@@ -1,32 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📖 checkup-carnet-documents.js — checkup de RELEASE
+// checkup-carnet-documents.js — checkup de release : un PDF livré dans le ZIP d'un plan remonte au Carnet
 // =====================================================================
-// UN PDF LIVRÉ DANS LE ZIP D'UN PLAN NE REMONTAIT PAS DANS « MON CARNET ».
-//
-// Signalement KARMA (26/09/2026) : « si j'ai intégré un PDF (mode histoire)
-// dans un zip à la génération, il ne remonte pas dans Mon Carnet > Récits ».
-// Ce n'était pas une régression mais une limite assumée et ÉCRITE dans le
-// code depuis la v1.69.0 (`journalUi.js`) : l'onglet Récits ne lit que deux
-// sources — les notes libres (localStorage) et les PDF importés en session
-// (IndexedDB `myktamap_histoire_pdfs`). Un document livré avec le plan
-// n'était dans ni l'une ni l'autre : il n'existait que le temps où son plan
-// était chargé, dans `RUNTIME_ASSETS`.
-//
-// Décision KARMA : on en fait une COPIE, supprimable, et rouvrir le plan la
-// recrée. D'où trois choses à mesurer, qu'aucun garde-fou statique ne peut
-// voir (IndexedDB + DOM du Carnet) :
-//   1. la copie se fait et le Carnet l'affiche, plan par plan ;
-//   2. elle est IDEMPOTENTE — dix chargements ne font pas dix copies ;
-//   3. supprimée, elle revient à la réouverture du plan.
-//
-// ⚠️ Ce harnais FALSIFIE : il joue aussi le cas sans synchro, où la ligne
-// doit être ABSENTE du Carnet. Sans ce second passage, un Carnet qui
-// afficherait n'importe quoi passerait pour un succès.
-//
+// L'onglet Récits (`journalUi.js`) ne lit que les notes libres (localStorage) et les PDF de l'IndexedDB
+// `myktamap_histoire_pdfs`. Un document livré avec le plan ne vit que dans `RUNTIME_ASSETS`, le temps du
+// chargement : `ModeHistoire.syncDocsEmbarques` en fait une COPIE supprimable, recréée à la réouverture
+// (décision produit). Mesure (IndexedDB + DOM, hors de portée d'un garde-fou statique) :
+//   1. la copie se fait et le Carnet l'affiche ; 2. elle est IDEMPOTENTE ; 3. supprimée, elle revient.
+// ⚠️ Le harnais FALSIFIE aussi : sans synchro, la ligne doit être ABSENTE, sinon un Carnet qui affiche
+// n'importe quoi passerait pour un succès.
 // Usage : node scripts/smoke/checkup-carnet-documents.js
-// =====================================================================
 "use strict";
 
 const { chromium } = require("playwright");
@@ -78,8 +62,7 @@ async function passe(nav, avecSync) {
 
   const r = await page.evaluate(async function (args) {
     const out = {};
-    // Le plan « généré avec un PDF dans son zip » : à l'extraction, son chemin
-    // est résolu en blob: URL — c'est exactement ce que produit RUNTIME_ASSETS.
+    // Plan « généré avec un PDF dans son ZIP » : chemin résolu en blob: URL, comme RUNTIME_ASSETS
     const url = URL.createObjectURL(new Blob([args.pdf], { type: "application/pdf" }));
     window.PLAN_CONFIG.plan.histoirePdfs = [url];
     out.planId = window._currentLoadedPlanId;
@@ -110,7 +93,6 @@ async function passe(nav, avecSync) {
     }
     out.enBase = await lireIdb();
 
-    // Le Carnet tel que l'utilisateur l'ouvre, onglet Récits compris.
     window.JournalUi.ouvrir();
     await new Promise(function (r) { setTimeout(r, 900); });
     const onglet = Array.prototype.slice.call(document.querySelectorAll(".kta-jrn-onglet"))

@@ -1,19 +1,11 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔥 smoke.js — SMOKE NAVIGATEUR (Playwright) — le garde-fou qui CLIQUE
-// =====================================================================
-// Né après 3 erreurs runtime en une semaine (ReferenceError `saved` des
-// Réglages, modale invisible par classe CSS fantôme, `tilesOverlay` hors
-// portée) que les 14 garde-fous logiques ne pouvaient pas voir : aucun
-// n'exécute l'app. Celui-ci boote l'app dans un vrai Chromium, ouvre les
-// écrans, clique, et ÉCHOUE sur : toute erreur console, toute pageerror,
-// tout warn « [I18n] Clé manquante », toute modale invisible.
-//
-// Usage : cd scripts/smoke && npm install && npm run smoke
-// (premier install : télécharge Chromium ~130 Mo, une fois)
-// Marche du RELEASE_GATE — lancé à la main avant release, pas en pre-commit
-// (trop lent pour chaque commit).
+// smoke.js — smoke navigateur (Playwright), le garde-fou qui CLIQUE : boote l'app dans un vrai Chromium,
+// ouvre les écrans et ÉCHOUE sur toute erreur console, pageerror, warn « [I18n] Clé manquante » ou modale
+// invisible — les erreurs runtime qu'aucun garde-fou statique ne voit.
+// Usage : cd scripts/smoke && npm install && npm run smoke (premier install : Chromium ~130 Mo).
+// Marche du RELEASE_GATE, lancée à la main avant release (trop lent pour le pre-commit).
 // =====================================================================
 "use strict";
 
@@ -25,13 +17,8 @@ const attendre = require("./attendre.js");   // pas de waitForFunction : refusé
 const PORT = 8123;
 const BASE = "http://127.0.0.1:" + PORT;
 
-// 🗺️ 26/09/2026 — LE SMOKE NE CHERCHE PLUS UN PLAN PAR SON NOM.
-// `data/` reçoit des relevés réels et ne part jamais sur le dépôt : dès que
-// KARMA y met un vrai plan, « Relevé fictif de test » n'est plus dans
-// `data/index.json` et le smoke était ROUGE pour cette seule raison — deux
-// faux échecs sur un harnais qui garde la porte de release. Il ouvre
-// désormais le relevé fictif s'il est là, le PREMIER plan de l'index sinon,
-// et le DIT (les mêmes checkups font ainsi depuis le 26/09).
+// 🩸 Ne pas exiger un plan par son nom : `data/` (hors Git) peut ne contenir que des relevés réels. Le
+// smoke ouvre le relevé fictif s'il est là, sinon le PREMIER plan de l'index, et le dit.
 function planDeTest() {
   try {
     const idx = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "data", "index.json"), "utf8"));
@@ -51,9 +38,8 @@ const LS_PREGATES = {
   "myktamap_pin_proposal_done_v1": "1",
   "myktamap_tutorial_seen_v1": "1"
 };
-// Les alertes EN COURS d'alert.json sont acquittées d'avance (07/10/2026) : une seule était codée en dur, et
-// l'alerte active du moment (live config) ouvrait sa modale au milieu du smoke, à un instant variable, et
-// bloquait les clics — smoke rouge avec ou sans changement de code. Acquit = released de l'alerte (alertChecker).
+// 🩸 Les alertes en cours d'alert.json sont acquittées d'avance (acquit = `released`, cf alertChecker) :
+// sinon leur modale s'ouvre à un instant variable et bloque les clics.
 try {
   const live = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "alert.json"), "utf8"));
   (Array.isArray(live.alerts) ? live.alerts : []).forEach(function (a) {
@@ -74,22 +60,15 @@ const BRUIT_TOLERE = [
 ];
 function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test(txt); }); }
 
-// 🎨 26/09/2026 — LE SONDAGE DES ICÔNES D'UN PLAN N'EST PAS UN DÉFAUT
-// D'ASSET. `config.js > resoudreIconesPlanServeur` demande au serveur si
-// chaque icône `icon/…` vit dans le dossier du plan ; pour un plan généré
-// AVANT la v1.97.9 (qui déclare `iconsEmbarquees`), la réponse est 404 et le
-// repli à la racine fait son travail. Ce n'est pas un fichier manquant mais
-// une question posée — on les compte et on dit quoi faire, au lieu de rougir.
+// Un 404 sur `data/<plan>/icon/…` n'est pas un asset manquant : `config.js > resoudreIconesPlanServeur`
+// sonde chaque icône d'un plan qui ne déclare pas `iconsEmbarquees`, puis se replie à la racine. On compte.
 const RX_SONDE_ICONE = /\/data\/[^/]+\/icon\/[^/]+$/;
 const sondesIcones = [];
 
 (async function main() {
   const server = require("./server.js");
-  // Playwright ≥ 1.49 lance par défaut le « headless shell », un binaire DISTINCT
-  // du Chromium complet. Quand seul ce dernier est installé — téléchargement du
-  // shell coupé par un proxy TLS (ERR_SSL_DECRYPTION_FAILED, vécu le 17/08/2026
-  // sur le poste de KARMA alors que `chromium` lui-même passait) — on retombe
-  // sur le build complet au lieu de renoncer à la marche 1bis du RELEASE_GATE.
+  // Playwright ≥ 1.49 lance le « headless shell », binaire distinct du Chromium complet ; si son
+  // téléchargement a échoué (proxy TLS), repli sur le Chromium complet, puis sur Edge.
   let navigateur;
   try {
     navigateur = await chromium.launch();
@@ -100,7 +79,7 @@ const sondesIcones = [];
       navigateur = await chromium.launch({ channel: "chromium" });
     } catch (e2) {
       if (!/Executable doesn't exist/i.test(String((e2 && e2.message) || ""))) throw e2;
-      // Aucun navigateur Playwright téléchargé : Edge, présent sur tout Windows (07/10/2026).
+      // Aucun navigateur Playwright téléchargé : Edge, présent sur tout Windows.
       console.log("[smoke] Chromium Playwright absent → repli sur Microsoft Edge (channel: msedge)");
       navigateur = await chromium.launch({ channel: "msedge" });
     }
@@ -127,8 +106,7 @@ const sondesIcones = [];
   }, LS_PREGATES);
 
   async function modaleVisible(nom, selecteur) {
-    // Une modale « présente mais invisible » (classe fantôme, display:none)
-    // est EXACTEMENT le bug qu'on chasse : on exige des dimensions réelles.
+    // 🩸 Une modale présente mais invisible (classe fantôme, display:none) : on exige des dimensions réelles.
     const el = page.locator(selecteur).last();
     try {
       await el.waitFor({ state: "visible", timeout: 4000 });
@@ -143,21 +121,20 @@ const sondesIcones = [];
   }
   async function fermerModales() {
     await page.keyboard.press("Escape").catch(function () {});
-    // les modales de l'app ferment aussi au clic sur ✕ — on tente les visibles
+    // puis clic sur les ✕ visibles
     const boutons = await page.locator(".kta-panneau-close:visible").all();
     for (const b of boutons.reverse()) { await b.click({ timeout: 1000 }).catch(function () {}); }
     await page.waitForTimeout(250);
   }
 
   try {
-    // ───────────────────────── 1. BOOT HOME ─────────────────────────
+    // ── 1. Boot HOME ──────
     console.log("— 1. Boot HOME —");
     await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2500);   // i18n + homeLoader async
     const titreVisible = await page.locator("#loaderTitle, .loader-title, .loader-header").first().isVisible().catch(function () { return false; });
     if (titreVisible) ok("HOME affiché"); else pb("boot", "HOME : aucun en-tête visible");
-    // 🚨 La modale Alertes peut s'ouvrir au boot (annonce non lue) et
-    // recouvrir le HOME — on la ferme comme un utilisateur (« J'ai compris »).
+    // La modale Alertes peut recouvrir le HOME au boot : on la ferme comme un utilisateur.
     const alerteOuverte = await page.locator("#kta-alert-modal").isVisible().catch(function () { return false; });
     if (alerteOuverte) {
       await page.evaluate(function () {
@@ -173,7 +150,7 @@ const sondesIcones = [];
     else pb("boot", "aucun plan ouvrable dans data/index.json (cherché : " + PLAN.nom + ")");
     if (!PLAN.fictif) console.log("  •  ⚠️ le relevé fictif n'est pas dans data/index.json — smoke sur « " + PLAN.nom + " »");
 
-    // ─────────────────── 2. ⚙️ CONFIGURATION (HOME) ──────────────────
+    // ── 2. Configuration (HOME) ──────
     console.log("— 2. ⚙️ Configuration HOME —");
     await page.locator("#loaderConfigBtn").click();
     await page.waitForTimeout(600);
@@ -184,7 +161,7 @@ const sondesIcones = [];
     const configFermee = await page.locator("#loaderConfigModal").isVisible().catch(function () { return false; });
     if (configFermee) pb("config", "la modale Configuration ne se ferme pas"); else ok("Configuration fermée");
 
-    // ───────────── 3. 📊 ÉDITEUR DE DONNÉES + modale résolution ─────────────
+    // ── 3. Éditeur de données + modale résolution ──────
     console.log("— 3. Éditeur de données —");
     const edOk = await page.evaluate(function () {
       if (typeof window.ouvrirTableEditor === "function") { window.ouvrirTableEditor(); return true; }
@@ -194,7 +171,7 @@ const sondesIcones = [];
     await page.waitForTimeout(500);
     await modaleVisible("accueil éditeur", "#kta-tbl-modal");
     await page.locator("#kta-tbl-src-resol").click();
-    // LA modale qui fut invisible (classe CSS fantôme) : dimensions exigées
+    // modale exposée à la classe CSS fantôme : dimensions exigées
     await modaleVisible("convertisseur de résolution", ".kta-readme-modal-overlay:has(#kta-tbl-resol-go)");
     await fermerModales();   // convertisseur
     await page.evaluate(function () { const b = document.getElementById("kta-tbl-close-accueil"); if (b) b.click(); });
@@ -206,20 +183,17 @@ const sondesIcones = [];
     }
     else ok("tous les overlays fermés");
 
-    // ───────────────────── 4. CHARGER LE PLAN DE TEST ─────────────────────
+    // ── 4. Charger le plan de test ──────
     console.log("— 4. Chargement du plan " + PLAN.nom + " —");
     await page.getByText(PLAN.nom, { exact: false }).first().click();
-    // 🩸 12/10/2026 — attendre() et non page.waitForFunction, refusé par la CSP de l'app (cf attendre.js) :
-    // l'erreur tombait dans le catch → faux « pas chargé ».
+    // 🩸 attendre() et non page.waitForFunction, refusé par la CSP (attendre.js) : faux « pas chargé ».
     await attendre(page, function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, 15000)
       .then(function () { ok("plan chargé (PLAN_CONFIG posé, #map présent)"); })
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
     await page.waitForTimeout(2500);   // rendu calques + restore session
 
-    // 🩸 29/09/2026 — le premier rendu du tuilage doit COMPTER ses tuiles. Il
-    // était consommé par un rendu fantôme « z=NaN » (carte encore sans vue) :
-    // `attendusPremier` restait à 0 et le repli « toutes les tuiles du premier
-    // rendu ont échoué → image entière » était désarmé, en silence.
+    // 🩸 Le premier rendu du tuilage doit COMPTER ses tuiles : un rendu fantôme « z=NaN » (carte sans vue)
+    // laisse `attendusPremier` à 0 et désarme en silence le repli « tout a échoué → image entière ».
     const tuilage = await page.evaluate(function () {
       const s = window._tilingV2State;
       return s ? { niveau: s.currentLevel, attendus: s.attendusPremier } : null;
@@ -229,7 +203,7 @@ const sondesIcones = [];
       ok("tuilage : premier rendu au niveau z=" + tuilage.niveau + ", " + tuilage.attendus + " tuiles attendues (repli d'erreur armé)");
     } else pb("tuilage", "premier rendu fantôme — niveau " + tuilage.niveau + ", " + tuilage.attendus + " tuile(s) attendue(s)");
 
-    // ───────────────── 5. ⚙️ RÉGLAGES (le ReferenceError `saved`) ─────────────────
+    // ── 5. Réglages (construction complète, section géoref comprise) ──────
     console.log("— 5. ⚙️ Réglages carte —");
     const ouvert = await page.evaluate(function () {
       if (typeof window.afficherConfig === "function") { window.afficherConfig(); return true; }
@@ -237,8 +211,7 @@ const sondesIcones = [];
     });
     if (ouvert) {
       await modaleVisible("⚙️ Réglages", "#kta-cfg-modal");
-      // v1.92.0 (L4) : application immédiate — l'échelle saisie est persistée
-      // SANS bouton Appliquer (puis remise à sa valeur d'origine).
+      // Application immédiate : l'échelle saisie est persistée sans Appliquer (puis remise).
       const persiste = await page.evaluate(function () {
         const el = document.getElementById("cfg_scale"); if (!el) return "champ absent";
         const avant = el.value;
@@ -250,19 +223,19 @@ const sondesIcones = [];
       });
       if (persiste === "ok") ok("réglage immédiat : l'échelle est persistée à la saisie (sans Appliquer)");
       else pb("reglages", "échelle non persistée à la saisie (" + persiste + ")");
-      // v1.92.0 (L4) : le géoréférencement vit dans SA sous-modale — on l'ouvre.
+      // Le géoréférencement vit dans sa sous-modale.
       if (await page.locator("#cfg_georef_open").count() > 0) {
         await page.locator("#cfg_georef_open").click();
         await page.waitForTimeout(300);
       } else pb("reglages", "bouton 🌐 Géoréférencement absent du groupe Plan");
-      // le bouton du bug `saved` : présent = la section géoref s'est construite
+      // bouton présent = la section géoref s'est construite sans erreur
       const estimer = await page.locator("#cfg_kmz_B_estimer").count();
       if (estimer > 0) ok("section géoref construite (bouton Estimer B présent)");
       else pb("reglages", "bouton Estimer B absent — section géoref cassée ?");
       await fermerModales();
     } else pb("reglages", "afficherConfig indisponible");
 
-    // ───────────────────── 6. ≡ LÉGENDE ─────────────────────
+    // ── 6. Légende ──────
     console.log("— 6. ≡ Légende —");
     const legendeOuverte = await page.evaluate(function () {
       if (typeof window.afficherLegende === "function") { window.afficherLegende(); return true; }
@@ -271,11 +244,7 @@ const sondesIcones = [];
     if (legendeOuverte) { await modaleVisible("≡ Légende", ".kta-legende-modal, #kta-legende-modal, .kta-readme-modal-overlay"); await fermerModales(); }
     else console.log("  ℹ️ afficherLegende non exposée — étape sautée (non bloquant)");
 
-    // ───────── 7. 📊 MODALE SESSION + section 📔 Carnet (v1.79.5) ─────────
-    // Ajoutée avec les boutons 🚶/🖥️ de correction du classement : cette modale
-    // n'était traversée par AUCUNE étape, donc une classe CSS fantôme ou un
-    // libellé i18n manquant y passait inaperçu (c'est exactement le bug qui a
-    // motivé ce harnais en v1.76.2).
+    // ── 7. Modale Session + section Carnet ──────
     console.log("— 7. 📊 Modale Session + section Carnet —");
     const compteurs = await page.locator("#kta-refonte-counters-btn").count();
     if (compteurs > 0) {
@@ -284,9 +253,7 @@ const sondesIcones = [];
       const carnet = await page.locator("#kta-refonte-session-carnet-section").count();
       if (carnet > 0) ok("section 📔 Carnet présente");
       else pb("session", "section Carnet absente de la modale Session");
-      // Les boutons de classement n'existent QUE s'il y a une sortie en cours.
-      // On n'exige leur présence que dans ce cas — sinon faux rouge quand le
-      // carnet est désactivé.
+      // Boutons de classement exigés seulement avec une sortie en cours (carnet désactivé sinon).
       const sortieEnCours = await page.evaluate(function () {
         try { return !!(window.Journal && window.Journal.getCurrent && window.Journal.getCurrent()); }
         catch (e) { return false; }
@@ -296,10 +263,8 @@ const sondesIcones = [];
         const nbB = await page.locator("#kta-refonte-session-carnet-type-bureau").count();
         if (nbT > 0 && nbB > 0) ok("boutons 🚶/🖥️ de classement présents");
         else pb("session", "boutons de classement absents alors qu'une sortie est en cours");
-        // Le clic doit BASCULER le classement. ⚠️ On clique sur le bouton qui
-        // n'est PAS actif : une sortie de smoke démarre « bureau », donc
-        // vérifier que 🖥️ est primary APRÈS avoir cliqué 🖥️ serait vrai sans
-        // rien faire (tautologie — attrapée en falsifiant ce test le 17/08).
+        // 🩸 Cliquer le bouton NON actif : la sortie démarre « bureau », cliquer « bureau » puis le voir actif
+        // serait vrai sans rien faire (tautologie).
         if (nbT > 0 && nbB > 0) {
           const idT = "#kta-refonte-session-carnet-type-terrain";
           const idB = "#kta-refonte-session-carnet-type-bureau";
@@ -319,9 +284,7 @@ const sondesIcones = [];
           else pb("session", "clic de classement sans bascule visible (setType échoué ? cible=" +
                              cibleOk + " autre_desactive=" + autreOk + ")");
         }
-        // 🧭 « Affiner le tracé » : présent, et GRISÉ ici — le scénario ne pose
-        // aucun « 📍 Je suis ici », donc il n'y a rien à affiner. Un bouton actif
-        // à ce stade signalerait un compteur de tronçons faux.
+        // « Affiner le tracé » doit être GRISÉ : aucun « Je suis ici » posé ; actif = compteur de tronçons faux.
         const aff = await page.locator("#kta-refonte-session-carnet-affiner").count();
         if (aff > 0) {
           const grise = await page.locator("#kta-refonte-session-carnet-affiner")
@@ -335,11 +298,7 @@ const sondesIcones = [];
       await fermerModales();
     } else console.log("  ℹ️ bouton compteurs absent — étape sautée (non bloquant)");
 
-    // ───────── 8. ❓ AIDE INTÉGRÉE (hub + une sous-modale) ─────────
-    // AUCUNE étape ne traversait l'Aide, alors qu'elle porte ~1 700 lignes de
-    // HTML en dur. Deux incidents l'ont prouvé : une régression de langue (elle
-    // s'est mise à sortir en français pour les hispanophones) et trois défauts
-    // de structure — tous invisibles au harnais parce qu'il ne l'ouvrait jamais.
+    // ── 8. Aide intégrée (hub + une sous-modale) ──────
     console.log("— 8. ❓ Aide intégrée —");
     const aideOuverte = await page.evaluate(function () {
       if (typeof window.afficherAide === "function") { window.afficherAide(); return true; }
@@ -347,15 +306,12 @@ const sondesIcones = [];
     });
     if (aideOuverte) {
       await modaleVisible("❓ Aide", "#kta-aide-modal");
-      // Le hub doit lister des lignes : un parsing cassé rendrait une modale
-      // vide et VISIBLE — donc verte au seul test de visibilité.
+      // 🩸 Un parsing cassé rend une modale vide mais VISIBLE : on compte les lignes.
       const nbLignes = await page.locator("#kta-aide-modal .kta-aide-row").count();
       if (nbLignes >= 10) ok("hub d'aide peuplé (" + nbLignes + " lignes)");
       else pb("aide", "hub d'aide quasi vide (" + nbLignes + " lignes) — parsing des sections cassé ?");
 
-      // Les classes de typographie du lot 1 doivent EXISTER dans le CSS servi :
-      // si le bloc n'était pas déployé, le texte perdrait taille et couleur
-      // sans lever la moindre erreur console.
+      // Les classes de typographie de l'Aide doivent exister dans le CSS servi (sinon aucune erreur console).
       const cssOk = await page.evaluate(function () {
         const d = document.createElement("p");
         d.className = "kta-aide-note";

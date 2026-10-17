@@ -4,27 +4,13 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// SWINSPECTOR.JS — Inspecteur Service Worker (v1.43.12)
-// =========================
-// Outil de transparence + diagnostic du cache PWA. Compare ce qui DEVRAIT
-// être en cache (= liste ASSETS_TO_CACHE + CRITICAL_APP_SHELL du sw.js)
-// avec ce qui Y EST VRAIMENT (= contenu réel du cache courant).
-//
-// Cas d'usage :
-//   - Debug "page X pas à jour après update" : voir si l'asset est cached
-//     et si oui, depuis quel cache.
-//   - Vérifier qu'un update du SW a bien pré-caché tous les assets critiques.
-//   - Récupérer manuellement les assets manquants (bouton retry).
-//
-// Modale accessible depuis ⚙️ Configuration → 🛠️ Mode Développeur (mode
-// actif seulement, js/devMode.js). Pour tous les utilisateurs, l'état du
-// cache est montré par la pastille « hors-ligne » du pied de page de
-// l'accueil (homeConfig.js), via etat() / recuperer() exposées ci-dessous.
-//
-// Lecture seule pour l'essentiel + 1 action explicite : "Récupérer les
-// fichiers manquants". Aucune écriture destructive.
-// =========================
+// swInspector.js — inspecteur du cache PWA : compare ce qui DEVRAIT être en cache (ASSETS_TO_CACHE +
+// CRITICAL_APP_SHELL de sw.js) à ce qui Y EST, avec la cause des échecs d'installation, et récupère les
+// manquants. Lecture seule hors l'action « Récupérer les fichiers manquants ».
+// Modale : ⚙️ Configuration → 🛠️ Mode Développeur (js/devMode.js). Pour tous : pastille « hors-ligne » de
+// l'accueil (homeConfig.js) via etat() / recuperer(), et auto-réparation silencieuse au boot.
+// Expose : window.SwInspector (ouvrir, fermer, autoHealIfNeeded, etat, recuperer).
+// Garde-fou : scripts/check-modal-lifecycle.js
 
 (function() {
   "use strict";
@@ -35,42 +21,31 @@
 
   const MODAL_ID = "kta-sw-inspector-modal";
 
-  // ============================================================
-  // HELPERS
-  // ============================================================
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
-  // ========== HELPER I18N ==========
-  // Appelé AU RENDU uniquement (jamais au load) → les dicos sont prêts.
+  // Appelé au rendu seulement, jamais au chargement : les dicos sont prêts.
   function _t(key, params) {
     return (window.I18n && typeof window.I18n.t === "function")
       ? window.I18n.t("swinsp." + key, params)
       : key;
   }
 
-  // Normalise une URL ou un asset path en pathname relatif au scope SW.
-  // Permet de comparer "./js/main.js" (asset list) avec "https://.../js/main.js" (cache key).
+  // URL ou chemin d'asset → pathname, pour comparer "./js/main.js" (liste) et "https://…/js/main.js" (clé de cache).
   function _normalize(urlLike) {
     try {
       if (!urlLike) return "";
       let s = String(urlLike);
-      // URL absolue → pathname
       if (/^https?:\/\//.test(s)) {
         try { s = new URL(s).pathname; } catch(e) {}
       }
-      // Retirer leading ./
       s = s.replace(/^\.\//, "/");
-      // Forcer leading /
       if (!s.startsWith("/")) s = "/" + s;
-      // Retirer query + hash
       s = s.split("?")[0].split("#")[0];
       return s;
     } catch(e) { return String(urlLike || ""); }
   }
 
-  // ============================================================
-  // QUERY SW : liste attendue (via MessageChannel)
-  // ============================================================
+  // ── Questions au SW (MessageChannel) et à la Cache API ──────────────
   function _querySwExpectedAssets() {
     return new Promise(function(resolve, reject) {
       if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
@@ -103,13 +78,8 @@
     });
   }
 
-  // ============================================================
-  // 🆕 v1.43.22 — QUERY SW : INSTALL FAILURES LOG
-  // ============================================================
-  // Récupère la liste des échecs d'install loggués dans IDB
-  // myktamap_sw_install_log/install_failures par _cacheAddDiag.
-  // Chaque entrée : { asset, type, status, message, timestamp, phase }
-  // Type possible : "404" / "5xx" / "4xx" / "network" / "quota" / "parse" / "unknown"
+  // Échecs d'installation journalisés par sw.js > _cacheAddDiag (IDB myktamap_sw_install_log/install_failures) :
+  // [{ asset, type ∈ 404|5xx|4xx|network|quota|parse|unknown, status, message, timestamp, phase }].
   function _querySwInstallFailures() {
     return new Promise(function(resolve) {
       if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
@@ -132,9 +102,6 @@
     });
   }
 
-  // ============================================================
-  // QUERY CACHE API : assets vraiment présents
-  // ============================================================
   async function _queryActualAssets(cacheName) {
     if (!("caches" in window)) throw new Error(_t("err.noCacheApi"));
     const cache = await caches.open(cacheName);
@@ -142,14 +109,7 @@
     return requests.map(function(r) { return r.url; });
   }
 
-  // ============================================================
-  // DIFF
-  // ============================================================
-  // Retourne { present: [], missing: [], unexpected: [] }
-  // - present    : asset attendu ET présent en cache
-  // - missing    : asset attendu MAIS absent du cache
-  // - unexpected : asset présent en cache MAIS pas dans la liste attendue
-  //                (= cache dynamique : tuiles, fetches runtime, etc.)
+  // → { present, missing (attendu, absent), unexpected (en cache, non attendu : cache dynamique, tuiles…) }
   function _computeDiff(expected, actual) {
     const expectedNormalized = expected.map(_normalize);
     const actualNormalized   = actual.map(_normalize);
@@ -168,9 +128,6 @@
     return { present: present, missing: missing, unexpected: unexpected };
   }
 
-  // ============================================================
-  // REFETCH MISSING (action utilisateur)
-  // ============================================================
   function _refetchMissing(missing) {
     return new Promise(function(resolve, reject) {
       if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
@@ -199,14 +156,9 @@
     });
   }
 
-  // ============================================================
-  // RENDER REPORT (HTML)
-  // ============================================================
-  // 🆕 v1.43.22 — Labels user-friendly + emoji pour chaque type d'erreur
-  // d'install. Permet à l'user de comprendre POURQUOI un asset manque
-  // (FTP partiel = 404, serveur en erreur = 5xx, offline = network, etc.).
-  // icon/color = données visuelles (non traduites) ; le label texte est résolu
-  // au rendu via I18n (clé swinsp.fail.<type>).
+  // ── Rapport ──────────────
+  // Par type d'échec, de quoi dire POURQUOI un fichier manque (dépôt partiel = 404, serveur = 5xx, réseau…).
+  // icône / couleur ici ; libellé traduit au rendu (swinsp.fail.<type>).
   const FAILURE_META = {
     "404":     { icon: "🚫", color: "#f4c542" },
     "5xx":     { icon: "🔥", color: "#f46b6b" },
@@ -225,10 +177,8 @@
 
   function _renderReport(diff, cacheName, failures) {
     failures = Array.isArray(failures) ? failures : [];
-    // Index par asset path pour lookup rapide quand on rend la section "Manquants"
     const failureByAsset = {};
     failures.forEach(function(f) { failureByAsset[f.asset] = f; });
-    // Stats agrégées par type
     const failureCounts = {};
     failures.forEach(function(f) {
       const t = f.type || "unknown";
@@ -239,7 +189,7 @@
     const presentPct = total > 0 ? Math.round(100 * diff.present.length / total) : 100;
     let html = "";
 
-    // VERDICT en tête
+    // Verdict en tête.
     if (diff.missing.length === 0) {
       html +=
         '<div class="kta-mem-section" style="border-color:rgba(166,215,133,0.4); background:rgba(166,215,133,0.05);">' +
@@ -261,7 +211,7 @@
         '</div>';
     }
 
-    // Section MANQUANTS (si applicable) — 🆕 v1.43.22 : avec cause si connue
+    // Manquants, avec leur cause si elle est connue.
     if (diff.missing.length > 0) {
       html +=
         '<div class="kta-mem-section">' +
@@ -285,9 +235,7 @@
         '</div>';
     }
 
-    // 🆕 v1.43.22 — Section ÉCHECS DÉTECTÉS — stats agrégées par type d'erreur.
-    // Affichée même si tous les manquants ont une cause (= utile pour vue
-    // synthétique : "j'ai 3 fichiers absents du serveur + 1 erreur réseau").
+    // Échecs par type, même si chaque manquant a déjà sa cause : la vue d'ensemble oriente le diagnostic.
     if (failures.length > 0) {
       const orderedTypes = ["404", "5xx", "4xx", "network", "quota", "parse", "unknown"];
       const statsLine = orderedTypes
@@ -322,7 +270,7 @@
         '</div>';
     }
 
-    // Section PRÉSENTS (collapse par défaut, affiche le count)
+    // Présents (repliés), puis inattendus (cache dynamique : tuiles, plans…).
     html +=
       '<details class="kta-mem-section">' +
         '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + _t("present.titre", { count: diff.present.length }) + '</summary>' +
@@ -331,7 +279,6 @@
         '</div>' +
       '</details>';
 
-    // Section INATTENDUS (= cache dynamique LRU, plans utilisateur, etc.)
     if (diff.unexpected.length > 0) {
       html +=
         '<details class="kta-mem-section">' +
@@ -351,9 +298,7 @@
     return html;
   }
 
-  // ============================================================
-  // MODALE
-  // ============================================================
+  // ── Modale ──────────────
   function _buildModalHtml() {
     return ''
       + '<div class="kta-readme-modal-boite" style="max-width:780px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">'
@@ -367,24 +312,17 @@
       + '</div>';
   }
 
-  // ============================================================
-  // COLLECT + RENDER
-  // ============================================================
   let _currentDiff = null;
   let _currentCacheName = null;
-  // 🆕 v1.44.0 — Pilote ModalLifecycle de la modale Inspecteur SW.
-  let _lc = null;
+  let _lc = null;   // ModalLifecycle de la modale
 
   async function _collectAndRender(bodyEl) {
     try {
-      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si
-      // modale fermée pendant les 3 awaits. Plus besoin de N isConnected.
+      // _lc.guard lève ModalClosedError si la modale se ferme pendant un await.
       const guard = _lc ? function(p) { return _lc.guard(p); } : function(p) { return p; };
       const expected = await guard(_querySwExpectedAssets());
       const actual   = await guard(_queryActualAssets(expected.cacheName));
       const diff     = _computeDiff(expected.assets, actual);
-      // 🆕 v1.43.22 — Fetch aussi le log des échecs d'install
-      // (peut être vide si tout est OK ou si v1.43.21 ou antérieur).
       const failures = await guard(_querySwInstallFailures());
       _currentDiff = diff;
       _currentCacheName = expected.cacheName;
@@ -392,7 +330,6 @@
       const btn = document.getElementById("kta-sw-inspector-refetch");
       if (btn && _lc) _lc.on(btn, "click", _handleRefetchClick);
     } catch(e) {
-      // 🆕 v1.44.0 — Modale fermée pendant l'await → silently return.
       if (e && e.name === "ModalClosedError") return;
       if (!bodyEl.isConnected) return;
       bodyEl.innerHTML =
@@ -406,20 +343,14 @@
     }
   }
 
-  // ============================================================
-  // ACTION : REFETCH
-  // ============================================================
   async function _handleRefetchClick() {
     if (!_currentDiff || !_currentDiff.missing || _currentDiff.missing.length === 0) return;
     const btn    = document.getElementById("kta-sw-inspector-refetch");
     const status = document.getElementById("kta-sw-inspector-refetch-status");
-    // 🆕 v1.44.0 — Pattern D via _lc.lockButton : auto-restore disabled + label
-    // au release(). Plus besoin de gérer manuellement btn.disabled.
+    // lockButton : disabled + libellé, rendus par release().
     const release = (_lc && btn) ? _lc.lockButton(btn, { text: _t("refetch.running") }) : function() {};
     if (status) status.textContent = _t("refetch.downloading");
     try {
-      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si
-      // modale fermée pendant le refetch (long : ~50 assets × HTTP).
       const refetchP = _refetchMissing(_currentDiff.missing);
       const result = await (_lc ? _lc.guard(refetchP) : refetchP);
       const okCount   = (result.results || []).filter(function(r) { return r.ok; }).length;
@@ -429,8 +360,7 @@
                              (failCount > 0 ? " · " + _t("refetch.failCount", { count: failCount }) : "");
         status.style.color = failCount > 0 ? "#f4c542" : "#a6d785";
       }
-      // 🆕 v1.44.0 — setTimeout tracked : cleared si user ferme la modale
-      // dans le 1.5s entre le refetch et la re-vérification.
+      // Minuteur suivi par _lc : annulé si la modale se ferme avant la re-vérification.
       const scheduleReload = function() {
         const bodyEl = document.getElementById("kta-sw-inspector-body");
         if (bodyEl) {
@@ -450,11 +380,8 @@
     }
   }
 
-  // ============================================================
-  // OUVRIR / FERMER
-  // ============================================================
   function ouvrir() {
-    fermer(); // sécurité : reset si modale existante
+    fermer();
     const overlay = document.createElement("div");
     overlay.id = MODAL_ID;
     overlay.className = "kta-readme-modal-overlay";
@@ -463,8 +390,7 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    // 🆕 v1.44.0 — ModalLifecycle : listeners (close, backdrop, Escape)
-    // cleared automatiquement au fermer().
+    // Écouteurs (croix, fond, Échap) retirés par ModalLifecycle à la fermeture.
     _lc = window.ModalLifecycle.attach(overlay, {
       label: "SwInspector",
       onClose: function() {
@@ -487,33 +413,17 @@
     if (el && el.parentNode) el.parentNode.removeChild(el);
   }
 
-  // ============================================================
-  // 🆕 v1.43.13 — AUTO-HEAL SILENCIEUX AU BOOT
-  // ============================================================
-  // Appelé depuis index.html après ~5s post-load, tente automatiquement
-  // de récupérer les assets manquants SI on a internet. Garde-fous stricts
-  // pour ne pas casser la performance ni la privacy.
-  //
-  // Conditions cumulatives requises :
-  //   1. navigator.onLine === true (pas en mode avion)
-  //   2. Service Worker controller actif (= app contrôlée)
-  //   3. Pas en Mode incognito
-  //   4. Pas déjà tiré cette session (sessionStorage anti-spam)
-  //   5. Cap à 100 fetches max pour ne pas DDoS-er le serveur sur cache cassé
-  //
-  // Output : console + événement `kta-sw-autoheal` sur window (cf. plus bas) :
-  // la pastille « hors-ligne » du pied de page de l'accueil (homeConfig.js)
-  // s'y branche pour MONTRER l'état. L'ancien toast rouge « cache incomplet »
-  // (qui renvoyait vers cet inspecteur, réservé au mode développeur) a été
-  // retiré : la pastille rouge et son indicateur d'en-tête le remplacent.
+  // ── Auto-réparation silencieuse au boot ──────────────
+  // Lancée par index.html ~5 s après le chargement. Conditions : en ligne, SW contrôleur, pas d'incognito
+  // (aucune requête sortante), pas déjà réussie cette session ; 100 requêtes au plus sur un cache cassé.
+  // Résultat : console + événement `kta-sw-autoheal`, que la pastille « hors-ligne » de l'accueil
+  // (homeConfig.js) affiche. Aucun toast.
 
   const SS_AUTOHEAL_KEY = "kta_sw_autoheal_done";
-  // 🆕 v1.43.23 — Mémorise le résultat du dernier check pour décider si
-  // on doit re-tirer au reload (échecs non résolus = retry) ou pas (tout OK).
+  // Dernier passage en échec → on retente au rechargement suivant.
   const SS_AUTOHEAL_LAST_FAILED = "kta_sw_autoheal_last_failed";
 
-  // Signale le début de la réparation et son résultat (y compris les sorties
-  // « skipped »). Aucune logique de réparation n'en dépend.
+  // Début et résultat (sorties « skipped » comprises) ; aucune logique n'en dépend.
   function _signalerAutoHeal(phase, resultat) {
     try {
       window.dispatchEvent(new CustomEvent("kta-sw-autoheal", { detail: { phase: phase, resultat: resultat } }));
@@ -530,12 +440,8 @@
     opts = opts || {};
     const maxRefetch = (typeof opts.maxRefetch === "number") ? opts.maxRefetch : 100;
 
-    // 🆕 v1.43.23 — Garde-fou INTELLIGENT (au lieu de "1× par session" brut) :
-    //   - Si le dernier check était OK → skip (cache déjà sain, pas de spam)
-    //   - Si le dernier check avait des échecs → RE-TIRER à chaque reload
-    //     (KARMA "50 manquants au 1er load, 7 après reload, mais l'auto-heal
-    //     ne re-tire pas") → le serveur a peut-être été corrigé entre temps,
-    //     ou le runtime cache a réglé une partie, donc on retente.
+    // Dernier passage OK cette session → rien. En échec → on retente à CHAQUE rechargement : le serveur a pu
+    // être corrigé, ou le cache runtime a comblé une partie.
     try {
       const alreadyDone = sessionStorage.getItem(SS_AUTOHEAL_KEY) === "1";
       const lastFailed  = sessionStorage.getItem(SS_AUTOHEAL_LAST_FAILED) === "1";
@@ -548,12 +454,10 @@
       }
     } catch(e) {}
 
-    // Garde-fous : online
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       console.log("[SwInspector] auto-heal skipped : offline");
       return { skipped: true, reason: "offline" };
     }
-    // Garde-fous : pas en incognito (= aucun fetch sortant)
     try {
       if (window.IncognitoMode && window.IncognitoMode.isActive
           && window.IncognitoMode.isActive()) {
@@ -561,14 +465,11 @@
         return { skipped: true, reason: "incognito" };
       }
     } catch(e) {}
-    // Garde-fous : SW controller actif (sinon REFETCH_MISSING_ASSETS plante)
+    // SW contrôleur requis (sinon REFETCH_MISSING_ASSETS plante).
     if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
       console.log("[SwInspector] auto-heal skipped : SW pas controller → retry dans 5s");
-      // 🆕 v1.43.23 — Au lieu d'abandonner, on re-programme un retry dans 5s.
-      // Ça couvre le cas où le timeout 5s d'index.html tire avant que le SW
-      // ait terminé son install (1er load post-update, SW en train de claim).
-      // On NE marque PAS le flag sessionStorage (sinon on bloquerait toutes
-      // les tentatives suivantes), on laisse le retry tourner.
+      // 1er chargement après mise à jour : le SW peut ne pas avoir fini son claim. Un essai 5 s plus tard,
+      // ⚠️ sans poser le drapeau de session (il bloquerait les tentatives suivantes).
       setTimeout(function() { // lint-ok-modal-lifecycle (auto-heal background hors modale)
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
           console.log("[SwInspector] SW controller arrivé, retry auto-heal");
@@ -585,18 +486,14 @@
       const actual   = await _queryActualAssets(expected.cacheName);
       const diff     = _computeDiff(expected.assets, actual);
 
-      // Marquer "tiré cette session" même si rien à faire
       try { sessionStorage.setItem(SS_AUTOHEAL_KEY, "1"); } catch(e) {}
 
       if (diff.missing.length === 0) {
         console.log("[SwInspector] auto-heal : ✅ cache complet (" + diff.present.length + " assets)");
-        // 🆕 v1.43.23 — Marquer "dernier check OK" → garde-fou pour skip
-        // les reload suivants tant que le cache est sain.
         try { sessionStorage.setItem(SS_AUTOHEAL_LAST_FAILED, "0"); } catch(e) {}
         return { healed: 0, present: diff.present.length, missing: 0 };
       }
 
-      // Cap pour ne pas spammer le serveur si le cache est complètement cassé
       const toRefetch = diff.missing.slice(0, maxRefetch);
       const capped    = diff.missing.length > maxRefetch;
       console.warn(
@@ -621,10 +518,7 @@
         console.log("[SwInspector] auto-heal terminé : ✅ " + okCount + " récupérés, cache complet.");
       }
 
-      // 🆕 v1.43.23 — Persiste le résultat pour décider du retry au prochain
-      // reload. Si failCount > 0 (ou capped = il reste des fichiers non
-      // traités), on marque "fail" pour re-tirer la prochaine fois. Sinon
-      // c'est "ok" et on skip jusqu'à la prochaine session.
+      // Échecs, ou fichiers laissés par le plafond → « fail » : on retentera au rechargement.
       try {
         const stillFailing = (failCount > 0) || capped;
         sessionStorage.setItem(SS_AUTOHEAL_LAST_FAILED, stillFailing ? "1" : "0");
@@ -639,17 +533,13 @@
       };
     } catch(e) {
       console.warn("[SwInspector] auto-heal erreur :", e.message || e);
-      // En cas d'exception, on marque "fail" pour retenter au prochain reload
       try { sessionStorage.setItem(SS_AUTOHEAL_LAST_FAILED, "1"); } catch(e2) {}
       return { error: String(e.message || e) };
     }
   }
 
-  // ============================================================
-  // ÉTAT HORS-LIGNE (pastille de l'accueil, lot B 03/10/2026)
-  // ============================================================
-  // etat() : COMPARAISON SEULE — un message au SW (liste attendue) + une
-  // lecture de la Cache API. Zéro requête réseau.
+  // ── État hors-ligne (pastille de l'accueil) ──────────────
+  // etat() : comparaison SEULE (un message au SW + une lecture de la Cache API), zéro requête réseau.
   // → { etat: "ok"|"manquants"|"indisponible", manquants, attendus, version,
   //     raison? ("incognito"|"sw"|"erreur") }
   function _version() {
@@ -688,10 +578,8 @@
     }
   }
 
-  // recuperer(onProgress) : retélécharge les fichiers manquants par paquets de
-  // 10 (la taille de lot du SW) pour pouvoir annoncer la progression —
-  // onProgress(faits, total). → { recuperes, echecs }. Mêmes URL, même
-  // origine que l'auto-réparation. Un seul appel à la fois.
+  // recuperer(onProgress(faits, total)) → { recuperes, echecs } : par paquets de 10 (le lot du SW) pour
+  // annoncer la progression. Un seul appel à la fois.
   const LOT_RECUP = 10;
   let _recupEnCours = null;
   function recuperer(onProgress) {
@@ -719,9 +607,6 @@
     return p;
   }
 
-  // ============================================================
-  // EXPORTS
-  // ============================================================
   window.SwInspector = {
     ouvrir:            ouvrir,
     fermer:            fermer,

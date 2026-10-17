@@ -1,35 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🚨 checkup-urgence-memoire.js — checkup de RELEASE
-// =====================================================================
-// Couvre deux familles de défauts qu'un audit mesuré a sorties en v1.97.6,
-// et qu'aucun test ne pouvait voir : ils ne se manifestent ni à l'œil, ni
-// dans la console, ni sur le plan de démonstration.
-//
-//   1. LA FUITE AU CHANGEMENT DE PLAN. `L.Map._initContainer` pose un
-//      écouteur `scroll` sur le conteneur et `map.remove()` ne le retire
-//      JAMAIS. Comme `<div id="map">` est permanent et réutilisé à chaque
-//      plan, sa closure épingle l'ancienne carte pour toujours : +1 `L.Map`,
-//      +970 polylines, +11 641 `L.LatLng`, +2,43 Mo par plan chargé, sans
-//      plafond. Ni l'OOMGuard ni l'inspecteur mémoire ne lisent
-//      `performance.memory` — l'app était aveugle à sa propre fuite.
-//
-//   2. L'ÉCRAN D'URGENCE « XL ». Sur un plan servi en HTTP — le modèle de
-//      déploiement de la production — sa minimap n'affichait AUCUN fond
-//      (0 tuile, 0 requête, un rectangle noir), sa boussole graphique
-//      contredisait ses propres chiffres au premier affichage, son unique
-//      bouton de sortie était coupé, et le bloc « 🔋 ÉTAT » ne montrait pas
-//      la batterie. Sur l'écran qu'on ouvre quand on est perdu.
-//
-//   3. LES COULEURS DE LA LÉGENDE PERSONNALISÉE, ignorées par la mini-carte.
-//      Cet écran garde délibérément sa palette vive (variante documentée en
-//      tête de `styleResolver.js`) — mais il ignorait aussi les couleurs
-//      CHOISIES par l'utilisateur, et ne connaissait aucun type `cust-…` :
-//      une zone custom sortait en gris remblais, un tracé custom en jaune
-//      chemin. La mini-carte montrait donc autre chose que la carte, sur
-//      l'écran où l'on cherche à reconnaître son propre relevé.
-//
+// checkup-urgence-memoire.js — checkup de RELEASE (Playwright, à la main) : défauts invisibles à l'œil,
+// dans la console et sur le plan de démonstration.
+//   1. 🩸 Fuite au changement de plan : `L.Map._initContainer` pose un écouteur `scroll` que `map.remove()`
+//      ne retire jamais ; `#map` étant permanent, sa closure épingle chaque ancienne carte (~2,4 Mo par
+//      plan, sans plafond, invisible de l'OOMGuard).
+//   2. Écran d'urgence « XL » sur un plan servi en HTTP : fond de minimap dessiné, boussole cohérente dès
+//      le premier affichage, bouton SORTIR dans l'écran, batterie dans « ÉTAT », coordonnées copiables.
+//   3. La mini-carte garde sa palette vive (exception de `styleResolver.js`) mais respecte les couleurs
+//      CHOISIES en légende et les types `cust-…`.
 // Usage : node scripts/smoke/checkup-urgence-memoire.js
 // =====================================================================
 "use strict";
@@ -68,8 +48,7 @@ function inf(m) { console.log("  •  " + m); }
 (async function main() {
   let nav;
   nav = await lancerNavigateur(chromium);
-  // 📋 `clipboard-read` : sans cette permission, on ne pourrait PAS vérifier ce
-  // qui a été copié — seulement que le bouton dit l'avoir fait.
+  // `clipboard-read` : pour vérifier ce qui a été copié, pas seulement ce que dit le bouton.
   const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2,
                                      permissions: ["clipboard-read", "clipboard-write"] });
   const page = await ctx.newPage();
@@ -91,17 +70,14 @@ function inf(m) { console.log("  •  " + m); }
     ok("plan chargé (« " + PLAN.nom + " »)");
     if (!PLAN.fictif) inf("⚠️ le relevé fictif n'est pas dans data/index.json — checkup sur « " + PLAN.nom + " »");
 
-    // ── F1 — l'écouteur `scroll` que Leaflet n'enlève jamais ───────────
-    // Testé sur un conteneur jetable : c'est le MÉCANISME qu'on fige, à
-    // l'identique de ce que fait l'app sur son `#map` permanent.
+    // ── F1 — l'écouteur `scroll` que Leaflet n'enlève jamais (mécanisme, sur un conteneur jetable) ──
     console.log("— F1 : la fuite du handler `scroll` au changement de plan —");
     const f1 = await page.evaluate(function () {
       const vivants = function (el) {
         const ev = el && el._leaflet_events;
         if (!ev) return 0;
         return Object.keys(ev).filter(function (k) {
-          // ⚠️ Leaflet met les entrées retirées à `null` SANS les supprimer :
-          // compter les clés donnerait un faux vert.
+          // 🩸 Leaflet met les entrées retirées à `null` sans les supprimer : compter les clés = faux vert.
           return /^scroll/.test(k) && ev[k];
         }).length;
       };
@@ -114,7 +90,7 @@ function inf(m) { console.log("  •  " + m); }
       m.remove();
       const sansParade = vivants(div);
 
-      // (b) ce que fait l'app depuis v1.97.6
+      // (b) ce que fait l'app
       m = L.map(div, { crs: L.CRS.Simple, center: [0, 0], zoom: 0 });
       L.DomEvent.off(div, "scroll", m._onScroll, m);
       m.remove();
@@ -130,7 +106,7 @@ function inf(m) { console.log("  •  " + m); }
     if (f1.avecParade === 0) ok("la parade retire l'écouteur — plus rien ne retient la carte");
     else pb("la parade laisse " + f1.avecParade + " écouteur vivant");
 
-    // …et l'app l'applique-t-elle vraiment sur son chemin réel ?
+    // …et sur son chemin réel
     const src = await page.evaluate(function () {
       return fetch("js/main.js").then(function (r) { return r.text(); });
     });
@@ -148,7 +124,7 @@ function inf(m) { console.log("  •  " + m); }
         return of.apply(this, arguments);
       };
       window.MapBearing && window.MapBearing.setEnabled(true);   // pour la rotation
-      // cap stable : c'est le cas qui révélait la boussole contradictoire
+      // cap stable : le cas où la boussole peut contredire ses chiffres
       try { await window.requestPermission(); } catch (e) {}
       const nomEv = ("ondeviceorientationabsolute" in window)
                       ? "deviceorientationabsolute" : "deviceorientation";
@@ -160,13 +136,12 @@ function inf(m) { console.log("  •  " + m); }
       for (let i = 0; i < 20; i++) { envoyer(); await new Promise(function (r) { setTimeout(r, 25); }); }
 
       window.EmergencyMode.activer();
-      // le cap NE bouge plus : c'est ce qui figeait les rotors
+      // cap immobile : le cas qui peut figer les rotors
       for (let i = 0; i < 30; i++) { envoyer(); await new Promise(function (r) { setTimeout(r, 50); }); }
       await new Promise(function (r) { setTimeout(r, 1200); });
 
-      // 🔋 29/09/2026 — immobile, la minimap ne doit PLUS se recentrer à chaque
-      // tick (250 ms) : 40 setView en 10 s relançaient chacun un parcours de
-      // toute la grille de tuiles. On compte ses setView pendant 2 s d'arrêt.
+      // Immobile, la minimap ne se recentre pas à chaque tick (250 ms) : chaque setView reparcourt toute
+      // la grille de tuiles. On compte ses setView pendant 2 s d'arrêt.
       const proto = L.Map.prototype, setViewOrig = proto.setView;
       let setViewsImmobile = 0;
       proto.setView = function () {
@@ -218,13 +193,9 @@ function inf(m) { console.log("  •  " + m); }
     else inf("batterie absente de « ÉTAT » (" + u.etat + ") — l'API batterie n'existe pas partout, " +
              "non bloquant au harnais");
 
-    // ── B — batterie indisponible : RIEN, pas un « ? » ──────────────
-    // `formatLabel()` rend « ? » et `getEmoji()` rend 🪢 quand la batterie est
-    // hors service (état « indispo » de la v1.11.1, fait pour que la chip de
-    // l'en-tête montre son emplacement). Le bloc ÉTAT affichait donc « 🪢 ? »
-    // sur Safari iOS et sur tout appareil où l'utilisateur a décoché le
-    // réglage : un point d'interrogation à la place d'un niveau, sur l'écran
-    // qu'on ouvre quand la batterie lâche.
+    // ── B — batterie indisponible : RIEN, pas un « ? » ──────
+    // 🩸 Hors service, `formatLabel()` rend « ? » et `getEmoji()` 🪢 (faits pour la chip de l'en-tête) : le
+    // bloc ÉTAT ne doit pas les reprendre (Safari iOS, réglage décoché).
     console.log("— B : batterie désactivée ou indisponible —");
     const bat = await page.evaluate(async function () {
       const vrai = window.BatteryGuard.isAvailable;
@@ -249,14 +220,10 @@ function inf(m) { console.log("  •  " + m); }
     if (u.miniTournee) ok("la minimap s'oriente quand le mode « plan orienté » est actif (" + u.miniTournee + ")");
     else pb("la minimap ne tourne pas alors que le mode est activé");
 
-    // ── P — coordonnées et copie (26/09/2026, contrat du 03/10/2026) ──
-    // KARMA : « on devrait avoir la possibilité de copier les coordonnées GPS de
-    // notre position, pour les envoyer si on trouve un point de réseau ». Depuis
-    // le 03/10/2026 plus aucune coordonnée n'est affichée en permanence : plan
-    // géoréférencé → icône 📋 dans la ligne d'état, qui ouvre une bulle (chiffres
-    // en gros + Copier) ; plan non géoréférencé → pas d'icône du tout. Ce qui
-    // compte n'est pas que le bouton dise « copié » : c'est ce qu'il y a DANS le
-    // presse-papier, et que ce soit collable tel quel dans un SMS ou une carte.
+    // ── P — coordonnées et copie ──────
+    // ⚠️ Contrat : aucune coordonnée affichée en permanence ; plan géoréférencé → icône 📋 qui ouvre une
+    // bulle (chiffres en gros + Copier), sinon pas d'icône. On vérifie le CONTENU du presse-papier,
+    // collable tel quel dans un SMS ou une carte.
     console.log("— P : coordonnées (bulle 📋) et copie —");
     const p1 = await page.evaluate(async function () {
       window.EmergencyMode.activer();
@@ -319,9 +286,7 @@ function inf(m) { console.log("  •  " + m); }
       ok("la sortie tient dans l'écran (" + p1.sortieBas + " ≤ " + p1.fenetre + ", 0 px de débordement)");
     else pb("l'écran déborde (sortie " + p1.sortieBas + "/" + p1.fenetre + ", débordement " + p1.debord + ")");
 
-    // Le repli quand `navigator.clipboard` est inaccessible : c'est le cas
-    // d'une instance servie en HTTP (réseau isolé de secours), où l'API
-    // sécurisée n'existe pas. Sans repli, pas de coordonnées à transmettre.
+    // Repli sans `navigator.clipboard` : instance servie en HTTP (réseau isolé de secours), API absente.
     const p2 = p1.geo ? await page.evaluate(async function () {
       try {
         Object.defineProperty(navigator, "clipboard", {
@@ -345,8 +310,7 @@ function inf(m) { console.log("  •  " + m); }
     else pb("le repli de copie ne fonctionne pas (bouton : « " + p2.etat + " »)");
 
     // ── C1 — les couleurs choisies en légende atteignent la mini-carte ──
-    // On capture ce que le mini DEMANDE à Leaflet : c'est la décision de style
-    // qu'on veut mesurer, pas le pixel (le renderer peut être un canvas).
+    // On capture ce que la mini-carte DEMANDE à Leaflet, pas le pixel (le renderer peut être un canvas).
     console.log("— C : couleurs de la légende personnalisée dans la mini-carte —");
     const c = await page.evaluate(async function () {
       const LC = window.LegendCustomization;

@@ -6,26 +6,19 @@
  */
 /* eslint-disable no-console */
 // =====================================================================
-// 🛡️ check-csp-inline.js — garde-fou pre-commit BLOQUANT
+// check-csp-inline.js — garde-fou pre-commit BLOQUANT : aucun script inline
 // =====================================================================
-// La CSP vise `script-src 'self'` SANS 'unsafe-inline' : une fois en place, tout
-// script écrit dans la page est BLOQUÉ par le navigateur — un bouton qui portait
-// un onclick ne fait plus rien, sans un mot pour l'utilisateur.
-//
-// POURQUOI (07/10/2026) : les 11 gestionnaires inline, 2 liens javascript: et
-// 3 blocs <script> qui restaient ont été retirés en une fois. Sans ce garde-fou,
-// le premier `onclick="…"` vite écrit réintroduit la dépendance, et la CSP
-// stricte casse l'app ou doit être rouverte.
-//
-// RÈGLES, sur js/*.js, les pages *.html de la racine et de docs/applications/, et lang/*.json :
-//   1. aucun attribut gestionnaire (onclick=, onerror=, onload=… ) dans du HTML
-//      écrit ou généré → un écouteur (addEventListener / délégation, data-*) ;
+// 🔒 La CSP est `script-src 'self'` SANS 'unsafe-inline' : tout script écrit dans la page est bloqué par le
+// navigateur — un bouton à onclick ne fait plus rien, sans un mot pour l'utilisateur.
+// Règles, sur js/*.js, les *.html de la racine et de docs/applications/, et lang/*.json :
+//   1. aucun attribut gestionnaire (onclick=, onerror=…) dans du HTML écrit ou généré → un écouteur
+//      (addEventListener / délégation + data-*) ;
 //   2. aucun lien `javascript:` (href ou .href) → "#" + preventDefault ;
-//   3. aucun <script> sans src dans une page → un fichier js/.
-// Exception unique, assumée : killsw.html (page de secours quand le Service Worker
-// est cassé — son script doit rester DANS la page ; nginx lui donne sa propre CSP).
-//
-// Usage : node scripts/check-csp-inline.js   (appelé par .githooks/pre-commit)
+//   3. aucun <script> sans src dans une page → un fichier js/ ;
+//   4. aucune config nginx du dépôt ne rouvre 'unsafe-inline' aux scripts ni ne revient en Report-Only.
+// Exception unique : killsw.html (page de secours quand le Service Worker est cassé — son script reste
+// DANS la page ; nginx lui donne sa propre CSP).
+// Usage : node scripts/check-csp-inline.js (appelé par .githooks/pre-commit)
 // =====================================================================
 "use strict";
 
@@ -87,7 +80,7 @@ if (rate.length || faux.length) {
 
 let fichiers;
 try {
-  // Pages servies : racine + docs/applications/ (pages d'audit, oubliées au premier passage — script de pied inline).
+  // Pages servies : racine + docs/applications/ (pages d'audit, dont le script de pied est un piège classique).
   fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "*.html", "lang/*.json"],
     { encoding: "utf8" }).split("\n").filter(Boolean)
     .filter((f) => !f.includes("/") || /^(js|lang)\//.test(f) || /^docs\/applications\/[^/]+\.html$/.test(f));
@@ -107,9 +100,7 @@ if (toutes.length) {
   console.error("   → un écouteur (addEventListener, délégation + data-*), \"#\" + preventDefault, ou un fichier js/.");
   process.exit(1);
 }
-// 4. Depuis la BASCULE du 10/10/2026, la CSP EN VIGUEUR est stricte : dans les configs nginx du dépôt, aucune
-//    politique ne rouvre 'unsafe-inline' aux scripts, hors du bloc `location = /killsw.html` (exception assumée).
-//    Plus de Report-Only : la phase d'observation est finie.
+// 4. Configs nginx : CSP en vigueur stricte, hors du bloc `location = /killsw.html` ; plus de Report-Only.
 const CONFS_NGINX = ["docker/nginx-docker.conf", "docs/nginx-csp-config.conf", "docs/nginx-myktamap.conf"];
 const fautesConf = [];
 CONFS_NGINX.forEach(function (f) {

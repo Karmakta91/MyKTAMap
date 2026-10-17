@@ -1,30 +1,21 @@
 /*!
- * MyKTAMap — Loader générique « calcul en cours » (v1.55.1)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// COMPUTELOADER.JS — Overlay « calcul en cours » réutilisable (depuis v1.55.1)
+// COMPUTELOADER.JS — Overlay « calcul en cours » réutilisable
 // =========================
-// Généralisation du loader d'itinéraire (interfaceItineraire.js) : un overlay
-// plein écran (spinner + message) avec **yield-to-paint** avant le calcul.
-// Indispensable pour les calculs SYNCHRONES bloquants (Dijkstra/Pathfinder) :
-// sans une frame peinte AVANT le blocage, l'écran fige « sans rien montrer »
-// et l'user croit à un bug.
-//
-// Consommateurs : « Je suis perdu » (zone de proba) + Mode Secours (itinéraire
-// d'équipe). L'itinéraire principal garde son propre loader (historique).
-//
+// Overlay plein écran (spinner + message) avec YIELD-TO-PAINT avant le calcul. 🩸 Indispensable pour les calculs
+// SYNCHRONES bloquants (Dijkstra / Pathfinder) : sans une frame peinte AVANT, l'écran fige sans rien montrer.
+// Utilisé par « Je suis perdu » (zone de probabilité) et le Mode Secours (itinéraire d'équipe) ; l'itinéraire
+// principal a son propre loader.
 // API : window.ComputeLoader = {
-//   show(message),          // affiche l'overlay avec un message
-//   hide(),                 // le retire
-//   wrap(fn, message)       // show + yield-to-paint + await fn() + hide (finally)
+//   show(message),     // affiche l'overlay
+//   hide(),            // le retire
+//   wrap(fn, message)  // show + yield-to-paint + await fn() + hide (finally)
 // };
-// 100 % local, aucune surface réseau.
-// =========================
 
 (function() {
   "use strict";
@@ -53,8 +44,7 @@
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
   }
 
-  // Enveloppe un calcul (sync ou async) : affiche l'overlay, attend une frame
-  // peinte (rAF + setTimeout 0), exécute fn(), puis retire l'overlay (finally).
+  // Enveloppe un calcul (sync ou async) : overlay, une frame peinte (rAF + setTimeout 0), fn(), retrait (finally).
   async function wrap(fn, message) {
     show(message);
     await new Promise(function(r) { requestAnimationFrame(function() { setTimeout(r, 0); }); });

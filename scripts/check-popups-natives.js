@@ -1,20 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 💬 check-popups-natives.js — garde-fou pré-commit BLOQUANT (rejoué en CI), à CLIQUET
+// check-popups-natives.js — garde-fou pré-commit BLOQUANT (rejoué en CI), à CLIQUET, plafond 0
 // =====================================================================
 // alert() / confirm() / prompt() natifs : hors charte, ignorent le thème, affichent « <site> indique… »,
-// iOS peut les bloquer en PWA, et ils figent l'app (suivi de position compris). Remplaçants :
-// window.ktaAlerte (message à lire pour agir), window.ktaConfirm (choix), toast OOMGuard.showToast
-// (confirmation de ce qui vient de se passer) — tous dans js/utils.js.
-// Migration TERMINÉE le 09/10/2026 (plafond 0) : plus aucune popup native hors repli marqué. Ce script compte
-// les popups natives dans
-// js/*.js et index.html, hors commentaires, et :
-//   • refuse toute HAUSSE (une nouvelle popup native) ;
-//   • refuse une BAISSE non reportée : abaisser PLAFOND ci-dessous dans le même commit — le compte
-//     ne peut ainsi jamais remonter.
+// iOS peut les bloquer en PWA, et ils figent l'app (suivi de position compris). Remplaçants (js/utils.js) :
+// window.ktaAlerte (message à lire pour agir), window.ktaConfirm (choix), toast OOMGuard.showToast.
+// Compte les appels dans js/*.js et index.html, hors commentaires : refuse toute HAUSSE, et une BAISSE non
+// reportée dans PLAFOND (même commit) — le compte ne peut jamais remonter.
 // Exception assumée : une ligne marquée « popup-native-ok » (ex. repli de ktaAlerte quand
 // l'interface ne peut pas s'afficher).
+// Diagnostic : --liste [alert|confirm|prompt] affiche chaque occurrence.
 // =====================================================================
 
 const fs = require("fs");
@@ -23,9 +19,8 @@ const path = require("path");
 const PLAFOND = 0;
 
 function sansCommentaires(src) {
-  // 🩸 10/10/2026 : `accept="image/*"` dans un gabarit HTML ouvrait un faux commentaire jusqu'au `*/` suivant
-  // (700 lignes de createConf.js et 5 alert() natifs invisibles). Un vrai commentaire bloc ne suit jamais une
-  // lettre, un chiffre, un guillemet ou un `/`.
+  // 🩸 `accept="image/*"` dans un gabarit HTML ouvre un faux commentaire jusqu'au `*/` suivant et masque
+  // des centaines de lignes. Un vrai commentaire bloc ne suit jamais une lettre, un chiffre, un guillemet ni `/`.
   return src.replace(/(?<![\w"'`/])\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
     .split(/\r?\n/).map((l) => {
       if (/^\s*\/\//.test(l)) return "";
@@ -52,7 +47,7 @@ const MOTIFS = [
   new RegExp(GLOBAL + "(?:\\?\\.|\\.)\\s*" + NOM + APPEL, "g"),
   new RegExp(GLOBAL + "(?:\\?\\.)?\\s*\\[\\s*([\"'`])" + NOM + "\\1\\s*\\]" + APPEL, "g")
 ];
-// Rend les occurrences d'un texte déjà privé de ses commentaires : [{ ligne (0-based), nom }].
+// Texte déjà privé de ses commentaires → [{ ligne (0-based), nom }]
 function occurrences(texte) {
   const vues = new Map();
   for (const re of MOTIFS) {
@@ -85,7 +80,6 @@ if (ratesVoir.length || ratesPas.length) {
 const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => path.join("js", f))
   .concat(["index.html"]);
 
-// --liste [alert|confirm|prompt] : affiche chaque occurrence (fichier:ligne) au lieu du verdict.
 const liste = process.argv.indexOf("--liste") >= 0 ? (process.argv[process.argv.indexOf("--liste") + 1] || "*") : null;
 let total = 0;
 const parFichier = [];

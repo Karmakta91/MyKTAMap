@@ -488,7 +488,7 @@ la doc intégrale (`{{README_USER}}`) n'est **plus injectée** — tenir la sect
 NE PAS re-remplir le survol avec des notes de release dev (c'est ce qui l'avait fait
 gonfler à 153 Ko — le digest + README.md suffisent pour l'historique).
 | 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` (note `### vX.Y.Z (titre)` en tête de « Notes par version », page à part depuis le 07/10/2026). Les deux `.html` servis sont **générés** : `node scripts/audit-html.js` (voir « Pages d'audit générées » ci-dessous) | À chaque release (verdict réseau attendu par les users qui auditent) |
-| 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
+| 📖 **Dev** | `README.md` racine : « Version courante » en tête = la version en cours SEULE ; les résumés précédents en bas, section « 🗂️ Résumés des versions précédentes » (le précédent y descend à chaque bump) ; entrée détaillée en tête du journal | À chaque release |
 | 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |
 
 **Pattern de commit** observé : chaque release de v1.31.x avait une section

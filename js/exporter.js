@@ -5,43 +5,30 @@
  */
 
 // =========================
-// EXPORTER.JS — Modale d'export plan avancée
+// EXPORTER.JS — Modale d'export image avancée (PNG / JPEG / WebP)
 // =========================
-// Permet d'exporter le plan en PNG/JPEG avec contrôle fin sur :
-//  - les calques d'image inclus
-//  - les calques de données inclus
-//  - les annotations de session (points / tracés / zones / mesure / tracker)
-//  - une légende intégrée positionnable et stylisable
-//  - le format et la résolution
-// =========================
+// Contrôle fin des calques image et données, des annotations de session (points, tracés, zones, structures,
+// mesure, tracker), d'une légende intégrée, du fond, du format et de la résolution. Aussi le moteur de rendu
+// canvas du PDF (pdfExport.js).
+// Expose : window.ouvrirExportModal, MyKTAMapExporterGenererCanvas, MyKTAMapExporterGenererCanvasLegende.
+// 🩸 Aucune table de couleurs locale : tout passe par window.ktaResolveStyle(cat, type, { flat: true })
+// (garde-fou check-style-canon.js). Doc : docs/architecture/exports.md.
 
 (function() {
   "use strict";
 
-  // ÉTAT global de la modale courante
   let _currentModal = null;
   let _previewTimer = null;
   let _previewBusy  = false;
 
-  // =========================
-  // 🎨 v1.76.0 — STYLES : plus aucune table locale
-  // =========================
-  // Toutes les couleurs viennent de `js/styleResolver.js` (table canonique).
-  // Ce fichier en portait 5 copies : c'est comme ca qu'une zone INACCESSIBLE
-  // venant d'un calque de donnees sortait en GRIS REMBLAIS dans l'export PNG
-  // avance — `ZS_EMBED` avait simplement oublie l'entree, et le repli
-  // `|| ZS_EMBED.remblais` rendait l'oubli invisible.
-  //
-  // { flat: true } : cette pipe est un CANVAS, il ne sait pas peindre un
-  // `url(#pattern)` SVG. Le resolveur substitue l'aplat de repli declare pour
-  // le type (rouge fonce semi-transparent pour `inaccessible`).
-  //
-  // `repli` est le type utilise quand `type` est introuvable — un custom
-  // supprime de la legende, par exemple. Passer `null` pour ne rien dessiner.
-  // 🎨 v1.76.0 (suite N2) — libellé de formulaire avec pastille RÉSOLUE.
-  // Les libellés i18n des cases à cocher portent leur émoji en dur
-  // (« 🟩 Principaux ») : après un override de couleur, le formulaire montrait
-  // l'ancienne couleur alors que l'export sortait la nouvelle.
+  // ── Styles : plus aucune table locale ──────────
+  // Toutes les couleurs viennent de `js/styleResolver.js`. 🩸 Une table recopiée oublie un type en silence
+  // (une zone INACCESSIBLE sortait en gris remblais via le repli `|| ZS_EMBED.remblais`).
+  // { flat: true } : cette pipe est un CANVAS, sans `url(#pattern)` SVG ; le résolveur substitue l'aplat de
+  // repli du type (rouge foncé semi-transparent pour `inaccessible`).
+  // `repli` = type utilisé quand `type` est introuvable (custom supprimé de la légende) ; `null` = ne rien dessiner.
+  // Libellé de formulaire avec pastille RÉSOLUE : les libellés i18n portent leur émoji en dur (« 🟩 Principaux »)
+  // et montreraient l'ancienne couleur après un override.
   function _lp(cat, key, label) {
     return (typeof window.ktaLabelAvecPastille === "function")
              ? window.ktaLabelAvecPastille(cat, key, label) : label;
@@ -57,9 +44,7 @@
            (repli ? R(categorie, repli, { flat: true }) : null);
   }
 
-  // =========================
-  // INJECTION DES STYLES (au premier appel)
-  // =========================
+  // ── Injection des styles (au premier appel) ──────────
   function _injecterStyles() {
     if (document.getElementById("kta-export-styles")) return;
     const style = document.createElement("style");
@@ -133,20 +118,15 @@
     document.head.appendChild(style);
   }
 
-  // =========================
-  // ENTRÉE PUBLIQUE
-  // =========================
+  // ── Entrée publique ──────────
   window.ouvrirExportModal = function() {
-    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
     _injecterStyles();
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
     if (typeof _resetLayerPointsCache === "function") _resetLayerPointsCache();
     _afficherModal("rapide");
   };
 
-  // =========================
-  // CONSTRUIRE ET AFFICHER LA MODALE
-  // =========================
+  // ── Construire et afficher la modale ──────────
   function _afficherModal(modeInitial, etatPrecedent) {
     const T = window.I18n.t;
     const config = window.PLAN_CONFIG;
@@ -155,26 +135,21 @@
       return;
     }
 
-    // 🩸 v1.82.0 — MÊME PIÈGE QUE DANS LA MODALE PDF : `row()` désactive la case
-    // quand le compteur est nul. Comptés sur la seule session, points, tracés et
-    // zones d'un plan importé étaient donc INEXPORTABLES — la case grisée, sans
-    // que rien n'explique pourquoi.
+    // 🩸 `row()` désactive la case quand le compteur est nul : compter la session SEULE rend inexportables
+    // points, tracés et zones d'un plan importé (case grisée sans explication).
     const nbPoints  = _sessionEtEmbarques("points").length;
     const nbRoads   = _sessionEtEmbarques("roads").length;
     const nbZones   = _sessionEtEmbarques("zones").length;
     const nbMesure  = window.getMeasurePoints        ? window.getMeasurePoints().length        : 0;
-    // 🆕 v1.12.0-fix : surface comptée séparément pour l'affichage de la modale export
+    // Surface comptée à part pour l'affichage.
     const nbMesureSurf = window.getMeasurePointsSurface ? window.getMeasurePointsSurface().length : 0;
     const nbTrackerPath = window.getTrackingPath ? window.getTrackingPath().length : 0;
     const trackerOk = window.getTrackingPosition && window.getTrackingPosition() !== null;
 
-    // Visibilité courante des calques (pour pré-cocher)
     const imageLayersVisibles = _getVisibleImageLayerIds(config);
     const dataLayersVisibles  = _getVisibleDataLayerIds(config);
 
-    // 🏗️ Multi-niveau : pour afficher dans la description du mode rapide
-    // quels niveaux seront exportés (le rapide est WYSIWYG = suit le filtre
-    // actuel `visibleLevels`). Si multiLevel OFF → pas d'info de niveau.
+    // Multi-niveau : niveaux exportés par le mode rapide (WYSIWYG = filtre `visibleLevels`) ; rien si OFF.
     const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const _visibleLevelsForExport = (_mlOn && Array.isArray(window.APP_CONFIG.visibleLevels))
       ? window.APP_CONFIG.visibleLevels.slice().sort(function(a,b){return a-b;})
@@ -430,31 +405,25 @@
     document.documentElement.appendChild(modal);
     _currentModal = modal;
 
-    // Construire les checkboxes calques dynamiquement
     _peuplerCalquesImage(config, imageLayersVisibles);
     _peuplerCalquesData(config, dataLayersVisibles);
     _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath);
     _peuplerNiveaux();
-    // 🆕 v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
     _peuplerLegendCustom();
-    // 🖼️ 29/09/2026 — la résolution pré-cochée n'est plus « Originale » d'office
-    // (AVANT la restauration : un choix déjà fait par l'utilisateur gagne).
+    // Résolution pré-cochée choisie AVANT la restauration (un choix déjà fait par l'utilisateur gagne).
     _preparerResolutions(config);
 
-    // Restaurer un état précédent (utilisé quand on revient d'une sélection 🎯)
+    // État précédent restauré (retour d'une sélection 🎯 sur la carte).
     if (etatPrecedent) _restaurerEtat(etatPrecedent);
 
     _attacherListeners(modal, modeInitial);
 
-    // Premier rendu de l'aperçu (en mode avancé)
     if (modeInitial === "avance") {
       _planifierApercu();
     }
   }
 
-  // =========================
-  // CONSTRUIRE LES CHECKBOXES
-  // =========================
+  // ── Cases à cocher des calques ──────────
   function _peuplerCalquesImage(config, visibles) {
     const cont = document.getElementById("kta-export-image-layers");
     if (!cont) return;
@@ -481,7 +450,7 @@
       return;
     }
 
-    // Rendu initial avec un placeholder par calque (la liste de tags arrive en async)
+    // Placeholder par calque (la liste de tags arrive en async).
     cont.innerHTML = layers.map(function(l) {
       const checked = visibles.includes(l.id) ? "checked" : "";
       const safeId = _slugLayerId(l.id);
@@ -494,7 +463,6 @@
       </div>`;
     }).join("");
 
-    // Charger les infos (tags + types roads/zones) de chaque calque en async
     layers.forEach(function(l) {
       _chargerInfosCalque(l).then(function(infos) {
         _renderInfosCalque(l, infos);
@@ -504,18 +472,15 @@
     });
   }
 
-  // Identifiant CSS-safe pour un calque
   function _slugLayerId(id) {
     return String(id).replace(/[^a-z0-9_-]/gi, "_");
   }
 
-  // Identifiant CSS-safe pour un tag
   function _slugTagId(tag) {
     return String(tag).replace(/[^a-z0-9_-]/gi, "_");
   }
 
-  // Liste les tags présents dans les points d'un calque
-  // Retourne [{ tag, count, isUntagged }] trié alphabétiquement
+  // Tags des points d'un calque : [{ tag, count, isUntagged }] trié alphabétiquement.
   function _listerTagsPoints(points) {
     const tagCounts = {};
     let untaggedCount = 0;
@@ -536,8 +501,7 @@
     return list;
   }
 
-  // Liste les types présents dans un tableau d'objets ayant un champ .type
-  // Retourne { type: count } uniquement pour les types qui apparaissent
+  // { type: count } des types présents dans un tableau d'objets à champ .type.
   function _compterTypes(arr, allTypes) {
     const out = {};
     allTypes.forEach(function(t) { out[t] = 0; });
@@ -547,8 +511,7 @@
     return out;
   }
 
-  // Charge le contenu d'un calque (points + roads + zones) pour pré-construire les filtres
-  // Cache local à la modale pour ne pas refetch à chaque rendu
+  // Contenu d'un calque (points + roads + zones) pour les filtres, en cache local à la modale.
   const _layerPointsCache = {};
   async function _chargerInfosCalque(layerCfg) {
     if (_layerPointsCache[layerCfg.id]) return _layerPointsCache[layerCfg.id];
@@ -559,7 +522,7 @@
 
     if (layerCfg.id === "editor") {
       points = window.getEditorPoints ? window.getEditorPoints() : [];
-      // Le calque éditeur n'a pas de roads/zones embarquées (gérées via session côté annotations)
+      // Le calque éditeur n'a pas de roads/zones embarquées (gérées par la session).
     } else {
       try {
         const r = await fetch(layerCfg.file);
@@ -568,9 +531,8 @@
         roads  = Array.isArray(j.roads) ? j.roads : [];
         zones  = Array.isArray(j.zones) ? j.zones : [];
       } catch(e) {
-        // 🩸 v1.82.0 — un plan importé n'a pas de fichier servi par le site :
-        // ses données vivent en mémoire (cf. le repli du même nom plus bas).
-        // Sans ce repli, la modale n'affichait aucun sous-filtre pour ce calque.
+        // 🩸 Un plan importé n'a pas de fichier servi par le site : ses données vivent en mémoire (même repli
+        // que plus bas). Sans lui, aucun sous-filtre pour ce calque.
         const duCalque = function (arr) {
           return (arr || []).filter(function (o) { return !o.layerId || o.layerId === layerCfg.id; });
         };
@@ -589,21 +551,20 @@
     return infos;
   }
 
-  // Récupère le chemin de l'icône pour un tag, avec cascade :
-  //   1. PLAN_CONFIG.icons[tag]  2. _iconMap[tag] (built-in fallback)
+  // Icône d'un tag : PLAN_CONFIG.icons[tag], puis _iconMap[tag].
   function _iconePourTag(tag) {
     const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
     if (planIcons[tag]) return planIcons[tag];
     const entry = window._iconMap && window._iconMap[tag];
     if (!entry) return null;
-    // v174 : entry peut être un L.divIcon (scaledMarkers ON) → options.iconUrl
-    // undefined. _kta_iconUrl est posé en backup par creerIcones.
+    // Une entrée L.divIcon (scaledMarkers) n'a pas options.iconUrl : _kta_iconUrl est posé en secours par
+    // creerIcones.
     return entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || null;
   }
 
   function _escapeHtmlExport(s) { return window.ktaEsc(s); }
 
-  // Affiche les sous-cases (tags + types roads + types zones) pour un calque + branche les synchros
+  // Sous-cases (tags + types roads + types zones) d'un calque, avec synchro parent ↔ enfants.
   function _renderInfosCalque(layerCfg, infos) {
     const safeId = _slugLayerId(layerCfg.id);
     const cont = document.getElementById("export_layer_tags_" + safeId);
@@ -624,7 +585,6 @@
 
     let html = "";
 
-    // Tags des points
     if (hasTags) {
       html += tagsList.map(function(item) {
         const safeTag = _slugTagId(item.tag);
@@ -641,7 +601,6 @@
       }).join("");
     }
 
-    // Sous-cases types de routes embarquées
     if (hasRoads) {
       const roadLabels = {
         principal:  _lp("traces", "principal", window.I18n.t("imgexport.roadType.principal")),
@@ -658,7 +617,6 @@
       });
     }
 
-    // Sous-cases types de zones embarquées
     if (hasZones) {
       const zoneLabels = {
         eau:          _lp("zones", "eau", window.I18n.t("imgexport.zoneType.eau")),
@@ -678,7 +636,6 @@
 
     cont.innerHTML = html;
 
-    // Synchronisation parent ↔ TOUS les enfants (tags + roads + zones)
     const parent = document.getElementById("export_layer_" + safeId);
     const subs = Array.from(cont.querySelectorAll('input[type="checkbox"]'));
 
@@ -697,9 +654,8 @@
   }
 
 
-  // Lit les tags cochés pour un calque donné. Retourne { tagsCoches: Set, untaggedCoche: bool, tousActifs: bool }
-  // tousActifs = true si AUCUNE sous-case tag n'est présente (= calque sans tags identifiables)
-  // → dans ce cas, on inclut tous les points sans filtrage.
+  // Tags cochés d'un calque : { tagsCoches: Set, untaggedCoche: bool, tousActifs: bool }.
+  // tousActifs = aucune sous-case tag (calque sans tags identifiables) → tous les points, sans filtre.
   function _lireTagsCochesCalque(layerId) {
     const safeId = _slugLayerId(layerId);
     const cont = document.getElementById("export_layer_tags_" + safeId);
@@ -711,9 +667,8 @@
     let untaggedCoche = false;
     const cache = _layerPointsCache[layerId];
     const tagsCache = cache && cache.tags ? cache.tags : [];
-    // Préfixe complet (ancré au début) — empêche la collision quand l'id du layer
-    // contient lui-même "_tag_" ou ressemble au mot. Les tags peuvent contenir des `_`
-    // (cf. _slugTagId), donc on ne peut pas utiliser `[^_]+$` ici.
+    // Préfixe complet ancré : l'id du calque peut contenir "_tag_", et les tags des `_` (cf. _slugTagId),
+    // donc pas de `[^_]+$` ici.
     const prefix = "export_layer_" + safeId + "_tag_";
     inputs.forEach(function(cb) {
       if (!cb.checked) return;
@@ -727,11 +682,9 @@
     return { tagsCoches: tagsCoches, untaggedCoche: untaggedCoche, tousActifs: false };
   }
 
-  // Lit les types de routes cochés pour un calque
-  // tousActifs = true si aucune sous-case road n'est présente (calque sans routes embarquées)
-  // ⚠️ Regex `[^_]+$` (et non `.+$`) pour éviter une fausse capture quand l'id du layer
-  //    contient lui-même "road" (ex: layer id="road" → checkbox id="export_layer_road_road_principal",
-  //    le 1er `_road_` est greedy gauche-droite et capturerait "road_principal" au lieu de "principal").
+  // Types de routes cochés d'un calque ; tousActifs = aucune sous-case road.
+  // ⚠️ Regex `[^_]+$` (pas `.+$`) : un calque d'id "road" donne "export_layer_road_road_principal", et `.+$`
+  // capturerait "road_principal" au lieu de "principal".
   function _lireRoadTypesCochesCalque(layerId) {
     const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
     const inputs = cont ? cont.querySelectorAll('input[data-layer-roadtype-of]') : [];
@@ -745,15 +698,10 @@
     return { types: types, tousActifs: false };
   }
 
-  // Lit les types de zones cochés pour un calque
-  // ⚠️ Regex `[^_]+$` : voir explication identique sur `_lireRoadTypesCochesCalque`.
-  //    Bug observé sur layer id="zone" : id checkbox = "export_layer_zone_zone_eau",
-  //    le `.+$` capturait "zone_eau" au lieu de "eau" → toutes les zones filtrées.
-  // Retourne aussi `connus` = les types pour lesquels une case EXISTE. Un type
-  // absent de cette liste n'a pas été refusé par l'utilisateur : il n'a jamais
-  // été proposé. Les cases ne couvrent que les quatre types intégrés — un type
-  // personnalisé (import SIG) n'en a donc aucune, et le filtrer sur `types`
-  // seul revenait à le supprimer de l'export sans que personne l'ait demandé.
+  // Types de zones cochés. ⚠️ Même regex `[^_]+$` (calque d'id "zone" : "export_layer_zone_zone_eau").
+  // Rend aussi `connus` = les types qui ONT une case. 🩸 Un type sans case n'a pas été refusé, il n'a jamais été
+  // proposé : les cases ne couvrent que les 4 types intégrés, et filtrer sur `types` seul supprimerait de
+  // l'export un type personnalisé (import SIG) sans que personne l'ait demandé.
   function _lireZoneTypesCochesCalque(layerId) {
     const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
     const inputs = cont ? cont.querySelectorAll('input[data-layer-zonetype-of]') : [];
@@ -769,7 +717,6 @@
     return { types: types, connus: connus, tousActifs: false };
   }
 
-  // Filtre une liste de points selon les tags cochés d'un calque
   function _filtrerPointsParTagsCalque(points, layerId) {
     const sel = _lireTagsCochesCalque(layerId);
     if (sel.tousActifs) return points; // calque sans tags identifiables → tout inclure
@@ -780,15 +727,13 @@
     });
   }
 
-  // Réinitialiser le cache (à appeler à chaque ouverture de modale)
+  // Remise à zéro du cache (à chaque ouverture).
   function _resetLayerPointsCache() {
     Object.keys(_layerPointsCache).forEach(function(k) { delete _layerPointsCache[k]; });
   }
 
-  // 🏗️ Multi-niveau (v148) : peuplement de la section "Niveaux a exporter".
-  // Section cachee si multiLevel = false pour ce plan (retro-compat strict).
-  // Sinon : 1 checkbox par niveau dans availableLevels, pre-cochee si le niveau
-  // est dans visibleLevels (= ce que le user voit actuellement).
+  // Section « Niveaux à exporter » : masquée si le plan n'est pas multi-niveau ; sinon une case par niveau
+  // d'availableLevels, pré-cochée s'il est dans visibleLevels.
   function _peuplerNiveaux() {
     const section = document.getElementById("kta-export-levels-section");
     const cont    = document.getElementById("kta-export-levels");
@@ -805,7 +750,7 @@
     const levels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
       ? window.APP_CONFIG.availableLevels.slice()
       : [-2, -1, 0, 1, 2];
-    // v154 : tri croissant (cf. modale Niveaux)
+    // Tri croissant (comme la modale Niveaux).
     levels.sort(function(a, b) { return a - b; });
     const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
       ? window.APP_CONFIG.visibleLevels
@@ -846,10 +791,8 @@
       </label>`;
     }
 
-    // Compter les routes et zones par type
     const roads = _sessionEtEmbarques("roads");
     const zones = _sessionEtEmbarques("zones");
-    // 🆕 v1.9.3-A1.b.2 : structures session (piliers + murs)
     const structures = _sessionEtEmbarques("structures");
     const nbStructures = structures.length;
     const roadsByType = {
@@ -857,27 +800,21 @@
       secondaire: roads.filter(function(r) { return r.type === "secondaire"; }).length,
       chemin:     roads.filter(function(r) { return r.type === "chemin";     }).length
     };
-    // 🆕 v1.9.3-A1.b.2-fix : ajout du compteur `inaccessible` qui manquait
-    // (causait "⛔ Inaccessible (undefined)" dans la modale annotations
-    // session — bug remonté KARMA après A1.b.1).
     const zonesByType = {
       eau:          zones.filter(function(z) { return z.type === "eau";          }).length,
       remblais:     zones.filter(function(z) { return z.type === "remblais";     }).length,
       effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length,
       inaccessible: zones.filter(function(z) { return z.type === "inaccessible"; }).length
     };
-    // 🆕 v1.9.3-A1.b.2 : compteur sous-types structures pour la modale
-    // annotations session (parallèle à zonesByType). Inclut les fronts.
-    // Compte les types RÉELLEMENT présents et distingue les personnalisés, dont
-    // le nom brut (`cust-sig-…`) doit céder la place au libellé de la légende.
+    // Sous-types de structures (fronts compris). Types RÉELLEMENT présents ; les personnalisés affichent le
+    // libellé de la légende plutôt que leur nom brut (`cust-sig-…`).
     function _compterEtCustom(items, builtins) {
       const par = {};
       (items || []).forEach(function (o) {
         if (!o || !o.type) return;
         par[o.type] = (par[o.type] || 0) + 1;
       });
-      // Les intégrés restent listés même à zéro : les voir disparaître ferait
-      // croire à un filtre, alors qu'il n'y en a simplement pas sur ce plan.
+      // Les intégrés restent listés même à zéro : les voir disparaître ferait croire à un filtre.
       builtins.forEach(function (t) { if (par[t] === undefined) par[t] = 0; });
       const custom = Object.keys(par)
         .filter(function (t) { return String(t).indexOf("cust-") === 0; })
@@ -894,10 +831,8 @@
       return { par: par, custom: custom };
     }
 
-    // 🩸 v1.82.0 — LES SOUS-TYPES ÉTAIENT LISTÉS EN DUR. La modale n'affichait
-    // que les types intégrés : un plan importé, dont toutes les annotations
-    // portent des types PERSONNALISÉS, voyait donc son total juste (20 664
-    // structures) et TOUS ses sous-types à zéro. Signalé par KARMA.
+    // 🩸 Les sous-types ne sont PAS listés en dur : un plan importé (types tous personnalisés) aurait son total
+    // juste et tous ses sous-types à zéro.
     const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
     const structuresByType   = _sS.par;
     const structTypesCustom  = _sS.custom;
@@ -906,14 +841,12 @@
     const _sZ = _compterEtCustom(zones, ["eau", "remblais", "effondrement", "inaccessible"]);
     const zoneTypesCustom    = _sZ.custom;
 
-    // Position du tracker : toujours active (la position courante existe au minimum)
-    // Inclut le tracé parcouru si > 1 point
+    // Tracker : toujours actif (la position courante existe au minimum), tracé inclus si > 1 point.
     const trackerLabel = (nbTrackerPath && nbTrackerPath > 1)
       ? window.I18n.t("imgexport.ann.trackerPath", { count: nbTrackerPath })
       : window.I18n.t("imgexport.ann.tracker");
 
-    // Tags présents — calques compris, sinon les sous-filtres par tag d'un plan
-    // importé restaient vides alors que ses points en portent.
+    // Tags présents, calques compris (sinon pas de sous-filtre par tag pour un plan importé).
     const sessionPoints = _sessionEtEmbarques("points");
     const sessionTags = _listerTagsPoints(sessionPoints);
 
@@ -956,15 +889,13 @@
         return rowSub("zones_" + c.type, c.label, c.n, true);
       }).join("") +
 
-      // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
-      // annotations session de l'export image. Calqué sur le bloc zones.
+      // Structures (piliers, murs, fronts), calqué sur le bloc zones.
       row("structures", Ti("imgexport.ann.structures"), nbStructures, true) +
       rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
       rowSub("structures_pilier-2", _lp("structures", "pilier-2", Ti("imgexport.structType.pilier2")), structuresByType["pilier-2"], true) +
       rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
       rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
       rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
-      // Une ligne par type custom réellement présent.
       structTypesCustom.map(function (c) {
         return rowSub("structures_" + c.type, c.label, c.n, true);
       }).join("") +
@@ -975,24 +906,20 @@
         <span>${trackerLabel}</span>
       </label>`;
 
-    // Stocker les tags session pour la lecture à l'export
     _sessionPointsTags = sessionTags;
 
-    // Synchronisation parent ↔ enfants
     setTimeout(function() {
       _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]
         .concat(roadTypesCustom.map(function (c) { return "ann_roads_" + c.type; })));
       _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]
         .concat(zoneTypesCustom.map(function (c) { return "ann_zones_" + c.type; })));
-      // 🆕 v1.9.3-A1.b.2 : sync parent↔enfants pour les structures (5 sous-types)
-      // Les sous-types custom sont ajoutés à la volée : la liste ne peut pas
-      // être écrite en dur, sinon décocher « Structures » ne les décoche pas.
+      // Synchro parent ↔ enfants des structures. Les sous-types custom sont ajoutés à la volée : liste non écrite
+      // en dur, sinon décocher « Structures » ne les décoche pas.
       _syncAnnotParent("ann_structures",
         ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur",
          "ann_structures_front-1", "ann_structures_front-2"]
         .concat(structTypesCustom.map(function (c) { return "ann_structures_" + c.type; })));
 
-      // Sync parent Points ↔ tags
       const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
       if (pointsTagIds.length > 0) {
         _syncAnnotParent("ann_points", pointsTagIds);
@@ -1000,7 +927,6 @@
     }, 0);
   }
 
-  // Cache des tags de points session (pour réutilisation dans la lecture des opts)
   let _sessionPointsTags = [];
 
   function _syncAnnotParent(parentId, subIds) {
@@ -1021,21 +947,10 @@
     });
   }
 
-  // =========================
-  // 🏷️ v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
-  // =========================
-  //
-  // Pour chaque catégorie (icones, traces, zones, structures), liste les
-  // entrées résolues via LegendCustomization.listEntries + listCustomEntries.
-  // Chaque ligne expose :
-  //   - checkbox visibilité (cochée = visible)
-  //   - input texte libellé (placeholder = label défaut)
-  //   - badge source (📋 plan / ✏️ moi / défaut)
-  //   - bouton 🗑️ pour supprimer une entrée custom (session uniquement)
-  //
-  // Pour les ICÔNES (~21 entrées), liste pliée dans un sous-<details> pour
-  // ne pas étouffer la modale. Les 3 autres catégories (4-5 entrées chacune)
-  // sont toujours dépliées.
+  // ── Panneau « Personnaliser les libellés » ──────────
+  // Par catégorie (icones, traces, zones, structures), les entrées résolues par LegendCustomization
+  // (listEntries + listCustomEntries) : case de visibilité, libellé (placeholder = défaut), badge de source
+  // (plan / moi / défaut), 🗑️ pour une entrée custom de session. Les icônes (~21) sont repliées dans un <details>.
   function _peuplerLegendCustom() {
     const cont = document.getElementById("kta-legend-custom-body");
     if (!cont) return;
@@ -1055,15 +970,12 @@
     }
 
     function _renderEntryRow(e, isCustomEntry) {
-      // Pour les icones standard (non-custom), pas d'iconUrl dans la définition
-      // par défaut → on essaie de la résoudre via _iconePourTag pour afficher
-      // un swatch image.
+      // Icône standard : pas d'iconUrl dans la définition, résolue par _iconePourTag pour la pastille.
       let iconUrl = e.iconUrl;
       if (!iconUrl && e.category === "icones" && typeof _iconePourTag === "function") {
         try { iconUrl = _iconePourTag(e.key); } catch(err) { iconUrl = null; }
       }
-      // Visual cue (swatch couleur / icône à gauche du libellé pour repérage)
-      // 🐛 v1.16.0 step2-drawable-fix : geometry first (cf legendCustomization.js)
+      // Pastille couleur / icône (geometry d'abord, cf. legendCustomization.js).
       let swatch = '';
       if (iconUrl) {
         swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
@@ -1085,7 +997,6 @@
       const placeholder = isCustomEntry ? _esc(e.label) : _esc(e.defaultLabel);
       const value = (e.label === e.defaultLabel && !isCustomEntry) ? "" : _esc(e.label);
 
-      // Bouton 🗑️ uniquement pour les custom entries (suppression session)
       const btnRm = isCustomEntry
         ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("imgexport.legende.custom.supprimerEntree") + '" ' + dataAttrs + '>🗑️</button>'
         : '';
@@ -1109,7 +1020,6 @@
       const entries = LC.listEntries(cat);
       const customs = LC.listCustomEntries(cat);
 
-      // Icones : section collapsible (~21 entrées). Les 3 autres dépliées.
       const isIcones = (cat === "icones");
       const sectionOpen = isIcones ? "" : "open";
 
@@ -1128,11 +1038,8 @@
     cont.innerHTML = html;
   }
 
-  // 🧹 v1.76.0 (F19) — la dialog « ajouter une entrée custom » vivait ici EN
-  // DOUBLE, clone intégral de celle de legendCustomization.js (~200 lignes).
-  // Chaque bug devait être corrigé deux fois — le contour vert fantôme (F9)
-  // l'a prouvé. On délègue désormais à l'original, dont le z-index (100100)
-  // passe déjà au-dessus de la modale Export (99999).
+  // Dialogue « ajouter une entrée custom » : délégué à legendCustomization.js (pas de clone à corriger deux
+  // fois) ; son z-index (100100) passe au-dessus de la modale Export (99999).
   function _ouvrirAddCustomEntryDialog() {
     if (window.LegendCustomization && typeof window.LegendCustomization.ouvrirAddDialog === "function") {
       window.LegendCustomization.ouvrirAddDialog(function() {
@@ -1142,9 +1049,7 @@
     }
   }
 
-  // Lit les valeurs courantes du panneau Légende Custom et appelle les
-  // setters de LegendCustomization pour persister les overrides session.
-  // Appelé sur tout change/input du panneau (debounce léger via apercu).
+  // Lit le panneau et persiste les overrides de session (setters LegendCustomization), à chaque change/input.
   function _appliquerLegendCustomFromUI(target) {
     const LC = window.LegendCustomization;
     if (!LC || !target) return;
@@ -1167,9 +1072,7 @@
     }
   }
 
-  // =========================
-  // ATTACHER LES LISTENERS
-  // =========================
+  // ── Listeners ──────────
   function _attacherListeners(modal, modeInitial) {
     const btnRapide = document.getElementById("kta-export-mode-rapide");
     const btnAvance = document.getElementById("kta-export-mode-avance");
@@ -1199,7 +1102,6 @@
       _planifierApercu();
     });
 
-    // Toggle légende
     const legOn = document.getElementById("kta-export-legende-on");
     const legOpts = document.getElementById("kta-export-legende-options");
     legOn.addEventListener("change", function() {
@@ -1207,7 +1109,6 @@
       _planifierApercu();
     });
 
-    // Position légende
     const radiosPos = modal.querySelectorAll('input[name="leg_pos"]');
     const customWrap = document.getElementById("kta-export-leg-custom");
     radiosPos.forEach(function(r) {
@@ -1217,22 +1118,18 @@
       });
     });
 
-    // Bouton 🎯 Sélectionner sur la carte
     const btnPick = document.getElementById("kta-export-leg-pick");
     btnPick.addEventListener("click", function() {
       const etat = _capturerEtat();
       _activerSelectionPosition(etat);
     });
 
-    // Champs X / Y manuels
     const xInput = document.getElementById("kta-export-leg-x");
     const yInput = document.getElementById("kta-export-leg-y");
     xInput.addEventListener("input", _planifierApercu);
     yInput.addEventListener("input", _planifierApercu);
 
-    // 🆕 v1.16.0 step 2 : listeners du panneau « Personnaliser les libellés ».
-    // Délégation sur le conteneur pour gérer les rows ajoutées dynamiquement
-    // (entrées custom ajoutées via ➕). Tout change/input recalcule l'aperçu.
+    // Panneau des libellés : délégation sur le conteneur (lignes ajoutées par ➕) ; tout change recalcule l'aperçu.
     const legendCustomBody = document.getElementById("kta-legend-custom-body");
     if (legendCustomBody) {
       legendCustomBody.addEventListener("change", function(e) {
@@ -1278,23 +1175,19 @@
       });
     }
 
-    // 🆕 v1.9.3-A1.b.3 : sélecteur fond — toggle banner info + grise
-    // visuellement la section "Calques d'image" quand fond custom.
+    // Fond personnalisé : bannière d'info + section « Calques d'image » grisée (sans effet sur le PNG).
     function _majBgState() {
       const bgVal = _radioVal("export_bg") || "image";
       const isCustom = (bgVal !== "image");
       const infoEl = document.getElementById("kta-export-bg-info");
       if (infoEl) infoEl.style.display = isCustom ? "block" : "none";
-      // Grise la section Calques d'image quand fond custom (pour signaler
-      // visuellement qu'elle n'aura pas d'effet sur le PNG sortant).
       const imgLayersWrap = document.getElementById("kta-export-image-layers");
       const imgSectionParent = imgLayersWrap?.parentElement;  // .kta-aide-section
       if (imgSectionParent) {
         imgSectionParent.style.opacity = isCustom ? "0.4" : "1";
         imgSectionParent.style.pointerEvents = isCustom ? "none" : "";
       }
-      // Si fond = transparent, force le format PNG (JPEG ne supporte pas
-      // l'alpha). Pratique : on coche PNG et on disable JPEG/WebP.
+      // Fond transparent → PNG forcé (JPEG sans alpha), JPEG/WebP désactivés.
       if (bgVal === "transparent") {
         const pngRadio = modal.querySelector('input[name="format"][value="png"]');
         if (pngRadio && !pngRadio.checked) {
@@ -1324,12 +1217,10 @@
     });
     _majInfoResolution();   // état initial (pré-sélection ou restauration)
 
-    // Tous les autres inputs déclenchent l'aperçu
     modal.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(function(el) {
       el.addEventListener("change", _planifierApercu);
     });
 
-    // Action Télécharger
     btnGo.addEventListener("click", async function() {
       const modeRapideActif = btnRapide.classList.contains("active");
       btnGo.disabled = true;
@@ -1358,11 +1249,7 @@
     });
   }
 
-  // =========================
-  // CAPTURE / RESTAURATION D'ÉTAT
-  // (utilisé quand on ouvre la sélection 🎯 sur la carte
-  //  pour rouvrir la modale dans son état précédent)
-  // =========================
+  // ── Capture / restauration d'état (sélection 🎯 sur la carte puis réouverture) ──────────
   function _capturerEtat() {
     if (!_currentModal) return null;
     const etat = {
@@ -1373,8 +1260,6 @@
       legende:     null,
       format:      _radioVal("format"),
       resol:       _radioVal("resol"),
-      // 🆕 v1.9.3-A1.b.3 : choix de fond sauvegardé pour restauration
-      // d'état (cas du Sélectionner sur la carte → réouverture modale).
       bg:          _radioVal("export_bg") || "image"
     };
     document.querySelectorAll('[data-layer-type="image"]').forEach(function(cb) {
@@ -1383,12 +1268,10 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       etat.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    // 🆕 v1.9.3-A1.b.2 : structures dans les annotations exportables
     ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       etat.ann[k] = cb ? cb.checked : false;
     });
-    // Sauver les sous-types
     ["principal","secondaire","chemin"].forEach(function(t) {
       const cb = document.getElementById("ann_roads_" + t);
       etat.ann["roads_" + t] = cb ? cb.checked : true;
@@ -1397,7 +1280,6 @@
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
-    // 🆕 v1.9.3-A1.b.2 : sous-types structures sauvegardés dans l'état
     ["pilier-1","pilier-2","mur","front-1","front-2"].forEach(function(t) {
       const cb = document.getElementById("ann_structures_" + t);
       etat.ann["structures_" + t] = cb ? cb.checked : true;
@@ -1423,16 +1305,15 @@
     return etat;
   }
 
-  // =========================
-  // 🖼️ RÉSOLUTION — garde-fou mémoire (29/09/2026, backlog « export 861 Mo »)
-  // =========================
-  // Mesuré sur un relevé de 16332×13820 : « Originale » pré-cochée allouait
-  // 861 Mo de canvas pour un PNG de 182 Mo, sans rien dire. Le canvas coûte
-  // 4 octets par pixel, quel que soit le format de sortie.
+  // ── Résolution : garde-fou mémoire ──────────
+  // Le canvas coûte 4 octets par pixel quel que soit le format : « Originale » sur un grand relevé alloue
+  // des centaines de Mo sans rien dire.
   //   • Pré-sélection : la plus grande résolution sous SEUIL_PX_EXPORT.
-  //   • Au-delà : l'option reste possible, mais annoncée (mémoire estimée).
-  //   • iPhone/iPad : Safari refuse tout canvas au-delà de IOS_MAX_PX_CANVAS
-  //     (toBlob rend alors null) — ces options sont désactivées, pas avertie.
+  //   • Au-delà : possible, mais annoncé (mémoire estimée).
+  //   • iPhone/iPad : Safari refuse tout canvas au-delà de IOS_MAX_PX_CANVAS (toBlob rend null) → options
+  //     désactivées.
+  //   • Si même ¼ dépasse le plafond, option « Max » (plus grand facteur sous le plafond, même formule que le
+  //     PDF), cochée d'office. ⚠️ Jamais une option désactivée cochée : rien ne serait exportable.
   const SEUIL_PX_EXPORT   = 64 * 1024 * 1024;   // ≈ 256 Mo de canvas
   const IOS_MAX_PX_CANVAS = 16777216;           // 4096², limite WebKit iOS
   const RESOLS_EXPORT     = [1, 0.5, 0.25];
@@ -1441,20 +1322,54 @@
     return Math.round(config.plan.imageWidth * r) * Math.round(config.plan.imageHeight * r);
   }
 
+  function _tailleExport(config, r) {
+    return { w: Math.round(config.plan.imageWidth * r), h: Math.round(config.plan.imageHeight * r) };
+  }
+
+  // Plus grand facteur (au millième) dont le canvas tient sous `budget` pixels.
+  function _facteurMaxSous(config, budget) {
+    const W = config.plan.imageWidth, H = config.plan.imageHeight;
+    let r = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+    while (r > 0.001 && _pixelsExport(config, r) > budget) r = Math.round((r - 0.001) * 1000) / 1000;
+    return r;
+  }
+
   function _preparerResolutions(config) {
     if (!config || !config.plan || !config.plan.imageWidth) return;
     const ios = (typeof window.ktaEstIos === "function") && window.ktaEstIos();
     const plafond = ios ? IOS_MAX_PX_CANVAS : SEUIL_PX_EXPORT;
-    let choix = RESOLS_EXPORT[RESOLS_EXPORT.length - 1];
+    let choix = null;
     RESOLS_EXPORT.forEach(function(r) {
       const px = _pixelsExport(config, r);
-      if (ios && px > IOS_MAX_PX_CANVAS) {
-        const el = document.querySelector('input[name="resol"][value="' + r + '"]');
-        if (el) { el.disabled = true; el.parentElement?.classList.add("kta-disabled"); }
+      const el = document.querySelector('input[name="resol"][value="' + r + '"]');
+      if (ios && px > IOS_MAX_PX_CANVAS && el) {
+        el.disabled = true;
+        el.checked = false;
+        el.parentElement?.classList.add("kta-disabled");
       }
-      if (px <= plafond && r > choix) choix = r;
+      if (px <= plafond && (choix === null || r > choix)) choix = r;
     });
-    _setRadio("resol", String(choix));
+    if (choix === null) {
+      const r = _facteurMaxSous(config, plafond);
+      const plusPetite = RESOLS_EXPORT[RESOLS_EXPORT.length - 1];
+      const ancre = document.querySelector('input[name="resol"][value="' + plusPetite + '"]');
+      const ligne = ancre && ancre.parentElement;
+      if (ligne && r > 0) {
+        const label = document.createElement("label");
+        label.className = "kta-export-radio-row";
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "resol";
+        input.value = String(r);
+        const span = document.createElement("span");
+        span.textContent = window.I18n.t(ios ? "imgexport.format.resol.maxIos" : "imgexport.format.resol.max");
+        label.appendChild(input);
+        label.appendChild(span);
+        ligne.parentNode.insertBefore(label, ligne.nextSibling);
+        choix = r;
+      }
+    }
+    if (choix !== null) _setRadio("resol", String(choix));
   }
 
   function _majInfoResolution() {
@@ -1463,7 +1378,7 @@
     const config = window.PLAN_CONFIG;
     if (!el || !config || !config.plan || !config.plan.imageWidth) return;
     const r  = parseFloat(_radioVal("resol") || "1");
-    const w  = Math.round(config.plan.imageWidth * r), h = Math.round(config.plan.imageHeight * r);
+    const taille = _tailleExport(config, r), w = taille.w, h = taille.h;
     const mo = Math.round(w * h * 4 / 1048576);
     let txt = window.I18n.t("imgexport.format.resol.info", { w: w, h: h, mo: mo.toLocaleString() });
     if (w * h > SEUIL_PX_EXPORT) txt += " " + window.I18n.t("imgexport.format.resol.lourd");
@@ -1491,7 +1406,6 @@
     });
     if (etat.format) _setRadio("format", etat.format);
     if (etat.resol)  _setRadio("resol",  etat.resol);
-    // 🆕 v1.9.3-A1.b.3 : restauration du choix de fond
     if (etat.bg)     _setRadio("export_bg", etat.bg);
 
     if (etat.legende) {
@@ -1516,26 +1430,35 @@
     const el = document.querySelector('input[name="' + name + '"]:checked');
     return el ? el.value : null;
   }
+  // Une option désactivée n'est jamais cochée (restauration d'état comprise) : le choix en place est gardé.
   function _setRadio(name, val) {
     const el = document.querySelector('input[name="' + name + '"][value="' + val + '"]');
-    if (el) el.checked = true;
+    if (el && !el.disabled) el.checked = true;
   }
 
-  // =========================
-  // SÉLECTION DE LA POSITION 🎯 SUR LA CARTE
-  // =========================
+  // ── Sélection de la position 🎯 sur la carte ──────────
   function _activerSelectionPosition(etatPrecedent) {
-    // Fermer la modale temporairement
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
 
-    // Banner d'instruction
+    // Floater comme le calibrage KMZ/GPX : Annuler (au doigt) = Échap, le choix est abandonné et la modale revient.
     const banner = document.createElement("div");
-    banner.id = "kta-export-pick-banner";
-    banner.style.cssText = "position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:10px 18px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.4); border:1px solid rgba(140,180,255,0.5);";
-    banner.innerHTML = window.I18n.t("imgexport.pick.banner");
+    banner.id = "kta-export-pick-banner";   // repéré par window._modeClicCarteActif (utils.js)
+    banner.className = "kta-iti-floater";
+    const icone = document.createElement("span");
+    icone.className = "kta-iti-floater-icon";
+    icone.textContent = "🎯";
+    const msg = document.createElement("span");
+    msg.className = "kta-iti-floater-msg";
+    msg.textContent = window.I18n.t("imgexport.pick.floaterMsg");
+    const btnAnnuler = document.createElement("button");
+    btnAnnuler.type = "button";
+    btnAnnuler.className = "kta-btn kta-btn-ghost";
+    btnAnnuler.textContent = window.I18n.t("imgexport.btn.annuler");
+    banner.appendChild(icone);
+    banner.appendChild(msg);
+    banner.appendChild(btnAnnuler);
     document.body.appendChild(banner);
 
-    // Mode crosshair
     const mapEl = document.getElementById("map");
     const oldCursor = mapEl.style.cursor;
     mapEl.style.cursor = "crosshair";
@@ -1547,12 +1470,20 @@
       document.removeEventListener("keydown", onEchap);
     }
 
+    // 🩸 Le floater peut être retiré par un autre chemin (retour accueil, _ktaAnnulerModesClicCarte) : ses
+    // écouteurs ne font alors plus rien, sinon Échap rouvrirait la modale d'export sur l'accueil.
+    function orphelin() {
+      if (banner.isConnected) return false;
+      nettoyer();
+      return true;
+    }
+
     function onClic(e) {
+      if (orphelin()) return;
       const x = Math.round(e.latlng.lng);
       const y = Math.round(APP_CONFIG.imageHeight - e.latlng.lat);
       nettoyer();
 
-      // Rouvrir la modale avec position custom + coords remplies
       etatPrecedent.legende = etatPrecedent.legende || {};
       etatPrecedent.legende.position = "custom";
       etatPrecedent.legende.customX = x;
@@ -1560,28 +1491,28 @@
       _afficherModal("avance", etatPrecedent);
     }
 
-    function onEchap(e) {
-      if (e.key === "Escape") {
-        nettoyer();
-        _afficherModal("avance", etatPrecedent);
-      }
+    function annuler() {
+      nettoyer();
+      _afficherModal("avance", etatPrecedent);
     }
+
+    function onEchap(e) {
+      if (e.key !== "Escape" || orphelin()) return;
+      annuler();
+    }
+
+    btnAnnuler.addEventListener("click", annuler);
 
     window.map.on("click", onClic);
     document.addEventListener("keydown", onEchap);
   }
 
-  // =========================
-  // PLANIFICATION DE L'APERÇU (debounced)
-  // =========================
+  // ── Aperçu (debounce) ──────────
   function _planifierApercu() {
     if (_previewTimer) clearTimeout(_previewTimer);
     _previewTimer = setTimeout(_genererApercu, 300);
   }
 
-  // =========================
-  // GÉNÉRATION DE L'APERÇU MINI-CANVAS
-  // =========================
   async function _genererApercu() {
     if (_previewBusy) return;
     const canvas = document.getElementById("kta-export-preview");
@@ -1592,7 +1523,6 @@
       const opts = _lireOptions();
       const tmpCanvas = await _genererCanvasExport(opts, true);
 
-      // Dessiner le tmpCanvas dans le mini-canvas (320×200)
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#1a1f2e";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1604,13 +1534,10 @@
       const dy = (canvas.height - h) / 2;
       ctx.drawImage(tmpCanvas, dx, dy, w, h);
 
-      // Info textuelle
       const info = document.getElementById("kta-export-preview-info");
       if (info) {
-        const config = window.PLAN_CONFIG;
-        const finalW = Math.round(config.plan.imageWidth  * opts.resol);
-        const finalH = Math.round(config.plan.imageHeight * opts.resol);
-        info.textContent = opts.format.toUpperCase() + " — " + finalW + "×" + finalH + " px";
+        const taille = _tailleExport(window.PLAN_CONFIG, opts.resol);
+        info.textContent = opts.format.toUpperCase() + " — " + taille.w + "×" + taille.h + " px";
       }
     } catch(err) {
       console.warn("[Export] Aperçu erreur :", err);
@@ -1619,9 +1546,7 @@
     }
   }
 
-  // =========================
-  // LECTURE DES OPTIONS DEPUIS LA MODALE
-  // =========================
+  // ── Lecture des options de la modale ──────────
   function _lireOptions() {
     const opts = {
       imageLayers: {},
@@ -1630,10 +1555,7 @@
       legende:     null,
       format:      _radioVal("format") || "png",
       resol:       parseFloat(_radioVal("resol") || "1"),
-      // 🆕 v1.9.3-A1.b.3 (KARMA "fond transparent / blanc / noir / image") :
-      // sélecteur de fond. Valeurs : "image" (défaut), "white", "black",
-      // "transparent". Pour les 3 valeurs non-image, les calques d'image
-      // sont automatiquement ignorés au render canvas.
+      // Fond : "image" (défaut), "white", "black", "transparent" ; hors "image", calques d'image ignorés.
       bg:          _radioVal("export_bg") || "image"
     };
     document.querySelectorAll('[data-layer-type="image"]').forEach(function(cb) {
@@ -1642,13 +1564,10 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       opts.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    // 🆕 v1.9.3-A1.b.2 : ajout de "structures" dans la liste des
-    // catégories d'annotations exportables.
     ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       opts.ann[k] = cb ? cb.checked : false;
     });
-    // Sous-types pour roads et zones (filtrage fin)
     opts.ann.roadsTypes = {
       principal:  document.getElementById("ann_roads_principal")?.checked  ?? true,
       secondaire: document.getElementById("ann_roads_secondaire")?.checked ?? true,
@@ -1660,7 +1579,6 @@
       effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true,
       inaccessible: document.getElementById("ann_zones_inaccessible")?.checked ?? true
     };
-    // 🆕 v1.9.3-A1.b.2 : sous-types structures (5 sous-cases incl. fronts)
     opts.ann.structuresTypes = {
       "pilier-1": document.getElementById("ann_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("ann_structures_pilier-2")?.checked ?? true,
@@ -1668,9 +1586,8 @@
       "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
       "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true
     };
-    // 🩸 Les sous-cases PERSONNALISÉES aussi : sans elles, décocher un niveau
-    // importé dans la modale n'avait aucun effet à l'export. On balaie le DOM
-    // plutôt que de rejouer les listes — elles sont construites à la volée.
+    // 🩸 Les sous-cases PERSONNALISÉES comptent aussi (sinon décocher un niveau importé n'a aucun effet). On
+    // balaie le DOM : les listes sont construites à la volée.
     [["roads", opts.ann.roadsTypes], ["zones", opts.ann.zonesTypes],
      ["structures", opts.ann.structuresTypes]].forEach(function (p) {
       const prefixe = "ann_" + p[0] + "_cust-";
@@ -1678,10 +1595,8 @@
         p[1][el.id.replace("ann_" + p[0] + "_", "")] = !!el.checked;
       });
     });
-    // 🏗️ Multi-niveau (v148) : Set des niveaux coches dans la section dediee.
-    // - null → multiLevel OFF pour ce plan → pas de filtrage niveau
-    // - Set → filtre actif : on n'exporte que les items dont level ∈ Set
-    //                         (jonction si fromLevel OU toLevel ∈ Set)
+    // Niveaux cochés : null = plan non multi-niveau (pas de filtre) ; Set = on n'exporte que level ∈ Set
+    // (jonction si fromLevel OU toLevel ∈ Set).
     opts.ann.levels = null;
     if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
       const levelsCoches = new Set();
@@ -1694,7 +1609,6 @@
       opts.ann.levels = levelsCoches;
     }
 
-    // Tags des points de session (filtrage fin)
     opts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
     if (_sessionPointsTags && _sessionPointsTags.length > 0) {
       const tagsCoches = new Set();
@@ -1729,9 +1643,7 @@
     return opts;
   }
 
-  // =========================
-  // EXPORT AVANCÉ — GÉNÉRATION + DOWNLOAD
-  // =========================
+  // ── Export avancé : génération + téléchargement ──────────
   async function _exporterAvance() {
     const opts = _lireOptions();
     const canvas = await _genererCanvasExport(opts, false);
@@ -1741,7 +1653,6 @@
     const mime = opts.format === "jpeg" ? "image/jpeg" : "image/png";
     const quality = opts.format === "jpeg" ? 0.9 : undefined;
 
-    // Helper qui tente un encodage et résout {ok, fallbackUsed}
     function _tryEncode(targetMime, targetExt, targetQuality) {
       return new Promise(function(resolve, reject) {
         canvas.toBlob(function(blob) {
@@ -1757,14 +1668,12 @@
       });
     }
 
-    // Tente le format demandé, puis fallback JPEG si c'était PNG, sinon downsample.
-    // Cf. utils.js — l'encodage PNG d'un gros canvas (plans JPG haute résolution)
-    // crame la mémoire mobile et retourne null. JPEG est plus tolérant.
+    // Format demandé, puis repli JPEG si c'était PNG, sinon sous-échantillonnage : l'encodage PNG d'un gros canvas
+    // épuise la mémoire mobile et rend null (JPEG est plus tolérant).
     try {
       await _tryEncode(mime, ext, quality);
     } catch(errPrimary) {
       console.warn("[Export avancé] encodage " + mime + " échoué — fallback :", errPrimary.message);
-      // Si PNG a échoué, on tente JPEG. Si JPEG a déjà échoué, on remonte.
       if (mime === "image/png") {
         try {
           await _tryEncode("image/jpeg", "jpg", 0.92);
@@ -1778,95 +1687,64 @@
     }
   }
 
-  // 🩸 v1.82.0 — LES COMPTEURS DE LA MODALE NE VOYAIENT QUE LA SESSION.
-  // `getRoads()`, `getZones()` et `getStructures()` ne retournent que les
-  // objets DESSINÉS À LA MAIN. Sur un plan IMPORTÉ, où tout le relevé vit
-  // dans un data layer, la modale annonçait donc « (0) » partout — et le PDF
-  // allait plus loin encore : `_cbRow` DÉSACTIVE la case quand le compteur
-  // est nul, si bien qu'aucune annotation n'était exportable. « L'export PDF
-  // n'exporte rien », signalé par KARMA — son diagnostic était le bon.
-  //
-  // ⚠️ RÉSERVÉ AUX COMPTEURS. Le DESSIN, lui, ne doit surtout pas cumuler :
-  // la boucle des calques data (plus bas) peint déjà le contenu embarqué,
-  // calque par calque, en respectant les cases de la modale. S'en servir des
-  // deux côtés dessinerait tout en double.
+  // 🩸 getRoads() / getZones() / getStructures() ne rendent que les objets DESSINÉS À LA MAIN : sur un plan
+  // IMPORTÉ (tout le relevé dans un calque), les compteurs seraient à 0 et les cases désactivées.
+  // ⚠️ RÉSERVÉ AUX COMPTEURS. Le DESSIN ne cumule pas : la boucle des calques data peint déjà le contenu
+  // embarqué calque par calque ; s'en servir des deux côtés dessinerait tout en double.
   function _sessionEtEmbarques(famille) {
     return (typeof window.ktaAnnotationsCompletes === "function")
       ? window.ktaAnnotationsCompletes(famille) : [];
   }
 
-  // =========================
-  // GÉNÉRATION DU CANVAS — cœur de l'export
-  // =========================
+  // ── Génération du canvas : cœur de l'export ──────────
   async function _genererCanvasExport(opts, isApercu) {
     const config = window.PLAN_CONFIG;
     const baseW = config.plan.imageWidth;
     const baseH = config.plan.imageHeight;
 
-    // Pour l'aperçu : taille modeste pour rapidité
+    // Aperçu : petite taille.
     const scale = isApercu ? Math.min(800 / baseW, 1) : opts.resol;
-    // 🖨️ 07/10/2026 — `opts.region` ({ x, y, w, h }, unités plan) : seul ce rectangle est
-    // rendu, à l'échelle `scale` (cartes PDF du Mode Secours). Le fond vient des tuiles V2
-    // si le plan en a (ktaDessinerRegionTuiles), sinon d'un sous-rectangle de l'image de
-    // base ; tout le reste se dessine en coordonnées plan, décalées par une translation.
+    // `opts.region` ({ x, y, w, h }, unités plan) : seul ce rectangle est rendu, à l'échelle `scale` (cartes PDF
+    // du Mode Secours). Fond depuis les tuiles V2 si le plan en a (ktaDessinerRegionTuiles), sinon sous-rectangle
+    // de l'image de base ; le reste en coordonnées plan décalées par une translation.
     const region = (!isApercu && opts.region && opts.region.w > 0 && opts.region.h > 0) ? opts.region : null;
     const Wplan = Math.round(baseW * scale);
     const Hplan = Math.round(baseH * scale);
     const W = region ? Math.max(1, Math.round(region.w * scale)) : Wplan;
     const H = region ? Math.max(1, Math.round(region.h * scale)) : Hplan;
 
-    // Set des tags effectivement utilisés sur le plan exporté
-    // (rempli au fil de la boucle data + editor, puis passé à la légende)
+    // Tags réellement utilisés (boucles data + editor), passés à la légende.
     const tagsUtilises = new Set();
 
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
-    // 🆕 v1.9.3-A1.b.3 : pour le fond transparent, on doit créer le
-    // context avec alpha: true (= default, mais on l'explicite). Le PNG
-    // sortant contiendra alors un canal alpha exploitable.
+    // alpha: true explicite : le PNG d'un fond transparent garde un canal alpha.
     const ctx = canvas.getContext("2d", { alpha: true });
 
-    // 🆕 v1.9.3-A1.b.3 : fond d'export selon opts.bg
-    //   - "image"       → fillRect blanc (sera couvert par l'image plan
-    //                     juste après, mais utile si baseImage échoue à
-    //                     charger pour avoir un fond propre au lieu de
-    //                     transparent par défaut).
-    //   - "white"       → fillRect blanc, baseImage + image layers SKIP
-    //   - "black"       → fillRect noir, baseImage + image layers SKIP
-    //   - "transparent" → pas de fillRect, baseImage + image layers SKIP
-    //                     → PNG avec canal alpha (les zones non peintes
-    //                     par les annotations restent transparentes).
+    // Fond selon opts.bg :
+    //   "image"       → aplat (couvert par l'image du plan ; fond propre si elle échoue)
+    //   "white"/"black" → aplat, image de base et calques d'image ignorés
+    //   "transparent" → rien, image de base et calques ignorés → PNG alpha
     const bg = opts.bg || "image";
     const skipBaseImage = (bg !== "image");
     if (bg === "image" || bg === "white") {
-      // Fond « image » : sous un plan transparent, celui choisi pour le plan (07/10/2026), sinon blanc comme avant.
+      // Fond « image » : sous un plan transparent, le fond choisi pour le plan, sinon blanc.
       ctx.fillStyle = (bg === "image" && typeof window.ktaCouleurFondPlan === "function" && window.ktaCouleurFondPlan()) || "#ffffff";
       ctx.fillRect(0, 0, W, H);
     } else if (bg === "black") {
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, W, H);
     }
-    // bg === "transparent" : on ne fait rien, le canvas reste vide → alpha
 
-    // Toutes les coords plan sont multipliées par "scale" pour matcher le canvas
+    // Coordonnées plan × scale.
     const sc = function(v) { return v * scale; };
 
-    // 🩸 v1.82.0 — L'EXPORT REPRODUISAIT LE PÂTÉ DU DÉZOOM.
-    // Un front de taille était peint à `style.weight × scale`, soit une largeur
-    // décidée par la légende et non par le terrain. Sur un relevé réel — des
-    // milliers de galeries espacées de quelques mètres — 10 px de plan valent
-    // 3,6 m au sol : les traits se touchent et la carte devient un aplat. Le
-    // rapport trait/écart ne dépend pas de la résolution choisie, donc exporter
-    // plus grand n'y changeait rien.
-    //
-    // Même loi qu'à l'écran (structures.js), même fonction : `scale` joue ici le
-    // rôle que 2^zoom joue là-bas — des pixels rendus par pixel de plan.
-    // Repli sur l'ancien calcul si structures.js n'est pas chargé.
-    // Sur un plan NON CALIBRÉ la loi n'a pas de sens : sans px/m, aucune largeur
-    // réelle n'est calculable. Là, `weight × scale` reste le bon repère — le
-    // trait dessiné à la résolution où le style a été pensé. (À l'écran c'est
-    // différent : il n'y a pas de résolution native, d'où les paliers de zoom.)
+    // 🩸 Largeur des fronts selon le TERRAIN, pas `style.weight × scale` : sur un relevé dense, 10 px de plan
+    // valent quelques mètres, les traits se touchent et la carte devient un aplat — quelle que soit la
+    // résolution. Même loi et même fonction qu'à l'écran (structures.js) : `scale` joue le rôle de 2^zoom.
+    // Repli sur `weight × scale` si structures.js n'est pas chargé, et sur un plan NON CALIBRÉ (sans px/m,
+    // aucune largeur réelle n'est calculable).
     const _planCalibre = !!(window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0);
     function _largeurFrontExp(style) {
       if (!_planCalibre) return ((style && style.weight) || 5) * scale;
@@ -1874,9 +1752,8 @@
         ? window.ktaLargeurFrontPourRatio(scale)
         : ((style && style.weight) || 5) * scale;
     }
-    // Les tracés de galerie suivent la même loi, minorée — cf. `wTrace` dans
-    // structures.js. Réservé aux tracés EMBARQUÉS : à l'écran, seuls ceux-là
-    // sont ajustés, et l'export doit montrer ce que montre la carte.
+    // Tracés de galerie : même loi, minorée (cf. `wTrace` dans structures.js), pour les tracés EMBARQUÉS
+    // seulement, comme à l'écran.
     function _largeurTraceExp(style) {
       if (!_planCalibre) return ((style && style.weight) || 5) * scale;
       return (typeof window.ktaLargeurTracePourRatio === "function")
@@ -1884,13 +1761,9 @@
         : ((style && style.weight) || 5) * scale;
     }
 
-    // 🏗️ Multi-niveau (v148) : helper local de filtrage selon les niveaux
-    // CHOISIS dans la modale Avancé (opts.ann.levels = Set<number> ou null).
-    // Cela découple l'export du filtre runtime (visibleLevels) : l'utilisateur
-    // peut filtrer la map sur Niv 0 mais exporter Niv 0+1+2 cochés dans la modale.
-    //   - opts.ann.levels === null → pas de filtre (multiLevel OFF) → tout passe
-    //   - opts.ann.levels = Set    → on filtre. Jonction visible si fromLevel
-    //     OU toLevel ∈ Set. Item sans level (rétro-compat) = niveau 0.
+    // Filtre par niveaux CHOISIS dans la modale (opts.ann.levels), indépendant du filtre de la carte
+    // (visibleLevels). null → tout passe ; Set → jonction visible si fromLevel OU toLevel ∈ Set ; objet sans
+    // level = niveau 0.
     function _itemPasseLevels(item) {
       if (!opts.ann.levels) return true;
       if (item && item.type === "jonction") {
@@ -1902,7 +1775,7 @@
       return opts.ann.levels.has(lvl);
     }
 
-    // ---------- helpers ----------
+    // ── Helpers ──
     function loadImage(src) {
       return new Promise(function(res, rej) {
         const img = new Image();
@@ -1912,22 +1785,17 @@
       });
     }
 
-    // ---------- image principale ----------
-    // 🆕 v1.9.3-A1.b.3 : skip si fond custom (white/black/transparent).
-    // L'utilisateur a explicitement demandé à NE PAS afficher l'image
-    // du plan — on respecte ça en sautant le baseImage drawImage.
+    // ── Image principale ── (ignorée si fond personnalisé)
     if (!skipBaseImage) {
       let fondFait = false;
       if (region && typeof window.ktaDessinerRegionTuiles === "function") {
         try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
         catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
       }
-      // 🖼️ 12/10/2026 — Plan ENTIER (export et aperçu) d'un plan tuilé V2 : si TOUTES les tuiles
-      // du niveau utile sont déjà sur l'appareil (archive du plan, ou Cache Storage d'un plan
-      // serveur), le fond est composé depuis elles — l'image de base (42 Mo mesurés sur un relevé
-      // lourd) n'est plus retéléchargée. Même niveau de détail (z = 0 dès l'échelle 0,5 ; aucun
-      // plafond de tuiles), bords calés sur le pixel. Une tuile absente ou illisible → image de
-      // base, peinte par-dessus, comme avant.
+      // Plan ENTIER d'un plan tuilé V2 : si TOUTES les tuiles du niveau utile sont sur l'appareil (archive du
+      // plan, ou Cache Storage d'un plan serveur), le fond est composé depuis elles (pas de retéléchargement de
+      // l'image de base). Même détail (z = 0 dès l'échelle 0,5, sans plafond de tuiles), bords calés au pixel.
+      // Une tuile absente ou illisible → image de base peinte par-dessus.
       const _plein = { x: 0, y: 0, w: baseW, h: baseH };
       if (!region && config.plan && config.plan.tiledV2 && typeof window.ktaTuilesSurAppareil === "function"
           && typeof window.ktaDessinerRegionTuiles === "function") {
@@ -1944,7 +1812,7 @@
         try {
           const baseImg = await loadImage(config.plan.baseImage);
           if (region) {
-            // L'image de base peut être une version réduite (plan tuilé V1) : ratio mesuré.
+      // L'image de base peut être réduite (plan tuilé V1) : ratio mesuré.
             const rx = (baseImg.naturalWidth || baseW) / baseW, ry = (baseImg.naturalHeight || baseH) / baseH;
             ctx.drawImage(baseImg, region.x * rx, region.y * ry, region.w * rx, region.h * ry, 0, 0, W, H);
           } else {
@@ -1953,13 +1821,9 @@
         } catch(e) { console.warn("[Export] base image :", e); }
       }
     }
-    // Région : tout ce qui suit se dessine en coordonnées plan × scale, décalées.
     if (region) { ctx.save(); ctx.translate(-region.x * scale, -region.y * scale); }
 
-    // ---------- calques d'image cochés ----------
-    // 🆕 v1.9.3-A1.b.3 : idem pour les image layers (calques tuiles V2,
-    // overlays multi-niveau, etc.). Skip global si fond custom — l'user
-    // veut UNIQUEMENT ses annotations sur le fond choisi.
+    // ── Calques d'image cochés ── (ignorés si fond personnalisé)
     if (!skipBaseImage) {
       const layers = (config.imageLayers || []).slice().sort(function(a, b) {
         return (a.order || 0) - (b.order || 0);
@@ -1968,11 +1832,8 @@
         if (!opts.imageLayers[layerCfg.id]) continue;
         try {
           const img = await loadImage(layerCfg.file);
-          // 🆕 v1.38.3 — Si l'image layer a une calibration 2 ancres (embed
-          // plan-config.json depuis v1.38.1), on la dessine avec la transform
-          // affine équivalente (rotation + scale + translation) via canvas
-          // ctx.transform → l'export reflète exactement ce que l'user voit
-          // sur la map. Sinon : drawImage stretching plan principal (v1.37.x).
+          // Calque calibré (2 ancres) : dessiné avec la transformation affine équivalente (ctx.transform), comme
+          // sur la carte ; sinon étiré sur le plan principal.
           const calibrated = (layerCfg.calibration && window.ImageLayerCalibration
                               && typeof window.ImageLayerCalibration.drawCalibratedImageLayer === "function")
             ? window.ImageLayerCalibration.drawCalibratedImageLayer(ctx, img, layerCfg.calibration, Wplan, Hplan)
@@ -1984,10 +1845,10 @@
       }
     }
 
-    // ---------- icônes (cache) ----------
+    // ── Icônes (cache) ──
     const iconCache = {};
     async function getIconUrl(p) {
-      // Cascade complète : plan-config.icons[tag] → _iconMap[tag] → default
+      // Cascade : plan-config.icons[tag] → _iconMap[tag] → default.
       let url = (typeof window.getIconUrlForPoint === "function")
         ? window.getIconUrlForPoint(p)
         : (config.icons && config.icons.default) || null;
@@ -2002,23 +1863,18 @@
       ctx.drawImage(img, sc(x) - half, sc(y) - half, size, size);
     }
 
-    // ---------- zones (avant les tracés) ----------
+    // ── Zones (avant les tracés) ──
     if (opts.ann.zones && window.getZones) {
       const zones = window.getZones();
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
-      // v169 : `inaccessible` sort en rouge fonce uni semi-transparent — les
-      // hachures SVG du runtime ne sont pas portables au canvas. C'est le repli
-      // d'aplat que { flat: true } applique (cf. _styleCanvas).
+      // `inaccessible` en aplat rouge foncé (hachures SVG non portables au canvas) : repli de { flat: true }.
       function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
       const triees = [...zones]
         .filter(function(z) {
-          // 🩸 v1.82.0 — un type personnalisé passait TOUJOURS, faute d'avoir sa
-          // case dans la modale. Il en a une maintenant : elle doit compter.
-          // `!== false` suffit — une clé absente reste permissive.
+          // 🩸 Un type personnalisé a sa case : elle doit compter. `!== false` : une clé absente reste permissive.
           return filtreZ[z.type] !== false;
         })
-        // 🏗️ Multi-niveau : filtre sur les niveaux coches dans la modale Avancé
         .filter(_itemPasseLevels)
         .sort(function(a, b) {
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
@@ -2045,30 +1901,24 @@
       }
     }
 
-    // ---------- 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) ----------
-    // Calqué sur le bloc zones ci-dessus. Styles cohérents avec
-    // structures.js > STRUCTURE_STYLES. Différenciation polygon (piliers,
-    // mur) vs polyline (fronts) au rendu canvas.
+    // ── Structures (piliers, murs, fronts) ── calquées sur les zones, styles de structures.js >
+    // STRUCTURE_STYLES ; polygone (piliers, mur) ou polyligne (fronts).
     if (opts.ann.structures && window.getStructures) {
       const structures = window.getStructures();
-      // Fronts : polylines épaisses sans contour. Le `weight` (px Leaflet) est
-      // converti via `scale` au canvas final.
-      // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
-      // front-2 < front-1 (fronts en avant-plan) + tri par level en M-LVL.
-      // Cohérent avec structures.js > renderStructures et utils.js.
+      // Fronts : polylignes épaisses sans contour (`weight` converti par `scale`).
+      // Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau (comme
+      // structures.js > renderStructures).
       const ordreS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
       const filtreS = opts.ann.structuresTypes || {
         "pilier-1": true, "pilier-2": true, "mur": true,
         "front-1":  true, "front-2": true
       };
-      // Custom : la géométrie déclarée tranche — polyline (front) → trait épais,
-      // polygon (pilier/mur) → contour noir. C'est le résolveur qui applique le
-      // gabarit de la catégorie « structures ».
+      // Custom : la géométrie déclarée tranche (polyligne → trait épais, polygone → contour noir), via le gabarit
+      // « structures » du résolveur.
       function _styleStructExp(type) { return _styleCanvas("structures", type, "mur"); }
       const _multiLevelOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const triees = [...structures]
         .filter(function(s) {
-          // Idem (cf. zones ci-dessus).
           return filtreS[s.type] !== false;
         })
         .filter(_itemPasseLevels)
@@ -2083,7 +1933,6 @@
       for (const st of triees) {
         const s = _styleStructExp(st.type);
         const isPolyline = !!s.isPolyline;
-        // Minimum 2 points pour polyline, 3 pour polygon
         const minPts = isPolyline ? 2 : 3;
         if (!st.points || st.points.length < minPts) continue;
         ctx.save();
@@ -2093,8 +1942,7 @@
           ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
         }
         if (isPolyline) {
-          // Front : polyline solide épaisse colorée, pas de fill ni
-          // de stroke noir contour. Round cap/join pour douceur visuelle.
+          // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour.
           ctx.strokeStyle = s.color;
           ctx.lineWidth = _largeurFrontExp(s);
           ctx.globalAlpha = s.opacity;
@@ -2102,7 +1950,7 @@
           ctx.lineJoin = "round";
           ctx.stroke();
         } else {
-          // Pilier / mur : polygon fermé + fill + stroke noir
+          // Pilier / mur : polygone fermé, fond + contour noir.
           ctx.closePath();
           ctx.fillStyle = s.fillColor;
           ctx.globalAlpha = s.fillOpacity;
@@ -2117,7 +1965,7 @@
       }
     }
 
-    // ---------- helpers polygones / polylignes ----------
+    // ── Helpers polygones / polylignes ──
     function _drawPolygon(points, style) {
       if (!points || points.length < 3) return;
       ctx.save();
@@ -2154,21 +2002,15 @@
       ctx.restore();
     }
 
-    // 🐛 v1.76.0 — CORRECTION DU BUG HISTORIQUE. Ces deux tables etaient
-    // ecrites a la main et INCOMPLETES : `ZS_EMBED` n'avait pas `inaccessible`,
-    // donc le repli `|| ZS_EMBED.remblais` faisait sortir une zone DANGEREUSE
-    // en gris remblais. Exactement le meme oubli avait deja frappe `jonction`
-    // ici meme (corrige en v1.7.1) — deux fois le meme defaut, parce que la
-    // table etait recopiee. Elle ne l'est plus : le resolveur connait TOUS les
-    // types, built-in comme custom, et il n'y a plus rien a oublier.
+    // Pas de table ZS_EMBED / RS_EMBED recopiée : le résolveur connaît TOUS les types (intégrés et custom).
 
-    // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
+    // Routes (embarquées + éditables) collectées pour les cercles d'intersection, dessinés à la fin.
     const allRoadsForIntersect = [];
-    // Markers DIFFÉRÉS : on les collecte pendant la boucle des calques mais on les dessine
-    // APRÈS toutes les routes + cercles, pour respecter l'ordre ZONE → TRAIT → CERCLE → ICÔNE
+    // Marqueurs DIFFÉRÉS : collectés pendant la boucle des calques, dessinés APRÈS routes et cercles
+    // (ordre ZONE → TRAIT → CERCLE → ICÔNE).
     const deferredMarkers = []; // [{p, layerId}]
 
-    // ---------- couches data (markers + roads/zones embarqués) ----------
+    // ── Calques data (marqueurs + roads/zones embarqués) ──
     const _diagAdv = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
     const _debugAdv = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
     for (const layerCfg of (config.dataLayers || [])) {
@@ -2180,11 +2022,7 @@
       let pts = [];
       let embeddedRoads = [];
       let embeddedZones = [];
-      // 🆕 v1.10.3-structures-embed-fix (KARMA "structures bien incluses ?") :
-      // les piliers/murs/fronts définis dans un data layer (data/<plan>/structure.json
-      // ou même inline dans un autre .json) étaient lus pour le runtime
-      // Leaflet (utils.js > ajouterPointsDepuisJSON ligne 645) mais PAS
-      // pour l'export canvas. Bug oublié à l'ajout des structures v1.9.3.
+      // Structures d'un calque de données (structure.json ou inline) : lues aussi pour l'export canvas.
       let embeddedStructures = [];
 
       if (layerCfg.id === "editor") {
@@ -2204,24 +2042,15 @@
         }
       }
 
-      // 🩸 v1.82.0 — UN PLAN IMPORTÉ N'A PAS DE FICHIER À ALLER CHERCHER.
-      // Le fetch ci-dessus suppose que `layerCfg.file` est servi par le site.
-      // C'est vrai des plans livrés avec l'app, faux de tout plan généré par
-      // l'import SIG : son `sig.json` vit en IndexedDB, jamais sur le serveur.
-      // Le fetch tombait donc en 404 — silencieusement, un simple `console.warn` —
-      // et l'export ne sortait QUE le fond de plan. C'est ce que KARMA a vu sur
-      // sa carrière importée : 20 664 structures à l'écran, zéro à l'export.
-      //
-      // Le contenu est pourtant déjà en mémoire : `ajouterPointsDepuisJSON` l'a
-      // rangé dans les registres au chargement du calque. On les relit, filtrés
-      // sur l'id du calque courant pour que les cases de la modale gardent leur
-      // sens. Repli seulement : quand le fichier existe, il fait foi.
+      // 🩸 UN PLAN IMPORTÉ N'A PAS DE FICHIER À ALLER CHERCHER : le fetch suppose que `layerCfg.file` est servi
+      // par le site, faux pour un plan d'import SIG (son `sig.json` vit en IndexedDB). Le 404 silencieux faisait
+      // sortir le fond de plan SEUL. Le contenu est en mémoire (`ajouterPointsDepuisJSON` l'a rangé dans les
+      // registres) : on le relit, filtré sur l'id du calque. Repli seulement : un fichier existant fait foi.
       if (layerCfg.id !== "editor"
           && !embeddedRoads.length && !embeddedZones.length && !embeddedStructures.length) {
         const duCalque = function (arr) {
           return (arr || []).filter(function (o) {
-            // `layerId` null = registre d'avant cette version, ou plan à calque
-            // unique : on ne l'écarte pas, faute de mieux que de tout perdre.
+            // `layerId` null (registre ancien, plan à calque unique) : gardé plutôt que tout perdre.
             return !o.layerId || o.layerId === layerCfg.id;
           });
         };
@@ -2240,13 +2069,12 @@
           "structures:", embeddedStructures.length);
       }
 
-      // Filtrer les points selon les tags cochés du calque (si la modale est ouverte)
-      // Si la fonction n'existe pas (mode rapide), on prend tout.
+      // Points filtrés par les tags cochés du calque (mode rapide : tout).
       if (typeof _filtrerPointsParTagsCalque === "function") {
         pts = _filtrerPointsParTagsCalque(pts, layerCfg.id);
       }
 
-      // Pour le calque "editor", appliquer en plus le filtre des tags Annotations (intersection)
+      // Calque "editor" : intersection avec le filtre des tags d'annotations.
       if (layerCfg.id === "editor" && opts.ann.pointsTags && !opts.ann.pointsTags.tousActifs) {
         const sel = opts.ann.pointsTags;
         pts = pts.filter(function(p) {
@@ -2256,7 +2084,6 @@
         });
       }
 
-      // Filtrer les routes embarquées par type (modale ouverte uniquement)
       let drawnRoads = embeddedRoads;
       if (typeof _lireRoadTypesCochesCalque === "function") {
         const rs = _lireRoadTypesCochesCalque(layerCfg.id);
@@ -2265,7 +2092,6 @@
         }
       }
 
-      // Filtrer les zones embarquées par type (modale ouverte uniquement)
       let drawnZones = embeddedZones;
       if (typeof _lireZoneTypesCochesCalque === "function") {
         const zs = _lireZoneTypesCochesCalque(layerCfg.id);
@@ -2282,8 +2108,7 @@
         }
       }
 
-      // Zones embarquées (arrière-plan, triées eau → remblais → effondrement → inaccessible)
-      // 🏗️ Multi-niveau : filtre WYSIWYG (visibleLevels) sur les zones embarquees.
+      // Zones embarquées en arrière-plan (eau → remblais → effondrement → inaccessible), filtre de niveaux.
       const ordreZ = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       [...drawnZones].sort(function(a, b) {
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
@@ -2293,14 +2118,8 @@
         _diagAdv.embZones++;
       });
 
-      // 🆕 v1.10.3-structures-embed-fix : structures embarquées (piliers,
-      // mur, fronts). Couleurs + tri Z cohérents avec le bloc structures
-      // SESSION (ligne ~1574 dans ce fichier) + utils.js > telechargerPlan
-      // futur. Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
-      // (fronts au-dessus, hotfix v1.10.0-hotfix1).
-      // Filtre par opts.ann.structures + opts.ann.structuresTypes (les
-      // mêmes que pour les structures session — cohérent avec la modale
-      // Avancé qui n'a qu'un seul groupe de checkbox pour les structures).
+      // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < pilier-2 < pilier-1 <
+      // front-2 < front-1). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a qu'un groupe.
       if (opts.ann.structures && embeddedStructures.length > 0) {
         const ordreS_E = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
         const filtreS_E = opts.ann.structuresTypes || {
@@ -2334,9 +2153,7 @@
         }
       }
 
-      // Routes embarquées
-      // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
-      // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
+      // Routes embarquées : filtre de niveaux, tri Z par level ascendant en multi-niveau.
       let drawnRoadsSorted = drawnRoads;
       const _mlOnExpAdv = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       if (_mlOnExpAdv) {
@@ -2357,10 +2174,8 @@
         _diagAdv.embRoads++;
       });
 
-      // Markers (filtrés par tags si modale) — DIFFÉRÉS au dessin final pour passer
-      // au-dessus des routes + cercles d'intersection.
-      // Les tags sont collectés ici (pour la légende exportée) sans attendre.
-      // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
+      // Marqueurs DIFFÉRÉS (filtrés par tags et niveaux), au-dessus des routes et cercles ; tags collectés ici
+      // pour la légende.
       for (const p of pts) {
         if (!_itemPasseLevels(p)) continue;
         deferredMarkers.push(p);
@@ -2376,14 +2191,12 @@
     }
     if (_debugAdv) console.log("[Export avancé] résumé layer loop :", _diagAdv);
 
-    // ---------- routes ----------
-    // ⚠️ Exclusion du type "itinerary" — c'est un overlay calculé par Pathfinder,
-    // pas une route à exporter. Sans ce filtre, le fallback "white" effaçait les
-    // segments du réseau sous-jacent par-dessus lesquels passait l'itinéraire.
+    // ── Routes ──
+    // ⚠️ Type "itinerary" exclu : c'est un overlay calculé par Pathfinder. Sinon son repli "white" effacerait
+    // les segments du réseau sous l'itinéraire.
     if (opts.ann.roads && window.getRoads) {
       const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
-      // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
-      // Cohérent avec road.js > renderRoads. Niveau bas en arrière, haut au-dessus.
+      // Tri Z par level ascendant en multi-niveau (comme road.js > renderRoads).
       const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       if (_mlOnExp) {
         const T_ORDER = { chemin: 0, secondaire: 1, principal: 2, jonction: 3 };
@@ -2401,27 +2214,17 @@
                  (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
         });
       }
-      // 🏗️ Multi-niveau (v148) : la jonction sort en magenta PLEIN — cette pipe
-      // canvas ne gere pas le dashArray. Ses extremites sont marquees en ronds
-      // blanc+magenta plus bas, pour la parite avec l'affichage carte.
-      // Repli "white" pour un type totalement inconnu (custom supprime de la
-      // legende) : mieux vaut un trait visible qu'un trait absent.
+      // Jonction en magenta PLEIN (pas de dashArray en canvas), extrémités en ronds blanc+magenta plus bas comme
+      // sur la carte. Repli "white" pour un type inconnu (custom supprimé) : un trait visible plutôt qu'absent.
       function _styleRoadExp(type) {
         return _styleCanvas("traces", type) || { color: "white", weight: 5 };
       }
       const filtreR = opts.ann.roadsTypes || { principal: true, secondaire: true, chemin: true };
       for (const r of roads) {
         if (!r.points || r.points.length === 0) continue;
-        // Jonctions toujours autorisees si multiLevel ON (pas dans le filtreR
-        // qui ne liste que principal/secondaire/chemin). Sinon respect filtreR.
-        // 🆕 v1.16.0 step2-drawable : les customs (cust-XXX) sont toujours
-        // exportés (pas filtrés par roadsTypes qui ne liste que les
-        // built-in). KARMA peut les masquer via le toggle visibilité.
-        // 🩸 v1.82.0 — idem : le filtre s'applique désormais aussi aux types
-        // personnalisés, qui ont leur case. Les jonctions restent hors filtre
-        // (elles ne sont pas listées dans la modale).
+        // Le filtre s'applique aussi aux types personnalisés (ils ont leur case). Les jonctions restent hors
+        // filtre (non listées dans la modale).
         if (r.type !== "jonction" && filtreR[r.type] === false) continue;
-        // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
         if (!_itemPasseLevels(r)) continue;
         const s = _styleRoadExp(r.type);
         ctx.save();
@@ -2436,7 +2239,7 @@
         }
         ctx.stroke();
         ctx.restore();
-        // 🏗️ Multi-niveau : ronds aux extremites pour les jonctions.
+        // Ronds aux extrémités des jonctions.
         if (r.type === "jonction" && r.points.length >= 2) {
           const endpts = [r.points[0], r.points[r.points.length - 1]];
           endpts.forEach(function(pt) {
@@ -2450,14 +2253,14 @@
             ctx.stroke();
             ctx.restore();
           });
-          // Jonctions exclues du calcul des intersections (bridges interniveau).
+          // Jonctions exclues des intersections (ponts entre niveaux).
           continue;
         }
         if (r.points.length >= 2) allRoadsForIntersect.push(r);
       }
     }
 
-    // ---------- cercles d'intersection (dessinés APRÈS toutes les routes, AVANT les icônes) ----------
+    // ── Cercles d'intersection (après les routes, avant les icônes) ──
     if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {
       const baseRadius = window.ROAD_INTERSECTION_RADIUS || 8;
       const intersections = window.computeRoadIntersections(allRoadsForIntersect);
@@ -2471,16 +2274,14 @@
       });
     }
 
-    // ---------- markers DIFFÉRÉS (icônes) — dessinés EN DERNIER (au-dessus des traits + cercles)
-    // → respecte l'ordre demandé : ZONE (en bas) → TRAIT → CERCLE → ICÔNE (en haut)
+    // ── Marqueurs différés (icônes), en dernier : ZONE → TRAIT → CERCLE → ICÔNE ──
     for (const p of deferredMarkers) {
       const img = await getIconUrl(p);
       drawMarker(img, p.x, p.y, 50 * scale);
     }
 
-    // ---------- mesure (distance + surface) ----------
+    // ── Mesure (distance + surface) ──
     if (opts.ann.mesure && window.getMeasurePoints) {
-      // 📐 Polyline distance (rouge plein, comme avant)
       const m = window.getMeasurePoints();
       if (m && m.length > 0) {
         ctx.save();
@@ -2494,8 +2295,7 @@
         ctx.stroke();
         ctx.restore();
       }
-      // ⬛ Polygone surface (v1.12.0-fix) — même couleur que distance
-      // mais fill semi-transparent (cohérent avec le rendu Leaflet on-screen).
+      // Polygone de surface : même couleur que la distance, fond semi-transparent (comme à l'écran).
       if (window.getMeasurePointsSurface) {
         const ms = window.getMeasurePointsSurface();
         if (ms && ms.length >= 3) {
@@ -2516,9 +2316,8 @@
       }
     }
 
-    // ---------- tracker (chemin parcouru + position courante) ----------
+    // ── Tracker (chemin parcouru + position) ──
     if (opts.ann.tracker) {
-      // 1) Tracé parcouru (polyline bleu Leaflet par défaut)
       if (window.getTrackingPath) {
         const path = window.getTrackingPath();
         if (path && path.length > 1) {
@@ -2536,7 +2335,6 @@
           ctx.restore();
         }
       }
-      // 2) Position courante (icône tracker)
       if (window.getTrackingPosition) {
         const t = window.getTrackingPosition();
         if (t && typeof t.x === "number" && typeof t.y === "number") {
@@ -2548,7 +2346,7 @@
       }
     }
 
-    // ---------- légende intégrée ----------
+    // ── Légende intégrée ──
     if (region) ctx.restore();
     if (opts.legende) {
       await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache, tagsUtilises);
@@ -2557,13 +2355,10 @@
     return canvas;
   }
 
-  // =========================
-  // DESSIN DE LA LÉGENDE INTÉGRÉE
-  // =========================
+  // ── Dessin de la légende intégrée ──────────
   async function _dessinerLegende(ctx, leg, canvasW, canvasH, scale, iconCache, tagsUtilises) {
     const config = window.PLAN_CONFIG;
 
-    // Tailles selon mode — titre plus modeste, plus proche des libellés
     const TAILLES = {
       compact:  { font: 11, line: 18, icon: 16, padding: 6,  titleFont: 13 },
       standard: { font: 14, line: 24, icon: 22, padding: 10, titleFont: 17 },
@@ -2576,8 +2371,7 @@
     const pad = T.padding * scale;
     const tfs = T.titleFont * scale;
 
-    // Dark theme — cohérent avec les modales de l'application
-    // Fond sombre, accent bleu vif, texte clair
+    // Thème sombre, cohérent avec les modales.
     const STYLES = {
       opaque:    {
         bg:           "rgba(26,31,46,1)",         // #1a1f2e (fond modale)
@@ -2606,10 +2400,7 @@
         titrePrincipal: "#c0c8d8",
         meta:         "#7a8298"
       },
-      // 🆕 v1.10.3-pdf-v3 (KARMA "pas en theme sombre, un truc plus pro
-      // mais même principe") : style print/impression — fond blanc opaque,
-      // texte foncé, accent bleu saturé. Adapté aux PDF/print, lisible à
-      // l'œil sur papier sans inverser la palette dark-on-screen.
+      // Style impression : fond blanc opaque, texte foncé, accent bleu saturé (PDF, papier).
       print:     {
         bg:           "rgba(255,255,255,1)",      // blanc pur
         border:       "rgba(30,58,138,0.55)",     // bleu marine #1e3a8a opacité
@@ -2622,16 +2413,14 @@
     };
     const S = STYLES[leg.style] || STYLES.opaque;
 
-    // Construire la liste des entrées
     const entrees = [];
 
-    // Métadonnées — rendues à part (pas de section "Plan", juste les infos)
+    // Métadonnées rendues à part (pas de section « Plan »).
     let metaLignes = [];
     if (leg.contenu.meta && config.plan) {
       const titre  = (config.plan.name || window.I18n.t("imgexport.legende.metaPlanDefaut"));
       const ver    = config.plan.version ? " " + config.plan.version : "";
       const auteur = config.plan.author  ? " — " + config.plan.author : "";
-      // Date au format FR : jj/mm/aaaa
       const d = new Date();
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -2639,43 +2428,35 @@
       metaLignes = [titre + ver + auteur, dd + "/" + mm + "/" + aaaa];
     }
 
-    // 🆕 v1.16.0 step 2 : pour les 4 catégories (icones, traces, zones,
-    // structures), on délègue à window.LegendCustomization qui applique la
-    // cascade session > plan > default. Les libellés peuvent être renommés
-    // et certaines entrées peuvent être cachées par l'utilisateur (UI
-    // dans la modale Export PNG). Fallback gracieux si le module n'est
-    // pas dispo (legacy hardcodés conservés en commentaire ci-dessous).
+    // Libellés des 4 catégories par window.LegendCustomization (cascade session > plan > défaut, entrées
+    // renommées ou masquées dans la modale), avec repli si le module manque.
     const LC = window.LegendCustomization;
 
-    // Icônes — découpées en 3 sous-groupes (cohérent avec la légende d'aide)
+    // Icônes en 3 sous-groupes (comme la légende d'aide).
     if (leg.contenu.icones && config.icons) {
       const exclu = ["default"];
       if (!leg.contenu.track) exclu.push("track");
 
-      // 3 sous-groupes ordonnés (les autres tags inconnus iront en "Signalétique")
       const GROUPES_ICONES = [
         { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
         { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
-        // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
+        // Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
       ];
       const clesGroupees = new Set(GROUPES_ICONES.flatMap(function(g) { return g.cles; }));
 
-      // Cumul : tags du plan-config + tags built-in (_iconMap) pour ne rien manquer
+    // Tags du plan-config + tags intégrés (_iconMap), pour ne rien manquer.
       const tagsConnus = new Set();
       Object.keys(config.icons || {}).forEach(function(t) { tagsConnus.add(t); });
       Object.keys(window._iconMap || {}).forEach(function(t) { tagsConnus.add(t); });
 
-      // FILTRE PAR USAGE RÉEL : si on a la liste des tags utilisés, on ne garde
-      // que ceux qui sont effectivement présents sur le plan exporté.
-      // (tagsUtilises peut être null/undefined en mode preview rapide → pas de filtre)
+      // Filtre par usage réel : seulement les tags présents sur le plan exporté (tagsUtilises absent en aperçu
+      // rapide → pas de filtre).
       const filtreUsage = tagsUtilises && tagsUtilises.size >= 0;
 
-      // Libellé résolu (cascade LegendCustomization si dispo, sinon fallback).
       function _iconLabel(tag) {
         if (LC) return LC.getLabel("icones", tag);
-        // Fallback : si le module n'est pas chargé, on retombe sur le tag brut.
         return tag;
       }
       function _iconVisible(tag) {
@@ -2683,14 +2464,13 @@
         return true;
       }
 
-      // Construire chaque sous-groupe
       GROUPES_ICONES.forEach(function(groupe) {
         const lignes = [];
         groupe.cles.forEach(function(tag) {
           if (exclu.includes(tag)) return;
           if (!tagsConnus.has(tag)) return;
           if (filtreUsage && !tagsUtilises.has(tag)) return;  // ← filtre par usage réel
-          if (!_iconVisible(tag)) return;                      // ← v1.16.0 step 2 : show/hide
+          if (!_iconVisible(tag)) return;                      // show/hide
           const url = _iconePourTag(tag);
           if (!url) return;
           lignes.push({ label: _iconLabel(tag), iconUrl: url });
@@ -2698,11 +2478,9 @@
         if (lignes.length > 0) entrees.push({ section: groupe.titre, lignes: lignes });
       });
 
-      // Tags custom non répertoriés dans les 3 groupes → "Autres"
-      // Option 5:a : on les affiche AVEC leur icône (custom ou défaut) si utilisés
+      // Tags custom hors des 3 groupes → « Autres », AVEC leur icône (custom ou défaut) s'ils sont utilisés.
       const lignesAutres = [];
-      // Source des tags candidats : tagsConnus + tagsUtilises (pour capter les tags
-      // créés dans la session qui ne sont ni dans plan-config ni dans _iconMap)
+      // Candidats : tagsConnus + tagsUtilises (tags créés en session, absents de plan-config et de _iconMap).
       const candidatsAutres = new Set(tagsConnus);
       if (tagsUtilises) tagsUtilises.forEach(function(t) { candidatsAutres.add(t); });
 
@@ -2711,11 +2489,9 @@
         if (clesGroupees.has(tag)) return;
         if (filtreUsage && !tagsUtilises.has(tag)) return;  // ← filtre par usage réel
         if (!_iconVisible(tag)) return;
-        // Récupérer l'URL : plan-config → _iconMap → default
         let url = _iconePourTag(tag);
         if (!url) {
-          // Tag custom sans icône dédiée → utiliser l'icône par défaut (5:a).
-          // v174 : default peut être divIcon → check _kta_iconUrl avant options.iconUrl.
+          // Tag custom sans icône : icône par défaut (divIcon possible → _kta_iconUrl avant options.iconUrl).
           const def = window._iconMap && window._iconMap.default;
           url = (config.icons && config.icons.default)
              || (def && (def._kta_iconUrl || (def.options && def.options.iconUrl)))
@@ -2726,8 +2502,7 @@
       });
       if (lignesAutres.length > 0) entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: lignesAutres });
 
-      // 🆕 v1.16.0 step 2 : entrées custom catégorie "icones" ajoutées par
-      // l'user (cascade plan + session). Visible si isVisible et si iconUrl.
+      // Entrées custom « icones » (plan + session), si visibles et pourvues d'une iconUrl.
       if (LC) {
         const customsIcones = LC.listCustomEntries("icones")
           .filter(function(e) { return e.visible && e.iconUrl; })
@@ -2738,23 +2513,19 @@
       }
     }
 
-    // Tracés
-    // 🪜 v169 (Karma_dev) : ajout de "Jonction interniveau" (magenta) — type
-    // de tracé spécifique au mode multi-niveau, bridge entre 2 niveaux pour
-    // le pathfinder. Visible dans la légende sans condition (si l'export ne
-    // contient pas de jonction, la ligne reste mais inerte — minor).
+    // Tracés. « Jonction interniveau » (magenta) seulement sur un plan multi-niveau.
     if (leg.contenu.traces) {
+      const mlvl = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const lignes = LC
         ? LC.listEntries("traces")
-            .filter(function(e) { return e.visible; })
+            .filter(function(e) { return e.visible && (mlvl || e.key !== "jonction"); })
             .map(function(e) { return { label: e.label, lineColor: e.lineColor }; })
         : [
             { label: window.I18n.t("imgexport.legLabel.routePrincipale"), lineColor: "#00ff00" },
             { label: window.I18n.t("imgexport.legLabel.routeSecondaire"), lineColor: "#b000ff" },
             { label: window.I18n.t("imgexport.legLabel.chemin"),          lineColor: "#ffff00" },
             { label: window.I18n.t("imgexport.legLabel.jonction"),        lineColor: "#ff4ecb" }
-          ];
-      // Ajout des customs traces
+          ].filter(function(e, i) { return mlvl || i !== 3; });
       if (LC) {
         LC.listCustomEntries("traces")
           .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
@@ -2765,10 +2536,7 @@
       if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.traces"), lignes: lignes });
     }
 
-    // Zones
-    // 🚫 v169 (Karma_dev) : ajout de "Inaccessible" (rouge foncé) — zone
-    // bloquante pour le pathfinder (contrainte dure). Couleur uni rouge
-    // foncé (pas de hachures dans cette pipe canvas — voir ZONE_STYLES_EXPORT).
+    // Zones, dont « Inaccessible » (aplat rouge foncé, pas de hachures en canvas).
     if (leg.contenu.zones) {
       const lignes = LC
         ? LC.listEntries("zones")
@@ -2790,19 +2558,14 @@
       if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.zones"), lignes: lignes });
     }
 
-    // 🏛️ v1.10.3 (KARMA "structures pas dans la légende") : section
-    // Structures. Polygones (piliers + mur) avec stroke noir + fill couleur ;
-    // polylines (fronts) avec lineColor uni. Couleurs cohérentes avec
-    // STRUCTURE_STYLES (structures.js) et les helpers d'export PNG/KMZ
-    // (front-1 jaune = pilier-1, front-2 orange = pilier-2 — hotfix v1.10.1-2).
+    // Structures : polygones (piliers, mur) fond + contour noir ; polylignes (fronts) en lineColor. Front-1 =
+    // couleur du pilier-1, front-2 = pilier-2.
     if (leg.contenu.structures) {
       const lignes = LC
         ? LC.listEntries("structures")
             .filter(function(e) { return e.visible; })
             .map(function(e) {
-              // Distingue polylines (front-X : lineColor) des polygones
-              // (pilier-X / mur : fillColor + borderColor). LegendCustomization
-              // expose les 3 champs, on prend ceux qui sont set.
+              // Polyligne (front-X : lineColor) ou polygone (pilier-X / mur : fillColor + borderColor).
               if (e.lineColor) return { label: e.label, lineColor: e.lineColor };
               return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor };
             })
@@ -2814,7 +2577,6 @@
             { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" }
           ];
       if (LC) {
-        // 🐛 v1.16.0 step2-drawable-fix : geometry first comme discriminator
         LC.listCustomEntries("structures")
           .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
           .forEach(function(e) {
@@ -2835,14 +2597,8 @@
 
     if (entrees.length === 0 && metaLignes.length === 0) return;
 
-    // ─────────────────────────────────────────────────
-    // RÉPARTITION INTELLIGENTE EN 2 COLONNES
-    // Algorithme : on parcourt les groupes dans l'ordre d'ajout et on les place
-    // dans la colonne la moins remplie (en hauteur cumulée).
-    // → équilibre automatique quel que soit le nombre d'icônes.
-    // ─────────────────────────────────────────────────
+    // ── Répartition en 2 colonnes : chaque groupe va dans la colonne la moins haute ──
     function _hauteurEstimee(section) {
-      // Approximation : 1 unité pour le titre + 1 par ligne
       return 1 + (section.lignes ? section.lignes.length : 0);
     }
     const colGauche = [];
@@ -2854,12 +2610,10 @@
       else          { colDroite.push(sec); hD += h; }
     });
 
-    // Si une seule colonne est utilisée (cas extrême), équilibre forcé
     if (colDroite.length === 0 && colGauche.length > 1) {
       colDroite.push(colGauche.pop());
     }
 
-    // Calculer la largeur max d'une colonne (mesurer libellés + titres de section)
     function _largeurColonne(sections) {
       let maxW = 0;
       ctx.save();
@@ -2887,13 +2641,11 @@
       return h;
     }
 
-    // Largeur de chaque colonne (libellé + icône + padding interne)
     const colInnerW_g = _largeurColonne(colGauche);
     const colInnerW_d = _largeurColonne(colDroite);
     const colW_g = colInnerW_g + ic + pad;   // icône + label
     const colW_d = colInnerW_d + ic + pad;
 
-    // Largeur titre principal et méta (ils s'étalent en pleine largeur)
     ctx.save();
     let titreMetaW = 0;
     ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
@@ -2906,17 +2658,14 @@
     });
     ctx.restore();
 
-    // Espace entre les 2 colonnes
     const colGap = pad * 1.5;
 
-    // Largeur de la boîte = max entre (titre/méta) et (col gauche + gap + col droite)
     const colsW = colDroite.length > 0
       ? colW_g + colGap + colW_d
       : colW_g;
     const contentW = Math.max(titreMetaW, colsW);
     const boiteW = contentW + pad * 2;
 
-    // Hauteur :
     let totalH = pad;
     totalH += tfs * 1.2;                  // titre "Légende"
     totalH += pad * 0.8;                  // espace après titre
@@ -2924,14 +2673,12 @@
       totalH += metaLignes.length * lh * 0.8;
       totalH += pad * 0.6;
     }
-    // Hauteur des colonnes (max des 2)
     const hCol_g = _hauteurColonne(colGauche);
     const hCol_d = _hauteurColonne(colDroite);
     totalH += Math.max(hCol_g, hCol_d);
     totalH += pad;
     const boiteH = totalH;
 
-    // Position
     let bx, by;
     const margin = 20 * scale;
     switch (leg.position) {
@@ -2945,7 +2692,6 @@
     bx = Math.max(0, Math.min(bx, canvasW - boiteW));
     by = Math.max(0, Math.min(by, canvasH - boiteH));
 
-    // Fond avec coins légèrement arrondis (cohérent avec les modales)
     const radius = 6 * scale;
     ctx.save();
     ctx.beginPath();
@@ -2966,7 +2712,6 @@
     ctx.stroke();
     ctx.restore();
 
-    // Titre principal "Légende"
     let cy = by + pad;
     ctx.save();
     ctx.fillStyle = S.titrePrincipal;
@@ -2976,7 +2721,6 @@
     cy += tfs * 1.2;
     ctx.restore();
 
-    // Trait fin sous le titre
     ctx.save();
     ctx.strokeStyle = S.titreSection;
     ctx.globalAlpha = 0.55;
@@ -2988,7 +2732,6 @@
     ctx.restore();
     cy += pad * 0.4;
 
-    // Métadonnées en pleine largeur (style discret, Georgia)
     if (metaLignes.length > 0) {
       ctx.save();
       ctx.fillStyle = S.meta;
@@ -3002,9 +2745,7 @@
       cy += pad * 0.4;
     }
 
-    // ─────────────────────────────────────────────────
-    // RENDU DES 2 COLONNES
-    // ─────────────────────────────────────────────────
+    // ── Rendu des 2 colonnes ──
     const cyColStart = cy;
     const xColGauche = bx + pad;
     const xColDroite = bx + pad + colW_g + colGap;
@@ -3013,7 +2754,6 @@
       let cyLocal = yStart;
 
       for (const sec of sections) {
-        // Titre de section
         ctx.save();
         ctx.fillStyle = S.titreSection;
         ctx.font = "bold " + fs + "px sans-serif";
@@ -3022,7 +2762,6 @@
         cyLocal += lh;
         ctx.restore();
 
-        // Lignes
         for (const l of sec.lignes) {
           const yLine = cyLocal + (lh - ic) / 2;
 
@@ -3082,37 +2821,23 @@
       await _dessinerSections(colDroite, xColDroite, cyColStart);
     }
 
-    // 🆕 v1.10.3-pdf-v3 (KARMA "générer une image de la légende") :
-    // retourne les dimensions effectivement dessinées pour permettre à
-    // pdfExport.js d'extraire la boîte légende et la coller dans le PDF.
+    // Dimensions dessinées : pdfExport.js en extrait la boîte légende.
     return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by };
   }
 
-  // =========================
-  // 🆕 v1.10.3 (PDF) : API PUBLIQUE — exposé pour pdfExport.js
-  // =========================
-  // Wrapper qui prend les opts simplifiées de pdfExport.js et construit le
-  // dict complet attendu par _genererCanvasExport. Évite de réimplémenter
-  // tout le pipeline de rendu canvas (icônes, zones, tracés, structures…).
-  //
-  // Forme attendue (toutes les clés sont optionnelles sauf ann) :
+  // ── API publique pour pdfExport.js ──────────
+  // Construit les options complètes de _genererCanvasExport depuis des options simplifiées (pas de second
+  // pipeline de rendu). Forme (tout optionnel sauf ann) :
   //   {
-  //     ann:               { points, roads, zones, structures, pointsTags,
-  //                          roadsTypes, zonesTypes, structuresTypes, levels },
-  //     scale:             1     // resol (1=natif, 0.5=½, 2=HD)
-  //     bg:                "image"|"white"|"black"|"transparent"
-  //     imageLayers:       { id: bool, ... } ← OBLIGATOIRE depuis v2 (PDF v2)
-  //     dataLayers:        { id: bool, ... } ← OBLIGATOIRE depuis v2 (PDF v2)
+  //     ann:         { points, roads, zones, structures, pointsTags, roadsTypes, zonesTypes, structuresTypes, levels },
+  //     scale:       1     // 1 = natif, 0.5 = ½, 2 = HD
+  //     bg:          "image"|"white"|"black"|"transparent"
+  //     imageLayers: { id: bool, ... }
+  //     dataLayers:  { id: bool, ... }
   //   }
-  //
-  // Fallback rétrocompat v1 (booléens globaux) :
-  //   {
-  //     includeBaseImage:  bool   (= bg blanc si false)
-  //     includeImgLayers:  bool   (auto-coche TOUS les calques image)
-  //     includeDataLayers: bool   (auto-coche TOUS les calques data)
-  //   }
-  //
-  // Retourne : Promise<HTMLCanvasElement>
+  // Repli ancienne forme (booléens globaux) : includeBaseImage (false = fond blanc), includeImgLayers,
+  // includeDataLayers (cochent TOUS les calques).
+  // Rend Promise<HTMLCanvasElement>.
   async function _publicGenererCanvas(userOpts) {
     const config = window.PLAN_CONFIG;
     const fullOpts = {
@@ -3126,8 +2851,7 @@
       dataLayers:  {}
     };
 
-    // 🆕 v2 (PDF v2) : si userOpts.imageLayers est un objet non-vide, on
-    // l'utilise tel quel. Sinon, fallback v1 = auto-list booléen global.
+    // imageLayers objet non vide → utilisé tel quel ; sinon repli booléen global.
     if (userOpts.imageLayers && typeof userOpts.imageLayers === "object"
         && Object.keys(userOpts.imageLayers).length > 0) {
       fullOpts.imageLayers = userOpts.imageLayers;
@@ -3138,7 +2862,7 @@
       });
     }
 
-    // 🆕 v2 (PDF v2) : idem pour les data layers — control fin via dict.
+    // Idem pour les calques de données.
     if (userOpts.dataLayers && typeof userOpts.dataLayers === "object"
         && Object.keys(userOpts.dataLayers).length > 0) {
       fullOpts.dataLayers = userOpts.dataLayers;
@@ -3148,40 +2872,43 @@
       });
     }
 
-    // pointsTags : si absent, on autorise tout (tousActifs:true)
+    // pointsTags absent → tout autorisé.
     if (!fullOpts.ann.pointsTags) {
       fullOpts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
+    }
+
+    // 🩸 Résolution native d'un très grand plan (centaines de Mpx) : le navigateur refuse le canvas et le PDF
+    // partirait avec une image 0 × 0 sans message. Même plafond que l'export image (SEUIL_PX_EXPORT ; iPhone :
+    // IOS_MAX_PX_CANVAS). A0 à 300 dpi ≈ 140 Mpx suffit.
+    const pc = config && config.plan;
+    const W = fullOpts.region ? fullOpts.region.w : (pc && pc.imageWidth);
+    const H = fullOpts.region ? fullOpts.region.h : (pc && pc.imageHeight);
+    if (W > 0 && H > 0) {
+      const ios = (typeof window.ktaEstIos === "function") && window.ktaEstIos();
+      const budget = ios ? IOS_MAX_PX_CANVAS : SEUIL_PX_EXPORT;
+      const px = W * H * fullOpts.resol * fullOpts.resol;
+      if (px > budget) {
+        const avant = fullOpts.resol;
+        fullOpts.resol = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+        console.log("[Exporter] Canvas plafonné : résolution " + avant + " → " + fullOpts.resol +
+                    " (" + Math.round(W * fullOpts.resol) + "×" + Math.round(H * fullOpts.resol) + ")");
+      }
     }
 
     return await _genererCanvasExport(fullOpts, false);
   }
   window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
 
-  // =========================
-  // 🆕 v1.10.3-pdf-v3 : Génère un canvas standalone de la LÉGENDE seule
-  // =========================
-  // Approche KARMA "comme l'export PNG, on génère une image de la légende
-  // que l'on colle dans le PDF". Évite tous les problèmes de font/emoji de
-  // jsPDF Helvetica latin1, car la légende est une vraie image raster avec
-  // ses icônes PNG, ses traits, ses polygones, ses emojis de sections.
-  //
-  // Pipeline :
-  //   1. Crée un canvas temporaire grand (3000×3000 — large pour les
-  //      légendes les plus chargées avec multi-niveau + icônes nombreuses)
-  //   2. Appelle _dessinerLegende dessus, position forcée "haut-gauche"
-  //      avec une petite marge interne (pour le shadow/border).
-  //   3. _dessinerLegende retourne {boiteW, boiteH, bx, by} = la zone
-  //      effectivement dessinée.
-  //   4. Crée un canvas final aux dimensions exactes, drawImage le crop.
-  //
+  // ── Canvas de la LÉGENDE seule ──────────
+  // Une image raster collée dans le PDF : évite les limites de jsPDF (Helvetica latin1, emojis) pour icônes,
+  // traits, polygones et emojis de sections.
+  //   1. canvas temporaire 3000×3000 ;
+  //   2. _dessinerLegende en haut-gauche, petite marge (ombre, bordure) ;
+  //   3. elle rend {boiteW, boiteH, bx, by} ;
+  //   4. canvas final aux dimensions exactes (crop).
   // legContenu : { icones, traces, zones, structures, track, meta }
-  // bg : "transparent" (défaut) ou "opaque" (= la légende sur fond plein,
-  //      utile si le footer PDF a un fond pâle qui s'accommode mal du
-  //      semi-transparent natif de la boîte légende).
-  //
-  // Retourne : Promise<HTMLCanvasElement | null>
-  //            (null si aucun contenu — pas d'icônes connues, pas de
-  //             tracé, etc. — le caller doit gérer ce cas)
+  // bg : "transparent" (défaut) ou "opaque" (fond plein, si le footer PDF est pâle).
+  // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère).
   async function _publicGenererCanvasLegende(userOpts) {
     userOpts = userOpts || {};
     const legContenu = userOpts.contenu || {
@@ -3191,21 +2918,16 @@
     const legStyle = userOpts.style || "opaque";
     const scale    = userOpts.scale || 1;
 
-    // Collecte des tagsUtilises pour ne montrer que les tags présents dans
-    // les annotations actuelles + data layers — cohérent avec l'export PNG
-    // avancé (filtre par usage réel).
+    // Tags utilisés (annotations + calques), pour filtrer comme l'export PNG.
     const tagsUtilises = userOpts.tagsUtilises || new Set();
     if (!userOpts.tagsUtilises) {
-      // Auto-collecte session + embedded data layers (via helpers globaux)
       const pushTags = function(p) {
         if (p && Array.isArray(p.tags)) p.tags.forEach(function(t) {
           if (t && String(t).trim()) tagsUtilises.add(String(t));
         });
       };
       if (typeof window.getEditorPoints === "function") window.getEditorPoints().forEach(pushTags);
-      // Data layers : fetch tous les points connus du dataLayerGroups Leaflet,
-      // sinon scan _ktaDataMarkers (mais pas toujours rempli avec les tags).
-      // Simplification : on fetch chaque dataLayer du plan-config.
+      // Calques de données : chaque dataLayer du plan-config est relu (les registres n'ont pas toujours les tags).
       const cfg = window.PLAN_CONFIG;
       if (cfg && Array.isArray(cfg.dataLayers)) {
         for (const l of cfg.dataLayers) {
@@ -3219,16 +2941,13 @@
       }
     }
 
-    // Canvas temporaire suffisamment grand pour les légendes les plus
-    // chargées. On garde un petit padding pour les ombres/bordures.
     const TMP_W = 3000, TMP_H = 3000;
     const tmpCanvas = document.createElement("canvas");
     tmpCanvas.width  = TMP_W;
     tmpCanvas.height = TMP_H;
     const tmpCtx = tmpCanvas.getContext("2d", { alpha: true });
 
-    // Options de légende : position forcée haut-gauche pour simplifier le
-    // crop. customX/Y = 0 pour coller au bord (marges gérées par caller).
+    // Position forcée haut-gauche pour simplifier le crop (marges gérées par l'appelant).
     const leg = {
       position: "haut-gauche",
       customX:  0,
@@ -3247,12 +2966,10 @@
       return null;
     }
     if (!dims || dims.boiteW <= 0 || dims.boiteH <= 0) {
-      // _dessinerLegende retourne early si entrees.length === 0 — pas de
-      // contenu cochable. Caller doit gérer.
+      // _dessinerLegende sort tôt sans entrée : l'appelant gère le null.
       return null;
     }
 
-    // Canvas final aux dimensions exactes (+ petit padding pour bordure)
     const PAD = 2;
     const W = Math.ceil(dims.boiteW + 2 * PAD);
     const H = Math.ceil(dims.boiteH + 2 * PAD);
@@ -3269,9 +2986,7 @@
   }
   window.MyKTAMapExporterGenererCanvasLegende = _publicGenererCanvasLegende;
 
-  // =========================
-  // HELPERS — visibilité actuelle des calques
-  // =========================
+  // ── Helpers : visibilité actuelle des calques ──────────
   function _getVisibleImageLayerIds(config) {
     const ids = [];
     (config.imageLayers || []).forEach(function(l) {

@@ -5,38 +5,24 @@
  */
 
 // =====================================================================
-// 💾 planOffline.js — rendre un plan SERVEUR disponible hors-ligne
+// planOffline.js — rendre un plan SERVEUR disponible hors ligne
 // =====================================================================
-// 🩸 POURQUOI CE MODULE EXISTE. Le Service Worker cache deja au vol tout ce
-// qu'il telecharge — mais ca ne suffisait pas, pour trois raisons cumulees :
-//
-//   1. PLAFOND. Le cache principal est borne a MAX_DYNAMIC_ENTRIES (800) avec
-//      eviction FIFO. Un plan V2 de 20000x12000 pese 1275 tuiles, et son SEUL
-//      niveau z=0 en fait 960 : le plan s'evincait lui-meme EN SE CHARGEANT.
-//      Hors-ligne, on n'obtenait pas une erreur mais une carte TROUEE.
-//   2. PARESSE. Les tuiles ne sont telechargees qu'a l'AFFICHAGE : _renderNiveau
-//      ne demande que le niveau de zoom courant. Ouvrir un plan sans zoomer
-//      n'en cachait qu'un sur quatre.
-//   3. BUMP. `activate` supprimait tout cache != CACHE_NAME → chaque release
-//      remettait le plan a zero.
-//
-// On ecrit donc dans un cache DEDIE par plan (`myktamap-plan-<id>`), que le SW
-// exclut de l'eviction ET de la purge au bump (cf sw.js > _estCachePlan).
-//
-// ⚠️ L'ETAT EST TOUJOURS LU DU CACHE REEL, jamais d'un drapeau memorise
-// (exigence KARMA : « attention a ne plus afficher ce bouton une fois le plan
-// telecharge, eviter un bouton fantome »). Un drapeau survivrait a une purge
-// navigateur et afficherait « disponible » sur un cache vide — le mensonge
-// exact qu'on veut eviter. Le manifeste est stocke DANS le cache : s'il
-// disparait, l'etat retombe tout seul sur « absent ».
-// =====================================================================
+// Cache DÉDIÉ par plan (`myktamap-plan-<id>`), exclu de l'éviction et de la purge au bump
+// (sw.js > _estCachePlan). 🩸 Le cache au vol du SW ne suffit pas : plafond FIFO (un plan V2
+// s'évince lui-même en se chargeant → carte trouée hors ligne), tuiles chargées seulement au
+// zoom affiché, cache principal purgé à chaque release.
+// ⚠️ L'état est TOUJOURS lu du cache réel, jamais d'un drapeau mémorisé (qui survivrait à une
+// purge navigateur → bouton fantôme « disponible »). Le manifeste vit DANS le cache.
+// Expose : window.PlanOffline { supporte, nomCache, listerUrls, statut, statuts, precacher,
+//   verifierMaj, supprimer, PREFIXE, MANIFESTE }
+// Garde-fou : scripts/check-plan-offline.js · Doc : docs/TILING.md
 
 (function () {
   "use strict";
 
   const PREFIXE   = "myktamap-plan-";
-  const MANIFESTE = "__kta_offline.json";   // stocke DANS le cache, jamais servi
-  const PARALLELE = 6;                      // requetes simultanees
+  const MANIFESTE = "__kta_offline.json";   // stocké DANS le cache, jamais servi
+  const PARALLELE = 6;                      // requêtes simultanées
 
   function _log()  { console.log.apply(console, ["[PlanOffline]"].concat([].slice.call(arguments))); }
   function _warn() { console.warn.apply(console, ["[PlanOffline]"].concat([].slice.call(arguments))); }
@@ -52,12 +38,9 @@
   }
   function _urlManifeste(plan) { return _dossier(plan) + "/" + MANIFESTE; }
 
-  // ── Enumeration des URLs d'un plan ──────────────────────────────────
-  // 🩸 Les tuiles sont enumerees par `window.ktaTuilesV2Urls` (tiling.js), la
-  // MEME fonction dont derive le rendu. Une seconde derivation ici aurait
-  // diverge au premier changement de mise en page du generateur, et le
-  // symptome aurait ete un plan « telecharge » mais troue — soit exactement
-  // le bug qu'on corrige.
+  // ── Énumération des URLs d'un plan ──────────────────────────────────
+  // 🩸 Tuiles énumérées par `window.ktaTuilesV2Urls` (tiling.js), la fonction du rendu : une
+  // seconde dérivation divergerait (plan « téléchargé » mais troué).
   async function listerUrls(plan) {
     const dir = _dossier(plan);
     if (!dir) throw new Error("plan sans chemin serveur");
@@ -66,13 +49,11 @@
     if (!rep.ok) throw new Error("plan-config.json : HTTP " + rep.status);
     let cfg = await rep.json();
 
-    // Memes regles de resolution que le chargement reel (config.js).
+    // Mêmes règles de résolution que le chargement réel (config.js).
     if (typeof window.resolveServerPaths === "function") {
       cfg = window.resolveServerPaths(cfg, dir);
     }
-    // 🎨 v1.87.2 — memes icones que le chargement reel : on SONDE aussi,
-    // sinon le pre-cache listerait une icone que le rendu n utilise pas
-    // (ou l inverse), et le plan serait « incomplet » a vie.
+    // 🩸 Mêmes icônes que le rendu (sondées aussi), sinon le plan reste « incomplet » à vie.
     if (typeof window.resoudreIconesPlanServeur === "function") {
       cfg = await window.resoudreIconesPlanServeur(cfg, dir);
     }
@@ -84,21 +65,16 @@
     if (cfg.plan) { ajouter(cfg.plan.baseImage); ajouter(cfg.plan.collisionImage); }
     (cfg.imageLayers || []).forEach(function (l) { ajouter(l && l.file); });
     (cfg.dataLayers  || []).forEach(function (l) { ajouter(l && l.file); });
-    // Icones : seules celles resolues DANS le dossier du plan (= perso, livrees
-    // dans le ZIP). Celles de l'app vivent a la racine et sont deja pre-cachees
-    // par le Service Worker a l'install.
+    // Icônes du dossier du plan seulement : celles de l'app sont déjà précachées par le SW.
     if (cfg.icons) {
       Object.keys(cfg.icons).forEach(function (k) {
         const u = cfg.icons[k];
         if (typeof u === "string" && u.indexOf(dir + "/") === 0) ajouter(u);
       });
     }
-    // La racine des tuiles est rendue avec la liste : `verifierMaj` s en sert
-    // pour EXCLURE les tuiles des sondes. Sonder 1275 tuiles serait absurde,
-    // et inutile : elles derivent de l image, qui est sondee, elle.
-    // 🩸 v1.88.3 — on SONDE, comme le rendu. L hypothese synchrone se
-    // trompait sur les plans dont le deploiement a deplace l image sans
-    // deplacer les tuiles : le pre-cache telechargeait alors 1275 URLs en 404.
+    // Racine des tuiles rendue avec la liste : verifierMaj l'exclut des sondes.
+    // 🩸 Racine SONDÉE comme le rendu : un déploiement peut déplacer l'image sans les tuiles
+    // (sinon des centaines d'URLs en 404).
     const racineTuiles = (typeof window.ktaResoudreRacineTuiles === "function")
       ? await window.ktaResoudreRacineTuiles(cfg)
       : ((typeof window.ktaRacineTuilesServeur === "function") ? window.ktaRacineTuilesServeur(cfg) : null);
@@ -109,11 +85,9 @@
     return { urls: urls, cfg: cfg, racineTuiles: racineTuiles };
   }
 
-  // ── Etat REEL, lu du cache ──────────────────────────────────────────
-  // Retourne { etat: "absent" | "complet" | "incomplet", present, total, date }
-  // `clesDejaLues` : liste des caches deja obtenue par l appelant. Sert au
-  // batch `statuts()` — sans ca, afficher N plans dans la liste du HOME
-  // declencherait N appels a caches.keys() pour la meme information.
+  // ── État RÉEL, lu du cache ──────────────────────────────────────────
+  // → { etat: "absent" | "complet" | "partiel" | "incomplet", present, total, manquants, date }
+  // `clesDejaLues` : caches.keys() déjà lu par statuts() (un seul appel pour N plans).
   async function statut(planId, clesDejaLues) {
     const vide = { etat: "absent", present: 0, total: 0, date: null };
     if (!supporte() || !planId) return vide;
@@ -124,8 +98,7 @@
 
     const cache = await caches.open(nom);
     const entrees = await cache.keys();
-    // Le manifeste dit ce qui ETAIT attendu. Sans lui, on ne peut pas conclure :
-    // on rend « incomplet » plutot que d'annoncer « complet » a tort.
+    // Sans manifeste (ce qui était attendu), pas de conclusion : « incomplet », jamais « complet ».
     let man = null;
     for (let i = 0; i < entrees.length; i++) {
       if (entrees[i].url.indexOf("/" + MANIFESTE) >= 0) {
@@ -140,20 +113,10 @@
     if (!man || !Array.isArray(man.urls)) {
       return { etat: present > 0 ? "incomplet" : "absent", present: present, total: 0, manquants: [], date: null };
     }
-    // 🩸 v1.87.1 — TROIS ÉTATS, PAS DEUX. Le manifeste v1 listait tout ce qu'on
-    // avait TENTÉ, y compris les fichiers absents du serveur. Un plan dont le
-    // plan-config déclare un fichier non déployé restait donc « incomplet — 9
-    // sur 10 » À VIE : le bouton invitait à retélécharger indéfiniment un
-    // fichier qui n'existe pas, sans jamais dire lequel. Constaté par KARMA.
-    // On distingue désormais :
-    //   • complet   : tout est là ;
-    //   • partiel   : tout ce qui EXISTE est là, mais le serveur n'a pas
-    //                 répondu 200 sur N fichiers — utilisable, et on DIT
-    //                 lesquels ;
-    //   • incomplet : téléchargement réellement interrompu (il en manque plus
-    //                 que ce que le serveur avait refusé).
-    // ⚠️ Manifeste v1 (sans `manquants`) → on retombe sur l'ancien calcul :
-    // il sera remplacé par un v2 au prochain téléchargement.
+    // 🩸 Trois états : complet ; partiel = tout ce qui EXISTE est là, le serveur a refusé
+    // `manquants` (utilisable, et on dit lesquels — sinon « 9 sur 10 » à vie sur un fichier
+    // non déployé) ; incomplet = téléchargement interrompu. Manifeste sans `manquants` : calcul
+    // simple jusqu'au prochain téléchargement.
     const manquants  = Array.isArray(man.manquants) ? man.manquants : [];
     const attendus   = man.urls.length;
     const obtenables = Math.max(0, attendus - manquants.length);
@@ -170,24 +133,18 @@
     };
   }
 
-  // ── Telechargement ──────────────────────────────────────────────────
-  // onProgress({ fait, total, echecs }) — appele a chaque fichier termine.
-  // Retourne { total, ok, echecs, annule }.
+  // ── Téléchargement ──────────────────────────────────────────────────
+  // onProgress({ fait, total, echecs }) à chaque fichier → { total, ok, echecs, annule, manquants }
   async function precacher(plan, onProgress, signal) {
     if (!supporte()) throw new Error("Cache API indisponible");
     const liste = await listerUrls(plan);
     const urls  = liste.urls;
     const cache = await caches.open(nomCache(plan.id));
     let fait = 0, ok = 0, echecs = 0, annule = false;
-    // 🩸 v1.87.1 — on retient QUELS fichiers manquent, pas juste combien.
-    // Sans la liste, l utilisateur voyait « 9 sur 10 » sans jamais savoir
-    // lequel, et retelechargait en boucle un fichier absent du serveur.
+    // QUELS fichiers manquent, pas seulement combien.
     const manquants = [];
-    // 🔎 v1.88.0 — VALIDATEURS HTTP, retenus au telechargement. Ils sont la
-    // seule facon FIABLE de savoir plus tard si le serveur a change : le
-    // champ `version` de index.json est saisi a la main et derive (dans ce
-    // repo meme, index dit V1 et le plan-config dit V2), et le generateur
-    // n ecrit aucun horodatage dans plan-config.json.
+    // Validateurs HTTP (ETag / Last-Modified) : seul signal fiable de changement côté serveur
+    // (cf verifierMaj).
     const validateurs = {};
 
     let curseur = 0;
@@ -200,8 +157,7 @@
         if (!u) return;
         try {
           const r = await fetch(u, { cache: "reload" });
-          // 🩸 On ne met en cache QUE du 200 : cacher un 404 rendrait le plan
-          // « complet » avec des fichiers morts, invisibles jusqu'au terrain.
+          // 🩸 Seulement du 200 : un 404 en cache donnerait un plan « complet » aux fichiers morts.
           if (r && r.status === 200) {
             const et = r.headers.get("ETag"), lm = r.headers.get("Last-Modified");
             if (et || lm) validateurs[u] = { etag: et || null, lm: lm || null };
@@ -218,9 +174,8 @@
     await Promise.all(pool);
 
     if (!annule) {
-      // Le manifeste n'est ecrit qu'a la FIN : un telechargement interrompu
-      // laisse donc un cache SANS manifeste → etat « incomplet », le bouton
-      // revient. C'est voulu.
+      // ⚠️ Manifeste écrit à la FIN seulement : interrompu → pas de manifeste → « incomplet »,
+      // le bouton revient.
       await cache.put(_urlManifeste(plan), new Response(JSON.stringify({
         version: 3, planId: plan.id, urls: urls, manquants: manquants,
         validateurs: validateurs, racineTuiles: liste.racineTuiles || null,
@@ -235,24 +190,12 @@
 
 
   // ── Y a-t-il du neuf sur le serveur ? ───────────────────────────────
-  // 🔎 v1.88.0 — On envoie des requetes CONDITIONNELLES : 304 = inchange
-  // (corps vide, cout quasi nul), 200 = le fichier a change.
-  //
-  // 🩸 POURQUOI PAS LE CHAMP `version` : il est saisi a la main dans
-  // index.json et derive deja dans ce repo (index dit V1, plan-config dit V2).
-  // Et `plan-config.json` ne porte AUCUN horodatage. Le seul signal fiable
-  // sans changer de format est donc HTTP : ETag / Last-Modified, que tout
-  // serveur statique emet par defaut.
-  //
-  // 🩸 LES TUILES SONT EXCLUES : elles peuvent etre 1275, et elles derivent de
-  // l image — qui, elle, EST sondee. Si l image a change, la mise a jour est
-  // annoncee et le retelechargement reprend tout.
-  //
-  // 🩸 LE MARQUEUR `_ktacheck=1` EST INDISPENSABLE : sans lui, la branche
-  // cache-first du Service Worker servirait la sonde depuis le cache et elle
-  // repondrait TOUJOURS « rien n a change » (cf sw.js).
-  //
-  // Retourne { etat: "ajour" | "maj" | "inconnu", changes: [...], verifies, date }
+  // Requêtes CONDITIONNELLES : 304 = inchangé, 200 = changé.
+  // 🩸 Pas le champ `version` d'index.json (saisi à la main, il dérive) ; plan-config.json n'a
+  //   pas d'horodatage : ETag / Last-Modified est le seul signal fiable.
+  // Tuiles exclues : elles dérivent de l'image, qui est sondée.
+  // 🩸 `_ktacheck=1` indispensable : sans lui, le cache-first du SW répond toujours « inchangé ».
+  // → { etat: "ajour" | "maj" | "inconnu", changes, verifies, date }
   async function verifierMaj(plan) {
     const inconnu = { etat: "inconnu", changes: [], verifies: 0, date: null };
     if (!supporte() || !plan || !plan.id) return inconnu;
@@ -264,8 +207,7 @@
     if (!rep) return inconnu;
     let man;
     try { man = await rep.json(); } catch (e) { return inconnu; }
-    // Manifeste v2 ou anterieur : aucun validateur retenu, on ne peut RIEN
-    // affirmer. On le dit, plutot que d annoncer « a jour » sans preuve.
+    // Manifeste sans validateurs : « inconnu », jamais « à jour » sans preuve.
     if (!man || !man.validateurs || !Array.isArray(man.urls)) {
       return { etat: "inconnu", changes: [], verifies: 0, date: man && man.date || null };
     }
@@ -291,9 +233,7 @@
         echecs++;
       } catch (e) { echecs++; }
     }));
-    // 🩸 Aucune sonde n a abouti (hors-ligne, CORS, serveur muet) : on ne
-    // conclut pas. Annoncer « a jour » sans avoir rien verifie serait le
-    // meme mensonge qu un drapeau memorise.
+    // 🩸 Aucune sonde aboutie (hors ligne, CORS, serveur muet) : pas de conclusion.
     if (verifies === 0) return { etat: "inconnu", changes: [], verifies: 0, date: man.date || null };
     _log("verif maj " + plan.id + " : " + verifies + " sonde(s), " + changes.length + " change(s)" +
          (echecs ? ", " + echecs + " sans reponse" : ""));
@@ -305,10 +245,7 @@
     };
   }
 
-  // Etat de PLUSIEURS plans en une passe. Un seul caches.keys() pour tous —
-  // c est ce qui rend tenable l affichage d un bouton par ligne dans la liste
-  // du HOME, ou l on peut avoir vingt plans serveur.
-  // Retourne { <planId>: <statut> }.
+  // Plusieurs plans en une passe, un seul caches.keys() (liste du HOME) → { <planId>: <statut> }
   async function statuts(planIds) {
     const out = {};
     if (!supporte() || !Array.isArray(planIds) || !planIds.length) return out;
@@ -328,8 +265,8 @@
     return r;
   }
 
-  // Le SW memoise la liste des caches de plan : on l'invalide tout de suite,
-  // sinon il peut ignorer un cache tout neuf pendant 30 s.
+  // 🩸 Le SW mémorise la liste des caches de plan : sans invalidation, il ignore un cache neuf
+  // pendant 30 s.
   function _notifierSW() {
     try {
       if (navigator.serviceWorker && navigator.serviceWorker.controller) {

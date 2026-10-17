@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🌐 server.js — serveur statique minimal pour le smoke navigateur
+// server.js — serveur statique minimal (zéro dépendance) des harnais navigateur
 // =====================================================================
-// Sert la RACINE DU REPO (../../) en HTTP local — le smoke a besoin d'un
-// vrai serveur (Service Worker, fetch same-origin, data/index.json).
-// Zéro dépendance. Utilisé par smoke.js (démarré/arrêté par lui) ; peut
-// aussi être lancé seul : node scripts/smoke/server.js [port]
+// Sert la racine du dépôt en HTTP local (Service Worker, fetch same-origin, data/index.json).
+// Requis par smoke.js et les checkups ; seul : node scripts/smoke/server.js [port] (défaut 8123).
 // =====================================================================
 "use strict";
 
@@ -33,11 +31,10 @@ const MIME = {
   ".woff2": "font/woff2"
 };
 
-// CSP STRICTE : la politique EN VIGUEUR de docker/nginx-docker.conf (scripts sans 'unsafe-inline' depuis la
-// bascule du 10/10/2026 ; 1re ligne add_header CSP = celle du serveur, le bloc killsw.html vient après).
-// Un script inline oublié devient une erreur console — et le smoke échoue déjà sur toute erreur console. Sans
-// upgrade-insecure-requests (le serveur local est en HTTP). killsw.html garde sa politique propre (script dans
-// la page, voulu) : pas d'en-tête ici. SMOKE_CSP=0 : servir SANS CSP (diagnostic : la CSP ou autre chose ?).
+// 🔒 CSP stricte = la politique en vigueur de docker/nginx-docker.conf (1re ligne add_header CSP ; le bloc
+// killsw.html vient après). Un script inline oublié devient une erreur console, qui fait échouer le smoke.
+// Sans upgrade-insecure-requests (serveur local en HTTP). killsw.html garde sa propre politique (script dans
+// la page, voulu) : pas d'en-tête ici. SMOKE_CSP=0 : servir SANS CSP (diagnostic).
 const CSP = process.env.SMOKE_CSP === "0" ? null : (function () {
   try {
     const conf = fs.readFileSync(path.join(RACINE, "docker", "nginx-docker.conf"), "utf8");
@@ -56,7 +53,6 @@ if (!CSP && process.env.SMOKE_CSP !== "0") console.log("[smoke-server] ⚠️ po
 const server = http.createServer(function (req, res) {
   const urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
   let fp = path.join(RACINE, urlPath === "/" ? "index.html" : urlPath);
-  // anti-traversée
   if (!fp.startsWith(RACINE)) { res.writeHead(403); res.end(); return; }
   fs.stat(fp, function (err, st) {
     if (!err && st.isDirectory()) fp = path.join(fp, "index.html");

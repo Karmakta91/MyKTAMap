@@ -5,93 +5,34 @@
  */
 
 // =========================
-// INTERFACE DOCS — Modales doc README + AIDE + AIDE IA
+// INTERFACE DOCS — modales Documentation (README), Aide (hub + aide contextuelle), Aide IA
 // =========================
-// 🆕 v1.31.0 (P3 Lot 4 — découpe interface.js) : module extrait de
-// js/interface.js (3 blocs : 1308-1751, 1752-2356, 8570-8806 avant
-// extraction) pour réduire le volume du fichier principal.
-//
-// Aucun changement de comportement runtime. Les 3 fonctions exposées
-// via `window` sont strictement identiques à v1.30.1.
-//
-// 📋 API publique :
-//   - window.afficherReadme(opts)
-//        → Modale plein écran de la documentation utilisateur
-//          (docs/applications/README_USER.md, FR ou EN selon toggle
-//          🇫🇷/🇬🇧). opts.hideOnboarding et opts.overLocker permettent
-//          d'afficher la doc depuis les écrans de verrouillage
-//          (UnlockGate communautaire + PinLock local — v1.28.1).
-//   - window.afficherAide()
-//        → Modale plein écran "Aide" intégrée (hardcoded HTML,
-//          regroupe les principales rubriques d'usage).
-//   - window.afficherModaleAideIA()
-//        → Modale qui propose un téléchargement du contexte IA
-//          (docs/applications/AI_CONTEXT.md enrichi avec README_USER
-//          + métadonnées build). Utile pour briefer un agent IA externe
-//          avec un fichier autocontenu.
-//
-// 🔌 Dépendances externes (toutes via window.* / global fonction
-//    declarations) :
-//   - window.__MKM__.build               [copyright.js]
-//   - window.LegendCustomization         [legendCustomization.js]
-//   - fetch docs/applications/README_USER.md (+ .en.md)
-//   - fetch docs/applications/AI_CONTEXT.md
-//   - localStorage["myktamap_readme_lang"]  [i18n FR/EN toggle]
-//
-// 📍 Ordre de chargement (cf index.html) :
-//   - Doit charger APRÈS interface.js (sidebar appelle window.afficherAide
-//     et window.afficherReadme au runtime via clic boutons sidebar).
-//     L'ordre cosmétique car les fonctions sont posées au load (avant
-//     DOMContentLoaded). Place ce script après interfaceLegende.js
-//     dans index.html.
+// Expose : afficherReadme(opts) (docs/applications/README_USER{,.en,.es}.md ; opts.hideOnboarding et
+//   opts.overLocker pour l'ouvrir depuis UnlockGate / PinLock) · afficherAide() · afficherModaleAideIA()
+//   (docs/applications/AI_CONTEXT.md filtré par profil) · ktaOuvrirAideSection(slug) ·
+//   ktaDocNormaliser / ktaDocTrouver (recherche plein texte, exécutées par le garde-fou).
+// Dépend de : __MKM__.build, I18n (resolveContentLang, onChange), KtaExtensions.aide, ktaCopierTexte.
+// ⚠️ Langue de la Documentation LOCALE (myktamap_readme_lang ≠ langue globale myktamap_app_lang) ;
+//   l'Aide, elle, vit dans les dicos (aide.*) et suit la langue globale.
+// Garde-fous : scripts/check-aide-sections.js, scripts/check-aide-contextuelle.js,
+//   scripts/check-doc-recherche.js
 
-// README — modale plein écran
-// =========================
-// 🆕 v1.28.1 : opts.hideOnboarding et opts.overLocker permettent d'afficher
-// la doc depuis les écrans de verrouillage (UnlockGate communautaire au boot
-// + PinLock local). Dans ce contexte :
-//   - hideOnboarding masque le bouton 🎓 Tutoriel (l'user lockout ne peut pas
-//     interagir avec l'app de toute façon — l'onboarding n'aurait aucun sens).
-//   - overLocker boost le z-index du modal à 100200 pour passer au-dessus
-//     des deux gates (UnlockGate=100100, PinLock=100002). Sans ça la modale
-//     apparaît derrière et l'user voit son fond mais ne peut pas interagir.
-// 🆕 v1.29.0 P0 i18n — Langue de la doc utilisateur (FR / EN).
-// Décisions design KARMA 1:a 2:c 3:a 4:a 5:c :
-//   - Toggle drapeaux 🇫🇷 / 🇬🇧 dans header modale Doc UNIQUEMENT (cas particulier
-//     isolé, palier 0 — le reste de l'app reste FR jusqu'au palier P1+).
-//   - Détection auto navigator.language au 1er affichage, sticky après.
-//   - Persistance localStorage["myktamap_readme_lang"] = "fr" | "en".
-//   - Fallback FR si fichier EN absent (catch fetch).
-//
-// Ce mécanisme est INTENTIONNELLEMENT LIMITÉ à la doc README pour le P0.
-// Quand on aura un vrai système i18n (P1+), ce toggle sera remplacé par
-// un sélecteur global de langue.
+// ── README : modale plein écran ──────────
+// overLocker : z-index relevé au-dessus des deux gates (sinon la doc s'ouvre derrière) ;
+// hideOnboarding : pas de 🎓 Tutoriel (l'utilisateur verrouillé ne peut pas s'en servir).
+// Langue : détection au premier affichage, choix manuel mémorisé, repli FR si le fichier manque.
 const README_LANG_STORAGE_KEY = "myktamap_readme_lang";
 
-// 🆕 v1.45.0 — Langues pour lesquelles un fichier README_USER existe RÉELLEMENT.
-// fr = README_USER.md (sans suffixe, historique) ; les autres = README_USER.<code>.md.
-// Ajouter une langue (ru, es…) = déposer le fichier + ajouter son code ici
-// (+ l'ajouter à ASSETS_TO_CACHE du SW). 100% générique, aucun code figé.
+// Langues pour lesquelles un fichier README_USER existe RÉELLEMENT (fr = sans suffixe, autres =
+// README_USER.<code>.md). Ajouter une langue = déposer le fichier + son code ici + ASSETS_TO_CACHE du SW.
 const DOC_AVAILABLE_LANGS = ["fr", "en", "es"];
 
-// ⚠️ CETTE LISTE NE CONCERNE QUE LA 📖 DOCUMENTATION (fichiers README_USER).
-// L'❓ Aide intégrée N'EN A PLUS : depuis le lot 2 (01/09/2026) son contenu vit
-// dans les dicos et elle suit la langue GLOBALE de l'app — sa disponibilité par
-// langue est donc celle des dicos, il n'y a plus rien à tenir à jour.
-// 🩸 Pourquoi c'est écrit ici : le 31/08, l'Aide lisait cette même liste. Y
-// ajouter "es" pour livrer la doc espagnole a suffi à la faire basculer en
-// FRANÇAIS pour les hispanophones (elle tombait sur l'anglais avant), avec un
-// drapeau 🇪🇸 qui promettait un contenu inexistant. Une liste partagée entre
-// « ajouter une langue = déposer un fichier » et « ajouter une langue = écrire
-// 870 lignes de HTML » ne pouvait que mentir. Le lot 2 a supprimé la cause.
+// 🩸 CETTE LISTE NE CONCERNE QUE LA 📖 DOCUMENTATION. L'Aide ne doit jamais la lire : y ajouter une langue
+// de doc ferait basculer l'Aide sur une langue sans contenu (son contenu vient des dicos).
 
-// 🆕 v1.45.0 — Langue à PRÉSÉLECTIONNER pour la doc :
-//   1. choix manuel mémorisé (myktamap_readme_lang) s'il est encore dispo ;
-//   2. sinon défaut dérivé de la langue de l'app via I18n.resolveContentLang
-//      (langue app si doc dispo, sinon "en", sinon "fr").
-// On NE persiste PAS le défaut dérivé : tant que l'user n'a pas cliqué un
-// drapeau, la doc suit la langue de l'app (décision KARMA Q1:A). La doc reste
-// donc LOCALE (clé myktamap_readme_lang ≠ langue globale myktamap_app_lang).
+// Langue à PRÉSÉLECTIONNER : choix manuel mémorisé s'il est encore disponible, sinon dérivé de la langue
+// de l'app (I18n.resolveContentLang : langue app si doc dispo, sinon "en", sinon "fr"). Le défaut dérivé
+// n'est PAS persisté : sans clic sur un drapeau, la doc suit l'app (décision produit).
 function _getReadmeLang() {
   try {
     const saved = localStorage.getItem(README_LANG_STORAGE_KEY);
@@ -100,8 +41,7 @@ function _getReadmeLang() {
   if (window.I18n && typeof window.I18n.resolveContentLang === "function") {
     return window.I18n.resolveContentLang(DOC_AVAILABLE_LANGS);
   }
-  // Fallback ultime si I18n indispo (très improbable, chargé au boot) :
-  // navigator.language mappé sur une langue doc dispo, sinon FR.
+  // Repli si I18n indisponible : navigator.language mappé sur une langue dispo, sinon FR.
   const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
   const guess = navLang.split("-")[0];
   return (DOC_AVAILABLE_LANGS.indexOf(guess) >= 0) ? guess : "fr";
@@ -112,37 +52,26 @@ function _setReadmeLang(lang) {
   try { localStorage.setItem(README_LANG_STORAGE_KEY, lang); } catch(e) {}
 }
 
-// 🆕 v1.46 (KARMA) — Un changement de LANGUE GLOBALE de l'app (myktamap_app_lang,
-// via le sélecteur Réglages/HOME) efface le choix manuel mémorisé de la doc +
-// onboarding (clé partagée myktamap_readme_lang). Effet : doc, aide ET onboarding
-// re-suivent la nouvelle langue app via resolveContentLang → "en" (GB) par défaut
-// quand l'app n'est plus en FR et que la langue active n'a pas de contenu dédié.
-// Le toggle drapeau LOCAL (dans la doc/aide/onboarding) reste sticky TANT QUE la
-// langue globale ne change pas. Enregistré une fois au chargement du module.
+// Changer la langue GLOBALE efface le choix manuel de la doc et de l'onboarding (clé partagée
+// myktamap_readme_lang) : ils re-suivent la langue app. Le choix local reste sticky tant que la langue
+// globale ne change pas. Enregistré une fois au chargement.
 if (window.I18n && typeof window.I18n.onChange === "function") {
   window.I18n.onChange(function() {
     try { localStorage.removeItem(README_LANG_STORAGE_KEY); } catch (e) {}
   });
 }
 
-// Retourne le chemin du fichier README selon la langue.
-// 🆕 v1.29.3 — README_USER.md + .en.md regroupés sous docs/applications/
-// avec les autres docs lues par l'app (AI_CONTEXT, NETWORK_AUDIT). À la
-// racine : README.md (GitHub) + CLAUDE.md (agents IA) uniquement.
-// 🆕 v1.45.0 — fr = sans suffixe ; toute autre langue = README_USER.<code>.md.
+// fr = README_USER.md ; autre langue = README_USER.<code>.md (docs/applications/).
 function _readmePathForLang(lang) {
   return (lang === "fr")
     ? "docs/applications/README_USER.md"
     : "docs/applications/README_USER." + lang + ".md";
 }
 
-// 🔎 Recherche plein texte (audit ergonomie D27, 14/09/2026) — deux helpers
-// PURS, exposés pour `check-doc-recherche.js` qui les EXÉCUTE.
-// Normalisation 1:1 (même longueur en unités UTF-16) : minuscules, accents
-// retirés — « Réglages » se trouve avec « reglages », et les positions restent
-// celles du texte d'origine (indispensable pour surligner sans décaler).
-// Texte d'un fragment HTML (balises remplacées par une espace), en un passage — pas /<[^>]+>/g, dont le retour
-// arrière est quadratique sur un « < » sans « > » (Sonar S8786).
+// Recherche plein texte : helpers PURS, exécutés par scripts/check-doc-recherche.js.
+// Normalisation 1:1 (même longueur en unités UTF-16 : minuscules, accents retirés) pour que les positions
+// restent celles du texte d'origine (surlignage sans décalage).
+// Texte d'un fragment HTML en un passage — pas /<[^>]+>/g, quadratique sur un « < » sans « > » (Sonar S8786).
 function _aideSansBalises(h) {
   const s = String(h || "");
   let out = "", i = 0;
@@ -165,8 +94,7 @@ window.ktaDocNormaliser = function(s) {
   }
   return out;
 };
-// Toutes les occurrences (non chevauchantes) de q dans texte → [[début, fin], …]
-// en indices du texte d'origine. Moins de 2 caractères utiles → rien.
+// Occurrences non chevauchantes de q → [[début, fin], …] (indices du texte d'origine) ; < 2 caractères → [].
 window.ktaDocTrouver = function(texte, q) {
   const t = window.ktaDocNormaliser(texte);
   const n = window.ktaDocNormaliser(q).trim();
@@ -182,12 +110,11 @@ function afficherReadme(opts) {
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
-  // 🆕 P0 i18n — détermine la langue à charger
   const lang = _getReadmeLang();
   _chargerReadme(_readmePathForLang(lang), opts);
 }
 
-// Construit le sommaire latéral (sidebar desktop / haut sur mobile) avec H2 + sous-H3 collapsibles
+// Sommaire latéral (desktop) / en haut (mobile), H2 + sous-H3 repliables.
 function _construireSommaireReadme(corpsEl) {
   const sidebar = document.getElementById("kta-readme-toc-sidebar");
   if (!sidebar || !corpsEl) return;
@@ -198,7 +125,6 @@ function _construireSommaireReadme(corpsEl) {
     return;
   }
 
-  // Construire l'arbre H2 → [H3...] en parcourant le DOM dans l'ordre
   const tree = h2List.map(function(h2, idx) {
     h2.id = "kta-readme-h2-" + idx;
     const children = [];
@@ -245,7 +171,6 @@ function _construireSommaireReadme(corpsEl) {
   sidebar.innerHTML = html;
   sidebar.style.display = "";
 
-  // Brancher les toggles plier/déplier
   sidebar.querySelectorAll(".kta-readme-toc-toggle").forEach(function(btn) {
     btn.addEventListener("click", function(e) {
       e.preventDefault();
@@ -256,7 +181,6 @@ function _construireSommaireReadme(corpsEl) {
   });
 }
 
-// Setup smooth scroll, active section highlighting, back-to-top
 function _setupReadmeNavigation() {
   const corpsScroll = document.getElementById("kta-readme-corps-scroll");
   const backBtn     = document.getElementById("kta-readme-back-top");
@@ -266,7 +190,7 @@ function _setupReadmeNavigation() {
   const tocLinks = sidebar ? sidebar.querySelectorAll(".kta-readme-toc-link") : [];
   const sections = corpsScroll.querySelectorAll("h2[id], h3[id]");
 
-  // Smooth scroll personnalisé sur les liens du TOC (l'ancrage natif scrollerait la page entière, pas notre conteneur)
+  // Scroll maison : l'ancrage natif ferait défiler la page entière, pas notre conteneur.
   tocLinks.forEach(function(link) {
     link.addEventListener("click", function(e) {
       e.preventDefault();
@@ -283,7 +207,6 @@ function _setupReadmeNavigation() {
     });
   });
 
-  // Active section highlighting via IntersectionObserver
   if (typeof IntersectionObserver !== "undefined" && sections.length > 0 && tocLinks.length > 0) {
     const observer = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
@@ -292,7 +215,7 @@ function _setupReadmeNavigation() {
         tocLinks.forEach(function(link) {
           const isActive = link.getAttribute("href") === "#" + id;
           link.classList.toggle("active", isActive);
-          // Si c'est un H3 actif, déplier son parent H2 pour qu'on le voie
+          // H3 actif → déplier son H2.
           if (isActive && link.classList.contains("kta-readme-toc-link-h3")) {
             const parentItem = link.closest(".kta-readme-toc-item");
             if (parentItem) parentItem.classList.remove("collapsed");
@@ -307,7 +230,6 @@ function _setupReadmeNavigation() {
     sections.forEach(function(s) { observer.observe(s); });
   }
 
-  // Bouton retour-en-haut : visible après scroll > 250px
   if (backBtn) {
     const onScroll = function() {
       backBtn.classList.toggle("visible", corpsScroll.scrollTop > 250);
@@ -319,11 +241,8 @@ function _setupReadmeNavigation() {
   }
 }
 
-// 🔎 Recherche plein texte de la modale Documentation (audit ergonomie D27,
-// 14/09/2026). Avant : 3 739 lignes, un sommaire caché sous 1 100 px, et
-// AUCUNE recherche — l'utilisateur mobile défilait 200 écrans ou abandonnait.
-// Ici : surlignage de toutes les occurrences, compteur « i / n », Entrée ou ↓
-// pour la suivante, et les entrées du sommaire sans résultat s'estompent.
+// Recherche de la Documentation : surlignage de toutes les occurrences, compteur « i / n », Entrée ou ↓
+// pour la suivante, entrées du sommaire sans résultat estompées.
 function _setupReadmeSearch() {
   const input  = document.getElementById("kta-readme-search");
   const count  = document.getElementById("kta-readme-search-count");
@@ -429,63 +348,55 @@ function _chargerReadme(fichier, opts) {
       const html = _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (!corps) return;
-      // Injection directe du HTML rendu (plus de <p> wrapper qui cassait le rendu)
       corps.innerHTML = html;
-      // Construction du sommaire latéral à partir du DOM rendu
       _construireSommaireReadme(corps);
-      // Activation des comportements de navigation
       _setupReadmeNavigation();
-      // 🔎 D27 : recherche plein texte (surlignage + sommaire estompé)
       _setupReadmeSearch();
     })
     .catch(function(err) {
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (corps) corps.innerHTML = '<p class="kta-readme-erreur">❌ ' + (window.I18n ? window.I18n.t("docs.erreurChargement") : "Impossible de charger") + ' <code>' + fichier + '</code><br><br><code>' + err.message + '</code></p>';
-      // Pas de sommaire si erreur
       const sidebar = document.getElementById("kta-readme-toc-sidebar");
       if (sidebar) sidebar.style.display = "none";
     });
 }
 
 function _renderMarkdown(md) {
-  // 0. Normaliser les fins de ligne — les fichiers markdown éditésur Windows ont
-  //    souvent CRLF, ce qui casse les regex \n (notamment celle des fenced code blocks)
+  // 0. Fins de ligne normalisées : le CRLF casse les regex \n (blocs de code fenced).
   md = md.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-  // 1. Protéger les blocs de code fenced AVANT tout traitement
+  // 1. Blocs de code fenced protégés AVANT tout traitement.
   const codeBlocks = [];
   md = md.replace(/```[\w]*\n([\s\S]*?)```/g, function(_, code) {
     codeBlocks.push(code);
     return "%%CODE" + (codeBlocks.length - 1) + "%%";
   });
 
-  // 2. Échapper le HTML (hors blocs protégés)
-  // Guillemets compris : une URL ou un alt de doc repart dans un attribut (src="…", href="…").
+  // 2. Échapper le HTML, guillemets compris (URL et alt repartent dans des attributs).
   md = window.ktaEsc(md);
 
-  // 3. Code inline
+  // 3. Code inline.
   md = md.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-  // 4. Images ![alt](url) — avant les liens
+  // 4. Images, avant les liens.
   md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(_, alt, url) {
-    // Ignorer les images GitHub (assets) qui ne sont pas accessibles hors contexte
+    // Images GitHub (assets) inaccessibles hors contexte : ignorées.
     if (url.includes("github.com") || url.includes("user-attachments")) {
       return '<span class="kta-readme-img-skip">📷 <em>' + (alt || "Image") + '</em></span>';
     }
     return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;border-radius:6px;margin:8px 0;">';
   });
 
-  // 5. Liens [texte](url)
+  // 5. Liens.
   md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
 
-  // 6. Tableaux Markdown |---|
+  // 6. Tableaux.
   md = md.replace(/((?:^\|.+\|\n?)+)/gm, function(block) {
     const lines = block.trim().split("\n").filter(function(l) { return l.trim(); });
     if (lines.length < 2) return block;
 
     let html = '<table class="kta-readme-table">';
     lines.forEach(function(line, i) {
-      // Ignorer la ligne de séparation |---|
       if (/^\|[\s\-:|]+\|/.test(line)) return;
       const cells = line.split("|").filter(function(_, ci) { return ci > 0 && ci < line.split("|").length - 1; });
       const tag = (i === 0) ? "th" : "td";
@@ -495,13 +406,11 @@ function _renderMarkdown(md) {
     return html;
   });
 
-  // 7. Blockquotes
+  // 7. Blockquotes.
   md = md.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
   md = md.replace(/(<\/blockquote>\n?<blockquote>)/g, "<br>");
 
-  // 8. Titres — jusqu'au niveau 5 : le Mode Secours, rangé sous « Pour aller
-  //    plus loin » (##), descend à ##### (03/10/2026). Sans cette ligne, ses
-  //    titres s'affichaient en brut (« ##### 📝 … »).
+  // 8. Titres jusqu'au niveau 5 (le Mode Secours descend à #####).
   md = md
     .replace(/^##### (.+)$/gm, "<h5>$1</h5>")
     .replace(/^#### (.+)$/gm, "<h4>$1</h4>")
@@ -509,28 +418,25 @@ function _renderMarkdown(md) {
     .replace(/^## (.+)$/gm,   "<h2>$1</h2>")
     .replace(/^# (.+)$/gm,    "<h1>$1</h1>");
 
-  // 9. HR
+  // 9. HR.
   md = md.replace(/^---$/gm, "<hr>");
 
-  // 10. Gras / italique
+  // 10. Gras / italique.
   md = md
     .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g,     "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g,         "<em>$1</em>");
 
-  // 11. Listes
+  // 11. Listes.
   md = md.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
   md = md.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, "<ul>$&</ul>");
 
-  // 12. Paragraphes — split sur double saut de ligne.
-  //  Pré-traitement : on isole les placeholders %%CODEN%% dans leurs propres blocs
-  //  pour éviter que le wrap <p> englobe un futur <pre> (HTML invalide → bug rendu).
+  // 12. Paragraphes (double saut de ligne). Les placeholders %%CODEN%% sont isolés dans leur bloc, sinon
+  // le <p> engloberait un <pre> (HTML invalide).
   md = md.replace(/(%%CODE\d+%%)/g, "\n\n$1\n\n");
   md = md.replace(/\n{3,}/g, "\n\n");
 
-  //  - les blocs commençant par une balise block-level sont gardés tels quels
-  //  - les blocs qui SONT un placeholder de code fenced sont gardés tels quels
-  //  - les autres blocs (texte) sont enveloppés dans <p>, les sauts simples deviennent <br>
+  // Blocs block-level et placeholders gardés tels quels ; texte enveloppé de <p>, sauts simples → <br>.
   const _BLOCK_TAG = /^<(h[1-6]|ul|ol|li|table|tr|td|th|blockquote|hr|pre|div|img|figure)/i;
   const _CODE_PLACEHOLDER = /^%%CODE\d+%%$/;
   md = md.split(/\n{2,}/).map(function(block) {
@@ -541,7 +447,7 @@ function _renderMarkdown(md) {
     return "<p>" + block.replace(/\n/g, "<br>") + "</p>";
   }).join("\n");
 
-  // 13. Restaurer les blocs de code
+  // 13. Restaurer les blocs de code.
   md = md.replace(/%%CODE(\d+)%%/g, function(_, i) {
     const escaped = window.ktaEsc(codeBlocks[Number.parseInt(i, 10)]);
     return "<pre><code>" + escaped + "</code></pre>";
@@ -555,21 +461,10 @@ function _ouvrirReadmeModal(html, opts) {
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
-  // 🆕 v1.28.1 : si la modale est ouverte depuis un écran de verrouillage
-  // (UnlockGate communautaire au boot ou PinLock local), classe additionnelle
-  // qui boost le z-index à 100200 (au-dessus de UnlockGate=100100 et
-  // PinLock=100002). Sans ça, la modale Doc apparaîtrait DERRIÈRE la gate
-  // et serait inaccessible.
+  // Ouverte depuis un écran de verrouillage : z-index au-dessus des deux gates, sinon inaccessible.
   if (opts.overLocker) modal.classList.add("kta-readme-over-locker");
-  // Structure : header / [sidebar | corps scrollable] / footer
-  // - sidebar : sommaire desktop fixe / inline en haut sur mobile (CSS @media)
-  // - corps : contenu rendu, scroll-behavior: smooth, contient aussi le bouton retour-en-haut
-  // - footer : crédit Leaflet (cohérence avec le splash)
-  // 🆕 v1.28.1 : bouton 🎓 Onboarding masqué quand hideOnboarding=true
-  // (cas d'ouverture depuis un lockeur — l'user lockout ne peut pas lancer
-  // le tutoriel de toute façon, et KARMA a explicitement demandé "sans
-  // l'icone Onboarding").
-  // Audit i18n (O9) : chrome de la modale traduit (était en FR dans les 3 langues).
+  // header / [sidebar | corps scrollable (avec retour en haut)] / footer (crédit Leaflet).
+  // 🎓 masqué si hideOnboarding (ouverture depuis un verrou).
   const _docTxt = function(k) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k).replace(/"/g, "&quot;") : k;
   };
@@ -577,19 +472,13 @@ function _ouvrirReadmeModal(html, opts) {
     ? ''
     : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="' + _docTxt("docs.tutorielBtn") +
       '" title="🎓 ' + _docTxt("docs.tutorielBtn") + '">🎓</button>';
-  // 🆕 v1.45.0 — Onglets de langue de la doc : UN drapeau par langue réellement
-  // dispo (DOC_AVAILABLE_LANGS), la langue courante marquée .active. Générique :
-  // 2 drapeaux aujourd'hui (FR/EN), 3+ dès qu'un nouveau README_USER.<code>.md
-  // existe. La langue présélectionnée suit l'app si l'user n'a pas de choix
-  // manuel (cf _getReadmeLang). Les méta (label/flag) viennent de I18n.available().
+  // Une langue par fichier réellement disponible (DOC_AVAILABLE_LANGS), méta de I18n.available().
   const _docCurrentLang = _getReadmeLang();
   const _docLangMeta = (window.I18n && window.I18n.available) ? window.I18n.available() : [
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" }
   ];
-  // 🧩 01/10/2026 (KARMA) — un menu déroulant remplace les drapeaux : un
-  // seul contrôle quel que soit le nombre de langues, et la place libérée
-  // accueille le bouton 🤖 Aide IA (retiré du groupe 📚 Aide de la barre).
+  // Menu déroulant (un seul contrôle quel que soit le nombre de langues) ; la place libérée accueille 🤖.
   const btnLang = '<select class="kta-readme-lang-select" id="kta-readme-lang-select" ' +
     'aria-label="' + _docTxt("docs.langSelect") + '" title="' + _docTxt("docs.langSelect") + '">' +
     DOC_AVAILABLE_LANGS.map(function(code) {
@@ -644,9 +533,7 @@ function _ouvrirReadmeModal(html, opts) {
   `;
   document.documentElement.appendChild(modal);
 
-  // === ÉTAT INITIAL DU SOMMAIRE ===
-  // - Pref user mémorisée si présente
-  // - Sinon : visible par défaut sur écrans larges (≥ 1100px), masqué sur écrans étroits
+  // Sommaire : préférence mémorisée, sinon visible sur écran ≥ 1100 px.
   const layout = modal.querySelector("#kta-readme-layout");
   const toggleBtn = modal.querySelector("#kta-readme-toc-toggle");
   let tocVisible;
@@ -664,7 +551,7 @@ function _ouvrirReadmeModal(html, opts) {
   if (toggleBtn && layout) {
     toggleBtn.addEventListener("click", function() {
       const nowVisible = layout.classList.toggle("toc-hidden");
-      // toc-hidden true = sommaire CACHÉ (logique inversée de tocVisible)
+      // toc-hidden true = sommaire CACHÉ.
       const isVisibleNow = !nowVisible;
       toggleBtn.classList.toggle("active", isVisibleNow);
       try { localStorage.setItem("kta_readme_toc_visible", isVisibleNow ? "true" : "false"); } catch(e) {}
@@ -674,11 +561,7 @@ function _ouvrirReadmeModal(html, opts) {
   document.getElementById("kta-readme-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 
-  // 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en haut
-  // de la doc README") : handler du bouton 🎓 dans le header → ouvre le
-  // tutoriel. La modale Documentation reste ouverte derrière (le tutoriel
-  // se pose par-dessus grâce à son z-index plus élevé). À la fermeture
-  // du tutoriel, l'user retrouve sa doc à l'endroit où il était.
+  // 🎓 ouvre le tutoriel PAR-DESSUS la doc (z-index plus élevé) : on la retrouve à la fermeture.
   const _readmeTutorialBtn = document.getElementById("kta-readme-tutorial-btn");
   if (_readmeTutorialBtn) {
     _readmeTutorialBtn.addEventListener("click", function() {
@@ -688,9 +571,7 @@ function _ouvrirReadmeModal(html, opts) {
     });
   }
 
-  // 🤖 Aide IA (01/10/2026) : s'ouvre PAR-DESSUS la doc, qui reste derrière.
-  // Devant le verrou (overLocker), elle hérite du même z-index relevé, sinon
-  // elle s'ouvrirait sous l'écran de verrouillage.
+  // 🤖 Aide IA par-dessus la doc ; devant un verrou, elle hérite du z-index relevé.
   const _readmeAiiaBtn = document.getElementById("kta-readme-aiia-btn");
   if (_readmeAiiaBtn) {
     _readmeAiiaBtn.addEventListener("click", function() {
@@ -700,10 +581,7 @@ function _ouvrirReadmeModal(html, opts) {
     });
   }
 
-  // 🆕 v1.45.0 — Choix de langue de la doc (menu déroulant depuis le
-  // 01/10/2026). Langue ≠ courante → persiste + rebuild la modale
-  // (préserve TOC dépliable, smooth scroll… sans dupliquer le rendu). Scope
-  // strictement LOCAL à la doc (ne touche pas la langue globale de l'app).
+  // Autre langue → persiste et reconstruit la modale. Portée LOCALE à la doc.
   const _readmeLangSel = document.getElementById("kta-readme-lang-select");
   if (_readmeLangSel) {
     _readmeLangSel.addEventListener("change", function() {
@@ -711,8 +589,7 @@ function _ouvrirReadmeModal(html, opts) {
       if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
       if (target === _getReadmeLang()) return; // déjà la langue courante
       _setReadmeLang(target);
-      // Préserve les opts (overLocker, hideOnboarding) — reflétées dans le DOM
-      // courant via les classes de la modale et la présence du bouton 🎓.
+      // Opts relues dans le DOM courant (classe overLocker, présence du 🎓).
       const wasOverLocker  = modal.classList.contains("kta-readme-over-locker");
       const wasHideOnboard = !document.getElementById("kta-readme-tutorial-btn");
       modal.remove();
@@ -724,54 +601,26 @@ function _ouvrirReadmeModal(html, opts) {
   }
 }
 
-// =========================
-
-// AIDE — modale plein écran
-// =========================
-// =====================================================================
-// ❓ AIDE CONTEXTUELLE (D35 de l'audit ergonomie, 14/09/2026)
-// =====================================================================
-// 🩸 LE CONSTAT : l'aide intégrée compte 33 sections, une par grande fonction,
-// et AUCUNE modale n'y renvoie. Pour lire la bonne, il fallait quitter ce qu'on
-// faisait, ouvrir le groupe ❓ Aide de la barre, puis chercher — personne ne le
-// fait au milieu d'une tâche. Les infobulles `title`, elles, n'existent pas au
-// doigt.
-//
-// LA RÈGLE : toute modale qui a une section d'aide porte un ❓ dans sa ligne de
-// titre, et ce ❓ ouvre CETTE section. Le lien vit dans UNE table, confrontée au
-// code par `check-aide-contextuelle.js` : chaque id doit exister dans les
-// sources, chaque slug doit être une section réelle.
-//
-// 🎛️ DÉSACTIVABLE (KARMA) : « quelqu'un qui ne veut pas cette icône partout
-// pour toujours ». Réglage GLOBAL, dans ⚙️ Configuration de l'accueil →
-// 🎨 Affichage. Défaut ACTIVÉ : l'aide ne sert que si elle se voit, et celui
-// qui n'en veut pas la coupe une fois.
-//
-// POURQUOI UN OBSERVATEUR et pas un appel dans chaque modale : elles sont une
-// vingtaine, créées dans autant de fichiers, avec le même en-tête
-// `.kta-readme-modal-header`. Poser le bouton à l'ajout du nœud garde la règle
-// en UN endroit ; vingt appels dispersés auraient dérivé au premier oubli.
+// ── Aide contextuelle ──────────
+// Toute modale qui a une section d'aide porte un ❓ dans sa ligne de titre, qui ouvre CETTE section. Le
+// lien vit dans UNE table (AIDE_PAR_MODALE), confrontée au code par scripts/check-aide-contextuelle.js.
+// Désactivable (⚙️ Configuration de l'accueil → 🎨 Affichage), activée par défaut (décision produit).
+// Un MutationObserver pose le bouton à l'ajout de chaque `.kta-readme-modal-header` : la règle reste en UN
+// endroit plutôt que dans une vingtaine de modales.
 
 const AIDE_CTX_LS = "myktamap_aide_contextuelle";   // "0" = coupée
 
-// id de la modale → slug de section d'aide. Une modale absente n'a pas de
-// section dédiée : pas de bouton, plutôt qu'un ❓ qui ouvrirait une page à
-// côté du sujet.
-//
-// 🩸 DEUX ERREURS CORRIGÉES LE JOUR MÊME, et ce qu'elles apprennent :
-//   • 🔥 Heatmap pointait vers l'aide « Tracker » (KARMA : « pas logique, il
-//     doit être avant, dans le modal tracker »). La heatmap est UNE TUILE du
-//     menu Tracker : le ❓ va sur le menu, en amont, pas sur une de ses sorties.
-//   • « kta-profil-modal » n'est PAS le profil de l'utilisateur : c'est le
-//     PROFIL EN LONG d'un trajet (`profondeurNiveaux.js`). Le ❓ aurait ouvert
-//     la page « Mode profil » — avatar et rangs — depuis un graphe d'altimétrie.
-//     Un id qui EXISTE ne prouve pas qu'il désigne le bon sujet ; seul un
-//     humain peut juger ce lien, et c'est pour ça qu'il vit dans une table
-//     courte et relue, pas dans une heuristique.
+// id de modale → slug d'aide. Pas de section dédiée → pas de ❓ (mieux qu'une page à côté du sujet).
+// 🩸 Un id qui EXISTE ne prouve pas qu'il désigne le bon sujet : la heatmap est une tuile du menu Tracker
+// (le ❓ va sur le menu) ; « kta-profil-modal » est le PROFIL EN LONG d'un trajet, pas le profil de
+// l'utilisateur. Seul un humain juge ce lien : table courte et relue, pas d'heuristique.
 const AIDE_PAR_MODALE = {
   "kta-cfg-modal":            "parametres",
   "kta-refonte-session-modal": "stats-session",
   "kta-export-modal":         "enregistrer",
+  "kta-export-lanceur":       "enregistrer",
+  "kta-session-export-modal": "enregistrer",
+  "kta-pdf-modal":            "enregistrer",
   "kta-import-modal":         "charger-import",
   "kta-legende-modal":        "legende",
   "kta-search-modal":         "recherche",
@@ -796,9 +645,7 @@ function ktaAideContextuelleActive() {
   try { return localStorage.getItem(AIDE_CTX_LS) !== "0"; } catch(e) { return true; }
 }
 
-// Ouvre DIRECTEMENT une section d'aide, sans passer par le hub. Rend false si
-// le slug est inconnu — l'appelant saura que le lien est mort au lieu d'ouvrir
-// une fenêtre vide.
+// Ouvre directement une section ; false si le slug est inconnu (l'appelant sait que le lien est mort).
 function ktaOuvrirAideSection(slug) {
   // Section d'une rubrique d'extension (prise « aide », slug « ext-… ») : lue à l'ouverture.
   if (typeof slug === "string" && slug.indexOf("ext-") === 0) {
@@ -821,9 +668,7 @@ function _aidePoserBouton(modal) {
   if (!modal || !modal.id) return;
   const slug = AIDE_PAR_MODALE[modal.id];
   if (!slug || !ktaAideContextuelleActive()) return;
-  // Deux familles d'en-tête coexistent dans l'app : celle des modales de
-  // contenu et celle du menu Tracker. Les deux accueillent le ❓ au même
-  // endroit, juste avant la croix.
+  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix.
   const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header");
   if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
   const b = document.createElement("button");
@@ -836,25 +681,15 @@ function _aidePoserBouton(modal) {
     e.stopPropagation();
     ktaOuvrirAideSection(slug);
   });
-  // Juste avant la croix : c'est là que l'œil va, et l'ordre reste le même
-  // d'une modale à l'autre.
   const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
-  // 🚨 26/09/2026 — `querySelector` cherche en PROFONDEUR : dans plusieurs
-  // en-têtes la croix est imbriquée dans un conteneur d'actions, et
-  // `head.insertBefore(b, croix)` jetait alors un `NotFoundError` (« the node
-  // before which the new node is to be inserted is not a child of this node »).
-  // L'exception partait d'un MutationObserver, donc **hors de tout try**, et
-  // laissait la modale sans son bouton ❓ : constaté sur ≡ Légende par le
-  // smoke, une fois celui-ci réparé (il s'arrêtait avant d'y arriver).
-  // On insère dans le parent RÉEL de la croix : même place à l'œil, plus
-  // d'hypothèse sur la profondeur du gabarit.
+  // 🩸 `querySelector` cherche en PROFONDEUR : la croix est parfois imbriquée dans un conteneur d'actions,
+  // et insérer dans `head` lève un NotFoundError — depuis un MutationObserver, donc hors de tout try, et la
+  // modale reste sans ❓. On insère dans le parent RÉEL de la croix.
   if (croix && croix.parentNode) croix.parentNode.insertBefore(b, croix);
   else head.appendChild(b);
 }
 
-// Le réglage a changé : on met à jour ce qui est DÉJÀ à l'écran, sinon la case
-// n'aurait d'effet qu'à la prochaine ouverture — et donnerait l'impression de
-// ne rien faire.
+// Réglage changé : on met à jour ce qui est DÉJÀ à l'écran, sinon la case semble ne rien faire.
 function ktaAideContextuelleRefresh() {
   const actif = ktaAideContextuelleActive();
   Object.keys(AIDE_PAR_MODALE).forEach(function(id) {
@@ -891,23 +726,12 @@ function afficherAide() {
   modal.id = "kta-aide-modal";
   modal.className = "kta-readme-modal-overlay";
 
-  // 🆕 Lot 2 — le contenu vient des DICOS : l'Aide suit la langue de l'app,
-  // comme le tutoriel depuis v1.79.4. Plus de booléen `aideEn`, plus de liste
-  // de langues à tenir : la disponibilité par langue EST celle des dicos.
-
-  // 🆕 Lot 2 — PLUS DE SÉLECTEUR DE DRAPEAUX DANS L'AIDE. Elle suit désormais
-  // la langue GLOBALE de l'app (dicos), donc un toggle local n'aurait plus de
-  // sens : il piloterait "myktamap_readme_lang", une clé que l'Aide ne lit
-  // plus. Même geste que le tutoriel en v1.79.4 (son toggle 🇫🇷/🇬🇧 a disparu
-  // à sa migration). La 📖 Documentation garde le sien : elle reste sur des
-  // FICHIERS, avec sa propre portée de langue.
+  // Contenu des DICOS : l'Aide suit la langue de l'app, sans sélecteur de langue local (la 📖
+  // Documentation garde le sien : elle repose sur des fichiers).
 
   const aideTitre = window.I18n ? window.I18n.t("aide.ui.titre") : "";
 
-  // 🆕 v1.51.0 (Lot C) : le corps n'est plus le gros scroll monolithique mais
-  // un HUB de sections (cartes par catégorie + recherche) → sous-modale par
-  // section. Depuis le lot 2, les sections viennent des DICOS (`aide.sec.*`),
-  // plus d'un HTML en dur parsé au vol.
+  // HUB de sections (cartes par catégorie + recherche) → sous-modale par section (dicos `aide.sec.*`).
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-aide-modal-boite">
       <div class="kta-readme-modal-header">
@@ -927,37 +751,13 @@ function afficherAide() {
   _aideRendreHub(document.getElementById("kta-aide-corps"));
 }
 
-// =========================
-// 🆕 v1.51.0 (Lot C) — Hub d'aide : sections groupées + sous-modale
-// =========================
-// Regroupement des sections d'aide pour le hub. `idx` = index de la section
-// Rangement des sections en catégories. Depuis le lot 2 le mapping se fait par
-// SLUG et non plus par index numérique — c'est ce qui a permis de voir enfin
-// les 4 erreurs de rangement accumulées (cf. l'encadré sous AIDE_SECTIONS).
-// Ajouter une section = 1 entrée dans AIDE_SECTIONS + 1 slug dans une
-// catégorie + les clés `aide.sec.<slug>.*` dans les 3 dicos. Toute section non
-// rangée retombe dans « Autres » (filet), et `check-aide-sections.js` refuse
-// le commit pour qu'elle ne s'y installe pas.
-// 🩸 RÉVISÉ le 01/09/2026 — trois défauts corrigés d'un coup, tous causés par
-// ce mécanisme d'index numériques maintenus à la main :
-//   1. la section FR « 📚 Bibliothèque de plans » n'avait pas son conteneur et
-//      était COLLÉE dans « 👤 Mode profil » (un seul `.kta-aide-section` pour
-//      deux titres) → le hub n'affichait qu'une ligne et « Mode profil » était
-//      inatteignable ;
-//   2. cette même section n'existait PAS en anglais → l'aide EN ne documentait
-//      pas une feature livrée en v1.78.0, et FR/EN n'avaient donc pas le même
-//      découpage alors que ces index sont COMMUNS aux deux langues ;
-//   3. le commentaire annonçait « Mon carnet = index 29 » : elle était en 30.
-//      L'index 29 pointait donc sur « Liaisons inter-plan », et « Mon carnet »
-//      tombait dans le filet « Autres » sans que personne ne le voie.
-// Les index ci-dessous ont été recalculés PAR SCRIPT depuis les titres réels,
-// puis chaque ligne a été confrontée FR ↔ EN (même sujet au même index).
-// 🛡️ `scripts/check-aide-sections.js` (pré-commit) verrouille tout ça : même
-// nombre de sections FR/EN, exactement 1 titre par section, couverture 32/32.
-// ORDRE CANONIQUE des sections. C'est lui qui fixe l'ordre d'affichage du
-// filet « Autres » et qui sert de source aux clés `aide.sec.<slug>.*`.
-// Un slug ne se renomme JAMAIS : un titre se reformule à chaque version, une
-// clé i18n vivrait alors dans 3 dicos sous un nom qui ne veut plus rien dire.
+// ── Hub d'aide : sections et catégories ──────────
+// Rangement par SLUG (des index numériques tenus à la main dérivaient sans que rien ne choque).
+// Ajouter une section = 1 entrée dans AIDE_SECTIONS + 1 slug dans une catégorie + les clés
+// `aide.sec.<slug>.*` dans les 3 dicos. Une section non rangée retombe dans « Autres » (filet) et
+// scripts/check-aide-sections.js refuse le commit.
+// AIDE_SECTIONS = ORDRE CANONIQUE (ordre du filet, source des clés). 🩸 Un slug ne se renomme JAMAIS :
+// la clé i18n vivrait dans 3 dicos sous un nom qui ne veut plus rien dire.
 const AIDE_SECTIONS = [
   "histoire", "sortie-urgence", "aide-doc-legende", "parametres",
   "recherche", "charger-import", "import-sig", "creer-modifier-plan",
@@ -967,29 +767,13 @@ const AIDE_SECTIONS = [
   "mode-secours", "mesure", "edition-points", "structures",
   "traces", "zones", "optimiser-plan", "code-acces",
   "astuces", "depannage", "liaisons-inter-plan", "carnet",
-  // 🌍 v1.85.0 — la Vue OSM n’avait AUCUNE fiche : six fonctions y
-  // vivaient sans foyer documentaire (mesure, coordonnees de surface,
-  // plans par etiquette, couleurs personnalisees, travail de session,
-  // ecart de calage). Un ecran entier absent de l’aide.
   "vue-osm",
-  // 🧩 01/10/2026 — fiches des fonctionnalités optionnelles qui n'en avaient pas.
   "heatmap", "vibration",
-  // ❓ 03/10/2026 (audit de l'aide) — fonctions qui n'avaient pas de fiche à
-  // elles : noyées dans « tracker » ou « mesure », ou répétées dans trois fiches.
   "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau"
 ];
 
-// 🩸 4ᵉ DÉFAUT DU MÉCANISME D'INDEX, découvert en migrant (01/09/2026) :
-// la catégorie « 🚨 Coordination secours » portait `idx: [18]` — soit la
-// section **🧭 Tracker**. Le vrai Mode Secours était rangé dans « Outils
-// carte ». Une erreur de rangement invisible pendant des mois : avec des
-// chiffres, rien ne choque ; avec des noms, elle saute aux yeux. C'est
-// précisément ce que cette migration achète.
-// (Les 3 autres défauts — conteneur oublié, section absente en EN, « Mon
-// carnet » orpheline — ont été corrigés au lot 0.)
-// ❓ 03/10/2026 — les catégories suivent les chapitres du guide, dans l'ordre
-// où l'on en a besoin. « Pour aller plus loin » reçoit ce qui est désactivé par
-// défaut, le Mode Secours et les outils des créateurs de plans.
+// Catégories dans l'ordre des chapitres du guide. « Pour aller plus loin » reçoit ce qui est désactivé
+// par défaut, le Mode Secours et les outils des créateurs de plans.
 const AIDE_CATEGORIES = [
   { cle: "prise-en-main", slugs: ["aide-doc-legende", "astuces"] },
   { cle: "urgence",       slugs: ["sortie-urgence", "urgence-xl", "je-suis-perdu"] },
@@ -1004,15 +788,13 @@ const AIDE_CATEGORIES = [
                                   "mode-secours", "creer-modifier-plan", "optimiser-plan"] }
 ];
 
-// Une ligne cliquable du hub (titre + chevron).
 function _aideRow(section, onClick) {
   const r = document.createElement("button");
   r.type = "button";
   r.className = "kta-aide-row";
   const t = document.createElement("span");
   t.className = "kta-aide-row-titre";
-  // Accepte une section (titre + raccourci) ou une simple chaîne (ligne
-  // « ⌨️ Raccourcis clavier », qui n'est pas une section).
+  // Section (titre + raccourci) ou simple chaîne (ligne « ⌨️ Raccourcis clavier »).
   if (typeof section === "string") t.textContent = section;
   else _aidePoserTitre(t, section);
   const chev = document.createElement("span");
@@ -1024,24 +806,19 @@ function _aideRow(section, onClick) {
   return r;
 }
 
-// Construit l'objet section depuis les DICOS (plus de HTML en dur : lot 2).
-// Le titre ET le corps sont des clés i18n ; le corps contient du HTML, c'est
-// VOULU — ce sont des sections de documentation mises en forme, pas des
-// libellés. Les classes de mise en forme viennent du CSS (lot 1).
+// Section depuis les DICOS. Le corps contient du HTML VOULU (documentation mise en forme, classes CSS) ;
+// le titre est du texte.
 function _aideSection(slug) {
   const t = window.I18n ? window.I18n.t("aide.sec." + slug + ".titre") : slug;
   const h = window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "";
-  // ⌨️ 14/09/2026 — le raccourci clavier a sa PROPRE clé, facultative. Avant,
-  // il était écrit dans le titre avec son `<span>` : posé en `textContent`, le
-  // balisage s'affichait en clair (« Recherche unifiée <span class=… »). Le
-  // titre est du texte, la mise en forme appartient au gabarit — règle CLAUDE.md.
+  // Raccourci clavier : clé PROPRE et facultative. Jamais dans le titre (posé en textContent, le
+  // balisage s'afficherait en clair).
   const r = (window.I18n && window.I18n.has && window.I18n.has("aide.sec." + slug + ".raccourci"))
     ? window.I18n.t("aide.sec." + slug + ".raccourci") : "";
   return { slug: slug, titre: t, raccourci: r, html: h };
 }
 
-// Pose un titre de section : le texte, puis le raccourci en petit s'il existe.
-// Un seul endroit, appelé par le hub ET par la fiche — deux rendus divergeraient.
+// Un seul endroit pour poser un titre (hub ET fiche), sinon deux rendus divergent.
 function _aidePoserTitre(el, section) {
   if (!el || !section) return;
   el.textContent = section.titre || "";
@@ -1055,13 +832,11 @@ function _aidePoserTitre(el, section) {
 function _aideRendreHub(corps) {
   if (!corps) return;
 
-  // Intro générale.
   const intro = document.createElement("p");
   intro.className = "kta-aide-intro";
   intro.innerHTML = window.I18n ? window.I18n.t("aide.intro") : "";
   corps.appendChild(intro);
 
-  // Barre de recherche
   const search = document.createElement("input");
   search.type = "search";
   search.className = "kta-aide-hub-search";
@@ -1072,7 +847,7 @@ function _aideRendreHub(corps) {
   hub.className = "kta-aide-hub";
   corps.appendChild(hub);
 
-  // Ligne épinglée : cheatsheet des raccourcis clavier (ouvre ShortcutsCheatsheet).
+  // Ligne épinglée : raccourcis clavier (ShortcutsCheatsheet).
   const libCheat = window.I18n ? window.I18n.t("aide.ui.shortcuts") : "";
   const cheatRow = _aideRow(libCheat, function() {
     if (window.ShortcutsCheatsheet && typeof window.ShortcutsCheatsheet.ouvrir === "function") {
@@ -1082,8 +857,8 @@ function _aideRendreHub(corps) {
   cheatRow.dataset.aideTitre = window.ktaDocNormaliser(libCheat);
   hub.appendChild(cheatRow);
 
-  // Rubrique fournie par une extension (prise « aide », ex. sécurité du pro) : posée avant « Pour aller plus
-  // loin ». Sans extension, KtaExtensions.aide() rend null et rien n'apparaît.
+  // Rubrique d'une extension (prise « aide ») avant « Pour aller plus loin » ; sans extension,
+  // KtaExtensions.aide() rend null.
   function ajouterRubriqueExtension() {
     const ext = (window.KtaExtensions && typeof window.KtaExtensions.aide === "function")
       ? window.KtaExtensions.aide() : null;
@@ -1100,7 +875,6 @@ function _aideRendreHub(corps) {
     });
   }
 
-  // Catégories + lignes
   const used = {};
   AIDE_CATEGORIES.forEach(function(cat) {
     if (cat.cle === "plus-loin") ajouterRubriqueExtension();
@@ -1117,19 +891,14 @@ function _aideRendreHub(corps) {
     hub.appendChild(ct);
     rows.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
-      // 🔎 D27 (14/09/2026) : la recherche ne filtrait que les 30 TITRES —
-      // chercher « CSV » ou « wake lock » ne trouvait rien alors que les mots
-      // sont dans le corps des sections. Titre + contenu (balises retirées),
-      // accents tolérés.
+      // Recherche sur titre + contenu (balises retirées), accents tolérés.
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
       r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   });
 
-  // Filet de sécurité : sections non rangées (si le mapping dérive).
-  // `check-aide-sections.js` interdit ce cas au commit — le filet reste pour
-  // qu'une section oubliée soit ATTEIGNABLE plutôt que perdue en silence.
+  // Filet : sections non rangées restent ATTEIGNABLES (check-aide-sections.js interdit ce cas au commit).
   const orphans = AIDE_SECTIONS.filter(function(slug) { return !used[slug]; })
                                .map(_aideSection);
   if (orphans.length) {
@@ -1139,24 +908,21 @@ function _aideRendreHub(corps) {
     hub.appendChild(ct);
     orphans.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
-      // 🔎 D27 (14/09/2026) : la recherche ne filtrait que les 30 TITRES —
-      // chercher « CSV » ou « wake lock » ne trouvait rien alors que les mots
-      // sont dans le corps des sections. Titre + contenu (balises retirées),
-      // accents tolérés.
+      // Recherche sur titre + contenu (balises retirées), accents tolérés.
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
       r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   }
 
-  // Message "aucun résultat"
   const empty = document.createElement("div");
   empty.className = "kta-aide-empty";
   empty.style.display = "none";
   empty.textContent = window.I18n ? window.I18n.t("aide.ui.empty") : "";
   corps.appendChild(empty);
 
-  // Filtrage par recherche (titre + contenu, accents tolérés — D27)
+  // 🏷️ ancre:hub-filtre-recherche
+  // Filtrage par recherche (titre + contenu, accents tolérés).
   search.addEventListener("input", function() {
     const q = window.ktaDocNormaliser(search.value.trim());
     let visibles = 0;
@@ -1166,7 +932,7 @@ function _aideRendreHub(corps) {
       r.style.display = match ? "" : "none";
       if (match) visibles++;
     });
-    // masque les titres de catégorie sans aucune ligne visible
+    // Titres de catégorie sans ligne visible masqués.
     hub.querySelectorAll(".kta-aide-cat-titre").forEach(function(ct) {
       let sib = ct.nextElementSibling, any = false;
       while (sib && sib.classList.contains("kta-aide-row")) {
@@ -1179,7 +945,7 @@ function _aideRendreHub(corps) {
   });
 }
 
-// Sous-modale : contenu d'UNE section + ← Retour (z-index 100001, au-dessus du hub).
+// Sous-modale : UNE section + ← Retour (z-index 100001, au-dessus du hub).
 function _aideOuvrirSousModal(section) {
   _aideFermerSousModal();
   const ov = document.createElement("div");
@@ -1195,8 +961,7 @@ function _aideOuvrirSousModal(section) {
       '<div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-sub-corps"></div>' +
     "</div>";
   document.documentElement.appendChild(ov);
-  // Le contenu vient des dicos : on reconstruit la section (titre + corps)
-  // au lieu de cloner un nœud parsé depuis du HTML en dur (lot 2).
+  // Section reconstruite depuis les dicos (titre + corps).
   const corps = ov.querySelector("#kta-aide-sub-corps");
   if (corps && section) {
     const bloc = document.createElement("div");
@@ -1225,45 +990,18 @@ function _aideFermerSousModal() {
   ov.remove();
 }
 
-// =========================
-// AIDE — le contenu vit dans les DICOS (lot 2, 01/09/2026)
-// =========================
-// _aideHtmlFr() et _aideHtmlEn() ont été SUPPRIMÉES ici : 1 738 lignes de
-// HTML en dur, dupliquées en deux langues, que personne ne pouvait traduire
-// sans écrire 870 lignes de plus par langue.
-// Le contenu est désormais dans lang/<code>.json :
-//   aide.intro                  · le paragraphe d introduction
-//   aide.sec.<slug>.titre       · le titre d une section
-//   aide.sec.<slug>.html        · son corps (HTML VOULU : ce sont des
-//                                 sections de doc mises en forme, et les
-//                                 classes viennent du CSS depuis le lot 1)
-//   aide.cat.<cle> · aide.ui.*  · titres de catégories et libellés du hub
-// Ajouter une langue = traduire des clés. Plus de fonction à écrire, plus de
-// liste de langues à tenir (AIDE_AVAILABLE_LANGS a disparu avec elles) :
-// la disponibilité par langue EST celle des dicos, comme le tutoriel v1.79.4.
-// Ordre et rangement des sections : AIDE_SECTIONS / AIDE_CATEGORIES ci-dessus.
-// =========================
-// =========================
-// 🤖 AIDE IA — génère un fichier de contexte téléchargeable
-// =========================
-// Le contenu vit dans le fichier STATIQUE `docs/AI_CONTEXT.md` (depuis
-// v1.8.0 — auparavant à la racine, déplacé dans docs/ avec README_USER.md).
-// JS se contente de :
-//   1. fetch docs/AI_CONTEXT.md (le squelette enrichi)
-//   2. fetch docs/README_USER.md (la doc officielle)
-//   3. remplacer les placeholders {{DATE}}, {{BUILD}}, {{README_USER}}
-//   4. proposer le fichier au téléchargement
-//
-// Avantage : tout l'enrichissement du contexte IA se fait en éditant
-// docs/AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
-// =========================
+// ── Contenu de l'Aide : lang/<code>.json ──────────
+//   aide.intro · aide.sec.<slug>.titre · aide.sec.<slug>.html (HTML voulu) · aide.cat.<clé> · aide.ui.*
+// Ajouter une langue = traduire des clés. Ordre et rangement : AIDE_SECTIONS / AIDE_CATEGORIES.
 
-// 🆕 v1.69.0 — PROFILS DE CONTEXTE. Le template est balisé par des marqueurs
-// `<!-- @@PROFIL usage,diagnostic -->` (un marqueur s'applique jusqu'au
-// suivant ; "tous" = commun à tous les profils). Filtrer = garder les blocs
-// du profil demandé + les blocs communs. profil null/"complet" = tout garder.
-// Objectif : fichiers de ~60-120 Ko réellement lisibles en entier par les IA
-// (l'ancien fichier unique de ~500 Ko était tronqué/résumé par la plupart).
+// ── Aide IA : fichier de contexte téléchargeable ──────────
+// Contenu dans le fichier STATIQUE docs/applications/AI_CONTEXT.md ; le JS (_genererContexte) le
+// télécharge, filtre par profil, retire les commentaires HTML, remplace {{DATE}}/{{BUILD}}/{{README_USER}}
+// et le propose. Enrichir le contexte = éditer ce .md, pas le code.
+
+// Profils : marqueurs `<!-- @@PROFIL usage,diagnostic -->` (valables jusqu'au suivant ; "tous" = commun).
+// On garde les blocs du profil + les communs ; profil null/"complet" = tout. But : des fichiers de
+// ~60-120 Ko lisibles en entier par les IA (un fichier unique de ~500 Ko était tronqué).
 function _filtrerContexteParProfil(tpl, profil) {
   const complet = !profil || profil === "complet";
   const out = [];
@@ -1276,10 +1014,8 @@ function _filtrerContexteParProfil(tpl, profil) {
   return out.join("\n");
 }
 
-// 🆕 v1.69.0 — Bloc « état de l'installation » (opt-in, case décochée par
-// défaut). Généré 100 % localement, joint au contexte pour permettre à l'IA
-// un diagnostic ciblé. ANONYME PAR CONSTRUCTION : aucun nom de plan, aucun
-// point/coordonnée/photo — uniquement des caractéristiques techniques.
+// « État de l'installation » (opt-in, décoché par défaut), généré localement pour un diagnostic ciblé.
+// 🔒 ANONYME PAR CONSTRUCTION : ni nom de plan, ni point, coordonnée ou photo — caractéristiques techniques.
 async function _genererEtatInstallation() {
   const L = [];
   L.push("## 🔧 État de l'installation (généré localement, anonyme)");
@@ -1295,7 +1031,6 @@ async function _genererEtatInstallation() {
     L.push("- Écran : " + screen.width + "×" + screen.height + " (dpr " + (window.devicePixelRatio || 1) +
            ") · PWA installée : " + (standalone ? "oui" : "non") + " · en ligne : " + (navigator.onLine ? "oui" : "non"));
   } catch(e) {}
-  // Stockage (quota navigateur)
   try {
     if (navigator.storage && navigator.storage.estimate) {
       const est = await navigator.storage.estimate();
@@ -1303,7 +1038,7 @@ async function _genererEtatInstallation() {
       L.push("- Stockage navigateur : " + mo(est.usage) + " utilisés / " + mo(est.quota) + " de quota");
     }
   } catch(e) {}
-  // Plans (anonymisés : Plan 1..N, jamais les noms — ce sont des lieux sensibles)
+  // Plans anonymisés (Plan 1..N) : leurs noms sont des lieux sensibles.
   try {
     const plans = (window.PlanRegistry && window.PlanRegistry.getAll) ? window.PlanRegistry.getAll() : [];
     L.push("- Plans dans la bibliothèque : " + plans.length);
@@ -1314,14 +1049,13 @@ async function _genererEtatInstallation() {
       L.push("  - Plan " + (i + 1) + " : " + (p.type || "?") + " · mode " + mode + " · preset perf " + (p.perfPreset || "auto") + " · " + stock + taille);
     });
   } catch(e) {}
-  // Sessions persistées (tailles uniquement)
   try {
     const st = window.KtaSessionStore;
     const ids = st.ids();
     const tot = ids.reduce(function(n, id) { return n + st.taille(id); }, 0);
     L.push("- Sessions sauvegardées : " + ids.length + " (" + Math.round(tot / 1024) + " Ko au total, stockage " + st.mode() + ")");
   } catch(e) {}
-  // Dernières erreurs/avertissements du buffer de logs (debug.js)
+  // Dernières erreurs/avertissements du buffer de logs (debug.js).
   try {
     const buf = JSON.parse(localStorage.getItem("kta_debug_logs") || "[]");
     const errs = buf.filter(function(l) { return typeof l === "string" && (l.indexOf("[ERROR]") === 0 || l.indexOf("[WARN]") === 0); }).slice(-15);
@@ -1342,16 +1076,14 @@ function _genererContenuContexteIA(aiContextTemplate, profil, etatBlock) {
   const dateExport = new Date().toISOString().slice(0, 10);
   const buildVersion = (window.__MKM__ && window.__MKM__.build) || "non-défini";
 
-  // Si le template docs/AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
+  // Repli minimal si docs/applications/AI_CONTEXT.md est introuvable.
   if (aiContextTemplate && aiContextTemplate.trim().length > 0) {
     let contenu = _filtrerContexteParProfil(aiContextTemplate, profil)
-      // Purge des commentaires HTML restants (note éditeur en tête, etc.) :
-      // le contexte livré à l'IA ne doit contenir que du contenu utile.
+      // Commentaires HTML purgés : l'IA ne reçoit que du contenu utile.
       .replace(/<!--[\s\S]*?-->\n?/g, "")
       .replace(/\{\{DATE\}\}/g, dateExport)
       .replace(/\{\{BUILD\}\}/g, buildVersion)
-      // Rétrocompat : vieux template encore en cache SW → le placeholder de la
-      // doc intégrale est remplacé par un renvoi (plus jamais les ~250 Ko).
+      // Vieux template en cache SW : le placeholder de la doc intégrale devient un renvoi (pas ~250 Ko).
       .replace(/\{\{README_USER\}\}/g,
         "_La documentation intégrale n'est plus incluse dans ce fichier (trop volumineuse pour être lue en entier par une IA). Consulte la Documentation intégrée de l'app (bouton 📖)._");
     if (etatBlock) {
@@ -1363,7 +1095,6 @@ function _genererContenuContexteIA(aiContextTemplate, profil, etatBlock) {
     return contenu;
   }
 
-  // ===== Fallback ultra-minimal si AI_CONTEXT.md est introuvable =====
   return (
     "# MyKTAMap — Contexte IA (fallback minimal)\n\n" +
     "> ⚠️ Le fichier `AI_CONTEXT.md` n'a pas pu être récupéré. Réessaye depuis l'app " +
@@ -1376,16 +1107,7 @@ function _genererContenuContexteIA(aiContextTemplate, profil, etatBlock) {
 }
 
 
-// =========================
-// 🚨 MODALES ALERTES + MISE À JOUR — DÉPLACÉES (v1.31.0 P3 Lot 1)
-// =========================
-// Les 4 fonctions globales `window.afficherModaleAlerteAbsente`,
-// `window.afficherSelecteurAlertes`, `window.afficherModaleAlerte`,
-// `window.afficherModaleUpdateDispo` ont été extraites vers
-// `js/interfaceAlerts.js` pour réduire le volume du fichier principal
-// (cf. P3 Lot 1, découpe interface.js). Comportement runtime strictement
-// identique à v1.30.1. Voir le header de `js/interfaceAlerts.js` pour
-// la liste complète des fonctions extraites et leurs dépendances.
+// Les modales d'alerte et de mise à jour vivent dans js/interfaceAlerts.js.
 
 
 window.afficherModaleAideIA = function() {
@@ -1459,13 +1181,12 @@ window.afficherModaleAideIA = function() {
   document.getElementById("kta-aide-ia-cancel").addEventListener("click", _fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
 
-  // Copie du prompt dans le presse-papiers
   document.getElementById("kta-aide-ia-copy").addEventListener("click", async function() {
     const btn = this;
     const ta = document.getElementById("kta-aide-ia-prompt");
     const originalText = btn.textContent;
     try {
-      // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+      // utils.js : clipboard puis repli execCommand (HTTP local).
       if (!(await window.ktaCopierTexte(ta.value))) throw new Error("clipboard + execCommand KO");
       btn.textContent = window.I18n.t("aiia.copy.ok");
       btn.classList.add("kta-aide-ia-copy-ok");
@@ -1480,8 +1201,7 @@ window.afficherModaleAideIA = function() {
     }
   });
 
-  // 🆕 v1.69.0 — génération factorisée : fetch du template (seul — la doc
-  // intégrale n'est plus injectée), filtrage par profil, bloc état opt-in.
+  // Template seul (la doc intégrale n'est plus injectée), filtré par profil, + bloc état opt-in.
   async function _genererContexte(statusEl) {
     statusEl.textContent = window.I18n.t("aiia.dl.fetching");
     let aiContextTpl = "";
@@ -1504,7 +1224,6 @@ window.afficherModaleAideIA = function() {
     return { contenu: _genererContenuContexteIA(aiContextTpl, profil, etatBlock), profil: profil };
   }
 
-  // 📥 Télécharger le fichier .md
   document.getElementById("kta-aide-ia-download").addEventListener("click", async function() {
     const btn = this;
     const statusEl = document.getElementById("kta-aide-ia-status");
@@ -1528,12 +1247,10 @@ window.afficherModaleAideIA = function() {
     btn.textContent = window.I18n.t("aiia.btn.download");
     btn.disabled = false;
 
-    // Fermer la modale après 1.5s
     setTimeout(_fermer, 1500);
   });
 
-  // 📋 Copier le contexte directement dans le presse-papiers (mobile-friendly :
-  // coller dans un chat IA est bien plus simple que joindre un fichier .md).
+  // Copier le contexte (sur mobile, coller dans un chat est plus simple que joindre un .md).
   document.getElementById("kta-aide-ia-copyctx").addEventListener("click", async function() {
     const btn = this;
     const statusEl = document.getElementById("kta-aide-ia-status");
@@ -1542,8 +1259,7 @@ window.afficherModaleAideIA = function() {
     btn.textContent = window.I18n.t("aiia.dl.generating");
     try {
       const res = await _genererContexte(statusEl);
-      // Helper commun (utils.js) : clipboard d'abord, repli execCommand s'il échoue
-      // (writeText peut throw même en contexte sécurisé, ex. document non focus).
+      // writeText peut lever même en contexte sécurisé (document sans focus) : repli execCommand.
       if (!(await window.ktaCopierTexte(res.contenu))) throw new Error("clipboard + execCommand KO");
       statusEl.textContent = window.I18n.t("aiia.copyCtx.ok", { ko: Math.round(res.contenu.length / 1024) });
       btn.textContent = window.I18n.t("aiia.copy.ok");
@@ -1562,15 +1278,6 @@ window.afficherModaleAideIA = function() {
   });
 };
 
-// ==========================================
-// EXPORTS WINDOW (v1.31.0 P3 Lot 4)
-// ==========================================
-// afficherReadme et afficherAide étaient référencés depuis interface.js
-// via leur identifier non-qualifié (function declarations top-level).
-// Post-extraction : on les expose via window.* pour que interface.js
-// puisse continuer à les appeler via window.afficherX() (les onClick
-// sidebar ont été patchés en conséquence).
-// afficherModaleAideIA est DÉJÀ posée comme window.afficherModaleAideIA
-// dans le bloc 3 lui-même (cf déclaration window.afficherModaleAideIA = function()...)
+// ── Exports window (afficherModaleAideIA est posée dans sa propre déclaration) ──────────
 window.afficherReadme = afficherReadme;
 window.afficherAide   = afficherAide;

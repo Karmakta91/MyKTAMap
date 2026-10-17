@@ -1,31 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔒 check-kiosque-serveur.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// LE BUG (KARMA, 07/09/2026) :
-//
-//   « en mode serveur, avec générateur et import désactivés, je peux importer
-//     un profil, et donc récupérer tous les ZIP ; et le pire, c'est que si ce
-//     profil a une préférence de mode serveur désactivé, ça casse tout. »
-//
-// 🩸 CE QUE ÇA COÛTAIT, EN DEUX TEMPS.
-//   1. `serverPlansOnly` masque la dropzone — mais l'import de PROFIL restaure
-//      les archives ZIP. La restriction se contournait sans le vouloir, par la
-//      porte d'à côté.
-//   2. Pire : un profil transporte `myktamap_loader_show_server_plans`. Importé
-//      sur un kiosque avec la valeur « false », il masque les plans serveur…
-//      dont la case de réglage est justement CACHÉE par le mode kiosque.
-//      Résultat : accueil vide, aucun plan, aucun réglage pour s'en sortir.
-//      Un flag qui cache son propre remède est un piège.
-//
-// LA RÈGLE : **un mode qui interdit quelque chose doit l'interdire au goulot,
-// pas sur un bouton.** Masquer une commande ne ferme pas une porte : la modale
-// d'import se déclenche depuis au moins deux endroits.
-//
-// COMMENT ON CONTRÔLE : on EXÉCUTE les prédicats extraits des vrais fichiers,
-// dans les deux états (kiosque / pas kiosque). Un `grep` dirait « le test est
-// là » sans jamais voir qu'il est inversé.
+// check-kiosque-serveur.js — BLOQUANT (pré-commit) : mode kiosque « plans serveur uniquement »
+// (`serverPlansOnly`, prédicat unique `window.ktaKiosqueServeurSeul`).
+// 🔒 Règle : un mode qui interdit quelque chose l'interdit au GOULOT, pas sur un bouton (une modale
+//    s'ouvre depuis plusieurs endroits, ou par appel direct).
+// 🩸 L'import de PROFIL restaure des ZIP : sans refus, il contourne la dropzone masquée.
+// 🩸 Un profil importé peut porter `myktamap_loader_show_server_plans = false` : accueil vide, et la case
+//    qui le corrige est cachée par le kiosque. Le kiosque force ces préférences, AVANT leur lecture au boot.
+// On EXÉCUTE les prédicats extraits des vrais fichiers dans les deux états : un grep ne voit pas une
+// condition inversée.
 // =====================================================================
 "use strict";
 
@@ -39,8 +23,7 @@ const MAIN = fs.readFileSync("js/main.js", "utf8");
 const PEI  = fs.readFileSync("js/profileExportImport.js", "utf8");
 const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
 
-// ═════════ 1. LE PRÉDICAT, EXÉCUTÉ DANS LES DEUX ÉTATS ═════════
-// 🩸 Une condition inversée passerait tous les tests textuels du monde.
+// ── 1. Le prédicat, exécuté dans les deux états ──────
 {
   const m = MAIN.match(/window\.ktaKiosqueServeurSeul = function\(\) \{[\s\S]*?\n\};/);
   t("🔒 le prédicat kiosque existe en un point unique (window.ktaKiosqueServeurSeul)", !!m);
@@ -58,7 +41,7 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
   }
 }
 
-// ═════════ 2. LES DEUX PRÉFÉRENCES QUI VIDENT UN KIOSQUE ═════════
+// ── 2. Les deux préférences qui vident un kiosque ──────
 {
   const i = MAIN.indexOf("if (cfg.serverPlansOnly === true) {");
   t("la branche kiosque est trouvable dans _appliquerConfigKiosque", i >= 0);
@@ -69,9 +52,8 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
   t("🩸 « Ne pas charger les plans serveur » est remis à false (même impasse)",
     /setItem\("myktamap_skip_server_plans_v1", "false"\)/.test(branche));
 
-  // 🩸 L'ORDRE EST LA MOITIÉ DU FIX. La pref était lue AVANT le chargement de
-  // l'index : le kiosque la remettait d'aplomb trop tard, et l'accueil restait
-  // vide pour CE démarrage. Il aurait fallu relancer l'app pour voir ses plans.
+  // 🩸 Ordre : la config kiosque (index) se charge AVANT la lecture de la pref, sinon l'accueil reste
+  // vide pour ce démarrage.
   const idx  = MAIN.indexOf("const _idxServeur = await _chargerIndexServeur();");
   const pref = MAIN.indexOf("const _skipServer = (typeof window._loaderSkipServerPlans");
   t("l'index serveur et la pref de skip sont tous deux lus au boot", idx >= 0 && pref >= 0);
@@ -79,14 +61,12 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
     idx >= 0 && pref > idx);
 }
 
-// ═════════ 3. LE REFUS D'IMPORT, EXÉCUTÉ ═════════
-// On extrait le test réel et on le joue dans les deux états.
+// ── 3. Le refus d'import, exécuté ──────
 {
   const m = PEI.match(/if \(typeof window\.ktaKiosqueServeurSeul === "function" && window\.ktaKiosqueServeurSeul\(\)\) \{[\s\S]*?\n    \}/);
   t("🔒 l'ouverture de la modale d'import interroge le prédicat kiosque", !!m);
 
-  // Le refus doit vivre AVANT tout traitement du fichier, sinon on aurait déjà
-  // lu et décompressé l'archive avant de dire non.
+  // refus AVANT de lire et décompresser l'archive
   const iRefus = PEI.indexOf("ktaKiosqueServeurSeul()");
   const iFic   = PEI.indexOf("const entete = new Uint8Array");
   t("🔒 …et refuse AVANT de toucher au fichier", iRefus >= 0 && iFic > iRefus);
@@ -95,14 +75,13 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
     const jouer = (kiosque) => {
       let vu = null, sorti = false;
       const sb = {
-        // Le refus passe par window.ktaAlerte depuis le 09/10/2026 (plus d'alert() natif) ; alert gardé
-        // pour qu'un retour au natif reste reconnu comme « le dit à l'utilisateur ».
+        // Refus via window.ktaAlerte ; `alert` bouchonné aussi, pour reconnaître un retour au natif.
         window: { ktaKiosqueServeurSeul: function () { return kiosque; },
                   I18n: { t: function (k) { return k; } },
                   ktaAlerte: function (msg) { vu = msg; return Promise.resolve(); } },
         alert: function (msg) { vu = msg; }
       };
-      // Le `return` du bloc n'est légal que dans une fonction : on l'enveloppe.
+      // `return` légal seulement dans une fonction : on enveloppe.
       vm.runInNewContext("(function(){ " + m[0] + " return \"suite\"; })()", sb, { filename: "pei.refus.js" });
       sorti = vm.runInNewContext("(function(){ " + m[0] + " return \"suite\"; })()", sb) !== "suite";
       return { vu: vu, sorti: sorti };
@@ -113,7 +92,6 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
     t("🩸 hors kiosque : l'import continue normalement", nk.sorti === false && nk.vu === null);
   }
 
-  // Le message existe dans les trois dictionnaires (FR = repli universel).
   ["fr", "en", "es"].forEach(function (code) {
     const d = JSON.parse(fs.readFileSync("lang/" + code + ".json", "utf8"));
     t("🌍 message de refus traduit : " + code,
@@ -121,12 +99,10 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
   });
 }
 
-// ═════════ 4. ON NE PROPOSE PAS CE QU'ON REFUSE ═════════
+// ── 4. On ne propose pas ce qu'on refuse ──────
 {
-  // 🩸 Borne explicite sur `</button>') +` : un `[\s\S]*?\) \+` non-greedy
-  // s'arrêtait au PREMIER `) +` venu — au milieu de l'expression — et donnait
-  // un fragment déséquilibré que le vm refusait. Un motif non borné avait déjà
-  // détruit la recherche live du HOME de la même façon.
+  // 🩸 Borne explicite sur `</button>') +` : un non-greedy `[\s\S]*?\) \+` s'arrête au PREMIER `) +` venu
+  // et rend un fragment déséquilibré.
   const m = HPR.match(/\(\(typeof window\.ktaKiosqueServeurSeul === "function" && window\.ktaKiosqueServeurSeul\(\)\)[\s\S]*?<\/button>'\) \+/);
   t("🔒 la modale Détails profil conditionne son bouton Import au prédicat kiosque", !!m);
   if (m) {
@@ -141,24 +117,19 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
     t("🔒 hors kiosque : le bouton Import est bien là",
       String(jouer(false)).indexOf('id="kta-profile-details-import"') >= 0);
   }
-  // 🩸 Le bouton disparaît : le câblage doit survivre à son absence, sinon
-  // `addEventListener` sur null jetait et tuait TOUT le reste de la modale.
+  // 🩸 Bouton absent : `addEventListener` sur null jetterait et tuerait tout le reste de la modale.
   t("🩸 le câblage tolère l'absence du bouton (sinon la modale entière casse)",
     /const _btnImp = document\.getElementById\("kta-profile-details-import"\);/.test(HPR) &&
     /if \(_btnImp\) \{/.test(HPR));
 
-  // L'EXPORT, lui, reste : sauvegarder son carnet n'a jamais gêné personne.
+  // L'export de profil reste permis (décision produit).
   t("💾 l'export de profil reste accessible en kiosque (aucune condition dessus)",
     /getElementById\("kta-profile-details-export"\)\.addEventListener/.test(HPR));
 }
 
-// ---------- 📦 Import multiple : une porte d'entrée de plus ----------
-// 🩸 KARMA, 15/09/2026 : « si en mode serveur on a coupé l'import de plan,
-// il ne doit pas être affiché (comme Ajouter un plan) ». Le bouton vit dans
-// les 🧰 Outils, donc HORS de `#panelZip` que le kiosque masque : sans
-// traitement, un kiosque « plans serveur uniquement » laissait entrer N
-// plans d'un coup. On vérifie les DEUX : le bouton masqué, ET le module qui
-// refuse — masquer un bouton ne ferme pas une porte.
+// ── 5. Import multiple : une porte d'entrée de plus ──────
+// 🩸 Son bouton vit dans Outils, HORS de `#panelZip` que le kiosque masque. On vérifie les DEUX : bouton
+// masqué ET module qui refuse (ouvrir et importer).
 {
   const IMP = fs.readFileSync("js/importMasse.js", "utf8").replace(/\r\n/g, "\n");
   const app = MAIN.slice(MAIN.indexOf("function _appliquerConfigKiosque()"),

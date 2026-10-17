@@ -5,46 +5,27 @@
  */
 
 // =========================
-// ⛑️ LOST MODE — mode urgence "Je suis perdu"
+// LOST MODE — mode urgence « Je suis perdu »
 // =========================
-// Aide à zoner la position probable d'un utilisateur perdu, en croisant :
-//   - Dernière position connue (point existant / clic carte / tracker actif)
-//   - Temps écoulé depuis cette position
-//   - Indices visuels observés (texte libre, recherche dans nom + description + tags + id)
-//
-// Calculs :
-//   - Rayon = vitesse × temps × facteur d'incertitude (modèle simple v1)
-//   - "Dans la zone" = distance euclidienne ≤ rayon depuis dernière position connue
-//   - Localisation probable affinée = barycentre des matchs in-zone (si ≥ 1)
-//
-// Couleurs (anti-collision avec les zones Effondrement rouge / Eau bleu / Roads rouge-orange-jaune
-// et Itinéraire cyan / Distance highlight magenta) :
-//   - Zone de recherche : orange foncé #ff6b35 (alerte mais distinct du rouge)
-//   - Dernière position : marker vert #6ce28a pulse
-//   - Match in-zone     : pulse violet  #b452ff
-//   - Match hors zone   : statique gris #8892a4
-//   - Loc probable      : cercle interne violet pulse rapide
-//
-// API exposée :
-//   - window.LostMode.open()       — ouvre la modale
-//   - window.LostMode.close()      — ferme + cleanup carte
-//   - window.LostMode.isActive()   — bool
+// Zone la position probable d'une personne perdue : dernière position connue (point, clic carte, tracker)
+// + temps écoulé + indices observés (recherche dans nom, description, tags, id).
+// Rayon = vitesse × temps (sans marge) ; « dans la zone » = distance euclidienne ≤ rayon ; localisation
+// affinée = barycentre des indices dans la zone ; portée réelle sur le réseau (Pathfinder.computeReachable).
+// ⚠️ Couleurs choisies pour ne pas se confondre avec zones, routes, itinéraire et distance : zone #ff6b35,
+// dernière position #6ce28a, indice dans la zone #b452ff, hors zone #8892a4, portée réseau #ff8080.
+// Expose window.LostMode : open(), close({ keepLayers }), isActive(), getState() (Mode Secours), _onPlanSwitch.
+// Doc : docs/architecture/secours.md
 // =========================
 
 (function() {
   "use strict";
 
-  // ===== Constantes =====
   const DEFAULT_ELAPSED_MIN  = 30;
   const MAX_ELAPSED_MIN      = 90;  // 1h30 — au-delà, mode urgence non pertinent (zone immense)
   const MAX_MATCHES_SHOWN    = 20;
 
-  // Presets de vitesse de marche, alignés sur ceux du mode itinéraire
-  // (mêmes km/h, mêmes libellés). Pas de marge de sécurité — le rayon est
-  // exactement `vitesse × temps`. La spécificité urgence vient des hints
-  // (contexte "état présumé de la personne perdue") et de l'icône.
-  // 🌍 i18n : `label`/`hint` ne sont plus codés en dur ici (data-only structure).
-  // Ils sont résolus AU RENDU via _presetLabel()/_presetHint() → I18n.t("lost.preset.<key>.label/.hint").
+  // Presets alignés sur ceux de l'itinéraire (mêmes km/h, mêmes libellés) ; libellés résolus AU RENDU
+  // (_presetLabel/_presetHint → lost.preset.<key>.*).
   const LOST_MODE_PRESETS = {
     blesse:  { kmh: 2, icon: "🤕" },
     lente:   { kmh: 3, icon: "🐌" },
@@ -54,13 +35,10 @@
   const DEFAULT_LOST_PRESET     = "normale";
   const LOST_PRESET_STORAGE_KEY = "myktamap_lost_preset";
 
-  // Preset initial dérivé du localStorage
   const _initialPreset = (function() {
     try {
       let v = localStorage.getItem(LOST_PRESET_STORAGE_KEY);
-      // 🆕 v1.26.3 — Micro-migration : l'ancien preset "bourre" a été
-      // renommé "blesse" (professionnalisation). Réécrit la valeur stockée
-      // pour préserver le réglage des users qui avaient ce preset actif.
+      // Ancien preset « bourre » renommé « blesse » : réécrit pour garder le réglage.
       if (v === "bourre") {
         v = "blesse";
         try { localStorage.setItem(LOST_PRESET_STORAGE_KEY, v); } catch(e) {}
@@ -73,13 +51,11 @@
 
   const COLOR_ZONE      = "#ff6b35";
   const COLOR_MATCH_IN  = "#b452ff";
-  // 🛣️ v173 : portée max sur le réseau de routes (rouge clair, choix 3b validé)
-  // Cohérent avec le thème urgence — rouge sans être trop agressif.
+  // Portée max sur le réseau de routes (rouge clair).
   const COLOR_REACH     = "#ff8080";
 
-  // ===== État interne =====
   let _active           = false;
-  let _lastKnownPos     = null;   // {x, y, level, label} (level depuis le 29/09/2026)
+  let _lastKnownPos     = null;   // {x, y, level, label}
   let _elapsedMinutes   = DEFAULT_ELAPSED_MIN;
   let _speedKmH         = DEFAULT_SPEED_KMH;
   let _radiusPx         = 0;
@@ -89,13 +65,9 @@
   let _zoneOverflow     = false;  // true si le rayon dépasse la taille du plan
   let _lastClues        = "";     // texte des indices saisis (pour restauration)
   let _currentPreset    = _initialPreset;  // clé du preset actif (blesse/lente/normale/rapide)
-  // 🆕 v1.43.26 — Timeout debounce de la recherche autocomplete. Promu au
-  // scope module pour pouvoir être cleared au close (sinon le setTimeout
-  // continue de tourner et tente d'écrire dans `searchResults.innerHTML`
-  // alors que l'élément a déjà été retiré du DOM).
-  // 🆕 v1.44.0 — Migré progressivement vers _lc.setTimeout (tracking auto).
+  // Débounce de la recherche au scope module : vidé au close, sinon il écrit dans un élément retiré du DOM.
   let _searchTimeout    = null;
-  // 🆕 v1.44.0 — Pilote ModalLifecycle de la modale Lost Mode.
+  // Pilote ModalLifecycle de la modale.
   let _lc               = null;
 
 
@@ -107,32 +79,23 @@
     return true;
   }
 
-  // Layers Leaflet (cleanup au close)
   let _zoneLayer        = null;
   let _lastKnownMarker  = null;
   let _matchMarkers     = [];
-  // 🐛 v1.34.15 (Pack RAM #4) — Promote svgRenderer du scope local de
-  // _renderOnMap (était `const svgRenderer = L.svg(...)`) au scope module.
-  // Sans ça, à chaque appel de _renderOnMap, un NOUVEAU L.svg() était créé
-  // et addTo(map), mais l'ancien restait attaché dans map._layers (jamais
-  // retiré). Sur plusieurs calculs de zone successifs (= user qui ajuste
-  // les critères de recherche), accumulation linéaire de SVG renderers
-  // dans le DOM Leaflet → fuite mémoire + ralentissement du re-render.
-  // Fix : on garde une seule instance, on l'enlève dans _clearLayers.
+  // 🩸 UN seul L.svg() au scope module, retiré dans _clearLayers : en recréer un à chaque _renderOnMap
+  // les accumule dans map._layers (fuite mémoire, rendu ralenti à chaque ajustement des critères).
   let _svgRenderer      = null;
   let _refinedCircle    = null;
-  // 🛣️ v173 : layers pour la portée max sur le réseau de routes
   let _reachPolyFull    = null;   // polyline multi-segments rouge (segments complets atteints)
   let _reachPolyPartial = null;   // polyline multi-segments rouge (segments tronqués)
   let _reachLeadLine    = null;   // ligne pointillée du point au snap road (cas départ éloigné)
   let _reachStats       = null;   // { fullCount, partialCount, totalReachableDistance, snapDistance, exceedsBudget }
 
-  // Mode click-carte pour saisir la position
   let _clickModeActive  = false;
   let _clickHandler     = null;
 
-  // ===== Helpers =====
-  // 🌍 i18n — résolution AU RENDU (jamais au load). Fallback FR si I18n absent.
+  // ── Helpers ──
+  // i18n au RENDU (jamais au load), repli FR.
   function _t(key, params) {
     if (window.I18n && typeof window.I18n.t === "function") {
       return window.I18n.t(key, params);
@@ -150,7 +113,6 @@
     if (typeof window.convertCoord === "function") {
       return window.convertCoord(x, y);
     }
-    // Fallback : suppose APP_CONFIG.imageHeight dispo
     const h = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
     return [h - y, x];
   }
@@ -160,13 +122,9 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  // Génère un polygone qui approxime un cercle autour d'un centre Leaflet [lat, lng].
-  // On utilise un polygone plutôt que L.circle parce que :
-  //   1. Avec L.CRS.Simple, L.circle a une interprétation du rayon (CRS units vs
-  //      mètres) variable selon la version Leaflet — sources de surprises.
-  //   2. Avec preferCanvas: true (notre map), les CSS animations ne s'appliquent
-  //      pas sur les paths canvas. Un polygone forcé en SVG (renderer: L.svg())
-  //      garde les pulsations CSS opérationnelles.
+  // Polygone approximant un cercle plutôt que L.circle : en CRS.Simple le rayon de L.circle s'interprète
+  // différemment selon la version de Leaflet, et avec preferCanvas les animations CSS ne s'appliquent pas
+  // aux paths canvas — un polygone forcé en SVG garde les pulsations.
   function _circleAsPolygon(centerLatLng, radiusInCrsUnits, numPoints) {
     const cy = centerLatLng[0];
     const cx = centerLatLng[1];
@@ -187,26 +145,19 @@
     return distM < 1000 ? distM.toFixed(0) + " m" : (distM / 1000).toFixed(2) + " km";
   }
 
-  // ===== Calcul du rayon de recherche =====
+  // ── Rayon de recherche ──
   function _calculerRayon() {
-    // distance (m) = vitesse_km_h × 1000 × temps_min / 60
-    // Pas de marge de sécurité — le rayon est exactement la distance que la
-    // personne aurait pu parcourir à la vitesse présumée durant le temps écoulé.
+    // distance (m) = km/h × 1000 × min / 60, sans marge : ce que la personne a pu parcourir.
     const distMeters = _speedKmH * 1000 * _elapsedMinutes / 60;
     _radiusMeters = distMeters;
     _radiusPx     = distMeters * _scale();
     return _radiusPx;
   }
 
-  // ===== Recherche des indices =====
-  //
-  // Normalisation pour insensibilité casse + accents :
-  //   "Tanière", "Taniere", "TANIÈRE", "taniére" → "taniere"
-  // NFD décompose les caractères accentués en base + combining mark,
-  // puis on retire la classe U+0300..U+036F (combining diacritical marks).
+  // ── Recherche des indices ──
+  // Insensible à la casse et aux accents : NFD sépare les accents (U+0300..U+036F), retirés ensuite.
   function _normalizeStr(s) {
     if (s === null || s === undefined) return "";
-    // ̀-ͯ = "combining diacritical marks" (les accents que NFD a séparés)
     return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   }
 
@@ -217,7 +168,6 @@
       return [];
     }
 
-    // Tokens normalisés (sans accents, minuscules)
     const tokens = _normalizeStr(queryText)
                     .split(/[\s,;/]+/)
                     .map(function(t) { return t.trim(); })
@@ -231,7 +181,6 @@
     for (const item of all) {
       const p = item.point || item;
       const layerLabel = item.layerLabel || item.layerId || item.layer || "—";
-      // Haystack également normalisé pour matcher
       const haystack = _normalizeStr([
         p.nom || "", p.id || "",
         p.description || p.desc || "",
@@ -253,13 +202,12 @@
       }
     }
 
-    // Tri : plus de matched tokens en premier, puis ordre arbitraire
+    // Plus de jetons trouvés d'abord.
     matches.sort(function(a, b) { return b.hits - a.hits; });
 
     return matches.slice(0, MAX_MATCHES_SHOWN);
   }
 
-  // ===== Enrichissement matches avec distance/zone =====
   function _annoterMatches(matches) {
     if (!_lastKnownPos) {
       return matches.map(function(m) {
@@ -274,7 +222,7 @@
     });
   }
 
-  // ===== Barycentre des matchs in-zone =====
+  // Barycentre des indices dans la zone.
   function _calculerLocAffinee(matches) {
     const inZone = matches.filter(function(m) { return m.inZone; });
     if (inZone.length === 0) return null;
@@ -283,7 +231,7 @@
     return { x: sx / inZone.length, y: sy / inZone.length, count: inZone.length };
   }
 
-  // ===== Rendu carte =====
+  // ── Rendu carte ──
   function _clearLayers() {
     if (!window.map) return;
     if (_zoneLayer)         { window.map.removeLayer(_zoneLayer);         _zoneLayer = null; }
@@ -295,8 +243,6 @@
     _reachStats = null;
     _matchMarkers.forEach(function(m) { window.map.removeLayer(m); });
     _matchMarkers = [];
-    // 🐛 v1.34.15 (Pack RAM #4) — Libère le SVG renderer (sinon il reste
-    // attaché à window.map._layers et accumule à chaque _renderOnMap).
     if (_svgRenderer)       { window.map.removeLayer(_svgRenderer);       _svgRenderer = null; }
   }
 
@@ -306,7 +252,6 @@
 
     const ll = _toLatLng(_lastKnownPos.x, _lastKnownPos.y);
 
-    // Diag complet — pour qu'on voie tout de suite si la chaîne se casse
     console.log("[LostMode] === Rendu carte ===");
     console.log("[LostMode] APP_CONFIG.scale =", _scale(), "px/m");
     console.log("[LostMode] APP_CONFIG.imageHeight =",
@@ -326,15 +271,8 @@
                 "/ 25e point", polyPoints[24],
                 "/ 49e point", polyPoints[48]);
 
-    // Zone de recherche — polygone échantillonné rendu en SVG explicite.
-    // Pourquoi SVG malgré preferCanvas:true ? Quand on ajoute un polygone canvas
-    // après l'init de la map, le canvas commun de Leaflet peut ne pas redessiner
-    // automatiquement la nouvelle layer si elle n'est pas attachée à un
-    // LayerGroup déclaré comme layer Leaflet. SVG est plus fiable pour les
-    // ajouts ad-hoc en cours de session.
-    // 🐛 v1.34.15 (Pack RAM #4) — Réutilise _svgRenderer module-level si déjà
-    // créé (cf _clearLayers qui le revoke). Évite d'accumuler des SVG renderers
-    // attachés à map._layers à chaque appel de _renderOnMap.
+    // Zone en SVG explicite malgré preferCanvas : un polygone canvas ajouté après l'init, hors LayerGroup
+    // déclaré, peut ne pas être redessiné. Renderer module-level réutilisé (cf _clearLayers).
     _svgRenderer = L.svg({ padding: 0.5 });
     _svgRenderer.addTo(window.map);
     const svgRenderer = _svgRenderer;  // alias pour rétro-compat des lignes suivantes
@@ -352,12 +290,11 @@
       _zoneLayer.addTo(window.map);
       console.log("[LostMode] ✓ Zone polygon addTo(map) OK,",
                   "layer in map?", window.map.hasLayer(_zoneLayer));
-      // Force redraw pour s'assurer que le SVG est dessiné immédiatement
       if (_zoneLayer.bringToFront) _zoneLayer.bringToFront();
       if (_zoneLayer._renderer && _zoneLayer._renderer._update) {
         _zoneLayer._renderer._update();
       }
-      // Vérif post-attache : la layer existe-t-elle vraiment dans le DOM ?
+      // Vérification post-attache : la couche existe-t-elle dans le DOM ?
       setTimeout(function() { // lint-ok-modal-lifecycle (diagnostic post-render leaflet, hors lifecycle modale)
         const path = _zoneLayer._path;
         const bbox = path && path.getBoundingClientRect ? path.getBoundingClientRect() : null;
@@ -368,19 +305,15 @@
       console.error("[LostMode] ❌ addTo(map) a throw :", e);
     }
 
-    // Détection "rayon trop grand vs plan" — la zone couvre tout le viewport
-    // et l'utilisateur peut croire qu'il n'y a pas de zone. On enregistre le
-    // ratio pour afficher un warning dans la modale après le calcul.
+    // Rayon plus grand que le plan : la zone couvre tout l'écran et semble absente → avertissement.
     const W = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || 1;
     const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 1;
     const planMaxDim = Math.max(W, H);
     _zoneOverflow = (_radiusPx * 2 > planMaxDim);
     console.log("[LostMode] Plan max dim :", planMaxDim, "px → zone overflow ?", _zoneOverflow);
 
-    // Helper d'échappement HTML (sécurité + cohérence visuelle)
     function _esc(s) { return window.ktaEsc(s); }
 
-    // Marker dernière position connue (avec popup charte dark au clic)
     const lastIcon = L.divIcon({
       className: "kta-lost-marker-last",
       html: '<div class="kta-lost-marker-last-inner">📍</div>',
@@ -399,10 +332,8 @@
       .addTo(window.map)
       .bindPopup(lastPopupHtml, { className: "kta-lost-popup-wrapper", autoPan: true });
 
-    // 🛣️ v173 : Portée max sur le réseau de routes (Pathfinder.computeReachable).
-    // Affiché systématiquement (choix 2c validé KARMA : pas de toggle, toujours
-    // actif quand Pathfinder dispo). Restreint visuellement la zone aux galeries
-    // physiquement accessibles, en complément du cercle théorique.
+    // Portée max sur le réseau (Pathfinder.computeReachable), toujours affichée si Pathfinder est là :
+    // restreint la zone aux galeries physiquement accessibles, en complément du cercle théorique.
     try {
       if (window.Pathfinder && typeof window.Pathfinder.computeReachable === "function") {
         const reach = window.Pathfinder.computeReachable(_lastKnownPos, _radiusPx);
@@ -416,10 +347,9 @@
         };
         console.log("[LostMode] Reach :", _reachStats);
 
-        // Cas 1 : départ ≤ budget des routes → on a au moins quelques segments
+        // Départ dans le budget : au moins quelques segments.
         if (!reach.exceedsBudget && (reach.fullSegments.length || reach.partialSegments.length)) {
-          // Ligne pointillée du startPoint vers le snapPoint si distance vol
-          // d'oiseau > 5px (choix 4b : informer l'user du décrochage point→road)
+          // Pointillé du départ vers le point de calage s'il est à plus de 5 px (décrochage visible).
           if (reach.snapPoint && reach.snapDistance > 5) {
             _reachLeadLine = L.polyline([
               ll,
@@ -435,9 +365,8 @@
             }).addTo(window.map);
           }
 
-          // UNE seule polyline multi-segments (perf — cf §16 piège : N polylines
-          // avec drop-shadow = compositing GPU explose à 10+ roads sur mobile)
-          // pour les segments full
+          // UNE polyline multi-segments : N polylines avec drop-shadow font exploser le compositing GPU sur
+          // mobile.
           if (reach.fullSegments.length > 0) {
             const fullLatLngs = reach.fullSegments.map(function(seg) {
               return [_toLatLng(seg[0].x, seg[0].y), _toLatLng(seg[1].x, seg[1].y)];
@@ -452,7 +381,6 @@
             }).addTo(window.map);
           }
 
-          // Idem pour les segments tronqués (au point d'arrêt budget)
           if (reach.partialSegments.length > 0) {
             const partLatLngs = reach.partialSegments.map(function(seg) {
               return [_toLatLng(seg[0].x, seg[0].y), _toLatLng(seg[1].x, seg[1].y)];
@@ -467,15 +395,13 @@
             }).addTo(window.map);
           }
         }
-        // Cas 2 : départ trop loin de toute road → juste le cercle, pas de rouge
-        // (l'user verra dans le rapport "Aucune route accessible depuis ce point")
+        // Départ loin de toute route : cercle seul (le rapport dit « Aucune route accessible »).
       }
     } catch(e) {
       console.warn("[LostMode] Pathfinder.computeReachable échec :", e);
       _reachStats = null;
     }
 
-    // Markers matches (in-zone violet, hors zone gris) — popups charte aussi
     _matches.forEach(function(m) {
       const cls = m.inZone ? "kta-lost-marker-match-in" : "kta-lost-marker-match-out";
       const sym = m.inZone ? "🔮" : "·";
@@ -510,7 +436,6 @@
       _matchMarkers.push(mk);
     });
 
-    // Cercle "localisation probable affinée" — polygone SVG aussi
     if (_refinedLoc) {
       const refinedRadius = Math.max(60, _radiusPx * 0.15);
       _refinedCircle = L.polygon(
@@ -526,7 +451,6 @@
       ).addTo(window.map);
     }
 
-    // Recadre la vue sur la zone (avec padding pour voir le pourtour + indices)
     try {
       const bounds = _zoneLayer.getBounds();
       if (bounds && bounds.isValid()) {
@@ -537,8 +461,8 @@
     }
   }
 
-  // ===== Mode "clic carte" pour saisir la dernière position =====
-  // Niveau affiché (clic carte, tracker) : c'est là que la personne a été vue.
+  // ── Clic carte pour la dernière position ──
+  // Niveau affiché (clic carte, tracker) : là où la personne a été vue.
   function _niveauAffiche() {
     return (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel)) ? window.APP_CONFIG.activeLevel : 0;
   }
@@ -548,9 +472,7 @@
     _desactiverClicCarte();
     _clickModeActive = true;
     document.body.classList.add("kta-lost-click-mode");
-    // 🆕 v1.48.0 : curseur géré par CSS (body.kta-lost-click-mode → réticule
-    // de précision contrasté). On n'impose plus de crosshair inline (qui
-    // écraserait le curseur custom de la charte).
+    // Curseur géré par la CSS (body.kta-lost-click-mode → réticule) : pas de crosshair inline.
     window.map.getContainer().style.cursor = "";
     _clickHandler = function(e) {
       const x = Math.round(e.latlng.lng);
@@ -574,7 +496,7 @@
     }
   }
 
-  // ===== Génération du rapport texte =====
+  // ── Rapport texte ──
   function _genererRapport() {
     const config = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? window.PLAN_CONFIG.plan : {};
     const now = new Date();
@@ -609,9 +531,7 @@
     }));
     lines.push(_t("lost.report.rayon", { radius: _formatDist(_radiusPx) }));
 
-    // 🛣️ v173 : portée max sur le réseau de routes (Pathfinder.computeReachable).
-    // Donne aux secours une info concrète sur le réseau physique parcouru
-    // plutôt qu'un simple cercle théorique.
+    // Portée réseau : une info concrète pour les secours plutôt qu'un cercle théorique.
     if (_reachStats) {
       if (_reachStats.exceedsBudget) {
         const r = _reachStats.reason;
@@ -623,7 +543,7 @@
           lines.push(_t("lost.report.reach.unknown", { reason: r || _t("lost.report.reach.reasonUnknown") }));
         }
       } else {
-        // Pluralisation des segments construite côté JS (FR ajoute "s", EN gère via la clé)
+        // Pluriel construit ici (FR ajoute « s », EN passe par la clé).
         const fc = _reachStats.fullCount;
         const pc = _reachStats.partialCount;
         const fullStr = _t("lost.report.reach.full" + (fc > 1 ? ".plural" : ".one"), { n: fc });
@@ -683,7 +603,6 @@
     return lines.join("\n");
   }
 
-  // ===== Validation des entrées =====
   function _validerEtCalculer(queryIndices) {
     if (!_lastKnownPos) {
       throw new Error(_t("lost.err.noPos"));
@@ -705,7 +624,7 @@
     });
   }
 
-  // ===== Ajouter localisation comme point éditeur de session =====
+  // ── Confirmer : la localisation devient un point éditeur de session ──
   function _confirmerLocalisation() {
     if (!_refinedLoc && !_lastKnownPos) return false;
     const target = _refinedLoc || _lastKnownPos;
@@ -714,8 +633,7 @@
       nom: _t("lost.point.nom"),
       x: Math.round(target.x),
       y: Math.round(target.y),
-      // Tag danger → icône ⚠️ panneau, justifié pour marquer une position incertaine
-      // issue d'une situation d'urgence (rappel visuel fort sur la carte).
+      // Tag danger : marque visuellement une position incertaine issue d'une urgence.
       tags: ["danger"],
       description: _t("lost.point.desc", {
         radius: _formatDist(_radiusPx),
@@ -737,16 +655,10 @@
     return false;
   }
 
-  // ===== Open/Close =====
-  // Sémantique de persistance (alignée sur "📏 Distance totale") :
-  //   - open()             : ouvre la modale. Si une session précédente est
-  //                          encore visible sur la carte (_zoneLayer existe),
-  //                          on restaure l'état dans la modale (pre-fill).
-  //   - close(keepLayers=true)  : ferme juste la modale. Garde zone + markers
-  //                                visibles sur la carte. C'est le défaut pour
-  //                                ✕ / clic backdrop / Fermer.
-  //   - close(keepLayers=false) : ferme la modale ET purge les layers de la
-  //                                carte. Pour "❌ Effacer la zone" et "✅ Confirmer".
+  // ── Ouverture / fermeture ──
+  // open() : si une zone est encore sur la carte, l'état est restauré dans la modale.
+  // close({ keepLayers: true }) (défaut : ✕, fond, Fermer) garde zone et marqueurs sur la carte ;
+  // close({ keepLayers: false }) les purge (Effacer la zone, Confirmer). Même logique que « 📏 Distance totale ».
   function open() {
     _desactiverClicCarte();
 
@@ -757,7 +669,6 @@
     const restoreMode = (_zoneLayer !== null) && (_lastKnownPos !== null);
     _afficherModale();
 
-    // Si une zone est déjà sur la carte, pré-remplir les champs avec l'état mémoire
     if (restoreMode) {
       _restaurerEtatModale();
     }
@@ -785,15 +696,12 @@
     }
 
     _active = false;
-    // 🆕 v1.43.26 — Cancel le debounce de la recherche autocomplete pour éviter
-    // qu'un setTimeout pending tente d'écrire dans un élément retiré du DOM.
+    // Débounce annulé : un setTimeout en attente écrirait dans un élément retiré.
     if (_searchTimeout) { clearTimeout(_searchTimeout); _searchTimeout = null; }
-    // 🆕 v1.44.0 — Cleanup centralisé via ModalLifecycle (timers + listeners).
     if (_lc) { _lc.close(); _lc = null; }
     const m = document.getElementById("kta-lost-modal");
     if (m) m.remove();
 
-    // Vérification post-close après reflow
     if (keepLayers) {
       setTimeout(function() { // lint-ok-modal-lifecycle (diagnostic post-close, modale déjà détruite)
         console.log("[LostMode] Post-close : _zoneLayer =", !!_zoneLayer,
@@ -803,20 +711,16 @@
     }
   }
 
-  // Restaure les valeurs des inputs/résultats à partir de l'état en mémoire
-  // (appelé quand on rouvre la modale alors qu'une zone est déjà active)
+  // Rouverte alors qu'une zone est active : champs et résultats restaurés depuis la mémoire.
   function _restaurerEtatModale() {
-    // Position
     if (_lastKnownPos) {
       _selectionnerPosition(_lastKnownPos);
     }
-    // Slider temps écoulé
     const elapsedRange = document.getElementById("kta-lost-elapsed");
     const elapsedNum   = document.getElementById("kta-lost-elapsed-num");
     if (elapsedRange) elapsedRange.value = _elapsedMinutes;
     if (elapsedNum)   elapsedNum.value   = _elapsedMinutes;
 
-    // Segmented preset (re-sync visuel sur _currentPreset)
     const segWrap = document.getElementById("kta-lost-preset-segmented");
     if (segWrap) {
       segWrap.querySelectorAll(".kta-lost-preset-btn").forEach(function(b) {
@@ -825,23 +729,19 @@
       });
     }
 
-    // Indices (restauré tel quel)
     const cluesEl = document.getElementById("kta-lost-clues");
     if (cluesEl && typeof _lastClues === "string") cluesEl.value = _lastClues;
 
-    // Si une zone est encore visible sur la carte (peu importe qu'il y ait des
-    // indices matchés ou non), on ré-affiche la section résultats — c'est elle
-    // qui contient le bouton 🗑️ Effacer, indispensable pour que l'utilisateur
-    // puisse retirer la zone sans avoir à re-cliquer Calculer.
+    // Zone encore visible (avec ou sans indices) : la section résultats revient, elle porte le bouton
+    // 🗑️ Effacer — sinon impossible de retirer la zone sans recalculer.
     if (_zoneLayer !== null) {
       _afficherResultats();
-      // Le bouton Calculer devient "🔄 Recalculer"
       const calc = document.getElementById("kta-lost-calc");
       if (calc) calc.textContent = _t("lost.btn.recalc");
     }
   }
 
-  // ===== Modale UI =====
+  // ── Modale ──
   function _afficherModale() {
     const existing = document.getElementById("kta-lost-modal");
     if (existing) { existing.remove(); }
@@ -933,8 +833,7 @@
           '<div class="kta-lost-section">' +
             '<div class="kta-lost-section-titre">' + _t("lost.section.vitesse") + '</div>' +
             (function() {
-              // Segmented control 4 presets — mêmes valeurs que le mode itinéraire
-              // (cohérence UX). Le rayon = vitesse × temps, pas de marge.
+              // 4 presets, mêmes valeurs que l'itinéraire ; rayon = vitesse × temps.
               let html = '<div class="kta-lost-preset-segmented" id="kta-lost-preset-segmented">';
               Object.keys(LOST_MODE_PRESETS).forEach(function(key) {
                 const p = LOST_MODE_PRESETS[key];
@@ -975,8 +874,7 @@
       '</div>';
     document.documentElement.appendChild(modal);
 
-    // 🆕 v1.44.0 — ModalLifecycle attaché : cleanup auto au close (listeners
-    // + timers + blob URLs si on en ajoute plus tard).
+    // ModalLifecycle : listeners et timers nettoyés au close.
     if (window.ModalLifecycle) {
       _lc = window.ModalLifecycle.attach(modal, { label: "LostMode" });
     }
@@ -985,10 +883,8 @@
   }
 
   function _bindModalEvents() {
-    // ✕ en haut à droite + bouton "👁️ Fermer" + backdrop
-    // → ferment juste la modale, gardent la zone visible sur la carte.
-    // (Le bouton "🗑️ Effacer la zone et fermer" est dans la section résultats
-    //  et est bindé après le rendu des résultats, voir _afficherResultats.)
+    // ✕, « 👁️ Fermer » et fond ferment la modale en gardant la zone (« 🗑️ Effacer » est bindé après le
+    // rendu des résultats, cf _afficherResultats).
     document.getElementById("kta-lost-close").addEventListener("click", function() {
       close({ keepLayers: true });
     });
@@ -996,14 +892,12 @@
       close({ keepLayers: true });
     });
 
-    // Sliders bidirectionnels (range <-> num)
     const elapsedRange = document.getElementById("kta-lost-elapsed");
     const elapsedNum   = document.getElementById("kta-lost-elapsed-num");
     elapsedRange.addEventListener("input", function() { elapsedNum.value = elapsedRange.value; _elapsedMinutes = parseInt(elapsedRange.value, 10); });
     elapsedNum.addEventListener("input",   function() { elapsedRange.value = elapsedNum.value;  _elapsedMinutes = parseInt(elapsedNum.value, 10); });
 
-    // Segmented control 4 presets — au clic, on update _speedKmH + persistance,
-    // et si une zone est déjà visible on la recalcule instantanément.
+    // Clic sur un preset : vitesse persistée, zone recalculée si elle est visible.
     const segWrap = document.getElementById("kta-lost-preset-segmented");
     if (segWrap) {
       segWrap.querySelectorAll(".kta-lost-preset-btn").forEach(function(btn) {
@@ -1013,7 +907,6 @@
           segWrap.querySelectorAll(".kta-lost-preset-btn").forEach(function(b) {
             b.classList.toggle("kta-lost-preset-active", b === btn);
           });
-          // Recalcul instantané si une zone existe déjà sur la carte
           if (_zoneLayer && _lastKnownPos) {
             _calculerRayon();
             _matches    = _annoterMatches(_matches);  // recompute inZone selon nouveau rayon
@@ -1025,22 +918,17 @@
       });
     }
 
-    // Recherche autocomplete position
     const searchInput   = document.getElementById("kta-lost-search");
     const searchResults = document.getElementById("kta-lost-search-results");
     searchInput.addEventListener("input", function() {
-      // 🆕 v1.43.26 — utilise le `_searchTimeout` module-level (cleared au close)
       clearTimeout(_searchTimeout);
       const q = searchInput.value.trim();
       if (q.length < 2) { searchResults.innerHTML = ""; return; }
       _searchTimeout = setTimeout(async function() {
         try {
           const found = await window.SearchPoints.findByQuery(q);
-          // 🆕 v1.43.27 (Pattern C) — Guard : modale peut avoir été fermée
-          // pendant l'await findByQuery() (qui peut prendre 100-500 ms sur
-          // une grosse base de points). Sans guard, on écrirait dans un
-          // searchResults DOM-détaché + on appendrait des divs orphelins
-          // + les listeners click resteraient zombies.
+          // La modale a pu être fermée pendant l'await (100-500 ms sur une grosse base) : sinon écriture dans
+          // un élément détaché et listeners zombies.
           if (!searchResults.isConnected) return;
           searchResults.innerHTML = "";
           found.slice(0, 8).forEach(function(item) {
@@ -1053,8 +941,8 @@
             div.addEventListener("click", function() {
               _selectionnerPosition({
                 x: p.x, y: p.y,
-                // Niveau du POI, pas celui affiché ; POI sans niveau → null (4e relecture,
-                // R4-14 : « sans niveau » ne doit pas activer le calage au niveau 0).
+                // Niveau du POI, pas celui affiché ; POI sans niveau → null (« sans niveau » n'active pas le
+                // calage au niveau 0).
                 level: Number.isInteger(p.level) ? p.level : null,
                 label: (p.nom || p.id || "?") + " — " + (item.layerLabel || item.layer || "")
               });
@@ -1072,7 +960,6 @@
       }, 200);
     });
 
-    // Clic carte
     document.getElementById("kta-lost-click-mode").addEventListener("click", function() {
       const modalEl = document.getElementById("kta-lost-modal");
       if (modalEl) modalEl.style.display = "none";
@@ -1082,7 +969,6 @@
       });
     });
 
-    // Position tracker
     document.getElementById("kta-lost-use-tracker").addEventListener("click", function() {
       let pos = null;
       if (window.getTrackingPosition && typeof window.getTrackingPosition === "function") {
@@ -1091,22 +977,19 @@
       if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
         _selectionnerPosition({ x: pos.x, y: pos.y, level: _niveauAffiche(), label: _t("lost.pos.trackerLabel") });
       } else if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        // Relecture (C1) : alert() natif migré — fonction touchée au 29/09/2026.
         window.OOMGuard.showToast(_t("lost.err.noTracker"), "warn");
       } else {
         window.ktaAlerte(_t("lost.err.noTracker"));
       }
     });
 
-    // Bouton Calculer
     document.getElementById("kta-lost-calc").addEventListener("click", async function() {
       const btn = this;
       btn.disabled = true;
       btn.textContent = _t("lost.btn.calcLoading");
       try {
         _lastClues = document.getElementById("kta-lost-clues").value || "";
-        // 🌀 v1.55.1 : overlay « calcul en cours » (computeReachable est SYNC
-        // bloquant → sans yield-to-paint l'écran fige sans rien montrer).
+        // Overlay « calcul en cours » : computeReachable est SYNCHRONE, sans yield-to-paint l'écran fige.
         const _msg = _t("lost.compute.loading");
         if (window.ComputeLoader && window.ComputeLoader.wrap) {
           await window.ComputeLoader.wrap(function() { return _validerEtCalculer(_lastClues); }, _msg);
@@ -1122,7 +1005,7 @@
       }
     });
 
-    // Fermeture backdrop — comportement identique au ✕ (garde les layers)
+    // Fond : comme ✕ (garde les couches).
     const modal = document.getElementById("kta-lost-modal");
     modal.addEventListener("click", function(e) {
       if (e.target === modal) close({ keepLayers: true });
@@ -1156,9 +1039,7 @@
               '· ' + _t("lost.results.zone.detail", { speed: _speedKmH, m: _elapsedMinutes }) +
             '</span></div>';
     if (_zoneOverflow) {
-      // 🆕 v1.43.26 — Classe CSS dédiée au lieu de styles inline hardcodés (qui
-      // restaient illisibles en thème clair). Les overrides light vivent dans
-      // css/style.css sous body.kta-theme-light .kta-lost-warn-overflow.
+      // Classe CSS (pas de style inline, illisible en thème clair : override dans style.css).
       html += '<div class="kta-lost-stat kta-lost-warn-overflow">' +
               _t("lost.results.overflow") +
               '</div>';
@@ -1213,10 +1094,7 @@
               '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">' + _t("lost.btn.copyReport") + '</button>' +
               '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">' + _t("lost.btn.confirm") + '</button>' +
             '</div>' +
-            // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours
-            // depuis Lost Mode. Pré-remplit le scénario avec context.lastKnownPoint
-            // + zoneIncertitude + elapsedMinutes → workflow naturel "je suis
-            // perdu (OU je cherche quelqu'un) → coordination équipes".
+            // Lancer un plan de secours pré-rempli (dernier point, zone, temps écoulé).
             '<div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,140,140,0.20);">' +
               '<button class="kta-btn kta-btn-danger" id="kta-lost-launch-secours" type="button" ' +
                 'style="background:rgba(255,68,68,0.85); color:#fff; border:1px solid #ff4444;" ' +
@@ -1234,11 +1112,11 @@
       const btn = this;
       const txt = _genererRapport();
       try {
-        // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+        // utils.js : clipboard puis repli execCommand (HTTP local).
         if (!(await window.ktaCopierTexte(txt))) throw new Error("clipboard + execCommand KO");
         const original = btn.textContent;
         btn.textContent = _t("lost.btn.copied");
-        // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.5s.
+        // setTimeout suivi : annulé si la modale ferme avant 1,5 s.
         const restoreFn = function() { if (btn.isConnected) btn.textContent = original; };
         if (_lc) _lc.setTimeout(restoreFn, 1500);
         else     setTimeout(restoreFn, 1500); // lint-ok-modal-lifecycle (fallback si _lc null)
@@ -1252,14 +1130,13 @@
       const ok = _confirmerLocalisation();
       if (ok) {
         await window.ktaAlerte(_t("lost.alert.confirmOk"));
-        // Une fois le point figé en session, la zone d'exploration n'a plus d'utilité
+        // Point figé en session : la zone n'a plus d'utilité.
         close({ keepLayers: false });
       } else {
         window.ktaAlerte(_t("lost.alert.confirmFail"), { type: "erreur" });
       }
     });
 
-    // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours pré-rempli
     const launchSecoursBtn = document.getElementById("kta-lost-launch-secours");
     if (launchSecoursBtn) {
       launchSecoursBtn.addEventListener("click", function() {
@@ -1272,15 +1149,12 @@
           window.ktaAlerte(_t("lost.alert.secoursNoPos"));
           return;
         }
-        // Ferme la modale Lost Mode (mais garde les layers carte pour
-        // contexte visuel pendant l'édition du scénario)
+        // La modale ferme mais les couches restent (contexte pendant l'édition du scénario).
         close({ keepLayers: true });
-        // Crée + ouvre le scénario pré-rempli
         window.SecoursMode.creerDepuisLostMode(lostState);
       });
     }
 
-    // 🗑️ Effacer la zone et fermer — petit lien dans la section résultats
     const wipeBtn = document.getElementById("kta-lost-wipe");
     if (wipeBtn) {
       wipeBtn.addEventListener("click", function() {
@@ -1289,25 +1163,20 @@
     }
   }
 
-  // ===== Cleanup au plan switch (appelé par main.js > _libererRessourcesPlanPrecedent) =====
-  // Plan switch = on perd tout : la carte sera détruite et reconstruite,
-  // donc on purge à fond (layers + état + modale éventuellement ouverte).
+  // ── Changement de plan (main.js > _libererRessourcesPlanPrecedent) : purge complète ──
   function _onPlanSwitch() {
     close({ keepLayers: false });
   }
 
-  // 🆕 v1.23.0 Phase 2 / Feature C (KARMA Mode Secours auto pre-fill context
-  // depuis Lost Mode) : expose le state pour SecoursMode.creerDepuisLostMode.
-  // Snapshot défensif (clone des objets) pour éviter mutations cross-module.
+  // État pour SecoursMode.creerDepuisLostMode : copie défensive (pas de mutation croisée).
   function getState() {
     return {
       active:         _active,
       lastKnownPos:   _lastKnownPos ? {
         x:     _lastKnownPos.x,
         y:     _lastKnownPos.y,
-        // 🩸 29/09/2026 (audit Secours) — le niveau voyage avec la position : le
-        // Mode Secours prenait le niveau AFFICHÉ au moment du clic sur « Lancer un
-        // plan de secours », faux dès qu'on avait changé d'étage entre-temps.
+        // 🩸 Le niveau voyage avec la position : le niveau AFFICHÉ au lancement est faux si on a changé
+        // d'étage entre-temps.
         level: Number.isInteger(_lastKnownPos.level) ? _lastKnownPos.level : null,
         label: _lastKnownPos.label || null
       } : null,
@@ -1320,7 +1189,7 @@
     };
   }
 
-  // ===== Export global =====
+  // ── Export global ──
   window.LostMode = {
     open: open,
     close: close,

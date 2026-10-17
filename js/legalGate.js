@@ -1,58 +1,38 @@
 /*!
- * MyKTAMap — Gate « Conditions d'utilisation & avertissement légal » (v1.56.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
+// legalGate.js — Gate « Conditions d'utilisation & avertissement légal »
 
 // =========================
-// LEGALGATE.JS — Conditions d'utilisation + avertissement légal (depuis v1.56.0)
+// LEGALGATE.JS — conditions d'utilisation + avertissement légal
 // =========================
-// Gate BLOQUANTE au premier lancement (case à cocher + « J'accepte ») rappelant
-// que MyKTAMap est un outil de repérage, pas une incitation à pénétrer dans des
-// lieux interdits : l'accès aux anciennes carrières de Paris est prohibé
-// (arrêté préfectoral du 2 novembre 1955) et l'intrusion en lieu privé/interdit
-// engage la seule responsabilité de l'utilisateur.
-//
-// - Séquencée par js/firstRunFlow.js (étape « légal », après une éventuelle
-//   alerte critique et avant l'onboarding).
-// - Ré-accessible à tout moment en consultation (footer / Documentation) via
-//   ouvrirConsultation() — non bloquant, sans case à cocher.
-// - Le CADRAGE GÉNÉRAL est traduit (fr/en, clés legal.*) ; les TEXTES DE LOI
-//   (arrêté + réponse Sénat) restent en FR (droit français, non traduit),
-//   stockés en constantes verbatim ci-dessous et mirrorés dans
-//   docs/applications/CGU.md.
-//
-// API : window.LegalGate = {
-//   isAccepted(),              // bool — CGU acceptées (version courante)
-//   ouvrirGate(),              // Promise — gate bloquante, résout à l'acceptation
-//   ouvrirConsultation(),      // void — ré-affichage non bloquant (re-lecture)
-//   TERMS_VERSION              // int — bump pour forcer un re-consentement
-// };
-// 100 % local, aucune surface réseau.
+// Gate BLOQUANTE au premier lancement (case + « J'accepte ») : MyKTAMap est un outil de repérage, pas une
+// incitation à pénétrer dans des lieux interdits (accès aux anciennes carrières de Paris prohibé par l'arrêté
+// préfectoral du 2 novembre 1955 ; l'intrusion engage la seule responsabilité de l'utilisateur).
+// Séquencée par js/firstRunFlow.js (étape « légal », après une alerte critique éventuelle, avant
+// l'onboarding) ; relisible à tout moment (pied de page, Documentation) par ouvrirConsultation().
+// ⚠️ Cadrage général traduit (clés legal.*) ; TEXTES DE LOI en FR verbatim (constantes ci-dessous, reflétées
+// dans docs/applications/CGU.md).
+// Expose window.LegalGate : isAccepted(), ouvrirGate() → Promise (résout à l'acceptation),
+//   ouvrirConsultation(), TERMS_VERSION. 100 % local, aucune surface réseau.
 // =========================
 
 (function() {
   "use strict";
 
-  // Bump TERMS_VERSION à chaque changement de fond des CGU → force un
-  // re-consentement des utilisateurs déjà passés (le flag stocke la version
-  // acceptée, pas juste un booléen).
+  // ⚠️ Bumper à chaque changement de fond des CGU : force un re-consentement (on stocke la version acceptée).
   const TERMS_VERSION = 1;
   const LS_KEY = "myktamap_terms_accepted_v1";
 
   const GATE_ID = "kta-legal-gate-overlay";
   const FULL_ID = "kta-legal-full-overlay";
 
-  // ---------------------------------------------------------------
-  // TEXTES DE LOI — FR verbatim (actes officiels, hors droit d'auteur :
-  // CPI art. L.122-5 2°). NE PAS traduire, NE PAS reformuler.
-  // ---------------------------------------------------------------
-  // Arrêté préfectoral du 2 novembre 1955 (Préfecture de la Seine / Police).
-  // Non publié sur Légifrance (arrêté préfectoral ancien). Reproduit d'après la
-  // source cataphile de référence ; cité officiellement par le Sénat comme
-  // « arrêté préfectoral du 2 novembre 1955 ».
+  // ── Textes de loi — FR verbatim (actes officiels, hors droit d'auteur : CPI art. L.122-5 2°) ──
+  // ⚠️ NE PAS traduire, NE PAS reformuler.
+  // Arrêté préfectoral du 2 novembre 1955 (Préfecture de la Seine / Police) : absent de Légifrance, reproduit
+  // d'après la source de référence, cité par le Sénat comme « arrêté préfectoral du 2 novembre 1955 ».
   const ARRETE_1955 = [
     { art: "Article 1er",
       txt: "Il est interdit à toute personne non munie d'une autorisation émanant de l'Inspection Générale des Carrières de la Seine d'ouvrir les portes et trappes d'accès aux escaliers et puits à échelons ou autres des anciennes carrières, de descendre dans ces ouvrages, de pénétrer et de circuler dans les vides des anciennes carrières s'étendant sous l'emprise des voies publiques de la Ville de Paris." },
@@ -88,9 +68,8 @@
     "Au regard du linéaire à couvrir en sécurisation, le dispositif actuel paraît correctement dimensionné. Toutefois, l'apparition cyclique de nouvelles brèches engendre ponctuellement une hausse de fréquentation des sous-sols parisiens. Une fois les accès détectés et refermés, le nombre de visiteurs diminue fortement. Aussi, des mesures sont prises régulièrement pour réduire le nombre d'accès aux carrières, notamment avec le renforcement des dispositifs de verrouillage des puits, le scellement des plaques d'accès et la présence policière. Une faiblesse du dispositif actuel réside dans la porosité entre le réseau des carrières et des galeries techniques. Les opérateurs de réseaux peuvent se montrer réticents à supporter le coût financier des opérations de « rebouchage » des chatières. Enfin, depuis novembre 2024, l'arsenal de répression a évolué vers une verbalisation à l'aide d'un procès verbal électronique qui facilite la rédaction et le suivi du relevé d'infraction. Les infractions à l'arrêté préfectoral du 2 novembre 1955 sont ainsi passibles d'une amende forfaitaire d'un montant de 135 euros avec une majoration à 375 euros."
   ];
 
-  // Intrusion en lieu privé — Article 226-4 du Code pénal (version en vigueur
-  // depuis le 29/07/2023, modifié par la loi n° 2023-668 du 27 juillet 2023).
-  // Source : Légifrance. Texte officiel — hors droit d'auteur.
+  // Intrusion en lieu privé — art. 226-4 du Code pénal (en vigueur depuis le 29/07/2023, loi n° 2023-668).
+  // Source : Légifrance.
   const CODE_PENAL_226_4 = [
     "L'introduction dans le domicile d'autrui à l'aide de manœuvres, menaces, voies de fait ou contrainte, hors les cas où la loi le permet, est puni de trois ans d'emprisonnement et de 45 000 euros d'amende.",
     "Le maintien dans le domicile d'autrui à la suite de l'introduction mentionnée au premier alinéa, hors les cas où la loi le permet, est puni des mêmes peines.",
@@ -99,32 +78,26 @@
   const CODE_PENAL_226_4_SRC = "Article 226-4 du Code pénal (version en vigueur depuis le 29 juillet 2023, modifié par la loi n° 2023-668 du 27 juillet 2023). Source : Légifrance.";
   const PROPRIETE_PRIVEE = "Le droit de propriété est exclusif (article 544 du Code civil) : nul ne peut pénétrer ni se maintenir sur une propriété privée sans l'autorisation de son propriétaire. Une telle intrusion engage la responsabilité civile de son auteur et, selon les circonstances (violation de domicile, dégradations, franchissement de clôture, non-respect d'un arrêté), sa responsabilité pénale.";
 
-  // Responsabilité pour faute — Code civil art. 1240 et 1241 (version en
-  // vigueur depuis le 01/10/2016, ord. n° 2016-131). Source : Légifrance.
+  // Responsabilité pour faute — Code civil art. 1240 et 1241 (en vigueur depuis le 01/10/2016, ord. n° 2016-131).
   const RESP_CIVILE = [
     "Article 1240 — Tout fait quelconque de l'homme, qui cause à autrui un dommage, oblige celui par la faute duquel il est arrivé à le réparer.",
     "Article 1241 — Chacun est responsable du dommage qu'il a causé non seulement par son fait, mais encore par sa négligence ou par son imprudence."
   ];
-  // Cas des secours : en principe gratuits (dépense obligatoire de la commune),
-  // mais la faute peut coûter cher — et les secours de loisir peuvent être
-  // facturés. Sources : CGCT art. L.2321-2 et L.2331-4.
+  // Secours : en principe gratuits (dépense obligatoire de la commune), mais la faute peut coûter cher et les
+  // secours de loisir peuvent être facturés. Sources : CGCT art. L.2321-2 et L.2331-4.
   const SECOURS = [
     "Concrètement : si votre présence dans un lieu interdit ou dangereux déclenche une opération de secours (égarement, blessure, mise en danger des sauveteurs), vous vous exposez à devoir en répondre. En France, les secours sont en principe gratuits (dépense obligatoire des communes, article L.2321-2 du Code général des collectivités territoriales), mais une commune peut, par délibération et après information du public, exiger le remboursement de tout ou partie des frais de secours consécutifs à une activité sportive ou de loisir (article L.2331-4 du même code).",
     "Surtout, sur le fondement des articles 1240 et 1241 du Code civil, quiconque cause un dommage par sa faute — imprudence, négligence, intrusion illicite — est tenu de le réparer : cela peut couvrir les dégradations commises, le préjudice causé aux tiers, et les conséquences d'une intervention rendue nécessaire par votre comportement."
   ];
   const RESP_SRC = "Sources : articles 1240 et 1241 du Code civil (Légifrance) ; articles L.2321-2 et L.2331-4 du Code général des collectivités territoriales.";
 
-  // ---------------------------------------------------------------
-  // i18n helper (cadrage général uniquement)
-  // ---------------------------------------------------------------
+  // ── i18n (cadrage général seulement) ──
   function _t(k, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
 
-  // ---------------------------------------------------------------
-  // État
-  // ---------------------------------------------------------------
+  // ── État ──
   function isAccepted() {
     try {
       const v = parseInt(localStorage.getItem(LS_KEY), 10);
@@ -136,19 +109,15 @@
     catch(e) { console.warn("[LegalGate] _markAccepted :", e); }
   }
 
-  // ---------------------------------------------------------------
-  // SOUS-MODALE — texte intégral (arrêté + Sénat), FR only
-  // ---------------------------------------------------------------
+  // ── Sous-modale : texte intégral (FR seulement) ──
   function _buildFullTextHtml() {
     let h = "";
-    // Arrêté 1955
     h += '<h3 class="kta-legal-full-h">⚖️ ' + _esc("Arrêté préfectoral du 2 novembre 1955") + '</h3>';
     ARRETE_1955.forEach(function(a) {
       h += '<p class="kta-legal-art"><strong>' + _esc(a.art) + '.</strong> ' + _esc(a.txt) + '</p>';
     });
     h += '<p class="kta-legal-sign">' + _esc(ARRETE_1955_SIGN) + '</p>';
     h += '<p class="kta-legal-src">' + _esc(ARRETE_1955_SRC) + '</p>';
-    // Sénat
     h += '<h3 class="kta-legal-full-h">🏛️ ' + _esc(SENAT_META.intitule) + '</h3>';
     h += '<p class="kta-legal-meta">' + _esc(SENAT_META.num) + '<br>' +
          '<strong>' + _esc("Auteure : ") + '</strong>' + _esc(SENAT_META.auteur) + '<br>' +
@@ -199,9 +168,7 @@
     });
   }
 
-  // ---------------------------------------------------------------
-  // GATE / CONSULTATION — corps commun
-  // ---------------------------------------------------------------
+  // ── Corps commun gate / consultation ──
   function _buildBodyHtml() {
     return (
       '<p class="kta-legal-intro">' + _esc(_t("legal.gate.intro")) + '</p>' +
@@ -216,11 +183,10 @@
     );
   }
 
-  // Gate BLOQUANTE : résout la Promise à l'acceptation (case cochée + bouton).
+  // Gate BLOQUANTE : résout à l'acceptation (case cochée + bouton).
   function ouvrirGate() {
     return new Promise(function(resolve) {
-      // Sécurité : si déjà accepté, ne pas re-afficher (le flow appelle déjà
-      // sous condition, mais on garde le no-op défensif).
+      // Déjà accepté : no-op défensif (l'appelant teste déjà).
       if (isAccepted()) { resolve(true); return; }
 
       const overlay = document.createElement("div");
@@ -264,7 +230,7 @@
     });
   }
 
-  // Consultation NON bloquante (re-lecture depuis footer / Documentation).
+  // Consultation NON bloquante.
   function ouvrirConsultation() {
     if (document.getElementById(GATE_ID)) return;
     const overlay = document.createElement("div");
@@ -292,9 +258,7 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
   }
 
-  // ---------------------------------------------------------------
-  // EXPORT
-  // ---------------------------------------------------------------
+  // ── Export ──
   window.LegalGate = {
     isAccepted:         isAccepted,
     ouvrirGate:         ouvrirGate,
@@ -302,7 +266,7 @@
     TERMS_VERSION:      TERMS_VERSION
   };
 
-  // Lien « Conditions d'utilisation » du pied de page : écouteur, pas de onclick inline (CSP, 07/10/2026).
+  // Lien « Conditions d'utilisation » du pied de page : écouteur, pas de onclick inline (CSP).
   document.addEventListener("click", function(e) {
     const a = e.target && e.target.closest && e.target.closest("#kta-footer-cgu");
     if (!a) return;

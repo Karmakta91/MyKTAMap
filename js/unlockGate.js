@@ -1,69 +1,37 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
- * Voir LICENSE a la racine du projet.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =====================================================================
-// UNLOCK GATE — barrière communautaire d'accès (depuis v173)
-// =====================================================================
-// 🔓 Depuis le 04/10/2026 (décision KARMA) : PLUS DE MOT DE PASSE CODÉ EN DUR.
-// Deux écrans selon l'instance :
-//   - instance qui publie un mot de passe (`index.json > config.accessHash`,
-//     posé par ConfAdmin — c'est le cas de myktamap.fr) : champ mot de passe,
-//     comme avant. C'est le SEUL mot de passe qui ouvre.
-//   - sinon (usage local, ZIP, Docker community) : « Continuer », retenu sur
-//     l'appareil. Plus d'import de licence ici (retiré le 09/10/2026) : une licence
-//     importée n'activait aucune fonction pro (règle E : licence SERVEUR exigée).
-// Re-demandé après un reset complet (viderCacheAppli purge le localStorage).
-//
-// ⚠️ NIVEAU DE SÉCURITÉ : c'est une barrière SOCIALE / COMMUNAUTAIRE, pas
-// une vraie authentification. Le code source HTML/JS est servi en clair
-// par Nginx ET disponible publiquement sur GitHub. Quelqu'un de motivé
-// peut :
-//   - Lire le hash dans ce fichier (mais pas le mdp lui-même grâce à SHA-256)
-//   - Brute force le hash (mais ralenti par 5 tentatives max + lockout)
-//   - Bypass via `localStorage.setItem("myktamap_unlock_v1", "<hash>")` en F12
-//   - Cloner le repo GitHub et obtenir le mdp en clair via brute-force offline
-//
-// Cette gate sert à :
-//   ✅ Décourager les passants / robots d'indexation
-//   ✅ Cadrer "communauté" → "il faut connaître le code"
-//   ❌ NE PAS empêcher un attaquant motivé de bypass
-//
-// Le mot de passe d'une instance est communiqué hors-bande par son
-// déployeur ; seul son hash SHA-256 est publié dans l'index.
-// =====================================================================
+// unlockGate.js — gate d'accès au premier lancement (re-demandée après un reset complet).
+// Expose : window.UnlockGate (isUnlocked, isLockedOut, ouvrirGate, lock, markUnlockedViaLicensePro,
+//   revaliderInstance, instanceRequiertMotDePasse).
+// Deux écrans : instance qui publie `index.json > config.accessHash` → champ mot de passe, seul ce
+//   mot de passe ouvre ; sinon → « Continuer », retenu sur l'appareil. Aucun mot de passe codé en dur,
+//   aucun import de licence ici (seule une licence SERVEUR active le pro).
+// ⚠️ Barrière SOCIALE, pas une authentification : le code est public, le hash se lit, le
+//   localStorage se force en F12. Elle écarte les passants et les robots, pas un attaquant motivé.
+// ⚠️ Verrou JAMAIS définitif (décision produit) : 5 échecs → temporisé, escaladé, comme pinLock.js.
+// Garde-fous : scripts/check-gate-instance.js, scripts/check-filets-donnees.js ·
+//   Doc : docs/architecture/security-legal.md
 
 (function() {
   "use strict";
 
-  // Hash SHA-256 du mot de passe communautaire. Pour bumper le mdp :
-  //   echo -n "<nouveau-mdp>" | openssl dgst -sha256
-  // → mettre le résultat ici, l'app redemandera au prochain boot des users
-  //   qui avaient l'ancien (le hash en localStorage ne matchera plus).
-  // Valeur mémorisée quand l'utilisateur continue sans licence (ou entre par
-  // une licence pro) sur une instance SANS mot de passe.
+  // Mémorisé quand l'utilisateur continue sur une instance SANS mot de passe (ou par licence pro).
   const ACCES_LIBRE = "libre-v1";
-  // 🩸 MIGRATION SEULEMENT — hash de l'ancien code communautaire (supprimé le
-  // 04/10/2026). Il n'est JAMAIS comparé à une saisie : il sert à reconnaître
-  // un appareil déjà déverrouillé avec l'ancien code, qui vaut « déjà choisi »
-  // (décision KARMA, reco 3) au lieu de lui remontrer l'écran.
+  // 🩸 Migration seulement : hash de l'ancien code communautaire. JAMAIS comparé à une saisie ;
+  // il reconnaît un appareil déjà déverrouillé, qui vaut « déjà choisi ».
   const HASH_HERITE = "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae";
 
-  // Clés localStorage
-  const LS_UNLOCK   = "myktamap_unlock_v1";       // hash validé (= mdp accepté)
-  const LS_ATTEMPTS = "myktamap_unlock_attempts"; // compteur tentatives échouées
+  const LS_UNLOCK   = "myktamap_unlock_v1";       // hash accepté
+  const LS_ATTEMPTS = "myktamap_unlock_attempts"; // tentatives échouées
   const MAX_ATTEMPTS = 5;
-  // 🔒 M2 (décision KARMA 13/09/2026, audit B7) : verrou TEMPORISÉ et escaladé
-  // (10 min → 1 h → 6 h → 24 h) à la place du verrou définitif. Palier et
-  // échéance persistés ; un code juste remet tout à zéro. Base de temps =
-  // horloge de l'appareil (cf pinLock.js, même règle).
+  // 🔒 Paliers 10 min → 1 h → 6 h → 24 h, persistés ; un code juste remet tout à zéro.
   const LS_LOCK        = "myktamap_unlock_lock_v1";   // { until, start, level }
   const LOCK_DELAYS_MS = [10 * 60 * 1000, 60 * 60 * 1000, 6 * 3600 * 1000, 24 * 3600 * 1000];
   let _lockTimer = null;
-  // ⏳ Durée lisible pour le compte à rebours du verrou.
   function _fmtDuree(ms) {
     const s = Math.max(0, Math.ceil(ms / 1000));
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -84,38 +52,19 @@
     return Math.max(0, l.until - Date.now());
   }
 
-  // 🔑 v1.90.6 (demande KARMA) — MOT DE PASSE PROPRE À UNE INSTANCE SERVEUR.
-  // Une instance auto-hébergée peut publier SON hash dans
-  // `data/index.json > config.accessHash`. Deux mots de passe ouvrent alors
-  // l'app : celui de la communauté (hardcodé ci-dessus, inchangé) et celui du
-  // déployeur. Aucun ne remplace l'autre — un kiosque n'a pas à distribuer le
-  // code communautaire à ses membres, et l'auteur n'a pas à connaître celui du
-  // kiosque.
-  //
-  // ⚠️ MÊME NIVEAU DE SÉCURITÉ QUE CI-DESSUS, PAS MOINS, PAS PLUS. Le hash est
-  // dans un fichier PUBLIC : n'importe qui peut le télécharger et le
-  // brute-forcer hors ligne. C'est exactement la situation du hash communautaire,
-  // lisible sur GitHub depuis toujours. Barrière SOCIALE, jamais une
-  // authentification — et ce serait mentir que de le présenter autrement.
-  //
-  // 🩸 CE QUI EST MÉMORISÉ, ET POURQUOI. Le hash accepté est écrit dans
-  // `LS_UNLOCK`. Hors ligne, l'index n'est pas joignable : `isUnlocked()` n'a
-  // rien d'autre pour reconnaître un accès légitime par mot de passe d'instance.
-  // D'où cette seconde clé : elle se souvient du hash d'instance accepté, sans
-  // quoi l'utilisateur serait REVERROUILLÉ au premier démarrage hors ligne.
+  // Mot de passe d'instance : son hash est publié dans `data/index.json > config.accessHash`.
+  // ⚠️ Fichier PUBLIC : n'importe qui peut le télécharger et le brute-forcer hors ligne.
+  // Barrière SOCIALE, jamais une authentification — ne jamais la présenter autrement.
+  // 🩸 Seconde clé : mémorise le hash d'instance accepté. Hors ligne, l'index est injoignable et
+  // isUnlocked() n'a rien d'autre ; sans elle, l'utilisateur serait reverrouillé hors ligne.
   const LS_UNLOCK_KIOSQUE = "myktamap_unlock_instance_v1";
   const RE_HASH = /^[0-9a-f]{64}$/;
 
-  // État interne
-  let _resolveGate = null;  // Promise resolver pour main.js qui attend
+  let _resolveGate = null;  // résout la Promise attendue par main.js
 
-  // =========================================================================
-  // HELPERS HASH (SubtleCrypto SHA-256)
-  // =========================================================================
   async function _sha256(s) {
     if (!crypto || !crypto.subtle) {
-      // Très vieux navigateur ou contexte non sécurisé (HTTP plain) — pas
-      // de subtle crypto dispo. On échoue plutôt que d'utiliser un hash bidon.
+      // Contexte non sécurisé (HTTP) : échouer plutôt qu'un hash bidon.
       throw new Error("Crypto SubtleCrypto indisponible — contexte non sécurisé (HTTP) ?");
     }
     const buf = new TextEncoder().encode(s);
@@ -125,42 +74,28 @@
       .join("");
   }
 
-  // =========================================================================
-  // ÉTAT PUBLIC
-  // =========================================================================
   function isUnlocked() {
     try {
       const v = localStorage.getItem(LS_UNLOCK);
       if (v === ACCES_LIBRE) return true;
       // Ancien code communautaire sans mémoire d'instance : vaut accès libre.
-      // 🩸 LECTURE SEULE — isUnlocked() est appelée dès le chargement du module,
-      // AVANT revaliderInstance : convertir ici effaçait l'ancien hash, qui
-      // n'était alors plus reconnu par une instance au même mot de passe
-      // (mesuré le 04/10/2026, accès révoqué à tort). Une instance qui impose
-      // un AUTRE mot de passe le révoque au démarrage en ligne (revaliderInstance).
+      // 🩸 LECTURE SEULE : appelée au chargement, AVANT revaliderInstance. Convertir ici effacerait
+      // l'ancien hash, alors refusé par une instance au même mot de passe. Une instance qui en
+      // impose un autre le révoque au démarrage en ligne (revaliderInstance).
       if (v === HASH_HERITE && !localStorage.getItem(LS_UNLOCK_KIOSQUE)) return true;
-      // 🩸 Le hash d'instance mémorisé, lu SANS réseau : hors-ligne, c'est la
-      // seule chose qui empêche de reverrouiller quelqu'un qui est entré
-      // légitimement. La comparaison exige les deux valeurs non vides — sans
-      // ce garde, deux `null` seraient « égaux » et déverrouilleraient tout.
+      // 🩸 Les deux valeurs doivent être non vides : deux `null` seraient « égaux » et ouvriraient tout.
       const k = localStorage.getItem(LS_UNLOCK_KIOSQUE);
       return !!(v && k && RE_HASH.test(k) && v === k);
     } catch(e) { return false; }
   }
 
-  // Lit le hash publié par l'instance. Appelé UNIQUEMENT quand la gate
-  // s'ouvre — c'est-à-dire à la première installation ou après un reset — donc
-  // aucune requête ajoutée pour un utilisateur déjà déverrouillé.
-  // 🩸 On valide la FORME (64 hexa) avant de s'en servir : un `accessHash`
-  // fautif (mot de passe collé en clair, hash tronqué) ne doit pas devenir une
-  // valeur acceptée par comparaison de chaînes.
+  // Hash publié par l'instance. Lu seulement quand la gate s'ouvre : rien pour un appareil déverrouillé.
+  // 🩸 La FORME (64 hexa) est validée : un mot de passe collé en clair ou un hash tronqué ne doit pas
+  // devenir une valeur acceptée.
   async function _hashInstance() {
     try {
-      // 🏛️ v2.6.0 (chantier 2) — l'index n'est plus relu ici : on lit la config
-      // d'instance chargée UNE fois au démarrage, avant les gates
-      // (js/ktaInstance.js). Index injoignable → dernière config connue : hors
-      // ligne, une instance protégée garde son mot de passe (avant, le fetch
-      // échouait → null → le code communautaire l'ouvrait).
+      // Config d'instance chargée une fois avant les gates (js/ktaInstance.js). Index injoignable →
+      // dernière config connue : hors ligne, une instance protégée garde son mot de passe.
       let cfg = null;
       if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
         const st = await window.KtaInstance.charger();
@@ -182,30 +117,19 @@
     } catch(e) { return null; }
   }
 
-  // 🔒 v1.90.8 — L'instance impose-t-elle un mot de passe d'accès ? (accessHash
-  // publié et valide.) Async : demande l'index. Utilisé par main.js pour
-  // refuser le bypass d'une licence pro LOCALE, et par la gate pour masquer le
-  // bloc d'import. 🩸 Échec réseau → false : hors-ligne au 1ᵉʳ contact, on ne
-  // peut pas savoir, et fermer par défaut bloquerait un accès légitime — le
-  // Service Worker sert l'index en cache dès la 2ᵉ visite.
+  // 🔒 accessHash publié et valide ? Lu par main.js pour refuser le contournement par licence pro
+  // LOCALE. 🩸 Échec réseau → false : fermer par défaut bloquerait un accès légitime au 1ᵉʳ contact
+  // hors ligne ; le Service Worker sert l'index en cache dès la 2ᵉ visite.
   async function instanceRequiertMotDePasse() {
     return !!(await _hashInstance());
   }
 
-  // 🔑 v1.90.6 — Le déployeur a changé son mot de passe : on oublie l'ancien,
-  // et l'utilisateur le ressaisira au PROCHAIN démarrage. On ne recharge pas la
-  // page en pleine session — couper quelqu'un au milieu de son relevé pour une
-  // rotation de mot de passe serait pire que le délai d'un boot.
-  // 🩸 Appelé UNIQUEMENT quand l'index a répondu : hors-ligne, on ne touche à
-  // rien, sinon une coupure réseau reverrouillerait l'app.
+  // Mot de passe d'instance changé ou retiré : l'ancien accès est oublié, ressaisie au PROCHAIN
+  // démarrage — jamais de rechargement en pleine session (décision produit).
   function revaliderInstance(hashPublie, indexRepondu) {
-    // 🩸 `null` VEUT DIRE DEUX CHOSES INCOMPATIBLES : « l index a repondu et le
-    // mot de passe a ete retire » (reverrouiller) et « l index est injoignable »
-    // (ne toucher a rien). La fonction ne peut pas les deviner, donc l appelant
-    // le DIT. Sans ce parametre, la sureté reposait sur la discipline d un site
-    // d appel situe a 1800 lignes de la -- et un futur appel de bonne foi
-    // reverrouillerait l app a la premiere coupure reseau.
-    if (indexRepondu !== true) return;   // hors-ligne / index absent : on ne touche à rien
+    // 🩸 `null` a deux sens incompatibles : mot de passe retiré (reverrouiller) ou index injoignable
+    // (ne rien toucher). L'appelant le DIT par `indexRepondu` ; sinon une coupure réseau reverrouillerait.
+    if (indexRepondu !== true) return;
     try {
       const propre = (typeof hashPublie === "string") ? hashPublie.trim().toLowerCase() : null;
       const valide = !!(propre && RE_HASH.test(propre));
@@ -213,12 +137,8 @@
       if (!v) return;   // pas déverrouillé : rien à révoquer
 
       if (valide) {
-        // 🔒 L'instance impose un mot de passe : le SEUL accès valable est le
-        // sien. Tout autre déverrouillage mémorisé — le code communautaire
-        // « hérité » d'avant que l'instance ne pose son mot de passe, ou un
-        // ancien mot de passe d'instance — est RÉVOQUÉ. Sans ça, un accès
-        // communautaire acquis quand l'instance était ouverte y survivrait,
-        // rouvrant exactement le trou que le refus au submit vient de fermer.
+        // 🔒 Seul le mot de passe de l'instance vaut : tout autre accès mémorisé (ancien code
+        // communautaire, ancien mot de passe) est RÉVOQUÉ, sinon il survivrait à la fermeture.
         if (v !== propre) {
           localStorage.removeItem(LS_UNLOCK);
           localStorage.removeItem(LS_UNLOCK_KIOSQUE);
@@ -227,9 +147,7 @@
           localStorage.setItem(LS_UNLOCK_KIOSQUE, propre);   // mémoire alignée sur l'accès en cours
         }
       } else {
-        // Pas (ou plus) de mot de passe d'instance : un accès entré via le mot
-        // de passe d'instance (mémoire présente) est révoqué — au prochain
-        // démarrage, l'écran propose « Continuer sans licence ».
+        // Plus de mot de passe : un accès entré par l'ancien est révoqué, l'écran proposera « Continuer ».
         const memo = localStorage.getItem(LS_UNLOCK_KIOSQUE);
         if (memo) {
           localStorage.removeItem(LS_UNLOCK_KIOSQUE);
@@ -259,13 +177,9 @@
     return now < l.until;
   }
 
-  // =========================================================================
-  // RENDU OVERLAY
-  // =========================================================================
-  // Crée l'overlay plein écran avec champ de saisie, bouton et signature.
-  // Style charte MyKTAMap (gradient noir, accent jaune #f4c542).
-  // 🌍 v1.79.4 — rang de langues de la gate (drapeau + code natif, actif
-  // surligné). Libellés = métadonnées de I18n.available(), rien à traduire.
+  // 🏷️ ancre:gate-fin-isLockedOut
+  // ── Rendu ──────────────────────────────
+  // Libellés de langue = métadonnées de I18n.available(), rien à traduire.
   function _langsHtml() {
     if (!window.I18n || typeof window.I18n.available !== "function") return "";
     const active = (typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
@@ -283,18 +197,12 @@
     o.id = "kta-unlock-overlay";
     o.innerHTML =
       '<div class="kta-unlock-box">' +
-        // 🌍 v1.79.4 (demande KARMA « choisir sa langue au premier
-        // lancement ») — le choix de langue vit sur la TOUTE PREMIÈRE gate :
-        // il pilote la langue GLOBALE (I18n.setLang, même clé que ⚙️ Config)
-        // → tout le funnel suit (gate légale, tutoriel, home). Pré-sélection
-        // = langue détectée (navigator.language, mécanisme existant).
+        // Première gate du parcours : la langue choisie ici est la langue GLOBALE (I18n.setLang).
         '<div class="kta-unlock-langs" role="group" aria-label="Language">' + _langsHtml() + '</div>' +
         '<div class="kta-unlock-icon">' + (libre ? '🧭' : '🗝️') + '</div>' +
         '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
-        // 14/10/2026 (KARMA) : plus de phrase sous le titre en mode libre ; le mode mot de passe garde la sienne.
         (libre ? '' : '<p class="kta-unlock-info">' + t("gate.info") + '</p>') +
-        // 🆕 v1.28.0 — Vrais canaux de contact (avant : « contacte l'auteur »
-        // sans aucun canal). Liens sortants uniquement → aucun impact CSP.
+        // Liens sortants seulement : aucun impact CSP.
         '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
           t("gate.contact") +
         '</div>' +
@@ -310,11 +218,6 @@
               '</button>' +
             '</form>') +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
-        // 🆕 v1.28.1 — Bouton 📖 Documentation accessible depuis l'écran de
-        // verrouillage. Permet à un user qui doute (« c'est quoi ce projet ? »,
-        // « pourquoi un code ? ») de lire le README utilisateur sans devoir
-        // entrer. L'onboarding (🎓) est volontairement masqué : sans accès à
-        // l'app, le tutoriel n'a pas de sens.
         '<button type="button" id="kta-unlock-readme-btn" class="kta-gate-readme-btn" title="' + t("gate.docTitle") + '">' +
           t("gate.docBtn") +
         '</button>' +
@@ -326,12 +229,8 @@
     return o;
   }
 
-  // 🆕 v1.28.1 — Helper d'ouverture de la modale Doc README au-dessus du
-  // lockeur. opts.hideOnboarding masque le bouton 🎓 (incohérent dans un
-  // contexte verrouillé) et opts.overLocker boost le z-index de la modale
-  // à 100200 pour passer au-dessus de l'overlay UnlockGate (z-index 100100).
-  // Si interface.js n'est pas encore chargé (cas très tôt au boot), no-op
-  // gracieux — le bouton ne fera rien plutôt que de crasher.
+  // Doc au-dessus de la gate (overLocker : z-index 100200 > 100100), sans le tutoriel (hideOnboarding).
+  // interface.js pas encore chargé : no-op.
   function _ouvrirDocReadme() {
     if (typeof window.afficherReadme === "function") {
       window.afficherReadme({ hideOnboarding: true, overLocker: true });
@@ -340,27 +239,14 @@
     }
   }
 
-  // Verrou TEMPORISÉ (M2, 13/09/2026) : champ caché, compte à rebours ; à
-  // l'expiration la gate est remontée (_monterGate, la Promise survit — même
-  // mécanisme que le changement de langue). Toujours AUCUN bouton de reset :
-  //
-  // 🚨 v173 fix incohérence remontée KARMA : on ne propose AUCUN bouton de
-  // reset depuis le lockout. Sinon l'user fait :
-  //   1. Saisit 5 fois faux → lockout
-  //   2. Clique "Reset complet" → modale confirmation → voit le mdp affiché
-  //   3. Reset → relance → re-saisit le mdp → bypass complet du lockout
-  //
-  // → Lockout vraiment bloquant. L'user qui ne connaît pas le code DOIT
-  // désinstaller l'app (vider cache navigateur manuellement, désinstaller
-  // la PWA, etc.). C'est sa responsabilité — l'app ne lui mâche pas le
-  // travail. Cohérent avec le warning "barrière sociale" : qui n'a pas
-  // le code n'a rien à faire ici.
+  // Verrou temporisé : champ caché, compte à rebours, puis _monterGate (la Promise survit).
+  // 🩸 AUCUN bouton de reset ici (décision produit) : un reset relancerait la gate et contournerait
+  // le verrou. Qui n'a pas le code attend ou vide lui-même le navigateur.
   function _afficherLockout(overlay) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const form = overlay.querySelector("#kta-unlock-form");
     const fb   = overlay.querySelector("#kta-unlock-feedback");
     if (form) form.style.display = "none";
-    // ⏳ M2 : compte à rebours ; à l'expiration, on remonte la gate.
     if (_lockTimer) { clearInterval(_lockTimer); _lockTimer = null; }
     _lockTimer = setInterval(function() {
       if (!isLockedOut()) {
@@ -382,27 +268,20 @@
           '<div class="kta-unlock-lockout-hint">' +
             t("gate.lockout.hint") +
           '</div>' +
-          // 🆕 v1.28.0 — Canaux explicites (avant : « contacte l'auteur » sans canal).
           '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
             t("gate.contact") +
           '</div>' +
-          // 🆕 v1.28.1 — Accès doc utilisateur même en lockout : si l'user est
-          // bloqué et veut comprendre ce qu'est l'app avant de réinstaller
-          // OU contacter l'auteur, il peut lire le README. Ne touche en rien
-          // au verrouillage : ouvre juste un modal info par-dessus.
+          // Doc lisible pendant le verrou ; ne change rien au verrouillage.
           '<button type="button" id="kta-unlock-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("gate.docTitle") + '">' +
             t("gate.docBtn") +
           '</button>' +
         '</div>';
-      // Bind du bouton 📖 doc (le HTML vient juste d'être injecté).
       const btnDocLockout = overlay.querySelector("#kta-unlock-readme-btn-lockout");
       if (btnDocLockout) btnDocLockout.addEventListener("click", _ouvrirDocReadme);
     }
   }
 
-  // =========================================================================
-  // SUBMIT FLOW
-  // =========================================================================
+  // ── Saisie ──────────────────────────────
   async function _onSubmit(overlay, input, fb) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const value = (input.value || "").trim();
@@ -411,7 +290,6 @@
       return;
     }
 
-    // Hash de la saisie + comparaison
     let hashed;
     try {
       hashed = await _sha256(value);
@@ -420,37 +298,21 @@
       return;
     }
 
-    // 🔑 v1.90.6 — QUAND UNE INSTANCE PUBLIE SON MOT DE PASSE, IL EST LE SEUL
-    // QUI OUVRE. 🩸 TROU DE SÉCURITÉ CORRIGÉ (KARMA) : la première version
-    // acceptait AUSSI le code communautaire. Or ce code est distribué
-    // largement — il ouvre la prod qui n'héberge rien. Quiconque le connaît
-    // aurait donc pu ouvrir n'importe quelle instance privée, et l'`accessHash`
-    // n'aurait rien protégé. Le code communautaire ne vaut plus que là où
-    // AUCUN mot de passe d'instance n'est publié.
-    //
-    // ⚠️ ON DEMANDE DONC L'INDEX À CHAQUE TENTATIVE : même une saisie qui égale
-    // le hash communautaire doit être REFUSÉE si l'instance impose le sien. La
-    // gate ne s'ouvre qu'à la 1ʳᵉ installation et après un reset — une requête
-    // y est négligeable. Hors-ligne, le Service Worker sert l'index en cache
-    // (network-first), donc le hash d'instance reste connu.
+    // 🔒 Seul le mot de passe publié par l'instance ouvre : un code largement distribué ouvrirait
+    // toute instance privée. Le hash est relu à chaque tentative (négligeable : la gate est rare ;
+    // hors ligne, le Service Worker sert l'index en cache).
     const hashInstance = await _hashInstance();
-    // 🔓 04/10/2026 : plus de code communautaire. Seul le mot de passe publié
-    // par l'instance ouvre (le champ n'est affiché que s'il existe).
     const okInstance   = !!(hashInstance && hashed === hashInstance);
 
     if (okInstance) {
-      // ✅ Succès
       try {
         localStorage.setItem(LS_UNLOCK, hashed);
-        // 🩸 Mémoriser le hash d'instance est ce qui rend l'accès utilisable
-        // HORS LIGNE : `isUnlocked()` n'a alors rien d'autre pour reconnaître
-        // un déverrouillage légitime.
+        // 🩸 Sans cette mémoire, isUnlocked() ne reconnaît plus l'accès hors ligne.
         localStorage.setItem(LS_UNLOCK_KIOSQUE, hashInstance);
         localStorage.removeItem(LS_ATTEMPTS);
-        localStorage.removeItem(LS_LOCK);   // 🔒 M2 : palier remis à zéro
+        localStorage.removeItem(LS_LOCK);
       } catch(e) {}
       fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
-      // Petite pause pour que l'user voie la confirmation, puis on libère
       setTimeout(function() {
         overlay.classList.add("kta-unlock-fading");
         setTimeout(function() {
@@ -463,16 +325,13 @@
         }, 250);
       }, 400);
     } else {
-      // ❌ Échec — incrémente compteur
       const attempts = _getAttempts() + 1;
       _setAttempts(attempts);
       input.value = "";
       input.focus();
 
       if (attempts >= MAX_ATTEMPTS) {
-        // 🔒 M2 : verrou TEMPORISÉ au palier suivant, compteur remis à zéro.
-        // La Promise n'est pas résolue ; à l'expiration la gate se remonte
-        // (même Promise, cf _afficherLockout) et un code juste la résout.
+        // Palier suivant, compteur remis à zéro ; la Promise reste en attente jusqu'au bon code.
         const prev  = _getLock();
         const lvl   = (prev && prev.level) || 0;
         const delai = LOCK_DELAYS_MS[Math.min(lvl, LOCK_DELAYS_MS.length - 1)];
@@ -491,16 +350,10 @@
     }
   }
 
-  // =========================================================================
-  // API PUBLIQUE
-  // =========================================================================
-  // ouvrirGate() retourne une Promise qui résout `true` à l'unlock, OU
-  // qui ne résout JAMAIS si lockout (5 tentatives ratées). Le caller
-  // (main.js > initApp) await ça → l'app reste bloquée tant que pas auth.
+  // ── API ──────────────────────────────
+  // Promise résolue `true` au déverrouillage ; pendant un verrou, elle attend. main.js l'attend.
+  // ⚠️ _monterGate redessine (langue, fin de verrou) SANS toucher la Promise : _resolveGate survit.
   function ouvrirGate() {
-    // 🌍 v1.79.4 — corps extrait dans _monterGate : le changement de langue
-    // re-monte la gate dans la nouvelle langue SANS toucher la Promise
-    // (_resolveGate survit au re-render).
     return new Promise(function(resolve) {
       _resolveGate = resolve;
       _monterGate();
@@ -508,8 +361,7 @@
   }
 
   function _monterGate() {
-    // 🔓 04/10/2026 — le mode dépend de l'instance : on lit son hash AVANT de
-    // dessiner (config d'instance déjà chargée et mémorisée : instantané).
+    // Le mode dépend du hash d'instance, lu avant de dessiner (config déjà en mémoire).
     _hashInstance().catch(function() { return null; }).then(function(h) { _monterGateMode(h); });
   }
 
@@ -534,8 +386,6 @@
       const libre = !hashInstance;
       const overlay = _creerOverlay(libre ? "libre" : "instance");
 
-      // 🌍 v1.79.4 — sélecteur de langue : setLang recharge le dico puis on
-      // re-monte la gate (l'overlay actuel est remplacé, la Promise survit).
       overlay.querySelectorAll(".kta-unlock-lang-btn").forEach(function(btn) {
         btn.addEventListener("click", function() {
           const code = btn.dataset.lang;
@@ -547,7 +397,6 @@
         });
       });
 
-      // 🔓 Instance sans mot de passe : « Continuer » (choix retenu sur l'appareil).
       if (libre) {
         const btnLibre = overlay.querySelector("#kta-unlock-libre-btn");
         if (btnLibre) {
@@ -564,8 +413,7 @@
         }
       }
 
-      // Si déjà en lockout au boot (tentatives épuisées), l'écran du verrou
-      // remplace le formulaire — seulement quand un mot de passe est demandé.
+      // Le verrou ne s'applique qu'à l'écran avec mot de passe.
       if (!libre && isLockedOut()) {
         _afficherLockout(overlay);
         return;
@@ -575,7 +423,6 @@
       const form  = overlay.querySelector("#kta-unlock-form");
       const fb    = overlay.querySelector("#kta-unlock-feedback");
 
-      // Focus champ après animation fade-in
       if (input) setTimeout(function() { input.focus(); }, 100);
 
       if (form) form.addEventListener("submit", function(e) {
@@ -583,11 +430,9 @@
         _onSubmit(overlay, input, fb);
       });
 
-      // 🆕 v1.28.1 — Bouton 📖 Documentation (mode gate normale, pas lockout).
       const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
       if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
-      // Si l'user avait déjà des tentatives ratées avant ce boot, on l'informe
       const ap = _getAttempts();
       if (ap > 0 && ap < MAX_ATTEMPTS) {
         fb.innerHTML =
@@ -598,8 +443,7 @@
     })();
   }
 
-  // Retire la flag unlock du localStorage. Utilisé par viderCacheAppli
-  // pour s'assurer qu'au reset l'app redemande bien le mdp.
+  // Appelé par la réinitialisation du cache : la gate sera redemandée.
   function lock() {
     try {
       localStorage.removeItem(LS_UNLOCK);
@@ -607,10 +451,7 @@
     } catch(e) {}
   }
 
-  // 🆕 v1.29.1-fix1 — Pose le flag LS_UNLOCK car une licence pro a été
-  // détectée — licence SERVEUR uniquement (/Licence-pro.json de l'installation ;
-  // l'import d'une licence par l'utilisateur n'existe plus depuis le 09/10/2026).
-  // Appelé par main.js juste après la résolution async de proLicense.isPro().
+  // Licence pro SERVEUR détectée (/Licence-pro.json de l'installation) ; appelé par main.js après isPro().
   function markUnlockedViaLicensePro() {
     try {
       localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
@@ -624,8 +465,8 @@
     ouvrirGate:  ouvrirGate,
     lock:        lock,
     markUnlockedViaLicensePro: markUnlockedViaLicensePro,
-    revaliderInstance: revaliderInstance,   // 🔑 v1.90.6 (appelé par main.js)
-    instanceRequiertMotDePasse: instanceRequiertMotDePasse   // 🔒 v1.90.8
+    revaliderInstance: revaliderInstance,
+    instanceRequiertMotDePasse: instanceRequiertMotDePasse
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

@@ -1,105 +1,47 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
- * Voir LICENSE a la racine du projet.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// PRO LICENSE DETECTOR — js/proLicense.js
-// =========================
-//
-// 🎯 Rôle : détecter si l'instance MyKTAMap tourne sous licence pro.
-// UNE seule source : le SERVEUR — un fichier `/Licence-pro.json` à la racine du
-// site (le déployeur active le mode pro pour tous les visiteurs de l'installation).
-//
-// 🗑️ 09/10/2026 — L'IMPORT D'UNE LICENCE PAR L'UTILISATEUR (source « locale », depuis
-// la gate ou le profil) EST RETIRÉ : il n'activait aucune fonction pro (règle E : les
-// modules exigent une licence SERVEUR) et servait seulement à passer la gate
-// community. Une licence locale déjà importée est purgée au démarrage.
-//
-// 🛡️ Côté community : 100 % transparent. Pas de Licence-pro.json sur
-// myktamap.fr, pas de licence importée → mode community par défaut →
-// aucun changement visible pour l'utilisateur.
-//
-// 🔐 Sécurité : ce mécanisme reste PUREMENT COSMÉTIQUE. La licence
-// (côté serveur ou local) est stockée en clair. La validité juridique
-// vient du contrat signé avec MyKTAMap, pas du contenu du fichier.
-// Cohérent avec UnlockGate (cf §36 CLAUDE.md "barrière sociale").
-//
-// 🆔 Hash de licence (depuis v1.28.4) : chaque licence émise par KARMA
-// porte un `license_hash` unique au format `MKTM-LIC-<32 hex>`. Ce hash
-// est nominatif (lié à 1 client/contrat). Sa reproduction ou son
-// utilisation par un tiers est une infraction contractuelle.
-//
-//   Backward compat : les fichiers serveur posés avant v1.28.4 (sans
-//   hash) sont toujours acceptés en source serveur (warning console
-//   seulement). L'IMPORT MANUEL en revanche EXIGE un hash valide
-//   (= toute licence livrée à un user à partir de maintenant doit
-//   en contenir un).
-//
-// 📦 Format Licence-pro.json :
-//
-//   {
-//     "instance":     "pro",                                  // REQUIS
-//     "license_hash": "MKTM-LIC-<32 hex>",                    // REQUIS pour import manuel, optionnel pour fetch serveur
-//     "client":       "Acme SpeleSecours",                    // optionnel — futur affichage
-//     "license_id":   "MKTM-2026-001",                        // optionnel — traçabilité interne
-//     "license_type": "annual" | "perpetual" | "free-grimp",  // optionnel
-//     "issued_at":    "2026-05-30",                           // optionnel
-//     "valid_until":  "2027-05-30"                            // optionnel
-//   }
-//
-// API publique exposée :
-//   window.__MKTM_PRO_LICENSE__         : objet JSON parsé OU null
-//   window.MyKTAMapProLicense.isPro()   : boolean
-//   window.MyKTAMapProLicense.getData() : objet ou null
-//   window.MyKTAMapProLicense.getSource() : "server" | null
-//   window.MyKTAMapProLicense.forceRecheck()   : void
-//
-// Event émis sur window au changement de licence :
-//   "mktm:license-changed" → detail = { isPro, source, data }
-//
-// =========================
+// proLicense.js — détecte si l'installation tourne sous licence pro. Source UNIQUE : le serveur
+// (`/Licence-pro.json` à la racine du site). Sans ce fichier (myktamap.fr) : mode community, rien
+// ne change. Une licence importée sur l'appareil (fonction retirée) est purgée au démarrage.
+// 🔒 Licence SIGNÉE (ECDSA P-256) : seule la clé PUBLIQUE vit ici ; la licence reste lisible en
+//   clair, sa valeur juridique vient du contrat. `license_hash` (MKTM-LIC-<32 hex>) est nominatif.
+// Format : { instance: "pro" (requis), signature, domaines, license_hash, client, license_id,
+//   license_type, issued_at, valid_until } ; `license_hash` facultatif côté serveur (avertissement).
+// Expose : window.__MKTM_PRO_LICENSE__ (objet | null) · window.MyKTAMapProLicense { isPro, getData,
+//   getSource → "server" | null, forceRecheck }
+// Événements : "mktm:license-changed" { isPro, source, data } · "mktm:license-checked"
+// Garde-fou : scripts/check-licence.js · Doc : docs/architecture/security-legal.md
 
 (function() {
   "use strict";
 
-  // Clés localStorage distinctes pour les 2 sources.
   var LS_KEY_SERVER = "__mktm_pro_license__";       // cache du fetch /Licence-pro.json
   var LS_KEY_LOCAL  = "__mktm_pro_license_local__"; // ancienne licence importée (retirée) : purgée au démarrage
 
   var FETCH_PATH = "/Licence-pro.json";
 
-  // 🔏 04/10/2026 — LICENCES SIGNÉES. Une licence n'est acceptée que si :
-  //   - sa `signature` (ECDSA P-256 / SHA-256, brute r||s en base64) est valide pour
-  //     la clé publique ci-dessous (la clé privée ne quitte jamais KARMA) ;
-  //   - elle n'est pas expirée (`valid_until`) ;
-  //   - ses `domaines` couvrent l'adresse ouverte (`*` = tous, licences de test).
-  // La forme signée est la licence SANS `signature`, clés triées récursivement.
+  // 🔒 Licence acceptée seulement si : `signature` (ECDSA P-256 / SHA-256, r||s brut en base64)
+  //   valide pour la clé publique ci-dessous (la clé privée ne quitte jamais l'émetteur) ;
+  //   `valid_until` non dépassé ; `domaines` couvrant l'adresse ouverte (`*` = tous, tests).
+  // Forme signée = la licence SANS `signature`, clés triées récursivement.
   // Clé PUBLIQUE : la publier ne permet pas d'émettre de licence.
   var CLE_PUBLIQUE_JWK = {"kty":"EC","crv":"P-256","x":"4hCCKedCcwslgzb2dueMVrnw5bMCwOReHr82fYBDMbE","y":"eesWXOFd9Snk-hM9mUB8J4SbKgdWvVJWKHMAX5kdDgk"};
   var FETCH_TIMEOUT_MS = 1500;
-  // 🩸 Sans licence serveur déjà connue (1er lancement, après « Tout réinitialiser »),
-  // on attend la vraie réponse : 1,5 s ne suffisait pas quand le Service Worker
-  // retélécharge toute l'app en même temps (licence abandonnée avant même d'être
-  // envoyée → instance pro prise pour une app community, vécu le 04/10/2026).
+  // 🩸 Sans licence déjà connue (1er lancement, après « Tout réinitialiser »), on attend la vraie
+  // réponse : 1,5 s ne suffit pas quand le SW retélécharge l'app en même temps (instance pro
+  // prise pour une app community).
   var FETCH_TIMEOUT_PREMIER_MS = 15000;
 
-  // Pattern de validation du hash de licence.
-  // Format : MKTM-LIC- suivi de 32 caractères hexadécimaux (insensible à la casse).
-  // Génération côté KARMA : `openssl rand -hex 16` → "MKTM-LIC-" + result.
+  // « MKTM-LIC- » + 32 hex (casse indifférente), généré par `openssl rand -hex 16`.
   var HASH_PATTERN = /^MKTM-LIC-[A-Fa-f0-9]{32}$/;
 
-  // -------------------------------------------------------------------------
-  // Helpers internes
-  // -------------------------------------------------------------------------
-
-  // Helper i18n — fallback = clé brute. 🐛 v1.68.1 (audit clés manquantes) :
-  // le commentaire d'origine (« jamais au load ») était faux — _validateData
-  // tourne AUSSI au boot (validation du cache LS / fetch serveur), AVANT la
-  // fin du fetch des dicos → t() warnait « clé manquante » pour rien. has()
-  // teste la présence réelle sans warn ; erreur de boot jetée = clé brute OK.
+  // ── Outils internes ──────────────────────────────────────────────────────
+  // 🩸 _validateData tourne AUSSI au boot, avant le chargement des dicos : has() évite un faux
+  // « clé manquante » ; repli = clé brute.
   function t(k, p) {
     return (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(k))
       ? window.I18n.t(k, p) : k;
@@ -111,10 +53,8 @@
       if (!raw) return null;
       var data = JSON.parse(raw);
       if (data && data.instance === "pro") {
-        // 🔏 09/10/2026 — Une licence en cache qui a EXPIRÉ n'est plus une licence, même hors
-        // ligne (sans réseau, le serveur ne peut pas la refuser à notre place) : purgée ici, elle
-        // fait passer l'installation pro en « licence » → app fermée (main.js), jamais en
-        // community sur les données de l'appareil.
+        // 🔒 Licence en cache EXPIRÉE purgée, même hors ligne : l'installation passe en « licence »
+        // (app fermée, main.js), jamais en community sur les données de l'appareil.
         if (typeof data.valid_until === "string" && data.valid_until < new Date().toISOString().slice(0, 10)) {
           localStorage.removeItem(key);
           console.warn("[ProLicense] licence en cache expirée le " + data.valid_until + " : ignorée");
@@ -123,7 +63,7 @@
         return data;
       }
     } catch(e) {
-      // Cache corrompu → on l'ignore (laissera la suite purger)
+      // Cache corrompu : ignoré.
     }
     return null;
   }
@@ -145,8 +85,8 @@
     return JSON.stringify(v);
   }
   var _clePromesse = null;
-  // Promesse de booléen : signature valide, non expirée, domaine couvert. Sans WebCrypto
-  // (contexte non sécurisé), aucune licence ne peut être vérifiée → refusée.
+  // Promise<boolean> : signée, non expirée, domaine couvert. 🔒 Sans WebCrypto (contexte non
+  // sécurisé) : refusée.
   function _verifierSignature(data) {
     try {
       if (!data || typeof data.signature !== "string" || !Array.isArray(data.domaines)) return Promise.resolve(false);
@@ -185,16 +125,12 @@
     return { ok: true, data: data };
   }
 
-  // -------------------------------------------------------------------------
-  // Lecture initiale synchrone (cache localStorage) — évite tout flash
-  // -------------------------------------------------------------------------
-  // Priorité : serveur > local (le serveur prime — c'est l'annonce du
-  // déployeur, plus "officielle" que l'import individuel).
+  // ── Lecture initiale synchrone (cache localStorage) : pas de flash ───────
 
   var _activeData = null;
   var _activeSource = null;
 
-  // Ancienne licence importée par l'utilisateur (avant le 09/10/2026) : sans effet, purgée.
+  // Ancienne licence importée par l'utilisateur : sans effet, purgée.
   try {
     if (localStorage.getItem(LS_KEY_LOCAL)) {
       localStorage.removeItem(LS_KEY_LOCAL);
@@ -215,10 +151,7 @@
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Application d'état + notification
-  // -------------------------------------------------------------------------
-
+  // ── Application de l'état + notification ─────────────────────────────────
   function _applyClasses(isPro) {
     if (document.documentElement) {
       document.documentElement.classList.toggle("kta-instance-pro", isPro);
@@ -257,10 +190,7 @@
     _notifyChange(prevIsPro, prevSource, !!_activeData, _activeSource, _activeData);
   }
 
-  // -------------------------------------------------------------------------
-  // Vérification async côté serveur
-  // -------------------------------------------------------------------------
-
+  // ── Vérification asynchrone côté serveur ─────────────────────────────────
   function _checkServerLicense() {
     if (typeof fetch !== "function") return;
 
@@ -288,10 +218,8 @@
       .then(function(resp) {
         if (timeoutId) clearTimeout(timeoutId);
         if (!resp.ok) {
-          // Seule une ABSENCE déclarée (404 / 410 : pas de licence sur ce serveur) purge
-          // le cache SERVEUR (le cache LOCAL reste indépendant). Hors ligne (503 du
-          // Service Worker) ou serveur en panne (5xx) : on garde la licence connue —
-          // l'installation est « injoignable », pas devenue community.
+          // 🩸 Seule une ABSENCE déclarée (404 / 410) purge le cache. Hors ligne (503 du SW) ou
+          // panne (5xx) : la licence connue reste, l'installation est « injoignable », pas community.
           if (resp.status === 404 || resp.status === 410) {
             _safeRemoveLS(LS_KEY_SERVER);
             _recomputeActive();
@@ -306,7 +234,7 @@
         if (data === undefined) return;
         var v = _validateData(data, /* strictHash */ false);
         if (!v.ok) { _safeRemoveLS(LS_KEY_SERVER); _recomputeActive(); _signalerVerifiee(); return; }
-        // 🔏 Signature vérifiée AVANT de mémoriser : une licence non signée n'active rien.
+        // 🔒 Signature vérifiée AVANT de mémoriser : une licence non signée n'active rien.
         return _verifierSignature(v.data).then(function(signee) {
           if (signee) _safeWriteLS(LS_KEY_SERVER, v.data);
           else { _safeRemoveLS(LS_KEY_SERVER); console.warn("[ProLicense] licence serveur refusée : signature invalide, expirée ou pour un autre domaine."); }
@@ -315,20 +243,17 @@
         });
       })
       .catch(function() {
-        // Network error / timeout → maintenir l'état cache (offline temporaire).
+        // Erreur réseau / délai : l'état en cache est maintenu.
         if (timeoutId) clearTimeout(timeoutId);
         _signalerVerifiee();
       });
   }
-  // Fin de la vérification serveur (licence trouvée ou non) : le démarrage qui
-  // l'attend n'a pas à patienter jusqu'au délai maximal.
+  // Fin de vérification (licence ou non) : le démarrage n'attend pas le délai maximal.
   function _signalerVerifiee() {
     try { window.dispatchEvent(new CustomEvent("mktm:license-checked")); } catch(e) {}
   }
 
-  // -------------------------------------------------------------------------
-  // API publique
-  // -------------------------------------------------------------------------
+  // ── API publique ─────────────────────────────────────────────────────────
   window.MyKTAMapProLicense = {
     isPro: function() {
       return !!_activeData;
@@ -342,18 +267,15 @@
     forceRecheck: function() {
       _checkServerLicense();
     },
-    // Helpers diagnostic
+    // Diagnostic :
     _LS_KEY_SERVER: LS_KEY_SERVER,
     HASH_PATTERN: HASH_PATTERN,
     _verifierSignature: _verifierSignature   // tests (scripts/check-licence.js)
   };
 
-  // -------------------------------------------------------------------------
-  // Lancement de la vérification async côté serveur
-  // -------------------------------------------------------------------------
-
-  // 🔏 Une licence mémorisée (localStorage) est revérifiée à chaque démarrage : une
-  // licence non signée (ou écrite à la main) est retirée.
+  // ── Lancement ────────────────────────────────────────────────────────────
+  // 🔒 Toute licence mémorisée est revérifiée à chaque démarrage : non signée (ou écrite à la
+  // main) → retirée.
   [LS_KEY_SERVER, LS_KEY_LOCAL].forEach(function(cle) {
     var memo = _safeReadLS(cle);
     if (!memo) return;
@@ -364,8 +286,7 @@
 
   _checkServerLicense();
 
-  // Au cas où body arrive après le check initial (script chargé dans <head>),
-  // re-applique l'état à DOMContentLoaded.
+  // Script chargé dans <head> : body n'existe pas encore, l'état est réappliqué au DOMContentLoaded.
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function() {
       _applyClasses(!!_activeData);

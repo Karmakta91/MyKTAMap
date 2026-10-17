@@ -6,46 +6,31 @@
  */
 
 // =========================
-// 🪫 BATTERY GUARD — v1.11.1 (cible V2)
+// BATTERYGUARD.JS — État de la batterie et avertissements gradués sous terre
 // =========================
-// Module qui expose l'état batterie via Battery Status API native
-// (`navigator.getBattery()`) et émet warnings graduels en sous-sol.
-//
-// Choix de design (KARMA "1:a · 2:d · 3:b · 4:a · 5:c · 6:d · 7:b · 8:a") :
-//   1:a → Battery Status API native uniquement (pas d'heuristique).
-//         Si pas dispo (Safari iOS, Firefox desktop récents) → fallback
-//         "indisponible" et tous les indicateurs UI sont masqués (8:a).
-//   2:d → Indicateur dans header bar refondue ET status bar (cf
-//         refonteInterface.js qui s'abonne via onChange).
-//   3:b → 3 seuils : 20% (info bleu), 10% (warning orange), 5% (modale
-//         rouge critique).
-//   4:a → Code couleur : >50% vert · 20-50% jaune · 10-20% orange · <10% rouge.
-//   5:c → Charge : ajoute icône ⚡ ET passe en bleu fixe (override).
-//   6:d → À 20% propose Perf ULTRA, à 10% propose aussi de fermer tracker.
-//   7:b → localStorage `myktamap_battery_warnings_seen_v1` = {level20, level10,
-//         level5, cycleId}. Reset à chaque transition décharge → charge.
-//   8:a → API indispo (Safari) → indicateurs masqués gracieusement.
-//
-// API publique :
-//   window.BatteryGuard = {
-//     isAvailable()    → bool (Battery Status API supportée)
-//     getLevel()       → number 0-100 (pourcentage), ou null si indispo
-//     isCharging()     → bool, ou null si indispo
-//     getColor()       → string ("#27c97e" | "#f4c542" | "#ff9933" | "#ef4444" | "#8cb4ff" charge)
-//     getEmoji()       → string ("🪫" | "🔋" selon niveau, "⚡" si charge)
-//     formatLabel()    → string ex. "87%" ou "⚡ 87%" (avec ⚡ si charge)
-//     onChange(cb)     → callback {level, charging, color, emoji, label}
-//                        return : unsubscribe()
-//     forceCheck()     → re-trigger un onChange immédiat (utile au boot UI)
-//   }
-// =========================
+// Battery Status API native seulement (`navigator.getBattery()`, pas d'heuristique), option à activer
+// (APP_CONFIG.batterieEnabled). API absente (Safari iOS, Firefox) : état « indisponible », l'UI affiche une pastille
+// grisée « ? ». Indicateur dans l'en-tête et la barre d'état (refonteInterface.js, via onChange).
+//   - Seuils : 20 % (info), 10 % (avertissement + proposer de fermer le tracker), 5 % (modale rouge critique) ; à
+//     20 et 10 % on propose Perf ULTRA.
+//   - Couleurs : > 50 % vert · 20-50 % jaune · 10-20 % orange · < 10 % rouge ; en charge : ⚡ et bleu fixe.
+//   - Une fois par cycle de charge : `myktamap_battery_warnings_seen_v1` = {level20, level10, level5, cycleId},
+//     remis à zéro à chaque passage décharge → charge.
+// API : window.BatteryGuard = {
+//   isAvailable()  → bool (API supportée)
+//   getLevel()     → 0-100, ou null si indisponible
+//   isCharging()   → bool, ou null
+//   getColor()     → "#27c97e" | "#f4c542" | "#ff9933" | "#ef4444" | "#8cb4ff" (charge)
+//   getEmoji()     → "🪫" | "🔋" selon niveau, "⚡" en charge
+//   formatLabel()  → "87%"
+//   onChange(cb)   → cb({level, charging, color, emoji, label}) ; rend unsubscribe()
+//   forceCheck()   → onChange immédiat (démarrage de l'UI)
+// }
 
 (function() {
   "use strict";
 
-  // ============================================================
-  // SEUILS & COULEURS (cf KARMA 3:b + 4:a)
-  // ============================================================
+  // ── Seuils et couleurs ──────────
   const THRESHOLDS = {
     info:    20,   // seuil bleu info → suggestion Perf ULTRA
     warning: 10,   // seuil orange warning → +suggestion fermer tracker
@@ -56,27 +41,21 @@
     medium:   "#f4c542",  // 20-50%
     low:      "#ff9933",  // 10-20%
     critical: "#ef4444",  // < 10%
-    charging: "#8cb4ff"   // override pendant charge (KARMA 5:c)
+    charging: "#8cb4ff"   // pendant la charge
   };
 
-  // ============================================================
-  // ÉTAT INTERNE
-  // ============================================================
+  // ── État interne ──────────
   let _battery = null;     // BatteryManager natif si dispo
   let _available = false;  // a-t-on accès à l'API ?
   const _listeners = [];   // callbacks abonnés via onChange
 
-  // Cache état précédent pour détecter les transitions décharge → charge
-  // (utile pour reset le localStorage des warnings vus)
+  // État précédent : détecte la transition décharge → charge (remise à zéro des avertissements vus).
   let _prevCharging = null;
 
-  // ============================================================
-  // INIT
-  // ============================================================
+  // ── Init ──────────
   function _init() {
-    // 🔕 v1.85.2 (KARMA) — l'utilisateur peut refuser ce capteur. On sort
-    // AVANT `getBattery()` : couper seulement l'icône laisserait l'écoute en
-    // place, et c'est justement l'écoute qu'on ne veut pas imposer.
+    // Capteur refusable : on sort AVANT `getBattery()` (couper seulement l'icône laisserait l'écoute en place, et
+    // c'est l'écoute qu'on ne veut pas imposer).
     if (!window.APP_CONFIG || window.APP_CONFIG.batterieEnabled !== true) {
       _available = false;
       console.log("[BatteryGuard] Désactivé par l'utilisateur — aucun capteur écouté.");
@@ -85,20 +64,14 @@
     if (typeof navigator === "undefined" || typeof navigator.getBattery !== "function") {
       _available = false;
       console.log("[BatteryGuard] navigator.getBattery indispo — fallback chip grisé '?' (KARMA option B v1.11.1).");
-      // 🆕 v1.11.1 (KARMA "option B debug") : on notifie quand même les
-      // listeners pour qu'ils affichent un chip grisé avec '?' au lieu de
-      // tout masquer. Permet de voir l'emplacement même sur Safari/FF.
-      // Notify différé via setTimeout 0 pour laisser le module finir son
-      // init avant de tirer (les listeners ne sont pas encore accroché à
-      // ce moment, c'est OK : refonteInterface fera son forceCheck() au
-      // boot UI qui re-notifie le state actuel = indispo).
+      // Pas de notification ici : refonteInterface appelle forceCheck() au démarrage de l'UI, qui rend l'état
+      // « indisponible » (pastille grisée « ? » plutôt que rien).
       return;
     }
     navigator.getBattery().then(function(bat) {
       _battery = bat;
       _available = true;
       _prevCharging = bat.charging;
-      // Listeners natifs sur le BatteryManager
       bat.addEventListener("levelchange",    _onUpdate);
       bat.addEventListener("chargingchange", _onChargingChange);
       console.log("[BatteryGuard] Init OK — level :", Math.round(bat.level * 100) + "%, charging :", bat.charging);
@@ -107,21 +80,18 @@
     }).catch(function(err) {
       _available = false;
       console.warn("[BatteryGuard] getBattery rejected — fallback chip grisé '?' :", err);
-      // Same comme ci-dessus : notifier avec state "indispo" via forceCheck()
-      // depuis l'UI (le state retourne déjà available:false).
+      // Même chose : l'UI obtient l'état « indisponible » par forceCheck().
     });
   }
 
-  // ============================================================
-  // EVENT HANDLERS NATIFS
-  // ============================================================
+  // ── Événements natifs ──────────
   function _onUpdate() {
     _notify();
     _checkWarnings();
   }
 
   function _onChargingChange() {
-    // Transition décharge → charge : reset les warnings vus pour ce cycle.
+    // Décharge → charge : avertissements remis à zéro pour ce cycle.
     if (_battery && _battery.charging && _prevCharging === false) {
       _resetWarningsSeen();
       console.log("[BatteryGuard] Charge détectée — warnings reset.");
@@ -130,15 +100,10 @@
     _notify();
   }
 
-  // ============================================================
-  // CALCUL ÉTAT EXPOSÉ
-  // ============================================================
+  // ── État exposé ──────────
   function _state() {
     if (!_available || !_battery) {
-      // 🆕 v1.11.1 (KARMA option B) : retourne un state explicite "indispo"
-      // pour que l'UI puisse afficher un chip grisé avec '?' au lieu de
-      // tout masquer. Le flag `available: false` permet à l'UI de
-      // distinguer "API pas supportée" vs "pas encore résolue".
+      // État explicite « indisponible » : `available: false` distingue « API absente » de « pas encore résolue ».
       return {
         level:     null,
         charging:  null,
@@ -161,7 +126,7 @@
   }
 
   function _computeColor(lvl, chg) {
-    // KARMA 5:c — en charge, override bleu fixe (sauf si critique <5%)
+    // En charge : bleu fixe (sauf critique < 5 %).
     if (chg && lvl >= THRESHOLDS.critical) return COLORS.charging;
     if (lvl < THRESHOLDS.critical) return COLORS.critical;
     if (lvl < THRESHOLDS.warning)  return COLORS.low;
@@ -171,7 +136,6 @@
 
   function _computeEmoji(lvl, chg) {
     if (chg) return "⚡";
-    // Emoji selon le niveau
     if (lvl < THRESHOLDS.critical) return "🪫";  // batterie quasi vide
     if (lvl < 30)                  return "🪫";
     return "🔋";  // batterie pleine ou suffisante
@@ -179,15 +143,11 @@
 
   function _formatLabel(lvl, chg) {
     if (lvl === null) return "";
-    // 🔧 v1.11.1-fix (KARMA "deux éclairs ?") : ne pas inclure ⚡ dans le
-    // label car l'emoji est déjà rendu en parallèle via _computeEmoji
-    // ("⚡" si charge, "🔋" / "🪫" sinon). Avant : double éclair "⚡ ⚡ 92%".
+    // Pas de ⚡ dans le libellé : l'emoji est rendu à côté (_computeEmoji), sinon double éclair « ⚡ ⚡ 92% ».
     return lvl + "%";
   }
 
-  // ============================================================
-  // WARNINGS GRADUELS (cf KARMA 3:b + 6:d + 7:b)
-  // ============================================================
+  // ── Avertissements gradués ──────────
   const LS_WARNINGS_KEY = "myktamap_battery_warnings_seen_v1";
 
   function _getWarningsSeen() {
@@ -217,29 +177,28 @@
     try { localStorage.removeItem(LS_WARNINGS_KEY); } catch (e) {}
   }
 
-  // Vérifie si on doit déclencher un warning sur le seuil franchi.
-  // Idempotent : ne tire qu'UNE fois par cycle de charge (cf 7:b).
+  // Avertissement du seuil franchi, UNE fois par cycle de charge (idempotent).
   function _checkWarnings() {
     if (!_available || !_battery) return;
     if (_battery.charging) return;  // en charge → pas de warning de décharge
     const lvl = Math.round(_battery.level * 100);
     const seen = _getWarningsSeen();
 
-    // Niveau critique 5% → modale rouge
+    // 5 % → modale rouge
     if (lvl <= THRESHOLDS.critical && !seen.level5) {
       _setWarningSeen("level5");
       _afficherModaleCritique(lvl);
       return;
     }
 
-    // Niveau warning 10% → toast + suggestion Perf ULTRA + fermer tracker
+    // 10 % → toast + Perf ULTRA + fermer le tracker
     if (lvl <= THRESHOLDS.warning && !seen.level10) {
       _setWarningSeen("level10");
       _toastWarning10(lvl);
       return;
     }
 
-    // Niveau info 20% → toast + suggestion Perf ULTRA
+    // 20 % → toast + Perf ULTRA
     if (lvl <= THRESHOLDS.info && !seen.level20) {
       _setWarningSeen("level20");
       _toastInfo20(lvl);
@@ -247,17 +206,11 @@
     }
   }
 
-  // ============================================================
-  // UX : TOASTS + MODALES
-  // ============================================================
-  // 🐛 v1.77.0 — COURSE AU BOOT : _init() tourne au chargement du module et
-  // _notify() évalue tout de suite → sur un appareil déjà ≤20 %, le toast
-  // partait AVANT l'arrivée du dico i18n (« Clé manquante : battery.toast.
-  // info20 », attrapé par le smoke sur un laptop déchargé). Même famille que
-  // la course du Mode Dev — même remède : barrière I18n.init() avant tout
-  // émetteur UX. `fn` est appelée aussi en cas d'échec d'init (une modale
-  // critique 5 % doit sortir même si les dicos plantent — clé brute plutôt
-  // que silence).
+  // ── UX : toasts et modales ──────────
+  // 🩸 Course au démarrage : _init() tourne au chargement et _notify() évalue tout de suite ; sur un appareil déjà
+  // ≤ 20 %, le toast partirait AVANT le dico i18n (« Clé manquante : battery.toast.info20 »). Barrière I18n.init()
+  // avant tout émetteur UX. `fn` est appelée aussi si l'init échoue : la modale critique 5 % doit sortir même sans
+  // dico (clé brute plutôt que silence).
   function _quandI18nPret(fn) {
     if (window.I18n && typeof window.I18n.init === "function") {
       try { window.I18n.init().then(fn, fn); return; } catch(e) {}
@@ -282,21 +235,17 @@
       const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
       const msg = t("battery.toast.warn10", { n: lvl });
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast(msg, "warn", { important: true });   // 🔕 survit au mode Silence
+        window.OOMGuard.showToast(msg, "warn", { important: true });   // survit au mode Silence
       } else {
         console.warn("[BatteryGuard] " + msg);
       }
     });
   }
 
-  // Modale critique 5% — overlay rouge plein écran, ne se ferme qu'à
-  // l'action utilisateur (pas de auto-close), car c'est une situation
-  // qui mérite l'attention (en sous-sol, batterie faible = grosse perte
-  // de temps si tu ne réagis pas).
+  // Modale critique 5 % : overlay rouge plein écran, fermée seulement par l'utilisateur (sous terre, une batterie
+  // faible ignorée coûte cher).
   function _afficherModaleCritique(lvl) {
-    // 🐛 v1.77.0 — même barrière i18n que les toasts (cf _quandI18nPret).
-    // Le garde anti-doublon vit dans _construireModaleCritique : valable
-    // aussi après le détour par la barrière.
+    // Même barrière i18n que les toasts ; l'anti-doublon vit dans _construireModaleCritique (valable après le détour).
     _quandI18nPret(function() { _construireModaleCritique(lvl); });
   }
 
@@ -340,7 +289,7 @@
     document.getElementById("kta-bat-ok").addEventListener("click", _close);
     document.getElementById("kta-bat-perf").addEventListener("click", function() {
       _close();
-      // Ouvrir la modale Réglages (ou Configuration loader si possible)
+      // Ouvre la modale Réglages (ou Configuration de l'accueil).
       if (typeof window.afficherConfig === "function") {
         try { window.afficherConfig(); } catch (e) {}
       } else if (typeof window._ouvrirLoaderConfig === "function") {
@@ -350,9 +299,7 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
   }
 
-  // ============================================================
-  // NOTIFY LISTENERS
-  // ============================================================
+  // ── Notification des listeners ──────────
   function _notify() {
     const s = _state();
     _listeners.forEach(function(cb) {
@@ -360,9 +307,7 @@
     });
   }
 
-  // ============================================================
-  // API PUBLIQUE
-  // ============================================================
+  // ── API publique ──────────
   window.BatteryGuard = {
     isAvailable:  function() { return _available; },
     getLevel:     function() { return _available && _battery ? Math.round(_battery.level * 100) : null; },
@@ -379,7 +324,7 @@
       };
     },
     forceCheck:   function() { _notify(); _checkWarnings(); },
-    // Pour debug uniquement — expose les seuils et l'état brut
+    // Debug : seuils et état brut.
     _peek:        function() {
       return {
         thresholds: THRESHOLDS,
@@ -389,7 +334,6 @@
     }
   };
 
-  // Démarrage automatique au chargement du module
   _init();
 
   console.log("[BatteryGuard] Module chargé.");

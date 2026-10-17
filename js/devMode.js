@@ -5,31 +5,21 @@
  */
 
 // =========================
-// 🛠️ DEV MODE — Mode Développeur (v1.76.3, topo KARMA 07/08)
+// DEVMODE.JS — Mode Développeur (section « Debug » de la ⚙️ Configuration de l'accueil)
 // =========================
-// Refonte de la section « Debug » du ⚙️ Configuration HOME :
-//   - Toggle « Mode Développeur » protégé par MOT DE PASSE à la première
-//     activation (même principe que la gate communautaire : hash SHA-256
-//     hardcodé — jamais le mdp en clair —, 5 tentatives max + lockout 60 s,
-//     déverrouillage persisté par appareil) + avertissement de responsabilité.
-//   - Contenu du mode : toggle logs détaillés (pilote setDebugMode global,
-//     le select des Réglages plan a été SUPPRIMÉ — décision 2:b), bouton
-//     📋 Afficher les logs (déménagé ici), 🏗️ ConfAdmin et 🔧 l'inspecteur
-//     Service Worker (js/swInspector.js).
-//   - 🩸 Plus de bibliothèque de docs (retirée le 09/10/2026, audit CD F1) :
-//     elle lisait README.md et docs/ sur le serveur, ce qui obligeait à les
-//     DÉPLOYER — donc à les publier, le mot de passe de ce mode ne protégeant
-//     que la liste, pas les fichiers. Les sites ne reçoivent plus que
-//     docs/applications/ ; la doc technique se lit dans le dépôt.
-//     scripts/check-devmode-docs.js empêche son retour.
-// HOME seulement (décision 4) : rien en mode carte.
-// =========================
+//   - 🔒 Activation protégée par MOT DE PASSE à la première fois (hash SHA-256 en dur, jamais le mot de passe ;
+//     5 tentatives puis temporisation de 60 s ; déverrouillage mémorisé par appareil) + avertissement.
+//   - Contenu : logs détaillés (pilote setDebugMode global), « Afficher les logs », ConfAdmin, inspecteur Service
+//     Worker (js/swInspector.js), outils d'extension (prise « outilsDev »).
+//   - 🩸 PAS de bibliothèque de docs : lire README.md et docs/ sur le serveur obligerait à les DÉPLOYER, donc à les
+//     publier (le mot de passe ne protège que la liste, pas les fichiers). Les sites ne reçoivent que
+//     docs/applications/. Garde-fou : scripts/check-devmode-docs.js.
+// Accueil seulement : rien en mode carte.
 
 (function() {
   "use strict";
 
-  // Hash SHA-256 du mot de passe Mode Développeur (fourni par KARMA — pour le
-  // changer : echo -n "<mdp>" | openssl dgst -sha256, et les appareils déjà
+  // 🔒 Hash SHA-256 du mot de passe (le changer : echo -n "<mdp>" | openssl dgst -sha256 ; les appareils déjà
   // déverrouillés le redemanderont).
   const DEV_HASH   = "cf54ce09daddca0545b4bf38455cacc2fef9f52379d187e0023228b84077db49";
   const LS_UNLOCK  = "myktamap_devmode_unlock_v1";   // hash validé
@@ -59,7 +49,7 @@
     try { localStorage.setItem(LS_TRIES, JSON.stringify(o)); } catch(e) {}
   }
 
-  // ---- Modale mot de passe (1re activation) ----
+  // ── Modale mot de passe (1re activation) ──
   function _demanderMdp() {
     return new Promise(function(resolve) {
       const ov = document.createElement("div");
@@ -122,7 +112,7 @@
     return (window.KtaExtensions && typeof window.KtaExtensions.outilsDev === "function") ? window.KtaExtensions.outilsDev() : [];
   }
 
-  // ---- Section HOME (peuple le conteneur de index.html) ----
+  // ── Section de l'accueil (peuple le conteneur d'index.html) ──
   function initSection() {
     const wrap = document.getElementById("kta-devmode-wrap");
     if (!wrap) return;
@@ -139,7 +129,6 @@
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-logs-show" style="width:100%; margin-top:8px;">' + t("home.debug.showLogs") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-confadmin" style="width:100%; margin-top:8px;">🏗️ ' + t("devmode.confadmin") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">' + t("home.inspector.swBtn") + '</button>' +
-          // Outils fournis par une extension (prise « outilsDev ») : aucun sans extension.
           _outilsExt().map(function(o, i) {
             return '<button class="loader-btn-secondary" type="button" data-devmode-outil="' + i + '" style="width:100%; margin-top:8px;"></button>';
           }).join("")
@@ -171,14 +160,11 @@
           if (typeof window.afficherLogsDebug === "function") window.afficherLogsDebug();
         });
         document.getElementById("kta-devmode-confadmin").addEventListener("click", function() {
-          // Page statique du repo, ouverte dans un onglet a part : elle a son
-          // propre cycle de vie et ne doit pas remplacer la session en cours.
+          // Page statique du dépôt, dans un onglet à part : elle ne doit pas remplacer la session en cours.
           try { window.open("confadmin.html", "_blank", "noopener"); }
           catch (e) { console.warn("[DevMode] Ouverture confadmin.html :", e); }
         });
-        // 🔧 Inspecteur Service Worker (lot C, 03/10/2026) : déplacé ici depuis
-        // ⚙️ Configuration › Système & maintenance. Pour tous, l'état du cache
-        // hors-ligne est la pastille du pied de page de l'accueil.
+        // Inspecteur Service Worker. Pour tous, l'état du cache hors ligne est la pastille du pied de page.
         const outils = _outilsExt();
         wrap.querySelectorAll("[data-devmode-outil]").forEach(function(b) {
           const o = outils[Number(b.getAttribute("data-devmode-outil"))];
@@ -194,15 +180,12 @@
         });
       }
     };
-    // 🐛 v3 du fix course i18n (le SMOKE a demasque la v2) : onChange ne
-    // fire PAS au chargement initial du dico — uniquement setLang/reload.
-    // Le pattern canonique est I18n.init().then(render) : barriere
-    // idempotente, resolue en microtask si le dico est deja la (doc en tete
-    // de langManager). onChange reste pose pour les changements de langue.
+    // 🩸 onChange ne se déclenche PAS au chargement initial du dico (seulement setLang / reload) : le rendu passe
+    // par I18n.init().then(render) (barrière idempotente, cf. langManager) ; onChange reste pour les changements
+    // de langue.
     if (window.I18n && typeof window.I18n.onChange === "function" && !window._devModeI18nHooked) {
       window._devModeI18nHooked = true;
       window.I18n.onChange(rendre);
-      // Une extension déclarée après l'accueil (modules chargés en asynchrone) : ses outils apparaissent.
       window.addEventListener("mktm:extensions-changees", rendre);
     }
     if (window.I18n && typeof window.I18n.init === "function") {

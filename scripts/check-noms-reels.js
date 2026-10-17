@@ -1,41 +1,21 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🗺️ check-noms-reels.js — garde-fou pre-commit + commit-msg + CI BLOQUANT
+// check-noms-reels.js — garde-fou pre-commit + commit-msg + CI BLOQUANT
 // =====================================================================
-// Refuse la réintroduction d'un nom réel lié aux relevés de terrain (nom du
-// département des relevés, ses variantes, son gentilé) dans un fichier suivi,
-// un chemin de fichier ou un message de commit.
-//
-// POURQUOI (12/10/2026) : le dépôt est public depuis le 11/10/2026. Le nom du
-// département des relevés réels traînait dans des commentaires `js/`, des
-// tests `scripts/`, le journal et `docs/architecture/` — en exemple d'étiquette,
-// de dossier, de sous-titre de kiosque, de mesure. Neutralisé partout le
-// 12/10 ; rien n'empêchait de le réécrire au prochain exemple.
-//
-// 🔐 LE NOM N'EST PAS ÉCRIT ICI : le contrôle compare l'EMPREINTE sha256 de
-// chaque mot (normalisé : accents ôtés, minuscules, camelCase et `_`/`-`
-// découpés) à une liste d'empreintes. Limite assumée : une empreinte de mot
-// courant se retrouve en essayant une liste de candidats (une centaine de
-// départements) — elle évite la lecture et le `grep`, pas la déduction. Le nom
-// reste de toute façon dans l'historique Git d'avant le 12/10.
-// Pour un nom qu'on ne veut même pas exposer en empreinte : liste HORS DÉPÔT,
-// facultative, `~/.myktamap/noms-interdits.txt` (un mot par ligne, `#` =
-// commentaire), hachée au chargement. Elle protège le poste ; la CI ne la voit
-// pas.
-//
-// AJOUTER UN MOT À LA LISTE PUBLIQUE :
-//   node -e "console.log(require('./scripts/check-noms-reels.js').empreinte('Mot'))"
-//
-// PORTÉE :
-//   - pre-commit : fichiers indexés (contenu de l'INDEX) ; KTA_FICHIERS_CI
-//     (liste de fichiers) si posée ;
-//   - CI (`CI` posé par GitHub Actions) ou `--tout` : TOUS les fichiers suivis ;
-//   - `--message <fichier>` : le message de commit (commit-msg, ci-commits.sh).
-//   Hors portée : `data/` (jamais publié, cf check-data-hors-git.js), `lib/`
-//   (tiers), binaires.
-//
-// Pas de dérogation : un nom réel n'a aucune raison légitime d'être publié.
+// Refuse un nom réel lié aux relevés de terrain (département des relevés,
+// variantes, gentilé) dans un fichier suivi, un chemin ou un message de
+// commit : le dépôt est public, un exemple suffit à le réintroduire.
+// 🔒 Le nom n'est pas écrit ici : on compare l'empreinte sha256 de chaque mot
+// normalisé (sans accents, minuscules, camelCase et `_`/`-` découpés). Limite
+// assumée : évite la lecture et le `grep`, pas la déduction par candidats.
+// Liste facultative hors dépôt `~/.myktamap/noms-interdits.txt` (un mot par
+// ligne, `#` = commentaire), hachée au chargement ; la CI ne la voit pas.
+// Ajouter un mot : node -e "console.log(require('./scripts/check-noms-reels.js').empreinte('Mot'))"
+// Portée : pre-commit = contenu de l'INDEX (ou KTA_FICHIERS_CI) ; CI ou
+// `--tout` = tous les fichiers suivis ; `--message <fichier>` = message de
+// commit (commit-msg, ci-commits.sh). Hors portée : `data/`
+// (check-data-hors-git.js), `lib/`, binaires. Pas de dérogation.
 // =====================================================================
 "use strict";
 
@@ -73,8 +53,7 @@ function empreinte(mot) {
   return crypto.createHash("sha256").update(normaliser(mot), "utf8").digest("hex");
 }
 
-// Mots d'un texte : découpe sur tout ce qui n'est pas une lettre, et sur les
-// frontières camelCase (« dossierXyz » → « dossier », « Xyz »).
+// Découpe sur toute non-lettre et aux frontières camelCase (« dossierXyz »).
 function mots(texte) {
   const t = String(texte).normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/([a-z])([A-Z])/g, "$1 $2");
@@ -92,7 +71,7 @@ function chargerEmpreintes() {
   return set;
 }
 
-// Renvoie [{ ligne, mot }] pour chaque mot interdit du texte.
+// → [{ ligne, mot }]
 function chercher(texte, set, cache) {
   const trouves = [];
   String(texte).split(/\n/).forEach(function (ligne, i) {
@@ -137,8 +116,7 @@ function lire(f, depuisIndex) {
   try { return fs.readFileSync(f, "utf8"); } catch (e) { return null; }
 }
 
-// Auto-test : la normalisation doit attraper les formes qui l'ont fait naître
-// (casse, accents, camelCase, identifiant `f_xxx`), sur un mot fictif.
+// Auto-test sur un mot fictif : casse, accents, camelCase, identifiant `f_xxx`.
 function autoTest() {
   const set = new Set([empreinte("Valbrume")]);
   const c = new Map();

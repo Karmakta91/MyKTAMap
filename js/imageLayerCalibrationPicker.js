@@ -1,39 +1,24 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Licence : CC BY-NC-SA 4.0
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// IMAGE-LAYER-CALIBRATION-PICKER.JS — Modale picker 2 ancres (v1.38.0)
+// IMAGE-LAYER-CALIBRATION-PICKER.JS — Modale de calage 2 ancres
 // =========================
-// Modale split-screen avec 2 mini-cartes Leaflet :
-//   - GAUCHE : image layer source (CRS.Simple sur ses propres dims naturelles)
-//   - DROITE : plan principal (CRS.Simple sur APP_CONFIG.imageWidth/Height)
-//
-// FLOW EN 4 ÉTAPES
-//   1. User clique le point A sur l'image source (gauche)  → marker rouge "A"
-//   2. User clique le même point A sur le plan principal   → marker rouge "A'"
-//   3. User clique le point B sur l'image source           → marker bleu "B"
-//   4. User clique le même point B sur le plan principal   → marker bleu "B'"
-//   5. Preview overlay calibré sur la mini droite + boutons Valider/↺/❌
-//
-// API
-//   window.ImageLayerCalibrationPicker.open({
-//     sourceUrl:   "...",        // URL image layer source
-//     planUrl:     "...",        // URL plan principal (pour mini droite)
-//     planWidth:   4000,         // dims plan principal
-//     planHeight:  4000,
-//     existing:    {calibration} // optionnel, pré-remplit les ancres
-//   }) → Promise<calibration|null>
-//        Résolu avec un objet calibration { sourceA, targetA, sourceB, targetB }
-//        OU null si l'user annule.
-//
-// DÉPENDANCES
-//   - L (Leaflet)
-//   - L.imageOverlay.rotated (lib/leaflet-imageoverlay-rotated.js)
-//   - window.ImageLayerCalibration (compute3CornersFromAnchors)
-//   - window.convertCoord  (utils.js — pour preview overlay)
-// =========================
+// Écran partagé, 2 mini-cartes Leaflet : à GAUCHE le calque source (CRS.Simple sur ses dimensions naturelles), à
+// DROITE le plan principal (CRS.Simple sur planWidth / planHeight).
+// Étapes : A sur la source (marqueur rouge) → A' sur le plan → B sur la source (bleu) → B' sur le plan → aperçu
+// calé sur la mini-carte droite + Valider / ↺ / ❌.
+// API : window.ImageLayerCalibrationPicker.open({
+//   sourceUrl: "...",           // image du calque
+//   planUrl:   "...",           // plan principal (mini-carte droite)
+//   planWidth: 4000, planHeight: 4000,
+//   existing:  {calibration}    // optionnel, préremplit les ancres
+// }) → Promise<{ sourceA, targetA, sourceB, targetB } | null> (null = annulé)
+// Dépend de : L, L.imageOverlay.rotated (lib/leaflet-imageoverlay-rotated.js), window.ImageLayerCalibration,
+// window.convertCoord.
 
 (function() {
   "use strict";
@@ -49,9 +34,7 @@
   let _previewOverlay = null;
   let _overlayEl  = null;
 
-  // =========================
-  // UI BUILDER
-  // =========================
+  // ── Construction de l'UI ──────────
   function _buildOverlay() {
     const overlay = document.createElement("div");
     overlay.id = "kta-imglayer-calib-overlay";
@@ -99,9 +82,7 @@
     if (valBtn) valBtn.disabled = !validateOk;
   }
 
-  // =========================
-  // INIT MINI-MAPS
-  // =========================
+  // ── Mini-cartes ──────────
   function _initMiniMap(divId, imageUrl, imageW, imageH, onClick) {
     const bounds = [[0, 0], [imageH, imageW]];
     const minZoom = -4, maxZoom = 2;
@@ -114,9 +95,7 @@
     });
     L.imageOverlay(imageUrl, bounds).addTo(map);
     map.fitBounds(bounds);
-    // Click handler — convert latlng → pixel coords (x, y)
-    //   lat = imageH - y  →  y = imageH - lat
-    //   lng = x
+    // Clic → pixels (x, y) : lat = imageH - y → y = imageH - lat ; lng = x.
     map.on("click", function(e) {
       const x = e.latlng.lng;
       const y = imageH - e.latlng.lat;
@@ -148,9 +127,7 @@
     }
   }
 
-  // =========================
-  // FLOW LOGIC
-  // =========================
+  // ── Déroulé ──────────
   function _refreshStep() {
     const s = _state;
     if (s.step === 1) {
@@ -212,12 +189,10 @@
       _setStepText(window.I18n.t("imgcal.warn.collinear"), false);
       return;
     }
-    // Calcule les latlng dans le repère mini-right (planH-based)
+    // Latlng dans le repère de la mini-carte droite.
     function _toMiniRightLatLng(latlngFromConvertCoord) {
-      // window.convertCoord(x, y) = [imageHeight - y, x]
-      // Or notre mini-right utilise planH au lieu de imageHeight global → différent
-      // si on est dans le générateur (planH peut être custom). Refaisons à plat
-      // pour rester portable.
+      // window.convertCoord(x, y) = [imageHeight - y, x], avec l'imageHeight GLOBAL : dans le générateur, planH peut
+      // différer (point de vigilance pour l'aperçu).
       return latlngFromConvertCoord;
     }
     if (_previewOverlay) {
@@ -233,9 +208,7 @@
     ).addTo(_miniRight);
   }
 
-  // =========================
-  // ACTIONS
-  // =========================
+  // ── Actions ──────────
   function _onValidate() {
     if (_state.step < 5) return;
     const calib = {
@@ -273,9 +246,7 @@
     _rejectFn  = null;
   }
 
-  // =========================
-  // API PUBLIQUE
-  // =========================
+  // ── API publique ──────────
   function open(opts) {
     return new Promise(function(resolve, reject) {
       if (_active) return reject(new Error(window.I18n.t("imgcal.err.alreadyActive")));
@@ -292,7 +263,7 @@
       _resolveFn = resolve;
       _rejectFn  = reject;
 
-      // Charge les dims source PUIS construit la modale
+      // Dimensions de la source d'abord, puis la modale.
       window.ImageLayerCalibration.loadImageDimensions(opts.sourceUrl)
         .then(function(dims) {
           _state = {
@@ -304,11 +275,11 @@
             sourceB: null, targetB: null
           };
           _overlayEl = _buildOverlay();
-          // Init mini-maps (dans timeout pour que le DOM soit prêt)
+          // Mini-cartes initialisées dans un timeout (DOM prêt).
           setTimeout(function() {
             _miniLeft  = _initMiniMap("kta-ilc-mini-left",  opts.sourceUrl, dims.width,  dims.height,  _onLeftClick);
             _miniRight = _initMiniMap("kta-ilc-mini-right", opts.planUrl,  opts.planWidth, opts.planHeight, _onRightClick);
-            // Pré-remplit si calibration existante
+          // Préremplissage si une calibration existe.
             if (opts.existing && opts.existing.sourceA && opts.existing.targetA
                 && opts.existing.sourceB && opts.existing.targetB) {
               _state.sourceA = opts.existing.sourceA;

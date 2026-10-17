@@ -5,55 +5,31 @@
  */
 
 // =====================================================================
-// 🔄 convertirObjet.js — changer un objet de TYPE, et au besoin de FAMILLE
+// CONVERTIROBJET.JS — Changer un objet de TYPE, et au besoin de FAMILLE (aussi : supprimer, convertir un lot)
 // =====================================================================
-// LE BESOIN, ET POURQUOI IL N'EST PAS COSMÉTIQUE (KARMA, 03/09/2026) :
-// à l'import SIG d'un relevé de carrière, tout part en « front de taille » —
-// globalement juste, puisque la géométrie d'un fichier SIG ne dit pas ce que
-// l'objet EST. Mais certains vecteurs sont en réalité des GALERIES.
-//
-// Or le Pathfinder construit son graphe UNIQUEMENT sur les `roads`
-// (`getRoads` + `getAllEmbeddedRoads`) : les structures n'y sont ni arêtes ni
-// obstacles. Un plan dont tout le relevé est en structures n'a donc pas
-// « un itinéraire médiocre » — il n'a AUCUN itinéraire possible. Reclasser un
-// vecteur est ce qui le fait exister.
-//
-// LA RÈGLE, ÉNONCÉE PAR KARMA : « un vecteur fermé = zone ou pilier, un
-// vecteur non fermé = tracé ou front de taille ». On s'y tient strictement :
-//
+// Pourquoi ce n'est pas cosmétique : à l'import SIG, tout part souvent en « front de taille » (la géométrie ne dit
+// pas ce que l'objet EST). Or le Pathfinder ne construit son graphe QUE sur les `roads` (getRoads +
+// getAllEmbeddedRoads) : un relevé tout en structures n'a AUCUN itinéraire. Reclasser un vecteur le fait exister.
+// Règle stricte : fermé = zone ou pilier, ouvert = tracé ou front de taille.
 //     OUVERT   ⇄   tracés (galeries)  ⇄  structures polylignes (fronts)
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
-//
-// La frontière ouvert/fermé n'est pas une convention : elle porte les
-// MINIMUMS DE POINTS. Un front de taille peut n'avoir que 2 points ; une zone
-// en exige 3. Autoriser la traversée obligerait à fermer ou ouvrir la
-// géométrie — c'est-à-dire à INVENTER de la donnée relevée sur le terrain.
-// Refus assumé, et dit à l'utilisateur.
-//
-// CE QUI EST CONSERVÉ : la géométrie (`points`), le NIVEAU (`level`) et la
-// note (`description`). Seul le type — et donc la famille — change.
-//
-// ⛔ EXCLUS DES CIBLES :
-//   • `jonction`  — porte `fromLevel`/`toLevel`, deux niveaux qu'une
-//                   conversion ne peut pas deviner. Elle se crée par l'outil
-//                   multi-niveau, qui les demande.
-//   • `itinerary` — c'est le trajet CALCULÉ, pas une donnée du relevé.
-//
-// ⚠️ SESSION UNIQUEMENT. Un objet de calque de données n'est pas éditable en
-// place (le calque est en lecture seule, cf. tableEditor : export-only). Le
-// chemin, c'est « Session → Conversion » pour rapatrier le calque, puis ici.
-// =====================================================================
+// La frontière porte les MINIMUMS DE POINTS (2 pour un front, 3 pour une zone) : la traverser obligerait à INVENTER
+// de la géométrie relevée. Refus assumé, et dit.
+// Conservés : `points`, `level`, `description` ; seul le type (donc la famille) change.
+// Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau) et `itinerary`
+// (trajet CALCULÉ, pas une donnée du relevé).
+// ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; on le rapatrie d'abord (js/calqueSession.js).
+// Garde-fou : check-calque-session.js (🩸 ce fichier ne doit contenir AUCUNE mention du nom de liste des points de
+// session, même en commentaire).
 
 (function () {
   "use strict";
 
-  // Famille de stockage ← → catégorie de légende. `roads` se dit `traces`
-  // côté LegendCustomization : le décalage est historique, on le traverse ici
-  // une fois pour toutes plutôt que dans chaque appel.
+  // Famille de stockage ↔ catégorie de légende : `roads` se dit `traces` côté LegendCustomization ; décalage traversé
+  // ici une fois pour toutes.
   const CAT_DE_FAMILLE = { roads: "traces", zones: "zones", structures: "structures" };
   const FAMILLE_DE_CAT = { traces: "roads", zones: "zones", structures: "structures" };
 
-  // Types de tracés qui ne peuvent pas être une CIBLE (cf. en-tête).
   const CIBLES_INTERDITES = { jonction: true, itinerary: true };
 
   function _t(cle, params) {
@@ -61,10 +37,8 @@
       ? window.I18n.t(cle, params) : cle;
   }
 
-  // Un objet est-il OUVERT (polyligne) ou FERMÉ (polygone) ?
-  // Ce n'est pas la géométrie qui tranche mais le TYPE : les mêmes `points`
-  // se peignent en trait ou en surface selon lui. `isStructurePolylineType`
-  // sait déjà lire la géométrie déclarée dans la légende, customs compris.
+  // OUVERT (polyligne) ou FERMÉ (polygone) ? C'est le TYPE qui tranche, pas la géométrie (les mêmes `points` se
+  // peignent en trait ou en surface) ; `isStructurePolylineType` lit la géométrie déclarée, customs compris.
   function _estOuvert(famille, type) {
     if (famille === "roads") return true;
     if (famille === "zones") return false;
@@ -92,8 +66,8 @@
     return "";
   }
 
-  // Toutes les cibles compatibles avec l'objet source, built-in ET custom.
-  // Retourne [{ cat, famille, type, label, swatch }], la source exclue.
+  // Cibles compatibles avec l'objet source, intégrées ET custom : [{ cat, famille, type, label, swatch }],
+  // source exclue.
   function listerCibles(famille, type) {
     const ouvert = _estOuvert(famille, type);
     const out = [];
@@ -101,19 +75,17 @@
 
     cats.forEach(function (cat) {
       const famCible = FAMILLE_DE_CAT[cat];
-      // Built-in
       const builtins = (typeof window.ktaStyleBuiltins === "function")
         ? (window.ktaStyleBuiltins(cat) || []) : [];
       builtins.forEach(function (cle) {
         if (cat === "traces" && CIBLES_INTERDITES[cle]) return;
-        // Dans « structures », seuls les types de la BONNE géométrie.
+        // En « structures », seuls les types de la BONNE géométrie.
         if (cat === "structures" && _estOuvert("structures", cle) !== ouvert) return;
         if (famCible === famille && cle === type) return;   // c'est la source
         out.push({ cat: cat, famille: famCible, type: cle,
                    label: _libelle(cat, cle), swatch: _pastille(cat, cle) });
       });
-      // Custom — mêmes règles. Sans eux, un plan importé n'aurait presque
-      // aucune cible : ses types sont tous personnalisés.
+      // Customs, mêmes règles : sans eux, un plan importé (types tous personnalisés) n'aurait presque aucune cible.
       let customs = [];
       try {
         const LC = window.LegendCustomization;
@@ -132,19 +104,12 @@
     return out;
   }
 
-  // ─────────────────────────────────────────────
-  // L'OPÉRATION
-  // ─────────────────────────────────────────────
-  // 🩸 Les trois listes sont lues d'un bloc AVANT toute écriture. Sinon une
-  // conversion à l'intérieur d'une même famille (front → pilier) retirerait
-  // l'objet, réécrirait la liste, puis la relirait — et perdrait l'ajout.
-  // On n'écrit ensuite QUE les familles réellement touchées : `setStructures`
-  // relance un rendu complet, ce qui coûte cher sur un relevé à 20 000 objets.
-  // Les accesseurs des trois familles. HISSES ici (et non dans `convertir`)
-  // depuis que la suppression existe : elle a besoin des memes, et une 4e
-  // copie de cette table serait exactement la dette qu on vient de solder
-  // ailleurs. Lus a chaque appel — `window.setRoads` peut ne pas encore
-  // exister au chargement du module.
+  // ── L'opération ──────────
+  // 🩸 Les trois listes sont lues d'un bloc AVANT toute écriture : sinon une conversion dans la même famille (front →
+  // pilier) retirerait l'objet, réécrirait la liste, la relirait et perdrait l'ajout. On n'écrit QUE les familles
+  // touchées (`setStructures` relance un rendu complet, cher à 20 000 objets).
+  // Accesseurs partagés par convertir, supprimer et le lot (pas de copie de la table), lus à chaque appel :
+  // `window.setRoads` peut ne pas exister au chargement du module.
   function _lire(famille) {
     const g = { roads: "getRoads", zones: "getZones", structures: "getStructures" }[famille];
     return (g && typeof window[g] === "function") ? (window[g]() || []) : [];
@@ -187,14 +152,13 @@
     }
     listes[famille].splice(idx, 1);
 
-    // On repart de l'objet d'origine pour ne rien perdre de ce qu'il porte
-    // (champs ajoutés par une version future comprise), puis on remplace le
-    // type. `fromLevel`/`toLevel` d'une jonction n'ont plus de sens ailleurs.
+    // On repart de l'objet d'origine (rien n'est perdu, champs futurs compris) et on remplace le type ; fromLevel /
+    // toLevel d'une jonction n'ont plus de sens ailleurs.
     const neuf = Object.assign({}, obj, { type: typeCible });
     delete neuf.fromLevel;
     delete neuf.toLevel;
-    // 🆔 v2.1.0 — même objet, autre nature : l'uid suit (Object.assign le
-    // recopie), la conversion est une modification (ETUDE_UID décision 10).
+    // Même objet, autre nature : l'uid suit (Object.assign le recopie), la conversion est une modification
+    // (ETUDE_UID décision 10).
     if (window.KtaUid) window.KtaUid.touch(neuf);
     listes[familleCible].push(neuf);
 
@@ -208,20 +172,11 @@
     return true;
   }
 
-  // 🗑️ SUPPRIMER L'OBJET (KARMA, 05/09 : « rajoute, dans le truc pour
-  // convertir, un bouton supprimer »). Meme popup, meme reference directe sur
-  // l objet : le seul endroit du code ou l on tient a la fois la famille et
-  // l objet vise.
-  //
-  // 🩸 IDENTITE PAR REFERENCE, jamais par contenu. `roads` et `zones` n ont
-  // PAS d id (`data-formats.md`) et deux tracés peuvent avoir exactement la
-  // meme geometrie et le meme type : chercher par egalite de contenu
-  // supprimerait le mauvais. `indexOf(obj)` compare les references — la popup
-  // porte l objet lui-meme, c est la seule cle fiable.
-  //
-  // 🩸 PAS DE CONFIRMATION, par coherence avec la suppression d un POINT
-  // (`supprimerPointEditor`) qui s appuie sur Ctrl+Z. Le filet est donc le
-  // snapshot d historique : sans lui, l objet serait perdu pour de bon.
+  // ── Supprimer l'objet (même popup, référence directe sur l'objet) ──────────
+  // 🩸 IDENTITÉ PAR RÉFÉRENCE, jamais par contenu : `roads` et `zones` n'ont PAS d'id (data-formats.md) et deux tracés
+  // peuvent être identiques ; `indexOf(obj)` compare les références (la popup porte l'objet lui-même).
+  // 🩸 PAS DE CONFIRMATION, comme la suppression d'un POINT (`supprimerPointEditor`) : le filet est l'instantané
+  // d'historique (Ctrl+Z / ⏪), sans lui l'objet serait perdu pour de bon.
   function supprimer(famille, obj) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     if (!obj || !famille) return false;
@@ -247,22 +202,12 @@
     return true;
   }
 
-  // ─────────────────────────────────────────────
-  // MODALE DE CHOIX
-  // ─────────────────────────────────────────────
-  // 🎯 LE LOT (KARMA, 05/09 : « sélectionner N vecteurs et les convertir
-  // d'un coup »). `items` = [{ famille, obj }].
-  //
-  // 🩸 UN SEUL INSTANTANÉ, UNE SEULE ÉCRITURE PAR FAMILLE, UN SEUL RENDU.
-  // Appeler `convertir()` N fois donnerait N re-rendus complets — `setRoads`
-  // reconstruit tout, ce qui coûte cher à 20 000 objets — et N entrées
-  // d'historique : annuler la conversion demanderait N Ctrl+Z. Le lot est UN
-  // geste, il doit s'annuler en UN geste.
-  //
-  // 🩸 UNE CIBLE DÉJÀ ATTEINTE N'EST PAS UNE ERREUR. Sur une sélection mixte
-  // (40 fronts + 5 chemins → galerie), les objets déjà du bon type sont
-  // SAUTÉS et comptés à part. L'alternative — masquer une cible parce qu'un
-  // seul objet de la sélection l'a déjà — rendrait la liste incompréhensible.
+  // ── Conversion d'un lot ──────────
+  // `items` = [{ famille, obj }].
+  // 🩸 UN SEUL INSTANTANÉ, UNE ÉCRITURE PAR FAMILLE, UN SEUL RENDU : N appels à `convertir()` donneraient N re-rendus
+  // complets et N entrées d'historique (N Ctrl+Z). Le lot est UN geste, il s'annule en UN geste.
+  // 🩸 Une cible déjà atteinte n'est pas une erreur : sur une sélection mixte (40 fronts + 5 chemins → galerie), les
+  // objets déjà du bon type sont SAUTÉS et comptés à part (masquer la cible rendrait la liste incompréhensible).
   function convertirLot(items, familleCible, typeCible) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return { convertis: 0, sautes: 0, echecs: (items || []).length };   // 🔒 lecture seule
     const bilan = { convertis: 0, sautes: 0, echecs: 0 };
@@ -276,9 +221,7 @@
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState() : null;
 
-    // Les trois listes sont lues d'un bloc AVANT toute écriture — même raison
-    // que pour `convertir` : une conversion intra-famille lirait une liste
-    // déjà amputée et perdrait les objets.
+    // Listes lues d'un bloc AVANT toute écriture (même raison que `convertir`).
     const listes = {
       roads:      _lire("roads").slice(),
       zones:      _lire("zones").slice(),
@@ -295,7 +238,7 @@
       const neuf = Object.assign({}, it.obj, { type: typeCible });
       delete neuf.fromLevel;
       delete neuf.toLevel;
-      if (window.KtaUid) window.KtaUid.touch(neuf);   // 🆔 v2.1.0 (cf convertir)
+      if (window.KtaUid) window.KtaUid.touch(neuf);   // (cf convertir)
       listes[familleCible].push(neuf);
       touchees[it.famille] = true;
       touchees[familleCible] = true;
@@ -311,10 +254,8 @@
     return bilan;
   }
 
-  // Cibles d'un LOT : l'UNION de celles de chaque objet. Un type qui est la
-  // source de l'un peut être la cible d'un autre (40 fronts + 5 chemins →
-  // « chemin » reste une cible valable pour les fronts). L'intersection
-  // ferait disparaître des cibles légitimes sans que rien ne l'explique.
+  // Cibles d'un LOT = UNION de celles de chaque objet (la source de l'un peut être la cible d'un autre :
+  // l'intersection ferait disparaître des cibles légitimes sans explication).
   function listerCiblesLot(items) {
     const vues = {}, out = [];
     (items || []).forEach(function (it) {
@@ -344,9 +285,8 @@
 
     function _esc(s) { return window.ktaEsc(s); }
 
-    // Regroupées par catégorie : passer d'une famille à l'autre est le geste
-    // qui change tout (un tracé entre dans le calcul d'itinéraire, pas une
-    // structure), il doit se voir.
+    // Regroupées par catégorie : changer de famille change tout (un tracé entre dans le calcul d'itinéraire, pas une
+    // structure), ça doit se voir.
     const parCat = {};
     cibles.forEach(function (c) { (parCat[c.cat] = parCat[c.cat] || []).push(c); });
 
@@ -390,8 +330,7 @@
           '<p class="kta-convert-regle">' +
             _esc(_t(ouvert ? "convert.regleOuvert" : "convert.regleFerme")) +
           '</p>' +
-          // 🎯 Entrée du mode lot. Absente quand on EST déjà en lot : on ne
-          // relance pas une sélection depuis l'écran qui en présente une.
+          // Entrée du mode lot, absente quand on EST déjà en lot.
           (lot ? '' :
             '<button class="kta-btn kta-btn-ghost kta-convert-multi" type="button" id="kta-convert-multi">' +
               _esc(_t("convert.selMulti")) +
@@ -409,8 +348,7 @@
       btn.addEventListener("click", function () {
         const fam = btn.getAttribute("data-famille");
         const typ = btn.getAttribute("data-type");
-        // La carte est re-rendue par les setteurs : la popup encore ouverte
-        // pointerait un layer détruit. On ferme avant.
+        // Les setters re-rendent la carte : la popup ouverte pointerait un layer détruit, on la ferme avant.
         try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
         fermer();
         if (lot) {
@@ -427,9 +365,7 @@
     const btnMulti = document.getElementById("kta-convert-multi");
     if (btnMulti && window.SelectionMulti) {
       btnMulti.addEventListener("click", function () {
-        // La modale disparaît le temps de la désignation : elle couvre la
-        // carte sur laquelle il faut justement cliquer. Elle revient à la
-        // validation, avec le lot.
+        // La modale disparaît le temps de la désignation (elle couvre la carte à cliquer) et revient à la validation.
         try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
         fermer();
         window.SelectionMulti.ouvrir({ famille: famille, obj: obj }, function (sel) {
@@ -442,9 +378,9 @@
   window.KtaConvertir = {
     ouvrir:        ouvrir,
     convertir:     convertir,
-    convertirLot:  convertirLot,   // 🎯 v1.85.0 — N objets d un coup
+    convertirLot:  convertirLot,   // N objets d un coup
     listerCiblesLot: listerCiblesLot,
-    supprimer:     supprimer,   // 🗑️ v1.85.0 — depuis la popup de l objet
+    supprimer:     supprimer,   // depuis la popup de l objet
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert
   };

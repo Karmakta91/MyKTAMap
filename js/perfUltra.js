@@ -5,73 +5,41 @@
  */
 
 // =========================
-// 🚀 PERF ULTRA — toggles d'optimisation pour gros plans / appareils faibles
+// PERF ULTRA — optimisations pour gros plans / appareils faibles
 // =========================
-// Préset "ULTRA" qui active 6 optims simultanément, OU toggles individuels
-// pour les power users qui veulent affiner.
-//
-// 🆕 v1.59.0 (KARMA « on n'active jamais cette option par défaut, c'est
-// l'utilisateur qui coche ») : persistance PAR PLAN (`myktamap_perf_toggles_
-// v2_<planId>`). Avant : clé GLOBALE `myktamap_perf_toggles` → cocher ULTRA
-// une fois sur un gros plan l'appliquait silencieusement à TOUS les plans
-// (perçu comme une « activation automatique »). Désormais chaque plan repart
-// sur les defaults (tout OFF sauf les toggles de sécurité DEFAULTS_TRUE) tant
-// que l'user n'a pas coché POUR CE PLAN. L'ancienne clé globale est IGNORÉE
-// (laissée en place, aucune donnée détruite). Au HOME (aucun plan chargé) :
-// defaults purs, les réglages éventuels ne sont pas persistés.
-//
-// Optims gérées :
-//   - decim         : décimation des polylines roads au dézoom (RDP)
-//   - animOff       : désactivation des animations Leaflet (zoom/fade/markerZoom)
-//                     ⚠️ Lu UNIQUEMENT à l'init de la map → reload requis
-//   - noIntersect   : seuil cercles d'intersection roads abaissé à 50 (vs 200)
-//   - noTooltips    : skip bindPopup sur les markers des calques de données
-//                     (les points de session restent interactifs)
-//   - slowSave      : SessionPersist polling 30s au lieu de 1.5s
-//   - viewportCull  : ne rendre que les roads dont l'AABB intersecte le viewport
-//                     (sans case depuis le 10/10/2026 : piloté par ULTRA seul)
-//
-// API exposée :
-//   - window.PerfUltra.get(key) → bool
-//   - window.PerfUltra.set(key, value, opts?) → bool (success)
-//   - window.PerfUltra.setUltra(bool) → applique le preset
-//   - window.PerfUltra.getAll() → {ultra, decim, animOff, ...}
-//   - window.PerfUltra.onChange(callback) → s'inscrit aux changements
-//   - window.PerfUltra.isUltra() → true si tous les toggles sont ON
+// Préset « ULTRA » (toutes les optimisations) ou réglages individuels, persistés PAR PLAN
+// (`myktamap_perf_toggles_v2_<planId>`) : jamais activés par défaut, c'est l'utilisateur qui coche pour CE
+// plan (décision produit). Au HOME (aucun plan) : défauts purs, non persistés.
+// Optimisations : decim (décimation RDP des routes au dézoom) · animOff (animations Leaflet ; ⚠️ lu à l'init
+// de la carte, rechargement requis) · noIntersect (seuil des cercles d'intersection à 50 au lieu de 200) ·
+// noTooltips (pas de bindPopup sur les points des calques ; ceux de session restent interactifs) · slowSave
+// (SessionPersist toutes les 30 s au lieu de 1,5 s) · viewportCull (routes hors écran non rendues, piloté par
+// ULTRA seul).
+// Expose window.PerfUltra : get(key), set(key, value, opts?), setUltra(bool), getAll(), onChange(cb), isUltra().
+// Doc : docs/architecture/perf-memory.md
 // =========================
 
 (function() {
   "use strict";
 
-  // 🆕 v1.59.0 : slot PAR PLAN. L'ancienne clé globale "myktamap_perf_toggles"
-  // n'est plus lue (péremption volontaire — cf. en-tête).
+  // Slot PAR PLAN ; l'ancienne clé globale "myktamap_perf_toggles" n'est plus lue (laissée en place).
   const STORAGE_PREFIX = "myktamap_perf_toggles_v2_";
 
-  // Liste des toggles individuels gérés. ultra n'est PAS dans cette liste —
-  // c'est un méta-toggle qui active/désactive les autres en bloc.
+  // Réglages individuels ; `ultra` est un méta-réglage qui les bascule en bloc.
   const TOGGLES = ["decim", "animOff", "noIntersect", "noTooltips", "slowSave", "viewportCull", "mobileZoomLimit"];
 
-  // 🏗️ v1.82.1 — « Afficher tous les niveaux au lancement » (demande KARMA).
-  // Rangé ICI parce que c'est un réglage de CHARGE : sur un relevé importé à
-  // six étages, tout afficher d'emblée multiplie ce que la carte doit peindre.
-  //
-  // ⚠️ VOLONTAIREMENT HORS DE `TOGGLES`, donc hors du méta-bouton ULTRA.
-  // La sémantique d'ULTRA est « active toutes les optimisations » ; or
-  // afficher plus de niveaux est exactement l'inverse. L'y inclure ferait
-  // qu'« activer tout » ALOURDIRAIT l'app — absurde, et personne ne le
-  // devinerait. Il se règle donc seul, et ON par défaut.
+  // « Afficher tous les niveaux au lancement » : réglage de CHARGE (un relevé à six étages multiplie ce que la
+  // carte peint), ON par défaut.
+  // ⚠️ VOLONTAIREMENT HORS DE `TOGGLES`, donc hors d'ULTRA : « activer toutes les optimisations » qui
+  // afficherait plus de niveaux ALOURDIRAIT l'app.
   const HORS_ULTRA = ["tousNiveaux"];
   const HORS_ULTRA_DEFAUT_TRUE = ["tousNiveaux"];
 
-  // 🛡️ v173 : certains toggles sont ON par défaut (= sécurité activée par défaut).
-  // `mobileZoomLimit` ON par défaut = limite mobile minZoom v172 active (anti-OOM).
-  // Décocher = l'user assume le risque crash, traite mobile comme PC (= plus de
-  // dézoom dispo). Cohérent avec la sémantique PerfUltra "ON = optimisation /
-  // sécurité activée".
+  // Réglages de sécurité ON par défaut : `mobileZoomLimit` (plancher de dézoom mobile anti-OOM). Décocher =
+  // l'utilisateur assume le risque et le mobile est traité comme un PC.
   const DEFAULTS_TRUE = ["mobileZoomLimit"];
 
-  // Defaults : tout désactivé SAUF les toggles dans DEFAULTS_TRUE.
-  // Comportement actuel v172 strictement préservé (limite mobile active).
+  // Défauts : tout OFF sauf DEFAULTS_TRUE.
   function _defaults() {
     const o = {};
     TOGGLES.forEach(function(k) {
@@ -83,11 +51,9 @@
     return o;
   }
 
-  // 🆕 v1.59.0 — État PAR PLAN, résolu au runtime. _resolve() détecte le
-  // changement de plan courant (window._currentLoadedPlanId, posé AVANT
-  // initMapFromConfig sur tous les chemins de chargement → animOff lu à
-  // l'init de la map voit déjà le bon slot) et recharge le slot correspondant.
-  // Aucun plan chargé (HOME) → defaults purs, non persistés.
+  // État PAR PLAN résolu au runtime : _resolve() détecte le changement de plan (window._currentLoadedPlanId,
+  // posé AVANT initMapFromConfig sur tous les chemins, donc animOff lu à l'init voit le bon slot). HOME →
+  // défauts purs, non persistés.
   let _cachePlanId = "__uninit__";
   let _state = _defaults();
 
@@ -101,8 +67,8 @@
       TOGGLES.forEach(function(k) {
         if (typeof parsed[k] === "boolean") out[k] = parsed[k];
       });
-      // 🩸 v1.92.0 (Q60) : les toggles HORS ULTRA n'étaient jamais RELUS —
-      // « tous les niveaux » repartait à true à chaque chargement.
+      // 🩸 Les réglages HORS ULTRA doivent être RELUS aussi, sinon « tous les niveaux » revient à true à chaque
+      // chargement.
       HORS_ULTRA.forEach(function(k) {
         if (typeof parsed[k] === "boolean") out[k] = parsed[k];
       });
@@ -124,7 +90,7 @@
     }
   }
 
-  // Callbacks abonnés aux changements (pour re-render à la volée)
+  // Abonnés aux changements (re-rendu à la volée).
   const _listeners = [];
 
   function _persist() {
@@ -155,7 +121,7 @@
     return Object.assign({}, _state, { ultra: isUltra() });
   }
 
-  // True si TOUS les toggles individuels sont ON (preset ULTRA actif)
+  // True si TOUS les réglages individuels sont ON.
   function isUltra() {
     _resolve();
     return TOGGLES.every(function(k) { return _state[k]; });
@@ -175,7 +141,7 @@
     return true;
   }
 
-  // Active/désactive le preset ULTRA = applique la même valeur à tous les toggles
+  // Même valeur appliquée à tous les réglages individuels.
   function setUltra(value) {
     _resolve();
     const v = !!value;
@@ -195,8 +161,7 @@
     if (typeof fn === "function") _listeners.push(fn);
   }
 
-  // (Diag au boot retiré en v1.59.0 : au boot, aucun plan n'est chargé →
-  //  l'état est toujours les defaults. Le log par plan vit dans _resolve().)
+  // Pas de diagnostic au boot (aucun plan chargé, toujours les défauts) : le log par plan vit dans _resolve().
 
   window.PerfUltra = {
     get: get,

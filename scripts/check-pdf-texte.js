@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🖨️ check-pdf-texte.js — garde-fou pré-commit BLOQUANT (rejoué en CI)
+// check-pdf-texte.js — garde-fou pré-commit BLOQUANT (rejoué en CI) : textes des PDF dans la police
 // =====================================================================
-// Les PDF de l'app (jsPDF, police standard Helvetica en WinAnsi) affichent tous les accents
-// français et espagnols et la typographie « » ’ — … € (PDF d'échantillon du 09/10/2026). Hors
-// police : flèches, coches, symboles, emojis — charabia qui désorganise toute la ligne.
-// Avant le 09/10/2026, on croyait l'inverse et les libellés PDF étaient écrits SANS accents.
-//   1. Libellés PDF des 3 dicos (clé contenant « .pdf. » ou « Ascii ») : uniquement des caractères
-//      de la police (pas de → ✓ ⚠ ni d'emoji).
-//   2. Plus de suppression d'accents dans le code des PDF : le texte libre passe par
-//      window.ktaTextePdf (utils.js), qui garde les accents.
+// ⚠️ jsPDF en Helvetica WinAnsi affiche tous les accents FR/ES et « » ’ — … € : on écrit AVEC accents.
+// 🩸 Hors police (flèches, coches, symboles, emojis) : charabia qui désorganise toute la ligne.
+//   1. libellés PDF des 3 dicos : uniquement des caractères de la police ;
+//   2. aucune suppression d'accents (normalize("NFD")) dans les modules PDF : le texte libre passe par
+//      window.ktaTextePdf (js/utils.js), qui garde les accents ;
+//   3. auto-test de ktaTextePdf (exécuté).
 // =====================================================================
 
 const fs = require("fs");
@@ -27,9 +25,8 @@ const horsPolice = (s) => [...String(s)].filter((c) => {
   return !((n >= 0x20 && n <= 0x7E) || n === 0x0A || n === 0x09 || (n >= 0xA0 && n <= 0xFF) || EXTRA.includes(c));
 });
 
-// 1. Libellés PDF des dictionnaires : clés « .pdf. » / « Ascii », briefing pompiers (secours.surf.*,
-//    secours.briefing.footer). Pas histoire.pdf.* (interface HTML du lecteur PDF, emojis voulus) ni les
-//    toasts (affichés à l'écran).
+// 1. Clés « .pdf. » / « Ascii », briefing secours (secours.surf.*, secours.briefing.footer). Pas
+//    histoire.pdf.* (interface HTML du lecteur, emojis voulus) ni les toasts (affichés à l'écran).
 const estLibellePdf = (k) => (/\.pdf\.|Ascii|^secours\.surf\.|^secours\.briefing\.footer$/.test(k)) &&
   !/^histoire\.pdf\.|\.toast\./.test(k);
 for (const langue of ["fr", "en", "es"]) {
@@ -42,7 +39,7 @@ for (const langue of ["fr", "en", "es"]) {
     fautifs.length === 0, fautifs.slice(0, 8).map(([k, h]) => k + " → " + h.join(" ")).join("\n     "));
 }
 
-// 2. Plus de suppression d'accents dans les modules qui produisent des PDF
+// 2. Modules qui produisent des PDF
 const MODULES_PDF = ["js/secoursMode.js", "js/sessionReport.js", "js/statsGlobales.js", "js/pdfExport.js"];
 for (const f of MODULES_PDF) {
   const src = fs.readFileSync(f, "utf8");
@@ -52,9 +49,8 @@ for (const f of MODULES_PDF) {
 const utilsSrc = fs.readFileSync("js/utils.js", "utf8");
 t("utils.js : window.ktaTextePdf existe", /window\.ktaTextePdf\s*=\s*function/.test(utilsSrc));
 
-// 3. Auto-test de window.ktaTextePdf (bloc extrait de utils.js, exécuté à part) : une lettre hors police
-//    garde sa base (« Łódź » → « Lódz », plus « ód »), accents français gardés, symboles convertis,
-//    emojis retirés, et rien de ce qui sort n'est hors police.
+// 3. Une lettre hors police garde sa base (« Łódź » → « Lódz »), accents FR gardés, symboles convertis,
+//    emojis retirés, rien hors police en sortie.
 const bloc = (utilsSrc.match(/\(function \(\) \{\s*const EXTRA[\s\S]*?\n\}\)\(\);/) || [])[0];
 t("utils.js : bloc de window.ktaTextePdf repérable pour l'auto-test", !!bloc);
 if (bloc) {

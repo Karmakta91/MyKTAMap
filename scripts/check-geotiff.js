@@ -1,39 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🗺️ check-geotiff.js — garde-fou pré-commit BLOQUANT
+// check-geotiff.js — garde-fou pré-commit BLOQUANT de l'import GeoTIFF
 // =====================================================================
-// Couvre les deux moitiés de l'import GeoTIFF :
-//   • la projection Web Mercator (EPSG:3857) ajoutée dans `js/sigImport.js` ;
-//   • le lecteur `js/tiffGeoref.js` (calage + décodage).
-//
-// 🎯 AUCUNE TABLE DE RÉFÉRENCE, même principe que `check-lambert93.js` : une
-// table recopiée depuis un site web est elle-même une source d'erreur — si le
-// chiffre est faux, le test valide le bug. Tout est déduit des PROPRIÉTÉS
-// DÉFINITOIRES, ou calculé à la main sur des fixtures construites ici.
-//
-// Web Mercator — ce qui l'ancre dans la réalité :
-//   A. l'équateur tombe EXACTEMENT sur y = 0, Greenwich sur x = 0 ;
-//   B. 180° de longitude font EXACTEMENT πR (la projection est linéaire en x) ;
-//   C. elle est CONFORME : à toute latitude, l'échelle le long du méridien
-//      égale celle le long du parallèle — c'est ce qui distingue Mercator
-//      d'une simple projection cylindrique équidistante ;
-//   D. l'aller-retour revient au point de départ.
-// ⚠️ D seul ne prouverait RIEN (deux fonctions fausses mais mutuellement
-// inverses passeraient). C'est A à C qui ancrent.
-//
-// Lecteur TIFF — les fixtures sont CONSTRUITES ICI, octet par octet, donc le
-// résultat attendu est connu par construction et non par recopie. Le flux LZW
-// de référence est calculé À LA MAIN dans le commentaire du contrôle L3.
-//
-// ⚠️ CE QUI EST VÉRIFIÉ EN PRIORITÉ, parce que c'est ce qui casse en silence :
-//   • le REPÈRE (pointA au sud-ouest, pointB au nord-est). L'inverser ne lève
-//     aucune erreur : le plan se retrouve simplement miroir sur la carte, et
-//     ça ne se voit que si on connaît le terrain.
-//   • les REFUS. Un format non lu qui passerait produirait une image en
-//     charpie, ou pire, un calage plausible mais faux.
-//   • les CLÉS i18n des refus : une clé absente du dictionnaire s'affiche
-//     brute (« tiff.err.compression ») et le refus n'apprend plus rien.
+// Couvre le Web Mercator (EPSG:3857) de `js/sigImport.js` et le lecteur `js/tiffGeoref.js`.
+// ⚠️ Aucune table de référence (comme check-lambert93.js) : une table recopiée fausse valide le bug.
+// Web Mercator : A origines exactes · B 180° = πR (linéaire en x) · C CONFORME (même échelle
+// méridien / parallèle) · D aller-retour. D seul ne prouve rien (deux fonctions fausses mais
+// inverses passent) : A à C ancrent.
+// Lecteur : fixtures construites octet par octet ici (attendu connu par construction ; flux LZW
+// calculé à la main en L3).
+// 🩸 Ce qui casse en silence : le REPÈRE (pointA sud-ouest, pointB nord-est ; inversé, le plan sort
+// en miroir sans erreur) · les REFUS (un format non lu donne une image en charpie ou un calage
+// plausible mais faux) · les clés i18n des refus (absentes, elles s'affichent brutes).
 // =====================================================================
 
 const fs = require("fs");
@@ -47,7 +26,7 @@ function verif(nom, cond, explication) {
   echecs.push(nom + "\n     → " + explication);
 }
 
-// --- chargement des modules réels ---------------------------------------
+// ── Chargement des modules réels ──────────────────────────────────────────
 const ctx = {
   window: {}, console: { log() {}, warn() {} },
   Blob: typeof Blob !== "undefined" ? Blob : undefined,
@@ -71,11 +50,9 @@ if (!TG || !TG._interne) { console.error("❌ [check-geotiff] window.TiffGeoref.
 
 const WM = SI.WEBMERC;
 
-// =========================================================================
+// ── Web Mercator ──────────────────────────────────────────────────────────
 console.log("\n📐 Web Mercator (EPSG:3857) — propriétés définitoires");
-// =========================================================================
 
-// A. origines exactes
 const o = WM.versMerc(0, 0);
 verif("A1. l'équateur et Greenwich tombent exactement sur (0, 0)",
   o.x === 0 && o.y === 0,
@@ -87,7 +64,6 @@ verif("A2. l'inverse ramène (0, 0) sur l'équateur à Greenwich",
   oi.lat === 0 && oi.lng === 0,
   "versWgs84(0,0) doit rendre exactement {lat:0,lng:0} — obtenu " + JSON.stringify(oi));
 
-// B. linéarité en longitude : 180° = πR, et la moitié = la moitié.
 const demi = WM.versMerc(0, 90).x, plein = WM.versMerc(0, 180).x;
 verif("B1. 180° de longitude valent exactement πR",
   Math.abs(plein - Math.PI * WM.R) < 1e-6,
@@ -98,10 +74,8 @@ verif("B2. x est LINÉAIRE en longitude (90° = la moitié de 180°)",
   "x(90°)×2 = " + (demi * 2) + " ≠ x(180°) = " + plein +
   ". Mercator ne déforme QUE la latitude ; une non-linéarité en x est une faute de projection.");
 
-// C. conformité : d(x)/d(lng) et d(y)/d(lat) doivent porter le MÊME facteur
-// d'échelle une fois ramenés au sol. C'est la propriété qui différencie
-// Mercator d'un cylindre équidistant — et celle qu'une erreur de formule
-// (log(tan(φ)) au lieu de log(tan(π/4+φ/2))) casse immédiatement.
+// C. d(x)/d(lng) et d(y)/d(lat) portent le MÊME facteur d'échelle au sol : c'est ce qu'une
+// formule fausse (log(tan(φ)) au lieu de log(tan(π/4+φ/2))) casse immédiatement.
 let confOk = true, pireConf = 0;
 for (let lat = -75; lat <= 75; lat += 5) {
   const d = 1e-6;
@@ -119,7 +93,6 @@ verif("C. la projection est CONFORME (même échelle méridien / parallèle)",
   "Une conformité rompue = mauvaise formule de latitude (le piège classique : " +
   "log(tan(φ)) au lieu de log(tan(π/4 + φ/2))).");
 
-// D. aller-retour
 let pireAR = 0;
 for (let lat = -84; lat <= 84; lat += 3.7) {
   for (let lng = -179; lng <= 179; lng += 13.3) {
@@ -131,19 +104,15 @@ verif("D. aller-retour WGS84 → 3857 → WGS84 sur une grille mondiale",
   pireAR < 1e-9,
   "écart max " + pireAR.toExponential(2) + "° (toléré < 1e-9).");
 
-// E. la borne officielle du 3857 : au-delà, la projection part à l'infini.
 const pole = WM.versMerc(89.9, 0), borne = WM.versMerc(85.051129, 0);
 verif("E. la latitude est bornée à ±85,051129° (sinon y → ∞)",
   Number.isFinite(pole.y) && Math.abs(pole.y - borne.y) < 1e-6,
   "versMerc(89.9°) doit être écrêté sur la borne du 3857, pas partir à l'infini — obtenu y=" + pole.y);
 
-// =========================================================================
+// ── Lecteur GeoTIFF ───────────────────────────────────────────────────────
 console.log("\n🗺️ Lecteur GeoTIFF — fixtures construites octet par octet");
-// =========================================================================
 
-// ─── Constructeur de TIFF minimal ────────────────────────────────────────
-// Écrit un TIFF classique valide : en-tête (8 o) + IFD + zone des valeurs
-// longues + données de pixels. Le résultat attendu est connu PAR CONSTRUCTION.
+// TIFF classique minimal : en-tête (8 o) + IFD + valeurs longues + pixels.
 const TYPE_TAILLE = { 1: 1, 3: 2, 4: 4, 12: 8 };
 function construireTiff(opts) {
   const le = opts.le !== false;
@@ -190,13 +159,11 @@ function construireTiff(opts) {
   return buf;
 }
 
-// Une fixture RGB 2×2 non compressée, calée en Lambert 93.
-//   échelle 10 m/px, tiepoint : le pixel (0,0) vaut (700000, 6600000) — soit
-//   l'origine EXACTE du Lambert 93, donc (46,5°N ; 3°E). Le coin sud-est vaut
-//   alors (700020, 6599980). Aucune valeur recopiée : tout se déduit.
+// Fixture RGB 2×2 non compressée en Lambert 93, 10 m/px : le pixel (0,0) vaut (700000, 6600000),
+// l'origine EXACTE du L93 (46,5°N ; 3°E).
 const PIX = new Uint8Array([
-  10, 20, 30,   40, 50, 60,     // ligne 0 : (0,0) puis (1,0)
-  70, 80, 90,   100, 110, 120   // ligne 1
+  10, 20, 30,   40, 50, 60,     // rangée 0 : (0,0) puis (1,0)
+  70, 80, 90,   100, 110, 120   // rangée 1
 ]);
 function fixtureBase(surcharges) {
   const e = [
@@ -226,7 +193,6 @@ const remplace = (o, tag, valeurs, type) => {
 
 (async function () {
 
-  // ─── L1. décodage exact ───────────────────────────────────────────────
   let img = null, cal = null, boum = null;
   try {
     const ab = fixtureBase();
@@ -242,11 +208,8 @@ const remplace = (o, tag, valeurs, type) => {
     "décodage non conforme" + (boum ? " (" + boum.message + ")" : "") +
     ". La conversion RGB→RGBA doit recopier les 3 canaux et forcer alpha=255.");
 
-  // ─── L2. LE REPÈRE — le contrôle qui compte ────────────────────────────
-  // pointA est le coin BAS-GAUCHE de l'image, donc le SUD-OUEST ;
-  // pointB le coin HAUT-DROIT, donc le NORD-EST.
-  // Par construction de la fixture, le pixel (0,0) EST l'origine du Lambert 93,
-  // donc pointB (coin haut-droit, y=0) est à 46,5°N et strictement à l'est de 3°E.
+  // ── L2. Le repère ── pointA = coin BAS-GAUCHE (sud-ouest), pointB = HAUT-DROIT (nord-est) ;
+  // par construction pointB est à 46,5°N et strictement à l'est de 3°E.
   verif("L2a. pointA = coin bas-gauche du plan (x=0, y=hauteur)",
     cal && cal.georef.pointA.x === 0 && cal.georef.pointA.y === 2,
     "obtenu " + JSON.stringify(cal && cal.georef.pointA) +
@@ -268,18 +231,14 @@ const remplace = (o, tag, valeurs, type) => {
     cal && Math.abs(cal.largeurM - 20) < 1e-9 && Math.abs(cal.hauteurM - 20) < 1e-9,
     "obtenu " + (cal && cal.largeurM) + " × " + (cal && cal.hauteurM) + " m, attendu 20 × 20.");
 
-  // ─── L2f. LE TIEPOINT N'EST PAS TOUJOURS SUR LE PIXEL (0,0) ────────────
-  // Le tag porte un COUPLE (pixel de référence → point du monde). QGIS y met
-  // presque toujours (0,0), ce qui rend le terme `(px - i)` invisible : on peut
-  // l'oublier sans qu'aucun fichier courant ne bronche. Une fixture qui
-  // référence le pixel (1,1) l'oblige à compter.
+  // 🩸 L2f. Le tiepoint est un COUPLE (pixel → monde). QGIS y met presque toujours (0,0) : le terme
+  // `(px - i)` peut disparaître sans qu'un fichier courant bronche. On référence le pixel (1,1).
   let calDecale = null;
   try {
     const ab = fixtureBase(o => { remplace(o, 33922, [1, 1, 0, 700000, 6600000, 0], 12); });
     calDecale = TG._interne.calage(TG._interne.lireIfd0(ab), 2, 2);
   } catch (e) { calDecale = null; }
-  // Le pixel (1,1) vaut l'origine L93 ⇒ le coin haut-droit (2,0) vaut
-  // (700000 + 10, 6600000 + 10), donc une latitude STRICTEMENT au nord de 46,5°.
+  // ⇒ le coin haut-droit (2,0) vaut (700010, 6600010) : strictement au nord de 46,5°.
   verif("L2f. le pixel de référence du tiepoint est honoré (pas supposé nul)",
     calDecale && calDecale.georef.pointB.lat > 46.5 &&
     Math.abs(calDecale.georef.pointB.lat - 46.5) > 1e-5,
@@ -288,12 +247,9 @@ const remplace = (o, tag, valeurs, type) => {
     "QGIS écrivant presque toujours (0,0), le terme `(px - i)` peut disparaître sans qu'aucun " +
     "fichier courant ne bronche.");
 
-  // ─── L2g. LES « MÈTRES » DU 3857 N'EN SONT PAS ─────────────────────────
-  // EPSG:3857 mesure en mètres Mercator, gonflés de 1/cos(latitude). À 48,9°N
-  // le facteur vaut 1,52 : un plan de 1985 m s'annoncerait « 3019 m ».
+  // 🩸 L2g. Les « mètres » du 3857 sont gonflés de 1/cos(lat) : ×1,52 à 48,9°N sans correction.
   let cal3857 = null;
   try {
-    // Tiepoint placé à ~48,9°N en coordonnées Mercator, échelle 1 « m » /px.
     const p = SI.WEBMERC.versMerc(48.9, 2.3);
     const ab = fixtureBase(o => {
       remplace(o, 33550, [1, 1, 0], 12);
@@ -308,14 +264,10 @@ const remplace = (o, tag, valeurs, type) => {
     "obtenu " + (cal3857 && cal3857.largeurM) + " m pour 2 px à 1 unité/px vers 48,9°N, " +
     "attendu ≈ " + (2 * attenduK).toFixed(3) + " m. Sans la correction, on annonce 1,52× trop grand.");
 
-  // ─── L2h. PREDICTOR 2, appliqué LIGNE PAR LIGNE ────────────────────────
-  // Le prédicteur horizontal ne franchit JAMAIS une fin de ligne : chaque
-  // ligne repart de ses valeurs absolues. L'appliquer à cheval décale toutes
-  // les lignes sauf la première — une image qui « bave » vers la droite, sans
-  // aucune erreur levée.
+  // 🩸 L2h. Predictor 2 ne franchit JAMAIS une fin de ligne : à cheval, toutes les lignes sauf la
+  // première se décalent (l'image « bave » vers la droite, sans erreur).
   let predOk = false, predDetail = "";
   try {
-    // Écarts tels que la reconstruction rende exactement PIX, ligne par ligne.
     const diff = new Uint8Array(12);
     for (let l = 0; l < 2; l++) {
       for (let c = 0; c < 6; c++) {
@@ -334,8 +286,7 @@ const remplace = (o, tag, valeurs, type) => {
     " Appliqué à cheval sur les lignes, le prédicteur décale tout sauf la première ligne — " +
     "l'image « bave » vers la droite et aucune erreur n'est levée.");
 
-  // ─── L3. LZW : flux calculé À LA MAIN ──────────────────────────────────
-  // Codes 9 bits : Clear(256), 'A'(65), 'B'(66), EOI(257)
+  // ── L3. LZW : flux calculé À LA MAIN ── codes 9 bits : Clear(256), 'A'(65), 'B'(66), EOI(257)
   //   256 = 100000000   65 = 001000001   66 = 001000010   257 = 100000001
   // concaténés : 100000000 001000001 001000010 100000001 (36 bits, complétés à 40)
   //   → 10000000 00010000 01001000 01010000 00010000
@@ -352,25 +303,12 @@ const remplace = (o, tag, valeurs, type) => {
     "obtenu " + lzwDetail + ", attendu [65,66]. Ce contrôle ancre l'ORDRE DES BITS " +
     "(MSB en tête) et la valeur des codes Clear/EOI, sans aucun encodeur de référence.");
 
-  // ─── L3b/L3c. LE DÉCALAGE DE LARGEUR, piège n°1 du LZW ─────────────────
-  // L'ENCODEUR passe à 10 bits quand son prochain code libre atteint 512.
-  // Le DÉCODEUR, lui, a toujours UNE ENTRÉE DE RETARD : il ne peut créer la
-  // sienne qu'en voyant le code suivant. Il doit donc basculer alors qu'il n'en
-  // détient que 511 — et c'est EXACTEMENT ce que compense le `dictLen + 1` du
-  // module. Sans ce +1, il bascule un code trop tard, tout le flux se décale
-  // d'un bit et l'image sort en bruit.
-  // Le flux court de L3a ne franchit JAMAIS cette limite : il ne dit donc rien
-  // de ce piège (constaté en sabotant le module — le contrôle restait vert).
-  // Il faut un flux long.
-  //
-  // ⚠️ CE QUE PROUVE CE CONTRÔLE, ET CE QU'IL NE PROUVE PAS. L'encodeur écrit
-  // ici partage la logique du décodeur : leur aller-retour seul ne prouverait
-  // pas la règle (deux implémentations fausses mais accordées passeraient).
-  // C'est le CONTRE-EXEMPLE qui tranche : on encode le MÊME contenu avec la
-  // règle de GIF, et on exige que le décodeur ÉCHOUE dessus. Un décodeur qui
-  // accepte les deux n'applique aucune des deux règles franchement.
-  // `retard` = 0 → règle TIFF (bascule quand le prochain code libre atteint 2^n)
-  // `retard` = 1 → la même bascule UN CODE PLUS TARD : le contre-exemple.
+  // 🩸 L3b/L3c. Décalage de largeur : le DÉCODEUR a une entrée de retard sur l'encodeur, il doit donc
+  // basculer à 511 entrées (`dictLen + 1` du module). Sans ce +1, tout le flux se décale d'un bit.
+  // Le flux court de L3a ne franchit jamais la limite : il faut un flux long.
+  // ⚠️ L'encodeur d'ici partage la logique du décodeur : l'aller-retour seul ne prouve rien. Le
+  // CONTRE-EXEMPLE tranche : le même contenu basculé un code plus tard doit être REJETÉ.
+  // `retard` = 0 → règle TIFF (bascule quand le prochain code libre atteint 2^n) ; 1 → contre-exemple.
   function encoderLzw(data, retard) {
     const bits = [];
     let largeur = 9;
@@ -394,13 +332,11 @@ const remplace = (o, tag, valeurs, type) => {
     bits.forEach((b, i) => { if (b) octets[i >> 3] |= 128 >> (i & 7); });
     return octets;
   }
-  // L'encodeur est lui-même ancré sur le cas calculé à la main : s'il se
-  // trompait d'ordre de bits ou de code Clear, le contre-exemple ne vaudrait rien.
+  // L'encodeur est lui-même ancré sur le cas calculé à la main (ordre des bits, code Clear).
   const ancre = encoderLzw([65, 66], 0);
   const ancreOk = ancre.length >= 5 && ancre[0] === 0x80 && ancre[1] === 0x10 &&
                   ancre[2] === 0x48 && ancre[3] === 0x50;
-  // Contenu long et varié : ~3000 octets forcent bien plus de 253 entrées
-  // nouvelles, donc plusieurs franchissements de largeur.
+  // ~3000 octets variés : plusieurs franchissements de largeur.
   const longue = [];
   let graine = 12345;
   for (let i = 0; i < 3000; i++) {
@@ -428,7 +364,6 @@ const remplace = (o, tag, valeurs, type) => {
     "le décodeur relit AUSSI un flux qui bascule un code trop tard : il n'applique donc aucune " +
     "règle franchement, et un sabotage de la condition de largeur passerait inaperçu.");
 
-  // ─── L4. gros-boutiste ─────────────────────────────────────────────────
   let beOk = false;
   try {
     const ab = fixtureBase(o => { o.le = false; });
@@ -441,9 +376,7 @@ const remplace = (o, tag, valeurs, type) => {
     "les deux ordres d'octets sont légaux ; ne lire que « II » ferait échouer " +
     "un fichier parfaitement valide sans que la cause soit devinable.");
 
-  // ─── L5. LES REFUS, chacun NOMMÉ ───────────────────────────────────────
-  // Un format non lu qui passerait produirait une image en charpie, ou pire,
-  // un calage plausible mais faux.
+  // ── L5. Les refus, chacun NOMMÉ ──────────────────────────────────────────
   const casRefus = [
     ["tiff.err.bigTiff",       o => { o.magic = 43; }],
     ["tiff.err.tuile",         o => { remplace(o, 322, [256]); }],
@@ -466,9 +399,7 @@ const remplace = (o, tag, valeurs, type) => {
       const ab = fixtureBase(patch);
       const ifd = TG._interne.lireIfd0(ab);
       TG._interne.calage(ifd, 2, 2);
-      // ⚠️ `decoderPixels` est async : ses refus sont des REJETS de promesse.
-      // Sans `await`, le test lirait sa variable avant que le rejet arrive et
-      // conclurait « aucune erreur » sur un module pourtant correct.
+      // ⚠️ `decoderPixels` est async : sans `await`, son rejet arrive après la lecture (faux rouge).
       await TG._interne.decoderPixels(ab, ifd);
     } catch (e) { obtenu = e.message; }
     verif("L5. refusé et NOMMÉ : " + cle,
@@ -478,9 +409,7 @@ const remplace = (o, tag, valeurs, type) => {
   }
   {
 
-    // ─── L6. les clés de refus existent dans les 3 dictionnaires ─────────
-    // Une clé absente s'affiche brute (« tiff.err.compression ») : le refus
-    // cesse alors d'être actionnable, ce qui est tout son intérêt.
+    // ── L6. Les clés de refus existent dans les 3 dictionnaires ──────────────
     const src = fs.readFileSync("js/tiffGeoref.js", "utf8");
     const clesCode = Array.from(new Set((src.match(/tiff\.err\.[A-Za-z0-9]+/g) || [])));
     const manquantes = [];
@@ -495,9 +424,7 @@ const remplace = (o, tag, valeurs, type) => {
       "absentes → " + manquantes.slice(0, 8).join(", ") +
       ". Une clé manquante s'affiche brute et le refus n'apprend plus rien.");
 
-    // ─── L7. pas de seconde implémentation de projection ─────────────────
-    // Règle du projet : les maths de projection vivent dans sigImport.js et
-    // NULLE PART ailleurs. Une copie dériverait sans que rien ne le voie.
+    // ── L7. Les maths de projection vivent dans sigImport.js et NULLE PART ailleurs ──
     const copie = /6378137|298\.257222101|Math\.log\(Math\.tan/.test(src);
     verif("L7. `tiffGeoref.js` ne recopie AUCUNE math de projection",
       !copie,
@@ -505,13 +432,10 @@ const remplace = (o, tag, valeurs, type) => {
       "apparaissent dans js/tiffGeoref.js. Elles doivent venir de window.SigImport.L93 / .WEBMERC — " +
       "une copie dérive en silence, exactement comme le catalogue d'icônes en v1.81.0.");
 
-    // ─── L8. LES DEUX PORTES D'ENTRÉE, ET CE QU'ELLES ANNONCENT ─────────
-    // 🩸 Défaut vécu le 14/09 : le lecteur GeoTIFF était livré et branché sur
-    // le sélecteur d'image, mais la ZONE DE DÉPÔT — le geste naturel — le
-    // faisait tomber dans son `else` (« mauvaise extension »), et TOUS les
-    // libellés visibles continuaient d'annoncer « ZIP, KMZ, GPX ou export
-    // SIG ». Une fonction qui existe mais que l'interface dément est pire
-    // qu'une fonction absente : l'utilisateur conclut qu'elle ne marche pas.
+    // ── L8. Les portes d'entrée, et ce qu'elles annoncent ──────────────────
+    // 🩸 Chaque porte (sélecteur d'image, zone de dépôt, accueil) doit router le .tif, et chaque
+    // libellé qui énumère les formats doit le citer : une fonction que l'interface dément passe
+    // pour cassée.
     const cc = fs.readFileSync("js/createConf.js", "utf8");
     verif("L8a. le sélecteur d'image accepte explicitement .tif/.tiff",
       /id="pl_baseImage"[^>]*accept="[^"]*\.tiff?/.test(cc),
@@ -524,10 +448,7 @@ const remplace = (o, tag, valeurs, type) => {
       "zone de dépôt doit accepter .tif — sinon le geste naturel sort « mauvaise extension » " +
       "alors que la fonction existe.");
 
-    // 🩸 L'ACCUEIL EST LA TROISIÈME PORTE, et c'est la plus évidente pour
-    // l'utilisateur (leçon déjà payée en v1.75.2 sur le SIG : il y était refusé,
-    // la conversion n'étant atteignable que depuis le Générateur). Un .tif y
-    // tombait sur « le fichier doit être une archive .zip ».
+    // 🩸 L'accueil est la porte la plus évidente : sans routage, un .tif y tombe sur « archive .zip ».
     const hl = fs.readFileSync("js/homeLoader.js", "utf8");
     const nbRoutages = (hl.match(/_estGeoTiff\(lower\)/g) || []).length;
     verif("L8d. l'accueil route le .tif par SES DEUX chemins (clic ET glisser-déposer)",
@@ -543,21 +464,13 @@ const remplace = (o, tag, valeurs, type) => {
       "`#zipFile` dans index.html doit lister .tif/.tiff, sinon le sélecteur de fichiers " +
       "de l'OS ne les propose même pas.");
 
-    // 📏 L'ÉCHELLE. Le GeoTIFF la donne exactement ; ne pas la poser laissait le
-    // plan sortir au défaut d'usine (4,9 px/m) alors que son géoréf était juste —
-    // et `calculerCoherenceEchelleGeoref` dénonçait alors « Incohérence échelle
-    // critique, +73,6 % d'écart » sur un plan parfaitement calé. L'app accusait
-    // sa propre omission, sans que l'utilisateur puisse savoir quel chiffre croire.
-    // On isole le HANDLER GeoTIFF : chercher ces motifs dans tout createConf.js
-    // (5 700 lignes) laisserait passer une ligne supprimée ici mais présente
-    // ailleurs — c'est exactement ce qui est arrivé en falsifiant ce contrôle.
+    // 🩸 L'échelle vient du GeoTIFF : sinon le plan sort au défaut d'usine (4,9 px/m) et
+    // `calculerCoherenceEchelleGeoref` dénonce une « incohérence critique » sur un plan bien calé.
+    // On isole le HANDLER : ailleurs dans createConf.js les mêmes motifs masqueraient une suppression.
     const iDeb = cc.indexOf("function _bindGeoTiff()");
     const bloc = iDeb >= 0 ? cc.slice(iDeb, cc.indexOf("_bindUploadLabel(\"pl_baseImage\"", iDeb)) : "";
-    // ⚠️ On regarde ce qui PRÉCÈDE l'écriture, pas le bloc entier : le message
-    // de succès, plus bas, cite les mêmes motifs (`1 / res.metresParPixel`,
-    // `res.metresParPixel > 0`) pour afficher l'échelle à l'écran. Un contrôle
-    // qui balaye tout le bloc reste donc vert alors que le calcul est faux —
-    // constaté en le falsifiant.
+    // ⚠️ On lit ce qui PRÉCÈDE l'écriture : le message de succès, plus bas, cite les mêmes motifs
+    // et garderait vert un calcul faux.
     const iPut = bloc.indexOf('put("pl_scale"');
     const amont = iPut >= 0 ? bloc.slice(Math.max(0, iPut - 600), iPut) : "";
     verif("L8f. l'échelle est renseignée depuis le GeoTIFF (1 / mètres par pixel)",
@@ -570,8 +483,7 @@ const remplace = (o, tag, valeurs, type) => {
       "Sans ça, le plan sort au défaut d'usine (4,9 px/m) et l'app affiche « Incohérence échelle " +
       "critique » sur un plan pourtant parfaitement calé.");
 
-    // gen.zip.info / gen.zip.titreHint retirés (allègement des textes, 12/10/2026) :
-    // la zone de dépôt ne liste plus les formats qu'à un seul endroit, son libellé.
+    // La zone de dépôt ne liste les formats qu'à un endroit : son libellé.
     const libelles = ["gen.zip.dropLabel",
                       "gen.router.badExt", "gen.images.modeUploadHint",
                       "home.add.dropSig", "home.loader.badFileType"];
@@ -590,15 +502,9 @@ const remplace = (o, tag, valeurs, type) => {
       "muets → " + muets.join(", ") + ". Un libellé qui énumère les formats acceptés et " +
       "oublie celui qu'on vient d'ajouter fait conclure à l'utilisateur que ça ne marche pas.");
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 🐛 L9. LE CALAGE LU DOIT ÊTRE VISIBLE (bug KARMA, 14/09/2026)
-    // ─────────────────────────────────────────────────────────────────────
-    // « Si je mets un tiff georef dans la fenêtre de chargement du home, ça
-    // m'ouvre juste le générateur, sans préremplir. » Reproduit au navigateur :
-    // TOUT était rempli — image, pointA/B, échelle 3,522 px/m, emprise — mais le
-    // Générateur s'ouvre en mode « simple », et le CSS masque alors tout bloc
-    // `data-planner-advanced="1"` : les six champs du géoréf ET l'échelle.
-    // Écrire dans des champs invisibles est indiscernable d'une panne.
+    // ── L9. Le calage lu doit être VISIBLE ─────────────────────────────────
+    // 🩸 En mode « simple », le CSS masque les blocs `data-planner-advanced="1"` (géoréf ET échelle) :
+    // écrire dans des champs invisibles est indiscernable d'une panne. D'où la bascule en Avancé.
     {
       const CC  = fs.readFileSync(path.join("js", "createConf.js"), "utf8").replace(/\r\n/g, "\n");
       const CSS = fs.readFileSync(path.join("css", "style.css"), "utf8").replace(/\r\n/g, "\n");
@@ -637,7 +543,6 @@ const remplace = (o, tag, valeurs, type) => {
       });
     }
 
-    // --- verdict -----------------------------------------------------------
     if (!echecs.length) {
       console.log("\n🎉 GeoTIFF : Web Mercator conforme à ses propriétés définitoires, lecteur juste, refus nommés");
       process.exit(0);

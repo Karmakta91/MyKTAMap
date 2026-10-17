@@ -1,21 +1,19 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🧹 check-secours-balayage.js — garde-fou pré-commit BLOQUANT
+// check-secours-balayage.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Lot C1 de l'audit Secours (QCM KARMA du 15/10/2026) : découpage du réseau en
-// secteurs équilibrés et parcours de balayage. ON EXÉCUTE le vrai moteur
-// (js/secoursBalayage.js) sur le vrai graphe (js/pathfinder.js), en VM, avec un
-// réseau synthétique : boucles, culs-de-sac, deux niveaux reliés par un puits,
-// un bout isolé.
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Une galerie oubliée par le parcours (le défaut d'origine : 62-72 % de
-//      couverture avec des étapes) — on vérifie que CHAQUE pièce est parcourue.
-//   2. Une galerie comptée deux fois (segment d'origine + morceaux coupés aux
-//      croisements) : longueurs et charges faussées.
-//   3. Des secteurs déséquilibrés ou en plusieurs morceaux.
-//   4. Le parcours ne part pas de l'entrée ou n'arrive pas à la sortie.
+// Mode Secours : découpage du réseau en secteurs équilibrés et parcours de
+// balayage. Le vrai moteur (js/secoursBalayage.js) tourne sur le vrai graphe
+// (js/pathfinder.js), en VM, avec un réseau synthétique (boucles, culs-de-sac,
+// deux niveaux reliés par un puits, un bout isolé). Doc : docs/architecture/secours.md.
+// 🩸 Régressions silencieuses visées :
+//   1. galerie oubliée par le parcours (des étapes seules couvrent mal) :
+//      CHAQUE pièce doit être parcourue ;
+//   2. galerie comptée deux fois (segment d'origine + morceaux coupés aux
+//      croisements) : longueurs et charges faussées ;
+//   3. secteurs déséquilibrés ou en plusieurs morceaux ;
+//   4. parcours qui ne part pas de l'entrée ou n'arrive pas à la sortie.
 // Usage : node scripts/check-secours-balayage.js
 "use strict";
 const fs = require("fs");
@@ -40,10 +38,9 @@ function charger(roads) {
 }
 const L = (pts) => pts.reduce((s, p, i) => i ? s + Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) : 0, 0);
 
-// ---------- Réseau synthétique ----------
-// Niveau 0 : grille 4 × 4 de 100 px (24 galeries, des boucles) faite de LONGS tracés
-// qui se croisent (l'enrichissement les coupe), + 3 culs-de-sac. Niveau −1 : une
-// galerie en L reliée au niveau 0 par un puits (jonction). Un bout isolé, injoignable.
+// ── Réseau synthétique ───────────────────────────────────────────────
+// Niveau 0 : grille 4 × 4 de 100 px faite de LONGS tracés qui se croisent (coupés
+// par l'enrichissement) + 3 culs-de-sac. Niveau −1 : un L relié par un puits. Un bout isolé.
 const roads = [];
 for (let i = 0; i < 4; i++) {
   roads.push({ type: "principal", level: 0, points: [{ x: 0, y: i * 100 }, { x: 300, y: i * 100 }] });
@@ -61,14 +58,14 @@ const { graph, SB } = charger(roads);
 const P = SB.pieces(graph);
 const totalPieces = P.reduce((s, p) => s + p.len, 0);
 
-// ---------- 1. Pièces ----------
+// ── 1. Pièces ────────────────────────────────────────────────────────
 t("pièces : la longueur totale = celle des tracés (rien de compté deux fois aux croisements)",
   Math.abs(totalPieces - totalTraces) < 1, { totalPieces, totalTraces });
 t("pièces : les longs tracés sont coupés à chaque croisement (≥ 24 pièces dans la grille)",
   P.filter((p) => graph.segments[p.seg].level === 0).length >= 24);
 t("pièces : chacune connaît son tracé d'origine", P.every((p) => roads.indexOf(graph.segments[p.seg].road) >= 0));
 
-// ---------- 2. Découpage ----------
+// ── 2. Découpage ─────────────────────────────────────────────────────
 const depart = { x: 0, y: 0 };
 const D = SB.decouper(graph, { n: 3, depart: depart });
 t("découpage : 3 secteurs", D.secteurs.length === 3);
@@ -93,7 +90,6 @@ const continu = D.secteurs.every((x) => {
 });
 t("découpage : chaque secteur est d'un seul tenant", continu);
 
-// Plusieurs accès : chaque secteur reçoit le plus proche par les galeries.
 const D2a = SB.decouper(graph, { n: 2, departs: [{ x: 0, y: 0 }, { x: 300, y: 300 }] });
 t("accès : chaque secteur reçoit l'accès le plus proche de son germe", D2a.secteurs.length === 2 && D2a.secteurs.every((x) => {
   const G = graph.nodes[x.germe];
@@ -103,7 +99,7 @@ t("accès : chaque secteur reçoit l'accès le plus proche de son germe", D2a.se
 t("accès : sans accès fourni, acces = −1", D.secteurs.every((x) => x.acces === 0) &&
   SB.decouper(graph, { n: 2 }).secteurs.every((x) => x.acces === -1));
 
-// ---------- 3. Parcours complet ----------
+// ── 3. Parcours complet ──────────────────────────────────────────────
 function couvreTout(res, idx) {
   const pas = new Set();
   for (let k = 1; k < res.path.length; k++) {
@@ -138,13 +134,13 @@ t("complet : chaque pas suit une galerie ou un raccord (aucun saut à travers la
 t("complet : les niveaux sont rendus (0 et −1 présents)",
   R.path.some((p) => p.level === 0) && R.path.some((p) => p.level === -1));
 
-// ---------- 4. Arrivée distincte ----------
+// ── 4. Arrivée distincte ─────────────────────────────────────────────
 const R2 = SB.parcours(graph, tout, { depart: depart, arrivee: { x: 300, y: 300 }, mode: "complet" });
 t("entrée ≠ sortie : part de l'entrée, finit à la sortie",
   R2.path[0].x === 0 && R2.path[0].y === 0 && R2.path[R2.path.length - 1].x === 300 && R2.path[R2.path.length - 1].y === 300);
 t("entrée ≠ sortie : toujours tout parcouru", couvreTout(R2, tout).length === 0);
 
-// ---------- 5. Ossature ----------
+// ── 5. Ossature ──────────────────────────────────────────────────────
 const O = SB.parcours(graph, tout, { depart: depart, mode: "ossature" });
 const culsDeSac = P.map((_, i) => i).filter((i) => [roads[8], roads[10]].indexOf(graph.segments[P[i].seg].road) >= 0);
 t("ossature : plus court que le complet", O.longueur < R.longueur, { o: O.longueur, c: R.longueur });
@@ -153,12 +149,12 @@ t("ossature : les boucles de la grille le sont", couvreTout(O, tout.filter((i) =
   const r = graph.segments[P[i].seg].road; return roads.indexOf(r) < 8;
 })).length === 0);
 
-// ---------- 6. Un secteur seul ----------
+// ── 6. Un secteur seul ───────────────────────────────────────────────
 const S0 = D.secteurs[0];
 const RS = SB.parcours(graph, S0.pieces, { depart: depart, mode: "complet" });
 t("secteur : tout le secteur est parcouru, approche comprise", RS && couvreTout(RS, S0.pieces).length === 0);
 
-// ---------- 6 ter. Enveloppe d'un secteur (carte) ----------
+// ── 6 ter. Enveloppe d'un secteur (carte) ────────────────────────────
 {
   const dedans = (p, r) => {
     let c = false;
@@ -178,7 +174,7 @@ t("secteur : tout le secteur est parcouru, approche comprise", RS && couvreTout(
   t("enveloppe : un bout éloigné fait un second polygone", deux.length === 2, deux.length);
 }
 
-// ---------- 6 bis. Câblage dans l'app (décisions 3:a et 4:a) ----------
+// ── 6 bis. Câblage dans l'app ────────────────────────────────────────
 {
   const SM = fs.readFileSync(path.join(ROOT, "js/secoursMode.js"), "utf8");
   const II = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
@@ -201,7 +197,7 @@ t("secteur : tout le secteur est parcouru, approche comprise", RS && couvreTout(
     SM.includes("updateScenario(s.id, { tagsExclusPoiZone: ex });") && SM.includes("tagsExclusPoiZone: Array.isArray(sc.tagsExclusPoiZone)"));
 }
 
-// ---------- 7. Tenue en charge ----------
+// ── 7. Tenue en charge ───────────────────────────────────────────────
 {
   const big = [];
   const n = 60;

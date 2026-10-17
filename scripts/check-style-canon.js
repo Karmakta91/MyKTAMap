@@ -1,23 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🎨 check-style-canon.js — garde-fou pré-commit BLOQUANT
+// check-style-canon.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Vérifie que la table canonique de `js/styleResolver.js` reste d'accord avec
-// TOUTES les tables de style encore présentes dans le code.
-//
-// Pourquoi ce contrôle existe : les couleurs des 13 types built-in étaient
-// recopiées à la main dans ~25 tables sur 12 fichiers. Un oubli y est
-// invisible — `exporter.js > ZS_EMBED` avait perdu `inaccessible`, et une zone
-// DANGEREUSE sortait en gris remblais dans l'export PNG sans que rien ne le
-// signale. Tant que des tables subsistent (migration en cours), ce script
-// garantit qu'elles ne DÉRIVENT pas de la référence.
-//
-// ⚠️ EXCEPTIONS DÉLIBÉRÉES, listées en dur ci-dessous. Deux fichiers ont une
-// palette volontairement différente, commentée dans leur source. Les unifier
-// changerait le rendu de deux écrans sans que personne l'ait demandé. Elles
-// sont donc EXCLUES du contrôle — et le fait de devoir les inscrire ici rend
-// tout nouvel écart VOLONTAIRE et visible, au lieu de silencieux.
+// Vérifie que toute table de style encore présente dans le code reste d'accord
+// avec la table canonique `js/styleResolver.js > CANON` (trait, fond, weight,
+// fillOpacity).
+// 🩸 Un oubli dans une copie est invisible : une zone dangereuse peut sortir en
+// gris dans un export sans que rien ne le signale.
+// ⚠️ EXCEPTIONS : palettes volontairement différentes, inscrites en dur
+// ci-dessous avec leur raison ; tout nouvel écart doit y être déclaré.
 // =====================================================================
 
 const fs = require("fs");
@@ -50,17 +42,11 @@ function lireCanon() {
   return eval("(" + corps + ")");
 }
 
-// Toutes les couleurs citées pour un type donné, quel que soit le nom du champ.
-// `color` et `borderColor` désignent le MÊME trait ; `fill` et `fillColor` le
-// même remplissage. Ne pas les assimiler produirait des faux positifs (piège
-// rencontré au premier jet du relevé).
-// Les valeurs NUMÉRIQUES (`weight`, `fillOpacity`) sont relevées elles aussi :
-// c'est précisément ce que la première version laissait passer. Le canon avait
-// `weight: 2` pour les piliers (valeur reprise à tort d'un `width:` KML, qui
-// n'est pas la même unité) et `weight: 5` pour les fronts au lieu de 10 —
-// invisible tant qu'on ne comparait que les hex.
-// `width:` (KMZ) n'est VOLONTAIREMENT pas assimilé à `weight:` pour cette
-// raison même : ce sont deux unités différentes.
+// Couleurs et valeurs citées pour un type, quel que soit le nom du champ :
+// `color` = `borderColor` (trait), `fill` = `fillColor` (remplissage) — sinon
+// faux positifs. `weight` et `fillOpacity` sont comparés aussi (un écart de
+// valeur numérique est invisible si l'on ne compare que les hex).
+// 🩸 `width:` (KMZ) n'est PAS assimilé à `weight:` : autre unité.
 function couleursPour(txt, type) {
   const esc = type.replace(/-/g, "\\-");
   const rx = new RegExp('["\']?' + esc + '["\']?\\s*:\\s*\\{([^}]*)\\}', "g");
@@ -105,8 +91,7 @@ for (const fichier of FICHIERS) {
   for (const [cat, table] of Object.entries(CANON)) {
     for (const [cle, ref] of Object.entries(table)) {
       const refTrait = (ref.color || "").toLowerCase() || null;
-      // Un type à motif SVG a DEUX remplissages légitimes : le motif lui-même
-      // et son aplat de repli (contextes bitmap/KMZ/OSM). Les deux passent.
+      // Type à motif SVG : le motif et son aplat de repli (bitmap/KMZ/OSM) passent.
       const refFonds = [];
       if (ref.fillColor && ref.fillColor.indexOf("url(") !== 0) refFonds.push(ref.fillColor.toLowerCase());
       if (ref._flatFill) refFonds.push(ref._flatFill.toLowerCase());

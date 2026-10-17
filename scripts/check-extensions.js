@@ -1,25 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🧩 check-extensions.js — garde-fou pré-commit BLOQUANT (v2.7.0, chantier 3)
-// =====================================================================
-// Les points d'extension (js/ktaExtensions.js) laissent un module greffé
-// remplacer la gate d'entrée, fournir des plans, refuser un import ou un
-// export, publier un plan, parler à un backend. Contrat :
-// docs/architecture/community-server-line.md §3. Ce qui ne doit JAMAIS arriver :
-//   1. Une prise de PERMISSION (gate, import, export) qui échoue et LAISSE
-//      PASSER : une extension en panne ouvrirait ce qu'elle devait fermer.
-//   2. Une gate déléguée en échec qui retombe sur la gate community : le code
-//      communautaire, diffusé largement, ouvrirait une instance privée.
-//   3. Une requête qui part hors des états permis, ou vers une autre origine
-//      que celle déclarée : le garde est au goulot ou il n'est rien.
-//   4. Un module chargé sur myktamap.fr (instance OFF) : règle E.
-//   5. Une prise sans extension qui change quoi que ce soit (no-op).
-//   6. Des caches de modules vidés à chaque release community, ou un module
-//      greffé précaché par community.
-//
-// COMMENT : le vrai module tourne dans un `vm` (faux localStorage, faux fetch
-// qui COMPTE ses appels) ; le câblage est vérifié sur les fichiers réels.
+// check-extensions.js — BLOQUANT (pré-commit) : points d'extension `js/ktaExtensions.js` (contrat :
+// docs/architecture/community-server-line.md §3). Le vrai module tourne dans un `vm` (faux localStorage,
+// faux fetch qui COMPTE ses appels) ; le câblage est vérifié sur les fichiers réels.
+// 🔒 Ne doit JAMAIS arriver :
+//   1. une prise de PERMISSION (gate, import, export) qui échoue et laisse passer ;
+//   2. une gate déléguée en échec qui retombe sur la gate community (ouvrirait une instance privée) ;
+//   3. une requête hors des états permis ou vers une autre origine (le garde est au goulot ou n'est rien) ;
+//   4. un module chargé sur une instance OFF (myktamap.fr) — règle E ;
+//   5. une prise sans extension qui change quoi que ce soit (no-op) ;
+//   6. des caches de modules vidés à chaque release community, ou un module greffé précaché par community.
 // =====================================================================
 "use strict";
 
@@ -41,7 +32,7 @@ function nouveauContexte(licence) {
                 createElement: () => ({ set src(v) { scripts.push(v); } }), head: { appendChild() {} } },
     MyKTAMapProLicense: { isPro: () => !!licence, getSource: () => licence || null },
     CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
-    // Écouteurs et événements gardés (section 📶) ; `w._fetch` remplace le réseau pour un test.
+    // Écouteurs et événements gardés (section réseau) ; `w._fetch` remplace le réseau pour un test.
     _ecoutes: {}, _emis: [],
     addEventListener(type, fn) { (w._ecoutes[type] = w._ecoutes[type] || []).push(fn); },
     dispatchEvent(e) { w._emis.push(e && e.type); return true; },
@@ -59,7 +50,7 @@ function nouveauContexte(licence) {
 const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", modules: ["pro/m.js"] } };
 
 (async function () {
-  // ═════════ 1. DÉCLARATION ═════════
+  // ── 1. DÉCLARATION ──────
   {
     const { K } = nouveauContexte(null);
     t("API exposée : register, signaler, chargerModules, requete, permissions, gate, plans, journal, effacement, secours",
@@ -72,7 +63,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("double déclaration refusée", K.register({ nom: "x", apiVersion: 1 }) === false);
   }
 
-  // ═════════ 2. SANS EXTENSION : RIEN NE CHANGE ═════════
+  // ── 2. SANS EXTENSION : RIEN NE CHANGE ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : import autorisé, export autorisé (aucune prise ne ferme rien)", K.importAutorise() === true && K.exportAutorise("p") === true);
@@ -80,7 +71,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("sans extension : aucun plan d'extension", (await K.listerPlansExtension()).length === 0);
   }
 
-  // ═════════ 3. PERMISSIONS : UNE ERREUR = REFUS ═════════
+  // ── 3. PERMISSIONS : UNE ERREUR = REFUS ──────
   {
     const { K } = nouveauContexte(null);
     K.register({ nom: "pannes", apiVersion: 1, importAutorise() { throw new Error("panne"); }, exportAutorise() { throw new Error("panne"); } });
@@ -96,9 +87,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 gate déléguée en échec → la promesse REJETTE (l'appelant n'ouvre rien)", rejete);
   }
 
-  // ═════════ 📶 RÉSEAU PERDU / REVENU (07/10/2026, retour KARMA iPhone) ═════════
-  // Avant : l'état n'était établi qu'au démarrage — réseau perdu sur l'accueil = « connectée »
-  // affiché, et l'ouverture d'un plan ☁️ attendait sans fin.
+  // ── Réseau perdu / revenu ──────
+  // 🩸 L'état suit le réseau en continu : établi au démarrage seulement, l'accueil afficherait
+  // « connectée » hors réseau et l'ouverture d'un plan d'extension attendrait sans fin.
   {
     const c = nouveauContexte("server");
     c.K.appliquerConfig(ON, true);
@@ -130,7 +121,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     (off.w._ecoutes.offline || []).forEach((f) => f({ type: "offline" }));
     t("📶 instance OFF : couper le réseau ne fabrique pas un « down »", off.K.etat().etat === "off");
 
-    // Le signal transmis à la source de plans (le veilleur de l'accueil annule par lui).
+    // signal transmis à la source de plans (le veilleur de l'accueil annule par lui)
     const p = nouveauContexte("server");
     let recu = null;
     p.K.register({ nom: "src", apiVersion: 1, plans: { lister: () => [], charger: (id, o) => { recu = o; return Promise.resolve("blob"); } } });
@@ -139,7 +130,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("📶 chargerPlanExtension transmet opts.signal à l'extension", recu && recu.signal === sig);
   }
 
-  // ⏱️ Veilleur d'inactivité de l'accueil : EXÉCUTÉ (délais réduits), pas seulement lu.
+  // ── Veilleur d'inactivité de l'accueil : EXÉCUTÉ (délais réduits), pas seulement lu ──────
   {
     const HL = lire("js/homeLoader.js");
     const i = HL.indexOf("const _VEILLE_DEBUT_MS"), j = HL.indexOf("const _horsLigne");
@@ -167,7 +158,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /zipIndex\.coupe/.test(HL) && /ext\.chargement\.coupe/.test(HL) && /signal: veille\.signal/.test(HL));
   }
 
-  // ═════════ 4. GARDE DES REQUÊTES ═════════
+  // ── 4. GARDE DES REQUÊTES ──────
   {
     const off = nouveauContexte(null);
     let refus = false;
@@ -200,7 +191,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("…sauf une sonde (pour détecter le retour du serveur)", cfg.appelsFetch.length === 2);
     cfg.K.signaler("on");
     t("signaler(\"on\") → connectée", cfg.K.etat().etat === "on");
-    // 🔏 09/10/2026 — licence REFUSÉE par le serveur : état « licence » + sa raison, jamais « down ».
+    // licence REFUSÉE par le serveur : état « licence » + sa raison, jamais « down ».
     cfg.K.signaler("licence", "expiree");
     t("🩸 signaler(\"licence\", raison) → état « licence » avec la raison du serveur",
       cfg.K.etat().etat === "licence" && cfg.K.etat().raison === "expiree");
@@ -215,7 +206,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 un signal ne rallume JAMAIS une instance OFF", off2.K.etat().etat === "off");
   }
 
-  // ═════════ 4 bis. API « MÊME SITE » (/api/) ═════════
+  // ── 4 bis. API « MÊME SITE » (/api/) ──────
   {
     const rel = nouveauContexte("server");
     rel.w.location = { origin: "https://club.exemple.org", href: "https://club.exemple.org/index.html" };
@@ -229,7 +220,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 api même site : une adresse d'un AUTRE site reste refusée", refus && rel.appelsFetch.length === 1);
   }
 
-  // ═════════ 5. CHARGEUR DE MODULES (règle E) ═════════
+  // ── 5. CHARGEUR DE MODULES (règle E) ──────
   {
     const off = nouveauContexte("server");
     off.K.appliquerConfig({}, true);
@@ -241,7 +232,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 « on » sans licence serveur : aucun module chargé", r2.demandes === 0 && sansLic.scripts.length === 0);
   }
 
-  // ═════════ 6. JOURNAL, EFFACEMENT, SECOURS ═════════
+  // ── 6. JOURNAL, EFFACEMENT, SECOURS ──────
   {
     const c = nouveauContexte(null);
     c.w.getEditorPoints = () => [{ uid: "pt_a", updatedAt: 100 }, { uid: "pt_b", updatedAt: 300 }];
@@ -267,7 +258,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       c.K.secoursAppliquer("sc1", { nom: "x" }) === true && appel[0] === "sc1");
   }
 
-  // ═════════ 6 bis. COMPTE CONNECTÉ ═════════
+  // ── 6 bis. COMPTE CONNECTÉ ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : aucun compte (myktamap.fr garde son profil local)", K.compte() === null);
@@ -285,7 +276,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("pseudo vide → aucun compte", K4.compte() === null);
   }
 
-  // ═════════ 6 bis ter. RANGEMENT DIFFUSÉ + HORS LIGNE D'UN PLAN ☁️ ═════════
+  // ── 6 bis ter. RANGEMENT DIFFUSÉ + HORS LIGNE D'UN PLAN D'EXTENSION ──────
   {
     const { K, w } = nouveauContexte(null);
     w.PlanRegistry = { findById: (id) => (id === "ext_a" ? { id, type: "ext", extId: "A" } : id === "loc" ? { id, type: "local" } : null) };
@@ -314,7 +305,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (await K2.garderPlanExtension("ext_a")) === false);
   }
 
-  // ═════════ 6 bis quinquies. ACTIONS SUR LA FICHE D'UN OBJET ═════════
+  // ── 6 bis quinquies. ACTIONS SUR LA FICHE D'UN OBJET ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : aucune action sur les fiches", K.actionsObjet("pt_x").length === 0);
@@ -342,7 +333,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /ligne\.textContent = info;/.test(lire("js/ktaExtensions.js")) && /\.slice\(0, 120\)/.test(lire("js/ktaExtensions.js")));
   }
 
-  // ═════════ 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ═════════
+  // ── 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ──────
   {
     const HLp = lire("js/homeLoader.js");
     t("fiche ℹ️ : « Publier sur l'installation » seulement pour un plan local ET si une extension sait publier",
@@ -351,7 +342,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /window\.KtaExtensions\.publierPlan\(\{ blob: blob/.test(HLp) && /input\.accept = "\.zip,application\/zip"/.test(HLp));
   }
 
-  // ═════════ 6 bis quater. PLAN PUBLIÉ : LA LISTE EST RELUE ═════════
+  // ── 6 bis quater. PLAN PUBLIÉ : LA LISTE EST RELUE ──────
   {
     const { K, w } = nouveauContexte(null);
     const evts = [];
@@ -364,7 +355,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
   }
 
-  // ═════════ 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ═════════
+  // ── 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ──────
   {
     const { K, w } = nouveauContexte(null);
     t("sans extension : présence inactive, pas de tuile (aPrise faux)", K.presenceActive() === false && K.aPrise("presence") === false);
@@ -391,7 +382,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const PR = lire("js/ktaPresences.js");
     t("🩸 présences : affichage seulement (aucune requête réseau dans le module)", !/fetch\(|XMLHttpRequest|WebSocket/.test(PR));
     t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
-    // 🎨 Qui est qui (13/10/2026) : une couleur par personne, tirée de son identifiant.
+    // Qui est qui : une couleur par personne, tirée de son identifiant.
     const elt = (tag) => ({ tag, attrs: {}, dataset: {}, style: {}, enfants: [], className: "", textContent: "",
       setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k]; },
       appendChild(c) { this.enfants.push(c); return c; } });
@@ -454,7 +445,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const etq = rep[2].icone.html.enfants[1];
     t("🩸 pseudo toujours affiché, posé en texte (textContent), jamais interprété",
       etq.className === "kta-presence-etiquette" && etq.textContent.indexOf("<img src=x onerror=1> · ") === 0 && !/innerHTML/.test(PR));
-    // « Masquer une personne » (14/10/2026) : ni repère ni trace, réversible, plus suivie, oublié en sortie de plan.
+    // « Masquer une personne » : ni repère ni trace, réversible, plus suivie, oublié en sortie de plan.
     wp.map.getZoom = () => 1; wp.map.setView = () => {};
     P.suivre("a1");
     couches.length = 0;
@@ -469,7 +460,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("👁️ sortie de plan : les masquages sont oubliés", !P.personneMasquee("b2"));
   }
 
-  // ═════════ 6 bis ter. LECTURE SEULE et SORTIE DE PLAN (audit du 05/10/2026) ═════════
+  // ── 6 bis ter. LECTURE SEULE et SORTIE DE PLAN ──────
   {
     const IF = lire("js/interface.js");
     const iEd = IF.indexOf('id: "edition"');
@@ -502,7 +493,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /KtaExtensions\.quitterPlan\("plan"\)/.test(MA) && /KtaExtensions\.quitterPlan\("accueil"\)/.test(MA));
   }
 
-  // ═════════ 6 bis quater. AUTEUR D'UN OBJET (filtre « Créé par » de l'export) ═════════
+  // ── 6 bis quater. AUTEUR D'UN OBJET (filtre « Créé par » de l'export) ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : auteurObjet → null, filtre auteur non proposé", K.auteurObjet("pt_x") === null && K.aPrise("auteurObjet") === false);
@@ -513,11 +504,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     K2.register({ nom: "au2", apiVersion: 1, auteurObjet: () => { throw new Error("x"); } });
     t("🩸 extension en erreur → null, aucune exception", K2.auteurObjet("pt_a") === null);
     const SE = lire("js/sessionExporter.js");
+    // ⚠️ Découpe sur du CODE (jamais sur un commentaire) ; repère absent → bloc vide → échec.
+    const iO = SE.indexOf("window.ouvrirExportSessionModal = function");
+    const jO = iO >= 0 ? SE.indexOf("_afficherModal();", iO) : -1;
+    const ouvrir = (iO >= 0 && jO > iO) ? SE.slice(iO, jO) : "";
     t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
-      /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
+      /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) &&
+      ouvrir.indexOf('_filtre = { du: "", au: "", auteur: "" };') >= 0);
   }
 
-  // ═════════ 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ═════════
+  // ── 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : grades et hauts faits actifs", K.profilJeuActif() === true);
@@ -531,7 +527,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (HP.match(/!_jeuProfilActif()/g) || []).length >= 4 && /mktm:extensions-changees/.test(HP));
   }
 
-  // ═════════ 6 bis octies. DICTIONNAIRES D'UNE EXTENSION (I18n.ajouter, 14/10/2026) ═════════
+  // ── 6 bis octies. DICTIONNAIRES D'UNE EXTENSION (I18n.ajouter) ──────
   {
     const LM = lire("js/langManager.js");
     t("I18n.ajouter : exposé, ajouts gardés à part et refusionnés à chaque chargement de dico (paresseux, reload)",
@@ -540,7 +536,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /hasOwnProperty\.call\(d, k\) && !posees\[k\]\) return;/.test(LM));
   }
 
-  // ═════════ 6 bis septies. STATISTIQUES DU PROFIL (prise profilStats) ═════════
+  // ── 6 bis septies. STATISTIQUES DU PROFIL (prise profilStats) ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : aucune statistique d'extension", (await K.profilStatsExtension()).length === 0);
@@ -574,7 +570,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /K\.aPrise\("auteurObjet"\)/.test(SG) && /_escapeHtml\(a\.nom != null/.test(SG));
   }
 
-  // ═════════ 6 bis sexies. ALERTES D'UNE EXTENSION (prise alertes, même modale qu'alert.json) ═════════
+  // ── 6 bis sexies. ALERTES D'UNE EXTENSION (prise alertes, même modale qu'alert.json) ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : aucune alerte d'extension", (await K.alertesExtension()).length === 0 && K.aPrise("alertes") === false);
@@ -596,7 +592,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));
   }
 
-  // ═════════ 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ═════════
+  // ── 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : aucun bouton Secours, aucun texte, tout est permis",
@@ -626,7 +622,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /function _emettre\(nom, detail\) \{\n\s*if \(_appliqueDistant\) return;/.test(SM));
   }
 
-  // ═════════ 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ═════════
+  // ── 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ──────
   {
     const { K, w } = nouveauContexte(null);
     t("sans extension : itinéraire non publié, pas de bouton (aPrise faux)",
@@ -663,7 +659,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /X\.aPrise\("itineraire"\)/.test(lire("js/interfaceItineraire.js")));
   }
 
-  // ═════════ 6 ter. CHANGEMENTS REÇUS (synchro entrante) ═════════
+  // ── 6 ter. CHANGEMENTS REÇUS (synchro entrante) ──────
   {
     const { K, w } = nouveauContexte(null);
     t("sans plan ouvert : rien n'est appliqué (null)", K.appliquerChangements({ editorPoints: [] }) === null);
@@ -694,7 +690,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("les objets reçus sont copiés (rien de partagé avec l'appelant)", pts.find((p) => p.uid === "pt_aaaa1111").name === "Distant plus récent");
   }
 
-  // ═════════ 6 ter bis. ⏪ L'ÉCHO DE SES PROPRES ENVOIS NE VIDE PAS CTRL+Z (08/10/2026, retour KARMA) ═════════
+  // ── 6 ter bis. L'ÉCHO DE SES PROPRES ENVOIS NE VIDE PAS CTRL+Z ──────
   {
     const { K, w } = nouveauContexte(null);
     const vm3 = require("vm");
@@ -713,7 +709,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("⏪ un vrai objet reçu (d'un autre) → l'historique repart de zéro, comme avant", resets === 1 && ecritures === 1);
   }
 
-  // ═════════ 6 quater. ACTIONS DU COMPTE ═════════
+  // ── 6 quater. ACTIONS DU COMPTE ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : aucune action, aucun bloc", K.actionsCompte("profil").length === 0 && K.blocActionsCompte("config", "x") === null);
@@ -728,7 +724,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 erreur de l'extension → aucune action", K3.actionsCompte("config").length === 0);
   }
 
-  // ═════════ 6 quinquies. DOSSIERS DE L'INSTANCE ═════════
+  // ── 6 quinquies. DOSSIERS DE L'INSTANCE ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : dossiers inconnus (null, rien ne bouge)", (await K.dossiersExtension()) === null);
@@ -743,7 +739,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 erreur de l'extension → null (les dossiers existants ne sont pas libérés)", (await K3.dossiersExtension()) === null);
   }
 
-  // ═════════ 6 sexies. PHOTOS DES POINTS (prise « photos », 10/10/2026) ═════════
+  // ── 6 sexies. PHOTOS DES POINTS (prise « photos ») ──────
   {
     const { K } = nouveauContexte(null);
     t("sans extension : completerPoint → 0, completerPlan → { 0, 0 } (rien n'est appelé)",
@@ -769,7 +765,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
       /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"(, "[a-zA-Z]+")*]/.test(EXT));
 
-    // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
+    // ── Prise « aide » : une rubrique d'extension dans l'Aide intégrée ──
     const { K: A0 } = nouveauContexte(null);
     t("aide : sans extension → null (l'aide reste celle du community)", A0.aide() === null);
     const { K: A1 } = nouveauContexte(null);
@@ -793,7 +789,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("aide : une section d'extension s'ouvre par ktaOuvrirAideSection(« ext-… »)",
       /slug\.indexOf\("ext-"\) === 0/.test(lire("js/interfaceDocs.js")));
 
-    // ── Actions du compte en rubriques (11/10/2026) : groupe, ligne d'état, action « fin » ──
+    // ── Actions du compte en rubriques : groupe, ligne d'état, action « fin » ──
     const { K: C1 } = nouveauContexte(null);
     const f = () => {};
     C1.register({ nom: "c1", apiVersion: 1, actionsCompte: () => [
@@ -811,7 +807,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (() => { const { K } = nouveauContexte(null); K.register({ nom: "c2", apiVersion: 1,
         actionsCompte: () => [{ libelle: "A", action: f }] }); const a = K.actionsCompte("profil");
         return a.length === 1 && a[0].groupe === "" && a[0].type === "" && a[0].action === f; })());
-    // ── Tuile d'extension dans 🧰 Outils (11/10/2026) ──
+    // ── Tuile d'extension dans Outils ──
     const { K: O0 } = nouveauContexte(null);
     t("outilHome : sans extension → null (aucune tuile)", O0.outilHome() === null && O0.ouvrirOutilHome() === false);
     const { K: O1 } = nouveauContexte(null);
@@ -825,6 +821,31 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("outilHome : la tuile suit le compte (mktm:compte-changed) et la fenêtre montre le lieu « outils »",
       EXT.includes('addEventListener("mktm:compte-changed", _poserOutilHome)') &&
       EXT.includes('blocActionsCompte("outils", "")'));
+    // ── Pastille d'extension dans l'en-tête de l'accueil ──
+    const { K: P0 } = nouveauContexte(null);
+    t("pastilleHome : sans extension → null (aucune pastille)", P0.pastilleHome() === null);
+    const { K: P1 } = nouveauContexte(null);
+    P1.register({ nom: "p1", apiVersion: 1,
+      pastilleHome: () => ({ icone: " 🏢 ", titre: " Documentation pro ", url: "https://doc.example.org/pro.html" }) });
+    const p1 = P1.pastilleHome();
+    t("pastilleHome : icône, titre et URL https lus et nettoyés",
+      !!p1 && p1.icone === "🏢" && p1.titre === "Documentation pro" && p1.url === "https://doc.example.org/pro.html");
+    const refus = [
+      { icone: "🏢", titre: "x", url: "http://doc.example.org/" },
+      { icone: "🏢", titre: "x", url: "javascript:alert(1)" },
+      { icone: "🏢", titre: "", url: "https://doc.example.org/" },
+      { icone: "abcdefgh", titre: "x", url: "https://doc.example.org/" },
+      { icone: "🏢", titre: "x" }
+    ].every((v, k) => { const { K } = nouveauContexte(null);
+      K.register({ nom: "pr" + k, apiVersion: 1, pastilleHome: () => v }); return K.pastilleHome() === null; });
+    t("🔒 pastilleHome : http, javascript:, titre vide, icône trop longue ou URL absente → aucune pastille", refus);
+    const { K: P2 } = nouveauContexte(null);
+    P2.register({ nom: "p2", apiVersion: 1, pastilleHome: () => { throw new Error("x"); } });
+    t("pastilleHome : une erreur de l'extension → aucune pastille", P2.pastilleHome() === null);
+    t("pastilleHome : posée après 📖, rendue en textContent, ouverte en noopener, suit le compte",
+      EXT.includes('aide.parentNode.insertBefore(b, aide.nextSibling)') && EXT.includes("b.textContent = p.icone") &&
+      EXT.includes('"_blank", "noopener,noreferrer"') &&
+      EXT.includes('addEventListener("mktm:compte-changed", _poserPastilleHome)'));
     t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
       /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
@@ -836,12 +857,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 purges LOCALES (plan retiré, déconnexion, réinitialisation) : AUCUN événement de suppression",
       purge.length > 0 && !/_emettre/.test(purge) && vide.length > 0 && !/_emettre/.test(vide));
     const RESTAURE = ["js/main.js", "js/interfaceImportExport.js", "js/profileExportImport.js"];
-    // (d'autres options peuvent suivre : `siAbsente: true` pour la fusion du réimport de session, 12/10/2026)
+    // d'autres options peuvent suivre (`siAbsente: true` pour la fusion du réimport de session)
     t("restaurations de l'app marquées source « import » (session, plan ZIP, profil)",
       RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import"(?:, \w+: \w+)* \}\)/.test(lire(f))));
   }
 
-  // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
+  // ── 7. CÂBLAGE (fichiers réels) ──────
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),
       GEN = lire("js/createConf.js"), SW = lire("sw.js");
@@ -853,8 +874,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 boot : gate déléguée en échec → « Installation indisponible », JAMAIS la gate community",
       /catch \(e\) \{[\s\S]{0,400}await _ktaInstanceIndisponible\(_motifBlocage\(\)\);/.test(MAIN) &&
       /function _ktaInstanceIndisponible\(motif\) \{\s*return new Promise\(function\(\) \{/.test(MAIN));
-    // 🔏 09/10/2026 — installation pro sans licence valide : fermée AVANT les modules et la gate
-    // community (sinon : app ouverte en community sur les données du dernier utilisateur).
+    // 🔒 Installation sans licence valide : fermée AVANT les modules et la gate community (sinon l'app
+    // s'ouvre en community sur les données du dernier utilisateur).
     const iBloc = MAIN.indexOf('if (_motifBlocage() === "licence") {');
     t("🩸 boot : licence pro absente/expirée/refusée → « Installation indisponible », AVANT modules et gate community",
       iBloc > iLic && iBloc < iMods && iBloc < iGate &&
@@ -873,8 +894,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /window\.KtaExtensions\.importAutorise === "function" &&\s*!window\.KtaExtensions\.importAutorise\(\)\) return true;/.test(MAIN));
     t("export de profil : les archives de plans passent par la prise", /window\.KtaExtensions\.exportAutorise\(p\.id\)/.test(PROF));
     t("plans d'extension : inscrits en type « ext » après la découverte serveur", /_decouvrirPlansExtension\(\)/.test(MAIN) && /type: "ext", extId:/.test(MAIN));
-    // Gardé selon « Mémoriser le plan dans l'app » ; une copie DÉJÀ gardée est toujours mise à
-    // jour (sinon l'ancienne passerait pour la version courante).
+    // Gardé selon « Mémoriser le plan dans l'app » ; une copie déjà gardée est toujours mise à jour
+    // (sinon l'ancienne passerait pour la courante).
     t("plans d'extension : ouverts via la prise, gardés selon le réglage (copie existante toujours à jour), type conservé",
       /if \(plan\.type === "ext"\) \{/.test(HL) &&
       /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
@@ -889,8 +910,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       t("🩸 multi-comptes : l'historique d'annulation repart de zéro après une réception", /window\.HistoryManager\.reset\(\)/.test(EXT));
       t("lecture seule : prise lectureSeule, erreur = lecture seule, plan local jamais",
         /function lectureSeule\(registreId\)/.test(EXT) && /lecture seule :", e\); return true;/.test(EXT));
-      t("export : le goulot ktaExportPlanRefuse garde l'export de session et l'export image",
-        /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/sessionExporter.js")) && /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/exporter.js")));
+      // Le verrou de l'installation ne garde que la SESSION (KMZ, GPX, image, PDF, Secours, ZIP passent) ;
+      // son message est important, donc jamais tu en mode « Essentielles ».
+      t("export : le goulot ktaExportPlanRefuse garde la session (complet, avancé, conversion) et rien d'autre",
+        /if \(tab === "full" \|\| tab === "advanced" \|\| tab === "conversion"\) \{\r?\n\s*if \(typeof window\.ktaExportPlanRefuse/.test(lire("js/sessionExporter.js")) &&
+        !/ktaExportPlanRefuse/.test(lire("js/exporter.js")) && !/ktaExportPlanRefuse/.test(lire("js/pdfExport.js")) &&
+        !/ktaExportPlanRefuse/.test(lire("js/secoursMode.js")));
+      t("export : le refus se dit toujours (toast important, jamais tu par le réglage des notifications)",
+        /showToast\(_t\("ext\.export\.refuse"\), "warn", \{ important: true \}\)/.test(EXT));
       const MAINT = lire("js/interfaceMaintenance.js");
       t("🩸 Tout réinitialiser : la session d'une installation est fermée AVANT l'effacement (prise bornée à 3 s)",
         MAINT.indexOf("avantReinitialisation()") > 0 && MAINT.indexOf("avantReinitialisation()") < MAINT.indexOf("localStorage.clear()") &&

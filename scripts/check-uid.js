@@ -1,26 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B, v2.3.0 lot C1, v2.4.0 lot C2, v2.5.0 lot C3)
-// =====================================================================
-// Chaque objet de carte porte une identité stable : `uid` + `updatedAt` (ms).
-// Décisions : docs/ETUDE_UID.md. Ce que ce script empêche :
-//   1. Un uid en DOUBLE. Une copie JSON (tableur « Dupliquer ») recopierait
-//      l'uid ; une migration de masse (des milliers d'objets dans la même ms)
-//      peut tirer deux fois le même. Plus tard, la fusion « le plus récent
-//      gagne » perdrait l'un des deux objets, en silence.
-//   2. Un uid ÉCRASÉ. ensure ne doit jamais remplacer une identité existante.
-//   3. Une modification OUBLIÉE : un site qui modifie sans `touch` laisse un
-//      updatedAt périmé, et la synchro garderait la mauvaise version.
-//   4. Une migration qui change le numéro de version de session : les
-//      anciennes versions de l'app IGNORENT une session de version inconnue
-//      (sessionPersist.getSaved) — un retour en arrière la ferait disparaître.
-//   5. Une identité perdue à la lecture des calques, ou fuyant vers un format
-//      étranger (KMZ / GPX).
-//
-// COMMENT : le vrai js/ktaUid.js tourne dans un `vm` (partie 1) ; le câblage
-// des sites est vérifié sur le texte des fichiers réels (partie 2), là où
-// exécuter le module complet (Leaflet, DOM) n'apporterait rien de plus.
+// check-uid.js — BLOQUANT (pré-commit) : identité stable des objets de carte, `uid` + `updatedAt` (ms)
+// (`js/ktaUid.js` exécuté dans un `vm` ; câblage des sites vérifié sur le texte). Décisions : docs/ETUDE_UID.md.
+// 🩸 Ce qu'il empêche :
+//   1. un uid en DOUBLE (copie JSON, migration de masse dans la même ms) : la fusion « le plus récent
+//      gagne » perdrait l'un des deux en silence ;
+//   2. un uid ÉCRASÉ par ensure ;
+//   3. une modification sans `touch` : updatedAt périmé, la synchro garde la mauvaise version ;
+//   4. un changement du numéro de version de session : une ancienne app IGNORE une version inconnue
+//      (`sessionPersist.getSaved`), un retour en arrière ferait disparaître la session ;
+//   5. une identité perdue à la lecture des calques, ou qui fuit vers KMZ / GPX.
+// Couvre aussi traces de suppression et fusion, photos, favoris, liaisons et Secours rattachés par uid.
 // =====================================================================
 "use strict";
 
@@ -31,7 +22,7 @@ let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
-// ═════════ 1. LE MODULE, EXÉCUTÉ ═════════
+// ── 1. LE MODULE, EXÉCUTÉ ──────
 const win = { console: { log() {}, warn() {}, error() {} } };
 win.window = win;
 const ctx = vm.createContext(win);
@@ -97,7 +88,7 @@ if (K) {
   for (let i = 0; i < 20000; i++) masse.push({ points: [] });
   K.ensureAll(masse, "rd", 1);
   t("migration de masse : 20 000 objets, aucun uid en double", new Set(masse.map((o) => o.uid)).size === 20000);
-  // Collision forcée : on rejoue un uid déjà vu en entrée
+  // Collision forcée
   const force = [];
   for (let i = 0; i < 50; i++) force.push({ uid: "st_meme_dddddd" });
   K.ensureAll(force, "st", 1);
@@ -128,7 +119,7 @@ if (K) {
   t("Générateur : un calque déjà complet repart à l'identique (texte inchangé)", K.marquerCalqueTexte(dejaMarque) === dejaMarque);
 }
 
-// ═════════ 2. CÂBLAGE DES SITES (fichiers réels) ═════════
+// ── 2. CÂBLAGE DES SITES (fichiers réels) ──────
 const EDITOR = lire("js/editor.js"), ROAD = lire("js/road.js"), ZONES = lire("js/zones.js"),
   STRUCT = lire("js/structures.js"), SP = lire("js/sessionPersist.js"), TBL = lire("js/tableEditor.js"),
   CONV = lire("js/convertirObjet.js"), UTILS = lire("js/utils.js"), GEN = lire("js/createConf.js"),
@@ -199,7 +190,7 @@ const iCfg = IDX.indexOf('<script src="js/config.js"'), iUid = IDX.indexOf('<scr
 t("index.html charge ktaUid après config.js et AVANT utils.js", iCfg > 0 && iUid > iCfg && iUt > iUid);
 t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
 
-// ═════════ 3. LOT B — TRACES DE SUPPRESSION ET FUSION (v2.2.0) ═════════
+// ── 3. Traces de suppression et fusion ──────
 {
   const store = { editorPoints: [], roads: [], zones: [], structures: [] };
   const w = {
@@ -234,14 +225,12 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     HM.record("suppr", avant, "roads");
     t("🩸 suppression enregistrée → trace de suppression", traces().indexOf("rd_a_aaaaaa") >= 0 && traces().length === 1);
 
-    // Annulation → même uid, trace retirée, updatedAt = maintenant
     HM.undo();
     const revenu = store.roads.find((o) => o.uid === "rd_a_aaaaaa");
     t("annulation d'une suppression : l'objet revient avec le MÊME uid", !!revenu);
     t("annulation : sa trace de suppression est retirée", traces().indexOf("rd_a_aaaaaa") < 0);
     t("annulation : updatedAt = maintenant (sinon la synchro garderait la version annulée)", revenu && Math.abs(revenu.updatedAt - Date.now()) < 5000);
 
-    // Rétablir → trace de nouveau
     HM.redo();
     t("rétablir la suppression : la trace revient", traces().indexOf("rd_a_aaaaaa") >= 0);
 
@@ -319,7 +308,7 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     (IIE.match(/_preparerIdentitesImport\((data|dataParsee)\);[^\n]*\n\s+if \(window\.setEditorPoints\)/g) || []).length === 2);
 }
 
-// ═════════ 4. LOT C1 — PHOTOS RATTACHÉES À L'UID (v2.3.0) ═════════
+// ── 4. Photos rattachées à l'uid ──────
 {
   const PH = lire("js/photos.js"), ED = lire("js/editor.js"), UT = lire("js/utils.js"),
     SE = lire("js/sessionExporter.js"), MA = lire("js/main.js"), RI = lire("js/refonteInterface.js");
@@ -331,8 +320,8 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     return "";
   };
   const migr = fn(PH, "migrerPhotosPlan"), setP = fn(PH, "setPhotoPointId"), ref = fn(PH, "getPhotosForPointRef");
-  // 📸 10/10/2026 — setPhotoPointId, migrerPhotosPlan et rattacher partagent l'écriture _poserPointId
-  // (une transaction pour plusieurs photos, fiche facultative) : c'est elle qu'on lit.
+  // écriture partagée par setPhotoPointId, migrerPhotosPlan et rattacher : c'est elle qu'on lit
+
   const pose = fn(PH, "_poserPointId");
   t("photos : getPhotosForPointRef, setPhotoPointId, migrerPhotosPlan exposées",
     /getPhotosForPointRef:\s+getPhotosForPointRef/.test(PH) && /setPhotoPointId:\s+setPhotoPointId/.test(PH) && /migrerPhotosPlan:\s+migrerPhotosPlan/.test(PH));
@@ -379,7 +368,7 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   });
 }
 
-// ═════════ 5. LOT C2 — FAVORIS, LIAISONS, SECOURS PAR UID (v2.4.0) ═════════
+// ── 5. Favoris, liaisons, Secours par uid ──────
 {
   // Favoris : le vrai module, exécuté
   const fstore = {};
@@ -453,7 +442,7 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     /Favoris\.migrerVersUid\(pts\)/.test(MAC) && /InterPlanLinks\.migrerVersUid\(planId, pts\)/.test(MAC));
 }
 
-// ═════════ 6. LOT C3 — PHOTOS DES ZIP DE PLAN (v2.5.0) ═════════
+// ── 6. Photos des ZIP de plan ──────
 {
   const GENC = lire("js/createConf.js"), MAIC = lire("js/main.js");
   const ex = (src, nom) => { const d = src.indexOf("function " + nom + "("); if (d < 0) return ""; const o = src.indexOf("{", d); let p = 0;

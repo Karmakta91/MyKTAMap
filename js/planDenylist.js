@@ -4,79 +4,41 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// PLAN DENYLIST — Kill-switch anti-fuite (v1.42.0)
-// =========================
-// Permet à KARMA de bloquer l'ouverture de plans dont le ZIP a fuité
-// publiquement. À chaque tentative d'import / ouverture d'un plan local :
-//   1. SHA-256 du ZIP complet (calculé localement via SubtleCrypto)
-//   2. Comparaison à la denylist (téléchargée depuis le serveur, cache 24h)
-//   3. Si match → modale rouge bloquante + suppression du plan local
-//
-// PRIVACY STRICTE :
-//   • Aucun hash n'est envoyé au serveur (= 0 fingerprinting des plans owned).
-//   • Seule la denylist publique est fetchée (= info publique, anyone peut la lire).
-//   • Pattern identique à alertChecker.js : fetch JSON public + check local.
-//
-// FORMAT denylist.json (publié à la racine du serveur) :
-//   {
-//     "version": 1,
-//     "updated": "2026-06-07T14:00:00Z",
-//     "deny": [
-//       {
-//         "sha256": "<64 chars hex>",
-//         "reason": "Fuite publique constatée le 05/06/2026 sur Telegram",
-//         "addedAt": "2026-06-07T13:50:00Z"
-//       },
-//       ...
-//     ]
-//   }
-//
-// CACHE STRATEGY :
-//   • localStorage["myktamap_denylist_cache"] = { fetchedAt, payload }
-//   • TTL 24h. Au-delà, refetch en arrière-plan. Si offline → utilise cache stale
-//     (le check est appliqué avec la dernière liste connue, pas désactivé).
-//
-// QUOI EST CHECKÉ ?
-//   • Plans LOCAUX (importés en ZIP) au moment de chargerZipFichier()
-//   • Plans IMPORTÉS via FS Access API (même hook)
-//   • Plans SERVEUR : pas concernés (publics par définition, hash impossible
-//     sans fetch complet du ZIP qui n'existe pas)
-//
-// API publique :
-//   • window.PlanDenylist.init()                        — fetch initial + cache
-//   • window.PlanDenylist.isPlanDenied(blob)            — async, retourne {denied, reason?, addedAt?, sha256}
-//   • window.PlanDenylist.refresh()                     — force refetch
-//   • window.PlanDenylist.getDenylist()                 — debug
-//   • window.PlanDenylist.computeSha256(blob)           — helper exposé
-//   • window.PlanDenylist.showDeniedModal(info, planId) — affiche modale rouge bloquante
-// =========================
+// planDenylist.js — kill-switch anti-fuite : bloque l'ouverture d'un plan LOCAL dont le ZIP a fuité.
+// SHA-256 du ZIP (SubtleCrypto, local) comparé à denylist.json (racine du serveur) ; trouvé → modale
+// rouge bloquante + suppression du plan. Vérifié à l'import (chargerZipFichier, FS Access) et au boot
+// (auditPlansLocaux). Plans serveur non concernés.
+// 🔒 Aucun hash ne quitte l'appareil : seule la liste publique est téléchargée (comme alertChecker.js).
+// Format : { version, updated, deny: [{ sha256: "<64 hex>", reason, addedAt }] }
+// Cache : localStorage["myktamap_denylist_cache"] = { fetchedAt, payload }, TTL 24 h ; hors ligne, la
+//   dernière liste connue s'applique (jamais désactivé).
+// Expose : window.PlanDenylist { init, isPlanDenied(blob) → {denied, sha256, reason?, addedAt?},
+//   refresh, getDenylist, computeSha256, showDeniedModal(info, planId, onDismiss), auditPlansLocaux,
+//   getPurgedAtBoot, clearPurgedAtBoot, showPurgedNotifModal }
+// Doc : docs/architecture/security-legal.md
 
 (function() {
   "use strict";
 
   const DENYLIST_URL    = "denylist.json";
   const LS_CACHE_KEY    = "myktamap_denylist_cache";
-  const CACHE_TTL_MS    = 24 * 60 * 60 * 1000;  // 24h
+  const CACHE_TTL_MS    = 24 * 60 * 60 * 1000;
 
   let _denylist = null;       // { version, updated, deny: [{sha256, reason, addedAt}] }
   let _fetchPromise = null;   // dédoublonne fetches concurrents
   let _initDone = false;
 
-  // ============================================================
-  // FETCH + CACHE
-  // ============================================================
+  // ── Téléchargement et cache ──────────────────────────────────
   async function init() {
     if (_initDone) return _denylist;
     _initDone = true;
 
-    // 1. Tentative cache local d'abord (instantané, évite race au 1er boot)
+    // Cache d'abord : disponible tout de suite, pas de course au premier boot.
     _denylist = _loadFromCache();
     if (_denylist) {
       console.log("[PlanDenylist] Cache local hit — " + (_denylist.deny || []).length + " entrée(s)");
     }
 
-    // 2. Refetch en arrière-plan si cache expiré OU absent
     const cacheAge = _getCacheAgeMs();
     const needRefetch = (cacheAge === null) || (cacheAge > CACHE_TTL_MS);
     if (needRefetch) {
@@ -89,10 +51,10 @@
     if (_fetchPromise) return _fetchPromise;
     _fetchPromise = (async function() {
       try {
-        // 🔇 cache:no-store pour bypasser le SW (denylist doit être TOUJOURS fraîche)
+        // no-store : contourne le SW, la liste doit être fraîche.
         const resp = await fetch(DENYLIST_URL, { cache: "no-store" });
         if (!resp.ok) {
-          // 404 = pas de denylist publiée → liste vide (= aucun blocage)
+          // 404 = aucune liste publiée → aucun blocage.
           if (resp.status === 404) {
             _denylist = { version: 1, updated: null, deny: [] };
             _saveToCache(_denylist);
@@ -117,7 +79,7 @@
         _saveToCache(_denylist);
         console.log("[PlanDenylist] Fetch OK — " + _denylist.deny.length + " entrée(s) actives");
       } catch(e) {
-        // Offline / DNS / CORS → on garde le cache existant (fail-safe)
+        // Hors ligne / DNS / CORS : le cache existant reste appliqué.
         console.log("[PlanDenylist] Fetch échec (offline ?) — fallback cache local :", e.message);
       } finally {
         _fetchPromise = null;
@@ -145,9 +107,6 @@
       if (!raw) return null;
       const cached = JSON.parse(raw);
       if (cached && typeof cached.fetchedAt === "number") {
-        // Note : on évite Date.now() volontairement pour rester pur, mais
-        // c'est nécessaire ici pour mesurer l'âge. Date.now() est OK runtime
-        // (le warning concernait le workflow scripts, pas le code app).
         return Date.now() - cached.fetchedAt;
       }
     } catch(e) {}
@@ -165,9 +124,7 @@
     }
   }
 
-  // ============================================================
-  // HASH SHA-256
-  // ============================================================
+  // ── SHA-256 ──────────────────────────────────────────────────
   async function computeSha256(blob) {
     if (!blob || (typeof blob.arrayBuffer !== "function" && !(blob instanceof ArrayBuffer))) {
       throw new Error("computeSha256: blob invalide");
@@ -177,7 +134,6 @@
     }
     const buf = (blob instanceof ArrayBuffer) ? blob : await blob.arrayBuffer();
     const digest = await window.crypto.subtle.digest("SHA-256", buf);
-    // Conversion ArrayBuffer → hex string (64 chars)
     const bytes = new Uint8Array(digest);
     let hex = "";
     for (let i = 0; i < bytes.length; i++) {
@@ -186,33 +142,26 @@
     return hex;
   }
 
-  // ============================================================
-  // CHECK PLAN
-  // ============================================================
-  // Retourne :
-  //   { denied: false, sha256: "..." } si OK
-  //   { denied: true, sha256: "...", reason: "...", addedAt: "..." } si refusé
+  // ── Vérification d'un plan ───────────────────────────────────
+  // → { denied: false, sha256 } ou { denied: true, sha256, reason, addedAt }
   async function isPlanDenied(blob) {
-    // Lazy init si pas encore fait
     if (!_initDone) await init();
 
-    // Calcul du hash (toujours, même si denylist vide — fail-safe + debug)
+    // Hash calculé même si la liste est vide (diagnostic).
     let sha256;
     try {
       sha256 = await computeSha256(blob);
     } catch(e) {
-      // SubtleCrypto indispo (HTTP non-HTTPS local dev ?) → on laisse passer
-      // pour ne pas bloquer le dev local. Log warning explicite.
+      // ⚠️ SubtleCrypto absent (HTTP local) : on laisse passer pour ne pas bloquer le dev.
       console.warn("[PlanDenylist] Hash impossible — check denylist skip :", e.message);
       return { denied: false, sha256: null, error: e.message };
     }
 
-    // Si denylist absente/vide → aucun blocage
     if (!_denylist || !Array.isArray(_denylist.deny) || _denylist.deny.length === 0) {
       return { denied: false, sha256: sha256 };
     }
 
-    // Lookup linéaire (denylist attendue petite, <100 entrées)
+    // Recherche linéaire : liste attendue petite (< 100 entrées).
     const lower = sha256.toLowerCase();
     for (const entry of _denylist.deny) {
       if (entry.sha256.toLowerCase() === lower) {
@@ -227,13 +176,10 @@
     return { denied: false, sha256: sha256 };
   }
 
-  // ============================================================
-  // MODALE BLOQUANTE — affichage si refus
-  // ============================================================
+  // ── Modale bloquante (plan refusé) ───────────────────────────
   function showDeniedModal(info, planId, onDismiss) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const locale = (window.I18n && window.I18n.getLang) ? window.I18n.getLang() : "fr";
-    // Suppression d'une modale existante (anti-doublon)
     const existing = document.getElementById("kta-denylist-modal");
     if (existing) existing.remove();
 
@@ -245,9 +191,7 @@
                        ? (info.sha256.slice(0, 12) + "…" + info.sha256.slice(-8))
                        : t("denylist.hashUnavailable");
 
-    // 🆕 v1.42.14 — Palette adaptée au thème (gardons le rouge danger fort
-    // dans les 2 thèmes — la sémantique reste critique — juste les fonds
-    // s'adaptent à la charte).
+    // Rouge danger fort dans les deux thèmes ; seuls les fonds suivent la charte.
     const isLight = _isLightTheme();
     const pal = isLight ? {
       backdrop: "rgba(60,30,30,0.55)",
@@ -286,7 +230,6 @@
       "animation:kta-denylist-pulse 2s ease-in-out infinite"
     ].join(";");
 
-    // En-tête
     const head = document.createElement("div");
     head.style.cssText = "display:flex;align-items:center;gap:14px;margin-bottom:14px;";
     head.innerHTML =
@@ -297,7 +240,6 @@
       '</div>';
     box.appendChild(head);
 
-    // Corps : raison
     const body = document.createElement("div");
     body.style.cssText = [
       "margin:14px 0", "padding:14px 16px",
@@ -310,7 +252,6 @@
       '<div>' + _escapeHtml(reasonText) + '</div>';
     box.appendChild(body);
 
-    // Détails techniques
     const tech = document.createElement("div");
     tech.style.cssText = "font-size:11px;color:" + pal.techCol + ";margin:12px 0 18px;line-height:1.6;";
     tech.innerHTML =
@@ -318,7 +259,6 @@
       t("denylist.fingerprint") + ' <code style="font-family:monospace;color:' + pal.monoCol + ';font-size:11px;">' + _escapeHtml(sha256Short) + '</code>';
     box.appendChild(tech);
 
-    // Action
     const actions = document.createElement("div");
     actions.style.cssText = "display:flex;justify-content:flex-end;gap:10px;margin-top:8px;";
     const btn = document.createElement("button");
@@ -331,13 +271,10 @@
     btn.addEventListener("mouseenter", function() { btn.style.background = "#b71c1c"; });
     btn.addEventListener("mouseleave", function() { btn.style.background = "#d32f2f"; });
     btn.addEventListener("click", async function() {
-      // Suppression du plan + cache associé
       if (planId && window.PlanRegistry) {
         try {
-          // Note : PlanRegistry.remove supprime l'entrée. Le blob IDB sera
-          // purgé via removeBlob si exposé, sinon resté orphelin (acceptable
-          // car id unique non réutilisé). Le SW cache n'a pas de plan local
-          // (data/<id>/... n'existe que pour les plans serveur).
+          // Retire l'entrée du registre. Un blob IDB orphelin est acceptable (id jamais réutilisé) ;
+          // le cache SW ne contient pas de plan local.
           window.PlanRegistry.remove(planId);
           console.log("[PlanDenylist] Plan supprimé du registre :", planId);
         } catch(e) {
@@ -345,9 +282,9 @@
         }
       }
       overlay.remove();
-      _injectKeyframes();  // safety si retiré du DOM
+      _injectKeyframes();
       if (typeof onDismiss === "function") onDismiss();
-      // Recharger la page pour repartir propre (vide la liste loader)
+      // Rechargement : repart d'une liste de plans propre.
       try {
         if (window.location && typeof window.location.reload === "function") {
           window.location.reload();
@@ -375,7 +312,6 @@
     document.head.appendChild(style);
   }
 
-  // 🆕 v1.42.14 — Détecte si le thème clair cataphile est actif (themeManager).
   function _isLightTheme() {
     try {
       return document.body.classList.contains("kta-theme-light") ||
@@ -385,36 +321,17 @@
 
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
-  // ============================================================
-  // 🆕 v1.42.3 — AUDIT BOOT : check des plans LOCAUX déjà importés
-  // ============================================================
-  // Au boot, on hash tous les plans `type:"local"` du PlanRegistry et on
-  // compare à la denylist actuelle. Permet de purger automatiquement les
-  // plans qui ont été révoqués ENTRE 2 sessions (cas où l'user a importé
-  // un plan AVANT que KARMA ajoute son hash à la denylist).
-  //
-  // Performance :
-  //   • Cache hash dans le registry (`plan.sha256`) → 1 seul hash par plan
-  //     dans sa vie (sauf si KARMA force un re-hash via clearAllHashes()).
-  //   • Audit séquentiel en arrière-plan (await yield entre chaque plan)
-  //     pour ne pas bloquer le main thread.
-  //   • Skip total si denylist vide (= cas commun, 0 charge).
-  //
-  // Privacy : tout reste local, aucun hash transmis au serveur (cf §80.7
-  // doc archi security-legal).
-  //
-  // Notification :
-  //   • Si des plans sont purgés, on stocke un résumé dans
-  //     localStorage["myktamap_denylist_purged_at_boot"] que le loader
-  //     pourra lire et afficher comme modale d'info.
+  // ── Audit au boot des plans LOCAUX déjà importés ─────────────
+  // Purge un plan révoqué APRÈS son import. Hash mémorisé dans le registre (`plan.sha256`,
+  // un seul calcul par plan ; le vider force un nouveau calcul). Séquentiel avec pause entre
+  // les plans ; rien si la liste est vide. Résumé des purges dans
+  // localStorage["myktamap_denylist_purged_at_boot"], affiché ensuite par le loader.
 
   const LS_PURGED_KEY = "myktamap_denylist_purged_at_boot";
 
-  // Audit les plans LOCAUX du registry contre la denylist active.
-  // Retourne : { audited: N, purged: [{id, name, sha256, reason, addedAt, purgedAt}] }
+  // → { audited, purged: [{ id, name, sha256, reason, addedAt, purgedAt }] }
   async function auditPlansLocaux() {
     if (!_initDone) await init();
-    // Skip si denylist vide → 0 charge inutile
     if (!_denylist || !Array.isArray(_denylist.deny) || _denylist.deny.length === 0) {
       return { audited: 0, purged: [], reason: "denylist-empty" };
     }
@@ -423,7 +340,6 @@
       return { audited: 0, purged: [], reason: "no-registry" };
     }
 
-    // Index hash → entry pour lookup O(1) au lieu de N
     const denyByHash = {};
     for (const e of _denylist.deny) {
       denyByHash[e.sha256.toLowerCase()] = e;
@@ -440,16 +356,14 @@
 
     for (const plan of localPlans) {
       try {
-        // 1. Cache hit : si plan.sha256 déjà en cache → check direct
         let hash = (typeof plan.sha256 === "string" && /^[a-f0-9]{64}$/i.test(plan.sha256))
                    ? plan.sha256.toLowerCase()
                    : null;
 
-        // 2. Cache miss : fetch blob + compute hash + persist
         if (!hash) {
           const blob = await window.PlanRegistry.getBlob(plan.id);
           if (!blob) {
-            // Plan local sans blob (FS handle ou orphelin) → skip silencieux
+            // Sans blob (handle FS ou orphelin) : ignoré.
             continue;
           }
           try {
@@ -458,7 +372,6 @@
             console.warn("[PlanDenylist] Hash plan", plan.id, "échec :", e.message);
             continue;
           }
-          // Persiste le hash dans le registry pour ne pas re-hasher au prochain boot
           try {
             window.PlanRegistry.addOrUpdate({ id: plan.id, sha256: hash });
           } catch(e) {
@@ -468,7 +381,6 @@
 
         audited++;
 
-        // 3. Lookup denylist
         const match = denyByHash[hash];
         if (match) {
           console.warn("[PlanDenylist] AUDIT BOOT : plan local révoqué détecté →",
@@ -488,14 +400,13 @@
           });
         }
 
-        // Yield au main thread entre chaque plan (anti-freeze sur gros plans)
+        // Rend la main entre deux plans (pas de gel sur les gros ZIP).
         await new Promise(function(r) { setTimeout(r, 10); });
       } catch(e) {
         console.warn("[PlanDenylist] Audit plan", plan.id, "exception :", e.message);
       }
     }
 
-    // Stocke le résumé pour notif user au prochain affichage du loader
     if (purged.length > 0) {
       try {
         const existing = _getPurgedAtBoot();
@@ -510,7 +421,6 @@
     return { audited: audited, purged: purged };
   }
 
-  // Lecture/effacement de la liste des plans purgés au boot.
   function _getPurgedAtBoot() {
     try {
       const raw = localStorage.getItem(LS_PURGED_KEY);
@@ -527,9 +437,8 @@
     catch(e) { return false; }
   }
 
-  // Affiche une modale orange listant les plans purgés au dernier boot.
-  // Appelée depuis le loader si getPurgedAtBoot() retourne une liste non-vide.
-  // Auto-clear la liste à la fermeture (ne ré-affiche pas au prochain boot).
+  // Modale orange des plans purgés au dernier boot (appelée par le loader) ; la liste est
+  // effacée à la fermeture.
   function showPurgedNotifModal(purgedList) {
     if (!Array.isArray(purgedList) || purgedList.length === 0) return;
 
@@ -539,8 +448,6 @@
     const existing = document.getElementById("kta-denylist-purged-modal");
     if (existing) existing.remove();
 
-    // 🆕 v1.42.14 — Palette adaptée au thème (orange ambré reste dominant
-    // dans les 2 thèmes — sémantique alerte douce — fonds adaptés).
     const isLightP = _isLightTheme();
     const pp = isLightP ? {
       backdrop: "rgba(60,45,15,0.45)",
@@ -645,9 +552,6 @@
     document.body.appendChild(overlay);
   }
 
-  // ============================================================
-  // API PUBLIQUE
-  // ============================================================
   window.PlanDenylist = {
     init:                init,
     isPlanDenied:        isPlanDenied,
@@ -655,7 +559,6 @@
     getDenylist:         function() { return _denylist; },
     computeSha256:       computeSha256,
     showDeniedModal:     showDeniedModal,
-    // 🆕 v1.42.3 — Audit boot des plans locaux déjà importés
     auditPlansLocaux:    auditPlansLocaux,
     getPurgedAtBoot:     getPurgedAtBoot,
     clearPurgedAtBoot:   clearPurgedAtBoot,

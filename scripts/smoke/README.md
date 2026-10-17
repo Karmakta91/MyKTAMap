@@ -48,6 +48,7 @@ structurels. Ces scripts les couvrent, chacun sur un axe précis.
 | Script | Axe couvert |
 |---|---|
 | `node checkup-langues.js` | parcours d'un utilisateur **espagnol** : Documentation et Aide en espagnol, aucun drapeau résiduel sur l'Aide, aucun titre de section resté en français |
+| `node checkup-panneaux-geometrie.js` | **Panneaux d'outils** du mode plan (Tracés, Zones, Structures, Favoris) sur 4 formats (portrait, 2 paysages, PC) × centré/ancré, liste de 22 boutons : entre la barre du haut et le footer, dernier bouton atteignable, fond + croix 36 px en centré, fermer en touchant la carte n'ajoute aucun sommet, boutons de zoom empilés |
 | `node checkup-home-scroll.js` | HOME en **petite fenêtre PC** (6 configs, 1280→1920 × 500→768) : le contenu déborde, mais la **molette** scrolle et le footer se rejoint |
 | `node checkup-guidage.js` | **Guidage de l'itinéraire** en **taille téléphone** (390×844) : bandeau sous l'en-tête et entre les colonnes de boutons, raccord en pointillé, feuille de route, avancée le long du trajet sans fausse alerte, écart, écran XL, urgence sans croix. Captures dans `$GUID_SHOTS` (défaut : dossier temporaire) |
 

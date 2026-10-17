@@ -5,31 +5,26 @@
  */
 
 // =========================
-// SESSION EXPORTER — Modale d'export de session avec 3 modes
-// =========================
-// Modes disponibles :
-//   • 🚀 Full       — points + tracés + zones + structures + mesure + tracker (timeline GPS si présente)
-//   • 🎨 Avancé     — sélection fine + sortie 1 fichier ou ZIP multi-fichiers
-//                     (peut inclure le tracker en option)
-//   • 🔄 Conversion — convertit en calque de données (devmap-data) prêt à
-//                     intégrer dans plan-config.json
-//
-// Entrée publique : window.ouvrirExportSessionModal()
-// =========================
+// sessionExporter.js — modale d'export de session, un onglet par fenêtre : Complet (tout, tracker compris),
+// Avancé (sélection fine, 1 fichier ou ZIP), Conversion (session ↔ calque devmap-data), Fusion de calques,
+// Export externe (KMZ / GPX, calibrage GPS 2 points commun).
+// Expose : window.ouvrirExportSessionModal(initialTab, solo, opts), window._kta_formatBytes
+// Dépend de : KmzExport, GpxIO, MyKTAMapPhotos, KtaUid, JSZip, I18n
+// 🔒 Export anonymisé : _anonymiserSession + _stripperExifPhotos, fail-closed sur les photos.
+// Garde-fous : scripts/check-export-anonyme.js, scripts/check-legend-roundtrip.js, scripts/check-photos.js
+// Doc : docs/architecture/exports.md
 
 (function() {
   "use strict";
 
-  // i18n helper — résout au RENDU (jamais au load). Fallback FR via I18n
-  // (clé brute si dico absent). Interpolation {param} via 2e arg.
+  // Résout au RENDU (jamais au load) ; clé brute si le dico est absent.
   function t(key, params) {
     return (window.I18n && typeof window.I18n.t === "function")
       ? window.I18n.t(key, params)
       : key;
   }
 
-  // « Rien à exporter » (sélection vide) : toast warn marqué important, visible même en
-  // mode Silence (décision KARMA 10/10/2026). Repli sur la modale si OOMGuard est absent.
+  // « Rien à exporter » : toast warn important, visible même en mode Silence (décision produit).
   function _avertirRienAExporter(msg) {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(msg, "warn", { important: true });
@@ -39,24 +34,23 @@
   }
 
   let _modal = null;
-  // 🔎 Filtre d'export (onglets Complet et Avancé) : ne garder que les annotations d'une période et/ou
-  // d'un auteur (« ce qu'a relevé B cette semaine »). Remis à zéro à chaque ouverture de la fenêtre.
+  // Filtre d'export (onglets Complet et Avancé) : période et/ou auteur. Remis à zéro à chaque ouverture.
   let _filtre = { du: "", au: "", auteur: "" };
   let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern" | "fusion"
 
-  // 🔗 Fusion de datalayers (v1.55.0) : ingère N fichiers data layer (.json/.zip),
-  // concatène par CATÉGORIE de contenu (data/roads/zones/structures) et ressort
-  // un fichier par type. _fusionInputs = [{name, json}] ; _fusionMerged = résultat
-  // + dupIds (ids POI en double détectés, concat brut conservé — alerte seulement).
+  // Fusion de calques : _fusionInputs = [{name, json}] ; _fusionMerged = résultat + dupIds (alerte seulement).
   let _fusionInputs = [];
   let _fusionMerged = null;
-  // Mode "solo" : modale focalisée sur un seul onglet (barre masquée), ex. le
-  // fusionneur ouvert depuis l'accueil via ouvrirExportSessionModal("fusion", true).
-  let _soloTab = false;
+  // Titre de la modale par onglet (chaque tuile du lanceur ouvre sa fenêtre sur un seul onglet).
+  const _TITRES_SOLO = {
+    full: "export.solo.full", advanced: "export.solo.advanced", extern: "export.solo.extern",
+    conversion: "export.solo.conversion", fusion: "tabledit.source.fusion"
+  };
+  let _onEchap = null; // écouteur Échap de la modale ouverte (retiré à toute fermeture)
+  // Format KMZ / GPX imposé par la tuile du lanceur : pas de sélecteur de format, le titre le nomme.
+  let _formatImpose = null;
 
-  // v1.14.1 — onglet unifié "📡 Export externe" (KMZ + GPX partagent
-  // le même calibrage GPS 2 points). Persisté côté localStorage pour
-  // ré-ouvrir sur le dernier format choisi.
+  // Onglet Export externe : dernier format choisi, persisté.
   const _EXTERN_FMT_KEY = "myktamap_extern_format_v1";
   let _externFormat = (function() {
     try {
@@ -65,14 +59,14 @@
     } catch(e) { return "kmz"; }
   })();
 
-  // État de l'onglet Conversion (bidirectionnel depuis 08/05/2026)
+  // État de l'onglet Conversion (bidirectionnel)
   let _convDirection      = "ed2data"; // "ed2data" (session→data) | "data2ed" (data→session)
   let _convUploadedJson   = null;      // JSON parsé du fichier uploadé (mode data2ed)
   let _convUploadedName   = "";        // nom du fichier uploadé (mode data2ed)
-  let _convUploadedPhotos = null;      // 🆕 v1.9.3-B1d++ : Array<{id, pointId, mime, size, blob}>
+  let _convUploadedPhotos = null;      // Array<{id, pointId, mime, size, blob}>
                                        // si l'input est un ZIP data layer avec photos/, sinon null
 
-  // ========== STYLES ==========
+  // ── Styles ──────────────
   function _injecterStyles() {
     if (document.getElementById("kta-session-export-styles")) return;
     const s = document.createElement("style");
@@ -82,37 +76,6 @@
         max-width: 560px; width: 95%;
         display: flex; flex-direction: column;
         max-height: 90vh;
-      }
-
-      .kta-ses-tabs {
-        display: flex;
-        gap: 4px;
-        padding: 12px 18px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-        background: var(--bg-modal, #1a1f2e);
-      }
-      .kta-ses-tab {
-        flex: 1;
-        padding: 10px 8px;
-        background: transparent;
-        color: #8892a4;
-        border: 1px solid transparent;
-        border-radius: 6px 6px 0 0;
-        cursor: pointer;
-        font-size: 13px;
-        font-family: inherit;
-        font-weight: 500;
-        transition: all 0.12s;
-      }
-      .kta-ses-tab:hover {
-        color: #c0c8d8;
-        background: rgba(140,180,255,0.05);
-      }
-      .kta-ses-tab.active {
-        color: #8cb4ff;
-        background: rgba(140,180,255,0.1);
-        border-color: rgba(140,180,255,0.3);
-        border-bottom-color: transparent;
       }
 
       .kta-ses-content {
@@ -516,34 +479,50 @@
       .kta-ses-filtre { margin: 0 0 12px; padding: 8px 10px; border: 1px solid #2a3144; border-radius: 8px; }
       .kta-ses-filtre-titre { font-weight: 700; color: #f4c542; margin-bottom: 6px; font-size: 0.92em; }
       .kta-ses-filtre-ligne { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 0.9em; }
-      .kta-ses-filtre-ligne input, .kta-ses-filtre-ligne select { margin-left: 4px; }
+      /* 15/10/2026 (capture iPhone) : « Du » / « au » en noir sur fond sombre, dates et bouton en blanc natif. */
+      .kta-ses-filtre-ligne label { display: flex; align-items: center; gap: 6px; color: #c8d0e0; min-width: 0; }
+      .kta-ses-filtre-ligne input, .kta-ses-filtre-ligne select {
+        background: #0a0d18; color: #e8eaf0; border: 1px solid rgba(140,180,255,0.35); border-radius: 6px;
+        padding: 4px 6px; font: inherit; color-scheme: dark; min-width: 0; max-width: 100%; min-height: 30px;
+      }
+      .kta-ses-filtre-ligne input[type="date"] { width: 10em; }
+      .kta-ses-filtre-ligne .kta-ses-btn { padding: 6px 12px; }
+      body.kta-theme-light .kta-ses-filtre-ligne label, html.kta-theme-light .kta-ses-filtre-ligne label { color: #3a4254; }
+      body.kta-theme-light .kta-ses-filtre-ligne input, html.kta-theme-light .kta-ses-filtre-ligne input,
+      body.kta-theme-light .kta-ses-filtre-ligne select, html.kta-theme-light .kta-ses-filtre-ligne select {
+        background: #fff; color: #1a1f2e; border-color: rgba(0,0,0,0.2); color-scheme: light;
+      }
       .kta-ses-filtre-bilan { margin-top: 6px; font-size: 0.82em; color: #8892a4; }
     `;
     document.head.appendChild(s);
   }
 
-  // ========== ENTRÉE PUBLIQUE ==========
-  window.ouvrirExportSessionModal = function(initialTab, solo) {
-    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
-    _injecterStyles();
-    if (_modal) { _modal.remove(); _modal = null; }
-    _filtre = { du: "", au: "", auteur: "" };
-    // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".
+  // ── Entrée publique ──────────────
+  // ouvrirExportSessionModal(initialTab, solo, opts)
+  //   initialTab  : "full" (défaut) | "advanced" | "extern" | "conversion" | "fusion"
+  //   solo        : sans effet (signature conservée) — la fenêtre montre toujours un seul onglet, titre propre
+  //   opts.format : "kmz" | "gpx" → onglet extern ouvert sur ce format, sans sélecteur de format
+  window.ouvrirExportSessionModal = function(initialTab, solo, opts) {
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
-    _activeTab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
-    // solo = true → modale focalisée sur un seul onglet (barre d'onglets masquée
-    // + titre = libellé de l'onglet), ex. le fusionneur ouvert depuis l'accueil.
-    _soloTab = !!solo && TABS.indexOf(_activeTab) >= 0;
+    const tab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
+    // Verrou de l'installation : la SESSION seulement (complet, avancé, conversion). Export externe (KMZ / GPX)
+    // et Fusion (fichiers téléversés) passent.
+    if (tab === "full" || tab === "advanced" || tab === "conversion") {
+      if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
+    }
+    _injecterStyles();
+    if (_modal) _fermer();
+    _filtre = { du: "", au: "", auteur: "" };
+    // initialTab optionnel (ex. "fusion" depuis l'Éditeur de données) ; défaut "full".
+    _activeTab = tab;
+    const fmt = opts && opts.format;
+    _formatImpose = (tab === "extern" && (fmt === "kmz" || fmt === "gpx")) ? fmt : null;
+    if (fmt === "kmz" || fmt === "gpx") _externFormat = fmt;
     _afficherModal();
   };
 
-  // v1.14.12 → v1.14.17 : exposition window.SessionExporterStyles.inject
-  // retirée. La modale Import a été repensée en v1.14.17 pour utiliser
-  // exclusivement des classes CSS statiques (pattern .kta-conv-sens-* de
-  // exporter.js). Plus aucun module externe ne dépend de cet injecteur,
-  // les styles .kta-ses-* restent purement internes à sessionExporter.
 
-  // ========== FILTRE (période / auteur) ==========
+  // ── Filtre (période / auteur) ──────────────
   function _filtreActif() {
     return (_activeTab === "full" || _activeTab === "advanced") && !!(_filtre.du || _filtre.au || _filtre.auteur);
   }
@@ -600,7 +579,7 @@
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
           '<label>' + window.ktaEsc(t("export.filtre.au")) + ' <input type="date" id="ses_filtre_au" value="' + window.ktaEsc(_filtre.au) + '"></label>' +
           (parAuteur ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) + ' <select id="ses_filtre_auteur">' + optAuteurs + '</select></label>' : '') +
-          (_filtreActif() ? '<button type="button" class="kta-ses-btn" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
+          (_filtreActif() ? '<button type="button" class="kta-ses-btn kta-ses-btn-secondary" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
         '</div>' +
         '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
           ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : "") + '</div>' +
@@ -622,39 +601,22 @@
     });
   }
 
-  // ========== COMPTAGES ==========
+  // ── Comptages ──────────────
   function _compter() {
     return {
-      // 🔎 Annotations filtrées par période / auteur (onglets Complet et Avancé seulement).
+      // Annotations filtrées par période / auteur (onglets Complet et Avancé seulement).
       points:    _filtrer(window.getEditorPoints  ? window.getEditorPoints()  : []),
       roads:     _filtrer(window.getRoads         ? window.getRoads()         : []),
       zones:     _filtrer(window.getZones         ? window.getZones()         : []),
-      // 🆕 v1.9.3-A1.a : structures (piliers + murs) incluses dans
-      // l'export session. Rétrocompat : si getStructures n'existe pas
-      // (ancien build), retourne array vide → pas de breakage.
       structures: _filtrer(window.getStructures   ? window.getStructures()    : []),
-      // 🆕 v1.9.3-A1.b.2.5 (KARMA "qu'il soit exporter dans l'export
-      // session") : mesure de distance dans l'export. Avant, elle était
-      // explicitement EXCLUE du mode Full / Avancé (commentaire ligne 5
-      // "sans mesure"). Maintenant incluse car KARMA en a besoin pour
-      // retrouver ses mesures entre sessions / appareils.
+      // Mesure de distance incluse : elle doit se retrouver d'une session ou d'un appareil à l'autre.
       mesure:        window.getMeasurePoints        ? window.getMeasurePoints()        : [],
-      // 🆕 v1.12.0-fix (KARMA "on peut faire en // 1 calcul de surface et 1
-      // de distance ... attention à ne pas mélanger") : la mesure de surface
-      // est désormais persistée séparément. Sans ce champ, l'export session
-      // perdrait le polygone surface au re-import.
+      // Mesure de surface persistée à part : sans ce champ, le polygone se perd au réimport.
       mesureSurface: window.getMeasurePointsSurface ? window.getMeasurePointsSurface() : [],
       trackerOk: !!(window.getTrackingPosition && window.getTrackingPosition()),
       trackerPath: window.getTrackingPath ? window.getTrackingPath() : [],
-      // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
-      // si non fait le") : timeline temporelle complète (persistée depuis
-      // v1.21.2 dans SessionPersist) + startTs. C'est ce qui permet aux
-      // exports session de transporter aussi l'historique GPS daté de
-      // l'user (= heatmap multi-sessions / replay multi-appareils).
-      // Ces champs s'ajoutent à trackerPath (rendu Leaflet runtime) sans
-      // le remplacer — pour rétrocompat avec sessions exportées avant
-      // v1.21.2. NB : exclu volontairement de la conversion data layer
-      // (ed2data) qui reste un format "devmap-data lecture seule".
+      // Timeline datée complète + startTs (heatmap / replay multi-appareils), en plus de trackerPath (rendu).
+      // Exclue de la conversion data layer (ed2data), format en lecture seule.
       trackerTimeline: (typeof window.getTrackingTimeline === "function")
                          ? (window.getTrackingTimeline() || [])
                          : [],
@@ -675,19 +637,9 @@
     return out;
   }
 
-  // 🐛 v1.76.0 — DÉVERSOIR DU BUCKET `autres`.
-  // `_trierParType` range tout type non built-in dans `out.autres`, et les
-  // appelants n'itéraient QUE sur `validTypes` : le bucket n'était écrit dans
-  // aucun fichier. Conséquence mesurée : en granularité « fine », TOUS les
-  // objets d'un type CUSTOM disparaissaient de l'export de calque de données,
-  // sans un log ni un avertissement. C'est le même défaut qui avait déjà
-  // effacé les `jonction` (corrigé en v169) — en pire, parce qu'un type custom
-  // est une création de l'utilisateur, pas un built-in qu'on peut redessiner.
-  //
-  // On émet un fichier par type restant, comme pour les built-in : la
-  // granularité fine tient enfin sa promesse. Le groupement se fait sur le
-  // type BRUT (deux types distincts ne doivent jamais fusionner) ; seul le nom
-  // de fichier est assaini.
+  // Déversoir du bucket `autres` : `_trierParType` y range tout type non built-in. 🩸 Sans un fichier par type
+  // restant, les objets d'un type CUSTOM disparaissent en silence de l'export fin. Groupement sur le type BRUT
+  // (deux types ne fusionnent jamais) ; seul le nom de fichier est assaini.
   function _emettreTypesRestants(items, prefixe, cleTableau, files) {
     if (!items || !items.length) return;
     const parType = new Map();
@@ -708,10 +660,8 @@
                 " type(s) hors built-in émis dans " + prefixe + "_*.json");
   }
 
-  // Liste tous les tags présents dans les points avec leur compte.
-  // Un point peut avoir plusieurs tags → il sera compté dans chacun.
-  // Cas spécial : points sans tag → catégorie "(sans tag)".
-  // Retourne [{ tag, count, isUntagged }] trié alphabétiquement, sans tag à la fin.
+  // Tags présents avec leur compte (un point multi-tags compte dans chacun ; « (sans tag) » à part).
+  // Retourne [{ tag, count, isUntagged }] trié, sans tag à la fin.
   function _listerTagsPoints(points) {
     const tagCounts = {};
     let untaggedCount = 0;
@@ -737,10 +687,7 @@
     return list;
   }
 
-  // Filtre une liste de points selon les tags cochés.
-  // - tagsCoches : Set des tags cochés
-  // - untaggedCoche : si true, inclut aussi les points sans tag
-  // Un point est inclus si AU MOINS UN de ses tags est coché, OU s'il n'a pas de tag et que untaggedCoche.
+  // Un point passe si AU MOINS UN de ses tags est coché, ou s'il n'a pas de tag et que untaggedCoche.
   function _filtrerPointsParTags(points, tagsCoches, untaggedCoche) {
     return (points || []).filter(function(p) {
       const tags = Array.isArray(p.tags) ? p.tags.filter(function(t) { return t && String(t).trim(); }) : [];
@@ -749,7 +696,6 @@
     });
   }
 
-  // Récupère depuis le DOM les tags cochés d'un préfixe donné (ex: "adv_points_tag_")
   function _lireTagsCoches(prefix, tagsList) {
     const tagsCoches = new Set();
     let untaggedCoche = false;
@@ -764,23 +710,21 @@
     return { tagsCoches: tagsCoches, untaggedCoche: untaggedCoche };
   }
 
-  // Identifiant CSS-safe pour un tag (peut contenir des caractères bizarres)
   function _slugTagId(tag) {
     return String(tag).replace(/[^a-z0-9_-]/gi, "_");
   }
 
-  // Récupère l'icône miniature d'un tag avec cascade :
-  //   1. PLAN_CONFIG.icons[tag]  2. _iconMap[tag] (built-in fallback)
+  // Icône d'un tag : PLAN_CONFIG.icons[tag] puis _iconMap[tag].
   function _iconePourTag(tag) {
     const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
     if (planIcons[tag]) return planIcons[tag];
     const entry = window._iconMap && window._iconMap[tag];
     if (!entry) return null;
-    // v174 : entry peut être un L.divIcon (scaledMarkers ON) → check _kta_iconUrl
+    // entry peut être un L.divIcon (scaledMarkers) : lire _kta_iconUrl
     return entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || null;
   }
 
-  // ========== AFFICHAGE MODALE ==========
+  // ── Affichage de la modale ──────────────
   function _afficherModal() {
     const modal = document.createElement("div");
     modal.id = "kta-session-export-modal";
@@ -788,16 +732,9 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${_soloTab ? t("tabledit.source.fusion") : t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${t(_formatImpose ? "export.solo." + _formatImpose
+                                                     : _TITRES_SOLO[_activeTab])}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
-        </div>
-
-        <div class="kta-ses-tabs"${_soloTab ? ' style="display:none;"' : ''}>
-          <button class="kta-ses-tab" data-tab="full">${t("export.tab.full")}</button>
-          <button class="kta-ses-tab" data-tab="advanced">${t("export.tab.advanced")}</button>
-          <button class="kta-ses-tab" data-tab="conversion">${t("export.tab.conversion")}</button>
-          <button class="kta-ses-tab" data-tab="fusion">${t("export.tab.fusion")}</button>
-          <button class="kta-ses-tab" data-tab="extern">${t("export.tab.extern")}</button>
         </div>
 
         <div class="kta-ses-content" id="kta-ses-content"></div>
@@ -812,75 +749,58 @@
     _modal = modal;
     _brancherFiltre(modal);
 
-    function fermer() {
-      if (_modal) _modal.remove();
-      _modal = null;
-    }
-
-    document.getElementById("kta-ses-close").addEventListener("click", fermer);
-    document.getElementById("kta-ses-cancel").addEventListener("click", fermer);
-    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
-    document.addEventListener("keydown", function onEsc(e) {
-      if (e.key === "Escape" && _modal) {
-        fermer();
-        document.removeEventListener("keydown", onEsc);
+    document.getElementById("kta-ses-close").addEventListener("click", _fermer);
+    document.getElementById("kta-ses-cancel").addEventListener("click", _fermer);
+    modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+    // Un seul écouteur Échap, retiré par _fermer() quelle que soit la façon de fermer.
+    _detacherEchap();
+    // Pendant le « clic carte » du calibrage KMZ/GPX (modale masquée), Échap annule seulement ce choix : la
+    // fenêtre revient avec les points déjà saisis, comme le bouton Annuler du floater.
+    _onEchap = function(e) {
+      if (e.key !== "Escape" || !_modal) return;
+      if (_kmzClickActive) {
+        _kmzDesactiverModeClic();
+        _modal.style.display = "";
+        return;
       }
-    });
-
-    // Listeners onglets
-    modal.querySelectorAll(".kta-ses-tab").forEach(function(tab) {
-      tab.addEventListener("click", function() {
-        _activeTab = tab.dataset.tab;
-        _renderTab();
-      });
-    });
+      _fermer();
+    };
+    document.addEventListener("keydown", _onEchap);
 
     document.getElementById("kta-ses-download").addEventListener("click", _executerExport);
 
     _renderTab();
   }
 
-  // ========== RENDU DES ONGLETS ==========
+  // ── Rendu des onglets ──────────────
   function _renderTab() {
     if (!_modal) return;
-
-    _modal.querySelectorAll(".kta-ses-tab").forEach(function(t) {
-      t.classList.toggle("active", t.dataset.tab === _activeTab);
-    });
 
     const c = document.getElementById("kta-ses-content");
     if (!c) return;
 
-    // Bouton Télécharger ré-activé par défaut à chaque changement d'onglet ;
-    // les onglets qui exigent un upload (Conversion data→session, Fusion) le
-    // re-désactivent dans leur bind tant que rien n'est chargé.
+    // Télécharger réactivé à chaque changement d'onglet ; Conversion data→session et Fusion le désactivent
+    // tant que rien n'est chargé.
     const _dlBtnReset = document.getElementById("kta-ses-download");
     if (_dlBtnReset) _dlBtnReset.disabled = false;
 
     if (_activeTab === "full") {
       c.innerHTML = _renderFull();
-      // 🆕 v1.9.3-B1d : remplit le compteur photos en async (lecture IDB).
-      // Si aucune photo trouvée OU module indispo, la section reste cachée.
+      // Compteur photos async (IDB) ; la section reste cachée sans photo.
       setTimeout(_majCompteurPhotosFull, 0);
     }
     else if (_activeTab === "advanced") {
       c.innerHTML = _renderAdvanced();
-      // 🆕 v1.9.3-B1d+ : remplit le compteur photos en async (lecture IDB).
       setTimeout(_majCompteurPhotosAdvanced, 0);
     }
     else if (_activeTab === "conversion") {
       c.innerHTML = _renderConversion();
-      // 🆕 v1.9.3-B1d++ : remplit le compteur photos pour le sens
-      // session→data (skip si on est en sens data→session, la section
-      // n'est pas dans le DOM dans ce cas).
+      // Sens session→data seulement (en data→session la section n'est pas dans le DOM).
       setTimeout(_majCompteurPhotosConvEd2Data, 0);
     }
     else if (_activeTab === "extern") {
-      // v1.14.1 — onglet unifié : KMZ + GPX partagent le calibrage 2 points.
       c.innerHTML = _renderExtern();
-      // Bind handlers calibrage (autocomplete + clic carte + validations + aperçu coins)
       setTimeout(_bindKmzHandlers, 0);
-      // Bind handlers du sélecteur de format (pills KMZ/GPX)
       setTimeout(_bindExternFmtHandlers, 0);
     }
     else if (_activeTab === "fusion") {
@@ -889,9 +809,7 @@
     }
   }
 
-  // 🆕 v1.9.3-B1d : compteur photos async pour la section "📸 Photos" de
-  // l'onglet Full. Section restée cachée si aucune photo (ou si module
-  // MyKTAMapPhotos indispo). Compteur format "(N · X Mo)".
+  // Compteur photos de l'onglet Complet, format « (N · X Mo) » ; section cachée sans photo.
   function _majCompteurPhotosFull() {
     const section = document.getElementById("full_photos_section");
     const counter = document.getElementById("full_photos_count");
@@ -899,7 +817,6 @@
     if (!section || !counter) return;
     _collecterPhotosPlan(null).then(function(pack) {
       if (pack.photos.length === 0) {
-        // Aucune photo → on cache la section (l'export reste JSON pur).
         section.style.display = "none";
         if (cb) cb.checked = false;
         return;
@@ -909,11 +826,8 @@
     });
   }
 
-  // 🆕 v1.9.3-B1d+ : compteur photos async pour la section "📸 Photos" de
-  // l'onglet Avancé. Affiche le compteur GLOBAL du plan (toutes photos).
-  // Le filtrage par points effectivement exportés se fait à la save (cf.
-  // _exportAdvanced). Le compteur indique donc "max" — il pourra être plus
-  // petit selon les filtres tag à la save.
+  // Compteur photos de l'onglet Avancé : total du plan (un « max ») ; le filtre par points se fait à
+  // l'enregistrement (_exportAdvanced).
   function _majCompteurPhotosAdvanced() {
     const section = document.getElementById("adv_photos_section");
     const counter = document.getElementById("adv_photos_count");
@@ -930,9 +844,7 @@
     });
   }
 
-  // 🆕 v1.9.3-B1d++ : compteur photos pour la conversion session→data layer.
-  // Section auto-cachée si 0 photo. Affichage "max N" : le filtre par
-  // points/tags peut réduire le nombre final à la conversion.
+  // Compteur photos de la conversion session→data : un « max », réduit par le filtre points/tags.
   function _majCompteurPhotosConvEd2Data() {
     const section = document.getElementById("conv_ed2data_photos_section");
     const counter = document.getElementById("conv_ed2data_photos_count");
@@ -949,12 +861,10 @@
     });
   }
 
-  // ---------- ONGLET FULL ----------
+  // ── Onglet Complet ──────────────
   function _renderFull() {
     const d = _compter();
-    // 🆕 v1.9.3-B1d : section 📸 Photos. Le compteur exact est rempli en
-    // async après render via _kta_majCompteurPhotosFull (cf. _afficherModale).
-    // En attendant, on affiche "Chargement…" pour ne pas bloquer le render.
+    // Section Photos : « Chargement… » puis compteur rempli en async (_kta_majCompteurPhotosFull).
     return _htmlFiltre() + `
       <div class="kta-ses-summary">
         <div>✏️ ${t("export.full.points", { n: d.points.length, s: d.points.length > 1 ? "s" : "" })}</div>
@@ -990,12 +900,11 @@
     `;
   }
 
-  // ---------- ONGLET AVANCÉ ----------
+  // ── Onglet Avancé ──────────────
   function _renderAdvanced() {
     const d = _compter();
     const roadsByType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
     const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement", "inaccessible"]);
-    // 🆕 v1.9.3-A1.a : tri par sous-type pour les structures (UI filtre)
     const structuresByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
     const tagsList = _listerTagsPoints(d.points);
 
@@ -1070,8 +979,7 @@
         ${row("adv_mesure_surface",t("export.adv.mesureSurface"),  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
 
         ${(function() {
-          // 🆕 v1.21.2 : tracker activable dès qu'il y a une timeline historisée
-          // (= heatmap multi-sessions) ou un path runtime ou une position courante.
+          // Tracker activable s'il y a une timeline, un path runtime ou une position courante.
           const trkAvailable = d.trackerOk
                                || (d.trackerPath || []).length > 0
                                || (d.trackerTimeline || []).length > 0;
@@ -1117,7 +1025,7 @@
     `;
   }
 
-  // Listeners pour la cohérence parent/sub-cases
+  // Cohérence parent / sous-cases
   function _attacherListenersAdvanced() {
     if (!_modal || _activeTab !== "advanced") return;
 
@@ -1126,14 +1034,12 @@
       const subs = subIds.map(function(id) { return document.getElementById(id); }).filter(Boolean);
       if (!parent || subs.length === 0) return;
 
-      // Parent → enfants : décocher parent décoche tous les enfants
       parent.addEventListener("change", function() {
         subs.forEach(function(s) {
           if (!s.disabled) s.checked = parent.checked;
         });
       });
 
-      // Enfants → parent : si tous décochés, décocher parent ; sinon cocher
       subs.forEach(function(s) {
         s.addEventListener("change", function() {
           const anyChecked = subs.some(function(x) { return x.checked; });
@@ -1144,10 +1050,9 @@
 
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
     syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
-    // 🆕 v1.9.3-A1.a : sync parent ↔ enfants pour les structures
     syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur", "adv_structures_front-1", "adv_structures_front-2"]);
 
-    // Synchro parent Points ↔ tags (dynamique : la liste varie selon les points)
+    // Points ↔ tags : la liste varie selon les points
     const tagsList = _listerTagsPoints(_compter().points);
     const tagSubIds = tagsList.map(function(item) {
       return "adv_points_tag_" + _slugTagId(item.tag);
@@ -1157,9 +1062,14 @@
     }
   }
 
-  // ---------- ONGLET CONVERSION ----------
-  // Wrapper : choisit l'UI selon le sens courant + ajoute le toggle de direction
+  // ── Onglet Conversion ──────────────
   function _renderConversion() {
+    // Sans plan affiché (Éditeur de données ouvert depuis l'accueil), pas de session : seul
+    // « data layer → session » a un sens.
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) {
+      _convDirection = "data2ed";
+      return _renderConvData2Session();
+    }
     return `
       <div class="kta-conv-sens-wrap">
         <button class="kta-conv-sens-btn ${_convDirection === "ed2data" ? "active" : ""}" data-conv-dir="ed2data" type="button">
@@ -1175,18 +1085,15 @@
     `;
   }
 
-  // Sens 1 : session courante → fichiers data layer (logique existante)
+  // Sens 1 : session courante → fichiers data layer
   function _renderConvSession2Data() {
     const d = _compter();
     const tagsList = _listerTagsPoints(d.points);
 
-    // ⚠️ Filtre les roads de type "itinerary" (calculées par Pathfinder, pas
-    // de vraies roads exportables). Comptage par type pour les sous-checkboxes
-    // de filtre fin (cohérent avec l'export image avancé).
+    // ⚠️ Les roads "itinerary" (calculées par Pathfinder) ne sont pas exportables.
     const roadsExportables = (d.roads || []).filter(function(r) { return r.type !== "itinerary"; });
     const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
     const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement", "inaccessible"]);
-    // 🆕 v1.9.3-A1.a : comptage structures pour l'UI Conversion
     const structureCountByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
 
     function row(id, label, count, defaultChecked) {
@@ -1231,20 +1138,17 @@
       }).join("");
     }
 
-    // Sub-cases types route (Principal / Secondaire / Chemin)
     const roadsTypesHtml =
       rowTypeSub("conv_roads_principal",  t("export.conv.roadsPrincipal"),  roadCountByType.principal.length,  true) +
       rowTypeSub("conv_roads_secondaire", t("export.conv.roadsSecondaire"), roadCountByType.secondaire.length, true) +
       rowTypeSub("conv_roads_chemin",     t("export.conv.roadsChemin"),     roadCountByType.chemin.length,     true);
 
-    // Sub-cases types zone (Eau / Remblais / Effondrement / Inaccessible)
     const zonesTypesHtml =
       rowTypeSub("conv_zones_eau",          t("export.conv.zonesEau"),          zoneCountByType.eau.length,          true) +
       rowTypeSub("conv_zones_remblais",     t("export.conv.zonesRemblais"),     zoneCountByType.remblais.length,     true) +
       rowTypeSub("conv_zones_effondrement", t("export.conv.zonesEffondrement"), zoneCountByType.effondrement.length, true) +
       rowTypeSub("conv_zones_inaccessible", t("export.conv.zonesInaccessible"), zoneCountByType.inaccessible.length, true);
 
-    // 🆕 v1.9.3-A1.a + A1.b.2 : sub-cases structures (5 sous-types incl. fronts)
     const structuresTypesHtml =
       rowTypeSub("conv_structures_pilier-1", t("export.conv.structPilier1"), structureCountByType["pilier-1"].length, true) +
       rowTypeSub("conv_structures_pilier-2", t("export.conv.structPilier2"), structureCountByType["pilier-2"].length, true) +
@@ -1308,7 +1212,7 @@
       const roads      = Array.isArray(_convUploadedJson.roads)      ? _convUploadedJson.roads      : [];
       const zones      = Array.isArray(_convUploadedJson.zones)      ? _convUploadedJson.zones      : [];
       const structures = Array.isArray(_convUploadedJson.structures) ? _convUploadedJson.structures : [];
-      // 🆕 v1.9.3-B1d++ : compteur photos si ZIP data layer avec photos/
+      // Compteur photos si ZIP data layer avec photos/
       const nbPhotos = (_convUploadedPhotos && _convUploadedPhotos.length) || 0;
       stats = { points: points.length, roads: roads.length, zones: zones.length, structures: structures.length, photos: nbPhotos };
       const photosBadge = nbPhotos > 0
@@ -1344,11 +1248,10 @@
     `;
   }
 
-  // Listeners parent ↔ tags pour Conversion (post-DOM)
+  // Écouteurs Conversion (post-DOM)
   function _attacherListenersConversion() {
     if (!_modal || _activeTab !== "conversion") return;
 
-    // Toggle de direction (ed2data ↔ data2ed)
     _modal.querySelectorAll(".kta-conv-sens-btn").forEach(function(btn) {
       btn.addEventListener("click", function() {
         const dir = btn.dataset.convDir;
@@ -1359,7 +1262,6 @@
       });
     });
 
-    // Mode data2ed : drop zone + file picker
     if (_convDirection === "data2ed") {
       const dropZone  = document.getElementById("kta-conv-d2e-drop");
       const fileInput = document.getElementById("kta-conv-d2e-file");
@@ -1372,7 +1274,6 @@
         dropZone.addEventListener("drop", function(e) {
           e.preventDefault(); dropZone.classList.remove("dragover");
           const f = e.dataTransfer.files[0];
-          // 🆕 v1.9.3-B1d++ : accepte aussi .zip (data layer avec photos)
           const okExt = f && (/\.(json|zip)$/i).test(f.name);
           if (okExt) _chargerFichierData2Ed(f);
           else if (erreurEl) { erreurEl.textContent = t("export.err.fichierType"); erreurEl.style.display = "block"; }
@@ -1381,13 +1282,11 @@
           if (fileInput.files[0]) _chargerFichierData2Ed(fileInput.files[0]);
         });
       }
-      // Si aucun fichier chargé → désactive le bouton Télécharger
       const dlBtn = document.getElementById("kta-ses-download");
       if (dlBtn) dlBtn.disabled = !_convUploadedJson;
       return; // pas de syncParent à brancher dans ce mode
     }
 
-    // Mode ed2data : réactive le bouton Télécharger
     const dlBtn = document.getElementById("kta-ses-download");
     if (dlBtn) dlBtn.disabled = false;
 
@@ -1413,18 +1312,12 @@
       syncParent("conv_points", tagSubIds);
     }
 
-    // Sync parent ↔ sub-checkboxes pour types road et zone
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
     syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
-    // 🆕 v1.9.3-A1.a : sync parent ↔ enfants structures dans Conversion
     syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_front-1", "conv_structures_front-2"]);
   }
 
-  // Charge un fichier .json ou .zip pour le sens data2ed, parse + re-render
-  // l'onglet pour afficher l'aperçu.
-  // 🆕 v1.9.3-B1d++ : support des ZIP data layer (avec ou sans photos/).
-  //   - Si .json → flow historique (1 seul fichier data layer)
-  //   - Si .zip  → merge des multiples .json data layer + extraction photos/
+  // Charge un .json (un calque) ou un .zip (plusieurs .json + photos/) pour le sens data2ed, puis re-rend.
   function _chargerFichierData2Ed(file) {
     _convUploadedPhotos = null;  // reset pour éviter un état stale
     const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip"
@@ -1435,7 +1328,6 @@
       return;
     }
 
-    // JSON pur — flow historique
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
@@ -1457,7 +1349,6 @@
     reader.readAsText(file);
   }
 
-  // 🆕 v1.9.3-B1d++ : helper d'erreur conv data2ed (factorisé)
   function _showConvErreur(msg) {
     const erreurEl = document.getElementById("kta-conv-d2e-erreur");
     if (erreurEl) {
@@ -1471,26 +1362,15 @@
     if (dlBtn) dlBtn.disabled = true;
   }
 
-  // 🆕 v1.9.3-B1d++ : charge un ZIP data layer (multi-fichiers ou pas) +
-  // extrait les photos si présentes.
-  // Format ZIP attendu :
-  //   ├── points.json | roads.json | zones.json | structure.json
-  //   │     (granularité basic)
-  //   OU
-  //   ├── points.json | roads_principal.json | roads_secondaire.json | ...
-  //   │     (granularité fine)
-  //   └── photos/
-  //        ├── _index.json
-  //        └── <photoId>.<ext>
+  // ZIP data layer attendu : *.json à la racine (points, roads, zones, structure, ou un fichier par type en
+  // granularité fine) + photos/_index.json et photos/<photoId>.<ext> facultatifs.
   function _chargerZipData2Ed(file) {
     if (typeof JSZip === "undefined") {
       _showConvErreur(t("export.err.jszipKo"));
       return;
     }
     JSZip.loadAsync(file).then(function(zip) {
-      // Étape 1 : merge tous les *.json à la racine en un seul objet
-      // _convUploadedJson. Chaque fichier individuel apporte ses propres
-      // champs (data, roads, zones, structures) qu'on cumule.
+      // Étape 1 : les *.json de la racine se cumulent dans _convUploadedJson.
       const merged = {
         type: "devmap-data-merged",
         version: "1.0",
@@ -1512,7 +1392,6 @@
         throw new Error(t("export.err.zipNoJson"));
       }
 
-      // Promise.all pour parse tous les JSON en parallèle
       const parsePromises = jsonFiles.map(function(entry) {
         return entry.async("string").then(function(txt) {
           try {
@@ -1544,10 +1423,9 @@
           throw new Error(t("export.err.zipDataVide"));
         }
 
-        // Étape 2 : extraire les photos (si dossier photos/_index.json)
+        // Étape 2 : photos (si photos/_index.json)
         const indexFile = zip.file("photos/_index.json");
         if (!indexFile) {
-          // Pas de photos → on s'arrête là
           _convUploadedJson = merged;
           _convUploadedName = file.name;
           _convUploadedPhotos = null;
@@ -1567,7 +1445,6 @@
             _renderTab();
             return;
           }
-          // Charge chaque blob en parallèle
           const blobPromises = photoIds.map(function(pid) {
             const info = idxMap[pid] || {};
             const filename = "photos/" + (info.file || (pid + ".jpg"));
@@ -1601,7 +1478,6 @@
     });
   }
 
-  // Re-render avec listeners post-DOM
   const _origRenderTab = _renderTab;
   _renderTab = function() {
     _origRenderTab();
@@ -1609,30 +1485,21 @@
     setTimeout(_attacherListenersConversion, 0);
   };
 
-  // ========== EXÉCUTION DE L'EXPORT ==========
+  // ── Exécution de l'export ──────────────
   function _executerExport() {
     if (_activeTab === "full")              _exportFull();
     else if (_activeTab === "advanced")     _exportAdvanced();
     else if (_activeTab === "conversion")   _exportConversion();
     else if (_activeTab === "fusion")       _exportFusion();
     else if (_activeTab === "extern") {
-      // v1.14.1 — dispatch selon format choisi (radio pill)
       if (_externFormat === "gpx") _exportGpxViaExtern();
       else                          _exportKmz();
     }
   }
 
-  // ========================================================
-  // 📸 PHOTOS — helper de collecte pour les exports (v1.9.3-B1d)
-  // ========================================================
-  // Collecte TOUTES les photos en IDB pour le plan courant, avec leur
-  // pointId associé. Retourne Promise<{ photos: Array<{id, blob, mime, pointId, size}>,
-  // totalSize: number }>. Si MyKTAMapPhotos indispo ou aucune photo, retourne
-  // un payload vide (le caller continue normalement).
-  //
-  // Filtre optionnel `pointIdsSet` : ne retourne que les photos des points
-  // listés (utilisé pour les exports filtrés type Avancé qui ne prennent
-  // qu'une partie des points). Si null → toutes les photos du plan.
+  // ── Photos : collecte pour les exports ──────────────
+  // Promise<{ photos: [{id, blob, mime, pointId, size}], totalSize }> ; payload vide si le module est absent.
+  // `pointIdsSet` (facultatif) : seulement les photos de ces points (exports filtrés) ; null = tout le plan.
   function _collecterPhotosPlan(pointIdsSet) {
     if (!window.MyKTAMapPhotos) {
       return Promise.resolve({ photos: [], totalSize: 0 });
@@ -1651,7 +1518,7 @@
           mime:    rec.mime || "image/jpeg",
           pointId: rec.pointId,
           size:    rec.size || (rec.blob && rec.blob.size) || 0,
-          fiche:   rec.fiche || null   // 📸 12/10/2026 — cf _entreeIndexPhoto
+          fiche:   rec.fiche || null   // cf _entreeIndexPhoto
         };
       });
       return { photos: photos, totalSize: totalSize };
@@ -1661,7 +1528,6 @@
     });
   }
 
-  // Détermine l'extension de fichier depuis un mime type photo.
   function _extDepuisMime(mime) {
     if (!mime) return "jpg";
     if (mime.indexOf("png")  >= 0) return "png";
@@ -1670,41 +1536,27 @@
     return "jpg";
   }
 
-  // Format human-readable d'une taille en bytes (Ko / Mo).
   function _formatBytes(n) {
     if (!n || n < 0) return "0 Ko";
     if (n < 1024 * 1024) return Math.round(n / 1024) + " Ko";
     return (n / (1024 * 1024)).toFixed(1) + " Mo";
   }
-  // Expose pour les autres modules / l'UI (counter de la modale)
   if (typeof window !== "undefined") window._kta_formatBytes = _formatBytes;
 
-  // Entrée de photos/_index.json — UN SEUL format pour Full, Avancé et Conversion.
-  // 📸 12/10/2026 : la FICHE du point (nom, position, niveau, type) voyage aussi,
-  // comme dans l'export de profil et « Enregistrer » de la galerie : une photo
-  // dont le point a disparu reste récupérable (♻️ Recréer le point) après un
-  // réimport. Champ facultatif : les ZIP sans fiche se relisent comme avant.
-  // 🔒 Jamais en export anonymisé : _stripperExifPhotos ne la recopie pas et
-  // _anonymiserSession la retire (check-export-anonyme.js).
+  // Entrée de photos/_index.json — UN SEUL format pour Complet, Avancé et Conversion. La fiche du point (nom,
+  // position, niveau, type) voyage : une photo dont le point a disparu reste récupérable après réimport.
+  // Champ facultatif (les ZIP sans fiche se relisent). 🔒 Jamais en export anonymisé : _stripperExifPhotos ne
+  // la recopie pas et _anonymiserSession la retire.
   function _entreeIndexPhoto(p, name) {
     const e = { pointId: p.pointId, mime: p.mime, size: p.size, file: name };
     if (p.fiche && typeof p.fiche === "object") e.fiche = p.fiche;
     return e;
   }
 
-  // Packe un payload session + des photos dans un ZIP. Retourne Promise<Blob>.
-  // Structure du ZIP :
-  //   /session.json                  ← payload session (format devmap-session)
-  //   /photos/<photoId>.<ext>        ← 1 fichier par photo (blob direct)
-  //   /photos/_index.json            ← mapping photoId → pointId pour le restore
-  //
-  // L'index est redondant avec le pointId qu'on PEUT mettre dans les records
-  // de editorPoints (cf. _enrichirPointsAvecPhotos), mais le garde séparé
-  // permet un restore robuste même si l'user édite session.json à la main
-  // et change des ids. Le restore IDB lit l'index en priorité.
-  // 📄 v1.69.0 : `historePdfs` = TABLEAU de documents (chacun avec son `zipName`
-  // déjà dédoublonné côté _exportFull). Un objet unique reste accepté par
-  // sécurité si un appelant tiers n'a pas suivi.
+  // Packe session + photos dans un ZIP → Promise<Blob> : /session.json, /photos/<photoId>.<ext>,
+  // /photos/_index.json (photoId → pointId). L'index, redondant avec les points, garde le restore robuste si
+  // session.json est édité à la main ; il est lu en priorité. `historePdfs` = TABLEAU de documents (zipName déjà
+  // dédoublonné par _exportFull) ; un objet unique reste accepté.
   function _packerZipSession(payload, photos, filename, historePdfs) {
     if (typeof JSZip === "undefined") {
       window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
@@ -1728,9 +1580,7 @@
       }, null, 2));
     }
 
-    // 🆕 v1.34.29 — PDF Mode Histoire de session (importé par l'user via la
-    // modale 📖). On le pose dans `mode-histoire/<name>` du ZIP. La référence
-    // est déjà inscrite dans `payload.historeSessionPdf` côté _exportFull.
+    // PDF Mode Histoire → `mode-histoire/<name>` (référence déjà posée dans payload.historeSessionPdf).
     const _docs = Array.isArray(historePdfs) ? historePdfs : (historePdfs ? [historePdfs] : []);
     if (_docs.length > 0) {
       const histoireFolder = zip.folder("mode-histoire");
@@ -1746,11 +1596,8 @@
     });
   }
 
-  // 🔒 v1.63.0 (A8) — Strip EXIF pour l'export anonymisé : chaque photo est
-  // RE-ENCODÉE via canvas (photos.js > compressBlob, qui ne retourne plus
-  // jamais le blob original) → métadonnées EXIF (dont GPS) garanties
-  // absentes. FAIL-CLOSED : une photo qui ne peut pas être ré-encodée est
-  // EXCLUE de l'export — jamais de blob original dans un ZIP anonymisé.
+  // 🔒 Strip EXIF de l'export anonymisé : chaque photo est RE-ENCODÉE (photos.js > compressBlob ne rend jamais
+  // le blob original). FAIL-CLOSED : une photo non ré-encodable est EXCLUE, jamais livrée brute.
   function _stripperExifPhotos(pack) {
     if (!window.MyKTAMapPhotos || typeof window.MyKTAMapPhotos.compressBlob !== "function") {
       console.warn("[SessionExport] Module photos absent — photos exclues de l'export anonymisé (fail-closed)");
@@ -1776,9 +1623,7 @@
     });
   }
 
-  // Marque chaque editorPoint avec un array `photos: [photoId, ...]` listant
-  // les photos qui lui sont rattachées. Permet un viewer "rapide" qui sait
-  // qu'un point a N photos sans relire l'index.
+  // Pose sur chaque point `photos: [photoId, …]` (savoir qu'un point a N photos sans relire l'index).
   function _enrichirPointsAvecPhotos(points, photos) {
     if (!points || !photos || photos.length === 0) return points;
     const parPoint = {};
@@ -1788,7 +1633,7 @@
       parPoint[k].push(p.id);
     });
     return points.map(function(pt) {
-      // 🆔 v2.3.0 — photos rangées sous l'uid du point, puis sous son nom.
+      // photos rangées sous l'uid du point, puis sous son nom.
       const parUid = pt.uid ? (parPoint[String(pt.uid)] || []) : [];
       const parNom = parPoint[String(pt.id || "")] || [];
       const ids = parUid.concat(parNom.filter(function(id) { return parUid.indexOf(id) < 0; }));
@@ -1799,34 +1644,14 @@
     });
   }
 
-  // ========================================================
-  // 🛡️ v1.31.7 F1 — ANONYMISATION POUR PARTAGE PUBLIC
-  // ========================================================
-  // Substitue les noms POI / roads / zones / structures par des codes
-  // séquentiels (tag + #N) et vide les notes/descriptions, retire le
-  // tracker GPS et le profil user.
-  //
-  // Objectif : permettre à un cataphile/spéléo de partager un plan utile
-  // (structure + coords + tags) sans exposer ses repérages personnels (nom
-  // de POI sensibles, notes opérationnelles, historique de présence).
-  //
-  // Le destinataire qui connaît la zone peut toujours coordonner ("celui
-  // qu'on appelle 📍 POI salle #3") — la traçabilité humaine reste possible mais
-  // ne fuite plus dans l'archive numérique.
-  //
-  // 1:1 préservé : x, y, level, tags, type. Reconstructibles par le ré-import.
-  // Strippé : id, nom, label, description, profondeur, date_update,
-  //           tracker, photos (= EXIF), user/author.
-  // Marqué : session.anonymized = true + session.anonymizedAt = ISO.
-  // 🔒 v1.63.0 (A8) : accepte un 2e param `photos` (records de
-  // _collecterPhotosPlan, déjà strippés EXIF par _stripperExifPhotos).
-  // Les ids photo sont renommés (`photo-anon-N`, zip-safe), le pointId de
-  // chaque photo est remappé vers le CODE anonymisé du point, et les points
-  // anonymisés récupèrent leur liste `photos` — la liaison photo↔point
-  // survit à l'anonymisation sans fuiter les ids d'origine.
+  // ── Anonymisation pour partage public ──────────────
+  // Noms POI / roads / zones / structures → codes séquentiels (tag + #N), notes vidées, tracker et profil
+  // retirés : partager la structure sans exposer ses repérages.
+  // Gardé : x, y, level, tags, type. Retiré : id, nom, label, description, profondeur, date_update, tracker,
+  // user/author. Marqué : session.anonymized + anonymizedAt.
+  // 🔒 `photos` (déjà strippées EXIF) : ids renommés `photo-anon-N`, pointId remappé vers le code anonymisé.
   function _anonymiserSession(session, photos) {
-    // 1. editorPoints — séquence par tag (cohérent avec coordination terrain)
-    // 🔒 v1.63.0 : idMap id d'origine → code anonymisé (remappage photos)
+    // 1. editorPoints — séquence par tag. 🔒 idMap : id d'origine → code (remappage photos)
     const idMap = {};
     if (Array.isArray(session.editorPoints)) {
       const counterByTag = {};
@@ -1834,12 +1659,11 @@
         const firstTag = (Array.isArray(p.tags) && p.tags.length) ? p.tags[0] : "";
         const key     = firstTag || "_notag";
         counterByTag[key] = (counterByTag[key] || 0) + 1;
-        // 29/09/2026 : le TAG entre dans le code. Avant, une table d'emojis (1 tag
-        // connu sur 22) donnait « 🎯 POI #1 » à la 1re salle ET au 1er puits : codes
-        // en double, donc ids en double et photos rattachées au mauvais point.
+        // Le TAG entre dans le code : un code commun à plusieurs tags donnerait des ids en double et des
+        // photos rattachées au mauvais point.
         const code = "📍 POI " + (firstTag ? firstTag + " " : "") + "#" + counterByTag[key];
         if (p.id) idMap[String(p.id)] = code;
-        if (p.uid) idMap[String(p.uid)] = code;   // 🆔 v2.3.0 : photos rangées sous l'uid
+        if (p.uid) idMap[String(p.uid)] = code;   // photos rangées sous l'uid
         const out  = {
           id:    code,
           nom:   code,
@@ -1856,9 +1680,7 @@
       });
     }
 
-    // 🔒 v1.63.0 (A8) : photos incluses dans l'export anonymisé (blobs déjà
-    // strippés EXIF en amont). Renommage zip-safe + remappage vers les codes
-    // anonymisés + ré-attache des listes `photos` sur les points anonymisés.
+    // 🔒 Photos (strippées EXIF en amont) : renommage zip-safe, remappage, listes `photos` rattachées.
     if (Array.isArray(photos) && photos.length > 0) {
       let n = 0;
       photos.forEach(function(p) {
@@ -1931,58 +1753,39 @@
     // 5. tracker → retiré entièrement (geo-historique daté = très révélateur)
     delete session.tracker;
 
-    // 6. profil user / author (rarement présent dans export session, mais
-    //    on nettoie défensivement au cas où un futur champ serait ajouté)
+    // 6. profil user / author (défensif)
     delete session.user;
     delete session.userProfile;
     delete session.author;
 
-    // 7. compteurs photos (info récap) — retirés seulement si pas de photos
-    // (🔒 v1.63.0 : photos strippées EXIF désormais incluables → les
-    // compteurs calculés en amont sur le pack strippé restent justes)
+    // 7. compteurs photos : retirés seulement s'il n'y a pas de photo
     if (!Array.isArray(photos) || photos.length === 0) {
       delete session.photosCount;
       delete session.photosTotalKB;
     }
 
-    // 🔒 v2.0.1 — LIAISONS INTER-PLAN. Chaque côté d'une liaison porte un
-    // instantané { planName, pointNom, planId, pointId, x, y } : les VRAIS noms
-    // du plan et du point. Ajoutées à l'export complet en v1.57.0, elles
-    // n'avaient jamais été retirées ici — un export « anonymisé » livrait donc
-    // le nom du réseau et de ses points. Une liaison n'a de sens qu'entre deux
-    // plans que le destinataire n'a pas : on la retire entièrement.
+    // 🔒 Liaisons inter-plan : chaque côté porte les VRAIS noms du plan et du point. Retirées entièrement.
     delete session.interPlanLinks;
-    // 🆔 v2.2.0 — les traces de suppression portent des uid : elles relieraient
-    // le fichier à la session d'origine.
+    // Traces de suppression : leurs uid relieraient le fichier à la session d'origine.
     delete session.tombstones;
 
-    // 🆕 v1.34.29 : Mode Histoire (note libre + PDF session)
+    // Mode Histoire (note libre + PDF session)
     delete session.noteLibre;
     delete session.historeSessionPdf;
-    delete session.historeSessionPdfs;   // 📄 v1.69.0 (multi-documents)
+    delete session.historeSessionPdfs;   // (multi-documents)
 
-    // 8. marqueur d'anonymisation pour audit côté destinataire
+    // 8. marqueur d'anonymisation
     session.anonymized   = true;
     session.anonymizedAt = new Date().toISOString();
 
     return session;
   }
 
-  // ---------- FULL ----------
-  // 🆕 v1.34.29 — Helper async pour lire le PDF Histoire de session depuis
-  // IDB `myktamap_histoire_pdfs` (cf js/modeHistoire.js v1.34.20+). Retourne
-  // { blob, name } ou null si absent. Ouverture/fermeture IDB ad-hoc — pas
-  // d'optimisation cache car export est un one-shot.
-  // 📄 v1.69.0 — MULTI-DOCUMENTS. Retourne un TABLEAU [{blob, name}] (vide si
-  // aucun). Deux pièges corrigés ici :
-  //   ① l'ouverture était figée sur `open(name, 1)` : depuis le passage du store
-  //      en v2 (keyPath `id` + index `by_plan`), ça déclenchait une VersionError
-  //      → le PDF disparaissait SILENCIEUSEMENT des exports ;
-  //   ② `get(planId)` ne marche plus (la clé est l'id du document) → lecture via
-  //      l'index `by_plan`.
-  // On ouvre SANS version pour suivre celle qui existe, et le fallback
-  // onupgradeneeded s'aligne sur le schéma v2 (sinon modeHistoire hériterait
-  // d'une base au mauvais schéma).
+  // ── Export Complet ──────────────
+  // PDF Mode Histoire du plan (IDB `myktamap_histoire_pdfs`) → TABLEAU [{blob, name}] (vide si aucun).
+  // 🩸 Ouvrir SANS version : un `open(name, 1)` sur la base v2 lève une VersionError et le PDF disparaît en
+  // silence. Lecture par l'index `by_plan` (la clé est l'id du document) ; onupgradeneeded s'aligne sur le
+  // schéma v2 pour ne pas léguer une base au mauvais schéma à modeHistoire.
   function _lirePdfsHistoireSession() {
     if (!window.indexedDB) return Promise.resolve([]);
     const planId = window._currentLoadedPlanId || "default";
@@ -2005,8 +1808,7 @@
           }
           try {
             const st = db.transaction("pdfs", "readonly").objectStore("pdfs");
-            // Base encore en v1 (l'user n'a pas rouvert le Mode Histoire depuis
-            // la mise à jour) : pas d'index, la clé EST le planId.
+            // Base encore en v1 (Mode Histoire pas rouvert) : pas d'index, la clé EST le planId.
             if (!st.indexNames.contains("by_plan")) {
               const g = st.get(planId);
               g.onsuccess = function() {
@@ -2034,9 +1836,7 @@
     });
   }
 
-  // 🆕 v1.34.29 — Helper pour lire la note libre Mode Histoire depuis
-  // localStorage `myktamap_note_libre_<planId>` (cf js/modeHistoire.js).
-  // Retourne la chaîne (potentiellement vide) ou null si jamais sauvée.
+  // Note libre Mode Histoire (localStorage `myktamap_note_libre_<planId>`) : chaîne, ou null si jamais sauvée.
   function _lireNoteLibreSession() {
     try {
       const planId = window._currentLoadedPlanId || "default";
@@ -2049,51 +1849,34 @@
 
   function _exportFull() {
     const d = _compter();
-    // 🆕 v1.9.3-A1.a + A1.b.2.5 : structures + mesure comptent aussi
-    // pour le test "session vide" (sinon un user qui n'a fait QUE de
-    // la mesure verrait "session vide" alors qu'il a contenu).
+    // Le test « session vide » compte aussi structures, mesures et Mode Histoire.
     const mesureLen     = (d.mesure        || []).length;
-    // 🆕 v1.12.0-fix : surface aussi prise en compte pour le test "session vide"
     const mesureSurfLen = (d.mesureSurface || []).length;
-    // 🆕 v1.34.29 — Mode Histoire (note libre + PDF session) compte aussi
-    // pour le test "session vide" : si l'user n'a QUE pris des notes ou
-    // importé un PDF Histoire, c'est légitime à exporter.
     const noteLibre = _lireNoteLibreSession();
     const hasNoteLibre = !!(noteLibre && noteLibre.length > 0);
-    // 🚨 Q47 (audit 13/09/2026) : une sortie tracker-seule (on a marché, rien
-    // annoté) était refusée « session vide » — alors que sessionPersist.js a
-    // été corrigé pour ce cas précis en v1.28.0. Le tracé du suivi compte.
+    // 🩸 Une sortie tracker seule (on a marché, rien annoté) n'est pas « vide ».
     const trackerLen = (d.trackerTimeline || []).length;
     if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0
         && (d.structures || []).length === 0 && mesureLen === 0 && mesureSurfLen === 0
         && trackerLen === 0 && !hasNoteLibre) {
-      // Note : on ne peut pas check le PDF Histoire ici (async). On accepte
-      // un cas edge : user qui n'aurait QUE un PDF Histoire (rien d'autre)
-      // verrait "session vide". OK pour MVP (cas marginal).
+      // Le PDF Histoire (async) n'est pas testé ici : une session qui n'aurait QUE lui paraît vide (cas marginal).
       _avertirRienAExporter(t("export.err.fullVide"));
       return;
     }
 
-    // 🆕 v1.9.3-B1d : checkbox "Inclure les photos" (default ON si photos présentes).
     const inclurePhotosCb = document.getElementById("full_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
-    // 🆕 v1.31.7 F1 : toggle anonymisation pour partage public.
-    // Si actif → force exclusion des photos (EXIF non strippé en MVP) et
-    // applique la substitution des labels sur le payload session.
+    // Anonymisation pour partage public (substitution des labels sur le payload).
     const anonymizeCb = document.getElementById("full_anonymize");
     const anonymize   = !!(anonymizeCb && anonymizeCb.checked);
 
-    // Collecte des photos (async — on encapsule tout dans la chaîne Promise).
-    // 🔒 v1.63.0 (A8) : l'anonymisation n'exclut PLUS les photos — elles
-    // sont ré-encodées (strip EXIF/GPS) par _stripperExifPhotos plus bas.
+    // 🔒 L'anonymisation garde les photos : elles sont ré-encodées (strip EXIF/GPS) plus bas.
     const photosPromise = inclurePhotos
       ? _collecterPhotosPlan(null)
       : Promise.resolve({ photos: [], totalSize: 0 });
 
-    // 🆕 v1.34.29 — Collecte Mode Histoire (note libre localStorage + PDF
-    // session IDB) en parallèle des photos. Si anonymize ON, on skip tout
-    // (la note libre peut contenir des infos perso, le PDF aussi).
+    // Mode Histoire (note + PDF) collecté en parallèle ; ignoré en anonymisé (contenu personnel).
     const histoirePromise = anonymize
       ? Promise.resolve({ note: null, pdfs: [] })
       : _lirePdfsHistoireSession().then(function(pdfs) {
@@ -2101,8 +1884,7 @@
         });
 
     Promise.all([photosPromise, histoirePromise]).then(function(results) {
-      // 🔒 v1.63.0 (A8) : anonymize + photos → strip EXIF AVANT toute
-      // construction du payload (fail-closed : photo non ré-encodable exclue).
+      // 🔒 Anonymisé + photos : strip EXIF AVANT tout payload (fail-closed).
       const stripPromise = (anonymize && results[0].photos.length > 0)
         ? _stripperExifPhotos(results[0])
         : Promise.resolve(results[0]);
@@ -2111,8 +1893,6 @@
       const pack = results[0];
       const histoire = results[1];
       const photos = pack.photos;
-      // Enrichit les points avec leur liste de photoIds (pour viewer rapide
-      // et debug à la main du JSON par l'user).
       const editorPointsEnriched = _enrichirPointsAvecPhotos(d.points, photos);
 
       const session = {
@@ -2122,42 +1902,22 @@
         editorPoints: editorPointsEnriched,
         roads:        d.roads,
         zones:        d.zones,
-        // 🆕 v1.9.3-A1.a : structures (piliers + murs) dans l'export Full
         structures:   d.structures || [],
-        // 🆕 v1.9.3-A1.b.2.5 : mesure dans l'export Full (objet avec points
-        // pour cohérence avec le format attendu en import).
         measure:      { points: d.mesure || [] },
-        // 🆕 v1.12.0-fix : mesure de surface dans l'export Full
         measureSurface: { points: d.mesureSurface || [] },
-        // 🆕 v1.48.0 (KARMA) : LÉGENDE CUSTOM → session AUTOPORTANTE. Les types
-        // custom (zones/tracés/tags/structures inventés par l'user) gardent
-        // label+couleur+icône à l'import, même sur un ZIP vierge. Miroir de
-        // SessionPersist (qui embarquait déjà getSessionState au reload).
+        // Légende custom → session AUTOPORTANTE (types gardent libellé, couleur, icône même sur un ZIP vierge).
         customLegend: (window.LegendCustomization && window.LegendCustomization.getSessionState)
                         ? window.LegendCustomization.getSessionState() : null,
-        // 🌀 v1.57.0 : liaisons inter-plan du plan courant (registre central
-        // myktamap_interplan_links_v1) → session AUTOPORTANTE cross-appareil.
-        // Réinjectées au registre à l'import (fusion par id, cf.
-        // interfaceImportExport.js). Ids de plans déterministes → portables.
+        // Liaisons inter-plan du plan courant, réinjectées au registre à l'import (fusion par id). Ids de plans
+        // déterministes : la liaison reste valable sur un autre appareil qui a le même plan.
         interPlanLinks: (window.InterPlanLinks && window._currentLoadedPlanId)
                           ? window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId) : [],
-        // 🆔 v2.2.0 — traces de suppression (décision KARMA Q2) : un réimport
-        // ou une fusion ne ressuscite pas un objet supprimé. Jamais en anonymisé.
+        // Traces de suppression : un réimport ne ressuscite pas un objet supprimé. Jamais en anonymisé.
         tombstones: window.KtaUid ? window.KtaUid.getTombstones() : []
       };
 
-      // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
-      // si non fait le, ignoré et supprimé lors d'une conversion data layer") :
-      // tracker GPS dans l'export Full → permet de transporter l'historique
-      // multi-sessions (heatmap + replay cross-appareil). On embed :
-      //   - position : pose courante du marker (objet ou null)
-      //   - path     : polyline runtime visible Leaflet (rendu carte session)
-      //   - timeline : timeline temporelle datée [{x,y,t,deltaMs,type,level?}]
-      //                ← survit aux reloads depuis v1.21.2 SessionPersist
-      //   - startTs  : timestamp UNIX du startTracking
-      // Champ totalement absent si timeline vide ET pas de path runtime
-      // (= user n'a jamais tracké) → rétrocompat absolue avec anciens
-      // imports devmap-session pré-v1.21.2 (ignoré silencieusement).
+      // Tracker : position (marker), path (polyline runtime), timeline datée [{x,y,t,deltaMs,type,level?}],
+      // startTs. Champ absent si ni timeline ni path (rien tracké) : les anciens imports l'ignorent.
       const _hasTracker = (d.trackerOk || (d.trackerPath || []).length > 0 ||
                            (d.trackerTimeline || []).length > 0);
       if (_hasTracker) {
@@ -2168,30 +1928,19 @@
           startTs:  d.trackerStartTs  || null
         };
       }
-      // 🆕 v1.9.3-B1d : info récap photos dans le JSON pour aider l'import
-      // (le re-import sait combien attendre).
+      // Récap photos : l'import sait combien attendre.
       if (photos.length > 0) {
         session.photosCount    = photos.length;
         session.photosTotalKB  = Math.round(pack.totalSize / 1024);
       }
 
-      // 🆕 v1.34.29 — Mode Histoire embarqué dans la session.
-      // `noteLibre` est inline dans session.json (texte simple, généralement
-      // < quelques KB). `historeSessionPdf` pointe vers un fichier dans le
-      // ZIP (chemin `mode-histoire/<name>`) car les PDFs sont des binaires
-      // qu'on ne veut pas base64-encoder dans le JSON.
-      // À l'import, sessionImporter.js (v1.34.30+) restaure :
-      //   - note libre → localStorage `myktamap_note_libre_<currentPlanId>`
-      //   - PDF        → IDB `myktamap_histoire_pdfs.put({planId, blob, name})`
-      // Si anonymize ON, `histoire.note` et `histoire.pdf` sont null (skip plus haut).
+      // Mode Histoire : `noteLibre` inline (texte) ; les PDF vont dans `mode-histoire/<name>` du ZIP (pas de
+      // base64 dans le JSON). Restauration : interfaceImportExport.js > ouvrirImportSession.
       if (histoire.note && histoire.note.length > 0) {
         session.noteLibre = histoire.note;
       }
-      // 📄 v1.69.0 — N documents possibles. `historeSessionPdfs` = tableau
-      // (nouveau) ; `historeSessionPdf` = premier document, CONSERVÉ pour que
-      // les versions antérieures relisent au moins un PDF (rétrocompat).
-      // Les noms sont dédoublonnés : deux fichiers homonymes s'écraseraient
-      // dans le dossier ZIP.
+      // `historeSessionPdfs` = tableau ; `historeSessionPdf` = premier document, gardé pour les anciennes versions.
+      // Noms dédoublonnés : deux homonymes s'écraseraient dans le ZIP.
       if (histoire.pdfs && histoire.pdfs.length > 0) {
         const vus = {};
         histoire.pdfs.forEach(function(p) {
@@ -2211,30 +1960,19 @@
         session.historeSessionPdf = session.historeSessionPdfs[0];
       }
 
-      // 🆕 v1.31.7 F1 : applique l'anonymisation APRÈS construction du
-      // payload — comme ça la logique d'inclusion (tracker, photos…)
-      // reste identique, on mute juste le résultat avant download.
-      // 🔒 v1.63.0 (A8) : les photos (déjà strippées EXIF) sont passées pour
-      // renommage zip-safe + remappage vers les codes anonymisés.
+      // Anonymisation APRÈS construction du payload (la logique d'inclusion reste la même).
       if (anonymize) {
         _anonymiserSession(session, photos);
       }
 
-      // Préfixe du nom de fichier : "session-anon-…" quand anonymisé
-      // pour rappeler au destinataire que le payload est anonymisé.
       const fnPrefix = anonymize ? "session-anon" : "session";
 
-      // 🆕 v1.34.29 — Force ZIP si PDF Histoire présent (le blob ne tient pas
-      // dans un JSON pur). La note libre seule reste compatible JSON pur car
-      // c'est du texte inline.
+      // ZIP forcé si un PDF Histoire est présent (binaire) ; la note libre tient dans le JSON.
       const hasHistoirePdf = !!(histoire.pdfs && histoire.pdfs.length > 0);
 
       if (photos.length > 0 || hasHistoirePdf) {
-        // Bundle ZIP : session.json + photos/ + mode-histoire/<pdf>
-        // 🔒 v1.63.0 (A8) : ce chemin est désormais POSSIBLE avec anonymize
-        // ON — les photos y sont garanties strippées EXIF (re-encodées,
-        // fail-closed) et renommées photo-anon-N. Le PDF Histoire, lui,
-        // reste exclu de l'anonymisation (contenu perso non nettoyable).
+        // ZIP : session.json + photos/ + mode-histoire/. 🔒 En anonymisé, photos re-encodées et renommées
+        // photo-anon-N ; le PDF Histoire reste exclu (non nettoyable).
         _packerZipSession(session, photos, _filename(fnPrefix, "zip"), histoire.pdfs)
           .then(function() { _fermer(); })
           .catch(function(err) {
@@ -2242,21 +1980,19 @@
             window.ktaAlerte(t("export.err.zipCreation", { err: err.message || err }), { type: "erreur" });
           });
       } else {
-        // Pas de photos ni PDF → JSON pur (rétro-compat absolue).
-        // La note libre, si présente, reste inline dans session.json.
+        // Ni photo ni PDF → JSON pur ; la note libre reste inline.
         _telechargerJSON(session, _filename(fnPrefix));
         _fermer();
       }
     });
   }
 
-  // ---------- AVANCÉ ----------
+  // ── Export Avancé ──────────────
   function _exportAdvanced() {
     const d = _compter();
     const incPoints = document.getElementById("adv_points")?.checked;
     const incTracker = document.getElementById("adv_tracker")?.checked;
-    // 🆕 v1.9.3-A1.a : checkbox pour structures (optionnel, default ON
-    // si la checkbox n'existe pas encore dans l'UI → fallback inclus).
+    // Case absente de l'UI → structures incluses.
     const incStructuresCb = document.getElementById("adv_structures");
     const incStructures = incStructuresCb ? incStructuresCb.checked : true;
 
@@ -2266,43 +2002,30 @@
     const zoneTypes = ["eau", "remblais", "effondrement", "inaccessible"].filter(function(t) {
       return document.getElementById("adv_zones_" + t)?.checked;
     });
-    // 🆕 v1.9.3-A1.a : sous-types structures filtables. Si aucune checkbox
-    // par type n'existe encore dans l'UI (= UI A1.a minimal), on inclut
-    // les 3 sous-types par défaut.
     const structureTypes = ["pilier-1", "pilier-2", "mur", "front-1", "front-2"].filter(function(t) {
       const cb = document.getElementById("adv_structures_" + t);
       return cb ? cb.checked : true;
     });
 
-    // 🪜 v169 (Karma_dev) : jonctions interniveau toujours préservées dans
-    // l'export Avancé (= bridges du graphe pathfinder, non négociables). Sans
-    // ce bypass, le filter `roadTypes.indexOf(r.type) >= 0` les retirerait
-    // silencieusement car "jonction" n'est PAS dans roadTypes (qui ne liste
-    // que principal/secondaire/chemin). Idem dans Conversion plus bas.
-    //
-    // 🆕 v1.21.1 (audit fix #5) : bypass parallèle pour les types `cust-*`
-    // (entrées custom Légende dessinables). Sans ce bypass, les roads/zones/
-    // structures custom étaient SILENCIEUSEMENT droppées de l'export Avancé.
-    // Symétrique au fix KMZ export #2.
+    // 🩸 Jonctions et types `cust-*` toujours gardés : `roadTypes` ne liste que principal/secondaire/chemin, le
+    // filtre les retirerait en silence (jonction = pont du graphe pathfinder). Idem dans Conversion et KMZ.
     function _isCustom(t) { return typeof t === "string" && t.indexOf("cust-") === 0; }
     const filteredRoads = (d.roads || []).filter(function(r) {
       if (r.type === "jonction") return true;     // bypass jonction
-      if (_isCustom(r.type))     return true;     // 🆕 bypass customs
+      if (_isCustom(r.type))     return true;     // bypass customs
       return roadTypes.indexOf(r.type) >= 0;
     });
     const filteredZones = (d.zones || []).filter(function(z) {
-      if (_isCustom(z.type))     return true;     // 🆕 bypass customs
+      if (_isCustom(z.type))     return true;     // bypass customs
       return zoneTypes.indexOf(z.type) >= 0;
     });
-    // 🆕 v1.9.3-A1.a : filtrage structures par type coché.
     const filteredStructures = incStructures
       ? (d.structures || []).filter(function(s) {
-          if (_isCustom(s.type)) return true;     // 🆕 bypass customs
+          if (_isCustom(s.type)) return true;     // bypass customs
           return structureTypes.indexOf(s.type) >= 0;
         })
       : [];
 
-    // Filtrer les points par tags cochés
     let filteredPoints = [];
     if (incPoints) {
       const tagsList = _listerTagsPoints(d.points);
@@ -2320,12 +2043,11 @@
       startTs:  d.trackerStartTs || null
     } : null;
 
-    // 🆕 v1.9.3-A1.b.2.5 : checkbox mesure (UI fallback ON si absente)
+    // Cases mesure : absentes de l'UI → incluses
     const incMesureCb = document.getElementById("adv_mesure");
     const incMesure = incMesureCb ? incMesureCb.checked : true;
     const mesurePts = incMesure ? (d.mesure || []) : [];
-    // 🆕 v1.12.0-fix : checkbox mesure surface (UI fallback ON si absente).
-    // Polygone valide à partir de 3 sommets → cap à 0 si en-dessous.
+    // Surface : polygone valide à partir de 3 sommets.
     const incMesureSurfCb = document.getElementById("adv_mesure_surface");
     const incMesureSurf = incMesureSurfCb ? incMesureSurfCb.checked : true;
     const mesureSurfPts = (incMesureSurf && (d.mesureSurface || []).length >= 3) ? (d.mesureSurface || []) : [];
@@ -2339,14 +2061,11 @@
 
     const fmt = document.querySelector('input[name="adv_format"]:checked')?.value || "single";
 
-    // 🆕 v1.9.3-B1d+ : photos. Filtre par les points effectivement exportés
-    // (= filteredPoints). Si l'user a décoché les points, ou qu'aucun point
-    // exporté n'a de photo, le pack sera vide → comportement strictement v1.9.2.
+    // Photos des seuls points exportés (pack vide si aucun).
     const inclurePhotosCb = document.getElementById("adv_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      // 🆔 v2.3.0 — clés photo : l'uid du point ET son nom (double lecture).
       ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
@@ -2355,13 +2074,10 @@
 
     photosPromise.then(function(pack) {
       const photos = pack.photos;
-      // Enrichit les points filtrés avec leur liste de photoIds (utile en
-      // single mode où l'user peut re-importer + voir les photos dans les
-      // popups). On mute filteredPoints en place via le helper qui clone.
+      // Pose les photoIds sur les points filtrés (clone via le helper).
       const enrichedPoints = _enrichirPointsAvecPhotos(filteredPoints, photos);
 
       if (fmt === "single") {
-        // 1 seul fichier session (JSON ou ZIP selon présence photos)
         const session = {
           type: "devmap-session",
           version: "1.0",
@@ -2370,19 +2086,14 @@
         if (enrichedPoints.length)     session.editorPoints = enrichedPoints;
         if (filteredRoads.length)      session.roads        = filteredRoads;
         if (filteredZones.length)      session.zones        = filteredZones;
-        // 🆕 v1.9.3-A1.a : structures dans le JSON Avancé (single file)
         if (filteredStructures.length) session.structures   = filteredStructures;
-        // 🆕 v1.9.3-A1.b.2.5 : mesure dans le JSON Avancé
         if (mesurePts.length)          session.measure        = { points: mesurePts };
-        // 🆕 v1.12.0-fix : mesure de surface dans le JSON Avancé
         if (mesureSurfPts.length)      session.measureSurface = { points: mesureSurfPts };
         if (tracker)                   session.tracker        = tracker;
-        // 🆕 v1.48.0 : légende custom si non vide → session autoportante.
         if (window.LegendCustomization && window.LegendCustomization.getSessionState &&
             window.LegendCustomization.isSessionStateEmpty && !window.LegendCustomization.isSessionStateEmpty()) {
           session.customLegend = window.LegendCustomization.getSessionState();
         }
-        // 🌀 v1.57.0 : liaisons inter-plan du plan courant (si non vide)
         if (window.InterPlanLinks && window._currentLoadedPlanId) {
           const _ipl = window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId);
           if (_ipl.length > 0) session.interPlanLinks = _ipl;
@@ -2393,7 +2104,6 @@
         }
 
         if (photos.length > 0) {
-          // Bundle ZIP : session.json + photos/ (= même structure que Full ZIP)
           _packerZipSession(session, photos, _filename("session", "zip"))
             .then(function() { _fermer(); })
             .catch(function(err) {
@@ -2401,13 +2111,11 @@
               window.ktaAlerte(t("export.err.zipCreation", { err: err.message || err }), { type: "erreur" });
             });
         } else {
-          // Pas de photos → JSON pur (rétrocompat absolue)
           _telechargerJSON(session, _filename("session"));
           _fermer();
         }
       } else {
-        // ZIP multi-fichiers — chaque catégorie dans un fichier session séparé
-        // + dossier photos/ si photos cochées
+        // ZIP multi-fichiers : un fichier session par catégorie (+ photos/)
         _genererZipAdvanced(enrichedPoints, filteredRoads, filteredZones, filteredStructures, mesurePts, mesureSurfPts, tracker, photos);
       }
     });
@@ -2426,19 +2134,9 @@
       zip.file(name, JSON.stringify(obj, null, 2));
     }
 
-    // 🐛 v1.76.0 (F13) — LA LÉGENDE MANQUAIT À CE ZIP.
-    // Le JSON de session simple la porte (`session.customLegend`), pas le ZIP
-    // multi-fichiers : deux boutons voisins, deux contenus différents.
-    //
-    // ⚠️ Précision vérifiée : ce format est un export SEUL — aucun importeur
-    // ne lit `session_points.json` & consorts (`_parseSessionZip` attend un
-    // `session.json`). Le tort n'est donc pas une perte au ré-import, mais une
-    // archive qui ne se DÉCRIT PAS : un fichier `session_roads.json` plein de
-    // types `cust-abc123` sans nulle part la définition de ces types. Pour une
-    // archive longue durée — la raison d'être de ce bouton — c'est un défaut
-    // suffisant.
-    // Fichier DÉDIÉ : le ZIP est déjà organisé un fichier par sujet, et la
-    // légende doit survivre même à une session sans aucun point.
+    // Légende dans un fichier DÉDIÉ du ZIP multi-fichiers. ⚠️ Format en export SEUL (aucun importeur ne lit
+    // `session_*.json` ; `_parseSessionZip` attend `session.json`) : sans elle, l'archive contient des types
+    // `cust-…` sans leur définition. Fichier à part : elle survit à une session sans point.
     (function() {
       const LC = window.LegendCustomization;
       if (!LC || typeof LC.getSessionState !== "function") return;
@@ -2450,17 +2148,12 @@
     if (points.length)     file("session_points.json",     { editorPoints: points });
     if (roads.length)      file("session_roads.json",      { roads: roads });
     if (zones.length)      file("session_zones.json",      { zones: zones });
-    // 🆕 v1.9.3-A1.a : fichier dédié pour les structures dans le ZIP Avancé
     if (structures.length) file("session_structures.json", { structures: structures });
-    // 🆕 v1.9.3-A1.b.2.5 : fichier dédié pour la mesure dans le ZIP Avancé
     if (mesurePts && mesurePts.length) file("session_measure.json", { measure: { points: mesurePts } });
-    // 🆕 v1.12.0-fix : fichier dédié pour la mesure de surface dans le ZIP Avancé
     if (mesureSurfPts && mesureSurfPts.length) file("session_measureSurface.json", { measureSurface: { points: mesureSurfPts } });
     if (tracker)           file("session_tracker.json",    { tracker: tracker });
 
-    // 🆕 v1.9.3-B1d+ : dossier photos/ + _index.json (même format que le
-    // ZIP Full bundle). Permet au re-import de retrouver les blobs +
-    // remapper le pointId si l'user a renommé un point depuis.
+    // photos/ + _index.json, même format que le ZIP Complet (remappage si un point a été renommé).
     if (photos && photos.length > 0) {
       const photosFolder = zip.folder("photos");
       const idx = {};
@@ -2485,26 +2178,22 @@
     });
   }
 
-  // ---------- CONVERSION ----------
-  // Dispatcher selon le sens choisi
+  // ── Conversion ──────────────
   function _exportConversion() {
     if (_convDirection === "data2ed") return _exportConvData2Session();
     return _exportConvSession2Data();
   }
 
-  // Sens 1 : session courante → fichiers data layer (logique existante renommée)
+  // Sens 1 : session courante → fichiers data layer
   function _exportConvSession2Data() {
     const d = _compter();
     const incPoints = document.getElementById("conv_points")?.checked;
     const incRoads  = document.getElementById("conv_roads")?.checked;
     const incZones  = document.getElementById("conv_zones")?.checked;
-    // 🆕 v1.9.3-A1.a : structures dans la conversion session → data layer.
-    // Default ON si la checkbox n'existe pas encore (A1.a UI minimal).
     const incStructuresCb = document.getElementById("conv_structures");
     const incStructures = incStructuresCb ? incStructuresCb.checked : true;
     const gran = document.querySelector('input[name="conv_gran"]:checked')?.value || "basic";
 
-    // Filtrer les points par tags cochés
     let filteredPoints = [];
     if (incPoints) {
       const tagsList = _listerTagsPoints(d.points);
@@ -2512,8 +2201,7 @@
       filteredPoints = _filtrerPointsParTags(d.points, sel.tagsCoches, sel.untaggedCoche);
     }
 
-    // Filtrer les roads par type coché (Principal / Secondaire / Chemin) +
-    // exclure le type "itinerary" qui n'a rien à faire dans un export data layer.
+    // Roads par type coché ; "itinerary" n'a rien à faire dans un data layer.
     const roadTypesActifs = {
       principal:  document.getElementById("conv_roads_principal")?.checked  ?? true,
       secondaire: document.getElementById("conv_roads_secondaire")?.checked ?? true,
@@ -2522,15 +2210,12 @@
     const filteredRoads = incRoads
       ? (d.roads || []).filter(function(r) {
           if (r.type === "itinerary") return false;
-          // 🪜 v169 (Karma_dev) : jonctions interniveau toujours préservées
-          // dans la conversion → data layer (bridges essentiels du graphe
-          // pathfinder, non filtrables par type principal/secondaire/chemin).
+          // 🩸 Jonctions toujours gardées (ponts du graphe pathfinder, non filtrables par type).
           if (r.type === "jonction") return true;
           return roadTypesActifs[r.type] !== false;
         })
       : [];
 
-    // Filtrer les zones par type coché (Eau / Remblais / Effondrement / Inaccessible)
     const zoneTypesActifs = {
       eau:          document.getElementById("conv_zones_eau")?.checked          ?? true,
       remblais:     document.getElementById("conv_zones_remblais")?.checked     ?? true,
@@ -2541,11 +2226,8 @@
       ? (d.zones || []).filter(function(z) { return zoneTypesActifs[z.type] !== false; })
       : [];
 
-    // 🆕 v1.9.3-A1.a + A1.b.2 : filtrage structures par type (5 sous-types
-    // incl. fronts). v1.20.0-fix1 : front-1 et front-2 étaient absents de
-    // ce dict → toujours inclus quoi que coche l'user (bug silencieux car
-    // structureTypesActifs[type] = undefined !== false = true). Maintenant
-    // les checkboxes UI sont respectées pour les 5 sous-types.
+    // Structures par type : les 5 sous-types (fronts compris) doivent figurer dans ce dict, sinon
+    // `undefined !== false` les inclut quoi qu'on coche.
     const structureTypesActifs = {
       "pilier-1": document.getElementById("conv_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("conv_structures_pilier-2")?.checked ?? true,
@@ -2564,12 +2246,10 @@
       return;
     }
 
-    // 🆕 v1.9.3-B1d++ : photos. Filtre par points effectivement convertis.
-    // Si N=0 ou case décochée → pack vide, comportement strictement v1.9.2.
+    // Photos des seuls points convertis (pack vide si aucun ou case décochée).
     const inclurePhotosCb = document.getElementById("conv_ed2data_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      // 🆔 v2.3.0 — clés photo : l'uid du point ET son nom (double lecture).
       ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
@@ -2578,9 +2258,7 @@
 
     photosPromise.then(function(pack) {
       const photos = pack.photos;
-      // Enrichit les points filtrés avec les photoIds → utile pour qu'un
-      // re-import (data→session) puisse reconnecter les photos aux points
-      // par lookup de point.photos[].
+      // photoIds sur les points : le réimport data→session reconnecte les photos par point.photos[].
       const enrichedPoints = _enrichirPointsAvecPhotos(filteredPoints, photos);
 
       if (gran === "basic") {
@@ -2595,7 +2273,7 @@
       if (filteredZones.length) {
         files.push({ name: "zones.json", payload: { data: [], zones: filteredZones } });
       }
-      // 🆕 v1.9.3-A1.a : 4e catégorie en granularité basique
+      // 4e catégorie en granularité basique
       if (filteredStructures.length) {
         files.push({ name: "structure.json", payload: { data: [], structures: filteredStructures } });
       }
@@ -2605,16 +2283,12 @@
       const files = [];
 
       if (enrichedPoints.length) {
-        // Points : un seul fichier (les tags sont multiples → séparation ambigüe).
-        // Utilise enrichedPoints pour préserver `photos: [photoIds]` même en
-        // granularité fine.
+        // Points : un seul fichier (tags multiples → séparation ambiguë), enrichedPoints garde `photos`.
         files.push({ name: "points.json", payload: { data: enrichedPoints } });
       }
 
       if (filteredRoads.length) {
-        // 🪜 v169 (Karma_dev) : inclure "jonction" dans la granularité fine
-        // pour ne pas perdre les bridges interniveau (sans ça, _trierParType
-        // les listerait dans le bucket "_ignored" et ils seraient drop).
+        // 🩸 "jonction" incluse en granularité fine, sinon _trierParType la range dans "_ignored" et elle se perd.
         const byType = _trierParType(filteredRoads, ["principal", "secondaire", "chemin", "jonction"]);
         ["principal", "secondaire", "chemin", "jonction"].forEach(function(t) {
           if (byType[t].length) {
@@ -2634,10 +2308,8 @@
         _emettreTypesRestants(byType.autres, "zones", "zones", files);
       }
 
-      // 🆕 v1.9.3-A1.a : structures en granularité fine, 1 fichier par
-      // sous-type (pilier-1 / pilier-2 / mur). Format de payload :
-      // { data: [], structures: [...] } pour rester un data layer valide
-      // chargeable directement comme structure.json.
+      // Structures en granularité fine : un fichier par sous-type, payload { data: [], structures: [...] }
+      // (data layer valide, chargeable comme structure.json).
       if (filteredStructures.length) {
         const byType = _trierParType(filteredStructures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
         ["pilier-1", "pilier-2", "mur", "front-1", "front-2"].forEach(function(t) {
@@ -2665,9 +2337,7 @@
                  : [];
     const roads  = Array.isArray(j.roads) ? j.roads : [];
     const zones  = Array.isArray(j.zones) ? j.zones : [];
-    // 🆕 v1.9.3-A1.a : structures dans le sens data layer → session.
-    // Rétrocompat : fichiers data layer pré-A1.a n'ont pas `structures`
-    // → tableau vide, pas de breakage.
+    // Anciens data layers sans `structures` → tableau vide.
     const structures = Array.isArray(j.structures) ? j.structures : [];
 
     if (points.length === 0 && roads.length === 0 && zones.length === 0
@@ -2686,16 +2356,12 @@
     if (zones.length)      session.zones        = zones;
     if (structures.length) session.structures   = structures;
 
-    // 🆕 v1.9.3-B1d++ : si l'input ZIP contenait des photos, on les
-    // ré-emballe dans un ZIP session de sortie (= même format que l'export
-    // Full ZIP de B1.d.α). Le re-import session "📥 Importer une session"
-    // saura les restaurer en IDB automatiquement.
+    // Photos du ZIP d'entrée ré-emballées dans un ZIP session (format Complet) : l'import session les restaure.
     const hasPhotos = _convUploadedPhotos && _convUploadedPhotos.length > 0;
     const baseName = (_convUploadedName || "data").replace(/\.(json|zip)$/i, "");
 
     if (hasPhotos) {
-      // Adapt _convUploadedPhotos {id, pointId, mime, size, blob} → format
-      // attendu par _packerZipSession (= ce qui sort de _collecterPhotosPlan).
+      // Adapte _convUploadedPhotos au format de _collecterPhotosPlan attendu par _packerZipSession.
       const photosForPack = _convUploadedPhotos.map(function(p) {
         return {
           id:      p.id,
@@ -2706,7 +2372,6 @@
           fiche:   p.fiche || null
         };
       });
-      // Ajoute photosCount/TotalKB pour cohérence avec l'export Full
       session.photosCount   = photosForPack.length;
       session.photosTotalKB = Math.round(photosForPack.reduce(function(s, p) {
         return s + (p.size || 0);
@@ -2725,20 +2390,10 @@
     }
   }
 
-  // 🆕 v1.9.3-B1d++ : param `photos` optionnel pour embarquer les blobs
-  // photos dans le ZIP de conversion. Format identique au session ZIP
-  // (B1.d.α) → photos/_index.json + photos/<photoId>.<ext>. Permet au
-  // re-import data→session de reconnecter les photos automatiquement.
-  // 🐛 v1.76.0 (F2) — LA LÉGENDE VOYAGE AVEC LE CALQUE.
-  // Jusqu'ici seul l'ID du type partait (`cust-abc123`), jamais sa DÉFINITION.
-  // Conséquence : on régénérait un plan avec le calque, on l'ouvrait, et les
-  // tracés custom sortaient en BLANC, les zones en gris remblais, les
-  // structures en bleu mur — sans même une ligne dans ≡ Légende, puisque le
-  // panneau ne liste que les entrées connues et ne regarde jamais les objets
-  // dessinés. Aucun chemin d'UI ne permettait de réparer.
-  //
-  // On n'embarque QUE ce que le fichier référence réellement : un calque de
-  // 3 tracés ne doit pas traîner les 40 entrées de légende de la session.
+  // `photos` (facultatif) : embarquées au format du ZIP session (photos/_index.json + blobs).
+  // 🩸 La légende voyage avec le calque : sans la DÉFINITION des types `cust-…`, un plan régénéré affiche
+  // tracés en blanc, zones en gris, structures en bleu, sans moyen de réparer depuis ≡ Légende. Seuls les types
+  // que le fichier référence sont embarqués.
   function _legendePourPayload(payload) {
     const LC = window.LegendCustomization;
     if (!LC || typeof LC.getSessionState !== "function") return null;
@@ -2756,9 +2411,8 @@
     Object.keys(parCat).forEach(function(cat) {
       const builtins = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat) : [];
       parCat[cat].forEach(function(tp) {
-        // 🧷 v1.76.1 — tout type NON built-in est candidat, plus seulement les
-        // `cust-` : une entrée liée à un type brut (« Bas », id technique)
-        // doit voyager elle aussi, sinon le round-trip la perd.
+        // Tout type NON built-in est candidat (pas seulement `cust-`) : une entrée liée à un type brut doit
+        // voyager aussi, sinon l'aller-retour la perd.
         if (builtins.indexOf(tp) === -1) idsUtilises.add(tp);
       });
     });
@@ -2768,8 +2422,7 @@
       return e && idsUtilises.has(e.id);
     });
 
-    // Les personnalisations de types BUILT-IN présents (libellé renommé,
-    // couleur choisie, masquage). Restreintes aux types du fichier.
+    // Personnalisations des types BUILT-IN présents (libellé, couleur, masquage).
     function _sousEnsemble(map) {
       const out = {};
       Object.keys(map || {}).forEach(function(k) {
@@ -2783,7 +2436,7 @@
     const labels  = _sousEnsemble(etat.labels);
     const hidden  = _sousEnsemble(etat.hidden);
     const colors  = _sousEnsemble(etat.colors);
-    const borders = _sousEnsemble(etat.borders);   // 🎨 v1.76.1
+    const borders = _sousEnsemble(etat.borders);
 
     if (!customEntries.length && !Object.keys(labels).length &&
         !Object.keys(hidden).length && !Object.keys(colors).length &&
@@ -2796,18 +2449,10 @@
     };
   }
 
-  // 🐛 v1.76.0 (F12) — LA LÉGENDE EXPORTÉE EN KMZ/GPX DOIT ÊTRE CELLE QU'ON VOIT.
-  // L'option « Légende personnalisée du plan » ne lisait que
-  // `PLAN_CONFIG.customLegend`. Or 100 % des types créés sur le terrain vivent
-  // dans la SESSION (l'éditeur ≡ Légende n'écrit que là ; le niveau plan ne se
-  // remplit que depuis le générateur). Pour un utilisateur normal la case était
-  // donc grisée à 0 en permanence : le seul transport MyKTAMap ↔ MyKTAMap qui
-  // existe lui était inaccessible.
-  // On fusionne les deux, dans l'ordre de la cascade d'affichage — la SESSION
-  // prime sur le plan — pour que le fichier exporté décrive ce que l'auteur a
-  // réellement sous les yeux.
-  // 🎨 v1.76.0 (suite N2) — libellé de case à cocher avec pastille RÉSOLUE
-  // (cf. exporter.js > _lp, même besoin : l'émoji des libellés i18n est figé).
+  // Légende exportée en KMZ / GPX = celle qu'on voit : session ET plan, la SESSION prime (même cascade que
+  // l'affichage). 🩸 Les types créés sur le terrain vivent dans la session (l'éditeur ≡ Légende n'écrit que là) :
+  // lire `PLAN_CONFIG.customLegend` seul grise la case pour tout le monde.
+  // Libellé de case avec pastille RÉSOLUE (comme exporter.js > _lp : l'émoji des libellés i18n est figé).
   function _lp(cat, key, label) {
     return (typeof window.ktaLabelAvecPastille === "function")
              ? window.ktaLabelAvecPastille(cat, key, label) : label;
@@ -2853,9 +2498,7 @@
     const now = new Date().toISOString();
     const hasPhotos = Array.isArray(photos) && photos.length > 0;
 
-    // Wrap en format devmap-data + légende embarquée (F2).
-    // Par FICHIER et non une fois pour toutes : un data layer doit rester
-    // exploitable seul, sorti de son ZIP.
+    // Wrap devmap-data + légende embarquée, par FICHIER : un data layer reste exploitable sorti du ZIP.
     let nbAvecLegende = 0;
     files.forEach(function(f) {
       const leg = _legendePourPayload(f.payload);
@@ -2870,14 +2513,13 @@
       console.log("[SessionExport] légende embarquée dans " + nbAvecLegende + "/" + files.length + " fichier(s)");
     }
 
-    // Cas le plus simple : 1 seul fichier, pas de photos → JSON direct (rétrocompat)
+    // 1 seul fichier sans photo → JSON direct
     if (files.length === 1 && !hasPhotos) {
       _telechargerJSON(files[0].payload, files[0].name);
       _fermer();
       return;
     }
 
-    // Sinon (>1 fichier OU avec photos) → ZIP
     if (typeof JSZip === "undefined") {
       window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return;
@@ -2887,8 +2529,7 @@
       zip.file(f.name, JSON.stringify(f.payload, null, 2));
     });
 
-    // 🆕 v1.9.3-B1d++ : dossier photos/ + _index.json. Format identique
-    // au session ZIP (B1.d.α) pour cohérence et symétrie au re-import.
+    // photos/ + _index.json, même format que le ZIP session.
     if (hasPhotos) {
       const photosFolder = zip.folder("photos");
       const idx = {};
@@ -2913,20 +2554,12 @@
     });
   }
 
-  // ========================================================
-  // 🔗 FUSION DE DATALAYERS (v1.55.0)
-  // ========================================================
-  // Ingère N fichiers data layer (.json ou .zip), concatène par CATÉGORIE
-  // (data/roads/zones/structures) et ressort un fichier par type. Réutilise
-  // _telechargerConversionFiles (sortie ZIP identique au sens session→data).
-
-  // Merge PUR : concatène les 4 tableaux de N objets data layer + détecte les
-  // ids POI en double (concat brut conservé, alerte seulement). Pas de DOM.
+  // ── Fusion de calques ──────────────
+  // N fichiers data layer (.json / .zip) concaténés par catégorie, un fichier par type en sortie
+  // (_telechargerConversionFiles). Merge PUR, sans DOM ; ids POI en double = alerte seulement.
   function _mergeDatalayerObjects(jsons) {
-    // 🆔 v2.2.0 — fusion PAR UID (ETUDE_UID décision 7) : un même objet présent
-    // dans plusieurs fichiers n'est plus dupliqué, le plus récent gagne, et une
-    // suppression postérieure l'emporte. Règle unique : KtaUid.fusionnerCalques
-    // (aussi utilisée par le Générateur). Repli : concaténation d'origine.
+    // Fusion PAR UID (KtaUid.fusionnerCalques, partagée avec le Générateur) : un objet présent dans plusieurs
+    // fichiers n'est pas dupliqué, le plus récent gagne, une suppression postérieure l'emporte. Repli : concaténation.
     if (window.KtaUid && typeof window.KtaUid.fusionnerCalques === "function") {
       const f = window.KtaUid.fusionnerCalques(jsons);
       const mergedU = { data: f.data, roads: f.roads, zones: f.zones, structures: f.structures,
@@ -2953,7 +2586,7 @@
       if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
       if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
     });
-    // Détection des ids POI en double (alerte ; concat brut conservé)
+    // Ids POI en double (alerte ; concaténation conservée)
     const seen = Object.create(null);
     const dupIds = [];
     merged.data.forEach(function(p) {
@@ -3010,7 +2643,6 @@
     });
   }
 
-  // Ajoute N fichiers (FileList) aux inputs, re-merge, re-render.
   function _fusionAjouterFichiers(fileList) {
     const files = Array.prototype.slice.call(fileList || []);
     if (!files.length) return;
@@ -3122,13 +2754,11 @@
       _renderTab();
     });
 
-    // Bouton Télécharger désactivé tant qu'aucun contenu fusionné.
     const dlBtn = document.getElementById("kta-ses-download");
     if (dlBtn) dlBtn.disabled = !_fusionMerged;
   }
 
-  // Export : un fichier data layer par catégorie non vide → ZIP (réutilise
-  // _telechargerConversionFiles, format identique au sens session→data layer).
+  // Export : un fichier data layer par catégorie non vide → ZIP (format du sens session→data layer).
   function _exportFusion() {
     const m = _fusionMerged;
     if (!m || (!m.data.length && !m.roads.length && !m.zones.length && !m.structures.length)) {
@@ -3143,7 +2773,7 @@
     _telechargerConversionFiles(files, []);
   }
 
-  // ========== UTILITAIRES ==========
+  // ── Utilitaires ──────────────
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
   function _filename(prefix, ext) {
@@ -3172,46 +2802,41 @@
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
+  function _detacherEchap() {
+    if (_onEchap) document.removeEventListener("keydown", _onEchap);
+    _onEchap = null;
+  }
+
   function _fermer() {
     if (_modal) _modal.remove();
     _modal = null;
-    // Reset de l'état de la conversion data2ed pour la prochaine ouverture
+    _detacherEchap();
     _convUploadedJson = null;
     _convUploadedName = "";
-    _convUploadedPhotos = null;  // 🆕 v1.9.3-B1d++
-    // 🔗 reset fusion datalayers (v1.55.0)
+    _convUploadedPhotos = null;
     _fusionInputs = [];
     _fusionMerged = null;
-    // 🌍 v169 (Karma_dev) : reset mode clic carte KMZ si actif
+    // Sortie du mode clic carte KMZ s'il est actif
     if (_kmzClickActive) _kmzDesactiverModeClic();
   }
 
-  // =========================================================================
-  // 🌍 ONGLET KMZ (depuis v169 / Karma_dev)
-  // =========================================================================
-  // Export geolocalise pour Google Earth / OsmAnd / Locus / Avenza.
-  // Calibrage 2 points (plan + GPS) → transformation affine 2D → KMZ.
-  // Cf. js/kmzExport.js pour le moteur (math + generateur KML + zip).
-  // =========================================================================
+  // ── Export externe KMZ / GPX ──────────────
+  // Calibrage 2 points (plan + GPS) → transformation affine 2D. Moteur : js/kmzExport.js.
 
-  // Etat interne onglet KMZ (mode clic carte pour saisir x/y d'un point)
-  // _kmzClickTarget = "A" | "B" | null — quel point on est en train de saisir
+  // Mode clic carte : _kmzClickTarget = "A" | "B" | null (point en cours de saisie)
   let _kmzClickActive = false;
   let _kmzClickHandler = null;
   let _kmzClickTarget = null;
 
-  // Helper : récupère l'ID du plan courant (pour la clé localStorage du calibrage)
   function _kmzCurrentPlanId() {
     return window._currentLoadedPlanId || "default";
   }
 
-  // Slug CSS-safe pour un tag (id checkbox)
   function _kmzSlugTag(tag) {
     return String(tag).replace(/[^a-z0-9_-]/gi, "_");
   }
 
-  // Liste les tags presents dans une collection de points
-  // Renvoie [{tag, count, isUntagged}] trie alpha, "__untagged__" en queue
+  // Tags présents → [{tag, count, isUntagged}] trié, "__untagged__" en queue
   function _kmzListerTags(points) {
     const counts = {};
     let untagged = 0;
@@ -3230,19 +2855,15 @@
     return list;
   }
 
-  // URL d'icone pour un tag (lookup _iconMap → resolution Leaflet)
-  // v174 : check _kta_iconUrl (divIcon) avant options.iconUrl (icon classique)
+  // Icône d'un tag : _kta_iconUrl (divIcon) avant options.iconUrl
   function _kmzIconePourTag(tag) {
     if (!window._iconMap || !window._iconMap[tag]) return null;
     const ic = window._iconMap[tag];
     return ic._kta_iconUrl || (ic.options && ic.options.iconUrl) || null;
   }
 
-  // Collecte unifiee des stats KMZ (session + embedded) pour generer les
-  // sous-cases avec compteurs et icones, comme l'export PNG mode avance.
-  // Reutilise les memes getters que _exportKmz pour rester strictement coherent.
+  // Statistiques KMZ (session + calques embarqués) pour les sous-cases ; mêmes getters que _exportKmz.
   function _kmzCollecterStats() {
-    // === Points : session + data layers ===
     const sessionPts = (window.getEditorPoints ? window.getEditorPoints() : []) || [];
     const dataLayerPts = [];
     if (Array.isArray(window._ktaDataMarkers)) {
@@ -3254,7 +2875,6 @@
     const allPts = sessionPts.concat(dataLayerPts);
     const tagsList = _kmzListerTags(allPts);
 
-    // === Roads : session + embedded ===
     const sessionRoads = (window.getRoads ? window.getRoads() : []) || [];
     const embeddedRoads = (typeof window.getAllEmbeddedRoads === "function")
       ? window.getAllEmbeddedRoads() : [];
@@ -3267,7 +2887,6 @@
       itinerary:  allRoads.filter(function(r) { return r.type === "itinerary";  }).length
     };
 
-    // === Zones : session + embedded ===
     const sessionZones = (window.getZones ? window.getZones() : []) || [];
     const embeddedZones = (typeof window.getAllEmbeddedZones === "function")
       ? window.getAllEmbeddedZones() : [];
@@ -3279,7 +2898,6 @@
       inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length
     };
 
-    // === Structures : session + embedded (v1.9.3-A1.b.1) ===
     const sessionStructures = (window.getStructures ? window.getStructures() : []) || [];
     const embeddedStructures = (typeof window.getAllEmbeddedStructures === "function")
       ? window.getAllEmbeddedStructures() : [];
@@ -3288,7 +2906,6 @@
       "pilier-1": allStructures.filter(function(s) { return s.type === "pilier-1"; }).length,
       "pilier-2": allStructures.filter(function(s) { return s.type === "pilier-2"; }).length,
       "mur":      allStructures.filter(function(s) { return s.type === "mur";      }).length,
-      // 🆕 v1.9.3-A1.b.2 : compteurs fronts pour stats KMZ
       "front-1":  allStructures.filter(function(s) { return s.type === "front-1";  }).length,
       "front-2":  allStructures.filter(function(s) { return s.type === "front-2";  }).length
     };
@@ -3302,9 +2919,7 @@
     };
   }
 
-  // Sync visuelle parent ↔ enfants (parent coche / decoche tous les enfants,
-  // enfants au moins 1 coche le parent). Replique le pattern _syncAnnotParent
-  // de exporter.js pour le mode avance PNG.
+  // Parent ↔ enfants : le parent coche/décoche tous les enfants, un enfant coché coche le parent.
   function _kmzSyncParent(parentId, childIds) {
     const parent = document.getElementById(parentId);
     if (!parent) return;
@@ -3322,9 +2937,7 @@
     });
   }
 
-  // ---------- RENDU CALIBRAGE COMMUN KMZ/GPX (v1.14.1) ----------
-  // Le calibrage GPS 2 points est partagé entre KMZ et GPX : on le saisit
-  // une seule fois, peu importe le format de sortie choisi.
+  // ── Rendu du calibrage commun KMZ / GPX (saisi une seule fois) ──────────────
   function _renderCalibrageCommun() {
     const planId = _kmzCurrentPlanId();
     const saved  = (window.KmzExport && window.KmzExport.getCalibration)
@@ -3332,10 +2945,8 @@
     const pA     = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
     const pB     = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
 
-    // 🆕 hotfix21 — Recompose "lat, lng" pour input combiné. Rétrocompat :
-    // une ancienne calibration sauvée avec lat/lng séparés → on les concatène
-    // pour affichage, mais le stockage interne (KmzExport.setCalibration)
-    // reste FLAT {x, y, lat, lng}.
+    // Champ combiné « lat, lng » ; une calibration ancienne (lat/lng séparés) est recomposée pour l'affichage.
+    // Le stockage (KmzExport.setCalibration) reste à plat {x, y, lat, lng}.
     const _fmtCoords = (typeof window.formatGpsCoords === "function")
                         ? window.formatGpsCoords
                         : function(a, b) { return (Number.isFinite(a) && Number.isFinite(b)) ? (a + ", " + b) : ""; };
@@ -3343,7 +2954,6 @@
     const pBcoords = _fmtCoords(pB.lat, pB.lng);
 
     return '' +
-      // ===== Calibrage Point A =====
       '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.calib.pointATitre") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
@@ -3362,7 +2972,6 @@
         '<div id="kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
-      // ===== Calibrage Point B =====
       '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.calib.pointBTitre") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
@@ -3381,7 +2990,6 @@
         '<div id="kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
-      // ===== Apercu coins =====
       '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.calib.apercuTitre") + '</div>' +
         '<div id="kmz_apercu" class="kta-kmz-apercu">' +
@@ -3390,7 +2998,7 @@
       '</div>';
   }
 
-  // ---------- RENDU OPTIONS KMZ (contenu + niveaux) ----------
+  // ── Rendu des options KMZ (contenu + niveaux) ──────────────
   function _renderOptsKmz() {
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const niveauxBloc = mlOn
@@ -3402,9 +3010,7 @@
     return _kmzRenderContenu(mlOn) + niveauxBloc;
   }
 
-  // ---------- RENDU ONGLET UNIFIÉ "📡 Export externe" (v1.14.1) ----------
-  // Fusionne les anciens onglets KMZ + GPX : 1 saisie de calibrage GPS,
-  // puis sélecteur de format (pills) qui toggle les options spécifiques.
+  // ── Rendu de l'onglet Export externe : calibrage commun puis sélecteur de format ──────────────
   function _renderExtern() {
     const fmt = (_externFormat === "gpx") ? "gpx" : "kmz";
     const introFmt = (fmt === "kmz")
@@ -3412,36 +3018,32 @@
       : t("export.extern.descGpx");
 
     return '' +
-      // 🆕 v1.26.1 — Banner cohérence échelle px/m ↔ géoréf GPS (si applicable)
       ((typeof window.renderBannerCoherenceEchelle === "function")
         ? window.renderBannerCoherenceEchelle(_kmzCurrentPlanId(), { context: "export" })
         : "") +
 
-      // ===== Calibrage GPS commun =====
       _renderCalibrageCommun() +
 
-      // ===== Sélecteur de format =====
-      '<div class="kta-kmz-section">' +
+      // Sélecteur de format (absent quand la tuile du lanceur l'a déjà choisi)
+      '<div class="kta-kmz-section"' + (_formatImpose ? ' style="display:none;"' : '') + '>' +
         '<div class="kta-kmz-section-titre">' + t("export.extern.outputTitle") + '</div>' +
         '<div class="kta-ses-format-pills" role="tablist">' +
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">🌍 KMZ</button>' +
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "gpx" ? "active" : "") + '" data-fmt="gpx" role="tab" aria-selected="' + (fmt === "gpx") + '">📤 GPX</button>' +
         '</div>' +
-        '<p class="kta-ses-fmt-desc" id="kta-extern-fmt-desc">' + introFmt + '</p>' +
       '</div>' +
+      '<p class="kta-ses-fmt-desc" id="kta-extern-fmt-desc">' + introFmt + '</p>' +
 
-      // ===== Options KMZ (visible si fmt=kmz) =====
       '<div id="kta-extern-opts-kmz" class="kta-extern-opts"' + (fmt === "kmz" ? '' : ' style="display:none;"') + '>' +
         _renderOptsKmz() +
       '</div>' +
 
-      // ===== Options GPX (visible si fmt=gpx) =====
       '<div id="kta-extern-opts-gpx" class="kta-extern-opts"' + (fmt === "gpx" ? '' : ' style="display:none;"') + '>' +
         _renderOptsGpx() +
       '</div>';
   }
 
-  // ---------- Handlers du sélecteur de format (pills KMZ/GPX) ----------
+  // ── Sélecteur de format (pills KMZ / GPX) ──────────────
   function _bindExternFmtHandlers() {
     if (!_modal) return;
     const pills = _modal.querySelectorAll(".kta-ses-fmt-pill");
@@ -3451,13 +3053,11 @@
         if (f !== "kmz" && f !== "gpx") return;
         _externFormat = f;
         try { localStorage.setItem(_EXTERN_FMT_KEY, f); } catch(e) {}
-        // Toggle pills
         pills.forEach(function(pp) {
           const on = pp.dataset.fmt === f;
           pp.classList.toggle("active", on);
           pp.setAttribute("aria-selected", on ? "true" : "false");
         });
-        // Toggle options + maj desc
         const optsKmz = document.getElementById("kta-extern-opts-kmz");
         const optsGpx = document.getElementById("kta-extern-opts-gpx");
         if (optsKmz) optsKmz.style.display = (f === "kmz") ? "" : "none";
@@ -3472,22 +3072,17 @@
     });
   }
 
-  // ---------- RENDU SECTION CONTENU (sous-cases par tag/type) ----------
+  // ── Section Contenu (sous-cases par tag / type) ──────────────
   function _kmzRenderContenu(mlOn) {
     const stats = _kmzCollecterStats();
 
-    // Helper : ligne parent ou simple checkbox.
-    // count = null → pas de compteur affiché, checkbox toujours enabled
-    //                (cas image : pas de notion de "X items à exporter")
-    // count = 0    → grisée + désactivée + dim 50% (rien à exporter pour cette
-    //                catégorie, donc on bloque la coche)
-    // count > 0    → normale, cochée si checked=true
+    // Ligne parent ou case simple. count = null : pas de compteur, toujours active ; count = 0 : grisée et
+    // désactivée ; count > 0 : normale.
     function row(id, label, count, checked) {
       const hasCount = (count !== null && count !== undefined);
       const isZero   = hasCount && count === 0;
       const disabled = isZero ? "disabled" : "";
       const dim      = isZero ? "opacity:0.5;" : "";
-      // Cochée si checked=true ET (pas de compteur OU compteur > 0)
       const isChecked= (checked && !isZero) ? "checked" : "";
       const cnt      = hasCount ? ' <span style="color:#8892a4;">(' + count + ')</span>' : '';
       return '<label class="kta-ses-cb-row" style="' + dim + '">' +
@@ -3496,7 +3091,6 @@
              '</label>';
     }
 
-    // Helper : sous-case indentee (enfant d'une parent)
     function rowSub(id, label, count, checked) {
       const disabled = count === 0 ? "disabled" : "";
       const dim      = count === 0 ? "opacity:0.5;" : "";
@@ -3507,7 +3101,6 @@
              '</label>';
     }
 
-    // Sous-cases dynamiques pour les tags de points (avec icones quand dispo)
     let pointsTagsHtml = "";
     if (stats.tagsList.length > 0) {
       pointsTagsHtml = stats.tagsList.map(function(item) {
@@ -3526,7 +3119,6 @@
 
     const rByT = stats.roadsByType;
     const zByT = stats.zonesByType;
-    // 🆕 v1.9.3-A1.b.1 : compteur structures pour stats KMZ
     const sByT = stats.structuresByType || { "pilier-1": 0, "pilier-2": 0, "mur": 0, "front-1": 0, "front-2": 0 };
     const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin;
     const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible;
@@ -3536,16 +3128,14 @@
     return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.kmz.contentTitle") + '</div>' +
 
-        // --- Image + opacite ---
         row("kmz_inc_image", t("export.kmz.image"), null, true) +
         '<div class="kta-kmz-opacity-row" id="kmz_opacity_wrap" style="margin-left:24px;">' +
           '<label for="kmz_img_opacity" class="kta-kmz-opacity-lbl">' + t("export.kmz.opacite") + '</label>' +
           '<input type="range" id="kmz_img_opacity" min="0" max="100" step="5" value="60" class="kta-kmz-opacity-slider">' +
           '<span id="kmz_img_opacity_val" class="kta-kmz-opacity-val">60%</span>' +
         '</div>' +
-        // 15/10/2026 (KARMA, Google Earth sur iPhone : croix rouges sur les 2 177 tuiles d'un grand plan ; une
-        // image unique de 4 096 px passe mais reste illisible) — plan tuilé : une MOSAÏQUE de quelques grandes
-        // images (≤ 4 096 px chacune) au lieu des tuiles, cochée par défaut, netteté au choix.
+        // Plan tuilé : une MOSAÏQUE de quelques grandes images (≤ 4 096 px) au lieu des tuiles — Google Earth sur
+        // iPhone n'affiche pas les tuiles d'un grand plan. Cochée par défaut, netteté au choix.
         (_tilingManifest() && _tilingManifest().version === 2
           ? '<div id="kmz_img_unique_wrap" style="margin-left:24px;font-size:12px;padding:3px 4px;">' +
               '<label class="kta-ses-cb-row" style="padding:0;">' +
@@ -3562,24 +3152,21 @@
             '</div>'
           : '') +
 
-        // --- Points + sous-cases par tag ---
         row("kmz_inc_points", t("export.kmz.points"), stats.pointsTotal, true) +
         pointsTagsHtml +
 
-        // --- Tracés + sous-cases par type ---
         row("kmz_inc_roads", t("export.kmz.roads"), roadsTotal, true) +
         rowSub("kmz_inc_roads_principal",  _lp("traces", "principal", t("export.kmz.roadsPrincipal")),  rByT.principal,  true) +
         rowSub("kmz_inc_roads_secondaire", _lp("traces", "secondaire", t("export.kmz.roadsSecondaire")), rByT.secondaire, true) +
         rowSub("kmz_inc_roads_chemin",     _lp("traces", "chemin", t("export.kmz.roadsChemin")),     rByT.chemin,     true) +
 
-        // --- Zones + sous-cases par type ---
         row("kmz_inc_zones", t("export.kmz.zones"), zonesTotal, true) +
         rowSub("kmz_inc_zones_eau",          _lp("zones", "eau", t("export.kmz.zonesEau")),          zByT.eau,          true) +
         rowSub("kmz_inc_zones_remblais",     _lp("zones", "remblais", t("export.kmz.zonesRemblais")),     zByT.remblais,     true) +
         rowSub("kmz_inc_zones_effondrement", _lp("zones", "effondrement", t("export.kmz.zonesEffondrement")), zByT.effondrement, true) +
         rowSub("kmz_inc_zones_inaccessible", _lp("zones", "inaccessible", t("export.kmz.zonesInaccessible")), zByT.inaccessible, true) +
 
-        // --- 🆕 v1.9.3-A1.b.1 + A1.b.2 : Structures + 5 sous-types ---
+        // Structures + 5 sous-types
         row("kmz_inc_structures", t("export.kmz.structures"), structuresTotal, true) +
         rowSub("kmz_inc_structures_pilier-1", _lp("structures", "pilier-1", t("export.kmz.structPilier1")), sByT["pilier-1"], true) +
         rowSub("kmz_inc_structures_pilier-2", _lp("structures", "pilier-2", t("export.kmz.structPilier2")), sByT["pilier-2"], true) +
@@ -3587,20 +3174,13 @@
         rowSub("kmz_inc_structures_front-1",  _lp("structures", "front-1", t("export.kmz.structFront1")),  sByT["front-1"] || 0, true) +
         rowSub("kmz_inc_structures_front-2",  _lp("structures", "front-2", t("export.kmz.structFront2")),  sByT["front-2"] || 0, true) +
 
-        // --- Jonctions (uniquement si multi-niveau) ---
         (mlOn ? row("kmz_inc_jonctions", t("export.kmz.jonctions"), rByT.jonction, rByT.jonction > 0) : '') +
 
-        // --- Itineraire actif ---
         row("kmz_inc_iti", t("export.kmz.itineraire"), rByT.itinerary, rByT.itinerary > 0) +
 
-        // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
-        // Coche par défaut SI le plan a une customLegend. Si le plan est
-        // « nu » (cascade défaut MKM), la case s'affiche grisée à 0 — pas
-        // d'incident, juste rien à embarquer.
+        // Légende (aller-retour MyKTAMap ↔ MyKTAMap) : cochée si une légende existe, sinon grisée à 0.
         (function() {
-          // 🐛 v1.76.0 (F12) — plan ET session (cf. _legendeCompleteAExporter).
-          // Avant, la case restait grisée à 0 pour quiconque avait créé ses
-          // types depuis ≡ Légende, c'est-à-dire tout le monde sur le terrain.
+          // Plan ET session (cf. _legendeCompleteAExporter) : les types créés depuis ≡ Légende vivent dans la session.
           const hasCustomLegend = !!_legendeCompleteAExporter();
           return row("kmz_inc_legend",
                      t("export.kmz.legend"),
@@ -3610,11 +3190,9 @@
       '</div>';
   }
 
-  // ---------- BIND HANDLERS ----------
+  // ── Écouteurs ──────────────
   function _bindKmzHandlers() {
-    // Validation + aperçu coins à chaque changement de champ
-    // 🆕 hotfix21 — lat/lng fusionnés dans "coords" → on listen aussi sur
-    // l'input combiné pour rafraîchir l'aperçu en live.
+    // Validation + aperçu des coins à chaque changement (champ combiné « coords » compris)
     ["x", "y", "coords"].forEach(function(field) {
       ["A", "B"].forEach(function(letter) {
         const el = document.getElementById("kmz_" + letter + "_" + field);
@@ -3622,9 +3200,7 @@
       });
     });
 
-    // 🆕 hotfix21 — Validation live des inputs GPS combinés (border rouge +
-    // message inline si format invalide). Idempotent : pas de duplication de
-    // listeners si déjà attachés.
+    // Validation live des champs GPS combinés (bordure rouge + message). Idempotent.
     if (typeof window.attacherGpsValidationCombo === "function") {
       window.attacherGpsValidationCombo(
         document.getElementById("kmz_A_coords"),
@@ -3636,27 +3212,24 @@
       );
     }
 
-    // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
+    // Bouton « Copier » de la bannière de cohérence d'échelle
     if (typeof window.attacherBoutonCopierEchelleGps === "function") {
-      // 29/09/2026 : visait « kta-ses-modal », id qui n’a jamais existé → repli
-      // silencieux sur tout le document. La bannière vit dans le contenu de l’onglet.
+      // La bannière vit dans le contenu de l'onglet (pas dans la modale).
       const zone = document.getElementById("kta-ses-content") || document;
       window.attacherBoutonCopierEchelleGps(zone);
     }
 
-    // Boutons "🔍 Chercher un point" → autocomplete
     ["A", "B"].forEach(function(letter) {
       const btn = document.getElementById("kmz_" + letter + "_search");
       if (btn) btn.addEventListener("click", function() { _kmzOuvrirRecherche(letter); });
     });
 
-    // Boutons "📍 Cliquer carte" → mode clic
     ["A", "B"].forEach(function(letter) {
       const btn = document.getElementById("kmz_" + letter + "_click");
       if (btn) btn.addEventListener("click", function() { _kmzActiverModeClic(letter); });
     });
 
-    // Slider opacité image : maj du % en live + greying out si checkbox image décochée
+    // Opacité : % en direct, grisé si l'image est décochée
     const sliderOp = document.getElementById("kmz_img_opacity");
     const sliderOpVal = document.getElementById("kmz_img_opacity_val");
     if (sliderOp && sliderOpVal) {
@@ -3681,23 +3254,19 @@
       _majOpState();
     }
 
-    // Sync parent ↔ enfants (pattern IMAGE AVANCE) — defer car les enfants
-    // sont rendus dans le meme HTML et tous prets a ce stade.
+    // Parent ↔ enfants, différé : les enfants sont dans le même HTML.
     setTimeout(function() {
       _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
       _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
-      // 🆕 v1.9.3-A1.b.1 : sync parent ↔ enfants pour structures KMZ
       _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2"]);
-      // Points : sous-cases par tag, IDs = kmz_inc_points_tag_<slug>
+      // Points : IDs kmz_inc_points_tag_<slug>
       const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
       const tagIds = Array.from(tagCheckboxes).map(function(cb) { return cb.id; });
       if (tagIds.length > 0) _kmzSyncParent("kmz_inc_points", tagIds);
     }, 0);
 
-    // Premier rendu aperçu (si calibrage restauré)
     _kmzRafraichirApercu();
 
-    // Chips niveaux si multiLevel ON
     _kmzRafraichirChipsNiveaux();
   }
 
@@ -3708,9 +3277,7 @@
       const n = parseFloat(v.value);
       return Number.isFinite(n) ? n : null;
     };
-    // 🆕 hotfix21 — Lecture lat/lng depuis input combiné "lat, lng".
-    // Si format invalide, retourne {lat:null, lng:null} (l'aperçu et la
-    // validation au submit s'occupent du feedback utilisateur).
+    // Lit le champ combiné « lat, lng » ; format invalide → {lat:null, lng:null} (feedback par l'aperçu).
     const getCoords = function(id) {
       const el = document.getElementById(id);
       if (!el) return { lat: null, lng: null };
@@ -3733,9 +3300,8 @@
         lat: cB.lat,           lng: cB.lng
       }
     };
-    // 📐 v1.73.0 — cette modale n'édite que A/B : on PRÉSERVE le pointC
-    // stocké (saisi via ⚙️ Réglages ou le Générateur), sinon chaque save
-    // KMZ écraserait silencieusement l'affine 3 points.
+    // 🩸 Cette modale n'édite que A/B : le pointC stocké (Réglages, Générateur) est PRÉSERVÉ, sinon chaque
+    // enregistrement écraserait l'affine 3 points.
     try {
       const saved = (window.KmzExport && window.KmzExport.getCalibration)
                      ? window.KmzExport.getCalibration(_kmzCurrentPlanId()) : null;
@@ -3762,7 +3328,7 @@
     }
     let transform;
     try {
-      transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      transform = window.KmzExport.buildTransformCalib(c);   // pointC optionnel propagé (affine)
     } catch(e) {
       target.innerHTML = '<span style="color:#ff9933;">⚠️ ' + String(e.message || e) + '</span>';
       return;
@@ -3791,14 +3357,11 @@
         ' · ' + t("export.calib.rotationLabel") + ' <strong>' + (transform.rotation * 180 / Math.PI).toFixed(1) + '°</strong>' +
       '</div>';
 
-    // Interception du clic Google Maps : ping internet avant ouverture pour
-    // éviter une erreur navigateur sèche en mode offline (DNS_PROBE / ERR_NAME).
-    // Le lien garde son target/rel pour le clic milieu/Ctrl+clic (ouvre direct
-    // en nouvel onglet, le ping ne s'applique qu'au clic gauche standard).
+    // Clic Google Maps : ping internet avant ouverture (pas d'erreur navigateur sèche hors ligne). Clic milieu /
+    // Ctrl+clic ouvrent directement.
     const linkGmaps = document.getElementById("kmz_apercu_gmaps_link");
     if (linkGmaps) {
       linkGmaps.addEventListener("click", function(e) {
-        // Modificateurs (Ctrl/Cmd/Shift/middle-click) → laisser le navigateur ouvrir
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;
         e.preventDefault();
         const oldText = linkGmaps.textContent;
@@ -3839,7 +3402,7 @@
     }).join("");
   }
 
-  // ---------- AUTOCOMPLETE RECHERCHE ----------
+  // ── Recherche (autocomplete) ──────────────
   function _kmzOuvrirRecherche(letter) {
     const res = document.getElementById("kmz_" + letter + "_search_results");
     if (!res) return;
@@ -3867,7 +3430,6 @@
         list.innerHTML = results.slice(0, 10).map(function(it, i) {
           const p = it.point;
           const nom = p.nom || p.id || t("export.search.point");
-          // Méta : ID (s'il diffère du nom) + coord plan en plus petit
           const metaParts = [];
           if (p.id && p.id !== nom) metaParts.push(p.id);
           if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
@@ -3893,7 +3455,7 @@
     });
   }
 
-  // ---------- MODE CLIC CARTE ----------
+  // ── Mode clic carte ──────────────
   function _kmzActiverModeClic(letter) {
     if (!window.map) return;
     _kmzDesactiverModeClic();  // si un autre était actif
@@ -3910,7 +3472,6 @@
     };
     window.map.on("click", _kmzClickHandler);
     if (_modal) _modal.style.display = "none";
-    // Floater minimal pour indiquer le mode actif
     const fl = document.createElement("div");
     fl.id = "kta-kmz-click-floater";
     fl.className = "kta-iti-floater";
@@ -3932,27 +3493,19 @@
     if (fl) fl.remove();
   }
 
-  // ---------- EXPORT KMZ ----------
-  // 🌍 v1.76.4 — Réduit l'image du GroundOverlay sous la limite de texture de
-  // Google Earth. Rend { blob, w, h, source } ou null (irréductible).
-  // Cible 4096 px : dans les limites GPU de GE partout, canvas ≤ 64 Mo (mobile
-  // OK), largement suffisant pour un overlay lu à 60 % d'opacité.
-  //   1. Plan V2 : composition depuis la PYRAMIDE DE TUILES — on choisit le
-  //      niveau z le plus fin dont les dimensions tiennent dans la cible, et
-  //      on assemble ses tuiles (512 px) sur un canvas. L'image géante n'est
-  //      JAMAIS décodée (le navigateur ne le pourrait pas plus que GE).
-  //      Le padding noir des tuiles de bord est clippé par le canvas.
-  //   2. Non-V2 : décodage entier + downscale — possible seulement sous la
-  //      limite Skia (32 767) et raisonnable en RAM ; sinon null.
-  // Manifest tiling — RACINE de PLAN_CONFIG (comme osmView), forme .plan
-  // tolérée par prudence (piège des deux étages, cf audit 06/08).
+  // ── Export KMZ ──────────────
+  // Image du GroundOverlay réduite sous la limite de texture de Google Earth (cible 4096 px : limites GPU,
+  // canvas ≤ 64 Mo) → { blob, w, h, source } ou null.
+  //   1. Plan V2 : niveau z le plus fin qui tient, tuiles (512 px) assemblées ; l'image géante n'est JAMAIS
+  //      décodée. Le padding noir des tuiles de bord est clippé.
+  //   2. Non-V2 : décodage + downscale, seulement jusqu'à 16 384 px (RAM ; Skia plafonne à 32 767) ; sinon null.
+  // Manifest tiling à la RACINE de PLAN_CONFIG (comme osmView) ; la forme .plan est tolérée.
   function _tilingManifest() {
     return (window.PLAN_CONFIG && window.PLAN_CONFIG.tiling) ||
            (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.tiling) || null;
   }
 
-  // Résout le blob d'une tuile V2 (RUNTIME_ASSETS + extraction lazy, fallback
-  // HTTP pour les plans serveur). null si introuvable.
+  // Blob d'une tuile V2 (RUNTIME_ASSETS + extraction lazy, repli HTTP pour un plan serveur) ou null.
   async function _blobTuile(path) {
     const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
     if (asset) {
@@ -3962,13 +3515,8 @@
       if (asset.file instanceof Blob) return asset.file;
       if (asset.url) { try { const r = await fetch(asset.url); if (r.ok) return await r.blob(); } catch (e) {} }
     }
-    // 🩸 v1.97.6 — LE REPLI HTTP VISAIT UN CHEMIN RELATIF, DONC LA RACINE DU
-    // SITE. Mesuré depuis la page : `fetch("data/tiles/z-3/x0_y-1.jpg")`
-    // résout en `/data/tiles/…` → 404, alors que `/data/<plan>/data/tiles/…`
-    // → 200. Sur un plan servi en HTTP, le superoverlay collectait donc ZÉRO
-    // tuile et repliait sur l'image basse définition — exactement la plainte
-    // qui avait motivé le superoverlay (« 4K c'est très flou »), revenue par
-    // une autre porte. La racine se demande à `tiling.js`, qui la sonde.
+    // 🩸 Le repli HTTP doit partir de la racine du plan (demandée à tiling.js) : un chemin relatif résout à la
+    // racine du site → 404, zéro tuile, et repli silencieux sur l'image basse définition.
     try {
       const racine = (typeof window.ktaRacineTuilesServeur === "function")
         ? window.ktaRacineTuilesServeur(window.PLAN_CONFIG) : null;
@@ -3981,15 +3529,9 @@
     return null;
   }
 
-  // 🗼 v1.76.4 (retour KARMA : « 4K c'est très flou, je pensais qu'on ferait
-  // comme en OSM via les tuiles ») — SUPEROVERLAY : collecte TOUTE la
-  // pyramide V2 pour l'embarquer tuile par tuile dans le KMZ (Region/Lod
-  // côté KML : Google Earth n'affiche que le niveau adapté au zoom, pleine
-  // résolution au plus près — le mécanisme de nos tuiles OSM, en KML).
-  // Les tuiles partent BRUTES (aucun ré-encodage), SAUF celles des bords :
-  // leur padding noir ferait des bandes sombres au-delà du plan dans Google
-  // Earth → rognées à l'emprise réelle via un petit canvas (~2√N tuiles).
-  // Rend { tileSize, ext, levels: [{z, cols, rows, tiles: [...]}] } ou null.
+  // SUPEROVERLAY : toute la pyramide V2 tuile par tuile dans le KMZ (Region/Lod : Google Earth n'affiche que le
+  // niveau adapté au zoom). Tuiles BRUTES, sauf celles des bords, rognées à l'emprise (leur padding noir ferait
+  // des bandes sombres). Rend { tileSize, ext, levels: [{z, cols, rows, tiles: [...]}] } ou null.
   async function _collecterPyramidePourSuperoverlay() {
     const tiling = _tilingManifest();
     if (!tiling || tiling.version !== 2) return null;
@@ -4009,11 +3551,8 @@
         for (let col = 0; col < cols; col++) {
           let blob = await _blobTuile("data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext);
           if (!blob) continue;   // tuile manquante : trou plutôt qu'échec total
-          // Rognage des tuiles de BORD (padding noir au-delà de l'emprise).
-          // ⚠️ Orientation VÉRIFIÉE dans _genererTuilesV2 : k=1 = bande du BAS
-          // du plan ; la tuile PARTIELLE est celle du HAUT (k = rows), son
-          // contenu est collé en BAS de l'image (destY = 512 − slice), padding
-          // noir AU-DESSUS → le crop vertical prend le bas (sy = TILE − utile).
+          // Rognage des tuiles de BORD. ⚠️ Orientation (cf _genererTuilesV2) : k=1 = bande du BAS ; la tuile
+          // PARTIELLE est celle du HAUT (k = rows), contenu collé en BAS (padding au-dessus) → sy = TILE − utile.
           // Horizontal : contenu à gauche, padding à droite → sx = 0.
           const utileW = Math.min(TILE, lvlW - col * TILE);
           const utileH = (lvlH - (k - 1) * TILE) - Math.max(0, lvlH - k * TILE);
@@ -4040,14 +3579,12 @@
     return { tileSize: TILE, ext: ext, levels: levels };
   }
 
-  // 15/10/2026 — MOSAÏQUE : le plan entier en quelques grandes images (≤ MORCEAU px de côté chacune : 16,7 Mpx
-  // = plafond d'un canvas sur iPhone), recomposées depuis la pyramide V2 — jamais l'image d'origine (un plan de
-  // 400 Mpx demanderait ~1,6 Go à décoder). Pas de Region/Lod : Google Earth sur iPhone n'affichait aucune des
-  // 2 177 tuiles du superoverlay, il affiche une image de 4 096 px (essai KARMA). CIBLE = plus grand côté voulu
-  // pour le plan entier ; on part du niveau le moins fin qui l'atteint. Placement des tuiles comme
-  // _collecterPyramidePourSuperoverlay : k=1 = bande du BAS, tuile du haut collée en bas (padding au-dessus),
-  // padding à droite. Rend { mosaique: true, w, h, levels: [{ z, tiles: [{ kmzPath, blob, nx0, ny0, nx1, ny1 }] }] }
-  // (n… = pixels NATIFS couverts, pour le KML) ou null.
+  // MOSAÏQUE : le plan entier en quelques grandes images (≤ MORCEAU px de côté : 16,7 Mpx = plafond d'un canvas
+  // iPhone), recomposées depuis la pyramide V2 — jamais l'image d'origine (~1,6 Go à décoder pour 400 Mpx).
+  // Pas de Region/Lod : Google Earth sur iPhone n'affiche pas les tuiles d'un superoverlay. CIBLE = plus grand
+  // côté voulu ; on part du niveau le moins fin qui l'atteint. Placement des tuiles comme
+  // _collecterPyramidePourSuperoverlay. Rend { mosaique: true, w, h, levels: [{ z, tiles: [{ kmzPath, blob,
+  // nx0, ny0, nx1, ny1 }] }] } (n… = pixels NATIFS couverts) ou null.
   async function _composerMosaique(CIBLE) {
     const MORCEAU = 4096;
     const tiling = _tilingManifest();
@@ -4105,13 +3642,10 @@
     return { mosaique: true, w: outW, h: outH, tileSize: MORCEAU, levels: [{ z: 0, tiles: tiles }] };
   }
 
-  // 🌍 v1.76.4 — repli NON-V2 : downscale sous la limite de texture de
-  // Google Earth (un plan V2 passe par le superoverlay ci-dessus).
-  // Rend { blob, w, h, source } ou null (irréductible).
+  // Repli NON-V2 : downscale sous la limite de texture de Google Earth → { blob, w, h, source } ou null.
   async function _reduireImagePourGoogleEarth(imageBlob, dims) {
     const CIBLE = 4096;
 
-    // ---- Voie 2 : downscale direct (image décodable seulement) ----
     if (Math.max(dims.width, dims.height) > 16384) return null;   // Skia/RAM : on ne tente même pas
     try {
       const bmp = await createImageBitmap(imageBlob);
@@ -4131,10 +3665,8 @@
   }
 
   async function _exportKmz() {
-    // 🐛 v1.76.4 (retour KARMA : « aucune info que la génération est en
-    // cours, l'user va recliquer ») — la collecte superoverlay d'un gros
-    // plan prend plusieurs secondes : bouton verrouillé + libellé d'attente
-    // + toast immédiat. try/finally : le bouton revit quoi qu'il arrive.
+    // La collecte d'un gros plan prend plusieurs secondes : bouton verrouillé + libellé d'attente + toast.
+    // try/finally : le bouton revit quoi qu'il arrive.
     const btnDl = document.getElementById("kta-ses-download");
     const btnTexteAvant = btnDl ? btnDl.textContent : null;
     if (btnDl) { btnDl.disabled = true; btnDl.textContent = "⏳ " + window.I18n.t("kmz.gen.enCours"); }
@@ -4159,21 +3691,17 @@
       window.ktaAlerte(t("export.err.calib8Champs"));
       return;
     }
-    // Build transform (avec validations bloquantes)
     let transform;
     try {
-      transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      transform = window.KmzExport.buildTransformCalib(c);   // pointC optionnel propagé (affine)
     } catch(e) {
       window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
-    // Persistance
     window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
 
-    // Collecte des données session
     const d = _compter();
 
-    // Filtre niveaux (chips si multiLevel ON, sinon null = tous)
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     let levels = null;
     if (mlOn) {
@@ -4185,19 +3713,15 @@
       if (levels.size === 0) levels = null;
     }
 
-    // Image plan (Blob) + nom de fichier — résolu via RUNTIME_ASSETS si dispo
     let imageBlob = null;
     let imageFilename = null;
-    // 🐛 v1.76.4-fix (KARMA : « tilesOverlay is not defined ») — declare ICI,
-    // au niveau de imageBlob : la version precedente le declarait DANS le
-    // bloc if(inclImage) alors que le call-site genererKmz le lit apres.
-    let tilesOverlay = null;   // 🗼 superoverlay V2 (ou null)
+    // ⚠️ Déclaré au niveau de imageBlob : genererKmz le lit hors du bloc if(inclImage).
+    let tilesOverlay = null;   // superoverlay V2 (ou null)
     const inclImage = document.getElementById("kmz_inc_image")?.checked;
     if (inclImage && window.PLAN_CONFIG?.plan?.baseImage) {
       const baseImagePath = window.PLAN_CONFIG.plan.baseImage;
       const fullPath = baseImagePath.indexOf("/") >= 0 ? baseImagePath : ("data/" + baseImagePath);
       imageFilename = baseImagePath;
-      // Tentative 1 : RUNTIME_ASSETS (cas ZIP local)
       if (window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[fullPath]) {
         const asset = window.RUNTIME_ASSETS[fullPath];
         if (asset.file instanceof Blob) imageBlob = asset.file;
@@ -4205,7 +3729,6 @@
           try { const r = await fetch(asset.url); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
         }
       }
-      // Tentative 2 : fetch direct (cas plan serveur)
       if (!imageBlob) {
         try { const r = await fetch(fullPath); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
       }
@@ -4214,24 +3737,16 @@
         imageFilename = null;
       }
 
-      // 🌍 v1.76.4 (bug KARMA : « le plan est au bon endroit MAIS cropé ») —
-      // Google Earth TRONQUE silencieusement les textures au-delà de sa
-      // limite GPU (~8-16 K px selon machine) : l'overlay d'un plan 32K
-      // s'affichait amputé. L'export était innocent (blob brut) mais
-      // complice par silence. Désormais, au-delà de GE_MAX px de côté :
-      //   - plan V2 → l'overlay est RECOMPOSÉ depuis la pyramide de tuiles
-      //     (niveau réduit : le plan entier, jamais l'image géante à décoder) ;
-      //   - plan non-V2 décodable → downscale canvas ;
-      //   - indécodable (≥ 32 767, limite Skia) → on le DIT et on demande.
+      // 🩸 Google Earth TRONQUE en silence les textures au-delà de sa limite GPU (~8-16 K px). Au-delà de
+      // GE_MAX px : plan V2 → superoverlay (ou mosaïque) ; non-V2 décodable → downscale ; au-delà de
+      // 16 384 px (non tenté, cf _reduireImagePourGoogleEarth) → on le DIT et on demande.
       if (imageBlob && typeof window.ktaLireDimensionsEntete === "function") {
         try {
           const _dims = window.ktaLireDimensionsEntete(await imageBlob.slice(0, 1048576).arrayBuffer());
           const _GE_MAX = 8192;
           if (_dims && Math.max(_dims.width, _dims.height) > _GE_MAX) {
-            // 🗼 v1.76.4 — plan V2 : SUPEROVERLAY (pleine résolution par
-            // tuiles + Region/Lod, « comme en OSM ») au lieu d'une image
-            // composée floue. L'image unique ne part plus dans le KMZ.
-            // 15/10/2026 — « Grandes images » cochée : une mosaïque lisible par Google Earth sur mobile.
+            // Plan V2 : SUPEROVERLAY pleine résolution au lieu d'une image composée floue ; « Grandes images »
+            // cochée → mosaïque lisible par Google Earth sur mobile.
             const uniqueVoulue = !!document.getElementById("kmz_img_unique")?.checked;
             const cible = Number.parseInt(document.getElementById("kmz_img_nettete")?.value, 10) || 8192;
             const unique = uniqueVoulue ? await _composerMosaique(cible) : null;
@@ -4263,8 +3778,7 @@
                 window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.reduit", { w: reduit.w, h: reduit.h }), "info");
               }
             } else if (!tilesOverlay && !unique) {
-              // Irréductible (image géante non-V2) : choix explicite, jamais
-              // d'erreur silencieuse (règle KARMA).
+              // Irréductible (image géante non-V2) : choix explicite, jamais d'erreur silencieuse.
               const continuer = await window.ktaConfirm(
                 window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }),
                 { titre: "🌍 Google Earth", okLabel: window.I18n.t("kmz.geOverlay.okQuandMeme"),
@@ -4283,8 +3797,7 @@
       }
     }
 
-    // Icônes embedded : 1 PNG par tag rencontré dans les points.
-    // v174 : check _kta_iconUrl (divIcon scaledMarkers) avant options.iconUrl
+    // Icônes embarquées : _kta_iconUrl (divIcon scaledMarkers) avant options.iconUrl
     const iconsToEmbed = {};
     if (window._iconMap) {
       // On embed TOUTES les icônes connues — c'est ~30 Ko au total et plus simple
@@ -4301,13 +3814,11 @@
       if (defUrl) iconsToEmbed["default"] = defUrl;
     }
 
-    // Génération KMZ
     const btnDl = document.getElementById("kta-ses-download");
     if (btnDl) { btnDl.disabled = true; btnDl.textContent = t("export.btn.generatingKmz"); }
     try {
-      // Collecte des points editor + data layers
       const editorPoints = d.points || [];
-      // Data layer points : on lit _ktaDataMarkers et on reconstruit {x, y, nom, tags, level}
+      // Points des calques : _ktaDataMarkers → {x, y, nom, tags, level}
       const dataLayerPoints = [];
       if (Array.isArray(window._ktaDataMarkers)) {
         window._ktaDataMarkers.forEach(function(m) {
@@ -4324,47 +3835,34 @@
       }
       const allPoints = editorPoints.concat(dataLayerPoints);
 
-      // 🛣️ Roads : session + embedded data layers
-      // Sans ça, un plan dont les tracés sont définis dans les JSON data layers
-      // (chemin.json, puits.json, etc.) ne sortait qu'avec ses tracés session.
-      // getAllEmbeddedRoads = TOUTES les roads embedded (visibles ET masquées),
-      // cohérent avec Pathfinder + Distance totale (cf. CLAUDE.md §15).
+      // Roads : session + calques embarqués. getAllEmbeddedRoads = TOUTES (visibles ET masquées), comme le
+      // Pathfinder et la distance totale.
       const sessionRoads = d.roads || [];
       const embeddedRoads = (typeof window.getAllEmbeddedRoads === "function")
         ? window.getAllEmbeddedRoads()
         : [];
       const allRoads = sessionRoads.concat(embeddedRoads);
 
-      // ⬛ Zones : session + embedded data layers (symétrique aux roads)
-      // Nouveau getter window.getAllEmbeddedZones (v169 Karma_dev) qui mappe
-      // _ktaDataPolygons vers le format {type, points, level} de getZones().
+      // Zones : session + calques (getAllEmbeddedZones → format {type, points, level} de getZones()).
       const sessionZones = d.zones || [];
       const embeddedZones = (typeof window.getAllEmbeddedZones === "function")
         ? window.getAllEmbeddedZones()
         : [];
       const allZones = sessionZones.concat(embeddedZones);
 
-      // 🏛️ Structures : session + embedded data layers (symétrique zones).
-      // 🆕 v1.9.3-A1.b.1 : inclus dans le KMZ avec leurs propres styles
-      // (cf. kmzExport.js > STYLES_KML > structure_*). Rétrocompat OK :
-      // si pas de structures (legacy build / plan sans structure.json),
-      // l'export skip silencieusement le Folder Structures.
+      // Structures : session + calques, styles kmzExport.js > STYLES_KML > structure_* ; sans structure, le
+      // dossier Structures est omis.
       const sessionStructures = d.structures || [];
       const embeddedStructures = (typeof window.getAllEmbeddedStructures === "function")
         ? window.getAllEmbeddedStructures()
         : [];
       const allStructures = sessionStructures.concat(embeddedStructures);
 
-      // Opacité image : slider 0-100% → passé en pourcent au générateur
       const opSlider = document.getElementById("kmz_img_opacity");
       const imageOpacity = opSlider ? Math.max(0, Math.min(100, parseInt(opSlider.value, 10) || 60)) : 60;
 
-      // === Lecture des sous-cases granulaires (pattern IMAGE AVANCE) ===
-      // Sets de filtrage par type/tag : si la Set est non-null, le generateur
-      // ne garde QUE les items du Set. Si null = parent decoche = drop total.
-      // Si Set vide = parent coche mais aucun enfant = drop total (cas degenere).
+      // Sous-cases : Set non-null = whitelist ; null (parent décoché) ou Set vide = rien.
 
-      // Tags points : on lit toutes les sous-cases [id^="kmz_inc_points_tag_"]
       let pointTagsSet = null;
       const pointsParent = document.getElementById("kmz_inc_points");
       if (pointsParent && pointsParent.checked) {
@@ -4374,7 +3872,6 @@
         });
       }
 
-      // Types roads : 3 sous-cases (principal/secondaire/chemin)
       let roadTypesSet = null;
       const roadsParent = document.getElementById("kmz_inc_roads");
       if (roadsParent && roadsParent.checked) {
@@ -4385,7 +3882,6 @@
         });
       }
 
-      // Types zones : 4 sous-cases (eau/remblais/effondrement/inaccessible)
       let zoneTypesSet = null;
       const zonesParent = document.getElementById("kmz_inc_zones");
       if (zonesParent && zonesParent.checked) {
@@ -4396,10 +3892,7 @@
         });
       }
 
-      // 🆕 v1.9.3-A1.b.1 : Types structures (3 sous-cases). Si parent
-      // décoché → null (drop total). Si pas de checkbox UI encore (= UI
-      // KMZ pas mise à jour), fallback Set complet "tout inclus" pour
-      // ne pas perdre les structures silencieusement.
+      // Types structures : parent décoché → null ; pas de case dans l'UI → Set complet (rien perdu en silence).
       let structureTypesSet = null;
       const structuresParent = document.getElementById("kmz_inc_structures");
       if (structuresParent) {
@@ -4411,18 +3904,11 @@
           });
         }
       } else {
-        // Pas de checkbox UI → tout inclus par défaut (rétrocompat A1.b.1
-        // avant ajout des checkboxes UI dans la modale KMZ)
         structureTypesSet = new Set(["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
       }
 
-      // 🆕 v1.21.1 (audit fix #2) : enrichissement des Sets avec les types
-      // custom (cust-XYZ) rencontrés dans les items. Sans ça, les roads/zones/
-      // structures custom (dessinables via éditeur Légende, cf §31.6 CLAUDE.md)
-      // étaient SILENCIEUSEMENT droppées du KMZ car les Sets ne contiennent que
-      // les types built-in. Décision design : si l'user a coché le parent
-      // (Roads/Zones/Structures), TOUS les customs partent — pas de UI dédiée
-       // pour cocher/décocher les customs individuels (= bonne par défaut).
+      // 🩸 Types custom (cust-…) ajoutés aux Sets, sinon roads/zones/structures custom disparaissent du KMZ.
+      // Parent coché → TOUS les customs partent, sans case dédiée (décision produit).
       function _addCustsToSet(set, items) {
         if (!set || !Array.isArray(items)) return;
         items.forEach(function(it) {
@@ -4459,18 +3945,14 @@
           points:     !!pointTagsSet,       // true si parent coche
           roads:      !!roadTypesSet,
           zones:      !!zoneTypesSet,
-          // 🆕 v1.9.3-A1.b.1 : flag parent pour les structures (true si
-          // le Set existe et est non-vide — sinon drop tout le folder
-          // Structures dans le KMZ).
+          // Structures : true si le Set existe et n'est pas vide (sinon pas de dossier)
           structures: !!structureTypesSet && structureTypesSet.size > 0,
           jonctions:  mlOn && document.getElementById("kmz_inc_jonctions")?.checked,
           itineraire: document.getElementById("kmz_inc_iti")?.checked,
           dataLayers: true,
-          // Sets de filtrage granulaire (null = pas de filtre, Set = whitelist)
           pointTagsSet: pointTagsSet,
           roadTypesSet: roadTypesSet,
           zoneTypesSet: zoneTypesSet,
-          // 🆕 v1.9.3-A1.b.1 : whitelist sous-types structures
           structureTypesSet: structureTypesSet
         },
         levels:        levels,
@@ -4478,29 +3960,23 @@
           editorPoints: allPoints,
           roads:        allRoads,
           zones:        allZones,
-          // 🆕 v1.9.3-A1.b.1 : session + embedded structures concaténées
           structures:   allStructures
         },
         imageBlob:     imageBlob,
-        tilesOverlay:  tilesOverlay,   // 🗼 v1.76.4 superoverlay V2 (ou null)
+        tilesOverlay:  tilesOverlay,   // superoverlay V2 (ou null)
         imageFilename: imageFilename,
         iconsToEmbed:  iconsToEmbed,
-        // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
-        // Embed `PLAN_CONFIG.customLegend` dans un fichier annexe
-        // `myktamap-extras.json` du KMZ ZIP. Lu par kmzImport.js au ré-import
-        // → injecté dans plan-config.json > plan.customLegend du ZIP MyKTAMap
-        // reconstruit. Les apps tierces (Google Earth, OsmAnd) ignorent ce
-        // fichier inconnu sans broncher. Skip si checkbox décochée ou si le
-        // plan courant n'a pas de customLegend (rien à embarquer).
+        // Légende (aller-retour) → fichier annexe `myktamap-extras.json` du KMZ, ignoré par les apps tierces.
+        // Au réimport, kmzImport.js la pose dans plan-config > plan.customLegend. Omis si case décochée ou
+        // légende vide.
         planCustomLegend: (function() {
           const inclLegend = !!document.getElementById("kmz_inc_legend")?.checked;
           if (!inclLegend) return null;
-          // F12 : plan + session fusionnes (la session prime, comme a l ecran).
+          // Plan + session fusionnés (la session prime, comme à l'écran).
           return _legendeCompleteAExporter();
         })()
       });
 
-      // Téléchargement
       const url = URL.createObjectURL(kmzBlob);
       const a = document.createElement("a");
       const planName = (window.PLAN_CONFIG?.plan?.name) || "plan";
@@ -4518,10 +3994,7 @@
     }
   }
 
-  // ============================================================
-  // 📤 GPX EXPORT — v1.14.0 (refactor v1.14.1 : options seules, calibrage
-  // partagé via onglet unifié "📡 Export externe")
-  // ============================================================
+  // ── Export GPX (options seules ; calibrage partagé avec KMZ) ──────────────
   function _renderOptsGpx() {
     const sessionPoints = window.getEditorPoints ? (window.getEditorPoints() || []) : [];
     const sessionRoads  = window.getRoads        ? (window.getRoads()        || []) : [];
@@ -4548,14 +4021,10 @@
           '<input type="checkbox" id="gpx_iti" ' + (itiCount === 0 ? "disabled" : "") + '>' +
           '<span>' + t("export.gpx.itineraire") + ' <span class="kta-ses-count">(' + itiCount + ')</span></span>' +
         '</label>' +
-        // 🆕 v1.18.1 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap via GPX).
-        // Symétrique de la checkbox KMZ v1.18.0. Cochée par défaut SI le plan
-        // a une customLegend non-vide, grisée à 0 sinon. Embed dans
-        // <extensions><myktamap:customLegend> sous <metadata> GPX standard.
-        // Ignoré par les apps tierces (TopoDroid, OsmAnd…), parsé par gpxIO.
+        // Légende (aller-retour via GPX) : <extensions><myktamap:customLegend> sous <metadata>, ignorée par les
+        // apps tierces, lue par gpxIO. Cochée si une légende existe, sinon grisée à 0.
         (function() {
-          // F12 : la case ne doit plus etre grisee quand la legende vient de
-          // la SESSION (cas de tout utilisateur terrain).
+          // Plan ET session : la légende de terrain vit dans la session.
           const has = !!_legendeCompleteAExporter();
           return '<label class="kta-ses-cb-row" style="' + (has ? "" : "opacity:0.5;") + '">' +
             '<input type="checkbox" id="gpx_legend" ' + (has ? "checked" : "disabled") + '>' +
@@ -4572,9 +4041,7 @@
     );
   }
 
-  // Sauvegarde le calibrage saisi dans le formulaire (réutilise les mêmes
-  // inputs kmz_A_x... que l'export KMZ), puis lance GpxIO.exporter.
-  // Le calibrage est ainsi partagé entre les deux formats.
+  // Persiste le calibrage du formulaire (mêmes champs kmz_A_x… que le KMZ), puis GpxIO.exporter.
   function _exportGpxViaExtern() {
     if (!window.KmzExport) {
       window.ktaAlerte(t("export.err.kmzModuleKo"), { type: "erreur" });
@@ -4584,7 +4051,6 @@
       window.ktaAlerte(t("export.err.gpxModuleKo"), { type: "erreur" });
       return;
     }
-    // 1) Valider + persister calibrage (même validation que _exportKmz)
     const c = _kmzLireCalib();
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
@@ -4592,20 +4058,17 @@
       return;
     }
     try {
-      window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      window.KmzExport.buildTransformCalib(c);   // pointC optionnel propagé (affine)
     } catch(e) {
       window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
     window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
 
-    // 2) Lire les options GPX
     const incPoints   = document.getElementById("gpx_points")   && document.getElementById("gpx_points").checked;
     const incEmbedded = document.getElementById("gpx_embedded") && document.getElementById("gpx_embedded").checked;
     const incRoads    = document.getElementById("gpx_roads")    && document.getElementById("gpx_roads").checked;
     const incIti      = document.getElementById("gpx_iti")      && document.getElementById("gpx_iti").checked;
-    // 🆕 v1.18.1 — Roundtrip légende plan-level (symétrique KMZ v1.18.0).
-    // Embed dans <extensions><myktamap:customLegend> sous <metadata> GPX.
     const incLegend   = document.getElementById("gpx_legend")   && document.getElementById("gpx_legend").checked;
 
     const btnDl = document.getElementById("kta-ses-download");
@@ -4617,11 +4080,10 @@
         incEmbedded: !!incEmbedded,
         incRoads:    !!incRoads,
         incIti:      !!incIti,
-        // 🆕 v1.18.1 — Légende plan-level via <extensions> GPX standard.
-        // Skip si checkbox décochée OU si pas de customLegend dans le plan.
+        // Légende via <extensions> GPX ; omise si case décochée ou légende vide.
         planCustomLegend: (function() {
           if (!incLegend) return null;
-          // F12 : plan + session fusionnes (la session prime, comme a l ecran).
+          // Plan + session fusionnés (la session prime, comme à l'écran).
           return _legendeCompleteAExporter();
         })()
       });

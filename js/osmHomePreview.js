@@ -1,90 +1,27 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Licence : CC BY-NC-SA 4.0
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// OSM-HOME-PREVIEW.JS — Mini Vue OSM dans la HOME (v1.40.17 — Step 4)
-// =========================
-// Bouquet final de la roadmap Vue OSM (Step 1-4) : widget de prévisualisation
-// embarqué directement dans la HOME, entre "📚 Mes plans" et "📦 Ajouter un
-// plan". Permet de voir où le plan georef sélectionné se situe dans le monde
-// réel SANS le charger en map mode complet (= pas de bascule d'écran).
-//
-// MODE LÉGER (v1.40.0)
-//   Pour éviter d'ouvrir le ZIP au boot HOME (coûteux RAM mobile), on
-//   utilise UNIQUEMENT les données déjà disponibles SANS extraction ZIP :
-//     - Liste des plans : `PlanRegistry.getAll()` (en mémoire)
-//     - Georef de chaque plan : `KmzExport.getCalibration(planId)` (LS session)
-//       Note : pas de fallback `PLAN_CONFIG.plan.georef` car PLAN_CONFIG est
-//       VIDE en HOME (aucun plan chargé). Le géoréf embarqué dans le
-//       plan-config.json ne peut donc pas être lu ici.
-//
-//       🩸 v1.82.0 — CE MANQUE ÉTAIT ÉRIGÉ EN « LIMITATION ACCEPTABLE » :
-//       l'utilisateur devait avoir saisi sa géoréf au moins une fois en mode
-//       plan. C'était défendable tant que la géoréf se saisissait à la main.
-//       L'import SIG produit désormais des plans calés PAR CONSTRUCTION, que
-//       personne n'a de raison de ressaisir — et ils étaient précisément ceux
-//       qui manquaient à cette liste (signalé par KARMA).
-//       Le géoréf du plan est donc déposé dans le REGISTRE à son chargement
-//       (main.js), seul endroit que le HOME lit déjà, et `_listGeorefPlans`
-//       s'en sert en second recours. `osmView.js` lisait ses deux sources
-//       depuis la v1.39.2 ; le widget du HOME n'avait jamais suivi.
-//
-// CONTENU AFFICHÉ
-//   v1.40.0 : Tile layer OSM + markers pointA/pointB georef + ligne d'échelle
-//   v1.40.4 : 🆕 + data layers embedded (POI + Roads + Zones + Structures)
-//     extraits via JSZip à la sélection du plan dans le dropdown. Cache RAM
-//     par planId pour éviter ré-extraction (LRU léger).
-//
-//   Helper `_loadPlanDataForPreview(planId)` :
-//     - Récupère le ZIP via PlanRegistry.getHandle() (FS Access) OU
-//       PlanRegistry.getBlob() (IDB fallback mobile/Safari)
-//     - JSZip.loadAsync (lazy : ne décompresse PAS toutes les tuiles, juste
-//       la liste centrale du ZIP)
-//     - Extrait `plan-config.json` → parse pour avoir `dataLayers[].file`
-//     - Pour chaque dataLayer : extract son JSON + parse (POI / Roads / Zones / Structures)
-//     - Retourne `{ config, dataLayers: [...] }` ISOLATED (pas de side
-//       effects sur window.PLAN_CONFIG ou autre)
-//
-//   Helper `_renderDataLayersOnMiniMap(data, georef)` :
-//     - Construit la projection plan→OSM via georef (KmzExport.buildTransform)
-//     - POI : `L.circleMarker` colorés (pas d'icônes images pour éviter
-//       extraction supplémentaire, perf > cohérence visuelle stricte sur HOME)
-//     - Roads : `L.polyline` avec `road.color` natif
-//     - Zones : `L.polygon` avec `zone.color` + `fillColor`
-//     - Structures : adaptatif polyline (fronts) ou polygon (mur/pilier)
-//
-// BOUTON ⛶ FULL-SCREEN
-//   🆕 v1.40.2 — Refonte sémantique : ⛶ NE BASCULE PLUS en map mode.
-//   Click → agrandit la mini-carte HOME en overlay plein-viewport
-//   (position fixed inset:0). L'user reste sur la HOME, juste le widget
-//   prend tout l'écran. Bouton devient ✕ pour réduire. Escape key aussi.
-//   Avantage : flow ultra-simple, marche dans tous les cas, pas de hook
-//   fragile sur kta:planConfigReady ou simulation clic plan row.
-//   (v1.40.0/1 essayaient une bascule map mode + auto-open modale OsmView
-//    via sessionStorage flag, mais les sélecteurs HTML data-plan-id étaient
-//    faux + l'event planConfigReady n'est pas fiable → ne marchait pas.)
-//
-// OPT-IN OSM
-//   Si le toggle "🌐 Autoriser OSM" n'est pas coché côté Configuration
-//   home → affichage d'un placeholder avec bouton "Autoriser OSM" qui
-//   l'active à la volée (LS `myktamap_osm_view_opt_in`). Pas d'appel
-//   sortant tant que pas opt-in.
-//
-// CAS AUCUN PLAN GEOREF
-//   Si la liste des plans georef est vide → message pédagogique avec
-//   instructions pour saisir la calibration via Réglages map mode ou
-//   Générateur.
-//
-// API
-//   window.OsmHomePreview = {
-//     mount()         → monte le widget dans #ktaOsmHomeContent (auto-call DOMContentLoaded)
-//     refresh()       → recharge la liste des plans + re-render
-//     selectPlan(id)  → bascule le plan affiché (= change le marker)
-//     openFullScreen()→ déclenche le flow full-screen sur le plan courant
-//   }
-// =========================
+// =====================================================================
+// osmHomePreview.js — widget « Vue OSM » de l'accueil : les plans géoréférencés sur OpenStreetMap.
+// =====================================================================
+// Mini-carte du HOME (plein écran au ⛶, Échap pour réduire), sans charger le plan en mode carte. Un plan
+// principal (liste déroulante) + d'autres empilés (modale « Plans & filtres » : ordre, opacité, filtres).
+// Expose : window.OsmHomePreview = { mount, refresh, selectPlan, openFullScreen }.
+// Données : plans de PlanRegistry, géoréf par KmzExport.getCalibration puis registre (p.georef) ; contenu
+// (POI, tracés, zones, structures, tuiles) lu dans le ZIP, ou en HTTP pour un plan serveur, via
+// _loadPlanDataForPreview, isolé de window.PLAN_CONFIG, mis en cache RAM par plan.
+// 🩸 PLAN_CONFIG est VIDE au HOME : un géoréf seulement embarqué n'est connu qu'après un premier chargement
+// du plan (main.js > _propagerGeorefVersKmzExport le dépose dans le registre).
+// 🩸 La légende personnalisée se relit PAR PLAN (slot de session, puis customLegend du plan-config) :
+// l'état live de LegendCustomization est vide ou celui d'un autre plan au HOME. Exception documentée à
+// check-style-canon (palette propre, pas de ktaResolveStyle).
+// ⚠️ _isOptedIn doit rester identique à OsmView.isOptedIn (osmView.js) ; défaut actif annoncé par bandeau.
+// 🔒 Pas d'opt-in → colonne masquée ; incognito → widget bloqué : aucun appel sortant dans les deux cas.
+// Garde-fous : scripts/check-osm-defaut.js, check-osm-pile.js, check-osm-etiquettes.js, check-icon-catalog.js ·
+// Doc : docs/architecture/vue-osm.md.
 
 (function() {
   "use strict";
@@ -95,69 +32,51 @@
   const OSM_ATTR      = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
   const OSM_MAX_ZOOM  = 19;
 
-  let _mapInstance   = null;  // L.map instance (mini-carte)
-  let _markerLayer   = null;  // L.layerGroup (markers georef + ligne)
-  let _dataLayer     = null;  // v1.40.4 — L.layerGroup parent (catégories sous-layers)
-  // 🆕 v1.40.12 — Sub-layers par catégorie pour toggles individuels
+  let _mapInstance   = null;  // mini-carte
+  let _markerLayer   = null;  // markers du géoréf + ligne
+  let _dataLayer     = null;  // parent des sous-couches par catégorie
   let _poiSubLayer       = null;
   let _roadsSubLayer     = null;
   let _zonesSubLayer     = null;
   let _structSubLayer    = null;
-  // 🆕 v1.40.12 — État des toggles par catégorie (default ON)
+  // bascules par catégorie (ON par défaut)
   let _showTiles       = true;
   let _showPoi         = true;
   let _showRoads       = true;
   let _showZones       = true;
   let _showStructures  = true;
-  // 🌀 v1.81.0 (dette D5) — liaisons inter-plans dessinées sur le fond OSM.
-  // OFF par défaut, contrairement aux 5 autres catégories : ce n'est pas un
-  // calque de contenu mais un OUTIL DE DIAGNOSTIC. L'arbitrage du 01/08 a
-  // enterré la traversée (le mode OSM n'a ni position courante ni « plan où tu
-  // es ») ; ce qui reste utile, c'est de VOIR l'écart entre les deux bouts d'un
-  // portail — deux points censés être au même endroit physique. Un écart
-  // important = un géoréférencement à revoir sur l'un des deux plans.
+  // Liaisons inter-plans : OFF par défaut, ce n'est pas du contenu mais un OUTIL DE DIAGNOSTIC — un grand
+  // écart entre les deux bouts d'un portail (même lieu physique) signale un géoréférencement à revoir.
   let _showPortails    = false;
-  let _portailsLayer   = null;  // L.layerGroup, reconstruit à chaque rendu
+  let _portailsLayer   = null;  // reconstruit à chaque rendu
   let _selectedPlanId = null;
-  let _isFullscreen  = false; // v1.40.2 — état overlay plein-viewport
-  let _fsEscapeHandler = null; // ref pour cleanup au close()
-  // 🐛 v1.46.4 — Cadrage robuste de la mini-carte (cf _fitToCurrentGeoref).
-  let _lastFitGeoref = null;  // georef du plan courant, pour re-fit auto au resize
-  let _miniFitDone   = false; // true une fois cadré avec une taille de conteneur réelle (>0)
-  // 🆕 v1.40.4 — Cache RAM : planId → { config, dataLayers, tilesOverview? }
-  // Évite ré-extraction du ZIP si user re-sélectionne un plan déjà vu pendant
-  // la session HOME. Cache cleared au unload page (RAM-only, pas de LS).
+  let _isFullscreen  = false; // overlay plein écran
+  let _fsEscapeHandler = null; // pour le nettoyage
+  let _lastFitGeoref = null;  // géoréf du plan courant, pour recadrer au resize
+  let _miniFitDone   = false; // cadré avec une taille de conteneur réelle (> 0)
+  // Cache RAM planId → { config, dataLayers, tilesOverview? } : pas de ré-extraction du ZIP pendant la
+  // session HOME (rien en localStorage).
   const _planDataCache = {};
-  let _tilesLayer     = null;   // L.layerGroup pour les tuiles plan projetées
-  let _planOpacity    = 0.5;    // 🆕 v1.40.6 / v1.42.4 — opacité plan (slider bandeau). KARMA : default 50% (meilleur compromis lecture OSM + plan, cohérent avec modale plan).
+  let _tilesLayer     = null;   // tuiles du plan projetées
+  let _planOpacity    = 0.5;    // opacité du plan principal (50 % : compromis lecture OSM + plan)
 
-  // ═══ 🗂️ v1.71.0 — MULTI-PLANS (lot 2, topo KARMA : « croisement de données
-  // OSM », cas de plusieurs relevés voisins + galeries techniques ensemble) ═══
-  // Le plan SÉLECTIONNÉ (dropdown) reste le « principal » (fitBounds, slider
-  // d'opacité du bandeau). Les autres plans géoréférencés peuvent être AJOUTÉS
-  // par-dessus/dessous via le panneau 🗂️ du mode OSM.
-  //   _stackOrder   : planIds dans l'ordre d'affichage — index 0 = AU-DESSUS
-  //                   (même ordre que le panneau). Contient AUSSI le principal.
-  //   _extraLayers  : planId → { tiles, data, poi, roads, zones, struct }
-  //                   (groupes Leaflet des plans NON principaux).
+  // ── Multi-plans ──────────
+  // Le plan SÉLECTIONNÉ reste le principal (fitBounds, opacité). Les autres plans géoréférencés s'ajoutent
+  // par le panneau 🗂️. RAM seulement : la composition est un geste de session.
+  //   _stackOrder   : planIds dans l'ordre d'affichage, index 0 = AU-DESSUS (principal compris).
+  //   _extraLayers  : planId → { tiles, data, poi, roads, zones, struct } (plans non principaux).
   //   _extraOpacity : planId → 0..1 (le principal garde _planOpacity).
-  // RAM-only (pas de persistance LS) : la composition est un geste de session.
-  // ⚠️ Les blob URLs des tuiles vivent dans _planDataCache et ne sont JAMAIS
-  // révoquées tant que la page vit → un plan retiré puis re-ajouté est gratuit.
+  // ⚠️ Les blob URLs des tuiles vivent dans _planDataCache, jamais révoquées tant que la page vit : retirer
+  // puis rajouter un plan est gratuit.
   let _stackOrder   = [];
   let _extraLayers  = {};
   let _extraOpacity = {};
 
-  // 🐛 14/09/2026 (bug KARMA « plan A reste dans la liste OSM et impossible à
-  // supprimer ») — RÈGLE UNIQUE de promotion d'un principal dans la pile,
-  // partagée par selectPlan (dropdown) ET _renderWidget (re-mount au retour à
-  // l'accueil, v1.90.12). Avant, seul selectPlan retirait l'ancien principal :
-  // le re-mount posait le nouveau SANS enlever l'ancien, qui restait en
-  // fantôme — et comme il n'avait jamais eu de groupe extra, le ✕ le refusait.
-  //   - nouveau absent de la pile → il PREND LA PLACE de l'ancien principal
-  //     (ou passe au-dessus s'il n'y en avait pas) ;
+  // 🩸 RÈGLE UNIQUE de promotion d'un principal dans la pile, partagée par selectPlan et _renderWidget
+  // (re-mount au retour HOME) — sinon l'ancien principal reste en fantôme, sans groupe extra, et ✕ le refuse.
+  //   - nouveau absent de la pile → il PREND LA PLACE de l'ancien (ou passe au-dessus s'il n'y en avait pas) ;
   //   - nouveau déjà dans la pile → l'ancien principal en SORT.
-  // Pure (n'agit que sur `pile`), donc exécutable par check-osm-pile.js.
+  // Pure (n'agit que sur `pile`) : exécutée par scripts/check-osm-pile.js.
   function _remplacerPrincipalDansPile(pile, prev, next) {
     if (!next) return pile;
     if (pile.indexOf(next) === -1) {
@@ -170,11 +89,10 @@
     }
     return pile;
   }
-  let _warnedMulti  = false;   // avertissement « > 3 plans » (1× par session)
+  let _warnedMulti  = false;   // avertissement « > 3 plans » (une fois par session)
 
-  // 🗂️ v1.71.0 (retour KARMA) — visibilités PAR PLAN (tuiles + 4 catégories).
-  // Visibilité effective = toggle GLOBAL du bandeau ET chip du plan. Vaut
-  // aussi pour le principal (clé = planId, comme les extras).
+  // Visibilités PAR PLAN (tuiles + 4 catégories) ; effective = bascule GLOBALE du bandeau ET chip du plan.
+  // Clé = planId, principal compris.
   let _planVis = {};
   function _visDe(id) {
     if (!id) return { tiles: true, poi: true, roads: true, zones: true, struct: true };
@@ -182,8 +100,7 @@
     return _planVis[id];
   }
 
-  // Style structures aligné sur structures.js > STRUCTURE_STYLES (cf §3b OSM modal).
-  // Variant LIGHT pour la mini-carte HOME (weight/fillOpacity allégés).
+  // Repli aligné sur structures.js > STRUCTURE_STYLES, allégé pour la mini-carte (weight, fillOpacity).
   const STRUCT_STYLES_HOME = {
     "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.70, weight: 1, isPolyline: false },
     "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.70, weight: 1, isPolyline: false },
@@ -191,40 +108,28 @@
     "front-1":  { color: "#f4c542", weight: 4, opacity: 0.95, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 4, opacity: 0.95, isPolyline: true }
   };
-  // 🆕 v1.40.13 — Couleurs roads natives (aligné sur utils.js > ROAD_STYLES_DATA).
-  // KARMA "récupéré la bonne couleur serait le top" → on prend les vraies
-  // couleurs natives selon le type (principal=vert, secondaire=violet, etc.)
-  // au lieu du fallback gris #8892a4 v1.40.4.
+  // Couleurs natives des tracés par type (repli aligné sur road.js / utils.js).
   const ROAD_STYLES_DATA_HOME = {
-    "principal":  "#00ff00",  // vert
-    "secondaire": "#b000ff",  // violet
-    "chemin":     "#ffff00",  // jaune
-    "jonction":   "#ff4ecb",  // rose (dashed sur map principale, simplifié ici)
-    "itinerary":  "#00d4ff"   // cyan (cohérence avec ITI_COLOR osmView.js)
+    "principal":  "#00ff00",
+    "secondaire": "#b000ff",
+    "chemin":     "#ffff00",
+    "jonction":   "#ff4ecb",  // rose (pointillé sur la carte principale, plein ici)
+    "itinerary":  "#00d4ff"   // = ITI_COLOR d'osmView.js
   };
-  // 🆕 v1.40.37 — Mapping zones par type (aligné sur zones.js > ZONE_STYLES).
-  // KARMA : « fait en sorte que la couleur des routes, zone, ... persiste »
-  // Cascade : z.color/fillColor explicite > built-in type > custom legend > fallback gris.
+  // Zones par type (repli aligné sur zones.js > ZONE_STYLES). Cascade : couleur explicite > override de
+  // légende du plan > type built-in > custom > gris.
   const ZONE_STYLES_DATA_HOME = {
     "eau":          { stroke: "#0066aa", fill: "#3aa9e8" },
     "remblais":     { stroke: "#3a3a44", fill: "#5a5a68" },
     "effondrement": { stroke: "#cc0000", fill: "#ff3333" },
     "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" }
   };
-  // Helper résolution couleur road (cascade complète)
-  // ═══════════════════════════════════════════════════════════
-  // 🎨 v1.77.0 — OVERRIDES DE LÉGENDE PAR PLAN (bug KARMA « galerie
-  // principale reste verte en OSM », puis « OSM PLAN OK mais pas OSM HOME »)
-  // ═══════════════════════════════════════════════════════════
-  // Pourquoi PAS ktaResolveStyle ici (contrairement à osmView) : le canon
-  // applique l'état LIVE de LegendCustomization, qui au HOME est soit VIDE
-  // (boot froid — le cas NORMAL : on est au HOME avant de charger un plan),
-  // soit celui du DERNIER plan chargé (faux pour les autres plans de la
-  // pile). La source correcte PAR PLAN : son slot SessionPersist
-  // (KtaSessionStore.lire(id) → payload.customLegend, auto-savé
-  // ~1,5 s en mode plan) puis le customLegend du plan-config (ZIP, niveau
-  // auteur). Cache RAM par planId, invalidé au mount() (retour HOME =
-  // re-mount → les modifs faites en mode plan sont reprises).
+  // ── Overrides de légende PAR PLAN ──────────
+  // 🩸 Pas de ktaResolveStyle ici (contrairement à osmView) : le canon applique l'état LIVE de
+  // LegendCustomization, VIDE au HOME après un boot froid (le cas normal) ou celui du DERNIER plan chargé
+  // (faux pour les autres plans de la pile). Source correcte par plan : son slot de session
+  // (KtaSessionStore.lire(id) → payload.customLegend, auto-sauvé ~1,5 s en mode plan), puis le customLegend
+  // du plan-config (ZIP). Cache RAM par planId, invalidé au mount() (le retour HOME reprend les modifs).
   let _legendeParPlan = {};
 
   function _legendeDe(planId) {
@@ -239,15 +144,14 @@
     let plan = null;
     const cache = _planDataCache[planId];
     const cfg   = cache && cache.config;
-    // Même double-lecture que legendCustomization.loadPlanState (v1.76.1) :
-    // les producteurs écrivent plan.customLegend, rétro-compat racine.
+    // même double lecture que legendCustomization.loadPlanState : plan.customLegend, sinon racine
     if (cfg) plan = (cfg.plan && cfg.plan.customLegend) || cfg.customLegend || null;
     const out = (sess || plan) ? { session: sess || {}, plan: plan || {} } : null;
     _legendeParPlan[planId] = out;
     return out;
   }
 
-  // Couleur override d'un type built-in pour UN plan. quoi = "colors"|"borders".
+  // Couleur d'override d'un type built-in pour UN plan ; quoi = "colors" | "borders".
   function _couleurOverrideDe(planId, categorie, type, quoi) {
     const lg = _legendeDe(planId);
     if (!lg || !type) return null;
@@ -278,8 +182,7 @@
     if (r && r.type && ROAD_STYLES_DATA_HOME[r.type]) return ROAD_STYLES_DATA_HOME[r.type];
     const ce = r && _entreeCustomDe(planId, r.type);
     if (ce && (!ce.category || ce.category === "traces") && ce.lineColor) return ce.lineColor;
-    // Dernier recours : état live (couvre le plan couramment chargé même si
-    // son slot n'a pas encore été écrit par l'auto-save).
+    // dernier recours : état live (plan chargé dont le slot n'est pas encore écrit)
     if (r && r.type && window.LegendCustomization
         && typeof window.LegendCustomization.findCustomEntry === "function") {
       try {
@@ -289,20 +192,10 @@
     }
     return "#8892a4";
   }
-  // Helper résolution couleurs zone (stroke + fill, cascade complète)
-  // 🏛️ v1.82.0 — STYLE D'UNE STRUCTURE, types CUSTOM compris.
-  //
-  // 🩸 Le bug corrigé ici : le rendu faisait
-  //     STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]
-  // Un type custom (`cust-…`) n'est évidemment pas dans cette table locale —
-  // TOUTES les structures personnalisées retombaient donc sur le style « mur » :
-  // même couleur pour tous les niveaux, et forme de POLYGONE même pour un front
-  // de taille. Les tracés et les zones, eux, consultaient déjà la légende
-  // custom : les structures étaient les seules oubliées. Signalé par KARMA sur
-  // un plan importé où chaque niveau avait pourtant sa couleur.
-  //
-  // La forme vient de `entry.geometry` — même champ que celui lu par
-  // `structures.js > _isPolylineType`. Une seule source, pas d'heuristique.
+  // Style d'une structure, types CUSTOM compris.
+  // 🩸 Pas de `STRUCT_STYLES_HOME[s.type] || …["mur"]` seul : un `cust-…` n'y est pas et toutes les
+  // structures personnalisées tomberaient sur « mur » (une couleur pour tous les niveaux, un POLYGONE même
+  // pour un front). La forme vient de `entry.geometry`, le champ lu par structures.js > _isPolylineType.
   function _styleStructHome(s, planId) {
     const base = STRUCT_STYLES_HOME[s.type];
     if (base) return Object.assign({}, base);
@@ -320,7 +213,7 @@
       gabarit.isPolyline = ligne;
       return gabarit;
     }
-    // Type inconnu ET absent de la légende : on garde le repli historique.
+    // type inconnu et absent de la légende : repli « mur »
     return Object.assign({}, STRUCT_STYLES_HOME["mur"]);
   }
 
@@ -331,8 +224,7 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
-    // 🎨 v1.77.0 — override par plan : remplissage choisi, bordure explicite
-    // ou dérivée par assombrissement (même relation que le canon).
+    // override par plan : remplissage choisi, bordure explicite ou assombrie (même relation que le canon)
     const fillOv   = z && _couleurOverrideDe(planId, "zones", z.type, "colors");
     const borderOv = z && _couleurOverrideDe(planId, "zones", z.type, "borders");
     if (fillOv || borderOv) {
@@ -367,15 +259,10 @@
     }
     return { stroke: "#8892a4", fill: "#8892a4" };
   }
-  // 🔁 v1.81.0 — FILET DE SECOURS, PLUS LA SOURCE. Le catalogue de référence
-  // est `window._ktaBuiltinIconUrls` (map.js > TAGS_BUILTIN), désormais exposé
-  // dès le chargement du script — donc lisible ici, sur un HOME où aucun plan
-  // n'est encore ouvert. Cette copie ne sert que si map.js n'a pas été chargé.
-  // 🩸 Elle a dérivé DEUX FOIS pendant qu'elle faisait autorité : `entree_plan`
-  // (v1.41.0) et `portail` (v1.59.0) n'y sont jamais arrivés, et un point
-  // portail s'affichait en Vue OSM comme un petit rond jaune au lieu de son
-  // icône vortex. Le commentaire qui disait « sync ici » n'a rien empêché :
-  // `scripts/check-icon-catalog.js` (pré-commit bloquant) confronte les deux.
+  // Filet de secours seulement : la référence est `window._ktaBuiltinIconUrls` (map.js > TAGS_BUILTIN),
+  // exposée dès le chargement du script, donc lisible au HOME. Cette copie ne sert que sans map.js.
+  // 🩸 Une copie dérive (un point portail tombait sur le rond de secours) : scripts/check-icon-catalog.js
+  // (pré-commit bloquant) confronte les deux.
   const TAGS_BUILTIN_HOME = {
     salle:    "icon/house.png",
     pa:       "icon/pa.png", pc: "icon/pc.png", pb: "icon/pb.png",
@@ -388,10 +275,6 @@
     info:     "icon/info.png",
     chatiere: "icon/chatiere.png", passage: "icon/passage.png",
     danger:   "icon/danger.png", plaque: "icon/plaque.png",
-    // 🔁 v1.81.0 — les 2 tags qui manquaient. Ils sont la RAISON de ce fix :
-    // absents ici, un point portail / entrée de plan tombait sur le
-    // circleMarker de secours en Vue OSM. Tenus alignés par
-    // `scripts/check-icon-catalog.js`.
     portail:  "icon/portail.png",
     entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
@@ -402,59 +285,44 @@
       '</svg>'
     )
   };
-  // 🆕 v1.40.13 — Tracker des blob URLs créés pour les icônes POI
+  // blob URLs des icônes de POI
   let _iconBlobUrls = [];
-  // 🆕 v1.40.17 — Filtre par tag : null = pas de filtre (tout affiché),
-  // Set<string> non-vide = ne montre que les POI dont le tag est dans le Set
+  // filtre par tag : null = tout ; Set non vide = seulement ces tags
   let _homeTagFilter = null;
-  // 🏔️ v1.82.0 — FILTRE PAR ÉTAGE (signalé par KARMA : « la gestion des
-  // niveaux est mal gérée, le cas de Citon est un exemple flagrant »).
-  // Il n'y en avait AUCUN : `level` ne servait que dans le popup d'un POI, et
-  // tous les niveaux étaient dessinés les uns sur les autres. Sur un relevé à
-  // sept niveaux dont un topo historique de 16 747 objets, la carte devenait
-  // illisible — le niveau du dessus masquant tout le reste.
-  // Même convention que le filtre par tag : `null` ou Set vide = tout afficher
-  // (aucun plan mono-niveau n'est impacté).
+  // Filtre par niveau : même convention que le filtre par tag (`null` ou Set vide = tout). Sans lui, un relevé
+  // à plusieurs niveaux les dessine tous les uns sur les autres et devient illisible.
   let _homeLevelFilter = null;
 
-  // Un objet sans `level` est considéré au niveau 0 : c'est la convention de
-  // l'app (cf. road.js), et un plan mono-niveau n'écrit pas ce champ.
+  // sans `level` = niveau 0 (convention de l'app, cf road.js ; un plan mono-niveau n'écrit pas ce champ)
   function _niveauDe(o) { return (o && typeof o.level === "number") ? o.level : 0; }
   function _passeNiveau(o) {
     if (!_homeLevelFilter || _homeLevelFilter.size === 0) return true;
     return _homeLevelFilter.has(_niveauDe(o));
   }
-  // 🆕 v1.40.18 — Marker "📍 Moi" (GPS device, 1 fix ponctuel, 0 stockage)
+  // « 📍 Moi » : un fix ponctuel, rien stocké
   let _myGpsMarkerHome         = null;
   let _myGpsAccuracyCircleHome = null;
 
-  // =========================
-  // HELPERS — Opt-in & state
-  // =========================
-  // 🌍 v1.90.2 — MÊME RÈGLE QUE `OsmView.isOptedIn` (osmView.js), et elle DOIT
-  // le rester : "0" = refus explicite → OFF ; absent ou "1" → ON. Voir le
-  // commentaire complet côté osmView.js.
+  // ── Opt-in et état ──────────
+  // ⚠️ MÊME RÈGLE que OsmView.isOptedIn (osmView.js), et elle doit le rester : "0" = refus → OFF ; absent ou
+  // "1" → ON (scripts/check-osm-defaut.js exécute les deux).
   function _isOptedIn() {
     try { return localStorage.getItem(LS_OPT_IN_KEY) !== "0"; } catch(e) { return false; }
   }
 
-  // 🩸 « Actif parce que jamais refusé » n'est PAS « actif parce que choisi ».
-  // Tant que la clé est absente, on doit l'annoncer : c'est un fond de carte
-  // servi par un tiers qui apparaît sans que personne ne l'ait demandé.
+  // 🩸 « Actif parce que jamais refusé » n'est PAS « actif parce que choisi » : tant que la clé est absente,
+  // on l'annonce (un fond de carte servi par un tiers apparaît sans avoir été demandé).
   function _estActifParDefaut() {
     try { return localStorage.getItem(LS_OPT_IN_KEY) === null; } catch(e) { return false; }
   }
-  // 🧹 v1.77.0 (audit code mort) : _setOptedIn supprimé — jamais appelé,
-  // l'opt-in réel s'écrit via OsmView.setOptedIn (Configuration HOME).
+  // l'opt-in s'écrit via OsmView.setOptedIn (Configuration HOME)
   function _isOnline() {
     return (typeof navigator === "undefined") || navigator.onLine !== false;
   }
 
-  // 🆕 v1.43.3 — Cache OSM offline : flag sync « il existe au moins une
-  // tuile cachée globalement ». Sert au mount() pour décider si on bloque
-  // tout le widget offline (= cache vide partout) OU si on monte normalement
-  // et laisse selectPlan() arbitrer plan par plan.
-  // Refresh async via getStats() au boot + après chaque cache + via event.
+  // Cache OSM hors ligne : « au moins une tuile en cache quelque part » (synchrone). Au mount(), décide si le
+  // widget est bloqué hors ligne (cache vide partout) ou monté, selectPlan() arbitrant plan par plan.
+  // Rafraîchi en async par getStats() : boot, après chaque cache, événement.
   let _anyCachePresent = false;
   async function _refreshAnyCachePresent() {
     try {
@@ -462,17 +330,14 @@
       const s = await window.OsmTilesCache.getStats();
       const before = _anyCachePresent;
       _anyCachePresent = (s.count > 0);
-      // Si on passe de "rien" à "quelque chose" et qu'on est offline,
-      // remount le widget pour qu'il devienne accessible.
+      // de « rien » à « quelque chose » hors ligne : re-mount pour rendre le widget accessible
       if (!before && _anyCachePresent && !_isOnline()) {
         refresh();
       }
     } catch(e) {}
   }
 
-  // 🆕 v1.43.3 — Helper bbox approximative d'un plan georef à partir des
-  // 2 points calibrés A↔B. Utilisé par hasCacheForBbox pour décider si
-  // un plan donné a des tuiles cachées.
+  // Bbox approximative d'un plan d'après ses 2 points calibrés (pour hasCacheForBbox).
   function _bboxFromGeoref(georef) {
     try {
       if (!_isValidGeoref(georef)) return null;
@@ -482,8 +347,7 @@
       );
     } catch(e) { return null; }
   }
-  // Parité gating modale OsmView : en incognito, le widget ne charge aucune
-  // tuile OSM.
+  // 🔒 Comme la modale OsmView : en incognito, aucune tuile OSM.
   function _isIncognitoOn() {
     try { return !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
     catch(e) { return false; }
@@ -498,11 +362,8 @@
     } catch(e) {}
   }
 
-  // =========================
-  // HELPERS — Liste plans georef
-  // =========================
-  // Retourne un Array<{ id, name, georef }> des plans qui ont une calibration
-  // GPS valide via KmzExport.getCalibration. Tri : lastOpened desc.
+  // ── Liste des plans géoréférencés ──────────
+  // Array<{ id, name, georef, tags }> des plans à calibration GPS valide, du plus récemment ouvert au plus ancien.
   function _listGeorefPlans() {
     if (!window.PlanRegistry || typeof window.PlanRegistry.getAll !== "function") return [];
     if (!window.KmzExport   || typeof window.KmzExport.getCalibration !== "function") return [];
@@ -510,17 +371,12 @@
     const out = [];
     for (const p of all) {
       if (!p || !p.id) continue;
-      // 🩸 v1.82.0 — DEUX SOURCES, comme `osmView.js` depuis la v1.39.2.
-      // Le localStorage porte la saisie de l'utilisateur et garde donc la
-      // priorité ; le registre porte le géoréf embarqué dans le plan, déposé
-      // à son chargement (cf. main.js > _propagerGeorefVersKmzExport). Sans
-      // ce second recours, un plan importé du SIG — calé par construction —
-      // n'apparaissait pas dans cette liste.
+      // 🩸 DEUX SOURCES, comme osmView.js : le localStorage (saisie de l'utilisateur) prime ; le registre porte le
+      // géoréf embarqué, déposé au chargement (main.js > _propagerGeorefVersKmzExport). Sans ce second recours,
+      // un plan importé du SIG — calé par construction — manquerait à la liste.
       const g = window.KmzExport.getCalibration(p.id) || p.georef;
       if (_isValidGeoref(g)) {
-        // 🏷️ v1.84.0 — `tags` transporte les ÉTIQUETTES DE PLAN du registre
-        // (v1.78.0). Elles ne servaient nulle part ici : la pile ne savait
-        // ajouter qu’un plan à la fois, par son nom.
+        // `tags` : les étiquettes de plan du registre (ajout à la pile par étiquette)
         out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0,
                    tags: Array.isArray(p.tags) ? p.tags : [] });
       }
@@ -535,34 +391,23 @@
       && Number.isFinite(g.pointB.lat) && Number.isFinite(g.pointB.lng));
   }
 
-  // =========================
-  // 🆕 v1.40.1 — Masquage colonne entière si pas opt-in
-  // =========================
-  // KARMA "si on a pas cocher le OSM dans la config, on affiche pas ce
-  // panel OSM en home" → choix B validé. Cohérent philo offline-first :
-  // aucune trace du widget tant que pas autorisé.
-  // Au refresh (opt-in ON via Configuration) → la colonne réapparaît
-  // automatiquement.
+  // ── Colonne masquée sans opt-in ──────────
+  // Aucune trace du widget tant qu'OSM n'est pas autorisé (hors-ligne d'abord) ; la colonne revient au
+  // refresh après l'opt-in.
   function _setOsmColumnVisible(visible) {
     const col = document.querySelector(".loader-col-osm");
     const grid = document.querySelector(".loader-grid");
     if (col) col.style.display = visible ? "" : "none";
-    // Toggle `.kta-no-osm` sur le grid pour rebasculer en 2 cols PC
-    // (sinon on aurait un trou visuel à la place de la colonne masquée).
+    // `.kta-no-osm` repasse le grid PC en 2 colonnes (pas de trou)
     if (grid) {
       if (visible) grid.classList.remove("kta-no-osm");
       else grid.classList.add("kta-no-osm");
     }
   }
 
-  // =========================
-  // RENDU UI — Cas spéciaux
-  // =========================
+  // ── Rendus des cas particuliers ──────────
   function _renderOptInNeeded(container) {
-    // 🆕 v1.40.1 — Masquage complet de la colonne (au lieu d'un placeholder)
-    // → la colonne disparaît, le grid PC retombe sur 2 cols comme avant
-    // v1.40.0. L'user qui veut activer la Vue OSM passe par ⚙️ Configuration
-    // (point d'entrée unique, déjà existant depuis v1.39.0).
+    // colonne entièrement masquée (pas de placeholder) ; on active OSM par ⚙️ Configuration
     _setOsmColumnVisible(false);
   }
 
@@ -577,8 +422,7 @@
       '</div>';
   }
 
-  // 🆕 v1.40.19 — Cas Mode incognito : on bloque pour ne pas laisser de trace
-  // de plan georef chargé (philosophie incognito = pas de leak metadata).
+  // 🔒 Incognito : bloqué, aucune trace d'un plan géoréférencé chargé.
   function _renderIncognito(container) {
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
@@ -590,29 +434,15 @@
       '</div>';
   }
 
-  // 🩸 v1.90.2 (KARMA : « à compléter, pour le cas où un plan n'a pas été
-  // chargé une fois ») — « AUCUN PLAN GÉORÉFÉRENCÉ » ÉTAIT UN MENSONGE DANS UN
-  // CAS SUR TROIS.
-  //
-  // `_listGeorefPlans` lit le géoréf à deux endroits : le localStorage (saisie
-  // manuelle) et `p.georef` du registre — mais ce dernier n'est écrit qu'au
-  // CHARGEMENT du plan (`main.js > _propagerGeorefVersKmzExport`). Un plan
-  // jamais ouvert peut donc être parfaitement calibré dans son propre
-  // `plan-config.json` et rester invisible ici. L'app affirmait « aucun plan
-  // géoréférencé » alors que la vraie phrase est « je n'ai pas encore regardé ».
-  //
-  // ⚠️ POURQUOI ON NE VA PAS LIRE LES PLANS POUR LE SAVOIR : il faudrait ouvrir
-  // chaque ZIP, ou — pour un plan serveur — demander son `plan-config.json` au
-  // réseau. Autant de requêtes que de plans, au chargement de l'accueil, pour
-  // remplir un widget que l'utilisateur n'a peut-être pas regardé. On préfère
-  // dire la vérité sur ce qu'on sait.
-  //
-  // Trois situations, trois messages :
-  //   A. bibliothèque vide            → « commence par charger un plan »
+  // 🩸 « Aucun plan géoréférencé » peut être FAUX : `p.georef` du registre n'est écrit qu'au CHARGEMENT du plan
+  // (main.js > _propagerGeorefVersKmzExport). Un plan jamais ouvert peut être calé dans son plan-config et
+  // rester invisible ici.
+  // ⚠️ On ne va PAS lire les plans pour le savoir (ouvrir chaque ZIP, ou une requête par plan serveur, au
+  // chargement de l'accueil). On dit ce qu'on sait, en trois messages :
+  //   A. bibliothèque vide              → « commence par charger un plan »
   //   B. des plans, aucun jamais ouvert → « ouvre-les une fois »
-  //   C. des plans ouverts, aucun calé  → le message d'origine, + le compte
-  //      des plans jamais ouverts s'il en reste (leur calibration est inconnue,
-  //      pas absente : la nuance change ce que l'utilisateur doit faire)
+  //   C. des plans ouverts, aucun calé  → message d'origine + le compte des plans jamais ouverts (calibration
+  //      inconnue, pas absente)
   function _renderNoGeorefPlans(container) {
     const tous = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
       ? (window.PlanRegistry.getAll() || []) : [];
@@ -635,12 +465,9 @@
       '</div>';
   }
 
-  // =========================
-  // RENDU UI — Widget complet (carte)
-  // =========================
-  // 🗂️ 14/09/2026 — remet la pile à un seul plan : celui qu'on vient de
-  // quitter. Séparée de `mount` pour être EXÉCUTABLE par le garde-fou.
-  // Rend la pile obtenue (facilite le test et la lecture).
+  // ── Widget complet (carte) ──────────
+  // Remet la pile à un seul plan, celui qu'on vient de quitter. Séparée de `mount` pour être exécutable par
+  // le garde-fou ; rend la pile obtenue.
   function _reinitialiserPileAuRetour(planId) {
     _stackOrder.slice().forEach(function(id) {
       if (id === planId) return;
@@ -666,17 +493,12 @@
     const sel = plans.find(function(p) { return p.id === selectedId; }) || plans[0];
     const _prevPrimary = _selectedPlanId;
     _selectedPlanId = sel.id;
-    // 🐛 v1.72.2 (KARMA) — CAUSE RACINE de « pas d'opacité pour le 1er plan »
-    // et « tags du principal invisibles » : ce chemin initial ne passe PAS par
-    // selectPlan → le principal n'entrait jamais dans _stackOrder → pas de
-    // ligne ◉ dans la modale (donc pas de curseur), et _renderModalTags
-    // (qui agrège sur la pile) ne voyait pas ses tags.
-    // 🐛 14/09/2026 : et l'ANCIEN principal doit en sortir — même règle que
-    // selectPlan (cf _remplacerPrincipalDansPile). Le simple unshift laissait
-    // le plan quitté précédemment en fantôme inamovible au 2ᵉ retour home.
+    // 🩸 Ce chemin ne passe pas par selectPlan : le principal doit entrer dans _stackOrder (sinon ni curseur
+    // d'opacité ni tags dans la modale), et l'ANCIEN principal en sortir (sinon fantôme inamovible) — même
+    // règle que selectPlan.
     _remplacerPrincipalDansPile(_stackOrder, _prevPrimary, sel.id);
 
-    // HTML structure : bandeau (dropdown + ⛶) + mini-map + footer
+    // bandeau (liste + ⛶) + mini-carte + pied
     let optionsHtml = "";
     for (const p of plans) {
       const selected = (p.id === sel.id) ? " selected" : "";
@@ -691,33 +513,26 @@
         '<select id="ktaOsmHomePlanSelect" title="' + _escapeHtml(window.I18n.t("osm_home.select.title")) + '">' +
           optionsHtml +
         '</select>' +
-        // 🆕 v1.40.18 — Bouton "Ma position GPS" (1 fix ponctuel, 0 stockage)
+        // « 📍 Moi » : un fix ponctuel, rien stocké
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMyGpsBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.gps.btnTitle")) + '" ' +
                 'style="background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.4); color: #00d4ff;">' +
           '📍' +
         '</button>' +
-        // 🆕 v1.43.0 — Bouton "Cacher tuiles offline" (cache partagé avec
-        // Vue OSM modale + Mode Secours, store IDB unique myktamap_osm_tiles).
+        // cache hors ligne (partagé avec la modale Vue OSM et le Mode Secours, store IDB myktamap_osm_tiles)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCacheBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.cache.btnTitle")) + '" ' +
                 'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: #a6d785;">' +
           '💾' +
         '</button>' +
-        // 🎚️ v1.71.0 (retour KARMA « un icône Filtre → modale dédiée, comme en
-        // mode plan ») : toute la gestion multi-plans (priorités, opacités,
-        // filtres par plan) vit dans une MODALE — zéro emprise sur la carte.
-        // 📏 v1.83.0 — mesurer ici (demande KARMA). Une mesure faite en vue OSM
-        // ne dépend d'AUCUN calibrage : les coordonnées sont déjà des lat/lng.
-        // Elle est donc structurellement plus fiable qu'en mode plan, où une
-        // échelle fausse a donné 480 m pour 1 644 réels sur un relevé importé.
+        // Multi-plans (priorités, opacités, filtres par plan) : dans une MODALE, rien sur la carte.
+        // Mesure : en vue OSM elle ne dépend d'AUCUN calibrage (les coordonnées sont déjà des lat/lng), donc plus
+        // fiable qu'en mode plan où une échelle fausse fausse tout.
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMesureBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' +
           '📏' +
         '</button>' +
-        // 🎯 v1.85.0 — relever les coordonnees GPS de SURFACE d un point.
-        // Range a cote de la mesure : meme famille (des outils de lecture de
-        // la carte), et les deux arment le meme evenement `click`.
+        // relevé des coordonnées GPS de surface d'un point ; à côté de la mesure (même famille, même `click`)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCoordBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
           '🎯' +
@@ -732,61 +547,46 @@
           '⛶' +
         '</button>' +
       '</div>' +
-      // 🔎 v1.70.0 — MODE OSM lot 1 (topo KARMA 30/07, décisions 1:local 2:b 3:a) :
-      // recherche PROPRE à la vue OSM, visible UNIQUEMENT en mode OSM (fullscreen,
-      // CSS .kta-osm-home-fullscreen-active). Périmètre 100 % LOCAL : les plans
-      // géoréférencés de la liste + leurs POI (via _loadPlanDataForPreview, cache
-      // RAM) — AUCUNE recherche d'adresse, zéro requête réseau nouvelle.
+      // Recherche PROPRE au mode OSM (plein écran seulement, CSS .kta-osm-home-fullscreen-active). 100 % LOCALE :
+      // les plans géoréférencés et leurs POI (cache RAM) — aucune recherche d'adresse, aucune requête réseau.
       '<div class="kta-osm-home-search" id="ktaOsmHomeSearch">' +
         '<input type="search" id="ktaOsmHomeSearchInput" ' +
                'placeholder="' + _escapeHtml(window.I18n.t("osm_mode.search.placeholder")) + '" autocomplete="off">' +
         '<div class="kta-osm-home-search-results" id="ktaOsmHomeSearchResults" style="display:none;"></div>' +
       '</div>' +
 
-      // 🧹 v1.71.0 (retour KARMA « on a la main dans la modale ≡ ») : le
-      // wrapper collapsible (opacité + toggles + chips tags) est SUPPRIMÉ du
-      // widget — opacité PAR PLAN, filtres globaux et tags vivent dans la
-      // modale « 🎚️ Plans & filtres ». La carte gagne la hauteur libérée.
+      // opacité par plan, filtres globaux et tags vivent dans la modale « 🎚️ Plans & filtres »
       '<div class="kta-osm-home-map" id="ktaOsmHomeMap"></div>' +
       '<div class="kta-osm-home-footer">' +
         window.I18n.t("osm_home.footer.tiles") + ' ' +
-        // 🆕 v1.43.0 — Stats cache OSM offline (refresh dynamique)
+        // stats du cache hors ligne
         '<span id="ktaOsmHomeCacheStats" title="' + _escapeHtml(window.I18n.t("osm_home.cache.statsTitle")) + '">📦 …</span>' +
       '</div>';
 
-    // Bind dropdown
     const dropdown = container.querySelector("#ktaOsmHomePlanSelect");
     if (dropdown) {
       dropdown.addEventListener("change", function(e) {
         selectPlan(e.target.value);
       });
     }
-    // Bind full-screen button
     const fullBtn = container.querySelector("#ktaOsmHomeFullBtn");
     if (fullBtn) {
       fullBtn.addEventListener("click", openFullScreen);
     }
-    // 🔎 v1.70.0 — Recherche du mode OSM (bindings)
     _bindOsmSearch(container);
-    // 🔎 v1.78.0 (retour KARMA « fait passer à la ligne, même logique que le
-    // filtre de la liste de plans ») — la barre NE monte PLUS dans la ligne
-    // de titre (v1.71.0 annulée par volonté de cohérence) : elle reste là où
-    // le HTML la crée, en ligne PLEINE LARGEUR entre le bandeau et la carte.
-    // Visibilité inchangée (mode réduit ET plein écran). Purge défensive d'un
-    // exemplaire encore accroché au head par une version précédente (le head
-    // est HORS container, il survit aux re-renders du widget).
+    // La barre de recherche reste où le HTML la crée (pleine largeur entre bandeau et carte). Purge défensive
+    // d'un exemplaire accroché au head (hors container, il survit aux re-rendus du widget).
     (function _purgerRechercheDuHead() {
       const head = document.querySelector("#ktaOsmHomeBox .loader-section-head");
       const ancien = head && head.querySelector("#ktaOsmHomeSearch");
       if (ancien) ancien.remove();
     })();
-    // 🗂️ v1.71.0 — Panneau multi-plans : bind du sélecteur d'ajout + 1er render
+    // panneau multi-plans
     const filtresBtn = container.querySelector("#ktaOsmHomeFiltersBtn");
     if (filtresBtn) {
       filtresBtn.addEventListener("click", _ouvrirModalFiltresOsm);
     }
-    // 📏 v1.83.0 — bascule de l'outil de mesure. Le module se démonte de
-    // lui-même au second clic (`activer` appelle `desactiver` s'il est actif).
+    // chaque outil se démonte seul au second clic (`activer` appelle `desactiver`)
     const coordBtn = container.querySelector("#ktaOsmHomeCoordBtn");
     if (coordBtn) {
       coordBtn.addEventListener("click", function () {
@@ -799,30 +599,23 @@
         if (window.OsmMesure) window.OsmMesure.activer(_mapInstance);
       });
     }
-    // 🆕 v1.40.18 — Bouton "Ma position GPS"
     const myGpsBtn = container.querySelector("#ktaOsmHomeMyGpsBtn");
     if (myGpsBtn) {
       myGpsBtn.addEventListener("click", _showMyGpsPositionHome);
     }
-    // 🆕 v1.43.0 — Bouton "Cacher tuiles offline" + refresh stats
     const cacheBtn = container.querySelector("#ktaOsmHomeCacheBtn");
     if (cacheBtn) {
       cacheBtn.addEventListener("click", _runCacheTilesHome);
     }
     _refreshCacheStatsHome();
 
-    // 🧹 v1.71.0 : binds du wrapper collapsible retirés avec lui (🔼, slider
-    // d'opacité bandeau, 5 checkboxes) — équivalents dans la modale ≡.
-    // Init mini-carte Leaflet (différée pour laisser le DOM se peindre)
+    // mini-carte initialisée en différé (le DOM se peint d'abord)
     setTimeout(function() { _initMiniMap(sel.georef); }, 50);
 
-    // Persiste la sélection
     _saveLastSelected(sel.id);
   }
 
-  // =========================
-  // RENDU LEAFLET — Mini-carte
-  // =========================
+  // ── Mini-carte Leaflet ──────────
   function _initMiniMap(georef) {
     const mapDiv = document.getElementById("ktaOsmHomeMap");
     if (!mapDiv) return;
@@ -830,45 +623,39 @@
       console.warn("[OsmHomePreview] Leaflet indisponible, abandon init mini-map");
       return;
     }
-    // Cleanup ancienne instance si refresh
+    // refresh : nettoyage de l'ancienne instance
     if (_mapInstance) {
-      _retirerToutHiRes(); // 🔍 v1.77.0 — URLs hi-res éphémères, à révoquer ici
+      _retirerToutHiRes(); // URLs hi-res éphémères : révoquées ici
       try { _mapInstance.remove(); } catch(e) {}
       _mapInstance = null;
-      _panesParPlan = {};   // v1.72.2 : les panes appartiennent à la carte détruite
+      _panesParPlan = {};   // les panes appartiennent à la carte détruite
       _markerLayer = null;
-      // 🐛 14/09/2026 : les groupes des plans AJOUTÉS (« + ») appartenaient à
-      // la carte détruite — ils ne se ré-affichent pas. On les sort de la pile
-      // plutôt que de lister des plans qui ne sont plus rendus (fantômes). Le
-      // principal est re-posé par _renderWidget ; les plans ajoutés par « + »
-      // sont à re-choisir après un retour à l'accueil (les opacités sont
-      // gardées dans _extraOpacity pour un re-ajout).
+      // Les plans AJOUTÉS (« + ») appartenaient à la carte détruite : on les sort de la pile plutôt que de lister
+      // des fantômes. Le principal est reposé par _renderWidget ; les opacités restent dans _extraOpacity.
       Object.keys(_extraLayers).forEach(function(id) {
         delete _extraLayers[id];
         const iX = _stackOrder.indexOf(id);
         if (iX !== -1) _stackOrder.splice(iX, 1);
       });
-      _dataLayer   = null; // v1.40.4
-      _tilesLayer  = null; // v1.40.6
-      // 🆕 v1.40.12 — Reset sub-layers (parent _dataLayer recréé au render)
+      _dataLayer   = null;
+      _tilesLayer  = null;
       _poiSubLayer = null;
       _roadsSubLayer = null;
       _zonesSubLayer = null;
       _structSubLayer = null;
-      // 🆕 v1.40.18 — Reset marker GPS au refresh (instance map détruite)
+      // marker GPS : sa carte est détruite
       _myGpsMarkerHome = null;
       _myGpsAccuracyCircleHome = null;
-      // ⚠️ NE PAS revoke les blob URLs ici : elles sont dans _planDataCache
-      // et seront réutilisées si on re-mount le widget (perf). Revoke
-      // uniquement au unload page (auto).
+      // ⚠️ PAS de révocation des blob URLs : elles vivent dans _planDataCache et resservent au re-mount.
     }
 
     _mapInstance = L.map(mapDiv, {
       worldCopyJump: false,
-      attributionControl: false, // mention compacte via footer custom
-      zoomControl: true,
+      attributionControl: false, // mention compacte dans le pied du widget
+      zoomControl: false,   // boutons +/− selon le réglage (ktaBoutonsZoom)
       preferCanvas: true
     }).setView([46.5, 2.5], 5);
+    if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_mapInstance);
 
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,
@@ -877,33 +664,22 @@
     }).addTo(_mapInstance);
 
     _markerLayer = L.featureGroup().addTo(_mapInstance);
-    _tilesLayer  = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.6 (en premier = en dessous des data)
-    _dataLayer   = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.4 (au dessus des tuiles)
-    // 🔍 v1.77.0 — tuiles hi-res au zoom (débounce, cf bloc TUILES HI-RES)
+    _tilesLayer  = L.layerGroup().addTo(_mapInstance); // en premier = sous les données
+    _dataLayer   = L.layerGroup().addTo(_mapInstance);
+    // tuiles hi-res au zoom (débounce, cf section Tuiles hi-res)
     _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
-    // 📏 v1.83.0 — la largeur des fronts suit le zoom, comme en mode plan.
+    // largeur des fronts au zoom, comme en mode plan
     _mapInstance.on("zoomend", _majLargeurFrontsHome);
     _renderGeorefMarkers(georef);
-    // 🐛 v1.40.40-41 — KARMA : « les tuiles OSM ne se chargent pas au boot ».
-    // Cause racine : Leaflet calcule la taille du container AVANT que le DOM
-    // soit stable (HOME se rend progressivement, container `#ktaOsmHomeMap`
-    // pas encore dimensionné). v1.40.40 avait ajouté raf + setTimeout 250ms,
-    // suffisant sur PC mais PAS sur mobile (DOM lent, CSS différé, PWA cold
-    // cache → dimensions stables seulement après 500ms-1.5s).
-    //
-    // v1.40.41 — Mobile fix : combine 3 stratégies redondantes
-    //   1. requestAnimationFrame : tentative immédiate après le prochain paint
-    //   2. ResizeObserver : invalide CHAQUE fois que le container change de
-    //      dimensions (la vraie solution sémantique). Auto-disconnect après
-    //      3 invalidations ou 5 sec (évite leak Observer).
-    //   3. Multi-timeouts safety net : 100ms, 500ms, 1500ms — couvre tous les
-    //      cas où le ResizeObserver ne se déclenche pas (déjà stable mais
-    //      Leaflet avait raté son calcul initial à l'instanciation).
+    // 🩸 Leaflet mesure le conteneur AVANT que le DOM du HOME soit stable (rendu progressif ; sur mobile PWA à
+    // froid, dimensions stables après 0,5 à 1,5 s) : tuiles OSM jamais chargées. Trois filets redondants :
+    //   1. requestAnimationFrame après le prochain paint ;
+    //   2. ResizeObserver sur le conteneur (déconnecté après 3 invalidations ou 5 s) ;
+    //   3. timeouts de 100, 500 et 1500 ms si l'observer ne se déclenche pas.
     function _safeInvalidate() {
       if (!_mapInstance) return;
-      // 🐛 v1.46.4 — tant que le 1er cadrage n'a pas réussi (conteneur enfin
-      // dimensionné), on ré-essaie le fit ; une fois fait, simple invalidateSize
-      // (pas de re-cadrage → ne clobbe pas un déplacement utilisateur).
+      // tant que le 1er cadrage n'a pas réussi, on retente le fit ; ensuite simple invalidateSize (on ne
+      // reprend pas un déplacement de l'utilisateur)
       if (!_miniFitDone) { _fitToCurrentGeoref(); }
       else { try { _mapInstance.invalidateSize(); } catch(e) {} }
     }
@@ -911,8 +687,6 @@
     setTimeout(_safeInvalidate, 100);
     setTimeout(_safeInvalidate, 500);
     setTimeout(_safeInvalidate, 1500);
-    // ResizeObserver : réagit aux vrais changements de dimensions du container.
-    // Sémantiquement la solution la plus propre (vs polling aveugle).
     if (typeof ResizeObserver !== "undefined") {
       let nInvalidations = 0;
       const ro = new ResizeObserver(function() {
@@ -923,24 +697,21 @@
         }
       });
       try { ro.observe(mapDiv); } catch(_) {}
-      // Safety cleanup après 5 sec si l'observer continue de trigger.
+      // filet : déconnexion après 5 s
       setTimeout(function() { try { ro.disconnect(); } catch(_) {} }, 5000);
     }
-    // 🆕 v1.40.4 — Lance l'extraction ZIP partielle async pour les data
-    // embedded (POI/Roads/Zones/Structures). Si le ZIP est inaccessible
-    // (plan serveur, blob purgé…), le widget reste OK avec juste les
-    // markers georef (= comportement v1.40.0-3).
+    // Extraction partielle async du contenu du plan ; ZIP inaccessible → le widget reste utilisable sans calques.
     if (_selectedPlanId) {
       _loadPlanDataForPreview(_selectedPlanId).then(function(data) {
         if (!data) return;
-        // 🆕 v1.40.6 — Render tuiles V2 EN PREMIER (sous les data layers)
+        // tuiles V2 EN PREMIER (sous les calques)
         if (data.tilesOverview) _renderTilesOnMiniMap(data.tilesOverview, georef);
         _renderDataLayersOnMiniMap(data, georef);
         _majLargeurFrontsHome();
-        // 🎚️ v1.71.0 : les tags vivent dans la modale ≡ (guard si fermée)
+        // tags de la modale ≡ (no-op si fermée)
         _renderModalTags();
         _renderModalNiveaux();
-        _appliquerOrdre();   // 🗂️ v1.71.0 — renormalise les zIndex de la pile
+        _appliquerOrdre();   // renormalise les zIndex de la pile
         _appliquerVisibilites();
       });
     }
@@ -950,33 +721,19 @@
     if (!_mapInstance || !_isValidGeoref(georef)) return;
     if (_markerLayer) _markerLayer.clearLayers();
 
-    // 🆕 v1.40.24 — KARMA : « en OSM on a a l'affichage le calibrage point A
-    // point B en pointillé, je ne veux pas le voir a l'écran ». On supprime
-    // les 2 circle markers visuels + la polyline pointillée jaune qui
-    // chargeaient inutilement la mini-carte (les vraies data POI/Roads/Zones/
-    // Structures + tuiles V2 sont déjà rendues depuis v1.40.4-6). Le
-    // _markerLayer existe encore (= layerGroup vide) pour ne pas casser
-    // d'autres call-sites éventuels.
+    // Pas de marqueurs A / B du géoréf à l'écran (décision produit) ; _markerLayer reste, vide, pour les
+    // appelants éventuels.
 
-    // 🐛 v1.46.4 — nouveau plan (ou 1er rendu) → mémorise le georef + force un
-    // re-cadrage propre (invalidateSize avant fitBounds via _fitToCurrentGeoref).
+    // nouveau plan : mémorise le géoréf et force un recadrage propre
     _lastFitGeoref = georef;
     _miniFitDone   = false;
     _fitToCurrentGeoref();
   }
 
-  // 🐛 v1.46.4 — Cadrage robuste de la mini-carte (fix « les tuiles d'un plan ne
-  // se chargent qu'après avoir ouvert le fullscreen »). Cause racine : le
-  // fitBounds s'exécutait JUSTE après L.map(), avant que le conteneur
-  // #ktaOsmHomeMap ait sa taille (layout CSS pas stabilisé au boot) → Leaflet
-  // calculait zoom/center avec une taille 0 → tuiles jamais demandées pour la
-  // bonne zone. Les invalidateSize (raf/timeouts/ResizeObserver) arrivaient trop
-  // tard ET ne ré-exécutaient pas fitBounds → la vue restait fausse jusqu'à ce
-  // qu'un reflow (fullscreen) force enfin un recalcul.
-  // Fix : invalidateSize PUIS fitBounds, et UNIQUEMENT si le conteneur a une
-  // taille réelle (>0). Sinon on n'a rien cadré (_miniFitDone reste false) → les
-  // timeouts + ResizeObserver de _initMiniMap ré-essaient jusqu'à réussite. Une
-  // fois cadré, on ne re-fit plus (ne pas clobber un pan/zoom utilisateur).
+  // 🩸 Cadrage : invalidateSize PUIS fitBounds, et seulement si le conteneur a une taille réelle (> 0). Un
+  // fitBounds sur un conteneur de taille 0 calcule zoom et centre faux et aucune tuile de la bonne zone
+  // n'est demandée. Pas de taille → _miniFitDone reste false et les filets de _initMiniMap retentent.
+  // Une fois cadré, plus de re-fit (on ne reprend pas un pan / zoom de l'utilisateur).
   function _fitToCurrentGeoref() {
     if (!_mapInstance) return;
     try { _mapInstance.invalidateSize(false); } catch(e) {}
@@ -998,16 +755,12 @@
     }
   }
 
-  // =========================
-  // 🆕 v1.40.4 — EXTRACTION ZIP PARTIELLE (POI + Roads + Zones + Structures)
-  // =========================
+  // ── Extraction partielle du ZIP (POI, tracés, zones, structures) ──────────
 
-  // Récupère le File du ZIP d'un plan via FS handle (Chrome/Edge desktop)
-  // OU IDB blob (mobile/Firefox/Safari). Retourne null si pas dispo (plan
-  // serveur sans cache local, blob purgé, permission refusée…).
+  // File du ZIP : handle FS Access (Chrome / Edge PC) ou blob IDB (mobile, Firefox, Safari) ; null sinon
+  // (plan serveur sans copie locale, blob purgé, permission refusée).
   async function _getPlanZipFile(planId) {
     if (!window.PlanRegistry) return null;
-    // 1. Tentative FS Access handle
     try {
       const meta = await window.PlanRegistry.getHandle(planId);
       if (meta && meta.handle && typeof meta.handle.getFile === "function") {
@@ -1017,7 +770,6 @@
     } catch(e) {
       console.warn("[OsmHomePreview] FS handle échec :", e);
     }
-    // 2. Fallback IDB blob
     try {
       const blob = await window.PlanRegistry.getBlob(planId);
       if (blob) return blob;
@@ -1027,23 +779,10 @@
     return null;
   }
 
-  // Extraction partielle ZIP : plan-config.json + chaque dataLayer JSON.
-  // Cache RAM par planId. Returns null si extraction impossible.
-  // ══════════════════════════════════════════════════════════════════
-  // 🌐 v1.88.4 — CHARGEMENT D'UN PLAN **SERVEUR** POUR L'APERÇU
-  // ══════════════════════════════════════════════════════════════════
-  // 🩸 Constat KARMA : « le mode OSM HOME ne fonctionne pas sur un plan
-  // serveur, OK en mode plan ». Ce n'était pas une régression : tout
-  // `_loadPlanDataForPreview` passait par le ZIP (`PlanRegistry.getHandle()`
-  // ou `getBlob()`) — qu'un plan serveur n'a NI l'un NI l'autre. Le widget
-  // rendait donc, au mieux, les marqueurs de géoréf et rien d'autre.
-  //
-  // On reproduit ici la MÊME sortie `{ config, dataLayers, tilesOverview,
-  // iconUrls }`, mais en HTTP. Les chemins passent par `resolveServerPaths`,
-  // exactement comme au chargement réel — sinon l'aperçu et le mode plan
-  // divergeraient sur les mêmes fichiers.
-  // ⚠️ Les tuiles sont demandées à la racine **SONDÉE** (`ktaResoudreRacineTuiles`,
-  // tiling.js) : la deviner ferait rejouer ici le bug de la v1.88.3.
+  // Plan SERVEUR pour l'aperçu : même sortie `{ config, dataLayers, tilesOverview, iconUrls }` que la branche
+  // ZIP, mais en HTTP (un plan serveur n'a ni handle ni blob). Chemins via `resolveServerPaths`, comme au
+  // chargement réel, sinon aperçu et mode plan divergent sur les mêmes fichiers.
+  // 🩸 Tuiles demandées à la racine SONDÉE (tiling.js > ktaResoudreRacineTuiles) : jamais devinée.
   async function _loadPlanDataServeur(plan) {
     const dir = String((plan && plan.path) || "").replace(/\/+$/, "");
     if (!dir) return null;
@@ -1059,7 +798,7 @@
     if (typeof window.resolveServerPaths === "function") config = window.resolveServerPaths(config, dir);
     config._baseDir = dir;
 
-    // ── Calques de données ──
+    // ── calques de données ──
     const dataLayers = [];
     for (const layerCfg of (Array.isArray(config.dataLayers) ? config.dataLayers : [])) {
       if (!layerCfg || !layerCfg.file) continue;
@@ -1067,8 +806,7 @@
         const rr = await fetch(layerCfg.file);
         if (!rr.ok) { console.warn("[OsmHomePreview] calque HTTP " + rr.status + " :", layerCfg.file); continue; }
         const json = await rr.json();
-        // Mêmes clés que la branche ZIP (cf normaliserPoints) : `data` pour le
-        // format embarqué, `editorPoints` pour un export de session.
+        // mêmes clés que la branche ZIP (cf normaliserPoints) : `data` (embarqué), `editorPoints` (export de session)
         const poiArray = Array.isArray(json.data)         ? json.data
                        : Array.isArray(json.editorPoints) ? json.editorPoints
                        : Array.isArray(json.points)       ? json.points
@@ -1086,7 +824,7 @@
       }
     }
 
-    // ── Aperçu tuilé V2 ──
+    // ── aperçu tuilé V2 ──
     let tilesOverview = null;
     if (config.plan && config.plan.tiledV2 === true && config.tiling) {
       try {
@@ -1103,8 +841,7 @@
           const rows = Math.ceil(Math.ceil(planH / scale) / tileSize);
           const ext  = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
           const tiles = [];
-          // 🛟 Pas de blob URL ici : on pointe directement l'URL HTTP. Rien à
-          // révoquer, donc rien à fuir — et le Service Worker les met en cache.
+          // URL HTTP directe, pas de blob : rien à révoquer, le Service Worker les met en cache
           for (let col = 0; col < cols; col++) {
             for (let k = 1; k <= rows; k++) {
               tiles.push({ col: col, k: k, url: racine + "/z" + z + "/x" + col + "_y" + (-k) + "." + ext });
@@ -1117,9 +854,7 @@
       }
     }
 
-    // ── Icônes : déjà des URLs utilisables après resolveServerPaths ──
-    // (celles de l'app pointent la racine du site, les perso le dossier du
-    // plan — cf config.js > resoudreIconesPlanServeur). Rien à extraire.
+    // ── icônes : déjà des URLs après resolveServerPaths (config.js > resoudreIconesPlanServeur) ──
     const iconUrls = {};
     if (config.icons) {
       Object.keys(config.icons).forEach(function (tag) {
@@ -1136,14 +871,10 @@
   async function _loadPlanDataForPreview(planId) {
     if (_planDataCache[planId]) return _planDataCache[planId];
 
-    // 🌐 v1.89.0 — PLAN SERVEUR : pas de ZIP, on lit en HTTP.
-    // 🩸 Avant, la fonction sortait ici avec « ZIP non récupérable » (constat
-    // KARMA, console) : le widget n'affichait donc AUCUN calque pour un plan
-    // servi. Ce n'était pas une régression — le mode serveur n'avait jamais
-    // été câblé dans ce module, qui n'a aucun chemin HTTP.
+    // Plan SERVEUR : lecture HTTP (ce module n'a pas d'autre chemin pour lui).
     const _plan = (window.PlanRegistry && typeof window.PlanRegistry.findById === "function")
       ? window.PlanRegistry.findById(planId) : null;
-    if (_plan && _plan.type === "server" && !_plan.zip) {   // 📦 plan ZIP : sa copie gardée (plus bas)
+    if (_plan && _plan.type === "server" && !_plan.zip) {   // plan ZIP : sa copie gardée (plus bas)
       const dataSrv = await _loadPlanDataServeur(_plan);
       if (dataSrv) _planDataCache[planId] = dataSrv;
       return dataSrv;
@@ -1166,12 +897,12 @@
       if (!cfgEntry) { console.warn("[OsmHomePreview] plan-config.json absent"); return null; }
       const cfgText = await cfgEntry.async("string");
       const config  = JSON.parse(cfgText);
-      // 2. Pour chaque dataLayer : extract son JSON
+      // 2. le JSON de chaque dataLayer
       const dataLayers = [];
       if (config.dataLayers && Array.isArray(config.dataLayers)) {
         for (const layerCfg of config.dataLayers) {
           if (!layerCfg || !layerCfg.file) continue;
-          // Le chemin peut être absolu ou relatif à data/, on essaie les 2
+          // chemin absolu ou relatif à data/ : on essaie les deux
           const entry = zip.file(layerCfg.file)
                      || zip.file("data/" + layerCfg.file)
                      || zip.file(layerCfg.file.replace(/^\.?\//, ""));
@@ -1182,15 +913,8 @@
           try {
             const txt  = await entry.async("string");
             const json = JSON.parse(txt);
-            // 🐛 v1.40.5 — Le format réel des data layer JSON utilise les
-            // clés `data` ou `editorPoints` pour les POI (cf
-            // utils.js > normaliserPoints). v1.40.4 lisait `json.points`
-            // qui n'existait pas → 0 POI à chaque render. Cause racine :
-            // mauvaise hypothèse sur le format JSON.
-            //   - json.data         → format embedded standard (createConf.js)
-            //   - json.editorPoints → format mkmsession export (sessionExporter)
-            // Fallback `json.points` gardé par sécurité au cas où un plan
-            // 3rd party l'utiliserait.
+            // ⚠️ Les POI sont sous `data` (embarqué, createConf.js) ou `editorPoints` (export de session,
+            // sessionExporter) — cf utils.js > normaliserPoints ; `points` gardé en repli pour un plan tiers.
             const poiArray = Array.isArray(json.data)         ? json.data
                            : Array.isArray(json.editorPoints) ? json.editorPoints
                            : Array.isArray(json.points)       ? json.points
@@ -1208,26 +932,22 @@
           }
         }
       }
-      // 🆕 v1.40.6 — Extraction des tuiles V2 overview (z=minNativeZoom)
-      // si le plan est tuilé. Crée des blob URLs trackés pour cleanup.
-      // Skip silencieux si plan V1 (pas de tiledV2 dans le config).
+      // tuiles V2 d'aperçu (z = minNativeZoom) si le plan est tuilé ; blob URLs suivies. Plan V1 : rien.
       let tilesOverview = null;
       try {
         tilesOverview = await _extractV2TilesOverview(zip, config);
       } catch(e) {
         console.warn("[OsmHomePreview] tiles overview extraction échec :", e);
       }
-      // 🆕 v1.40.13 — Extraction des icônes POI (config.icons + TAGS_BUILTIN_HOME)
+      // icônes des POI (config.icons + catalogue built-in)
       let iconUrls = {};
       try {
         iconUrls = await _extractIcons(zip, config);
       } catch(e) {
         console.warn("[OsmHomePreview] icons extraction échec :", e);
       }
-      // 🔍 v1.77.0 — le handle JSZip est GARDÉ dans le cache pour les tuiles
-      // hi-res au zoom : loadAsync est lazy (central directory seul, le
-      // File/Blob sous-jacent est une référence) → coût RAM négligeable,
-      // et on évite de re-parser le ZIP à chaque changement de niveau.
+      // handle JSZip GARDÉ en cache pour les tuiles hi-res : loadAsync est paresseux (répertoire central seul,
+      // le File reste une référence), coût RAM négligeable, pas de re-parse à chaque niveau.
       const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls, zip: zip };
       _planDataCache[planId] = result;
       console.log("[OsmHomePreview] Plan data extrait (" + (Date.now() - tDebut) + " ms) — " +
@@ -1241,38 +961,16 @@
     }
   }
 
-  // 🆕 v1.40.13 — Extraction des icônes POI du ZIP.
-  // Source 1 : config.icons (mapping tag → fichier dans le ZIP, défini par
-  //            le user via le générateur)
-  // Source 2 : TAGS_BUILTIN_HOME (fallback pour les tags standard cataphile
-  //            non-overridés dans config.icons, mais dont le fichier
-  //            icon/<tag>.png est probablement présent dans le ZIP)
-  // Cache RAM via blob URLs trackés dans _iconBlobUrls.
-  // 🆕 v1.40.16 — Approche hybride suite diag KARMA v1.40.15 :
-  //
-  // Diagnostic v1.40.14/15 a montré que les chemins type "lib/leaflet/..."
-  // et "icon/house.png" sont des URLs relatives vers les **icônes de l'app**
-  // (servies par le serveur web), PAS des fichiers stockés dans le ZIP.
-  // Le générateur n'inclut dans le ZIP que les icônes **custom** uploadées
-  // par l'user (`iconFolder.file(name, ...)` cf createConf.js:2770).
-  //
-  // Stratégie v1.40.16 :
-  //   1. Si le chemin existe dans le ZIP → extract blob URL (custom user)
-  //   2. Sinon → utiliser le path tel quel comme URL relative (le browser
-  //      le résoudra vers `<origin>/<path>` qui est servi par le SW
-  //      MyKTAMap = icône app cachée)
-  //
-  // Avantages :
-  //   - Plus besoin d'inclure les icônes builtin dans chaque ZIP
-  //   - Cohérence stricte avec getIconUrlForPoint (utils.js:38) qui retourne
-  //     aussi des URLs relatives
-  //   - Cache SW déjà actif sur ces URLs → load instantané
+  // Icônes des POI : config.icons (tag → fichier, du Générateur), puis le catalogue built-in.
+  // ⚠️ Les chemins "icon/…" ou "lib/leaflet/…" sont des URLs de l'APPLI (servies et mises en cache par le
+  // SW), pas des fichiers du ZIP : le Générateur n'y met que les icônes personnalisées. Donc : chemin présent
+  // dans le ZIP → blob URL ; sinon URL relative telle quelle (comme getIconUrlForPoint).
   async function _extractIcons(zip, config) {
     const iconUrls = {};
     let nFromZip = 0, nFromApp = 0;
     async function _resolveIcon(tag, path) {
       if (!path) return;
-      // 1. Tentative extraction ZIP (icône custom user)
+      // 1. icône personnalisée dans le ZIP
       let entry = zip.file(path) || zip.file(path.replace(/^\.?\//, ""));
       if (!entry && path.includes("/")) {
         const filename = path.split("/").pop();
@@ -1288,26 +986,23 @@
           return;
         } catch(e) { /* fall through to URL relative */ }
       }
-      // 2. Fallback URL relative app : le browser résoudra vers <origin>/<path>
-      // (= icône MyKTAMap servie via SW, cachée donc instant)
+      // 2. sinon URL relative de l'appli (servie par le SW)
       iconUrls[tag] = path.replace(/^\.\//, "");
       nFromApp++;
     }
-    // 1. config.icons (priorité, peut overrider les builtins)
+    // 1. config.icons (prioritaire)
     if (config && config.icons && typeof config.icons === "object") {
       for (const tag in config.icons) {
         await _resolveIcon(tag, config.icons[tag]);
       }
     }
-    // 2. Catalogue built-in (fallback non-overridé). SOURCE UNIQUE =
-    //    `window._ktaBuiltinIconUrls` (map.js) ; la copie locale ne prend le
-    //    relais que si map.js n'est pas là. Voir le bandeau de TAGS_BUILTIN_HOME.
+    // 2. catalogue built-in : `window._ktaBuiltinIconUrls` (map.js), copie locale en repli seulement
     const CATALOGUE = window._ktaBuiltinIconUrls || TAGS_BUILTIN_HOME;
     for (const tag in CATALOGUE) {
-      if (iconUrls[tag]) continue; // déjà overridé par config.icons
+      if (iconUrls[tag]) continue;
       await _resolveIcon(tag, CATALOGUE[tag]);
     }
-    // 3. Default fallback Leaflet marker (au cas où POI sans tag)
+    // 3. repli : marker Leaflet (POI sans tag)
     if (!iconUrls.default) {
       iconUrls.default = "lib/leaflet/images/marker-icon.png";
     }
@@ -1315,13 +1010,12 @@
     return iconUrls;
   }
 
-  // Construit la projection plan→OSM via georef (KmzExport.buildTransform).
-  // Pattern identique à osmView.js > _buildProjection.
+  // Projection plan → OSM par le géoréf, comme osmView.js > _buildProjection.
   function _buildProjection(georef) {
     if (!georef || !window.KmzExport || typeof window.KmzExport.buildTransform !== "function") return null;
     let t;
     try {
-      t = window.KmzExport.buildTransformCalib(georef);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      t = window.KmzExport.buildTransformCalib(georef);   // pointC optionnel propagé (affine)
     } catch(e) { console.warn("[OsmHomePreview] buildTransform échec :", e); return null; }
     return {
       planToLatLng: function(x, y) {
@@ -1331,7 +1025,7 @@
     };
   }
 
-  // Projette un array de points {x,y} en latlngs OSM (skip silencieux les invalides).
+  // Points {x, y} → latlngs (invalides sautés).
   function _projectPoints(points, proj) {
     const out = [];
     for (const p of points) {
@@ -1342,37 +1036,15 @@
     return out;
   }
 
-  // Rendu des data layers embedded sur la mini-carte HOME.
-  // POI → L.circleMarker (perf > cohérence visuelle stricte, pas d'icônes images)
-  // Roads → L.polyline avec road.color
-  // Zones → L.polygon avec zone.color + fillColor
-  // Structures → polyline (fronts) ou polygon (mur/pilier)
-  // 🔧 v1.40.12 — Refactor : chaque catégorie va dans son propre sub-layerGroup
-  // pour permettre les toggles individuels via add/removeLayer. Pattern aligné
-  // sur osmView.js modale (5 layers indépendants par catégorie).
-  // =========================
-  // 📝 v1.81.0 — TRAVAIL DE SESSION EN VUE OSM
-  // =========================
-  // KARMA, 03/09 : « je ne vois pas mes points en OSM HOME » — ils étaient
-  // créés EN SESSION. La Vue OSM ne lisait que le ZIP (plan-config +
-  // dataLayers), donc tout le travail non exporté restait invisible. Le pire :
-  // la recherche cross-plan, elle, les trouvait déjà (`collectPointsForPlan`
-  // lit la session). Une carte qui n'affiche pas ce que la recherche trouve
-  // est indéfendable côté utilisateur.
-  //
-  // 🩸 POURQUOI LA LECTURE EST FAITE AU RENDU ET NON À L'EXTRACTION :
-  // `_planDataCache` n'est JAMAIS invalidé (il vit toute la durée de la page).
-  // Ranger la session dedans la figerait au premier affichage — on édite en
-  // mode plan, on revient au HOME, on voit l'état d'avant. Ici c'est un
-  // `getItem` + un `JSON.parse` par plan affiché : négligeable devant
-  // l'extraction ZIP, et toujours frais.
-  let _showSession = true;   // ON par défaut : c'est le travail en cours de
-                             // l'utilisateur, le masquer par défaut le ferait
-                             // chercher exactement comme aujourd'hui.
+  // ── Travail de session en Vue OSM ──────────
+  // Une carte qui n'affiche pas ce que la recherche trouve (collectPointsForPlan lit la session) est
+  // indéfendable : la session du plan s'ajoute comme calque virtuel.
+  // 🩸 Lue AU RENDU, pas à l'extraction : `_planDataCache` n'est jamais invalidé ; y ranger la session la
+  // figerait au premier affichage (édition en mode plan, retour HOME, état d'avant). Coût : un getItem + un
+  // JSON.parse par plan affiché.
+  let _showSession = true;   // ON par défaut : c'est le travail en cours de l'utilisateur
 
-  // Calque VIRTUEL bâti sur le slot de session du plan. `null` si rien.
-  // Le payload de SessionPersist porte déjà les 4 familles que la Vue OSM
-  // sait rendre, aux mêmes noms de champs — aucune conversion.
+  // Calque VIRTUEL bâti sur le slot de session du plan (null si vide) : mêmes 4 familles, mêmes champs.
   function _calqueSession(planId) {
     if (!_showSession || !planId) return null;
     if (!window.SessionPersist || typeof window.SessionPersist.getSaved !== "function") return null;
@@ -1388,31 +1060,18 @@
              points: pts, roads: rds, zones: zns, structures: strs };
   }
 
-  // LA liste de calques d'un plan = ceux du ZIP + celui de la session.
-  // Les 3 consommateurs de `dataLayers` passent par ici : le rendu, les chips
-  // de filtre par tag et l'index de recherche. En oublier un donnerait un
-  // point affiché dont le tag manque aux chips — donc masqué dès qu'un filtre
-  // est posé, sans que rien ne l'explique.
+  // 🩸 LA liste des calques d'un plan = ZIP + session. Le rendu, les chips de tags et l'index de recherche
+  // passent TOUS par ici : en oublier un masquerait un point dès qu'un filtre est posé, sans explication.
   function _tousCalques(data, planId) {
     const base = (data && Array.isArray(data.dataLayers)) ? data.dataLayers : [];
     const s = _calqueSession(planId);
     return s ? base.concat([s]) : base;
   }
 
-  // 📏 v1.83.0 — MÊME LOI QUE LE MODE PLAN ET QUE LA MODALE OSM.
-  //
-  // Le widget HOME empile PLUSIEURS plans et s'ouvre très dézoomé : c'est
-  // l'endroit où des traits de largeur fixe fusionnent le plus vite. Sa table
-  // de styles « light » posait 4 px pour un front — réglé à la main, donc juste
-  // à un seul zoom.
-  //
-  // La loi est formulée en pixels par mètre (structures.js) : la Vue OSM n'a
-  // pas d'échelle de plan, mais elle sait sa résolution Web Mercator, laquelle
-  // dépend de la LATITUDE autant que du zoom.
-  //
-  // On mute `options.weight` en place — le renderer canvas le relit à chaque
-  // frame — puis une repeinture NON CLIPPÉE. Aucun `setStyle` : le widget peut
-  // porter plusieurs relevés de plusieurs milliers d'objets.
+  // 🩸 Même loi de largeur des fronts qu'en mode plan et que la modale OSM, en pixels par mètre
+  // (structures.js) : le widget empile plusieurs plans et s'ouvre très dézoomé, une largeur fixe fusionne
+  // tout. Résolution Web Mercator (latitude + zoom) ; `options.weight` muté en place puis une repeinture
+  // NON CLIPPÉE. Pas de setStyle (plusieurs relevés de milliers d'objets).
   function _majLargeurFrontsHome() {
     if (!_mapInstance || typeof window.ktaPxParMetreOsm !== "function") return;
     const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
@@ -1423,14 +1082,12 @@
     const appliquer = function (grp, largeur) {
       if (!grp || typeof grp.eachLayer !== "function") return;
       grp.eachLayer(function (lay) {
-        // Les surfaces gardent leur trait : un pilier se lit à son
-        // remplissage, pas à l'épaisseur de son contour.
+        // les surfaces gardent leur trait : un pilier se lit à son remplissage
         if (!lay || !lay.options || lay.options.fill === true) return;
         lay.options.weight = largeur;
       });
     };
-    // Le plan principal ET chaque plan empilé : le widget est multi-plans,
-    // n'en traiter qu'un laisserait les autres en aplat.
+    // le principal ET chaque plan empilé (sinon les autres restent en aplat)
     appliquer(_dataLayer, w);
     Object.keys(_extraLayers || {}).forEach(function (id) {
       const g = _extraLayers[id];
@@ -1445,10 +1102,8 @@
   }
 
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
-    // 🗂️ v1.71.0 — PARAMÉTRÉ : sans `cible`, rend dans les groupes MODULE du
-    // plan principal (comportement historique, clear inclus). Avec `cible`
-    // ({data, poi, roads, zones, struct}), rend dans les groupes d'un plan
-    // AJOUTÉ de la pile multi-plans — les groupes module ne sont pas touchés.
+    // Sans `cible` : groupes du MODULE (plan principal, clear inclus). Avec `cible` ({data, poi, roads, zones,
+    // struct}) : groupes d'un plan AJOUTÉ de la pile ; ceux du module ne sont pas touchés.
     if (!_mapInstance) return;
     let dataL, poiL, roadsL, zonesL, structL;
     if (cible) {
@@ -1469,9 +1124,8 @@
     zonesL.clearLayers();
     structL.clearLayers();
     if (!data || !Array.isArray(data.dataLayers)) return;
-    // v1.72.2 — pane du plan : markers via `pane`, chemins SVG via `renderer`
-    // dédié au pane (un L.Path ignore `pane`, seul son renderer compte).
-    const planIdFx = planIdPourPane || _selectedPlanId; // 🎨 v1.77.0 — overrides par plan
+    // ⚠️ pane du plan : markers via `pane`, chemins SVG via un `renderer` dédié (un L.Path ignore `pane`)
+    const planIdFx = planIdPourPane || _selectedPlanId; // overrides par plan
     const paneCtx = _panePour(planIdFx);
     const optsPane = paneCtx ? { pane: paneCtx.nom } : {};
     const optsRendu = paneCtx ? { renderer: paneCtx.renderer } : {};
@@ -1479,11 +1133,11 @@
     if (!proj) { console.warn("[OsmHomePreview] proj indisponible, skip data render"); return; }
 
     let nPoi = 0, nRoad = 0, nZone = 0, nStruct = 0;
-    let nPoiWithIcon = 0, nPoiFallback = 0; // 🆕 v1.40.14 — diagnostic match icônes
-    const unmatchedTags = {}; // tag → count, pour identifier les tags sans icône
-    // v1.40.13 — Map des icônes du plan (tag → blob URL)
+    let nPoiWithIcon = 0, nPoiFallback = 0; // diagnostic des icônes
+    const unmatchedTags = {}; // tag → nombre, tags sans icône
+    // icônes du plan (tag → blob URL)
     const iconUrls = data.iconUrls || {};
-    // Cache des L.icon Leaflet pour éviter de recréer le même objet à chaque POI
+    // cache des L.icon
     const iconCache = {};
     function _getOrBuildIcon(tag) {
       if (iconCache[tag]) return iconCache[tag];
@@ -1498,29 +1152,22 @@
     }
 
     for (const layer of _tousCalques(data, planIdPourPane || _selectedPlanId)) {
-      // 🐛 v1.73.1 (KARMA « un datalayer généré invisible n'est pas affichable
-      // en Vue OSM ») : on ne skippe PLUS les calques `visible: false` du
-      // plan-config. Cette visibilité est un DÉFAUT D'AFFICHAGE du mode plan
-      // (retoggables via ⊞ Calques) — or la Vue OSM n'a aucun toggle par
-      // calque : les sauter les rendait INACCESSIBLES, tracés compris. Ici
-      // l'affichage est gouverné par les filtres existants (chips catégories
-      // globales + par plan, filtre tags). `layer.visible` reste parsé si un
-      // jour on veut des toggles par calque dans la modale ≡.
+      // 🩸 Les calques `visible: false` du plan-config ne sont PAS sautés : c'est un défaut d'affichage du mode
+      // plan (⊞ Calques), et la Vue OSM n'a pas de bascule par calque — les sauter les rendrait inaccessibles.
+      // Ici décident les filtres (catégories globales et par plan, tags).
 
-      // POI → poiL (v1.40.13 icônes natives + 🆕 v1.40.17 popup + filtre tag)
+      // POI : icônes natives, popup, filtres
       const isMultiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
       for (const p of layer.points) {
         if (typeof p.x !== "number" || typeof p.y !== "number") continue;
         const ll = proj.planToLatLng(p.x, p.y);
         if (!ll) continue;
         const tag  = (Array.isArray(p.tags) && p.tags[0]) || "default";
-        // 🆕 v1.40.17 — Filtre par tag (skip si tag pas dans le Set actif)
+        // filtres niveau et tag
         if (!_passeNiveau(p)) continue;
         if (_homeTagFilter && _homeTagFilter.size > 0 && !_homeTagFilter.has(tag)) continue;
         const icon = _getOrBuildIcon(tag) || _getOrBuildIcon("default");
-        // 🆕 v1.40.17 — Popup info : nom + tag + niveau (si M-LVL)
-        // 🆕 v1.40.25 — Description prééminente (au lieu du tag en ligne 2),
-        // tag réduit en petit subtle en dessous pour debug. Cohérent modale.
+        // popup : nom, description, puis tag en petit (et niveau en multi-niveau)
         const nom  = p.nom || p.label || p.name || window.I18n.t("osm_home.poi.noName");
         const lvl  = (typeof p.level === "number") ? p.level : 0;
         const lvlSfx = isMultiLevel ? window.I18n.t("osm_home.poi.levelSuffix", { lvl: lvl }) : '';
@@ -1532,9 +1179,7 @@
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvlSfx +
             '</span>' +
             (desc ? '<br><span style="color:#8892a4; font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
-            // 📝 v1.81.0 — dire d'où vient le point. La Vue OSM montre l'état
-            // ENREGISTRÉ des plans ; y mêler du travail non exporté sans le
-            // nommer créerait une confusion pire que son absence.
+            // le point de session est NOMMÉ comme tel : la Vue OSM montre l'état enregistré
             (layer.estSession
               ? '<br><span style="color:#f4c542; font-size:10.5px;">📝 ' +
                 _escapeHtml(window.I18n.t("osm_home.session.badge")) + '</span>'
@@ -1552,9 +1197,7 @@
           nPoiFallback++;
           unmatchedTags[tag] = (unmatchedTags[tag] || 0) + 1;
         }
-        // 🆕 v1.40.22 — autoPan + paddings : Leaflet déplace la map pour que
-        // la popup tienne dans la mini-carte (sinon clippée sur petit widget HOME).
-        // className "kta-osm-popup" pour appliquer le style charte dark.
+        // autoPan + marges : la popup tient dans la mini-carte
         marker.bindPopup(popupHtml, {
           closeButton: true,
           autoClose: true,
@@ -1568,11 +1211,7 @@
         nPoi++;
       }
 
-      // Roads → roadsL (🆕 v1.40.37 : cascade couleur complète via
-      // _resolveRoadColorHome — explicit r.color > built-in type > custom
-      // legend > fallback gris. KARMA : « la couleur des routes... doit
-      // persister ». Inclut les types custom (cust-*) définis dans
-      // LegendCustomization, à l'identique de la map principale.)
+      // tracés : couleur explicite > override du plan > type built-in > custom > gris (_resolveRoadColorHome)
       for (const r of layer.roads) {
         if (!_passeNiveau(r)) continue;
         if (!Array.isArray(r.points) || r.points.length < 2) continue;
@@ -1586,9 +1225,7 @@
         nRoad++;
       }
 
-      // Zones → zonesL (🆕 v1.40.37 : idem cascade couleur via
-      // _resolveZoneColorsHome — couleurs natives ZONE_STYLES respectées
-      // et custom legend persistée.)
+      // zones : même cascade (_resolveZoneColorsHome)
       for (const z of layer.zones) {
         if (!_passeNiveau(z)) continue;
         if (!Array.isArray(z.points) || z.points.length < 3) continue;
@@ -1603,14 +1240,13 @@
         nZone++;
       }
 
-      // Structures → structL (adaptatif polyline/polygon)
+      // structures : polyline (fronts) ou polygone
       for (const s of layer.structures) {
         if (!_passeNiveau(s)) continue;
         if (!Array.isArray(s.points)) continue;
         const style = _styleStructHome(s, planIdFx);
-        // 🎨 v1.77.0 — couleurs overridées PAR PLAN par-dessus la variante
-        // HOME locale (qui ne garde que weight/fillOpacity allégés). Fronts
-        // (polyline) : le trait ; piliers/murs : remplissage + bordure.
+        // couleurs d'override DU PLAN par-dessus la variante HOME (weight / fillOpacity allégés) : fronts = trait,
+        // piliers / murs = remplissage + bordure
         const fillOvS   = _couleurOverrideDe(planIdFx, "structures", s.type, "colors");
         const borderOvS = _couleurOverrideDe(planIdFx, "structures", s.type, "borders");
         if (style.isPolyline) {
@@ -1635,36 +1271,33 @@
         nStruct++;
       }
     }
-    // Add sub-layers selon les toggles utilisateur
+    // sous-couches selon les bascules
     if (_showPoi)        dataL.addLayer(poiL);
     if (_showRoads)      dataL.addLayer(roadsL);
     if (_showZones)      dataL.addLayer(zonesL);
     if (_showStructures) dataL.addLayer(structL);
     console.log("[OsmHomePreview] Data render :", nPoi, "POI ·", nRoad, "roads ·", nZone, "zones ·", nStruct, "struct");
-    // 🆕 v1.40.14 — Diagnostic icônes : combien matchent vs fallback + top tags non-matchés
+    // diagnostic des icônes : matchées / repli, tags sans icône
     if (nPoi > 0) {
       console.log("[OsmHomePreview] POI icônes : " + nPoiWithIcon + " avec icône · " + nPoiFallback + " fallback cercle");
       const unmatched = Object.keys(unmatchedTags);
       if (unmatched.length > 0) {
         const sorted = unmatched.sort(function(a, b) { return unmatchedTags[b] - unmatchedTags[a]; });
         const top    = sorted.slice(0, 10).map(function(t) { return t + "(" + unmatchedTags[t] + ")"; });
-        // 🆕 v1.40.15 — console.log au lieu de console.warn (idem extract)
         console.log("[OsmHomePreview] ⚠️ Tags POI sans icône : " + top.join(" · ") + (sorted.length > 10 ? " (+" + (sorted.length - 10) + ")" : ""));
       }
     }
   }
 
-  // 🆕 v1.40.12 — Toggles par catégorie (add/removeLayer du sub-group)
+  // bascule par catégorie (add / removeLayer du sous-groupe)
   function _montrer(parent, layer, on) {
     if (!parent || !layer) return;
     if (on) { if (!parent.hasLayer(layer)) parent.addLayer(layer); }
     else    { if  (parent.hasLayer(layer)) parent.removeLayer(layer); }
   }
 
-  // 🗂️ v1.71.0 (retour KARMA « je veux qu'on puisse filtrer comme on fait
-  // déjà ») — APPLICATEUR UNIQUE : visibilité effective d'une couche =
-  // toggle GLOBAL (bandeau) ET chip PAR PLAN (panneau 🗂️). Appelé par les
-  // toggles globaux, les chips, et après chaque rendu.
+  // APPLICATEUR UNIQUE : visibilité effective = bascule GLOBALE (bandeau) ET chip PAR PLAN (panneau 🗂️).
+  // Appelé par les bascules, les chips, et après chaque rendu.
   function _appliquerVisibilites() {
     if (!_mapInstance) return;
     const vP = _visDe(_selectedPlanId);
@@ -1683,7 +1316,7 @@
       _montrer(g.data, g.zones,  _showZones      && v.zones);
       _montrer(g.data, g.struct, _showStructures && v.struct);
     });
-    // 🔍 v1.77.0 — les groupes hi-res suivent le même régime que les tuiles.
+    // les groupes hi-res suivent les tuiles
     Object.keys(_hiRes).forEach(function(id) {
       const h = _hiRes[id];
       if (h && h.groupe) _montrer(_mapInstance, h.groupe, _showTiles && _visDe(id).tiles);
@@ -1696,9 +1329,8 @@
   function _toggleZones(visible)      { _showZones      = !!visible; _appliquerVisibilites(); }
   function _toggleStructures(visible) { _showStructures = !!visible; _appliquerVisibilites(); }
   function _togglePortails(visible)   { _showPortails   = !!visible; _renderPortails(); }
-  // 📝 v1.81.0 — bascule du travail de session. Un `_reRenderDataTous()` complet
-  // est nécessaire : le calque session traverse le rendu, les chips de tag et
-  // l'index de recherche.
+  // Bascule du travail de session : re-rendu COMPLET (_reRenderDataTous), le calque session traverse le
+  // rendu, les chips de tags et l'index de recherche.
   function _toggleSession(visible) {
     _showSession = !!visible;
     _reRenderDataTous();
@@ -1706,22 +1338,12 @@
     _renderModalNiveaux();
   }
 
-  // =========================
-  // 🌀 LIAISONS INTER-PLANS SUR OSM (dette D5, v1.81.0)
-  // =========================
-  // À quoi ça sert : les deux bouts d'un portail désignent LE MÊME endroit
-  // physique, vu depuis deux plans. Projetés sur OSM via le géoréf de leur plan
-  // respectif, ils devraient donc se superposer. L'écart qui apparaît est une
-  // mesure directe de la qualité du calage — et c'est le seul endroit de l'app
-  // où on peut le VOIR, puisqu'il faut deux géoréfs pour le révéler.
-  //
-  // Contrainte non négociable : les DEUX plans doivent être affichés ET
-  // géoréférencés. Sans le géoréf du plan d'en face, un des bouts n'est pas
-  // plaçable — on saute la liaison au lieu d'inventer une position.
-  //
-  // Pas de seuil de couleur volontairement : 20 m d'écart, c'est énorme sur une
-  // petite carrière et négligeable sur un réseau de 5 km. On affiche le chiffre,
-  // l'utilisateur juge avec son échelle en tête.
+  // ── Liaisons inter-plans sur OSM (contrôle du calage) ──────────
+  // Les deux bouts d'un portail désignent le MÊME lieu vu de deux plans : projetés chacun par son géoréf, ils
+  // devraient se superposer. L'écart mesure directement la qualité du calage.
+  // ⚠️ Les DEUX plans doivent être affichés ET géoréférencés, sinon la liaison est sautée (aucune position
+  // inventée). Pas de seuil de couleur (décision produit) : 20 m, c'est énorme ou négligeable selon le réseau ;
+  // on affiche le chiffre.
   function _plansAffichesAvecGeoref() {
     const out = {};
     const georefs = {};
@@ -1755,7 +1377,7 @@
     liens.forEach(function(lk) {
       if (!lk || !lk.a || !lk.b) return;
       const pa = projections[lk.a.planId], pb = projections[lk.b.planId];
-      if (!pa || !pb) return;   // au moins un des deux plans n'est pas affiché/géoréf
+      if (!pa || !pb) return;   // un des deux plans n'est pas affiché / géoréférencé
       const la = pa.planToLatLng(Number(lk.a.x) || 0, Number(lk.a.y) || 0);
       const lb = pb.planToLatLng(Number(lk.b.x) || 0, Number(lk.b.y) || 0);
       if (!la || !lb) return;
@@ -1773,7 +1395,7 @@
         '</div>'
       ).addTo(grp);
 
-      // Les deux bouts, pour voir LEQUEL est décalé (et pas seulement de combien).
+      // les deux bouts : on voit LEQUEL est décalé
       [la, lb].forEach(function(pt) {
         L.circleMarker(pt, {
           radius: 4, color: "#f4c542", weight: 2, fillColor: "#1a1f2e", fillOpacity: 1
@@ -1790,18 +1412,9 @@
                 " (les autres ont au moins un plan non affiché ou non géoréférencé)");
   }
 
-  // 📐 v1.81.0 (D5) — CONTRÔLE QUALITÉ DU CALAGE (arbitrage KARMA du 03/09)
-  //
-  // Pourquoi une LISTE et pas seulement le calque : deux portails bien calés
-  // se superposent, donc la polyligne est de longueur nulle et le calque ne
-  // montre RIEN dans le cas nominal. Un outil dont le cas nominal est
-  // invisible se lit mal — l'utilisateur ne sait pas s'il fonctionne. La
-  // liste, elle, répond directement à « mes géoréfs sont-ils bons ? » : elle
-  // affiche le compte mesuré et classe du PIRE au meilleur, donc ce qui
-  // mérite un recalage est en première ligne.
-  //
-  // L'écart vient de `InterPlanLinks.ecartCalage` — fonction UNIQUE, jamais
-  // recopiée ici (leçon du bug des icônes portail du 02/09).
+  // Liste de contrôle du calage : deux portails bien calés se superposent (polyligne de longueur nulle), le
+  // calque ne montre rien dans le cas nominal. La liste donne le compte mesuré, du PIRE au meilleur.
+  // ⚠️ L'écart vient de InterPlanLinks.ecartCalage (fonction UNIQUE, jamais recopiée).
   function _renderPortailsQualite() {
     const cont = document.getElementById("ktaOsmPortailsQualite");
     if (!cont) return;
@@ -1814,9 +1427,7 @@
     try { liens = window.InterPlanLinks.getAllLinks() || []; } catch(e) { liens = []; }
     const affiches = _plansAffichesAvecGeoref();
 
-    // Mesurables = les deux plans AFFICHÉS dans la pile et géoréférencés.
-    // On ne liste pas les autres : un écart qu'on ne peut pas montrer sur la
-    // carte devant soi n'aide personne — il se lit dans 🌀 Mes liaisons.
+    // mesurables = les deux plans affichés dans la pile et géoréférencés (les autres : 🌀 Mes liaisons)
     const mesures = [];
     liens.forEach(function(lk) {
       if (!lk || !lk.a || !lk.b) return;
@@ -1849,9 +1460,7 @@
                '</button>';
       }).join("");
 
-    // Clic → on cadre les DEUX bouts. `fitBounds` plutôt qu'un centrage sur le
-    // milieu : avec un gros écart, se poser au milieu laisse les deux bouts
-    // hors champ — exactement les deux choses qu'on voulait voir.
+    // clic → fitBounds sur les DEUX bouts (centrer sur le milieu d'un gros écart les laisserait hors champ)
     cont.querySelectorAll("[data-q]").forEach(function(btn) {
       btn.addEventListener("click", function() {
         const e = mesures[parseInt(btn.getAttribute("data-q"), 10)];
@@ -1868,8 +1477,7 @@
     });
   }
 
-  // 🆕 v1.40.21 — Bbox GPS du plan sélectionné (4 coins projetés via la georef).
-  // Utilisée pour le garde-fou "GPS hors champ du plan" du bouton 📍 widget HOME.
+  // Bbox GPS du plan sélectionné (4 coins projetés), pour le garde « GPS hors champ » du bouton 📍.
   function _getPlanGpsBboxHome() {
     if (!_selectedPlanId) return null;
     const data = _planDataCache[_selectedPlanId];
@@ -1904,9 +1512,7 @@
     return 2 * R * Math.asin(Math.sqrt(a));
   }
 
-  // 🆕 v1.40.18 — Fix GPS ponctuel sur le widget HOME (1 clic = 1 fix).
-  // Browser API native, 0 stockage, 0 réseau, permission OS demandée à la demande.
-  // Garde runtime incognito (parité OsmView).
+  // « 📍 Moi » : un fix par clic, rien stocké, permission demandée au clic ; garde incognito comme OsmView.
   function _showMyGpsPositionHome() {
     if (!_mapInstance) return;
     if (_isIncognitoOn()) {
@@ -1927,8 +1533,7 @@
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const acc = pos.coords.accuracy || 0;
-        // 🆕 v1.40.21 — Garde-fou "hors champ du plan" : refus si fix GPS très
-        // loin du plan sélectionné (>50% au-delà de la bbox plan). UX + privacy.
+        // 🔒 fix à plus de 50 % au-delà de la bbox du plan sélectionné : refusé
         const bbox = _getPlanGpsBboxHome();
         if (bbox) {
           const padded = bbox.pad(0.5);
@@ -1990,11 +1595,8 @@
     );
   }
 
-  // 🆕 v1.40.17 — Énumération des tags présents dans les data layers
-  // (avec compteur de POI par tag pour tri par fréquence).
-  // Niveaux réellement présents dans un plan, toutes familles confondues.
-  // Sert à ne proposer que des chips qui montrent quelque chose : un niveau
-  // vide dans la liste ferait croire à un bug d'affichage quand on le coche.
+  // Niveaux réellement présents dans un plan, toutes familles confondues : un chip de niveau vide ferait
+  // croire à un bug d'affichage.
   function _collectNiveaux(data, planId) {
     const set = new Set();
     _tousCalques(data, planId).forEach(function (layer) {
@@ -2018,11 +1620,6 @@
     return counts;
   }
 
-  // Rendu de la ligne de chips tag (filtre par tag) dans le bandeau.
-  // Click → toggle in/out du Set _homeTagFilter + re-render data layers.
-  // 🧹 v1.71.0 : _renderTagChips (chips tags du widget) SUPPRIMÉE — le
-  // conteneur #ktaOsmHomeTagChips n'existe plus, les tags vivent dans la
-  // modale ≡ (_renderModalTags, agrégés sur toute la pile).
 
   function _chooseTileLevelForHome(tiling, planW, planH) {
     const MAX_TILES_HOME = 80;
@@ -2033,17 +1630,14 @@
       const rows = Math.ceil(Math.ceil(planH / scale) / tileSize);
       if (cols * rows <= MAX_TILES_HOME) return z;
     }
-    return tiling.minNativeZoom; // fallback safety
+    return tiling.minNativeZoom; // filet
   }
 
-  // Extrait les tuiles V2 du niveau adaptatif (cf _chooseTileLevelForHome).
-  // Skip silencieux si plan V1 (pas de tiledV2). Crée des blob URLs trackés
-  // pour cleanup au close(). Format identique à osmView.js > _renderTilesV2OnOsm.
+  // Tuiles V2 du niveau adaptatif (_chooseTileLevelForHome) en blob URLs ; plan V1 : rien.
   async function _extractV2TilesOverview(zip, config) {
     if (!config.plan || config.plan.tiledV2 !== true || !config.tiling) return null;
     const planW    = config.plan.imageWidth  || 1;
     const planH    = config.plan.imageHeight || 1;
-    // 🆕 v1.40.7 — Niveau adaptatif (au lieu de minNativeZoom fixe v1.40.6)
     const z        = _chooseTileLevelForHome(config.tiling, planW, planH);
     const scale    = Math.pow(2, -z);
     const tileSize = config.tiling.tileSize || 512;
@@ -2053,15 +1647,10 @@
     const rows = Math.ceil(lvlH / tileSize);
 
     const tiles = [];
-    // ⚠️ v1.77.0 (réparation du fix code-mort du 09/08) — PAS de révocation
-    // ici : les blob URLs baseline vivent avec _planDataCache (design v1.71.0,
-    // « un plan retiré puis re-ajouté est gratuit »). La révocation ajoutée
-    // par l'audit cassait le multi-plans : charger un plan B révoquait les
-    // URLs du plan A encore AFFICHÉ, et le cache de A gardait des URLs mortes
-    // pour toute la session. Le cache borne déjà l'extraction à 1×/plan — il
-    // n'y avait pas de fuite. Les tuiles HI-RES (zoom), elles, sont éphémères
-    // et révoquées à chaque swap (cf bloc TUILES HI-RES plus bas).
-    // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
+    // 🩸 PAS de révocation : les blob URLs de la vue d'ensemble vivent avec _planDataCache (re-ajout d'un plan
+    // gratuit). Révoquer au chargement d'un plan B tuerait les URLs du plan A encore AFFICHÉ. Le cache borne
+    // déjà l'extraction à une fois par plan. Les tuiles HI-RES, elles, sont révoquées à chaque swap.
+    // Extension d'après le manifest (webp/png = alpha, jpg = ancien).
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
     for (let col = 0; col < cols; col++) {
       for (let k = 1; k <= rows; k++) {
@@ -2083,18 +1672,11 @@
     return { tiles: tiles, planW: planW, planH: planH, z: z, scale: scale, tileSize: tileSize };
   }
 
-  // Render des tuiles V2 sur la mini-carte via L.imageOverlay.rotated.
-  // Pattern identique à osmView.js > _renderTilesV2OnOsm — convention CRS.Simple
-  // pour le flip Y (k=1 = tuile la plus basse = sud).
-  // 🗂️ v1.71.0 — Cœur PARAMÉTRÉ (multi-plans) : rend les tuiles d'UN plan dans
-  // le groupe fourni, avec SON opacité et SON zIndex de pile. Le wrapper
-  // historique (plan principal) et les plans ajoutés passent tous par ici.
-  // 🫥 08/10/2026 — OPACITÉ D'UN PLAN SUR UN CALQUE, PLUS TUILE PAR TUILE (retour KARMA : rectangle plus
-  // sombre au milieu du plan). La vue d'ensemble (tout le plan) et les tuiles nettes de la zone visible
-  // (hi-res) se superposent PAR CONSTRUCTION : à 50 % chacune, la zone visible sortait à ~75 %. Toutes les
-  // tuiles d'un plan vont dans un sous-calque de son pane, opaques ; l'opacité choisie est posée sur ce
-  // sous-calque : la hi-res recouvre la vue d'ensemble sans s'y ajouter. zIndex -1 : sous les tracés du
-  // plan (même pane, renderer SVG).
+  // Tuiles V2 d'UN plan dans le groupe fourni, avec SON opacité et SON zIndex de pile (principal et plans
+  // ajoutés), comme osmView.js (flip Y de CRS.Simple : k = 1 = tuile la plus basse, au sud).
+  // 🩸 Opacité sur un SOUS-CALQUE du pane du plan, pas tuile par tuile : la vue d'ensemble et les tuiles
+  // hi-res se superposent par construction (50 % + 50 % ≈ 75 %, rectangle plus sombre). Tuiles opaques,
+  // opacité sur le sous-calque, sous les tracés du plan (même pane, renderer SVG).
   function _paneTuiles(paneNom, op) {
     if (!_mapInstance || !paneNom) return null;
     const nom = paneNom + "_tuiles";
@@ -2103,10 +1685,9 @@
       const parent = _mapInstance.getPane(paneNom);
       if (!parent) return null;
       pane = _mapInstance.createPane(nom, parent);
-      // 🩸 12/10/2026 (iPhone, vidéo KARMA : le plan disparaît PENDANT le glissé, revient à la fin) — plus de
-      // z-index NÉGATIF : Safari iOS repeignait ce sous-calque derrière le fond OSM tant que la carte bougeait.
-      // Il passe en PREMIER enfant (sous les tracés du plan par l'ordre du DOM) et a sa propre couche de
-      // composition (translateZ + will-change), le remède connu au clignotement d'un calque semi-transparent.
+      // 🩸 Pas de z-index NÉGATIF : Safari iOS repeint ce sous-calque derrière le fond OSM pendant que la carte
+      // bouge. Premier enfant (sous les tracés par l'ordre du DOM) + couche de composition propre
+      // (translateZ + will-change), le remède au clignotement d'un calque semi-transparent.
       parent.insertBefore(pane, parent.firstChild);
       pane.style.transform = "translateZ(0)";
       pane.style.willChange = "opacity";
@@ -2114,7 +1695,7 @@
     if (op != null) pane.style.opacity = String(op);
     return nom;
   }
-  // Opacité des tuiles d'un plan : posée sur son sous-calque. false = pas de calque (ancien chemin).
+  // Opacité des tuiles d'un plan, posée sur son sous-calque ; false = pas de sous-calque.
   function _opaciteTuilesPlan(planId, op) {
     const e = _panesParPlan[planId];
     if (!e || e.map !== _mapInstance) return false;
@@ -2139,8 +1720,7 @@
     const pTuiles = _paneTuiles(paneNom, opacite);
     let rendered = 0;
     for (const t of tilesData.tiles) {
-      // Bounds pixel dans le plan source (top-left origin pour Y)
-      // Convention CRS.Simple : k=1 = tuile la plus basse → flip Y :
+      // bounds pixel dans le plan source ; CRS.Simple : k = 1 = tuile la plus basse → flip Y
       const pxLeft   = t.col * tileSize * scale;
       const pxRight  = (t.col + 1) * tileSize * scale;
       const pxTop    = planH - t.k * tileSize * scale;
@@ -2157,7 +1737,7 @@
           opacity: pTuiles ? 1 : opacite,
           zIndex: zIndex
         }, pTuiles ? { pane: pTuiles } : (paneNom ? { pane: paneNom } : {})));
-        // Remplissage noir des tuiles de bord masqué (07/10/2026).
+        // masque le remplissage noir des tuiles de bord
         if (window.ktaRognerTuile) window.ktaRognerTuile(overlay, window.ktaRemplissageTuile(tilesData.planW, planH, tileSize, scale, t.col, t.k));
         overlay.addTo(groupe);
         rendered++;
@@ -2176,12 +1756,11 @@
                      _zIndexPour(_selectedPlanId), pn ? pn.nom : null);
   }
 
-  // Met à jour l'opacité des tuiles plan (slider bandeau).
-  // N'affecte pas les data layers (qui ont leur propre fillOpacity native).
+  // Opacité des tuiles du plan principal ; les calques gardent leur fillOpacity.
   function _setPlanOpacity(opacity) {
     _planOpacity = Math.max(0, Math.min(1, opacity));
-    _appliquerOpaciteHiRes(_selectedPlanId, _planOpacity); // 🔍 v1.77.0
-    if (_opaciteTuilesPlan(_selectedPlanId, _planOpacity)) return;   // calque : tuiles opaques
+    _appliquerOpaciteHiRes(_selectedPlanId, _planOpacity);
+    if (_opaciteTuilesPlan(_selectedPlanId, _planOpacity)) return;   // sous-calque : tuiles opaques
     if (!_tilesLayer) return;
     _tilesLayer.eachLayer(function(l) {
       try {
@@ -2191,26 +1770,18 @@
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // 🔍 v1.77.0 — TUILES HI-RES AU ZOOM (bug KARMA « un plan X est très flou
-  // si je zoome dans le widget HOME, alors qu'il est lisible en OSM plan »)
-  // ═══════════════════════════════════════════════════════════
-  // Le baseline (≤80 tuiles, _chooseTileLevelForHome) reste le socle affiché
-  // en permanence — sur un gros plan c'est un niveau très réduit, d'où le
-  // flou. Au zoomend/moveend (débounce 300 ms) : pour chaque plan V2 visible,
-  // on calcule le niveau adapté à la taille ÉCRAN du plan, on extrait du ZIP
-  // (gardé lazy dans _planDataCache) les seules tuiles de ce niveau qui
-  // intersectent le viewport (budget 60/plan, sinon on redescend d'un cran),
-  // rendues AU-DESSUS du baseline (même pane, zIndex+1 → pas de trou pendant
-  // le chargement). Au pan à niveau constant : delta (tuiles communes
-  // réutilisées, sorties révoquées). Retour à un zoom où le baseline suffit
-  // → groupe retiré + URLs révoquées. Miroir frugal de osmView.js > zoomend
-  // → _renderLevel, qui explique l'écart de netteté constaté par KARMA.
-  const HIRES_BUDGET_TUILES = 60;   // par plan — ~15 Mo décodés à 512px
+  // ── Tuiles hi-res au zoom ──────────
+  // La vue d'ensemble (≤ 80 tuiles) reste le socle ; sur un gros plan elle est floue de près. Au
+  // zoomend / moveend (débounce 300 ms), pour chaque plan V2 visible : niveau adapté à la taille ÉCRAN du
+  // plan, extraction (ZIP gardé en cache) des seules tuiles qui coupent la vue (60 par plan, sinon un cran de
+  // moins), posées AU-DESSUS du socle (même pane, zIndex + 1 : pas de trou pendant le chargement). Pan à
+  // niveau constant : delta (tuiles communes gardées, sorties révoquées). Zoom où le socle suffit → groupe
+  // retiré, URLs révoquées. Version frugale de osmView.js > _renderLevel.
+  const HIRES_BUDGET_TUILES = 60;   // par plan, ~15 Mo décodés en 512 px
   const HIRES_DEBOUNCE_MS   = 300;
   let _hiRes      = {};    // planId → { z, tuiles: {"col_k": {url, overlay}}, groupe }
   let _hiResTimer = null;
-  let _hiResBusy  = false; // extraction async en cours → on re-planifie au lieu d'empiler
+  let _hiResBusy  = false; // extraction en cours : on replanifie au lieu d'empiler
   let _hiResRedo  = false;
 
   function _opaciteDe(planId) {
@@ -2241,9 +1812,8 @@
     }, HIRES_DEBOUNCE_MS);
   }
 
-  // Tuiles du niveau z qui intersectent la vue (bounds GPS avec marge).
-  // Même convention que _renderTilesInto : k=1 = tuile la plus basse (sud),
-  // tuiles de bord PLEINES (padding au-dessus du plan) → pas de clamp.
+  // Tuiles du niveau z qui coupent la vue (bounds GPS avec marge). k = 1 = tuile la plus basse ; tuiles de
+  // bord PLEINES (padding au-dessus du plan) : pas de clamp.
   function _tuilesVisiblesPour(z, scale, planW, planH, tileSize, proj, vue) {
     const lvlW = Math.ceil(planW / scale), lvlH = Math.ceil(planH / scale);
     const cols = Math.ceil(lvlW / tileSize), rows = Math.ceil(lvlH / tileSize);
@@ -2281,7 +1851,7 @@
         try { await _majHiResPlan(id, georefs[id]); }
         catch(e) { console.warn("[OsmHomePreview] hi-res échec plan " + id + " :", e); }
       }
-      // Plans sortis de la pile depuis le dernier passage → purge
+      // plans sortis de la pile depuis le dernier passage : purge
       Object.keys(_hiRes).forEach(function(id) { if (!vus[id]) _retirerHiRes(id); });
     } finally {
       _hiResBusy = false;
@@ -2301,37 +1871,37 @@
     const planW    = tv.planW, planH = tv.planH;
     const tileSize = tv.tileSize;
 
-    // Taille ÉCRAN du plan : distance px entre ses coins bas projetés.
+    // taille ÉCRAN du plan : distance en px entre ses coins bas projetés
     const bg = proj.planToLatLng(0, planH), bd = proj.planToLatLng(planW, planH);
     if (!bg || !bd) { _retirerHiRes(planId); return; }
     const pG = _mapInstance.latLngToContainerPoint(bg);
     const pD = _mapInstance.latLngToContainerPoint(bd);
     const ecranW = Math.hypot(pD.x - pG.x, pD.y - pG.y);
 
-    // Baseline déjà net (≥ 1 px de tuile par px écran) → pas de hi-res.
+    // socle déjà net (≥ 1 px de tuile par px écran) : pas de hi-res
     if (planW / Math.pow(2, -tv.z) >= ecranW) { _retirerHiRes(planId); return; }
 
-    // Niveau idéal = le plus GROSSIER qui couvre la largeur écran.
+    // niveau idéal = le plus GROSSIER qui couvre la largeur écran
     let zCible = tiling.maxNativeZoom;
     for (let z = tv.z + 1; z <= tiling.maxNativeZoom; z++) {
       if (planW / Math.pow(2, -z) >= ecranW) { zCible = z; break; }
     }
 
-    // Budget : si trop de tuiles dans la vue, on redescend d'un cran.
+    // budget dépassé dans la vue : un cran de moins
     const vue = _mapInstance.getBounds().pad(0.15);
     let choix = null;
     for (let z = zCible; z > tv.z; z--) {
       const scale = Math.pow(2, -z);
       const t = _tuilesVisiblesPour(z, scale, planW, planH, tileSize, proj, vue);
-      if (t.length === 0) break;                      // plan hors viewport
+      if (t.length === 0) break;                      // plan hors de la vue
       if (t.length <= HIRES_BUDGET_TUILES) { choix = { z: z, scale: scale, tuiles: t }; break; }
     }
     if (!choix) { _retirerHiRes(planId); return; }
 
-    // Delta vs état courant : même niveau → réutiliser les tuiles communes.
+    // delta : même niveau → tuiles communes réutilisées
     const h        = _hiRes[planId];
     const memeZ    = !!(h && h.z === choix.z);
-    if (h && !memeZ) _retirerHiRes(planId);           // swap de niveau → purge
+    if (h && !memeZ) _retirerHiRes(planId);           // changement de niveau : purge
     const ancien   = memeZ ? h.tuiles : {};
     const groupe   = (memeZ && h.groupe) ? h.groupe : L.layerGroup();
     if (!_mapInstance.hasLayer(groupe)) groupe.addTo(_mapInstance);
@@ -2342,9 +1912,8 @@
     const pT   = pn ? _paneTuiles(pn.nom, op) : null;   // même sous-calque que la vue d'ensemble
     const ext  = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
     const nouvelles = {};
-    // Garde anti-race : si la carte est détruite/recréée pendant un await
-    // (refresh widget), on abandonne SANS poser l'état — sinon on recréerait
-    // une entrée _hiRes orpheline avec des URLs jamais révoquées.
+    // 🩸 carte détruite / recréée pendant un await (refresh du widget) : abandon SANS poser d'état, sinon une
+    // entrée _hiRes orpheline garderait des URLs jamais révoquées
     const carte = _mapInstance;
 
     for (const t of choix.tuiles) {
@@ -2379,7 +1948,7 @@
       });
       return;
     }
-    // Tuiles sorties du viewport (même niveau) : overlay retiré + URL révoquée.
+    // tuiles sorties de la vue (même niveau) : overlay retiré, URL révoquée
     Object.keys(ancien).forEach(function(cle) {
       try { groupe.removeLayer(ancien[cle].overlay); } catch(e) {}
       try { URL.revokeObjectURL(ancien[cle].url); } catch(e) {}
@@ -2390,7 +1959,7 @@
   }
 
   function _appliquerOpaciteHiRes(planId, op) {
-    if (_opaciteTuilesPlan(planId, op)) return;   // calque : tuiles opaques
+    if (_opaciteTuilesPlan(planId, op)) return;   // sous-calque : tuiles opaques
     const h = _hiRes[planId];
     if (!h || !h.groupe) return;
     h.groupe.eachLayer(function(l) {
@@ -2401,33 +1970,16 @@
     });
   }
 
-  // =========================
-  // 🆕 v1.40.2 — TOGGLE PLEIN ÉCRAN INLINE
-  // =========================
-  // Refonte sémantique : ⛶ N'OUVRE PLUS la modale OsmView (= ne bascule
-  // pas en map mode). À la place : agrandit la mini-carte HOME en overlay
-  // plein-viewport via toggle de classe CSS sur #ktaOsmHomeBox.
-  // Avantages : flow simple, marche dans tous les cas, pas de hook fragile.
-  //
-  // L'ancien flow (sessionStorage + simulation clic + auto-open) est retiré
-  // car les sélecteurs HTML étaient faux (data-plan-id n'existe pas, le
-  // HTML utilise data-id, et la classe est .plan-row-load pas .plan-row-load-btn).
-  // ═══════════════════════════════════════════════════════════
-  // 🗂️ v1.71.0 — PILE MULTI-PLANS (lot 2 : croisement de données OSM)
-  // ═══════════════════════════════════════════════════════════
-  // Cas d'usage KARMA : plusieurs relevés voisins + galeries techniques d'une ville
-  // sur la même carte, avec ordre d'affichage et opacité PAR PLAN.
-  // Le plan sélectionné (dropdown) reste le « principal » ; les autres sont
-  // ajoutés via le panneau 🗂️ (fullscreen uniquement, comme la recherche).
-
-  // 🐛 v1.72.2 (KARMA « une image du plan A cache les tracés du plan B ») —
-  // les zIndex d'imageOverlay n'ordonnent QUE les images : tous les tracés
-  // SVG partagent un renderer unique dans l'overlayPane, hors de portée.
-  // Fix structurel : UN PANE LEAFLET PAR PLAN (zIndex posé sur le pane),
-  // et TOUT le contenu du plan (tuiles + tracés + POI) rendu dedans →
-  // l'ordre de pile devient global, vecteurs compris. Dans un pane, le SVG
-  // est ajouté APRÈS les tuiles → les tracés d'un plan restent au-dessus de
-  // sa propre image.
+  // ── Plein écran en place ──────────
+  // ⛶ n'ouvre PAS la modale OsmView : la mini-carte passe en overlay plein écran (classe CSS sur
+  // #ktaOsmHomeBox), l'utilisateur reste sur le HOME.
+  // ── Pile multi-plans ──────────
+  // Plusieurs relevés voisins sur la même carte, avec ordre et opacité PAR PLAN ; le plan de la liste reste
+  // le principal, les autres s'ajoutent par le panneau 🗂️ (plein écran).
+  // 🩸 UN PANE LEAFLET PAR PLAN (zIndex sur le pane), TOUT le contenu du plan dedans : les zIndex
+  // d'imageOverlay n'ordonnent que les images (les tracés SVG partagent un renderer dans l'overlayPane), et
+  // l'image du plan A cacherait les tracés du plan B. Dans un pane, le SVG vient après les tuiles : les tracés
+  // d'un plan restent au-dessus de sa propre image.
   let _panesParPlan = {};   // planId → { nom, pane, renderer, map }
 
   function _panePour(planId) {
@@ -2453,8 +2005,7 @@
     });
   }
 
-  // zIndex de pile : index 0 = AU-DESSUS. Base 200 (au-dessus du fond OSM),
-  // pas de 5 par niveau.
+  // zIndex de pile : index 0 = AU-DESSUS ; base 200 (au-dessus du fond OSM), pas de 5.
   function _zIndexPour(planId) {
     const i = _stackOrder.indexOf(planId);
     if (i === -1) return 200;
@@ -2463,15 +2014,14 @@
 
   function _appliquerOrdre() {
     _stackOrder.forEach(function(id) {
-      // v1.72.2 : l'ordre vit sur le PANE du plan (images ET vecteurs).
+      // l'ordre vit sur le PANE du plan (images ET vecteurs)
       const e = _panesParPlan[id];
       if (e && e.pane) e.pane.style.zIndex = String(_zIndexPour(id));
     });
   }
 
   function _avertirMultiSiBesoin() {
-    // Décision KARMA 2:b — pas de cap dur : avertissement quand la pile
-    // DÉPASSE 3 plans, 1× par session.
+    // pas de plafond dur (décision produit) : avertissement au-delà de 3 plans, une fois par session
     if (_warnedMulti || _stackOrder.length <= 3) return;
     _warnedMulti = true;
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
@@ -2480,17 +2030,11 @@
     }
   }
 
-  // 🗂️ v1.84.0 — L'AJOUT D'UN PLAN EST COUPÉ EN DEUX : le MONTAGE (synchrone,
-  // bon marché : on pousse dans la pile et on crée les layerGroups) et le
-  // CHARGEMENT DE SA DONNÉE (asynchrone, cher : extraction du ZIP).
-  //
-  // 🩸 POURQUOI : l'ajout par étiquette peut en demander vingt d'un coup.
-  // Appeler vingt fois `_ajouterPlanOsm` déclencherait vingt re-rendus du
-  // panneau ET vingt extractions de ZIP EN PARALLÈLE — exactement la charge
-  // que `_avertirMultiSiBesoin` existe pour signaler, mais concentrée sur une
-  // seule frame. Découpé, un lot monte tout d'un coup, rend UNE fois, puis
-  // charge les données EN SÉRIE : la carte se remplit progressivement au lieu
-  // de figer l'onglet.
+  // Ajout d'un plan en deux temps : MONTAGE (synchrone : pile + layerGroups) puis CHARGEMENT (async, cher :
+  // extraction du ZIP).
+  // 🩸 L'ajout par étiquette peut en demander vingt d'un coup : vingt _ajouterPlanOsm = vingt re-rendus du
+  // panneau et vingt extractions EN PARALLÈLE sur une frame. Découpé : le lot monte tout, rend UNE fois, puis
+  // charge EN SÉRIE (la carte se remplit au lieu de figer l'onglet).
   function _monterPlanOsm(planId) {
     if (!planId || planId === _selectedPlanId || _extraLayers[planId]) return null;
     const plans = _listGeorefPlans();
@@ -2514,7 +2058,7 @@
 
   function _chargerDataPlanOsm(planId, p, g) {
     return _loadPlanDataForPreview(planId).then(function(data) {
-      // Garde anti-race : retiré (ou devenu principal) pendant l'extraction ?
+      // 🩸 retiré (ou devenu principal) pendant l'extraction ? abandon
       if (!_extraLayers[planId] || _extraLayers[planId] !== g) return;
       if (!data) return;
       if (data.tilesOverview) {
@@ -2526,7 +2070,7 @@
       _majLargeurFrontsHome();
       _appliquerOrdre();
       _appliquerVisibilites();
-      _renderModalTags();   // 🐛 v1.72.2 : les tags du plan ajouté arrivent DÈS son extraction
+      _renderModalTags();   // les tags du plan ajouté arrivent dès son extraction
       _renderModalNiveaux();
     });
   }
@@ -2536,20 +2080,16 @@
     if (!m) return;
     _avertirMultiSiBesoin();
     _renderMultiPanel();
-    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
+    _renderPortails();   // la pile a changé : les liaisons traçables aussi
     _chargerDataPlanOsm(planId, m.p, m.g);
   }
 
-  // Démontage SANS re-rendu : le lot (retrait par étiquette) en enlève
-  // plusieurs et ne veut rendre qu'une fois. `_retirerPlanOsm` reste le
-  // chemin unitaire et garde son comportement d'origine.
+  // Démontage SANS re-rendu (le lot par étiquette n'en veut qu'un) ; _retirerPlanOsm reste le chemin unitaire.
   function _demonterPlanOsm(planId) {
     const g = _extraLayers[planId];
     if (!g) {
-      // 🐛 14/09/2026 : une ligne FANTÔME (présente dans la pile sans groupe de
-      // couches — ex-principal laissé par un re-mount, ou groupe mort) doit
-      // rester RETIRABLE. Avant : `return false` → le ✕ ne faisait rien.
-      // Le principal courant, lui, ne se retire pas (pas de ✕ sur sa ligne).
+      // 🩸 une ligne FANTÔME (dans la pile sans groupe : ex-principal d'un re-mount, groupe mort) reste RETIRABLE ;
+      // le principal courant ne se retire pas (pas de ✕ sur sa ligne)
       const iF = _stackOrder.indexOf(planId);
       if (iF === -1 || planId === _selectedPlanId) return false;
       _stackOrder.splice(iF, 1);
@@ -2565,22 +2105,15 @@
     delete _extraLayers[planId];
     const i = _stackOrder.indexOf(planId);
     if (i !== -1) _stackOrder.splice(i, 1);
-    _retirerHiRes(planId); // 🔍 v1.77.0 — les hi-res, elles, sont éphémères
-    // Pas de revoke des blob URLs BASELINE : elles vivent dans _planDataCache
-    // (re-ajout gratuit) et peuvent servir au plan principal.
+    _retirerHiRes(planId); // les hi-res sont éphémères
+    // pas de révocation des blob URLs de la vue d'ensemble : elles vivent dans _planDataCache
     return true;
   }
 
   function _retirerPlanOsm(planId) {
-    // 🩸 14/09/2026 (KARMA : « je peux même pas les supprimer ») — UN CLIC SUR
-    // ✕ DOIT TOUJOURS FAIRE DISPARAÎTRE LA LIGNE. Deux durcissements :
-    //   • le retrait de la pile est VÉRIFIÉ après coup, quel que soit le
-    //     chemin pris par `_demonterPlanOsm` (groupe présent, fantôme, ou
-    //     échec silencieux d'un des deux) ;
-    //   • le re-rendu se fait même si un des rendus annexes jette. Avant, une
-    //     exception dans `_appliquerOrdre`, les portails, les tags ou les
-    //     niveaux laissait la liste à l'écran avec la ligne encore dedans —
-    //     du point de vue de l'utilisateur, le bouton ne marche pas.
+    // 🩸 UN CLIC SUR ✕ FAIT TOUJOURS DISPARAÎTRE LA LIGNE : le retrait de la pile est VÉRIFIÉ après coup
+    // (quel que soit le chemin de _demonterPlanOsm), et le re-rendu a lieu même si un rendu annexe (ordre,
+    // portails, tags, niveaux) jette.
     const principal = (planId === _selectedPlanId);
     try { _demonterPlanOsm(planId); } catch(e) { console.warn("[OsmHomePreview] démontage " + planId + " :", e); }
     if (!principal) {
@@ -2593,27 +2126,14 @@
       });
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // 🏷️ v1.84.0 — AJOUTER LA PILE PAR ÉTIQUETTE DE PLAN
-  // ═══════════════════════════════════════════════════════════
-  // LE BESOIN (KARMA, 04/09) : un atlas départemental découpé produit des
-  // DIZAINES de plans du même secteur — « je veux voir d'un coup tous les
-  // plans étiquetés SECTEUR ». Les deux moitiés existaient depuis longtemps
-  // sans se parler : `plan.tags` (registre, v1.78.0, saisi depuis la
-  // bibliothèque) et la pile multi-plans (v1.71.0), dont le seul chemin
-  // d'ajout était un `<select>` UN PLAN À LA FOIS.
-  //
-  // ⚠️ NE PAS CONFONDRE avec la section « 🏷️ Filtrer par tag » juste au-dessus :
-  // celle-là filtre les POI *à l'intérieur* des plans affichés. Ici on choisit
-  // QUELS PLANS sont affichés. Deux notions homonymes dans la même modale —
-  // d'où un intitulé qui dit explicitement « étiquette de plan ».
-  //
-  // 🔠 Regroupement INSENSIBLE À LA CASSE : `PlanRegistry.setTags` dédoublonne
-  // par plan, pas entre plans. « Secteur » sur l'un et « SECTEUR » sur l'autre
-  // afficherait deux chips pour ce que l'utilisateur tient pour une seule
-  // étiquette — et chacune ne montrerait que la moitié de ses plans.
+  // ── Ajouter à la pile par étiquette de plan ──────────
+  // Afficher d'un coup tous les plans portant une étiquette (`plan.tags` du registre).
+  // ⚠️ À ne pas confondre avec « 🏷️ Filtrer par tag » juste au-dessus, qui filtre les POI DANS les plans
+  // affichés ; ici on choisit QUELS plans sont affichés (d'où l'intitulé « étiquette de plan »).
+  // 🩸 Regroupement INSENSIBLE À LA CASSE : PlanRegistry.setTags dédoublonne par plan, pas entre plans ;
+  // « Secteur » et « SECTEUR » donneraient deux chips, chacun avec la moitié des plans.
   function _etiquettesDesPlans() {
-    const parTag = {};   // clé minuscule → { libelle, ids: [] }
+    const parTag = {};   // clé en minuscules → { libelle, ids: [] }
     _listGeorefPlans().forEach(function (p) {
       (Array.isArray(p.tags) ? p.tags : []).forEach(function (t) {
         const brut = String(t == null ? "" : t).trim();
@@ -2631,9 +2151,7 @@
     const sect = document.getElementById("ktaOsmMultiTagsSect");
     if (!cont) return;
     const parTag = _etiquettesDesPlans();
-    // Une étiquette qui ne porte QU'UN plan n'apprend rien ici : le sélecteur
-    // juste en dessous fait déjà ce travail, et vingt chips à un plan
-    // noieraient les deux qui servent.
+    // une étiquette d'UN seul plan n'apporte rien (le sélecteur le fait déjà) et noierait les autres
     const cles = Object.keys(parTag)
       .filter(function (c) { return parTag[c].ids.length >= 2; })
       .sort(function (a, b) {
@@ -2658,11 +2176,8 @@
     });
   }
 
-  // Un clic fait l'un OU l'autre selon ce qui manque : tant qu'un plan de
-  // l'étiquette n'est pas là, le chip AJOUTE ce qui manque ; quand ils y sont
-  // tous, il les RETIRE. Sans le retrait groupé, afficher vingt plans se
-  // défait en vingt clics sur des ✕ — ce n'est pas du confort, c'est ce qui
-  // rend la fonction utilisable deux fois de suite.
+  // Un clic AJOUTE ce qui manque tant qu'un plan de l'étiquette est absent, sinon RETIRE le lot (sans retrait
+  // groupé, défaire vingt plans coûterait vingt ✕).
   function _basculerEtiquettePlans(cle) {
     const e = _etiquettesDesPlans()[cle];
     if (!e) return;
@@ -2671,7 +2186,7 @@
     else _retirerPlansOsm(e.ids);
   }
 
-  // 📁 Tous les plans géoréférencés d'un dossier, pas encore affichés : même chemin que le lot par étiquette.
+  // Tous les plans géoréférencés d'un dossier pas encore affichés (même chemin que le lot par étiquette).
   function _ajouterDossierOsm(dossierId) {
     const PR = window.PlanRegistry;
     if (!PR || typeof PR.planFolderId !== "function") return;
@@ -2684,11 +2199,8 @@
   }
 
   async function _ajouterPlansOsm(ids, libelle, cleConfirm) {
-    // ⚠️ ON DEMANDE AVANT, avec le compte. La pile n'a pas de cap dur
-    // (arbitrage KARMA 2:b) et `_avertirMultiSiBesoin` prévient APRÈS coup —
-    // sur un lot, « après coup » veut dire une fois les vingt plans montés,
-    // donc trop tard pour renoncer. Le seuil de la confirmation est CELUI DE
-    // L'AVERTISSEMENT EXISTANT (3), pas un nombre inventé ici.
+    // ⚠️ On DEMANDE AVANT, avec le compte : sans plafond dur, _avertirMultiSiBesoin prévient après coup, trop
+    // tard pour renoncer à un lot. Même seuil que cet avertissement (3).
     const total = _stackOrder.length + ids.length;
     if (ids.length >= 2 && total > 3) {
       const ok = await window.ktaConfirm(window.I18n.t(cleConfirm || "osm_mode.multi.tagConfirm",
@@ -2704,9 +2216,7 @@
     _avertirMultiSiBesoin();
     _renderMultiPanel();
     _renderPortails();
-    // EN SÉRIE, jamais en parallèle : chaque chargement extrait un ZIP.
-    // Vingt extractions lancées ensemble figent l'onglet ; enchaînées, la
-    // carte se remplit plan par plan et reste manipulable.
+    // EN SÉRIE : chaque chargement extrait un ZIP ; en parallèle, vingt extractions figent l'onglet
     let chaine = Promise.resolve();
     montes.forEach(function (m) {
       chaine = chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
@@ -2717,10 +2227,8 @@
   }
 
   function _retirerPlansOsm(ids) {
-    // Le plan PRINCIPAL ne se retire pas : il n'a même pas de ✕ dans le
-    // panneau, et `_renderMultiPanel` le remettrait dans la pile au rendu
-    // suivant (ceinture v1.72.2). Le chip repasse alors à « 1/N », ce qui est
-    // la vérité : il reste ce plan-là.
+    // le PRINCIPAL ne se retire pas (pas de ✕, et _renderMultiPanel le remettrait dans la pile) : le chip
+    // repasse à « 1/N », ce qui est vrai
     let n = 0;
     ids.forEach(function (id) {
       if (id === _selectedPlanId) return;
@@ -2747,8 +2255,8 @@
 
   function _setOpaciteExtra(planId, v) {
     _extraOpacity[planId] = Math.max(0, Math.min(1, v));
-    _appliquerOpaciteHiRes(planId, _extraOpacity[planId]); // 🔍 v1.77.0
-    if (_opaciteTuilesPlan(planId, _extraOpacity[planId])) return;   // calque : tuiles opaques
+    _appliquerOpaciteHiRes(planId, _extraOpacity[planId]);
+    if (_opaciteTuilesPlan(planId, _extraOpacity[planId])) return;   // sous-calque : tuiles opaques
     const g = _extraLayers[planId];
     if (!g) return;
     g.tiles.eachLayer(function(l) {
@@ -2759,10 +2267,8 @@
     });
   }
 
-  // 🎚️ v1.71.0 (retour KARMA) — MODALE « Plans & filtres OSM » : remplace le
-  // panneau flottant (qui empiétait sur la carte). Même pattern que la modale
-  // ≡ Filtres du mode plan. Contenu vivant : _renderMultiPanel() cible les ids
-  // à l'intérieur de la modale (garde d'existence déjà en place).
+  // Modale « Plans & filtres OSM » (rien de flottant sur la carte), sur le modèle de ≡ Filtres du mode plan.
+  // _renderMultiPanel() cible ses ids (garde d'existence en place).
   const OSM_FILTERS_MODAL_ID = "kta-osm-filters-modal";
 
   function _fermerModalFiltresOsm() {
@@ -2772,8 +2278,7 @@
   }
   function _escFiltresOsm(e) {
     if (e.key === "Escape" || e.key === "Esc") {
-      // capture + stopPropagation : ne pas laisser l'Escape refermer AUSSI le
-      // mode OSM (handler fullscreen en phase bulle sur document).
+      // capture + stopPropagation : Échap ne referme pas AUSSI le mode OSM (handler plein écran en bulle)
       e.stopPropagation();
       _fermerModalFiltresOsm();
     }
@@ -2785,7 +2290,7 @@
     overlay.id = OSM_FILTERS_MODAL_ID;
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.display = "flex";
-    overlay.style.zIndex = "100001";   // au-dessus du widget fullscreen
+    overlay.style.zIndex = "100001";   // au-dessus du widget plein écran
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-osm-filters-boite">' +
         '<div class="kta-readme-modal-header">' +
@@ -2796,19 +2301,16 @@
           '<p class="kta-osm-filters-hint">' + _escapeHtml(window.I18n.t("osm_mode.filters.hint")) + '</p>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.global")) + '</div>' +
           '<div class="kta-osm-multi-cats kta-osm-filters-globaux" id="ktaOsmFiltersGlobaux"></div>' +
-          // 📐 v1.81.0 (D5) — bloc « qualité du calage », rempli seulement
-          // quand le chip 🌀 est actif (cf. _renderPortailsQualite).
+          // « qualité du calage », rempli quand le chip 🌀 est actif (_renderPortailsQualite)
           '<div class="kta-osm-qualite" id="ktaOsmPortailsQualite"></div>' +
-          // 🏔️ v1.82.0 — chips d'ÉTAGE. Vide et masqué sur un plan
-          // mono-niveau : afficher « niveau 0 » tout seul n'apprendrait rien.
+          // chips de niveau : masqués sur un plan mono-niveau (« niveau 0 » seul n'apprend rien)
           '<div class="kta-osm-filters-sect" id="ktaOsmFiltersNivSect" style="display:none;">' +
             _escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmFiltersNiveaux"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
-          // 🏷️ v1.84.0 — ajout par ÉTIQUETTE DE PLAN. Masqué tant qu’aucune
-          // étiquette ne porte au moins deux plans (cf. `_renderMultiTags`).
+          // ajout par étiquette de plan : masqué tant qu'aucune étiquette ne porte au moins deux plans
           '<div class="kta-osm-filters-sect" id="ktaOsmMultiTagsSect" style="display:none;">' +
             _escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmMultiTags"></div>' +
@@ -2838,7 +2340,7 @@
     _renderMultiPanel();
   }
 
-  // Catalogue partagé des 5 catégories (chips globaux ET par plan).
+  // catalogue des 5 catégories (chips globaux ET par plan)
   const _CATS = [
     ["tiles",  "🖼️", "osm_home.toggle.plan.label"],
     ["poi",    "📍", "osm_home.toggle.poi.label"],
@@ -2847,8 +2349,7 @@
     ["struct", "🏛️", "osm_home.toggle.struct.label"]
   ];
 
-  // 🎚️ v1.71.0 (retour KARMA) — chips GLOBAUX de la modale (ex-checkboxes du
-  // bandeau, supprimées avec le wrapper collapsible).
+  // chips GLOBAUX de la modale
   function _renderModalGlobaux() {
     const cont = document.getElementById("ktaOsmFiltersGlobaux");
     if (!cont) return;
@@ -2861,11 +2362,8 @@
              (etats[c[0]] ? " active" : "") + '" data-gcat="' + c[0] + '">' +
              c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
     }).join("");
-    // 🌀 v1.81.0 (D5) — chip PORTAILS ajouté ICI et non dans `_CATS` : ce
-    // catalogue alimente aussi les filtres PAR PLAN, or un portail appartient à
-    // DEUX plans — le filtrer depuis la ligne d'un seul n'aurait pas de sens.
-    // Il n'apparaît que s'il existe au moins une liaison, sinon c'est un bouton
-    // qui ne peut rien montrer.
+    // chip PORTAILS hors `_CATS` : ce catalogue alimente aussi les filtres PAR PLAN, or un portail appartient à
+    // DEUX plans. Affiché seulement s'il existe au moins une liaison.
     let nbLiens = 0;
     try {
       nbLiens = (window.InterPlanLinks && typeof window.InterPlanLinks.getAllLinks === "function")
@@ -2877,9 +2375,7 @@
         'title="' + _escapeHtml(window.I18n.t("osm_home.portails.hint")) + '">🌀 <span>' +
         _escapeHtml(window.I18n.t("osm_home.portails.label")) + '</span></button>';
     }
-    // 📝 v1.81.0 — chip SESSION, hors `_CATS` lui aussi : le travail de
-    // session n'est pas une catégorie d'objets mais une ORIGINE de données,
-    // transversale aux POI, tracés, zones et structures.
+    // chip SESSION hors `_CATS` aussi : une ORIGINE de données, transversale aux catégories
     cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
       (_showSession ? " active" : "") + '" data-gsession="1" ' +
       'title="' + _escapeHtml(window.I18n.t("osm_home.session.hint")) + '">📝 <span>' +
@@ -2908,12 +2404,8 @@
     _renderPortailsQualite();
   }
 
-  // 🏷️ v1.71.0 (retour KARMA « on doit aussi pouvoir filtrer au tag ») — chips
-  // tags dans la modale, agrégés sur TOUTE la pile (plus seulement le principal).
-  // 🏔️ v1.82.0 — chips de niveau, agrégés sur TOUTE la pile (comme les tags).
-  // Tri décroissant : +1 (l'historique, s'il est là) en tête, puis -1, -2…
-  // C'est l'ordre physique vu du dessus, celui qu'attend quelqu'un qui pense
-  // en niveaux.
+  // Chips de niveau agrégés sur TOUTE la pile (comme les tags), triés du haut vers le bas (+1, puis -1, -2…) :
+  // l'ordre physique vu du dessus.
   function _renderModalNiveaux() {
     const cont = document.getElementById("ktaOsmFiltersNiveaux");
     const sect = document.getElementById("ktaOsmFiltersNivSect");
@@ -2924,7 +2416,6 @@
       if (data) _collectNiveaux(data, id).forEach(function(n) { tous.add(n); });
     });
     const niveaux = Array.from(tous).sort(function(a, b) { return b - a; });
-    // Un seul niveau = rien à filtrer.
     if (niveaux.length < 2) {
       cont.innerHTML = "";
       if (sect) sect.style.display = "none";
@@ -2944,14 +2435,12 @@
     cont.querySelectorAll("[data-niv]").forEach(function(b) {
       b.addEventListener("click", function() {
         const n = parseInt(b.getAttribute("data-niv"), 10);
-        // Premier clic depuis « tout » : on ISOLE le niveau cliqué plutôt que de
-        // le retirer. Sur sept niveaux superposés, c'est le geste attendu — et
-        // retirer un seul niveau sur sept ne changerait quasiment rien à l'écran.
+        // premier clic depuis « tout » : on ISOLE le niveau cliqué (en retirer un sur sept ne changerait presque rien)
         if (!_homeLevelFilter || _homeLevelFilter.size === 0) {
           _homeLevelFilter = new Set([n]);
         } else if (_homeLevelFilter.has(n)) {
           _homeLevelFilter.delete(n);
-          if (_homeLevelFilter.size === 0) _homeLevelFilter = null;   // plus rien coché = tout
+          if (_homeLevelFilter.size === 0) _homeLevelFilter = null;   // plus rien de coché = tout
         } else {
           _homeLevelFilter.add(n);
         }
@@ -3008,8 +2497,7 @@
     });
   }
 
-  // Re-render de la DATA de TOUTE la pile (filtre tag modifié). Les tuiles ne
-  // bougent pas (le filtre tag ne concerne que les POI).
+  // Re-rend les DONNÉES de toute la pile (filtre modifié) ; les tuiles ne bougent pas.
   function _reRenderDataTous() {
     const plans = _listGeorefPlans();
     const principal = plans.find(function(p) { return p.id === _selectedPlanId; });
@@ -3024,15 +2512,13 @@
     _appliquerVisibilites();
   }
 
-  // Panneau 🗂️ — reconstruit à chaque changement de pile. Lignes dans l'ordre
-  // de _stackOrder (haut de liste = au-dessus sur la carte).
+  // Panneau 🗂️, reconstruit à chaque changement de pile ; lignes dans l'ordre de _stackOrder (haut = dessus).
   function _renderMultiPanel() {
     const rows = document.getElementById("ktaOsmMultiRows");
     const addSel = document.getElementById("ktaOsmMultiAdd");
     if (!rows || !addSel) return;
-    // Ceinture v1.72.2 : le principal DOIT être dans la pile (cf bug du rendu
-    // initial) — tout futur chemin qui poserait _selectedPlanId sans passer
-    // par selectPlan est rattrapé ici.
+    // 🩸 ceinture : le principal DOIT être dans la pile ; rattrape tout chemin qui poserait _selectedPlanId sans
+    // passer par selectPlan
     if (_selectedPlanId && _stackOrder.indexOf(_selectedPlanId) === -1) {
       _stackOrder.unshift(_selectedPlanId);
     }
@@ -3060,8 +2546,7 @@
         (principal ? '<span class="kta-osm-multi-btn kta-osm-multi-vide"></span>'
                    : '<button type="button" class="kta-osm-multi-btn kta-osm-multi-x" data-x="' + _escapeHtml(id) + '" ' +
                      'title="' + _escapeHtml(window.I18n.t("osm_mode.multi.removeTitle")) + '">✕</button>') +
-        // 🗂️ v1.71.0 (retour KARMA) — chips de filtrage PAR PLAN. Visibilité
-        // effective = case globale du bandeau ET chip du plan.
+        // chips PAR PLAN : visibilité effective = bascule globale ET chip du plan
         '<div class="kta-osm-multi-cats">' +
           _CATS.map(function(c) {
             const v = _visDe(id);
@@ -3073,11 +2558,11 @@
       '</div>';
     }).join("");
 
-    // Sélecteur d'ajout : plans georef restants
+    // sélecteur d'ajout : plans géoréférencés restants
     const restants = plans.filter(function(p) { return _stackOrder.indexOf(p.id) === -1; });
     const opt = function(p) { return '<option value="' + _escapeHtml(p.id) + '">' + _escapeHtml(p.name) + '</option>'; };
-    // 📁 12/10/2026 (KARMA) — rangés par DOSSIER de « Mes plans » (même règle que la liste : rangement manuel,
-    // sinon règle d'étiquettes), avec « ajouter tout le dossier » en tête d'un dossier de 2 plans ou plus.
+    // rangés par DOSSIER de « Mes plans » (même règle que la liste), « ajouter tout le dossier » en tête d'un
+    // dossier de 2 plans ou plus
     const PR = window.PlanRegistry;
     const dossiers = (PR && typeof PR.getFolders === "function") ? PR.getFolders() : [];
     let corps;
@@ -3099,7 +2584,7 @@
     addSel.innerHTML = '<option value="">' + _escapeHtml(window.I18n.t("osm_mode.multi.add")) + '</option>' + corps;
     addSel.style.display = restants.length ? "" : "none";
 
-    // Bindings (rows reconstruits → rebind à chaque render, listeners courts)
+    // lignes reconstruites → rebranchées à chaque rendu
     rows.querySelectorAll("[data-up]").forEach(function(b) {
       b.addEventListener("click", function() { _deplacerPlan(b.getAttribute("data-up"), -1); });
     });
@@ -3119,8 +2604,7 @@
         _appliquerVisibilites();
       });
     });
-    // 🏷️ v1.84.0 — les chips d’étiquette suivent l’état de la pile (« 3/12 »)
-    // : tout ce qui la modifie passe par ici, donc un seul point de rendu.
+    // chips d'étiquette (« 3/12 ») : tout ce qui modifie la pile passe par ici, un seul point de rendu
     _renderMultiTags();
 
     rows.querySelectorAll("[data-op]").forEach(function(r) {
@@ -3128,7 +2612,7 @@
         const id = r.getAttribute("data-op");
         const v = parseInt(r.value, 10) / 100;
         if (id === _selectedPlanId) {
-          _setPlanOpacity(v);   // (le slider bandeau n'existe plus — modale seule)
+          _setPlanOpacity(v);
         } else {
           _setOpaciteExtra(id, v);
         }
@@ -3136,23 +2620,14 @@
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // 🔎 v1.70.0 — RECHERCHE DU MODE OSM (topo KARMA 30/07, décision 1)
-  // ═══════════════════════════════════════════════════════════
-  // Périmètre STRICTEMENT LOCAL (décision explicite : « pas de sortie
-  // internet ») : ① les PLANS de la liste OSM (géoréférencés uniquement —
-  // les autres sont invisibles ici par construction) ② leurs POI, lus sans
-  // charger le plan via _loadPlanDataForPreview (cache RAM `_planDataCache`).
-  // PAS de recherche d'adresse (Nominatim = nouvelle surface réseau,
-  // écartée ; réétudiable en option opt-in séparée).
-  //
-  // Index construit PARESSEUSEMENT à la première saisie (extraire N ZIP au
-  // mount du widget ralentirait le boot HOME pour un usage incertain).
+  // ── Recherche du mode OSM ──────────
+  // 🔒 STRICTEMENT LOCALE (décision produit : pas de sortie internet) : ① les plans de la liste OSM (géoréférencés
+  // seulement) ② leurs POI, lus via _loadPlanDataForPreview (cache RAM). PAS de recherche d'adresse (Nominatim
+  // = nouvelle surface réseau).
+  // Index construit à la PREMIÈRE saisie (extraire N ZIP au mount ralentirait le boot du HOME).
   let _searchIndex = null;      // [{type:"plan"|"poi", planId, planName, georef, nom, x, y, tags}]
-  // 🐛 v1.72.1 (KARMA « elle se bloque ») : pendant l'extraction, un 2e appel
-  // recevait `Promise.resolve(null)` IMMÉDIAT → _rendre re-tournait → nouvel
-  // appel → résolution immédiate → boucle de microtasks, UI gelée sur
-  // « Lecture des plans… ». Fix : retourner LA promesse en vol.
+  // 🩸 Pendant l'extraction, un 2e appel reçoit LA promesse en vol : une résolution immédiate à null relançait
+  // le rendu en boucle de microtâches (UI gelée sur « Lecture des plans… »).
   let _searchIndexPromise = null;
 
   function _construireIndexRecherche() {
@@ -3163,8 +2638,7 @@
     plans.forEach(function(p) {
       index.push({ type: "plan", planId: p.id, planName: p.name, georef: p.georef });
     });
-    // Extraction séquentielle (pas Promise.all : N JSZip simultanés = pic RAM
-    // mobile ; le cache _planDataCache rend les passages suivants gratuits).
+    // extraction séquentielle (N JSZip simultanés = pic RAM mobile) ; les passages suivants sont gratuits (cache)
     let chaine = Promise.resolve();
     plans.forEach(function(p) {
       chaine = chaine.then(function() {
@@ -3191,13 +2665,12 @@
     return _searchIndexPromise;
   }
 
-  // Projette un POI en latlng via le georef de SON plan (chaque plan a sa
-  // propre calibration — jamais celle du plan sélectionné).
+  // 🩸 un POI se projette par le géoréf de SON plan, jamais celui du plan sélectionné
   function _poiVersLatLng(entry) {
     try {
       if (!window.KmzExport || typeof window.KmzExport.buildTransform !== "function") return null;
       const g = entry.georef;
-      const t = window.KmzExport.buildTransformCalib(g);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      const t = window.KmzExport.buildTransformCalib(g);   // pointC optionnel propagé (affine)
       const gps = window.KmzExport.planToGps(t, entry.x, entry.y);
       return gps ? L.latLng(gps.lat, gps.lng) : null;
     } catch(e) { return null; }
@@ -3208,14 +2681,12 @@
   function _allerAuResultat(entry) {
     const resEl = document.getElementById("ktaOsmHomeSearchResults");
     if (resEl) resEl.style.display = "none";
-    // Le résultat bascule d'abord la vue sur SON plan (mono-plan en lot 1 —
-    // le multi-plans du lot 2 réutilisera ce même pipeline).
+    // le résultat bascule d'abord la vue sur SON plan
     if (entry.planId !== _selectedPlanId) selectPlan(entry.planId);
     if (entry.type === "plan") return;   // sélection = fitBounds déjà fait
     const ll = _poiVersLatLng(entry);
     if (!ll) return;
-    // La carte peut être en cours de (re)création après selectPlan → retries
-    // bornés, même pattern que les invalidateSize en cascade du module.
+    // la carte peut être en (re)création après selectPlan : essais bornés
     let essais = 0;
     (function _volerVers() {
       if (!_mapInstance) {
@@ -3238,10 +2709,8 @@
     const resEl = container.querySelector("#ktaOsmHomeSearchResults");
     if (!input || !resEl) return;
 
-    // 🐛 v1.72.1 (spec finale KARMA) — le dropdown ÉPOUSE la barre : même
-    // gauche, même largeur, collé dessous. position:fixed + rect de l'input
-    // à chaque affichage ; largeur élargie (min 320px) et clampée au viewport
-    // si la barre est très étroite.
+    // la liste de résultats épouse la barre (même gauche, même largeur, collée dessous) : position fixed sur le
+    // rect de l'input à chaque affichage, min 320 px, bornée au viewport
     function _positionnerResultats() {
       try {
         const r = input.getBoundingClientRect();
@@ -3308,10 +2777,8 @@
     });
   }
 
-  // ⚠️ v1.70.0 — Avertissement perf du mode OSM (décision KARMA 2:b) :
-  // UNE FOIS à la première ouverture du mode (persisté LS). Le second volet
-  // (« > 3 plans affichés ») s'activera au lot 2 multi-plans via cette même
-  // fonction (seuil passé en argument).
+  // ⚠️ Avertissement perf du mode OSM (décision produit) : UNE FOIS à la première ouverture (persisté en LS) ;
+  // le seuil « > 3 plans » passe par la même fonction.
   const _WARN_LS_KEY = "myktamap_osm_mode_warn_v1";
   function _avertirPerfModeOsm() {
     try {
@@ -3328,10 +2795,10 @@
     const box = document.getElementById("ktaOsmHomeBox");
     if (!box) return;
     if (_isFullscreen) {
-      _avertirPerfModeOsm();   // 🔔 v1.70.0 — 1× à la première ouverture du mode
+      _avertirPerfModeOsm();   // une fois, à la première ouverture du mode
       box.classList.add("kta-osm-home-fullscreen-active");
       document.body.classList.add("kta-osm-home-fs-lock");
-      // Escape pour réduire
+      // Échap pour réduire
       _fsEscapeHandler = function(e) {
         if (e.key === "Escape" || e.key === "Esc") {
           if (_isFullscreen) openFullScreen();
@@ -3346,7 +2813,7 @@
         _fsEscapeHandler = null;
       }
     }
-    // Update icône bouton (⛶ ↔ ✕)
+    // icône du bouton (⛶ ↔ ✕)
     const btn = document.getElementById("ktaOsmHomeFullBtn");
     if (btn) {
       btn.textContent = _isFullscreen ? "✕" : "⛶";
@@ -3354,75 +2821,50 @@
         ? window.I18n.t("osm_home.fullscreen.exitTitle")
         : window.I18n.t("osm_home.fullscreen.enterTitle");
     }
-    // Leaflet : recalc size après que le DOM ait appliqué la transition
-    // (sinon les tuiles ne couvrent que l'ancienne zone visible).
+    // invalidateSize après la transition du DOM, sinon les tuiles ne couvrent que l'ancienne zone
     setTimeout(function() {
       if (_mapInstance) try { _mapInstance.invalidateSize(); } catch(e) {}
     }, 100);
   }
 
-  // =========================
-  // API PUBLIQUE
-  // =========================
+  // ── API publique ──────────
   function mount(preferId) {
-    // 🗺️ v1.90.12 — `preferId` : plan à afficher en priorité (le plan qu'on
-    // vient de quitter, passé par afficherLoader). 🩸 On EXIGE une chaîne : le
-    // câblage `Promise.resolve(ready).then(mount)` passe la valeur résolue de la
-    // promesse comme 1ᵉʳ argument — sans ce filtre, elle serait prise pour un
-    // planId et fausserait la sélection.
+    // `preferId` : plan à afficher d'abord (celui qu'on vient de quitter, passé par afficherLoader).
+    // 🩸 On EXIGE une chaîne : `Promise.resolve(ready).then(mount)` passe la valeur résolue en 1er argument.
     if (typeof preferId !== "string" || !preferId) preferId = null;
     const container = document.getElementById("ktaOsmHomeContent");
-    if (!container) return; // pas en HOME, abort silencieux
+    if (!container) return; // pas au HOME : sortie silencieuse
 
-    // 🗂️ 14/09/2026 (KARMA, 2ᵉ passe) — AU RETOUR D'UN PLAN, LA PILE REPART DE
-    // ZÉRO. `preferId` n'est renseigné QUE par `main.js > refresh(planId)` au
-    // retour à l'accueil : c'est le signal sans ambiguïté « on vient de quitter
-    // un plan ». La règle voulue est alors « le seul plan en liste est celui
-    // qu'on vient de quitter ».
-    //
-    // 🩸 Pourquoi ici et pas seulement dans `_initMiniMap` : la purge de la
-    // v1.91.1 est suspendue à la RECRÉATION DE LA CARTE. Tout chemin de rendu
-    // qui n'y arrive pas — hors-ligne sans cache, incognito,
-    // conteneur sans `#ktaOsmHomeMap` — laissait la pile intacte, avec des
-    // plans dont les couches appartenaient à une carte morte. Posée au point
-    // d'entrée, la règle ne dépend plus d'aucun de ces chemins.
-    //
-    // Les groupes de couches sont démontés au passage : ils appartiennent de
-    // toute façon à la carte qu'on s'apprête à détruire. `_extraOpacity` est
-    // conservé — une opacité réglée à la main survit à un re-ajout.
+    // ⚠️ Au retour d'un plan, la pile repart de zéro avec ce seul plan. `preferId` n'est renseigné que par
+    // main.js > refresh(planId) au retour à l'accueil.
+    // 🩸 Règle posée au POINT D'ENTRÉE, pas dans _initMiniMap : les chemins qui ne recréent pas la carte
+    // (hors ligne sans cache, incognito, pas de #ktaOsmHomeMap) garderaient des plans aux couches mortes.
+    // Les groupes de couches sont démontés au passage ; `_extraOpacity` est conservé (survit à un re-ajout).
     if (preferId) _reinitialiserPileAuRetour(preferId);
 
-    // 🎨 v1.77.0 — cache des overrides de légende par plan invalidé à chaque
-    // mount : un retour au HOME après des modifs de couleur en mode plan
-    // relit les slots SessionPersist (auto-savés ~1,5 s).
+    // cache des légendes par plan invalidé : un retour HOME après des modifs de couleur relit les slots
     _legendeParPlan = {};
 
-    // 🆕 v1.40.1 — Avant tout : restore la colonne (au cas où un mount
-    // précédent l'aurait masquée et qu'on rebascule en opt-in ON).
+    // la colonne d'abord (un mount précédent a pu la masquer)
     _setOsmColumnVisible(true);
 
-    // Cas 1 : pas opt-in OSM → masque la colonne (cf _setOsmColumnVisible)
-    // 🩸 LE SEUL CHEMIN SANS BANDEAU, et c'est voulu : `_renderOptInNeeded`
-    // MASQUE la colonne entière. Il n'y a rien où l'afficher, et il n'y a rien
-    // à annoncer — l'utilisateur a refusé, on respecte son refus en silence.
+    // Cas 1 : pas d'opt-in → colonne masquée.
+    // 🩸 Le SEUL chemin sans bandeau, voulu : rien où l'afficher, rien à annoncer — le refus est respecté en
+    // silence.
     if (!_isOptedIn()) {
       _renderOptInNeeded(container);
       return;
     }
-    // Cas 1bis : incognito → message dédié, bloque tout (pas de leak metadata plan)
+    // Cas 1bis : incognito → message dédié, tout est bloqué
     if (_isIncognitoOn()) {
       _renderIncognito(container);
       _afficherBandeauDefaut(container);
       return;
     }
-    // Cas 2 : hors-ligne → message UNIQUEMENT si aucun cache OSM n'existe
-    // pour aucun plan (v1.43.3). Si au moins 1 tuile cachée → on laisse le
-    // widget se monter, selectPlan() arbitrera plan par plan (overlay
-    // dédié pour les plans non cachés).
+    // Cas 2 : hors ligne → message SEULEMENT si aucun cache OSM n'existe ; sinon le widget se monte et
+    // selectPlan() arbitre plan par plan.
     if (!_isOnline()) {
-      // Refresh async la flag _anyCachePresent (fire-and-forget — si elle
-      // devient true, _refreshAnyCachePresent appelle refresh() qui re-monte
-      // le widget automatiquement).
+      // rafraîchissement async ; si le cache existe, _refreshAnyCachePresent appelle refresh()
       _refreshAnyCachePresent();
       if (!_anyCachePresent) {
         _renderOffline(container);
@@ -3430,41 +2872,31 @@
         return;
       }
     }
-    // Cas 3 : aucun plan georef → message pédagogique
+    // Cas 3 : aucun plan géoréférencé → message
     const plans = _listGeorefPlans();
     if (plans.length === 0) {
       _renderNoGeorefPlans(container);
       _afficherBandeauDefaut(container);
       return;
     }
-    // Cas 4 : widget complet — choix initial.
-    // 🗺️ v1.90.12 (bug KARMA : « au retour home, le plan de la Vue OSM doit être
-    // celui qu'on vient de quitter »). Priorité : le plan quitté (preferId) s'il
-    // est géoréférencé, sinon le dernier sélectionné dans le widget, sinon le
-    // 1ᵉʳ de la liste (= le plus récemment ouvert, liste triée desc).
+    // Cas 4 : widget complet. Plan initial : celui qu'on vient de quitter s'il est géoréférencé, sinon le
+    // dernier sélectionné, sinon le premier de la liste (le plus récemment ouvert).
     let initialId = (preferId && plans.find(function(p) { return p.id === preferId; }))
       ? preferId : _getLastSelectedFromLs();
     if (!initialId || !plans.find(function(p) { return p.id === initialId; })) {
       initialId = plans[0].id;
     }
-    // Le plan quitté devient la sélection COURANTE : les re-montages suivants
-    // (changement de langue, cache…) le garderont, jusqu'à ce que l'utilisateur
-    // en choisisse un autre.
+    // le plan quitté devient la sélection COURANTE pour les re-montages suivants (langue, cache…)
     if (preferId && initialId === preferId) _saveLastSelected(preferId);
     _renderWidget(container, plans, initialId);
     _afficherBandeauDefaut(container);
   }
 
-  // 🌍 v1.90.2 — L'ANNONCE DU DÉFAUT. Elle ne s'affiche que tant que la clé
-  // d'opt-in est ABSENTE : cliquer « J'ai compris » écrit "1", ce qui
-  // transforme un accord implicite en accord EXPLICITE et fait disparaître le
-  // bandeau pour toujours. Refuser se fait au même endroit qu'avant
-  // (⚙️ Configuration), et écrit "0" — que plus rien ne réécrase.
-  // ⚠️ C'est une NOTIFICATION, pas un consentement préalable : les premières
-  // tuiles sont déjà demandées quand elle s'affiche. Assumé et écrit tel quel
-  // dans l'audit réseau — le mode est coupable d'un fond de carte, pas d'une
-  // fuite de données : aucune donnée du plan ne part, seules des coordonnées
-  // de tuiles sont demandées.
+  // Annonce du défaut, tant que la clé d'opt-in est ABSENTE : « J'ai compris » écrit "1" (accord EXPLICITE,
+  // bandeau disparu). Refuser = ⚙️ Configuration, écrit "0", que plus rien ne réécrase.
+  // ⚠️ NOTIFICATION, pas consentement préalable : les premières tuiles sont déjà demandées quand elle
+  // s'affiche (assumé, et écrit dans l'audit réseau). Aucune donnée du plan ne part, seulement des
+  // coordonnées de tuiles.
   function _afficherBandeauDefaut(container) {
     if (!_estActifParDefaut() || !container) return;
     if (container.querySelector(".kta-osm-defaut-info")) return;
@@ -3474,7 +2906,7 @@
     el.innerHTML =
       '<span class="kta-osm-defaut-txt"></span>' +
       '<button type="button" class="kta-osm-defaut-ok"></button>';
-    // 🩸 textContent, jamais innerHTML, sur ce qui vient du dictionnaire.
+    // 🔒 textContent, jamais innerHTML, pour ce qui vient du dictionnaire
     el.querySelector(".kta-osm-defaut-txt").textContent = t("osm_home.defautOn.corps");
     el.querySelector(".kta-osm-defaut-ok").textContent  = t("osm_home.defautOn.ok");
     el.querySelector(".kta-osm-defaut-ok").addEventListener("click", function() {
@@ -3490,43 +2922,32 @@
 
   function selectPlan(planId) {
     if (!planId) return;
-    // 🗂️ v1.71.0 — pile multi-plans : le plan sélectionné devient le PRINCIPAL.
-    // S'il était un plan AJOUTÉ, on retire d'abord ses groupes extra (ses
-    // couches vont renaître dans les groupes module) ; l'ancien principal est
-    // REMPLACÉ dans la pile à la même position (comportement historique : ses
-    // couches sont écrasées par le rendu du nouveau).
+    // Le plan sélectionné devient le PRINCIPAL : s'il était AJOUTÉ, ses groupes extra sont retirés (ses
+    // couches renaissent dans les groupes du module) ; l'ancien principal est REMPLACÉ à la même position.
     const _prevPrimary = _selectedPlanId;
     if (planId !== _prevPrimary && _extraLayers[planId]) _retirerPlanOsm(planId);
     _selectedPlanId = planId;
-    // 🐛 v1.71.0 (KARMA) — synchroniser le DROPDOWN du bandeau : la recherche
-    // (et tout selectPlan programmatique) changeait le plan affiché mais le
-    // <select> gardait l'ancien nom — sa valeur n'était posée qu'au render
-    // initial du widget.
+    // la liste déroulante suit la sélection (recherche, selectPlan programmatique)
     const _dd = document.getElementById("ktaOsmHomePlanSelect");
     if (_dd && _dd.value !== planId) _dd.value = planId;
     const plans = _listGeorefPlans();
     const sel = plans.find(function(p) { return p.id === planId; });
     if (!sel) return;
-    _remplacerPrincipalDansPile(_stackOrder, _prevPrimary, planId);   // 14/09/2026 : règle unique
+    _remplacerPrincipalDansPile(_stackOrder, _prevPrimary, planId);   // règle unique
     _renderMultiPanel();
-    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
+    _renderPortails();   // la pile a changé : les liaisons traçables aussi
     _saveLastSelected(planId);
     _renderGeorefMarkers(sel.georef);
-    // 🆕 v1.43.3 — Si offline, vérifier si ce plan a des tuiles cachées.
-    // Si non → overlay « ce plan n'est pas caché offline ». Si oui → render
-    // normal (les tuiles seront servies par le SW depuis IDB).
+    // hors ligne : overlay « plan non mis en cache » si ce plan n'a pas de tuiles (sinon le SW les sert)
     _maybeShowNotCachedOverlay(planId, sel.georef);
-    // 🆕 v1.40.4 — Charge les data du nouveau plan + render
     _loadPlanDataForPreview(planId).then(function(data) {
-      // Garde anti-race : si l'user a re-sélectionné un autre plan pendant
-      // l'extraction (async), on skip le render (le nouveau triggera son
-      // propre rendu via cette même fonction).
+      // 🩸 autre plan sélectionné pendant l'extraction : pas de rendu (le nouveau fait le sien)
       if (planId !== _selectedPlanId) return;
       if (!data) return;
-      // 🆕 v1.40.6 — Render tuiles V2 EN PREMIER (sous les data layers)
+      // tuiles V2 EN PREMIER (sous les calques)
       if (data.tilesOverview) _renderTilesOnMiniMap(data.tilesOverview, sel.georef);
       _renderDataLayersOnMiniMap(data, sel.georef);
-      // 🎚️ v1.71.0 : tags en modale (guard si fermée) + parité pile
+      // tags de la modale (no-op si fermée)
       _renderModalTags();
       _renderModalNiveaux();
       _appliquerOrdre();
@@ -3536,14 +2957,9 @@
 
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
-  // =========================
-  // BOOT
-  // =========================
-  // Auto-mount au DOMContentLoaded + écoute changements opt-in pour refresh.
-  // 🌍 v1.46.0 — Le widget rend ses toggles/labels via window.I18n.t(). Comme
-  // I18n.init() est ASYNC (fetch des dicos), un mount au DOMContentLoaded peut
-  // s'exécuter AVANT que les dicos soient chargés → labels en clés brutes
-  // (osm_home.toggle.*). On attend donc I18n.init() avant le 1er mount.
+  // ── Boot ──────────
+  // 🩸 Montage après I18n.init() (async, fetch des dicos) : au DOMContentLoaded seul, les libellés
+  // sortiraient en clés brutes (osm_home.toggle.*).
   function _mountWhenI18nReady() {
     var ready = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : Promise.resolve();
     Promise.resolve(ready).then(mount).catch(function() { mount(); });
@@ -3551,41 +2967,28 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _mountWhenI18nReady);
   } else {
-    setTimeout(_mountWhenI18nReady, 100); // léger délai pour laisser PlanRegistry s'initialiser
+    setTimeout(_mountWhenI18nReady, 100); // laisse PlanRegistry s'initialiser
   }
-  // 🌍 v1.46.0 — Re-render au changement de langue (labels reconstruits via I18n.t).
+  // re-rendu au changement de langue
   if (window.I18n && typeof window.I18n.onChange === "function") {
     window.I18n.onChange(function() { try { mount(); } catch(e) {} });
   }
 
-  // ============================================================
-  // 🆕 v1.43.15 — Toggle "Réduire les contrôles" du widget Home
-  // 🧹 v1.71.0 : helpers du bouton 🔼 « réduire les contrôles » SUPPRIMÉS
-  // avec le wrapper collapsible (la clé LS myktamap_osm_home_controls_collapsed
-  // n'est plus lue — résidu inoffensif chez les users existants).
-
-  // ============================================================
-  // 🆕 v1.43.3 — Overlay "ce plan n'est pas caché offline"
-  // ============================================================
-  // Affiché par-dessus la mini-carte quand l'user sélectionne un plan
-  // qui n'a pas (encore) de tuiles cachées dans le store global, alors
-  // qu'on est offline. UX : message clair + suggestion d'action.
+  // ── Overlay « ce plan n'est pas en cache hors ligne » ──────────
+  // Plan sélectionné hors ligne sans tuiles dans le store global : message clair + action suggérée.
 
   async function _maybeShowNotCachedOverlay(planId, georef) {
     _clearNotCachedOverlay();
-    if (_isOnline()) return; // online → render normal, pas d'overlay
+    if (_isOnline()) return; // en ligne : rendu normal
     if (!window.OsmTilesCache) return;
     const bbox = _bboxFromGeoref(georef);
     if (!bbox) return;
     try {
-      // 🐛 v1.43.6 — Mode any-zoom (omission du 2e arg) : scan 10→18 au lieu
-      // de tester uniquement zoom 14 (qui ratait les caches faits à d'autres
-      // zooms par l'user).
+      // sans 2e argument : scan des zooms 10 à 18 (pas seulement 14)
       const has = await window.OsmTilesCache.hasCacheForBbox(bbox);
-      // Garde anti-race : l'user a peut-être sélectionné un autre plan
-      // pendant le lookup IDB.
+      // 🩸 autre plan sélectionné pendant la lecture IDB : abandon
       if (planId !== _selectedPlanId) return;
-      if (has) return; // plan caché → render normal
+      if (has) return; // plan en cache : rendu normal
       _showNotCachedOverlay();
     } catch(e) {}
   }
@@ -3621,13 +3024,9 @@
     if (ov) ov.style.display = "none";
   }
 
-  // ============================================================
-  // 🆕 v1.43.0 — OSM TILES CACHE OFFLINE (widget Home)
-  // ============================================================
-  // Bouton 💾 du bandeau widget Home → délègue à OsmTilesCache.
-  // Cache GLOBAL partagé avec Vue OSM modale + Mode Secours
-  // (même store IDB myktamap_osm_tiles, indexé par z/x/y → aucune
-  // duplication même si l'user clic 💾 depuis 3 contextes différents).
+  // ── Cache OSM hors ligne (bouton 💾 du widget) ──────────
+  // Délégué à OsmTilesCache. Store IDB GLOBAL (myktamap_osm_tiles, z/x/y) partagé avec la modale Vue OSM et le
+  // Mode Secours : aucune duplication.
 
   async function _refreshCacheStatsHome() {
     const span = document.getElementById("ktaOsmHomeCacheStats");
@@ -3671,14 +3070,13 @@
     } finally {
       if (btn && oldHtml != null) { btn.disabled = false; btn.innerHTML = oldHtml; }
       await _refreshCacheStatsHome();
-      // Notifie Vue OSM modale (gate offline) que le cache a changé
+      // la gate hors ligne de la modale Vue OSM est prévenue
       try {
         if (window.OsmView && typeof window.OsmView.recheckOfflineCache === "function") {
           window.OsmView.recheckOfflineCache();
         }
       } catch(e) {}
-      // 🆕 v1.43.3 — Refresh flag global + plan courant (= clear overlay
-      // si plan vient juste d'être caché)
+      // flag globale + plan courant (retire l'overlay si le plan vient d'être mis en cache)
       _refreshAnyCachePresent();
       if (_selectedPlanId) {
         const plans = _listGeorefPlans();
@@ -3694,7 +3092,7 @@
       window.OOMGuard.showToast(msg, "info");
       return;
     }
-    // Fallback : inject bar dans le widget
+    // repli : barre injectée dans le widget
     const container = document.querySelector(".kta-osm-home-map");
     if (!container) { console.log(msg); return; }
     let bar = container.querySelector(".kta-osm-home-toast");
@@ -3715,20 +3113,14 @@
     bar._t = setTimeout(function() { if (bar) bar.style.display = "none"; }, durationMs);
   }
 
-  // Listen opt-in changes pour refresh widget
   window.addEventListener("kta:osmOptInChange", refresh);
 
-  // 🆕 v1.43.3 — Init flag _anyCachePresent au boot (différé pour laisser
-  // OsmTilesCache.init() terminer). Si cache existant + offline → le
-  // _refreshAnyCachePresent() déclenchera refresh() automatiquement.
+  // _anyCachePresent initialisée au boot, après OsmTilesCache.init() ; cache + hors ligne → refresh() auto
   setTimeout(function() {
     if (window.OsmTilesCache && typeof window.OsmTilesCache.init === "function") {
       window.OsmTilesCache.init().then(_refreshAnyCachePresent);
     }
   }, 1500);
-  // 🆕 v1.40.2 — Plus de hook auto-open (l'ancien flow basé sur sessionStorage
-  // + simulation clic plan row + kta:planConfigReady ne marchait pas — sélecteurs
-  // HTML faux). Le ⛶ déclenche maintenant openFullScreen() en local.
 
   window.OsmHomePreview = {
     mount:          mount,

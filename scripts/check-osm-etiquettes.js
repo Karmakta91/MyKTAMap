@@ -1,27 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🏷️ check-osm-etiquettes.js — garde-fou pré-commit BLOQUANT
+// check-osm-etiquettes.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Éprouve l'AJOUT DE PLANS PAR ÉTIQUETTE dans la pile multi-plans de la Vue
-// OSM du HOME (demande KARMA du 04/09 : « afficher d'un coup tous les plans
-// tagués SECTEUR »), sur deux points qui régressent en silence :
-//
-//   1. LE REGROUPEMENT EST INSENSIBLE À LA CASSE. `PlanRegistry.setTags`
-//      dédoublonne les étiquettes D'UN plan, jamais ENTRE plans : « Secteur »
-//      sur l'un et « SECTEUR » sur l'autre donneraient deux chips, chacun ne
-//      montrant que la moitié de ses plans. Le bug ne se voit que si on a
-//      justement tapé les deux orthographes — donc jamais chez celui qui code.
-//
-//   2. LE CLIC N'EST PAS SYMÉTRIQUE : tant qu'il manque un plan, il AJOUTE
-//      seulement les manquants (ré-ajouter un plan déjà monté le dupliquerait
-//      dans la pile) ; quand ils y sont tous, il RETIRE. Inverser ou simplifier
-//      cette règle rend la fonction inutilisable au deuxième clic.
-//
-// Le code testé est EXTRAIT de `js/osmHomePreview.js` (pas recopié) : si les
-// fonctions changent, c'est la nouvelle version qui est éprouvée ; si elles
-// disparaissent ou sont renommées, le script échoue bruyamment au lieu de
-// tester du vide.
+// L'ajout de plans PAR ÉTIQUETTE dans la pile multi-plans de la Vue OSM du
+// HOME. Code EXTRAIT de `js/osmHomePreview.js` et exécuté (une fonction
+// renommée fait échouer le script au lieu de tester du vide).
+// 🩸 Deux régressions silencieuses :
+//   1. regroupement sensible à la casse : `PlanRegistry.setTags` dédoublonne
+//      DANS un plan, jamais ENTRE plans — « Secteur » et « SECTEUR » feraient
+//      deux chips, chacun avec la moitié des plans ;
+//   2. clic asymétrique : tant qu'il manque un plan il AJOUTE les manquants
+//      seulement (sinon doublon dans la pile), quand tous y sont il RETIRE.
 // =====================================================================
 const fs = require("fs"), vm = require("vm");
 
@@ -58,7 +48,7 @@ vm.runInContext(
   extraire("  function _basculerEtiquettePlans(cle)", "\n  }") + "\n" +
   "this._et = _etiquettesDesPlans; this._bascule = _basculerEtiquettePlans;", ctx);
 
-// ───────── 1. regroupement ─────────
+// ── 1. Regroupement ──────────────────────────────────────────────────
 const e = ctx._et();
 t("casse ignoree : Secteur / SECTEUR / secteur = UNE etiquette",
   !!e.secteur && e.secteur.ids.length === 4);
@@ -72,7 +62,7 @@ t("une etiquette a UN seul plan existe (c'est le rendu qui la masque)",
 t("un plan sans etiquette n'apparait nulle part",
   !Object.keys(e).some(k => e[k].ids.indexOf("d") >= 0));
 
-// ───────── 2. bascule ─────────
+// ── 2. Bascule ───────────────────────────────────────────────────────
 const reset = () => { ctx._ajout = null; ctx._retrait = null; };
 
 ctx._stackOrder.length = 0; reset();
@@ -96,7 +86,7 @@ reset();
 ctx._bascule("nexistepas");
 t("etiquette inconnue : aucun effet", ctx._ajout === null && ctx._retrait === null);
 
-// ───────── 3. cablage (ce que l'extraction ne voit pas) ─────────
+// ── 3. Câblage (ce que l'extraction ne voit pas) ─────────────────────
 t("`_listGeorefPlans` transporte bien `tags`", /tags:\s*Array\.isArray\(p\.tags\)/.test(src));
 t("le conteneur des chips existe dans la modale", src.indexOf('id="ktaOsmMultiTags"') >= 0);
 t("`_renderMultiPanel` rend les chips", /_renderMultiTags\(\);/.test(src));
@@ -104,8 +94,8 @@ t("l'ajout en lot demande confirmation avant de depasser la pile",
   /osm_mode\.multi\.tagConfirm/.test(src));
 t("le plan PRINCIPAL est protege du retrait en lot",
   /_retirerPlansOsm[\s\S]{0,400}id === _selectedPlanId/.test(src));
-// En série = chaque chargement accroché au précédent (reduce, ou forEach qui réaffecte la chaîne — écriture
-// adoptée le 09/10/2026, Sonar refusant une valeur de reduce ignorée) ; jamais Promise.all sur le lot.
+// En série = chaque chargement accroché au précédent (reduce, ou forEach qui réaffecte la chaîne : Sonar
+// refuse une valeur de reduce ignorée) ; jamais Promise.all sur le lot.
 t("les donnees d'un lot se chargent EN SERIE, pas en parallele",
   (/montes\.reduce\(/.test(src) || /montes\.forEach\(function \(m\) \{\s*chaine = chaine\.then\(/.test(src)) &&
   !/Promise\.all\(\s*montes/.test(src));

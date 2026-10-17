@@ -1,28 +1,14 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔁 check-legend-roundtrip.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// Rejoue de bout en bout LE scénario qui était cassé (F2/F3, audit du 04/08) :
-// je crée un type custom, je dessine, j'exporte en calque de données, je
-// régénère un plan avec ce calque, je l'ouvre.
-//
-// Avant v1.76.0 : seul l'ID du type voyageait, jamais sa DÉFINITION. Les
-// tracés custom ressortaient en BLANC, les zones en gris remblais, les
-// structures en bleu mur — et aucune ligne dans ≡ Légende, puisque le panneau
-// ne liste que les entrées connues et ne regarde jamais les objets dessinés.
-// Aucun chemin d'UI ne permettait de réparer.
-//
-// Le code testé est EXTRAIT des fichiers réels (pas recopié) : si quelqu'un
-// modifie `_legendePourPayload` ou `_absorberLegendeCalque`, c'est la nouvelle
-// version qui est éprouvée. Si l'une des deux disparaît ou change de nom, le
-// script échoue bruyamment au lieu de tester du vide.
-//
-// Ce qu'il verrouille, au-delà du simple aller-retour :
-//   • on n'embarque QUE ce que le calque référence (pas toute la session) ;
-//   • le ré-import du même calque est IDEMPOTENT (pas de doublons) ;
-//   • en cas de CONFLIT, la légende du plan gagne toujours — un calque ne
-//     doit jamais repeindre en silence le travail de l'auteur du plan.
+// check-legend-roundtrip.js — BLOQUANT (pré-commit) : aller-retour de la légende personnalisée
+// (type custom → dessin → export en calque → plan régénéré → ouverture), plus la légende SIG et le nom
+// des types custom dans les stats de l'accueil. Code EXTRAIT des fichiers réels ; une fonction renommée
+// fait échouer bruyamment.
+// 🩸 La DÉFINITION du type doit voyager, pas seulement son id : sinon tracés blancs, zones grises, et
+//    aucune ligne dans la Légende (elle ne liste que les entrées connues), sans réparation possible.
+// ⚠️ Contrat : on n'embarque que ce que le calque référence ; ré-import idempotent ; en conflit, la
+//    légende du PLAN gagne toujours (un calque ne repeint jamais en silence le travail de l'auteur).
 // =====================================================================
 const fs = require("fs"), vm = require("vm");
 
@@ -35,13 +21,12 @@ function extraire(src, signature, fin) {
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
-// ───────── cote EXPORT (sessionExporter.js) ─────────
+// ── Côté export (sessionExporter.js) ──────
 const se = fs.readFileSync("js/sessionExporter.js", "utf8");
 const winE = { console: { log() {}, warn() {} } };
 winE.window = winE;
 const ctxE = vm.createContext(winE);
-// styleResolver charge en prealable : _legendePourPayload interroge
-// ktaStyleBuiltins depuis v1.76.1 (types bruts non-builtin candidats).
+// styleResolver d'abord : _legendePourPayload interroge ktaStyleBuiltins (types bruts non built-in).
 vm.runInContext("var window=this;" + fs.readFileSync("js/styleResolver.js", "utf8"), ctxE);
 vm.runInContext("var window=this;" + extraire(se, "function _legendePourPayload", "\n  }") +
                 "\nthis._legendePourPayload=_legendePourPayload;", ctxE);
@@ -59,7 +44,7 @@ winE.LegendCustomization = {
         { id: "cust-aaa", category: "traces", geometry: "polyline", label: "Boyau", lineColor: "#ff00aa" },
         { id: "cust-bbb", category: "zones",  geometry: "polygon",  label: "Argile", fillColor: "#00ffaa" },
         { id: "cust-zzz", category: "traces", geometry: "polyline", label: "Jamais dessine", lineColor: "#000000" },
-        // 🧷 v1.76.1 — entree liee a un ID TECHNIQUE brut (pas de prefixe cust-)
+        // entree liee a un ID TECHNIQUE brut (pas de prefixe cust-)
         { id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse", fillColor: "#334455" }
       ]
     };
@@ -83,14 +68,13 @@ t("le masquage d'un type absent ne part pas", leg.hidden["structures.mur"] === u
 t("calque sans perso -> pas de champ legende",
   winE._legendePourPayload({ data: [], roads: [{ type: "secondaire" }] }) === null);
 
-// 🧷 v1.76.1 — un type BRUT (id technique « Bas », sans prefixe cust-) voyage
-// lui aussi : c'etait le mur rencontre par KARMA.
+// Un type BRUT (id technique « Bas », sans préfixe cust-) voyage lui aussi.
 const legBas = winE._legendePourPayload({ data: [], zones: [ { type: "Bas" }, { type: "eau" } ] });
 t("l'entree a id technique part avec le calque", !!legBas && legBas.customEntries.some(e => e.id === "Bas"));
 t("les bordures overridees des types presents partent", !!legBas && legBas.borders["zones.eau"] === "#101010");
 t("les bordures des types ABSENTS ne partent pas", !!legBas && legBas.borders["zones.remblais"] === undefined);
 
-// ───────── cote IMPORT (createConf.js) ─────────
+// ── Côté import (createConf.js) ──────
 const cc = fs.readFileSync("js/createConf.js", "utf8");
 const winI = { console: { log() {}, warn() {} } };
 winI.window = winI;
@@ -130,18 +114,10 @@ winI._setPlan(null);
 t("legende vide -> rien n'est cree", winI._absorber({ labels:{}, hidden:{}, colors:{}, customEntries:[] }) === null);
 t("legende absente -> rien n'est cree", winI._absorber(null) === null);
 
-// ───────── cote GENERATEUR SIG (sigImport.js > assemblerLegendePlan) ─────────
-// 🩸 v1.83.1 (bug KARMA, 04/09 : « j'avais modifie ma legende, elle n'a pas ete
-// emportee dans l'export »). L'ecran « Convertir depuis SIG » ouvre le MEME
-// editeur de legende que le Generateur, mais la generation du ZIP assemblait
-// `plan.customLegend` avec `labels: {}` et `hidden: {}` ECRITS EN DUR, sans
-// `colors` ni `borders`. Renommer un type built-in, en masquer un, en recolorer
-// un, ou ajouter une entree a la main : tout partait a la poubelle en silence.
-// Seules survivaient les entrees `cust-sig-…` fabriquees par niveau.
-//
-// Le contre-piege est de tout garder aveuglement : une entree `cust-sig-…` que
-// la generation courante n'a PAS produite vient d'un routage perime, et poserait
-// dans la legende un type qu'aucun objet ne porte. Les deux sens sont verrouilles.
+// ── Côté générateur SIG (sigImport.js > assemblerLegendePlan) ──────
+// 🩸 La légende éditée (labels, hidden, colors, borders, entrées ajoutées à la main) doit partir dans le
+// ZIP, pas des objets vides écrits en dur. Contre-piège : une entrée `cust-sig-…` que la génération
+// courante n'a PAS produite vient d'un routage périmé et poserait un type qu'aucun objet ne porte.
 const si = fs.readFileSync("js/sigImport.js", "utf8");
 const winS = { console: { log() {}, warn() {} } };
 winS.window = winS;
@@ -185,30 +161,19 @@ t("SIG : rien de personnalise -> pas de section customLegend",
 t("SIG : sans etat edite, les entrees par niveau partent quand meme",
   (winS._assembler(null, autoSig) || {}).customEntries.length === 2);
 
-// ═════════════════════════════════════════════════════════════════════
-// 🏷️ LE NOM D'UN TYPE PERSONNALISÉ, VU DEPUIS L'ACCUEIL (v1.90.3)
-// ═════════════════════════════════════════════════════════════════════
-// BUG KARMA (capture des stats du profil) : les camemberts affichaient
-// « cust-sig-structures-l-nm2 », « cust-mrcevuxu-41f8 ». Illisible — et c'est
-// précisément là qu'on a besoin du nom : un type personnalisé n'a QUE son nom
-// pour identité, contrairement à un built-in qui a un libellé par défaut.
-//
-// 🩸 POURQUOI ÇA RATAIT. `_defaultLabelStat` demandait à `findCustomEntry`,
-// qui interroge l'état COURANT de LegendCustomization — donc le plan chargé.
-// Sur l'accueil il n'y en a aucun. Et le nom d'un type né d'un import SIG vit
-// dans le `plan-config.json` DU ZIP : même en cherchant, il n'est pas dans le
-// localStorage.
-//
-// LA RÈGLE À NE PAS CASSER EN RÉPARANT (v1.21.5-fix1, décision KARMA) : en
-// agrégat cross-plan, un type BUILT-IN garde son libellé PAR DÉFAUT. Sinon le
-// renommage de « principal » en « route de surface » sur le plan A s'imposerait
-// au total de tous les autres. Le dictionnaire externe ne doit donc servir
-// QUE les clés `cust-`.
+// ── Nom d'un type personnalisé vu depuis l'accueil (statsGlobales.js) ──────
+// 🩸 `findCustomEntry` interroge le plan CHARGÉ : sur l'accueil il n'y en a aucun, et le nom d'un type
+// SIG vit dans le plan-config du ZIP. D'où un dictionnaire externe, qui ne sert QUE les clés `cust-` :
+// en agrégat cross-plan, un BUILT-IN garde son libellé par défaut (décision produit), sinon le renommage
+// d'un plan s'impose au total de tous les autres.
 {
   const SG = fs.readFileSync("js/statsGlobales.js", "utf8");
   const d = SG.indexOf("let _labelsExternes = null;");
-  const f = SG.indexOf("  /**", d);
-  t("le résolveur de libellé est extractible de statsGlobales.js", d >= 0 && f > d);
+  // ⚠️ Fin de découpe = ancre explicite de la source (jamais un commentaire libre, qu'un nettoyage
+  // retirerait). Absente → échec, pas de découpe jusqu'à la fin.
+  const f = d >= 0 ? SG.indexOf("// 🏷️ ancre:fin-libelles-stats", d) : -1;
+  t("le résolveur de libellé est extractible de statsGlobales.js (repère `🏷️ ancre:fin-libelles-stats`)",
+    d >= 0 && f > d);
 
   if (d >= 0 && f > d) {
     const sb = {
@@ -232,26 +197,22 @@ t("SIG : sans etat edite, les entrees par niveau partent quand meme",
       const DICO = { "structures.cust-sig-structures-l-nm2": "Niveau -2",
                      "traces.principal": "NE DOIT PAS SERVIR" };
 
-      // 1. sans dictionnaire : le comportement d'AVANT le correctif
       sb.__set(null);
       t("sans dictionnaire, une clé custom reste brute (état d'avant le fix)",
         sb.__lbl("structures", "cust-sig-structures-l-nm2", "cust-sig-structures-l-nm2")
           === "cust-sig-structures-l-nm2");
 
-      // 2. avec dictionnaire : le nom, préfixé ✨ comme partout ailleurs
+      // avec dictionnaire : le nom, préfixé ✨ comme partout ailleurs
       sb.__set(DICO);
       t("🏷️ avec dictionnaire, la clé custom devient son NOM",
         sb.__lbl("structures", "cust-sig-structures-l-nm2", "x") === "✨ Niveau -2");
 
-      // 3. 🩸 LA RÈGLE : un built-in ignore le dictionnaire, même s'il y figure
       t("🩸 un type BUILT-IN garde son libellé par défaut (règle v1.21.5-fix1)",
         sb.__lbl("roads", "principal", "x") === "Principal");
 
-      // 4. une clé custom absente du dictionnaire ne s'invente pas un nom
       t("une clé custom inconnue reste brute (aucun nom inventé)",
         sb.__lbl("zones", "cust-inconnu-42", "cust-inconnu-42") === "cust-inconnu-42");
 
-      // 5. 🩸 le dictionnaire ne doit pas SURVIVRE au rendu
       t("🩸 le dictionnaire se retire (sinon il fuiterait dans la modale d'un plan)",
         /if \(arguments\.length >= 5\) _setLabelsExternes\(null\);/.test(SG) &&
         /keys\.length === 0\) \{ _setLabelsExternes\(null\); return "";/.test(SG) &&
@@ -259,8 +220,7 @@ t("SIG : sans etat edite, les entrees par niveau partent quand meme",
     }
   }
 
-  // Côté profil : le dictionnaire est alimenté au CHARGEMENT du plan, seul
-  // moment où la cascade complète peut répondre.
+  // Côté profil : dictionnaire alimenté au CHARGEMENT du plan, seul moment où la cascade complète répond.
   const HP = fs.readFileSync("js/homeProfile.js", "utf8");
   t("les libellés custom sont mémorisés dans le cache de stats du plan",
     /labels: _labelsCustomCourants\(/.test(HP));

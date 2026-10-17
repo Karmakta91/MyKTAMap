@@ -5,17 +5,17 @@
  */
 
 // =========================
-// CONFADMIN.JS — script de confadmin.html (ex-bloc <script> inline)
+// CONFADMIN.JS — Script de confadmin.html (outil de génération de data/index.json)
 // =========================
-// Sorti de la page le 07/10/2026 pour la CSP stricte (script-src sans 'unsafe-inline'). Code INCHANGÉ, chargé à
-// la même place (fin de body).
+// Fichier séparé pour la CSP stricte (script-src sans 'unsafe-inline'), chargé en fin de body.
+// Garde-fou : check-connexion-serveur.js (même validation que js/ktaExtensions.js).
 
 (function() {
   "use strict";
 
-  // ───────── État ─────────
+  // ── État ──────────
   const _plans = [];        // { id, name, version, author, multiLevel, tiledV2, tags, folder }
-  const _folders = [];      // 📁 { id, name, color } — dossiers déclarés par l'index
+  const _folders = [];      // { id, name, color } — dossiers déclarés par l'index
   const _FOLDER_COLORS = ["#8cb4ff", "#f4c542", "#7ed6a5", "#ff9f7a", "#c39bff", "#7fd8e6", "#ff7aa8", "#b8c4d6"];
   function _slugDossier(nom) {
     return String(nom || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -33,11 +33,8 @@
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
   }
-  // 🏷️ v1.90.1 — MÊMES RÈGLES QUE `PlanRegistry.setTags` (trim, 24 caractères,
-  // dédup insensible à la casse, 12 max). 🩸 Si elles divergeaient, ConfAdmin
-  // publierait des tags que l'app rognerait en silence : l'auteur du kiosque
-  // verrait un filtre annoncé qui ne remonte pas. Le champ accepte des virgules
-  // ou des points-virgules — on ne fait pas deviner la syntaxe à l'utilisateur.
+  // ⚠️ MÊMES RÈGLES QUE `PlanRegistry.setTags` (trim, 24 caractères, dédup sans casse, 12 max) : sinon ConfAdmin
+  // publierait des tags que l'app rognerait en silence. Virgules ou points-virgules acceptés.
   function _normTags(v) {
     const vus = {};
     return String(v == null ? "" : v).split(/[,;]/)
@@ -52,10 +49,10 @@
       .slice(0, 12);
   }
 
-  // Même sanitisation que le moteur (main.js decouvrirPlansServeur)
+  // Même assainissement que le moteur (main.js > decouvrirPlansServeur).
   function _sanitId(s) { return String(s || "").replace(/[^a-z0-9_-]/gi, "_"); }
-  // 📦 07/10/2026 — même règle que l'app (main.js > decouvrirPlansServeur) : chemin relatif .zip,
-  // sans « .. » ni « / » initial. Une saisie refusée retombe sur data/<id>.zip.
+  // Même règle que l'app (main.js > decouvrirPlansServeur) : chemin relatif .zip, sans « .. » ni « / » initial ;
+  // une saisie refusée retombe sur data/<id>.zip.
   function _zipValide(z) { return /^[\w./-]+\.zip$/i.test(z || "") && z.indexOf("..") < 0 && z.charAt(0) !== "/"; }
   function _cheminZip(p) { return _zipValide(p.zip) ? p.zip : "data/" + p.id + ".zip"; }
   function _slug(s) {
@@ -66,11 +63,11 @@
     el.innerHTML = msg ? '<div class="kta-ca-status' + (err ? " kta-ca-err" : "") + '">' + msg + "</div>" : "";
   }
 
-  // ───────── 1. PLANS ─────────
+  // ── 1. Plans ──────────
   async function _lireZip(file) {
     if (typeof JSZip === "undefined") throw new Error("lib/jszip.min.js introuvable (ouvre la page depuis l'instance)");
     const zip = await JSZip.loadAsync(file);
-    // plan-config.json à la racine du ZIP — sinon le moins profond (ZIP re-dossierisé)
+    // plan-config.json à la racine du ZIP, sinon le moins profond (ZIP re-dossierisé).
     let entry = zip.file("plan-config.json");
     if (!entry) {
       let best = null;
@@ -86,7 +83,7 @@
     const plan = cfg && cfg.plan ? cfg.plan : {};
     return {
       id:         _slug(file.name),
-      // 📦 par défaut, le plan est servi tel quel : son ZIP, sous son nom s'il est sûr pour une URL.
+      // Par défaut, le plan est servi tel quel : son ZIP, sous son nom s'il est sûr pour une URL.
       format:     "zip",
       zip:        /^[\w.-]+\.zip$/i.test(file.name) ? "data/" + file.name : "",
       name:       plan.name || _slug(file.name),
@@ -105,7 +102,7 @@
       if (!/\.zip$/i.test(f.name)) continue;
       try {
         const p = await _lireZip(f);
-        // dédup id
+        // Dédoublonnage de l'id.
         let base = p.id, n = 2;
         while (_plans.some(function(x) { return x.id === p.id; })) p.id = base + "-" + (n++);
         _plans.push(p);
@@ -126,7 +123,7 @@
         '<td><button class="kta-ca-mv" data-mv="-1" data-i="' + i + '" title="Monter">▲</button>' +
         '<button class="kta-ca-mv" data-mv="1" data-i="' + i + '" title="Descendre">▼</button></td>' +
         '<td><input type="text" data-f="id" data-i="' + i + '" value="' + _esc(p.id) + '"></td>' +
-        // 📦 Format : l'archive telle quelle (recommandé) ou un dossier décompressé (historique).
+        // Format : l'archive telle quelle (recommandé) ou un dossier décompressé (historique).
         '<td style="width:170px;"><select data-f="format" data-i="' + i + '">' +
           '<option value="zip"' + (p.format === "zip" ? " selected" : "") + '>📦 ZIP</option>' +
           '<option value="dossier"' + (p.format !== "zip" ? " selected" : "") + '>📂 Dossier</option></select>' +
@@ -151,7 +148,7 @@
     _plans[Number(e.target.getAttribute("data-i"))][f] = e.target.value;
     _renderMapping(); _renderOut();
   });
-  // 📁 la colonne Dossier est un <select> : événement change, pas input
+  // La colonne Dossier est un <select> : événement change, pas input.
   $("caPlansBody").addEventListener("change", function(e) {
     const f = e.target.getAttribute("data-f");
     if (f === "format") {   // le champ de chemin change avec le format
@@ -164,7 +161,7 @@
     _renderOut();
   });
 
-  // ── 📁 Dossiers déclarés par l'index ──
+  // ── Dossiers déclarés par l'index ──
   function _selectDossier(i, val) {
     return '<select data-f="folder" data-i="' + i + '"><option value="">—</option>' +
       _folders.map(function(d) { return '<option value="' + _esc(d.id) + '"' + (d.id === val ? " selected" : "") + '>' + _esc(d.name) + '</option>'; }).join("") +
@@ -193,7 +190,7 @@
     const avant = _folders[i].id;
     _folders[i][f] = e.target.value;
     if (f === "id") {
-      // un id qui change entraîne les plans qui le référencent
+      // Un id qui change entraîne les plans qui le référencent.
       const apres = _slugDossier(e.target.value);
       _folders[i].id = apres;
       _plans.forEach(function(p) { if (p.folder === avant) p.folder = apres; });
@@ -251,12 +248,10 @@
   });
 
 
-  // ───────── 📂 REPRENDRE UN INDEX.JSON EXISTANT ─────────
-  // 🩸 La page ne savait que PRODUIRE un index. Pour ajouter un tag à un parc
-  // déjà en ligne, il fallait redéposer tous les ZIPs et retaper chaque nom —
-  // et la moindre faute de frappe sur un `id` cassait le chemin du plan.
-  // On relit donc l'index publié : ce qu'il contient fait foi, y compris les
-  // liaisons, que ce navigateur ne peut pas reconstruire (cf _construire).
+  // ── Reprendre un index.json existant ──────────
+  // Pour modifier un parc déjà en ligne sans redéposer tous les ZIP ni retaper chaque nom (une faute sur un `id`
+  // casse le chemin du plan) : l'index publié fait foi, liaisons comprises (ce navigateur ne peut pas les
+  // reconstruire, cf. _construire).
   $("caLoadIndex").addEventListener("click", function() { $("caIndexInput").click(); });
   $("caIndexInput").addEventListener("change", function(e) {
     const f = (e.target.files || [])[0]; e.target.value = "";
@@ -274,7 +269,7 @@
           if (!x || !x.id) return;
           _plans.push({
             id:         String(x.id),
-            // 📦 format et chemin d'origine conservés (un `path` personnalisé était perdu)
+            // Format et chemin d'origine conservés (un `path` personnalisé serait perdu).
             format:     x.zip ? "zip" : "dossier",
             zip:        x.zip ? String(x.zip) : "",
             path:       x.path ? String(x.path) : "",
@@ -287,7 +282,7 @@
             folder:     x.folder ? String(x.folder) : ""
           });
         });
-        // 📁 dossiers déclarés (et plans orphelins d'un dossier absent → sans dossier)
+        // Dossiers déclarés ; un plan rangé dans un dossier absent devient sans dossier.
         _folders.length = 0;
         (Array.isArray(d.folders) ? d.folders : []).forEach(function(x) {
           if (!x || !x.name) return;
@@ -301,9 +296,8 @@
         $("caSubtitle").value        = c.subtitle || "";
         $("caFlagServerOnly").checked = c.serverPlansOnly === true;
         $("caFlagNoGen").checked      = c.disableGenerator === true;
-        // 🩸 On CONSERVE le hash repris tel quel, sans toucher au champ : un
-        // hash ne se remonte pas en mot de passe. Le champ reste vide, et
-        // taper dedans REMPLACE le hash — ce qui est le seul geste honnête.
+        // 🔒 Le hash repris est CONSERVÉ tel quel, champ vide : un hash ne redevient pas un mot de passe. Taper dans
+        // le champ REMPLACE le hash.
         _accessHash = (typeof c.accessHash === "string" && /^[0-9a-f]{64}$/.test(c.accessHash.trim().toLowerCase()))
           ? c.accessHash.trim().toLowerCase() : "";
         const _etatPwd = $("caAccessPwdEtat");
@@ -312,8 +306,8 @@
             ? "🔑 mot de passe existant conservé (" + _accessHash.slice(0, 16) + "…) — tape ici pour le remplacer"
             : "";
         }
-        // 🔌 connexion serveur reprise telle quelle (même invalide : on la montre
-        // pour qu'elle soit corrigée, l'export la refusera tant qu'elle l'est).
+        // Connexion serveur reprise telle quelle, même invalide (montrée pour être corrigée ; l'export la refuse tant
+        // qu'elle l'est).
         const sc = c.serverConnection;
         $("caCnxState").value = (sc && sc.state === "on") ? "on" : "off";
         $("caCnxApi").value = (sc && typeof sc.api === "string") ? sc.api : "";
@@ -334,13 +328,10 @@
     r.readAsText(f);
   });
 
-  // 🔑 v1.90.6 — SHA-256 du mot de passe d'instance. Recalculé à la volée,
-  // jamais stocké : `_accessHash` ne contient QUE le hash, et la valeur tapée
-  // reste dans le champ, en RAM, le temps de l'onglet.
-  // 🩸 `crypto.subtle` n'existe qu'en contexte SÛR (https ou localhost). Un
-  // déployeur qui ouvre confadmin.html en `file://` ou en HTTP simple doit le
-  // SAVOIR : sans ce message, il croirait avoir posé un mot de passe et
-  // publierait un index sans hash.
+  // 🔒 SHA-256 du mot de passe d'instance, recalculé à la volée, jamais stocké : `_accessHash` ne contient QUE le
+  // hash, la valeur tapée reste dans le champ (RAM, le temps de l'onglet).
+  // 🩸 `crypto.subtle` n'existe qu'en contexte SÛR (https ou localhost) : en `file://` ou HTTP simple, on le DIT,
+  // sinon le déployeur publierait un index sans hash en croyant avoir posé un mot de passe.
   let _accessHash = "";
   async function _majAccessHash() {
     const el = $("caAccessPwd"), etat = $("caAccessPwdEtat");
@@ -370,7 +361,7 @@
   }
   $("caAccessPwd").addEventListener("input", function() { _majAccessHash(); });
 
-  // ───────── 2. LIAISONS ─────────
+  // ── 2. Liaisons ──────────
   function _poserLiaisons(reg, origine) {
     const links = (reg && Array.isArray(reg.links)) ? reg.links : [];
     if (!links.length) { _statut($("caLinksStatus"), "Aucune liaison trouvée (" + origine + ")", true); return; }
@@ -401,7 +392,7 @@
     r.onload = function() {
       try {
         const d = JSON.parse(r.result);
-        // Export de profil complet (sections.preferences) OU registre brut {links:[]}
+        // Export de profil complet (sections.preferences) OU registre brut {links:[]}.
         let reg = null;
         if (d && d.type === "myktamap-profile-export" && d.sections && d.sections.preferences) {
           reg = d.sections.preferences["myktamap_interplan_links_v1"] || null;
@@ -429,7 +420,7 @@
     box.innerHTML = "";
     ids.forEach(function(pid) {
       if (!(pid in _mapping)) _mapping[pid] = _autoMatch(pid);
-      // pack retiré depuis ? → reset
+      // Pack retiré depuis : remise à zéro.
       if (_mapping[pid] && !_plans.some(function(p) { return p.id === _mapping[pid]; })) _mapping[pid] = _autoMatch(pid);
       const row = document.createElement("div");
       row.className = "kta-ca-map-row";
@@ -478,7 +469,7 @@
     _renderOut();
   });
 
-  // ───────── 3+4. SORTIE ─────────
+  // ── 3+4. Sortie ──────────
   function _construire() {
     const out = {};
     const so = $("caFlagServerOnly").checked, ng = $("caFlagNoGen").checked;
@@ -490,14 +481,14 @@
       if (ng) out.config.disableGenerator = true;
       if (_accessHash) out.config.accessHash = _accessHash;
     }
-    // 🔌 connexion serveur : écrite SEULEMENT si « activée » et valide.
+    // Connexion serveur écrite SEULEMENT si « activée » et valide.
     const cnx = _connexionSaisie();
     if (cnx.valide && cnx.champ) { out.config = out.config || {}; out.config.serverConnection = cnx.champ; }
-    // 📁 décision KARMA 9 : mode Dossiers par défaut (seulement s'il y a des dossiers)
+    // Mode Dossiers par défaut (décision produit), seulement s'il y a des dossiers.
     const fd = !!($("caFlagFoldersDefault") && $("caFlagFoldersDefault").checked) && _folders.length > 0;
     if (fd) { out.config = out.config || {}; out.config.plansViewDefault = "folders"; }
     if ($("caFlagSitePlansHidden") && $("caFlagSitePlansHidden").checked) { out.config = out.config || {}; out.config.sitePlansHiddenDefault = true; }
-    // 📁 dossiers déclarés : seulement s'il y en a (index identique sinon)
+    // Dossiers déclarés seulement s'il y en a (index identique sinon).
     const dossiersValides = _folders.filter(function(d) { return d.id && String(d.name || "").trim(); });
     if (dossiersValides.length) {
       out.folders = dossiersValides.map(function(d, i) {
@@ -518,8 +509,8 @@
       if (p.tiledV2)    e.tiledV2    = true;
       return e;
     });
-    // Liaisons : remap des planId locaux → "server_<id>" (= id PlanRegistry
-    // que decouvrirPlansServeur attribuera sur le kiosque), planName = nom pack.
+    // Liaisons : planId locaux → "server_<id>" (id PlanRegistry que decouvrirPlansServeur attribuera sur le
+    // kiosque), planName = nom du pack.
     const links = _links.filter(function(l) { return _liaisonExportable(l) && _linkSel[l.id]; })
       .map(function(l) {
         function remap(s) {
@@ -534,21 +525,17 @@
         nl.a = remap(l.a); nl.b = remap(l.b);
         return nl;
       });
-    // 🩸 REPRENDRE UN INDEX NE DOIT RIEN DÉTRUIRE. Les liaisons se construisent
-    // depuis le registre de CE navigateur ; sur une machine qui n'en a pas, un
-    // index rechargé pour corriger un tag serait redescendu SANS ses liaisons —
-    // perte silencieuse. On les repose telles quelles tant qu'aucune liaison
-    // locale n'est sélectionnée pour les remplacer.
+    // 🩸 REPRENDRE UN INDEX NE DOIT RIEN DÉTRUIRE : sans registre local, un index rechargé pour corriger un tag
+    // perdrait ses liaisons en silence. Elles sont reposées telles quelles tant qu'aucune liaison locale n'est
+    // sélectionnée pour les remplacer.
     if (links.length) out.liaisons = { version: 1, links: links };
     else if (_liaisonsReprises) out.liaisons = _liaisonsReprises;
     return out;
   }
 
-  // ───────── 🔌 CONNEXION SERVEUR ─────────
-  // 🩸 MÊMES RÈGLES que js/ktaExtensions.js > valider() — corps recopié à
-  // l'identique, et scripts/check-connexion-serveur.js exécute les deux sur la
-  // même table de cas. Une instance que ConfAdmin jugerait valide et que l'app
-  // jugerait invalide serait le pire des deux mondes.
+  // ── Connexion serveur ──────────
+  // 🩸 MÊMES RÈGLES que js/ktaExtensions.js > valider() (corps recopié à l'identique ;
+  // scripts/check-connexion-serveur.js exécute les deux sur la même table de cas) : une instance valide ici et invalide dans l'app serait le pire cas.
   function ktaValiderConnexion(sc) {
     if (sc === undefined || sc === null) return { etat: "off", raison: "absent" };
     if (typeof sc !== "object" || Array.isArray(sc)) {
@@ -557,9 +544,8 @@
     if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
     if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
 
-    // api : une adresse https:// (autre domaine possible, règle D) OU un chemin du
-    // MÊME site (« /api/ ») — résolu à l'adresse de l'app au moment de l'appel :
-    // l'installation marche alors par localhost, par IP ou par nom de domaine.
+    // api : une adresse https:// (autre domaine possible) OU un chemin du MÊME site (« /api/ »), résolu à l'adresse
+    // de l'app à l'appel (localhost, IP ou nom de domaine).
     if (typeof sc.api !== "string" ||
         !(/^https:\/\/[^\s/?#]+/i.test(sc.api.trim()) || /^\/(?!\/)[^\s?#]*$/.test(sc.api.trim()))) {
       return { etat: "invalide", raison: "api doit être une adresse https:// ou un chemin du même site (/api/)" };
@@ -577,9 +563,8 @@
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
     }
-    // transparence (facultatif) : la page de transparence de l'installation, sur le MÊME
-    // site que l'app (chemin relatif .html, mêmes règles qu'un module). La pastille y
-    // mène dès que l'état n'est pas OFF (cadrage : ce que l'installation fait de tes données).
+    // transparence (facultatif) : page de transparence de l'installation, MÊME site (chemin relatif .html, règles
+    // d'un module). La pastille y mène dès que l'état n'est pas OFF.
     if (sc.transparence !== undefined && (typeof sc.transparence !== "string" ||
         !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/.test(sc.transparence) ||
         sc.transparence.indexOf("..") >= 0 || sc.transparence.indexOf("//") >= 0)) {
@@ -590,7 +575,6 @@
     return v;
   }
 
-  // Lit le bloc : { valide, champ (à écrire, ou null), raison }.
   function _connexionSaisie() {
     if ($("caCnxState").value !== "on") return { valide: true, champ: null, raison: "" };
     const champ = {

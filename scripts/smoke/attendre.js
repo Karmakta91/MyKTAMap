@@ -2,14 +2,10 @@
 // =====================================================================
 // attendre.js — attendre qu'une condition évaluée dans la page soit vraie
 // =====================================================================
-// 🩸 12/10/2026 — REMPLACE page.waitForFunction dans tous les harnais.
-// waitForFunction passe par une évaluation de chaîne que la CSP de l'app
-// (script-src 'self', sans 'unsafe-eval') REFUSE : il échouait aussitôt, et
-// le harnais concluait « pas chargé » (smoke rouge à l'étape 4 sans défaut
-// réel de l'app). page.evaluate n'est pas concerné : on sonde en boucle.
-// Ne pas contourner par `bypassCSP` : le harnais ne verrait plus une vraie
-// violation de CSP.
-//
+// 🩸 REMPLACE page.waitForFunction dans tous les harnais : il passe par une évaluation de chaîne que la CSP
+// de l'app (sans 'unsafe-eval') refuse, échoue aussitôt, et le harnais conclut « pas chargé » à tort.
+// page.evaluate n'est pas concerné : on sonde en boucle. Ne pas contourner par `bypassCSP` : le harnais
+// ne verrait plus une vraie violation de CSP.
 // attendre(page, fn, delaiMs[, pasMs]) → Promise<true>, rejette au délai.
 // =====================================================================
 "use strict";

@@ -1,28 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📐 check-home-layout.js — le HOME PC ne dépend pas du zoom (pré-commit)
+// check-home-layout.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// 🩸 KARMA, 15/09/2026 : « on a encore un souci de zoom, si je dézoome ça
-// rentre bien. Ça fait plusieurs fois qu'on bosse sans résoudre ce problème. »
-//
-// L'audit (mesures Playwright, 13 configurations de 1000 à 2400 px et de 80 à
-// 125 % de zoom) a établi que ce n'était NI la largeur NI le zoom : la colonne
-// Actions fait 300 px partout depuis la v1.69.0. Deux causes réelles :
-//   1. HORIZONTAL — cinq outils dans deux colonnes = un orphelin, seul à
-//      droite d'une cellule vide, son libellé sur deux lignes.
-//   2. VERTICAL — la colonne d'un portable (1536×800) était à zéro de marge ;
-//      +128 px ajoutés en deux commits ont fait passer « Charger ce plan »,
-//      le bouton PRIMAIRE, dans le scroll interne de #panelZip (filet v1.88.1)
-//      sans indice visuel. Le dézoom rend la fenêtre plus haute, c'est tout.
-//
-// Onze passes en quatre mois avaient chacune posé UNE CONSTANTE (300, 58→44,
-// 520, 820…) à un endroit différent, sans jamais écrire l'invariant. Le voici,
-// vérifié : « Charger ce plan » ne peut pas disparaître, un nombre impair
-// d'outils ne laisse pas d'orphelin, et AUCUNE nouvelle largeur en px n'entre
-// sur la colonne Actions. Ce garde lit le CSS ; la mesure au navigateur vit
-// dans scripts/smoke/checkup-home-scroll.js (porte de release).
-//
+// Le HOME PC ne dépend pas du zoom. La colonne Actions a une largeur fixe ; les
+// vrais défauts sont (1) un outil orphelin quand leur nombre est impair, (2) le
+// bouton primaire « Charger ce plan » qui glisse dans le scroll interne de
+// #panelZip sur un écran bas (le dézoom ne fait qu'agrandir la fenêtre).
+// Invariant vérifié dans le CSS : le primaire ne peut pas disparaître, un nombre
+// impair d'outils ne laisse pas d'orphelin, et AUCUNE nouvelle largeur en px
+// n'entre sur la colonne Actions (poser une constante ne règle rien).
+// Mesure au navigateur : scripts/smoke/checkup-home-scroll.js (porte de release).
 // Usage : node scripts/check-home-layout.js
 // =====================================================================
 
@@ -40,8 +28,7 @@ function regle(source, selecteur) {
   const j = source.indexOf("}", i);
   return source.slice(i + selecteur.length + 2, j);
 }
-// Le média « PC bas » où la colonne scrolle en interne (v1.88.1) — la seule
-// zone où le bouton primaire PEUT se retrouver hors de vue.
+// Bloc entier d'un média (accolades équilibrées).
 function bloc(source, ouverture) {
   const i = source.indexOf(ouverture);
   if (i < 0) return null;
@@ -50,7 +37,7 @@ function bloc(source, ouverture) {
   return source.slice(i, p);
 }
 
-// ---------- 1. L'orphelin ----------
+// ── 1. L'orphelin ────────────────────────────────────────────────────
 {
   const tuile = regle(CSS, ".loader-secondary-actions .loader-btn-secondary");
   t("📐 la tuile d'outil existe (grille .loader-secondary-actions)", !!tuile);
@@ -67,7 +54,7 @@ function bloc(source, ouverture) {
     !/\.loader-secondary-actions\s*\{[^}]*auto-fit/.test(CSS));
 }
 
-// ---------- 2. Le budget vertical ----------
+// ── 2. Le budget vertical (média « PC bas » : la seule zone où le primaire peut sortir de la vue) ──
 {
   const pcBas = bloc(CSS, "@media (min-width: 1024px) and (max-height: 820px)");
   t("📐 le média « PC bas » (≤ 820 px de haut) existe", !!pcBas);
@@ -89,10 +76,9 @@ function bloc(source, ouverture) {
     !!tuilesBas && /min-height:\s*(3[0-9]|40)px;/.test(tuilesBas));
 }
 
-// ---------- 3. Aucune nouvelle constante en px ----------
-// 🩸 C'est LA règle qui empêche le retour du bug : chaque passe précédente
-// avait « réglé » le HOME en posant une largeur en px quelque part. Seul le
-// rail de la grille (300px, décision v1.69.0) a le droit d'être fixe.
+// ── 3. Aucune nouvelle constante en px ───────────────────────────────
+// 🩸 Poser une largeur en px « règle » le HOME à un zoom et le casse à un autre.
+// Seul le rail de la grille (300px) est fixe (décision produit).
 {
   const re = /\.loader-(?:col-actions|secondary-actions)[^{]*\{([^}]*)\}/g;
   const fautifs = [];

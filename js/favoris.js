@@ -5,51 +5,31 @@
  */
 
 // =========================
-// ⭐ Favoris (v1.16.0 step 3)
+// FAVORIS.JS — Points favoris par plan (groupe ⭐ Favoris de la sidebar)
 // =========================
-//
-// Permet à l'utilisateur de marquer des POINTS (POI) comme favoris pour y
-// revenir rapidement. Stockage par plan dans localStorage. Affichage dans
-// un nouveau groupe sidebar "⭐ Favoris" (flyout) : clic sur un favori →
-// centre la carte dessus + flash visuel.
-//
-// Format de stockage (localStorage key "myktamap_favoris_v1") :
+// Un clic sur un favori centre la carte dessus + flash. Stockage localStorage "myktamap_favoris_v1" :
 //   {
 //     version: 1,
 //     byPlan: {
 //       "<planId>": [
 //         {
-//           uid:        "fav-...",     // ID unique du favori
-//           pointId:    "...",          // ID du point d'origine
-//           nom:        "...",          // libellé snapshot
-//           x: 1234, y: 5678,           // coords plan x/y (snapshot)
-//           tag:        "puits"|...,   // tag principal (pour icône)
-//           layerId:    "editor"|...,  // calque d'origine (pour info)
-//           layerLabel: "...",          // libellé du calque (pour info)
-//           addedAt:    1716552000     // timestamp ajout
+//           uid:        "fav-...",     // identifiant du favori
+//           pointId:    "...",          // id du point d'origine (pointUid : uid du point)
+//           nom:        "...",          // libellé (snapshot)
+//           x: 1234, y: 5678,           // coords plan (snapshot)
+//           tag:        "puits"|...,   // tag principal (icône)
+//           layerId:    "editor"|...,  // calque d'origine
+//           layerLabel: "...",          // libellé du calque
+//           addedAt:    1716552000     // horodatage d'ajout
 //         }
 //       ]
 //     }
 //   }
-//
-// API publique :
-//   window.Favoris.loadPlan(planId)     → switch active plan (appelé par main.js)
-//   window.Favoris.getAll()             → list of favoris for current plan
-//   window.Favoris.isFav(pointId)       → bool
-//   window.Favoris.findByPointId(id)    → favori entry or null
-//   window.Favoris.add(snapshot)        → adds, returns true if added
-//   window.Favoris.remove(pointId)      → removes, returns true if removed
-//   window.Favoris.toggle(snapshot)     → { action: "added"|"removed", changed }
-//   window.Favoris.onChange(fn)         → listener (sidebar refresh)
-//
-// Pourquoi snapshot complet plutôt que juste l'ID :
-//   1. Résilience : si le point est supprimé/déplacé du data layer, le
-//      favori continue de fonctionner (centre sur les coords snapshot).
-//   2. Performance : pas besoin de scanner getEditorPoints + data layers
-//      à chaque ouverture du flyout pour résoudre les libellés/icônes.
-//   3. Si le point est édité (renommé) après ajout en favori, le snapshot
-//      est obsolète — trade-off acceptable, l'utilisateur peut retirer
-//      et re-ajouter pour rafraîchir.
+// API : window.Favoris = { loadPlan(planId) (appelé par main.js), getAll(), isFav(pointId), findByPointId(id),
+//   add(snapshot), remove(pointId), toggle(snapshot) → { action: "added"|"removed", changed }, onChange(fn),
+//   exportToJson / exportToFile / importFromJson / importFromFile, migrerVersUid, transfererPlan }
+// SNAPSHOT plutôt que l'id seul : le favori survit à la suppression ou au déplacement du point, et le flyout n'a
+// rien à résoudre à l'ouverture. Prix assumé : un point renommé garde l'ancien libellé (retirer puis rajouter).
 
 window.Favoris = (function() {
   "use strict";
@@ -61,9 +41,7 @@ window.Favoris = (function() {
   let _store         = { version: VERSION, byPlan: {} };
   const _listeners   = [];
 
-  // ─────────────────────────────────────────────
-  // Persistance localStorage
-  // ─────────────────────────────────────────────
+  // ── Persistance localStorage ──────────
   function _load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -82,7 +60,7 @@ window.Favoris = (function() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(_store));
     } catch(e) {
       console.warn("[Favoris] _save échec :", e);
-      // Quota dépassé sur mobile → on alerte une fois via OOMGuard si dispo
+      // Quota dépassé (mobile) : une alerte, par OOMGuard si présent.
       if (window.OOMGuard && typeof window.OOMGuard.showToast === "function" &&
           e && (e.name === "QuotaExceededError" || /quota/i.test(e.message || ""))) {
         window.OOMGuard.showToast(
@@ -99,9 +77,7 @@ window.Favoris = (function() {
     });
   }
 
-  // ─────────────────────────────────────────────
-  // Cycle de vie : switch de plan
-  // ─────────────────────────────────────────────
+  // ── Cycle de vie : changement de plan ──────────
   function loadPlan(planId) {
     _currentPlanId = planId || null;
     if (_currentPlanId && !_store.byPlan[_currentPlanId]) {
@@ -110,8 +86,8 @@ window.Favoris = (function() {
     _emit();
   }
 
-  // Les favoris d'un plan passent sous un autre id (copie locale remplacée par
-  // sa version publiée). Fusion si la cible en a déjà. → nombre déplacé.
+  // Les favoris d'un plan passent sous un autre id (copie locale remplacée par sa version publiée), fusion si la cible
+  // en a déjà. Rend le nombre déplacé.
   function transfererPlan(ancienId, nouveauId) {
     const src = _store.byPlan[ancienId];
     if (!ancienId || !nouveauId || ancienId === nouveauId || !Array.isArray(src) || !src.length) return 0;
@@ -128,17 +104,13 @@ window.Favoris = (function() {
     return _store.byPlan[_currentPlanId] || [];
   }
 
-  // ─────────────────────────────────────────────
-  // Lookup / state
-  // ─────────────────────────────────────────────
+  // ── Lookup / état ──────────
   function getAll() {
     return _currentList().slice();
   }
 
-  // 🆔 v2.4.0 (ETUDE_UID lot C2) — un favori est rattaché à l'uid de son point
-  // (`pointUid` : le champ `uid` d'un favori est déjà SON identifiant, fav-…).
-  // Lecture : l'uid d'abord ; un favori ancien sans pointUid se reconnaît
-  // encore à son nom (double lecture, comme les photos).
+  // Un favori est rattaché à l'uid de son point (`pointUid` ; le champ `uid` est celui du FAVORI, fav-…). L'uid
+  // d'abord ; un favori ancien sans pointUid se reconnaît à son nom (double lecture, comme les photos).
   function _correspond(f, pointId, pointUid) {
     if (pointUid && f.pointUid) return f.pointUid === pointUid;
     return !!pointId && f.pointId === pointId;
@@ -156,11 +128,9 @@ window.Favoris = (function() {
     return !!findByPointId(pointId, pointUid);
   }
 
-  // 🆔 v2.4.0 — Migration douce des favoris du plan courant (ETUDE_UID déc. 12) :
-  // un favori sans pointUid reçoit l'uid du point SI on peut le désigner sans
-  // deviner — un seul point de ce nom ; sinon parmi les homonymes, celui du
-  // même calque à la même position (tolérance 0,5 px). Ambigu : inchangé (il
-  // reste reconnu par son nom). `points` = tous les points du plan.
+  // Migration douce des favoris du plan courant (ETUDE_UID décision 12) : un favori sans pointUid reçoit l'uid du
+  // point SI on le désigne sans deviner (un seul point de ce nom ; sinon l'homonyme du même calque à la même
+  // position, 0,5 px). Ambigu : inchangé. `points` = tous les points du plan.
   function migrerVersUid(points) {
     if (!_currentPlanId || !Array.isArray(points)) return 0;
     const list = _store.byPlan[_currentPlanId] || [];
@@ -180,9 +150,7 @@ window.Favoris = (function() {
     return n;
   }
 
-  // ─────────────────────────────────────────────
-  // Mutations
-  // ─────────────────────────────────────────────
+  // ── Mutations ──────────
   function _newUid() {
     return "fav-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
   }
@@ -190,13 +158,12 @@ window.Favoris = (function() {
   function add(snapshot) {
     if (!_currentPlanId) return false;
     if (!snapshot || !snapshot.pointId) return false;
-    // Anti-doublon
     if (isFav(snapshot.pointId, snapshot.pointUid)) return false;
     if (!_store.byPlan[_currentPlanId]) _store.byPlan[_currentPlanId] = [];
     const entry = {
       uid:        _newUid(),
       pointId:    String(snapshot.pointId),
-      pointUid:   snapshot.pointUid ? String(snapshot.pointUid) : undefined,   // 🆔 v2.4.0
+      pointUid:   snapshot.pointUid ? String(snapshot.pointUid) : undefined,
       nom:        String(snapshot.nom || "(sans nom)"),
       x:          Number(snapshot.x) || 0,
       y:          Number(snapshot.y) || 0,
@@ -233,9 +200,7 @@ window.Favoris = (function() {
     return { action: "added", changed: ok };
   }
 
-  // ─────────────────────────────────────────────
-  // Listeners pour UI (sidebar flyout refresh)
-  // ─────────────────────────────────────────────
+  // ── Listeners UI (rafraîchissement du flyout) ──────────
   function onChange(fn) {
     if (typeof fn !== "function") return function() {};
     _listeners.push(fn);
@@ -245,30 +210,17 @@ window.Favoris = (function() {
     };
   }
 
-  // ─────────────────────────────────────────────
-  // 🆕 v1.20.0 — Export / Import JSON (partage cross-appareil)
-  // ─────────────────────────────────────────────
-  // Use case : un cataphile veut envoyer sa liste de POI favoris (entrée
-  // carrière, point de RDV, lieux d'intérêt) à un autre cataphile qui
-  // utilise MyKTAMap. Sans cette feature, les favoris restent strictement
-  // locaux par appareil (cf doc en tête). Avec export → JSON, import →
-  // merge ou replace selon mode.
-  //
-  // Format JSON exporté (extensible, versionné) :
+  // ── Export / import JSON (partage entre appareils ou utilisateurs) ──────────
+  // Format exporté (versionné) :
   //   {
   //     "type":       "myktamap-favoris-export",
   //     "version":    1,
   //     "exportedAt": "ISO timestamp",
-  //     "appVersion": "v1.20.0",
+  //     "appVersion": "vX.Y.Z",
   //     "scope":      "all" | "current-plan",
   //     "byPlan":     { "<planId>": [favoris...], ... }
   //   }
-  //
-  // - scope: "all" → exporte TOUS les plans (= dump complet de _store.byPlan)
-  // - scope: "current-plan" → exporte UNIQUEMENT le plan courant
-  //
-  // Import : modes "merge" (par défaut, ajoute sans écraser, anti-doublon
-  // sur pointId) ou "replace" (vide le plan courant puis injecte).
+  // scope "all" = tout _store.byPlan ; "current-plan" = le plan courant seulement.
 
   function exportToJson(opts) {
     opts = opts || {};
@@ -277,7 +229,6 @@ window.Favoris = (function() {
     if (scope === "current-plan" && _currentPlanId) {
       byPlan[_currentPlanId] = (_store.byPlan[_currentPlanId] || []).slice();
     } else {
-      // Deep clone de tout le store
       Object.keys(_store.byPlan).forEach(function(pid) {
         byPlan[pid] = (_store.byPlan[pid] || []).slice();
       });
@@ -292,10 +243,7 @@ window.Favoris = (function() {
     };
   }
 
-  /**
-   * Télécharge l'export en tant que fichier JSON.
-   * @param {Object} opts - { scope: "all"|"current-plan", filename?: string }
-   */
+  // Télécharge l'export en fichier JSON. opts = { scope: "all"|"current-plan", filename?: string }
   function exportToFile(opts) {
     const payload = exportToJson(opts);
     const fname = (opts && opts.filename)
@@ -308,23 +256,11 @@ window.Favoris = (function() {
     return payload;
   }
 
-  /**
-   * Importe un JSON exporté.
-   * @param {Object|string} input - payload JSON parsé OU string JSON brut
-   * @param {Object} opts - { mode: "merge"|"replace", targetPlanId?: string|null }
-   * @returns {Object} { ok, error?, added, skipped, replaced, plansTouched }
-   *
-   * Modes :
-   * - "merge" (défaut) : ajoute aux favoris existants, skip si pointId déjà
-   *   présent dans le plan cible. NE TOUCHE PAS aux autres plans.
-   * - "replace" : pour chaque plan présent dans l'import, REMPLACE entièrement
-   *   les favoris existants de ce plan. Les plans absents de l'import sont
-   *   préservés.
-   *
-   * Si `targetPlanId` est fourni : tous les favoris importés sont assignés à
-   * ce plan (utile pour un export "current-plan" reçu d'ailleurs et qu'on
-   * veut accrocher à un plan local sans conserver l'ancien planId).
-   */
+  // Importe un JSON exporté (objet parsé OU chaîne brute). opts = { mode: "merge"|"replace", targetPlanId? }.
+  // Rend { ok, error?, added, skipped, replaced, plansTouched }.
+  //   - "merge" (défaut) : ajoute, ignore un pointId déjà présent dans le plan cible ; autres plans intacts.
+  //   - "replace" : REMPLACE entièrement les favoris de chaque plan présent dans l'import ; plans absents préservés.
+  // `targetPlanId` : tous les favoris importés vont dans ce plan (export « current-plan » reçu d'ailleurs).
   function importFromJson(input, opts) {
     opts = opts || {};
     const mode = opts.mode === "replace" ? "replace" : "merge";
@@ -350,7 +286,6 @@ window.Favoris = (function() {
     let added = 0, skipped = 0, replaced = 0;
     const plansTouched = new Set();
 
-    // Si targetPlanId : on aplatit tout dans ce plan (sinon par planId source)
     if (targetPlanId) {
       const allFlat = [];
       Object.keys(payload.byPlan).forEach(function(srcPid) {
@@ -409,10 +344,7 @@ window.Favoris = (function() {
     };
   }
 
-  /**
-   * Importe depuis un File (input type=file).
-   * @returns {Promise<Object>} le résultat de importFromJson
-   */
+  // Importe depuis un File (input type=file) ; rend Promise du résultat de importFromJson.
   function importFromFile(file, opts) {
     if (!file) return Promise.resolve({ ok: false, error: window.I18n.t("fav.err.noFile") });
     return file.text().then(function(txt) {
@@ -422,7 +354,7 @@ window.Favoris = (function() {
     });
   }
 
-  // Validation + nettoyage d'une entrée favori importée. Retourne null si invalide.
+  // Validation + nettoyage d'une entrée importée ; null si invalide.
   function _sanitizeImportedFav(raw) {
     if (!raw || typeof raw !== "object") return null;
     if (!raw.pointId) return null;
@@ -439,13 +371,12 @@ window.Favoris = (function() {
     };
   }
 
-  // Lecture immédiate au boot — main.js > startApp appellera loadPlan(planId)
-  // pour pointer sur le bon plan après load de PLAN_CONFIG.
+  // Lecture immédiate au démarrage ; main.js > initDataFromConfig appelle ensuite loadPlan(planId).
   _load();
 
   return {
     loadPlan:        loadPlan,
-    migrerVersUid:   migrerVersUid,   // 🆔 v2.4.0
+    migrerVersUid:   migrerVersUid,
     transfererPlan:  transfererPlan,
     getAll:          getAll,
     isFav:           isFav,
@@ -454,12 +385,10 @@ window.Favoris = (function() {
     remove:          remove,
     toggle:          toggle,
     onChange:        onChange,
-    // 🆕 v1.20.0 — Export/Import JSON pour partage cross-appareil
     exportToJson:    exportToJson,
     exportToFile:    exportToFile,
     importFromJson:  importFromJson,
     importFromFile:  importFromFile,
-    // Exposé pour debug
     _STORAGE_KEY:    STORAGE_KEY,
     _VERSION:        VERSION
   };

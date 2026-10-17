@@ -1,33 +1,20 @@
 /*!
- * MyKTAMap — Carnet d'exploration : interface (v1.69.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
+// journalUi.js — Carnet d'exploration : interface
 
 // =========================
-// JOURNALUI.JS — Modale « 📔 Mon carnet » + fiche de sortie (depuis v1.69.0)
+// JOURNALUI.JS — modale « 📔 Mon carnet » et fiche de sortie
 // =========================
-// Couche VUE du Carnet — la donnée et le cycle de vie vivent dans js/journal.js
-// (séparation volontaire : le socle doit rester testable/appelable sans DOM, et
-// on évite un nouveau monolithe façon index.html pré-B7).
-//
-// 2 écrans :
-//   1. CARNET (modale, ouverte depuis le HOME ou l'écran plan) — bandeau de
-//      totaux + liste antéchronologique des sorties, filtrable par plan.
-//   2. FICHE (sous-modale z-index 100001) — détail d'une sortie : métriques,
-//      mini-tracé SVG, vignettes photos, note libre éditable, suppression.
-//
-// Les photos ne sont PAS copiées dans le carnet (cf journal.js) : la fiche lit
-// les REFS dans le store Photos. Une photo supprimée depuis l'app affiche une
-// vignette « 🚫 photo supprimée » — pas une erreur.
-//
-// API : window.JournalUi = {
-//   ouvrir(planIdFiltre?),   // modale carnet (filtre plan optionnel)
-//   ouvrirFiche(id),         // fiche d'une sortie
-//   cloturerDepuisUi()       // bouton « 🏁 Clôturer ma sortie » → fiche + toast
-// };
+// Couche VUE du Carnet ; donnée et cycle de vie dans js/journal.js (socle testable sans DOM).
+// Écrans : CARNET (totaux + liste antéchronologique filtrable par plan, onglet Récits, fusion) et FICHE
+// (sous-modale z-index 100001 : métriques, mini-tracé SVG, vignettes, note, fin corrigeable, suppression).
+// Les photos ne sont pas copiées : la fiche lit les REFS du store Photos ; une photo supprimée donne une
+// vignette « 🚫 photo supprimée », pas une erreur.
+// Expose window.JournalUi : ouvrir(planIdFiltre?), ouvrirFiche(id), cloturerDepuisUi(), histoire (accès aux
+//   documents du Mode Histoire pour l'export de profil).
 // =========================
 
 (function() {
@@ -37,8 +24,7 @@
   const FICHE_ID = "kta-jrn-fiche";
   const RECIT_ID = "kta-jrn-recit";
 
-  // URLs blob des vignettes de la fiche ouverte — révoquées à la fermeture
-  // (sans ça, chaque ouverture de fiche fuit quelques Mo, cf pattern photoViewer).
+  // URLs blob des vignettes de la fiche, révoquées à la fermeture (sinon quelques Mo fuient par ouverture).
   let _ficheUrls = [];
 
   function _t(k, p) {
@@ -51,7 +37,7 @@
     }
   }
 
-  // ───────── FORMATAGE ─────────
+  // ── Formatage ──
 
   function _fmtDate(ms) {
     if (!ms) return "—";
@@ -77,11 +63,8 @@
       : (Math.round(Number(m) || 0) + " m");
   }
 
-  // 🚶 terrain / 🖥️ bureau — les records d'avant la distinction (aucun `type`)
-  // sont traités comme du bureau : ils n'avaient pas de déplacement mesuré.
-  // ⏱️ La durée AFFICHÉE vient de `Journal.dureeMs()` — la règle vit là-bas et
-  // nulle part ailleurs. La recalculer ici ferait diverger le détail du total à
-  // la première retouche.
+  // Records sans `type` traités comme bureau (pas de déplacement mesuré).
+  // Durée AFFICHÉE = `Journal.dureeMs()` : la règle vit là-bas seulement (sinon détail et total divergent).
   function _dureeAffichee(rec) {
     if (window.Journal && typeof window.Journal.dureeMs === "function") {
       return window.Journal.dureeMs(rec);
@@ -104,12 +87,10 @@
     return out;
   }
 
-  // ───────── MINI-TRACÉ SVG ─────────
+  // ── Mini-tracé SVG ──
 
-  // Le tracé archivé est en coordonnées IMAGE du plan (x → droite, y → bas,
-  // origine haut-gauche comme les points) : pas de convertCoord ici, on ne
-  // passe jamais par Leaflet — c'est un dessin normalisé dans son propre
-  // viewBox, pas une projection carte.
+  // Tracé archivé en coordonnées IMAGE (x → droite, y → bas, origine haut-gauche) : pas de convertCoord,
+  // c'est un dessin normalisé dans son propre viewBox, pas une projection carte.
   function _svgTrace(track) {
     if (!Array.isArray(track) || track.length < 2) return "";
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -135,7 +116,7 @@
            '</svg>';
   }
 
-  // ───────── FICHE DE SORTIE ─────────
+  // ── Fiche de sortie ──
 
   function _fermerFiche() {
     _ficheUrls.forEach(function(u) { try { URL.revokeObjectURL(u); } catch(e) {} });
@@ -150,11 +131,8 @@
       _fermerFiche();
 
       const chips = _chipsAjouts(rec);
-      // 🧭 17/08/2026 — si la sortie a été affinée, on dessine le tracé
-      // RECONSTRUIT (chemin de galeries entre les « 📍 Je suis ici »). Le brut
-      // reste stocké et n'est jamais écrasé ; la mention sous le dessin dit
-      // lequel est affiché, parce qu'un tracé reconstruit est une HYPOTHÈSE :
-      // un détour ou un demi-tour n'y figure pas.
+      // Sortie affinée : on dessine le tracé RECONSTRUIT (le brut reste stocké). La mention sous le dessin
+      // dit lequel est affiché : un tracé reconstruit est une HYPOTHÈSE (détours et demi-tours absents).
       const traceAffinee = Array.isArray(rec.trackAffine) && rec.trackAffine.length >= 2;
       const svg   = _svgTrace(traceAffinee ? rec.trackAffine : rec.track);
       const overlay = document.createElement("div");
@@ -174,17 +152,13 @@
                 (_estTerrain(rec) ? '🚶 ' + _esc(_t("jrn.type.terrain")) : '🖥️ ' + _esc(_t("jrn.type.bureau"))) +
               '</span>' +
               (rec.closedBy === "manual" ? ' <span class="kta-jrn-tag">' + _esc(_t("jrn.fiche.manuelle")) + '</span>' : '') +
-              // ✏️ Corriger la fin : sans ça, une sortie où l'on a oublié de
-              // clôturer porte pour fin le moment où iOS a tué l'app, pas celui
-              // où l'on est ressorti — durée sous-évaluée, sans recours.
+              // ✏️ Corriger la fin : sinon une sortie non clôturée finit quand iOS a tué l'app.
               ' <button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-jrn-fin-btn" ' +
                 'id="kta-jrn-fin">✏️ ' + _esc(_t("jrn.fin.corriger")) + '</button>' +
             '</div>' +
             '<div class="kta-jrn-metrics">' +
-              // ⏱️ v1.85.2 — la durée de la SORTIE (début → fin) en premier ;
-              // le temps d'usage de l'app reste dit juste dessous, parce qu'il
-              // dit ce que vaut la mesure : 3 h de sortie pour 12 min d'app,
-              // c'est un podomètre qui n'a presque rien vu.
+              // Durée de la SORTIE d'abord ; le temps d'usage juste dessous dit ce que vaut la mesure (3 h de
+              // sortie pour 12 min d'app : le podomètre n'a presque rien vu).
               '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dur(_dureeAffichee(rec))) + '</span>' +
                 '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.duree")) +
                   (_estTerrain(rec)
@@ -192,19 +166,14 @@
                     : '') +
                   (rec.finManuelle ? ' ' + _esc(_t("jrn.metric.finCorrigee")) : '') +
                 '</span></div>' +
-              // Une session bureau n'a pas de distance : afficher « 0 m » ferait
-              // croire à un tracker en panne. On montre les photos à la place.
+              // Bureau : pas de distance (« 0 m » ferait croire à un tracker en panne), les photos à la place.
               (_estTerrain(rec)
                 ? '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dist(rec.distM)) + '</span>' +
-                    // 📏 16/08/2026 — la part estimée (tronçons entre « 📍 Je suis
-                    // ici », podomètre muet) est dite, jamais fondue dans le total :
-                    // l'user doit savoir ce que vaut le chiffre qu'il lit.
+                    // La part estimée est dite, jamais fondue dans le total.
                     '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) +
-                      // 🩸 v1.85.2 — DIRE D OU VIENT LA PART ESTIMEE. « Calculee
-                      // sur les galeries » et « a vol d oiseau » n ont pas la
-                      // meme valeur : dans un labyrinthe l ecart est un facteur
-                      // 2 ou 3. `trackAffine` n existe QUE si l affinage reseau
-                      // a tourne — c est le marqueur, et il est deja stocke.
+                      // 🩸 Dire D'OÙ vient la part estimée : « sur les galeries » et « à vol d'oiseau » diffèrent
+                      // d'un facteur 2 ou 3 dans un labyrinthe. `trackAffine` n'existe QUE si l'affinage réseau
+                      // a tourné : c'est le marqueur.
                       ((rec.distEstimeeM || 0) > 0
                         ? ' ' + _esc(_t(rec.trackAffine ? "jrn.section.dontReseau" : "jrn.section.dontVol",
                                         { dist: _dist(rec.distEstimeeM),
@@ -251,21 +220,17 @@
       document.getElementById("kta-jrn-fiche-close").addEventListener("click", _fermerFiche);
       overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerFiche(); });
 
-      // ✏️ Corriger la fin de sortie.
-      // 🩸 On saisit une HEURE, pas une durée. Une durée obligerait à calculer
-      // de tête depuis une heure de départ qu'on ne voit pas ; l'heure de
-      // sortie, elle, on s'en souvient. Le champ est pré-rempli avec la fin
-      // actuelle, au format local du navigateur (`datetime-local`), et le
-      // module refuse une fin antérieure au départ.
+      // ✏️ Corriger la fin. 🩸 On saisit une HEURE, pas une durée (on se souvient de l'heure de sortie, pas
+      // d'un calcul depuis un départ qu'on ne voit pas). Pré-remplie avec la fin actuelle (`datetime-local`) ;
+      // le module refuse une fin antérieure au départ.
       const finBtn = document.getElementById("kta-jrn-fin");
       if (finBtn) {
         finBtn.addEventListener("click", async function () {
           const finMs = Date.parse(rec.endedAt || rec.updatedAt || 0) || Date.now();
-          // `datetime-local` veut du temps LOCAL sans fuseau : `toISOString()`
-          // rendrait de l'UTC et décalerait le champ de l'écart horaire.
+          // 🩸 `datetime-local` veut du temps LOCAL sans fuseau : toISOString() brut décalerait de l'écart horaire.
           const d = new Date(finMs - new Date(finMs).getTimezoneOffset() * 60000);
           const val = d.toISOString().slice(0, 16);
-          // Annuler = abandon (le null du prompt) ; OK = la saisie, même vide (Date.parse("") → refus format).
+          // Annuler = abandon (null) ; OK = la saisie, même vide (Date.parse("") → refus de format).
           const champ = { valeur: val, maxLength: 32 };
           const ok = await window.ktaConfirm(
             _esc(_t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) })), { texte: champ });
@@ -289,8 +254,7 @@
         });
       });
 
-      // Correction manuelle du classement : pose `typeManuel` côté socle → le
-      // record ne sera plus jamais reclassé automatiquement.
+      // Reclassement manuel : `typeManuel` côté socle, plus jamais reclassé automatiquement.
       document.getElementById("kta-jrn-type-toggle").addEventListener("click", function() {
         const cible = _estTerrain(rec) ? "bureau" : "terrain";
         window.Journal.setType(rec.id, cible).then(function() {
@@ -313,7 +277,6 @@
     });
   }
 
-  // Vignettes : lecture à la demande dans le store Photos (refs uniquement).
   function _hydraterPhotos(rec) {
     const box = document.getElementById("kta-jrn-fiche-photos");
     if (!box) return;
@@ -344,7 +307,7 @@
     });
   }
 
-  // ───────── MODALE CARNET ─────────
+  // ── Modale carnet ──
 
   let _sorties = [];
   let _filtrePlan = "";
@@ -356,8 +319,7 @@
     if (m) m.remove();
   }
 
-  // Rend la promesse : « Terminer la sortie » enchaîne `.then(ouvrirFiche)` dessus (sans retour, TypeError
-  // et fiche jamais rouverte — relevé par Sonar le 09/10/2026).
+  // Rend la promesse : « Terminer la sortie » enchaîne `.then(ouvrirFiche)` dessus.
   function _rafraichirListe() {
     if (!document.getElementById(MODAL_ID)) return Promise.resolve();
     return window.Journal.list().then(function(all) {
@@ -367,9 +329,7 @@
     });
   }
 
-  // Les totaux ne comptent QUE le terrain (décision KARMA 29/07) : mélanger une
-  // soirée de dessin à des heures passées sous terre rendrait le chiffre faux.
-  // Le bureau apparaît en pied de bandeau, à part.
+  // Totaux = terrain SEULEMENT (décision produit) ; le bureau est en pied de bandeau, à part.
   function _renderTotaux() {
     const el = document.getElementById("kta-jrn-totaux");
     if (!el) return;
@@ -397,20 +357,16 @@
         : '');
   }
 
-  // ───────── 🔗 FUSION DE SORTIES (v1.85.2) ─────────
-  // KARMA, sortie terrain : une seule vraie sortie ressortait en TROIS au
-  // carnet, parce que quitter la PWA pour changer de musique la fait décharger
-  // par iOS et que le retour rouvrait une sortie neuve. La reprise automatique
-  // (`journal.js`) empêche désormais le problème — elle ne répare pas ce qui
-  // est déjà haché. D'où ce mode : cocher N sorties, les recoller en une.
+  // ── Fusion de sorties ──
+  // La reprise automatique (journal.js) empêche le hachage d'une sortie ; ce mode répare ce qui est déjà
+  // haché : cocher N sorties, les recoller en une.
   let _modeFusion = false;
   const _selFusion = {};       // id -> true
 
   function _ligne(r, idx) {
     const chips = _chipsAjouts(r);
     const terrain = _estTerrain(r);
-    // En mode fusion la ligne ne mène plus à la fiche : elle coche. On garde
-    // un <button> — la cible tactile et le style restent ceux de la liste.
+    // En mode fusion la ligne coche au lieu d'ouvrir la fiche ; on garde un <button> (cible tactile, style).
     const coche = _modeFusion
       ? '<span class="kta-jrn-coche">' + (_selFusion[r.id] ? '☑️' : '⬜') + '</span>'
       : '';
@@ -429,9 +385,7 @@
            '</button>';
   }
 
-  // Liste SCINDÉE : les sorties terrain d'abord, le travail sur plan dans une
-  // section repliée en dessous (décision KARMA 29/07 — les deux ne se lisent pas
-  // de la même façon, mais on ne jette pas le travail de bureau pour autant).
+  // Terrain d'abord, travail sur plan dans une section repliée dessous (décision produit).
   function _renderListe() {
     const el = document.getElementById("kta-jrn-liste");
     if (!el) return;
@@ -486,8 +440,7 @@
     _renderBarreFusion();
   }
 
-  // Barre d'actions, rendue SOUS la liste pour ne pas repousser les sorties
-  // hors de l'écran sur téléphone.
+  // Barre d'actions SOUS la liste (sur téléphone, elle repousserait les sorties hors de l'écran).
   function _renderBarreFusion() {
     const el = document.getElementById("kta-jrn-liste");
     if (!el) return;
@@ -522,9 +475,7 @@
     if (go && n >= 2) {
       go.addEventListener("click", function () {
         const ids = Object.keys(_selFusion);
-        // 🩸 La fusion SUPPRIME des enregistrements : on confirme. C'est le
-        // seul geste destructif du carnet, dont la raison d'être est d'être
-        // une archive append-only.
+        // 🩸 La fusion SUPPRIME des enregistrements (seul geste destructif d'une archive append-only) : confirmation.
         const demander = window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }));
         demander.then(function (ok) {
           if (!ok) return;
@@ -539,20 +490,11 @@
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // 📖 ONGLET RÉCITS — Mode Histoire remonté au HOME (v1.69.0)
-  // ═══════════════════════════════════════════════════════════
-  // Sources lues DIRECTEMENT, sans charger le plan (c'était tout l'intérêt) :
-  //   • note libre  → localStorage `myktamap_note_libre_<planId>` (modeHistoire.js)
-  //   • documents   → IDB `myktamap_histoire_pdfs`, store `pdfs`
-  // 📕 26/09/2026 — un PDF LIVRÉ DANS LE ZIP remonte désormais ici, et rien
-  // n'a changé dans ce fichier pour ça : `modeHistoire.js > syncDocsEmbarques`
-  // en dépose une COPIE dans la même base au chargement du plan (id
-  // déterministe `embed_<planId>_<rang>`, donc pas de doublon), et le Carnet la
-  // voit comme un document ordinaire — supprimable, recréée si l'utilisateur
-  // rouvre le plan. C'était la seule façon de tenir la promesse de cet onglet
-  // (« sans charger le plan ») : le chemin runtime d'un embarqué n'existe QUE
-  // pendant que son plan est chargé.
+  // ── Onglet Récits : le Mode Histoire au HOME ──
+  // Lu DIRECTEMENT, sans charger le plan : note libre (localStorage `myktamap_note_libre_<planId>`,
+  // modeHistoire.js) et documents (IDB `myktamap_histoire_pdfs`, store `pdfs`). Un PDF livré dans le ZIP y
+  // figure car `modeHistoire.js > syncDocsEmbarques` en dépose une COPIE au chargement du plan (id
+  // `embed_<planId>_<rang>`, pas de doublon) : le chemin runtime d'un embarqué n'existe que plan chargé.
   const NOTE_PREFIX = "myktamap_note_libre_";
   const HIST_DB     = "myktamap_histoire_pdfs";
   const HIST_STORE  = "pdfs";
@@ -561,10 +503,9 @@
 
   let _recitUrl = null;   // blob URL du PDF ouvert dans la fiche récit
 
-  // Ouvre la base du Mode Histoire en LECTURE SEULE sans jamais la créer :
-  // `indexedDB.open(name)` sans version crée une base vide si elle n'existe pas,
-  // et modeHistoire.js ferait ensuite `open(name, 1)` SANS onupgradeneeded →
-  // store `pdfs` absent → plantage. Si on a déclenché la création, on efface.
+  // 🩸 Base du Mode Histoire ouverte en LECTURE sans jamais la créer : `indexedDB.open(name)` sans version crée
+  // une base vide, puis modeHistoire.js ferait `open(name, 1)` SANS onupgradeneeded → store `pdfs` absent →
+  // plantage. Si on l'a créée, on l'efface.
   function _histOpen() {
     return new Promise(function(resolve) {
       let creee = false, req;
@@ -584,9 +525,8 @@
     });
   }
 
-  // 📄 v1.69.0 — le store est passé en v2 (N documents par plan) : clé = id du
-  // document, index `by_plan`. On gère aussi une base restée en v1 (l'user n'a
-  // pas rouvert le Mode Histoire depuis la mise à jour) : la clé EST le planId.
+  // Store v2 (N documents par plan, clé = id, index `by_plan`) ; base restée en v1 (Mode Histoire pas rouvert
+  // depuis) : la clé EST le planId.
   function _histTousDocs() {
     return _histOpen().then(function(db) {
       if (!db) return [];
@@ -628,8 +568,7 @@
     });
   }
 
-  // Ajout / suppression depuis le carnet (décision KARMA 3:a — le carnet n'est
-  // pas qu'une vitrine). L'écriture passe par le MÊME schéma que modeHistoire.
+  // Ajout / suppression depuis le carnet, par le MÊME schéma que modeHistoire.
   function _histAjouter(planId, file) {
     return _histOpen().then(function(db) {
       if (!db) return Promise.reject(new Error("base indisponible"));
@@ -637,8 +576,7 @@
         try {
           const st = db.transaction(HIST_STORE, "readwrite").objectStore(HIST_STORE);
           if (!st.indexNames.contains(HIST_INDEX)) {
-            // Base encore en v1 : y écrire créerait un doublon de clé planId qui
-            // écraserait le PDF existant. On laisse le Mode Histoire migrer.
+            // 🩸 Base encore en v1 : y écrire écraserait le PDF existant (clé planId) ; le Mode Histoire migre.
             try { db.close(); } catch(e) {}
             reject(new Error("v1"));
             return;
@@ -659,13 +597,8 @@
     });
   }
 
-  // 🆕 v1.81.0 (dette D1) — RESTAURATION d'un document venu d'un export de
-  // profil. Distinct de `_histAjouter` : celui-ci reçoit un File fraîchement
-  // choisi et forge un id ; ici on REPOSE un document existant en conservant
-  // son id, son nom et sa date d'origine — sans quoi un profil réimporté deux
-  // fois créerait des doublons, et les dates d'ajout seraient toutes écrasées
-  // par celle de l'import.
-  // `put` et non `add` : réimporter le même profil doit être IDEMPOTENT.
+  // Restauration d'un document d'un export de profil : on REPOSE le document avec son id, son nom et sa date
+  // d'origine (sinon doublons au second import, dates écrasées). `put`, pas `add` : IDEMPOTENT.
   function _histRestaurer(doc) {
     return _histOpen().then(function(db) {
       if (!db) return Promise.reject(new Error("base indisponible"));
@@ -673,9 +606,7 @@
         try {
           const st = db.transaction(HIST_STORE, "readwrite").objectStore(HIST_STORE);
           if (!st.indexNames.contains(HIST_INDEX)) {
-            // Base encore en v1 (1 PDF par plan, keyPath planId) : y écrire un
-            // doc v2 écraserait le PDF existant. On laisse le Mode Histoire
-            // migrer d'abord — même garde que `_histAjouter`.
+            // Base v1 : même garde que `_histAjouter`.
             try { db.close(); } catch(e) {}
             reject(new Error("v1"));
             return;
@@ -716,8 +647,7 @@
     catch(e) { console.warn("[JournalUi] écriture note échouée :", e); return false; }
   }
 
-  // Nom lisible d'un plan : registre d'abord, puis les sorties du carnet (un plan
-  // supprimé du registre garde son nom dans ses sorties), sinon l'id brut.
+  // Nom lisible : registre, puis sorties du carnet (un plan supprimé garde son nom), sinon l'id.
   function _nomDePlan(planId) {
     if (planId === "default") return _t("jrn.recits.sansPlan");
     try {
@@ -735,7 +665,6 @@
   function _chargerRecits() {
     const el = document.getElementById("kta-jrn-recits");
     if (!el) return;
-    // 1) tous les planId ayant une note libre non vide
     const ids = {};
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -746,7 +675,6 @@
         }
       }
     } catch(e) {}
-    // 2) + ceux ayant au moins un document PDF
     _histTousDocs().then(function(docs) {
       const parPlan = {};
       docs.forEach(function(d) {
@@ -794,8 +722,7 @@
     if (_recitUrl) { try { URL.revokeObjectURL(_recitUrl); } catch(e) {} _recitUrl = null; }
     const el = document.getElementById(RECIT_ID);
     if (el) {
-      // Vider l'iframe AVANT le remove : sinon WebKit garde la bitmap du PDF
-      // épinglée en mémoire (même leçon que modeHistoire.js > close()).
+      // 🩸 Vider l'iframe AVANT le remove : sinon WebKit garde la bitmap du PDF en mémoire (cf modeHistoire.js).
       const ifr = el.querySelector("iframe");
       if (ifr) { try { ifr.src = ""; } catch(e) {} }
       el.remove();
@@ -812,10 +739,8 @@
     const rendu = (typeof window.kta_renderMd === "function" && r.note)
       ? window.kta_renderMd(r.note)
       : ('<p class="kta-ipl-empty">' + _esc(r.note || _t("jrn.recits.noteVide")) + '</p>');
-    // 🖥️ v1.69.0 (retour KARMA) — sur PC, la fiche récit s'ouvre en DEUX
-    // COLONNES : note + documents à gauche, visionneuse PDF à droite (qui prend
-    // toute la hauteur utile). Le balisage est le même partout ; c'est le CSS
-    // ≥ 1024 px qui bascule en grille — mobile strictement inchangé.
+    // Sur PC (≥ 1024 px), la fiche récit passe en DEUX COLONNES (note + documents | visionneuse) par la CSS
+    // seule ; même balisage partout.
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-jrn-fiche-boite kta-jrn-recit-boite" id="kta-jrn-recit-boite">' +
         '<div class="kta-readme-modal-header">' +
@@ -844,8 +769,7 @@
     document.getElementById("kta-jrn-recit-close").addEventListener("click", _fermerRecit);
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerRecit(); });
 
-    // ✏️ Édition sur place — écrit la MÊME clé que le Mode Histoire de l'écran
-    // plan (`myktamap_note_libre_<planId>`), donc pas de copie divergente.
+    // Édition sur place : MÊME clé que le Mode Histoire (`myktamap_note_libre_<planId>`), pas de copie.
     const btnMod = document.getElementById("kta-jrn-recit-mod");
     const ta     = document.getElementById("kta-jrn-recit-edit");
     const vue    = document.getElementById("kta-jrn-recit-rendu");
@@ -873,10 +797,8 @@
       _chargerRecits();
     });
 
-    // ➕ Ajout d'un document depuis le carnet (même schéma IDB que le Mode
-    // Histoire). Refusé si la base est encore en v1 : y écrire écraserait le
-    // PDF existant (clé = planId). Le message renvoie vers le Mode Histoire,
-    // dont l'ouverture déclenche la migration.
+    // Ajout d'un document : refusé si la base est en v1 (écraserait le PDF) ; le message renvoie vers le
+    // Mode Histoire, dont l'ouverture migre.
     const inpAdd = document.getElementById("kta-jrn-recit-add");
     const btnAdd = document.getElementById("kta-jrn-recit-addbtn");
     if (btnAdd && inpAdd) {
@@ -905,7 +827,6 @@
     _renderRecitDocs(r);
   }
 
-  // Documents PDF d'un plan dans la fiche récit : ouvrir / supprimer.
   function _renderRecitDocs(r) {
     const box = document.getElementById("kta-jrn-recit-docs");
     if (!box) return;
@@ -938,8 +859,7 @@
           vue.innerHTML = '<div class="kta-jrn-recit-pdfmeta">' + _esc(rec.name || "histoire.pdf") +
                             ' · ' + Math.round((rec.size || 0) / 1024) + ' Ko</div>' +
                           '<iframe class="kta-jrn-recit-iframe" src="' + _recitUrl + '" title="PDF"></iframe>';
-          // La fiche ne s'élargit (et ne passe en 2 colonnes sur PC) QUE quand un
-          // PDF est ouvert : une note seule dans une modale géante se lirait mal.
+          // La fiche ne s'élargit (2 colonnes sur PC) QUE quand un PDF est ouvert.
           const boite = document.getElementById("kta-jrn-recit-boite");
           if (boite) boite.classList.add("kta-jrn-recit-avecpdf");
         });
@@ -988,10 +908,7 @@
           '<button class="kta-readme-modal-close" id="kta-jrn-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          // 📖 v1.69.0 (demande KARMA 29/07) — 2e onglet : les récits (note libre
-          // + PDF du Mode Histoire) étaient enfermés dans l'écran plan, donc
-          // illisibles sans charger le plan. Ils remontent ici, tous plans
-          // confondus, éditables sur place.
+          // 2e onglet : les récits, tous plans confondus, éditables sur place.
           '<div class="kta-jrn-onglets">' +
             '<button type="button" class="kta-jrn-onglet kta-jrn-onglet-actif" data-tab="sorties">📔 ' +
               _esc(_t("jrn.tab.sorties")) + '</button>' +
@@ -1019,8 +936,7 @@
     document.getElementById("kta-jrn-close").addEventListener("click", _fermer);
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermer(); });
 
-    // Onglets — les récits ne sont scannés qu'à la première ouverture de l'onglet
-    // (lecture localStorage + IDB : inutile de la payer si l'user ne va pas voir).
+    // Récits scannés à la première ouverture de l'onglet seulement (localStorage + IDB).
     let _recitsCharges = false;
     overlay.querySelectorAll(".kta-jrn-onglet").forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -1036,8 +952,7 @@
 
     window.Journal.list().then(function(all) {
       _sorties = all;
-      // Filtre plan alimenté par les sorties elles-mêmes (et pas par le
-      // registre : un plan supprimé garde ses sorties au carnet).
+      // Filtre plan alimenté par les sorties (pas le registre : un plan supprimé garde ses sorties).
       const vus = {}, opts = [];
       all.forEach(function(r) {
         if (r.planId && !vus[r.planId]) { vus[r.planId] = 1; opts.push({ id: r.planId, nom: r.planName || r.planId }); }
@@ -1057,26 +972,14 @@
     });
   }
 
-  // Bouton « 🏁 Clôturer ma sortie » (modale Session de l'écran plan).
-  // La clôture manuelle garde TOUJOURS la sortie (pas de seuil), puis en
-  // rouvre une nouvelle — cf journal.js > cloturer().
-  // 📍 v1.85.2 — DEMANDER OU L ON EST AVANT DE CLOTURER.
-  //
-  // 🩸 LE TROU QUE CA FERME : la distance entre deux « 📍 Je suis ici » est
-  // comblee quand l ancre SUIVANTE arrive, en regardant en arriere. Apres le
-  // dernier repere, tout ce qui est marche jusqu a la sortie n est donc compte
-  // que par le podometre — c est-a-dire RIEN quand le telephone est en poche.
-  // Et `cloturer()` ne posait aucune ancre.
-  //
-  // 🩸 UNE HEURE N EST PAS UNE POSITION. Poser l ancre a la position tracker
-  // courante n ajouterait 0 m : si le podometre s est tu, on est
-  // encore affiche au dernier repere. Il FAUT demander ou l on est.
-  //
-  // On passe par `recalerTrackerSurPoint` — le meme chemin que « Je suis ici »
-  // sur un point, seul a alimenter la distance estimee. Un clic carte LIBRE
-  // (`src: "click"`) est volontairement exclu depuis le 16/08 parce qu il
-  // corrige le plus souvent une position fausse ; ici c est l inverse, la
-  // personne DECLARE ou elle est ressortie. Meme geste, sens oppose.
+  // « 🏁 Clôturer ma sortie » (modale Session) : la clôture manuelle garde TOUJOURS (cf journal.js > cloturer()).
+  // On DEMANDE OÙ L'ON EST avant de clôturer.
+  // 🩸 La distance entre deux « 📍 Je suis ici » se comble à l'arrivée de l'ancre SUIVANTE : après le dernier
+  // repère, la marche jusqu'à la sortie n'est comptée que par le podomètre (rien, téléphone en poche).
+  // 🩸 Une heure n'est pas une position : poser l'ancre à la position tracker ajouterait 0 m.
+  // Passage par `recalerTrackerSurPoint`, seul chemin qui alimente la distance estimée. Le clic carte libre
+  // (`src: "click"`) en est exclu parce qu'il corrige souvent une position fausse ; ici la personne DÉCLARE
+  // où elle est ressortie.
   let _finPickHandler = null;
   let _finPickFloater = null;
 
@@ -1088,16 +991,15 @@
     try { if (window.map) window.map.getContainer().style.cursor = ""; } catch (e) {}
   }
 
-  // Rend une promesse resolue quand la position est posee OU passee.
+  // Promesse résolue quand la position est posée OU passée.
   function _demanderPositionSortie() {
     if (!window.map || typeof window.recalerTrackerSurPoint !== "function") {
       return Promise.resolve(false);
     }
     return new Promise(function (resolve) {
       _finPickFermer();
-      // `.kta-iti-floater` : reconnue par `_modeClicCarteActif()`, donc aucune
-      // popup d annotation n avale le clic et celui-ci est re-emis en phase
-      // capture. Huitieme picker du meme moule.
+      // `.kta-iti-floater` est reconnue par `_modeClicCarteActif()` : aucune popup n'avale le clic, ré-émis
+      // en phase capture.
       _finPickFloater = document.createElement("div");
       _finPickFloater.id = "kta-jrn-fin-pick";
       _finPickFloater.className = "kta-iti-floater";
@@ -1132,8 +1034,7 @@
       _toast(_t("jrn.err.aucuneSortie"), "warn");
       return Promise.resolve(null);
     }
-    // La demande est FACULTATIVE : on ne bloque jamais une cloture. Qui ferme
-    // depuis le canape n a pas de position de sortie a donner.
+    // Demande FACULTATIVE : on ne bloque jamais une clôture (depuis le canapé, pas de position à donner).
     return _demanderPositionSortie().then(function () {
       return window.Journal.cloturer();
     }).then(function(rec) {
@@ -1148,20 +1049,15 @@
     ouvrir:           ouvrir,
     ouvrirFiche:      ouvrirFiche,
     cloturerDepuisUi: cloturerDepuisUi,
-    // 🆕 v1.81.0 (dette D1) — accès aux documents du Mode Histoire pour
-    // l'export/import de profil. Exposé ICI et pas réécrit dans
-    // `profileExportImport.js` : le schéma de cette base est DÉJÀ dupliqué
-    // entre `modeHistoire.js` et ce module, une 3ᵉ copie garantissait la
-    // dérive (c'est la leçon des 25 tables de styles). En particulier
-    // `_histOpen` porte un piège non évident — `indexedDB.open(nom)` SANS
-    // version CRÉE une base vide, ce qui casserait ensuite le Mode Histoire.
+    // Documents du Mode Histoire pour l'export/import de profil, exposés ICI plutôt que réécrits dans
+    // profileExportImport.js : le schéma est déjà en double avec modeHistoire.js, une 3e copie dériverait.
+    // 🩸 `_histOpen` porte le piège : `indexedDB.open(nom)` SANS version CRÉE une base vide.
     histoire: {
       lister:    _histTousDocs,    // → [{id, planId, name, size, addedAt}] (sans blob)
       getDoc:    _histGet,         // → l'enregistrement COMPLET, blob inclus
       restaurer: _histRestaurer,   // ← repose un doc exporté (idempotent)
-      // 🗑️ 29/09/2026 — la suppression d'un plan PEUT emporter ses documents
-      // (case à cocher, décision KARMA). Base v1 : l'id listé EST le planId,
-      // donc la même suppression par id convient aux deux schémas.
+      // Supprimer un plan PEUT emporter ses documents (case à cocher). Base v1 : l'id listé EST le planId,
+      // la même suppression vaut pour les deux schémas.
       supprimerPourPlan: function(planId) {
         return _histTousDocs().then(function(docs) {
           const siens = docs.filter(function(d) { return d.planId === String(planId); });

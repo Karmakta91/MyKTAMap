@@ -1,68 +1,23 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🏷️ check-icon-catalog.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// Confronte les DEUX tables de tags built-in du projet :
-//   • `js/map.js > TAGS_BUILTIN`            — la SOURCE (exposée en
-//     `window._ktaBuiltinIconUrls` dès le chargement du script)
-//   • `js/osmHomePreview.js > TAGS_BUILTIN_HOME` — le FILET DE SECOURS,
-//     utilisé seulement si map.js n'est pas chargé
-//
-// LE BUG D'ORIGINE (v1.81.0) : la table du HOME faisait autorité et a dérivé
-// DEUX FOIS sans que rien ne le signale.
-//   - `entree_plan` (v1.41.0) — dont le commentaire dit pourtant « Vue OSM ×
-//     Mode Secours » : il manquait précisément dans la Vue OSM ;
-//   - `portail` (v1.59.0) — l'icône vortex des liaisons inter-plans.
-// Conséquence visible : en Vue OSM, un point portail tombait sur le
-// `circleMarker` de secours — un petit rond jaune de rayon 4 à la place de son
-// icône. Le module le SAVAIT et l'écrivait (« ⚠️ Tags POI sans icône :
-// portail(N) »)… en `console.log`, dégradé depuis `console.warn` en v1.40.15,
-// donc noyé dans le bruit et invisible du smoke.
-//
-// POURQUOI DEUX TABLES SUBSISTENT : `osmHomePreview` dessine des plans qui ne
-// sont PAS chargés (il lit leur ZIP), sur un HOME affiché avant tout plan. Il
-// ne peut donc pas passer par `window._iconMap`, qui est le résolveur du plan
-// courant. Depuis la v1.81.0 il lit `window._ktaBuiltinIconUrls` ; la copie
-// locale ne sert que si `map.js` venait à ne pas être chargé.
-//
-// CE QUI EST VÉRIFIÉ :
-//   A. aucun tag de map.js absent de la copie du HOME (le bug d'origine) ;
-//   B. aucun tag inventé côté HOME et inconnu de map.js (dérive inverse) ;
-//   C. la copie n'est plus consommée directement : `osmHomePreview` doit lire
-//      `window._ktaBuiltinIconUrls` en priorité — sans quoi les deux tables
-//      peuvent rester identiques et le HOME continuer à utiliser la mauvaise ;
-//   D. `map.js` expose la globale AU TOP-LEVEL, hors de toute fonction. C'est
-//      tout le sujet : à l'intérieur de `creerIcones()`, elle n'existait
-//      qu'après le chargement d'un plan — trop tard pour le HOME.
-//
-// 🎨 26/09/2026 (audit icônes, étage 1) — IL NE GARDAIT QUE 2 TABLES SUR 8.
-// L'audit a mesuré que **six** autres tables connaissent les tags built-in et
-// que rien ne les confrontait : l'invariant ne tenait que par discipline. Or
-// c'est exactement par là que `portail` s'est perdu en v1.81.0. Ajouté :
-//   E1. les 4 tables « tag → valeur » : `createConf > PLANNER_DEFAULT_ICONS`,
-//       `editor > EDITOR_TAG_LABELS`, `interfaceLegende > LEGENDE_LABELS`,
-//       `legendCustomization > DEFAULT_LABELS.icones` ;
-//   E2. les 3 structures de GROUPES (qui décident de l'ordre et des
-//       catégories) : `interfaceLegende > GROUPES` et `GROUPES2`,
-//       `exporter > GROUPES_ICONES`. Un tag absent d'un groupe **disparaît**
-//       de la légende ou de l'export sans erreur ;
-//   E3. le PRÉCACHE : chaque icône PNG du catalogue doit être dans
-//       `sw.js > ASSETS_TO_CACHE` **et exister sur le disque**. Un oubli = une
-//       icône absente hors-ligne, invisible en développement ;
-//   E4. les dictionnaires : `editor.tag.<tag>` et `legendui.label.<tag>` dans
-//       les TROIS langues — sans quoi l'utilisateur lit la clé brute.
-//
-// 📌 Ce qui n'est PAS vérifié ici, volontairement :
-// `sessionExporter.js > EMOJI_PAR_TAG` (18 clés dont **aucune** n'existe dans
-// le catalogue, alors que son commentaire dit « synchroniser avec
-// TAGS_BUILTIN »). Le brancher changerait les noms produits par l'export
-// anonymisé (`🎯-1` → autre chose) : c'est un format de sortie, donc un
-// arbitrage KARMA, pas un bug à corriger en silence. Consigné au BACKLOG.
-//
-// ⚠️ Contrôle STATIQUE : il compare des listes de CLÉS. Il ne dit pas qu'un
-// fichier `icon/<tag>.png` s'affiche — ça, c'est le smoke. Il vérifie en
-// revanche qu'il EXISTE (E3).
+// check-icon-catalog.js — BLOQUANT (pré-commit) : confronte au catalogue `js/map.js > TAGS_BUILTIN` les
+// 9 autres tables qui connaissent les tags built-in, dans les deux sens (oubli = fonction muette, tag
+// inventé = promesse que la carte ne tient pas).
+//   A/B. `osmHomePreview.js > TAGS_BUILTIN_HOME` (filet si map.js absent) : ni manquant ni inventé.
+//        Sans icône, un point en Vue OSM tombe sur un petit rond jaune.
+//   C. le HOME lit `window._ktaBuiltinIconUrls` en priorité : il dessine des plans NON chargés, donc ne
+//      peut pas passer par `window._iconMap` (résolveur du plan courant).
+//   D. 🩸 `map.js` expose la globale au TOP-LEVEL : dans `creerIcones()`, elle n'existe qu'après le
+//      chargement d'un plan, trop tard pour le HOME.
+//   E1. tables tag → valeur : PLANNER_DEFAULT_ICONS, EDITOR_TAG_LABELS, LEGENDE_LABELS, DEFAULT_LABELS.icones.
+//   E2. GROUPES, GROUPES2, GROUPES_ICONES : un tag hors groupe disparaît de la légende/l'export sans erreur.
+//   E3. précache `sw.js > ASSETS_TO_CACHE` + fichier présent : un oubli ne manque que HORS-LIGNE.
+//   E4. `editor.tag.<tag>` et `legendui.label.<tag>` dans les 3 dicos.
+// Volontairement hors contrôle : `sessionExporter.js > EMOJI_PAR_TAG` (format de sortie de l'export
+// anonymisé, à arbitrer ; consigné au BACKLOG).
+// ⚠️ Contrôle statique de CLÉS : l'affichage réel d'une icône relève du smoke.
+// Ajouter un tag : skill `add-icon-tag`.
 // =====================================================================
 
 const fs = require("fs");
@@ -79,9 +34,7 @@ try {
   process.exit(2);
 }
 
-// --- extraction des clés d'un littéral d'objet ---------------------------
-// On borne au littéral pour ne pas ramasser des identifiants voisins : on part
-// de l'accolade ouvrante et on compte les niveaux jusqu'à la fermante.
+// ── Clés d'un littéral d'objet, borné par comptage d'accolades (pas d'identifiants voisins) ──
 function extraireCles(src, declaration, ou) {
   const i = src.indexOf(declaration);
   if (i < 0) {
@@ -122,7 +75,7 @@ function verif(nom, ok, aide) {
   if (!ok) echecs.push(aide);
 }
 
-// --- A. rien ne manque côté HOME ----------------------------------------
+// ── A. Rien ne manque côté HOME ──────
 const manquants = [...clesMap].filter(function (t) { return !clesHome.has(t); });
 verif(
   "aucun tag de " + MAP + " absent de la copie du HOME (" + clesMap.size + " tags)",
@@ -132,7 +85,7 @@ verif(
   "un point portant un de ces tags s'affiche en petit rond jaune au lieu de son icône."
 );
 
-// --- B. rien d'inventé côté HOME ----------------------------------------
+// ── B. Rien d'inventé côté HOME ──────
 const orphelins = [...clesHome].filter(function (t) { return !clesMap.has(t); });
 verif(
   "aucun tag inventé côté HOME",
@@ -142,7 +95,7 @@ verif(
   "l'incohérence dans l'autre sens, tout aussi trompeuse."
 );
 
-// --- C. le HOME lit bien la source, pas sa copie -------------------------
+// ── C. Le HOME lit la source, pas sa copie ──────
 verif(
   "le HOME résout ses icônes via `window._ktaBuiltinIconUrls`",
   /window\._ktaBuiltinIconUrls\s*\|\|\s*TAGS_BUILTIN_HOME/.test(hsrc),
@@ -152,9 +105,7 @@ verif(
   "au prochain tag ajouté."
 );
 
-// --- D. la globale est exposée au TOP-LEVEL ------------------------------
-// Une ligne SANS indentation = hors de toute fonction. C'est tout l'enjeu :
-// dans `creerIcones()`, la globale n'existait qu'après le chargement d'un plan.
+// ── D. Globale exposée au top-level (ligne SANS indentation = hors de toute fonction) ──
 verif(
   "`window._ktaBuiltinIconUrls` est exposé au top-level de " + MAP,
   /^window\._ktaBuiltinIconUrls = TAGS_BUILTIN;$/m.test(msrc),
@@ -163,14 +114,8 @@ verif(
   "d'un plan — or le HOME s'affiche AVANT, et c'est lui qui en a besoin."
 );
 
-// =====================================================================
-// E. LES SIX AUTRES TABLES (26/09/2026)
-// =====================================================================
-// Toutes ces structures dérivent du même catalogue et aucune n'était gardée.
-// On vérifie l'INCLUSION dans les deux sens : un tag oublié = une
-// fonctionnalité muette, un tag inventé = une promesse que la carte ne tient
-// pas. Les seules clés tolérées en plus sont `default` et `track`, qui ne sont
-// pas des tags de POI mais les deux icônes de service.
+// ── E. Les autres tables ──────
+// Seules clés tolérées hors catalogue : `default` et `track` (icônes de service, pas des tags de POI).
 const HORS_CATALOGUE = ["default", "track"];
 
 function lireFichier(chemin) {
@@ -202,8 +147,7 @@ function corpsLitteral(src, declaration, ou, ouvre, ferme) {
   return src.slice(debut + 1, fin);
 }
 
-// Clés d'un objet, y compris les clés citées ("pilier-1") — `extraireCles`
-// ci-dessus ne lit que les identifiants nus, ce qui suffit à TAGS_BUILTIN.
+// Clés d'un objet, y compris citées ("pilier-1") ; `extraireCles` ne lit que les identifiants nus.
 function clesObjet(src, declaration, ou) {
   const corps = corpsLitteral(src, declaration, ou, "{", "}");
   const out = new Set();
@@ -255,7 +199,7 @@ const GEN = "js/createConf.js", ED = "js/editor.js", LEG = "js/interfaceLegende.
 const gsrc = lireFichier(GEN), esrc = lireFichier(ED), lsrc = lireFichier(LEG),
       xsrc = lireFichier(EXP), csrc = lireFichier(LC), swsrc = lireFichier(SW);
 
-// --- E1. les tables « tag → valeur » ------------------------------------
+// ── E1. Tables « tag → valeur » ──────
 confronter("`PLANNER_DEFAULT_ICONS` (" + GEN + ")",
   clesObjet(gsrc, "const PLANNER_DEFAULT_ICONS = {", GEN),
   "Le Générateur ne proposerait pas ce tag, et un plan généré n'aurait pas son icône.");
@@ -269,7 +213,7 @@ confronter("`DEFAULT_LABELS.icones` (" + LC + ")",
   clesObjet(csrc.slice(csrc.indexOf("const DEFAULT_LABELS = {")), "icones: {", LC),
   "La légende personnalisable afficherait la clé brute dès que LegendCustomization est chargé — c'est-à-dire toujours.");
 
-// --- E2. les groupes (ordre et catégories de la légende / de l'export) ---
+// ── E2. Groupes (ordre et catégories de la légende / de l'export) ──────
 confronter("`GROUPES` (" + LEG + ")",  tagsDeGroupes(lsrc, "const GROUPES = [", LEG),
   "Ce tag n'apparaîtrait dans AUCUN groupe de ≡ Légende : invisible, sans erreur.");
 confronter("`GROUPES2` (" + LEG + ")", tagsDeGroupes(lsrc, "const GROUPES2 = [", LEG),
@@ -277,9 +221,7 @@ confronter("`GROUPES2` (" + LEG + ")", tagsDeGroupes(lsrc, "const GROUPES2 = [",
 confronter("`GROUPES_ICONES` (" + EXP + ")", tagsDeGroupes(xsrc, "const GROUPES_ICONES = [", EXP),
   "Le tag manquerait à la légende des exports PNG/PDF — un relevé imprimé sans sa clef de lecture.");
 
-// --- E3. le précache du Service Worker + l'existence du fichier ----------
-// Un oubli ici ne se voit pas en développement : l'icône se charge depuis le
-// réseau. Elle manque **hors-ligne**, c'est-à-dire sous terre.
+// ── E3. Précache du Service Worker + existence du fichier ──────
 const corpsCat = corpsLitteral(msrc, "const TAGS_BUILTIN = {", MAP, "{", "}");
 const valeurs = {};
 (corpsCat.match(/([A-Za-z_][A-Za-z0-9_]*)\s*:\s*"([^"]*)"/g) || []).forEach(function (s) {
@@ -309,7 +251,7 @@ if (nonLisibles.length) {
   console.log("   ℹ️ valeur non extractible statiquement (donc hors E3) : " + nonLisibles.join(", "));
 }
 
-// --- E4. les trois dictionnaires -----------------------------------------
+// ── E4. Les trois dictionnaires ──────
 ["fr", "en", "es"].forEach(function (lg) {
   const chemin = "lang/" + lg + ".json";
   let dico;
@@ -329,7 +271,7 @@ if (nonLisibles.length) {
     ". L'utilisateur lirait la clé brute — exactement le défaut corrigé en v1.76.0.");
 });
 
-// --- verdict -------------------------------------------------------------
+// ── Verdict ──────
 if (!echecs.length) {
   console.log("\n🎉 Catalogue d'icônes cohérent : " + clesMap.size + " tags, " +
               "9 tables confrontées, précache et 3 dicos compris");

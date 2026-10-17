@@ -4,31 +4,14 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// SEARCH POINTS — Recherche unifiée (v1.10.3-search-unified)
-// =========================
-// Permet à l'utilisateur de chercher dans 4 catégories d'annotations :
-//   📍 Points    (data layers + session)
-//   🛣️ Tracés    (roads session + getAllEmbeddedRoads)
-//   ⬛ Zones     (zones session + getAllEmbeddedZones)
-//   🏛️ Structures (structures session + getAllEmbeddedStructures)
-//
-// Workflow :
-//   1. Modale ouverte par window.ouvrirRecherche() OU Ctrl/Cmd+K
-//   2. Champ de recherche live debounced 200ms
-//   3. Résultats groupés par catégorie (📍 Points (N) · 🛣️ Tracés (M)…)
-//   4. Clic sur un résultat → carte centrée + popup + flash visuel
-//
-// Histoire :
-//   v1.7.x → recherche points uniquement
-//   v1.10.3 (KARMA "1:b · 2:b · 3:a · 5:b · 6:a+b · 7:a · 8:a+b+c") →
-//   extension à roads/zones/structures + raccourci clavier + groupes.
-// =========================
+// searchPoints.js — recherche dans le plan ouvert (Ctrl/Cmd+K) : points (calques + session), tracés,
+//   zones, structures (session + embarqués) ; saisie « lat, lng » sur un plan géoréférencé.
+//   Résultats groupés par catégorie ; un clic centre la carte, ouvre le popup et fait clignoter l'objet.
+// Expose : window.ouvrirRecherche, window.SearchPoints (getAllPoints, findByQuery : points seuls).
 
 (function() {
   "use strict";
 
-  // ========== ÉTAT ==========
   let _modal       = null;
   let _pointsCache = null;          // [{point, layerId, layerLabel}] — UNIQUEMENT data layers externes (cache)
   let _planSignature = null;        // pour invalider le cache au changement de plan
@@ -36,14 +19,12 @@
   let _visibles    = [];            // liste actuellement affichée (référence pour les clics)
   let _flashLayer  = null;          // pour l'animation visuelle
 
-  // Filtres actifs (réinitialisés à chaque ouverture de modale)
+  // Filtres remis à zéro à chaque ouverture. Set vide = tout.
   let _filterLayers = new Set();    // Set<layerId> — vide = tous les calques
   let _filterTags   = new Set();    // Set<tag>     — vide = tous les tags
-  // 🆕 v1.10.3-search-unified : filtre par catégorie (kind). Set<"point"|"road"|"zone"|"structure">
-  // Vide = toutes les catégories actives (comportement par défaut "tout voir").
+  // Set<"point"|"road"|"zone"|"structure">
   let _filterKinds  = new Set();
 
-  // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
     if (document.getElementById("kta-search-styles")) return;
     const s = document.createElement("style");
@@ -254,28 +235,21 @@
     document.head.appendChild(s);
   }
 
-  // ========== ENTRÉE PUBLIQUE ==========
   window.ouvrirRecherche = function() {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
-    // Réinitialise les filtres à chaque ouverture (état "propre")
     _filterLayers = new Set();
     _filterTags   = new Set();
     _filterKinds  = new Set();
     _afficherModal();
   };
 
-  // 🆕 v1.10.3-search-unified : raccourci clavier global Ctrl/Cmd+K
-  // Ouvre la modale de recherche sauf si l'user est en train de taper
-  // dans un input/textarea/contenteditable (anti-vol de focus).
+  // Ctrl/Cmd+K global, sauf dans un champ de saisie (ne pas voler le raccourci natif), et sauf pour
+  // refermer la recherche déjà ouverte (bascule).
   document.addEventListener("keydown", function(e) {
     const key = (e.key || "").toLowerCase();
     const isCmdK = (e.ctrlKey || e.metaKey) && key === "k" && !e.altKey && !e.shiftKey;
     if (!isCmdK) return;
-    // Si on est focus sur un champ texte, ne pas voler le focus (l'user pourrait
-    // vouloir le binding Ctrl+K natif de son OS = couper-ligne en bash, etc.).
-    // EXCEPTION : si la modale de recherche est déjà ouverte, on autorise le
-    // toggle pour fermer/rouvrir.
     const ae = document.activeElement;
     const isInputFocused = ae && (
       ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" ||
@@ -285,7 +259,6 @@
     if (isInputFocused && !searchAlreadyOpen) return;
     e.preventDefault();
     e.stopPropagation();
-    // Toggle : si déjà ouverte → fermer, sinon ouvrir
     if (searchAlreadyOpen) {
       const existing = document.getElementById("kta-search-modal");
       if (existing) existing.remove();
@@ -295,18 +268,15 @@
     }
   });
 
-  // API utilitaire exposée pour les autres modules (Pathfinder par ex.) qui
-  // veulent énumérer tous les points (data layers + editor) sans ouvrir la
-  // modale de recherche. Async car le 1er appel charge le cache des data
-  // layers depuis fetch().
+  // ⚠️ API au format POINT seul (Pathfinder, itinéraire), sans ouvrir la modale. Async : le 1er appel
+  // charge le cache des calques.
   window.SearchPoints = {
     getAllPoints: async function() {
       try { await _chargerCache(); }
       catch(e) { console.warn("[SearchPoints.getAllPoints] cache load failed :", e); }
       return _tousLesPoints();
     },
-    // Recherche substring case-insensitive sur nom + id + tags. Utile pour
-    // l'autocomplete dans la modale itinéraire.
+    // Sous-chaîne, casse ignorée, sur nom + id + tags (autocomplétion de l'itinéraire).
     findByQuery: async function(query) {
       const q = _normalize(query || "");
       if (!q) return [];
@@ -321,8 +291,7 @@
     }
   };
 
-  // ========== FILTRES — DONNÉES DISPO ==========
-  // Calques présents dans les points (data + editor)
+  // ── Filtres ──────────────────────────────
   function _availableLayers() {
     const map = new Map();
     _tousLesPoints().forEach(function(it) {
@@ -335,7 +304,6 @@
     });
   }
 
-  // Tags uniques rencontrés dans tous les points (triés alphabétique)
   function _availableTags() {
     const set = new Set();
     _tousLesPoints().forEach(function(it) {
@@ -351,15 +319,9 @@
   }
 
 
-  // 🆕 v1.10.3-search-unified : version unifiée pour les 4 catégories.
-  // - filterKinds (Set vide = tout) : filtre par "point"|"road"|"zone"|"structure"
-  // - filterLayers : pour points uniquement (tracés/zones/structures n'ont pas de "layer" au sens calque)
-  // - filterTags  : pour points uniquement (les autres n'ont pas de tags)
+  // Catégorie pour tous ; calques et tags pour les POINTS seulement (les autres n'en ont pas).
   function _matchesFiltersUnified(it) {
-    // Filtre catégorie
     if (_filterKinds.size > 0 && !_filterKinds.has(it.kind)) return false;
-    // Filtre layer + tags : ne s'applique QUE aux points (les autres catégories
-    // n'ont pas de structure "calque" comparable et pas de tags).
     if (it.kind === "point") {
       if (_filterLayers.size > 0 && !_filterLayers.has(it.layerId)) return false;
       if (_filterTags.size > 0) {
@@ -371,14 +333,14 @@
     return true;
   }
 
-  // ========== INVALIDATION CACHE ==========
+  // Cache invalidé quand le plan change (signature relue à chaque ouverture).
   function _signaturePlan() {
     const c = window.PLAN_CONFIG;
     if (!c) return null;
     return (c.plan?.name || "") + "|" + (c.plan?.version || "") + "|" + (c.plan?.baseImage || "");
   }
 
-  // ========== AFFICHAGE MODALE ==========
+  // ── Modale ──────────────────────────────
   function _afficherModal() {
     const modal = document.createElement("div");
     modal.id = "kta-search-modal";
@@ -428,9 +390,7 @@
     const resEl    = document.getElementById("kta-search-results");
     const btnClose = document.getElementById("kta-search-close");
 
-    // 🆕 hotfix18 — Affiche le hint GPS UNIQUEMENT si le plan est calibré
-    // (sinon le format "lat, lng" ne servira à rien — autant ne pas
-    // afficher de hint trompeur).
+    // Indice « lat, lng » seulement sur un plan calibré (ailleurs, il tromperait).
     (function _checkGpsHint() {
       const hintEl = document.getElementById("kta-search-gps-hint");
       if (!hintEl) return;
@@ -451,8 +411,7 @@
     }
     btnClose.addEventListener("click", fermer);
 
-    // 🌐 v1.58.0 — pont cross-plan : ferme cette modale et ouvre la recherche
-    // multi-plans avec la saisie courante pré-remplie.
+    // Passerelle : ferme et ouvre la recherche multi-plans avec la saisie en cours.
     (function _wireCrossPlanBridge() {
       const bridge = document.getElementById("kta-search-crossplan");
       if (!bridge || !window.CrossPlanSearch || typeof window.CrossPlanSearch.ouvrir !== "function") return;
@@ -471,7 +430,6 @@
       }
     });
 
-    // Charger le cache au besoin
     _chargerCache().then(function() {
       const total = _tousLesItems().length;
       infoEl.textContent = window.I18n.t("search.info.available", { count: total });
@@ -482,7 +440,6 @@
       infoEl.innerHTML = '<span style="color:#ff8888;">❌ ' + _escapeHtml(err.message) + '</span>';
     });
 
-    // Délégation : clic sur un chip de filtre → toggle + re-render
     const filtersEl = document.getElementById("kta-search-filters");
     if (filtersEl) {
       filtersEl.addEventListener("click", function(e) {
@@ -497,7 +454,6 @@
           if (_filterTags.has(value)) _filterTags.delete(value);
           else _filterTags.add(value);
         } else if (type === "kind") {
-          // 🆕 v1.10.3-search-unified : filtre catégorie
           if (_filterKinds.has(value)) _filterKinds.delete(value);
           else _filterKinds.add(value);
         }
@@ -507,7 +463,6 @@
       });
     }
 
-    // Bouton "Effacer les filtres"
     const clearBtn = document.getElementById("kta-search-clear-filters");
     if (clearBtn) {
       clearBtn.addEventListener("click", function() {
@@ -527,7 +482,6 @@
       }, 200);
     });
 
-    // Sélection au clavier (flèches haut/bas + Enter)
     input.addEventListener("keydown", function(e) {
       const items = resEl.querySelectorAll(".kta-search-result");
       if (items.length === 0) return;
@@ -556,10 +510,9 @@
     });
   }
 
-  // ========== CHARGEMENT DU CACHE DE POINTS ==========
-  // Le cache `_pointsCache` ne contient QUE les points externes (data.json).
-  // Les points editor sont récupérés à chaque appel via `_collecterPointsEditor()`
-  // car ils peuvent changer entre 2 ouvertures de la recherche (ajout, import session, etc.)
+  // ── Collecte ──────────────────────────────
+  // ⚠️ `_pointsCache` ne contient QUE les calques externes ; les points de session sont relus à chaque
+  // appel (_collecterPointsEditor), sinon un ajout ou un import de session n'apparaîtrait pas.
   async function _chargerCache() {
     const sig = _signaturePlan();
     if (sig === _planSignature && _pointsCache) return;
@@ -570,7 +523,6 @@
     const config = window.PLAN_CONFIG;
     if (!config) throw new Error(window.I18n.t("search.error.noPlan"));
 
-    // Calques de données externes uniquement (on saute "editor")
     if (Array.isArray(config.dataLayers)) {
       for (const lc of config.dataLayers) {
         if (lc.id === "editor") continue;       // editor traité séparément à chaque recherche
@@ -588,15 +540,11 @@
     }
   }
 
-  // Récupère les points editor à jour (jamais cachés)
-  // → garantit que les imports de session, ajouts/suppressions sont immédiatement
-  //   visibles dans la recherche sans avoir à recharger le plan.
   function _collecterPointsEditor() {
     const out = [];
     if (!window.getEditorPoints) return out;
 
     const config = window.PLAN_CONFIG;
-    // Trouver le label du calque editor (s'il est déclaré dans dataLayers)
     let label = window.I18n.t("search.layer.editor");
     if (config && Array.isArray(config.dataLayers)) {
       const lc = config.dataLayers.find(function(d) { return d.id === "editor"; });
@@ -610,20 +558,14 @@
     return out;
   }
 
-  // Renvoie l'ensemble complet (cache externe + editor frais)
   function _tousLesPoints() {
     const editor = _collecterPointsEditor();
     return (_pointsCache || []).concat(editor);
   }
 
-  // ========== 🆕 v1.10.3-search-unified : COLLECTEURS ROADS/ZONES/STRUCTURES ==========
-  // Labels lisibles par type (cohérent UI app). Résolus via I18n AU RENDU
-  // (fonctions, pas constantes) pour ne pas appeler t() au load du module.
-  // 🏷️ v1.78.0 (retour KARMA « le renommage doit prendre partout ») — un
-  // type RENOMMÉ dans la légende (session ou plan) s'affiche sous son nom
-  // choisi dans les résultats ; sans renommage, libellé i18n historique
-  // (getSource() ≠ "default" = même garde que la sidebar, zéro changement
-  // par défaut). Un type custom (cust-…) est résolu via findCustomEntry.
+  // Libellé d'un type, résolu AU RENDU (jamais t() au chargement). Un type renommé dans la légende
+  // (session ou plan : getSource() ≠ "default", même garde que la sidebar) prend son nom choisi ;
+  // sinon le libellé i18n. Un type `cust-` passe par findCustomEntry.
   function _lcOuI18n(cat, type, cleI18n) {
     const LC = window.LegendCustomization;
     if (LC) {
@@ -651,15 +593,13 @@
   }
   function _structTypeLabel(type) {
     const keys = { "pilier-1": "search.structType.pilier1", "pilier-2": "search.structType.pilier2", "mur": "search.structType.mur", "front-1": "search.structType.front1", "front-2": "search.structType.front2" };
-    return _lcOuI18n("structures", type, keys[type] || null); // 🏷️ v1.78.0
+    return _lcOuI18n("structures", type, keys[type] || null);
   }
 
-  // Icônes emoji utilisés dans les résultats (pas d'image PNG dédiée pour
-  // roads/zones/structures — emojis plus rapides et cohérents UI).
+  // Emoji pour les catégories sans icône de tag.
   const _KIND_EMOJI = { point: "📍", road: "🛣️", zone: "⬛", structure: "🏛️" };
 
-  // Collecte les roads (session + embedded data layers) avec label auto si manquant.
-  // Retourne format unifié [{kind:"road", item:road, layerId, layerLabel, label, searchableText}]
+  // Session + embarqués → [{ kind, item, layerId, layerLabel, label, searchableText }], libellé auto si absent.
   function _collecterRoads() {
     const out = [];
     const sessionRoads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
@@ -753,13 +693,9 @@
     return out;
   }
 
-  // Retourne TOUS les items (points + roads + zones + structures) dans un
-  // format unifié. Utilisé par la modale de recherche UNIQUEMENT — n'est
-  // PAS exposé via SearchPoints.* pour ne pas casser Pathfinder et autres
-  // modules qui consomment getAllPoints/findByQuery (format point-only).
+  // Toutes catégories, format unifié : modale seulement, JAMAIS exposé (SearchPoints reste point-only).
   function _tousLesItems() {
     const items = [];
-    // Points : on garde le format historique mais on l'enrichit avec kind
     _tousLesPoints().forEach(function(it) {
       const p = it.point;
       const lbl = p.nom || p.id || window.I18n.t("search.point.noName");
@@ -769,13 +705,12 @@
         layerId: it.layerId,
         layerLabel: it.layerLabel,
         label: lbl,
-        // Pour les points, on garde un searchableText riche (nom + id + tags + desc + état)
         searchableText: [
           lbl, p.id || "", p.nom || "",
           Array.isArray(p.tags) ? p.tags.join(" ") : "",
           p.description || "", p.etat || ""
         ].join(" "),
-        // Compat avec _ouvrirPopupEtFlash actuel (qui attend item.point) :
+        // _ouvrirPopupEtFlash attend item.point.
         point: p
       });
     });
@@ -785,13 +720,11 @@
     return items;
   }
 
-  // ========== NORMALISATION POUR RECHERCHE ==========
   function _normalize(s) {
     if (s === null || s === undefined) return "";
     return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
-  // ========== RENDU DES CHIPS DE FILTRE ==========
   function _renderFiltres() {
     const el = document.getElementById("kta-search-filters");
     if (!el) return;
@@ -801,9 +734,7 @@
 
     let html = "";
 
-    // 🆕 v1.10.3-search-unified : filtres catégorie (4 chips)
-    // Affichés en premier car ils restructurent le plus la liste de résultats.
-    // Compteurs live = nombre d'items par catégorie dans la session+data layers.
+    // Chips de catégorie d'abord (elles restructurent le plus la liste), avec compteurs.
     const allItems  = _tousLesItems();
     const kindCount = { point: 0, road: 0, zone: 0, structure: 0 };
     allItems.forEach(function(it) { kindCount[it.kind] = (kindCount[it.kind] || 0) + 1; });
@@ -863,14 +794,10 @@
     btn.style.display = hasFilters ? "inline-block" : "none";
   }
 
-  // ========== RECHERCHE & TRI (v1.10.3-search-unified) ==========
-  // Scoring sur les 4 catégories :
-  //   - Points : nom, id, tags, description, état (comme avant)
-  //   - Roads/Zones/Structures : label, type (label FR), level (niveau N)
-  // Tri intra-catégorie par score décroissant, puis alphabétique sur le label.
-  // Le grouping par catégorie est fait par _renderResultats (pas ici).
+  // ── Recherche et rendu ──────────────────────────────
+  // Filtres d'abord, puis score : points sur nom, id, tags, description, état ; autres sur libellé,
+  // type et niveau. Tri par score décroissant puis libellé ; le groupage se fait au rendu.
   function _filtrer(query) {
-    // Application des filtres unifiés (kind + layers + tags) AVANT le filtrage textuel
     const tousItems = _tousLesItems().filter(_matchesFiltersUnified);
     if (!query) return tousItems.slice();
 
@@ -896,9 +823,6 @@
         else if (tags.includes(q))       score = 20;
         else if (desc.includes(q) || etat.includes(q)) score = 10;
       } else {
-        // Roads/Zones/Structures : match sur le searchableText pré-calculé
-        // (label + type + label FR du type + level). Scoring plus simple
-        // car moins de champs à différencier en priorité.
         const text = _normalize(it.searchableText || "");
         const lbl  = _normalize(it.label || "");
         if      (lbl === q)         score = 100;
@@ -918,20 +842,13 @@
     return matches.map(function(m) { return m.item; });
   }
 
-  // ========== RENDU DES RÉSULTATS (v1.10.3-search-unified) ==========
-  // Rendu groupé par catégorie (📍 Points, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures)
-  // avec headers de section + compteurs par catégorie. Limite 50 résultats
-  // au total répartis sur les 4 catégories (au prorata par défaut).
+  // Groupé par catégorie avec compteurs ; 50 résultats au plus, toutes catégories confondues.
   function _renderResultats(query) {
     const resEl  = document.getElementById("kta-search-results");
     const infoEl = document.getElementById("kta-search-info");
     if (!resEl) return;
 
-    // 🆕 hotfix18 — Détection auto format GPS "lat, lng" (copier-coller Maps)
-    // Si la query match le format strict (2 décimaux séparés par virgule,
-    // dans les plages géographiques valides), on bascule sur un rendu
-    // spécial GPS au lieu du flow texte standard. Le helper
-    // window.parseGpsCoords est défini dans utils.js.
+    // Saisie au format strict « lat, lng » (plages valides, window.parseGpsCoords) → rendu GPS.
     if (typeof window.parseGpsCoords === "function") {
       const gpsCoords = window.parseGpsCoords(query);
       if (gpsCoords) {
@@ -978,7 +895,6 @@
       return;
     }
 
-    // Groupage par catégorie (préserve l'ordre interne du score / alphabétique)
     const groups = { point: [], road: [], zone: [], structure: [] };
     visibles.forEach(function(it) {
       if (groups[it.kind]) groups[it.kind].push(it);
@@ -1017,7 +933,6 @@
 
     resEl.innerHTML = html;
 
-    // Listeners — un seul handler par row, utilise data-visible-idx
     resEl.querySelectorAll(".kta-search-result").forEach(function(el) {
       el.addEventListener("click", function() {
         const idx = parseInt(el.dataset.visibleIdx);
@@ -1025,11 +940,8 @@
         if (it) _aller(it);
       });
     });
-    // 🆕 v1.23.2 Feature G — Bouton 📌 Assigner à équipe (clic indépendant
-    // du _aller — stopPropagation pour pas pan/zoom le map)
-    // 🐛 v1.23.2-fix (audit UX P2 — z-index stack) : ferme la modale Recherche
-    // AVANT d'ouvrir Assigner pour éviter le stack (Esc dans Assigner aurait
-    // laissé la Recherche orpheline visible).
+    // 📌 Assigner : stopPropagation (pas de déplacement de carte). La Recherche se ferme AVANT
+    // d'ouvrir Assigner, sinon Échap dans Assigner la laisse orpheline à l'écran.
     resEl.querySelectorAll(".kta-search-result-assign").forEach(function(btn) {
       btn.addEventListener("click", function(e) {
         e.stopPropagation();
@@ -1038,8 +950,7 @@
         const it = _visibles[idx];
         if (!it || it.kind !== "point") return;
         if (window.SecoursMode && typeof window.SecoursMode.ouvrirAssignerModale === "function") {
-          // Snapshot le point + label AVANT de fermer la modale (sinon _visibles
-          // peut être vidé par le close)
+          // Point et libellé lus AVANT la fermeture, qui peut vider _visibles.
           const point = it.item;
           const layerLabel = it.layerLabel || it.layerId || null;
           if (_modal) { _modal.remove(); _modal = null; }
@@ -1049,13 +960,10 @@
     });
   }
 
-  // Rendu d'une ligne résultat selon le kind. Visuellement homogène, mais
-  // l'icône + le contenu meta varient par catégorie.
   function _renderResultRow(it, visIdx, isFirst) {
     const activeClass = isFirst ? " active" : "";
     let html = '<div class="kta-search-result' + activeClass + '" data-visible-idx="' + visIdx + '">';
 
-    // Icône : pour les points → image PNG du tag ; pour les autres → emoji.
     html += '<div class="kta-search-icon">';
     if (it.kind === "point") {
       const iconUrl = _getIconUrl(it.item);
@@ -1068,7 +976,6 @@
 
     html += '<div class="kta-search-content">';
 
-    // Nom principal — varie selon le kind
     if (it.kind === "point") {
       const p = it.item;
       html += '<div class="kta-search-name">';
@@ -1076,11 +983,9 @@
       html += _escapeHtml(p.nom || window.I18n.t("search.row.unnamed"));
       html += '</div>';
     } else {
-      // Roads/Zones/Structures : juste le label
       html += '<div class="kta-search-name">' + _escapeHtml(it.label) + '</div>';
     }
 
-    // Meta — varie selon le kind
     html += '<div class="kta-search-meta">';
     html += '<span class="layer-tag">' + _escapeHtml(it.layerLabel) + '</span>';
     if (it.kind === "point") {
@@ -1095,19 +1000,16 @@
       }
     } else {
       const r = it.item;
-      // Type lisible (badge couleur)
       const typeLabel = (it.kind === "road"      ? (_roadTypeLabel(r.type)   || r.type)
                         : it.kind === "zone"     ? (_zoneTypeLabel(r.type)   || r.type)
                         : it.kind === "structure"? (_structTypeLabel(r.type) || r.type)
                         : (r.type || ""));
       if (typeLabel) html += '<span class="tag-chip">' + _escapeHtml(typeLabel) + '</span>';
-      // Niveau si M-LVL ou level présent
       if (Number.isInteger(r.level)) {
         html += '<span class="tag-chip">' + _escapeHtml(window.I18n.t("search.row.level", { n: r.level })) + '</span>';
       } else if (r.type === "jonction" && (Number.isInteger(r.fromLevel) || Number.isInteger(r.toLevel))) {
         html += '<span class="tag-chip">' + _escapeHtml(window.I18n.t("search.row.levelRange", { from: (r.fromLevel != null ? r.fromLevel : "?"), to: (r.toLevel != null ? r.toLevel : "?") })) + '</span>';
       }
-      // Nombre de points (info utile pour les polygones)
       if (Array.isArray(r.points)) {
         html += ' <span class="kta-search-coords">' + _escapeHtml(window.I18n.t("search.row.pointCount", { count: r.points.length })) + '</span>';
       }
@@ -1116,12 +1018,7 @@
 
     html += '</div>';  // end content
 
-    // 🆕 v1.23.2 Phase 2 Feature G (KARMA roadmap §65.12 "Recherche unifiée
-    // Ctrl+K → étend pour assigner un point à une équipe en 2 clics") :
-    // bouton 📌 visible UNIQUEMENT si :
-    //   • le résultat est un POINT (pas road/zone/structure pour MVP)
-    //   • la modale Mode Secours est ouverte avec un scénario actif
-    // Au clic : ouvre une mini-modale de sélection équipe + role.
+    // 📌 Assigner à une équipe : POINT seulement, et Mode Secours ouvert avec un scénario actif.
     if (it.kind === "point" && window.SecoursMode
         && typeof window.SecoursMode.isOpen === "function" && window.SecoursMode.isOpen()
         && typeof window.SecoursMode.getCurrentScenarioId === "function"
@@ -1134,13 +1031,12 @@
     return html;
   }
 
-  // ========== RÉCUPÉRATION DE L'ICÔNE ==========
-  // Cascade : plan-config.icons[tag] → _iconMap[tag] (built-in fallback) → default
+  // Icône : plan-config.icons[tag] → _iconMap[tag] → défaut.
   function _getIconUrl(p) {
     if (typeof window.getIconUrlForPoint === "function") {
       return window.getIconUrlForPoint(p);
     }
-    // Fallback ancien comportement si utils.js pas chargé
+    // Repli si utils.js n'est pas chargé.
     const config = window.PLAN_CONFIG;
     if (!config || !config.icons) return null;
     if (Array.isArray(p.tags)) {
@@ -1151,17 +1047,9 @@
     return config.icons.default || null;
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 🆕 hotfix18 — Recherche par coordonnées GPS (plans georef)
-  // ════════════════════════════════════════════════════════════════════════
-  // L'user colle "48.680831, 2.158843" depuis Google Maps → on convertit
-  // GPS → plan via KmzExport.buildTransform + gpsToPlan, puis on bascule
-  // sur l'un des 4 comportements :
-  //   1. Plan non géoréférencé        → bandeau d'info + lien Paramètres
-  //   2. Coords hors plan             → message "coordonée hors plan"
-  //   3. POI proche détecté (≤ 50px)  → card POI + comportement classique
-  //   4. Pas de POI dans 50px         → bouton "Créer un point ici"
-  // ════════════════════════════════════════════════════════════════════════
+  // ── Recherche par coordonnées GPS ──────────────────────────────
+  // « lat, lng » collé depuis une carte → plan (KmzExport.buildTransform + gpsToPlan). Quatre issues :
+  // plan non géoréférencé (lien Paramètres), hors plan, POI à ≤ 50 px (fiche), sinon « Créer un point ici ».
 
   const _GPS_RADIUS_PX = 50;
 
@@ -1172,7 +1060,6 @@
 
     infoEl.textContent = window.I18n.t("search.gps.info", { lat: gps.lat.toFixed(6), lng: gps.lng.toFixed(6) });
 
-    // 1) Plan calibré ?
     const planId = window._currentLoadedPlanId || "";
     if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") {
       _renderGpsCardNoCalib(resEl, gps);
@@ -1188,10 +1075,10 @@
       return;
     }
 
-    // 2) Conversion GPS → plan (pattern §32.7 transform rebuild on-demand)
+    // Transformation reconstruite à la demande.
     let transform, planCoords;
     try {
-      transform = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      transform = window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
       planCoords = window.KmzExport.gpsToPlan(transform, gps.lat, gps.lng);
     } catch (e) {
       _renderGpsCardErreur(resEl, gps, window.I18n.t("search.gps.errInvalidCalib", { msg: (e && e.message) || "" }));
@@ -1202,7 +1089,6 @@
       return;
     }
 
-    // 3) Bounds check (= validation "coordonée hors plan")
     const pc = window.PLAN_CONFIG;
     const imgW = (pc && pc.plan && pc.plan.imageWidth)  || 0;
     const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
@@ -1211,7 +1097,6 @@
       return;
     }
 
-    // 4) Cherche POI proche dans rayon _GPS_RADIUS_PX (50)
     const pointsItems = _tousLesItems().filter(function(it) { return it.kind === "point"; });
     let closest = null;
     let minDist = Infinity;
@@ -1343,7 +1228,6 @@
     const createBtn = resEl.querySelector("#kta-search-gps-create-point");
     if (createBtn) {
       createBtn.addEventListener("click", function() {
-        // Centre la carte + ouvre le formulaire de création (= mode édition POI)
         if (_modal) _modal.remove();
         if (window.map && window.APP_CONFIG) {
           const latlng = [window.APP_CONFIG.imageHeight - planCoords.y, planCoords.x];
@@ -1360,13 +1244,11 @@
     }
   }
 
-  // ========== ALLER À UN POINT/ROAD/ZONE/STRUCTURE (v1.10.3-search-unified) ==========
-  // Dispatcher selon le kind de l'item — points utilisent l'ancien flow,
-  // les 3 autres utilisent _allerVersAnnotation (centroïde + flash overlay).
+  // ── Aller au résultat ──────────────────────────────
+  // Point : popup du marqueur ; tracé, zone, structure : centroïde + surbrillance (_allerVersAnnotation).
   function _aller(item) {
     if (!window.map || !window.APP_CONFIG) return;
 
-    // Fermer la modale
     if (_modal) _modal.remove();
     _modal = null;
     if (_filtreTimer) { clearTimeout(_filtreTimer); _filtreTimer = null; }
@@ -1378,7 +1260,6 @@
     }
   }
 
-  // Va vers un point (comportement v1.7.x préservé pour compat)
   function _allerVersPoint(item) {
     const p = item.item || item.point;  // compat ancien format (point) + nouveau (item)
     if (typeof p.x !== "number" || typeof p.y !== "number") {
@@ -1388,14 +1269,10 @@
     const latlng = convertCoord(p.x, p.y);
     window.map.setView(latlng, window.map.getZoom(), { animate: false });
     window.map.invalidateSize();
-    // _ouvrirPopupEtFlash attend item.point — on assure la rétrocompat
     const compatItem = { point: p, layerId: item.layerId, layerLabel: item.layerLabel };
     _ouvrirPopupEtFlash(compatItem, latlng);
   }
 
-  // 🆕 v1.10.3-search-unified : va vers une road / zone / structure.
-  // Calcule le centroïde, centre la carte dessus, pose un overlay flash
-  // (polyline jaune ou polygon jaune) + popup info.
   function _allerVersAnnotation(item) {
     const ann = item.item;
     if (!ann || !Array.isArray(ann.points) || ann.points.length === 0) {
@@ -1403,7 +1280,7 @@
       return;
     }
 
-    // Centroïde simple = moyenne des coords plan
+    // Centroïde = moyenne des sommets.
     let sumX = 0, sumY = 0;
     ann.points.forEach(function(pt) { sumX += pt.x; sumY += pt.y; });
     const cx = sumX / ann.points.length;
@@ -1412,13 +1289,11 @@
     window.map.setView(center, window.map.getZoom(), { animate: false });
     window.map.invalidateSize();
 
-    // Cleanup d'un éventuel overlay flash précédent
     if (_flashLayer) {
       try { window.map.removeLayer(_flashLayer); } catch(e) {}
       _flashLayer = null;
     }
 
-    // Construit l'overlay de flash selon le kind + type
     const latlngs = ann.points.map(function(pt) { return convertCoord(pt.x, pt.y); });
 
     const isPolyline = (item.kind === "road" || (item.kind === "structure" && (ann.type === "front-1" || ann.type === "front-2")));
@@ -1432,7 +1307,6 @@
         pane: "overlayPane"
       }).addTo(window.map);
     } else {
-      // Polygon (zone, pilier, mur)
       _flashLayer = L.polygon(latlngs, {
         color: "#ffaa00",
         weight: 4,
@@ -1444,7 +1318,6 @@
       }).addTo(window.map);
     }
 
-    // Popup info — contenu adapté au kind
     let popupHtml = "<b>" + _escapeHtml(item.label) + "</b>";
     const typeLabel = (item.kind === "road"      ? (_roadTypeLabel(ann.type)   || ann.type)
                       : item.kind === "zone"     ? (_zoneTypeLabel(ann.type)   || ann.type)
@@ -1462,7 +1335,6 @@
       .setContent(popupHtml)
       .openOn(window.map);
 
-    // Disparition automatique du flash après 4 secondes
     setTimeout(function() {
       if (_flashLayer) {
         try { window.map.removeLayer(_flashLayer); } catch(e) {}
@@ -1471,18 +1343,15 @@
     }, 4000);
   }
 
-  // ========== POPUP + ENTOURAGE STATIQUE ==========
   function _ouvrirPopupEtFlash(item, latlng) {
     const p = item.point;
 
-    // Cleanup d'un éventuel entourage précédent
     if (_flashLayer) {
       try { window.map.removeLayer(_flashLayer); } catch(e) {}
       _flashLayer = null;
     }
 
-    // Tenter d'ouvrir le popup du marker existant si on le trouve
-    // Matching par coordonnées plan x/y exactes (pas par latlng dérivé)
+    // Marqueur existant retrouvé par x/y plan EXACTS (pas par latlng dérivé).
     const targetLayer = window.dataLayerGroups && window.dataLayerGroups[item.layerId];
     let foundMarker = null;
     if (targetLayer && targetLayer.eachLayer) {
@@ -1490,7 +1359,6 @@
         if (foundMarker) return;
         if (m.getLatLng) {
           const ll = m.getLatLng();
-          // Reconvertir en coords plan pour comparer à p.x, p.y
           const mx = ll.lng;
           const my = APP_CONFIG.imageHeight - ll.lat;
           if (Math.abs(mx - p.x) < 0.5 && Math.abs(my - p.y) < 0.5) {
@@ -1503,7 +1371,7 @@
     if (foundMarker && foundMarker.openPopup) {
       foundMarker.openPopup();
     } else {
-      // Pas de marker direct (ex: layer pas visible) → popup temporaire
+      // Pas de marqueur (calque masqué) : popup temporaire.
       L.popup({ autoClose: true, closeOnClick: true })
         .setLatLng(latlng)
         .setContent(
@@ -1516,7 +1384,6 @@
         .openOn(window.map);
     }
 
-    // Cercle d'entourage statique (pas d'animation, juste pour aider à repérer)
     _flashLayer = L.circleMarker(latlng, {
       radius: 24,
       color: "#ffaa00",
@@ -1527,7 +1394,6 @@
       interactive: false
     }).addTo(window.map);
 
-    // Le cercle disparaît après 3 secondes
     setTimeout(function() {
       if (_flashLayer) {
         try { window.map.removeLayer(_flashLayer); } catch(e) {}
@@ -1536,11 +1402,8 @@
     }, 3000);
   }
 
-  // ========== UTILS ==========
   function _escapeHtml(s) { return window.ktaEsc(s); }
   function _escapeAttr(s) { return window.ktaEsc(s); }
 
-  // ========== INVALIDATION DU CACHE AU CHANGEMENT DE PLAN ==========
-  // (le cache se réinitialise automatiquement via _signaturePlan() à chaque ouverture)
 
 })();

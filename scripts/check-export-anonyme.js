@@ -1,22 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔒 check-export-anonyme.js — garde-fou pré-commit BLOQUANT (v2.0.1)
+// check-export-anonyme.js — garde-fou pré-commit BLOQUANT : l'export anonymisé ne livre aucun nom réel
 // =====================================================================
-// L'export « anonymisé » est fait pour être PARTAGÉ publiquement. Une seule
-// clé oubliée suffit à livrer le nom d'un réseau ou d'un point réel.
-//
-// 🩸 LE CAS RÉEL (v2.0.1) : les liaisons inter-plan, ajoutées à l'export
-// complet en v1.57.0, portent un instantané { planName, pointNom } de chaque
-// côté. `_anonymiserSession` ne les a jamais retirées : pendant 40 versions,
-// un export anonymisé contenait les vrais noms. Aucun garde-fou ne l'avait vu,
-// parce qu'aucun n'exécutait l'anonymiseur.
-//
-// COMMENT : `_anonymiserSession` est EXTRAITE du vrai sessionExporter.js et
-// exécutée dans un `vm` sur une session piégée, dont chaque texte identifiant
-// contient un marqueur. Le contrôle final cherche le marqueur dans TOUT le
-// JSON produit : une clé ajoutée demain à l'export complet et oubliée ici
-// fera échouer le script, même si personne n'a pensé à l'y lister.
+// 🔒 L'export « anonymisé » est fait pour être partagé publiquement : une seule clé oubliée livre le nom
+// d'un réseau ou d'un point réel. 🩸 Exemple : les liaisons inter-plan portent un instantané
+// { planName, pointNom } de chaque côté ; une clé ajoutée à l'export complet et oubliée par l'anonymiseur
+// fuit sans bruit tant que personne n'EXÉCUTE l'anonymiseur.
+// `_anonymiserSession` est EXTRAITE de js/sessionExporter.js et exécutée dans un `vm` sur une session piégée
+// (chaque texte identifiant contient un marqueur). Le marqueur est cherché dans TOUT le JSON produit : une
+// clé nouvelle oubliée fait échouer le script, même si personne n'a pensé à la lister ici.
 // =====================================================================
 "use strict";
 
@@ -71,8 +64,7 @@ const session = {
   user: { nom: M }, userProfile: { surnom: M }, author: M
 };
 
-// 📸 12/10/2026 — les photos portent la FICHE de leur point (nom, position) dans
-// l'index des ZIP de session : elle ne doit jamais sortir d'un export anonymisé.
+// Les photos portent la FICHE de leur point (nom, position) dans l'index des ZIP de session
 const photos = [{ id: "ph1", pointId: "pt_UIDMARK1", mime: "image/jpeg", size: 1, blob: null,
   fiche: { nom: M + " Salle", x: 10, y: 20, niveau: null, type: "salle", maj: 1 } }];
 const enrichir = extraireFonction(SRC, "_enrichirPointsAvecPhotos");
@@ -97,7 +89,7 @@ if (out) {
   t("la session est marquée anonymisée", out.anonymized === true && typeof out.anonymizedAt === "string");
   t("la géométrie est conservée (x/y du 1er point)", out.editorPoints && out.editorPoints[0].x === 10 && out.editorPoints[0].y === 20);
   const json = JSON.stringify(out);
-  // 🆔 v2.1.0 — un uid relierait le fichier anonymisé à la session d'origine.
+  // 🔒 un uid relierait le fichier anonymisé à la session d'origine
   t("🆔 aucun identifiant stable (uid) ne survit", json.indexOf("UIDMARK") < 0);
   t("🆔 aucun horodatage de modification (updatedAt) ne survit", json.indexOf("updatedAt") < 0);
   const i = json.indexOf(M);

@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔒 check-xss.js — garde-fou pré-commit BLOQUANT (05/10/2026)
+// check-xss.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Faille prouvée le 05/10/2026 : le nom d'un point partait dans un
-// onclick="…" échappé pour le JS seulement — un « " » sortait de l'attribut
-// et le code s'exécutait à l'ouverture de la fiche (installation reliée, mais
-// aussi ZIP de plan ou session partagés sur myktamap.fr). Ce contrôle garde :
+// 🔒 Un nom de point dans un `onclick="…"` échappé pour le JS seulement sort de
+// l'attribut avec un « " » : le code s'exécute à l'ouverture de la fiche (ZIP
+// de plan ou session partagés). Ce contrôle garde :
 //   1. la fiche d'un point et sa section liaisons SANS gestionnaire inline ;
 //   2. l'écouteur unique en capture qui exécute leurs actions ;
-//   3. les filtres d'entrée (icônes, couleurs, libellés) — les VRAIES fonctions
-//      de js/config.js, exécutées contre des charges d'attaque ;
-//   4. la légende personnalisée (plan ou session) passée par ces filtres ;
-//   5. les deux chemins d'ouverture d'un plan (ZIP et site) assainis.
+//   3. les filtres d'entrée de js/config.js (icônes, couleurs, libellés),
+//      EXÉCUTÉS contre des charges d'attaque ;
+//   4. la légende personnalisée passée par ces filtres ;
+//   5. les deux chemins d'ouverture d'un plan (ZIP et site) assainis ;
+//   6. aucune donnée brute dans un message ktaConfirm (rendu en HTML).
 // =====================================================================
 "use strict";
 
@@ -38,7 +38,7 @@ function corps(src, nom) {
   return fin < 0 ? "" : src.slice(i, fin + pad.length + 2);
 }
 
-// ═════════ 1. Fiche d'un point et section liaisons : aucun gestionnaire inline ═════════
+// ── 1. Fiche d'un point et section liaisons : aucun gestionnaire inline ──
 {
   const fiche = corps(UTILS, "buildPointPopupHtml");
   t("fiche d'un point trouvée (buildPointPopupHtml)", fiche.length > 1000);
@@ -50,7 +50,7 @@ function corps(src, nom) {
     !/data-kta-uid=/.test(section));
 }
 
-// ═════════ 2. L'écouteur unique, en capture ═════════
+// ── 2. L'écouteur unique, en capture ─────────────────────────────────
 {
   t("écouteur des actions de fiche posé EN CAPTURE (la popup Leaflet arrête la propagation)",
     /document\.addEventListener\("click", _ktaPopupAction, true\)/.test(UTILS));
@@ -63,7 +63,7 @@ function corps(src, nom) {
   t("🩸 l'écouteur ne fait jamais d'eval / new Function", !/\beval\(|new Function/.test(ecouteur));
 }
 
-// ═════════ 3. Filtres d'entrée : les vraies fonctions, contre des charges ═════════
+// ── 3. Filtres d'entrée : les vraies fonctions, contre des charges ───
 {
   const ctx = { console: { warn() {}, log() {} } };
   ctx.window = ctx;
@@ -101,7 +101,7 @@ function corps(src, nom) {
   }
 }
 
-// ═════════ 4. Légende personnalisée (plan ou session) filtrée ═════════
+// ── 4. Légende personnalisée (plan ou session) filtrée ───────────────
 {
   const norm = corps(LEGENDE, "_normalize");
   t("légende : _normalize passe les couleurs par ktaCouleurSure", /ktaCouleurSure/.test(norm));
@@ -110,23 +110,18 @@ function corps(src, nom) {
   t("🩸 légende : un id de type personnalisé doit être un jeton sûr", /ID_SUR\.test\(e\.id\)/.test(norm));
 }
 
-// ═════════ 5. Les deux chemins d'ouverture d'un plan ═════════
+// ── 5. Les deux chemins d'ouverture d'un plan ────────────────────────
 {
   t("plan importé (ZIP) : cloneAndResolvePlanConfig assainit", /ktaAssainirPlanConfig\(resolved/.test(corps(CONFIG, "cloneAndResolvePlanConfig")));
   t("plan du site : loadAppConfig assainit", /ktaAssainirPlanConfig\(config/.test(CONFIG.slice(CONFIG.indexOf("async function loadAppConfig("))));
 }
 
-// ═════════ 6. Fenêtres de message : une donnée brute n'entre pas dans un message rendu en HTML ═════════
-// window.ktaConfirm insère son message en HTML (contrat voulu, cf en-tête dans utils.js) : un nom de plan, de
-// fichier, de dossier, un libellé, une version ou un message venus d'ailleurs passent par un échappeur
-// (window.ktaEsc ou un alias local). Contrôle VOLONTAIREMENT étroit (zéro faux positif), dans le 1er argument
-// d'un appel — ou, s'il s'agit d'une variable (`msg`), dans sa dernière affectation qui précède l'appel :
-//   a. une propriété de nom (.name .nom .label .libelle .titre .title .displayName .version .message
-//      .planName .pseudo .fileName) hors de tout échappeur ;
-//   b. une variable au nom de donnée (nom, label, planName, pseudo, fichier, version, err, msg…) posée
-//      telle quelle en paramètre i18n (`{ nom: nom }`) ou concaténée (`+ nom`).
-// window.ktaAlerte échappe elle-même : seule l'option `html` (message déjà sûr) y rouvre la porte, et elle
-// est refusée ici (aucun appelant aujourd'hui ; en ajouter un = l'échapper puis élargir ce contrôle).
+// ── 6. Fenêtres de message : pas de donnée brute dans un message rendu en HTML ──
+// ⚠️ window.ktaConfirm insère son message en HTML (contrat, utils.js) : toute donnée venue d'ailleurs passe
+// par un échappeur (ktaEsc ou alias). Contrôle volontairement étroit (zéro faux positif), sur le 1er argument
+// ou, pour une variable, sa dernière affectation avant l'appel : (a) propriété de nom (.name .label .version…)
+// hors échappeur ; (b) variable au nom de donnée (nom, fichier, err, msg…) en paramètre i18n ou concaténée.
+// window.ktaAlerte échappe elle-même ; son option `html` est refusée ici (l'ajouter = échapper et élargir ce contrôle).
 {
   const ECHAPPEURS = /\b(?:ktaEsc|_escHtml|escapeHtml|_esc|esc)\s*\(/g;
   const NOM_BRUT = /\.\s*(?:name|nom|label|libelle|titre|title|displayName|version|message|planName|pseudo|fileName)\b/;
@@ -187,7 +182,7 @@ function corps(src, nom) {
     }
     return out;
   };
-  // Auto-test du contrôle (sinon il peut passer à vide sans que personne ne le voie).
+  // Auto-test : sans lui, le contrôle peut passer à vide sans que personne ne le voie.
   const piege = 'window.ktaConfirm(t("k", { nom: plan.name }));\nktaConfirm("Supprimer " + f.label + " ?");\n' +
     'const msg = t("k", { v: remote.version });\nwindow.ktaConfirm(msg);\nktaConfirm(t("k", { nom: nom }));\n' +
     'ktaConfirm("Fichier " + fichier);\nwindow.ktaAlerte(x, { html: true });';

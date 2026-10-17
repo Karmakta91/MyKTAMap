@@ -1,26 +1,21 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🏷️ check-plan-tags.js — garde-fou pré-commit BLOQUANT
+// check-plan-tags.js — garde-fou pré-commit BLOQUANT des étiquettes de plan écrites à la génération
 // =====================================================================
-// Étiquettes de plan écrites À LA GÉNÉRATION (16/09/2026, KARMA : « affecter
-// des tags directement à la génération, rétro-compat comme d'hab »).
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Deux normalisations divergent (ℹ️ Infos d'un côté, Générateur de
-//      l'autre) : un tag accepté ici est refusé là, silencieusement.
-//   2. Le fichier ÉCRASE l'utilisateur : réimporter une nouvelle version du
-//      ZIP effacerait les étiquettes posées à la main — le ping-pong déjà
-//      corrigé sur `version` (v1.88.0) et sur l'index serveur (v1.90.1).
-//   3. Un convertisseur (KMZ, GPX, SIG) oublie le champ : un plan converti
-//      n'a jamais d'étiquettes, personne ne sait pourquoi.
-//   4. Le champ est écrit même vide : le JSON d'un plan sans étiquettes
-//      change, et la promesse « rétro-compat = zéro diff » est rompue.
-//   5. L'import multiple entre les plans SANS lire leurs étiquettes : elles
-//      n'apparaîtraient qu'à la première ouverture.
-//
-// ON EXÉCUTE la normalisation et la règle d'application (extraites du code),
-// on ne se contente pas de grep. Usage : node scripts/check-plan-tags.js [racine]
+// 🩸 Ce qui régresse sans bruit :
+//   1. deux normalisations divergent (Infos / Générateur) : un tag accepté ici est refusé là ;
+//   2. le fichier ÉCRASE l'utilisateur : réimporter une nouvelle version du ZIP effacerait les étiquettes
+//      posées à la main (le fichier propose, l'utilisateur et l'index disposent) ;
+//   3. un convertisseur (KMZ, GPX, SIG) oublie le champ : un plan converti n'a jamais d'étiquettes ;
+//   4. le champ est écrit même vide : le JSON d'un plan sans étiquettes change (rétro-compat = zéro diff) ;
+//   5. l'import multiple ne lit pas les étiquettes : elles n'arrivent qu'à la première ouverture.
+// La normalisation et la règle d'application sont EXÉCUTÉES (extraites du code), pas seulement greppées.
+// 🏷️ REPÈRES DE DÉCOUPE : marqueurs explicites `// 🏷️ ancre:debut-tags-config` /
+// `// 🏷️ ancre:fin-tags-config` posés dans la source (forme commune à tous les
+// garde-fous : `// 🏷️ ancre:<nom>`, jamais un commentaire libre ni un tag de
+// version). Repère introuvable = ÉCHEC.
+// Usage : node scripts/check-plan-tags.js [racine]
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -35,7 +30,7 @@ const MAIN = lire("js/main.js");
 const GEN  = lire("js/createConf.js");
 const IMPM = lire("js/importMasse.js");
 
-// ---------- 1. UNE normalisation, exécutée ----------
+// ── 1. UNE normalisation, exécutée ──────────
 {
   const i = PR.indexOf("function normaliserTags(");
   const j = PR.indexOf("\n  }\n", i);
@@ -58,9 +53,9 @@ const IMPM = lire("js/importMasse.js");
     /if \(origine === "index" \|\| origine === "config"\) delete p\.tagsSrc;/.test(PR));
 }
 
-// ---------- 2. La règle d'application, exécutée (main.js ET importMasse.js) ----------
+// ── 2. La règle d'application, exécutée (main.js ET importMasse.js) ──────────
 function jouerRegle(src, vars, scenario) {
-  // registre factice : on observe les appels à setTags
+  // Registre factice : on observe les appels à setTags
   const appels = [];
   const reg = {
     findById: function () { return scenario.existant || null; },
@@ -71,7 +66,7 @@ function jouerRegle(src, vars, scenario) {
   return appels;
 }
 function extraire(S, nom) {
-  const i = S.indexOf("// 🏷️ début-tags-config"), j = S.indexOf("// 🏷️ fin-tags-config");
+  const i = S.indexOf("// 🏷️ ancre:debut-tags-config"), j = S.indexOf("// 🏷️ ancre:fin-tags-config");
   const src = (i >= 0 && j > i) ? S.slice(i, j) : "";
   t(nom + " : la règle d'application est extractible (repères début/fin présents)", src.length > 0);
   return src;
@@ -107,7 +102,7 @@ const SCENARIOS = [
     /tags: Array\.isArray\(plan\.tags\) \? plan\.tags : \[\]/.test(IMPM));
 }
 
-// ---------- 3. Le Générateur et ses trois convertisseurs ----------
+// ── 3. Le Générateur et ses trois convertisseurs ──────────
 {
   t("le champ 🏷️ vit dans « Informations du plan », après l'auteur",
     /id="pl_author"[\s\S]{0,900}id="pl_tags"[\s\S]{0,1500}id="pl_width"/.test(GEN));
@@ -128,7 +123,7 @@ const SCENARIOS = [
   }
 }
 
-// ---------- 4. Textes ×3 et format documenté ----------
+// ── 4. Textes ×3 et format documenté ──────────
 {
   for (const l of ["fr", "en", "es"]) {
     const d = JSON.parse(lire("lang/" + l + ".json"));

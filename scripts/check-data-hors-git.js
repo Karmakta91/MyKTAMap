@@ -1,34 +1,20 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🗺️ check-data-hors-git.js — garde-fou commit-msg BLOQUANT
+// check-data-hors-git.js — garde-fou commit-msg + CI BLOQUANT
 // =====================================================================
-// Refuse tout commit qui embarque un fichier de `data/`.
-//
-// POURQUOI (consigne KARMA, 26/09/2026) : `data/` reçoit des **relevés réels
-// de terrain**. Un relevé de carrière n'a rien à faire sur un dépôt public —
-// ni le tracé des galeries, ni les entrées, ni le nom du réseau. Le dépôt ne
-// publie QUE le relevé fictif de démonstration, et même lui ne se met à jour
-// que sur consigne explicite.
-//
-// 🩸 CE QUI L'A FAIT NAÎTRE : un plan réel déposé dans `data/` pour servir de
-// cas de test. Le dossier lui-même n'était pas suivi — mais `data/index.json`,
-// lui, l'EST : il avait été modifié pour pointer vers ce plan. Un `git commit
-// -a` ou un `git add data/` aurait publié le nom du réseau et cassé la démo,
-// sans que rien ne proteste. La règle « Claude ne touche pas à data/ » existait
-// déjà côté ÉCRITURE (permission `deny`) ; elle ne disait rien du COMMIT, et
-// c'est par là que ça passait.
-//
-// PORTÉE : tout chemin indexé qui commence par `data/`. Aucune exception
-// automatique, pas même le relevé fictif — la consigne est « sauf consigne
-// précise », donc elle doit s'écrire, et rester dans l'historique.
-//
-// DÉROGATION (même mécanique que `Docs-deroge:` de check-release-docs) :
-//   Data-deroge: <motif>
-// dans le message de commit. Elle est archivée dans Git : dans six mois, on
-// saura POURQUOI un fichier de données est parti.
-//
-// Usage (appelé par .githooks/commit-msg) :
+// 🔒 Refuse tout commit qui embarque un fichier de `data/` : il reçoit des
+// relevés réels de terrain (galeries, entrées, nom du réseau) qui ne partent
+// jamais sur le dépôt public. Seul le relevé fictif y vit, mis à jour sur
+// consigne explicite seulement.
+// 🩸 Le dossier d'un plan n'est pas suivi, mais `data/index.json` l'EST : un
+// `git commit -a` suffit à publier le nom d'un réseau. L'interdiction d'écrire
+// dans data/ ne protège pas du commit.
+// Portée : tout chemin indexé sous `data/` (ou KTA_FICHIERS_CI en CI), sans
+// exception automatique, relevé fictif compris.
+// Dérogation (archivée dans l'historique) : ligne `Data-deroge: <motif>` dans
+// le message de commit, 5 caractères minimum.
+// Usage (appelé par .githooks/commit-msg et scripts/ci-commits.sh) :
 //   node scripts/check-data-hors-git.js <chemin-du-message>
 // =====================================================================
 "use strict";
@@ -54,8 +40,7 @@ function indexes() {
 const fautifs = indexes().filter(p => p === "data" || p.startsWith("data/"));
 if (!fautifs.length) process.exit(0);
 
-// Le message peut ne pas être lisible (amend en cours, etc.) : sans message,
-// pas de dérogation possible, donc refus.
+// Message illisible (amend en cours…) = pas de dérogation possible = refus.
 let message = "";
 const chemin = process.argv[2];
 if (chemin) { try { message = fs.readFileSync(chemin, "utf8"); } catch (e) {} }

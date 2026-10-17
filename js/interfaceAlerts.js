@@ -7,69 +7,26 @@
 // =========================
 // INTERFACE ALERTS — Modales d'alertes publiques + mise à jour
 // =========================
-// 🆕 v1.31.0 (P3 Lot 1 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 9324-9701 avant extraction) pour réduire le
-// volume du fichier principal et améliorer la maintenabilité.
-//
-// Aucun changement de comportement runtime. Les 4 fonctions exposées
-// sur `window` sont strictement identiques à v1.30.1.
-//
-// 📋 Fonctions exposées (toutes via window.*) :
-//   - afficherModaleAlerteAbsente(status)
-//        → Modale informative "Aucune alerte en cours" / "Déjà à jour"
-//          / "Vérification impossible (offline)". Pattern compact :
-//          backdrop translucide, boîte centrée non pleine hauteur.
-//          Utilisée au clic sur le badge 🚨 sans alerte active, et
-//          au clic badge version footer sans update dispo.
-//   - afficherSelecteurAlertes(alerts, opts)
-//        → Liste à choix multi-alertes triée par criticité
-//          (emergency > warning > info). Click sur une row → callback
-//          opts.onSelect(alert) ou par défaut afficherModaleAlerte.
-//   - afficherModaleAlerte(alert, onClose)
-//        → Modale détail d'une alerte avec niveau coloré (emergency
-//          rouge + pulse, warning orange, info bleu). Volontairement
-//          sans fermeture backdrop (alerte critique = clic explicite).
-//   - afficherModaleUpdateDispo(opts)
-//        → Modale de proposition de mise à jour avec choix douce / reset
-//          complet / plus tard. Déléguée par updateChecker.js au boot.
-//
-// 🔌 Dépendances externes (toutes via window.* — aucun import) :
-//   - window.AlertChecker.dismiss(id, released)  [optionnel]
-//   - window.afficherModaleAlerte                [self-ref interne]
-//   - window.mettreAJourCodeSeul                 [interface.js]
-//   - window.viderCacheAppli                     [interface.js]
-//   - window.__MKM__.build                       [copyright.js]
-//   - localStorage["myktamap_last_version_data"] [updateChecker.js]
-//   - localStorage["myktamap_alert_seen_<id>"]   [alertChecker.js]
-//
-// 📍 Ordre de chargement (cf index.html) :
-//   - Doit charger APRÈS interface.js (pour que window.mettreAJourCodeSeul
-//     soit défini au moment où une modale Update est ouverte). En
-//     pratique : ordre cosmétique car les modales sont ouvertes au
-//     RUNTIME (clic user), bien après DOMContentLoaded → toutes les
-//     fonctions globales sont déjà posées. Place ce script juste après
-//     interface.js dans index.html.
-//
-// =========================
-// 🚨 MODALE ALERTE PUBLIQUE — diffusée par alert.json (incendie, fermeture, etc.)
-// =========================
-// Déclenchée par alertChecker.js si alert.json a `active: true`.
-// 3 niveaux possibles selon `level` :
-//   - "emergency" : rouge + pulse (incendie, fermeture totale, etc.)
-//   - "warning"   : orange (perturbation, info importante)
-//   - "info"      : bleu (annonce neutre)
-// Modale informative quand l'utilisateur clique sur 🔔 et qu'il n'y a pas
-// d'alerte en cours (alert.json renommé en .lock côté serveur → 404, OU
-// alert.json présent avec "active": false). Permet de confirmer visuellement
-// que la situation est revenue à la normale.
+// Exposé sur window :
+//   - afficherModaleAlerteAbsente(status) → modale informative compacte « Aucune alerte en cours » / « Déjà à jour »
+//     / « Vérification impossible (hors ligne) » (clic sur 🚨 sans alerte, ou sur la version du pied de page sans
+//     mise à jour).
+//   - afficherSelecteurAlertes(alerts, opts) → liste multi-alertes par criticité (emergency > warning > info) ;
+//     clic sur une ligne → opts.onSelect(alert), sinon afficherModaleAlerte.
+//   - afficherModaleAlerte(alert, onClose) → détail coloré (emergency rouge + pulse, warning orange, info bleu).
+//   - afficherModaleUpdateDispo(opts) → proposition de mise à jour (douce / plus tard), appelée par updateChecker.js.
+// Dépend de (window.*) : AlertChecker.dismiss (optionnel), mettreAJourCodeSeul, viderCacheAppli, __MKM__.build ;
+// localStorage["myktamap_last_version_data"] (updateChecker.js), ["myktamap_alert_seen_<id>"] (alertChecker.js).
+// Chargé après interface.js (index.html) ; les modales s'ouvrent au runtime, les globales sont alors posées.
+// Alertes : alert.json (`active: true`) lu par alertChecker.js ; « pas d'alerte » = alert.json renommé en .lock
+// (404) ou `"active": false`.
 window.afficherModaleAlerteAbsente = function(status) {
   if (document.getElementById("kta-alert-absent-modal")) return;
 
   const isOffline   = (status === "offline");
   const isUpToDate  = (status === "up-to-date");
 
-  // Pour "up-to-date" : lit les notes de la dernière version connue (stockées
-  // par UpdateChecker au dernier fetch réussi) pour les afficher dans la modale.
+  // « up-to-date » : notes de la dernière version connue (mémorisées par UpdateChecker au dernier fetch réussi).
   let lastVersionData = null;
   if (isUpToDate) {
     try {
@@ -78,7 +35,7 @@ window.afficherModaleAlerteAbsente = function(status) {
     } catch(e) {}
   }
 
-  // Échappe le texte HTML (anti-XSS sur contenu remote)
+  // Échappement (contenu distant, anti-XSS).
   function _esc(s) { return window.ktaEsc(s); }
 
   let icon, title, msg, extraHtml = "";
@@ -91,14 +48,9 @@ window.afficherModaleAlerteAbsente = function(status) {
     title = window.I18n.t("alerts.absent.uptodate.title");
     const installed = (window.__MKM__ && window.__MKM__.build) || (lastVersionData && lastVersionData.version) || "?";
     msg = window.I18n.t("alerts.absent.uptodate.msg", { version: _esc(installed) });
-    // 🐛 v1.34.25 — On affiche les notes UNIQUEMENT si la version cachée
-    // dans localStorage correspond exactement à la version installée. Sinon
-    // le cache est stale (cas typique : update douce v1.34.X → v1.35.0 →
-    // rollback v1.34.4 — le LS gardait les notes de v1.35.0 alors que
-    // __MKM__.build était v1.34.X, et la modale "Déjà à jour" affichait
-    // des notes obsolètes/fausses). Si cache stale → on n'affiche pas les
-    // notes (juste le titre + version installée). Le prochain check
-    // version.json mettra à jour le cache LS avec les vraies notes.
+    // 🩸 Notes affichées SEULEMENT si la version en cache est EXACTEMENT la version installée : après une mise à jour
+    // puis un retour arrière, le cache garderait les notes d'une autre version. Cache périmé → titre + version
+    // seulement (le prochain check de version.json le remet à jour).
     const cacheMatchInstalled = lastVersionData && lastVersionData.version === installed;
     if (cacheMatchInstalled && (lastVersionData.released || (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length))) {
       extraHtml += '<div class="kta-alert-absent-version-block">';
@@ -121,8 +73,7 @@ window.afficherModaleAlerteAbsente = function(status) {
     msg   = window.I18n.t("alerts.absent.none.msg");
   }
 
-  // Variante compacte pour les modales informatives (vs overlay opaque global) :
-  // backdrop translucide léger, boîte centrée mais NON pleine hauteur.
+  // Variante compacte (fond translucide léger, boîte centrée non pleine hauteur).
   const modal = document.createElement("div");
   modal.id = "kta-alert-absent-modal";
   modal.className = "kta-alert-absent-overlay kta-alert-absent-compact";
@@ -145,24 +96,15 @@ window.afficherModaleAlerteAbsente = function(status) {
   function _fermer() { modal.remove(); }
   document.getElementById("kta-alert-absent-ok").addEventListener("click", _fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
-  // Échap = fermer
   function _onKey(e) { if (e.key === "Escape") { _fermer(); document.removeEventListener("keydown", _onKey); } }
   document.addEventListener("keydown", _onKey);
 };
 
-// v166 : sélecteur d'alertes quand N > 1 alertes actives. Liste classée par
-// criticité (emergency > warning > info). Click sur une row → ouvre la modale
-// détail correspondante. Après acquit, si d'autres alertes restent → re-ouvre
-// le sélecteur. Si l'user ferme le sélecteur (✕ ou Échap), tout se ferme.
-//
-// `alerts` : array d'objets alert (format normalisé par alertChecker.js).
-// `opts.onSelect(alert)` : callback appelé quand l'user clique une row.
-// `opts.fromBoot` : si true (boot post-splash), bypass-acquittement check
-//                   (= filtre sur non-acquittées seulement). Si false (click
-//                   bouton 🚨), affiche TOUTES les alertes même acquittées.
-// 🧩 13/10/2026 — Source d'une alerte : celle que fournit une extension (« 🏢 Organisation… ») ; une alerte du
-// fichier alert.json n'est étiquetée « plateforme » que si une extension fournit aussi des alertes (sinon rien
-// ne change à l'écran). Texte échappé par l'appelant.
+// Sélecteur quand N > 1 alertes actives, classé par criticité ; clic sur une ligne → modale détail.
+// `alerts` : alertes normalisées par alertChecker.js. `opts.onSelect(alert)` : clic sur une ligne.
+// `opts.fromBoot` : vrai au démarrage (non acquittées seulement) ; faux au clic sur 🚨 (toutes, acquittées comprises).
+// Source d'une alerte : celle d'une extension (« 🏢 Organisation… ») ; une alerte d'alert.json n'est étiquetée
+// « plateforme » que si une extension fournit aussi des alertes (sinon rien ne change). Texte échappé par l'appelant.
 function _ktaSourceAlerte(a) {
   if (a && a.source) return a.source;
   const ext = window.KtaExtensions && typeof window.KtaExtensions.aPrise === "function" && window.KtaExtensions.aPrise("alertes");
@@ -176,7 +118,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
 
   function _esc(s) { return window.ktaEsc(s); }
 
-  // Tri par priorité (emergency > warning > info) puis released desc
+  // Tri par priorité puis released décroissant.
   const prioOrder = { emergency: 0, warning: 1, info: 2 };
   const sorted = alerts.slice().sort(function(a, b) {
     const pa = prioOrder[a.level] != null ? prioOrder[a.level] : 3;
@@ -185,8 +127,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
     return (b.released || "").localeCompare(a.released || "");
   });
 
-  // Indicateur acquit : utile en mode "click 🚨" pour distinguer les alertes
-  // déjà lues. localStorage["myktamap_alert_seen_<id>"] = released acquitté.
+  // Alerte déjà lue (utile au clic sur 🚨) : localStorage["myktamap_alert_seen_<id>"] = released acquitté.
   function _isAcquittee(a) {
     if (!a.id || !a.released) return false;
     try {
@@ -229,7 +170,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   function _fermer() {
     if (modal.parentNode) modal.remove();
     document.removeEventListener("keydown", _onKey);
-    // Une alerte arrivée pendant que le sélecteur était ouvert s'ouvre maintenant (AlertChecker, 13/10/2026).
+    // Une alerte arrivée pendant que le sélecteur était ouvert s'ouvre maintenant (AlertChecker).
     if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") window.AlertChecker.dismiss();
   }
   function _onKey(e) { if (e.key === "Escape") _fermer(); }
@@ -243,9 +184,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
       const alertObj = sorted.filter(function(a) { return a.id === id; })[0];
       if (!alertObj) return;
       _fermer();
-      // Petite pause pour fade-out visuel propre, puis ouvre la détail.
-      // Au close de la détail, on appelle onSelect pour permettre la cascade
-      // (réouvrir le sélecteur si d'autres alertes restent à voir).
+      // Courte pause (fondu), puis la modale détail ; à sa fermeture, onSelect.
       setTimeout(function() {
         if (typeof opts.onSelect === "function") {
           opts.onSelect(alertObj);
@@ -257,15 +196,14 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   });
 };
 
-// v163 : 2e arg optionnel `onClose` — callback appelé à la fermeture de la
-// modale (utilisé par AlertChecker pour la cascade multi-alertes).
+// `onClose` optionnel : appelé à la fermeture (AlertChecker).
 window.afficherModaleAlerte = function(alert, onClose) {
   if (!alert) return;
   if (document.getElementById("kta-alert-modal")) return;
 
   function _esc(s) { return window.ktaEsc(s); }
 
-  const id    = alert.id    || "";  // v163 : acquit individuel par id
+  const id    = alert.id    || "";  // acquittement individuel par id
   const level = alert.level === "warning" || alert.level === "info" ? alert.level : "emergency";
   const title = alert.title   || window.I18n.t("alerts.detail.defaultTitle");
   const msg   = alert.message || "";
@@ -306,26 +244,22 @@ window.afficherModaleAlerte = function(alert, onClose) {
 
   function _fermer() {
     if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") {
-      // v163 : passe id + released pour acquit individuel (pas juste released)
+      // id + released : acquittement individuel.
       window.AlertChecker.dismiss(id, released);
     }
     modal.remove();
-    // v163 : callback pour la cascade multi-alertes
     if (typeof onClose === "function") {
       try { onClose(); } catch(e) {}
     }
   }
 
   document.getElementById("kta-alert-ok").addEventListener("click", _fermer);
-  // Volontairement PAS de fermeture au clic backdrop : alerte critique,
-  // l'utilisateur doit cliquer explicitement "J'ai compris".
+  // PAS de fermeture au clic sur le fond (décision produit) : alerte critique, « J'ai compris » explicite.
 };
 
-// =========================
-// 🔔 MODALE MISE À JOUR DISPONIBLE — déclenchée par updateChecker.js
-// =========================
+// ── Modale « mise à jour disponible » (updateChecker.js) ──────────
 window.afficherModaleUpdateDispo = function(opts) {
-  // Si déjà ouverte (re-appel), ne fait rien
+  // Déjà ouverte : rien.
   if (document.getElementById("kta-update-modal")) return;
 
   const localVersion  = opts.localVersion  || "?";
@@ -371,14 +305,13 @@ window.afficherModaleUpdateDispo = function(opts) {
           notesHtml +
         '</div>' +
 
-        // 13/10/2026 (KARMA) : un seul mode de mise à jour depuis le retrait du reset d'ici — plus de rubrique
-        // « deux modes » : une ligne dit ce qui est rafraîchi et ce qui est gardé.
+        // Un seul mode de mise à jour : une ligne dit ce qui est rafraîchi et ce qui est gardé.
         '<div class="kta-aide-section">' +
           '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55; margin-bottom:8px;">' +
             window.I18n.t("alerts.update.softDesc") +
           '</div>' +
-          // 10/10/2026 (retour testeur en prod) : le « 💥 Reset complet » était proposé ICI, à côté du bouton de mise
-          // à jour — il efface tout (sessions, photos, backups) sans recours. Il ne vit plus que dans 🆘 Dépannage.
+          // 🩸 Pas de « Reset complet » ici : il efface tout (sessions, photos, sauvegardes) sans recours et ne vit que
+          // dans 🆘 Dépannage.
           '<div style="color:#8892a4; font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
         '</div>' +
 
@@ -400,7 +333,7 @@ window.afficherModaleUpdateDispo = function(opts) {
     _fermer();
     if (typeof opts.onPostpone === "function") opts.onPostpone();
   });
-  // 🪶 Mise à jour douce — préserve les données utilisateur
+  // Mise à jour douce : données utilisateur préservées.
   document.getElementById("kta-update-accept-soft").addEventListener("click", function() {
     _fermer();
     if (typeof opts.onAcceptSoft === "function") {
@@ -409,7 +342,7 @@ window.afficherModaleUpdateDispo = function(opts) {
       window.mettreAJourCodeSeul();
     }
   });
-  // Clic backdrop = postpone (équivalent Plus tard)
+  // Clic sur le fond = Plus tard.
   modal.addEventListener("click", function(e) {
     if (e.target === modal) {
       _fermer();

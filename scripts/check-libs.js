@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📚 check-libs.js — garde-fou pré-commit BLOQUANT (rejoué en CI)
+// check-libs.js — garde-fou pré-commit BLOQUANT (rejoué en CI) : versions des librairies de lib/
 // =====================================================================
-// Les librairies de lib/ sont copiées à la main (PWA hors ligne, pas de bundler). Leur veille passe par
-// lib/package.json, manifeste DÉCLARATIF lu par Dependabot (avis de sécurité, nouvelles versions). Trois
-// sources doivent dire la même version, sinon la veille ment :
-//   • l'en-tête du fichier embarqué (ce qui tourne vraiment) ;
-//   • lib/package.json (ce que Dependabot surveille) ;
-//   • lib/VERSIONS.md (ce que l'humain lit).
-// Une PR Dependabot ne touche que le manifeste : ce script la fait échouer tant que le fichier et la table
-// n'ont pas suivi — c'est voulu (la mise à jour réelle reste un geste testé, cf. lib/VERSIONS.md).
+// Les librairies sont copiées à la main (PWA hors ligne, pas de bundler) ; leur veille passe par
+// lib/package.json, manifeste DÉCLARATIF lu par Dependabot. Trois sources disent la même version, sinon la
+// veille ment : en-tête du fichier embarqué (ce qui tourne) · lib/package.json · lib/VERSIONS.md.
+// ⚠️ Une PR Dependabot ne touche que le manifeste : elle échoue ici tant que fichier et table n'ont pas suivi
+// — voulu, la mise à jour réelle reste un geste testé (marche à suivre : lib/VERSIONS.md).
 // =====================================================================
 
 const fs = require("fs");
@@ -28,7 +25,6 @@ const LIBS = {
   jspdf:       { fichiers: ["lib/jspdf.umd.min.js"],      motif: /jsPDF[\s\S]{0,200}?Version (\d+\.\d+\.\d+)/ },
   html2canvas: { fichiers: ["lib/html2canvas.min.js"],    motif: /html2canvas (\d+\.\d+\.\d+)/ }
 };
-// libellé de la ligne dans lib/VERSIONS.md
 const LIGNE = { leaflet: "**Leaflet**", jszip: "**JSZip**", jspdf: "**jsPDF**", html2canvas: "**html2canvas**" };
 
 let manifeste = {};

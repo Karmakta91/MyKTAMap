@@ -1,24 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// ❓ check-aide-contextuelle.js — garde-fou pré-commit BLOQUANT
+// check-aide-contextuelle.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Le bouton ❓ posé dans l'en-tête des modales qui ont une section d'aide
-// (D35 de l'audit ergonomie, 14/09/2026), et son interrupteur.
-//
-// 🎯 AUCUNE TABLE RECOPIÉE — la règle du repo depuis `check-icon-catalog.js` :
-// la table `AIDE_PAR_MODALE` est confrontée AU CODE dans les deux sens.
-//   • chaque id de modale doit EXISTER dans les sources (une modale renommée
-//     ferait disparaître son ❓ en silence) ;
-//   • chaque slug doit être une SECTION RÉELLE (sinon le ❓ ouvre du vide).
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Une modale renommée : le ❓ disparaît, personne ne le remarque.
-//   2. L'interrupteur qui cesse d'agir sur ce qui est DÉJÀ à l'écran : la case
-//      paraît inerte, on la coche trois fois et on abandonne.
-//   3. Le défaut qui bascule à OFF : une aide qui ne se voit pas ne sert pas.
-//
-// ON EXÉCUTE la lecture du réglage, extraite du fichier réel.
+// Le bouton ❓ posé dans l'en-tête des modales qui ont une section d'aide, et
+// son interrupteur (js/interfaceDocs.js, case de l'accueil).
+// Aucune table recopiée : `AIDE_PAR_MODALE` est confrontée au code (chaque id
+// de modale existe, chaque slug est une section réelle d'AIDE_SECTIONS).
+// 🩸 Régressions silencieuses visées : modale renommée (le ❓ disparaît),
+// interrupteur sans effet sur l'écran déjà ouvert (la case paraît inerte),
+// défaut qui bascule à OFF. La lecture du réglage est EXÉCUTÉE (vm).
 // Usage : node scripts/check-aide-contextuelle.js [racine]
 "use strict";
 const fs   = require("fs");
@@ -33,7 +24,7 @@ const DOCS = lire("js/interfaceDocs.js");
 const IDX  = lire("index.html");
 const HOME = lire("js/homeConfig.js");
 
-// ---------- 1. La table, confrontée au code ----------
+// ── 1. La table, confrontée au code ──────────────────────────────────
 let table = {};
 {
   const i = DOCS.indexOf("const AIDE_PAR_MODALE = {");
@@ -46,25 +37,19 @@ let table = {};
     table = sb.out || {};
     t("🩸 …et elle n'est pas vide (au moins 8 modales couvertes)", Object.keys(table).length >= 8);
 
-    // Les sections réelles, lues dans AIDE_SECTIONS — pas une liste recopiée.
     const iS = DOCS.indexOf("const AIDE_SECTIONS = [");
     const sbS = {};
     try { vm.runInNewContext(DOCS.slice(iS, DOCS.indexOf("];", iS) + 2) + "\nout = AIDE_SECTIONS;", sbS, { filename: "aide.sections.js" }); } catch (e) {}
     const sections = sbS.out || [];
     t("les sections d'aide sont lisibles depuis le même fichier", sections.length > 0);
 
-    // Sources JS où chercher les ids de modales.
-    // 🩸 LA TABLE EST RETIRÉE DU CORPUS avant la recherche. Sans ça, le contrôle
-    // se validait lui-même : un id renommé DANS la table restait « trouvé »,
-    // puisque la table vit dans un des fichiers fouillés. Défaut révélé par la
-    // falsification du 14/09/2026, pas par la relecture.
+    // 🩸 La table est RETIRÉE du corpus : sinon un id renommé dans la table se
+    // « trouve » lui-même (elle vit dans un des fichiers fouillés).
     const JS = fs.readdirSync(path.join(ROOT, "js")).filter(function (f) { return f.endsWith(".js"); })
       .map(function (f) { return lire("js/" + f); }).join("\n").split(src).join("");
 
-    // 🩸 14/09/2026 — L'EXISTENCE DE L'ID NE SUFFIT PAS. Une modale sans
-    // en-tête reconnu n'aurait jamais reçu son ❓, sans un mot : c'est arrivé
-    // avec le menu Tracker, qui n'avait même pas d'id. On exige donc que le
-    // fichier qui crée la modale porte AUSSI une des deux familles d'en-tête.
+    // 🩸 L'id ne suffit pas : sans en-tête reconnu, la modale ne reçoit jamais
+    // son ❓. Le fichier qui la crée doit porter une des deux familles d'en-tête.
     const ENTETES = ["kta-readme-modal-header", "kta-tracker-modal-header"];
     const fichiers = fs.readdirSync(path.join(ROOT, "js"))
       .filter(function (f) { return f.endsWith(".js") && f !== "interfaceDocs.js"; })
@@ -75,8 +60,7 @@ let table = {};
       if (JS.indexOf('"' + id + '"') < 0 && IDX.indexOf('"' + id + '"') < 0) idsMorts.push(id);
       if (sections.indexOf(table[id]) < 0) slugsMorts.push(id + " → " + table[id]);
       // Le fichier qui CRÉE la modale (`x.id = "…"`), pas le premier qui la
-      // nomme : `kta-itinerary-modal` est cité par copyright.js, qui n'a
-      // évidemment pas son en-tête (03/10/2026).
+      // cite (ex. copyright.js cite `kta-itinerary-modal` sans son en-tête).
       const cite = fichiers.filter(function (f) { return f.txt.indexOf('"' + id + '"') >= 0; });
       const cree = new RegExp("\\.id\\s*=\\s*\"" + id + "\"|id=\\\\?\"" + id + "\\\\?\"");
       const src = cite.filter(function (f) { return cree.test(f.txt); })[0] || cite[0];
@@ -93,16 +77,15 @@ let table = {};
   }
 }
 
-// ---------- 2. Le réglage, exécuté ----------
+// ── 2. Le réglage, exécuté ───────────────────────────────────────────
 {
   const i = DOCS.indexOf("function ktaAideContextuelleActive()");
   const j = DOCS.indexOf("\n}", i);
   const src = (i >= 0 && j > i) ? DOCS.slice(i, j + 2) : "";
   t("la lecture du réglage est extractible", src.length > 0);
   if (src) {
-    // La clé vit hors de la fonction : sans elle, le sandbox lèverait une
-    // ReferenceError que le try/catch de la fonction avalerait — et le contrôle
-    // validerait un code cassé en croyant tester le défaut.
+    // 🩸 La clé vit hors de la fonction : absente du sandbox, la ReferenceError
+    // serait avalée par son try/catch et un code cassé passerait pour le défaut.
     const CLE = (DOCS.match(/const AIDE_CTX_LS = "([^"]+)"/) || [])[1];
     t("la clé de réglage est nommée dans le code", !!CLE);
     const jouer = function (valeur) {
@@ -119,14 +102,20 @@ let table = {};
   }
 }
 
-// ---------- 3. La pose et le retrait ----------
+// ── 3. La pose et le retrait ─────────────────────────────────────────
 {
   t("🩸 le bouton se pose à l'ouverture d'une modale (observateur), pas au cas par cas",
     /new MutationObserver\(/.test(DOCS) && /AIDE_PAR_MODALE\[n\.id\]/.test(DOCS));
-  const p = DOCS.slice(DOCS.indexOf("function _aidePoserBouton("), DOCS.indexOf("function ktaAideContextuelleRefresh("));
+  // 🩸 On lit le CODE sans ses commentaires : un commentaire citant la forme attendue suffirait
+  // à rendre le contrôle vert. `head.insertBefore(b, croix)` jette NotFoundError si la croix est imbriquée.
+  const sansCom = function (s) { return s.replace(/^[ \t]*\/\/.*$/gm, ""); };
+  const i3 = DOCS.indexOf("function _aidePoserBouton("), j3 = DOCS.indexOf("function ktaAideContextuelleRefresh(");
+  const p = (i3 >= 0 && j3 > i3) ? sansCom(DOCS.slice(i3, j3)) : "";
+  t("_aidePoserBouton est extractible", p.length > 0);
   t("🩸 rien n'est posé quand le réglage est coupé", /if \(!slug \|\| !ktaAideContextuelleActive\(\)\) return;/.test(p));
   t("le bouton n'est jamais posé deux fois", /head\.querySelector\("\.kta-aide-ctx-btn"\)/.test(p));
-  t("il se place avant la croix (même ordre dans toutes les modales)", /head\.insertBefore\(b, croix\)/.test(p));
+  t("il se place avant la croix (même ordre dans toutes les modales), dans le parent RÉEL de la croix",
+    /croix\.parentNode\.insertBefore\(b, croix\)/.test(p) && !/head\.insertBefore\(b, croix\)/.test(p));
   t("🩸 les DEUX familles d'en-tête sont acceptées (contenu et menu Tracker)",
     /kta-readme-modal-header, \.kta-tracker-modal-header/.test(p) && /kta-tracker-modal-close/.test(p));
   t("il ouvre la section visée", /ktaOuvrirAideSection\(slug\)/.test(p));
@@ -137,7 +126,7 @@ let table = {};
     /AIDE_SECTIONS\.indexOf\(slug\) < 0/.test(DOCS) && /console\.warn\("\[Aide\] section inconnue/.test(DOCS));
 }
 
-// ---------- 4. L'interrupteur, à l'accueil ----------
+// ── 4. L'interrupteur, à l'accueil ───────────────────────────────────
 {
   t("❓ la case existe dans ⚙️ Configuration de l'accueil", IDX.indexOf('id="loaderAideCtxCb"') >= 0);
   t("🩸 …et elle est CÂBLÉE (écrit le réglage et rafraîchit l'écran)",

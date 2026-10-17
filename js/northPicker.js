@@ -6,35 +6,15 @@
  */
 
 // =========================
-// NORTH-PICKER.JS — Calibration Nord 2 clics (v1.37.0)
+// NORTH-PICKER.JS — calibrage du Nord en 2 clics
 // =========================
-// Picker WYSIWYG pour calibrer l'offset Nord d'un plan dont le haut n'est PAS
-// le Nord vrai (photo aérienne au cadrage arbitraire, plan cataphile sans
-// rosace alignée). Workflow :
-//   1. Modale Réglages map mode > "🧭 Calibrer (2 clics)"
-//   2. La modale Réglages se ferme, on bascule en mode picker (overlay
-//      d'instruction + click handler sur la map Leaflet).
-//   3. 1er clic = pointer le SUD du plan (= côté vers lequel pointe le bas
-//      d'une boussole tenue à plat à cet endroit du plan).
-//   4. 2e clic = pointer le NORD du plan.
-//   5. Flèche pointillée Sud→Nord tracée sur la map (Leaflet polyline +
-//      marqueur "N" à l'extrémité). Bouton Valider / Recommencer / Annuler.
-//   6. Au Valider, calcul de l'angle CW entre l'axe "haut du plan" et le
-//      vecteur Sud→Nord (= direction du Nord vrai dans le repère plan).
-//   7. Promesse résolue avec la valeur en degrés [0, 360[, ou null si annulé.
-//
-// MATH
-//   - Leaflet CRS.Simple : convertCoord(x,y) = [imageHeight - y_plan, x_plan].
-//     → en latlng, lat croît vers le HAUT du plan, lng croît vers la DROITE.
-//   - Angle CW depuis "haut plan" = atan2(dlng, dlat) (radians, sens trigo
-//     inversé pour avoir CW). Converti en degrés et normalisé [0, 360[.
-//   - Sanity check : distance Sud→Nord < 20 px latlng → rejet (clics trop
-//     proches, angle imprécis). Toast erreur + redemande.
-//
-// LIMITES
-//   - Picker actif uniquement sur la map principale (pas en Mode Itinéraire
-//     ou Secours en cours). Vérification _isMapReady() au lancement.
-//   - 1 picker à la fois (guard `_active`).
+// Pour un plan dont le haut n'est PAS le Nord vrai. Depuis Réglages (« 🧭 Calibrer (2 clics) ») : 1er clic =
+// SUD, 2e clic = NORD, flèche pointillée Sud→Nord avec « N », puis Valider / Recommencer / Annuler. Valider
+// calcule l'angle horaire entre le haut du plan et Sud→Nord.
+// ⚠️ CRS.Simple : convertCoord(x,y) = [imageHeight - y, x] → lat croît vers le HAUT, lng vers la DROITE ;
+// angle = atan2(dlng, dlat), normalisé [0, 360[. Sud→Nord < 20 px → rejet (angle imprécis), on redemande.
+// Un seul picker à la fois, carte principale seulement (_isMapReady()).
+// Expose : openNorthCalibrationPicker() → Promise<number|null> (null = annulé ; rejet si la carte n'est pas prête).
 // =========================
 
 (function() {
@@ -50,8 +30,7 @@
   let _instrEl       = null;   // overlay HTML d'instruction
   let _mapClickToken = null;   // référence handler pour off()
 
-  // Distance min entre Sud et Nord (en unités latlng = px plan en CRS.Simple).
-  // Sous ce seuil l'angle est trop bruité → on rejette.
+  // Distance min Sud–Nord (unités latlng = px plan en CRS.Simple) : en dessous, angle trop bruité.
   const MIN_DIST_PX = 20;
 
   function _isMapReady() {
@@ -60,24 +39,20 @@
 
   function _hexCol(c) { return c; /* placeholder pour facilité de thèmage */ }
 
-  // Calcul de l'angle CW depuis "haut du plan" jusqu'au vecteur Sud→Nord.
-  // Retour : nombre [0, 360[ ou null si distance trop faible.
+  // → [0, 360[ ou null si trop proche.
   function _computeAngleDeg() {
     if (!_pickedSouth || !_pickedNorth) return null;
     const dlat = _pickedNorth.lat - _pickedSouth.lat;
     const dlng = _pickedNorth.lng - _pickedSouth.lng;
     const distPx = Math.sqrt(dlat * dlat + dlng * dlng);
     if (distPx < MIN_DIST_PX) return null;
-    // atan2(dlng, dlat) → 0° = vers le haut plan (dlat > 0), 90° = vers la
-    // droite plan (dlng > 0, sens CW). Convertit puis normalise.
+    // 0° = haut du plan (dlat > 0), 90° = droite (dlng > 0), sens horaire.
     let deg = Math.atan2(dlng, dlat) * 180 / Math.PI;
     deg = ((deg % 360) + 360) % 360;
     return deg;
   }
 
-  // =========================
-  // UI OVERLAY (instructions + boutons)
-  // =========================
+  // ── Overlay (instructions + boutons) ──
   function _ensureInstrEl() {
     if (_instrEl) return _instrEl;
     _instrEl = document.createElement("div");
@@ -116,9 +91,7 @@
     if (v) v.disabled = !validateOk;
   }
 
-  // =========================
-  // FLÈCHE PREVIEW (Leaflet polyline + marqueur N)
-  // =========================
+  // ── Flèche d'aperçu (polyline + marqueur N) ──
   function _drawArrow() {
     _removeArrow();
     if (!_pickedSouth || !_pickedNorth || !window.map || !window.L) return;
@@ -126,7 +99,6 @@
       [[_pickedSouth.lat, _pickedSouth.lng], [_pickedNorth.lat, _pickedNorth.lng]],
       { color: _hexCol("#f4c542"), weight: 4, dashArray: "10,8", opacity: 0.9 }
     ).addTo(window.map);
-    // Petit marqueur "N" au bout (extrémité Nord)
     const nIcon = window.L.divIcon({
       className: "kta-north-picker-n-icon",
       html: '<span>N</span>',
@@ -143,9 +115,7 @@
     if (_arrowHeadMrk) { try { window.map.removeLayer(_arrowHeadMrk); } catch(e) {} _arrowHeadMrk = null; }
   }
 
-  // =========================
-  // CLICK HANDLER MAP
-  // =========================
+  // ── Clic carte ──
   function _onMapClick(e) {
     if (!_active) return;
     if (!_pickedSouth) {
@@ -157,7 +127,7 @@
       _pickedNorth = { lat: e.latlng.lat, lng: e.latlng.lng };
       const deg = _computeAngleDeg();
       if (deg == null) {
-        // Trop proche du Sud — invalider et redemander le 2e clic
+        // Trop proche du Sud : on redemande le 2e clic.
         _pickedNorth = null;
         _setStep(window.I18n.t("north.step.tooClose"), false);
         return;
@@ -167,14 +137,9 @@
     }
   }
 
-  // =========================
-  // ACTIONS UI
-  // =========================
-  // 🐛 v1.37.0 hotfix — Capturer _resolveFn AVANT _cleanup() (qui le nullifie).
-  // Sinon la promesse n'est JAMAIS résolue → le .then() du caller ne s'exécute
-  // pas → la modale Réglages cachée par le caller reste cachée pour toujours,
-  // l'user est bloqué sur le picker. (KARMA "il se rouvre pas après les deux
-  // cliques".)
+  // ── Actions ──
+  // 🩸 Capturer _resolveFn AVANT _cleanup() (qui le remet à null) : sinon la promesse n'est jamais résolue et
+  // la modale Réglages cachée par l'appelant reste cachée, utilisateur bloqué.
   function _onValidate() {
     const deg = _computeAngleDeg();
     if (deg == null) return;  // sécurité (bouton déjà désactivé sinon)
@@ -208,17 +173,10 @@
     _rejectFn  = null;
   }
 
-  // =========================
-  // API PUBLIQUE
-  // =========================
-  // openNorthCalibrationPicker() : Promise<number|null>
-  // Résolu avec l'angle [0, 360[ au Valider, ou null si Annulé.
-  // Rejet seulement si la map n'est pas prête (cas dégradé : on n'est pas en
-  // mode carte).
+  // ── API publique ──
   function openNorthCalibrationPicker() {
     return new Promise(function(resolve, reject) {
       if (_active) {
-        // Un autre picker tourne déjà — refuse
         return reject(new Error(window.I18n.t("north.err.alreadyActive")));
       }
       if (!_isMapReady()) {

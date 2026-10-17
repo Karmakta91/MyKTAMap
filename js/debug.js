@@ -5,24 +5,20 @@
  */
 
 // =========================
-// DEBUG.JS
-// Capture des logs + modale plein écran accessible depuis les réglages
-// Toujours actif — accessible via ⚙️ → Afficher les logs
+// DEBUG.JS — Capture des logs + modale plein écran (⚙️ → Afficher les logs)
 // =========================
 
 (function() {
 
   let _logBuffer = [];
 
-  // Charger les logs du crash précédent
+  // Logs de la session précédente (survivent à un crash).
   try {
     const prev = localStorage.getItem("kta_debug_logs");
     if (prev) _logBuffer = JSON.parse(prev);
   } catch(e) {}
 
-  // =========================
-  // CAPTURE DES LOGS
-  // =========================
+  // ── Capture des logs ──────────
   function _format(args) {
     const now = new Date();
     const ts  = now.getHours().toString().padStart(2,"0") + ":" +
@@ -42,7 +38,6 @@
     _logBuffer.push(entry);
     if (_logBuffer.length > 300) _logBuffer.shift();
     try { localStorage.setItem("kta_debug_logs", JSON.stringify(_logBuffer)); } catch(e) {}
-    // Mettre à jour la modale si ouverte
     _refreshModal();
   }
 
@@ -51,19 +46,11 @@
   const _origWarn  = console.warn.bind(console);
   const _origError = console.error.bind(console);
 
-  // Gating centralisé en deux niveaux :
-  //  - DevTools console (sortie visible) : log/info gates derrière debugMode.
-  //    warn/error toujours visibles car critiques (echecs fetch, OOM, etc.).
-  //  - Buffer (modale 🐛 Logs) : log/info gates derrière debugMode AUSSI.
-  //    warn/error toujours bufferisés (diagnostic post-mortem en prod).
-  //
-  // Pourquoi gater AUSSI le buffer ? Sans ça, tracking.js (60 logs/s en
-  // mode actif) pollue le localStorage et pousse les warn/error utiles
-  // hors du buffer (limite 300 entries). En debug OFF on ne garde donc
-  // que les warn/error : modale 🐛 reste lisible meme apres une session
-  // intensive de tracking.
-  // Lecture safe d'APP_CONFIG (pas encore chargé au tout début du boot
-  // → défaut silencieux).
+  // Filtrage à deux niveaux : log/info derrière debugMode, dans la console ET dans le buffer (modale Logs) ;
+  // warn/error toujours visibles et toujours bufferisés (diagnostic post-mortem).
+  // 🩸 Le buffer est filtré lui aussi : tracking.js (60 logs/s en suivi actif) chasserait les warn/error utiles hors
+  // du buffer (300 entrées) et remplirait le localStorage.
+  // APP_CONFIG n'existe pas encore au tout début du démarrage : défaut silencieux.
   function _isDebug() {
     return !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
   }
@@ -96,15 +83,11 @@
     _save("error", ["[PROMISE] " + (e.reason?.message || e.reason || "rejection")]);
   });
 
-  // =========================
-  // MODALE PLEIN ÉCRAN
-  // =========================
+  // ── Modale plein écran ──────────
   function _refreshModal() {
     const zone = document.getElementById("kta-debug-logzone");
     if (!zone) return;
-    // 🆕 v1.20.0-fix1 : utilise des classes CSS (au lieu de inline colors)
-    // pour permettre les overrides thème clair. Voir css/style.css >
-    // `.kta-debug-log-line` + `body.kta-theme-light .kta-debug-log-*`.
+    // Classes CSS plutôt que couleurs inline, pour le thème clair (css/style.css > `.kta-debug-log-line`).
     zone.innerHTML = _logBuffer.map(function(entry) {
       let cls = "kta-debug-log-line";
       if (entry.includes("[ERROR]") || entry.includes("[UNCAUGHT]") || entry.includes("[PROMISE]")) cls += " kta-debug-log-error";
@@ -117,7 +100,7 @@
   }
 
   window.afficherLogsDebug = function() {
-    // Fermer la modale config si ouverte
+    // Ferme la modale de configuration si ouverte.
     const cfg = document.getElementById("kta-cfg-modal");
     if (cfg) cfg.remove();
 
@@ -164,14 +147,14 @@
 
     document.getElementById("kta-debug-copier").addEventListener("click", function() {
       const text = _logBuffer.join("\n");
-      // Copie réussie = geste confirmé : toast « info » (masqué en Essentielles, voulu).
+      // Copie réussie : toast « info » (masqué en Essentielles, voulu).
       const _toastCopie = function() {
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t("debug.logsCopied"), "info");
         }
       };
-      // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
-      // Échec des deux = on montre le début du journal pour une copie à la main.
+      // Helper commun (utils.js) : presse-papier puis execCommand ; double échec → début du journal affiché pour
+      // une copie à la main.
       const _copieManuelle = function() {
         window.ktaAlerte(window.I18n.t("debug.copyManual", { text: text.slice(0,200) }));
       };

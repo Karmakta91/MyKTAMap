@@ -6,46 +6,17 @@
  */
 
 // =========================
-// COMPASS WIDGET — boussole flottante (rose des vents)
+// COMPASS.JS — Boussole flottante (rose des vents)
 // =========================
-// Affiche une rose des vents (icon/compass.png, rose dediee avec N/S/E/W
-// marques clairement + fleche rouge sur le Nord — depuis v157) flottante
-// au-dessus de la carte. Le loader/splash reste sur icon/mkm-full.png qui
-// est l'identite visuelle de la marque.
-// La rose contre-tourne en temps reel selon
-// le heading capte par tracking.js (window.getCurrentHeading) → le repere "N"
-// pointe toujours vers le vrai Nord, peu importe la pose du telephone.
-//
-// DEUX VUES
-//   1. Widget flottant (bottom-right) : compact, rose ~100px, cardinal + angle
-//      en texte sous la rose. Clic ✕ pour fermer, clic sur la rose pour ouvrir
-//      le modal plein.
-//   2. Modal plein (pattern .kta-readme-modal-overlay) : rose ~240px, cardinal
-//      en grand + angle, hint explicatif. Fermable ✕ / backdrop / Échap. Le
-//      widget flottant reste visible derriere (mais cache visuellement sous
-//      l'overlay du modal).
-//
-// USAGE
-//   - Bouton 🧭 dans le groupe Tracker de la sidebar → show() / hide().
-//   - Clic sur le widget (hors ✕) → ouvre le modal plein.
-//   - Clic ✕ du widget → ferme tout (widget + modal s'il est ouvert).
-//
-// MATH DE ROTATION
-//   - L'utilisateur tient le tel a plat, top edge vers la direction de marche.
-//   - direction = heading compass (0 = Nord, 90 = Est, sens CW).
-//   - On applique rotate(-direction) sur l'image de la rose :
-//       direction = 0   → rose normale (N en haut)
-//       direction = 90  → rose tournee -90° (N pointe a gauche → vrai Nord
-//                          est a gauche de l'utilisateur qui marche vers l'Est)
-//       direction = 180 → rose tournee 180° (N pointe en bas)
-//       direction = 270 → rose tournee +90° (N pointe a droite)
-//
-// PERF
-//   - Boucle requestAnimationFrame uniquement quand le widget est visible.
-//   - Throttle ≥0.5° avant de re-appliquer le transform.
-//   - Le rAF met a jour widget ET modal en un seul tick (les deux roses
-//     partagent la classe .kta-compass-rotating-rose, query unifiee).
-// =========================
+// Rose (icon/compass.png) au-dessus de la carte, contre-tournée en temps réel selon le cap de tracking.js
+// (window.getCurrentHeading) : le « N » pointe toujours le vrai Nord.
+// Deux vues : widget flottant (bas-droite, rose ~100 px, cardinal + angle ; ✕ ferme tout, clic sur la rose ouvre
+// le plein écran) et modale plein écran (.kta-readme-modal-overlay, rose ~240 px ; ✕ / fond / Échap).
+// Bouton 🧭 du groupe Tracker → show() / hide().
+// Rotation : téléphone à plat, bord haut vers la marche, cap 0 = Nord, sens horaire ; on applique
+// rotate(-cap) à la rose (cap 90 → N à gauche, 180 → en bas, 270 → à droite).
+// Perf : boucle rAF seulement si le widget est visible, seuil ≥ 0,5° ; widget et modale mis à jour dans le même
+// tick (classe partagée .kta-compass-rotating-rose).
 
 (function() {
   "use strict";
@@ -56,8 +27,7 @@
 
   const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
 
-  // Cardinaux localises (FR : N/NE/E/SE/S/SO/O/NO · EN : SW/W/NW). Resolus au
-  // rendu via I18n (cle compass.cardinals = liste "N,NE,E,SE,S,SO,O,NO").
+  // Cardinaux localisés, résolus au rendu (clé compass.cardinals = "N,NE,E,SE,S,SO,O,NO").
   function _cardinal(h) {
     let idx = Math.round(h / 45) % 8;
     if (idx < 0) idx += 8;
@@ -68,9 +38,7 @@
     return dirs[idx] || dirs[0];
   }
 
-  // =========================
-  // WIDGET FLOTTANT (petit)
-  // =========================
+  // ── Widget flottant ──────────
   function _ensureWidget() {
     if (_widgetEl) return;
     _widgetEl = document.createElement("div");
@@ -86,29 +54,26 @@
       '</div>';
     document.body.appendChild(_widgetEl);
 
-    // ✕ : ferme tout (widget + modal s'il est ouvert)
+    // ✕ : ferme tout (widget + modale).
     _widgetEl.querySelector(".kta-compass-close").addEventListener("click", function(e) {
       e.stopPropagation();
       _closeFullModal();
       hide();
-      // Decoche visuellement la sous-action 🧭 dans la sidebar
+    // Décoche la sous-action 🧭 de la sidebar.
       if (typeof window._onCompassHiddenExternally === "function") {
         try { window._onCompassHiddenExternally(); } catch(e2) {}
       }
     });
 
-    // Clic sur la rose / zone widget (hors ✕) → ouvre modal plein
+    // Clic sur le widget (hors ✕) → modale plein écran.
     _widgetEl.addEventListener("click", function(e) {
       if (e.target.closest(".kta-compass-close")) return;
       _openFullModal();
     });
   }
 
-  // =========================
-  // MODAL PLEIN (pattern .kta-readme-modal-overlay)
-  // =========================
+  // ── Modale plein écran ──────────
   function _openFullModal() {
-    // Guard double-ouverture
     if (document.getElementById("kta-compass-full-overlay")) return;
 
     const overlay = document.createElement("div");
@@ -147,7 +112,7 @@
     document.getElementById("kta-compass-full-close")
       .addEventListener("click", _closeFullModal);
 
-    // Force application du heading courant sur les nouveaux elements du modal
+    // Force l'application du cap courant aux nouveaux éléments.
     _lastApplied = -999;
   }
 
@@ -160,11 +125,9 @@
     overlay.remove();
   }
 
-  // =========================
-  // BOUCLE RAF — met a jour widget ET modal
-  // =========================
+  // ── Boucle rAF (widget ET modale) ──────────
   function _tick() {
-    // Si plus rien a animer (widget cache), on stoppe le rAF.
+    // Widget caché : plus rien à animer, le rAF s'arrête.
     if (!_widgetEl || _widgetEl.style.display === "none") {
       _rafId = null;
       return;
@@ -179,25 +142,24 @@
       const cardinalTxt = _cardinal(h);
       const angleRound  = Math.round(h);
 
-      // Toutes les roses qui doivent tourner (widget + modal s'il est ouvert)
       const roses = document.querySelectorAll(".kta-compass-rotating-rose");
       for (let i = 0; i < roses.length; i++) {
         roses[i].style.transform = rotateStyle;
       }
 
-      // Texte combine "N 12°" du widget flottant
+      // « N 12° » du widget.
       const textDisplays = document.querySelectorAll(".kta-compass-text-display");
       for (let i = 0; i < textDisplays.length; i++) {
         textDisplays[i].textContent = cardinalTxt + " " + angleRound + "°";
       }
 
-      // Cardinal seul (modal plein)
+      // Cardinal seul (modale).
       const cardinalDisplays = document.querySelectorAll(".kta-compass-cardinal-display");
       for (let i = 0; i < cardinalDisplays.length; i++) {
         cardinalDisplays[i].textContent = cardinalTxt;
       }
 
-      // Angle seul (modal plein)
+      // Angle seul (modale).
       const angleDisplays = document.querySelectorAll(".kta-compass-angle-display");
       for (let i = 0; i < angleDisplays.length; i++) {
         angleDisplays[i].textContent = angleRound + "°";
@@ -206,25 +168,21 @@
     _rafId = requestAnimationFrame(_tick);
   }
 
-  // =========================
-  // API PUBLIQUE
-  // =========================
+  // ── API publique ──────────
   function show() {
     _ensureWidget();
     _widgetEl.style.display = "";
     _lastApplied = -999;
-    // Idempotent cote tracking.js (cf _orientationListenerAttached). Le clic
-    // initial qui declenche show() est un geste utilisateur valide pour iOS
-    // → requestPermission peut afficher la popup d'autorisation.
+    // Idempotent côté tracking.js (cf. _orientationListenerAttached). Le clic qui déclenche show() est un geste
+    // utilisateur valide pour iOS : requestPermission peut afficher sa demande.
     if (typeof window.requestPermission === "function") {
       try {
-        // 🚨 B2 (audit 13/09/2026) : un refus était avalé en silence et la
-        // rose affichait « N 0° » comme si on regardait le Nord.
+        // 🩸 Un refus ne doit pas être avalé : la rose afficherait « N 0° » comme si on regardait le Nord.
         const p = window.requestPermission();
         if (p && typeof p.then === "function") {
           p.then(function(ok) {
             if (ok === false && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-              window.OOMGuard.showToast(window.I18n.t("compass.toast.capteursRefuses"), "warn", { important: true });   // 🔕 sans capteurs, rien ne marche
+              window.OOMGuard.showToast(window.I18n.t("compass.toast.capteursRefuses"), "warn", { important: true });   // sans capteurs, rien ne marche
             }
           });
         }
@@ -255,7 +213,6 @@
     hide:      hide,
     toggle:    toggle,
     isVisible: isVisible,
-    // Expose le clic "voir en grand" pour usage externe eventuel
     openFull:  _openFullModal,
     closeFull: _closeFullModal
   };

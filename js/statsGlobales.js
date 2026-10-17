@@ -1,47 +1,28 @@
 /*!
- * MyKTAMap — Statistiques globales du plan
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// STATSGLOBALES.JS — Modale de stats agrégées du plan (depuis v1.20.0)
-// =========================
-// Différent de la modale 📊 Détails session (qui couvre la SESSION active,
-// = annotations en RAM + photos IDB + backups). Cette modale couvre LE PLAN
-// dans son ENSEMBLE : session + data layers embedded.
-//
-// Sections affichées :
-//   📍 Points        : total + breakdown par tag (avec icônes)
-//   🛣️ Tracés        : total + distance cumulée par type (auto m/km)
-//   ⬛ Zones         : total + surface cumulée par type (auto m²/ha)
-//   🏛️ Structures   : total + breakdown par type
-//   📸 Photos        : N photos POI attachées (depuis IDB)
-//   🌐 Géoréf        : statut + coords si présent
-//   🏗️ Multi-niveau : breakdown par niveau (si M-LVL actif)
-//
-// Use cases :
-//   - Évaluer une carrière dans son ensemble avant une sortie
-//   - Stats à partager (bouton 📋 Copier le rapport)
-//   - Comprendre la composition d'un plan partagé reçu
-//
-// API : window.StatsGlobales = { ouvrir, fermer, compute, getReportText }
-// =========================
+// statsGlobales.js — modale de stats du PLAN entier (session + couches embarquées), à distinguer
+//   de « Détails session ». Points par tag, tracés (distance), zones (surface), structures, photos,
+//   géoréf, multi-niveau ; copie du rapport, export PDF et CSV.
+// Expose : window.StatsGlobales (ouvrir, fermer, compute, getReportText, renderPieChart…).
+// Couleurs : window.ktaSwatchColor (styleResolver.js), jamais de table locale.
+// 🩸 En agrégat multi-plans, un type BUILT-IN garde son libellé PAR DÉFAUT (décision produit).
+// Garde-fous : scripts/check-legend-roundtrip.js, scripts/check-style-canon.js, scripts/check-pdf-texte.js
 
 (function() {
   "use strict";
 
-  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
-  // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
+  // CSS chargé à la demande (js/cssLazy.js).
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-stats-globales.css", "kta-css-style-stats-globales");
   }
 
   const MODAL_ID = "kta-stats-globales-modal";
 
-  // ───────── HELPERS ─────────
+  // ── Utilitaires ──────────────────────────────
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
   function _formatDist(m) {
@@ -70,7 +51,6 @@
 
   function _polygonAreaPx(points) {
     if (typeof window.polygonArea === "function") return window.polygonArea(points);
-    // Shoelace fallback
     if (!Array.isArray(points) || points.length < 3) return 0;
     let area = 0;
     for (let i = 0; i < points.length; i++) {
@@ -85,26 +65,14 @@
     return (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
   }
 
-  // ───────── 🆕 v1.21.0 : CAMEMBERTS SVG INLINE ─────────
-  //
-  // KARMA : "Camembert pour breakdown par type (Recommandé)".
-  // SVG natif (0 dep externe). Coloration via palette charte cohérente
-  // avec les rendus carte. Layout : camembert à gauche + légende à droite.
-  //
-  // Palettes par catégorie alignées sur les rendus Leaflet (cf road.js,
-  // zones.js, structures.js) + utils.js pour data layers.
-
-  // 🎨 v1.76.0 — les trois palettes par type sont supprimées : les couleurs
-  // viennent de `window.ktaSwatchColor` (cf. js/styleResolver.js). Un polygone
-  // est représenté par son remplissage, une ligne par son trait — c'est
-  // exactement ce que ces palettes recopiaient à la main.
-  // Palette générique pour points par tag (10 couleurs cycle via hash djb2)
+  // ── Camemberts SVG ──────────────────────────────
+  // Types de tracés/zones/structures : couleur du canon (ktaSwatchColor). Points par tag et types
+  // inconnus : palette de repli, indexée par hash djb2 (un tag garde toujours la même couleur).
   const _PALETTE_TAGS = [
     "#f4c542", "#8cb4ff", "#6ee287", "#ff8c8c", "#ff4ecb",
     "#00d4ff", "#a78bfa", "#ffb380", "#34d399", "#c9b88f"
   ];
 
-  // djb2 — déterministe pour qu'un même tag ait toujours la même couleur
   function _djb2Hash(str) {
     let h = 5381;
     const s = String(str || "");
@@ -113,15 +81,8 @@
   }
 
   function _colorForKey(category, key) {
-    // 🐛 v1.21.4 (KARMA "même couler entre route principal et jonction de
-    // niveau") : accepte aussi les alias LegendCustomization ("traces"
-    // alias de "roads", "icones" alias de "tags") pour résilience.
-    // Avant : ma modale Profil envoyait "traces" → mismatch palette →
-    // fallback hash → collision possible principal/jonction (même hash %10).
-    // 🎨 v1.76.0 — résolution via le styleResolver. Effet de bord VOULU : les
-    // types CUSTOM ont désormais leur VRAIE couleur. Avant, ils tombaient dans
-    // le repli par hash ci-dessous et une part de camembert n'avait aucun
-    // rapport avec la couleur du tracé sur la carte.
+    // 🩸 "roads" ET "traces" acceptés (le Profil envoie "traces") : sinon repli par hash, et deux
+    // types distincts peuvent prendre la même couleur. Les types `cust-` ont aussi leur vraie couleur.
     const cat = (category === "roads" || category === "traces") ? "traces"
               : (category === "zones" || category === "structures") ? category
               : null;
@@ -129,16 +90,12 @@
       const c = window.ktaSwatchColor(cat, key);
       if (c) return c;
     }
-    // Fallback : palette générique cycle via hash (points par tag, et types
-    // réellement inconnus — un custom supprimé de la légende, par exemple).
     return _PALETTE_TAGS[_djb2Hash(key) % _PALETTE_TAGS.length];
   }
 
-  // Resolve label via LegendCustomization si dispo (cascade session > plan > default).
-  // Cohérent avec le helper _lcLabel de refonteInterface.js (v1.20.0-fix2).
+  // Libellé par la cascade LegendCustomization (session > plan > défaut). Type `cust-` : préfixe ✨.
   function _lcLabelStat(category, type, fallback) {
     if (typeof type !== "string" || !type) return fallback || "?";
-    // Entrée custom (cust-XYZ) : préfixe ✨
     if (type.indexOf("cust-") === 0) {
       if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
         try {
@@ -148,10 +105,8 @@
       }
       return fallback || type;
     }
-    // Built-in cascade
     if (window.LegendCustomization && typeof window.LegendCustomization.getLabel === "function") {
       try {
-        // Mapping category statsGlobales → LC category
         const lcCat = (category === "roads") ? "traces"
                     : (category === "tags")  ? "icones"
                     : category;
@@ -162,39 +117,18 @@
     return fallback || type;
   }
 
-  // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours prendre la
-  // valeur par default") : helper qui retourne le label par défaut UNIQUEMENT
-  // (court-circuite la cascade session > plan > default de LegendCustomization).
-  // Utilisé dans le rendu camemberts cross-plan home : l'user a pu renommer
-  // "principal" → "route de surface" sur le plan A, mais sur la modale Profil
-  // home on agrège plusieurs plans → afficher des labels génériques cohérents.
-  // 🐛 v1.90.3 (bug KARMA, capture des stats du profil) — LES TYPES
-  // PERSONNALISÉS S'AFFICHAIENT EN CLAIR : « cust-sig-structures-l-nm2 »,
-  // « cust-mrcevuxu-41f8 ». Illisible, et c'est justement là qu'on a le plus
-  // besoin du nom : un type personnalisé n'a QUE son nom pour identité.
-  //
-  // 🩸 POURQUOI ÇA RATAIT. `findCustomEntry` interroge l'état COURANT de
-  // LegendCustomization — c'est-à-dire le plan chargé. Sur l'accueil, aucun
-  // plan n'est chargé : la fonction ne trouve rien et on retombait sur la clé
-  // brute. Pire, les types nés d'un import SIG ont leur nom dans le
-  // `plan-config.json` DU ZIP : même en cherchant, il n'est pas dans le
-  // localStorage.
-  //
-  // La parade est un dictionnaire construit AILLEURS (homeProfile agrège les
-  // labels mémorisés au chargement de chaque plan) et passé ici. Il n'est
-  // consulté que pour les clés `cust-` : la règle de la v1.21.5-fix1 — en
-  // agrégat cross-plan, un type BUILT-IN garde son libellé par défaut, sinon
-  // le renommage du plan A polluerait le total — reste intacte.
+  // Libellé pour l'agrégat multi-plans (Profil de l'accueil). Un type BUILT-IN prend son libellé par
+  // DÉFAUT (décision produit) : un renommage sur le plan A ne doit pas s'imposer au total.
+  // 🩸 Un type `cust-` n'a que son nom : sur l'accueil, findCustomEntry (état du plan COURANT) ne
+  // trouve rien, et le nom d'un type né d'un import SIG vit dans le plan-config du ZIP. D'où un
+  // dictionnaire externe (homeProfile.js), consulté pour les seules clés `cust-`.
   let _labelsExternes = null;   // { "structures.cust-…": "Niveau -2", … }
   function _setLabelsExternes(map) { _labelsExternes = map || null; }
 
   function _defaultLabelStat(category, type, fallback) {
     if (typeof type !== "string" || !type) return fallback || "?";
-    // Entrée custom (cust-XYZ) : préfixe ✨ — même traitement que _lcLabelStat
-    // car les customs n'ont JAMAIS de version "default" (ils sont par essence
-    // personnalisés). Le préfixe ✨ signale visuellement l'origine.
     if (type.indexOf("cust-") === 0) {
-      // 1. le dictionnaire cross-plan, seul à savoir sur l'accueil
+      // 1. dictionnaire multi-plans (seul à savoir sur l'accueil), 2. légende du plan ouvert.
       if (_labelsExternes) {
         const lcCat2 = (category === "roads") ? "traces"
                      : (category === "tags")  ? "icones"
@@ -202,7 +136,6 @@
         const ext = _labelsExternes[lcCat2 + "." + type] || _labelsExternes[category + "." + type];
         if (ext) return "✨ " + ext;
       }
-      // 2. l'état courant (mode plan : la légende du plan ouvert)
       if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
         try {
           const e = window.LegendCustomization.findCustomEntry(type);
@@ -211,8 +144,7 @@
       }
       return fallback || type;
     }
-    // Built-in : on prend STRICTEMENT le DEFAULT_LABELS du module, jamais le
-    // session.labels ni le plan.labels.
+    // Built-in : STRICTEMENT le libellé par défaut, jamais celui de la session ou du plan.
     if (window.LegendCustomization && typeof window.LegendCustomization.getDefaultLabel === "function") {
       try {
         const lcCat = (category === "roads") ? "traces"
@@ -225,37 +157,33 @@
     return fallback || type;
   }
 
+  // 🏷️ ancre:fin-libelles-stats
   /**
    * Génère un camembert SVG inline + légende textuelle à droite.
    * @param {Object}  data              - {key: count, ...}
    * @param {String}  category          - "roads"|"zones"|"structures"|"tags" (palette + labels)
    * @param {Number}  size              - taille en px (recommandé 160)
-   * @param {Boolean} useDefaultLabels  - 🆕 v1.21.5-fix1 : si true, force les labels
-   *                                       par défaut (bypass LC cascade). Utile cross-plan.
+   * @param {Boolean} useDefaultLabels  - true : libellés par défaut (agrégat multi-plans)
+   * @param {Object}  labelsExternes    - dictionnaire des types `cust-` (cf _defaultLabelStat)
    * @returns {String} HTML <div> contenant SVG + légende
    */
   function _renderPieChart(data, category, size, useDefaultLabels, labelsExternes) {
-    // 🐛 v1.90.3 — dictionnaire de labels cross-plan (cf _defaultLabelStat).
-    // Posé le temps du rendu puis RETIRÉ : laisser un état global traînant
-    // ferait fuiter les noms d'un agrégat dans la modale d'un plan.
+    // 🩸 Dictionnaire posé le temps du rendu puis RETIRÉ, sinon les noms d'un agrégat fuient
+    // dans la modale d'un plan.
     if (arguments.length >= 5) _setLabelsExternes(labelsExternes);
     size = size || 160;
     const r = size / 2 - 4;        // rayon (avec marge)
     const cx = size / 2;
     const cy = size / 2;
     const keys = Object.keys(data || {});
-    // 🩸 Les DEUX sorties anticipees doivent RETIRER le dictionnaire, sinon il
-    // survit au rendu et fait fuiter les noms d un agregat cross-plan dans la
-    // modale d un plan. Un camembert vide est justement le cas ou personne ne
-    // regarde -- donc celui ou la fuite passerait inapercue.
+    // 🩸 Les DEUX sorties anticipées retirent aussi le dictionnaire (fuite invisible : camembert vide).
     if (keys.length === 0) { _setLabelsExternes(null); return ""; }
     const total = keys.reduce(function(s, k) { return s + (data[k] || 0); }, 0);
     if (total === 0) { _setLabelsExternes(null); return ""; }
 
-    // Tri desc par count (le plus gros slice en premier visuellement)
     const sortedKeys = keys.slice().sort(function(a, b) { return (data[b] || 0) - (data[a] || 0); });
 
-    // Cas 1 seul slice : cercle plein (le path SVG arc dégénère à 360°)
+    // Une seule part : cercle plein (un arc SVG de 360° dégénère).
     let svgSlices = "";
     if (sortedKeys.length === 1) {
       const k0 = sortedKeys[0];
@@ -281,10 +209,6 @@
       });
     }
 
-    // Légende à droite : swatch + label + count + pct
-    // 🆕 v1.21.5-fix1 : si useDefaultLabels === true (cross-plan home),
-    // on bypass la cascade LC pour afficher les labels génériques cohérents
-    // entre plans (sinon le renommage local d'un plan A polluerait l'agrégat).
     const _labelFn = useDefaultLabels ? _defaultLabelStat : _lcLabelStat;
     let legend = '<div class="kta-stats-glob-pie-legend">';
     sortedKeys.forEach(function(k) {
@@ -311,10 +235,9 @@
            '</div>';
   }
 
-  // ───────── COLLECTE ─────────
-
+  // ── Collecte ──────────────────────────────
   /**
-   * Agrège tout le plan (session + data layers embedded).
+   * Agrège tout le plan (session + couches embarquées).
    * @returns {Promise<StatsReport>}
    */
   async function compute() {
@@ -323,36 +246,29 @@
     const planMeta = planConf.plan || {};
     const scale    = _scalePxPerM();
 
-    // Points
     const sessionPts  = (typeof window.getEditorPoints      === "function") ? (window.getEditorPoints()      || []) : [];
     const embeddedPts = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
     const allPoints   = sessionPts.concat(embeddedPts);
 
-    // Tracés (roads)
     const sessionRoads  = (typeof window.getRoads             === "function") ? (window.getRoads()             || []) : [];
     const embeddedRoads = (typeof window.getAllEmbeddedRoads  === "function") ? (window.getAllEmbeddedRoads()  || []) : [];
     const allRoads      = sessionRoads.concat(embeddedRoads);
 
-    // Zones
     const sessionZones  = (typeof window.getZones             === "function") ? (window.getZones()             || []) : [];
     const embeddedZones = (typeof window.getAllEmbeddedZones  === "function") ? (window.getAllEmbeddedZones()  || []) : [];
     const allZones      = sessionZones.concat(embeddedZones);
 
-    // Structures
     const sessionStructs  = (typeof window.getStructures            === "function") ? (window.getStructures()            || []) : [];
     const embeddedStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
     const allStructs      = sessionStructs.concat(embeddedStructs);
 
-    // === Aggregations ===
-
-    // Points : breakdown par tag
+    // Un point compte pour son PREMIER tag.
     const pointsByTag = {};
     allPoints.forEach(function(p) {
       const tag = (Array.isArray(p.tags) && p.tags[0]) ? p.tags[0] : "default";
       pointsByTag[tag] = (pointsByTag[tag] || 0) + 1;
     });
 
-    // Tracés : breakdown par type + distance cumulée
     const roadsByType = {};
     const roadsDistByType = {};   // px
     allRoads.forEach(function(r) {
@@ -361,7 +277,6 @@
       roadsByType[type] = (roadsByType[type] || 0) + 1;
       roadsDistByType[type] = (roadsDistByType[type] || 0) + _polylinePxLength(r.points);
     });
-    // Convert px → m
     const roadsDistByTypeM = {};
     Object.keys(roadsDistByType).forEach(function(t) {
       roadsDistByTypeM[t] = scale > 0 ? roadsDistByType[t] / scale : 0;
@@ -370,7 +285,6 @@
       return s + roadsDistByTypeM[t];
     }, 0);
 
-    // Zones : breakdown par type + surface cumulée
     const zonesByType = {};
     const zonesAreaByType = {};   // px²
     allZones.forEach(function(z) {
@@ -387,14 +301,12 @@
       return s + zonesAreaByTypeM2[t];
     }, 0);
 
-    // Structures : breakdown par type
     const structsByType = {};
     allStructs.forEach(function(s) {
       const type = s.type || "?";
       structsByType[type] = (structsByType[type] || 0) + 1;
     });
 
-    // Multi-niveau breakdown (si actif)
     let multiLevelBreakdown = null;
     if (planMeta.multiLevel === true) {
       multiLevelBreakdown = {};
@@ -406,7 +318,7 @@
       allPoints.forEach(function(p) { _addLvl(p.level, "points"); });
       allRoads.forEach(function(r) {
         if (r.type === "jonction") {
-          // Jonction concerne 2 niveaux — on compte sur le max (cf §26.3 CLAUDE)
+          // Une jonction relie 2 niveaux : comptée sur le plus haut.
           const lvl = Math.max(r.fromLevel || 0, r.toLevel || 0);
           _addLvl(lvl, "roads");
         } else {
@@ -417,7 +329,6 @@
       allStructs.forEach(function(s) { _addLvl(s.level, "structures"); });
     }
 
-    // Photos POI (async via IDB)
     let photosCount = 0;
     let photosBytes = 0;
     try {
@@ -430,7 +341,6 @@
       }
     } catch(e) { /* silent */ }
 
-    // Géoréférencement
     const georef = planMeta.georef || null;
 
     return {
@@ -480,13 +390,9 @@
         bytes: photosBytes
       },
       georef: georef,
-      // 🆕 v1.28.0 (KARMA "le tracé + stat") : récap tracker depuis la timeline
-      // persistée. distM = distance physique parcourue (skip téléportations de
-      // recalage, cf getTrackingDistanceM) ; steps = nb de pas PDR appliqués.
+      // Tracker (timeline persistée) : distM = podomètre + tronçons estimés entre recalages, sans les
+      // sauts de recalage ; la part estimée est rendue à part, jamais fondue. steps = pas PDR appliqués.
       tracker: {
-        // 📏 16/08/2026 — distance EXPLOITABLE = podomètre + tronçons estimés
-        // entre les « 📍 Je suis ici » (une sortie menée au recalage valait 0 m).
-        // La part estimée est rendue à part, jamais fondue dans le total.
         distM: (typeof window.getTrackingDistanceTotaleM === "function")
                  ? (window.getTrackingDistanceTotaleM() || 0)
                  : ((typeof window.getTrackingDistanceM === "function")
@@ -535,14 +441,12 @@
              _escapeHtml(window.I18n.t("stats.auteurs.label")) + ' ' + parts.join(" · ") + '</div>';
   }
 
-  // ───────── RENDER UI ─────────
-
+  // ── Rendu ──────────────────────────────
   function _renderHtml(rep) {
     const t = rep.totals;
     const meta = rep.planMeta;
     let html = "";
 
-    // Header plan
     html += '<div class="kta-stats-glob-header">';
     html += '<div class="kta-stats-glob-plan-name">' + _escapeHtml(meta.name);
     if (meta.version) html += ' <span class="kta-stats-glob-dim">' + _escapeHtml(meta.version) + '</span>';
@@ -556,7 +460,6 @@
     html += '</div>';
     html += '</div>';
 
-    // Totaux
     html += '<div class="kta-stats-glob-grid">';
     html += _statCard("📍", t.points,     window.I18n.t(t.points     > 1 ? "stats.card.points.plural"     : "stats.card.points.singular"),     rep.session.points,     rep.embedded.points);
     html += _statCard("🛣️", t.roads,      window.I18n.t(t.roads      > 1 ? "stats.card.roads.plural"      : "stats.card.roads.singular"),      rep.session.roads,      rep.embedded.roads);
@@ -569,7 +472,6 @@
               (sz ? '<div class="kta-stats-glob-card-sub">' + sz + '</div>' : '') +
               '</div>';
     }
-    // 🆕 v1.28.0 : carte tracker (distance parcourue + nb de pas) si historique présent.
     if (rep.tracker && (rep.tracker.distM > 0 || rep.tracker.steps > 0)) {
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + _formatDist(rep.tracker.distM) + '</div>' +
               '<div class="kta-stats-glob-card-label">🧭 ' + window.I18n.t("stats.card.tracker.label") + '</div>' +
@@ -583,7 +485,6 @@
     html += '</div>';
     html += _renderAuteurs(rep.auteurs);
 
-    // Points par tag — 🆕 v1.21.0 : camembert SVG inline + légende
     if (t.points > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">📍 ' + window.I18n.t("stats.section.pointsParTag") + '</div>';
@@ -591,9 +492,7 @@
       html += '</div>';
     }
 
-    // Tracés par type + distance — 🆕 v1.21.0 : camembert SVG inline (count) +
-    // liste détaillée avec distance cumulée par type (l'info distance reste utile,
-    // pas représentable par le camembert qui ne montre que le count).
+    // Tracés et zones : le camembert compte les objets, la liste donne distance ou surface par type.
     if (t.roads > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">🛣️ ' + window.I18n.t("stats.section.traces") + ' ' +
@@ -614,7 +513,6 @@
       html += '</div></div>';
     }
 
-    // Zones par type + surface — idem : camembert + liste détaillée
     if (t.zones > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">⬛ ' + window.I18n.t("stats.section.zones") + ' ' +
@@ -634,8 +532,6 @@
       html += '</div></div>';
     }
 
-    // Structures par type — camembert seul (pas d'info distance/surface cumulée
-    // distincte par type ici, déjà couverte par la liste de la modale Détails session)
     if (t.structures > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">🏛️ ' + window.I18n.t("stats.section.structures") + '</div>';
@@ -643,7 +539,6 @@
       html += '</div>';
     }
 
-    // Multi-niveau
     if (rep.multiLevelBreakdown) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">🏗️ ' + window.I18n.t("stats.section.breakdownNiveau") + '</div>';
@@ -668,7 +563,6 @@
       html += '</div></div>';
     }
 
-    // Géoréférencement
     if (rep.georef && rep.georef.pointA && rep.georef.pointB) {
       const a = rep.georef.pointA;
       const b = rep.georef.pointB;
@@ -703,7 +597,7 @@
            '</div>';
   }
 
-  // ───────── REPORT TEXT (pour bouton Copier) ─────────
+  // ── Rapport texte (bouton Copier) ──────────────────────────────
   function getReportText(rep) {
     if (!rep) return "";
     const t = rep.totals;
@@ -787,7 +681,7 @@
     return lines.join("\n");
   }
 
-  // ───────── MODALE ─────────
+  // ── Modale ──────────────────────────────
   let _lastReport = null;
 
   async function _refreshAndRender() {
@@ -820,10 +714,6 @@
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 ' + window.I18n.t("stats.btn.rafraichir") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 ' + window.I18n.t("stats.btn.exportCsv") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 ' + window.I18n.t("stats.btn.exportPdf") + '</button>' +
-          // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" — ouvre la modale dédiée
-          // js/sessionReport.js (3 formats : PDF/JSON/Texte + période + 8 toggles
-          // + note libre + carte miniature + heatmap zones explorées).
-          // Naturellement placé ici car les stats sont la "vitrine" de la session.
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-rapport">📋 ' + window.I18n.t("stats.btn.rapportSortie") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 ' + window.I18n.t("stats.btn.copierRapport") + '</button>' +
         '</div>' +
@@ -835,11 +725,7 @@
     document.addEventListener("keydown", _onEscape);
     document.getElementById("kta-stats-glob-refresh").addEventListener("click", _refreshAndRender);
 
-    // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" → ouvre la modale dédiée
-    // de js/sessionReport.js. Pas de prérequis particulier sur _lastReport
-    // car SessionReport collecte ses propres données via window.getEditorPoints
-    // etc. — il duplique légèrement la collecte mais reste plus simple que
-    // de partager un state global.
+    // Rapport de sortie (js/sessionReport.js) : collecte ses propres données, pas _lastReport.
     const btnRapport = document.getElementById("kta-stats-glob-rapport");
     if (btnRapport) {
       btnRapport.addEventListener("click", function() {
@@ -866,7 +752,6 @@
       });
     });
 
-    // 🆕 v1.21.0 — Bouton Export CSV (ZIP 4 fichiers : points/roads/zones/structures).
     document.getElementById("kta-stats-glob-csv").addEventListener("click", function() {
       const btn = document.getElementById("kta-stats-glob-csv");
       const orig = btn ? btn.textContent : null;
@@ -882,7 +767,6 @@
       });
     });
 
-    // 🆕 v1.21.0 — Bouton Export PDF (A4 portrait, texte/tableaux seuls).
     document.getElementById("kta-stats-glob-pdf").addEventListener("click", function() {
       if (!_lastReport) {
         window.ktaAlerte(window.I18n.t("stats.feedback.aucuneDonnee"));
@@ -915,9 +799,7 @@
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }
 
-  // Copie déléguée au helper commun (utils.js) : il tente navigator.clipboard puis
-  // retombe sur execCommand (HTTP local, clipboard refusé). On garde la forme
-  // Promise résolue / rejetée attendue par les appelants.
+  // ktaCopierTexte (utils.js) retombe sur execCommand si le presse-papiers est refusé ; rejette en échec.
   function _copyToClipboard(text) {
     if (typeof window.ktaCopierTexte !== "function") {
       return Promise.reject(new Error("ktaCopierTexte indisponible"));
@@ -927,19 +809,9 @@
     });
   }
 
-  // ───────── EXPORT PDF (v1.21.0) ─────────
-  //
-  // Format A4 portrait via jsPDF (déjà chargé par pdfExport.js / index.html).
-  // Texte/tableaux uniquement, pas de rendu de carte (= cf v1.21.0 choix
-  // KARMA "PDF léger, partageable, rapide"). Pagination auto si dépasse la
-  // page (= grosses carrières avec beaucoup de tags).
-  //
-  // ⚠️ Rappel CLAUDE.md §44.6 : jsPDF Helvetica latin1 → emojis Unicode
-  // rendus en mojibake (`📍` devient `O=UI...`). Donc on remplace tous
-  // les emojis par du texte plain (« Points », « Tracés », etc.) pour le
-  // contenu textuel. Les sections gardent leur emoji uniquement comme
-  // marqueur visuel dans le code, jamais écrit dans pdf.text().
-  //
+  // ── Export PDF ──────────────────────────────
+  // A4 portrait (jsPDF), texte et tableaux seulement, sans carte (décision produit : PDF léger).
+  // ⚠️ Helvetica latin1 : un emoji passé à pdf.text() sort en mojibake. Textes en clair seulement.
   async function exportToPDF(opts) {
     opts = opts || {};
     if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
@@ -947,7 +819,6 @@
     }
     const jsPDF = window.jspdf.jsPDF;
 
-    // Compute le rapport si pas fourni
     const rep = opts.report || (await compute());
 
     const pdf = new jsPDF({
@@ -966,7 +837,6 @@
 
     function _newPageIfNeeded(needed) {
       if (y + needed > pageH - margin - 8) {
-        // Footer crédit sur la page courante avant break
         _drawFooterCredit();
         pdf.addPage();
         y = margin;
@@ -995,7 +865,6 @@
       pdf.setTextColor(244, 197, 66);  // ambre charte
       pdf.text(text, margin, y);
       y += 2;
-      // Underline
       pdf.setDrawColor(244, 197, 66);
       pdf.setLineWidth(0.4);
       pdf.line(margin, y, pageW - margin, y);
@@ -1016,7 +885,6 @@
 
     function _drawTable2col(rows, leftLbl, rightLbl) {
       _newPageIfNeeded(lineH + 2);
-      // Header
       pdf.setFontSize(9);
       pdf.setTextColor(100, 100, 100);
       pdf.text(leftLbl,  margin, y);
@@ -1026,7 +894,6 @@
       pdf.setLineWidth(0.2);
       pdf.line(margin, y, pageW - margin, y);
       y += 3;
-      // Rows
       pdf.setFontSize(10);
       pdf.setTextColor(40, 40, 40);
       rows.forEach(function(r) {
@@ -1063,7 +930,6 @@
       y += 1;
     }
 
-    // ─── HEADER PRINCIPAL ───
     pdf.setFont("helvetica", "bold");
     _drawTitle("MyKTAMap - " + window.I18n.t("stats.pdf.title"), 18, [30, 58, 138]);
     y += 2;
@@ -1078,7 +944,6 @@
     y += 6;
     pdf.setFont("helvetica", "normal");
 
-    // Plan meta
     if (meta.author)               _drawKV(window.I18n.t("stats.pdf.kv.auteur"),     window.ktaTextePdf(meta.author));
     if (meta.imageW && meta.imageH) _drawKV(window.I18n.t("stats.pdf.kv.dimensions"), meta.imageW + " x " + meta.imageH + " px");
     if (meta.scale && meta.scale !== 1) _drawKV(window.I18n.t("stats.pdf.kv.echelle"), meta.scale.toFixed(1) + " px/m");
@@ -1089,7 +954,6 @@
     _drawKV(window.I18n.t("stats.pdf.kv.rapportGenere"), new Date(rep.timestamp).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR"));
     y += sectionGap;
 
-    // ─── TOTAUX ───
     const t = rep.totals;
     _drawSectionTitle(window.I18n.t("stats.pdf.sec.totaux"));
     _drawTable2col([
@@ -1101,7 +965,6 @@
     ], window.I18n.t("stats.pdf.col.categorie"), window.I18n.t("stats.pdf.col.total"));
     y += sectionGap;
 
-    // ─── POINTS PAR TAG ───
     if (t.points > 0) {
       _drawSectionTitle(window.I18n.t("stats.pdf.sec.pointsParTag"));
       const sorted = Object.keys(rep.pointsByTag).sort(function(a, b) {
@@ -1113,7 +976,6 @@
       y += sectionGap;
     }
 
-    // ─── TRACÉS PAR TYPE ───
     if (t.roads > 0) {
       _drawSectionTitle(window.I18n.t("stats.pdf.sec.tracesParType", { cumul: _formatDist(rep.roadsTotalDistM).replace("²", "2") }));
       const sorted = Object.keys(rep.roadsByType).sort(function(a, b) {
@@ -1126,7 +988,6 @@
       y += sectionGap;
     }
 
-    // ─── ZONES PAR TYPE ───
     if (t.zones > 0) {
       _drawSectionTitle(window.I18n.t("stats.pdf.sec.zonesParType", { cumul: _formatSurf(rep.zonesTotalAreaM2).replace("²", "2") }));
       const sorted = Object.keys(rep.zonesByType).sort(function(a, b) {
@@ -1139,7 +1000,6 @@
       y += sectionGap;
     }
 
-    // ─── STRUCTURES PAR TYPE ───
     if (t.structures > 0) {
       _drawSectionTitle(window.I18n.t("stats.pdf.sec.structuresParType"));
       const sorted = Object.keys(rep.structsByType).sort(function(a, b) {
@@ -1151,7 +1011,6 @@
       y += sectionGap;
     }
 
-    // ─── M-LVL BREAKDOWN ───
     if (rep.multiLevelBreakdown) {
       _drawSectionTitle(window.I18n.t("stats.pdf.sec.breakdownNiveau"));
       const lvlKeys = Object.keys(rep.multiLevelBreakdown).sort(function(a, b) {
@@ -1169,7 +1028,6 @@
       y += sectionGap;
     }
 
-    // ─── GÉORÉFÉRENCEMENT ───
     if (rep.georef && rep.georef.pointA && rep.georef.pointB) {
       _drawSectionTitle(window.I18n.t("stats.pdf.sec.georeferencement"));
       const a = rep.georef.pointA;
@@ -1179,10 +1037,8 @@
       y += sectionGap;
     }
 
-    // ─── FOOTER CRÉDIT (page courante) ───
     _drawFooterCredit();
 
-    // ─── SAVE ───
     const planName = (meta.name || "Plan").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40);
     const dateStr  = new Date(rep.timestamp).toISOString().slice(0, 10);
     const filename = "MyKTAMap_Stats_" + planName + "_" + dateStr + ".pdf";
@@ -1191,19 +1047,11 @@
     return { ok: true, filename: filename };
   }
 
-  // ───────── EXPORT CSV (v1.21.0) ─────────
-  //
-  // KARMA : "Export CSV des annotations (tableur friendly)".
-  // 1 ZIP avec 4 fichiers CSV (points/roads/zones/structures), UTF-8 BOM +
-  // séparateur `;` (compat Excel FR par défaut). Inclut session + embedded
-  // data layers (cohérent avec le scope StatsGlobales : plan COMPLET).
-  // Colonne `source` = "session" ou "embedded" pour permettre filtrage Excel.
-  //
-  // Reuse JSZip déjà chargé dans index.html (lib/jszip.min.js, pré-requis
-  // multi-modules : kmzExport, profileExportImport, etc.).
+  // ── Export CSV ──────────────────────────────
+  // Un ZIP de 4 CSV (points, roads, zones, structures) du plan COMPLET : BOM UTF-8 et séparateur `;`
+  // (Excel FR), colonne `source` = "session" | "embedded". JSZip est chargé par index.html.
 
-  // Helper CSV : escape une valeur pour cellule CSV-RFC4180.
-  // Si contient `;`, `"` ou newline → wrap en `"..."` + double les `"`.
+  // RFC 4180 : `;`, `"` ou fin de ligne → cellule entre guillemets, `"` doublés.
   function _csvEscape(v) {
     if (v == null) return "";
     const s = String(v);
@@ -1213,8 +1061,7 @@
     return s;
   }
 
-  // Construit un CSV à partir d'un array d'objets + l'ordre des colonnes.
-  // UTF-8 BOM ajouté en tête (Excel FR auto-detect encoding).
+  // BOM en tête : sans lui, Excel FR se trompe d'encodage.
   function _buildCsv(rows, columns) {
     const BOM = "﻿";
     const sep = ";";
@@ -1226,7 +1073,6 @@
     return csv;
   }
 
-  // Helper : distance polyline en mètres (factorisation depuis _polylinePxLength + scale)
   function _polylineLenM(pts) {
     if (!Array.isArray(pts) || pts.length < 2) return 0;
     const scale = _scalePxPerM();
@@ -1252,7 +1098,6 @@
     const planName = (planMeta.name || "Plan").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40);
     const dateStr  = new Date().toISOString().slice(0, 10);
 
-    // Collecte session + embedded de chaque type
     const sessionPts  = (typeof window.getEditorPoints      === "function") ? (window.getEditorPoints()      || []) : [];
     const embeddedPts = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
 
@@ -1265,7 +1110,6 @@
     const sessionStructs  = (typeof window.getStructures            === "function") ? (window.getStructures()            || []) : [];
     const embeddedStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
 
-    // ─── POINTS ───
     const pointsCols = ["source", "id", "nom", "x", "y", "level", "tags", "etat", "description"];
     const pointsRows = [];
     function _addPoint(p, source) {
@@ -1285,7 +1129,6 @@
     embeddedPts.forEach(function(p) { _addPoint(p, "embedded"); });
     zip.file("points.csv", _buildCsv(pointsRows, pointsCols));
 
-    // ─── ROADS ───
     const roadsCols = ["source", "type", "nb_points", "distance_m", "level", "fromLevel", "toLevel", "description"];
     const roadsRows = [];
     function _addRoad(r, source) {
@@ -1305,7 +1148,6 @@
     embeddedRoads.forEach(function(r) { _addRoad(r, "embedded"); });
     zip.file("roads.csv", _buildCsv(roadsRows, roadsCols));
 
-    // ─── ZONES ───
     const zonesCols = ["source", "type", "nb_points", "surface_m2", "level", "description"];
     const zonesRows = [];
     function _addZone(z, source) {
@@ -1322,7 +1164,6 @@
     embeddedZones.forEach(function(z) { _addZone(z, "embedded"); });
     zip.file("zones.csv", _buildCsv(zonesRows, zonesCols));
 
-    // ─── STRUCTURES ───
     // Fronts (front-1/2) = polylines → longueur. Piliers/mur = polygones → surface.
     const structsCols = ["source", "type", "nb_points", "surface_m2", "longueur_m", "level", "description"];
     const structsRows = [];
@@ -1342,7 +1183,6 @@
     embeddedStructs.forEach(function(s) { _addStruct(s, "embedded"); });
     zip.file("structures.csv", _buildCsv(structsRows, structsCols));
 
-    // ─── README dans le ZIP pour expliquer le format ───
     const readme =
       window.I18n.t("stats.csv.readme.titre") + "\r\n" +
       window.I18n.t("stats.csv.readme.plan") + " : " + (planMeta.name || "") + "\r\n" +
@@ -1361,7 +1201,6 @@
       window.I18n.t("stats.csv.readme.ouverture") + "\r\n";
     zip.file("_README.txt", "﻿" + readme);
 
-    // ─── PACK ZIP + DOWNLOAD ───
     const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
     const url  = URL.createObjectURL(blob);
     const filename = "MyKTAMap_CSV_" + planName + "_" + dateStr + ".zip";
@@ -1381,22 +1220,14 @@
     }};
   }
 
-  // ───────── EXPORT API ─────────
   window.StatsGlobales = {
     ouvrir:        ouvrir,
     fermer:        fermer,
     compute:       compute,
     getReportText: getReportText,
     exportToCSV:   exportToCSV,
-    // 🆕 v1.21.0
     exportToPDF:   exportToPDF,
-    // 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque
-    // plan stat détailé les graph et tout") : expose renderPieChart pour
-    // la modale Profil > section "📊 Mes plans" → permet de réutiliser
-    // l'algo camembert SVG + légende sans dupliquer le code.
-    // data = { key: count, ... }
-    // category = "tags" | "traces" | "zones" | "structures"
-    // size = pixels (default 160)
+    // Réutilisé par le Profil (Mes plans) ; signature : cf _renderPieChart.
     renderPieChart: _renderPieChart
   };
 })();

@@ -1,33 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🌍 checkup-langues.js — CHECKUP CIBLÉ (marche 3 du RELEASE_GATE)
+// checkup-langues.js — checkup ciblé (marche 3 du RELEASE_GATE), non branché au pre-commit
 // =====================================================================
-// Le smoke (marche 1bis) boote l'app en français et ne dit RIEN des langues.
-// Or v1.80.0 livre la doc utilisateur espagnole, et l'incident qui a précédé
-// ce train était précisément un problème de langue : ajouter `es` à la liste
-// de la Documentation a fait basculer l'AIDE en français pour les
-// hispanophones (elle tombait sur l'anglais avant) — un recul, invisible de
-// bout en bout parce qu'aucun harnais n'ouvrait ces écrans en espagnol.
-//
-// Ce script rejoue le parcours d'un utilisateur espagnol et vérifie que les
-// DEUX contenus longs sont bien dans sa langue :
-//   📖 Documentation   → ESPAGNOL (fichier README_USER.es.md)
-//   ❓ Aide intégrée   → ESPAGNOL (clés `aide.sec.*` des dicos, lot 2)
-//   🇪🇸 drapeaux       → la Documentation en propose 3 (elle reste sur des
-//      fichiers, avec sa portée de langue propre) ; l'Aide n'en a PLUS AUCUN,
-//      elle suit la langue globale de l'app comme le tutoriel.
-//
-// ⚠️ CE FICHIER A DÉJÀ ENCODÉ UN CONTRAT PÉRIMÉ : avant le lot 2 il exigeait
-// une Aide en ANGLAIS (repli assumé, faute de contenu espagnol) et exactement
-// 2 drapeaux. Ces attentes-là sont devenues fausses le jour où l'Aide a été
-// traduite — un test qui n'évolue pas avec le produit finit par défendre
-// l'ancien comportement contre le nouveau.
-//
-// Usage : cd scripts/smoke && node checkup-langues.js
-// Non branché au pre-commit (lance un navigateur) — c'est un contrôle de
-// release, à passer avant le merge sur main.
-// =====================================================================
+// Le smoke boote en français et ne dit rien des langues. 🩸 Ajouter une langue à la Documentation peut
+// faire basculer l'AIDE dans une autre langue pour ses lecteurs, sans qu'aucun autre harnais ne le voie.
+// Rejoue le parcours d'un utilisateur espagnol :
+//   Documentation → espagnol (README_USER.es.md), menu à 3 langues + bouton Aide IA ;
+//   Aide intégrée → espagnol (clés `aide.sec.*` des dicos), AUCUN drapeau : elle suit la langue globale.
+// ⚠️ Faire évoluer les attentes avec le produit : un test figé finit par défendre l'ancien comportement.
+// Usage : cd scripts/smoke && node checkup-langues.js (lance un navigateur ; à passer avant le merge main).
 "use strict";
 
 const { chromium } = require("playwright");
@@ -41,15 +23,14 @@ const LS = {
   "myktamap_terms_accepted_v1": "1",
   "myktamap_pin_proposal_done_v1": "1",
   "myktamap_tutorial_seen_v1": "1",
-  "myktamap_app_lang": "es"              // ← LE point : on est un utilisateur espagnol
+  "myktamap_app_lang": "es"
 };
 
 const problemes = [];
 function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
 function ok(m) { console.log("  ✅ " + m); }
 
-// Mots-témoins : présents dans une langue, absents des deux autres. Choisis
-// dans des phrases de structure (pas dans du contenu susceptible de bouger).
+// Mots-témoins propres à une langue, pris dans des phrases de structure (stables)
 const TEMOIN_ES = /Gu[ií]a de usuario|Esta gu[ií]a est[aá] destinada/i;
 const TEMOIN_FR = /Guide Utilisateur|Ce guide est destin/i;
 const TEMOIN_EN = /User Guide|This guide is intended/i;
@@ -77,7 +58,7 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
     if (langue === "es") ok("l'app tourne bien en espagnol (I18n.getLang = es)");
     else pb("langue de l'app = " + langue + " au lieu de es — le reste du checkup ne prouverait rien");
 
-    // ───────── 📖 DOCUMENTATION : doit être en ESPAGNOL ─────────
+    // ── Documentation : en espagnol ──────────
     console.log("— 📖 Documentation —");
     const docOk = await page.evaluate(function () {
       if (typeof window.afficherReadme === "function") { window.afficherReadme(); return true; }
@@ -96,7 +77,6 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       else if (TEMOIN_EN.test(txt)) pb("Documentation en ANGLAIS — la résolution de langue ne prend pas 'es'");
       else pb("Documentation dans une langue non identifiée (aucun mot-témoin) — début : " + txt.slice(0, 90).replace(/\s+/g, " "));
 
-      // 🧩 01/10/2026 — les drapeaux sont devenus un menu déroulant, suivi du bouton 🤖 Aide IA.
       const drapeaux = await page.locator("#kta-readme-modal #kta-readme-lang-select option").count();
       if (drapeaux === 3) ok("Documentation : 3 langues proposées dans le menu (fr/en/es)");
       else pb("Documentation : " + drapeaux + " langue(s) dans le menu au lieu de 3");
@@ -108,7 +88,7 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       await page.waitForTimeout(400);
     }
 
-    // ───────── ❓ AIDE : doit être en ESPAGNOL (lot 2) ─────────
+    // ── Aide : en espagnol ──────────
     console.log("— ❓ Aide intégrée (attendu : espagnol) —");
     const aideOk = await page.evaluate(function () {
       if (typeof window.afficherAide === "function") { window.afficherAide(); return true; }
@@ -121,23 +101,19 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
         const t = document.querySelector("#kta-aide-modal .kta-readme-modal-titre");
         return t ? t.textContent.trim() : "";
       });
-      // ES = « ❓ Ayuda »
       if (/Ayuda/i.test(titre)) ok("Aide servie en ESPAGNOL — « " + titre + " »");
       else if (/Help/i.test(titre)) pb("Aide en ANGLAIS — c'était le repli d'AVANT le lot 2 ; le contenu espagnol existe désormais (« " + titre + " »)");
       else if (/Aide/i.test(titre)) pb("Aide en FRANÇAIS — la résolution de langue ne prend pas 'es' (« " + titre + " »)");
       else pb("titre d'Aide non reconnu : « " + titre + " »");
 
-      // Plus AUCUN drapeau : l'Aide suit la langue globale (comme le tutoriel).
       const drapAide = await page.locator("#kta-aide-modal .kta-readme-lang-btn").count();
       if (drapAide === 0) ok("Aide : aucun drapeau (elle suit la langue globale)");
       else pb("Aide : " + drapAide + " drapeau(x) — le toggle local a été retiré au lot 2, il piloterait une clé que l'Aide ne lit plus");
 
-      // Les 2 sections réparées au lot 0 doivent avoir CHACUNE leur ligne,
-      // et en espagnol.
+      // Deux sections sujettes à disparaître : chacune sa ligne, traduite.
       const lignes = await page.locator("#kta-aide-modal .kta-aide-row").allTextContents();
       const joint = lignes.join(" | ");
-      // Titres lus dans les dicos, pas recopiés : l'audit de l'aide (03/10/2026)
-      // les a reformulés, et ce contrôle s'est alors cru en échec.
+      // 🩸 titres lus dans les dicos, jamais recopiés : une reformulation ferait échouer le contrôle à tort.
       const _dico = function (l) {
         return JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "..", "lang", l + ".json"), "utf8"));
       };
@@ -148,7 +124,6 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
         if (tEs && tEs !== tFr && lignes.some(function (l) { return l.indexOf(tEs) >= 0; })) ok("fiche « " + tEs + " » présente et traduite (" + c[1] + ")");
         else pb("fiche « " + c[0] + " » absente du hub ou non traduite (« " + tEs + " »)");
       });
-      // Un titre resté français signalerait une clé non traduite passée au filet.
       const residusFr = lignes.filter(function (t) { return /Réglages|Recherche unifiée|Mon carnet|Astuces/i.test(t); });
       if (!residusFr.length) ok("aucun titre de section resté en français");
       else pb("titre(s) non traduit(s) : " + residusFr.slice(0, 3).join(" / "));

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/*!
+/*
  * MyKTAMap — check-doc-langues.js
  * Parité des 3 guides utilisateur servis dans l'app (modale Documentation) :
  *   docs/applications/README_USER.md (FR, référence) · .en.md · .es.md
@@ -9,7 +9,7 @@
  * une section entière absente en espagnol, deux sections espagnoles qui
  * décrivaient un réglage supprimé depuis des mois, 7 puces manquantes, et —
  * pire — une règle de sécurité fausse en EN et ES (la zone ⛔ Inaccessible
- * « jamais relâchée », faux depuis la v1.82.0).
+ * « jamais relâchée », alors qu'elle l'est).
  *
  * Ce qu'il vérifie (BLOQUANT) :
  *   1. STRUCTURE — mêmes titres, dans le même ordre, dans les 3 langues.
@@ -99,7 +99,7 @@ function comparer(fr, trad, lang) {
 let ko = 0;
 function t(nom, ok) { console.log((ok ? "✅" : "❌") + " " + nom); if (!ok) ko++; }
 
-// ---- Auto-test : le contrôle doit ROUGIR sur des guides sabotés ----
+// ── Auto-test : le contrôle doit ROUGIR sur des guides sabotés ──
 (function autoTest() {
   const long = "x".repeat(400);
   const ref = "# 📚 Guide\n\n" + long + "\n\n## 🧭 Tracker\n\n" + long + "\n\n## 🪧 Guidage\n\n" + long + "\n";
@@ -116,7 +116,7 @@ function t(nom, ok) { console.log((ok ? "✅" : "❌") + " " + nom); if (!ok) ko
   t("🩸 auto-test : deux sections interverties sont détectées", comparer(ref, decale, "xx").length > 0);
 })();
 
-// ---- Les vrais guides ----
+// ── Les vrais guides ──
 const fr = fs.readFileSync(path.join(DIR, "README_USER.md"), "utf8");
 ["en", "es"].forEach(function(lang) {
   const trad = fs.readFileSync(path.join(DIR, "README_USER." + lang + ".md"), "utf8");

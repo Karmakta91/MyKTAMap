@@ -1,64 +1,29 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
- * Voir LICENSE a la racine du projet.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// 🔐 PIN LOCK — Code d'accès local optionnel (v1.9.4-V1)
-// =========================
-// Couche perso optionnelle par-dessus UnlockGate (qui reste la barrière
-// communautaire avec mdp partagé hardcodé, cf. CLAUDE.md §36).
-//
-// Modèle de sécurité honnête :
-//   - PIN 4-6 chiffres → SHA-256(salt + pin) stocké en localStorage
-//   - Salt random 16 bytes (b64) → empêche le rainbow-tabling trivial
-//   - BARRIÈRE UX, PAS PSEUDO-CRYPTO : l'app étant 100% client-side,
-//     un attaquant motivé bypass via DevTools (localStorage.clear() = 5s)
-//   - Les données IDB (photos, sessions) ne sont PAS chiffrées (choix
-//     6:a validé KARMA, cohérent avec la promesse "no fake security")
-//   - Aucune recovery si oubli → reset complet requis (choix 4:a)
-//
-// Biométrie Face ID/Touch ID via WebAuthn :
-//   - Si dispo (`PublicKeyCredential` + platform authenticator) →
-//     l'user peut opter pour la biométrie à l'activation
-//   - WebAuthn ici sert juste à "garder le PIN déchiffré côté client"
-//     après une authentification biométrique réussie. C'est NOT une vraie
-//     crypto serveur-side car on n'a pas de serveur.
-//   - Fallback PIN automatique si WebAuthn indisponible ou refusé
-//
-// Lockout :
-//   - 5 tentatives PIN échouées consécutives → verrou TEMPORISÉ, escaladé
-//     10 min → 1 h → 6 h → 24 h (décision KARMA 13/09/2026, audit B7 : le
-//     verrou définitif tuait l'app sous terre, hors réseau, plan compris)
-//   - Stocké en localStorage["myktamap_pin_v1"].attempts
-//   - Le verrou expire tout seul ; un code juste remet le compteur ET le
-//     palier à zéro. Base de temps = Date.now() (horloge de l'appareil) : reculer
-//     l'horloge sous le début du verrou ne l'ouvre pas, l'avancer le raccourcit —
-//     accepté et documenté (security-legal.md §36.3)
-//
-// API publique :
-//   window.MyKTAMapPinLock = {
-//     isEnabled, isUnlocked, isLockedOut, getRemainingAttempts,
-//     hasBiometric, isBiometricSupported,
-//     enable(pin, useBiometric), disable(),
-//     unlock(pin), unlockWithBiometric(),
-//     changePin(newPin),
-//     reset, ouvrirGate
-//   };
-// =========================
+// pinLock.js — code d'accès local optionnel (PIN 4-6 chiffres, biométrie), par-dessus UnlockGate.
+// Expose : window.MyKTAMapPinLock (isEnabled, isUnlocked, isLockedOut, getRemainingAttempts,
+//   hasBiometric, isBiometricSupported, enable, disable, unlock, unlockWithBiometric, changePin,
+//   reset, ouvrirGate, proposerActivation).
+// 🔒 Barrière UX, pas de la crypto : SHA-256(sel 16 octets + PIN) en localStorage["myktamap_pin_v1"] ;
+//   DevTools la contourne. Les données IDB ne sont pas chiffrées. Pas de récupération : oubli = reset.
+// 🔒 WebAuthn (plateforme seulement) sans serveur : challenge local, signature non vérifiée.
+// ⚠️ Verrou JAMAIS définitif (décision produit) : 5 échecs → verrou temporisé, escaladé
+//   10 min → 1 h → 6 h → 24 h ; il expire seul, un code juste remet compteur et palier à zéro.
+//   Base Date.now() : reculer l'horloge sous le début du verrou ne l'ouvre pas, l'avancer le raccourcit (accepté).
+// Garde-fou : scripts/check-filets-donnees.js · Doc : docs/architecture/security-legal.md
 
 (function() {
   "use strict";
 
   const STORAGE_KEY      = "myktamap_pin_v1";
   const MAX_ATTEMPTS     = 5;
-  // 🔒 M2 : paliers du verrou temporisé (ms). Palier = nombre de séries de
-  // MAX_ATTEMPTS erreurs consécutives sans code juste entre deux.
+  // Paliers (ms). Palier = nombre de séries de MAX_ATTEMPTS erreurs sans code juste entre deux.
   const LOCK_DELAYS_MS   = [10 * 60 * 1000, 60 * 60 * 1000, 6 * 3600 * 1000, 24 * 3600 * 1000];
   let _lockTimer = null;   // compte à rebours de l'écran de verrou
-  // ⏳ Durée lisible pour le compte à rebours du verrou.
   function _fmtDuree(ms) {
     const s = Math.max(0, Math.ceil(ms / 1000));
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -69,15 +34,11 @@
   const SALT_BYTES       = 16;
   const PIN_MIN          = 4;
   const PIN_MAX          = 6;
-  // RP ID pour WebAuthn — domain courant (la spec exige rp.id == origin sans port)
   const WEBAUTHN_RP_NAME = "MyKTAMap";
 
-  // État runtime
-  let _unlocked = false;   // déverrouillé pour la session courante (in-memory)
+  let _unlocked = false;   // déverrouillé pour la session courante (en mémoire)
 
-  // ============================================================
-  // STORAGE HELPERS
-  // ============================================================
+  // ── Stockage ──────────────────────────────
   function _getState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -106,9 +67,7 @@
     catch(e) { console.warn("[PinLock] _clearState error :", e); }
   }
 
-  // ============================================================
-  // CRYPTO HELPERS (SHA-256 + base64)
-  // ============================================================
+  // ── Crypto (SHA-256 + base64) ──────────────────────────────
   function _bytesToB64(bytes) {
     let bin = "";
     for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -127,7 +86,6 @@
     if (window.crypto && window.crypto.getRandomValues) {
       window.crypto.getRandomValues(bytes);
     } else {
-      // Fallback Math.random (très improbable sur les navigateurs cibles)
       for (let i = 0; i < n; i++) bytes[i] = Math.floor(Math.random() * 256);
     }
     return bytes;
@@ -140,7 +98,6 @@
     }
     const saltBytes = _b64ToBytes(saltB64);
     const pinBytes = new TextEncoder().encode(String(pin));
-    // Concat salt + pin
     const concat = new Uint8Array(saltBytes.length + pinBytes.length);
     concat.set(saltBytes, 0);
     concat.set(pinBytes, saltBytes.length);
@@ -149,9 +106,6 @@
     });
   }
 
-  // ============================================================
-  // VALIDATION PIN INPUT
-  // ============================================================
   function _validatePinInput(pin) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     if (typeof pin !== "string" && typeof pin !== "number") {
@@ -164,17 +118,9 @@
     return null;  // valide
   }
 
-  // ============================================================
-  // API : ÉTAT
-  // ============================================================
+  // ── État ──────────────────────────────
   function isEnabled() {
-    // 🕵️ v1.31.9-fix1 — Skip PIN/biométrie en mode incognito. KARMA :
-    // "en mode incognito, on ne doit pas avoir la popup auth renforcé".
-    // Cohérent avec le pattern : la session incognito est éphémère,
-    // pas de hash PIN écrit en disque possible → le re-saisir à chaque
-    // ouverture incognito n'apporte rien (pas d'auth = pas de protection
-    // d'une session qui se vide au close). L'user peut toujours configurer
-    // un PIN depuis la fenêtre principale qui restera actif là-bas.
+    // Jamais de PIN en incognito : la session est éphémère, rien à protéger (décision produit).
     if (window.IncognitoMode && window.IncognitoMode.active) return false;
     const state = _getState();
     return !!(state && state.hashedPin && state.salt);
@@ -184,8 +130,7 @@
     return _unlocked;
   }
 
-  // 🔒 M2 : verrouillé = un `lockUntil` dans le futur. Horloge reculée sous
-  // le début du verrou → on reste verrouillé (contournement grossier écarté).
+  // 🔒 Verrouillé = `lockUntil` dans le futur, ou horloge reculée sous `lockStart`.
   function isLockedOut() {
     const state = _getState();
     if (!state || !state.lockUntil) return false;
@@ -215,16 +160,12 @@
     return !!(state && state.hasBiometric && state.credentialId);
   }
 
-  // ============================================================
-  // BIOMÉTRIE — WebAuthn
-  // ============================================================
-  // Détection : WebAuthn dispo ET il existe un platform authenticator
-  // (Face ID, Touch ID, Windows Hello, etc.) — pas juste roaming USB keys.
+  // ── Biométrie (WebAuthn) ──────────────────────────────
+  // Authentificateur de plateforme exigé (Face ID, Touch ID, Windows Hello), pas une clé USB.
   function isBiometricSupported() {
     if (typeof window.PublicKeyCredential === "undefined") {
       return Promise.resolve(false);
     }
-    // Méthode standard : isUserVerifyingPlatformAuthenticatorAvailable
     if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
       return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
         .catch(function() { return false; });
@@ -232,10 +173,7 @@
     return Promise.resolve(false);
   }
 
-  // Enregistre une credential biométrique pour le device courant.
-  // Retourne Promise<credentialIdB64>. Le challenge est random côté client
-  // (sans backend, on ne peut pas faire mieux — c'est un compromis assumé,
-  // cf. comment d'en-tête).
+  // → Promise<credentialIdB64>. Challenge aléatoire local : sans serveur, compromis assumé.
   function _enregistrerBiometrie() {
     const challenge = _randomBytes(32);
     const userId    = _randomBytes(16);
@@ -256,8 +194,6 @@
           { type: "public-key", alg: -257 }  // RS256 (Windows Hello)
         ],
         authenticatorSelection: {
-          // platform : intégré au device (Face ID, Touch ID, Windows Hello)
-          // — pas une clé USB externe (= cross-platform)
           authenticatorAttachment: "platform",
           userVerification: "required",
           residentKey: "preferred"
@@ -274,10 +210,7 @@
     });
   }
 
-  // Vérifie une biométrie existante (au unlock).
-  // Retourne Promise<bool>. Sans backend pour vérifier la signature,
-  // on se contente du fait que le navigateur ait validé la biométrie
-  // user-side. C'est suffisant pour notre niveau "barrière UX".
+  // → Promise<bool>. Sans serveur, la validation du navigateur suffit (barrière UX).
   function _verifierBiometrie(credentialIdB64) {
     if (!credentialIdB64) return Promise.resolve(false);
     const challenge = _randomBytes(32);
@@ -300,8 +233,6 @@
       }
     };
     return navigator.credentials.get(options).then(function(assertion) {
-      // Si on arrive ici, c'est que le navigateur a validé. Pas besoin de
-      // vérifier la signature (no backend → pas de challenge tracking).
       return !!assertion;
     }).catch(function(e) {
       console.warn("[PinLock] biométrie échouée :", e);
@@ -309,10 +240,8 @@
     });
   }
 
-  // ============================================================
-  // API : ENABLE
-  // ============================================================
-  // Active le PIN avec ou sans biométrie. Retourne Promise<bool>.
+  // ── Activation, désactivation ──────────────────────────────
+  // → Promise<bool>. Biométrie refusée : le PIN reste actif, l'erreur porte pinActivatedWithoutBiometric.
   function enable(pin, useBiometric) {
     const err = _validatePinInput(pin);
     if (err) return Promise.reject(new Error(err));
@@ -332,11 +261,10 @@
 
       if (!useBiometric) {
         _setState(state);
-        _unlocked = true;  // session courante déverrouillée
+        _unlocked = true;
         return true;
       }
 
-      // Biométrie demandée → tentative d'enregistrement WebAuthn
       return _enregistrerBiometrie().then(function(credId) {
         state.hasBiometric = true;
         state.credentialId = credId;
@@ -345,10 +273,8 @@
         return true;
       }).catch(function(e) {
         console.warn("[PinLock] enregistrement biométrie échoué :", e);
-        // On garde le PIN sans biométrie (fallback)
         _setState(state);
         _unlocked = true;
-        // On signale l'échec biométrie au caller pour qu'il puisse informer l'user
         const err = new Error("PIN activé sans biométrie : " + (e.message || e));
         err.pinActivatedWithoutBiometric = true;
         throw err;
@@ -356,15 +282,10 @@
     });
   }
 
-  // ============================================================
-  // API : DISABLE
-  // ============================================================
-  // Désactive le PIN. Nécessite un PIN valide OU une biométrie valide
-  // (pas de bypass DevTools sans warning console).
+  // Exige le PIN courant ; refusé pendant un verrou.
   function disable(pin) {
     if (!isEnabled()) return Promise.resolve(true);
 
-    // Verrou temporisé actif → on attend la fin du délai
     if (isLockedOut()) {
       return Promise.reject(new Error(_msgVerrou()));
     }
@@ -377,9 +298,7 @@
     });
   }
 
-  // ============================================================
-  // API : UNLOCK PIN
-  // ============================================================
+  // ── Déverrouillage ──────────────────────────────
   function unlock(pin) {
     if (!isEnabled()) {
       _unlocked = true;
@@ -395,7 +314,6 @@
     }
     return _hashPin(pin, state.salt).then(function(candidate) {
       if (candidate === state.hashedPin) {
-        // Reset compteur tentatives + palier de verrou + flag unlocked
         state.attempts  = 0;
         state.lockLevel = 0;
         delete state.lockUntil;
@@ -404,8 +322,8 @@
         _unlocked = true;
         return true;
       }
-      // Tentative ratée → incrémente compteur ; à MAX_ATTEMPTS, verrou
-      // temporisé au palier suivant et compteur remis à zéro (M2).
+      // 🏷️ ancre:pin-tentative-ratee
+      // À MAX_ATTEMPTS : verrou au palier suivant, compteur remis à zéro.
       state.attempts = (state.attempts || 0) + 1;
       if (state.attempts >= MAX_ATTEMPTS) {
         const lvl   = state.lockLevel || 0;
@@ -421,9 +339,6 @@
     });
   }
 
-  // ============================================================
-  // API : UNLOCK BIOMÉTRIE
-  // ============================================================
   function unlockWithBiometric() {
     if (!hasBiometric()) {
       return Promise.reject(new Error(window.I18n ? window.I18n.t("pin.err.bioNotConfigured") : "pin.err.bioNotConfigured"));
@@ -432,25 +347,17 @@
     if (!state) return Promise.resolve(false);
     return _verifierBiometrie(state.credentialId).then(function(ok) {
       if (ok) {
-        // Reset compteur tentatives + flag unlocked
         state.attempts = 0;
         _setState(state);
         _unlocked = true;
       }
-      // ⚠️ Une biométrie ratée ne compte PAS dans `attempts` (la spec
-      // WebAuthn gère son propre lockout natif du device, on ne veut pas
-      // que les user qui annulent par accident augmentent le compteur PIN).
+      // ⚠️ Une biométrie ratée ne compte pas dans `attempts` : l'appareil a son propre verrou,
+      // et une annulation par accident ne doit pas user les essais PIN.
       return ok;
     });
   }
 
-  // ============================================================
-  // API : CHANGE PIN
-  // ============================================================
-  // L'user doit déjà être unlocked (via PIN ou biométrie) au moment où
-  // il appelle changePin (= 9:b validé KARMA). Cette fonction ne reverif
-  // pas l'ancien PIN — la garde est posée par l'UI qui appelle unlock()
-  // avant d'autoriser le changement.
+  // ⚠️ Ne revérifie pas l'ancien PIN : exige une session déverrouillée, l'UI appelle unlock() avant.
   function changePin(newPin) {
     const t = function(k) { return window.I18n ? window.I18n.t(k) : k; };
     if (!_unlocked) {
@@ -465,7 +372,7 @@
     const state = _getState();
     if (!state) return Promise.reject(new Error(t("pin.err.stateMissing")));
 
-    // On régénère un sel pour ne pas pouvoir corréler les hashes successifs
+    // Sel neuf : les hashes successifs ne se corrèlent pas.
     const newSaltBytes = _randomBytes(SALT_BYTES);
     const newSaltB64   = _bytesToB64(newSaltBytes);
     return _hashPin(newPin, newSaltB64).then(function(newHash) {
@@ -478,24 +385,15 @@
     });
   }
 
-  // ============================================================
-  // API : RESET (utilisé par viderCacheAppli, pas l'user direct)
-  // ============================================================
+  // Appelé par la réinitialisation du cache, pas par l'utilisateur.
   function reset() {
     _clearState();
     _unlocked = false;
   }
 
-  // ============================================================
-  // API : OUVRIR GATE (UI plein écran)
-  // ============================================================
-  // Wrapper async qui :
-  //   1. Si pas activé → résout immédiatement
-  //   2. Si lockout → affiche le screen lockout (ne résout JAMAIS)
-  //   3. Sinon affiche la modale PIN/biométrie, résout au unlock
-  //
-  // L'UI est dans une fonction séparée _afficherGateUI exposée à part
-  // pour pouvoir mocker en test. La logique flow est ici.
+  // ── Gate plein écran ──────────────────────────────
+  // Résout tout de suite si PIN inactif, sinon au déverrouillage. Verrou temporisé : la Promise
+  // attend l'expiration puis le bon code. _afficherGateUI est exposée à part (mockable en test).
   function ouvrirGate() {
     if (!isEnabled()) {
       _unlocked = true;
@@ -505,25 +403,13 @@
 
     return new Promise(function(resolve) {
       window.MyKTAMapPinLock._afficherGateUI(function() {
-        // Callback appelé quand unlock réussi (PIN ou biométrie)
         resolve(true);
       });
-      // En cas de verrou temporisé, l'écran de verrou repasse au pavé à
-      // l'expiration et le callback finit par être appelé (M2, 13/09/2026).
     });
   }
 
-  // ============================================================
-  // UI GATE — modale plein écran (keypad + biométrie + lockout)
-  // ============================================================
-  // Style cohérent avec UnlockGate :
-  //   - Overlay plein écran sombre #0a0d18
-  //   - Boîte centrée avec ⚠️/✓ icone + titre + saisie + erreur + boutons
-  //   - Si lockout : screen rouge sans bouton de sortie (force reset)
-  //
-  // Saisie PIN : `●●●●` dynamique (8:b = visible 0.5s puis masqué).
-  // Keypad custom 3×4 (0-9 + ← + ✓) pour mobile (clavier numérique
-  // natif ne marche pas toujours bien en PWA).
+  // Pavé maison 3×4 (⌫ / 0 / ✓ en bas) : le clavier numérique natif est peu fiable en PWA.
+  // Bouton biométrie au-dessus du pavé ; ✓ actif dès PIN_MIN chiffres. Dernier chiffre visible 0,5 s.
   function _afficherGateUI(onUnlock) {
     if (isLockedOut()) {
       _afficherLockoutUI(onUnlock);
@@ -537,14 +423,6 @@
     const overlay = document.createElement("div");
     overlay.id        = "kta-pin-gate-overlay";
     overlay.className = "kta-pin-gate-overlay";
-    // 🆕 v1.10.0-hotfix3 (KARMA "je n'ai plus le bouton valider quand je
-    // saisis le code") : restructure du keypad. Avant : 3×4 avec bio + 0
-    // + ⌫ en dernière rangée → pas de bouton ✓ Valider tactile, l'user
-    // qui saisit 4-5 chiffres n'avait que la touche Enter clavier (KO mobile).
-    // Maintenant :
-    //   - Bouton bio standalone AU-DESSUS du keypad (plus visible + gros)
-    //   - Keypad 3×4 avec dernière rangée ⌫ / 0 / ✓
-    //   - ✓ activable dès PIN_MIN (4) chiffres, désactivé sinon
     overlay.innerHTML =
       '<div class="kta-pin-gate-box">' +
         '<div class="kta-pin-gate-icon">🔐</div>' +
@@ -566,31 +444,25 @@
           _keypadKey("0") +
           '<button class="kta-pin-gate-key kta-pin-gate-key-validate" id="kta-pin-validate" title="' + t("pin.gate.validateTitle") + '" disabled>✓</button>' +
         '</div>' +
-        // 🆕 v1.28.1 — Accès doc utilisateur depuis l'écran PIN. Cas d'usage :
-        // un user qui hésite à activer le PIN, l'a activé puis oublié à quoi
-        // ça sert, ou qui veut se renseigner avant de saisir. L'onboarding
-        // (🎓) est masqué côté modale doc — sans accès à l'app, pas de sens.
+        // Doc lisible depuis la gate ; l'onboarding y est masqué (pas d'accès à l'app).
         '<button type="button" id="kta-pin-readme-btn" class="kta-gate-readme-btn" title="' + t("pin.gate.docTitle") + '">' +
           t("pin.gate.docBtn") +
         '</button>' +
       '</div>';
     document.documentElement.appendChild(overlay);
 
-    let buffer = "";  // chiffres saisis (in-memory uniquement, jamais loggé)
+    let buffer = "";  // 🔒 chiffres saisis, en mémoire seulement, jamais loggés
     let _lastDigitTimer = null;
 
     function _refreshDots() {
       const dotsEl = document.getElementById("kta-pin-dots");
       if (!dotsEl) return;
-      // 6 emplacements max. Affiche ● pour chaque chiffre saisi, ○ pour vide.
-      // Pattern 8:b : le dernier chiffre est visible 0.5s puis devient ●.
       let html = "";
       for (let i = 0; i < PIN_MAX; i++) {
         const filled = i < buffer.length;
         if (filled) {
           const isLast = (i === buffer.length - 1) && _lastDigitTimer;
           if (isLast) {
-            // Affiche le chiffre brièvement
             html += '<span class="kta-pin-dot kta-pin-dot-filled kta-pin-dot-visible">' + buffer[i] + '</span>';
           } else {
             html += '<span class="kta-pin-dot kta-pin-dot-filled">●</span>';
@@ -600,7 +472,6 @@
         }
       }
       dotsEl.innerHTML = html;
-      // 🆕 v1.10.0-hotfix3 : enable/disable du bouton ✓ Valider selon buffer
       const validateBtn = document.getElementById("kta-pin-validate");
       if (validateBtn) {
         validateBtn.disabled = (buffer.length < PIN_MIN);
@@ -631,11 +502,10 @@
       }
       _showErr("");
       const pinTry = buffer;
-      buffer = "";  // reset buffer immédiat (sécurité in-memory)
+      buffer = "";
       _refreshDots();
       unlock(pinTry).then(function(ok) {
         if (ok) {
-          // Cleanup + résolution
           overlay.remove();
           document.removeEventListener("keydown", _onKeyDown);
           console.log("[PinLock] Déverrouillé via PIN");
@@ -660,18 +530,15 @@
     function _onDigit(d) {
       if (buffer.length >= PIN_MAX) return;
       buffer += d;
-      // Pattern 8:b : visible 0.5s puis ●
       if (_lastDigitTimer) clearTimeout(_lastDigitTimer);
       _lastDigitTimer = setTimeout(function() {
         _lastDigitTimer = null;
         _refreshDots();
       }, 500);
       _refreshDots();
-      // Auto-submit si pile MAX chiffres ? Non — l'user peut faire 4 ou 5
-      // ou 6 chiffres, on attend qu'il valide via ⏎ ou tape un 7e qui
-      // est ignoré. Mais si exact MAX, on tente direct.
+      // Validation auto seulement à PIN_MAX chiffres (un PIN de 4-5 se valide par ✓ ou Entrée),
+      // après 200 ms pour laisser voir le dernier chiffre.
       if (buffer.length === PIN_MAX) {
-        // Petit délai pour que l'user voie le dernier chiffre brièvement
         setTimeout(_tryUnlock, 200);
       }
     }
@@ -700,7 +567,6 @@
       });
     }
 
-    // Bind handlers keypad
     overlay.querySelectorAll(".kta-pin-gate-key[data-digit]").forEach(function(btn) {
       btn.addEventListener("click", function() {
         _onDigit(btn.dataset.digit);
@@ -710,12 +576,9 @@
     if (eraseBtn) eraseBtn.addEventListener("click", _onErase);
     const bioBtn = document.getElementById("kta-pin-bio");
     if (bioBtn) bioBtn.addEventListener("click", _onBio);
-    // 🆕 v1.10.0-hotfix3 : bouton ✓ Valider explicite (activé dès PIN_MIN chiffres)
     const validateBtn = document.getElementById("kta-pin-validate");
     if (validateBtn) validateBtn.addEventListener("click", _tryUnlock);
-    // 🆕 v1.28.1 : bouton 📖 Documentation. Ouvre la modale Doc README
-    // (sans bouton Tutoriel — incohérent en contexte verrouillé) au-dessus
-    // de la gate via z-index 100200 (cf css kta-readme-over-locker).
+    // Doc au-dessus de la gate (z-index 100200, classe CSS kta-readme-over-locker).
     const docBtn = document.getElementById("kta-pin-readme-btn");
     if (docBtn) {
       docBtn.addEventListener("click", function() {
@@ -727,7 +590,6 @@
       });
     }
 
-    // Clavier physique (PC + clavier Bluetooth mobile)
     function _onKeyDown(e) {
       if (/^[0-9]$/.test(e.key)) {
         _onDigit(e.key);
@@ -739,17 +601,14 @@
         _tryUnlock();
         e.preventDefault();
       } else if (e.key === "Escape") {
-        // On NE PERMET PAS Escape : l'user est censé saisir son code,
-        // pas annuler la gate. Cohérent avec UnlockGate.
+        // Échap n'annule pas la gate (comme UnlockGate).
         e.preventDefault();
       }
     }
     document.addEventListener("keydown", _onKeyDown);
 
-    // Auto-tentative biométrie au boot si configurée
-    // (= UX iOS : Face ID demandé directement sans clic explicite)
+    // Biométrie demandée d'office, après 400 ms pour laisser la modale s'afficher.
     if (useBio) {
-      // Petit délai pour laisser la modale apparaître avant le prompt biométrique
       setTimeout(_onBio, 400);
     }
 
@@ -757,20 +616,15 @@
     _refreshAttempts();
   }
 
-  // Bouton du keypad — helper pour générer le HTML
   function _keypadKey(digit) {
     return '<button class="kta-pin-gate-key" data-digit="' + digit + '">' + digit + '</button>';
   }
 
-  // Écran de verrou TEMPORISÉ (M2, 13/09/2026). Avant : « 5 codes incorrects →
-  // l'app est verrouillée définitivement », sans bouton de sortie, la Promise
-  // de la gate restant en attente pour toujours ; « réinstaller » ou
-  // « Instagram » sont impossibles à 30 m sous terre. Désormais : compte à
-  // rebours, et à l'expiration le pavé revient tout seul (`onUnlock` est
-  // repassé à _afficherGateUI, la Promise de ouvrirGate résout au bon code).
+  // 🩸 Écran de verrou temporisé : compte à rebours, puis retour automatique au pavé.
+  // `onUnlock` DOIT être repassé à _afficherGateUI, sinon la Promise de ouvrirGate ne résout
+  // jamais. Sous terre, ni réinstaller ni contacter quelqu'un n'est possible.
   function _afficherLockoutUI(onUnlock) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    // Cleanup une éventuelle gate précédente
     const old = document.getElementById("kta-pin-gate-overlay");
     if (old) old.remove();
     if (_lockTimer) { clearInterval(_lockTimer); _lockTimer = null; }
@@ -790,17 +644,13 @@
           '<div class="kta-pin-gate-countdown" id="kta-pin-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
           t("pin.lockout.escalade") + '</p>' +
-          // 🆕 v1.28.1 — Accès doc utilisateur même en lockout. Aide l'user
-          // perdu à comprendre ce qu'est l'app avant de réinstaller / contacter.
-          // Ouverture par-dessus le lockeur via z-index 100200 (cf css
-          // .kta-readme-over-locker). Ne change rien au verrouillage.
+          // Doc lisible pendant le verrou ; ne change rien au verrouillage.
           '<button type="button" id="kta-pin-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("pin.gate.docTitle") + '">' +
             t("pin.gate.docBtn") +
           '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
-    // Bind du bouton 📖 (HTML vient d'être injecté).
     const docBtnLockout = document.getElementById("kta-pin-readme-btn-lockout");
     if (docBtnLockout) {
       docBtnLockout.addEventListener("click", function() {
@@ -809,7 +659,6 @@
         }
       });
     }
-    // ⏳ Compte à rebours ; à l'expiration, retour au pavé (même callback).
     _lockTimer = setInterval(function() {
       if (!isLockedOut()) {
         clearInterval(_lockTimer); _lockTimer = null;
@@ -823,22 +672,10 @@
     console.warn("[PinLock] Verrou temporisé actif — reste", _fmtDuree(getLockRemainingMs()));
   }
 
-  // ============================================================
-  // PROPOSITION D'ACTIVATION (v1.10.0 — post-update one-shot)
-  // ============================================================
-  // KARMA "après cette mise à jour, premier lancement, proposer activer
-  // l'authentification forte, expliquer la possibilité de le faire via
-  // configuration, si refus, pas reproposer (doit passer par configuration)"
-  //
-  // Stratégie :
-  //   - Affiché UNIQUEMENT si PIN pas activé ET flag jamais set
-  //   - 2 boutons : "🔐 Activer maintenant" (ouvre la modale Configuration
-  //     et focus la section PIN) OU "Plus tard / Non merci" (set le flag,
-  //     ne propose plus jamais)
-  //   - L'user qui change d'avis doit aller dans ⚙️ Configuration manuellement
-  //
-  // Appelé depuis main.js après lancerApplication() pour ne pas masquer
-  // le splash + ne pas bloquer le boot.
+  // 🏷️ ancre:pin-fin-lockout-ui
+  // ── Proposition d'activation ──────────────────────────────
+  // Une seule fois, si le PIN n'est pas actif : « Activer » ouvre Configuration sur la section PIN,
+  // « Plus tard » ne repropose jamais (décision produit). Lancée par le séquenceur de premier lancement.
   const PROPOSAL_FLAG = "myktamap_pin_proposal_done_v1";
 
   function isProposalDone() {
@@ -852,22 +689,10 @@
   }
 
   function proposerActivation(onClose) {
-    // 🆕 v1.56.0 — onClose : signal de fin pour le séquenceur de premier
-    // lancement (js/firstRunFlow.js). Appelé dans TOUS les cas (skip inclus)
-    // pour que la file continue. Le délai interne de 800 ms est supprimé : le
-    // séquenceur garantit qu'aucune autre modale n'est ouverte à ce moment.
+    // ⚠️ onClose (séquenceur js/firstRunFlow.js) est appelé dans TOUS les cas, sinon la file s'arrête.
     const _done = (typeof onClose === "function") ? onClose : function() {};
-    // 🕵️ v1.31.10-fix1 — Skip aussi la PROPOSITION d'activation en
-    // incognito (modale "🔐 Authentification renforcée disponible").
-    // KARMA bug : "J'ai toujours la popup authentification renforcé au
-    // chargement de incognito". L'écran que KARMA voyait n'était pas le
-    // gate PinLock (déjà skippé par isEnabled() en v1.31.9-fix1), mais
-    // la PROPOSITION qui est appelée au boot quand PIN pas encore activé.
-    // En incognito, isProposalDone() lit la clé PROPOSAL_FLAG qui n'est
-    // PAS dans la whitelist → retourne null → considère "pas encore
-    // proposé" → modale s'affichait à chaque boot incognito.
+    // 🩸 Incognito : PROPOSAL_FLAG n'y est pas conservé, la proposition reviendrait à chaque ouverture.
     if (window.IncognitoMode && window.IncognitoMode.active) { _done(); return; }
-    // Skip si PIN déjà activé OU déjà proposé une fois
     if (isEnabled()) { _done(); return; }
     if (isProposalDone()) { _done(); return; }
 
@@ -921,7 +746,7 @@
     let _closed = false;
     function _close() {
       try { overlay.remove(); } catch(e) {}
-      if (!_closed) { _closed = true; try { _done(); } catch(e) {} }  // 🆕 v1.56.0 : notifie le séquenceur
+      if (!_closed) { _closed = true; try { _done(); } catch(e) {} }
     }
 
     document.getElementById("kta-pin-proposal-non").addEventListener("click", function() {
@@ -933,13 +758,8 @@
     document.getElementById("kta-pin-proposal-oui").addEventListener("click", function() {
       markProposalDone();
       _close();
-      // 🆕 v1.10.0-hotfix1 (KARMA "si on clique sur activer maintenant, ca
-      // ferme juste le modal mais ouvre pas le formulaire") : on ouvre la
-      // modale Configuration via window._ouvrirLoaderConfig (exposée par
-      // index.html depuis cette version). Si on est in-app (plan chargé,
-      // loader masqué), l'helper affiche aussi le loader d'abord.
-      // Bonus : scroll auto + flash highlight de la section PIN pour
-      // guider l'user vers le bouton "Activer le code d'accès".
+      // Ouvre Configuration (affiche le loader d'abord si un plan est chargé), puis amène et
+      // fait clignoter le bouton d'activation du PIN.
       if (typeof window._ouvrirLoaderConfig === "function") {
         window._ouvrirLoaderConfig();
         setTimeout(function() {
@@ -949,7 +769,6 @@
             try { section.scrollIntoView({ behavior: "smooth", block: "center" }); }
             catch(e) { section.scrollIntoView(); }
           }
-          // Flash highlight le bouton pour attirer l'œil
           if (enableBtn) {
             enableBtn.classList.add("kta-pin-enable-flash");
             setTimeout(function() {
@@ -958,7 +777,6 @@
           }
         }, 150);
       } else {
-        // Fallback : on log + on indique à l'user d'ouvrir Configuration
         console.warn("[PinLock] window._ouvrirLoaderConfig indisponible — l'user doit ouvrir ⚙️ Configuration manuellement");
         window.ktaAlerte(t("pin.proposal.fallbackAlert"));
       }
@@ -966,22 +784,16 @@
     });
   }
 
-  // ============================================================
-  // EXPORT GLOBAL
-  // ============================================================
   window.MyKTAMapPinLock = {
-    // Constantes
     PIN_MIN:                PIN_MIN,
     PIN_MAX:                PIN_MAX,
     MAX_ATTEMPTS:           MAX_ATTEMPTS,
-    // État
     isEnabled:              isEnabled,
     isUnlocked:             isUnlocked,
     isLockedOut:            isLockedOut,
     getRemainingAttempts:   getRemainingAttempts,
     hasBiometric:           hasBiometric,
     isBiometricSupported:   isBiometricSupported,
-    // Actions
     enable:                 enable,
     disable:                disable,
     unlock:                 unlock,
@@ -989,11 +801,9 @@
     changePin:              changePin,
     reset:                  reset,
     ouvrirGate:             ouvrirGate,
-    // 🆕 v1.10.0 : proposition one-shot d'activation au 1er lancement
     proposerActivation:     proposerActivation,
     isProposalDone:         isProposalDone,
     markProposalDone:       markProposalDone,
-    // UI plein écran (utilisée par ouvrirGate)
     _afficherGateUI:        _afficherGateUI,
     _afficherLockoutUI:     _afficherLockoutUI,
     _afficherModaleProposition: _afficherModaleProposition

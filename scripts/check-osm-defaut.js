@@ -1,34 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🌍 check-osm-defaut.js — garde-fou pré-commit BLOQUANT
+// check-osm-defaut.js — garde-fou pré-commit BLOQUANT de la Vue OSM active par défaut
 // =====================================================================
-// LA DÉCISION (KARMA, 08/09/2026) : « active le mode OSM par défaut […] dans
-// 99 % des cas ce mode est utilisé ».
-//
-// 🩸 CE QU'ON RETOURNE N'EST PAS UN RÉGLAGE ORDINAIRE. Le widget OSM du HOME
-// monte une carte Leaflet dont le fond vient de `tile.openstreetmap.org`. Actif
-// par défaut, l'accueil contacte donc un TIERS au chargement, sans clic. C'est
-// la seule chose que l'app fait sortir du navigateur, et toute sa promesse
-// tient à ce que ce soit dit — pas à ce que ce soit rare.
-//
-// D'OÙ LES TROIS INVARIANTS TENUS ICI :
-//
-//   1. UN REFUS EXPLICITE NE SE RÉÉCRASE JAMAIS. La clé est tri-état : "1"
-//      accepté, "0" REFUSÉ, absent jamais touché. Seul l'absent bascule. Un
-//      `!== "0"` mal écrit en `=== "1"` inversé, ou un `!!localStorage…`
-//      paresseux, rallumerait OSM chez quelqu'un qui l'a coupé — c'est la
-//      faute qu'on ne peut pas rattraper après un déploiement.
-//   2. LES DEUX LECTEURS DISENT LA MÊME CHOSE. `isOptedIn` est dupliqué dans
-//      osmView.js (modale) et osmHomePreview.js (widget HOME). Divergents, on
-//      obtient un widget affiché sans bouton dans la modale, ou l'inverse.
-//   3. LE DÉFAUT S'ANNONCE. Tant que la clé est absente, « actif parce que
-//      jamais refusé » n'est pas « actif parce que choisi » : un bandeau le
-//      dit, et le valider écrit "1" — l'implicite devient explicite.
-//
-// COMMENT ON CONTRÔLE : on EXÉCUTE les deux fonctions extraites des vrais
-// fichiers sur les quatre états de la clé. Un `grep` verrait « le test est là »
-// sans jamais voir qu'il est inversé.
+// La Vue OSM est active par défaut (décision produit). 🔒 Le widget du HOME contacte alors un TIERS
+// (`tile.openstreetmap.org`) au chargement, sans clic : la promesse de l'app tient à ce que ce soit DIT.
+// Invariants :
+//   1. 🩸 un refus explicite ne se réécrase JAMAIS : clé tri-état "1" accepté / "0" REFUSÉ /
+//      absent ; seul l'absent bascule (un `=== "1"` inversé rallumerait OSM chez qui l'a coupé) ;
+//   2. les deux lecteurs (osmView.js > isOptedIn, osmHomePreview.js > _isOptedIn) disent pareil ;
+//   3. le défaut s'annonce : bandeau tant que la clé est absente, le valider écrit "1".
+// On EXÉCUTE les fonctions extraites des vrais fichiers : un grep ne voit pas un test inversé.
 // =====================================================================
 "use strict";
 
@@ -42,11 +24,9 @@ const VUE  = fs.readFileSync("js/osmView.js", "utf8");
 const HOME = fs.readFileSync("js/osmHomePreview.js", "utf8");
 const IDX  = fs.readFileSync("index.html", "utf8");
 
-// ═════════ 1. LES DEUX LECTEURS, EXÉCUTÉS SUR LES 4 ÉTATS ═════════
-// 🩸 On extrait du VRAI fichier : une copie recopiée ici testerait le garde-fou.
-// 🩸 Accepte une fonction AVEC paramètres : la première version cherchait
-// `function <nom>() {` et rendait `null` en silence sur `(container)` — le
-// contrôle se désactivait tout seul au lieu de rougir.
+// ── 1. Les deux lecteurs, exécutés sur les 4 états ───────────────────────
+// 🩸 Extraction du VRAI fichier (une copie testerait le garde-fou), fonction AVEC ou sans paramètres :
+// un motif `function <nom>() {` rendrait `null` en silence et désactiverait le contrôle.
 function extraire(src, nom) {
   const d = src.search(new RegExp("function\\s+" + nom + "\\s*\\([^)]*\\)\\s*\\{"));
   if (d < 0) return null;
@@ -93,7 +73,7 @@ LECTEURS.forEach(function (l) {
   });
 });
 
-// ═════════ 2. LES DEUX LECTEURS NE DOIVENT PAS DIVERGER ═════════
+// ── 2. Les deux lecteurs ne divergent pas ────────────────────────────────
 {
   const cles = Object.keys(resultats);
   t("🩸 les deux lecteurs répondent À L'IDENTIQUE sur les 4 états " +
@@ -101,17 +81,14 @@ LECTEURS.forEach(function (l) {
     cles.length === 2 && resultats[cles[0]].join(",") === resultats[cles[1]].join(","));
 }
 
-// ═════════ 3. UN REFUS RESTE UN REFUS, ET S'ÉCRIT ═════════
+// ── 3. Un refus reste un refus, et s'écrit ───────────────────────────────
 t("🩸 setOptedIn(false) écrit bien \"0\" — sans quoi un refus s'effacerait à la purge",
   /localStorage\.setItem\(LS_OPT_IN_KEY, value \? "1" : "0"\)/.test(VUE));
 t("le changement est diffusé aux écrans déjà montés (kta:osmOptInChange)",
   /dispatchEvent\(new CustomEvent\("kta:osmOptInChange"/.test(VUE));
 
-// ═════════ 4. LE DÉFAUT S'ANNONCE ═════════
-// 🩸 EXÉCUTÉ, pas grepé. Une première version testait le motif
-// `=== null;` à moins de 160 caractères du nom de la fonction : un
-// `return true;` glissé juste avant le laissait intact, et le sabotage
-// « le bandeau s'affiche même après un choix explicite » passait au VERT.
+// ── 4. Le défaut s'annonce ───────────────────────────────────────────────
+// 🩸 EXÉCUTÉ, pas grepé : un `return true;` glissé avant le motif `=== null;` le laisserait intact.
 {
   const code = extraire(HOME, "_estActifParDefaut");
   t("le détecteur de défaut est extractible", !!code);
@@ -137,15 +114,11 @@ t("le bandeau est posé au montage du widget", /_afficherBandeauDefaut\(containe
 t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnaire)",
   /\.kta-osm-defaut-txt"\)\.textContent = t\("osm_home\.defautOn\.corps"\)/.test(HOME));
 
-// ═════════ 5. LES BLOQUANTS RESTENT PRIORITAIRES ═════════
-// 🩸 L'incognito est une PROMESSE : un défaut ON ne doit pas passer devant.
-// Il est testé APRÈS l'opt-in dans mount(), donc l'ordre relatif est ce qui
-// compte.
+// ── 5. 🔒 Les bloquants restent prioritaires ─────────────────────────────
+// L'incognito est une PROMESSE : un défaut ON ne passe pas devant.
 {
-  // 🩸 Chercher la garde dans TOUT le fichier trouvait sa DÉFINITION,
-  // toujours placée avant `mount()` : l'assertion était vraie par
-  // construction, quel que soit l'ordre réel des tests. On borne donc la
-  // recherche au corps de mount(), après le test d'opt-in.
+  // 🩸 Borné au corps de mount(), après l'opt-in : dans tout le fichier, on trouve la DÉFINITION de
+  // la garde, toujours avant mount() (vrai par construction).
   const iOpt = HOME.indexOf("if (!_isOptedIn()) {");
   const corps = iOpt > 0 ? HOME.slice(iOpt) : "";
   t("le test d'opt-in est trouvable dans mount()", iOpt > 0);
@@ -153,12 +126,9 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     corps.indexOf("if (_isIncognitoOn()) {") > 0);
 }
 
-// ═════════ 5 bis. LA GARDE INCOGNITO, EXÉCUTÉE ═════════
-// 🩸 03/10/2026 — le contrôle ci-dessus cherchait un TEXTE : il est resté vert
-// pendant que `_isIncognitoOn()` appelait `IncognitoMode.isActive()`, une
-// fonction qui n'existait pas. L'incognito ne coupait donc pas la Vue OSM.
-// On charge le VRAI module incognito, on extrait la VRAIE garde des deux
-// fichiers, et on l'exécute dans les deux états.
+// ── 5 bis. 🔒 La garde incognito, exécutée ───────────────────────────────
+// 🩸 Un contrôle de TEXTE reste vert si la garde appelle une méthode inexistante d'IncognitoMode
+// (l'incognito ne coupe alors plus OSM). On charge le VRAI module et on exécute la VRAIE garde.
 {
   const vm = require("vm");
   const INC = fs.readFileSync("js/incognitoMode.js", "utf8");
@@ -167,8 +137,7 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     const j = src.indexOf("\n  }", i);
     return (i >= 0 && j > i) ? src.slice(i, j + 4) : "";
   };
-  // Actif, le module détourne le stockage (document, Storage, indexedDB…) :
-  // des bouchons qui acceptent tout suffisent, seul l'état rendu nous importe.
+  // Actif, le module détourne le stockage : des bouchons qui acceptent tout suffisent.
   const n_importe = function () {
     return new Proxy(function () {}, {
       get: function (c, k) { return k === Symbol.toPrimitive ? function () { return ""; } : n_importe(); },
@@ -197,11 +166,11 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     try { ok = jouer(f[1], true) === true && jouer(f[1], false) === false; } catch (e) {}
     t("🩸 " + f[0] + " : incognito actif → OSM coupée ; inactif → non", ok);
   });
-  // Toute propriété d'IncognitoMode appelée dans js/ doit exister dans l'API.
+  // Toute propriété d'IncognitoMode appelée dans js/ existe dans l'API (le module lui-même, qui pose
+  // des membres privés en mode actif, est hors champ).
   const api = {};
   Object.keys(bac(false).window.IncognitoMode || {}).forEach(function (k) { api[k] = true; });
   const manquantes = [];
-  // Le module lui-même pose des membres privés (`_…`) en mode actif : hors champ.
   fs.readdirSync("js").filter(function (f) { return f.endsWith(".js") && f !== "incognitoMode.js"; }).forEach(function (f) {
     const re = /IncognitoMode\.([A-Za-z_]+)/g;
     let m;
@@ -212,11 +181,8 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     (manquantes.length ? " — absentes : " + manquantes.slice(0, 5).join(", ") : ""), manquantes.length === 0);
 }
 
-// ═════════ 6. CE QUE L'UTILISATEUR LIT DOIT ÊTRE VRAI ═════════
-// 🩸 La case annonçait « default OFF » — faux désormais — et « quand la modale
-// Vue OSM est ouverte », qui était DÉJÀ faux : le widget du HOME contacte le
-// même serveur sans ouvrir aucune modale. Tolérable en opt-in, plus du tout
-// en défaut ON.
+// ── 6. 🔒 Ce que l'utilisateur lit doit être vrai ────────────────────────
+// La case dit « actif par défaut » et nomme le widget de l'accueil (il contacte le serveur sans modale).
 {
   const fr = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
   const lib = fr["home.privacy.osmToggle"] || "";
@@ -227,13 +193,9 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
   t("📄 le libellé de repli d'index.html dit la même chose",
     /Activée? par défaut/.test(IDX) && IDX.indexOf("default OFF") < 0);
 
-  // L'audit réseau est la page où l'on promet de tout dire : le changement de
-  // défaut doit y être, faute de quoi la promesse ne vaut plus rien.
-  // 🩸 UNE PREMIÈRE VERSION DE CE TEST ÉTAIT VRAIE PAR ACCIDENT : elle exigeait
-  // « défaut » + « tile.openstreetmap.org » + « v1.90.2 » quelque part dans le
-  // fichier — trois mots qui s'y trouvaient déjà, séparément, pour d'autres
-  // raisons. Elle passait au vert sur un audit qui ne disait RIEN du changement.
-  // On exige donc la phrase qui engage, et elle seule.
+  // L'audit réseau promet de tout dire : le défaut doit y figurer.
+  // 🩸 On exige la PHRASE qui engage : des mots épars (« défaut », le domaine) s'y trouvent déjà
+  // pour d'autres raisons et rendraient le test vrai par accident.
   const PHRASE = "activée PAR DÉFAUT";
   ["docs/applications/NETWORK_AUDIT.md", "docs/applications/NETWORK_AUDIT.html"].forEach(function (f) {
     const D = fs.readFileSync(f, "utf8");
@@ -244,18 +206,11 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
   });
 }
 
-// ═════════ 7. « AUCUN PLAN GÉORÉFÉRENCÉ » NE DOIT PAS MENTIR ═════════
-// VÉCU (KARMA) : « (A compléter, pour le cas où un plan n'a pas été chargé
-// une fois) ». Le géoréf embarqué dans un plan n'est écrit au registre qu'à sa
-// PREMIÈRE OUVERTURE : un plan jamais ouvert peut être parfaitement calibré et
-// rester invisible ici. L'app affirmait « aucun plan géoréférencé » quand la
-// vraie phrase était « je n'ai pas encore regardé ».
-//
-// 🩸 ET LES CLÉS SONT CONSTRUITES DYNAMIQUEMENT (`"osm_home." + cle + …`) :
-// `check-i18n` ne peut PAS les voir. Une faute de frappe sortirait un libellé
-// humanisé en production sans que rien ne rougisse. On EXÉCUTE donc la
-// fonction sur les trois scénarios et on confronte les clés demandées aux
-// trois dictionnaires.
+// ── 7. « Aucun plan géoréférencé » ne doit pas mentir ───────────────────
+// 🩸 Le géoréf d'un plan n'entre au registre qu'à sa PREMIÈRE ouverture : un plan jamais ouvert peut
+// être calé, son état est « inconnu », pas « absent ».
+// 🩸 Clés construites dynamiquement (`"osm_home." + cle + …`) : check-i18n ne les voit pas. On
+// EXÉCUTE la fonction sur trois scénarios et on confronte les clés demandées aux trois dicos.
 {
   const code = extraire(HOME, "_renderNoGeorefPlans");
   t("le rendu « aucun plan géoréférencé » est extractible", !!code);
@@ -287,7 +242,6 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     t("🧪 " + sc[0] + " → le bon message" + (err ? " — EXCEPTION : " + err : ""),
       !err && demandees.indexOf(sc[2]) >= 0);
 
-    // 🩸 Toutes les clés demandées doivent EXISTER, dans les trois langues.
     demandees.forEach(function (k) {
       const manquantes = DICOS.filter(function (d) { return typeof d[1][k] !== "string"; })
                               .map(function (d) { return d[0]; });
@@ -297,27 +251,16 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     });
   });
 
-  // 🩸 Le troisième cas doit AUSSI compter les plans jamais ouverts : leur
-  // calibration est INCONNUE, pas absente — la nuance change ce que
-  // l'utilisateur doit faire ensuite.
   t("🩸 le cas mixte annonce les plans jamais ouverts (calibration inconnue ≠ absente)",
     /osm_home\.nogeoref\.reste", \{ n: jamaisOuverts \}/.test(HOME));
 }
 
-// ═════════ 8. LE BANDEAU NE DÉPEND PAS D'UN AFFICHAGE RÉUSSI ═════════
-// VÉCU (KARMA, une heure après la mise en place) : « le panneau que tu as
-// rajouté ne s'affiche qu'une fois qu'il a fait un premier affichage — pas
-// dans le cas “aucun plan géoréférencé” ».
-// 🩸 Exact : il n'était posé que dans le dernier cas de `mount()`. Les
-// chemins qui sortent AVANT (incognito, hors-ligne, aucun plan géoréférencé) écrivaient leur message et rentraient — le défaut n'était
-// donc annoncé qu'à ceux qui voyaient déjà la carte. Or il est ACTIF dans tous
-// ces états : il attend seulement que la condition tombe.
-//
-// UN SEUL chemin en est exempt, et c'est une décision : `_renderOptInNeeded`
-// MASQUE la colonne entière — il n'y a nulle part où l'afficher, et rien à
-// annoncer à quelqu'un qui a refusé.
+// ── 8. Le bandeau ne dépend pas d'un affichage réussi ────────────────────
+// 🩸 Le défaut est ACTIF même quand mount() sort tôt (incognito, hors-ligne, aucun plan calé) :
+// chaque sortie anticipée pose le bandeau. Seule exception (décision produit) : le refus,
+// où `_renderOptInNeeded` masque la colonne (rien à annoncer).
 {
-  // 🩸 `function mount(` avec ou sans paramètre (v1.90.12 : mount(preferId)).
+  // `function mount(` avec ou sans paramètre.
   const iM = HOME.search(/function mount\s*\([^)]*\)\s*\{/);
   let fin = iM, prof = 0;
   for (let i = HOME.indexOf("{", iM); i < HOME.length; i++) {
@@ -327,8 +270,7 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
   const corps = iM >= 0 ? HOME.slice(iM, fin) : "";
   t("le corps de mount() est délimitable", corps.length > 200);
 
-  // Chaque `return;` du corps doit être précédé du bandeau — sauf celui du
-  // refus, reconnaissable à `_renderOptInNeeded` juste au-dessus.
+  // Chaque `return;` est précédé du bandeau, sauf celui du refus (`_renderOptInNeeded` au-dessus).
   const lignes = corps.split(/\r?\n/);
   const sorties = [];
   lignes.forEach(function (l, i) {
@@ -356,9 +298,7 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     /_renderWidget\(container, plans, initialId\);\s*[\r\n]+\s*_afficherBandeauDefaut\(container\);/.test(corps));
 }
 
-// 🩸 …ET LE TEXTE DOIT RESTER VRAI DANS CES CINQ ÉTATS. « le fond ci-dessous
-// est fourni par OpenStreetMap » devenait faux dès qu'aucune carte n'est
-// affichée — donc dans quatre des cinq cas où le bandeau apparaît désormais.
+// 🩸 …et le texte reste vrai dans ces états : il ne parle pas d'une carte « ci-dessous », souvent absente.
 {
   const fr = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
   const txt = fr["osm_home.defautOn.corps"] || "";

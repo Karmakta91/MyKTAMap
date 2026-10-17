@@ -1,35 +1,20 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📄 check-profile-histpdf.js — garde-fou pré-commit BLOQUANT
+// check-profile-histpdf.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
 // Verrouille le transport des PDF du Mode Histoire dans l'export de profil
-// (dette D1, livrée en v1.81.0).
-//
-// LE PROBLÈME D'ORIGINE : le carnet voyageait avec le profil depuis v1.74.0,
-// mais PAS les documents PDF qui lui sont attachés. Sur un nouvel appareil,
-// l'onglet 📖 Récits arrivait avec ses notes libres et des documents absents —
-// sans un mot. C'est la dette D1.
-//
-// CE QUI EST VÉRIFIÉ (code EXTRAIT des fichiers réels, pas une copie) :
-//   A. La section est OPT-IN STRICT (`=== true`). Un plan peut porter jusqu'à
-//      100 Mo de PDF : si la case devenait cochée par défaut, des exports
-//      exploseraient en silence chez des gens qui n'ont rien demandé.
-//   B. Elle est branchée aux 5 points de l'UI (collecte, estimation, ligne
-//      d'export, récap, aperçu d'import) — en oublier un donne une case qui
-//      ne coche rien, ou des données exportées qu'on ne voit jamais revenir.
-//   C. La restauration passe par `JournalUi.histoire.restaurer` et NON par une
-//      3ᵉ copie du schéma IDB. Ce schéma est déjà dupliqué entre
-//      `modeHistoire.js` et `journalUi.js` ; une copie de plus garantissait la
-//      dérive (leçon des 25 tables de styles).
-//   D. `restaurer()` utilise `put` et non `add` : réimporter deux fois le même
-//      profil ne doit PAS créer de doublons.
-//   E. Le garde de base v1 est présent des DEUX côtés (écriture + import) —
-//      écrire un document v2 dans une base v1 (keyPath planId) écraserait le
-//      PDF existant du plan.
-//
-// ⚠️ Contrôles STATIQUES : ils prouvent le câblage, pas qu'un PDF de 40 Mo
-// survit à un aller-retour réel. Ça, c'est le smoke et le test à la main.
+// (sans lui, les Récits arrivent sur un autre appareil sans leurs documents).
+// Vérifie, sur le code réel de profileExportImport.js et journalUi.js :
+//   A. section OPT-IN strict (`=== true`) : un plan peut porter 100 Mo de PDF ;
+//   B. branchée aux 5 points de l'UI (collecte, estimation, ligne d'export,
+//      récap, aperçu d'import) — un oubli = case sans effet ou données perdues ;
+//   C. restauration par `JournalUi.histoire.restaurer`, jamais une 3ᵉ copie du
+//      schéma IDB (déjà dupliqué entre modeHistoire.js et journalUi.js) ;
+//   D. `put` et non `add` : réimporter le même profil ne crée pas de doublons ;
+//   E. garde « base v1 » des deux côtés : un document v2 écrit dans une base v1
+//      (keyPath planId) écrase le PDF existant du plan.
+// ⚠️ Contrôles statiques : le câblage, pas l'aller-retour réel d'un gros PDF.
 // =====================================================================
 
 const fs = require("fs");
@@ -52,24 +37,20 @@ function verif(nom, ok, aide) {
   if (!ok) echecs.push(aide);
 }
 
-// --- A. opt-in strict ---------------------------------------------------
+// ── A. opt-in strict ──────────────────────────────────────────────────
 verif(
   "la section est OPT-IN strict (=== true) à l'export",
-  // ⚠️ On exige la garde ACCOLÉE À L'AFFECTATION, pas la simple présence de la
-  // chaîne : le fichier la contient aussi dans un COMMENTAIRE d'en-tête, et un
-  // test qui s'en contente reste vert alors que la vraie garde a été changée.
-  // Vécu en falsifiant ce script : passer la collecte à `!== false` ne le
-  // faisait pas broncher. Un garde-fou qui valide un commentaire ne garde rien.
+  // 🩸 La garde doit être ACCOLÉE À L'AFFECTATION : la chaîne seule figure
+  // aussi dans un commentaire d'en-tête, et le test resterait vert avec une
+  // collecte passée à `!== false`.
   /if \(include\.histoirePdfs === true\)\s*profile\.sections\.histoirePdfs/.test(src),
   "La collecte doit être gardée par `include.histoirePdfs === true`. Un plan peut " +
   "porter 100 Mo de PDF : cochée par défaut, elle ferait exploser des exports sans prévenir."
 );
 verif(
   "décochée par défaut dans la ligne d'export",
-  // ⚠️ Pas `[^)]*?` ici : les arguments contiennent des appels `T("…")`, donc
-  // la classe s'arrêterait à la PREMIÈRE parenthèse fermante et le test
-  // échouerait sur du code correct (vécu au premier lancement de ce script).
-  // `[\s\S]{0,200}?` reste borné à la ligne sans buter sur les parenthèses.
+  // 🩸 Pas `[^)]*?` : les arguments contiennent des `T("…")`, la classe
+  // s'arrêterait à la première `)` et échouerait sur du code correct.
   /_renderSectionRow\("histoirePdfs"[\s\S]{0,200}?,\s*false\s*,/.test(src),
   "La ligne d'export doit passer `false` en 5e argument (= case décochée). " +
   "C'est le même régime que les photos, et pour la même raison : le poids."
@@ -80,7 +61,7 @@ verif(
   "Les défauts d'`applyProfile` doivent porter `histoirePdfs: false`."
 );
 
-// --- B. les 5 points de branchement -------------------------------------
+// ── B. les 5 points de branchement ────────────────────────────────────
 const POINTS = [
   // (estExt) : la modale d'export saute les plans ☁️ d'une organisation
   ["collecte",          /profile\.sections\.histoirePdfs\s*=\s*await _collectHistoirePdfs\((?:estExt)?\)/],
@@ -95,7 +76,7 @@ POINTS.forEach(function (p) {
         "soit une case sans effet, soit des données exportées qui ne reviennent jamais.");
 });
 
-// --- C. pas de 3e copie du schéma IDB -----------------------------------
+// ── C. pas de 3e copie du schéma IDB ──────────────────────────────────
 verif(
   "aucune réécriture du schéma IDB histoire dans " + PROFIL,
   !/myktamap_histoire_pdfs/.test(src),
@@ -116,7 +97,7 @@ verif(
   "sinon l'export de profil ne peut plus lire ni reposer les documents."
 );
 
-// --- D. idempotence ------------------------------------------------------
+// ── D. idempotence ────────────────────────────────────────────────────
 const mRest = /function _histRestaurer\([\s\S]*?\n  \}/.exec(jsrc);
 verif(
   "restaurer() utilise put (idempotent), pas add",
@@ -131,7 +112,7 @@ verif(
   "renomme les documents et écrase toutes les dates d'ajout par celle de l'import."
 );
 
-// --- E. garde base v1 des deux côtés -------------------------------------
+// ── E. garde base v1 des deux côtés ───────────────────────────────────
 verif(
   "garde 'base v1' dans _histRestaurer",
   !!mRest && /indexNames\.contains\(HIST_INDEX\)/.test(mRest[0]),
@@ -146,7 +127,6 @@ verif(
   "que de ne rien faire."
 );
 
-// --- verdict -------------------------------------------------------------
 if (!echecs.length) {
   console.log("\n🎉 PDF du Mode Histoire : transport de profil câblé, opt-in, idempotent");
   process.exit(0);

@@ -7,20 +7,12 @@
  */
 
 // =========================
-// LOADERNETAUDIT.JS — Modales « Journal réseau » (live) + « Doc audit »
+// LOADERNETAUDIT.JS — modales « Journal réseau » (en direct) et « Doc audit » du home
 // =========================
-// Extrait du gros <script> inline d index.html (consolidation : alléger le
-// fichier). DÉPLACEMENT PUR, zéro changement de comportement. Lit
-// window.NetworkAudit (log live + whitelist) et window.I18n.
-//
-// Le CÂBLAGE (boutons, ✕, backdrop, Escape) reste dans la closure window.load
-// d index.html et appelle ces fonctions via les globals exposés ci-dessous
-// (module chargé en `defer` → s exécute avant l event load).
-//
-// Exposé : window._ouvrirNetLogModal / _fermerNetLogModal /
-//          _ouvrirNetDocModal / _fermerNetDocModal / _refreshNetLogTable
-// Privé  : _escapeHtml, _formatTime, _renderNetLogRow, _netLogUnsub,
-//          CATEGORY_COLORS. 100 % local, aucune surface réseau propre.
+// Lit window.NetworkAudit (journal, whitelist) et I18n. Le CÂBLAGE (boutons, ✕, fond, Échap) reste dans la
+// closure window.load d'index.html (module en `defer`, exécuté avant load).
+// Expose : window._ouvrirNetLogModal / _fermerNetLogModal / _ouvrirNetDocModal / _fermerNetDocModal /
+//   _refreshNetLogTable. 100 % local, aucune requête propre.
 // =========================
 
 (function() {
@@ -62,7 +54,7 @@
     const statusClass = typeof entry.status === "number" && entry.status >= 200 && entry.status < 400 ? "kta-net-status-ok"
                       : (typeof entry.status === "number" && entry.status >= 400 ? "kta-net-status-err"
                       : "kta-net-status-pending");
-    // 🌍 v1.60.x (B8) : i18n au rendu, fallback FR inline (pattern projet).
+    // i18n au rendu, repli FR inline.
     const _nt = function(k, fb) {
       return (window.I18n && typeof window.I18n.t === "function" && window.I18n.has && window.I18n.has(k))
         ? window.I18n.t(k) : fb;
@@ -86,7 +78,7 @@
     const meta  = document.getElementById("loaderNetLogMeta");
     if (!tbody || !window.NetworkAudit) return;
     const log = window.NetworkAudit.getLog();
-    // 🌍 v1.60.x (B8) : i18n au rendu, fallback FR inline (pattern projet).
+    // i18n au rendu, repli FR inline.
     const _nt = function(k, fb, params) {
       return (window.I18n && typeof window.I18n.t === "function" && window.I18n.has && window.I18n.has(k))
         ? window.I18n.t(k, params || {}) : fb;
@@ -96,7 +88,7 @@
         _nt("netlog.empty", "Aucune requête capturée pour le moment. Utilise l'app, recharge un plan, ou ferme/rouvre cette modale.") +
         '</td></tr>';
     } else {
-      // On affiche du plus récent au plus ancien (reverse)
+      // Du plus récent au plus ancien.
       tbody.innerHTML = log.slice().reverse().map(_renderNetLogRow).join("");
     }
     if (meta) {
@@ -112,7 +104,7 @@
     if (!modal) return;
     modal.style.display = "flex";
     _refreshNetLogTable();
-    // Subscribe live : chaque nouvel event re-render
+    // Abonnement en direct : chaque événement re-rend la table.
     if (window.NetworkAudit && typeof window.NetworkAudit.onLog === "function") {
       _netLogUnsub = window.NetworkAudit.onLog(function(/* entry */) {
         _refreshNetLogTable();
@@ -132,7 +124,7 @@
   function _ouvrirNetDocModal() {
     const modal = document.getElementById("loaderNetDocModal");
     if (!modal) return;
-    // Rempli la liste whitelist depuis NetworkAudit.WHITELIST_HUMAN
+    // Liste depuis NetworkAudit.WHITELIST_HUMAN.
     const ul = document.getElementById("loaderNetDocWhitelist");
     if (ul && window.NetworkAudit && Array.isArray(window.NetworkAudit.WHITELIST_HUMAN)) {
       ul.innerHTML = window.NetworkAudit.WHITELIST_HUMAN.map(function(s) {
@@ -146,7 +138,7 @@
     if (modal) modal.style.display = "none";
   }
 
-  // ── Exposé pour le câblage inline d index.html (closure window.load) ──
+  // ── Exposé pour le câblage inline d'index.html (closure window.load) ──
   window._ouvrirNetLogModal  = _ouvrirNetLogModal;
   window._fermerNetLogModal  = _fermerNetLogModal;
   window._ouvrirNetDocModal  = _ouvrirNetDocModal;

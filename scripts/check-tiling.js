@@ -1,29 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🖼️ check-tiling.js — garde-fou pré-commit BLOQUANT
+// check-tiling.js — garde-fou pré-commit BLOQUANT du tuilage (js/tiling.js, config.js, main.js…)
 // =====================================================================
-// LA RÈGLE (audit tuilage du 07/09/2026, arbitrage KARMA) :
-//
-//   « Un plan V2 doit OBLIGATOIREMENT profiter du mode tuile. Le fichier
-//     complet reste dans le ZIP — il sert au dézip manuel — mais en
-//     principe il n'est pas utilisé. »
-//
-// 🩸 CE QUE L'AUDIT A TROUVÉ :
-//
-//   1. Sur un plan V2, les presets Qualité / Équilibré / Performance / Auto
-//      étaient STRICTEMENT identiques : la branche V2 est prise avant eux et
-//      `_chargerImageV2OptionB` ne reçoit aucun paramètre de preset. L'UI
-//      promettait « Plus net. Recommandé sur PC desktop. » — c'était faux.
-//
-//   2. `auto`, le DÉFAUT, était le mode le MOINS protecteur : il tranchait
-//      sur le poids fichier (60 Mo) quand les presets explicites tranchaient
-//      sur la surface (4096²). Un JPEG de 100 Mpx pèse ~15 Mo → auto ne
-//      tuilait pas, texture géante, crash Safari iOS.
-//
-//   3. Un plan V2 servi en HTTP affichait une CARTE BLANCHE : RUNTIME_ASSETS
-//      n'est rempli que par les imports ZIP, donc toutes les tuiles étaient
-//      introuvables. Seul « Désactivé » sauvait ce cas — par accident.
+// Règle (décision produit) : un plan V2 tuile TOUJOURS ; l'image complète reste dans le ZIP pour le
+// dézip manuel mais n'est pas affichée.
+// 🩸 Pièges couverts :
+//   - sur un plan V2 la branche tuiles passe avant les presets : un preset n'y change rien ;
+//   - `auto` (le défaut) doit trancher sur la SURFACE (4096²), pas sur le poids : un JPEG de 100 Mpx
+//     pèse ~15 Mo et ferait une texture géante (crash Safari iOS) ;
+//   - un plan V2 servi en HTTP n'a rien dans RUNTIME_ASSETS : ses tuiles se résolvent en HTTP, sinon
+//     carte blanche.
+// Plusieurs contrôles CHARGENT le module dans un vm et l'exécutent : une assertion de chaîne ne voit
+// pas une régression de logique. Doc : docs/TILING.md.
 // =====================================================================
 "use strict";
 
@@ -35,18 +24,10 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 const TIL = fs.readFileSync("js/tiling.js", "utf8");
 const IDX = fs.readFileSync("index.html", "utf8");
 
-// 🩸 STRIPPER LIGNE À LIGNE, JAMAIS INLINE — « le mangeur de blocs », 2e round.
-// La version précédente faisait `.replace(/\/\*[\s\S]*?\*\//g, " ")`. Or un
-// `/*` peut apparaître AILLEURS que dans un commentaire : dans une chaîne
-// (`accept="image/*"`), dans un chemin cité (`data/**`), dans une regex. Le
-// non-greedy avalait alors tout jusqu'au `*/` suivant — MESURÉ : de 28 % à
-// 88 % du fichier détruit selon les cas (main.js : 98 986 → 12 170 octets).
-// 🩸 Le danger n'était pas les faux rouges, qui se voient : c'étaient les
-// assertions de la forme « X n'est PAS présent », vraies par accident dès que
-// la zone avait été mangée. Le même piège est documenté dans README.md pour
-// check-i18n (« le mangeur de blocs »), et je l'ai réintroduit ici.
-// On ne retire donc QUE des lignes ENTIÈRES de commentaire : un `/*` au milieu
-// d'une ligne de code est laissé tel quel, il ne peut plus rien avaler.
+// 🩸 « Le mangeur de blocs » : retirer les commentaires LIGNE À LIGNE, jamais par regex
+// `/\/\*[\s\S]*?\*\//`. Un `/*` hors commentaire (chaîne `image/*`, chemin `data/**`, regex) ferait
+// avaler tout jusqu'au `*/` suivant (jusqu'à 88 % d'un fichier), et les assertions « X n'est PAS
+// présent » deviendraient vraies par accident. Seules les lignes ENTIÈRES de commentaire partent.
 function sansCommentaires(src) {
   const nl = src.indexOf("\r\n") >= 0 ? "\r\n" : "\n";
   const out = [];
@@ -65,10 +46,8 @@ function sansCommentaires(src) {
 const CODE = sansCommentaires(TIL);
 const IDXC = sansCommentaires(IDX);
 
-// Extrait le bloc `if (preset === "off")` SITUÉ DANS la branche V2, par
-// appariement d'accolades. 🩸 Première version : je découpais « du test tiledV2
-// jusqu'à l'appel du runtime V2 » — la tranche se terminait sur le `return` du
-// dispatch lui-même, et l'assertion rougissait sur du code parfaitement sain.
+// Extrait le bloc `if (preset === "off")` SITUÉ DANS la branche V2, par appariement d'accolades.
+// 🩸 Une tranche « du test tiledV2 à l'appel du runtime » finit sur le `return` du dispatch : faux rouge.
 function blocOffV2() {
   const d = CODE.indexOf("pc.plan.tiledV2 === true");
   if (d < 0) return "";
@@ -88,8 +67,7 @@ function blocOffV2() {
 {
   const b = blocOffV2();
   t("le traitement de « off » dans la branche V2 est trouvable", b.length > 0);
-  // Le contournement v151 posait un L.imageOverlay puis SORTAIT de la fonction.
-  // Ce sont le `return` et le `imageOverlay` qui faisaient le détournement.
+  // Le détournement = un `imageOverlay` suivi d'un `return` dans ce bloc.
   t("🩸 un plan V2 ne peut plus être détourné vers le baseImage par « off »",
     b.length > 0 && b.indexOf("return") < 0 && b.indexOf("imageOverlay") < 0);
   t("« off » sur un plan V2 est explicitement ignoré (et tracé)",
@@ -109,15 +87,11 @@ function blocOffV2() {
 }
 
 // ───────── 3. les plans SERVEUR résolvent leurs tuiles en HTTP ─────────
-// 🩸 v1.87.0 : la dérivation a quitté l'IIFE locale pour une fonction
-// TOP-LEVEL partagée avec le pré-cache hors-ligne. Deux copies auraient
-// divergé, et le symptôme aurait été un plan « téléchargé » mais troué.
+// 🩸 Une seule fonction TOP-LEVEL, partagée avec le pré-cache hors-ligne : deux copies divergeraient
+// et donneraient un plan « téléchargé » mais troué.
 t("🌐 la racine des tuiles serveur est une fonction PARTAGÉE",
   /function ktaRacineTuilesServeur\(pc\)/.test(CODE));
-// 🩸 v1.88.3 : le runtime NE calcule plus la racine — il la REÇOIT, sondée,
-// de chargerImage. L'ancienne assertion visait `const RACINE_SRV =
-// ktaRacineTuilesServeur(` et est devenue fausse par le refactor lui-même.
-// Le §16 couvre désormais la chaîne complète ; ici on garde le repli.
+// Le runtime REÇOIT la racine sondée de chargerImage (chaîne complète : §16) ; ici, le repli.
 t("🩸 le runtime garde un repli synchrone si la sonde n'a rien donné",
   /const RACINE_SRV = racineSrv \|\| ktaRacineTuilesServeur\(/.test(CODE));
 t("🌐 elle est exposée pour le pré-cache hors-ligne",
@@ -128,9 +102,8 @@ t("🌐 un déploiement non standard peut la surcharger (tilesDir)",
 t("🩸 un plan LOCAL (baseImage en blob:) n'est PAS pris pour un plan serveur",
   /blob:\|data:/.test(CODE));
 t("🌐 sans asset en mémoire, la tuile est résolue en HTTP au lieu de null",
-  // 🩸 ASSERTION RENFORCÉE APRÈS FALSIFICATION : la première version ne testait
-  // que la PRÉSENCE de RACINE_SRV dans le ternaire — `return null ? RACINE_SRV
-  // + ... : null` la satisfaisait. On exige qu'il en soit la CONDITION.
+  // 🩸 RACINE_SRV doit être la CONDITION du ternaire : sa simple présence laisse passer
+  // `return null ? RACINE_SRV + … : null`.
   /return RACINE_SRV\s*[\r\n]\s*\? RACINE_SRV \+/.test(CODE) && /if \(!asset\) \{/.test(CODE));
 
 // ───────── 4. le repli est une RÉCUPÉRATION, pas un mode ─────────
@@ -138,26 +111,20 @@ t("🩸 un repli baseImage existe quand aucune tuile n'est exploitable",
   /function _repliBaseImage\(/.test(CODE));
 t("il ne se déclenche qu'une seule fois par chargement",
   /if \(state\.repliFait\) return;[\s\S]{0,80}state\.repliFait = true;/.test(CODE));
-// 🧱 29/09/2026 — une tuile hors écran n'est plus POSÉE mais reste RÉSOLUE
-// (différée) : « aucune résolue » compte les deux, sinon un plan zoomé loin de
-// tout déclencherait le repli à tort. L'assertion exige les deux termes.
+// Une tuile hors écran est RÉSOLUE mais différée : « aucune résolue » compte posées + différées,
+// sinon un plan zoomé loin de tout déclenche le repli à tort.
 t("déclencheur 1 : aucune tuile résolue (ni posée ni différée)",
   /const resolues = added \+ differees;[\s\S]{0,40}if \(resolues === 0 && missing > 0\)[\s\S]{0,60}_repliBaseImage/.test(CODE));
-// 🩸 En mode serveur une URL HTTP « résout » toujours, même en 404 : `added`
-// ne dit plus rien. Sans ce second déclencheur, un déploiement raté redonne
-// une carte blanche muette — le bug qu'on vient de corriger.
+// 🩸 En mode serveur une URL HTTP « résout » toujours, même en 404 : sans ce second déclencheur,
+// un déploiement raté donne une carte blanche muette.
 t("🩸 déclencheur 2 : toutes les tuiles du premier rendu en ERREUR de chargement",
   /overlay\.on\("error"/.test(CODE) && CODE.indexOf("state.erreursPremier") >= 0);
 t("le premier rendu est capturé AVANT la boucle (currentLevel est réaffecté après)",
   /const premierRendu = \(state\.currentLevel === null\);/.test(CODE));
 
 // ───────── 5. LE SEUL POINT DE RÉGLAGE DU TUILAGE ─────────
-// v1.86.0 avait réduit l'UI du HOME à 2 choix (Auto / Désactivé) ; v1.90.2 la
-// retire entièrement, sur décision KARMA : « on est en auto tout le temps, la
-// majorité des plans sont en V2 et c'est le process conseillé ».
-// 🩸 Le contrôle ne pesait que sur les plans V1 au-dessus de 4096² px : sur un
-// plan V2 la branche tuiles est prise AVANT lui, « Désactivé » n'y changeait
-// rien. Il vit maintenant dans ℹ️ Infos, MÉMORISÉ, et seulement là où il agit.
+// Pas de sélecteur au HOME : auto par défaut (décision produit). Le réglage vit dans la fiche Infos,
+// mémorisé par plan, et seulement pour un plan non V2 (sur un V2 il ne changerait rien).
 {
   const HL = fs.readFileSync("js/homeLoader.js", "utf8");
   t("🩸 plus aucun sélecteur de preset au HOME",
@@ -171,8 +138,7 @@ t("le premier rendu est capturé AVANT la boucle (currentLevel est réaffecté a
     opts.length === 2 && opts[0] === "auto" && opts[1] === "off");
   t("🖼️ et il est MÉMORISÉ pour ce plan (l'ancien repartait à zéro à chaque démarrage)",
     /PlanRegistry\.setPerfPreset\(plan\.id, selTuilage\.value\)/.test(HL));
-  // 🩸 RÉTRO-COMPAT : un plan peut avoir « quality » mémorisé dans le registre.
-  // Le code doit continuer de l'accepter, sinon le preset stocké devient invalide.
+  // 🩸 Rétro-compat : un registre peut contenir « quality » ; le refuser invalide le preset stocké.
   ["js/main.js", "js/planRegistry.js"].forEach(function (f) {
     t("rétro-compat : " + f + " accepte toujours les 5 valeurs historiques",
       /"off", "auto", "quality", "balanced", "performance"/.test(fs.readFileSync(f, "utf8")));
@@ -191,16 +157,10 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
   /preset === "off" && \(W \* H\) > TUILING_NECESSAIRE_PIXELS/.test(CODE));
 
 
-// ───────── 9. 🌐 DÉPLOIEMENT SERVEUR : ON EXÉCUTE, ON NE DEVINE PAS ─────────
-// 🩸 VÉCU (v1.86.1) : « je crée un dossier toto et j'y mets le contenu du ZIP ».
-// Ça ne marchait pas, et ça n'avait JAMAIS marché — ni en V1 ni en V2. Le
-// générateur écrit `data/MonPlan.png` dans le plan-config (mise en page DU ZIP)
-// et `resolveServerPath` rendait tout chemin `data/…` TEL QUEL, donc résolu à
-// la racine du site : 404 sur tout sauf le plan-config. Il fallait aplatir le
-// dossier `data/` ET réécrire chaque chemin à la main, sans que rien ne le dise.
-//
-// Ce contrôle CHARGE config.js dans un vm et APPELLE la fonction : une
-// assertion de chaîne aurait laissé passer une régression de logique.
+// ───────── 9. DÉPLOIEMENT SERVEUR : ON EXÉCUTE, ON NE DEVINE PAS ─────────
+// 🩸 Contrat : un ZIP dézippé tel quel dans `data/<plan>/` doit marcher. Le plan-config écrit les
+// chemins du ZIP (`data/MonPlan.png`) ; rendus TELS QUELS ils se résolvent à la racine du site (404).
+// On CHARGE config.js dans un vm et on APPELLE resolveServerPath.
 {
   const vm = require("vm");
   const win = { location: { href: "http://x/", search: "" }, navigator: { userAgent: "node" },
@@ -222,8 +182,8 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 
   if (typeof f === "function") {
     const cas = [
-      // LE CAS KARMA : dézip brut du ZIP dans data/toto/
-      ["data/MonPlan.png",        "data/toto", "data/toto/data/MonPlan.png", "🩸 dézip brut : le chemin du ZIP est préfixé"],
+      // Dézip brut du ZIP dans data/toto/
+      ["data/MonPlan.png",       "data/toto", "data/toto/data/MonPlan.png", "🩸 dézip brut : le chemin du ZIP est préfixé"],
       ["data/tiles/z0/x0_y-1.jpg","data/toto", "data/toto/data/tiles/z0/x0_y-1.jpg", "🩸 les tuiles suivent le même chemin"],
       // RÉTRO-COMPAT : déploiement réécrit à la main (data/test)
       ["data/test/TestMAP.png",   "data/test", "data/test/TestMAP.png",      "🩸 déploiement déjà préfixé : INCHANGÉ"],
@@ -232,14 +192,10 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
       ["icon/house.png",          "data/toto", "icon/house.png",             "icon/ reste à la racine (icônes de l'app)"],
       ["https://x/y.png",         "data/toto", "https://x/y.png",            "URL absolue intacte"],
       ["/racine.png",             "data/toto", "/racine.png",                "chemin absolu intact"],
-      // 🩸 v1.88.4 : un nom NU vient du dossier `data/` du ZIP — c est la mise
-      // en page de toute archive produite par l app. Rattrape les plans SIG
-      // deja deployes, dont le plan-config omet le prefixe.
-      ["sig.json",                "data/toto", "data/toto/data/sig.json",   "🩸 nom NU (import SIG) : sous data/"],
+      // 🩸 Un nom NU vient du dossier `data/` du ZIP (plans SIG déjà déployés sans préfixe).
+      ["sig.json",               "data/toto", "data/toto/data/sig.json",   "🩸 nom NU (import SIG) : sous data/"],
       ["baseImage.png",           "data/toto", "data/toto/data/baseImage.png", "🩸 idem pour l image"],
-      // 🩸 Epingle la BORNE de la regle : seuls les noms NUS passent par
-      // `data/`. Sans ce cas, remplacer la condition par `true` ne se voyait
-      // pas -- aucun chemin relatif AVEC dossier n etait teste.
+      // 🩸 Borne de la règle : seuls les noms NUS passent par `data/` (sinon une condition `true` passe).
       ["sous/x.json",             "data/toto", "data/toto/sous/x.json",      "relatif AVEC dossier : pas de data/ injecte"],
     ];
     cas.forEach(function (c) {
@@ -250,22 +206,10 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 }
 
 
-// ───────── 10. 🎨 ICÔNES : ON SONDE, ON NE DEVINE PLUS ─────────
-// 🩸 VÉCU DEUX FOIS, ET LA 2e ÉTAIT MA CORRECTION DE LA 1re.
-//   v1.86.1 — les icônes PERSO d'un plan servi n'étaient pas résolues
-//             (`icon/…` toujours lu depuis la racine du site).
-//   v1.86.2 — j'ai voulu trancher sur le catalogue `TAGS_BUILTIN` : hors
-//             catalogue = icône du ZIP → préfixée. FAUX. `TAGS_BUILTIN` liste
-//             des **tags de POI**, pas les icônes livrées avec l'app :
-//             `icon/iconetrack.png` (marqueur du tracker) existe bien à la
-//             racine et n'y figure pas. Sur un plan serveur, l'icône du
-//             tracker partait donc en `data/<plan>/icon/iconetrack.png` → 404.
-//             Régression d'AFFICHAGE, révélée par hasard par le pré-cache
-//             hors-ligne (« 9 fichiers sur 10 », constat KARMA).
-//   v1.87.2 — on ne devine plus : on DEMANDE au serveur. Une icône n'est
-//             réécrite que si elle est VRAIMENT dans le dossier du plan.
-// Aucun catalogue ne liste toutes les icônes de l'app : tout critère fondé
-// sur une liste rejouera ce bug. C'est ce que ce contrôle empêche.
+// ───────── 10. ICÔNES : ON SONDE, ON NE DEVINE PAS ─────────
+// 🩸 Une icône `icon/…` d'un plan servi n'est réécrite vers le dossier du plan que si le serveur
+// l'y trouve. Aucun catalogue ne liste toutes les icônes de l'app (`TAGS_BUILTIN` = tags de POI ;
+// `icon/iconetrack.png` n'y est pas) : un critère fondé sur une liste envoie ces icônes en 404.
 {
   const CFG = fs.readFileSync("js/config.js", "utf8");
   const CFGC = sansCommentaires(CFG);
@@ -283,17 +227,10 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 }
 
 
-// ───────── 12. 🔢 LA VERSION D'UN PLAN SERVEUR NE PING-PONG PLUS ─────────
-// 🩸 VÉCU : `index.json` et `plan-config.json` portent tous deux un champ
-// `version`, et ils DIVERGENT déjà dans ce repo — l'index dit « V1 », le
-// plan-config du plan de test dit « V2 ». Or `addOrUpdate` fait un
-// Object.assign : au boot on écrivait celle de l'index, au chargement celle du
-// plan-config, au boot suivant on revenait à la première. La ligne « Version »
-// de la fiche ℹ️ Infos changeait donc selon la dernière action.
-// Pire : `entry.version || null` écrivait NULL quand l'index omet le champ —
-// la version connue était EFFACÉE à chaque démarrage.
-// Règle : le plan-config fait autorité (il est DANS le plan) ; l'index n'est
-// qu'un indice utile avant le premier chargement.
+// ───────── 12. LA VERSION D'UN PLAN SERVEUR NE PING-PONG PAS ─────────
+// 🩸 `index.json` et `plan-config.json` portent chacun un `version`, qui peuvent diverger ;
+// `addOrUpdate` fait un Object.assign. Règle : le plan-config fait autorité (il est DANS le plan),
+// l'index n'est qu'un indice avant le premier chargement, et un champ absent n'écrit jamais NULL.
 {
   const MAIN = sansCommentaires(fs.readFileSync("js/main.js", "utf8"));
   t("🩸 la découverte n'écrit plus la version inconditionnellement",
@@ -304,9 +241,7 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     MAIN.indexOf("versionSrc = \"index\"") >= 0 && MAIN.indexOf("versionSrc: window.PLAN_CONFIG.plan.version") >= 0);
   t("🔢 le plan-config fait autorité : une version d'origine « plan » n'est pas écrasée",
     MAIN.indexOf("_dejaLa.versionSrc === \"plan\"") >= 0);
-  // ⚠️ Le désaccord de données lui-même n'est PAS une erreur : `index.json` est
-  // rempli à la main par le déployeur. Ce qui était faux, c'est que l'app en
-  // faisait une source d'autorité alternée.
+  // ⚠️ Le désaccord de données n'est PAS une erreur (`index.json` est rempli à la main) : c'est le cas de preuve.
   t("📄 le repo montre bien les deux sources qui divergent (le cas qui a servi de preuve)",
     (function () {
       try {
@@ -319,19 +254,12 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 }
 
 
-// ───────── 13. 🩸 LES DEUX FONCTIONS SURVIVANTES S'EXÉCUTENT ─────────
-// VÉCU (v1.88.1) : en repliant le bloc de tuilage, j'avais ajouté à la fin de
-// `setLoaderPerfPreset` un accès à `meta` — variable déclarée DANS le
-// `if (descEl) { … }` juste au-dessus. Hors portée : ReferenceError au premier
-// appel, donc tout le bloc perf du HOME cassé. `node -c` ne voit RIEN de ça.
-// Le contrôle a disparu (v1.90.2) mais les deux fonctions restent exposées :
-// `main.js` appelle setLoaderPerfPreset au changement de langue, et
-// `homeLoader.js` lit getLoaderPerfPreset à chaque chargement de plan. On les
-// EXÉCUTE donc toujours — et on vérifie que « auto » est bien constant, sans
-// quoi les lecteurs cesseraient de retomber sur le preset mémorisé du plan.
+// ───────── 13. 🩸 LES DEUX FONCTIONS DE PRESET S'EXÉCUTENT ─────────
+// main.js appelle setLoaderPerfPreset au changement de langue, homeLoader.js lit getLoaderPerfPreset
+// à chaque chargement. On les EXÉCUTE : une variable hors portée (ReferenceError au premier appel)
+// échappe à `node -c`. « auto » doit être constant, sinon on ne retombe plus sur le preset du plan.
 {
   const vm3 = require("vm");
-  // Sorti d'index.html le 07/10/2026 (CSP stricte) : js/homeDemarrage.js.
   const BOOT = fs.readFileSync("js/homeDemarrage.js", "utf8");
   const d = BOOT.indexOf("function getLoaderPerfPreset()");
   const f = BOOT.indexOf("window.setLoaderPerfPreset = setLoaderPerfPreset;", d);
@@ -342,10 +270,7 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     let erreur = null, vus = [];
     try {
       const ctx = vm3.createContext(win);
-      // 🩸 On coupe EXACTEMENT à la fin de la dernière ligne cherchée. Un
-      // `+ 60` arbitraire emportait le début du code suivant et faisait échouer
-      // le parse sur une regex tronquée — le garde-fou rougissait pour une
-      // raison qui n'avait rien à voir avec ce qu'il teste.
+      // 🩸 Couper EXACTEMENT après l'ancre : une marge arbitraire emporte du code suivant (regex tronquée).
       const ANC = "window.setLoaderPerfPreset = setLoaderPerfPreset;";
       vm3.runInContext("var window = this;" + BOOT.slice(d, f + ANC.length), ctx);
       vus = [win.getLoaderPerfPreset(), win.getLoaderPerfPreset("off")];
@@ -358,27 +283,19 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
   }
 }
 
-// ───────── 14. 🖼️ LA COLONNE ACTIONS NE DOIT PAS DÉBORDER ─────────
-// 🩸 Le bloc de tuilage, posé déplié en v1.86.0, ajoutait ~207 px à une colonne
-// dont le min-content vaut ~510 px sous un plancher de grid de 520 px : à 125 %
-// de zoom (viewport 1229×691) elle débordait sur le footer. Il a été replié
-// (v1.88.1) puis retiré (v1.90.2) — mais le FILET reste la vraie protection,
-// et il vaut pour la PROCHAINE addition, pas pour celle qu'on vient d'enlever.
+// ───────── 14. LA COLONNE ACTIONS NE DOIT PAS DÉBORDER ─────────
+// 🩸 Son min-content frôle le plancher de la grid : à 125 % de zoom, tout ajout la fait déborder
+// sur le footer. Le filet (scroll interne) protège la PROCHAINE addition.
 {
   const CSS = fs.readFileSync("css/style.css", "utf8");
   t("🩸 FILET : la colonne Actions peut scroller en interne (robuste à la PROCHAINE addition)",
     /\.loader-col-actions #panelZip \{[\s\S]{0,200}overflow-y: auto;/.test(CSS));
 }
 
-// ───────── 15. 🧹 LES PLANS SERVEUR DISPARUS SONT ÉLAGUÉS ─────────
-// 🩸 VÉCU (KARMA) : « un plan serveur est embarqué dans l'export profil et
-// affiché même s'il n'est plus présent côté serveur ; si je reset full, la
-// liste remonte ». La découverte ne faisait QUE des `addOrUpdate` : rien ne
-// retirait jamais une entrée. Un plan sorti de `index.json` restait donc dans
-// le registre (localStorage), s'affichait dans « Mes plans », et partait dans
-// l'export de profil — polluant l'instance d'en face.
-// 🍖 Corriger la SOURCE suffit : l'export reste inchangé, car une entrée
-// périmée importée ailleurs sera élaguée au premier boot de cette instance.
+// ───────── 15. LES PLANS SERVEUR DISPARUS SONT ÉLAGUÉS ─────────
+// 🩸 Sans élagage, un plan sorti de `index.json` reste au registre, dans « Mes plans » et dans
+// l'export de profil. L'export n'a pas besoin de filtre : une entrée périmée importée ailleurs
+// est élaguée au premier boot de l'autre instance.
 {
   const MAIN2 = sansCommentaires(fs.readFileSync("js/main.js", "utf8"));
   t("🧹 les ids vus dans l'index sont collectés", /const vus = \[\];/.test(MAIN2) && /vus\.push\(id\);/.test(MAIN2));
@@ -399,16 +316,10 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 }
 
 
-// ───────── 16. 🧱 LA RACINE DES TUILES EST SONDÉE, PAS DEVINÉE ─────────
-// 🩸 VÉCU (KARMA) : « il va chercher les tuiles ici
-// dev.myktamap.fr/data/plan_jean_may_from_v2.zip-d/tiles/… hors le dossier
-// tiles est dans un dossier data. Sur certains plans ça fonctionne bien. »
-// La v1.86.0 dérivait la racine du dossier du `baseImage`. Or le générateur
-// écrit TOUJOURS les tuiles dans `zip.folder("data").folder("tiles")`, tandis
-// que l'emplacement de l'IMAGE, lui, dépend de la recette de déploiement :
-// avant la v1.86.1 il fallait réécrire les chemins à la main, ce qui remontait
-// souvent l'image d'un cran sans toucher aux tuiles. D'où « certains oui,
-// d'autres non » — le ZIP est le même, le déploiement non.
+// ───────── 16. LA RACINE DES TUILES EST SONDÉE, PAS DEVINÉE ─────────
+// 🩸 Le générateur écrit TOUJOURS les tuiles dans `data/tiles` du ZIP, mais l'emplacement de l'IMAGE
+// dépend du déploiement (souvent remontée d'un cran) : dériver la racine du `baseImage` marche sur
+// certains plans et pas d'autres. On sonde une tuile témoin par candidat.
 {
   const vm6 = require("vm");
   const d = CODE.indexOf("function ktaCandidatsRacineTuiles");
@@ -423,16 +334,13 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
                  plan: { baseImage: "data/mon-plan/plan.png" },
                  tiling: { maxNativeZoom: 0 } };
     const l = cands(pc);
-    // 🩸 LE CAS KARMA : image remontée à la racine du plan, tuiles restées
-    // dans `data/`. Le 1er candidat doit être celui du GÉNÉRATEUR.
+    // 🩸 Image remontée à la racine du plan, tuiles restées dans `data/` : 1er candidat = générateur.
     t("🩸 1er candidat = la mise en page du générateur  [" + l[0] + "]",
       l[0] === "data/mon-plan/data/tiles");
     t("🧱 le voisinage de l'image reste proposé en secours", l.indexOf("data/mon-plan/tiles") > 0);
-    // Surcharge explicite : elle passe devant tout.
     const l2 = cands({ _baseDir: "data/mon-plan", plan: { baseImage: "data/mon-plan/plan.png" },
                        tiling: { tilesDir: "autre/part/tiles" } });
     t("🧱 `tiling.tilesDir` gagne toujours", l2[0] === "autre/part/tiles");
-    // Plan LOCAL : rien à sonder, tout vient de RUNTIME_ASSETS.
     t("🩸 plan LOCAL (blob:) → aucun candidat",
       cands({ _baseDir: "x", plan: { baseImage: "blob:http://x/a" }, tiling: {} }).length === 0);
   }
@@ -451,16 +359,9 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 
 
 // ───────── 17. 🩸 LES IMPORTATEURS DÉCLARENT LEURS FICHIERS AVEC `data/` ─────────
-// VÉCU (KARMA, diagnostic console sur 18 plans servis) : ses plans issus d'un
-// import SIG (`*_from_v2`) donnaient 404 sur l'image ET le calque, ceux du
-// Générateur passaient. Cause : `sigImport`, `gpxImport` et `kmzImport`
-// ÉCRIVAIENT le fichier dans `data/` du ZIP mais le DÉCLARAIENT sans préfixe
-// dans le plan-config.
-// 🩸 POURQUOI ÇA A SURVÉCU SI LONGTEMPS : en import LOCAL, `findMatchingFile`
-// retrouve l'asset par son NOM DE BASE — l'incohérence était donc invisible.
-// Seul le mode serveur, où la résolution est stricte, la révèle.
-// ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en v1.21.0-fix5,
-// jamais pour son `baseImage` : la moitié d'une leçon.
+// Un fichier écrit dans `data/` du ZIP doit être déclaré `data/…` dans le plan-config (image ET
+// calques). 🩸 En import local `findMatchingFile` retrouve l'asset par son nom de base : l'oubli est
+// invisible, seul le mode serveur (résolution stricte) le révèle en 404.
 {
   const PROD = [["js/sigImport.js", 2], ["js/gpxImport.js", 1], ["js/kmzImport.js", 1]];
   PROD.forEach(function (r) {
@@ -472,22 +373,15 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
   });
   t("🩸 sigImport déclare son calque en `data/sig.json`",
     sansCommentaires(fs.readFileSync("js/sigImport.js", "utf8")).indexOf('file: "data/sig.json"') >= 0);
-  // Le Générateur, lui, a toujours été correct — on le VÉRIFIE, sinon une
-  // régression future y passerait inaperçue.
   t("✅ le Générateur préfixe déjà (référence)",
     sansCommentaires(fs.readFileSync("js/createConf.js", "utf8")).indexOf('file: "data/" + fileName') >= 0);
 }
 
 
-// ───────── 18. 🌐 LA VUE OSM DU HOME SAIT LIRE UN PLAN SERVEUR ─────────
-// 🩸 VÉCU (KARMA, console) : « [OsmHomePreview] ZIP non récupérable pour
-// planId=server_plan_carmelet_v2 (FS handle absent + IDB blob purgé) ».
-// `_loadPlanDataForPreview` passait EXCLUSIVEMENT par le ZIP
-// (`PlanRegistry.getHandle()` / `getBlob()`) — qu'un plan serveur n'a ni l'un
-// ni l'autre. Le widget ne rendait donc aucun calque. Ce n'était pas une
-// régression : ce module n'avait AUCUN chemin HTTP.
-// ⚠️ On EXÉCUTE le chargeur. Les trois fautes du jour (deux zones mortes
-// temporelles, une ReferenceError) n'ont été attrapées que comme ça.
+// ───────── 18. LA VUE OSM DU HOME SAIT LIRE UN PLAN SERVEUR ─────────
+// 🩸 Un plan serveur n'a ni handle ni blob ZIP : sans chemin HTTP, le widget ne rend aucun calque
+// (« ZIP non récupérable »). ⚠️ On EXÉCUTE le chargeur : zones mortes temporelles et
+// ReferenceError ne se voient que comme ça.
 async function _osmServeur() {
   const vm7 = require("vm");
   const OHP = fs.readFileSync("js/osmHomePreview.js", "utf8");
@@ -504,9 +398,8 @@ async function _osmServeur() {
   t("🌐 le chargeur serveur est extractible", d >= 0 && f > d);
   t("🩸 il est BRANCHÉ sur le type de plan, AVANT la voie ZIP",
     (function () {
-      // 🩸 Borner au CORPS de `_loadPlanDataForPreview` : chercher
-      // `_getPlanZipFile(planId)` dans tout le fichier tombait sur sa
-      // DÉFINITION, située plus haut — l'assertion rougissait sur du code sain.
+      // 🩸 Borner au CORPS de `_loadPlanDataForPreview` : dans tout le fichier, on tombe sur la
+      // DÉFINITION de `_getPlanZipFile`, plus haut (faux rouge).
       const i = OHPC.indexOf("async function _loadPlanDataForPreview(planId)");
       if (i < 0) return false;
       const j = OHPC.indexOf("const file = await _getPlanZipFile(planId);", i);
@@ -533,8 +426,7 @@ async function _osmServeur() {
     return { ok: true, status: 200, json: async function () {
       return { data: [{ x: 1, y: 2 }], roads: [{ id: "r" }], zones: [] }; } };
   };
-  // Mêmes helpers qu'au runtime : la résolution des chemins et la racine des
-  // tuiles SONDÉE. Les stuber ici garantit qu'on teste le chargeur, pas eux.
+  // Helpers du runtime stubés : on teste le chargeur, pas eux.
   win.resolveServerPaths = function (c, dir) {
     if (c.plan && c.plan.baseImage) c.plan.baseImage = dir + "/data/" + c.plan.baseImage;
     (c.dataLayers || []).forEach(function (l) { if (l.file) l.file = dir + "/data/" + l.file; });
@@ -568,14 +460,10 @@ async function _osmServeur() {
     OHP.slice(d, f).indexOf("createObjectURL") < 0);
 }
 
-// ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────
-// Le cas de la régression est rejoué tel quel : une icône de l'app absente du
-// dossier du plan NE DOIT PAS être réécrite, une icône perso présente DOIT
-// l'être. Une assertion de chaîne n'aurait rien dit de ce comportement.
-// 🩸 `async` : sans ça, un throw de `vm.runInContext` (module renommé, syntaxe
-// cassée…) remontait SYNCHRONEMENT hors du Promise.all et faisait PLANTER le
-// script au lieu de le faire échouer. Un crash n'est pas un échec annoncé :
-// mon falsificateur le lisait comme « reste vert ».
+// ───────── 11. ON EXÉCUTE LE SONDEUR ─────────
+// Icône de l'app absente du dossier du plan : NON réécrite ; icône perso présente : réécrite.
+// 🩸 `async` obligatoire : un throw synchrone de `vm.runInContext` sortirait du Promise.all et
+// ferait planter le script au lieu de l'annoncer en échec.
 async function _sonderIcones(icons, presentsLocalement, fetchPlante) {
   const vm = require("vm");   // require local : le §9 le scope dans son bloc
   const win = { console: { log: () => {}, warn: () => {} }, navigator: { userAgent: "node" },
@@ -598,11 +486,9 @@ async function _sonderIcones(icons, presentsLocalement, fetchPlante) {
   return { icons: cfg.icons, sondes: win._sondes };
 }
 
-// ───────── §19. OPACITÉ DU PLAN SUR UN CALQUE (08/10/2026, retour KARMA) ─────────
-// Rectangle plus sombre au milieu d'un plan en Vue OSM / widget de l'accueil : des tuiles qui se
-// superposent (vue d'ensemble + tuiles nettes de la zone visible ; deux niveaux après une course de
-// rendu) s'additionnaient, l'opacité étant posée TUILE PAR TUILE. Mesuré en navigateur : calque à 0,5,
-// tuiles sans opacité propre.
+// ───────── 20. OPACITÉ DU PLAN SUR UN CALQUE ─────────
+// 🩸 Opacité posée TUILE PAR TUILE = des tuiles superposées (vue d'ensemble + tuiles nettes, ou deux
+// niveaux après une course de rendu) s'additionnent en rectangle plus sombre. L'opacité vit sur le calque.
 function _opaciteCalque() {
   const OV = fs.readFileSync("js/osmView.js", "utf8"), HP = fs.readFileSync("js/osmHomePreview.js", "utf8");
   t("🫥 Vue OSM : tuiles dans un pane dédié qui porte l'opacité (sous les tracés)",
@@ -610,13 +496,13 @@ function _opaciteCalque() {
     /pane: PANE_TUILES/.test(OV) && /if \(pane\) \{ pane\.style\.opacity = String\(_opacity\); return; \}/.test(OV));
   t("🩸 Vue OSM : un rendu de niveau dépassé pendant l'extraction ne pose rien (jeton), jamais 2 overlays par tuile",
     /const jeton = \+\+_rendusLances;/.test(OV) && /if \(jeton !== _rendusLances \|\| z !== _currentLevel \|\| !_osmMap\) return;/.test(OV) &&
-    /if \(_tilesByPath\[t\.path\]\) continue;   \/\/ posée entre-temps/.test(OV));
+    /if \(_tilesByPath\[t\.path\]\) continue;/.test(OV));   // le CODE seul, sans le commentaire de fin de ligne
   t("🫥 accueil : vue d'ensemble ET tuiles nettes dans le même sous-calque opaque du plan, opacité sur le calque",
     /const pTuiles = _paneTuiles\(paneNom, opacite\);/.test(HP) && /opacity: pTuiles \? 1 : opacite/.test(HP) &&
     /const pT   = pn \? _paneTuiles\(pn\.nom, op\) : null;/.test(HP) && /opacity: pT \? 1 : op/.test(HP) &&
     /parent\.insertBefore\(pane, parent\.firstChild\);/.test(HP) && !/pane\.style\.zIndex = "-1";/.test(HP));
-  // 🩸 12/10/2026 : plus de z-index négatif (Safari iOS le repeignait derrière le fond OSM pendant le glissé) ;
-  // le sous-calque reste sous les tracés par l'ordre du DOM (premier enfant du calque du plan).
+  // 🩸 Pas de z-index négatif (Safari iOS le repeint derrière le fond OSM pendant le glissé) : le
+  // sous-calque reste sous les tracés par l'ordre du DOM (premier enfant du calque du plan).
   t("🫥 accueil : les 3 réglages d'opacité passent par le calque (sinon la tuile se re-multiplie)",
     (HP.match(/_opaciteTuilesPlan\(/g) || []).length === 4);
 }
@@ -632,9 +518,7 @@ Promise.all([
     a.track === "icon/iconetrack.png");
   t("🎨 icône PERSO réellement présente → réécrite vers le dossier du plan",
     a.perso === "data/toto/icon/moncustom.png");
-  // 🩸 Vérifier seulement « def n'a pas changé » ne prouvait RIEN : sondé, il
-  // aurait pris un 404 et serait resté identique de toute façon. On compte les
-  // SONDES : un chemin hors `icon/` ne doit même pas générer de requête.
+  // 🩸 « def inchangé » ne prouve rien (un 404 le laisse identique) : on compte les SONDES.
   t("🎨 un chemin hors `icon/` n'est même pas SONDÉ (2 sondes, pas 3)",
     a.def === "lib/leaflet/images/marker-icon.png" && r[0].sondes.length === 2 &&
     r[0].sondes.every(function (u) { return u.indexOf("/icon/") >= 0; }));
@@ -646,15 +530,10 @@ Promise.all([
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);
 });
-// ───────── 17. 🧠 LRU DES TUILES : UN PLAN ZIP LIBÈRE ENFIN DE LA MÉMOIRE ─────────
-// 🩸 Mesuré le 26/09/2026 : sur desktop, MAX_CACHED_LEVELS valait 4 alors que
-// le générateur produit EXACTEMENT 4 niveaux (-3…0) — l'éviction ne pouvait
-// jamais se déclencher, et les fichiers extraits du ZIP restaient en mémoire
-// pour tous les niveaux visités. Ce contrôle CHARGE tiling.js dans un vm, lui
-// donne un faux ZIP paresseux (asset.file + _zipPath, comme main.js) et une
-// fausse carte, puis visite les 4 niveaux : le premier visité doit être libéré
-// (URL révoquée ET fichier rendu), les 3 derniers conservés.
-// Falsification : remettre 4 sur desktop → rien n'est libéré → rouge.
+// ───────── 17 bis. LRU DES TUILES : UN PLAN ZIP LIBÈRE DE LA MÉMOIRE ─────────
+// 🩸 Le générateur produit EXACTEMENT 4 niveaux (-3…0) : MAX_CACHED_LEVELS à 4 sur desktop
+// n'évince jamais rien. On charge tiling.js dans un vm (faux ZIP paresseux comme main.js, fausse
+// carte), on visite les 4 niveaux : le premier doit être libéré (URL révoquée ET fichier rendu).
 function _lruZip() {
   const vm17 = require("vm");
   const W = 4096, H = 4096, TS = 512;
@@ -710,15 +589,11 @@ function _lruZip() {
   });
 }
 
-// ───────── 18. 🖨️ RÉGION PEINTE DEPUIS LES TUILES (cartes PDF du Mode Secours) ─────────
-// 🩸 07/10/2026 : les cartes PDF rendaient le plan ENTIER sous 16 Mpx puis recadraient —
-// sur un grand plan, ~20 % de la résolution, noms de galeries illisibles (test terrain du
-// 30/09). `ktaDessinerRegionTuiles` ne peint que la région demandée, depuis les tuiles.
-// Bac à sable : faux plan 1300 × 1100 (tuiles partielles en haut et à droite), faux ZIP,
-// fausse Image, contexte qui ENREGISTRE les drawImage. On vérifie quelles tuiles sont lues,
-// OÙ elles sont posées (rangée k = 1 en bas, rangée du haut collée en bas de sa tuile),
-// le niveau choisi selon l'échelle, et que chaque URL créée est révoquée.
-// Falsification : inverser le sens des rangées, ou oublier le décalage de la région → rouge.
+// ───────── 18 bis. RÉGION PEINTE DEPUIS LES TUILES (cartes PDF du Mode Secours) ─────────
+// 🩸 Rendre le plan ENTIER sous 16 Mpx puis recadrer laisse ~20 % de la résolution sur un grand
+// plan (noms illisibles) : `ktaDessinerRegionTuiles` ne peint que la région, depuis les tuiles.
+// Bac à sable (plan 1300 × 1100, tuiles de bord partielles, drawImage enregistrés) : tuiles lues,
+// position (rangée k = 1 en bas), niveau selon l'échelle, URL révoquées.
 function _regionTuiles() {
   const vm18 = require("vm");
   const W = 1300, H = 1100, TS = 512;
@@ -748,7 +623,7 @@ function _regionTuiles() {
                     fs.readFileSync("js/tiling.js", "utf8"), ctx);
   const pc = { plan: { tiledV2: true, imageWidth: W, imageHeight: H, baseImage: "blob:base" },
                tiling: { version: 2, tileSize: TS, format: "jpeg", minNativeZoom: -3, maxNativeZoom: 0 } };
-  // drawImage à 9 arguments depuis le 07/10/2026 : la source est découpée (remplissage des tuiles de bord exclu).
+  // drawImage à 9 arguments : la source est découpée (remplissage des tuiles de bord exclu).
   const ctxRec = () => { const d = []; return { d: d, drawImage: function (img, sx, sy, sw, sh, x, y, w, h) {
     if (x === undefined) { x = sx; y = sy; w = sw; h = sh; sx = 0; sy = 0; sw = img.naturalWidth; sh = img.naturalHeight; }
     d.push({ src: img._src, sx: sx, sy: sy, sw: sw, sh: sh, x: x, y: y, w: w, h: h }); } }; };
@@ -762,8 +637,7 @@ function _regionTuiles() {
     t("🖨️ région à l'échelle 1 → tuiles pleine résolution (z0), seules celles qui la touchent (4, dont 1 absente)",
       r.ok === true && r.z === 0 && r.tuiles === 4 && r.manquantes === 1 && c1.d.length === 3);
     const a = de(0, 3), b = de(1, 2);
-    // Plan de 1100 px de haut : la rangée du haut (k = 3) n'a que 76 px de contenu, collés EN BAS de la tuile ; les
-    // 436 px du dessus sont du remplissage (noir sur un plan opaque) — ni lus, ni dessinés.
+    // La rangée du haut (k = 3) n'a que 76 px de contenu, collés EN BAS de la tuile : le remplissage n'est pas lu.
     t("🖨️ rangée du HAUT (partielle, k=3) : seuls ses 76 px de contenu, posés au bord haut du plan (-100, -50)",
       !!a && a.sy === 436 && a.sh === 76 && a.x === -100 && a.y === -50 && a.w === 512 && a.h === 76, a);
     t("🖨️ tuile (col 1, k=2) posée à (412, 26) : rangée k=1 en BAS, origine = coin de la région", !!b && b.x === 412 && b.y === 26, b);
@@ -773,7 +647,7 @@ function _regionTuiles() {
       t("🖨️ échelle 0,3 → niveau z-1 (le moins détaillé qui suffit), tuiles intérieures réduites de moitié en taille",
         r2.z === -1 && c2.d.length > 0 && c2.d.every(e => /\/z-1\//.test(e.src) && e.w <= 512 * 2 * 0.3 + 1e-6) &&
         c2.d.some(e => Math.abs(e.w - 512 * 2 * 0.3) < 1e-6));
-      // 🩸 Rien au-delà des bords du plan (le remplissage noir des tuiles de bord débordait à droite et en haut).
+      // 🩸 Rien au-delà des bords : le remplissage noir des tuiles de bord déborderait à droite et en haut.
       t("🖨️ rien n'est dessiné au-delà des bords du plan (remplissage des tuiles de bord exclu)",
         c2.d.every(e => (e.x + e.w) / 0.3 <= 1300 + 1e-6 && e.y >= -1e-6 && (e.y + e.h) / 0.3 <= 1100 + 1e-6), c2.d.map(e => [e.x, e.y, e.w, e.h]));
       return win.ktaDessinerRegionTuiles(ctxRec(), { plan: { imageWidth: W, imageHeight: H } }, { x: 0, y: 0, w: 10, h: 10 }, 1);
@@ -792,13 +666,11 @@ function _regionTuiles() {
   });
 }
 
-// ───────── 19. 🖼️ EXPORT DU PLAN ENTIER : LE FOND VIENT DES TUILES DÉJÀ SUR L'APPAREIL ─────────
-// 🩸 Mesuré le 26/09/2026 sur un relevé lourd tuilé : l'export image retéléchargeait l'image
-// de base (42 Mo) alors que 30 Mo de tuiles étaient déjà sur l'appareil. `ktaTuilesSurAppareil`
-// dit si TOUTES les tuiles du niveau utile sont là (archive du plan, ou Cache Storage d'un plan
-// serveur — sans réseau) ; l'export compose alors le fond depuis elles, sans plafond de tuiles
-// (qualité inchangée : z = 0 dès l'échelle 0,5) et bords calés sur le pixel (pas de filet).
-// Falsification : retirer le test du cache (toujours true), le plafond Infinity ou `aligner` → rouge.
+// ───────── 19. EXPORT DU PLAN ENTIER : LE FOND VIENT DES TUILES DÉJÀ SUR L'APPAREIL ─────────
+// Sans ça, l'export retélécharge l'image de base (des dizaines de Mo) alors que les tuiles sont là.
+// `ktaTuilesSurAppareil` dit si TOUTES les tuiles du niveau utile sont présentes (archive, ou Cache
+// Storage d'un plan serveur, sans réseau) ; le fond se compose alors sans plafond (z = 0 dès
+// l'échelle 0,5) et calé sur le pixel (`aligner` : pas de filet entre tuiles).
 function _fondExportTuiles() {
   const vm19 = require("vm");
   const W = 13000, H = 1100, TS = 512;   // 26 colonnes × 3 rangées = 78 tuiles à z0

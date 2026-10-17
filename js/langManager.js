@@ -5,92 +5,55 @@
  */
 
 // =========================
-// 🌍 I18N — Internationalisation (multi-langue)
+// I18N — internationalisation (window.I18n) + window.ktaLocale + window.ktaEsc
 // =========================
-// Chantier v1.45.0 — Passage progressif au multi-langue.
-//
-// PRINCIPE : tout le texte user-facing codé en dur en français est extrait
-// dans des dicos `lang/<code>.json` (clés plates "module.section.element").
-// Le FR (`lang/fr.json`) est la LANGUE DE RÉFÉRENCE et le FALLBACK universel :
-// toute clé absente d'une autre langue retombe sur le FR. Toute clé absente
-// PARTOUT retourne la clé brute (visible = signal de dette, jamais de crash).
-//
-// MIGRATION PROGRESSIVE : on remplace `"Texte FR"` par `I18n.t("cle")` module
-// par module, vague par vague. Un module non-migré garde son FR inline (qui
-// reste correct). Aucune régression possible : migré ou pas, ça marche.
-//
-// LANGUE ACTIVE : lue depuis `myktamap_app_lang` — la langue GLOBALE de l'app,
-// pilotée par le sélecteur de ⚙️ Configuration de l'accueil (#loaderAppLang)
-// et par l'écran de déverrouillage — jamais depuis un plan (v1.85.4).
-// ⚠️ DÉCOUPLÉE de `myktamap_readme_lang` (clé de la doc + onboarding), qui ne
-// pilote QUE l'affichage local de ces deux contenus. Choix KARMA v1.45.0 :
-// « le changement de langue complet se fait via Configuration ; doc/onboarding
-// = local au mode en cours ». Auto-détection navigator.language au 1er boot.
-// Demain pour ajouter ES/RU/… : déposer `lang/es.json` + l'ajouter à
-// AVAILABLE_LANGS ci-dessous (+ ASSETS_TO_CACHE du SW). Zéro code à toucher.
-//
-// CHARGEMENT : `I18n.init()` est AWAIT-é dans main.js AVANT lancerApplication.
-// Les dicos sont précachés par le Service Worker (ASSETS_TO_CACHE) → offline
-// instantané dès le 1er install. fr.json est TOUJOURS chargé (fallback).
-//
-// API publique (window.I18n) :
-//   I18n.init()              → Promise. Précharge fr + langue active. À await au boot.
-//   I18n.t(key, params)      → string. Trad langue active → fallback fr → clé brute.
-//                              params : objet { nom: valeur } pour interpoler {nom}.
-//   I18n.getLang()           → "fr" | "en" | … (langue active courante)
-//   I18n.setLang(lang)       → Promise. Change + persiste + fetch le dico + notifie.
-//   I18n.onChange(cb)        → s'abonne aux changements de langue (re-render). Retourne unbind().
-//   I18n.available()         → [{ code, label, flag }] des langues déclarées.
-//   I18n.has(key)            → bool. La clé existe-t-elle (langue active OU fr) ?
+// Textes extraits dans `lang/<code>.json` (clés plates "module.section.element"). Le FR est la référence et le
+// repli universel ; une clé absente PARTOUT s'affiche humanisée (signal de dette, jamais de crash). Migration
+// progressive : un module non migré garde son FR inline.
+// Langue active : `myktamap_app_lang` (⚙️ Configuration de l'accueil, écran de déverrouillage ; jamais un plan).
+// ⚠️ DÉCOUPLÉE de `myktamap_readme_lang` (doc + onboarding, portée locale). Auto-détection navigator.language.
+// Ajouter une langue : lang/<code>.json + AVAILABLE_LANGS + ASSETS_TO_CACHE du SW, sans autre code.
+// ⚠️ `I18n.init()` est AWAIT-é dans main.js AVANT lancerApplication ; appeler t() au rendu, jamais au load.
+// API : init() → Promise · t(key, params) ({nom} interpolé) · getLang() · setLang(lang) → Promise ·
+//   onChange(cb) → unbind · available() → [{code, label, flag}] · has(key) · ajouter(code, dico) · reload() ·
+//   resolveContentLang(liste) · ensureLang(code).
+// Garde-fous : scripts/check-i18n.js, scripts/check-esc.js · Doc : docs/architecture/i18n.md
 // =========================
 
 (function() {
   "use strict";
 
-  // Clé localStorage de la langue GLOBALE de l'app, pilotée par le sélecteur
-  // de ⚙️ Configuration de l'accueil (hors plan). DISTINCTE de `myktamap_readme_lang` (doc + onboarding) :
-  // changer la langue de l'app n'impose PAS la langue de la doc et vice-versa.
+  // Langue GLOBALE de l'app, DISTINCTE de `myktamap_readme_lang` (l'une n'impose pas l'autre).
   const LANG_STORAGE_KEY = "myktamap_app_lang";
 
-  // Langues déclarées. Pour en ajouter une : déposer lang/<code>.json,
-  // ajouter l'entrée ici, et ajouter "./lang/<code>.json" à ASSETS_TO_CACHE
-  // (sw.js). C'est TOUT.
+  // Langues déclarées : lang/<code>.json + entrée ici + "./lang/<code>.json" dans ASSETS_TO_CACHE (sw.js).
   const AVAILABLE_LANGS = [
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" },
     { code: "es", label: "Español",  flag: "🇪🇸" }
   ];
 
-  // Langue de référence / fallback universel. fr.json est toujours chargé.
+  // Référence / repli universel, toujours chargé.
   const FALLBACK_LANG = "fr";
 
-  // Dicos chargés en mémoire : { fr: {...}, en: {...} }
   const _dicts = {};
-  // Callbacks abonnés au changement de langue (re-render des modales ouvertes).
+  // Abonnés au changement de langue (re-rendu des modales ouvertes).
   const _onChangeCbs = [];
   let _initialized = false;
-  // 🆕 v1.68.1 (audit clés manquantes) : promesse d'init MÉMOÏSÉE. Avant,
-  // deux appels concurrents à init() (main.js + osmHomePreview au boot)
-  // relançaient chacun le Promise.all → DOUBLE fetch des dicos. Et surtout,
-  // init() devient une barrière gratuite : tout module qui rend du texte
-  // potentiellement AVANT la fin du fetch des dicos fait
-  // `I18n.init().then(render)` — résolue = microtask immédiate, en vol = on
-  // attend le dico. C'est le filet anti-course du boot (cf audit v1.68.1 :
-  // 32 clés « manquantes » qui existaient toutes, appelées trop tôt).
+  // Promesse d'init MÉMOÏSÉE : deux appels concurrents (main.js + osmHomePreview au boot) ne refont pas le
+  // fetch, et init() sert de barrière gratuite — un module qui rend du texte peut-être avant la fin du fetch
+  // fait `I18n.init().then(render)` (résolue = microtask immédiate). Filet anti-course du boot.
   let _initPromise = null;
 
   function _isKnownLang(code) {
     return AVAILABLE_LANGS.some(function(l) { return l.code === code; });
   }
 
-  // 🆕 v1.46.4 (audit M2) : mémoïsation de la langue active. getLang() est
-  // appelé à CHAQUE t() (= des milliers de fois au rendu d'un gros plan) et
-  // relisait localStorage à chaque appel. La langue ne change QU'AU setLang
-  // (seul écrivain de LANG_STORAGE_KEY) → on cache le résultat et on l'invalide
-  // dans setLang. Comportement inchangé, juste moins de getItem() répétés.
+  // Langue active mémoïsée : getLang() est appelé à CHAQUE t() (des milliers de fois) ; seul setLang écrit la
+  // clé, il invalide le cache.
   let _cachedLang = null;
 
-  // Langue active : lit la clé partagée, fallback navigator.language puis FR.
+  // Clé partagée, sinon navigator.language, sinon FR.
   function getLang() {
     if (_cachedLang) return _cachedLang;
     try {
@@ -98,15 +61,15 @@
       if (_isKnownLang(saved)) { _cachedLang = saved; return saved; }
     } catch(e) {}
     const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
-    // On ne mappe que sur une langue DÉCLARÉE ; sinon FR.
+    // Seulement une langue DÉCLARÉE ; sinon FR.
     const guess = navLang.split("-")[0];
     _cachedLang = _isKnownLang(guess) ? guess : FALLBACK_LANG;
     return _cachedLang;
   }
 
-  // 🧩 14/10/2026 — Dictionnaires fournis par une EXTENSION (I18n.ajouter) : gardés à part et refusionnés à
-  // chaque chargement du dico de la langue (chargement paresseux, reload). Une clé de l'app n'est JAMAIS
-  // écrasée : l'extension n'ajoute que des clés qui n'existent pas (préfixe propre recommandé, ex. « pro. »).
+  // Dictionnaires d'une EXTENSION (I18n.ajouter), gardés à part et refusionnés à chaque chargement du dico.
+  // 🔒 Une clé de l'app n'est JAMAIS écrasée : l'extension n'ajoute que des clés absentes (préfixe propre
+  // recommandé).
   const _ajouts = {};          // code → { clé: texte }
   const _clesAjoutees = {};    // code → { clé: true } (posées par une extension, donc remplaçables par elle)
   function _fusionnerAjouts(code) {
@@ -118,7 +81,7 @@
       d[k] = a[k]; posees[k] = true;
     });
   }
-  // I18n.ajouter(code, dico) → nombre de clés retenues. Textes seulement, clés [\w.-]+ ; langue inconnue : 0.
+  // → nombre de clés retenues. Textes seulement, clés [\w.-]+ ; langue inconnue : 0.
   function ajouter(code, dico) {
     if (!_isKnownLang(code) || !dico || typeof dico !== "object") return 0;
     const a = _ajouts[code] = _ajouts[code] || {};
@@ -130,25 +93,17 @@
     return n;
   }
 
-  // Fetch + parse un dico de langue. Résout {} en cas d'échec (jamais reject :
-  // une langue manquante doit dégrader vers le fallback, pas casser l'app).
+  // Résout {} en cas d'échec, jamais reject : une langue manquante dégrade vers le repli.
   function _loadDict(code) {
     if (_dicts[code]) return Promise.resolve(_dicts[code]);
-    // 🆕 v1.46.6 — CACHE-BUSTER PAR VERSION DE BUILD. Règle DÉFINITIVEMENT les
-    // « clés brutes/humanisées après mise à jour » : l'URL `?v=<build>` change à
-    // CHAQUE release → contourne TOUTES les couches de cache (HTTP navigateur,
-    // précache SW, cache serveur/CDN) qui servaient un vieux dico au boot. Le SW
-    // fait un fallback `ignoreSearch` en offline (cf sw.js) pour retomber sur le
-    // dico précaché sans query. Sans __MKM__.build (improbable, copyright.js
-    // charge avant) : URL nue = comportement d'avant.
+    // 🩸 Cache-buster `?v=<build>` : change à chaque release et contourne TOUTES les couches de cache (HTTP,
+    // précache SW, CDN) qui serviraient un vieux dico (clés humanisées après mise à jour). Hors ligne, le SW
+    // retombe en `ignoreSearch` sur le dico précaché. Sans __MKM__.build : URL nue.
     var _build = (window.__MKM__ && window.__MKM__.build) ? window.__MKM__.build : "";
     var _url = "lang/" + code + ".json" + (_build ? "?v=" + encodeURIComponent(_build) : "");
-    // 🆕 v1.47.0 — `cache: "reload"` (et non "no-cache") : force un GET réseau qui
-    // IGNORE le cache HTTP du navigateur, au lieu de simplement le revalider.
-    // Sans SW (ex. après killsw), "no-cache" pouvait recevoir un 304 et ressservir
-    // un `fr.json?v=<build>` PÉRIMÉ tant que le build ne changeait pas (clés i18n
-    // ajoutées en cours de cycle → invisibles). "reload" garantit le dico frais dès
-    // que le serveur l'a. SW présent → il intercepte avec son propre no-store.
+    // 🩸 `cache: "reload"`, pas "no-cache" : GET réseau qui IGNORE le cache HTTP. Sans SW (après killsw),
+    // "no-cache" peut recevoir un 304 et resservir un dico périmé tant que le build ne change pas. Avec SW,
+    // il intercepte avec son propre no-store.
     return fetch(_url, { cache: "reload" })
       .then(function(r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -169,13 +124,13 @@
       });
   }
 
-  // Garantit qu'un dico de langue est chargé (lazy). Le FR est toujours préchargé.
+  // Charge un dico à la demande (le FR est toujours préchargé).
   function ensureLang(code) {
     if (!_isKnownLang(code)) return Promise.resolve({});
     return _loadDict(code);
   }
 
-  // Init au boot : charge le FALLBACK (fr, obligatoire) + la langue active.
+  // Boot : repli (fr, obligatoire) + langue active.
   function init() {
     if (_initPromise) return _initPromise;
     const active = getLang();
@@ -189,7 +144,6 @@
     return _initPromise;
   }
 
-  // Interpolation : remplace {nom} par params.nom dans la chaîne.
   function _interpolate(str, params) {
     if (!params || typeof str !== "string") return str;
     return str.replace(/\{(\w+)\}/g, function(match, key) {
@@ -197,10 +151,8 @@
     });
   }
 
-  // 🆕 Dégradation gracieuse d'une clé manquante : "module.section.changeBtn"
-  // → "Change Btn" (dernier segment, camelCase/_/- éclatés en mots, 1ère
-  // majuscule). Évite d'afficher la clé technique brute à l'user si une clé
-  // manque (dico périmé via cache SW, oubli, faute) — lisible plutôt que cassé.
+  // Clé manquante → "Change Btn" (dernier segment, camelCase/_/- éclatés, majuscule) plutôt que la clé
+  // technique : lisible si un dico est périmé ou une clé oubliée.
   function _humanizeKey(key) {
     if (typeof key !== "string") return "";
     const last = key.split(".").pop() || key;
@@ -208,7 +160,7 @@
     return words ? words.charAt(0).toUpperCase() + words.slice(1) : key;
   }
 
-  // Cœur : traduction d'une clé. langue active → fallback fr → clé brute.
+  // Langue active → repli fr → clé humanisée.
   function t(key, params) {
     if (key == null) return "";
     const lang = getLang();
@@ -219,16 +171,13 @@
       val = _dicts[FALLBACK_LANG][key];
     }
     if (val == null) {
-      // Clé inconnue partout : retourne la clé brute (signal de dette, pas de crash).
-      // En dev on log une fois par clé pour repérer les trous.
+      // Inconnue partout : un log par clé pour repérer les trous.
       if (!t._warned) t._warned = {};
       if (!t._warned[key]) {
         t._warned[key] = true;
         console.warn("[I18n] Clé manquante : \"" + key + "\" (langue " + lang + ")");
       }
-      // 🆕 H1 (audit 2026-06-14) : au lieu de la clé brute (« pin.setup.changeBtn »
-      // — moche si une clé manque côté user, ex. dico périmé), on humanise →
-      // « Change Btn ». Couvre du même coup les ~39 helpers `_t` inline d'index.html.
+      // Humanisée plutôt que brute (couvre aussi les helpers `_t` inline d'index.html).
       return _humanizeKey(key);
     }
     return _interpolate(val, params);
@@ -240,11 +189,11 @@
               (_dicts[FALLBACK_LANG] && Object.prototype.hasOwnProperty.call(_dicts[FALLBACK_LANG], key)));
   }
 
-  // Change la langue : persiste, charge le dico si besoin, notifie les abonnés.
+  // Persiste, charge le dico si besoin, notifie les abonnés.
   function setLang(code) {
     if (!_isKnownLang(code)) return Promise.resolve();
     try { localStorage.setItem(LANG_STORAGE_KEY, code); } catch(e) {}
-    _cachedLang = code; // 🆕 v1.46.4 (M2) : invalide/rafraîchit le cache getLang.
+    _cachedLang = code; // (M2) : invalide/rafraîchit le cache getLang.
     return ensureLang(code).then(function() {
       _onChangeCbs.forEach(function(cb) {
         try { cb(code); } catch(e) { console.warn("[I18n] onChange cb failed :", e); }
@@ -261,11 +210,8 @@
     };
   }
 
-  // 🆕 v1.47.0 — Recharge les dicos (langue active + fallback) DEPUIS LE RÉSEAU :
-  // vide le cache mémoire → _loadDict refetch en `cache: "reload"` (frais garanti),
-  // puis notifie les abonnés (onChange). Sert au lissage du swap SW passif : si le
-  // 1er boot a chargé un dico périmé (clés humanisées), on rafraîchit + re-render à
-  // la volée, sans reload. Idempotent, retourne une Promise.
+  // Recharge les dicos DEPUIS LE RÉSEAU (cache mémoire vidé, fetch en `cache: "reload"`) puis notifie : si le
+  // premier boot a chargé un dico périmé, rafraîchissement et re-rendu à la volée. Idempotent, → Promise.
   function reload() {
     var active = getLang();
     delete _dicts[active];
@@ -283,13 +229,9 @@
     return AVAILABLE_LANGS.slice();
   }
 
-  // Résout la langue à PRÉSÉLECTIONNER pour un contenu localisé (doc, onboarding)
-  // dont les langues réellement disponibles sont passées en argument (ex.
-  // ["fr","en"] aujourd'hui, ["fr","en","ru"] le jour où le contenu RU existe).
-  // Règle : langue active de l'app si elle est dispo pour ce contenu, sinon
-  // "en" (fallback universel non-FR), sinon le 1er dispo (fr en pratique).
-  // NE LIT PAS myktamap_readme_lang : ne fournit QUE le défaut dérivé de l'app ;
-  // la mémoire du choix manuel est gérée par le module appelant.
+  // Langue à PRÉSÉLECTIONNER pour un contenu localisé (doc, onboarding) dont les langues dispo sont passées :
+  // langue active si dispo, sinon "en", sinon la première. NE LIT PAS myktamap_readme_lang (le choix manuel est
+  // géré par l'appelant).
   function resolveContentLang(availableList) {
     const avail = (Array.isArray(availableList) && availableList.length) ? availableList : [FALLBACK_LANG];
     const app = getLang();
@@ -299,10 +241,8 @@
     return avail[0];
   }
 
-  // Audit i18n (O11) : locale des dates affichées ET imprimées (rapports, PDF,
-  // stats). 51 appels codaient "fr-FR" : un utilisateur EN/ES recevait ses
-  // dates au format français. en-GB (jj/mm/aaaa, 24 h) plutôt qu'en-US : pas
-  // d'AM/PM ni d'espace insécable fine, que jsPDF imprime mal.
+  // Locale des dates affichées ET imprimées (rapports, PDF, stats) : jamais "fr-FR" en dur. en-GB (jj/mm/aaaa,
+  // 24 h) plutôt qu'en-US : pas d'AM/PM ni d'espace fine insécable, mal imprimés par jsPDF.
   window.ktaLocale = function() {
     const l = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : FALLBACK_LANG;
     return ({ fr: "fr-FR", en: "en-GB", es: "es-ES" })[l] || "fr-FR";
@@ -325,13 +265,12 @@
 })();
 
 // =========================
-// 🧹 window.ktaEsc(s) — ÉCHAPPEMENT HTML UNIQUE de l'application
+// window.ktaEsc(s) — ÉCHAPPEMENT HTML UNIQUE de l'application
 // =========================
-// & < > " ' → entités ; null / undefined → "". Sûr dans un texte comme dans un attribut entre
-// guillemets (simples ou doubles). Posé ICI (2e script chargé, sans defer) et non dans utils.js
-// (defer) : les modules non différés (accueil, profil, inspecteurs) s'en servent dès leur chargement.
-// Une copie locale d'échappement est refusée par scripts/check-esc.js : un module garde au plus un
-// alias (`function _esc(s) { return window.ktaEsc(s); }`). Exceptions motivées : voir ce contrôle.
+// 🔒 & < > " ' → entités ; null / undefined → "". Sûr en texte comme en attribut entre guillemets. Posé ICI
+// (2e script, sans defer) et non dans utils.js (defer) : les modules non différés s'en servent au chargement.
+// Une copie locale est refusée par scripts/check-esc.js : au plus un alias
+// (`function _esc(s) { return window.ktaEsc(s); }`). Exceptions motivées : voir ce contrôle.
 window.ktaEsc = function(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];

@@ -5,85 +5,54 @@
  */
 
 // =========================
-// MAIN.JS — unifié serveur + import navigateur + registre de plans
+// main.js — démarrage de l'app : découverte des plans serveur (data/index.json), import navigateur, registre de
+// plans, lancement de la carte et libération du plan précédent.
+// Expose : window.ktaKiosqueServeurSeul, ktaIdRegistreExtension, ktaEstIdRegistreExtension, lancerApplication…
+// Dépend de : PlanRegistry, SessionPersist, KtaInstance, KtaExtensions, map.js, utils.js.
+// Pièges : 🩸 l'ordre initMapFromConfig → initDataFromConfig est un contrat (registres vidés au bon endroit).
+//          🔒 tout refus kiosque passe par window.ktaKiosqueServeurSeul, jamais par KIOSK_CONFIG à la main.
+// Garde-fous : check-plan-tags.js (ancres des tags), check-gate-instance.js, check-kiosque-serveur.js,
+// check-extensions.js (une partie de l'ordre du boot).
+// Doc : docs/architecture/plans-loader.md, community-server-line.md
 // =========================
 
-// =========================
-// CHARGEMENT DES DONNÉES
-// =========================
+// ── Chargement des données ──────────────────────
 async function initDataFromConfig() {
   const config = window.PLAN_CONFIG;
   if (!config || !Array.isArray(config.dataLayers)) {
     console.warn("[Main] Aucune dataLayer à charger");
     return;
   }
-  // Vider le registre des routes embarquées du plan précédent — elles seront re-remplies
-  // au fil du chargement des calques par ajouterPointsDepuisJSON > registerEmbeddedRoad
+  // Routes embarquées du plan précédent : re-remplies par ajouterPointsDepuisJSON > registerEmbeddedRoad.
   if (typeof window.clearEmbeddedRoads === "function") {
     window.clearEmbeddedRoads();
   }
 
-  // 🏗️ Multi-niveau (v148) : vider les registres des objets data layers du
-  // plan precedent (markers + polylines + polygons) — ils seront re-remplis
-  // par ajouterPointsDepuisJSON ci-dessous. Sans ce reset, les objets du
-  // plan precedent restent dans les registres et le filtre niveau tenterait
-  // de les modifier alors qu'ils sont detaches de la map.
+  // 🩸 Registres des objets data layers vidés au changement de plan : sinon le filtre niveau modifie des objets
+  // détachés de la carte. Re-remplis par ajouterPointsDepuisJSON ci-dessous.
   window._ktaDataMarkers   = [];
   window._ktaDataPolylines = [];
   window._ktaDataPolygons  = [];
-  // 🆕 v1.9.3-A1.a : registre des structures embarquées via data layer
-  // (= structure.json chargé via plan-config.json comme zone.json l'est).
-  // Vidé au plan switch pour éviter que des structures du plan précédent
-  // restent référencées et soient ciblées par le filtre niveau actif.
   window._ktaDataStructurePolygons = [];
-  // 🐛 v1.34.7 — RETIRÉ : `window._ktaImageOverlays = [];` (était ici en
-  // v162). Bug racine de "checkbox imageLayer décoché alors que calque
-  // visible / cocher ne fait rien" : initDataFromConfig était appelée
-  // APRÈS initMapFromConfig (cf lancerApplication l293-294). Le reset
-  // ici vidait le registre que initMapFromConfig venait de populer
-  // (push à map.js:420). Les overlays restaient attachés à la map (Leaflet
-  // a sa propre référence interne dans `_layers`), mais le registre était
-  // vide → filterPanel ne trouvait plus aucune entry → handler change
-  // retournait early. Le reset est déjà fait dans `map.js:403` JUSTE
-  // AVANT les push, ce qui suffit (et c'est le bon endroit puisque c'est
-  // la même fonction qui pousse).
-  // v1.16.0 step 1d : registre des ghosts note du data layer KMZ. Vidé
-  // au switch de plan pour éviter d'accumuler des références mortes
-  // référant aux layerGroups du plan précédent (cf utils.js).
+  // 🩸 Ne PAS vider window._ktaImageOverlays ici : initDataFromConfig tourne APRÈS initMapFromConfig, qui vient de
+  // le remplir (reset fait dans map.js juste avant les push). Le vider casse les cases imageLayer du filtre.
+  // Ghosts note du data layer KMZ : sinon références mortes vers les layerGroups du plan précédent (utils.js).
   if (typeof window._kta_resetDataLayerNoteGhosts === "function") {
     window._kta_resetDataLayerNoteGhosts();
   }
-  // v1.16.0 step 2 : charge la couche "plan" de la légende personnalisée
-  // (PLAN_CONFIG.customLegend). Doit être appelé APRÈS que PLAN_CONFIG
-  // est en place — startApp() est invoqué après load du plan-config.json.
-  // Le niveau "session" (= overrides utilisateur) est chargé séparément
-  // par SessionPersist._applyRestore().
+  // ⚠️ Couche « plan » de la légende personnalisée (PLAN_CONFIG.customLegend) : exige PLAN_CONFIG en place.
+  // La couche « session » est chargée par SessionPersist._applyRestore().
   if (window.LegendCustomization && typeof window.LegendCustomization.loadPlanState === "function") {
     window.LegendCustomization.loadPlanState();
   }
-  // v1.16.0 step 3 : charge les favoris du plan courant. Le module
-  // Favoris stocke la liste indexée par planId — switch de plan = swap
-  // de la liste active. Le planId est window._currentLoadedPlanId
-  // (défini par le plan switcher / loader).
+  // Favoris indexés par planId : changer de plan = changer de liste active.
   if (window.Favoris && typeof window.Favoris.loadPlan === "function") {
     window.Favoris.loadPlan(window._currentLoadedPlanId || null);
   }
 
-  // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
-  // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.
-  // Sans ce skip, les markers du JSON arrivent async APRÈS le restore et coexistent
-  // avec ceux de la session dans le layerEditor — mais ces markers JSON ne sont
-  // PAS dans listePoints, donc tout render ultérieur (suppression, ajout) les efface
-  // silencieusement, et le contrôle des calques peut sembler ne pas les gérer.
-  //
-  // 🐛 v1.21.3 (audit anti-crash P0-1) : avant ce fix, on lisait le slot
-  // legacy unique `myktamap_session_v1` qui n'est plus écrit depuis la
-  // migration v1.16.1 vers le slot per-plan `myktamap_session_v1_<planId>`.
-  // Résultat : `_skipEditorJsonLoad` restait toujours false → `data/editor.json`
-  // se chargeait async PAR-DESSUS la session restaurée → bug silencieux 100%
-  // reproductible sur tout plan moderne avec un editor.json fourni.
-  // Fix : passer par `window.SessionPersist.getSaved(planId)` qui pointe sur
-  // le slot per-plan via le bon préfixe.
+  // 🩸 Session avec des points editor pour ce plan → on saute data/editor.json (la session fait autorité).
+  // Sinon les markers du JSON arrivent après le restore, hors listePoints, et le prochain render les efface en
+  // silence. Lecture par SessionPersist.getSaved(planId) (slot par plan), jamais l'ancien slot unique.
   let _skipEditorJsonLoad = false;
   try {
     const planId = window._currentLoadedPlanId;
@@ -112,45 +81,27 @@ async function initDataFromConfig() {
   });
 }
 
-// Verrou pour éviter double lancement
+// Verrou anti double lancement.
 let _appEnCours = false;
-// Flag : true = l'utilisateur a explicitement demandé un import
+// true = l'utilisateur a explicitement demandé un import.
 let _importDemande = false;
 
-// =========================
-// AUTO-DISCOVERY SERVEUR (data/index.json)
-// =========================
-// 🛠️ v1.73.0 — MODE SERVEUR KIOSQUE (gouvernance : community-server-line.md).
-// data/index.json porte, en plus de plans[], un bloc `config` (subtitle +
-// 2 flags MAX — règle figée) et un bloc `liaisons`. Le SW le sert
-// network-first → les changements d'un admin kiosque se propagent au boot
-// suivant, sans réinstallation.
-//
-// _chargerIndexServeur() : fetch + parse + application de la config.
-// TOUJOURS appelée au boot — la pref « ne pas charger les plans serveur »
-// ne skippe QUE l'enregistrement des plans (decouvrirPlansServeur), pas la
-// config d'instance (sinon : sous-titre/flags morts pour ces users).
+// ── Découverte serveur (data/index.json) ──────────────────────
+// Mode serveur kiosque (community-server-line.md) : index.json porte plans[], un bloc `config` (subtitle + 2 flags
+// MAX, règle figée) et un bloc `liaisons`. Servi network-first par le SW : une modif s'applique au boot suivant.
+// ⚠️ _chargerIndexServeur() tourne TOUJOURS au boot : la pref « ne pas charger les plans serveur » ne saute que
+// l'enregistrement des plans, jamais la config d'instance.
 async function _chargerIndexServeur() {
   try {
-    // 🩸 v1.88.2 — `no-store` EXPLICITE. Le Service Worker sert deja ce fichier
-    // en network-first, mais ce fetch-ci part de la PAGE : quand le SW ne
-    // controle pas encore l onglet (tout premier chargement, SW en cours de
-    // mise a jour), c est le cache HTTP du navigateur qui repond. Or la conf
-    // Nginx documentee ne pose `no-cache` que sur sw.js / version.json /
-    // alert.json / Licence-pro.json : `data/**` tombe dans « le reste » et
-    // herite d une fraicheur heuristique. Un index modifie pouvait donc
-    // remonter perime (bug KARMA : « j ai refait un fichier index et ca ne
-    // semble pas bien remonter »).
-    // 🏛️ v2.6.0 (chantier 2) — PLUS DE SECONDE LECTURE : la config d'instance
-    // a été lue avant les gates (js/ktaInstance.js) ; on reprend ce résultat.
-    // Repli (module absent) : la lecture d'origine.
+    // La config d'instance a déjà été lue avant les gates (js/ktaInstance.js) : on reprend ce résultat.
+    // 🩸 Repli sans le module : `no-store` explicite. Quand le SW ne contrôle pas encore l'onglet, c'est le cache
+    // HTTP qui répond, et Nginx ne pose `no-cache` que sur sw.js/version.json/… : un index modifié remonterait périmé.
     let idx = null;
     if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
       const st = await window.KtaInstance.charger();
       idx = st && st.repondu ? st.index : null;
-      // Index injoignable mais config connue : le kiosque garde ses réglages
-      // hors ligne (même source que la gate et le connecteur). Pas de liste de
-      // plans à découvrir dans ce cas : on sort comme avant, sans index.
+      // Index injoignable mais config connue : le kiosque garde ses réglages hors ligne (même source que la gate
+      // et le connecteur). Pas de plans à découvrir : on sort sans index.
       if (!idx && st && st.config) {
         window.KIOSK_CONFIG = st.config;
         _appliquerConfigKiosque();
@@ -161,10 +112,9 @@ async function _chargerIndexServeur() {
     }
     if (!idx) {
       console.log("[Main] data/index.json absent — pas de config d'instance");
-      // 🔌 v2.0.0 — Hors ligne et sans cache, le Service Worker répond un 404
-      // SYNTHÉTIQUE (sw.js) : indiscernable d'un vrai 404. On le traite donc en
-      // « index injoignable » → dernière config connue (règle B), jamais OFF
-      // par défaut (décision KARMA : une instance connectée hors ligne est HS).
+      // 🩸 Hors ligne sans cache, le SW répond un 404 SYNTHÉTIQUE, indiscernable d'un vrai : traité en « index
+      // injoignable » → dernière config connue (règle B), jamais OFF (décision produit : instance connectée hors
+      // ligne = HS).
       _appliquerConnexionServeur(null, false);
       return null;
     }
@@ -174,11 +124,9 @@ async function _chargerIndexServeur() {
     if (typeof window.refreshPlansList === "function") { try { window.refreshPlansList(); } catch(e) {} }
     _appliquerConnexionServeur(window.KIOSK_CONFIG, true);
 
-    // 🔑 La revalidation du mot de passe d'instance a lieu AVANT la gate
-    // depuis v2.6.0 (initApp) : rien à refaire ici.
-    // 🌀 Liaisons fournies par l'instance : FUSION par id dans le registre
-    // local (idempotent — rejouée à chaque boot, dédup par link.id). Une
-    // liaison retirée côté serveur reste chez qui l'a déjà (assumé, doc).
+    // La revalidation du mot de passe d'instance a lieu AVANT la gate (initApp) : rien à refaire ici.
+    // Liaisons de l'instance : fusion idempotente par link.id à chaque boot. Une liaison retirée côté serveur reste
+    // chez qui l'a déjà (décision produit).
     try {
       const lks = idx && idx.liaisons && Array.isArray(idx.liaisons.links) ? idx.liaisons.links : [];
       if (lks.length && window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
@@ -194,9 +142,8 @@ async function _chargerIndexServeur() {
   }
 }
 
-// 🔌 v2.0.0 — Connexion serveur de l'instance (`config.serverConnection`) :
-// état et pastille gérés par js/ktaExtensions.js. `indexRepondu` dit si l'index
-// a vraiment répondu : la fonction ne peut pas le deviner (cf revaliderInstance).
+// Connexion serveur de l'instance (`config.serverConnection`) : état et pastille dans js/ktaExtensions.js.
+// ⚠️ `indexRepondu` dit si l'index a vraiment répondu : la fonction ne peut pas le deviner (cf revaliderInstance).
 function _appliquerConnexionServeur(config, indexRepondu) {
   try {
     if (window.KtaExtensions && typeof window.KtaExtensions.appliquerConfig === "function") {
@@ -205,13 +152,10 @@ function _appliquerConnexionServeur(config, indexRepondu) {
   } catch(e) { console.warn("[Main] connexion serveur :", e); }
 }
 
-// 🧩 v2.7.0 — « Instance indisponible » : une instance connectée dont le module
-// de connexion ne se charge pas, ou dont la gate déléguée échoue. L'app reste
-// bloquée ici (comme une gate) ; « Réessayer » recharge la page. JAMAIS de
-// repli sur la gate community.
-// 🔏 09/10/2026 — motif "licence" : installation pro dont la licence est absente, expirée ou
-// refusée par le serveur. Même écran, autre texte : avant, l'app s'ouvrait en mode community
-// sur les données gardées par le dernier utilisateur de l'appareil (retour KARMA).
+// « Instance indisponible » : instance connectée dont le module de connexion ne se charge pas ou dont la gate
+// déléguée échoue. L'app reste bloquée ici ; « Réessayer » recharge la page.
+// 🔒 JAMAIS de repli sur la gate community. Motif "licence" (licence pro absente, expirée, refusée) : même écran,
+// sinon l'app s'ouvrirait en community sur les données du dernier utilisateur de l'appareil.
 function _motifBlocage() {
   const e = (window.KtaExtensions && typeof window.KtaExtensions.etat === "function") ? window.KtaExtensions.etat() : null;
   return (e && e.etat === "licence") ? "licence" : "";
@@ -236,8 +180,8 @@ function _ktaInstanceIndisponible(motif) {
     b.textContent = t("ext.indispo.reessayer");
     b.addEventListener("click", function() { location.reload(); });
     boite.appendChild(h); boite.appendChild(p); boite.appendChild(b);
-    // Licence absente / refusée : lien vers la présentation de la licence pro (même adresse que le « 💼 Licence
-    // pro » du pied de page de l'accueil, index.html) — demande KARMA du 10/10/2026.
+    // Licence absente / refusée : lien vers la présentation de la licence pro (même adresse que le pied de page
+    // de l'accueil, index.html).
     if (lic) {
       const lien = document.createElement("a");
       lien.className = "kta-instance-indispo-lien";
@@ -252,17 +196,14 @@ function _ktaInstanceIndisponible(motif) {
   });
 }
 
-// 🧩 v2.7.0 — Plans fournis par une extension (prise « source de plans ») :
-// inscrits au registre en `type: "ext"`, ouverts par KtaExtensions.charger
-// PlanExtension (homeLoader). Une extension qui ne répond pas = aucun plan
-// ajouté (prise d'information : erreur ignorée).
-// Id du registre d'un plan d'extension (☁️) — seule fabrique, aussi lue par l'accueil.
+// Plans fournis par une extension (prise « source de plans ») : inscrits en `type: "ext"`, ouverts par
+// KtaExtensions.chargerPlanExtension (homeLoader). Extension muette = aucun plan ajouté (erreur ignorée).
+// Id du registre d'un plan d'extension : seule fabrique, aussi lue par l'accueil.
 window.ktaIdRegistreExtension = function(extId) {
   return "ext_" + String(extId).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
 };
-// Réciproque : cet id du registre (plan, ou dossier fourni par l'extension — même
-// préfixe) sort-il de cette fabrique ? Sert quand la ligne du registre manque
-// (profil importé : session ou photo d'un plan ☁️ arrivée sans son entrée).
+// Réciproque (plan ou dossier d'extension, même préfixe) : sert quand la ligne du registre manque (profil importé
+// avec une session ou photo d'un plan d'extension sans son entrée).
 window.ktaEstIdRegistreExtension = function(id) {
   return typeof id === "string" && id.indexOf("ext_") === 0;
 };
@@ -273,8 +214,8 @@ async function _decouvrirPlansExtension() {
     if (!p || !p.id) return;
     const id = window.ktaIdRegistreExtension(p.id);
     const entree = { id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id), version: p.version || null };
-    // Mode fourni par l'extension (lu dans le ZIP) : badge juste avant la 1re ouverture. Comme
-    // pour les plans du site, seulement « vrai » — jamais d'écrasement d'un réglage de l'utilisateur.
+    // Mode fourni par l'extension (badge avant la 1re ouverture) : seulement « vrai », jamais d'écrasement d'un
+    // réglage de l'utilisateur.
     if (p.tiledV2 === true) entree.tiledV2 = true;
     if (p.multiLevel === true) entree.multiLevel = true;
     window.PlanRegistry.addOrUpdate(entree);
@@ -282,10 +223,9 @@ async function _decouvrirPlansExtension() {
   });
   if (liste.length) console.log("[Main] " + liste.length + " plan(s) fourni(s) par une extension");
 
-  // 📁 Dossiers de l'instance fournis par l'extension : même doctrine que ceux de
-  // l'index (proposés, verrouillés tant qu'ils sont déclarés, un rangement manuel de
-  // l'utilisateur l'emporte). Appliqués EN MÊME TEMPS que ceux de l'index — sinon
-  // applyIndexFolders libérerait ces derniers. null (serveur injoignable) : rien ne bouge.
+  // Dossiers fournis par l'extension : même doctrine que ceux de l'index (proposés, verrouillés tant que déclarés,
+  // le rangement manuel l'emporte). 🩸 Appliqués EN MÊME TEMPS que ceux de l'index, sinon applyIndexFolders
+  // libère ces derniers. null (serveur injoignable) : rien ne bouge.
   const dossiers = await window.KtaExtensions.dossiersExtension();
   if (Array.isArray(dossiers) && typeof window.PlanRegistry.applyIndexFolders === "function") {
     const st = (window.KtaInstance && window.KtaInstance.etat) ? window.KtaInstance.etat() : null;
@@ -293,8 +233,8 @@ async function _decouvrirPlansExtension() {
     const table = window.PlanRegistry.applyIndexFolders(deIndex.concat(dossiers.map(function(d) {
       return Object.assign({}, d, { id: "ext_" + d.id });
     })));
-    // Correspondance dossier du registre → dossier de l'extension : un plan rangé à la main
-    // dans un dossier de l'installation y est rangé pour tous (si le compte en a le droit).
+    // Dossier du registre → dossier de l'extension : un rangement manuel dans un dossier de l'installation vaut
+    // pour tous (si le compte en a le droit).
     if (typeof window.KtaExtensions.associerDossiersExtension === "function") {
       const corresp = {};
       dossiers.forEach(function(d) { const r = table["ext_" + d.id]; if (r) corresp[r] = String(d.id); });
@@ -311,26 +251,19 @@ async function _decouvrirPlansExtension() {
   }
 }
 
-// Application de `config` : sous-titre (splash + header loader — textContent
-// jamais innerHTML, + retrait de data-i18n pour survivre aux changements de
-// langue) et flags kiosque (= DÉCLUTTER UI, pas de la sécurité — assumé).
-// 🔒 v1.90.1 (bug KARMA) — LE VERROU KIOSQUE, EN UN SEUL POINT.
-// « en mode serveur, avec générateur et import désactivés, je peux importer
-//   un profil, et donc récupérer tous les ZIP ; et si ce profil a une
-//   préférence de mode serveur désactivé, ça casse tout. »
-// Masquer un bouton ne ferme pas une porte : tout ce qui doit être refusé en
-// kiosque interroge CE prédicat, jamais `KIOSK_CONFIG` à la main.
+// 🔒 Le verrou kiosque, en un seul point. Masquer un bouton ne ferme pas une porte (un import de profil rouvrirait
+// tous les ZIP) : tout ce qui doit être refusé en kiosque interroge CE prédicat, jamais `KIOSK_CONFIG` à la main.
 window.ktaKiosqueServeurSeul = function() {
   if (window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true) return true;
-  // 🧩 v2.7.0 (chantier 3, prise « droit d'import ») : une extension peut
-  // refuser l'import local (réglage admin, rôle Lecteur). Même goulot que le
-  // kiosque : import simple, import multiple, import de profil. Une prise qui
-  // échoue REFUSE (KtaExtensions._permission).
+  // Prise « droit d'import » : une extension peut refuser l'import local (réglage admin, rôle Lecteur). Même goulot
+  // pour import simple, multiple et de profil. 🔒 Une prise qui échoue REFUSE (KtaExtensions._permission).
   if (window.KtaExtensions && typeof window.KtaExtensions.importAutorise === "function" &&
       !window.KtaExtensions.importAutorise()) return true;
   return false;
 };
 
+// Application de `config` : sous-titre (textContent, data-i18n retiré pour survivre au changement de langue) et
+// flags kiosque (désencombrer l'UI, pas de la sécurité : la sécurité est dans ktaKiosqueServeurSeul).
 function _appliquerConfigKiosque() {
   const cfg = window.KIOSK_CONFIG || {};
   const st = (typeof cfg.subtitle === "string") ? cfg.subtitle.trim().slice(0, 80) : "";
@@ -342,9 +275,7 @@ function _appliquerConfigKiosque() {
     console.log("[Main] Sous-titre kiosque appliqué :", st);
   }
   if (cfg.serverPlansOnly === true) {
-    // Masque le flux d'import (dropzone + FS Access + « Charger ce plan »)
-    // et les prefs serveur devenues sans objet. La liste, les Outils et les
-    // données user (sessions, carnet…) restent intacts.
+    // Masque le flux d'import et les prefs serveur sans objet ; liste, Outils et données user restent intacts.
     const pz = document.getElementById("panelZip");
     if (pz) {
       pz.style.display = "none";
@@ -353,11 +284,8 @@ function _appliquerConfigKiosque() {
     }
     const filtres = document.querySelector(".loader-plans-filters");
     if (filtres) filtres.style.display = "none";
-    // 📦 v1.94.0 — L'IMPORT MULTIPLE EST UNE PORTE D'ENTRÉE, et il vit dans
-    // les 🧰 Outils, donc HORS de `#panelZip` : sans cette ligne, un kiosque
-    // « plans serveur uniquement » masquait l'ajout d'un plan mais laissait
-    // entrer N plans d'un coup (signalé par KARMA, 15/09/2026). Le module
-    // refuse AUSSI de s'ouvrir — masquer ne ferme pas une porte.
+    // 🩸 L'import multiple vit dans les Outils, HORS de `#panelZip` : à masquer à part, sinon N plans entrent d'un
+    // coup. Le module refuse aussi de s'ouvrir.
     const impMasse = document.getElementById("loaderImportMasseBtn");
     if (impMasse) impMasse.style.display = "none";
     const skipCb = document.getElementById("loaderSkipServerPlansCb");
@@ -365,15 +293,9 @@ function _appliquerConfigKiosque() {
       const sec = skipCb.closest(".kta-aide-section");
       if (sec) sec.style.display = "none";
     }
-    // 🩸 LES DEUX PRÉFÉRENCES QUI VIDENT UN KIOSQUE, ET DONT LES CASES SONT
-    // JUSTEMENT MASQUÉES ICI. « Ne pas charger les plans serveur » et
-    // « Afficher les plans serveur » suffisent chacune à ne RIEN afficher :
-    // plus de plans serveur, et pas d'import local pour compenser — écran
-    // vide, sans aucun réglage visible pour s'en sortir. Elles arrivent soit
-    // d'un import de profil (`myktamap_loader_show_server_plans` voyage dans
-    // la section préférences), soit d'un choix fait AVANT que l'instance ne
-    // devienne un kiosque. Un flag qui cache son propre remède est un piège :
-    // on remet les deux à leur valeur sûre.
+    // 🩸 Deux préférences vident un kiosque et leurs cases sont masquées ici : « Ne pas charger les plans serveur »
+    // et « Afficher les plans serveur » (décochée). Écran vide sans réglage pour s'en sortir. Elles arrivent par
+    // import de profil ou d'avant le kiosque : on les remet à leur valeur sûre.
     try {
       localStorage.setItem("myktamap_loader_show_server_plans", "true");
       localStorage.setItem("myktamap_skip_server_plans_v1", "false");
@@ -385,13 +307,8 @@ function _appliquerConfigKiosque() {
     if (gen) gen.style.display = "none";
     console.log("[Main] Kiosque : disableGenerator actif");
   }
-  // 📁 16/09/2026 — mode par défaut de « Mes plans » imposé par le kiosque
-  // (décision KARMA 9), SEULEMENT si l'utilisateur n'a jamais choisi : son
-  // choix, une fois fait, prime toujours. On ne l'écrit pas dans le registre
-  // (ce serait un choix qu'il n'a pas fait) : homeLoader lit ce défaut.
-  // Plans du site (data/index.json) non chargés par défaut — installation où tout vit
-  // en base. Même doctrine que plansViewDefault : le choix de l'utilisateur prime
-  // (lu par homeLoader > _loaderSkipServerPlans, rien n'est écrit ici).
+  // Défauts d'installation (sitePlansHiddenDefault, plansViewDefault) : ne valent que tant que l'utilisateur n'a
+  // pas choisi. Rien n'est écrit dans le registre (ce serait un choix qu'il n'a pas fait) : homeLoader les lit.
   if (cfg.sitePlansHiddenDefault === true && cfg.serverPlansOnly !== true) {
     console.log("[Main] Instance : plans du site masqués par défaut (sitePlansHiddenDefault)");
   }
@@ -408,17 +325,12 @@ async function decouvrirPlansServeur(idxDeja) {
     const idx = idxDeja || await _chargerIndexServeur();
     if (!idx) return;
     const plans = Array.isArray(idx?.plans) ? idx.plans : [];
-    // 🩸 v1.88.2 — on retient les ids VUS dans l index pour elaguer ensuite
-    // les entrees du registre qui n y sont plus (cf bloc en fin de fonction).
+    // Ids vus dans l'index : sert à élaguer en fin de fonction les entrées qui n'y sont plus.
     const vus = [];
     console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
 
-    // 📁 16/09/2026 — DOSSIERS DÉCLARÉS PAR L'INDEX (ConfAdmin). Même doctrine
-    // que les tags v1.90.1 : l'index PROPOSE, l'utilisateur DISPOSE. Un
-    // dossier déclaré est verrouillé (ni renommé ni supprimé localement) tant
-    // qu'il l'est, et LIBÉRÉ — jamais supprimé — quand l'index ne le déclare
-    // plus. La table traduit l'id déclaré vers l'id réel (un dossier local
-    // homonyme est repris sous son id). Index sans `folders` = tout libéré.
+    // Dossiers déclarés par l'index : l'index PROPOSE, l'utilisateur DISPOSE. Verrouillé tant que déclaré, LIBÉRÉ
+    // (jamais supprimé) ensuite. La table traduit l'id déclaré vers l'id réel (dossier local homonyme repris).
     const tableDossiers = (window.PlanRegistry.applyIndexFolders)
       ? window.PlanRegistry.applyIndexFolders(Array.isArray(idx.folders) ? idx.folders : []) : {};
 
@@ -432,10 +344,8 @@ async function decouvrirPlansServeur(idxDeja) {
         id   = window.PlanRegistry.genServerId(path);
       } else if (entry && typeof entry === "object") {
         path = entry.path || ("data/" + (entry.id || ""));
-        // 📦 07/10/2026 — un plan peut être déclaré par son ARCHIVE (`"zip": "data/x.zip"`) plutôt
-        // que par un dossier : l'app la télécharge et l'ouvre comme un ZIP importé (copie gardée
-        // sur l'appareil selon « Mémoriser »). Chemin relatif seulement : ni schéma, ni « .. »,
-        // ni chemin absolu — l'index ne doit pas faire télécharger ailleurs que sur l'installation.
+        // Plan déclaré par son ARCHIVE (`"zip": "data/x.zip"`) : ouvert comme un ZIP importé.
+        // 🔒 Chemin relatif seulement (ni schéma, ni « .. », ni absolu) : jamais de téléchargement hors installation.
         if (typeof entry.zip === "string" && /^[\w./-]+\.zip$/i.test(entry.zip) &&
             entry.zip.indexOf("..") < 0 && entry.zip.charAt(0) !== "/") {
           zip = entry.zip;
@@ -445,11 +355,8 @@ async function decouvrirPlansServeur(idxDeja) {
         name = entry.name || entry.id || path;
         version = entry.version || null;
         author  = entry.author  || null;
-        // 🏗️ Mode badges (v150) : flags optionnels declares dans data/index.json
-        // pour que la liste de plans affiche les badges V2 / Multi-LVL immediatement,
-        // sans avoir a charger chaque plan-config.json. Pour les plans locaux et
-        // server-mais-pas-declares, les flags sont stockes en PlanRegistry au
-        // premier load (cf _enregistrerPlanCharge dans chargerPlanServeur / startImportedPlan).
+        // Flags optionnels : badges V2 / Multi-LVL sans charger chaque plan-config.json. Sinon ils sont stockés au
+        // premier chargement (_enregistrerPlanCharge).
         if (entry.multiLevel === true) multiLevel = true;
         if (entry.tiledV2    === true) tiledV2    = true;
         id   = entry.id ? "server_" + entry.id.replace(/[^a-z0-9_-]/gi, "_") : window.PlanRegistry.genServerId(path);
@@ -467,80 +374,45 @@ async function decouvrirPlansServeur(idxDeja) {
         discovered: true,
         addedAt: new Date().toISOString()
       };
-      // 🩸 v1.88.0 — LA VERSION NE PING-PONGAIT PLUS QU'ENTRE DEUX SOURCES QUI
-      // SE CONTREDISENT. `addOrUpdate` fait un Object.assign : au boot on
-      // écrivait celle de `index.json`, au chargement du plan celle du
-      // `plan-config.json`, et au boot suivant on revenait à la première. La
-      // ligne « Version » de la fiche ℹ️ Infos changeait donc selon la dernière
-      // action. Constaté dans le repo même : index.json dit « V1 », le
-      // plan-config du plan de test dit « V2 ».
-      // Pire : `entry.version || null` écrivait NULL quand index.json omet le
-      // champ — la version connue était EFFACÉE à chaque démarrage.
-      //
-      // Règle : le `plan-config.json` fait autorité (il est DANS le plan) ;
-      // `index.json` n'est qu'un indice d'affichage, utile avant le premier
-      // chargement. On n'écrase donc jamais une version d'origine « plan », et
-      // on n'écrit jamais `null`.
+      // 🩸 Version : plan-config.json fait autorité (il est DANS le plan), index.json n'est qu'un indice avant le
+      // premier chargement. addOrUpdate fait un Object.assign : écrire la version de l'index à chaque boot la ferait
+      // ping-ponguer, et écrire `null` l'effacerait. On n'écrase jamais une version d'origine « plan ».
       const _dejaLa = window.PlanRegistry.findById ? window.PlanRegistry.findById(id) : null;
       if (version && !(_dejaLa && _dejaLa.versionSrc === "plan")) {
         regEntry.version    = version;
         regEntry.versionSrc = "index";
       }
-      // Ajout conditionnel des flags (sinon Object.assign dans addOrUpdate effacerait
-      // un user-override explicite en multiLevel:false par setMultiLevel).
+      // 🩸 Flags ajoutés seulement s'ils sont vrais : sinon l'Object.assign efface un multiLevel:false de l'user.
       if (multiLevel === true) regEntry.multiLevel = true;
       if (tiledV2    === true) regEntry.tiledV2    = true;
-      // 📁 le dossier proposé par l'index pour ce plan (appliqué après
-      // l'écriture de l'entrée, plus bas — setPlanFolder exige le plan).
+      // Dossier proposé : appliqué après l'écriture de l'entrée (setPlanFolder exige le plan).
       const dossierIndex = (entry && entry.folder) ? (tableDossiers[String(entry.folder)] || null) : null;
       vus.push(id);
       window.PlanRegistry.addOrUpdate(regEntry);
 
-      // 📁 16/09/2026 — rangement proposé par l'index : jamais par-dessus un
-      // plan déplacé à la main (folderSrc "user", setPlanFolder refuse). Un
-      // plan que l'index ne range plus en sort seulement s'il y était par lui.
+      // Jamais par-dessus un plan rangé à la main (folderSrc "user", setPlanFolder refuse). Un plan que l'index ne
+      // range plus n'en sort que s'il y était par lui.
       if (window.PlanRegistry.setPlanFolder) {
         const _apres = window.PlanRegistry.findById(id);
         if (dossierIndex) window.PlanRegistry.setPlanFolder(id, dossierIndex, "index");
         else if (_apres && _apres.folderSrc === "index") window.PlanRegistry.setPlanFolder(id, null, "index");
       }
 
-      // 🏷️ v1.90.1 — TAGS PROPOSÉS PAR L'INDEX (demande KARMA : pouvoir
-      // taguer un plan serveur depuis ConfAdmin, pour filtrer facilement).
-      // 🩸 L'INDEX PROPOSE, L'UTILISATEUR DISPOSE : on n'écrit que si le plan
-      // n'a pas de tags posés à la main. Sans ça, la découverte les
-      // réécrirait à CHAQUE boot et effacerait le travail de l'utilisateur —
-      // le ping-pong exact corrigé sur `version` en v1.88.0.
-      // La normalisation (trim, dédup, 12 max, 24 car.) reste dans
-      // `PlanRegistry.setTags` : un seul endroit pour toute l'app.
+      // Tags proposés par l'index (ConfAdmin). 🩸 Jamais par-dessus des tags posés à la main, sinon chaque boot
+      // efface le travail de l'utilisateur. Normalisation (trim, dédup, 12 max, 24 car.) : PlanRegistry.setTags.
       if (Array.isArray(entry && entry.tags) && entry.tags.length &&
           !(_dejaLa && _dejaLa.tagsSrc === "user")) {
         window.PlanRegistry.setTags(id, entry.tags, "index");
       } else if (_dejaLa && _dejaLa.tagsSrc === "index" && _dejaLa.tags) {
-        // Le kiosque a RETIRÉ les tags de son index : ceux qu il avait posés
-        // s en vont avec. Il reste maître de ce qu il a lui-même proposé —
-        // et ne touche jamais à ce que l utilisateur a écrit (tagsSrc user).
+        // Tags retirés de l'index : ceux qu'il avait posés s'en vont (jamais ceux de l'utilisateur).
         window.PlanRegistry.setTags(id, [], "index");
       }
     });
 
-    // 🩸 v1.88.2 — ÉLAGAGE DES PLANS SERVEUR DISPARUS (bug KARMA : « un plan
-    // serveur est embarqué dans l'export profil et affiché même s'il n'est
-    // plus présent côté serveur ; si je reset full, la liste remonte »).
-    // La découverte ne faisait QUE des addOrUpdate : rien ne retirait jamais
-    // une entrée. Un plan sorti de index.json restait donc dans le registre
-    // (localStorage), s'affichait dans « Mes plans », et partait dans l'export
-    // de profil — où il polluait l'instance d'en face.
-    //
-    // On ne retire QUE des entrées auto-découvertes (`discovered: true`) et de
-    // type serveur : un plan local importé, ou un plan serveur ajouté
-    // autrement, n'est jamais touché.
-    //
-    // 🛟 Ce code n'est atteint que si le fetch de index.json a RÉUSSI
-    // (`decouvrirPlansServeur` sort plus haut sinon) : un serveur injoignable
-    // ou hors-ligne ne peut donc pas vider la liste.
-    // ⚠️ On ne purge PAS les données associées (sessions, photos, géoréf) :
-    // si le plan revient sous le même id, elles se rattachent d'elles-mêmes.
+    // 🩸 Élagage des plans serveur disparus de index.json : sans lui, ils restent dans « Mes plans » et partent dans
+    // l'export de profil. Seules les entrées serveur `discovered: true` sont retirées (jamais un plan importé).
+    // Atteint seulement si index.json a répondu : un serveur injoignable ne vide pas la liste.
+    // ⚠️ Les données associées (sessions, photos, géoréf) restent : elles se rattachent si le plan revient.
     try {
       const connus = new Set(vus);
       const aRetirer = (window.PlanRegistry.getAll() || []).filter(function (p) {
@@ -559,18 +431,14 @@ async function decouvrirPlansServeur(idxDeja) {
   }
 }
 
-// =========================
-// ENREGISTRER DANS LE REGISTRE APRÈS CHARGEMENT
-// =========================
+// ── Registre après chargement ──────────────────────
 function _enregistrerPlanCharge(infos) {
   if (!window.PlanRegistry || !infos) return;
   window.PlanRegistry.addOrUpdate(infos);
   window.PlanRegistry.markOpened(infos.id);
 }
 
-// =========================
-// LANCEMENT DE LA CARTE (après config prête)
-// =========================
+// ── Lancement de la carte (après config prête) ──────────────────────
 async function lancerApplication() {
   if (_appEnCours) {
     console.warn("[Main] lancerApplication déjà en cours, ignoré");
@@ -578,42 +446,23 @@ async function lancerApplication() {
   }
   _appEnCours = true;
 
-  // 🆕 v1.11.2 V2.2 : timestamp de début de session pour calculer la
-  // durée (modale Détails session). Set à chaque démarrage de
-  // lancerApplication (= nouveau plan chargé). Reset dans
-  // _libererRessourcesPlanPrecedent au plan switch.
+  // Début de session (durée affichée par Détails session) ; remis à zéro au changement de plan.
   window._sessionStartTs = Date.now();
 
   try {
-  // Reset complet de l'interface
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
   window.zonesInitialized     = false;
-  // 🆕 v1.9.3-A1.a-fix6 (KARMA "je fait une structure, change de plan,
-  // et je peux plus en faire") : flag reset au plan switch pour que
-  // initStructures() ré-attache le click handler sur la NOUVELLE map
-  // Leaflet (cleanupExistingMap dans map.js détruit l'ancienne map →
-  // tous les listeners attachés via window.map.on() sont perdus avec
-  // elle). Sans ce reset, structuresInitialized restait true → return
-  // early dans initStructures → click handler perdu, plus de dessin.
-  // Bug NON présent en zones car ce reset existait déjà pour
-  // zonesInitialized. Le flag structures avait été oublié dans le
-  // commit A1.a initial.
+  // 🩸 cleanupExistingMap (map.js) détruit l'ancienne carte et ses listeners map.on() : sans ce reset,
+  // initStructures sort tôt et le clic de dessin des structures est perdu sur la nouvelle carte.
   window.structuresInitialized = false;
 
-  // 🏗️ Multi-niveau (v148) : lecture de la preference par plan (PlanRegistry)
-  // + reset des etats de session (activeLevel = 0, visibleLevels = [0] a
-  // chaque plan switch — confirme Q4 du topo). Si la feature n'est pas
-  // activee pour ce plan, multiLevel reste false → UI cachee + comportement
-  // strictement identique a v147 pour la retro-compat.
+  // Multi-niveau : préférence par plan, et à chaque changement de plan activeLevel = 0. Feature off → UI cachée,
+  // comportement mono-niveau.
   try {
     const _planId = window._currentLoadedPlanId;
-    // 🏗️ Multi-niveau : ordre de priorite pour determiner si la feature est
-    // activee :
-    //   1. Si user a explicitement toggle via ⚙️ Reglages → PlanRegistry.multiLevel
-    //      (true ou false) → ca prime
-    //   2. Sinon → plan-config.json `plan.multiLevel` (par defaut du generateur)
-    //   3. Sinon → false (retro-compat absolue avec plans v147 et avant)
+    // Priorité : 1. choix explicite de l'user (PlanRegistry.multiLevel, true ou false) · 2. plan-config.json
+    // `plan.multiLevel` · 3. false.
     const _fromConfig = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan
                             && window.PLAN_CONFIG.plan.multiLevel === true);
     const _multiOn = (_planId && window.PlanRegistry && typeof window.PlanRegistry.getMultiLevel === "function")
@@ -622,21 +471,11 @@ async function lancerApplication() {
     APP_CONFIG.multiLevel     = !!_multiOn;
     APP_CONFIG.activeLevel    = 0;
     if (!Array.isArray(APP_CONFIG.availableLevels) || APP_CONFIG.availableLevels.length === 0) {
-      APP_CONFIG.availableLevels = [-2, -1, 0, 1, 2];  // defaut symetrique (v154+)
+      APP_CONFIG.availableLevels = [-2, -1, 0, 1, 2];  // défaut symétrique
     }
-    // 🆕 v1.10.0 (KARMA "en mode M-LVL, fait en sorte que -1, 0, +1 soit
-    // affiché par défaut") : si multi-niveau actif → on montre les 3
-    // 🏗️ v1.82.1 — TOUS LES NIVEAUX AU LANCEMENT (demande KARMA), réglable.
-    //
-    // Le défaut de v1.10.0 montrait les trois niveaux centraux (-1, 0, +1).
-    // Il tenait tant qu'un plan en comptait trois ou quatre. Un relevé importé
-    // du SIG en porte SIX ou SEPT : la carte s'ouvrait alors sur une fraction
-    // du travail, sans que rien n'indique que le reste existait.
-    //
-    // Décocher « Afficher tous les niveaux au lancement » (panneau Performance
-    // du HOME) rend l'ancien comportement. La case est là et pas ailleurs
-    // parce que c'est un arbitrage de CHARGE — mais elle est hors du méta
-    // ULTRA : afficher plus n'est pas optimiser.
+    // Tous les niveaux visibles au lancement (décision produit) : un relevé SIG en porte six ou sept, n'en montrer
+    // que trois cache le reste du travail sans le dire. « Afficher tous les niveaux au lancement » décochée (panneau
+    // Performance du HOME) → -1, 0, +1. Hors du méta ULTRA : afficher plus n'est pas optimiser.
     if (APP_CONFIG.multiLevel) {
       const _tous = !(window.PerfUltra && window.PerfUltra.get("tousNiveaux") === false);
       if (_tous) {
@@ -650,15 +489,13 @@ async function lancerApplication() {
     } else {
       APP_CONFIG.visibleLevels = [0];   // reset filtre : montre uniquement le niveau 0 au load
     }
-    // 🏗️ v154 : auto-extension de availableLevels — premier passage (session).
-    // Voir window._etendreAvailableLevelsSiBesoin pour les details.
+    // Auto-extension de availableLevels, premier passage (session) : voir window._etendreAvailableLevelsSiBesoin.
     if (APP_CONFIG.multiLevel === true && typeof window._etendreAvailableLevelsSiBesoin === "function") {
       window._etendreAvailableLevelsSiBesoin();
     }
     window.APP_CONFIG = APP_CONFIG;
-    // Body class : la boussole et autres elements fixes top-left utilisent
-    // cette classe pour se decaler vers le bas et liberer de la place pour
-    // le Leaflet control "niveau actif" sous le zoom.
+    // Classe lue par la boussole et les éléments fixes en haut à gauche : ils descendent pour laisser place au
+    // contrôle « niveau actif » sous le zoom.
     if (APP_CONFIG.multiLevel === true) {
       document.body.classList.add("kta-multilevel-active");
     } else {
@@ -669,7 +506,7 @@ async function lancerApplication() {
     console.warn("[Main] init multi-niveau a echoue :", e);
   }
 
-  // Nettoyer les modales orphelines
+  // Modales orphelines du plan précédent.
   ["kta-aide-modal","kta-legende-modal","kta-cfg-modal","kta-readme-modal",
    "kta-readme-choix","kta-conv-modal","kta-planner-modal","popupChangerPlan",
    "kta-titre-fixe"
@@ -678,16 +515,13 @@ async function lancerApplication() {
     if (el) el.remove();
   });
 
-  // Masquer le loader
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) overlay.style.display = "none";
 
-  // 🆕 v1.9.2-hotfix-loader-header : retire la classe pour ré-afficher
-  // le header + statusbar refonte (symétrique d'afficherLoader). Cf.
-  // afficherLoader() pour le rationale détaillé.
+  // Ré-affiche header et statusbar (symétrique d'afficherLoader).
   document.body.classList.remove("kta-loader-active");
 
-  // 🌀 v152 : message overlay au moment du render carte (lourd sur V2)
+  // Message pendant le rendu de la carte (lourd en V2).
   if (typeof window._majOverlayChargement === "function") {
     window._majOverlayChargement(window.I18n.t("main.loading.mapInit"));
   }
@@ -702,10 +536,7 @@ async function lancerApplication() {
   initEditor();
   initRoad();
   initZones();
-  // 🆕 v1.9.3-A1.a : init du module structures (piliers + murs). Doit
-  // venir après initZones() pour que window.map.on("click") soit déjà
-  // attaché — pas critique en pratique car les listeners se cumulent,
-  // mais on garde un ordre lisible.
+  // Structures (piliers + murs) après initZones : ordre lisible des map.on("click") (ils se cumulent).
   if (typeof window.initStructures === "function") {
     window.initStructures();
   }
@@ -715,47 +546,30 @@ async function lancerApplication() {
   if (typeof window.ktaMajOutilsLectureSeule === "function") window.ktaMajOutilsLectureSeule();
   initTracking();
 
-  // 🆕 v1.16.0 step 4 : init SessionBackups + snapshot AVANT restore.
-  //
-  // L'ordre est important :
-  //   1. SessionBackups.init() ouvre IDB + démarre timer auto 5 min
-  //   2. Snapshot IMMÉDIAT de localStorage (= état de la session "en place"
-  //      avant la restore actuelle). Cas critique : plan switch — le
-  //      localStorage contient la session du PLAN PRÉCÉDENT, on la backup
-  //      avant que onPlanLoaded ne la "déclasse" et que les saves auto
-  //      de la nouvelle session l'écrasent. Si on snapshote APRÈS restore,
-  //      cette session du plan précédent serait perdue.
-  //   3. Puis SessionPersist.onPlanLoaded fait son boulot normal (restore
-  //      si planId matche, sinon ignore).
-  //   4. Et un second snapshot APRÈS restore (= état restauré = ce que
-  //      voit l'utilisateur). Permet un point de retour récent même si
-  //      l'init n'a rien capté (cas session vide au boot).
+  // ⚠️ Ordre : 1. SessionBackups.init() (IDB + timer 5 min) · 2. snapshot AVANT restore — au changement de plan,
+  // c'est la seule copie de la session du plan précédent avant que les saves auto l'écrasent ·
+  // 3. SessionPersist.onPlanLoaded · 4. second snapshot APRÈS restore (point de retour récent).
   if (window.SessionBackups && typeof window.SessionBackups.init === "function") {
     window.SessionBackups.init().then(function() {
       try { window.SessionBackups.snapshot("boot-pre-restore"); } catch(e) {}
     });
   }
 
-  // 🎯 v1.76.1 — échelle recalibrée per-plan (⚙️ Réglages / 🎯 Calibrer
-  // l'échelle) : appliquée ICI car _currentLoadedPlanId est enfin posé —
-  // buildAppConfigFromPlan tourne trop tôt pour lire la bonne pref.
+  // 🩸 Échelle recalibrée et réglages tracking par plan : appliqués ICI, où _currentLoadedPlanId est enfin posé
+  // (buildAppConfigFromPlan tourne trop tôt pour lire la bonne pref).
   if (typeof window.appliquerScalePerPlan === "function") window.appliquerScalePerPlan();
-  // 👣 v1.82.0 — même contrainte, même endroit : les réglages de podomètre
-  // per-plan se posent une fois l'id connu (cf. config.js).
   if (typeof window.appliquerTrackingPerPlan === "function") window.appliquerTrackingPerPlan();
   if (typeof window.appliquerSmartNavPerPlan === "function") window.appliquerSmartNavPerPlan();
 
-  // Restauration de session si correspond au plan courant (et démarrage du polling auto-save)
+  // Restauration de session du plan courant + démarrage de l'auto-save.
   if (window.SessionPersist) {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
-  // 🆔 v2.3.0 — photos rangées sous le nom du point → sous son uid (lot C1).
+  // Photos rangées sous le nom du point → sous son uid.
   if (typeof window._ktaPlanifierMigrationPhotos === "function") window._ktaPlanifierMigrationPhotos();
 
-  // 📔 v1.69.0 — Ouverture d'une SORTIE au carnet. Impérativement APRÈS
-  // SessionPersist.onPlanLoaded : la baseline des compteurs doit inclure la
-  // session restaurée, sinon tout le contenu déjà présent serait compté comme
-  // « ajouté pendant cette sortie ».
+  // 🩸 Ouverture d'une sortie au carnet APRÈS onPlanLoaded : la baseline des compteurs doit inclure la session
+  // restaurée, sinon tout l'existant compte comme « ajouté pendant cette sortie ».
   if (window.Journal && typeof window.Journal.onPlanLoaded === "function") {
     try {
       window.Journal.onPlanLoaded(
@@ -765,59 +579,43 @@ async function lancerApplication() {
     } catch(e) { console.warn("[Main] Journal.onPlanLoaded échec :", e); }
   }
 
-  // 🆕 v1.22.0 (Mode Secours) : charge les scénarios de secours pour ce plan
-  // depuis localStorage. Idempotent — peut être rappelé au plan switch.
+  // Scénarios de secours du plan (localStorage). Idempotent.
   if (window.SecoursMode && typeof window.SecoursMode.init === "function") {
     try { window.SecoursMode.init(); } catch(e) {
       console.warn("[Main] SecoursMode.init échec :", e);
     }
   }
 
-  // Second snapshot APRÈS restore (cf bloc ci-dessus).
+  // Second snapshot APRÈS restore, avec un délai pour laisser finir setRoads & co.
   if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
-    // Léger délai pour laisser le restore Phase 1 finir (setRoads, etc.).
     setTimeout(function() {
       try { window.SessionBackups.snapshot("boot-after-restore"); } catch(e) {}
     }, 500);
   }
 
-  // Si la session restaurée contient un road de type "itinerary", afficher
-  // immédiatement le label de distance. Le hook est aussi appelé après chaque
-  // setRoads dans la modale itinéraire pour rester à jour.
+  // Label de distance d'un road "itinerary" restauré (aussi rappelé après chaque setRoads de la modale).
   if (typeof window._majLabelDistanceItineraire === "function") {
     window._majLabelDistanceItineraire();
   }
 
-  // Démarre le heartbeat OOMGuard : marker localStorage rafraîchi toutes
-  // les 5s, effacé proprement au beforeunload/pagehide. Si la fois suivante
-  // on retrouve le marker au boot, c'est qu'iOS/Android a tué l'app
-  // brutalement (typiquement OOM) → toast affiché côté utilisateur.
+  // Heartbeat OOMGuard : marker localStorage toutes les 5 s, effacé au pagehide. Retrouvé au boot = l'OS a tué
+  // l'app (typiquement OOM) → toast.
   if (window.OOMGuard) window.OOMGuard.start();
 
-  // 🎨 Refonte UI v1 : hook post-init pour que refonteInterface.js puisse
-  // créer le header bar + status bar maintenant que window.map et tous les
-  // setters (getEditorPoints, getRoads, etc.) sont prêts. No-op si flag OFF.
+  // Header + status bar de refonteInterface.js, maintenant que la carte et les getters sont prêts.
   if (typeof window._refonteInterfacePostInit === "function") {
     try { window._refonteInterfacePostInit(); } catch(e) {
       console.warn("[Refonte UI] postInit error:", e);
     }
   }
 
-  // 🆕 v1.11.1 V2 (KARMA "il faut que forceCheck soit call à l'init map") :
-  // Force un sync BatteryGuard ici, garanti après que :
-  //   1. refonteInterface.js a fini son postInit (chips DOM créés)
-  //   2. batteryGuard.js IIFE a eu le temps d'init son state via getBattery()
-  // 4 tentatives décalées dans le temps pour bypass toute race condition
-  // possible entre l'init async de l'API Battery et l'attachement du listener.
-  // No-op gracieux si BatteryGuard indispo.
+  // 🩸 Sync BatteryGuard après le postInit (chips créés) : getBattery() est async et peut arriver après
+  // l'attachement du listener, d'où 4 tentatives étalées.
   if (window.BatteryGuard && typeof window.BatteryGuard.forceCheck === "function") {
     function _batteryForceSync() {
       try { window.BatteryGuard.forceCheck(); } catch(e) {}
     }
-    // 🐛 v1.21.3 (audit P0-8) : on stocke les IDs des 3 setTimeout dans
-    // window._ktaBatteryForceTimers pour pouvoir les clear au plan switch.
-    // Avant : 4 callbacks pendants × N switches = jusqu'à 12 callbacks
-    // orphelins qui tirent refreshStatusBar sur un DOM peut-être reconstruit.
+    // Ids gardés pour être annulés au changement de plan (sinon callbacks orphelins sur un DOM reconstruit).
     if (Array.isArray(window._ktaBatteryForceTimers)) {
       window._ktaBatteryForceTimers.forEach(function(id) { clearTimeout(id); });
     }
@@ -828,17 +626,12 @@ async function lancerApplication() {
     window._ktaBatteryForceTimers.push(setTimeout(_batteryForceSync, 3000));  // dernière chance (3s = limite raisonnable)
   }
 
-  // Resize defensif (iOS PWA viewport-fit=cover) :
-  //   Sur iPhone PWA, la viewport change après l'activation du Service Worker
-  //   (la status bar passe en black-translucent et la home-indicator zone entre
-  //   dans la viewport). Leaflet calcule ses dimensions à l'init et reste figé
-  //   sur l'ancienne taille → bande visible en haut/bas, tuiles décalées.
-  //   `invalidateSize` recalcule, et un listener resize gère les rotations
-  //   d'écran et le toggle de l'URL bar Safari.
+  // 🩸 iOS PWA (viewport-fit=cover) : la viewport change après l'activation du SW, Leaflet garde l'ancienne taille
+  // (bande en haut/bas, tuiles décalées). invalidateSize + listeners resize/orientation (rotation, barre Safari).
   if (window.map && typeof window.map.invalidateSize === "function") {
     requestAnimationFrame(function() {
       try { window.map.invalidateSize(); } catch(e) {}
-      // 2e passe après ~300ms pour rattraper la fin de l'animation status bar iOS
+      // 2e passe : fin de l'animation de la status bar iOS.
       setTimeout(function() {
         try { window.map.invalidateSize(); } catch(e) {}
       }, 300);
@@ -862,29 +655,22 @@ async function lancerApplication() {
 
   console.log("[Main] Application lancée");
 
-  // 🌀 v1.57.0 — Liaisons inter-plan : pose les badges 🌀 sur les points
-  // liés du plan courant (lecture du registre localStorage — cf.
-  // js/interPlanLinks.js). Le module gère lui-même son différé interne.
+  // Badges de liaison inter-plan sur les points liés (js/interPlanLinks.js, différé interne).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanLoaded === "function") {
     try { window.InterPlanLinks.onPlanLoaded(); } catch(e) {
       console.warn("[Main] InterPlanLinks.onPlanLoaded échec :", e);
     }
   }
 
-  // 🧭 v1.60.0 (A6) — Itinéraire inter-plan : trace le leg distant en attente
-  // (l'user vient de traverser un portail avec un itinéraire calculé).
+  // Itinéraire inter-plan : trace le tronçon en attente (portail traversé avec un itinéraire calculé).
   if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanLoaded === "function") {
     try { window.InterPlanRoute.onPlanLoaded(); } catch(e) {
       console.warn("[Main] InterPlanRoute.onPlanLoaded échec :", e);
     }
   }
 
-  // 🚀 v1.59.0 (U3, KARMA) — INDICATEUR honnête : si des optimisations Perf
-  // ULTRA sont actives sur CE plan (slot per-plan, hors mobileZoomLimit qui
-  // est une sécurité par défaut), un toast le signale au chargement —
-  // l'affichage « allégé » (tracés simplifiés, popups data désactivés,
-  // culling…) ne doit jamais passer pour un bug. Queued par OOMGuard si le
-  // splash est encore affiché (flushPendingToasts).
+  // Optimisations Perf ULTRA actives sur CE plan (hors mobileZoomLimit, sécurité par défaut) : toast au
+  // chargement, pour qu'un affichage allégé ne passe jamais pour un bug. Mis en file si le splash est affiché.
   if (window.PerfUltra && Array.isArray(window.PerfUltra.TOGGLES)) {
     try {
       const _optimsActives = window.PerfUltra.TOGGLES.filter(function(k) {
@@ -897,19 +683,9 @@ async function lancerApplication() {
     } catch(e) { console.warn("[Main] toast PerfUltra échec :", e); }
   }
 
-  // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
-  // persiste les stats COMPLÈTES du plan courant (session + embedded data
-  // layers) dans localStorage pour que la modale Profil > "📊 Mes plans"
-  // affiche les chiffres réels même pour les plans non chargés. Defer 800ms
-  // pour laisser les data layers async (rAF batch dans utils.js) finir leur
-  // ajout aux registries _ktaDataMarkers/Polylines/Polygons/Structure.
-  // 📕 26/09/2026 (KARMA « un PDF intégré au zip ne remonte pas dans Mon
-  // Carnet ») — les documents livrés avec le plan sont copiés dans la base du
-  // Mode Histoire, qui est la seule source que le Carnet sache lire sans
-  // charger de plan. Différé : c'est une recopie de fichier, elle n'a aucune
-  // raison de retarder l'affichage de la carte. Idempotent, donc sans effet
-  // aux chargements suivants — sauf si l'utilisateur a supprimé la copie,
-  // auquel cas rouvrir le plan la remet (comportement demandé).
+  // Documents livrés avec le plan copiés dans la base du Mode Histoire, seule source que le Carnet lit sans
+  // charger de plan. Différé (n'a pas à retarder la carte), idempotent ; une copie supprimée revient à la
+  // réouverture (décision produit).
   if (window.ModeHistoire && typeof window.ModeHistoire.syncDocsEmbarques === "function") {
     setTimeout(function() {
       try { window.ModeHistoire.syncDocsEmbarques(); } catch(e) {
@@ -918,6 +694,8 @@ async function lancerApplication() {
     }, 1200);
   }
 
+  // Stats COMPLÈTES du plan (session + data layers) persistées pour Profil > Mes plans. 🩸 800 ms : les data
+  // layers se chargent par rAF (utils.js) et doivent avoir rempli leurs registres.
   if (typeof window._persisterStatsPlanCourant === "function") {
     setTimeout(function() {
       try { window._persisterStatsPlanCourant(); } catch(e) {
@@ -936,36 +714,17 @@ async function lancerApplication() {
   }
   } finally {
     _appEnCours = false;
-    // 🌀 v152 : ferme l'overlay de chargement plein écran (lancé par
-    // chargerZipFichier ou chargerPlanServeur). Succès OU erreur cumulés
-    // ici dans finally → l'overlay disparaît dans tous les cas.
+    // Overlay de chargement (chargerZipFichier / chargerPlanServeur) fermé en succès comme en erreur.
     if (typeof window._fermerOverlayChargement === "function") {
       window._fermerOverlayChargement();
     }
   }
 }
 
-// =========================
-// AUTO-EXTENSION availableLevels (v154+, mode multi-niveau)
-// =========================
-// Scanne toutes les sources level-aware connues (session + data layers) et
-// etend APP_CONFIG.availableLevels pour englober le min/max trouve. Idempotent :
-// peut etre appele plusieurs fois sans risque.
-//
-// Cas d'usage :
-//   1. Premier passage au plan load (depuis lancerApplication) : scan session
-//      pre-existante (SessionPersist a deja reload les editorPoints/roads/zones)
-//   2. Deuxieme passage apres chargement des data layers async (utils.js >
-//      ajouterPointsDepuisJSON appelle ce helper apres avoir charge un layer)
-//
-// Defaut v154 = [-2, -1, 0, 1, 2]. Si l'user avait un plan v153 ou il avait
-// etendu manuellement a [0..4], l'auto-extension ajoute 3 et 4 pour qu'il
-// retrouve ses niveaux dans l'UI.
-// Niveaux qui portent réellement quelque chose (tracés, zones, structures, points,
-// calques de données, images de niveau). 29/09/2026 (bug KARMA) : sans niveaux
-// déclarés, availableLevels vaut -2..+2 par défaut — le Mode Secours créait alors
-// des équipes sur des niveaux vides. Source unique du scan, partagée avec l'auto-
-// extension ci-dessous. Rend une liste triée, sans doublon (peut être vide).
+// ── Niveaux occupés et auto-extension de availableLevels (multi-niveau) ──────────────────────
+// Niveaux qui portent réellement quelque chose (tracés, zones, structures, points, data layers, images de niveau) :
+// liste triée sans doublon, peut être vide. Source unique du scan.
+// 🩸 availableLevels vaut -2..+2 par défaut : le lire à la place créerait des équipes Secours sur des niveaux vides.
 window.ktaNiveauxOccupes = function() {
   const levelsFound = [];
   try {
@@ -981,11 +740,10 @@ window.ktaNiveauxOccupes = function() {
     };
     if (typeof window.getRoads        === "function") _push(window.getRoads());
     if (typeof window.getZones        === "function") _push(window.getZones());
-    // 🆕 v1.9.3-A1.a : structures aussi tagguées avec level (multi-niveau)
     if (typeof window.getStructures   === "function") _push(window.getStructures());
     if (typeof window.getEditorPoints === "function") _push(window.getEditorPoints());
-    // Data layers : levels stockes en _ktaLevel sur les markers, en .level sur
-    // les entries polylines/polygons (cf. utils.js > ajouterPointsDepuisJSON).
+    // ⚠️ Data layers : niveau en _ktaLevel sur les markers, en .level sur les entrées polylines/polygons
+    // (utils.js > ajouterPointsDepuisJSON).
     if (Array.isArray(window._ktaDataMarkers)) {
       window._ktaDataMarkers.forEach(function(m) {
         if (m && Number.isInteger(m._ktaLevel)) levelsFound.push(m._ktaLevel);
@@ -1001,13 +759,12 @@ window.ktaNiveauxOccupes = function() {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
       });
     }
-    // 🆕 v1.9.3-A1.a : idem pour les structures data layer
     if (Array.isArray(window._ktaDataStructurePolygons)) {
       window._ktaDataStructurePolygons.forEach(function(entry) {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
       });
     }
-    // 🏗️ v162 : scan des image layers (PLAN_CONFIG.imageLayers[i].level)
+    // Image layers (PLAN_CONFIG.imageLayers[i].level).
     if (Array.isArray(window._ktaImageOverlays)) {
       window._ktaImageOverlays.forEach(function(entry) {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
@@ -1020,12 +777,10 @@ window.ktaNiveauxOccupes = function() {
                     .sort(function(a, b) { return a - b; });
 };
 
-// 🆔 v2.3.0 — MIGRATION DES PHOTOS VERS L'UID DU POINT (ETUDE_UID lot C1).
-// Les calques arrivent un par un, sans signal « tout est chargé » : on attend
-// 2 s après le DERNIER appel (restauration de session, puis chaque calque).
-// L'ambiguïté se juge sur TOUS les points du plan (session + calques) : une
-// photo n'est rattachée à un uid que si son nom n'est porté que par ce point.
-// 🩸 Le plan peut avoir changé pendant l'attente : on vérifie son id.
+// Migration des photos, favoris et liaisons vers l'uid du point (docs/ETUDE_UID.md).
+// Les calques arrivent un par un sans signal « tout est chargé » : on attend 2 s après le DERNIER appel.
+// Règle « jamais deviné » : rattachement seulement si le nom n'est porté que par ce point (ou l'homonyme à la
+// même position), jugé sur TOUS les points du plan. 🩸 Le plan peut avoir changé pendant l'attente : id vérifié.
 let _ktaMigrPhotosTimer = null;
 window._ktaPlanifierMigrationPhotos = function() {
   if (!window.MyKTAMapPhotos || typeof window.MyKTAMapPhotos.migrerPhotosPlan !== "function") return;
@@ -1035,16 +790,13 @@ window._ktaPlanifierMigrationPhotos = function() {
   _ktaMigrPhotosTimer = setTimeout(function() {
     _ktaMigrPhotosTimer = null;
     if ((window._currentLoadedPlanId || null) !== planId) return;
-    // 🆔 v2.4.0 (lot C2) — la même passe rattache aussi favoris et liaisons :
-    // tous partagent la règle « jamais deviné » (un seul point de ce nom, ou
-    // l'homonyme à la même position).
     const pts = [].concat(
       (window.getEditorPoints ? window.getEditorPoints() || [] : []).map(function(p) { return Object.assign({ layerId: "editor" }, p); }),
       (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : [])
     ).filter(Boolean).map(function(p) { return { uid: p.uid, id: p.id, x: p.x, y: p.y, layerId: p.layerId }; });
     const _migr = window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
-    // 📸 Photos « sans point » de ce plan : signal discret (toast), APRÈS la migration
-    // (une photo encore rangée sous un nom n'est pas « sans point »). Une fois par ouverture.
+    // Photos « sans point » : toast discret APRÈS la migration (une photo encore rangée sous un nom n'est pas
+    // « sans point »). Une fois par ouverture.
     if (window.KtaPhotosGalerie && typeof window.KtaPhotosGalerie.apresOuverturePlan === "function") {
       Promise.resolve(_migr).then(function() { window.KtaPhotosGalerie.apresOuverturePlan(planId); });
     }
@@ -1053,6 +805,8 @@ window._ktaPlanifierMigrationPhotos = function() {
   }, 2000);
 };
 
+// Étend APP_CONFIG.availableLevels jusqu'au min/max des niveaux occupés. Idempotent. Appelé au lancement (session
+// restaurée) puis après chaque data layer chargé (utils.js > ajouterPointsDepuisJSON).
 window._etendreAvailableLevelsSiBesoin = function() {
   if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return false;
   try {
@@ -1079,12 +833,8 @@ window._etendreAvailableLevelsSiBesoin = function() {
       console.log("[Main] availableLevels auto-etendu :",
                   "items min/max =", minF, "/", maxF,
                   "→ availableLevels =", avail);
-      // 🏗️ v1.82.1 — LES NIVEAUX DÉCOUVERTS DOIVENT ÊTRE VISIBLES AUSSI.
-      // Sans ça, « Afficher tous les niveaux au lancement » ne portait que sur
-      // le range PAR DÉFAUT (-2..+2) : les niveaux d'un plan importé, trouvés
-      // ici même en lisant le calque de données APRÈS le calcul initial de
-      // `visibleLevels`, restaient masqués. Sur un relevé à six étages, l'option
-      // n'aurait donc rien changé là où elle sert le plus.
+      // 🩸 Les niveaux découverts ici (data layer lu APRÈS le calcul initial de visibleLevels) doivent devenir
+      // visibles aussi, sinon « Afficher tous les niveaux » ne couvre que -2..+2.
       const _tousNiv = !(window.PerfUltra && window.PerfUltra.get("tousNiveaux") === false);
       if (_tousNiv) {
         window.APP_CONFIG.visibleLevels = avail.slice();
@@ -1100,46 +850,30 @@ window._etendreAvailableLevelsSiBesoin = function() {
   }
 };
 
-// =========================
-// CLEANUP DU PLAN PRÉCÉDENT
-// =========================
-// Centralise le démontage des ressources avant rechargement (chargerPlanServeur,
-// startImportedPlan). Évite la duplication ET garantit que rien n'est oublié
-// sur mobile où chaque Mo retenu compte pour iOS Safari.
+// ── Libération du plan précédent ──────────────────────
+// Démontage unique avant rechargement (chargerPlanServeur, startImportedPlan) : sur iOS Safari chaque Mo retenu
+// compte.
 function _libererRessourcesPlanPrecedent() {
-  // 🐛 v1.64.0 (KARMA « au chargement je suis sur la position initiale, pas
-  // sur celle du tracker ») : FIGER LA PERSISTANCE EN PREMIER. Le poller
-  // d'auto-save (1.5 s) restait actif sur l'ANCIEN plan pendant tout le
-  // switch : le teardown ci-dessous vide la timeline tracker en RAM
-  // (resetTrackingTimeline), puis un tick pendant le chargement du nouveau
-  // plan (plusieurs secondes) sauvegardait l'état MUTILÉ — timeline vide
-  // écrasée dans le slot, voire slot PURGÉ (_isEmptyState) pour une session
-  // tracker-seule → au retour sur le plan, tracker sur la position initiale.
-  // Fix : save final forcé (état encore intact) + arrêt du poll — il ne
-  // redémarre qu'au onPlanLoaded du nouveau plan.
+  // 🩸 FIGER LA PERSISTANCE EN PREMIER : save final (état intact) + arrêt du poll auto-save. Sinon un tick pendant
+  // le chargement du nouveau plan sauve l'état mutilé (timeline tracker vidée plus bas, voire slot purgé) et le
+  // tracker revient à la position initiale. Le poll ne redémarre qu'au onPlanLoaded du nouveau plan.
   if (window.SessionPersist && typeof window.SessionPersist.onPlanUnload === "function") {
     try { window.SessionPersist.onPlanUnload(); } catch(e) {}
   }
 
-  // 📔 v1.69.0 — Clôture de la sortie au carnet. MÊME CONTRAINTE que
-  // SessionPersist ci-dessus : ici l'état RAM est encore intact (compteurs,
-  // timeline tracker). Plus bas, resetTrackingTimeline() vide la timeline →
-  // le tracé et la distance de la sortie seraient perdus. Écriture IDB async,
-  // mais le record est snapshoté de façon SYNCHRONE dans cet appel.
+  // 🩸 Clôture de la sortie au carnet, même contrainte : avant resetTrackingTimeline(), sinon tracé et distance
+  // perdus. Écriture IDB async, mais le record est figé de façon SYNCHRONE dans l'appel.
   if (window.Journal && typeof window.Journal.onPlanUnload === "function") {
     try { window.Journal.onPlanUnload(); } catch(e) {}
   }
 
-  // 🧩 Installation reliée : panneau d'extension fermé, présences / itinéraires de l'ancien plan effacés.
+  // Installation reliée : panneau d'extension fermé, présences / itinéraires de l'ancien plan effacés.
   if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
     try { window.KtaExtensions.quitterPlan("plan"); } catch(e) {}
   }
 
-  // 🧹 v1.68.0 (audit) : purge des flottants de navigation au CHANGEMENT de
-  // plan. Bug bench : après un switch DIRECT (sélecteur du titre, sans goTo),
-  // la mini-pastille ↩️ survivait sur le NOUVEAU plan avec une pile de retour
-  // PÉRIMÉE. Les hooks distinguent goTo (pendingTarget posé → no-op côté
-  // liaison, chaîne multi-hop conservée côté route) du switch direct (purge).
+  // Flottants de navigation purgés au changement direct de plan, sinon la pastille de retour survit avec une pile
+  // périmée. Les hooks distinguent goTo (pendingTarget posé : rien côté liaison, chaîne gardée côté route).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
     try { window.InterPlanLinks.onPlanExit("switch"); } catch(e) {}
   }
@@ -1147,54 +881,36 @@ function _libererRessourcesPlanPrecedent() {
     try { window.InterPlanRoute.onPlanExit("switch"); } catch(e) {}
   }
 
-  // 🎨 Refonte UI v1 : cleanup du header bar + status bar avant démontage
-  // de la map. Sinon le header reste affiché avec les vieilles valeurs
-  // pendant le splash du nouveau plan. No-op si flag OFF.
+  // Header + status bar retirés avant le démontage, sinon vieilles valeurs pendant le splash du nouveau plan.
   if (typeof window._refonteInterfacePreUnload === "function") {
     try { window._refonteInterfacePreUnload(); } catch(e) {}
   }
 
-  // Distance totale des tracés : ferme le panneau flottant et purge le layer
-  // de surlignage magenta avant le démontage de la map (sinon le layer reste
-  // attaché à une map détruite et le panneau flotte par-dessus le splash).
+  // Distance totale des tracés : panneau et surlignage purgés avant le démontage de la carte.
   if (typeof window._rdEffacerHighlight === "function") {
     try { window._rdEffacerHighlight(); } catch(e) {}
   }
 
-  // Mode urgence "Je suis perdu" : ferme la modale et purge tous les layers
-  // (cercle zone, marker dernière position, markers indices, cercle affiné)
-  // avant le démontage de la map.
+  // « Je suis perdu » : modale fermée et layers purgés avant le démontage de la carte.
   if (window.LostMode && typeof window.LostMode._onPlanSwitch === "function") {
     try { window.LostMode._onPlanSwitch(); } catch(e) {}
   }
 
-  // 🆕 v1.22.0 Mode Secours : ferme la modale + purge l'overlay carte +
-  // vide les scénarios in-memory. Les scénarios localStorage du plan
-  // précédent restent persistés (per-plan key) et seront re-chargés via
-  // SecoursMode.init() au boot du prochain plan si l'user y retourne.
+  // Mode Secours : modale, overlay et scénarios en mémoire purgés (ceux du localStorage restent, par plan).
   if (window.SecoursMode && typeof window.SecoursMode.reset === "function") {
     try { window.SecoursMode.reset(); } catch(e) {}
   }
 
-  // 🆕 v1.11.0 Undo/Redo : reset historique au plan switch (KARMA 11:a).
-  // L'historique est par-plan : aucune raison de garder les snapshots
-  // d'un plan dans la pile quand on en charge un autre (les setters
-  // restaureraient des données qui ne correspondent pas au nouveau plan).
+  // 🩸 Undo/Redo par plan : une pile gardée restaurerait les données de l'ancien plan dans le nouveau.
   if (window.HistoryManager && typeof window.HistoryManager.reset === "function") {
     try { window.HistoryManager.reset(); } catch(e) {}
   }
 
-  // 🆕 v1.11.2 V2.2 : reset du timestamp début de session au plan switch.
-  // Utilisé par la modale Détails session pour afficher la durée de la
-  // session courante (depuis le chargement du plan ≈ KARMA 3:a "depuis
-  // le 1er ajout" — compromis pragmatique, le 1er ajout est typiquement
-  // dans les premières secondes après chargement).
+  // Durée de session (Détails session) comptée depuis le chargement du plan.
+  // Compromis voulu : comptée depuis le chargement, pas depuis le 1er ajout.
   window._sessionStartTs = null;
 
-  // 🆕 v1.11.3 V2.3 : reset de la timeline tracker au plan switch.
-  // Cohérent avec le reset RAM only choisi pour V2.3. Si TrackerReplay
-  // est ouvert, on le ferme aussi pour éviter qu'il garde des refs vers
-  // une map détruite.
+  // Timeline tracker remise à zéro (RAM) ; TrackerReplay fermé pour ne pas garder la carte détruite.
   if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.fermer === "function") {
     try { window.MyKTAMapTrackerReplay.fermer(); } catch(e) {}
   }
@@ -1202,28 +918,18 @@ function _libererRessourcesPlanPrecedent() {
     try { window.resetTrackingTimeline(); } catch(e) {}
   }
 
-  // 🧲 C5 v1.74.0 : purge du flash d'accrochage (magnétisme edit-time) — un
-  // circleMarker transitoire pourrait survivre sur la carte détruite.
+  // Flash d'accrochage (magnétisme) : son circleMarker transitoire survivrait sur la carte détruite.
   if (typeof window.ktaPurgerFlashSnap === "function") {
     try { window.ktaPurgerFlashSnap(); } catch(e) {}
   }
 
-  // 🔥 v1.21.2 (KARMA "on reactive") : reset Heatmap au plan switch.
-  // Si le module est chargé ET qu'un overlay est actif sur la carte du
-  // plan précédent, on l'efface AVANT d'invalider la carte Leaflet
-  // (sinon référence morte vers l'ancien overlay).
+  // Heatmap effacée AVANT la destruction de la carte (sinon référence morte vers l'ancien overlay).
   if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.effacer === "function") {
     try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
   }
 
-  // 🐛 v1.34.16 (Pack RAM Phase 4 — Fix #C) — Safe-remove des _ktaImageOverlays
-  // (calques image du plan : Légende, etc.) AVANT map.remove(). Le pattern
-  // critique : clear img.src AVANT removeLayer pour forcer iOS à libérer la
-  // bitmap décodée. Sans ça, removeLayer détache le DOM mais WebKit garde
-  // le bitmap pinned en cache GPU (sur plan multi-niveau avec 4-10 calques
-  // 4096×4096 PNG, c'est 64-160 Mo retenus).
-  // Note : map.remove() un peu plus bas détache tous les layers de toute
-  // façon — ce qu'on ajoute ici c'est UNIQUEMENT le clear img.src préalable.
+  // 🩸 img.src vidé AVANT map.remove() : sinon WebKit garde la bitmap décodée en cache GPU (calques image
+  // 4096² × 4-10 niveaux = 64-160 Mo retenus). map.remove() plus bas détache les layers.
   if (Array.isArray(window._ktaImageOverlays) && window.map) {
     window._ktaImageOverlays.forEach(function(entry) {
       try {
@@ -1234,35 +940,21 @@ function _libererRessourcesPlanPrecedent() {
     });
   }
 
-  // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
-  // (libererTuiles fait maintenant aussi le clear img.src — cf tiling.js
-  // v1.34.16 Phase 4 Fix #B, gain potentiel énorme sur iPhone PWA).
+  // Tuiles : overlays libérés, blob URLs révoquées, img.src vidé (tiling.js > libererTuiles).
   if (window._baseTiles && window._baseTiles.length > 0) {
     libererTuiles(window._baseTiles, window.map);
     window._baseTiles = [];
   }
 
-  // 🧱 Tiling V2 (v149) : cleanup spécifique du runtime Option B (listener
-  // zoomend + overlays actifs + blob URLs lazy créées au fil des swaps).
-  // Indépendant de window._baseTiles (le tableau retourné par chargerImage en
-  // mode V2 contient juste les overlays du niveau courant, pas tous).
+  // Tiling V2 : listener zoomend, overlays actifs et blob URLs lazy. ⚠️ Indépendant de _baseTiles, qui ne contient
+  // en V2 que les overlays du niveau courant.
   if (typeof window._libererTuilesV2 === "function") {
     try { window._libererTuilesV2(); } catch(e) {}
   }
 
-  // Map Leaflet : map.remove() détache tous les listeners/overlays/markers
-  //
-  // 🩸 v1.97.6 — …TOUS SAUF UN, et il retient tout le plan précédent.
-  // `L.Map._initContainer` fait `on(container, 'scroll', this._onScroll, this)`
-  // (leaflet-src.js:4201) et `remove()` ne le retire JAMAIS. Sur 20 handlers
-  // du conteneur, 19 partent, celui-là survit — et comme `<div id="map">` est
-  // PERMANENT dans index.html et réutilisé à chaque plan, sa closure épingle
-  // l'ancienne carte pour toujours.
-  // Mesuré sur 9 chargements : +1 `L.Map` vivante, +970 polylines,
-  // +11 641 `L.LatLng` et +2,43 Mo de heap PAR PLAN, sans aucun plafond.
-  // Ni l'OOMGuard ni l'inspecteur mémoire ne pouvaient le voir : aucun des
-  // deux ne lit `performance.memory` (l'un surveille les kills, l'autre le
-  // stockage).
+  // 🩸 map.remove() détache tous les listeners SAUF le 'scroll' posé par L.Map._initContainer. Comme
+  // `<div id="map">` est permanent (index.html), sa closure épingle l'ancienne carte : +1 L.Map, ~+2,4 Mo de heap
+  // par plan, sans plafond. On le retire à la main avant remove().
   if (window.map) {
     try {
       if (L && L.DomEvent && window.map._container && window.map._onScroll) {
@@ -1273,9 +965,7 @@ function _libererRessourcesPlanPrecedent() {
     window.map = null;
   }
 
-  // Collision canvas : potentiellement 4096×4096 = 64 Mo. Force la libération
-  // immédiate des pixels en mettant width/height à 0 — sinon le GC peut tarder
-  // et iOS Safari accumule la pression mémoire entre 2 plans.
+  // Canvas de collision (jusqu'à 64 Mo) : width/height à 0 libère les pixels tout de suite, sans attendre le GC.
   if (window.collisionCanvas) {
     try {
       window.collisionCanvas.width  = 0;
@@ -1285,78 +975,58 @@ function _libererRessourcesPlanPrecedent() {
     window.collisionCtx    = null;
   }
 
-  // Runtime assets (blob URLs des fichiers ZIP importés)
+  // Blob URLs des fichiers du ZIP importé.
   resetRuntimeAssets();
 
-  // 🐛 v1.21.3 (audit P0-6/9) : bump le token data layer load. Tout rAF
-  // récursif en cours dans ajouterPointsDepuisJSON exit silencieusement
-  // à la prochaine itération → fini les markers atterrissant dans le
-  // layerGroup du plan précédent (zombies + fuite). Doit être fait AVANT
-  // que window.dataLayerGroups soit vidé / reconstruit.
+  // 🩸 Token de chargement des data layers incrémenté AVANT de vider dataLayerGroups : un rAF en cours dans
+  // ajouterPointsDepuisJSON sort à l'itération suivante, au lieu de poser des markers zombies dans l'ancien plan.
   window._ktaDataLayerLoadToken = (window._ktaDataLayerLoadToken || 0) + 1;
 
-  // 🐛 v1.21.3 (audit P0-10) : purge explicite des 4 registres data layer.
-  // Sans ça, ils cumulaient entre les switches → fuite mémoire linéaire et
-  // les helpers getAllEmbeddedRoads/Structures retournaient un mix des plans.
-  // Note : ne pas détacher les Leaflet layers d'abord — map.remove() ci-dessus
-  // a déjà tout déconnecté, on vide juste les arrays JS.
+  // Registres data layer vidés (sinon fuite linéaire et getAllEmbedded* mélangent les plans). Les layers sont déjà
+  // détachés par map.remove() : on vide seulement les tableaux.
   if (Array.isArray(window._ktaDataMarkers))            window._ktaDataMarkers.length            = 0;
   if (Array.isArray(window._ktaDataPolylines))          window._ktaDataPolylines.length          = 0;
   if (Array.isArray(window._ktaDataPolygons))           window._ktaDataPolygons.length           = 0;
   if (Array.isArray(window._ktaDataStructurePolygons))  window._ktaDataStructurePolygons.length  = 0;
   if (Array.isArray(window._kta_dataLayerNoteGhosts))   window._kta_dataLayerNoteGhosts.length   = 0;
 
-  // 🐛 v1.21.3 (audit P0-8) : clear les timers BatteryGuard.forceCheck en
-  // attente. Sans ça, switch 3× rapidement = 9 callbacks orphelins qui tirent
-  // refreshStatusBar sur un DOM peut-être reconstruit.
+  // Timers BatteryGuard.forceCheck en attente (sinon callbacks orphelins sur un DOM reconstruit).
   if (Array.isArray(window._ktaBatteryForceTimers)) {
     window._ktaBatteryForceTimers.forEach(function(id) { clearTimeout(id); });
     window._ktaBatteryForceTimers.length = 0;
   }
 
-  // 🐛 v1.21.3 (audit P0-10) : revoke les ObjectURL des photos affichées
-  // (sinon les Blob restent pinned tant que le tab vit). Le Set vit dans
-  // editor.js / photos.js, on appelle leur cleanup helper si exposé.
+  // ObjectURL des photos affichées (sinon les Blob restent tant que l'onglet vit).
   if (typeof window._revokeAllPhotoObjectUrls === "function") {
     try { window._revokeAllPhotoObjectUrls(); } catch(e) {}
   }
 
-  // 🆕 v1.34.19 — Mode Histoire : ferme la modale au plan switch (la note
-  // libre du plan précédent est déjà saved en localStorage, on ne perd
-  // rien). La note du nouveau plan sera chargée à la prochaine ouverture.
+  // Mode Histoire : modale fermée (la note libre est déjà en localStorage).
   if (window.ModeHistoire && typeof window.ModeHistoire._onPlanSwitch === "function") {
     try { window.ModeHistoire._onPlanSwitch(); } catch(e) {}
   }
 
-  // 🐛 v1.21.3 (audit P0-10) : désactive le mode urgence XL si actif —
-  // emergencyMode.js retient un _orientationListener sur window qui resterait
-  // sinon attaché jusqu'à la fermeture du tab.
+  // Mode urgence XL désactivé : son _orientationListener sur window resterait attaché.
   if (window.EmergencyMode && typeof window.EmergencyMode.desactiver === "function") {
     try { window.EmergencyMode.desactiver(); } catch(e) {}
   }
 
-  // Flags d'init des modules (forcent re-init au prochain lancerApplication)
+  // Flags d'init : re-init au prochain lancerApplication (sinon les clics ne se ré-attachent pas à la carte).
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
   window.zonesInitialized     = false;
-  // 🆕 v1.9.3-A1.a-fix6 : reset symétrique du flag structures
-  // (= mêmes raisons que zones/road : sans ce reset, le click handler
-  // ne se ré-attache pas sur la nouvelle map Leaflet au plan switch).
   window.structuresInitialized = false;
 }
 
-// =========================
-// CHARGEMENT D'UN PLAN SERVEUR PARTICULIER (depuis le registre)
-// =========================
-// presetChoisi (optionnel) : "off" | "auto" | "quality" | "balanced" | "performance"
-//   → appliqué à APP_CONFIG.perfPreset et sauvegardé dans le registre pour ce plan
+// ── Chargement d'un plan serveur (depuis le registre) ──────────────────────
+// presetChoisi (optionnel) : "off" | "auto" | "quality" | "balanced" | "performance" → APP_CONFIG.perfPreset,
+// mémorisé dans le registre pour ce plan.
 const _PERF_VALID_PRESETS = ["off", "auto", "quality", "balanced", "performance"];
 
 async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   _libererRessourcesPlanPrecedent();
 
-  // 🌀 v152 : overlay plein écran visible (lance avant le fetch du plan-config
-  // pour que l'utilisateur sache qu'il y a une activité en cours dès le clic).
+  // Overlay plein écran dès le clic, avant le fetch du plan-config.
   if (typeof window._afficherOverlayChargement === "function") {
     window._afficherOverlayChargement(window.I18n.t("ui.loading.fetchingPlan"));
   }
@@ -1369,7 +1039,7 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
     throw err;
   }
 
-  // Appliquer le preset perf choisi (avant lancerApplication, donc avant rendu de l'image)
+  // Preset perf appliqué avant lancerApplication (donc avant le rendu de l'image).
   if (typeof presetChoisi === "string" && _PERF_VALID_PRESETS.indexOf(presetChoisi) >= 0) {
     APP_CONFIG.perfPreset = presetChoisi;
     DEFAULT_CONFIG.perfPreset = presetChoisi;
@@ -1377,7 +1047,6 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
     console.log("[Loader] perfPreset (server) :", presetChoisi);
   }
 
-  // Enregistrer dans le registre
   if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
     const id = registryEntry?.id || window.PlanRegistry.genServerId(planPath);
     window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
@@ -1387,26 +1056,17 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
       path: planPath,
       name:    window.PLAN_CONFIG.plan.name    || (registryEntry && registryEntry.name) || planPath,
       version: window.PLAN_CONFIG.plan.version || (registryEntry && registryEntry.version) || null,
-      // 🩸 v1.88.0 — marque lorigine : le plan-config fait autorite, la
-      // decouverte via index.json ne doit plus lecraser au boot suivant.
+      // 🩸 Origine marquée : le plan-config fait autorité, la découverte index.json ne l'écrase plus au boot.
       versionSrc: window.PLAN_CONFIG.plan.version ? "plan" : undefined,
       author:  window.PLAN_CONFIG.plan.author  || (registryEntry && registryEntry.author)  || null,
       discovered: registryEntry?.discovered || false,
       perfPreset: APP_CONFIG.perfPreset
     };
-    // 🏗️ Mode badges (v150) : enregistrer les flags depuis plan-config.json
-    // pour que la liste de plans affiche M-LVL / V2 a la prochaine visite du
-    // loader. Ajout conditionnel pour ne pas ecraser un user-override explicite
-    // false fait via setMultiLevel (Object.assign dans addOrUpdate respecte ca).
+    // Badges M-LVL / V2 : flags posés seulement s'ils sont vrais (ne pas écraser un multiLevel:false de l'user).
     if (window.PLAN_CONFIG.plan.multiLevel === true) planEntry.multiLevel = true;
     if (window.PLAN_CONFIG.plan.tiledV2    === true) planEntry.tiledV2    = true;
     _enregistrerPlanCharge(planEntry);
 
-    // 🌐 v1.14.20 — propagation du calibrage GPS embarqué dans le
-    // plan-config.json (plan.georef) vers KmzExport.setCalibration. Permet
-    // l'auto-remplissage dans 📡 Export externe et ⚙️ Réglages > 🌐
-    // Géoréférencement (mode map) sans intervention de l'user. Skip si un
-    // calibrage local existe déjà pour ce planId (priorité à l'user).
     _propagerGeorefVersKmzExport(id);
   }
 
@@ -1415,34 +1075,17 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   await lancerApplication();
 }
 
-// 🌐 v1.14.20 — Helper de propagation du calibrage embarqué dans le
-// plan-config.json → KmzExport. Idempotent : ne touche pas un calibrage
-// local déjà saisi par l'user (priorité à la saisie manuelle).
+// Calibrage GPS embarqué (plan-config.json > plan.georef) → KmzExport.setCalibration : pré-remplit Export
+// externe et Réglages > Géoréférencement. Idempotent ; un calibrage local saisi par l'user a la priorité.
 function _propagerGeorefVersKmzExport(planId) {
   try {
     const georef = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
     if (!georef || !georef.pointA || !georef.pointB) return;
     if (!window.KmzExport || typeof window.KmzExport.setCalibration !== "function") return;
-    // Skip si un calibrage local existe déjà (l'user a saisi manuellement → on respecte).
-    //
-    // 🩸 v1.82.0 — SAUF S'IL EST STRUCTURELLEMENT PÉRIMÉ. Le planId est
-    // DÉTERMINISTE (slug nom+version) : régénérer un plan sous le même nom
-    // réutilise le même id, et l'ancien calibrage lui survit. Si les dimensions
-    // du plan ont changé entre-temps, ses coordonnées x/y désignent un canvas
-    // QUI N'EXISTE PLUS — `buildTransformCalib` calcule alors une longueur plan
-    // fausse, donc une échelle fausse.
-    //
-    // Symptôme vécu (KARMA, 03/09) : plan régénéré en 4000×4672, calibrage
-    // resté sur un 12000×14017. Les distances lues étaient justes (elles
-    // viennent de `tracking.scale`), mais la modale criait « Incohérence
-    // échelle critique, +246,9 % d'écart » — l'alerte comparait la bonne
-    // échelle à une déduction faite sur un géoréf mort. Elle avait tort, et
-    // rien ne permettait de le deviner.
-    //
-    // Un calibrage dont les points sortent du plan n'est pas une préférence
-    // utilisateur : c'est une donnée morte. On la remplace. Un calibrage
-    // manuel VALIDE, lui, a forcément ses points dans le plan — il est
-    // préservé, la règle d'origine tient.
+    // Calibrage local existant : respecté, 🩸 SAUF s'il est périmé. Le planId est déterministe (nom+version) :
+    // un plan régénéré à d'autres dimensions hérite d'un calibrage dont les x/y désignent un canvas disparu →
+    // échelle déduite fausse et fausse alerte « incohérence d'échelle ». Points hors du plan = donnée morte,
+    // remplacée ; un calibrage manuel valide a forcément ses points dans le plan.
     const dejaLa = window.KmzExport.getCalibration && window.KmzExport.getCalibration(planId);
     if (dejaLa) {
       const W = window.PLAN_CONFIG.plan.imageWidth;
@@ -1460,22 +1103,9 @@ function _propagerGeorefVersKmzExport(planId) {
     window.KmzExport.setCalibration(planId, georef);
     console.log("[Main] 🌐 Géoréférencement plan.georef propagé vers KmzExport (planId=" + planId + ")");
 
-    // 🩸 v1.82.0 — ET DANS LE REGISTRE, parce que le HOME ne peut pas lire
-    // `PLAN_CONFIG` : aucun plan n'y est chargé. Le widget OSM du HOME ne
-    // listait donc que les plans dont le géoréf avait atteint le
-    // localStorage — un plan importé du SIG, pourtant parfaitement calé par
-    // construction, restait invisible (signalé par KARMA).
-    //
-    // `osmView.js` (la modale, en mode plan) lit DEUX sources depuis la
-    // v1.39.2 : `PLAN_CONFIG.plan.georef` puis le localStorage. Le widget du
-    // HOME n'a jamais reçu l'équivalent, et son en-tête érigeait le manque en
-    // « limitation acceptable ». Elle ne l'est plus : l'import SIG produit
-    // des plans dont le géoréf est calculé, que l'utilisateur n'a aucune
-    // raison de ressaisir à la main.
-    //
-    // Le registre est le seul endroit que le HOME lit déjà. On y dépose donc
-    // le géoréf du plan — sa donnée propre, pas une préférence : le
-    // localStorage reste la voix de l'utilisateur, et garde la priorité.
+    // 🩸 Aussi dans le REGISTRE : le HOME ne lit pas PLAN_CONFIG (aucun plan chargé), et sans ça son widget OSM
+    // ignore les plans géoréférencés par construction (import SIG). C'est la donnée du plan, pas une préférence :
+    // le localStorage reste la voix de l'utilisateur et garde la priorité.
     if (window.PlanRegistry && typeof window.PlanRegistry.addOrUpdate === "function") {
       window.PlanRegistry.addOrUpdate({ id: planId, georef: georef });
     }
@@ -1484,29 +1114,21 @@ function _propagerGeorefVersKmzExport(planId) {
   }
 }
 
-// =========================
-// CHARGEMENT DEPUIS IMPORT NAVIGATEUR
-// =========================
+// ── Chargement depuis un import navigateur ──────────────────────
 // presetChoisi : "off" | "auto" | "quality" | "balanced" | "performance" (string)
-//   ← v2 : remplace l'ancien `perfChoisi` (boolean)
-// meta = { zipFile?, fsHandle?, planId? }  (tout optionnel)
+// meta = { zipFile?, planId?, storeBlob?, fromStoredBlob?, typeRegistre?, zipEtag?, zipLastModified? } (optionnels)
 async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta) {
   if (!planConfigFile) throw new Error("Aucun fichier plan-config.json fourni");
 
   meta = meta || {};
 
-  // Détruire proprement la carte existante (plan serveur éventuellement chargé)
   _importDemande = true;
   _appEnCours    = false;
 
   _libererRessourcesPlanPrecedent();
 
-  // 🐛 v1.34.12 — Set window._lazyZipRef APRÈS _libererRessourcesPlanPrecedent
-  // pour qu'il survive au cleanup (resetRuntimeAssets nullify _lazyZipRef du
-  // plan précédent — légitime — mais on doit ensuite restaurer la ref du nouveau
-  // plan annotée par extraireZip sur assetFiles._lazyZip).
-  // Si pas de stub (plan sans tuiles V2 hors whitelist), assetFiles._lazyZip
-  // est undefined → on laisse _lazyZipRef = null (cohérent avec le reset).
+  // 🩸 _lazyZipRef posé APRÈS la libération : resetRuntimeAssets le remet à null. Absent (pas de tuiles V2
+  // paresseuses) → reste null.
   if (assetFiles && assetFiles._lazyZip) {
     window._lazyZipRef = assetFiles._lazyZip;
     console.log("[LazyTiles v1.34.12] window._lazyZipRef restauré post-cleanup");
@@ -1523,7 +1145,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   const allLogicalPaths = [];
   if (rawConfig.plan?.baseImage)      allLogicalPaths.push(rawConfig.plan.baseImage);
   if (rawConfig.plan?.collisionImage) allLogicalPaths.push(rawConfig.plan.collisionImage);
-  // v1.34.19 — Champ `histoirePdf` (PDF embarqué pour Mode Histoire).
+  // PDF embarqué du Mode Histoire.
   if (rawConfig.plan?.histoirePdf)    allLogicalPaths.push(rawConfig.plan.histoirePdf);
   (rawConfig.imageLayers || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
   (rawConfig.dataLayers  || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
@@ -1536,14 +1158,9 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     await registerAsset(logicalPath, matched);
   }));
 
-  // 🧱 Tiling V2 (v149) : scan des tuiles dans le ZIP (chemin `data/tiles/z<N>/*`
-  // — 🫥 v1.62.0 : extension .jpg (legacy) OU .webp/.png (tuiles avec alpha), le
-  // regex est agnostique et le format vit dans `tiling.format`).
-  // Enregistrement LAZY (pas de blob URL au boot — économie d'allocations sur des
-  // plans qui peuvent avoir 1000+ tuiles). Les blob URLs sont créées à la demande
-  // par tiling.js > _chargerImageTuileV2 quand chaque tuile est rendue.
+  // Tiling V2 : tuiles `data/tiles/z<N>/*` (.jpg, .webp ou .png : le format vit dans `tiling.format`).
+  // Enregistrement LAZY (1000+ tuiles possibles) : blob URL créée au rendu (tiling.js > _chargerImageTuileV2).
   if (rawConfig.plan?.tiledV2 === true || rawConfig.tiling) {
-    // 🌀 v152 : mise à jour de l'overlay de chargement avec progression
     const totalTuiles = files.filter(function(f) {
       const fp = f._fullPath || f.name;
       return typeof fp === "string" && /^data\/tiles\/z-?\d+\//.test(fp);
@@ -1557,7 +1174,6 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
       if (typeof fullPath === "string" && /^data\/tiles\/z-?\d+\//.test(fullPath)) {
         await registerAsset(fullPath, f, { lazy: true });
         nbTuiles++;
-        // Update progress every 50 tiles (gros plans = 1000+ tuiles)
         if (nbTuiles % 50 === 0 && typeof window._majOverlayChargement === "function") {
           window._majOverlayChargement(window.I18n.t("main.loading.tilesProgress", { done: nbTuiles, total: totalTuiles }));
         }
@@ -1573,15 +1189,14 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
 
   const cfg = buildAppConfigFromPlan(rawConfig);
 
-  // Muter DEFAULT_CONFIG en place pour que resetConfig() utilise les valeurs du plan importé
+  // ⚠️ DEFAULT_CONFIG muté EN PLACE : resetConfig() doit retomber sur les valeurs du plan importé.
   Object.assign(DEFAULT_CONFIG, cfg);
   window.DEFAULT_CONFIG = DEFAULT_CONFIG;
 
   APP_CONFIG = { ...cfg };
   window.APP_CONFIG = APP_CONFIG;
 
-  // Appliquer le preset perf choisi par l'utilisateur dans le loader (string)
-  // AVANT lancerApplication → l'image est tilée selon le bon preset dès le 1er rendu
+  // Preset perf du loader appliqué AVANT lancerApplication : l'image est tuilée selon lui dès le 1er rendu.
   if (typeof presetChoisi === "string" && _PERF_VALID_PRESETS.indexOf(presetChoisi) >= 0) {
     APP_CONFIG.perfPreset = presetChoisi;
     DEFAULT_CONFIG.perfPreset = presetChoisi;
@@ -1591,28 +1206,23 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
 
   console.log("[Loader] APP_CONFIG.perfPreset au lancement :", APP_CONFIG.perfPreset);
 
-  // ENREGISTREMENT DANS LE REGISTRE
   if (window.PlanRegistry && rawConfig.plan) {
     const planName = rawConfig.plan.name || "Plan importé";
     const planVer  = rawConfig.plan.version || "";
     const id = meta.planId || window.PlanRegistry.genLocalId(planName, planVer);
     window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
 
-    // 🧩 Plan d'extension (☁️) : son nom et sa version sont ceux de l'installation (renommé dans
-    // la gestion, version serveur) — le nom inscrit dans le ZIP les écrasait à chaque ouverture
-    // (« renommé, puis l'ancien nom revient une fois le plan ouvert », retour KARMA 05/10/2026).
+    // 🩸 Plan d'extension : nom et version sont ceux de l'installation, jamais ceux inscrits dans le ZIP (sinon
+    // un renommage côté installation est annulé à chaque ouverture).
     const _estExt = meta.typeRegistre === "ext";
-    // 📦 07/10/2026 — plan déclaré par son archive dans data/index.json : il reste un plan
-    // « server » (l'index le gère, le retire, le renomme) ; son nom est celui de l'index, sa
-    // version celle du plan-config (règle v1.88.0 : le fichier DANS le plan fait autorité).
+    // Plan déclaré par son archive dans index.json : reste « server » (l'index le gère) ; nom de l'index, version
+    // du plan-config (le fichier DANS le plan fait autorité).
     const _estZipSrv = meta.typeRegistre === "server-zip";
     const _existant = (_estExt || _estZipSrv) && typeof window.PlanRegistry.findById === "function"
       ? window.PlanRegistry.findById(id) : null;
     const entry = {
       id: id,
-      // 🧩 v2.7.0 — un plan fourni par une extension garde son type « ext »
-      // (sinon l'ouvrir le ferait passer pour un import local, et l'effacement à
-      // la déconnexion ne le retrouverait plus).
+      // Un plan d'extension garde le type « ext », sinon l'effacement à la déconnexion ne le retrouve plus.
       type: _estExt ? "ext" : (_estZipSrv ? "server" : "local"),
       name: (_existant && _existant.name) ? _existant.name : planName,
       version: (_estExt && _existant && _existant.version) ? _existant.version
@@ -1622,28 +1232,21 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
       fileSize: meta.zipFile?.size || null,
       perfPreset: APP_CONFIG.perfPreset
     };
-    // 🏗️ Mode badges (v150) : enregistrer les flags depuis plan-config.json
-    // pour que la liste de plans affiche M-LVL / V2. Ajout conditionnel pour
-    // ne pas ecraser un user-override explicite (setMultiLevel(id, false)).
+    // Badges M-LVL / V2 : seulement si vrais (ne pas écraser un setMultiLevel(id, false) de l'user).
     if (rawConfig.plan.multiLevel === true) entry.multiLevel = true;
     if (rawConfig.plan.tiledV2    === true) entry.tiledV2    = true;
     if (_estZipSrv && planVer) entry.versionSrc = "plan";
 
-    // 15/09/2026 : plus de prise de référence disque (`meta.fsHandle`) — le
-    // bouton 🔐 de l'accueil est retiré, la copie du ZIP est le seul mécanisme.
-    // Les entrées existantes qui portent `fsHandleId` restent lues par
-    // `homeLoader` (étape 2 de l'ouverture) ; on n'en crée plus.
-
-    // Si l'utilisateur a demandé de mémoriser le ZIP en local, le sauver en IDB
+    // La copie du ZIP en IDB est le seul mécanisme de mémorisation ; on ne crée plus de `fsHandleId` (les
+    // entrées existantes restent lues par homeLoader).
     if (meta.storeBlob && meta.zipFile) {
       try {
-        // Demander la persistance du stockage (empêche purge auto par iOS/Chrome)
+        // Stockage persistant : évite la purge automatique iOS/Chrome.
         if (window.PlanRegistry.requestPersistentStorage) {
           await window.PlanRegistry.requestPersistentStorage();
         }
-        // 🩸 14/10/2026 : un plan d'extension dont la copie est DÉJÀ gardée (même taille) n'est pas réécrit sur
-        // lui-même — réécrire l'enregistrement efface, sous iOS, les données du fichier encore en lecture (« object
-        // can not be found »). L'extension garde elle-même sa copie à jour.
+        // 🩸 Plan d'extension déjà gardé (même taille) : pas de réécriture sur lui-même. Sous iOS, réécrire efface
+        // les données du fichier encore en lecture (« object can not be found »). L'extension tient sa copie à jour.
         let _dejaGarde = false;
         if (meta.typeRegistre === "ext" && typeof window.PlanRegistry.getBlob === "function") {
           const g = await window.PlanRegistry.getBlob(id).catch(function() { return null; });
@@ -1652,13 +1255,11 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         const result = _dejaGarde ? { ok: true } : await window.PlanRegistry.saveBlob(id, meta.zipFile);
         if (result.ok) {
           entry.storedBlob = true;
-          // 📦 Plan ZIP de l'index : les validateurs HTTP de la copie gardée, pour la requête
-          // conditionnelle de la prochaine ouverture (304 = la copie est à jour).
+          // Plan ZIP de l'index : validateurs HTTP pour la requête conditionnelle suivante (304 = copie à jour).
           if (_estZipSrv) { entry.zipEtag = meta.zipEtag || null; entry.zipLastModified = meta.zipLastModified || null; }
           console.log("[Loader] ZIP mémorisé dans IndexedDB :", id);
         } else {
           console.error("[Loader] Mémorisation ZIP échouée :", result.error);
-          // Avertir l'utilisateur via le statut du loader
           if (typeof window !== "undefined") {
             const status = document.getElementById("loaderStatus");
             if (status) {
@@ -1671,23 +1272,15 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         console.error("[Loader] Erreur saveBlob :", e);
       }
     } else if (meta.fromStoredBlob) {
-      // Chargé depuis un blob mémorisé — préserver la flag
       entry.storedBlob = true;
     }
 
     _enregistrerPlanCharge(entry);
 
-    // 🏷️ 16/09/2026 — ÉTIQUETTES PROPOSÉES PAR LE ZIP (demande KARMA :
-    // « affecter des tags directement à la génération »). Le plan-config peut
-    // porter `plan.tags` ; on les applique avec l'origine "config".
-    // 🩸 LE FICHIER PROPOSE, L'UTILISATEUR DISPOSE (décisions 1:a 2:a) :
-    //   • des tags posés à la main (tagsSrc "user") ne sont JAMAIS touchés,
-    //     même si une nouvelle version du ZIP en propose d'autres ;
-    //   • sur un plan serveur, l'index du déployeur ("index") passe avant ;
-    //   • un ZIP réimporté SANS tags retire ceux qu'un ZIP précédent avait
-    //     proposés ("config"), et seulement ceux-là.
-    // Absence du champ = rien ne change (rétro-compat totale).
-    // 🏷️ début-tags-config
+    // Tags proposés par le ZIP (`plan.tags`, origine "config"). 🩸 Le fichier propose, l'utilisateur dispose :
+    // tags posés à la main ("user") jamais touchés ; l'index du déployeur ("index") passe avant ; un ZIP réimporté
+    // sans tags retire seulement ceux d'origine "config".
+    // 🏷️ ancre:debut-tags-config
     try {
       const _cfgTags = rawConfig.plan.tags;
       const _reg = window.PlanRegistry.findById(id);
@@ -1699,27 +1292,15 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         window.PlanRegistry.setTags(id, [], "config");
       }
     } catch (eTags) { console.warn("[Loader] tags du plan-config ignorés :", eTags); }
-    // 🏷️ fin-tags-config
+    // 🏷️ ancre:fin-tags-config
 
-    // 🌐 v1.14.20 — Propagation du calibrage GPS embarqué dans le
-    // plan-config.json vers KmzExport. Idempotent (skip si calibrage local
-    // existe déjà). Voir _propagerGeorefVersKmzExport pour les détails.
     _propagerGeorefVersKmzExport(id);
   }
 
-  // 🆕 v1.9.3-B1d.γ.3 : extraction + restore des photos depuis le ZIP plan.
-  // Format attendu (créé par createConf.js > _genererZip quand "Inclure les
-  // photos" est cochée en mode Modifier, cf B1.d.γ.1) :
-  //   data/photos/_index.json   ← mapping photoId → {pointId, mime, size, file}
+  // Photos embarquées dans le ZIP (createConf.js > _genererZip, « Inclure les photos ») :
+  //   data/photos/_index.json      ← photoId → {pointId, mime, size, file}
   //   data/photos/<photoId>.<ext>  ← blob de chaque photo
-  //
-  // Stratégie wipe + restore (KARMA 3:a) : on supprime d'abord les photos IDB
-  // existantes pour ce planId (= le ZIP fait foi, cohérent avec syncModeFlags),
-  // puis on insère les nouvelles via restorePhoto qui préserve les photoIds.
-  //
-  // Toast OOMGuard discret en fin de restore (KARMA 2:c).
-  // Comportement strictement opt-in (rétrocompat) : si aucun _index.json
-  // dans le ZIP, on saute toute cette section silencieusement.
+  // Sans _index.json, section sautée.
   try {
     const indexFile = findMatchingFile("data/photos/_index.json", files);
     if (indexFile && window.MyKTAMapPhotos && window._currentLoadedPlanId) {
@@ -1737,19 +1318,10 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           if (typeof window._majOverlayChargement === "function") {
             window._majOverlayChargement(window.I18n.t("main.loading.photosRestore", { n: photoIds.length }));
           }
-          // 🩸 v2.5.0 (lot C3, décision KARMA) — PLUS D'EFFACEMENT GLOBAL.
-          // Avant : `deletePhotosForPlan(planId)` à CHAQUE ouverture d'un plan ZIP
-          // qui embarque des photos (« 3:a ») — les photos prises par
-          // l'utilisateur sur ce plan, et ses rattachements « c'est ce point »,
-          // disparaissaient à la réouverture. Désormais :
-          //   - une photo du ZIP déjà présente est GARDÉE telle quelle (son
-          //     rattachement éventuel survit) ;
-          //   - une photo du ZIP absente est restaurée, marquée origine « plan » ;
-          //   - seules les photos d'origine « plan » qui ont disparu de la
-          //     nouvelle version du ZIP sont retirées ;
-          //   - une photo prise par l'utilisateur (sans cette marque) n'est JAMAIS
-          //     touchée. Une photo restaurée avant v2.5.0 n'a pas la marque : elle
-          //     reste aussi (au pire, une photo périmée — jamais une perte).
+          // 🩸 Jamais d'effacement global (deletePhotosForPlan) : il emporterait les photos de l'utilisateur et
+          // leurs rattachements. Règle : photo du ZIP déjà présente → gardée telle quelle ; absente → restaurée,
+          // marquée origine « plan » ; seules les « plan » disparues du ZIP sont retirées ; une photo sans
+          // marque (prise par l'user, ou restaurée anciennement) n'est jamais touchée — au pire périmée, jamais perdue.
           const _dansIndex = new Set(photoIds.map(String));
           try {
             const _existantes = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
@@ -1783,8 +1355,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 blob:    blob,
                 mime:    info.mime || "image/jpeg",
                 size:    info.size || blob.size,
-                meta:    { origine: "plan" }   // 🆔 v2.5.0 : seules celles-ci peuvent être retirées
-              }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
+                meta:    { origine: "plan" }   // seules celles-ci peuvent être retirées
+              }, { source: "import" });   // restauration de l'app (≠ dépôt d'une extension)
               restoredCount++;
             } catch(e) {
               console.warn("[Loader] restorePhoto échoué pour", pid, ":", e);
@@ -1792,15 +1364,13 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           }
           console.log("[Loader] " + restoredCount + " / " + photoIds.length + " photo(s) restaurée(s) en IDB");
 
-          // Toast discret pour informer l'user (KARMA 2:c). On utilise
-          // OOMGuard.showToast s'il est dispo (queue jusqu'à fin splash),
-          // sinon console seulement (toast nice-to-have, pas critique).
+          // Toast discret (mis en file jusqu'à la fin du splash).
           if (restoredCount > 0 && window.OOMGuard
               && typeof window.OOMGuard.showToast === "function") {
             window.OOMGuard.showToast(
               window.I18n.t(restoredCount > 1 ? "main.toast.photosRestored.many" : "main.toast.photosRestored.one",
                             { n: restoredCount }),
-              "info", { groupe: "chargement" }   // 🔕 regroupé avec les autres restaurations
+              "info", { groupe: "chargement" }   // regroupé avec les autres restaurations
             );
           }
         }
@@ -1808,7 +1378,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     }
   } catch(e) {
     console.warn("[Loader] Restore photos depuis ZIP plan :", e);
-    // Pas bloquant — le plan se charge normalement sans les photos
+    // Non bloquant : le plan se charge sans les photos.
   }
 
   _appEnCours    = false;
@@ -1817,20 +1387,14 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   await lancerApplication();
 }
 
-// =========================
-// AFFICHER LE LOADER (avec rafraîchissement de la liste)
-// =========================
+// ── Retour à l'accueil (loader) ──────────────────────
 function afficherLoader() {
-  // 🐛 v1.28.0 : annule tout mode « cliquer sur la carte » resté actif (floater
-  // + modale config masquée + handler orphelin) avant de revenir au home.
+  // Mode « cliquer sur la carte » encore actif (floater, modale config masquée, handler) annulé.
   if (typeof window._ktaAnnulerModesClicCarte === "function") {
     try { window._ktaAnnulerModesClicCarte(); } catch(e) {}
   }
-  // 🧹 v1.68.0 (audit KARMA « fermetures à la sortie du plan ») : purge des
-  // FLOTTANTS DE NAVIGATION — 4 résidus reproduits au bench restaient
-  // affichés par-dessus le HOME : mini-pastille ↩️ (sans timer), invite
-  // « 🌀 Portail suivant » (sans timer), widget boussole, modale itinéraire
-  // fantôme (cachée dans le DOM). Seuls les chemins goTo nettoyaient.
+  // 🩸 Flottants de navigation purgés, sinon ils restent par-dessus le HOME : pastille de retour, invite
+  // « Portail suivant », boussole, modale itinéraire cachée dans le DOM.
   if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
     try { window.InterPlanLinks.onPlanExit("home"); } catch(e) {}
   }
@@ -1848,57 +1412,27 @@ function afficherLoader() {
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";
-    // 🆕 v1.7.3 : remonter au top à chaque ouverture du loader.
-    // Sans ça, si l'user était scrollé en bas (ex: section 📚 Mes plans),
-    // chargeait un plan, puis revenait au loader → la home s'affichait au
-    // même niveau de scroll qu'avant chargement, masquant le titre/header.
-    // overflow-y vit sur #planLoaderOverlay (cf. CSS), donc c'est lui le
-    // scroll container, pas le body. scrollTop = 0 est instantané (pas
-    // smooth) car on veut un reset perceptif net "retour à l'accueil".
+    // Retour en haut à chaque ouverture. ⚠️ Le conteneur qui défile est #planLoaderOverlay (overflow-y), pas body.
     overlay.scrollTop = 0;
     const btn = document.getElementById("loadPlanBtn");
     if (btn) btn.disabled = false;
     const status = document.getElementById("loaderStatus");
     if (status) status.textContent = "";
   }
-  // Masquer #map pendant que le loader est visible
   const mapEl = document.getElementById("map");
   if (mapEl) mapEl.style.display = "none";
 
-  // 🆕 v1.9.2-hotfix-loader-header (KARMA "si je clique sur la rose des
-  // vents, retour au home avec le haut de la couleur du haut de leaflet.
-  // Mais si je clique sur le titre puis tous mes plans, retour sur home
-  // avec le haut en noir").
-  //
-  // Diagnostic : le refonte header (#kta-refonte-header, z:1200) reste
-  // visible "à travers" le planLoaderOverlay (z:5000) à cause du fond
-  // semi-opaque rgba(5,8,15,0.92) qui laisse 8% de transparence — le
-  // gradient #1a1f2e du header bleed-through en haut. Selon le chemin
-  // d'arrivée au home, le rendu compositing iOS varie (passage par
-  // overlay modal intermédiaire vs direct). Pour normaliser : on ajoute
-  // une classe `kta-loader-active` sur le body qui force le header et
-  // la statusbar refonte en display:none tant que le loader est visible.
-  // Garantit un rendu identique quel que soit le chemin d'arrivée.
+  // 🩸 Le fond du loader est semi-opaque (8 %) : le header refonte transparaît, différemment selon le chemin
+  // d'arrivée (compositing iOS). Cette classe masque header et statusbar tant que le loader est visible.
   document.body.classList.add("kta-loader-active");
 
-  // Rafraîchir la liste des plans dans le loader
   if (typeof window.refreshPlansList === "function") {
     window.refreshPlansList();
   }
 
-  // 🗺️ v1.90.11 (bug KARMA) — RAFRAÎCHIR AUSSI LE WIDGET OSM DE L'ACCUEIL.
-  // Symptôme : charger un NOUVEAU plan, y entrer, revenir au home → sa Vue OSM
-  // ne marchait pas depuis l'accueil tant qu'on n'avait pas redémarré l'app.
-  // Cause : le widget calcule sa liste de plans géoréférencés au `mount()`,
-  // qui ne tournait qu'au boot / au changement de langue / d'opt-in — JAMAIS au
-  // retour home. La géoref du plan est pourtant persistée dès son chargement
-  // (`_propagerGeorefVersKmzExport` → KmzExport.setCalibration), donc un simple
-  // re-mount la fait apparaître. Le commentaire du widget (« invalidé au mount,
-  // retour HOME = … ») supposait déjà ce câblage : il manquait.
-  // 🗺️ v1.90.12 — …et il s'ouvre sur LE PLAN QU'ON VIENT DE QUITTER (demande
-  // KARMA). `_currentLoadedPlanId` tient encore l'id à ce point (il n'est jamais
-  // remis à null au retour home). S'il n'est pas géoréférencé, le widget retombe
-  // proprement sur sa sélection précédente puis le 1ᵉʳ plan.
+  // 🩸 Widget OSM de l'accueil re-monté : il calcule sa liste de plans géoréférencés au mount(), sinon un plan
+  // chargé entre-temps n'y apparaît qu'au redémarrage. Il s'ouvre sur le plan qu'on vient de quitter
+  // (_currentLoadedPlanId n'est jamais remis à null au retour) ; non géoréférencé → sélection précédente.
   if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
     try { window.OsmHomePreview.refresh(window._currentLoadedPlanId || null); } catch (e) {
       console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
@@ -1906,27 +1440,18 @@ function afficherLoader() {
   }
 }
 
-// =========================
-// SPLASH SCREEN — animation de bienvenue au démarrage
-// =========================
-// 🆕 v1.8.0 : 4000ms → 3500ms (demande KARMA). Reste assez long pour que
-// l'animation de la barre de chargement + le logo soient perçus, mais
-// raccourcit légèrement l'attente perçue au boot/F5.
+// ── Splash de démarrage ──────────────────────
+// Durée minimale : assez pour percevoir l'animation et le logo (décision produit).
 const SPLASH_MIN_DURATION_MS = 3500;
 let _splashShownAt = null;
 
 function _splashStart() {
-  // Le splash est affiché par défaut via index.html
-  // Cette fonction enregistre juste l'heure de début
+  // Le splash est affiché par index.html ; on note seulement l'heure de début.
   const splash = document.getElementById("splashOverlay");
   if (!splash) return;
   _splashShownAt = Date.now();
 
-  // 🆕 v1.47.0 — Affiche la version courante (haut-droite du splash) depuis
-  // le build courant (window.__MKM__.build, défini par js/copyright.js). Zéro
-  // hardcode : la version suit automatiquement chaque release. L'ancienne
-  // barre de progression (#splashProgressBar) a été remplacée par l'arc
-  // doré rotatif autour de la boussole (CSS pur, aucun pilotage JS requis).
+  // Version lue sur window.__MKM__.build (js/copyright.js) : jamais en dur.
   const ver = document.getElementById("splashVersion");
   if (ver) {
     const b = (window.__MKM__ && window.__MKM__.build) ? String(window.__MKM__.build) : "";
@@ -1939,7 +1464,6 @@ async function _splashEnd() {
   const splash = document.getElementById("splashOverlay");
   if (!splash) return;
 
-  // Attendre que la durée minimale soit écoulée
   if (_splashShownAt) {
     const elapsed = Date.now() - _splashShownAt;
     const remaining = SPLASH_MIN_DURATION_MS - elapsed;
@@ -1948,47 +1472,31 @@ async function _splashEnd() {
     }
   }
 
-  // Fade out puis retrait du DOM
   splash.classList.add("fading");
   setTimeout(function() {
     if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
-    // Splash plus à l'écran → on peut afficher les éléments en attente
+    // Splash parti : toasts en attente et modale de mise à jour détectée pendant le splash.
     if (window.OOMGuard) window.OOMGuard.flushPendingToasts();
-    // Modale de mise à jour si une nouvelle version a été détectée pendant le splash
     if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
       window.UpdateChecker.notifySplashEnded();
     }
-    // 🆕 v1.56.0 — Séquenceur de premier lancement (js/firstRunFlow.js).
-    // Remplace les anciens déclencheurs non coordonnés (alerte + onboarding +
-    // proposition PIN) qui se superposaient au 1er boot. Joue les étapes UNE
-    // PAR UNE, dans l'ordre : 🚨 alerte critique → ⚖️ conditions d'utilisation
-    // → 🎓 onboarding → 🔐 proposition PIN. AlertChecker.notifySplashEnded (qui
-    // pose aussi le flag _splashEnded + affiche les alertes différées) est
-    // désormais appelé PAR l'orchestrateur (étape 1). Chaque boot rejoue la
-    // séquence : les étapes déjà faites (légal accepté, onboarding vu, PIN
-    // proposé) se sautent d'elles-mêmes.
+    // ⚠️ Séquenceur de premier lancement (js/firstRunFlow.js) : une étape à la fois — alerte critique →
+    // conditions d'utilisation → onboarding → proposition PIN — pour qu'elles ne se superposent pas. Il appelle
+    // lui-même AlertChecker.notifySplashEnded. Rejoué à chaque boot, les étapes faites se sautent.
     if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
       window.FirstRunFlow.run();
     } else if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
-      // Fallback défensif si le module n'a pas chargé : au moins les alertes.
+      // Module absent : au moins les alertes.
       window.AlertChecker.notifySplashEnded();
     }
   }, 500);
 }
 
-// =========================
-// 🌍 v1.45.0 — i18n DOM (HOME statique)
-// =========================
-// Applique les traductions sur le DOM : tout élément portant
-//   • data-i18n        → remplace textContent par I18n.t(clé)
-//   • data-i18n-html   → remplace innerHTML  par I18n.t(clé) (valeurs avec balises)
-//   • data-i18n-title  → pose title + aria-label = I18n.t(clé)
-//   • data-i18n-placeholder → pose placeholder = I18n.t(clé)  [v1.69.0]
-//   • data-i18n-aria-label  → pose aria-label = I18n.t(clé), sans title
-// Le texte FR laissé dans le HTML n'est qu'un FALLBACK (si I18n indispo). La
-// VRAIE source est le dico lang/<code>.json. Idempotent → rappelé à chaque
-// changement de langue. Générique : poser les attributs suffit, aucun code à
-// ajouter ici pour une nouvelle zone ou une nouvelle langue.
+// ── i18n du DOM (HOME statique) ──────────────────────
+// ⚠️ Attributs : data-i18n → textContent · data-i18n-html → innerHTML · data-i18n-title → title + aria-label ·
+// data-i18n-placeholder → placeholder · data-i18n-aria-label → aria-label seul.
+// Le FR du HTML n'est qu'un repli ; la source est lang/<code>.json. Idempotent, rejoué à chaque changement de langue.
+// Générique : poser l'attribut data-i18n* suffit, rien à coder ici pour une nouvelle zone ou langue.
 function _applyI18nDom(root) {
   if (!window.I18n || typeof window.I18n.t !== "function") return;
   root = root || document;
@@ -2003,9 +1511,6 @@ function _applyI18nDom(root) {
     el.setAttribute("title", v);
     el.setAttribute("aria-label", v);
   });
-  // 🆕 v1.69.0 — placeholder d'input (barre de recherche du HOME). Manquait :
-  // un champ traduit devait sinon être rempli à la main en JS, hors du cycle
-  // de re-traduction au changement de langue.
   root.querySelectorAll("[data-i18n-placeholder]").forEach(function(el) {
     el.setAttribute("placeholder", window.I18n.t(el.getAttribute("data-i18n-placeholder")));
   });
@@ -2016,20 +1521,11 @@ function _applyI18nDom(root) {
   });
 }
 
-// Peuple le sélecteur de langue du HOME depuis I18n.available() (scale N
-// langues, aucun code de langue figé) + sélectionne la langue active + bind le
-// change : bascule I18n PUIS ré-applique les traductions du HOME EN PLACE (pas
-// de reload → compatible incognito, où l'écriture localStorage est shimée en
-// mémoire et un reload perdrait le choix). Couvre le HOME normal ET incognito
-// (même écran). Idempotent (guard _i18nBound).
-// 🆕 v1.47.0 — Re-traduit le DOM HOME EN PLACE (data-i18n + perf preset rendu en
-// JS, non-data-i18n). Extrait de _initHomeLangSelect pour être rejoué AUSSI au
-// swap SW passif (handler controllerchange ci-dessous), pas seulement à la
-// bascule de langue. Idempotent.
+// Re-traduit le HOME EN PLACE (data-i18n + description du preset perf rendue en JS). Rejoué à la bascule de
+// langue et au swap SW passif. Idempotent.
 function _retraduireI18nDomEnPlace() {
   _applyI18nDom(document);
-  // #loaderPerfDesc n'est PAS un data-i18n (rempli en JS depuis les metas
-  // tiling.js, traduit au point d'affichage) → re-render en re-jouant le preset.
+  // #loaderPerfDesc n'est pas un data-i18n (rempli en JS) : on rejoue le preset.
   try {
     if (typeof window.setLoaderPerfPreset === "function" &&
         typeof window.getLoaderPerfPreset === "function") {
@@ -2038,12 +1534,9 @@ function _retraduireI18nDomEnPlace() {
   } catch (e) { /* no-op : home non encore monté */ }
 }
 
-// 🆕 v1.47.0 — LISSAGE i18n AU SWAP SW PASSIF (option B, KARMA). Quand un nouveau
-// SW prend la main SANS reload (activation auto au lancement), le 1er boot a pu
-// charger un dico périmé → clés humanisées affichées. On re-fetch les dicos frais
-// (I18n.reload) + re-render EN PLACE → zéro flash, zéro reload. Le flux update
-// MANUEL (interfaceMaintenance) reload déjà la page → se suffit ; ce handler couvre
-// le swap PASSIF. Guard _done : une seule fois par cycle de page.
+// 🩸 Swap SW passif (nouveau SW sans reload) : le 1er boot a pu charger un dico périmé (clés brutes affichées).
+// On recharge les dicos (I18n.reload) et on re-traduit en place, une fois par page. La mise à jour manuelle
+// recharge déjà la page.
 (function _initI18nSwSwapRefresh() {
   if (!("serviceWorker" in navigator)) return;
   var _done = false;
@@ -2059,14 +1552,14 @@ function _retraduireI18nDomEnPlace() {
   });
 })();
 
+// Sélecteur de langue du HOME, peuplé depuis I18n.available() (aucun code de langue figé). Bascule = I18n puis
+// re-traduction EN PLACE, sans reload (en incognito, un reload perdrait le choix tenu en mémoire). Idempotent.
 function _initHomeLangSelect() {
   const sel = document.getElementById("loaderAppLang");
   if (!sel || !window.I18n || typeof window.I18n.available !== "function") return;
   const langs = window.I18n.available() || [];
   const cur = window.I18n.getLang();
-  // 🌍 v1.46.0 — Le sélecteur vit désormais dans la modale Configuration (après
-  // Incognito), plus dans le header : on a la place → drapeau + label complet
-  // (« 🇫🇷 Français »). Sur Windows le drapeau s'affiche en 2 lettres (FR/GB/ES).
+  // Drapeau + libellé complet (sous Windows, le drapeau s'affiche en 2 lettres).
   sel.innerHTML = langs.map(function(l) {
     return '<option value="' + l.code + '"' + (l.code === cur ? ' selected' : '') +
            ' title="' + l.label + '">' + (l.flag ? l.flag + " " : "") + l.label + '</option>';
@@ -2078,19 +1571,14 @@ function _initHomeLangSelect() {
     const done = (typeof window.I18n.setLang === "function") ? window.I18n.setLang(code) : Promise.resolve();
     Promise.resolve(done).then(function() {
       _retraduireI18nDomEnPlace();
-      // 🌍 v1.46.4 (KARMA) : proposer un redémarrage pour une bascule 100% propre.
       if (typeof window.proposerRedemarrageLangue === "function") window.proposerRedemarrageLangue();
     });
   });
 }
 
-// 🌍 v1.46.4 (KARMA) — Popup « redémarrer pour appliquer la langue ». Certains
-// contenus (doc, onboarding, modules non abonnés à I18n.onChange) ne se
-// re-traduisent qu'au reload → on RECOMMANDE (sans imposer) de redémarrer après
-// un changement de langue. Appelé par les 2 sélecteurs (HOME + ⚙️ Réglages carte).
-// Texte affiché dans la NOUVELLE langue (le popup s'ouvre après setLang().then()).
-// Skippé en incognito : un reload y perdrait la session in-memory (décision KARMA
-// 2a) ; la langue est déjà appliquée à chaud + persistée (write-through disque).
+// Popup « redémarrer pour appliquer la langue » : certains contenus (doc, onboarding, modules non abonnés à
+// I18n.onChange) ne se re-traduisent qu'au reload. Recommandé, jamais imposé. Appelé par les 2 sélecteurs, après
+// setLang() (texte dans la NOUVELLE langue). Pas en incognito : un reload y perdrait la session en mémoire.
 window.proposerRedemarrageLangue = function() {
   if (window.IncognitoMode && window.IncognitoMode.active) return;
   var existing = document.getElementById("kta-lang-restart-modal");
@@ -2117,46 +1605,37 @@ window.proposerRedemarrageLangue = function() {
   });
 };
 
-// =========================
-// POINT D'ENTRÉE — auto-détection
-// =========================
+// ── Point d'entrée ──────────────────────
+// ⚠️ Ordre du boot (contrat, vérifié EN PARTIE par check-gate-instance.js et check-extensions.js) : i18n →
+// sessions → HOME traduit → splash → conditions d'utilisation → config d'instance → revalidation du mot de
+// passe → licence (si « on ») → verrou licence → modules et gate déléguée → UnlockGate → PIN → FirstRunFlow →
+// découverte des plans.
 (async function initApp() {
   console.log("[Main] Démarrage…");
 
-  // 🌍 v1.45.0 : I18N — précharge les dicos (fr = fallback obligatoire +
-  // langue active) AVANT tout rendu d'UI/modale, pour que I18n.t() retourne
-  // les traductions et jamais la clé brute. Échec réseau → dico {} (jamais de
-  // reject) → fallback FR garanti. Cf js/langManager.js.
+  // Dicos (fr = repli obligatoire + langue active) AVANT toute UI, pour que I18n.t() ne rende jamais la clé
+  // brute. Échec réseau → dico {} (jamais de rejet), repli FR (js/langManager.js).
   if (window.I18n && typeof window.I18n.init === "function") {
     try { await window.I18n.init(); }
     catch (e) { console.warn("[Main] I18n.init a échoué (fallback FR) :", e); }
   }
 
-  // 💾 Sessions : chargées depuis IndexedDB (et migrées du localStorage au 1er
-  // lancement) AVANT tout rendu qui les lit — accueil, stats, restauration.
+  // Sessions chargées depuis IndexedDB (migrées du localStorage au 1er lancement) AVANT tout rendu qui les lit.
   // Jamais de rejet : IndexedDB indisponible = repli localStorage (js/sessionStore.js).
   if (window.KtaSessionStore && typeof window.KtaSessionStore.init === "function") {
     try { await window.KtaSessionStore.init(); }
     catch (e) { console.warn("[Main] KtaSessionStore.init a échoué :", e); }
   }
 
-  // 🌍 v1.45.0 — Traduit le HOME (statique, déjà dans le DOM) depuis le dico +
-  // initialise son sélecteur de langue. Fait AVANT le splash → le HOME est déjà
-  // dans la bonne langue quand il devient visible.
+  // HOME traduit AVANT le splash : déjà dans la bonne langue quand il devient visible.
   try { _applyI18nDom(document); _initHomeLangSelect(); }
   catch (e) { console.warn("[Main] i18n HOME a échoué :", e); }
 
-  // Démarrer le splash dès l'init
   _splashStart();
 
-  // ⚖️ v1.56.4 — Conditions d'utilisation EN TOUT PREMIER, AVANT toute saisie
-  // de code communautaire ou import de licence (bug : déclenchée par
-  // FirstRunFlow post-splash, la gate légale [z 99999] passait DERRIÈRE
-  // l'UnlockGate [z 100100] — et l'ordre logique voulu par KARMA est « on lit
-  // et accepte les conditions AVANT de saisir un code »). Bloquant : le boot
-  // ne continue pas tant que l'user n'a pas accepté. Skip en incognito (flag
-  // localStorage shimé, non persistant — cohérent FirstRunFlow). L'étape
-  // légale de FirstRunFlow reste en filet (no-op ici car déjà accepté).
+  // 🩸 Conditions d'utilisation EN PREMIER, avant toute saisie de code ou import de licence : lancée après le
+  // splash, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate (z 100100). Bloquant. Sautée en incognito
+  // (flag non persistant) ; l'étape légale de FirstRunFlow reste en filet.
   if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
       && !window.LegalGate.isAccepted()
       && !(window.IncognitoMode && window.IncognitoMode.active)) {
@@ -2165,31 +1644,24 @@ window.proposerRedemarrageLangue = function() {
     catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
   }
 
-  // 🏛️ v2.6.0 (chantier 2, community-server-line.md §3) — CONFIG D'INSTANCE
-  // LUE UNE FOIS, AVANT LES GATES. Même requête qu'avant (data/index.json),
-  // avancée : la gate, le kiosque, le connecteur et la découverte des plans la
-  // partagent (js/ktaInstance.js). Délai 2 s, puis dernière config connue.
+  // Config d'instance lue UNE fois, avant les gates (community-server-line.md §3) : gate, kiosque, connecteur et
+  // découverte la partagent (js/ktaInstance.js). Délai 2 s, puis dernière config connue.
   const _instanceBoot = (window.KtaInstance && typeof window.KtaInstance.charger === "function")
     ? await window.KtaInstance.charger() : null;
-  // 🔑 Rotation du mot de passe d'instance à EFFET IMMÉDIAT : la revalidation
-  // passe AVANT la gate, donc au lancement — jamais en pleine session (la
-  // raison de l'ancien délai d'un démarrage). 🩸 Seulement si l'index a
-  // VRAIMENT répondu : une config rejouée de mémoire ne révoque rien
-  // (revaliderInstance ignore tout appel sans `true`), sinon une coupure
-  // réseau reverrouillerait l'app.
+  // Rotation du mot de passe d'instance à effet immédiat : revalidation avant la gate, jamais en pleine session.
+  // 🩸 Seulement si l'index a VRAIMENT répondu : une config rejouée de mémoire ne révoque rien (sinon une coupure
+  // réseau reverrouillerait l'app).
   if (_instanceBoot && _instanceBoot.repondu && window.UnlockGate &&
       typeof window.UnlockGate.revaliderInstance === "function") {
     window.UnlockGate.revaliderInstance(_instanceBoot.config ? _instanceBoot.config.accessHash : null, true);
   }
-  // 🔌 L'état de connexion est connu avant la gate (une future gate déléguée en
-  // a besoin) ; la licence n'est ATTENDUE que si l'instance déclare « on » —
-  // myktamap.fr et toute instance en OFF ne perdent pas une milliseconde.
+  // État de connexion connu avant la gate (la gate déléguée en a besoin) ; la licence n'est ATTENDUE que si
+  // l'instance déclare « on » : myktamap.fr et toute instance OFF ne perdent pas une milliseconde.
   if (_instanceBoot) _appliquerConnexionServeur(_instanceBoot.config, _instanceBoot.repondu);
   const _scBoot = _instanceBoot && _instanceBoot.config ? _instanceBoot.config.serverConnection : null;
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
-    // Licence serveur déjà connue : 2 s suffisent (repli). Sinon (1er lancement,
-    // après « Tout réinitialiser ») : jusqu'à 15 s, et on repart dès la fin de la
-    // vérification (mktm:license-checked) — trouvée ou non.
+    // Licence serveur déjà connue : 2 s. Sinon (1er lancement, après réinitialisation) : jusqu'à 15 s, on repart dès
+    // mktm:license-checked, trouvée ou non.
     let _licConnue = false;
     try { _licConnue = !!localStorage.getItem(window.MyKTAMapProLicense._LS_KEY_SERVER); } catch(e) {}
     await new Promise(function(resolve) {
@@ -2204,18 +1676,11 @@ window.proposerRedemarrageLangue = function() {
     });
   }
 
-  // 🧩 v2.7.0 (chantier 3) — MODULES GREFFÉS ET GATE DÉLÉGUÉE.
-  // Règle E : les modules ne se chargent que sur une instance « on » avec une
-  // licence de source serveur (KtaExtensions.chargerModules ne fait rien
-  // sinon : myktamap.fr n'en charge jamais). Ils se chargent AVANT les gates,
-  // pour qu'un module puisse remplacer la gate d'entrée par son compte.
-  // 🔏 09/10/2026 — INSTALLATION PRO SANS LICENCE VALIDE = APP FERMÉE. L'état « licence » ne
-  // naît que d'une installation qui déclare une connexion serveur (index, ou sa dernière config
-  // connue hors ligne) sans licence serveur valide : absente, expirée, signature refusée. Sans
-  // ce verrou, les modules ne se chargeaient pas, la gate déléguée non plus, et l'app tombait
-  // sur la gate community — souvent déjà franchie — puis s'ouvrait sur les plans et sessions
-  // gardés par le dernier utilisateur de l'appareil. Hors ligne avec une licence encore valide
-  // en cache, l'état est « configurée » : rien ne change (module + copie locale).
+  // Modules greffés et gate déléguée. Règle E : modules chargés seulement sur une instance « on » avec une licence
+  // de source serveur (myktamap.fr n'en charge jamais), AVANT les gates, pour qu'un module remplace la gate d'entrée.
+  // 🔒 Installation pro sans licence valide (absente, expirée, signature refusée) = APP FERMÉE. Sans ce verrou, ni
+  // modules ni gate déléguée : l'app tomberait sur la gate community (souvent déjà franchie) et s'ouvrirait sur les
+  // données du dernier utilisateur. Hors ligne avec une licence valide en cache : état « configurée », rien ne change.
   if (_motifBlocage() === "licence") {
     console.warn("[Main] Installation pro sans licence valide : accès fermé (jamais de repli community)");
     await _splashEnd();
@@ -2225,61 +1690,35 @@ window.proposerRedemarrageLangue = function() {
   let _gateDelegueeOk = false;
   if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
     const _mods = await window.KtaExtensions.chargerModules();
-    // Splash terminé AVANT d'ouvrir la gate déléguée : gate.ouvrir() dessine son écran tout de suite
-    // (pro : connexion), qui apparaissait par-dessus le splash encore affiché (constat KARMA du 10/10/2026,
-    // mesuré : écran de connexion à 1,2 s, splash présent et sans fondu).
+    // 🩸 Splash terminé AVANT la gate déléguée : gate.ouvrir() dessine son écran tout de suite, par-dessus le
+    // splash encore affiché sinon.
     if (_mods && _mods.demandes > 0) await _splashEnd();
     const _gate = window.KtaExtensions.gateDeleguee();
     if (_gate) {
       await _splashEnd();
       try { await _gate; _gateDelegueeOk = true; console.log("[Main] Gate déléguée franchie"); }
       catch (e) {
-        // 🩸 JAMAIS de repli sur la gate community : le code communautaire,
-        // diffusé largement, ouvrirait une instance privée (trou v1.90.7).
+        // 🔒 JAMAIS de repli sur la gate community : le code communautaire, diffusé largement, ouvrirait une
+        // instance privée.
         console.warn("[Main] Gate déléguée en échec :", e);
         await _ktaInstanceIndisponible(_motifBlocage());
       }
     } else if (_mods && _mods.demandes > 0 && _mods.echecs > 0) {
-      // Instance connectée dont un module ne se charge pas : écran dédié, même
-      // règle (jamais de repli sur la gate community).
+      // Module qui ne se charge pas : écran dédié, même règle.
       await _splashEnd();
       await _ktaInstanceIndisponible();
     }
   }
 
-  // 🗝️ v173 : Unlock Gate (barrière communautaire).
-  // Position 3=b validée KARMA : APRÈS le splash, AVANT toute initialisation
-  // qui touche au plan ou à l'UI. Si pas authentifié → l'app reste bloquée
-  // sur l'overlay tant que l'user n'a pas saisi le bon code (ou reset complet).
-  // ⚠️ La fonction await ouvrirGate() ne résout JAMAIS en lockout (5 échecs)
-  //    → main.js reste bloqué là pour toujours, l'user doit cliquer "Reset
-  //    complet" dans l'overlay pour repartir. Volontaire.
+  // Unlock Gate (barrière communautaire) : après le splash, avant toute init qui touche au plan ou à l'UI. Déjà
+  // déverrouillé (cas courant) → étape sautée sans overlay.
+  // ⚠️ ouvrirGate() ne résout pas pendant un verrou temporisé : le boot attend là (volontaire).
   if (!_gateDelegueeOk && window.UnlockGate && !window.UnlockGate.isUnlocked()) {
-    // On laisse le splash se finir d'abord (UX préservée) puis on enchaîne
-    // sur le gate. Si l'user a déjà été déverrouillé (cas le plus fréquent
-    // = 2e boot+), on saute complètement cette étape sans même montrer
-    // l'overlay → tu ne le vois qu'à la 1ère installation et au reset.
     await _splashEnd();
 
-    // 🆕 v1.29.1-fix1 — Bypass gate si licence pro active.
-    // Cas d'usage : instance pro (Licence-pro.json fetché côté serveur OU
-    // importé localement). Sans ce bypass, l'user voyait la gate
-    // communautaire au 1er boot ET le bouton « 📂 Importer ma licence
-    // pro » en dessous → friction inutile + risque de double-import
-    // (cache local en plus du serveur, masqué par la priorité server>local).
-    //
-    // Logique :
-    //   1. Si MyKTAMapProLicense.isPro() est déjà true au moment du check
-    //      (cache localStorage déjà rempli par un précédent fetch ou import)
-    //      → bypass immédiat, aucune attente.
-    //   2. Sinon on attend brièvement (max 2s) un éventuel event
-    //      "mktm:license-changed" émis par js/proLicense.js quand son
-    //      fetch /Licence-pro.json async résout (timeout fetch 1.5s + marge).
-    //   3. Si toujours pas pro après ce délai → gate normale.
-    //
-    // Cohérent avec v1.28.5 (import licence depuis la gate = bypass via
-    // set LS_UNLOCK) : ici aussi on pose le flag pour ne plus jamais
-    // redemander la gate tant que l'app reste dans son contexte pro.
+    // Licence pro active → la gate community est contournée (sinon gate ET bouton d'import de licence au 1er boot).
+    // isPro() déjà vrai → immédiat ; sinon attente max 2 s de mktm:license-changed (fetch /Licence-pro.json) ;
+    // toujours pas pro → gate normale.
     const _proLicenseReady = async function(maxMs) {
       if (!window.MyKTAMapProLicense) return false;
       if (window.MyKTAMapProLicense.isPro()) return true;
@@ -2301,23 +1740,10 @@ window.proposerRedemarrageLangue = function() {
 
     const _proActive = await _proLicenseReady(2000);
 
-    // 🔒 v1.90.9 (décision KARMA) — QUAND UNE INSTANCE PUBLIE UN MOT DE PASSE
-    // (`accessHash`), PLUS AUCUNE LICENCE PRO NE LE CONTOURNE — ni celle
-    // importée par l'utilisateur (source "local"), ni celle servie par
-    // l'instance (source "server"). Le mot de passe est LA porte d'accès ; la
-    // licence n'accorde que le MODE pro, pas l'accès.
-    //
-    // 🩸 POURQUOI ON A RETIRÉ L'EXCEPTION "server" (elle datait de la v1.90.8).
-    // Le `/Licence-pro.json` servi par l'instance est fetché pour TOUS les
-    // visiteurs : le laisser bypasser l'`accessHash` rendait le mot de passe
-    // MUET dès qu'une licence serveur était présente — quiconque ouvrait
-    // l'instance entrait. Or `accessHash` ET licence serveur ensemble n'ont
-    // qu'une lecture cohérente : le déployeur veut un accès filtré ET le mode
-    // pro. Le mode pro reste actif après la saisie du mot de passe ; seul le
-    // contournement de la gate est refusé.
-    //
-    // Cas inchangé : une instance pro SANS mot de passe → la licence bypasse
-    // toujours (pas d'`accessHash` → pas de gate à contourner).
+    // 🔒 Instance avec mot de passe (`accessHash`) : AUCUNE licence ne le contourne, ni "local" ni "server". Le mot
+    // de passe est l'accès, la licence n'accorde que le MODE pro. 🩸 Pas d'exception "server" : /Licence-pro.json est
+    // servi à TOUS les visiteurs, elle rendrait le mot de passe muet. Instance pro SANS mot de passe → bypass.
+    // (check-gate-instance.js exécute ce bloc.)
     let _proBypass = _proActive;
     if (_proActive
         && typeof window.UnlockGate.instanceRequiertMotDePasse === "function"
@@ -2331,16 +1757,9 @@ window.proposerRedemarrageLangue = function() {
       console.log("[Main] Licence pro active (source=" +
                   window.MyKTAMapProLicense.getSource() +
                   ") → bypass UnlockGate community");
-      // Pose le flag unlock pour cohérence avec le pattern v1.28.5
-      // (= une licence pro est un canal d'accès légitime, équivalent
-      // au code communautaire validé). Évite la gate au prochain boot.
+      // Flag unlock posé (la licence est un accès légitime, comme le code validé) : pas de gate au prochain boot.
+      // Jamais le hash en dur ici : API publique d'UnlockGate, sinon rien (le bypass se rejoue au reload).
       try {
-        // Hash community attendu par UnlockGate.isUnlocked()
-        // (cf js/unlockGate.js > HASH_VALIDE). On ne hardcode pas
-        // le hash ici — on appelle l'API publique si dispo, sinon
-        // on skip silencieusement (la gate sera juste réaffichée au
-        // prochain reload, ce qui restera correct vu que le bypass
-        // se ré-applique).
         if (typeof window.UnlockGate.markUnlockedViaLicensePro === "function") {
           window.UnlockGate.markUnlockedViaLicensePro();
         }
@@ -2352,15 +1771,8 @@ window.proposerRedemarrageLangue = function() {
     }
   }
 
-  // 🆕 v1.9.4 (KARMA 2:a "PIN après UnlockGate") : couche perso PIN/biométrie
-  // optionnelle, par-dessus la barrière communautaire UnlockGate.
-  //   - Si pas activé → résout immédiatement (no-op)
-  //   - Si activé et déjà unlocké cette session (rare car flag in-memory
-  //     reset à chaque reload) → no-op
-  //   - Sinon → affiche la gate PIN, attend l'unlock (via PIN ou biométrie)
-  //   - En lockout → la gate reste affichée infiniment (l'user doit reset)
-  //
-  // Cf. js/pinLock.js pour le moteur (hash SHA-256 + WebAuthn + lockout).
+  // PIN/biométrie optionnel, APRÈS l'UnlockGate (js/pinLock.js). Désactivé ou déjà déverrouillé cette session →
+  // rien ; sinon gate PIN jusqu'au déverrouillage (verrou temporisé, jamais définitif : décision produit).
   if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
       && !window.MyKTAMapPinLock.isUnlocked()) {
     await _splashEnd();
@@ -2369,91 +1781,55 @@ window.proposerRedemarrageLangue = function() {
     console.log("[Main] Gate PIN franchie → init normale");
   }
 
-  // ⚖️ v1.56.4 — Toutes les gates de boot (légale → unlock → PIN) sont
-  // franchies : on libère le séquenceur de premier lancement. Sans ce signal
-  // explicite, FirstRunFlow (déclenché par _splashEnd ~500 ms après le fade)
-  // pouvait démarrer dans une FENÊTRE SANS GATE entre deux gates (ex. ~2 s
-  // d'attente du check licence pro entre la légale et l'UnlockGate) → le
-  // tutoriel partait avant/derrière la saisie du code. En lockout, ce point
-  // n'est jamais atteint → la file ne démarre jamais (voulu).
+  // 🩸 Toutes les gates franchies : on libère le séquenceur de premier lancement. Sans ce signal, FirstRunFlow
+  // (lancé par _splashEnd) démarrait dans une fenêtre sans gate (attente de licence) et le tutoriel passait
+  // derrière la saisie du code. En verrou, jamais atteint : la file ne démarre pas (voulu).
+  // La proposition d'activation du PIN est la dernière étape de ce séquenceur (js/firstRunFlow.js).
   if (window.FirstRunFlow && typeof window.FirstRunFlow.notifyBootGatesDone === "function") {
     window.FirstRunFlow.notifyBootGatesDone();
   }
 
-  // 🆕 v1.56.0 — La proposition d'activation du PIN n'est PLUS déclenchée ici :
-  // elle est désormais séquencée par js/firstRunFlow.js (dernière étape du flux
-  // de premier lancement : alerte → légal → onboarding → PIN), pour éviter le
-  // « spam » de popups superposées au 1er boot. Cf. _splashEnd → FirstRunFlow.run().
-
-  // Initialiser le registre
   if (window.PlanRegistry) {
     window.PlanRegistry.init();
   }
 
-  // Détection de mise à jour (non bloquant) — fetch version.json en arrière-plan
-  // et propose une modale de reset si une nouvelle version est dispo. Si offline,
-  // silencieux. La modale s'affichera AU-DESSUS du splash naturellement (z-index 99999).
+  // Mise à jour (version.json, non bloquant, silencieux hors ligne) : modale au-dessus du splash (z 99999).
   if (window.UpdateChecker && typeof window.UpdateChecker.check === "function") {
     window.UpdateChecker.check().catch(function(e) {
       console.warn("[Main] UpdateChecker error :", e);
     });
   }
 
-  // Alerte publique (incendie, fermeture, etc.) — fetch alert.json en parallèle.
-  // Si une alerte est active (alert.active = true côté serveur), modale charte
-  // affichée après le splash via notifySplashEnded (queue pour éviter le bypass
-  // du gradient sombre).
+  // Alerte publique (alert.json) : modale affichée après le splash via notifySplashEnded.
   if (window.AlertChecker && typeof window.AlertChecker.check === "function") {
     window.AlertChecker.check().catch(function(e) {
       console.warn("[Main] AlertChecker error :", e);
     });
   }
 
-  // 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur).
-  // Fetch initial async + cache 24h. Le check effectif a lieu au moment de
-  // chargerZipFichier() via window.PlanDenylist.isPlanDenied(zipFile).
-  // 🆕 v1.42.3 — Audit boot des plans LOCAUX déjà importés (delay 2s pour
-  // ne pas bloquer le boot principal). Si des plans sont purgés → modale
-  // orange affichée 1s après pour informer l'user. Cache hash dans le
-  // registry pour éviter le re-hash au prochain boot.
-  // 🔆 v1.85.2 — SECOND FILET. ⚠️ Le module s initialise DEJA lui-meme en fin
-  // de fichier : cet appel n est pas ce qui repare quoi que ce soit (mon
-  // premier diagnostic, corrige le 07/09). Il vaut comme reprise plus tard
-  // dans le boot, quand l app est stabilisee. La vraie panne etait le VERROU
-  // FANTOME — cf. l en-tete de js/wakeLock.js.
-  // (ancien commentaire, faux, conserve pour memoire du raisonnement :)
-  // 🩸 v1.85.2 (KARMA « l option qui garde le tel allume ne fonctionne pas sur
-  // iPhone en PWA ») — `WakeLock.init()` n etait appele NULLE PART. Le module
-  // etait charge, les deux cases appelaient bien `setEnabled()`, mais la
-  // preference n etait JAMAIS relue au demarrage : `_enabled` restait false, le
-  // verrou n etait pas repris, et `isEnabled()` rendant false, la case
-  // s affichait DECOCHEE a chaque lancement.
-  //
-  // Pourquoi ca n a saute aux yeux que sur iPhone : sur PC on ne recharge pas,
-  // donc cocher la case marchait pour la session en cours. En PWA iOS, quitter
-  // l app pour une autre la fait decharger — chaque retour est un boot, donc
-  // chaque retour perdait le reglage. Meme famille que le bug `snapDraw` du
-  // 03/08 : une preference sauvegardee mais jamais relue.
+  // WakeLock : second filet (le module s'initialise déjà en fin de fichier), repris quand l'app est stabilisée.
+  // 🩸 Une préférence sauvegardée doit être RELUE au boot : en PWA iOS chaque retour dans l'app est un boot.
+  // La vraie panne était le verrou fantôme (en-tête de js/wakeLock.js). check-wakelock.js exige cet appel.
   if (window.WakeLock && typeof window.WakeLock.init === "function") {
     window.WakeLock.init().catch(function () {});
   }
 
+  // Kill-switch anti-fuite (denylist.json, cache 24 h). Le refus d'un ZIP se joue dans chargerZipFichier
+  // (PlanDenylist.isPlanDenied) ; ici, audit différé des plans LOCAUX déjà importés.
   if (window.PlanDenylist && typeof window.PlanDenylist.init === "function") {
     window.PlanDenylist.init().then(function() {
-      // Affiche la modale de notif si des plans ont été purgés au DERNIER boot
-      // (lecture LS — peut survenir aussi suite à audit en arrière-plan plus tôt)
+      // Plans purgés au DERNIER boot : modale d'information.
       const purged = window.PlanDenylist.getPurgedAtBoot();
       if (purged && purged.length > 0) {
         setTimeout(function() {
           try { window.PlanDenylist.showPurgedNotifModal(purged); } catch(e) {}
         }, 800);
       }
-      // Lance l'audit en arrière-plan (delay 2s anti-blocage boot)
+      // Audit en arrière-plan, différé de 2 s pour ne pas bloquer le boot.
       setTimeout(function() {
         window.PlanDenylist.auditPlansLocaux().then(function(res) {
           if (res.purged && res.purged.length > 0) {
             console.warn("[Main] Audit denylist : " + res.purged.length + " plan(s) purgé(s) au boot — affichage notif");
-            // Affiche immédiatement la notif (la modale réutilise LS_PURGED)
             try { window.PlanDenylist.showPurgedNotifModal(res.purged); } catch(e) {}
           }
         }).catch(function(e) {
@@ -2465,18 +1841,9 @@ window.proposerRedemarrageLangue = function() {
     });
   }
 
-  // Auto-discovery serveur (data/index.json)
-  // 🆕 v1.21.3 (KARMA "rajoute une option — ne pas charger les plan serveur
-  // au démarrage") : skip total si l'user a coché la pref dans ⚙️ Configuration
-  // loader → section 📚 Plans serveur. Default OFF (rétrocompat).
-  // 🛠️ v1.73.0 : la config d'instance (sous-titre, flags, liaisons kiosque)
-  // est chargée MÊME si la pref skippe la discovery — seule l'inscription
-  // des plans serveur est optionnelle.
-  // 🩸 v1.90.1 — ET ELLE EST CHARGÉE D'ABORD. La pref était lue AVANT
-  // l'index : le kiosque avait beau remettre `skip_server_plans` à false, la
-  // décision était déjà prise, et l'accueil restait vide pour CE démarrage —
-  // il aurait fallu relancer l'app pour voir ses plans. On lit l'index, puis
-  // la pref, une fois le kiosque appliqué.
+  // Découverte serveur. La pref « ne pas charger les plans serveur » ne saute que l'inscription des plans ; la
+  // config d'instance est toujours chargée. 🩸 Index lu AVANT la pref : le kiosque peut la remettre à false, sinon
+  // l'accueil reste vide pour ce démarrage.
   const _idxServeur = await _chargerIndexServeur();
   const _skipServer = (typeof window._loaderSkipServerPlans === "function")
                       && window._loaderSkipServerPlans();
@@ -2494,9 +1861,8 @@ window.proposerRedemarrageLangue = function() {
   window.addEventListener("mktm:plans-extension-changes", function() {
     _decouvrirPlansExtension().then(function() {
       if (typeof window.refreshPlansList === "function") window.refreshPlansList();
-      // 🩸 12/10/2026 (retour KARMA) — la Vue OSM de l'accueil gardait les noms de la PREMIÈRE lecture (encore
-      // illisibles quand l'extension ne les avait pas fini de traiter) jusqu'à l'ouverture d'un plan : elle suit
-      // désormais la liste, quand l'accueil est affiché (en mode carte, le retour à l'accueil la remonte déjà).
+      // 🩸 La Vue OSM de l'accueil suit la liste (sinon elle garde les noms de la première lecture, parfois encore
+      // illisibles). Seulement si l'accueil est affiché : en mode carte, le retour à l'accueil la remonte.
       const osm = document.getElementById("ktaOsmHomeContent");
       if (osm && osm.offsetParent !== null && window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
         try { window.OsmHomePreview.refresh(); } catch (e) { console.warn("[Main] Vue OSM après la liste :", e); }
@@ -2504,8 +1870,7 @@ window.proposerRedemarrageLangue = function() {
     }).catch(function(e) { console.warn("[Main] plans d'extension :", e); });
   });
 
-  // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
-  // le charger automatiquement comme avant
+  // Registre vide ET plan racine présent (data/plan-config.json) : chargé automatiquement.
   const registreVide = !window.PlanRegistry || window.PlanRegistry.getAll().length === 0;
 
   if (registreVide) {
@@ -2513,7 +1878,6 @@ window.proposerRedemarrageLangue = function() {
     if (chargéDepuisServeur) {
       console.log("[Main] Plan serveur racine détecté — chargement auto (rétro-compat)");
 
-      // L'enregistrer dans le registre comme plan "racine"
       if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
         const id = "server_root";
         window._currentLoadedPlanId = id;  // pour SessionPersist (sinon save() ne saurait pas qui sauvegarder)
@@ -2534,7 +1898,7 @@ window.proposerRedemarrageLangue = function() {
           await _splashEnd();
           return;
         }
-        // Lancer l'application en parallèle de la fin du splash
+        // Application lancée en parallèle de la fin du splash.
         const appPromise = lancerApplication();
         await _splashEnd();
         await appPromise;
@@ -2546,14 +1910,11 @@ window.proposerRedemarrageLangue = function() {
   }
 
   console.log("[Main] Affichage du home avec liste des plans");
-  // Afficher le loader en parallèle de la fin du splash
   afficherLoader();
   await _splashEnd();
 })();
 
-// =========================
-// EXPORTS GLOBAUX
-// =========================
+// ── Exports globaux ──────────────────────
 window.startImportedPlan   = startImportedPlan;
 window.chargerPlanServeur  = chargerPlanServeur;
 window.initDataFromConfig  = initDataFromConfig;

@@ -33,7 +33,9 @@ grep -n "vX\.Y\.Z" sw.js js/copyright.js version.json
     algorithmique). Ne dit que ce que l'utilisateur voit ou doit savoir. Pas de ligne « Sources de vérité ».
   - Le détail technique va dans `docs/architecture/<sujet>.md`, le message de commit et `NETWORK_AUDIT` (réseau).
 - Détail technique dans `README.md`, **2 endroits précis** (⚠️ ne JAMAIS prépender en tête de fichier) :
-  1. Remplacer le bloc `## 📦 Version courante` (tête de fichier, 3-5 lignes max) ;
+  1. Remplacer le bloc `## 📦 Version courante` (tête de fichier, 3-5 lignes max) : il ne contient QUE la version
+     en cours ; le résumé de la version précédente descend en tête de `### 🗂️ Résumés des versions précédentes`
+     (fin du journal, juste avant `## 📄 Licence`) — convention KARMA du 17/10/2026 ;
   2. Ajouter l'entrée détaillée **en tête de la section `## 📋 Journal des versions`** (fin de fichier, juste sous `### 🕐 Versions récentes`).
 
 ## 3 bis. Audit réseau (axe 🔒) — on écrit le `.md`, le `.html` se génère

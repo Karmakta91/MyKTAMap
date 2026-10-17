@@ -5,61 +5,25 @@
  */
 
 // =========================
-// INTERFACE MAINTENANCE — Calibrage + Reset + Mise à jour douce
+// INTERFACE MAINTENANCE — calibrage d'échelle, réinitialisation, mise à jour douce
 // =========================
-// 🆕 v1.31.0 (P3 Lot 7 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 1671-2326 avant extraction) pour réduire le
-// volume du fichier principal.
-//
-// Aucun changement de comportement runtime. Les 3 fonctions publiques
-// + 2 helpers ping exposés via `window.*` sont strictement identiques
-// à v1.30.1.
-//
-// 📋 API publique :
-//   - window.ouvrirCalibrageEchelle()
-//        Modale "Calibrage d'échelle" — produit en croix entre une
-//        distance pixel mesurée et une distance réelle saisie par l'user.
-//        Met à jour APP_CONFIG.scale + persiste dans plan-config local.
-//   - window.viderCacheAppli()
-//        Reset complet : pré-check Internet (ping no-cors gstatic.com)
-//        + double confirmation (3 si offline) + purge SW + caches HTTP/
-//        PWA + localStorage + sessionStorage + TOUTES les bases IDB +
-//        location.reload(true).
-//   - window.mettreAJourCodeSeul()
-//        Mise à jour douce : purge SW cache uniquement, préserve
-//        localStorage + IDB + UnlockGate. Réutilisée par le badge
-//        version footer et par le bouton dans Configuration.
-//   - window._pingInternet() / window._pingInternetUrl
-//        Helpers ping connectivité (fetch no-cors gstatic.com + timeout
-//        5s + navigator.onLine). Exposés pour réutilisation par d'autres
-//        modules qui veulent tester l'état réseau avant action destructive.
-//
-// 🔌 Dépendances externes (toutes via window.*) :
-//   - navigator.serviceWorker.unregister      [browser API]
-//   - caches.delete / caches.keys             [browser API]
-//   - localStorage / sessionStorage           [browser API]
-//   - indexedDB.databases / .deleteDatabase   [browser API + fallback]
-//   - window.UnlockGate (depuis v1.7.x)       [unlockGate.js]
-//   - window.PinLock                          [pinLock.js]
-//   - window.afficherToast                    [refonteInterface.js]
-//
-// 📍 Ordre de chargement (cf index.html) :
-//   - Doit charger APRÈS interface.js (cohérence ordre découpe).
-//     L'ordre est cosmétique car les fonctions sont appelées au runtime
-//     (clic user, badge version, etc.).
+// Expose : ouvrirCalibrageEchelle() (produit en croix distance pixel mesurée / distance réelle →
+//   APP_CONFIG.scale) · viderCacheAppli() (ping serveur + double confirmation, puis SW, caches, localStorage,
+//   sessionStorage, TOUTES les bases IDB, reload) · mettreAJourCodeSeul() (purge du cache PWA seulement,
+//   données préservées ; badge version du footer et Configuration) · _pingInternet() / _pingInternetUrl.
+// Dépend de : UnlockGate, PinLock, KtaInstance, KtaExtensions (avantReinitialisation), afficherToast.
+// Fonctions appelées au runtime : l'ordre de chargement est cosmétique.
 
-// =========================
-// CALIBRAGE D'ÉCHELLE — produit en croix
-// =========================
+// ── Calibrage d'échelle ──────────
 function ouvrirCalibrageEchelle() {
   const existing = document.getElementById("kta-calib-modal");
   if (existing) { existing.remove(); return; }
 
-  // Lire la valeur actuelle du champ (pas APP_CONFIG, au cas où on l'a modifiée sans appliquer)
+  // Valeur du champ, pas APP_CONFIG (modifiée sans être appliquée).
   const champScale = document.getElementById("cfg_scale");
   const scaleActuel = champScale ? parseFloat(champScale.value) : APP_CONFIG.scale;
 
-  // 🌍 i18n au rendu (la modale s'ouvre toujours après I18n.init).
+  // i18n au rendu (la modale s'ouvre après I18n.init).
   const _t = function(k) { return window.I18n.t(k); };
 
   const modal = document.createElement("div");
@@ -160,8 +124,7 @@ function ouvrirCalibrageEchelle() {
     }
     if (champScale) {
       champScale.value = nouveauScale.toFixed(3);
-      // v1.92.0 (L4) : plus de bouton Appliquer dans Réglages — la valeur
-      // s'enregistre comme une saisie (change → setPlanScale).
+      // La valeur s'enregistre comme une saisie (change → setPlanScale), sans bouton Appliquer.
       champScale.dispatchEvent(new Event("change", { bubbles: true }));
     }
     fermer();
@@ -170,36 +133,11 @@ function ouvrirCalibrageEchelle() {
   setTimeout(function() { inputAffichee.focus(); }, 50);
 }
 
-// =========================
-// VIDER LE CACHE APPLICATIF
-// =========================
-// 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être vers
-// origin/ping.html, plus aucun appel externe vers Google. On assure le
-// serveur dispo, SSL, Nginx avant Force update. On attend retour 'OK'").
-//
-// 🆕 v1.9.3-B-side-fix (KARMA "j'ai dit myktamap.fr dans le cadre de prod,
-// mais ca doit etre origin, pour devmap ca doit attaquer l'url de dev") :
-// PING_URL utilise location.origin DYNAMIQUEMENT au lieu d'un hardcode :
-//   - Prod (myktamap.fr) → https://myktamap.fr/ping.html
-//   - Prod future (myktamap.fr)         → https://myktamap.fr/ping.html
-//   - Local (localhost:8080)            → http://localhost:8080/ping.html
-//
-// Avantage same-origin : plus besoin de header CORS côté Nginx (le fetch
-// est same-origin → la SOP autorise). On peut même retirer le mode "cors"
-// explicite (default same-origin). Simplification déploiement : KARMA crée
-// /ping.html UNE fois sur chaque serveur, ça marche partout.
-//
-// Vérification connexion Internet + disponibilité serveur MyKTAMap :
-//   - timeout 5s, retourne Promise<boolean>
-//   - navigator.onLine (rapide) en court-circuit si false
-//   - fetch GET sur PING_URL same-origin
-//   - body attendu : exactement "OK" (texte brut)
-//
-// Avantages vs ancien ping Google :
-//   ✅ Plus AUCUN appel externe (cohérent avec privacy)
-//   ✅ Si OK → on garantit DNS + SSL + Nginx + PWA peut pull
-//   ❌ "Internet OK mais serveur down" est traité comme offline (voulu —
-//      pas la peine d'updater si le serveur source du nouveau code est down)
+// ── Vider le cache applicatif ──────────
+// 🔒 Ping sur <origin>/ping.html (location.origin DYNAMIQUE : prod, dev, local), plus aucun appel externe.
+// Same-origin : pas de CORS côté Nginx. Promise<boolean>, timeout 5 s, navigator.onLine en court-circuit,
+// corps attendu exactement « OK ». Vrai = DNS + SSL + Nginx joignables, la PWA peut se recharger.
+// « Internet OK mais serveur down » = hors ligne (voulu : inutile de mettre à jour sans source du code).
 const PING_URL = (typeof location !== "undefined" && location.origin)
   ? (location.origin + "/ping.html")
   : "/ping.html";  // fallback chemin relatif (très improbable)
@@ -208,7 +146,7 @@ const PING_EXPECTED_BODY = "OK";  // body attendu trim-comparé (case-insensitiv
 function _pingInternet() {
   return new Promise(function(resolve) {
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      // Le navigateur est sûr d'être offline → on évite même le fetch
+      // Navigateur sûr d'être hors ligne : pas de fetch.
       resolve(false);
       return;
     }
@@ -220,16 +158,8 @@ function _pingInternet() {
       resolve(false);
     }, 5000);
     const ctrl = new AbortController();
-    // Same-origin par défaut (PING_URL = location.origin + "/ping.html").
-    // Pas besoin de mode "cors" explicite → moins de friction Nginx.
-    // credentials: "omit" pour ne pas envoyer de cookies (le ping n'a
-    // pas besoin de session, garde la requête neutre).
-    //
-    // 🆕 Cache-bust ?_=Date.now() : même pattern que version.json /
-    // alert.json (cf. CLAUDE.md §20). Garantit que le SW ne sert pas
-    // une réponse cachée d'un précédent ping (= false positive si le
-    // serveur est down maintenant mais OK avant). Chaque appel a une
-    // URL unique → cache miss → fetch réseau forcé.
+    // credentials: "omit" (requête neutre, sans cookie). 🩸 Cache-bust ?_=Date.now() (comme version.json /
+    // alert.json) : sinon le SW peut servir un ancien ping réussi alors que le serveur est down.
     const pingUrlCb = PING_URL + "?_=" + Date.now();
     fetch(pingUrlCb, {
       method: "GET",
@@ -238,7 +168,7 @@ function _pingInternet() {
       credentials: "omit"
     }).then(function(res) {
       if (!res.ok) {
-        // Status HTTP non-2xx (404 si fichier absent, 5xx Nginx down, etc.)
+        // HTTP non-2xx (404 fichier absent, 5xx Nginx…).
         if (done) return;
         done = true;
         clearTimeout(timer);
@@ -250,7 +180,7 @@ function _pingInternet() {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      // Body "OK" attendu (trim + uppercase pour tolérer "ok\n" ou " Ok ")
+      // « OK » attendu, tolère « ok\n » ou « Ok ».
       const trimmed = (body || "").trim().toUpperCase();
       resolve(trimmed === PING_EXPECTED_BODY);
     }).catch(function() {
@@ -261,40 +191,21 @@ function _pingInternet() {
     });
   });
 }
-// Expose globalement (consommé par d'autres modules, ex: sessionExporter
-// onglet KMZ qui vérifie la connexion avant d'ouvrir un lien externe).
+// Exposé (ex. sessionExporter, onglet KMZ, avant d'ouvrir un lien externe).
 window._pingInternet = _pingInternet;
-// Expose aussi l'URL résolue pour les messages d'erreur user-friendly.
+// URL résolue, pour les messages d'erreur.
 window._pingInternetUrl = PING_URL;
 
-// =========================
-// 🔄 MISE À JOUR DOUCE — purge SW cache uniquement, préserve toutes les données
-// =========================
-// Différent de viderCacheAppli() qui fait table rase. Ici on ne touche QUE
-// au cache PWA (assets HTTP) — la session, le registre de plans, l'IndexedDB
-// et le localStorage restent intacts.
-//
-// Flow :
-//   1. Quick ping Internet (5s) — sinon erreur claire avant de tout purger.
-//   2. Demande au SW de skipWaiting si une nouvelle version attend.
-//   3. Force reg.update() pour que le navigateur check sw.js sur le réseau.
-//   4. Purge caches.keys() (cache PWA uniquement).
-//   5. Reload — les nouveaux assets sont re-fetchés depuis le réseau.
-//
-// Préservé : localStorage (sessions, plans registry, prefs), IndexedDB (handles + blobs),
-// sessionStorage, cookies, données utilisateur.
-// 🐛 v1.37.1 — La fonction _getCacheNameFromSW (hotfix21) a été RETIRÉE.
-// Elle interrogeait le SW COURANT (= l'ancien avant update) → on récupérait
-// le nom du cache de l'ANCIENNE version → la purge filtrait `k !== currentName`
-// → on PRÉSERVAIT EXPLICITEMENT l'ancien cache → l'ancien SW continuait de
-// servir son ancien copyright.js → __MKM__.build figé → badge footer
-// "ancienne → nouvelle" persistait après reload.
-// Le handler côté SW (GET_CACHE_NAME) est lui conservé pour rétrocompat
-// (modules tiers éventuels, debug F12 manuel).
+// ── Mise à jour douce : purge du cache PWA seulement ──────────
+// Contrairement à viderCacheAppli(), session, registre de plans, IndexedDB, localStorage, sessionStorage et
+// cookies restent intacts. Étapes : ping (5 s) → reg.update() sans attendre → SKIP_WAITING au SW en
+// attente → purge de TOUS les caches → reload.
+// 🩸 Ne jamais demander le nom du cache au SW COURANT pour l'épargner : c'est l'ANCIEN avant update, son
+// cache préservé ressert l'ancien copyright.js (__MKM__.build figé, badge « ancienne → nouvelle » qui
+// persiste). Le handler GET_CACHE_NAME du SW reste pour le debug.
 
 async function mettreAJourCodeSeul() {
-  // Affiche un overlay pendant l'opération pour que l'utilisateur voie
-  // qu'il se passe quelque chose. Cette phase peut prendre 1-3s.
+  // Overlay pendant l'opération (1-3 s).
   const overlay = document.createElement("div");
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
@@ -309,7 +220,7 @@ async function mettreAJourCodeSeul() {
   function _statusUpdate(txt) { if (status) status.innerHTML = txt; }
 
   try {
-    // 1. Ping Internet — sans réseau le re-fetch va échouer après la purge
+    // 1. Ping : sans réseau, le re-fetch échouerait APRÈS la purge.
     _statusUpdate(window.I18n.t("maint.msg_checking_connection"));
     const online = await _pingInternet();
     if (!online) {
@@ -318,57 +229,21 @@ async function mettreAJourCodeSeul() {
       return;
     }
 
-    // 🐛 v1.37.1 — RETRAIT du hotfix21 _getCacheNameFromSW. Cause racine du
-    // bug "badge footer ancienne→nouvelle persiste après reload" :
-    //   - hotfix21 interrogeait le SW COURANT (= l'ancien) AVANT reg.update()
-    //   - Récupérait son CACHE_NAME → croyait être le "courant"
-    //   - Filtre purge `k !== currentCacheName` préservait EXPLICITEMENT
-    //     l'ancien cache
-    //   - Au reload, l'ancien SW (toujours controller) servait son ancien
-    //     copyright.js depuis son cache préservé → __MKM__.build figé
-    // Le polling v1.34.9 ne couvrait que le happy path (install < 5s).
-    // En 4G molle ou ~100 assets cache:'reload', timeout fréquent → fallback
-    // reload avec cache ancien préservé = même bug.
-    //
-    // Fix : purge TOTALE comme killsw.html (qui marche systématiquement).
-    // Coût : 1 re-DL des assets au reload (~100 fichiers) — acceptable car
-    // Force update est une action volontaire avec ping internet déjà validé.
-    // Audit indépendant : cause racine confirmée + reco piste 1 validée KARMA.
-
-    // 2. SW update FIRE-AND-FORGET (au lieu de await). Avant,
-    // `await reg.update()` bloquait 30s-2min en téléchargeant ~100 assets
-    // via l'install event SYNCHRONE (cache.add x 100 avec cache:'reload').
-    // Maintenant : on lance update() en background, le téléchargement se
-    // fait pendant que l'user voit "Préparation…" + "Rechargement…", et
-    // au reload le nouveau SW est déjà prêt avec son cache populé.
-    //
-    // 🐛 v1.34.9 — Polling reg.waiting (max 5s) avant le reload. Sans ça,
-    // race condition : reload 200ms après reg.update() = nouveau SW pas
-    // encore installed → reg.waiting = null → SKIP_WAITING jamais envoyé
-    // → ancien SW sert encore l'ancien copyright.js au reload →
-    // __MKM__.build = ancienne version → badge footer affiche
-    // "ancienne → nouvelle" alors qu'on vient juste de mettre à jour.
-    // L'user devait restart 1 fois manuellement pour avoir la nouvelle
-    // version active (régression hotfix21).
-    // Fix : polling de reg.waiting (200ms x 25 = max 5s). Dès qu'on voit
-    // un waiting, on lui envoie SKIP_WAITING puis on await controllerchange
-    // (avec safety timeout 1.5s) → le nouveau SW est actif, son cache
-    // contient le nouveau copyright.js → reload sert la bonne version.
-    // Si timeout 5s atteint sans waiting (= install vraiment lent) →
-    // fallback reload anyway (= comportement v1.34.8 dégradé, pas pire).
+    // 2. reg.update() FIRE-AND-FORGET : l'attendre bloque 30 s-2 min (install synchrone de ~100 assets en
+    //    cache:'reload'). Le téléchargement se fait pendant « Préparation… » / « Rechargement… ».
+    // 🩸 Puis polling de reg.waiting (200 ms × 25 = 5 s max) : un reload trop tôt trouve waiting = null,
+    //    SKIP_WAITING n'est jamais envoyé et l'ancien SW ressert l'ancienne version. Dès qu'un waiting
+    //    apparaît : SKIP_WAITING puis attente de controllerchange (garde 1,5 s). Timeout sans waiting →
+    //    reload quand même (mode dégradé).
     _statusUpdate(window.I18n.t("maint.msg_prep_sw"));
     if (navigator.serviceWorker) {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (reg) {
-          // Fire-and-forget : pas de await, le téléchargement des assets se
-          // fait en background. Si reg.update() trouve un nouveau sw.js, il
-          // déclenche INSTALL en arrière-plan (cache.add x 100). On laisse
-          // tourner, on n'attend pas.
+          // Sans await : l'install tourne en arrière-plan.
           reg.update().catch(function(e) {
             console.warn("[Soft update] reg.update() :", e);
           });
-          // 🐛 v1.34.9 — Polling actif sur reg.waiting (max 5s).
           const DEADLINE_MS = Date.now() + 5000;
           let nouveauSwActive = false;
           while (Date.now() < DEADLINE_MS) {
@@ -376,8 +251,7 @@ async function mettreAJourCodeSeul() {
             if (reg2 && reg2.waiting) {
               _statusUpdate(window.I18n.t("maint.msg_activating_sw"));
               reg2.waiting.postMessage({ type: "SKIP_WAITING" });
-              // Attendre controllerchange (= nouveau SW pris le contrôle)
-              // ou safety timeout 1.5s (si le browser tarde).
+              // controllerchange (nouveau SW aux commandes) ou garde 1,5 s.
               await new Promise(function(resolve) {
                 let done = false;
                 function _onChange() { if (!done) { done = true; resolve(); } }
@@ -394,7 +268,6 @@ async function mettreAJourCodeSeul() {
               console.log("[Soft update] Nouveau SW actif via SKIP_WAITING");
               break;
             }
-            // Petit sleep avant prochain check (200ms = 25 checks max sur 5s)
             await new Promise(function(r) { setTimeout(r, 200); });
           }
           if (!nouveauSwActive) {
@@ -406,14 +279,8 @@ async function mettreAJourCodeSeul() {
       }
     }
 
-    // 3. 🐛 v1.37.1 — Purge TOTALE des caches PWA (sans préservation).
-    // Audit indépendant : le filtre hotfix21 préservait l'ANCIEN cache
-    // (interrogé via SW courant) → reload servait l'ancienne version.
-    // Pattern killsw.html (qui marche) : `caches.keys().map(caches.delete)`
-    // sans filter. Le nouveau SW (install en bg via reg.update fire-and-forget
-    // ci-dessus) re-populera son cache au reload via son install handler.
-    // Coût : 1 re-DL des assets au reload (~100 fichiers) — acceptable pour
-    // une action volontaire avec ping internet validé en amont.
+    // 3. Purge TOTALE des caches PWA, sans filtre (comme killsw.html) : le nouveau SW repeuple le sien au
+    //    reload. Coût : un re-téléchargement des assets, acceptable pour une action volontaire.
     _statusUpdate(window.I18n.t("maint.msg_cleaning_caches"));
     if (window.caches) {
       try {
@@ -428,11 +295,8 @@ async function mettreAJourCodeSeul() {
       }
     }
 
-    // 4. Reload : le nouveau SW (install possiblement encore en cours) prend
-    // le contrôle. Son cache sera populé soit via l'install handler s'il
-    // n'a pas encore fini, soit déjà rempli si l'install a terminé.
-    // L'user voit un boot un poil plus long (~3-8s sur fibre) mais c'est
-    // garantie de servir la nouvelle version.
+    // 4. Reload : le nouveau SW prend le contrôle (cache rempli par son install, fini ou en cours) ;
+    //    démarrage un peu plus long, mais la nouvelle version est garantie.
     _statusUpdate(window.I18n.t("maint.msg_reloading"));
     setTimeout(function() {
       window.location.reload();
@@ -445,16 +309,9 @@ async function mettreAJourCodeSeul() {
   }
 }
 
-// Avertissement spécifique offline pour la mise à jour douce.
-// 🆕 v1.9.3-B-side (KARMA "rend le modal plus jolie pour l'erreur") :
-// upgrade visuel — passage du style basique kta-modal (icône + titre + texte
-// + un bouton OK) au style élaboré kta-oom-modal-boite (header big avec
-// ⚠️ qui pulsent, sections 🔍 Causes / ⛔ Conséquence / ✅ Recommandation),
-// strictement symétrique avec _resetFlowOfflineWarning. Sémantique adaptée :
-//   - action ANNULÉE automatiquement (pas de bouton "Continuer quand même")
-//     car relancer le soft update offline ferait le même crash
-//   - ton rassurant ("aucune donnée perdue, app continue de fonctionner")
-//     car contrairement au reset, on n'a touché à rien
+// Hors ligne pendant la mise à jour douce : action ANNULÉE d'office (pas de « Continuer quand même », la
+// relancer échouerait pareil), ton rassurant (rien n'a été touché). Même gabarit que
+// _resetFlowOfflineWarning (kta-oom-modal-boite : Causes / Conséquence / Recommandation).
 function _softUpdateOfflineWarning() {
   const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
   const overlay = document.createElement("div");
@@ -502,7 +359,7 @@ function _softUpdateOfflineWarning() {
   document.getElementById("kta-soft-update-offline-ok").addEventListener("click", function() {
     overlay.remove();
   });
-  // Cohérent avec _resetFlowOfflineWarning : clic backdrop ferme aussi
+  // Clic sur le fond : ferme aussi.
   overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
@@ -510,9 +367,7 @@ function viderCacheAppli() {
   const cfgModal = document.getElementById("kta-cfg-modal");
   if (cfgModal) cfgModal.remove();
 
-  // 1ère étape : check connexion Internet AVANT toute confirmation.
-  // Affichage bref d'un "Vérification connexion…" pour pas avoir un
-  // freeze silencieux de 5s si le réseau ne répond pas.
+  // Connexion vérifiée AVANT toute confirmation, avec un « Vérification… » (pas de gel muet de 5 s).
   const overlayPing = document.createElement("div");
   overlayPing.className = "kta-modal-overlay";
   overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">' + window.I18n.t("maint.ping_title") + '</div><div class="kta-modal-texte">' + window.I18n.t("maint.ping_text") + '</div></div>';
@@ -528,17 +383,9 @@ function viderCacheAppli() {
   });
 }
 
-// Affiche d'abord le warning insistant "PAS INTERNET OU SERVEUR INDISPO" en
-// rouge (style cohérent avec la modale OOM), puis bascule sur le flow de
-// double confirmation classique si l'utilisateur veut quand même continuer.
-//
-// 🆕 v1.9.3-B-side (KARMA "ca fonctionne en mise jours mais pas en mode tout
-// reset, il devrait nous dire serveur indispo ou pas internet") : message
-// aligné avec _softUpdateOfflineWarning car le ping cible désormais le serveur
-// MyKTAMap (<origin>/ping.html), pas Google. Un échec peut signifier "pas
-// d'internet" OU "serveur MyKTAMap indispo (DNS, SSL, Nginx, hébergeur)".
-// Pour le reset, c'est encore plus critique : sans serveur joignable, le SW
-// ne peut PAS re-cacher les assets → app inutilisable post-wipe.
+// Hors ligne ou serveur MyKTAMap injoignable (DNS, SSL, Nginx, hébergeur) : avertissement insistant, puis
+// double confirmation si l'utilisateur continue. 🩸 Plus critique qu'en mise à jour : sans serveur, le SW
+// ne peut PAS re-cacher les assets → app inutilisable après l'effacement.
 function _resetFlowOfflineWarning() {
   const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
   const overlay = document.createElement("div");
@@ -597,10 +444,9 @@ function _resetFlowOfflineWarning() {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
-// 🔓 04/10/2026 — plus de mot de passe communautaire (ni hash, ni valeur en
-// clair). Seule une instance qui publie SON mot de passe (index.json >
-// config.accessHash) le redemande après reset : on PRÉVIENT, sans jamais
-// l'afficher. Config d'instance lue en mémoire (KtaInstance, chargée au boot).
+// 🔒 Aucun mot de passe communautaire stocké (ni hash, ni clair). Seule une instance qui publie SON mot de
+// passe (index.json > config.accessHash) le redemande après reset : on PRÉVIENT, sans jamais l'afficher.
+// Config d'instance lue en mémoire (KtaInstance, chargée au boot).
 function _resetBlocAccesInstance() {
   const st = (window.KtaInstance && typeof window.KtaInstance.etat === "function") ? window.KtaInstance.etat() : null;
   const h = st && st.config ? st.config.accessHash : null;
@@ -647,10 +493,8 @@ function _resetFlowConfirmation() {
   document.documentElement.appendChild(overlay1);
 
   document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
-  // 🚨 B4 (audit ergonomie 13/09/2026) : la modale listait 4 postes et en
-  // effaçait 9 (photos, carnet, backups, profil, PDF Histoire, photos Secours,
-  // tuiles OSM, hauts faits). La liste dit tout, et l'export de profil — qui
-  // sait sauver tout ça — est proposé AVANT, pas découvert après.
+  // La liste dit TOUT ce qui est effacé (photos, carnet, backups, profil, PDF Histoire, photos Secours,
+  // tuiles OSM, hauts faits), et l'export de profil — qui sait le sauver — est proposé AVANT.
   const _btnExportProfil = document.getElementById("cache-export-profil");
   if (_btnExportProfil) {
     _btnExportProfil.addEventListener("click", function () {
@@ -685,11 +529,8 @@ function _resetFlowConfirmation() {
 
     document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
-      // 🆕 v1.43.26 (Pattern D) — Disable IMMÉDIAT du bouton avant tout async
-      // (reset complet : SW unregister + caches.delete + localStorage.clear +
-      // IDB wipe). Sans ça, l'user qui re-clique pendant le wipe peut
-      // déclencher un 2e flow concurrent qui collide avec le 1er (en
-      // particulier les IDB ouvertes qui restent verrouillées).
+      // Bouton désactivé AVANT tout async : un second clic lancerait un effacement concurrent (IDB ouvertes
+      // qui restent verrouillées).
       const btn = this;
       btn.disabled = true;
       btn.textContent = window.I18n.t("maint.btn_cleaning");
@@ -700,14 +541,13 @@ function _resetFlowConfirmation() {
       document.documentElement.appendChild(overlayWait);
 
       try {
-        // 0) Installation reliée : sa session est fermée AVANT l'effacement (sinon l'appli se
-        //    reconnectait seule). Sans extension : rien, immédiat.
+        // 0) Installation reliée : session fermée AVANT l'effacement (sinon reconnexion seule). Sans
+        //    extension : rien, immédiat.
         let sessionFermee = true;
         if (window.KtaExtensions && typeof window.KtaExtensions.avantReinitialisation === "function") {
           try { sessionFermee = await window.KtaExtensions.avantReinitialisation(); } catch(e) { sessionFermee = false; }
         }
 
-        // 1) Service Worker
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.map(function(r) { return r.unregister(); }));
@@ -719,18 +559,17 @@ function _resetFlowConfirmation() {
           await Promise.all(cacheNames.map(function(name) { return caches.delete(name); }));
         }
 
-        // 3) localStorage — wipe complet (tous les préfixes connus + clés inattendues)
+        // 3) localStorage — tout (préfixes connus et clés inattendues)
         try { localStorage.clear(); } catch(e) { console.warn("[Reset] localStorage.clear :", e); }
-        // Session d'une installation reliée pas fermée (hors ligne) : seule marque gardée, pour que
-        // l'extension la ferme au retour du réseau au lieu de se reconnecter.
+        // Session d'installation pas fermée (hors ligne) : seule marque gardée, pour que l'extension la
+        // ferme au retour du réseau au lieu de se reconnecter.
         if (!sessionFermee && window.KtaExtensions && window.KtaExtensions.CLE_DECONNEXION_EN_ATTENTE) {
           try { localStorage.setItem(window.KtaExtensions.CLE_DECONNEXION_EN_ATTENTE, "1"); } catch(e) {}
         }
 
-        // 4) sessionStorage
         try { sessionStorage.clear(); } catch(e) { console.warn("[Reset] sessionStorage.clear :", e); }
 
-        // 5) IndexedDB — toutes les bases (avec fallback Safari/Firefox qui n'a pas indexedDB.databases())
+        // 5) IndexedDB — toutes les bases (repli si indexedDB.databases() manque)
         try {
           if (indexedDB.databases) {
             const dbs = await indexedDB.databases();
@@ -742,10 +581,8 @@ function _resetFlowConfirmation() {
               });
             }));
           } else {
-            // Safari/Firefox : on ne peut pas lister, on supprime au moins les bases connues.
-            // 🐛 v1.69.0 : la liste s'était arrêtée à `handles` — sur Safari, « tout
-            // effacer » laissait donc en place photos, backups, profil, crashes (et
-            // maintenant le carnet). Liste alignée sur memInspector.KNOWN_IDB_DBS.
+            // 🩸 Safari/Firefox ne listent pas : bases connues, liste alignée sur memInspector.KNOWN_IDB_DBS
+            // (sinon photos, backups, profil, carnet survivent à « tout effacer »).
             const knownDbs = [
               "myktamap_handles", "myktamap_backups", "myktamap_sessions", "myktamap_photos",
               "myktamap_profile", "myktamap_crashes", "myktamap_journal",
@@ -774,12 +611,7 @@ function _resetFlowConfirmation() {
   });
 }
 
-// ==========================================
-// EXPORTS WINDOW (v1.31.0 P3 Lot 7)
-// ==========================================
-// ouvrirCalibrageEchelle, viderCacheAppli, mettreAJourCodeSeul
-// étaient exposés depuis interface.js > EXPORT GLOBAL (lignes 5364-5366
-// avant ce lot). Post-extraction : on les expose ici.
+// ── Exports window ──────────
 window.ouvrirCalibrageEchelle = ouvrirCalibrageEchelle;
 window.viderCacheAppli        = viderCacheAppli;
 window.mettreAJourCodeSeul    = mettreAJourCodeSeul;

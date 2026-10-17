@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// ⚙️ check-reglages-immediats.js — garde-fou pré-commit BLOQUANT
+// check-reglages-immediats.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// L4 de l'audit ergonomie (décision KARMA 14/09/2026) : la modale ⚙️ Réglages
-// du mode carte n'a plus de bouton « Appliquer » — chaque champ s'enregistre
-// à la modification, la portée de chaque groupe est affichée, le reset ne
-// touche que le plan, wake lock et vocal ne se cachent plus.
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Un champ qui redevient « lu au bouton » : l'utilisateur tape, ferme,
-//      rien n'est gardé — exactement le défaut d'avant, invisible.
-//   2. Une borne qui glisse dans `_CFG_BORNES` (ou un `>=` qui devient `>`) :
-//      `setPlanTracking` refuse SEC hors PODO_BORNES → le champ passe vert et
-//      rien n'est écrit. On EXÉCUTE le validateur extrait du fichier.
-//   3. Le reset qui recommence à écrire `app_user_prefs` depuis un plan.
-//   4. Le géoref qui perd ses handlers (sous-modale rendue sans les poser).
+// La modale ⚙️ Réglages du mode carte (js/interfaceConfig.js) n'a pas de bouton
+// « Appliquer » (décision produit) : chaque champ s'enregistre à la
+// modification, la portée de chaque groupe est affichée, le reset ne touche
+// que le plan, wake lock et vocal non supportés disent pourquoi.
+// 🩸 Régressions silencieuses visées :
+//   1. champ redevenu « lu au bouton » : on tape, on ferme, rien n'est gardé ;
+//   2. borne qui glisse dans `_CFG_BORNES` : `setPlanTracking` refuse SEC hors
+//      PODO_BORNES, le champ passe vert et rien n'est écrit (validateur EXÉCUTÉ) ;
+//   3. reset qui écrit `app_user_prefs` depuis un plan ;
+//   4. sous-modale géoref rendue sans ses handlers.
 // Usage : node scripts/check-reglages-immediats.js [racine]
+// 🏷️ REPÈRES DE DÉCOUPE : du CODE ou un marqueur explicite `// 🏷️ ancre:<nom>`
+// posé dans la source, jamais un commentaire libre (un nettoyage le retirerait).
+// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -28,7 +28,7 @@ function t(msg, cond) { console.log((cond ? "✅ " : "❌ ") + msg); if (!cond) 
 
 const UIC = lire("js/interfaceConfig.js");
 
-// ---------- 1. Le validateur, exécuté ----------
+// ── 1. Le validateur, exécuté ────────────────────────────────────────
 {
   const i = UIC.indexOf("const _CFG_BORNES = {");
   const j = UIC.indexOf("window._ktaCfgValider = _cfgValider;", i);
@@ -59,15 +59,16 @@ const UIC = lire("js/interfaceConfig.js");
   }
 }
 
-// ---------- 2. Plus de bouton Appliquer, tout est câblé ----------
+// ── 2. Pas de bouton Appliquer, tout est câblé ───────────────────────
 {
   t("🩸 plus aucun bouton « Appliquer » dans le gabarit", !/onclick="appliquerConfig\(\)"/.test(UIC) && !/config\.actions\.apply/.test(UIC));
   t("🩸 appliquerConfig et _validerReglagesTracking n'existent plus", !/function appliquerConfig\(/.test(UIC) && !/function _validerReglagesTracking\(/.test(UIC) && !/window\.appliquerConfig = /.test(UIC));
-  const b = UIC.slice(UIC.indexOf("function _bindReglagesImmediats()"), UIC.indexOf("// ── Fermeture"));
-  t("_bindReglagesImmediats est trouvable", b.length > 0);
-  // 🩸 On vérifie la FORME du câblage (l'appel `on(…)` ou la liste passée au
-  // forEach), pas la simple présence de l'id : `_cfgValider("cfg_scale", …)`
-  // cite l'id même quand le champ n'est plus écouté (sabotage S2).
+  const iB = UIC.indexOf("function _bindReglagesImmediats()");
+  const jB = iB >= 0 ? UIC.indexOf("// 🏷️ ancre:fin-reglages-immediats", iB) : -1;
+  const b = (iB >= 0 && jB > iB) ? UIC.slice(iB, jB) : "";
+  t("_bindReglagesImmediats est trouvable (repère `🏷️ ancre:fin-reglages-immediats`)", b.length > 0);
+  // 🩸 On vérifie la FORME du câblage (`on(…)` ou liste du forEach), pas l'id seul :
+  // `_cfgValider("cfg_scale", …)` cite l'id même quand le champ n'est plus écouté.
   const LIENS = {
     cfg_scale:           'on("cfg_scale", function (el)',
     cfg_startX:          '["cfg_startX", "cfg_startY"].forEach',
@@ -94,25 +95,25 @@ const UIC = lire("js/interfaceConfig.js");
   t("🩸 le calibrage d'échelle émet un change sur #cfg_scale", /champScale\.dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/.test(IM));
 }
 
-// ---------- 3. Fermeture ----------
+// ── 3. Fermeture ─────────────────────────────────────────────────────
 {
   t("Échap ferme la modale (et d'abord la sous-modale géoref)", /e\.key !== "Escape"\) return;/.test(UIC) && /kta-cfg-georef-modal"\);\n\s*if \(sub\)/.test(UIC));
   t("croix, bouton Fermer et clic hors modale passent par _cfgFermer", /id="kta-cfg-fermer"/.test(UIC) && /croix\.addEventListener\("click", _cfgFermer\)/.test(UIC) && /if \(e\.target === modal\) _cfgFermer\(\)/.test(UIC));
 }
 
-// ---------- 4. Portée, groupes, globaux, géoref ----------
+// ── 4. Portée, groupes, globaux, géoref ──────────────────────────────
 {
   t("🩸 7 groupes ouverts par _cfgGroupeDebut, badges de portée présents", (UIC.match(/\$\{_cfgGroupeDebut\("config\.group\./g) || []).length === 7 && /config\.scope\.badgePlan/.test(UIC) && /config\.scope\.badgeGlobal/.test(UIC) && /config\.scope\.badgeMixte/.test(UIC));
   t("🩸 les 7 groupes portent une pastille (aucun `null`) — KARMA : « Affichage n'a pas la pastille »", !/_cfgGroupeDebut\("config\.group\.[a-zA-Z]+", null/.test(UIC));
-  t("🩸 …et 7 fermés par _cfgGroupeFin (un de moins : un groupe avale le suivant)", (UIC.match(/\$\{_cfgGroupeFin\(\)\}/g) || []).length === 7);   // 7 depuis le 12/10/2026 (confidentialité retirée)
+  t("🩸 …et 7 fermés par _cfgGroupeFin (un de moins : un groupe avale le suivant)", (UIC.match(/\$\{_cfgGroupeFin\(\)\}/g) || []).length === 7);
   t("groupes repliables, choix mémorisé", /_bindCfgGroupes\(modal\)/.test(UIC) && /myktamap_cfg_groupes_v1/.test(UIC));
   t("les globaux de l'accueil sont LUS ici (lecture seule) avec le chemin pour les changer", /_renderCfgGlobauxLectureSeule\(\)/.test(UIC) && /_retourLoaderAvecConfirm/.test(UIC));
   t("🩸 géoref : sous-modale ENFANT de la modale, handlers posés à l'ouverture", /parent\.appendChild\(sub\);\n\s*_bindCfgGeorefHandlers\(\);/.test(UIC) && /\$\{_renderCfgGeorefLanceur\(\)\}/.test(UIC) && !/\$\{_renderCfgGeorefSection\(\)\}/.test(UIC));
 }
 
-// ---------- 5. Reset par plan, Q61, code mort ----------
+// ── 5. Reset par plan, capteurs non supportés, code mort ─────────────
 {
-  // Le commentaire de la fonction CITE l'ancien code fautif : on ne juge que le code.
+  // 🩸 On ne juge que le code : un commentaire peut citer l'ancienne forme fautive.
   const r = UIC.slice(UIC.indexOf("function _resetConfigExecuter()"), UIC.indexOf("function _resetConfigExecuter()") + 2200)
                .split("\n").filter(function (l) { return !/^\s*\/\//.test(l); }).join("\n");
   t("🩸 reset : plus aucune écriture globale (sauvegarderPrefsUtilisateur) ni Object.assign(APP_CONFIG, DEFAULT_CONFIG)", !/sauvegarderPrefsUtilisateur/.test(r) && !/Object\.assign\(APP_CONFIG, DEFAULT_CONFIG\)/.test(r));
@@ -128,7 +129,7 @@ const UIC = lire("js/interfaceConfig.js");
   t("perf : la case « tous les niveaux » est rendue et câblée", /cfg_perf_tousNiveaux/.test(UIC) && /"cfg_perf_tousNiveaux":\s*"tousNiveaux"/.test(UIC));
 }
 
-// ---------- 6. i18n et docs ×3 ----------
+// ── 6. i18n et docs ×3 ───────────────────────────────────────────────
 {
   const F = { fr: "README_USER.md", en: "README_USER.en.md", es: "README_USER.es.md" };
   const H = { fr: ["### ✓ Tout s'enregistre dès la modification", "🌐 Ouvrir le géoréférencement…", "| **Réglages** | ⚙️ |"],

@@ -1,57 +1,26 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// VOICE COMMAND — E1 v1.34.0
-// =========================
-//
-// Commandes vocales push-to-talk pour piloter MyKTAMap à la voix.
-// Idéal sous terre quand les mains sont prises (corde, sac, lampe).
-//
-// Stack :
-// - Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`)
-//   ✅ Chrome / Edge / Safari iOS 14.5+ / Chrome Android
-//   ❌ Firefox (graceful degradation : pas de bouton mic)
-// - Push-to-talk : bouton mic flottant. L'user appuie, parle, lâche.
-// - Langue : FR uniquement (reconnaissance fr-FR, motifs en français). Le
-//   bouton 🎤 n'apparaît que si la langue de l'app est le français
-//   (décision KARMA 10/10/2026) ; réévalué à chaque changement de langue.
-// - Permission micro demandée à la 1ère utilisation par le navigateur.
-//
-// Activation : OPT-IN dans la modale Réglages → "🎤 Commandes vocales (BETA)".
-// La permission micro est sensible → on ne l'active jamais auto.
-//
-// Commandes MVP (~17) :
-//   📐 Navigation : zoom +/-, centrer, recherche
-//   ✏️ Actions session : ajouter point, tracker on/off, urgence, secours
-//   🌓 Réglages : thème clair/sombre
-//   🛑 Méta : stop, fermer modale, aide
-//
-// API publique :
-//   window.VoiceCommand = {
-//     isSupported():      boolean,
-//     isEnabled():        boolean,
-//     setEnabled(b):      void,    // persiste + inject/remove bouton
-//     startListening():   void,    // déclenche reconnaissance
-//     stopListening():    void,
-//     registerCommand(c): void,    // pour modules tiers
-//     afficherAide():     void     // ouvre modale aide commandes
-//   };
+// voiceCommand.js — commandes vocales push-to-talk (Web Speech API) : navigation, actions de session,
+//   réglages, sortie d'urgence, itinéraire vers un POI nommé. Sans SpeechRecognition (Firefox) : pas de bouton.
+// Expose : window.VoiceCommand (isSupported, isEnabled, setEnabled, startListening, stopListening,
+//   registerCommand, afficherAide).
+// 🔒 OPT-IN dans Réglages, jamais activé d'office : la permission micro est sensible.
+// ⚠️ Français seulement (fr-FR, motifs FR) : le bouton 🎤 n'existe que si l'app est en français
+//   (décision produit), réévalué à chaque changement de langue.
+// 🩸 La reconnaissance passe par un service distant : hors ligne, elle échoue (erreur « network »).
 
 (function() {
   "use strict";
 
   const LS_KEY = "myktamap_voice_enabled_v1";
 
-  // Detect SpeechRecognition (préfixe webkit pour Safari iOS)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  // Helper i18n défensif : appelé AU RENDU. Si window.I18n absent (chargement
-  // partiel / offline cassé), retombe sur la clé brute (signal de dette visible,
-  // jamais de crash). Interpolation via params {nom}.
+  // Appelé AU RENDU ; sans I18n, rend la clé brute (jamais de crash).
   function _t(key, params) {
     if (window.I18n && typeof window.I18n.t === "function") {
       return window.I18n.t(key, params);
@@ -59,36 +28,26 @@
     return key;
   }
 
-  // Résout le libellé affiché d'une commande AU RENDU : `labelKey` (built-ins,
-  // traduit via i18n) prioritaire, sinon `label` brut (modules tiers qui
-  // enregistrent une string fixe via registerCommand).
+  // `labelKey` (i18n, commandes intégrées) prime sur `label` (chaîne fixe d'un module tiers).
   function _cmdLabel(cmd) {
     if (!cmd) return "";
     if (cmd.labelKey) return _t(cmd.labelKey);
     return cmd.label || "";
   }
 
-  // ============================================================
-  // MODULE STATE
-  // ============================================================
   let _recognition = null;
   let _isListening = false;
   let _micButton   = null;
   let _liveOverlay = null;
   let _enabled     = false;
 
-  // Restaure l'état activation depuis localStorage
   try {
     _enabled = localStorage.getItem(LS_KEY) === "1";
   } catch(e) { _enabled = false; }
 
-  // ============================================================
-  // 🔌 COMMAND REGISTRY
-  // ============================================================
-  // Chaque commande = { patterns: [string|regex], handler: fn(matches), label }
-  // Les patterns sont matchés dans l'ordre, premier hit gagne.
-  // Un pattern string match si le transcript LE CONTIENT (substring match).
-  // Un pattern regex match si test() retourne true.
+  // ── Registre des commandes ──────────────────────────────
+  // Commande = { patterns: [string|regex], handler: fn(matches), label|labelKey, priority? }.
+  // Une chaîne matche si le transcript la CONTIENT ; une regex, si test() réussit.
   const _commands = [];
 
   function registerCommand(cmd) {
@@ -99,13 +58,8 @@
     _commands.push(cmd);
   }
 
-  // 🚨 Q7 (audit ergonomie 13/09/2026) : le PREMIER motif enregistré gagnait.
-  // « où est la sortie » / « trouve la sortie » ouvraient la RECHERCHE (« où
-  // est », « trouve »), « sortie d'urgence » ouvrait l'écran XL (« urgence »),
-  // « au secours » le planificateur d'équipes — sans erreur, puisque le
-  // système croyait avoir réussi. Désormais le motif le plus LONG gagne (le
-  // plus spécifique), puis la `priority` déclarée (commandes vitales), puis
-  // l'ordre d'enregistrement.
+  // 🩸 Le motif le plus LONG gagne (le plus spécifique), puis `priority`, puis l'ordre d'enregistrement.
+  // Au premier motif trouvé, « où est la sortie » ouvrirait la RECHERCHE (« où est ») sans erreur visible.
   function _matchCommand(transcript) {
     const text = String(transcript || "").toLowerCase().trim();
     if (!text) return null;
@@ -129,10 +83,7 @@
     return best ? { cmd: best.cmd, matches: best.matches } : null;
   }
 
-  // ============================================================
-  // 🎤 SPEECH RECOGNITION SETUP
-  // ============================================================
-
+  // ── Reconnaissance ──────────────────────────────
   function _initRecognition() {
     if (!SR) return null;
     const r = new SR();
@@ -149,7 +100,6 @@
         if (res.isFinal) finalT  += res[0].transcript;
         else              interim += res[0].transcript;
       }
-      // Affiche le texte interim pendant qu'on parle, final quand fini
       _updateLive(finalT || interim, finalT ? "final" : "interim");
       if (finalT) _onFinalTranscript(finalT);
     };
@@ -160,21 +110,16 @@
       if (event.error === "no-speech") msg = _t("voice.err.noSpeech");
       else if (event.error === "not-allowed") msg = _t("voice.err.notAllowed");
       else if (event.error === "audio-capture") msg = _t("voice.err.audioCapture");
-      // 🚨 Q8 (audit 13/09/2026) : sous terre, la reconnaissance Web Speech
-      // passe par un service distant → l'erreur est « network », affichée brute.
+      // Service distant : sous terre, l'erreur est « network » → message « hors ligne ».
       else if (event.error === "network") msg = _t("voice.err.offline");
       _updateLive(msg, "error");
       setTimeout(_hideLiveOverlay, 2500);
       _setListening(false);
-      // 🩹 v1.34.2 — libère la ref pour GC du MediaStream (cf bug iOS
-      // indicateur micro persistant après stop dans stopListening).
-      _recognition = null;
+      _recognition = null;   // libère le MediaStream (cf stopListening)
     };
 
     r.onend = function() {
       _setListening(false);
-      // 🩹 v1.34.2 — libère la ref pour GC du MediaStream. À la prochaine
-      // startListening(), une nouvelle instance est créée via _initRecognition().
       _recognition = null;
     };
 
@@ -187,8 +132,7 @@
       console.warn("[VoiceCommand] SpeechRecognition non supporté");
       return;
     }
-    // 🚨 Q8 : hors ligne, on le dit tout de suite au lieu de laisser le
-    // moteur échouer en « network » 2 s plus tard.
+    // Hors ligne : le dire tout de suite plutôt qu'un échec « network » 2 s plus tard.
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       _showLiveOverlay();
       _updateLive(_t("voice.err.offline"), "error");
@@ -209,26 +153,15 @@
   }
 
   function stopListening() {
-    // 🩹 v1.34.2 — KARMA bug iPhone : "l'arret d'enrengistrement bug, il me
-    // met icone violet 'arreté' mais en haut sur mon iphone c'est toujours
-    // en écoute".
-    // Cause : sur iOS Safari, `recognition.stop()` est trop "doux" — il
-    // attend de retourner le SpeechRecognitionResult avec l'audio capté,
-    // et l'indicateur micro iOS (point orange en haut) reste actif tant
-    // que le MediaStream sous-jacent n'est pas libéré.
-    // Fix : utiliser `.abort()` (kill immédiat sans tenter de result) +
-    // forcer la libération de la référence _recognition à null pour que
-    // le GC release le stream audio. À la prochaine activation, on crée
-    // une nouvelle instance fraîche via _initRecognition().
+    // 🩸 iOS Safari : `stop()` attend un résultat et l'indicateur micro reste allumé tant que le
+    // MediaStream vit. D'où `abort()` et _recognition = null ; une instance neuve est créée au prochain
+    // startListening().
     if (_recognition && _isListening) {
       try { _recognition.abort(); } catch(e) {
-        // Fallback si .abort() pas dispo (très vieux browser)
         try { _recognition.stop(); } catch(e2) {}
       }
     }
     _setListening(false);
-    // Libère la référence → GC release MediaStream → indicateur micro iOS off.
-    // Une nouvelle instance sera créée à la prochaine startListening().
     _recognition = null;
   }
 
@@ -247,11 +180,7 @@
       let isAsync = false;
       try {
         const ret = match.cmd.handler(match.matches);
-        // 🩹 v1.34.0-fix2 — Si le handler retourne une Promise (handler async),
-        // on saute l'auto-hide 1.5s : c'est le handler qui gère son propre
-        // cycle de vie de l'overlay (recherche → résultat → hide). Cas usage
-        // typique : "aller à <POI>" qui fait un findByQuery + Pathfinder
-        // async qui peuvent prendre plusieurs secondes.
+        // ⚠️ Handler async (Promise) : pas de masquage auto à 1,5 s, il gère lui-même l'overlay.
         if (ret && typeof ret.then === "function") isAsync = true;
       } catch(e) {
         console.error("[VoiceCommand] handler error :", e);
@@ -265,25 +194,12 @@
       _updateLive(_t("voice.live.unknown", { text: text }), "unknown");
       setTimeout(_hideLiveOverlay, 2500);
     }
-    // 🩹 v1.34.3 — STOP EXPLICITE après chaque transcript final.
-    // KARMA bug : "si je dis aller a drapeau, il me trouve l'itineraire,
-    // mais reste en ecoute (j'ai la télé allumé, mais sous terre on peut
-    // avoir des gens qui parle a coté) donc si recherche effectuer (point
-    // trouvé, aide ouverte) on coupe le micro".
-    // Pourquoi : malgré `recognition.continuous = false`, iOS Safari garde
-    // le micro warm et peut continuer à capturer du bruit de fond avant
-    // que onend ne fire. Push-to-talk strict : 1 click → 1 phrase → stop
-    // immédiat. Évite la capture parasite TV / voix nearby.
-    // Pour les handlers async : ils ont déjà été dispatché (handler() s'est
-    // exécuté = Promise lancée), arrêter la recognition ne les affecte pas.
+    // 🩸 Arrêt EXPLICITE après chaque phrase finale : malgré `continuous = false`, iOS garde le micro
+    // ouvert et capte les voix voisines. Un handler async déjà lancé n'en est pas affecté.
     stopListening();
   }
 
-  // ============================================================
-  // 🎨 UI — BOUTON MIC FLOTTANT
-  // ============================================================
-
-  // Commande vocale française seulement : hors FR, pas de bouton.
+  // ── Bouton micro, overlay, aide ──────────────────────────────
   function _langueFr() {
     try {
       if (window.I18n && typeof window.I18n.getLang === "function") {
@@ -318,10 +234,6 @@
     _micButton = null;
   }
 
-  // ============================================================
-  // 🎨 UI — OVERLAY TRANSCRIPTION LIVE
-  // ============================================================
-
   function _showLiveOverlay() {
     if (_liveOverlay) return;
     const o = document.createElement("div");
@@ -351,34 +263,21 @@
     _liveOverlay.dataset.state = state || "";
   }
 
-  // ============================================================
-  // 🎨 UI — MODALE AIDE COMMANDES
-  // ============================================================
-
   function _afficherAideModale() {
     if (document.getElementById("kta-voice-aide-modal")) return;
-    // 🩹 v1.34.0-fix1 — KARMA bug : "si je dis aide, j'ai pas erreur
-    // comme quoi il ne pige pas la commande mais ca s'ouvre pas".
-    // Cause : l'overlay voice-live (top-center) reste affiché 1.5s
-    // après "✅ Aide commandes", et il chevauche visuellement la
-    // modale qui s'ouvre dessous. L'user voit l'overlay disparaître
-    // mais ne réalise pas que la modale est ouverte.
-    // Fix : on hide le voice-live IMMÉDIATEMENT avant d'ouvrir la
-    // modale d'aide (les autres handlers gardent le 1.5s auto-dismiss).
+    // 🩸 Overlay masqué TOUT DE SUITE : resté 1,5 s, il cache la modale et l'aide semble ne pas s'ouvrir.
     _hideLiveOverlay();
 
     const m = document.createElement("div");
     m.id        = "kta-voice-aide-modal";
     m.className = "kta-readme-modal-overlay";
-    // 🩹 v1.34.0-fix1 — display: flex explicite pour garantir l'affichage
-    // (certains résiduels CSS pourraient appliquer display:none par défaut).
     m.style.display = "flex";
 
     function _patternsToHtml(patterns) {
       return patterns.slice(0, 3).map(function(p) {
         if (typeof p === "string") return "« " + p + " »";
         if (p instanceof RegExp) {
-          // Simplification regex pour user-readable
+          // Regex rendue lisible.
           const s = p.source
             .replace(/\\s\+/g, " <terme>")
             .replace(/\(\?:.*?\)/g, "")
@@ -419,10 +318,6 @@
     m.addEventListener("click", function(e) { if (e.target === m) m.remove(); });
   }
 
-  // ============================================================
-  // 🔧 ENABLED STATE
-  // ============================================================
-
   function isEnabled()   { return _enabled; }
   function isSupported() { return !!SR; }
 
@@ -438,22 +333,11 @@
     }
   }
 
-  // ============================================================
-  // 📋 BUILT-IN COMMANDS
-  // ============================================================
-  // Note : tous les handlers sont défensifs (typeof check) car les
-  // modules cible peuvent ne pas être chargés en mode offline cassé.
-  // Si le handler ne peut pas exécuter, il log un warn console mais ne
-  // crash pas — l'user voit "Commande exécutée" mais rien ne se passe.
-
-  // 🩹 v1.34.0-fix1 — KARMA : "rajoute des formulations en plus différente
-  // telle que aide, ouvre aide ou tracker on, allume tracker...". Expansion
-  // massive des patterns pour chaque commande, couvrant les formulations
-  // naturelles FR + impératif + indicatif + variantes synonymiques.
-  // Note : substring match (text.indexOf(p) !== -1), donc des patterns
-  // courts ("aide") matchent dans phrases longues ("dis-moi aide stp").
+  // ── Commandes intégrées ──────────────────────────────
+  // Handlers défensifs (typeof) : un module absent → warn console, pas de crash. Motifs nombreux
+  // (impératif, indicatif, synonymes) ; un motif court (« aide ») matche aussi dans une phrase longue.
   function _registerBuiltins() {
-    // ─── 📐 Navigation ──────────────────────────────
+    // ─── Navigation ──────────────────────────────
     registerCommand({
       patterns: [
         "zoom plus", "zoom avant", "zoomer", "agrandir",
@@ -505,7 +389,7 @@
       }
     });
 
-    // ─── ✏️ Actions session ─────────────────────────
+    // ─── Actions de session ─────────────────────────
     registerCommand({
       patterns: [
         "ajouter point", "ajoute point", "ajoute un point", "nouveau point",
@@ -527,34 +411,18 @@
       }
     });
 
-    // 🆕 v1.34.0-fix2 — KARMA : "il serait super si on pouvait dire par
-    // exemple 'aller a puit 25' on fait dans le 'simple' depuis ma position".
-    // Itinéraire simple depuis la position tracker actuelle vers le POI
-    // matchant le nom prononcé. Utilise window.SearchPoints.findByQuery
-    // (substring case-insensitive sur nom + id + tags) puis
-    // window.itineraireYAller (qui gère pathfinder + Position tracker).
-    //
-    // Variations couvertes par le regex :
-    //   - "aller à puits 25" / "aller a puit 25"
-    //   - "va à PA12" / "va a pa12"
-    //   - "emmène-moi à siphon" / "emmene moi a siphon"
-    //   - "guide-moi vers chaufferette"
-    //   - "naviguer vers <nom>"
-    //   - "itinéraire vers <nom>" / "iti vers <nom>"
-    //   - "go to <nom>"
-    //
-    // Le handler est ASYNC (renvoie Promise) → _onFinalTranscript skip
-    // l'auto-hide 1.5s, le handler gère son cycle de vie de l'overlay.
+    // « aller à / va à / emmène-moi à / guide-moi vers / naviguer vers / itinéraire vers / go to <nom> » :
+    // itinéraire depuis la position du tracker vers le premier POI de SearchPoints.findByQuery
+    // (window.itineraireYAller). Handler ASYNC : il gère lui-même l'overlay.
     registerCommand({
       patterns: [
         /(?:aller\s+(?:à|a)|va\s+(?:à|a)|vas\s+(?:à|a)|emmène[-\s]?moi\s+(?:à|a)|emmene[-\s]?moi\s+(?:à|a)|guide[-\s]?moi\s+(?:vers|à|a)|naviguer\s+vers|navigue\s+vers|itin[ée]raire\s+(?:vers|jusqu[' ]à)|iti\s+vers|go\s+to|trace\s+moi\s+vers|trace\s+itin[ée]raire\s+vers)\s+(.+)/i
       ],
       labelKey: "voice.cmd.route",
       handler:  function(matches) {
-        // Le handler retourne une Promise → _onFinalTranscript skip auto-hide
         return (async function() {
           const rawQuery = (matches && matches[1] ? matches[1] : "").trim();
-          // Nettoie ponctuation finale ("aller à puits 25." → "puits 25")
+          // Ponctuation finale retirée.
           const query = rawQuery.replace(/[.?!,;:]+$/, "").trim();
           if (!query) {
             _updateLive(_t("voice.route.noDest"), "unknown");
@@ -585,9 +453,6 @@
             return;
           }
 
-          // Premier résultat = meilleur match selon le scoring SearchPoints.
-          // Note : pour "puits 25" tape, l'user attend probablement le PA25 / Puits 25,
-          // les autres puits arrivent ensuite. findByQuery cherche substring.
           const first = results[0].point || results[0];
           const nom = first.nom || first.id || query;
           const x = first.x, y = first.y;
@@ -598,7 +463,7 @@
             return;
           }
 
-          // Vérifie qu'on a une position tracker (sinon itineraireYAller affiche alert)
+          // Sans position du tracker, itineraireYAller afficherait une alerte : refusé avant.
           const trackerPos = (typeof window.getTrackingPosition === "function")
                              ? window.getTrackingPosition()
                              : null;
@@ -694,7 +559,7 @@
       }
     });
 
-    // ─── 🌓 Réglages ────────────────────────────────
+    // ─── Réglages ────────────────────────────────
     registerCommand({
       patterns: [
         "thème clair", "thème blanc", "mode clair", "mode blanc",
@@ -723,7 +588,7 @@
       }
     });
 
-    // ─── 🛑 Méta ────────────────────────────────────
+    // ─── Méta ────────────────────────────────────
     registerCommand({
       patterns: [
         "aide", "ouvre aide", "ouvrir aide", "ouvre l'aide", "ouvrir l'aide",
@@ -758,9 +623,7 @@
       }
     });
 
-    // 🆕 v1.35.0 — Sortie d'urgence : trouve la sortie la plus proche
-    // (puits/escalier/cavage ouvert ou tag "entrée") via pathfinder.
-    // Patterns volontairement larges (urgence = user stressé).
+    // Sortie la plus proche (pathfinder). Motifs volontairement larges : l'utilisateur est stressé.
     registerCommand({
       patterns: [
         "sortie", "la sortie", "sortie urgence", "sortie d'urgence",
@@ -769,7 +632,7 @@
         "je dois sortir", "comment sortir", "où est la sortie",
         "ou est la sortie", "sors", "sortir d'ici", "au secours sortie",
         "issue", "issue de secours"
-        // « urgence » retiré : motif mort (l'écran XL le capturait avant).
+        // Pas de motif « urgence » seul : l'écran d'urgence XL le prend.
       ],
       labelKey: "voice.cmd.exit",
       priority: 10,   // LA commande vitale : gagne toute égalité
@@ -785,17 +648,11 @@
 
   _registerBuiltins();
 
-  // ============================================================
-  // 🚀 INIT
-  // ============================================================
-  // Si activé via localStorage, injecte le bouton mic au DOMContentLoaded
-  // (ou immédiatement si on est déjà dans `interactive`/`complete`).
-
+  // ── Démarrage ──────────────────────────────
   function _initUI() {
     if (_enabled && isSupported()) _injectMicButton();
   }
 
-  // Réévalue la présence du bouton au changement de langue (FR seulement).
   function _surChangementLangue() {
     if (_langueFr()) {
       if (_enabled && isSupported()) _injectMicButton();
@@ -814,9 +671,6 @@
     document.addEventListener("DOMContentLoaded", _initUI);
   }
 
-  // ============================================================
-  // 🔌 EXPORT API
-  // ============================================================
   window.VoiceCommand = {
     isSupported:      isSupported,
     isEnabled:        isEnabled,
@@ -825,7 +679,6 @@
     stopListening:    stopListening,
     registerCommand:  registerCommand,
     afficherAide:     _afficherAideModale,
-    // Debug / introspection
     _commands:        _commands
   };
 

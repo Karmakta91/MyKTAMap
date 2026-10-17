@@ -5,51 +5,33 @@
  */
 
 // =========================
-// FILTERPANEL.JS — Modale de filtres custom (depuis v1.21.5)
+// FILTERPANEL.JS — Modale de filtres (bouton ≡)
 // =========================
-// Remplace le control Leaflet natif `≡` (qui ne togglait que les image
-// layers) par une modale unifiée qui filtre :
-//   • 🖼️ Image layers      (déjà géré par Leaflet)
-//   • 📊 Data layers        (sync via dataLayerGroups)
-//   • 🏗️ Niveaux M-LVL      (sync bidirectionnel avec _ouvrirSelecteurNiveau)
-//   • 🏷️ Tags points        (filtre runtime AJOUTÉ — nouveau pattern)
-//   • 🛣️ Types tracés       (filtre runtime AJOUTÉ)
-//   • ⬛ Types zones        (filtre runtime AJOUTÉ)
-//   • 🏛️ Types structures   (filtre runtime AJOUTÉ)
-//
-// État stocké dans `window._ktaRuntimeFilters` :
+// Remplace le contrôle de couches Leaflet natif par une modale unifiée : calques image et données (avec
+// rapatriement en session, cf. js/calqueSession.js), niveaux (synchro avec _ouvrirSelecteurNiveau), filtres
+// runtime de tags de points et de types de tracés / zones / structures.
+// État des filtres runtime dans `window._ktaRuntimeFilters` :
 //   {
 //     tags:        Set<string> | null,  // null = pas de filtre (tout visible)
 //     roadTypes:   Set<string> | null,
 //     zoneTypes:   Set<string> | null,
 //     structTypes: Set<string> | null
 //   }
-// Les niveaux M-LVL restent dans APP_CONFIG.visibleLevels (sync avec
-// _ouvrirSelecteurNiveau via le callback `appliquerFiltreNiveau`).
-//
-// API publique :
-//   window.FilterPanel = {
-//     ouvrir, fermer, getState, setFilters,
-//     onChange, applyFilters, isVisible
-//   }
-//
-// Cascade d'application : `window.appliquerFiltreRuntime()` (exposé)
-// notifie les modules de rendu (road.js, zones.js, structures.js,
-// utils.js > _applyTagFilterToDataPoints, editor.js > renderEditorPoints).
-// =========================
+// Les niveaux restent dans APP_CONFIG.visibleLevels (via appliquerFiltreNiveau).
+// API : window.FilterPanel = { ouvrir, fermer, getState, setFilters, onChange, applyFilters, isVisible, majBadge… }
+// Cascade : `window.appliquerFiltreRuntime()` notifie road.js, zones.js, structures.js,
+// utils.js > _applyTagFilterToDataPoints, editor.js > renderEditorPoints.
+// Garde-fou : check-calque-session.js. Doc : docs/architecture/ui.md.
 
 (function() {
   "use strict";
 
-  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
-  // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
+  // Préchargement du chunk CSS dédié (window._loadCssOnce, js/cssLazy.js).
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-filtres.css", "kta-css-style-filtres");
   }
 
-  // ============================================================
-  // STATE RUNTIME GLOBAL
-  // ============================================================
+  // ── État runtime global ──────────
   if (!window._ktaRuntimeFilters) {
     window._ktaRuntimeFilters = {
       tags:        null,
@@ -61,12 +43,10 @@
 
   let _modal = null;
   const _listeners = [];
-  // Debounce 200ms pour les changements live (évite freeze sur plans denses)
+  // Debounce 200 ms des changements live (plans denses).
   let _applyTimer = null;
 
-  // ============================================================
-  // API
-  // ============================================================
+  // ── API ──────────
   function getState() { return window._ktaRuntimeFilters; }
 
   function setFilters(partial) {
@@ -89,11 +69,8 @@
     };
   }
 
-  // 🚨 Q34/Q35 (audit ergonomie 13/09/2026) : un filtre actif n'était visible
-  // QUE dans le pied de la modale, et « Tout afficher » oubliait les niveaux
-  // en affirmant « Aucun filtre actif ». Sous terre, un POI masqué se lit
-  // « il n'existe pas ». Le bouton ≡ porte désormais une pastille avec le
-  // nombre de filtres actifs (tags / tracés / zones / structures / niveaux).
+  // Un filtre actif doit se VOIR : sous terre, un POI masqué se lit « il n'existe pas ». Le bouton ≡ porte une
+  // pastille dès qu'une catégorie est filtrée (tags / tracés / zones / structures / niveaux).
   function _niveauxFiltres() {
     const c = window.APP_CONFIG;
     if (!c || c.multiLevel !== true) return false;
@@ -115,12 +92,8 @@
     if (!a) return;
     const n = _nbFiltresActifs();
     a.classList.toggle("kta-filter-ctrl-actif", n > 0);
-    // 🔵 14/09/2026 (KARMA) — UN POINT, PAS UN CHIFFRE. `n` compte les
-    // CATÉGORIES filtrées (points, tracés, zones, structures, niveaux), pas
-    // les objets masqués : décocher un seul type ou vingt affichait « 1 ».
-    // Un chiffre qui ne mesure pas ce qu'on croit est pire que pas de chiffre.
-    // Le point dit « quelque chose est masqué », ce qui est exactement le
-    // besoin ; le compte reste disponible, dans l'infobulle.
+    // UN POINT, PAS UN CHIFFRE (décision produit) : `n` compte les CATÉGORIES filtrées, pas les objets masqués
+    // (un type décoché ou vingt afficheraient « 1 »). Le compte reste dans l'infobulle.
     if (n > 0) {
       a.setAttribute("data-filtre-actif", "1");
       a.setAttribute("title", window.I18n.t("filter.badge.actifs", { n: n }));
@@ -146,17 +119,10 @@
     }, 200);
   }
 
-  // 🐛 v1.44.1 — Recalcul des roads/intersections après toggle d'un calque
-  // DATA. Contexte : road.js écoute `overlayadd`/`overlayremove` (événements
-  // émis par le contrôle de couches Leaflet NATIF) pour recalculer les
-  // cercles d'intersection quand un calque devient visible/masqué. Or depuis
-  // la refonte Filtres (v1.21.5), le toggle passe par CE panel qui fait
-  // `map.addLayer/removeLayer` DIRECTEMENT → aucun événement émis → les
-  // cercles d'intersection des roads embarquées du calque masqué restaient
-  // affichés. Fix : on déclenche explicitement renderRoads() après le toggle.
-  // Coalescé à 150 ms : le bouton « Tout afficher » (reset-all) dispatch un
-  // event `change` synthétique PAR checkbox → sans coalescing on ferait
-  // N renderRoads d'affilée (O(N²) chacun sur plan dense).
+  // Recalcul des roads et cercles d'intersection après le basculement d'un calque DATA. 🩸 road.js écoute
+  // `overlayadd`/`overlayremove` du contrôle Leaflet NATIF ; ce panneau fait `map.addLayer/removeLayer` en direct,
+  // sans événement : les cercles des roads d'un calque masqué resteraient. On appelle donc renderRoads().
+  // Regroupé à 150 ms : « Tout afficher » émet un `change` synthétique PAR case (N renderRoads d'affilée sinon).
   let _roadsRecalcTimer = null;
   function _scheduleRoadsRecalc() {
     if (_roadsRecalcTimer) return;
@@ -171,9 +137,7 @@
   }
 
   function applyFilters() {
-    // Appelle la cascade globale qui re-rend tous les modules concernés.
-    // Définie dans interface.js > initInterface (cascade vers road / zones /
-    // structures / editor.js + utils.js > _applyTagFilterToDataPoints).
+    // Cascade globale (interface.js > initInterface) vers road / zones / structures / editor.js + utils.js.
     if (typeof window.appliquerFiltreRuntime === "function") {
       try { window.appliquerFiltreRuntime(); } catch(e) {
         console.warn("[FilterPanel] applyFilters erreur :", e);
@@ -183,9 +147,8 @@
 
   function isVisible() { return !!_modal; }
 
-  // 🆕 v1.21.5 (sync M-LVL bidirectionnel) : appelé par appliquerFiltreNiveau
-  // quand visibleLevels / activeLevel changent ailleurs (modale Niveaux,
-  // pastille). Re-render seulement la section M-LVL si la modale est ouverte.
+  // Synchro des niveaux : appelé par appliquerFiltreNiveau quand visibleLevels / activeLevel changent ailleurs ;
+  // ne re-rend que la section niveaux, si la modale est ouverte.
   function onLevelChange() {
     if (!_modal) return;
     const sec = document.getElementById("kta-fp-sec-lvl");
@@ -193,32 +156,23 @@
     const body = sec.querySelector(".kta-fp-section-body");
     if (!body) return;
     body.innerHTML = _renderLevelsSection();
-    // Re-bind handlers de la section seule
     _bindLevelHandlers(sec);
   }
 
-  // 🆕 v1.43.26 — Refacto event delegation : au lieu de re-binder tous les
-  // boutons à chaque onLevelChange (qui faisait un innerHTML reflow + multi
-  // attaches de listeners sur les nouveaux noeuds), on attache UN SEUL
-  // listener click/change sur `sec` (le conteneur de section M-LVL, jamais
-  // remplacé). Comme la délégation lit `e.target.closest(...)`, ça continue
-  // de marcher après chaque innerHTML rebuild du body — sans accumulation
-  // de listeners.
+  // Délégation d'événements : UN listener click/change sur `sec` (conteneur de la section niveaux, jamais
+  // remplacé) ; `e.target.closest(...)` marche après chaque reconstruction du corps, sans accumuler de listeners.
   function _bindLevelHandlers(scope) {
-    // Guard contre double-bind (sec ne change pas, donc 1 seul listener
-    // suffit pour toute la vie de la modale Filtres).
+    // Garde anti-double bind (un listener pour toute la vie de la modale).
     if (scope._levelHandlersBound) return;
     scope._levelHandlersBound = true;
 
     scope.addEventListener("click", function(e) {
-      // Actif level (chips numérotés "0", "1", "2"…)
+      // Niveau actif (puces « 0 », « 1 », « 2 »…).
       const btnActive = e.target.closest('[data-lvl-active]');
       if (btnActive && scope.contains(btnActive)) {
         const lvl = parseInt(btnActive.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // 🆕 v1.74.0 : passe par le helper unique (avant : écriture directe de
-        // activeLevel + notify d'un callback _onLevelChange jamais défini →
-        // ni pastille ni modules rafraîchis depuis cette modale).
+        // Toujours par le helper unique ktaSetActiveLevel (pastille et modules rafraîchis).
         if (typeof window.ktaSetActiveLevel === "function") {
           window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
         } else {
@@ -227,11 +181,10 @@
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
           b.classList.toggle("kta-fp-lvl-btn-active", b === btnActive);
         });
-        // Le niveau a pu s'AJOUTER aux visibles (union) → resync des cases.
+        // Le niveau a pu s'AJOUTER aux visibles (union) : resynchro des cases.
         _refreshChipsState(_modal);
         return;
       }
-      // Quick action "Tous"
       const btnAll = e.target.closest('[data-action="lvl-all"]');
       if (btnAll && scope.contains(btnAll)) {
         const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
@@ -243,7 +196,6 @@
         _refreshChipsState(_modal);
         return;
       }
-      // Quick action "Actif seul"
       const btnOnly = e.target.closest('[data-action="lvl-active-only"]');
       if (btnOnly && scope.contains(btnOnly)) {
         const active = window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number"
@@ -267,23 +219,19 @@
     });
   }
 
-  // ============================================================
-  // COLLECTE DE DONNÉES POUR LA MODALE
-  // ============================================================
+  // ── Collecte des données de la modale ──────────
 
-  // Énumère les tags effectivement présents dans la session + data layers
-  // courants. Retourne [{tag, count, iconUrl?}, ...] trié desc par count.
+  // Tags présents dans la session et les calques : [{tag, count, iconUrl?}, ...], par count décroissant.
   function _enumerateTags() {
     const counts = {};
     function _addPt(p) {
       const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
       counts[t] = (counts[t] || 0) + 1;
     }
-    // Session
     if (typeof window.getEditorPoints === "function") {
       (window.getEditorPoints() || []).forEach(_addPt);
     }
-    // Data layers (points embedded) — _ktaDataMarkers a _ktaTags
+    // Calques (points embarqués) : _ktaDataMarkers porte _ktaTags.
     if (Array.isArray(window._ktaDataMarkers)) {
       window._ktaDataMarkers.forEach(function(m) {
         if (!m) return;
@@ -291,7 +239,6 @@
         counts[t] = (counts[t] || 0) + 1;
       });
     }
-    // Tri desc + helper iconUrl si dispo
     return Object.keys(counts).sort(function(a, b) {
       return (counts[b] || 0) - (counts[a] || 0);
     }).map(function(t) {
@@ -308,17 +255,15 @@
     });
   }
 
-  // Liste les types runtime utilisés par catégorie (= apparition au moins 1×)
+  // Types utilisés par catégorie (au moins une apparition).
   function _enumerateTypes(category) {
     const counts = {};
     function _add(items) {
       if (!Array.isArray(items)) return;
       items.forEach(function(it) {
         if (!it || !it.type) return;
-        // 🐛 v1.21.5-fix1 (KARMA "itinerary1") : exclure le type "itinerary" du
-        // filtre runtime. C'est un dérivé Pathfinder (= chemin calculé), pas un
-        // type user-chooseable. Cohérent avec les hooks runtime qui bypass
-        // déjà road.type === "itinerary" dans renderRoads.
+        // Le type "itinerary" est exclu : c'est un dérivé de Pathfinder, pas un type choisi (renderRoads l'ignore
+        // déjà).
         if (category === "roads" && it.type === "itinerary") return;
         counts[it.type] = (counts[it.type] || 0) + 1;
       });
@@ -336,17 +281,13 @@
     return counts;  // { type: count }
   }
 
-  // Label LegendCustomization-aware
-  // 🐛 v1.76.0 (F11) — `getLabel` ne consulte QUE les libellés des types
-  // built-in : pour un type CUSTOM elle rendait la clé brute, et la puce du
-  // filtre affichait `cust-m2k9x-3fa` au lieu du nom choisi. Il faut passer par
-  // `findCustomEntry`, comme le font déjà refonteInterface.js, statsGlobales.js
-  // et pathfinder.js — ce module était le seul à l'avoir oublié.
+  // Libellé tenant compte de LegendCustomization. ⚠️ `getLabel` ne connaît que les types intégrés : un type CUSTOM
+  // passe par `findCustomEntry` (comme refonteInterface.js, statsGlobales.js, pathfinder.js), sinon la puce
+  // affiche `cust-m2k9x-3fa` au lieu du nom choisi.
   function _lcLabel(category, type, fallback) {
     const LC = window.LegendCustomization;
-    // 🧷 v1.76.1 — findCustomEntry pour TOUT type non résolu par getLabel
-    // (plus seulement `cust-`) : une entrée liée à un id technique (« Bas »)
-    // doit afficher son libellé ici aussi.
+    // findCustomEntry pour TOUT type non résolu par getLabel (pas seulement `cust-`) : une entrée liée à un id
+    // technique (« Bas ») affiche aussi son libellé.
     if (LC && typeof LC.findCustomEntry === "function") {
       try {
         const e = LC.findCustomEntry(type);
@@ -363,9 +304,7 @@
     return fallback || type;
   }
 
-  // ============================================================
-  // RENDER MODALE
-  // ============================================================
+  // ── Rendu de la modale ──────────
 
   function _isHidden(setName, type) {
     const set = window._ktaRuntimeFilters[setName];
@@ -374,18 +313,16 @@
   }
 
   function _toggle(setName, type, checked) {
-    // Si null (= tout visible), on initialise le set avec TOUS les types
-    // courants moins celui qu'on décoche (pour préserver le reste visible).
+    // Filtre null (tout visible) : on part de TOUS les types courants moins celui qu'on décoche.
     const f = window._ktaRuntimeFilters;
     let set = f[setName];
     if (set === null) {
-      // Initialise avec tout l'univers courant
       const universe = _getUniverse(setName);
       set = new Set(universe);
     }
     if (checked) set.add(type);
     else         set.delete(type);
-    // Si on a tout coché → revient à null (= filtre désactivé)
+    // Tout coché → null (filtre désactivé).
     const universe = _getUniverse(setName);
     if (set.size === universe.length && universe.every(function(t) { return set.has(t); })) {
       f[setName] = null;
@@ -407,10 +344,8 @@
   function _toggleAll(setName, value) {
     const f = window._ktaRuntimeFilters;
     if (value) {
-      // Tout afficher = null (filtre désactivé)
       f[setName] = null;
     } else {
-      // Tout masquer = Set vide
       f[setName] = new Set();
     }
     _scheduleApply();
@@ -451,7 +386,7 @@
     if (universe.length === 0) {
       return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.items")) + '</div>';
     }
-    // Tri : builtin en premier dans l'ordre déclaré, puis customs alphabétique
+    // Tri : intégrés dans l'ordre déclaré, puis customs par ordre alphabétique.
     const sortedKeys = [];
     (builtinOrder || []).forEach(function(t) { if (counts[t] != null) sortedKeys.push(t); });
     universe.filter(function(t) { return !(builtinOrder || []).includes(t); })
@@ -502,15 +437,7 @@
     }
     let html = '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
-      // 🩹 v1.34.5 — KARMA bug prod v1.34.3 : check imageLayer → close →
-      // reopen → unchecked. Cause initiale supposée : mismatch d'id si
-      // plan-config sans `id`. Fallback `lc.id || lc.label` aligné avec
-      // map.js l423. Bénéfice : couvre quand même le cas des vieux plans
-      // sans champ `id` (défense en profondeur).
-      // 🐛 v1.34.7 — Le vrai bug racine était ailleurs : initDataFromConfig
-      // (main.js l39, ancien) vidait `_ktaImageOverlays` JUSTE APRÈS que
-      // initMapFromConfig venait de le populer. Fix : retrait du reset
-      // dupliqué dans main.js. Le check `hasLayer` ici fonctionne désormais.
+      // Id du calque : `lc.id || lc.label`, comme map.js > initMapFromConfig (vieux plans sans `id`).
       const layerId = lc.id || lc.label;
       const visible = window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays)
                       ? (function() {
@@ -536,20 +463,17 @@
     }
     const pc = window.PLAN_CONFIG;
     const cfg = (pc && Array.isArray(pc.dataLayers)) ? pc.dataLayers : [];
-    // 🔄 v1.85.0 — RAPATRIEMENT EN SESSION (cf. js/calqueSession.js).
-    // Un calque de données est en LECTURE SEULE et rendu UNE seule fois : pour
-    // y corriger quoi que ce soit il faut amener son contenu dans la session,
-    // là où `renderRoads`/`renderZones`/`renderStructures` savent redessiner.
-    // Cette section est le seul point de contrôle de la visibilité d'un calque
-    // — le verrou se pose donc ICI, et nulle part ailleurs, sinon deux
-    // contrôles se disputent le même état.
+    // Rapatriement en session (cf. js/calqueSession.js) : un calque de données est en LECTURE SEULE et rendu une
+    // fois ; pour le corriger, son contenu passe dans la session (renderRoads / renderZones / renderStructures
+    // savent redessiner). ⚠️ Cette section est le SEUL point de contrôle de la visibilité d'un calque : le verrou
+    // se pose ICI et nulle part ailleurs, sinon deux contrôles se disputent le même état.
     const CS = window.CalqueSession;
     let html = '<div class="kta-fp-list">';
     ids.forEach(function(id) {
       const visible = window.map && window.map.hasLayer(groups[id]);
       const lc = cfg.find(function(d) { return d.id === id; });
       const label = (lc && lc.label) || (id === "editor" ? window.I18n.t("filter.dataLayer.editor") : id);
-      // Le calque « editor » EST la session : le rapatrier n'aurait aucun sens.
+        // Le calque « editor » EST la session : rien à rapatrier.
       const rapatriable = !!(CS && lc && lc.file && id !== "editor");
       const rapatrie    = !!(CS && CS.estRapatrie(id));
       html += '<div class="kta-fp-calque-ligne">' +
@@ -560,10 +484,8 @@
                                 + _escHtml(window.I18n.t("filter.calque.remplace")) + '</em>' : '') +
                   '</span>' +
                 '</label>' +
-                // 💾 Exporter ne s'affiche que sur un calque rapatrié : c'est
-                // ce qui ferme la boucle vers le ZIP. Un fichier, à déposer sur
-                // la ligne de CE calque dans « Modifier un plan » — la ligne
-                // étant le calque, aucun doublon n'est possible.
+                // « Exporter » seulement sur un calque rapatrié : le fichier se dépose sur la ligne de CE calque
+                // dans « Modifier un plan » (aucun doublon possible), ce qui ferme la boucle vers le ZIP.
                 (rapatrie
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       'data-calque-exporter="' + _escAttr(id) + '" ' +
@@ -585,10 +507,8 @@
     return html;
   }
 
-  // 🔄 v1.85.0 — re-rend la SEULE section des calques. Un `ouvrir()` complet
-  // refermerait les `<details>` que l'utilisateur a repliés et perdrait sa
-  // position de défilement : après un rapatriement, on ne redessine que ce
-  // qui a changé.
+  // Re-rend la SEULE section des calques : un `ouvrir()` complet refermerait les `<details>` repliés et perdrait
+  // la position de défilement.
   function refreshDataLayers() {
     if (!_modal) return;
     const sec = _modal.querySelector("#kta-fp-sec-data .kta-fp-section-body");
@@ -636,9 +556,7 @@
     return html;
   }
 
-  // ============================================================
-  // MODALE
-  // ============================================================
+  // ── Modale ──────────
 
   function ouvrir() {
     if (_modal) { fermer(); }
@@ -675,7 +593,7 @@
   }
 
   function _section(title, id, contentHtml) {
-    // Section ouverte par défaut. L'user peut replier via le header.
+    // Section ouverte par défaut, repliable par son en-tête.
     return '<details class="kta-fp-section" id="kta-fp-sec-' + id + '" open>' +
              '<summary class="kta-fp-section-titre">' + _escHtml(title) + '</summary>' +
              '<div class="kta-fp-section-body">' + contentHtml + '</div>' +
@@ -690,17 +608,12 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     document.addEventListener("keydown", _onKey);
 
-    // 🆕 v1.43.27 (Pattern 2 — extension du refactor M-LVL v1.43.26) :
-    // event delegation sur `overlay` pour les sections Image / Data / Tags /
-    // show-all / hide-all. Avant : N listeners individuels par section
-    // (cb.addEventListener × ~30 checkboxes). Maintenant : 2 listeners
-    // mutualisés (1 change, 1 click) qui dispatchent via e.target.dataset.
-    // Bénéfice : moins de bind à chaque ouvrir() + cohérence avec le pattern
-    // M-LVL déjà délégué (sec via `_bindLevelHandlers` v1.43.26).
+    // Délégation sur `overlay` pour les sections Image / Data / Tags / Tout afficher / Tout masquer : 2 listeners
+    // (change, click) qui dispatchent par e.target.dataset, comme la section niveaux.
     overlay.addEventListener("change", function(e) {
       const t = e.target;
       if (!t || !t.matches) return;
-      // === Image layers ===
+      // Calques image
       if (t.matches('[data-img-layer]')) {
         const id = t.getAttribute("data-img-layer");
         if (!Array.isArray(window._ktaImageOverlays) || !window.map) return;
@@ -710,20 +623,18 @@
         else           { try { window.map.removeLayer(entry.overlay); } catch(_) {} }
         return;
       }
-      // === Data layers ===
+      // Calques de données
       if (t.matches('[data-data-layer]')) {
         const id = t.getAttribute("data-data-layer");
         const grp = (window.dataLayerGroups || {})[id];
         if (!grp || !window.map) return;
         if (t.checked) { try { window.map.addLayer(grp); } catch(_) {} }
         else           { try { window.map.removeLayer(grp); } catch(_) {} }
-        // 🐛 v1.44.1 — recalcule roads + cercles d'intersection (les roads
-        // embarquées du calque masqué doivent disparaître du calcul, cf.
-        // _scheduleRoadsRecalc pour le contexte complet).
+        // Roads + cercles d'intersection recalculés (cf. _scheduleRoadsRecalc).
         _scheduleRoadsRecalc();
         return;
       }
-      // === Tags + Types (set-based) ===
+      // Tags + types (par Set)
       if (t.matches('[data-set][data-type]')) {
         const setName = t.getAttribute("data-set");
         const type    = t.getAttribute("data-type");
@@ -734,32 +645,31 @@
       }
     });
 
-    // === Niveaux : actif (segmented) ===
+    // Niveaux : actif (segmented)
     overlay.querySelectorAll('[data-lvl-active]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // 🆕 v1.74.0 : helper unique (cf. _bindLevelHandlers, même correctif).
+        // Helper unique (cf. _bindLevelHandlers).
         if (typeof window.ktaSetActiveLevel === "function") {
           window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
         } else {
           window.APP_CONFIG.activeLevel = lvl;
         }
-        // Update UI segmented
         overlay.querySelectorAll('[data-lvl-active]').forEach(function(b) {
           b.classList.toggle("kta-fp-lvl-btn-active", b === btn);
         });
       });
     });
 
-    // === Niveaux : visibles (chips multi) ===
+    // Niveaux : visibles (puces multiples)
     overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
       cb.addEventListener("change", function() {
         _updateVisibleLevelsFromUI(overlay);
       });
     });
 
-    // === Quick actions niveaux ===
+    // Actions rapides des niveaux
     overlay.querySelectorAll('[data-action="lvl-all"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
@@ -785,18 +695,14 @@
       });
     });
 
-    // 🆕 v1.43.27 — Tags+Types délégués via le listener `change` sur overlay
-    // (cf. bloc plus haut). Plus de forEach individuel.
 
-    // === Mini actions "Tout / Aucun" par section — délégation click ===
+    // Mini actions « Tout / Aucun » par section : délégation click.
     overlay.addEventListener("click", function(e) {
       const t = e.target;
       if (!t || !t.matches) return;
-      // === Calques : rapatriement en session / restitution / export (v1.85.0) ===
-      // 🩸 ICI, et pas dans le listener `change` juste au-dessus : ce sont des
-      // <button>, et un bouton n’emet JAMAIS `change`. Places la-bas, ils
-      // etaient morts SILENCIEUSEMENT — aucune erreur console, juste rien au
-      // clic. C’est KARMA qui l’a vu a l’ecran, pas la relecture.
+      // Calques : rapatriement / restitution / export.
+      // 🩸 Dans le listener CLICK, pas `change` : ce sont des <button>, qui n'émettent JAMAIS `change` (ils seraient
+      // morts en silence, sans erreur console). Garde-fou : check-calque-session.js.
       if (t.matches('[data-calque-rapatrier]')) {
         _rapatrierCalque(t.getAttribute("data-calque-rapatrier"));
         return;
@@ -821,7 +727,7 @@
       }
     });
 
-    // === Reset all ===
+    // Tout afficher
     const resetBtn = document.getElementById("kta-fp-reset-all");
     if (resetBtn) {
       resetBtn.addEventListener("click", function() {
@@ -829,23 +735,17 @@
         f.tags = null; f.roadTypes = null; f.zoneTypes = null; f.structTypes = null;
         _scheduleApply();
         _notify();
-        // Recoche toutes les checkboxes runtime
         overlay.querySelectorAll('[data-set][data-type]').forEach(function(cb) { cb.checked = true; });
-        // 🐛 v1.34.6 — Fix bug confirmé : "Tout afficher" ne touchait PAS les
-        // image layers ni les data layers. L'utilisateur attendait un reset
-        // complet (toutes les couches re-visibles) — uniquement les chips
-        // tags/types étaient remises à zéro. Maintenant on dispatch un event
-        // `change` synthétique sur chaque checkbox imageLayer/dataLayer pour
-        // déclencher le handler existant (qui appelle map.addLayer).
+        // « Tout afficher » réinitialise AUSSI les calques image et données : un `change` synthétique sur chaque
+        // case déclenche le handler existant (map.addLayer).
         overlay.querySelectorAll('[data-img-layer]').forEach(function(cb) {
           if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
         });
         overlay.querySelectorAll('[data-data-layer]').forEach(function(cb) {
           if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
         });
-        // 🚨 Q35 : les NIVEAUX aussi (même chemin que « 👁️ Tous »). Avant, le
-        // seul bouton de réinitialisation laissait des étages masqués tout en
-        // affichant « Aucun filtre actif ».
+        // Les NIVEAUX aussi (même chemin que « 👁️ Tous ») : sinon des étages restent masqués sous « Aucun filtre
+        // actif ».
         if (_niveauxFiltres()) {
           const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
                         ? window.APP_CONFIG.availableLevels : [];
@@ -913,21 +813,14 @@
     _modal = null;
   }
 
-  // ============================================================
-  // HELPERS
-  // ============================================================
+  // ── Helpers ──────────
   function _escHtml(s) { return window.ktaEsc(s); }
   function _escAttr(s) { return window.ktaEsc(s); }
 
-  // ============================================================
-  // 🔄 v1.85.0 — RAPATRIEMENT D'UN CALQUE EN SESSION
-  // ============================================================
-  // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur des relevés réels :
-  // 225 octets par objet, donc ~1,1 Mo pour un relevé SIG de 5 000 objets —
-  // quand `localStorage` plafonne vers 5 Mo POUR TOUT LE DOMAINE et que
-  // `SessionPersist` re-sérialise la session entière à chaque sauvegarde.
-  // Découvrir ça au `QuotaExceededError`, c'est le découvrir une fois la
-  // session perdue. D'où la pesée, et l'occupation réelle dans le message.
+  // ── Rapatriement d'un calque en session ──────────
+  // ⚠️ ON ANNONCE LE COÛT AVANT : ~225 octets par objet, ~1,1 Mo pour un relevé SIG de 5 000 objets. Découvrir la
+  // limite de stockage au `QuotaExceededError`, c'est la découvrir session perdue : pesée et occupation réelle
+  // dans le message.
   function _fmtOctets(o) {
     if (!Number.isFinite(o)) return "?";
     return (o >= 1048576) ? (o / 1048576).toFixed(2) + " Mo"
@@ -939,8 +832,8 @@
     if (!CS || !id) return;
     CS.peser(id).then(async function(p) {
       if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return; }
-      // Sessions en IndexedDB (js/sessionStore.js) : leur total face à la place accordée au site.
-      // Repli localStorage : l'occupation du localStorage, plafond ~5 Mo (message d'origine).
+      // Sessions en IndexedDB (js/sessionStore.js) : leur total face à la place accordée au site. Repli
+      // localStorage : son occupation, plafond ~5 Mo.
       const mem = window.ktaStockageLocal ? window.ktaStockageLocal.mesurer() : null;
       const idb = !!mem && mem.mode === "idb";
       const occ = idb ? mem.carSessions : CS.occupationLocalStorage();
@@ -967,18 +860,12 @@
     });
   }
 
-  // 🩸 CE QUE LA RESTITUTION DÉTRUIT, EXACTEMENT (question KARMA, 05/09) :
-  // les objets qui portent la marque du calque — donc **tes corrections
-  // dessus**, y compris celles faites avec 🔄 Convertir (la conversion repart
-  // de l'objet d'origine, elle conserve la marque). Elle ne touche RIEN
-  // d'autre : les structures et tracés que tu as dessinés, ton itinéraire, tes
-  // points restent, parce qu'ils ne portent pas cette marque.
-  //
-  // Le travail perdu peut valoir des heures. On propose donc d'ABORD
-  // l'exporter — le fichier produit EST le calque corrigé, prêt à redonner au
-  // plan. Deux questions enchaînées plutôt qu'un `confirm` binaire : il faut
-  // trois issues (exporter puis restituer · restituer quand même · annuler),
-  // et un choix destructeur ne doit pas partager un bouton avec un choix sûr.
+  // 🩸 CE QUE LA RESTITUTION DÉTRUIT : les objets qui portent la marque du calque, donc les corrections faites
+  // dessus (y compris par « Convertir », qui conserve la marque). Rien d'autre : structures, tracés, itinéraire et
+  // points dessinés à la main restent.
+  // Ce travail peut valoir des heures : on propose d'ABORD l'export (le fichier EST le calque corrigé). Deux
+  // questions enchaînées plutôt qu'un confirm binaire : trois issues (exporter puis restituer · restituer quand
+  // même · annuler), et un choix destructeur ne partage pas un bouton avec un choix sûr.
   function _restituerCalque(id) {
     const CS = window.CalqueSession;
     if (!CS || !id) return;
@@ -995,7 +882,7 @@
         _exporterCalque(id).then(function (exporte) { if (exporte === true) _restituerVraiment(id); });
         return;
       }
-      // Refus d'exporter → on redemande, et là le message dit ce qui se perd.
+      // Refus d'exporter → on redemande, et le message dit ce qui se perd.
       window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }), {
         titre:       window.I18n.t("filter.calque.exportAvantTitre"),
         okLabel:     window.I18n.t("filter.calque.restituerOk"),
@@ -1019,11 +906,9 @@
     }
   }
 
-  // 💾 Ferme la boucle vers le ZIP. Le message dit QUOI FAIRE du fichier —
-  // sans ça, l'utilisateur se retrouve avec un `.json` dans ses
-  // téléchargements et aucune idée de la ligne où le déposer.
-  // Rend une Promise<boolean> résolue à la fermeture du message : true = fichier produit. L'appelant
-  // ne restitue QUE sur true — un export en échec suivi d'une restitution perdait les objets.
+  // Ferme la boucle vers le ZIP : le message dit QUOI FAIRE du fichier (sur quelle ligne le déposer).
+  // Rend Promise<boolean> à la fermeture du message, true = fichier produit. ⚠️ L'appelant ne restitue QUE sur
+  // true (un export en échec suivi d'une restitution perdrait les objets).
   function _exporterCalque(id) {
     const CS = window.CalqueSession;
     if (!CS || !id) return Promise.resolve(false);
@@ -1033,20 +918,17 @@
       return window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" })
         .then(function () { return false; });
     }
-    // ⚠️ On ANNONCE les objets créés à la main qui ne sont PAS partis : ils
-    // n'appartiennent pas à ce calque, et les verser d'office serait décider
-    // à la place de l'utilisateur. Le taire lui ferait croire tout embarqué.
+    // ⚠️ On ANNONCE les objets dessinés à la main qui ne sont PAS partis : ils n'appartiennent pas au calque (les
+    // verser d'office serait décider à la place de l'utilisateur), et le taire ferait croire tout embarqué.
     return window.ktaAlerte(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
                                                           : "filter.calque.exporte",
                                          { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }))
       .then(function () { return true; });
   }
 
-  // ============================================================
-  // EXPORT
-  // ============================================================
+  // ── Export ──────────
   window.FilterPanel = {
-    majBadge:      majBadge,          // 🚨 Q34 : pastille sur ≡ (appelée aussi par le polling du footer)
+    majBadge:      majBadge,          // pastille sur ≡ (appelée aussi par le polling du footer)
     nbActifs:      _nbFiltresActifs,
     refresh:       refreshDataLayers,
     ouvrir:        ouvrir,

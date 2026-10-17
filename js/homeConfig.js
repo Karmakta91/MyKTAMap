@@ -7,33 +7,28 @@
 // =========================
 // HOMECONFIG.JS — modale Config ⚙️ + PIN + badges alertes/paranoïa + thème + réseau
 // =========================
-// 🧹 B7 (v1.66.0) : extrait VERBATIM du monolithe index.html (ex-lignes
-// 4643-5916 du bloc <script> inline). AUCUN refactor interne — seul ajout :
-// les ponts window.* en fin de wrapper (le monolithe partageait UNE closure
-// « load » ; découpé, chaque fichier expose ce que les autres consomment,
-// les identifiants nus se résolvant sur l'objet global).
-// ⚠️ Chargé SANS defer (exécution synchrone à l'emplacement d'origine) et
-// wrappé dans window.addEventListener("load") : l'ordre d'enregistrement
-// des listeners (homeLoader → homeProfile → homeConfig → résiduel inline)
-// reproduit l'ordre d'exécution du bloc d'origine. Ne pas réordonner.
+// Accueil : modale ⚙️ Configuration (réglages GLOBAUX : thème, capteurs, notifications, Carnet, aide…), code
+// d'accès local (PIN), badge d'alerte, version du pied de page, pastille hors-ligne, 🆘 Dépannage, audit réseau.
+// Expose : window._ouvrirLoaderConfig / _fermerLoaderConfig, ktaOuvrirDepannage.
+// ⚠️ Chargé SANS defer et enveloppé dans window.addEventListener("load") : l'ordre d'enregistrement des
+// listeners (homeLoader → homeProfile → homeConfig) est voulu. Ne pas réordonner.
+// 🩸 Textes rendus au chargement : attendre I18n.init() avant de peindre, sinon la clé est « humanisée ».
+// Garde-fous : check-prefs-survival.js, check-notifs.js, check-wakelock.js. Doc : docs/architecture/ui.md.
     window.addEventListener("load", function () {
-      // === BOUTON ⚙️ CONFIGURATION (v1.7.3) ===
-      // Ouvre la modale unique qui regroupe Tiling perf + ULTRA + Logs + Reset.
-      // Remplace l'ancien drawer 'Réglages de performance' + la section
-      // 'Plus d'options' qui étaient éparpillés dans le loader.
+      // ── Bouton ⚙️ Configuration ──────────
       const configBtn   = document.getElementById("loaderConfigBtn");
       const configModal = document.getElementById("loaderConfigModal");
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
-        // Rubriques repliables, comme les Réglages du plan (même balisage, mémoire à part).
-        // Une seule liaison : la fenêtre n'est jamais reconstruite.
+        // Rubriques repliables comme les Réglages du plan (même balisage, mémoire à part), liées une fois
+        // (la fenêtre n'est jamais reconstruite).
         if (configModal && !configModal.dataset.groupesLies && typeof window.ktaGroupesRepliables === "function") {
           configModal.dataset.groupesLies = "1";
           window.ktaGroupesRepliables(configModal, "myktamap_home_cfg_groupes_v1");
         }
-        // 🧩 Bloc « Installation » en tête (ex. gérer les comptes, pour un admin) :
-        // actions fournies par l'extension de l'installation, recalculées à chaque ouverture.
+        // Bloc « Installation » en tête (ex. gestion des comptes pour un admin) : actions fournies par l'extension,
+        // recalculées à chaque ouverture.
         if (configModal && window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
           const ancien = configModal.querySelector(".kta-ext-compte");
           if (ancien) ancien.remove();
@@ -42,10 +37,8 @@
             window.I18n ? window.I18n.t("config.compteTitre") : "Installation");
           if (bloc && corpsCfg) corpsCfg.insertBefore(bloc, corpsCfg.firstChild);
         }
-        // 🆕 v1.10.0-hotfix1 : si on est in-app (plan chargé, loader masqué),
-        // on doit aussi afficher le loader pour que la modale Config soit
-        // visible dans son contexte (sinon elle apparaît au-dessus de la
-        // map et l'user ferme → l'app reste en mode map sans contexte).
+        // En mode carte (loader masqué), on réaffiche le loader : la modale a besoin de son contexte, sinon on
+        // ferme et l'app reste en mode carte sans contexte.
         const loaderOverlay = document.getElementById("planLoaderOverlay");
         if (loaderOverlay && loaderOverlay.style.display === "none") {
           loaderOverlay.style.display = "flex";
@@ -54,12 +47,7 @@
       function _fermerLoaderConfig() {
         if (configModal) configModal.style.display = "none";
       }
-      // 🆕 v1.10.0-hotfix1 (KARMA "si on clique sur activer maintenant, ca
-      // ferme juste le modal mais ouvre pas le formulaire") : expose les
-      // helpers sur window pour que les modules externes (pinLock.js, etc.)
-      // puissent ouvrir/fermer la modale Configuration. Avant : functions
-      // locales au scope du <script> inline → window._ouvrirLoaderConfig
-      // était undefined.
+      // Exposés pour les modules externes (pinLock.js…) qui ouvrent/ferment la modale.
       window._ouvrirLoaderConfig = _ouvrirLoaderConfig;
       window._fermerLoaderConfig = _fermerLoaderConfig;
       if (configBtn && configModal) {
@@ -69,11 +57,9 @@
         configClose.addEventListener("click", _fermerLoaderConfig);
       }
       if (configModal) {
-        // Click backdrop pour fermer (mais pas si on clique sur la boîte)
         configModal.addEventListener("click", function(e) {
           if (e.target === configModal) _fermerLoaderConfig();
         });
-        // Escape ferme la modale (cohérent avec autres modales projet)
         document.addEventListener("keydown", function(e) {
           if (e.key === "Escape" && configModal.style.display !== "none" &&
               !document.getElementById("kta-depannage-modal")) {
@@ -82,30 +68,19 @@
         });
       }
 
-      // === 🕵️ v1.31.9 BOUTON MODE INCOGNITO (home) ===
-      // Section #loaderIncognitoSection dans la modale Configuration. Le
-      // bouton est dynamique selon window.IncognitoMode.active :
-      //   • Pas actif → "Démarrer en mode incognito" → IncognitoMode.launch()
-      //   • Actif    → "Quitter le mode incognito"  → IncognitoMode.quit()
-      // Le label + l'icône + le hint + la classe sont mis à jour à chaque
-      // ouverture de la modale (au cas où l'état change pendant la session,
-      // bien que ce soit en théorie impossible — l'état est figé au boot).
+      // ── Bouton mode incognito ──────────
+      // Libellé, icône, hint et classe selon window.IncognitoMode.active (Démarrer → launch(), Quitter → quit()),
+      // remis à jour à chaque ouverture de la modale.
       (function _bindLoaderIncognito() {
         var btn   = document.getElementById("loaderIncognitoBtn");
         var icon  = document.getElementById("loaderIncognitoIcon");
         var label = document.getElementById("loaderIncognitoLabel");
         var hint  = document.getElementById("loaderIncognitoHint");
         if (!btn || !icon || !label || !hint) return;
-        // i18n : helper de traduction avec fallback FR inline si I18n
-        // indisponible (ne devrait pas arriver — l'IIFE tourne après
-        // I18n.init au boot, mais on reste défensif pour ne jamais crasher).
+        // Traduction avec repli FR inline si I18n manque (défensif, ne jamais planter).
         function _t(key, fr) {
-          // 🐛 v1.46.5 — clé présente dans le dico chargé → traduction normale
-          // (toute langue). Clé ABSENTE (dico SW périmé, clé ajoutée après la
-          // version en cache) : le fallback FR inline n'est correct QUE si la
-          // langue active est le FR. En EN/ES on laisse I18n.t HUMANISER (afficher
-          // le texte français en EN/ES serait une régression — vue en v1.46.4).
-          // Le VRAI fix global = dico frais (SW network-first, v1.46.5).
+          // Clé ABSENTE du dico chargé (dico en cache périmé) : le repli FR n'est correct QUE si la langue active
+          // est le FR ; en EN/ES, I18n.t humanise (mieux que du français).
           if (window.I18n && typeof window.I18n.t === "function") {
             if (typeof window.I18n.has === "function" && window.I18n.has(key)) return window.I18n.t(key);
             if (typeof window.I18n.getLang === "function" && window.I18n.getLang() === "fr") return fr;
@@ -136,38 +111,27 @@
             btn.classList.remove("kta-cfg-incognito-btn-quit");
             icon.textContent  = "🕵️";
             label.textContent = _t("home.privacy.incognitoStartLabel", "Démarrer en mode incognito");
-            // 12/10/2026 — le libellé suffit (le mode incognito est décrit dans le Guide).
+            // Le libellé suffit (le mode est décrit dans le Guide).
             hint.textContent  = "";
           }
         }
-        // Rendu immédiat UNIQUEMENT si le dico est déjà là (cas FR, et tout cas
-        // où l'IIFE passe après le chargement). Sinon on ne rend RIEN tout de
-        // suite : appeler `_refresh()` à vide ferait humaniser les clés et
-        // émettrait un « [I18n] Clé manquante » qui fait échouer le smoke — un
-        // faux signal, puisque la clé existe et arrive une fraction de seconde
-        // plus tard. La barrière ci-dessous s'en charge.
+        // Rendu immédiat SEULEMENT si le dico est déjà là : rendre à vide humaniserait les clés et émettrait un
+        // « [I18n] Clé manquante » (faux signal qui fait échouer le smoke).
         var _dicoPret = !(window.I18n && typeof window.I18n.has === "function") ||
                         window.I18n.has("home.privacy.incognitoStartLabel");
         if (_dicoPret) _refresh();
-        // 🐛 v1.80.0 — BARRIÈRE I18n.init() : ce premier _refresh() tombe AVANT
-        // l'arrivée du dico quand la langue n'est pas le FR (fr.json est le dico
-        // de référence, chargé en premier). `I18n.has()` répondait donc false et
-        // `I18n.t()` HUMANISAIT la clé : un utilisateur EN ou ES lisait
-        // « Incognito Start Label » sur le HOME — la clé technique, ni traduite
-        // ni en français. Et ça ne se réparait JAMAIS : `onChange` ci-dessous ne
-        // se déclenche qu'au CHANGEMENT de langue, pas à l'arrivée du dico.
-        // Mesuré le 01/09/2026 sur les 3 langues : FR correct, EN et ES cassés.
-        // Même barrière que `_majPinStatusUI` plus bas dans ce fichier (v1.68.1).
+        // 🩸 BARRIÈRE I18n.init() : hors FR, le premier rendu tombe AVANT le dico (fr.json est chargé en premier)
+        // et la clé technique s'afficherait (« Incognito Start Label »). `onChange` ne se déclenche qu'au
+        // CHANGEMENT de langue, pas à l'arrivée du dico : sans barrière, ça ne se répare jamais. Même barrière
+        // que `_majPinStatusUI`.
         if (window.I18n && typeof window.I18n.init === "function") {
           window.I18n.init().then(_refresh).catch(function () {});
         }
-        // Re-render du label/hint à chaque changement de langue (live, sans
-        // reload — cohérent avec _applyI18nDom appliqué au reste du HOME).
+        // Re-rendu à chaque changement de langue.
         if (window.I18n && typeof window.I18n.onChange === "function") {
           window.I18n.onChange(_refresh);
         }
-        // Re-refresh à chaque ouverture de la modale Configuration (Hook
-        // sur le helper exposé sur window pour rester DRY avec configBtn).
+        // Rafraîchi à chaque ouverture (hook sur le helper exposé).
         var _origOuvrir = window._ouvrirLoaderConfig;
         if (typeof _origOuvrir === "function") {
           window._ouvrirLoaderConfig = function() {
@@ -185,20 +149,16 @@
               if (ok) window.IncognitoMode.quit();
             });
           } else {
-            // 🆕 v1.31.10 : passe par confirmAndLaunch() qui affiche la
-            // modale charte de garde-fou (description + risques + buttons).
-            // L'user peut Annuler dans la modale → no launch.
+            // confirmAndLaunch() : modale de garde-fou (description, risques), annulable.
             _fermerLoaderConfig();
             window.IncognitoMode.confirmAndLaunch();
           }
         });
       })();
 
-      // === BOUTON 🔔 ALERTE EN COURS ===
-      // Force le re-fetch de alert.json et affiche soit la modale d'alerte
-      // (même si déjà acquittée), soit une modale informative "pas d'alerte".
-      // L'auteur peut désactiver l'alerte en renommant alert.json en
-      // alert.lock côté serveur (fetch 404 → modale "pas d'alerte").
+      // ── Bouton 🔔 Alerte en cours ──────────
+      // Relit alert.json et affiche la modale d'alerte (même acquittée) ou « pas d'alerte ». L'auteur désactive
+      // l'alerte en renommant alert.json en alert.lock (404 → « pas d'alerte »).
       const alertBtn = document.getElementById("loaderAlertBtn");
       if (alertBtn) {
         alertBtn.addEventListener("click", function() {
@@ -209,12 +169,10 @@
           }
         });
 
-        // v163 : badge 🚨 dynamique selon niveau max + pastille compteur si >1.
-        // Le AlertChecker notifie via onChange après chaque check/dismiss.
+        // Badge selon le niveau max + pastille compteur si > 1 ; AlertChecker notifie par onChange.
         function _majBadgeAlert() {
           if (!window.AlertChecker || typeof window.AlertChecker.getActiveAlerts !== "function") return;
           const actives = window.AlertChecker.getActiveAlerts() || [];
-          // Filtre les non-acquittées pour le badge actif visuel
           const nonAcq = actives.filter(function(a) {
             if (!a.id || !a.released) return true;
             try {
@@ -222,14 +180,13 @@
               return !(seen && seen === a.released);
             } catch(e) { return true; }
           });
-          // Reset classes de niveau
           alertBtn.classList.remove(
             "loader-btn-alert-emergency",
             "loader-btn-alert-warning",
             "loader-btn-alert-info",
             "loader-btn-alert-none"
           );
-          // Détecte niveau max (parmi les non acquittées)
+          // Niveau max parmi les non acquittées.
           let maxLevel = "none";
           for (var i = 0; i < nonAcq.length; i++) {
             const lvl = nonAcq[i].level;
@@ -238,7 +195,6 @@
             else if (lvl === "info" && maxLevel === "none")     maxLevel = "info";
           }
           alertBtn.classList.add("loader-btn-alert-" + maxLevel);
-          // Pastille compteur si > 1 alerte non acquittée
           let counter = alertBtn.querySelector(".loader-btn-alert-counter");
           if (nonAcq.length > 1) {
             if (!counter) {
@@ -254,31 +210,21 @@
         if (window.AlertChecker && typeof window.AlertChecker.onChange === "function") {
           window.AlertChecker.onChange(_majBadgeAlert);
         }
-        // Premier rendu (en cas où le check a déjà eu lieu)
+        // Premier rendu (le check a pu déjà avoir lieu).
         _majBadgeAlert();
       }
 
-      // ⚠️ v1.85.3 (audit KARMA) — LE CABLAGE DES TOGGLES PERF ULTRA A ETE
-      // RETIRE avec les cases correspondantes (cf. index.html). Il etait
-      // null-safe, donc inoffensif — mais c est precisement ce qui le rendait
-      // trompeur : du code qui a l air de brancher une interface qui n existe
-      // plus. Ces reglages sont PAR PLAN depuis la v1.59.0 et se reglent dans
-      // ⚙️ Reglages, une fois le plan ouvert.
+      // Pas de toggles Perf ULTRA ici : ces réglages sont PAR PLAN (⚙️ Réglages, plan ouvert).
 
-      // === VERSION DANS LE FOOTER COPYRIGHT ===
-      // - Le badge est TOUJOURS cliquable :
-      //   · Mode normal (à jour) → modale "Déjà à jour" avec les notes de la
-      //     version installée (récap pratique)
-      //   · Mode update dispo → modale "🔔 Mise à jour disponible" (avec choix
-      //     douce / reset complet, bypass snooze)
-      // - Visuel différencié : gris discret normal vs bleu clignotant si update
-      //   (mais cursor:pointer + onclick dans LES DEUX cas).
+      // ── Version dans le pied de page ──────────
+      // Badge TOUJOURS cliquable : à jour → « Déjà à jour » + notes de la version installée ; mise à jour
+      // disponible → « Mise à jour disponible » (douce / reset complet, sans snooze). Gris discret ou bleu
+      // clignotant.
       (function _initFooterVersion() {
         const el = document.getElementById("loaderCopyrightVersion");
         if (!el) return;
         const installed = (window.__MKM__ && window.__MKM__.build) || "v?";
 
-        // Badge cliquable dès le départ — peu importe l'état update.
         el.setAttribute("role", "button");
         el.setAttribute("tabindex", "0");
         el.onclick = function() {
@@ -286,7 +232,6 @@
             window.UpdateChecker.showCurrent();
           }
         };
-        // Support Entrée/Espace au clavier (accessibilité)
         el.addEventListener("keydown", function(e) {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -294,13 +239,8 @@
           }
         });
 
-        // État initial : affiche la version installée. Le check d'update
-        // décoré ci-dessous ré-évalue au moment où le résultat du fetch
-        // version.json arrive.
-        // Audit i18n (O8) : infobulle traduite (était en FR dans les 3 langues).
-        // 🐛 30/09/2026 (checkup-guidage : « Clé manquante home.version.titre ») : ce code
-        // tourne AU CHARGEMENT, avant que les dicos soient là. L'infobulle est donc
-        // calculée au SURVOL (dicos prêts, langue courante) ; l'état est mémorisé ici.
+        // État initial : version installée ; réévalué à l'arrivée de version.json. Infobulle calculée au SURVOL
+        // (dicos prêts, langue courante) : ce code tourne avant les dicos.
         let _titreVer = { cle: "home.version.titre", v: installed };
         const _TITRE_FR = {
           "home.version.titre":    "Version installée : {v} — clique pour voir les notes ou vérifier les mises à jour",
@@ -323,16 +263,15 @@
           const cmp = function (a, b) { return UC && typeof UC.compareSemver === "function" ? UC.compareSemver(a, b) : (a === b ? 0 : 1); };
           el.classList.remove("kta-loader-copyright-version-attente");
           if (!remoteVersion || cmp(remoteVersion, installed) <= 0) {
-            // Pas d'update dispo (ou serveur plus ancien que le code chargé) → état normal (toujours cliquable)
+            // Pas de mise à jour (ou serveur plus ancien que le code chargé) : état normal.
             el.classList.remove("kta-loader-copyright-version-update");
             el.textContent = installed;
             el.title = _tVer("home.version.titre", { v: installed });
             return;
           }
-          // 🩸 10/10/2026 (retour testeur en prod) : mise à jour DÉJÀ acceptée (version connue = serveur) mais ancien
-          // code encore chargé (iOS en app installée, SW pas encore relayé). Avant : badge bleu clignotant à chaque
-          // ouverture, pris pour « la mise à jour m'est demandée à chaque fois », alors qu'un clic répondait
-          // « déjà à jour ». Désormais : ⏳ sans clignoter, l'infobulle dit quoi faire, le clic propose de relancer.
+          // 🩸 Mise à jour DÉJÀ acceptée mais ancien code encore chargé (iOS app installée, SW pas relayé) : ⏳ sans
+          // clignoter, l'infobulle dit quoi faire, le clic propose de relancer (sinon on croit que la mise à jour
+          // est redemandée à chaque ouverture).
           const acceptee = UC && typeof UC.getCurrentVersion === "function" ? UC.getCurrentVersion() : null;
           if (acceptee && cmp(acceptee, remoteVersion) >= 0) {
             el.classList.remove("kta-loader-copyright-version-update");
@@ -341,13 +280,12 @@
             el.title = _tVer("home.version.titreAttente", { v: remoteVersion });
             return;
           }
-          // Update disponible → badge bleu clignotant
           el.classList.add("kta-loader-copyright-version-update");
           el.textContent = installed + " → " + remoteVersion;
           el.title = _tVer("home.version.titreMaj", { v: remoteVersion });
         }
 
-        // Évaluation initiale via le cache LS si dispo
+        // Évaluation initiale par le cache LS.
         try {
           const raw = localStorage.getItem("myktamap_last_version_data");
           if (raw) {
@@ -356,8 +294,7 @@
           }
         } catch(e) {}
 
-        // Re-évaluation après chaque check() de UpdateChecker (fetch frais).
-        // Couvre le cas où la version sur le serveur a changé entre 2 boots.
+        // Réévaluation après chaque check() de UpdateChecker (version serveur changée entre deux démarrages).
         if (window.UpdateChecker && typeof window.UpdateChecker.onCheck === "function") {
           window.UpdateChecker.onCheck(function(result) {
             if (result && result.remote && result.remote.version) {
@@ -367,19 +304,13 @@
         }
       })();
 
-      // === 📡 PASTILLE « HORS-LIGNE » (lot B, 03/10/2026) ===
-      // Un point coloré accolé au badge de version (#loaderOfflineDot) MONTRE
-      // l'état du cache hors-ligne, que l'auto-réparation (SwInspector.
-      // autoHealIfNeeded, ~5 s après l'accueil) répare en silence :
-      //   🟢 ok · 🔴 manquants (clic = tout récupérer) · 🟠 récupération en
-      //   cours, ou manquants hors réseau · ⚪ pas de service worker.
-      // Le rouge seul remonte dans l'en-tête (#loaderOfflineHdrBtn). Le badge de
-      // version garde son clic et son état « mise à jour disponible » : la
-      // pastille est un élément À CÔTÉ, jamais dedans (le badge réécrit son
-      // textContent). Vérifications : au résultat de l'auto-réparation
-      // (événement kta-sw-autoheal), au controllerchange, après un clic.
-      // Aucune boucle, aucune minuterie. Accueil seulement : en mode carte, le
-      // pied de page et l'en-tête de l'accueil sont masqués avec lui.
+      // ── Pastille « hors-ligne » ──────────
+      // Point coloré à côté du badge de version (#loaderOfflineDot) : état du cache hors ligne, que
+      // l'auto-réparation (SwInspector.autoHealIfNeeded, ~5 s après l'accueil) répare en silence.
+      //   🟢 ok · 🔴 manquants (clic = tout récupérer) · 🟠 récupération en cours, ou manquants hors réseau ·
+      //   ⚪ pas de service worker. Le rouge seul remonte dans l'en-tête (#loaderOfflineHdrBtn).
+      // ⚠️ La pastille est À CÔTÉ du badge, jamais dedans (le badge réécrit son textContent). Vérifiée à
+      // kta-sw-autoheal, au controllerchange et après un clic : aucune boucle ni minuterie. Accueil seulement.
       (function _initPastilleHorsLigne() {
         const dot = document.getElementById("loaderOfflineDot");
         const hdr = document.getElementById("loaderOfflineHdrBtn");
@@ -391,8 +322,7 @@
         let _progres = null;        // { faits, total } pendant un clic
 
         function _peindre() {
-          // Dicos en cours de rechargement (I18n.reload() au controllerchange,
-          // main.js) : on ne peint pas de clé humanisée, onChange repeindra.
+          // Dicos en rechargement (I18n.reload() au controllerchange) : pas de clé humanisée, onChange repeindra.
           if (window.I18n && typeof window.I18n.has === "function" && !window.I18n.has("home.offline.dot.ok")) return;
           const e = _dernier;
           let cls, titre;
@@ -431,8 +361,7 @@
 
         function _verifier() {
           if (!window.SwInspector || typeof window.SwInspector.etat !== "function") return Promise.resolve();
-          // Les titres sont traduits au rendu : on attend les dicos (un
-          // controllerchange du tout premier chargement peut les devancer).
+          // Titres traduits au rendu : on attend les dicos (un controllerchange du 1er chargement peut les devancer).
           const dicos = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : null;
           return Promise.all([window.SwInspector.etat(), dicos]).then(function(r) {
             _dernier = r[0];
@@ -440,9 +369,8 @@
           });
         }
 
-        // Petit message court au-dessus de tout, visible depuis l'en-tête comme
-        // depuis le pied de page (les toasts d'OOMGuard attendent la fin du
-        // splash de la carte et « info » est tu par défaut : pas adaptés ici).
+        // Message court au-dessus de tout (les toasts d'OOMGuard attendent la fin du splash et « info » est tu
+        // par défaut : pas adaptés ici).
         let _msgTimer = null;
         function _message(texte, cls, garder) {
           let m = document.getElementById("kta-offline-msg");
@@ -498,7 +426,7 @@
           } else if (!e || e.etat === "indisponible") {
             _message(dot.title);
           } else if (e.etat === "ok") {
-            // Vert : comportement du badge de version (notes / mise à jour).
+            // Vert : comportement du badge de version.
             const ver = document.getElementById("loaderCopyrightVersion");
             if (ver) ver.click();
           } else if (navigator.onLine === false) {
@@ -524,30 +452,20 @@
         if (navigator.serviceWorker) {
           navigator.serviceWorker.addEventListener("controllerchange", function() { _verifier(); });
         }
-        // Langue changée ou dicos rechargés : les titres suivent.
         if (window.I18n && typeof window.I18n.onChange === "function") {
           window.I18n.onChange(function() { if (_dernier || _enCours) _peindre(); });
         }
-        // Le réseau revient ou tombe : on ne fait que repeindre (aucune
-        // vérification, l'état du cache n'a pas changé).
+        // Réseau qui revient ou tombe : on repeint seulement (le cache n'a pas changé).
         window.addEventListener("online", function() { if (_dernier) _peindre(); });
         window.addEventListener("offline", function() { if (_dernier) _peindre(); });
       })();
 
-      // v1.7.3 : section "Plus d'options" retirée du loader (boutons
-      // déplacés dans la modale ⚙️ Configuration). Les IDs #advancedHead,
-      // #advancedBox, #advancedChevron n'existent plus dans le DOM.
-      // Le bloc collapse handler est retiré aussi (devenu inutile).
 
-      // === 🆘 DÉPANNAGE (lot A, 03/10/2026) ===
-      // Les trois outils de dépannage ne sont plus affichés en vrac dans
-      // ⚙️ Configuration : un seul bouton « 🆘 Dépannage » ouvre une fenêtre
-      // qui les range du plus doux au plus radical. Les trois parcours
-      // ci-dessous sont les anciens écouteurs de clic, extraits TELS QUELS en
-      // fonctions nommées (confirmations comprises) — aucune logique changée.
+      // ── Dépannage ──────────
+      // Un seul bouton « 🆘 Dépannage » range les trois outils du plus doux au plus radical (confirmations
+      // comprises).
 
-      // 💥 TOUT RÉINITIALISER — double confirmation portée par viderCacheAppli
-      // (js/interfaceMaintenance.js).
+      // Tout réinitialiser : double confirmation portée par viderCacheAppli (js/interfaceMaintenance.js).
       function _depannageReset() {
         if (typeof window.viderCacheAppli === "function") {
           window.viderCacheAppli();
@@ -556,11 +474,9 @@
         }
       }
 
-      // 🔄 FORCER LA MISE À JOUR (v1.7.3) — « reset lite » : purge cache SW +
-      // reload, préserve TOUTES les données user. Garde-fou : modale de
-      // confirmation (js/loaderSwModals.js). Le ping internet n'est PAS
-      // répliqué ici : il vit dans `mettreAJourCodeSeul()`, qui affiche
-      // `_softUpdateOfflineWarning()` si offline.
+      // Forcer la mise à jour (« reset lite ») : purge du cache SW + reload, TOUTES les données gardées.
+      // Confirmation par js/loaderSwModals.js ; le ping internet vit dans mettreAJourCodeSeul()
+      // (_softUpdateOfflineWarning si hors ligne).
       function _depannageForceUpdate() {
         _afficherConfirmForceUpdate().then(function(ok) {
           if (!ok) return;
@@ -572,13 +488,10 @@
         });
       }
 
-      // 🆘 v1.37.0 — KILL SW (ouvre killsw.html). Double garde-fou :
-      //   1. Ping Internet AVANT la modale — refus immédiat si offline ou
-      //      serveur KO (re-download des assets requis au prochain boot).
-      //   2. Modale de confirmation (Promise, js/loaderSwModals.js).
+      // Kill SW (killsw.html), double garde-fou : 1. ping Internet AVANT la modale (refus hors ligne ou serveur
+      // KO : les assets seront retéléchargés) ; 2. confirmation (js/loaderSwModals.js).
       async function _depannageKillSw() {
-        // Overlay "Vérification…" pendant le ping (5s max) : sinon l'user
-        // ne voit RIEN se passer entre clic et résultat.
+        // Overlay « Vérification… » pendant le ping (5 s max), sinon rien ne se passe à l'écran.
         const waitOverlay = document.createElement("div");
         waitOverlay.className = "kta-modal-overlay";
         waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
@@ -590,8 +503,7 @@
           '</div>';
         document.documentElement.appendChild(waitOverlay);
 
-        // Garde-fou 1 : ping Internet. Si _pingInternet n'est pas exposé
-        // (timing de chargement), repli sur navigator.onLine.
+        // 1. Ping Internet ; _pingInternet pas encore exposé → navigator.onLine.
         let online;
         try {
           if (typeof window._pingInternet === "function") {
@@ -601,35 +513,29 @@
           }
         } catch(e) { online = false; }
 
-        // Retire l'overlay d'attente (que la suite soit refus ou modale conf)
         try { waitOverlay.remove(); } catch(e) {}
 
         if (!online) {
           _afficherKillSwOfflineRefus();
           return;
         }
-        // Garde-fou 2 : confirmation utilisateur.
+        // 2. Confirmation utilisateur.
         _afficherConfirmKillSw().then(function(ok) {
           if (!ok) return;
           window.location.href = "killsw.html";
         });
       }
 
-      // La fenêtre 🆘 Dépannage, construite à chaque ouverture : le
-      // MutationObserver de js/interfaceDocs.js y pose le ❓ (fiche
-      // « depannage »). Elle s'empile au-dessus de ⚙️ Configuration (même
-      // z-index, ajoutée après) et SOUS les confirmations, ajoutées après
-      // elle : à l'annulation, on y revient.
+      // Fenêtre Dépannage, construite à chaque ouverture (le MutationObserver de js/interfaceDocs.js y pose le ❓).
+      // Empilée au-dessus de ⚙️ Configuration (même z-index, ajoutée après) et SOUS les confirmations : à
+      // l'annulation, on y revient.
       function _fermerDepannage() {
         const m = document.getElementById("kta-depannage-modal");
         if (m) m.remove();
         window.removeEventListener("keydown", _depannageOnKey, true);
       }
-      // Échap ne ferme la fenêtre que si elle est AU PREMIER PLAN : quand une
-      // confirmation (ou la fiche d'aide) est ouverte par-dessus, c'est elle
-      // qui doit partir. Écoute en capture + stopPropagation : l'Échap de
-      // ⚙️ Configuration ne fermerait sinon la fenêtre parente dans la foulée
-      // (il s'abstient aussi tant que la fenêtre existe).
+      // Échap ne ferme la fenêtre que si elle est AU PREMIER PLAN (sinon c'est la confirmation ou l'aide qui part).
+      // Capture + stopPropagation : sinon l'Échap de ⚙️ Configuration fermerait aussi la fenêtre parente.
       function _depannageOnKey(e) {
         if (e.key !== "Escape") return;
         const m = document.getElementById("kta-depannage-modal");
@@ -644,7 +550,7 @@
         _fermerDepannage();
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const _esc = window.ktaEsc;
-        // Adresse de la page de secours, relative à l'origine (dev, prod, selfhost).
+        // Page de secours relative à l'origine (dev, prod, selfhost).
         let urlSecours = "killsw.html";
         try { urlSecours = new URL("killsw.html", window.location.href).href; } catch(e) {}
 
@@ -692,21 +598,13 @@
 
       const depannageBtn = document.getElementById("loaderDepannageBtn");
       if (depannageBtn) depannageBtn.addEventListener("click", _ouvrirDepannage);
-      // 🧩 10/10/2026 — point d'extension neutre : un écran qui précède l'accueil (gate d'une extension
-      // de connexion) peut proposer le même 🆘 Dépannage (mise à jour forcée, page de secours, tout
-      // réinitialiser). La fenêtre est ajoutée à <html> (id kta-depannage-modal), z-index 99999.
+      // Point d'extension neutre : un écran qui précède l'accueil (gate d'une extension de connexion) peut ouvrir
+      // le même Dépannage. Fenêtre ajoutée à <html> (id kta-depannage-modal), z-index 99999.
       window.ktaOuvrirDepannage = _ouvrirDepannage;
 
-      // ═══════════════════════════════════════════════════════════════
-      // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)
-      // ═══════════════════════════════════════════════════════════════
-      // Affichage de l'état + boutons d'activation/modif/désactivation.
-      // Le moteur (hash + WebAuthn + lockout + Gate UI) est dans
-      // js/pinLock.js — ici on ne fait que les flows UI de configuration.
-      //
-      // Cohérent KARMA 7:b "loader uniquement" — la modale ⚙️ Réglages
-      // map mode n'expose PAS cette section (pour ne pas surcharger les
-      // réglages in-app focus PAR PLAN).
+      // ── Code d'accès local (PIN / biométrie, optionnel) ──────────
+      // État + activation / modification / désactivation ; le moteur (hash, WebAuthn, temporisation, gate) est
+      // dans js/pinLock.js. Accueil seulement : les Réglages du plan n'exposent pas cette section.
       function _majPinStatusUI() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const iconEl    = document.getElementById("loaderPinStatusIcon");
@@ -749,8 +647,7 @@
         }
       }
 
-      // Helper Promise-based : demande un PIN à l'user via une modale custom.
-      // Retourne Promise<string|null> (null si annulé).
+      // Demande un PIN par une modale charte. Rend Promise<string|null> (null = annulé).
       function _demanderPin(titre, message, confirmLabel) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
@@ -788,17 +685,13 @@
           document.addEventListener("keydown", _onKey);
           okBtn.addEventListener("click", function() { _close(input.value); });
           cancel.addEventListener("click", function() { _close(null); });
-          // Filtre l'input : que des chiffres
           input.addEventListener("input", function() {
             input.value = input.value.replace(/[^0-9]/g, "").slice(0, 6);
           });
         });
       }
 
-      // 🆕 v1.10.0-hotfix5 (KARMA "au lieu Annuler mettre Non plus clair") :
-      // helper Promise-based pour une question Oui/Non charte (remplace
-      // le confirm() natif qui affiche "OK/Annuler"). Retourne true=oui,
-      // false=non (Échap, click backdrop, ou bouton Non).
+      // Question Oui/Non charte (au lieu de « OK/Annuler »). Rend true = oui, false = non (Échap, fond, Non).
       function _demanderOuiNon(titre, message, ouiLabel, nonLabel, icon) {
         return new Promise(function(resolve) {
           const overlay = document.createElement("div");
@@ -830,7 +723,6 @@
         });
       }
 
-      // Flow d'activation
       async function _lancerActivationPin() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const pin1 = await _demanderPin(
@@ -839,7 +731,7 @@
           _t("pin.setup.next")
         );
         if (!pin1) return;
-        // Validation basique côté UI (le backend re-valide)
+        // Validation basique côté UI (le moteur revalide).
         if (!/^\d{4,6}$/.test(pin1)) {
           await window.ktaAlerte(_t("pin.setup.errLength"), { type: "erreur" });
           return;
@@ -855,9 +747,7 @@
           return;
         }
 
-        // Check biométrie disponible
-        // 🆕 v1.10.0-hotfix5 (KARMA) : modale Oui/Non charte au lieu du
-        // confirm() natif qui affichait "OK / Annuler" (peu clair).
+        // Biométrie disponible ? (question Oui/Non).
         let useBio = false;
         try {
           const bioSupported = await window.MyKTAMapPinLock.isBiometricSupported();
@@ -872,13 +762,12 @@
           console.warn("[PinSetup] check biométrie :", e);
         }
 
-        // Activation
         try {
           await window.MyKTAMapPinLock.enable(pin1, useBio);
           await window.ktaAlerte(_t("pin.setup.okEnabled") + (useBio ? _t("pin.setup.okBioConfigured") : ""));
         } catch(e) {
           if (e && e.pinActivatedWithoutBiometric) {
-            // Cas partiel : PIN OK mais biométrie a échoué
+            // Partiel : PIN OK, biométrie échouée.
             await window.ktaAlerte(_t("pin.setup.okEnabledBioFailed") + e.message);
           } else {
             console.error("[PinSetup] enable :", e);
@@ -889,10 +778,10 @@
         _majPinStatusUI();
       }
 
-      // Flow de modification (9:b — biométrie OU ancien PIN → nouveau)
+      // Modification : biométrie OU ancien PIN, puis nouveau PIN.
       async function _lancerModificationPin() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        // Vérification identité : tentative biométrie d'abord si dispo, sinon PIN
+        // Identité : biométrie d'abord si disponible, sinon PIN.
         let unlocked = false;
         if (window.MyKTAMapPinLock.hasBiometric()) {
           try {
@@ -921,7 +810,7 @@
           }
         }
 
-        // Saisie du nouveau code (2 fois)
+        // Nouveau code saisi 2 fois.
         const newPin1 = await _demanderPin(
           _t("pin.setup.newTitle"),
           _t("pin.setup.newBody"),
@@ -954,10 +843,8 @@
         _majPinStatusUI();
       }
 
-      // Flow de désactivation
       async function _lancerDesactivationPin() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        // 🆕 v1.10.0-hotfix5 : modale Oui/Non charte au lieu du confirm() natif
         const okDesact = await _demanderOuiNon(
           _t("pin.setup.disableAskTitle"),
           _t("pin.setup.disableAskBody"),
@@ -966,7 +853,7 @@
         );
         if (!okDesact) return;
 
-        // Vérification identité (biométrie ou PIN)
+        // Identité (biométrie ou PIN).
         let unlocked = false;
         if (window.MyKTAMapPinLock.hasBiometric()) {
           try {
@@ -992,50 +879,31 @@
           }
         }
 
-        // Si déverrouillé via biométrie → on peut désactiver directement
-        // (la disable() backend reverif le PIN, donc on contourne en
-        // appelant reset() après check biométrie OK).
-        // ⚠️ Sécurité OK car la biométrie EST la preuve d'identité.
+        // Déverrouillé par biométrie : reset() direct (disable() revérifierait le PIN).
+        // 🔒 Acceptable : la biométrie EST la preuve d'identité.
         window.MyKTAMapPinLock.reset();
         await window.ktaAlerte(_t("pin.setup.okDisabledBio"));
         _majPinStatusUI();
       }
 
-      // Initialisation : update au load de la modale Configuration.
-      // 🐛 v1.68.1 (audit clés manquantes) : derrière la barrière I18n.init()
-      // (mémoïsée) — le window load peut gagner la course du fetch des dicos
-      // → le statut PIN sortait « humanisé » (« Status Disabled »).
+      // Init à l'ouverture de la modale, derrière la barrière I18n.init() (sinon statut « humanisé »).
       if (window.I18n && typeof window.I18n.init === "function") {
         window.I18n.init().then(_majPinStatusUI);
       } else {
         _majPinStatusUI();
       }
 
-      // 🆕 v1.46.4 (audit P3-LOW #7) : re-traduit la section PIN au changement
-      // de langue À CHAUD. Elle est rendue par _t() inline (pas via data-i18n)
-      // → non captée par _applyI18nDom. Comme la langue ET le code d'accès sont
-      // dans la MÊME modale Configuration, un switch laissait le PIN en FR.
-      // Abonnement UNIQUE (garde anti-double, même si ce bloc re-tourne) ;
-      // _majPinStatusUI se garde déjà si les éléments DOM sont absents.
+      // Section PIN retraduite À CHAUD au changement de langue : rendue par _t() inline, pas par data-i18n
+      // (non captée par _applyI18nDom). Abonnement UNIQUE (garde anti-double).
       if (window.I18n && window.I18n.onChange && !window._pinStatusI18nHooked) {
         window._pinStatusI18nHooked = true;
         window.I18n.onChange(_majPinStatusUI);
       }
 
-      // === BOUTON "📋 AFFICHER LES LOGS" (v1.7.3 suite KARMA) ===
-      // Permet de consulter le buffer des logs capturés par debug.js sans
-      // avoir besoin de charger un plan d'abord. Réutilise window.afficherLogsDebug
-      // exposé par debug.js qui ouvre la modale `.kta-readme-modal-overlay`
-      // avec le buffer.
-      //
-      // Cas d'usage : bug bloquant au chargement, l'user veut envoyer un rapport
-      // sans pouvoir entrer dans l'app.
-      //
-      // Empilement DOM : la modale Configuration et la modale Logs ont le
-      // même z-index (99999 via `.kta-readme-modal-overlay`), donc c'est le
-      // DOM order qui décide. La modale Logs est appendée APRÈS, elle passe
-      // au-dessus. Au close des Logs, la modale Config est toujours là
-      // derrière → l'user retrouve son contexte sans avoir à re-ouvrir.
+      // ── Bouton « Afficher les logs » ──────────
+      // Le buffer de debug.js sans charger de plan (bug bloquant au chargement → rapport quand même), via
+      // window.afficherLogsDebug. Même z-index que Configuration : la modale Logs, ajoutée APRÈS, passe
+      // au-dessus ; à sa fermeture, Configuration est toujours là.
       const showLogsBtn = document.getElementById("loaderShowLogsBtn");
       if (showLogsBtn) {
         showLogsBtn.addEventListener("click", function() {
@@ -1047,19 +915,13 @@
         });
       }
 
-      // 🛠️ v1.76.3 — la section Debug est devenue le MODE DÉVELOPPEUR
-      // (gate mdp + logs + 📚 bibliothèque docs) : peuplée par devMode.js.
-      // (loaderShowLogsBtn/loaderDebugBtn n'existent plus dans le DOM — les
-      // binds ci-dessus restent if-guardés, inoffensifs.)
+      // Section Debug = MODE DÉVELOPPEUR (mot de passe + logs + bibliothèque docs), peuplée par devMode.js.
       if (window.DevMode && typeof window.DevMode.initSection === "function") {
         window.DevMode.initSection();
       }
 
-      // 🆕 v1.19.0 — 📊 Inspecteur mémoire. Ouvre la modale de topo lisible
-      // (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime).
-      // Module js/memInspector.js chargé tôt (juste après networkAudit).
-      // Même z-index que les autres modales — la modale Inspector passe
-      // au-dessus de Configuration (DOM order), au close on retrouve Config.
+      // Inspecteur mémoire (js/memInspector.js) : localStorage / IndexedDB / Cache PWA / estimate / runtime.
+      // Ajouté après, il passe au-dessus de Configuration.
       const memInspectBtn = document.getElementById("loaderMemInspectorBtn");
       if (memInspectBtn) {
         memInspectBtn.addEventListener("click", function() {
@@ -1071,60 +933,34 @@
         });
       }
 
-      // 🔧 L'inspecteur Service Worker (#loaderSwInspectorBtn) est rendu et
-      // branché par js/devMode.js (mode développeur actif seulement).
+      // L'inspecteur Service Worker (#loaderSwInspectorBtn) est rendu par js/devMode.js (mode développeur).
 
-      // 🆕 v1.43.13 — Auto-heal silencieux du cache SW. Tire ~5s après le
-      // boot pour laisser le SW finir son install. Garde-fous internes
-      // (online, SW ready, pas incognito, 1x par session,
-      // cap 100 fetches). La réparation reste silencieuse ; son résultat
-      // (événement kta-sw-autoheal) repeint la pastille « hors-ligne » du
-      // pied de page (cf. _initPastilleHorsLigne plus haut).
+      // Auto-réparation silencieuse du cache SW ~5 s après le démarrage (le SW finit son install). Garde-fous
+      // internes : en ligne, SW prêt, pas incognito, 1× par session, 100 fetches max. Son résultat
+      // (kta-sw-autoheal) repeint la pastille hors-ligne (cf. _initPastilleHorsLigne).
       setTimeout(function() {
         if (window.SwInspector && typeof window.SwInspector.autoHealIfNeeded === "function") {
           window.SwInspector.autoHealIfNeeded();
         }
       }, 5000);
 
-      // ═══════════════════════════════════════════════════════════════
-      // 🎨 AFFICHAGE — Toggle "Utiliser l'ancienne interface" (Legacy)
-      // v1.14.19 (KARMA) : toggle « ancienne interface » retiré. La
-      // nouvelle interface (refonte v1) est désormais imposée pour tout
-      // le monde. Le handler du checkbox #loaderLegacyCb est supprimé
-      // en même temps que la checkbox elle-même côté HTML.
+      // ── Affichage ──────────
 
-      // 🗑️ v1.36.2 : handler du toggle #loaderShowIntersectionsCb supprimé.
-      // L'option "afficher les ronds aux intersections" est passée de globale
-      // à per-plan (Réglages map mode). Cf js/config.js > getPlanShowsIntersections.
+      // Ronds aux intersections : réglage PAR PLAN (config.js > getPlanShowsIntersections), pas ici.
 
 
-      // 🆕 v1.13.0-fix2 (KARMA "possibilité d'activer ou non depuis le conf home") :
-      // toggle thème CLAIR / SOMBRE — accessible UNIQUEMENT depuis la modale
-      // Configuration home (KARMA v1.14.2 : retrait du toggle équivalent en
-      // mode map). Persistance globale en localStorage ("myktamap_theme_v1").
-      //
-      // v1.14.2 : le changement déclenche un reload complet de l'app via
-      // ThemeManager.setThemeAndReload(). Le swap "live" laissait toujours
-      // des bugs résiduels sur le bandeau top / modales chargées avant le
-      // toggle qu'on n'a jamais réussi à régler. Reload = état propre garanti.
-      //
-      // v1.14.6 (KARMA) : confirmation user avant reload — l'ancien
-      // comportement déclenchait le reload instant au clic checkbox.
-      // v1.14.9 (KARMA) : remplacement du confirm() natif par une modale
-      // custom fidèle à la charte graphique MyKTAMap (bleu nuit / accent
-      // jaune charte, variant light beige / ambre). Promise-based avec
-      // Escape pour annuler et Enter pour confirmer.
+      // Thème CLAIR / SOMBRE, seulement ici (global, "myktamap_theme_v1").
+      // 🩸 Le changement RECHARGE l'app (ThemeManager.setThemeAndReload) : le basculement à chaud laissait des
+      // restes sur le bandeau et les modales déjà chargées. Confirmation par une modale charte (Échap = annuler,
+      // Entrée = confirmer).
       function _confirmThemeSwitch(cible) {
         return new Promise(function(resolve) {
-          // Suppr modale existante éventuelle (sécurité double-clic)
           const old = document.getElementById("kta-theme-confirm-modal");
           if (old) old.remove();
 
           const cibleIcone   = (cible === "light") ? "☀️" : "🌙";
           const cibleColor   = (cible === "light") ? "#f4c542" : "#8cb4ff";
-          // i18n : libellés + textes résolus au RENDU (langue active). I18n.t
-          // n'utilise pas `this` → on peut référencer la fonction directement.
-          // Fallback = clé brute si I18n indispo (très improbable, chargé au boot).
+          // Textes résolus au RENDU. I18n.t n'utilise pas `this` : référence directe possible ; repli = clé brute.
           const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
           const cibleLibelle = _t(cible === "light" ? "theme.name.light" : "theme.name.dark");
           const cibleSpan    = '<strong style="color:' + cibleColor + ';">' + cibleLibelle + '</strong>';
@@ -1171,7 +1007,7 @@
           modal.addEventListener("click", function(e) { if (e.target === modal) _close(false); });
           document.addEventListener("keydown", _onKey);
 
-          // Auto-focus sur "Activer et relancer" pour permettre Enter direct
+          // Focus sur « Activer et relancer » (Entrée directe).
           setTimeout(function() {
             const okBtn = document.getElementById("kta-theme-confirm-ok");
             if (okBtn) okBtn.focus();
@@ -1186,7 +1022,7 @@
           const cible = themeLightCb.checked ? "light" : "dark";
           _confirmThemeSwitch(cible).then(function(ok) {
             if (!ok) {
-              // Rollback visuel — restaure l'état précédent de la checkbox.
+              // Retour visuel : la case reprend son état.
               themeLightCb.checked = !themeLightCb.checked;
               return;
             }
@@ -1195,27 +1031,22 @@
         });
       }
 
-      // 🆕 v1.21.1+ (KARMA "on doit pouvoir l'activer aussi depuis parametre
-      // du home") : toggle Wake Lock dans Configuration home. Parité avec
-      // ⚙️ Réglages map mode > 🔍 Affichage. Les 2 toggles pointent sur le
-      // même window.WakeLock → state synchronisé entre les 2 modales.
-      // ⚙️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES GLOBAUX rapatriés du mode
-      // plan. Ils s'écrivent par le chemin CANONIQUE : c'est lui que
-      // `check-prefs-survival.js` inspecte pour vérifier qu'une préférence
-      // sauvegardée est bien relue au chargement d'un plan.
+      // Wake Lock ici aussi : même window.WakeLock que ⚙️ Réglages du plan, état synchronisé.
+      // Réglages GLOBAUX écrits par le chemin CANONIQUE, celui que `check-prefs-survival.js` inspecte (une
+      // préférence sauvegardée doit être relue au chargement d'un plan).
       (function _initReglagesGlobaux() {
         const cases = [
           ["loaderScaledMarkers",  "scaledMarkers",  true],   // défaut ON  → test `!== false`
           ["loaderPanneauxAncres", "panneauxAncres", false],  // défaut OFF → test `=== true`
-          ["loaderSnapDraw",       "snapDraw",       false]
+          ["loaderSnapDraw",       "snapDraw",       false],
+          ["loaderZoomBoutons",    "zoomBoutons",    false, "ktaBoutonsZoomPartout"]  // appliqué à chaud
         ];
         cases.forEach(function (row) {
           const el = document.getElementById(row[0]);
           if (!el) return;
           const cfg = window.APP_CONFIG || {};
-          // 🩸 L'idiome DÉPEND du défaut : `!== false` pour un défaut ON,
-          // `=== true` pour un défaut OFF. Les confondre allume ou éteint
-          // l'option pour tout le monde au premier lancement.
+          // 🩸 L'idiome DÉPEND du défaut : `!== false` pour un défaut ON, `=== true` pour un défaut OFF. Les
+          // confondre allume ou éteint l'option pour tout le monde au premier lancement.
           el.checked = row[2] ? (cfg[row[1]] !== false) : (cfg[row[1]] === true);
           el.addEventListener("change", function () {
             if (!window.APP_CONFIG) window.APP_CONFIG = {};
@@ -1223,6 +1054,7 @@
             if (typeof window.sauvegarderPrefsUtilisateur === "function") {
               window.sauvegarderPrefsUtilisateur();
             }
+            if (row[3] && typeof window[row[3]] === "function") window[row[3]]();
           });
         });
         const px = document.getElementById("loaderSnapDrawPx");
@@ -1231,8 +1063,7 @@
           px.value = Number.isFinite(Number(cfg.snapDrawPx)) ? Number(cfg.snapDrawPx) : 14;
           px.addEventListener("change", function () {
             const v = parseFloat(px.value);
-            // Hors bornes = saisie fautive, pas une préférence : on ignore et
-            // on remet la valeur en place plutôt que d'écrire n'importe quoi.
+            // Hors bornes = saisie fautive : on remet la valeur en place au lieu d'écrire n'importe quoi.
             if (!Number.isFinite(v) || v < 4 || v > 40) {
               px.value = (window.APP_CONFIG && window.APP_CONFIG.snapDrawPx) || 14;
               return;
@@ -1246,9 +1077,8 @@
         }
       })();
 
-      // ❓ v1.94.0 — Aide contextuelle : le ❓ des modales se coupe ici.
-      // L'état visible est mis à jour TOUT DE SUITE (modales déjà ouvertes) :
-      // une case qui n'agit qu'à la prochaine ouverture passe pour inerte.
+      // Aide contextuelle : le ❓ des modales se coupe ici, effet IMMÉDIAT sur les modales ouvertes (sinon la case
+      // passe pour inerte).
       (function _initAideCtxHome() {
         const cb = document.getElementById("loaderAideCtxCb");
         if (!cb) return;
@@ -1263,10 +1093,8 @@
         });
       })();
 
-      // 💾 15/09/2026 — Mémoriser le plan dans l'app au premier chargement.
-      // Rapatrié de l'accueil (KARMA : « alourdit pour rien le home »). La
-      // source de vérité est `window.ktaMemoriserPlanActif()` (homeLoader) ;
-      // on écrit la même clé, jamais une copie locale de l'état.
+      // Mémoriser le plan dans l'app au premier chargement : source de vérité `window.ktaMemoriserPlanActif()`
+      // (homeLoader) ; on écrit la même clé, jamais une copie de l'état.
       (function _initMemoriserHome() {
         const cb = document.getElementById("loaderMemoriserCb");
         if (!cb) return;
@@ -1279,9 +1107,8 @@
         });
       })();
 
-      // 🔕 17/09/2026 — niveau des notifications (Toutes / Essentielles / Silence).
-      // La source de vérité est OOMGuard (le goulot) ; ici on ne fait que lire
-      // et écrire par lui. Pas de toast de confirmation : ce serait ironique.
+      // Niveau des notifications (Toutes / Essentielles / Silence) : source de vérité OOMGuard (le goulot). Pas de
+      // toast de confirmation.
       (function _initNotifsHome() {
         const sel = document.getElementById("loaderNotifsSel");
         if (!sel || !window.OOMGuard || typeof window.OOMGuard.niveauNotifs !== "function") return;
@@ -1289,15 +1116,12 @@
         sel.addEventListener("change", function () { window.OOMGuard.setNiveauNotifs(sel.value); });
       })();
 
-      // 📔 v1.92.0 — Carnet des sorties, réglage GLOBAL rapatrié du mode plan.
-      // Le module est la source de vérité (clé dédiée, pas app_user_prefs) :
-      // on lit et on écrit par lui, jamais en touchant localStorage ici.
+      // Carnet des sorties (global) : le module est la source de vérité (clé dédiée), jamais localStorage ici.
       (function _initCarnetHome() {
         const cb = document.getElementById("loaderJournalCb");
         if (!cb) return;
         if (!window.Journal || typeof window.Journal.setEnabled !== "function") {
-          // Module absent : la case mentirait. On la retire plutôt que de la
-          // laisser cliquable sans effet.
+          // Module absent : la ligne est retirée plutôt que cliquable sans effet.
           const row = document.getElementById("loaderJournalRow");
           if (row) row.style.display = "none";
           return;
@@ -1311,16 +1135,13 @@
         });
       })();
 
-      // 🛰️ v1.85.2 — Options via capteur, côté ACCUEIL (demande KARMA :
-      // « elles ont plus de pertinence en HOME »). Même état que la modale du
-      // mode plan — `APP_CONFIG` + `app_user_prefs` —, donc aucune divergence
-      // possible entre les deux écrans.
+      // Options via capteur, aussi à l'accueil : même état que le mode plan (`APP_CONFIG` + `app_user_prefs`),
+      // aucune divergence possible.
       const batRowH = document.getElementById("loaderBatterieRow");
       const batCbH  = document.getElementById("loaderBatterieCb");
       if (batRowH && batCbH) {
         if (typeof navigator.getBattery !== "function") {
-          // 🩸 Affiché et expliqué, jamais masqué : cacher la ligne laissait
-          // croire que l'option n'existe pas.
+          // 🩸 Affiché et expliqué, jamais masqué (sinon l'option semble ne pas exister).
           if (window.ktaCapteurRefuse) {
             window.ktaCapteurRefuse(batRowH, batCbH, document.getElementById("loaderBatterieHint"));
           }
@@ -1340,7 +1161,7 @@
         }
       }
 
-      // 🧩 01/10/2026 — 🎬 Replay / 🔥 Heatmap (Fonctionnalités optionnelles).
+      // Replay / Heatmap (fonctionnalités optionnelles).
       if (typeof window.ktaBrancherOptionnel === "function") {
         window.ktaBrancherOptionnel(document.getElementById("loaderReplayCb"), "replayEnabled", "config.replay");
         window.ktaBrancherOptionnel(document.getElementById("loaderHeatmapCb"), "heatmapEnabled", "config.heatmap");
@@ -1374,8 +1195,7 @@
           loaderWlRow.style.display = "";  // révèle (default = none)
           loaderWlCb.checked = window.WakeLock.isEnabled();
           loaderWlCb.addEventListener("change", function() {
-            // 🩸 v1.85.2 — meme correctif qu en ⚙️ Parametres : on n annonce
-            // le verrou qu une fois qu il est REELLEMENT pose.
+            // 🩸 On n'annonce le verrou qu'une fois RÉELLEMENT posé.
             Promise.resolve(window.WakeLock.setEnabled(loaderWlCb.checked)).then(function (ok) {
               if (!(window.OOMGuard && typeof window.OOMGuard.showToast === "function")) return;
               const t = function (k, repli) {
@@ -1391,27 +1211,20 @@
                 ok ? "info" : "warn");
             });
           });
-          // Sync UI si le state change ailleurs (ex: toggle dans ⚙️ Réglages
-          // map mode pendant que la home est ouverte en arrière-plan)
+          // Synchro si l'état change ailleurs (⚙️ Réglages du plan, accueil en arrière-plan).
           window.WakeLock.onChange(function(state) {
             if (loaderWlCb && loaderWlCb.checked !== state.enabled) {
               loaderWlCb.checked = state.enabled;
             }
           });
         }
-        // Sinon : row caché par défaut (display:none HTML), pas de message.
+        // Sinon : ligne cachée par défaut (display:none), sans message.
       }
 
-      // ═══════════════════════════════════════════════════════════════
-      // 🔒 NETWORK AUDIT (v1.8.0 "Privacy & Audit")
-      // ═══════════════════════════════════════════════════════════════
-      // Section "🔒 Confidentialité & Audit" de la modale Configuration :
-      //   - 📋 Voir le journal réseau → ouvre #loaderNetLogModal (live)
-      //   - 📖 Que fait l'app sur le réseau ? → ouvre #loaderNetDocModal
-      //   - 🗺️ Vue OSM → OsmView.setOptedIn (seul accès à un tiers :
-      //     le fond de carte OpenStreetMap)
+      // ── Confidentialité & audit réseau ──────────
+      // Journal réseau (#loaderNetLogModal, en direct), « Que fait l'app sur le réseau ? » (#loaderNetDocModal),
+      // Vue OSM (OsmView.setOptedIn : seul accès à un tiers, le fond OpenStreetMap).
 
-      // Toggle "🗺️ Autoriser la Vue OSM"
       const osmOptInCb = document.getElementById("loaderOsmOptInCb");
       if (osmOptInCb && window.OsmView) {
         osmOptInCb.checked = window.OsmView.isOptedIn();
@@ -1420,27 +1233,19 @@
         });
       }
 
-      // ── Bouton "📋 Voir le journal réseau" ──────────────────────────
-      // Ouvre la modale journal live. Re-render initial + subscribe aux events.
+      // Journal réseau : rendu initial + abonnement aux événements.
       const netLogBtn = document.getElementById("loaderNetLogBtn");
       if (netLogBtn) {
         netLogBtn.addEventListener("click", function() { _ouvrirNetLogModal(); });
       }
 
-      // ── Bouton "📖 Que fait l'app sur le réseau ?" ──────────────────
       const netDocBtn = document.getElementById("loaderNetDocBtn");
       if (netDocBtn) {
         netDocBtn.addEventListener("click", function() { _ouvrirNetDocModal(); });
       }
 
-      // ── Modales « Journal réseau » + « Doc audit » ──────────────────
-      // 🔀 Consolidation : l état (_netLogUnsub, CATEGORY_COLORS) et les
-      // fonctions (_escapeHtml/_formatTime/_renderNetLogRow,
-      // _refreshNetLogTable, _ouvrir/_fermerNetLogModal,
-      // _ouvrir/_fermerNetDocModal) sont extraits dans js/loaderNetAudit.js
-      // et exposés sur window. Le câblage ci-dessous (boutons/backdrop/Escape)
-      // les appelle via ces globals.
-      // Close ✕ + backdrop + Escape
+      // ── Modales « Journal réseau » + « Doc audit » ──
+      // État et fonctions dans js/loaderNetAudit.js (globals) ; ici le câblage (✕, fond, Échap).
       const netLogClose = document.getElementById("loaderNetLogClose");
       if (netLogClose) netLogClose.addEventListener("click", _fermerNetLogModal);
       const netLogModal = document.getElementById("loaderNetLogModal");
@@ -1450,7 +1255,6 @@
         });
       }
 
-      // Boutons d'action de la modale journal
       const netLogCopy = document.getElementById("loaderNetLogCopy");
       if (netLogCopy) {
         netLogCopy.addEventListener("click", function() {
@@ -1459,8 +1263,8 @@
           var _tNL = function(key, fr) {
             return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
           };
-          // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
-          // Les deux en échec = on oriente vers 📥 Exporter, qui marche partout.
+          // Helper commun (utils.js) : presse-papier puis execCommand ; double échec → « Exporter », qui marche
+          // partout.
           window.ktaCopierTexte(txt).then(function(ok) {
             if (!ok) {
               window.ktaAlerte(_tNL("home.netlog.copyUnavailable",
@@ -1497,7 +1301,6 @@
         });
       }
 
-      // ── Modale « Doc audit » : fonctions dans js/loaderNetAudit.js ──
       const netDocClose = document.getElementById("loaderNetDocClose");
       if (netDocClose) netDocClose.addEventListener("click", _fermerNetDocModal);
       const netDocModal = document.getElementById("loaderNetDocModal");
@@ -1509,19 +1312,14 @@
       const netDocOpenFull = document.getElementById("loaderNetDocOpenFull");
       if (netDocOpenFull) {
         netDocOpenFull.addEventListener("click", function() {
-          // Ouvre la doc complète dans un nouvel onglet. On vise le .html
-          // (page formatée standalone) PAS le .md brut. Raison : le SW
-          // intercepte tout fetch et a un fallback `caches.match(index.html)`
-          // pour les requests type "document" qui échouent → si on pointait
-          // sur le .md et qu'il n'est pas (encore) dans le cache, le SW
-          // servirait le splash index.html à la place → confusion totale
-          // pour l'user. Le .html est dans ASSETS_TO_CACHE depuis v1.8.0
-          // donc toujours dispo offline. Path same-origin → passe la CSP.
+          // On ouvre le .html (page autonome), PAS le .md : le SW sert index.html en repli aux requêtes
+          // « document » absentes du cache, un .md non caché afficherait le splash. Le .html est précaché (même
+          // origine, passe la CSP).
           window.open("docs/applications/NETWORK_AUDIT.html", "_blank", "noopener,noreferrer");
         });
       }
 
-      // Escape global : ferme journal/doc d'abord avant les autres modales
+      // Échap global : journal / doc d'abord.
       document.addEventListener("keydown", function(e) {
         if (e.key !== "Escape") return;
         const logM = document.getElementById("loaderNetLogModal");
@@ -1530,12 +1328,6 @@
         if (docM && docM.style.display !== "none") { _fermerNetDocModal(); return; }
       });
 
-      // ═══════════════════════════════════════════════════════════════
-
-      // 🔀 Consolidation : modales de gestion du Service Worker
-      // (_afficherConfirmForceUpdate / _afficherConfirmKillSw /
-      // _afficherKillSwOfflineRefus) extraites dans js/loaderSwModals.js
-      // (exposées sur window). Le câblage (boutons update/kill SW plus haut)
-      // les appelle via ces globals.
-      // (l'export chargerPlanDuRegistre ex-ligne 5918 vit désormais dans homeLoader.js)
+      // Modales de gestion du SW (_afficherConfirmForceUpdate / _afficherConfirmKillSw /
+      // _afficherKillSwOfflineRefus) : js/loaderSwModals.js, exposées sur window.
     });

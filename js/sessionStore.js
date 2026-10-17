@@ -4,60 +4,20 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// 💾 KtaSessionStore — où vivent les sessions auto-sauvegardées
-// =========================
-// Les sessions (une par plan) vivaient dans le localStorage
-// (`myktamap_session_v1_<planId>`), plafonné à ~5 Mo PAR SITE quel que soit
-// l'espace du téléphone : un relevé dense le remplissait, et plus rien ne se
-// sauvegardait. Elles vivent désormais dans IndexedDB (base `myktamap_sessions`,
-// quota = une part de l'espace libre de l'appareil).
-//
-// Lecture SYNCHRONE garantie : au démarrage, toutes les sessions sont chargées en
-// mémoire (`_cache`) ; les lecteurs (accueil, liaisons, stats, export de profil…)
-// gardent leur appel synchrone. L'écriture met à jour la mémoire tout de suite et
-// part en IndexedDB en arrière-plan, une écriture à la fois par plan (la plus
-// récente gagne, jamais de retour en arrière).
-//
-// 🩸 Ne jamais perdre la dernière modification à la fermeture : une écriture IDB
-// lancée dans `beforeunload` peut ne pas aboutir. Toute écriture FORCÉE (fermeture,
-// arrière-plan, changement de plan) et toute écriture encore en vol au `pagehide`
-// est doublée d'un TAMPON synchrone en localStorage
-// (`myktamap_session_tampon_v1_<planId>`), retiré dès que IDB a confirmé. Au
-// démarrage suivant, un tampon plus récent que la copie IDB la remplace.
-// Limite : un tampon ne tient que si la session tient dans le localStorage (~5 Mo).
-//
-// Migration au 1er lancement (décision KARMA 10/10/2026) : chaque session du
-// localStorage est copiée en IDB, RELUE et comparée. L'ancienne copie est gardée
-// 30 jours puis retirée — sauf si le localStorage est rempli à 90 % ou plus : elle
-// est alors retirée dès la copie vérifiée, APRÈS une copie dans 📦 Backups.
-// Idempotente (un registre `migration` dit ce qui est déjà copié), reprise si
-// interrompue, et jamais de perte si IDB est indisponible : on reste alors en
-// localStorage (mode « ls », comportement d'avant).
-// Une copie localStorage PLUS RÉCENTE que la copie IDB (démarrage passé en repli
-// localStorage, onglet d'une ancienne version) est recopiée, après une copie de
-// l'ancienne version IDB dans 📦 Backups.
-//
-// Navigation incognito de l'app (?incognito=1) : mode « ls » — le localStorage y
-// est déjà un leurre en mémoire qui ne lit rien du disque, comme avant.
-//
-// API : window.KtaSessionStore
-//   init()               → Promise (idempotent) : ouvre IDB, charge, migre
-//   pret                 → la même Promise
-//   mode()               → "attente" | "idb" | "ls"
-//   lire(planId)         → JSON brut | null           (synchrone)
-//   ecrire(planId, brut, { force }) → true            (synchrone ; en mode « ls »,
-//                           l'exception du localStorage remonte, comme avant)
-//   ecrireDurable(planId, brut) → Promise<bool>       (attend la confirmation IDB)
-//   retirer(planId)      → efface la session (et son ancienne copie localStorage)
-//   ids()                → [planId]   ·  taille(planId) → nb de caractères
-//   attendre(planId?)    → Promise<bool> : écritures en vol terminées
-//   surResultat(fn)      → fn({ planId, ok, erreur, quota }) après chaque écriture IDB
-//   estimation()         → { usage, quota } | null (navigator.storage.estimate)
-//   actualiserEstimation() → Promise
-//   purgerAnciennesCopies({ urgence }) → Promise<nb retirées>
-//   etat()               → diagnostic
-// =========================
+// sessionStore.js — stockage des sessions auto-sauvegardées (une par plan) dans IndexedDB
+// (`myktamap_sessions`) : le localStorage plafonne à ~5 Mo par site. Lecture SYNCHRONE depuis
+// `_cache` (tout chargé à l'init) ; écriture en mémoire puis IDB en arrière-plan, une à la fois
+// par plan, la plus récente gagne.
+// 🩸 Une écriture IDB dans beforeunload peut ne pas aboutir : toute écriture FORCÉE et toute
+//   écriture en vol au pagehide est doublée d'un TAMPON synchrone localStorage
+//   (`myktamap_session_tampon_v1_<planId>`, tenu seulement si la session tient en ~5 Mo).
+// Migration depuis `myktamap_session_v1_<planId>` : copie RELUE et comparée, ancienne copie gardée
+//   30 jours (retirée tout de suite, après Backup, si le localStorage est plein à ≥ 90 %).
+//   Idempotente, reprise si interrompue ; IDB indisponible ou ?incognito=1 → mode « ls ».
+// Expose : window.KtaSessionStore { init/pret, mode → "attente" | "idb" | "ls", lire, ecrire(planId,
+//   brut, { force }) (en « ls », l'exception de quota remonte), ecrireDurable, retirer, ids, taille,
+//   attendre, surResultat(fn), estimation, actualiserEstimation, purgerAnciennesCopies, etat }
+// Garde-fou : scripts/check-session-store.js · Doc : docs/architecture/session-data.md §9.0
 
 (function () {
   "use strict";
@@ -280,7 +240,7 @@
   function ecrire(planId, brut, opts) {
     if (!planId || typeof brut !== "string") return false;
     if (_mode === "ls") {
-      localStorage.setItem(PREFIXE_LS + planId, brut);   // QuotaExceededError remonte à l'appelant, comme avant
+      localStorage.setItem(PREFIXE_LS + planId, brut);   // QuotaExceededError remonte à l'appelant
       return true;
     }
     _cache.set(planId, brut);

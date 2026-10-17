@@ -4,13 +4,12 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// 📡 Présences sur le plan ouvert — affichage seulement (prise neutre).
-// Une installation reliée (extension) fournit la position des AUTRES personnes qui ont
-// choisi de partager la leur sur ce plan ; ce module les dessine : un repère avec le
-// pseudo, l'ancienneté de la position, et la trace parcourue. Rien n'est lu ni envoyé
-// ici. Sans extension, `afficher` n'est jamais appelé : aucun calque, aucun coût.
-// Même principe pour les ITINÉRAIRES que d'autres ont publiés (`afficherItineraires`) :
-// calque distinct, pointillés jaunes, étapes ○ / ✓, lecture seule (rien n'est cliquable).
+// ktaPresences.js — présences et itinéraires publiés sur le plan ouvert, AFFICHAGE seulement (prise neutre).
+// Une installation reliée fournit la position des AUTRES qui ont choisi de la partager : repère avec pseudo,
+// ancienneté et trace. Itinéraires publiés (`afficherItineraires`) : calque distinct, pointillés jaunes,
+// étapes ○ / ✓, lecture seule. Rien n'est lu ni envoyé ici ; sans extension, aucun calque, aucun coût.
+// Expose window.KtaPresences (afficher, afficherItineraires, couleurDe, reinitialiser, actions de panneau).
+// Garde-fou : scripts/check-extensions.js
 (function () {
   "use strict";
   var ANCIENNE_MS = 2 * 60 * 1000;   // au-delà : repère grisé (position plus mise à jour)
@@ -24,16 +23,15 @@
   var _calqueIti = null;
   var _itis = [];
   var _itisMasques = {};             // id → true : itinéraire non dessiné
-  var _personnesMasquees = {};       // id → true : ni repère ni trace (14/10/2026, « Masquer une personne »)
+  var _personnesMasquees = {};       // id → true : ni repère ni trace (« Masquer une personne »)
 
-  // 🎨 Qui est qui : une couleur par personne, tirée de son identifiant (même couleur sur tous les
-  // appareils, sans serveur). Palette lisible sur fond sombre comme clair (contour sombre), et qui
-  // évite le jaune d'accent (itinéraires), les rouges (urgence), les gris (position ancienne) et le
-  // bleu de MON tracker (#8cb4ff) : on ne doit jamais confondre un autre avec soi.
-  // 9 teintes choisies pour rester distinctes deux à deux (écart CIELAB ≥ 40, cf check-extensions.js).
+  // Une couleur par personne, tirée de son identifiant (la même sur tous les appareils, sans serveur). Lisible
+  // sur fond sombre et clair ; ⚠️ évite le jaune d'accent (itinéraires), les rouges (urgence), les gris
+  // (position ancienne) et le bleu de MON tracker (#8cb4ff) : jamais confondre un autre avec soi.
+  // 9 teintes distinctes deux à deux (écart CIELAB ≥ 40, vérifié par check-extensions.js).
   var PALETTE = ["#f5862e", "#2fd92f", "#86a32a", "#ff5cad", "#d933e6",
     "#5068f0", "#14b8a6", "#ffffff", "#8b5a2b"];
-  // Empreinte FNV-1a 32 bits de l'identifiant → case de la palette (déterministe).
+  // FNV-1a 32 bits de l'identifiant → case de la palette (déterministe).
   function couleurDe(id) {
     var s = String(id === undefined || id === null ? "" : id), h = 0x811c9dc5;
     for (var i = 0; i < s.length; i++) { h ^= s.codePointAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
@@ -48,7 +46,7 @@
   }
   function _fini(n) { return typeof n === "number" && isFinite(n); }
 
-  // Entrées non conformes écartées : l'extension n'est pas crue sur parole.
+  // 🔒 Entrées non conformes écartées : l'extension n'est pas crue sur parole.
   function _nettoyer(liste) {
     if (!Array.isArray(liste)) return [];
     return liste.filter(function (p) {
@@ -61,7 +59,7 @@
         id: p.id, pseudo: p.pseudo.trim().slice(0, 40) || "?", x: p.x, y: p.y,
         niveau: Number.isInteger(p.niveau) ? p.niveau : null,
         ts: _fini(p.ts) ? p.ts : Date.now(), trace: trace,
-        // Couleur facultative (ex. équipe d'une intervention Secours) : #rrggbb seulement.
+        // Couleur facultative (ex. équipe Secours) : #rrggbb seulement.
         couleur: (typeof p.couleur === "string" && /^#[0-9a-f]{6}$/i.test(p.couleur)) ? p.couleur : null
       };
     });
@@ -73,8 +71,8 @@
     return _t("presence.age.min", { n: Math.round(s / 60) });
   }
 
-  // Repère : la forme de l'icône de mon tracker (triangle et rond blanc), redessinée en SVG pour
-  // prendre la couleur de la personne. Pas de cap transmis : le repère reste pointe en haut.
+  // Repère = forme de l'icône de mon tracker (triangle + rond blanc) en SVG, à la couleur de la personne. Pas
+  // de cap transmis : pointe en haut.
   var TAILLE = 40;
   var SVG_NS = "http://www.w3.org/2000/svg";
   function _repere(couleur) {
@@ -113,10 +111,10 @@
     _liste.forEach(function (p) {
       if (_personnesMasquees[p.id]) return;   // masquée depuis le panneau : réversible, oubliée au changement de plan
       var ancienne = Date.now() - p.ts > ANCIENNE_MS;
-      // Autre niveau que ceux affichés : repère atténué (la personne n'est pas « ici »).
+      // Autre niveau que ceux affichés : repère atténué.
       var horsNiveau = p.niveau !== null && typeof window.passeFiltreNiveau === "function" &&
         !window.passeFiltreNiveau({ level: p.niveau });
-      // Couleur fournie par l'extension (ex. équipe d'une intervention Secours) prioritaire, sinon la sienne.
+      // Couleur fournie par l'extension prioritaire, sinon la sienne.
       var couleur = p.couleur || couleurDe(p.id);
       if (p.trace.length > 1 && !_tracesMasquees[p.id]) {
         L.polyline(p.trace.map(function (q) { return _coord(q[0], q[1]); }), {
@@ -142,7 +140,7 @@
   }
 
   function _trouver(id) { for (var i = 0; i < _liste.length; i++) if (_liste[i].id === id) return _liste[i]; return null; }
-  // Recentre la carte sur une présence (niveau compris, en multi-niveau). zoomer : au moins le zoom 0.
+  // Recentre sur une présence (niveau compris) ; zoomer : au moins le zoom 0.
   function _allerA(p, zoomer) {
     var map = window.map;
     if (!map) return;
@@ -183,7 +181,7 @@
     _calqueIti = L.layerGroup();
     _itis.forEach(function (it) {
       if (_itisMasques[it.id]) return;
-      // Découpé par niveau : un tronçon sur un niveau non affiché est atténué.
+      // Découpé par niveau : tronçon sur un niveau non affiché atténué.
       var run = [], niv = it.points[0][2];
       var tracer = function () {
         if (run.length > 1) {
@@ -229,19 +227,18 @@
   }
 
   // liste : [{ id, pseudo, x, y, niveau?, ts?, trace?: [[x, y], …], couleur?: "#rrggbb" }] ; [] efface.
-  // Sans `couleur`, le repère et la trace prennent couleurDe(id).
+  // Sans `couleur` : couleurDe(id).
   function afficher(liste) {
     _liste = _nettoyer(liste);
     _dessiner();
     clearInterval(_minuteur);
-    // Ancienneté (« il y a 3 min ») tenue à jour même sans nouvelle position.
+    // Ancienneté (« il y a 3 min ») tenue à jour sans nouvelle position.
     _minuteur = _liste.length ? setInterval(_dessiner, 30000) : null;
     return _liste.length;
   }
 
-  // Sortie du plan (changement de plan, retour à l'accueil) : tout ce qui appartenait à l'ancien plan
-  // disparaît — présences, itinéraires, suivi, masquages, minuteur. Sans ça, l'équipe de l'ancien plan
-  // était redessinée sur le nouveau à ses anciennes coordonnées (audit UI du 05/10/2026).
+  // 🩸 Sortie du plan : tout ce qui appartenait à l'ancien plan disparaît (présences, itinéraires, suivi,
+  // masquages, minuteur), sinon l'équipe est redessinée sur le nouveau plan à ses anciennes coordonnées.
   function reinitialiser() {
     clearInterval(_minuteur); _minuteur = null;
     _liste = []; _itis = []; _suivi = null; _tracesMasquees = {}; _itisMasques = {};
@@ -251,18 +248,18 @@
 
   window.KtaPresences = {
     afficher: afficher,
-    // Couleur d'une personne (identifiant de compte) : la même sur la carte et dans un panneau d'extension.
+    // Couleur d'une personne : la même sur la carte et dans un panneau d'extension.
     couleurDe: couleurDe,
     palette: function () { return PALETTE.slice(); },
     reinitialiser: reinitialiser,
     redessiner: function () { _dessiner(); _dessinerItis(); },   // changement de niveau affiché
-    // Actions neutres pour un panneau d'extension (« 👥 Équipe ») : jamais déclenchées par l'app seule.
+    // Actions neutres pour un panneau d'extension (« 👥 Équipe »), jamais déclenchées par l'app seule.
     centrer: function (id) { var p = _trouver(id); if (!p) return false; _allerA(p, true); return true; },
     suivre: function (id) { _suivi = (id && _trouver(id)) ? id : null; if (_suivi) _allerA(_trouver(_suivi), true); return _suivi; },
     suivi: function () { return _suivi; },
     masquerTrace: function (id, masquer) { if (masquer) _tracesMasquees[id] = true; else delete _tracesMasquees[id]; _dessiner(); return !!masquer; },
     traceMasquee: function (id) { return !!_tracesMasquees[id]; },
-    // Masquer une personne : son repère ET sa trace (son itinéraire garde son propre réglage). Ne plus la suivre.
+    // Masquer une personne : repère ET trace (son itinéraire a son propre réglage) ; on cesse de la suivre.
     masquerPersonne: function (id, masquer) {
       if (masquer) { _personnesMasquees[id] = true; if (_suivi === id) _suivi = null; } else delete _personnesMasquees[id];
       _dessiner();

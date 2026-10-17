@@ -1,31 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🧰 check-osm-outils.js — garde-fou pré-commit BLOQUANT
+// check-osm-outils.js — garde-fou pré-commit BLOQUANT des outils de la Vue OSM
 // =====================================================================
-// Les DEUX outils de lecture de la carte en Vue OSM — 📏 mesure
-// (`osmMesure.js`) et 🎯 coordonnées de surface (`osmCoords.js`) — et la règle
-// qui les lie.
-//
-// 🩸 CE QUI RÉGRESSE ICI, ET SANS BRUIT :
-//
-//   1. L'ASYMÉTRIE ENTRE LES DEUX VUES. La mesure a vécu de la v1.83.0 à la
-//      v1.85.0 dans la Vue OSM du HOME et **pas** dans celle du mode plan —
-//      même module, même genre de carte, aucune raison technique. L'écart
-//      venait de l'endroit où le besoin était né. Un outil ajouté à une seule
-//      des deux vues repart dans ce travers sans que rien ne le signale.
-//
-//   2. L'EXCLUSION MUTUELLE. Les deux arment le MÊME événement `click` de
-//      Leaflet. S'ils coexistent, chaque relevé de coordonnée pose aussi un
-//      point de mesure — le symptôme est discret et l'utilisateur croit à un
-//      bug de la carte.
-//
-//   3. LE DÉMONTAGE. Un listener `click` laissé sur la map continue d'agir
-//      après fermeture de l'outil, et le curseur croix fait croire qu'il est
-//      encore armé.
-//
-// Le code est CHARGÉ dans un `vm` (pas recopié) : s'il change, c'est la
-// nouvelle version qui est éprouvée.
+// Mesure (`osmMesure.js`) et coordonnées de surface (`osmCoords.js`), plus le placement des
+// bandeaux et des panneaux d'outils. Le code est CHARGÉ dans un `vm`, pas recopié.
+// 🩸 Ce qui régresse sans bruit :
+//   - la SYMÉTRIE : chaque outil existe dans la Vue OSM du HOME ET dans celle du mode plan ;
+//   - l'EXCLUSION MUTUELLE : les deux arment le même `click` Leaflet, ensemble chaque relevé de
+//     coordonnée pose aussi un point de mesure ;
+//   - le DÉMONTAGE : un listener `click` resté actif, ou le curseur croix, survit à la fermeture.
 // =====================================================================
 "use strict";
 
@@ -67,8 +51,7 @@ function contexte() {
       body: { appendChild(el) { el.parentNode = { }; } }
     },
     navigator: {},
-    // Un navigateur a TOUJOURS ces methodes : le bouchon qui ne les avait
-    // pas faisait echouer le module pour une raison qui n existe pas en vrai.
+    // Un navigateur a TOUJOURS ces méthodes : sans elles, faux échec du module.
     addEventListener() {}, removeEventListener() {},
     formatGpsCoords: (a, b) => a.toFixed(6) + ", " + b.toFixed(6)
   };
@@ -130,25 +113,23 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const IDX  = fs.readFileSync("index.html", "utf8");
   const SW   = fs.readFileSync("sw.js", "utf8");
 
-  // 🏗️ v1.90.10 (bug KARMA) — L'INIT DES NIVEAUX PRÉCÈDE LE RENDU LEVEL-AWARE.
-  // À l'ouverture, le niveau -1 n'apparaissait pas alors qu'il était actif :
-  // `_initVisibleLevels()` était appelé APRÈS le rendu des POI/tracés, qui
-  // filtraient donc sur un `_visibleLevels` hérité de la modale précédente. Un
-  // seul appel, et il doit tomber AVANT le rendu des POI (étape 6 de la
-  // séquence). Cette assertion rougit si quelqu'un le redescend.
+  // 🩸 Un seul `_initVisibleLevels()`, AVANT le rendu des POI/tracés : après, ils filtrent sur les
+  // niveaux hérités de la modale précédente (un niveau actif manque à l'ouverture).
   {
     const nCall = (VIEW.match(/_initVisibleLevels\(\);/g) || []).length;
     t("🏗️ Vue OSM : un seul appel à _initVisibleLevels()", nCall === 1);
-    const iStep6 = VIEW.indexOf("// 6) 🆕 v1.39.12 — Step 1 : POI session");
+    // 🏷️ Repère = marqueur explicite `// 🏷️ ancre:osm-rendu-poi` posé avant le rendu des POI (jamais un
+    // tag de version, qu'un nettoyage retirerait). Absent → échec dédié, pas un faux diagnostic.
+    const iStep6 = VIEW.indexOf("// 🏷️ ancre:osm-rendu-poi");
     const iInit  = VIEW.indexOf("_initVisibleLevels();");
+    t("🏗️ Vue OSM : repère `🏷️ ancre:osm-rendu-poi` présent", iStep6 > 0);
     t("🏗️ Vue OSM : les niveaux sont initialisés AVANT le rendu des POI/tracés " +
       "(sinon le niveau -1 manque à l'ouverture)",
       iStep6 > 0 && iInit > 0 && iInit < iStep6);
   }
 
-  // 🗺️ v1.90.11 (bug KARMA) — LE WIDGET OSM DE L'ACCUEIL SE RAFRAÎCHIT AU RETOUR
-  // HOME. Sans ça, un plan tout juste chargé (donc géoréférencé) n'apparaissait
-  // dans sa Vue OSM qu'après un redémarrage complet de l'app.
+  // Le widget OSM de l'accueil se rafraîchit au retour HOME, sinon un plan tout juste géoréférencé
+  // n'y apparaît qu'après redémarrage.
   {
     const MAIN = fs.readFileSync("js/main.js", "utf8");
     const iAff = MAIN.indexOf("function afficherLoader()");
@@ -156,18 +137,12 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     const corps = iAff >= 0 && iEnd > iAff ? MAIN.slice(iAff, iEnd) : "";
     t("🗺️ retour home : afficherLoader() rafraîchit le widget OSM",
       /OsmHomePreview\.refresh\(/.test(corps));
-    // 🗺️ v1.90.12 — …en préférant le plan qu'on vient de quitter.
     t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_currentLoadedPlanId)",
       /OsmHomePreview\.refresh\(window\._currentLoadedPlanId/.test(corps));
 
-    // 🩸 v1.90.15 (bug KARMA) — ON EXÉCUTE LE BLOC DE SÉLECTION, ON NE LE GREP
-    // PLUS. La v1.90.12 appelait `_setLastSelected(preferId)` — une fonction qui
-    // N'EXISTE PAS (le vrai nom est `_saveLastSelected`). `node -c` ne voit pas
-    // une ReferenceError, et l'ancienne assertion GREPAIT le texte de l'appel :
-    // elle était donc VERTE sur un `mount()` qui crashait à chaque retour home.
-    // Résultat vécu : la Vue OSM ne se rafraîchissait jamais (exception avalée
-    // par le try/catch d'afficherLoader). On extrait le bloc et on le JOUE : un
-    // nom de fonction inexistant lève ici, pas en silence chez l'utilisateur.
+    // 🩸 On EXÉCUTE le bloc de sélection : un appel à une fonction inexistante passe `node -c` et un
+    // grep, puis crashe `mount()` à chaque retour home, exception avalée par le try/catch
+    // d'afficherLoader (le widget ne se rafraîchit jamais, sans erreur visible).
     {
       const iBloc = HOME.indexOf("let initialId = (preferId");
       const iEnd  = HOME.indexOf("_renderWidget(container, plans, initialId);", iBloc);
@@ -194,17 +169,14 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     t("🗺️ …et le widget expose bien refresh()",
       /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
 
-    // 🐛 v1.90.13 (crash KARMA) — L'overlay image roté ne doit pas crasher quand
-    // un `img.onload` tardif tape une carte déjà détruite (re-mount du widget).
-    // `_reset` doit court-circuiter si `_map` est null.
+    // 🩸 Un `img.onload` tardif peut taper une carte déjà détruite (re-mount) : `_reset` court-circuite.
     const ROT = fs.readFileSync("lib/leaflet-imageoverlay-rotated.js", "utf8");
     t("🐛 rotated overlay : _reset() court-circuite si la carte est détruite (!map)",
       /_reset: function\(\) \{[\s\S]{0,900}if \(!map \|\| !image \|\| !this\._rawImage\) return;/.test(ROT));
   }
 
-  // 📌 Le bandeau se cale sur LE CONTENEUR DE LA CARTE, pas sur la fenetre :
-  // en mode plan la barre d outils occupe le haut de la fenetre, un `top`
-  // fixe recouvrirait ses boutons.
+  // ⚠️ Le bandeau se cale sur le CONTENEUR DE LA CARTE : en mode plan, un `top` fixe sur la fenêtre
+  // recouvrirait la barre d'outils.
   const CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const MES = fs.readFileSync("js/osmMesure.js", "utf8");
   [["coordonnees", CRD], ["mesure", MES]].forEach(function (pair) {
@@ -217,7 +189,6 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("cablage : osmCoords.js est charge par index.html", /src="js\/osmCoords\.js"/.test(IDX));
   t("cablage : osmCoords.js est precache", SW.indexOf('"./js/osmCoords.js"') >= 0);
 
-  // 🩸 LA REGLE DE SYMETRIE : chaque outil dans LES DEUX vues.
   t("🩸 symetrie : la MESURE est dans la Vue OSM du mode plan",
     /OsmMesure\.activer\(/.test(VIEW));
   t("🩸 symetrie : la MESURE est dans la Vue OSM du HOME",
@@ -229,20 +200,13 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
 
   t("cablage : le bouton du mode plan existe", /id="kta-osm-coords"/.test(VIEW));
   t("cablage : le bouton du HOME existe", /id="ktaOsmHomeCoordBtn"/.test(HOME));
-  // La map de osmView s'appelle `_osmMap` : passer `_map` (qui n'existe pas)
-  // donnerait un bouton silencieusement mort — l'erreur a ete faite en ecrivant
-  // ce lot, et c'est exactement ce que ce controle rattrape.
+  // 🩸 La map de osmView s'appelle `_osmMap` : passer `_map` donne un bouton silencieusement mort.
   t("🩸 cablage : le mode plan passe bien `_osmMap` aux deux outils",
     /OsmMesure\.activer\(_osmMap\)/.test(VIEW) && /OsmCoords\.activer\(_osmMap\)/.test(VIEW));
 
-  // L'avertissement d'honnetete doit rester : la coordonnee est exacte pour la
-  // carte, pas forcement pour la galerie d'un plan mal cale.
-  // 🩸 DEUX BOUTONS VOISINS NE PARTAGENT PAS UNE ICONE. Le releve de
-  // coordonnees est ne avec 📍 — deja celle de « Ma position » (`osm.btn.mygps`
-  // = « 📍 Moi »), dans la MEME barre. L un donne TA position, l autre celle
-  // d un point que tu choisis : rien ne les distinguait a l oeil. Et la
-  // correction a d abord casse le bouton « Ma position » du HOME en lui
-  // prenant sa nouvelle icone — la collision avait juste change de camp.
+  // L'infobulle avertit : la coordonnée est exacte pour la carte, pas pour un plan mal calé.
+  // 🩸 Deux boutons voisins ne partagent pas une icône : « Ma position » garde 📍, le relevé de
+  // coordonnées a 🎯 (on vérifie les DEUX côtés, une collision peut changer de camp).
   const FR = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
   const ICONE_MOI = "📍", ICONE_COORD = "🎯";
   t("🩸 icones : « Ma position » garde la sienne (" + ICONE_MOI + ")",
@@ -259,28 +223,17 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     .forEach((k) => t("i18n : " + k + " existe", typeof FR[k] === "string" && FR[k].length > 0));
 }
 
-// ───────── 5. 🩸 le bandeau NE SORT PAS DU CADRE (KARMA, mobile) ─────────
-// `max-width` plafonne la BOÎTE, jamais son CONTENU. Avec un message en
-// `white-space: nowrap` et des boutons en `flex-shrink: 0`, la ligne ne peut
-// ni se couper ni se comprimer : elle déborde de la boîte, qui déborde de
-// l'écran. Invisible sur un grand écran — tout y tient —, systématique sur
-// téléphone. Le défaut vivait dans la règle PARTAGÉE `.kta-iti-floater`,
-// donc dans les six pickers, pas seulement dans les deux outils OSM.
-//
-// Contrôle STRUCTUREL : on ne peut pas mesurer un débordement sans
-// navigateur. On vérifie donc les trois conditions qui le rendent possible,
-// et on le dit plutôt que de laisser croire à une mesure.
+// ───────── 5. 🩸 le bandeau NE SORT PAS DU CADRE (mobile) ─────────
+// `max-width` plafonne la BOÎTE, pas son CONTENU : message en `nowrap` + boutons en `flex-shrink: 0`
+// = débordement hors écran sur téléphone. La règle PARTAGÉE `.kta-iti-floater` sert aux six pickers.
+// Contrôle STRUCTUREL (pas de navigateur) : on vérifie les conditions du débordement.
 {
   const CSS = fs.readFileSync("css/style.css", "utf8");
-  // Relus ICI : les blocs sont scopes, et les constantes de la section 4 ne
-  // sont pas visibles depuis celle-ci (plantage a la premiere execution).
+  // Relus ici : les blocs sont scopés, les constantes de la section 4 ne sont pas visibles.
   const CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const MES = fs.readFileSync("js/osmMesure.js", "utf8");
-  // 🩸 Tolérant à l'espacement : le projet aligne certains sélecteurs sur
-  // DEUX espaces avant l'accolade. Un `indexOf(sel + " {")` strict rendait
-  // alors "" — et sur une chaîne vide, une assertion NÉGATIVE (« plus de
-  // nowrap ») passe À VIDE. Un sélecteur introuvable rend `null`, et c'est
-  // traité comme un ÉCHEC, jamais comme un succès silencieux.
+  // 🩸 Tolérant à l'espacement avant l'accolade : sur une chaîne vide, une assertion NÉGATIVE passe
+  // À VIDE. Un sélecteur introuvable rend `null`, traité comme un ÉCHEC.
   function bloc(sel) {
     for (let n = 1; n <= 4; n++) {
       const i = CSS.indexOf(sel + " ".repeat(n) + "{");
@@ -294,9 +247,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     t("🩸 " + sel + " : le contenu peut passer à la ligne (flex-wrap)",
       b !== null && /flex-wrap:\s*wrap/.test(b));
   });
-  // 🩸 `min-width: 0` est la moitié qu'on oublie : sans lui un enfant flex
-  // refuse de descendre sous sa largeur de contenu, et `flex-wrap` ne sert
-  // à rien. Et un `nowrap` réintroduit ramènerait le bug tel quel.
+  // 🩸 Sans `min-width: 0`, un enfant flex refuse de descendre sous son contenu : flex-wrap inopérant.
   [[".kta-iti-floater-msg", true], [".kta-osm-mes-info", false], [".kta-osm-coord-info", false]]
     .forEach(function (row) {
       const b = bloc(row[0]);
@@ -307,8 +258,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
         b !== null && /min-width:\s*0/.test(b));
     });
 
-  // Côté JS : la largeur est bridée sur la CARTE (en mode plan elle n'occupe
-  // pas toute la fenêtre), et le centrage reste DANS la carte.
+  // Côté JS : largeur bridée et centrage bornés à la CARTE (en mode plan, pas toute la fenêtre).
   [["coordonnées", CRD], ["mesure", MES]].forEach(function (pair) {
     t("🩸 " + pair[0] + " : la largeur est bridée sur la carte, pas sur la fenêtre",
       /style\.maxWidth\s*=\s*Math\.max\(180, Math\.round\(r\.width - 24\)\)/.test(pair[1]));
@@ -317,11 +267,9 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   });
 }
 
-// ───────── 6. 🐛 pas DEUX règles dans le bandeau de mesure ─────────
-// KARMA, 05/09 : « on voit deux fois la règle ». Le bandeau porte une icône
-// FIXE 📏, et le texte de mesure la re-préfixait — deux règles côte à côte.
-// Le ⬛ de la surface, lui, reste : elle n'a pas d'icône fixe, et c'est ce
-// qui la distingue de la distance dans la même ligne.
+// ───────── 6. pas DEUX règles dans le bandeau de mesure ─────────
+// Le bandeau porte déjà une icône FIXE 📏 : le texte ne la re-préfixe pas. Le ⬛ de la surface
+// reste (seul repère qui la distingue de la distance).
 {
   const MESJS = fs.readFileSync("js/osmMesure.js", "utf8");
   const iMaj = MESJS.indexOf("function _majFloater");
@@ -330,23 +278,15 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("🐛 mesure : le texte ne re-préfixe PAS l'icône 📏 (elle est déjà dans le bandeau)",
     bloc !== null && bloc.indexOf('"📏 "') < 0);
   t("mesure : l'icône fixe du bandeau est bien là, elle", MESJS.indexOf('mes-icone">📏') >= 0);
-  // 🩸 Viser la ligne qui l'ECRIT : le commentaire juste au-dessus contient
-  // le meme caractere et suffisait a satisfaire une recherche de sous-chaine.
+  // 🩸 Viser la ligne qui l'ÉCRIT : un commentaire voisin contient le même caractère.
   t("mesure : le ⬛ de la surface est conservé (rien ne la distingue sinon)",
     bloc !== null && /txt \+= "\s+⬛ " \+ _fmtS\(/.test(bloc));
 }
 
-// ───────── 7. 🪟 les panneaux d'outils ne passent plus sous le footer ─────────
-// KARMA, 05/09 : « la fenêtre structure passe sous le footer, toujours ».
-// Le correctif de v1.82.0 (mesurer le viewport RÉEL via `visualViewport` au
-// lieu de `innerHeight`) était juste mais insuffisant : le panneau reste
-// ANCRÉ au haut de son bouton, donc plus sa liste s'allonge — un plan importé
-// ajoute un type de structure PAR NIVEAU — plus il descend, et le clamp ne
-// peut que le remonter jusqu'à buter. Centré, sa hauteur se répartit des deux
-// côtés et la question ne se pose plus.
-//
-// L'ancrage reste offert en réglage : sur grand écran il ne gêne pas, et le
-// retirer d'office serait une régression pour qui travaille à la souris.
+// ───────── 7. les panneaux d'outils ne passent pas sous le footer ─────────
+// 🩸 Ancré au haut de son bouton, un panneau à longue liste (un type de structure PAR NIVEAU sur un
+// plan importé) descend sous le footer même avec le viewport réel. Centré par défaut ; l'ancrage
+// reste un réglage (décision produit : utile à la souris sur grand écran).
 {
   const ITF = fs.readFileSync("js/interface.js", "utf8");
   const CFG = fs.readFileSync("js/config.js", "utf8");
@@ -356,22 +296,25 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("le positionneur de panneau existe", fn !== null);
   t("🪟 par défaut le panneau est CENTRÉ (le défaut est la négation du réglage)",
     fn !== null && /if \(!\(window\.APP_CONFIG && window\.APP_CONFIG\.panneauxAncres === true\)\)/.test(fn));
-  t("🪟 centrage vertical sur le viewport RÉEL, encoches déduites",
-    fn !== null && /top\s*=\s*offY \+ insets\.top \+ \(vpH - insets\.top - insets\.bottom - flyHeight\) \/ 2/.test(fn));
+  // 🩸 La bande utile exclut AUSSI la barre du haut et le footer (z-index 1200, au-dessus du
+  // panneau), sinon en paysage le bas du panneau reste caché.
+  t("🪟 bande utile : viewport RÉEL, encoches déduites",
+    fn !== null && /let haut = offY \+ safeMargin \+ insets\.top;/.test(fn) &&
+    /let bas\s+= offY \+ vpH - safeMargin - insets\.bottom;/.test(fn));
+  t("🩸 bande utile : sous la barre du haut et au-dessus du footer",
+    fn !== null && /"kta-refonte-header"/.test(fn) && /"kta-refonte-statusbar"/.test(fn) &&
+    /maxH = Math\.max\(120, bas - haut\)/.test(fn));
+  t("🪟 centrage vertical dans la bande utile",
+    fn !== null && /top\s*=\s*haut \+ \(bas - haut - flyHeight\) \/ 2/.test(fn));
   t("🪟 centrage horizontal de même",
     fn !== null && /left\s*=\s*offX \+ insets\.left \+ \(vpW - insets\.left - insets\.right - flyWidth\) \/ 2/.test(fn));
-  // 🩸 Un panneau plus haut que l'écran donne un `top` négatif : il doit être
-  // collé en haut (son scroll interne prend le relais), pas laissé au-dessus
-  // du bord — sinon on remplace un débordement par le bas par un par le haut.
-  //
-  // Ce clamp existe DÉJÀ plus haut dans la fonction, pour le mode ancré : une
-  // recherche sur toute la fonction serait satisfaite par celui-là et ne dirait
-  // rien du mode centré. On délimite donc la BRANCHE de centrage.
+  // 🩸 Plus haut que l'écran, un panneau centré a un `top` négatif : collé en haut (scroll interne).
+  // Le même clamp existe pour le mode ancré : on délimite la BRANCHE de centrage.
   const iC = fn === null ? -1 : fn.indexOf("panneauxAncres === true))");
   const branche = iC < 0 ? null : fn.slice(iC, fn.indexOf("}", fn.indexOf("insets.left) left", iC)));
   t("la branche de centrage est délimitable", branche !== null);
-  t("🩸 un panneau plus haut que l'écran est collé EN HAUT, pas au-dessus du bord",
-    branche !== null && /if \(top\s+< offY \+ safeMargin \+ insets\.top\)\s+top\s+= offY \+ safeMargin \+ insets\.top;/.test(branche));
+  t("🩸 un panneau plus haut que la bande utile est collé EN HAUT, pas au-dessus du bord",
+    branche !== null && /if \(top\s+< haut\) top = haut;/.test(branche));
   t("🩸 et de même à gauche",
     branche !== null && /if \(left < offX \+ safeMargin \+ insets\.left\) left = offX \+ safeMargin \+ insets\.left;/.test(branche));
 
@@ -379,8 +322,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("🩸 réglage : sauvegardé par le chemin CANONIQUE (sinon invisible au contrôle des prefs)",
     /existing\.panneauxAncres\s*=/.test(CFG) && /sauvegarderPrefsUtilisateur\(\)/.test(UIC));
   t("réglage : relu au chargement d'un plan", /"panneauxAncres" in saved/.test(CFG));
-  // ⚠️ v1.85.3 : l'option a MIGRÉ vers la config de l'ACCUEIL (audit KARMA —
-  // c'est un réglage global, il n'avait rien à faire dans la config d'un plan).
+  // ⚠️ Réglage global : il vit dans la configuration de l'ACCUEIL, pas dans celle d'un plan.
   t("réglage : la case existe dans ⚙️ Configuration de l'accueil",
     /id="loaderPanneauxAncres"/.test(fs.readFileSync("index.html", "utf8")));
   ["config.panneaux.label"].forEach(function (k) {

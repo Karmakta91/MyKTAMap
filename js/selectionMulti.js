@@ -5,58 +5,33 @@
  */
 
 // =====================================================================
-// 🎯 selectionMulti.js — sélectionner N objets vectoriels d'un coup
+// selectionMulti.js — sélectionner N objets vectoriels d'un coup pour KtaConvertir
 // =====================================================================
-// KARMA, 05/09/2026 : « au lieu de cliquer sur un truc, le convertir, je veux
-// pouvoir sélectionner N vecteurs et les convertir d'un coup ».
-//
-// Sert `KtaConvertir` : la modale de conversion ouvre ce mode, l'utilisateur
-// désigne des objets sur la carte, et la modale revient avec le lot.
-//
-// 🩸 LA RÈGLE DE COMPATIBILITÉ EST L'OUVERTURE, PAS LA FAMILLE. Un tracé et un
-// front de taille sont tous deux des LIGNES : les mélanger est légitime, et
-// c'est même LE cas utile (convertir 40 fronts mal typés en galeries). Ce
-// qu'on refuse, c'est de mêler une ligne et une surface fermée — la
-// conversion n'aurait aucune cible commune, puisqu'on ne peut pas refermer un
-// trait ni ouvrir un polygone. Le refus est EXPLIQUÉ : un clic qui « ne prend
-// pas » sans message se lit comme un bug.
-//
-// 🩸 LA SURBRILLANCE EST UN CALQUE À PART, pas un `setStyle` sur les layers
-// existants. Deux raisons : il n'existe pas de registre objet → layer fiable
-// pour les trois familles, et un re-render (déclenché par n'importe quoi
-// d'autre) écraserait des styles modifiés à la main sans qu'on le sache. Un
-// calque d'overlay se contente d'être vidé à la sortie. Il est
-// `interactive: false` — sinon il mangerait les clics qu'il est censé aider à
-// viser.
-//
-// 🎨 La couleur vient de la charte (accent d'interaction `#8cb4ff`) et de
-// nulle part ailleurs : `scripts/check-style-canon.js` refuse toute table de
-// couleurs locale. Ce n'est pas un style de TYPE, c'est un état d'interface.
-//
-// 🧭 GÉOMÉTRIE — FOYER CANONIQUE. `_pointInPolygon` vivait déjà en QUATRE
-// copies locales (interface.js, pathfinder.js, secoursMode.js…). On n'en fait
-// pas une cinquième muette : les deux helpers sont exposés ici
-// (`window.ktaPointInPolygon`, `window.ktaDistPointSegment`) pour que le code
-// à venir ait un foyer. Migrer les quatre existantes est au BACKLOG — pas
-// ici : elles servent trois chemins de suppression qui marchent, et on ne les
-// rouvre pas dans une version non déployée.
-// =====================================================================
+// La modale de conversion ouvre ce mode ; l'utilisateur désigne des objets, la modale revient avec
+// le lot.
+// 🩸 La compatibilité est l'OUVERTURE, pas la famille : tracés et fronts (lignes) se mêlent ;
+//   ligne + surface fermée est refusé (aucune cible commune), et le refus est EXPLIQUÉ.
+// 🩸 Surbrillance = calque à part, `interactive: false`, jamais un setStyle sur les layers (pas
+//   de registre objet → layer fiable ; un re-rendu écraserait les styles).
+// Couleur = accent d'interaction de la charte (état d'interface, pas un style de type).
+// Expose : window.SelectionMulti { ouvrir(graine, onValide), fermer, liste, estActif } et les
+//   helpers géométriques window.ktaPointInPolygon / ktaDistPointSegment (foyer canonique ; des
+//   copies locales anciennes subsistent dans d'autres modules).
+// Garde-fou : scripts/check-selection-multi.js
 (function () {
   "use strict";
 
-  // Tolérance de visée, en pixels PLAN (pas écran) — même valeur que les
-  // modes « supprimer au clic » existants : bon compromis doigt / souris.
+  // Tolérance de visée en px PLAN (pas écran), comme « supprimer au clic ».
   const TOLERANCE_PX = 20;
 
-  // Couleur d'ÉTAT d'interface (charte : interaction), pas un style de type.
   const SURBRILLANCE = { color: "#8cb4ff", weight: 6, opacity: 0.95, dashArray: "7 5" };
 
   function _t(k, p) {
     return (window.I18n && window.I18n.t) ? window.I18n.t(k, p) : k;
   }
 
-  // ───────── géométrie ─────────
-  // Ray-casting, cohérent avec pathfinder.js > _pointInPolygon.
+  // ── Géométrie ────────────────────────────────────────
+  // Ray-casting, comme pathfinder.js > _pointInPolygon.
   function _pointInPolygon(p, poly) {
     if (!p || !Array.isArray(poly) || poly.length < 3) return false;
     let dedans = false;
@@ -79,9 +54,7 @@
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
   }
 
-  // Distance au CONTOUR d'une suite de points. Pour un polygone on ferme la
-  // boucle : sans ça, cliquer sur le dernier côté d'un pilier ne le viserait
-  // pas alors qu'il est bien dessiné.
+  // Distance au CONTOUR ; polygone : boucle fermée, sinon son dernier côté ne se vise pas.
   function _distAuContour(p, points, ferme) {
     if (!Array.isArray(points) || points.length < 2) return Infinity;
     let d = Infinity;
@@ -97,9 +70,8 @@
   window.ktaPointInPolygon   = _pointInPolygon;
   window.ktaDistPointSegment = _distPointSegment;
 
-  // ───────── lecture des trois familles ─────────
-  // `itinerary` est le trajet CALCULÉ, pas une donnée du relevé : déjà interdit
-  // comme cible par KtaConvertir, il doit l'être comme SOURCE.
+  // ── Lecture des trois familles ───────────────────────
+  // `itinerary` = trajet CALCULÉ, pas une donnée du relevé : exclu comme source aussi.
   const EXCLUS = { itinerary: true };
 
   function _lire(famille) {
@@ -132,10 +104,8 @@
     return out;
   }
 
-  // ───────── le cœur testable : qui est sous le clic ─────────
-  // Rendu séparé de tout Leaflet pour être éprouvé en harnais. Retourne
-  // { cible, refus } — `refus` porte l'objet incompatible qu'on a visé, pour
-  // pouvoir DIRE pourquoi on refuse au lieu d'ignorer le clic.
+  // ── Qui est sous le clic (sans Leaflet, testé en harnais) ──
+  // → { cible, refus } : `refus` = objet incompatible visé, pour dire pourquoi.
   function _choisir(candidats, cx, cy, ouvertRef) {
     const p = { x: cx, y: cy };
     let meilleur = null, meilleurD = Infinity;
@@ -154,7 +124,7 @@
     return { cible: meilleur, refus: null };
   }
 
-  // ───────── état ─────────
+  // ── État ─────────────────────────────────────────────
   let _actif = false;
   let _sel = [];                 // [{ famille, obj }]
   let _ouvertRef = null;         // ouverture imposée par la graine
@@ -169,7 +139,7 @@
     return -1;
   }
 
-  // ───────── surbrillance ─────────
+  // ── Surbrillance ─────────────────────────────────────
   function _repeindre() {
     if (!_groupe) return;
     _groupe.clearLayers();
@@ -211,9 +181,7 @@
     }
   }
 
-  // ➕ Étend la sélection à tous les objets du MÊME TYPE que le dernier ajouté,
-  // bornée au niveau affiché. C'est ce qui rend le mode utilisable sur un
-  // relevé importé : cliquer 200 objets un par un coûterait autant qu'avant.
+  // Tous les objets du MÊME TYPE que le dernier ajouté, au niveau affiché (relevé importé).
   function _ajouterTousDuType() {
     if (!_dernier) return;
     const fam = _dernier.famille, typ = _dernier.obj.type;
@@ -230,7 +198,7 @@
     _majFloater(n > 0 ? _t("selm.ajoutes", { n: n }) : _t("selm.aucunAjout"));
   }
 
-  // ───────── ouverture / fermeture ─────────
+  // ── Ouverture / fermeture ────────────────────────────
   function fermer() {
     if (!_actif) return;
     _actif = false;
@@ -248,9 +216,8 @@
     _onValide = null;
   }
 
-  // `graine` = { famille, obj } : l'objet depuis lequel on est parti. Il donne
-  // l'ouverture de référence ET compte comme premier sélectionné — repartir
-  // d'une sélection vide obligerait à re-cliquer l'objet qu'on vient d'ouvrir.
+  // `graine` = { famille, obj } de départ : donne l'ouverture de référence ET compte comme premier
+  // sélectionné.
   function ouvrir(graine, onValide) {
     if (!window.map || !graine || !graine.obj) return false;
     const ouvert = _ouvertureDe(graine.famille, graine.obj.type);
@@ -275,15 +242,14 @@
                    : e.latlng.lat;
       const r = _choisir(_candidats(), cx, cy, _ouvertRef);
       if (r.refus) {
-        // 🩸 On DIT pourquoi. Un clic sans effet et sans mot se lit comme un bug.
+        // 🩸 On DIT pourquoi : un clic sans effet ni mot se lit comme un bug.
         _majFloater(_t(_ouvertRef ? "selm.refusFerme" : "selm.refusOuvert"));
         return;
       }
       if (!r.cible) { _majFloater(_t("selm.rien")); return; }
       const i = _dansSel(r.cible.obj);
       if (i >= 0) {
-        // Re-cliquer un objet le retire : c'est la seule façon de corriger une
-        // erreur de visée sans tout recommencer.
+        // Re-cliquer retire l'objet (corrige une erreur de visée).
         _sel.splice(i, 1);
         if (_dernier && _dernier.obj === r.cible.obj) _dernier = _sel[_sel.length - 1] || null;
         _repeindre();
@@ -299,10 +265,8 @@
 
     _floater = document.createElement("div");
     _floater.id = "kta-selm-floater";
-    // `.kta-iti-floater` n'est pas cosmétique : `_modeClicCarteActif()`
-    // (utils.js) la reconnaît, donc aucune popup d'annotation ne s'ouvre
-    // pendant le mode et le clic est ré-émis en phase capture — il porte même
-    // si on vise pile un layer interactif.
+    // 🩸 `.kta-iti-floater` n'est pas cosmétique : utils.js > _modeClicCarteActif la reconnaît
+    // (pas de popup d'annotation, clic ré-émis en capture même sur un layer interactif).
     _floater.className = "kta-iti-floater kta-selm-floater";
     _floater.innerHTML =
       '<span class="kta-iti-floater-icon">🎯</span>' +
@@ -331,8 +295,7 @@
     fermer:   fermer,
     liste:    function () { return _sel.slice(); },
     estActif: function () { return _actif; },
-    // Exposés pour le harnais : le cœur de la visée et du refus s'éprouve
-    // sans Leaflet.
+    // Pour le harnais (sans Leaflet) :
     _choisir: _choisir,
     _TOLERANCE_PX: TOLERANCE_PX
   };

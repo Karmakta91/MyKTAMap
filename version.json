@@ -1,9 +1,9 @@
 {
-  "version": "v2.16.0",
-  "released": "2026-10-15",
+  "version": "v2.17.0",
+  "released": "2026-10-17",
   "notes": [
-    "🚑 Mode Secours : « Découper en secteurs » partage les galeries en secteurs équilibrés, une équipe chacun, et chaque équipe peut balayer toute sa zone, culs-de-sac compris ; si tu t'écartes, le guidage te ramène sur le circuit.",
-    "🌍 Export KMZ : un grand plan s'affiche enfin dans Google Earth sur téléphone (case « Grandes images », netteté au choix).",
-    "🧭 Et aussi : les boutons du tracker montrent leur état (vert en route, orange en pause, grisé si coupé), et un plan devenu illisible dans le stockage de l'iPhone s'ouvre quand même."
+    "⬆️ Exporter : un seul bouton ouvre un lanceur à tuiles (image, PDF, session, KMZ, GPX) ; sur iPhone, l'export image propose « 📱 Max iPhone » quand le plan est trop grand, et l'image sort enfin.",
+    "📱 Sur téléphone : les panneaux Tracés, Zones et Structures tiennent entre les barres même en paysage (« Fermer la structure » toujours atteignable), toucher la carte pour les fermer n'ajoute plus de point, et les croix de fermeture sont plus grandes au doigt.",
+    "➕ Les boutons de zoom +/− deviennent une option de ⚙️ Configuration (désactivés par défaut : on zoome au doigt ou à la molette)."
   ]
 }

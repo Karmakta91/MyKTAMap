@@ -6,25 +6,17 @@
  */
 /* eslint-disable no-console */
 // =====================================================================
-// ©️ check-entete-licence.js — garde-fou pre-commit BLOQUANT
+// check-entete-licence.js — garde-fou pre-commit BLOQUANT : en-tête de licence des scripts servis
 // =====================================================================
-// Tout script SERVI aux utilisateurs (js/*.js + sw.js) porte l'en-tête de
-// licence : auteur + CC BY-NC-SA 4.0. Le `/*!` le garde même après une
-// minification.
-//
-// POURQUOI (07/10/2026) : l'en-tête avait été posé en une fois le 09/05/2026
-// sur les fichiers de l'époque ; rien ne l'exigeait ensuite, et 24 modules nés
-// depuis (map.js, editor.js, tracking.js…) n'en avaient jamais eu.
-//
-// RÈGLE : dans les 15 premières lignes, « Flavien VIDAL » ET « CC BY-NC-SA ».
-// Les deux formes en usage passent (courte : main.js ; longue : copyright.js).
+// Tout script SERVI (js/*.js + sw.js) porte auteur + CC BY-NC-SA 4.0 ; le `/*!` survit à une minification.
+// Sans ce contrôle, chaque nouveau module naît sans en-tête.
+// Règle : dans les 15 premières lignes, « Flavien VIDAL » ET « CC BY-NC-SA » (formes courte et longue).
 // En-tête à copier pour un nouveau fichier :
 //   /*!
 //    * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
 //    * https://myktamap.fr — Licence CC BY-NC-SA 4.0
 //    * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
 //    */
-//
 // Usage : node scripts/check-entete-licence.js   (appelé par .githooks/pre-commit)
 // =====================================================================
 "use strict";
@@ -37,7 +29,7 @@ function aEntete(texte) {
   return tete.indexOf("Flavien VIDAL") >= 0 && tete.indexOf("CC BY-NC-SA") >= 0;
 }
 
-// Auto-test : la règle doit rougir sur les cas qui l'ont fait naître.
+// Auto-test : chaque sabotage doit rougir, chaque forme valide passer
 const SABOTAGES = [
   "// =========\n// MAP.JS\n",                                       // aucun en-tête
   "/*!\n * MyKTAMap (c) 2026 Flavien VIDAL\n */\n",                    // auteur sans licence

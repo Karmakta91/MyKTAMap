@@ -1,37 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 👣 check-tracking-defaults.js — garde-fou pré-commit BLOQUANT
+// check-tracking-defaults.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
 // Refuse un réglage de podomètre (`stepLength`, `stepThreshold`,
-// `stepCooldown`) recopié en dur avec une valeur qui diverge de celle
-// d'usine, déclarée une seule fois dans `js/config.js > DEFAULT_CONFIG`.
-//
-// LE BUG QUI L'A FAIT NAÎTRE (03/09/2026, signalé par KARMA sur l'écran SIG) :
-// `sigImport.js` et `gpxImport.js` écrivaient dans chaque plan produit
-//
-//     stepLength: 0.75, stepThreshold: 1.2, stepCooldown: 280
-//
-// là où l'usine dit 0.7 / 13 / 400. L'écart sur le SEUIL est d'un facteur 11,
-// et il n'est pas cosmétique : `tracking.js` compare ce seuil à la magnitude
-// de `accelerationIncludingGravity`, qui vaut DÉJÀ ~9,81 téléphone posé à
-// plat. `magnitude > 1.2` est donc VRAI EN PERMANENCE — seul le cooldown
-// limitait encore le comptage.
-//
-// Résultat, à l'arrêt complet : un pas toutes les 280 ms, soit ~3,6 pas/s ;
-// à 0,75 m le pas, ~2,7 m/s — près de 10 km/h de distance FANTÔME. Sur tout
-// plan issu d'un import SIG ou GPX, et donc dans le Carnet, les statistiques
-// et l'historique des sorties.
-//
-// POURQUOI RIEN NE L'A VU : les trois valeurs étaient plausibles à l'œil.
-// Seule leur confrontation à la source les condamne — et personne ne la
-// faisait, puisque chaque générateur portait sa propre copie.
-//
-// PORTÉE : uniquement les littéraux numériques affectés à l'une des trois
-// clés, dans `js/`. Une valeur lue depuis `KTA_TRACKING_USINE` ou depuis
-// `DEFAULT_CONFIG` n'est pas une copie et n'est pas contrôlée. Les champs de
-// SAISIE (générateur classique) sont contrôlés eux aussi : ils proposent une
-// valeur par défaut à l'utilisateur, elle doit être celle d'usine.
+// `stepCooldown`) recopié en dur avec une valeur différente de l'usine,
+// déclarée une seule fois dans `js/config.js > DEFAULT_CONFIG`.
+// 🩸 Une copie plausible à l'œil peut être fausse d'un facteur 11 : `tracking.js`
+// compare `stepThreshold` à la magnitude de `accelerationIncludingGravity`, qui
+// vaut déjà ~9,81 téléphone posé. Un seuil de 1.2 est vrai en permanence et
+// fabrique des pas à l'arrêt (distance fantôme dans Carnet, stats, historique).
+// Portée : littéraux numériques affectés à l'une des trois clés dans `js/`
+// (objet, repli `??`, `value=` d'un champ de saisie). Une valeur lue depuis
+// `KTA_TRACKING_USINE` ou `DEFAULT_CONFIG` n'est pas une copie.
 // =====================================================================
 
 const fs = require("fs");
@@ -67,8 +48,7 @@ try {
   process.exit(2);
 }
 
-// `stepLength: 0.7` en objet, `value="0.7"` dans un champ précédé de son id,
-// et `?? 0.7` en repli. Les trois formes existent dans ce dépôt.
+// Formes : `stepLength: 0.7`, `?? 0.7`, `id="…stepLength" … value="0.7"`.
 const RE_OBJ = new RegExp("\\b(" + CLES.join("|") + ")\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)", "g");
 const RE_REPLI = new RegExp("\\b(" + CLES.join("|") + ")[^\\n]*?\\?\\?\\s*(-?[0-9]+(?:\\.[0-9]+)?)", "g");
 const RE_INPUT = new RegExp("id=\"[a-z_]*(" + CLES.join("|") +
@@ -86,8 +66,7 @@ fichiers.forEach(function (nom) {
       re.lastIndex = 0;
       let m;
       while ((m = re.exec(ligne)) !== null) {
-        // La clé peut être suffixée dans un id (`pl_stepLength`) : on
-        // normalise sur la clé canonique.
+        // Id préfixé (`pl_stepLength`) : normalisé sur la clé canonique.
         const cle = CLES.find(function (k) { return m[1].toLowerCase() === k.toLowerCase(); });
         if (!cle) continue;
         const val = parseFloat(m[2]);

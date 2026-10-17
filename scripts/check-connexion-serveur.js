@@ -1,28 +1,23 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔌 check-connexion-serveur.js — garde-fou pré-commit BLOQUANT (v2.0.0)
+// check-connexion-serveur.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// LE CONTRAT (docs/architecture/community-server-line.md §3) : une instance
+// Contrat (docs/architecture/community-server-line.md §3) : une instance
 // déclare `index.json > config.serverConnection` ; l'app en tire un état
 // (off · invalide · licence · configuree) affiché dans le pied de page.
-// myktamap.fr n'a pas de backend et n'en aura jamais : l'état y vaut « off ».
-//
-// 🩸 CE QUI PEUT MAL TOURNER, ET QUE CE SCRIPT ATTRAPE :
-//   1. ConfAdmin et l'app qui ne valident pas pareil : un index que l'outil
-//      du déployeur juge bon, et que l'app refuse (ou l'inverse). On EXÉCUTE
-//      les deux fonctions sur la même table de cas.
-//   2. « Index injoignable » confondu avec « connexion coupée » : une instance
-//      connectée ouverte hors ligne passerait pour désactivée (décision KARMA :
-//      elle est HS, pas OFF), ou une coupure réseau effacerait la mémoire.
-//   3. Une licence importée par l'utilisateur qui suffirait à passer en
-//      « configurée » (règle E : seule la source "server" compte).
-//   4. La mémoire de l'instance partie dans l'export de profil (c'est une
-//      donnée de l'instance, pas de l'utilisateur).
-//   5. Une requête réseau glissée dans le module : il ne doit RIEN contacter.
-//
-// COMMENT : le vrai js/ktaExtensions.js tourne dans un `vm` avec un faux
-// localStorage ; la fonction de confadmin.html est extraite du vrai fichier.
+// myktamap.fr n'a pas de backend : l'état y vaut « off ».
+// 🩸 Ce que ce script attrape :
+//   1. ConfAdmin et l'app qui ne valident pas pareil (les deux fonctions sont
+//      EXÉCUTÉES sur la même table de cas) ;
+//   2. « index injoignable » confondu avec « connexion coupée » : une instance
+//      hors ligne est HS, pas OFF (décision produit), et garde sa mémoire ;
+//   3. licence importée (source "local") qui suffirait à passer « configurée »
+//      (règle E : seule la source "server" compte) ;
+//   4. mémoire de l'instance partie dans l'export de profil ;
+//   5. requête réseau hors du garde `requete()` du module.
+// Le vrai js/ktaExtensions.js tourne dans un `vm` (faux localStorage) ; la
+// fonction de ConfAdmin est extraite de confadmin.html + js/confadmin.js.
 // =====================================================================
 "use strict";
 
@@ -33,7 +28,7 @@ let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
 const MOD  = fs.readFileSync("js/ktaExtensions.js", "utf8");
-// Le script de confadmin.html vit dans js/confadmin.js depuis le 07/10/2026 (CSP stricte) : page + script.
+// CSP stricte : le script de confadmin.html vit dans js/confadmin.js (page + script).
 const CA   = fs.readFileSync("confadmin.html", "utf8") + "\n" + fs.readFileSync("js/confadmin.js", "utf8");
 const MAIN = fs.readFileSync("js/main.js", "utf8");
 const HOME = fs.readFileSync("js/homeLoader.js", "utf8");
@@ -41,7 +36,7 @@ const IDX  = fs.readFileSync("index.html", "utf8");
 const SW   = fs.readFileSync("sw.js", "utf8");
 const PROF = fs.readFileSync("js/profileExportImport.js", "utf8");
 
-// ═════════ 1. LE MODULE, EXÉCUTÉ ═════════
+// ── 1. Le module, exécuté ────────────────────────────────────────────
 const store = {};
 const evenements = [];
 let licence = { isPro: false, source: null };
@@ -82,7 +77,7 @@ t("window.KtaExtensions est exposé", !!K);
 t("valider / etatDe / appliquerConfig / etat / peindre exposés",
   !!(K && ["valider", "etatDe", "appliquerConfig", "etat", "peindre"].every((f) => typeof K[f] === "function")));
 
-// ═════════ 2. CONFADMIN, EXTRAIT ET EXÉCUTÉ ═════════
+// ── 2. ConfAdmin, extrait et exécuté ─────────────────────────────────
 function extraireFonction(src, nom) {
   const debut = src.indexOf("function " + nom + "(");
   if (debut < 0) return null;
@@ -105,7 +100,7 @@ let validerCA = null;
   }
 }
 
-// ═════════ 3. TABLE DE CAS : APP ET CONFADMIN CONCORDENT ═════════
+// ── 3. Table de cas : app et ConfAdmin concordent ────────────────────
 const OK = { state: "on", api: "https://api.exemple.org", modules: ["pro/sync.js"] };
 const CAS = [
   ["absent", undefined, "off"],
@@ -163,7 +158,7 @@ if (K && validerCA) {
     K.valider(Object.assign({ transparence: "pro/transparence.html" }, OK)).transparence === "pro/transparence.html");
 }
 
-// ═════════ 4. TABLE DE VÉRITÉ DES ÉTATS (règle E) ═════════
+// ── 4. Table de vérité des états (règle E) ───────────────────────────
 if (K) {
   const on = K.valider(OK);
   t("off reste off, quelle que soit la licence", K.etatDe(K.valider(undefined), "server") === "off");
@@ -173,7 +168,7 @@ if (K) {
   t("« on » + licence serveur → configuree", K.etatDe(on, "server") === "configuree");
 }
 
-// ═════════ 5. RÈGLE B : INDEX INJOIGNABLE ≠ CONNEXION COUPÉE ═════════
+// ── 5. Règle B : index injoignable ≠ connexion coupée ────────────────
 if (K) {
   const memo = K.LS_MEMO;
   const raz = () => { Object.keys(store).forEach((k) => delete store[k]); evenements.length = 0; };
@@ -211,7 +206,7 @@ if (K) {
     !!(dernier && dernier.type === "mktm:connexion-changed" && dernier.detail.etat === "configuree"));
 }
 
-// ═════════ 6. CÂBLAGE ═════════
+// ── 6. Câblage ───────────────────────────────────────────────────────
 t("main.js transmet la config quand l'index a répondu (true)",
   /_appliquerConnexionServeur\(window\.KIOSK_CONFIG, true\)/.test(MAIN));
 t("🩸 main.js déclare l'index INJOIGNABLE (false) quand il n'a pas répondu (non-2xx = 404 synthétique du SW, cf ktaInstance)",
@@ -234,10 +229,9 @@ t("la pastille et le bloc d'état existent dans index.html",
 t("le module est précaché (sw.js > ASSETS_TO_CACHE)", /"\.\/js\/ktaExtensions\.js"/.test(SW));
 t("🩸 la mémoire de l'instance ne part PAS dans l'export de profil",
   PROF.indexOf("myktamap_server_connection_v1") < 0);
-// v2.7.0 (chantier 3) : le module porte le GARDE des requêtes d'extension.
-// Règle : un seul fetch, dans requete() ; jamais de XHR/beacon/socket ; le
-// module ne contacte JAMAIS le serveur de lui-même (seule une extension
-// l'appelle), et en OFF requete refuse avant tout envoi (cf check-extensions).
+// 🔒 Le module porte le GARDE des requêtes d'extension : un seul fetch, dans
+// requete() ; ni XHR, ni beacon, ni socket ; il ne contacte jamais le serveur
+// de lui-même (en OFF, requete refuse avant envoi : check-extensions.js).
 {
   const sansComm = MOD.replace(/\/\/.*$/gm, "");
   const nFetch = (sansComm.match(/\bfetch\s*\(/g) || []).length;
@@ -252,7 +246,7 @@ t("ConfAdmin refuse l'export tant que le champ est invalide",
   /\$\("caDownload"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA) &&
   /\$\("caCopy"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA));
 
-// ═════════ 7. TEXTES : un libellé et une explication par état, 3 langues ═════════
+// ── 7. Textes : un libellé et une explication par état, 3 langues ────
 ["fr", "en", "es"].forEach((l) => {
   const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
   const manquantes = [];

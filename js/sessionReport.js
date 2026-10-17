@@ -1,70 +1,34 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// SESSION REPORT — D1 v1.33.0
-// =========================
-//
-// Génération de rapports de sortie post-mission pour un usage cataphile/spéléo
-// CLASSIQUE (≠ Mode Secours, qui a son propre rapport via secoursMode.js).
-//
-// 3 formats d'export : 📄 Texte presse-papier + 📦 JSON + 📑 PDF (jsPDF).
-//
-// Périmètre temporel sélectionnable (date range start/end). POI + tracker
-// GPS sont filtrés temporellement, mais roads/zones/structures n'ont pas
-// de timestamp dans le format actuel → inclus en totalité avec note dans
-// le rapport.
-//
-// Contenu (8 sections optionnelles) :
-//   📍 Points (POI) — filtré par date_update
-//   🛣️ Tracés (toutes périodes)
-//   ⬛ Zones (toutes périodes)
-//   🏛️ Structures (toutes périodes)
-//   🧭 Tracker GPS — filtré par t (timestamp ms)
-//   📸 Photos — pas de filtre temporel MVP (à voir si KARMA insiste)
-//   🗺️ Carte miniature (PDF only) — canvas du plan avec overlay POI/tracés/heatmap
-//   🔥 Heatmap zones explorées (PDF only) — radial blur sur path tracker
-//
-// + Note libre user (textarea optionnelle).
-//
-// API publique :
-//   window.SessionReport = {
-//     ouvrirModal:               function() { ... }  // ouvre la modale UI
-//     _collecterDonneesBrutes:   function() { ... }  // exposé pour tests
-//     _genererTexte:             function(data, opts) { ... }
-//     _genererJSON:              function(data, opts) { ... }
-//   };
-//
-// Intégration UI : bouton "📋 Générer rapport de sortie" dans la modale
-// 📊 Stats globales (statsGlobales.js _renderHtml fin de output).
+// sessionReport.js — rapport de sortie (usage classique ; le Mode Secours a le sien dans secoursMode.js).
+// Formats : texte presse-papier, JSON, PDF (jsPDF). Sections optionnelles : POI, tracés, zones,
+// structures, tracker, photos, carte miniature et heatmap (PDF seul), note libre.
+// ⚠️ Période : seuls les POI (date_update) et le tracker (t, ms) sont filtrés ; tracés, zones et
+//   structures n'ont pas d'horodatage et sont inclus en totalité ; photos non filtrées.
+// Expose : window.SessionReport { ouvrirModal, _collecterDonneesBrutes, _filtrerParPeriode,
+//   _genererTexte, _genererJSON } (les _ pour les tests).
+// Appelé par : le bouton « Générer rapport de sortie » des Stats globales (statsGlobales.js).
+// Garde-fou : scripts/check-pdf-texte.js
 
 (function() {
   "use strict";
 
-  // ====================================================================
-  // MODULE STATE
-  // ====================================================================
   let _modal = null;
 
-  // ====================================================================
-  // I18N HELPER — appelé AU RENDU (jamais au load). Fallback = clé brute.
-  // ====================================================================
+  // Appelé AU RENDU, jamais au load. Repli = clé brute.
   function t(key, params) {
     return (window.I18n && typeof window.I18n.t === "function")
       ? window.I18n.t(key, params)
       : key;
   }
 
-  // ====================================================================
-  // 📊 DATA COLLECTION
-  // ====================================================================
-
-  // Récupère TOUTES les données disponibles de la session courante.
-  // Retourne un objet structuré, à filtrer ensuite par _filtrerParPeriode.
-  // Photos en async via Promise (caller attend la résolution avant export).
+  // ── Collecte ─────────────────────────────────────────────────────────────
+  // Toute la session courante, à filtrer par _filtrerParPeriode. ⚠️ photos = Promise
+  // (photosPromise), à attendre avant l'export.
   function _collecterDonneesBrutes() {
     const planCfg = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
     const data = {
@@ -105,16 +69,13 @@
     return data;
   }
 
-  // Filtre les données par période [startTs, endTs] en ms epoch.
-  // - POI : filter by date_update (YYYY-MM-DD)
-  // - Tracker timeline : filter by t (ms epoch)
-  // - Roads/zones/structures : inclus tels quels (pas de timestamp natif)
+  // Période [startTs, endTs] en ms epoch : POI par date_update (YYYY-MM-DD), tracker par t.
   function _filtrerParPeriode(data, startTs, endTs) {
     const startDay = new Date(startTs).toISOString().slice(0, 10);
     const endDay   = new Date(endTs).toISOString().slice(0, 10);
     const filteredPoints = data.points.filter(function(p) {
       const d = p.date_update || "";
-      // Si pas de date_update → inclus (pre-v1.x ou points programmatiques)
+      // Sans date_update (point ancien ou programmatique) : inclus.
       if (!d) return true;
       return d >= startDay && d <= endDay;
     });
@@ -128,9 +89,7 @@
     });
   }
 
-  // ====================================================================
-  // 📊 STATS HELPERS
-  // ====================================================================
+  // ── Statistiques ─────────────────────────────────────────────────────────
 
   function _calculerDistanceTrackerPx(timeline) {
     if (!timeline || timeline.length < 2) return 0;
@@ -214,16 +173,13 @@
     return map;
   }
 
-  // ====================================================================
-  // 📄 TEXTE GÉNÉRATION (Markdown-ish pour WhatsApp / Discord)
-  // ====================================================================
+  // ── Texte (Markdown léger pour messageries) ──────────────────────────────
 
   function _genererTexte(data, opts) {
     const o = opts || {};
     const lines = [];
     const sep = "─".repeat(40);
 
-    // En-tête
     lines.push("📋 " + t("report.txt.header") + data.plan.name);
     lines.push(sep);
     const dStart = new Date(o.startTs).toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
@@ -238,7 +194,6 @@
     lines.push("📱 " + t("report.txt.app") + " " + data.app.version);
     lines.push("");
 
-    // Stats POI
     if (o.includePoints !== false) {
       const tagStats = _statsParTag(data.points);
       lines.push("📍 " + t("report.txt.poi") + data.points.length);
@@ -248,7 +203,6 @@
       lines.push("");
     }
 
-    // Roads
     if (o.includeRoads !== false) {
       const typeStats = _statsParType(data.roads);
       lines.push("🛣️ " + t("report.txt.roads") + data.roads.length + " " + t("report.txt.allPeriodsNoTs"));
@@ -262,7 +216,6 @@
       lines.push("");
     }
 
-    // Zones
     if (o.includeZones !== false) {
       const typeStats = _statsParType(data.zones);
       lines.push("⬛ " + t("report.txt.zones") + data.zones.length + " " + t("report.txt.allPeriods"));
@@ -272,7 +225,6 @@
       lines.push("");
     }
 
-    // Structures
     if (o.includeStructures !== false && data.structures.length > 0) {
       const typeStats = _statsParType(data.structures);
       lines.push("🏛️ " + t("report.txt.structures") + data.structures.length + " " + t("report.txt.allPeriods"));
@@ -282,7 +234,6 @@
       lines.push("");
     }
 
-    // Tracker
     if (o.includeTracker !== false && data.tracker.timeline.length > 0) {
       const distM = _pxVersM(_calculerDistanceTrackerPx(data.tracker.timeline), data.plan.scale);
       const duree = _calculerDureeTimelineMs(data.tracker.timeline);
@@ -293,13 +244,11 @@
       lines.push("");
     }
 
-    // Photos
     if (o.includePhotos !== false && typeof o.photosCount === "number" && o.photosCount > 0) {
       lines.push("📸 " + t("report.txt.photos") + o.photosCount);
       lines.push("");
     }
 
-    // Note libre
     if (o.note && o.note.trim()) {
       lines.push("📝 " + t("report.txt.note"));
       lines.push(sep);
@@ -314,9 +263,7 @@
     return lines.join("\n");
   }
 
-  // ====================================================================
-  // 📦 JSON GÉNÉRATION
-  // ====================================================================
+  // ── JSON ─────────────────────────────────────────────────────────────────
 
   function _genererJSON(data, opts) {
     const o = opts || {};
@@ -355,29 +302,12 @@
     return out;
   }
 
-  // ====================================================================
-  // 🖼️ CARTE MINIATURE (canvas → PNG dataURL)
-  // ====================================================================
-
-  // Génère une PNG miniature du plan avec overlay POI/tracés/heatmap.
-  // Retourne Promise<dataURL> ou null si pas possible.
-  // Cible : largeur max 800px (downscaled), pour intégration PDF.
-  //
-  // 🩹 v1.33.0-fix1 — KARMA bug : "en pdf, la carte exposé n'affiche pas
-  // l'image principal". Cause : la tentative custom de charger
-  // "data/<planId>/<baseImage>" ne marchait pas pour les plans selfhost,
-  // les plans ZIP-loaded, ou avec des chemins relatifs différents.
-  // Fix : on utilise window.MyKTAMapExporterGenererCanvas (helper global
-  // exposé par js/exporter.js depuis v1.10.3) qui gère DÉJÀ correctement
-  // tous les cas : selfhost, server, ZIP, multi-layer, etc. C'est le même
-  // helper que Mode Secours utilise pour ses cartes miniatures PDF
-  // (cf js/secoursMode.js ligne 4208+).
-  // Stratégie :
-  //   1. Préférence : exporter.generCanvas → canvas full résolution
-  //      avec image + data layers, SANS annotations
-  //   2. Downscale à 800px max
-  //   3. Overlay session filtrée (heatmap, tracker, roads, zones, POI)
-  //      par-dessus
+  // ── Carte miniature (canvas → PNG dataURL, 800 px de large max) ─────────
+  // Promise<dataURL | null>. Fond = window.MyKTAMapExporterGenererCanvas SANS annotations (seul
+  // chemin qui gère selfhost, serveur, ZIP, multi-calques), réduit, puis overlay de la session
+  // filtrée (heatmap, tracker, tracés, zones, POI).
+  // 🩸 Pas de chargement direct de « data/<planId>/<baseImage> » en premier : faux pour les plans
+  //   selfhost ou ZIP (carte du PDF sans image). Ce n'est que le repli si l'exporter manque.
   function _genererCarteMiniature(data, opts) {
     const W = data.plan.imageW;
     const H = data.plan.imageH;
@@ -394,7 +324,7 @@
       canvas.height = ch;
       const ctx = canvas.getContext("2d");
 
-      // Fond sombre (fallback ultime + visible dans les zones transparentes du plan)
+      // Fond sombre : repli ultime, visible sous les zones transparentes du plan.
       ctx.fillStyle = "#1a1f2e";
       ctx.fillRect(0, 0, cw, ch);
 
@@ -408,21 +338,19 @@
         }
       }
 
-      // ─── Préférence : helper exporter ──────────────────
       if (typeof window.MyKTAMapExporterGenererCanvas === "function") {
         window.MyKTAMapExporterGenererCanvas({
           scale:             1,
           bg:                "image",
           includeImgLayers:  true,
           includeDataLayers: true,
-          // PAS d'annotations exporter → on dessine notre overlay filtré par-dessus
+          // Pas d'annotations : l'overlay filtré par période est dessiné par-dessus.
           ann: {
             points: false, roads: false, zones: false, structures: false,
             jonctions: false, itineraire: false
           }
         }).then(function(fullCanvas) {
           if (fullCanvas && fullCanvas.width > 0 && fullCanvas.height > 0) {
-            // Downscale full → mini (800px max width)
             ctx.drawImage(fullCanvas, 0, 0, cw, ch);
           } else {
             console.warn("[SessionReport] exporter canvas vide, fallback fond sombre");
@@ -435,9 +363,7 @@
         return;
       }
 
-      // ─── Fallback : image base directe (cas exporter indispo) ─
-      // Note : ce path n'est pratiquement jamais pris en prod car
-      // exporter.js est en cache PWA depuis v1.10.3.
+      // Repli (exporter.js absent, quasi jamais en pratique) : image de base directe.
       if (data.plan.baseImage) {
         const planUrl = "data/" + data.plan.planId + "/" + data.plan.baseImage;
         const img = new Image();
@@ -506,14 +432,8 @@
       ctx.lineWidth = 1.5;
       data.roads.forEach(function(r) {
         if (!Array.isArray(r.points) || r.points.length < 2) return;
-        // 🎨 v1.76.0 — couleur résolue au lieu d'une 5e palette écrite à la
-        // main. Elle n'était ni documentée comme variante délibérée, ni
-        // recensée nulle part : `principal` y sortait en #6ce28a alors que la
-        // carte le dessine en #00ff00. Le rapport décrivait donc la session
-        // avec des couleurs qui n'étaient celles d'aucun autre écran.
-        // ⚠️ CHANGEMENT VISIBLE : la mini-carte du rapport prend désormais les
-        // couleurs de la carte. C'est l'intention de tout ce lot — sans quoi un
-        // futur override de couleur ne l'atteindrait jamais.
+        // ⚠️ Couleurs de la carte (canon), jamais une palette locale : sinon la couleur choisie
+        // par l'utilisateur n'atteint pas le rapport.
         ctx.strokeStyle = (typeof window.ktaSwatchColor === "function" &&
                            window.ktaSwatchColor("traces", r.type)) || "#8cb4ff";
         ctx.beginPath();
@@ -532,9 +452,7 @@
       ctx.globalAlpha = 0.25;
       data.zones.forEach(function(z) {
         if (!Array.isArray(z.points) || z.points.length < 3) return;
-        // 🎨 v1.76.0 — idem : couleur de la carte (remplissage de la zone),
-        // au lieu d'une palette locale. Le globalAlpha 0.25 du contexte reste
-        // la signature visuelle du rapport.
+        // Idem (remplissage de la zone) ; le globalAlpha 0.25 est propre au rapport.
         ctx.fillStyle = (typeof window.ktaSwatchColor === "function" &&
                          window.ktaSwatchColor("zones", z.type)) || "#8892a4";
         ctx.beginPath();
@@ -565,14 +483,10 @@
     }
   }
 
-  // ====================================================================
-  // 📑 PDF GÉNÉRATION (jsPDF)
-  // ====================================================================
-
-  // Texte envoyé au PDF : window.ktaTextePdf (utils.js) garde les accents et retire tout ce
-  // que la police standard n'affiche pas (emojis, mais aussi flèches et symboles, que l'ancienne
-  // liste de plages laissait passer). Seul le DÉBUT est nettoyé : un .trim() complet mangeait
-  // l'espace après « : » des libellés (« Période :08/10 », « POI ajoutés :0 » — vu le 09/10/2026).
+  // ── PDF (jsPDF) ──────────────────────────────────────────────────────────
+  // Texte du PDF : window.ktaTextePdf (utils.js) garde les accents, retire ce que la police
+  // standard n'affiche pas. 🩸 Seul le DÉBUT est nettoyé : un .trim() complet mange l'espace
+  // après « : » des libellés (« Période :08/10 »).
   function _stripPourPdf(s) {
     if (!s) return "";
     return window.ktaTextePdf(s).replace(/^\s+/, "");
@@ -710,9 +624,7 @@
     return pdf;
   }
 
-  // ====================================================================
-  // 💾 DOWNLOAD HELPERS
-  // ====================================================================
+  // ── Téléchargement ───────────────────────────────────────────────────────
 
   function _telechargerBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -741,9 +653,7 @@
     return "rapport_" + safePlan + "_" + date + "." + (ext || "txt");
   }
 
-  // ====================================================================
-  // 🖥️ UI MODAL
-  // ====================================================================
+  // ── Modale ───────────────────────────────────────────────────────────────
 
   function _checkboxRow(id, label, defaultChecked) {
     const chk = defaultChecked ? " checked" : "";
@@ -756,9 +666,7 @@
   function ouvrirModal() {
     if (_modal) { _modal.remove(); _modal = null; }
 
-    // Détermine dates par défaut :
-    // - startTs : début du tracker actuel si dispo, sinon hier
-    // - endTs : maintenant
+    // Période par défaut : début du tracker actuel (sinon hier) → maintenant.
     const trackerStart = (typeof window.getTrackingStartTs === "function") ? window.getTrackingStartTs() : null;
     const startTs = trackerStart || (Date.now() - 86400 * 1000);
     const endTs = Date.now();
@@ -838,7 +746,7 @@
       }
     });
 
-    // Données de base (1 fois — pas refetchées à chaque preview)
+    // Collectées une fois, pas à chaque aperçu.
     const baseData = _collecterDonneesBrutes();
 
     function _readOpts() {
@@ -894,7 +802,6 @@
     document.getElementById("kta-report-start").addEventListener("change", _refreshPreview);
     document.getElementById("kta-report-end").addEventListener("change", _refreshPreview);
 
-    // === EXPORT HANDLERS ===
 
     document.getElementById("kta-report-btn-text").addEventListener("click", function() {
       const opts = _readOpts();
@@ -919,8 +826,7 @@
       baseData.photosPromise.then(function(photos) {
         const payload = _genererJSON(filtered, opts);
         if (opts.includePhotos && photos.length > 0) {
-          // Métadonnées photos seulement, pas les blobs (trop lourd en JSON
-          // texte — le user peut les exporter via Enregistrer session ZIP)
+          // Métadonnées seules : les blobs sont trop lourds en JSON (export ZIP de session).
           payload.photosMeta = photos.map(function(p) {
             return { id: p.id, pointId: p.pointId, mime: p.mime, size: p.size };
           });
@@ -958,12 +864,9 @@
     });
   }
 
-  // ====================================================================
-  // 🔌 EXPORT API
-  // ====================================================================
   window.SessionReport = {
     ouvrirModal:              ouvrirModal,
-    // Exposés pour debug / tests / réutilisation
+    // Pour les tests et le diagnostic :
     _collecterDonneesBrutes:  _collecterDonneesBrutes,
     _filtrerParPeriode:       _filtrerParPeriode,
     _genererTexte:            _genererTexte,

@@ -303,7 +303,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, affichage… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver un point, un tracé, une zone ou une structure *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
-| **Enregistrer** | ⬆️ | Exporter ta session, le plan en image, ou un PDF imprimable |
+| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, export externe (KMZ / GPX) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
 | **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
@@ -869,7 +869,7 @@ Tes annotations (points, tracés, zones, structures, mesures) s'enregistrent tou
 À la réouverture (**▶️ Reprendre** sur l'accueil), une fenêtre résume ce qui a été restauré (« 3 points · 1 tracé · 2 zones ») et propose **🗑️ Effacer la session** (repartir de zéro sur ce plan) ou **✓ Continuer**. Échap ou un clic à côté = Continuer.
 
 - Le chemin du tracker n'est pas restauré : relance le suivi et recale-toi.
-- Pour garder une session à part, ou la passer à un autre appareil : **⬆️ Enregistrer → 💾 Exporter** (voir « ⬆️ Sauvegarder et partager »).
+- Pour garder une session à part, ou la passer à un autre appareil : **⬆️ Exporter → 💾 Export complet** (voir « ⬆️ Sauvegarder et partager »).
 
 ### 📔 Mon carnet — l'historique de tes sorties
 
@@ -970,33 +970,30 @@ Dans la fenêtre Profil, **📤 Exporter mon profil** produit un fichier qui tra
 
 ## ⬆️ Sauvegarder et partager
 
-Tous les exports sont dans le groupe **⬆️ Enregistrer** de la barre latérale. Avant de partager une image, un PDF ou un KMZ, vérifie qu'il ne révèle rien de sensible (accès, lieu privé).
+Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : il ouvre un lanceur à tuiles en trois parties — **🖼️ Image**, **💾 Session**, **🌍 Export externe**. Avant de partager une image, un PDF ou un KMZ, vérifie qu'il ne révèle rien de sensible (accès, lieu privé).
 
 ### 📤 Exporter ta session
 
-**⬆️ → 💾 Exporter** ouvre une fenêtre à cinq onglets :
+**⬆️ Exporter → 💾 Session** propose deux tuiles :
 
-- **🚀 Full** — toute la session en un fichier, à réimporter plus tard : points, tracés, zones, structures, mesures et suivi du tracker (position, chemin, chronologie : le replay fonctionne après réimport). `.json`, ou `.zip` si tu coches les photos. L'option **🛡️ Anonymiser pour partage public** remplace les noms par des codes et retire le suivi.
-- **🎨 Avancé** — tu choisis : points (par icône, y compris « sans tag »), tracés, zones et structures (par type), mesures, tracker (un compteur montre ce qu'il contient). Sortie en **un seul fichier session** réimportable, ou en **ZIP multi-fichiers** (un par catégorie).
-- **🔎 Ne garder que** (en tête de 🚀 Full et 🎨 Avancé) — limite les points, tracés, zones et structures à une **période** (date de leur dernière modification) et, sur une installation reliée, à leur auteur (**Créé par**) ; un compteur dit combien partent. Suivi, mesures et notes partent tels quels.
-- **🔄 Conversion** — transforme ta session en **calque de données** à intégrer à un plan (voir « 🏗️ Créer ou modifier un plan »). Même choix par catégorie et par icône ; granularité **Basique** (un fichier par catégorie) ou **Fine** (un fichier par type). Le tracker n'est jamais converti : une dérive figée dans un plan tromperait ses futurs utilisateurs. Une fois converties, ces données ne se modifient plus depuis l'app.
-- **🔗 Fusion** — regroupe plusieurs calques de données (`.json` ou `.zip`, issus de plusieurs sessions) en un seul jeu par catégorie. Un aperçu donne les totaux et signale les identifiants de points en double (gardés tels quels). Aussi accessible sans plan ouvert : **📊 Éditeur de données → 🔗 Fusionner des calques de données**.
-- **📡 Export externe** — KMZ ou GPX, voir plus bas.
+- **💾 Export complet** — toute la session en un fichier, à réimporter plus tard : points, tracés, zones, structures, mesures et suivi du tracker (position, chemin, chronologie : le replay fonctionne après réimport). `.json`, ou `.zip` si tu coches les photos. L'option **🛡️ Anonymiser pour partage public** remplace les noms par des codes et retire le suivi.
+- **🎨 Export avancé** — tu choisis : points (par icône, y compris « sans tag »), tracés, zones et structures (par type), mesures, tracker (un compteur montre ce qu'il contient). Sortie en **un seul fichier session** réimportable, ou en **ZIP multi-fichiers** (un par catégorie).
+- **🔎 Ne garder que** (en tête des deux) — limite les points, tracés, zones et structures à une **période** (date de leur dernière modification) et, sur une installation reliée, à leur auteur (**Créé par**) ; un compteur dit combien partent. Suivi, mesures et notes partent tels quels.
 
 ### 🖼️ Exporter en image
 
-**⬆️ → 🖼️ Exporter le plan en image**, deux modes :
+**⬆️ Exporter → 🖼️ Image (PNG / JPEG)**, deux modes :
 
 - **⚡ Export rapide** — tout ce qui est visible (plan, calques, annotations, tracker), en PNG à la résolution d'origine. Un clic sur **Télécharger**.
 - **🎨 Export avancé** — tu coches les calques d'image, les calques de données et tes annotations, et tu règles :
   - une **légende** posée sur le plan : position (un des 4 coins, ou 🎯 n'importe où), style (Opaque / Semi-transparent / Filigrane), taille (Compact / Standard / Large), contenu (icônes, tracés, zones, tag du tracker, nom, version, auteur et date du plan) ; ses libellés se personnalisent ;
   - le **format** : PNG, ou JPEG (plus léger) ;
-  - la **résolution** : Originale, ½ ou ¼. L'app pré-coche la plus grande qui reste raisonnable et indique la taille et la mémoire nécessaires ; sur iPhone/iPad, les résolutions impossibles sont grisées.
+  - la **résolution** : Originale, ½ ou ¼. L'app pré-coche la plus grande qui reste raisonnable et indique la taille et la mémoire nécessaires ; sur iPhone/iPad, les résolutions impossibles sont grisées, et quand même ¼ est trop grand pour l'iPhone, un choix **📱 Max iPhone** (la plus grande image possible) est coché d'office ; la taille affichée est celle de l'image produite.
   - Un aperçu se met à jour en direct.
 
 ### 🖨️ Exporter en PDF imprimable
 
-**⬆️ → 📤 Exporter en PDF imprimable** : un PDF à imprimer pour le terrain, à envoyer à quelqu'un qui n'a pas l'app, ou à archiver.
+**⬆️ Exporter → 🖨️ PDF imprimable** : un PDF à imprimer pour le terrain, à envoyer à quelqu'un qui n'a pas l'app, ou à archiver.
 
 - **Format** : A0 à A4, portrait ou paysage (A4 paysage au départ).
 - **Contenu** : tes annotations, l'image du plan et ses calques, les calques de données, un en-tête (titre et informations du plan).
@@ -1007,7 +1004,7 @@ Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap
 
 ### 🌍 Exporter vers une autre app (KMZ, GPX)
 
-**⬆️ → 💾 Exporter → 📡 Export externe** produit :
+**⬆️ Exporter → 🌍 Export externe** (tuile **KMZ** ou **GPX**) produit :
 - un **KMZ** : ton plan et tes annotations posés sur le globe, pour **Google Earth**, **OsmAnd**, **Locus** ou **Avenza** ;
 - un **GPX** : points et tracés, pour TopoDroid, OsmAnd, Strava… et réimportable dans MyKTAMap avec ses niveaux.
 
@@ -1095,6 +1092,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **📐 Adapter la taille des icônes au zoom** (activé au départ) ;
   - **❓ Bouton d'aide dans les fenêtres** (activé) : un ❓ dans le titre des fenêtres qui ont une page d'aide, qui ouvre directement la bonne page ;
   - **🔔 Notifications** : **Toutes**, **Essentielles** (au départ : plus de message pour confirmer un geste que tu viens de faire) ou **Silence** (seulement l'important : batterie faible, capteur refusé, erreurs). Les alertes du serveur et les fenêtres qui attendent une décision ne sont jamais coupées ;
+  - **➕ Boutons de zoom +/− sur les cartes** : affiche les boutons + et − sur le plan, le widget OSM de l'accueil et la Vue OSM. Désactivé par défaut : on zoome au doigt (pincer) ou à la molette ;
   - **🪟 Ancrer les panneaux d'outils au bouton** : les panneaux Tracés, Zones et Structures s'ouvrent collés à leur bouton au lieu d'être centrés (confortable sur grand écran, déconseillé sur téléphone) ;
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;
@@ -1681,6 +1679,8 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 - **🗺️ Plan en cours** : les calques de données du plan ouvert (absent depuis l'accueil, où aucun plan n'est chargé).
 - **📦 Importer un ZIP** : les calques d'un plan complet.
 - **📄 Importer un fichier JSON** : un fichier de données ou de session.
+- **🔄 Convertir session ↔ calques** : transforme ta session en **calque de données** à intégrer à un plan (voir « 🏗️ Créer ou modifier un plan »). Même choix par catégorie et par icône ; granularité **Basique** (un fichier par catégorie) ou **Fine** (un fichier par type). Le tracker n'est jamais converti : une dérive figée dans un plan tromperait ses futurs utilisateurs. Une fois converties, ces données ne se modifient plus depuis l'app.
+- **🔗 Fusionner des calques** : regroupe plusieurs calques de données (`.json` ou `.zip`, issus de plusieurs sessions) en un seul jeu par catégorie. Un aperçu donne les totaux et signale les identifiants de points en double (gardés tels quels).
 - **🔁 Convertir la résolution** : passe tes fichiers de données d'un ancien scan à un nouveau scan du même plan. Indique les deux résolutions (ou laisse l'app les lire dans les images) ; si les marges diffèrent, ajoute un **repère commun** (le même pilier sur les deux plans), ou **deux**, et l'échelle et la rotation sont déduites. Liaisons inter-plans, géoréférencement et échelle restent à refaire sur le nouveau plan.
 - **🧹 Dédoublonner les données** : retire les sommets identiques consécutifs des tracés, zones, structures et mesures, invisibles mais qui alourdissent les fichiers. Tu récupères un fichier `_dedup.json` et le compte de ce qui a été retiré ; les points ne sont jamais touchés.
 

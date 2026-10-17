@@ -1,23 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔕 check-notifs.js — garde-fou pré-commit BLOQUANT
+// check-notifs.js — garde-fou pré-commit BLOQUANT du réglage des notifications (Toutes / Essentielles / Silence)
 // =====================================================================
-// Réglage des notifications (17/09/2026, KARMA : « beaucoup de popups
-// d'information inutiles » — état des lieux docs/audits/2026-09-17_etat-
-// des-lieux-notifications.md, recos 1-6).
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Un toast contourne le goulot (un module se remet à dessiner son
-//      propre bandeau sans demander la permission) : le réglage ne le
-//      coupe pas, l'utilisateur croit le réglage cassé.
-//   2. Une erreur ou une alerte importante (batterie 10 %, capteurs
-//      refusés) disparaît en mode « Silence ».
-//   3. La vibration ne suit plus le réglage : « Essentiel » vibre encore
-//      sur « filtres restaurés ».
-//   4. Les toasts de restauration au chargement se dispersent à nouveau.
-// ON EXÉCUTE la décision (_decisionToast) extraite du goulot.
-// Usage : node scripts/check-notifs.js [racine]
+// 🩸 Ce qui régresse sans bruit :
+//   1. un module dessine son propre toast sans passer par le goulot (js/oomGuard.js) : le réglage ne le
+//      coupe pas, l'utilisateur croit le réglage cassé ;
+//   2. une alerte importante (batterie 10 %, capteurs refusés) ou une erreur disparaît en « Silence » ;
+//   3. la vibration ne suit plus le réglage (« Essentielles » vibre sur « filtres restaurés ») ;
+//   4. les toasts de restauration au chargement ne sont plus regroupés.
+// La décision (_decisionToast) est EXÉCUTÉE, extraite du goulot. Usage : node scripts/check-notifs.js [racine]
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -29,7 +21,7 @@ function t(msg, cond) { console.log((cond ? "✅ " : "❌ ") + msg); if (!cond) 
 
 const OOM = lire("js/oomGuard.js");
 
-// ---------- 1. La décision, exécutée ----------
+// ── 1. La décision, exécutée ──────────
 {
   const i = OOM.indexOf("function _decisionToast(");
   const j = OOM.indexOf("\n  }\n", i);
@@ -51,7 +43,7 @@ const OOM = lire("js/oomGuard.js");
     /const NOTIFS_DEFAUT = "essential";/.test(OOM) && /return NOTIFS_NIVEAUX\.indexOf\(v\) >= 0 \? v : NOTIFS_DEFAUT/.test(OOM) && /catch \(e\) \{ return NOTIFS_DEFAUT; \}/.test(OOM) && /if \(NOTIFS_NIVEAUX\.indexOf\(n\) < 0\) return false;/.test(OOM));
 }
 
-// ---------- 2. Un seul goulot ----------
+// ── 2. Un seul goulot ──────────
 {
   t("showToast passe par la décision avant tout rendu (et avant la file du splash)",
     /function _emettre\([\s\S]{0,200}_decisionToast\(niveauNotifs\(\), type, opts\)[\s\S]{0,300}_toastQueue\.push/.test(OOM));
@@ -62,13 +54,12 @@ const OOM = lire("js/oomGuard.js");
     /function _grouper\([\s\S]{0,1400}if \(vus\[m\]\) return false;[\s\S]{0,120}uniques\.join\(" · "\)/.test(OOM));
   const OSM = lire("js/osmView.js");
   t("🩸 le toast maison de la Vue OSM demande la permission au goulot", /toastAutorise\("info"\)\) return;/.test(OSM));
-  // aucun autre module ne dessine un .kta-toast à lui
   const autres = fs.readdirSync(path.join(ROOT, "js")).filter(function (f) { return f.endsWith(".js") && f !== "oomGuard.js"; })
     .filter(function (f) { return /createElement\("div"\)[\s\S]{0,120}kta-toast\b/.test(lire("js/" + f)); });
   t("🩸 aucun autre module ne fabrique un #kta-toast à lui (un seul goulot)" + (autres.length ? " — " + autres.join(", ") : ""), autres.length === 0);
 }
 
-// ---------- 3. Les sites marqués ----------
+// ── 3. Les sites marqués ──────────
 {
   t("batterie 10 % survit au mode Silence (important)", /battery\.toast\.warn10[\s\S]{0,200}\{ important: true \}/.test(lire("js/batteryGuard.js")));
   t("capteurs refusés survit au mode Silence (important)", /capteursRefuses"\), "warn", \{ important: true \}/.test(lire("js/compass.js")));
@@ -76,7 +67,7 @@ const OOM = lire("js/oomGuard.js");
     /filtresRestaures[^\n]*groupe: "chargement"/.test(lire("js/sessionPersist.js")) && (lire("js/main.js").match(/groupe: "chargement"/g) || []).length >= 2);
 }
 
-// ---------- 4. Le réglage ----------
+// ── 4. Le réglage ──────────
 {
   const IDX = lire("index.html"), HC = lire("js/homeConfig.js");
   t("⚙️ Configuration : un sélecteur à trois positions", /id="loaderNotifsSel"[\s\S]{0,400}value="all"[\s\S]{0,200}value="essential"[\s\S]{0,200}value="silent"/.test(IDX));

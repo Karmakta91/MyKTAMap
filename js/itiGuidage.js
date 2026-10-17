@@ -5,41 +5,20 @@
  */
 
 // =========================
-// 🪧 GUIDAGE DE L'ITINÉRAIRE — consignes « dans X m, tourner à gauche »
+// GUIDAGE DE L'ITINÉRAIRE — consignes « dans X m, tourner à gauche »
 // =========================
-// Étude et décisions KARMA : docs/ETUDE_GUIDAGE.md (fait foi).
-//
-// Ce module transforme un itinéraire calculé (road `type === "itinerary"`)
-// en CONSIGNES. Il ne calcule aucun chemin : il lit ce que le pathfinder a
-// rendu — `points` (le trajet sur tracé), `carrefours` (nœuds du graphe posés
-// sur le trajet, d'où partent au moins 3 directions) et `raccords` (le trajet
-// à vol d'oiseau entre chaque étape et le tracé où elle s'accroche).
-//
-// Règles (cf l'étude, §« Logique quand annoncer ») :
-//   • un croisement se dit, même pour aller tout droit ;
-//   • un virage SANS croisement ne se dit pas : tant qu'il n'y a qu'un chemin,
-//     suivre la galerie suffit (retour KARMA, relevé réel, 27/09/2026) ;
-//   • l'angle se mesure sur une fenêtre de quelques mètres, pas au segment
-//     voisin (le dessin à la main tremble) ;
-//   • les événements trop proches fusionnent en un seul ;
-//   • on parle TOUJOURS en mètres, jamais « la 3e à gauche ».
-//
-// API :
-//   window.ItiGuidage.construire(road, opts) → plan de guidage | null
-//       opts.scale (px/m) · opts.pois [{x,y,nom}] — sinon lus dans l'app
-//   window.ItiGuidage.projeter(guide, p, sMin, sMax) → { s, dist, x, y }
-//   window.ItiGuidage.texteAction(consigne) → libellé traduit de la manœuvre
-//   window.ItiGuidage.longueurRaccordsPx(road) → px à vol d'oiseau à compter
-//   window.ItiGuidage.alerteRaccord(road) → { distM, role, label } | null
-//   window.ItiGuidage.ouvrirFeuilleDeRoute(road)
-//   window.ItiGuidage.onPosition(pos)   — appelé par tracking.js à chaque pas
-//   window.ItiGuidage.rafraichir()      — recalcule l'affichage du bandeau
-//   window.ItiGuidage.etat()            — { visible, mode, icone, picto, principal, sous, fleche, urgence }
-//   window.ItiGuidage.getPref() / setPref("auto" | "jamais")
-//   window.ItiGuidage.agir("recalculer" | "ici" | "ignorer") — boutons d'un écart
-//
-// Convention de cap : degrés, 0 = haut du plan, sens horaire (= tracking.js).
-// Un écart positif entre cap de sortie et cap d'entrée = virage à DROITE.
+// Décisions : docs/ETUDE_GUIDAGE.md (fait foi). Transforme un itinéraire calculé (road `type === "itinerary"`)
+// en CONSIGNES sans calculer de chemin : lit `points` (trajet sur tracé), `carrefours` (nœuds d'où partent
+// ≥ 3 directions) et `raccords` (vol d'oiseau entre une étape et son tracé) rendus par le pathfinder.
+// Règles : un croisement se dit, même tout droit ; un virage SANS croisement ne se dit pas (un seul chemin,
+// suivre la galerie suffit) ; l'angle se mesure sur quelques mètres (le dessin tremble) ; les événements
+// proches fusionnent ; TOUJOURS en mètres, jamais « la 3e à gauche ».
+// Expose window.ItiGuidage : construire(road, {scale, pois}) · projeter(guide, p, sMin, sMax) → {s, dist, x, y}
+//   · texteAction · longueurRaccordsPx · alerteRaccord → {distM, role, label}|null · ouvrirFeuilleDeRoute ·
+//   onPosition(pos) (tracking.js, chaque pas) · rafraichir · etat() · getPref/setPref("auto"|"jamais") ·
+//   agir("recalculer"|"ici"|"ignorer").
+// ⚠️ Cap : degrés, 0 = haut du plan, sens horaire (= tracking.js) ; écart sortie − entrée > 0 = DROITE.
+// Garde-fou : scripts/check-guidage.js · Doc : docs/architecture/tracking.md §Guidage
 // =========================
 
 (function() {
@@ -47,11 +26,9 @@
 
   const G = {};
 
-  // ---- Seuils (mètres / degrés) — à caler sur des plans réels (étude §Inconnues)
+  // ── Seuils (mètres / degrés) ──
   const FENETRE_M        = 4;    // angle mesuré sur 4 m avant et après
-  // Croisements qui se suivent à ≤ 5 m l'un du précédent = UN carrefour (une
-  // zone). Même valeur que pathfinder.js > ZONE_ECART_M, qui mesure les sorties
-  // de la zone entière. KARMA : « 20 m c'est beaucoup trop, plutôt 5 ».
+  // Croisements à ≤ 5 m l'un du précédent = UN carrefour (zone) ; même valeur que pathfinder.js > ZONE_ECART_M.
   const ZONE_ECART_M     = 5;
   const PICTO_MIN_SORTIES = 4;   // décision 2:a : schéma du carrefour à partir de 4 galeries
   const TOUT_DROIT_DEG   = 25;
@@ -62,7 +39,7 @@
   const REPERE_M         = 5;
   const CARREFOUR_TOL_PX = 3;
   const RACCORD_MIN_M    = 1;    // en dessous : pas de consigne « rejoindre le tracé »
-  const RACCORD_ALERTE_M = 50;   // décision KARMA : au-delà, on avertit sans bloquer
+  const RACCORD_ALERTE_M = 50;   // au-delà, on avertit sans bloquer (décision produit)
 
   function _t(k, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
@@ -81,7 +58,7 @@
     return (d + 360) % 360;
   }
 
-  // ---- Géométrie du trajet (abscisse curviligne s, en px plan)
+  // ── Géométrie du trajet (abscisse curviligne s, en px plan) ──
   function _preparer(points) {
     const cum = [0];
     for (let i = 1; i < points.length; i++) {
@@ -104,7 +81,6 @@
     return { x: pts[lo].x + t * (pts[hi].x - pts[lo].x), y: pts[lo].y + t * (pts[hi].y - pts[lo].y) };
   }
 
-  // Projection d'un point sur le trajet, éventuellement restreinte à [sMin, sMax].
   function _projeter(ch, p, sMin, sMax) {
     const pts = ch.pts, cum = ch.cum;
     const lo = (typeof sMin === "number") ? sMin : -Infinity;
@@ -130,7 +106,7 @@
     return _cap(_pointA(ch, a), _pointA(ch, b));
   }
 
-  // ---- Points nommés servant de repères
+  // ── Points nommés servant de repères ──
   function _poisDeLApp() {
     const out = [];
     function _ajout(arr) {
@@ -163,9 +139,7 @@
     return vers > de ? "monter" : "descendre";
   }
 
-  // =========================
-  // CONSTRUCTION DES CONSIGNES
-  // =========================
+  // ── Construction des consignes ──
   function construire(road, opts) {
     opts = opts || {};
     if (!road || !Array.isArray(road.points) || road.points.length < 2) return null;
@@ -178,12 +152,8 @@
     function capIn(s)  { return _capEntre(ch, s - W, s); }
     function capOut(s) { return _capEntre(ch, s, s + W); }
 
-    // 1) Candidats : les croisements posés sur le trajet, ET RIEN D'AUTRE.
-    // 🩸 27/09/2026 (retour KARMA sur un relevé réel) — les virages francs du
-    // dessin SANS croisement étaient annoncés aussi (« le tracé ne montre pas
-    // toutes les ouvertures »). Sur un réseau de galeries, c'est du bruit :
-    // tant qu'il n'y a qu'un chemin, suivre la galerie suffit. Un virage ne se
-    // dit donc qu'à un croisement, là où il y a un choix à faire.
+    // 1) Candidats : les croisements du trajet, RIEN D'AUTRE. 🩸 Annoncer les virages du dessin sans croisement
+    // est du bruit sur un réseau de galeries : un virage ne se dit que là où il y a un choix.
     const cands = [];
     (Array.isArray(road.carrefours) ? road.carrefours : []).forEach(function(c) {
       const pr = _projeter(ch, c);
@@ -193,13 +163,9 @@
     });
     cands.sort(function(a, b) { return a.s - b.s; });
 
-    // 2) Grappes = carrefours. De proche en proche : un croisement rejoint le
-    // carrefour s'il est à ≤ ZONE_ECART_M du PRÉCÉDENT. Un grand carrefour est
-    // une zone de plusieurs croisements (décision 1:a) ; une seule consigne la
-    // couvre, mesurée de son entrée à sa sortie.
-    // 🩸 L'ancien piège du chaînage (deux virages à gauche = « demi-tour ») ne
-    // revient pas : seuls des croisements sont candidats désormais, et
-    // « demi-tour » exige que le trajet se replie (`replie` plus bas).
+    // 2) Grappes = carrefours : un croisement rejoint le carrefour s'il est à ≤ ZONE_ECART_M du PRÉCÉDENT.
+    // Une consigne couvre tout le carrefour, mesurée de son entrée à sa sortie. « Demi-tour » exige que le
+    // trajet se replie (`replie`), pas deux virages à gauche chaînés.
     const grappes = [];
     cands.forEach(function(c) {
       const g = grappes[grappes.length - 1];
@@ -217,23 +183,19 @@
       if (ci === null || co === null) return;
       const delta = _norm180(co - ci);
       const abs = Math.abs(delta);
-      // Consigne posée à l'ENTRÉE du carrefour (décision 4) : « maintenant »
-      // tombe avant d'être dans la salle, pas en son milieu.
+      // Consigne à l'ENTRÉE du carrefour : « maintenant » tombe avant d'être dans la salle.
       const rep = g[0];
       const pt = _pointA(ch, rep.s);
       const c = { s: rep.s, x: pt.x, y: pt.y, angle: Math.round(delta), carrefour: true };
-      // Sorties du carrefour ENTIER si le pathfinder a reconnu une zone
-      // (comparée par position : après un rechargement, les membres portent
-      // des copies, plus la même référence).
+      // Sorties du carrefour ENTIER si le pathfinder a reconnu une zone (comparée par position : après
+      // rechargement, les membres portent des copies).
       const zoneMembre = g.map(function(x) { return x.carrefour.zone; }).find(Boolean) || null;
       const sortiesCarrefour = (zoneMembre && Array.isArray(zoneMembre.sorties)) ? zoneMembre.sorties
         : (rep.carrefour.sorties || []);
       const cote = delta > 0 ? "droite" : "gauche";
 
-      // « Faire demi-tour » seulement si le trajet REVIENT SUR LUI-MÊME (une
-      // fenêtre avant et une fenêtre après se superposent). Un virage en
-      // épingle par une galerie de liaison a le même angle mais part ailleurs :
-      // c'est un virage.
+      // « Demi-tour » seulement si le trajet REVIENT SUR LUI-MÊME (fenêtres avant et après superposées) ; une
+      // épingle par une galerie de liaison a le même angle mais part ailleurs.
       const replie = Math.hypot(_pointA(ch, sIn - W).x - _pointA(ch, sOut + W).x,
                                 _pointA(ch, sIn - W).y - _pointA(ch, sOut + W).y) < W * 0.5;
       if (abs < TOUT_DROIT_DEG) {
@@ -246,7 +208,7 @@
         c.force = abs < LEGER_DEG ? "leger" : "franc";   // > 135° sans repli = virage franc aussi
       }
 
-      // Ambiguïté : une autre sortie trop proche de celle qu'on prend
+      // Ambiguïté : une autre sortie trop proche de celle qu'on prend.
       if (c.carrefour && c.type !== "demiTour") {
         const sorties = sortiesCarrefour.filter(function(sx) {
           return Math.abs(_norm180(sx - (ci + 180))) > REVERS_DEG;
@@ -265,8 +227,7 @@
           }
         }
       }
-      // Schéma du carrefour (décision 2:a) : les galeries en rayons, relatives
-      // au sens de marche (0° = devant). Pas de comptage : on les montre.
+      // Schéma du carrefour : galeries en rayons, relatives au sens de marche (0° = devant).
       if (sortiesCarrefour.length >= PICTO_MIN_SORTIES && c.type !== "demiTour") {
         let choisie = sortiesCarrefour[0], arrivee = sortiesCarrefour[0];
         sortiesCarrefour.forEach(function(sx) {
@@ -279,17 +240,15 @@
           arrivee: Math.round(_norm180(arrivee - ci))
         };
       }
-      // Nom du lieu (décision 3:a) : un point nommé DANS le carrefour ouvre la
-      // consigne (« À « Carrefour Raspail », tourner à gauche »). Le rayon suit
-      // la zone : le point nommé d'un grand carrefour tombait à 8–19 m des
-      // nœuds, hors des 5 m du repère ordinaire.
+      // Un point nommé DANS le carrefour ouvre la consigne (« À « Carrefour Nord », tourner à gauche »). Le rayon
+      // suit la zone : le nom d'un grand carrefour tombe souvent à 8-19 m des nœuds.
       const centre = zoneMembre || pt;
       c.lieu = _repereProche(pois, centre, (zoneMembre ? zoneMembre.r : 0) + repPx);
       c.repere = c.lieu ? null : _repereProche(pois, pt, repPx);
       consignes.push(c);
     });
 
-    // 3) Changements de niveau (le trajet porte le niveau de chaque point)
+    // 3) Changements de niveau (le trajet porte le niveau de chaque point).
     let dernier = null, sTransit = null;
     for (let i = 0; i < road.points.length; i++) {
       const lv = road.points[i].level;
@@ -309,7 +268,7 @@
       }
     }
 
-    // 4) Étapes intermédiaires et arrivée
+    // 4) Étapes intermédiaires et arrivée.
     const raccords = Array.isArray(road.raccords) ? road.raccords : [];
     raccords.forEach(function(r) {
       if (r.role !== "etape") return;
@@ -336,11 +295,8 @@
     };
   }
 
-  // =========================
-  // RACCORDS À VOL D'OISEAU (décision K : dessinés ET comptés)
-  // =========================
-  // Départ et arrivée : un aller simple. Étape intermédiaire hors tracé : il
-  // faut y aller ET en revenir, donc deux fois.
+  // ── Raccords à vol d'oiseau (dessinés ET comptés) ──
+  // Départ et arrivée : aller simple ; étape intermédiaire hors tracé : aller ET retour.
   function longueurRaccordsPx(road) {
     if (!road || !Array.isArray(road.raccords)) return 0;
     return road.raccords.reduce(function(acc, r) {
@@ -359,9 +315,8 @@
     });
     return pire;
   }
-  // Le texte dépend du bout qui est loin (test terrain 30/09) : « vérifie ta position »
-  // ne vaut que pour le DÉPART. Une étape posée loin des galeries (POI à 68 m d'une
-  // galerie) accusait à tort la position de l'équipe, que l'app venait de poser.
+  // Le texte dépend du bout qui est loin : « vérifie ta position » ne vaut que pour le DÉPART (une étape loin
+  // des galeries n'accuse pas la position de l'équipe).
   function texteAlerteRaccord(a) {
     if (!a) return "";
     const dist = _fmtM(a.distM);
@@ -370,9 +325,7 @@
                    : _t("guid.alerte.raccordLoinPoint", { dist: dist });
   }
 
-  // =========================
-  // TEXTES (traduits au rendu, jamais au chargement)
-  // =========================
+  // ── Textes (traduits au rendu, jamais au chargement) ──
   function texteAction(c) {
     if (!c) return "";
     let txt;
@@ -396,8 +349,7 @@
     return txt;
   }
 
-  // Les actions sont en minuscule : elles s'insèrent dans « Dans 40 m, … ».
-  // Seules, elles prennent la majuscule.
+  // Actions en minuscule (insérées dans « Dans 40 m, … ») ; seules, elles prennent la majuscule.
   function _majuscule(s) { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); }
 
   function _fmtM(m) {
@@ -406,9 +358,7 @@
 
   function _esc(s) { return window.ktaEsc(s); }
 
-  // =========================
-  // FEUILLE DE ROUTE (lot 1) — toutes les consignes, sans tracker
-  // =========================
+  // ── Feuille de route : toutes les consignes, sans tracker ──
   function ouvrirFeuilleDeRoute(road) {
     const guide = construire(road);
     if (!guide) return;
@@ -438,10 +388,8 @@
       }
       lignes += _ligne(n, c, txt, c.picto ? _pictoSvg(c.picto, 28) : _icone(c));
     });
-    // 🌀 Itinéraire inter-plans (01/10/2026) : la feuille s'arrête au portail —
-    // une ligne par plan suivant dit ce qui attend derrière (`road.suite`,
-    // posée par interPlanRoute). Pas de consignes détaillées : elles se
-    // calculent à l'échelle du plan suivant, une fois l'étape tracée là-bas.
+    // Itinéraire inter-plans : la feuille s'arrête au portail, une ligne par plan suivant (`road.suite`,
+    // interPlanRoute). Les consignes détaillées se calculent sur le plan suivant, une fois l'étape tracée.
     (Array.isArray(road.suite) ? road.suite : []).forEach(function(sv) {
       n++;
       const nb = sv.croisements || 0;
@@ -484,10 +432,8 @@
     });
   }
 
-  // Schéma d'un carrefour (décision 2:a) — « vue d'intersection » des GPS :
-  // chaque galerie est un rayon, celle d'où l'on vient en bas, celle à prendre
-  // en doré. Uniquement des nombres dans le SVG (angles calculés ici) : rien
-  // qui vienne de l'utilisateur, d'où l'innerHTML sans risque côté appelants.
+  // Schéma d'un carrefour (« vue d'intersection ») : un rayon par galerie, l'arrivée en bas, la sortie en doré.
+  // 🔒 Que des nombres calculés ici dans le SVG, rien de l'utilisateur : innerHTML sans risque.
   function _pictoSvg(p, taille) {
     if (!p || !Array.isArray(p.rayons)) return "";
     const t = taille || 40, c = t / 2, L = t * 0.44;
@@ -534,26 +480,17 @@
            '</li>';
   }
 
-  // =========================
-  // 🪧 BANDEAU EN DIRECT (lot 2)
-  // =========================
-  // Décisions KARMA (docs/ETUDE_GUIDAGE.md) :
-  //   1:c  automatique dès qu'un itinéraire coexiste avec un tracker actif OU
-  //        une position confirmée (« Je suis ici », 01/10/2026) ; réglage
-  //        Auto / Jamais (tuile 🪧 du menu Tracker) ; la croix = « Jamais ».
+  // ── Bandeau en direct ──
+  // Décisions (docs/ETUDE_GUIDAGE.md) :
+  //   1:c  automatique dès qu'un itinéraire coexiste avec un tracker actif OU une position confirmée ;
+  //        réglage Auto / Jamais (tuile 🪧 du menu Tracker) ; la croix = « Jamais ».
   //   2:b  prochaine consigne + « puis… » ; toucher = feuille de route.
-  //   3/L  toujours en mètres ; sans navigation intelligente : « ~ » + arrondi
-  //        10 m + UNE suggestion de l'activer.
-  //   D/E/F  écart ou demi-tour → [Recalculer d'ici] [Je suis ici] [Ignorer],
-  //        jamais de recalcul automatique ; sans navigation intelligente,
-  //        « Je suis ici » en premier ; « Ignorer » = silence jusqu'au retour
-  //        sur le chemin.
-  //   I/J  hors tracé au départ → « Rejoindre le tracé » + flèche relative au
-  //        téléphone vers le point le plus proche du trajet.
-  //
-  // Alimenté par tracking.js > updateMap (chaque pas / recalage) et par un
-  // battement d'1 s (apparition / disparition quand l'itinéraire ou le suivi
-  // changent). Le calcul des consignes n'est refait QUE si la road change.
+  //   3/L  toujours en mètres ; sans navigation intelligente : « ~ », arrondi 10 m, UNE suggestion de l'activer.
+  //   D/E/F  écart ou demi-tour → [Recalculer d'ici] [Je suis ici] [Ignorer], jamais de recalcul automatique ;
+  //        sans navigation intelligente « Je suis ici » d'abord ; « Ignorer » = silence jusqu'au retour.
+  //   I/J  hors tracé au départ → « Rejoindre le tracé » + flèche relative au téléphone.
+  // Alimenté par tracking.js > updateMap (pas, recalages) et un battement d'1 s ; les consignes ne sont
+  // recalculées QUE si la road change.
   const LS_PREF   = "myktamap_guidage_v1";                 // "auto" | "jamais"
   const LS_ASTUCE = "myktamap_guidage_astuce_smartnav";    // suggestion déjà faite
   const MAINTENANT_M = 8;      // en dessous : « Maintenant : … »
@@ -581,21 +518,18 @@
     return roads.find(function(r) { return r && r.type === "itinerary" && !r._preview; }) || null;
   }
   function _smartNav() { return !!(window.APP_CONFIG && window.APP_CONFIG.smartNav === true); }
-  // Seuils de présence sur le trajet : avec la navigation intelligente la
-  // position est calée sur les galeries, donc serrée ; sans, le PDR dérive.
+  // Présence sur le trajet : serrée avec la navigation intelligente (position calée), large sans (le PDR dérive).
   function _seuils() {
-    // demiM / demiPas : recul sur le trajet qui fait parler de demi-tour, et
-    // sur combien de positions de suite. Sans calage, 10 m ne suffisaient pas :
-    // mesuré sur un trajet réel bruité à 4 m, 3 faux « demi-tour » en 350 m.
+    // demiM / demiPas : recul qui fait parler de demi-tour, sur combien de positions de suite. Sans calage,
+    // 10 m ne suffisent pas (faux « demi-tour » sur un trajet bruité à 4 m).
     return _smartNav() ? { surM: 3, horsM: 6, pas: 3, demiM: 10, demiPas: 3 }
                        : { surM: 8, horsM: 15, pas: 5, demiM: 20, demiPas: 5 };
   }
   function _suiviActif() {
     return !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
   }
-  // 01/10/2026 (KARMA 1:a) — guidage SANS suivi : on avance de plaque en plaque
-  // (« 📍 Je suis ici »). Il faut alors une position CONFIRMÉE : sans elle, la
-  // position vaut le départ du plan et le bandeau donnerait de fausses consignes.
+  // Guidage SANS suivi (de plaque en plaque) : il faut une position CONFIRMÉE, sinon la position vaut le
+  // départ du plan et les consignes sont fausses.
   function _positionConfirmee() {
     if (typeof window.getTrackingPositionEtat !== "function") return false;
     const e = window.getTrackingPositionEtat();
@@ -641,10 +575,7 @@
     _el.querySelector(".kta-guid-corps").addEventListener("click", function() {
       if (_road) ouvrirFeuilleDeRoute(_road);
     });
-    // 01/10/2026 (KARMA 2:a) — la croix ÉTEINT le guidage (réglage « Jamais »,
-    // la tuile 🪧 du menu Tracker passe à off) ; la tuile le rallume aussitôt.
-    // Avant, elle masquait seulement CET itinéraire, et la tuile ne savait pas
-    // lever ce masquage : il fallait recalculer l'itinéraire pour le retrouver.
+    // La croix ÉTEINT le guidage (réglage « Jamais », tuile 🪧 à off) ; la tuile le rallume.
     _el.querySelector(".kta-guid-fermer").addEventListener("click", function() {
       setPref("jamais");
       _toast(_t("guid.toast.masque"), "info");
@@ -676,15 +607,14 @@
     if (nom === "recalculer") {
       _alerte = null; _horsCompte = 0; _demiCompte = 0;
       if (_road && _road.urgence && window.SortieUrgence && typeof window.SortieUrgence.relancerDepuis === "function") {
-        // Décision G : en sortie d'urgence, la sortie la plus proche D'ICI.
+        // En sortie d'urgence, la sortie la plus proche D'ICI.
         if (pos) window.SortieUrgence.relancerDepuis(pos);
       } else if (pos && typeof window.itineraireReplanifierDepuis === "function") {
         window.itineraireReplanifierDepuis(pos.x, pos.y);
       }
     } else if (nom === "ici") {
       _alerte = null; _horsCompte = 0; _demiCompte = 0;
-      // Le picker partagé RECALE le tracker : la replanification existante
-      // (interfaceItineraire > _onTrackerRecale) prend le relais.
+      // Le picker partagé RECALE le tracker : la replanification (interfaceItineraire > _onTrackerRecale) suit.
       if (typeof window.ktaDemanderPositionCarte === "function") {
         window.ktaDemanderPositionCarte(function() {}, { icone: "📍", texte: _t("guid.pick") });
       }
@@ -696,9 +626,8 @@
     _maj();
   }
 
-  // Projection de la position sur le trajet, en préférant l'avancée : sur un
-  // trajet qui repasse au même endroit (aller-retour vers un cul-de-sac), la
-  // fenêtre part juste derrière la dernière position connue.
+  // Projection en préférant l'avancée : sur un aller-retour vers un cul-de-sac, la fenêtre part juste derrière
+  // la dernière position connue.
   function _progression(pos) {
     const e = _guide.echelle;
     const S = _seuils();
@@ -722,7 +651,7 @@
     const distM = pr.dist / e;
     const surTrajet = distM <= S.surM;
 
-    // Jamais encore sur le trajet : on le rejoint (décisions I/J)
+    // Jamais encore sur le trajet : on le rejoint.
     if (!_dejaSurTrajet && !surTrajet) {
       return { mode: "rejoindre", distM: distM, cible: { x: pr.x, y: pr.y }, pos: pos };
     }
@@ -742,8 +671,8 @@
     if (!_alerte && _demiCompte >= S.demiPas) _alerte = "demi";
 
     const cs = _guide.consignes;
-    // La consigne reste affichée jusqu'à ce qu'on l'ait FRANCHIE (0,5 m après
-    // le point) : sinon « Maintenant » disparaissait juste avant le croisement.
+    // 🩸 Consigne affichée jusqu'à être FRANCHIE (0,5 m après le point), sinon « Maintenant » disparaît avant
+    // le croisement.
     let k = cs.findIndex(function(c) { return c.s > _sPrev - 0.5 * e; });
     if (k < 0) k = cs.length - 1;
     return {
@@ -765,8 +694,8 @@
       icone = "⬆";
       principal = _t("guid.bandeau.rejoindre", { dist: _fmtDirect(r.distM) });
       sous = _t("guid.bandeau.rejoindreSous");
-      // Flèche relative au téléphone (décision J) : cap vers le tracé moins
-      // le cap de marche. Sans boussole, pas de flèche — elle mentirait.
+      // Flèche relative au téléphone : cap vers le tracé moins cap de marche. Sans boussole, pas de flèche (elle
+      // mentirait).
       const cap = (typeof window.getPlanRelHeading === "function") ? window.getPlanRelHeading() : null;
       if (typeof cap === "number" && isFinite(cap)) fleche = Math.round(_norm180(_cap(r.pos, r.cible) - cap));
       else icone = "🪢";
@@ -776,9 +705,8 @@
       sous = (r.mode === "ecart")
         ? _t("guid.ecart.detail", { dist: _fmtDirect(r.distM) })
         : _t("guid.demi.detail", { dist: _fmtDirect(r.reculM) });
-      // E : sans navigation intelligente la position est douteuse → se
-      // resituer d'abord. G : en urgence, « Recalculer » vise la sortie la
-      // plus proche d'ici.
+      // Sans navigation intelligente la position est douteuse → se resituer d'abord. En urgence, « Recalculer »
+      // vise la sortie la plus proche.
       const recalc = { id: "recalculer", label: _t(urgence ? "guid.btn.sortieProche" : "guid.btn.recalculer") };
       const ici = { id: "ici", label: _t("guid.btn.jeSuisIci") };
       actions = _smartNav() ? [recalc, ici] : [ici, recalc];
@@ -827,7 +755,7 @@
     const corps = el.querySelector(".kta-guid-corps");
     corps.title = _t("guid.bandeau.ouvrir");
     const fermer = el.querySelector(".kta-guid-fermer");
-    // Décision C : pas de croix en sortie d'urgence.
+    // Pas de croix en sortie d'urgence.
     fermer.style.display = urgence ? "none" : "";
     fermer.title = _t("guid.bandeau.fermer");
     fermer.setAttribute("aria-label", _t("guid.bandeau.fermer"));
@@ -841,8 +769,7 @@
     const road = _roadActive();
     if (road !== _road) _reinitialiser(road);
     const urgence = !!(road && road.urgence);
-    // En sortie d'urgence le guidage s'affiche même réglé sur « Jamais » :
-    // c'est l'utilisateur qui vient de demander le chemin vers la sortie.
+    // En sortie d'urgence, affiché même réglé sur « Jamais » : l'utilisateur vient de demander le chemin.
     const voulu = !!(road && _guide && (_suiviActif() || _positionConfirmee()) &&
                      (urgence || getPref() === "auto"));
     if (!voulu) { _cacher(); return; }
@@ -852,7 +779,7 @@
     if (!r) { _cacher(); return; }
     _rendu(r);
 
-    // Décision L : UNE suggestion, la première fois, si les mètres sont approximatifs.
+    // UNE suggestion, la première fois, si les mètres sont approximatifs.
     if (!_smartNav()) {
       let dejaDit = false;
       try { dejaDit = localStorage.getItem(LS_ASTUCE) === "1"; } catch(e) {}
@@ -877,9 +804,7 @@
     else _demarrer();
   }
 
-  // =========================
-  // EXPORT
-  // =========================
+  // ── Export ──
   G.construire           = construire;
   G.projeter             = function(guide, p, sMin, sMax) { return guide ? _projeter(guide.ch, p, sMin, sMax) : null; };
   G.pointA               = function(guide, s) { return guide ? _pointA(guide.ch, s) : null; };
@@ -892,7 +817,6 @@
   G.texteAlerteRaccord   = texteAlerteRaccord;
   G.ouvrirFeuilleDeRoute = ouvrirFeuilleDeRoute;
   G.RACCORD_ALERTE_M     = RACCORD_ALERTE_M;
-  // Lot 2 — bandeau en direct
   G.onPosition           = onPosition;          // tracking.js > updateMap
   G.rafraichir           = function() { _maj(); };
   G.etat                 = function() { return Object.assign({}, _etat); };   // lu par l'écran XL

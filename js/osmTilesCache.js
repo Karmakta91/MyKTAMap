@@ -5,47 +5,19 @@
  */
 
 // =========================
-// OSM TILES CACHE — Cache offline persistant des tuiles OpenStreetMap (v1.43.0)
+// OSM TILES CACHE — cache hors ligne persistant des tuiles OpenStreetMap
 // =========================
-// Permet à l'user de télécharger une fois les tuiles d'une zone (typiquement
-// la bbox d'un plan georef) pour pouvoir consulter la Vue OSM SANS réseau
-// par la suite. Cas d'usage clé : sortie terrain Mode Secours avec cellular
-// faible/coupé — on a quand même la carte OSM en fond.
-//
-// ARCHITECTURE :
-//   • Stockage : IndexedDB store "myktamap_osm_tiles_v1"
-//                Schéma : { key: "z/x/y", blob: Blob, addedAt: ISO }
-//   • Granularité : GLOBALE (cache partagé entre tous les plans —
-//                   tile.openstreetmap.org sert les mêmes tuiles pour
-//                   tout le monde, pas de duplication par planId).
-//   • Interception : Service Worker (sw.js) — si URL matche
-//                    tile.openstreetmap.org → check IDB → sert le blob
-//                    en priorité, fallback fetch réseau.
-//   • UI : bouton "💾 Cacher pour offline" dans bandeau Vue OSM
-//          (modale + widget Home) — toast progress + stats persistantes.
-//
-// PRIVACY :
-//   • Tuiles téléchargées via le navigateur (= comme une consultation
-//     normale de la carte). OSM ne sait pas que c'est pour "cacher
-//     offline", c'est juste une suite de GET tile sur quelques secondes.
-//   • Le cache IDB est local, jamais transmis ailleurs.
-//
-// ⚠️ POLITIQUE D'USAGE OSM :
-//   https://operations.osmfoundation.org/policies/tiles/
-//   Pré-cache acceptable pour usage personnel modéré (< 200 tuiles à la
-//   fois). On limite donc à 200 tuiles par opération (cf MAX_TILES_PER_CACHE).
-//
-// API publique :
-//   window.OsmTilesCache = {
-//     init,                              // ouvre la connexion IDB
-//     cacheVisibleTiles(map, opts),       // télécharge les tuiles visibles + zoom ±1
-//     getCachedTile(z, x, y),             // récupère blob d'une tuile cached
-//     hasCachedTile(z, x, y),             // boolean check rapide
-//     getStats(),                         // { count, sizeBytes }
-//     hasCacheForBbox(bbox, zoom),        // au moins quelques tuiles pour cette bbox ?
-//     clear(),                            // vide le cache
-//     enumerateTilesForBbox(bbox, zoom)   // liste les {z,x,y} pour une bbox/zoom
-//   }
+// Télécharger une fois les tuiles d'une zone (bbox d'un plan géoréférencé) pour ouvrir la Vue OSM SANS réseau
+// (sortie terrain, Mode Secours en réseau faible).
+// IndexedDB "myktamap_osm_tiles_v1", { key: "z/x/y", blob, addedAt } ; cache GLOBAL (tuiles identiques pour
+// tous les plans). sw.js sert la tuile en IDB en priorité pour tile.openstreetmap.org, sinon le réseau.
+// 🔒 Téléchargement par le navigateur comme une consultation normale ; le cache reste local.
+// ⚠️ Politique d'usage OSM (https://operations.osmfoundation.org/policies/tiles/) : 200 tuiles max par
+// opération (MAX_TILES_PER_CACHE).
+// Expose window.OsmTilesCache : init, cacheVisibleTiles(map, opts) (tuiles visibles, zoom ±1),
+//   getCachedTile / hasCachedTile(z, x, y), getStats() → { count, sizeBytes }, hasCacheForBbox(bbox, zoom?),
+//   clear, enumerateTilesForBbox(bbox, zoom), formatBytes.
+// Doc : docs/architecture/vue-osm.md
 // =========================
 
 (function() {
@@ -56,15 +28,12 @@
   const IDB_STORE      = "tiles";
 
   const TILE_URL_PATTERN = /\/(\d+)\/(\d+)\/(\d+)\.png(\?.*)?$/;
-  // Limite politique d'usage OSM (https://operations.osmfoundation.org/policies/tiles/)
-  // Max ~200 tuiles par cache one-shot pour rester respectueux.
+  // Politique d'usage OSM : ~200 tuiles par opération.
   const MAX_TILES_PER_CACHE = 200;
 
   let _dbPromise = null;
 
-  // ============================================================
-  // IDB CONNECTION
-  // ============================================================
+  // ── Connexion IDB ──
   function _openDB() {
     if (_dbPromise) return _dbPromise;
     _dbPromise = new Promise(function(resolve, reject) {
@@ -93,9 +62,7 @@
     }
   }
 
-  // ============================================================
-  // GET / PUT / DELETE
-  // ============================================================
+  // ── Lecture / écriture / suppression ──
   async function getCachedTile(z, x, y) {
     try {
       const db = await _openDB();
@@ -144,9 +111,7 @@
     } catch(e) { return false; }
   }
 
-  // ============================================================
-  // STATS
-  // ============================================================
+  // ── Statistiques ──
   async function getStats() {
     try {
       const db = await _openDB();
@@ -157,8 +122,7 @@
         let count = 0;
         let sizeBytes = 0;
         countReq.onsuccess = function() { count = countReq.result || 0; };
-        // Iterate pour calculer la taille totale (lent si beaucoup de tuiles,
-        // mais OK car on cap à ~200-300 tuiles max).
+        // Parcours pour la taille totale (lent si beaucoup de tuiles, borné par le plafond).
         const curReq = store.openCursor();
         curReq.onsuccess = function(e) {
           const cur = e.target.result;
@@ -176,10 +140,7 @@
     } catch(e) { return { count: 0, sizeBytes: 0 }; }
   }
 
-  // ============================================================
-  // ENUMERATE TILES FOR BBOX/ZOOM (slippy map tile names)
-  // ============================================================
-  // https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+  // ── Tuiles d'une bbox (https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames) ──
   function _lat2tileY(lat, z) {
     const r = lat * Math.PI / 180;
     return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z));
@@ -188,7 +149,7 @@
     return Math.floor((lng + 180) / 360 * Math.pow(2, z));
   }
 
-  // Retourne [{z, x, y}] couvrant la bbox au zoom donné.
+  // → [{z, x, y}] couvrant la bbox au zoom donné.
   function enumerateTilesForBbox(bbox, zoom) {
     if (!bbox || typeof bbox.getNorth !== "function") return [];
     const z = Math.max(0, Math.min(19, Math.floor(zoom)));
@@ -205,15 +166,9 @@
     return tiles;
   }
 
-  // ============================================================
-  // CACHE VISIBLE TILES (= action principale du bouton 💾)
-  // ============================================================
-  // Énumère les tuiles couvrant la bbox actuelle de la map, sur la
-  // plage de zoom [zoomActuel-1, zoomActuel, zoomActuel+1] (= 3 niveaux),
-  // capés à MAX_TILES_PER_CACHE. Pour chaque : fetch HTTP → blob → IDB.
-  //
-  // Callbacks options.onProgress(done, total) pour UI progress bar.
-  // Retourne : { cached: N, skipped: M, failed: K, totalRequested: T }
+  // ── Cacher les tuiles visibles (bouton 💾) ──
+  // bbox actuelle sur [zoom-1, zoom, zoom+1], plafonnée à MAX_TILES_PER_CACHE : fetch → blob → IDB.
+  // opts.onProgress(done, total) ; → { cached, skipped, failed, totalRequested }.
   async function cacheVisibleTiles(map, opts) {
     opts = opts || {};
     if (!map || typeof map.getBounds !== "function") {
@@ -222,10 +177,8 @@
     const bbox = map.getBounds();
     const curZ = Math.round(map.getZoom() || 14);
 
-    // 3 niveaux : actuel ±1
     const zooms = [curZ - 1, curZ, curZ + 1].filter(function(z) { return z >= 0 && z <= 19; });
 
-    // Collecte tous les tiles + dedup
     const seen = {};
     const allTiles = [];
     for (const z of zooms) {
@@ -239,7 +192,6 @@
       }
     }
 
-    // Cap MAX_TILES_PER_CACHE (politique OSM)
     const limited = allTiles.slice(0, MAX_TILES_PER_CACHE);
     const total = limited.length;
     if (typeof opts.onProgress === "function") opts.onProgress(0, total);
@@ -248,7 +200,6 @@
     for (let i = 0; i < limited.length; i++) {
       const t = limited[i];
       try {
-        // Skip si déjà en cache
         const existing = await getCachedTile(t.z, t.x, t.y);
         if (existing) {
           skipped++;
@@ -274,27 +225,16 @@
     };
   }
 
-  // ============================================================
-  // HAS CACHE FOR BBOX (= au moins 1 tuile cachée pour cette zone ?)
-  // ============================================================
-  // Utilisé par le gate _isOnline() de Vue OSM : si offline mais cache
-  // présent pour la bbox du plan, autoriser ouverture en mode cache.
-  // 🐛 v1.43.6 — Bug v1.43.2 (KARMA "mode avion → icône OSM disparaît") :
-  // l'ancienne version testait UNIQUEMENT au zoom hardcoded `14`. Or
-  // cacheVisibleTiles cache à [curZ-1, curZ, curZ+1] avec curZ = zoom
-  // courant de la map au moment du clic 💾. Si l'user clic 💾 à zoom 16,
-  // on cache 15/16/17 — JAMAIS 14 → `hasCacheForBbox(bbox, 14)` retournait
-  // false → flag _planHasCachedTiles=false → bouton 🌍 disparu offline.
-  //
-  // Fix : 2 modes
-  //  - zoom fourni → ancien comportement (5 samples au zoom donné)
-  //  - zoom omis → "any-zoom" : test le centre du bbox sur tous les zooms
-  //    [10, 18]. 9 lookups IDB ≈ 50ms, transparent. Stop dès le 1er hit.
+  // ── Au moins une tuile en cache pour cette zone ? ──
+  // Lu par le test hors ligne de la Vue OSM (cache présent → ouverture en mode cache).
+  // 🩸 Le zoom du cache est celui du clic 💾 (±1) : tester un zoom fixe rendrait faux et ferait disparaître
+  // le bouton 🌍 hors ligne. zoom fourni → 5 échantillons à ce zoom ; omis → centre de la bbox sur [10, 18]
+  // (9 lectures IDB au pire, arrêt au premier trouvé).
   async function hasCacheForBbox(bbox, zoom) {
     if (!bbox || typeof bbox.getCenter !== "function") return false;
     const center = bbox.getCenter();
     if (typeof zoom === "number") {
-      // Mode zoom spécifique — 5 samples (centre + 4 coins)
+      // Centre + 4 coins.
       const samples = [
         { lat: center.lat, lng: center.lng },
         { lat: bbox.getNorth(), lng: bbox.getWest() },
@@ -309,9 +249,6 @@
       }
       return false;
     }
-    // Mode "any-zoom" — test le centre du plan sur tous les zooms typiques.
-    // 9 lookups IDB worst-case. Robuste indépendamment du zoom auquel
-    // l'user a cliqué 💾.
     for (let z = 10; z <= 18; z++) {
       const x = _lng2tileX(center.lng, z);
       const y = _lat2tileY(center.lat, z);
@@ -320,9 +257,7 @@
     return false;
   }
 
-  // ============================================================
-  // FORMAT BYTES (helper UI)
-  // ============================================================
+  // ── Format des tailles ──
   function formatBytes(bytes) {
     if (!bytes) return "0 B";
     const k = 1024;
@@ -331,9 +266,7 @@
     return (bytes / k / k).toFixed(2) + " MB";
   }
 
-  // ============================================================
-  // EXPORTS
-  // ============================================================
+  // ── Exports ──
   window.OsmTilesCache = {
     init:                  init,
     cacheVisibleTiles:     cacheVisibleTiles,

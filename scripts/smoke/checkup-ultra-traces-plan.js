@@ -1,31 +1,19 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🚀 checkup-ultra-traces-plan.js — checkup de RELEASE
+// checkup-ultra-traces-plan.js — checkup de release : les réglages ULTRA agissent sur les tracés du PLAN
 // =====================================================================
-// DEUX RÉGLAGES ULTRA NE FAISAIENT RIEN SUR LES TRACÉS D'UN PLAN.
-//
-// « Ne rendre que ce qui est à l'écran » (viewportCull) et « Simplifier les
-// tracés au dézoom » (decim) ne parcouraient que `roadsData` de road.js — les
-// annotations de l'utilisateur. Les tracés d'un plan sont créés par utils.js
-// (calques de données) et n'y entrent jamais. Mesuré le 26/09/2026 sur un
-// relevé de 912 tracés, cull ON à z=0 : 895 polylines sur la carte, 38 dans
-// l'écran.
-//
-// Ce harnais mesure, sur le vrai plan, ce qui est RÉELLEMENT sur la carte
-// (`polyline._map`), pas ce que le code croit avoir fait :
-//   1. réglages coupés : tous les tracés du plan sont sur la carte ;
-//   2. viewportCull : seuls ceux qui touchent l'écran y restent, et un
-//      déplacement fait entrer les nouveaux ;
-//   3. un calque DÉCOCHÉ reste décoché (le réglage ne le rallume pas) ;
-//   4. decim au dézoom : moins de sommets dessinés, `entry.points` intact ;
-//      rezoomé, la géométrie complète revient ;
+// 🩸 viewportCull (« ne rendre que l'écran ») et decim (« simplifier au dézoom ») ne voient pas les tracés
+// du plan s'ils ne parcourent que `roadsData` (road.js, annotations utilisateur) : ceux du plan sont créés
+// par utils.js (calques de données, `window._ktaDataPolylines`) et n'y entrent jamais.
+// Mesure ce qui est RÉELLEMENT sur la carte (`polyline._map`), pas ce que le code croit avoir fait :
+//   1. réglages coupés : tous les tracés sur la carte ;
+//   2. viewportCull : seuls ceux qui touchent l'écran restent, un déplacement fait entrer les nouveaux
+//      (ce passage échoue si le cull ignore les calques de données) ;
+//   3. un calque DÉCOCHÉ reste décoché ;
+//   4. decim au dézoom : moins de sommets dessinés, `entry.points` intact ; rezoomé, tout revient ;
 //   5. réglages recoupés : tout revient.
-// Falsification : le passage 2 échoue sur le code d'avant le 29/09 (tous
-// les tracés restent sur la carte).
-//
 // Usage : node scripts/smoke/checkup-ultra-traces-plan.js
-// =====================================================================
 "use strict";
 
 const { chromium } = require("playwright");
@@ -79,7 +67,6 @@ function inf(m) { console.log("  •  " + m); }
     }, 90000);
     await page.waitForTimeout(3000);
 
-    // Mesures faites DANS la page : ce qui est sur la carte, pas ce qu'on croit.
     const mesurer = function () {
       return page.evaluate(function () {
         const L0 = window._ktaDataPolylines.filter(function (e) { return e && e.polyline && Array.isArray(e.points); });
@@ -130,8 +117,7 @@ function inf(m) { console.log("  •  " + m); }
     else pb("viewportCull sans effet sur les tracés du plan : " + m2.surCarte + "/" + m2.total);
     if (m2.manquants === 0) ok("aucun tracé visible dans l'écran n'a été retiré");
     else pb(m2.manquants + " tracé(s) de l'écran retiré(s) à tort");
-    // Se poser sur un tracé RÉEL, loin de la première vue (une zone vide ne
-    // prouverait rien : 0 tracé attendu, 0 trouvé).
+    // Se poser sur un tracé existant, loin de la première vue : une zone vide ne prouverait rien
     await page.evaluate(async function () {
       const H = window.APP_CONFIG.imageHeight;
       const c0 = window.map.getCenter();

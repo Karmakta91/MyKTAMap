@@ -1,83 +1,22 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
- *
- * MODULE : secoursPhotos.js (introduit en v1.24.0 — Phase 3 Mode EXÉCUTION)
- * =========================================================================
- *
- * Backend de stockage des photos attachées aux étapes d'un parcours d'équipe
- * Mode Secours en exécution terrain. Pattern similaire à photos.js (POI)
- * mais avec key composite scenarioId + equipeId + stepIdx au lieu de
- * planId + pointId.
- *
- * Choix design KARMA validé : store IDB DÉDIÉ (myktamap_secours_photos)
- * séparé du store POI (myktamap_photos) pour :
- *  - séparation propre (cleanup indépendant, compteurs distincts)
- *  - cohérence sémantique (photos de mission vs photos d'annotation perm)
- *  - sécurité d'évolution (Phase 3 peut bouger le schema sans toucher au POI)
- *
- * Architecture :
- *   - 1 Database IndexedDB : "myktamap_secours_photos"
- *   - 1 Object store : "photos" (keyPath = photoId)
- *   - 3 Index :
- *       • "by_scenario"             : scenarioId
- *       • "by_scenario_equipe"      : [scenarioId, equipeId]
- *       • "by_scenario_equipe_step" : [scenarioId, equipeId, stepIdx]
- *
- * Format d'un record :
- *   {
- *     id:         "a1b2c3d4",        // photoId (short UUID-ish, unique)
- *     scenarioId: "secours_1234",    // scenario owner
- *     equipeId:   "G_5678",          // équipe owner (ou "_notes_libres" pour mode secouriste)
- *     stepIdx:    2,                 // étape index dans le parcours (ou pour _notes_libres,
- *                                    //   l'id de la note tronqué pour fit Number — voir note bas)
- *     blob:       Blob,              // binary JPEG/PNG
- *     mime:       "image/jpeg",      // MIME type
- *     size:       234567,            // bytes (= blob.size, cache)
- *     createdAt:  1700000000000,     // Date.now() à l'ajout
- *     meta:       { caption: "..." } // metadata user optionnelle
- *   }
- *
- * ⚠️ Note sur stepIdx pour mode "secouriste libre" :
- *   Les notes libres n'ont pas d'index numérique stable mais un id string
- *   (genre "note_1700000000_abc"). Pour rester compatible avec l'index
- *   composite IDB qui requiert un type cohérent, on stocke equipeId =
- *   "_notes_libres" et stepIdx = -1 (sentinel). Le rapprochement avec la
- *   note exacte se fait via meta.noteId stocké dans le record. Plus
- *   simple que de migrer le schema pour 1 cas d'usage.
- *
- * Limites :
- *   - MAX_PHOTOS_PER_ETAPE = 5 (cohérent avec POI photos, max ergonomie 1 grille)
- *   - Compression auto à l'ajout : max 1920 px côté long, JPEG 0.85
- *     → ~200-400 Ko par photo (vs 3-5 MB raw smartphone)
- *
- * API publique (window.MyKTAMapSecoursPhotos) :
- *   - init()                                              → Promise<IDBDatabase|null>
- *   - isAvailable()                                       → boolean
- *   - generateId()                                        → string
- *   - compressBlob(blob, opts)                            → Promise<Blob>
- *   - addPhoto(scenarioId, equipeId, stepIdx, blob, opts) → Promise<photoId>
- *   - getPhoto(photoId)                                   → Promise<record|null>
- *   - getBlob(photoId)                                    → Promise<Blob|null>
- *   - getObjectUrl(photoId)                               → Promise<string|null>
- *   - getPhotosForEtape(scenarioId, equipeId, stepIdx)    → Promise<Array<record>>
- *   - getPhotosForEquipe(scenarioId, equipeId)            → Promise<Array<record>>
- *   - getPhotosForScenario(scenarioId)                    → Promise<Array<record>>
- *   - countPhotosForEtape(scenarioId, equipeId, stepIdx)  → Promise<number>
- *   - countPhotosForScenario(scenarioId)                  → Promise<number>
- *   - deletePhoto(photoId)                                → Promise<boolean>
- *   - deletePhotosForEtape(scenarioId, equipeId, stepIdx) → Promise<number>
- *   - deletePhotosForScenario(scenarioId)                 → Promise<number>
- *   - clearAll()                                          → Promise<void>
- *
- * Toutes les fonctions retournent des Promises (asynchrones). Gestion
- * gracieuse des erreurs : log warn + return null/false/array vide plutôt
- * que throw, pour ne pas casser le flow UI consommateur.
- *
- * Confidentialité : 100% local IndexedDB. Aucun fetch externe.
- * =========================================================================
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
+
+// secoursPhotos.js — photos attachées aux étapes d'un parcours d'équipe (Mode Secours, exécution).
+// Base IndexedDB DÉDIÉE "myktamap_secours_photos" (séparée de myktamap_photos des POI : nettoyage
+// et évolution indépendants), store "photos" (keyPath id), index by_scenario,
+// by_scenario_equipe [scenarioId, equipeId], by_scenario_equipe_step [+ stepIdx].
+// Enregistrement : { id, scenarioId, equipeId, stepIdx, blob, mime, size, createdAt, meta }.
+// ⚠️ Notes libres (mode secouriste) : equipeId "_notes_libres", stepIdx -1 (NOTES_LIBRES_STEP_IDX),
+//   note retrouvée par meta.noteId (index composite = types cohérents). stepIdx -2 = étape retirée.
+// Limites : MAX_PHOTOS_PER_ETAPE = 5 ; compression 1920 px côté long, JPEG 0.85.
+// Erreurs : log + null / false / [] plutôt qu'une exception (l'UI ne casse pas). 100 % local.
+// Expose : window.MyKTAMapSecoursPhotos { init, isAvailable, generateId, compressBlob, addPhoto,
+//   importPhotoFromDataUrl, getPhoto, getBlob, getObjectUrl, getPhotosForEtape/Equipe/Scenario,
+//   countPhotosForEtape/Scenario, deletePhoto, setStepIdx, deletePhotosForEtape/Scenario, clearAll }
+// Doc : docs/architecture/secours.md
 
 (function() {
   "use strict";
@@ -86,29 +25,23 @@
   const DB_VERSION = 1;
   const STORE      = "photos";
 
-  // Sentinel pour stepIdx en mode notes libres (mode secouriste)
   const NOTES_LIBRES_STEP_IDX = -1;
 
-  // Limites (anti-OOM, anti-quota)
   const MAX_PHOTOS_PER_ETAPE   = 5;
-  const COMPRESS_MAX_DIMENSION = 1920;  // px côté long après compression
-  const COMPRESS_JPEG_QUALITY  = 0.85;  // qualité JPEG (0-1)
+  const COMPRESS_MAX_DIMENSION = 1920;  // px, côté long
+  const COMPRESS_JPEG_QUALITY  = 0.85;
 
-  // Singleton connection IDB (= 1 seule fois ouverte par session)
+  // Connexion IDB ouverte une seule fois.
   let _db = null;
   let _initPromise = null;
 
-  // ============================================================
-  // CHECK DISPONIBILITÉ
-  // ============================================================
+  // ── Disponibilité ──────────────────────────────
   function isAvailable() {
     return typeof window !== "undefined" &&
            typeof window.indexedDB !== "undefined";
   }
 
-  // ============================================================
-  // GÉNÉRATION D'ID PHOTO
-  // ============================================================
+  // ── Identifiant de photo ──────────────────────────────
   function generateId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") {
       return window.crypto.randomUUID().split("-")[0];
@@ -116,9 +49,7 @@
     return Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
   }
 
-  // ============================================================
-  // OUVERTURE DE LA DATABASE
-  // ============================================================
+  // ── Ouverture de la base ──────────────────────────────
   function init() {
     if (!isAvailable()) {
       console.warn("[SecoursPhotos] IndexedDB non disponible — module désactivé");
@@ -173,9 +104,7 @@
     return _initPromise;
   }
 
-  // ============================================================
-  // HELPER TRANSACTION + REQ WRAPPER
-  // ============================================================
+  // ── Transaction + requête ──────────────────────────────
   function _tx(mode, op) {
     return init().then(function(db) {
       if (!db) throw new Error("IDB unavailable");
@@ -212,9 +141,7 @@
     });
   }
 
-  // ============================================================
-  // COMPRESSION D'UN BLOB IMAGE
-  // ============================================================
+  // ── Compression ──────────────────────────────
   function compressBlob(srcBlob, opts) {
     opts = opts || {};
     const maxDim  = opts.maxDimension || COMPRESS_MAX_DIMENSION;
@@ -232,9 +159,8 @@
         const W = img.naturalWidth;
         const H = img.naturalHeight;
         URL.revokeObjectURL(url);
-        // 🔒 v1.63.0 (A8) : plus de bypass « déjà petite » — le blob original
-        // peut porter de l'EXIF (GPS). Re-encodage systématique, qualité
-        // haute (0.92) sans resize pour les petites (cf photos.js).
+        // 🔒 Toujours ré-encodé, même petit : l'original peut porter de l'EXIF (GPS). Petite
+        // image : qualité 0.92 sans redimensionner (comme photos.js).
         const petite = (W <= maxDim && H <= maxDim && srcBlob.size < 500 * 1024);
         const q = petite ? Math.max(quality, 0.92) : quality;
         const ratio = Math.min(maxDim / W, maxDim / H, 1);
@@ -265,11 +191,8 @@
     });
   }
 
-  // ============================================================
-  // AJOUTER UNE PHOTO
-  // ============================================================
-  // stepIdx = -1 pour les notes libres (mode secouriste). Pour les étapes
-  // équipe normales, stepIdx >= 0 (0=entrée, 1..N=intermédiaires, N+1=sortie).
+  // ── Ajout ──────────────────────────────
+  // stepIdx : -1 = notes libres ; sinon 0 = entrée, 1..N = intermédiaires, N+1 = sortie.
   function addPhoto(scenarioId, equipeId, stepIdx, srcBlob, opts) {
     opts = opts || {};
     if (!scenarioId || !equipeId) {
@@ -308,9 +231,7 @@
     });
   }
 
-  // ============================================================
-  // GETTERS / COUNTERS
-  // ============================================================
+  // ── Lecture et comptage ──────────────────────────────
   function getPhoto(photoId) {
     if (!photoId) return Promise.resolve(null);
     return _tx("readonly", function(store) {
@@ -382,9 +303,7 @@
     });
   }
 
-  // ============================================================
-  // DELETIONS
-  // ============================================================
+  // ── Suppression ──────────────────────────────
   function deletePhoto(photoId) {
     if (!photoId) return Promise.resolve(false);
     return _tx("readwrite", function(store) {
@@ -394,11 +313,9 @@
       return false;
     });
   }
-  // 🩸 29/09/2026 (relecture Secours, R7) — une étape renumérotée par
-  // secoursMode._resyncEtapesEquipe emporte ses photos : sans ça, le quota de
-  // MAX_PHOTOS_PER_ETAPE (compté par stepIdx) comptait celles d'une autre étape.
-  // -2 = étape retirée (photo gardée, hors rapport). Lecture + écriture dans la
-  // MÊME transaction : le put part du handler de la lecture (tx encore active).
+  // 🩸 Une étape renumérotée (secoursMode > _resyncEtapesEquipe) emporte ses photos, sinon le quota
+  // par stepIdx compte celles d'une autre étape. -2 = étape retirée (photo gardée, hors rapport).
+  // Lecture + écriture dans la MÊME transaction (le put part du handler de lecture).
   function setStepIdx(photoId, stepIdx) {
     if (!photoId || typeof stepIdx !== "number") return Promise.resolve(false);
     return _tx("readwrite", function(store) {
@@ -441,32 +358,21 @@
     });
   }
 
-  // ============================================================
-  // 🆕 v1.26.0 — IMPORT PHOTO depuis dataUrl (consolidation cross-device)
-  // ============================================================
-  // Différences avec addPhoto :
-  //   - Préserve l'id source (pour dédup à l'import par id)
-  //   - Skip la compression (photo déjà compressée à l'export par genererRapportData)
-  //   - Skip la quota check MAX_PHOTOS_PER_ETAPE (l'opérateur consolide ce que
-  //     l'équipier a saisi sur le terrain — limite déjà respectée à la source)
-  //   - Si une photo avec le même id existe déjà → no-op idempotent
-  //
-  // Utilisé par js/secoursMode.js > _appliquerImportRapportEquipe pour réintégrer
-  // les photos d'un rapport .mkmsec.report.json scope=equipe.
-  //
-  // opts = { id, scenarioId, equipeId, stepIdx, mime, dataUrl }
+  // ── Import depuis un dataUrl (consolidation entre appareils) ──────────────
+  // Pour secoursMode.js > _appliquerImportRapportEquipe (rapport .mkmsec.report.json d'équipe).
+  // ≠ addPhoto : garde l'id source (dédoublonnage), pas de compression (déjà faite à l'export), pas
+  // de quota (respecté à la source), id déjà présent → rien. opts = { id, scenarioId, equipeId,
+  // stepIdx, mime, dataUrl }
   function importPhotoFromDataUrl(opts) {
     if (!opts || !opts.id || !opts.scenarioId || !opts.equipeId
         || typeof opts.stepIdx !== "number" || !opts.dataUrl) {
       return Promise.reject(new Error("importPhotoFromDataUrl : id, scenarioId, equipeId, stepIdx, dataUrl tous requis"));
     }
-    // Check si déjà présent (idempotence)
     return getPhoto(opts.id).then(function(existing) {
       if (existing) {
-        // Photo déjà en base avec cet id → no-op idempotent
         return { id: opts.id, status: "already-present" };
       }
-      // Convertit dataUrl → Blob via fetch local (pattern standard navigateur)
+      // dataUrl → Blob par fetch local.
       return fetch(opts.dataUrl).then(function(resp) {
         if (!resp.ok) throw new Error("dataUrl invalide (fetch local échoué)");
         return resp.blob();
@@ -491,16 +397,14 @@
     });
   }
 
-  // ============================================================
-  // EXPORT API PUBLIQUE
-  // ============================================================
+  // ── API ──────────────────────────────
   window.MyKTAMapSecoursPhotos = {
     init:                       init,
     isAvailable:                isAvailable,
     generateId:                 generateId,
     compressBlob:               compressBlob,
     addPhoto:                   addPhoto,
-    importPhotoFromDataUrl:     importPhotoFromDataUrl,  // 🆕 v1.26.0
+    importPhotoFromDataUrl:     importPhotoFromDataUrl,
     getPhoto:                   getPhoto,
     getBlob:                    getBlob,
     getObjectUrl:               getObjectUrl,
@@ -510,19 +414,18 @@
     countPhotosForEtape:        countPhotosForEtape,
     countPhotosForScenario:     countPhotosForScenario,
     deletePhoto:                deletePhoto,
-    setStepIdx:                 setStepIdx,              // 🆕 29/09/2026
+    setStepIdx:                 setStepIdx,
     deletePhotosForEtape:       deletePhotosForEtape,
     deletePhotosForScenario:    deletePhotosForScenario,
     clearAll:                   clearAll,
-    // Constantes exposées pour usage externe (genre afficher le max dans UI)
     MAX_PHOTOS_PER_ETAPE:       MAX_PHOTOS_PER_ETAPE,
     NOTES_LIBRES_STEP_IDX:      NOTES_LIBRES_STEP_IDX
   };
 
-  // Init eager au boot (non-bloquant, juste pour pre-warm la connexion IDB)
+  // Ouverture anticipée de la connexion, non bloquante.
   setTimeout(function() {
     if (isAvailable()) {
-      init().catch(function() {});  // swallow erreur boot
+      init().catch(function() {});
     }
   }, 0);
 

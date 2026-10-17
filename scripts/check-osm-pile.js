@@ -1,24 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🗂️ check-osm-pile.js — garde-fou pré-commit BLOQUANT
+// check-osm-pile.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// La PILE DE PLANS du widget OSM de l'accueil (`osmHomePreview.js >
+// La pile de plans du widget OSM de l'accueil (`osmHomePreview.js >
 // _stackOrder`) et sa règle de promotion du principal.
-//
-// 🩸 LE BUG QUI L'A FAIT NAÎTRE (KARMA, 14/09/2026) : « je charge A, retour
-// home → A en OSM home ; je charge B, retour home → B chargé, mais A est
-// toujours dans la liste et impossible à supprimer ». Deux fautes :
-//   1. le re-mount du widget (retour home, v1.90.12) posait le nouveau
-//      principal par un simple `unshift`, sans retirer l'ancien — seul
-//      `selectPlan` le faisait. `_stackOrder` est une variable de module :
-//      elle survit au remontage → A restait en fantôme ;
-//   2. le ✕ (`_demonterPlanOsm`) refusait tout id sans groupe extra — un
-//      ex-principal n'en a jamais eu → retrait refusé sans toucher la pile.
-//
-// ON EXÉCUTE, ON NE GREPE PAS (leçon v1.90.15) : la règle et le démontage sont
-// extraits du fichier réel et joués sur les scénarios du bug.
-//
+// 🩸 `_stackOrder` est une variable de module : elle survit au remontage du
+// widget. Tout chemin qui pose le nouveau principal sans retirer l'ancien
+// laisse un plan fantôme ; et un ✕ qui exige un groupe extra ne peut pas
+// retirer un ex-principal (il n'en a jamais eu).
+// Les règles sont extraites du fichier réel et EXÉCUTÉES (vm) sur des scénarios.
 // Usage : node scripts/check-osm-pile.js [racine]
 "use strict";
 const fs   = require("fs");
@@ -38,7 +29,7 @@ function fonction(nom) {
   return j < 0 ? "" : HOME.slice(i, j + 4);
 }
 
-// ---------- 1. La règle de promotion, exécutée ----------
+// ── 1. La règle de promotion, exécutée ───────────────────────────────
 {
   const src = fonction("_remplacerPrincipalDansPile");
   t("la règle _remplacerPrincipalDansPile est extractible", src.length > 0);
@@ -64,7 +55,7 @@ function fonction(nom) {
   t("🩸 selectPlan (dropdown) passe par la MÊME règle", /_remplacerPrincipalDansPile\(_stackOrder, _prevPrimary, planId\)/.test(sp));
 }
 
-// ---------- 2. Le démontage, exécuté : un fantôme se retire ----------
+// ── 2. Le démontage, exécuté : un fantôme se retire ──────────────────
 {
   const src = fonction("_demonterPlanOsm");
   t("_demonterPlanOsm est extractible", src.length > 0);
@@ -89,7 +80,7 @@ function fonction(nom) {
   }
 }
 
-// ---------- 3. À la destruction de la carte, les groupes morts sortent de la pile ----------
+// ── 3. Carte détruite : les groupes morts sortent de la pile ─────────
 {
   const i = HOME.indexOf("try { _mapInstance.remove(); } catch(e) {}");
   const bloc = i >= 0 ? HOME.slice(i, i + 1200) : "";
@@ -97,14 +88,11 @@ function fonction(nom) {
     /Object\.keys\(_extraLayers\)\.forEach\(function\(id\) \{\n\s*delete _extraLayers\[id\];\n\s*const iX = _stackOrder\.indexOf\(id\);\n\s*if \(iX !== -1\) _stackOrder\.splice\(iX, 1\);/.test(bloc));
 }
 
-// ---------- 4. Au RETOUR d'un plan, la pile repart de zéro ----------
-// 🩸 KARMA, 14/09/2026 (2ᵉ passe) : « quand je charge un plan et le quitte, le
-// seul plan en liste doit être celui dernièrement chargé. Je peux même pas les
-// supprimer. » La purge de la v1.91.1 était suspendue à la RECRÉATION DE LA
-// CARTE (`_initMiniMap`) : tout chemin de rendu qui n'y arrive pas — hors-ligne
-// sans cache, incognito, conteneur sans `#ktaOsmHomeMap` —
-// laissait la pile intacte, avec des plans dont les couches appartenaient à une
-// carte morte. La règle est désormais posée au POINT D'ENTRÉE du retour.
+// ── 4. Au RETOUR d'un plan, la pile repart de zéro ───────────────────
+// Le seul plan listé est celui qu'on vient de quitter (décision produit).
+// 🩸 La règle vit au POINT D'ENTRÉE du retour (`mount`), pas dans la recréation
+// de la carte (`_initMiniMap`) : hors-ligne sans cache, incognito ou conteneur
+// absent n'y arrivent jamais et laisseraient des couches d'une carte morte.
 {
   const src = fonction("_reinitialiserPileAuRetour");
   t("la règle _reinitialiserPileAuRetour est extractible", src.length > 0);
@@ -139,8 +127,7 @@ function fonction(nom) {
     t("le plan quitté était au milieu de la pile → il reste seul", eq(r5.pile, ["D"]) && r5.extras.length === 0);
   }
 
-  // Fenêtre large : les chemins de sortie anticipée (opt-in, offline…) sont
-  // répartis sur plusieurs dizaines de lignes après l'en-tête de mount().
+  // Fenêtre large : les sorties anticipées (opt-in, offline…) sont loin dans mount().
   const iM = HOME.indexOf("function mount(preferId)");
   const m  = HOME.slice(iM, iM + 6000);
   t("🩸 mount() applique la règle dès qu'un plan est passé (= retour depuis un plan)",
@@ -153,14 +140,15 @@ function fonction(nom) {
     })());
 }
 
-// ---------- 5. Un clic sur ✕ fait TOUJOURS disparaître la ligne ----------
-// « Je peux même pas les supprimer. » Deux façons de rater : `_demonterPlanOsm`
-// qui rend false, et un rendu annexe qui jette avant le re-rendu de la liste.
+// ── 5. Un clic sur ✕ fait TOUJOURS disparaître la ligne ──────────────
+// 🩸 Deux façons de rater : `_demonterPlanOsm` qui rend false, un rendu annexe
+// qui jette avant le re-rendu de la liste.
 {
   const src = fonction("_retirerPlanOsm");
   t("_retirerPlanOsm est extractible", src.length > 0);
   t("🩸 le retrait de la pile est VÉRIFIÉ après coup, quel que soit le chemin",
-    /const i = _stackOrder\.indexOf\(planId\);\n\s*if \(i !== -1\) _stackOrder\.splice\(i, 1\);\s*\/\/ ceinture/.test(src));
+    // Sur le CODE seul : le retrait APRÈS le démontage.
+    /_demonterPlanOsm\(planId\)[\s\S]*const i = _stackOrder\.indexOf\(planId\);\n\s*if \(i !== -1\) _stackOrder\.splice\(i, 1\);/.test(src));
   t("🩸 …et le principal, lui, n'est jamais retiré par ce chemin",
     /const principal = \(planId === _selectedPlanId\);/.test(src) && /if \(!principal\) \{/.test(src));
   t("🩸 un rendu annexe qui jette ne laisse plus la ligne à l'écran",

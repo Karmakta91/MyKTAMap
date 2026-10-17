@@ -303,7 +303,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Settings** | ⚙️ | Map settings: scale, North, georeferencing, tracker, display… *(direct click)* |
 | **Search** | 🔍 | Find a point, a path, a zone or a structure *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
-| **Save** | ⬆️ | Export your session, the map as an image, or a printable PDF |
+| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, external export (KMZ / GPX) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
 | **Measurement** | 📐 | Measure a distance or an area, clear |
@@ -869,7 +869,7 @@ Your annotations (points, paths, zones, structures, measurements) are saved on t
 When you reopen it (**▶️ Resume** on the home screen), a window sums up what was restored (“3 points · 1 path · 2 zones”) and offers **🗑️ Clear the session** (start this map from scratch) or **✓ Continue**. Esc or a click outside = Continue.
 
 - The tracker's trail is not restored: restart tracking and reposition yourself.
-- To keep a session aside, or move it to another device: **⬆️ Save → 💾 Export** (see “⬆️ Save and share”).
+- To keep a session aside, or move it to another device: **⬆️ Export → 💾 Full export** (see “⬆️ Save and share”).
 
 ### 📔 My logbook — the history of your outings
 
@@ -970,33 +970,30 @@ In the Profile window, **📤 Export my profile** produces a file that carries e
 
 ## ⬆️ Save and share
 
-All exports are in the **⬆️ Save** group of the sidebar. Before sharing an image, a PDF or a KMZ, check that it reveals nothing sensitive (entrances, private site).
+Every export starts from the **⬆️ Export** group of the sidebar: it opens a tile launcher in three parts — **🖼️ Image**, **💾 Session**, **🌍 External export**. Before sharing an image, a PDF or a KMZ, check that it reveals nothing sensitive (entrances, private site).
 
 ### 📤 Exporting your session
 
-**⬆️ → 💾 Export** opens a window with five tabs:
+**⬆️ Export → 💾 Session** offers two tiles:
 
-- **🚀 Full** — the whole session in one file, to import again later: points, paths, zones, structures, measurements and tracker data (position, trail, timeline: replay works after re-import). `.json`, or `.zip` if you tick the photos. The **🛡️ Anonymize for public sharing** option replaces names with codes and removes the tracker data.
-- **🎨 Advanced** — you choose: points (by icon, including “no tag”), paths, zones and structures (by type), measurements, tracker (a counter shows what it holds). Output as a **📄 Single session file** that can be re-imported, or a **📦 Multi-file ZIP** (one per category).
-- **🔎 Keep only** (at the top of 🚀 Full and 🎨 Advanced) — limits points, paths, zones and structures to a **period** (date of their last change) and, on a connected installation, to their author (**Created by**); a counter shows how many go out. Tracking, measurements and notes are exported as they are.
-- **🔄 Conversion** — turns your session into a **data layer** to integrate into a map (see “🏗️ Create or modify a map”). Same choice by category and by icon; **Basic** granularity (one file per category) or **Fine** (one file per type). The tracker is never converted: a drift frozen into a map would mislead its future users. Once converted, this data can no longer be edited from the app.
-- **🔗 Merge** — combines several data layers (`.json` or `.zip`, from several sessions) into a single set per category. A preview gives the totals and flags duplicate point identifiers (kept as they are). Also available with no map open: **📊 Data editor → 🔗 Merge data layers**.
-- **📡 External export** — KMZ or GPX, see below.
+- **💾 Full export** — the whole session in one file, to import again later: points, paths, zones, structures, measurements and tracker data (position, trail, timeline: replay works after re-import). `.json`, or `.zip` if you tick the photos. The **🛡️ Anonymize for public sharing** option replaces names with codes and removes the tracker data.
+- **🎨 Advanced export** — you choose: points (by icon, including “no tag”), paths, zones and structures (by type), measurements, tracker (a counter shows what it holds). Output as a **📄 Single session file** that can be re-imported, or a **📦 Multi-file ZIP** (one per category).
+- **🔎 Keep only** (at the top of both) — limits points, paths, zones and structures to a **period** (date of their last change) and, on a connected installation, to their author (**Created by**); a counter shows how many go out. Tracking, measurements and notes are exported as they are.
 
 ### 🖼️ Exporting as an image
 
-**⬆️ → 🖼️ Export the map as an image**, two modes:
+**⬆️ Export → 🖼️ Image (PNG / JPEG)**, two modes:
 
 - **⚡ Quick export** — everything visible (map, layers, annotations, tracker), as PNG at the original resolution. One click on **Download**.
 - **🎨 Advanced export** — you tick the image layers, the data layers and your annotations, and you set:
   - a **legend** placed on the map: position (one of the 4 corners, or 🎯 anywhere), style (Opaque / Semi-transparent / Watermark), size (Compact / Standard / Large), content (icons, paths, zones, tracker tag, the map's name, version, author and date); its labels can be customised;
   - the **format**: PNG, or JPEG (lighter);
-  - the **resolution**: Original, ½ or ¼. The app pre-selects the largest that stays reasonable and shows the size and memory needed; on iPhone/iPad, impossible resolutions are greyed out.
+  - the **resolution**: Original, ½ or ¼. The app pre-selects the largest that stays reasonable and shows the size and memory needed; on iPhone/iPad, impossible resolutions are greyed out, and when even ¼ is too large for the iPhone, a **📱 iPhone max** choice (the largest possible image) is selected by default; the size shown is the size of the image produced.
   - A preview updates live.
 
 ### 🖨️ Exporting as a printable PDF
 
-**⬆️ → 📤 Export as printable PDF**: a PDF to print for the field, to send to someone without the app, or to archive.
+**⬆️ Export → 🖨️ Printable PDF**: a PDF to print for the field, to send to someone without the app, or to archive.
 
 - **Format**: A0 to A4, portrait or landscape (A4 landscape by default).
 - **Content**: your annotations, the map image and its layers, the data layers, a header (title and map information).
@@ -1007,7 +1004,7 @@ The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktama
 
 ### 🌍 Exporting to another app (KMZ, GPX)
 
-**⬆️ → 💾 Export → 📡 External export** produces:
+**⬆️ Export → 🌍 External export** (**KMZ** or **GPX** tile) produces:
 - a **KMZ**: your map and annotations placed on the globe, for **Google Earth**, **OsmAnd**, **Locus** or **Avenza**;
 - a **GPX**: points and paths, for TopoDroid, OsmAnd, Strava… and re-importable into MyKTAMap with its levels.
 
@@ -1095,6 +1092,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **📐 Scale icon size with zoom** (on by default);
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
+  - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
@@ -1681,6 +1679,8 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 - **🗺️ Current plan**: the data layers of the open map (absent from the home screen, where no map is loaded).
 - **📦 Import a ZIP**: the layers of a complete map.
 - **📄 Import a JSON file**: a data or session file.
+- **🔄 Convert session ↔ layers**: turns your session into a **data layer** to integrate into a map (see “🏗️ Create or modify a map”). Same choice by category and by icon; **Basic** granularity (one file per category) or **Fine** (one file per type). The tracker is never converted: a drift frozen into a map would mislead its future users. Once converted, this data can no longer be edited from the app.
+- **🔗 Merge layers**: combines several data layers (`.json` or `.zip`, from several sessions) into a single set per category. A preview gives the totals and flags duplicate point identifiers (kept as they are).
 - **🔁 Convert resolution**: moves your data files from an old scan to a new scan of the same map. Give both resolutions (or let the app read them from the images); if the margins differ, add a **common landmark** (the same pillar on both maps), or **two**, and the scale and rotation are worked out. Inter-map links, georeferencing and scale have to be redone on the new map.
 - **🧹 Deduplicate data**: removes consecutive identical vertices from paths, zones, structures and measurements, invisible but making files heavier. You get a `_dedup.json` file and a count of what was removed; points are never touched.
 

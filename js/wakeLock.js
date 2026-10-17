@@ -1,54 +1,25 @@
 /*!
- * MyKTAMap — Wake Lock API (écran toujours allumé)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// WAKELOCK.JS — Empêche l'écran de s'éteindre (depuis Karma_dev pending)
-// =========================
-// Utilise navigator.wakeLock.request("screen") pour empêcher l'écran de
-// se mettre en veille quand l'user utilise l'app en cavité (ou en démo).
-// Utile pour cataphile : pas de timeout d'écran qui force à débloquer
-// son téléphone toutes les 30s en pleine progression.
-//
-// COMPATIBILITÉ :
-//   ✅ Chrome 84+ (Android, PC)
-//   ✅ Edge 84+
-//   ✅ Safari iOS 16.4+ (PWA standalone)
-//   ❌ Firefox (Bug 1589554, pas encore en 2026)
-//   ❌ Safari < 16.4
-//
-// PERSISTANCE :
-//   localStorage["myktamap_wake_lock_v1"] = "1" | "0" (default "0" = off)
-//   Au boot du module, si "1" → tente d'acquire (peut échouer si user
-//   gesture pas requis sur certains browsers — auto-retry au prochain
-//   visibilitychange→visible).
-//
-// CYCLE DE VIE :
-//   Le wakeLock est AUTO-RELEASE par le browser quand l'onglet devient
-//   caché (visibilitychange→hidden). Donc le module re-acquire à chaque
-//   visibilitychange→visible si l'user a activé l'option.
-//
-// API : window.WakeLock = {
-//   init(),              // boot async (lit pref + applique si activée)
-//   isSupported(),       // bool — API native dispo dans le browser
-//   isActive(),          // bool — wake lock actuellement actif
-//   isEnabled(),         // bool — préférence user activée (peut être true
-//                           sans isActive si l'onglet est caché)
-//   setEnabled(bool),    // active/désactive + persiste + acquire/release
-//   onChange(cb)         // notifie les listeners au change d'état
-// };
-// =========================
+// wakeLock.js — écran maintenu allumé (navigator.wakeLock.request("screen")) : pas de mise en veille en
+// pleine progression. Absent de Firefox et de Safari < 16.4.
+// Préférence : localStorage["myktamap_wake_lock_v1"] = "1" | "0" (défaut "0").
+// Le navigateur relâche le verrou quand l'onglet se cache : il est repris au retour visible.
+// Expose : window.WakeLock (init, isSupported, isActive, isEnabled — vrai même onglet caché,
+//   setEnabled(bool) → Promise<bool> du résultat RÉEL, onChange(cb) → désabonnement).
+// 🩸 Un verrou posé sans geste utilisateur peut être accepté puis ignoré (verrou fantôme) : on le repose au
+// premier geste, cf init().
+// Garde-fou : scripts/check-wakelock.js, scripts/check-journal-reprise.js
 
 (function() {
   "use strict";
 
   const LS_KEY = "myktamap_wake_lock_v1";
 
-  let _enabled  = false;   // pref user (peut être true sans active si caché)
+  let _enabled  = false;   // préférence (vraie même sans verrou si l'onglet est caché)
   let _sentinel = null;    // WakeLockSentinel actif (null si pas acquis)
   let _reprises = 0;       // reprises consécutives après un relâchement système
   const MAX_REPRISES = 3;  // au-delà, on cesse d'insister et on attend un geste
@@ -90,16 +61,9 @@
     if (_sentinel !== null) return true;  // déjà acquis
     try {
       _sentinel = await navigator.wakeLock.request("screen");
-      _reprises = 0;   // acquisition réussie : le compteur de reprises repart
-      // Le navigateur peut relâcher sans qu'on demande (batterie critique,
-      // onglet caché, décision du système).
-      //
-      // 🩸 v1.85.2 — AVANT, on se contentait de vider le sentinel en comptant
-      // sur un `visibilitychange → visible` pour reprendre. Quand le système
-      // relâche le verrou TOUT SEUL, sans que l'onglet ait bougé, ce
-      // changement n'arrive JAMAIS : la préférence restait à `true`, la case
-      // cochée, et plus rien ne tenait l'écran. On reprend donc ici même,
-      // borné pour ne pas boucler contre un système qui refuse.
+      _reprises = 0;
+      // 🩸 Le système peut relâcher TOUT SEUL (batterie, décision système) sans que l'onglet bouge : aucun
+      // visibilitychange n'arrivera. On reprend donc ici, borné pour ne pas boucler contre un refus.
       _sentinel.addEventListener("release", function() {
         _sentinel = null;
         _notify();
@@ -108,8 +72,7 @@
           _reprises++;
           setTimeout(function() { if (_enabled && !isActive()) _acquire(); }, 400);
         } else {
-          // Le système s'obstine : on cesse d'insister et on rend la main au
-          // prochain geste de l'utilisateur, qui vaut autorisation fraîche.
+          // Le système s'obstine : on attend le prochain geste, qui vaut autorisation fraîche.
           _reprendreAuPremierGeste();
         }
       });
@@ -132,11 +95,8 @@
     _notify();
   }
 
-  // 🩸 v1.85.2 — REND LE RESULTAT REEL. Avant, la fonction ne rendait rien :
-  // l appelant affichait « 🔆 Ecran maintenu allume » sans savoir si le verrou
-  // avait ete pose. Quand le navigateur refuse — pas de geste utilisateur,
-  // batterie faible, ou implementation qui accepte puis ignore — l app MENTAIT.
-  // C est ce mensonge qui a fait chercher la panne du mauvais cote.
+  // 🩸 Rend le résultat RÉEL : l'appelant n'annonce « écran maintenu allumé » qu'au vu de ce booléen, sinon
+  // l'app ment quand le navigateur refuse (pas de geste, batterie faible).
   async function setEnabled(v) {
     const newVal = !!v;
     if (newVal === _enabled) return isActive();
@@ -151,31 +111,18 @@
     return false;
   }
 
-  // 🩸 v1.85.2 — LE VERROU FANTÔME (retour KARMA, iPhone 17 Pro en PWA).
-  // Symptôme : « je coche, ça marche ; je quitte l'app, je relance, la case
-  // est cochée mais ça ne marche plus ; je décoche/recoche et ça repart ».
-  //
-  // La case cochée prouve que la préférence est bien relue. Ce qui échoue,
-  // c'est le verrou posé AU BOOT, sans geste utilisateur : le système
-  // l'accepte — `request()` résout, on tient un sentinel, `isActive()` rend
-  // vrai — puis il l'IGNORE. Ni erreur, ni événement `release`. Rien ne
-  // permet de le distinguer d'un vrai verrou, et `_acquire()` sort d'ailleurs
-  // tout de suite (`if (_sentinel !== null) return true`) : le fantôme bloque
-  // à jamais toute reprise.
-  //
-  // Décocher/recocher répare parce que ça fait un RELÂCHEMENT puis une
-  // acquisition SOUS GESTE UTILISATEUR. On refait donc exactement ce geste,
-  // nous-mêmes, au premier contact avec l'écran — sans rien demander.
+  // 🩸 Verrou fantôme (PWA iOS) : posé au boot SANS geste utilisateur, il est accepté (request() résout,
+  // isActive() vrai) puis IGNORÉ, sans erreur ni `release`. Indiscernable d'un vrai verrou, et _acquire()
+  // sort aussitôt (sentinel en main) : plus aucune reprise. On refait donc nous-mêmes ce qui répare
+  // (relâcher puis reprendre SOUS GESTE) au premier contact avec l'écran.
   async function init() {
     _enabled = _readPref();
     if (!_enabled) return;
     if (!document.hidden) {
-      // On tente quand même : sur les plateformes qui l'acceptent vraiment,
-      // l'écran tient dès la première seconde, avant tout contact.
+      // Là où le verrou du boot tient vraiment, l'écran tient dès la première seconde.
       await _acquire();
     }
-    // Puis on repose le verrou au premier geste, QU'IL AIT L'AIR TENU OU NON.
-    // `forcer: true` — un sentinel en main ne prouve rien ici.
+    // Reposé au premier geste QU'IL AIT L'AIR TENU OU NON : un sentinel en main ne prouve rien.
     _reprendreAuPremierGeste(true);
   }
 
@@ -188,14 +135,10 @@
     };
   }
 
-  // ─── Reprise au PREMIER GESTE utilisateur ───
-  // 🩸 Un `wakeLock.request()` au boot peut etre refuse faute de geste
-  // utilisateur : au lancement a froid, personne ne bascule d onglet, donc le
-  // filet `visibilitychange` ne se declenche jamais et la preference reste
-  // lettre morte. Le premier tap sur l ecran sert de rattrapage. Une seule
-  // fois : le listener se retire des qu il a servi.
-  // `forcer` : on RELÂCHE avant de reprendre, même si un sentinel est en main.
-  // C'est le cas du retour d'un lancement à froid — cf. `_rearmerApresBoot`.
+  // ── Reprise au premier geste ──────────────
+  // 🩸 Refusé au boot faute de geste : au lancement à froid aucun visibilitychange ne viendra, le premier tap
+  // rattrape. L'écouteur se retire dès qu'il a servi. `forcer` : relâcher avant de reprendre, même sentinel
+  // en main (verrou fantôme, cf init()).
   let _gesteArme = false;
   function _reprendreAuPremierGeste(forcer) {
     if (!_enabled) return;
@@ -209,36 +152,26 @@
       if (!_enabled) return;
       if (forcer) await _release();
       const ok = await _acquire();
-      // 🩸 Un échec ne doit pas condamner la préférence : on se réarme pour
-      // le geste suivant. La version initiale retirait l'écouteur une fois
-      // pour toutes — un seul refus et l'option restait morte jusqu'au
-      // prochain décochage manuel.
+      // 🩸 Un refus ne condamne pas la préférence : réarmé pour le geste suivant.
       if (!ok) _reprendreAuPremierGeste(false);
     };
     document.addEventListener("pointerdown", rattraper, true);
     document.addEventListener("touchstart", rattraper, true);
   }
 
-  // ─── Re-acquire au retour visibility ───
-  // Le wakeLock est auto-release par le browser quand l'onglet devient
-  // caché. On le ré-acquire au retour si l'user l'avait activé.
+  // ── Retour au premier plan ──────────────
   document.addEventListener("visibilitychange", function() {
     if (document.hidden) {
-      // Le browser a déjà release (ou va le faire). On reset le sentinel
-      // pour cohérence (la release event fera le reset officiellement,
-      // mais on est défensif au cas où il ne fire pas sur tous les browsers).
+      // Relâché par le navigateur ; `release` ne se déclenche pas partout.
       _sentinel = null;
     } else if (_enabled) {
-      // Onglet revenu visible : le compteur de reprises repart, et on repose
-      // le verrou en FORÇANT — le retour d'arrière-plan est le même cas que
-      // le boot, un sentinel survivant peut être un fantôme.
+      // Même cas que le boot : un sentinel survivant peut être un fantôme → reprise FORCÉE au geste.
       _reprises = 0;
       if (!isActive()) _acquire();
       _reprendreAuPremierGeste(true);
     }
   });
 
-  // ─── EXPORT API ───
   window.WakeLock = {
     init:         init,
     isSupported:  isSupported,
@@ -248,8 +181,7 @@
     onChange:     onChange
   };
 
-  // Boot auto-init au load. Si la pref est "0" (default), no-op silencieux.
-  // Si "1", _acquire() est tenté.
+  // Auto-init au chargement (no-op si la préférence est "0") ; main.js le rappelle plus tard dans le boot.
   init();
 
   console.log("[WakeLock] Module chargé — supported:", isSupported(), " pref enabled:", _readPref());

@@ -7,38 +7,29 @@
  */
 
 // =========================
-// MEMINSPECTOR.JS — Topo lisible de ce qui est chargé en mémoire (depuis v1.19.0)
+// MEMINSPECTOR.JS — état lisible de ce que l'app garde en local
 // =========================
-// Outil de transparence + debug pour comprendre l'état mémoire local de
-// l'application : localStorage, IndexedDB, Cache PWA (Service Worker),
-// Storage estimate navigateur, Runtime (PLAN_CONFIG, session active, modules
-// chargés). Pratique pour :
-//   - Diagnostiquer un bug "ma session disparaît" / "mes photos ne sont pas là"
-//   - Vérifier qu'un reset complet a bien purgé tout
-//   - Voir la consommation mémoire avant un export volumineux
-//   - Partager un rapport par DM au mainteneur (bouton 📋 Copier)
-//
-// Accessible depuis le loader home : ⚙️ Configuration → section
-// 📊 Inspecteur → bouton 📊 État mémoire.
+// localStorage, IndexedDB, cache PWA, estimation de stockage, runtime (PLAN_CONFIG, session, modules), crashs,
+// données orphelines. Pour diagnostiquer « ma session disparaît », vérifier un reset, partager un rapport
+// (📋 Copier). Ouvert depuis ⚙️ Configuration → 📊 Inspecteur → 📊 État mémoire.
+// Expose window.MemInspector ; KNOWN_IDB_DBS sert aussi de référence à « tout effacer »
+// (interfaceMaintenance.js).
 // =========================
 
 (function() {
   "use strict";
 
-  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
-  // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
+  // Préchargement du chunk CSS dédié (window._loadCssOnce, js/cssLazy.js).
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-meminspector.css", "kta-css-style-meminspector");
   }
 
   const MODAL_ID = "kta-mem-inspector-modal";
 
-  // 🆕 v1.44.0 — Pilote ModalLifecycle : centralise timers + listeners +
-  // blob URLs de la modale principale (cleanup auto au close). Le helper est
-  // chargé avant memInspector dans index.html, donc on peut compter sur lui.
+  // ModalLifecycle de la modale principale (chargé avant ce module dans index.html).
   let _lc = null;
 
-  // ========== HELPER : FORMAT BYTES ==========
+  // ── Format des tailles ──
   function _formatBytes(n) {
     if (n == null || isNaN(n)) return "—";
     const num = Number(n);
@@ -52,7 +43,7 @@
 
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
-  // ========== COLLECTE : localStorage ==========
+  // ── localStorage ──
   function _collectLocalStorage() {
     const result = { keys: [], totalBytes: 0, error: null };
     try {
@@ -60,14 +51,14 @@
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (k == null) continue;
-        // Filter sur prefix MyKTAMap + quelques clés app pertinentes
+        // Préfixe MyKTAMap + quelques clés de l'app.
         const isOurs = /^myktamap_/i.test(k)
                     || /^app_user_prefs$/i.test(k)
                     || /^kta_/i.test(k);
         if (!isOurs) continue;
         try {
           const v = localStorage.getItem(k) || "";
-          // UTF-16 = ~2 bytes per char, approximation suffisante pour un topo
+          // UTF-16 ≈ 2 octets par caractère (approximation suffisante).
           const sizeBytes = v.length * 2;
           interesting.push({ key: k, sizeBytes: sizeBytes, sizePretty: _formatBytes(sizeBytes) });
           result.totalBytes += sizeBytes;
@@ -81,21 +72,19 @@
     return result;
   }
 
-  // ========== COLLECTE : IndexedDB ==========
-  // Bases MyKTAMap connues. Si indexedDB.databases() est dispo (Chrome,
-  // Firefox récent), on scan aussi pour détecter d'autres bases potentielles.
+  // ── IndexedDB ──
+  // Bases connues ; si indexedDB.databases() existe (Chrome, Firefox récent), les autres sont listées aussi.
   const KNOWN_IDB_DBS = [
     { name: "myktamap_handles", stores: ["handles", "blobs"] },
     { name: "myktamap_backups", stores: ["backups"] },
-    // Sessions auto-sauvegardées (js/sessionStore.js, depuis le 10/10/2026)
+    // Sessions auto-sauvegardées (js/sessionStore.js)
     { name: "myktamap_sessions", stores: ["sessions", "migration"] },
     { name: "myktamap_photos",  stores: ["photos"] },
-    // 🆕 v1.20.0 — Crash Reports (cf js/crashReports.js)
+    // Crash Reports (js/crashReports.js)
     { name: "myktamap_crashes", stores: ["crashes"] },
-    // 🆕 v1.69.0 — Le Carnet : archive des sorties (cf js/journal.js)
+    // Carnet des sorties (js/journal.js)
     { name: "myktamap_journal", stores: ["sorties"] },
-    // 🆕 v1.69.0 — Documents PDF du Mode Histoire (N par plan depuis v1.69.0).
-    // Absente de cette liste depuis v1.34.20 : les PDF pesaient sans apparaître.
+    // Documents PDF du Mode Histoire (N par plan) — à garder ici, sinon ils pèsent sans apparaître.
     { name: "myktamap_histoire_pdfs", stores: ["pdfs"] }
   ];
 
@@ -125,7 +114,7 @@
   async function _collectIndexedDB() {
     const result = { databases: [], scanError: null };
 
-    // Tente d'abord la découverte native (Chrome 71+, Firefox 126+)
+    // Découverte native d'abord (Chrome 71+, Firefox 126+).
     let discoveredNames = null;
     try {
       if (indexedDB && typeof indexedDB.databases === "function") {
@@ -136,24 +125,19 @@
       result.scanError = _t("collect.err.idbDatabasesUnsupported", { detail: String(e.message || e) });
     }
 
-    // Union avec les bases connues (au cas où discoveredNames soit incomplet
-    // sur certains navigateurs, ou si la base existe pas — open la crée à vide
-    // ce qu'on ne veut PAS faire ici, on filtre uniquement les connues qui ont
-    // été détectées au scan natif si dispo)
+    // 🩸 open() d'une base absente la CRÉE vide : avec la découverte native, seules les bases connues
+    // réellement présentes sont ouvertes.
     const namesToInspect = [];
     KNOWN_IDB_DBS.forEach(function(kdb) {
-      // Si discoveredNames est dispo, on ne traite que celles présentes
       if (discoveredNames) {
         if (discoveredNames.indexOf(kdb.name) >= 0) namesToInspect.push(kdb);
       } else {
-        // Fallback : on tente d'ouvrir toutes les connues
-        // (peut créer une base vide si elle n'existait pas — accepté)
+        // Sans découverte : toutes les connues (peut créer une base vide — accepté).
         namesToInspect.push(kdb);
       }
     });
 
-    // Bases découvertes mais pas dans KNOWN_IDB_DBS (= bases tierces qui
-    // pourraient être pollution d'extensions ou de session précédente)
+    // Bases découvertes hors KNOWN_IDB_DBS (extensions, restes anciens).
     if (discoveredNames) {
       discoveredNames.forEach(function(name) {
         const known = KNOWN_IDB_DBS.some(function(k) { return k.name === name; });
@@ -194,7 +178,7 @@
     return result;
   }
 
-  // ========== COLLECTE : Cache PWA (Service Worker) ==========
+  // ── Cache PWA (Service Worker) ──
   async function _collectCachePWA() {
     const result = { cacheNames: [], activeCache: null, error: null };
     try {
@@ -203,7 +187,7 @@
         return result;
       }
       result.cacheNames = await caches.keys();
-      // Détection du cache courant : celui qui correspond à __MKM__.build
+      // Cache courant = celui de __MKM__.build.
       const buildVer = window.__MKM__ && window.__MKM__.build;
       let activeName = null;
       if (buildVer) {
@@ -211,7 +195,7 @@
         if (result.cacheNames.indexOf(guess) >= 0) activeName = guess;
       }
       if (!activeName && result.cacheNames.length > 0) {
-        // Fallback : prendre le 1er qui commence par myktamap-cache
+        // Repli : le premier myktamap-cache-*.
         activeName = result.cacheNames.find(function(n) { return /^myktamap-cache-/.test(n); }) || result.cacheNames[0];
       }
       if (activeName) {
@@ -231,7 +215,7 @@
     return result;
   }
 
-  // ========== COLLECTE : Storage Estimate ==========
+  // ── Estimation de stockage ──
   async function _collectStorageEstimate() {
     const result = { usage: null, quota: null, usagePct: null, error: null };
     try {
@@ -249,25 +233,19 @@
     return result;
   }
 
-  // ========== COLLECTE : Runtime ==========
-  // Liste des modules window.* MyKTAMap qu'on s'attend à voir. Présence
-  // = chargé OK, absence = problème de chargement ou intentionnellement skip.
+  // ── Runtime ──
+  // Modules window.* attendus : absent = problème de chargement (ou volontairement sauté).
   const KNOWN_MODULES = [
     "PlanRegistry", "SessionPersist", "SessionBackups", "MyKTAMapPhotos",
     "MyKTAMapPhotoViewer", "LegendCustomization", "Favoris", "KmzExport",
     "KmzImport", "GpxIO", "GpxImport", "ThemeManager", "BatteryGuard",
     "HistoryManager", "MyKTAMapPinLock", "UnlockGate", "OOMGuard",
     "NetworkAudit", "UpdateChecker", "AlertChecker", "PerfUltra",
-    // 🐛 v1.79.3 (KARMA « 31/32, pourquoi ? ») — le module s'expose sous
-    // MyKTAMapTrackerReplay depuis toujours : « TrackerReplay » n'a JAMAIS
-    // existé sur window, le compteur ne pouvait pas atteindre 32/32.
+    // Le module de replay s'expose sous MyKTAMapTrackerReplay (pas « TrackerReplay »).
     "CompassWidget", "MyKTAMapTrackerReplay", "Pathfinder", "SearchPoints",
     "MyKTAMapPdfExport", "RefonteInterface", "MemInspector",
-    // 🆕 v1.20.0
     "CrashReports", "StatsGlobales",
-    // 🆕 v1.21.0
     "Tutorial",
-    // 🆕 v1.22.0
     "ProfileExportImport"
   ];
 
@@ -281,13 +259,11 @@
       modulesMissing:  []
     };
 
-    // Modules chargés
     KNOWN_MODULES.forEach(function(name) {
       if (window[name] != null) result.modulesLoaded.push(name);
       else                       result.modulesMissing.push(name);
     });
 
-    // Plan chargé
     try {
       const pc = window.PLAN_CONFIG;
       if (pc && pc.plan) {
@@ -306,7 +282,7 @@
       }
     } catch(e) { /* skip */ }
 
-    // Session active (= compteurs des annotations actuellement en RAM)
+    // Session active (compteurs des annotations en RAM).
     try {
       const points  = typeof window.getEditorPoints  === "function" ? (window.getEditorPoints()  || []).length : 0;
       const roads   = typeof window.getRoads         === "function" ? (window.getRoads()         || []).length : 0;
@@ -329,7 +305,7 @@
       };
     } catch(e) { /* skip */ }
 
-    // APP_CONFIG : champs pertinents uniquement (pas tout, pour rester lisible)
+    // APP_CONFIG : champs utiles seulement.
     try {
       const ac = window.APP_CONFIG || {};
       result.appConfig = {
@@ -345,7 +321,7 @@
     return result;
   }
 
-  // ========== COLLECTE : Crash Reports (v1.20.0) ==========
+  // ── Crash Reports ──
   async function _collectCrashReports() {
     const result = { reports: [], error: null };
     try {
@@ -360,15 +336,10 @@
     return result;
   }
 
-  // ========== COLLECTE GLOBALE ==========
-  // ========== 🧹 v1.79.3 — DONNÉES ORPHELINES (demande KARMA : « un profil
-  // historique a plein de données IDB liées à des plans qui n'existent
-  // plus ») : compare la liste de plans à date (registre) aux entrées
-  // par-plan du stockage local, et PROPOSE la suppression (jamais auto —
-  // une session orpheline redevient utile si l'user réimporte le ZIP).
-  // Scanné : sessions auto (LS), géoref/calib KMZ (LS), archives ZIP +
-  // handles (IDB), photos (IDB), backups (IDB). EXCLUS par design : Carnet
-  // et récits du Mode Histoire (l'HISTOIRE survit aux plans, v1.69).
+  // ── Données orphelines ──
+  // Compare le registre des plans aux données par plan (sessions, géoref/calage KMZ, archives ZIP et handles,
+  // photos, backups) et PROPOSE la suppression, jamais automatique (une session orpheline redevient utile si
+  // l'on réimporte le ZIP). Exclus par conception : Carnet et récits du Mode Histoire (l'histoire survit aux plans).
   async function _collectOrphelins() {
     const out = { plans: [], totalBytes: 0, error: null };
     try {
@@ -389,7 +360,6 @@
         e.sessionBytes = val.length;
         try { const p = JSON.parse(val); if (p && p.planName) e.nom = p.planName; } catch(err) {}
       });
-      // LS : calibs
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf("myktamap_kmz_calib_") !== 0) continue;
@@ -423,7 +393,6 @@
         }
         db.close();
       } catch(e) { /* base absente : rien à scanner */ }
-      // IDB photos
       try {
         const db = await _openDb("myktamap_photos");
         if (db.objectStoreNames.contains("photos")) {
@@ -441,7 +410,7 @@
         }
         db.close();
       } catch(e) {}
-      // IDB backups (via l'API : léger, payloads en RAM le temps du scan)
+      // Backups via l'API (payloads en RAM le temps du scan).
       if (window.SessionBackups && typeof window.SessionBackups.listAll === "function") {
         try {
           const backs = await window.SessionBackups.listAll();
@@ -493,7 +462,7 @@
     };
   }
 
-  // ========== RAPPORT TEXTE (pour bouton 📋 Copier) ==========
+  // ── Rapport texte (📋 Copier) ──
   function getReportText(rep) {
     if (!rep) return "";
     const lines = [];
@@ -504,7 +473,6 @@
     lines.push(_t("report.version", { version: rep.runtime.appVersion }));
     lines.push("");
 
-    // Runtime
     lines.push(_t("report.runtime"));
     lines.push("─────────────────────────────────────────");
     if (rep.runtime.planLoaded) {
@@ -530,7 +498,6 @@
     }
     lines.push("");
 
-    // localStorage
     lines.push(_t("report.ls"));
     lines.push("─────────────────────────────────────────");
     if (rep.localStorage.error) {
@@ -543,7 +510,6 @@
     }
     lines.push("");
 
-    // IndexedDB
     lines.push(_t("report.idb"));
     lines.push("─────────────────────────────────────────");
     if (rep.indexedDB.scanError) {
@@ -566,7 +532,6 @@
     });
     lines.push("");
 
-    // Cache PWA
     lines.push(_t("report.cache"));
     lines.push("─────────────────────────────────────────");
     if (rep.cachePWA.error) {
@@ -588,7 +553,6 @@
     }
     lines.push("");
 
-    // Storage estimate
     lines.push(_t("report.storage"));
     lines.push("─────────────────────────────────────────");
     if (rep.storageEstimate.error) {
@@ -600,7 +564,6 @@
     }
     lines.push("");
 
-    // 🆕 v1.20.0 — Crash Reports
     const cr = rep.crashReports || { reports: [], error: null };
     lines.push(_t("report.crash"));
     lines.push("─────────────────────────────────────────");
@@ -628,9 +591,8 @@
     return lines.join("\n");
   }
 
-  // ========== UI : MODALE ==========
-  // ========== HELPER I18N ==========
-  // Appelé AU RENDU uniquement (jamais au load) → les dicos sont prêts.
+  // ── Modale ──
+  // i18n au RENDU uniquement (dicos prêts).
   function _t(key, params) {
     return (window.I18n && typeof window.I18n.t === "function")
       ? window.I18n.t("meminsp." + key, params)
@@ -666,12 +628,10 @@
 
     let html = "";
 
-    // === Header ===
     html += '<div class="kta-mem-header-stamp">';
     html += _t("stamp", { date: _escapeHtml(new Date(rep.timestamp).toLocaleString(_locale())), version: _escapeHtml(r.appVersion) });
     html += '</div>';
 
-    // === Section RUNTIME ===
     html += '<div class="kta-mem-section">';
     html += '<div class="kta-mem-section-titre">' + _t("runtime.titre") + '</div>';
     if (r.planLoaded) {
@@ -722,7 +682,6 @@
     }
     html += '</div>';
 
-    // === Section LOCALSTORAGE ===
     html += '<div class="kta-mem-section">';
     html += '<div class="kta-mem-section-titre">' + _t("ls.titre") + ' <span class="kta-mem-total">' +
               _t("ls.count", { count: ls.keys.length, size: _formatBytes(ls.totalBytes) }) +
@@ -747,7 +706,6 @@
     }
     html += '</div>';
 
-    // === Section INDEXEDDB ===
     html += '<div class="kta-mem-section">';
     const totalIdbEntries = idb.databases.reduce(function(acc, d) { return acc + (d.totalEntries || 0); }, 0);
     html += '<div class="kta-mem-section-titre">' + _t("idb.titre") + ' <span class="kta-mem-total">' +
@@ -784,7 +742,6 @@
     });
     html += '</div>';
 
-    // === Section CACHE PWA ===
     html += '<div class="kta-mem-section">';
     html += '<div class="kta-mem-section-titre">' + _t("cache.titre");
     if (cp.activeCache) {
@@ -818,7 +775,6 @@
     }
     html += '</div>';
 
-    // === Section STORAGE ESTIMATE ===
     html += '<div class="kta-mem-section">';
     html += '<div class="kta-mem-section-titre">' + _t("storage.titre") + '</div>';
     if (se.error) {
@@ -834,7 +790,6 @@
     }
     html += '</div>';
 
-    // === Section 🧹 DONNÉES ORPHELINES (v1.79.3) ===
     const orph = rep.orphelins || { plans: [], totalBytes: 0, error: null };
     html += '<div class="kta-mem-section">';
     html += '<div class="kta-mem-section-titre">' + _t("orph.titre");
@@ -866,7 +821,6 @@
     }
     html += '</div>';
 
-    // === Section CRASH REPORTS (v1.20.0) ===
     const cr = rep.crashReports || { reports: [], error: null };
     html += '<div class="kta-mem-section">';
     html += '<div class="kta-mem-section-titre">' + _t("crash.titre");
@@ -912,22 +866,16 @@
     return html;
   }
 
-  // ───────── HANDLERS CRASH REPORTS (v1.20.0) ─────────
-  // 🆕 v1.44.0 — Refacto event delegation via _lc.delegate (UN listener par
-  // type d'event au lieu de N listeners ré-attachés à chaque rafraîchissement).
-  // Avant : à chaque _refreshAndRender(), forEach + addEventListener × ~30
-  // boutons = accumulation transitoire de closures + zombies sur DOM ancien.
-  // Maintenant : 1 listener click délégué sur #kta-mem-corps (jamais remplacé,
-  // seul son innerHTML l'est) qui dispatch via e.target.matches.
+  // ── Handlers des crashs ──
+  // Délégation (_lc.delegate) sur #kta-mem-corps, jamais remplacé (seul son innerHTML l'est) : un listener par
+  // type d'événement, pas ~30 listeners ré-attachés à chaque rafraîchissement.
   let _crashHandlersBound = false;
   function _bindCrashHandlers() {
     if (_crashHandlersBound || !_lc) return;
     const corps = document.getElementById("kta-mem-corps");
     if (!corps) return;
     _crashHandlersBound = true;
-    // 🧹 v1.79.3 — nettoyage des données orphelines (ktaConfirm, jamais
-    // silencieux : une session orpheline redevient utile si l'user
-    // réimporte le ZIP — c'est LUI qui tranche).
+    // Nettoyage des orphelins : toujours confirmé (c'est l'utilisateur qui tranche).
     _lc.delegate(corps, "click", "#kta-mem-orph-clean", async function() {
       const btn = this;
       const rep = _lastReport;
@@ -963,7 +911,6 @@
         window.CrashReports.clearAll().then(_refreshAndRender);
       }
     });
-    // Reset le flag au close (au cas où la modale est ré-ouverte)
     _lc.onClose(function() { _crashHandlersBound = false; });
   }
 
@@ -973,7 +920,6 @@
     if (!entry) return;
     if (!window.CrashReports || typeof window.CrashReports.formatReportText !== "function") return;
     const txt = window.CrashReports.formatReportText(entry);
-    // Modale simple : un <pre> avec le rapport texte intégral
     const overlay = document.createElement("div");
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100100"; // au-dessus de la modale MemInspector
@@ -988,8 +934,7 @@
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
-    // 🆕 v1.44.0 — Sous-lifecycle dédié pour cette sous-modale (au-dessus
-    // de la modale MemInspector principale). Cleanup auto au close().
+    // Cycle de vie propre à la sous-modale (au-dessus de la principale).
     const subLc = window.ModalLifecycle.attach(overlay, { label: "MemCrashDetail" });
     const close = function() {
       subLc.close();
@@ -1010,7 +955,7 @@
       if (!btn || !_lc || !_lc.alive) return;
       const orig = btn.textContent;
       btn.textContent = _t("btn.copied");
-      // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.8s.
+      // Timer suivi : annulé si la modale ferme avant 1,8 s.
       _lc.setTimeout(function() {
         if (btn.isConnected) btn.textContent = orig;
       }, 1800);
@@ -1026,17 +971,13 @@
     if (!corps) return;
     corps.innerHTML = '<div class="kta-mem-loading">' + _t("loading") + '</div>';
     try {
-      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si la
-      // modale a été fermée pendant l'await collecter() (200-800 ms typiques).
-      // On catch silencieusement plus bas.
+      // _lc.guard : ModalClosedError si la modale ferme pendant collecter() (200-800 ms) ; ignorée plus bas.
       const report = await (_lc ? _lc.guard(collecter()) : collecter());
       _lastReport = report;
       corps.innerHTML = _renderReport(_lastReport);
-      // 🆕 v1.20.0 — Bind handlers de la section Crash Reports (boutons
-      // dynamiques par crash). Re-bindé à chaque render (rafraîchir, suppr…).
+      // Handlers des boutons de crash, re-posés à chaque rendu.
       _bindCrashHandlers();
     } catch(e) {
-      // 🆕 v1.44.0 — Modale fermée pendant l'await → silently return.
       if (e && e.name === "ModalClosedError") return;
       if (!corps.isConnected) return;
       corps.innerHTML = '<div class="kta-mem-warn">' + _t("collect.error", { detail: _escapeHtml(e.message || e) }) + '</div>';
@@ -1051,15 +992,11 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    // 🆕 v1.44.0 — ModalLifecycle attaché : remplace les addEventListener
-    // manuels, le _onEscape custom, et le setTimeout du bouton 📋 Copier.
-    // Tous les listeners + timers seront cleared automatiquement au close().
+    // ModalLifecycle : listeners et timers nettoyés au close().
     _lc = window.ModalLifecycle.attach(overlay, {
       label: "MemInspector",
       onClose: function() {
-        // 🆕 v1.43.26 — Libère le snapshot du dernier rapport (peut contenir
-        // crashReports avec stacks volumineuses + photos byteCount). Sinon
-        // il survit jusqu'à la prochaine ouverture.
+        // Libère le dernier rapport (stacks de crash, tailles de photos), sinon gardé jusqu'à la réouverture.
         _lastReport = null;
       }
     });
@@ -1077,8 +1014,7 @@
         if (!btn || !_lc || !_lc.alive) return;
         const orig = btn.textContent;
         btn.textContent = _t("btn.copied");
-        // 🆕 v1.44.0 — setTimeout tracked : si user ferme la modale dans les
-        // 1.8s, le timer est cleared (plus de write dans bouton détaché).
+        // Timer suivi : pas d'écriture dans un bouton détaché.
         _lc.setTimeout(function() {
           if (btn.isConnected) btn.textContent = orig;
         }, 1800);
@@ -1096,9 +1032,7 @@
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }
 
-  // Copie déléguée au helper commun (utils.js) : il tente navigator.clipboard puis
-  // retombe sur execCommand (HTTP local, clipboard refusé). On garde la forme
-  // Promise résolue / rejetée attendue par les appelants.
+  // utils.js : navigator.clipboard puis repli execCommand (HTTP local) ; forme Promise attendue par les appelants.
   function _copyToClipboard(text) {
     if (typeof window.ktaCopierTexte !== "function") {
       return Promise.reject(new Error("ktaCopierTexte indisponible"));
@@ -1108,7 +1042,7 @@
     });
   }
 
-  // ========== EXPORT API ==========
+  // ── Export ──
   window.MemInspector = {
     ouvrir:        ouvrir,
     fermer:        fermer,

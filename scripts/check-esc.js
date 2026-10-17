@@ -1,17 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🧹 check-esc.js — garde-fou pré-commit BLOQUANT (rejoué en CI) — 14/10/2026
+// check-esc.js — garde-fou pré-commit BLOQUANT (rejoué en CI) : UN SEUL échappeur HTML, window.ktaEsc
 // =====================================================================
-// UN SEUL échappeur HTML : window.ktaEsc (js/langManager.js, 2e script chargé, sans defer). Il y avait ~75
-// copies locales, dont des variantes qui oubliaient les guillemets (un nom piégé sortait d'un attribut
-// value="…") et des replis qui n'échappaient RIEN quand ktaEsc manquait (`function(x){return x;}`).
-// Ce contrôle, sur tous les js/*.js (pas l'index : tout l'arbre, donc rien à passer en CI) :
-//   1. ktaEsc défini une seule fois, dans langManager.js, et il échappe vraiment (exécuté contre des charges) ;
-//   2. langManager.js chargé juste après copyright.js dans index.html, avant tout module qui s'en sert ;
-//   3. aucune nouvelle copie locale : une ligne qui produit « &amp; » ou « &lt; » (littéral entre guillemets)
-//      hors des exceptions motivées ci-dessous ; un module garde au plus un alias
-//      (`function _esc(s) { return window.ktaEsc(s); }`) ;
+// 🔒 Les copies locales dérivent : une variante qui oublie les guillemets laisse un nom piégé sortir d'un
+// attribut value="…", un repli `function(x){return x;}` n'échappe RIEN. Sur tous les js/*.js (tout l'arbre,
+// pas l'index : rien à passer en CI) :
+//   1. ktaEsc défini une seule fois, dans js/langManager.js, et il échappe vraiment (exécuté) ;
+//   2. langManager.js est le 2e script d'index.html (après copyright.js, sans defer) ;
+//   3. aucune copie locale : une ligne qui produit « &amp; » ou « &lt; » (littéral entre guillemets) hors
+//      EXCEPTIONS ; un module garde au plus un alias (`function _esc(s) { return window.ktaEsc(s); }`) ;
 //   4. aucun repli « ktaEsc || function… » (ktaEsc est toujours là : un repli ne sert qu'à mal échapper).
 // =====================================================================
 "use strict";
@@ -26,7 +24,7 @@ const t = (n, c, detail) => {
 };
 const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
-// Exceptions : fichier → nombre de lignes tolérées, avec la raison.
+// Exceptions : fichier → nombre de lignes tolérées, avec la raison
 const EXCEPTIONS = {
   "langManager.js": 1,   // l'échappeur canonique lui-même
   "confadmin.js": 1,     // page confadmin.html : ne charge pas langManager.js
@@ -37,7 +35,7 @@ const EXCEPTIONS = {
 const LITTERAL = /["'`]&(?:amp|lt);["'`]/;
 const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
 
-// ═════════ 1. Une définition, qui échappe ═════════
+// ── 1. Une définition, qui échappe ──────────
 {
   const defs = fichiers.filter((f) => /window\.ktaEsc\s*=(?!=)/.test(lire("js/" + f)));
   t("window.ktaEsc défini une seule fois, dans js/langManager.js", defs.length === 1 && defs[0] === "langManager.js",
@@ -58,7 +56,7 @@ const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
   }
 }
 
-// ═════════ 2. Chargé avant ses utilisateurs ═════════
+// ── 2. Chargé avant ses utilisateurs ──────────
 {
   const html = lire("index.html");
   const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((m) => m[1]);
@@ -67,7 +65,7 @@ const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
     /<script src="js\/langManager\.js"><\/script>/.test(html), scripts.slice(0, 3).join(", "));
 }
 
-// ═════════ 3. Aucune copie locale ═════════
+// ── 3. Aucune copie locale ──────────
 {
   const fautes = [];
   for (const f of fichiers) {
@@ -86,7 +84,7 @@ const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
     fautes.length === 0, fautes.join(" | "));
 }
 
-// ═════════ 4. Aucun repli « ktaEsc || … » ═════════
+// ── 4. Aucun repli « ktaEsc || … » ──────────
 {
   const REPLI = /ktaEsc\s*\|\||typeof\s+window\.ktaEsc\s*===?\s*["']function["']\s*\)?\s*\?/;
   const fautes = fichiers.filter((f) => REPLI.test(lire("js/" + f)));
