@@ -1,44 +1,28 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🧰 check-modal-lifecycle.js — pré-commit advisory linter
+// check-modal-lifecycle.js — linter pré-commit CONSULTATIF
 // =====================================================================
-// Sprint v1.44.0 — Sur les modules `MIGRATED_MODULES` (qui ont opt-in
-// au cycle de vie unifié `ModalLifecycle`), on VEUT que les opérations
-// soient routées via `lc.setTimeout` / `lc.on` / `lc.createObjectURL`
-// et non via les natifs. Sinon = leak résiduel non-géré par close().
-//
-// Politique : ⚠️ ADVISORY (avertit mais ne bloque pas) — chaque WARN
-// peut être un faux positif (ex: scope hors modale, helper local…).
-// L'auteur du commit décide. Le hook pre-commit affiche les WARN puis
-// continue. Pour rendre bloquant : `process.exit(1)` au lieu de `0`.
-//
-// Pour étendre : ajouter le file dans MIGRATED_MODULES quand tu finis
-// une migration v1.44.x.
+// Dans les modules `MIGRATED_MODULES` (cycle de vie unifié `ModalLifecycle`),
+// timers, écouteurs et blob URLs passent par `lc.setTimeout` / `lc.on` /
+// `lc.createObjectURL` : un natif fuit, close() ne le nettoie pas.
+// Consultatif : avertit sans bloquer (faux positifs possibles : scope hors
+// modale, helper local). Exemption par ligne : marqueur de TOLERANCE_MARKERS.
+// Un module dont la migration est complète s'ajoute à MIGRATED_MODULES.
+// Doc : docs/architecture/modal-lifecycle.md.
 // =====================================================================
 
 const fs   = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 
-// Fichiers JS de modale qui ont opt-in à ModalLifecycle.
-// Les natifs setTimeout/addEventListener/createObjectURL dans ces fichiers
-// déclenchent un WARN (à éviter, préférer lc.*).
 const MIGRATED_MODULES = [
-  "js/memInspector.js",       // migration complète (timers, listeners, delegation crash handlers)
-  "js/swInspector.js",        // migration complète (timers, listeners, lockButton, guard)
-  // Migration partielle (close + setTimeout du bouton copy) — listeners pas
-  // encore tous migrés. À promouvoir dans la liste quand la migration complète
-  // sera faite (v1.44.x). En attendant, le linter ne flag pas pour éviter le
-  // bruit (mais le helper EST attaché et le _lc.close() au fermer fonctionne).
-  // "js/lostMode.js",
-  // "js/secoursMode.js",     // v1.43.26-27 OK (pattern A/D appliqué, migration full ModalLifecycle pas critique)
-  // "js/osmView.js",
-  // "js/interfaceItineraire.js",
-  // ...
+  "js/memInspector.js",
+  "js/swInspector.js",
+  // Migration partielle (helper attaché, écouteurs pas tous migrés) : non
+  // listés pour éviter le bruit — lostMode, secoursMode, osmView, interfaceItineraire.
 ];
 
-// Patterns natifs à signaler (regex + label).
 const NATIVE_PATTERNS = [
   { re: /(?<!_lc\.|_lc &&\s*|lc\.|window\.)\bsetTimeout\s*\(/g,        label: "setTimeout natif (utiliser lc.setTimeout)" },
   { re: /(?<!_lc\.|_lc &&\s*|lc\.|window\.)\bsetInterval\s*\(/g,       label: "setInterval natif (utiliser lc.setInterval)" },
@@ -46,8 +30,7 @@ const NATIVE_PATTERNS = [
   { re: /URL\.createObjectURL\s*\(/g,                                   label: "URL.createObjectURL (utiliser lc.createObjectURL)" },
 ];
 
-// Lignes de tolérance : si la ligne contient un de ces marqueurs, on skip
-// (ex: code volontairement hors modale, helper local, blob URL pour download).
+// Marqueurs d'exemption par ligne (natif voulu : hors modale, download…).
 const TOLERANCE_MARKERS = [
   "// lint-ok-modal-lifecycle",   // exemption explicite par l'auteur
   "/* lint-ok-modal-lifecycle */",
@@ -68,10 +51,8 @@ function scanFile(filePath) {
   const findings = [];
 
   lines.forEach(function(line, idx) {
-    // Skip si commentaire pur (commence par // ou *)
     const trimmed = line.trim();
     if (trimmed.startsWith("//") || trimmed.startsWith("*")) return;
-    // Skip si marqueur de tolérance
     if (TOLERANCE_MARKERS.some(function(m) { return line.includes(m); })) return;
 
     NATIVE_PATTERNS.forEach(function(pat) {
@@ -101,8 +82,7 @@ function main() {
   });
 
   if (allFindings.length === 0) {
-    // Silencieux quand tout va bien — pas de bruit pour les commits propres.
-    process.exit(0);
+    process.exit(0);   // silencieux quand tout va bien
   }
 
   console.log("\n⚠️  [check-modal-lifecycle] " + allFindings.length + " usage(s) natif(s) détecté(s) dans les modales migrées :\n");
@@ -113,8 +93,7 @@ function main() {
   console.log("\n💡 Préférer les équivalents tracked sur lc.* (cf docs/architecture/modal-lifecycle.md).");
   console.log("   Si le natif est VOULU (scope hors modale, helper local…), ajouter // lint-ok-modal-lifecycle en bout de ligne.\n");
 
-  // Advisory : on n'échoue PAS le commit. Pour bloquer : exit(1).
-  process.exit(0);
+  process.exit(0);   // consultatif : n'échoue pas le commit
 }
 
 main();

@@ -6,23 +6,13 @@
  */
 /* eslint-disable no-console */
 // =====================================================================
-// 📊 garde-fous-tableau.js — TABLEAU DE BORD des garde-fous (NON bloquant)
+// garde-fous-tableau.js — tableau de bord des garde-fous (NON bloquant)
 // =====================================================================
-// Lance, un par un, chaque script appelé par .githooks/pre-commit (la liste
-// est LUE dans le hook : il reste la source de vérité, rien à tenir à jour
-// ici), mesure sa durée et son résultat, et écrit un tableau Markdown sur la
-// sortie standard. `--json` : la même chose en JSON.
-//
-// POURQUOI (10/10/2026, backlog CI/CD) : le pre-commit s'arrête au premier
-// garde-fou rouge et ne dit pas lequel coûte le plus. Ce tableau montre TOUS
-// les résultats d'un coup et où part le temps (CI : résumé du job).
-//
-// Ce n'est PAS un garde-fou : il sort toujours en 0 (sauf hook illisible).
-// Le verdict reste celui du pre-commit, qui tourne tel quel en CI.
-//
-// Statuts : OK · ÉCHEC (bloquant rouge) · AVERTI (consultatif rouge : le
-// hook l'appelle sans `|| exit`, il ne bloque pas).
-//
+// Lance un par un chaque script appelé par .githooks/pre-commit (liste LUE dans le hook, seule source de
+// vérité), mesure durée et résultat, écrit un tableau Markdown (`--json` : la même chose en JSON).
+// Le pre-commit s'arrête au premier rouge ; ce tableau montre TOUS les résultats et où part le temps
+// (CI : résumé du job). Sort toujours en 0 (sauf hook illisible) : le verdict reste celui du pre-commit.
+// Statuts : OK · ÉCHEC (bloquant rouge) · AVERTI (consultatif rouge : appelé sans `|| exit`).
 // Usage : node scripts/garde-fous-tableau.js [--json]
 // =====================================================================
 "use strict";
@@ -46,7 +36,7 @@ function lireGardeFous() {
   return liste;
 }
 
-// Première ligne parlante d'une sortie en échec (pour la colonne « détail »).
+// Première ligne parlante d'une sortie en échec (colonne « détail »)
 function detail(sortie) {
   const l = String(sortie || "").split(/\r?\n/).map(function (s) { return s.trim(); })
     .filter(function (s) { return s && /❌|⛔|erreur|error|échec|refus/i.test(s); })[0] || "";

@@ -1,25 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 💾 check-plan-offline.js — garde-fou pré-commit BLOQUANT
+// check-plan-offline.js — garde-fou pré-commit BLOQUANT du hors-ligne d'un plan serveur
 // =====================================================================
-// LE BESOIN (question KARMA, 07/09/2026) : « une fois un plan serveur chargé,
-// il est en cache, offline ok ? » — NON, et pour trois raisons cumulées :
-//
-//   1. PLAFOND : le cache principal est borné à MAX_DYNAMIC_ENTRIES (800) avec
-//      éviction FIFO. Un plan V2 de 20000×12000 fait 1275 tuiles, et son SEUL
-//      niveau z=0 en fait 960 → le plan s'évinçait lui-même en se chargeant.
-//      Hors-ligne : carte TROUÉE, pas une erreur.
-//   2. PARESSE : seules les tuiles AFFICHÉES sont téléchargées (un niveau de
-//      zoom sur quatre si on n'a pas zoomé).
-//   3. BUMP : `activate` supprimait tout cache ≠ CACHE_NAME.
-//
-// D'où un cache DÉDIÉ par plan, exclu des deux mécanismes.
-//
-// ⚠️ L'EXIGENCE LA PLUS FACILE À CASSER, et celle que ce script protège en
-// priorité : l'état affiché doit être lu du CACHE RÉEL, jamais d'un drapeau
-// mémorisé. Un drapeau survit à une purge navigateur et annonce « disponible »
-// sur du vide — le « bouton fantôme » que KARMA a explicitement refusé.
+// (js/planOffline.js, sw.js, js/homeLoader.js). Un plan servi n'est PAS hors-ligne par simple
+// chargement : le cache principal est borné (MAX_DYNAMIC_ENTRIES, éviction FIFO : un grand plan V2
+// s'évince lui-même), seules les tuiles affichées sont téléchargées, et `activate` purge tout cache
+// ≠ CACHE_NAME. D'où un cache DÉDIÉ par plan, exclu de l'éviction et du bump.
+// 🩸 L'exigence la plus facile à casser : l'état affiché se lit du CACHE RÉEL, jamais d'un drapeau
+// mémorisé (il survit à une purge et annonce « disponible » sur du vide : pas de bouton fantôme,
+// décision produit). Plusieurs contrôles EXÉCUTENT le code (vm) : une TDZ échappe à `node -c`.
+// Doc : docs/TILING.md (hors-ligne d'un plan serveur).
 // =====================================================================
 "use strict";
 
@@ -34,18 +25,10 @@ const PO  = fs.readFileSync("js/planOffline.js", "utf8");
 const HL  = fs.readFileSync("js/homeLoader.js", "utf8");
 const IDX = fs.readFileSync("index.html", "utf8");
 
-// 🩸 STRIPPER LIGNE À LIGNE, JAMAIS INLINE — « le mangeur de blocs », 2e round.
-// La version précédente faisait `.replace(/\/\*[\s\S]*?\*\//g, " ")`. Or un
-// `/*` peut apparaître AILLEURS que dans un commentaire : dans une chaîne
-// (`accept="image/*"`), dans un chemin cité (`data/**`), dans une regex. Le
-// non-greedy avalait alors tout jusqu'au `*/` suivant — MESURÉ : de 28 % à
-// 88 % du fichier détruit selon les cas (main.js : 98 986 → 12 170 octets).
-// 🩸 Le danger n'était pas les faux rouges, qui se voient : c'étaient les
-// assertions de la forme « X n'est PAS présent », vraies par accident dès que
-// la zone avait été mangée. Le même piège est documenté dans README.md pour
-// check-i18n (« le mangeur de blocs »), et je l'ai réintroduit ici.
-// On ne retire donc QUE des lignes ENTIÈRES de commentaire : un `/*` au milieu
-// d'une ligne de code est laissé tel quel, il ne peut plus rien avaler.
+// 🩸 « Le mangeur de blocs » : retirer les commentaires LIGNE À LIGNE, jamais par regex
+// `/\/\*[\s\S]*?\*\//`. Un `/*` hors commentaire (chaîne `image/*`, chemin `data/**`, regex) ferait
+// avaler tout jusqu'au `*/` suivant, et les assertions « X n'est PAS présent » deviendraient
+// vraies par accident. Seules les lignes ENTIÈRES de commentaire partent.
 function sansCommentaires(src) {
   const nl = src.indexOf("\r\n") >= 0 ? "\r\n" : "\n";
   const out = [];
@@ -76,8 +59,7 @@ t("💾 la liste des caches de plan est mémoïsée (pas un caches.keys() par re
   /_planCachesMemo/.test(SWC) && /PLAN_CACHES_TTL/.test(SWC));
 t("💾 …et invalidée par la page après écriture/suppression",
   /PLAN_CACHE_CHANGED/.test(SWC) && /PLAN_CACHE_CHANGED/.test(POC));
-// L'éviction LRU n'ouvre que CACHE_NAME : les caches de plan lui échappent
-// par construction. On le VÉRIFIE, sinon un refactor pourrait l'élargir.
+// Les caches de plan échappent à l'éviction par construction : vérifié contre un refactor.
 t("🩸 l'éviction LRU ne touche QUE le cache principal",
   /_scheduleEviction[\s\S]{0,400}caches\.open\(CACHE_NAME\)/.test(SWC));
 
@@ -89,19 +71,15 @@ t("🩸 le statut est calculé en LISANT le cache (caches.keys + cache.keys)",
 t("🩸 sans manifeste, on ne conclut JAMAIS « complet »",
   /if \(!man \|\| !Array\.isArray\(man\.urls\)\)/.test(POC));
 t("🩸 le manifeste n'est écrit qu'APRÈS la boucle (une interruption laisse « incomplet »)",
-  // 🩸 `_urlManifeste(plan)` apparait AUSSI dans la definition de la fonction,
-  // bien avant la boucle : on vise l ECRITURE (`cache.put(_urlManifeste`).
+  // 🩸 `_urlManifeste(plan)` apparaît aussi dans sa définition, avant la boucle : on vise l'ÉCRITURE.
   POC.indexOf("await Promise.all(pool)") > 0 &&
   POC.indexOf("cache.put(_urlManifeste(plan)") > POC.indexOf("await Promise.all(pool)"));
 t("🩸 les URLs manquantes sont retenues sur LES DEUX chemins d échec (HTTP + réseau)",
-  // 🩸 La 1re version exigeait UNE occurrence : saboter le seul cas HTTP la
-  // laissait verte, alors que la moitié des échecs cessait d être tracée.
+  // 🩸 Exactement 2 occurrences : une seule laisserait passer la perte d'un des deux chemins.
   POC.split("manquants.push(u)").length - 1 === 2);
 t("🩸 le MANIFESTE porte la liste des manquants",
   (function () {
-    // 🩸 Chercher « manquants: manquants » dans tout le fichier ne prouvait
-    // rien : la valeur de retour de precacher() le contient aussi. On borne
-    // sur l écriture du manifeste.
+    // 🩸 Borné à l'écriture du manifeste : le retour de precacher() contient la même chaîne.
     const i = POC.indexOf("cache.put(_urlManifeste(plan)");
     return i >= 0 && POC.slice(i, i + 400).indexOf("manquants: manquants") >= 0;
   })());
@@ -109,9 +87,7 @@ t("🩸 l UI nomme les fichiers manquants au lieu de dire seulement « n sur N �
   HLC.indexOf("manquantsTitre") >= 0 && HLC.indexOf("st.manquants.slice(0, 5)") >= 0);
 t("🩸 l état « partiel » propose un RÉESSAI, pas un retéléchargement complet",
   (function () {
-    // Tranche du bloc BOUTONS pour l état « partiel », bornée par appariement
-    // de branches : viser une chaîne dans tout le fichier aurait attrapé le
-    // bloc des MESSAGES, qui parle du même état sans contenir de bouton.
+    // Tranche du bloc BOUTONS (pas celui des MESSAGES, qui parle du même état sans bouton).
     const iZ = HLC.indexOf("zone.innerHTML = html;");
     const d  = HLC.lastIndexOf("} else if (st.etat === \"partiel\") {", iZ);
     const f  = HLC.indexOf("} else if (st.etat === \"incomplet\") {", d);
@@ -123,9 +99,7 @@ t("🩸 l état « partiel » propose un RÉESSAI, pas un retéléchargement com
   })());
 t("🩸 seul un 200 est mis en cache (un 404 caché rendrait le plan faussement complet)",
   (function () {
-    // 🩸 Chercher `r.status === 200` dans tout le fichier ne prouvait plus rien
-    // depuis que `verifierMaj` en contient un aussi : saboter celui de
-    // `precacher` laissait l'assertion verte. On borne à la mise en cache.
+    // 🩸 Borné à `precacher` : `verifierMaj` contient aussi un `r.status === 200`.
     const i = POC.indexOf("async function precacher");
     const j = POC.indexOf("cache.put(u, r.clone())", i);
     return i >= 0 && j > i && POC.slice(i, j).indexOf("r.status === 200") >= 0;
@@ -138,13 +112,10 @@ t("🩸 …et ne recalcule aucune grille localement",
   POC.indexOf("Math.pow(2") < 0 && POC.indexOf("tileSize") < 0);
 t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") >= 0);
 
-// ───────── 4. PAS DE BOUTON FANTÔME (exigence KARMA) ─────────
-// Le bloc de rendu distingue trois états ; celui du plan COMPLET ne doit
-// proposer QUE « mettre à jour » et « retirer ».
+// ───────── 4. PAS DE BOUTON FANTÔME (décision produit) ─────────
+// Plan COMPLET : seulement « mettre à jour » et « retirer ».
 {
-  // 🩸 `if (st.etat === "complet")` apparait DEUX fois : d abord pour le
-  // message colore, ensuite pour les boutons. La 1re version prenait la
-  // mauvaise tranche et rougissait sur du code sain. On borne sur le rendu.
+  // 🩸 `if (st.etat === "complet")` apparaît DEUX fois (message, puis boutons) : borné sur le rendu.
   const iZone = HLC.indexOf("zone.innerHTML = html;");
   const d = HLC.lastIndexOf('if (st.etat === "complet") {', iZone);
   const f = HLC.indexOf('} else if (st.etat === "incomplet") {', d);
@@ -161,8 +132,8 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
 }
 
 // ───────── 4 bis. PLAN ZIP DÉCLARÉ PAR L'INDEX (`"zip": "data/x.zip"`) ─────────
-// Son hors-ligne est la copie gardée en IndexedDB, pas le cache du SW : chaque branche doit
-// le savoir, sinon il retombe sur le chemin « dossier » (fetch de <path>/plan-config.json → 404).
+// 🩸 Son hors-ligne est la copie gardée en IndexedDB, pas le cache du SW : chaque branche doit le
+// savoir, sinon il retombe sur le chemin « dossier » (fetch de <path>/plan-config.json → 404).
 {
   const lire = function (f) { return fs.readFileSync(f, "utf8"); };
   const HLZ = lire("js/homeLoader.js"), MZ = lire("js/main.js"), SWZ = lire("sw.js");
@@ -192,8 +163,7 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
 }
 
 // ───────── 5. ON EXÉCUTE l'énumération des tuiles ─────────
-// Une assertion de chaîne ne dirait rien de la grille. On charge tiling.js
-// dans un vm et on compte, sur un cas dont le nombre est calculable à la main.
+// tiling.js chargé dans un vm, sur un cas dont le nombre est calculable à la main.
 {
   const win = { navigator: { userAgent: "node", deviceMemory: 8 }, console: console,
                 document: { createElement: () => ({ getContext: () => null }) },
@@ -214,15 +184,13 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
       tiling: { version: 2, tileSize: 512, format: "jpeg", minNativeZoom: -3, maxNativeZoom: 0 }
     };
     const urls = f(pc);
-    // 960 (z=0) + 240 + 60 + 15 = 1275, calculable à la main : c'est le chiffre
-    // qui prouve que le plafond de 800 du cache principal était intenable.
+    // 960 (z=0) + 240 + 60 + 15 = 1275 : au-delà du plafond du cache principal.
     t("🩸 grille complète des 4 niveaux : 1275 tuiles (z=0 en fait 960 à lui seul)",
       urls.length === 1275);
     t("racine dérivée du dossier du baseImage",
       urls[0] === "data/toto/data/tiles/z0/x0_y-1.jpg");
     t("le dernier niveau est bien z=-3",
       urls[urls.length - 1].indexOf("/z-3/") >= 0);
-    // Un plan LOCAL (baseImage en blob:) n'a pas de tuiles HTTP à pré-cacher.
     const local = f({ plan: { baseImage: "blob:http://x/abc", imageWidth: 4096, imageHeight: 4096 },
                       tiling: pc.tiling });
     t("🩸 plan LOCAL (blob:) → aucune URL (rien à pré-cacher, tout est déjà dans le ZIP)",
@@ -230,21 +198,10 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
   }
 }
 
-// ───────── 6. 🩸 TROIS ÉTATS — ON EXÉCUTE statut() SUR UN FAUX CACHE ─────────
-// VÉCU (v1.87.1, constat KARMA « ⚠️ incomplet — 9 fichiers sur 10 ») : le
-// manifeste v1 listait tout ce qu'on avait TENTÉ, échecs compris. Un plan dont
-// le plan-config déclare un fichier non déployé restait donc « incomplet » À
-// VIE — le bouton invitait à retélécharger sans fin un fichier qui n'existe
-// pas, sans jamais dire lequel.
-// Une assertion de chaîne n'aurait rien vu de cette arithmétique : on APPELLE.
-// ───────── 7. 🔎 FRAÎCHEUR : SAVOIR QUE LE SERVEUR A CHANGÉ ─────────
-// 🩸 LE TROU QUE LE PRÉ-CACHE A CREUSÉ (v1.87.0). Un plan téléchargé est servi
-// depuis son cache dédié, que RIEN ne purge — ni l'éviction, ni le bump. Il
-// pouvait donc servir du contenu périmé indéfiniment, sans le dire.
-// 🩸 POURQUOI PAS LE CHAMP `version` : saisi à la main dans `index.json`, il
-// dérive déjà dans ce repo (index dit « V1 », le plan-config du plan de test
-// dit « V2 »), et `plan-config.json` ne porte AUCUN horodatage. Le seul signal
-// fiable sans changer de format est HTTP : ETag / Last-Modified.
+// ───────── 7. FRAÎCHEUR : SAVOIR QUE LE SERVEUR A CHANGÉ ─────────
+// 🩸 Le cache dédié n'est purgé par RIEN (ni éviction, ni bump) : sans sonde, il sert du périmé
+// sans le dire. Le champ `version` (saisi à la main, il dérive) ne suffit pas et le plan-config
+// n'a pas d'horodatage : le seul signal fiable est HTTP (ETag / Last-Modified).
 {
   t("🔎 le SW laisse passer les sondes en RÉSEAU SEUL",
     /_ktacheck=1/.test(SWC) && SWC.indexOf("event.respondWith(") >= 0);
@@ -255,8 +212,7 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
     (function () {
       const i = SWC.indexOf("_ktacheck");
       const j = SWC.indexOf("return;", i);
-      // 🩸 `cache.put` etait trop etroit : un sabotage ecrivant `c.put(...)`
-      // passait au travers. On refuse TOUTE ecriture de cache dans la branche.
+      // 🩸 On refuse TOUTE écriture (`.put(`) : viser `cache.put` laisserait passer `c.put(...)`.
       return i >= 0 && j > i && SWC.slice(i, j).indexOf(".put(") < 0;
     })());
   t("🔎 les validateurs HTTP sont retenus au téléchargement",
@@ -274,10 +230,9 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
 }
 
 
-// ───────── 8. 🔎 ON EXÉCUTE verifierMaj() ─────────
-// Une assertion de chaîne ne dit rien de ce que la fonction CONCLUT. On charge
-// planOffline.js dans un vm avec `caches` et `fetch` stubés, et on rejoue les
-// quatre cas qui comptent — dont les deux où elle doit refuser de conclure.
+// ───────── 8. ON EXÉCUTE verifierMaj() ─────────
+// planOffline.js dans un vm (`caches`, `fetch` stubés) : quatre cas, dont deux où elle doit refuser
+// de conclure.
 async function _verifierAvec(manifeste, reponses) {
   const vm2 = require("vm");
   const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
@@ -363,17 +318,10 @@ async function _fraicheur() {
 
 
 
-// ───────── 11. 🧹 LE PLAN DE DÉMO N'EST PAS PRÉ-CACHÉ ─────────
-// 🩸 DEUX RAISONS, et la seconde vaut plus que la première.
-//   1. POIDS : ses 8 fichiers pèsent ~2 Mo (dont 2,0 Mo pour TestMAP.png +
-//      collision.png), téléchargés à l'INSTALL par tout le monde — y compris
-//      ceux qui ne l'ouvriront jamais.
-//   2. 🍖 FAUX TÉMOIN : pré-caché, il était INÉVINÇABLE (`_staticAssetUrls`
-//      le protège de l'éviction LRU). Tester le hors-ligne avec lui donnait
-//      donc un « ça marche » MENSONGER, alors qu'un plan ajouté par
-//      l'utilisateur pouvait s'évincer lui-même en se chargeant. Ce faux
-//      témoin a masqué le vrai comportement jusqu'à la v1.87.0.
-// `data/index.json` reste pré-caché : canal de config d'instance, minuscule.
+// ───────── 11. LE PLAN DE DÉMO N'EST PAS PRÉ-CACHÉ ─────────
+// ~2 Mo téléchargés à l'install par tous ; et surtout 🩸 pré-caché, il est INÉVINÇABLE
+// (`_staticAssetUrls`) : un test hors-ligne fait avec lui ment, alors qu'un plan utilisateur
+// peut s'évincer. `data/index.json` reste pré-caché (config d'instance, minuscule).
 {
   const iList = SW.indexOf("const ASSETS_TO_CACHE = [");
   const fList = SW.indexOf("];", iList);
@@ -387,17 +335,13 @@ async function _fraicheur() {
 }
 
 
-// ───────── 12. 💾 LE BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN ─────────
-// Demande KARMA (« offline first oblige ») : télécharger un plan SERVEUR
-// directement depuis la liste du HOME, et le bouton devient « mettre à jour »
-// une fois le plan complet.
-// 🩸 Mêmes règles que la fiche ℹ️ Infos, pour les mêmes raisons : l'état vient
-// du CACHE RÉEL, et le bouton naît `hidden` — tant que l'état n'est pas lu, il
-// n'existe pas. Un cache purgé le fait repasser en « télécharger » tout seul.
+// ───────── 12. LE BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN ─────────
+// 🩸 Mêmes règles que la fiche Infos : l'état vient du CACHE RÉEL et le bouton naît `hidden`
+// (tant que l'état n'est pas lu, il n'existe pas) ; un cache purgé le repasse en « télécharger ».
 {
   const HL2 = sansCommentaires(fs.readFileSync("js/homeLoader.js", "utf8"));
-  // Plans SERVEUR (data/) et plans ☁️ d'une installation reliée QUAND une extension sait les
-  // garder (prise plans.horsLigne) — jamais un plan local (il est déjà sur l'appareil).
+  // Plans SERVEUR, et ☁️ d'une installation reliée si une extension sait les garder
+  // (prise plans.horsLigne) ; jamais un plan local.
   t("💾 le bouton n'est rendu que pour les plans SERVEUR (et ☁️ si une extension sait les garder)",
     /plan\.type === "server" \|\| \(plan\.type === "ext" && window\.KtaExtensions &&\s*window\.KtaExtensions\.horsLigneExtensionDisponible\(\)\) \? `<button class="plan-row-btn kta-plan-row-dl"/.test(HL2));
   t("🩸 …et il naît CACHÉ (pas de bouton fantôme avant de connaître l'état)",
@@ -414,8 +358,7 @@ async function _fraicheur() {
     /async function statuts\(planIds\)/.test(sansCommentaires(fs.readFileSync("js/planOffline.js", "utf8"))));
   t("🩸 le clic ne déclenche PAS le chargement du plan (stopPropagation)",
     /ev\.stopPropagation\(\);/.test(HL2) && /_lancerHorsLigneLigne\(id, dlBtn\)/.test(HL2));
-  // 🩸 Le piège du jour, quatre fois : `plan` n'existe pas dans cette boucle,
-  // qui ne lie que `id`. Le référencer aurait été une ReferenceError au clic.
+  // 🩸 La boucle ne lie que `id` : référencer `plan` serait une ReferenceError au clic.
   t("🩸 le handler passe l'`id` (seule variable liée par la boucle), pas `plan`",
     HL2.indexOf("_lancerHorsLigneLigne(plan, dlBtn)") < 0);
   t("🛟 après téléchargement, on RELIT le cache au lieu de croire le résultat",
@@ -423,14 +366,9 @@ async function _fraicheur() {
 }
 
 // ───────── 9. 🩸 ON APPELLE LE HANDLER `fetch` DU SERVICE WORKER ─────────
-// VÉCU (v1.88.0 → corrigé en v1.88.2, signalé par KARMA depuis sa console) :
-// j'ai inséré la branche des sondes `_ktacheck` AVANT la ligne
-// `const reqUrl = event.request.url || "";`. `const` en ZONE MORTE
-// TEMPORELLE → `ReferenceError: Cannot access 'reqUrl' before initialization`
-// à CHAQUE requête. Le handler `fetch` du SW mourait donc entièrement : plus
-// de cache, plus de hors-ligne, console noyée.
-// ⚠️ `node -c` ne voit RIEN d'une TDZ, et aucune assertion de chaîne non plus.
-// Le seul filet possible est d'EXÉCUTER le handler.
+// Une branche insérée avant `const reqUrl = …` = zone morte temporelle : ReferenceError à CHAQUE
+// requête, le handler meurt (plus de cache ni de hors-ligne). ⚠️ `node -c` et les assertions de
+// chaîne ne voient rien d'une TDZ : seul l'exécuter la voit.
 {
   const vm4 = require("vm");
   const self0 = {};
@@ -465,9 +403,7 @@ async function _fraicheur() {
   t("il enregistre bien un handler `fetch`", typeof handlers.fetch === "function");
 
   if (typeof handlers.fetch === "function") {
-    // 🩸 Chaque URL emprunte une BRANCHE différente du handler. Une TDZ, une
-    // faute de frappe ou une variable manquante dans n'importe laquelle fait
-    // lever ICI — ce que la relecture ne voit pas.
+    // Chaque URL emprunte une BRANCHE différente du handler.
     const cas = [
       ["sonde de fraîcheur",   "http://x/data/p/plan-config.json?_ktacheck=1"],
       ["page de reset",        "http://x/killsw.html"],
@@ -493,18 +429,13 @@ async function _fraicheur() {
 
 
 // ───────── 10. 🩸 ON EXÉCUTE listerUrls() ─────────
-// VÉCU DEUX FOIS EN UNE HEURE (v1.88.2 dans sw.js, v1.88.3 ici) : une variable
-// `const` utilisée AVANT sa déclaration — zone morte temporelle. `node -c` ne
-// voit rien, aucune assertion de chaîne non plus. La 2e fois, c'est en câblant
-// la racine de tuiles sondée que j'ai remis l'usage avant la déclaration.
-// Seule l'exécution attrape ça.
+// Même piège TDZ (un `const` utilisé avant sa déclaration) : seule l'exécution l'attrape.
 async function _listerUrlsAvec(planConfig) {
   const vm5 = require("vm");
   const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
   win.window = win;
   win.caches = { keys: async () => [], open: async () => ({ keys: async () => [], match: async () => null }) };
   win.fetch = async function () { return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(planConfig)) }; };
-  // Stubs des helpers que listerUrls consomme — mêmes noms qu'au runtime.
   win.resolveServerPaths = function (c) { return c; };
   win.resoudreIconesPlanServeur = async function (c) { return c; };
   win.ktaResoudreRacineTuiles = async function () { return "data/p/data/tiles"; };
@@ -516,9 +447,11 @@ async function _listerUrlsAvec(planConfig) {
 }
 
 
-// 🩸 `async` OBLIGATOIRE : un throw de vm.runInContext doit devenir une
-// REJECTION, pas un crash synchrone hors du Promise.all. Un crash n est pas
-// un echec annonce -- il passe pour un succes aux yeux d un falsificateur.
+// ───────── 6. TROIS ÉTATS : ON EXÉCUTE statut() SUR UN FAUX CACHE ─────────
+// 🩸 Un fichier déclaré mais absent du serveur donne « partiel » (nommé), jamais « incomplet » à
+// vie (retéléchargement sans fin d'un fichier qui n'existe pas).
+// 🩸 `async` OBLIGATOIRE : un throw de vm.runInContext doit devenir une REJECTION, pas un crash
+// synchrone hors du Promise.all (un crash n'est pas un échec annoncé).
 async function _statutAvecCache(entrees, manifeste) {
   const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
   win.window = win;

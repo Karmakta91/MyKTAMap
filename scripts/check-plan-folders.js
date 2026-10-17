@@ -1,25 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📁 check-plan-folders.js — garde-fou pré-commit BLOQUANT
+// check-plan-folders.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Dossiers de « Mes plans » (étude docs/audits/2026-09-16_etude-dossiers-
-// mes-plans.md, décisions KARMA 1-11). Le registre est EXÉCUTÉ tel quel
-// (js/planRegistry.js chargé dans un bac à sable avec un localStorage en
-// mémoire) : on prouve l'API, on ne la lit pas.
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. L'index serveur reprend un plan que l'utilisateur a déplacé à la main
-//      (le ping-pong de `version` v1.88.0 et des tags v1.90.1, une 3e fois).
-//   2. Un dossier déclaré par l'index se renomme ou se supprime localement :
-//      il revient au boot suivant, l'utilisateur ne comprend pas.
-//   3. Supprimer un dossier emporte ses plans.
-//   4. Deux « Secteur » après un import de profil ou de liste.
-//   5. Un folderId orphelin (dossier absent) fait planter la liste au lieu de
-//      valoir « Non classés ».
-//   6. La mise à jour d'un plan (même id) ou la découverte serveur (merge
-//      addOrUpdate) lui fait perdre son dossier.
-//   7. Le glisser s'active au doigt, ou l'écran ajoute de la hauteur.
+// Dossiers de « Mes plans ». Le vrai js/planRegistry.js est EXÉCUTÉ dans un bac
+// à sable (localStorage en mémoire) ; l'écran est vérifié dans le source.
+// 🩸 Régressions silencieuses visées :
+//   1. l'index serveur reprend un plan que l'utilisateur a déplacé à la main ;
+//   2. un dossier de l'index renommé/supprimé localement revient au boot ;
+//   3. supprimer un dossier emporte ses plans ;
+//   4. deux « Secteur » après un import de profil ou de liste ;
+//   5. folderId orphelin qui plante la liste au lieu de valoir « Non classés » ;
+//   6. mise à jour d'un plan (addOrUpdate, même id) qui perd son dossier ;
+//   7. glisser actif au doigt sans appui long, ou écran qui gagne en hauteur.
 // Usage : node scripts/check-plan-folders.js [racine]
 "use strict";
 const fs   = require("fs");
@@ -30,7 +23,7 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\
 let echecs = 0;
 function t(msg, cond) { console.log((cond ? "✅ " : "❌ ") + msg); if (!cond) echecs++; }
 
-// ---------- 0. Charger le registre réel dans un bac à sable ----------
+// ── 0. Charger le registre réel dans un bac à sable ──────────────────
 function registre(lsInitial) {
   const mem = Object.assign({}, lsInitial || {});
   const localStorage = {
@@ -52,7 +45,7 @@ function registre(lsInitial) {
   return { PR: PR, mem: mem };
 }
 
-// ---------- 1. Rangement manuel ----------
+// ── 1. Rangement manuel ──────────────────────────────────────────────
 {
   const { PR, mem } = registre();
   PR.addOrUpdate({ id: "a", type: "local", name: "A" });
@@ -79,7 +72,7 @@ function registre(lsInitial) {
   t("removeAll efface aussi dossiers et mode", (PR.removeAll(), !/"folders"|"plansView"/.test(mem.myktamap_plans)));
 }
 
-// ---------- 2. L'index propose, l'utilisateur dispose ----------
+// ── 2. L'index propose, l'utilisateur dispose ────────────────────────
 {
   const { PR } = registre();
   PR.addOrUpdate({ id: "s1", type: "server", name: "S1" });
@@ -107,7 +100,7 @@ function registre(lsInitial) {
     Object.keys(lib).length === 0 && PR2.findFolder(mien.id) && PR2.findFolder(mien.id).src === "user" && PR2.renameFolder(mien.id, "Secteur bis"));
 }
 
-// ---------- 3. Fusion (liste .config / profil) et robustesse ----------
+// ── 3. Fusion (liste .config / profil) et robustesse ─────────────────
 {
   const { PR } = registre();
   const locaux = [{ id: "f_secteur", name: "Secteur", color: "#111", order: 0, collapsed: true, src: "index" }];
@@ -118,10 +111,8 @@ function registre(lsInitial) {
   t("la fusion est PURE (les dossiers locaux ne sont pas mutés)", locaux[0].src === "index" && locaux.length === 1);
   const rr = PR.fusionnerDossiers(locaux, [{ id: "n", name: "Nouveau" }], "replace");
   t("mode remplacer : seuls les importés restent", rr.folders.length === 1 && rr.folders[0].name === "Nouveau");
-  // orphelin
   const { PR: PR3 } = registre({ myktamap_plans: JSON.stringify({ version: "1.0", plans: [{ id: "o", type: "local", name: "O", folderId: "f_disparu" }] }) });
   t("🩸 folderId orphelin = Non classés, pas d'erreur", PR3.planFolderId(PR3.findById("o")) === null && PR3.getFolders().length === 0);
-  // survie au merge (mise à jour d'un plan / découverte)
   const { PR: PR4 } = registre();
   PR4.addOrUpdate({ id: "p", type: "local", name: "P", version: "V1" });
   const d = PR4.createFolder("Dossier");
@@ -131,7 +122,7 @@ function registre(lsInitial) {
     PR4.findById("p").folderId === d.id && PR4.findById("p").folderSrc === "user" && PR4.findById("p").version === "V2");
 }
 
-// ---------- 3 bis. Règles par étiquette (marche 2) ----------
+// ── 3 bis. Règles par étiquette ──────────────────────────────────────
 {
   const { PR } = registre();
   PR.addOrUpdate({ id: "r1", type: "local", name: "R1", tags: ["Secteur", "calcaire"] });
@@ -155,7 +146,7 @@ function registre(lsInitial) {
   t("la fusion de profil transporte la règle", fus.folders[0].rule && fus.folders[0].rule.tags[0] === "t");
 }
 
-// ---------- 4. Ce que l'écran et les autres modules doivent respecter ----------
+// ── 4. Ce que l'écran et les autres modules doivent respecter ────────
 {
   const HOME = lire("js/homeLoader.js");
   const MAIN = lire("js/main.js");
@@ -167,23 +158,18 @@ function registre(lsInitial) {
       .test(IDX));   // suivi du bloc des filtres, repéré sur le CODE (le commentaire HTML est facultatif)
   t("🩸 le glisser n'existe que pour un pointeur fin (jamais au doigt)",
     /pointer: fine/.test(HOME) && /draggable/.test(HOME));
-  // 🐛 17/09 (KARMA : « sur PC le glisser ne marche plus ») — mon seuil de 6 px
-  // arrivait APRÈS celui de Chrome et annulait dragstart : plus de seuil maison.
+  // 🩸 Un seuil maison arrive APRÈS celui du navigateur et annule dragstart.
   t("🩸 le glisser souris s'en remet au seuil NATIF du navigateur (aucun preventDefault sur dragstart, aucun seuil maison)",
     /addEventListener\("dragstart", function\(e\) \{\s*_dragPlanId = row\.dataset\.id;/.test(HOME) && !/SEUIL_GLISSER|_dragArme/.test(HOME));
-  // 📱 16/09 (KARMA : « sur mobile le glisser-déposer ne fonctionne pas ») — appui long.
   t("📱 au doigt, le glisser passe par un APPUI LONG (timer), et le défilement n'est bloqué (preventDefault) QUE pendant le geste",
     /APPUI_LONG/.test(HOME) && /touchstart[\s\S]{0,400}setTimeout/.test(HOME) &&
     /if \(_tDrag && _tDrag\.id === row\.dataset\.id\) \{\s*e\.preventDefault\(\)/.test(HOME) && /\{ passive: false \}/.test(HOME));
   t("📱 un doigt qui bouge avant l'appui long annule (c'est un défilement)", /TOLERANCE_APPUI/.test(HOME));
-  // (KARMA) : « scintillement, doublement » → empreinte ; « tout en haut ça devrait défiler » → défilement aux bords
   t("📱 pendant le glisser tactile, la ligne d'origine est une EMPREINTE (pas un double) et le défilement aux bords tourne en rAF, arrêté au dépôt",
     /kta-plan-row-empreinte/.test(HOME) && /\.plan-row\.kta-plan-row-empreinte \{ opacity: 0\.12/.test(CSS) &&
     /function _defilerAuxBords\(\)[\s\S]{0,1600}requestAnimationFrame\(_defilerAuxBords\)/.test(HOME) && /cancelAnimationFrame\(d\.raf\)/.test(HOME));
-  // (KARMA) : « si je glisse vers le bas je ne peux pas défiler après OSM » — borné à la liste
   t("📱 le défilement du glisser est BORNÉ à « Mes plans » (jamais au-delà de la fin de la liste ni au-dessus de son titre)",
     /liste\.getBoundingClientRect\(\)\.bottom <= bas\) delta = 0/.test(HOME) && /boite\.getBoundingClientRect\(\)\.top >= haut\) delta = 0/.test(HOME));
-  // 🐛 16/09 (KARMA, PWA) : l'appui long surlignait le texte de la ligne en même temps
   t("📱 un appui long ne sélectionne pas de texte : user-select:none sur les lignes et en-têtes, selectstart bloqué pendant le geste",
     /\.plan-row, \.kta-plans-folder-head \{ user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; \}/.test(CSS) &&
     /selectstart/.test(HOME));

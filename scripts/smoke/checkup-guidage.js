@@ -1,34 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🪧 checkup-guidage.js — checkup de RELEASE (pas un hook pré-commit)
+// checkup-guidage.js — checkup de release (pas un hook) du guidage d'itinéraire (js/itiGuidage.js)
 // =====================================================================
-// Vérifie le guidage de l'itinéraire (js/itiGuidage.js) DANS L'APP RÉELLE,
-// en taille téléphone (390×844) : c'est là qu'il sert, et c'est là qu'un
-// bandeau trop large ou masqué se voit.
-//
-// Le filet logique (scripts/check-guidage.js) tourne sur des réseaux fictifs ;
-// ce checkup-ci vérifie ce qu'il ne peut pas voir : le rendu, le câblage au
-// tracker, la cohabitation avec l'en-tête, les colonnes de boutons, l'écran XL.
-//
-// Il ouvre le plan que liste `data/index.json` (le relevé fictif s'il y est)
-// et choisit lui-même deux points nommés : aucun nom de plan ni de point ici.
-//
-// CE QUI EST VÉRIFIÉ :
-//   G1. itinéraire « Y aller » calculé → bandeau visible, sous l'en-tête,
-//       entre les colonnes de boutons, avec une consigne
-//   G2. raccord à vol d'oiseau dessiné en pointillé (si le départ est hors tracé)
-//   G3. toucher le bandeau → feuille de route peuplée
-//   G4. avancer le long du trajet → la distance restante baisse / la consigne change
-//   G5. s'écarter → « Hors itinéraire ? » + 3 boutons
-//   G6. écran XL → la consigne y est reprise
-//   G8. itinéraire d'urgence → pas de croix
-//   G9. suivi arrêté → bandeau gardé si position confirmée, masqué sinon
-//   + zéro erreur console / pageerror / clé i18n manquante
-//
-// Captures : dossier $GUID_SHOTS (défaut : dossier temporaire du système).
-// Usage : node scripts/smoke/checkup-guidage.js
-// =====================================================================
+// Dans l'app réelle, en taille téléphone (390×844), ce que scripts/check-guidage.js (logique, réseaux
+// fictifs) ne voit pas : rendu, câblage au tracker, en-tête, colonnes de boutons, écran XL.
+// Ouvre le plan listé par `data/index.json` (le relevé fictif s'il y est) et choisit deux points nommés :
+// aucun nom de plan ni de point ici.
+//   G1 bandeau sous l'en-tête, entre les colonnes de boutons · G2 raccord à vol d'oiseau en pointillé ·
+//   G3 feuille de route · G4 la consigne change en avançant · G5 écart → « Hors itinéraire ? » + 3 boutons ·
+//   G6 consigne reprise sur l'écran XL · G8 urgence sans croix · G9 suivi arrêté : bandeau gardé si
+//   position confirmée, masqué sinon · zéro erreur console / pageerror / clé i18n manquante.
+// Captures : $GUID_SHOTS (défaut : dossier temporaire). Usage : node scripts/smoke/checkup-guidage.js
 "use strict";
 
 const { chromium } = require("playwright");
@@ -97,7 +80,7 @@ function inf(msg) { console.log("  •  " + msg); }
     await page.waitForTimeout(3000);
     ok("plan chargé, ItiGuidage présent");
 
-    // Deux points nommés à 60–250 m l'un de l'autre (calcul court).
+    // Deux points nommés à 60–250 m (calcul court)
     const choix = await page.evaluate(function () {
       const e = Number(window.APP_CONFIG.scale) || 1;
       const pts = [].concat(window.getEditorPoints ? window.getEditorPoints() : [],
@@ -232,8 +215,8 @@ function inf(msg) { console.log("  •  " + msg); }
     if (!g8) pb("G8 : la croix reste en urgence");
     else ok("G8 : itinéraire d'urgence → pas de croix");
 
-    // G9 — suivi arrêté. Depuis le 01/10/2026 (KARMA 1:a), une position
-    // CONFIRMÉE suffit (on avance de plaque en plaque) ; sans elle, masqué.
+    // G9 — suivi arrêté : une position CONFIRMÉE suffit à garder le guidage (décision produit :
+    // on avance de plaque en plaque) ; sans elle, masqué.
     const masque = function () {
       const el = document.getElementById("kta-guid-bandeau");
       return !el || el.style.display === "none";

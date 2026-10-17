@@ -1,22 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📦 check-livrables-docs.js — garde-fou pré-commit BLOQUANT (rejoué en CI)
+// check-livrables-docs.js — garde-fou pré-commit BLOQUANT (rejoué en CI) : ce qui part dans les livrables
 // =====================================================================
-// Audit CD du 09/10/2026, F1 : la documentation interne (BACKLOG, audits, porte de release,
-// architecture) et le README.md racine (journal de dev) partaient dans TOUT ce qui se livre — sites
-// dev et prod, image Docker (donc aussi pro.myktamap.fr, construit avec ce Dockerfile), ZIP
-// d'auto-hébergement des Releases. Règle unique : de docs/, seul docs/applications/ (ce que l'app
-// lit) est livré, et le README.md racine ne l'est pas.
-//
-// Ce script vérifie que les trois listes d'exclusion du DÉPÔT portent cette règle :
-//   • Dockerfile (rsync de l'étape assets) ;
-//   • .github/workflows/release.yml (rsync du ZIP selfhost) ;
-//   • .dockerignore (contexte envoyé au build).
-// 🔒 Même audit : data/ n'entre dans l'image que par liste blanche (relevé fictif + ZIP d'exemple), et son
-// index vient de docker/index-fictif.json — jamais du data/index.json local (réel, en skip-worktree).
-// Les scripts de déploiement des sites vivent HORS dépôt : leurs motifs sont décrits dans
-// docs/architecture/infra-versioning.md §85, et etat-sites.ps1 vérifie ce qui est réellement servi.
+// Règle : de docs/, seul docs/applications/ (ce que l'app lit) est livré, et le README.md racine (journal de
+// dev) ne l'est pas — sinon la doc interne part sur les sites, dans l'image Docker (pro compris) et le ZIP
+// d'auto-hébergement. Vérifie les trois listes d'exclusion du dépôt : Dockerfile (rsync de l'étape assets),
+// .github/workflows/release.yml (rsync du ZIP selfhost), .dockerignore (contexte du build).
+// 🔒 data/ n'entre dans l'image que par liste blanche (relevé fictif + ZIP d'exemple), et son index vient de
+// docker/index-fictif.json — jamais du data/index.json local (réel, en skip-worktree) : une image construite
+// sur le poste embarquerait sinon les relevés réels.
+// Les scripts de déploiement vivent HORS dépôt (motifs : infra-versioning.md §85 ; etat-sites.ps1 vérifie
+// ce qui est réellement servi).
 // =====================================================================
 
 const fs = require("fs");
@@ -37,14 +32,12 @@ function verifierRsync(fichier) {
   t(fichier + " : les 4 règles docs/ et README.md sont présentes", positions.every(p => p >= 0));
   t(fichier + " : dans l'ordre (inclusions avant l'exclusion de docs/*)",
     positions.every(p => p >= 0) && positions.every((p, i) => i === 0 || p > positions[i - 1]));
-  // Les règles doivent précéder la copie elle-même (même commande rsync).
   const iRsync = src.indexOf("rsync -a");
   t(fichier + " : règles posées dans la commande rsync -a", iRsync >= 0 && positions[0] > iRsync);
 }
 verifierRsync("Dockerfile");
 verifierRsync(".github/workflows/release.yml");
 
-// .dockerignore : motifs ligne à ligne
 {
   const lignes = fs.readFileSync(".dockerignore", "utf8").split(/\r?\n/).map(l => l.trim());
   const iDocs = lignes.indexOf("docs/*");
@@ -52,7 +45,6 @@ verifierRsync(".github/workflows/release.yml");
   t(".dockerignore : docs/* exclu", iDocs >= 0);
   t(".dockerignore : docs/applications réintégré APRÈS docs/*", iApps > iDocs && iDocs >= 0);
   t(".dockerignore : README.md exclu", lignes.indexOf("README.md") >= 0);
-  // 🔒 data/ (audit CD du 09/10/2026) : une image construite sur le poste embarquait les relevés RÉELS.
   const iData = lignes.indexOf("data/*");
   t(".dockerignore : data/* exclu (relevés réels du poste)", iData >= 0);
   t(".dockerignore : seuls data/test et data/myktamap.zip réintégrés, APRÈS data/*",

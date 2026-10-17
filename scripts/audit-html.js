@@ -6,24 +6,15 @@
  */
 /* eslint-disable no-console */
 // =====================================================================
-// 🔒 audit-html.js — génère les pages d'audit réseau depuis leurs .md
+// audit-html.js — génère les pages d'audit réseau depuis leurs .md
 // =====================================================================
-// docs/applications/NETWORK_AUDIT.md            → NETWORK_AUDIT.html
-// docs/applications/NETWORK_AUDIT_HISTORIQUE.md → NETWORK_AUDIT_HISTORIQUE.html
-//
-// POURQUOI (10/10/2026) : les deux .html étaient tenus À LA MAIN à côté des .md. Ils avaient divergé (section
-// « Permissions API » absente de la page, titres de version différents, sections d'historique manquantes) et
-// débordaient sur mobile. Le .md est désormais la SEULE source : le .html est un produit, régénéré au bump.
-//
-// AUTONOME : aucune dépendance, aucun lien vers un autre dépôt. Moteur Markdown : scripts/md-mini.js.
-// Page sans style ni script écrit dedans (CSP `script-src 'self'`) : feuille docs/applications/audit.css,
-// pied docs/applications/audit-pied.js (mention de licence community / pro).
-//
-// USAGE :
-//   node scripts/audit-html.js           → (ré)écrit les deux .html
-//   node scripts/audit-html.js --check   → n'écrit rien ; code 1 si un .html n'est pas celui que donne son .md
-//                                          (garde-fou : scripts/check-audit-html.js, pre-commit et CI)
-// REPRODUCTIBLE : même .md → mêmes octets (aucune date, aucun hasard ; fins de ligne LF).
+// docs/applications/NETWORK_AUDIT{,_HISTORIQUE}.md → .html. ⚠️ Le .md est la SEULE source : un .html tenu
+// à la main diverge (sections manquantes, débordement mobile). Le .html est un produit, régénéré au bump.
+// Autonome (moteur Markdown : scripts/md-mini.js). Page sans style ni script écrit dedans (CSP
+// `script-src 'self'`) : feuille docs/applications/audit.css, pied audit-pied.js (licence community / pro).
+// Usage : node scripts/audit-html.js → (ré)écrit les deux .html ;
+//         --check → n'écrit rien, code 1 si un .html diffère de son .md (garde-fou : check-audit-html.js).
+// Reproductible : même .md → mêmes octets (aucune date, aucun hasard ; fins de ligne LF).
 // =====================================================================
 "use strict";
 
@@ -107,7 +98,7 @@ function rendrePage(page, source) {
   ].join("\n");
 }
 
-// Pour le garde-fou : rend une page depuis un contenu .md donné (lu dans l'index Git, par ex.).
+// Pour le garde-fou : rend une page depuis un contenu .md donné (lu dans l'index Git, par ex.)
 function generer(nomMd, source) {
   const page = PAGES.find((p) => p.md === nomMd);
   if (!page) throw new Error("page d'audit inconnue : " + nomMd);

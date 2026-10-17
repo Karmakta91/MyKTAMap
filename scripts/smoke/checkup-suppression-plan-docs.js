@@ -1,26 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🗑️ checkup-suppression-plan-docs.js — checkup de RELEASE
+// checkup-suppression-plan-docs.js — checkup de release : supprimer un plan et ses documents d'histoire
 // =====================================================================
-// SUPPRIMER UN PLAN LAISSAIT SES DOCUMENTS D'HISTOIRE ORPHELINS.
-//
-// `PlanRegistry.purgeAssociatedData` nettoie session, géoréf, photos et
-// sauvegardes, mais pas la base `myktamap_histoire_pdfs` : les PDF d'un plan
-// supprimé restaient listés dans 📔 Mon carnet → 📖 Récits, sous le nom d'un
-// plan disparu. Décision KARMA (29/09/2026) : une case DÉCOCHÉE dans la
-// confirmation, « supprimer aussi ses N document(s) (X Mo) ».
-//
-// Ce que ce harnais mesure, par le vrai clic dans ℹ️ Infos → 🗑️ :
-//   1. la case apparaît, décochée, avec le bon nombre de documents ;
-//   2. case COCHÉE → les documents du plan partent, ceux d'un AUTRE plan restent ;
-//   3. case LAISSÉE décochée → rien ne part (le comportement d'avant tient) ;
-//   4. un plan sans document → pas de case du tout.
-// Le passage 3 est la falsification du 2 : sans lui, une suppression qui
-// viderait la base à chaque fois passerait pour un succès.
-//
+// `PlanRegistry.purgeAssociatedData` ne touche pas la base `myktamap_histoire_pdfs` : sans la case de la
+// confirmation (décochée par défaut, décision produit), les PDF d'un plan supprimé restent orphelins dans
+// Mon carnet → Récits. Mesure par le vrai clic Infos → Supprimer :
+//   1. la case apparaît, décochée, avec le bon nombre de documents et leur poids ;
+//   2. cochée → les documents du plan partent, ceux d'un AUTRE plan restent ;
+//   3. laissée décochée → rien ne part (falsification du 2 : sans elle, une suppression qui viderait
+//      toute la base passerait pour un succès) ;
+//   4. plan sans document → pas de case.
 // Usage : node scripts/smoke/checkup-suppression-plan-docs.js
-// =====================================================================
 "use strict";
 
 const { chromium } = require("playwright");
@@ -41,8 +32,7 @@ const problemes = [];
 function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
 function ok(m) { console.log("  ✅ " + m); }
 
-// Un passage = une page neuve, deux plans fictifs au registre, des documents
-// semés dans la base, puis le vrai parcours de suppression du plan A.
+// Un passage : page neuve, deux plans fictifs, documents semés, puis vraie suppression du plan A
 async function passe(nav, docsA, cocher) {
   const page = await nav.newPage({ viewport: { width: 1100, height: 800 } });
   await page.addInitScript(function (ls) {
@@ -56,11 +46,10 @@ async function passe(nav, docsA, cocher) {
   await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
 
   const ids = await page.evaluate(async function (n) {
-    // Deux plans ZIP fictifs : aucun relevé réel n'intervient.
     const idA = "local_checkup_suppr_a", idB = "local_checkup_suppr_b";
     window.PlanRegistry.addOrUpdate({ id: idA, type: "zip", name: "Checkup suppr A", fileName: "a.zip" });
     window.PlanRegistry.addOrUpdate({ id: idB, type: "zip", name: "Checkup suppr B", fileName: "b.zip" });
-    // Base du Mode Histoire au schéma v2 (celui que crée modeHistoire.js).
+    // ⚠️ même schéma (version 2, index by_plan) que modeHistoire.js
     await new Promise(function (res, rej) {
       const r = indexedDB.open("myktamap_histoire_pdfs", 2);
       r.onupgradeneeded = function () {

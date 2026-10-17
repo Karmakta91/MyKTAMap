@@ -1,25 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🧱 checkup-tuiles-hors-ecran.js — checkup de RELEASE
+// checkup-tuiles-hors-ecran.js — checkup de release : le tuilage V2 ne pose que les tuiles proches de l'écran
 // =====================================================================
-// LE TUILAGE V2 POSAIT TOUT LE NIVEAU, MÊME HORS ÉCRAN.
-//
-// Mesuré le 26/09/2026 sur un relevé de 16332×13820 : 864 overlays posés au
-// niveau 0 pour 6 à l'écran, 880 requêtes, ~30 Mo. Une image d'overlay n'est
-// demandée qu'au moment où il est posé : depuis le 29/09, seules les tuiles
-// proches de l'écran le sont (tiling.js > ktaCullerTuilesV2).
-//
-// Ce harnais mesure sur le vrai plan, zoomé au niveau le plus fin :
-//   1. peu de tuiles posées, et peu de REQUÊTES de tuiles réellement parties ;
-//   2. aucun trou : chaque point de l'écran situé dans le plan est couvert par
-//      une tuile posée — au départ ET après un déplacement ;
-//   3. filtre multi-niveau : niveau 0 masqué → aucune tuile ; ré-affiché →
-//      seulement les tuiles proches, pas tout le niveau.
-// Falsification : le point 1 échoue sur le code d'avant (tout le niveau posé).
-//
+// Une image d'overlay n'est demandée qu'au moment où il est posé : poser tout le niveau coûte des centaines
+// de requêtes et des dizaines de Mo sur un grand plan. Seules les tuiles proches de l'écran sont posées
+// (tiling.js > ktaCullerTuilesV2). Mesure sur le vrai plan, au niveau le plus fin :
+//   1. peu de tuiles posées et peu de REQUÊTES de tuiles parties (échoue si tout le niveau est posé) ;
+//   2. aucun trou : chaque point de l'écran dans le plan est couvert, au départ ET après déplacement ;
+//   3. filtre multi-niveau : niveau 0 masqué → aucune tuile ; ré-affiché → seulement les proches.
 // Usage : node scripts/smoke/checkup-tuiles-hors-ecran.js
-// =====================================================================
 "use strict";
 
 const { chromium } = require("playwright");
@@ -61,7 +51,6 @@ function inf(m) { console.log("  •  " + m); }
     if (!PLAN.fictif) inf("⚠️ le relevé fictif n'est pas dans data/index.json — checkup sur « " + PLAN.nom + " »");
     const page = await nav.newPage({ viewport: { width: 1200, height: 850 } });
     page.on("pageerror", function (e) { erreurs.push(String(e)); });
-    // Requêtes de TUILES réellement émises par le navigateur.
     let requetesTuiles = 0;
     page.on("request", function (r) { if (/\/tiles\/z-?\d+\//.test(r.url())) requetesTuiles++; });
     await page.addInitScript(function (ls) {
@@ -76,8 +65,7 @@ function inf(m) { console.log("  •  " + m); }
     }, 90000);
     await page.waitForTimeout(3000);
 
-    // État : tuiles du niveau, tuiles posées, part de l'écran (dans le plan)
-    // qu'aucune tuile posée ne couvre.
+    // Tuiles du niveau, tuiles posées, points de l'écran (dans le plan) sans tuile posée
     const etat = function () {
       return page.evaluate(function () {
         const st = window._tilingV2State, map = window.map;
@@ -129,7 +117,6 @@ function inf(m) { console.log("  •  " + m); }
     if (e2.dansPlan > 0 && e2.trous === 0 && e2.poses < e2.total / 4)
       ok("après déplacement : écran couvert, toujours " + e2.poses + " tuiles posées");
     else pb("après déplacement : " + JSON.stringify(e2));
-    // Petit déplacement (panBy) : doit aussi compléter les bords.
     await page.evaluate(function () { window.map.panBy([300, 200], { animate: false }); });
     await page.waitForTimeout(1500);
     const e2b = await etat();

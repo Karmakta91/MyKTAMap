@@ -1,48 +1,19 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🖥️ checkup-home-scroll.js — checkup de RELEASE (pas un hook pré-commit)
-// =====================================================================
-// Vérifie qu'en petite fenêtre PC le HOME reste ATTEIGNABLE : le contenu
-// déborde (normal), mais il scrolle et le footer se rejoint à la molette.
-//
-// POURQUOI CE CHECKUP EXISTE (dette D-home-mini, refermée le 02/09/2026) :
-// la dette décrivait « footer coupé SANS scroll possible, scrollHeight ne
-// grandit pas ». Rediagnostiqué sur 9 configs (1366/1600/1920 × 500→1080) :
-// NON REPRODUIT — le scroll marche partout. Le postulat « colonne Actions
-// ~586 px incompressibles » était faux : elle est élastique (852 px à 1080
-// de haut, 520 px à 560).
-//
-// 🩸 LA LEÇON, ET LA VRAIE RAISON DE CE FICHIER : pendant le rediagnostic,
-// trois mesures successives ont été FAUSSÉES par un overlay qui couvrait la
-// page — le splash (3,5 s minimum, `SPLASH_MIN_DURATION_MS` dans main.js) puis
-// la modale `#kta-alert-modal` (« Accès hors-ligne », déclenchée quand le
-// service worker est bloqué). Les deux figent `scrollHeight` et interceptent
-// la molette : exactement le symptôme décrit par la dette. Un harnais qui
-// mesure trop tôt invente un bug qui n'existe pas.
-//   → Ce script attend le DÉTACHEMENT du splash (il est retiré du DOM, pas
-//     masqué) puis retire la modale, et REFUSE de conclure sans l'avoir fait.
-//
-// CE QUI EST VÉRIFIÉ, à chaque hauteur :
-//   1. la page est bien dégagée (aucun overlay sous le curseur) — sinon ABANDON
-//      plutôt qu'un faux vert ;
-//   2. si le contenu déborde, la molette scrolle VRAIMENT (pas `scrollTop = n`
-//      en JS : ça marche même quand un handler mange l'événement) ;
-//   3. après scroll, le footer est ENTIÈREMENT dans la viewport.
-//
-//   4. 📐 15/09/2026 — AVANT tout scroll : « Charger ce plan » (le bouton
-//      PRIMAIRE) est dans la partie VISIBLE de #panelZip, et à ≥ 800 px de
-//      haut #panelZip ne cache RIEN. C'est le trou exact par lequel deux
-//      ajouts de la semaine (+128 px) sont passés : le bouton partait dans
-//      le scroll interne du filet v1.88.1 et ce checkup disait OK, puisque
-//      la page, elle, ne débordait pas.
-//
-// ⚠️ Ne teste ni le thème clair, ni la colonne OSM (invisible au harnais :
-// pas de réseau pour les tuiles). Le zoom navigateur est émulé comme Chrome
-// le fait — viewport = fenêtre ÷ zoom et deviceScaleFactor = zoom — sur la
-// config « portable 1536×800 à 125 % » ; `body.style.zoom` ne déclencherait
-// ni les médias ni le bon viewport.
-//
+// checkup-home-scroll.js — checkup de RELEASE (Playwright, pas un hook) : en petite fenêtre PC, le HOME
+// reste atteignable. À chaque taille :
+//   1. page dégagée (aucun overlay sous le curseur), sinon ABANDON plutôt qu'un faux vert ;
+//   2. si le contenu déborde, la MOLETTE scrolle vraiment (`scrollTop = n` réussit même quand un handler
+//      `wheel` mange l'événement) ;
+//   3. après scroll, le footer est entièrement dans la viewport ;
+//   4. avant tout scroll, « Charger ce plan » est dans la partie VISIBLE de #panelZip, et à ≥ 800 px de
+//      haut #panelZip ne cache rien (sinon le bouton part dans le scroll interne, page non débordante).
+// 🩸 Le splash (retiré du DOM après ~3,5 s) et la modale « Accès hors-ligne » (SW bloqué) figent
+//    `scrollHeight` et interceptent la molette : mesurer trop tôt invente un bug de scroll. Le script
+//    attend le DÉTACHEMENT du splash, retire la modale, et refuse de conclure sans l'avoir fait.
+// ⚠️ Ni thème clair ni colonne OSM (pas de réseau). Zoom navigateur émulé comme Chrome (viewport =
+//    fenêtre ÷ zoom, deviceScaleFactor = zoom) ; `body.style.zoom` ne déclencherait ni médias ni viewport.
 // Usage : node scripts/smoke/checkup-home-scroll.js
 // =====================================================================
 
@@ -70,9 +41,8 @@ const LS = {
   LS.myktamap_plans_registry_v1 = JSON.stringify({ plans: plans });
 })();
 
-// Largeur × hauteur [× zoom]. Les hauteurs < 768 sont le domaine de la dette.
-// 1536×800 = portable 1080p à 125 % Windows : la config qui était à ZÉRO de
-// marge avant le 14/09/2026. Son zoom 125 % navigateur = 1229×640 à dsf 1,25.
+// Largeur × hauteur [× zoom]. 1536×800 = portable 1080p à 125 % Windows, la config la plus serrée ;
+// son zoom navigateur 125 % = 1229×640 à dsf 1,25.
 const CONFIGS = [
   [1366, 768], [1366, 600], [1366, 560],
   [1600, 650], [1920, 700], [1280, 500],
@@ -97,9 +67,8 @@ async function testerConfig(nav, W, H, zoom) {
     await p.goto(URL, { waitUntil: "domcontentloaded" });
 
     // 1) Le splash est RETIRÉ DU DOM après ~3,5 s (main.js > _splashEnd).
-    //    Ne pas tester `display`/`opacity`/`offsetParent` : il est en
-    //    `position:fixed`, donc `offsetParent` vaut null même quand il couvre
-    //    tout l'écran — piège vécu, il rendait l'attente vraie trop tôt.
+    //    🩸 Pas `display`/`opacity`/`offsetParent` : en `position:fixed`, `offsetParent` vaut null même
+    //    quand il couvre tout l'écran.
     await p.waitForSelector("#splashOverlay", { state: "detached", timeout: 25000 })
       .catch(function () {});
     await p.waitForTimeout(700);
@@ -127,10 +96,8 @@ async function testerConfig(nav, W, H, zoom) {
       return;
     }
 
-    // 📐 4 bis) LE BOUTON PRIMAIRE, AVANT TOUT SCROLL. #panelZip scrolle en
-    //    interne sous 821 px de haut (filet v1.88.1) : « Charger ce plan »
-    //    doit rester dans sa partie visible (il est épinglé en bas), et à
-    //    ≥ 800 px de haut rien ne doit être caché dedans.
+    // 4 bis) Bouton primaire, avant tout scroll : #panelZip scrolle en interne sous 821 px de haut,
+    //    « Charger ce plan » y est épinglé en bas.
     const prim = await p.evaluate(function () {
       const pz = document.getElementById("panelZip");
       const b = document.getElementById("loadPlanBtn");
@@ -158,8 +125,7 @@ async function testerConfig(nav, W, H, zoom) {
                   "à comprimer côté décoratif, pas à laisser scroller sur un écran de cette taille.");
     }
 
-    // 4) Scroll À LA MOLETTE. `scrollTop = n` en JS réussit même si un
-    //    handler `wheel` mange l'événement — ça ne prouverait rien.
+    // 4) Scroll à la MOLETTE (pas `scrollTop = n`, qui ne prouverait rien).
     await p.evaluate(function () {
       const ov = document.getElementById("planLoaderOverlay");
       if (ov) ov.scrollTop = 0;

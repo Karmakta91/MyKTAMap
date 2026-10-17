@@ -1,35 +1,16 @@
 // =====================================================================
-// 🛟 check-filets-donnees.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// Le lot 2 « Filets de données » de l'audit ergonomie (13/09/2026) + la
-// décision M2 (verrou temporisé). Chaque item est un filet posé sous une
-// action destructive : un snapshot attendu, une confirmation chartée, une
-// entrée d'historique, un compte à rebours à la place d'un verrou définitif.
-//
-// CE QUI RÉGRESSE SANS BRUIT, ET QUE CE SCRIPT REFUSE :
-//
-//   1. UN FILET QUI SAUTE AU REFACTOR. Un import de session qui recommence à
-//      écraser avant le snapshot, un « Effacer la session » qui repasse en un
-//      tap, une suppression de point qui n'écrit plus dans l'historique : rien
-//      ne casse, rien ne s'affiche — l'utilisateur perd ses données plus tard,
-//      à un moment où personne ne fera le lien avec le commit.
-//
-//   2. LE VERROU DÉFINITIF QUI REVIENT. `isLockedOut()` recomparé à un
-//      compteur au lieu d'une échéance, ou l'écran de verrou qui cesse de
-//      rappeler la gate à l'expiration : l'app redevient « morte sous terre »
-//      (bloquant B7), sans qu'aucun test le voie.
-//
-//   3. LA ZONE DÉTRUITE PAR LE MÊME GESTE QUI VALIDE UN TRACÉ. Un `splice`
-//      réintroduit dans toggleZoneMode / toggleStructureMode hors de la
-//      fonction de résolution.
-//
-// Usage : node scripts/check-filets-donnees.js [racine]  (racine = repo par
-// défaut ; un autre dossier sert à FALSIFIER le script sur une copie).
-//
-// 🏷️ REPÈRES DE DÉCOUPE : du CODE (nom de fonction, instruction) ou un
+// check-filets-donnees.js — BLOQUANT (pré-commit) : chaque action destructive garde son filet (snapshot
+// attendu, confirmation chartée, entrée d'historique, verrou temporisé plutôt que définitif).
+// 🩸 Ce qui régresse sans bruit :
+//   1. un filet qui saute au refactor (import qui écrase avant le snapshot, « Effacer la session » en un
+//      tap, suppression hors historique) : la perte de données arrive plus tard, sans lien visible ;
+//   2. le verrou DÉFINITIF qui revient (`isLockedOut()` sur un compteur au lieu d'une échéance, écran qui
+//      ne rappelle plus la gate) : l'app devient morte sous terre (jamais de verrou définitif, décision produit) ;
+//   3. un `splice` dans toggleZoneMode / toggleStructureMode hors de la fonction de résolution.
+// Usage : node scripts/check-filets-donnees.js [racine] (autre racine = falsifier sur une copie).
+// ⚠️ Repères de découpe : du CODE ou un
 // marqueur explicite `// 🏷️ ancre:<nom>` posé dans la source, jamais un
-// commentaire libre ni un tag de version (un nettoyage les retirerait).
-// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
+// commentaire libre (un nettoyage le retirerait). Repère introuvable = ÉCHEC.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -51,7 +32,7 @@ function bloc(src, debut, fin) {
   return src.slice(i, fin ? j : undefined);
 }
 
-// ---------- B3 : import de session ----------
+// ── B3 : import de session ──────
 {
   const s = lire("js/interfaceImportExport.js");
   const iSnap = s.indexOf('snapshot("before-import-session")');
@@ -62,13 +43,12 @@ function bloc(src, debut, fin) {
   verif(s.includes("impexp.session.toastSnapshot"), "import de session : toast « ancienne session dans Backups »");
 }
 
-// ---------- Q44 + B5 : sessionPersist ----------
+// ── Q44 + B5 : sessionPersist ──────
 {
   const s = lire("js/sessionPersist.js");
   const clearBtn = bloc(s, "modal.querySelector('[data-action=\"clear\"]')", "modal.addEventListener(\"click\"");
-  // La confirmation doit être le SEUL chemin vers go() hors repli « helper
-  // absent » : on exige la garde exacte ET l'appel conditionné (une branche
-  // morte `if (false)` contenant encore le texte ne suffit pas — falsification n° 3).
+  // Confirmation = SEUL chemin vers go() (hors repli « helper absent ») : garde exacte ET appel conditionné
+  // (une branche morte `if (false)` contenant le texte ne doit pas suffire).
   verif(clearBtn.includes('if (typeof window.ktaConfirm === "function") {') &&
         /window\.ktaConfirm\(msg, \{[\s\S]*?\}\)\.then\(function\(ok\) \{ if \(ok\) go\(\); \}\);/.test(clearBtn),
         "🩸 « Effacer la session » passe par ktaConfirm (garde exacte + go() conditionné)");
@@ -77,8 +57,8 @@ function bloc(src, debut, fin) {
   verif(/function clear\(opts\)[\s\S]*?opts\.snapshotFait/.test(s), "clear(opts) respecte snapshotFait (pas de double snapshot)");
   verif(/function _compterEtatCourant\(/.test(s) && clearBtn.includes("session.confirm.clear"), "confirmation chiffrée (points / tracés / zones / structures)");
   verif(/function _afficherBandeauStockage\(/.test(s) && /function _masquerBandeauStockage\(/.test(s), "B5 : bandeau « sauvegarde impossible » défini");
-  // Sessions en IndexedDB (10/10/2026) : la réussite se confirme en asynchrone. Le bandeau tombe dans
-  // _ecritureReussie, appelée par save() en localStorage ET par l'écouteur de résultat IndexedDB.
+  // Sessions en IndexedDB : réussite confirmée en asynchrone ; le bandeau tombe dans _ecritureReussie,
+  // appelée par save() (localStorage) ET par l'écouteur de résultat IndexedDB.
   const reussie = bloc(s, "function _ecritureReussie() {", "}");
   const save = bloc(s, "S.ecrire(_currentPlanId, JSON.stringify(payload)", "return true;");
   const resultat = bloc(s, "window.KtaSessionStore.surResultat(function(r) {", "});");
@@ -88,7 +68,7 @@ function bloc(src, debut, fin) {
   verif(/if \(isQuota\) _afficherBandeauStockage\(\);/.test(s), "🩸 B5 : le bandeau s'affiche à CHAQUE échec de quota (pas seulement le premier)");
 }
 
-// ---------- Q23 : suppression d'un point ----------
+// ── Q23 : suppression d'un point ──────
 {
   const s = lire("js/editor.js");
   const b = bloc(s, "window.supprimerPointEditor = function", "console.log(\"[Editor] Point supprimé");
@@ -96,7 +76,7 @@ function bloc(src, debut, fin) {
   verif(b.includes("editor.toast.pointSupprime"), "supprimer un point : toast qui dit comment annuler");
 }
 
-// ---------- Q24 / Q25 : zones et structures ----------
+// ── Q24 / Q25 : zones et structures ──────
 {
   const z = lire("js/zones.js");
   verif(/function _resoudreZoneEnCours\(/.test(z), "zones : fonction de résolution de la zone en cours");
@@ -119,7 +99,7 @@ function bloc(src, debut, fin) {
   verif(okS.includes("HistoryManager.record(") && okS.includes("_fermerModeStructure"), "🩸 bouton ✅ structure : historique + outil éteint");
 }
 
-// ---------- Q45 : snapshots ----------
+// ── Q45 : snapshots ──────
 {
   const s = lire("js/refonteInterface.js");
   const rm = bloc(s, 'listEl.querySelectorAll("[data-backup-remove]")', "}).catch(function(err) {");
@@ -128,24 +108,21 @@ function bloc(src, debut, fin) {
   verif(!/window\.confirm\(/.test(backups), "restaurer / tout vider : plus de confirm() natif dans la section backups");
 }
 
-// ---------- Q47 : export ----------
+// ── Q47 : export ──────
 {
   const s = lire("js/sessionExporter.js");
   verif(/trackerLen === 0 && !hasNoteLibre/.test(s), "🩸 export Full : une sortie tracker-seule n'est pas « vide »");
   verif(s.includes("export.full.structures") && s.includes("export.full.tracker"), "export Full : le résumé affiche structures + points du suivi");
 }
 
-// ---------- B6 / Q58 / Q49 : Réglages ----------
+// ── B6 / Q58 / Q49 : Réglages ──────
 {
   const s = lire("js/interfaceConfig.js");
   const reset = bloc(s, "function resetConfig() {", "function _resetConfigExecuter() {");
   verif(reset.includes("ktaConfirm(") && reset.includes("config.confirm.reset"), "🩸 Reset des Réglages demande confirmation (parcours du suivi effacé)");
   verif(/function _resetConfigExecuter\(\) \{[\s\S]*?resetTrackingPosition/.test(s), "Reset : l'exécution reste dans _resetConfigExecuter");
   verif(s.includes("config.georef.confirmClear") && /function _executerClear\(/.test(s), "🩸 effacer un géoréférencement persisté demande confirmation");
-  // l'interrupteur du carnet a quitté le mode
-  // plan pour ⚙️ Configuration de l'ACCUEIL — il est global, et le carnet
-  // s'ouvre depuis l'accueil. Le contrôle suit : il vérifie qu'il EXISTE et
-  // qu'il est câblé LÀ-BAS, pas qu'il a disparu du projet.
+  // L'interrupteur du carnet (réglage global) vit dans la Configuration de l'ACCUEIL et y est câblé.
   const idx = lire("index.html");
   const home = lire("js/homeConfig.js");
   verif(idx.includes('id="loaderJournalCb"') && home.includes("window.Journal.setEnabled("),
@@ -154,7 +131,7 @@ function bloc(src, debut, fin) {
   verif(s.includes("config.globaux.carnet"), "réglage carnet : son état reste LISIBLE depuis un plan (« Réglés depuis l'accueil »)");
 }
 
-// ---------- Q59 : générateur ----------
+// ── Q59 : générateur ──────
 {
   const s = lire("js/createConf.js");
   verif(/const _fermerPlanner = function/.test(s) && s.includes('"kta-planner-close").addEventListener("click", _fermerPlanner)') && s.includes('"kta-planner-annuler").addEventListener("click", _fermerPlanner)'),
@@ -164,7 +141,7 @@ function bloc(src, debut, fin) {
   verif(!apres.includes("if (e.target === modal) modal.remove()"), "🩸 générateur : le clic sur le fond ne ferme plus la modale");
 }
 
-// ---------- B4 : Tout réinitialiser ----------
+// ── B4 : Tout réinitialiser ──────
 {
   const s = lire("js/interfaceMaintenance.js");
   const items = ["cache", "maps", "session", "prefs", "photos", "journal", "backups", "profile", "secours"]
@@ -173,7 +150,7 @@ function bloc(src, debut, fin) {
   verif(s.includes("cache-export-profil") && s.includes("ProfileExportImport.ouvrirExportModale"), "« Tout réinitialiser » propose l'export de profil AVANT");
 }
 
-// ---------- M2 : verrou temporisé (PIN + gate) ----------
+// ── M2 : verrou temporisé (PIN + gate) ──────
 {
   const p = lire("js/pinLock.js");
   verif(/const LOCK_DELAYS_MS\s*=\s*\[/.test(p), "PIN : paliers LOCK_DELAYS_MS déclarés");
@@ -200,7 +177,7 @@ function bloc(src, debut, fin) {
   verif(/localStorage\.removeItem\(LS_LOCK\)/.test(g), "gate : un code juste efface le verrou");
 }
 
-// ---------- i18n ----------
+// ── i18n ──────
 for (const lang of ["fr", "en", "es"]) {
   const dico = JSON.parse(lire("lang/" + lang + ".json"));
   const manquantes = ["impexp.session.toastSnapshot", "editor.undo.deletePoint", "editor.toast.pointSupprime",

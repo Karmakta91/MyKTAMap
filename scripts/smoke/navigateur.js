@@ -3,10 +3,8 @@
 // navigateur.js — lancer le navigateur des harnais, avec replis
 // =====================================================================
 // Ordre : headless shell Playwright → Chromium complet Playwright → Microsoft Edge (présent sur tout
-// Windows). Avant le 12/10/2026, seul le smoke se repliait sur Edge : sur un poste sans navigateur
-// Playwright téléchargé, les checkups de la porte de release ne démarraient pas du tout.
+// Windows) : sans ce repli, un poste sans navigateur Playwright ne lance aucun checkup de la porte.
 // Seule l'absence du navigateur déclenche un repli ; toute autre erreur remonte.
-//
 // lancerNavigateur(chromium[, opts]) → Promise<Browser>
 // =====================================================================
 "use strict";

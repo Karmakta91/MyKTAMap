@@ -99,7 +99,7 @@ function comparer(fr, trad, lang) {
 let ko = 0;
 function t(nom, ok) { console.log((ok ? "✅" : "❌") + " " + nom); if (!ok) ko++; }
 
-// ---- Auto-test : le contrôle doit ROUGIR sur des guides sabotés ----
+// ── Auto-test : le contrôle doit ROUGIR sur des guides sabotés ──
 (function autoTest() {
   const long = "x".repeat(400);
   const ref = "# 📚 Guide\n\n" + long + "\n\n## 🧭 Tracker\n\n" + long + "\n\n## 🪧 Guidage\n\n" + long + "\n";
@@ -116,7 +116,7 @@ function t(nom, ok) { console.log((ok ? "✅" : "❌") + " " + nom); if (!ok) ko
   t("🩸 auto-test : deux sections interverties sont détectées", comparer(ref, decale, "xx").length > 0);
 })();
 
-// ---- Les vrais guides ----
+// ── Les vrais guides ──
 const fr = fs.readFileSync(path.join(DIR, "README_USER.md"), "utf8");
 ["en", "es"].forEach(function(lang) {
   const trad = fs.readFileSync(path.join(DIR, "README_USER." + lang + ".md"), "utf8");

@@ -1,27 +1,14 @@
 // =====================================================================
-// 🛡️ check-audit-domaine.js — garde-fou pré-commit BLOQUANT
+// check-audit-domaine.js — garde-fou pré-commit BLOQUANT : périmètre de garantie de l'audit réseau figé
 // =====================================================================
-// LE PÉRIMÈTRE DE GARANTIE DE L'AUDIT RÉSEAU EST UN TEXTE FIGÉ, JAMAIS UNE
-// ORIGINE CALCULÉE (contrôle KARMA, 13/09/2026).
-//
-// Le bloc « 🛡️ Périmètre de garantie : myktamap.fr » existe à DEUX endroits :
-//   1. la modale « 📖 Que fait l'app sur le réseau ? » (index.html, clés
-//      `home.netdoc.scope*` des dictionnaires, injectées par main.js via
-//      data-i18n-html) ;
-//   2. la page d'audit complète docs/applications/NETWORK_AUDIT.html (et son
-//      jumeau NETWORK_AUDIT.md), ouverte dans un nouvel onglet.
-//
-// 🩸 CE QUE ÇA PROTÈGE. Ce bloc dit à l'utilisateur : « si l'URL ne commence
-// pas par https://myktamap.fr, rien de cette page ne te concerne ». Le jour
-// où quelqu'un « factorise » ces domaines en `location.origin` / `location.host`
-// pour « s'adapter au self-host », une copie servie sur evil.com afficherait
-// « Périmètre de garantie : evil.com » et demanderait de vérifier que l'URL
-// commence par https://evil.com. L'audit se validerait lui-même partout — le
-// contraire exact de sa raison d'être. Il doit se DÉSAVOUER hors du domaine
-// officiel, donc citer myktamap.fr en dur, dans les trois langues. Le domaine de
-// développement n'est plus annoncé publiquement (décision KARMA du 12/10/2026) :
-// le citer est refusé.
-//
+// Le bloc « Périmètre de garantie : myktamap.fr » vit à DEUX endroits : la modale « Que fait l'app sur le
+// réseau ? » (clés `home.netdoc.scope*`, injectées par main.js via data-i18n-html) et la page
+// docs/applications/NETWORK_AUDIT.html (+ son jumeau .md).
+// 🔒 Il dit « si l'URL ne commence pas par https://myktamap.fr, rien de cette page ne te concerne ».
+// « Factoriser » le domaine en `location.origin` / `location.host` ferait qu'une copie servie ailleurs
+// se garantirait elle-même : l'audit doit se DÉSAVOUER hors du domaine officiel, donc citer myktamap.fr
+// en dur, dans les trois langues. Le domaine de développement n'est pas annoncé publiquement (décision
+// produit) : le citer est refusé.
 // Usage : node scripts/check-audit-domaine.js [racine]
 "use strict";
 const fs   = require("fs");
@@ -36,7 +23,7 @@ const RE_PROD = /(^|[^.\w])myktamap\.fr/;           // myktamap.fr hors « dev.m
 const RE_DEV  = /dev\.myktamap\.fr/;
 const RE_LOC  = /location\.(origin|host|hostname|href)|\$\{[^}]*origin[^}]*\}|\{origin\}|\{host\}/;
 
-// ---------- 1. La modale (dictionnaires + index.html) ----------
+// ── 1. La modale (dictionnaires + index.html) ──────────
 for (const lang of ["fr", "en", "es"]) {
   const d = JSON.parse(lire("lang/" + lang + ".json"));
   const t = (k) => (typeof d[k] === "string" ? d[k] : "");
@@ -59,7 +46,7 @@ for (const lang of ["fr", "en", "es"]) {
         "🩸 main.js : l'injection data-i18n-html copie le dictionnaire, sans variable d'origine");
 }
 
-// ---------- 2. La page d'audit (html + md) ----------
+// ── 2. La page d'audit (html + md) ──────────
 {
   const html = lire("docs/applications/NETWORK_AUDIT.html");
   const i = html.indexOf("Périmètre de cette garantie");
@@ -78,7 +65,7 @@ for (const lang of ["fr", "en", "es"]) {
         "🩸 NETWORK_AUDIT.md : idem, domaines en dur, aucune origine calculée");
 }
 
-// ---------- 3. Aucun JS ne réécrit ces blocs avec l'origine ----------
+// ── 3. Aucun JS ne réécrit ces blocs avec l'origine ──────────
 {
   const files = fs.readdirSync(path.join(ROOT, "js")).filter(f => f.endsWith(".js"));
   const suspects = [];

@@ -1,25 +1,19 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 👣 check-podometre-global.js — garde-fou pré-commit BLOQUANT
+// check-podometre-global.js — garde-fou pré-commit BLOQUANT : le podomètre est un réglage de l'appareil
 // =====================================================================
-// taille de pas, seuil et cooldown ne sont
-// PAS des propriétés du plan — la foulée est celle de la personne, le seuil
-// et le cooldown ceux du téléphone. Ils sont GLOBAUX à l'appareil
-// (`app_user_prefs`), réglés dans ⚙️ Réglages pour tous les plans.
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Le Générateur ou un convertisseur réécrit ces clés dans plan-config :
-//      un plan fige la foulée pour toujours, et l'usine améliorée demain ne
-//      s'applique plus à personne.
-//   2. Le chargeur relit `tracking.stepThreshold` d'un vieux plan : le bug
-//      des 10 km/h fantômes (seuil 1.2) revient par la fenêtre.
-//   3. L'écran ⚙️ Réglages écrit par plan : 50 plans = 50 fois la même foulée.
-//   4. Une pref par plan saisie avant v1.96.0 est perdue au lieu d'être promue.
-//
-// ON EXÉCUTE `js/config.js` dans un bac à sable (localStorage en mémoire) :
-// on prouve ce que le chargeur fait d'un plan-config piégé, pas ce qu'il dit.
-// Usage : node scripts/check-podometre-global.js [racine]
+// Taille de pas, seuil et cooldown ne sont PAS des propriétés du plan (la foulée est celle de la personne,
+// seuil et cooldown ceux du téléphone) : GLOBAUX (`app_user_prefs`), réglés dans Réglages pour tous les plans.
+// 🩸 Ce qui régresse sans bruit :
+//   1. le Générateur ou un convertisseur réécrit ces clés dans plan-config : la foulée est figée par plan
+//      et une meilleure valeur d'usine ne s'applique plus à personne ;
+//   2. le chargeur relit `tracking.stepThreshold` d'un vieux plan : un seuil trop bas (1.2) fait compter
+//      des pas fantômes (≈ 10 km/h à l'arrêt) ;
+//   3. Réglages écrit par plan : 50 plans = 50 fois la même foulée ;
+//   4. une ancienne pref PAR PLAN est perdue au lieu d'être promue en global.
+// `js/config.js` est EXÉCUTÉ dans un bac à sable (localStorage en mémoire) : on prouve ce que le chargeur
+// fait d'un plan-config piégé. Usage : node scripts/check-podometre-global.js [racine]
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -29,7 +23,7 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\
 let echecs = 0;
 function t(msg, cond) { console.log((cond ? "✅ " : "❌ ") + msg); if (!cond) echecs++; }
 
-// ---------- 0. config.js dans un bac à sable ----------
+// ── 0. config.js dans un bac à sable ──────────
 function bac(lsInitial) {
   const mem = Object.assign({}, lsInitial || {});
   const localStorage = {
@@ -66,7 +60,7 @@ t("valeurs d'usine lisibles dans DEFAULT_CONFIG (" + JSON.stringify(USINE) + ")"
   const b = bac();
   t("config.js se charge dans le bac à sable" + (b.erreur ? " — " + b.erreur : ""), !b.erreur && typeof b.win.buildAppConfigFromPlan === "function");
   if (!b.erreur) {
-    // 1. un plan-config piégé (le bug de 2026-09-03) est IGNORÉ
+    // 1. un plan-config piégé (clés podomètre présentes) est IGNORÉ
     const piege = { plan: { name: "P", imageWidth: 100, imageHeight: 100 }, tracking: { scale: 5, startX: 10, startY: 20, stepLength: 0.3, stepThreshold: 1.2, stepCooldown: 280 } };
     const c = b.win.buildAppConfigFromPlan(piege);
     t("🩸 les clés podomètre d'un plan-config sont IGNORÉES, même présentes : usine appliquée",
@@ -84,7 +78,7 @@ t("valeurs d'usine lisibles dans DEFAULT_CONFIG (" + JSON.stringify(USINE) + ")"
       b.win.setPlanTracking("p1", { stepLength: 0.8 }) === false && b.win.setPlanTracking("p1", { startX: 5, startY: 6 }) === true &&
       !("stepLength" in JSON.parse(b.mem["myktamap_plan_prefs_p1"])));
   }
-  // 3. migration : une pref PAR PLAN d'avant v1.96.0 est promue une fois, puis retirée
+  // 3. migration : une ancienne pref PAR PLAN est promue une fois, puis retirée
   const b2 = bac({ "myktamap_plan_prefs_p9": JSON.stringify({ stepLength: 0.85, stepCooldown: 500, startX: 1 }) });
   if (!b2.erreur) {
     b2.win._currentLoadedPlanId = "p9";
@@ -93,7 +87,6 @@ t("valeurs d'usine lisibles dans DEFAULT_CONFIG (" + JSON.stringify(USINE) + ")"
     const g = JSON.parse(b2.mem.app_user_prefs || "{}"), pp = JSON.parse(b2.mem["myktamap_plan_prefs_p9"]);
     t("🩸 migration : la pref par plan devient le réglage global (personne ne perd sa foulée)…", g.stepLength === 0.85 && g.stepCooldown === 500 && b2.win.APP_CONFIG.stepLength === 0.85);
     t("…et quitte les prefs du plan (startX y reste)", !("stepLength" in pp) && !("stepCooldown" in pp) && pp.startX === 1);
-    // un second plan avec une autre valeur ne renverse pas le global déjà posé
     b2.mem["myktamap_plan_prefs_p10"] = JSON.stringify({ stepLength: 0.5 });
     b2.win._currentLoadedPlanId = "p10";
     b2.win.appliquerTrackingPerPlan();
@@ -101,7 +94,7 @@ t("valeurs d'usine lisibles dans DEFAULT_CONFIG (" + JSON.stringify(USINE) + ")"
   }
 }
 
-// ---------- 4. Les écrivains n'écrivent plus, l'écran écrit global ----------
+// ── 4. Les écrivains n'écrivent plus, l'écran écrit global ──────────
 {
   const sansCommentaires = function (s) { return s.split("\n").filter(function (l) { return !/^\s*\/\//.test(l); }).join("\n"); };
   const GEN = sansCommentaires(lire("js/createConf.js")), UI = lire("js/interfaceConfig.js");
@@ -113,7 +106,7 @@ t("valeurs d'usine lisibles dans DEFAULT_CONFIG (" + JSON.stringify(USINE) + ")"
   }
   t("⚙️ Réglages écrit le podomètre en GLOBAL (setGlobalPodometre), plus par plan", /window\.setGlobalPodometre\(\{\s*stepLength/.test(UI) && !/setPlanTracking\(null, \{\s*stepLength/.test(UI));
   t("⚙️ Réglages : Réinitialiser revient à l'USINE de l'app, pas aux valeurs du plan", /KTA_TRACKING_USINE/.test(UI) && /setGlobalPodometre\(\{ stepLength: null/.test(UI));
-  // (KARMA) : le groupe « Navigation & Tracker » disait « 📍 ce plan » au-dessus d'une section devenue globale
+  // Le badge de portée ne doit pas dire « ce plan » au-dessus d'une section globale
   t("⚙️ Réglages : la section « Détection des pas » porte le badge 🌍 tous les plans, et son groupe est « selon la ligne »",
     /config\.steps\.titre[\s\S]{0,200}kta-cfg-scope-global[\s\S]{0,80}config\.scope\.badgeGlobal/.test(UI) &&
     /_cfgGroupeDebut\("config\.group\.navTracker", "mixte"\)/.test(UI));

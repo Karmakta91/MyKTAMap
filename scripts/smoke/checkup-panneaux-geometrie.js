@@ -1,32 +1,19 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📐 checkup-panneaux-geometrie.js — checkup de RELEASE (pas un hook pré-commit)
+// checkup-panneaux-geometrie.js — checkup de release (pas un hook) des panneaux d'outils du mode plan
 // =====================================================================
-// Vérifie AU PIXEL que les panneaux d'outils du mode plan (Tracés, Zones,
-// Structures, Favoris : `.kta-group-flyout`) restent utilisables sur PC ET sur
-// téléphone, portrait ET paysage, centrés ET ancrés au bouton.
-//
-// 🩸 POURQUOI CE CHECKUP EXISTE : le correctif v1.82 (« Fermer la structure en
-// cours » inatteignable) a été validé en portrait seulement. En paysage, le
-// panneau passait toujours SOUS le footer (z-index 1200 contre 1050) : le bas
-// de la liste restait caché, même scrollé au bout. Aucune erreur console,
-// aucun garde-fou statique ne pouvait le voir (audit ergonomie 16/10/2026).
-//
-// CE QUI EST VÉRIFIÉ, pour 4 formats × 2 modes (centré / ancré) × 4 panneaux,
-// avec une liste ALLONGÉE à 22 boutons (un plan importé ajoute un type par
-// niveau) :
-//   G1. le panneau tient entre la barre du haut et le footer ;
-//   G2. son DERNIER bouton, une fois scrollé, est bien sous le doigt
-//       (`elementFromPoint` = le bouton, pas le footer) ;
-//   G3. en mode centré, un fond est posé sous le panneau et la croix fait ≥ 36 px ;
-//       au toucher, la croix fait ≥ 40 px dans les deux modes ;
-//   G4. toucher la carte pour fermer n'ajoute AUCUN sommet au tracé armé,
-//       le toucher suivant en ajoute bien un ;
-//   G5. boutons de zoom (réglage activé) empilés + au-dessus de −.
-//
+// Vérifie au pixel que `.kta-group-flyout` (Tracés, Zones, Structures, Favoris) reste utilisable :
+// 4 formats (téléphone portrait/paysage, petit paysage, PC) × centré/ancré × 4 panneaux, liste allongée
+// à 22 boutons (un plan importé ajoute un type par niveau).
+// 🩸 un panneau peut passer SOUS le footer en paysage (ordre des z-index) : le bas de liste reste caché,
+// même scrollé, sans erreur console ni prise pour un garde-fou statique.
+//   G1 le panneau tient entre la barre du haut et le footer ;
+//   G2 le DERNIER bouton, scrollé, est sous le doigt (`elementFromPoint` = le bouton, pas le footer) ;
+//   G3 centré : fond posé et croix ≥ 36 px ; au toucher, croix ≥ 40 px dans les deux modes ;
+//   G4 toucher la carte pour fermer n'ajoute AUCUN sommet au tracé armé, le toucher suivant en ajoute un ;
+//   G5 boutons de zoom (réglage activé) empilés, + au-dessus de −.
 // Usage : node scripts/smoke/checkup-panneaux-geometrie.js
-// =====================================================================
 "use strict";
 
 const { chromium } = require("playwright");
@@ -45,8 +32,7 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1"
 };
 
-// Même logique que checkup-plan-oriente.js : le relevé fictif s'il est dans
-// l'index, sinon le premier plan — dont on ne logue PAS le nom (relevé réel).
+// Le relevé fictif s'il est dans l'index, sinon le premier plan, dont on ne logue PAS le nom (relevé réel)
 function planAOuvrir() {
   try {
     const idx = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "data", "index.json"), "utf8"));
@@ -147,7 +133,7 @@ async function controlerPanneau(page, f, mode, gid) {
   } else if (mode === "ancré" && r.fond) {
     pb(etiquette + " : fond posé en mode ancré");
   } else if (f.touch && r.croix < 40) {
-    // 🩸 la règle « pointer: coarse » était placée AVANT les règles de base → sans effet (36/24 px).
+    // 🩸 une règle « pointer: coarse » placée AVANT les règles de base est sans effet (croix 36/24 px).
     pb(etiquette + " : croix de " + r.croix + " px au toucher (40 attendus)");
   } else {
     ok(etiquette + " : " + r.haut + "→" + r.bas + " dans " + limH + "→" + limB + ", dernier bouton atteint");
@@ -196,7 +182,6 @@ async function controlerTapFermeture(page, f) {
   if (apres !== avant) pb(f.nom + " : fermer le panneau en touchant la carte a ajouté " + (apres - avant) + " sommet(s)");
   else if (apres2 !== apres + 1) pb(f.nom + " : le toucher suivant n'a pas posé de sommet (" + (apres2 - apres) + ")");
   else ok(f.nom + " : fermeture au toucher = 0 sommet, toucher suivant = 1");
-  // Désarme sans laisser de tracé derrière soi (le contexte est jeté ensuite).
   await page.evaluate(function () { if (window.modeRoad && window.toggleRoadMode) window.toggleRoadMode(window.modeRoad); });
 }
 

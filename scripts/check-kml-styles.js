@@ -1,33 +1,23 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🌍 check-kml-styles.js — garde-fou pré-commit BLOQUANT
+// check-kml-styles.js — garde-fou pré-commit BLOQUANT des <Style> KML de `js/kmzExport.js`
 // =====================================================================
-// Verrouille les <Style> KML produits par `js/kmzExport.js`.
-//
-// POURQUOI : les Placemark émettent `<styleUrl>#road_<type></styleUrl>`. Pour
-// un type CUSTOM ça donnait `#road_cust-abc123`, un id qui n'était JAMAIS
-// déclaré dans le document — styleUrl pendant, Google Earth retombait sur son
-// trait par défaut, la couleur choisie par l'utilisateur était perdue.
-// Corrigé en v1.76.0 en résolvant les couleurs via `js/styleResolver.js` et en
-// déclarant un <Style> par type custom réellement utilisé.
-//
-// Ce script garde DEUX invariants :
-//   1. Les 14 styles BUILT-IN restent identiques à la référence figée
-//      ci-dessous. Le KML a ses propres LARGEURS (unité ≠ `weight` Leaflet,
-//      ajustées à l'échelle GPS : un front est à 5 ici, 10 sur la carte) et
-//      ses propres ALPHAS. Brancher naïvement le résolveur sur ces champs
-//      changerait le rendu dans Google Earth — d'où cette référence.
-//   2. Un type CUSTOM produit bien un style, et un front custom n'hérite
-//      JAMAIS d'un remplissage (le canon donne un `fillColor` aux fronts,
-//      mais un LineString KML ne doit pas se voir attribuer de PolyStyle).
+// 🩸 Les Placemark émettent `<styleUrl>#road_<type></styleUrl>` : pour un type CUSTOM, un id jamais déclaré
+// laisse le styleUrl pendant, Google Earth retombe sur son trait par défaut et la couleur choisie est perdue.
+// Les couleurs passent par `js/styleResolver.js` et un <Style> est déclaré par type custom utilisé.
+// Deux invariants :
+//   1. les 14 styles BUILT-IN restent identiques à REFERENCE : le KML a ses propres LARGEURS (unité ≠
+//      `weight` Leaflet : un front est à 5 ici, 10 sur la carte) et ALPHAS ; brancher naïvement le
+//      résolveur sur ces champs changerait le rendu dans Google Earth ;
+//   2. un type CUSTOM produit un style, et un front custom n'a JAMAIS de PolyStyle (le canon donne un
+//      `fillColor` aux fronts, mais c'est un LineString).
 // =====================================================================
 
 const fs = require("fs");
 const vm = require("vm");
 
-// Référence FIGÉE : sortie du code d'avant la migration (v1.75.2).
-// Ne la modifier QUE si un changement de rendu KML est explicitement voulu.
+// ⚠️ Référence FIGÉE du rendu KML : ne la modifier QUE pour un changement de rendu voulu.
 const REFERENCE = {
   road_principal:    { line: "#00ff00", width: 4, alpha: 1 },
   road_secondaire:   { line: "#b000ff", width: 4, alpha: 1 },
@@ -50,8 +40,7 @@ win.window = win;
 const ctx = vm.createContext(win);
 vm.runInContext("var window=this;" + fs.readFileSync("js/styleResolver.js", "utf8"), ctx);
 
-// Extrait les deux fonctions de kmzExport.js sans charger le module entier
-// (il dépend de JSZip, du DOM, de Leaflet…).
+// Deux fonctions extraites de kmzExport.js (le module entier dépend de JSZip, du DOM, de Leaflet)
 const src = fs.readFileSync("js/kmzExport.js", "utf8");
 function extraire(signature) {
   const d = src.indexOf(signature);
@@ -69,7 +58,7 @@ vm.runInContext(
 
 let ko = 0, ok = 0;
 
-// ---------- 1. les built-in n'ont pas bougé ----------
+// ── 1. Les built-in n'ont pas bougé ──────────
 const produits = {};
 Object.keys(win.PREFIXE_CATEGORIE).forEach(function(prefixe) {
   const cat = win.PREFIXE_CATEGORIE[prefixe];
@@ -92,7 +81,7 @@ new Set(Object.keys(REFERENCE).concat(Object.keys(produits))).forEach(function(i
   } else ok++;
 });
 
-// ---------- 2. les customs sont stylés (LE bug corrigé) ----------
+// ── 2. Les customs sont stylés ──────────
 win.LegendCustomization = {
   findCustomEntry(id) {
     if (id === "cust-trace") return { id, category: "traces",     geometry: "polyline", lineColor: "#ff00aa" };

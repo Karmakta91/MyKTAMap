@@ -1,21 +1,15 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📁 checkup-plan-folders.js — le mode Dossiers de « Mes plans », au pixel
+// checkup-plan-folders.js — le mode Dossiers de « Mes plans », au pixel (consultatif)
 // =====================================================================
-// Étude archivée sous le tag Git `archive-docs-2026-09-30`. Ce que seul un
-// navigateur prouve :
-//   1. le mode TOUT reste l'écran d'avant (sélecteur dans la ligne de titre,
-//      aucune hauteur ajoutée à « Mes plans ») ;
-//   2. 🩸 LA CONTRAINTE STRICTE : avec 8 dossiers et 60 plans, « Mes plans »
-//      en mode Dossiers n'est PAS plus haut qu'en mode TOUT (1536×800) ;
-//   3. créer un dossier, y déplacer un plan (📁), sélection multiple ;
-//   4. l'index serveur (route interceptée) déclare 2 dossiers : verrouillés,
-//      un plan déplacé à la main y reste après redécouverte ;
+// Vérifie : 1. mode TOUT sans hauteur ajoutée (sélecteur dans la ligne de titre) ;
+//   2. 🩸 avec 8 dossiers et 60 plans, « Mes plans » en Dossiers n'est PAS plus haut qu'en TOUT (1536×800) ;
+//   3. créer un dossier, y ranger un plan, sélection multiple ;
+//   4. dossiers de l'index serveur verrouillés ; un plan déplacé à la main y reste après redécouverte ;
 //   5. mobile 400 px : un dossier déplié se borne à 5 lignes + « Tout le dossier » ;
-//   6. glisser PC (HTML5) : une ligne déposée sur un en-tête change de dossier.
-// Usage : node scripts/smoke/checkup-plan-folders.js
-// (Playwright + Chromium ; KTA_CHROMIUM=<chrome.exe> pour imposer l'exécutable.)
+//   6. glisser souris (HTML5) et appui long tactile vers un en-tête.
+// Usage : node scripts/smoke/checkup-plan-folders.js (Playwright ; KTA_CHROMIUM=<chrome.exe> force l'exécutable).
 "use strict";
 const { chromium } = require("playwright");
 const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
@@ -76,7 +70,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("la ligne de titre reste basse (" + etat0.headH + " px ≤ 40)", etat0.headH > 0 && etat0.headH <= 40);
     const hTout = await hauteur(p);
 
-    // 8 dossiers, 7 plans chacun (56 rangés + 4 non classés), via l'API (l'écran est testé ensuite)
+    // 8 dossiers × 7 plans (56 rangés + non classés), par l'API : l'écran est testé ensuite
     await p.evaluate(function () {
       const PR = window.PlanRegistry;
       for (let d = 1; d <= 8; d++) {
@@ -97,7 +91,6 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("mode Dossiers : 8 dossiers repliés + Non classés en dernier, chips masquées, seuls les non classés visibles (" + attendusNonClasses + ")",
       etat1.n === 9 && etat1.visibles === attendusNonClasses && etat1.chips === "none" && /Non class/.test(etat1.dernier));
     t("un en-tête de dossier fait la hauteur d'une ligne (" + etat1.hMax + " px ≤ 40)", etat1.hMax <= 40);
-    // tout déplier = le pire cas
     await p.evaluate(function () { window.PlanRegistry.getFolders().forEach(function (f) { window.PlanRegistry.setFolderCollapsed(f.id, false); }); window.refreshPlansList(); });
     const hDossiersOuverts = await hauteur(p);
     await modeVue(p, "all");
@@ -106,14 +99,13 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
       hDossiersOuverts <= hTout2 + 2 && hTout === hTout2);
     await modeVue(p, "folders");
 
-    // créer un dossier par l'écran, y déplacer un plan par 📁
     await p.click("#loaderPlansFolderNew");
     await p.fill("#kta-plans-folder-name", "Secteur");
     await p.keyboard.press("Enter");
     await p.waitForTimeout(200);
     const cree = await p.evaluate(function () { const f = window.PlanRegistry.findFolderByName("secteur"); return f ? { id: f.id, ouvert: f.collapsed === false } : null; });
     t("➕ crée le dossier « Secteur » (déplié) et il apparaît", !!cree && cree.ouvert && (await p.$$('.kta-plans-folder-head[data-folder="' + cree.id + '"]')).length === 1);
-    // (KARMA, après v1.95.0) : plus de bouton 📁 par ligne — un seul plan se range par ☑ puis « Déplacer vers… », ou par glisser
+    // Pas de bouton par ligne (décision produit) : on range par ☑ puis « Déplacer vers… », ou par glisser
     t("aucun bouton 📁 « Déplacer vers » sur les lignes", (await p.$$(".kta-plan-row-move")).length === 0);
     await p.click("#loaderPlansSelect");
     await p.click('.plan-row[data-id="local_p57"]');
@@ -122,13 +114,12 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     await p.waitForTimeout(200);
     t("☑ un seul plan coché → Déplacer vers → il est dans Secteur (origine user), sélection close",
       await p.evaluate(function (fid) { const pl = window.PlanRegistry.findById("local_p57"); return pl.folderId === fid && pl.folderSrc === "user" && !document.getElementById("loaderPlansSelectBar"); }, cree.id));
-    // sélection multiple
     await p.click("#loaderPlansSelect");
     await p.click('.plan-row[data-id="local_p58"]');
     await p.click('.plan-row[data-id="local_p59"]');
     const nSel = await p.evaluate(function () { return document.querySelectorAll(".plan-row.kta-plan-row-selected").length; });
     t("☑ sélection : un clic coche au lieu d'ouvrir (" + nSel + " cochés, aucun plan ouvert)", nSel === 2 && await p.evaluate(function () { return !window.PLAN_CONFIG; }));
-    // 🐛 16/09 (KARMA : « j'avais pas vu le Déplacer vers en bas ») — la barre est EN TÊTE de liste et visible sans défiler
+    // 🩸 en bas de liste, la barre « Déplacer vers » passe inaperçue : elle doit être en tête, visible sans défiler
     const barre = await p.evaluate(function () {
       const l = document.getElementById("allPlansList"), b = document.getElementById("loaderPlansSelectBar");
       if (!l || !b) return null;
@@ -142,9 +133,8 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("« Déplacer 2 vers… » range les deux d'un coup et sort du mode sélection",
       await p.evaluate(function (fid) { return ["local_p58", "local_p59"].every(function (id) { return window.PlanRegistry.findById(id).folderId === fid; }) && !document.getElementById("loaderPlansSelectBar"); }, cree.id));
 
-    // 6. glisser PC (HTML5, à la souris) : local_p60 (non classé) → en-tête Secteur.
-    // 🐛 17/09 (KARMA : « sur PC le glisser ne marche plus ») — un mouvement LENT
-    // (petits pas) déclenchait dragstart avant mon seuil maison, qui l'annulait.
+    // ── 6. Glisser souris (HTML5) : local_p60 (non classé) → en-tête Secteur ──
+    // 🩸 un mouvement LENT déclenche dragstart avant le seuil maison : le seuil ne doit pas l'annuler.
     const src = await p.$('.plan-row[data-id="local_p60"]');
     const dst = await p.$('.kta-plans-folder-head[data-folder="' + cree.id + '"]');
     if (src && dst) {
@@ -159,7 +149,6 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
       const glisse = await p.evaluate(function (fid) { return window.PlanRegistry.findById("local_p60").folderId === fid; }, cree.id);
       t("🩸 glisser PC LENT : la ligne déposée sur l'en-tête rejoint le dossier", glisse);
     }
-    // un clic simple ouvre toujours (le seuil protège) : on vérifie qu'un mousedown/up sans mouvement ne déclenche pas de dragstart
     const clicOk = await p.evaluate(function () { return typeof window.PLAN_CONFIG === "undefined" || !window.PLAN_CONFIG; });
     t("aucun plan ne s'est ouvert pendant ces gestes", clicOk);
     await ctx.close();
@@ -186,14 +175,13 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("⋮ sur un dossier de l'index : verrou affiché, nom et suppression désactivés", verrou.lock && verrou.nomDisabled && verrou.delDisabled && verrou.ok);
     await p.keyboard.press("Escape");
     await p.waitForTimeout(150);
-    // l'utilisateur déplace Serveur 1 vers Calcaire, puis l'index est redécouvert (rechargement)
+    // Serveur 1 déplacé à la main vers Calcaire, puis index redécouvert (rechargement)
     await p.evaluate(function (id) { window.PlanRegistry.setPlanFolder(id, "calcaire", "user"); }, idx1.s1.id);
     await p.close();
     p = await ouvrir(ctx, { index: INDEX_DOSSIERS });
     await p.waitForTimeout(800);
     const idx2 = await p.evaluate(function (id) { const s1 = window.PlanRegistry.findById(id); return { fid: s1.folderId, src: s1.folderSrc }; }, idx1.s1.id);
     t("🩸 après redécouverte, le plan déplacé à la main RESTE dans Calcaire (l'index ne le reprend pas)", idx2.fid === "calcaire" && idx2.src === "user");
-    // l'index ne déclare plus Calcaire → libéré, jamais supprimé
     await p.close();
     p = await ouvrir(ctx, { index: { folders: [INDEX_DOSSIERS.folders[0]], plans: INDEX_DOSSIERS.plans } });
     await p.waitForTimeout(800);
@@ -215,9 +203,8 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     });
     t("mobile : un dossier de 8 plans déplié montre 5 lignes + « Tout le dossier », et AUCUNE ligne n'est draggable au doigt",
       mob.visibles === 5 && mob.bouton && mob.draggable === 0);
-    // 🐛 16/09 (KARMA) : le bouton « Tous mes plans (N) » du mode TOUT restait affiché sous les dossiers
     t("🩸 mobile : le bouton global « Tous mes plans » du mode TOUT ne survit PAS au passage en Dossiers", !mob.boutonGlobal);
-    // 🐛 18/09 (KARMA) : « Tout le dossier » puis cocher un plan en sélection → le dossier se refermait
+    // 🩸 cocher un plan après « Tout le dossier » re-rend la liste : le dossier ne doit pas se replier
     await p.click("#loaderPlansSelect");
     await p.click(".kta-plans-folder-rows:not([hidden]) .kta-plans-folder-more");
     await p.waitForTimeout(150);
@@ -233,8 +220,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
       avantCoche === 8 && apresCoche.visibles === 8 && apresCoche.coche);
     await p.click("#loaderPlansSelectDone");
 
-    // 📱 glisser TACTILE par appui long (KARMA : « sur mobile le glisser-déposer ne fonctionne pas »)
-    // local_p10 est « Non classés » ; on le dépose sur l'en-tête de « Grand ».
+    // Glisser tactile par appui long : local_p10 (non classé) → en-tête « Grand »
     const tactile = await p.evaluate(async function () {
       const row = document.querySelector('.plan-row[data-id="local_p10"]');
       const head = document.querySelector('.kta-plans-folder-head[data-folder]:not([data-folder=""])');
@@ -266,7 +252,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("📱 un doigt qui bouge tout de suite fait DÉFILER (rien ne se soulève)", tactile.souleveTrop === false);
     t("📱 appui long → la ligne se soulève, l'en-tête survolé se surligne, le dépôt range le plan, le fantôme disparaît",
       tactile.souleve && tactile.cibleSurlignee && tactile.range && !tactile.fantomeRestant);
-    // (KARMA) : pas de double pendant le geste, et le bord bas fait DÉFILER
+    // Pendant le geste : pas de double de la ligne, et le bord bas fait défiler
     const bords = await p.evaluate(async function () {
       const row = document.querySelector('.plan-row[data-id="local_p11"]');
       if (!row) return { erreur: "local_p11 introuvable" };
@@ -291,8 +277,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
       touche(row, "touchmove", x0, window.innerHeight - 6);   // doigt collé au bord bas
       await new Promise(function (ok) { setTimeout(ok, 450); });
       const apres = sc.scrollTop;
-      // (KARMA : « je ne peux pas défiler après OSM ») — on laisse tourner : le
-      // défilement doit S'ARRÊTER quand la fin de la liste est visible, jamais au-delà.
+      // 🩸 le défilement auto doit s'arrêter à la fin de la liste, sinon il file vers la Vue OSM
       await new Promise(function (ok) { setTimeout(ok, 1500); });
       const estPage = (sc === document.scrollingElement);
       const bas = estPage ? window.innerHeight : sc.getBoundingClientRect().bottom;

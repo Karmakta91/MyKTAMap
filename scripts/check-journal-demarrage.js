@@ -1,28 +1,19 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📔 check-journal-demarrage.js — garde-fou pré-commit BLOQUANT
+// check-journal-demarrage.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// L'OUVERTURE MANUELLE d'une sortie (demande KARMA, 14/09/2026 : « 📔 Démarrer
-// une sortie peut être utile, bien sûr attention au cas où une sortie est déjà
-// en cours »).
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Le garde « une sortie tourne déjà » qui saute. `_ouvrir` clôture la
-//      sortie en cours avant d'en poser une neuve : sans le garde, un clic de
-//      trop archive une sortie à la place de l'utilisateur, ou pire, la coupe
-//      en deux. Rien à l'écran ne le dirait.
-//   2. `demarrer` qui se met à tester `isEnabled()`. Le bouton deviendrait
-//      inutile exactement là où il sert : carnet décoché, l'app n'ouvre plus
-//      rien toute seule — c'est le SEUL moyen d'enregistrer une sortie.
-//   3. Le balayage de démarrage re-conditionné au carnet actif : une sortie
-//      manuelle interrompue par un crash resterait « en cours » pour toujours.
-//   4. Le bouton affiché en même temps que 🏁 Clôturer : deux actions qui
-//      s'excluent, offertes ensemble.
-//
-// ON EXÉCUTE la fonction extraite du fichier réel (leçon v1.90.15).
+// Le démarrage manuel d'une sortie (`js/journal.js > demarrer`, bouton de la
+// section Carnet). La fonction extraite du fichier réel est EXÉCUTÉE (vm).
+// 🩸 Régressions silencieuses visées :
+//   1. garde « une sortie tourne déjà » qui saute : `_ouvrir` clôture la sortie
+//      en cours, un clic de trop l'archive ou la coupe en deux ;
+//   2. `demarrer` qui teste `isEnabled()` : carnet décoché, c'est le SEUL moyen
+//      d'enregistrer une sortie ;
+//   3. balayage de démarrage conditionné au carnet actif : une sortie manuelle
+//      coupée par un crash resterait « en cours » pour toujours ;
+//   4. bouton affiché en même temps que 🏁 Clôturer.
 // Usage : node scripts/check-journal-demarrage.js [racine]
-//
 // 🏷️ REPÈRES DE DÉCOUPE : du CODE ou un marqueur explicite `// 🏷️ ancre:<nom>`
 // posé dans la source, jamais un commentaire libre (un nettoyage le retirerait).
 // Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
@@ -48,15 +39,14 @@ function bloc(src, debut, fin) {
 const JRN = lire("js/journal.js");
 const RFI = lire("js/refonteInterface.js");
 
-// ---------- 1. La fonction, exécutée ----------
+// ── 1. La fonction, exécutée ─────────────────────────────────────────
 {
   const i = JRN.indexOf("  function demarrer() {");
   const j = JRN.indexOf("\n  }\n", i);
   const src = (i >= 0 && j > i) ? JRN.slice(i, j + 4) : "";
   t("la fonction demarrer() est extractible", src.length > 0);
   if (src) {
-    // `_ouvrir` est remplacée par un mouchard : on veut savoir si elle est
-    // appelée, et avec quoi. C'est elle qui clôture la sortie en cours.
+    // `_ouvrir` (qui clôture la sortie en cours) remplacée par un mouchard.
     const jouer = function (etat) {
       const appels = [];
       const sb = {
@@ -98,14 +88,12 @@ const RFI = lire("js/refonteInterface.js");
   }
 }
 
-// ---------- 2. Le module autour ----------
+// ── 2. Le module autour ──────────────────────────────────────────────
 {
   t("📔 demarrer est exposée dans l'API du module", /^\s*demarrer:\s*demarrer,/m.test(JRN));
   const opl = JRN.slice(JRN.indexOf("function onPlanLoaded("), JRN.indexOf("function demarrer()"));
-  // la branche « carnet décoché » ne se réduit plus à
-  // `return null;` : elle peut REPRENDRE une sortie démarrée à la main puis
-  // suspendue par un changement de plan. La règle gardée est la même : elle
-  // n'OUVRE jamais de sortie (aucun `_ouvrir`) et rend null.
+  // ⚠️ La branche « carnet décoché » peut REPRENDRE une sortie manuelle
+  // suspendue, mais n'en OUVRE jamais (aucun `_ouvrir`) et rend null.
   const brancheOff = (function () {
     const i = opl.indexOf("if (!isEnabled()) {");
     if (i < 0) return null;
@@ -126,7 +114,7 @@ const RFI = lire("js/refonteInterface.js");
   t("la sortie garde son origine (ouvertePar)", /ouvertePar:\s*\(origine === "manuel"\) \? "manuel" : "auto",/.test(JRN));
 }
 
-// ---------- 3. Le bouton ----------
+// ── 3. Le bouton ─────────────────────────────────────────────────────
 {
   t("📔 le bouton existe dans la section Carnet de 📊 Détails de la session", /id="kta-refonte-session-carnet-demarrer"/.test(RFI));
   t("🩸 il n'est proposé QUE sans sortie en cours (sinon il coexisterait avec 🏁 Clôturer)",
@@ -138,7 +126,7 @@ const RFI = lire("js/refonteInterface.js");
   t("un démarrage réussi le dit et re-rend la section", /jrn\.toast\.demarree/.test(h) && /_afficherModaleSessionDetail\(\)/.test(h));
 }
 
-// ---------- 4. i18n et doc ×3 ----------
+// ── 4. i18n et doc ×3 ────────────────────────────────────────────────
 {
   const CLES = ["jrn.section.demarrer", "jrn.section.demarrerTitre", "jrn.section.aucuneHint",
                 "jrn.toast.demarree", "jrn.err.dejaEnCours", "jrn.err.sansPlan", "jrn.err.indispo"];
@@ -149,9 +137,7 @@ const RFI = lire("js/refonteInterface.js");
     const d = JSON.parse(lire("lang/" + l + ".json"));
     t("🌍 " + l + " : les 7 textes du démarrage manuel existent", CLES.every(k => typeof d[k] === "string"));
     t("❓ " + l + " : l'aide du carnet explique le démarrage manuel", (d["aide.sec.carnet.html"] || "").includes(A[l]));
-    // la case du carnet n'a plus de paragraphe d'explication
-    // (le libellé suffit) : le démarrage manuel est dit par l'aide (ci-dessus)
-    // et par le Guide (ci-dessous), qui restent contrôlés.
+    // Le démarrage manuel est expliqué par l'aide et le Guide, pas par la case.
     t("📖 " + l + " : le README documente le bouton", lire("docs/applications/" + F[l]).includes(H[l]));
   }
 }

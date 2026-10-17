@@ -1,14 +1,11 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔁 check-secours-relais.js — garde-fou pré-commit BLOQUANT (05/10/2026)
+// check-secours-relais.js — garde-fou pré-commit BLOQUANT : le relais Secours fusionne, n'écrase pas
 // =====================================================================
-// Défaut constaté (étude Secours avec l'installation, étape 0) : le relais en
-// direct d'une installation reliée importait le scénario reçu en « remplacer »,
-// qui reconstruit le scénario SANS son exécution et efface ses photos — le PC qui
-// coche effaçait le tableau du téléphone de l'équipe, et l'inverse ; le rôle de
-// l'un écrasait celui de l'autre. Ce contrôle exécute la VRAIE fusion
-// (js/secoursMode.js) contre ces cas et vérifie son câblage.
+// 🩸 Importer le scénario relayé en « remplacer » le reconstruit SANS son exécution et efface ses photos :
+// le PC qui coche efface le tableau du téléphone de l'équipe (et l'inverse), le rôle de l'un écrase celui
+// de l'autre. Exécute la VRAIE fusion (js/secoursMode.js > _fusionnerExecutionDirect) et vérifie le câblage.
 // =====================================================================
 "use strict";
 
@@ -29,7 +26,7 @@ function corps(nom) {
 }
 const champs = (SM.match(/const _CHAMPS_APPAREIL = \[[\s\S]*?\];/) || [""])[0];
 
-// ═════════ 1. La vraie fusion, exécutée ═════════
+// ── 1. La vraie fusion, exécutée ──────────
 const ctx = {};
 let charge = true;
 try {
@@ -78,7 +75,7 @@ if (ctx.F) {
   t("sans horodatage des deux côtés : le statut le plus grave gagne", g.etapes.G1[0].statut === "victime");
 }
 
-// ═════════ 2. Câblage ═════════
+// ── 2. Câblage ──────────
 t("updateEtape horodate chaque modification (majAt)", /et\.majAt = _nowIso\(\);/.test(corps("updateEtape")));
 const imp = corps("_appliquerPayloadImport");
 t("🩸 import « remplacer » + garderExecution : exécution FUSIONNÉE, photos gardées",

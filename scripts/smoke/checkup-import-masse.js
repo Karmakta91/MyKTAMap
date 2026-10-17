@@ -1,23 +1,14 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📦 checkup-import-masse.js — la copie d'un ZIP mémorisé est RÉELLE
+// checkup-import-masse.js — la copie d'un ZIP mémorisé par l'import multiple est RÉELLE (consultatif)
 // =====================================================================
-// 🩸 Vécu le 16/09/2026 (KARMA : « ça marche uniquement pour le dernier plan
-// chargé dans la liste »). Chromium range un `File` issu d'un sélecteur PAR
-// RÉFÉRENCE au fichier sur le disque : IndexedDB rend un objet de la bonne
-// taille, mais sa lecture échoue dès que l'original a été modifié, déplacé
-// ou supprimé. Aucun garde-fou statique ne peut le prouver : seul un
-// navigateur le montre. Ce checkup :
-//   1. fabrique 3 ZIP MyKTAMap sur le disque ;
-//   2. les importe PAR L'ÉCRAN (bouton 📦, champ de fichiers, Importer) ;
-//   3. MODIFIE plan1.zip, SUPPRIME plan2.zip, laisse plan3 intact ;
-//   4. recharge la page et relit les 3 blobs (4 octets chacun) ;
-//   5. ouvre depuis la liste le plan dont le fichier a disparu.
-// Sur le code d'avant (put(file) tel quel) : plan1 NotReadableError, plan2
-// NotFoundError. Usage : node scripts/smoke/checkup-import-masse.js
-// (Playwright + Chromium requis, comme les autres checkups de ce dossier ;
-// KTA_CHROMIUM=<chemin de chrome.exe> pour imposer un exécutable.)
+// 🩸 Chromium range un `File` issu d'un sélecteur PAR RÉFÉRENCE au fichier disque : IndexedDB rend un
+// objet de la bonne taille, mais sa lecture échoue (NotReadableError / NotFoundError) dès que l'original
+// est modifié, déplacé ou supprimé. Un `put(file)` tel quel ne marche donc que pour le dernier plan.
+// Seul un navigateur le prouve : 1. fabrique 3 ZIP ; 2. les importe par l'écran ; 3. modifie plan1,
+// supprime plan2 ; 4. recharge et relit les 3 blobs ; 5. ouvre le plan dont le fichier a disparu.
+// Usage : node scripts/smoke/checkup-import-masse.js (Playwright ; KTA_CHROMIUM=<chrome.exe> force l'exécutable).
 "use strict";
 const path = require("path");
 const fs   = require("fs");
@@ -41,10 +32,8 @@ const LS = {
 const echecs = [];
 function t(msg, ok) { console.log((ok ? "✅ " : "❌ ") + msg); if (!ok) echecs.push(msg); }
 
-// Trois VRAIS plans : le ZIP d'exemple du dépôt (`data/myktamap.zip`, plan
-// « Test MultiLVL »), renommé et re-versionné trois fois. Un plan fabriqué
-// de toutes pièces (image 1×1) reste bloqué sur « Chargement en cours… » :
-// l'étape 5 doit ouvrir un plan qui se charge vraiment.
+// Trois VRAIS plans : le ZIP d'exemple du dépôt, renommé et re-versionné. 🩸 Un plan fabriqué de toutes
+// pièces (image 1×1) reste bloqué sur « Chargement en cours… » : l'étape 5 doit vraiment se charger.
 const ZIP_EXEMPLE = path.join(ROOT, "data", "myktamap.zip");
 async function fabriquerZip(dossier, i) {
   const z = await JSZip.loadAsync(fs.readFileSync(ZIP_EXEMPLE));
@@ -52,8 +41,7 @@ async function fabriquerZip(dossier, i) {
   const cfg = JSON.parse(await entree.async("string"));
   cfg.plan.name = "Checkup import " + i;
   cfg.plan.version = "V" + i;
-  // étiquettes proposées par le ZIP (champ du Générateur) :
-  // elles doivent apparaître dans la liste dès l'import multiple.
+  // Étiquettes proposées par le ZIP : visibles dans la liste dès l'import multiple
   cfg.plan.tags = ["checkup", "lot " + i];
   z.file(entree.name, JSON.stringify(cfg));
   z.file("bourrage.bin", Buffer.alloc(1000 * i, i));   // taille distincte par plan
@@ -65,7 +53,7 @@ async function fabriquerZip(dossier, i) {
 async function ouvrirAccueil(ctx) {
   const p = await ctx.newPage();
   await p.goto(URL, { waitUntil: "domcontentloaded" });
-  // Le splash est RETIRÉ DU DOM après ~3,5 s (cf. checkup-home-scroll.js).
+  // Le splash est RETIRÉ du DOM après ~3,5 s
   await p.waitForSelector("#splashOverlay", { state: "detached", timeout: 25000 }).catch(function () {});
   await p.waitForTimeout(700);
   await p.evaluate(function () { const m = document.getElementById("kta-alert-modal"); if (m) m.remove(); });
@@ -117,7 +105,6 @@ async function etatBlobs(p) {
     const e1 = await etatBlobs(p);
     t("3 plans entrés dans la liste, tous marqués « mémorisé »", e1.length === 3 && e1.every(function (x) { return x.storedBlob; }));
     t("les 3 blobs se lisent dans l'onglet de l'import", e1.every(function (x) { return x.taille && x.lisible === true; }));
-    // les étiquettes du plan-config arrivent AVEC l'entrée, origine "config".
     const tags1 = await p.evaluate(function () {
       return window.PlanRegistry.getAll().filter(function (pl) { return pl.type === "local"; })
         .map(function (pl) { return { tags: pl.tags || [], src: pl.tagsSrc || null }; });
@@ -143,8 +130,7 @@ async function etatBlobs(p) {
     t("le plan dont le fichier a été supprimé est dans la liste", !!ligne);
     if (ligne) {
       await ligne.click();
-      // Ouvert = le plan courant porte son nom (indépendant de la façon dont
-      // l'accueil se masque). On laisse jusqu'à 10 s à un vrai chargement.
+      // Ouvert = le plan courant porte son nom (indépendant du masquage de l'accueil) ; 10 s max
       await attendre(p, function () {
         return (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name === "Checkup import 2") ||
                !!document.getElementById("planIntrouvableModal");
@@ -159,7 +145,7 @@ async function etatBlobs(p) {
       });
       if (!etat.ouvert) console.log("   état : modale=" + etat.modale + " · statut=« " + etat.statut + " »");
       t("🩸 …et il S'OUVRE depuis sa copie (pas de modale « Données introuvables »)", etat.ouvert && !etat.modale);
-      // 🏷️ l'ouverture rejoue la règle « le fichier propose » : les étiquettes restent, même origine.
+      // L'ouverture rejoue la règle « le fichier propose » : étiquettes et origine conservées
       const tagsOuv = await p.evaluate(function () {
         const pl = window.PlanRegistry.findById("local_checkup_import_2_v2");
         return pl ? { tags: pl.tags || [], src: pl.tagsSrc || null } : null;

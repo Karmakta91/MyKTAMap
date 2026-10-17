@@ -1,628 +1,248 @@
 #!/bin/sh
 # ============================================================
-# 🛡️ Pre-commit hook MyKTAMap community
+# Pre-commit hook MyKTAMap community
 # ============================================================
-# Bloque tout commit qui contiendrait du code appartenant au
-# repo MyKTAMap-pro (privé). Voir scripts/check-no-pro-leak.js
-# pour la liste des patterns / fichiers interdits.
-#
-# Pour activer ce hook :
-#   git config core.hooksPath .githooks
-#
-# Pour bypass en urgence :
-#   git commit --no-verify
+# Une ligne par garde-fou : ce qu'il protege. Le detail (pourquoi, sabotages) vit dans l'en-tete du script.
+# Rejoue tel quel en CI (.github/workflows/ci.yml) ; scripts/garde-fous-tableau.js lit les lignes `node scripts/`.
+# BLOQUANT = `|| exit $?` ; sans, consultatif. Un script qui lit l'index (git diff --cached) doit accepter
+# KTA_FICHIERS_CI, sinon il passe a vide en CI.
+# Activer : git config core.hooksPath .githooks
 # ============================================================
 
-# Vérifie que Node.js est disponible (cross-platform)
+# Sans Node, le hook laisse passer (la CI rejoue tout).
 if ! command -v node >/dev/null 2>&1; then
   echo "⚠️  [pre-commit] Node.js introuvable — check anti-fuite pro skippé."
   echo "    Installer Node depuis https://nodejs.org pour activer le hook."
   exit 0
 fi
 
-# Lance les checkers
+# Aucun fichier ni module du depot prive MyKTAMap-pro.
 node scripts/check-no-pro-leak.js || exit $?
 
-# Dépôt public : aucun nom réel lié aux relevés de terrain
-# (département des relevés, ses variantes). Comparaison par EMPREINTE sha256 :
-# le nom n'est pas écrit dans le contrôle. Fichiers indexés ; en CI (`CI`
-# posé), tous les fichiers suivis. BLOQUANT, sans dérogation.
+# Depot public : aucun nom reel lie aux releves (empreintes sha256, sans derogation).
 node scripts/check-noms-reels.js || exit $?
 
-# Advisory linter ModalLifecycle (avertit mais ne bloque pas)
+# Cycle de vie des modales (consultatif).
 node scripts/check-modal-lifecycle.js
 
-# Surface d'API : CHARGE les modules IIFE et vérifie que chaque
-# méthode annoncée existe. `node -c` ne valide QUE la syntaxe : un identifiant
-# supprimé mais encore référencé dans un bloc d'exports passe le check et
-# casse au chargement navigateur (ReferenceError vécu le 01/08 sur
-# WALLPAPER_MAX_PX — le même patch raté avait aussi fait sauter
-# setWallpaperCadrage des exports, sans aucun signal).
-# BLOQUANT : contrairement au linter ModalLifecycle, ici un échec = module
-# mort au boot, jamais un faux positif.
+# Chaque methode exportee par un module IIFE existe au chargement (node -c ne resout pas les identifiants).
 node scripts/check-api-surface.js || exit $?
 
-# Prefs globales : APP_CONFIG est RECONSTRUIT a chaque chargement
-# de plan. Une pref sauvegardee mais absente de la liste de relecture retombe
-# silencieusement sur son defaut (bug vecu le 03/08 : le magnetisme au dessin
-# repassait a OFF des l'ouverture d'un plan). BLOQUANT.
+# Une pref globale sauvegardee est bien relue quand APP_CONFIG est reconstruit au chargement d'un plan.
 node scripts/check-prefs-survival.js || exit $?
 
-# Table canonique des styles : tant que des tables subsistent
-# (migration en cours), on verifie qu'elles ne DERIVENT pas de la reference.
-# Un oubli y est invisible : exporter.js avait perdu `inaccessible` et une zone
-# dangereuse sortait en gris remblais dans l'export PNG. BLOQUANT.
+# Styles des types : une seule table canonique, resolue par ktaResolveStyle.
 node scripts/check-style-canon.js || exit $?
 node scripts/check-style-resolver.js || exit $?
 
-# Sortie KML : le KMZ a ses PROPRES largeurs (unite different du
-# `weight` Leaflet, ajustee a l'echelle GPS) et ses propres alphas. Brancher
-# naivement le resolveur dessus changerait le rendu dans Google Earth sans que
-# personne le voie. Ce script fige les 14 styles built-in et verifie que les
-# types custom recoivent bien un <Style> (bug 2 : styleUrl pendant = couleur
-# perdue). BLOQUANT.
+# Styles KML figes (largeurs/alphas propres au KMZ) et un <Style> pour chaque type custom.
 node scripts/check-kml-styles.js || exit $?
 
-# Round-trip de la legende : type custom -> calque de donnees ->
-# plan regenere. Avant, seul l'ID du type voyageait et les objets ressortaient
-# blancs/gris, sans aucune ligne de legende ni moyen de reparer. Verrouille
-# aussi l'idempotence du re-import et la regle de conflit (le plan gagne).
-# BLOQUANT.
+# Round-trip de la legende : type custom -> calque -> plan regenere, re-import idempotent.
 node scripts/check-legend-roundtrip.js || exit $?
 
-# Math de l'estimation du point B de georef (A + echelle + Nord).
-# Fonction extraite du code REEL de config.js ; a attrape Number(null)=0 des
-# son premier run (un A a lat nulle serait parti a l'equateur). BLOQUANT.
+# Estimation du point B de georef (A + echelle + Nord), sur le code reel de config.js.
 node scripts/check-georef-estimation.js || exit $?
 
-# Parseur binaire de dimensions d'images du Generateur (bug JPG
-# 32Kx32K « non decodable » : Chrome/Skia refuse un cote > 32767 px, on lit
-# l'en-tete sans decoder). Fixtures synthetiques PNG/GIF/WebP/JPEG. BLOQUANT.
+# Dimensions d'image lues dans l'en-tete, sans decoder (cote > 32767 px refuse par Chrome).
 node scripts/check-image-header-dims.js || exit $?
 
-# Convertisseur de resolution de l'editeur de donnees (migration
-# des donnees d'une carriere entre deux scans). Le champ coordonnee OUBLIE est
-# le bug classique : chaque tableau du format est eprouve + aller-retour. BLOQUANT.
+# Convertisseur de resolution de l'editeur de donnees : aucun champ de coordonnee oublie.
 node scripts/check-resolution-convert.js || exit $?
 
-# 🛠️ Mode Developpeur : plus de bibliotheque de docs (retiree le 09/10/2026,
-# audit CD F1 — elle obligeait a publier la doc interne), hash mdp au format
-# SHA-256, ConfAdmin et inspecteur SW rendus en mode actif seulement. BLOQUANT.
+# Mode Developpeur : pas de bibliotheque de docs, hash SHA-256, outils rendus en mode actif seulement.
 node scripts/check-devmode-docs.js || exit $?
 
-# Livrables : de docs/, seul docs/applications/
-# part (Dockerfile, ZIP de release.yml, .dockerignore), jamais le README.md
-# racine. BLOQUANT.
+# Livrables : de docs/, seul docs/applications/ part, jamais le README.md racine.
 node scripts/check-livrables-docs.js || exit $?
 
-# Librairies de lib/ : version de l'en-tête du fichier embarqué = lib/package.json (manifeste
-# lu par Dependabot) = lib/VERSIONS.md. Une PR Dependabot (manifeste seul) échoue ici tant que le fichier
-# n'est pas réellement remplacé et testé. BLOQUANT.
+# lib/ : en-tete du fichier embarque = lib/package.json = lib/VERSIONS.md.
 node scripts/check-libs.js || exit $?
 
-# Textes des PDF : la police standard affiche les accents (on les retirait à tort) ;
-# libellés PDF des dicos sans caractère hors police (→ ✓ ⚠ emoji), aucun normalize("NFD") dans les
-# modules PDF, texte libre filtré par window.ktaTextePdf. BLOQUANT.
+# Textes des PDF : accents gardes, aucun caractere hors police, texte libre filtre par ktaTextePdf.
 node scripts/check-pdf-texte.js || exit $?
 
-# Popups natives (alert/confirm/prompt) : migration par lots vers ktaAlerte / ktaConfirm /
-# toast. CLIQUET : le compte ne peut que baisser (abaisser PLAFOND dans le script). BLOQUANT.
+# Popups natives : cliquet a 0 (ktaAlerte / ktaConfirm / toast).
 node scripts/check-popups-natives.js || exit $?
 
-# Commentaires = etat actuel (convention CLAUDE.md) : aucun tag de version ni date en tete de commentaire,
-# aucun renvoi « ligne N », aucun renvoi vers un scripts/check-*.js absent. CLIQUET : les lignes de
-# commentaire qui citent une version ne peuvent que baisser (abaisser PLAFOND dans le script). BLOQUANT.
+# Commentaires = etat actuel : ni tag de version en tete, ni « ligne N », ni garde-fou absent ; cliquet.
 node scripts/check-commentaires.js || exit $?
 
-# Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
-# Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
-# inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.
+# Superoverlay KMZ : pavage exact des tuiles V2, coherence inter-niveaux, Lod/drawOrder.
 node scripts/check-kmz-superoverlay.js || exit $?
 
-# ❓ Structure de l'Aide integree. Elle vit en HTML DUR dans deux
-# fonctions jumelles (_aideHtmlFr / _aideHtmlEn) rangees par des INDEX
-# NUMERIQUES communs aux 2 langues. Trois bugs le 01/09 : un conteneur oublie
-# fusionnait 2 sections FR (« Mode profil » inatteignable), la meme section
-# n'existait pas en EN (index communs pointant sur des sujets differents), et
-# un index annonce a 29 pour une section en 30 laissait « Mon carnet » dans le
-# filet « Autres ». Verifie : meme nombre de sections FR/EN, 1 titre par
-# section, couverture complete, pas de doublon ni de hors-bornes. BLOQUANT.
+# Aide integree : sections FR/EN appariees par index, couverture complete, sans doublon.
 node scripts/check-aide-sections.js || exit $?
 
-# 📄 Transport des PDF du Mode Histoire dans l'export de profil (dette D1).
-# Le carnet voyageait depuis v1.74.0, pas ses documents : un profil reimporte
-# arrivait avec les notes libres et des PDF absents, sans un mot. Verifie :
-# opt-in STRICT (un plan peut porter 100 Mo), les 5 points de branchement UI,
-# aucune 3e copie du schema IDB (deja duplique modeHistoire/journalUi), et
-# l'idempotence du reimport (put, pas add). BLOQUANT.
+# PDF du Mode Histoire dans l'export de profil : opt-in strict, reimport idempotent.
 node scripts/check-profile-histpdf.js || exit $?
 
-# 🏷️ Catalogue des tags built-in : UNE seule source (dette : icones portail
-# absentes en Vue OSM, v1.81.0). `js/osmHomePreview.js` gardait une COPIE de
-# `js/map.js > TAGS_BUILTIN` parce que la globale n'existait qu'apres le
-# chargement d'un plan, alors que le HOME s'affiche AVANT. La copie a derive
-# deux fois en silence (`entree_plan` v1.41.0, `portail` v1.59.0) : un point
-# portail tombait sur le circleMarker de secours, petit rond jaune au lieu de
-# son icone. Verifie la parite des deux tables DANS LES DEUX SENS, que le HOME
-# lit bien la globale, et qu'elle est exposee au TOP-LEVEL. BLOQUANT.
+# Catalogue des tags built-in : une seule source (map.js > TAGS_BUILTIN), parite des 9 tables.
 node scripts/check-icon-catalog.js || exit $?
 
-# 📐 Projection Lambert 93 (EPSG:2154) de l'import SIG. QGIS exporte
-# massivement en L93 en France : l'app le convertit au lieu de le refuser.
-# Le controle ne compare a AUCUNE table de reference (une table recopiee est
-# elle-meme une source d'erreur) : il verifie les PROPRIETES DEFINITOIRES de
-# la projection - origine exacte sur (700000, 6600000), echelle 1 sur les deux
-# paralleles standard, conformite, aller-retour - plus la surete de la
-# detection (ne jamais confondre des degres avec des metres, ne jamais
-# reprojeter un fichier mixte a moitie). BLOQUANT.
+# Lambert 93 de l'import SIG, verifie par ses proprietes definitoires (aucune table recopiee).
 node scripts/check-lambert93.js || exit $?
 
-# 🗺️ GeoTIFF : un plan cale dans QGIS ressort avec son georeferencement DANS
-# le fichier — l app le lit au lieu de faire ressaisir deux points GPS. Meme
-# methode que le Lambert 93 : le Web Mercator ajoute (7 des 39 plans reels de
-# KARMA sont en 3857) est verifie par ses PROPRIETES DEFINITOIRES, jamais par
-# une table recopiee. Cote lecteur, les fixtures TIFF sont construites octet
-# par octet, donc le resultat attendu est connu par construction.
-# Ce qui casse en SILENCE et que le script tient : le REPERE (inverser
-# sud-ouest/nord-est ne leve aucune erreur, le plan sort juste en miroir), le
-# PIXEL DE REFERENCE du tiepoint (QGIS y met presque toujours (0,0), donc le
-# terme peut disparaitre sans qu un fichier courant ne bronche), les
-# « metres » du 3857 qui n en sont pas (×1,52 en Ile-de-France), la bascule de
-# largeur du LZW (le decodeur a UNE ENTREE DE RETARD sur l encodeur), le
-# predicteur qui ne franchit jamais une fin de ligne, et les REFUS, qui
-# doivent NOMMER la caracteristique non lue — sinon ils n apprennent rien.
-# 9 sabotages de reference rougissent. BLOQUANT.
+# GeoTIFF : repere, tiepoint, 3857, LZW et refus nommes, sur fixtures construites octet par octet.
 node scripts/check-geotiff.js || exit $?
 
-# 🏷️ Étiquettes à la génération (16/09/2026) : UNE normalisation (exécutée),
-# la règle « le fichier propose, l utilisateur dispose » EXÉCUTÉE sur 7
-# scénarios dans main.js ET importMasse.js, les 4 écrivains de plan-config
-# couverts (Générateur, KMZ, GPX, SIG), plan.tags absent si vide. BLOQUANT.
+# Etiquettes a la generation : le fichier propose, l'utilisateur dispose ; 4 ecrivains de plan-config.
 node scripts/check-plan-tags.js || exit $?
 
-# 📁 Dossiers de « Mes plans » (v1.95.0) : le registre est EXÉCUTÉ (bac à sable),
-# l index propose / l utilisateur dispose sur 7 scénarios, jamais deux « Secteur »,
-# jamais un plan perdu, règles par étiquette, glisser réservé au pointeur fin,
-# sélecteur dans la ligne de titre (0 px). BLOQUANT.
+# Dossiers de « Mes plans » : registre execute, aucun plan perdu, regles par etiquette.
 node scripts/check-plan-folders.js || exit $?
 
-# 👣 Podomètre GLOBAL (v1.96.0) : config.js EXÉCUTÉ dans un bac à sable — les
-# clés podomètre d un plan-config sont ignorées meme presentes, le reglage
-# global prime, migration des prefs par plan sans perte, generateur et
-# convertisseurs n ecrivent plus ces cles. BLOQUANT.
+# Podometre global : le reglage global prime sur les cles d'un plan-config.
 node scripts/check-podometre-global.js || exit $?
 
-# 🔕 Notifications (v1.96.0) : la decision Toutes / Essentielles / Silence est
-# EXECUTEE, un seul goulot (OOMGuard.showToast), l important et les erreurs
-# survivent, la vibration suit le reglage, restauration regroupee, alertes
-# serveur hors de portee par construction. BLOQUANT.
+# Notifications : un seul goulot (OOMGuard.showToast), l'important et les erreurs survivent au silence.
 node scripts/check-notifs.js || exit $?
 
-# 🔤 Constantes MAJUSCULES utilisees mais jamais declarees. Ne des le 03/09 :
-# le nettoyage de code mort du 09/08 avait supprime `const HEADER_HEIGHT_MM`
-# de pdfExport.js alors qu elle etait utilisee 20 lignes plus bas - toute
-# generation de PDF avec en-tete echouait depuis, sans que rien ne le voie
-# (node -c ne resout pas les identifiants, et le smoke ne genere pas de PDF).
-# C est le linter minimal que ce projet n a pas, sur le seul motif qui a
-# reellement mordu. BLOQUANT.
+# Constantes MAJUSCULES utilisees mais jamais declarees (node -c ne les voit pas).
 node scripts/check-constantes-orphelines.js || exit $?
 
-# 🗺️ Listener pose sur la map Leaflet dont la garde anti-doublon vit ailleurs
-# que sur la map. `window.map` est REMPLACEE a chaque plan charge : un drapeau
-# global survit au remplacement, annonce « deja branche » et le listener ne se
-# pose plus jamais. Le piege a mordu deux fois - v1.30.0 (culling des markers,
-# corrige en portant le drapeau sur la map) puis v1.82.0 (largeur des fronts au
-# zoom), la lecon de la premiere fois etant pourtant ecrite dans le depot.
-# Symptome qui egare : le contournement de l utilisateur marche, parce qu un
-# re-rendu rappelle la fonction. Le mecanisme a l air vivant, seul son
-# declencheur a disparu. BLOQUANT.
+# Garde anti-doublon d'un listener portee par la map (window.map est remplacee a chaque plan).
 node scripts/check-map-listeners.js || exit $?
 
-# 👣 Reglage de podometre recopie en dur avec une valeur qui diverge de
-# l'usine (js/config.js > DEFAULT_CONFIG). Ne le 03/09 : trois generateurs
-# (SIG, GPX, KMZ) ecrivaient `stepThreshold: 1.2` la ou l'usine dit 13. Or
-# tracking.js compare ce seuil a la magnitude de accelerationIncludingGravity,
-# qui vaut DEJA ~9,81 telephone pose : la condition etait vraie en permanence
-# et fabriquait ~3,6 pas/seconde A L'ARRET, soit pres de 10 km/h de distance
-# fantome sur tout plan issu d'un import. BLOQUANT.
+# Reglages de podometre recopies en dur qui divergent de config.js > DEFAULT_CONFIG.
 node scripts/check-tracking-defaults.js || exit $?
 
-# des plans générés à l'époque où le
-# générateur laissait régler le tracking portent des valeurs impossibles.
-# La règle « hors bornes → usine » ne couvrait que les trois réglages de
-# podomètre ; `scale`, les dimensions et le départ entraient sans contrôle
-# — une échelle nulle fait valoir l'infini à toute distance. BLOQUANT.
+# Valeurs hors bornes d'un plan-config (echelle, dimensions, depart) ramenees a l'usine.
 node scripts/check-plan-config-borne.js || exit $?
 
-# 🏷️ Ajout de plans PAR ETIQUETTE dans la pile multi-plans de la Vue OSM du
-# HOME. Deux regles y regressent en silence : le regroupement INSENSIBLE A LA
-# CASSE (« Secteur » et « SECTEUR » doivent faire UNE etiquette — sinon deux
-# chips montrent chacun la moitie de leurs plans, et le bug ne se voit que si
-# on a justement tape les deux orthographes), et l ASYMETRIE du clic (ajouter
-# seulement les manquants, retirer seulement quand ils y sont tous). BLOQUANT.
+# Pile OSM du HOME : etiquettes insensibles a la casse, clic asymetrique (ajouter / retirer).
 node scripts/check-osm-etiquettes.js || exit $?
 
-# 🔄 Rapatriement d un calque de donnees dans la session. Deux pieges y sont
-# mortels et silencieux : un VERROU POSE SANS SA COPIE masque le calque et
-# donne un plan vide sans un mot (cas reel : la sauvegarde saute sur quota,
-# 1,1 Mo etant exactement le seuil sur un releve SIG), et un EFFACEMENT DE
-# SESSION qui laisserait le verrou ferait disparaitre le releve de l auteur.
-# Verifie aussi que la copie est defensive (muter le calque source serait une
-# corruption definitive) et que le retour ne retire QUE ce qui est marque. BLOQUANT.
+# Calque de donnees rapatrie dans la session : jamais de verrou sans sa copie, copie defensive.
 node scripts/check-calque-session.js || exit $?
 
-# 🧰 Les DEUX outils de lecture de la carte en Vue OSM (📏 mesure et 📍
-# coordonnees de surface) et la regle qui les lie. Trois choses y regressent
-# sans bruit : l ASYMETRIE entre les deux vues (la mesure a vecu deux versions
-# dans le HOME et pas dans le mode plan, sans raison technique), l EXCLUSION
-# MUTUELLE (les deux arment le meme evenement `click` : coexistants, chaque
-# releve de coordonnee pose aussi un point de mesure), et le DEMONTAGE (un
-# listener laisse sur la map continue d agir apres fermeture). BLOQUANT.
+# Outils mesure / coordonnees de la Vue OSM : memes dans les deux vues, exclusifs, demontes a la fermeture.
 node scripts/check-osm-outils.js || exit $?
 
-# 📌 Le repositionnement d un POI de session (« si le POI a ete mal mis »).
-# Premier picker « clic carte » qui MUTE un objet de la session au lieu de
-# remplir un champ : quatre choses y regressent sans bruit. La CONVERSION
-# INVERSE de convertCoord (inverser lat/lng deplace le point ailleurs que sous
-# le doigt, et ca a l air volontaire). L INDEX PERIME (entre l armement et le
-# clic la session a pu changer : un index fige deplacerait le mauvais point).
-# La MUTATION EN PLACE (reconstruire le point lui ferait perdre `_srcCalque`
-# — donc un doublon a la restauration du calque — et son `level`, donc un
-# etage change en douce). Et les LIAISONS INTER-PLAN, qui stockent les coords
-# servant au trace du lien a l export KMZ : sans recalage le lien part de
-# l ancienne position. Les 7 sabotages de reference rougissent. BLOQUANT.
+# Repositionner un POI : conversion inverse, index frais, mutation en place, liaisons recalees.
 node scripts/check-repositionner.js || exit $?
 
-# 🔒 XSS (05/10/2026) : fiche d'un point sans gestionnaire inline (écouteur unique en capture),
-# filtres d'entrée d'un plan et d'une légende exécutés contre des charges d'attaque. BLOQUANT.
+# 🔒 XSS : fiche de point sans gestionnaire inline, filtres d'entree executes contre des charges d'attaque.
 node scripts/check-xss.js || exit $?
 
-# 🧹 Échappement HTML unique (14/10/2026) : window.ktaEsc (js/langManager.js, chargé 2e), aucune copie
-# locale ni repli qui n'échappe pas ; exceptions motivées dans le script. Lit tout js/ (pas l'index). BLOQUANT.
+# Echappement HTML unique (window.ktaEsc), aucune copie locale. Lit tout js/.
 node scripts/check-esc.js || exit $?
 
-# 🔁 Relais Secours en direct (05/10/2026) : l'intervention en cours n'est jamais effacée par le
-# scénario reçu d'un autre appareil, le poste reste celui de l'appareil. BLOQUANT.
+# Relais Secours : l'intervention en cours n'est jamais ecrasee par le scenario d'un autre appareil.
 node scripts/check-secours-relais.js || exit $?
 
-# 🧭 Le tableau recapitulatif des groupes de la barre laterale (3 langues)
-# confronte a ce que interface.js declare vraiment. Rien ne faisait ce
-# rapprochement, d ou une doc qui a decrit pendant des MOIS une interface
-# disparue : un bouton 🗑️ voisin de ✏️ retire le 25/05 (b9de2fa), et surtout
-# « 🏗️ Creer / Modifier plan » presente comme un groupe de la barre alors
-# qu il en a ete RETIRE a la refonte v1.14.19, code supprime en v1.26.2 —
-# l utilisateur pouvait chercher ce bouton indefiniment. Plus « 11 groupes »
-# annonces pour 13 declares, trois groupes reels absents du tableau, et une
-# note inseree AU MILIEU qui le coupait en deux au rendu Markdown. Les 5
-# defauts reels rougissent. BLOQUANT.
+# Tableau des groupes de la barre laterale (3 langues) confronte a interface.js.
 node scripts/check-doc-sidebar.js || exit $?
 
-# 🎯 La selection multiple et la conversion EN LOT. Six choses y regressent
-# sans bruit. La REGLE DE COMPATIBILITE porte sur l OUVERTURE (ligne vs
-# surface fermee), PAS sur la famille : un trace et un front de taille sont
-# tous deux des lignes, et les melanger est LE cas utile — 40 fronts mal
-# types qui deviennent des galeries. La resserrer sur la famille tuerait la
-# raison d etre de la feature sans casser un test naif. Le REFUS doit etre
-# EXPLIQUE (un clic sans effet et sans mot se lit comme un bug). Le LOT doit
-# etre UN geste : un instantane, une entree d historique, une ecriture par
-# famille TOUCHEE — sinon annuler demanderait N Ctrl+Z et on paierait N
-# re-rendus complets. Les trois listes sont lues AVANT toute ecriture. Une
-# cible DEJA atteinte est sautee, pas comptee en echec. Et `itinerary` reste
-# hors selection. Les 8 sabotages de reference rougissent. BLOQUANT.
+# Selection multiple et conversion en lot : compatibilite par ouverture, un seul geste annulable.
 node scripts/check-selection-multi.js || exit $?
 
-# 🔁 La REPRISE d une sortie interrompue et la FUSION manuelle. Cinq choses y
-# regressent sans bruit. Le SIGNAL de reprise n est pas un delai mais
-# `closedBy: crash` — pose uniquement quand l app a ete tuee SOUS
-# l utilisateur : reprendre sur le delai seul recollerait une sortie qu il a
-# cloturee expres. La BASELINE est RECONSTRUITE par soustraction de ce qui est
-# deja en banque — une baseline neuve remettrait tous les compteurs a zero et
-# la reprise n aurait l air de marcher que de loin. La GARDE D ID protege la
-# substitution asynchrone (sans elle, soit la reprise n arrive jamais, soit
-# elle ecrase une sortie deja repartie). A la fusion, `wallMs` est debut->fin
-# TROUS COMPRIS, jamais une somme, et le resultat est ECRIT avant que les
-# autres soient supprimees. Enfin `WakeLock.init()` doit rester appele au boot
-# — il ne l etait NULLE PART, d ou l option ecran-allume morte en PWA iOS.
-# Les 7 sabotages de reference rougissent. BLOQUANT.
+# Reprise d'une sortie interrompue (closedBy: crash) et fusion manuelle ; WakeLock.init() au boot.
 node scripts/check-journal-reprise.js || exit $?
 
-# 🔆 L option « garder l ecran allume », et le VERROU FANTOME qui a resiste a
-# deux diagnostics. Au demarrage, sans geste utilisateur, iOS ACCEPTE la
-# demande — `request()` resout, on tient un sentinel, `isActive()` rend vrai —
-# puis il l IGNORE : ni erreur, ni evenement `release`. Et le fantome se
-# verrouille lui-meme, `_acquire()` sortant des qu un sentinel est en main :
-# aucune reprise n etait possible. Decocher/recocher reparait parce que c est
-# un relachement puis une acquisition SOUS GESTE — le module refait donc ce
-# geste seul au premier contact. Couvre aussi le defaut OFF de la vibration
-# haptique et l absence de tout `!== false` (qui rend VRAI sur undefined et
-# rallumerait l option). BLOQUANT.
+# Ecran allume : verrou fantome iOS repris au premier geste ; vibration OFF par defaut.
 node scripts/check-wakelock.js || exit $?
 
-# i18n. Le script existait depuis la v1.45 mais n etait JAMAIS
-# lance automatiquement : outil manuel, donc filet absent au moment ou il
-# servait. Il verifie la parite fr/en/es, les cles appelees mais absentes, et
-# depuis la v1.85.4 qu aucune cle rendue en textContent (data-i18n) ne contient
-# de HTML — le bug vu par KARMA : « Niveau de batterie <em>(s applique a tous
-# tes plans)</em> » affiche balises comprises, parce que la meme cle passait en
-# innerHTML cote plan et en textContent cote accueil.
-# TUILAGE. Regle KARMA : « un plan V2 doit OBLIGATOIREMENT
-# profiter du mode tuile ; le fichier complet reste pour le dezip manuel mais
-# en principe n est pas utilise ». L audit avait trouve trois choses : sur un
-# plan V2 les presets Qualite/Equilibre/Performance ne changeaient RIEN (la
-# branche tuiles est prise avant eux) ; `auto`, le defaut, tranchait sur le
-# poids fichier quand les autres tranchaient sur la surface, donc un JPEG de
-# 100 Mpx a 15 Mo passait en rendu direct et crashait iOS ; et un plan V2
-# servi en HTTP affichait une CARTE BLANCHE (RUNTIME_ASSETS n est rempli que
-# par les imports ZIP). Ce controle verifie que rien de tout ca ne revient.
+# Tuilage : un plan V2 passe toujours par les tuiles ; auto tranche sur la surface ; V2 servi en HTTP.
 node scripts/check-tiling.js || exit $?
 
-# HORS-LIGNE D UN PLAN SERVEUR. Question KARMA : « une fois
-# charge, il est en cache, offline ok ? » Non : le cache principal plafonne a
-# 800 entrees en FIFO (un plan V2 de 20000x12000 fait 1275 tuiles, dont 960
-# pour le seul niveau z=0 : il s evincait lui-meme), seules les tuiles
-# AFFICHEES etaient telechargees, et `activate` purgeait tout au bump.
-# D ou un cache DEDIE par plan, exclu des deux mecanismes.
-# Ce controle protege surtout l exigence la plus facile a casser : l etat
-# affiche est lu du CACHE REEL, jamais d un drapeau -- un drapeau survit a une
-# purge navigateur et annonce « disponible » sur du vide (bouton fantome).
+# Hors-ligne d'un plan serveur : cache dedie, etat lu du cache reel (jamais d'un drapeau).
 node scripts/check-plan-offline.js || exit $?
 
-
+# i18n : parite fr/en/es, cles appelees presentes, aucun HTML dans une cle rendue en textContent.
 node scripts/check-i18n.js || exit $?
 
-# ⚖️ LA PORTEE DES REGLAGES (audit KARMA du 07/09). La config du MODE PLAN ne
-# doit concerner QUE le plan : un reglage qui, modifie la, affecte toute
-# l application n y a rien a faire. Dix y vivaient — cocher « magnetisme au
-# dessin » depuis un releve le cochait pour TOUS, sans un mot. Le pire cas
-# avait deja ete paye en v1.59.0 sur les toggles Perf ULTRA.
-# On tranche sur la PERSISTANCE, jamais sur l onglet : est global ce que
-# `sauvegarderPrefsUtilisateur()` ecrit dans `app_user_prefs`. Deux tolerances
-# EXPLICITES (vibration, batterie) : on les ajuste en cavite, remonter au HOME
-# pour couper la vibration serait absurde. Verifie aussi que les rapatries sont
-# ATTEIGNABLES au HOME — les sortir sans les y mettre serait pire —, que la nav
-# intelligente est passee par plan AVEC son repli de migration, et que les
-# toggles Perf ne sont plus affiches au HOME ou ils ne persistaient rien.
+# Portee des reglages : est global ce qui persiste dans app_user_prefs ; rapatries atteignables au HOME.
 node scripts/check-portee-reglages.js || exit $?
 
-# TAGS PROPOSES PAR L INDEX (demande KARMA du 07/09 : taguer un plan serveur
-# depuis le generateur de conf, pour filtrer facilement). LE CONTRAT :
-# l index PROPOSE, l utilisateur DISPOSE. decouvrirPlansServeur tourne a
-# CHAQUE demarrage : une ecriture inconditionnelle ecraserait les tags poses
-# a la main, en silence, boot apres boot — le ping-pong exact corrige en
-# v1.88.0 sur `version`. Et son symetrique : vider ses tags est un CHOIX, la
-# trace du refus doit survivre sinon l index les repropose.
-# On EXECUTE (vm) : le registre, le bloc de decision extrait de main.js sur
-# ses 5 cas, et les DEUX normalisations (ConfAdmin vs moteur) comparees — si
-# elles divergeaient, le kiosque publierait des tags que l app rogne en
-# silence. 9 sabotages rougissent.
+# Tags proposes par l'index : l'index propose, l'utilisateur dispose (jamais d'ecrasement au boot).
 node scripts/check-tags-index.js || exit $?
 
-# KIOSQUE SERVEUR (bug KARMA du 08/09 : « en mode serveur, avec generateur et
-# import desactives, je peux importer un profil et donc recuperer tous les
-# ZIP ; et si ce profil a une preference de mode serveur desactive, ca casse
-# tout »). Deux trous : l import de PROFIL restaure les archives (la
-# restriction se contournait par la porte d a cote), et un profil transporte
-# `myktamap_loader_show_server_plans` — importe a false sur un kiosque, il
-# masque les plans serveur dont la case de reglage est justement CACHEE :
-# accueil vide, aucun moyen d en sortir. Un flag qui cache son propre remede
-# est un piege. LA REGLE : ce qui est interdit l est AU GOULOT, pas sur un
-# bouton — la modale d import se declenche depuis au moins deux endroits.
+# Kiosque serveur : interdits appliques au goulot (import de profil compris), aucun flag qui cache son remede.
 node scripts/check-kiosque-serveur.js || exit $?
 
-# CONNEXION SERVEUR (v2.0.0, community-server-line.md §3) : une instance declare
-# `config.serverConnection` ; l app en tire un etat affiche dans le pied de page
-# (myktamap.fr : « off », pas de backend, jamais). Le script EXECUTE la
-# validation de l app ET celle de ConfAdmin sur la meme table de cas (un index
-# que l outil juge bon et que l app refuse serait le pire des deux mondes),
-# verifie qu un index INJOIGNABLE ne passe jamais pour « connexion coupee »
-# (une instance connectee hors ligne est HS, pas OFF), qu une licence importee
-# ne suffit pas, que la memoire de l instance ne part pas dans l export de
-# profil, et que le module ne fait aucune requete. BLOQUANT.
+# Connexion serveur : meme validation app / ConfAdmin, index injoignable = DOWN (pas OFF), aucune requete.
 node scripts/check-connexion-serveur.js || exit $?
 
-# EXPORT ANONYMISE (v2.0.1) : fait pour etre PARTAGE publiquement. Le script
-# EXECUTE `_anonymiserSession` (extraite du vrai fichier) sur une session piegee
-# dont chaque texte identifiant porte un marqueur, puis cherche le marqueur dans
-# TOUT le JSON produit — une cle ajoutee demain a l export complet et oubliee
-# dans l anonymiseur fera echouer le commit. Ne en v2.0.1 : les liaisons
-# inter-plan livraient les vrais noms de plan et de point depuis v1.57.0. BLOQUANT.
+# Export anonymise : aucun texte identifiant dans le JSON produit (session piegee a marqueurs).
 node scripts/check-export-anonyme.js || exit $?
 
-# IDENTIFIANTS STABLES (v2.1.0, docs/ETUDE_UID.md) : chaque objet de carte porte
-# uid + updatedAt. Le script EXECUTE js/ktaUid.js (doublons regeneres en
-# migration de masse, uid jamais ecrase, copie du tableur = uid neuf) et verifie
-# le cablage des sites : setters, migration a l ouverture (VERSION de session
-# inchangee - une ancienne app ignorerait une version inconnue), touch a chaque
-# modification, lecture des calques, Generateurs, aucun uid vers KMZ/GPX. BLOQUANT.
+# Identifiants stables (uid + updatedAt) : ktaUid.js execute, cablage des sites, aucun uid vers KMZ/GPX.
 node scripts/check-uid.js || exit $?
 
-# POINTS D'EXTENSION (v2.7.0, chantier 3) : un module greffe peut remplacer la
-# gate, fournir des plans, refuser un import/export, publier, parler a un
-# backend. Le script EXECUTE js/ktaExtensions.js : une permission qui echoue
-# REFUSE, une gate deleguee en echec ne retombe jamais sur la gate community,
-# le garde des requetes refuse hors etat permis et hors origine declaree, aucun
-# module sur une instance OFF, aucune prise sans extension ne change rien. BLOQUANT.
+# Points d'extension : permission en echec = refus, gate deleguee en echec jamais rabattue sur la community.
 node scripts/check-extensions.js || exit $?
 
-# LICENCES SIGNEES (04/10/2026) : seules les licences signees par la cle de KARMA
-# (ECDSA P-256), non expirees et pour la bonne adresse activent le mode pro ; la
-# cle embarquee doit etre PUBLIQUE. Le script EXECUTE la verification. BLOQUANT.
+# 🔒 Licences signees ECDSA P-256 : seule la cle PUBLIQUE est embarquee ; verification executee.
 node scripts/check-licence.js || exit $?
 
-# DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
-# 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
-# widget OSM du HOME monte une carte dont le fond vient de
-# tile.openstreetmap.org. Actif par defaut, l accueil contacte donc un TIERS au
-# chargement, sans clic -- la seule chose que l app fasse sortir du navigateur.
-# TROIS INVARIANTS : un refus explicite ("0") n est JAMAIS reecrase (la faute
-# qu on ne rattrape pas apres un deploiement) ; les DEUX lecteurs (osmView =
-# modale, osmHomePreview = widget) repondent a l identique, sinon widget sans
-# bouton ou l inverse ; et le defaut S ANNONCE tant que la cle est absente.
-# On EXECUTE les deux lecteurs sur les 4 etats de la cle. 7 sabotages rougissent.
+# OSM actif par defaut : refus explicite ("0") jamais reecrase, les deux lecteurs d'accord.
 node scripts/check-osm-defaut.js || exit $?
 
-# MOT DE PASSE D INSTANCE (demande KARMA du 08/09 : « un hash perso pour le mot
-# de passe de la gate, du coup soit le mdp lie au hash de la gate, soit celui
-# lie au hash dans le index.json »). Le niveau de securite ne bouge PAS : le
-# hash vit dans un fichier public, brute-forcable hors ligne, exactement comme
-# le hash communautaire lisible sur GitHub. Barriere sociale, jamais une
-# authentification -- et le dire fait partie du contrat, donc la doc est
-# verifiee elle aussi.
-# TROIS FAUTES SILENCIEUSES tenues ici : deux `null` qui s egalent sur un
-# navigateur vierge (app grande ouverte) ; le reverrouillage hors-ligne d un
-# visiteur entre legitimement ; un accessHash fautif accepte par comparaison de
-# chaines. On EXECUTE isUnlocked et revaliderInstance. 10 sabotages rougissent.
+# 🔒 Mot de passe d'instance : barriere sociale (hash public), sans faille null == null ni comparaison laxiste.
 node scripts/check-gate-instance.js || exit $?
 
-# (bug KARMA du 10/09 : « Ctrl+Z jusqu a tout effacer, la pastille
-# du trace reste allumee mais l outil est mort »). Le raccourci clavier passe
-# par HistoryManager.undo -> _applyState (qui remet modeRoad a null au trace
-# vide) et NON par les boutons de suppression qui, eux, fermaient deja le mode.
-# La resync est branchee sur onChange. On EXECUTE le corps du callback extrait
-# du fichier reel (lecon v1.90.12 : un grep aurait valide un mauvais nom de
-# fonction, avale par le try/catch). 6 sabotages rougissent.
+# Outils de dessin resynchronises apres Ctrl+Z (HistoryManager.onChange).
 node scripts/check-outils-dessin-sync.js || exit $?
 
-# 📍 Regle « instant T » (audit ergonomie 13/09/2026, decision KARMA) : la
-# position du tracker vaut le depart du plan tant que l utilisateur ne s est
-# pas situe. Sortie d urgence / « Y aller » partent de la position SANS
-# question si le suivi est actif ou la position confirmee ; sinon, et
-# seulement sinon, picker partage « Ou es-tu ? ». Le script verifie les
-# points d ecriture du drapeau, la reprise de l origine par « Tracer », la
-# Promise de requestPermission attendue par _doStart, et la classe commune
-# du floater. 4 falsifications rougissent.
+# Position confirmee : urgence / « Y aller » partent de la position sans question si elle est sure.
 node scripts/check-position-confirmee.js || exit $?
 
-# 🛟 Filets de donnees (audit ergonomie 13/09/2026, lot 2 + decision M2) :
-# snapshot ATTENDU avant un import de session, confirmation chiffree avant
-# « Effacer la session », historique sur la suppression d un point, zone /
-# structure fermee (pas detruite) au re-tap, Reset des Reglages et effacement
-# du georef confirmes, carnet debrayable, generateur inerte au clic fond,
-# bandeau persistant si le stockage est sature, et verrou PIN / gate
-# TEMPORISE (echeance, compte a rebours, retour automatique) au lieu du
-# verrou definitif. 3 falsifications rougissent.
+# Filets de donnees : snapshot avant import, confirmations chiffrees, verrou PIN temporise (decision produit).
 node scripts/check-filets-donnees.js || exit $?
 
-# 👁️ Etat visible (audit ergonomie 13/09/2026, lot 4) : pastille de filtres
-# sur ≡ (niveaux compris), toast quand des filtres sont restaures, etapes de
-# l itineraire redessinees apres rechargement, « enregistre il y a » dans les
-# details de session, pas + distance dans le footer, toasts tracker masque /
-# verrou suspendu, wake lock propose au demarrage du suivi. 3 falsifications
-# rougissent.
+# Etat visible : pastille de filtres, toasts de restauration, etapes d'itineraire redessinees.
 node scripts/check-etat-visible.js || exit $?
 
-# 🛡️ Perimetre de garantie de l audit reseau (controle KARMA 13/09/2026) :
-# les deux domaines officiels sont ecrits EN DUR aux deux endroits (modale
-# « Que fait l app sur le reseau ? » + page NETWORK_AUDIT.html/.md), jamais
-# derives de location.origin — une copie servie ailleurs doit se desavouer,
-# pas s adapter. 2 falsifications rougissent.
+# Audit reseau : les deux domaines officiels ecrits en dur, jamais derives de location.origin.
 node scripts/check-audit-domaine.js || exit $?
 
-# 🗂️ Pile de plans du widget OSM home (bug KARMA 14/09/2026) : le plan quitte
-# REMPLACE l ancien principal (regle unique partagee par le re-mount et le
-# dropdown), une ligne fantome se retire toujours d un ✕, les groupes morts
-# sortent de la pile a la destruction de la carte. EXECUTE la regle et le
-# demontage extraits du fichier. 3 sabotages rougissent.
+# Pile de plans du widget OSM : le plan quitte remplace l'ancien principal, groupes morts retires.
 node scripts/check-osm-pile.js || exit $?
 
-# 🔎 Recherche plein texte de la modale Documentation + hub d aide (audit
-# ergonomie D27, 14/09/2026) : normalisation 1:1 (accents retires, positions
-# preservees), occurrences non chevauchantes, hub titre OU contenu, libelles
-# de la bulle par le dictionnaire, docs bulle / Details / recherche x3.
-# EXECUTE les helpers extraits du fichier. 4 sabotages rougissent.
+# Recherche plein texte de la Documentation : normalisation 1:1, occurrences non chevauchantes.
 node scripts/check-doc-recherche.js || exit $?
 
-# ⚙️ L4 (audit ergonomie, decision KARMA 14/09/2026) : la modale Reglages n a plus
-# de bouton Appliquer — chaque champ s enregistre a la modification (bornes
-# EXECUTEES), portee par groupe, reset limite au plan, wake lock / vocal
-# affiches avec la raison, code mort retire. 4 sabotages rougissent.
+# Reglages a enregistrement immediat (pas de bouton Appliquer), bornes executees.
 node scripts/check-reglages-immediats.js || exit $?
 
-# 📔 Ouverture MANUELLE d une sortie (demande KARMA 14/09/2026) : une seule
-# sortie a la fois (la sortie en cours n est JAMAIS ecrasee), un refus toujours
-# dit, et ca marche carnet decoche — c est justement son cas d usage. EXECUTE
-# la fonction extraite du fichier. 4 sabotages rougissent.
+# Ouverture manuelle d'une sortie : la sortie en cours n'est jamais ecrasee, refus toujours dit.
 node scripts/check-journal-demarrage.js || exit $?
 
-# 📚 Vocabulaire de la doc (audit ergonomie D2 / D13, 14/09/2026) : « flyout » ne
-# designe que les groupes qui portent reellement useFlyout (lus dans
-# interface.js, AUCUNE table recopiee), et le nombre de styles de legende
-# annonce par le tutoriel est COMPTE dans les deux ecrans d export.
-# 4 sabotages rougissent.
+# Vocabulaire de la doc (« flyout », nombre de styles de legende) confronte au code.
 node scripts/check-doc-vocabulaire.js || exit $?
 
-# ❓ Aide contextuelle (D35, 14/09/2026) : le bouton ❓ des modales renvoie a LA
-# section d aide du sujet. La table modale -> section est confrontee AU CODE
-# dans les deux sens (aucune table recopiee), le reglage est EXECUTE (defaut
-# ACTIVE, seul « 0 » coupe), et couper agit sur ce qui est deja a l ecran.
-# 5 sabotages rougissent.
+# Aide contextuelle : table modale -> section confrontee au code dans les deux sens.
 node scripts/check-aide-contextuelle.js || exit $?
 
-# 🧱 Integrite structurelle d index.html (bug KARMA 14/09/2026 : « un truc est
-# casse »). Une retouche par index de caracteres avait RECOPIE 388 lignes au
-# milieu du document : le bloc « Concu avec Claude » du splash s affichait dans
-# la zone de depot, et les 1912 controles etaient au vert. Balises equilibrees,
-# aucun id en double, aucun repere structurant recopie, scripts existants.
+# Integrite d'index.html : balises equilibrees, aucun id en double, aucun bloc recopie.
 node scripts/check-html-integrite.js || exit $?
 
-# 📦 Import multiple (v1.94.0, demande KARMA) : N archives ajoutees a la liste
-# SANS qu aucune ne s ouvre. Le point dur n est pas la boucle : jusqu ici,
-# ajouter un plan c etait l ouvrir. EXECUTE les deux decisions (doublons,
-# place), verifie le traitement un par un, l entree retiree si le stockage
-# rate, et le bouton au-dessus de l acces permanent. 6 sabotages rougissent.
+# Import multiple : N archives ajoutees sans qu'aucune ne s'ouvre, entree retiree si le stockage rate.
 node scripts/check-import-masse.js || exit $?
 
-# 📐 HOME PC (15/09/2026, KARMA : « on a encore un souci de zoom… ça fait
-# plusieurs fois qu on bosse sans résoudre ce problème ») : ce n était ni la
-# largeur ni le zoom. Orphelin pleine largeur, « Charger ce plan » épinglé en
-# bas du scroller, décoratif compressé sur écran bas, et AUCUNE nouvelle
-# largeur en px sur la colonne Actions. 9 sabotages rougissent.
+# HOME PC : orphelin pleine largeur, primaire epingle, aucune largeur en px sur la colonne Actions.
 node scripts/check-home-layout.js || exit $?
 
-# Guidage de l'itinéraire (js/itiGuidage.js + raccords /
-# carrefours de pathfinder.js). CHARGE les vrais modules sur des réseaux
-# FICTIFS et fige la logique « quand annoncer » de docs/ETUDE_GUIDAGE.md :
-# un croisement se dit même tout droit, le tremblement du dessin ne se dit
-# pas, un quadrillage de piliers ne parle pas tous les trois mètres, le
-# raccord à vol d'oiseau est compté et alerté au-delà de 50 m — et le chemin
-# ne part plus en arrière au départ (défaut du pathfinder révélé ici). BLOQUANT.
+# Guidage de l'itineraire sur reseaux fictifs (quand annoncer, raccords a vol d'oiseau).
 node scripts/check-guidage.js || exit $?
 
-# Lot C1 de l'audit Secours : découpage en secteurs et parcours de
-# balayage (js/secoursBalayage.js) EXÉCUTÉS sur le vrai graphe de pathfinder.js
-# (réseau fictif) : chaque galerie parcourue, rien de compté deux fois aux
-# croisements, secteurs équilibrés et d'un seul tenant, entrée / sortie
-# respectées, ossature sans culs-de-sac. BLOQUANT.
+# Secours : secteurs et parcours de balayage executes sur le vrai graphe (reseau fictif).
 node scripts/check-secours-balayage.js || exit $?
 
-# Parité des 3 guides utilisateur servis dans l'app
-# (README_USER .md / .en.md / .es.md). check-i18n garde les DICTIONNAIRES,
-# rien ne gardait les GUIDES : un audit y a trouvé une section entière absente
-# en ES, deux sections ES qui décrivaient un réglage supprimé, et une règle de
-# sécurité fausse en EN/ES. Mêmes sections dans le même ordre + aucune section
-# traduite sous 70 % du FR. S'auto-teste sur des guides sabotés. BLOQUANT.
+# Parite des 3 guides utilisateur (memes sections, aucune traduction sous 70 % du FR).
 node scripts/check-doc-langues.js || exit $?
 
-# En-tête de licence (auteur + CC BY-NC-SA 4.0) sur tout script
-# servi (js/*.js + sw.js). Posé en une fois le 09/05 puis plus exigé : 24
-# modules nés depuis n'en avaient jamais eu. S'auto-teste. BLOQUANT.
+# En-tete de licence sur tout script servi (js/*.js + sw.js).
 node scripts/check-entete-licence.js || exit $?
-# CSP stricte (07/10/2026) : aucun script inline (onclick=, javascript:, <script> sans src) — killsw.html excepté.
+# 🔒 CSP stricte : aucun script inline (onclick=, javascript:, <script> sans src), killsw.html excepte.
 node scripts/check-csp-inline.js || exit $?
 
-# Sessions en IndexedDB (js/sessionStore.js) : aucun module ne relit
-# ni n'écrit localStorage["myktamap_session_v1_<planId>"] en direct (il lirait une
-# ancienne copie gardée 30 jours, ou écraserait la session à jour au démarrage
-# suivant) + câblage (chargement, précache, init attendue). BLOQUANT.
+# Sessions en IndexedDB : aucun acces direct a localStorage["myktamap_session_v1_<planId>"].
 node scripts/check-session-store.js || exit $?
 
-# 🔒 Pages d'audit réseau GÉNÉRÉES : NETWORK_AUDIT.html et NETWORK_AUDIT_HISTORIQUE.html
-# sont le rendu de leurs .md (scripts/audit-html.js). Refuse un .md modifié sans régénérer, ou un .html
-# retouché à la main (lu dans l'index) ; vérifie que audit.css / audit-pied.js sont précachés. BLOQUANT.
+# 🔒 Pages d'audit reseau generees depuis leurs .md (jamais retouchees a la main), assets precaches.
 node scripts/check-audit-html.js || exit $?
 
-# Photos : le réimport d'une session ZIP effaçait TOUTES les photos
-# du plan (photos « sans point » comprises, sans confirmation) ; le rattachement de
-# la galerie ignorait la limite de 5 par point. Le VRAI photos.js tourne sur une
-# fausse IndexedDB (fusion siAbsente, places du point) + câblage import/galerie. BLOQUANT.
+# Photos : reimport ZIP sans effacer les photos du plan, limite de 5 par point.
 node scripts/check-photos.js || exit $?

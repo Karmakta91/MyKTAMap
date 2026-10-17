@@ -1,29 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// ⚖️ check-portee-reglages.js — garde-fou pré-commit BLOQUANT
+// check-portee-reglages.js — garde-fou pré-commit BLOQUANT de la portée des réglages
 // =====================================================================
-// LA RÈGLE (audit KARMA du 07/09/2026) :
-//
-//   « La config du MODE PLAN ne doit concerner QUE le plan. Si une
-//     modification faite là affecte toute l'application — donc les autres
-//     plans — elle n'a rien à faire là. »
-//
-// 🩸 CE QUE ÇA COÛTAIT. Dix réglages GLOBAUX vivaient dans la config du mode
-// plan. Cocher « magnétisme au dessin » depuis un relevé le cochait pour TOUS,
-// sans qu'un mot le dise. Le pire cas avait déjà été payé en v1.59.0 sur les
-// toggles Perf ULTRA : « cocher ULTRA une fois sur un gros plan l'appliquait
-// silencieusement à TOUS les plans », perçu par l'utilisateur comme une
-// « activation automatique » qu'il n'avait pas demandée.
-//
-// COMMENT ON TRANCHE, sans deviner : une préférence est GLOBALE si elle est
-// écrite dans `app_user_prefs` par `sauvegarderPrefsUtilisateur()`. C'est la
-// couche de persistance qui fait foi, jamais l'onglet où le réglage s'affiche.
-//
-// ⚠️ CE CONTRÔLE NE LIT QUE LES ÉCRITURES DIRECTES `APP_CONFIG.x = …` dans
-// l'écran de réglages du mode plan. Un réglage qui passerait par un setteur
-// indirect lui échapperait — la limite est réelle et assumée, elle couvre le
-// cas qui s'est produit.
+// Règle (décision produit) : la config du MODE PLAN ne concerne QUE le plan ; un réglage qui
+// affecte toute l'app vit au HOME.
+// 🩸 Un réglage global écrit depuis un plan s'applique en silence à TOUS les plans (perçu comme une
+// « activation automatique »).
+// ⚠️ Arbitre : une préférence est GLOBALE si `sauvegarderPrefsUtilisateur()` l'écrit dans
+// `app_user_prefs` (la persistance fait foi, pas l'onglet). Le §3 ne lit que les écritures
+// DIRECTES `APP_CONFIG.x = …` de js/interfaceConfig.js ; les setteurs indirects connus sont
+// listés au §7 (`SETTEURS_GLOBAUX`, point d'extension).
 // =====================================================================
 "use strict";
 
@@ -35,7 +22,7 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 const CFG = fs.readFileSync("js/config.js", "utf8");
 const UIC = fs.readFileSync("js/interfaceConfig.js", "utf8");
 const IDX = fs.readFileSync("index.html", "utf8");
-// Fin du démarrage du HOME, sortie d'index.html le 07/10/2026 (CSP stricte) : mêmes fonctions, autre fichier.
+// Fin du démarrage du HOME (hors d'index.html : CSP stricte).
 const BOOT = fs.readFileSync("js/homeDemarrage.js", "utf8");
 
 // ───────── 1. qui est GLOBAL : la persistance fait foi ─────────
@@ -50,11 +37,9 @@ const GLOBAUX = new Set();
 }
 
 // ───────── 2. 🩸 TOLÉRANCE EXPLICITE ─────────
-// Ces trois-là restent accessibles depuis un plan PARCE QU'ON LES AJUSTE SUR LE
-// TERRAIN : allumer l'écran ou couper la vibration en cavité ne doit pas
-// obliger à remonter au HOME. Arbitrage KARMA (option 1:c de l'audit).
-// Une omission doit rester une DÉCISION, jamais un oubli — même principe que
-// `HORS_REBUILD_ASSUME` dans check-prefs-survival.js.
+// Réglables depuis un plan parce qu'on les ajuste SUR LE TERRAIN, sans remonter au HOME (décision
+// produit). Une tolérance reste une DÉCISION écrite ici, jamais un oubli (cf `HORS_REBUILD_ASSUME`
+// de check-prefs-survival.js).
 const TOLERES = new Set([
   "vibrationEnabled",   // 📳 se coupe en cavité, à plusieurs
   "batterieEnabled"     // 🔋 idem, et c'est là qu'on surveille sa charge
@@ -75,8 +60,7 @@ t("🩸 aucun réglage GLOBAL n'est écrit depuis la config du mode plan" +
 });
 
 // ───────── 4. les rapatriés doivent être ATTEIGNABLES ─────────
-// 🩸 Sortir un réglage du mode plan sans l'ajouter au HOME le rendrait
-// INTROUVABLE — pire que le désordre de départ.
+// 🩸 Sortir un réglage du mode plan sans l'ajouter au HOME le rend INTROUVABLE.
 [["loaderScaledMarkers", "taille des icônes au zoom"],
  ["loaderPanneauxAncres", "ancrage des panneaux"],
  ["loaderSnapDraw", "magnétisme au dessin"],
@@ -86,8 +70,7 @@ t("🩸 aucun réglage GLOBAL n'est écrit depuis la config du mode plan" +
 });
 
 // ───────── 5. la nav intelligente est bien PAR PLAN ─────────
-// Elle dépend de la qualité du réseau de tracés DU plan : globale, l'activer
-// sur un relevé bien tracé l'activait sur un plan qui n'en a aucun.
+// Elle dépend de la qualité des tracés DU plan : globale, elle s'activerait sur un plan sans tracés.
 t("🧭 nav intelligente : elle n'est plus écrite globalement",
   !GLOBAUX.has("smartNav") || !ecrits.has("smartNav"));
 t("🧭 nav intelligente : un setteur PAR PLAN existe", /function setPlanSmartNav/.test(CFG));
@@ -96,28 +79,18 @@ t("🩸 nav intelligente : la valeur globale sert de REPLI (aucune perte à la m
   /g\.smartNav === true/.test(CFG));
 
 // ───────── 6. les toggles Perf ne sont plus au HOME ─────────
-// Ils y étaient affichés et câblés, mais `perfUltra.js > _persist()` sort sans
-// écrire quand aucun plan n'est chargé — ce qui est TOUJOURS le cas au HOME.
-// L'utilisateur cochait, l'interface répondait, rien n'était gardé.
+// 🩸 `perfUltra.js > _persist()` sort sans écrire quand aucun plan n'est chargé (toujours le cas au
+// HOME) : une case cochée là ne serait jamais gardée.
 t("🩸 perf : les toggles ULTRA ne sont plus affichés au HOME",
   IDX.indexOf('id="loader_perf_') < 0);
 t("perf : ni câblés", fs.readFileSync("js/homeConfig.js", "utf8").indexOf("loader_perf_") < 0);
-// (l assertion « le tuilage reste ici » a ete remplacee par le §8 ci-dessous)
 t("perf : la persistance reste bien par plan",
   /STORAGE_PREFIX\s*=\s*"myktamap_perf_toggles_v2_"/.test(fs.readFileSync("js/perfUltra.js", "utf8")));
 
-// 🩸 STRIPPER LIGNE À LIGNE, JAMAIS INLINE — « le mangeur de blocs », 2e round.
-// La version précédente faisait `.replace(/\/\*[\s\S]*?\*\//g, " ")`. Or un
-// `/*` peut apparaître AILLEURS que dans un commentaire : dans une chaîne
-// (`accept="image/*"`), dans un chemin cité (`data/**`), dans une regex. Le
-// non-greedy avalait alors tout jusqu'au `*/` suivant — MESURÉ : de 28 % à
-// 88 % du fichier détruit selon les cas (main.js : 98 986 → 12 170 octets).
-// 🩸 Le danger n'était pas les faux rouges, qui se voient : c'étaient les
-// assertions de la forme « X n'est PAS présent », vraies par accident dès que
-// la zone avait été mangée. Le même piège est documenté dans README.md pour
-// check-i18n (« le mangeur de blocs »), et je l'ai réintroduit ici.
-// On ne retire donc QUE des lignes ENTIÈRES de commentaire : un `/*` au milieu
-// d'une ligne de code est laissé tel quel, il ne peut plus rien avaler.
+// 🩸 « Le mangeur de blocs » : retirer les commentaires LIGNE À LIGNE, jamais par regex
+// `/\/\*[\s\S]*?\*\//`. Un `/*` hors commentaire (chaîne `image/*`, chemin `data/**`, regex) ferait
+// avaler tout jusqu'au `*/` suivant, et les assertions « X n'est PAS présent » deviendraient
+// vraies par accident. Seules les lignes ENTIÈRES de commentaire partent.
 function sansCommentaires(src) {
   const nl = src.indexOf("\r\n") >= 0 ? "\r\n" : "\n";
   const out = [];
@@ -135,16 +108,9 @@ function sansCommentaires(src) {
 }
 const UIC_CODE = sansCommentaires(UIC);
 
-// ───────── 7. 🌍 LES ÉCRITURES GLOBALES *INDIRECTES* ─────────
-// 🩸 LA LIMITE DU §3 A MORDU EN MOINS D'UNE JOURNÉE. Le contrôle ci-dessus ne
-// voit que les écritures directes `APP_CONFIG.x = …`. Or le sélecteur de LANGUE
-// vivait dans la config du mode plan et persistait via `I18n.setLang()` →
-// localStorage `myktamap_app_lang`. Aussi global que le reste, invisible pour
-// l'audit. KARMA l'a vu à l'œil nu ; le garde-fou, non.
-//
-// On liste donc les SETTEURS qui persistent quelque chose de global. Un réglage
-// du mode plan qui en appelle un est fautif, quel que soit son onglet. Cette
-// liste est le point d'extension : tout nouveau setteur global s'ajoute ici.
+// ───────── 7. LES ÉCRITURES GLOBALES *INDIRECTES* ─────────
+// 🩸 Le §3 ne voit pas un setteur qui persiste du global (`I18n.setLang()` → `myktamap_app_lang`).
+// ⚠️ Point d'extension : tout nouveau setteur global s'ajoute à cette liste.
 const SETTEURS_GLOBAUX = [
   ["I18n.setLang", "la langue de toute l'application"]
 ];
@@ -155,37 +121,20 @@ SETTEURS_GLOBAUX.forEach(function (r) {
 t("🌍 le sélecteur de langue a bien quitté la config du mode plan",
   UIC_CODE.indexOf("cfg_app_lang") < 0);
 
-// 🩸 …et il reste ATTEIGNABLE hors plan, sinon on l'aurait rendu introuvable.
+// 🩸 …et il reste ATTEIGNABLE hors plan.
 t("🌍 langue atteignable : ⚙️ Configuration de l'accueil",
   IDX.indexOf('id="loaderAppLang"') >= 0);
 t("🌍 langue atteignable : écran de déverrouillage",
   fs.readFileSync("js/unlockGate.js", "utf8").indexOf("I18n.setLang(") >= 0);
 
-// ───────── 8. 🖼️ LE TUILAGE N'EST PLUS RÉGLABLE AU HOME ─────────
-// Décision KARMA (08/09/2026), après la v1.85.4 qui l'avait seulement DÉPLACÉ
-// dans la carte de chargement :
-//
-//   « enlève la possibilité de régler ce truc. On est en auto tout le temps.
-//     La majorité des plans sont en V2 et c'est le process conseillé. Ne
-//     concernant que peu de cas je veux pas ce réglage ici. On peut à la
-//     rigueur le mettre dans info, d'un plan pour lequel ça a une pertinence
-//     (V1). »
-//
-// 🩸 CE QU'IL FAISAIT VRAIMENT. Sur un plan tuilé V2 — le cas courant — la
-// branche tuiles est prise AVANT le preset : « Désactivé » n'y changeait rien,
-// il était seulement journalisé. Le contrôle ne pesait que sur les plans V1
-// au-dessus de 4096² px, et il occupait la place juste au-dessus du bouton
-// « Charger ce plan ». Il n'était pas mémorisé non plus : un réglage qui
-// repart à zéro à chaque démarrage n'en est pas un.
-//
-// Il n'est pas SUPPRIMÉ, il est DÉPLACÉ là où il a un sens : ℹ️ Infos, et
-// seulement pour un plan qui n'est pas tuilé V2. Il y est enfin mémorisé.
+// ───────── 8. LE TUILAGE N'EST PAS RÉGLABLE AU HOME ─────────
+// Auto par défaut (décision produit). Sur un plan V2 la branche tuiles passe AVANT le preset :
+// le réglage n'agit que sur un gros plan V1. Il vit donc dans la fiche Infos, seulement pour un plan
+// non V2, et y est mémorisé.
 t("🖼️ le groupe « Performance » a disparu de la config de l'accueil",
   IDX.indexOf('data-i18n="config.group.perf"') < 0);
 
-// 🩸 PLUS AUCUN POINT DE RÉGLAGE AU HOME — ni le contrôle, ni son câblage.
-// Laisser le second aurait produit un réglage fantôme : du code qui lit un
-// DOM absent, et une valeur qui a l'air de venir de quelque part.
+// 🩸 Ni le contrôle, ni son câblage : un câblage resté seul lit un DOM absent (réglage fantôme).
 [["loaderPerfSegmented", "le sélecteur"],
  ["loaderPerfDetails",   "son bloc dépliant"],
  ["loaderPerfDesc",      "sa description"],
@@ -196,10 +145,8 @@ t("🖼️ le groupe « Performance » a disparu de la config de l'accueil",
 t("🖼️ …et son câblage aussi (pas de lecteur d'un DOM disparu)",
   IDX.indexOf("updatePerfDebugLine") < 0 && IDX.indexOf(".kta-perf-btn") < 0);
 
-// 🩸 LES DEUX FONCTIONS RESTENT EXPOSÉES, ET RENVOIENT « auto ». `main.js` les
-// appelle au changement de langue, `homeLoader.js` lit la valeur à chaque
-// chargement de plan : les retirer aurait cassé ces appels. Renvoyer « auto »
-// fait retomber les lecteurs sur le preset MÉMORISÉ du plan — le but.
+// 🩸 Les deux fonctions restent exposées (main.js et homeLoader.js les appellent) et renvoient
+// « auto », ce qui fait retomber les lecteurs sur le preset MÉMORISÉ du plan.
 t("🖼️ getLoaderPerfPreset survit et vaut toujours « auto »",
   /function getLoaderPerfPreset\(\) \{ return "auto"; \}/.test(BOOT) &&
   /window\.getLoaderPerfPreset = getLoaderPerfPreset;/.test(BOOT));
@@ -207,8 +154,7 @@ t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement 
   /function setLoaderPerfPreset\(\)/.test(BOOT) &&
   /window\.setLoaderPerfPreset = setLoaderPerfPreset;/.test(BOOT));
 
-// 🩸 ET IL EXISTE BIEN AILLEURS. Le retirer partout aurait ôté le seul moyen
-// de désactiver le tuilage sur un très gros plan V1 — un cas rare, mais réel.
+// 🩸 …et le réglage existe bien ailleurs : seul moyen de couper le tuilage d'un très gros plan V1.
 {
   const HL = fs.readFileSync("js/homeLoader.js", "utf8");
   t("🖼️ le réglage vit dans ℹ️ Infos", HL.indexOf('id="kta-plan-tiling-select"') >= 0);
@@ -221,23 +167,11 @@ t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement 
     /if \(selTuilage\) \{/.test(HL));
 }
 
-// ───────── 8 bis. 🩸 LA DOC NE DOIT PLUS DÉCRIRE UN CONTRÔLE DISPARU ─────────
-// VÉCU, une heure après le retrait (KARMA, capture de sa propre doc) :
-//   « 🎚️ Découpage de l'image — 2 choix … Juste au-dessus du bouton
-//     ▶️ Charger ce plan, un bandeau 🖼️ Tuilage pour ce chargement : Auto
-//     montre le mode actif … (DEVENU FAUX) »
-// Six passages décrivaient encore un bandeau supprimé, dans deux langues.
-// 🩸 Une doc fausse coûte PLUS cher qu'une doc absente : elle envoie chercher
-// un contrôle qui n'existe pas, et l'utilisateur conclut que l'app est cassée.
-//
-// ⚠️ LIMITE ÉCRITE ET ASSUMÉE — et elle est SÉVÈRE. Ce contrôle ne connaît que
-// les tournures ci-dessous, celles qui ont réellement menti. Une NOUVELLE
-// phrase, tout aussi fausse, lui échapperait. Une première version tentait le
-// contraire — « chaque doc doit nommer le nouvel emplacement » — et j'ai
-// mesuré qu'elle était vraie PAR ACCIDENT : « v1.90.2 » et « ℹ️ Infos »
-// apparaissent ailleurs dans ces mêmes fichiers, donc les 4 sabotages
-// passaient au vert. Une assertion qu'on ne peut pas faire rougir ne protège
-// rien : elle a été retirée plutôt que gardée pour la façade.
+// ───────── 8 bis. 🩸 LA DOC NE DÉCRIT PAS UN CONTRÔLE DISPARU ─────────
+// Une doc fausse envoie chercher un contrôle qui n'existe pas : l'app passe pour cassée.
+// ⚠️ Limite assumée : seules ces tournures connues sont refusées, une nouvelle phrase fausse
+// échappe. (« Chaque doc nomme le nouvel emplacement » serait vrai par accident : ces mots
+// apparaissent ailleurs dans les mêmes fichiers.)
 [["docs/applications/README_USER.md",
   "un bandeau **🖼️ Tuilage pour ce chargement : Auto** montre le mode actif",
   "doc utilisateur FR"],
@@ -254,10 +188,8 @@ t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement 
     fs.readFileSync(r[0], "utf8").indexOf(r[1]) < 0);
 });
 
-// 🩸 Sur le CODE (UIC_CODE) : l'ancien critère, la chaîne « affichage read-only », n'existait que dans
-// un commentaire — la moitié positive ne vérifiait rien (audit commentaires 16/10/2026, QW1).
-// Lecture seule = le preset est AFFICHÉ (libellé rendu) et rien ne l'écrit : ni champ, ni affectation,
-// ni setteur du registre depuis l'écran de réglages du plan.
+// 🩸 Sur le CODE (UIC_CODE), jamais sur un commentaire (il satisferait l'assertion à lui seul).
+// Lecture seule = le preset est AFFICHÉ et rien ne l'écrit (ni champ, ni affectation, ni setteur).
 t("🖼️ côté plan (⚙️ Réglages), le preset reste en LECTURE SEULE (aucun troisième point)",
   /\$\{presetMeta\.label\}/.test(UIC_CODE) && /_PRESET_LABELS\[c\.perfPreset\]/.test(UIC_CODE) &&
   !/id="cfg_perfPreset"/.test(UIC_CODE) && !/\.perfPreset\s*=[^=]/.test(UIC_CODE) &&

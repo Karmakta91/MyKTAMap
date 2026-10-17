@@ -1,24 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📚 check-doc-vocabulaire.js — garde-fou pré-commit BLOQUANT
+// check-doc-vocabulaire.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Deux écarts doc ↔ app de l'audit ergonomie (§6.1), corrigés le 14/09/2026 :
-//
-//   • D2 — « le flyout Tracker ». Le Tracker n'est PAS un flyout : c'est une
-//     modale plein écran de tuiles (v1.50.0). Le mot est juste ailleurs —
-//     Favoris, Tracés, Zones et Structures portent `useFlyout: true`. Un mot
-//     d'interface employé pour le mauvais objet envoie chercher une barre
-//     latérale qui ne s'ouvrira jamais.
-//   • D13 — « 4 styles » de légende pour l'export IMAGE, qui n'en a que 3 ;
-//     le 4ᵉ (impression) est propre au PDF.
-//
-// 🎯 AUCUNE TABLE RECOPIÉE — même règle que `check-icon-catalog.js` : les
-// groupes qui ont droit au mot « flyout » sont LUS dans `interface.js`, leurs
-// noms dans les dictionnaires, et les styles de légende COMPTÉS dans les deux
-// écrans d'export. Une table figée ici validerait le bug le jour où le code
-// change.
-//
+// Deux écarts de vocabulaire doc ↔ app :
+//   • « flyout » réservé aux groupes qui portent `useFlyout: true` (le Tracker
+//     est une modale de tuiles) : le mauvais mot envoie chercher une barre
+//     latérale qui ne s'ouvrira jamais ;
+//   • nombre de styles de légende annoncé = celui de l'export IMAGE (le style
+//     impression est propre au PDF).
+// Aucune table recopiée : groupes LUS dans `interface.js`, noms dans les
+// dictionnaires, styles COMPTÉS dans les deux écrans d'export.
 // Usage : node scripts/check-doc-vocabulaire.js [racine]
 "use strict";
 const fs   = require("fs");
@@ -35,9 +27,8 @@ const DOCS  = { fr: lire("docs/applications/README_USER.md"),
                 en: lire("docs/applications/README_USER.en.md"),
                 es: lire("docs/applications/README_USER.es.md") };
 
-// ---------- 1. Qui a droit au mot « flyout » ----------
-// Un groupe est declaré par `id: "x"` ; `useFlyout: true` apparaît dans le même
-// littéral. On découpe sur les `id:` et on regarde ce que chaque bloc contient.
+// ── 1. Qui a droit au mot « flyout » ─────────────────────────────────
+// Découpe sur les `id: "x"` : `useFlyout: true` vit dans le même littéral.
 const groupes = [];
 {
   const re = /id:\s*"([a-z0-9_-]+)"/gi;
@@ -58,12 +49,11 @@ const groupes = [];
               groupes.filter(function (g) { return !g.flyout; }).map(function (g) { return g.id; }).join(", "));
 }
 
-// ---------- 2. Le mot n'est employé que pour eux ----------
+// ── 2. Le mot n'est employé que pour eux ─────────────────────────────
 {
   const FLY = /flyout/i;
   const sansFlyout = groupes.filter(function (g) { return !g.flyout; });
   LANGS.forEach(function (l) {
-    // Textes à contrôler : la doc utilisateur et tout texte du dictionnaire.
     const sources = [{ nom: "README_USER (" + l + ")", txt: DOCS[l] }];
     Object.keys(DICOS[l]).forEach(function (k) {
       const v = DICOS[l][k];
@@ -85,17 +75,14 @@ const groupes = [];
   });
 }
 
-// ---------- 3. Les styles de légende, comptés dans le code ----------
+// ── 3. Les styles de légende, comptés dans le code ───────────────────
 {
   const IMG = lire("js/exporter.js");
   const PDF = lire("js/pdfExport.js");
   const nImg = (IMG.match(/name="leg_style"[^>]*value="[a-z]+"/g) || []).length;
   const nPdf = (PDF.match(/_radioRowInline\("pdf_leg_style",\s*"[a-z]+"/g) || []).length;
   t("les styles de légende sont comptables dans les deux écrans (image " + nImg + " · PDF " + nPdf + ")", nImg > 0 && nPdf > 0);
-  // Le tutoriel ne compte plus les styles (refonte du 03/10/2026 : une carte
-  // d'accueil ne détaille pas l'export). Le contrôle ne lit plus une carte
-  // par son numéro : toute carte qui annoncerait un nombre de styles doit
-  // annoncer celui de l'export image.
+  // Toute carte du tutoriel qui annonce un nombre de styles annonce celui de l'export image.
   const MOT = { fr: ["styles", "estilos"], en: ["styles"], es: ["estilos"] };
   LANGS.forEach(function (l) {
     const faux = [];

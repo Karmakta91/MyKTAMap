@@ -1,8 +1,7 @@
-// Harness : toute pref GLOBALE doit survivre au CHARGEMENT D'UN PLAN.
-// APP_CONFIG est reconstruit a chaque plan par buildAppConfigFromPlan() ; une
-// pref absente de sa liste de relecture retombe silencieusement sur le defaut.
-// C'est le bug du 03/08 : snapDraw etait restaure au boot mais PAS ici, donc
-// le magnetisme repassait a false des l'ouverture d'un plan.
+// check-prefs-survival.js — garde-fou pré-commit BLOQUANT
+// Toute pref (globale ou per-plan) survit au CHARGEMENT D'UN PLAN.
+// 🩸 APP_CONFIG est reconstruit à chaque plan par buildAppConfigFromPlan() : une
+// pref sauvegardée mais absente de sa relecture retombe en silence sur le défaut.
 const fs = require("fs");
 
 const src = fs.readFileSync("js/config.js", "utf8");
@@ -28,9 +27,8 @@ console.log("prefs sauvegardees :", [...ecrites].join(", "));
 console.log("prefs relues au chargement de plan :", [...relues].join(", "));
 console.log("");
 
-// Tolerance : quelques prefs sont VOLONTAIREMENT hors rebuild (elles ne
-// pilotent rien au niveau plan). On les liste explicitement pour que toute
-// nouvelle omission soit une DECISION, pas un oubli.
+// ⚠️ Prefs VOLONTAIREMENT hors rebuild (ne pilotent rien au niveau plan) :
+// listées pour que toute nouvelle omission soit une décision, pas un oubli.
 const HORS_REBUILD_ASSUME = new Set([
   "vibrationEnabled",   // lue directement par kta_vibrate
   "last_version_data"
@@ -42,26 +40,15 @@ for (const p of ecrites) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────
-// LES PREFS PER-PLAN AUSSI, et pour la MÊME raison.
-//
-// Le défaut ci-dessus a maintenant TROIS occurrences :
-//   • v1.75.0 magnétisme  → pref globale, corrigée
-//   • v1.76.1 échelle     → pref PER-PLAN (setPlanScale)
-//   • v1.82.0 podomètre   → pref per-plan (setPlanTracking), signalée par
-//     KARMA : « je modifie, j'applique, je reviens, c'est revenu par défaut »
-//
-// Un réglage per-plan a besoin de DEUX choses, et l'oubli de l'une ou de
-// l'autre produit exactement le même symptôme muet :
-//   1. un ÉCRIVAIN   (`setPlanX`) appelé par l'écran ⚙️ Réglages ;
-//   2. un APPLICATEUR (`appliquerXPerPlan`) appelé par main.js une fois
-//      l'id du plan connu — jamais depuis buildAppConfigFromPlan, où l'on
-//      lirait les prefs du plan PRÉCÉDENT.
+// ── Prefs per-plan ───────────────────────────────────────────────────
+// 🩸 Un réglage per-plan a besoin de DEUX pièces, l'oubli de l'une ou l'autre
+// donne le même symptôme muet (« j'applique, je reviens, c'est revenu ») :
+//   1. un ÉCRIVAIN (`setPlanX`) appelé par l'écran ⚙️ Réglages ;
+//   2. un APPLICATEUR (`appliquerXPerPlan`) appelé par main.js une fois l'id du
+//      plan connu — jamais depuis buildAppConfigFromPlan (prefs du plan PRÉCÉDENT).
 const iface = fs.readFileSync("js/interfaceConfig.js", "utf8");
 const mainJs = fs.readFileSync("js/main.js", "utf8");
 
-// Tout `appliquerXPerPlan` déclaré dans config.js doit être exposé, appelé
-// par main.js, et avoir son écrivain appelé depuis l'écran de réglages.
 const PER_PLAN = [...src.matchAll(/function (appliquer([A-Za-z0-9]+)PerPlan)\s*\(/g)]
   .map(function (m) { return { applique: m[1], sujet: m[2] }; });
 
@@ -78,10 +65,8 @@ PER_PLAN.forEach(function (p) {
     iface.indexOf(ecrivain + "(") >= 0);
 });
 
-// Et le cas concret qui a mordu : les trois réglages de podomètre doivent
-// être écrits par l'écran de réglages. Sans ça, « Appliquer » ne persiste rien.
-// ils sont GLOBAUX — l'écrivain est setGlobalPodometre,
-// plus setPlanTracking (cf. scripts/check-podometre-global.js pour le reste).
+// Podomètre : réglages GLOBAUX, écrits par setGlobalPodometre depuis l'écran de
+// réglages (sinon « Appliquer » ne persiste rien) ; le reste : check-podometre-global.js.
 ["stepLength", "stepThreshold", "stepCooldown"].forEach(function (k) {
   const bloc = iface.slice(iface.indexOf("window.setGlobalPodometre({"));
   t("réglage « " + k + " » transmis à setGlobalPodometre (global depuis v1.96.0)",

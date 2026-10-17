@@ -6,19 +6,14 @@
  */
 /* eslint-disable no-console */
 // =====================================================================
-// 🔒 check-audit-html.js — garde-fou pre-commit BLOQUANT (et donc CI)
+// check-audit-html.js — garde-fou pre-commit BLOQUANT (donc CI) : pages d'audit = rendu exact de leurs .md
 // =====================================================================
-// Les pages d'audit réseau NETWORK_AUDIT.html et NETWORK_AUDIT_HISTORIQUE.html sont GÉNÉRÉES depuis leurs .md
-// par scripts/audit-html.js. Ce contrôle refuse un commit où un .html n'est pas exactement ce que produit son .md :
-//   - .md modifié sans régénérer → la page servie (celle que l'utilisateur lit) mentirait par omission ;
-//   - .html retouché à la main   → la retouche disparaîtrait à la prochaine génération.
-// Il vérifie aussi que la page ne dépend que de fichiers précachés (hors ligne : audit.css, audit-pied.js).
-//
-// LIT L'INDEX (`git show :chemin`, ce qui sera commité), pas le disque ; repli sur le disque hors Git. Il ne
-// dépend PAS de `git diff --cached` (contrôle complet à chaque passage) : il marche tel quel en CI, où l'index
-// est le commit vérifié — pas besoin de KTA_FICHIERS_CI.
-//
-// RÉPARER : node scripts/audit-html.js, puis indexer les deux .html.
+// NETWORK_AUDIT{,_HISTORIQUE}.html sont GÉNÉRÉES par scripts/audit-html.js. Refuse un .html qui diffère :
+// .md modifié sans régénérer → la page servie ment par omission ; .html retouché à la main → retouche perdue
+// à la prochaine génération. Vérifie aussi que la page ne dépend que de fichiers précachés (hors ligne).
+// ⚠️ Lit l'INDEX (`git show :chemin`), repli sur le disque hors Git ; contrôle complet à chaque passage, sans
+// `git diff --cached` : marche tel quel en CI, pas besoin de KTA_FICHIERS_CI.
+// Réparer : node scripts/audit-html.js, puis indexer les deux .html.
 // Usage : node scripts/check-audit-html.js   (appelé par .githooks/pre-commit)
 // =====================================================================
 "use strict";

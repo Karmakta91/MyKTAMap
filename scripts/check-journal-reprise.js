@@ -1,39 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔁 check-journal-reprise.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// La REPRISE d'une sortie interrompue et la FUSION manuelle (KARMA, sortie
-// terrain du 06/09 : « j'ai plusieurs sorties détectées sur la même sortie
-// car j'ai utilisé d'autres applis »).
-//
-// 🩸 CE QUI RÉGRESSE ICI, ET SANS BRUIT :
-//
-//   1. LE SIGNAL DE REPRISE. Ce n'est PAS un simple délai, c'est
-//      `closedBy: "crash"` — posé par le balayage sur une sortie restée
-//      `encours`, donc uniquement quand l'app a été tuée SOUS l'utilisateur.
-//      Reprendre sur le délai seul recollerait une sortie qu'il a clôturée
-//      exprès : son geste serait annulé sans un mot.
-//
-//   2. LA BASELINE RECONSTRUITE. Les compteurs d'une sortie sont des
-//      DIFFÉRENCES (`compte - baseline`) recalculées à chaque instantané, pas
-//      des accumulations. Reprendre avec une baseline neuve remettrait tout à
-//      zéro — la reprise aurait l'air de marcher et ne garderait rien.
-//
-//   3. `wallMs` À LA FUSION. C'est la durée du début à la fin, TROUS COMPRIS,
-//      pas une somme. La sommer donnerait une sortie plus courte que le temps
-//      qu'elle a réellement duré.
-//
-//   4. L'ORDRE DE LA FUSION. Le résultat est écrit AVANT que les autres soient
-//      supprimées. L'inverse perdrait tout si l'écriture échouait.
-//
-//   5. LE WAKE LOCK JAMAIS INITIALISÉ. `WakeLock.init()` n'était appelé nulle
-//      part : la préférence n'était jamais relue, donc la case s'affichait
-//      décochée à chaque lancement et le verrou n'était jamais repris. Sur PC
-//      on ne recharge pas — le bug ne se voyait qu'en PWA iOS, où chaque
-//      retour d'appli est un boot.
-//
-// Le code est CHARGÉ dans un `vm` (pas recopié).
+// check-journal-reprise.js — BLOQUANT (pré-commit) : reprise d'une sortie interrompue et fusion manuelle
+// du carnet (`js/journal.js`, `js/journalUi.js`). Le code est CHARGÉ dans un `vm`, pas recopié.
+// 🩸 Ce qui régresse sans bruit :
+//   1. Le signal de reprise est `closedBy: "crash"` (balayage d'une sortie restée `encours`), pas un délai :
+//      reprendre sur le délai seul recollerait une sortie clôturée exprès.
+//   2. Les compteurs sont des différences (`compte - baseline`) : reprendre avec une baseline neuve remet
+//      tout à zéro, la reprise a l'air de marcher et ne garde rien.
+//   3. `wallMs` à la fusion = début→fin, trous compris ; une somme raccourcit la sortie.
+//   4. La fusion écrit le résultat AVANT de supprimer les autres ; l'inverse perd tout sur échec.
+//   5. Le wake lock doit relire sa préférence au boot (en PWA iOS chaque retour d'appli est un boot).
 // =====================================================================
 "use strict";
 
@@ -42,9 +19,7 @@ const fs = require("fs"), vm = require("vm");
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
-// ───────── 1. la logique de reprise, éprouvée sur la vraie fonction ─────────
-// `_candidateReprise` est interne : on l'extrait par son texte et on l'évalue
-// avec un `list()` bouchonné. C'est la RÈGLE qu'on teste, celle qui décide.
+// ── 1. Règle de reprise : `_candidateReprise` extraite par son texte, `list()` bouchonné ──
 {
   const SRC = fs.readFileSync("js/journal.js", "utf8");
   const i = SRC.indexOf("function _candidateReprise");
@@ -90,7 +65,7 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
     .then(() => attend("reprise : une sortie encore `encours` n'est pas reprise",
       [rec({ status: "encours" })], (r) => r === null))
     .then(() => attend("reprise : carnet vide → rien, sans planter", [], (r) => r === null))
-    // suspension au changement de plan (KARMA 1:a 2:b)
+    // suspension au changement de plan (décision produit)
     .then(() => attend("🔀 suspendue : une sortie suspendue il y a 1 h est reprise",
       [rec({ status: "suspendue", closedBy: null, endedAt: null,
              suspendueLe: new Date(1000000 - 3600000).toISOString() })], (r) => !!r && r.id === "s1"))
@@ -113,16 +88,10 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
   }
 }
 
-// ───────── 1 bis. ⏱️ LA DURÉE D'UNE SORTIE ─────────
-// KARMA : « on ne se base que sur le temps d'ouverture de l'app, or on a une
-// date de début et une date de fin ». Les deux mesures existaient depuis la
-// v1.69.0 — c'est leur USAGE qui était faux : liste, fiche ET totaux
-// affichaient tous `activeMs`, et `wallMs` n'était montré nulle part.
-//
-// 🩸 La règle DÉPEND DU TYPE. Terrain → temps réel (le téléphone en poche ne
-// compte pas, l'app tuée par iOS non plus). Bureau → temps d'usage : on laisse
-// un plan ouvert toute la soirée sans le regarder, le temps réel n'y veut rien
-// dire. Confondre les deux gonflerait les totaux de travail sur plan.
+// ── 1 bis. Durée d'une sortie (`dureeMs`) ──────
+// 🩸 La règle dépend du type. Terrain → temps réel `wallMs` (téléphone en poche, app tuée par iOS : ça
+// compte). Bureau → temps d'usage `activeMs` (un plan ouvert toute la soirée ne vaut rien). Confondre les
+// deux gonfle les totaux de travail sur plan.
 function partie1bis(SRC) {
   const i = SRC.indexOf("function dureeMs");
   const fn = i < 0 ? null : SRC.slice(i, SRC.indexOf("\n  }", i) + 4);
@@ -142,11 +111,8 @@ function partie1bis(SRC) {
   t("durée : record vide → 0, sans planter", d(null) === 0 && d({}) === 0);
 }
 
-// ───────── 1 ter. ✏️ CORRIGER LA FIN OUBLIÉE ─────────
-// « Si la personne n'a pas cliqué sur fin de sortie, il faut un truc pour
-// re-saisir la fin. » Sans ça, une sortie non clôturée porte pour fin le
-// dernier instant où l'app était vivante — donc, en pratique, le moment où iOS
-// l'a tuée, pas celui où l'on est ressorti.
+// ── 1 ter. Corriger une fin oubliée (`setFin`) ──────
+// Sans correction, une sortie non clôturée finit au dernier instant où l'app vivait (iOS l'a tuée).
 function partie1ter(SRC) {
   const i = SRC.indexOf("function setFin");
   const fn = i < 0 ? null : SRC.slice(i, SRC.indexOf("\n  }", i) + 4);
@@ -179,21 +145,18 @@ function partie1ter(SRC) {
   });
 }
 
-// ───────── 2. le câblage, que l'extraction ne voit pas ─────────
+// ── 2. Câblage, que l'extraction ne voit pas ──────
 function partie2() {
   const J   = fs.readFileSync("js/journal.js", "utf8");
   const JUI = fs.readFileSync("js/journalUi.js", "utf8");
   const WL  = fs.readFileSync("js/wakeLock.js", "utf8");
   const MAIN = fs.readFileSync("js/main.js", "utf8");
 
-  // 🩸 La course : la recherche est ASYNCHRONE, la création SYNCHRONE. Sans
-  // garde sur l'id de la sortie neuve, soit la reprise n'arrive jamais (elle
-  // voit `_cur` déjà posé), soit elle écrase une sortie déjà repartie.
+  // 🩸 Recherche asynchrone, création synchrone : sans garde sur l'id de la sortie neuve, la reprise
+  // n'arrive jamais (`_cur` déjà posé) ou écrase une sortie déjà repartie.
   t("🩸 reprise : la substitution est gardée par l'id de la sortie neuve",
     /_cur\.id !== idNeuve/.test(J));
-  // 🩸 Viser le SITE D'APPEL, pas la déclaration : un sabotage qui remplace
-  // l'appel par `_counts()` laisse la fonction en place, et une assertion qui
-  // se contente de la trouver reste verte (constaté à la falsification).
+  // 🩸 Viser le SITE D'APPEL : remplacer l'appel par `_counts()` laisse la fonction en place.
   t("🩸 reprise : la baseline d'origine est RECONSTRUITE, pas repartie de zéro",
     /_baseline = _baselineDepuisReprise\(rec\);/.test(J) &&
     /_trackerDistM\(\)\s*-\s*\(Number\(rec\.distM\)/.test(J));
@@ -201,7 +164,6 @@ function partie2() {
     /_cur\.reprises = \(Number\(rec\.reprises\) \|\| 0\) \+ 1/.test(J));
   t("reprise : l'utilisateur est prévenu", /journal\.reprise\.toast/.test(J));
 
-  // 🩸 La fusion écrit AVANT de supprimer. L'inverse perdrait tout sur échec.
   const iF = J.indexOf("function fusionner");
   const f = iF < 0 ? "" : J.slice(iF, iF + 4200);
   t("fusion : l'API est exposée", /fusionner:\s+fusionner/.test(J));
@@ -221,9 +183,7 @@ function partie2() {
   t("🩸 fusion : elle SUPPRIME, donc elle demande confirmation", /ktaConfirm\(_t\("jrn\.fusion\.confirm"/.test(JUI));
   t("fusion : le mode sélection existe dans le carnet", /_modeFusion/.test(JUI));
 
-  // 🩸 LA RÈGLE DE DURÉE VIT DANS `journal.js` ET NULLE PART AILLEURS. La
-  // recalculer dans l'UI ferait diverger le détail du total à la première
-  // retouche — c'est la dette qu'on a soldée trois fois cette semaine.
+  // 🩸 La règle de durée vit dans `journal.js` seul : la refaire dans l'UI fait diverger détail et total.
   t("🩸 durée : l'UI APPELLE la règle, elle ne la refait pas",
     /window\.Journal\.dureeMs\(rec\)/.test(JUI) && !/rec\.wallMs\s*:\s*rec\.activeMs/.test(JUI));
   t("🩸 durée : les TOTAUX du carnet passent par la même règle",
@@ -234,18 +194,14 @@ function partie2() {
     /jrn\.metric\.dontActif/.test(JUI));
   t("fin : le bouton de correction existe dans la fiche", /id="kta-jrn-fin"/.test(JUI));
 
-  // ───────── 🏁 LA POSITION DE SORTIE (KARMA, 07/09) ─────────
-  // 🩸 LE TROU : la distance entre deux « Je suis ici » est comblée quand
-  // l'ancre SUIVANTE arrive, en regardant en arrière. Après le dernier repère,
-  // tout ce qui est marché jusqu'à la sortie n'est compté que par le podomètre
-  // — donc rien quand le téléphone est en poche. Et `cloturer()` ne posait
-  // aucune ancre.
+  // ── Position de sortie ──────
+  // 🩸 Un tronçon est comblé quand l'ancre SUIVANTE arrive : sans ancre posée à la clôture, la marche
+  // après le dernier repère n'est comptée que par le podomètre (rien téléphone en poche).
   const TRK = fs.readFileSync("js/tracking.js", "utf8");
   t("🩸 fin : la clôture DEMANDE la position de sortie avant de fermer",
     /_demanderPositionSortie\(\)\.then\(function \(\) \{[\s\S]{0,80}Journal\.cloturer\(\)/.test(JUI));
-  // 🩸 Elle doit passer par le chemin « Je suis ici SUR UN POINT » : un clic
-  // carte LIBRE porte `src: "click"` et n'alimente JAMAIS la distance estimée
-  // (décision du 16/08). Utiliser le mauvais chemin ajouterait 0 m en silence.
+  // 🩸 Passer par « Je suis ici SUR UN POINT » : un clic carte libre (`src: "click"`) n'alimente jamais
+  // la distance estimée (décision produit) et ajouterait 0 m en silence.
   t("🩸 fin : elle passe par `recalerTrackerSurPoint`, seul chemin qui compte",
     /window\.recalerTrackerSurPoint\(x, y, undefined\)/.test(JUI));
   t("🩸 tracking : seul `src: \"point\"` déclenche le comblement de tronçon",
@@ -258,23 +214,19 @@ function partie2() {
   t("🩸 fin : le listener `click` est retiré à la fermeture du picker",
     /map\.off\("click", _finPickHandler\)/.test(JUI));
 
-  // 🩸 LE BUDGET DÉGRADAIT EN SILENCE. Au-delà de 20 000 sommets l'affinage
-  // réseau est sauté et le vol d'oiseau conservé — pour que l'archivage
-  // AUTOMATIQUE reste invisible. Une clôture MANUELLE n'est pas ce cas :
-  // l'utilisateur attend un résultat.
+  // 🩸 Au-delà de 20 000 sommets l'affinage réseau est sauté (archivage auto invisible) ; une clôture
+  // manuelle, elle, attend un résultat : pas de plafond.
   t("🩸 budget : la clôture manuelle affine SANS plafond (`force`)",
     /const optsAff = \(reason === "manual"\) \? \{ force: true \} : undefined;/.test(J) &&
     /_affinerDistances\(rec, baseDist, baseEst, optsAff\)/.test(J));
   t("budget : l'archivage automatique, lui, garde son plafond",
     /!opts\.force/.test(TRK));
 
-  // 📊 La fiche distingue enfin la QUALITÉ du chiffre.
   t("📊 qualité : réseau et vol d'oiseau ne s'affichent pas pareil",
     /jrn\.section\.dontReseau/.test(JUI) && /jrn\.section\.dontVol/.test(JUI));
   t("📊 qualité : le marqueur est `trackAffine` (présent seulement si l'affinage a tourné)",
     /rec\.trackAffine \? "jrn\.section\.dontReseau" : "jrn\.section\.dontVol"/.test(JUI));
 
-  // 🐛 Le champ de note débordait du cadre à droite (capture KARMA).
   {
     const CSS = fs.readFileSync("css/style.css", "utf8");
     const i = CSS.indexOf(".kta-jrn-note {");
@@ -296,18 +248,13 @@ function partie2() {
   t("fin : l'API est exposée", /setFin:\s+setFin/.test(J));
   t("fin : une fin saisie à la main est signalée dans la fiche", /jrn\.metric\.finCorrigee/.test(JUI));
 
-  // 🩸 LE WAKE LOCK. Le module vivait complet mais n'était jamais initialisé.
-  // ⚠️ Le module s'initialise DEJA lui-meme en fin de fichier ; cet appel-ci
-  // est un second filet, plus tard dans le boot. Le diagnostic initial (« il
-  // n'etait appele nulle part ») etait FAUX — la vraie panne est le verrou
-  // fantome, couverte par `check-wakelock.js`.
+  // ⚠️ Le module s'initialise déjà en fin de fichier ; l'appel du boot est un second filet. Le verrou
+  // fantôme est couvert par `check-wakelock.js`.
   t("wakeLock : `init()` est aussi appelé depuis le boot de l'app",
     /window\.WakeLock\.init\(\)/.test(MAIN));
   t("🩸 wakeLock : rattrapage au premier geste si l'acquisition du boot échoue",
     /_reprendreAuPremierGeste/.test(WL) && /pointerdown/.test(WL));
-  // 🩸 Le toast MENTAIT : il annonçait « écran maintenu allumé » sans jamais
-  // vérifier que le verrou avait été posé. C'est ce mensonge qui a fait
-  // chercher la panne du mauvais côté pendant deux tours.
+  // 🩸 Le toast « écran maintenu allumé » ne doit sortir qu'une fois le verrou réellement posé.
   t("🩸 wakeLock : `setEnabled` REND le résultat réel de l'acquisition",
     /const ok = await _acquire\(\);[\s\S]{0,120}return ok;/.test(WL));
   t("🩸 wakeLock : ⚙️ Paramètres attend ce résultat avant d'annoncer quoi que ce soit",
@@ -340,12 +287,8 @@ function partie2() {
   process.exit(ko === 0 ? 0 : 1);
 }
 
-// ───────── 3. 🔀 A → B → A : le MODULE ENTIER sur un faux IndexedDB ─────────
-// Le scénario de KARMA (28/09/2026) : « durant ma sortie je vais sur un autre
-// plan pour le montrer ; quand je reviens dans la carrière, la sortie ne
-// reprend pas ». La règle isolée ne suffit pas à le prouver : ici le vrai
-// journal.js tourne (ouverture, suspension, reprise, expiration) sur un
-// stockage en mémoire, avec une horloge pilotée.
+// ── 3. A → B → A : le vrai journal.js sur un faux IndexedDB, horloge pilotée ──────
+// Pendant une sortie, passer sur un autre plan puis revenir doit reprendre la MÊME sortie.
 function allerRetour(SRC) {
   let NOW = Date.parse("2026-09-28T10:00:00Z");
   class FDate extends Date {
@@ -426,8 +369,7 @@ function allerRetour(SRC) {
     .then(() => {
       const cur = J.getCurrent();
       t("🔀 B→A (10 min plus tard) : la MÊME sortie reprend", !!cur && cur.id === idA && cur.reprises === 1);
-      // ▶️ Sortie TERRAIN (30 m) reprise, suivi arrêté par le changement de
-      // plan : on propose de le relancer — la fenêtre remplace le toast.
+      // Sortie terrain reprise, suivi arrêté : la fenêtre de relance remplace le toast.
       t("▶️ reprise d'une sortie terrain, suivi arrêté : on propose de relancer le suivi", questions === 1 && toasts === 0);
       t("▶️ « Relancer » démarre le suivi par le chemin de la tuile (ktaDemarrerSuivi)", relances === 1);
       plans.A.dist = 80;

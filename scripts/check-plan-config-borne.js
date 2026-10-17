@@ -1,35 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📐 check-plan-config-borne.js — garde-fou pré-commit BLOQUANT
+// check-plan-config-borne.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
 // Exécute `js/config.js` en bac à sable sur des plan-configs PIÉGÉS et
-// vérifie qu'aucune valeur numérique hors bornes n'entre dans APP_CONFIG.
-//
-// POURQUOI (retour KARMA, 26/09/2026) : « j'ai pu générer des plans avec des
-// valeurs délirantes à l'époque où le générateur laissait régler le tracking
-// — sensibilité à 1,2 au lieu de 12. Ces valeurs ne doivent jamais être
-// chargées si elles sont hors limite. »
-//
-// 🩸 LE POINT QUI REND CE SCRIPT NÉCESSAIRE : la règle EXISTAIT, mais pour
-// les trois réglages de podomètre seulement (réparés en v1.82.0, plus lus du
-// tout depuis v1.96.0). Les valeurs voisines du MÊME bloc `tracking` — et
-// `plan.imageWidth`/`imageHeight` — entraient, elles, sans aucun contrôle.
-// Or elles cassent plus fort :
-//   • `scale: 0`  → on divise par elle : toute distance vaut l'infini ;
-//   • `scale: "x"`→ NaN, et tout ce qui en découle ;
-//   • `imageWidth: 0` → `convertCoord` et les bounds n'ont plus de sens ;
-//   • départ hors du plan → le tracker démarre hors carte.
-//
-// Le critère n'est pas une opinion : ce que l'écran de saisie REFUSE ne peut
-// pas être un choix de l'utilisateur (`setPlanScale` refuse tout ce qui n'est
-// pas > 0 ; `cfg_scale` est `strict: true`). Une valeur hors de ces bornes
-// est de la donnée corrompue, et retombe sur l'usine.
-//
-// ⚠️ CE QUI SE VÉRIFIE AUSSI, ET QUI COMPTE AUTANT : une valeur VALIDE doit
-// être respectée. Un garde-fou qui écraserait tout par l'usine « réparerait »
-// les plans corrects — ce serait pire que le défaut qu'il corrige.
-//
+// vérifie qu'aucune valeur numérique hors bornes n'entre dans APP_CONFIG
+// (un ancien Générateur a pu écrire des valeurs délirantes).
+// 🩸 Ce qui casse sans ce contrôle : `scale: 0` → toute distance infinie ;
+// `scale: "x"` → NaN partout ; `imageWidth: 0` → `convertCoord` et les bounds
+// absurdes ; départ hors du plan → tracker hors carte.
+// Critère : ce que l'écran de saisie refuse (`setPlanScale` exige > 0,
+// `cfg_scale` est `strict: true`) est de la donnée corrompue → valeur d'usine.
+// ⚠️ Autant que les pièges : une valeur VALIDE est respectée (un garde-fou qui
+// « répare » les plans corrects serait pire que le défaut).
 // Usage : node scripts/check-plan-config-borne.js
 // =====================================================================
 "use strict";
@@ -44,7 +27,7 @@ const lire = (p) => fs.readFileSync(path.join(RACINE, p), "utf8");
 let echecs = 0;
 const t = (msg, cond) => { console.log((cond ? "✅ " : "❌ ") + msg); if (!cond) echecs++; };
 
-// ---------- config.js dans un bac à sable ----------
+// ── config.js dans un bac à sable ─────────────────────────────────────
 function bac() {
   const mem = {};
   const localStorage = {
@@ -80,7 +63,7 @@ t("un plan-config vide donne les valeurs d'usine (scale " + USINE.scale + ")",
   Number.isFinite(USINE.scale) && USINE.scale > 0 &&
   Number.isFinite(USINE.imageWidth) && USINE.imageWidth > 0);
 
-// ---------- 1. Les valeurs impossibles retombent sur l'usine ----------
+// ── 1. Les valeurs impossibles retombent sur l'usine ──────────────────
 const PIEGES = [
   ["scale nulle",            { tracking: { scale: 0 } },            "scale"],
   ["scale négative",         { tracking: { scale: -4.9 } },         "scale"],
@@ -97,7 +80,7 @@ PIEGES.forEach(function ([nom, piege, cle]) {
   t(nom + " → usine (" + cle + " = " + cfg[cle] + ")", cfg[cle] === USINE[cle]);
 });
 
-// ---------- 2. Un départ hors du plan est recentré ----------
+// ── 2. Un départ hors du plan est recentré ────────────────────────────
 {
   const cfg = b.win.buildAppConfigFromPlan({
     plan: { imageWidth: 1000, imageHeight: 800 },
@@ -107,9 +90,7 @@ PIEGES.forEach(function ([nom, piege, cle]) {
     cfg.startX === 500 && cfg.startY === 400);
 }
 
-// ---------- 3. 🩸 Une valeur VALIDE doit être respectée ----------
-// Le vrai risque d'un garde-fou comme celui-ci est de « réparer » ce qui
-// n'est pas cassé. Ces cas-là comptent autant que les pièges.
+// ── 3. 🩸 Une valeur VALIDE est respectée ─────────────────────────────
 {
   const cfg = b.win.buildAppConfigFromPlan({
     plan:     { imageWidth: 16332, imageHeight: 13820 },
@@ -123,9 +104,8 @@ PIEGES.forEach(function ([nom, piege, cle]) {
     b.win.buildAppConfigFromPlan({ plan: {}, tracking: { scale: 0.01 } }).scale === 0.01);
 }
 
-// ---------- 4. Le podomètre reste hors de portée du plan ----------
-// (acquis v1.96.0, vérifié par check-podometre-global.js — on s'assure
-// seulement que ce chantier ne l'a pas défait.)
+// ── 4. Le podomètre reste hors de portée du plan ──────────────────────
+// (règle tenue par check-podometre-global.js ; contrôle de non-régression.)
 {
   const cfg = b.win.buildAppConfigFromPlan({
     plan: {}, tracking: { stepThreshold: 1.2, stepCooldown: 280, stepLength: 0.75 }

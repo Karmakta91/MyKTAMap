@@ -1,36 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔄 check-calque-session.js — garde-fou pré-commit BLOQUANT
+// check-calque-session.js — garde-fou pré-commit BLOQUANT du rapatriement d'un calque en session
 // =====================================================================
-// Éprouve le RAPATRIEMENT D'UN CALQUE DE DONNÉES DANS LA SESSION
-// (`js/calqueSession.js`, demande KARMA du 04/09 : corriger un front de taille
-// en tracé imposait huit étapes et un aller-retour par des fichiers).
-//
-// Le module charge dans un `vm` avec des bouchons — donc c'est le VRAI code
-// qui est éprouvé, pas une reconstitution. S'il disparaît ou change de nom, le
-// script échoue bruyamment au lieu de tester du vide.
-//
-// CE QU'IL VERROUILLE, et pourquoi chacun de ces points coûte cher :
-//
-//   1. LE MARQUAGE. Chaque objet rapatrié porte `_srcCalque`. Sans lui, le
-//      retour ne sait plus quoi retirer et emporterait le travail de
-//      l'utilisateur avec la copie.
-//   2. LA COPIE EST DÉFENSIVE. Muter l'objet du calque contaminerait la source
-//      relue au prochain chargement — une corruption invisible et définitive.
-//   3. LE RETOUR EST CHIRURGICAL. Il retire ce qui porte la marque, et RIEN
-//      d'autre : les objets créés à la main pendant la session restent.
-//   4. 🩸 LE VERROU NE S'APPLIQUE QUE SI LA COPIE EST LÀ. C'est le piège
-//      mortel : la sauvegarde saute sur quota (1,1 Mo, c'est exactement le
-//      seuil sur un relevé SIG), on recharge, le verrou masque le calque et la
-//      copie manque → plan vide, sans un mot. `appliquerVerrous` doit LIBÉRER
-//      dans ce cas, pas masquer.
-//   5. 🩸 EFFACER LA SESSION REND LE CALQUE. Le verrou vit dans la session ;
-//      s'il survit à l'effacement de la copie, l'utilisateur voit son relevé
-//      disparaître et croit le plan cassé. Vérifié à la source, dans
-//      `sessionPersist.js > clear()`.
-//   6. LE CÂBLAGE que l'extraction ne voit pas : script chargé, précaché,
-//      hooks de session posés, interface branchée.
+// `js/calqueSession.js`, chargé dans un `vm` avec des bouchons (le VRAI code ; absent ou renommé,
+// le script échoue bruyamment). Ce qu'il verrouille :
+//   1. le marquage `_srcCalque` : sans lui, le retour ne sait plus quoi retirer ;
+//   2. la copie défensive : muter l'objet du calque corromprait la source, invisiblement ;
+//   3. le retour chirurgical : seuls les objets marqués partent, les créations à la main restent ;
+//   4. 🩸 le verrou ne s'applique QUE si la copie est là : sauvegarde sautée sur quota + verrou qui
+//      masque le calque = plan vide sans un mot. `appliquerVerrous` LIBÈRE dans ce cas ;
+//   5. 🩸 effacer la session rend le calque (`sessionPersist.js > clear()`), sinon le relevé disparaît ;
+//   6. le câblage que l'extraction ne voit pas (script, précache, hooks de session, interface).
 // =====================================================================
 "use strict";
 
@@ -53,9 +34,8 @@ function monter(calque, sessionInitiale) {
   const ctx = {
     console: { log() {}, warn() {} },
     Promise, JSON, Array, Object, String, Number,
-    // Blob minimal : `_octets` lit `.size`, et `_telecharger` en construit un.
-    // Le laisser `undefined` faisait echouer le telechargement DANS son
-    // try/catch — le test passait a cote sans rien voir.
+    // 🩸 Blob minimal obligatoire : `undefined`, le téléchargement échoue DANS son try/catch et le
+    // test passe à côté sans rien voir.
     Blob: function (parts) { this.size = (parts || []).join("").length; },
     setTimeout,
     localStorage: {
@@ -76,7 +56,6 @@ function monter(calque, sessionInitiale) {
       addLayer: (g) => { surCarte[g.__id] = true; }
     },
     I18n: { t: (k) => k },
-    // `exporterCalque` télécharge : on capture au lieu d'écrire.
     URL: { createObjectURL: (b) => { ctx.__blob = b; return "blob:x"; }, revokeObjectURL() {} },
     document: { createElement: () => ({ click() { ctx.__telecharge = true; } }) }
   };
@@ -122,18 +101,15 @@ const CALQUE = {
   t("rapatrier : les objets sont DANS la session",
     etat.roads.length === 2 && etat.zones.length === 1 && etat.structures.length === 1 && etat.editorPoints.length === 1);
 
-  // 1. LE MARQUAGE
   const tous = etat.roads.concat(etat.zones, etat.structures, etat.editorPoints);
   t("marquage : les 5 objets portent `_srcCalque` = sig",
     tous.length === 5 && tous.every(function (o) { return o._srcCalque === "sig"; }));
 
-  // 2. LA COPIE EST DÉFENSIVE
   etat.roads[0].type = "MODIFIE";
   etat.roads[0].points[0].x = 999;
   t("copie defensive : le calque source n'est pas mute (type)", avantRoad.type === "secondaire");
   t("copie defensive : ni sa geometrie (reference profonde)", avantRoad.points[0].x === 1);
 
-  // LE VERROU
   t("verrou : le calque d'origine est masque", surCarte.sig === false);
   t("etat : estRapatrie devient vrai", CS.estRapatrie("sig") === true);
   t("etat : listeRapatries le contient", CS.listeRapatries().indexOf("sig") >= 0);
@@ -163,9 +139,7 @@ const CALQUE = {
     const p = ex.stats;
     t("export : forme de data layer (data/roads/zones/structures)",
       Array.isArray(p.data) && Array.isArray(p.roads) && Array.isArray(p.zones) && Array.isArray(p.structures));
-    // 🩸 REMPLACEMENT : un tableau VIDE doit etre ECRIT. L'omettre laisserait
-    // les anciennes zones en place au rechargement — la suppression serait
-    // silencieusement annulee.
+    // 🩸 Un tableau VIDE est ÉCRIT : omis, les anciennes zones reviennent au rechargement.
     t("🩸 export : les zones supprimees sortent en tableau VIDE, pas omises",
       p.zones.length === 0 && "zones" in p);
     t("export : l'objet cree a la main n'y est pas", p.roads.length === 2);
@@ -180,14 +154,11 @@ const CALQUE = {
   }
 
   // ───────── 2 ter. 🩸 PLUSIEURS CALQUES EN MÊME TEMPS ─────────
-  // Question KARMA (05/09) : « si je rapatrie plusieurs layers, ils se cumulent
-  // en session ? » Oui — et chacun doit rester INDÉPENDANT. C'est `_srcCalque`
-  // qui le permet : sans lui, restituer un calque emporterait le contenu de
-  // l'autre, et l'export du premier embarquerait les objets du second.
+  // Les calques se cumulent en session et restent INDÉPENDANTS grâce à `_srcCalque` : restitution et
+  // export d'un calque n'emportent pas l'autre.
   {
     const CALQUE_B = { roads: [{ type: "chemin", points: [{ x: 50, y: 60 }] }],
                        zones: [{ type: "eau", points: [{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }] }] };
-    // Deux calques declares, et un `fetch` qui rend celui qu'on demande.
     const m = monter(CALQUE);
     m.ctx.PLAN_CONFIG.dataLayers.push({ id: "puits", label: "Puits", file: "data/puits.json" });
     m.ctx.dataLayerGroups.puits = { __id: "puits" };
@@ -206,12 +177,10 @@ const CALQUE = {
     t("multi : l'etat porte les deux ids",
       JSON.stringify(m.CS.getSessionState()) === JSON.stringify({ rapatries: ["sig", "puits"] }));
 
-    // 🩸 L'EXPORT NE MELANGE PAS : il ne sort QUE le calque demande.
     const exB = m.CS.exporterCalque("puits");
     t("🩸 multi : l'export d'un calque n'emporte QUE le sien", exB.total === 2);
     t("  -> et ne compte pas les objets de l'autre comme « crees a la main »", exB.horsCalque === 0);
 
-    // 🩸 LA RESTITUTION EST CHIRURGICALE ENTRE CALQUES.
     const rr = m.CS.restituer("sig");
     t("🩸 multi : restituer « sig » ne retire QUE ses 5 objets", rr.retires === 5);
     t("  -> « puits » est intact en session", m.CS.compterCopie("puits") === 2);
@@ -221,16 +190,9 @@ const CALQUE = {
   }
 
   // ───────── 2 quater. 🩸 L'INTERACTION AVEC « CONVERTIR CET OBJET » ─────────
-  // Question KARMA (05/09) : « je rapatrie, je CORRIGE des objets du calque,
-  // puis je restitue — je perds quoi ? »
-  //
-  // Tout repose sur un detail de `convertirObjet.js` : il reconstruit l'objet
-  // par `Object.assign({}, obj, { type })`, donc il REPART DE L'ORIGINAL et
-  // conserve `_srcCalque`. Si un jour quelqu'un le reecrit en ne recopiant que
-  // les champs connus (points / level / description), la marque sauterait —
-  // et un objet converti SURVIVRAIT a la restitution pendant que son original
-  // reviendrait du calque : LE DOUBLON QUE TOUTE CETTE CONCEPTION EXISTE POUR
-  // EMPECHER. Ce controle est la pour ca.
+  // 🩸 `convertirObjet.js` reconstruit par `Object.assign({}, obj, { type })` et garde donc
+  // `_srcCalque`. Une copie par liste de champs ferait sauter la marque : l'objet converti
+  // survivrait à la restitution pendant que l'original revient du calque (doublon).
   {
     const m = monter(CALQUE);
     m.ctx.HistoryManager = { captureState: () => null, pushState() {} };
@@ -257,18 +219,10 @@ const CALQUE = {
     }
   }
 
-  // ───────── 2 quinquies. 🩸 ET LES POI (question KARMA, 05/09) ─────────
-  // « Convertir » ne gere que les VECTEURS — un point n'a pas de geometrie a
-  // ouvrir ou fermer, la question ne se pose pas pour lui. Un POI se corrige
-  // par sa FICHE (tag, nom, description), et cette porte-la existait deja.
-  //
-  // Le risque est le meme que pour la conversion : si la sauvegarde de la
-  // fiche RECONSTRUISAIT le point au lieu de le muter, `_srcCalque` sauterait
-  // et le POI corrige survivrait a la restauration pendant que son original
-  // reviendrait du calque — un doublon, exactement comme pour les vecteurs.
-  // `editor.js` mute en place (`existingPoint.nom = …`). Controle STRUCTUREL :
-  // le formulaire est trop lie au DOM pour tourner ici, on verifie la forme du
-  // code, pas son execution — et on le dit.
+  // ───────── 2 quinquies. 🩸 ET LES POI ─────────
+  // Un POI se corrige par sa FICHE (« Convertir » ne gère que les vecteurs). Même piège : une fiche
+  // qui RECONSTRUIT le point perd `_srcCalque` (doublon). `editor.js` mute en place. Contrôle
+  // STRUCTUREL (formulaire trop lié au DOM pour tourner ici).
   {
     const ED = fs.readFileSync("js/editor.js", "utf8");
     t("🩸 POI : la fiche MUTE le point, elle ne le reconstruit pas",
@@ -276,10 +230,8 @@ const CALQUE = {
     t("POI : « Convertir » ne pretend PAS gerer les points",
       fs.readFileSync("js/convertirObjet.js", "utf8").indexOf("editorPoints") < 0);
 
-    // 🩸 LA SECONDE PORTE : le Tableau. Il relit les points, les fait editer en
-    // masse, puis les REPOSE en session (`_remplacerSession`). S'il copiait par
-    // liste blanche de champs au lieu de copier l'objet entier, il effacerait
-    // `_srcCalque` sur TOUTE la table d'un coup — bien plus large que la fiche.
+    // 🩸 Le Tableau repose tous les points en session : une copie par liste de champs effacerait
+    // `_srcCalque` sur TOUTE la table d'un coup.
     const TAB = fs.readFileSync("js/tableEditor.js", "utf8");
     t("🩸 POI : le Tableau copie l'objet ENTIER (Object.assign), pas une liste de champs",
       /\.map\(function \(?p\)? \{ return Object\.assign\(\{\}, p\); \}\)/.test(TAB) ||
@@ -302,14 +254,12 @@ const CALQUE = {
   // ───────── 4. 🩸 LE VERROU SANS SA COPIE ─────────
   {
     const m = monter(CALQUE);
-    m.CS.loadSessionState({ rapatries: ["sig"] });   // etat restaure...
-    // ... mais AUCUN objet en session (la sauvegarde avait saute sur quota)
+    m.CS.loadSessionState({ rapatries: ["sig"] });   // état restauré, mais AUCUN objet (quota)
     const v = m.CS.appliquerVerrous();
     t("verrou orphelin : le calque N'EST PAS masque", m.surCarte.sig === true);
     t("verrou orphelin : il est LIBERE", v.liberes.indexOf("sig") >= 0 && v.verrouilles.length === 0);
     t("verrou orphelin : estRapatrie repasse a faux", m.CS.estRapatrie("sig") === false);
   }
-  // ... et le cas nominal, lui, verrouille bien
   {
     const m = monter(CALQUE, { roads: [{ type: "a", points: [], _srcCalque: "sig" }] });
     m.CS.loadSessionState({ rapatries: ["sig"] });
@@ -319,9 +269,8 @@ const CALQUE = {
   }
 
   // ───────── 4 bis. 🩸 IMPORT D'UNE SESSION : la liste se DEDUIT des marques ─────────
-  // Le fichier session emporte les objets marques, PAS `calquesSession`. Sans
-  // recalage : doublon a l'ecran sur un autre appareil (calque d'origine
-  // reaffiche par-dessus sa copie) et « Exporter » refuse (`pasRapatrie`).
+  // Le fichier session emporte les objets marqués, PAS `calquesSession` : sans resynchronisation,
+  // doublon à l'écran sur un autre appareil et « Exporter » refusé (`pasRapatrie`).
   {
     const m = monter(CALQUE, { roads: [{ type: "a", points: [], _srcCalque: "sig" }] });
     const r = m.CS.resynchroniser();
@@ -376,15 +325,10 @@ const CALQUE = {
   t("🩸 cablage : l import de session RESYNCHRONISE les calques APRES les objets",
     IE.indexOf("CalqueSession.resynchroniser()") > IE.indexOf("window.setStructures(dataParsee.structures"));
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
-    // clear(opts) — `opts.snapshotFait` évite un double snapshot
-    // quand la modale de restauration l'a déjà pris et attendu (audit Q44).
+    // clear(opts) : `opts.snapshotFait` évite un double snapshot (déjà pris par la modale de restauration).
     /function clear\((?:opts)?\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
-  // 🩸 UN <button> N'EMET JAMAIS `change`. Les trois actions ont d'abord ete
-  // posees dans le listener `change` du panneau, avec les cases a cocher :
-  // elles y etaient MORTES SILENCIEUSEMENT — aucune erreur console, juste
-  // rien au clic. C'est KARMA qui l'a vu a l'ecran, pas la relecture.
-  // On verifie donc le TYPE D'EVENEMENT, pas seulement la presence de
-  // l'attribut : c'est la difference entre « c'est ecrit » et « ca marche ».
+  // 🩸 Un <button> n'émet JAMAIS `change` : branché sur le listener `change` des cases, il est mort
+  // sans erreur. On vérifie le TYPE D'ÉVÉNEMENT, pas seulement l'attribut.
   ["rapatrier", "restituer", "exporter"].forEach(function (act) {
     const i = FP.indexOf("[data-calque-" + act + "]");
     const avant = i < 0 ? "" : FP.slice(0, i);
@@ -397,10 +341,8 @@ const CALQUE = {
     /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP) && /data-calque-exporter/.test(FP));
   t("cablage : l export dit OU deposer le fichier (sinon il est inutilisable)",
     /filter.calque.exporte"/.test(FP) && /filter.calque.exporteAvecReste/.test(FP));
-  // 🩸 LE RETOUR PROPOSE D EXPORTER AVANT. Ce qu il detruit peut valoir des
-  // heures de correction ; un `confirm` binaire ne laissait le choix qu entre
-  // perdre et renoncer. Trois issues desormais, et le chemin sur est le
-  // bouton principal.
+  // 🩸 Le retour peut détruire des heures de correction : il PROPOSE d'exporter d'abord (trois
+  // issues, le chemin sûr en bouton principal), pas un choix binaire perdre / renoncer.
   t("🩸 retour : l export est PROPOSE avant de restituer",
     FP.indexOf("filter.calque.exportAvantMsg") >= 0 && FP.indexOf("_exporterCalque(id)") >= 0);
   t("🩸 retour : trois issues (exporter / restituer quand meme / annuler)",

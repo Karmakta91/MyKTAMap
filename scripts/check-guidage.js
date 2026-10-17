@@ -72,8 +72,7 @@ async function itineraire(win, de, vers, opts) {
 
 const sansArrivee = g => g.consignes.filter(c => c.type !== "arrivee");
 
-// Faux DOM : juste ce que le bandeau touche (style, classList, textContent,
-// innerHTML, querySelector par classe, événements).
+// Faux DOM : juste ce que le bandeau touche.
 function fauxElement() {
   const enfants = {};
   const classes = new Set();
@@ -145,8 +144,7 @@ async function bandeau() {
   G.setPref("auto");
   actif = false; G.rafraichir();
   t("suivi arrêté : bandeau masqué", G.etat().visible === false);
-  // sans suivi, une position CONFIRMÉE (« Je suis
-  // ici » sur une plaque) suffit ; la position du départ du plan, non.
+  // Sans suivi : une position CONFIRMÉE (« Je suis ici ») suffit, le départ du plan non.
   let confirmee = true;
   w.getTrackingPositionEtat = () => ({ confirmee: confirmee, suiviActif: actif });
   G.rafraichir();
@@ -155,9 +153,7 @@ async function bandeau() {
   t("sans suivi, position NON confirmée : bandeau masqué", G.etat().visible === false);
   delete w.getTrackingPositionEtat;
   actif = true;
-  // la croix ÉTEINT le guidage (réglage « Jamais »),
-  // la tuile 🪧 le rallume, sans recalculer l'itinéraire. (Itinéraire normal :
-  // une sortie d'urgence, elle, reste affichée même sur « Jamais ».)
+  // La croix passe le réglage à « Jamais », la tuile le rallume sans recalcul (hors urgence).
   iti = Object.assign({}, it.road);
   aller(20, 500);
   w.__bandeau.querySelector(".kta-guid-fermer").__clic();
@@ -178,8 +174,7 @@ async function bandeau() {
   t("sans nav intelligente : distances précédées de « ~ »", /~/.test(e.principal));
   t("sans nav intelligente : une suggestion faite, une seule", ls["myktamap_guidage_astuce_smartnav"] === "1");
 
-  // Urgence (lot 4, décisions C/G) : pas de croix, « Recalculer » vise la
-  // sortie la plus proche d'ICI (SortieUrgence.relancerDepuis)
+  // Urgence : pas de croix, « Recalculer » vise la sortie la plus proche d'ICI (relancerDepuis).
   w.APP_CONFIG.smartNav = true;
   let relance = null;
   w.SortieUrgence = { relancerDepuis: p => { relance = { x: p.x, y: p.y }; } };
@@ -202,8 +197,7 @@ async function bandeau() {
   t("hors urgence : « Recalculer » replanifie l'itinéraire depuis ici", replan && replan[0] === 620);
   t("hors urgence : la croix est là", w.__bandeau.querySelector(".kta-guid-fermer").style.display === "");
 
-  // Câblage (sources) : la sortie d'urgence marque son itinéraire, « Y aller »
-  // le porte sans question, la replanification le garde, l'écran XL lit l'état.
+  // Câblage des sources.
   const src = f => fs.readFileSync(path.join(ROOT, f), "utf8");
   const su = src("js/sortieUrgence.js"), ii = src("js/interfaceItineraire.js");
   const em = src("js/emergencyMode.js"), tr = src("js/tracking.js");
@@ -267,8 +261,7 @@ async function evacuationBrancard() {
   r = await evacuer({ avoidZones: [], respecterInaccessibles: false });
   t("inaccessibles levés (dernier recours) : A redevient la plus proche, et c'est écrit",
     r.trace && r.trace.x === 500 && /sortie.brancard.inaccLeve/.test(r.html));
-  // Sortie CLASSIQUE (sans options) coupée par une zone inaccessible (10/10/2026) : même seuil
-  // de 10 m et même rang qu'en brancard — A, calée court, ne passe plus devant B ; alerte si coupé.
+  // Sortie classique coupée par une zone inaccessible : même seuil (10 m) et même rang qu'en brancard.
   r = await evacuer(null);
   t("classique : A coupée par une zone inaccessible ne passe plus devant B (chemin entier)",
     r.trace && r.trace.x === 900 && !/sortie.coupee.alerte/.test(r.html) && !/sortie.brancard/.test(r.html));
@@ -305,16 +298,13 @@ async function evacuationBrancard() {
     t("T : c'est « tourner à droite »", cs[0] && cs[0].type === "virage" && cs[0].cote === "droite" && cs[0].force === "franc");
     t("T : placée au croisement (± 2 m)", cs[0] && Math.abs(cs[0].s - 180) <= 8);
     t("T : l'arrivée ferme la liste", it.guide.consignes[it.guide.consignes.length - 1].type === "arrivee");
-    // 🩸 Le départ s'accroche sur un segment qui porte un nœud de croisement :
-    // le chemin partait d'abord EN ARRIÈRE jusqu'à l'extrémité (+2×20 px).
+    // 🩸 Départ accroché à un segment porteur d'un croisement : pas de détour par l'extrémité (+2×20 px).
     t("🩸 T : pas d'aller-retour au départ (180 + 380 px, pas 220 + 380)",
       Math.abs(it.r.totalDistance - 560) < 0.5);
     t("🩸 T : pas de « demi-tour » au départ", !it.guide.consignes.some(c => c.type === "demiTour"));
   }
 
-  // 2) Croisement franchi TOUT DROIT : il se dit quand même (étude, règle 1)
-  //    — et c'est le cas où le chemin peut ne PAS traverser le nœud du
-  //    croisement (arête d'origine gardée dans le graphe).
+  // 2) Croisement franchi tout droit : il se dit, même si le chemin enjambe le nœud (arête d'origine gardée).
   {
     const w = bac([R("principal", [[0, 500], [400, 500]]), R("principal", [[200, 300], [200, 700]])]);
     const it = await itineraire(w, [20, 500], [380, 500]);
@@ -332,8 +322,7 @@ async function evacuationBrancard() {
     t("dessin tremblé : aucune consigne avant l'arrivée", sansArrivee(it.guide).length === 0);
   }
 
-  // 4) Coude SANS croisement → tu, même franc (retour KARMA, relevé réel :
-  //    tant qu'il n'y a qu'un chemin, suivre la galerie suffit)
+  // 4) Coude sans croisement → tu, même franc : un seul chemin, suivre la galerie suffit (décision produit).
   {
     const w = bac([R("principal", [[0, 500], [300, 500], [300, 100]])]);
     const it = await itineraire(w, [20, 500], [300, 120]);
@@ -357,10 +346,8 @@ async function evacuationBrancard() {
     t("fourche : « prendre la branche de gauche »", cs[0] && cs[0].type === "branche" && cs[0].cote === "gauche");
   }
 
-  // 5 bis) 🩸 Épingle par une galerie de liaison de 5 m (ouest → sud → est) :
-  //   angle ≈ 180°, mais le trajet ne revient PAS sur lui-même → virage, pas
-  //   « demi-tour » (cas réel : la fusion en chaîne l'annonçait ainsi). Les
-  //   deux coins sont de vrais croisements (une galerie continue vers l'ouest).
+  // 5 bis) 🩸 Épingle par une liaison de 5 m : angle ≈ 180° mais le trajet ne revient pas sur lui-même →
+  //   virage, pas « demi-tour » (la fusion en chaîne se trompe sinon).
   {
     const w = bac([
       R("principal", [[400, 500], [100, 500]]),
@@ -371,8 +358,7 @@ async function evacuationBrancard() {
     const cs = sansArrivee(it.guide);
     t("épingle : pas de « demi-tour »", !cs.some(c => c.type === "demiTour"));
     t("épingle : dite comme un virage à gauche", cs.length >= 1 && cs.every(c => c.type === "virage" && c.cote === "gauche"));
-    // Aller-retour au fond d'un cul-de-sac (sans croisement) : c'est l'ÉTAPE
-    // qui se dit là, et le retour au croisement.
+    // Cul-de-sac aller-retour : c'est l'ÉTAPE qui se dit au fond.
     const w2 = bac([R("principal", [[0, 500], [400, 500]]), R("principal", [[200, 500], [200, 380]])]);
     const r2 = await w2.Pathfinder.computeRoute([{ x: 20, y: 500 }, { x: 200, y: 380 }, { x: 380, y: 500 }], {});
     const g2 = w2.ItiGuidage.construire({ points: r2.path, raccords: r2.raccords, carrefours: r2.carrefours });
@@ -381,10 +367,8 @@ async function evacuationBrancard() {
     t("cul-de-sac : aucun virage inventé au fond", !g2.consignes.some(c => c.type === "virage" && c.y < 480));
   }
 
-  // 5 ter) GRAND CARREFOUR (décisions 1:a / 2:a / 3:a / 4) — trois branches
-  //   qui quittent la galerie à 2,5 m d'intervalle (un carrefour réel n'est
-  //   pas un nœud, c'est une zone) : UNE consigne, posée à l'entrée, avec le
-  //   schéma des 5 galeries et le nom du lieu.
+  // 5 ter) Grand carrefour : branches à 2,5 m d'intervalle = une zone → UNE consigne à l'entrée, schéma
+  //   des 5 galeries et nom du lieu.
   {
     const w = bac([
       R("principal", [[0, 500], [800, 500]]),
@@ -420,8 +404,7 @@ async function evacuationBrancard() {
     t("croisements à 8 m : pas de schéma (3 galeries chacun)", sansArrivee(g2).every(c => !c.picto));
   }
 
-  // 6) Quadrillage serré (chambre à piliers, maille 2 m = 8 px) traversé en
-  //    ligne droite : la fusion empêche une consigne à chaque maille.
+  // 6) Chambre à piliers (maille 2 m) en ligne droite : pas une consigne par maille.
   {
     const roads = [];
     for (let k = 0; k <= 30; k++) {
@@ -482,22 +465,12 @@ async function evacuationBrancard() {
     t("ancien itinéraire : aucune longueur de raccord", w.ItiGuidage.longueurRaccordsPx({ points: [] }) === 0);
   }
 
-  // 12) PERFORMANCE DU PATHFINDER (29/09/2026) — l'enrichissement comparait
-  // chaque segment à tous les autres et Dijkstra balayait tous les nœuds à
-  // chaque pas : ~40 s par itinéraire sur un relevé réel de ~9 000 sommets.
-  // Grille spatiale + tas binaire, résultats identiques au bit près (vérifié
-  // hors dépôt sur le relevé réel : graphe enrichi de même empreinte). Ici,
-  // un quadrillage FICTIF : 90 galeries horizontales × 90 verticales (~16 000
-  // segments), un sommet tous les 40 px, galeries posées à 40k + 20 → chaque
-  // croisement tombe au MILIEU d'un segment des deux côtés, à 20 px de tout
-  // sommet, au-delà de la tolérance de proximité (15 px) : aucun raccourci
-  // diagonal, la distance attendue est exacte.
-  // ⏱️ Temps CPU de CE processus, pas l'horloge murale (14/10/2026) : sous
-  // charge (pre-commit pendant qu'une autre session calcule), Date.now()
-  // comptait le temps passé à attendre le processeur — 36 instances en
-  // parallèle donnaient 3 à 9 s « mesurées » pour ~1 s de calcul, et le
-  // filet tombait au hasard (D-guidage-instable). Le CPU consommé, lui, ne
-  // dépend pas des voisins : la régression O(S²) visée (~40 s) reste prise.
+  // 12) Performance du pathfinder : grille spatiale + tas binaire, sans quoi l'enrichissement O(S²) coûte
+  // ~40 s sur un relevé de ~9 000 sommets. Quadrillage FICTIF 90 × 90 (~16 000 segments), sommet tous les
+  // 40 px, galeries à 40k + 20 : chaque croisement tombe au milieu d'un segment, à 20 px de tout sommet
+  // (> tolérance 15 px), donc aucun raccourci diagonal et une distance attendue exacte.
+  // 🩸 Mesurer le temps CPU du processus, pas l'horloge murale : sous charge (pre-commit en parallèle),
+  // Date.now() compte l'attente du processeur et le filet tombe au hasard.
   const cpuMs = () => { const u = process.cpuUsage(); return (u.user + u.system) / 1000; };
   {
     const N = 90, PAS = 40, L = N * PAS;
@@ -520,8 +493,7 @@ async function evacuationBrancard() {
     t("pathfinder : graphe de ~" + g.segments.length + " segments enrichi en < 3 s (" + msGraphe + " ms ; avant : O(S²))",
       msGraphe < 3000);
     t0 = cpuMs();
-    // Coin à coin, sur les galeries : la distance exacte est connue d'avance.
-    // Départ (20, 20) = croisement H0 × V0 ; arrivée = croisement de la dernière H × dernière V.
+    // Coin à coin (croisement H0 × V0 → dernière H × dernière V) : distance connue d'avance.
     const r = await w.Pathfinder.computeRoute(
       [{ x: 20, y: 20, label: "A" }, { x: (N - 1) * PAS + 20, y: (N - 1) * PAS + 20, label: "B" }], {});
     const msRoute = Math.round(cpuMs() - t0);
@@ -529,11 +501,8 @@ async function evacuationBrancard() {
     t("pathfinder : distance coin à coin exacte (" + Math.round(r.totalDistance) + " px, attendu " + attendu + ")",
       Math.abs(r.totalDistance - attendu) < 1e-6);
     t("pathfinder : itinéraire complet en < 3 s (" + msRoute + " ms)", msRoute < 3000);
-    // 🩸 Égalités : sur un quadrillage, des milliers de chemins ont la même
-    // longueur. L'ancien balayage choisissait, à égalité, le plus PETIT indice ;
-    // le tas doit faire pareil, sinon le trajet dessiné changerait d'un appel à
-    // l'autre. Deux calculs identiques → deux trajets identiques, et le 1er
-    // pas suit la galerie créée en premier (l'horizontale).
+    // 🩸 Égalités : à longueur égale le tas départage par le plus PETIT indice, sinon le trajet dessiné
+    // change d'un appel à l'autre.
     const r2 = await w.Pathfinder.computeRoute(
       [{ x: 20, y: 20, label: "A" }, { x: (N - 1) * PAS + 20, y: (N - 1) * PAS + 20, label: "B" }], {});
     t("pathfinder : à égalité de longueur, le même trajet à chaque calcul",
@@ -544,11 +513,8 @@ async function evacuationBrancard() {
     t("pathfinder : zone atteignable calculée en < 3 s (" + msZone + " ms)", !!zone && msZone < 3000);
   }
 
-  // 13) ITINÉRAIRE INTER-PLANS (01/10/2026) — l'étape sur l'AUTRE plan est
-  //     calculée depuis le plan ouvert : ses carrefours doivent se mesurer à
-  //     l'échelle de SON plan (rayon de sortie 3 m), pas du plan courant.
-  //     Une branche de 30 px = 7,5 m à 4 px/m (vrai croisement), 0,75 m à
-  //     40 px/m (amorce du dessin, ignorée).
+  // 13) Inter-plans : l'étape sur l'AUTRE plan se mesure à l'échelle de SON plan, pas du plan ouvert.
+  //     Branche de 30 px = 7,5 m à 4 px/m (croisement), 0,75 m à 40 px/m (amorce ignorée).
   {
     const reseauB = [R("principal", [[0, 500], [800, 500]]), R("principal", [[400, 500], [400, 530]])];
     const w = bac([], { scale: 40 });                 // plan OUVERT : 40 px/m
@@ -569,9 +535,8 @@ async function evacuationBrancard() {
     t("câblage inter-plans : distances avec les raccords (décision K)",
       ip.includes("_raccordsM(r, ctx.scale)") && ip.includes("_raccordsM(legB, scaleB)"));
 
-    // Poids d'une jonction de niveau sur l'étape distante : profondeurs ET
-    // échelle du plan CIBLE. Plan ouvert : 5 m entre ses niveaux 0 et 1, 40 px/m ;
-    // plan cible : 40 m, 4 px/m. Puits dessiné sur 10 px (un segment), deux tronçons de 180 px.
+    // Jonction sur l'étape distante : profondeurs ET échelle du plan CIBLE. Ouvert : 5 m entre niveaux,
+    // 40 px/m ; cible : 40 m, 4 px/m. Puits de 10 px, deux tronçons de 180 px.
     const wJ = bac([], { scale: 40, multiLevel: true });
     const profOuvert = { "0": -25, "1": -20 };
     wJ.getProfondeurNiveau = n => (profOuvert[String(n)] === undefined ? null : profOuvert[String(n)]);
@@ -597,10 +562,8 @@ async function evacuationBrancard() {
     t("inter-plans : plan cible sans profondeurs → jonction en 2D, jamais celles du plan ouvert",
       proche(vide.totalDistance, plat + 10));
 
-    // jonction dessinée en PLUSIEURS segments : chaque segment
-    // comptait le dénivelé complet (2 segments → 680 px au lieu de 520). Le
-    // dénivelé est réparti au prorata de la longueur 2D de chaque segment :
-    // même puits en 1 ou 3 segments → même poids, dans les deux sens.
+    // 🩸 Jonction en plusieurs segments : le dénivelé se répartit au prorata de la longueur 2D, sinon
+    // chaque segment compte le dénivelé entier. Même puits en 1 ou 3 segments → même poids.
     const ctxCible = { echelle: 4, profondeurs: { "0": -25, "1": -65 } };
     const reseauJ3 = [
       reseauJ[0],
@@ -631,8 +594,7 @@ async function evacuationBrancard() {
       ip.includes("profondeurs: ctx.profondeurs") && ip.includes("profondeurs: routingB.profondeurs || {}") &&
       ilJ.includes("return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };"));
 
-    // Feuille de route : elle s'arrête au portail, puis UNE ligne par plan
-    // suivant (`road.suite`, posée par interPlanRoute > _tracerItinerary).
+    // Feuille de route : arrêt au portail, puis UNE ligne par plan suivant (`road.suite`).
     const w2 = bac([R("principal", [[0, 500], [800, 500]])]);
     const it2 = await itineraire(w2, [20, 500], [780, 500]);
     let feuille = null;
@@ -655,10 +617,8 @@ async function evacuationBrancard() {
     const ii = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
     t("câblage inter-plans : la suite survit à la coupe et à la replanification",
       (ii.match(/if \(road\.suite\) newRoad\.suite = road\.suite;/g) || []).length === 2);
-    // la suite n'était jamais abandonnée : ouvrir
-    // le plan suivant par le sélecteur y traçait l'étape (et l'enregistrait dans
-    // sa session). Elle ne se poursuit que par une traversée PHYSIQUE, et part
-    // avec l'itinéraire supprimé ou remplacé.
+    // 🩸 La suite ne se poursuit que par une traversée PHYSIQUE ; ouvrir le plan suivant par le sélecteur
+    // ne doit pas y tracer l'étape. Elle part avec l'itinéraire supprimé ou remplacé.
     const il = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
     t("câblage inter-plans : la traversée physique est lisible au changement de plan",
       il.includes("traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); }"));
@@ -670,11 +630,10 @@ async function evacuationBrancard() {
       ip.includes("abandonnerSuite:     abandonnerSuite,") && ii.includes("window.InterPlanRoute.abandonnerSuite();"));
   }
 
-  // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal
+  // 11) Bandeau en direct : simulation de marche, faux DOM minimal
   await bandeau();
 
-  // 12) ÉVACUATION — options brancard (Mode Secours « 🚑 Évacuer », 06/10/2026) : moteur et
-  // Sortie d'urgence RÉELS ; seuls le DOM de la modale et itineraireYAller sont simulés.
+  // 14) Évacuation, options brancard : moteur et Sortie d'urgence réels, DOM et itineraireYAller simulés.
   await evacuationBrancard();
 
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 guidage : tout passe");

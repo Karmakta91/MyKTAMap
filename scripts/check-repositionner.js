@@ -1,52 +1,20 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📌 check-repositionner.js — garde-fou pré-commit BLOQUANT
+// check-repositionner.js — garde-fou pré-commit BLOQUANT du repositionnement d'un POI de session
 // =====================================================================
-// Le repositionnement d'un POI de session (KARMA, 05/09 : « si le POI a été
-// mal mis »). Septième picker « clic carte » du code, et le premier qui MUTE
-// un objet de la session au lieu de remplir un champ de formulaire — d'où les
-// pièges qui lui sont propres.
-//
-// 🩸 CE QUI RÉGRESSE ICI, ET SANS BRUIT :
-//
-//   1. LA CONVERSION INVERSE. `convertCoord(x, y) = [imageHeight - y, x]`.
-//      Le picker fait le chemin retour. Inverser lat et lng, ou oublier le
-//      `imageHeight - `, déplace le point AILLEURS que sous le doigt — et
-//      comme le marqueur se re-rend à la nouvelle position, ça a l'air
-//      volontaire. Le contrôle refait le tour complet.
-//
-//   2. L'INDEX PÉRIMÉ. Entre l'armement du mode et le clic, l'utilisateur
-//      peut supprimer un autre point, vider sa session, recharger le plan.
-//      Un index capturé à l'armement désignerait alors le MAUVAIS point : on
-//      en déplacerait un au hasard. Le point est donc re-cherché au clic.
-//
-//   3. LA MARQUE DE CALQUE ET LE NIVEAU. Le point doit être muté EN PLACE :
-//      s'il était reconstruit, il perdrait `_srcCalque` (→ doublon à la
-//      restauration du calque, cf. check-calque-session.js) et son `level`
-//      (→ téléporté d'étage en douce sur un plan multi-niveau).
-//
-//   4. LES LIAISONS INTER-PLAN. Elles sont indexées par `id:<id>`, donc elles
-//      SURVIVENT au déplacement — mais elles stockent AUSSI les coordonnées,
-//      qui servent au tracé du lien à l'export KMZ. Sans recalage, le lien
-//      part de l'ancienne position dans le KMZ, et rien ne le dit.
-//
-//   5. LES AUTRES MODES « CLIC CARTE ». Armer le picker sans les couper fait
-//      consommer le MEME clic deux fois : en mode ajout de point, la carte
-//      repositionne ET ouvre la fiche d'un point tout neuf (KARMA, 05/09).
-//      `_modeClicCarteActif()` ne sauve pas la mise — il exclut volontairement
-//      `modeEdition`, et il n'empêche de toute façon que les POPUPS.
-//
-//   6. LE DÉMONTAGE. Un handler `click` laissé sur la map déplacerait le
-//      point au clic suivant, longtemps après la fermeture du floater.
-//
-//   7. LA CLASSE DU FLOATER. `.kta-iti-floater` n'est pas cosmétique :
-//      `_modeClicCarteActif()` (utils.js) la reconnaît, ce qui empêche les
-//      popups d'annotation pendant le mode et fait ré-émettre le clic en
-//      phase capture (map.js). La renommer casserait le mode en silence.
-//
-// Le code est CHARGÉ dans un `vm` (pas recopié) : s'il change, c'est la
-// nouvelle version qui est éprouvée.
+// editor.js > repositionnerPointEditor : picker « clic carte » qui MUTE un point de la session.
+// Code CHARGÉ dans un `vm`, pas recopié. 🩸 Ce qui régresse sans bruit :
+//   1. conversion inverse de `convertCoord` (`[imageHeight - y, x]`) : lat/lng inversés ou
+//      `imageHeight -` oublié déplacent le point ailleurs, et ça a l'air volontaire ;
+//   2. index périmé : le point est re-cherché AU CLIC (la session a pu changer depuis l'armement) ;
+//   3. mutation EN PLACE : reconstruit, il perdrait `_srcCalque` (doublon à la restauration, cf
+//      check-calque-session.js) et son `level` (changement d'étage en douce) ;
+//   4. liaisons inter-plan : elles stockent aussi les coordonnées (tracé du lien en KMZ) → recalées ;
+//   5. les autres modes « clic carte » sont COUPÉS à l'armement, sinon le même clic sert deux fois
+//      (`_modeClicCarteActif()` exclut `modeEdition` et ne bloque que les popups) ;
+//   6. démontage : aucun handler `click` ne survit au floater ;
+//   7. ⚠️ la classe `.kta-iti-floater` est lue par utils.js > _modeClicCarteActif et map.js.
 // =====================================================================
 "use strict";
 
@@ -66,8 +34,7 @@ function contexte(hauteur) {
       _enfants: {}, _clics: [],
       set innerHTML(v) {
         el._html = v;
-        // Le picker interroge son propre floater : on rend les 3 noeuds qu'il
-        // vient de declarer, reperes par leur classe ou leur id.
+        // Le picker interroge son propre floater : on rend les nœuds qu'il vient de déclarer.
         el._enfants[".kta-iti-floater-msg"] = creer();
         el._enfants["#kta-repo-cancel"]     = creer();
       },
@@ -148,7 +115,6 @@ function pointDeBase() {
 
   const fl = noeuds["kta-repo-floater"];
   t("armer : le floater est dans le DOM", !!fl);
-  // 🩸 C'est cette classe qui fait reconnaitre le mode par _modeClicCarteActif().
   t("🩸 armer : le floater porte la classe `kta-iti-floater`",
     !!fl && String(fl.className).indexOf("kta-iti-floater") >= 0);
   t("armer : le nom est injecté en TEXTE, jamais en HTML (XSS)",
@@ -166,10 +132,8 @@ function pointDeBase() {
   ctx.setEditorPoints([pointDeBase()]);
   ctx.repositionnerPointEditor("Puits nord", 10, 20);
 
-  // 🩸 lat ET lng doivent DIFFERER, sinon les inverser ne casse rien et
-  // l assertion ne prouve rien (piege tombe a la falsification du 05/09).
-  // On vise le pixel plan (300, 250) : convertCoord = [1000-250, 300] = [750, 300].
-  // Les centiemes servent a eprouver l arrondi pour de vrai.
+  // 🩸 lat ET lng DIFFÈRENT, sinon les inverser ne casse rien. Pixel visé ≈ (300, 250) ;
+  // les centièmes éprouvent l'arrondi.
   const cible = { x: 300.12, y: 249.75 };
   ecoutes.click[0]({ latlng: { lat: H - 249.753, lng: 300.1234 } });
 
@@ -204,15 +168,8 @@ function pointDeBase() {
 
 // ───────── 4. 🩸 l'index périmé ─────────
 {
-  // 🩸 CE TEST DOIT DISTINGUER TROIS INDEX DIFFERENTS, sinon il ne prouve
-  // rien. Version initiale (05/09) : on visait un point qui se retrouvait
-  // justement en index 0 apres coup — remplacer la recherche par `const i = 0`
-  // tombait juste par accident et l assertion restait verte. Tautologie.
-  //
-  // Ici : on arme sur « sud » (index 1), puis DEUX points s inserent devant →
-  // « sud » passe en index 3. Un index fige a l armement (1) toucherait
-  // « nord », un index code en dur (0) toucherait « est ». Les trois cibles
-  // sont distinctes, seule la vraie recherche tombe juste.
+  // 🩸 Trois index DISTINCTS, sinon le test est une tautologie : armé sur « sud » (index 1), puis
+  // deux points s'insèrent devant (« sud » → 3). Index figé (1) → « nord », index en dur (0) → « est ».
   const { ctx, ecoutes } = contexte(1000);
   const nord = pointDeBase();
   const sud  = { id: "Puits sud",  nom: "Puits sud",  x: 50, y: 60, tags: [], level: 0 };
@@ -247,16 +204,10 @@ function pointDeBase() {
   t("  -> le mode se démonte quand même", (ecoutes.click || []).length === 0 && !noeuds["kta-repo-floater"]);
 }
 
-// ───────── 4 bis. 🩸 les autres modes « clic carte » tombent a l armement ─────────
-// KARMA, 05/09 : « si je suis en train d ajouter des points et que je clique
-// sur repositionner, ca me le repositionne mais m ouvre EN PLUS une fenetre de
-// point nouveau ». Le meme clic etait consomme deux fois.
-//
-// 🩸 `_modeClicCarteActif()` NE COUVRE PAS CE CAS, et c est deliberé de sa part :
-// il exclut `modeEdition` (« y ajouter un point peut ouvrir une popup de
-// nommage legitime »). Et meme quand il rend vrai, il n empeche que les POPUPS
-// d annotation — modeRoad/Zone/Structure posent quand meme leur sommet. Donc
-// le picker doit COUPER les modes lui-meme, comme les six autres pickers.
+// ───────── 4 bis. 🩸 les autres modes « clic carte » tombent à l'armement ─────────
+// Sinon, en mode ajout de point, le même clic repositionne ET ouvre la fiche d'un point neuf.
+// `_modeClicCarteActif()` exclut `modeEdition` (popup de nommage légitime) et ne bloque que les
+// popups : le picker coupe les modes lui-même, comme les autres pickers.
 {
   const { ctx, journal } = contexte(1000);
   ctx.setEditorPoints([pointDeBase()]);
@@ -327,14 +278,13 @@ function pointDeBase() {
   const UTILS = fs.readFileSync("js/utils.js", "utf8");
   const LIENS = fs.readFileSync("js/interPlanLinks.js", "utf8");
 
-  // Depuis le correctif XSS (05/10/2026) : le bouton porte data-kta-act="repositionner",
-  // l'écouteur unique de la fiche (_ktaPopupAction) appelle repositionnerPointEditor.
+  // 🔒 Le bouton porte data-kta-act="repositionner" ; l'écouteur unique de la fiche (_ktaPopupAction)
+  // appelle repositionnerPointEditor (pas de handler inline).
   t("câblage : le bouton est dans la popup d'un point, et son action appelle repositionnerPointEditor",
     UTILS.indexOf('_act("repositionner")') >= 0 &&
     /case "repositionner":\s+return appel\("repositionnerPointEditor"/.test(UTILS));
-  // 🩸 Le bouton doit vivre dans `editRow`, gouverne par showSessionActions :
-  // pose ailleurs, il apparaitrait sur les points de calque en lecture seule,
-  // ou les points ne seraient pas dans listePoints -> bouton mort.
+  // 🩸 Dans `editRow` (showSessionActions) : ailleurs, il apparaîtrait sur des points de calque en
+  // lecture seule, absents de listePoints → bouton mort.
   const iEdit = UTILS.indexOf("const editRow = showSessionActions");
   const iDel  = UTILS.indexOf("const deleteRow = showSessionActions");
   const iRepo = UTILS.indexOf('_act("repositionner")');
@@ -344,7 +294,7 @@ function pointDeBase() {
   t("câblage : InterPlanLinks expose onPointMoved", /onPointMoved:\s+onPointMoved/.test(LIENS));
   t("câblage : onPointMoved recale bien x ET y",
     /side\.x = Number\(point\.x\)/.test(LIENS) && /side\.y = Number\(point\.y\)/.test(LIENS));
-  // Purger au lieu de recaler detruirait des liaisons a chaque deplacement.
+  // Purger au lieu de recaler détruirait des liaisons à chaque déplacement.
   t("🩸 câblage : onPointMoved RECALE, il ne purge pas",
     LIENS.indexOf("function onPointMoved") >= 0 &&
     LIENS.slice(LIENS.indexOf("function onPointMoved"),
@@ -359,19 +309,10 @@ function pointDeBase() {
   });
 }
 
-// ───────── 10. 🩸 la doc ne promet pas un bouton retire ─────────
-// Le 25/05/2026 (commit b9de2fa, demande KARMA « on garde le crayon, mais on
-// enleve la poubelle maintenant qu on peut supprimer directement le point au
-// clic »), la sous-action 🗑️ du groupe Edition a ete retiree : le groupe est
-// devenu un `soloAction`, un simple interrupteur. Le commit annoncait « on
-// adapte doc en consequence » — ca n a pas ete fait, et `README_USER` a decrit
-// pendant QUATRE MOIS une fenetre a deux options (« ↩️ Dernier point » /
-// « 🗑️ Tous les points ») qui n existait plus, plus un bouton 🗑️ voisin de ✏️
-// qui n existait plus non plus. Trouve par KARMA le 05/09.
-//
-// Rien ne confrontait la doc au code : c est ca qu on verrouille ici. Le
-// signal cote code est double — le groupe est un `soloAction`, et
-// `removeLastEditorPoint()` n est plus appelee par personne.
+// ───────── 10. 🩸 la doc ne promet pas un bouton retiré ─────────
+// Le groupe Édition est un simple interrupteur (`soloAction`) : on supprime un point depuis sa popup
+// (décision produit). La doc ne doit plus décrire l'ancienne fenêtre « Dernier point / Tous les
+// points ». Signal côté code : `soloAction`, et `removeLastEditorPoint()` appelée par personne.
 {
   const ITF = fs.readFileSync("js/interface.js", "utf8");
   const i = ITF.indexOf('id: "edition"');
@@ -379,15 +320,12 @@ function pointDeBase() {
   t("le groupe Édition est un interrupteur simple (soloAction)",
     i >= 0 && /soloAction:/.test(groupe) && !/subActions:/.test(groupe));
 
-  // La fonction survit (atteignable en console) mais plus AUCUN appel : c est
-  // le marqueur que la sous-action est bien partie. Si elle etait recablee, ce
-  // controle tomberait et la doc devrait etre rouverte — c est voulu.
+  // La fonction survit (console) sans AUCUN appel. Recâblée, ce contrôle tombe et la doc est à rouvrir.
   const APPELS = ["js/interface.js", "js/interfaceConfig.js", "js/utils.js", "index.html"]
     .filter((f) => fs.existsSync(f))
     .some((f) => fs.readFileSync(f, "utf8").indexOf("removeLastEditorPoint") >= 0);
   t("🪦 `removeLastEditorPoint` n'est recâblée nulle part (sous-action retirée)", !APPELS);
 
-  // 🩸 Et la doc des 3 langues ne doit plus promettre la fenetre disparue.
   [["fr", "docs/applications/README_USER.md",    ["↩️ Dernier point** | Supprime", "🗑️ Tous les points**"]],
    ["en", "docs/applications/README_USER.en.md", ["↩️ Last point** | Deletes",     "🗑️ All points**"]],
    ["es", "docs/applications/README_USER.es.md", ["↩️ Último punto** | Elimina",   "🗑️ Todos los puntos**"]]

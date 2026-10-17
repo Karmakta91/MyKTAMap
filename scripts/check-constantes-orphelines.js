@@ -1,38 +1,14 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔤 check-constantes-orphelines.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// Détecte les constantes en MAJUSCULES **utilisées mais jamais déclarées**
-// dans le fichier qui les emploie.
-//
-// LE BUG QUI L'A FAIT NAÎTRE (03/09/2026) : le nettoyage de code mort du 09/08
-// (commit 9834504) a supprimé `const HEADER_HEIGHT_MM = 18;` de
-// `js/pdfExport.js` — alors qu'elle était utilisée vingt lignes plus bas.
-// Résultat : « HEADER_HEIGHT_MM is not defined » à CHAQUE génération de PDF
-// avec en-tête, pendant près d'un mois, sans que rien ne le signale.
-//
-// POURQUOI RIEN NE L'A VU :
-//   • `node -c` ne détecte pas les identifiants non résolus — c'est une erreur
-//     d'EXÉCUTION, pas de syntaxe ;
-//   • le smoke traverse 8 écrans mais ne génère jamais de PDF ;
-//   • aucun des garde-fous n'inspectait les identifiants ;
-//   • le projet n'a pas de linter (choix assumé : pas de bundler, pas de
-//     toolchain). Ce script en fait le strict minimum, sur le seul motif qui a
-//     réellement mordu.
-//
-// PORTÉE VOLONTAIREMENT ÉTROITE : uniquement les identifiants en
-// MAJUSCULES_AVEC_UNDERSCORES, soit la convention des constantes de module de
-// ce projet. C'est là que le nettoyage de code mort frappe — une constante ne
-// s'appelle souvent qu'une fois, elle a donc l'air morte. Élargir aux
-// fonctions et variables produirait des faux positifs (globales inter-modules,
-// `window.x`), et un garde-fou qui crie à tort finit ignoré.
-//
-// ⚠️ CE QU'IL NE VOIT PAS : une constante déclarée dans un fichier et utilisée
-// dans un autre (le projet en a — `window.X` ou portée globale de script). Pour
-// éviter d'inventer des erreurs, un identifiant déclaré N'IMPORTE OÙ dans `js/`
-// est considéré comme résolu. On n'attrape donc que le cas franc : utilisé
-// nulle part déclaré.
+// check-constantes-orphelines.js — BLOQUANT (pré-commit) : constantes MAJUSCULES_AVEC_UNDERSCORES de `js/`
+// utilisées mais déclarées nulle part.
+// 🩸 Un nettoyage de code mort prend pour morte une constante citée une seule fois ; sa suppression lève
+//    une ReferenceError à l'EXÉCUTION seulement (`node -c` ne voit rien, pas de linter), souvent sur un
+//    chemin rare (export PDF) que le smoke ne traverse pas.
+// Portée volontairement étroite : élargir aux fonctions/variables crierait à tort (globales
+// inter-modules), et un garde-fou qui crie à tort finit ignoré.
+// ⚠️ Un identifiant déclaré N'IMPORTE OÙ dans `js/` compte comme résolu : seul le cas franc est attrapé.
 // =====================================================================
 
 const fs = require("fs");
@@ -47,14 +23,9 @@ try {
   process.exit(2);
 }
 
-// Retire chaînes et commentaires : une constante citée dans un message d'erreur
-// ou un commentaire n'est pas un usage.
-// 🩸 Le nettoyage doit PRÉSERVER LES RETOURS À LA LIGNE, sinon les numéros
-// rapportés sont faux — et il doit vraiment neutraliser les commentaires,
-// sinon on signale des constantes qui ne sont que CITÉES dans une explication.
-// Première version : deux faux positifs sur trois (`WHITELIST_HUMAN` et
-// `README_USER`, tous deux en commentaire). Un garde-fou qui crie à tort finit
-// ignoré — donc il vaut mieux en rater un que d'en inventer.
+// Retire chaînes et commentaires (une citation n'est pas un usage).
+// 🩸 Préserver les retours à la ligne, sinon les numéros rapportés sont faux. Mieux vaut rater un cas
+// que d'en inventer.
 function nettoyer(src) {
   const garderLignes = function (s) { return s.replace(/[^\n]/g, " "); };
   return src
@@ -63,28 +34,20 @@ function nettoyer(src) {
     .replace(/"(?:[^"\\\n]|\\.)*"/g, garderLignes)
     .replace(/'(?:[^'\\\n]|\\.)*'/g, garderLignes)
     .replace(/`(?:[^`\\]|\\.)*`/g, garderLignes)
-    // Regex littérales : `README_USER` apparaissait dans
-    // `/\{\{README_USER\}\}/g` — c'est un motif de remplacement, pas un
-    // identifiant. Heuristique volontairement grossière (une regex précédée
-    // d'un `(`, `,`, `=` ou `.replace(`), suffisante ici et sans risque : au
-    // pire on neutralise un peu trop, ce qui ne peut que RATER un cas,
-    // jamais en inventer un.
+    // Regex littérales (un motif de remplacement n'est pas un identifiant) : heuristique grossière, au
+    // pire elle neutralise trop, donc rate un cas sans jamais en inventer.
     .replace(/([(,=:]\s*)\/(?![*\/])(?:[^\/\\\n]|\\.)+\/[gimsuy]*/g,
              function (s, avant) { return avant + garderLignes(s.slice(avant.length)); });
 }
 
 const RE_IDENT = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
-// Toutes les formes de DÉCLARATION rencontrées dans ce dépôt :
-//   const X = …            (le cas courant)
-//   const A = 1, X = 2;    ← déclaration MULTIPLE : le 2e identifiant n'est pas
-//                            précédé de `const`, il faut le voir quand même
-//   get X() { … }          ← getter d'objet (networkAudit.js)
-// Chacune de ces trois formes a produit un faux positif avant d'être ajoutée.
+// Formes de déclaration : `const X = …`, déclaration MULTIPLE `const A = 1, X = 2;` (le 2e n'est pas
+// précédé de `const`), getter `get X()`. Chacune oubliée produit un faux positif.
 const RE_DECL  = /(?:const|let|var|function)\s+([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b/g;
 const RE_DECL2 = /[,;{(]\s*([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\s*=/g;   // multiples
 const RE_GETSET = /\b(?:get|set)\s+([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\s*\(/g;
 
-// 1) tous les identifiants déclarés, quel que soit le fichier
+// 1) identifiants déclarés, quel que soit le fichier
 const declaresPartout = new Set();
 const contenus = {};
 fichiers.forEach(function (n) {
@@ -94,21 +57,11 @@ fichiers.forEach(function (n) {
   while ((m = RE_DECL.exec(contenus[n])) !== null) declaresPartout.add(m[1]);
   while ((m = RE_DECL2.exec(contenus[n])) !== null) declaresPartout.add(m[1]);
   while ((m = RE_GETSET.exec(contenus[n])) !== null) declaresPartout.add(m[1]);
-  // Une propriété d'objet compte aussi comme définition (`{ MAX_X: 3 }`) et
-  // un paramètre de fonction également — sinon on crie sur du code sain.
-  // 🩸 Une clé d objet doit etre precedee de `{` ou `,`. Sans cette borne, le
-  // TERNAIRE `cond ? X : 0` faisait passer X pour une declaration - et le
-  // garde-fou devenait aveugle au cas meme qui l a motive :
-  //     const headerH = opts.incHeader ? HEADER_HEIGHT_MM : 0;
-  // Decouvert en le falsifiant. Un garde-fou non falsifie ne garde rien.
-  //
-  // 🩸 BIS — les `\s` de ce motif avaient perdu leur antislash (`[{,]s*...s*:`),
-  // ce qui exigeait un `s` LITTERAL : la regle « une cle d'objet compte comme
-  // declaration » ne s'appliquait donc JAMAIS. Le defaut est reste invisible
-  // tant qu'aucun module ne rangeait ses constantes dans un objet ; il a
-  // rougi au premier qui l'a fait (la table de tags de `js/tiffGeoref.js`).
-  // Verifie apres correction : le cas historique du ternaire est toujours
-  // attrape a l'identique, et les 116 fichiers restent verts.
+  // Une clé d'objet (`{ MAX_X: 3 }`) et un paramètre de fonction comptent aussi comme déclaration.
+  // 🩸 La clé doit être précédée de `{` ou `,` : sinon le TERNAIRE `cond ? X : 0` passe pour une
+  // déclaration et le garde-fou devient aveugle au cas même qu'il vise.
+  // 🩸 Garder les antislashs de `\s` : sans eux le motif exige un `s` littéral et la règle ne
+  // s'applique jamais, en silence.
   const RE_PROP = /[{,]\s*([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\s*:/g;
   while ((m = RE_PROP.exec(contenus[n])) !== null) declaresPartout.add(m[1]);
   const RE_PARAM = /function\s*[\w$]*\s*\(([^)]*)\)/g;
@@ -138,10 +91,9 @@ fichiers.forEach(function (n) {
     const id = m[0];
     if (vus.has(id) || CONNUS.has(id) || declaresPartout.has(id)) continue;
     vus.add(id);
-    // Ignorer ce qui est manifestement une propriété (`x.MAX_Y`) ou une clé.
+    // propriété (`x.MAX_Y`) : ignorée
     const avant = src.slice(Math.max(0, m.index - 1), m.index);
     if (avant === ".") continue;
-    // Numéro de ligne, sur la source ORIGINALE pour rester exploitable.
     const ligne = src.slice(0, m.index).split("\n").length;
     orphelins.push({ fichier: n, id: id, ligne: ligne });
   }

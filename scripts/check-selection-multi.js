@@ -1,44 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🎯 check-selection-multi.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// La conversion EN LOT (KARMA, 05/09 : « sélectionner N vecteurs et les
-// convertir d'un coup »), et la sélection qui l'alimente.
-//
-// 🩸 CE QUI RÉGRESSE ICI, ET SANS BRUIT :
-//
-//   1. LA RÈGLE DE COMPATIBILITÉ. Elle porte sur l'OUVERTURE (ligne vs surface
-//      fermée), PAS sur la famille. Un tracé et un front de taille sont tous
-//      deux des lignes : les mélanger est LE cas utile — 40 fronts mal typés
-//      qui deviennent des galeries. Resserrer la règle sur la famille
-//      supprimerait la raison d'être de la feature sans casser un seul test
-//      naïf.
-//
-//   2. LE REFUS SILENCIEUX. Cliquer une surface quand la sélection est en
-//      lignes doit DIRE pourquoi. Un clic sans effet et sans mot se lit comme
-//      un bug de la carte — c'est exactement le symptôme qu'on a déjà payé sur
-//      les pickers en v1.28.0.
-//
-//   3. LE LOT QUI N'EST PAS UN LOT. Convertir N objets en appelant N fois
-//      `convertir()` donnerait N re-rendus complets (coûteux à 20 000 objets)
-//      et N entrées d'historique : annuler demanderait N Ctrl+Z. Un geste, un
-//      instantané, une entrée.
-//
-//   4. LA LECTURE-ÉCRITURE-RELECTURE. Les trois listes sont lues d'un bloc
-//      AVANT toute écriture. Sinon une conversion intra-famille relit une
-//      liste déjà amputée et perd des objets — le piège déjà tombé sur
-//      `convertir()` en v1.82.0.
-//
-//   5. LA CIBLE DÉJÀ ATTEINTE. Sur une sélection mixte, les objets déjà du bon
-//      type sont SAUTÉS, pas comptés en échec, et surtout pas cause de refus.
-//
-//   6. `itinerary` COMME SOURCE. C'est le trajet calculé. Déjà interdit comme
-//      cible, il doit l'être comme source : le convertir en ferait une donnée
-//      du relevé.
-//
-// Le code est CHARGÉ dans un `vm` (pas recopié) : s'il change, c'est la
-// nouvelle version qui est éprouvée.
+// check-selection-multi.js — BLOQUANT (pré-commit) : sélection multiple et conversion EN LOT
+// (`js/selectionMulti.js`, `js/convertirObjet.js`, chargés dans un `vm`).
+// 🩸 Ce qui régresse sans bruit :
+//   1. La compatibilité porte sur l'OUVERTURE (ligne vs surface fermée), pas sur la famille : tracé et
+//      front de taille se mélangent, c'est le cas utile (décision produit).
+//   2. Un refus se DIT : un clic sans effet ni mot se lit comme un bug de la carte.
+//   3. Un lot = un geste, UN instantané, UNE entrée d'historique, une écriture par famille (pas N
+//      re-rendus ni N Ctrl+Z).
+//   4. Les trois listes sont lues d'un bloc AVANT toute écriture, sinon une conversion intra-famille relit
+//      une liste amputée et perd des objets.
+//   5. Les objets déjà du bon type sont SAUTÉS, ni en échec ni cause de refus.
+//   6. `itinerary` (trajet calculé) n'est ni source ni cible : le convertir en ferait une donnée du relevé.
 // =====================================================================
 "use strict";
 
@@ -47,7 +21,7 @@ const fs = require("fs"), vm = require("vm");
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
-// ───────── harnais : convertirObjet + selectionMulti, sans Leaflet ─────────
+// ── Harnais : convertirObjet + selectionMulti, sans Leaflet ──────
 function contexte() {
   const journal = { snap: 0, record: [], saves: 0, rendus: {} };
   let R = [], Z = [], S = [];
@@ -88,16 +62,14 @@ function contexte() {
   };
 }
 
-// 🩸 Accès SÛR au résultat de la visée. Sans lui, une régression qui rend
-// `null` fait planter le script — et un plantage n'est pas un échec lisible :
-// on perd la ligne qui dit CE QUI a cassé (constaté à la falsification).
+// 🩸 Accès SÛR au résultat : une régression qui rend `null` ferait planter le script au lieu d'un échec lisible.
 const vise = (r) => (r && r.cible) ? r.cible : {};
 const refuse = (r) => (r && r.refus) ? r.refus : {};
 
 const carre = (x, y, c) => [{ x: x, y: y }, { x: x + c, y: y }, { x: x + c, y: y + c }, { x: x, y: y + c }];
 const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
 
-// ───────── 1. surface d'API ─────────
+// ── 1. Surface d'API ──────
 {
   const h = contexte();
   ["convertirLot", "listerCiblesLot"].forEach((m) =>
@@ -106,7 +78,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     t("API : SelectionMulti." + m + "()", typeof h.ctx.SelectionMulti[m] === "function"));
   t("API : le cœur de la visée est exposé au harnais",
     typeof h.ctx.SelectionMulti._choisir === "function");
-  // 🧭 Foyer canonique de la géométrie : `_pointInPolygon` vivait en 4 copies.
+  // Foyer canonique de la géométrie (pas de copie locale de `_pointInPolygon`).
   t("🧭 géométrie : `ktaPointInPolygon` est exposé", typeof h.ctx.ktaPointInPolygon === "function");
   t("🧭 géométrie : `ktaDistPointSegment` est exposé", typeof h.ctx.ktaDistPointSegment === "function");
   const poly = carre(0, 0, 10);
@@ -115,7 +87,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   t("géométrie : distance à un segment", h.ctx.ktaDistPointSegment({ x: 5, y: 3 }, { x: 0, y: 0 }, { x: 10, y: 0 }) === 3);
 }
 
-// ───────── 2. 🩸 la visée et la règle de compatibilité ─────────
+// ── 2. Visée et règle de compatibilité ──────
 {
   const h = contexte();
   const SM = h.ctx.SelectionMulti;
@@ -139,7 +111,6 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   t("visée : le plus PROCHE gagne quand deux objets sont voisins",
     vise(SM._choisir(cands, 50, 45, true)).obj === front);
 
-  // 🩸 LE CŒUR : ouverture, pas famille.
   t("🩸 règle : depuis une LIGNE, un FRONT de taille est accepté (l'autre famille !)",
     vise(SM._choisir(cands, 50, 50, true)).obj === front);
   const refus = SM._choisir(cands, 230, 230, true);
@@ -155,7 +126,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     vise(SM._choisir(cands, 230, 230, null)).obj === zone);
 }
 
-// ───────── 3. 🩸 le lot : un geste, un instantané, une entrée ─────────
+// ── 3. Le lot : un geste, un instantané, une entrée ──────
 {
   const h = contexte();
   const CV = h.ctx.KtaConvertir;
@@ -194,7 +165,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   t("lot : la session est sauvegardée une fois", h.journal.saves === 1);
 }
 
-// ───────── 4. lot : les refus propres ─────────
+// ── 4. Lot : refus propres ──────
 {
   const h = contexte();
   const CV = h.ctx.KtaConvertir;
@@ -219,7 +190,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     h.S.length === 2 && h.S.some((s) => s.type === "front-2" && s.fromLevel === undefined));
 }
 
-// ───────── 5. les cibles d'un lot : UNION, pas intersection ─────────
+// ── 5. Cibles d'un lot : UNION, pas intersection ──────
 {
   const h = contexte();
   const CV = h.ctx.KtaConvertir;
@@ -228,8 +199,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     { famille: "roads",      obj: { type: "principal" } }
   ];
   const cibles = CV.listerCiblesLot(items).map((c) => c.famille + ":" + c.type);
-  // « principal » est la SOURCE du 2e, mais une cible légitime pour le 1er.
-  // Une intersection la ferait disparaître sans que rien ne l'explique.
+  // « principal », source du 2e, reste une cible légitime pour le 1er (une intersection l'effacerait).
   t("🩸 cibles du lot : UNION — « principal » reste proposé malgré la source",
     cibles.indexOf("roads:principal") >= 0);
   t("cibles du lot : « front-2 » y est aussi", cibles.indexOf("structures:front-2") >= 0);
@@ -240,14 +210,13 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     cibles.indexOf("roads:itinerary") < 0 && cibles.indexOf("roads:jonction") < 0);
 }
 
-// ───────── 6. 🩸 `itinerary` n'est pas sélectionnable ─────────
+// ── 6. `itinerary` n'est pas sélectionnable ──────
 {
   const h = contexte();
   const SM = h.ctx.SelectionMulti;
   const iti = { type: "itinerary", points: ligne(0, 0, 100) };
   h.R = [iti];
-  // Il passe par _candidats() en interne ; on éprouve la règle sur la liste
-  // que le module construit vraiment, via une sélection ouverte dessus.
+  // règle interne à _candidats(), vérifiée sur la source
   const SRC = fs.readFileSync("js/selectionMulti.js", "utf8");
   t("🩸 `itinerary` est exclu de la sélection (c'est le trajet calculé)",
     /EXCLUS\s*=\s*\{\s*itinerary:\s*true\s*\}/.test(SRC));
@@ -255,7 +224,7 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     SRC.indexOf("obj.points.length < 2") >= 0);
 }
 
-// ───────── 7. le câblage, que l'extraction ne voit pas ─────────
+// ── 7. Câblage, que l'extraction ne voit pas ──────
 {
   const IDX = fs.readFileSync("index.html", "utf8");
   const SW  = fs.readFileSync("sw.js", "utf8");
@@ -265,7 +234,6 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
 
   t("câblage : selectionMulti.js est chargé par index.html", /src="js\/selectionMulti\.js"/.test(IDX));
   t("câblage : il est précaché", SW.indexOf('"./js/selectionMulti.js"') >= 0);
-  // 🩸 L ordre compte : le module interroge KtaConvertir.estOuvert.
   t("🩸 câblage : chargé APRÈS convertirObjet.js (il l'interroge)",
     IDX.indexOf("js/convertirObjet.js") < IDX.indexOf("js/selectionMulti.js"));
   t("câblage : la modale de conversion ouvre le mode",
@@ -273,19 +241,15 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   t("câblage : et revient avec le lot", /ouvrir\(famille, obj, \{ lot: sel \}\)/.test(CV));
   t("câblage : le bouton d'entrée existe", /id="kta-convert-multi"/.test(CV));
 
-  // 🩸 La classe du floater n est pas cosmétique : _modeClicCarteActif() la
-  // reconnait, ce qui empeche les popups d annotation d avaler le clic.
+  // 🩸 Classe du floater lue par _modeClicCarteActif() : sans elle, les popups d'annotation avalent le clic.
   t("🩸 câblage : le bandeau porte `kta-iti-floater`", /kta-iti-floater kta-selm-floater/.test(SM));
-  // 🩸 Viser l'OBJET DE STYLE, pas la chaîne n'importe où : le commentaire qui
-  // explique la règle contient les mêmes mots et suffisait à satisfaire
-  // l'assertion (constaté à la falsification du 05/09).
+  // 🩸 Viser l'OBJET DE STYLE : un commentaire aux mêmes mots satisferait une recherche de chaîne.
   t("🩸 câblage : la surbrillance est NON interactive (sinon elle mange les clics)",
     /Object\.assign\(\{\}, SURBRILLANCE, \{ fill: false, interactive: false \}\)/.test(SM));
   t("🩸 câblage : le listener `click` est retiré à la fermeture",
     /map\.off\("click", _handler\)/.test(SM));
   t("câblage : le calque de surbrillance est retiré à la fermeture",
     /removeLayer\(_groupe\)/.test(SM));
-  // 🎨 Aucune couleur inventée : celle-ci est l accent d interaction de la charte.
   t("🎨 la surbrillance utilise l'accent d'interaction de la charte",
     SM.indexOf("#8cb4ff") >= 0);
 

@@ -1,51 +1,16 @@
 #!/usr/bin/env node
 /**
- * 🛡️ check-no-pro-leak.js — Garde-fou anti-fuite code PRO côté community
- * ====================================================================
+ * check-no-pro-leak.js — BLOQUANT (pre-commit et CI) : aucun fichier ni motif du dépôt privé MyKTAMap-pro
+ * dans ce dépôt public. Lit les fichiers indexés (ou `KTA_FICHIERS_CI` en CI).
  *
- * Lance ce script avant chaque commit côté community (MyKTAMap public)
- * pour vérifier qu'aucun fichier ou pattern appartenant au repo
- * MyKTAMap-pro (privé, propriétaire) ne s'y glisse par erreur.
+ * Frontière « zéro FICHIER pro » (docs/architecture/community-server-line.md §1, §3, §4) : les points
+ * d'extension neutres (`config.serverConnection`, états, garde, événements `mktm:*`) sont autorisés ;
+ * restent interdits le code serveur (*.php, backend/), pro/, tout module JS qui parle à un backend (même
+ * no-op), les fichiers propriétaires et les clés privées.
+ * ⚠️ C'est surtout la règle de CHEMIN qui protège : les motifs de contenu ne connaissent que les noms d'un
+ * module pro déjà écrit, un renommage leur échappe.
  *
- * Branché en pre-commit hook via .githooks/pre-commit (cf README pour
- * l'install : `git config core.hooksPath .githooks` une fois).
- *
- * Politique (frontière révisée le 04/10/2026, cf
- * docs/architecture/community-server-line.md §1, §3 et §4) : la frontière
- * est « zéro FICHIER pro », plus « zéro trace ». Les points d'extension
- * neutres (interrupteur `config.serverConnection`, état OFF/ON/DOWN, garde,
- * événements `mktm:*`) sont autorisés ici. Restent interdits : le code
- * serveur (*.php, backend/), le dossier pro/ et tout module JS qui parle
- * à un backend, même en mode "no-op" ou "mort". C'est donc surtout la règle
- * de CHEMIN qui protège : les motifs de contenu ci-dessous ne connaissent
- * que les noms d'un module pro déjà écrit, un renommage leur échappe.
- *
- * Patterns détectés (regex appliqués aux fichiers STAGED uniquement) :
- *   - Modules pro : MyKTAMapCloudSync, MyKTAMapCloudSyncUI
- *   - Config opt-in : cloudSyncEnabled
- *   - Storage keys : mktm_pro_cloud_*, mktm_pro_user_optin_cloud
- *   - Format wire : MKTM-CLOUD-v[N]
- *   - Headers auth : X-Mock-Token, X-MKTM-Token
- *   - Endpoints backend : /v1/secours, /v1/health
- *
- * Fichiers interdits (chemin) :
- *   - *.php, où qu'il soit (aucun code serveur dans ce repo)
- *   - pro/** (dossier des modules greffés par une instance)
- *   - js/cloudSync.js, js/cloudSyncUI.js
- *   - backend/** (toute l'arbo backend Fastify+Prisma)
- *   - DRIFT.md, CHARTE.md, LICENSE_PRO.md, README_PRO.md, ROADMAP_PRO.md
- *   - Licence-pro.json (nominatif client)
- *
- * Pour bypass en urgence (NE PAS abuser) :
- *   git commit --no-verify ...
- *
- * Pour ajouter une exception (rare, ex: doc qui mentionne le pro
- * dans un commentaire pédagogique) → ajouter dans EXEMPT_FILES ci-dessous.
- *
- * Code de retour :
- *   0  : OK, aucune fuite détectée
- *   1  : Fuite détectée, commit bloqué
- *   2  : Erreur d'exécution (git introuvable, etc.)
+ * Exception (rare, à justifier) : EXEMPT_FILES. Retour : 0 OK · 1 fuite, commit bloqué · 2 erreur git.
  */
 
 "use strict";
@@ -54,9 +19,7 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-// ============================================================
-// PATTERNS INTERDITS — contenu de fichiers
-// ============================================================
+// ── Motifs interdits dans le contenu ──────
 
 const FORBIDDEN_PATTERNS = [
   { rx: /MyKTAMapCloudSync(UI)?\b/g,      label: "module pro cloudSync"       },
@@ -73,9 +36,7 @@ const FORBIDDEN_PATTERNS = [
   { rx: /"d"\s*:\s*"[A-Za-z0-9_-]{40,}"/g, label: "clé privée JWK (champ d)" },
 ];
 
-// ============================================================
-// FICHIERS INTERDITS — chemin (regex sur le chemin git-style)
-// ============================================================
+// ── Chemins interdits (regex sur le chemin git-style) ──────
 
 const FORBIDDEN_FILES = [
   { rx: /\.php$/i,                     label: "code serveur PHP (aucun code serveur ici)" },
@@ -92,21 +53,11 @@ const FORBIDDEN_FILES = [
   { rx: /(^|\/)signer-licence\.js$/,   label: "outil de signature des licences (dépôt pro interne)" },
 ];
 
-// ============================================================
-// EXEMPTIONS — fichiers où les patterns sont autorisés
-// (ex: ce script lui-même qui contient les patterns en regex)
-// ============================================================
-
+// ── Exemptions du contrôle de contenu (préférer un wording neutre à un ajout ici) ──────
 const EXEMPT_FILES = [
   "scripts/check-no-pro-leak.js",
   ".githooks/pre-commit",
-  // Si un commentaire pédagogique dans la doc community parle du pro,
-  // ajouter le fichier ici. Mais à éviter : préférer un wording neutre.
 ];
-
-// ============================================================
-// MAIN
-// ============================================================
 
 function getStagedFiles() {
   // CI (scripts/ci-commits.sh) : rien n'est indexé sur GitHub — la liste vient des commits poussés.
@@ -115,9 +66,7 @@ function getStagedFiles() {
       .filter(function (f) { return f && fs.existsSync(f); });
   }
   try {
-    // --diff-filter=ACMR = Added, Copied, Modified, Renamed
-    //   (= les fichiers qui vont vraiment finir dans le commit)
-    // -z = null-separated pour gérer les noms avec espaces/UTF-8
+    // ACMR = ce qui finit dans le commit ; -z pour les noms avec espaces/UTF-8
     const out = execSync("git diff --cached --name-only --diff-filter=ACMR -z", {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"]
@@ -130,7 +79,6 @@ function getStagedFiles() {
 }
 
 function isBinaryLike(filePath) {
-  // Skip les binaires (images, archives, fonts...) — pas de patterns texte dedans
   const ext = path.extname(filePath).toLowerCase();
   return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf",
           ".zip", ".kmz", ".gz", ".woff", ".woff2", ".ttf", ".otf",
@@ -140,7 +88,6 @@ function isBinaryLike(filePath) {
 function checkFile(filePath) {
   const violations = [];
 
-  // 1. Chemin interdit ?
   for (const rule of FORBIDDEN_FILES) {
     if (rule.rx.test(filePath)) {
       violations.push({
@@ -153,15 +100,12 @@ function checkFile(filePath) {
     }
   }
 
-  // 2. Exempt du content-check ?
   if (EXEMPT_FILES.includes(filePath)) return violations;
   if (isBinaryLike(filePath)) return violations;
 
-  // 3. Contenu interdit ?
   let content;
   try {
-    // On lit depuis l'INDEX git (= ce qui va être commité), pas le worktree
-    // (= ce qui peut être différent si l'user a édité APRÈS git add).
+    // ⚠️ Lire l'INDEX (ce qui sera commité), pas le worktree (édité peut-être après git add).
     content = execSync(`git show :"${filePath}"`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"]
@@ -180,7 +124,6 @@ function checkFile(filePath) {
     rule.rx.lastIndex = 0; // reset state du regex global
     let m;
     while ((m = rule.rx.exec(content)) !== null) {
-      // Calcule le numéro de ligne du match
       const before = content.substring(0, m.index);
       const lineNum = before.split("\n").length;
       violations.push({
@@ -190,7 +133,7 @@ function checkFile(filePath) {
         label: rule.label,
         match: m[0],
       });
-      // Limite à 5 matches par fichier+pattern pour éviter le spam
+      // 5 occurrences max par fichier et motif
       if (violations.filter(v => v.file === filePath && v.label === rule.label).length >= 5) {
         break;
       }
@@ -203,7 +146,6 @@ function checkFile(filePath) {
 function main() {
   const staged = getStagedFiles();
   if (staged.length === 0) {
-    // Pas de fichier staged → rien à checker (commit vide, --amend sans changes, etc.)
     process.exit(0);
   }
 
@@ -217,7 +159,6 @@ function main() {
     process.exit(0);
   }
 
-  // Format de l'erreur pour être MAX lisible en console pre-commit
   console.error("");
   console.error("╔══════════════════════════════════════════════════════════════════════╗");
   console.error("║  🛡️  COMMIT BLOQUÉ — code PRO détecté dans le repo community         ║");

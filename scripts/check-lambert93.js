@@ -1,34 +1,22 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📐 check-lambert93.js — garde-fou pré-commit BLOQUANT
+// check-lambert93.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Vérifie la projection Lambert 93 (EPSG:2154) de `js/sigImport.js`, qui
-// permet d'importer un export QGIS français sans passer par une reprojection
-// manuelle.
-//
-// 🎯 CE QUI REND CE CONTRÔLE PARTICULIER : il ne compare à AUCUNE table de
-// référence. Une table recopiée depuis un site web est elle-même une source
-// d'erreur — si le chiffre est faux, le test valide le bug. Ici, tout est
-// déduit des PROPRIÉTÉS DÉFINITOIRES de la projection, qui découlent de ses
-// seuls paramètres :
-//   A. le point d'origine (3°E, 46,5°N) tombe EXACTEMENT sur (700000, 6600000) ;
-//   B. sur le méridien central, X vaut exactement 700000 à toute latitude ;
-//   C. le facteur d'échelle vaut 1 sur les DEUX parallèles standard (44°, 49°) —
-//      c'est la définition même d'une conique sécante ;
-//   D. il est < 1 entre les deux parallèles et > 1 au-delà (sécante, pas tangente) ;
-//   E. l'échelle est identique le long du méridien et du parallèle (conformité) ;
-//   F. l'aller-retour WGS84 → L93 → WGS84 revient au point de départ.
-// Une erreur de paramètre (mauvais ellipsoïde, parallèle inversé, faux
-// méridien central) casse au moins un de ces contrôles.
-//
-// ⚠️ F seul ne prouverait RIEN : deux fonctions fausses mais mutuellement
-// inverses passeraient. C'est A à E qui ancrent la projection dans la réalité.
-//
-// Vérifie aussi la DÉTECTION : l'enveloppe qui reconnaît du Lambert 93 ne doit
-// jamais happer des degrés WGS84, et un fichier mixte (des degrés ET des
-// mètres) ne doit pas être reprojeté à moitié — une carte à moitié juste est
-// pire qu'un refus, l'erreur ne s'y voit pas.
+// Vérifie la projection Lambert 93 (EPSG:2154) de `js/sigImport.js` (import
+// d'un export QGIS sans reprojection manuelle). Aucune table de référence
+// recopiée (elle validerait son propre chiffre faux) : tout découle des
+// propriétés définitoires de la projection :
+//   A. origine (3°E, 46,5°N) → exactement (700000, 6600000) ;
+//   B. X = 700000 sur le méridien central à toute latitude ;
+//   C. échelle = 1 sur les deux parallèles standard (44°, 49°) ;
+//   D. échelle < 1 entre eux, > 1 au-delà (sécante, pas tangente) ;
+//   E. même échelle le long du méridien et du parallèle (conformité) ;
+//   F. aller-retour WGS84 → L93 → WGS84 sous le micromètre.
+// ⚠️ F seul ne prouve rien (deux fonctions fausses mais inverses passent) :
+// A à E ancrent la projection.
+// Détection (G/H) : l'enveloppe ne happe jamais des degrés WGS84, et un fichier
+// mixte n'est pas reprojeté à moitié (erreur invisible, pire qu'un refus).
 // =====================================================================
 
 const fs = require("fs");
@@ -41,7 +29,7 @@ catch (e) {
   process.exit(2);
 }
 
-// --- extraction de l'IIFE L93 -------------------------------------------
+// ── extraction de l'IIFE L93 ──────────────────────────────────────────
 const m = /const L93 = \(function \(\) \{[\s\S]*?\n {2}\}\)\(\);/.exec(src);
 if (!m) {
   console.error("❌ [check-lambert93] bloc `const L93 = (function () { … })();` introuvable dans " + SRC +
@@ -66,7 +54,7 @@ function verif(nom, ok, aide) {
   if (!ok) echecs.push(aide);
 }
 
-// --- A. origine exacte ---------------------------------------------------
+// ── A. origine exacte ─────────────────────────────────────────────────
 const o = L93.versL93(46.5, 3);
 verif(
   "A. l'origine (3°E, 46,5°N) tombe sur (700000, 6600000)",
@@ -83,7 +71,7 @@ verif(
   oi.lat + " lng=" + oi.lng + "."
 );
 
-// --- B. méridien central -------------------------------------------------
+// ── B. méridien central ───────────────────────────────────────────────
 let pireX = 0;
 for (let lat = 41; lat <= 52; lat += 0.25) pireX = Math.max(pireX, Math.abs(L93.versL93(lat, 3).x - 700000));
 verif(
@@ -93,7 +81,7 @@ verif(
   pireX.toExponential(3) + " m. Un écart ici trahit un mauvais méridien central."
 );
 
-// --- C/D/E. facteur d'échelle -------------------------------------------
+// ── C/D/E. facteur d'échelle ──────────────────────────────────────────
 const A = 6378137, F = 1 / 298.257222101, E2 = 2 * F - F * F, D = Math.PI / 180;
 function echelleParallele(lat) {
   const d = 1e-6, r = lat * D;
@@ -135,7 +123,7 @@ verif(
   "d'ellipsoïde (GRS80 attendu) ou de formule."
 );
 
-// --- F. aller-retour -----------------------------------------------------
+// ── F. aller-retour ───────────────────────────────────────────────────
 let pireAR = 0, ou = "";
 for (let lat = 41; lat <= 51.5; lat += 0.5) {
   for (let lng = -5.5; lng <= 10; lng += 0.5) {
@@ -152,9 +140,7 @@ verif(
   "isométrique sort trop tôt."
 );
 
-// --- G/H. détection ------------------------------------------------------
-// On rejoue la logique d'enveloppe telle qu'elle est ÉCRITE dans le source,
-// plutôt que de la recopier : si la bbox change là-bas, ce test suit.
+// ── G/H. détection (bbox lue dans le source, pas recopiée) ────────────
 const mb = /const L93_BBOX = \{[^}]*\}/.exec(src);
 if (!mb) {
   echecs.push("`L93_BBOX` introuvable dans " + SRC + " — l'enveloppe de détection a disparu.");
@@ -163,7 +149,6 @@ if (!mb) {
   const dans = function (lng, lat) {
     return lng >= BB.xMin && lng <= BB.xMax && lat >= BB.yMin && lat <= BB.yMax;
   };
-  // Des degrés WGS84 en France ne doivent JAMAIS ressembler à du L93.
   const wgs = [[2.3522, 48.8566], [4.8357, 45.764], [5.3698, 43.2965], [-1.55, 47.21], [7.75, 48.58]];
   verif(
     "G. l'enveloppe ne confond pas des degrés WGS84 avec du Lambert 93",
@@ -171,7 +156,6 @@ if (!mb) {
     "Des coordonnées en degrés tombent dans l'enveloppe L93 : la détection reprojetterait un " +
     "fichier WGS84 parfaitement valide et l'enverrait à l'autre bout du monde."
   );
-  // Et de vraies coordonnées L93 doivent y tomber.
   const enL93 = wgs.map(function (c) { return L93.versL93(c[1], c[0]); });
   verif(
     "G'. de vraies coordonnées Lambert 93 tombent bien dans l'enveloppe",
@@ -181,7 +165,6 @@ if (!mb) {
   );
 }
 
-// H. fichier mixte : la détection exige que TOUTES les coordonnées soient en L93.
 verif(
   "H. la détection exige que TOUTES les coordonnées soient en Lambert 93",
   /for \(let i = 0; i < tous\.length; i\+\+\) \{\s*\n\s*if \(!_dansEnveloppeL93\(tous\[i\]\)\) return false;/.test(src),
@@ -190,7 +173,6 @@ verif(
   "bien pire qu'un refus franc."
 );
 
-// --- verdict -------------------------------------------------------------
 if (!echecs.length) {
   console.log("\n🎉 Lambert 93 : projection conforme à ses propriétés définitoires, détection sûre");
   process.exit(0);

@@ -1,21 +1,17 @@
-// Harness "surface d'API" : CHARGE reellement les modules IIFE et verifie que
-// chaque methode annoncee existe.
-//
-// Pourquoi : `node -c` ne valide QUE la syntaxe. Un `WALLPAPER_MAX_PX` supprime
-// mais encore reference dans le bloc d'exports passe `node -c` sans broncher et
-// casse au chargement dans le navigateur (ReferenceError). C'est exactement le
-// bug remonte par KARMA le 01/08 -- et le meme patch rate avait aussi fait
-// SAUTER setWallpaperCadrage des exports, sans aucun signal.
+// check-api-surface.js — garde-fou BLOQUANT : CHARGE réellement les modules IIFE dans un vm et
+// vérifie que chaque méthode annoncée existe et se comporte (userProfile, styleResolver,
+// legendCustomization, osmMesure, profondeurNiveaux, convertirObjet, loi de largeur des fronts).
+// 🩸 `node -c` ne valide QUE la syntaxe : une constante supprimée mais encore citée dans le bloc
+// d'exports passe `node -c` et meurt en ReferenceError au chargement navigateur (module entier
+// perdu, méthodes disparues des exports sans signal).
 const fs = require("fs");
 const vm = require("vm");
 
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
-// `prealables` : fichiers à charger dans le MÊME contexte avant celui-ci.
-// Nécessaire dès qu'un module en interroge un autre au chargement (ex.
-// legendCustomization qui demande ses couleurs à styleResolver) — sans ça
-// chaque appel de `charger` repart d'un contexte vierge et la dépendance
+// ⚠️ `prealables` : fichiers chargés dans le MÊME contexte avant celui-ci, dès qu'un module en
+// interroge un autre au chargement (legendCustomization → styleResolver) ; sinon la dépendance
 // est silencieusement absente.
 function charger(fichier, nomGlobal, prealables) {
   const win = {
@@ -41,19 +37,15 @@ function charger(fichier, nomGlobal, prealables) {
     return null;
   }
   t(fichier + " se charge sans erreur", true);
-  // On rend aussi le `window` simule : certains modules exposent des fonctions
-  // libres (window.ktaResolveStyle) plutot qu'un objet d'API.
+  // `__win` : certains modules exposent des fonctions libres (window.ktaResolveStyle).
   const api = win[nomGlobal];
   if (api && typeof api === "object") api.__win = win;
   return api;
 }
 
-// ───────── largeur des fronts : UNE loi, TROIS consommateurs (v1.83.0) ─────────
-// 📏 Le mode plan, l'export PNG/PDF et la Vue OSM doivent donner la MÊME
-// largeur à densité de pixels égale. Les deux premiers passent par l'échelle
-// du plan, la Vue OSM par sa résolution Web Mercator — mais la règle est la
-// même, et c'est ce qu'on vérifie ici. Trois copies dériveraient ; une seule
-// formule ne le peut pas.
+// ───────── largeur des fronts : UNE loi, TROIS consommateurs ─────────
+// Mode plan, export PNG/PDF (échelle du plan) et Vue OSM (résolution Web Mercator) donnent la MÊME
+// largeur à densité égale : une seule formule, trois copies dériveraient.
 (function () {
   const src = fs.readFileSync("js/structures.js", "utf8");
   const a = src.indexOf("const FRONT_LARGEUR_M");
@@ -75,15 +67,11 @@ function charger(fichier, nomGlobal, prealables) {
   t("px/m : la LATITUDE compte — 45°N vaut 1/cos(45) fois l'équateur",
     Math.abs(r45 / r0 - 1 / Math.cos(45 * Math.PI / 180)) < 1e-9);
 
-  // 🩸 LE test qui empêche les trois consommateurs de diverger — et il doit
-  // BALAYER PLUSIEURS DENSITÉS. Une première version n'en échantillonnait
-  // qu'une (2,764 px/m) : une copie qui aurait dérivé sur les BORNES, par
-  // exemple un plafond à 12 px au lieu de 14, passait au travers, puisque les
-  // deux chemins concordent partout entre les bornes. Falsifié, justement.
+  // 🩸 Balayer PLUSIEURS densités, bornes comprises : une copie qui dérive sur un plafond (12 px au
+  // lieu de 14) concorde partout entre les bornes et passerait sur un seul échantillon.
   const DENSITES = [0.005, 0.5, 1, 2.764, 9, 12, 50, 500];
   const divergentes = DENSITES.filter(function (d) {
-    // Même densité exprimée des deux façons : par le ratio du mode plan
-    // (échelle 2,764 px/m × ratio) et directement en px/m pour la Vue OSM.
+    // Même densité : ratio du mode plan (échelle 2,764 px/m × ratio) vs px/m de la Vue OSM.
     return win.ktaLargeurFrontPourRatio(d / 2.764) !== win.ktaLargeurFrontPourPxParMetre(d);
   });
   t("largeur : plan et Vue OSM concordent sur " + DENSITES.length + " densités, bornes comprises",
@@ -99,17 +87,14 @@ function charger(fichier, nomGlobal, prealables) {
   t("px/m : sans carte → null", win.ktaPxParMetreOsm(null) === null);
 })();
 
-// ───────── osmMesure.js (v1.83.0) ─────────
-// 📏 MESURER EN VUE OSM. La math est confrontée à des VALEURS CONNUES, pas
-// à elle-même : un degré de latitude vaut ~111,2 km, un degré de longitude
-// à 45°N ~78,6 km. C'est la leçon de l'import SIG — 34 tests verts qui ne
-// prouvaient que la cohérence du code avec ses propres suppositions.
+// ───────── osmMesure.js ─────────
+// ⚠️ Confronté à des VALEURS CONNUES (1° de latitude ≈ 111,2 km, de longitude à 45°N ≈ 78,6 km),
+// jamais au code lui-même : un test qui se compare à ses propres suppositions ne prouve rien.
 (function () {
   const OM = charger("js/osmMesure.js", "OsmMesure");
   if (!OM) return;
   const w = OM.__win;
-  // Leaflet n'est pas là : on fournit le strict nécessaire, dont un
-  // `distanceTo` géodésique INDÉPENDANT du code testé.
+  // Sans Leaflet : un `distanceTo` géodésique INDÉPENDANT du code testé.
   function LL(lat, lng) {
     return { lat: lat, lng: lng, distanceTo: function (o) {
       const R = 6371008.8, r = Math.PI / 180;
@@ -137,15 +122,10 @@ function charger(fichier, nomGlobal, prealables) {
   t("mesure OSM : moins de 3 points → surface nulle", OM._surface([LL(44, 0), LL(45, 0)]) === 0);
 })();
 
-// ───────── profondeurNiveaux.js (v1.83.0) ─────────
-// 📉 PROFIL EN LONG. Deux règles qui ne se devinent pas et qu'un rendu
-// « à peu près juste » masquerait :
-//   • un point de niveau INDÉTERMINÉ (milieu de jonction) s'interpole — c'est
-//     exactement ce qu'est un puits ;
-//   • un niveau SANS PROFONDEUR en bout de chemin ne s'extrapole PAS. Le cas
-//     du +1 que l'import SIG donne au topo historique : ce n'est pas un étage
-//     au-dessus, c'est une convention d'empilement. Inventer son altitude
-//     fausserait tout profil qui le traverse.
+// ───────── profondeurNiveaux.js (profil en long) ─────────
+// ⚠️ Un point de niveau INDÉTERMINÉ (milieu de jonction, un puits) s'interpole ; un niveau SANS
+// PROFONDEUR en bout de chemin ne s'extrapole PAS (un +1 d'import SIG est une convention
+// d'empilement, pas un étage : inventer son altitude fausserait le profil).
 (function () {
   const PN = charger("js/profondeurNiveaux.js", "ProfondeurNiveaux");
   if (!PN) return;
@@ -186,20 +166,15 @@ function charger(fichier, nomGlobal, prealables) {
   t("profil : chemin trop court → null", CP([{x:0,y:0,level:0}]) === null);
 })();
 
-// ───────── convertirObjet.js (v1.82.0) ─────────
-// 🔄 RECLASSER UN OBJET. L'enjeu n'est pas cosmétique : le Pathfinder ne
-// construit son graphe QUE sur les `roads`. Un relevé importé dont tout est
-// en structures n'a aucun itinéraire possible — convertir est ce qui le fait
-// exister. D'où des tests sur la RÈGLE (ouvert/fermé) autant que sur le
-// DÉPLACEMENT lui-même.
+// ───────── convertirObjet.js (reclasser un objet) ─────────
+// Le Pathfinder ne construit son graphe QUE sur les `roads` : un relevé importé tout en structures
+// n'a d'itinéraire qu'après conversion. On teste la RÈGLE (ouvert/fermé) et le DÉPLACEMENT.
 (function () {
   const CV = charger("js/convertirObjet.js", "KtaConvertir",
     ["js/styleResolver.js", "js/legendCustomization.js"]);
   if (!CV) return;
   const w = CV.__win;
-  // `isStructurePolylineType` vit dans structures.js, qui exige un vrai
-  // Leaflet : on fournit la même règle que lui (built-in + géométrie de la
-  // légende), c'est ce que le module consomme.
+  // `isStructurePolylineType` vit dans structures.js (vrai Leaflet requis) : même règle recopiée ici.
   w.isStructurePolylineType = function (t) {
     if (t === "front-1" || t === "front-2") return true;
     const e = w.LegendCustomization && w.LegendCustomization.findCustomEntry(t);
@@ -234,8 +209,7 @@ function charger(fichier, nomGlobal, prealables) {
   t("convert : une zone ne peut PAS devenir un front",
     typesF.indexOf("structures:front-1") < 0);
 
-  // Un type CUSTOM polyligne doit être proposé : sur un plan importé, TOUS
-  // les types le sont — sans eux la modale serait quasi vide.
+  // Les types CUSTOM polylignes sont proposés : sur un plan importé, tous les types le sont.
   w.LegendCustomization.loadSessionState({
     schemaVersion: 1, labels: {}, hidden: {}, customEntries: [
       { id: "cust-sig-l", category: "structures", geometry: "polyline", label: "Galerie N+1", lineColor: "#8cb4ff" },
@@ -268,17 +242,14 @@ function charger(fichier, nomGlobal, prealables) {
   t("convert : la géométrie est conservée",      arrive.points.length === 2 && arrive.points[1].x === 9);
   t("convert : l'objet d'origine n'est pas muté", front.type === "front-1");
 
-  // Même famille : le piège du lire-écrire-relire. Une première rédaction
-  // écrivait la liste amputée PUIS la relisait pour ajouter — et perdait
-  // l'objet au lieu de le reclasser.
+  // 🩸 Même famille : écrire la liste amputée PUIS la relire pour ajouter perd l'objet.
   const pilier = { type: "pilier-1", level: 0, points: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] };
   S = [pilier];
   t("convert : reclassement DANS la même famille", CV.convertir("structures", pilier, "structures", "mur") === true);
   t("convert : l'objet n'a pas disparu", S.length === 1);
   t("convert : il porte le nouveau type", S[0].type === "mur");
 
-  // Une jonction reclassée perd fromLevel/toLevel : ils n'ont de sens que
-  // pour elle, et les laisser traîner ferait mentir tout filtre de niveau.
+  // Une jonction reclassée perd fromLevel/toLevel, sinon les filtres de niveau mentent.
   const jonc = { type: "jonction", fromLevel: 0, toLevel: -1, level: 0, points: [{x:0,y:0},{x:2,y:2}] };
   R = [jonc]; S = [];
   CV.convertir("roads", jonc, "structures", "front-2");
@@ -288,9 +259,7 @@ function charger(fichier, nomGlobal, prealables) {
   t("convert : un objet absent de sa famille est refusé",
     CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
 
-  // ── 🗑️ LA SUPPRESSION (KARMA, 05/09 : « rajoute, dans le truc pour
-  // convertir, un bouton supprimer ») ──
-  // Meme popup, meme reference directe sur l objet.
+  // ── La suppression (même popup, même référence directe sur l'objet) ──
   t("suppr : l'API est exposée", typeof CV.supprimer === "function");
 
   const journal = { snap: 0, record: [], saves: 0 };
@@ -300,11 +269,8 @@ function charger(fichier, nomGlobal, prealables) {
   };
   w.SessionPersist = { save: function () { journal.saves++; } };
 
-  // 🩸 LE PIEGE CENTRAL : `roads` et `zones` n'ont PAS d'id (data-formats.md).
-  // Deux tracés peuvent porter EXACTEMENT le même type et la même géométrie.
-  // Une suppression qui chercherait par égalité de contenu retirerait le
-  // mauvais — et l'utilisateur ne verrait qu'un objet en moins, au bon
-  // endroit. Seule l'identité par RÉFÉRENCE tient, et la popup la porte.
+  // 🩸 Deux tracés peuvent être identiques (même type, même géométrie) : chercher par contenu
+  // retirerait le mauvais, sans que rien ne se voie. Seule l'identité par RÉFÉRENCE tient.
   const jumeauA = { type: "principal", points: [{ x: 1, y: 1 }, { x: 5, y: 5 }] };
   const jumeauB = { type: "principal", points: [{ x: 1, y: 1 }, { x: 5, y: 5 }] };
   const temoin  = { type: "chemin",    points: [{ x: 0, y: 0 }] };
@@ -323,15 +289,12 @@ function charger(fichier, nomGlobal, prealables) {
   t("suppr : l'action est enregistrée dans l'historique", journal.record.length === 1);
   t("suppr : la session est sauvegardée tout de suite", journal.saves === 1);
 
-  // Le marquage de calque ne protège pas l'objet : le retirer est légitime,
-  // c'est même le geste qu'on veut pouvoir faire sur un calque ouvert à la
-  // modification avant de l'exporter.
+  // Le marquage de calque ne protège pas l'objet (nettoyer un calque avant export est voulu).
   const duCalque = { type: "eau", points: [], _srcCalque: "sig" };
   Z = [duCalque];
   t("suppr : un objet venu d'un calque se supprime aussi",
     CV.supprimer("zones", duCalque) === true && Z.length === 0);
 
-  // Refus propres : ni suppression fantôme, ni entrée d'historique fantôme.
   const avantRefus = journal.record.length;
   t("suppr : un objet absent de sa famille est refusé",
     CV.supprimer("structures", { type: "mur" }) === false);
@@ -347,12 +310,10 @@ function charger(fichier, nomGlobal, prealables) {
       U.indexOf("kta-note-popup-supprimer") >= 0);
     t("câblage : il appelle bien KtaConvertir.supprimer",
       /KtaConvertir\.supprimer\(opts\.convertir\.famille, opts\.convertir\.obj\)/.test(U));
-    // 🩸 Une action destructrice collée au « Sauver » se cliquerait par
-    // accident : elle vit dans sa propre ligne danger, comme pour un point.
+    // 🩸 Collée au « Sauver », une action destructrice se clique par accident : ligne danger à part.
     t("🩸 câblage : le bouton est dans une ligne DANGER séparée",
       /kta-popup-actions-danger[^']*'[\s\S]{0,220}kta-note-popup-supprimer/.test(U));
-    // 🩸 Le setteur relance un rendu complet : le layer qui porte la popup
-    // est detruit. Sans fermeture, la popup reste a l ecran, orpheline.
+    // 🩸 Le setteur relance un rendu complet qui détruit le layer : sans fermeture, popup orpheline.
     const iSup = U.indexOf("kta-note-popup-supprimer\");");
     t("🩸 câblage : la popup est FERMÉE (sinon elle survit à son layer détruit)",
       iSup > 0 && U.slice(iSup, iSup + 900).indexOf("closePopup") >= 0);
@@ -382,8 +343,7 @@ if (UP) {
     t("UserProfile." + c + " exposee", UP[c] !== undefined);
   });
 
-  // L'etat par defaut doit porter les champs du fond d'ecran, sinon l'UI lit
-  // `undefined` et les curseurs partent a la mauvaise valeur.
+  // L'état par défaut porte les champs du fond d'écran, sinon les curseurs lisent `undefined`.
   const snap = UP.get();
   ["hasWallpaper", "wallVoile", "wallPosX", "wallPosY", "wallFit"].forEach(function(k) {
     t("get() expose " + k, Object.prototype.hasOwnProperty.call(snap, k));
@@ -392,23 +352,17 @@ if (UP) {
   t("cadrage par defaut centre", snap.wallPosX === 50 && snap.wallPosY === 50);
 }
 
-// ───────── styleResolver.js ─────────
-// Expose des fonctions LIBRES sur window, pas un objet d'API.
+// ───────── styleResolver.js (fonctions LIBRES sur window) ─────────
 const SR = charger("js/styleResolver.js", "ktaResolveStyle");
 t("window.ktaResolveStyle() exposee",  typeof SR === "function");
 ["ktaStyleBuiltins", "ktaSwatchColor", "ktaTypeSwatchHtml"].forEach(function(f) {
-  // Rechargement isole : on veut verifier CHAQUE nom, pas seulement le premier.
   const g = charger("js/styleResolver.js", f);
   t("window." + f + "() exposee", typeof g === "function");
 });
 
 // ───────── legendCustomization.js ─────────
-// 🐛 Ajouté en v1.76.0 après un incident : la suppression de la table
-// `DEFAULT_RENDERS` avait laissé `DEFAULT_RENDERS: DEFAULT_RENDERS` dans le
-// bloc d'exports. `node -c` passe (la syntaxe est valide), mais le module
-// mourait d'un ReferenceError au chargement navigateur — donc plus AUCUNE
-// légende, plus aucun type custom. Même classe de bug que WALLPAPER_MAX_PX
-// le 01/08. Ce guard ne couvrait alors que userProfile.js : il n'a rien vu.
+// 🩸 Une table supprimée mais encore exportée = ReferenceError au chargement : plus aucune légende
+// ni type custom, alors que `node -c` passe.
 const LC = charger("js/legendCustomization.js", "LegendCustomization", ["js/styleResolver.js"]);
 if (LC) {
   const ATTENDU_LC = [
@@ -416,20 +370,13 @@ if (LC) {
     "getLabel", "getDefaultLabel", "isVisible", "getSource",
     "listEntries", "listCustomEntries", "findCustomEntry",
     "addCustomEntry", "removeCustomEntry", "ouvrirEditeur",
-    // override de couleur. `getColor` est appelee par
-    // window.ktaResolveStyle : si elle disparait des exports, la carte perd
-    // silencieusement les couleurs choisies par l'utilisateur.
+    // 🩸 `getColor` est appelée par ktaResolveStyle : absente, la carte perd les couleurs choisies.
     "getColor", "setColor", "hasColorOverride",
-    // (F8) — decompte des objets utilisant un type, lu par la
-    // confirmation de suppression de l'editeur.
-    "countUsages",
-    // (F19/F23) — exporter.js DELEGUE sa dialog d'ajout a
-    // ouvrirAddDialog (son clone de 209 lignes a ete supprime) : si ce nom
-    // change, le bouton ➕ de la modale Export devient un no-op silencieux.
-    // listOrphanTypes est lu par le bandeau ⚠️ de la Legende.
+    "countUsages",   // lu par la confirmation de suppression de l'éditeur
+    // 🩸 exporter.js DÉLÈGUE son ajout à ouvrirAddDialog : renommée, le bouton ➕ de l'Export devient
+    // un no-op silencieux. listOrphanTypes est lu par le bandeau ⚠️ de la Légende.
     "ouvrirAddDialog", "listOrphanTypes",
-    // bordure independante (lues par ktaResolveStyle).
-    "getBorderColor", "setBorderColor"
+    "getBorderColor", "setBorderColor"   // bordure indépendante, lue par ktaResolveStyle
   ];
   ATTENDU_LC.forEach(function(m) {
     t("LegendCustomization." + m + "() exposee", typeof LC[m] === "function");
@@ -438,9 +385,7 @@ if (LC) {
     t("LegendCustomization." + c + " exposee", LC[c] !== undefined);
   });
 
-  // Le rendu par defaut d'une entree built-in doit etre DERIVE du style reel.
-  // Si listEntries rend des couleurs vides, les pastilles de l'editeur de
-  // legende deviennent grises sans que rien ne le signale.
+  // Le rendu d'une entrée built-in est DÉRIVÉ du style réel, sinon les pastilles virent au gris.
   const traces = LC.listEntries("traces") || [];
   const principal = traces.filter(function(e) { return e.key === "principal"; })[0];
   t("listEntries(traces) rend le built-in principal", !!principal);
@@ -455,9 +400,7 @@ if (LC) {
   t("pastille d'un front = un TRAIT, pas un polygone",
     !!front1 && front1.lineColor === "#f4c542" && !front1.fillColor);
 
-  // Boucle complete de l'override : on choisit une couleur, la pastille de
-  // l'editeur doit la refleter (elle passe par le resolveur), puis le retrait
-  // doit rendre EXACTEMENT la couleur d'origine.
+  // Override : la pastille suit (via le résolveur), le retrait rend EXACTEMENT la couleur d'origine.
   t("pas d'override au depart", LC.hasColorOverride("traces", "principal") === false);
   LC.setColor("traces", "principal", "#abcdef");
   t("setColor est enregistre", LC.getColor("traces", "principal") === "#abcdef");
@@ -470,10 +413,8 @@ if (LC) {
     LC.getColor("traces", "principal") === null &&
     (LC.listEntries("traces") || []).filter(function(e) { return e.key === "principal"; })[0].lineColor === "#00ff00");
 
-  // F22 — `hidden` au format TABLEAU (forme qui a reellement circule, cf.
-  // Array.isArray dans createConf) doit etre MIGRE en objet au chargement :
-  // avant, tous les lookups rendaient undefined et les masquages etaient
-  // perdus en silence.
+  // 🩸 `hidden` en TABLEAU (forme qui circule, cf createConf) est MIGRÉ en objet au chargement,
+  // sinon les lookups rendent undefined et les masquages se perdent en silence.
   LC.loadSessionState({ hidden: ["traces.principal"], labels: {}, customEntries: [] });
   t("hidden en tableau : le masquage est bien applique", LC.isVisible("traces", "principal") === false);
   t("hidden en tableau : les autres types restent visibles", LC.isVisible("traces", "chemin") === true);
@@ -481,7 +422,7 @@ if (LC) {
   t("hidden re-serialise en OBJET", !Array.isArray(snapH.hidden) && snapH.hidden["traces.principal"] === true);
   LC.loadSessionState(null);
 
-  // F21 — collision d'id plan/session : UNE seule ligne, variante session.
+  // Collision d'id plan/session : UNE seule ligne, variante session.
   LC.__win.PLAN_CONFIG = { customLegend: { labels: {}, hidden: {}, customEntries: [
     { id: "cust-dup", category: "traces", geometry: "polyline", label: "Version PLAN", lineColor: "#111111" },
     { id: "cust-planonly", category: "traces", geometry: "polyline", label: "Plan seul", lineColor: "#222222" }
@@ -497,12 +438,8 @@ if (LC) {
   t("l'entree plan sans collision reste listee", lst.some(function(e) { return e.id === "cust-planonly"; }));
   t("ordre historique conserve (plan d'abord)", lst[0].id === "cust-dup" && lst[1].id === "cust-planonly");
   LC.loadSessionState(null);
-  // RENOMMER / RECOLORER une entrée PLAN-LEVEL. Symétrique du
-  // tombstone ci-dessus, et resté en plan pendant tout ce temps :
-  // `updateCustomEntry` ne cherchait que dans la session et sortait sur
-  // `return false` sans rien dire. Les entrées d'un plan importé (un type par
-  // niveau, fabriqués par l'import SIG) étaient donc listées mais inertes.
-  // Vécu KARMA sur « +1 (historique) ».
+  // 🩸 Renommer / recolorer une entrée PLAN-LEVEL : `updateCustomEntry` doit la reprendre en
+  // session, sinon les types d'un plan importé (import SIG) sont listés mais inertes.
   (function () {
     LC.loadSessionState(null);
     LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: {}, hidden: {}, customEntries: [
@@ -547,12 +484,8 @@ if (LC) {
   LC.__win.PLAN_CONFIG = null;
   LC.loadPlanState();
 
-  // 🐛 05/08 — LA CARTE DOIT SE REPEINDRE, pas seulement l'état changer.
-  // Deux bugs successifs de la même famille : l'override livré sans
-  // repeinture, puis le RESET livré sans repeinture (retour des couleurs
-  // d'origine seulement au redémarrage). On vérifie donc que chaque mutation
-  // qui change un rendu déclenche bien les render* : setColor, resetSession,
-  // removeCustomEntry, updateCustomEntry.
+  // 🩸 La carte doit se REPEINDRE, pas seulement l'état changer : chaque mutation de rendu
+  // (setColor, resetSession, add/update/removeCustomEntry) déclenche les render*.
   (function() {
     let repeints = 0;
     ["renderRoads", "renderZones", "renderStructures"].forEach(function(fn) {
@@ -565,8 +498,6 @@ if (LC) {
     }
     _mutationRepeint("setColor", function() { LC.setColor("traces", "principal", "#0000aa"); });
     _mutationRepeint("resetSession (bug du restart)", function() { LC.resetSession(); });
-    // C1 (audit 06/08) : l'AJOUT repeint aussi — c'etait la seule mutation
-    // sans repeinture, source de l'intermittence « Lier colore, ➕ non ».
     _mutationRepeint("addCustomEntry (C1, l'oublie de la famille)", function() {
       LC.addCustomEntry({ category: "zones", label: "tmpC1", geometry: "polygon", fillColor: "#456789" });
     });
@@ -578,11 +509,8 @@ if (LC) {
     LC.loadSessionState(null);
   })();
 
-  // 💣 Corruption du stockage (checkup destructif M3, 05/08) : la session en
-  // localStorage, le plan-config et les calques importes sont des entrees NON
-  // FIABLES. Une entree `null` dans customEntries plantait listCustomEntries
-  // (TypeError) -> plus de legende NI de sidebar au boot. Ces cas verrouillent
-  // la regle : _normalize assainit TOUT, aucun lecteur ne crash sur du pourri.
+  // 🩸 Session, plan-config et calques importés sont NON FIABLES : une entrée `null` dans
+  // customEntries ferait tomber légende et sidebar au boot. _normalize assainit TOUT.
   t("customLegend = 42 ne casse rien", (function() {
     LC.loadSessionState(42);
     return LC.listCustomEntries("traces").length === 0 && LC.isVisible("traces", "principal");
@@ -611,9 +539,7 @@ if (LC) {
   t("retrait de la bordure -> plus d'override", LC.hasColorOverride("zones", "eau") === false);
   LC.loadSessionState(null);
 
-  // LIAISON PAR ID TECHNIQUE (le mur « Bas » de KARMA) :
-  // une entree peut porter l'id EXACT d'un type brut deja present dans les
-  // donnees ; le resolveur la sert comme n'importe quel custom.
+  // Liaison par id technique : une entrée peut porter l'id EXACT d'un type brut des données.
   const idBas = LC.addCustomEntry({ id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse", fillColor: "#334455" });
   t("addCustomEntry accepte un id explicite", idBas === "Bas");
   t("le resolveur sert le type brut lie", (function() {
@@ -633,10 +559,8 @@ if (LC) {
   delete LC.__win.getZones;
   LC.loadSessionState(null);
 
-  // C4 (audit 06/08) — LA LEGENDE PLAN-LEVEL ETAIT MORTE DEPUIS SON
-  // INTRODUCTION : loadPlanState lisait PLAN_CONFIG.customLegend (racine),
-  // tous les producteurs ecrivent plan.customLegend (sous-objet). Ces cas
-  // verrouillent la lecture des DEUX formes.
+  // 🩸 Les producteurs écrivent `plan.customLegend` (sous-objet) ; la racine reste lue en
+  // rétro-compat. Lire une seule forme rend la légende du plan muette.
   LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: { "traces.principal": "Nom plan" }, hidden: {}, customEntries: [
     { id: "cust-duplan", category: "zones", geometry: "polygon", label: "Du plan", fillColor: "#9a9a9a" }
   ] } } };
@@ -650,9 +574,8 @@ if (LC) {
   LC.__win.PLAN_CONFIG = null;
   LC.loadPlanState();
 
-  // Annexe 6 (audit 06/08) — suspendPersist coupe l'ecriture SessionPersist
-  // pendant le swap du Generateur (la legende du PLAN fuyait dans le slot de
-  // SESSION du plan charge).
+  // 🩸 suspendPersist coupe SessionPersist pendant le swap du Générateur, sinon la légende du PLAN
+  // fuit dans la session du plan chargé.
   (function() {
     let saves = 0;
     LC.__win.SessionPersist = { save: function() { saves++; } };
@@ -666,9 +589,8 @@ if (LC) {
     LC.loadSessionState(null);
   })();
 
-  // TOMBSTONES : une entrée PLAN-LEVEL supprimée par
-  // l'utilisateur ne doit PAS revenir du plan-config au prochain chargement
-  // (vécu KARMA : « Bas » embarqué dans un ZIP régénéré, insupprimable).
+  // 🩸 Tombstones : une entrée PLAN-LEVEL supprimée ne revient pas du plan-config au rechargement
+  // (sinon un type embarqué dans le ZIP est insupprimable).
   LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: {}, hidden: {}, customEntries: [
     { id: "cust-fantome", category: "zones", geometry: "polygon", label: "Fantôme", fillColor: "#808080" }
   ] } } };
@@ -690,7 +612,7 @@ if (LC) {
   LC.loadPlanState();
   LC.loadSessionState(null);
 
-  // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
+  // L'override VOYAGE avec la session, sinon il est perdu au reload.
   LC.setColor("zones", "eau", "#010203");
   const snap = LC.getSessionState();
   t("getSessionState embarque les couleurs", !!snap.colors && snap.colors["zones.eau"] === "#010203");

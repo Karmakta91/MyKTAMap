@@ -1,35 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📦 check-import-masse.js — garde-fou pré-commit BLOQUANT
-// =====================================================================
-// L'import multiple (v1.94.0) : N archives ajoutées à la liste des plans,
-// SANS qu'aucune ne s'ouvre.
-//
-// 🩸 CE QUI RÉGRESSE SANS BRUIT :
-//   1. Le module se remet à OUVRIR un plan. C'était le chemin d'origine et le
-//      seul qui existait : un appel à `startImportedPlan` et l'import de vingt
-//      archives ouvre vingt fois l'application.
-//   2. Le traitement passe en parallèle. Vingt archives de 30 Mo chargées
-//      ensemble font tomber un téléphone avant la cinquième — et ça ne se voit
-//      que sur l'appareil de quelqu'un d'autre.
-//   3. Une entrée survit à un stockage raté : la liste montre un plan que rien
-//      ne peut ouvrir, et l'utilisateur ne sait pas lequel.
-//   4. Le défaut sur les doublons bascule vers « remplacer » : un import écrase
-//      alors des plans existants sans que personne l'ait demandé.
-//   5. La marge de quota disparaît : on remplit jusqu'au refus du navigateur,
-//      donc on s'arrête au milieu au lieu de prévenir avant.
-//   6. Le ZIP est rangé mais l'entrée ne le DIT pas (v1.94.0, trouvé le
-//      15/09 : KARMA « pas besoin de sélectionner le zip si le plan a été
-//      ajouté à la liste »). Sans `storedBlob`, homeLoader redemande le
-//      fichier et la copie en IndexedDB est orpheline.
-//   7. La « référence disque » revient (`saveHandle`, `showOpenFilePicker`).
-//      Retirée le 15/09 avec le bouton 🔐 de l'accueil : à l'ouverture la
-//      copie passe avant elle, et elle ne sert même pas de secours. Deux
-//      mécanismes pour un seul effet.
-//
-// ON EXÉCUTE les deux décisions, extraites du fichier réel (leçon v1.90.15).
-// Usage : node scripts/check-import-masse.js [racine]
+// check-import-masse.js — BLOQUANT (pré-commit) : import multiple (`js/importMasse.js`), N archives
+// ajoutées à la liste des plans SANS qu'aucune ne s'ouvre. Les décisions sont EXÉCUTÉES, extraites du
+// fichier réel. Usage : node scripts/check-import-masse.js [racine]
+// 🩸 Ce qui régresse sans bruit :
+//   1. ouvrir un plan (`startImportedPlan`) : vingt archives ouvriraient vingt fois l'application ;
+//   2. traiter en parallèle : vingt archives de 30 Mo font tomber un téléphone ;
+//   3. une entrée qui survit à un stockage raté : plan inouvrable dans la liste ;
+//   4. un défaut « remplacer » sur les doublons : un import écraserait sans qu'on le demande ;
+//   5. plus de marge de quota : on s'arrête au milieu au lieu de prévenir avant ;
+//   6. ZIP rangé sans `storedBlob` sur l'entrée : homeLoader redemande le fichier, la copie est orpheline ;
+//   7. retour de la « référence disque » (`saveHandle`, `showOpenFilePicker`) : la copie suffit, un seul
+//      mécanisme.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -44,7 +27,7 @@ const IDX  = lire("index.html");
 const HOME = lire("js/homeLoader.js");
 const SW   = lire("sw.js");
 
-// ---------- 1. La décision sur les doublons, exécutée ----------
+// ── 1. Décision sur les doublons, exécutée ──────
 {
   const i = M.indexOf("function _deciderDoublon(");
   const j = M.indexOf("\n  }\n", i);
@@ -79,7 +62,7 @@ const SW   = lire("sw.js");
   }
 }
 
-// ---------- 2. La décision sur la place, exécutée ----------
+// ── 2. Décision sur la place, exécutée ──────
 {
   const i = M.indexOf("function _verdictPlace(");
   const j = M.indexOf("\n  }\n", i);
@@ -108,7 +91,7 @@ const SW   = lire("sw.js");
   }
 }
 
-// ---------- 3. Le module n'ouvre JAMAIS de plan ----------
+// ── 3. Le module n'ouvre JAMAIS de plan ──────
 {
   const sansCommentaires = M.split("\n").filter(function (l) { return !/^\s*\/\//.test(l); }).join("\n");
   t("🩸 aucun appel à startImportedPlan (ce serait ouvrir le plan)", !/startImportedPlan\s*\(/.test(sansCommentaires));
@@ -119,8 +102,7 @@ const SW   = lire("sw.js");
   t("🩸 aucune référence disque : ni saveHandle ni showOpenFilePicker (un seul mécanisme, la copie)",
     !/saveHandle\s*\(/.test(sansCommentaires) && !/showOpenFilePicker/.test(sansCommentaires));
   t("le contrôle de blocage est appliqué par fichier", /PlanDenylist[\s\S]{0,120}isPlanDenied\(f\)/.test(M));
-  // 🩸 Chromium range un File PAR RÉFÉRENCE au disque : sans
-  // copie réelle, les plans importés meurent dès que leurs ZIP bougent.
+  // 🩸 Chromium range un File PAR RÉFÉRENCE au disque : sans copie réelle, le plan meurt si le ZIP bouge.
   const PR = lire("js/planRegistry.js");
   t("🩸 PlanRegistry.saveBlob range une COPIE (File → arrayBuffer → Blob), jamais une référence disque",
     /async function saveBlob\([\s\S]{0,1600}instanceof File[\s\S]{0,200}await blob\.arrayBuffer\(\)/.test(PR));
@@ -128,11 +110,10 @@ const SW   = lire("sw.js");
     /getBlob\(plan\.id\);[\s\S]{0,900}blob\.slice\(0, 4\)\.arrayBuffer\(\)[\s\S]{0,400}afficherModalePlanIntrouvable\(plan, "local-blob"\)/.test(HOME));
 }
 
-// ---------- 4. Un fichier à la fois, et rien de mort dans la liste ----------
+// ── 4. Un fichier à la fois, rien de mort dans la liste ──────
 {
-  // 🩸 Repère NON AMBIGU : « window.ImportMasse = { » apparaît aussi dans le
-  // commentaire d'en-tête qui documente l'API, DONC avant la fonction — la
-  // tranche sortait vide et cinq contrôles passaient au vert sans rien lire.
+  // 🩸 Repère NON AMBIGU : « window.ImportMasse = { » apparaît aussi dans l'en-tête du module ; tranche vide
+  // = contrôles verts sans rien lire.
   const imp = M.slice(M.indexOf("async function importer("), M.indexOf("\n  window.ImportMasse = {"));
   t("importer() est extractible", imp.length > 0);
   t("🩸 les fichiers sont traités UN PAR UN (aucun Promise.all sur le lot)",
@@ -147,9 +128,7 @@ const SW   = lire("sw.js");
     !/addOrUpdate\(/.test(ana) && !/saveBlob\(/.test(ana) && !/saveHandle\(/.test(ana));
 }
 
-// ---------- 6. Le ZIP rangé est RETROUVÉ par la liste (importer() exécuté) ----------
-// On EXÉCUTE importer() avec un registre factice : c'est la seule preuve que
-// le drapeau est posé sur l'entrée, et seulement après un rangement réussi.
+// ── 6. Le ZIP rangé est RETROUVÉ par la liste (importer() exécuté, registre factice) ──────
 async function section6() {
   const i = M.indexOf("async function importer(");
   const j = M.indexOf("\n  }\n", i);
@@ -202,35 +181,28 @@ async function section6() {
   t("sans préchargement, le résumé ne parle pas de copie", /impmasse\.resume\.poidsSansCopie/.test(M));
 }
 
-// ---------- 5. Après l'import, on reste à l'accueil ----------
+// ── 5. Après l'import, on reste à l'accueil ──────
 {
   const lan = M.slice(M.indexOf("async function _lancer()"), M.indexOf("function ouvrir()"));
   t("🩸 la liste des plans est rafraîchie (sinon l'import a l'air de n'avoir rien fait)",
     /rafraichirListePlans|afficherLoader/.test(lan));
   t("la vue OSM de l'accueil est prévenue (les nouveaux plans géoréférencés y entrent)",
     /OsmHomePreview[\s\S]{0,80}refresh\(\)/.test(lan));
-  // 🩸 KARMA, 15/09/2026 : « ce bouton ne fonctionne pas ». Le bouton de fin
-  // restait DÉSACTIVÉ avec le libellé « Terminé », tout en gardant l'aspect
-  // plein d'un bouton actif. Un bouton qui invite à cliquer doit agir.
+  // 🩸 Le bouton de fin garde l'aspect d'un bouton actif : il doit agir, pas rester désactivé.
   t("🩸 le bouton de fin d'import est RÉACTIVÉ (il ne reste pas mort à l'écran)",
     /btn\.disabled = false;/.test(lan) && /dataset\.fini = "1"/.test(lan));
   t("🩸 …et il FAIT quelque chose : il ferme, la liste étant déjà rafraîchie",
     /dataset\.fini === "1"\) \{ _fermer\(\); return; \}/.test(M));
   t("son libellé dit l'action, pas seulement l'état",
     /impmasse\.btn\.voir/.test(M) && /impmasse\.btn\.fermerRien/.test(M));
-  // « Fermer » et « Voir mes plans » faisaient la même chose.
   t("🩸 une fois l'import fini, UNE seule sortie en pied : le « Fermer » secondaire disparaît",
     /_zone\("kta-impm-fermer"\)[\s\S]{0,80}style\.display = "none"/.test(lan));
 }
 
-// ---------- 6. Le bouton, le câblage, le chargement ----------
+// ── 7. Bouton, câblage, chargement ──────
 {
   t("📦 le bouton existe au HOME", IDX.indexOf('id="loaderImportMasseBtn"') >= 0);
-  // KARMA a déplacé le bouton : « mets ce bouton dans OUTILS
-  // (car pas forcément utilisé bcp) ». Il était au-dessus de l'accès permanent,
-  // donc entre la zone de dépôt et « Charger ce plan » — deux gestes
-  // quotidiens encadrant un outil occasionnel. La règle CHANGE avec la
-  // décision : il doit vivre dans la section Outils, pas ailleurs.
+  // Outil occasionnel : il vit dans la section Outils, pas entre deux gestes quotidiens (décision produit).
   t("🩸 …dans la section 🧰 Outils, avec les outils occasionnels",
     (function () {
       const iOutils = IDX.indexOf('data-i18n="home.tools.title"');
@@ -247,7 +219,7 @@ async function section6() {
   t("il est précaché (l'app reste installable hors ligne)", SW.indexOf('"./js/importMasse.js"') >= 0);
 }
 
-// ---------- 7. Les textes ----------
+// ── 8. Textes ──────
 {
   const CLES = ["impmasse.titre", "impmasse.intro", "impmasse.btn.ouvrir", "impmasse.btn.choisir",
                 "impmasse.btn.lancer", "impmasse.politique.titre", "impmasse.politique.ignorer",
@@ -260,8 +232,7 @@ async function section6() {
     t("🌍 " + l + " : les textes de l'import multiple" + (manque.length ? " — manquants : " + manque.join(", ") : ""),
       manque.length === 0);
   });
-  // Toute clé d'erreur levée par le module doit exister : un refus qui affiche
-  // sa clé brute ne dit rien à personne.
+  // Toute clé d'erreur levée doit avoir un texte (une clé brute ne dit rien).
   const levees = (M.match(/new Error\("(impmasse\.err\.[a-zA-Z]+)"\)/g) || [])
     .map(function (s) { return (s.match(/"([^"]+)"/) || [])[1]; });
   const fr = JSON.parse(lire("lang/fr.json"));

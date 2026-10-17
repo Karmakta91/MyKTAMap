@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🔬 repro-import.js — REPRO du bug KARMA « import de profil complet
-// bloqué sur Import en cours » (v1.79.0). Jetable une fois le bug réglé.
-// Flux : boot app → seed un plan + blob IDB → export conteneur via
-// buildProfileArchive → ouvrirImportModale(File) → clic Importer →
-// observe la progression du bouton + logs, timeout 30 s.
+// repro-import.js — reproduction manuelle : l'import d'un profil complet ne doit pas rester bloqué
+// sur « Import en cours ». Flux : seed d'un plan + blob IDB → buildProfileArchive → registre vidé
+// (appareil neuf) → ouvrirImportModale(File) → Importer → progression du bouton, timeout 30 s.
 // =====================================================================
 "use strict";
 
@@ -67,9 +65,7 @@ const LS_PREGATES = {
       const arch = await window.ProfileExportImport.buildProfileArchive({ include: {}, planIds: ["repro_plan"] });
       log.push("buildProfileArchive: nb=" + arch.nb + " sautes=" + arch.sautes.length + " taille=" + arch.blob.size);
 
-      // 3. Purge le blob + le plan pour simuler un appareil neuf (mode simple :
-      //    on retire juste le blob, le registre garde l'entrée -> fusion la garde ?
-      //    Non : on VIDE aussi le registre pour le vrai scénario « appareil neuf ».)
+      // 3. Plan ET blob retirés : scénario « appareil neuf »
       window.PlanRegistry.remove("repro_plan");
       log.push("plan + blob purgés");
 
@@ -86,11 +82,9 @@ const LS_PREGATES = {
   resultat.log.forEach(function (l) { console.log("  • " + l); });
   if (!resultat.ok) { console.log("❌ échec avant la modale"); process.exit(1); }
 
-  // La modale est ouverte — état de la ligne archives ?
   const ligneArch = await page.locator("#kta-profile-import-archives").count();
   console.log("— case archives présente : " + (ligneArch ? "OUI" : "NON ← problème"));
 
-  // Clic Importer et observation du bouton pendant 30 s
   await page.click("#kta-profile-import-go");
   console.log("— clic Importer, observation…");
   const debut = Date.now();
@@ -105,7 +99,6 @@ const LS_PREGATES = {
   }
   if (Date.now() - debut >= 30000) console.log("❌ TIMEOUT 30 s — le blocage est reproduit");
 
-  // Vérif finale : blob restauré ?
   const verif = await page.evaluate(async function () {
     const p = window.PlanRegistry.findById("repro_plan");
     const b = await window.PlanRegistry.getBlob("repro_plan");

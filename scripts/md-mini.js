@@ -6,15 +6,12 @@
 // =====================================================================
 // md-mini.js — Markdown → HTML (sous-ensemble GitHub), sans dépendance
 // =====================================================================
-// Copie autonome du moteur du site de documentation (même auteur) : le dépôt community n'en dépend pas.
-// Sert à scripts/audit-html.js, qui génère les pages d'audit réseau depuis leurs .md.
-// Couvre : titres (ancres façon GitHub), paragraphes, listes imbriquées (puces, numérotées, cases à cocher),
-// citations, blocs de code, tableaux (alignement), règles, liens, images, gras / italique / barré,
-// code en ligne, échappements, autoliens.
-// SÉCURITÉ : tout HTML brut du Markdown est ÉCHAPPÉ (sauf <br>, <kbd>, <sub>, <sup>), les commentaires
-// HTML sont retirés, et chaque lien passe par ctx.lien() qui refuse javascript:/data:/vbscript:.
-// DIRECTIVE (invisible sur GitHub) : une ligne `<!-- kta:classe nom1 nom2 -->` pose ces classes sur le bloc
-// qui la suit (paragraphe, citation, liste, tableau…). Noms limités à [a-z0-9-].
+// Copie autonome du moteur du site de documentation (le dépôt community n'en dépend pas), utilisée par
+// scripts/audit-html.js. Couvre titres (ancres GitHub), listes imbriquées et cases, citations, code,
+// tableaux alignés, liens, images, emphase, échappements, autoliens.
+// 🔒 Tout HTML brut est ÉCHAPPÉ (sauf <br>, <kbd>, <sub>, <sup>), les commentaires HTML retirés, et chaque
+// lien passe par ctx.lien() qui refuse javascript:/data:/vbscript:.
+// ⚠️ Directive : une ligne `<!-- kta:classe nom1 nom2 -->` pose ces classes ([a-z0-9-]) sur le bloc suivant.
 "use strict";
 
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -82,7 +79,6 @@ Rendu.prototype.blocs = function (lignes, serre) {
     const l = lignes[i];
     if (blanc(l)) { i++; continue; }
     const t = l.trim();
-    // Directive : classes posées sur le bloc suivant
     const dir = /^<!--\s*kta:classe\s+([a-z0-9 -]+?)\s*-->$/.exec(t);
     if (dir) { appliquer(); classe = dir[1].split(/\s+/).join(" "); classeIdx = out.length; i++; continue; }
     appliquer();
@@ -139,15 +135,14 @@ Rendu.prototype.blocs = function (lignes, serre) {
     }
     m = RE.liste.exec(l);
     if (m) { i = this.liste(lignes, i, out); continue; }
-    // Paragraphe
     const para = [];
     while (i < n && !blanc(lignes[i]) && (para.length === 0 || !commenceBloc(lignes[i], lignes[i + 1]))) {
       if (para.length > 0 && RE.hr.test(lignes[i])) break;
       para.push(lignes[i]); i++;
     }
     if (/^\s*<[a-zA-Z]/.test(para[0])) this.alertes.push("HTML brut échappé : " + para[0].trim().slice(0, 60));
-    // Le paragraphe est rendu D'UN BLOC (et non ligne par ligne) : un gras, un lien ou un code coupé par un
-    // retour à la ligne du .md doit rester un gras, un lien, un code. Saut dur : deux espaces ou « \ » en fin.
+    // 🩸 Rendu D'UN BLOC : un gras, un lien ou un code coupé par un retour à la ligne du .md reste entier.
+    // Saut dur : deux espaces ou « \ » en fin de ligne.
     const html = this.enLigne(para.map((p, k) => {
       const dur = k < para.length - 1 && (/ {2,}$/.test(p) || /\\$/.test(p));
       return p.trim().replace(/\\$/, "") + (dur ? "<br>" : "");
@@ -251,16 +246,14 @@ Rendu.prototype.lien = function (url, image) {
 Rendu.prototype.enLigne = function (s) {
   const ph = [];
   const mettre = (h) => "\u0001" + (ph.push(h) - 1) + "\u0002";
+  // ⚠️ L'ordre des passes compte : ce qui est mis de côté (placeholder) n'est plus échappé ni retouché.
   // 1. code en ligne
   s = s.replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, (_, __, c) =>
     mettre("<code>" + esc(c.replace(/^ (.*) $/, "$1")) + "</code>"));
-  // 2. commentaires HTML (déjà traités en bloc ; ici les restes en ligne)
+  // 2. commentaires HTML en ligne · 3. échappements Markdown · 4. autoliens · 5. HTML en ligne autorisé
   s = s.replace(/<!--[\s\S]*?-->/g, "");
-  // 3. échappements Markdown
   s = s.replace(/\\([\\`*_{}[\]()#+\-.!|<>~])/g, (_, c) => mettre(esc(c)));
-  // 4. autoliens <https://…>
   s = s.replace(/<(https?:\/\/[^\s>]+)>/g, (_, u) => mettre(this.baliseLien(u, esc(u))));
-  // 5. HTML en ligne autorisé
   s = s.replace(/<(\/?)(br|kbd|sub|sup)\s*\/?>/gi, (_, sl, t) => mettre("<" + sl + t.toLowerCase() + ">"));
   // 6. tout le reste est échappé
   s = esc(s);

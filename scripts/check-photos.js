@@ -1,28 +1,21 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 📸 check-photos.js — garde-fou pré-commit BLOQUANT (12/10/2026)
+// check-photos.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// Règle produit (KARMA, 10/10/2026) : une photo n'est JAMAIS effacée sans
-// confirmation, et un point garde 5 photos au plus.
-//
-// 🩸 LES CAS RÉELS :
-//   1. Réimporter une session ZIP effaçait TOUTES les photos du plan
-//      (`deletePhotosForPlan` puis restauration du fichier) — y compris les
-//      photos « sans point » gardées pour récupération. Désormais : FUSION
-//      (`restorePhoto(…, { siAbsente: true })`), rien d'existant n'est touché.
-//   2. Le rattachement depuis 📸 Mes photos ne vérifiait pas la limite de 5.
-//   3. La fiche du point (nom, position) ne voyageait pas dans les ZIP de
-//      session : une photo dont le point avait disparu n'était plus
-//      récupérable (♻️ Recréer) après un réimport.
-//
-// COMMENT : le VRAI js/photos.js est chargé dans un `vm` sur une fausse
-// IndexedDB (Map en mémoire, requêtes asynchrones, transaction qui se ferme
-// quand plus rien n'est en attente). On exécute restorePhoto et
-// placesPourPoint ; le câblage de l'import et de la galerie est vérifié dans
-// le source.
-// Falsification : retirer `siAbsente` de l'import, ou la garde de la galerie,
-// ou écrire la photo existante dans restorePhoto → rouge.
+// Une photo n'est JAMAIS effacée sans confirmation, et un point garde 5 photos
+// au plus (décision produit).
+// 🩸 Ce qui casse en silence :
+//   1. réimport de session qui purge les photos du plan (dont les « sans
+//      point » gardées pour récupération) : il doit FUSIONNER
+//      (`restorePhoto(…, { siAbsente: true })`) ;
+//   2. rattachement depuis 📸 Mes photos sans la limite de 5 ;
+//   3. fiche du point absente des ZIP de session : une photo orpheline n'est
+//      plus récupérable (♻️ Recréer) après réimport ;
+//   4. analyse depuis l'accueil qui charge toute l'archive en RAM.
+// Le vrai js/photos.js tourne dans un `vm` sur une fausse IndexedDB (Map,
+// requêtes asynchrones, transaction close quand rien n'attend) ; le câblage de
+// l'import et de la galerie est vérifié dans le source.
 // =====================================================================
 "use strict";
 
@@ -35,7 +28,7 @@ const t = (n, c, info) => {
   if (!c) { ko++; if (info !== undefined) console.log("   ↳", JSON.stringify(info)); }
 };
 
-// ───────── Fausse IndexedDB (le strict nécessaire de photos.js) ─────────
+// ── Fausse IndexedDB (le strict nécessaire de photos.js) ─────────────
 function fausseIDB() {
   const lignes = new Map();
   const cle = { by_plan: (r) => JSON.stringify(r.planId), by_plan_point: (r) => JSON.stringify([r.planId, r.pointId]) };
@@ -137,7 +130,7 @@ async function photos() {
   // ── 2. Limite de 5 au rattachement ──
   idb.lignes.clear();
   for (let i = 1; i <= 4; i++) idb.lignes.set("q" + i, rec("q" + i, "pt_quatre"));
-  idb.lignes.set("n1", rec("n1", "Salle"));   // rangée sous le NOM (avant la v2.3.0)
+  idb.lignes.set("n1", rec("n1", "Salle"));   // rangée sous le NOM (ancien format)
   for (let i = 1; i <= 6; i++) idb.lignes.set("v" + i, rec("v" + i, "pt_six"));
   const a = await P.placesPourPoint("planA", { uid: "pt_quatre" }, ["x1"]);
   const b = await P.placesPourPoint("planA", { uid: "pt_quatre" }, ["x1", "x2"]);
@@ -178,10 +171,9 @@ function cablage() {
     ["fr", "en", "es"].every((l) => !!JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"))["photosgal.limite.refus"]));
 }
 
-// ───────── 3. La fiche du point voyage dans les ZIP de session ─────────
-// Écriture : un seul helper pour les 3 index (Full, Avancé, Conversion) ; la
-// collecte emporte la fiche. Relecture : l'import la lit et la passe à
-// restorePhoto. Un ZIP sans fiche (d'avant le 12/10/2026) se relit comme avant.
+// ── 3. La fiche du point voyage dans les ZIP de session ──────────────
+// Un seul helper pour les 3 index (Full, Avancé, Conversion) ; l'import relit
+// la fiche et la passe à restorePhoto. Un ZIP sans fiche se relit comme avant.
 function fiche() {
   const SE = fs.readFileSync("js/sessionExporter.js", "utf8");
   const i = SE.indexOf("function _entreeIndexPhoto(");
@@ -213,11 +205,10 @@ function fiche() {
   t("🧾 …et la passe à restorePhoto (validée là-bas par _fiche)", /fiche:\s*p\.fiche[\s\S]{0,120}siAbsente: true/.test(IMP));
 }
 
-// ───────── 4. Analyse depuis l'accueil : l'archive n'est PAS chargée en entier ─────────
-// 🩸 JSZip.loadAsync(blob) lit tout le Blob en mémoire : un plan de 200 Mo coûtait
-// 200 Mo de RAM pour lire quelques Ko de points. `_lecteurZipPartiel` (extrait du
-// vrai photosGalerie.js) ne lit que le répertoire central et les entrées demandées.
-// Mesure : on compte les octets réellement lus par Blob.slice.
+// ── 4. Analyse depuis l'accueil : l'archive n'est PAS chargée en entier ──
+// 🩸 JSZip.loadAsync(blob) lit tout le Blob en mémoire (200 Mo de RAM pour
+// quelques Ko de points). `_lecteurZipPartiel` ne lit que le répertoire central
+// et les entrées demandées ; on compte les octets lus par Blob.slice.
 async function archivePartielle() {
   const GAL = fs.readFileSync("js/photosGalerie.js", "utf8");
   const i = GAL.indexOf("async function _lecteurZipPartiel(");
