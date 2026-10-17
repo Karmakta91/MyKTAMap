@@ -5,54 +5,19 @@
  */
 
 // =========================
-// INTERFACE IMPORT / EXPORT SESSION — JSON + GPX
+// INTERFACE IMPORT / EXPORT SESSION — JSON, ZIP, GPX
 // =========================
-// (P3 Lot 5 — découpe interface.js) : module extrait de
-// js/interface.js pour réduire le
-// volume du fichier principal.
-//
-// Aucun changement de comportement runtime. Les 4 fonctions exposées
-// via `window.*` sont strictement identiques à v1.30.1.
-//
-// 📋 API publique :
-//   - window.telechargerSessionJSON()
-//        → Export de la session courante (editor, roads, zones, structures,
-//          measure, etc.) en fichier JSON téléchargeable.
-//   - window.importerSessionJSON(file)
-//        → Import depuis un fichier JSON. Validation du format + restore
-//          via les setters globaux.
-//   - window.ouvrirImportChoix()
-//        → Ouvre directement le sélecteur de fichier (.json/.zip/.gpx) ;
-//          window.ouvrirImportFichier(file) route selon l'extension.
-//   - window.ouvrirImportSession([file]) / window.ouvrirImportGpx([file])
-//        → Modales d'import (aperçu + validation), fichier pré-chargé
-//          si fourni.
-//
-// 🔌 Dépendances externes (toutes via window.* / global declarations) :
-//   - window.getRoads / setRoads / resetRoads
-//   - window.getZones / setZones / resetZones
-//   - window.getEditorPoints / setEditorPoints
-//   - window.getStructures / setStructures / resetStructures
-//   - window.getMeasurePoints / setMeasurePoints
-//   - window.getMeasurePointsSurface / setMeasurePointsSurface
-//   - window.getTrackingPath / setTrackingPath
-//   - window.GpxIO                       [gpxIO.js]
-//   - window.KmzImport                   [kmzImport.js]
-//   - window.MyKTAMapPhotos              [photos.js]
-//
-// 📍 Ordre de chargement (cf index.html) :
-//   - Doit charger APRÈS interface.js (cohérence ordre découpe).
-//     L'ordre est cosmétique car les fonctions sont appelées au runtime
-//     (clic user via sidebar).
+// Expose : telechargerSessionJSON() (repli si sessionExporter.js manque) · importerSessionJSON(file) ·
+//   ouvrirImportChoix() (sélecteur unique .json/.zip/.gpx, routé par ouvrirImportFichier(file) selon
+//   l'extension) · ouvrirImportSession([file]) / ouvrirImportGpx([file]) (aperçu + validation).
+// Dépend de : get/set/reset des familles (Roads, Zones, EditorPoints, Structures, Measure, Tracking), GpxIO,
+//   KmzImport, KmzExport (calage), MyKTAMapPhotos, LegendCustomization, InterPlanLinks, ModeHistoire, KtaUid.
+// ⚠️ Un import de SESSION REMPLACE la session du plan (snapshot sessionBackups avant) ; un import GPX AJOUTE.
+// Doc : docs/architecture/session-data.md · docs/ETUDE_UID.md
 
-// =========================
-// EXPORT SESSION JSON
-// =========================
-// Import par REMPLACEMENT d'une session (ETUDE_UID décision 7) :
-// les objets d'un fichier ancien reçoivent un uid (repli updatedAt = date
-// d'export du fichier), un uid en double dans le fichier est régénéré, et les
-// traces de suppression du fichier REMPLACENT celles du plan (c'est un
-// remplacement : l'état importé devient l'état du plan).
+// ── Export session JSON ──────────
+// Import par REMPLACEMENT : les objets d'un ancien fichier reçoivent un uid (updatedAt de repli = date
+// d'export), un uid en double est régénéré, et les traces de suppression du fichier REMPLACENT celles du plan.
 function _preparerIdentitesImport(d) {
   if (!window.KtaUid || !d || typeof d !== "object") return;
   const repli = Date.parse(d.date_export || d.exported_at) || Date.now();
@@ -65,8 +30,7 @@ function _preparerIdentitesImport(d) {
 }
 
 function telechargerSessionJSON() {
-  // Fonction conservée comme fallback si sessionExporter.js n'est pas chargé.
-  // Format Full (sans mesure, sans tracker) — voir sessionExporter.js pour la modale complète.
+  // Repli si sessionExporter.js n'est pas chargé : format Full sans mesure ni tracker.
   const data = {
     type: "devmap-session",
     version: "1.0",
@@ -74,11 +38,9 @@ function telechargerSessionJSON() {
     editorPoints: window.getEditorPoints ? window.getEditorPoints() : [],
     roads:        window.getRoads        ? window.getRoads()        : [],
     zones:        window.getZones        ? window.getZones()        : [],
-    // structures aussi dans le fallback JSON. Reste
-    // rétro-compatible — les anciens imports sans 'structures' tomberont
-    // sur l'array vide via `dataParsee.structures || []` côté import.
+    // Fichiers sans 'structures' → `|| []` à l'import.
     structures:   window.getStructures   ? window.getStructures()   : [],
-    // traces de suppression (un réimport ne ressuscite rien)
+    // Traces de suppression : un réimport ne ressuscite rien.
     tombstones:   window.KtaUid ? window.KtaUid.getTombstones() : []
   };
 
@@ -94,9 +56,7 @@ function telechargerSessionJSON() {
   URL.revokeObjectURL(url);
 }
 
-// =========================
-// IMPORT SESSION JSON
-// =========================
+// ── Import session JSON ──────────
 function importerSessionJSON(file) {
   if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const reader = new FileReader();
@@ -117,18 +77,17 @@ function importerSessionJSON(file) {
       if (window.setMeasurePoints) {
         window.setMeasurePoints(data.measure && data.measure.points ? data.measure.points : []);
       }
-      // restore aussi le polygone surface si présent dans le fichier importé
       if (window.setMeasurePointsSurface) {
         window.setMeasurePointsSurface(data.measureSurface && data.measureSurface.points ? data.measureSurface.points : []);
       }
       if (window.resetRoads) window.resetRoads();
       if (window.setRoads) window.setRoads(data.roads || []);
-      // liaisons inter-plan (fusion par id dans le registre)
+      // Liaisons inter-plan (fusion par id dans le registre).
       if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
         window.InterPlanLinks.importLinks(data.interPlanLinks || []);
       }
 
-      // Fin d'import : rien ne le signale autrement (points hors vue) → toast warn, visible par défaut.
+      // Rien d'autre ne signale la fin (points hors vue) : toast warn, visible par défaut.
       const msgFin = window.I18n.t("impexp.importDone");
       if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgFin, "warn", { important: true });
       else window.ktaAlerte(msgFin);
@@ -141,14 +100,10 @@ function importerSessionJSON(file) {
   reader.readAsText(file);
 }
 
-// =========================
-// 📤 IMPORT GPX — v1.14.0
-// =========================
-// Modale d'import d'un fichier GPX externe (TopoDroid, OsmAnd, Avenza,
-// etc.). Réutilise la calibration KMZ existante (window.KmzExport
-// .getCalibration / gpsToPlan) pour transformer les coords WGS84 → plan.
-// Flow : sélection fichier → preview (X points / Y tracés) → confirm
-// → ajout aux annotations session avec snapshot HistoryManager (undo OK).
+// ── Import GPX ──────────
+// Fichier GPX externe (TopoDroid, OsmAnd, Avenza…) converti WGS84 → plan par le calage KMZ
+// (KmzExport.getCalibration / gpsToPlan). Aperçu (X points / Y tracés) → ajout aux annotations de session
+// avec snapshot HistoryManager (Ctrl+Z possible).
 window.ouvrirImportGpx = function(fichierInitial) {
   if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-gpx-modal");
@@ -202,12 +157,10 @@ window.ouvrirImportGpx = function(fichierInitial) {
 
   if (!calibre) return;
 
-  // File picker handler
   let _pendingPreview = null;
   const fileInput = document.getElementById("kta-import-gpx-file");
   const previewEl = document.getElementById("kta-import-gpx-preview");
 
-  // Click sur le label déclenche le file picker
   const labelEl = fileInput.closest("label");
   if (labelEl) {
     labelEl.addEventListener("click", function(e) {
@@ -278,15 +231,10 @@ window.ouvrirImportGpx = function(fichierInitial) {
   }
 };
 
-// =========================
-// 📥 IMPORT — un seul sélecteur, l'extension choisit le parcours
-// =========================
-// Avant (v1.14.5 → v1.98.25) : une modale à 2 cartes (Session / GPX), puis
-// une 2e modale avec son propre sélecteur — 3 clics, et rien ne disait que
-// l'une REMPLACE la session quand l'autre y AJOUTE. Désormais :
+// ── Import : un seul sélecteur, l'extension choisit le parcours ──────────
 //   .json / .zip → ouvrirImportSession(file) : aperçu + avertissement « remplace »
 //   .gpx         → ouvrirImportGpx(file)     : aperçu + « ajoute, Ctrl+Z »
-// Le nom ouvrirImportChoix est gardé (appelé par le menu ⬇️ de interface.js).
+// Nom ouvrirImportChoix gardé : appelé par le menu ⬇️ d'interface.js.
 window.ouvrirImportChoix = function() {
   if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const ancien = document.getElementById("kta-import-fichier");
@@ -317,9 +265,7 @@ window.ouvrirImportFichier = function(file) {
   }
 };
 
-// =========================
-// IMPORT SESSION — modale plein écran
-// =========================
+// ── Import session : modale plein écran ──────────
 function ouvrirImportSession(fichierInitial) {
   if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-modal");
@@ -393,12 +339,9 @@ function ouvrirImportSession(fichierInitial) {
     erreurEl.style.display = msg ? "block" : "none";
   }
 
-  // ZIP avec photos (session.json + photos/) en plus du JSON pur.
-  // _pendingPhotosToRestore stocke les photos extraites du ZIP entre la parse
-  // et la validation. Format : [{id, pointId, mime, size, blob, fiche}, ...]
+  // Photos extraites du ZIP entre l'analyse et la validation : [{id, pointId, mime, size, blob, fiche}].
   let _pendingPhotosToRestore = null;
-  // PDF Mode Histoire embarqué dans le ZIP (chemin
-  // `mode-histoire/<name>`). Format : { blob, name } ou null si absent.
+  // Documents du Mode Histoire du ZIP (`mode-histoire/<name>`).
   let _pendingHistoirePdfToRestore = null;
 
   function _renderApercu(data) {
@@ -406,16 +349,12 @@ function ouvrirImportSession(fichierInitial) {
     const nbMesure     = (data.measure && data.measure.points) ? data.measure.points.length : 0;
     const nbTraces     = (data.roads || []).length;
     const nbZones      = (data.zones || []).length;
-    // structures dans l'aperçu d'import session
-    // (sinon KARMA voyait l'import accepté sans confirmation visuelle
-    // que les structures étaient bien dans le fichier).
+    // Structures comptées dans l'aperçu (confirmation visible qu'elles sont dans le fichier).
     const nbStructures = (data.structures || []).length;
-    // photos
     const nbPhotos     = (_pendingPhotosToRestore && _pendingPhotosToRestore.length) || 0;
     const photosBadge  = nbPhotos > 0
       ? '<span>' + window.I18n.t("impexp.session.apercuPhotos", { n: nbPhotos }) + '</span>'
       : '';
-    // tracker (path/timeline) si présent dans la session
     const _trk     = data.tracker || null;
     const trkPathN = _trk && Array.isArray(_trk.path) ? _trk.path.length : 0;
     const trkTimeN = _trk && Array.isArray(_trk.timeline) ? _trk.timeline.length : 0;
@@ -423,7 +362,6 @@ function ouvrirImportSession(fichierInitial) {
       ? '<span>' + window.I18n.t("impexp.session.apercuTracker", { pts: trkPathN, evts: trkTimeN }) + '</span>'
       : '';
 
-    // Mode Histoire (note libre + PDF de session)
     const hasNoteLibre = typeof data.noteLibre === "string" && data.noteLibre.length > 0;
     const hasHistPdf   = !!(_pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.blob);
     let histoireBadge = "";
@@ -460,9 +398,7 @@ function ouvrirImportSession(fichierInitial) {
     return data;
   }
 
-  // Parse un ZIP de session (v1.9.3-B1d) : extrait session.json + photos/
-  // Retourne Promise<data> où data est l'objet session parsé + remplit le
-  // tableau _pendingPhotosToRestore en variable de fermeture.
+  // ZIP de session : session.json + photos/ (+ mode-histoire/). Promise<data> ; remplit _pendingPhotosToRestore.
   function _parseSessionZip(file) {
     if (typeof JSZip === "undefined") {
       return Promise.reject(new Error(window.I18n.t("impexp.session.errJszip")));
@@ -472,14 +408,8 @@ function ouvrirImportSession(fichierInitial) {
       if (!sessionFile) throw new Error(window.I18n.t("impexp.session.errZipNoSession"));
       return sessionFile.async("string").then(function(jsonText) {
         const data = _parseSessionJson(jsonText);
-        // Extraction PDF Mode Histoire si présent. Le payload
-        // session.json référence le fichier via `historeSessionPdf.file`
-        // (ex. "mode-histoire/histoire.pdf"). On stocke le blob en pending
-        // pour restauration au moment du clic Valider. Si le fichier référencé
-        // est absent dans le ZIP → log warn, on ignore (pas d'erreur fatale).
-        // le Mode Histoire accepte N documents : on lit d'abord
-        // `historeSessionPdfs` (tableau), et on retombe sur l'ancien champ
-        // unique `historeSessionPdf` pour les sessions exportées avant.
+        // Documents du Mode Histoire : `historeSessionPdfs` (tableau), sinon l'ancien champ unique
+        // `historeSessionPdf`. Blob gardé en attente jusqu'à Valider ; fichier référencé absent → warn, ignoré.
         _pendingHistoirePdfToRestore = null;
         const _refsPdf = (data && Array.isArray(data.historeSessionPdfs) && data.historeSessionPdfs.length)
           ? data.historeSessionPdfs
@@ -499,19 +429,17 @@ function ouvrirImportSession(fichierInitial) {
             }));
           });
           if (_proms.length > 0) {
-            // On schedule l'extraction des blobs en parallèle des photos.
             data._pendingHistPromise = Promise.all(_proms).then(function() {
               if (_lus.length > 0) _pendingHistoirePdfToRestore = _lus;
             });
           }
         }
 
-        // Cherche le sous-dossier photos/ + l'index. Si absent → pas de photos.
+        // Pas de photos/_index.json → pas de photos.
         const indexFile = zip.file("photos/_index.json");
         if (!indexFile) {
           _pendingPhotosToRestore = [];
-          // Si l'on attend juste le PDF Histoire (pas de photos),
-          // on attend sa résolution avant de retourner les données.
+          // Seulement le PDF Histoire à attendre.
           if (data._pendingHistPromise) {
             return data._pendingHistPromise.then(function() {
               delete data._pendingHistPromise;
@@ -528,9 +456,7 @@ function ouvrirImportSession(fichierInitial) {
           const photoIds = Object.keys(idxMap);
           if (photoIds.length === 0) {
             _pendingPhotosToRestore = [];
-            // Attendre le PDF Histoire si en cours (cas où
-            // l'index photos existe mais vide, et il n'y a qu'un PDF Histoire).
-            // Attend la promise PDF Mode Histoire si présente
+            // Index photos vide : on attend quand même le PDF Histoire.
             if (data._pendingHistPromise) {
               return data._pendingHistPromise.then(function() {
                 delete data._pendingHistPromise;
@@ -539,7 +465,6 @@ function ouvrirImportSession(fichierInitial) {
             }
             return data;
           }
-          // Charge chaque blob photo en parallèle
           const promises = photoIds.map(function(pid) {
             const info = idxMap[pid] || {};
             const filename = "photos/" + (info.file || (pid + ".jpg"));
@@ -561,10 +486,7 @@ function ouvrirImportSession(fichierInitial) {
           });
           return Promise.all(promises).then(function(arr) {
             _pendingPhotosToRestore = arr.filter(function(p) { return p !== null; });
-            // Si une promesse PDF Histoire est en cours, attend-la
-            // aussi pour synchroniser le _pendingHistoirePdfToRestore avant de
-            // rendre le preview.
-            // Attend la promise PDF Mode Histoire si présente
+            // PDF Histoire attendu aussi avant de rendre l'aperçu.
             if (data._pendingHistPromise) {
               return data._pendingHistPromise.then(function() {
                 delete data._pendingHistPromise;
@@ -589,7 +511,6 @@ function ouvrirImportSession(fichierInitial) {
                   || file.type === "application/x-zip-compressed";
 
     if (isZip) {
-      // ZIP avec photos
       _parseSessionZip(file).then(function(data) {
         dataParsee = data;
         _renderApercu(data);
@@ -606,7 +527,7 @@ function ouvrirImportSession(fichierInitial) {
       return;
     }
 
-    // JSON pur (rétrocompat)
+    // JSON pur.
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
@@ -624,7 +545,6 @@ function ouvrirImportSession(fichierInitial) {
     reader.readAsText(file);
   }
 
-  // Drop zone
   dropZone.addEventListener("click", function() { fileInput.click(); });
   fileInput.addEventListener("change", function() {
     if (fileInput.files[0]) chargerFichier(fileInput.files[0]);
@@ -636,14 +556,13 @@ function ouvrirImportSession(fichierInitial) {
   dropZone.addEventListener("drop", function(e) {
     e.preventDefault(); dropZone.classList.remove("dragover");
     const f = e.dataTransfer.files[0];
-    // accepte aussi les .zip (session avec photos)
+    // .zip aussi (session avec photos).
     const okExt = f && (/\.(json|zip)$/i).test(f.name);
     if (okExt) chargerFichier(f);
     else if (f && /\.gpx$/i.test(f.name)) { fermer(); window.ouvrirImportFichier(f); }
     else setErr(window.I18n.t("impexp.session.errDropExt"));
   });
 
-  // Boutons
   btnClose.addEventListener("click", fermer);
   btnAnnuler.addEventListener("click", fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
@@ -651,18 +570,11 @@ function ouvrirImportSession(fichierInitial) {
   btnValider.addEventListener("click", function() {
     if (!dataParsee) return;
 
-    // restauration des photos en IDB AVANT de pousser
-    // editorPoints (= avant que la grille puisse interroger IDB).
-    // FUSION, plus de purge. Avant : toutes les photos du plan
-    // étaient effacées puis remplacées par celles du ZIP — y compris les photos
-    // « sans point » gardées pour récupération, sans confirmation (règle
-    // produit : une photo n'est jamais effacée sans confirmation). Désormais
-    // les photos du fichier s'AJOUTENT ; une photo déjà en base (même id) est
-    // gardée telle quelle (`siAbsente` : son rattachement ou sa fiche peuvent
-    // être plus récents que l'export) ; rien d'existant n'est supprimé. Une
-    // photo dont le point n'est plus dans la session importée apparaît « sans
-    // point » dans 📸 Mes photos — exactement comme après la suppression d'un
-    // point. → Promise<{ ajoutees, deja, echecs }>.
+    // Photos restaurées en IDB AVANT editorPoints (la grille interroge IDB). FUSION, jamais de purge : une
+    // photo n'est jamais effacée sans confirmation (règle produit), y compris les photos « sans point ».
+    // Les photos du fichier s'AJOUTENT ; une photo déjà en base (même id) est gardée (`siAbsente` : son
+    // rattachement ou sa fiche peuvent être plus récents). Photo dont le point n'est plus dans la session →
+    // « sans point » dans 📸 Mes photos. → Promise<{ ajoutees, deja, echecs }>.
     function _restorerPhotos() {
       const bilan = { ajoutees: 0, deja: 0, echecs: 0 };
       if (!_pendingPhotosToRestore || _pendingPhotosToRestore.length === 0) {
@@ -681,8 +593,8 @@ function ouvrirImportSession(fichierInitial) {
           blob:    p.blob,
           mime:    p.mime,
           size:    p.size,
-          fiche:   p.fiche   // 📸 fiche du point (facultative, validée par restorePhoto)
-        }, { source: "import", siAbsente: true })   // 📣 restauration de l'app (≠ dépôt d'une extension)
+          fiche:   p.fiche   // fiche du point (facultative, validée par restorePhoto)
+        }, { source: "import", siAbsente: true })   // restauration de l'app (≠ dépôt d'une extension)
           .then(function(id) { if (id) bilan.ajoutees++; else bilan.deja++; })
           .catch(function(e) { bilan.echecs++; console.warn("[Import] photo non restaurée :", p.id, e); });
       });
@@ -692,10 +604,7 @@ function ouvrirImportSession(fichierInitial) {
       });
     }
 
-    // 🚨 B3 (audit ergonomie 13/09/2026) : un import REMPLACE tout (points,
-    // tracés, zones, structures, photos AJOUTÉES depuis le 12/10/2026) — sans snapshot,
-    // alors que sessionBackups.js listait « import qui écrase » parmi ses
-    // déclencheurs et que l'UI le promettait. Snapshot ATTENDU avant tout.
+    // Un import REMPLACE tout (points, tracés, zones, structures) : snapshot sessionBackups ATTENDU avant.
     let _snapshotAvantImport = false;
     const _snapAvant = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
       ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-import-session"); })
@@ -708,17 +617,12 @@ function ouvrirImportSession(fichierInitial) {
       try {
         _preparerIdentitesImport(dataParsee);
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
-        // restaure la LÉGENDE CUSTOM de la session (labels +
-        // entrées custom : zones/tracés/tags/structures inventés par l'user) AVANT
-        // les re-renders → les types custom retrouvent label+couleur+icône, même
-        // sur un ZIP vierge. Stratégie : REMPLACE l'état légende session (miroir
-        // SessionPersist). Rétro-compat : fichiers sans customLegend → null = vide.
+        // Légende custom de la session (libellés, entrées custom) restaurée AVANT les rendus : les types custom
+        // retrouvent libellé, couleur, icône. REMPLACE l'état légende session ; absent → vide.
         if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
           window.LegendCustomization.loadSessionState(dataParsee.customLegend || null);
         }
-        // réinjecte les liaisons inter-plan de la session importée
-        // dans le registre central (fusion par id — les liaisons déjà connues
-        // localement ne sont pas dupliquées). Rétro-compat : champ absent → 0.
+        // Liaisons inter-plan réinjectées (fusion par id, pas de doublon) ; champ absent → 0.
         if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
           window.InterPlanLinks.importLinks(dataParsee.interPlanLinks || []);
         }
@@ -727,7 +631,6 @@ function ouvrirImportSession(fichierInitial) {
         if (window.setMeasurePoints) {
           window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
         }
-        // restore aussi le polygone surface si présent
         if (window.setMeasurePointsSurface) {
           window.setMeasurePointsSurface(dataParsee.measureSurface && dataParsee.measureSurface.points ? dataParsee.measureSurface.points : []);
         }
@@ -735,29 +638,20 @@ function ouvrirImportSession(fichierInitial) {
         if (window.setRoads)           window.setRoads(dataParsee.roads || []);
         if (window.resetZones)         window.resetZones();
         if (window.setZones)           window.setZones(dataParsee.zones || []);
-        // restauration des structures depuis l'import
-        // session JSON. Rétrocompat : si l'import est antérieur à v1.9.3,
-        // dataParsee.structures sera undefined → array vide via `|| []`.
+        // Structures : absentes des vieux fichiers → `|| []`.
         if (window.resetStructures)    window.resetStructures();
         if (window.setStructures)      window.setStructures(dataParsee.structures || []);
 
-        // 🔄 Calques en modification : le fichier emporte les objets marqués,
-        // pas la liste des calques verrouillés — on la déduit des marques
-        // (cf. calqueSession.js > resynchroniser). Sans ça : doublon à l'écran
-        // sur un autre appareil, ou calque masqué et vide si la copie manque.
+        // Calques en modification : le fichier porte les objets marqués, pas la liste des calques verrouillés —
+        // déduite des marques (calqueSession.js > resynchroniser). Sinon doublon, ou calque masqué et vide.
         let _calquesRemis = null;
         if (window.CalqueSession && typeof window.CalqueSession.resynchroniser === "function") {
           try { _calquesRemis = window.CalqueSession.resynchroniser(); }
           catch(e) { console.warn("[Import session] resynchronisation des calques :", e); }
         }
 
-        // restore timeline + startTs du tracker si présent dans
-        // le fichier session. Format : session.tracker = {position, path,
-        // timeline, startTs}. On ne restaure QUE la timeline + startTs : le
-        // path (polyline) et la position sont des artefacts runtime liés à
-        // l'instance de plan courante et n'ont pas vocation à survivre à un
-        // import cross-session. Mirroir de SessionPersist (mêmes 2 champs).
-        // Compat : si absent → tracker non touché.
+        // Tracker : on ne restaure QUE timeline + startTs (comme SessionPersist) ; path et position sont des
+        // artefacts runtime du plan courant. Absent → tracker non touché.
         if (dataParsee.tracker && typeof dataParsee.tracker === "object"
             && Array.isArray(dataParsee.tracker.timeline)
             && typeof window.setTrackingTimeline === "function") {
@@ -771,16 +665,9 @@ function ouvrirImportSession(fichierInitial) {
           }
         }
 
-        // Restauration Mode Histoire (note libre + PDF session).
-        // - noteLibre est inline dans le payload (string) → écrit localStorage.
-        // - PDF session a été extrait dans `_pendingHistoirePdfToRestore` au
-        //   parse (blob). On délègue à ModeHistoire.importSessionData() pour
-        //   centraliser la logique IDB et garantir la cohérence du schéma.
-        // Rétrocompat : si dataParsee.noteLibre et historeSessionPdf absents
-        // (anciens exports), on ne touche RIEN — la note du plan courant reste.
-        // `_pendingHistoirePdfToRestore` est désormais un TABLEAU
-        // de documents (il pouvait être un objet unique avant — géré ici pour
-        // ne pas dépendre de l'ordre des mises à jour).
+        // Mode Histoire : noteLibre (inline) → localStorage ; documents extraits à l'analyse →
+        // ModeHistoire.importSessionData() (logique IDB centralisée). Champs absents → on ne touche RIEN.
+        // `_pendingHistoirePdfToRestore` : tableau (un objet unique est encore accepté).
         const _noteToImport = (typeof dataParsee.noteLibre === "string") ? dataParsee.noteLibre : null;
         const _docs = Array.isArray(_pendingHistoirePdfToRestore)
           ? _pendingHistoirePdfToRestore
@@ -806,7 +693,7 @@ function ouvrirImportSession(fichierInitial) {
         if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");
         }
-        // 📸 Bilan de la fusion des photos (rien d'existant n'a été effacé).
+        // Bilan de la fusion des photos (rien d'existant n'a été effacé).
         const _bp = bilanPhotos || { ajoutees: 0, deja: 0, echecs: 0 };
         if ((_bp.ajoutees || _bp.deja || _bp.echecs)
             && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
@@ -839,16 +726,7 @@ function ouvrirImportSession(fichierInitial) {
 }
 
 
-// ==========================================
-// EXPORTS WINDOW (v1.31.0 P3 Lot 5)
-// ==========================================
-// telechargerSessionJSON, importerSessionJSON, ouvrirImportSession
-// étaient référencés depuis interface.js via leur identifier local
-// (function declarations top-level). Post-extraction : on les expose
-// via window.* pour que interface.js et les autres modules puissent
-// continuer à les appeler via window.X.
-// ouvrirImportChoix est DÉJÀ posée comme window.ouvrirImportChoix
-// dans le bloc lui-même (déclaration window.X = function()...).
+// ── Exports window (ouvrirImportChoix est posée dans sa propre déclaration) ──────────
 window.telechargerSessionJSON = telechargerSessionJSON;
 window.importerSessionJSON    = importerSessionJSON;
 window.ouvrirImportSession    = ouvrirImportSession;

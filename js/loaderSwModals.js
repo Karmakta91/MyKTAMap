@@ -7,33 +7,23 @@
  */
 
 // =========================
-// LOADERSWMODALS.JS — Modales SW « Forcer la mise à jour » + « Réinitialiser
-// le cache (kill SW) » du home
+// LOADERSWMODALS.JS — modales SW « Forcer la mise à jour » / « Réinitialiser le cache (kill SW) » du home
 // =========================
-// Extrait du gros <script> inline d index.html (consolidation). DÉPLACEMENT
-// PUR, zéro changement de comportement. 3 modales de confirmation Promise-based
-// (résolvent un booléen) auto-contenues : ne touchent que des globals
-// (window.I18n, navigator.serviceWorker, caches, location).
-//
-// Le CÂBLAGE (boutons « Forcer la mise à jour » / « Réinitialiser le cache »
-// du panneau SW) reste dans la closure window.load d index.html et appelle ces
-// fonctions via les globals exposés (module chargé en `defer`).
-//
-// Exposé : window._afficherConfirmForceUpdate / _afficherConfirmKillSw /
-//          _afficherKillSwOfflineRefus. 100 % local.
+// 3 modales de confirmation Promise-based (résolvent un booléen), autonomes : ne touchent que des globales
+// (I18n, navigator.serviceWorker, caches, location). Le CÂBLAGE des boutons reste dans la closure window.load
+// d'index.html (module chargé en `defer`).
+// Expose : window._afficherConfirmForceUpdate / _afficherConfirmKillSw / _afficherKillSwOfflineRefus.
+// 100 % local.
 // =========================
 
 (function() {
   "use strict";
 
-  // Modale de confirmation pour Force update douce.
-  // Promise<boolean> : true = continuer, false = annuler.
-  // Pattern Promise-based identique aux modales de re-sélection ZIP
-  // (cf. CLAUDE.md §35) — fermable via ✕ / backdrop / Échap / Annuler.
+  // Mise à jour douce : Promise<boolean> (true = continuer), fermable par ✕ / fond / Échap / Annuler.
   function _afficherConfirmForceUpdate() {
     const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
     return new Promise(function(resolve) {
-      // Cleanup éventuel d'une instance précédente
+      // Instance précédente retirée.
       const existing = document.getElementById("kta-force-update-confirm");
       if (existing) existing.remove();
 
@@ -42,16 +32,10 @@
       overlay.className = "kta-readme-modal-overlay";
       overlay.style.display = "flex";
 
-      // Accent bleu (info, action non-destructive) — différencie de la
-      // modale de Reset qui est rouge (action destructive).
+      // Accent bleu (info, non destructif), distinct du rouge du Reset.
       overlay.innerHTML =
-        // ajout de height:auto + max-height:92vh pour
-        // que la modale ne prenne plus toute la hauteur de l'écran sur
-        // PC (KARMA : "prend toute longueur pour rien, bcp de vide").
-        // La base CSS .kta-readme-modal-boite donne désormais min(92vh,
-        // 1100px) sur PC — utile pour les modales avec contenu long
-        // (Doc, Aide), mais pas pour cette modale de confirmation
-        // courte. height:auto rend la modale à la taille de son contenu.
+        // height:auto + max-height:92vh : la boîte de base prend min(92vh, 1100px) sur PC (utile pour Doc,
+        // Aide), trop pour une confirmation courte.
         '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
             '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">' + _t("home.maint.forceUpdate.title") + '</div>' +
@@ -107,12 +91,8 @@
     });
   }
 
-  // Modale de confirmation pour le bouton "Kill SW"
-  // (ouverture de killsw.html depuis Configuration home). Calque du
-  // pattern _afficherConfirmForceUpdate ci-dessus. Accent orange (entre
-  // bleu info et rouge danger) car action plus impactante que la mise à
-  // jour douce (re-download complet au prochain boot) mais pas
-  // destructive pour les données utilisateur. Promise<bool>.
+  // Kill SW (ouverture de killsw.html depuis Configuration) : même gabarit, accent orange — plus impactant que
+  // la mise à jour douce (tout re-téléchargé au prochain boot), sans toucher aux données. Promise<bool>.
   function _afficherConfirmKillSw() {
     const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
     return new Promise(function(resolve) {
@@ -182,12 +162,9 @@
     });
   }
 
-  // Modale de refus offline pour Kill SW.
-  // Équivalent compact de _softUpdateOfflineWarning (interfaceMaintenance.js)
-  // adapté au cas Kill SW : action ANNULÉE car re-download des assets
-  // requis au prochain boot. Sans Internet → app inutilisable post-kill.
-  // Pas de bouton "Continuer quand même" (cas trop dangereux). L'user
-  // doit retrouver une connexion avant de relancer la désinscription.
+  // Refus hors ligne du kill SW (équivalent compact de interfaceMaintenance.js > _softUpdateOfflineWarning) :
+  // action ANNULÉE, sans « Continuer quand même » — sans Internet, l'app est inutilisable après le kill
+  // (assets à re-télécharger).
   function _afficherKillSwOfflineRefus() {
     const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
     const existing = document.getElementById("kta-killsw-offline");
@@ -238,7 +215,7 @@
     document.getElementById("kta-kso-ok").addEventListener("click", _close);
   }
 
-  // ── Exposé pour le câblage inline d index.html (closure window.load) ──
+  // ── Exposé pour le câblage inline d'index.html (closure window.load) ──
   window._afficherConfirmForceUpdate = _afficherConfirmForceUpdate;
   window._afficherConfirmKillSw      = _afficherConfirmKillSw;
   window._afficherKillSwOfflineRefus = _afficherKillSwOfflineRefus;

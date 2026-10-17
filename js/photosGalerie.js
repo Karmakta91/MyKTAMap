@@ -6,38 +6,22 @@
  */
 
 // =========================
-// 📸 MES PHOTOS — js/photosGalerie.js (vague « Photos », 10/10/2026)
+// MES PHOTOS — js/photosGalerie.js
 // =========================
-//
-// 🎯 Rôle : la galerie de TOUTES les photos de l'appareil (🧰 Outils de
-// l'accueil), plan par plan, rangées par point — et le moyen de RÉCUPÉRER
-// une photo dont le point a été supprimé (décision KARMA : pas un nettoyage,
-// une récupération ; gardée indéfiniment, jamais effacée sans confirmation).
-//
-// « Sans point » = sa clé (`pointId` : uid du point, ou son nom pour les
-// photos d'avant la v2.3.0) ne correspond à AUCUN point connu du plan :
-// session (KtaSessionStore — objets reçus d'une installation reliée compris),
-// et points des calques du plan (fichiers du plan serveur, ou archive ZIP
-// gardée sur l'appareil). 🩸 Si les points du plan ne sont pas lisibles
-// d'ici (archive absente, serveur injoignable, plan d'une installation pas
-// encore synchronisé), on NE CONCLUT PAS : « à vérifier à l'ouverture du
-// plan ». Plan ouvert : la vérité est la carte (points vivants).
-//
-// Actions sur un point disparu : 🔗 Rattacher (liste filtrable ou carte),
-// ♻️ Recréer le point (avec sa fiche : position, niveau, type, nom — même uid,
-// donc les photos le retrouvent sans changer de clé), 💾 Enregistrer (ZIP au
-// format photos/_index.json des exports de session), 🗑️ Supprimer (ktaConfirm,
-// nombre + taille).
-//
-// Signal discret : à l'ouverture d'un plan qui a des photos sans point
-// (main.js > _ktaPlanifierMigrationPhotos appelle apresOuverturePlan), un
-// toast « N photos sans point » ouvre la galerie sur ce plan.
-//
-// Installation reliée : prise `photos` (js/ktaExtensions.js) — la galerie
-// demande à l'extension de compléter le plan affiché (completerPlan). Sans
-// extension : rien n'est appelé, tout est local.
-//
-// API : window.KtaPhotosGalerie = { ouvrir(planId?), analyser(planId), apresOuverturePlan(planId) }
+// Galerie de TOUTES les photos de l'appareil (🧰 Outils de l'accueil), par plan et par point, et moyen de
+// RÉCUPÉRER une photo dont le point a été supprimé (récupération, pas nettoyage : gardée indéfiniment, jamais
+// effacée sans confirmation — décision produit).
+// « Sans point » : sa clé (`pointId` = uid du point, ou son nom pour les anciennes photos) ne correspond à
+// AUCUN point connu : session (KtaSessionStore, objets reçus compris) et calques du plan (fichiers serveur
+// ou archive ZIP). 🩸 Points du plan illisibles d'ici (archive absente, serveur injoignable, plan pas
+// synchronisé) → on NE CONCLUT PAS : « à vérifier à l'ouverture du plan ». Plan ouvert : la carte fait foi.
+// Actions : 🔗 Rattacher (liste ou carte), ♻️ Recréer le point (sa fiche, même uid), 💾 Enregistrer (ZIP au
+// format photos/_index.json), 🗑️ Supprimer (ktaConfirm, nombre + taille).
+// À l'ouverture d'un plan avec des photos sans point (main.js > _ktaPlanifierMigrationPhotos →
+// apresOuverturePlan), un toast ouvre la galerie sur ce plan. Installation reliée : prise `photos`
+// (completerPlan) ; sans extension, tout est local.
+// Expose window.KtaPhotosGalerie : ouvrir(planId?), analyser(planId), apresOuverturePlan(planId).
+// Garde-fou : scripts/check-photos.js
 // =========================
 
 (function () {
@@ -78,7 +62,7 @@
     _urls.clear();
   }
 
-  // ─────────────────────────── POINTS D'UN PLAN ───────────────────────────
+  // ── Points d'un plan ──
   function _pt(p, source) {
     if (!p || typeof p.x !== "number" || typeof p.y !== "number") return null;
     const o = { id: p.id != null ? String(p.id) : "", nom: p.nom || p.id || "", x: p.x, y: p.y,
@@ -97,15 +81,10 @@
     }
     throw new Error("calque introuvable : " + file);
   }
-  // 📦 Lecture PARTIELLE de l'archive d'un plan (12/10/2026). Avant,
-  // JSZip.loadAsync(blob) chargeait TOUTE l'archive en mémoire (JSZip lit le
-  // Blob entier dans un ArrayBuffer : un plan de 200 Mo = 200 Mo de RAM, sur
-  // téléphone, pour lire quelques Ko de points). Ici on ne lit que la fin du
-  // fichier (répertoire central) puis les seules entrées demandées, par
-  // Blob.slice — le Blob d'IndexedDB reste sur le disque. Inflate par
-  // DecompressionStream("deflate-raw"). Rend null si ce n'est pas faisable
-  // (navigateur sans deflate-raw, ZIP64, archive chiffrée ou exotique) :
-  // l'appelant retombe alors sur JSZip, comme avant.
+  // Lecture PARTIELLE de l'archive d'un plan : JSZip.loadAsync lit le Blob entier en mémoire (200 Mo de RAM
+  // pour quelques Ko de points). Ici : fin du fichier (répertoire central) puis les seules entrées demandées,
+  // par Blob.slice (le Blob d'IndexedDB reste sur disque), inflate par DecompressionStream("deflate-raw").
+  // null si infaisable (pas de deflate-raw, ZIP64, chiffré, exotique) → l'appelant retombe sur JSZip.
   // → { noms: [...], a(nom), texte(nom) → Promise<string> } | null
   async function _lecteurZipPartiel(blob) {
     if (!blob || typeof blob.slice !== "function" || typeof DecompressionStream === "undefined") return null;
@@ -148,7 +127,7 @@
     }
     return { noms: noms, a: function (n) { return entrees.has(n); }, texte: texte };
   }
-  // Archive d'un plan : lecture partielle, sinon JSZip (archive entière en mémoire, comme avant).
+  // Lecture partielle, sinon JSZip (archive entière en mémoire).
   async function _ouvrirArchive(blob) {
     try {
       const l = await _lecteurZipPartiel(blob);
@@ -162,7 +141,7 @@
       texte: function (n) { return zip.file(n).async("string"); }
     };
   }
-  // Points des calques d'un plan NON ouvert. ok = false si on n'a pas pu tout lire.
+  // Points des calques d'un plan NON ouvert ; ok = false si tout n'a pas pu être lu.
   async function _lireCalques(plan) {
     const pts = [];
     try {
@@ -227,7 +206,7 @@
     return l && l.length ? l[0] : null;
   }
 
-  // ─────────────────────────── ANALYSE ───────────────────────────
+  // ── Analyse ──
   // → { planId, complet, pts, groupes: [{ etat: "point"|"sans"|"verifier", cle, point, fiche, photos, taille }] }
   async function analyser(planId) {
     const P = _P();
@@ -239,8 +218,8 @@
     if (_planOuvert(planId)) {
       pts = _pointsVivants();
       complet = true;
-      // Les calques arrivent par lots : une photo non retrouvée sur la carte est
-      // cherchée aussi dans les fichiers du plan avant de la dire « sans point ».
+      // Les calques arrivent par lots : une photo absente de la carte est cherchée aussi dans les fichiers du
+      // plan avant d'être dite « sans point ».
       const ix0 = _index(pts);
       if (plan && photos.some(function (ph) { return !_trouver(ix0, String(ph.pointId || "")); })) {
         const c = await _lireCalques(plan);
@@ -272,7 +251,7 @@
     return { planId: planId, complet: complet, pts: pts, groupes: Array.from(groupes.values()) };
   }
 
-  // ─────────────────────────── FENÊTRE ───────────────────────────
+  // ── Fenêtre ──
   function fermer() {
     _revoquer();
     const m = document.getElementById(MODAL_ID);
@@ -318,7 +297,7 @@
       e.n++; e.taille += ph.size || 0;
       parPlan.set(ph.planId, e);
     });
-    // Installation reliée : ses plans peuvent avoir des photos de l'équipe pas encore sur l'appareil.
+    // Installation reliée : des photos de l'équipe peuvent manquer sur l'appareil.
     if (_extPhotos() && window.PlanRegistry && typeof window.PlanRegistry.getAll === "function") {
       (window.PlanRegistry.getAll() || []).forEach(function (p) {
         if (p && p.type === "ext" && !parPlan.has(p.id)) parPlan.set(p.id, { n: 0, taille: 0 });
@@ -481,7 +460,7 @@
       actions.appendChild(_bouton(_t("photosgal.action.voir"), function () { _allerAuPoint(a.planId, g.point); }));
     }
     actions.appendChild(_bouton(_t("photosgal.action.enregistrer"), function () { _enregistrer(a.planId, nom, g.photos); }));
-    // Supprimer : photos sans point (ou d'un plan absent de l'appareil, qu'on ne peut plus vérifier).
+    // Supprimer : photos sans point (ou d'un plan absent de l'appareil, invérifiable).
     if (g.etat === "sans" || (g.etat === "verifier" && !_plan(a.planId))) {
       actions.appendChild(_bouton(_t("photosgal.action.supprimer"), function () { _supprimer(a.planId, nom, ids, g.taille); }, "kta-phg-danger"));
     }
@@ -512,8 +491,7 @@
       img.addEventListener("click", ouvrirViewer);
       img.addEventListener("keydown", ouvrirViewer);
     }
-    // (la carte est insérée dans la fenêtre juste après cet appel : on ne teste
-    // sa présence qu'APRÈS la première lecture)
+    // La carte est insérée juste après cet appel : sa présence n'est testée qu'APRÈS la première lecture.
     for (let i = 0; i < photos.length; i++) {
       const rec = await P.getPhoto(photos[i].id);
       if (!rec || !rec.blob || !conteneur.isConnected) continue;
@@ -524,7 +502,7 @@
     }
   }
 
-  // ─────────────────────────── ACTIONS ───────────────────────────
+  // ── Actions ──
   function _allerAuPoint(planId, point) {
     const IPL = window.InterPlanLinks;
     if (!IPL || typeof IPL.goTo !== "function") return;
@@ -534,7 +512,7 @@
       { confirm: confirmer });
   }
 
-  // Rattacher : liste filtrable des points du plan, ou la carte si le plan est ouvert.
+  // Rattacher : liste filtrable des points, ou la carte si le plan est ouvert.
   function _choisirPoint(a, g) {
     const ancien = document.getElementById(PICK_ID);
     if (ancien) ancien.remove();
@@ -608,10 +586,8 @@
     setTimeout(function () { try { filtre.focus(); } catch (e) { /* rien */ } }, 30);
   }
 
-  // 📸 Limite de 5 photos par point, vérifiée AVANT de rattacher (12/10/2026) :
-  // au-delà, refus expliqué — rien n'est rattaché, rien n'est supprimé, le
-  // groupe reste « sans point ». Un point déjà au-delà (photos d'avant la
-  // limite) garde tout : seul l'ajout est refusé. → Promise<boolean>.
+  // Limite de 5 photos par point vérifiée AVANT de rattacher : refus expliqué, rien rattaché ni supprimé. Un
+  // point déjà au-delà garde tout (seul l'ajout est refusé). → Promise<boolean>.
   async function _placeSurPoint(planId, g, p) {
     const P = _P();
     if (!P || typeof P.placesPourPoint !== "function") return true;
@@ -667,7 +643,7 @@
         const P = _P();
         P.rattacher(g.photos.map(function (q) { return q.id; }), planId, p.uid || p.id, P.ficheDepuisPoint(p)).then(function (n) {
           _toast(_t("photosgal.rattache", { n: n, nom: p.nom || p.id }), "info");
-          // la fiche se rouvre : ses photos s'y affichent
+          // Fiche rouverte : ses photos s'y affichent.
           try { src.closePopup(); src.openPopup(); } catch (er) { /* rien */ }
         });
       });
@@ -676,7 +652,7 @@
     annuler.addEventListener("click", function () { fl.remove(); try { map.off("popupopen", surPopup); } catch (e) { /* rien */ } });
   }
 
-  // Recréer le point : sa fiche (position, niveau, type, nom), en un geste. Le plan doit être ouvert.
+  // Recréer le point depuis sa fiche (position, niveau, type, nom), en un geste ; le plan doit être ouvert.
   let _apresOuverture = null;   // { planId, fn } : action à faire quand ce plan aura fini de s'ouvrir
   const RE_UID = /^[a-z]{2}_[a-z0-9]+_[a-z0-9]{6}$/;
   async function _recreer(planId, g) {
@@ -707,8 +683,7 @@
     if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
       point.level = Number.isInteger(fiche.niveau) ? fiche.niveau : (window.APP_CONFIG.activeLevel || 0);
     }
-    // Même uid que le point supprimé : ses photos (et, en installation reliée, celles du
-    // serveur) le retrouvent sans changer de clé. Clé de nom (photo d'avant la v2.3.0) : uid neuf.
+    // Même uid que le point supprimé : ses photos (et celles du serveur) le retrouvent. Clé de nom : uid neuf.
     const K = window.KtaUid;
     point.uid = RE_UID.test(cle) ? cle : (K ? K.genUid("pt") : undefined);
     if (!point.uid) delete point.uid;
@@ -735,7 +710,7 @@
     return true;
   }
 
-  // Enregistrer sur l'appareil : ZIP au format des exports de session (photos/_index.json).
+  // ZIP au format des exports de session (photos/_index.json).
   async function _enregistrer(planId, nom, photos) {
     if (typeof window.JSZip === "undefined") { window.ktaAlerte(_t("photosgal.err.zip"), { type: "erreur" }); return; }
     const P = _P();
@@ -757,7 +732,7 @@
     if (!n) return;
     dossier.file("_index.json", JSON.stringify({ version: 1, planId: planId, photos: idx }, null, 2));
     const blob = await zip.generateAsync({ type: "blob" });
-    // Coupe des « _ » de bord en temps linéaire (une alternative ancrée ^_+|_+$ peut revenir en arrière, Sonar S8786).
+    // « _ » de bord coupés en temps linéaire (une regex ancrée ^_+|_+$ peut revenir en arrière, Sonar S8786).
     const propre = function (s) {
       const t = String(s || "").replace(/[^\w-]+/g, "_");
       let a = 0, b = t.length;
@@ -787,8 +762,7 @@
     if (_corps()) _vuePlan(planId);
   }
 
-  // ─────────────────────────── SIGNAL À L'OUVERTURE ───────────────────────────
-  // Une fois par ouverture d'un plan (oublié à la fermeture du plan).
+  // ── Signal à l'ouverture d'un plan (une fois, oublié à sa fermeture) ──
   const _signales = new Set();
   window.addEventListener("mktm:plan-ferme", function () { _signales.clear(); });
   async function apresOuverturePlan(planId) {
@@ -811,7 +785,7 @@
     if (document.getElementById(MODAL_ID)) return;
     _signaler(planId, n);
   }
-  // Toast maison (il porte un bouton) : il demande la permission au goulot des notifications.
+  // Toast maison (il porte un bouton) : permission demandée au goulot des notifications.
   function _signaler(planId, n) {
     const G = window.OOMGuard;
     if (G && typeof G.toastAutorise === "function" && !G.toastAutorise("warn")) return;

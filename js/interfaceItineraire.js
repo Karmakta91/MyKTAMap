@@ -5,69 +5,24 @@
  */
 
 // =========================
-// INTERFACE ITINÉRAIRE — Pathfinder UI + Évitements + Presets vitesse
+// INTERFACE ITINÉRAIRE — UI du pathfinder, évitements, presets de vitesse
 // =========================
-// (P3 Lot 6 — découpe interface.js) : module extrait de
-// js/interface.js (2 plages : 4913-5105 + 5516-6846 avant extraction)
-// pour réduire le volume du fichier principal. Lot 6 + Lot 8 du plan
-// initial ont été fusionnés ici car l'itinéraire et les évitements
-// partagent des helpers internes (TDZ-safe via deferral runtime).
-//
-// La SUPPRESSION clic visuel (tracé/zone/structure) reste dans
-// interface.js — aucune dep partagée avec ce module.
-//
-// Aucun changement de comportement runtime. Les 8 fonctions exposées
-// via `window.*` sont strictement identiques à v1.30.1.
-//
-// 📋 API publique principale :
-//   - window.ouvrirItinerairModal()
-//        Modale principale Itinéraire : input recherche autocomplete,
-//        mode clic carte, picker waypoints, presets vitesse (Blessé/Lent/
-//        Normal/Rapide), pause configurable, section Évitements (points/
-//        tags/zones), calcul Pathfinder + preview + save/discard.
-//   - window.itineraireYAller(x, y, nom)
-//        Helper utilisé par les popups de points POI — ajoute le point
-//        comme waypoint UNIQUE et calcule un itinéraire depuis le tracker.
-//   - window.itineraireAjouterWaypoint(x, y, nom)
-//        Helper utilisé par les popups de points POI — ajoute le point
-//        comme waypoint à l'itinéraire actif (append, recalcule auto).
-//   - window.getItiPauseEnabled() / setItiPauseEnabled()
-//   - window.getItiPauseMinutes() / setItiPauseMinutes()
-//        Persistance localStorage pour la pause entre waypoints.
-//   - window.getItiTempsMinutes()
-//        Calcule la durée prévue de l'itinéraire actif selon preset
-//        vitesse + pauses configurées. Lu par le statusbar refonte v1.
-//   - window._majLabelDistanceItineraire()
-//        Hook appelé après setRoads pour rafraîchir le label distance
-//        en bottom-left (au-dessus du label measure).
-//
-// 🔌 Dépendances externes (toutes via window.* / global declarations) :
-//   - window.Pathfinder.computeRoute       [pathfinder.js]
-//   - window.SearchPoints.findByQuery /
-//     getAllPoints                          [searchPoints.js]
-//   - window.getRoads / setRoads           [interface.js / road.js]
-//   - window.map / convertCoord            [map.js / utils.js]
-//   - window.formatDistance                [utils.js]
-//   - window.APP_CONFIG (scale, etc.)      [config.js]
-//   - window._currentPlanIdSafe            [main.js]
-//   - window.getEditorPoints + autres registres POI [main.js]
-//
-// 📍 Ordre de chargement (cf index.html) :
-//   - Doit charger APRÈS interface.js (cohérence ordre découpe).
-//     L'ordre est cosmétique car les fonctions sont appelées au runtime.
+// Expose : ouvrirItinerairModal() (modale : recherche, mode clic, étapes, vitesse, pause, évitements,
+//   calcul + aperçu) · itineraireYAller / itineraireAjouterWaypoint (boutons des fiches POI) ·
+//   get/setItiPauseEnabled, get/setItiPauseMinutes, getItiTempsMinutes (partagés avec le Mode Secours) ·
+//   _majLabelDistanceItineraire (libellé bas-gauche, à rappeler après chaque setRoads) ·
+//   itineraireRedessinerDepuisRoad, itineraireActiverRoad, getItineraireWaypoints.
+// Dépend de : Pathfinder.computeRoute, SearchPoints, getRoads/setRoads, map/convertCoord, formatDistance,
+//   APP_CONFIG.scale (px/m), ItiGuidage. Fonctions appelées au runtime : l'ordre de chargement est cosmétique.
+// La suppression au clic (tracé/zone/structure) reste dans interface.js.
+// Doc : docs/architecture/multilevel-pathfinding.md · docs/architecture/tracking.md §Guidage
 
-// =========================
-// ITINÉRAIRE — modale + mode clic + rendu du tracé calculé
-// =========================
+// ── Itinéraire : modale, mode clic, rendu du tracé calculé ──────────
 function _escapeHtml(s) { return window.ktaEsc(s); }
 
-// =========================
-// 🪧 GUIDAGE (27/09/2026) — ce que l'itinéraire garde du calcul
-// =========================
-// Le pathfinder rend désormais `raccords` (trajet à vol d'oiseau entre chaque
-// étape et son tracé) et `carrefours` (croisements posés sur le trajet). Ils
-// sont recopiés sur la road : les consignes (js/itiGuidage.js) et le
-// pointillé du raccord (road.js) les lisent, y compris après un rechargement.
+// ── Guidage : ce que l'itinéraire garde du calcul ──────────
+// `raccords` (vol d'oiseau entre une étape et son tracé) et `carrefours` sont recopiés sur la road :
+// itiGuidage.js et le pointillé de road.js les lisent, y compris après rechargement.
 // Les TROIS créations d'itinéraire de ce fichier passent par ici.
 function _champsGuidage(result) {
   return {
@@ -76,33 +31,23 @@ function _champsGuidage(result) {
   };
 }
 
-// Décision KARMA : un plan sans aucun tracé → on AVERTIT au lancement ; le
-// calcul échouerait sur un message technique et le guidage n'aurait rien à dire.
+// Plan sans aucun tracé → on avertit au lancement : le calcul échouerait sur un message technique
+// et le guidage n'aurait rien à dire (décision produit).
 function _itiAucunTrace() {
   return !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
             !window.Pathfinder.aDesTraces());
 }
 
-// Décision KARMA : raccord à vol d'oiseau de plus de 50 m → on avertit sans bloquer.
+// Raccord à vol d'oiseau > 50 m → on avertit sans bloquer (décision produit).
 function _texteAlerteRaccord(road) {
   if (!window.ItiGuidage) return "";
   return window.ItiGuidage.texteAlerteRaccord(window.ItiGuidage.alerteRaccord(road));
 }
 
-// =========================
-// OVERLAY DE CALCUL D'ITINÉRAIRE
-// =========================
-// Sur un réseau de tracés DENSE, le Dijkstra prend 1-3 s. On affiche un loader
-// chartré (spinner du chargement de plan + message) le temps du pathfinding,
-// pour que l'user ne croie pas que rien ne s'est passé / que ça a bugué.
-// Plein écran → marche pour la modale ET le popup « itinéraire jusqu'ici ».
-//
-// ⚠️ CŒUR DU FIX : `computeRoute` est `async` mais le Dijkstra dedans est
-// SYNCHRONE → il bloque le thread. Sans yield-to-paint, ni l'overlay ni le
-// label « Calcul en cours… » du bouton ne seraient peints avant le blocage
-// (c'est pour ça que l'user voyait « rien »). `_withItiComputeLoader` affiche
-// l'overlay PUIS attend une frame (rAF + setTimeout 0) pour laisser le
-// navigateur peindre, AVANT de lancer le calcul.
+// ── Overlay de calcul ──────────
+// Le Dijkstra prend 1-3 s sur un réseau dense : loader plein écran (modale ET popup « jusqu'ici »).
+// 🩸 `computeRoute` est async mais son Dijkstra est SYNCHRONE et bloque le thread : sans attendre une
+// frame (rAF + setTimeout 0) après l'affichage, ni l'overlay ni « Calcul en cours… » ne sont peints.
 function _showItiComputeOverlay() {
   let ov = document.getElementById("kta-iti-compute-overlay");
   if (!ov) {
@@ -124,8 +69,7 @@ function _hideItiComputeOverlay() {
 }
 async function _withItiComputeLoader(fn) {
   _showItiComputeOverlay();
-  // yield-to-paint : rAF programme avant le prochain paint, setTimeout 0 reprend
-  // après → garantit ≥1 frame peinte avant de bloquer le thread.
+  // rAF puis setTimeout 0 : au moins une frame peinte avant de bloquer le thread.
   await new Promise(function(r) { requestAnimationFrame(function() { setTimeout(r, 0); }); });
   try {
     return await fn();
@@ -134,9 +78,7 @@ async function _withItiComputeLoader(fn) {
   }
 }
 
-// =========================
-// PAN + FLASH (style searchPoints) — pour les boutons "aller à" sur les waypoints
-// =========================
+// ── Pan + flash (boutons « aller à » des étapes) ──────────
 let _itiFlashLayer = null;
 function _panEtFlashSurPoint(p) {
   if (!window.map || !window.APP_CONFIG) return;
@@ -165,16 +107,11 @@ function _panEtFlashSurPoint(p) {
   }, 3000);
 }
 
-// =========================
-// POPUP D'UN POINT — boutons "Y aller" / "Ajouter à l'itinéraire"
-// =========================
-// Appelees depuis le HTML inline genere par utils.js > buildPointPopupHtml.
-// Toutes les routes session + embedded (visibles ou non) participent au calcul
-// via le pathfinder qui utilise getAllEmbeddedRoads (cf suite 26).
+// ── Fiche d'un point : « Y aller » / « Ajouter à l'itinéraire » ──────────
+// Appelés depuis utils.js > buildPointPopupHtml. Toutes les routes session + embarquées participent.
 
-// Modal charte : confirme remplacement de l'itineraire en cours
-// `actif` (16/10/2026, KARMA) : l'itinéraire en place. Si c'est le parcours d'une équipe du Mode Secours
-// (road.secours), la fenêtre le dit — le remplacer arrête le guidage de l'équipe — et met en avant « Garder ».
+// Confirme le remplacement de l'itinéraire en place (`actif`). Parcours d'une équipe du Mode Secours
+// (road.secours) : la fenêtre le dit — le remplacer arrête son guidage — et met « Garder » en avant.
 function _confirmRemplacerItineraire(onConfirm, actif) {
   const existing = document.getElementById("kta-iti-confirm-replace");
   if (existing) existing.remove();
@@ -219,16 +156,12 @@ function _confirmRemplacerItineraire(onConfirm, actif) {
   modal.addEventListener("click", function(e) { if (e.target === modal) _ferme(); });
 }
 
-// "🧭 Y aller" : depuis position tracker → ce point. Calcul direct + trace.
-// Si itineraire actif → confirme avant remplacement.
-// `opts.origine` {x, y} (13/09/2026) : origine imposée par l'appelant — la
-// Sortie d'urgence passe celle de SON calcul, sinon on re-testait le tracker.
-// Règle « instant T » (décision KARMA, audit ergonomie B1) : suivi actif OU
-// position confirmée → on part de la position du tracker sans question ;
-// jamais confirmée (= encore le départ du plan) → picker partagé « Où es-tu ? »
-// qui recale le tracker, puis on revient ici avec l'origine.
-// Options d'évitement du moteur : préférences de l'itinéraire, ou contraintes d'une
-// évacuation (Mode Secours, options brancard) qui les remplacent entièrement.
+// « Y aller » : du tracker vers ce point ; confirme si un itinéraire est actif.
+// `opts.origine` {x, y} : origine imposée (la Sortie d'urgence passe celle de SON calcul).
+// Règle « instant T » (décision produit) : suivi actif OU position confirmée → départ du tracker sans
+// question ; jamais confirmée → picker « Où es-tu ? » qui recale le tracker, puis retour ici.
+// Options d'évitement : préférences de l'itinéraire, ou contraintes d'une évacuation (Mode Secours,
+// options brancard) qui les remplacent entièrement.
 function _optsEvitement(avoidPrefs, evC) {
   if (evC) {
     return { avoidPoints: [], avoidTags: [], avoidRadius: 0,
@@ -281,7 +214,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
   const labelPoint = nom ? String(nom) : window.I18n.t("iti.point.coords", { x: Math.round(x), y: Math.round(y) });
 
   async function _calculer() {
-    // Ferme la popup Leaflet ouverte (sinon elle reste affichee derriere le tracé)
+    // Sinon la popup reste affichée derrière le tracé.
     if (window.map) try { window.map.closePopup(); } catch(e) {}
 
     const waypoints = [
@@ -293,38 +226,29 @@ window.itineraireYAller = function(x, y, nom, opts) {
     ];
 
     try {
-      // 🚫 v169 : computeRoute est async (await getAllPoints pour avoidTags).
-      // Pour les itineraires depuis popup "Itineraire jusqu'ici", on n'a pas
-      // d'avoidances configurees → mais on peut les charger depuis localStorage
-      // pour cohérence avec la modale itineraire (l'user voudrait probablement
-      // les memes preferences).
+      // Préférences d'évitement de la modale réutilisées pour cohérence.
       const avoidPrefs = _getItiAvoidPrefs();
-      // 🚑 Évacuation (Mode Secours, options brancard) : les contraintes du classement des
-      // sorties remplacent les préférences de l'itinéraire classique.
+      // Évacuation (Mode Secours) : ses contraintes remplacent les préférences.
       const evC = opts.evacuation && opts.evacuation.contraintes;
       const result = await _withItiComputeLoader(function() {
         return window.Pathfinder.computeRoute(waypoints, _optsEvitement(avoidPrefs, evC));
       });
 
-      // Cree la road itineraire (sans flag _preview : on enregistre direct)
       const newRoad = Object.assign({
         type:      "itinerary",
         points:    result.path,
         waypoints: waypoints
       }, _champsGuidage(result));
-      // 🪧 Guidage lot 4 (décisions A/C/G) : un itinéraire de SORTIE
-      // D'URGENCE est marqué — bandeau sans croix, affiché même réglé sur
-      // « Jamais », et « Recalculer » y vise la sortie la plus proche.
+      // Sortie d'urgence marquée : bandeau sans croix, affiché même réglé sur « Jamais »,
+      // « Recalculer » vise la sortie la plus proche.
       if (opts.urgence) newRoad.urgence = true;
       if (opts.evacuation) newRoad.evacuation = opts.evacuation;
 
-      // Remove ancien itineraire + add le nouveau
       const currentRoads = window.getRoads ? window.getRoads() : [];
       const filtered = currentRoads.filter(function(r) { return r.type !== "itinerary"; });
       filtered.push(newRoad);
       if (window.setRoads) window.setRoads(filtered);
 
-      // Update markers visuels des waypoints + label distance bottomleft
       _itineraryWaypoints = waypoints.map(function(w) { return Object.assign({}, w); });
       if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
       _itineraryWaypoints.forEach(function(p, i) {
@@ -332,7 +256,6 @@ window.itineraireYAller = function(x, y, nom, opts) {
       });
       _majLabelDistanceItineraire();
 
-      // Pan + flash sur le point d'arrivée pour indiquer ce qui vient d'etre calcule
       _panEtFlashSurPoint({ x: x, y: y });
 
       const alerteRaccord = _texteAlerteRaccord(newRoad);
@@ -343,9 +266,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
     }
   }
 
-  // Check si itineraire actif → confirm
-  // 🪧 Sauf en sortie d'urgence : l'utilisateur vient de toucher « Tracer »
-  // vers une sortie — une question de plus à ce moment-là est de trop.
+  // Pas de confirmation en sortie d'urgence : l'utilisateur vient de toucher « Tracer ».
   const existing = (window.getRoads ? window.getRoads() : [])
     .find(function(r) { return r.type === "itinerary"; });
   if (existing && !opts.urgence) {
@@ -355,18 +276,15 @@ window.itineraireYAller = function(x, y, nom, opts) {
   }
 };
 
-// "➕ Itinéraire" : ajoute le point comme waypoint à un itinéraire existant
-// (mode navigation) ou ouvre la modale en mode calcul avec ce waypoint pre-rempli.
+// « ➕ Itinéraire » : ajoute une étape à l'itinéraire existant, ou ouvre la modale pré-remplie.
 window.itineraireAjouterWaypoint = function(x, y, nom) {
   if (typeof x !== "number" || typeof y !== "number") return;
 
-  // Ferme la popup Leaflet
   if (window.map) try { window.map.closePopup(); } catch(e) {}
 
   const labelPoint = nom ? String(nom) : window.I18n.t("iti.point.coords", { x: Math.round(x), y: Math.round(y) });
   const newWaypoint = { x: x, y: y, source: "search", label: labelPoint };
 
-  // Cas 1 : modale itineraire deja ouverte → ajoute direct a la liste
   if (document.getElementById("kta-itinerary-modal")) {
     _itineraryWaypoints.push(newWaypoint);
     _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
@@ -375,9 +293,8 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
     return;
   }
 
-  // Cas 2 : pas de modale ouverte → on ouvre, et on push le waypoint apres
-  // ouverture (la modale restore _itineraryWaypoints depuis l'itineraire actif
-  // si mode navigation, sinon vide en mode calcul).
+  // Modale fermée : on l'ouvre (elle restaure _itineraryWaypoints depuis l'itinéraire actif),
+  // puis on pousse l'étape.
   window.ouvrirItinerairModal();
   _itineraryWaypoints.push(newWaypoint);
   _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
@@ -385,44 +302,24 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
 };
 
 
-// ==========================================
-// P3 Lot 6 — coupure plage 5106-5515 (SUPPRESSION clic)
-//      reste dans interface.js — pas de dep partagée avec l'itinéraire
-// ==========================================
-
-// =========================
-// LABEL DISTANCE ITINÉRAIRE — au-dessus du label measure (bottomleft)
-// =========================
+// ── Libellé de distance (bas-gauche, au-dessus du libellé measure) ──────────
 let _itiDistanceCtrl = null;
 
-// =========================
-// Presets de vitesse de marche pour l'itinéraire
-// =========================
-// 4 modes choisis par l'utilisateur via segmented control dans la modale
-// Itinéraire. Le mode courant est affiché dans le label bottomleft (icône +
-// nom) et persisté en localStorage pour conserver le réglage entre sessions.
-// 🆕 i18n : label/hint ne vivent plus dans le const (résolus au rendu via
-// _presetLabel/_presetHint pour éviter d'appeler I18n.t() au load). Seuls
-// kmh (donnée) et icon (cosmétique stable) restent ici.
+// ── Presets de vitesse ──────────
+// Persistés en localStorage. Libellés résolus au rendu (_presetLabel/_presetHint), jamais au load.
 const ITI_SPEED_PRESETS = {
   blesse:  { kmh: 2, icon: "🤕" },
   lente:   { kmh: 3, icon: "🐌" },
   normale: { kmh: 5, icon: "🚶" },
   rapide:  { kmh: 7, icon: "🏃" }
 };
-// Résolution i18n au rendu (jamais au load). Clés iti.speed.<key>.label/.hint
 function _presetLabel(key) { return window.I18n.t("iti.speed." + key + ".label"); }
 function _presetHint(key)  { return window.I18n.t("iti.speed." + key + ".hint"); }
 const DEFAULT_ITI_SPEED       = "normale";
 const ITI_SPEED_STORAGE_KEY   = "myktamap_iti_walking_preset";
 
-// (KARMA "rajoute dans le modal itineraire un temps de pause
-// définissable entre chaque point en minutes") : la pause par arrêt
-// intermédiaire est désormais CONFIGURABLE :
-//   • Checkbox "Inclure pause entre arrêts" (default ON = comportement v1.22.x)
-//   • Input minutes par pause (default 15 min)
-// Persistance : localStorage. Le Mode Secours (secoursMode.js > _recalculer-
-// ItineraireGroupe) lit les mêmes prefs pour cohérence cross-feature.
+// Pause par arrêt intermédiaire configurable (case + minutes, défaut cochée 15 min), en localStorage.
+// secoursMode.js > _recalculerItineraireGroupe lit les mêmes réglages.
 const TEMPS_PAUSE_PAR_POINT_MIN_DEFAULT = 15;
 const ITI_PAUSE_ENABLED_STORAGE_KEY     = "myktamap_iti_pause_enabled";
 const ITI_PAUSE_MINUTES_STORAGE_KEY     = "myktamap_iti_pause_minutes";
@@ -448,25 +345,17 @@ function _setItiPauseMinutes(min) {
   const v = Math.max(0, Math.min(120, parseFloat(min) || 0));
   try { localStorage.setItem(ITI_PAUSE_MINUTES_STORAGE_KEY, String(v)); } catch(e) {}
 }
-// Exposé globalement pour que js/secoursMode.js réutilise les mêmes prefs
-// (cohérence cross-feature : si l'user change la pause dans itinéraire, ça
-// s'applique aussi au calcul des durées Mode Secours).
+// Partagés avec secoursMode.js : la pause réglée ici vaut aussi pour les durées du Mode Secours.
 window.getItiPauseEnabled = _getItiPauseEnabled;
 window.getItiPauseMinutes = _getItiPauseMinutes;
-// Setters exposés pour permettre à Mode Secours (et autres
-// modules futurs) de modifier la pause depuis leur propre UI. Persistance
-// localStorage immédiate via _setItiPauseEnabled/_setItiPauseMinutes.
-// Pas de side-effect global au set (pas de re-render auto) — le caller
-// est responsable de recalculer ce qui dépend de la pause (durées
-// estimées d'itinéraire, durées d'équipes Mode Secours, etc.).
+// ⚠️ Les setters persistent sans re-rendu : l'appelant recalcule ce qui dépend de la pause.
 window.setItiPauseEnabled = _setItiPauseEnabled;
 window.setItiPauseMinutes = _setItiPauseMinutes;
 
 function _getItiSpeedPreset() {
   try {
     let stored = localStorage.getItem(ITI_SPEED_STORAGE_KEY);
-    // Micro-migration : ancien preset "bourre" renommé "blesse"
-    // (professionnalisation). Réécrit la valeur pour garder le réglage user.
+    // Ancien preset « bourre » renommé « blesse » : réécrit pour garder le réglage.
     if (stored === "bourre") {
       stored = "blesse";
       try { localStorage.setItem(ITI_SPEED_STORAGE_KEY, stored); } catch(e) {}
@@ -479,7 +368,6 @@ function _getItiSpeedPreset() {
 function _setItiSpeedPreset(preset) {
   if (!ITI_SPEED_PRESETS[preset]) return false;
   try { localStorage.setItem(ITI_SPEED_STORAGE_KEY, preset); } catch(e) {}
-  // Re-rendu du label bottomleft (la durée change avec la nouvelle vitesse)
   if (typeof window._majLabelDistanceItineraire === "function") {
     window._majLabelDistanceItineraire();
   }
@@ -491,8 +379,7 @@ function _vitesseMarcheKmh() {
   return ITI_SPEED_PRESETS[preset].kmh;
 }
 
-// Retourne le temps total estime en minutes : marche + pauses intermediaires.
-// pause configurable via _getItiPauseEnabled + _getItiPauseMinutes
+// Temps total estimé en minutes : marche + pauses intermédiaires (si activées).
 function _tempsItineraireMinutes(distanceM, nbWaypoints) {
   if (typeof distanceM !== "number" || distanceM <= 0) return 0;
   const tempsMarcheMin = distanceM / (_vitesseMarcheKmh() * 1000 / 60);  // m / (m/min)
@@ -502,10 +389,8 @@ function _tempsItineraireMinutes(distanceM, nbWaypoints) {
   const tempsPauseMin  = nbPausesInter * pauseMin;
   return tempsMarcheMin + tempsPauseMin;
 }
-// Exposé globalement pour cohérence cross-feature (Mode Secours utilise le même)
 window.getItiTempsMinutes = _tempsItineraireMinutes;
 
-// Formate une duree en minutes : "X min" si < 60, "Xh YY" sinon.
 function _formatTempsMinutes(totalMin) {
   if (!totalMin || totalMin < 1) return window.I18n.t("iti.time.lessMin");
   if (totalMin < 60) return window.I18n.t("iti.time.min", { n: Math.round(totalMin) });
@@ -516,19 +401,16 @@ function _formatTempsMinutes(totalMin) {
 
 function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
   if (!window.map) return;
-  // Détection d'un contrôle "détaché" : après un plan switch, map.remove()
-  // a été appelé et le contrôle n'est plus rattaché à la map. _itiDistanceCtrl._map
-  // devient null/undefined → on doit re-créer le contrôle, pas réutiliser l'ancien.
+  // 🩸 Après un changement de plan, map.remove() détache le contrôle (_map devient null) :
+  // il faut le recréer, pas réutiliser l'ancien.
   if (!_itiDistanceCtrl || !_itiDistanceCtrl._map) {
     _itiDistanceCtrl = L.control({ position: "bottomleft" });
     _itiDistanceCtrl.onAdd = function() {
       const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-iti-distance");
       div.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>' + window.I18n.t("iti.label.empty");
-      // Raccourci : clic sur le label → ouvre la modale itineraire (mode
-      // navigation ou calcul selon presence d'un itineraire actif).
+      // Clic → modale itinéraire.
       div.style.cursor = "pointer";
       div.title = window.I18n.t("iti.label.openMenu");
-      // Empecher Leaflet de capturer les events (sinon clic propage a la map)
       L.DomEvent.disableClickPropagation(div);
       L.DomEvent.on(div, "click", function() {
         if (typeof window.ouvrirItinerairModal === "function") {
@@ -559,8 +441,6 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
         window.I18n.t("iti.label.speedTitle", { label: presetLabel, kmh: preset.kmh }) + '">' +
         preset.icon + ' ' + presetLabel +
       '</span>';
-    // Tooltip detaille pour la breakdown (vitesse + nb pauses)
-    // pause configurable → lit la valeur dynamique
     const pauseActive = _getItiPauseEnabled();
     const pauseMin    = _getItiPauseMinutes();
     const pausePart   = (nbPausesInter > 0 && pauseActive && pauseMin > 0)
@@ -582,8 +462,7 @@ function _masquerLabelDistanceItineraire() {
   if (el) el.style.display = "none";
 }
 
-// Recalcule la distance d'un tracé itinerary à partir de ses points (en pixels
-// plan) et la convertit en mètres via APP_CONFIG.scale (px/m).
+// Distance d'un tracé itinéraire en mètres (points en px plan, APP_CONFIG.scale en px/m).
 function _distanceItineraireMeters(road) {
   if (!road || !Array.isArray(road.points) || road.points.length < 2) return 0;
   let totalPx = 0;
@@ -592,22 +471,20 @@ function _distanceItineraireMeters(road) {
     const b = road.points[i];
     totalPx += Math.hypot(b.x - a.x, b.y - a.y);
   }
-  // 🪧 Décision KARMA K (27/09/2026) : le trajet à vol d'oiseau jusqu'au
-  // tracé fait partie du chemin — il était ignoré. Un itinéraire d'avant ce
-  // lot n'a pas de `raccords` : il garde sa distance d'origine.
+  // Le trajet à vol d'oiseau jusqu'au tracé fait partie du chemin. Un itinéraire sans `raccords`
+  // garde sa distance d'origine.
   if (window.ItiGuidage) totalPx += window.ItiGuidage.longueurRaccordsPx(road);
   const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
   return totalPx / scale;
 }
 
-// Met à jour le label de distance en fonction de l'état actuel des roads.
-// À appeler après chaque setRoads / save / discard / plan switch / session restore.
+// À appeler après chaque setRoads / save / discard / changement de plan / restauration de session.
 function _majLabelDistanceItineraire() {
   if (!window.getRoads || !window.map) return;
   const itineraryRoad = window.getRoads().find(function(r) { return r.type === "itinerary"; });
   if (itineraryRoad) {
     const distM = _distanceItineraireMeters(itineraryRoad);
-    // les étapes validées (done) ne comptent plus dans les pauses
+    // Les étapes validées (done) ne comptent plus dans les pauses.
     const nbWp  = Array.isArray(itineraryRoad.waypoints)
       ? itineraryRoad.waypoints.filter(function(w) { return !w.done; }).length : 2;
     _afficherLabelDistanceItineraire(distM, nbWp);
@@ -615,7 +492,6 @@ function _majLabelDistanceItineraire() {
     _masquerLabelDistanceItineraire();
   }
 }
-// Exposé globalement pour que main.js puisse appeler après lancerApplication
 window._majLabelDistanceItineraire = _majLabelDistanceItineraire;
 
 let _itineraryWaypoints   = [];
@@ -623,13 +499,8 @@ let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers num
 let _itineraryClickActive = false;
 // Handler à RÉFÉRENCE STABLE (cf _itineraryMapClick) : on/off idempotents.
 
-// Expose les waypoints de l'iti actif en lecture seule pour que
-// tracking.js puisse détecter quand l'user arrive à proximité (vibration
-// haptique de proximité 100px, cf tracking.js _checkWaypointProximity).
-// Retourne une COPIE pour empêcher la mutation côté caller.
-// filtre les étapes validées (done) ET le point 0 tracker —
-// vibrer « waypoint atteint » sur sa propre origine ou sur une étape déjà
-// validée est du bruit (et chaque replanification crée une nouvelle origine).
+// Étapes de l'itinéraire actif pour la vibration de proximité (tracking.js > _checkWaypointProximity).
+// Rend une COPIE, sans les étapes validées ni le point 0 tracker (vibrer sur sa propre origine = bruit).
 window.getItineraireWaypoints = function() {
   return _itineraryWaypoints.filter(function(w) {
     return !w.done && w.source !== "tracker";
@@ -638,14 +509,12 @@ window.getItineraireWaypoints = function() {
 
 function _ajouterWaypointVisuel(p, num) {
   if (!window.map) return;
-  // Idem _afficherLabelDistanceItineraire : si l'ancien layerGroup a été détaché
-  // par un plan switch (map.remove() précédent), on doit le recréer avant
-  // d'ajouter des markers — sinon ils sont attachés à un layer mort qui
-  // n'apparaîtra jamais sur la nouvelle map.
+  // 🩸 Même piège que le libellé : layerGroup détaché par un changement de plan → le recréer,
+  // sinon les marqueurs vont sur un calque mort.
   if (!_itineraryMarkerLayer || !_itineraryMarkerLayer._map) {
     _itineraryMarkerLayer = L.layerGroup().addTo(window.map);
   }
-  // étape validée (« je suis ici » dessus) → ✓ vert au lieu du numéro
+  // Étape validée → ✓ vert au lieu du numéro.
   const done = !!p.done;
   const icon = L.divIcon({
     className: "kta-itinerary-waypoint" + (done ? " kta-iti-wp-done" : ""),
@@ -653,15 +522,10 @@ function _ajouterWaypointVisuel(p, num) {
     iconSize:  [28, 28],
     iconAnchor: [14, 14]
   });
-  // (KARMA « un point de passage fait au clic ne peut pas être
-  // validé ») : un waypoint-POI se valide via la popup du POI sous-jacent,
-  // mais un waypoint posé AU CLIC n'a AUCUN objet cliquable — son marker
-  // numéroté était interactive:false. Ce false reste VOULU pour les
-  // waypoints-POI (le clic doit traverser vers la popup du POI dessous) :
-  // le marker ne devient cliquable QUE pour source "click" non validée,
-  // avec une mini-popup « Je suis ici » qui emprunte EXACTEMENT le chemin
-  // POI (recalerTrackerSurPoint → _notifierRecalage("point") → coords
-  // exactes → validation d'étape + replanification).
+  // Un waypoint-POI reste interactive:false (le clic doit traverser vers la popup du POI dessous).
+  // Une étape posée AU CLIC n'a aucun objet cliquable : son marqueur devient cliquable (non validée
+  // seulement) avec une mini-popup « Je suis ici » qui suit EXACTEMENT le chemin POI
+  // (recalerTrackerSurPoint → _notifierRecalage("point") → validation + replanification).
   const cliquable = !done && p.source === "click";
   const m = L.marker(convertCoord(p.x, p.y), { icon: icon, interactive: cliquable })
               .addTo(_itineraryMarkerLayer);
@@ -669,7 +533,7 @@ function _ajouterWaypointVisuel(p, num) {
     m.bindPopup(
       '<div class="kta-popup-point"><b>' + window.I18n.t("iti.wp.popupEtape", { n: num }) + '</b>' +
         '<div class="kta-popup-actions">' +
-          // Écouteur global des fiches (utils.js > _ktaPopupAction), pas de onclick inline (CSP, 07/10/2026).
+          // Écouteur global des fiches (utils.js > _ktaPopupAction) : pas de onclick inline (CSP).
           '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
             'data-kta-act="ici" data-kta-x="' + (Number(p.x) || 0) + '" data-kta-y="' + (Number(p.y) || 0) + '" ' +
             'title="' + window.I18n.t("poi.iAmHere") + '">' +
@@ -690,12 +554,9 @@ function _redessinerWaypoints() {
   _rafraichirListeWaypointsModale();
 }
 
-// 🚨 Q12 (audit ergonomie 13/09/2026) : après un rechargement, sessionPersist
-// restaurait le tracé cyan mais PAS les étapes ① ② ③ ni les ✓ des étapes
-// validées — elles ne revenaient qu'en rouvrant la modale. Reconstruit les
-// waypoints en RAM depuis la road « itinerary » restaurée (les flags `done`
-// sont persistés) et redessine les marqueurs. Appelé par sessionPersist.js
-// en fin de phase 2. Rend faux s'il n'y a rien à redessiner.
+// Après rechargement, sessionPersist restaure le tracé mais pas les étapes ni leurs ✓ : reconstruit les
+// waypoints en RAM depuis la road « itinerary » (flags `done` persistés) et redessine les marqueurs.
+// Appelé par sessionPersist.js en fin de phase 2. Rend false s'il n'y a rien à redessiner.
 window.itineraireRedessinerDepuisRoad = function() {
   const road = (window.getRoads ? (window.getRoads() || []) : [])
     .find(function(r) { return r && r.type === "itinerary" && !r._preview && Array.isArray(r.waypoints) && r.waypoints.length >= 2; });
@@ -716,8 +577,7 @@ function _rafraichirListeWaypointsModale() {
   }
   cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
     const label = p.label || window.I18n.t("iti.wp.coordShort", { x: Math.round(p.x), y: Math.round(p.y) });
-    // 3 sources possibles : "search" (point existant), "tracker" (position
-    // tracker), "click" (par defaut, clic carte). Icone + title adaptes.
+    // Sources : "search" (point existant), "tracker", "click" (défaut).
     let sourceIcon, sourceTitle, sourceClass;
     if (p.source === "search") {
       sourceIcon  = "🎯";
@@ -732,8 +592,7 @@ function _rafraichirListeWaypointsModale() {
       sourceTitle = window.I18n.t("iti.wp.srcClick");
       sourceClass = "";
     }
-    // étape validée → ligne rayée + ✓ (elle reste listée pour
-    // montrer la progression, exclue du calcul)
+    // Étape validée : rayée + ✓, reste listée pour la progression, exclue du calcul.
     const done = !!p.done;
     return '<div class="kta-iti-wp-row' + (done ? " kta-iti-wp-row-done" : "") + '">' +
              '<span class="kta-iti-wp-num">' + (done ? "✓" : (i + 1)) + '</span>' +
@@ -743,7 +602,6 @@ function _rafraichirListeWaypointsModale() {
              '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="' + window.I18n.t("iti.wp.removeTitle") + '">✕</button>' +
            '</div>';
   }).join("");
-  // Wire-up des boutons retirer
   Array.from(cont.querySelectorAll(".kta-iti-wp-remove")).forEach(function(btn) {
     btn.addEventListener("click", function() {
       const idx = parseInt(btn.dataset.idx, 10);
@@ -754,13 +612,12 @@ function _rafraichirListeWaypointsModale() {
       }
     });
   });
-  // Wire-up des boutons "aller à"
   Array.from(cont.querySelectorAll(".kta-iti-wp-goto")).forEach(function(btn) {
     btn.addEventListener("click", function() {
       const idx = parseInt(btn.dataset.idx, 10);
       if (idx >= 0 && idx < _itineraryWaypoints.length) {
         const p = _itineraryWaypoints[idx];
-        // Ferme la modale pour laisser voir la map (comportement style search)
+        // Ferme la modale pour laisser voir la carte.
         const modal = document.getElementById("kta-itinerary-modal");
         if (modal) modal.remove();
         _panEtFlashSurPoint(p);
@@ -769,19 +626,14 @@ function _rafraichirListeWaypointsModale() {
   });
 }
 
-// 🐛 fix double-input : handler à RÉFÉRENCE STABLE (toujours la même fonction).
-// L'itinéraire est le seul mode qui bind/unbind le clic carte à chaque
-// activation — avec une closure recréée à chaque fois, un cycle interrompu
-// (rebuild de modale, plan switch…) pouvait laisser un 1er handler bindé et un
-// 2e s'ajouter → 1 clic = 2 waypoints (même coordonnée). Réf stable + off-avant-on
-// = binding idempotent (exactement 1 handler, quoi qu'il arrive).
+// 🩸 Handler à RÉFÉRENCE STABLE + off-avant-on : avec une closure recréée à chaque activation, un cycle
+// interrompu (rebuild de modale, changement de plan) laisse deux handlers → 1 clic = 2 étapes.
 function _itineraryMapClick(e) {
-  // Coords plan (cf. convention du projet : convertCoord inverse y)
+  // Coords plan (convertCoord inverse y).
   const x = e.latlng.lng;
   const y = APP_CONFIG.imageHeight - e.latlng.lat;
   _itineraryWaypoints.push({ x: x, y: y, source: "click" });
-  // passer l'objet POUSSÉ (avec source) — sinon le marker frais
-  // n'est pas cliquable avant le premier _redessinerWaypoints.
+  // Passer l'objet POUSSÉ (avec source), sinon le marqueur n'est pas cliquable avant le redessin.
   _ajouterWaypointVisuel(_itineraryWaypoints[_itineraryWaypoints.length - 1], _itineraryWaypoints.length);
   _rafraichirListeWaypointsModale();
   _majPanneauFloaterCount();
@@ -809,17 +661,15 @@ function _viderItineraire() {
   }
 }
 
-// Supprime l'itinéraire tracé (road + étapes + libellé de distance). Partagé par
-// « ❌ Effacer l'itinéraire » (modale) et « 🗑️ Supprimer l'itinéraire » de la
-// question de recalcul (01/10/2026).
+// Supprime l'itinéraire (road + étapes + libellé). Partagé par « Effacer » (modale) et « Supprimer »
+// de la question de recalcul.
 function _effacerItineraireActif() {
   const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
   if (window.setRoads) window.setRoads(roadsNow);
   _viderItineraire();
   _majLabelDistanceItineraire();
-  // Le bandeau de guidage ne se recalcule qu'à son battement d'1 s : sans ce
-  // rafraîchissement, l'ancienne consigne (« Rejoindre le tracé », « Hors
-  // itinéraire ? ») réapparaissait un instant à la fermeture de la fenêtre.
+  // Le bandeau ne se recalcule qu'à son battement d'1 s : sans ce rafraîchissement, l'ancienne consigne
+  // réapparaît un instant à la fermeture.
   if (window.ItiGuidage && typeof window.ItiGuidage.rafraichir === "function") {
     try { window.ItiGuidage.rafraichir(); } catch (e) {}
   }
@@ -829,8 +679,7 @@ function _effacerItineraireActif() {
   }
 }
 
-// Mini panneau flottant en bas d'écran pendant le mode clic, pour ne pas
-// bloquer la carte. Bouton "✓ Terminer" → re-affiche la modale principale.
+// Mini panneau flottant pendant le mode clic (la modale bloquerait la carte) ; « Terminer » la réaffiche.
 let _itineraryFloater = null;
 function _afficherPanneauItineraireFlottant(mainModal) {
   if (_itineraryFloater) _itineraryFloater.remove();
@@ -866,23 +715,12 @@ function _majPanneauFloaterCount() {
   if (el) el.textContent = _itineraryWaypoints.length;
 }
 
-// =========================
-// REPLANIFICATION AU RECALAGE + VALIDATION D'ÉTAPES
-// =========================
-// Scénario KARMA (sortie multi-étapes en carrière) : le tracker dérive ou le
-// téléphone est verrouillé → l'user recale souvent sa position. À chaque
-// recalage (clic carte, « 📍 Je suis ici », arrivée portail — hook
-// window._onTrackerRecale émis par tracking.js), l'itinéraire actif est
-// REPLANIFIÉ : ma position devient le point 0, étapes restantes dans l'ordre
-// planifié (reco 3:a).
-// Si le recalage « Je suis ici » tombe sur les coords EXACTES (arrondies)
-// d'une étape non validée, c'est une VALIDATION DE PASSAGE — dans n'importe
-// quel ordre (l'user ne suit pas forcément l'ordre proposé) : étape flaggée
-// done (persistée dans road.waypoints → survit au reload), exclue du calcul,
-// marker passé en ✓ vert (reco 4:a). Dernière étape validée → toast
-// « terminé » + effacement du tracé itinéraire (le tracé tracker reste,
-// reco 5:a). Clic carte = jamais une validation (coords approximatives par
-// nature) : simple replanification.
+// ── Replanification au recalage + validation d'étapes ──────────
+// À chaque recalage (clic carte, « Je suis ici », portail — hook window._onTrackerRecale de tracking.js),
+// l'itinéraire actif est REPLANIFIÉ : la position devient le point 0, étapes restantes dans l'ordre prévu.
+// « Je suis ici » sur les coords EXACTES d'une étape non validée = VALIDATION, dans n'importe quel ordre :
+// flag done (persisté dans road.waypoints), exclue du calcul, ✓ vert. Dernière étape → toast « terminé »
+// + effacement du tracé (le tracé tracker reste). Un clic carte ne valide jamais (coords approximatives).
 // Débounce 500 ms : recalages rapprochés → un seul Dijkstra.
 let _replanTimer = null;
 
@@ -897,13 +735,9 @@ function _toastIti(msg, type) {
   }
 }
 
-// « Je suis ici » sur un point qui est SUR
-// l'itinéraire (≤ COUPE_SEUIL_M du trajet) : on n'a rien à recalculer, on
-// COUPE ce qui est derrière. Le Dijkstra (et sa question) ne sert plus qu'au
-// point hors trajet. Guidage actif ou non : la coupe dépend de l'itinéraire.
-// Même tolérance que le guidage pour « tu es sur le trajet » (itiGuidage
-// > _seuils, sans navigation intelligente) — un seuil en pixels changerait
-// de sens d'un plan à l'autre selon sa résolution.
+// « Je suis ici » sur un point SUR l'itinéraire (≤ COUPE_SEUIL_M du trajet) : rien à recalculer, on COUPE
+// ce qui est derrière ; le Dijkstra ne sert qu'au point hors trajet. Même tolérance que le guidage
+// (itiGuidage > _seuils) : un seuil en pixels changerait de sens selon la résolution du plan.
 const COUPE_SEUIL_M = 8;
 
 function _cumulsTrajet(pts) {
@@ -917,9 +751,8 @@ function _projSegment(a, b, p) {
   const x = a.x + t * dx, y = a.y + t * dy;
   return { t: t, x: x, y: y, d: Math.hypot(p.x - x, p.y - y) };
 }
-// PREMIER passage du trajet à moins de `seuil` (le plus proche dans ce
-// passage) : sur un aller-retour vers un cul-de-sac, le premier « Je suis
-// ici » coupe l'aller, le suivant le retour.
+// PREMIER passage du trajet à moins de `seuil` : sur un aller-retour vers un cul-de-sac, le premier
+// « Je suis ici » coupe l'aller, le suivant le retour.
 function _premierPassage(pts, cum, p, seuil) {
   let best = null;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -944,15 +777,12 @@ function _projApres(pts, cum, p, sMin) {
   return best;
 }
 
-// Rend true si l'itinéraire a été coupé (rien d'autre à faire), false si le
-// point n'est pas sur le trajet (→ replanification habituelle).
+// true si l'itinéraire a été coupé, false si le point est hors trajet (→ replanification).
 function _couperDerriere(road, x, y) {
   const pts = road.points;
   if (!Array.isArray(pts) || pts.length < 2) return false;
-  // 🚨 Parcours d'une équipe de secours : ses étapes (wid) ne se valident que
-  // par le scénario (`secoursMode > _majRoadSuivi` les y recale à chaque
-  // mutation). Une étape cochée ici serait décochée aussitôt, trajet déjà coupé
-  // derrière — et un recalcul y renverrait l'équipe. Comportement inchangé.
+  // 🩸 Parcours d'une équipe de secours : ses étapes ne se valident que par le scénario
+  // (secoursMode > _majRoadSuivi les recale à chaque mutation). Les couper ici serait défait aussitôt.
   if (road.secours) return false;
   const e = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : 1;
   const cum = _cumulsTrajet(pts);
@@ -964,9 +794,8 @@ function _couperDerriere(road, x, y) {
   const tete = { x: coupe.x, y: coupe.y, level: (lvl === undefined) ? null : lvl };
   const points = [tete].concat(pts.slice(coupe.i + 1).map(function(p) { return Object.assign({}, p); }));
 
-  // Étapes et raccords dépassés : projetés DANS L'ORDRE du trajet (chacun
-  // au-delà du précédent), sinon une étape du retour d'un aller-retour serait
-  // prise pour une étape de l'aller.
+  // Projetés DANS L'ORDRE du trajet (chacun au-delà du précédent), sinon une étape du retour d'un
+  // aller-retour serait prise pour une étape de l'aller.
   const etapes = road.waypoints.filter(function(w) { return w.source !== "tracker"; })
                                .map(function(w) { return Object.assign({}, w); });
   let sPrec = 0;
@@ -1012,7 +841,7 @@ function _couperDerriere(road, x, y) {
   _itineraryWaypoints = newRoad.waypoints.map(function(w) { return Object.assign({}, w); });
   _redessinerWaypoints();
   _majLabelDistanceItineraire();
-  // Dernière étape dépassée : c'est la clôture (toast « terminé » + effacement).
+  // Dernière étape dépassée : clôture (toast « terminé » + effacement).
   if (restantes === 0) { _replanifierDepuis(x, y); return true; }
   const resteM = _distanceItineraireMeters(newRoad);
   _toastIti(window.I18n.t("iti.coupe.toast", {
@@ -1027,7 +856,7 @@ window._onTrackerRecale = function(x, y, source, opts) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
 
-  // Validation d'étape : uniquement au recalage "point" (coords exactes).
+  // Validation uniquement au recalage "point" (coords exactes).
   if (source === "point") {
     const etape = road.waypoints.find(function(w) {
       return !w.done && w.source !== "tracker" &&
@@ -1042,16 +871,13 @@ window._onTrackerRecale = function(x, y, source, opts) {
         }), "info");
         if (window.kta_vibrate) window.kta_vibrate.medium();
       }
-      // restantes === 0 → le toast « terminé » est géré par _replanifierDepuis
+      // restantes === 0 → toast « terminé » géré par _replanifierDepuis.
     }
   }
 
-  // Mode Secours (30/09) : recalage sur une étape du parcours qu'on vient de valider
-  // (`sansReplan`) — on est SUR le parcours prévu : l'étape est cochée ci-dessus, pas
-  // de proposition de recalcul à chaque étape.
+  // Mode Secours (`sansReplan`) : on est SUR le parcours prévu, pas de proposition de recalcul.
   if (opts && opts.sansReplan) return;
-  // ✂️ Point SUR le trajet : on coupe derrière, sans Dijkstra ni question. Pas
-  // quand la dernière étape vient d'être validée : c'est la clôture, plus bas.
+  // Point SUR le trajet : on coupe derrière, sans Dijkstra ni question — sauf clôture (plus bas).
   const resteAvant = road.waypoints.filter(function(w) { return !w.done && w.source !== "tracker"; }).length;
   if (source === "point" && resteAvant > 0) {
     try {
@@ -1066,27 +892,19 @@ window._onTrackerRecale = function(x, y, source, opts) {
   if (_replanTimer) clearTimeout(_replanTimer);
   _replanTimer = setTimeout(function() {
     _replanTimer = null;
-    // DEMANDER avant de recalculer : sur les
-    // grands plans, le Dijkstra peut prendre plusieurs dizaines de secondes,
-    // parfois pour rien (simple recalage sans besoin de nouvel itinéraire).
-    // Sûr ici : ce hook n'est déclenché QUE par un geste utilisateur (clic
-    // en mode recalage, « 📍 Je suis ici », portail) — jamais par le tracker
-    // automatique. EXCEPTION : dernière étape tout juste validée (restantes
-    // = 0) → replan direct, c'est la CLÔTURE de l'itinéraire (toast
-    // « terminé » + effacement du tracé, quasi instantané) — la soumettre à
-    // confirmation laisserait un itinéraire fini ouvert pour toujours.
+    // On DEMANDE avant de recalculer : sur un grand plan le Dijkstra peut prendre des dizaines de secondes.
+    // Sûr : ce hook ne part que d'un geste utilisateur, jamais du tracker automatique.
+    // 🩸 Exception : dernière étape validée → replan direct (clôture) ; la soumettre à confirmation
+    // laisserait un itinéraire fini ouvert pour toujours.
     const roadNow = _roadItineraireActive();
     const restantes = roadNow && Array.isArray(roadNow.waypoints)
       ? roadNow.waypoints.filter(function(w) { return !w.done && w.source !== "tracker"; }).length
       : 0;
     if (restantes > 0) {
-      // Confirm CHARTÉ (ktaConfirm, utils.js) — retour KARMA : le confirm()
-      // natif jurait avec la charte graphique.
       const demander = window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
         titre: window.I18n.t("iti.replan.confirmTitre"),
         okLabel: window.I18n.t("iti.replan.confirmOk"),
         cancelLabel: window.I18n.t("iti.replan.confirmNon"),
-        // 3e choix : on n'en veut plus du tout.
         autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
       });
       demander.then(function(ok) {
@@ -1104,12 +922,10 @@ window._onTrackerRecale = function(x, y, source, opts) {
   }, 500);
 };
 
-// 🪧 Guidage (lot 2, décision D) — « Recalculer d'ici » du bandeau. Geste
-// explicite de l'utilisateur : pas de confirmation en plus.
-// 🧭 Mode Secours (B1, 30/09/2026) : active un itinéraire DÉJÀ calculé (le parcours
-// d'une équipe) comme l'itinéraire de l'app — bandeau de guidage, feuille de route,
-// écran XL et replanification le prennent tel quel. `opts.confirmer` : demande avant
-// de remplacer un itinéraire en cours (même fenêtre que le calcul classique).
+// « Recalculer d'ici » du bandeau de guidage : geste explicite, pas de confirmation.
+// itineraireActiverRoad : active un itinéraire DÉJÀ calculé (parcours d'une équipe du Mode Secours) comme
+// celui de l'app — guidage, feuille de route, écran XL et replanification le prennent tel quel.
+// `opts.confirmer` : demande avant de remplacer un itinéraire en cours.
 window.itineraireActiverRoad = function(newRoad, opts) {
   opts = opts || {};
   if (!newRoad || newRoad.type !== "itinerary" || !Array.isArray(newRoad.points) || newRoad.points.length < 2) return;
@@ -1140,8 +956,7 @@ async function _replanifierDepuis(px, py) {
   const etapes    = road.waypoints.filter(function(w) { return w.source !== "tracker"; });
   const restantes = etapes.filter(function(w) { return !w.done; });
 
-  // Toutes les étapes validées → itinéraire terminé. On efface le tracé
-  // itinéraire (le tracé TRACKER, lui, reste à l'écran).
+  // Toutes les étapes validées → terminé : on efface le tracé itinéraire (pas le tracé tracker).
   if (restantes.length === 0) {
     if (window.setRoads) {
       window.setRoads((window.getRoads ? window.getRoads() : [])
@@ -1161,15 +976,12 @@ async function _replanifierDepuis(px, py) {
   };
   try {
     const avoidPrefs = _getItiAvoidPrefs();
-    // 🧭 Parcours d'une équipe de secours : on garde SES évitements (les zones des
-    // autres équipes), pas les préférences de l'itinéraire classique (B1, 30/09/2026).
+    // Parcours d'une équipe : on garde SES évitements (zones des autres équipes), pas les préférences.
     const sec = road.secours || null;
     const evC = road.evacuation && road.evacuation.contraintes;
-    // un parcours de BALAYAGE n'est pas
-    // remplacé par un plus court chemin (qui sauterait boucles et culs-de-sac) : on
-    // rejoint le circuit plus loin, puis on le suit. Point visé : à partir de la progression
-    // notée pendant la marche (secoursMode > _avancerBalayage), le plus proche de la position,
-    // légèrement pénalisé par l'avance sur le circuit (à distance égale, le plus tôt).
+    // Un parcours de BALAYAGE n'est pas remplacé par un plus court chemin (qui sauterait boucles et
+    // culs-de-sac) : on rejoint le circuit plus loin, puis on le suit. Point visé : à partir de la
+    // progression (secoursMode > _avancerBalayage), le plus proche, légèrement pénalisé par l'avance.
     if (sec && Array.isArray(sec.balayage) && sec.balayage.length > 1 && !evC) {
       const B = sec.balayage;
       const deb = Number.isInteger(sec.balayageIdx) ? Math.min(sec.balayageIdx, B.length - 1) : 0;
@@ -1212,15 +1024,14 @@ async function _replanifierDepuis(px, py) {
         avoidRadius: sec ? (sec.avoidRadius || 30) : (avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS)
       });
     });
-    // road.waypoints conserve TOUTES les étapes (validées incluses, avec leur
-    // flag done) → progression visible + persistance session gratuite. Seul
-    // l'ancien point 0 tracker est remplacé par la position recalée.
+    // road.waypoints garde TOUTES les étapes (validées incluses) ; seul l'ancien point 0 tracker est
+    // remplacé par la position recalée.
     const newRoad = Object.assign({
       type:      "itinerary",
       points:    result.path,
       waypoints: [origin].concat(etapes.map(function(w) { return Object.assign({}, w); }))
     }, _champsGuidage(result));
-    // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
+    // Une sortie d'urgence replanifiée reste une sortie d'urgence.
     if (road.urgence) newRoad.urgence = true;
     if (road.evacuation) newRoad.evacuation = road.evacuation;   // garde ses options brancard
     if (road.secours) newRoad.secours = road.secours;   // reste le parcours de l'équipe
@@ -1237,8 +1048,7 @@ async function _replanifierDepuis(px, py) {
     const alerteRaccord = _texteAlerteRaccord(newRoad);
     if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
   } catch(err) {
-    // Pas de chemin depuis la nouvelle position (réseau non connecté, etc.) :
-    // on GARDE l'ancien tracé tel quel, on informe sans bloquer.
+    // Pas de chemin depuis la nouvelle position : on GARDE l'ancien tracé, on informe sans bloquer.
     const msg = (err && err.i18nKey && window.I18n)
       ? window.I18n.t(err.i18nKey, err.i18nParams || {})
       : (err && err.message) || String(err);
@@ -1246,12 +1056,9 @@ async function _replanifierDepuis(px, py) {
   }
 }
 
-// =========================
-// 🚫 EVITEMENTS ITINERAIRE — preferences par plan (depuis v169 / Karma_dev)
-// =========================
-// Stockage localStorage par planId : { points: [{x,y,label,id?}], tags: [], radius: 100 }
-// Restauration a l'ouverture de la modale itineraire, ecriture a chaque
-// modification (ajout/suppression/changement radius). Reset via bouton dedie.
+// ── Évitements : préférences par plan ──────────
+// localStorage par planId : { points: [{x,y,label,id?}], tags: [], zones: [], radius, respecterInaccessibles }
+// Écrites à chaque modification, restaurées à l'ouverture de la modale.
 
 const ITI_AVOID_LS_PREFIX = "myktamap_route_avoid_";
 const ITI_AVOID_DEFAULT_RADIUS = 100;
@@ -1272,9 +1079,8 @@ function _getItiAvoidPrefs() {
       tags:   Array.isArray(obj.tags)   ? obj.tags   : [],
       zones:  Array.isArray(obj.zones)  ? obj.zones  : [],   // ids dérivés des zones à éviter
       radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS,
-      // seule contrainte DURE du moteur, desormais debrayable.
-      // `!== false` : une pref enregistree avant cette version n'a pas le
-      // champ, et doit garder le comportement historique (= respecter).
+      // Seule contrainte DURE du moteur, débrayable. `!== false` : une préférence sans le champ
+      // garde le comportement par défaut (respecter).
       respecterInaccessibles: obj.respecterInaccessibles !== false
     };
   } catch(e) {
@@ -1289,23 +1095,18 @@ function _setItiAvoidPrefs(prefs) {
   } catch(e) {}
 }
 
-// Rendu des TYPES de zones à éviter (1 checkbox par type, comme
-// les autres filtres). Source : window.getAvoidableZoneTypes() (pathfinder :
-// types distincts des zones session + embarquées, sauf "inaccessible", label
-// résolu legend/custom). Coché = type présent dans prefs.zones. Persiste à
-// chaque toggle. Contrainte SOUPLE côté pathfinder (relâchée si aucun chemin).
+// Types de zones à éviter (une case par TYPE, pas par instance) : window.getAvoidableZoneTypes()
+// (types des zones session + embarquées, sauf "inaccessible"). Contrainte SOUPLE (relâchée si aucun chemin).
 function _rafraichirListeAvoidZones() {
   const el = document.getElementById("kta-iti-avoid-zones-list");
   if (!el) return;
-  // 1 entrée par TYPE de zone (comme les autres filtres), pas par instance.
-  // prefs.zones contient des TYPES ; cocher un type = éviter toutes ses zones.
   const types = (typeof window.getAvoidableZoneTypes === "function") ? window.getAvoidableZoneTypes() : [];
   if (!types.length) {
     el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.zonesEmpty") + '</p>';
     return;
   }
   const prefs = _getItiAvoidPrefs();
-  // 🔒 guillemets compris (le type part dans data-ztype="…").
+  // 🔒 Guillemets compris (le type part dans data-ztype="…").
   const _esc = window.ktaEsc;
   el.innerHTML = types.map(function(z) {
     const checked = prefs.zones.indexOf(z.type) >= 0;
@@ -1327,11 +1128,8 @@ function _rafraichirListeAvoidZones() {
   });
 }
 
-// Liste des tags presents dans le plan (depuis SearchPoints) pour le dropdown
-// "+ Ajouter un tag a eviter". Distincts, tries alphabetiquement.
-// ASYNC depuis v169 : SearchPoints.getAllPoints est async (cache fetch). Le
-// 1er appel peut prendre 1 frame, les suivants sont en cache. Structure des
-// retours : [{point, source, layerId}, ...] — on lit `.point.tags`.
+// Tags présents dans le plan, distincts et triés. SearchPoints.getAllPoints est async (en cache ensuite) ;
+// retours [{point, source, layerId}] → on lit `.point.tags`.
 async function _itiAvoidGetAvailableTags() {
   if (typeof window.SearchPoints !== "object" ||
       typeof window.SearchPoints.getAllPoints !== "function") {
@@ -1351,15 +1149,8 @@ async function _itiAvoidGetAvailableTags() {
   } catch(e) { return []; }
 }
 
-// 🚫 v169 (Karma_dev) : mode clic carte pour ajouter des points d'évitement
-// directement en cliquant sur la map. Réutilise le pattern des waypoints mais
-// avec un état séparé (sinon conflit avec le mode clic des waypoints).
-//
-// Flow :
-//   1. Click bouton "📍 Cliquer sur la carte" → _activerModeClicAvoid
-//   2. Modale cachée + floater orange "Mode clic évitement actif"
-//   3. Chaque clic sur la map ajoute aux avoidPoints + persiste localStorage
-//   4. Click "✓ Terminer" sur le floater → _desactiverModeClicAvoid + re-affiche modale
+// Mode clic carte des points d'évitement : état séparé de celui des étapes (sinon conflit).
+// Modale cachée + floater orange ; chaque clic ajoute un point (persisté) ; « Terminer » réaffiche la modale.
 
 let _itiAvoidClickActive  = false;
 let _itiAvoidClickHandler = null;
@@ -1385,10 +1176,9 @@ function _activerModeClicAvoid(mainModal) {
   };
   window.map.on("click", _itiAvoidClickHandler);
 
-  // Cache la modale (pas remove → on garde son DOM pour réafficher)
+  // Cachée, pas retirée : on garde son DOM pour la réafficher.
   if (mainModal) mainModal.style.display = "none";
 
-  // Floater orange (couleur thématique avoid) avec compteur live
   if (_itiAvoidFloater) _itiAvoidFloater.remove();
   const panneau = document.createElement("div");
   panneau.id = "kta-iti-avoid-floater";
@@ -1434,14 +1224,7 @@ function _majPanneauFloaterAvoidCount() {
   if (el) el.textContent = _getItiAvoidPrefs().points.length;
 }
 
-// Genere le HTML de la section "🚫 Preferences d'evitement" pour la modale
-// itineraire. Replie par defaut via <details> (HTML natif). Composants :
-//   - Recherche autocomplete (input + dropdown resultats)
-//   - Saisie ID texte + bouton Ajouter
-//   - Multi-select des tags (chips cliquables)
-//   - Champ marge (px)
-//   - Liste des points evites avec ✕
-//   - Bouton 🗑️ Reset
+// Section « Préférences d'évitement » de la modale, repliée (<details>).
 function _htmlSectionAvoidItineraire(prefs) {
   const radiusVal = Number.isFinite(prefs.radius) ? prefs.radius : ITI_AVOID_DEFAULT_RADIUS;
   return '' +
@@ -1449,7 +1232,6 @@ function _htmlSectionAvoidItineraire(prefs) {
       '<details class="kta-iti-avoid-details">' +
         '<summary class="kta-iti-section-titre" style="cursor:pointer;">' + window.I18n.t("iti.avoid.title") + '</summary>' +
 
-        // === Points à éviter ===
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.pointsTitle") + '</div>' +
           '<div class="kta-iti-avoid-search-wrap">' +
@@ -1462,21 +1244,16 @@ function _htmlSectionAvoidItineraire(prefs) {
               'placeholder="' + window.I18n.t("iti.avoid.byIdPlaceholder") + '" autocomplete="off" style="flex:1;">' +
             '<button id="kta-iti-avoid-byid-add" class="kta-btn kta-btn-ghost kta-btn-small" type="button">' + window.I18n.t("iti.avoid.byIdAdd") + '</button>' +
           '</div>' +
-          // 🚫 v169 (Karma_dev) : bouton mode clic carte — bascule la modale en
-          // floater, chaque clic sur la map ajoute un point d'évitement
           '<button id="kta-iti-avoid-click-map" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-bottom:8px;">' + window.I18n.t("iti.avoid.clickMapBtn") + '</button>' +
           '<div id="kta-iti-avoid-points-list" class="kta-iti-avoid-list"></div>' +
         '</div>' +
 
-        // === Tags à éviter ===
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.tagsTitle") + '</div>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
         '</div>' +
 
-        // === Zones inaccessibles (🆕 v1.82.0) ===
-        // Placée AVANT les évitements souples : c'est la contrainte la plus
-        // forte, et la seule que le moteur ne relâche jamais de lui-même.
+        // Inaccessibles AVANT les évitements souples : seule contrainte que le moteur ne relâche jamais.
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.inacc.title") + '</div>' +
           '<label class="kta-iti-avoid-zone-row">' +
@@ -1486,7 +1263,6 @@ function _htmlSectionAvoidItineraire(prefs) {
           '</label>' +
         '</div>' +
 
-        // === Zones à éviter (🆕 v1.48.0) ===
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.zonesTitle") + '</div>' +
           '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
@@ -1495,7 +1271,6 @@ function _htmlSectionAvoidItineraire(prefs) {
           '<div id="kta-iti-avoid-zones-list" class="kta-iti-avoid-zones-list"></div>' +
         '</div>' +
 
-        // === Marge ===
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.marginTitle") + '</div>' +
           '<div style="display:flex; align-items:center; gap:8px;">' +
@@ -1505,14 +1280,11 @@ function _htmlSectionAvoidItineraire(prefs) {
           '</div>' +
         '</div>' +
 
-        // === Reset ===
         '<button id="kta-iti-avoid-reset" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-top:6px;">' + window.I18n.t("iti.avoid.reset") + '</button>' +
       '</details>' +
     '</div>';
 }
 
-// Re-rendu de la liste des points evites (chips avec ✕). Appelle apres
-// chaque ajout/suppression. Lit prefs depuis localStorage.
 function _rafraichirListeAvoidPoints() {
   const el = document.getElementById("kta-iti-avoid-points-list");
   if (!el) return;
@@ -1528,7 +1300,6 @@ function _rafraichirListeAvoidPoints() {
              '<button class="kta-iti-avoid-chip-remove" data-idx="' + idx + '" type="button" title="' + window.I18n.t("iti.avoid.chipRemove") + '">✕</button>' +
            '</div>';
   }).join("");
-  // Bind retraits
   el.querySelectorAll(".kta-iti-avoid-chip-remove").forEach(function(btn) {
     btn.addEventListener("click", function() {
       const i = parseInt(btn.getAttribute("data-idx"), 10);
@@ -1541,17 +1312,14 @@ function _rafraichirListeAvoidPoints() {
   });
 }
 
-// Re-rendu des chips de tags avec etat actif/inactif selon prefs.tags.
-// ASYNC depuis v169 (await _itiAvoidGetAvailableTags). Pendant le chargement,
-// on affiche un placeholder "Chargement…" pour ne pas laisser un vide visible.
+// Placeholder « Chargement… » pendant l'await des tags (sinon vide visible).
 async function _rafraichirChipsAvoidTags() {
   const el = document.getElementById("kta-iti-avoid-tags-chips");
   if (!el) return;
   el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.tagsLoading") + '</p>';
   const prefs = _getItiAvoidPrefs();
   const available = await _itiAvoidGetAvailableTags();
-  // Si l'utilisateur a deja ferme la modale entre temps, le sub-element peut
-  // ne plus exister — on re-check.
+  // La modale a pu être fermée pendant l'await : re-vérifier l'élément.
   const el2 = document.getElementById("kta-iti-avoid-tags-chips");
   if (!el2) return;
   if (available.length === 0) {
@@ -1579,12 +1347,9 @@ async function _rafraichirChipsAvoidTags() {
   });
 }
 
-// Setup des handlers de la section evitement (recherche, ajout par ID, radius,
-// reset). Appele apres injection du HTML dans la modale itineraire.
+// Appelé après injection du HTML dans la modale.
 function _bindAvoidSectionHandlers() {
-  // 1. Recherche autocomplete : reuse SearchPoints.findByQuery (ASYNC).
-  // Structure retournee : [{point, source, layerId}, ...] — on lit `.point.*`.
-  // Debounce 150ms pour eviter de spam le fetch a chaque keystroke.
+  // Recherche : SearchPoints.findByQuery (async), retours [{point, source, layerId}], débounce 150 ms.
   const searchInput = document.getElementById("kta-iti-avoid-search-input");
   const searchRes   = document.getElementById("kta-iti-avoid-search-results");
   if (searchInput && searchRes && window.SearchPoints &&
@@ -1598,8 +1363,7 @@ function _bindAvoidSectionHandlers() {
         let results = [];
         try { results = await window.SearchPoints.findByQuery(q) || []; }
         catch(e) { results = []; }
-        // Si l'input a change entre temps, on annule (la prochaine query
-        // viendra en remplacement)
+        // L'input a changé entre-temps : la requête suivante remplace celle-ci.
         if (searchInput.value.trim() !== q) return;
         if (results.length === 0) {
           searchRes.innerHTML = '<div class="kta-iti-search-result-empty">' + window.I18n.t("iti.search.noPoint") + '</div>';
@@ -1617,16 +1381,11 @@ function _bindAvoidSectionHandlers() {
                  '</div>';
         }).join("");
         searchRes.style.display = "block";
-        // Event delegation sur searchRes (conteneur stable) au
-        // lieu de N listeners individuels par row (re-créés à chaque keypress).
-        // Évite l'accumulation transitoire de closures.
-        // On stocke `results` au scope du handler ; chaque row a son data-idx.
         searchRes._lastResults = results;
       }, 150);
     });
 
-    // Listener délégué attaché UNE FOIS au build de la modale
-    // (pas à chaque input). data-idx référence l'index dans `_lastResults`.
+    // Délégation posée UNE FOIS au build de la modale ; data-idx → `_lastResults`.
     if (!searchRes._delegateBound) {
       searchRes._delegateBound = true;
       searchRes.addEventListener("click", function(e) {
@@ -1653,7 +1412,6 @@ function _bindAvoidSectionHandlers() {
     }
   }
 
-  // 2. Ajout par ID texte
   const idInput = document.getElementById("kta-iti-avoid-byid-input");
   const idBtn   = document.getElementById("kta-iti-avoid-byid-add");
   if (idInput && idBtn && window.Pathfinder &&
@@ -1683,22 +1441,17 @@ function _bindAvoidSectionHandlers() {
     });
   }
 
-  // 2bis. 🚫 v169 (Karma_dev) : mode clic carte — bascule en floater, chaque
-  // clic ajoute un point. Coexiste avec le mode clic waypoints (handlers
-  // séparés via _itiAvoidClickHandler) → si l'user active les 2 modes en
-  // même temps, c'est OK (clics partagés) mais peu utile en pratique.
+  // Mode clic carte : handler séparé (_itiAvoidClickHandler), coexiste avec celui des étapes.
   const clickMapBtn = document.getElementById("kta-iti-avoid-click-map");
   if (clickMapBtn) {
     clickMapBtn.addEventListener("click", function() {
       const mainModal = document.getElementById("kta-itinerary-modal");
       _activerModeClicAvoid(mainModal);
-      // Indicateur visuel (devient inactif au "✓ Terminer" du floater)
       clickMapBtn.classList.add("kta-actif");
       clickMapBtn.textContent = window.I18n.t("iti.avoid.clickMapActive");
     });
   }
 
-  // 3. Champ radius
   const radiusInput = document.getElementById("kta-iti-avoid-radius");
   if (radiusInput) {
     radiusInput.addEventListener("change", function() {
@@ -1709,9 +1462,7 @@ function _bindAvoidSectionHandlers() {
     });
   }
 
-  // 4. Reset complet
-  // persiste immédiatement, comme les autres réglages de la
-  // section : la modale peut être fermée par le calcul lui-même.
+  // Persistée immédiatement : la modale peut être fermée par le calcul lui-même.
   const inaccCb = document.getElementById("kta-iti-respect-inacc");
   if (inaccCb) {
     inaccCb.addEventListener("change", function () {
@@ -1725,8 +1476,7 @@ function _bindAvoidSectionHandlers() {
   if (resetBtn) {
     resetBtn.addEventListener("click", async function() {
       if (!(await window.ktaConfirm(window.I18n.t("iti.avoid.resetConfirm")))) return;
-      // Le reset rend le comportement SÛR, pas le dernier choix : la case
-      // revient cochée comme le reste revient à vide.
+      // Le reset rend le comportement SÛR, pas le dernier choix : la case revient cochée.
       _setItiAvoidPrefs({ points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
                           respecterInaccessibles: true });
       const cbI = document.getElementById("kta-iti-respect-inacc");
@@ -1738,7 +1488,6 @@ function _bindAvoidSectionHandlers() {
     });
   }
 
-  // Premier rendu des chips + liste
   _rafraichirListeAvoidPoints();
   _rafraichirChipsAvoidTags();
   _rafraichirListeAvoidZones();
@@ -1753,20 +1502,16 @@ function _itiPartageLibelle() {
 }
 
 window.ouvrirItinerairModal = function() {
-  // Si une modale existe déjà, on la ferme et reset l'état
   const existing = document.getElementById("kta-itinerary-modal");
   if (existing) existing.remove();
 
-  // Détection itinéraire actif : si une road de type "itinerary" existe,
-  // on RESTAURE ses waypoints et on bascule en MODE NAVIGATION
-  // (pas de calcul, juste les boutons pour aller voir chaque waypoint).
+  // Itinéraire actif → MODE NAVIGATION : on restaure ses étapes (pas de calcul).
   const existingItinerary = (window.getRoads ? window.getRoads() : [])
     .find(function(r) { return r.type === "itinerary"; });
 
   const modeNavigation = !!(existingItinerary && Array.isArray(existingItinerary.waypoints) && existingItinerary.waypoints.length >= 2);
 
   if (modeNavigation) {
-    // Restaure les waypoints et leurs markers visuels
     _itineraryWaypoints = existingItinerary.waypoints.map(function(w) { return Object.assign({}, w); });
     if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
     _itineraryWaypoints.forEach(function(p, i) {
@@ -1778,12 +1523,8 @@ window.ouvrirItinerairModal = function() {
 
   const titre = modeNavigation ? window.I18n.t("iti.modal.titreNav") : window.I18n.t("iti.modal.titreCalc");
 
-  // ===== Section "Points de passage" UNIFIEE (mode calcul + mode navigation) =====
-  // Les deux modes ont desormais les memes controles d'edition (ajout/suppression
-  // de waypoints) → l'utilisateur peut modifier son itineraire actif sans
-  // passer par "Recalculer" qui efface tout et recommence.
-  // En mode navigation : on ajoute en plus une quick-nav (Debut/Fin/Tour) au-dessus
-  // de la liste, pour acceder rapidement aux extremites du tracé.
+  // Points de passage : mêmes contrôles d'édition dans les deux modes ; en navigation, une quick-nav
+  // (Début/Fin/Tour) au-dessus de la liste.
   const quickNavHtml = modeNavigation
     ? '<div class="kta-iti-quicknav">' +
         '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.nav.start") + '</button>' +
@@ -1814,17 +1555,12 @@ window.ouvrirItinerairModal = function() {
       '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
     '</div>';
 
-  // ===== Section action UNIFIEE =====
-  // Bouton principal "🎯 Calculer" / "🔄 Recalculer" selon presence d'itineraire.
-  // Bouton "❌ Effacer" affiche uniquement si itineraire actif.
-  // Statut Distance/Tronçons en haut si mode navigation.
   const computeBtnLabel = modeNavigation ? window.I18n.t("iti.btn.recompute") : window.I18n.t("iti.btn.compute");
   const currentPresetKey = _getItiSpeedPreset();
   const currentPreset    = ITI_SPEED_PRESETS[currentPresetKey];
   let statusActuel = '';
   if (modeNavigation) {
     const distActMeters = _distanceItineraireMeters(existingItinerary);
-    // étapes validées exclues du compte de pauses
     const nbWpAct       = Array.isArray(existingItinerary.waypoints)
       ? existingItinerary.waypoints.filter(function(w) { return !w.done; }).length : 2;
     const tempsActMin   = _tempsItineraireMinutes(distActMeters, nbWpAct);
@@ -1837,17 +1573,14 @@ window.ouvrirItinerairModal = function() {
           '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
         '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segments") + '</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
-        // accès au profil en long. Le chemin est DÉJÀ là :
-        // `existingItinerary.points` porte le niveau de chaque point depuis
-        // que `computeRoute` cesse de le jeter. Aucune plomberie en plus.
+        // Profil en long : `existingItinerary.points` porte déjà le niveau de chaque point.
         '<button id="kta-iti-profil" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
           ' style="width:100%; margin-top:6px;">📉 ' + window.I18n.t("prof.profil.btn") + '</button>' +
-        // 🪧 Feuille de route (guidage, lot 1) — toutes les consignes, sans tracker.
         (window.ItiGuidage
           ? '<button id="kta-iti-feuille" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
               ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
           : '') +
-        // 🧭 Installation reliée seulement (prise neutre `itineraire`) : montrer l'itinéraire à l'équipe.
+        // Installation reliée seulement (prise neutre `itineraire`) : montrer l'itinéraire à l'équipe.
         (_itiPartageDispo()
           ? '<button id="kta-iti-partage" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
               ' style="width:100%; margin-top:6px;">' + _itiPartageLibelle() + '</button>'
@@ -1879,9 +1612,7 @@ window.ouvrirItinerairModal = function() {
       if (iti) window.ItiGuidage.ouvrirFeuilleDeRoute(iti);
     });
   }
-  // Délégation plutôt qu'un listener direct : ce bloc est réécrit à chaque
-  // rafraîchissement du panneau, un `addEventListener` posé sur le bouton
-  // partirait avec lui au premier recalcul.
+  // Délégation : ce bloc est réécrit à chaque rafraîchissement, un listener direct partirait avec lui.
   if (!window._itiProfilBound) {
     window._itiProfilBound = true;
     document.addEventListener("click", function (e) {
@@ -1896,8 +1627,6 @@ window.ouvrirItinerairModal = function() {
   const eraseBtn = modeNavigation
     ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">' + window.I18n.t("iti.btn.erase") + '</button>'
     : '';
-  // Segmented control pour la vitesse de marche (4 presets)
-  // currentPresetKey est déjà défini plus haut (avant statusActuel)
   let speedButtonsHtml = "";
   Object.keys(ITI_SPEED_PRESETS).forEach(function(key) {
     const p = ITI_SPEED_PRESETS[key];
@@ -1920,10 +1649,7 @@ window.ouvrirItinerairModal = function() {
       '</div>' +
     '</div>';
 
-  // (KARMA "rajoute un temps de pause définissable entre chaque
-  // point en minutes... avec un par default auto cocher [système actuel]") :
-  // section dédiée Pause configurable. Default = case cochée + 15 min (=
-  // comportement v1.22.x strictement préservé).
+  // Pause configurable : défaut case cochée + 15 min.
   const pauseEnabled   = _getItiPauseEnabled();
   const pauseMin       = _getItiPauseMinutes();
   const sectionPause =
@@ -1946,9 +1672,7 @@ window.ouvrirItinerairModal = function() {
       '<div class="kta-iti-section-titre">' + (modeNavigation ? window.I18n.t("iti.action.titreNav") : window.I18n.t("iti.action.titre")) + '</div>' +
       statusActuel +
       '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + computeBtnLabel + '</button>' +
-      // (A6 1:c) — destination sur un AUTRE plan : ouvre la
-      // recherche multi-plans en mode sélection → itinéraire via portail
-      // (InterPlanRoute). Affiché seulement si les modules sont chargés.
+      // Destination sur un AUTRE plan : recherche multi-plans en mode sélection → itinéraire via portail.
       ((window.CrossPlanSearch && window.InterPlanRoute)
         ? '<button id="kta-iti-crossplan" class="kta-btn kta-btn-ghost" type="button" style="width:100%; margin-top:8px;">🌐 ' +
             window.I18n.t("ipr.btn.fromItiModal") + '</button>'
@@ -1958,9 +1682,6 @@ window.ouvrirItinerairModal = function() {
       '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
     '</div>';
 
-  // 🚫 v169 (Karma_dev) : section preferences d'evitement (avancees, repliees
-  // par defaut via <details> HTML). Lit les prefs depuis localStorage par
-  // planId pour restaurer l'etat entre 2 ouvertures de la modale.
   const sectionAvoid = _htmlSectionAvoidItineraire(_getItiAvoidPrefs());
 
   const modal = document.createElement("div");
@@ -1984,10 +1705,7 @@ window.ouvrirItinerairModal = function() {
   _rafraichirListeWaypointsModale();
   _bindAvoidSectionHandlers();
 
-  // Bind du segmented control de vitesse — clic = update preset + refresh
-  // visuel des boutons + refresh in-place du temps affiché dans le bloc
-  // statusActuel (mode navigation) + refresh du label bottom-left (géré par
-  // _setItiSpeedPreset).
+  // Clic = preset + boutons + temps du bloc navigation (le libellé bas-gauche suit via _setItiSpeedPreset).
   (function bindSpeedSegmented() {
     const wrap = document.getElementById("kta-iti-speed-segmented");
     if (!wrap) return;
@@ -1995,7 +1713,6 @@ window.ouvrirItinerairModal = function() {
       btn.addEventListener("click", function() {
         const key = btn.getAttribute("data-speed");
         if (!_setItiSpeedPreset(key)) return;
-        // Toggle visuel des boutons
         wrap.querySelectorAll(".kta-iti-speed-btn").forEach(function(b) {
           b.classList.toggle("kta-iti-speed-active", b === btn);
         });
@@ -2004,7 +1721,6 @@ window.ouvrirItinerairModal = function() {
     });
   })();
 
-  // Bind handlers section Pause (checkbox + input minutes)
   (function bindPauseSection() {
     const cb     = document.getElementById("kta-iti-pause-cb");
     const inp    = document.getElementById("kta-iti-pause-min");
@@ -2023,7 +1739,7 @@ window.ouvrirItinerairModal = function() {
       });
     }
     if (inp) {
-      // Change ET input (live feedback pendant la saisie au clavier)
+      // change ET input : retour en direct pendant la saisie.
       const _onInput = function() {
         const v = parseFloat(inp.value);
         if (isFinite(v) && v >= 0) {
@@ -2039,8 +1755,6 @@ window.ouvrirItinerairModal = function() {
     }
   })();
 
-  // Helper local : refresh le bloc statusActuel (mode navigation) — partagé
-  // entre vitesse + pause handlers pour cohérence.
   function _refreshItiTempsInPlace() {
     const statusBlk = document.getElementById("kta-iti-status-block");
     if (!statusBlk) return;
@@ -2059,11 +1773,8 @@ window.ouvrirItinerairModal = function() {
     _desactiverModeClicCarte();
     if (_itineraryFloater) { _itineraryFloater.remove(); _itineraryFloater = null; }
     if (modeNavigation) {
-      // Mode navigation : si un preview existe (l'utilisateur a recalcule
-      // pendant cette session de modale), on l'auto-save → l'itineraire
-      // utilise la nouvelle version au lieu d'etre perdu. Cohérent avec
-      // l'intention "j'ai recalculé donc je veux le nouveau". L'utilisateur
-      // peut explicitement annuler via le bouton ❌ Effacer du preview.
+      // Navigation : un aperçu recalculé pendant la modale est enregistré à la fermeture (intention
+      // « j'ai recalculé, je veux le nouveau »).
       const hasPreview = (window.getRoads ? window.getRoads() : []).some(function(r) { return r._preview; });
       if (hasPreview) {
         const roadsNow = (window.getRoads ? window.getRoads() : []).map(function(r) {
@@ -2072,12 +1783,9 @@ window.ouvrirItinerairModal = function() {
         });
         if (window.setRoads) window.setRoads(roadsNow);
       }
-      // On garde les markers numérotés (waypoints visuels) sur la carte pour
-      // que l'utilisateur les voie toujours hors modale.
+      // Les marqueurs numérotés restent visibles hors modale.
     } else {
-      // Mode calcul : on retire le preview éventuel + les markers numérotés
-      // (sinon ça encombre la carte). L'utilisateur doit explicitement
-      // sauver via le bouton 💾 dans la zone résultat.
+      // Calcul : on retire l'aperçu et les marqueurs ; enregistrer passe par le bouton 💾.
       _viderItineraire();
       const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return !r._preview; });
       if (window.setRoads) window.setRoads(roadsNow);
@@ -2089,10 +1797,7 @@ window.ouvrirItinerairModal = function() {
   document.getElementById("kta-iti-close").addEventListener("click", fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
 
-  // ===== Mode navigation : wiring des quick-nav + erase =====
-  // Ces boutons ne sont presents que si modeNavigation = true (HTML conditionnel
-  // plus haut). Le reste du wiring (mode-click, search, tracker-pos, clear,
-  // compute) est commun aux 2 modes — pas de return early.
+  // Navigation : quick-nav + effacer (présents seulement dans ce mode). Le reste du câblage est commun.
   if (modeNavigation) {
     document.getElementById("kta-iti-nav-debut").addEventListener("click", function() {
       if (_itineraryWaypoints.length === 0) return;
@@ -2105,7 +1810,6 @@ window.ouvrirItinerairModal = function() {
       _panEtFlashSurPoint(_itineraryWaypoints[_itineraryWaypoints.length - 1]);
     });
     document.getElementById("kta-iti-nav-tour").addEventListener("click", function() {
-      // fitBounds sur l'ensemble des points du tracé
       if (!existingItinerary || !existingItinerary.points || existingItinerary.points.length < 2) return;
       const latlngs = existingItinerary.points.map(function(p) { return convertCoord(p.x, p.y); });
       const bounds = L.latLngBounds(latlngs);
@@ -2119,10 +1823,7 @@ window.ouvrirItinerairModal = function() {
     });
   }
 
-  // ===== Sélecteur de point existant (autocomplete) =====
-  // Recherche sur tous les points du plan (data layers + editor) via l'API
-  // window.SearchPoints.findByQuery. Affiche les résultats sous l'input,
-  // clic sur un résultat → ajoute un waypoint avec les coords du point ET son nom.
+  // Point existant (autocomplete SearchPoints.findByQuery) : clic → étape avec coords ET nom.
   const searchInput   = document.getElementById("kta-iti-search-input");
   const searchResults = document.getElementById("kta-iti-search-results");
   let _searchTimer = null;
@@ -2133,7 +1834,6 @@ window.ouvrirItinerairModal = function() {
       searchResults.style.display = "block";
       return;
     }
-    // Limite l'affichage aux 10 premiers résultats pour pas saturer le DOM
     const limite = items.slice(0, 10);
     searchResults.innerHTML = limite.map(function(it, idx) {
       const p = it.point;
@@ -2150,20 +1850,16 @@ window.ouvrirItinerairModal = function() {
     }
     searchResults.style.display = "block";
 
-    // Event delegation (même schéma que plus haut).
-    // Stocke limite sur le conteneur, dispatch via data-idx.
     searchResults._lastLimite = limite;
   }
 
-  // Listener délégué attaché UNE FOIS au build de la modale
-  // (pas à chaque keypress).
+  // Délégation posée UNE FOIS au build de la modale.
   if (!searchResults._delegateBound) {
     searchResults._delegateBound = true;
     searchResults.addEventListener("click", function(e) {
       const el = e.target && e.target.closest ? e.target.closest(".kta-iti-search-item") : null;
       if (!el || !searchResults.contains(el)) return;
-      // Récupère l'index via la position de l'élément dans la liste (les items
-      // ne sont pas data-idx-isés ici, on calcule par index parmi les frères).
+      // Pas de data-idx ici : index calculé parmi les frères.
       const items = Array.from(searchResults.querySelectorAll(".kta-iti-search-item"));
       const idx = items.indexOf(el);
       const limite = searchResults._lastLimite || [];
@@ -2180,7 +1876,6 @@ window.ouvrirItinerairModal = function() {
       _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
       _majPanneauFloaterCount();
-      // Reset l'input pour faciliter un autre ajout
       searchInput.value    = "";
       searchResults.style.display = "none";
     });
@@ -2200,14 +1895,11 @@ window.ouvrirItinerairModal = function() {
     }, 150);
   });
   searchInput.addEventListener("blur", function() {
-    // Petit délai pour laisser le clic sur un résultat fonctionner avant de cacher
+    // Délai : laisser le clic sur un résultat aboutir avant de cacher.
     setTimeout(function() { searchResults.style.display = "none"; }, 200);
   });
 
-  // Bouton activer / désactiver mode clic carte
-  // Quand on active : on cache la modale et affiche un mini-panneau flottant
-  // pour que l'utilisateur puisse cliquer sur la carte (la modale plein-écran
-  // bloquait les clics).
+  // Mode clic carte : la modale plein écran bloquerait les clics → mini-panneau flottant.
   const btnMode = document.getElementById("kta-iti-mode-click");
   btnMode.addEventListener("click", function() {
     if (_itineraryClickActive) {
@@ -2216,16 +1908,12 @@ window.ouvrirItinerairModal = function() {
       btnMode.classList.remove("kta-actif");
     } else {
       _activerModeClicCarte();
-      // Cacher la modale principale + montrer mini-panneau
       modal.style.display = "none";
       _afficherPanneauItineraireFlottant(modal);
     }
   });
 
-  // 🧭 Ma position tracker — ajoute un waypoint avec la position courante du
-  // tracker (snapshot fige au moment du clic, ne bouge plus apres). Position
-  // toujours disponible : APP_CONFIG.startX/Y au boot, puis modifiee par
-  // recalage manuel ou par les pas du tracker actif.
+  // Position du tracker figée au clic (toujours définie : APP_CONFIG.startX/Y au boot).
   const btnTrackerPos = document.getElementById("kta-iti-tracker-pos");
   if (btnTrackerPos) {
     btnTrackerPos.addEventListener("click", function() {
@@ -2247,7 +1935,6 @@ window.ouvrirItinerairModal = function() {
     });
   }
 
-  // Vider
   document.getElementById("kta-iti-clear").addEventListener("click", function() {
     _itineraryWaypoints = [];
     if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
@@ -2256,10 +1943,8 @@ window.ouvrirItinerairModal = function() {
     document.getElementById("kta-iti-error").style.display  = "none";
   });
 
-  // (A6) — Destination sur un autre plan : recherche multi-plans
-  // en mode sélection. Point du plan COURANT sélectionné → simple waypoint
-  // (flux classique) ; point DISTANT → itinéraire via portail (InterPlanRoute,
-  // la modale itinéraire est fermée — le résumé par étapes prend le relais).
+  // Destination sur un autre plan : point du plan COURANT → simple étape ; point DISTANT → itinéraire
+  // via portail (InterPlanRoute ; la modale se ferme, le résumé par étapes prend le relais).
   const btnCross = document.getElementById("kta-iti-crossplan");
   if (btnCross) {
     btnCross.addEventListener("click", function() {
@@ -2269,10 +1954,8 @@ window.ouvrirItinerairModal = function() {
           window.itineraireAjouterWaypoint(pt.x, pt.y, label);
           return;
         }
-        // (KARMA « plusieurs points de passage sur le plan A avant
-        // le portail ») : les étapes déjà posées dans la modale (non validées,
-        // hors origine tracker) deviennent des points de passage OBLIGATOIRES
-        // du leg A, dans l'ordre planifié, AVANT le portail.
+        // Les étapes déjà posées (non validées, hors origine tracker) deviennent des passages
+        // OBLIGATOIRES du leg A, dans l'ordre, AVANT le portail.
         const viaA = _itineraryWaypoints
           .filter(function(w) { return !w.done && w.source !== "tracker"; })
           .map(function(w) { return { x: w.x, y: w.y, label: w.label || "" }; });
@@ -2287,8 +1970,6 @@ window.ouvrirItinerairModal = function() {
     });
   }
 
-  // Calculer (handler async depuis v169 : computeRoute peut await SearchPoints
-  // si avoidTags non vide — l'await passe immediatement si pas d'avoidTags)
   document.getElementById("kta-iti-compute").addEventListener("click", async function() {
     const btn   = this;
     const errEl = document.getElementById("kta-iti-error");
@@ -2296,9 +1977,7 @@ window.ouvrirItinerairModal = function() {
     errEl.style.display = "none";
     resEl.style.display = "none";
 
-    // les étapes validées (done) restent listées mais sont
-    // EXCLUES du calcul — sinon « Recalculer » re-router par des étapes
-    // déjà visitées.
+    // Étapes validées EXCLUES du calcul, sinon « Recalculer » repasse par des étapes visitées.
     const wpsCalc = _itineraryWaypoints.filter(function(w) { return !w.done; });
     if (wpsCalc.length < 2) {
       errEl.textContent = window.I18n.t("iti.err.min2");
@@ -2317,42 +1996,31 @@ window.ouvrirItinerairModal = function() {
       return;
     }
 
-    // (Pattern D) — Disable bouton pendant le pathfinding Dijkstra
-    // (peut prendre 1-3 s sur un grand graph). Sans ça, l'user qui double-clique
-    // lance 2 calculs concurrents qui se marchent dessus sur le road preview.
+    // Bouton désactivé pendant le Dijkstra : un double clic lancerait deux calculs sur le même aperçu.
     const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = window.I18n.t("iti.btn.computing");
     try {
-      // 🚫 v169 (Karma_dev) : lit les preferences d'evitement depuis localStorage
-      // et les passe au Pathfinder. La logique 2-passes (fallback) est interne
-      // au Pathfinder — on lit result.usedFallback et result.avoidedThrough pour
-      // afficher un message d'avertissement au user le cas echeant.
+      // Repli 2 passes interne au Pathfinder : on lit result.usedFallback / avoidedThrough pour avertir.
       const avoidPrefs = _getItiAvoidPrefs();
       const result = await _withItiComputeLoader(function() {
         return window.Pathfinder.computeRoute(wpsCalc, {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
           avoidZones:  avoidPrefs.zones  || [],
-          // la seule contrainte DURE du moteur suit la case de la modale.
+          // La seule contrainte DURE du moteur suit la case de la modale.
           respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
           avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
         });
       });
-      // (Pattern C) — Guard : la modale peut avoir été fermée pendant
-      // l'await computeRoute() (Dijkstra peut prendre 1-3 s sur grand graph). Sans
-      // ça, on écrirait dans resEl détaché + on appellerait getElementById sur
-      // "kta-iti-save"/"kta-iti-discard" qui retourneraient null → crash sur
-      // .addEventListener. On vérifie via resEl qui était récupéré au début du
-      // handler (réf captée AVANT l'await).
+      // 🩸 La modale a pu être fermée pendant l'await : écrire dans resEl détaché puis chercher
+      // kta-iti-save → null → crash. resEl est capté AVANT l'await.
       if (!resEl.isConnected) return;
-      // Conversion px → mètres via APP_CONFIG.scale (px/mètre)
       const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
-      // 🪧 raccords à vol d'oiseau compris (décision K) — même total que le libellé.
+      // Raccords à vol d'oiseau compris : même total que le libellé.
       const raccordsPx = window.ItiGuidage ? window.ItiGuidage.longueurRaccordsPx(result) : 0;
       const distM = (result.totalDistance + raccordsPx) / scale;
 
-      // Message fallback si certains evitements n'ont pas pu etre respectes
       let fallbackHtml = "";
       if (result.usedFallback && Array.isArray(result.avoidedThrough) && result.avoidedThrough.length > 0) {
         function _esc(s) { return window.ktaEsc(s); }
@@ -2387,13 +2055,8 @@ window.ouvrirItinerairModal = function() {
         '</div>';
       resEl.style.display = "block";
 
-      // Tracer immédiatement (preview) en utilisant le type "itinerary".
-      // ⚠️ Sémantique : un seul itinéraire actif à la fois — on retire TOUTES
-      // les roads de type "itinerary" (preview ET déjà enregistrées) avant
-      // d'ajouter le nouveau. Recalculer remplace la session précédente.
-      // ⚠️ Les waypoints originaux (avec leurs labels/sources) sont stockés sur
-      // le road via la propriété `waypoints` → restauration au re-open de la
-      // modale (mode navigation).
+      // ⚠️ Un seul itinéraire actif : on retire TOUTES les roads "itinerary" (aperçu ET enregistrées)
+      // avant d'ajouter. Les étapes d'origine sont gardées dans `waypoints` (restaurées en navigation).
       const previewRoad = Object.assign({
         type:      "itinerary",
         points:    result.path,
@@ -2412,7 +2075,6 @@ window.ouvrirItinerairModal = function() {
       });
 
       document.getElementById("kta-iti-save").addEventListener("click", function() {
-        // Convertit le preview en road persistante (les waypoints sont déjà attachés)
         const roadsNow = (window.getRoads ? window.getRoads() : []).map(function(r) {
           if (r._preview) { const c = Object.assign({}, r); delete c._preview; return c; }
           return r;
@@ -2429,14 +2091,12 @@ window.ouvrirItinerairModal = function() {
       });
 
     } catch(err) {
-      // 🌍 i18n : erreurs Pathfinder portent err.i18nKey (+ err.i18nParams),
-      // localisées ici au rendu. Fallback : err.message FR brut.
+      // Erreurs du Pathfinder : err.i18nKey (+ i18nParams) localisée ici ; repli err.message.
       errEl.textContent = (err && err.i18nKey && window.I18n)
         ? window.I18n.t(err.i18nKey, err.i18nParams || {})
         : (err.message || String(err));
       errEl.style.display = "block";
     } finally {
-      // (Pattern D) — Restore bouton dans tous les chemins de sortie
       btn.disabled = false;
       btn.textContent = originalText;
     }

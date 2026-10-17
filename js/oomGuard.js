@@ -5,36 +5,19 @@
  */
 
 // =========================
-// OOM GUARD — détection kill mémoire mobile + toast utilisateur
+// OOM GUARD — détection d'un kill mémoire mobile + goulot unique des toasts
 // =========================
-// iOS Safari (et Android Chrome aggressif) tuent silencieusement les PWA
-// qui dépassent ~500 MB de RAM. La page redémarre sans aucun event ni
-// erreur en console. Pour donner un signal explicite à l'utilisateur, on
-// pose un marker localStorage rafraîchi par heartbeat tant que l'app est
-// vivante, et on l'efface au beforeunload/pagehide. Au boot suivant :
-//   - Marker absent → shutdown propre (rien à signaler)
-//   - Marker présent récent → kill brutal probable → toast d'avertissement
-//
-// API : window.OOMGuard
-//   - start()             : démarre l'heartbeat (à appeler après lancerApplication)
-//   - showToast(msg, type, opts): notif courte, file d'attente derrière le splash
-//       opts.important : survit au réglage « Silence » (batterie 10 %, capteurs refusés)
-//       opts.groupe    : les toasts d'un même groupe émis à quelques ms d'écart
-//                        (restauration au chargement) sortent en UN seul toast
-//   - toastAutorise(type, opts) : la même décision, pour un toast maison (osmView)
-//   - niveauNotifs() / setNiveauNotifs(n) : réglage « all » | « essential » | « silent »
-//   - flushPendingToasts(): vide la file (appelée depuis _splashEnd)
-//
-// (KARMA : « beaucoup de popups d'information inutiles ») —
-// UN SEUL GOULOT pour tous les toasts de l'app, et une décision PURE
-// (_decisionToast, exécutée par scripts/check-notifs.js) :
-//   • « all »       : tout, vibration sur warn/error (comportement d'avant) ;
-//   • « essential » : plus de toasts « info » (ils confirment un geste que
-//                     l'utilisateur vient de faire et voit à l'écran), les
-//                     « warn » restent, sans vibration ;
-//   • « silent »    : seuls les warn marqués important et les erreurs.
-// Les alertes serveur (alertChecker) et les modales qui demandent une décision
-// ne passent PAS par ici : hors de portée du réglage par construction.
+// iOS Safari (et Android Chrome) tuent sans événement une PWA au-delà de ~500 Mo : un témoin localStorage,
+// rafraîchi par battement tant que l'app vit, est effacé à beforeunload/pagehide. Au boot suivant, témoin
+// récent présent → kill brutal probable → modale d'explication.
+// Expose window.OOMGuard : start() (après lancerApplication) · showToast(msg, type, opts) (file d'attente
+//   derrière le splash ; opts.important survit à « Silence » ; opts.groupe fusionne les toasts émis à
+//   quelques ms d'écart) · toastAutorise(type, opts) (même décision pour un toast maison) ·
+//   niveauNotifs() / setNiveauNotifs("all"|"essential"|"silent") · flushPendingToasts() (depuis _splashEnd).
+// ⚠️ UN SEUL GOULOT pour les toasts, décision PURE `_decisionToast` (exécutée par scripts/check-notifs.js) :
+//   all = tout, vibration sur warn/error · essential = pas d'« info » (confirmation d'un geste visible),
+//   warn sans vibration · silent = warn importants et erreurs seulement. Les alertes serveur (alertChecker)
+//   et les modales de décision ne passent PAS ici.
 // =========================
 
 (function() {
@@ -52,11 +35,9 @@
   const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
   let _pendingKillInfo    = null;                    // payload kill détecté → modale après splash
   let _v2CrashDetecte = false;   // un plantage de génération V2 a sa modale : pas la modale générique en plus
-  let _pendingV2CrashInfo = null;                    // 🧱 v152 : payload kill V2 generation → modale spécifique
+  let _pendingV2CrashInfo = null;                    // kill pendant une génération V2 → modale spécifique
 
-  // =========================
-  // TOAST UI
-  // =========================
+  // ── Toast ──
   function _renderToast(message, type) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const existing = document.getElementById("kta-toast");
@@ -83,18 +64,16 @@
 
     toast.querySelector(".kta-toast-close").addEventListener("click", dismiss);
 
-    // Auto-dismiss après 10s pour warn/error, 6s pour info
     const autoMs = type === "info" ? 6000 : 10000;
     setTimeout(function() {
       if (document.body.contains(toast)) dismiss();
     }, autoMs);
   }
 
-  // ── 🔕 Réglage des notifications ──
+  // ── Réglage des notifications ──
   const NOTIFS_KEY = "myktamap_notifs";
   const NOTIFS_NIVEAUX = ["all", "essential", "silent"];
-  // 🔕 Défaut « essential » (décision KARMA 17/09/2026) : sans réglage
-  // enregistré, les messages qui confirment un geste sont tus. « Toutes »
+  // Défaut « essential » (décision produit) : les messages qui confirment un geste sont tus ; « Toutes »
   // reste un choix explicite dans ⚙️ Configuration.
   const NOTIFS_DEFAUT = "essential";
   function niveauNotifs() {
@@ -107,7 +86,7 @@
     console.log("[OOMGuard] 🔕 notifications :", n);
     return true;
   }
-  // La décision, PURE : { afficher, vibrer }. Extraite et exécutée par le garde-fou.
+  // Décision PURE : { afficher, vibrer }. Extraite et exécutée par le garde-fou.
   function _decisionToast(niveau, type, opts) {
     type = (type === "info" || type === "error") ? type : "warn";
     const important = !!(opts && opts.important);
@@ -121,8 +100,7 @@
   }
   function toastAutorise(type, opts) { return _decisionToast(niveauNotifs(), type, opts).afficher; }
 
-  // ── Regroupement : plusieurs toasts d'un même groupe à quelques ms d'écart
-  // (session, filtres, photos restaurés au chargement) sortent en UN seul ──
+  // ── Regroupement : toasts d'un même groupe à quelques ms d'écart (restauration au chargement) → UN seul ──
   const GROUPE_FENETRE_MS = 1200;
   const _groupes = {};
   const POIDS = { info: 0, warn: 1, error: 2 };
@@ -135,8 +113,7 @@
       if (!items.length) return;
       let type2 = "info", important = false;
       items.forEach(function(it) { if (POIDS[it.type] > POIDS[type2]) type2 = it.type; if (it.opts && it.opts.important) important = true; });
-      // (capture KARMA : « Lecture seule… » ×7 dans un seul toast) : un message identique n'apparaît
-      // qu'une fois — répéter le même geste refusé ne doit pas allonger le toast.
+      // Message identique affiché une fois : répéter un geste refusé n'allonge pas le toast.
       const vus = {};
       const uniques = items.map(function(it) { return it.message; })
         .filter(function(m) { if (vus[m]) return false; vus[m] = true; return true; });
@@ -147,15 +124,13 @@
   function _emettre(message, type, opts) {
     const d = _decisionToast(niveauNotifs(), type, opts);
     if (!d.afficher) { console.log("[OOMGuard] 🔕 toast tu (" + type + ") :", message); return; }
-    // Si le splash bloque encore l'écran, on met en file pour ne pas
-    // afficher un toast invisible derrière le gradient sombre.
+    // Splash encore affiché : en file (un toast derrière le dégradé serait invisible).
     if (!_splashGone) {
       _toastQueue.push({ message: message, type: type, vibrer: d.vibrer });
       return;
     }
     _renderToast(message, type);
-    // Vibration haptique (warn / error) — depuis le 17/09 elle suit
-    // le réglage : en « Essentiel » un warn ne vibre plus. Pref + support : kta_vibrate.
+    // Vibration selon le réglage (pas en « Essentiel » pour un warn) ; préférence et support : kta_vibrate.
     if (d.vibrer && window.kta_vibrate) window.kta_vibrate.error();
   }
 
@@ -168,43 +143,32 @@
   function flushPendingToasts() {
     _splashGone = true;
 
-    // Petit délai pour laisser la map se poser après la fin du splash.
+    // Délai : laisser la carte se poser après le splash.
     setTimeout(function() {
-      // 1) 🧱 v152 : Modale "V2 generation crash" prioritaire si flag détecté
-      //    au boot. Spécifique car le user a une action concrète à reprendre
-      //    (relancer la conversion sur PC ou réduire l'image source).
-      //    NB : _checkV2GenerationCrash a déjà discardé _pendingKillInfo car
-      //    les 2 modales pointent vers le même kill OOM (V2 plus spécifique).
+      // 1) Crash pendant une génération V2 d'abord : action concrète à proposer (PC, image réduite). Il a déjà
+      //    écarté la modale de kill générique (même kill OOM).
       if (_pendingV2CrashInfo) {
         _afficherModaleV2Crash(_pendingV2CrashInfo);
         _pendingV2CrashInfo = null;
         return;  // les toasts seront flush au close de la modale V2
       }
-      // 2) Modale "kill détecté" générique (OOM session normale).
+      // 2) Kill générique.
       if (_pendingKillInfo) {
         _afficherModaleKill(_pendingKillInfo);
         _pendingKillInfo = null;
         return;
       }
-      // 3) Toasts en attente
+      // 3) Toasts en attente.
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
-        if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // 🔕 vibration décidée à l'émission
+        if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // vibration décidée à l'émission
         if (_toastQueue.length > 0) break; // un seul à la fois (le 2e replacerait le 1er)
       }
     }, 400);
   }
 
-  // =========================
-  // MODALE "KILL DÉTECTÉ"
-  // =========================
-  // Pleine carte centrée, style kta-readme-modal pour cohérence avec les
-  // autres modales de l'app (Documentation, Réglages, etc.). Contient :
-  //   - Explication factuelle
-  //   - Pourquoi (cause probable mémoire)
-  //   - Liste de conseils concrets pour réduire la pression mémoire
-  //   - Bouton de fermeture
+  // ── Modale « kill détecté » : constat, cause probable (mémoire), conseils concrets ──
   function _afficherModaleKill(info) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const existing = document.getElementById("kta-oom-modal");
@@ -273,7 +237,7 @@
       overlay.classList.add("kta-oom-leaving");
       setTimeout(function() {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        // Une fois la modale fermée, traiter les toasts qui auraient pu s'accumuler
+        // Modale fermée : toasts accumulés traités.
         if (_toastQueue.length > 0) flushPendingToasts();
       }, 220);
     }
@@ -290,9 +254,7 @@
     document.addEventListener("keydown", onKey);
   }
 
-  // =========================
-  // MARKER LIFECYCLE
-  // =========================
+  // ── Cycle de vie du témoin ──
   function _setMarker() {
     try {
       localStorage.setItem(MARKER_KEY, JSON.stringify({
@@ -319,18 +281,14 @@
     if (!info || !info.lastSeen) return;
 
     const age = Date.now() - info.lastSeen;
-    // Si le marker date de plus d'une heure, c'est probablement juste que
-    // l'utilisateur n'avait pas rouvert l'app depuis longtemps (le tab a été
-    // suspendu/déchargé "normalement" après inactivité). On ne crie pas au loup.
+    // Témoin de plus d'une heure : onglet simplement déchargé après inactivité, pas un kill.
     if (age > KILL_FRESHNESS_MS) {
       _clearMarker();
       return;
     }
 
-    // le témoin est PARTAGÉ par tous les
-    // onglets de l'app. Un onglet resté ouvert (la page de gestion s'ouvre dans un onglet à part ; l'onglet caché met
-    // son battement en pause sans effacer le témoin) le laisse « récent » : la nouvelle instance croyait à un arrêt
-    // brutal. On demande d'abord aux autres onglets s'ils vivent ; un seul qui répond = pas d'arrêt brutal.
+    // 🩸 Le témoin est PARTAGÉ par tous les onglets de l'app : un onglet resté ouvert (caché, battement en pause)
+    // le garde « récent ». On demande d'abord aux autres onglets s'ils vivent ; un seul qui répond = pas de kill.
     _autreOngletVivant(function(vivant) {
       if (vivant) {
         console.log("[OOMGuard] Témoin tenu par un autre onglet encore ouvert : pas d'arrêt brutal");
@@ -341,8 +299,8 @@
     });
   }
 
-  // Un autre onglet de l'app répond-il ? (BroadcastChannel : un message n'est jamais remis à l'émetteur.) Sans
-  // BroadcastChannel : « non », comme avant.
+  // Un autre onglet répond-il ? (BroadcastChannel ne remet jamais un message à l'émetteur.) Sans
+  // BroadcastChannel : « non ».
   const CANAL_VIVANT = "myktamap-oomguard";
   let _canalVivant = null;
   try {
@@ -369,10 +327,8 @@
   }
 
   function _signalerKill(info, age) {
-    // Kill brutal probable : l'app était active et n'a pas atteint son
-    // beforeunload. Sur smartphone (iOS Safari + Android Chrome agressif)
-    // c'est très souvent un OOM. On stocke l'info et on l'affiche en modale
-    // pleine carte une fois le splash parti (cf. flushPendingToasts).
+    // Kill brutal probable (beforeunload jamais atteint), souvent un OOM sur smartphone : affiché en modale
+    // une fois le splash parti (cf flushPendingToasts).
     const ageSec = Math.round(age / 1000);
     console.warn("[OOMGuard] Kill détecté — dernière activité il y a", ageSec,
                  "s | plan :", info.planId, "| UA :", info.userAgent);
@@ -383,12 +339,8 @@
       userAgent: info.userAgent
     };
 
-    // Archive automatique du crash en IDB via CrashReports.
-    // L'appel est fire-and-forget (Promise non awaited) car _checkPreviousKill
-    // est appelé synchrone au boot du module. Le crash report sera consultable
-    // depuis Memory Inspector (⚙️ Configuration → 📊 Inspecteur) → section
-    // « 📋 Derniers crashs ». Pratique pour diagnostiquer les patterns
-    // récurrents et partager au mainteneur.
+    // Crash archivé en IDB (CrashReports, fire-and-forget : on est synchrone au boot), consultable dans
+    // l'Inspecteur mémoire (⚙️ Configuration → 📊) → « 📋 Derniers crashs ».
     if (window.CrashReports && typeof window.CrashReports.saveCrash === "function") {
       try {
         window.CrashReports.saveCrash(_pendingKillInfo);
@@ -400,41 +352,23 @@
     _clearMarker();
   }
 
-  // =========================
-  // (P7) — VISIBILITY-AWARE HEARTBEAT
-  // =========================
-  // Le heartbeat 5s écrivait dans localStorage en continu, même onglet en
-  // arrière-plan (mobile lockscreen, autre app au premier plan, etc.). Sur
-  // mobile, ça représentait des dizaines d'écritures inutiles par minute en
-  // BG → drain batterie léger constant.
-  //
-  // Fix : pause complète du tick quand document.hidden, reprise + tick
-  // immédiat au reveal pour rafraîchir le timestamp marker (= éviter un
-  // faux positif "kill détecté" si l'app a passé 30 min en BG).
-  //
-  // ⚠️ On ne se base PAS sur le fait que le browser peut suspendre tout le
-  // JS en BG (iOS Safari le fait agressivement, Android Doze aussi). Pourquoi :
-  // on ne contrôle pas ce comportement, il varie selon mobile/version/état
-  // batterie. Notre pause explicite garantit l'économie quel que soit le
-  // comportement browser.
+  // ── Battement sensible à la visibilité ──
+  // Pas d'écriture localStorage toutes les 5 s en arrière-plan (batterie) : tick suspendu quand
+  // document.hidden, repris avec un tick immédiat au retour. Pause explicite plutôt que compter sur le
+  // navigateur pour suspendre le JS (comportement variable selon l'OS, la version, la batterie).
   function _onVisibilityChange() {
-    // Si pas démarré (start() pas encore appelé), rien à faire
     if (_heartbeatStart === null) return;
 
     if (document.hidden) {
-      // Onglet en arrière-plan → on suspend le tick. Le marker reste posé en
-      // l'état : si l'app est killée pendant ce temps (mobile aggressif), le
-      // boot suivant détectera bien le crash via la fenêtre KILL_FRESHNESS_MS.
+      // Arrière-plan : tick suspendu, témoin laissé en place (un kill pendant ce temps sera détecté).
       if (_heartbeatTimer) {
         clearInterval(_heartbeatTimer);
         _heartbeatTimer = null;
         _heartbeatPaused = true;
       }
     } else {
-      // Onglet revenu au premier plan → tick immédiat + reprise du polling.
-      // Le _setMarker() au reveal rafraîchit le timestamp pour éviter qu'un
-      // long séjour en BG (ex: 30 min en lockscreen) déclenche à tort la
-      // modale "kill détecté" au prochain reload (KILL_FRESHNESS_MS = 1h).
+      // Retour : tick immédiat — un long séjour en arrière-plan ne doit pas passer pour un kill au prochain
+      // reload (KILL_FRESHNESS_MS = 1 h).
       if (_heartbeatPaused) {
         _heartbeatPaused = false;
         _setMarker();
@@ -444,39 +378,31 @@
   }
 
   function _bindVisibilityHandlerOnce() {
-    // Idempotent : protège contre un double-bind si start() est rappelé
+    // Idempotent (start() rappelé).
     if (_visibilityHandlerBound) return;
     _visibilityHandlerBound = true;
     document.addEventListener("visibilitychange", _onVisibilityChange);
   }
 
-  // =========================
-  // CONTRÔLE
-  // =========================
+  // ── Contrôle ──
   function start() {
     _heartbeatStart = Date.now();
     _setMarker();
     if (_heartbeatTimer) clearInterval(_heartbeatTimer);
     _heartbeatTimer = setInterval(_setMarker, HEARTBEAT_MS);
 
-    // (P7) — bind du handler visibilitychange + check immédiat
-    // si l'onglet est DÉJÀ en BG au moment du démarrage (cas marginal mais
-    // possible : user lance l'app puis bascule très vite sur une autre).
+    // Onglet déjà en arrière-plan au démarrage (bascule rapide) : vérifié tout de suite.
     _bindVisibilityHandlerOnce();
     if (document.hidden) _onVisibilityChange();
   }
 
-  // Vérification au chargement du module (avant tout app code)
+  // Vérification au chargement du module, avant tout code de l'app.
   _checkPreviousKill();
   _checkV2GenerationCrash();
 
-  // =========================
-  // 🧱 V2 GENERATION CRASH (depuis v152)
-  // =========================
-  // Flag posé par createConf.js > _genererTuilesV2 AVANT la génération, retiré
-  // dans le `finally` APRÈS (succès ou catch). Si le flag est encore présent
-  // au boot suivant → le navigateur a probablement kill la page pendant la
-  // génération (OOM mobile). Modale spécifique pour expliquer + suggérer PC.
+  // ── Crash pendant une génération V2 ──
+  // Drapeau posé par createConf.js > _genererTuilesV2 AVANT la génération, retiré dans le `finally`. Encore
+  // présent au boot → page probablement tuée pendant la génération (OOM mobile) : modale dédiée (suggérer PC).
   function _checkV2GenerationCrash() {
     const FLAG = "myktamap_v2_gen_in_progress";
     let info = null;
@@ -491,12 +417,11 @@
     }
     if (!info || !info.startedAt) return;
 
-    // Fenêtre de fraîcheur : 1h. Au-delà, c'est probablement un vieux flag
-    // qui traîne (l'user a fermé l'onglet sans crash, on a oublié de remove).
+    // Plus d'une heure : vieux drapeau oublié, pas un crash.
     const ageMs = Date.now() - info.startedAt;
     if (ageMs > 3600000) return;
 
-    // Differé après splash (pareil que la modale kill standard)
+    // Différé après le splash, comme la modale kill.
     _v2CrashDetecte = true;
     _pendingV2CrashInfo = {
       planName:    info.planName  || "(sans nom)",
@@ -508,11 +433,8 @@
                  "imageSize:", _pendingV2CrashInfo.imageSizeMB + "Mo",
                  "age:", _pendingV2CrashInfo.ageSec + "s");
 
-    // ⚠️ Important : un crash V2 laisse AUSSI le marker session_alive en place
-    // (la page a été killed avant beforeunload/pagehide). _checkPreviousKill()
-    // a donc probablement déjà set _pendingKillInfo. On le discard ici car la
-    // modale V2 couvre déjà le sujet de manière plus spécifique (et plus utile :
-    // l'user a une action concrète = relancer la conversion sur PC).
+    // ⚠️ Un crash V2 laisse AUSSI le témoin de session : _checkPreviousKill() a sans doute posé _pendingKillInfo.
+    // On l'écarte : la modale V2 couvre le même kill, avec une action concrète.
     if (_pendingKillInfo) {
       console.log("[OOMGuard] Crash V2 détecté → discard de la modale kill générique (redondante)");
       _pendingKillInfo = null;
@@ -557,14 +479,11 @@
     function fermer() {
       if (overlay.parentNode) overlay.remove();
       document.removeEventListener("keydown", _onKey);
-      // Note : on NE ré-affiche PAS la modale kill générique ici. Si on est dans
-      // ce code, _checkV2GenerationCrash a déjà discardé _pendingKillInfo (la
-      // modale V2 couvre le même sujet plus spécifiquement). On flush juste les
-      // toasts en attente.
+      // Pas de modale kill générique ici (déjà écartée) : seulement les toasts en attente.
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
-        if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // 🔕 vibration décidée à l'émission
+        if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // vibration décidée à l'émission
         if (_toastQueue.length > 0) break;
       }
     }
@@ -574,18 +493,15 @@
     document.getElementById("kta-v2-crash-ok").addEventListener("click", fermer);
   }
 
-  // Effacement aux 2 events de fin de page : beforeunload (desktop / Android Chrome
-  // qui le firea avant de killer) + pagehide (iOS Safari qui préfère pagehide).
+  // Effacement aux deux fins de page : beforeunload (desktop, Android Chrome) + pagehide (iOS Safari).
   window.addEventListener("beforeunload", _clearMarker);
   window.addEventListener("pagehide",     _clearMarker);
 
-  // =========================
-  // EXPORT
-  // =========================
+  // ── Export ──
   window.OOMGuard = {
     start:               start,
     showToast:           showToast,
-    toastAutorise:       toastAutorise,     // 🔕 pour les toasts maison (osmView)
+    toastAutorise:       toastAutorise,     // pour les toasts maison (osmView)
     niveauNotifs:        niveauNotifs,
     setNiveauNotifs:     setNiveauNotifs,
     flushPendingToasts:  flushPendingToasts

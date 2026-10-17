@@ -8,29 +8,18 @@
 // =========================
 // IDENTIFIANTS STABLES — js/ktaUid.js
 // =========================
-//
-// 🎯 Rôle : donner à chaque objet de carte (point, tracé, zone, structure) une
-// identité qui survit au renommage, à la conversion, à l'annulation et à
-// l'export : `uid` + `updatedAt` (ms). Décisions : docs/ETUDE_UID.md (lot A).
-//
-//   genUid("pt")        → "pt_lq3x9a_k2f8m1"  (préfixe de famille À LA CRÉATION)
-//   touch(obj)          → updatedAt = maintenant (+ date_update jour pour un point)
-//   ensure(obj, t, ts)  → pose uid / updatedAt s'ils manquent (jamais d'écrasement)
-//   ensureAll(arr, t, ts, vus) → idem sur un tableau, et RÉGÉNÈRE un uid déjà vu
-//
-// ⚠️ Points de vigilance :
-//   - `id` d'un point reste son NOM (rétro-compat photos, favoris, liaisons,
-//     Secours). L'identité stable est `uid`, champ à part.
-//   - Le préfixe dit la famille à la création seulement : après une conversion
-//     (décision 10), un « rd_ » peut vivre dans les zones. Ne jamais déduire la
-//     famille du préfixe.
-//   - Unicité PAR STOCKAGE : un objet rapatrié d'un calque garde l'uid de
-//     l'original (session d'un côté, base de l'autre).
-//   - Migration de masse : des milliers d'objets dans la même milliseconde.
-//     Avec 6 caractères aléatoires, le risque de doublon n'est plus négligeable
-//     (~1-3 % sur 20 000 objets) — ensureAll régénère tout uid déjà vu.
-//   - Aucun stockage ici, aucune requête : le module ne fait que poser des
-//     champs sur des objets que d'autres enregistrent.
+// Une identité qui survit au renommage, à la conversion, à l'annulation et à l'export pour chaque objet de
+// carte (point, tracé, zone, structure) : `uid` + `updatedAt` (ms). Décisions : docs/ETUDE_UID.md.
+//   genUid("pt") → "pt_lq3x9a_k2f8m1" · touch(obj) · ensure(obj, t, ts) · ensureAll(arr, t, ts, vus) ·
+//   cloneNeuf · sansIdentite · marquerCalqueTexte · get/setTombstones · fusionnerCalques (window.KtaUid).
+// ⚠️ `id` d'un point reste son NOM (photos, favoris, liaisons, Secours) ; l'identité stable est `uid`.
+// 🩸 Le préfixe dit la famille À LA CRÉATION seulement (un « rd_ » peut vivre dans les zones après
+//   conversion) : ne jamais déduire la famille du préfixe.
+// ⚠️ Unicité PAR STOCKAGE : un objet rapatrié d'un calque garde l'uid de l'original.
+// 🩸 Migration de masse : des milliers d'objets dans la même milliseconde, ~1-3 % de doublons sur 20 000 avec
+//   6 caractères aléatoires — ensureAll régénère tout uid déjà vu.
+// Aucun stockage ni requête ici : le module pose des champs sur des objets que d'autres enregistrent.
+// Garde-fou : scripts/check-uid.js
 
 (function () {
   "use strict";
@@ -49,8 +38,8 @@
         return s;
       }
     } catch (e) { /* repli ci-dessous */ }
-    // 🩸 Math.random().toString(36).slice(2, 8) peut rendre MOINS de 6
-    // caractères (0.5 → "i") : on tire caractère par caractère.
+    // 🩸 Math.random().toString(36).slice(2, 8) peut rendre MOINS de 6 caractères (0.5 → "i") : tirage
+    // caractère par caractère.
     for (let i = 0; i < 6; i++) s += ALPHABET[Math.floor(Math.random() * 36)];
     return s;
   }
@@ -61,7 +50,7 @@
   }
 
   function _jour(ts) {
-    // Même format que l'éditeur (UTC, AAAA-MM-JJ) : lu par le rapport de sortie.
+    // Même format que l'éditeur (UTC, AAAA-MM-JJ), lu par le rapport de sortie.
     return new Date(ts).toISOString().split("T")[0];
   }
 
@@ -69,8 +58,7 @@
     return obj && !Array.isArray(obj.points);
   }
 
-  // Une modification : horodate l'objet. Ne crée jamais d'uid (c'est le rôle
-  // d'ensure, appelé par les setters et à la création).
+  // Une modification : horodate. Ne crée jamais d'uid (rôle d'ensure, appelé par les setters et à la création).
   function touch(obj) {
     if (!obj || typeof obj !== "object") return obj;
     const now = Date.now();
@@ -79,8 +67,8 @@
     return obj;
   }
 
-  // Pose ce qui manque, n'écrase jamais. `ts` = horodatage de repli pour un
-  // objet ancien (date de dernière sauvegarde de sa session), sinon maintenant.
+  // Pose ce qui manque, n'écrase jamais. `ts` = horodatage de repli d'un objet ancien (dernière sauvegarde de
+  // sa session), sinon maintenant.
   function ensure(obj, type, ts) {
     if (!obj || typeof obj !== "object") return obj;
     if (typeof obj.uid !== "string" || !obj.uid) obj.uid = genUid(type);
@@ -90,10 +78,8 @@
     return obj;
   }
 
-  // Sur un tableau. `vus` (Set) peut être partagé entre plusieurs familles d'un
-  // même stockage. Un uid déjà vu est régénéré sur le SECOND objet : doublon de
-  // migration de masse, ou copie faite par une ancienne version de l'app.
-  // Rend le nombre d'objets touchés (uid posé ou régénéré).
+  // Sur un tableau ; `vus` (Set) peut être partagé entre les familles d'un même stockage. Un uid déjà vu est
+  // régénéré sur le SECOND objet (doublon de migration, ou copie d'une ancienne version). → nombre touché.
   function ensureAll(arr, type, ts, vus) {
     if (!Array.isArray(arr)) return 0;
     const seen = vus || new Set();
@@ -119,7 +105,7 @@
     return n;
   }
 
-  // Copie d'un objet pour un DOUBLON voulu (tableur « Dupliquer ») : uid neuf.
+  // Copie pour un DOUBLON voulu (tableur « Dupliquer ») : uid neuf.
   function cloneNeuf(obj, type) {
     const c = JSON.parse(JSON.stringify(obj));
     delete c.uid;
@@ -127,7 +113,7 @@
     return touch(c);
   }
 
-  // Copie sans les champs d'identité (exports vers des formats étrangers).
+  // Copie sans champs d'identité (exports vers des formats étrangers).
   function sansIdentite(obj) {
     if (!obj || typeof obj !== "object") return obj;
     const c = Object.assign({}, obj);
@@ -137,9 +123,8 @@
   }
 
   // ── Lecture d'un fichier de calque (Générateurs) ──
-  // Pose les uid manquants sur toutes les familles d'un JSON de calque, en
-  // gardant ceux qui existent. Rend le texte réécrit, ou le texte d'origine
-  // s'il n'est pas un JSON exploitable (jamais de fichier perdu pour ça).
+  // Pose les uid manquants sur toutes les familles d'un JSON de calque. Rend le texte réécrit, ou l'original
+  // s'il n'est pas un JSON exploitable (jamais de fichier perdu).
   function marquerCalqueTexte(texte) {
     let d;
     try { d = JSON.parse(texte); } catch (e) { return texte; }
@@ -147,8 +132,7 @@
     const vus = new Set();
     let n = 0;
     n += ensureAll(d.data, "pt", undefined, vus);
-    // Calques produits par l'import SIG : la famille des points s'appelle « points »
-    // (au niveau racine — à ne pas confondre avec la géométrie d'un tracé).
+    // Calques de l'import SIG : la famille des points s'appelle « points » (racine — pas la géométrie d'un tracé).
     if (Array.isArray(d.points) && d.points.length && d.points[0] && !Array.isArray(d.points[0]) &&
         typeof d.points[0] === "object" && !("x" in d) ) n += ensureAll(d.points, "pt", undefined, vus);
     n += ensureAll(d.editorPoints, "pt", undefined, vus);
@@ -158,17 +142,14 @@
     return n > 0 ? JSON.stringify(d) : texte;
   }
 
-  // ── Traces de suppression (lot B, ETUDE_UID décision 8) ──
-  // Sans elles, une synchro « le dernier gagne » ressusciterait un objet
-  // supprimé ici mais encore présent ailleurs. Une liste par plan ouvert, en
-  // mémoire ; sessionPersist l'écrit dans le payload et la recharge.
-  // Purge après 90 jours : au-delà, tout appareil qui se synchronise a eu le
-  // temps de la recevoir (règle d'exploitation, à confirmer côté backend).
+  // ── Traces de suppression ──
+  // Sans elles, une synchro « le dernier gagne » ressusciterait un objet supprimé ici mais présent ailleurs.
+  // Une liste par plan ouvert, en mémoire ; sessionPersist l'écrit dans le payload et la recharge. Purge après
+  // 90 jours (tout appareil synchronisé a eu le temps de la recevoir).
   const TTL_TRACE = 90 * 24 * 3600 * 1000;
   let _traces = new Map();   // uid → deletedAt (ms)
 
-  // Objets qui ne laissent JAMAIS de trace : l'itinéraire calculé (recréé à la
-  // demande, jamais synchronisé).
+  // Jamais de trace pour l'itinéraire calculé (recréé à la demande, jamais synchronisé).
   function estTransitoire(obj) {
     return !!(obj && obj.type === "itinerary");
   }
@@ -183,7 +164,7 @@
     _traces.forEach(function (d, u) { out.push({ uid: u, deletedAt: d }); });
     return out;
   }
-  // Remplace la liste (restauration, import). Entrées invalides ignorées.
+  // Remplace la liste (restauration, import) ; entrées invalides ignorées.
   function setTombstones(list) {
     _traces = new Map();
     (Array.isArray(list) ? list : []).forEach(function (t) {
@@ -198,16 +179,13 @@
     return n0 - _traces.size;
   }
 
-  // ── Fusion de plusieurs fichiers (lot B, décision 7) ──
-  // Fusion de sessions et doublon de fusion du Générateur : même règle.
-  //   - Deux objets de fichiers DIFFÉRENTS au même uid = le même objet : le plus
-  //     récent (updatedAt) gagne ; à égalité, le fichier le plus tardif.
-  //   - Deux objets d'un MÊME fichier au même uid = deux objets distincts (copie
-  //     d'une ancienne version) : le second reçoit un uid neuf, rien n'est perdu.
-  //   - Une trace de suppression (d'un des fichiers) postérieure ou égale à la
-  //     dernière modification de l'objet l'emporte : il ne ressuscite pas.
-  //   - Un objet sans uid est gardé tel quel (fichier d'une version antérieure).
-  // Rend { data, roads, zones, structures, fusionnes, supprimes }.
+  // ── Fusion de plusieurs fichiers (sessions, doublon de fusion du Générateur) ──
+  //   - Fichiers DIFFÉRENTS, même uid = le même objet : le plus récent (updatedAt) gagne ; à égalité, le
+  //     fichier le plus tardif.
+  //   - MÊME fichier, même uid = deux objets (copie d'une ancienne version) : le second reçoit un uid neuf.
+  //   - Une trace de suppression postérieure ou égale à la dernière modification l'emporte (pas de résurrection).
+  //   - Un objet sans uid est gardé tel quel.
+  // → { data, roads, zones, structures, fusionnes, supprimes }.
   function fusionnerCalques(jsons) {
     const FAM = [["data", "pt"], ["roads", "rd"], ["zones", "zn"], ["structures", "st"]];
     const out = { data: [], roads: [], zones: [], structures: [], fusionnes: 0, supprimes: 0 };

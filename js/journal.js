@@ -7,80 +7,23 @@
  */
 
 // =========================
-// JOURNAL.JS — Le Carnet : journalisation des sorties (depuis v1.69.0)
+// JOURNAL.JS — le Carnet : archive append-only des sorties
 // =========================
-// POURQUOI CE MODULE — avant lui, RIEN dans l'app ne datait ni n'empilait une
-// sortie : `sessionPersist` = état live écrasé par plan, `sessionBackups` = 10
-// rotations FIFO (donc destructif au-delà), la timeline tracker vit par plan et
-// Mode Histoire est enfermé dans l'écran plan. Impossible de répondre à « qu'est-ce
-// que j'ai fait le 12 juillet ? ». Le Carnet ajoute la couche manquante : une
-// ARCHIVE append-only, indépendante des sessions (une session effacée ne détruit
-// pas la sortie déjà archivée).
-//
-// DÉCISIONS KARMA (topo 28/07/2026 — 1:c 2:b 3:a) :
-//   1:c — Archivage HYBRIDE : auto au teardown du plan (seuils de pertinence)
-//         + bouton explicite « 🏁 Clôturer ma sortie » + note éditable après coup.
-//   2:b — Contenu : métadonnées + compteurs + REFS photos + TRACÉ tracker
-//         (décimé) → une sortie reste consultable/rejouable, sans dupliquer la
-//         session complète (rôle déjà tenu par SessionBackups).
-//   3:a — Lot 1 seul : socle + timeline HOME + fiche. L'agrégation (récits Mode
-//         Histoire, galerie photos transverse, export PDF du carnet) = lots 2-3.
-//
-// LIMITE ASSUMÉE : le carnet ne se remplit qu'à partir de la v1.69.0. Aucun
-// remplissage rétroactif (les sorties d'avant n'ont jamais existé en tant que
-// telles — seuls des états live écrasés subsistent).
-//
-// CYCLE DE VIE D'UNE SORTIE
-//   main.js > lancerApplication()          → onPlanLoaded(planId, planName)
-//     ↳ baseline = compteurs APRÈS restore de session (sinon la session
-//       restaurée serait comptée comme « ajoutée aujourd'hui »)
-//   pendant la sortie                      → flush IDB toutes les 30 s + à chaque
-//                                            passage en arrière-plan (mobile tué)
-//   main.js > _libererRessourcesPlanPrecedent() → onPlanUnload() = SUSPENSION
-//     (depuis le 28/09/2026 : reprise si retour sur le même plan sous 2 h)
-//     ↳ APRÈS SessionPersist.onPlanUnload (état RAM encore intact), AVANT le
-//       teardown qui vide la timeline tracker.
-//
-// TEMPS ACTIF — même règle que le compteur global du profil (homeProfile) :
-// on ne compte pas onglet caché, et on ignore les deltas > 5 min (veille /
-// suspend). `activeMs` ≠ `wallMs` (fin - début) : les deux sont stockés.
-//
-// STORAGE : IDB `myktamap_journal` v1, store `sorties` (keyPath `id`),
-//           index `by_start` (startedAtMs). ~2-8 Ko par sortie (tracé décimé).
-//           Aucune image copiée : seules les REFS photos (ids du store Photos).
-//           → une photo supprimée devient une vignette « photo manquante ».
-//
-// 100 % local, offline, zéro réseau.
-//
-// 🚶 TERRAIN vs 🖥️ BUREAU (v1.69.0, retour KARMA 29/07) : une session sans AUCUN
-// déplacement tracker est du « travail sur plan », pas une sortie. Classement
-// auto (`type`), corrigeable à la main (`setType` → `typeManuel: true`, plus
-// jamais recalculé), totaux = terrain SEULEMENT.
-//
-// 🔧 RÉVISION DU 16/08/2026 (sortie réelle de KARMA jetée par le carnet) — une
-// sortie de NAVIGATION PURE (itinéraire + « 📍 Je suis ici » jusqu'à la sortie,
-// sans annoter ni marcher au podomètre) ne pouvait STRUCTURELLEMENT pas entrer
-// au carnet. Trois causes cumulées, les trois corrigées :
-//   1. les validations d'étapes sont des recalages → 0 m mesuré (la distance
-//      estimée de tracking.js comble désormais les trous sans PDR) ;
-//   2. l'itinéraire est EFFACÉ à l'arrivée → son ajout disparaissait du delta
-//      (les compteurs d'ajouts sont des différences de longueurs de tableaux :
-//      ce qui est créé puis supprimé pendant la sortie reste invisible — limite
-//      connue, non corrigée ici) ;
-//   3. la rétention n'examinait QUE la branche du type classé — un pas PDR
-//      parasite suffisait à exiger 50 m et à jeter 3 h de travail.
-// Les seuils sont maintenant un OU, et le classement a un seuil de bascule
-// (`MIN_TERRAIN_DIST_M`) + un signal fort (une validation = terrain).
-//
-// API : window.Journal = {
-//   onPlanLoaded(planId, planName), onPlanUnload(), onPhotoAdded(photoId, planId, pointId),
-//   cloturer(),                  // clôture manuelle → retourne la sortie archivée (Promise)
-//   getCurrent(),                // snapshot RAM de la sortie en cours (ou null)
-//   list(), get(id), remove(id), setNote(id, texte), setType(id, "terrain"|"bureau"),
-//   affinerEnCours(opts),        // recalcule distance + tracé sur le réseau (bouton)
-//   stats(),                     // totaux TERRAIN + compteurs bureau à part
-//   isEnabled(), setEnabled(bool), TYPE_TERRAIN, TYPE_BUREAU
-// };
+// Indépendant des sessions (sessionPersist = état live écrasé, sessionBackups = rotation FIFO) : une
+// session effacée ne détruit pas la sortie archivée. Archivage auto au teardown (seuils), clôture
+// manuelle, démarrage manuel, note éditable. Contenu : métadonnées, compteurs, REFS photos (pas d'image
+// copiée : une photo supprimée devient « photo manquante »), tracé tracker décimé.
+// Cycle : main.js > lancerApplication → onPlanLoaded (baseline APRÈS restauration de session) ; flush IDB
+//   toutes les 30 s + au passage en arrière-plan ; main.js > _libererRessourcesPlanPrecedent →
+//   onPlanUnload = SUSPENSION (après SessionPersist.onPlanUnload, avant le teardown de la timeline).
+// Temps actif : onglet caché non compté, deltas > 5 min ignorés ; `activeMs` ≠ `wallMs` (fin − début).
+// 🚶 terrain / 🖥️ bureau : classement auto par le déplacement, corrigeable (`typeManuel`, figé) ;
+//   les totaux ne comptent que le terrain.
+// IDB `myktamap_journal` v1, store `sorties` (keyPath id, index by_start), ~2-8 Ko par sortie. 100 % local.
+// Expose window.Journal : onPlanLoaded, onPlanUnload, onPhotoAdded, demarrer, cloturer, getCurrent, list,
+//   get, remove, setNote, setType, setFin, fusionner, dureeMs, affinerEnCours, stats, isEnabled/setEnabled.
+// Garde-fous : scripts/check-journal-demarrage.js, scripts/check-journal-reprise.js
+// Doc : docs/architecture/session-data.md
 // =========================
 
 (function() {
@@ -91,72 +34,45 @@
   const STORE      = "sorties";
   const SCHEMA     = 1;
 
-  // Cadence d'écriture de la sortie « en cours ». 30 s = compromis : assez court
-  // pour qu'un kill mémoire iOS ne coûte qu'une demi-minute, assez long pour ne
-  // pas concurrencer le poller session (1,5 s) sur le thread IDB.
+  // 30 s : un kill mémoire iOS ne coûte qu'une demi-minute, sans concurrencer le poller session (1,5 s).
   const FLUSH_MS = 30000;
 
-  // 🚶 vs 🖥️ — DEUX NATURES DE SESSION (retour KARMA 29/07/2026, reco 1:a 2:a 3:a).
-  // Le lot 1 les confondait : une soirée de dessin à la maison atterrissait dans
-  // le carnet à côté d'une vraie sortie (le seuil « ≥ 1 ajout » le garantissait
-  // même). Le signal qui les sépare existe déjà et est fiable : le TRACKER.
-  //   • "terrain" = tu t'es déplacé (distance parcourue OU pas PDR > 0)
-  //   • "bureau"  = zéro déplacement, uniquement des annotations
-  // Classement AUTO, corrigeable à la main sur la fiche (`setType`) — un
-  // classement corrigé (`typeManuel: true`) n'est JAMAIS recalculé.
+  // Deux natures de session, séparées par le TRACKER (seul signal fiable) : "terrain" = déplacement
+  // (distance ou pas PDR), "bureau" = annotations seules. Auto, corrigeable (`typeManuel` jamais recalculé).
   const TYPE_TERRAIN = "terrain";
   const TYPE_BUREAU  = "bureau";
 
-  // Seuils d'archivage AUTOMATIQUE, distincts par nature (la clôture manuelle
-  // garde toujours). En dessous, la session est jetée : ouvrir un plan 20 s pour
-  // vérifier un détail ne doit pas polluer le carnet.
+  // Seuils d'archivage AUTOMATIQUE (la clôture manuelle garde toujours) : un plan ouvert 20 s pour
+  // vérifier un détail ne pollue pas le carnet.
   const MIN_DIST_M            = 50;               // terrain : 50 m parcourus
   const MIN_BUREAU_ACTIVE_MS  = 10 * 60 * 1000;   // bureau : 10 min actives…
   const MIN_BUREAU_AJOUTS     = 1;                // …ET au moins un ajout
 
-  // Seuil de BASCULE terrain (≠ seuils de rétention ci-dessus). Avant le
-  // 16/08/2026 il n'existait pas : UN pas PDR parasite suffisait à classer
-  // une soirée de dessin en « sortie », et comme les totaux ne comptent que
-  // le terrain, ça polluait les stats. 20 m = on a vraiment marché.
+  // Seuil de BASCULE en terrain (≠ seuils de rétention) : un pas PDR parasite ne fait pas d'une soirée de
+  // dessin une sortie (les totaux ne comptent que le terrain). 20 m = on a vraiment marché.
   const MIN_TERRAIN_DIST_M = 20;
 
-  // Delta de temps ignoré (veille machine / onglet suspendu) — cf homeProfile.
   const MAX_TICK_MS = 5 * 60 * 1000;
 
-  // 🩸 REPRISE D UNE SORTIE INTERROMPUE.
-  // Quitter la PWA pour une autre appli (changer de musique, prendre un appel)
-  // la fait DECHARGER par iOS. Au retour, l app reboote et `onPlanLoaded`
-  // ouvrait systematiquement une NOUVELLE sortie : une seule vraie sortie
-  // ressortait en trois au carnet, chacune avec un bout des compteurs.
-  //
-  // Le signal de reprise n est PAS le delai seul, c est `closedBy: "crash"` —
-  // pose par le balayage sur une sortie restee `encours`, donc UNIQUEMENT
-  // quand l app a ete tuee sous l utilisateur. Une sortie cloturee a la main
-  // n est jamais recollee : il l a terminee. (Le changement de plan, lui, ne
-  // cloture plus : il SUSPEND — cf SUSPENSION_MS, 28/09/2026.)
-  // Le delai n est qu une borne de bon sens par-dessus.
+  // 🩸 REPRISE D'UNE SORTIE INTERROMPUE : quitter la PWA (musique, appel) la fait décharger par iOS et le
+  // reboot ouvrirait une NOUVELLE sortie (une vraie sortie en trois morceaux). Le signal de reprise n'est
+  // PAS le délai seul mais `closedBy: "crash"` — posé par le balayage sur une sortie restée `encours`,
+  // donc seulement quand l'app a été tuée. Une sortie clôturée à la main n'est jamais recollée. Le délai
+  // n'est qu'une borne de bon sens.
   const REPRISE_MS = 45 * 60 * 1000;
 
-  // SUSPENSION AU CHANGEMENT DE PLAN.
-  // « Durant ma sortie je vais sur un autre plan pour le montrer ; quand je
-  // reviens dans la carrière où je suis réellement, la sortie ne reprend
-  // pas. » Le changement de plan CLÔTURAIT la sortie (`closedBy: "auto"`,
-  // jamais recollée — et même SUPPRIMÉE sous les seuils) : l'hypothèse « il
-  // l'a terminée » était fausse pour ce cas. Désormais la sortie est
-  // SUSPENDUE (`status: "suspendue"`), sans filtre de pertinence : rien n'est
-  // jeté pendant l'aller-retour. Retour sur son plan dans le délai → elle
-  // reprend. Délai dépassé → finalisée normalement (`_expirerSuspendues`).
-  // Au plus UNE suspendue par plan (on ne suspend que la sortie du plan
-  // quitté), plusieurs plans peuvent en avoir une chacun : sans ça, revenir de
-  // B vers A suspendrait la session de B et FINALISERAIT celle de A.
-  const SUSPENSION_MS = 2 * 60 * 60 * 1000;   // KARMA : « disons 2 h pour le moment »
+  // Changement de plan = SUSPENSION (`status: "suspendue"`), sans filtre de pertinence : on peut montrer
+  // un autre plan puis revenir, la sortie reprend dans le délai ; au-delà, finalisée (_expirerSuspendues).
+  // Au plus UNE suspendue par plan, plusieurs plans chacun la leur : sinon revenir de B vers A
+  // suspendrait B et FINALISERAIT A. 2 h (décision produit).
+  const SUSPENSION_MS = 2 * 60 * 60 * 1000;   // 2 h (décision produit)
 
   const MAX_TRACK_PTS = 1500;   // décimation du tracé archivé
   const MAX_SORTIES   = 500;    // garde-fou quota : purge FIFO au-delà
 
   const LS_ENABLED = "myktamap_journal_enabled";   // "0" = carnet désactivé
 
-  // ───────── ÉTAT RAM ─────────
+  // ── État RAM ──
 
   let _cur        = null;   // sortie en cours (objet record) ou null
   let _baseline   = null;   // compteurs au démarrage de la sortie
@@ -164,7 +80,7 @@
   let _lastTick   = null;   // null = onglet caché (comptage suspendu)
   let _photoIds   = [];     // refs photos ajoutées pendant la sortie
 
-  // ───────── HELPERS ─────────
+  // ── Helpers ──
 
   function _now() { return Date.now(); }
 
@@ -181,7 +97,7 @@
     return "srt_" + _now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
   }
 
-  // ───────── IDB ─────────
+  // ── IDB ──
 
   function _openDb() {
     return new Promise(function(resolve, reject) {
@@ -229,17 +145,14 @@
     });
   }
 
-  // ⚠️ Les lectures retournent la promesse de LEUR REQUÊTE (adoptée par
-  // `resolve(out)` dans _tx), jamais une variable remplie par effet de bord :
-  // dépendre de l'ordre « onsuccess de la requête AVANT oncomplete de la
-  // transaction » est vrai selon la spec IDB mais fragile (et faux dès qu'on
-  // teste avec un double). Ici, la valeur résolue EST le résultat lu.
+  // ⚠️ Les lectures rendent la promesse de LEUR REQUÊTE (adoptée par resolve(out) dans _tx), jamais une
+  // variable remplie par effet de bord : l'ordre « onsuccess avant oncomplete » est fragile (faux avec un
+  // double de test).
   function list() {
     return _tx("readonly", function(st) { return _reqP(st.getAll()); })
       .then(function(arr) {
         const out = Array.isArray(arr) ? arr : [];
-        // Tri antéchronologique (la plus récente en tête) — l'index by_start ne
-        // sert qu'à la purge FIFO, getAll() suffit aux volumes visés (< 500).
+        // Antéchronologique ; by_start ne sert qu'à la purge FIFO (getAll suffit sous 500).
         out.sort(function(a, b) { return (b.startedAtMs || 0) - (a.startedAtMs || 0); });
         return out;
       }).catch(function(e) {
@@ -262,17 +175,8 @@
       .catch(function(e) { console.warn("[Journal] remove() échec :", e); return false; });
   }
 
-  // (repro KARMA : « la liste affiche ma note, mais la fiche est
-  // vide et je ne peux que la réécrire ») — CAUSE RACINE : setNote écrivait
-  // en IDB SANS toucher `_cur`, l'objet RAM de la sortie EN COURS. Or `flush()`
-  // ré-écrit `_snapshot()` (= `_cur`) toutes les 30 s et à la fermeture du
-  // plan. Sur la sortie en cours, la séquence était donc :
-  //   setNote → note en base ✅ → la liste (relue) l'affiche ✅
-  //   flush 30 s plus tard → _put(_cur) SANS note → note écrasée en base ❌
-  //   fiche rouverte → get() frais → note perdue ❌
-  // La note semblait « posée puis oubliée », exactement le symptôme décrit.
-  // Fix : quand l'id visé est celui de la sortie en cours, on met aussi à
-  // jour `_cur` — le prochain flush réécrit alors la bonne valeur.
+  // 🩸 Sur la sortie EN COURS, mettre aussi à jour `_cur` : flush() réécrit `_snapshot()` (= `_cur`) toutes
+  // les 30 s et écraserait en base la note posée (affichée dans la liste, perdue dans la fiche).
   function setNote(id, texte) {
     return get(id).then(function(rec) {
       if (!rec) return false;
@@ -284,7 +188,7 @@
     });
   }
 
-  // Purge FIFO si le carnet dépasse MAX_SORTIES (garde-fou quota IDB).
+  // Purge FIFO au-delà de MAX_SORTIES (quota IDB).
   function _purgeSiBesoin() {
     return list().then(function(all) {
       if (all.length <= MAX_SORTIES) return;
@@ -294,7 +198,7 @@
     }).catch(function() {});
   }
 
-  // ───────── COLLECTE ─────────
+  // ── Collecte ──
 
   function _counts() {
     function _len(fn) {
@@ -309,10 +213,8 @@
     };
   }
 
-  // Distance EXPLOITABLE : podomètre + tronçons estimés entre les
-  // « 📍 Je suis ici » (tracking.js, 16/08/2026). Avant, le carnet ne lisait
-  // que le podomètre — une sortie de navigation pure valait 0 m et se faisait
-  // jeter. Repli sur la mesure seule si le tracker est d'une version antérieure.
+  // Distance exploitable : podomètre + tronçons estimés entre « 📍 Je suis ici » (tracking.js) ; sans eux
+  // une sortie de navigation pure vaudrait 0 m. Repli sur la mesure seule.
   function _trackerDistM() {
     try {
       if (typeof window.getTrackingDistanceTotaleM === "function") {
@@ -323,8 +225,7 @@
     } catch(e) { return 0; }
   }
 
-  // Part estimée du total ci-dessus — stockée à part pour que la fiche puisse
-  // dire « 820 m dont 600 estimés » : mesuré et estimé ne se valent pas.
+  // Part estimée, stockée à part (« 820 m dont 600 estimés » : mesuré et estimé ne se valent pas).
   function _trackerDistEstimeeM() {
     try {
       return (typeof window.getTrackingDistanceEstimeeM === "function")
@@ -332,7 +233,6 @@
     } catch(e) { return 0; }
   }
 
-  // Nombre de « 📍 Je suis ici » validés depuis le début de la sortie.
   function _validationsDepuis(baseline) {
     try {
       if (typeof window.getTrackingValidations !== "function") return 0;
@@ -348,10 +248,8 @@
     } catch(e) { return []; }
   }
 
-  // Tracé de la sortie = portion de la timeline postérieure au démarrage,
-  // décimée à MAX_TRACK_PTS (premier et dernier points toujours conservés).
-  // Champs réduits : {x, y, t, level?} — pas de deltaMs/type (inutiles au replay
-  // de fiche, et ça divise le poids par ~2).
+  // Portion de la timeline postérieure au démarrage, décimée à MAX_TRACK_PTS (1er et dernier gardés).
+  // Champs {x, y, t, level?} : pas de deltaMs/type (inutiles au replay, poids divisé par ~2).
   function _trackDepuis(startMs) {
     const tl = _timeline().filter(function(e) {
       const t = Number(e && e.t);
@@ -371,10 +269,8 @@
     });
   }
 
-  // Décimation partagée avec `_trackDepuis` : premier et dernier points toujours
-  // conservés. Le tracé reconstruit suit un chemin de galeries, donc il peut être
-  // BEAUCOUP plus dense que la timeline d'origine — sans ce plafond, une sortie
-  // pèserait plusieurs fois le budget de 2-8 Ko annoncé.
+  // Plafond partagé avec _trackDepuis : un tracé reconstruit sur les galeries peut être bien plus dense
+  // que la timeline et dépasser le budget de 2-8 Ko.
   function _decimer(pts) {
     if (!Array.isArray(pts) || pts.length === 0) return null;
     if (pts.length <= MAX_TRACK_PTS) return pts;
@@ -403,17 +299,9 @@
     return arr;
   }
 
-  // 🚶 / 🖥️ — classement AUTO d'après le seul signal fiable : le déplacement.
-  // Ni la durée ni le nombre d'ajouts ne discriminent (on peut passer 3 h à
-  // dessiner assis, comme parcourir 2 km sans rien annoter).
-  //
-  // deux corrections :
-  //   • un « 📍 Je suis ici » validé bascule en terrain À LUI SEUL : l'user
-  //     affirme être physiquement passé par un point précis, c'est le geste
-  //     terrain le moins ambigu de l'app (et il ne produit AUCUN pas PDR).
-  //   • le déplacement mesuré doit franchir MIN_TERRAIN_DIST_M. Avant, un
-  //     unique pas parasite (téléphone posé sur une table qui vibre) classait
-  //     une soirée de dessin en « sortie » et faussait les totaux.
+  // Classement par le déplacement seul (ni la durée ni les ajouts ne discriminent) :
+  //   • un « 📍 Je suis ici » validé suffit : geste terrain le moins ambigu (et il ne produit aucun pas PDR) ;
+  //   • sinon le déplacement mesuré doit franchir MIN_TERRAIN_DIST_M (téléphone qui vibre sur une table).
   function _classer(rec) {
     if (!rec) return TYPE_BUREAU;
     if (Number(rec.validations) > 0) return TYPE_TERRAIN;
@@ -425,13 +313,13 @@
     return (a.points || 0) + (a.roads || 0) + (a.zones || 0) + (a.structures || 0) + (a.photos || 0);
   }
 
-  // Met à jour le record en cours depuis l'état RAM. Ne persiste pas.
+  // Met à jour le record en cours depuis la RAM, sans persister.
   function _snapshot() {
     if (!_cur || !_baseline) return null;
     _tickActive();
     const now = _now();
     const c   = _counts();
-    // Clamp à 0 : une suppression nette ne doit pas afficher un ajout négatif.
+    // Clamp à 0 : une suppression nette n'affiche pas un ajout négatif.
     _cur.ajouts = {
       points:     Math.max(0, c.points     - _baseline.points),
       roads:      Math.max(0, c.roads      - _baseline.roads),
@@ -440,31 +328,26 @@
       photos:     _photoIds.length
     };
     const d = _trackerDistM();
-    // Ré-ancrage si la distance a reculé (session effacée / tracker reset) :
-    // sans ça, le delta partirait négatif pour le reste de la sortie.
+    // Distance qui recule (session effacée, tracker reset) → ré-ancrage, sinon delta négatif.
     if (d < _baseline.distM) _baseline.distM = d;
     _cur.distM = Math.max(0, d - _baseline.distM);
-    // Part estimée (tronçons entre « 📍 Je suis ici ») — même ré-ancrage.
     const de = _trackerDistEstimeeM();
     if (de < _baseline.distEstM) _baseline.distEstM = de;
     _cur.distEstimeeM = Math.max(0, de - _baseline.distEstM);
     _cur.validations  = _validationsDepuis(_baseline.validations);
     _cur.track = _trackDepuis(_cur.startedAtMs);
-    // steps = VRAIS pas PDR appliqués (même définition que statsGlobales), pas
-    // la longueur du tracé archivé : celui-ci est décimé, il ne compte rien.
+    // steps = VRAIS pas PDR (même définition que statsGlobales), pas la longueur du tracé décimé.
     _cur.steps = _stepsDepuis(_cur.startedAtMs);
     _cur.levels = _niveauxVus(_cur.track);
     _cur.photoIds = _photoIds.slice();
     _cur.wallMs = Math.max(0, now - _cur.startedAtMs);
-    // Classement re-évalué à chaque snapshot : une session qui démarre au bureau
-    // devient « terrain » dès le premier pas. L'inverse n'arrive jamais (le
-    // déplacement ne se dé-parcourt pas), donc pas d'oscillation.
+    // Réévalué à chaque snapshot : bureau → terrain au premier pas ; l'inverse n'arrive jamais.
     if (!_cur.typeManuel) _cur.type = _classer(_cur);
     _cur.updatedAt = new Date().toISOString();
     return _cur;
   }
 
-  // ───────── TEMPS ACTIF ─────────
+  // ── Temps actif ──
 
   function _tickActive() {
     if (!_cur || _lastTick === null) return;
@@ -482,12 +365,10 @@
     if (_flushTimer) { clearInterval(_flushTimer); _flushTimer = null; }
   }
 
-  // ───────── CYCLE DE VIE ─────────
+  // ── Cycle de vie ──
 
-  // Appelé par main.js APRÈS SessionPersist.onPlanLoaded (baseline = état
-  // restauré, sinon une session restaurée compterait comme des ajouts du jour).
-  // Cherche une sortie du MEME plan que l app peut reprendre. Rend le record
-  // ou null. Asynchrone : l appelant enchaine.
+  // Appelé par main.js APRÈS SessionPersist.onPlanLoaded (baseline = état restauré).
+  // Sortie du MÊME plan reprenable, ou null (asynchrone).
   function _candidateReprise(planId) {
     if (!planId) return Promise.resolve(null);
     return list().then(function (all) {
@@ -495,7 +376,7 @@
       for (let i = 0; i < all.length; i++) {          // deja trie du + recent
         const r = all[i];
         if (!r || r.planId !== planId) continue;
-        // 🔀 Suspendue au changement de plan : reprise dans les 2 h.
+        // Suspendue au changement de plan : reprise dans le délai.
         if (r.status === "suspendue") {
           const suspMs = Date.parse(r.suspendueLe || r.updatedAt || 0) || 0;
           return (suspMs && (now - suspMs) <= SUSPENSION_MS) ? r : null;
@@ -509,18 +390,10 @@
     }).catch(function () { return null; });
   }
 
-  // 🩸 RECONSTRUIT LA BASELINE D ORIGINE. Les compteurs d une sortie sont des
-  // DIFFERENCES (`compte - baseline`), recalculees a chaque snapshot — pas des
-  // accumulations. Reprendre avec une baseline neuve remettrait donc tout a
-  // zero et la reprise ne servirait a rien.
-  //
-  // Mais la session est restauree A L IDENTIQUE au reboot : le compte d ici
-  // vaut celui d avant le kill. Donc `baseline = compte_actuel - deja_en_banque`
-  // redonne EXACTEMENT la baseline d origine, sans l avoir stockee.
-  //
-  // Si la session n a PAS ete restauree a l identique (l utilisateur l a
-  // effacee entre-temps), les gardes de re-ancrage deja en place dans
-  // `_snapshot` empechent les compteurs de partir en negatif.
+  // 🩸 Les compteurs sont des DIFFÉRENCES (`compte − baseline`), pas des cumuls : une baseline neuve
+  // remettrait tout à zéro. La session étant restaurée à l'identique au reboot,
+  // `baseline = compte_actuel − déjà_en_banque` redonne la baseline d'origine. Session effacée entre-temps :
+  // les ré-ancrages de `_snapshot` empêchent les valeurs négatives.
   function _baselineDepuisReprise(rec) {
     const c = _counts();
     const a = rec.ajouts || {};
@@ -540,9 +413,7 @@
 
   function onPlanLoaded(planId, planName) {
     if (!isEnabled()) {
-      // Carnet désactivé : pas de sortie automatique… mais une sortie démarrée
-      // À LA MAIN puis suspendue par un changement de plan doit reprendre au
-      // retour, comme les autres.
+      // Carnet désactivé : pas de sortie auto, mais une sortie démarrée À LA MAIN puis suspendue reprend.
       if (!_cur) {
         _candidateReprise(planId).then(function (rec) {
           if (rec && rec.status === "suspendue" && !_cur) _reprendre(rec, "carnet désactivé");
@@ -554,21 +425,10 @@
     return _ouvrir(planId, planName, "auto");
   }
 
-  // 📔 DÉMARRAGE MANUEL (demande KARMA, 14/09/2026) — « et si je veux en ouvrir
-  // une manuellement ? ».
-  //
-  // 🩸 Deux refus, jamais un clic sans effet :
-  //   • une sortie est DÉJÀ en cours → on ne la remplace pas en silence (ses
-  //     compteurs partent d'une baseline, l'écraser perdrait le travail déjà
-  //     compté) ; l'appelant reçoit la raison et le dit à l'utilisateur ;
-  //   • aucun plan chargé → une sortie appartient à un plan.
-  //
-  // Le carnet DÉSACTIVÉ n'est pas un refus : c'est même le cas d'usage. Qui a
-  // décoché « tenir un carnet » ne veut pas que chaque plan ouvert devienne une
-  // sortie — il peut vouloir en enregistrer une, décidée, ce soir-là. Le
-  // balayage de démarrage tourne donc désormais dans tous les cas (plus bas),
-  // sans quoi une sortie manuelle interrompue par un crash resterait « en
-  // cours » pour toujours.
+  // Démarrage manuel. 🩸 Deux refus explicites, jamais un clic sans effet : sortie DÉJÀ en cours (l'écraser
+  // perdrait ses compteurs ; la raison remonte à l'appelant) ; aucun plan chargé.
+  // Carnet DÉSACTIVÉ n'est pas un refus (c'est le cas d'usage) — d'où le balayage de démarrage
+  // inconditionnel, sinon une sortie manuelle interrompue resterait « en cours » pour toujours.
   function demarrer() {
     if (_cur) return { ok: false, raison: "encours", id: _cur.id };
     const planId = window._currentLoadedPlanId || null;
@@ -578,17 +438,15 @@
   }
 
   function _ouvrir(planId, planName, origine) {
-    // Filet : une sortie encore ouverte (plan switch sans passer par le
-    // teardown, cas dégénéré) est clôturée avant d'en ouvrir une nouvelle.
+    // Filet : sortie encore ouverte (changement de plan sans teardown) clôturée d'abord.
     if (_cur) { try { _finaliser("auto"); } catch(e) {} }
 
     const startMs = _now();
     _baseline = _counts();
     _baseline.distM       = _trackerDistM();
     _baseline.distEstM    = _trackerDistEstimeeM();
-    // La timeline du plan est RESTAURÉE au chargement : les validations d'une
-    // sortie précédente y sont déjà. Sans cette baseline, elles seraient
-    // recomptées et classeraient d'office la nouvelle session en terrain.
+    // La timeline restaurée contient les validations d'une sortie précédente : sans baseline, elles
+    // classeraient d'office la nouvelle session en terrain.
     _baseline.validations = (typeof window.getTrackingValidations === "function")
       ? (Number(window.getTrackingValidations()) || 0) : 0;
     _photoIds = [];
@@ -612,8 +470,7 @@
       photoIds:    [],
       track:       [],
       note:        "",
-      // Toute session démarre « bureau » : elle ne devient terrain qu'au premier
-      // déplacement réel. `typeManuel` = classement corrigé par l'user, figé.
+      // Toute session démarre « bureau ».
       type:        TYPE_BUREAU,
       typeManuel:  false,
       ouvertePar:  (origine === "manuel") ? "manuel" : "auto",
@@ -623,16 +480,10 @@
     _startTimer();
     console.log("[Journal] Sortie ouverte :", _cur.id, "—", _cur.planName);
 
-    // 🔁 Reprise d'une sortie que l'app a perdue en étant tuée sous
-    // l'utilisateur. La recherche est ASYNCHRONE (lecture IDB) alors que tout
-    // ce qui précède est synchrone : on ne peut donc pas la placer avant, rien
-    // en aval ne doit attendre une promesse. La sortie neuve vient d'être
-    // ouverte, on retient son id et on la REMPLACE si une reprise arrive.
-    //
-    // 🩸 Sans garde sur cet id, une reprise arrivée en retard écraserait une
-    // sortie déjà repartie (changement de plan rapide) — et le travail fait
-    // entre-temps partirait avec. Elle n'a jamais touché IDB (1er flush à
-    // 30 s), donc il n'y a rien à nettoyer derrière elle.
+    // Reprise d'une sortie tuée sous l'utilisateur : recherche ASYNCHRONE (IDB) alors que tout ce qui
+    // précède est synchrone → on ouvre la sortie neuve, on retient son id, et on la REMPLACE si une reprise
+    // arrive. 🩸 Garde sur cet id : une reprise tardive écraserait une sortie déjà repartie (changement de
+    // plan rapide). La sortie neuve n'a pas encore touché IDB (1er flush à 30 s) : rien à nettoyer.
     const idNeuve = _cur.id;
     _candidateReprise(planId).then(function (rec) {
       if (!rec || !_cur || _cur.id !== idNeuve) return;
@@ -643,8 +494,7 @@
     return { id: _cur.id, startedAt: _cur.startedAt };
   }
 
-  // Remet `rec` (tuée sous l'utilisateur, ou suspendue par un changement de
-  // plan) en sortie EN COURS, avec sa baseline d'origine reconstruite.
+  // Remet `rec` (tuée ou suspendue) EN COURS, baseline d'origine reconstruite.
   function _reprendre(rec, detail) {
     if (_cur && _cur.id !== rec.id) _stopTimer();
     _cur = rec;
@@ -658,12 +508,9 @@
     _lastTick = (document.visibilityState === "hidden") ? null : _now();
     _startTimer();
     console.log("[Journal] 🔁 Sortie reprise :", rec.id, "· reprise n°" + _cur.reprises + (detail ? " · " + detail : ""));
-    // (KARMA, « b ») — la SORTIE reprend, mais pas le SUIVI :
-    // tout chargement de plan le coupe (tracking.js > initTracking), et un
-    // redémarrage de l'app aussi. Sur une sortie terrain, on propose de le
-    // relancer d'un geste. Pas de relance automatique : sur iOS l'accès aux
-    // capteurs exige un geste de l'utilisateur, elle échouerait en silence.
-    // Le clic sur « Relancer » EST ce geste (ktaConfirm résout dans le clic).
+    // La SORTIE reprend, pas le SUIVI (coupé à chaque chargement de plan et redémarrage). Sur une sortie
+    // terrain on propose de le relancer. 🩸 Pas de relance automatique : sur iOS l'accès aux capteurs exige
+    // un geste, elle échouerait en silence ; le clic « Relancer » EST ce geste (ktaConfirm résout dans le clic).
     const suiviArrete = !(typeof window.getTrackingActif === "function" && window.getTrackingActif());
     if (rec.type === TYPE_TERRAIN && suiviArrete &&
         typeof window.ktaDemarrerSuivi === "function" && typeof window.ktaConfirm === "function") {
@@ -681,11 +528,8 @@
     }
   }
 
-  // 🔀 Une sortie suspendue depuis plus de SUSPENSION_MS ne reviendra plus :
-  // elle est finalisée comme l'aurait fait l'ancien changement de plan —
-  // gardée si elle passe les seuils, jetée sinon. Appelé à chaque ouverture de
-  // plan et au démarrage. (Pas d'affinage réseau ici : la timeline de son plan
-  // n'est plus en mémoire — même limite que le balayage des sorties tuées.)
+  // Suspendue depuis plus de SUSPENSION_MS : finalisée (gardée si elle passe les seuils, jetée sinon).
+  // Appelé à chaque ouverture de plan et au démarrage. Pas d'affinage : la timeline n'est plus en mémoire.
   function _expirerSuspendues() {
     return list().then(function (all) {
       const now = _now();
@@ -715,20 +559,11 @@
     return null;
   }
 
-  // Vaut-il le coup de garder cette session ? (archivage AUTO uniquement — la
-  // clôture manuelle garde sans condition).
-  //   • critère terrain : ≥ 50 m parcourus. Le « ≥ 1 ajout » du lot 1 est
-  //     VOLONTAIREMENT absent — c'est lui qui faisait entrer chaque soirée de
-  //     dessin dans le carnet.
-  //   • critère bureau : ≥ 10 min actives ET ≥ 1 ajout (une vraie séance de
-  //     travail, pas un plan ouvert puis refermé).
-  //
-  // ⚠️ les deux critères sont désormais un OU, plus un AIGUILLAGE
-  // sur le type. L'ancienne version ne testait QUE la branche correspondant au
-  // classement : une session basculée « terrain » par un seul pas PDR n'était
-  // plus jugée que sur ses 50 m, et 3 h de travail avec 20 ajouts partaient à
-  // la poubelle sans appel. Le type redevient ce qu'il aurait toujours dû
-  // être — un libellé d'affichage, pas un juge.
+  // Pertinence pour l'archivage AUTO (la clôture manuelle garde sans condition) :
+  //   • terrain : ≥ 50 m parcourus (pas de « ≥ 1 ajout » : chaque soirée de dessin entrerait) ;
+  //   • bureau : ≥ 10 min actives ET ≥ 1 ajout.
+  // ⚠️ Les deux critères sont un OU, pas un aiguillage sur le type : une session basculée terrain par un
+  // pas PDR ne doit pas perdre 3 h de travail faute de 50 m. Le type est un libellé, pas un juge.
   function _pertinente(rec) {
     if (!rec) return false;
     const terrainOk = Number(rec.distM) >= MIN_DIST_M;
@@ -737,14 +572,10 @@
     return terrainOk || bureauOk;
   }
 
-  // 🐢 Repasse les tronçons estimés « à vol d'oiseau » en distance RÉELLE sur le
-  // réseau, puis recalcule les distances du record. Le calcul ne se fait PLUS au
-  // clic « 📍 Je suis ici » (il y coûtait une reconstruction de graphe par clic,
-  // doublée par la replanification d'itinéraire — retour terrain KARMA 17/08).
-  //
-  // Les roads sont CAPTURÉES ici et passées explicitement : l'affinage tourne au
-  // moment où on quitte le plan, lire l'état courant plus tard calculerait sur le
-  // plan suivant.
+  // Tronçons estimés « à vol d'oiseau » → distance RÉELLE sur le réseau, puis distances du record
+  // recalculées (pas au clic « 📍 Je suis ici » : une reconstruction de graphe par clic coûte trop).
+  // 🩸 Roads CAPTURÉES ici et passées explicitement : l'affinage tourne en quittant le plan, lire l'état
+  // plus tard calculerait sur le plan suivant.
   function _roadsDuPlan() {
     try {
       const s = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
@@ -764,17 +595,15 @@
       if (!bilan || !bilan.runs) return bilan || null;
       rec.distM        = Math.max(0, _trackerDistM()        - (Number(baseDist) || 0));
       rec.distEstimeeM = Math.max(0, _trackerDistEstimeeM() - (Number(baseEst)  || 0));
-      // Tracé RECONSTRUIT stocké À CÔTÉ du brut, jamais à sa place (`track`
-      // reste ce qui a réellement été enregistré). Décimé comme lui.
+      // Tracé RECONSTRUIT à côté du brut, jamais à sa place (`track` = ce qui a été enregistré).
       if (bilan.trace) rec.trackAffine = _decimer(bilan.trace);
       if (!rec.typeManuel) rec.type = _classer(rec);
       return bilan;
     }).catch(function() { return null; });
   }
 
-  // Affine la sortie EN COURS sans la clôturer (bouton « 🧭 Affiner le tracé »
-  // de la modale Session). `opts.force` outrepasse le budget de sommets — c'est
-  // un geste explicite de l'user, cf. tracking.js.
+  // Affine la sortie EN COURS sans la clôturer (« 🧭 Affiner le tracé »). `opts.force` outrepasse le
+  // budget de sommets (geste explicite, cf tracking.js).
   function affinerEnCours(opts) {
     if (!_cur || !_baseline) return Promise.resolve(null);
     const rec = _snapshot();
@@ -786,7 +615,7 @@
       });
   }
 
-  // reason : "auto" (teardown / fermeture) | "manual" (bouton Clôturer)
+  // reason : "auto" (teardown / fermeture) | "manual" (Clôturer).
   function _finaliser(reason) {
     if (!_cur) return Promise.resolve(null);
     const rec = _snapshot();
@@ -799,20 +628,10 @@
     const baseEst  = _baseline ? _baseline.distEstM : 0;
     _cur = null; _baseline = null; _photoIds = [];
 
-    // ⚠️ L'affinage passe AVANT le test de pertinence : 30 m à vol d'oiseau
-    // peuvent valoir 200 m de galeries. Juger la sortie sur la ligne droite puis
-    // la jeter reproduirait EXACTEMENT le défaut que ce lot corrige.
-    // 🩸 `force` sur une CLOTURE MANUELLE. Le budget de sommets
-    // (20 000, cf. tracking.js) protege l archivage AUTOMATIQUE, qui doit
-    // rester invisible : au-dela, l affinage reseau est saute et le vol
-    // d oiseau conserve, SANS un mot. Sur un releve importe, c est
-    // systematique — le carnet affichait donc une distance a vol d oiseau en
-    // la presentant comme la distance parcourue.
-    //
-    // Une cloture manuelle n est pas ce cas : l utilisateur vient d appuyer
-    // sur « Cloturer », il attend un resultat, un calcul un peu long est
-    // legitime. On leve donc le plafond — le meme raisonnement que le bouton
-    // « 🧭 Affiner le trace ».
+    // ⚠️ Affinage AVANT le test de pertinence : 30 m à vol d'oiseau peuvent valoir 200 m de galeries.
+    // 🩸 `force` sur une clôture MANUELLE : le budget de sommets (cf tracking.js) protège l'archivage AUTO
+    // qui doit rester invisible — au-delà, le vol d'oiseau serait gardé SANS un mot (systématique sur un
+    // relevé importé) et présenté comme distance parcourue. Après « Clôturer », un calcul long est légitime.
     const optsAff = (reason === "manual") ? { force: true } : undefined;
     return _affinerDistances(rec, baseDist, baseEst, optsAff).then(function() {
       return _finaliserSuite(rec, id, reason);
@@ -821,8 +640,7 @@
 
   function _finaliserSuite(rec, id, reason) {
     if (reason !== "manual" && !_pertinente(rec)) {
-      // Sortie trop maigre : on jette, y compris l'éventuel flush « en cours »
-      // déjà écrit en IDB (sinon un fantôme « en cours » resterait au carnet).
+      // Trop maigre : on jette, y compris le flush « en cours » déjà en IDB (sinon fantôme au carnet).
       console.log("[Journal] Sortie ignorée (sous les seuils) :", id);
       return remove(id).then(function() { return null; });
     }
@@ -834,12 +652,8 @@
     });
   }
 
-  // Appelé par main.js > _libererRessourcesPlanPrecedent (après
-  // SessionPersist.onPlanUnload, avant le teardown qui vide la timeline).
-  // le changement de plan SUSPEND la sortie au lieu de la
-  // finaliser (cf SUSPENSION_MS). Pas de filtre de pertinence ni d'affinage
-  // ici : c'est une pause, pas une fin. La finalisation viendra au retour
-  // (sortie reprise puis clôturée plus tard) ou à l'expiration du délai.
+  // Appelé par main.js > _libererRessourcesPlanPrecedent (après SessionPersist.onPlanUnload, avant le
+  // teardown). SUSPEND la sortie (cf SUSPENSION_MS) : pause, pas fin — ni pertinence ni affinage ici.
   function onPlanUnload() {
     if (!_cur) return Promise.resolve(null);
     return _suspendre();
@@ -858,14 +672,11 @@
     return _put(rec).then(function () { return rec; });
   }
 
-  // Clôture manuelle : garde TOUJOURS, puis rouvre immédiatement une nouvelle
-  // sortie sur le même plan (l'user continue d'explorer après avoir « posé »
-  // une étape dans son carnet).
+  // Clôture manuelle : garde TOUJOURS, puis rouvre une sortie sur le même plan.
   function cloturer() {
     if (!_cur) return Promise.resolve(null);
     const planId = _cur.planId, planName = _cur.planName;
-    // 🩸 La sortie suivante ne repart QUE si le carnet est actif : après une
-    // sortie démarrée à la main carnet décoché, clôturer doit s'arrêter là.
+    // 🩸 La suivante ne repart QUE si le carnet est actif (sortie démarrée à la main carnet décoché).
     return _finaliser("manual").then(function(rec) {
       onPlanLoaded(planId, planName);
       return rec;
@@ -885,31 +696,22 @@
     return s ? JSON.parse(JSON.stringify(s)) : null;
   }
 
-  // Hook posé dans photos.js > addPhoto (succès). Ne compte QUE les photos
-  // réellement prises pendant la sortie — pas celles restaurées par un import
-  // de session (restorePhoto n'appelle pas ce hook, volontairement).
+  // Hook de photos.js > addPhoto (succès) : seulement les photos prises pendant la sortie (restorePhoto
+  // ne l'appelle pas, volontairement).
   function onPhotoAdded(photoId, planId) {
     if (!_cur || !photoId) return;
     if (planId && _cur.planId && String(planId) !== String(_cur.planId)) return;
     _photoIds.push(String(photoId));
   }
 
-  // Corrige à la main le classement d'une session archivée (bouton 🚶 / 🖥️ de
-  // la fiche). Pose `typeManuel` → plus aucun recalcul auto sur ce record.
-  // ⚠️ MÊME PIÈGE que setNote (corrigé en même temps, v1.74.0) : sans la mise
-  // à jour de `_cur`, un reclassement manuel sur la sortie EN COURS était
-  // annulé au flush suivant — et pire, `_snapshot()` reclasse automatiquement
-  // tant que `typeManuel` est absent, donc le choix de l'user était non
-  // seulement perdu mais ACTIVEMENT écrasé par le classement auto.
+  // Reclassement manuel (🚶 / 🖥️) : pose `typeManuel`. 🩸 Même piège que setNote : sans mise à jour de
+  // `_cur`, le flush suivant l'annule — et `_snapshot()` reclasserait activement tant que typeManuel manque.
   function setType(id, type) {
     const t = (type === TYPE_TERRAIN) ? TYPE_TERRAIN : TYPE_BUREAU;
     const estCourante = !!(_cur && String(_cur.id) === String(id));
     return get(id).then(function(rec) {
-      // ⚠️ la sortie EN COURS n'est écrite en IDB qu'au premier
-      // flush (30 s). Avant ce délai, `get` rendait null et le reclassement
-      // partait en SILENCE : invisible tant que le seul point d'entrée était
-      // la fiche d'une sortie archivée, mais le bouton 🚶/🖥️ de la modale
-      // Session vise justement la sortie en cours, souvent toute fraîche.
+      // ⚠️ La sortie EN COURS n'est en IDB qu'après le premier flush (30 s) : `get` rend null, et le bouton
+      // de la modale Session vise justement une sortie souvent toute fraîche.
       if (!rec) {
         if (!estCourante) return false;
         _cur.type       = t;
@@ -927,8 +729,7 @@
     });
   }
 
-  // Agrégat : les TOTAUX ne comptent que le TERRAIN (une soirée de dessin n'est
-  // pas du temps passé sous terre). Le bureau est compté à part, jamais mélangé.
+  // Les TOTAUX ne comptent que le TERRAIN ; le bureau est compté à part, jamais mélangé.
   function stats() {
     return list().then(function(all) {
       let ms = 0, m = 0, nbT = 0, nbB = 0, bureauMs = 0;
@@ -957,19 +758,14 @@
     });
   }
 
-  // ───────── REPRISE APRÈS CRASH ─────────
+  // ── Reprise après crash ──
 
-  // Un record reste en `status: "encours"` si l'app est morte sans passer par
-  // onPlanUnload (kill mémoire iOS, crash, onglet tué). Sans ce balayage au
-  // boot, ces sorties fantômes s'accumuleraient dans le carnet — et celles qui
-  // n'avaient pas atteint les seuils (plan ouvert 40 s pour vérifier un détail,
-  // flushé une fois) n'auraient JAMAIS l'occasion d'être jetées, puisque le
-  // filtre de pertinence ne joue qu'à la finalisation.
+  // Un record reste `encours` si l'app est morte sans onPlanUnload (kill iOS, crash). Sans ce balayage,
+  // les fantômes s'accumulent, et ceux sous les seuils ne seraient jamais jetés (le filtre ne joue qu'à
+  // la finalisation).
   function _balayerEnCours() {
     return list().then(function(all) {
-      // Garde anti-race : la sortie EN COURS ne doit jamais être régularisée par
-      // son propre balayage (elle n'est écrite en IDB qu'au premier flush, mais
-      // un balayage retardé pourrait la croiser).
+      // La sortie EN COURS n'est jamais régularisée par son propre balayage (balayage retardé).
       const curId = _cur ? _cur.id : null;
       const orphelines = all.filter(function(r) {
         return r && r.status === "encours" && r.id !== curId;
@@ -987,7 +783,7 @@
     }).catch(function() {});
   }
 
-  // ───────── FILETS ─────────
+  // ── Filets ──
 
   document.addEventListener("visibilitychange", function() {
     if (!_cur) return;
@@ -1001,49 +797,29 @@
   });
 
   window.addEventListener("pagehide", function() { _tickActive(); flush(); });
-  // beforeunload : l'écriture IDB peut ne pas aboutir (page qui disparaît) —
-  // c'est le flush 30 s + celui du visibilitychange qui font le vrai travail.
+  // beforeunload : l'écriture IDB peut ne pas aboutir ; le vrai travail est fait par le flush 30 s et
+  // celui du visibilitychange.
   window.addEventListener("beforeunload", function() { _tickActive(); flush(); });
 
-  // ───────── EXPORT ─────────
+  // ── Export ──
 
-  // ───────── ⏱️ LA DUREE D UNE SORTIE (KARMA, v1.85.2) ─────────
-  // « On ne se base que sur le temps d ouverture de l app. Or on a une date de
-  // debut et une date de fin, ce qui permettrait un temps plus pertinent. »
-  //
-  // Les deux mesures existaient deja et cohabitent — c est leur USAGE qui etait
-  // faux, tout affichait `activeMs` :
-  //   • `activeMs` = temps ou l app etait OUVERTE ET VISIBLE, deltas > 5 min
-  //     ignores. Il dit combien de temps on s est SERVI de l app.
-  //   • `wallMs`   = fin - debut, trous compris. Il dit combien de temps la
-  //     SORTIE a dure.
-  //
-  // 🩸 LA REGLE DEPEND DU TYPE, et c est le coeur du sujet. Sur une sortie
-  // TERRAIN, « on est restes 3 h » est le temps reel : le telephone en poche ne
-  // compte pas, et l app tuee par iOS non plus. Sur du travail BUREAU, le temps
-  // reel n a aucun sens — on laisse un plan ouvert toute la soiree sans le
-  // regarder ; c est le temps d usage qui compte.
-  //
-  // Cette regle vit ICI et nulle part ailleurs : l affichage, les totaux et la
-  // fiche l appellent. La dupliquer dans l UI ferait diverger le detail du
-  // total a la premiere retouche.
+  // ── Durée d'une sortie ──
+  // `activeMs` = temps où l'app était ouverte et visible (combien de temps on s'en est SERVI) ;
+  // `wallMs` = fin − début, trous compris (combien de temps la SORTIE a duré).
+  // 🩸 LA RÈGLE DÉPEND DU TYPE : terrain → temps réel (téléphone en poche, app tuée par iOS ne comptent
+  // pas comme absence) ; bureau → temps d'usage (un plan ouvert toute la soirée sans le regarder).
+  // Cette règle vit ICI seulement : affichage, totaux et fiche l'appellent (sinon détail et total divergent).
   function dureeMs(rec) {
     if (!rec) return 0;
     if (rec.type !== TYPE_TERRAIN) return Number(rec.activeMs) || 0;
     const w = Number(rec.wallMs) || 0;
-    // Filet : une sortie dont la fin serait anterieure au debut (donnee
-    // corrompue) ne doit pas rendre une duree negative ni ecraser l actif.
+    // Fin antérieure au début (donnée corrompue) : ni durée négative, ni actif écrasé.
     return w > 0 ? w : (Number(rec.activeMs) || 0);
   }
 
-  // ✏️ Corriger la fin apres coup. Sans ca, une sortie ou l on a oublie de
-  // cliquer « Cloturer » porte pour fin le dernier instant ou l app etait
-  // vivante — soit, en pratique, le moment ou iOS l a tuee, pas celui ou l on
-  // est ressorti. La duree reelle est alors sous-evaluee sans recours.
-  //
-  // 🩸 On NE TOUCHE PAS a `activeMs` : c est une mesure, pas une declaration.
-  // Seul `wallMs` est recalcule. Les deux restent lisibles cote a cote, et
-  // `finManuelle` dit que le chiffre vient de l utilisateur.
+  // Corriger la fin après coup (oubli de « Clôturer » : la fin enregistrée est le moment où iOS a tué
+  // l'app). 🩸 `activeMs` est une mesure, on n'y touche PAS : seul `wallMs` est recalculé ;
+  // `finManuelle` dit que le chiffre vient de l'utilisateur.
   function setFin(id, quand) {
     const ms = (quand instanceof Date) ? quand.getTime()
              : (typeof quand === "number") ? quand
@@ -1052,8 +828,7 @@
     return get(id).then(function (rec) {
       if (!rec) return null;
       const debut = Number(rec.startedAtMs) || 0;
-      // Une fin AVANT le debut n a pas de sens : on refuse plutot que de
-      // stocker une duree negative que tout le reste devrait ensuite gerer.
+      // Fin avant le début : refusée plutôt qu'une durée négative.
       if (!debut || ms <= debut) return null;
       rec.endedAt     = new Date(ms).toISOString();
       rec.wallMs      = ms - debut;
@@ -1066,15 +841,10 @@
     });
   }
 
-  // ───────── FUSION MANUELLE (KARMA, v1.85.2) ─────────
-  // La reprise automatique EMPECHE le probleme ; elle ne repare pas les
-  // sorties deja hachees. D ou la fusion : l utilisateur designe N sorties du
-  // carnet, elles n en font plus qu une.
-  //
-  // 🩸 LA PLUS ANCIENNE SERT DE SOCLE et garde son id : la fiche eventuellement
-  // deja ouverte, les references et l ordre du carnet restent valides. Les
-  // autres sont supprimees APRES ecriture du resultat — jamais avant, sinon un
-  // echec d ecriture perdrait tout.
+  // ── Fusion manuelle ──
+  // La reprise automatique empêche le hachage ; la fusion répare les sorties déjà hachées.
+  // 🩸 LA PLUS ANCIENNE SERT DE SOCLE et garde son id (fiche ouverte, références, ordre). Les autres sont
+  // supprimées APRÈS écriture du résultat, jamais avant (un échec d'écriture perdrait tout).
   function fusionner(ids) {
     if (!Array.isArray(ids) || ids.length < 2) return Promise.resolve(null);
     return Promise.all(ids.map(function (id) { return get(id); })).then(function (recs) {
@@ -1100,9 +870,7 @@
         o[k] = liste.reduce(function (s, r) { return s + (Number((r.ajouts || {})[k]) || 0); }, 0);
         return o;
       }, {});
-      // 🩸 `wallMs` n est PAS une somme : c est la duree reelle du debut a la
-      // fin, trous compris. La sommer donnerait une sortie plus courte que le
-      // temps qu elle a dure.
+      // 🩸 `wallMs` n'est PAS une somme : durée réelle du début à la fin, trous compris.
       base.wallMs = Math.max(0, fin - (base.startedAtMs || 0));
       base.endedAt = fin ? new Date(fin).toISOString() : base.endedAt;
 
@@ -1118,10 +886,10 @@
         (r.levels || []).forEach(function (l) { if (!(l in nv)) { nv[l] = 1; out.push(l); } });
         return out;
       }, []);
-      // Les notes ne se perdent pas : on les empile dans l ordre.
+      // Notes empilées dans l'ordre.
       base.note = liste.map(function (r) { return String(r.note || "").trim(); })
         .filter(Boolean).join("\n\n———\n\n");
-      // Terrain domine : si UN morceau etait du terrain, l ensemble l est.
+      // Un morceau terrain → l'ensemble est terrain.
       if (!base.typeManuel) {
         base.type = liste.some(function (r) { return r.type === TYPE_TERRAIN; }) ? TYPE_TERRAIN : TYPE_BUREAU;
       }
@@ -1148,7 +916,7 @@
     cloturer:     cloturer,
     flush:        flush,
     getCurrent:   getCurrent,
-    demarrer:     demarrer,     // 📔 ouverture MANUELLE (14/09/2026)
+    demarrer:     demarrer,     // ouverture MANUELLE
     list:         list,
     get:          get,
     remove:       remove,
@@ -1168,14 +936,9 @@
   };
 
   // 🏷️ ancre:balayage-demarrage
-  // Balayage différé : le boot a mieux à faire que d'ouvrir une IDB. 4 s après
-  // le load, l'app est stabilisée (plan chargé ou HOME affiché).
-  //
-  // 🩸 il ne tourne PLUS sous condition de `isEnabled()`. Il ne
-  // crée rien — il régularise ce qui traîne. Sous l'ancienne garde, une sortie
-  // interrompue par un crash puis le carnet décoché restait « en cours » à
-  // jamais, et le démarrage manuel (qui marche carnet décoché) créait le même
-  // orphelin.
+  // Balayage différé de 4 s (app stabilisée). 🩸 Inconditionnel (pas sous `isEnabled()`) : il ne crée rien,
+  // il régularise — sinon une sortie interrompue puis carnet décoché, ou une sortie manuelle carnet
+  // décoché, resterait « en cours » à jamais.
   setTimeout(function() { _balayerEnCours(); _expirerSuspendues(); }, 4000);
 
   console.log("[Journal] Module chargé (DB " + DB_NAME + " v" + DB_VERSION + ")");

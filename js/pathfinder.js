@@ -7,49 +7,33 @@
 // =========================
 // PATHFINDER — itinéraire sur le réseau de routes du plan
 // =========================
-// Calcule un trajet en suivant les polylines existantes (session via getRoads()
-// + embarquées via getAllEmbeddedRoads()). Algorithme : Dijkstra sur un graphe
-// dynamique construit à la volée, avec snap orthogonal des waypoints sur le
-// segment le plus proche du réseau.
-//
-// API : window.Pathfinder
-//   - computeRoute(waypoints, opts) → { path, totalDistance, segmentCount, snappedPoints }
-//     path : [{x, y, level}] — `level` est l'entier du niveau quand il est
-//     UNIVOQUE, `null` sinon (nœud d'intersection multi-niveaux, ou milieu de
-//     jonction qui n'est à aucun étage mais ENTRE deux). Ajouté en v1.83.0 pour
-//     le profil en long : il était calculé puis jeté.
-//     waypoints : [{x, y}, ...] (≥ 2 points)
-//     opts.allowedTypes : ['principal', 'secondaire', 'chemin'] par défaut
-//   - resolvePointById(idOrName) → {x, y, source, point} | null
-//
-// Coordonnées en système image (x, y plan) — la conversion Leaflet se fait
-// au rendu (cf. road.js > renderRoads et le type "itinerary").
+// Dijkstra sur un graphe construit à la volée depuis les polylines (session getRoads() + embarquées
+// getAllEmbeddedRoads()), waypoints calés orthogonalement sur le segment le plus proche.
+// Expose window.Pathfinder : computeRoute (async, 2 passes), computeRouteOnRoads (sync, réseau fourni),
+//   computeReachable (isochrone du Mode Perdu), buildNetworkGraph / snapPointToGraph (roadGraph.js),
+//   resolvePointById, aDesTraces, carrefoursSurChemin. Et window.getAvoidableZoneTypes (modale itinéraire).
+// ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours }.
+//   `level` = entier du niveau s'il est UNIVOQUE, sinon null (nœud fusionné multi-niveaux, milieu de jonction).
+// Coordonnées en système image (x, y plan) ; la conversion Leaflet se fait au rendu (road.js > renderRoads).
+// Doc : docs/architecture/multilevel-pathfinding.md
 // =========================
 
 (function() {
   "use strict";
 
-  // Tolérance de fusion spatiale : 2 nœuds à <= 1.5 px sont considérés comme
-  // le MÊME nœud → permet de joindre les routes qui se touchent par les
-  // extrémités OU se croisent quasi exactement (T-junctions, croisements).
+  // Deux nœuds à ≤ 1,5 px = le MÊME nœud : joint les routes qui se touchent ou se croisent quasi exactement.
   const SPATIAL_MERGE_THRESHOLD = 1.5;
 
-  // Tolérance pour les jonctions imparfaites (T-junction par projection
-  // ET endpoint↔endpoint). 15 px est plus permissif que les 8 px utilisés
-  // pour le DESSIN des cercles d'intersection — pour le pathfinding, on
-  // veut max de connexions logiques même si elles ne se voient pas (les
-  // roads hand-tracés ont souvent 5-10 px de jitter aux jonctions).
+  // Jonctions imparfaites (T et extrémité↔extrémité). Plus permissif que les 8 px du DESSIN des cercles
+  // d'intersection : les tracés à la main ont 5-10 px de jitter aux jonctions.
   const PROXIMITY_TOLERANCE = 15;
 
-  // =========================
-  // HELPERS GÉOMÉTRIQUES
-  // =========================
+  // ── Géométrie ──────────
   function _dist(a, b) {
     return Math.hypot(b.x - a.x, b.y - a.y);
   }
 
-  // Projection orthogonale du point p sur le segment [a, b], clampé aux extrémités.
-  // Retourne {x, y, t, dist} : x/y = projeté, t ∈ [0,1] = paramètre, dist = à p.
+  // Projection orthogonale clampée aux extrémités → {x, y, t ∈ [0,1], dist}.
   function _projectOnSegment(p, a, b) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
@@ -65,9 +49,7 @@
     return { x: px, y: py, t: t, dist: Math.hypot(p.x - px, p.y - py) };
   }
 
-  // Intersection stricte de 2 segments (paramétrique). Retourne {x, y} si
-  // les segments [p1,p2] et [p3,p4] se coupent dans leur intervalle [0,1],
-  // sinon null. Cohérent avec road.js > _segmentIntersection.
+  // Intersection stricte de [p1,p2] et [p3,p4] dans [0,1], sinon null (cohérent avec road.js).
   function _segmentIntersection(p1, p2, p3, p4) {
     const x1 = p1.x, y1 = p1.y;
     const x2 = p2.x, y2 = p2.y;
@@ -84,17 +66,11 @@
     return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
   }
 
-  // =========================
-  // ZONES INACCESSIBLES — geometrie polygone
-  // =========================
-  // 🚫 v169 (Karma_dev) : une zone de type "inaccessible" bloque le pathfinder.
-  // Tout segment de route qui passe a l'interieur ou traverse le bord d'un
-  // polygone inaccessible n'est PAS ajoute au graphe (= contrainte dure).
-  // Multi-niveau : la zone bloque uniquement les segments du MEME niveau
-  // (sauf si multiLevel = false, auquel cas tout est "level 0" implicite).
+  // ── Zones inaccessibles (contrainte DURE) ──────────
+  // Tout segment qui entre ou traverse le bord d'un polygone "inaccessible" n'est PAS ajouté au graphe.
+  // Multi-niveau : la zone ne bloque que les segments de SON niveau (multiLevel off → tout au niveau 0).
 
-  // Ray-casting standard : retourne true si le point (p.x, p.y) est dans
-  // le polygone defini par l'array `poly` ({x, y}). Algo classique en O(n).
+  // Ray-casting standard, O(n).
   function _pointInPolygon(p, poly) {
     let inside = false;
     const x = p.x, y = p.y;
@@ -108,11 +84,7 @@
     return inside;
   }
 
-  // Test : le segment [p1, p2] entre-t-il en contact avec le polygone `poly` ?
-  //   - Si l'un des 2 endpoints est dans le polygone → oui
-  //   - Si le segment croise l'une des aretes du polygone → oui
-  // (Si les 2 endpoints sont a l'exterieur ET le segment ne croise aucune arete,
-  //  alors le segment est entierement hors polygone → non bloque.)
+  // Contact si une extrémité est dedans OU si le segment croise une arête.
   function _segmentTraversePolygon(p1, p2, poly) {
     if (_pointInPolygon(p1, poly)) return true;
     if (_pointInPolygon(p2, poly)) return true;
@@ -124,11 +96,8 @@
     return false;
   }
 
-  // Helper : le segment doit-il etre exclu du graphe a cause d'une zone
-  // inaccessible ? Filtre niveau-aware : on ignore les zones d'un niveau
-  // different du segment (sauf si multiLevel = false → comparaison plate).
-  // Les segments "transit" (middle de jonction) sont jamais bloques car
-  // physiquement ce sont des points "en l'air" dans un escalier vertical.
+  // Zones d'un autre niveau ignorées (sauf multiLevel off). Les segments "transit" (milieu de jonction)
+  // ne sont jamais bloqués : ce sont des points « en l'air » dans un puits.
   function _segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc) {
     if (segLevel === "transit") return false;
     if (!zonesInacc || zonesInacc.length === 0) return false;
@@ -141,25 +110,17 @@
     return false;
   }
 
-  // =========================
-  // EVITEMENTS DE POINTS (preferences souples) — depuis v169 (Karma_dev)
-  // =========================
-  // Contrainte SOUPLE : si possible, le pathfinder evite les segments qui
-  // passent a moins de `avoidRadius` d'un point a eviter. Si aucun chemin
-  // n'est trouve avec ces contraintes, on bascule en fallback (passe 2)
-  // qui calcule sans les evitements et renvoie la liste des points
-  // contournes pour affichage utilisateur ("Impossible d'eviter : X, Y").
+  // ── Évitement de points (contrainte SOUPLE) ──────────
+  // Le graphe exclut les segments à moins de `avoidRadius` d'un point à éviter. Sans chemin, computeRoute
+  // repasse sans évitements et rend les points contournés (« Impossible d'éviter : X, Y »).
 
-  // Vrai si la distance du point `avoidPoint` au segment [p1, p2] < radius.
-  // Utilise la projection orthogonale clampee aux extremites (= distance min
-  // d'un point a un segment, pas a sa droite support).
+  // Distance au SEGMENT (projection clampée), pas à sa droite support.
   function _segmentTraverseProxiPoint(p1, p2, avoidPoint, radius) {
     const proj = _projectOnSegment(avoidPoint, p1, p2);
     return proj.dist < radius;
   }
 
-  // Vrai si le segment doit etre exclu du graphe a cause d'au moins un point
-  // d'evitement. Si avoidPoints vide ou radius<=0 → toujours false.
+  // Toujours false si avoidPoints vide ou radius ≤ 0.
   function _segmentBloqueParAvoidance(p1, p2, avoidPoints, radius) {
     if (!avoidPoints || avoidPoints.length === 0 || !radius || radius <= 0) return false;
     for (let i = 0; i < avoidPoints.length; i++) {
@@ -168,9 +129,7 @@
     return false;
   }
 
-  // Vrai si le path final passe a moins de `radius` du point `ap` au moins
-  // une fois. Utilise apres la passe 2 (fallback) pour detecter les
-  // evitements n'ont pas pu etre respectes.
+  // Après la passe 2 : les évitements que le chemin final n'a pas pu respecter.
   function _pathPassesNearPoint(pathPts, ap, radius) {
     if (!Array.isArray(pathPts) || pathPts.length < 2 || !radius || radius <= 0) return false;
     for (let i = 1; i < pathPts.length; i++) {
@@ -180,11 +139,8 @@
     return false;
   }
 
-  // Expand les tags a eviter en liste de points. Pour chaque tag, on
-  // recupere tous les points du plan portant ce tag (via SearchPoints qui
-  // expose getAllPoints() ASYNC). La structure SearchPoints retourne
-  // [{point, source, layerId}, ...] — on lit `.point.{x,y,nom,id,tags}`.
-  // Si SearchPoints absent → array vide (degraded gracieusement).
+  // Tags → points porteurs (SearchPoints.getAllPoints, async ; retours [{point, …}] → `.point`).
+  // SearchPoints absent → [].
   async function _expandAvoidTagsEnPoints(tags) {
     if (!Array.isArray(tags) || tags.length === 0) return [];
     if (typeof window.SearchPoints !== "object" ||
@@ -212,10 +168,8 @@
       });
   }
 
-  // Collecte toutes les zones inaccessibles actives sur le plan courant :
-  //   - Zones de session (via window.getZones())
-  //   - Zones embarquees dans les data layers (via window._ktaDataPolygons)
-  // Retourne [{ points: [{x,y}, ...], level: number }, ...].
+  // Zones inaccessibles du plan : session (getZones) + embarquées (_ktaDataPolygons).
+  // → [{ points: [{x,y}], level }].
   function _collecterZonesInaccessibles() {
     const out = [];
     if (typeof window.getZones === "function") {
@@ -248,11 +202,9 @@
     return out;
   }
 
-  // ÉVITEMENT DE ZONES NOMMÉES (contrainte SOUPLE)
-  // Label user-facing d'un TYPE de zone (comme les autres filtres) :
-  //  - type custom (cust-…) → label de l'entrée legend ("galerie basse") via
-  //    findCustomEntry (getLabel ne consulte PAS customEntries) ;
-  //  - type built-in → getLabel "zones" ("Eau", "Effondrement"…).
+  // ── Évitement de zones par TYPE (contrainte SOUPLE) ──────────
+  // Libellé d'un type : cust-… → entrée de légende via findCustomEntry (getLabel ne lit PAS
+  // customEntries) ; built-in → getLabel "zones".
   function _zoneTypeLabel(type) {
     var LC = window.LegendCustomization;
     if (LC && typeof LC.findCustomEntry === "function") {
@@ -264,9 +216,7 @@
     return type || "?";
   }
 
-  // Liste des TYPES de zones ÉVITABLES (distincts, SAUF "inaccessible" déjà
-  // bloquée d'office). Session (getZones) + embarquées (_ktaDataPolygons).
-  // 1 entrée PAR TYPE (comme les filtres) : [{ type, label, count }, ...].
+  // Types évitables distincts, SAUF "inaccessible" (bloqué d'office) → [{ type, label, count }].
   function _listerTypesZonesEvitables() {
     var counts = {};
     function _compter(z) {
@@ -284,9 +234,7 @@
   }
   window.getAvoidableZoneTypes = _listerTypesZonesEvitables;
 
-  // Polygones de TOUTES les zones dont le type est coché (évitement souple).
-  // Même forme que _collecterZonesInaccessibles → réutilise le test géométrique
-  // niveau-aware (une zone ne bloque que les segments de son niveau).
+  // Même forme que _collecterZonesInaccessibles → même test géométrique niveau-aware.
   function _collecterZonesAEviter(avoidTypes) {
     if (!Array.isArray(avoidTypes) || avoidTypes.length === 0) return [];
     var set = {};
@@ -304,10 +252,8 @@
     return out;
   }
 
-  // =========================
-  // CONSTRUCTION DU GRAPHE
-  // =========================
-  // Spatial bucketing : O(1) pour vérifier si un nœud existe déjà près d'une position.
+  // ── Construction du graphe ──────────
+  // Buckets spatiaux : existence d'un nœud proche en O(1).
   function _bucketKey(x, y) {
     const s = SPATIAL_MERGE_THRESHOLD * 2;
     return Math.floor(x / s) + "," + Math.floor(y / s);
@@ -319,25 +265,19 @@
       edges:      [],   // edges[i] = [{to: nodeIdx, weight: number}, ...]
       segments:   [],   // [{a: nodeIdx, b: nodeIdx, roadType: string, level: number|"transit"}]
       buckets:    {},   // bucketKey → [nodeIdx, ...]
-      // 🏗️ Multi-niveau (v148) : Set<level> par nœud.
-      // Pour les nodes normaux road : 1 élément (le niveau de la road).
-      // Pour les nodes spatial-mergés (ex: jonction first sur road) : multiple éléments.
-      // Pour jonction middle : ["transit"] (pas de niveau réel).
-      // Utilisé par l'enrichissement pour décider si on peut connecter 2 nodes
-      // (endpoint-endpoint) ou un endpoint à un segment (T-junction).
+      // Set<niveau> par nœud : 1 niveau pour un nœud de route, plusieurs pour un nœud fusionné,
+      // ["transit"] pour le milieu d'une jonction. Décide des connexions à l'enrichissement.
       nodeLevels: []    // nodeLevels[i] = Set<number|"transit">
     };
   }
 
-  // Helper : ajoute un niveau a la Set du node (cree la Set si absente).
   function _ajouterNiveauNode(graph, idx, lvl) {
     while (graph.nodeLevels.length <= idx) graph.nodeLevels.push(new Set());
     graph.nodeLevels[idx].add(lvl);
   }
 
   function _getOrAddNode(graph, x, y) {
-    // Recherche dans le bucket courant + 8 voisins (pour gérer le cas où un
-    // point est juste au-delà d'une frontière de bucket)
+    // Bucket courant + 8 voisins (point juste au-delà d'une frontière de bucket).
     const ks = _bucketKey(x, y).split(",").map(Number);
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
@@ -364,20 +304,16 @@
 
   function _addEdge(graph, a, b, weight) {
     if (a === b) return;
-    // Symétrique (graphe non-orienté)
     graph.edges[a].push({ to: b, weight: weight });
     graph.edges[b].push({ to: a, weight: weight });
   }
 
-  // Trace de diagnostic, uniquement en mode debug : une jonction dont la
-  // longueur change soudain mérite d'être visible quand on la cherche.
+  // Trace de diagnostic en mode debug seulement : une jonction dont la longueur change mérite d'être vue.
   const _diagJonction = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
 
-  // Profondeur d'un niveau pour le réseau en cours de calcul. `ctxPoids` =
-  // { echelle, profondeurs } du plan du RÉSEAU quand ce n'est pas le plan
-  // ouvert (étape d'un itinéraire inter-plans). Une table fournie fait foi,
-  // même vide : le repli sur le plan ouvert n'a lieu que SANS table — sinon une
-  // étape distante pèserait ses puits avec les profondeurs du mauvais plan.
+  // `ctxPoids` = { echelle, profondeurs } du plan du RÉSEAU quand ce n'est pas le plan ouvert
+  // (itinéraire inter-plans). 🩸 Une table fournie fait foi, même vide : le repli sur le plan ouvert
+  // n'a lieu que SANS table, sinon une étape distante pèserait ses puits avec le mauvais plan.
   function _profondeurPourPoids(niveau, ctxPoids) {
     const table = ctxPoids && ctxPoids.profondeurs;
     if (table && typeof table === "object") {
@@ -388,14 +324,10 @@
     return window.getProfondeurNiveau(niveau);
   }
 
-  // Poids d'un segment, en pixels plan. Identique à la distance 2D SAUF pour
-  // une jonction dont les deux niveaux ont une profondeur renseignée.
-  // `part` (0..1) = part du dénivelé portée par CE segment : une jonction
-  // dessinée en N segments répartit son dénivelé au prorata de la longueur 2D
-  // de chacun (cf _partsDenivJonction). Sans prorata, chaque segment comptait
-  // le dénivelé COMPLET (680 px au lieu de 520 pour un puits en 2 segments).
-  // Somme des hypoténuses = hypot(longueur 2D totale, dénivelé) : une jonction
-  // pèse pareil quel que soit son nombre de points, et dans les deux sens.
+  // Poids en pixels plan = distance 2D, SAUF jonction dont les deux niveaux ont une profondeur.
+  // `part` (0..1) = part du dénivelé portée par CE segment (prorata de la longueur 2D, cf
+  // _partsDenivJonction) : somme des hypoténuses = hypot(longueur 2D totale, dénivelé) — une jonction
+  // pèse pareil quel que soit son nombre de points et dans les deux sens.
   function _poidsSegment(a, b, road, ctxPoids, part) {
     const plan = _dist(a, b);
     if (!road || road.type !== "jonction") return plan;
@@ -409,9 +341,7 @@
     return Math.hypot(plan, denivPx);
   }
 
-  // Parts du dénivelé d'une jonction, segment par segment (index i = segment
-  // [points[i], points[i+1]]) : longueur 2D du segment / longueur 2D totale.
-  // Jonction de longueur nulle (tous ses points confondus) → parts égales.
+  // Part i = longueur 2D de [points[i], points[i+1]] / longueur totale ; longueur nulle → parts égales.
   function _partsDenivJonction(points) {
     const n = points.length - 1;
     const longueurs = [];
@@ -424,8 +354,7 @@
     return longueurs.map(function(l) { return total > 0 ? l / total : 1 / n; });
   }
 
-  // `ctxPoids` (facultatif) : { echelle, profondeurs } du plan du réseau — cf
-  // _profondeurPourPoids. Absent = plan ouvert.
+  // `ctxPoids` facultatif (cf _profondeurPourPoids) ; absent = plan ouvert.
   function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones, ctxPoids) {
     zonesInacc  = zonesInacc  || [];
     avoidPoints = avoidPoints || [];
@@ -439,16 +368,12 @@
       if (road.type === "itinerary") continue;
 
       const isJonction = (road.type === "jonction");
-      // Jonctions toujours autorisees (ce sont les bridges interniveau).
-      // Pour les roads normales, on respecte allowedTypes.
+      // Jonctions toujours autorisées (ponts entre niveaux) ; les autres suivent allowedTypes.
       if (!isJonction && allowedTypes && allowedTypes.indexOf(road.type) < 0) continue;
 
-      // 🏗️ Multi-niveau (v148) : niveau des segments + des nodes.
-      //   Road normale : tous les segments + tous les nodes ont le meme `level`.
-      //   Jonction     : tous les segments sont "transit" (interdits a l'enrichissement
-      //                  intersection/T-junction). MAIS le first node porte fromLevel
-      //                  et le last node porte toLevel → permet endpoint-endpoint
-      //                  avec les roads cibles meme s'il y a un peu de jitter.
+      // Route : segments et nœuds au même `level`. Jonction : segments "transit" (exclus de
+      // l'enrichissement), mais premier nœud = fromLevel, dernier = toLevel → raccord
+      // extrémité↔extrémité avec les routes cibles malgré le jitter.
       const segLevel = isJonction
         ? "transit"
         : (Number.isInteger(road.level) ? road.level : 0);
@@ -462,7 +387,6 @@
       const partsDeniv = isJonction ? _partsDenivJonction(road.points) : null;
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y);
-      // Niveau du first node : fromLvl pour jonction, segLevel pour road normale.
       _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
 
       for (let i = 1; i < road.points.length; i++) {
@@ -470,36 +394,20 @@
         const prevP = road.points[i - 1];
         const idx = _getOrAddNode(graph, p.x, p.y);
         const isLast = (i === lastPointIdxInRoad);
-        // Pour jonction : middle = "transit", last = toLvl. Pour road normale : segLevel.
         const nodeLvl = isJonction
           ? (isLast ? toLvl : "transit")
           : segLevel;
         _ajouterNiveauNode(graph, idx, nodeLvl);
 
-        // 🚫 v169 (Karma_dev) : 2 raisons possibles d'exclure un segment du graphe :
-        //   - Zone inaccessible le traverse (contrainte DURE, jamais relachee)
-        //   - Point d'evitement a moins de `avoidRadius` du segment (contrainte
-        //     SOUPLE, relachee par computeRoute si passe 1 fail → passe 2 sans
-        //     avoidances, message "Impossible d'eviter : X" affiche au user)
-        // Quand exclu, le node existe quand meme mais sans edge → impossible
-        // d'emprunter ce troncon dans Dijkstra.
+        // Segment exclu (nœud sans arête) si une zone inaccessible le traverse (DUR, jamais relâché)
+        // ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, relâché en passe 2).
         if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc) &&
             !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius) &&
-            !_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)) { // 🆕 zones à éviter (souple)
-          // 🩸 UNE JONCTION EST UN PUITS, PAS UN TRAIT.
-          // Son coût était sa longueur DANS LE PLAN : un puits dessiné sur
-          // 3 px entre deux étages distants de 12 m comptait pour 3 px. Les
-          // distances d'itinéraire multi-niveaux étaient donc sous-comptées,
-          // et Dijkstra préférait systématiquement le puits au détour à plat —
-          // parfois à tort.
-          //
-          // Avec des profondeurs saisies, la vraie longueur est l'hypoténuse.
-          // Le graphe travaille en PIXELS PLAN : le dénivelé est converti par
-          // l'échelle avant d'être combiné, sinon on additionnerait des mètres
-          // à des pixels.
-          //
-          // Sans profondeur renseignée — l'état de tout plan d'avant cette
-          // version — on retombe exactement sur l'ancien calcul.
+            !_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)) { // zones à éviter (souple)
+          // 🩸 UNE JONCTION EST UN PUITS, PAS UN TRAIT : sa longueur dans le plan (3 px pour 12 m de
+          // dénivelé) sous-compterait les distances et ferait toujours préférer le puits au détour.
+          // Avec profondeurs saisies, le poids est l'hypoténuse, le dénivelé converti en PIXELS par
+          // l'échelle (sinon on additionnerait des mètres à des pixels). Sans profondeur : longueur 2D.
           const w = _poidsSegment(prevP, p, road, ctxPoids, partsDeniv ? partsDeniv[i - 1] : 1);
           if (_diagJonction && road.type === "jonction") {
             console.log("[Pathfinder] jonction 3D : plan", _dist(prevP, p).toFixed(1),
@@ -520,28 +428,14 @@
     return graph;
   }
 
-  // =========================
-  // ENRICHISSEMENT DU GRAPHE — NŒUDS VIRTUELS AUX CROISEMENTS
-  // =========================
-  // Sans cette étape, le graphe est composé de N composantes déconnectées
-  // (une par road dont les points ne sont pas EXACTEMENT partagés avec une
-  // autre road). Conséquence : Dijkstra échoue à passer d'un type à l'autre
-  // même quand les roads se croisent visuellement.
-  // Solution : pour chaque paire de segments (a) qui se croisent strictement,
-  // ou (b) dont une extrémité d'un segment est à ≤ 8 px de l'intérieur d'un
-  // autre segment (T-junction imparfaite), on insère un nœud virtuel et on
-  // crée des arêtes qui relient les 2 roads.
-  // 🏗️ Multi-niveau (v148) : helpers de compatibilite niveau.
-  // Si feature OFF (multiLevel = false) → tout est compatible (v147 strict).
-  // Si ON →
-  //   - 2 segments compatibles ssi tous deux ont le meme niveau NUMERIQUE.
-  //     Les segments "transit" (jonction middle) ne sont JAMAIS compatibles
-  //     avec quoi que ce soit (les middle nodes d'une jonction ne croisent
-  //     rien — ce sont des points en l'air dans un escalier vertical).
-  //   - 2 nodes compatibles (pour endpoint-endpoint) ssi ils partagent au
-  //     moins 1 niveau numerique (transit exclu de la comparaison).
-  //   - Endpoint vs segment (T-junction) : le node doit contenir le niveau
-  //     numerique du segment.
+  // ── Enrichissement : nœuds virtuels aux croisements ──────────
+  // Sans lui, le graphe a une composante par route dont les points ne sont pas EXACTEMENT partagés :
+  // Dijkstra ne passe pas d'une route à l'autre même si elles se croisent. On insère un nœud virtuel
+  // (a) aux croisements stricts, (b) aux T imparfaits, (c) entre extrémités proches.
+  // Compatibilité de niveau (multiLevel off → tout compatible) :
+  //   - 2 segments : même niveau NUMÉRIQUE ; un segment "transit" n'est compatible avec rien ;
+  //   - 2 nœuds (extrémité↔extrémité) : au moins 1 niveau numérique commun (transit exclu) ;
+  //   - nœud vs segment (T) : le nœud porte le niveau du segment.
   function _segmentsCompatibleNiveau(segA, segB, mlOn) {
     if (!mlOn) return true;
     if (segA.level === "transit" || segB.level === "transit") return false;
@@ -562,15 +456,10 @@
     return !!(nodeSet && nodeSet.has(segLevel));
   }
 
-  // GRILLE SPATIALE pour l'enrichissement. Les trois passes
-  // ci-dessous comparaient chaque segment à TOUS les autres (O(S²)) : ~40 s
-  // par itinéraire mesurés sur un relevé de 912 tracés / ~9 000 sommets.
-  // Or chaque test n'aboutit que si les deux objets sont PROCHES (bbox qui se
-  // touchent, ou à moins de PROXIMITY_TOLERANCE). La grille ne sert qu'à
-  // écarter d'avance les paires lointaines, qui ne produisaient rien.
-  // 🩸 RÉSULTAT IDENTIQUE AU BIT PRÈS, pas « équivalent » : les candidats sont
-  // TRIÉS par indice croissant avant d'être traités, donc les nœuds virtuels
-  // sont créés dans le même ordre, avec les mêmes indices, qu'avant.
+  // Grille spatiale de l'enrichissement : chaque test n'aboutit que pour des objets PROCHES, la grille
+  // écarte d'avance les paires lointaines (O(S²) = ~40 s par itinéraire sur un grand relevé).
+  // 🩸 RÉSULTAT IDENTIQUE AU BIT PRÈS : les candidats sont TRIÉS par indice croissant, donc les nœuds
+  // virtuels naissent dans le même ordre, avec les mêmes indices, qu'en comparaison exhaustive.
   const GRILLE_ENRICH_PX = 64;
 
   function _cellulesDe(x0, y0, x1, y1, cell, rappel) {
@@ -581,8 +470,7 @@
     }
   }
 
-  // Indexe chaque segment dans toutes les cellules que couvre sa bbox
-  // élargie de `marge`.
+  // Chaque segment dans toutes les cellules de sa bbox élargie de `marge`.
   function _grilleSegments(graph, segs, marge) {
     const g = new Map();
     for (let i = 0; i < segs.length; i++) {
@@ -597,7 +485,7 @@
     return g;
   }
 
-  // Candidats (indices triés, sans doublon) des cellules couvrant une bbox.
+  // Candidats triés, sans doublon, des cellules couvrant une bbox.
   function _candidatsGrille(g, x0, y0, x1, y1) {
     const vus = new Set();
     _cellulesDe(x0, y0, x1, y1, GRILLE_ENRICH_PX, function(k) {
@@ -608,26 +496,22 @@
   }
 
   function _enrichirGrapheAvecCroisements(graph) {
-    // Snapshot des segments AVANT l'enrichissement (sinon boucle infinie sur
-    // les segments virtuels qu'on ajoute).
+    // Snapshot AVANT enrichissement, sinon boucle infinie sur les segments virtuels ajoutés.
     const segs = graph.segments.slice();
-    // ⚡ Deux index : bbox brute (+1 px de sûreté) pour les croisements,
-    // bbox élargie de la tolérance pour les T-junctions.
+    // Deux index : bbox brute (+1 px) pour les croisements, bbox élargie de la tolérance pour les T.
     const grilleCroise = _grilleSegments(graph, segs, 1);
     const grilleProxi  = _grilleSegments(graph, segs, PROXIMITY_TOLERANCE + 1);
     let nbCroisements = 0;
     let nbProximites  = 0;
-    // 🏗️ Multi-niveau : flag lu une fois pour eviter de relire APP_CONFIG
-    // a chaque iteration des boucles enrichissement (chaud sur gros plans).
+    // Lu une fois : boucles chaudes sur les gros plans.
     const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     let _nbSkipNiveau = 0;
 
-    // ===== 1. Croisements stricts (segment-segment) =====
+    // ── 1. Croisements stricts ──
     for (let i = 0; i < segs.length; i++) {
       const segA = segs[i];
       const a1 = graph.nodes[segA.a];
       const a2 = graph.nodes[segA.b];
-      // ⚡ Seuls les segments dont la bbox touche celle de A peuvent le croiser.
       const candA = _candidatsGrille(grilleCroise, Math.min(a1.x, a2.x), Math.min(a1.y, a2.y),
                                      Math.max(a1.x, a2.x), Math.max(a1.y, a2.y));
 
@@ -635,15 +519,11 @@
         const j = candA[c];
         if (j <= i) continue;
         const segB = segs[j];
-        // Skip si les segments partagent un nœud (déjà connectés)
+        // Nœud partagé : déjà connectés.
         if (segA.a === segB.a || segA.a === segB.b ||
             segA.b === segB.a || segA.b === segB.b) continue;
 
-        // 🏗️ Multi-niveau : skip si niveaux incompatibles. Cela couvre :
-        //   - Croisement visuel 2D d'une road niveau 0 et road niveau 1
-        //     (ne se touchent pas physiquement → pas d'intersection valide)
-        //   - Tout pair impliquant une jonction transit (les middle segments
-        //     d'une jonction ne croisent rien — bridge vertical)
+        // Niveaux incompatibles : croisement visuel 2D entre étages, ou milieu de jonction.
         if (!_segmentsCompatibleNiveau(segA, segB, _mlOn)) {
           _nbSkipNiveau++;
           continue;
@@ -655,16 +535,12 @@
         const inter = _segmentIntersection(a1, a2, b1, b2);
         if (!inter) continue;
 
-        // Insère un nœud virtuel à l'intersection (spatial-bucket-merge si
-        // déjà existant à cet endroit, ce qui gère les croisements à 3+ roads).
+        // Bucket-merge si un nœud existe déjà (croisements à 3+ routes).
         const newIdx = _getOrAddNode(graph, inter.x, inter.y);
-        // Le node virtuel herite du niveau commun des 2 segments (forcement
-        // egal sinon on aurait skip plus haut). Important pour les futurs
-        // checks node-vs-segment (T-junction propagation).
+        // Le nœud virtuel hérite du niveau commun (nécessaire aux tests nœud↔segment suivants).
         if (_mlOn && segA.level !== "transit") {
           _ajouterNiveauNode(graph, newIdx, segA.level);
         }
-        // Connecte aux 4 extrémités des 2 segments
         _addEdge(graph, newIdx, segA.a, Math.hypot(a1.x - inter.x, a1.y - inter.y));
         _addEdge(graph, newIdx, segA.b, Math.hypot(a2.x - inter.x, a2.y - inter.y));
         _addEdge(graph, newIdx, segB.a, Math.hypot(b1.x - inter.x, b1.y - inter.y));
@@ -673,18 +549,13 @@
       }
     }
 
-    // ===== 2. T-junctions par proximité (extrémités proches d'un autre segment) =====
-    // Pour chaque endpoint de chaque segment, projeter sur les autres segments
-    // et vérifier la distance. Si < tolérance ET projection à l'intérieur du
-    // segment cible (pas à un endpoint), on crée un nœud virtuel.
+    // ── 2. T par proximité : extrémité projetée à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
     for (let i = 0; i < segs.length; i++) {
       const segA = segs[i];
       const endpoints = [
         { nodeIdx: segA.a, point: graph.nodes[segA.a] },
         { nodeIdx: segA.b, point: graph.nodes[segA.b] }
       ];
-      // ⚡ Seuls les segments à moins de la tolérance d'une des deux extrémités
-      // (index construit sur les bbox élargies) peuvent donner une T-junction.
       const pa = endpoints[0].point, pb = endpoints[1].point;
       const candB = _candidatsGrille(grilleProxi, Math.min(pa.x, pb.x), Math.min(pa.y, pb.y),
                                      Math.max(pa.x, pb.x), Math.max(pa.y, pb.y));
@@ -694,23 +565,17 @@
         if (j === i) continue;
         const segB = segs[j];
 
-        // 🏗️ Multi-niveau : on saute si segB est transit (jonction middle —
-        // pas de T-junction VERS un segment de jonction interne, c'est en l'air).
-        // Pour le check niveau du node endpoint ↔ segment cible, on utilise
-        // _nodeSurSegmentCompatible plus bas (par endpoint).
+        // Pas de T vers un segment "transit" ; le niveau de chaque extrémité est vérifié plus bas.
         if (_mlOn && segB.level === "transit") {
           _nbSkipNiveau++;
           continue;
         }
 
         for (const ep of endpoints) {
-          // Skip si l'endpoint est déjà sur ce segment B
           if (segB.a === ep.nodeIdx || segB.b === ep.nodeIdx) continue;
 
-          // 🏗️ Multi-niveau : skip si le node endpoint ne porte pas le niveau
-          // du segment cible (ex: endpoint level-0 vs segment level-1). Permet
-          // les jonction endpoints (first portant fromLevel, last portant toLevel)
-          // de faire un T-junction avec leur road cible meme avec du jitter.
+          // L'extrémité doit porter le niveau du segment cible (permet aux bouts de jonction
+          // fromLevel/toLevel de s'accrocher malgré le jitter).
           if (_mlOn && !_nodeSurSegmentCompatible(graph.nodeLevels[ep.nodeIdx], segB.level, _mlOn)) {
             _nbSkipNiveau++;
             continue;
@@ -720,15 +585,11 @@
           const b2 = graph.nodes[segB.b];
           const proj = _projectOnSegment(ep.point, b1, b2);
 
-          // Tolérance courte ET projection clairement à l'intérieur
-          // (t entre 0.05 et 0.95 — évite double-comptage avec les croisements
-          // déjà gérés ci-dessus aux extrémités)
+          // t ∈ ]0,05 ; 0,95[ : évite le double comptage avec les croisements aux extrémités.
           if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95) {
             const projIdx = _getOrAddNode(graph, proj.x, proj.y);
             if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
-            // Lie l'endpoint vers la projection (distance courte = pénalité minime)
             _addEdge(graph, ep.nodeIdx, projIdx, proj.dist);
-            // Lie la projection aux 2 extrémités du segment B
             _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
             _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
             nbProximites++;
@@ -737,11 +598,8 @@
       }
     }
 
-    // ===== 3. Endpoint-endpoint proximity =====
-    // Cas typique : 2 roads se rejoignent visuellement à un endroit, mais leur
-    // dernier point respectif est décalé de quelques pixels (jitter hand-trace).
-    // SPATIAL_MERGE_THRESHOLD (1.5 px) est trop strict pour les fusionner au
-    // build du graphe ; on les relie ici par une arête directe pondérée.
+    // ── 3. Extrémité↔extrémité : derniers points décalés de quelques px (jitter), trop loin pour
+    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée ──
     const endpointSet = new Set();
     for (let i = 0; i < segs.length; i++) {
       endpointSet.add(segs[i].a);
@@ -749,8 +607,7 @@
     }
     const endpoints = Array.from(endpointSet);
     let nbEndpoints = 0;
-    // ⚡ Grille de pas ≥ tolérance : deux extrémités à moins de
-    // PROXIMITY_TOLERANCE sont forcément dans des cellules voisines (3×3).
+    // Pas ≥ tolérance : deux extrémités assez proches sont forcément dans des cellules voisines (3×3).
     const pasExt = Math.max(GRILLE_ENRICH_PX, PROXIMITY_TOLERANCE);
     const grilleExt = new Map();
     for (let i = 0; i < endpoints.length; i++) {
@@ -777,10 +634,7 @@
         const j = candE[c];
         const idxB = endpoints[j];
 
-        // 🏗️ Multi-niveau : skip si les niveaux des 2 nodes n'ont aucun
-        // niveau numerique en commun (transit ne compte pas car deux
-        // jonction-middle ne se connectent pas par proximite — ce sont
-        // des points en l'air dans des escaliers différents).
+        // Aucun niveau numérique commun → pas de lien (deux milieux de jonction ne se relient pas).
         if (_mlOn && !_nodesCompatibleNiveau(graph.nodeLevels[idxA], graph.nodeLevels[idxB], _mlOn)) {
           _nbSkipNiveau++;
           continue;
@@ -788,8 +642,7 @@
 
         const pB = graph.nodes[idxB];
         const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
-        // Inférieur à la tolérance ET supérieur au seuil de fusion (sinon
-        // déjà mergés au build) → 2 endpoints distincts mais proches.
+        // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).
         if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE) {
           _addEdge(graph, idxA, idxB, d);
           nbEndpoints++;
@@ -809,19 +662,12 @@
       "endpoint↔endpoint:", nbEndpoints);
   }
 
-  // =========================
-  // SNAP D'UN POINT EXTERNE SUR LE GRAPHE
-  // =========================
-  // Trouve le segment le plus proche, projette le point dessus, INSÈRE un
-  // nœud virtuel à la projection (split du segment original) pour que
-  // Dijkstra puisse partir/arriver exactement à ce point.
-  // 🩸 LE CALAGE IGNORAIT LE NIVEAU DU POINT : le
-  // segment le plus proche en 2D gagnait, quel que soit son étage (mesuré : 7,8 %
-  // des clics à ~2 m d'une galerie du −1 accrochés à un autre niveau). Si le point
-  // porte un niveau (plan multi-niveau), le segment le plus proche DE CE NIVEAU est
-  // préféré, à condition de ne pas être à plus de NIVEAU_TOLERANCE_PX au-delà du plus
-  // proche tous niveaux confondus — sinon le niveau du point est sans doute faux, et
-  // l'ancien comportement reste. Point sans niveau : rien ne change.
+  // ── Calage d'un point externe sur le graphe ──────────
+  // Projette le point sur le segment le plus proche et y INSÈRE un nœud virtuel (départ/arrivée exacts).
+  // 🩸 Le niveau du point compte : le segment le plus proche DE SON NIVEAU est préféré s'il n'est pas à
+  // plus de NIVEAU_TOLERANCE_PX au-delà du plus proche tous niveaux confondus (sinon le niveau du point
+  // est sans doute faux). Le plus proche en 2D seul accrochait des clics à un autre étage.
+  // Point sans niveau : plus proche en 2D.
   const NIVEAU_TOLERANCE_PX = 40;
   function _insertVirtualNode(graph, p) {
     let bestSegIdx = -1;
@@ -855,8 +701,7 @@
     const a   = graph.nodes[seg.a];
     const b   = graph.nodes[seg.b];
 
-    // Si le projeté coïncide avec une extrémité, on retourne directement ce nœud
-    // (pas besoin d'insérer un node virtuel — pénible et inutile).
+    // Projeté sur une extrémité → ce nœud, pas de nœud virtuel.
     const dToA = Math.hypot(a.x - bestProj.x, a.y - bestProj.y);
     if (dToA < SPATIAL_MERGE_THRESHOLD) {
       return { nodeIdx: seg.a, projection: { x: a.x, y: a.y }, snapDist: bestDist };
@@ -866,33 +711,21 @@
       return { nodeIdx: seg.b, projection: { x: b.x, y: b.y }, snapDist: bestDist };
     }
 
-    // Sinon, insère un nouveau nœud virtuel et 2 nouvelles arêtes A↔V et V↔B.
-    // L'arête A↔B originale n'est PAS supprimée (Dijkstra trouvera le
-    // meilleur chemin de toute façon ; supprimer compliquerait la gestion).
+    // Nœud virtuel + arêtes A↔V et V↔B ; l'arête A↔B d'origine reste (Dijkstra choisit).
     const newIdx = graph.nodes.length;
     graph.nodes.push({ x: bestProj.x, y: bestProj.y, virtual: true });
     graph.edges.push([]);
-    // 🏗️ Multi-niveau (v148) : le node virtuel herite du niveau du segment
-    // snapped (numeric pour road, "transit" pour jonction). Sans ca, Dijkstra
-    // partirait d'un node sans niveau → traverserait tout le graphe sans
-    // contrainte. Avec, le node est sur le bon niveau et les contraintes des
-    // edges (deja niveau-aware via l'enrichissement) le maintiennent.
+    // Le nœud virtuel hérite du niveau du segment, sinon Dijkstra partirait sans contrainte de niveau.
     if (graph.nodeLevels) {
       _ajouterNiveauNode(graph, newIdx, seg.level);
     }
     _addEdge(graph, newIdx, seg.a, dToA);
     _addEdge(graph, newIdx, seg.b, dToB);
 
-    // 🩸 (révélé par le guidage) — LE CHEMIN PARTAIT EN ARRIÈRE.
-    // Le nœud virtuel n'était relié qu'aux DEUX EXTRÉMITÉS du segment. Or
-    // l'enrichissement a pu poser des nœuds de croisement ENTRE elles (sur
-    // l'arête d'origine, gardée). Départ à 20 px d'une extrémité, croisement
-    // au milieu : le chemin allait à l'extrémité puis revenait (+2×20 px de
-    // distance, un aller-retour invisible sur la carte, et un « demi-tour »
-    // annoncé au départ). On relie donc aussi le nœud virtuel aux nœuds
-    // posés sur son segment — le plus proche de chaque côté suffit.
-    // Multi-niveau : seul un nœud du MÊME niveau que le segment est relié —
-    // sinon deux étages superposés en x/y communiqueraient par ce raccourci.
+    // 🩸 Le nœud virtuel doit aussi être relié aux nœuds de croisement posés SUR son segment (sur
+    // l'arête d'origine, gardée) — le plus proche de chaque côté. Relié aux seules extrémités, le
+    // chemin partait vers l'extrémité puis revenait (aller-retour invisible, « demi-tour » annoncé).
+    // Multi-niveau : seulement un nœud du MÊME niveau, sinon deux étages superposés communiqueraient.
     const _mlOnV = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const tV = bestProj.t;
     let avant = null, apres = null;
@@ -920,16 +753,10 @@
     };
   }
 
-  // =========================
-  // DIJKSTRA
-  // =========================
-  // TAS BINAIRE au lieu d'un balayage de tous les nœuds à
-  // chaque extraction (O(V²) → O(E log V)). « OK pour < 10k nœuds » était
-  // faux en pratique : ~40 s sur un relevé réel, dont une large part ici.
-  // 🩸 Même ordre d'extraction qu'avant, donc mêmes chemins : l'ancien
-  // balayage prenait la plus petite distance et, à égalité, le plus petit
-  // indice (parcours croissant, comparaison stricte). Le tas est ordonné sur
-  // exactement ce couple (distance, indice). Entrées périmées ignorées.
+  // ── Dijkstra ──────────
+  // Tas binaire (O(E log V)) : le balayage O(V²) coûtait ~40 s sur un grand relevé.
+  // 🩸 Tas ordonné sur (distance, indice) : à égalité de distance, le plus petit indice sort d'abord,
+  // comme le balayage — donc mêmes chemins. Entrées périmées ignorées.
   function _tasPousser(tas, d, i) {
     tas.push(d, i);
     let k = (tas.length >> 1) - 1;
@@ -980,7 +807,6 @@
       if (u === end) break;
       fait[u] = 1;
 
-      // Relaxer les voisins
       const neigh = graph.edges[u];
       for (let i = 0; i < neigh.length; i++) {
         const v = neigh[i].to;
@@ -996,7 +822,6 @@
 
     if (dist[end] === Infinity) return null;
 
-    // Reconstruction du chemin (indices de nœuds)
     const pathIdx = [];
     let u = end;
     while (u >= 0) {
@@ -1006,22 +831,17 @@
     return { nodeIndices: pathIdx, totalDistance: dist[end] };
   }
 
-  // =========================
-  // CALCUL INTERNE — 1 passe (avec contraintes donnees)
-  // =========================
-  // Factorise la logique build+enrich+snap+Dijkstra. Appele par computeRoute
-  // pour la passe 1 (avec contraintes) puis si necessaire pour la passe 2
-  // (sans avoidances). Throw avec messages clairs si echec.
-  // `echelle` (px/m) et `profondeurs` ({ "<niveau>": m|null }), facultatifs :
-  // ceux du plan du RÉSEAU, quand ce n'est pas le plan ouvert (étape d'un
-  // itinéraire inter-plans) — sinon APP_CONFIG.scale / getProfondeurNiveau.
-  // Ils servent aux carrefours ET au poids des jonctions de niveau.
+  // ── Calcul interne, une passe ──────────
+  // build + enrichissement + calage + Dijkstra ; computeRoute l'appelle en passe 1 puis 2 si besoin.
+  // `echelle` (px/m) et `profondeurs` ({ "<niveau>": m|null }) facultatifs : ceux du plan du RÉSEAU
+  // quand ce n'est pas le plan ouvert (sinon APP_CONFIG.scale / getProfondeurNiveau). Ils servent aux
+  // carrefours ET au poids des jonctions.
   function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
                                 echelle, profondeurs) {
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
                               { echelle: echelle, profondeurs: profondeurs });
     if (graph.nodes.length === 0) {
-      // 🌍 i18n : code + params, localisé côté rendu (interfaceItineraire.js).
+      // i18n : code + params, localisé au rendu (interfaceItineraire.js).
       const e = new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
       e.code = "NO_ROUTE_TYPES";
       e.i18nKey = "iti.err.aucuneRouteTypes";
@@ -1061,22 +881,13 @@
         e.i18nParams = { a: (i + 1), b: (i + 2) };
         throw e;
       }
-      // 🩸 LE NIVEAU VOYAGE AVEC LE CHEMIN.
-      // Il était JETÉ : les nœuds du graphe le portent (`levels: Set`), mais
-      // le retour était un `{x, y}` plat. Aucun profil en long n'était donc
-      // calculable, faute de savoir à quelle profondeur passe chaque point.
-      //
-      // `levels` peut contenir plusieurs entrées (nœud fusionné à une
-      // intersection) ou « transit » (milieu d'une jonction, qui n'est à aucun
-      // étage — il est ENTRE deux). On ne rend un niveau que s'il est
-      // univoque : ailleurs, `null` dit honnêtement « indéterminé », et le
-      // profil interpole. C'est exactement ce qu'on veut d'un puits.
+      // 🩸 LE NIVEAU VOYAGE AVEC LE CHEMIN (nécessaire au profil en long). `levels` peut avoir plusieurs
+      // entrées (nœud fusionné) ou « transit » (milieu de jonction, ENTRE deux étages) : on ne rend un
+      // niveau qu'univoque, sinon null (« indéterminé ») et le profil interpole.
       const segPoints = result.nodeIndices.map(function(idx) {
         const n = graph.nodes[idx];
-        // ⚠️ Les niveaux ne sont PAS portés par le nœud : ils vivent dans le
-        // tableau parallèle `graph.nodeLevels[idx]` (Set<number|"transit">).
-        // Première rédaction : `n.levels` — toujours `undefined`, donc `null`
-        // partout, sans la moindre erreur. Le profil serait sorti plat.
+        // 🩸 Les niveaux vivent dans le tableau parallèle `graph.nodeLevels[idx]`, PAS sur le nœud :
+        // `n.levels` vaut toujours undefined → null partout, sans erreur, profil plat.
         const set = graph.nodeLevels && graph.nodeLevels[idx];
         let lvl = null;
         if (set && typeof set.forEach === "function") {
@@ -1097,16 +908,10 @@
       totalDistance:  totalDistance,
       segmentCount:   segmentCount,
       snappedPoints:  snapResults.map(function(s) { return s.projection; }),
-      // 🪧 Guidage (27/09/2026) — deux champs AJOUTÉS, aucun champ existant ne
-      // change : `path` et `totalDistance` restent le seul trajet SUR tracé.
-      //   • raccords : le trajet à vol d'oiseau entre chaque waypoint et le
-      //     tracé où il s'accroche. Il existait (snapDist) mais était jeté —
-      //     l'itinéraire commençait sur la galerie sans dire qu'il fallait
-      //     d'abord la rejoindre (décision KARMA K : dessiné ET compté).
-      //   • carrefours : les nœuds du graphe SITUÉS SUR le chemin d'où partent
-      //     au moins 3 directions. Cherchés géométriquement : l'arête d'origine
-      //     restant dans le graphe quand un croisement est inséré, un chemin
-      //     qui passe tout droit peut ne pas traverser le nœud du croisement.
+      // Champs du guidage (`path`/`totalDistance` restent le trajet SUR tracé) :
+      //   • raccords : trajet à vol d'oiseau entre chaque waypoint et son tracé (dessiné ET compté) ;
+      //   • carrefours : nœuds SUR le chemin d'où partent ≥ 3 directions, cherchés géométriquement —
+      //     l'arête d'origine restant dans le graphe, un chemin tout droit peut éviter le nœud de croisement.
       raccords: snapResults.map(function(s, i) {
         const w = waypoints[i];
         return {
@@ -1122,29 +927,19 @@
     };
   }
 
-  // =========================
-  // 🪧 CARREFOURS LE LONG D'UN CHEMIN (guidage, 27/09/2026)
-  // =========================
-  // Rend [{x, y, sorties:[cap°]}] pour chaque nœud du graphe posé sur le
-  // chemin (≤ CARREFOUR_TOL_PX) d'où partent au moins 3 directions DISTINCTES.
-  // Cap en degrés, 0 = haut du plan, sens horaire (convention de tracking.js).
-  //
-  // « Distinctes » est le cœur de l'affaire : le graphe est bruité par
-  // construction (arête doublée A↔B à côté de A↔V↔B, sommets voisins d'un
-  // même tracé reliés par la proximité d'extrémités, tremblement du dessin à
-  // la main). Compter les voisins d'un nœud mentait sur un tracé tremblé.
-  // On regarde donc la GÉOMÉTRIE : un cercle de ~3 m autour du nœud, et
-  // chaque endroit où le réseau le traverse est une sortie. Les directions
-  // proches (SORTIE_ECART_DEG) se regroupent. Effet voulu : une amorce de
-  // moins de 3 m (défaut de dessin) n'atteint pas le cercle et ne compte pas.
+  // ── Carrefours le long d'un chemin (guidage) ──────────
+  // [{x, y, sorties:[cap°]}] par nœud posé sur le chemin (≤ CARREFOUR_TOL_PX) d'où partent au moins 3
+  // directions DISTINCTES. Cap : 0 = haut du plan, sens horaire (convention de tracking.js).
+  // 🩸 Compter les voisins d'un nœud ment (arêtes doublées, extrémités proches reliées, tremblement) :
+  // on regarde la GÉOMÉTRIE — chaque traversée d'un cercle de ~3 m autour du nœud est une sortie, les
+  // directions proches (SORTIE_ECART_DEG) se regroupent. Une amorce < 3 m (défaut de dessin) ne compte pas.
   const CARREFOUR_TOL_PX  = 3;
   const SORTIE_ECART_DEG  = 25;
   const GRILLE_CHEMIN_PX  = 24;
 
-  // Rayon du cercle de sortie : ~3 m, jamais moins de 8 px.
-  // Échelle (px/m) du réseau mesuré : celle passée par l'appelant (réseau d'un
-  // AUTRE plan — itinéraire inter-plans), sinon celle du plan ouvert. `repli` :
-  // valeur quand aucune n'est connue (0 = pas calibré pour le rayon de sortie).
+  // Rayon de sortie : ~3 m, jamais moins de 8 px.
+  // Échelle (px/m) : celle de l'appelant (réseau d'un AUTRE plan), sinon le plan ouvert, sinon `repli`
+  // (0 = pas calibré).
   function _echelleReseau(echelle, repli) {
     if (Number(echelle) > 0) return Number(echelle);
     return (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : repli;
@@ -1172,7 +967,6 @@
     return out;
   }
 
-  // Grille des arêtes du graphe (une seule fois par calcul de carrefours).
   function _grilleAretes(graph, cell) {
     const g = {};
     for (let i = 0; i < graph.edges.length; i++) {
@@ -1197,7 +991,7 @@
     return g;
   }
 
-  // `c` : le centre du cercle — un nœud, ou le centre d'une ZONE de carrefour.
+  // `c` : centre du cercle — un nœud, ou le centre d'une ZONE de carrefour.
   function _capsDeSortie(graph, c, grille, cell, R) {
     const caps = [];
     const vus = {};
@@ -1212,7 +1006,6 @@
           const key = i + "," + j;
           if (vus[key]) continue;
           vus[key] = 1;
-          // Intersections du segment [a, b] avec le cercle (c, R)
           const a = graph.nodes[i], b = graph.nodes[j];
           const dx = b.x - a.x, dy = b.y - a.y;
           const fx = a.x - c.x, fy = a.y - c.y;
@@ -1229,9 +1022,8 @@
         }
       }
     }
-    // Regroupement par angle, circulaire : le dernier groupe peut rejoindre
-    // le premier en passant par 0°. Moyenne VECTORIELLE (359° et 1° font 0°,
-    // pas 180°).
+    // Regroupement circulaire (le dernier groupe peut rejoindre le premier via 0°), moyenne VECTORIELLE
+    // (359° et 1° font 0°, pas 180°).
     caps.sort(function(a, b) { return a - b; });
     const groupes = [];
     caps.forEach(function(c) {
@@ -1252,7 +1044,6 @@
 
   function _carrefoursSurChemin(graph, path, echelle) {
     if (!graph || !Array.isArray(path) || path.length < 2) return [];
-    // Grille des segments du chemin → test de proximité en O(1) par nœud
     const grille = {};
     function _cle(cx, cy) { return cx + "," + cy; }
     for (let i = 1; i < path.length; i++) {
@@ -1297,15 +1088,11 @@
     return out;
   }
 
-  // 🪧 GRANDS CARREFOURS (décision KARMA 1:a, 27/09/2026). Sur un plan réel,
-  // un grand carrefour n'est pas UN nœud à 5 branches : c'est une ZONE de
-  // plusieurs croisements proches (7 croisements sur moins de 20 m mesurés
-  // sur l'un d'eux), les galeries n'arrivant pas toutes au même point du
-  // dessin. Des croisements qui se suivent sur le trajet à ≤ ZONE_ECART_M
-  // l'un du précédent forment une zone ; ses sorties se mesurent sur un
-  // cercle qui l'englobe (rayon de la zone + le rayon de sortie habituel).
-  // Chaque membre reçoit la MÊME `zone` : { x, y, r, sorties }.
-  const ZONE_ECART_M = 5;   // KARMA : « 20 m c'est beaucoup trop, plutôt 5 »
+  // Grands carrefours : une ZONE de croisements proches (les galeries n'arrivent pas au même point du
+  // dessin). Des croisements consécutifs sur le trajet à ≤ ZONE_ECART_M forment une zone ; ses sorties se
+  // mesurent sur un cercle qui l'englobe (rayon de zone + rayon de sortie). Chaque membre reçoit la
+  // MÊME `zone` : { x, y, r, sorties }. 5 m (décision produit : 20 m regroupait trop).
+  const ZONE_ECART_M = 5;   // (décision produit, cf plus haut)
   function _zonesDeCarrefour(graph, carrefours, grilleA, cellA, R, echelle) {
     if (carrefours.length < 2 || !grilleA) return;
     const e = _echelleReseau(echelle, 1);
@@ -1332,34 +1119,14 @@
     });
   }
 
-  // =========================
-  // API PUBLIQUE — computeRoute (avec fallback 2 passes pour evitements)
-  // =========================
-  // opts :
-  //   - allowedTypes : ['principal','secondaire','chemin'] par defaut
-  //   - avoidPoints  : [{x, y, label?}, ...] — points a eviter (souple)
-  //   - avoidTags    : ["pa", "danger", ...] — tags a eviter (expansion auto
-  //                    via SearchPoints.getAllPoints + filtre par tag)
-  //   - avoidRadius  : px (defaut 100). Tout segment a moins de cette distance
-  //                    d'un point d'evitement est exclu du graphe.
-  //   - respecterInaccessibles : false pour SUSPENDRE la contrainte dure des
-  //                    zones "inaccessible" (v1.82.0). Absent/true = comportement
-  //                    historique. Seule contrainte du moteur qui ne se relache
-  //                    jamais d'elle-meme, d'ou le besoin d'un interrupteur.
-  //
-  // ALGO 2 PASSES
-  //   Passe 1 : avec zones inaccessibles (dur) + evitements (souple)
-  //   Si echec ET avoidances non vides → Passe 2 : zones uniquement.
-  //   Si passe 2 trouve un chemin → detection des points evites qui ont quand
-  //   meme ete traverses par le path final (proximite < avoidRadius). Retour
-  //   enrichi avec `usedFallback: true` + `avoidedThrough: [...]` pour que
-  //   l'UI puisse afficher "⚠️ Impossible d'eviter : ..."
-  //   Si passe 2 echoue aussi → on relance l'erreur (vraie absence de chemin
-  //   = zone inaccessible bloquante ou reseau disconnect).
-  // ⚠️ ASYNC depuis v169 (Karma_dev) : _expandAvoidTagsEnPoints utilise
-  // SearchPoints.getAllPoints qui est async (cache fetch + data layers).
-  // Les appelants doivent utiliser `await Pathfinder.computeRoute(...)` ou
-  // `.then(...)`. Sans avoidTags, l'await est immediat (resolve sync).
+  // ── computeRoute (2 passes) ──────────
+  // opts : allowedTypes (défaut principal/secondaire/chemin) · avoidPoints [{x, y, label?}] · avoidTags
+  //   (développés en points via SearchPoints) · avoidRadius px (défaut 100) · avoidZones (types) ·
+  //   respecterInaccessibles (false = SUSPEND la seule contrainte dure ; absent = respecter).
+  // Passe 1 : zones inaccessibles (dur) + évitements (souple). Échec avec évitements → passe 2 sans eux ;
+  // si elle aboutit : `usedFallback: true` + `avoidedThrough` (points traversés) pour l'UI. Échec de la
+  // passe 2 → vraie absence de chemin, l'erreur remonte.
+  // ⚠️ ASYNC (SearchPoints.getAllPoints) : `await Pathfinder.computeRoute(…)`.
   async function computeRoute(waypoints, opts) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
       throw new Error("Au moins 2 waypoints sont requis");
@@ -1367,11 +1134,8 @@
     opts = opts || {};
     const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
 
-    // 1. Collecte des roads disponibles.
-    // ⚠️ On utilise getAllEmbeddedRoads (TOUTES les embedded, visibles ET masquees)
-    // au lieu de getEmbeddedRoads (visibles uniquement) — cela permet a l'utilisateur
-    // de masquer le calque des routes (routes parfois dessinees en dur sur le PNG du
-    // plan) pour gagner en perf de rendu, tout en gardant un pathfinder fonctionnel.
+    // ⚠️ getAllEmbeddedRoads (visibles ET masquées), pas getEmbeddedRoads : masquer le calque des routes
+    // (souvent déjà dessinées sur le PNG) ne doit pas casser le pathfinder.
     const sessionRoads = (typeof window.getRoads === "function") ? window.getRoads() : [];
     let embeddedRoads;
     if (typeof window.getAllEmbeddedRoads === "function") {
@@ -1396,17 +1160,11 @@
       throw e;
     }
 
-    // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" (contrainte dure).
-    // DÉBRAYABLE (demande KARMA). C'est la SEULE contrainte dure du
-    // moteur : jamais relâchée, même en passe 2. Sur un relevé importé encore
-    // incomplet, un polygone typé « inaccessible » par erreur ferme donc un
-    // passage qui existe, sans recours. La case de la modale itinéraire permet
-    // de le suspendre — cochée par défaut : le comportement sûr reste l'implicite,
-    // et le lever est un geste explicite de l'utilisateur qui connaît son terrain.
-    //
-    // ⚠️ Volontairement limité à `computeRoute`. `computeReachable` (Mode
-    // Secours / Perdu) garde les zones inaccessibles en toutes circonstances :
-    // une préférence de confort n'a pas à élargir un périmètre de secours.
+    // Zones inaccessibles : SEULE contrainte dure, jamais relâchée même en passe 2 — un polygone typé
+    // « inaccessible » par erreur ferme un passage sans recours, d'où la case de la modale (cochée par
+    // défaut : la suspendre est un geste explicite).
+    // ⚠️ Limité à computeRoute : computeReachable (Secours / Perdu) les garde toujours — une préférence
+    // de confort n'élargit pas un périmètre de secours.
     const zonesInacc = (opts.respecterInaccessibles === false)
       ? [] : _collecterZonesInaccessibles();
     if (opts.respecterInaccessibles === false) {
@@ -1416,15 +1174,13 @@
       console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) — contrainte dure");
     }
 
-    // 🚫 v169 (Karma_dev) : preferences d'evitement (contrainte souple).
-    // avoidPoints explicites + expansion des avoidTags en points.
+    // Évitements souples : points explicites + avoidTags développés.
     const explicitAvoid    = Array.isArray(opts.avoidPoints) ? opts.avoidPoints.slice() : [];
     const avoidTags        = Array.isArray(opts.avoidTags)   ? opts.avoidTags.slice()   : [];
     const expandedFromTags = await _expandAvoidTagsEnPoints(avoidTags);
     const allAvoidPts      = explicitAvoid.concat(expandedFromTags);
     const avoidRadius      = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0)
                               ? opts.avoidRadius : 100;
-    // zones a eviter (souple) — resolues depuis opts.avoidZones (ids derives).
     const avoidZones       = _collecterZonesAEviter(Array.isArray(opts.avoidZones) ? opts.avoidZones : []);
     if (avoidZones.length > 0) {
       console.log("[Pathfinder] " + avoidZones.length + " zone(s) a eviter — contrainte souple");
@@ -1435,7 +1191,6 @@
                   " point(s) a eviter (rayon " + avoidRadius + "px) — contrainte souple, fallback possible");
     }
 
-    // ===== PASSE 1 : avec contraintes dures + souples =====
     let result          = null;
     let usedFallback    = false;
     let avoidedThrough  = [];
@@ -1446,11 +1201,9 @@
         zonesInacc, allAvoidPts, avoidRadius, avoidZones
       );
     } catch(e1) {
-      // Passe 1 echoue. Si on n'avait pas d'avoidances, c'est une vraie absence
-      // de chemin (= zone inaccessible bloque ou reseau disconnect) → on relance.
+      // Sans évitements, c'est une vraie absence de chemin → on relance.
       if (!hasAvoidances) throw e1;
 
-      // Sinon, tentative passe 2 sans avoidances (= seulement zones dures).
       console.log("[Pathfinder] Passe 1 echec — tentative passe 2 sans evitements (fallback)");
       try {
         result = _computeRouteInterne(
@@ -1458,16 +1211,13 @@
           zonesInacc, [], 0, []
         );
         usedFallback = true;
-        // Detecter quels points evites sont traverses par le chemin final
-        // (proximite < avoidRadius). Permet a l'UI d'afficher "Impossible
-        // d'eviter : X, Y" pour informer l'user.
+        // Points évités que le chemin final traverse quand même (« Impossible d'éviter : X, Y »).
         avoidedThrough = allAvoidPts.filter(function(ap) {
           return _pathPassesNearPoint(result.path, ap, avoidRadius);
         });
         console.log("[Pathfinder] Passe 2 ok — " + avoidedThrough.length +
                     " evitement(s) traverse(s) malgre la preference");
       } catch(e2) {
-        // Passe 2 echoue aussi → vraie absence de chemin
         throw e2;
       }
     }
@@ -1479,28 +1229,14 @@
     });
   }
 
-  // ============================================================
-  // (A6 — itinéraire inter-plan) — computeRouteOnRoads
-  // ============================================================
-  // Dijkstra sur des ROADS FOURNIES EN PARAMÈTRE (plan NON chargé — lues à
-  // distance par InterPlanLinks.collectRoutingDataForPlan). Contrairement à
-  // computeRoute : SYNCHRONE (pas d'expansion avoidTags — l'appelant résout
-  // lui-même ses évitements en points/zones objets, car les données du plan
-  // distant ne sont pas dans les globals du runtime).
-  //
-  // opts :
-  //   - allowedTypes        : types de roads (défaut principal/secondaire/chemin)
-  //   - zones               : zones du plan distant [{type, points, level?}] —
-  //                           les "inaccessible" deviennent CONTRAINTE DURE
-  //   - avoidPoints         : [{x, y, label?}] contrainte souple (passe 2 sans)
-  //   - avoidZonesResolved  : zones OBJETS à éviter (souple)
-  //   - avoidRadius         : rayon px (défaut 100)
-  //   - echelle             : px/m du plan de CE réseau (défaut : plan ouvert) —
-  //                           mesure des carrefours (rayon de sortie 3 m, zone 5 m)
-  //                           et dénivelé des jonctions de niveau
-  //   - profondeurs         : { "<niveau>": m|null } du plan de CE réseau —
-  //                           poids des jonctions. Fournie (même {}) = fait foi ;
-  //                           absente = plan ouvert (à réserver au plan ouvert)
+  // ── computeRouteOnRoads : itinéraire inter-plans ──────────
+  // Dijkstra sur des ROADS FOURNIES (plan NON chargé, lues par InterPlanLinks.collectRoutingDataForPlan).
+  // SYNCHRONE : pas d'avoidTags — l'appelant résout ses évitements, les données distantes ne sont pas
+  // dans les globales.
+  // opts : allowedTypes · zones [{type, points, level?}] (les "inaccessible" = contrainte DURE) ·
+  //   avoidPoints · avoidZonesResolved (zones objets, souple) · avoidRadius (px, 100) ·
+  //   echelle (px/m de CE réseau : carrefours 3 m / 5 m et dénivelé) ·
+  //   profondeurs ({ "<niveau>": m|null } de CE réseau ; fournie, même {}, fait foi ; absente = plan ouvert).
   // Retour : même forme que computeRoute (+ usedFallback / avoidedThrough).
   function computeRouteOnRoads(waypoints, roads, opts) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
@@ -1530,7 +1266,6 @@
                                     zonesInacc, avoidPts, avoidRadius, avoidZones, opts.echelle, opts.profondeurs);
     } catch(e1) {
       if (!hasAvoid) throw e1;
-      // Passe 2 sans évitements souples (mêmes règles que computeRoute)
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
                                     zonesInacc, [], 0, [], opts.echelle, opts.profondeurs);
       usedFallback = true;
@@ -1545,15 +1280,12 @@
     });
   }
 
-  // Recherche un point existant par id ou par nom (case-insensitive).
-  // Cherche d'abord dans les editor points, puis dans le cache de recherche
-  // si dispo (rempli par searchPoints.js au boot).
+  // Point par id ou nom (insensible à la casse) : points éditeur, puis cache de searchPoints.js.
   function resolvePointById(idOrName) {
     if (!idOrName) return null;
     const target = String(idOrName).trim().toLowerCase();
     if (!target) return null;
 
-    // 1. Editor points (session)
     const editorPoints = (typeof window.getEditorPoints === "function") ? window.getEditorPoints() : [];
     for (let i = 0; i < editorPoints.length; i++) {
       const p = editorPoints[i];
@@ -1564,44 +1296,21 @@
       }
     }
 
-    // 2. Points des data layers (via cache searchPoints si exposé, sinon fetch direct)
     if (window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.dataLayers)) {
-      // Best effort : lecture synchrone du cache si dispo. Sinon, l'appelant
-      // devra utiliser un waypoint par coordonnées (clic) plutôt que par ID.
-      // (Une recherche async dans tous les calques serait plus complète mais
-      // nécessite une API séparée — Phase 2 si besoin.)
+      // Lecture synchrone du cache seulement : sinon l'appelant passe par des coordonnées (clic).
     }
 
     return null;
   }
 
-  // =========================
-  // =========================
-  // ISOCHRONE / REACHABILITY (depuis v173 — mode urgence "Je suis perdu")
-  // =========================
-  // Calcule tous les segments de roads atteignables depuis un point de départ
-  // dans la limite d'un budget de distance (= vitesse × temps écoulé).
-  // Utilisé par lostMode.js pour restreindre visuellement la zone de recherche
-  // au réseau physique réel (galeries/chemins) au lieu d'un simple cercle.
-  //
-  // Algorithme : Dijkstra "budget" (variante one-to-all avec coupure à budget).
-  // - On part du nœud snap (projection du startPoint sur le road le plus proche)
-  // - On relaxe les voisins tant que leur distance accumulée ≤ budget
-  // - Sortie : 3 catégories de segments :
-  //   * fullSegments : les 2 endpoints sont dans le budget → highlight complet
-  //   * partialSegments : seulement A (ou B) dans le budget → highlight tronqué
-  //     via interpolation linéaire au point d'arrêt exact (= où le budget est épuisé)
-  //   * (non retournés) : aucun endpoint dans le budget → skip
-  //
-  // Multi-niveau : les jonctions sont traversables (choix 5b validé KARMA),
-  // donc le calcul peut s'étendre sur d'autres niveaux via les bridges. Géré
-  // automatiquement par _buildGraph + _enrichirGrapheAvecCroisements existants.
-  //
-  // Cas dégénéré (départ loin de tout road) : retourne exceedsBudget=true avec
-  // snapPoint + snapDistance, mais fullSegments/partialSegments vides. Le caller
-  // (LostMode) trace alors une ligne pointillée + cercle seul.
-  //
-  // opts (optionnel, réservé pour évolutions Phase 2) — actuellement aucun.
+  // ── computeReachable : isochrone du Mode Perdu ──────────
+  // Segments atteignables depuis un point dans un budget de distance (vitesse × temps), pour que
+  // lostMode.js restreigne la zone de recherche au réseau réel plutôt qu'à un cercle.
+  // Dijkstra « budget » depuis le nœud de calage → fullSegments (2 extrémités dans le budget) et
+  // partialSegments (tronqués par interpolation au point où le budget s'épuise).
+  // Les jonctions sont traversables : le calcul s'étend aux autres niveaux.
+  // Départ loin de tout tracé : exceedsBudget=true + snapPoint/snapDistance, listes vides (LostMode trace
+  // alors pointillé + cercle seul). `opts` : réservé, inutilisé.
   function computeReachable(startPoint, budgetPx, opts) {
     if (!startPoint || typeof startPoint.x !== "number" || typeof startPoint.y !== "number") {
       throw new Error("computeReachable : startPoint = {x, y} requis");
@@ -1610,9 +1319,7 @@
       throw new Error("computeReachable : budgetPx > 0 requis (= rayon en pixels)");
     }
 
-    // 1) Collecte de toutes les roads (session + embedded data layers) cohérente
-    // avec computeRoute pour que le mode urgence couvre TOUT le réseau visible
-    // par Pathfinder (visible ET masqué — cf §15 du CLAUDE.md).
+    // Même collecte que computeRoute (visibles ET masquées) : tout le réseau est couvert.
     const sessionRoads = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
     const embeddedRoads = (typeof window.getAllEmbeddedRoads === "function"
       ? window.getAllEmbeddedRoads() : []) || [];
@@ -1627,12 +1334,10 @@
       };
     }
 
-    // Types autorisés : tous (principal/secondaire/chemin/jonction), idem computeRoute.
     const allowedTypes = ["principal", "secondaire", "chemin"];
     const zonesInacc = _collecterZonesInaccessibles();
 
-    // 2) Construction graphe + enrichissement croisements (idem computeRoute,
-    //    sans avoidances qui sont propres à l'itinéraire).
+    // Sans évitements (propres à l'itinéraire).
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
     _enrichirGrapheAvecCroisements(graph);
 
@@ -1645,7 +1350,6 @@
       };
     }
 
-    // 3) Snap du point de départ sur le road le plus proche.
     const snap = _insertVirtualNode(graph, startPoint);
     if (!snap) {
       return {
@@ -1656,7 +1360,7 @@
       };
     }
 
-    // 4) Si le snap est déjà hors budget → impossible d'atteindre une route.
+    // Calage déjà hors budget → aucune route atteignable.
     if (snap.snapDist >= budgetPx) {
       return {
         fullSegments: [], partialSegments: [],
@@ -1669,10 +1373,8 @@
 
     const remainingBudget = budgetPx - snap.snapDist;
 
-    // 5) Dijkstra "budget" depuis le node snap.
     const distances = _dijkstraReachable(graph, snap.nodeIdx, remainingBudget);
 
-    // 6) Catégorisation des segments (full vs partial).
     const fullSegments = [];
     const partialSegments = [];
     let totalDist = 0;
@@ -1682,7 +1384,6 @@
       const dA = distances[seg.a];
       const dB = distances[seg.b];
 
-      // Ni A ni B atteints → segment non emprunté
       if (dA === Infinity && dB === Infinity) continue;
 
       const pA = graph.nodes[seg.a];
@@ -1694,11 +1395,10 @@
       const inB = dB <= remainingBudget;
 
       if (inA && inB) {
-        // Cas 1 : les 2 endpoints atteints sous le budget → segment complet
         fullSegments.push([{ x: pA.x, y: pA.y }, { x: pB.x, y: pB.y }]);
         totalDist += segLen;
       } else if (inA) {
-        // Cas 2 : A atteint, B hors budget → tronquer de A vers B
+        // A atteint, B hors budget → tronqué de A vers B.
         const rem = remainingBudget - dA;
         const ratio = Math.min(1, rem / segLen);
         if (ratio > 0.001) {
@@ -1710,7 +1410,7 @@
           totalDist += segLen * ratio;
         }
       } else if (inB) {
-        // Cas 3 : B atteint, A hors budget → tronquer de B vers A
+        // B atteint, A hors budget → tronqué de B vers A.
         const rem = remainingBudget - dB;
         const ratio = Math.min(1, rem / segLen);
         if (ratio > 0.001) {
@@ -1722,8 +1422,6 @@
           totalDist += segLen * ratio;
         }
       }
-      // Cas 4 (A et B hors budget) : aucun highlight (le segment était entre 2
-      // sub-trees dépassés, peu intéressant pour l'user perdu).
     }
 
     return {
@@ -1736,15 +1434,13 @@
     };
   }
 
-  // Dijkstra one-to-all avec coupure à budget. Renvoie un array dist[] indexé
-  // par nodeIdx (Infinity si non atteint ou hors budget).
+  // dist[] par nodeIdx (Infinity si non atteint).
   function _dijkstraReachable(graph, start, budget) {
     const N = graph.nodes.length;
     const dist = new Array(N).fill(Infinity);
     const fait = new Uint8Array(N);
     dist[start] = 0;
-    // même tas (distance, indice) que `_dijkstra` : même ordre
-    // d'extraction que l'ancien balayage O(V²), donc mêmes distances rendues.
+    // Même tas (distance, indice) que `_dijkstra` : mêmes distances.
     const tas = [];
     _tasPousser(tas, 0, start);
 
@@ -1752,8 +1448,7 @@
       const e = _tasExtraire(tas);
       const u = e[1], minD = e[0];
       if (fait[u] || minD !== dist[u]) continue;   // entrée périmée
-      // Optimisation : si le nœud minimum dépasse déjà le budget, tous les
-      // suivants aussi (Dijkstra extraction par ordre croissant) → on peut sortir.
+      // Extraction croissante : le minimum dépasse le budget → tous les suivants aussi.
       if (minD > budget) break;
       fait[u] = 1;
 
@@ -1762,9 +1457,7 @@
         const v = neigh[i].to;
         if (fait[v]) continue;
         const alt = dist[u] + neigh[i].weight;
-        // On garde dist[v] même si > budget : utile pour le calcul des
-        // partial segments (cas 2/3 ci-dessus où on a besoin de savoir
-        // que B a été "vu" avec une certaine distance même si > budget).
+        // dist[v] gardé même > budget : les segments partiels doivent savoir que B a été « vu ».
         if (alt < dist[v]) {
           dist[v] = alt;
           _tasPousser(tas, alt, v);
@@ -1775,16 +1468,11 @@
     return dist;
   }
 
-  // =========================
-  // API GRAPHE RÉSEAU — réutilisable hors pathfinding (Nav Intelligente C1)
-  // =========================
-  // Expose le moteur de graphe DÉJÀ ÉPROUVÉ (_buildGraph + enrichissement) pour
-  // réutilisation par la navigation intelligente (map-matching). Le cache et
-  // l'invalidation sont gérés par js/roadGraph.js — ici on fournit juste le
-  // constructeur + un snap LECTURE SEULE. Aucune modification de computeRoute /
-  // computeReachable (qui gardent leur propre build par-requête avec avoidances).
+  // ── Graphe réseau réutilisable (navigation intelligente) ──────────
+  // Même moteur (_buildGraph + enrichissement) pour le map-matching ; cache et invalidation dans
+  // js/roadGraph.js. computeRoute / computeReachable gardent leur build par requête.
 
-  // Collecte session + embedded (même logique que computeRoute/computeReachable).
+  // Session + embarquées, comme computeRoute.
   function _collecterToutesLesRoads() {
     const sessionRoads = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
     let embeddedRoads;
@@ -1798,11 +1486,8 @@
     return sessionRoads.concat(embeddedRoads || []);
   }
 
-  // Construit le graphe réseau complet (build + enrichissement croisements),
-  // SANS évitements (propres à l'itinéraire). Zones inaccessibles exclues par
-  // défaut : la nav indique où l'utilisateur EST physiquement, une zone "inacc"
-  // ne change pas la géométrie des galeries. opts.includeZones = true pour les
-  // respecter quand même.
+  // Graphe complet SANS évitements. Zones inaccessibles exclues par défaut : la nav dit où l'utilisateur
+  // EST, une zone ne change pas la géométrie (opts.includeZones = true pour les respecter).
   function buildNetworkGraph(opts) {
     opts = opts || {};
     const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
@@ -1814,10 +1499,8 @@
     return graph;
   }
 
-  // Snap LECTURE SEULE d'un point sur le graphe (NE MUTE PAS le graphe, par
-  // opposition à _insertVirtualNode qui insère un nœud). Pour le map-matching
-  // par pas : on veut juste le segment le plus proche + la projection.
-  // Retourne { segIdx, seg, projection:{x,y}, t, dist } | null.
+  // Calage LECTURE SEULE (ne mute pas le graphe, contrairement à _insertVirtualNode).
+  // → { segIdx, seg, projection:{x,y}, t, dist } | null.
   function snapPointToGraph(graph, p) {
     if (!graph || !Array.isArray(graph.segments) || graph.segments.length === 0) return null;
     if (!p || typeof p.x !== "number" || typeof p.y !== "number") return null;
@@ -1834,10 +1517,8 @@
     return best;
   }
 
-  // 🪧 Guidage (27/09/2026) — le plan a-t-il au moins un tracé exploitable ?
-  // Sert à AVERTIR au lancement (modale, « Y aller », sortie d'urgence) plutôt
-  // qu'à laisser le calcul échouer sur un message technique. L'itinéraire
-  // lui-même ne compte pas : c'est un calcul, pas un tracé.
+  // Le plan a-t-il un tracé exploitable ? Pour AVERTIR au lancement plutôt qu'échouer sur un message
+  // technique. L'itinéraire lui-même ne compte pas (c'est un calcul, pas un tracé).
   function aDesTraces() {
     const s = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
     const e = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || [])
@@ -1847,20 +1528,16 @@
     });
   }
 
-  // =========================
-  // EXPORT
-  // =========================
+  // ── Export ──────────
   window.Pathfinder = {
     aDesTraces:        aDesTraces,
     computeRoute:      computeRoute,
     computeRouteOnRoads: computeRouteOnRoads,   // (A6) — roads fournies (plan non chargé)
     computeReachable:  computeReachable,
     resolvePointById:  resolvePointById,
-    // 🆕 Nav Intelligente C1 — graphe réseau réutilisable (cf js/roadGraph.js)
     buildNetworkGraph: buildNetworkGraph,
     snapPointToGraph:  snapPointToGraph,
-    // (Secours C1) — carrefours d'un chemin calculé ailleurs (parcours de
-    // balayage) : mêmes règles que ceux de computeRoute, pour le même guidage.
+    // Carrefours d'un chemin calculé ailleurs (parcours de balayage) : mêmes règles, même guidage.
     carrefoursSurChemin: function(graph, path, echelle) { return _carrefoursSurChemin(graph, path, echelle); }
   };
 })();

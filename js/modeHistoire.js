@@ -5,46 +5,19 @@
  */
 
 // =========================
-// MODE HISTOIRE — Note libre + PDF Histoire (embarqué OU importé session)
+// MODE HISTOIRE — note libre + documents PDF du plan
 // =========================
-// Feature v1.34.19 → v1.34.20 — Modale unifiée 2 onglets accessible via
-// bouton 📖 dans la status bar (à côté de 📊 stats et 🔋 batterie).
-//
-// Onglet 1 — 📝 NOTE LIBRE :
-//   Zone de texte éditable où l'user peut prendre des notes contextuelles
-//   au plan. Persistée localStorage per-plan (clé "myktamap_note_libre_<planId>").
-//   Auto-save sur input avec debounce 500ms.
-//
-// Onglet 2 — 📚 HISTOIRE (PDF) — 2 sources possibles, priorité absolue à l'embarqué :
-//   1. EMBARQUÉ : plan-config.json > plan.histoirePdf = "data/histoire.pdf"
-//      → résolu via RUNTIME_ASSETS (extraction eager dans whitelist 2-pass
-//        d'extraireZip v1.34.10+). Le bouton "Importer" est CACHÉ.
-//      (KARMA « si j'ai intégré un PDF dans un zip à la
-//        génération, il ne remonte pas dans Mon Carnet > Récits ») : au
-//        chargement du plan, chaque document embarqué est COPIÉ dans l'IDB
-//        (`syncDocsEmbarques`). Il devient un document comme les autres —
-//        donc visible dans le Carnet, qui lit l'IDB SANS charger le plan, et
-//        **supprimable**. Le rouvrir depuis son plan le recrée : c'est le
-//        comportement demandé, et il dispense d'une liste de pierres
-//        tombales. L'affichage direct de l'embarqué reste en REPLI si la
-//        copie échoue (quota, navigation privée, fetch KO).
-//   2. IMPORTÉ EN SESSION (v1.34.20) : si plan n'a pas histoirePdf embarqué,
-//      l'user peut importer son propre PDF via file picker. Stocké en IDB
-//      `myktamap_histoire_pdfs` (1 PDF max par plan, remplaçable). Bouton
-//      "🗑️ Retirer" pour supprimer.
-//   3. Si ni embarqué ni session → message + bouton "📥 Importer un PDF".
-//
-// Affichage : iframe natif sur desktop/Android, fallback bouton télécharger
-// sur iOS (où iframe PDF est peu fiable).
-//
-// API publique :
-//   window.ModeHistoire.open()       — ouvre la modale (mode défaut : note)
-//   window.ModeHistoire.openTab(t)   — t = "note" | "pdf"
-//   window.ModeHistoire.close()
-//   window.ModeHistoire.isOpen()
-//
-// Au plan switch, la modale se ferme automatiquement. Les ObjectURL créés
-// pour le PDF session sont revoke (Pack RAM Phase 4 — éviter bitmap pinning).
+// Modale à 2 onglets (bouton 📖 de la barre d'état) :
+//   📝 NOTE LIBRE : Markdown éditable (aperçu / édition), localStorage "myktamap_note_libre_<planId>",
+//     sauvegarde auto (débounce 500 ms).
+//   📚 HISTOIRE : N documents PDF par plan, en IDB `myktamap_histoire_pdfs`. Les PDF livrés dans le ZIP
+//     (plan.histoirePdfs / histoirePdf, résolus via RUNTIME_ASSETS) sont COPIÉS en IDB au chargement du plan
+//     (syncDocsEmbarques) : visibles dans Carnet > Récits sans charger le plan, et supprimables (recréés à la
+//     réouverture). L'affichage direct de l'embarqué reste en repli si la copie échoue.
+// Affichage : iframe sur desktop/Android, bouton de téléchargement sur iOS (iframe PDF peu fiable).
+// Expose window.ModeHistoire : open(), openTab("note"|"pdf"), close(), isOpen(), syncDocsEmbarques(),
+//   importSessionData(), _onPlanSwitch (fermeture au changement de plan, URLs révoquées).
+// 🩸 Vider l'iframe AVANT de la retirer : sinon WebKit garde la bitmap du PDF en mémoire.
 // =========================
 
 (function() {
@@ -57,25 +30,20 @@
   let _saveTimer = null;
   let _pdfBlobUrl = null;     // URL.createObjectURL du document AFFICHÉ (à revoke)
   let _sessionPdfMeta = null; // { id, name, size } du document affiché
-  // multi-documents : id du document sélectionné dans la liste.
-  // EMBED_ID = pseudo-id du PDF livré dans le ZIP (non supprimable, pas en IDB).
+  // Id du document sélectionné ; EMBED_ID = pseudo-id du PDF du ZIP (pas en IDB, non supprimable).
   const EMBED_ID = "__embed__";
   let _docSelectionne = null;
 
-  // ========== IDB DOCUMENTS PDF (v1.34.20 · MULTI-DOCUMENTS depuis v1.69.0) ==========
-  // v1 : 1 seul PDF par plan (`keyPath: "planId"`, un import écrasait le précédent).
-  // v2 : N documents par plan → `keyPath: "id"` + index `by_plan`.
-  // Le keyPath d'un store ne se change PAS : la migration lit les anciens
-  // enregistrements dans la transaction `versionchange`, supprime le store et le
-  // recrée. Chaque ancien PDF devient le document n°1 de son plan (jamais perdu).
+  // ── IDB des documents PDF ──
+  // v2 : N documents par plan (`keyPath: "id"` + index `by_plan`) ; v1 : un PDF par plan (`keyPath: "planId"`).
+  // 🩸 Un keyPath ne se change PAS : la migration lit les anciens enregistrements dans la transaction
+  // `versionchange`, supprime le store et le recrée ; chaque ancien PDF devient le document n°1 de son plan.
   const IDB_NAME    = "myktamap_histoire_pdfs";
   const IDB_VERSION = 2;
   const IDB_STORE   = "pdfs";
   const IDB_INDEX   = "by_plan";
 
-  // Garde-fous quota (décision KARMA 29/07 — 1:a). Sans eux, un seul PDF de
-  // 80 Mo passait sans un mot, et la base n'apparaissait nulle part dans le
-  // calcul « Stockage » (corrigé en même temps côté memInspector/homeProfile).
+  // Plafonds quota (décision produit) : sans eux, un PDF de 80 Mo passe sans un mot.
   const MAX_DOCS_PAR_PLAN = 10;
   const WARN_TOTAL_BYTES  = 25 * 1024 * 1024;    // avertissement au-delà
   const MAX_TOTAL_BYTES   = 100 * 1024 * 1024;   // refus au-delà
@@ -105,15 +73,14 @@
         }
         if (e.oldVersion >= 2) return;
 
-        // ── Migration v1 → v2 (1 PDF/plan → N documents/plan) ──
+        // ── Migration v1 → v2 ──
         const anciens = [];
         const cur = tx.objectStore(IDB_STORE).openCursor();
         cur.onsuccess = function(ev) {
           const c = ev.target.result;
           if (c) { anciens.push(c.value); c.continue(); return; }
-          // Tous les anciens sont en mémoire (Blobs = handles, pas des copies
-          // d'octets) → on peut détruire et recréer le store dans la MÊME
-          // transaction versionchange.
+          // Anciens en mémoire (Blobs = handles, pas de copie d'octets) : store détruit et recréé dans la
+          // MÊME transaction versionchange.
           db.deleteObjectStore(IDB_STORE);
           const neuf = db.createObjectStore(IDB_STORE, { keyPath: "id" });
           neuf.createIndex(IDB_INDEX, "planId", { unique: false });
@@ -137,7 +104,7 @@
     return _idbPromise;
   }
 
-  // Tous les documents d'un plan, du plus ancien au plus récent (ordre d'import).
+  // Documents d'un plan dans l'ordre d'import.
   function _idbListe(planId) {
     return _idbOpen().then(function(db) {
       return new Promise(function(resolve) {
@@ -168,10 +135,8 @@
     }).catch(function() { return null; });
   }
 
-  // COPIE D'UN DOCUMENT LIVRÉ AVEC LE PLAN.
-  // Id DÉTERMINISTE (`embed_<planId>_<rang>`) + `put` : le plan peut être
-  // rechargé dix fois sans jamais créer de doublon, et une copie supprimée
-  // par l'utilisateur revient à la prochaine ouverture du plan.
+  // Copie d'un document livré avec le plan : id DÉTERMINISTE (`embed_<planId>_<rang>`) + `put` — jamais de
+  // doublon au rechargement, et une copie supprimée revient à la prochaine ouverture.
   const EMBED_DOC_PREFIX = "embed_";
   function _idEmbed(planId, rang) {
     return EMBED_DOC_PREFIX + String(planId) + "_" + rang;
@@ -189,9 +154,8 @@
     });
   }
 
-  // Copie les documents embarqués du plan COURANT qui ne sont pas déjà en base.
-  // Appelée à la fin du chargement d'un plan (`main.js`), jamais bloquante :
-  // tout échec laisse l'affichage direct de l'embarqué prendre le relais.
+  // Copie les documents embarqués du plan COURANT absents de la base. Appelée en fin de chargement (main.js),
+  // jamais bloquante : en cas d'échec, l'affichage direct de l'embarqué prend le relais.
   function syncDocsEmbarques() {
     const embarques = _getEmbeddedPdfUrls();
     if (!embarques.length) return Promise.resolve(0);
@@ -206,8 +170,7 @@
         if (d.embarque && d.embedIdx !== undefined && d.embedIdx !== null) parRang[d.embedIdx] = true;
       });
 
-      // Un plan qui livrerait 30 documents ne doit pas remplir la base à lui
-      // seul : mêmes plafonds que pour un import manuel (nombre ET poids).
+      // Mêmes plafonds (nombre ET poids) qu'un import manuel : un plan ne remplit pas la base à lui seul.
       let places = MAX_DOCS_PAR_PLAN - docs.length;
       const aFaire = [];
       embarques.forEach(function(e, i) {
@@ -242,7 +205,7 @@
               embedIdx: item.rang  // → sert à ne PAS afficher l'embarqué en double
             }).then(function() { posees++; });
           }).catch(function(e) {
-            // Rien de fatal : l'onglet Histoire affichera l'embarqué en direct.
+            // Pas fatal : l'onglet affichera l'embarqué en direct.
             console.warn("[ModeHistoire] copie de « " + item.name + " » impossible :", e);
           });
         });
@@ -288,8 +251,7 @@
     });
   }
 
-  // Vérifie les garde-fous AVANT d'écrire. Retourne null si OK, sinon un message.
-  // `avertir` (fonction) est appelé pour les cas non bloquants.
+  // Plafonds vérifiés AVANT d'écrire : null si OK, sinon un message ; `avertir` pour les cas non bloquants.
   function _verifierQuota(docs, file, avertir) {
     if (docs.length >= MAX_DOCS_PAR_PLAN) {
       return window.I18n.t("histoire.pdf.err.tropDeDocs", { max: MAX_DOCS_PAR_PLAN });
@@ -306,7 +268,7 @@
     return null;
   }
 
-  // ========== LOCALSTORAGE NOTE LIBRE ==========
+  // ── Note libre (localStorage) ──
   function _currentPlanId() {
     return window._currentLoadedPlanId || "default";
   }
@@ -325,11 +287,9 @@
     catch(e) { console.warn("[ModeHistoire] localStorage save échec :", e); }
   }
 
-  // ========== PDF EMBARQUÉS (plan-config.json) ==========
-  // MULTI : lit `plan.histoirePdfs[]` (générateur v1.71+), avec
-  // repli sur `plan.histoirePdf` (chaîne unique, plans antérieurs). ⚠️ Quand
-  // les DEUX existent, histoirePdf est le 1er élément du tableau — ne JAMAIS
-  // concaténer les deux sources (doublon garanti).
+  // ── PDF embarqués (plan-config.json) ──
+  // `plan.histoirePdfs[]`, repli sur `plan.histoirePdf` (chaîne). ⚠️ Quand les DEUX existent, histoirePdf est
+  // le 1er élément du tableau : ne JAMAIS concaténer (doublon garanti).
   function _resoudreCheminEmbed(path) {
     if (!path) return null;
     if (typeof path === "string" && path.indexOf("blob:") === 0) return path;
@@ -357,15 +317,14 @@
   }
 
 
-  // ========== DOCUMENTS PDF DU PLAN (IDB, multi depuis v1.69.0) ==========
+  // ── Documents du plan (IDB) ──
 
   // Documents importés du plan courant (métadonnées + Blob handle).
   function _docsImportes() {
     return _idbListe(_currentPlanId());
   }
 
-  // Crée la blob URL d'un document et révoque la précédente (fuite bitmap iOS
-  // — leçon Pack RAM Phase 4 : une seule URL vivante à la fois).
+  // Une seule blob URL vivante : la précédente est révoquée (bitmap épinglée sur iOS).
   function _urlDeDoc(id) {
     return _idbGetDoc(id).then(function(rec) {
       if (!rec || !rec.blob) return null;
@@ -380,7 +339,7 @@
     });
   }
 
-  // Ajoute un document (ne remplace plus rien) après contrôle des garde-fous.
+  // Ajoute un document (ne remplace rien) après contrôle des plafonds.
   function _ajouterDoc(file) {
     if (!file) return Promise.reject(new Error("Pas de fichier"));
     return _docsImportes().then(function(docs) {
@@ -403,7 +362,7 @@
     });
   }
 
-  // ========== UI : MODALE ==========
+  // ── Modale ──
   function _build() {
     if (_modal) return;
     const t = function(k, p) { return window.I18n.t(k, p); };
@@ -421,11 +380,8 @@
           '<button class="kta-histoire-tab" id="kta-histoire-tab-pdf" role="tab" type="button" data-mode="pdf">' + t("histoire.tab.pdf") + '</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-histoire-corps">' +
-          // === ONGLET NOTE LIBRE (v1.34.30 — MD editor inline) ===
-          // Deux modes : VIEW (rendu MD par défaut) + EDIT (textarea + toolbar).
-          // L'user voit le rendu en arrivant ; clic ✏️ pour éditer la source MD.
+          // Onglet note : VIEW (rendu MD, par défaut) / EDIT (textarea + barre d'outils).
           '<div class="kta-histoire-pane" id="kta-histoire-pane-note">' +
-            // Header avec switch view/edit + status sauvegarde
             '<div class="kta-histoire-note-header">' +
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
                 'id="kta-histoire-note-edit-btn" title="' + t("histoire.note.editBtn.title") + '">' + t("histoire.note.editBtn") + '</button>' +
@@ -433,9 +389,7 @@
                 'id="kta-histoire-note-view-btn" title="' + t("histoire.note.viewBtn.title") + '" style="display:none;">' + t("histoire.note.viewBtn") + '</button>' +
               '<span class="kta-histoire-note-status" id="kta-histoire-note-status">' + t("histoire.note.status.saved") + '</span>' +
             '</div>' +
-            // Mode VIEW : div avec MD rendu (par défaut visible)
             '<div id="kta-histoire-note-view" class="kta-histoire-note-rendered"></div>' +
-            // Mode EDIT : toolbar + textarea (caché par défaut)
             '<div id="kta-histoire-note-edit" class="kta-histoire-note-edit-wrap" style="display:none;">' +
               '<div class="kta-histoire-md-toolbar" role="toolbar" aria-label="' + t("histoire.md.toolbar.label") + '">' +
                 '<button type="button" class="kta-md-tb-btn" data-md="bold" title="' + t("histoire.md.bold.title") + '"><strong>B</strong></button>' +
@@ -452,20 +406,15 @@
                 'autocomplete="off" spellcheck="true"></textarea>' +
             '</div>' +
           '</div>' +
-          // === ONGLET HISTOIRE (PDF) ===
           '<div class="kta-histoire-pane" id="kta-histoire-pane-pdf" style="display:none;">' +
-            // Toolbar (import / supprimer) — visible selon contexte (v1.34.20)
             '<div class="kta-histoire-pdf-toolbar" id="kta-histoire-pdf-toolbar" style="display:none;">' +
               '<span class="kta-histoire-pdf-meta" id="kta-histoire-pdf-meta"></span>' +
               '<input type="file" id="kta-histoire-pdf-input" accept="application/pdf,.pdf" style="display:none;">' +
               '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-import">' + t("histoire.pdf.import") + '</button>' +
               '<button class="kta-btn kta-btn-danger" type="button" id="kta-histoire-pdf-remove" style="display:none;">' + t("histoire.pdf.remove") + '</button>' +
             '</div>' +
-            // liste des documents (N par plan). Le PDF embarqué dans
-            // le ZIP y figure aussi, en lecture seule : il n'appartient pas à
-            // l'utilisateur, seul le générateur peut le changer.
+            // Liste des documents ; le PDF du ZIP y figure en lecture seule (seul le Générateur le change).
             '<div class="kta-histoire-pdf-docs" id="kta-histoire-pdf-docs" style="display:none;"></div>' +
-            // Viewer wrap (iframe ou fallback)
             '<div id="kta-histoire-pdf-wrap" class="kta-histoire-pdf-wrap">' +
               '<div class="kta-histoire-pdf-empty" id="kta-histoire-pdf-empty">' +
                 '<p>' + t("histoire.pdf.empty.titre") + '</p>' +
@@ -477,14 +426,12 @@
       '</div>';
     document.documentElement.appendChild(_modal);
 
-    // Wire close handlers
     document.getElementById("kta-histoire-close").addEventListener("click", close);
     _modal.addEventListener("click", function(e) {
       if (e.target === _modal) close();
     });
     document.addEventListener("keydown", _onKey);
 
-    // Wire onglets
     _modal.querySelectorAll(".kta-histoire-tab").forEach(function(btn) {
       btn.addEventListener("click", function() {
         const m = btn.getAttribute("data-mode");
@@ -492,15 +439,12 @@
       });
     });
 
-    // Wire note auto-save + view/edit toggle + toolbar MD (v1.34.30)
     const ta       = document.getElementById("kta-histoire-note");
     const btnEdit  = document.getElementById("kta-histoire-note-edit-btn");
     const btnView  = document.getElementById("kta-histoire-note-view-btn");
     const status   = document.getElementById("kta-histoire-note-status");
 
-    // Charge la note depuis localStorage + render initial.
-    // Si la note est vide → on bascule directement en mode EDIT (sinon
-    // l'user voit un vide qui ne suggère pas qu'on peut écrire).
+    // Note vide → directement en EDIT (un aperçu vide ne suggère pas qu'on peut écrire).
     const initialNote = _loadNote();
     ta.value = initialNote;
     _refreshNoteView();
@@ -510,7 +454,6 @@
       _setNoteMode("view");
     }
 
-    // Auto-save sur input + re-render preview (à la prochaine bascule view).
     ta.addEventListener("input", function() {
       if (status) status.textContent = window.I18n.t("histoire.note.status.modified");
       if (_saveTimer) clearTimeout(_saveTimer);
@@ -520,19 +463,16 @@
       }, 500);
     });
 
-    // Bouton "✏️ Éditer" → bascule en mode EDIT, focus textarea
     if (btnEdit) {
       btnEdit.addEventListener("click", function() {
         _setNoteMode("edit");
-        // Focus avec léger délai pour iOS (clavier virtuel)
+        // Délai pour le clavier virtuel iOS.
         setTimeout(function() { try { ta.focus(); } catch(e) {} }, 50);
       });
     }
-    // Bouton "👁 Aperçu" → re-render + bascule en mode VIEW
     if (btnView) {
       btnView.addEventListener("click", function() {
-        // Force sauvegarde immédiate avant aperçu (sinon le debounce 500ms
-        // pourrait afficher un rendu en retard d'1 keystroke).
+        // Sauvegarde forcée avant l'aperçu (sinon rendu en retard d'une frappe).
         if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
         _saveNote(ta.value);
         if (status) status.textContent = window.I18n.t("histoire.note.status.saved");
@@ -541,7 +481,6 @@
       });
     }
 
-    // Toolbar MD : insère un marqueur autour de la sélection (ou au curseur)
     const toolbar = _modal.querySelector(".kta-histoire-md-toolbar");
     if (toolbar) {
       toolbar.addEventListener("click", function(e) {
@@ -552,7 +491,6 @@
       });
     }
 
-    // Wire PDF import / suppression (v1.34.20 · multi-documents v1.69.0)
     const fileInput = document.getElementById("kta-histoire-pdf-input");
     const btnImport = document.getElementById("kta-histoire-pdf-import");
     const btnRemove = document.getElementById("kta-histoire-pdf-remove");
@@ -565,7 +503,6 @@
       fileInput.addEventListener("change", function() {
         const f = fileInput.files && fileInput.files[0];
         if (!f) return;
-        // Garde-fou : MIME / extension
         const isPdf = (f.type === "application/pdf") || /\.pdf$/i.test(f.name || "");
         if (!isPdf) {
           window.ktaAlerte(window.I18n.t("histoire.pdf.err.onlyPdf"));
@@ -585,8 +522,7 @@
       });
     }
 
-    // Supprime le document AFFICHÉ (jamais l'embarqué : le bouton est masqué
-    // quand la sélection vient du ZIP).
+    // Supprime le document AFFICHÉ (jamais l'embarqué : bouton masqué dans ce cas).
     if (btnRemove) {
       btnRemove.addEventListener("click", async function() {
         if (!_docSelectionne || String(_docSelectionne).indexOf(EMBED_ID) === 0) return;
@@ -601,9 +537,7 @@
     }
   }
 
-  // ========== HELPERS MODE NOTE (v1.34.30 — MD editor inline) ==========
-
-  // Bascule entre VIEW (aperçu MD rendu) et EDIT (textarea source + toolbar).
+  // ── Note : modes aperçu / édition ──
   function _setNoteMode(mode) {
     const viewDiv  = document.getElementById("kta-histoire-note-view");
     const editWrap = document.getElementById("kta-histoire-note-edit");
@@ -623,15 +557,13 @@
     }
   }
 
-  // Re-rend l'aperçu MD depuis la valeur courante de la textarea (ou note LS
-  // si textarea pas encore présente — fallback au cas où).
+  // Aperçu depuis la textarea (ou la note en localStorage si elle n'existe pas encore).
   function _refreshNoteView() {
     const viewDiv = document.getElementById("kta-histoire-note-view");
     const ta      = document.getElementById("kta-histoire-note");
     if (!viewDiv) return;
     const src = ta ? ta.value : _loadNote();
     if (!src || src.trim() === "") {
-      // Note vide → placeholder doux (suggère le bouton Éditer).
       viewDiv.innerHTML = '<p class="kta-histoire-note-empty">' +
         window.I18n.t("histoire.note.empty") +
         '</p>';
@@ -640,19 +572,14 @@
     if (typeof window.kta_renderMd === "function") {
       viewDiv.innerHTML = window.kta_renderMd(src);
     } else {
-      // Fallback panique-safe : si mdParser pas chargé, on affiche le source
-      // brut (escape automatique via textContent).
+      // mdParser absent : source brute en textContent (échappée).
       viewDiv.textContent = src;
     }
   }
 
-  // Toolbar MD : applique un marqueur autour de la sélection courante. Si
-  // pas de sélection, insère un placeholder éditable (curseur sélectionne
-  // le placeholder → user tape par-dessus). Conserve focus, déclenche input
-  // pour l'auto-save. Gère 2 catégories de marqueurs :
-  //   - Inline (bold, italic, code, link) : entoure la sélection
-  //   - Préfixe de ligne (h1, h2, ul, quote) : insère en début de ligne
-  //     (multi-ligne : préfixe chaque ligne sélectionnée)
+  // Barre MD : entoure la sélection (gras, italique, code, lien) ou préfixe les lignes (h1, h2, liste,
+  // citation ; chaque ligne en multi-ligne). Sans sélection : placeholder sélectionné. Focus gardé, `input`
+  // déclenché pour la sauvegarde auto.
   function _applyMdToolbar(ta, kind) {
     if (!ta) return;
     const start = ta.selectionStart || 0;
@@ -681,13 +608,11 @@
     if (prefixLine) {
       const lineStart = ta.value.lastIndexOf("\n", start - 1) + 1;
       if (sel.indexOf("\n") >= 0) {
-        // Sélection multi-ligne : préfixe chaque ligne
         const lines = sel.split("\n").map(function(l) { return before + l; }).join("\n");
         inserted = ta.value.substring(0, start) + lines + ta.value.substring(end);
         newStart = start + before.length;
         newEnd   = start + lines.length;
       } else {
-        // Insère marqueur en début de la ligne courante + placeholder
         const headPart = ta.value.substring(0, lineStart);
         const tailPart = ta.value.substring(lineStart);
         inserted = headPart + before + (sel || placeholder) + tailPart.substring(end - lineStart);
@@ -703,7 +628,6 @@
 
     ta.value = inserted;
     try { ta.focus(); ta.setSelectionRange(newStart, newEnd); } catch(e) {}
-    // Déclenche input → auto-save via le listener existant
     ta.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
@@ -722,14 +646,8 @@
     if (mode === "pdf") _renderPdf();
   }
 
-  // _renderPdf : construit la liste des documents du plan (embarqué + importés)
-  // et affiche celui qui est sélectionné.
-  // opts.force=true → re-render même si déjà fait (après import/suppression).
-  //
-  // ⚠️ l'embarqué ne MASQUE plus l'import. Avant, un plan livré avec
-  // un PDF interdisait d'en ajouter (toolbar cachée) — l'user ne pouvait rien
-  // joindre à ces plans-là. Il est maintenant une entrée de la liste parmi les
-  // autres, simplement non supprimable.
+  // Liste des documents du plan (embarqué + importés) et affichage du sélectionné ; opts.force = re-rendu après
+  // import/suppression. L'embarqué est une entrée parmi les autres (non supprimable), il ne masque pas l'import.
   function _renderPdf(opts) {
     opts = opts || {};
     const wrap = document.getElementById("kta-histoire-pdf-wrap");
@@ -741,8 +659,7 @@
 
     if (!opts.force && wrap.getAttribute("data-rendu") === "1") return;
 
-    // Reset du wrap : vider l'iframe AVANT de la retirer (bitmap PDF épinglée
-    // sur WebKit sinon).
+    // 🩸 Vider l'iframe AVANT de la retirer (bitmap PDF épinglée sur WebKit).
     const oldIframe = wrap.querySelector("iframe");
     if (oldIframe) { try { oldIframe.src = ""; } catch(e) {} oldIframe.remove(); }
     const fallback = wrap.querySelector(".kta-histoire-pdf-fallback");
@@ -757,10 +674,8 @@
 
     _docsImportes().then(function(docs) {
       const liste = [];
-      // un document embarqué DÉJÀ COPIÉ en base ne doit pas
-      // apparaître deux fois : la copie le représente, et c'est elle qui est
-      // supprimable. L'entrée « embarquée » ci-dessous n'est plus qu'un REPLI,
-      // pour le cas où la copie n'a pas pu se faire.
+      // Un embarqué DÉJÀ COPIÉ en base n'apparaît qu'une fois (la copie, supprimable) ; l'entrée embarquée
+      // n'est qu'un REPLI si la copie a échoué.
       const copies = {};
       docs.forEach(function(d) {
         if (d.embarque && d.embedIdx !== undefined && d.embedIdx !== null) copies[d.embedIdx] = true;
@@ -786,7 +701,6 @@
       }
       if (empty) empty.style.display = "none";
 
-      // Sélection : celle en cours si elle existe encore, sinon la première.
       let sel = null;
       for (let i = 0; i < liste.length; i++) {
         if (liste[i].id === _docSelectionne) { sel = liste[i]; break; }
@@ -815,8 +729,7 @@
     });
   }
 
-  // Rangée par document : clic = afficher. La liste est masquée s'il n'y a
-  // qu'un seul document (une liste d'un élément n'apprend rien).
+  // Clic = afficher ; liste masquée s'il n'y a qu'un document.
   function _renderDocsListe(liste) {
     const box = document.getElementById("kta-histoire-pdf-docs");
     if (!box) return;
@@ -849,12 +762,10 @@
     });
   }
 
-  // Helper : injecte le viewer PDF (iframe ou fallback download) dans le wrap.
   function _displayPdfInWrap(url, name) {
     const wrap = document.getElementById("kta-histoire-pdf-wrap");
     if (!wrap) return;
 
-    // Détection iOS : iframe PDF peu fiable → fallback bouton download
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
                   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
@@ -870,12 +781,8 @@
         '</div>'
       );
     } else {
-      // En plus de l'iframe, on ajoute un petit bouton "Ouvrir"
-      // en sticky en haut du wrap. (1) Si l'iframe est bloquée par CSP
-      // (frame-src absent côté serveur), le user a au moins le bouton pour
-      // ouvrir le PDF dans un nouvel onglet. (2) Même quand l'iframe marche,
-      // certains users préfèrent ouvrir le PDF plein écran dans un onglet
-      // dédié (zoom natif, copie texte, etc.).
+      // Bouton « Ouvrir » en plus de l'iframe : si la CSP du serveur bloque l'iframe (frame-src), et pour qui
+      // préfère un onglet dédié (zoom natif, copie du texte).
       wrap.insertAdjacentHTML("beforeend",
         '<div class="kta-histoire-pdf-actions">' +
           '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
@@ -894,7 +801,7 @@
     }
   }
 
-  // ========== PUBLIC API ==========
+  // ── API publique ──
   function open() {
     _build();
     _modal.style.display = "flex";
@@ -910,15 +817,13 @@
 
   function close() {
     if (!_modal) return;
-    // Flush save note en cours
     if (_saveTimer) {
       clearTimeout(_saveTimer);
       _saveTimer = null;
       const ta = document.getElementById("kta-histoire-note");
       if (ta) _saveNote(ta.value);
     }
-    // (Pack RAM Phase 4 lesson) — Clear iframe src AVANT remove
-    // pour libérer la bitmap PDF iOS. Sinon WebKit garde la texture pinned.
+    // Vider l'iframe AVANT le remove (bitmap PDF iOS).
     const iframe = _modal.querySelector("iframe");
     if (iframe) {
       try { iframe.src = ""; } catch(e) {}
@@ -926,7 +831,7 @@
     document.removeEventListener("keydown", _onKey);
     if (_modal.parentNode) _modal.parentNode.removeChild(_modal);
     _modal = null;
-    // Revoke session PDF URL (l'embarqué reste géré par RUNTIME_ASSETS)
+    // URL du document importé révoquée (l'embarqué est géré par RUNTIME_ASSETS).
     if (_pdfBlobUrl) {
       try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {}
       _pdfBlobUrl = null;
@@ -938,40 +843,30 @@
     return !!_modal;
   }
 
-  // Hook plan switch : fermer la modale (la note du plan précédent est déjà
-  // saved, on ne perd rien). Appelé par main.js > _libererRessourcesPlanPrecedent.
+  // Changement de plan (main.js > _libererRessourcesPlanPrecedent) : fermeture (la note est déjà sauvée).
   function _onPlanSwitch() {
     close();
   }
 
-  // Helper d'import session (utilisé par interfaceImportExport.js
-  // pour restaurer le Mode Histoire embarqué dans un .mkmsession.zip).
-  // Pose la note libre + (éventuellement) le PDF de session sur le plan
-  // courant. Cohérent avec la sémantique d'import des autres champs : on
-  // remplace les données du plan courant par celles du fichier importé.
-  //   - noteText : string (vide ou null = pas de note → on n'écrase rien)
-  //   - docs     : 📄 v1.69.0 — TABLEAU [{blob, name}] de documents à AJOUTER.
-  //                Ancienne signature (pdfBlob, pdfName) encore acceptée.
-  // Renvoie Promise qui résout quand IDB est OK (note est sync).
+  // Import de session (interfaceImportExport.js, .mkmsession.zip) sur le plan courant :
+  //   - noteText : string ; vide ou null → la note en place n'est pas écrasée ;
+  //   - docs : [{blob, name}] AJOUTÉS (l'import n'efface aucun document) ; ancienne signature
+  //     (pdfBlob, pdfName) acceptée.
+  // → Promise résolue quand IDB a fini (la note est synchrone).
   function importSessionData(noteText, docs, pdfNameLegacy) {
-    // Rétrocompat d'appel : importSessionData(note, blob, name)
     if (docs && typeof docs.size === "number" && !Array.isArray(docs)) {
       docs = [{ blob: docs, name: pdfNameLegacy || "histoire.pdf" }];
     }
     const liste = Array.isArray(docs) ? docs.filter(function(d) { return d && d.blob && d.blob.size > 0; }) : [];
     return new Promise(function(resolve) {
       try {
-        // Note libre : si présente, on écrase la note courante du plan.
         if (typeof noteText === "string" && noteText.length > 0) {
           _saveNote(noteText);
         }
       } catch(e) {
         console.warn("[ModeHistoire] importSessionData note échec :", e);
       }
-      // PDF : AJOUTÉS aux documents du plan courant.
-      // c'était un `put` sur la clé du plan → réimporter une
-      // session écrasait le PDF déjà en place. Depuis le multi-documents, on
-      // ajoute — l'import n'efface plus rien (cohérent avec « merge » ailleurs).
+      // Documents AJOUTÉS (pas de `put` sur la clé du plan, qui écraserait le PDF en place).
       if (liste.length === 0) { resolve(true); return; }
       const planId = _currentPlanId();
       Promise.all(liste.map(function(d) {
@@ -984,7 +879,7 @@
     });
   }
 
-  // ========== EXPORT ==========
+  // ── Export ──
   MH.open               = open;
   MH.openTab            = openTab;
   MH.close              = close;
@@ -992,7 +887,7 @@
   MH._onPlanSwitch      = _onPlanSwitch;
   MH.importSessionData  = importSessionData;
 
-  // appelée par `main.js` à la fin du chargement d'un plan.
+  // Appelée par main.js en fin de chargement d'un plan.
   MH.syncDocsEmbarques = syncDocsEmbarques;
 
   window.ModeHistoire = MH;

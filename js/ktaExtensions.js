@@ -8,38 +8,30 @@
 // =========================
 // EXTENSIONS — js/ktaExtensions.js
 // =========================
+// Rôle : l'interrupteur de la CONNEXION SERVEUR d'une instance, sa pastille (pied de page de l'accueil),
+// et les POINTS D'EXTENSION neutres (no-op sans extension). Contrat complet (API v1) :
+// docs/architecture/community-server-line.md §3.
 //
-// 🎯 Rôle : l'interrupteur de la CONNEXION SERVEUR d'une instance, et la
-// pastille qui en montre l'état dans le pied de page de l'accueil.
-// Contrat complet : docs/architecture/community-server-line.md §3.
+// ⚠️ L'instance déclare dans `data/index.json > config.serverConnection` :
+//   { "state": "on" | "off", "api": "https://…" | "/api/", "modules": ["chemin/module.js?v=1.0.0"],
+//     "transparence"?: "page.html" }
+// États : off (absent ou "off" — myktamap.fr : aucun backend, jamais) · invalide (mal formé, raison
+//   journalisée [Connexion]) · licence (« on » sans licence pro de source "server", ou licence refusée par
+//   le serveur) · configuree (« on » + licence serveur) · on / down (SIGNALÉS par un module greffé).
 //
-// L'instance déclare dans `data/index.json > config.serverConnection` :
-//   { "state": "on" | "off", "api": "https://…" | "/api/", "modules": ["chemin/module.js?v=1.0.0"] }
-//
-// États produits ici :
-//   off        — champ absent ou "off" (myktamap.fr : aucun backend, jamais)
-//   invalide   — champ mal formé (raison exacte journalisée [Connexion])
-//   licence    — "on", mais aucune licence pro de source "server"
-//   configuree — "on" + licence serveur, aucun module déclaré pour l'instant
-//
-// ⚠️ Ce module ne fait AUCUNE requête : il lit l'index déjà chargé par
-// main.js > _chargerIndexServeur(), et ne contacte jamais `api`. Personne ne
-// sonde le serveur tant qu'aucun module greffé ne le fait (règle C) ; les
-// états « connecté » et « injoignable » viendront de ces modules.
-//
-// 🩸 « Index injoignable » n'est PAS « connexion coupée » (même piège que
-// UnlockGate.revaliderInstance) : l'appelant DÉCLARE si l'index a répondu.
-// Injoignable → on rejoue la dernière config connue (règle B), on ne
-// l'efface pas.
+// ⚠️ Ce module ne fait AUCUNE requête de lui-même : il lit l'index déjà chargé par
+// main.js > _chargerIndexServeur() et ne sonde jamais `api` (règle C) ; les requêtes d'extension passent
+// par la garde unique `requete`.
+// 🩸 « Index injoignable » n'est PAS « connexion coupée » (même piège que UnlockGate.revaliderInstance) :
+// l'appelant DÉCLARE si l'index a répondu ; injoignable → on rejoue la dernière config connue (règle B).
+// Garde-fous : scripts/check-connexion-serveur.js, scripts/check-extensions.js
 
 (function () {
   "use strict";
 
-  // Dernière config valide connue de l'instance. Donnée de l'INSTANCE, pas de
-  // l'utilisateur : elle ne voyage pas avec l'export de profil.
+  // Dernière config valide connue : donnée de l'INSTANCE, pas de l'utilisateur (hors export de profil).
   const LS_MEMO = "myktamap_server_connection_v1";
-  // (chantier 3) : `on` et `down` existent — un module greffé les
-  // SIGNALE (règle C : community ne sonde jamais le serveur).
+  // `on` et `down` sont SIGNALÉS par un module greffé (règle C : community ne sonde jamais le serveur).
   const ETATS = ["off", "invalide", "licence", "configuree", "on", "down"];
   const CLASSE_ETAT = {
     off:        "kta-tx-muted",
@@ -60,10 +52,8 @@
   let _reseauCoupe = typeof navigator !== "undefined" && navigator.onLine === false;
 
   // ── Validation : fonction PURE, sans DOM ni stockage ──
-  // 🩸 confadmin.html applique EXACTEMENT les mêmes règles :
-  // scripts/check-connexion-serveur.js exécute les deux sur la même table de
-  // cas et refuse toute divergence (une instance que ConfAdmin juge valide et
-  // que l'app juge invalide serait le pire des deux mondes).
+  // 🩸 confadmin.html applique EXACTEMENT les mêmes règles : scripts/check-connexion-serveur.js exécute les
+  // deux sur la même table de cas et refuse toute divergence.
   function valider(sc) {
     if (sc === undefined || sc === null) return { etat: "off", raison: "absent" };
     if (typeof sc !== "object" || Array.isArray(sc)) {
@@ -72,9 +62,8 @@
     if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
     if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
 
-    // api : une adresse https:// (autre domaine possible, règle D) OU un chemin du
-    // MÊME site (« /api/ ») — résolu à l'adresse de l'app au moment de l'appel :
-    // l'installation marche alors par localhost, par IP ou par nom de domaine.
+    // api : https:// (autre domaine possible, règle D) OU chemin du MÊME site (« /api/ »), résolu à
+    // l'adresse de l'app au moment de l'appel (localhost, IP ou nom de domaine).
     if (typeof sc.api !== "string" ||
         !(/^https:\/\/[^\s/?#]+/i.test(sc.api.trim()) || /^\/(?!\/)[^\s?#]*$/.test(sc.api.trim()))) {
       return { etat: "invalide", raison: "api doit être une adresse https:// ou un chemin du même site (/api/)" };
@@ -87,19 +76,16 @@
     }
     for (let i = 0; i < sc.modules.length; i++) {
       const m = sc.modules[i];
-      // Même origine que l'app (script-src 'self') : chemin relatif, sans
-      // schéma, sans « // », sans remontée, terminé par .js. Un seul suffixe
-      // permis : « ?v=<version> » (v2.7.2). Le SW sert les modules depuis son
-      // cache (URL exacte) : changer la version change l'URL, donc la nouvelle
-      // version d'un module arrive sans attendre une release community.
+      // Même origine que l'app (script-src 'self') : chemin relatif, sans schéma ni « // » ni remontée,
+      // terminé par .js. Seul suffixe permis : « ?v=<version> » — le SW sert les modules depuis son cache
+      // (URL exacte), changer la version change l'URL et livre le module sans release community.
       if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js(\?v=[A-Za-z0-9._-]{1,32})?$/.test(m) ||
           m.indexOf("..") >= 0 || m.indexOf("//") >= 0) {
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
     }
-    // transparence (facultatif) : la page de transparence de l'installation, sur le MÊME
-    // site que l'app (chemin relatif .html, mêmes règles qu'un module). La pastille y
-    // mène dès que l'état n'est pas OFF (cadrage : ce que l'installation fait de tes données).
+    // transparence (facultatif) : page de transparence de l'installation, .html relatif du MÊME site (mêmes
+    // règles qu'un module). La pastille y mène dès que l'état n'est pas OFF.
     if (sc.transparence !== undefined && (typeof sc.transparence !== "string" ||
         !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/.test(sc.transparence) ||
         sc.transparence.indexOf("..") >= 0 || sc.transparence.indexOf("//") >= 0)) {
@@ -149,8 +135,8 @@
   }
 
   // ── Point d'entrée appelé par main.js ──
-  // `indexRepondu` : true si data/index.json a répondu (même sans config),
-  // false s'il est injoignable. Seul l'appelant le sait.
+  // `indexRepondu` : true si data/index.json a répondu (même sans config), false s'il est injoignable.
+  // Seul l'appelant le sait.
   function appliquerConfig(config, indexRepondu) {
     if (indexRepondu === true) {
       const sc = (config && typeof config === "object") ? config.serverConnection : undefined;
@@ -169,20 +155,16 @@
   function _recalculer() {
     const avant = _etat;
     _etat = etatDe(_connexion, _sourceLicence());
-    // Le signal d'un module ne vaut que sur une instance « configurée » (on +
-    // licence serveur) : il ne peut jamais rallumer une instance OFF.
+    // Le signal d'un module ne vaut que sur une instance « configurée » : il ne rallume jamais une instance OFF.
     if (_etat === "configuree" && _signal) _etat = _signal;
-    // Réseau coupé (mode avion, tunnel) : « injoignable » tout de suite, sans
-    // attendre le module. Avant, l'état n'était établi qu'au démarrage : perdre le réseau sur
-    // l'accueil laissait « connectée », et ouvrir un plan ☁️ partait sur le réseau et attendait
-    // sans fin (retour KARMA, iPhone). En « down », la garde refuse les requêtes : l'accueil
-    // rouvre aussitôt la copie gardée.
+    // Réseau coupé (mode avion, tunnel) : « injoignable » tout de suite, sans attendre le module. En « down »
+    // la garde refuse les requêtes et l'accueil rouvre aussitôt la copie gardée (sinon ouvrir un plan ☁️
+    // attendrait le réseau sans fin).
     if ((_etat === "configuree" || _etat === "on") && _reseauCoupe) _etat = "down";
     _raison = (_etat === "licence" && _signal === "licence") ? _signalRaison : (_connexion.raison || "");
-    // Installation RELIÉE (connexion serveur déclarée, même sans licence valide) :
-    // le splash et le pied de page cessent d'afficher l'identité community. Avant, une licence
-    // refusée retirait .kta-instance-pro et le splash redevenait celui de myktamap.fr juste avant
-    // l'écran « Installation indisponible » (retour KARMA). Posée dès la dernière config connue.
+    // Installation RELIÉE (connexion déclarée, même sans licence valide) : splash et pied de page cessent
+    // d'afficher l'identité community — aussi devant « Installation indisponible ». Posée dès la dernière
+    // config connue.
     try { document.documentElement.classList.toggle("kta-instance-reliee", !!_connexion && _connexion.etat !== "off"); }
     catch (e) { /* pas de DOM (tests) */ }
     peindre();
@@ -200,25 +182,20 @@
   // ── Affichage ──
   const _t = function (k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
 
-  // Licence REFUSÉE par le serveur (signalée par le module) ≠ licence absente de
-  // l'installation : même état « licence » (contrat inchangé), libellés distincts. Avant, le
-  // module ne savait dire que « down » : une licence expirée s'affichait « Base de données :
-  // injoignable » (retour KARMA).
+  // Licence REFUSÉE par le serveur (signalée par le module) ≠ licence absente : même état « licence »
+  // (contrat inchangé), libellés distincts.
   function _cle(etat) { return (etat === "licence" && _signal === "licence") ? "licenceRefusee" : etat; }
   function _libelle(etat) { return _t("home.serveur.mot." + _cle(etat)); }
 
-  // Pastille du pied de page, bloc d'état de la modale « Que fait l'app sur le
-  // réseau ? », et icône du bouton de pied de page replié (qui masque tout
-  // #loaderFooterBlock, pastille comprise). homeLoader rappelle peindre()
-  // après chaque repli/dépli, car il réécrit le texte de ce bouton.
+  // Pastille du pied de page, bloc d'état de la modale « Que fait l'app sur le réseau ? », et icône du bouton
+  // de pied de page replié. homeLoader rappelle peindre() après chaque repli/dépli (il réécrit ce bouton).
   function peindre() {
-    // Dicos pas encore prêts : pas de clé brute à l'écran, onChange repeindra.
+    // Dicos pas encore prêts : pas de clé brute, onChange repeindra.
     if (window.I18n && typeof window.I18n.has === "function" && !window.I18n.has("home.serveur.mot.off")) return;
     const cls = CLASSE_ETAT[_etat] || CLASSE_ETAT.off;
     const mot = _libelle(_etat);
-    // L'infobulle et le titre du bloc disent « Base de données : <état> » :
-    // ils prennent la forme courte de l'état, pas le mot de la pastille (qui
-    // contient déjà « Base de données »).
+    // Infobulle et titre du bloc : forme courte de l'état (le mot de la pastille contient déjà « Base de
+    // données »).
     const etatCourt = _t("home.serveur.etat." + _cle(_etat));
     const titre = _t("home.serveur.infobulle", { etat: etatCourt });
 
@@ -243,8 +220,8 @@
         t.classList.add(cls);
       }
       if (d) d.textContent = _t("home.serveur.explication." + _cle(_etat), { raison: _raison || "?" });
-      // Installation reliée : la suite de la modale (« 100 % client-side », liste blanche) ne décrit que
-      // l'app de base. On le dit, et on mène à la page de transparence de l'installation si elle en publie une.
+      // Installation reliée : la suite de la modale (« 100 % client-side », liste blanche) ne décrit que l'app
+      // de base ; on le dit, et on mène à la page de transparence si elle existe.
       const relie = _etat === "on" || _etat === "down";
       const lien = relie && _connexion && _connexion.transparence;
       const audit = bloc.querySelector(".kta-cnx-bloc-audit");
@@ -286,8 +263,7 @@
     if (chip && !chip._ktaCable) {
       chip._ktaCable = true;
       chip.addEventListener("click", function () {
-        // Installation reliée qui publie sa page de transparence : c'est elle qui dit ce
-        // que l'installation fait des données (la doc community ne le sait pas).
+        // Installation reliée avec page de transparence : c'est elle qui dit ce qu'elle fait des données.
         if (_etat !== "off" && _connexion && _connexion.transparence) {
           window.open(_connexion.transparence, "_blank", "noopener");
           return;
@@ -303,18 +279,16 @@
         if (_connexion && _connexion.transparence) window.open(_connexion.transparence, "_blank", "noopener");
       });
     }
-    // Les libellés sont traduits au rendu : on attend les dicos.
+    // Libellés traduits au rendu : on attend les dicos.
     const dicos = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : null;
     Promise.resolve(dicos).then(peindre, peindre);
   }
 
-  // La licence serveur arrive en asynchrone, parfois APRÈS l'index : l'état
-  // se recalcule à chaque changement.
+  // La licence serveur arrive en asynchrone, parfois APRÈS l'index : recalcul à chaque changement.
   window.addEventListener("mktm:license-changed", _recalculer);
 
-  // Avant la lecture de l'index (qui passe après les gates), on affiche la
-  // dernière config connue : pas de clignotement « désactivé » → « configurée »
-  // à chaque démarrage d'une instance connectée.
+  // Avant la lecture de l'index (après les gates), dernière config connue : pas de clignotement
+  // « désactivé » → « configurée » à chaque démarrage.
   appliquerConfig(null, false);
 
   if (document.readyState === "loading") {
@@ -326,10 +300,10 @@
 
 
   // =====================================================================
-  // POINTS D'EXTENSION (chantier 3, community-server-line.md §3)
+  // POINTS D'EXTENSION (community-server-line.md §3)
   // =====================================================================
-  // Tout est NEUTRE : nommé sans référence au pro, utilisable par n'importe
-  // quelle extension, sans effet tant qu'aucune ne s'est déclarée.
+  // Tout est NEUTRE : nommé sans référence au pro, utilisable par n'importe quelle extension, sans effet
+  // tant qu'aucune ne s'est déclarée.
   //
   // Une extension se déclare par :
   //   KtaExtensions.register({
@@ -341,8 +315,8 @@
   //     exportAutorise: function (planId) → bool,           // permission (synchrone)
   //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
   //   })
-  // Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
-  // Prises d'INFORMATION : une erreur est journalisée et ignorée.
+  // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
+  //    Prises d'INFORMATION : une erreur est journalisée et ignorée.
   const API_VERSION = 1;
   const _extensions = [];
   let _modules = { demandes: 0, charges: 0, echecs: 0, termine: false };
@@ -377,16 +351,16 @@
   function aPrise(nom) { return !!_prise(nom); }
 
   // ── Signal d'état par un module (règle C) ──
-  // "licence" (09/10/2026) : le SERVEUR refuse la licence de l'installation (expirée, signature,
-  // domaine) — `raison` est la sienne. L'état devient « licence » : l'app reste fermée (main.js),
-  // jamais rouverte en mode community sur les données de l'appareil.
+  // "licence" : le SERVEUR refuse la licence de l'installation (expirée, signature, domaine), `raison` est la
+  // sienne. 🔒 L'état devient « licence » : l'app reste fermée (main.js), jamais rouverte en mode community
+  // sur les données de l'appareil.
   function signaler(etat, raison) {
     if (etat !== "on" && etat !== "down" && etat !== "licence" && etat !== null) return false;
     _signal = etat;
     _signalRaison = etat === "licence" ? String(raison || "").slice(0, 40) : "";
-    // Un module qui vient de JOINDRE son serveur dit que le réseau est revenu : l'indicateur « réseau coupé »
-    // (posé par l'événement offline) ne doit pas rester collant jusqu'à un événement online qui peut ne jamais
-    // venir (retour d'une autre appli sur téléphone). Sauf si le navigateur se dit encore hors ligne.
+    // Un module qui JOINT son serveur dit que le réseau est revenu : « réseau coupé » ne doit pas rester
+    // collant jusqu'à un événement online qui peut ne jamais venir (retour d'une autre appli). Sauf si le
+    // navigateur se dit encore hors ligne.
     if (etat === "on" && _reseauCoupe && typeof navigator !== "undefined" && navigator.onLine !== false) {
       _reseauCoupe = false;
     }
@@ -395,9 +369,8 @@
   }
 
   // ── Chargeur de modules (règle E : licence serveur ET « on ») ──
-  // Charge les scripts de `serverConnection.modules`, même origine que l'app.
-  // Rend une promesse résolue quand tous ont fini (chargés ou en échec, 8 s max
-  // chacun). Ne fait RIEN hors de l'état « configurée ».
+  // Scripts de `serverConnection.modules`, même origine. Promesse résolue quand tous ont fini (chargés ou en
+  // échec, 8 s max chacun). Ne fait RIEN hors de l'état « configurée ».
   function chargerModules() {
     if (etatDe(_connexion, _sourceLicence()) !== "configuree") {
       _modules = { demandes: 0, charges: 0, echecs: 0, termine: true };
@@ -424,12 +397,9 @@
   }
 
   // ── Garde unique des requêtes d'extension ──
-  // Toute requête vers le backend d'une instance passe ICI. Refus avant tout
-  // envoi hors des états « configurée » / « connectée » ; en « injoignable »,
-  // seules les sondes (opts.sonde) partent, pour détecter le retour du serveur.
-  // Jamais une autre origine que celle déclarée dans `serverConnection.api`.
-  // Base absolue de l'API : un chemin du même site (« /api/ ») est résolu à
-  // l'adresse de l'app (location.origin) au moment de l'appel.
+  // 🔒 Toute requête vers le backend d'une instance passe ICI : refus avant tout envoi hors « configurée » /
+  // « connectée » ; en « injoignable », seules les sondes (opts.sonde) partent. Jamais une autre origine que
+  // celle de `serverConnection.api`. Un chemin du même site (« /api/ ») est résolu à location.origin.
   function _apiBase() {
     const a = _connexion && _connexion.api;
     if (typeof a !== "string" || !a) return null;
@@ -451,21 +421,20 @@
     }
     const init = Object.assign({}, o);
     delete init.sonde;
-    // Marque la requête pour le Service Worker (jamais de cache, v2.7.1) et
-    // interdit le cache HTTP : une réponse de backend n'a rien à faire hors ligne.
+    // Marque la requête pour le Service Worker (jamais de cache) et interdit le cache HTTP : une réponse de
+    // backend n'a rien à faire hors ligne.
     init.cache = "no-store";
     const entetes = new Headers(init.headers || {});
     entetes.set("X-Kta-Ext", "1");
     init.headers = entetes;
-    // 🩸 Un échec réseau isolé NE fait PAS passer en « down » (essayé le 07/10/2026, retiré) : la garde
-    // refusait alors toute requête jusqu'à la prochaine sonde du module (60 s) — synchro, positions et
-    // envois en attente bloqués après un simple raté (8 scénarios pro au rouge). L'état « down » vient
-    // du réseau de l'appareil (offline) ou du module ; une requête figée, du veilleur de l'accueil.
+    // 🩸 Un échec réseau isolé NE fait PAS passer en « down » : la garde refuserait toute requête jusqu'à la
+    // prochaine sonde du module (synchro, positions, envois en attente bloqués après un simple raté). « down »
+    // vient du réseau de l'appareil (offline) ou du module ; une requête figée, du veilleur de l'accueil.
     return fetch(url.href, init);
   }
 
-  // 📶 Réseau de l'appareil : coupé → « injoignable » aussitôt ; revenu → on prévient les modules
-  // (mktm:reseau-retour), qui sondent le serveur et signalent « on » ou « down ».
+  // Réseau de l'appareil : coupé → « injoignable » aussitôt ; revenu → mktm:reseau-retour, les modules
+  // sondent et signalent « on » ou « down ».
   if (typeof window !== "undefined" && window.addEventListener) {
     window.addEventListener("offline", function () { _reseauCoupe = true; _recalculer(); });
     window.addEventListener("online", function () {
@@ -483,12 +452,11 @@
     catch (e) { console.warn("[Extensions] « " + nom + " » a échoué → refus :", e); return false; }
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
-  // ── Alertes fournies par une extension (prise d'INFORMATION « alertes », 13/10/2026) ──
-  // alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]> : mêmes champs que
-  // alert.json, affichées par AlertChecker dans la MÊME modale (badge 🚨, sélecteur, acquittement par id).
-  // Nettoyées ici (textes seulement, bornés, niveau connu sinon « info ») ; id préfixé « ext_ » (pas de
-  // collision avec alert.json). Attente bornée ; erreur, délai ou forme inattendue → []. L'extension annonce
-  // une liste changée par l'événement mktm:alertes-changees (AlertChecker la relit).
+  // ── Alertes d'une extension (prise d'INFORMATION « alertes ») ──
+  // alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]> : mêmes champs
+  // que alert.json, affichées par AlertChecker dans la MÊME modale. Nettoyées ici (textes, bornés, niveau
+  // connu sinon « info »), id préfixé « ext_ » (pas de collision). Attente bornée ; erreur, délai ou forme
+  // inattendue → []. Changement annoncé par mktm:alertes-changees.
   const ALERTES_DELAI_MS = 3000;
   function alertesExtension() {
     const ext = _prise("alertes");
@@ -513,11 +481,10 @@
       }).filter(Boolean);
     }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.lister a échoué :", e); return []; });
   }
-  // ── Statistiques du profil fournies par une extension (prise d'INFORMATION profilStats, 13/10/2026) ──
-  // profilStats() → [{ cle, icone, libelle, valeur, titre? }] (ou Promise) : lignes de texte affichées dans la
-  // modale « Détails du profil » et proposées au bandeau d'accueil (clé « ext:<cle> »). Nettoyées ici (12 lignes au
-  // plus, textes bornés, clé [\w-]), attente bornée ; erreur, délai ou forme inattendue → []. L'extension annonce un
-  // changement par mktm:profil-stats-changees.
+  // ── Statistiques du profil (prise d'INFORMATION profilStats) ──
+  // profilStats() → [{ cle, icone, libelle, valeur, titre? }] (ou Promise) : lignes de texte de « Détails du
+  // profil », proposées au bandeau d'accueil (clé « ext:<cle> »). Nettoyées (12 lignes max, textes bornés,
+  // clé [\w-]), attente bornée ; erreur, délai ou forme inattendue → []. Changement : mktm:profil-stats-changees.
   const PROFIL_STATS_DELAI_MS = 3000;
   function profilStatsExtension() {
     const ext = _prise("profilStats");
@@ -544,8 +511,8 @@
       }).filter(Boolean);
     }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] profilStats a échoué :", e); return []; });
   }
-  // Grades et hauts faits du profil (prise d'INFORMATION profilJeu → bool) : seul un false explicite les coupe ;
-  // sans extension ou en erreur, ils restent. Les statistiques ne sont jamais concernées.
+  // Grades et hauts faits (prise d'INFORMATION profilJeu → bool) : seul un false explicite les coupe ; sans
+  // extension ou en erreur, ils restent. Les statistiques ne sont jamais concernées.
   function profilJeuActif() {
     const ext = _prise("profilJeu");
     if (!ext || typeof ext.profilJeu !== "function") return true;
@@ -553,11 +520,10 @@
     catch (e) { console.warn("[Extensions] profilJeu :", e); return true; }
   }
   function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
-  // Avant un effacement complet de l'appareil (« Tout réinitialiser ») : l'extension ferme sa
-  // session (le cookie de session est HttpOnly : le code de la page ne peut pas l'effacer, et
-  // sans ça l'appli se reconnectait seule au démarrage suivant). Attente bornée à 3 s ; rend
-  // true si c'est fait (ou sans extension), false sinon → l'appelant pose, APRÈS l'effacement,
-  // la marque CLE_DECONNEXION_EN_ATTENTE que l'extension honore au démarrage suivant.
+  // Avant un effacement complet (« Tout réinitialiser ») : l'extension ferme sa session (cookie HttpOnly,
+  // ineffaçable par la page — sinon reconnexion seule au démarrage suivant). Attente bornée à 3 s ; true si
+  // fait (ou sans extension), false sinon → l'appelant pose, APRÈS l'effacement, la marque
+  // CLE_DECONNEXION_EN_ATTENTE que l'extension honore au démarrage suivant.
   const CLE_DECONNEXION_EN_ATTENTE = "myktamap_ext_deconnexion_en_attente";
   function avantReinitialisation() {
     const ext = _prise("avantReinitialisation");
@@ -569,8 +535,8 @@
     ]).finally(function () { clearTimeout(delai); });
   }
 
-  // Lecture seule d'un plan d'extension (droit « lire ») : l'extension le dit ; une erreur
-  // = lecture seule (règle des permissions). Plan local ou du site : jamais.
+  // Lecture seule d'un plan d'extension (droit « lire ») : l'extension le dit ; une erreur = lecture seule
+  // (règle des permissions). Plan local ou du site : jamais.
   function lectureSeule(registreId) {
     const ext = _prise("lectureSeule");
     const id = _idExtension(registreId);
@@ -580,9 +546,8 @@
   }
 
   // ── Gate déléguée ──
-  // Rend null si aucune extension ne fournit de gate, sinon une promesse qui
-  // résout quand l'extension a ouvert l'accès. Une gate qui échoue REJETTE :
-  // l'appelant affiche « instance indisponible », jamais la gate community.
+  // null si aucune extension ne fournit de gate, sinon une promesse résolue quand l'accès est ouvert.
+  // 🔒 Une gate qui échoue REJETTE : l'appelant affiche « instance indisponible », jamais la gate community.
   function gateDeleguee() {
     const ext = _prise("gate");
     if (!ext || typeof ext.gate.ouvrir !== "function") return null;
@@ -599,23 +564,21 @@
       .then(function (l) { return Array.isArray(l) ? l : []; })
       .catch(function (e) { console.warn("[Extensions] plans.lister a échoué :", e); return []; });
   }
-  // opts.progression(recus, total) : l'extension peut annoncer l'avancement du
-  // téléchargement (octets ; total 0 si inconnu) — l'accueil l'affiche.
+  // opts.progression(recus, total) : avancement du téléchargement (octets ; total 0 si inconnu).
   function chargerPlanExtension(id, opts) {
     const ext = _prise("plans");
     if (!ext || typeof ext.plans.charger !== "function") return Promise.reject(new Error("aucune source de plans"));
     const progression = opts && typeof opts.progression === "function" ? function (r, t) {
       try { opts.progression(Number(r) || 0, Number(t) || 0); } catch (e) { /* affichage seulement */ }
     } : null;
-    // opts.signal : le veilleur d'inactivité de l'accueil annule le téléchargement (AbortSignal),
-    // que l'extension transmet à sa requête. L'accueil n'en dépend pas : il abandonne de son côté.
+    // opts.signal (AbortSignal) : le veilleur d'inactivité de l'accueil annule le téléchargement ; l'accueil
+    // abandonne de son côté sans en dépendre.
     const signal = opts && opts.signal ? opts.signal : undefined;
     return Promise.resolve().then(function () { return ext.plans.charger(id, { progression: progression, signal: signal }); });
   }
 
-  // Dossiers de l'instance fournis par la source de plans (prise facultative
-  // plans.dossiers) : [{ id, name, color?, order?, rule?: { tags } }]. null = inconnu
-  // (pas de prise, serveur injoignable, erreur) → l'accueil ne touche à rien.
+  // Dossiers de l'instance (prise facultative plans.dossiers) : [{ id, name, color?, order?, rule?: { tags } }].
+  // null = inconnu (pas de prise, serveur injoignable, erreur) → l'accueil ne touche à rien.
   function dossiersExtension() {
     const ext = _prise("plans");
     if (!ext || typeof ext.plans.dossiers !== "function") return Promise.resolve(null);
@@ -636,15 +599,14 @@
     const ext = _prise("publierPlan");
     if (!ext) return Promise.reject(new Error("aucune publication disponible"));
     return Promise.resolve().then(function () { return ext.publierPlan(args); }).then(function (r) {
-      // Le plan publié rejoint tout de suite la liste de l'accueil (avant : au démarrage suivant).
+      // Le plan publié rejoint tout de suite la liste de l'accueil.
       try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
       return r;
     });
   }
 
   // ── Journal des changements (information) ──
-  // Ce qui a changé depuis `ts` (ms) : objets dont updatedAt > ts, et traces de
-  // suppression postérieures. Base de la synchro incrémentale (lot A/B).
+  // Depuis `ts` (ms) : objets dont updatedAt > ts et traces de suppression postérieures (synchro incrémentale).
   function changementsDepuis(ts) {
     const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
     const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
@@ -658,14 +620,12 @@
   }
 
   // ── Actions du compte (Mon profil, Configuration) ──
-  // L'extension fournit, selon le LIEU (« profil » | « config »), les actions à
-  // proposer : la fenêtre « Mon profil » les montre en tête, sous le compte
-  // connecté ; le panneau ⚙️ Configuration dans un bloc « Installation » (ex. gérer
-  // les comptes, pour un admin). Texte seulement (60 car.), 10 au plus, action
+  // Selon le LIEU (« profil » | « config »), les actions proposées : en tête de « Mon profil » sous le compte
+  // connecté ; dans ⚙️ Configuration, un bloc « Installation ». Texte seulement (60 car.), 10 au plus, action
   // protégée ; erreur ou forme inattendue = aucune action.
-  // Prise d'INFORMATION « outilsDev » (10/10/2026) : pages d'outils d'une extension, proposées dans le Mode
-  // Développeur (js/devMode.js) quand il est actif. ext.outilsDev() → [{ libelle, page }] ; page = .html du MÊME site,
-  // chemin relatif (mêmes règles que serverConnection.transparence). Une erreur ou une entrée invalide est ignorée.
+  // Prise d'INFORMATION « outilsDev » : ext.outilsDev() → [{ libelle, page }], pages .html du MÊME site
+  // (mêmes règles que serverConnection.transparence), proposées dans le Mode Développeur (js/devMode.js).
+  // Entrée invalide ou erreur : ignorée.
   const PAGE_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/;
   function outilsDev() {
     const ext = _prise("outilsDev");
@@ -678,14 +638,12 @@
       }).slice(0, 10).map(function (o) { return { libelle: o.libelle.trim().slice(0, 60), page: o.page }; });
     } catch (e) { console.warn("[Extensions] outilsDev :", e); return []; }
   }
-  // Prise d'INFORMATION « aide » (11/10/2026) : UNE rubrique fournie par une extension, ajoutée à l'Aide intégrée
-  // (js/interfaceDocs.js) juste avant « Pour aller plus loin ». ext.aide() → { titre, sections: [{ titre, html }] },
-  // lue au rendu (langue courante). Le HTML de mise en forme est admis (l'extension est du code de la page : ce
-  // nettoyage est une hygiène, pas une frontière) — sans script, cadre, formulaire, gestionnaire on* ni lien
-  // javascript:. Erreur ou forme inattendue = rien ; sans extension, l'aide reste celle du community.
-  // Un seul passage, balise par balise (12/10/2026) : les expressions régulières d'avant revenaient en arrière
-  // (coût quadratique sur un fragment mal fermé, Sonar S8786). Mêmes règles : éléments à contenu dangereux retirés
-  // AVEC leur contenu, link/meta/base retirés, attributs on* retirés, href/src « javascript: » → « # ».
+  // Prise d'INFORMATION « aide » : UNE rubrique ajoutée à l'Aide intégrée (js/interfaceDocs.js) avant « Pour
+  // aller plus loin ». ext.aide() → { titre, sections: [{ titre, html }] }, lue au rendu (langue courante).
+  // HTML de mise en forme admis (l'extension est du code de la page : hygiène, pas frontière) — sans script,
+  // cadre, formulaire, gestionnaire on* ni lien javascript:. Erreur ou forme inattendue = rien.
+  // Nettoyage en un seul passage, balise par balise (pas de regex à retour arrière : Sonar S8786) : éléments
+  // à contenu dangereux retirés AVEC leur contenu, link/meta/base retirés, on* retirés, javascript: → « # ».
   const _HTML_BLOC = { script: 1, style: 1, iframe: 1, object: 1, embed: 1, form: 1 };
   const _HTML_SEUL = { link: 1, meta: 1, base: 1 };
   function _attributsSurs(brut) {
@@ -754,8 +712,7 @@
       const sections = r.sections.filter(function (s) {
         return s && typeof s.titre === "string" && s.titre.trim() && typeof s.html === "string";
       }).slice(0, 20).map(function (s, i) {
-        // `id` facultatif (lettres, chiffres, tirets) : slug stable « ext-<id> » pour ouvrir la section depuis
-        // l'extension (window.ktaOuvrirAideSection) ; sinon « ext-<rang> ».
+        // `id` facultatif ([a-z0-9-]) : slug stable « ext-<id> » (window.ktaOuvrirAideSection), sinon « ext-<rang> ».
         const id = typeof s.id === "string" && /^[a-z0-9-]{1,40}$/.test(s.id) ? s.id : String(i);
         return { slug: "ext-" + id, titre: s.titre.trim().slice(0, 80), raccourci: "", html: _nettoyerHtml(s.html) };
       });
@@ -767,9 +724,9 @@
     if (!ext || typeof ext.actionsCompte !== "function") return [];
     try {
       const l = ext.actionsCompte(lieu);
-      // Entrée : { libelle, action, groupe?, type? } (11/10/2026, retour KARMA « menu pas ergonomique ») —
-      // `groupe` : intitulé de rubrique (texte, 30 car.), posé quand il change ; `type` : « etat » = ligne d'état
-      // (texte ; `action` + `lien` facultatifs → petit lien à droite), « fin » = action à part, en bas (déconnexion).
+      // Entrée : { libelle, action, groupe?, type? } — `groupe` : intitulé de rubrique (texte, 30 car.), posé
+      // quand il change ; `type` : « etat » = ligne d'état (texte ; `action` + `lien` facultatifs → petit lien
+      // à droite), « fin » = action à part, en bas (déconnexion).
       return (Array.isArray(l) ? l : []).filter(function (a) {
         return a && typeof a.libelle === "string" && a.libelle.trim() &&
           (typeof a.action === "function" || a.type === "etat");
@@ -787,10 +744,9 @@
     try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
   }
 
-  // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome », 11/10/2026) ──
-  // ext.outilHome() → { libelle } (texte, 40 car.) ou null : UNE tuile ajoutée à 🧰 Outils de l'accueil, qui ouvre
-  // une fenêtre avec le bloc du compte au lieu « outils » (actionsCompte("outils")). Sans extension (ou null) :
-  // aucune tuile — myktamap.fr ne change pas. Erreur ou forme inattendue = rien.
+  // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome ») ──
+  // ext.outilHome() → { libelle } (40 car.) ou null : UNE tuile dans 🧰 Outils de l'accueil, qui ouvre le bloc
+  // du compte au lieu « outils ». Sans extension (ou null) : aucune tuile. Erreur ou forme inattendue = rien.
   function outilHome() {
     const ext = _prise("outilHome");
     if (!ext || typeof ext.outilHome !== "function") return null;
@@ -810,7 +766,7 @@
     const o = outilHome();
     if (!o) return false;
     _fermerOutilHome();
-    // Une action du bloc ouvre souvent sa propre fenêtre (clés, 2FA, kit) : on referme celle-ci d'abord.
+    // Une action ouvre souvent sa propre fenêtre (clés, 2FA, kit) : on referme celle-ci d'abord.
     const ov = document.createElement("div");
     ov.id = "kta-ext-outil-modal";
     ov.className = "kta-readme-modal-overlay";
@@ -841,7 +797,7 @@
     document.documentElement.appendChild(ov);
     return true;
   }
-  // Pose (ou retire) la tuile dans 🧰 Outils de l'accueil, à la déclaration d'une extension et au chargement.
+  // Pose (ou retire) la tuile, à la déclaration d'une extension et au chargement.
   function _poserOutilHome() {
     if (typeof document === "undefined" || !document.querySelector) return;
     const zone = document.querySelector(".loader-secondary-actions");
@@ -856,10 +812,9 @@
     b.textContent = o.libelle;
     if (!vieux) { b.addEventListener("click", ouvrirOutilHome); zone.insertBefore(b, zone.firstChild); }
   }
-  // Bloc prêt à insérer ; null s'il n'y a rien à montrer. Lieux : « profil » (Mon profil), « config » (⚙️),
-  // « outils » (fenêtre de la tuile d'extension de 🧰 Outils, 11/10/2026). Profil et outils : carte du compte
-  // (pseudo, rôle en pastille, précision), puis les rubriques, puis l'action « fin ». Dans « Mon profil », quand
-  // l'extension a une tuile d'outils, la carte porte un lien vers sa fenêtre (les actions y vivent).
+  // Bloc prêt à insérer, null si rien à montrer. Lieux : « profil », « config », « outils ». Profil et outils :
+  // carte du compte (pseudo, rôle en pastille, précision), rubriques, puis l'action « fin ». Dans « Mon
+  // profil », si l'extension a une tuile d'outils, la carte mène à sa fenêtre (les actions y vivent).
   function blocActionsCompte(lieu, titre) {
     const actions = actionsCompte(lieu);
     const c = compte();
@@ -921,13 +876,11 @@
     return bloc;
   }
 
-  // ── Photos des points (prise d'INFORMATION `photos`, 10/10/2026) ──
-  // L'extension déclare photos: { completerPoint(planId, pointId) → Promise<number>,
-  //                               completerPlan(planId) → Promise<{ ajoutees, total }> }.
-  // Elle dépose les photos qui manquent sur l'appareil par MyKTAMapPhotos.restorePhoto ;
-  // l'app réaffiche si quelque chose est arrivé. Attente bornée à 8 s, puis abandon
-  // silencieux ; erreur = ignorée (journalisée [Photos]) : l'app montre ce qui est local.
-  // Sans extension : aucune attente, rien n'est appelé.
+  // ── Photos des points (prise d'INFORMATION `photos`) ──
+  // photos: { completerPoint(planId, pointId) → Promise<number>, completerPlan(planId) → Promise<{ ajoutees,
+  //   total }> } : l'extension dépose les photos manquantes par MyKTAMapPhotos.restorePhoto ; l'app
+  //   réaffiche si quelque chose est arrivé. Attente bornée à 8 s ; erreur ignorée (journalisée [Photos]).
+  // Sans extension : aucune attente.
   const PHOTOS_DELAI_MS = 8000;
   function _photosBorne(appel, defaut, nom) {
     let delai;
@@ -956,12 +909,10 @@
   }
 
   // ── Changements reçus (synchro entrante) ──
-  // Applique au plan OUVERT des objets et des traces de suppression venus d'un
-  // autre appareil ou d'une autre personne : même règle que la fusion de
-  // sessions (KtaUid.fusionnerCalques — par uid, le plus récent gagne, une trace
-  // postérieure l'emporte, un objet supprimé ne ressuscite pas). L'itinéraire
-  // en cours n'est jamais touché. Rend { fusionnes, supprimes } ou null (aucun
-  // plan ouvert). Les objets reçus sont copiés : rien de partagé avec l'appelant.
+  // Applique au plan OUVERT des objets et traces de suppression d'un autre appareil : même règle que la fusion
+  // de sessions (KtaUid.fusionnerCalques — par uid, le plus récent gagne, une trace postérieure l'emporte, un
+  // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. → { fusionnes, supprimes }
+  // ou null (aucun plan ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
   function appliquerChangements(lot) {
     if (!lot || typeof lot !== "object" || !window.KtaUid ||
         typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
@@ -985,14 +936,12 @@
       tombstones: Array.isArray(lot.tombstones) ? lot.tombstones : []
     };
     const r = window.KtaUid.fusionnerCalques([local, distant]);
-    // Familles réellement touchées : un objet reçu, ou une trace qui vise un objet d'ici.
-    // Les autres ne sont pas réécrites (une réécriture ferme la fiche ouverte et coupe
-    // le dessin en cours — retour de l'audit multi-utilisateur 05/10/2026).
+    // Seules les familles touchées (objet reçu, ou trace visant un objet d'ici) sont réécrites : une
+    // réécriture ferme la fiche ouverte et coupe le dessin en cours.
     const tracesRecues = new Set(distant.tombstones.map(function (t) { return t && t.uid; }));
-    // 🩸 L'ÉCHO DE SES PROPRES ENVOIS N'EST PAS UNE NOUVEAUTÉ. Le serveur renvoie, au cycle
-    // suivant, les objets que cet appareil vient d'envoyer (même uid, même updatedAt). Ils comptaient comme
-    // « reçus » : famille réécrite et historique d'annulation vidé à CHAQUE synchro — Ctrl+Z inopérant même
-    // seul sur le plan (retour KARMA). Un objet reçu ne compte que s'il est inconnu ici ou plus récent.
+    // 🩸 L'ÉCHO DE SES PROPRES ENVOIS N'EST PAS UNE NOUVEAUTÉ : le serveur renvoie les objets que cet appareil
+    // vient d'envoyer (même uid, même updatedAt). Comptés comme reçus, ils réécriraient la famille et
+    // videraient l'historique d'annulation à chaque synchro. Reçu = inconnu ici ou plus récent.
     const nouveau = function (fam) {
       const ici = new Map();
       local[fam].forEach(function (o) { if (o && o.uid) ici.set(o.uid, Number(o.updatedAt) || 0); });
@@ -1007,8 +956,8 @@
       if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
     });
     window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
-    // Le tracé / la zone / la structure EN COURS de dessin est retrouvé par son uid après
-    // réécriture (sinon le clic suivant démarrait un nouvel objet).
+    // L'objet EN COURS de dessin est retrouvé par son uid après réécriture (sinon le clic suivant en démarre
+    // un nouveau).
     const enCours = function (getter) { const o = typeof window[getter] === "function" ? window[getter]() : null; return o && o.uid ? o.uid : null; };
     const reprendre = function (setter, liste, uid) {
       if (uid && typeof window[setter] === "function") window[setter](liste.findIndex(function (o) { return o && o.uid === uid; }));
@@ -1020,9 +969,8 @@
     if (touches.zones && window.setZones) { window.setZones(r.zones); reprendre("setCurrentZoneByIndex", r.zones, cZone); }
     if (touches.structures && window.setStructures) { window.setStructures(r.structures); reprendre("setCurrentStructureByIndex", r.structures, cStruct); }
     const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures;
-    // ⏪ L'annulation remet une photo COMPLÈTE d'une famille : après une réception, elle
-    // effacerait chez tout le monde ce que les autres viennent d'ajouter. L'historique
-    // d'annulation repart donc de zéro (le message ne paraît que s'il y avait de quoi annuler).
+    // L'annulation remet une photo COMPLÈTE d'une famille : après une réception, elle effacerait ce que les
+    // autres viennent d'ajouter. L'historique repart de zéro (message seulement s'il y avait de quoi annuler).
     if (!rien && window.HistoryManager && typeof window.HistoryManager.reset === "function") {
       const avait = typeof window.HistoryManager.canUndo === "function" && (window.HistoryManager.canUndo() ||
         (typeof window.HistoryManager.canRedo === "function" && window.HistoryManager.canRedo()));
@@ -1032,7 +980,7 @@
       }
     }
     if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
-    // Le plan ouvert a changé après son ouverture : les statistiques (cache par plan du profil) se recalculent.
+    // Le plan ouvert a changé : les statistiques (cache par plan du profil) se recalculent.
     if (!rien) {
       try { window.dispatchEvent(new CustomEvent("mktm:changements-appliques")); } catch (e) { /* rien */ }
     }
@@ -1043,10 +991,9 @@
   function recuADistance(uid) { return !!uid && _recusADistance.has(uid); }
 
   // ── Effacement à la déconnexion ──
-  // Retire les plans fournis par une extension (registre `type: "ext"`), leur
-  // session, leurs photos et leur archive locale. 🩸 Jamais un plan importé par
-  // l'utilisateur (type « local ») ni un plan de l'instance (type « server ») :
-  // ils ne viennent pas du backend.
+  // Retire les plans d'une extension (registre `type: "ext"`) : session, photos, archive locale.
+  // 🩸 Jamais un plan importé (type « local ») ni un plan de l'instance (type « server ») : ils ne viennent
+  // pas du backend.
   function effacerDonneesExtension(planIds) {
     const PR = window.PlanRegistry;
     if (!PR || !Array.isArray(planIds)) return Promise.resolve({ effaces: 0, refuses: 0 });
@@ -1056,8 +1003,7 @@
         const e = PR.findById(id);
         if (!e || e.type !== "ext") { refuses++; return; }
         try { window.KtaSessionStore.retirer(id); } catch (er) {}
-        // Photos, sauvegardes de session et calage du plan (purge du registre), puis
-        // l'entrée et son archive locale (remove).
+        // Photos, sauvegardes de session et calage (purge du registre), puis l'entrée et son archive (remove).
         return Promise.resolve(typeof PR.purgeAssociatedData === "function" ? PR.purgeAssociatedData(id) : null)
           .catch(function () { /* purge partielle : on retire quand même l'entrée */ })
           .then(function () { return typeof PR.remove === "function" ? PR.remove(id) : null; })
@@ -1067,21 +1013,18 @@
   }
 
   // ── Mode Secours partagé (entrant) ──
-  // Applique au scénario une modification reçue d'un autre appareil, par la
-  // fusion en liste blanche existante (SecoursMode.update). Le sortant est
-  // l'événement `mktm:secours-scenario-mutated`, déjà émis.
+  // Modification reçue appliquée par la fusion en liste blanche (SecoursMode.update). Le sortant est
+  // l'événement `mktm:secours-scenario-mutated`.
   function secoursAppliquer(scenarioId, partiel) {
     if (!window.SecoursMode || typeof window.SecoursMode.update !== "function") return false;
     try { return window.SecoursMode.update(scenarioId, partiel) !== false; }
     catch (e) { console.warn("[Extensions] secoursAppliquer :", e); return false; }
   }
 
-  // ── Compte connecté (v2.7.4) ──
-  // Une extension de connexion peut dire QUI est connecté : la carte profil de
-  // l'accueil l'affiche à la place du profil local, sans rien y écrire (le
-  // surnom et la photo de l'appareil restent intacts et reviennent à la
-  // déconnexion). Rendu en texte seulement, longueurs bornées. Erreur ou forme
-  // inattendue = aucun compte (null) : la carte garde le profil local.
+  // ── Compte connecté ──
+  // Une extension de connexion dit QUI est connecté : la carte profil de l'accueil l'affiche à la place du
+  // profil local, sans rien y écrire (surnom et photo de l'appareil reviennent à la déconnexion). Texte
+  // seulement, longueurs bornées ; erreur ou forme inattendue = null.
   function compte() {
     const ext = _prise("compte");
     if (!ext || typeof ext.compte !== "function") return null;
@@ -1091,21 +1034,19 @@
       return {
         pseudo: c.pseudo.trim().slice(0, 40),
         libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : "",
-        // Ligne de précision sous le pseudo, dans « Mon profil » seulement (ex. l'organisation) ; facultative.
+        // Précision sous le pseudo (ex. l'organisation), dans « Mon profil » seulement ; facultative.
         details: typeof c.details === "string" ? c.details.trim().slice(0, 80) : ""
       };
     } catch (e) { console.warn("[Extensions] compte :", e); return null; }
   }
-  // L'extension prévient quand le compte change (connexion, rôle modifié).
   function notifierCompte() {
     try { window.dispatchEvent(new CustomEvent("mktm:compte-changed")); } catch (e) { /* rien */ }
   }
 
-  // ── Présence sur le plan ouvert (tracking à plusieurs, opt-in) ──
-  // L'extension `presence: { actif(), basculer() }` publie la position de l'utilisateur
-  // UNIQUEMENT quand il l'a choisi (tuile 📡 du tracker). L'app ne fournit qu'une
-  // lecture (positionTracker) et un affichage (afficherPresences, js/ktaPresences.js).
-  // Sans extension : pas de tuile, rien n'est lu.
+  // ── Présence sur le plan ouvert (opt-in) ──
+  // `presence: { actif(), basculer() }` publie la position UNIQUEMENT quand l'utilisateur l'a choisi (tuile 📡
+  // du tracker). L'app fournit une lecture (positionTracker) et un affichage (afficherPresences,
+  // js/ktaPresences.js). Sans extension : pas de tuile, rien n'est lu.
   function presenceActive() {
     const ext = _prise("presence");
     if (!ext || !ext.presence || typeof ext.presence.actif !== "function") return false;
@@ -1119,8 +1060,7 @@
         function (e) { console.warn("[Extensions] presence :", e); return presenceActive(); });
     } catch (e) { console.warn("[Extensions] presence :", e); return Promise.resolve(presenceActive()); }
   }
-  // Position du tracker sur le plan ouvert, ou null tant qu'elle ne veut rien dire
-  // (ni suivi en cours ni position confirmée : ce serait le point de départ du plan).
+  // Position du tracker, ou null tant qu'elle ne veut rien dire (ni suivi ni position confirmée).
   function positionTracker() {
     try {
       if (!window.map || typeof window.getTrackingPosition !== "function") return null;
@@ -1137,11 +1077,10 @@
     catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
   }
 
-  // ── Itinéraire publié (montré à l'équipe du plan, opt-in) ──
-  // L'extension `itineraire: { publie(), basculer() }` publie l'itinéraire actif UNIQUEMENT
-  // quand l'utilisateur l'a choisi (bouton de la fenêtre Itinéraire). L'app fournit une lecture
-  // (itineraireActuel) et un affichage (afficherItineraires, js/ktaPresences.js).
-  // Sans extension : pas de bouton, rien n'est lu.
+  // ── Itinéraire publié (opt-in) ──
+  // `itineraire: { publie(), basculer() }` publie l'itinéraire actif UNIQUEMENT si l'utilisateur l'a choisi
+  // (bouton de la fenêtre Itinéraire). Lecture : itineraireActuel ; affichage : afficherItineraires
+  // (js/ktaPresences.js). Sans extension : pas de bouton, rien n'est lu.
   function itinerairePublie() {
     const ext = _prise("itineraire");
     if (!ext || !ext.itineraire || typeof ext.itineraire.publie !== "function") return false;
@@ -1155,7 +1094,7 @@
         function (e) { console.warn("[Extensions] itineraire :", e); return itinerairePublie(); });
     } catch (e) { console.warn("[Extensions] itineraire :", e); return Promise.resolve(itinerairePublie()); }
   }
-  // Itinéraire actif du plan ouvert : { points: [[x, y, niveau]], etapes: [[x, y, faite]] }, ou null.
+  // Itinéraire actif : { points: [[x, y, niveau]], etapes: [[x, y, faite]] }, ou null.
   function itineraireActuel() {
     try {
       if (!window.map || typeof window.getRoads !== "function") return null;
@@ -1171,9 +1110,8 @@
       };
     } catch (e) { return null; }
   }
-  // Itinéraire REÇU (ex. attribué par un chef d'équipe, installation reliée) : devient l'itinéraire actif,
-  // après acceptation par l'utilisateur côté extension. { points: [[x, y, niveau]], etapes: [[x, y, faite]] }.
-  // Entrées non conformes écartées ; sans carte ni module Itinéraire : false.
+  // Itinéraire REÇU (ex. attribué par un chef d'équipe), après acceptation côté extension : devient
+  // l'itinéraire actif. Même forme ; entrées non conformes écartées ; sans carte ni module Itinéraire : false.
   function appliquerItineraire(it) {
     try {
       if (!it || !Array.isArray(it.points) || !window.map || typeof window.itineraireActiverRoad !== "function") return false;
@@ -1190,12 +1128,12 @@
       return true;
     } catch (e) { console.warn("[Extensions] appliquerItineraire :", e); return false; }
   }
-  // ── Mode Secours avec une installation reliée (étude Secours, étapes 1-3) — prises neutres ──
-  // secoursActions(ctx) → [{ libelle, action, danger? }] : boutons posés par le Mode Secours (en-tête du
-  //   scénario, carte d'une équipe, vue Live). ctx = { scenarioId, vue: "edition"|"live", equipeId?, role? }.
-  // secoursInfoEquipe(scenarioId, equipeId) → texte (ex. comptes de l'équipe) affiché sur la carte.
+  // ── Mode Secours avec une installation reliée — prises neutres ──
+  // secoursActions(ctx) → [{ libelle, action, danger? }] : boutons du Mode Secours (en-tête du scénario, carte
+  //   d'une équipe, vue Live). ctx = { scenarioId, vue: "edition"|"live", equipeId?, role? }.
+  // secoursInfoEquipe(scenarioId, equipeId) → texte affiché sur la carte de l'équipe.
   // secoursPeutAvancer(scenarioId, equipeId, quoi) → bool, quoi ∈ etape|depart|rentree|rappel :
-  //   sans prise = oui ; prise en erreur = NON (une permission qui échoue ne laisse pas passer).
+  //   sans prise = oui ; 🔒 prise en erreur = NON (une permission qui échoue ne laisse pas passer).
   function secoursActions(ctx) {
     const out = [];
     _extensions.forEach(function (ext) {
@@ -1217,8 +1155,7 @@
     try { const t = ext.secoursInfoEquipe(scenarioId, equipeId); return typeof t === "string" ? t.trim().slice(0, 200) : ""; }
     catch (e) { console.warn("[Extensions] secoursInfoEquipe :", e); return ""; }
   }
-  // Nombre de comptes reliés à une équipe (installation reliée) : entre dans l'effectif automatique.
-  // Sans prise ou en erreur : 0 (l'effectif retombe sur les membres nommés ou la saisie).
+  // Comptes reliés à une équipe : entrent dans l'effectif automatique. Sans prise ou en erreur : 0.
   function secoursNbComptesEquipe(scenarioId, equipeId) {
     const ext = _prise("secoursNbComptesEquipe");
     if (!ext) return 0;
@@ -1231,9 +1168,9 @@
     try { return ext.secoursPeutAvancer(scenarioId, equipeId, quoi) === true; }
     catch (e) { console.warn("[Extensions] secoursPeutAvancer :", e); return false; }
   }
-  // Bandeau d'alerte Secours (intervention déclenchée…) : persistant en haut de l'écran, texte échappé,
-  // boutons fournis par l'extension. Son + vibration à la première apparition (ou si `sonner`).
-  // { id, titre, texte, actions: [{ libelle, action }], sonner? } ; retirerAlerteSecours(id).
+  // Bandeau d'alerte Secours : persistant en haut de l'écran, texte échappé, boutons de l'extension ; son +
+  // vibration à la première apparition (ou si `sonner`). { id, titre, texte, actions: [{ libelle, action }],
+  // sonner? } ; retirerAlerteSecours(id).
   function _bip() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1289,11 +1226,11 @@
     catch (e) { console.warn("[Extensions] afficherItineraires :", e); return 0; }
   }
 
-  // ── Plans d'extension : rangement DIFFUSÉ et copie hors ligne, plan par plan ──
-  // L'extension déclare plans.ranger(idExt, dossierExt|null) → Promise<bool> et
-  // plans.horsLigne = { etat(idExt) → Promise<"garde"|"perime"|"absent">, garder(idExt) → Promise<bool> }.
-  // Un dossier de l'installation porte, dans le registre, un id local : main.js donne la
-  // correspondance (associerDossiersExtension). Un dossier créé sur l'appareil n'est jamais diffusé.
+  // ── Plans d'extension : rangement DIFFUSÉ et copie hors ligne ──
+  // plans.ranger(idExt, dossierExt|null) → Promise<bool> ; plans.horsLigne = { etat(idExt) →
+  // Promise<"garde"|"perime"|"absent">, garder(idExt) → Promise<bool> }. Un dossier de l'installation a un id
+  // local dans le registre (main.js > associerDossiersExtension). Un dossier créé sur l'appareil n'est jamais
+  // diffusé.
   let _dossiersRegistre = {};
   function associerDossiersExtension(table) {
     _dossiersRegistre = (table && typeof table === "object") ? Object.assign({}, table) : {};
@@ -1336,10 +1273,9 @@
     catch (e) { return Promise.resolve(false); }
   }
 
-  // ── Actions d'extension sur la fiche d'un objet de session ──
-  // L'extension déclare actionsObjet(uid) → [{ libelle, action }] (synchrone, ex. « Historique »).
-  // Les fiches portent data-kta-uid ; un observateur, posé SEULEMENT si la prise existe,
-  // ajoute les boutons à l'ouverture d'une fiche. Sans extension : rien n'est observé.
+  // ── Actions d'extension sur la fiche d'un objet ──
+  // actionsObjet(uid) → [{ libelle, action }] (synchrone). Les fiches portent data-kta-uid ; un observateur,
+  // posé SEULEMENT si la prise existe, ajoute les boutons. Sans extension : rien n'est observé.
   function actionsObjet(uid) {
     const ext = _prise("actionsObjet");
     if (!ext || typeof ext.actionsObjet !== "function" || typeof uid !== "string" || !uid) return [];
@@ -1350,10 +1286,9 @@
       }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
     } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
   }
-  // Panneau d'une extension sur la carte (ex. « 👥 Équipe ») : prise `panneau: { icone, titre,
-  // rendre(conteneur) }`. L'app pose un bouton à gauche sur la carte et ouvre une fenêtre dont
-  // l'extension remplit le corps (rendre est rappelé à chaque ouverture et par rafraichirPanneau()).
-  // Sans extension : ni bouton, ni fenêtre. Erreur de l'extension = fenêtre avec un message.
+  // Panneau d'extension sur la carte : `panneau: { icone, titre, rendre(conteneur) }`. Bouton à gauche sur la
+  // carte, fenêtre dont l'extension remplit le corps (rendre rappelé à chaque ouverture et par
+  // rafraichirPanneau()). Sans extension : rien. Erreur de l'extension = fenêtre avec un message.
   function panneauExtension() {
     const ext = _prise("panneau");
     const p = ext && ext.panneau;
@@ -1402,17 +1337,16 @@
     if (ov) ov.remove();
     _panneauCorps = null;
   }
-  // Sortie du plan affiché (main.js : changement de plan, retour à l'accueil) : le panneau se ferme,
-  // les présences et itinéraires de l'ancien plan s'effacent, l'extension est prévenue (mktm:plan-ferme).
+  // Sortie du plan (main.js : changement de plan, retour à l'accueil) : panneau fermé, présences et
+  // itinéraires effacés, extension prévenue (mktm:plan-ferme).
   function quitterPlan(versOu) {
     fermerPanneau();
     try { if (window.KtaPresences) window.KtaPresences.reinitialiser(); } catch (e) { /* rien */ }
     try { window.dispatchEvent(new CustomEvent("mktm:plan-ferme", { detail: { vers: versOu || "plan" } })); } catch (e) { /* rien */ }
   }
 
-  // Badge d'un plan d'extension dans la liste de l'accueil (ex. « 👥 2 », activité de l'installation) :
-  // { texte (8 car.), titre (160 car.) }, rendu en texte ; l'extension annonce un changement par
-  // l'événement `mktm:plans-badges-changes`. Erreur ou forme inattendue = pas de badge.
+  // Badge d'un plan d'extension dans la liste de l'accueil : { texte (8 car.), titre (160 car.) }, en texte ;
+  // changement annoncé par `mktm:plans-badges-changes`. Erreur ou forme inattendue = pas de badge.
   function badgePlan(registreId) {
     const ext = _prise("badgePlan");
     const id = _idExtension(registreId);
@@ -1424,16 +1358,16 @@
     } catch (e) { console.warn("[Extensions] badgePlan :", e); return null; }
   }
 
-  // Ligne d'information fournie par l'extension (ex. « Créé par X · modifié par Y ») : texte
-  // seulement, 120 caractères au plus ; l'app n'écrit jamais d'auteur elle-même (community anonyme).
+  // Ligne d'information de l'extension (« Créé par X · modifié par Y ») : texte, 120 car. max ; l'app n'écrit
+  // jamais d'auteur elle-même (community anonyme).
   function infoObjet(uid) {
     const ext = _prise("infoObjet");
     if (!ext || typeof ext.infoObjet !== "function" || typeof uid !== "string" || !uid) return "";
     try { const t = ext.infoObjet(uid); return typeof t === "string" ? t.trim().slice(0, 120) : ""; }
     catch (e) { console.warn("[Extensions] infoObjet :", e); return ""; }
   }
-  // Auteur d'un objet de session (installation reliée) : prise `auteurObjet(uid) → { createur, modifiePar }`.
-  // Sert au filtre « auteur » de l'export ; sans extension : null (le filtre auteur n'est pas proposé).
+  // auteurObjet(uid) → { createur, modifiePar } : filtre « auteur » de l'export ; sans extension : null
+  // (filtre non proposé).
   function auteurObjet(uid) {
     const ext = _prise("auteurObjet");
     if (!ext || typeof ext.auteurObjet !== "function" || typeof uid !== "string" || !uid) return null;
@@ -1470,8 +1404,8 @@
   let _observateurFiches = null;
   function _observerFiches() {
     if (_observateurFiches || typeof MutationObserver !== "function" || !document.body) return;
-    // Une seule recherche par image affichée, limitée aux fiches pas encore traitées : un déplacement ou un
-    // zoom de la carte produit des centaines de mutations (audit UI du 05/10/2026).
+    // Une recherche par image affichée, limitée aux fiches pas encore traitées : un déplacement ou un zoom
+    // produit des centaines de mutations.
     let prevu = false;
     const planifier = (typeof requestAnimationFrame === "function") ? requestAnimationFrame : function (f) { return setTimeout(f, 16); };
     _observateurFiches = new MutationObserver(function () {
@@ -1570,12 +1504,12 @@
   };
 
   // ── Goulots pour le reste de l'app (sans extension : toujours « permis ») ──
-  // Export de la SESSION du plan ouvert (complet, avancé, conversion) : refusé = message. 16/10/2026 (KARMA) :
-  // KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche du plan ne passent plus par ici — seule la session
-  // (ce qu'on a écrit sur le plan) est gardée. Message marqué important : il était tu en mode « Essentielles ».
+  // Export de la SESSION du plan ouvert (complet, avancé, conversion) : refusé = message (marqué important,
+  // visible même en mode « Essentielles »). KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche ne
+  // passent pas ici : seule la session (ce qu'on a écrit sur le plan) est gardée.
   window.ktaExportPlanRefuse = function () {
     const id = window._currentLoadedPlanId;
-    // Seulement plan affiché : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
+    // Plan affiché seulement : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
     if (!id || exportAutorise(id)) return false;
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
@@ -1583,8 +1517,8 @@
     }
     return true;
   };
-  // 🔒 à chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée
-  // (avant : on ne l'apprenait qu'en essayant d'ajouter un objet). Appelée par main.js en fin de chargement.
+  // 🔒 À chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée. Appelée par main.js en fin
+  // de chargement.
   window.ktaAnnoncerLectureSeule = function () {
     const id = window._currentLoadedPlanId;
     if (!id || !lectureSeule(id) || document.getElementById("kta-ext-lecture-seule")) return false;
