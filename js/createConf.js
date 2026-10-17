@@ -2748,7 +2748,7 @@ function _lireImageDimensions(file) {
       console.log("[Planner] Dimensions lues dans l'en-tête (sans décodage) :", dims.width + "×" + dims.height);
       return dims;
     }
-  // 2. Repli : décodage navigateur (formats non parsés).
+    // 2. Repli : décodage navigateur (formats non parsés).
     return new Promise(function(resolve, reject) {
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -4825,7 +4825,7 @@ function _sigImpInvaliderLegende(avecMessage) {
     _sigPlanLegend = null;
     if (avecMessage) _sigLegendeReset = true;
   }
-      // Nouveau fichier = écran neuf : le signal précédent est effacé aussi.
+  // Nouveau fichier = écran neuf : le signal précédent est effacé aussi.
   if (!avecMessage) _sigLegendeReset = false;
   _sigImpMajEtatLegende();
 }
@@ -5282,6 +5282,7 @@ window.afficherImporterSig = _afficherImporterSig;
 // GeoTIFF déposé depuis l'accueil, jumelle de `afficherImporterSig`.
 // ⚠️ Ce n'est PAS une modale d'import : KMZ, GPX et SIG produisent un plan entier ; un GeoTIFF est une
 // image de fond déjà calée. On ouvre le Générateur avec l'image, le géoréf et l'échelle remplis.
+// Sans cette route, un .tif déposé sur l'accueil serait refusé (« archive .zip attendue », homeLoader.js).
 function _afficherImporterGeoTiff(fichier) {
   if (!fichier) return false;
   // Le Générateur est un toggle (appelé ouvert, il se FERME) : on ne l'ouvre que s'il est absent.

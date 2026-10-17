@@ -55,6 +55,7 @@ t("la distance est conservée par la projection (0,1 % près)", Math.abs(dPix - 
 t("échelle 0 → null", ktaEstimerPointB(A, { x: 0, y: 0 }, 0, 0) === null);
 t("échelle négative → null", ktaEstimerPointB(A, { x: 0, y: 0 }, -5, 0) === null);
 t("échelle NaN → null", ktaEstimerPointB(A, { x: 0, y: 0 }, NaN, 0) === null);
+// 🩸 Number(null) vaut 0 : un A sans latitude partirait de l'équateur au lieu de rendre null.
 t("A incomplet → null", ktaEstimerPointB({ x: 1, y: 2, lat: null, lng: 3 }, { x: 0, y: 0 }, 5, 0) === null);
 t("latitude polaire (>85°) → null", ktaEstimerPointB({ x: 0, y: 0, lat: 88, lng: 0 }, { x: 10, y: 0 }, 5, 0) === null);
 t("offset nord absent → traité comme 0",

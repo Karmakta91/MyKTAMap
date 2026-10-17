@@ -1532,7 +1532,7 @@
   window.Pathfinder = {
     aDesTraces:        aDesTraces,
     computeRoute:      computeRoute,
-    computeRouteOnRoads: computeRouteOnRoads,   // (A6) — roads fournies (plan non chargé)
+    computeRouteOnRoads: computeRouteOnRoads,   // roads fournies (plan non chargé)
     computeReachable:  computeReachable,
     resolvePointById:  resolvePointById,
     buildNetworkGraph: buildNetworkGraph,

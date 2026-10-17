@@ -4,8 +4,9 @@
 # ============================================================
 # Une ligne par garde-fou : ce qu'il protege. Le detail (pourquoi, sabotages) vit dans l'en-tete du script.
 # Rejoue tel quel en CI (.github/workflows/ci.yml) ; scripts/garde-fous-tableau.js lit les lignes `node scripts/`.
-# BLOQUANT = `|| exit $?` ; sans, consultatif. Un script qui lit l'index (git diff --cached) doit accepter
-# KTA_FICHIERS_CI, sinon il passe a vide en CI.
+# BLOQUANT = `|| exit $?` ; sans, consultatif. En CI rien n'est indexe : un script qui lit l'index
+# (git diff --cached) doit aussi etre appele par scripts/ci-commits.sh (KTA_FICHIERS_CI) ou relire tout le
+# depot sous CI, sinon il passe a vide.
 # Activer : git config core.hooksPath .githooks
 # ============================================================
 

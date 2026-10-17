@@ -12,7 +12,7 @@
 // session de chaque plan reste dans son slot. Polling par empreinte + save forcé sur beforeunload et
 // visibilitychange. Restauration appelée par main.js via onPlanLoaded(planId).
 // Le tracé visible du tracker n'est pas persisté (seule sa timeline l'est).
-// 🩸 Jamais localStorage["myktamap_session_v1_…"] en direct ailleurs qu'ici.
+// 🩸 Jamais localStorage["myktamap_session_v1_…"] en direct ailleurs qu'ici, dans sessionStore.js et utils.js.
 // Garde-fou : scripts/check-session-store.js · Doc : docs/architecture/session-data.md
 
 (function() {
@@ -134,7 +134,8 @@
       tombstones: window.KtaUid ? window.KtaUid.getTombstones() : [],
 
       // Timeline du tracker [{x, y, t, deltaMs, type ∈ start|pdr|recalage, level?}] pour stats / heatmap /
-      // replay. Le tracé visible (polyline) n'est pas persisté (décision produit).
+      // replay. Le tracé visible (polyline) n'est pas persisté (décision produit : un tracé restauré ferait
+      // croire à un suivi en cours).
       trackerTimeline: (typeof window.getTrackingTimeline === "function")
                          ? (window.getTrackingTimeline() || [])
                          : [],

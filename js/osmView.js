@@ -777,7 +777,7 @@
     if (_trackerPollTimer) { clearInterval(_trackerPollTimer); _trackerPollTimer = null; }
   }
 
-  // Centre sur la dernière position du tracker, zoom porté à 16 au moins.
+  // Centre sur la dernière position du tracker : sous le zoom 16, saute au zoom 17 ; sinon simple panTo.
   function _centerOnTracker() {
     if (!_osmMap || !_trackerMarker) return;
     try {

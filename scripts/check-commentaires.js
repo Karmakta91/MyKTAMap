@@ -10,7 +10,7 @@
 // =====================================================================
 // Le code décrit l'ÉTAT ACTUEL (convention « Commentaires » de CLAUDE.md) : l'historique vit dans le
 // commit et README.md. Scan GLOBAL (pas l'index : KTA_FICHIERS_CI est sans objet) des commentaires de
-// js/*.js (sauf copyright.js, bloc canonique), sw.js, css/style.css et scripts/**/*.js. Refuse :
+// js/*.js (sauf copyright.js, bloc canonique), sw.js, css/style.css, index.html (<!-- -->) et scripts/**/*.js. Refuse :
 //   (a) un commentaire qui COMMENCE par un tag de version ou une date (« 🆕 vX.Y.Z — », « JJ/MM/AAAA : ») ;
 //       exemptés : la ligne qui CONTINUE la phrase du commentaire précédent, et le tag sans emoji ni
 //       séparateur suivi d'un verbe (« vX.Y.Z cassait… ») — les deux se réécrivent à la main ;
@@ -120,11 +120,19 @@ function teteFautive(contenu, precedent) {
   return true;
 }
 
-function analyser(src, cssSeul) {
+// HTML : pas de script inline (CSP), les seuls commentaires sont les <!-- -->.
+function commentairesHtml(src) {
+  const res = [], re = /<!--[\s\S]*?-->/g;
+  let m;
+  while ((m = re.exec(src))) res.push({ type: "html", debut: m.index, fin: m.index + m[0].length });
+  return res;
+}
+
+function analyser(src, cssSeul, html) {
   const fautes = [], cliquet = [];
   const lignesSrc = src.split("\n");
   const numLigne = (pos) => src.slice(0, pos).split("\n").length;
-  commentaires(src, cssSeul).forEach((c) => {
+  (html ? commentairesHtml(src) : commentaires(src, cssSeul)).forEach((c) => {
     const texte = src.slice(c.debut, c.fin);
     if (c.type === "bloc" && texte.startsWith("/*!")) return;
     const l0 = numLigne(c.debut);
@@ -134,7 +142,10 @@ function analyser(src, cssSeul) {
       if (PROTEGE.test(seg)) return;
       if (VERSION.test(seg)) cliquet.push(no);
       let contenu, precedent = "";
-      if (c.type === "ligne") {
+      if (c.type === "html") {
+        contenu = seg.replace(/^\s*<!--\s*/, "").replace(/\s*-->\s*$/, "");
+        if (k > 0) precedent = morceaux[k - 1].replace(/^\s*<!--\s*/, "").trim();
+      } else if (c.type === "ligne") {
         contenu = seg.replace(/^\/\/+\s*/, "");
         const avant = lignesSrc[no - 2] || "";
         const debutLigne = lignesSrc[no - 1] || "";
@@ -174,6 +185,8 @@ const NE_DOIT_PAS_VOIR = [
 ];
 const ratesVoir = DOIT_VOIR.filter((s) => analyser(s, false).fautes.length === 0);
 const ratesPas = NE_DOIT_PAS_VOIR.filter((s) => analyser(s, false).fautes.length !== 0);
+if (analyser("<!-- 🆕 v9.9.9 — test -->", false, true).fautes.length === 0) ratesVoir.push("<!-- 🆕 v9.9.9 — test -->");
+if (analyser("<p title=\"v9.9.9\">x</p><!-- rien -->", false, true).fautes.length !== 0) ratesPas.push("<!-- rien -->");
 if (ratesVoir.length || ratesPas.length) {
   console.log("❌ check-commentaires : le motif a régressé" +
     (ratesVoir.length ? "\n     ne voit plus : " + ratesVoir.map((s) => JSON.stringify(s)).join(" · ") : "") +
@@ -193,14 +206,14 @@ function jsDe(dossier, recursif) {
   return out;
 }
 const fichiers = jsDe("js", false).filter((f) => path.basename(f) !== "copyright.js")
-  .concat(["sw.js", path.join("css", "style.css")], jsDe("scripts", true))
+  .concat(["sw.js", path.join("css", "style.css"), "index.html"], jsDe("scripts", true))
   .filter((f) => fs.existsSync(f)).sort();
 
 const liste = process.argv.indexOf("--liste") >= 0;
 let total = 0;
 const fautes = [], parFichier = [];
 fichiers.forEach((f) => {
-  const r = analyser(fs.readFileSync(f, "utf8"), f.endsWith(".css"));
+  const r = analyser(fs.readFileSync(f, "utf8"), f.endsWith(".css"), f.endsWith(".html"));
   r.fautes.forEach((x) => fautes.push(f.replace(/\\/g, "/") + ":" + x.no + "  " + x.quoi + "\n       " +
     x.txt.trim().slice(0, 110)));
   if (r.cliquet.length) { total += r.cliquet.length; parFichier.push([r.cliquet.length, f.replace(/\\/g, "/")]); }

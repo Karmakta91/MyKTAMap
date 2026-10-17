@@ -174,6 +174,7 @@ window.polygonAreaM2 = polygonAreaM2;
 
 // ── GPS : saisie « lat, lng » (copier-coller Google Maps) ──────────
 // ⚠️ Rend {lat, lng} ou null. Refusés : pas de virgule, non numérique, hors plage [-90, 90] / [-180, 180].
+// Plage stricte : évite de prendre pour du GPS deux nombres quelconques séparés d'une virgule.
 function parseGpsCoords(str) {
   if (typeof str !== "string") return null;
   const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(str);
@@ -386,6 +387,8 @@ window.ktaAppareilTactile = function() {
   } catch (e) { return false; }
 };
 
+// Capteur refusé : ligne grisée, case décochée, raison affichée. Partagé par la config HOME (homeConfig.js)
+// et celle du plan (interfaceConfig.js) : un seul rendu pour les deux modales, deux copies finiraient par diverger.
 window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   if (!row) return;
   row.style.display = "";
@@ -1653,9 +1656,9 @@ window.ktaAnnotationsCompletes = function (famille) {
 };
 
 // ── Getters publics des data layers ──────────
-// ⚠️ getAllEmbeddedPoints → [{x, y, nom, id, tags, level, description?, uid?}], même format que
-// window.getEditorPoints (concaténation directe). Lu sur _ktaDataMarkers (_ktaLevel, _ktaNom, _ktaId,
-// _ktaTags) ; x = lng, y = imageHeight - lat (inverse de convertCoord). Sans lui, stats et exports ne
+// ⚠️ getAllEmbeddedPoints → [{x, y, nom, id, tags, level, layerId, description?, uid?, updatedAt?}], même
+// format que window.getEditorPoints (concaténation directe). Lu sur _ktaDataMarkers (_ktaLevel, _ktaNom, _ktaId,
+// _ktaTags…) ; x = lng, y = imageHeight - lat (inverse de convertCoord). Sans lui, stats et exports ne
 // verraient que la session.
 window.getAllEmbeddedPoints = function() {
   if (!Array.isArray(window._ktaDataMarkers)) return [];
@@ -1683,8 +1686,8 @@ window.getAllEmbeddedPoints = function() {
   return out;
 };
 
-// Zones embarquées → [{type, points, level, layerId, description?}], même format que window.getZones() :
-// les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
+// Zones embarquées → [{type, points, level, layerId, description?, uid?, updatedAt?}], même format que
+// window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
 window.getAllEmbeddedZones = function() {
   if (!Array.isArray(window._ktaDataPolygons)) return [];
   return window._ktaDataPolygons

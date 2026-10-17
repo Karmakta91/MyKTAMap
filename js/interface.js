@@ -2884,6 +2884,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     _setGroupeModeActif("structures", true, iconeReflet);
   }
 
+  // Déclaré juste après Zones : l'ordre d'ajout fixe sa place dans la sidebar droite.
   _creerGroupeAccordeon({
     id: "structures",
     iconePrincipale: "🏛️",

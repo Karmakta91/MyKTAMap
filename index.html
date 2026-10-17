@@ -13,7 +13,6 @@
   <meta charset="utf-8">
   <title>MyKTAMap</title>
 
-  <!-- Metadonnees de propriete intellectuelle -->
   <meta name="author"      content="Flavien VIDAL (alias KARMA)">
   <meta name="copyright"   content="(c) 2026 Flavien VIDAL — Tous droits reserves">
   <meta name="license"     content="CC BY-NC-SA 4.0 — https://creativecommons.org/licenses/by-nc-sa/4.0/">
@@ -21,31 +20,19 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 📱 ROLLBACK ×2 du plein écran iPhone — NE PAS RETENTER sans nouveau
-       diagnostic. Tentative 1 (v1.9.2) : « bande sombre en bas, status bar
-       hide/show ». Tentative 2 (30/07/2026, v1.71.0) : cover +
-       black-translucent MALGRÉ 86 env(safe-area-inset-*) déjà en place —
-       constat terrain KARMA immédiat : « ça marche pas ». Le pari « la
-       plomberie safe-area suffit » est RÉFUTÉ deux fois ; la prochaine
-       tentative devra partir d'une observation précise du symptôme sur
-       l'appareil (quel écran, quelle zone, quelle bande), pas des metas.
-       État stable conservé : pas de cover, status bar opaque noire,
-       ~47px perdus en haut sur iPhone notché mais comportement PRÉVISIBLE. -->
+  <!-- 🩸 Plein écran iPhone (viewport-fit=cover + black-translucent) : échoué deux fois malgré les
+       env(safe-area-inset-*). Ne pas retenter sans diagnostic précis du symptôme sur l'appareil. État stable :
+       barre d'état opaque, ~47 px perdus en haut sur iPhone à encoche, comportement prévisible. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
-       du contenu. Stable, l'heure iOS reste visible en permanence. -->
+  <!-- « black » : barre d'état iOS opaque, indépendante du contenu (cf. le piège plein écran ci-dessus). -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <!-- 🧭 v1.77.0 — FAVICON de l'onglet (bug KARMA : « plus de logo dans
-       l'onglet Chrome »). Le <link rel="icon"> d'origine (icon/mkm.png,
-       commit initial de mai) avait été retiré sans remplacement : l'onglet
-       vivait sur le cache favicon de Chrome, purgé par les killsw répétés.
-       SVG d'abord (net à toutes tailles), PNG en repli. -->
+  <!-- 🩸 Favicon explicite : sans <link rel="icon">, l'onglet dépend du cache favicon de Chrome, purgé par
+       killsw. SVG d'abord (net à toutes tailles), PNG en repli. -->
   <link rel="icon" type="image/svg+xml" href="icon/compass.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icon/compass-192.png">
   <!-- Icône écran d'accueil iOS — Safari iOS lit UNIQUEMENT apple-touch-icon -->
@@ -55,32 +42,19 @@
   <link rel="apple-touch-icon" sizes="152x152" href="icon/compass-180.png">
   <link rel="apple-touch-icon" sizes="120x120" href="icon/compass-180.png">
 
-  <!-- Favicon classique pour navigateur desktop -->
   <link rel="icon" type="image/png" href="icon/compass-180.png">
 
-  <!-- ICON CHROME INSTALL-->
 <link rel="manifest" href="manifest.json">
-<!-- 🆕 v1.9.2-rollback4 (KARMA "premier chargement barre noire, après
-     Leaflet me la met comme je veux") : theme-color aligné à la
-     couleur de DÉPART du gradient header refonte (#1a1f2e). Ainsi le
-     status bar tinté par theme-color (Safari mobile, Android Chrome)
-     correspond visuellement au header refonte qui s'affiche après
-     chargement d'un plan. Avant : #111827 (un peu plus sombre, créait
-     un léger contraste perçu comme "saut de couleur"). Sur iPhone PWA
-     standalone, c'est apple-mobile-web-app-status-bar-style qui prime
-     (= black opaque), mais theme-color est utile partout ailleurs. -->
+<!-- theme-color = départ du dégradé de l'en-tête (#1a1f2e) : la barre d'état teintée (Android, Safari) se
+     raccorde à l'en-tête. En PWA iPhone, apple-mobile-web-app-status-bar-style prime. -->
 <meta name="theme-color" content="#1a1f2e">
 </head>
 
 <body>
 
-  <!-- ════════════════════════════════════════════════════════
-       SVG PATTERNS — definitions partagees pour les zones (depuis Karma_dev / v169)
-       Le pattern `kta-pattern-inaccessible` est utilise par les zones de type
-       "inaccessible" (bloquant pour le pathfinder). SVG global invisible pour
-       que `fill: url(#kta-pattern-inaccessible)` resolve depuis n'importe quel
-       polygon Leaflet en mode SVG renderer.
-       ════════════════════════════════════════════════════════ -->
+  <!-- Motifs SVG partagés : `kta-pattern-inaccessible` habille les zones inaccessibles (bloquantes pour le
+       pathfinder). SVG global invisible pour que `fill: url(#…)` se résolve depuis tout polygone Leaflet
+       (rendu SVG). -->
   <svg style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
     <defs>
       <pattern id="kta-pattern-inaccessible" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(45)">
@@ -91,14 +65,9 @@
     </defs>
   </svg>
 
-  <!-- ════════════════════════════════════════════════════════
-       SPLASH SCREEN — Animation de bienvenue au démarrage
-       Affiché par défaut, fermé par main.js après init + 4s min
-       ════════════════════════════════════════════════════════ -->
+  <!-- Splash : affiché par défaut, fermé par main.js après l'init (4 s minimum). -->
   <div id="splashOverlay">
-    <!-- 👑 v1.47.0 (KARMA) — Crédit Claude, seul en haut-gauche (symétrique
-         avec la version en haut-droite). Teinte « clay » Claude (#d97757)
-         pour se démarquer du doré charte sans être clinquant. -->
+    <!-- Crédit Claude en haut à gauche, symétrique de la version ; teinte « clay » #d97757, distincte du doré. -->
     <div id="splashClaudeCorner" aria-hidden="true">
       <span class="splash-claude-mark">✦</span>
       <span class="splash-claude-text">
@@ -106,33 +75,25 @@
         <span class="splash-claude-sub" data-i18n="home.splash.craftedSub">Assistant IA · Anthropic</span>
       </span>
     </div>
-    <!-- Version courante (haut-droite) — remplie par main.js > _splashStart
-         depuis window.__MKM__.build (zéro hardcode, suit chaque release). -->
+    <!-- Version remplie par main.js > _splashStart depuis window.__MKM__.build (aucune valeur en dur). -->
     <div id="splashVersion" aria-hidden="true"></div>
 
     <div id="splashBox">
-      <!-- 🧭 v1.47.0 — Rose des vents (compass.png, asset unifié Option 2 :
-           même rose que le mode boussole + header). Nord en haut, statique ;
-           l'entrée « calibrage » splashLogoIn (rotation + amortissement)
-           reste. L'arc doré tourne autour = indicateur de chargement
-           continu (remplace l'ancienne barre + échelle 0-100). -->
+      <!-- Rose des vents statique (même asset que la boussole et l'en-tête), entrée animée splashLogoIn ;
+           l'arc doré qui tourne autour sert d'indicateur de chargement. -->
       <div id="splashCompassWrap">
         <img src="icon/compass.svg" alt="MyKTAMap" id="splashLogo">
         <svg id="splashSpinArc" viewBox="0 0 220 220" aria-hidden="true">
           <circle cx="110" cy="110" r="104" fill="none" stroke-linecap="round" stroke-dasharray="90 565"></circle>
         </svg>
       </div>
-      <!-- Depuis v2.0.0, le splash n'affiche plus « -pro », même en édition pro (décision KARMA) : le suffixe reste
-           dans l'en-tête de l'accueil. Le chiffre de version majeure (« 2 » de biais) a été retiré le 14/10/2026. -->
+      <!-- Le splash n'affiche jamais « -pro » (décision produit) : le suffixe vit dans l'en-tête de l'accueil. -->
       <div id="splashTitle"><span class="kta-titre-base">MyKTAMap</span></div>
       <div id="splashSubtitle" data-i18n="home.tagline">Cartographie souterraine</div>
     </div>
 
-    <!-- Licence affichée en bas du splash, JUSTE AU-DESSUS de la signature
-         KARMA + crédits libs. Position absolute pour décoreller du flux
-         vertical du #splashBox centré.
-         🏷️ v1.28.3 : 2 variantes selon mode (community / pro) basculées
-         par la classe .kta-instance-pro posée par js/proLicense.js. -->
+    <!-- Licence en bas du splash (position absolue, hors du flux de #splashBox). Variantes community / pro
+         basculées par la classe .kta-instance-pro (js/proLicense.js). -->
     <div id="splashLicense">
       <span class="kta-licence-community">
         <span data-i18n="home.splash.licenceFree">Licence libre — usage non commercial</span><br>
@@ -144,192 +105,108 @@
       </span>
     </div>
 
-    <!-- 🆕 v1.9.2-fix15 (KARMA) : signature KARMA en bas à droite, plus
-         petite que l'ancienne. Animation : la karma.png se révèle
-         progressivement de gauche à droite via clip-path avec steps()
-         pour un effet "lettre par lettre" (5 étapes pour K-A-R-M-A).
-         Préserve le style graphique original (l'image stylisée) tout
-         en ajoutant la séquence d'apparition demandée. -->
+    <!-- Signature KARMA : révélée de gauche à droite par clip-path + steps(5), une étape par lettre. -->
     <div id="splashKarmaCorner" aria-hidden="true">
       <img src="icon/karma.png" alt="KARMA" id="splashKarmaImg">
     </div>
 
-    <!-- Crédits librairies + algos — discret, en bas à GAUCHE pour
-         libérer le bas-droit pour KARMA. Mention des libs majeures
-         (Leaflet mapping, JSZip ZIP I/O, jsPDF impression PDF, OSM
-         tiles Vue OSM opt-in v1.39+) + de l'algo Dijkstra du pathfinder
-         (utilisé pour le calcul d'itinéraires sur le réseau de tracés).
-         KARMA s'en souvient : "djakarta" était une confusion phonétique
-         avec Dijkstra. 🆕 v1.40.29 — ajout 🌍 OSM. -->
-    <!-- v1.43.19 — Splash : 6 libs sur 2 lignes de 3 (KARMA "je voulais 3
-         et en dessous 3 et karma a droite comme avant"). Le `<br>` force
-         le split explicite après la 3e lib. Le CSS double la hauteur du
-         conteneur (#splashLeafletCredit) pour faire entrer les 2 lignes.
-         Logo KARMA reste à `bottom: 28px; right: 28px` (= aligné avec
-         la 2e ligne du crédit). -->
+    <!-- Crédits librairies + algorithme (Dijkstra = pathfinder), en bas à gauche, 2 lignes de 3 : le <br> force
+         la coupure, #splashLeafletCredit double sa hauteur en CSS, la signature s'aligne sur la 2e ligne. -->
     <div id="splashLeafletCredit">🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</div>
   </div>
 
-  <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
+  <!-- copyright.js : filigrane, bannière console, détection DevTools. Chargé EN PREMIER (n'écrit rien). -->
   <script src="js/copyright.js"></script>
 
-  <!-- 🌍 v1.45.0 : I18N — helper multi-langue (window.I18n). Chargé très tôt
-       pour être dispo dans tous les modules suivants (interfaceConfig…). Ne
-       fait QUE définir window.I18n au load (aucune requête, aucune écriture
-       storage). Les dicos lang/<code>.json sont fetch-és par I18n.init(), qui
-       est AWAIT-é dans main.js AVANT lancerApplication. Cf js/langManager.js. -->
+  <!-- ⚠️ langManager.js pose window.I18n pour tous les modules suivants (aucune requête, aucun stockage).
+       Les dicos lang/<code>.json sont chargés par I18n.init(), attendu par main.js avant lancerApplication. -->
   <script src="js/langManager.js"></script>
 
-  <!-- 🕵️ v1.31.8 F2 : INCOGNITO MODE — détecte ?incognito=1 au boot et shim
-       Storage.prototype + IDBObjectStore.prototype writes en in-memory avant
-       que TOUT autre module ne puisse écrire. DOIT être SYNC + très haut
-       (juste après copyright.js qui n'écrit rien). networkAudit + themeManager
-       + proLicense viennent APRÈS pour qu'ils utilisent les shims.
-       En mode normal (URL sans flag) : ne fait que poser window.IncognitoMode
-       = { active: false, launch: fn } et return. Zéro effet de bord. -->
+  <!-- ⚠️ incognitoMode.js : SYNCHRONE et avant tout module qui écrit. Avec ?incognito=1, il redirige les
+       écritures Storage / IDBObjectStore vers la mémoire ; les modules suivants héritent de ces shims.
+       Sans le flag : pose window.IncognitoMode = { active: false, launch } et rien d'autre. -->
   <script src="js/incognitoMode.js"></script>
-  <!-- 💾 Sessions auto-sauvegardées : IndexedDB (lecture synchrone depuis la mémoire,
-       repli localStorage). Chargé tôt, sans dépendance : les modules de l'accueil
-       lisent les sessions par window.KtaSessionStore. main.js attend son init(). -->
+  <!-- sessionStore.js : sessions en IndexedDB (lecture synchrone depuis la mémoire, repli localStorage), sans
+       dépendance. L'accueil lit les sessions par window.KtaSessionStore ; main.js attend son init(). -->
   <script src="js/sessionStore.js"></script>
 
-  <!-- 🏷️ v1.28.2 : PRO LICENSE DETECTOR — détecte la présence de
-       /Licence-pro.json à la racine du serveur. Si présent : active le
-       mode pro (footer sans CC BY-NC-SA). 100% transparent côté community
-       (myktamap.fr) où le fichier n'existe pas (404 silencieux). Chargé
-       tôt + cache localStorage pour éviter tout flash visuel au boot 2+
-       sur une instance pro. Cf js/proLicense.js pour le détail. -->
+  <!-- proLicense.js : détecte /Licence-pro.json (404 silencieux en community) et active le mode pro. Chargé tôt,
+       avec cache localStorage, pour éviter un flash visuel au démarrage d'une instance pro. -->
   <script src="js/proLicense.js"></script>
-  <!-- 🔌 v2.0.0 : CONNEXION SERVEUR — interrupteur `config.serverConnection` de
-       l'instance + pastille d'état du pied de page. Après proLicense.js (règle :
-       « on » n'aboutit qu'avec une licence de source serveur). Aucune requête.
+  <!-- ⚠️ ktaExtensions.js : interrupteur `config.serverConnection` + pastille du pied de page. Après proLicense.js
+       (« on » exige une licence de source serveur). Aucune requête.
        Contrat : docs/architecture/community-server-line.md §3. -->
   <script src="js/ktaExtensions.js"></script>
-  <!-- 📡 Présences d'une installation reliée (affichage seulement, prise neutre). -->
+  <!-- Présences d'une installation reliée (affichage seulement, prise neutre). -->
   <script src="js/ktaPresences.js" defer></script>
 
-  <!-- 🎨 v1.13.0 : THEME MANAGER — toggle clair/sombre LIMITÉ au mode carte.
-       Chargé très tôt pour que le body.kta-theme-light soit appliqué avant
-       même le splash si l'user avait choisi clair (évite un FOUC dark→light).
-       Init synchrone via le script lui-même au chargement. -->
+  <!-- themeManager.js : synchrone et tôt, pose body.kta-theme-light avant le splash (évite un flash
+       sombre → clair). Le thème clair ne s'applique qu'au mode carte. -->
   <script src="js/themeManager.js"></script>
 
-  <!-- 🔒 NETWORK AUDIT — v1.8.0 "Privacy & Audit".
-       Instrumente fetch / XHR / sendBeacon / WebSocket / EventSource AVANT
-       que tout autre module ne puisse émettre une requête réseau. Sans cet
-       ordre, les premiers appels (debug.js, sw.register…) passeraient sous
-       le radar. copyright.js juste avant ne fait que console.log/info, pas
-       de requête réseau, donc l'ordre est OK. Cf. docs/NETWORK_AUDIT.md -->
+  <!-- 🔒 networkAudit.js instrumente fetch / XHR / sendBeacon / WebSocket / EventSource AVANT tout module qui
+       émet une requête (debug.js, sw.register…), sinon les premiers appels échappent au journal.
+       Doc : docs/NETWORK_AUDIT.md. -->
   <script src="js/networkAudit.js"></script>
 
-  <!-- 🆕 v1.31.4+ (P2 progressive lazy CSS) : helper window._loadCssOnce
-       chargé SYNC très tôt pour que les modules suivants (memInspector,
-       statsGlobales, filterPanel, secoursMode) puissent appeler l'API
-       au début de leur IIFE. Aucun effet de bord (pose juste un global
-       window._loadCssOnce + zéro réseau). Cf perf-memory §87. -->
+  <!-- cssLazy.js : pose window._loadCssOnce (aucun réseau), synchrone et tôt : memInspector, statsGlobales,
+       filterPanel, secoursMode l'appellent au début de leur IIFE. Cf. docs/architecture/perf-memory.md. -->
   <script src="js/cssLazy.js"></script>
 
-  <!-- 📋 CRASH REPORTS — Archive auto des kills mémoire détectés par OOMGuard.
-       DOIT être chargé AVANT oomGuard.js (qui l'appelle dans _checkPreviousKill).
-       API : window.CrashReports = { saveCrash, listAll, remove, clearAll,
-       formatReportText }. Stockage IDB myktamap_crashes v1, FIFO 5 entries.
-       Consultable depuis Memory Inspector → section 📋 Derniers crashs.
-       Depuis v1.20.0. -->
+  <!-- ⚠️ crashReports.js AVANT oomGuard.js, qui l'appelle dans _checkPreviousKill. window.CrashReports ;
+       IDB myktamap_crashes, 5 derniers rapports (FIFO), visibles dans l'Inspecteur mémoire. -->
   <script src="js/crashReports.js"></script>
 
-  <!-- 📊 MEM INSPECTOR — Topo lisible de ce qui est chargé en mémoire
-       (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime /
-       Crash Reports v1.20.0). Accessible depuis ⚙️ Configuration loader →
-       section 📊 Inspecteur. Pas de dépendance bloquante, peut être chargé
-       n'importe où dans la chaîne — placé ici à côté de NetworkAudit pour
-       cohérence « outils d'inspection & transparence ». Depuis v1.19.0. -->
+  <!-- memInspector.js : inspecteur mémoire (Configuration → Inspecteur), sans dépendance au chargement. -->
   <script src="js/memInspector.js"></script>
 
-  <!-- 🧰 v1.44.0 — Helper ModalLifecycle (cycle de vie unifié des modales).
-       Chargé AVANT toutes les modales qui l'utilisent (opt-in : memInspector,
-       swInspector, lostMode, secoursMode sous-modales pour v1.44.0 — les
-       autres modales migrent progressivement). Pas de dépendance, juste un
-       window.ModalLifecycle exposé. Voir docs/architecture/modal-lifecycle.md
-       pour le contrat complet (timers/listeners/blob URLs/btn disabled
-       cleanup automatique au close()). -->
+  <!-- ⚠️ modalLifecycle.js : window.ModalLifecycle, avant toutes les modales qui l'utilisent. Contrat (timers,
+       listeners, blob URLs nettoyés au close()) : docs/architecture/modal-lifecycle.md. -->
   <script src="js/modalLifecycle.js"></script>
 
-  <!-- 🆕 v1.43.12 — Inspecteur Service Worker. Diagnostic du cache PWA :
-       compare ASSETS_TO_CACHE (attendus, query SW via MessageChannel)
-       avec le contenu réel du cache courant (Cache API), affiche le diff
-       + verdict + bouton récupération des manquants. -->
+  <!-- swInspector.js : compare ASSETS_TO_CACHE (demandé au SW par MessageChannel) au contenu réel du cache,
+       et propose de récupérer les manquants. -->
   <script src="js/swInspector.js"></script>
 
-  <!-- 📊 STATS GLOBALES — Modale d'agrégation plan complet (session + data
-       layers embedded). Sections : points par tag, tracés par type +
-       distance cumulée, zones par type + surface cumulée, structures,
-       photos, M-LVL breakdown, géoréf. Accessible depuis modale 📊 Détails
-       session > bouton « 📊 Voir stats globales du plan ». API :
-       window.StatsGlobales = { ouvrir, fermer, compute, getReportText }.
-       Depuis v1.20.0. -->
+  <!-- statsGlobales.js : window.StatsGlobales, statistiques du plan complet (session + calques embarqués),
+       ouvertes depuis Détails session. -->
   <script src="js/statsGlobales.js"></script>
 
-  <!-- 🎓 TUTORIAL — Onboarding cards séquentielles. Auto-affiché au tout
-       premier lancement (flag localStorage `myktamap_tutorial_seen_v1`).
-       Réaffichable via le bouton 🎓 dans le header de 📖 Documentation
-       (depuis v1.21.3 ; auparavant 📚 Aide → sous-action 🎓).
-       API : window.Tutorial = { ouvrir, fermer, isFirstLaunch, markAsSeen }.
-       Auto-lancement déclenché depuis main.js > _splashEnd. Depuis v1.21.0. -->
+  <!-- tutorial.js : window.Tutorial, affiché au premier lancement (flag `myktamap_tutorial_seen_v1`, séquencé
+       par firstRunFlow.js), réaffichable depuis Documentation. -->
   <script src="js/tutorial.js"></script>
 
-  <!-- 👤 USER PROFILE — Mini profil utilisateur (surnom + photo optionnelle).
-       Stocké dans une IDB dédiée `myktamap_profile`. Affiché dans le bandeau
-       en-tête du loader avec avatar (photo ou initiale colorée déterministe)
-       + surnom + bouton ⚙️ Détails. Karma_dev (Cycle Karma_dev pending). -->
+  <!-- userProfile.js : profil local (surnom + photo, IDB `myktamap_profile`), affiché dans le bandeau de l'accueil. -->
   <script src="js/userProfile.js"></script>
-  <!-- 🆕 v1.52.0 : gamification du profil (rangs/badges selon temps + plans + km) -->
+  <!-- Rangs du profil (temps, plans, km) -->
   <script src="js/profileGamification.js"></script>
-  <!-- 🆕 v1.53.0 : hauts faits / succès du profil (8 familles × 4 paliers) -->
+  <!-- Hauts faits du profil (8 familles × 4 paliers) -->
   <script src="js/profileAchievements.js"></script>
 
-  <!-- 📦 PROFILE EXPORT/IMPORT — Profil utilisateur complet (registry +
-       préférences + favoris + sessions + snapshots + tutorial + user +
-       photos optionnel + crashes optionnel). Remplace l'ancien export
-       "liste de plans" tout en gardant la rétro-compat (détection auto du
-       format legacy `myktamap-plans-list`). API :
-       window.ProfileExportImport = { buildProfile, computeSectionSizes,
-       exportToFile, parseProfile, computeImportStats, applyProfile,
-       isLegacyFormat }. EXCLUS par design : ZIPs binaires des plans +
-       PIN/Unlock (sécurité). Depuis v1.22.0. Section `user` (surnom +
-       photo profil) ajoutée Karma_dev. -->
+  <!-- profileExportImport.js : window.ProfileExportImport, profil complet (registre, préférences, favoris,
+       sessions, snapshots, profil ; photos et crashs en option). Relit l'ancien format `myktamap-plans-list`.
+       🔒 Jamais exportés : les ZIP des plans, le PIN et le déverrouillage. -->
   <script src="js/profileExportImport.js"></script>
 
-  <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
+  <!-- debug.js : capture silencieuse des logs, consultable dans la Configuration -->
   <script src="js/debug.js"></script>
 
-  <!-- PERF ULTRA — toggles d'optimisation lus par map.js / road.js / utils.js
-       à l'initialisation. DOIT être chargé AVANT ces modules. -->
+  <!-- ⚠️ perfUltra.js : toggles lus à l'init par map.js / road.js / utils.js — à charger AVANT eux. -->
   <script src="js/perfUltra.js"></script>
 
-  <!-- 🗝️ UNLOCK GATE — barrière communautaire (depuis v173). Chargé tôt
-       pour que main.js puisse vérifier l'auth dès initApp. Ne charge que
-       le module (l'affichage de l'overlay est déclenché par main.js après
-       le splash). -->
-  <!-- 🏛️ v2.6.0 : config d'instance lue UNE fois, avant les gates (chantier 2) —
-       la gate, le kiosque, le connecteur et la découverte des plans la partagent. -->
+  <!-- ⚠️ ktaInstance.js : config d'instance lue UNE fois, avant les gates (partagée par la gate, le kiosque,
+       le connecteur et la découverte des plans). unlockGate.js : barrière communautaire, chargée tôt pour
+       main.js > initApp ; l'overlay s'affiche après le splash. -->
   <script src="js/ktaInstance.js"></script>
   <script src="js/unlockGate.js"></script>
-  <!-- 🆕 v1.9.4 : code d'accès local optionnel (PIN + biométrie). Chargé
-       APRÈS unlockGate.js car le PIN est une couche par-dessus la barrière
-       communautaire. Doit être chargé avant main.js pour que la détection
-       isEnabled() au boot fonctionne. -->
+  <!-- pinLock.js : code d'accès local (PIN + biométrie), couche au-dessus d'unlockGate ; avant main.js, qui
+       teste isEnabled() au démarrage. -->
   <script src="js/pinLock.js"></script>
 
-  <!-- CHARGEUR DE PLAN (masqué par défaut, affiché si pas de plan serveur) -->
+  <!-- Accueil (chargeur de plans), masqué par défaut -->
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">
 
-      <!-- HEADER : titre stylisé (logo + nom + tagline) + boutons utilitaires
-           (alerte, doc). v1.7.3 — refonte D validée KARMA : logo rose des vents
-           jaune (mkm-full.png, déjà utilisé au splash → cohérence identité),
-           wordmark, tagline "Cartographie souterraine" en sous-titre italique.
-           Tous les bonus déco activés (ombre jaune accent, hover pulse,
-           taille +1024px). -->
       <div class="loader-header">
         <div class="loader-titre">
           <img src="icon/compass.svg" alt="" class="loader-titre-logo" draggable="false">
@@ -338,13 +215,8 @@
             <span class="loader-titre-tagline" data-i18n="home.tagline">Cartographie souterraine</span>
           </div>
         </div>
-        <!-- 🔎 HOME v2 (refonte KARMA 29/07, décision 1:a) : la recherche vit
-             dans l'EN-TÊTE, centrée — sa place naturelle (pattern app bar).
-             Fin définitive des problèmes d'alignement : elle n'appartient plus
-             à aucune grille. PC : pilule centrée entre logo et chips. Mobile :
-             le header passe en wrap, la barre prend la 2e ligne pleine largeur.
-             La barre reste masquée tant que la bibliothèque est vide
-             (refreshPlansList pose display:flex/none sur #loaderSearchBar). -->
+        <!-- Recherche dans l'en-tête, hors de toute grille : pilule centrée sur PC, 2e ligne pleine largeur sur
+             mobile. Masquée tant que la bibliothèque est vide (refreshPlansList pilote #loaderSearchBar). -->
         <div class="loader-search-wrap">
           <div class="loader-search-bar" id="loaderSearchBar" style="display:none;">
             <input type="search" id="loaderSearchInput" class="loader-search-input"
@@ -353,19 +225,13 @@
                    placeholder="🔎 Chercher un point dans tous mes plans…" autocomplete="off">
             <button type="button" id="loaderSearchBtn" class="loader-search-btn"
                     data-i18n-title="home.search.btnTitle" title="Chercher dans tous les plans">🔎</button>
-            <!-- 🔎 v1.72.1 (KARMA « même principe que la barre OSM ») : résultats
-                 EN DIRECT sous la barre — position:fixed, top/left/width posés en
-                 JS depuis le rect de l'input (même modèle éprouvé que la
-                 recherche du mode OSM). Entrée/🔎 = modale complète inchangée. -->
+            <!-- Résultats en direct : position:fixed, calée en JS sur le rect de l'input (même modèle que la recherche
+                 OSM). Entrée ou la loupe ouvre la modale complète. -->
             <div class="loader-search-results" id="loaderSearchResults" style="display:none;"></div>
           </div>
         </div>
         <div class="loader-header-actions">
-          <!-- 🌍 v1.46.0 (KARMA) — Le sélecteur de langue GLOBALE a été déplacé
-               du header vers la modale Configuration (après Incognito) : header
-               trop chargé sur mobile. Cf #loaderLangSection plus bas + js/main.js. -->
-          <!-- 📡 Fichiers hors-ligne manquants (lot B) : visible SEULEMENT quand la
-               pastille du pied de page est rouge ; clic = tout récupérer. -->
+          <!-- Visible seulement quand la pastille hors-ligne du pied de page est rouge ; clic = tout récupérer. -->
           <button class="loader-btn-help kta-offline-hdr" id="loaderOfflineHdrBtn" type="button" hidden>📥</button>
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" data-i18n-title="home.header.alert" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" data-i18n-title="home.header.help" title="Documentation utilisateur">📖</button>
@@ -373,54 +239,32 @@
         </div>
       </div>
 
-      <!-- 👤 BANDEAU PROFIL — Karma_dev pending : mini-profil utilisateur
-           (avatar + surnom + bouton ⚙️ Détails). Position en haut du
-           loader, juste sous le header. Avatar = photo si uploadée, sinon
-           initiale du surnom dans cercle coloré déterministe. Si pas de
-           surnom : affiche "Mon profil" en placeholder italique avec
-           avatar 👤 gris. Module : js/userProfile.js. Détails (édition,
-           stats, export/import) : modale #kta-profile-details-modal. -->
-      <!-- 🆕 v1.21.1 (KARMA) : bouton ⚙️ Détails RETIRÉ — toute la box est
-           cliquable pour ouvrir la modale Détails. Espace libéré utilisé
-           pour 2 stats compactes adaptatives (temps app + Mo storage). -->
-      <!-- 🆕 v1.40.42 (KARMA "en home sur pc on peut mettre profile et reprendre
-           sur la meme ligne") : wrapper `.kta-loader-top-row` qui regroupe
-           profile-bar + resumeBox.
-           - PC (≥ 1024px) : display:flex row → profile (flex:1) + resume (auto)
-             côte-à-côte sur 1 ligne.
-           - Mobile : display:contents → wrapper transparent, comportement
-             v1.40.41 préservé (chaque enfant garde son margin-bottom + stack
-             vertical naturel). -->
+      <!-- Bandeau profil + « Reprendre » : une ligne flex sur PC (≥ 1024 px) ; sur mobile, .kta-loader-top-row est
+           en display:contents (empilement). Toute la boîte du profil est cliquable (#kta-profile-details-modal) ;
+           avatar = photo, sinon initiale sur une couleur déterministe. -->
       <div class="kta-loader-top-row">
         <div id="kta-loader-profile-bar" class="kta-loader-profile-bar" role="button"
              tabindex="0" aria-label="Mon profil utilisateur" style="display:none;">
           <div class="kta-loader-profile-avatar-holder">
             <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
-              <!-- contenu généré dynamiquement par _refreshProfileBar() -->
+              <!-- rempli par homeProfile.js > _refreshLoaderProfileBar() -->
             </div>
-            <!-- 🆕 v1.52.0 : médaille de rang en bas-droite (cachée pour Touriste) -->
+            <!-- Médaille de rang (cachée pour Touriste) -->
             <span class="kta-loader-profile-badge" id="kta-loader-profile-badge" aria-hidden="true" style="display:none;"></span>
           </div>
           <div class="kta-loader-profile-info">
             <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting" data-i18n="home.profile.greeting">Bienvenue</div>
-            <!-- surnom = DYNAMIQUE (pseudo user OU placeholder) → pas de data-i18n
-                 (sinon _applyI18nDom écraserait le pseudo). Rempli + traduit par
+            <!-- ⚠️ Surnom dynamique : PAS de data-i18n (_applyI18nDom écraserait le pseudo). Rempli et traduit par
                  _refreshLoaderProfileBar via I18n.t("home.profile.placeholder"). -->
             <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
-            <!-- 🆕 v1.52.0 : nom du rang sous le pseudo -->
             <div class="kta-loader-profile-rank" id="kta-loader-profile-rank"></div>
           </div>
-          <!-- 🆕 v1.21.1 : stats compactes (cachées mobile < 600px via CSS).
-               🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
-               profile les 2 ou 3 stats") : stats désormais rendues
-               DYNAMIQUEMENT via _renderProfileBarStatsSlots selon
-               localStorage["myktamap_loader_bar_stats_v1"]. Default :
-               ["time", "storage"]. Pool : time / storage / plans.
-               Cap dur 3 max (mobile). Section de choix dans modale Profil. -->
+          <!-- Stats compactes rendues par _renderProfileBarStatsSlots selon localStorage `myktamap_loader_bar_stats_v1`
+               (défaut time + storage, 3 au plus, choix dans la modale Profil) ; masquées sous 600 px. -->
           <div class="kta-loader-profile-stats" id="kta-loader-profile-stats" aria-hidden="true"></div>
         </div>
 
-        <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
+        <!-- Reprendre le dernier plan (visible si lastPlanId existe) -->
         <div id="resumeBox" style="display:none; margin-bottom:14px;">
           <button id="resumeBtn" class="loader-btn-resume">
             ▶️ <span data-i18n="home.resume">Reprendre</span> <strong id="resumeName"></strong>
@@ -429,25 +273,17 @@
 
       </div>
 
-      <!-- ===== Layout 2 colonnes sur PC (≥1024px) — sur mobile/tablette
-           le wrapper se comporte en display:contents (transparent), tout
-           s'empile verticalement comme avant. ===== -->
+      <!-- Grille en colonnes sur PC (≥ 1024 px) ; display:contents en dessous (empilement). -->
       <div class="loader-grid">
 
-        <!-- ▬▬▬ COLONNE GAUCHE (60% PC) : 📚 Mes plans ▬▬▬ -->
         <div class="loader-col loader-col-plans">
 
 
-          <!-- 📚 MES PLANS — Karma_dev : les boutons d'export/import profil
-               ont été retirés d'ici pour être regroupés dans la nouvelle
-               modale "Mon profil" (cf. bandeau #kta-loader-profile-bar). -->
           <div id="myPlansBox" style="display:none; margin-bottom:14px;">
             <div class="loader-section-head">
               <span data-i18n="home.plans.title">📚 Mes plans</span>
-              <!-- 📁 16/09/2026 — sélecteur TOUT / DOSSIERS dans la ligne de titre
-                   (0 px ajouté), TOUJOURS visible (KARMA : « sinon on ne pourra
-                   jamais créer le premier dossier »). ➕ et ☑ n'apparaissent
-                   qu'en mode Dossiers. -->
+              <!-- Sélecteur Tout / Dossiers toujours visible (sinon impossible de créer le premier dossier) ;
+                   « Nouveau dossier » et « Sélectionner » seulement en mode Dossiers. -->
               <div class="kta-plans-head-tools" id="loaderPlansHeadTools">
                 <button type="button" class="kta-plans-head-btn" id="loaderPlansFolderNew" hidden data-i18n-title="home.plans.folders.newTitle" title="Nouveau dossier">➕</button>
                 <button type="button" class="kta-plans-head-btn" id="loaderPlansSelect" hidden data-i18n-title="home.plans.folders.select" title="Sélectionner">☑</button>
@@ -458,19 +294,18 @@
               </div>
             </div>
 
-            <!-- Filtres (v170) : toggle pour cacher les plans serveur (persisté localStorage) -->
+            <!-- Masquer les plans serveur (persisté en localStorage) -->
             <div class="loader-plans-filters">
               <label class="loader-plans-filter-row" data-i18n-title="home.plans.showServerTitle" title="Plans posés sur le site (data/index.json), lus au démarrage">
                 <input type="checkbox" id="loaderShowServerPlans" checked>
-                <!-- Un seul bloc texte : la rangée est en flex, la mention « hors base » partait dans une
-                     3e colonne coupée sur deux lignes à 390 px (audit UI du 05/10/2026). -->
+                <!-- Un seul bloc texte : la rangée est en flex, une 3e colonne coupait « hors base »
+                     sur deux lignes à 390 px. -->
                 <span><span data-i18n="home.plans.showServer">🌐 Afficher les plans du site</span>
                 <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></span>
               </label>
             </div>
-            <!-- 🏷️ v1.78.0 : organisation de la liste (KARMA 1+3+4) — filtre par
-                 nom (RAM only) + chips tags (visibles seulement si des tags
-                 existent). Les épinglés ⭐ remontent en tête du tri. -->
+            <!-- Filtre par nom (en mémoire seulement) + puces de tags (visibles s'il existe des tags) ;
+                 les plans épinglés remontent en tête. -->
             <input class="kta-plans-name-filter" id="loaderPlansNameFilter" type="search"
                    aria-label="Filtrer par nom" data-i18n-aria-label="home.plans.filterName"
                    data-i18n-placeholder="home.plans.filterName" placeholder="🔎 Filtrer par nom…" autocomplete="off">
@@ -481,16 +316,9 @@
 
         </div><!-- /.loader-col-plans -->
 
-        <!-- 🆕 v1.40.0 — COLONNE MILIEU (PC ≥1024px) : 🌍 Vue OSM mini-preview.
-             Mobile : section pile entre Mes plans et Ajouter.
-             Mode léger : marker pointA + marker pointB georef sur OSM (pas
-             d'extraction ZIP, pas de tuiles plan ni data layers — kept light
-             pour boot HOME rapide). Bouton ⛶ ouvre la modale Vue OSM
-             full-screen (charge le plan complet en map mode + déclenche open).
-             Comportement adaptatif :
-              - Pas opt-in OSM → message + bouton "Autoriser OSM"
-              - Aucun plan georef → message pédagogique + lien vers Générateur
-              - Sinon → carte + dropdown sélection plan -->
+        <!-- Colonne du milieu (PC) : aperçu Vue OSM léger (points A / B géoréférencés, ni ZIP ni tuiles du plan,
+             pour un accueil rapide) ; ⛶ ouvre la Vue OSM complète. Sans opt-in OSM : bouton d'autorisation ;
+             sans plan géoréférencé : message + lien vers le Générateur. -->
         <div class="loader-col loader-col-osm">
           <div id="ktaOsmHomeBox" class="kta-osm-home-box">
             <div class="loader-section-head">
@@ -503,10 +331,8 @@
           </div>
         </div><!-- /.loader-col-osm -->
 
-        <!-- ▬▬▬ COLONNE DROITE (PC) : 📦 Ajouter + ⚙️ Plus d'options ▬▬▬ -->
         <div class="loader-col loader-col-actions">
 
-          <!-- 📦 CHARGER UN NOUVEAU PLAN — bloc cohérent -->
           <div class="loader-section-head">
             <span data-i18n="home.add.title">📦 Ajouter un plan</span>
           </div>
@@ -517,34 +343,19 @@
           <span data-i18n="home.add.drop">Glisse un fichier ici</span><br>
           <span style="font-size:12px; opacity:0.6;" data-i18n="home.add.dropSub">ou clique pour sélectionner</span>
           <span class="zip-drop-sig" data-i18n="home.add.dropSig">.zip · .kmz · .gpx · .geojson · .kml · .json · .tif</span>
-          <!-- v1.14.20-hotfix6 + v1.15.0 — accept étendu à .kmz et .gpx :
-               un KMZ ou un GPX déposé ici est routé vers sa modale d'import
-               dédiée (afficherImporterKmz / afficherImporterGpx) qui le
-               reconvertit en ZIP MyKTAMap utilisable.
-               🗺️ v1.75.2 — + .geojson / .kml / .json : routés vers
-               afficherImporterSig. Avant, l'accueil les REFUSAIT (« le fichier
-               doit être une archive .zip ») et la conversion SIG n'était
-               atteignable que depuis la zone d'import du Générateur. -->
+          <!-- Les .kmz / .gpx / .geojson / .kml / .json / .tif déposés ici partent vers leur import dédié
+               (afficherImporterKmz / Gpx / Sig), qui les convertit en ZIP MyKTAMap. -->
           <input id="zipFile" type="file" aria-label="Ajouter un plan" data-i18n-aria-label="home.add.title" accept=".zip,.kmz,.gpx,.geojson,.kml,.json,.tif,.tiff,.jpg,.jpeg,.png,.webp,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml,image/tiff,image/jpeg,image/png,image/webp">
         </div>
         <div id="zipFileName"></div>
 
 
-        <!-- Bouton principal Charger -->
         <div class="loaderActions">
           <button id="loadPlanBtn" type="button" data-i18n="home.add.load">▶️ Charger ce plan</button>
         </div>
       </div>
 
-          <!-- 🏗️ Bouton "Générer un plan" — accessible directement (sortie de
-               'Plus d'options' v1.7.3). Cohérent avec son importance : c'est
-               la voie d'entrée pour créer/modifier un plan, pas une option
-               avancée cachée.
-               🧹 v1.69.0 (allègement du HOME, demande KARMA) : la liste passe
-               de 5 à 4 entrées — « 🌐 Recherche multi-plans » devient la barre
-               de recherche au-dessus de la liste des plans, « 🔗 Fusionner des
-               datalayers » rejoint les sources de l'Éditeur de données, et
-               « 📔 Mon carnet » entre ici au lieu d'être isolé au-dessus. -->
+          <!-- « Générer un plan » est ici, accessible directement : c'est la voie d'entrée pour créer un plan. -->
           <div class="loader-section-head loader-tools-head">
             <span data-i18n="home.tools.title">🧰 Outils</span>
           </div>
@@ -552,13 +363,11 @@
             <button class="loader-btn-secondary" type="button" id="loaderJournalBtn" data-i18n="home.add.journal">📔 Mon carnet</button>
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
             <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
-            <!-- 📸 10/10/2026 — galerie de toutes les photos, rattachées ou non (js/photosGalerie.js) -->
+            <!-- Galerie de toutes les photos, rattachées ou non (js/photosGalerie.js) -->
             <button class="loader-btn-secondary" type="button" id="loaderPhotosBtn" data-i18n="home.add.photos">📸 Mes photos</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
-            <!-- 📦 v1.94.0 — import multiple. Il vit ICI, avec les outils
-                 occasionnels (KARMA : « pas forcément utilisé bcp ») et non
-                 dans « Ajouter un plan », où il s'intercalait entre la zone de
-                 dépôt et « Charger ce plan » — deux gestes quotidiens. -->
+            <!-- Import multiple : parmi les outils occasionnels, pas dans « Ajouter un plan » entre deux gestes
+                 quotidiens (décision produit). -->
             <button class="loader-btn-secondary" type="button" id="loaderImportMasseBtn" data-i18n="impmasse.btn.ouvrir">📦 Importer plusieurs plans</button>
           </div>
 
@@ -566,39 +375,21 @@
 
       </div><!-- /.loader-grid -->
 
-      <!-- Input caché pour import de liste -->
-      <!-- 📦 v1.79.0 : .zip accepté — profil COMPLET (conteneur profil.json + plans/) -->
+      <!-- Import de profil caché : liste de plans (.config / .json) ou profil complet .zip (profil.json + plans/). -->
       <input id="importListFile" type="file" aria-label="Fichier de liste de plans à importer" accept=".config,.json,.zip,application/json,application/zip" style="display:none;">
 
       <div id="loaderStatus"></div>
 
-      <!-- Mention copyright + licence (visible côté utilisateur).
-           v1.7.3 : seule la mention "Flavien VIDAL" (nom civil) est
-           retirée — elle reste présente dans les headers copyright des
-           fichiers JS critiques + meta tags <head>, donc la force
-           probante légale est préservée.
-           L'image karma.png (signature manuscrite, alias artistique
-           visible) est CONSERVÉE comme identité du copyright, cohérente
-           avec le splash. Le footer final affiche : "© 2026 [karma.png]
-           · CC BY-NC-SA 4.0 · Usage commercial interdit · vX.Y.Z".
-           Le span .kta-loader-copyright-line2 wrappe la partie licence
-           pour permettre un line-break sur mobile (CSS @media). -->
-      <!-- 🔽 v1.71.0 (KARMA) — footer REPLIABLE : petite flèche classique,
-           état persisté (LS myktamap_home_footer_replie_v1, embarqué dans
-           l'export de profil via PREF_KEYS). Replié : le bloc complet est
-           masqué, la barre de bascule garde une mention minimale
-           « © MyKTAMap · vX » (la mention légale complète reste à 1 clic —
-           on ne supprime jamais le copyright, on le replie). -->
+      <!-- Pied de page légal : pas de nom civil (il reste dans les en-têtes des fichiers et les meta du <head>) ;
+           la signature karma.png tient lieu d'identité. .kta-loader-copyright-line2 permet la coupure sur mobile. -->
+      <!-- Pied de page repliable (LS `myktamap_home_footer_replie_v1`, exporté avec le profil via PREF_KEYS).
+           Replié, la barre garde une mention minimale (+ version) : on replie le copyright, on ne le supprime jamais
+           (décision produit). -->
       <button id="loaderFooterToggle" class="kta-footer-toggle" type="button"
               data-i18n-title="home.footer.toggleTitle" title="Réduire / déplier le pied de page" aria-expanded="true">▾</button>
       <div class="kta-loader-copyright" id="loaderFooterBlock">
-        <!-- 🏷️ v1.28.2 : copyright dual community ↔ pro.
-             - Bloc .kta-licence-community : visible par défaut (community)
-             - Bloc .kta-licence-pro : visible UNIQUEMENT si <html> ou <body>
-               porte la classe .kta-instance-pro (posée par proLicense.js
-               après détection de /Licence-pro.json).
-             - Version + libs (citations légales) restent visibles dans les
-               deux modes (obligation open source). -->
+        <!-- Variantes community / pro : .kta-licence-pro n'est visible que si <html> ou <body> porte .kta-instance-pro
+             (proLicense.js). Version et librairies restent visibles dans les deux modes (obligation open source). -->
         <span class="kta-licence-community"><span>&copy; 2026</span>
           <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
         </span>
@@ -615,60 +406,32 @@
             <span class="kta-loader-copyright-pro-badge" data-i18n="home.footer.proBadge">✓ Licence professionnelle active</span>
           </span>
           <span class="kta-loader-copyright-sep">·</span>
-          <!-- 📡 Pastille « hors-ligne » (lot B, 03/10/2026) : état du cache hors-ligne,
-               peinte par js/homeConfig.js > _initPastilleHorsLigne (title/aria au rendu).
-               Élément FRÈRE du badge (celui-ci réécrit son propre texte), soudé à lui
-               par .kta-offline-groupe (nowrap) pour ne pas partir seul à la ligne. -->
+          <!-- Pastille hors-ligne, peinte par js/homeConfig.js > _initPastilleHorsLigne. Élément FRÈRE du badge de
+               version (qui réécrit son propre texte), soudé à lui par .kta-offline-groupe (nowrap). -->
           <span class="kta-offline-groupe"><span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span><button type="button" class="kta-offline-dot" id="loaderOfflineDot" hidden></button></span>
-          <!-- 🔌 v2.0.0 : pastille « connexion serveur », peinte par js/ktaExtensions.js
-               (classe de couleur, mot, title/aria au rendu). Groupe insécable à part :
-               sous 380 px, seule l'icône reste (le mot est dans l'infobulle et la modale).
-               Clic → modale « Que fait l'app sur le réseau ? ». -->
+          <!-- Pastille « connexion serveur », peinte par js/ktaExtensions.js. Groupe insécable à part : sous 380 px,
+               seule l'icône reste. Clic → modale « Que fait l'app sur le réseau ? ». -->
           <span class="kta-cnx-groupe"><span class="kta-loader-copyright-sep">·</span><button type="button" class="kta-cnx-chip" id="loaderCnxChip" hidden><span class="kta-cnx-ico" aria-hidden="true">🔌</span><span class="kta-cnx-mot"></span></button></span>
         </span>
-        <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer du home nos
-             nouvelles citations") : mention des libs + algo majeurs du
-             projet, en cohérence avec le crédit affiché en bas-gauche
-             du splash. Ligne séparée pour la lisibilité. -->
-        <!-- 🆕 v1.28.0 — Contact : Instagram (communauté) + page pro
-             (licence commerciale). Liens SORTANTS uniquement (target=_blank, pas
-             d'embed) → aucune requête réseau ajoutée par l'app. Corrige le
-             manque de canal de contact réel (le site n'en proposait aucun).
-             Placé AVANT les citations libs (KARMA) pour mettre le contact
-             plus visible et garder les crédits en clôture du footer.
-             🆕 v1.28.2 — Lien "💼 Licence pro" wrappé en .kta-licence-community
-             (masqué sur instance pro où ce n'est plus pertinent — déjà sous
-             licence). -->
+        <!-- 🔒 Contact : liens SORTANTS seulement (target=_blank, aucun embed) → aucune requête ajoutée.
+             « Licence pro » est masqué sur une instance pro (.kta-licence-community). -->
         <div class="kta-loader-credits kta-loader-contact">
           📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">@karma_kta</a>
           · ✉️ <a href="mailto:contact@myktamap.fr">contact@myktamap.fr</a>
           <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr/presentation/" target="_blank" rel="noopener noreferrer" data-i18n="home.footer.proLink">Licence pro</a></span>
-          <!-- 🆕 v1.56.0 — ré-accès aux Conditions d'utilisation (consultation, non bloquant) -->
+          <!-- Conditions d'utilisation, en consultation (non bloquant) -->
           · ⚖️ <a href="#" id="kta-footer-cgu" data-i18n="legal.footer.link">Conditions d'utilisation</a>
         </div>
         <div class="kta-loader-credits">
-          <!-- 🆕 v1.40.29 — ajout 🌍 OSM (Vue OSM v1.39+ opt-in). Affiché dans
-               le loader HOME, identique en mode community et pro (la mention
-               "💼 Licence pro" community-only est gérée par .kta-licence-community
-               au-dessus, pas ici). -->
-          <!-- 🆕 v1.43.18 — `&nbsp;` entre emoji et nom de chaque lib pour
-               empêcher le wrap de couper la paire (KARMA "à la ligne bizarre
-               avec html2canvas qui passe seul sur la 2e ligne"). Le séparateur
-               `·` reste sur espace normal pour permettre le wrap entre 2 libs. -->
+          <!-- Crédits identiques en community et pro. &nbsp; entre emoji et nom : la paire ne se coupe jamais,
+               la coupure se fait sur « · ». -->
           🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 🆕 v1.7.3 : Modale "⚙️ Configuration" du loader.
-       Regroupe tout ce qui était auparavant éparpillé :
-         • Drawer "🎚️ Réglages de performance" (Tiling + ULTRA)
-         • Bouton 🐛 Logs détaillés
-         • Bouton 💥 Tout réinitialiser
-       Cachée par défaut (display:none), affichée au clic sur le bouton ⚙️
-       du header loader. Pattern .kta-readme-modal-overlay pour cohérence
-       avec les autres modales du projet. -->
+  <!-- Modale Configuration de l'accueil (motif .kta-readme-modal-overlay). -->
   <div id="loaderConfigModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-loader-config-boite">
       <div class="kta-readme-modal-header">
@@ -677,25 +440,16 @@
       </div>
       <div class="kta-readme-modal-corps kta-loader-config-corps">
 
-        <!-- ════════════════════════════════════════════════════════════════
-             v1.45.x (KARMA) — REFONTE ERGONOMIQUE : sections regroupées par
-             thèmes (en-têtes .kta-cfg-group-titre), ordre calé sur la modale
-             PLAN. ZÉRO changement de logique : blocs déplacés tels quels, tous
-             les id / class / data-i18n / listeners inline conservés intacts.
-             Clés config.group.* créées côté modale PLAN (lang/_frag3_reorg.json).
-             ════════════════════════════════════════════════════════════════ -->
+        <!-- Sections regroupées par thèmes (.kta-cfg-group), dans l'ordre de la modale du mode plan ;
+             clés config.group.* partagées avec elle. -->
 
-        <!-- ═══ GROUPE 1 : 🌍 Application ═══ -->
         <div class="kta-cfg-group" data-cfg-group="config.group.application">
         <div class="kta-cfg-group-titre" style="margin:4px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.application">🌍 Application</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
-        <!-- 🌍 v1.46.0 (KARMA) — Sélecteur de LANGUE GLOBALE de l'app, déplacé du
-             header HOME vers ici (après Incognito). Pilote toute l'interface
-             (clé myktamap_app_lang). Options peuplées par JS depuis
-             I18n.available() via _initHomeLangSelect(). Au change : I18n.setLang()
-             + ré-application i18n en place (HOME + cette modale), pas de reload
-             → compatible incognito. Cf js/main.js. -->
+        <!-- Langue globale (myktamap_app_lang) : options peuplées par main.js > _initHomeLangSelect() depuis
+             I18n.available() ; au changement, I18n.setLang() + ré-application en place, sans rechargement
+             (compatible incognito). -->
         <div class="kta-aide-section" id="loaderLangSection">
           <div class="kta-cfg-lang-row">
             <label class="kta-cfg-lang-label" for="loaderAppLang"><span data-i18n="home.lang.label">Langue</span></label>
@@ -705,14 +459,12 @@
 
         </div></div><!-- /kta-cfg-group -->
 
-        <!-- ═══ GROUPE 2 : 🎨 Affichage ═══ -->
         <div class="kta-cfg-group" data-cfg-group="config.group.affichage">
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.affichage">🎨 Affichage</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
-        <!-- ⚙️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES GLOBAUX RAPATRIÉS ICI
-             depuis la config du mode plan. Ils valent pour TOUS les plans :
-             les régler depuis un plan donnait l'impression du contraire. -->
+        <!-- Réglages GLOBAUX, valables pour tous les plans : ils vivent ici, pas dans la config du mode plan,
+             qui laissait croire le contraire. -->
         <div class="kta-aide-section">
           <label class="kta-perf-ultra-row">
             <input type="checkbox" id="loaderScaledMarkers">
@@ -720,18 +472,16 @@
               <span class="kta-perf-ultra-label" data-i18n="config.display.scaledMarkers.label"></span>
             </span>
           </label>
-          <!-- ❓ v1.94.0 (D35, exigence KARMA) — l'aide contextuelle se coupe.
-               Défaut ACTIVÉ : une aide ne sert que si elle se voit. Celui que
-               l'icône dérange la coupe une fois, pour tous ses plans. -->
+          <!-- Aide contextuelle : activée par défaut (une aide ne sert que si elle se voit) ;
+               la couper vaut pour tous les plans. -->
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderAideCtxCb">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.aidectx.label">❓ Bouton d'aide dans les fenêtres</span>
             </span>
           </label>
-          <!-- 🔕 17/09/2026 (KARMA : « beaucoup de popups d'information inutiles ») —
-               niveau des notifications, un seul goulot (OOMGuard.showToast).
-               Les alertes serveur et les fenêtres de décision ne sont jamais coupées. -->
+          <!-- Niveau des notifications, un seul goulot (OOMGuard.showToast). Les alertes serveur et les fenêtres
+               de décision ne sont jamais coupées. -->
           <div class="kta-perf-ultra-row kta-notifs-row" style="margin-top:10px;">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" id="loaderNotifsLabel" data-i18n="config.notifs.label">🔔 Notifications</span>
@@ -766,48 +516,15 @@
           </div>
         </div>
 
-        <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
-             Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user
-             peut basculer ici aussi sans avoir à charger un plan.
-             Coché = ancienne interface (classique v1.8.x)
-             Décoché (défaut) = nouvelle interface (refonte v1.2)
-
-             ⚠️ Position v1.8.1-refonte-17 (suite KARMA) : déplacé AVANT
-             "🔄 Mise à jour" pour que Force update + Reset se suivent
-             directement. Logique narrative respectée :
-               1. Confidentialité (informatif, doux)
-               2. Affichage (préférence UI, doux, reload simple)
-               3. Force update (purge cache, garde data)
-               4. Reset (purge totale, irréversible)
-             Update+Reset consécutifs = pattern "actions de purge en
-             gradation" plus lisible. -->
         <div class="kta-aide-section">
-          <!-- v1.14.19 (KARMA) : la checkbox « 📜 Utiliser l'ancienne interface »
-               est retirée. La nouvelle interface (header bar + sidebars unifiées
-               + status bar) est désormais imposée pour tout le monde. -->
-          <!-- 🆕 v1.9.2 → 🗑️ v1.36.2 : le toggle "⚪ Afficher les ronds aux
-               intersections de tracés" a été RETIRÉ de Configuration home et
-               déplacé dans ⚙️ Réglages map mode (per-plan). Raison KARMA :
-               l'option est devenue plan-dépendante (un plan dense peut nécessiter
-               de désactiver les ronds, un plan léger n'a pas besoin). Stockage
-               LS per-plan + fallback global rétrocompat pour préserver le choix
-               historique des users qui avaient désactivé globalement. -->
 
-          <!-- 🆕 v1.13.0-fix2 (KARMA "possibilité d'activer ou non depuis le conf home") :
-               toggle thème clair / sombre accessible depuis la home aussi
-               (en plus du toggle dans ⚙️ Paramètres > Thème en mode carte).
-               Cette case et le toggle map-mode pointent sur le même
-               ThemeManager → réglage unique persisté en localStorage. -->
+          <!-- Thème clair : même ThemeManager que le réglage du mode carte → un seul réglage persisté. -->
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(244, 197, 66, 0.08); border-color: rgba(244, 197, 66, 0.30);">
             <input type="checkbox" id="loaderThemeLightCb">
             <span data-i18n-html="home.cfg.themeLight"><strong>☀️ Thème clair</strong></span>
           </label>
-          <!-- 🆕 v1.21.1+ (KARMA "on doit pouvoir l'activer aussi depuis
-               parametre du home") : toggle Wake Lock dans Configuration home
-               aussi (parité avec ⚙️ Réglages map mode). Visible UNIQUEMENT
-               si WakeLock.isSupported() (Chrome/Edge/Safari iOS 16.4+,
-               PAS Firefox). Sync UI ↔ state via window.WakeLock — les 2
-               toggles (home + map mode) pointent sur le même module. -->
+          <!-- Wake Lock : visible seulement si WakeLock.isSupported() (pas Firefox) ; même module que le réglage
+               du mode carte. -->
           <label class="kta-net-paranoia-toggle" id="loaderWakeLockRow" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22); display:none;">
             <input type="checkbox" id="loaderWakeLockCb">
             <span data-i18n-html="home.cfg.wakeLock"><strong>🔆 Garder l'écran allumé</strong></span>
@@ -816,14 +533,9 @@
 
         </div></div><!-- /kta-cfg-group -->
 
-        <!-- ═══ GROUPE 2 bis : 🧩 Fonctionnalités optionnelles ═══
-             (ex-« Options via capteur » v1.85.2, élargi le 01/10/2026, décision
-             KARMA : désencombrer l'app). Tout est OFF par défaut. Réglages
-             d'APPAREIL, pas de plan. Ils existent aussi dans la modale du mode
-             plan — même état partagé (APP_CONFIG + app_user_prefs), aucune
-             divergence possible.
-             ⚠️ Une option dont le capteur manque n'est PAS masquée : elle
-             s'affiche désactivée avec sa raison (cf. window.ktaCapteurRefuse). -->
+        <!-- ⚠️ Fonctionnalités optionnelles : OFF par défaut, réglages d'APPAREIL (pas de plan), même état que la
+             modale du mode plan (APP_CONFIG + app_user_prefs). Une option dont le capteur manque n'est PAS masquée :
+             elle s'affiche désactivée avec sa raison (window.ktaCapteurRefuse). -->
         <div class="kta-cfg-group" data-cfg-group="config.group.optionnels">
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">🧩 Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
@@ -847,58 +559,29 @@
               <span id="loaderVibrationHint" class="kta-cfg-raison"></span></span>
           </label>
         </div>
-        <!-- 🕵️ Mode incognito : dans les fonctionnalités optionnelles depuis le 07/10/2026 (KARMA). Grisé sur une
-             installation reliée (IncognitoMode.indisponible). -->
+        <!-- Mode incognito : grisé sur une installation reliée (IncognitoMode.indisponible). -->
         <div class="kta-aide-section" id="loaderIncognitoSection">
           <button class="kta-cfg-incognito-btn" type="button" id="loaderIncognitoBtn">
             <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
             <span><strong id="loaderIncognitoLabel">Démarrer en mode incognito</strong></span>
           </button>
           <div id="loaderIncognitoHint" class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">
-            <!-- Rempli dynamiquement par le script bind plus bas. -->
+            <!-- Rempli par js/homeConfig.js. -->
           </div>
 
-        <!-- ⚠️ v1.85.3 / v1.85.4 (audit KARMA) — LE GROUPE « 🚀 PERFORMANCE »
-             A DISPARU DE CET ÉCRAN, en deux temps et pour deux raisons
-             différentes :
-
-             • v1.85.3 — les toggles PERF ULTRA ne sauvegardaient RIEN ici :
-               `perfUltra.js > _persist()` sort sans écrire quand aucun plan
-               n'est chargé, ce qui est TOUJOURS le cas au HOME. On cochait,
-               l'interface répondait, le réglage mourait au plan suivant — qui
-               reconstruit son état depuis SA clé `myktamap_perf_toggles_v2_…`.
-               Ce sont des réglages PAR PLAN depuis la v1.59.0 : ils se règlent
-               dans ⚙️ Réglages une fois le plan ouvert. Les remettre ici avec
-               une persistance « défaut pour les prochains plans » ré-introduirait
-               le bug corrigé alors (cocher ULTRA sur un gros plan l'appliquait
-               silencieusement à TOUS).
-
-             • v1.85.4 — le sélecteur de TUILAGE est descendu dans la carte de
-               chargement, contre le bouton « Charger ce plan ». Il n'est pas
-               mémorisé et ne vaut que pour le chargement qu'on lance : le
-               ranger parmi les réglages le faisait passer pour une préférence
-               durable, ce qu'il n'a jamais été. -->
+        <!-- 🩸 Ni PERF ULTRA ni tuilage ici. PERF ULTRA est PAR PLAN : `perfUltra.js > _persist()` n'écrit rien sans
+             plan chargé (toujours le cas à l'accueil) — on cochait, le réglage mourait au plan suivant, qui relit
+             SA clé `myktamap_perf_toggles_v2_…`. Un « défaut pour les prochains plans » appliquerait ULTRA en
+             silence à TOUS. Le sélecteur de tuilage vit près de « Charger ce plan » : il ne vaut que pour ce
+             chargement, ce n'est pas une préférence. -->
         </div></div><!-- /kta-cfg-group -->
 
-        <!-- ═══ GROUPE 4 : 🔒 Confidentialité & sécurité ═══ -->
         <div class="kta-cfg-group" data-cfg-group="config.group.privacy">
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.privacy">🔒 Confidentialité &amp; sécurité</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
-        <!-- 🕵️ v1.31.9 : Mode incognito — bouton accessible AVANT chargement
-             plan (home/loader) pour tester un import en mode privé directement.
-             Le label / l'action sont remplis dynamiquement par le script inline
-             plus bas selon l'état de window.IncognitoMode.active : "Démarrer"
-             si pas actif, "Quitter" si actif. Section .kta-aide-section
-             cohérente avec le pattern des autres groupes (Perf, Debug, etc.).
-             Le texte est injecté en JS pour rester DRY avec la modale Réglages
-             carte (interfaceConfig.js). -->
-        <!-- 📔 v1.92.0 (audit ergonomie, décision KARMA 14/09/2026) — LE CARNET
-             SE RÈGLE ICI, PLUS DEPUIS UN PLAN. Il est GLOBAL (clé
-             myktamap_journal_enabled, valable pour tous les plans) et il
-             s'ouvre depuis l'accueil : le régler depuis un plan laissait croire
-             qu'on ne décidait que pour ce plan-là. Même raisonnement que les
-             quatre réglages rapatriés en v1.85.3. -->
+        <!-- Carnet : réglage GLOBAL (myktamap_journal_enabled), ouvert depuis l'accueil — le régler depuis un plan
+             laissait croire qu'il ne valait que pour ce plan. -->
         <div class="kta-aide-section">
           <label class="kta-perf-ultra-row" id="loaderJournalRow">
             <input type="checkbox" id="loaderJournalCb">
@@ -906,11 +589,8 @@
               <span class="kta-perf-ultra-label" data-i18n="config.journal.label">📔 Tenir un carnet de mes sorties</span>
             </span>
           </label>
-          <!-- 💾 15/09/2026 (KARMA : « ce truc à cocher alourdit pour rien le
-               home ») — la case « Mémoriser ce plan dans l'app » quitte
-               l'accueil et devient ce réglage, ACTIVÉ par défaut. Source de
-               vérité : window.ktaMemoriserPlanActif() (homeLoader.js), lue
-               au chargement d'un plan et par l'import multiple. -->
+          <!-- Mémoriser le plan : activé par défaut. Source de vérité : window.ktaMemoriserPlanActif() (homeLoader.js),
+               lue au chargement d'un plan et par l'import multiple. -->
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderMemoriserCb">
             <span class="kta-perf-ultra-text">
@@ -921,11 +601,9 @@
 
         </div>
 
-        <!-- 🔐 Code d'accès local (v1.9.4 — KARMA 7:b "loader uniquement").
-             Couche perso optionnelle par-dessus UnlockGate communautaire.
-             Cf. js/pinLock.js pour le moteur (hash SHA-256 + WebAuthn
-             biométrie + lockout 5 tentatives). UI d'activation/modif/désactivation
-             gérée par le script inline plus bas (window._pinSetupHandlers). -->
+        <!-- 🔒 Code d'accès local : couche optionnelle au-dessus d'UnlockGate. Moteur js/pinLock.js (SHA-256,
+             WebAuthn, temporisation après 5 échecs, jamais de verrou définitif) ;
+             actions peintes par js/homeConfig.js. -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.cfg.pinTitle">🔐 Code d'accès local</div>
           <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.cfg.pinHint">⚠️ <strong>Aucune récupération en cas d'oubli</strong> (il faut tout effacer). Barrière d'usage, pas un chiffrement.</p>
@@ -938,17 +616,8 @@
           </div>
         </div>
 
-        <!-- 🔒 Confidentialité & Audit réseau (v1.8.0 "Privacy & Audit")
-             Trois actions :
-               1. 📋 Voir le journal réseau live (modale buffer)
-               2. 📖 Que fait l'app sur le réseau ? (modale doc + lien doc/NETWORK_AUDIT.md)
-               3. 🗺️ Vue OSM (seul accès à un tiers : le fond de carte OpenStreetMap)
-             Cf. docs/NETWORK_AUDIT.md pour la doc complète.
-
-             ⚠️ Ordre v1.8.0 (suite KARMA) : Confidentialité avant Force update
-             et avant Reset. Logique narrative : actions douces / informatives
-             d'abord (audit, Vue OSM), puis actions de purge progressive
-             (Force update = cache PWA uniquement, Reset = tout). -->
+        <!-- 🔒 Confidentialité : journal réseau, explication réseau, opt-in Vue OSM (seul tiers contacté).
+             Doc complète : docs/NETWORK_AUDIT.md. -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.privacy.title">🔒 Confidentialité &amp; Audit</div>
           <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;" data-i18n="home.privacy.netLogBtn">
@@ -957,28 +626,17 @@
           <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" data-i18n="home.privacy.netDocBtn">
             📖 Que fait l'app sur le réseau ?
           </button>
-          <!-- Case "Vue OSM" (autorise tile.openstreetmap.org, seul tiers que
-               l'app contacte). Cochée par défaut depuis v1.90.2 ; décochée,
-               ni le widget de l'accueil ni la modale Vue OSM ne chargent de
-               tuile (cf js/osmView.js > isOptedIn). -->
+          <!-- Vue OSM (tile.openstreetmap.org) : cochée par défaut ; décochée, ni le widget de l'accueil ni la modale
+               ne chargent de tuile (js/osmView.js > isOptedIn). -->
           <label class="kta-net-paranoia-toggle">
             <input type="checkbox" id="loaderOsmOptInCb">
             <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — contacte <code>tile.openstreetmap.org</code> quand l'accueil ou la Vue OSM affiche la carte. Activée par défaut.</span>
           </label>
         </div>
 
-        <!-- 🆕 v1.21.3 (KARMA "rajoute une option dans les parametre — ne pas
-             charger les plan serveur au démarrage, ete en // si actif on a pu
-             le cocher decocher du home afficher les plan serveur. car la plus
-             part des user ne veule pas voir les plan server. peut en plus
-             fausser nos statistique") : pref dédiée pour skip l'auto-discovery
-             serveur (`data/index.json`) au boot. Si actif :
-               • main.js > initApp skip l'appel à decouvrirPlansServeur()
-               • Le toggle "Afficher plans serveur" du home est masqué
-               • Les plans `type === "server"` sont filtrés des stats agrégées
-                 du bandeau profil + section "📊 Mes plans"
-             Reload requis pour effet immédiat (sinon les plans serveur déjà
-             chargés au boot courant restent). -->
+        <!-- Ne pas charger les plans du site : main.js > initApp saute decouvrirPlansServeur() (data/index.json),
+             le filtre « Afficher les plans du site » est masqué, les plans `type === "server"` sortent des stats
+             du profil. Effet au rechargement. -->
         <div class="kta-aide-section" id="loaderSitePlansSection">
           <div class="kta-perf-titre"><span data-i18n="home.cfg.serverPlansTitle">📚 Plans du site</span>
             <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></div>
@@ -990,55 +648,30 @@
 
         </div></div><!-- /kta-cfg-group -->
 
-        <!-- ═══ GROUPE 5 : 🛠️ Système & maintenance ═══ -->
         <div class="kta-cfg-group" data-cfg-group="config.group.system">
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.system">🛠️ Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
-        <!-- 🐛 Logs détaillés
-             v1.7.3 (suite KARMA) : ajout du bouton 📋 Afficher les logs juste
-             en-dessous du toggle ON/OFF. Avant, l'user devait charger un plan
-             puis ouvrir ⚙️ Réglages > 🐛 Logs pour consulter le buffer. Désormais
-             le buffer est accessible directement depuis la home, ce qui est
-             pratique en cas de bug bloquant au chargement (l'user n'a pas accès
-             à la modale ⚙️ Réglages in-app). -->
-        <!-- 🛠️ v1.76.3 (refonte KARMA) : la section « Debug » devient le
-             MODE DÉVELOPPEUR — toggle protégé par mdp (hash SHA-256, même
-             principe que la gate communautaire), contenant les logs
-             détaillés (le select des Réglages plan a été supprimé — 2:b),
-             l'affichage des logs, ConfAdmin et l'inspecteur Service Worker.
-             Le conteneur est peuplé par js/devMode.js > initSection(). -->
+        <!-- Mode Développeur, protégé par mot de passe (hash SHA-256) : logs détaillés et leur affichage, ConfAdmin,
+             inspecteur Service Worker. Peuplé par js/devMode.js > initSection(). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="devmode.title">🛠️ Mode Développeur</div>
           <div id="kta-devmode-wrap"></div>
         </div>
 
-        <!-- 📊 Inspecteur mémoire (depuis v1.19.0)
-             Outil de transparence + debug. Affiche un topo lisible de tout
-             ce qui est chargé en mémoire localement par l'app :
-               - localStorage (clés MyKTAMap + tailles)
-               - IndexedDB (bases + entries par store)
-               - Cache PWA (cache actif + assets)
-               - Storage estimate navigateur (usage/quota)
-               - Runtime (plan chargé, session active, modules)
-             Bouton 📋 Copier le rapport pour partager par DM en cas de bug. -->
+        <!-- Inspecteur mémoire : localStorage, IndexedDB, cache PWA, quota, runtime ; rapport copiable. -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.inspector.title">📊 Inspecteur</div>
           <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" data-i18n="home.inspector.memBtn">
             📊 Voir l'état mémoire
           </button>
-          <!-- 🔧 L'inspecteur Service Worker (#loaderSwInspectorBtn) vit dans le
-               🛠️ Mode Développeur (js/devMode.js, mode actif seulement). L'état
-               du cache hors-ligne est montré à tous par la pastille du pied de page. -->
+          <!-- L'inspecteur Service Worker (#loaderSwInspectorBtn) vit dans le Mode Développeur (js/devMode.js).
+               L'état du cache hors-ligne est montré à tous par la pastille du pied de page. -->
         </div>
 
-        <!-- 🆘 Dépannage (lot A, 03/10/2026) — UN seul bouton visible.
-             Les trois outils de dépannage (🔄 Forcer la mise à jour, 🆘 Kill SW,
-             💥 Tout réinitialiser) vivent dans la fenêtre #kta-depannage-modal,
-             construite à l'ouverture par js/homeConfig.js > _ouvrirDepannage(),
-             rangés du plus doux au plus radical. Leurs ids historiques
-             (#loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn) sont
-             portés par les boutons de la fenêtre. -->
+        <!-- Dépannage : un seul bouton. La fenêtre #kta-depannage-modal (js/homeConfig.js > _ouvrirDepannage)
+             range du plus doux au plus radical : Forcer la mise à jour, Kill SW, Tout réinitialiser — boutons
+             #loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn. -->
         <div class="kta-aide-section">
           <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;" data-i18n="home.cfg.depannage.btn"
                   data-i18n-title="home.cfg.depannage.hint" title="L'app ne se met pas à jour, reste bloquée ou plante">
@@ -1051,10 +684,7 @@
     </div>
   </div>
 
-  <!-- 🆕 v1.8.0 : Modale "📋 Journal réseau" — live audit des requêtes
-       fetch/XHR/sendBeacon/WebSocket/EventSource captées par networkAudit.js.
-       Ouverte depuis ⚙️ Configuration → 🔒 Confidentialité → 📋 Voir le journal.
-       Mise à jour live via window.NetworkAudit.onLog(cb). -->
+  <!-- Modale Journal réseau : requêtes captées par networkAudit.js, en direct via window.NetworkAudit.onLog(cb). -->
   <div id="loaderNetLogModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-net-log-boite">
       <div class="kta-readme-modal-header">
@@ -1090,10 +720,7 @@
     </div>
   </div>
 
-  <!-- 🆕 v1.8.0 : Modale "📖 Que fait l'app sur le réseau ?" — doc inline
-       qui explique le modèle PWA, liste la whitelist, explique comment
-       vérifier soi-même (journal + F12). Pointe aussi vers
-       docs/NETWORK_AUDIT.md pour la version longue. -->
+  <!-- Modale « Que fait l'app sur le réseau ? » (version longue : docs/NETWORK_AUDIT.md). -->
   <div id="loaderNetDocModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-net-doc-boite">
       <div class="kta-readme-modal-header">
@@ -1101,8 +728,7 @@
         <button class="kta-panneau-close" id="loaderNetDocClose">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-net-doc-corps">
-        <!-- 🔌 v2.0.0 : état de la connexion serveur de CETTE installation,
-             peint par js/ktaExtensions.js (textContent). -->
+        <!-- État de la connexion serveur de CETTE installation, peint par js/ktaExtensions.js (textContent). -->
         <div class="kta-net-doc-section kta-cnx-bloc" id="loaderNetDocCnx" hidden>
           <div class="kta-net-doc-section-titre kta-cnx-bloc-titre"></div>
           <p class="kta-net-doc-hint kta-cnx-bloc-texte"></p>
@@ -1171,232 +797,138 @@
     </div>
   </div>
 
-  <!-- CARTE -->
   <div id="map" style="display:none;"></div>
 
-  <!-- ============================================================ -->
-  <!-- 🚀 v1.30.0 (P6.B boot perf) — Bloc DEFER (51 scripts) -->
-  <!-- ============================================================ -->
-  <!-- Tous les scripts ci-dessous sont marqués `defer` : ils sont
-       téléchargés en parallèle pendant que le browser continue à parser
-       le HTML, et exécutés (dans l'ordre du DOM) APRÈS le parsing complet
-       mais AVANT DOMContentLoaded.
-       Bénéfices :
-        - Page visible plus vite (parsing HTML non bloqué)
-        - Téléchargements // en arrière-plan
-        - Ordre d'exécution préservé → aucune régression métier
-       Les 14 scripts SYNC en haut du body (copyright, proLicense,
-       themeManager, networkAudit, crashReports, memInspector,
-       statsGlobales, tutorial, userProfile, profileExportImport, debug,
-       perfUltra, unlockGate, pinLock) restent en chargement bloquant car
-       ils doivent setup le DOM / monkey-patcher fetch / poser des classes
-       CSS pré-render. main.js boucle via DOMContentLoaded donc le defer
-       respecte la séquence v1.29.x sans risque. -->
+  <!-- ⚠️ Scripts `defer` : téléchargés en parallèle, exécutés dans l'ordre du DOM après le parsing, avant
+       DOMContentLoaded. Les scripts synchrones du haut du body restent bloquants : ils posent le DOM,
+       instrumentent fetch ou posent des classes CSS avant le rendu. -->
 
-  <!-- Leaflet -->
   <script src="lib/leaflet/leaflet.js" defer></script>
 
-  <!-- 🆕 v1.38.0 — Plugin Leaflet.ImageOverlay.Rotated (vendored, BSD 2-clause).
-       Permet de rendre une image en parallélogramme via 3 coins (rotation +
-       scale 2D). Utilisé par js/imageLayerCalibration.js pour les image
-       layers calibrés via 2 ancres source/target. -->
+  <!-- Leaflet.ImageOverlay.Rotated : image en parallélogramme par 3 coins, pour les calques image calés
+       (js/imageLayerCalibration.js). -->
   <script src="lib/leaflet-imageoverlay-rotated.js" defer></script>
 
-  <!-- JSZip -->
   <script src="lib/jszip.min.js" defer></script>
 
-  <!-- APP JS -->
   <script src="js/config.js" defer></script>
-  <!-- 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt), avant
-       tous les modules qui créent des objets (utils, road, zones, structures, editor…).
-       Décisions : docs/ETUDE_UID.md. Aucune requête, aucun stockage. -->
+  <!-- ⚠️ ktaUid.js (uid + updatedAt) : avant tous les modules qui créent des objets (utils, road, zones,
+       structures, editor…). Décisions : docs/ETUDE_UID.md. -->
   <script src="js/ktaUid.js" defer></script>
-  <!-- 🎨 v1.76.0 — StyleResolver : source de verite UNIQUE des styles built-in
-       (traces / zones / structures). Place EN AMONT de tous ses consommateurs
-       (utils, road, zones, structures, exporter, puis kmz/gpx aux vagues
-       suivantes). Il n'a AUCUNE dependance au chargement : legendCustomization
-       n'est interroge qu'a l'appel, pour les types custom. -->
+  <!-- ⚠️ styleResolver.js : source unique des styles built-in, avant tous ses consommateurs. Aucune dépendance
+       au chargement : legendCustomization n'est interrogé qu'à l'appel, pour les types custom. -->
   <script src="js/styleResolver.js" defer></script>
   <script src="js/utils.js" defer></script>
   <script src="js/measure.js" defer></script>
   <script src="js/tiling.js" defer></script>
-  <!-- 🆕 v1.38.0 — Helpers calage image layers (cascade per-plan, math 2 ancres
-       → 3 coins). Chargé AVANT js/map.js qui en dépend. -->
+  <!-- ⚠️ imageLayerCalibration.js (calage des calques image, 2 ancres → 3 coins) : avant map.js, qui en dépend. -->
   <script src="js/imageLayerCalibration.js" defer></script>
-  <!-- 🆕 v1.38.0 — UI Picker calage image layers (modale split-screen 2 minimaps Leaflet) -->
+  <!-- Sélecteur de calage des calques image (modale à 2 mini-cartes) -->
   <script src="js/imageLayerCalibrationPicker.js" defer></script>
-  <!-- 🧭 v1.97.0 — Mode « plan orienté » (la carte tourne pendant le suivi).
-       Chargé AVANT map.js et tracking.js, qui l'appellent : map.js pose le pane
-       de rotation à chaque plan, tracking.js lui pousse le cap et les pas. -->
+  <!-- ⚠️ mapBearing.js (plan orienté) : avant map.js (pane de rotation à chaque plan) et tracking.js
+       (cap et pas). -->
   <script src="js/mapBearing.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/editor.js" defer></script>
   <script src="js/road.js" defer></script>
   <script src="js/zones.js" defer></script>
-  <!-- 🆕 v1.9.3-A1.a : structures (piliers + murs). Chargé APRÈS zones.js
-       car certaines fonctions partagent des helpers Leaflet et l'ordre
-       de définition n'est pas strict mais reste lisible (cohérence avec
-       le DOM dans la sidebar : Zones puis Structures). -->
+  <!-- structures.js après zones.js : ordre de la sidebar, pas de dépendance stricte. -->
   <script src="js/structures.js" defer></script>
-  <!-- 🔄 v1.82.0 : reclassement d'un objet de session (type et famille).
-       Chargé APRÈS road/zones/structures : il appelle leurs setteurs. Le
-       bouton vit dans la popup de note (utils.js), qui teste window.KtaConvertir
-       au clic — l'ordre exact n'est donc pas critique, mais rester derrière
-       ses trois familles évite de dépendre d'un hasard de chargement. -->
+  <!-- convertirObjet.js : après road / zones / structures, dont il appelle les setteurs (la popup de note
+       teste window.KtaConvertir au clic). -->
   <script src="js/convertirObjet.js" defer></script>
   <script src="js/selectionMulti.js" defer></script>
-  <!-- 🔄 v1.85.0 — rapatrier un calque de donnees dans la session, pour
-       pouvoir l editer (un calque est rendu UNE fois et n a pas de
-       re-render : cf. l en-tete du module). Doit charger AVANT
-       sessionPersist.js, qui appelle ses hooks getSessionState /
-       loadSessionState / appliquerVerrous, et avant filterPanel.js, qui
-       porte son interface. -->
+  <!-- ⚠️ calqueSession.js rapatrie un calque dans la session pour l'éditer (un calque est rendu une fois,
+       sans re-rendu). AVANT sessionPersist.js (hooks getSessionState / loadSessionState / appliquerVerrous)
+       et filterPanel.js (son interface). -->
   <script src="js/calqueSession.js" defer></script>
-  <!-- 📉 v1.83.0 : profondeur des niveaux + profil en long. Après config.js
-       (dont il lit l'API de stockage) et pathfinder.js (dont il consomme le
-       niveau désormais rendu par computeRoute). -->
+  <!-- profondeurNiveaux.js (profondeur des niveaux, profil en long) : lit l'API de stockage de config.js ;
+       consomme à l'appel le niveau rendu par pathfinder.js > computeRoute. -->
   <script src="js/profondeurNiveaux.js" defer></script>
-  <!-- 📏 v1.83.0 : mesure dans la Vue OSM (distance géodésique + surface).
-       Indépendant de measure.js, qui travaille en pixels d'UN plan. -->
+  <!-- osmMesure.js : mesure géodésique dans la Vue OSM, indépendante de measure.js (pixels d'un plan). -->
   <script src="js/osmMesure.js" defer></script>
-  <!-- 📍 v1.85.0 — relever les coordonnees GPS DE SURFACE d un point du releve.
-       Meme famille que osmMesure : les deux n existent que dans la Vue OSM,
-       ou la carte est geographique et ou un clic donne deja du lat/lng. Les
-       deux arment le meme evenement `click` et se desarment mutuellement. -->
+  <!-- osmCoords.js : coordonnées GPS de surface d'un point, dans la Vue OSM. Il arme le même `click`
+       qu'osmMesure : les deux se désarment mutuellement. -->
   <script src="js/osmCoords.js" defer></script>
-  <!-- 🆕 v1.9.3-B1 : module photos (backend IndexedDB pour les photos
-       attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
-       Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->
+  <!-- photos.js : window.MyKTAMapPhotos (IndexedDB ouverte à la 1re opération). -->
   <script src="js/photos.js" defer></script>
-  <!-- 🆕 v1.9.3-B1c : viewer photo plein écran (pinch-zoom + pan + swipe).
-       Self-contained, exposé via window.MyKTAMapPhotoViewer. Doit charger
-       APRÈS photos.js (pas de dep stricte mais cohérence d'ordre). -->
+  <!-- photoViewer.js : window.MyKTAMapPhotoViewer, plein écran (pinch-zoom, pan, swipe). -->
   <script src="js/photoViewer.js" defer></script>
-  <!-- 🆕 v1.11.0 : HistoryManager (Undo/Redo). Doit charger APRÈS les
-       modules de mutation (editor/road/zones/structures) pour que les
-       getters/setters globaux soient déjà définis au moment de
-       _captureState() / _applyState(). Et AVANT interface.js qui s'abonne
-       via HistoryManager.onChange pour griser les boutons ⏪/⏩. -->
+  <!-- ⚠️ historyManager.js : APRÈS editor / road / zones / structures (getters / setters lus par _captureState /
+       _applyState), AVANT interface.js (HistoryManager.onChange grise Annuler / Rétablir). -->
   <script src="js/historyManager.js" defer></script>
-  <!-- 🆕 v1.11.1 V2 : BatteryGuard — indicateur batterie + warnings
-       graduels via Battery Status API native. Init au load du module.
-       Module léger (~250 lignes), no-op gracieux si l'API n'est pas
-       dispo (Safari iOS). Chargé tôt pour que les chips header/footer
-       puissent s'abonner via refonteInterface.js > _setupBatteryHook. -->
+  <!-- batteryGuard.js : Battery Status API, no-op sans elle (Safari iOS) ; chargé tôt pour
+       refonteInterface.js > _setupBatteryHook. -->
   <script src="js/batteryGuard.js" defer></script>
-  <!-- 🆕 v1.11.3 V2.3 : Replay du parcours tracker. Modale plein écran
-       avec slider timeline + play/pause + vitesse + export CSV. Doit charger
-       APRÈS tracking.js (qui expose getTrackingTimeline) et AVANT interface.js
-       (qui ajoute le bouton 🎬 dans la sidebar). -->
+  <!-- ⚠️ trackerReplay.js : APRÈS tracking.js (getTrackingTimeline), AVANT interface.js (bouton Replay). -->
   <script src="js/trackerReplay.js" defer></script>
-  <!-- 🆕 v1.21.2 (KARMA "on reactive [la heatmap]") : Heatmap densité
-       RÉACTIVÉE après que la timeline tracker GPS est maintenant persistée
-       (cf v1.21.2 SessionPersist trackerTimeline). Désactivée v1.12.0 →
-       v1.21.2. Le cas d'usage initial "cumul multi-session" qui justifiait
-       son existence est maintenant viable car la timeline survit aux
-       reloads. Doit charger APRÈS tracking.js (timeline) et trackerReplay.js. -->
+  <!-- heatmap.js : densité tirée de la timeline du tracker (persistée par SessionPersist) ;
+       APRÈS tracking.js et trackerReplay.js. -->
   <script src="js/heatmap.js" defer></script>
-  <!-- 🆕 v1.16.0 step 2 : module de personnalisation de la légende
-       (cascade session > plan > default ; libellés + visibilité +
-       entrées custom). Doit charger AVANT exporter.js (qui lit le
-       resolver dans _dessinerLegende) et AVANT sessionPersist.js
-       (qui sérialise / restaure l'état session). -->
+  <!-- ⚠️ legendCustomization.js (cascade session > plan > défaut) : AVANT exporter.js (_dessinerLegende) et
+       sessionPersist.js (qui sérialise son état). -->
   <script src="js/legendCustomization.js" defer></script>
-  <!-- 🆕 v1.16.0 step 3 : module Favoris (points POI). Doit charger
-       AVANT utils.js (qui injecte le bouton ⭐ dans buildPointPopupHtml)
-       — en pratique utils.js est déjà chargé donc on met juste avant
-       exporter.js, et utils.js > buildPointPopupHtml fait un guard
-       `window.Favoris && window.Favoris.isFav(...)` qui no-op si pas
-       encore chargé. -->
+  <!-- favoris.js : avant exporter.js. utils.js > buildPointPopupHtml teste `window.Favoris && …` :
+       l'ordre vis-à-vis d'utils.js est libre. -->
   <script src="js/favoris.js" defer></script>
-  <!-- 🆕 v1.16.0 step 4 : module SessionBackups (10 snapshots FIFO en
-       IDB). Doit charger AVANT sessionPersist.js (qui appelle
-       SessionBackups.snapshot avant de wipe) — sessionPersist.js fait
-       un guard `window.SessionBackups && ...` donc ordre flexible. -->
+  <!-- sessionBackups.js (10 snapshots FIFO en IDB) : avant sessionPersist.js, qui appelle
+       SessionBackups.snapshot avant d'effacer (garde `window.SessionBackups && …`). -->
   <script src="js/sessionBackups.js" defer></script>
   <script src="js/exporter.js" defer></script>
-  <!-- 🆕 v1.10.3 : Export PDF imprimable via jsPDF. La lib UMD doit être
-       chargée AVANT pdfExport.js (sinon window.jspdf n'existe pas et le
-       module log un warn de disponibilité). -->
+  <!-- ⚠️ jsPDF AVANT pdfExport.js (sinon window.jspdf manque et le module avertit). -->
   <script src="lib/jspdf.umd.min.js" defer></script>
-  <!-- 🆕 v1.42.5 — html2canvas pour capture du rendu Leaflet OSM (PDF Briefing pompiers).
-       BSD 2-Clause MIT, vendored ~50KB. Utilisé UNIQUEMENT par secoursMode.js > _captureOsmCanvasForBriefing
-       (génération PDF dédié). Aucune dépendance runtime ailleurs. -->
+  <!-- html2canvas : utilisé seulement par secoursMode.js > _captureOsmCanvasForBriefing (PDF briefing). -->
   <script src="lib/html2canvas.min.js" defer></script>
   <script src="js/pdfExport.js" defer></script>
   <script src="js/tableEditor.js" defer></script>
   <script src="js/searchPoints.js" defer></script>
   <script src="js/sessionExporter.js" defer></script>
-  <!-- 🆕 v1.33.0 D1 : SessionReport — rapport post-mission (3 formats PDF/JSON/Texte
-       + période + 8 toggles + note libre + carte mini + heatmap). Bouton d'entrée
-       dans la modale Stats globales. Dépend de jsPDF (chargé plus haut ligne 1046). -->
+  <!-- sessionReport.js : rapport post-mission (PDF / JSON / texte), depuis Stats globales ; dépend de jsPDF. -->
   <script src="js/sessionReport.js" defer></script>
-  <!-- 🆕 v1.34.0 E1 : VoiceCommand — commandes vocales push-to-talk (Web Speech API).
-       Opt-in dans Réglages → "🎤 Commandes vocales (BETA)". Aucune permission
-       micro demandée tant que l'user n'active pas + n'appuie pas sur le mic. -->
+  <!-- 🔒 voiceCommand.js : push-to-talk (Web Speech API), opt-in ; aucune permission micro tant que
+       l'utilisateur n'a pas activé l'option et appuyé sur le micro. -->
   <script src="js/voiceCommand.js" defer></script>
-  <!-- 🆕 v1.34.18 E2 : VoiceTts — lecture vocale des notes POI via Web Speech
-       Synthesis API. Aucune permission demandée, mode strictement manuel (bouton
-       🔊 dans popup POI quand description existe). Cf docs/architecture/ui.md. -->
+  <!-- voiceTts.js : lecture vocale des notes POI (Speech Synthesis), manuelle, sans permission. -->
   <script src="js/voiceTts.js" defer></script>
-  <!-- 🆕 v1.35.0 : SortieUrgence — Mode Sortie d'urgence. Identifie les POIs
-       avec tags {Puits/Escalier/Cavage ouvert} OU tag "entrée", calcule la
-       distance pathfinder vers chaque depuis la position tracker, trie et
-       propose la plus proche + alternatives. Bouton 🚨 dans status bar +
-       commande vocale "sortie". Cf js/sortieUrgence.js. -->
+  <!-- sortieUrgence.js : sorties possibles (tags Puits / Escalier / Cavage ouvert, ou « entrée ») triées par
+       distance pathfinder depuis la position du tracker. -->
   <script src="js/sortieUrgence.js" defer></script>
-  <!-- 🆕 v1.34.30 : mdParser — parser MD inline minimaliste, XSS-safe, sans
-       dépendance. Utilisé par modeHistoire.js (note libre rendu MD). Doit
-       charger AVANT modeHistoire.js. -->
+  <!-- ⚠️ mdParser.js (Markdown inline, XSS-safe) : AVANT modeHistoire.js. -->
   <script src="js/mdParser.js" defer></script>
-  <!-- 🛠️ v1.76.3 : Mode Développeur (gate mdp + logs + bibliothèque docs) -->
+  <!-- Mode Développeur (mot de passe, logs, bibliothèque de docs) -->
   <script src="js/devMode.js" defer></script>
-  <!-- 🆕 v1.34.19 : ModeHistoire — bouton 📖 dans status bar, modale 2 onglets
-       (📝 note libre per-plan localStorage [MD-rendered v1.34.30] + 📚 PDF
-       embarqué dans le ZIP via plan-config.json > histoirePdf). Cf
-       js/modeHistoire.js. -->
+  <!-- modeHistoire.js : note libre par plan (Markdown) + PDF embarqué (plan-config.json > histoirePdf). -->
   <script src="js/modeHistoire.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
-  <!-- 🆕 v1.43.0 — Cache OSM offline (IndexedDB partagé entre Vue OSM modale,
-       widget Home et Mode Secours). Doit charger AVANT osmView.js + osmHomePreview.js
-       (utilisé par leurs boutons "💾 Cacher offline"). -->
+  <!-- ⚠️ osmTilesCache.js (cache OSM hors-ligne, IDB partagé Vue OSM / accueil / Secours) : AVANT osmView.js
+       et osmHomePreview.js. -->
   <script src="js/osmTilesCache.js" defer></script>
-  <!-- 🆕 v1.39.0 — Mode Vue OSM (plan au-dessus d'OpenStreetMap). Chargé
-       APRÈS kmzExport (dépend de KmzExport.buildTransform/planToGps) et
-       APRÈS imageLayerCalibration (utilise compute3CornersFromAnchorsPx). -->
+  <!-- ⚠️ osmView.js : APRÈS kmzExport (buildTransform / planToGps) et imageLayerCalibration
+       (compute3CornersFromAnchorsPx). -->
   <script src="js/osmView.js" defer></script>
   <script src="js/osmHomePreview.js" defer></script>
   <script src="js/kmzImport.js" defer></script>
-  <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
-       via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS
-       kmzExport.js. -->
+  <!-- gpxIO.js : APRÈS kmzExport.js (réutilise planToGps / gpsToPlan). -->
   <script src="js/gpxIO.js" defer></script>
-  <!-- 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré + annotations
-       restaurées). Doit charger APRÈS gpxIO.js et kmzExport.js. -->
+  <!-- gpxImport.js (GPX → ZIP MyKTAMap) : APRÈS gpxIO.js et kmzExport.js. -->
   <script src="js/gpxImport.js" defer></script>
-  <!-- 🗺️ v1.74.0 — Import SIG (QGIS) : GeoJSON + KML/KMZ vectoriel.
-       Après gpxImport : il réutilise sa génération de canvas vierge
-       (window.GpxImport.genererCanvasVierge) au moment de l'appel. -->
+  <!-- sigImport.js (GeoJSON, KML / KMZ vectoriel) : après gpxImport, dont il appelle
+       window.GpxImport.genererCanvasVierge. -->
   <script src="js/sigImport.js" defer></script>
-  <!-- 🗺️ GeoTIFF : lit le calage embarqué dans un .tif (QGIS) + décode ses
-       pixels. Après sigImport : il réutilise ses projections Lambert 93 et
-       Web Mercator (window.SigImport.L93 / .WEBMERC) au moment de l'appel.
-       Avant createConf : le Générateur s'y branche pour remplir le géoréf. -->
+  <!-- tiffGeoref.js (calage + pixels d'un .tif) : après sigImport (window.SigImport.L93 / .WEBMERC, à l'appel),
+       avant createConf (le Générateur s'y branche pour le géoréf). -->
   <script src="js/tiffGeoref.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
-  <!-- 💾 v1.87.0 — Pre-cache hors-ligne dun plan serveur. Apres planRegistry
-       (il lit les entrees de plan) et apres tiling.js (il reutilise
-       ktaTuilesV2Urls pour enumerer les tuiles : un seul point de verite). -->
+  <!-- planOffline.js (hors-ligne d'un plan serveur) : après planRegistry et tiling.js (ktaTuilesV2Urls,
+       un seul point de vérité pour les tuiles). -->
   <script src="js/planOffline.js" defer></script>
-  <!-- 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur). Charge
-       APRÈS planRegistry.js (dépend de window.PlanRegistry pour suppression). -->
+  <!-- planDenylist.js (kill-switch denylist.json) : APRÈS planRegistry.js (suppression via window.PlanRegistry). -->
   <script src="js/planDenylist.js" defer></script>
   <script src="js/sessionPersist.js" defer></script>
-  <!-- 📔 v1.69.0 — Le Carnet : archive des sorties (socle IDB + hooks de cycle
-       de vie) et sa couche vue. Chargé après sessionPersist : la baseline d'une
-       sortie est prise APRÈS la restauration de session (cf main.js). -->
+  <!-- ⚠️ journal.js / journalUi.js (Carnet) : après sessionPersist — la base d'une sortie se prend APRÈS la
+       restauration de session (main.js). -->
   <script src="js/journal.js" defer></script>
   <script src="js/journalUi.js" defer></script>
   <script src="js/oomGuard.js" defer></script>
@@ -1405,165 +937,96 @@
   <script src="js/roadGraph.js" defer></script>
   <script src="js/updateChecker.js" defer></script>
   <script src="js/alertChecker.js" defer></script>
-  <!-- 🆕 v1.56.0 : Conditions d'utilisation + avertissement légal (gate
-       bloquante 1er lancement) + orchestrateur de premier lancement qui
-       séquence alerte → légal → onboarding → PIN. Cf docs CGU.md. -->
+  <!-- legalGate.js (conditions d'utilisation, gate au 1er lancement) + firstRunFlow.js, qui séquence
+       alerte → légal → onboarding → PIN. -->
   <script src="js/legalGate.js" defer></script>
   <script src="js/firstRunFlow.js" defer></script>
-  <!-- 🌀 v1.57.0 : Liaisons inter-plan (« portails » entre points de 2 plans).
-       Registre central localStorage + section popup + badges. -->
+  <!-- interPlanLinks.js : liaisons entre plans (registre localStorage, section de popup, badges). -->
   <script src="js/interPlanLinks.js" defer></script>
-  <!-- 🌐 v1.58.0 : Recherche cross-plan (tous les plans de la bibliothèque).
-       Réutilise InterPlanLinks (lecture de plans non chargés + navigation). -->
+  <!-- crossPlanSearch.js : recherche dans toute la bibliothèque, via InterPlanLinks. -->
   <script src="js/crossPlanSearch.js" defer></script>
-  <!-- 📸 10/10/2026 : galerie « Mes photos » (🧰 Outils) + photos sans point (récupération). -->
+  <!-- Galerie « Mes photos » + photos sans point -->
   <script src="js/photosGalerie.js" defer></script>
-  <!-- 🧭 v1.60.0 : Itinéraire inter-plan (Dijkstra à travers les portails). -->
+  <!-- Itinéraire inter-plan (Dijkstra à travers les liaisons) -->
   <script src="js/interPlanRoute.js" defer></script>
-  <!-- 🕸️ v1.65.0 (A7) : Vue « réseau de plans » (graphe SVG plans/portails,
-       intégrée au gestionnaire Mes liaisons). -->
+  <!-- Vue « réseau de plans » (graphe SVG, dans Mes liaisons) -->
   <script src="js/planNetwork.js" defer></script>
   <script src="js/lostMode.js" defer></script>
-  <!-- 🆕 v1.10.1 : Mode urgence (panique) — affichage XL position + cap
-       boussole + thèmes clair/sombre. Différent du LostMode (calcul de
-       zone). Self-contained, exposé via window.EmergencyMode. -->
+  <!-- emergencyMode.js : mode urgence (position + cap en XL), distinct de lostMode (calcul de zone). -->
   <script src="js/emergencyMode.js" defer></script>
   <script src="js/compass.js" defer></script>
 
-  <!-- 🎨 REFONTE UI v1 (branche Refonte_interface) — chargé AVANT
-       interface.js pour que window._refonteInterfaceActive soit défini
-       quand _creerGroupeAccordeon est appelé (option `position`). No-op
-       si flag OFF (localStorage["myktamap_refonte_v1"] absent). -->
+  <!-- ⚠️ refonteInterface.js AVANT interface.js : window._refonteInterfaceActive doit exister quand
+       _creerGroupeAccordeon s'exécute. -->
   <script src="js/refonteInterface.js" defer></script>
 
   <script src="js/interface.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 1) : Module extrait de interface.js — 4 modales
-       globales (alertes publiques + sélecteur multi-alertes + détail
-       alerte + mise à jour disponible). Cohabite avec interface.js en
-       parallèle (ordre indifférent vu que les fonctions sont appelées
-       au runtime après DOMContentLoaded). -->
+  <!-- interfaceAlerts.js : alertes publiques, sélecteur, détail, mise à jour disponible (appelé à l'exécution :
+       ordre libre vis-à-vis d'interface.js). -->
   <script src="js/interfaceAlerts.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 2) : Module extrait de interface.js — panneau
-       Distance totale des tracés avec surlignage magenta + filtres par
-       type + API status pour le statusbar refonte v1. Appelé au clic
-       sur 📏 Distance totale dans la sidebar (groupe Tracés). -->
+  <!-- interfaceDistanceTotale.js : panneau Distance totale (surlignage, filtres par type). -->
   <script src="js/interfaceDistanceTotale.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 3) : Module extrait de interface.js — modale
-       Légende plein écran avec 4 sections (icônes / tracés / zones /
-       structures), cascade libellés LegendCustomization, bouton
-       ✏️ Modifier pour édition in-place. -->
+  <!-- interfaceLegende.js : légende plein écran, libellés via LegendCustomization. -->
   <script src="js/interfaceLegende.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 4) : Module extrait de interface.js — 3 modales
-       de documentation : afficherReadme (modale README + toggle FR/EN),
-       afficherAide (aide intégrée hardcoded), afficherModaleAideIA
-       (téléchargement contexte IA enrichi). -->
+  <!-- interfaceDocs.js : README, aide intégrée, contexte IA. -->
   <script src="js/interfaceDocs.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 5) : Module extrait de interface.js — fonctions
-       d'export session JSON + import (JSON / GPX / KMZ) + modale de choix
-       d'import multi-format (refonte from-scratch v1.14.17). -->
+  <!-- interfaceImportExport.js : export / import de session (JSON, GPX, KMZ). -->
   <script src="js/interfaceImportExport.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 6) : Module extrait de interface.js — modale
-       Itinéraire principale + helpers POPUP POI ("Y aller" /
-       "Ajouter à l'itinéraire") + LABEL DISTANCE + Presets vitesse +
-       Évitements (points/tags/zones) — Lots 6 et 8 du plan initial
-       fusionnés ici car helpers partagés. -->
+  <!-- interfaceItineraire.js : modale Itinéraire, actions de popup POI, presets de vitesse, évitements. -->
   <script src="js/interfaceItineraire.js" defer></script>
 
-  <!-- 🪧 27/09/2026 : Guidage de l'itinéraire — consignes « dans X m, tourner
-       à gauche » lues dans l'itinéraire calculé (croisements + raccords à vol
-       d'oiseau rendus par pathfinder.js), feuille de route, bandeau en direct.
-       Étude : docs/ETUDE_GUIDAGE.md. -->
+  <!-- itiGuidage.js : consignes « dans X m, tourner à gauche » tirées de l'itinéraire (croisements + raccords
+       rendus par pathfinder.js), feuille de route, bandeau. Étude : docs/ETUDE_GUIDAGE.md. -->
   <script src="js/itiGuidage.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 7) : Module extrait de interface.js —
-       ouvrirCalibrageEchelle + viderCacheAppli (reset complet) +
-       mettreAJourCodeSeul (mise à jour douce) + helpers ping
-       connectivité (_pingInternet). -->
+  <!-- interfaceMaintenance.js : calibrage d'échelle, réinitialisation, mise à jour douce, test de connectivité. -->
   <script src="js/interfaceMaintenance.js" defer></script>
 
-  <!-- 🧭 v1.37.0 — Picker calibration Nord 2 clics. Chargé AVANT
-       interfaceConfig.js qui en dépend (window.openNorthCalibrationPicker
-       est requis par le handler du bouton "📐 Calibrer (2 clics)"). -->
+  <!-- ⚠️ northPicker.js AVANT interfaceConfig.js (window.openNorthCalibrationPicker, bouton « Calibrer »). -->
   <script src="js/northPicker.js" defer></script>
 
-  <!-- 🆕 v1.31.0 (P3 Lot 9 — DERNIER LOT) : Module extrait de
-       interface.js — modale Réglages complète + sections Perf ULTRA +
-       Multi-niveau + Géoref + helpers M-LVL (modales niveau + jonction
-       + Leaflet control top-left). -->
+  <!-- interfaceConfig.js : modale Réglages (Perf ULTRA, multi-niveau, géoréf) et contrôles M-LVL. -->
   <script src="js/interfaceConfig.js" defer></script>
 
-  <!-- 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : modale FilterPanel
-       unifiée qui remplace L.control.layers natif (≡). Filtre Image +
-       Data layers + M-LVL + Tags + Types Road/Zone/Struct en live.
-       Doit charger APRÈS interface.js (utilise appliquerFiltreNiveau /
-       appliquerFiltreRuntime) et APRÈS sessionPersist.js (lecture
-       payload.runtimeFilters au restore). -->
+  <!-- ⚠️ filterPanel.js (remplace L.control.layers) : APRÈS interface.js (appliquerFiltreNiveau /
+       appliquerFiltreRuntime) et sessionPersist.js (payload.runtimeFilters au restore). -->
   <script src="js/filterPanel.js" defer></script>
 
-  <!-- 🆕 v1.31.4 (P2 progressive lazy CSS) : helper `window._loadCssOnce`
-       chargé SYNC très tôt (~ligne 178, juste après networkAudit.js)
-       pour que tous les modules consumers puissent appeler l'API au
-       début de leur IIFE — y compris ceux chargés SYNC en haut comme
-       memInspector.js et statsGlobales.js. Cf perf-memory §87. -->
 
-  <!-- 🚨 v1.22.0 (KARMA "définir un plan de secours") : Mode Secours —
-       outil opérationnel pour assigner méthodiquement des équipes de
-       secours à des zones de recherche. Multi-scénarios par plan,
-       persistance localStorage. Doit charger APRÈS interface.js (sidebar
-       urgences integration), pathfinder.js (pré-calcul itinéraires),
-       kmzExport.js (export géolocalisé) et pdfExport.js (export PDF). -->
+  <!-- ⚠️ secoursMode.js : APRÈS interface.js, pathfinder.js, kmzExport.js et pdfExport.js. -->
   <script src="js/secoursMode.js" defer></script>
 
-  <!-- 🧹 15/10/2026 (lot C1 de l'audit Secours) : découpage du réseau en secteurs
-       et parcours de balayage — calcul pur sur le graphe de pathfinder.js,
-       appelé par secoursMode.js à la demande. -->
+  <!-- secoursBalayage.js : secteurs et parcours de balayage, calcul pur sur le graphe de pathfinder.js,
+       appelé par secoursMode.js. -->
   <script src="js/secoursBalayage.js" defer></script>
 
-  <!-- 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live).
-       Doit être chargé APRÈS secoursMode.js mais avant main.js. Réfère à
-       __MKM__ pour le watermark + utilise navigator.indexedDB direct. -->
+  <!-- secoursPhotos.js (photos de la vue Live) : après secoursMode.js, avant main.js. -->
   <script src="js/secoursPhotos.js" defer></script>
 
-  <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
-       Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
-       de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).
-       Anti-vol focus + skip si modale ouverte. -->
+  <!-- ⚠️ shortcuts.js APRÈS interface.js (window._groupes) ; inactif si une modale est ouverte. -->
   <script src="js/shortcuts.js" defer></script>
 
-  <!-- 🆕 v1.51.0 : Cheatsheet des raccourcis (touche ?). Auto-générée depuis
-       KtaShortcuts.listMapping(). Doit charger APRÈS shortcuts.js. -->
+  <!-- shortcutsCheatsheet.js (touche ?) : après shortcuts.js (KtaShortcuts.listMapping()). -->
   <script src="js/shortcutsCheatsheet.js" defer></script>
 
-  <!-- 🆕 v1.21.0 (U1) : Mode présentation (touche F). Cache header +
-       sidebars + footer, garde zoom Leaflet + boussole. Toggle via touche
-       F ou window.PresentationMode.toggle(). Désactive les raccourcis U4
-       pendant qu'il est actif (anti-trigger accidentel pendant démo). -->
+  <!-- presentationMode.js (touche F) : masque l'interface, garde zoom et boussole, coupe les raccourcis. -->
   <script src="js/presentationMode.js" defer></script>
 
-  <!-- 🆕 v1.21.1+ (KARMA) : Wake Lock API — empêche l'écran de s'éteindre
-       tant que l'app est ouverte (toggle dans ⚙️ Réglages > 🔍 Affichage).
-       Compatibilité : Chrome/Edge 84+, Safari iOS 16.4+, PAS Firefox.
-       Boot auto-init lit la pref localStorage et acquire si activée. -->
+  <!-- wakeLock.js : relit la préférence au démarrage et réacquiert le verrou (pas Firefox). -->
   <script src="js/wakeLock.js" defer></script>
 
   <script src="js/main.js" defer></script>
   <script src="js/loaderNetAudit.js" defer></script>
   <script src="js/loaderSwModals.js" defer></script>
 
-  <!-- LOADER SCRIPT — 🧹 B7 (v1.66.0) : monolithe (~232 Ko) découpé en 3
-       modules home* extraits VERBATIM. Chargés SANS defer = exécution
-       synchrone ici même, ordre identique au bloc inline d'origine ;
-       chaque fichier garde son wrapper window.addEventListener("load")
-       (les listeners se déclenchent dans l'ordre d'enregistrement).
-       Reste inline ci-dessous : segmented control perf + debug (résiduel). -->
-  <!-- 📦 v1.94.0 — import multiple (enregistrer sans ouvrir). Chargé avant
-       homeLoader, qui câble son bouton. -->
+  <!-- ⚠️ Modules de l'accueil SANS defer : exécutés ici, dans cet ordre ; chacun s'accroche à window « load »
+       (déclenché dans l'ordre d'enregistrement). importMasse.js avant homeLoader.js, qui câble son bouton. -->
   <script src="js/importMasse.js"></script>
   <script src="js/homeLoader.js"></script>
   <script src="js/homeProfile.js"></script>

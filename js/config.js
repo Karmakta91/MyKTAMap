@@ -901,6 +901,7 @@ window.appliquerScalePerPlan = appliquerScalePerPlan;
 // est un bug d'appelant, la corriger en silence le masquerait.
 const PODO_BORNES = {
   stepLength:    { min: 0,   max: 1.5  },
+  // La magnitude inclut la gravité (~9,81 au repos) : un seuil < 10 est toujours franchi.
   stepThreshold: { min: 10,  max: 30   },
   stepCooldown:  { min: 300, max: 3000 },
   startX:        { min: 0,   max: Infinity },

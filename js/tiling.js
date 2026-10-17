@@ -10,7 +10,8 @@
 //   ktaCullerTuilesV2(Throttle), _libererTuilesV2, _applyLevelFilterToBasePlan, ktaRacineTuilesServeur,
 //   ktaCandidatsRacineTuiles, ktaResoudreRacineTuiles, ktaTuilesV2Urls, ktaDessinerRegionTuiles,
 //   ktaTuilesSurAppareil, ktaRemplissageTuile, ktaRognerTuile.
-// 🩸 Un plan V2 tuile TOUJOURS ; au-delà de 4096² px, une texture unique fait planter Safari iOS.
+// ⚠️ Un plan V2 tuile toujours, quelle que soit sa taille (choix).
+// 🩸 En V1, au-delà de 4096² px le rendu direct est instable sur GPU mobile : on tuile même en Qualité.
 // 🩸 Rendu, pré-cache hors-ligne (planOffline.js) et export partagent la MÊME dérivation des URLs de tuiles.
 // Garde-fou : scripts/check-tiling.js, scripts/check-plan-offline.js · Doc : docs/TILING.md
 
@@ -180,7 +181,7 @@ window._applyLevelFilterToBasePlan = function() {
 //   • zone = écran réel (`MapBearing.zoneVisible`, coins dé-tournés sous rotation) élargi de MARGE ;
 //   • on ne remet QUE les tuiles retirées ou jamais posées par nous (`_ktaCulled`) ;
 //   • fond masqué par le filtre multi-niveau → rien n'est posé.
-// 0,6 mesuré : trous au grand glissé ~0-1 % (contre 36 % sans marge) ; 0,3 ne gagnait rien.
+// 0,6 mesuré : trous au grand glissé ~0-1 % (36 % avec 0,15) ; 0,3 ne gagnait rien (tuiles de 512 px).
 const MARGE_TUILES_V2 = 0.6;
 window.ktaCullerTuilesV2 = function() {
   const map = window.map;

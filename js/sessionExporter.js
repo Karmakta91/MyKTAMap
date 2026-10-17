@@ -1908,7 +1908,8 @@
         // Légende custom → session AUTOPORTANTE (types gardent libellé, couleur, icône même sur un ZIP vierge).
         customLegend: (window.LegendCustomization && window.LegendCustomization.getSessionState)
                         ? window.LegendCustomization.getSessionState() : null,
-        // Liaisons inter-plan du plan courant, réinjectées au registre à l'import (fusion par id).
+        // Liaisons inter-plan du plan courant, réinjectées au registre à l'import (fusion par id). Ids de plans
+        // déterministes : la liaison reste valable sur un autre appareil qui a le même plan.
         interPlanLinks: (window.InterPlanLinks && window._currentLoadedPlanId)
                           ? window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId) : [],
         // Traces de suppression : un réimport ne ressuscite pas un objet supprimé. Jamais en anonymisé.
@@ -3497,7 +3498,7 @@
   // canvas ≤ 64 Mo) → { blob, w, h, source } ou null.
   //   1. Plan V2 : niveau z le plus fin qui tient, tuiles (512 px) assemblées ; l'image géante n'est JAMAIS
   //      décodée. Le padding noir des tuiles de bord est clippé.
-  //   2. Non-V2 : décodage + downscale, seulement sous la limite Skia (32 767) ; sinon null.
+  //   2. Non-V2 : décodage + downscale, seulement jusqu'à 16 384 px (RAM ; Skia plafonne à 32 767) ; sinon null.
   // Manifest tiling à la RACINE de PLAN_CONFIG (comme osmView) ; la forme .plan est tolérée.
   function _tilingManifest() {
     return (window.PLAN_CONFIG && window.PLAN_CONFIG.tiling) ||
@@ -3737,8 +3738,8 @@
       }
 
       // 🩸 Google Earth TRONQUE en silence les textures au-delà de sa limite GPU (~8-16 K px). Au-delà de
-      // GE_MAX px : plan V2 → superoverlay (ou mosaïque) ; non-V2 décodable → downscale ; indécodable
-      // (≥ 32 767, limite Skia) → on le DIT et on demande.
+      // GE_MAX px : plan V2 → superoverlay (ou mosaïque) ; non-V2 décodable → downscale ; au-delà de
+      // 16 384 px (non tenté, cf _reduireImagePourGoogleEarth) → on le DIT et on demande.
       if (imageBlob && typeof window.ktaLireDimensionsEntete === "function") {
         try {
           const _dims = window.ktaLireDimensionsEntete(await imageBlob.slice(0, 1048576).arrayBuffer());
@@ -3965,8 +3966,9 @@
         tilesOverlay:  tilesOverlay,   // superoverlay V2 (ou null)
         imageFilename: imageFilename,
         iconsToEmbed:  iconsToEmbed,
-        // Légende (aller-retour) → fichier annexe `myktamap-extras.json` du KMZ, lu par kmzImport.js ; ignoré
-        // par les apps tierces. Omis si case décochée ou légende vide.
+        // Légende (aller-retour) → fichier annexe `myktamap-extras.json` du KMZ, ignoré par les apps tierces.
+        // Au réimport, kmzImport.js la pose dans plan-config > plan.customLegend. Omis si case décochée ou
+        // légende vide.
         planCustomLegend: (function() {
           const inclLegend = !!document.getElementById("kmz_inc_legend")?.checked;
           if (!inclLegend) return null;

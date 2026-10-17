@@ -8,8 +8,8 @@
 // s'évince lui-même), seules les tuiles affichées sont téléchargées, et `activate` purge tout cache
 // ≠ CACHE_NAME. D'où un cache DÉDIÉ par plan, exclu de l'éviction et du bump.
 // 🩸 L'exigence la plus facile à casser : l'état affiché se lit du CACHE RÉEL, jamais d'un drapeau
-// mémorisé (il survit à une purge et annonce « disponible » sur du vide : pas de bouton fantôme,
-// décision produit). Plusieurs contrôles EXÉCUTENT le code (vm) : une TDZ échappe à `node -c`.
+// mémorisé (il survit à une purge et annonce « disponible » sur du vide) : pas de bouton fantôme.
+// Plusieurs contrôles EXÉCUTENT le code (vm) : une TDZ échappe à `node -c`.
 // Doc : docs/TILING.md (hors-ligne d'un plan serveur).
 // =====================================================================
 "use strict";
@@ -112,7 +112,7 @@ t("🩸 …et ne recalcule aucune grille localement",
   POC.indexOf("Math.pow(2") < 0 && POC.indexOf("tileSize") < 0);
 t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") >= 0);
 
-// ───────── 4. PAS DE BOUTON FANTÔME (décision produit) ─────────
+// ───────── 4. PAS DE BOUTON FANTÔME (sinon l'état affiché ment après une purge) ─────────
 // Plan COMPLET : seulement « mettre à jour » et « retirer ».
 {
   // 🩸 `if (st.etat === "complet")` apparaît DEUX fois (message, puis boutons) : borné sur le rendu.

@@ -1585,9 +1585,8 @@
     const eff = _effectif(g);
     const su0 = _suiviEquipe(s, gid) || {};
     const nombre = { label: t("secours.b9.remontesLabel", { effectif: eff || "?" }),
-                     // 🩸 Jamais prérempli avec l'effectif : un seul « Valider » donnerait « 3/3 » sans que personne
-                     // n'ait
-                     // compté.
+                     // 🩸 Jamais prérempli avec l'effectif : un seul « Valider » donnerait « 3/3 » sans que
+                     // personne n'ait compté.
                      valeur: Number.isInteger(su0.remontes) ? su0.remontes : null, min: 0, max: 99 };
     const msg = t("secours.b9.remontesQuestion", { equipe: _escHtml(g.nom) });
     const ok = (typeof window.ktaConfirm === "function")
@@ -1630,8 +1629,8 @@
   // Rang d'affichage : les équipes en retard d'abord.
   const RANG_RETOUR = { manquant: -1, rouge: 0, orange: 1, ok: 2, inconnu: 3, rentree: 4 };
 
-  // Veille des retards, fenêtre fermée comprise : pastille du footer + toast et
-  // vibration au franchissement d'un seuil (une fois par équipe et par seuil).
+  // Veille des retards, fenêtre fermée comprise : pastille du footer + toast et vibration au franchissement
+  // d'un seuil (une fois par équipe et par seuil).
   let _veilleRetardsId = null;
   const _seuilsNotifies = {};
   function _veilleRetards() {
@@ -1717,9 +1716,9 @@
     if (nz !== null && (Number.isInteger(niveau) ? niveau : 0) !== nz) return false;
     return _pointInPolygon(pt, g.zonePolygon);
   }
-  // Galeries SOUS le polygone d'une équipe, à un niveau où ni sa zone ni son parcours
-  // ne vont : [{ niveau, m, horsZone }] (≥ 50 m). `horsZone` : niveau exclu de la zone
-  // (dessinée ailleurs) ; sinon niveau de la zone que l'itinéraire ne visite pas.
+  // Galeries SOUS le polygone d'une équipe, à un niveau où ni sa zone ni son parcours ne vont :
+  // [{ niveau, m, horsZone }] (≥ 50 m). `horsZone` : niveau exclu de la zone (dessinée ailleurs) ; sinon niveau
+  // de la zone que l'itinéraire ne visite pas.
   function _niveauxNonParcourus(g) {
     if (!_mlvlActif() || !g || g.zoneType !== "polygon" || !Array.isArray(g.zonePolygon) || g.zonePolygon.length < 3) return [];
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
@@ -1751,8 +1750,8 @@
   // ── Couverture ──────────────────────────────────────────────────────
   // Aide à la lecture, sans affectation automatique : (1) POI DANS la zone d'une équipe mais hors de son
   // parcours, (2) POI visités par plusieurs équipes, (3) part des galeries couverte par les zones (tracés
-  // sélectionnés ou segments dont le milieu tombe dans un polygone). Niveaux ignorés : ordre de grandeur
-  // pour l'opérateur (décision produit).
+  // sélectionnés ou segments dont le milieu tombe dans un polygone). Zones polygone testées au niveau de la
+  // zone ; zones « tracés » sans filtre de niveau (ordre de grandeur).
   function _calculerCouverture(s) {
     const groupes = (s && s.groupes) || [];
     // L'uid d'abord : deux POI homonymes ne sont pas « le même ».
@@ -7752,7 +7751,7 @@
     _bindViewHandlers(view);
     _placerEnteteLive(corps, view);
     // Le timer tourne dès qu'une exécution est active sur le scénario courant, quelle que soit la vue (live, ou
-    // édition avec le bandeau PLAN ACTIF), et même fenêtre fermée.
+    // édition avec le bandeau PLAN ACTIF) ; arrêté à la fermeture (la veille des retards, elle, continue).
     const s = _currentScenarioId ? get(_currentScenarioId) : null;
     const execActive = s && _estExecutionActive(s);
     if (view === "live" || execActive) _startLiveTimer();
@@ -8454,9 +8453,8 @@
                     '<label title="' + _escAttr(t("secours.retour.imperatifTitle")) + '">' + t("secours.retour.imperatifLabel") + '</label>' +
                     '<input type="time" data-action="edit-heure-retour" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.heureRetour || "") + '">' +
                   '</div>' +
-                  // GPS de surface de l'équipe (PC, rendez-vous pompiers…), saisi « lat, lng » (WGS84), stocké {lat,
-                  // lng},
-                  // facultatif ; utilisé par le briefing pompiers PDF.
+                  // GPS de surface de l'équipe (PC, rendez-vous pompiers…), saisi « lat, lng » (WGS84), stocké
+                  // {lat, lng}, facultatif ; utilisé par le briefing pompiers PDF.
                   '<div class="kta-secours-groupe-row">' +
                     '<label>' + t("secours.groupe.gpsSurfaceLabel") + '</label>' +
                     '<input type="text" data-action="edit-surface-gps" data-gid="' + _escAttr(g.id) + '" ' +
@@ -8557,8 +8555,7 @@
                    t("secours.bandeau.reprendreLive") +
                  '</button>' +
                  // Vue OSM depuis le bandeau : le plan géoréférencé sur OpenStreetMap, pour briefer un secours
-                 // extérieur
-                 // (conditions d'accès : cf _ouvrirVueOsmDepuisSecours).
+                 // extérieur (conditions d'accès : cf _ouvrirVueOsmDepuisSecours).
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitle")) + '">' +
                    t("secours.bandeau.vueOsm") +
                  '</button>' +

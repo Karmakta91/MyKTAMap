@@ -14,7 +14,8 @@
 //     niveau, pan/flash).
 //   - Scan à la demande + cache RAM par plan (TTL), aucun index persistant.
 // Dépend de : InterPlanLinks.collectPointsForPlan (points d'un plan NON chargé) et InterPlanLinks.goTo.
-// 100 % local.
+// 100 % local : lit sessions et ZIP stockés, ne fetche que la config et les calques des plans servis (aucune
+// nouvelle surface réseau).
 
 (function() {
   "use strict";

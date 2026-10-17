@@ -53,7 +53,8 @@
 
   // ── Validation : fonction PURE, sans DOM ni stockage ──
   // 🩸 confadmin.html applique EXACTEMENT les mêmes règles : scripts/check-connexion-serveur.js exécute les
-  // deux sur la même table de cas et refuse toute divergence.
+  // deux sur la même table de cas et refuse toute divergence (sinon instance valide pour ConfAdmin, invalide
+  // pour l'app).
   function valider(sc) {
     if (sc === undefined || sc === null) return { etat: "off", raison: "absent" };
     if (typeof sc !== "object" || Array.isArray(sc)) {

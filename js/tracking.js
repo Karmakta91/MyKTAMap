@@ -575,6 +575,8 @@ function _avancerSurGraphe() {
 // l'actif = sortie de puits ou d'escalier.
 // Auto plutôt que confirmation (décision produit) : en navigation, mains prises, une modale est ingérable.
 // ktaSetActiveLevel fait une UNION sur visibleLevels : l'étage quitté reste affiché, toast + pastille le disent.
+// ⚠️ Risque résiduel : un point créé juste après une bascule hérite du nouveau niveau (editor.js) ; retour
+// manuel par le contrôle Niveau.
 // ⚠️ Seulement en multi-niveau ET smartNav ON (appelée depuis _avancerSurGraphe).
 function _basculerNiveauSiTraversee(m) {
   if (!m || !Number.isInteger(m.level)) return;   // "transit" ou null → on traverse encore

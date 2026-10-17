@@ -12,7 +12,7 @@
 // Pièges : 🩸 l'ordre initMapFromConfig → initDataFromConfig est un contrat (registres vidés au bon endroit).
 //          🔒 tout refus kiosque passe par window.ktaKiosqueServeurSeul, jamais par KIOSK_CONFIG à la main.
 // Garde-fous : check-plan-tags.js (ancres des tags), check-gate-instance.js, check-kiosque-serveur.js,
-// check-extensions.js (ordre du boot).
+// check-extensions.js (une partie de l'ordre du boot).
 // Doc : docs/architecture/plans-loader.md, community-server-line.md
 // =========================
 
@@ -907,6 +907,7 @@ function _libererRessourcesPlanPrecedent() {
   }
 
   // Durée de session (Détails session) comptée depuis le chargement du plan.
+  // Compromis voulu : comptée depuis le chargement, pas depuis le 1er ajout.
   window._sessionStartTs = null;
 
   // Timeline tracker remise à zéro (RAM) ; TrackerReplay fermé pour ne pas garder la carte détruite.
@@ -1495,6 +1496,7 @@ async function _splashEnd() {
 // ⚠️ Attributs : data-i18n → textContent · data-i18n-html → innerHTML · data-i18n-title → title + aria-label ·
 // data-i18n-placeholder → placeholder · data-i18n-aria-label → aria-label seul.
 // Le FR du HTML n'est qu'un repli ; la source est lang/<code>.json. Idempotent, rejoué à chaque changement de langue.
+// Générique : poser l'attribut data-i18n* suffit, rien à coder ici pour une nouvelle zone ou langue.
 function _applyI18nDom(root) {
   if (!window.I18n || typeof window.I18n.t !== "function") return;
   root = root || document;
@@ -1604,9 +1606,10 @@ window.proposerRedemarrageLangue = function() {
 };
 
 // ── Point d'entrée ──────────────────────
-// ⚠️ Ordre du boot (contrat, vérifié par check-gate-instance.js et check-extensions.js) : i18n → sessions → HOME
-// traduit → splash → conditions d'utilisation → config d'instance → revalidation du mot de passe → licence (si
-// « on ») → verrou licence → modules et gate déléguée → UnlockGate → PIN → FirstRunFlow → découverte des plans.
+// ⚠️ Ordre du boot (contrat, vérifié EN PARTIE par check-gate-instance.js et check-extensions.js) : i18n →
+// sessions → HOME traduit → splash → conditions d'utilisation → config d'instance → revalidation du mot de
+// passe → licence (si « on ») → verrou licence → modules et gate déléguée → UnlockGate → PIN → FirstRunFlow →
+// découverte des plans.
 (async function initApp() {
   console.log("[Main] Démarrage…");
 
