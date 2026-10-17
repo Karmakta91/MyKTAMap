@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/*!
+/*
  * MyKTAMap — check-guidage.js
  * Filet du guidage de l'itinéraire (js/itiGuidage.js + champs `raccords` /
  * `carrefours` de js/pathfinder.js). Étude : docs/ETUDE_GUIDAGE.md.

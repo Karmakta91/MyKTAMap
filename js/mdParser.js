@@ -1,10 +1,10 @@
 /*!
- * MyKTAMap — js/mdParser.js (v1.34.30)
- * Parser Markdown inline minimaliste, XSS-safe, sans dépendance externe.
- *
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
+// mdParser.js
+// Parser Markdown inline minimaliste, XSS-safe, sans dépendance externe.
 
 // =========================
 // MD PARSER — sous-ensemble Markdown minimal, XSS-safe (note libre du Mode Histoire)

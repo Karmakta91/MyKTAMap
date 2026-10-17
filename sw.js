@@ -418,8 +418,7 @@ const ASSETS_TO_CACHE = [
   // 🍖 Et surtout, être pré-caché le rendait INÉVINÇABLE (cf _staticAssetUrls
   // et l'éviction LRU) : tester le hors-ligne avec lui donnait un faux
   // « ça marche », alors qu'un plan ajouté par l'utilisateur, lui, pouvait
-  // s'évincer tout seul. Ce faux témoin a masqué le vrai comportement
-  // jusqu'à la v1.87.0.
+  // s'évincer tout seul.
   // Il se comporte désormais comme n'importe quel plan servi : mis en cache
   // au premier chargement, évinçable, et pré-téléchargeable via 💾
   // Disponibilité hors-ligne. `data/index.json` reste pré-caché — c'est le
@@ -1056,10 +1055,9 @@ self.addEventListener("fetch", (event) => {
   const reqProtocol = (event.request.url || "").split(":")[0];
   if (reqProtocol !== "http" && reqProtocol !== "https") return;
 
-  // 🩸 `reqUrl` est declare ICI, en TETE du handler, et plus juste
-  // avant le test killsw. En v1.88.0 j ai insere la sonde `_ktacheck` AVANT
-  // cette declaration : `const` en zone morte temporelle -> ReferenceError a
-  // CHAQUE requete, donc handler fetch mort et cache hors-ligne contourne.
+  // 🩸 `reqUrl` est declare ICI, en TETE du handler : une branche inseree
+  // avant une declaration `const` la lit en zone morte temporelle ->
+  // ReferenceError a CHAQUE requete, handler fetch mort, hors-ligne contourne.
   // Toute branche ajoutee plus bas doit pouvoir lire reqUrl sans y penser.
   const reqUrl = event.request.url || "";
 
@@ -1243,12 +1241,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   // STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
-  // Même classe de bug que les docs (v1.43.11) : les dicos de traduction
-  // changent à chaque vague i18n, mais le cache-first les sert « stale » tant
-  // que CACHE_NAME ne bump pas ET que le SW se réinstalle. Symptôme vécu (KARMA)
-  // : clés PIN ajoutées en v1.46.2 (`pin.setup.changeBtn`…) affichées humanisées
-  // (« Change Btn ») parce que le `fr.json` précaché datait d'avant. Aggravé par
-  // un SW zombie qui ne se met jamais à jour → traduction périmée INDÉFINIMENT.
+  // 🩸 Les dicos changent souvent, mais le cache-first les sert « stale » tant
+  // que CACHE_NAME ne bump pas ET que le SW se réinstalle : des clés récentes
+  // s'affichent humanisées (« Change Btn »), et un SW zombie qui ne se met
+  // jamais à jour garde la traduction périmée INDÉFINIMENT.
   //
   // Fix : network-first + timeout 2.5s + fallback cache. Online → dico TOUJOURS
   // frais (nouvelles clés visibles dès le déploiement, sans dépendre du bump
@@ -1327,7 +1323,7 @@ self.addEventListener("fetch", (event) => {
     // CACHE_NAME courant uniquement. Le `caches.match()` global cherche
     // dans TOUS les caches existants — y compris d'anciens caches pas
     // encore supprimés par l'activate (qui est async). Sans ce scope,
-    // le SW peut servir une entrée d'un ancien cache v1.43.x après bump.
+    // le SW peut servir une entrée d'un ancien cache après bump.
     caches.open(CACHE_NAME).then(function(c) { return c.match(event.request); })
       // miss du cache principal → on regarde les caches de plan
       // hors-ligne avant de sortir sur le réseau.

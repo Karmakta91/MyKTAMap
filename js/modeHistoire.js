@@ -1,8 +1,9 @@
 /*!
- * MyKTAMap — modeHistoire.js (v1.34.20)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
+// modeHistoire.js
 
 // =========================
 // MODE HISTOIRE — note libre + documents PDF du plan

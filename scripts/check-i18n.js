@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-/*!
+/*
  * MyKTAMap — check-i18n.js
- * Filet de la migration multilingue (chantier v1.45.x).
+ * Filet de la migration multilingue.
  *
  * Vérifie :
  *   1. Parité des dicos : toute clé de fr.json existe en en.json et inversement.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/*!
+/*
  * MyKTAMap — check-doc-langues.js
  * Parité des 3 guides utilisateur servis dans l'app (modale Documentation) :
  *   docs/applications/README_USER.md (FR, référence) · .en.md · .es.md
@@ -9,7 +9,7 @@
  * une section entière absente en espagnol, deux sections espagnoles qui
  * décrivaient un réglage supprimé depuis des mois, 7 puces manquantes, et —
  * pire — une règle de sécurité fausse en EN et ES (la zone ⛔ Inaccessible
- * « jamais relâchée », faux depuis la v1.82.0).
+ * « jamais relâchée », alors qu'elle l'est).
  *
  * Ce qu'il vérifie (BLOQUANT) :
  *   1. STRUCTURE — mêmes titres, dans le même ordre, dans les 3 langues.

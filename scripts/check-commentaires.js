@@ -27,7 +27,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const PLAFOND = 884;
+const PLAFOND = 0;
 
 // ── Tokenizer : repère les commentaires d'un source JS (ou CSS : blocs seuls) ──────────
 function commentaires(src, cssSeul) {

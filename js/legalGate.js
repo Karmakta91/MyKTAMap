@@ -1,10 +1,9 @@
 /*!
- * MyKTAMap — Gate « Conditions d'utilisation & avertissement légal » (v1.56.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
+// legalGate.js — Gate « Conditions d'utilisation & avertissement légal »
 
 // =========================
 // LEGALGATE.JS — conditions d'utilisation + avertissement légal
