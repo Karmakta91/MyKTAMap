@@ -1,42 +1,29 @@
 /*!
- * MyKTAMap — Orchestrateur du premier lancement (v1.56.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// FIRSTRUNFLOW.JS — Séquenceur des modales de premier lancement (depuis v1.56.0)
+// FIRSTRUNFLOW.JS — Séquenceur des modales de premier lancement
 // =========================
-// Problème résolu : au 1er boot, la proposition PIN, l'alerte publique et
-// l'onboarding se déclenchaient via 3 setTimeout non coordonnés → superposition
-// (« spam de popups », première impression non pro).
-//
-// Solution : une FILE SÉQUENTIELLE jouée après le splash. Chaque étape attend la
-// FERMETURE de la précédente avant de s'afficher. Ordre par priorité :
-//   1. 🚨 Alerte critique serveur (si publiée dans alert.json)  — sécurité d'abord
-//   2. ⚖️ Conditions d'utilisation + avertissement légal (bloquant, 1re fois)
-//   3. 🎓 Onboarding (1er lancement)
-//   4. 🔐 Proposition d'activation du PIN (le moins urgent → en dernier)
-//
-// Chaque module expose désormais un signal de fin (Promise / callback onClose) :
-//   - AlertChecker.notifySplashEnded(onDone)
-//   - LegalGate.ouvrirGate() → Promise
-//   - Tutorial.ouvrir(onClose)
-//   - MyKTAMapPinLock.proposerActivation(onClose)
-//
-// Appelé UNE FOIS par main.js juste après le retrait du splash.
-// 100 % local, aucune surface réseau.
-// =========================
+// Une FILE SÉQUENTIELLE jouée après le splash (sinon PIN, alerte et onboarding se superposent) : chaque étape
+// attend la FERMETURE de la précédente. Ordre :
+//   1. Alerte critique serveur (alert.json) : sécurité d'abord
+//   2. Conditions d'utilisation + avertissement légal (filet)
+//   3. Onboarding (1er lancement)
+//   4. Proposition d'activation du PIN (le moins urgent)
+// Signaux de fin : AlertChecker.notifySplashEnded(onDone), LegalGate.ouvrirGate() → Promise,
+// Tutorial.ouvrir(onClose), MyKTAMapPinLock.proposerActivation(onClose).
+// Appelé UNE FOIS par main.js après le retrait du splash. 100 % local.
 
 (function() {
   "use strict";
 
   let _ran = false;
 
-  // Promisifie un déclencheur « fire + callback de fin ». Si le module est
-  // absent ou l'étape non applicable, résout immédiatement (la file continue).
+  // Promisifie un déclencheur « lancer + callback de fin ». Module absent ou étape non applicable : résolu tout de
+  // suite (la file continue).
   function _step(label, fn) {
     return new Promise(function(resolve) {
       let done = false;
@@ -54,20 +41,12 @@
     });
   }
 
-  // Attend que les GATES DE BOOT (légale → unlock → PIN) soient
-  // TOUTES franchies avant de dérouler la file. _splashEnd() déclenche run()
-  // ~500 ms après le début du fade du splash, c.-à-d. potentiellement PENDANT
-  // une gate bloquante à z-index supérieur → l'alerte/onboarding s'affichaient
-  // derrière ou par-dessus.
-  //
-  // Signal EXPLICITE (notifyBootGatesDone, appelé par main.js une fois le
-  // bloc gates passé) plutôt qu'un poll du DOM : entre 2 gates il existe des
-  // fenêtres sans overlay (ex. ~2 s d'attente du check licence pro entre la
-  // gate légale et l'UnlockGate) pendant lesquelles un poll croirait la voie
-  // libre (race constatée au test : le tutoriel partait avant l'unlock).
-  // En lockout (unlock/PIN), main.js reste bloqué sur ouvrirGate() → le
-  // signal n'arrive jamais → la file ne démarre jamais (voulu).
-  // Poll DOM conservé en 2e rideau (défense) après le signal.
+  // La file attend que les GATES DE BOOT (légale → unlock → PIN) soient TOUTES franchies : run() part ~500 ms après
+  // le début du fondu du splash, potentiellement PENDANT une gate bloquante.
+  // 🩸 Signal EXPLICITE (notifyBootGatesDone, appelé par main.js après le bloc des gates), pas un sondage du DOM :
+  // entre deux gates il existe des fenêtres sans overlay (attente du check licence entre la gate légale et
+  // l'UnlockGate) où un sondage croirait la voie libre. En temporisation (unlock / PIN), le signal n'arrive jamais :
+  // la file ne démarre pas (voulu). Sondage du DOM gardé en second rideau après le signal.
   const _BOOT_GATES_SEL = "#kta-legal-gate-overlay, #kta-unlock-overlay, #kta-pin-gate-overlay";
   let _bootGatesDone = false;
   let _bootGatesWaiters = [];
@@ -99,10 +78,8 @@
 
     const inIncognito = !!(window.IncognitoMode && window.IncognitoMode.active);
 
-    // 1) 🚨 Alerte critique serveur (si une alerte est en attente).
-    //    notifySplashEnded pose le flag _splashEnded ET affiche les alertes
-    //    différées ; le onDone est appelé à la fermeture de la modale (ou
-    //    immédiatement s'il n'y a rien à montrer).
+    // 1) Alerte critique serveur : notifySplashEnded pose _splashEnded ET affiche les alertes différées ; onDone à
+    //    la fermeture de la modale (ou tout de suite s'il n'y a rien).
     await _step("alerte", function(done) {
       if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
         window.AlertChecker.notifySplashEnded(done);
@@ -111,21 +88,16 @@
       }
     });
 
-    // 2) ⚖️ Conditions d'utilisation — FILET uniquement depuis v1.56.4 : la
-    //    gate légale est désormais affichée par main.js AVANT l'UnlockGate
-    //    (« on accepte les conditions avant de saisir un code ») → ici c'est
-    //    un no-op (isAccepted() = true) sauf cas anormal où l'étape boot
-    //    n'aurait pas tourné. Skip en incognito : localStorage est shimé (le
-    //    flag ne persiste pas) → sinon re-prompt à chaque session incognito
-    //    (cf. même parti pris que la proposition PIN). L'accès reste possible
-    //    en consultation (footer).
+    // 2) Conditions d'utilisation : FILET seulement (la gate légale passe dans main.js AVANT l'UnlockGate) ; no-op
+    //    si isAccepted(). Ignorée en incognito : localStorage y est simulé, le drapeau ne persisterait pas et la
+    //    question reviendrait à chaque session (consultation possible depuis le pied de page).
     if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
         && !window.LegalGate.isAccepted() && !inIncognito) {
       try { await window.LegalGate.ouvrirGate(); }
       catch(e) { console.warn("[FirstRunFlow] LegalGate a échoué :", e); }
     }
 
-    // 3) 🎓 Onboarding (1er lancement uniquement).
+    // 3) Onboarding (1er lancement seulement).
     await _step("onboarding", function(done) {
       if (window.Tutorial && typeof window.Tutorial.isFirstLaunch === "function"
           && window.Tutorial.isFirstLaunch()
@@ -136,9 +108,8 @@
       }
     });
 
-    // 4) 🔐 Proposition d'activation du PIN (en dernier, le moins urgent).
-    //    proposerActivation gère lui-même ses conditions de skip (déjà activé,
-    //    déjà proposé, incognito) et appelle onClose dans tous les cas.
+    // 4) Proposition du PIN, en dernier : proposerActivation gère ses propres conditions (déjà activé, déjà
+    //    proposé, incognito) et appelle onClose dans tous les cas.
     await _step("proposition-pin", function(done) {
       if (window.MyKTAMapPinLock && typeof window.MyKTAMapPinLock.proposerActivation === "function") {
         window.MyKTAMapPinLock.proposerActivation(done);

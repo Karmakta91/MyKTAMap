@@ -1,29 +1,20 @@
 /*!
- * MyKTAMap — Recherche cross-plan (v1.58.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
 // CROSSPLANSEARCH.JS — Recherche dans TOUS les plans de la bibliothèque
 // =========================
-// Décisions KARMA (A1 : 1:c 2:a 3:a 4:a) :
-//   - 2 points d'entrée : bouton HOME (« 🌐 Recherche multi-plans ») + pont
-//     depuis la recherche unifiée Ctrl+K (bouton « 🌐 Tous les plans » qui
-//     reprend la saisie en cours).
-//   - Périmètre V1 : POINTS uniquement (session + datalayers de chaque plan).
-//   - Clic sur un résultat : mini-confirmation (si un plan est chargé) puis
-//     switch + bascule niveau + pan/flash — pipeline InterPlanLinks.goTo.
-//   - Perf : scan à la demande + cache RAM de session (TTL par plan), aucun
-//     index persistant.
-//
-// Dépendances : InterPlanLinks.collectPointsForPlan (lecture des points d'un
-// plan NON chargé : session localStorage + datalayers serveur fetch / ZIP
-// IndexedDB) et InterPlanLinks.goTo (navigation avec cible pendante).
-// 100 % local, aucune nouvelle surface réseau.
-// =========================
+//   - Entrées : bouton de l'accueil (« 🌐 Recherche multi-plans ») et pont depuis la recherche Ctrl+K (« 🌐 Tous les
+//     plans », saisie reprise) ; barre de l'accueil via rechercher().
+//   - Périmètre : POINTS (session + calques de chaque plan).
+//   - Clic sur un résultat : mini-confirmation si un plan est chargé, puis InterPlanLinks.goTo (changement de plan,
+//     niveau, pan/flash).
+//   - Scan à la demande + cache RAM par plan (TTL), aucun index persistant.
+// Dépend de : InterPlanLinks.collectPointsForPlan (points d'un plan NON chargé) et InterPlanLinks.goTo.
+// 100 % local.
 
 (function() {
   "use strict";
@@ -31,7 +22,6 @@
   const MODAL_ID = "kta-xps-modal";
   const CACHE_TTL_MS = 120000;   // 2 min — le temps d'une session de recherche
 
-  // Cache RAM : planId → { pts: [...], ts }
   const _cache = {};
 
   function _t(k, p) {
@@ -39,8 +29,7 @@
   }
   function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
 
-  // (U2) : retourne { pts, dataError } — dataError = datalayers du
-  // plan injoignables (serveur off, ZIP absent) → compteur ⚠️ dans le statut.
+  // Rend { pts, dataError } ; dataError = calques injoignables (serveur off, ZIP absent) → compteur ⚠️ au statut.
   async function _pointsDuPlan(plan) {
     const hit = _cache[plan.id];
     if (hit && (Date.now() - hit.ts) < CACHE_TTL_MS) return hit;
@@ -54,10 +43,8 @@
     return entry;
   }
 
-  // « un plan est-il AFFICHÉ ? ». Le test historique
-  // `PLAN_CONFIG && PLAN_CONFIG.plan` restait vrai au HOME (afficherLoader ne
-  // remet pas PLAN_CONFIG à null) → case multi-hop et boutons 🧭 affichés sur
-  // l'accueil. Source de vérité unique : window.ktaPlanAffiche (utils.js).
+  // « Un plan est-il AFFICHÉ ? » : source unique window.ktaPlanAffiche (utils.js). 🩸 `PLAN_CONFIG.plan` reste vrai
+  // à l'accueil (afficherLoader ne le remet pas à null) : case multi-hop et boutons 🧭 s'afficheraient sur l'accueil.
   function _planAffiche() {
     return (typeof window.ktaPlanAffiche === "function")
       ? window.ktaPlanAffiche()
@@ -69,10 +56,8 @@
     if (m) m.remove();
   }
 
-  // Entrée principale. initialQuery optionnel (pont depuis la recherche Ctrl+K).
-  // (A6) : opts.onSelect(plan, pt) — mode SÉLECTION : le clic sur un
-  // résultat appelle le callback au lieu de naviguer (utilisé par la modale
-  // Itinéraire pour choisir une destination sur un autre plan).
+  // Entrée principale. initialQuery optionnel (pont Ctrl+K). opts.onSelect(plan, pt) = mode SÉLECTION : le clic
+  // appelle le callback au lieu de naviguer (modale Itinéraire : destination sur un autre plan).
   function ouvrir(initialQuery, opts) {
     opts = opts || {};
     _fermer();
@@ -95,13 +80,8 @@
         '<div class="kta-readme-modal-corps">' +
           '<input type="text" id="kta-xps-input" class="kta-ipl-search" ' +
             'placeholder="' + _esc(_t("xps.placeholder")) + '" autocomplete="off">' +
-          // (multi-hop, décision KARMA 5 : opt-in à cocher) :
-          // autorise l'itinéraire 🧭 à passer par des plans intermédiaires.
-          // Préférence persistée via InterPlanRoute (OFF par défaut).
-          // la case n'est plus rendue DU TOUT au HOME — la notion
-          // d'itinéraire n'existe pas sans plan chargé (le calcul part de la
-          // position tracker courante). Elle s'affichait à tort depuis que le
-          // marqueur « plan chargé » était faussé (cf. window.ktaPlanAffiche).
+          // Case multi-hop (option, désactivée par défaut, persistée par InterPlanRoute) : itinéraire 🧭 par des plans
+          // intermédiaires. Pas rendue à l'accueil : l'itinéraire part de la position du tracker sur un plan chargé.
           (_planAffiche()
             ? '<label class="kta-xps-multihop" title="' + _esc(_t("xps.multihop.hint")) + '">' +
                 '<input type="checkbox" id="kta-xps-multihop-cb">' +
@@ -117,9 +97,7 @@
     document.getElementById("kta-xps-close").addEventListener("click", _fermer);
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermer(); });
 
-    // case multi-hop : lue/écrite via InterPlanRoute (source de
-    // vérité unique). Absente du DOM au HOME (cf. plus haut) → `mhCb` peut être
-    // null, ce n'est pas une anomalie.
+    // Case multi-hop lue/écrite par InterPlanRoute (source unique) ; absente à l'accueil, `mhCb` peut être null.
     const mhCb = document.getElementById("kta-xps-multihop-cb");
     if (mhCb) {
       if (window.InterPlanRoute && typeof window.InterPlanRoute.isMultiHopEnabled === "function") {
@@ -136,7 +114,7 @@
     const statusEl = document.getElementById("kta-xps-status");
     const resEl    = document.getElementById("kta-xps-results");
 
-    // Index en construction : [{plan, pt}] — rempli par le scan progressif.
+    // Index en construction : [{plan, pt}], rempli par le scan progressif.
     let _index = [];
     let _scanDone = false;
 
@@ -157,9 +135,8 @@
           _esc(_scanDone ? _t("xps.noResult") : _t("xps.scanning")) + '</p>';
         return;
       }
-      // (A6) : bouton 🧭 « itinéraire via portail » sur les
-      // résultats DISTANTS — seulement si un plan est chargé (le calcul part
-      // de la position tracker sur le plan courant) et hors mode sélection.
+      // Bouton 🧭 « itinéraire via portail » sur les résultats DISTANTS, seulement si un plan est chargé et hors mode
+      // sélection.
       const _planCharge = _planAffiche();
       const _iprDispo = !opts.onSelect && _planCharge
         && window.InterPlanRoute && typeof window.InterPlanRoute.computeEtAfficher === "function";
@@ -196,17 +173,14 @@
           const e = matches[parseInt(btn.getAttribute("data-i"), 10)];
           if (!e) return;
           _fermer();
-          // mode SÉLECTION (modale Itinéraire) → callback.
+          // Mode SÉLECTION (modale Itinéraire) → callback.
           if (typeof opts.onSelect === "function") {
             try { opts.onSelect(e.plan, e.pt); } catch(err) { console.warn("[CrossPlanSearch] onSelect :", err); }
             return;
           }
-          // 3:a — mini-confirmation seulement si un plan est chargé (au HOME,
-          // rien à interrompre → chargement direct). Même pipeline d'arrivée
-          // que les portails : bascule niveau + pan/flash + bouton retour.
-          // le marqueur « plan chargé » est PLAN_CONFIG (null au
-          // home) — _currentLoadedPlanId PERSISTE au retour home et affichait
-          // la confirmation à tort depuis l'accueil.
+          // Mini-confirmation seulement si un plan est AFFICHÉ (à l'accueil, chargement direct ;
+          // _currentLoadedPlanId persiste après le retour accueil et ne vaut pas preuve).
+          // Même arrivée que les portails.
           window.InterPlanLinks.goTo(e.plan.id, {
             x: e.pt.x, y: e.pt.y,
             level: e.pt.level,
@@ -226,8 +200,7 @@
       });
     }
 
-    // Scan progressif : plan par plan (cache RAM par plan, TTL 2 min).
-    // Le rendu se rafraîchit au fil de l'eau — pas d'attente bloquante.
+    // Scan progressif plan par plan (cache RAM, TTL 2 min), rendu rafraîchi au fil de l'eau.
     (async function _scan() {
       let unreachable = 0;   // (U2)
       for (let i = 0; i < plans.length; i++) {
@@ -250,15 +223,11 @@
     try { input.focus(); } catch(e) {}
   }
 
-  // (KARMA « même principe pour la barre du HOME ») — API de
-  // recherche SANS UI : scanne la bibliothèque (même cache RAM _cache, TTL
-  // 2 min, partagé avec la modale) et retourne les correspondances. Utilisée
-  // par le dropdown live de la barre du HOME (homeLoader).
-  //   q   : chaîne (déjà lowercase-able ici)
-  //   max : cap de résultats points (défaut 8)
-  // → Promise<{ points: [{plan, pt}], scanEnCours: bool }>
-  //   `scanEnCours` = des plans restaient à lire quand le cap a été atteint
-  //   (le dropdown affiche « … » ; la modale reste le chemin exhaustif).
+  // Recherche SANS UI pour la barre de l'accueil (homeLoader), même cache que la modale (TTL 2 min).
+  //   q   : chaîne
+  //   max : plafond de résultats points (8 par défaut)
+  // → Promise<{ points: [{plan, pt}], scanEnCours: bool }> ; scanEnCours = des plans restaient à lire au plafond
+  //   (« … » ; la modale est le chemin exhaustif).
   async function rechercher(q, max) {
     q = String(q || "").toLowerCase().trim();
     max = max || 8;

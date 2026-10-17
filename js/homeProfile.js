@@ -7,15 +7,14 @@
 // =========================
 // HOMEPROFILE.JS — bandeau profil + rangs + hauts faits + stats + modale détails + édition pro
 // =========================
-// 🧹 B7 (v1.66.0) : extrait VERBATIM du monolithe index.html (ex-lignes
-// 2818-4642 du bloc <script> inline). AUCUN refactor interne — seul ajout :
-// les ponts window.* en fin de wrapper (le monolithe partageait UNE closure
-// « load » ; découpé, chaque fichier expose ce que les autres consomment,
-// les identifiants nus se résolvant sur l'objet global).
-// ⚠️ Chargé SANS defer (exécution synchrone à l'emplacement d'origine) et
-// wrappé dans window.addEventListener("load") : l'ordre d'enregistrement
-// des listeners (homeLoader → homeProfile → homeConfig → résiduel inline)
-// reproduit l'ordre d'exécution du bloc d'origine. Ne pas réordonner.
+// Accueil : bandeau profil (rang, stats choisies), fond d'écran, hauts faits, modale « Détails du profil »
+// (stats agrégées de tous les plans, camemberts filtrables par étiquette), section Édition pro.
+// Expose : window._persisterStatsPlanCourant, afficherChoixImportListe (pont pour homeLoader.js).
+// ⚠️ Chargé SANS defer et enveloppé dans window.addEventListener("load") : l'ordre d'enregistrement des
+// listeners (homeLoader → homeProfile → homeConfig) est voulu. Ne pas réordonner.
+// 🩸 Blob URL (avatar, fond) : révoquer l'ancienne APRÈS avoir posé la nouvelle, et seul le DERNIER appel
+// émis a le droit de commiter (jeton anti-course).
+// Dépend de : UserProfile, profileGamification.js, profileAchievements.js, StatsGlobales, PlanRegistry.
     window.addEventListener("load", function () {
       // Statistiques fournies par une extension (prise profilStats, KtaExtensions) : texte seulement,
       // modale « Détails du profil » + choix du bandeau (clé « ext:<cle> »). Vide sans extension.
@@ -33,37 +32,28 @@
         const bar = document.getElementById("kta-loader-profile-bar");
         if (!bar || !window.UserProfile) return;
         try { await window.UserProfile.init(); } catch(e) {}
-        // construit les slots stats selon les prefs user AVANT
-        // de hydrater (sinon les querySelectorAll dans _hydrateProfileBarStats
-        // tombent sur un container vide).
+        // Slots de stats construits selon les préférences AVANT l'hydratation (sinon conteneur vide).
         _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
         await _refreshLoaderProfileBar();
         bar.style.display = "";  // révèle (default = none)
         await _appliquerFondEcran();
-        // Listener changement (notifie sur setSurnom / setPhoto / removePhoto / clear)
         window.UserProfile.onChange(function() {
           _refreshLoaderProfileBar();
           _appliquerFondEcran();
         });
-        // Re-render au changement de langue (greeting + placeholder
-        // "Mon profil" viennent du dico ; le pseudo reste inchangé). Couvre la
-        // bascule live via le sélecteur du HOME.
+        // Re-rendu au changement de langue (salutation et placeholder viennent du dico ; le pseudo ne change pas).
         if (window.I18n && window.I18n.onChange) {
           window.I18n.onChange(function() { _refreshLoaderProfileBar(); });
         }
-        // compte d'une installation reliée (KtaExtensions.compte) :
-        // la carte se redessine quand l'extension annonce un changement.
+        // Compte d'une installation reliée (KtaExtensions.compte) : la carte se redessine à chaque changement.
         window.addEventListener("mktm:compte-changed", function() { _refreshLoaderProfileBar(); });
-        // Une extension arrive APRÈS le 1er dessin : elle peut couper grades et hauts faits (profilJeu) — les cases
-        // du bandeau suivent (score / hauts faits retirés si le jeu est coupé).
+        // Une extension arrivée APRÈS le 1er dessin peut couper grades et hauts faits (profilJeu) : le bandeau suit.
         window.addEventListener("mktm:extensions-changees", function() {
           _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
           _refreshLoaderProfileBar();
         });
-        // bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
-        // Click anywhere → ouvre la modale Détails.
+        // Toute la boîte est cliquable → modale Détails.
         bar.addEventListener("click", function() { _ouvrirModaleProfilDetails(); });
-        // Accessibilité clavier (Enter/Espace sur bandeau focusable)
         bar.addEventListener("keydown", function(e) {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -72,46 +62,28 @@
         });
       }
 
-      // FOND D'ÉCRAN DU HOME (demande KARMA « un peu comme Windows »).
-      // On pose 2 variables CSS sur #planLoaderBox : l'image et l'alpha du voile.
-      // La COULEUR du voile est définie côté CSS par thème (sombre / clair), donc
-      // basculer le thème réajuste automatiquement le voile sans repasser ici.
-      //
-      // ⚠️ La Blob URL précédente DOIT être révoquée : sans ça, chaque
-      // notification de profil (renommage, avatar, réglage du voile…) en créerait
-      // une nouvelle et l'image resterait en mémoire à chaque fois.
-      // (repro KARMA : « je perds ma photo de profil ET le fond
-      // d'écran en fermant la modale, ça revient au restart ») — JETON
-      // ANTI-COURSE. Chaque réglage du fond (voile, cadrage X, cadrage Y)
-      // déclenche un `_notify()`, donc plusieurs `_appliquerFondEcran()` et
-      // `_refreshLoaderProfileBar()` se chevauchent, chacun avec une lecture
-      // IDB asynchrone au milieu. Un appel ANCIEN pouvait alors se terminer
-      // APRÈS un plus récent : il réécrivait son URL périmée et révoquait
-      // celle réellement affichée. Le dégât ne se voyait qu'au repaint —
-      // c'est-à-dire à la fermeture de la modale, d'où le symptôme trompeur.
-      // Les données n'ont jamais été touchées : un rechargement recréait des
-      // URL fraîches, d'où le « ça revient au restart ».
-      // Règle : seul le DERNIER appel émis a le droit de commiter.
+      // ── Fond d'écran de l'accueil ──────────
+      // Deux variables CSS : l'image et l'alpha du voile. La COULEUR du voile vient du CSS par thème : basculer
+      // le thème réajuste le voile sans repasser ici.
+      // ⚠️ La Blob URL précédente DOIT être révoquée, sinon chaque notification de profil en crée une nouvelle.
+      // 🩸 JETON ANTI-COURSE : chaque réglage (voile, cadrage X/Y) déclenche `_notify()`, donc plusieurs
+      // `_appliquerFondEcran()` et `_refreshLoaderProfileBar()` qui se chevauchent autour d'une lecture IDB. Un
+      // appel ANCIEN qui finit après un récent réécrirait une URL périmée et révoquerait celle affichée (dégât
+      // visible au repaint, à la fermeture de la modale). Seul le DERNIER appel émis a le droit de commiter.
       let _wallObjectUrl = null;
       let _wallJeton     = 0;
       async function _appliquerFondEcran() {
         const box = document.getElementById("planLoaderBox");
         if (!box || !window.UserProfile) return;
-        // ⚠️ L'IMAGE EST PORTÉE PAR L'OVERLAY, PAS PAR LA BOX.
-        // La box est le CONTENU DÉFILÉ (hauteur = hauteur du contenu, 2000-3000 px
-        // en portrait) ; l'overlay est `position:fixed; inset:0` + le scroller,
-        // donc sa boîte de fond EST le viewport et ne bouge pas au défilement.
-        // Peindre sur la box faisait calculer `cover` sur 2500 px de haut →
-        // ~88 % de la largeur rognée, et le fond défilait avec le contenu.
-        // La CLASSE `.kta-has-wall` reste sur la box : une douzaine de blocs
-        // de contraste (header, profil, footer, titres) sont scopés dessus.
-        // L'overlay reçoit sa propre classe miroir.
+        // ⚠️ L'IMAGE EST PORTÉE PAR L'OVERLAY, PAS PAR LA BOX. La box est le contenu défilé (2000-3000 px en
+        // portrait) : `cover` y rognerait ~88 % de la largeur et le fond défilerait. L'overlay (`position:fixed;
+        // inset:0`) a le viewport pour boîte de fond. La classe `.kta-has-wall` reste sur la box (blocs de
+        // contraste scopés dessus) ; l'overlay reçoit sa classe miroir.
         const fond = document.getElementById("planLoaderOverlay") || box;
         const monJeton = ++_wallJeton;
         try {
           const snap = window.UserProfile.get();
-          // Même règle que pour l'avatar : on ne révoque qu'APRÈS avoir posé
-          // la nouvelle URL, sinon le fond disparaît le temps de la lecture.
+          // Révocation APRÈS la pose de la nouvelle URL, sinon le fond disparaît le temps de la lecture.
           const ancienne = _wallObjectUrl;
           const liberer = function() {
             if (ancienne) { try { URL.revokeObjectURL(ancienne); } catch(e) {} }
@@ -128,9 +100,8 @@
             return;
           }
           const url = await window.UserProfile.getWallpaperObjectUrl();
-          // Un appel plus récent est passé pendant la lecture : on abandonne
-          // en révoquant NOTRE url (jamais affichée) — surtout pas l'ancienne,
-          // qui est celle que le gagnant vient d'installer.
+          // Appel plus récent passé pendant la lecture : on révoque NOTRE url (jamais affichée), surtout pas
+          // l'ancienne, que le gagnant vient d'installer.
           if (monJeton !== _wallJeton) {
             if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
             return;
@@ -147,10 +118,8 @@
           fond.style.setProperty("--kta-wall-img", 'url("' + url + '")');
           fond.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
           fond.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
-          // mode d'affichage. `contain` = image entière, l'espace
-          // restant prend la couleur du thème (le voile joue déjà cette
-          // couleur, donc ça se lit comme une image posée sur le fond de
-          // l'app, pas comme un rendu raté).
+          // `contain` = image entière ; l'espace restant prend la couleur du voile (se lit comme une image posée
+          // sur le fond de l'app).
           fond.style.setProperty("--kta-wall-size", snap.wallFit === "contain" ? "contain" : "cover");
           box.classList.add("kta-has-wall");        // ← blocs de contraste
           fond.classList.add("kta-has-wall-bg");    // ← porteur de l'image
@@ -164,10 +133,8 @@
       let _barJeton = 0;                // anti-course (cf. _appliquerFondEcran)
       async function _refreshLoaderProfileBar() {
         if (!window.UserProfile) return;
-        // Installation reliée à une base de données : le compte
-        // connecté (pseudo + rôle, fournis par l'extension) prend la place du
-        // surnom et du rang. Rien n'est écrit dans le profil local : il revient
-        // tel quel à la déconnexion. Sans extension (myktamap.fr) : null.
+        // Installation reliée à une base : le compte connecté (pseudo + rôle de l'extension) remplace surnom et
+        // rang. Rien n'est écrit dans le profil local, qui revient tel quel à la déconnexion. Sans extension : null.
         const _compte = (window.KtaExtensions && typeof window.KtaExtensions.compte === "function")
           ? window.KtaExtensions.compte() : null;
         const snap = Object.assign({}, window.UserProfile.get(), _compte ? { surnom: _compte.pseudo } : {});
@@ -175,16 +142,14 @@
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
         const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
-        // ⚠️ Le jeton s'incrémente APRÈS les gardes de sortie — sinon un appel
-        // stérile (DOM absent) brûlait un numéro et faisait abandonner un appel
-        // légitime déjà en vol. `_appliquerFondEcran` avait déjà le bon ordre.
+        // ⚠️ Jeton incrémenté APRÈS les gardes de sortie : un appel stérile (DOM absent) brûlerait un numéro et
+        // ferait abandonner un appel légitime en vol.
         const monJetonBar = ++_barJeton;
 
-        // anneau de rang (sur le wrap → survit au remplacement du innerHTML)
-        // + nom du rang sous le pseudo + médaille en coin bas-droite de la photo.
+        // Anneau de rang (sur le wrap : survit au remplacement du innerHTML) + nom du rang + médaille.
         const _rank = _appliquerRangAvatar(avatarWrap);
         if (!_rank) {
-          // Grades coupés par une extension (prise profilJeu) : ni nom de grade, ni médaille.
+          // Grades coupés par une extension (profilJeu) : ni nom de grade, ni médaille.
           const rankLabelEl = document.getElementById("kta-loader-profile-rank");
           if (rankLabelEl) { rankLabelEl.textContent = ""; rankLabelEl.removeAttribute("data-kta-rank"); }
           const badgeEl = document.getElementById("kta-loader-profile-badge");
@@ -214,21 +179,14 @@
           if (rankLabelEl) { rankLabelEl.textContent = _compte.libelle; rankLabelEl.removeAttribute("data-kta-rank"); }
         }
 
-        // hauts faits — toast si de nouveaux succès sont débloqués
-        // (au retour sur le home). 1er calcul = accord rétroactif silencieux.
+        // Hauts faits : toast si nouveaux succès. 1er calcul = accord rétroactif silencieux.
         _evalAchievements();
 
-        // (KARMA "j'ai que un —") : hydrate les stats AVANT
-        // toute autre opération (et hors await) pour garantir que les valeurs
-        // s'affichent même si le bloc photo plus bas fait un early return
-        // (cas user avec photo de profil) ou throw silencieusement.
-        // Avant le fix : `_hydrateProfileBarStats()` à la fin → skip si
-        // `snap.hasPhoto && url` → tous les users avec photo voyaient "—".
+        // 🩸 Stats hydratées AVANT tout le reste et hors await : le bloc photo plus bas peut sortir tôt ou lever,
+        // et les valeurs du bandeau resteraient à « — ».
         _hydrateProfileBarStats();
 
-        // Surnom display
-        // greeting + placeholder viennent du dico (I18n.t) ; le
-        // pseudo (snap.surnom) reste tel quel (donnée user, pas traduite).
+        // Salutation et placeholder viennent du dico ; le pseudo (donnée utilisateur) n'est pas traduit.
         const _tGreeting = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.greeting") : "Bienvenue";
         const _tPlaceholder = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.placeholder") : "Mon profil";
         const hasName = !!(snap.surnom && snap.surnom.trim());
@@ -241,16 +199,9 @@
           surnomEl.classList.add("kta-loader-profile-surnom-empty");
           if (greetingEl) greetingEl.textContent = _tGreeting;
         }
-        // Avatar : photo si dispo, sinon initiale colorée
-        // (repro KARMA : « quand je charge un fond d'écran, la
-        // miniature de ma photo de profil devient un ? ») — l'ancienne URL
-        // était révoquée AVANT l'await : entre les deux, le <img> affiché
-        // pointait sur une URL morte → image cassée (le « ? » du navigateur).
-        // Invisible tant que les rafraîchissements étaient rares ; le fond
-        // d'écran en déclenche beaucoup plus (ajout, voile, cadrage) et la
-        // fenêtre est devenue systématiquement visible.
-        // Fix : on RETIENT l'ancienne URL, on installe la nouvelle, et on ne
-        // révoque qu'APRÈS le remplacement.
+        // Avatar : photo si disponible, sinon initiale colorée.
+        // 🩸 On RETIENT l'ancienne URL, on installe la nouvelle, et on ne révoque qu'APRÈS : révoquer avant
+        // l'await laisse le <img> sur une URL morte (le « ? » du navigateur), fréquent avec le fond d'écran.
         const _ancienneUrl = _profileBarObjectUrl;
         const _libererAncienne = function() {
           if (_ancienneUrl) { try { URL.revokeObjectURL(_ancienneUrl); } catch(e) {} }
@@ -258,8 +209,7 @@
         if (snap.hasPhoto) {
           try {
             const url = await window.UserProfile.getPhotoObjectUrl();
-            // Appel dépassé pendant la lecture IDB → on jette NOTRE url et on
-            // laisse le gagnant tranquille (cf. _appliquerFondEcran).
+            // Appel dépassé pendant la lecture IDB : on jette NOTRE url (cf. _appliquerFondEcran).
             if (monJetonBar !== _barJeton) {
               if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
               return;
@@ -277,11 +227,9 @@
           }
         }
         if (monJetonBar !== _barJeton) return;
-        // Pas de photo (ou lecture échouée) : l'initiale remplace le <img>,
-        // on peut libérer sans risque.
+        // Pas de photo (ou lecture échouée) : l'initiale remplace le <img>, libération sans risque.
         _profileBarObjectUrl = null;
         _libererAncienne();
-        // Fallback initiale
         const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
         const color   = window.UserProfile.getAvatarColor(snap.surnom || "");
         if (hasName) {
@@ -289,27 +237,16 @@
             '<div class="kta-loader-profile-avatar-initial" style="background:' +
               color.bg + '; color:' + color.fg + ';">' + initial + '</div>';
         } else {
-          // Vraiment vide : silhouette grise neutre, pas d'initiale
+          // Vraiment vide : silhouette grise neutre.
           avatarWrap.innerHTML =
             '<div class="kta-loader-profile-avatar-initial kta-loader-profile-avatar-empty">👤</div>';
         }
       }
 
-      // (KARMA "temps session en cours pas général") :
-      // tracking temps app CUMULÉ (toutes sessions). Stocké dans
-      // `localStorage["myktamap_total_time_ms"]`.
-      //
-      // 🐛 Bug v1.21.1-fix1 : `_flushTotalTime` avait `if (document.hidden)
-      // return` au début, ce qui faisait skip TOUS les flushes après
-      // visibilitychange→hidden (qui fire AVANT beforeunload/pagehide).
-      // Conséquence : à la fermeture de l'onglet, le delta de la session
-      // courante n'était JAMAIS persisté → l'user voyait son temps repartir
-      // à 0 à chaque reload.
-      //
-      // Fix : sentinel `_timeLastTick = null` pour stopper le comptage
-      // quand l'onglet devient caché. Le flush écrit toujours si tick valide
-      // (qu'il soit appelé via heartbeat, visibilitychange, beforeunload ou
-      // pagehide). Au retour de visibility, on remet `_timeLastTick = Date.now()`.
+      // Temps d'app CUMULÉ (toutes sessions) dans `localStorage["myktamap_total_time_ms"]`.
+      // 🩸 Le flush n'est PAS sauté quand l'onglet est caché : visibilitychange→hidden arrive AVANT
+      // beforeunload/pagehide, et le delta de la session serait perdu. On arrête le comptage par la sentinelle
+      // `_timeLastTick = null` ; le flush écrit toujours si le tick est valide ; retour visible → Date.now().
       const _TOTAL_TIME_LS_KEY = "myktamap_total_time_ms";
       const _TIME_TICK_MS      = 30000;  // sauvegarde toutes les 30s
       let _timeLastTick = Date.now();   // null = onglet caché, sinon timestamp
@@ -343,7 +280,7 @@
         }
       });
 
-      // Formattage temps humain : "12h 34min" / "45min" / "12s"
+      // "12h 34min" / "45min" / "12s"
       function _formatDuration(ms) {
         if (typeof ms !== "number" || ms < 0) return "—";
         const s = Math.floor(ms / 1000);
@@ -355,10 +292,8 @@
         return remM > 0 ? h + "h " + remM + "min" : h + "h";
       }
 
-      // Gamification du profil : rang/badge selon temps + plans + km.
-      // Métriques lues depuis les compteurs EXISTANTS (toutes locales) ; le calcul
-      // de rang vit dans js/profileGamification.js (module pur). km = galeries
-      // cartographiées (somme des distM en cache par plan).
+      // Rang selon temps + plans + km, lus dans les compteurs locaux existants ; calcul dans
+      // js/profileGamification.js (module pur). km = galeries cartographiées (somme des distM en cache par plan).
       function _collectGamifMetrics() {
         let plans = 0, km = 0, pois = 0, roads = 0, zones = 0, structures = 0, plansGeoref = 0, list = [];
         let hasTracked = false, maxLevels = 0, maxTrackerH = 0;  // (spéciaux)
@@ -370,7 +305,7 @@
         try {
           list.forEach(function(p){
             if (!p || !p.id) return;
-            // plan géoréférencé = calibration GPS présente (hauts faits Géomètre)
+            // Plan géoréférencé = calibration GPS présente (haut fait Géomètre).
             try { if (localStorage.getItem("myktamap_kmz_calib_" + p.id)) plansGeoref++; } catch(e) {}
             try {
               const raw = localStorage.getItem("myktamap_plan_stats_v1_" + p.id);
@@ -385,7 +320,7 @@
                 }
               }
             } catch(e) {}
-            // scan session pour les spéciaux (tracker + niveaux annotés)
+            // Session scannée pour les spéciaux (tracker, niveaux annotés).
             try {
               const sraw = window.KtaSessionStore.lire(p.id);
               if (sraw) {
@@ -425,18 +360,16 @@
         };
       }
 
-      // Hauts faits (succès one-shot). Détection des nouveaux
-      // débloqués + persistance + toast. Catalogue/éval dans js/profileAchievements.js.
+      // Hauts faits (succès uniques) : détection, persistance, toast. Catalogue et évaluation :
+      // js/profileAchievements.js.
       const _ACH_LS_KEY = "myktamap_achievements_v1";
       function _readUnlockedAch() {
         try { const a = JSON.parse(localStorage.getItem(_ACH_LS_KEY)); return (a && typeof a === "object") ? a : {}; }
         catch(e) { return {}; }
       }
       function _writeUnlockedAch(o) { try { localStorage.setItem(_ACH_LS_KEY, JSON.stringify(o)); } catch(e) {} }
-      // Grades et hauts faits : actifs sauf si une extension les coupe (prise profilJeu — ex. une installation
-      // où les plans viennent de l'organisation et gonfleraient le grade, 13/10/2026).
-      // Plan fourni par une extension (☁️, registre type « ext ») : son contenu vient de plusieurs auteurs. Le
-      // profil le compte À PART des plans de l'appareil (13/10/2026).
+      // Grades et hauts faits actifs sauf si une extension les coupe (prise profilJeu : plans de l'organisation
+      // qui gonfleraient le grade). Plan d'extension (type « ext ») : contenu de plusieurs auteurs, compté À PART.
       function _estPlanExt(p) { return !!p && p.type === "ext"; }
       function _jeuProfilActif() {
         return !(window.KtaExtensions && typeof window.KtaExtensions.profilJeuActif === "function"
@@ -444,7 +377,7 @@
       }
       function _evalAchievements() {
         if (!window.ProfileAchievements || !_jeuProfilActif()) return;
-        // 1er calcul (clé absente) → on accorde rétroactivement SANS toast (pas de spam).
+        // 1er calcul (clé absente) : accord rétroactif SANS toast.
         const firstRun = (localStorage.getItem(_ACH_LS_KEY) === null);
         const m = _collectGamifMetrics();
         const ids = window.ProfileAchievements.unlockedIds(m);
@@ -469,7 +402,7 @@
         } catch(e) {}
       }
 
-      // Remplit la grille des hauts faits dans la modale Détails profil (8 familles × 4 paliers).
+      // Grille des hauts faits de la modale Détails (8 familles × 4 paliers).
       function _hydrateProfileFeats() {
         const box = document.getElementById("kta-profile-details-feats");
         if (!box || !window.ProfileAchievements) return;
@@ -502,7 +435,6 @@
                   '</div>';
         });
         html += '</div>';
-        // section Spéciaux (hauts faits one-shot)
         const specials = all.filter(function(a){ return a.group === "special"; });
         if (specials.length) {
           html += '<div class="kta-feats-sptitle">🎉 ' + tt("feat.specials") + '</div>' +
@@ -516,7 +448,7 @@
         box.innerHTML = html;
       }
 
-      // Applique l'anneau de rang sur un conteneur d'avatar (data-kta-rank lu par le CSS).
+      // Anneau de rang sur un conteneur d'avatar (data-kta-rank lu par le CSS).
       function _appliquerRangAvatar(wrapEl) {
         if (!wrapEl || !window.ProfileGamification) return null;
         if (!_jeuProfilActif()) { wrapEl.removeAttribute("data-kta-rank"); wrapEl.removeAttribute("title"); return null; }
@@ -528,7 +460,7 @@
         } catch(e) { return null; }
       }
 
-      // Remplit le bloc rang de la modale Détails profil (puce + métriques + progression + score).
+      // Bloc rang de la modale Détails (puce, métriques, progression, score).
       function _hydrateProfileRank() {
         const box = document.getElementById("kta-profile-details-rank");
         if (!box || !window.ProfileGamification) return;
@@ -565,8 +497,7 @@
             '</div>';
         } else {
           html += '<div class="kta-profile-rank-next kta-profile-rank-max">' + tt("rank.maxReached") + '</div>';
-          // 🥚 Si le rang affiché vient de l'Easter egg (pseudo Karma → Légende),
-          // on garde l'info : le rang réellement mérité par les métriques.
+          // Rang affiché venu de l'Easter egg (pseudo → Légende) : on garde le rang réellement mérité.
           const real = (typeof PG.rankByMetrics === "function") ? PG.rankByMetrics(m) : null;
           if (real && real.id !== rank.id) {
             html += '<div class="kta-profile-rank-real">' + tt("rank.realRank") + ' : ' +
@@ -580,17 +511,10 @@
         box.innerHTML = html;
       }
 
-      // (KARMA "on doit pouvoir choisir dans profile les 2 ou 3
-      // stats du bandeau accueil") : système dynamique de stats configurables.
-      //
-      // - PROFILE_BAR_STATS = pool de stats disponibles (3 actuellement,
-      //   extensible si besoin).
-      // - localStorage key `myktamap_loader_bar_stats_v1` = array de keys
-      //   sélectionnées par l'user (default ["time", "storage"]).
-      // - _renderProfileBarStatsSlots(keys) construit le DOM dynamiquement.
-      // - _hydrateProfileBarStats() itère les slots présents (pas hardcodé)
-      //   et remplit les valeurs selon la key.
-      // 🌐 i18n : on stocke des clés (titleKey) résolues AU RENDU, jamais au load.
+      // Stats du bandeau d'accueil, au choix : PROFILE_BAR_STATS = pool disponible ;
+      // `myktamap_loader_bar_stats_v1` = clés choisies (défaut ["time", "storage"]) ;
+      // _renderProfileBarStatsSlots construit le DOM, _hydrateProfileBarStats remplit les slots présents.
+      // ⚠️ i18n : on stocke des clés (titleKey) résolues AU RENDU, jamais au chargement.
       const PROFILE_BAR_STATS = {
         time: {
           icon:  "⏱️",
@@ -604,7 +528,7 @@
           icon:  "🗺️",
           titleKey: "home.profile.stats.plansTitle"
         },
-        // score (gamification) + nb de hauts faits débloqués.
+        // Score + nombre de hauts faits débloqués.
         score: {
           icon:  "⭐",
           titleKey: "home.profile.stats.scoreTitle"
@@ -617,9 +541,8 @@
       const PROFILE_BAR_STATS_LS_KEY = "myktamap_loader_bar_stats_v1";
       const PROFILE_BAR_STATS_MAX    = 3;  // cap mobile (et général)
 
-      // Une clé du bandeau s'affiche si elle existe ET a encore un sens : score / hauts faits seulement quand le jeu
-      // est actif (prise profilJeu), « ext:<clé> » seulement si l'extension fournit cette statistique. La préférence
-      // n'est pas réécrite : la stat revient d'elle-même si le jeu ou l'extension reviennent.
+      // Une clé du bandeau s'affiche si elle a encore un sens : score / hauts faits si le jeu est actif (profilJeu),
+      // « ext:<clé> » si l'extension fournit la stat. La préférence n'est pas réécrite : la stat revient seule.
       function _cleBandeauUtilisable(k) {
         if (typeof k !== "string") return false;
         if (k.indexOf("ext:") === 0) return _statsExt.some(function(x) { return "ext:" + x.cle === k; });
@@ -632,20 +555,18 @@
           if (raw) {
             const arr = JSON.parse(raw);
             if (Array.isArray(arr) && arr.length > 0) {
-              // Filtre les keys valides (anti-corruption) et applique le cap
+              // Clés valides seulement, puis plafond.
               const filtered = arr.filter(_cleBandeauUtilisable);
               if (filtered.length) return filtered.slice(0, PROFILE_BAR_STATS_MAX);
             }
           }
         } catch(e) {}
-        // Default : time + storage (= comportement v1.21.1+)
         return ["time", "storage"];
       }
       function _setProfileBarStatsKeys(arr) {
         try { localStorage.setItem(PROFILE_BAR_STATS_LS_KEY, JSON.stringify(arr)); } catch(e) {}
       }
 
-      // Construit dynamiquement les slots dans le bandeau profil
       function _renderProfileBarStatsSlots(keys) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const wrap = document.getElementById("kta-loader-profile-stats");
@@ -660,7 +581,7 @@
           div.id = "kta-loader-profile-stat-" + k.replace(/[^\w-]/g, "_");
           div.title = cfg.titre != null ? cfg.titre : _t(cfg.titleKey);
           div.dataset.statKey = k;
-          // Texte seulement (une statistique d'extension est un texte, jamais du HTML).
+          // Texte seulement : une stat d'extension n'est jamais du HTML.
           const ic = document.createElement("span"); ic.className = "kta-loader-profile-stat-icon"; ic.textContent = cfg.icon;
           const val = document.createElement("span"); val.className = "kta-loader-profile-stat-val"; val.textContent = "—";
           div.appendChild(ic); div.appendChild(val);
@@ -668,7 +589,7 @@
         });
       }
 
-      // Formattage bytes : "12 KB" / "1.2 MB" / "234 MB"
+      // "12 KB" / "1.2 MB" / "234 MB"
       function _formatBytesShort(n) {
         if (n == null || isNaN(n)) return "—";
         const num = Number(n);
@@ -678,45 +599,33 @@
         return (num / (1024 * 1024 * 1024)).toFixed(2) + " GB";
       }
 
-      // (KARMA "valeur sauvegarde dans profil varie bizarement") :
-      // L'ancien code utilisait navigator.storage.estimate() qui retourne TOUTE
-      // la consommation de l'origine, y compris le Cache PWA volatile (eviction
-      // LRU v1.21.3 → fluctuation visible). Le tooltip annonçait pourtant
-      // "données MyKTAMap (localStorage + IDB)" → mensonge.
-      //
-      // Fix : calcul ciblé qui scanne uniquement les sources MyKTAMap fiables :
-      //   - localStorage keys prefix "myktamap_" / "kta_" / "app_user_prefs"
-      //   - IDB stores connus (handles/blobs, backups, photos, profile, crashes)
-      //   - toute autre base IDB de l'origine nommée "kta_…" / "myktamap…" (base créée par une extension, cache de
-      //     tuiles…), découverte par indexedDB.databases() quand le navigateur l'offre ; sans lui, les connues seules.
-      // Les ZIP des plans d'extension (registre type "ext") sont mesurés à part au même passage (« dont ☁️ »).
-      //
-      // Cache mémoire 30s pour éviter de recalculer à chaque ouverture du
-      // loader (le scan IDB est rapide mais inutile en re-render).
+      // 🩸 Taille calculée sur les SOURCES MYKTAMAP seulement, pas navigator.storage.estimate() (qui inclut le
+      // cache PWA, volatil, et fait fluctuer la valeur) :
+      //   - clés localStorage "myktamap_" / "kta_" / "app_user_prefs"
+      //   - stores IDB connus (handles/blobs, sauvegardes, photos, profil, crashes, sessions, Carnet, PDF)
+      //   - autres bases "kta_…" / "myktamap…" de l'origine (extension, cache de tuiles), découvertes par
+      //     indexedDB.databases() quand le navigateur l'offre.
+      // ZIP des plans d'extension mesurés à part au même passage (« dont ☁️ »). Cache mémoire 30 s.
       let _storageCalcCache = null;  // { ts: number, bytes: number, extBytes: number }
       const _STORAGE_CACHE_MS = 30000;
       const _IDB_STORES = [
         { db: "myktamap_handles", store: "handles", blobFields: [] },
-        // ext: true → les ZIP rangés sous l'id d'un plan d'extension sont aussi cumulés à part (« dont ☁️ »).
+        // ext: true → les ZIP rangés sous l'id d'un plan d'extension sont aussi cumulés à part.
         { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"], ext: true },
         { db: "myktamap_backups", store: "backups", blobFields: [] },
-        // Sessions auto-sauvegardées (js/sessionStore.js, IndexedDB depuis le 10/10/2026).
+        // Sessions auto-sauvegardées (js/sessionStore.js).
         { db: "myktamap_sessions", store: "sessions", blobFields: [] },
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
         { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob", "wallBlob"] },
         { db: "myktamap_crashes", store: "crashes", blobFields: [] },
-        // Le Carnet (js/journal.js) : sans cette ligne, l'espace
-        // occupé par les sorties archivées serait invisible dans « Stockage ».
+        // Le Carnet (js/journal.js).
         { db: "myktamap_journal", store: "sorties", blobFields: [] },
-        // Documents PDF du Mode Histoire : jamais comptés jusqu'ici
-        // (un PDF de 40 Mo était invisible dans « Stockage »).
+        // Documents PDF du Mode Histoire.
         { db: "myktamap_histoire_pdfs", store: "pdfs", blobFields: ["blob"] }
       ];
 
-      // Ouvre une DB IDB en lecture seule SANS la créer si absente. Utilise
-      // indexedDB.open(name) sans version → ouvre la version actuelle. Si la
-      // DB n'existe pas, ça la créera vide (overhead trivial accepté, alternative
-      // databases() pas dispo Safari).
+      // Ouvre une base IDB en lecture SANS la garder si elle n'existait pas : indexedDB.open(name) sans version
+      // la crée vide, l'upgrade le révèle et on la supprime (databases() manque sur Safari).
       function _openIdbReadOnly(dbName) {
         return new Promise(function(resolve) {
           let upgradeNeeded = false;
@@ -724,7 +633,6 @@
           req.onupgradeneeded = function() { upgradeNeeded = true; };
           req.onsuccess = function() {
             const db = req.result;
-            // Si on a déclenché un upgrade = la DB n'existait pas. On la ferme + delete.
             if (upgradeNeeded) {
               db.close();
               try { indexedDB.deleteDatabase(dbName); } catch(e) {}
@@ -738,19 +646,12 @@
         });
       }
 
-      // Itère un store IDB et accumule les bytes (Blobs + JSON metadata)
-      // (KARMA "valeur sauvegarde pas bonne, j'ai 150 Mo de
-      // plans en mémoire") : le helper ratait les stores qui mettent la
-      // valeur Blob/Handle DIRECTEMENT comme `store.put(blob, id)` (cas de
-      // myktamap_handles.handles + myktamap_handles.blobs). Mon code
-      // cherchait `val.blob.size` qui n'existe pas pour ces stores → 0 bytes
-      // comptés pour potentiellement des MB de ZIPs plans mémorisés.
-      // Fix : détection 3 cas :
-      //   1. Valeur EST un Blob (a `.size` + `.type` typique Blob)
-      //   2. Valeur est un objet wrapper (cherche les champs Blob déclarés)
-      //   3. Valeur est un objet opaque (FileSystemHandle) → ~200 bytes flat
-      // blobFields === null : base inconnue (extension) → les champs Blob de 1er niveau sont détectés valeur par valeur.
-      // acc (facultatif) : { ids: { <idPlan>: true }, ext: 0 } — cumule à part les valeurs rangées sous un id de plan ext.
+      // Parcourt un store IDB et cumule les octets (Blobs + métadonnées JSON). 🩸 Trois formes de valeur :
+      //   1. la valeur EST un Blob (`store.put(blob, id)` de myktamap_handles) ;
+      //   2. objet enveloppe (champs Blob déclarés) ;
+      //   3. objet opaque (FileSystemHandle) → ~200 octets forfaitaires.
+      // blobFields === null : base inconnue (extension) → champs Blob de 1er niveau détectés valeur par valeur.
+      // acc (facultatif) : { ids: { <idPlan>: true }, ext: 0 } — cumule à part les valeurs d'un plan ext.
       function _accStoreBytes(db, storeName, blobFields, acc) {
         const auto = blobFields === null;
         return new Promise(function(resolve) {
@@ -769,23 +670,19 @@
                 blobFields = [];
                 try { for (const k in val) { if (val[k] instanceof Blob) blobFields.push(k); } } catch(e) {}
               }
-              // Compte la clé (string ID typique 30-50 chars)
               try {
                 if (typeof cur.key === "string") total += cur.key.length * 2;
               } catch(e) {}
               if (val) {
-                // CAS 1 : la valeur EST elle-même un Blob (cf saveBlob :
-                // store.put(blob, id) → cursor.value = Blob directement)
+                // 1. La valeur EST un Blob (saveBlob : store.put(blob, id)).
                 if (val instanceof Blob) {
                   total += val.size || 0;
                 } else if (typeof val.kind === "string"
                            && (val.kind === "file" || val.kind === "directory")) {
-                  // CAS 3 : FileSystemHandle (kind = "file" | "directory").
-                  // Pas de .size accessible, mais l'objet est léger.
+                  // 3. FileSystemHandle : pas de .size, objet léger.
                   total += 200;  // estimation flat (metadata interne navigateur)
                 } else {
-                  // CAS 2 : objet wrapper avec champs typés
-                  // - Champs Blob déclarés → use .size réel
+                  // 2. Enveloppe : .size réel des champs Blob déclarés.
                   let blobBytes = 0;
                   for (let i = 0; i < blobFields.length; i++) {
                     const f = blobFields[i];
@@ -794,8 +691,7 @@
                       blobBytes += val[f].size;
                     }
                   }
-                  // Reste : approx via JSON.stringify (UTF-16 = ×2). On skip
-                  // les champs Blob déjà comptés ci-dessus.
+                  // Reste : JSON.stringify (UTF-16 = ×2), champs Blob déjà comptés exclus.
                   try {
                     const clean = {};
                     for (const k in val) {
@@ -817,7 +713,7 @@
 
       async function _calculerStorageMyktamapBytes() {
         let total = 0;
-        // 1. localStorage MyKTAMap-specific
+        // 1. localStorage propre à MyKTAMap.
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
@@ -828,21 +724,20 @@
             }
           }
         } catch(e) {}
-        // Ids des plans d'extension : leurs ZIP (store blobs) sont cumulés à part.
         const acc = { ids: {}, ext: 0 };
         try {
           const reg = (window.PlanRegistry && window.PlanRegistry.getAll) ? (window.PlanRegistry.getAll() || []) : [];
           reg.forEach(function(p) { if (_estPlanExt(p) && p.id) acc.ids[p.id] = true; });
         } catch(e) {}
-        // Bases présentes sur l'origine, quand le navigateur sait les lister (sinon null → les connues seules).
-        // Une base connue absente de la liste n'est pas ouverte (pas de création-suppression à vide).
+        // Bases présentes, quand le navigateur sait les lister (sinon null → les connues seules). Une base connue
+        // absente de la liste n'est pas ouverte (pas de création-suppression à vide).
         let presentes = null;
         try {
           if (typeof indexedDB.databases === "function") {
             presentes = (await indexedDB.databases()).map(function(d) { return d && d.name; }).filter(Boolean);
           }
         } catch(e) { presentes = null; }
-        // 2. IDB stores MyKTAMap (lecture seule, skip si DB absente)
+        // 2. Stores IDB MyKTAMap (lecture seule, base absente ignorée).
         const seenDbs = {};
         async function _ouvrir(nom) {
           if (seenDbs[nom] === undefined) {
@@ -859,8 +754,8 @@
             total += bytes;
           } catch(e) {}
         }
-        // 2bis. Autres bases "kta_…" / "myktamap…" de l'origine (extension, caches) : tous leurs stores, champs Blob
-        // détectés à la volée. Uniquement des bases LISTÉES par le navigateur → jamais de création.
+        // 2bis. Autres bases "kta_…" / "myktamap…" (extension, caches) : tous leurs stores, champs Blob détectés à
+        // la volée. Seulement des bases LISTÉES par le navigateur → jamais de création.
         if (presentes) {
           const connues = {};
           _IDB_STORES.forEach(function(sp) { connues[sp.db] = true; });
@@ -876,7 +771,6 @@
             } catch(e) {}
           }
         }
-        // 3. Close les DBs ouvertes
         for (const dbName in seenDbs) {
           const db = seenDbs[dbName];
           if (db) { try { db.close(); } catch(e) {} }
@@ -893,14 +787,11 @@
         _storageCalcCache = { ts: now, bytes: r.bytes, extBytes: r.extBytes };
         return r.bytes;
       }
-      // Part des ZIP de plans d'extension dans le dernier calcul (0 sans plan ext) — lue juste après
-      // _getStorageMyktamapCached(), qui l'a mise en cache au même passage.
+      // Part des ZIP de plans d'extension dans le dernier calcul (0 sans plan ext), mise en cache par
+      // _getStorageMyktamapCached() au même passage.
       function _storageExtBytes() { return (_storageCalcCache && _storageCalcCache.extBytes) || 0; }
 
-      // Hydrate les stats compactes du bandeau profil — refactor dynamique
-      // itère les slots PRÉSENTS dans le DOM (data-stat-key)
-      // au lieu de hardcoder time/storage. Permet d'ajouter de nouvelles
-      // stats au pool PROFILE_BAR_STATS sans toucher à cette fonction.
+      // Hydrate les slots PRÉSENTS dans le DOM (data-stat-key) : une stat ajoutée au pool ne touche pas cette fonction.
       async function _hydrateProfileBarStats() {
         const slots = document.querySelectorAll("#kta-loader-profile-stats [data-stat-key]");
         for (const slot of slots) {
@@ -914,13 +805,13 @@
           } else if (key === "storage") {
             try {
               const bytes = await _getStorageMyktamapCached();
-              // la mémoire des SESSIONS (localStorage, ~5 Mo par site) peut être pleine alors que le
-              // total reste modeste — on le signale ici (⚠️ + infobulle), le détail est dans 📊 Détails de la session.
+              // La mémoire des SESSIONS (localStorage, ~5 Mo par site) peut être pleine alors que le total reste
+              // modeste : signalé ici (⚠️ + infobulle), détail dans « Détails de la session ».
               const S = window.ktaStockageLocal;
               const mem = S ? S.mesurer() : null;
               const alerte = mem && mem.ratio >= S.SEUIL_ALERTE;
               valEl.textContent = _formatBytesShort(bytes) + (alerte ? " ⚠️" : "");
-              // Part des plans d'extension (☁️) : dans l'infobulle seulement, la valeur reste le total.
+              // Part des plans d'extension : dans l'infobulle seulement, la valeur reste le total.
               const ext = _storageExtBytes();
               const titreBase = window.I18n.t("home.profile.stats.storageTitle");
               slot.title = ext ? titreBase + " — " + window.I18n.t("home.profile.stats.dontExt",
@@ -937,8 +828,7 @@
               let arr = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
                         ? (window.PlanRegistry.getAll() || [])
                         : [];
-              // si pref skipServer active, exclut les plans
-              // serveur du count (cohérent avec "ne pas fausser les stats").
+              // Pref skipServer active : plans serveur exclus du compte.
               if (typeof window._loaderSkipServerPlans === "function" && window._loaderSkipServerPlans()) {
                 arr = arr.filter(function(p) { return p.type !== "server"; });
               }
@@ -965,13 +855,10 @@
         }
       }
 
-      // === MODALE "Détails du profil" ===
-      // Pattern .kta-readme-modal-overlay. Édition inline (surnom contenteditable),
-      // bouton modifier/retirer photo (input file caché), stats agrégées,
-      // boutons export profil / import profil / reset.
+      // ── Modale « Détails du profil » ──────────
+      // Surnom éditable en place, photo (input caché), stats agrégées, export / import / réinitialisation.
       function _ouvrirModaleProfilDetails() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        // Cleanup d'une modale précédente
         const ex = document.getElementById("kta-profile-details-modal");
         if (ex) ex.parentNode.removeChild(ex);
 
@@ -991,7 +878,6 @@
               '<button type="button" class="kta-panneau-close" id="kta-profile-details-close" aria-label="' + _t("home.profile.closeAria") + '">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps kta-profile-details-corps">' +
-              // — Identité (gros avatar + surnom inline) —
               '<div class="kta-profile-details-identity">' +
                 '<div class="kta-profile-details-avatar-holder">' +
                   '<div class="kta-profile-details-avatar-big" id="kta-profile-details-avatar"></div>' +
@@ -1011,22 +897,15 @@
                 '</div>' +
               '</div>' +
 
-              // Rang / badge (gamification, hydraté par _hydrateProfileRank)
               '<div class="kta-profile-details-rank" id="kta-profile-details-rank"></div>' +
 
-              // Hauts faits (succès, hydraté par _hydrateProfileFeats)
               '<div class="kta-profile-details-feats" id="kta-profile-details-feats"></div>' +
 
-              // — Stats compactes —
               '<div class="kta-profile-details-stats" id="kta-profile-details-stats">' +
                 '<div class="kta-profile-details-stats-loading">' + _t("home.profile.statsLoading") + '</div>' +
               '</div>' +
 
-              // (KARMA "on doit dans ce cas pouvoir choisir dans
-              // profile les 2 ou 3 stats du bandeau") : section toggle pour
-              // configurer quelles stats apparaissent dans le bandeau home.
-              // Cap dur 3 (cf PROFILE_BAR_STATS_MAX) pour rester lisible
-              // sur mobile compact.
+              // Choix des stats du bandeau d'accueil, plafond 3 (PROFILE_BAR_STATS_MAX) pour rester lisible sur mobile.
               '<div class="kta-profile-barstats">' +
                 '<div class="kta-profile-barstats-header">' + _t("home.profile.barStatsHeader") + '</div>' +
                 '<p class="kta-profile-barstats-hint">' +
@@ -1047,9 +926,8 @@
                 '</div>' +
               '</div>' +
 
-              // 💼 Section Édition pro — affichée SEULEMENT quand l'installation sert sa
-              // licence (source serveur). Plus d'import ni de retrait par l'utilisateur
-              // (retirés le 09/10/2026) : une licence importée n'activait aucune fonction pro.
+              // Édition pro : affichée SEULEMENT quand l'installation sert sa licence (source serveur). Aucun
+              // import ni retrait par l'utilisateur.
               '<div class="kta-profile-pro-section" id="kta-profile-pro-section" hidden>' +
                 '<div class="kta-profile-pro-header">💼 ' + window.I18n.t("home.splash.proEdition") + '</div>' +
                 '<div class="kta-profile-pro-body" id="kta-profile-pro-body">' +
@@ -1057,10 +935,8 @@
                 '</div>' +
               '</div>' +
 
-              // Fond d'écran du HOME. Placé JUSTE AVANT les actions
-              // (retour KARMA : « mal intégré, mets-le plus vers la fin ») —
-              // c'est de la déco, elle ne doit pas s'intercaler entre l'identité
-              // et les stats/rang qui, eux, se lisent d'affilée.
+              // Fond d'écran, juste avant les actions : c'est de la déco, elle ne s'intercale pas entre l'identité
+              // et les stats/rang qui se lisent d'affilée.
               '<div class="kta-profile-details-section">' +
                 '<div class="kta-profile-details-section-titre">' + _t("home.profile.wallTitle") + '</div>' +
                 '<div class="kta-wall-preview" id="kta-wall-preview">' + _t("home.profile.wallNone") + '</div>' +
@@ -1096,12 +972,10 @@
                 '<p class="kta-profile-details-hint">' + _t("home.profile.wallHint") + '</p>' +
               '</div>' +
 
-              // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
-                // 🔒 en kiosque `serverPlansOnly`, l'import est refusé
-                // (cf profileExportImport) : on ne l'affiche pas non plus. L'EXPORT
-                // reste — sauvegarder son carnet n'a jamais gêné personne.
+                // 🔒 En kiosque `serverPlansOnly`, l'import est refusé (cf. profileExportImport) : pas affiché.
+                // L'export reste.
                 ((typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul())
                   ? ""
                   : '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">' + _t("home.profile.importBtn") + '</button>') +
@@ -1115,29 +989,21 @@
           '</div>';
         document.documentElement.appendChild(overlay);
 
-        // Render avatar initial dans la modale (gros format)
         _refreshProfileDetailsAvatar(snap);
         _hydrateProfileRank();  // bloc rang (puce + métriques + progression)
         _evalAchievements();
         _hydrateProfileFeats();  // grille des hauts faits
 
-        // Calcul stats async
         _refreshProfileDetailsStats();
 
-        // Render initial + bind handlers de la section Édition pro.
         _refreshProfileProSection();
 
-        // Fermeture
         const closeFn = function() {
           const m = document.getElementById("kta-profile-details-modal");
           if (m) m.parentNode.removeChild(m);
           document.removeEventListener("keydown", escFn);
-          // RESYNCHRONISATION du HOME à la fermeture. Le jeton
-          // anti-course règle les chevauchements, mais on ne veut pas dépendre
-          // du timing pour que l'accueil soit juste : après avoir édité son
-          // profil, l'user revient au HOME, et le HOME DOIT refléter l'état
-          // final. Deux rendus frais, coût négligeable (une fois par
-          // fermeture), et ça rend le symptôme impossible par construction.
+          // Resynchronisation de l'accueil à la fermeture : il DOIT refléter l'état final sans dépendre du
+          // timing (le jeton règle les chevauchements, ceci rend le symptôme impossible par construction).
           // Fonctions async : un try ne voit pas leur rejet, le .catch si.
           _refreshLoaderProfileBar().catch(function() {});
           _appliquerFondEcran().catch(function() {});
@@ -1147,9 +1013,8 @@
         overlay.addEventListener("click", function(e) { if (e.target === overlay) closeFn(); });
         document.addEventListener("keydown", escFn);
 
-        // bind des checkboxes "Stats du bandeau d'accueil".
-        // Cap dur PROFILE_BAR_STATS_MAX (3). Au moins 1 stat requise.
-        // À chaque change : sauve + re-render bandeau + re-hydrate les valeurs.
+        // Cases « Stats du bandeau » : plafond PROFILE_BAR_STATS_MAX (3), au moins 1. Chaque changement sauve,
+        // re-rend le bandeau et réhydrate.
         (function() {
           const cbs = document.querySelectorAll(".kta-profile-barstats-cb input[type=checkbox][data-bar-stat-key]");
           if (cbs.length === 0) return;
@@ -1160,7 +1025,6 @@
           function _onChange(e) {
             const allCbs = Array.from(cbs);
             const checked = allCbs.filter(function(c) { return c.checked; });
-            // Cap dur 3 : si on dépasse, on uncheck cette case + toast
             if (checked.length > PROFILE_BAR_STATS_MAX) {
               e.target.checked = false;
               if (window.OOMGuard && window.OOMGuard.showToast) {
@@ -1168,7 +1032,6 @@
               }
               return;
             }
-            // Au moins 1 stat : si l'user décoche la dernière, on annule
             if (checked.length === 0) {
               e.target.checked = true;
               if (window.OOMGuard && window.OOMGuard.showToast) {
@@ -1176,7 +1039,6 @@
               }
               return;
             }
-            // Save + re-render bandeau live
             const keys = allCbs.filter(function(c) { return c.checked; })
                                .map(function(c) { return c.dataset.barStatKey; });
             _setProfileBarStatsKeys(keys);
@@ -1186,10 +1048,9 @@
           cbs.forEach(function(cb) { cb.addEventListener("change", _onChange); });
         })();
 
-        // Bind handlers édition surnom (live + save button)
         const surnomInput = document.getElementById("kta-profile-details-surnom");
         const saveBtn     = document.getElementById("kta-profile-details-save-name");
-        // compte connecté : le pseudo vient du compte, pas modifiable ici.
+        // Compte connecté : le pseudo vient du compte, non modifiable ici.
         const _compteModale = (window.KtaExtensions && typeof window.KtaExtensions.compte === "function")
           ? window.KtaExtensions.compte() : null;
         if (_compteModale) {
@@ -1200,9 +1061,8 @@
           const p = hint && hint.nextElementSibling;
           if (p && p.classList.contains("kta-profile-details-hint")) p.textContent = _t("home.profile.nicknameAccount");
         }
-        // 🧩 Compte de l'installation : APRÈS la photo et le pseudo, AVANT le grade (retour
-        // KARMA), le compte connecté et ses actions (gestion, hors ligne, données perso,
-        // déconnexion — fournies par l'extension).
+        // Compte de l'installation : APRÈS photo et pseudo, AVANT le grade, avec ses actions (gestion, hors
+        // ligne, données perso, déconnexion — fournies par l'extension).
         if (window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
           const blocCompte = window.KtaExtensions.blocActionsCompte("profil", _t("home.profile.compteTitre"));
           const grade = document.getElementById("kta-profile-details-rank");
@@ -1230,12 +1090,10 @@
             saveBtn.textContent = _t("home.profile.saveName");
           }
         });
-        // Submit aussi sur Enter
         surnomInput.addEventListener("keydown", function(e) {
           if (e.key === "Enter") { e.preventDefault(); if (saveBtn.style.display !== "none") saveBtn.click(); }
         });
 
-        // Photo : upload
         const photoBtn   = document.getElementById("kta-profile-details-photo-btn");
         const photoInput = document.getElementById("kta-profile-details-photo-input");
         const removeBtn  = document.getElementById("kta-profile-details-photo-remove");
@@ -1269,8 +1127,7 @@
           } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
 
-        // Boutons export / import (réutilise ProfileExportImport + le file picker
-        // déjà présent dans le DOM = #importListFile)
+        // Export / import : ProfileExportImport + le sélecteur déjà présent (#importListFile).
         document.getElementById("kta-profile-details-export").addEventListener("click", function() {
           if (window.ProfileExportImport && window.ProfileExportImport.ouvrirExportModale) {
             window.ProfileExportImport.ouvrirExportModale();
@@ -1278,8 +1135,8 @@
             window.ktaAlerte(_t("home.profile.errExportModule"), { type: "erreur" });
           }
         });
-        // 🩸 Le bouton n'existe pas en kiosque : sans ce test, `addEventListener`
-        // sur null jetait et tuait TOUT le câblage de la modale qui suit.
+        // 🩸 Le bouton n'existe pas en kiosque : sans ce test, addEventListener sur null lève et tue tout le
+        // câblage qui suit.
         const _btnImp = document.getElementById("kta-profile-details-import");
         if (_btnImp) {
           _btnImp.addEventListener("click", function() {
@@ -1288,9 +1145,8 @@
           });
         }
 
-        // FOND D'ÉCRAN. L'aperçu montre l'image AVEC son voile,
-        // exactement comme le vrai fond : sans ça on choisirait une image qui
-        // rend bien nue mais illisible une fois voilée.
+        // Fond d'écran : l'aperçu montre l'image AVEC son voile et son cadrage, comme le vrai fond (une image
+        // belle nue peut être illisible voilée).
         const wallPreview = document.getElementById("kta-wall-preview");
         const wallInput   = document.getElementById("kta-wall-input");
         const wallBtn     = document.getElementById("kta-wall-btn");
@@ -1304,9 +1160,6 @@
         const wallPosYVal = document.getElementById("kta-wall-posy-val");
         let _wallPreviewUrl = null;
 
-        // Peint l'aperçu avec le voile ET le cadrage courants — l'aperçu doit
-        // montrer exactement ce que donnera le vrai fond, sinon on choisit une
-        // image qui rend bien nue et illisible une fois voilée.
         const wallFit = document.getElementById("kta-wall-fit");
         const _peindreApercu = function(url, voile, posX, posY, fit) {
           const a = voile / 100;
@@ -1315,15 +1168,14 @@
           wallPreview.style.backgroundImage =
             'linear-gradient(rgba(' + rgb + ',' + a + '), rgba(' + rgb + ',' + a + ')), url("' + url + '")';
           wallPreview.style.backgroundPosition = posX + "% " + posY + "%";
-          // L'aperçu doit montrer le MÊME mode que le vrai fond, sinon on
-          // choisit « Entière » sur une vignette qui affiche du « Remplir ».
+          // Même mode d'affichage que le vrai fond.
           wallPreview.style.backgroundSize = (fit === "contain") ? "contain" : "cover";
         };
         const _fitCourant = function() { return wallFit ? wallFit.value : "cover"; };
 
         const _rafraichirApercuFond = async function() {
           const s = window.UserProfile.get();
-          // Idem : révocation différée après remplacement (cf. avatar).
+          // Révocation différée après remplacement (cf. avatar).
           const ancienneP = _wallPreviewUrl;
           const libererP = function() {
             if (ancienneP) { try { URL.revokeObjectURL(ancienneP); } catch(e) {} }
@@ -1338,9 +1190,8 @@
             return;
           }
           const url = await window.UserProfile.getWallpaperObjectUrl();
-          // ⚠️ `_wallPreviewUrl = null` INDISPENSABLE ici : sans ça la variable
-          // gardait l'URL qu'on vient de révoquer, et les handlers `input` des
-          // curseurs repeignaient l'aperçu avec une URL morte.
+          // ⚠️ `_wallPreviewUrl = null` INDISPENSABLE : sinon les handlers `input` des curseurs repeignent
+          // l'aperçu avec l'URL qu'on vient de révoquer.
           if (!url) { _wallPreviewUrl = null; libererP(); return; }
           _wallPreviewUrl = url;
           libererP();
@@ -1358,8 +1209,7 @@
         };
         _rafraichirApercuFond();
 
-        // Cadrage : `input` = aperçu live, `change` = persistance au relâchement
-        // (même contrat que le voile — sinon une écriture IDB par pixel parcouru).
+        // Cadrage : `input` = aperçu live, `change` = persistance au relâchement (pas une écriture IDB par pixel).
         [[wallPosX, wallPosXVal, "x"], [wallPosY, wallPosYVal, "y"]].forEach(function(t) {
           const el = t[0], lab = t[1], axe = t[2];
           el.addEventListener("input", function() {
@@ -1397,8 +1247,7 @@
           try { await window.UserProfile.removeWallpaper(); await _rafraichirApercuFond(); }
           catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
-        // `input` = aperçu live pendant le glissement ; `change` = persistance
-        // au relâchement seulement (sinon une écriture IDB par pixel parcouru).
+        // `input` = aperçu live ; `change` = persistance au relâchement seulement.
         wallRange.addEventListener("input", function() {
           wallVal.textContent = wallRange.value + " %";
           if (_wallPreviewUrl) {
@@ -1411,12 +1260,9 @@
           catch(e) { console.warn("[Profile] voile non enregistré :", e); }
         });
 
-        // mode d'affichage. Pas de `input`/`change` séparés ici :
-        // un <select> ne se « glisse » pas, un seul événement suffit.
-        // ⚠️ Les curseurs de cadrage restent ACTIFS en mode Entière : quand
-        // l'image ne remplit pas l'écran, ils ne choisissent plus ce qui est
-        // rogné mais OÙ l'image se pose dans le cadre. Même contrôle, usage
-        // différent — les griser aurait retiré une possibilité réelle.
+        // Mode d'affichage : un seul événement (un <select> ne se glisse pas).
+        // ⚠️ Les curseurs de cadrage restent ACTIFS en mode Entière : ils choisissent alors OÙ l'image se pose
+        // dans le cadre.
         if (wallFit) {
           wallFit.addEventListener("change", async function() {
             if (_wallPreviewUrl) {
@@ -1428,14 +1274,12 @@
           });
         }
 
-        // Reset profil — modale custom charte (cf §35 CLAUDE.md, pattern
-        // Promise-based, .kta-readme-modal-overlay + accent rouge danger).
+        // Réinitialisation du profil : modale charte (Promise, accent rouge).
         document.getElementById("kta-profile-details-reset").addEventListener("click", async function() {
           const ok = await _confirmResetProfilModale();
           if (!ok) return;
           try {
             await window.UserProfile.clear();
-            // Refresh modale en place
             const snap2 = window.UserProfile.get();
             surnomInput.value = "";
             _originalSurnom = "";
@@ -1443,23 +1287,18 @@
             removeBtn.style.display = "none";
             photoBtn.textContent = _t("home.profile.photoBtn");
             _refreshProfileDetailsAvatar(snap2);
-            // `clear()` efface l'entrée entière, fond compris —
-            // l'aperçu doit suivre, sinon il montre une image qui n'existe plus.
+            // `clear()` efface aussi le fond : l'aperçu suit.
             await _rafraichirApercuFond();
           } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
       }
 
-      /**
-       * Modale custom charte pour confirmer la réinitialisation du profil.
-       * Pattern Promise-based (résout true = continuer, false = annuler).
-       * Z-index 100001 pour passer au-dessus de la modale parente "Détails
-       * du profil" (qui est à 99999 via .kta-readme-modal-overlay).
-       */
+      // Confirmation de réinitialisation (résout true / false). Z-index 100001 : au-dessus de la modale
+      // « Détails du profil » (99999).
       function _confirmResetProfilModale() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
-          // Cleanup d'une instance précédente éventuelle (anti-empilement)
+          // Anti-empilement.
           const ex = document.getElementById("kta-profile-reset-confirm-modal");
           if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
 
@@ -1510,7 +1349,7 @@
           overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(false); });
           document.addEventListener("keydown", _onEsc);
 
-          // Focus accessibilité : focus auto sur "Annuler" (sécuritaire)
+          // Focus sur « Annuler » (choix sûr).
           setTimeout(function() {
             const btn = document.getElementById("kta-profile-reset-cancel");
             if (btn) btn.focus();
@@ -1522,7 +1361,7 @@
       async function _refreshProfileDetailsAvatar(snap) {
         const avatarEl = document.getElementById("kta-profile-details-avatar");
         if (!avatarEl || !window.UserProfile) return;
-        // anneau de rang + 🆕 médaille de coin (parité avec le home)
+        // Anneau de rang + médaille de coin (comme l'accueil).
         const _dRank = _appliquerRangAvatar(avatarEl);
         const _dBadge = document.getElementById("kta-profile-details-badge");
         if (_dBadge && !_dRank) { _dBadge.textContent = ""; _dBadge.style.display = "none"; }
@@ -1536,10 +1375,7 @@
             _dBadge.style.display = "none";  // Touriste : pas de médaille
           }
         }
-        // même correctif que le bandeau : révoquer AVANT l'await
-        // laissait le <img> sur une URL morte le temps de la lecture IDB.
-        // C'est l'avatar de CETTE modale que KARMA voyait passer en « ? »,
-        // puisque c'est là qu'on charge un fond d'écran.
+        // Même règle que le bandeau : révoquer APRÈS le remplacement, jamais avant l'await.
         const _ancienneUrlD = _profileDetailsObjectUrl;
         const _libererAncienneD = function() {
           if (_ancienneUrlD) { try { URL.revokeObjectURL(_ancienneUrlD); } catch(e) {} }
@@ -1572,14 +1408,9 @@
         }
       }
 
-      // ============================================================
-      // Section "💼 Édition pro" dans la modale profil
-      // ============================================================
-      // Permet à un user d'importer un fichier Licence-pro.json reçu
-      // par mail/canal privé pour activer le mode pro localement
-      // (cf. js/proLicense.js doctrine 2 sources serveur + local).
-
-      // Helper : tronque un hash pour affichage compact (ex:
+      // ── Section « Édition pro » de la modale profil ──────────
+      // État de la licence pro (cf. js/proLicense.js), source serveur seule.
+      // Tronque un hash pour affichage compact (ex :
       // "MKTM-LIC-abc123..." → "MKTM-LIC-abc1…3456").
       function _proHashShort(hash) {
         if (typeof hash !== "string") return "";
@@ -1587,20 +1418,17 @@
         return hash.slice(0, 13) + "…" + hash.slice(-4);
       }
 
-      // Helper : libellés humains selon source.
       function _proSourceLabel(source) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (source === "server") return _t("home.profile.pro.sourceServer");
         return "—";
       }
-      // Seule source restante : la licence servie par l'installation.
       function _proSourceHint() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return _t("home.profile.pro.hintServer");
       }
 
-      // Rend la section selon l'état actuel de la licence pro : visible seulement avec une
-      // licence SERVEUR (l'installation est pro) ; masquée sinon, sans rien proposer.
+      // Section visible seulement avec une licence SERVEUR (installation pro) ; masquée sinon.
       function _refreshProfileProSection() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const section = document.getElementById("kta-profile-pro-section");
@@ -1621,18 +1449,11 @@
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const statsEl = document.getElementById("kta-profile-details-stats");
         if (!statsEl) return;
-        // Statistiques de l'extension relues à l'ouverture : la liste des plans ☁️ arrive souvent APRÈS le dernier
-        // événement (vu au scénario du 13/10/2026 : « 0 plans de l'organisation » pour 1 plan ☁️ listé).
+        // Stats de l'extension relues à l'ouverture : la liste des plans de l'installation arrive souvent APRÈS
+        // le dernier événement.
         await _relireStatsExt();
-        // (KARMA "si je relance, mes plans srv disparaissent
-        // mais ils restent dans les stats profil — 2 plans en trop") :
-        // helper qui retourne la liste des plans filtrée selon la pref
-        // skipServerPlans. Utilisé pour les 2 compteurs ci-dessous (nbPlans
-        // + boucle photos POI) qui lisaient le localStorage brut sans
-        // appliquer le filtre — divergence avec _hydrateProfileBarStats et
-        // la table détaillée plus bas qui filtraient déjà.
-        // même source que le bandeau (PlanRegistry.getAll, plus le JSON brut) ; les plans ☁️ d'une
-        // extension sont comptés À PART (_plansExtCount) — leur contenu vient de plusieurs auteurs.
+        // Liste des plans filtrée selon skipServerPlans, même source que le bandeau (PlanRegistry.getAll) ;
+        // plans d'extension comptés À PART (_plansExtCount).
         let _plansExtCount = [];
         function _getPlansFiltered() {
           let plans = [];
@@ -1645,7 +1466,6 @@
           }
           return plans;
         }
-        // Compteurs simples sync
         let nbPlans = 0, nbFavoris = 0, nbSessions = 0, nbBackups = 0;
         const _plansForCount = _getPlansFiltered();
         nbPlans = _plansForCount.length;
@@ -1664,8 +1484,7 @@
         if (window.SessionBackups && window.SessionBackups.listAll) {
           try { const arr = await window.SessionBackups.listAll(); nbBackups = arr.length; } catch(e) {}
         }
-        // Photos POI (count + bytes total) — utilise la liste FILTRÉE
-        // (cohérence avec le compteur nbPlans ci-dessus). Cf v1.29.0-fix2.
+        // Photos POI (nombre + octets), sur la liste FILTRÉE (cohérent avec nbPlans).
         let nbPhotos = 0, photosBytes = 0, nbPhotosExt = 0;
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.getAllPhotosForPlan) {
           try {
@@ -1685,9 +1504,7 @@
           if (n < 1024*1024) return (n/1024).toFixed(1) + " KB";
           return (n/1048576).toFixed(1) + " MB";
         }
-        // (KARMA "il manque le sauvegarde (la taille)") : 6e cell
-        // dans la grid stats — taille totale MyKTAMap (= même valeur que la
-        // stat 💾 du bandeau home, calcul ciblé LS + IDB).
+        // Taille totale MyKTAMap (même valeur que la stat 💾 du bandeau).
         let storageTotalBytes = 0;
         try {
           storageTotalBytes = await _getStorageMyktamapCached();
@@ -1715,13 +1532,8 @@
                 '</div>' +
               '</div>'
             : '') +
-          // (KARMA "récuperer les stat global de chaque plan pour les
-          // lister (ne pas avoir a rentrer dans le plan pour consulter)") :
-          // section enrichie avec calcul SÉQUENTIEL plan par plan (anti-crash :
-          // KARMA "si on fait tout les plan d'un coup ca crash a 100%, il faut
-          // donc de facons séquentiel, cumuler un plan par un plan").
-          // Squelette rendu d'abord, le calcul peuple le tbody progressivement
-          // via `_calculerStatsPlansAggregees` (cf ci-après).
+          // Stats de tous les plans sans les ouvrir. 🩸 Calcul SÉQUENTIEL plan par plan : tout d'un coup ferait
+          // planter. Squelette rendu d'abord, `_calculerStatsPlansAggregees` remplit le tbody au fil de l'eau.
           '<div class="kta-profile-plansstats" id="kta-profile-plansstats">' +
             '<div class="kta-profile-plansstats-header" id="kta-profile-plansstats-header">' +
               _t("home.profile.stats.plansHeaderLoading") +
@@ -1742,25 +1554,14 @@
             '</div>' +
           '</div>';
 
-        // Lancement async du calcul agrégé séquentiel (anti-crash)
-        // Géré HORS du innerHTML synchrone pour ne pas bloquer le rendu.
+        // Calcul agrégé séquentiel, hors du innerHTML synchrone.
         _calculerStatsPlansAggregees();
       }
 
-      // (KARMA "les stat de plan ne comprenne que les session") :
-      // helper de calcul "stats complètes d'un plan" qui agrège session
-      // (localStorage) + data layers embedded (registries en mémoire).
-      // À utiliser pour le plan COURANT (chargé) — il a besoin que les
-      // registries _ktaDataMarkers/Polylines/Polygons/StructurePolygons soient
-      // peuplés (= via utils.js > ajouterPointsDepuisJSON). Pour les autres
-      // plans, on lit le CACHE localStorage `myktamap_plan_stats_v1_<id>`
-      // qui a été persisté par _persisterStatsPlanCourant au dernier load.
-      //
-      // Format cache : { pois, roads, distPx, nbPolys, ts, source: "live" }
-      //   - pois    : count des points (session + embedded)
-      //   - roads   : count des roads (session + embedded)
-      //   - distPx  : longueur totale des roads en pixels (= unité plan)
-      //   - ts      : timestamp du calcul (pour invalidation future si besoin)
+      // Stats complètes d'un plan = session + calques de données embarqués. Plan COURANT : registres en mémoire
+      // (_ktaDataMarkers/Polylines/Polygons/StructurePolygons, peuplés par utils.js > ajouterPointsDepuisJSON).
+      // Autres plans : cache `myktamap_plan_stats_v1_<id>` écrit par _persisterStatsPlanCourant.
+      // Format : { pois, roads, distPx, nbPolys, ts, source: "live" } (distPx en pixels du plan).
       function _sumRoadsDistPx(roads) {
         if (!Array.isArray(roads)) return 0;
         let total = 0;
@@ -1776,9 +1577,7 @@
         return total;
       }
 
-      // (KARMA "rajoute comme on voit sur chaque plan stat détailé
-      // les graph et tout") : breakdowns par catégorie pour camemberts.
-      // Helper qui produit { key: count } depuis un array d'items typés.
+      // { clé: nombre } depuis un tableau d'objets typés (camemberts par catégorie).
       function _countBy(items, accessor) {
         const out = {};
         if (!Array.isArray(items)) return out;
@@ -1790,12 +1589,12 @@
         });
         return out;
       }
-      // Helper : retourne le 1er tag d'un point (default "default")
+      // 1er tag d'un point ("default" sinon).
       function _firstTagOf(p) {
         if (Array.isArray(p.tags) && p.tags.length > 0) return p.tags[0];
         return "default";
       }
-      // Helper : merge un objet { key: count } dans un autre (mutation)
+      // Fusionne { clé: nombre } dans target (mutation).
       function _mergeBreakdown(target, src) {
         if (!src || typeof src !== "object") return target;
         Object.keys(src).forEach(function(k) {
@@ -1805,8 +1604,7 @@
       }
 
       function _computePlanStatsLive() {
-        // Agrège session (getters) + embedded (registries en mémoire).
-        // Le plan COURANT a tout ce qu'il faut chargé.
+        // Session (getters) + embarqué (registres en mémoire) : le plan courant a tout.
         const editorPts   = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []) : [];
         const embedPts    = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
         const sessRoads   = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
@@ -1816,20 +1614,13 @@
         const sessStructs = (typeof window.getStructures === "function") ? (window.getStructures() || []) : [];
         const embedStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
 
-        // Breakdowns par catégorie (pour camemberts agrégés cross-plan)
         const pointsByTag = _countBy(editorPts.concat(embedPts), _firstTagOf);
         const roadsByType = _countBy(sessRoads.concat(embedRoads), function(r) { return r.type || "principal"; });
         const zonesByType = _countBy(sessZones.concat(embedZones), function(z) { return z.type || "remblais"; });
         const structsByType = _countBy(sessStructs.concat(embedStructs), function(s) { return s.type || "pilier-1"; });
 
-        // Distance + scale (px/m) du plan courant. Si scale dispo, on calcule
-        // aussi distM en mètres → cohérent cross-plan dans la modale Profil
-        // (les autres plans lisent distM via leur cache, persisté avec leur
-        // propre scale au moment du load).
-        // (KARMA "il m'affiche KM pour le dernier plan charger,
-        // sinon en px") : avant on retournait juste distPx → impossible de
-        // convertir pour les autres plans (scale inconnue). Maintenant on
-        // persiste distM dans le cache aussi → conversion universelle.
+        // Distance + échelle (px/m) du plan courant. distM est persisté dans le cache avec l'échelle du plan :
+        // chaque plan se convertit en mètres avec la sienne.
         const distPx = _sumRoadsDistPx(sessRoads) + _sumRoadsDistPx(embedRoads);
         const scale  = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number" && window.APP_CONFIG.scale > 0)
                        ? window.APP_CONFIG.scale
@@ -1850,24 +1641,17 @@
             zonesByType:   zonesByType,
             structsByType: structsByType
           },
-          // LE NOM DES TYPES PERSONNALISÉS, MÉMORISÉ
-          // ICI PARCE QUE C'EST LE SEUL MOMENT OÙ ON LE CONNAÎT. Sur l'accueil
-          // aucun plan n'est chargé : `LegendCustomization` ne peut rien
-          // résoudre, et le nom d'un type né d'un import SIG vit dans le
-          // `plan-config.json` DU ZIP — hors de portée du localStorage. Les
-          // camemberts du profil affichaient donc « cust-sig-structures-l-nm2 ».
-          // Ici, le plan est ouvert : la cascade complète répond.
+          // 🩸 Noms des types personnalisés mémorisés ICI, seul moment où on les connaît : sur l'accueil aucun
+          // plan n'est chargé, et le nom d'un type né d'un import SIG vit dans le plan-config.json du ZIP. Sans ça,
+          // les camemberts affichent « cust-sig-structures-l-nm2 ».
           labels: _labelsCustomCourants(pointsByTag, roadsByType, zonesByType, structsByType),
           ts:     Date.now(),
           source: "live"
         };
       }
 
-      // Récolte le libellé des types `cust-…` PRÉSENTS dans les
-      // décomptes du plan courant. On n'en garde QUE les personnalisés : un
-      // type built-in doit rester au libellé par défaut dans un agrégat
-      // cross-plan (règle v1.21.5-fix1), sinon le renommage d'un plan A
-      // s'imposerait au total de tous les autres.
+      // Libellés des types `cust-…` PRÉSENTS dans les décomptes du plan courant. Seulement les personnalisés : un
+      // type intégré garde son libellé par défaut dans un agrégat (sinon le renommage d'un plan s'impose à tous).
       function _labelsCustomCourants(parTag, parTrace, parZone, parStruct) {
         const out = {};
         const LC = window.LegendCustomization;
@@ -1879,9 +1663,7 @@
             if (cle.indexOf("cust-") !== 0) return;
             try {
               const lbl = LC.getLabel(cat, cle);
-              // 🩸 `getLabel` retombe sur la CLÉ quand il ne sait pas : la
-              // stocker telle quelle ferait croire à un nom résolu et
-              // masquerait le trou pour toujours.
+              // 🩸 `getLabel` retombe sur la CLÉ quand il ne sait pas : la stocker passerait pour un nom résolu.
               if (lbl && lbl !== cle) out[cat + "." + cle] = String(lbl).slice(0, 60);
             } catch(e) {}
           });
@@ -1889,30 +1671,25 @@
         return out;
       }
 
-      // Persiste les stats COMPLÈTES du plan courant dans localStorage.
-      // Appelé depuis main.js après lancerApplication terminé (defer 800ms
-      // pour laisser le temps aux data layers async de finir leur ajout via
-      // rAF batch — cf utils.js > ajouterPointsDepuisJSON BATCH=50).
+      // Persiste les stats COMPLÈTES du plan courant. Appelé par main.js après lancerApplication, différé de
+      // 800 ms : les calques de données s'ajoutent par lots rAF (utils.js > ajouterPointsDepuisJSON, BATCH=50).
       window._persisterStatsPlanCourant = function() {
         const planId = window._currentLoadedPlanId;
         if (!planId) return;
         try {
           const stats = _computePlanStatsLive();
           localStorage.setItem("myktamap_plan_stats_v1_" + planId, JSON.stringify(stats));
-          // Et dans le dictionnaire DURABLE : le cache de stats est
-          // réécrit à chaque ouverture, mais il est aussi purgé et versionné.
-          // Les noms, eux, doivent survivre — ils ne dépendent d'aucune version.
-          // Plan ☁️ : ses noms de types restent dans SON cache (effacé avec lui), jamais dans le dictionnaire
-          // durable, qui survit à la déconnexion (13/10/2026).
+          // Aussi dans le dictionnaire DURABLE : le cache de stats est purgé et versionné, les noms doivent
+          // survivre. Plan d'extension : ses noms restent dans SON cache (effacé avec lui), jamais dans le
+          // dictionnaire durable, qui survit à la déconnexion.
           const pc = window.PlanRegistry && window.PlanRegistry.findById ? window.PlanRegistry.findById(planId) : null;
           if (!_estPlanExt(pc)) _persisterNoms(stats.labels);
         } catch(e) {
           console.warn("[ProfileStats] Persist plan stats échec :", e);
         }
       };
-      // Objets arrivés APRÈS l'ouverture (changements reçus d'une installation reliée, appliqués par
-      // KtaExtensions.appliquerChangements) : le cache du plan COURANT est recalculé, regroupé à 2 s (une
-      // synchro peut enchaîner plusieurs lots). Sans extension, l'événement n'est jamais émis.
+      // Objets arrivés APRÈS l'ouverture (KtaExtensions.appliquerChangements) : cache du plan COURANT recalculé,
+      // regroupé à 2 s (une synchro enchaîne des lots). Sans extension, l'événement n'arrive jamais.
       let _statsPlanDiffere = null;
       window.addEventListener("mktm:changements-appliques", function() {
         clearTimeout(_statsPlanDiffere);
@@ -1921,14 +1698,9 @@
         }, 2000);
       });
 
-      // Calcul SÉQUENTIEL plan par plan des stats agrégées.
-      // Itère le PlanRegistry, pour chaque plan lit sa session (KtaSessionStore,
-      // lecture instantanée depuis la mémoire), compte
-      // editorPoints + roads et somme la longueur cumulée des tracés en
-      // pixels. `await new Promise(r => setTimeout(r, 0))` entre 2 plans
-      // pour laisser respirer le thread UI (vital sur mobile avec 10+ plans).
-      // Le tbody est peuplé progressivement → l'user voit la liste grossir
-      // au lieu d'attendre un blocking compute.
+      // Stats agrégées, plan par plan : session lue dans KtaSessionStore (mémoire), points + tracés + longueur.
+      // ⚠️ `await setTimeout(0)` entre deux plans laisse respirer le thread UI (vital sur mobile à 10+ plans) ;
+      // le tbody grossit au fil de l'eau.
       async function _calculerStatsPlansAggregees() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const headerEl = document.getElementById("kta-profile-plansstats-header");
@@ -1936,18 +1708,12 @@
         const tfootEl  = document.getElementById("kta-profile-plansstats-tfoot");
         if (!tbodyEl || !tfootEl) return;
 
-        // (KARMA "il voit aucun plan enrengistrer alors que
-        // j'en ai 3") : l'API PlanRegistry est `.getAll()`, pas `.list()`
-        // (que j'avais inventé). Mon code retournait undefined → "aucun
-        // plan enregistré" alors que le registre était plein.
+        // ⚠️ L'API est PlanRegistry.getAll() (pas .list()).
         let plans = [];
         if (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function") {
           try { plans = window.PlanRegistry.getAll() || []; } catch(e) {}
         }
-        // (KARMA "peut en plus fausser nos statistique") : si la
-        // pref `skipServerPlans` est active, on exclut les plans `type ===
-        // "server"` des stats (gonflerait artificiellement le count Plans
-        // pour les users qui ne veulent pas les voir).
+        // Pref skipServerPlans : plans `server` exclus (ils gonfleraient les comptes).
         if (typeof window._loaderSkipServerPlans === "function" && window._loaderSkipServerPlans()) {
           plans = plans.filter(function(p) { return p.type !== "server"; });
         }
@@ -1956,25 +1722,17 @@
           return;
         }
 
-        // Totaux cumulés (mis à jour à chaque plan)
         let totalPois = 0, totalRoads = 0;
-        // cumul séparé pour les distM convertibles vs distPx
-        // orphelins (= plans sans scale connue). On affiche le total en m/km
-        // avec un suffix "+N plan(s) en px" si certains sont orphelins.
+        // distM convertibles d'un côté, distPx orphelins (plans sans échelle connue) de l'autre : total en m/km
+        // + « +N plan(s) en px ».
         let totalDistM = 0, totalDistPxOrphan = 0, nbPxOrphan = 0;
         let nbAvecData = 0, nbPartial = 0;
-        let nbExt = 0, extPois = 0, extRoads = 0, extDistM = 0;   // plans ☁️ (13/10/2026)
-        // agrégation des breakdowns cross-plan pour les camemberts
-        // dictionnaire cross-plan des noms de types personnalisés.
-        // Premier arrivé, premier servi : deux plans peuvent avoir forgé la même
-        // clé `cust-<ts36>-<rnd36>` (le module la dit lui-même « probabiliste,
-        // pas structurellement unique »). Afficher un nom plutôt qu'une clé
-        // reste le bon choix même dans ce cas rare.
-        // On PART du dictionnaire persistant : il porte tout ce qui
-        // a déjà été retrouvé, une fois pour toutes.
+        let nbExt = 0, extPois = 0, extRoads = 0, extDistM = 0;   // plans d'extension
+        // Breakdowns agrégés pour les camemberts, et dictionnaire des noms de types personnalisés, PARTI du
+        // dictionnaire persistant. Premier arrivé, premier servi : deux plans peuvent forger la même clé
+        // `cust-<ts36>-<rnd36>` (probabiliste) ; un nom reste préférable à une clé.
         const aggLabels = _nomsPersistes();
-        // détail par plan (id, étiquettes, décomptes), conservé
-        // pour le filtre par étiquette. Vidé à chaque recalcul complet.
+        // Détail par plan (id, étiquettes, décomptes) pour le filtre par étiquette, vidé à chaque recalcul.
         _statsParPlan.length = 0;
         const aggBreakdowns = {
           pointsByTag:   {},
@@ -1982,19 +1740,10 @@
           zonesByType:   {},
           structsByType: {}
         };
-        // ID du plan courant (pour marqueur ● dans la table)
-        // la variable _currentScale a été retirée — chaque plan
-        // a désormais sa propre `scale` dans son cache (via `_computePlanStatsLive`
-        // qui la persiste au load du plan). Plus besoin de hack "scale courant
-        // pour tous les plans" → conversion m/km précise par plan.
+        // Plan courant (marqueur ● dans la table). Chaque plan a sa propre `scale` dans son cache.
         const _currentId = window._currentLoadedPlanId || null;
 
-        // Format distance pour une row (m/km si distM connu, sinon pixels).
-        // (KARMA "il m'affiche KM pour le dernier plan charger,
-        // sinon en px") : avant on convertissait UNIQUEMENT le plan courant
-        // via _currentScale → tous les autres plans en pixels. Maintenant
-        // chaque plan stocke sa propre scale dans le cache → distM précis
-        // pour tous les plans déjà ouverts.
+        // Distance d'une ligne : m/km si distM connu, sinon pixels.
         function _fmtDist(stats) {
           const distM  = stats && typeof stats.distM === "number" ? stats.distM : null;
           const distPx = stats && typeof stats.distPx === "number" ? stats.distPx : 0;
@@ -2006,41 +1755,25 @@
           return (distPx / 1000).toFixed(1) + "k px";
         }
 
-        // (KARMA "les stat de plan ne comprenne que les session") :
-        // 3 sources de stats avec fallback en cascade par plan :
-        //   1. Plan COURANT → calcul live via _computePlanStatsLive (registries
-        //      en mémoire = session + data layers embedded chargés)
-        //   2. Plan déjà ouvert au moins une fois → cache localStorage
-        //      "myktamap_plan_stats_v1_<id>" (rempli par _persisterStatsPlanCourant
-        //      dans main.js après lancerApplication)
-        //   3. Plan jamais ouvert → fallback session-only via localStorage
-        //      "myktamap_session_v1_<id>" + marqueur "⚠️" partiel (data layers
-        //      manquants — il faut ouvrir le plan pour avoir le total complet)
+        // Trois sources par plan, en cascade :
+        //   1. plan COURANT → calcul live (_computePlanStatsLive : session + calques embarqués) ;
+        //   2. plan déjà ouvert → cache "myktamap_plan_stats_v1_<id>" (_persisterStatsPlanCourant) ;
+        //   3. plan jamais ouvert → session seule + marqueur « ⚠️ » partiel (ouvrir le plan pour le total).
         function _resoudreStatsPlan(plan) {
-          // Cas 1 : plan courant → live (avec distM + scale via APP_CONFIG)
           if (plan.id === _currentId) {
             const live = _computePlanStatsLive();
             return {
               pois: live.pois, roads: live.roads,
               distPx: live.distPx,
-              distM:  live.distM,    // ← v1.21.4 : mètres précis avec scale courante
+              distM:  live.distM,    // mètres, avec l'échelle courante
               scale:  live.scale,
               breakdowns: live.breakdowns || null,
               source: "live"
             };
           }
-          // Cas 2 : cache localStorage. Tolère 2 formats :
-          //   • v1.21.4+ : cache contient distM + scale (= mètres convertibles)
-          //   • v1.21.3  : cache contient juste distPx (= pixels seulement)
-          //                → traité comme partial (réopen plan pour upgrade)
-          // (KARMA "les route secondaire ou taguer lvl -1 ne
-          // semble pas pris en compte en stat general plan") : si le cache
-          // existe mais N'A PAS de breakdowns (cache antérieur à v1.21.3, ou
-          // entry corrompue), on NE retourne PAS breakdowns:null (qui ferait
-          // skip totalement ce plan dans l'agrégation des camemberts). On
-          // FALL THROUGH au cas 3 (session-only) pour avoir au moins les
-          // breakdowns session — sans les embedded data layers, mais c'est
-          // mieux que rien.
+          // 2. Cache : avec distM + scale (mètres) ou seulement distPx (ancien format → partiel, rouvrir le plan).
+          // 🩸 Un cache SANS breakdowns ne rend pas breakdowns:null (le plan disparaîtrait des camemberts) : on
+          // passe au cas 3 pour avoir au moins ceux de la session.
           try {
             const raw = localStorage.getItem("myktamap_plan_stats_v1_" + plan.id);
             if (raw) {
@@ -2060,14 +1793,8 @@
               }
             }
           } catch(e) {}
-          // Cas 3 : fallback session-only (partial — pas de scale, pas
-          // d'embedded data layers : on ne lit QUE le payload SessionPersist
-          // du plan, jamais les data/*.json embedded qui demandent un fetch).
-          // (KARMA "les route secondaire ou taguer lvl -1 ne
-          // semble pas pris en compte") : on étend désormais zones + structures
-          // du payload session (rétrocompat v1.9.3-A1.a+ qui les a ajoutées).
-          // Les niveaux M-LVL et tous les types (secondaire, chemin, jonction)
-          // sont préservés tels quels — pas de filtre par type ni par level.
+          // 3. Session seule (partiel : ni échelle ni calques embarqués, aucun fetch). Zones et structures du
+          // payload comptées ; niveaux et types (secondaire, chemin, jonction) gardés tels quels, sans filtre.
           let pois = 0, roads = 0, distPx = 0;
           let pointsByTag = {}, roadsByType = {};
           let zonesByType = {}, structsByType = {};
@@ -2101,16 +1828,13 @@
           };
         }
 
-        // ════════ ITÉRATION SÉQUENTIELLE ANTI-CRASH ════════
+        // ── Itération séquentielle anti-crash ──
         for (let i = 0; i < plans.length; i++) {
           const plan = plans[i];
 
-          // Yield au thread UI entre chaque plan (vital mobile)
-          // ⚠️ NE JAMAIS retirer ce await — c'est ce qui empêche le freeze
-          // sur 10+ plans, surtout avec des sessions chargées.
+          // ⚠️ NE JAMAIS retirer ce await : c'est lui qui empêche le gel sur 10+ plans chargés.
           await new Promise(function(r) { setTimeout(r, 0); });
 
-          // Update progress header
           if (headerEl) {
             headerEl.innerHTML = _t("home.profile.statsProgress", { i: (i + 1), n: plans.length });
           }
@@ -2120,24 +1844,21 @@
           const roads = stats.roads;
           const distPx = stats.distPx;
           const distM  = stats.distM;
-          // "partial" inclut désormais aussi "cache-legacy"
-          // (cache v1.21.3 sans distM/scale). L'user doit re-ouvrir le plan
-          // pour upgrader son cache au format v1.21.4 avec mètres.
+          // Partiel = session seule ou ancien cache sans distM/scale (rouvrir le plan met le cache à jour).
           const isPartial = (stats.source === "session-only" || stats.source === "cache-legacy");
           if (pois > 0 || roads > 0) nbAvecData++;
           if (isPartial)            nbPartial++;
 
           if (_estPlanExt(plan)) {
-            // ☁️ : totaux à part (contenu de tous les auteurs du plan), pas dans « mes » totaux.
+            // Plan d'extension : totaux à part (contenu de tous les auteurs), pas dans « mes » totaux.
             nbExt++; extPois += pois; extRoads += roads;
             if (typeof distM === "number" && distM > 0) extDistM += distM;
           } else {
             totalPois  += pois;
             totalRoads += roads;
           }
-          // Cumul intelligent : distM si dispo, sinon distPx orphelin
           if (_estPlanExt(plan)) {
-            // déjà compté à part
+            // Déjà compté à part.
           } else if (typeof distM === "number" && distM > 0) {
             totalDistM += distM;
           } else if (distPx > 0) {
@@ -2145,7 +1866,6 @@
             nbPxOrphan++;
           }
 
-          // merge des breakdowns dans l'agrégat cross-plan
           if (stats.breakdowns) {
             _mergeBreakdown(aggBreakdowns.pointsByTag,   stats.breakdowns.pointsByTag);
             _mergeBreakdown(aggBreakdowns.roadsByType,   stats.breakdowns.roadsByType);
@@ -2156,10 +1876,8 @@
                 if (aggLabels[k] == null) aggLabels[k] = stats.labels[k];
               });
             }
-            // La SESSION du plan porte aussi ses renommages, et
-            // elle est déjà en mémoire (KtaSessionStore) : c'est gratuit, on la lit toujours.
-            // (Elle ne contient PAS les types nés d'un import SIG, dont le nom
-            // vit dans le plan-config du ZIP — d'où la recherche à la demande.)
+            // La SESSION porte aussi ses renommages, déjà en mémoire (KtaSessionStore) : lue toujours. Les types
+            // nés d'un import SIG n'y sont pas (plan-config du ZIP), d'où la recherche à la demande.
             try {
               const brut = window.KtaSessionStore.lire(plan.id);
               if (brut) {
@@ -2169,31 +1887,26 @@
                 });
               }
             } catch (e) {}
-            // On GARDE le détail par plan, avec ses étiquettes.
-            // 🩸 Sans ça, chaque clic sur une chip de filtre relirait le
-            // localStorage de tous les plans — la boucle ci-dessus a un `await`
-            // par plan justement parce qu'elle est trop lourde pour le thread UI.
-            // Refiltrer doit être une opération de RAM, pas une relecture.
+            // Détail gardé par plan avec ses étiquettes. 🩸 Sinon chaque clic de chip relirait le localStorage de
+            // tous les plans : refiltrer doit être une opération de RAM.
             _statsParPlan.push({
               id: plan.id,
-              // `type` et `path` servent à retrouver le plan-config SANS ouvrir
-              // le plan, quand l'utilisateur demande les noms manquants.
+              // `type` et `path` retrouvent le plan-config SANS ouvrir le plan (noms manquants).
               type: plan.type,
-              // 📦 plan ZIP de l'index : pas de dossier à interroger, sa copie gardée fait foi.
+              // Plan ZIP de l'index : pas de dossier à interroger, sa copie gardée fait foi.
               path: plan.zip ? null : (plan.path || null),
               tags: Array.isArray(plan.tags) ? plan.tags.slice() : [],
               breakdowns: stats.breakdowns
             });
           }
 
-          // Append row au tbody (rendu progressif visible par l'user)
+          // Ligne ajoutée au tbody (rendu progressif).
           const isCurrent = (plan.id === _currentId);
           const planName  = plan.name || plan.id;
           const safeLabel = window.ktaEsc(planName);
           const versionTag = plan.version ? ' <span class="kta-pps-version">' + window.ktaEsc(plan.version) + '</span>' : '';
           const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé (stats live + data layers)">●</span>' : '';
-          // marqueur ⚠️ si stats partielles (session-only, data
-          // layers absents car plan jamais ouvert dans cette release)
+          // Marqueur ⚠️ si stats partielles (plan jamais ouvert : calques absents).
           const partialTag = isPartial ? ' <span class="kta-pps-partial" title="⚠️ Stats partielles : session uniquement (les data layers embedded ne sont pas inclus). Ouvre ce plan une fois pour avoir les stats complètes en cache.">⚠️</span>' : '';
           const extTag = _estPlanExt(plan) ? ' <span class="kta-pps-ext" title="' + _t("home.profile.stats.plansExtTitle") + '">☁️</span>' : '';
           const row = document.createElement("tr");
@@ -2205,11 +1918,8 @@
             '<td class="kta-pps-num">' + _fmtDist(stats) + '</td>';
           tbodyEl.appendChild(row);
 
-          // Mise à jour live du footer (totaux cumulés).
-          // cumul intelligent en 3 cas :
-          //   • Tout en distM → "12.5 km"
-          //   • Mix distM + px orphan → "12.5 km (+ N en px)"
-          //   • Tout en px → "X k px" (= cas tous plans jamais ouverts)
+          // Footer mis à jour en direct : tout en distM → « 12.5 km » ; mélange → « 12.5 km (+ N en px) » ;
+          // tout en px → « X k px ».
           let totalDistStr;
           if (totalDistM > 0 && nbPxOrphan === 0) {
             totalDistStr = window.formatDistance(totalDistM, 0);
@@ -2239,7 +1949,6 @@
             '</tr>' : '');
         }
 
-        // Header final (calcul terminé)
         if (headerEl) {
           const partialNote = nbPartial > 0
             ? ' <span style="color:#f4c542; font-size:11px;">(' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
@@ -2247,36 +1956,20 @@
           headerEl.innerHTML = _t("home.profile.statsFinal", { n: plans.length, s: (plans.length > 1 ? "s" : "") }) + partialNote;
         }
 
-        // (KARMA "dans les stat, rajoute comme on voit sur chaque
-        // plan stat détailé les graph et tout") : section camemberts SVG
-        // agrégés cross-plan, après la table. Réutilise renderPieChart
-        // exposé par window.StatsGlobales (= même rendu que la modale Stats
-        // Globales d'un plan, mais agrégé sur tous les plans accessibles).
+        // Camemberts SVG agrégés, après la table (window.StatsGlobales.renderPieChart, même rendu que les Stats
+        // globales d'un plan).
         _renderProfilePies(aggBreakdowns, aggLabels);
       }
 
-      // (demande KARMA : « rajoute un graph de ce genre via les tags
-      // des plans, possibilité de filtrer et exclure »).
-      //
-      // Trois états par étiquette, et c'est ce qui rend « exclure » utile :
+      // Filtre des camemberts par étiquette de plan, trois états :
       //   neutre  → l'étiquette ne dit rien
       //   inclure → on ne garde QUE les plans qui la portent
       //   exclure → on retire les plans qui la portent, quoi qu'il arrive
-      // 🩸 L'exclusion l'emporte toujours sur l'inclusion : un plan tagué
-      // « secteur » ET « brouillon », avec secteur inclus et brouillon exclu,
-      // est ÉCARTÉ. L'inverse ferait rentrer par une porte ce qu'on a fermé par
-      // l'autre — et c'est exactement le cas d'usage (« sors-moi l'atlas »).
-      //
-      // ⚠️ RAM uniquement, aucune clé de stockage : un filtre de consultation
-      // qui survivrait à la fermeture de la modale ferait croire, au retour,
-      // que des plans ont disparu.
-      // DICTIONNAIRE PERSISTANT DES NOMS DE TYPES PERSONNALISÉS.
-      // 🩸 VÉCU (KARMA) : la v1.90.3 mémorisait le nom au chargement du plan, ce
-      // qui ne réparait RIEN pour les plans déjà ouverts AVANT elle — leur cache
-      // de stats date d'avant et ne contient pas de `labels`. Le message disait
-      // vrai (« ouvre ces plans une fois ») mais imposait 20 ouvertures pour un
-      // affichage. Ce dictionnaire survit aux versions et se remplit par deux
-      // voies : le chargement d'un plan, et la recherche à la demande ci-dessous.
+      // 🩸 L'exclusion l'emporte toujours sur l'inclusion : un plan tagué « secteur » ET « brouillon », secteur
+      // inclus et brouillon exclu, est ÉCARTÉ (sinon on rentre par une porte ce qu'on a fermé par l'autre).
+      // ⚠️ RAM uniquement : un filtre qui survivrait à la modale ferait croire au retour que des plans ont disparu.
+      // Dictionnaire PERSISTANT des noms de types personnalisés : il survit aux versions et se remplit au
+      // chargement d'un plan et par la recherche à la demande (sinon il faudrait rouvrir chaque plan).
       const LS_NOMS = "myktamap_legend_labels_v1";
       function _nomsPersistes() {
         try { return JSON.parse(localStorage.getItem(LS_NOMS) || "{}") || {}; }
@@ -2290,15 +1983,13 @@
         } catch (e) { console.warn("[ProfileStats] noms non persistés :", e); }
       }
 
-      // Extrait les noms d'un bloc `customLegend` (plan-config ou session).
-      // Deux sources dans le même objet : `labels` (renommages) et
-      // `customEntries` (les types créés, dont le nom EST l'identité).
+      // Noms extraits d'un bloc `customLegend` : `labels` (renommages) et `customEntries` (types créés, dont le
+      // nom EST l'identité).
       function _nomsDepuisLegende(cl) {
         const out = {};
         if (!cl || typeof cl !== "object") return out;
         Object.keys(cl.labels || {}).forEach(function(k) {
-          // 🩸 On ne retient QUE les clés custom : un renommage de type built-in
-          // ne doit jamais s'imposer à un agrégat cross-plan (règle v1.21.5-fix1).
+          // 🩸 Clés custom SEULEMENT : un renommage de type intégré ne s'impose jamais à un agrégat.
           if (k.indexOf(".cust-") < 0) return;
           const v = cl.labels[k];
           if (v) out[k] = String(v).slice(0, 60);
@@ -2324,10 +2015,8 @@
         return inclus.some(function(k) { return cles.indexOf(k) >= 0; });
       }
 
-      // Recalcule les 4 décomptes sur les seuls plans retenus, plus la
-      // répartition des PLANS par étiquette (un plan multi-étiquettes compte
-      // dans chacune : la somme des parts peut donc dépasser le nombre de
-      // plans, et c'est le comportement attendu d'un filtre).
+      // Recalcule les 4 décomptes sur les plans retenus + la répartition des PLANS par étiquette (un plan
+      // multi-étiquettes compte dans chacune : la somme peut dépasser le nombre de plans, c'est voulu).
       function _agregerFiltre() {
         const out = { pointsByTag: {}, roadsByType: {}, zonesByType: {}, structsByType: {}, plansByTag: {} };
         _statsParPlan.forEach(function(e) {
@@ -2342,18 +2031,14 @@
         return out;
       }
 
-      // Rend la section camemberts dans la modale Profil.
-      // Construit ou met à jour le DOM #kta-profile-pies (après la table
-      // "📊 Mes plans"). Une grille de 4 camemberts max (4 catégories) ;
-      // chaque camembert n'apparaît QUE si sa catégorie a des données.
+      // Section camemberts (#kta-profile-pies, après la table « Mes plans ») : 4 max, chacun seulement si sa
+      // catégorie a des données.
       function _renderProfilePies(breakdowns, labels) {
         const wrap = document.getElementById("kta-profile-plansstats");
         if (!wrap) return;
-        // Cleanup précédent (en cas de re-render)
         const ex = document.getElementById("kta-profile-pies");
         if (ex) ex.remove();
 
-        // StatsGlobales.renderPieChart accessible ?
         const renderPie = (window.StatsGlobales && typeof window.StatsGlobales.renderPieChart === "function")
                           ? window.StatsGlobales.renderPieChart
                           : null;
@@ -2361,13 +2046,10 @@
 
         const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
 
-        // Les décomptes viennent désormais du FILTRE, pas de
-        // l'agrégat brut : sans filtre actif, `_agregerFiltre()` rend
-        // exactement le même total. On garde `breakdowns` en repli pour le cas
-        // où le détail par plan n'aurait pas été collecté (ancien chemin).
+        // Décomptes issus du FILTRE (sans filtre, même total). `breakdowns` reste en repli si le détail par plan
+        // n'a pas été collecté.
         if (_statsParPlan.length) breakdowns = _agregerFiltre();
 
-        // Une cat à afficher = breakdown non vide
         const sections = [
           { key: "plansByTag",    category: "plantags",   label: "🏷️ " + tr("home.profile.pies.plansParTag") },
           { key: "pointsByTag",   category: "tags",       label: "📍 Points par tag" },
@@ -2379,21 +2061,14 @@
           const data = breakdowns[s.key] || {};
           return Object.keys(data).length > 0;
         });
-        // 🩸 L IMPASSE A EVITER : si le filtre exclut TOUT, les cinq
-        // sections sont vides. Sortir ici retirerait aussi les chips -- donc le
-        // seul moyen de revenir en arriere. L utilisateur se retrouverait devant
-        // un bloc disparu, persuade d avoir casse quelque chose. Meme piege que
-        // le flag kiosque qui cachait son propre remede (v1.90.1).
+        // 🩸 Si le filtre exclut TOUT, les sections sont vides : sortir ici retirerait aussi les chips, seul moyen
+        // de revenir en arrière.
         const filtreActif = Object.keys(_filtreTags).length > 0;
         if (activeSections.length === 0 && !filtreActif) return;  // rien a dessiner
 
-        // 🩸 QUAND ON NE SAIT PAS, ON LE DIT. Le nom d'un type
-        // personnalisé n'est mémorisé qu'au chargement du plan : pour un plan
-        // jamais ouvert depuis cette version, la clé brute reste le seul
-        // affichage possible. Sans cette note, l'utilisateur croit à un bug
-        // permanent au lieu de comprendre qu'il lui suffit d'ouvrir le plan.
-        // Même honnêteté que le message « aucun plan géoréférencé ».
-        // Un seul bouton pour tout le bloc, remis à zéro à chaque rendu.
+        // 🩸 Quand on ne sait pas, on le dit : le nom d'un type personnalisé n'est connu qu'après ouverture du
+        // plan ; sans note, la clé brute passe pour un bug permanent. Un seul bouton pour le bloc, remis à zéro à
+        // chaque rendu.
         let _boutonNomsPose = false;
         function _noteTypesNonResolus(data, categorie, labels) {
           const cat = (categorie === "roads") ? "traces"
@@ -2403,15 +2078,12 @@
             return k.indexOf("cust-") === 0 && !(labels && labels[cat + "." + k]);
           });
           if (inconnus.length === 0) return "";
-          // 🩸 AUTONOME À DESSEIN. `_t` et `escapeHtml` sont declares dans
-          // d autres fonctions de ce fichier, pas au niveau de l IIFE : les
-          // referencer ici serait une ReferenceError au runtime, que `node -c`
-          // ne voit pas. C est la faute exacte de `meta` en v1.88.1.
+          // 🩸 AUTONOME À DESSEIN : `_t` et `escapeHtml` sont déclarés dans d'autres fonctions, pas au niveau du
+          // module. Les référencer ici = ReferenceError au runtime, que `node -c` ne voit pas.
           const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
           const txt = window.ktaEsc(tr("home.profile.pies.typesInconnus", { n: inconnus.length }));
-          // Le bouton n'apparaît QU'UNE FOIS pour tout le bloc (il interroge
-          // tous les plans d'un coup) : le premier camembert qui a des types
-          // inconnus le porte.
+          // Bouton UNE FOIS pour tout le bloc (il interroge tous les plans) : porté par le 1er camembert qui a
+          // des types inconnus.
           let bouton = "";
           if (!_boutonNomsPose) {
             _boutonNomsPose = true;
@@ -2425,20 +2097,11 @@
           return '<div class="kta-profile-pies-note">' + txt + bouton + '</div>';
         }
 
-        // RETROUVER LES NOMS SANS OUVRIR LES PLANS.
-        // 🩸 VÉCU (KARMA, capture) : « toujours un souci ». La v1.90.3 ne
-        // réparait que les plans rouverts APRÈS elle — pour 20 plans déjà
-        // ouverts avant, il fallait les rouvrir un par un. Le message était
-        // exact et la corvée réelle.
-        //
-        // Le nom d'un type né d'un import SIG vit dans `plan.customLegend` du
-        // `plan-config.json`. Pour un plan SERVEUR c'est UNE requête vers votre
-        // propre serveur ; pour un plan local, une lecture du ZIP mémorisé.
-        //
-        // ⚠️ SUR DEMANDE, JAMAIS AUTOMATIQUE : 20 plans = 20 requêtes au
-        // chargement d'une fenêtre que l'utilisateur n'a peut-être pas ouverte
-        // pour ça. Le bouton dit combien de plans il va interroger — on ne
-        // déclenche pas du réseau dans le dos de quelqu'un.
+        // Retrouver les noms SANS ouvrir les plans : le nom d'un type né d'un import SIG vit dans
+        // `plan.customLegend` du plan-config.json. Plan SERVEUR : une requête vers son serveur ; plan local : une
+        // lecture du ZIP mémorisé.
+        // ⚠️ SUR DEMANDE, JAMAIS AUTOMATIQUE : 20 plans = 20 requêtes. Le bouton dit combien de plans il va
+        // interroger ; pas de réseau dans le dos de l'utilisateur.
         async function _retrouverNoms(btn) {
           const trb = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
           const trouves = {};
@@ -2456,10 +2119,8 @@
                 interroges++;
               } else if (window.PlanRegistry && typeof window.PlanRegistry.getBlob === "function"
                          && typeof window.JSZip !== "undefined") {
-                // 🩸 Le BLOB uniquement, jamais le FileSystemFileHandle : ce
-                // dernier peut réclamer une permission, donc une boîte de
-                // dialogue par plan. Un bouton ne doit pas se transformer en
-                // interrogatoire.
+                // 🩸 Le BLOB uniquement, jamais le FileSystemFileHandle : il peut réclamer une permission, donc
+                // une boîte de dialogue par plan.
                 const blob = await window.PlanRegistry.getBlob(e.id);
                 if (blob) {
                   const zip = await window.JSZip.loadAsync(blob);
@@ -2473,8 +2134,7 @@
               }
             } catch (err) { echecs++; }
             if (cl && e.type !== "ext") Object.assign(trouves, _nomsDepuisLegende(cl));   // ☁️ : jamais dans le dictionnaire durable
-            // Laisse respirer le thread UI entre deux plans, comme la boucle
-            // d'agrégation : 20 lectures de ZIP d'affilée figeraient l'écran.
+            // Respiration du thread UI entre deux plans (20 lectures de ZIP d'affilée figeraient l'écran).
             await new Promise(function(r2) { setTimeout(r2, 0); });
           }
           _persisterNoms(trouves);
@@ -2488,11 +2148,8 @@
           if (n) _renderProfilePies(breakdowns, Object.assign({}, labels, trouves));
         }
 
-        // La rangée de chips. Trois états, un clic pour passer au
-        // suivant : neutre → inclure → exclure → neutre. 🩸 Le libellé de chaque
-        // état est PORTÉ PAR LA CHIP (✓ / ✕), pas seulement par une couleur :
-        // un filtre qui ne se lit qu'à la teinte est illisible pour qui
-        // distingue mal les couleurs, et invisible sur une capture d'écran.
+        // Chips : un clic passe neutre → inclure → exclure → neutre. 🩸 L'état est PORTÉ PAR LA CHIP (✓ / ✕),
+        // pas seulement par une couleur (illisible pour qui distingue mal les couleurs, et sur une capture).
         function _chipsFiltre() {
           if (!_statsParPlan.length) return "";
           const compte = {};
@@ -2507,7 +2164,6 @@
           });
           const cles = Object.keys(compte).sort(function(a, b) { return compte[b] - compte[a]; });
           if (sansTag > 0) cles.push(SANS_TAG);
-          // Une seule étiquette (ou aucune) : le filtre n'a rien à trancher.
           if (cles.length < 2) return "";
 
           const retenus = _statsParPlan.filter(_planRetenu).length;
@@ -2534,7 +2190,6 @@
           return h;
         }
 
-        // 🩸 Autonome : `escapeHtml` n'est pas déclaré au niveau de ce module.
         function _echapper(s2) { return window.ktaEsc(s2); }
 
         const piesContainer = document.createElement("div");
@@ -2545,8 +2200,8 @@
         html += '<div class="kta-profile-pies-grid">';
         activeSections.forEach(function(s) {
           let data = breakdowns[s.key] || {};
-          // 🩸 La sentinelle « sans étiquette » ne doit JAMAIS s'afficher telle
-          // quelle. On la traduit dans une COPIE : l'originale sert au filtre.
+          // 🩸 La sentinelle « sans étiquette » ne s'affiche JAMAIS telle quelle : traduite dans une COPIE,
+          // l'originale sert au filtre.
           if (s.key === "plansByTag" && data[SANS_TAG] != null) {
             const copie = {}; const nom = tr("home.profile.pies.sansTag");
             Object.keys(data).forEach(function(k) {
@@ -2556,11 +2211,8 @@
           }
           html += '<div class="kta-profile-pies-card">' +
                     '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
-                    // (KARMA "en stat général, on doit toujours
-                    // prendre la valeur par default") : 4e arg true = bypass la
-                    // cascade LegendCustomization (qui appliquerait le renommage
-                    // local du plan A à l'agrégat cross-plan home). Cross-plan =
-                    // labels par défaut cohérents partout.
+                    // 4e argument true : libellés par défaut, sans la cascade LegendCustomization (le renommage
+                    // local d'un plan ne s'impose pas à l'agrégat).
                     renderPie(data, s.category, 140, true, labels || {}) +
                     _noteTypesNonResolus(data, s.category, labels) +
                   '</div>';
@@ -2569,12 +2221,8 @@
         piesContainer.innerHTML = html;
         wrap.appendChild(piesContainer);
 
-        // Un clic fait tourner l'état de l'étiquette, puis on
-        // re-rend TOUT le bloc : les quatre autres camemberts se recalculent
-        // sur les plans retenus. C'est le sens de la demande — « exclure »
-        // n'a d'intérêt que s'il change les totaux qu'on regarde.
-        // 🩸 Délégation sur le conteneur : les chips sont recréées à chaque
-        // rendu, brancher chaque bouton laisserait des écouteurs orphelins.
+        // Un clic fait tourner l'état puis re-rend TOUT le bloc : les autres camemberts se recalculent sur les
+        // plans retenus. 🩸 Délégation sur le conteneur : les chips sont recréées à chaque rendu.
         piesContainer.addEventListener("click", function(ev) {
           const fix = ev.target && ev.target.closest ? ev.target.closest(".kta-profile-pies-fix") : null;
           if (fix) {
@@ -2595,12 +2243,11 @@
         });
       }
 
-      // Init bandeau au boot du loader (différé pour laisser UserProfile.init())
+      // Init du bandeau, différé pour laisser UserProfile.init().
       setTimeout(_initLoaderProfileBar, 100);
 
       function afficherChoixImportListe(stats) {
         return new Promise(function(resolve) {
-          // Modale simple avec 3 options
           const modal = document.createElement("div");
           modal.className = "kta-readme-modal-overlay";
           modal.innerHTML = `
@@ -2634,7 +2281,7 @@
         });
       }
 
-      // === BOUTON 📖 DOCUMENTATION UTILISATEUR ===
+      // ── Bouton Documentation utilisateur ──────────
       const helpBtn = document.getElementById("loaderHelpBtn");
       if (helpBtn) {
         helpBtn.addEventListener("click", function() {
@@ -2647,6 +2294,6 @@
       }
 
 
-      // ── Pont B7 : consommé par le flux d'import de homeLoader.js
+      // ── Pont : consommé par le flux d'import de homeLoader.js
       window.afficherChoixImportListe = afficherChoixImportListe;
     });

@@ -5,22 +5,22 @@
  */
 
 // =========================
-// EDITOR.JS — modale plein écran avec gestion des tags
+// EDITOR.JS — Points de session : formulaire plein écran (tags, photos), édition, repositionnement, suppression
 // =========================
+// Expose : initEditor, afficherFormulaire, renderEditorPoints, setEditorPoints, supprimerPointEditor,
+// repositionnerPointEditor, _applyLevelFilterToEditorPoints, _refreshEditorMarkersViewport.
+// 🩸 layerEditor contient AUSSI les roads et zones de session : jamais layerEditor.clearLayers(), on retire
+// seulement nos marqueurs (_markersEditor).
+// Coordonnées : convertCoord(x, y) = [imageHeight - y, x]. Garde-fous : check-repositionner.js, check-uid.js,
+// check-icon-catalog.js. Doc : docs/architecture/session-data.md.
 
 window.modeEdition = false;
 let listePoints = [];
 
-// Tracking des markers Leaflet créés par _ajouterMarker, pour pouvoir les
-// retirer SÉLECTIVEMENT lors d'un re-render. Avant suite 13, layerEditor
-// ne contenait que des markers — on pouvait faire layerEditor.clearLayers()
-// sans risque. Mais depuis suite 13, layerEditor contient AUSSI les roads
-// et zones session (regroupement dans le calque "Mes annotations") →
-// clearLayers les supprime tous, ce qui faisait disparaitre roads + zones
-// quand on supprimait UN seul point.
-// On track donc nos propres markers pour pouvoir faire un cleanup cible.
+// Marqueurs Leaflet créés par _ajouterMarker, pour les retirer SÉLECTIVEMENT au re-rendu (layerEditor contient
+// aussi les roads et zones de session : clearLayers les ferait disparaître à la suppression d'UN point).
 let _markersEditor = [];
-let _editorClickHandler = null;  // 🆕 ref stable pour off idempotent (cf initEditor / measure.js)
+let _editorClickHandler = null;  // ref stable pour un off idempotent (cf. initEditor / measure.js)
 
 const EDITOR_TAG_LABELS = {
   salle:    "Salle",
@@ -43,9 +43,8 @@ const EDITOR_TAG_LABELS = {
   elec:     "Électricité",
   epure:    "Épure",
   plaque:   "Plaque indication",
-  // Portail (liaison inter-plan) : icône dédiée optionnelle.
   portail:  "Portail (liaison inter-plan)",
-  // D — Point d'entrée du plan (Vue OSM × Mode Secours).
+  // Point d'entrée du plan (Vue OSM × Mode Secours).
   entree_plan: "🚪 Point d'entrée du plan"
 };
 
@@ -53,24 +52,17 @@ const EDITOR_EXCLURE = ["default", "track"];
 
 // Le mode édition s'arme par le bouton ✏️ (interface.js), qui porte la garde lecture seule.
 
-// =========================
-// INIT
-// =========================
+// ── Init ──────────
 function initEditor() {
-  // Reset complet (cohérence avec initZones / initMeasure) — sans ce reset,
-  // listePoints survit au switch de plan via le plan switcher et le polling
-  // SessionPersist ré-enregistre les points de l'ancien plan sous l'ID du
-  // nouveau plan (cross-pollination entre plans).
+  // Reset complet (comme initZones / initMeasure) : sinon listePoints survit au changement de plan et le
+  // polling SessionPersist réenregistre les points de l'ancien plan sous l'ID du nouveau.
   listePoints = [];
-  // Cleanup des markers tracking (pas clearLayers du group entier — voir
-  // commentaire sur _markersEditor en haut du fichier).
+  // Nos marqueurs seulement (cf. _markersEditor).
   _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
   _markersEditor = [];
 
-  // 🆕 Idempotence du binding clic (cf measure.js) : retire l'ancien handler de la
-  // map courante avant d'en (re)binder un. Sans ça, si initEditor() re-tourne sur
-  // une map réutilisée, les map.on('click') s'EMPILENT → 1 clic = N formulaires POI.
-  // Le off avec l'ancienne référence (encore valide) nettoie le binding précédent.
+  // Binding du clic idempotent (cf. measure.js) : l'ancien handler est retiré de la carte avant d'en poser un,
+  // sinon les map.on('click') s'EMPILENT (1 clic = N formulaires POI).
   if (window.map && _editorClickHandler) {
     try { window.map.off("click", _editorClickHandler); } catch (e) {}
   }
@@ -89,29 +81,20 @@ function initEditor() {
   window.map.on("click", _editorClickHandler);
 }
 
-// =========================
-// OPTIONS DYNAMIQUES (fusion des tags connus + tags du plan-config)
-// =========================
+// ── Options dynamiques (tags connus + tags du plan-config) ──────────
 function _buildTypeOptionsHTML(selectedTag) {
   const icons = window.PLAN_CONFIG?.icons || {};
 
-  // Set des tags : on cumule
-  //   1. tous les tags définis dans EDITOR_TAG_LABELS (y compris les nouveaux : peo, pef, etc.)
-  //   2. + les tags du plan-config (pour les tags custom ajoutés à un plan particulier)
-  // → l'utilisateur peut TOUJOURS sélectionner un type, même si le plan-config
-  //   ne déclare pas son icône (l'app utilisera _iconMap[tag] ou l'icône par défaut)
+  // Tags = EDITOR_TAG_LABELS + tags du plan-config (customs d'un plan) : un type reste TOUJOURS sélectionnable,
+  // même sans icône déclarée (_iconMap[tag] ou icône par défaut).
   const tagsSet = new Set(Object.keys(EDITOR_TAG_LABELS));
   Object.keys(icons).forEach(function(k) {
     if (!EDITOR_EXCLURE.includes(k)) tagsSet.add(k);
   });
-  // Retirer les tags système
   EDITOR_EXCLURE.forEach(function(k) { tagsSet.delete(k); });
 
-  // (F10) — les ICÔNES CUSTOM de la légende deviennent des tags
-  // sélectionnables. Elles existaient dans ≡ Légende mais aucun point ne
-  // pouvait les porter : ce sélecteur ne les listait pas. L'icône elle-même
-  // est résolue par _iconMap[id] (enregistrée par map.js, MAJ au fil de la
-  // session via onCustomEntriesChange).
+  // Les ICÔNES CUSTOM de la légende sont des tags sélectionnables (icône résolue par _iconMap[id], enregistrée
+  // par map.js et mise à jour par onCustomEntriesChange).
   const customIconLabels = {};
   if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
     try {
@@ -124,16 +107,14 @@ function _buildTypeOptionsHTML(selectedTag) {
     } catch(e) {}
   }
 
-  // Trier : d'abord les tags labellisés (ordre de EDITOR_TAG_LABELS),
-  // puis les tags custom non labellisés en fin
+  // Tri : tags labellisés (ordre d'EDITOR_TAG_LABELS), puis customs non labellisés.
   const known   = Object.keys(EDITOR_TAG_LABELS).filter(function(k) { return tagsSet.has(k); });
   const custom  = [...tagsSet].filter(function(k) { return !EDITOR_TAG_LABELS[k]; });
   const orderedTags = known.concat(custom);
 
   let html = '<option value="">' + window.I18n.t("editor.options.none") + '</option>';
   html += orderedTags.map(function(tag) {
-    // Label built-in via i18n (clé "editor.tag.<tag>"), icône custom via son
-    // libellé de légende, sinon le tag custom brut.
+    // Libellé intégré par i18n ("editor.tag.<tag>"), icône custom par son libellé de légende, sinon tag brut.
     const label = EDITOR_TAG_LABELS[tag] ? window.I18n.t("editor.tag." + tag)
                 : (customIconLabels[tag] || tag);
     const sel   = tag === selectedTag ? ' selected' : '';
@@ -144,23 +125,11 @@ function _buildTypeOptionsHTML(selectedTag) {
   return html;
 }
 
-// =========================
-// FORMULAIRE — modale plein écran style cohérent
-// =========================
-// signature étendue pour mode ajout/édition unifié.
-//   - afficherFormulaire(x, y)                    → mode AJOUT (existant)
-//   - afficherFormulaire(x, y, existingPoint)     → mode ÉDITION (nouveau)
-//
-// En mode ÉDITION, on travaille DIRECTEMENT sur la référence du point dans
-// listePoints (mutation in place) pour ne pas avoir à dupliquer/réinjecter.
-// Le re-render du marker est fait au save (pour propager nom, tag, level…).
-//
-// 📸 Photos : section IDB-backed (B1.b stratégie 5a — écriture immédiate
-// avec cleanup à l'annulation). Mode AJOUT utilise un pointId temporaire
-// (_pendingPointId, UUID préfixé "_temp_") qui sera migré vers le vrai id
-// (= nom saisi) à la validation. Mode ÉDITION utilise existingPoint.id
-// directement. Si l'user renomme un point ayant des photos, on appelle
-// MyKTAMapPhotos.renamePointId au save pour migrer les enregistrements.
+// ── Formulaire (modale plein écran) ──────────
+//   afficherFormulaire(x, y)                → AJOUT
+//   afficherFormulaire(x, y, existingPoint) → ÉDITION, directement sur la référence du point dans listePoints
+//                                             (mutation en place) ; le marqueur est re-rendu au save.
+// Photos en IDB, écrites immédiatement et nettoyées à l'annulation.
 function afficherFormulaire(x, y, existingPoint) {
   const existing = document.getElementById("kta-poi-modal");
   if (existing) existing.remove();
@@ -175,25 +144,17 @@ function afficherFormulaire(x, y, existingPoint) {
   const nomInitial   = isEdit ? (existingPoint.nom || "") : "";
   const descInitial  = isEdit ? (existingPoint.description || "") : "";
 
-  // Echappement pour pré-remplissage (sinon une apostrophe dans le nom
-  // casserait l'attribut value HTML).
+  // Échappement du préremplissage (une apostrophe casserait l'attribut value).
   function _esc(s) { return window.ktaEsc(s); }
 
-  // planId courant — utilisé pour les opérations MyKTAMapPhotos.
-  // Fallback "default" cohérent avec sessionExporter.js (cf. CLAUDE.md §27).
+  // Plan courant pour MyKTAMapPhotos (repli "default" comme sessionExporter.js).
   const planId = window._currentLoadedPlanId || "default";
 
-  // ID du point côté IDB photos :
-  //   - mode ÉDITION : id figé = existingPoint.id
-  //   - mode AJOUT   : id temporaire (UUID préfixé "_temp_") qu'on
-  //     migrera vers le vrai nom à la validation. Permet à l'user
-  //     d'attacher des photos AVANT d'avoir saisi un nom définitif.
-  // (lot C1) — la clé photo est l'UID du point, plus son nom :
-  //   - édition : l'uid du point (son nom en repli s'il n'en a pas encore) ;
-  //     les anciennes photos rangées sous le nom restent lues (double lecture) ;
-  //   - ajout : l'uid du FUTUR point, tiré ici et posé sur le point à la
-  //     validation — les photos prises avant d'avoir saisi un nom sont déjà
-  //     sous leur clé définitive, plus de renommage au save.
+  // Clé des photos = UID du point :
+  //   - édition : l'uid du point (son nom en repli s'il n'en a pas) ; les photos encore rangées sous le nom
+  //     restent lues (double lecture) ;
+  //   - ajout : l'uid du FUTUR point, tiré ici et posé à la validation : les photos prises avant le nom sont
+  //     déjà sous leur clé définitive.
   let _photoPointId;
   let _uidAjout = null;
   if (isEdit) {
@@ -205,18 +166,14 @@ function afficherFormulaire(x, y, existingPoint) {
     _photoPointId = "_temp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
   }
 
-  // Tracking des photoIds manipulés DANS cette session de modale :
-  //   - _photosAddedThisSession : ajoutées (à supprimer si Annuler)
-  //   - _photosPendingDelete    : marquées à supprimer (à committer au Save,
-  //                                à ignorer si Annuler)
+  // PhotoIds manipulés dans CETTE ouverture : ajoutées (supprimées si Annuler) / à supprimer (commit au Save,
+  // ignorées si Annuler).
   const _photosAddedThisSession = new Set();
   const _photosPendingDelete    = new Set();
 
-  // Cache des metadata photos chargées en mémoire pour rendre la grille
-  // sans refetch IDB à chaque tick. Format : [{id, blob, mime, size, ...}]
+  // Métadonnées des photos en mémoire ([{id, blob, mime, size, ...}]) : pas de relecture IDB à chaque rendu.
   let _photosCacheMeta = [];
-  // Cache des objectURL pour pouvoir révoquer au close (évite memory leak
-  // si l'user ouvre/ferme la modale 50 fois sur des plans riches).
+  // objectURL révoquées à la fermeture (fuite mémoire sinon).
   const _photoObjectUrls = new Set();
 
   const modal = document.createElement("div");
@@ -308,7 +265,6 @@ function afficherFormulaire(x, y, existingPoint) {
   const btnAnnuler  = document.getElementById("kta-poi-annuler");
   const btnValider  = document.getElementById("kta-poi-valider");
 
-  // Section photos
   const photoGrid       = document.getElementById("kta-poi-photos-grid");
   const photoCounter    = document.getElementById("kta-poi-photos-counter");
   const photoBtnCamera  = document.getElementById("kta-poi-photos-camera");
@@ -316,9 +272,8 @@ function afficherFormulaire(x, y, existingPoint) {
   const photoInputCam   = document.getElementById("kta-poi-photos-input-camera");
   const photoInputGal   = document.getElementById("kta-poi-photos-input-galerie");
 
-  // 📸 Fiche du point portée par chaque photo (retrouver le point s'il est
-  // supprimé, cf js/photos.js) : ce que dit le formulaire à l'instant de l'ajout.
-  // Remise à jour à l'enregistrement du point (majFichesPoints ci-dessous).
+  // Fiche du point portée par chaque photo (retrouver le point s'il est supprimé, cf. js/photos.js) : l'état du
+  // formulaire à l'ajout, remis à jour à l'enregistrement (majFichesPoints).
   function _ficheCourante() {
     const tagForm = (selectType.value && selectType.value !== "__new__") ? selectType.value : (tagInitial || null);
     let niveau = null;
@@ -332,9 +287,7 @@ function afficherFormulaire(x, y, existingPoint) {
     erreurEl.style.display = msg ? "block" : "none";
   }
 
-  // Cleanup commun à toutes les fermetures (sauf au save qui appelle son
-  // propre cleanup conditionnel). Révoque les objectURL pour éviter les
-  // memory leaks.
+  // Nettoyage commun aux fermetures (le save a le sien) : révoque les objectURL.
   function _cleanupObjectUrls() {
     _photoObjectUrls.forEach(function(u) {
       try { URL.revokeObjectURL(u); } catch(e) {}
@@ -344,18 +297,12 @@ function afficherFormulaire(x, y, existingPoint) {
 
   function fermer() { _cleanupObjectUrls(); modal.remove(); }
 
-  // 🚪 Annuler : delete les photos ajoutées dans cette session de modale
-  // (sous _photoPointId, qui peut être l'id réel d'un point existant en
-  // édition OU l'id temporaire en ajout). Les pending deletes ne sont
-  // PAS committés (rien n'a été vraiment supprimé en IDB).
+  // Annuler : supprime les photos ajoutées pendant cette ouverture ; les suppressions en attente ne sont PAS
+  // appliquées (rien n'a été supprimé en IDB).
   function annuler() {
     if (!window.MyKTAMapPhotos || _photosAddedThisSession.size === 0) {
-      // Si mode AJOUT sans photos uploadées → rien à nettoyer
-      // Si mode AJOUT avec photos → on les delete via deletePhotosForPoint
-      //   sur le _temp_ pointId (couvre aussi le cas où Set serait désynchro)
-      // 🩸 garde STRICTE : seulement en AJOUT et sur la clé tirée pour
-      // ce point qui n'existe pas encore. Jamais sur un point existant : ses
-      // photos seraient supprimées pour de bon.
+      // 🩸 Garde STRICTE : seulement en AJOUT et sur la clé tirée pour ce point qui n'existe pas encore. Jamais
+      // sur un point existant : ses photos seraient supprimées pour de bon.
       if (!isEdit && window.MyKTAMapPhotos &&
           (_photoPointId === _uidAjout || _photoPointId.indexOf("_temp_") === 0)) {
         window.MyKTAMapPhotos.deletePhotosForPoint(planId, _photoPointId)
@@ -364,7 +311,7 @@ function afficherFormulaire(x, y, existingPoint) {
       fermer();
       return;
     }
-    // Mode édition avec ajouts : delete précis des photos uploadées cette session
+    // Édition : suppression précise des photos ajoutées pendant cette ouverture.
     const promises = [];
     _photosAddedThisSession.forEach(function(photoId) {
       promises.push(window.MyKTAMapPhotos.deletePhoto(photoId));
@@ -387,14 +334,11 @@ function afficherFormulaire(x, y, existingPoint) {
   btnAnnuler.addEventListener("click", annuler);
   modal.addEventListener("click", function(e) { if (e.target === modal) annuler(); });
 
-  // Empêcher Leaflet de capturer les events tactiles dans la modale
+  // Leaflet ne capture pas les événements tactiles de la modale.
   L.DomEvent.disableClickPropagation(modal);
 
-  // ============================================================
-  // PHOTOS — handlers
-  // ============================================================
-  // Recompte les photos visibles (cache - pending delete) pour afficher
-  // "N / 5" et désactiver les boutons d'ajout à la saturation.
+  // ── Photos : handlers ──────────
+  // Compteur « N / 5 » (cache - suppressions en attente), boutons d'ajout désactivés à saturation.
   function _refreshCounterAndButtons() {
     const visible = _photosCacheMeta.filter(function(p) {
       return !_photosPendingDelete.has(p.id);
@@ -413,8 +357,7 @@ function afficherFormulaire(x, y, existingPoint) {
     }
   }
 
-  // Re-render visuel de la grille à partir de _photosCacheMeta.
-  // Les vignettes marquées pending delete sont stylées différemment (grisées + ✕ disabled).
+  // Grille re-rendue depuis _photosCacheMeta ; vignettes en attente de suppression grisées.
   function _renderPhotoGrid() {
     photoGrid.innerHTML = "";
     if (_photosCacheMeta.length === 0) {
@@ -433,24 +376,17 @@ function afficherFormulaire(x, y, existingPoint) {
         img.alt = "photo";
         img.loading = "lazy";
         thumb.appendChild(img);
-        // tap miniature → ouvre viewer plein écran.
-        // - Skip si la photo est en cours de compression (placeholder)
-        //   ou marquée pending delete (l'user veut la supprimer, pas la zoomer)
-        // - L'array passé au viewer = filtré pour ne montrer QUE les
-        //   photos visibles (pas les placeholders ni les pendings),
-        //   sinon l'index ne correspondrait pas.
+        // Toucher une miniature ouvre la visionneuse, sauf placeholder (compression) ou suppression en attente.
+        // ⚠️ La visionneuse reçoit la liste FILTRÉE des photos visibles, sinon l'index ne correspond pas.
         if (!isPending && !isPlaceholder) {
           thumb.style.cursor = "zoom-in";
           thumb.addEventListener("click", function(ev) {
-            // Click sur le ✕ ne doit PAS ouvrir le viewer (stop propag dans le handler ✕ ci-dessous)
+            // Le ✕ n'ouvre pas la visionneuse.
             if (ev.target && ev.target.classList.contains("kta-poi-photo-del")) return;
             if (!window.MyKTAMapPhotoViewer) {
               console.warn("[Editor] MyKTAMapPhotoViewer indisponible");
               return;
             }
-            // Filtre : on n'envoie au viewer que les photos visibles
-            // (pas les placeholders, pas les pendings). On recalcule
-            // startIndex dans cette sous-liste filtrée.
             const visible = _photosCacheMeta.filter(function(q) {
               return q._objectUrl && !_photosPendingDelete.has(q.id);
             });
@@ -459,10 +395,10 @@ function afficherFormulaire(x, y, existingPoint) {
           });
         }
       } else {
-        // Placeholder (compression en cours, voir _ajouterPhotoBlob)
+        // Placeholder (compression en cours, cf. _ajouterPhotoBlob).
         thumb.innerHTML = '<div class="kta-poi-photo-spinner">⏳</div>';
       }
-      // Bouton ✕ pour retirer la photo (mark pending delete, vraie suppression au save)
+        // ✕ : suppression en attente, appliquée au save.
       const btnDel = document.createElement("button");
       btnDel.type = "button";
       btnDel.className = "kta-poi-photo-del";
@@ -483,17 +419,14 @@ function afficherFormulaire(x, y, existingPoint) {
     });
   }
 
-  // Charge en mémoire les photos existantes (mode édition uniquement)
-  // pour pré-remplir la grille. En mode ajout, _photoPointId est temporaire
-  // donc rien à charger au départ (cache vide).
+  // Photos existantes en mémoire (édition seulement ; en ajout la clé est neuve, rien à charger).
   function _loadExistingPhotos() {
     if (!isEdit || !window.MyKTAMapPhotos) {
       _renderPhotoGrid();
       _refreshCounterAndButtons();
       return;
     }
-    // double lecture : sous l'uid du point, et sous son nom
-    // (photos d'avant la v2.3.0 pas encore migrées).
+    // Double lecture : sous l'uid du point et sous son nom (photos pas encore migrées).
     const _lecture = (window.MyKTAMapPhotos.getPhotosForPointRef && existingPoint.uid)
       ? window.MyKTAMapPhotos.getPhotosForPointRef(planId, { uid: existingPoint.uid, id: existingPoint.id })
       : window.MyKTAMapPhotos.getPhotosForPoint(planId, _photoPointId);
@@ -519,10 +452,8 @@ function afficherFormulaire(x, y, existingPoint) {
     });
   }
 
-  // 📸 Installation reliée : l'extension dépose les photos de ce point qui
-  // manquent sur l'appareil (prise `photos`, 8 s max). Si elle en a déposé, la
-  // grille est relue — en gardant les ajouts et retraits en cours. Une fois
-  // par ouverture de la fiche. Sans extension : rien.
+  // Installation reliée : l'extension dépose les photos manquantes de ce point (prise `photos`, 8 s max) ; si
+  // elle en dépose, la grille est relue en gardant les ajouts et retraits en cours. Une fois par ouverture.
   let _completeFait = false;
   function _completerParExtension() {
     const K = window.KtaExtensions;
@@ -547,15 +478,13 @@ function afficherFormulaire(x, y, existingPoint) {
     }).catch(function(e) { console.warn("[Editor] photos de l'extension :", e); });
   }
 
-  // Upload d'1 Blob photo : crée un placeholder grille immédiat (UX
-  // réactive), lance compression+IDB write en arrière-plan, swap par la
-  // vraie miniature au callback. Si erreur → toast + retire le placeholder.
+  // Upload d'une photo : placeholder immédiat, compression + écriture IDB en arrière-plan, puis vraie
+  // miniature. Erreur → toast + placeholder retiré.
   function _ajouterPhotoBlob(blob) {
     if (!window.MyKTAMapPhotos) {
       setErr(window.I18n.t("editor.err.photoModule"));
       return;
     }
-    // Placeholder local — id provisoire local pour pouvoir le retrouver
     const placeholderLocalId = "_pending_" + Math.random().toString(36).slice(2, 10);
     _photosCacheMeta.push({
       id:        placeholderLocalId,
@@ -566,7 +495,6 @@ function afficherFormulaire(x, y, existingPoint) {
     _refreshCounterAndButtons();
 
     window.MyKTAMapPhotos.addPhoto(planId, _photoPointId, blob, { fiche: _ficheCourante() }).then(function(photoId) {
-      // Récupère le blob compressé pour générer l'objectURL d'affichage
       return window.MyKTAMapPhotos.getPhoto(photoId).then(function(rec) {
         if (!rec) throw new Error("photo introuvable après addPhoto");
         const idx = _photosCacheMeta.findIndex(function(p) { return p.id === placeholderLocalId; });
@@ -586,12 +514,10 @@ function afficherFormulaire(x, y, existingPoint) {
       });
     }).catch(function(err) {
       console.warn("[Editor] ajout photo erreur :", err);
-      // Retire le placeholder en échec
       const idx = _photosCacheMeta.findIndex(function(p) { return p.id === placeholderLocalId; });
       if (idx !== -1) _photosCacheMeta.splice(idx, 1);
       _renderPhotoGrid();
       _refreshCounterAndButtons();
-      // Message utilisateur
       const msg = (err && err.code === "QUOTA_PER_POINT")
         ? window.I18n.t("editor.err.photoQuotaPoint")
         : (err && err.code === "QUOTA_EXCEEDED")
@@ -604,14 +530,13 @@ function afficherFormulaire(x, y, existingPoint) {
     });
   }
 
-  // File picker → addPhoto pour chaque file sélectionné
   function _onFileChange(ev) {
     const files = ev.target.files;
     if (!files || files.length === 0) return;
     for (let i = 0; i < files.length; i++) {
       _ajouterPhotoBlob(files[i]);
     }
-    // Reset l'input pour permettre re-sélection du même fichier
+    // Réinitialisé pour pouvoir resélectionner le même fichier.
     ev.target.value = "";
   }
 
@@ -620,22 +545,17 @@ function afficherFormulaire(x, y, existingPoint) {
   photoInputCam.addEventListener("change",  _onFileChange);
   photoInputGal.addEventListener("change",  _onFileChange);
 
-  // Charge les photos existantes (mode édition)
   _loadExistingPhotos();
 
-  // ============================================================
-  // VALIDATION — save
-  // ============================================================
+  // ── Validation : save ──────────
   btnValider.addEventListener("click", async function() {
     const nom = inputNom.value.trim();
     if (!nom) { setErr(window.I18n.t("editor.err.nameRequired")); inputNom.focus(); return; }
-    // Installation reliée : le point a été remplacé (modifié ou supprimé par un autre compte)
-    // pendant l'édition — sans ça, l'enregistrement partait dans un objet qui n'était plus
-    // dans la liste, et se perdait en silence. Sans extension : rien ne change.
+    // Installation reliée : le point a été remplacé (modifié ou supprimé par un autre compte) pendant l'édition ;
+    // sans ce test, l'enregistrement partirait dans un objet hors de la liste, perdu en silence.
     if (isEdit && existingPoint.uid && window.KtaExtensions && typeof window.KtaExtensions.recuADistance === "function" &&
         window.KtaExtensions.recuADistance(existingPoint.uid)) {
       const courant = listePoints.find(function(p) { return p && p.uid === existingPoint.uid; });
-      // Objet remplacé, supprimé, ou mis à jour sur place par la synchro depuis l'ouverture.
       if (courant !== existingPoint || (courant && courant.updatedAt !== _majOuverture)) {
         const ok = (typeof window.ktaConfirm === "function")
           ? await window.ktaConfirm(window.I18n.t(courant ? "editor.conflit.modifie" : "editor.conflit.supprime"),
@@ -649,7 +569,7 @@ function afficherFormulaire(x, y, existingPoint) {
 
     let tag = selectType.value;
 
-    // Création d'un nouveau tag à la volée
+    // Nouveau tag créé à la volée.
     if (tag === "__new__") {
       const nouveau = inputNewTag.value.trim().toLowerCase().replace(/\s+/g, "_");
       if (!nouveau) { setErr(window.I18n.t("editor.err.tagInvalid")); inputNewTag.focus(); return; }
@@ -660,16 +580,13 @@ function afficherFormulaire(x, y, existingPoint) {
       }
       tag = nouveau;
 
-      // Enregistrer le tag dans PLAN_CONFIG.icons s'il n'existe pas (icône par défaut)
-      // ⚠️ F10 : jamais pour un id `cust-…` — PLAN_CONFIG.icons est lu EN
-      // PREMIER par getIconUrlForPoint, y écrire l'icône par défaut masquerait
-      // l'icône custom de la légende dans tous les exports.
+      // Tag ajouté à PLAN_CONFIG.icons (icône par défaut). ⚠️ Jamais pour un id `cust-…` : PLAN_CONFIG.icons est
+      // lu EN PREMIER par getIconUrlForPoint et masquerait l'icône custom de la légende dans tous les exports.
       if (window.PLAN_CONFIG && window.PLAN_CONFIG.icons && tag.indexOf("cust-") !== 0) {
         if (!window.PLAN_CONFIG.icons[tag]) {
           window.PLAN_CONFIG.icons[tag] = window.PLAN_CONFIG.icons.default || "icon/iconetrack.png";
         }
       }
-      // S'assurer que le _iconMap a une entrée pour ce nouveau tag
       if (window._iconMap && !window._iconMap[tag]) {
         window._iconMap[tag] = window._iconMap.default || window.iconeDefault;
       }
@@ -677,20 +594,16 @@ function afficherFormulaire(x, y, existingPoint) {
 
     const desc = inputDesc.value.trim();
 
-    // Phase 1 : commit photos (pendings delete + migration id si renommage)
+    // 1. Photos : suppressions en attente + rattachement de clé.
     const photoOps = [];
     if (window.MyKTAMapPhotos) {
-      // Commit pending deletes (vraie suppression IDB)
       _photosPendingDelete.forEach(function(photoId) {
         photoOps.push(window.MyKTAMapPhotos.deletePhoto(photoId));
       });
-      // les photos sont rangées sous l'UID : renommer le point ne
-      // les touche plus. Deux restes du rangement par nom :
-      //   - point d'avant la v2.3.0, sans uid : comportement historique
-      //     (renommage de clé nom → nouveau nom) ;
-      //   - point avec uid dont des photos sont encore rangées sous son nom :
-      //     on les rattache à l'uid, SEULEMENT si ce nom n'est porté par aucun
-      //     autre point (sinon on prendrait les photos d'un homonyme).
+      // Photos rangées sous l'UID : renommer le point ne les touche pas. Restes du rangement par nom :
+      //   - point sans uid : renommage de clé nom → nouveau nom ;
+      //   - point avec uid dont des photos sont encore sous son nom : rattachées à l'uid SEULEMENT si aucun
+      //     autre point ne porte ce nom (sinon on prendrait les photos d'un homonyme).
       if (isEdit && !existingPoint.uid) {
         if (_photoPointId !== nom) photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, _photoPointId, nom));
       } else if (isEdit && existingPoint.uid) {
@@ -702,7 +615,7 @@ function afficherFormulaire(x, y, existingPoint) {
           photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, ancienNom, existingPoint.uid));
         }
       } else if (!_uidAjout && _photoPointId !== nom) {
-        // repli sans KtaUid : comportement historique (_temp_ → nom)
+        // Repli sans KtaUid : _temp_ → nom.
         photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, _photoPointId, nom));
       }
     }
@@ -710,16 +623,13 @@ function afficherFormulaire(x, y, existingPoint) {
     Promise.all(photoOps).catch(function(e) {
       console.warn("[Editor] photoOps erreur :", e);
     }).finally(function() {
-      // Undo/Redo : capture l'état AVANT la mutation pour
-      // l'historique. Note : les photos sont EXCLUES du périmètre undo
-      // (cf. historyManager.js), donc on enregistre uniquement le state
-      // points/roads/zones/structures. Si l'user undo après save, les
-      // ops photos (delete IDB / rename) ne seront PAS rollback.
+      // Undo/Redo : état capturé AVANT la mutation. ⚠️ Les photos sont HORS du périmètre undo
+      // (historyManager.js) : un undo après save ne défait pas les suppressions ni les renommages IDB.
       const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
 
-      // Phase 2 : commit du point (création ou update)
+      // 2. Le point : création ou mise à jour.
       if (isEdit) {
-        // Update IN PLACE de l'objet existant dans listePoints
+        // Mise à jour EN PLACE de l'objet de listePoints.
         existingPoint.nom         = nom;
         existingPoint.id          = nom;  // garde id === nom (rétro-compat)
         existingPoint.tags        = tag ? [tag] : [];
@@ -727,13 +637,11 @@ function afficherFormulaire(x, y, existingPoint) {
         // touch : updatedAt (ms) + date_update (jour), en un seul geste.
         if (window.KtaUid) window.KtaUid.touch(existingPoint);
         else existingPoint.date_update = new Date().toISOString().split("T")[0];
-        // 🏗️ Multi-niveau : on garde le level d'origine (pas de re-tag automatique
-        // sur le niveau actif au save d'une édition, ce serait surprenant si l'user
-        // a switché de niveau entretemps).
-        // Re-render tout pour propager le changement d'icône / nom / popup.
+        // Multi-niveau : le level d'origine est gardé (pas de re-tag sur le niveau actif, surprenant si
+        // l'utilisateur a changé de niveau entre-temps). Re-rendu complet (icône, nom, popup).
         if (window.renderEditorPoints) window.renderEditorPoints();
         console.log("[Editor] Point modifié :", nom, "à", x, y);
-        // 📸 fiche des photos du point remise à jour (nom, type…)
+        // Fiche des photos du point remise à jour (nom, type…).
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints) {
           window.MyKTAMapPhotos.majFichesPoints(planId, [existingPoint]);
         }
@@ -754,20 +662,17 @@ function afficherFormulaire(x, y, existingPoint) {
           source:      "editor"
         };
 
-        // 🏗️ Multi-niveau (v148) : tag le point avec le niveau actif si la feature
-        // est ON pour ce plan. Si OFF → aucun champ `level` → retro-compat absolue.
+        // Multi-niveau actif : le point prend le niveau actif ; sinon aucun champ `level`.
         if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
           point.level = window.APP_CONFIG.activeLevel || 0;
         }
-        // identité stable dès la création (le nom peut changer, l'uid non).
-        // l'uid est celui tiré à l'ouverture du formulaire, sous lequel
-        // les photos de ce point sont déjà rangées.
+        // Identité stable dès la création : l'uid tiré à l'ouverture, sous lequel ses photos sont déjà rangées.
         if (_uidAjout) point.uid = _uidAjout;
         if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(point, "pt"));
 
         listePoints.push(point);
         _ajouterMarker(point);
-        // 📸 les photos prises avant d'avoir saisi le nom reçoivent la fiche définitive
+        // Les photos prises avant le nom reçoivent la fiche définitive.
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && _photosAddedThisSession.size) {
           window.MyKTAMapPhotos.majFichesPoints(planId, [point]);
         }
@@ -779,24 +684,14 @@ function afficherFormulaire(x, y, existingPoint) {
     });
   });
 
-  // Focus auto sur le nom
   setTimeout(function() { inputNom.focus(); }, 50);
 }
 
-// =========================
-// ÉDITION D'UN POINT EXISTANT (v1.9.3-B1b)
-// =========================
-// Appelé depuis le bouton "✏️ Modifier" de la popup d'un point session
-// (cf. utils.js > buildPointPopupHtml). Lookup dans listePoints par id +
-// coords (fallback coords seules si l'id ne matche pas), puis ouvre
-// afficherFormulaire en mode édition. Si introuvable → warn console et
-// no-op (pas de modale d'erreur, c'est un cas marginal).
-// Index d'un point de session par id + coords. Match exact d'abord, repli sur
-// les coords seules : l'id d'un point SUIT SON NOM (`existingPoint.id = nom`
-// au save), il a donc pu changer depuis que la popup a ete construite. -1 si
-// absent.
-// Partage par les trois actions de la popup — modifier, repositionner,
-// supprimer — qui portaient chacune sa copie de cette boucle.
+// ── Édition d'un point existant ──────────
+// Bouton « Modifier » de la popup d'un point de session (utils.js > buildPointPopupHtml).
+// Index d'un point de session par id + coords, repli sur les coords seules : l'id SUIT LE NOM (`id = nom` au
+// save) et a pu changer depuis la construction de la popup. -1 si absent. Partagé par modifier, repositionner
+// et supprimer.
 function _indexPointSession(id, x, y) {
   for (let i = 0; i < listePoints.length; i++) {
     const p = listePoints[i];
@@ -808,25 +703,13 @@ function _indexPointSession(id, x, y) {
   return -1;
 }
 
-// =========================
-// 📌 REPOSITIONNER UN POINT DE SESSION (picker « clic carte »)
-// =========================
-// KARMA : « pour un POI modifiable de session, un bouton repositionner peut
-// servir, si le POI a ete mal mis ». Septieme picker du meme moule que ceux
-// de la Georef, du depart tracker, de l'itineraire, de l'evitement et du KMZ.
-//
-// 🩸 CE QUE LA CLASSE `.kta-iti-floater` APPORTE, et pourquoi on ne bricole
-// pas son propre floater : `_modeClicCarteActif()` (utils.js) la reconnait,
-// donc (a) aucune popup d'annotation ne s'ouvre pendant le mode — sinon le
-// clic serait mange par la popup du marqueur vise — et (b) le clic est
-// re-emis en phase CAPTURE (map.js) → il porte meme si on vise pile un autre
-// marqueur, un trace ou une zone. Deux bugs deja payes en v1.28.0 : les
-// heriter gratuitement vaut mieux que les repayer.
-//
-// 🩸 GLISSER-DEPOSER ECARTE : un `touchmove` demarre sur un marqueur devient
-// un drag au lieu d'un pan → des POI deplaces par accident en manipulant la
-// carte, symptome silencieux sur une app terrain. Ici rien ne bouge tant
-// qu'on n'a pas arme le mode, et le doigt ne cache pas la cible.
+// ── Repositionner un point de session (picker « clic carte ») ──────────
+// Même moule que les pickers du géoréf, du départ tracker, de l'itinéraire, de l'évitement et du KMZ.
+// 🩸 On réutilise la classe `.kta-iti-floater`, pas un floater maison : `_modeClicCarteActif()` (utils.js) la
+// reconnaît, donc (a) aucune popup d'annotation ne s'ouvre pendant le mode (elle mangerait le clic) et (b) le
+// clic est réémis en phase CAPTURE (map.js), il porte même sur un autre marqueur, un tracé ou une zone.
+// 🩸 PAS de glisser-déposer : un `touchmove` sur un marqueur deviendrait un drag au lieu d'un pan (POI déplacés
+// par accident, en silence). Ici rien ne bouge tant que le mode n'est pas armé, et le doigt ne cache pas la cible.
 let _repoActif   = false;
 let _repoHandler = null;
 
@@ -840,8 +723,7 @@ function _repoDesactiver() {
 }
 window.repositionnerAnnuler = _repoDesactiver;
 
-// Appele depuis le bouton « 📌 Repositionner » de la popup d'un point session
-// (cf. utils.js > buildPointPopupHtml).
+// Bouton « Repositionner » de la popup d'un point de session (utils.js > buildPointPopupHtml).
 window.repositionnerPointEditor = function(id, x, y) {
   if (typeof x !== "number" || typeof y !== "number") return;
   if (!window.map) return;
@@ -851,20 +733,14 @@ window.repositionnerPointEditor = function(id, x, y) {
   }
   _repoDesactiver();   // annule un repositionnement deja arme
 
-  // 🩸 LES AUTRES MODES « CLIC CARTE » DOIVENT TOMBER AVANT D ARMER, sinon le
-  // meme clic est consomme DEUX FOIS. `_modeClicCarteActif()` (utils.js) ne
-  // suffit pas, pour deux raisons distinctes :
-  //   1. il EXCLUT VOLONTAIREMENT `modeEdition` — « y ajouter un point peut
-  //      ouvrir une popup de nommage legitime qu il ne faut pas fermer ». En
-  //      mode ajout, le clic repositionnait donc le point ET ouvrait la fiche
-  //      d un point tout neuf (KARMA, 05/09) ;
-  //   2. meme quand il rend vrai, il n empeche que les POPUPS d annotation :
-  //      `modeRoad` / `modeZone` / `modeStructure` posent quand meme leur
-  //      sommet, et `modeMesure` son jalon.
-  // Meme remede qu a la v1.57.2 (« le bouton ajouter point est actif quand
-  // j ouvre le plan ») : le registre des modes d abord — lui seul retire la
-  // surbrillance du bouton, sinon la sidebar mentirait —, puis les drapeaux
-  // en filet, pour un mode jamais enregistre ou un etat incoherent.
+  // 🩸 LES AUTRES MODES « CLIC CARTE » DOIVENT TOMBER AVANT D'ARMER, sinon le même clic est consommé DEUX FOIS.
+  // `_modeClicCarteActif()` ne suffit pas :
+  //   1. il EXCLUT volontairement `modeEdition` (une popup de nommage y est légitime) : en mode ajout, le clic
+  //      repositionnerait le point ET ouvrirait la fiche d'un point neuf ;
+  //   2. il n'empêche que les POPUPS : `modeRoad` / `modeZone` / `modeStructure` posent leur sommet, `modeMesure`
+  //      son jalon.
+  // D'abord le registre des modes (lui seul retire la surbrillance du bouton, sinon la sidebar ment), puis les
+  // drapeaux en filet (mode jamais enregistré, état incohérent).
   try { _desactiverTousLesModes(); } catch(e) {}
   window.modeEdition   = false;
   window.modeMesure    = false;
@@ -885,9 +761,8 @@ window.repositionnerPointEditor = function(id, x, y) {
     const ny = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
                  ? (window.APP_CONFIG.imageHeight - e.latlng.lat)
                  : e.latlng.lat;
-    // 🩸 On RE-CHERCHE le point : entre l'armement et le clic, l'utilisateur a
-    // pu en supprimer un autre, vider la session ou recharger le plan — un
-    // index capture a l'armement serait perime et on deplacerait le mauvais.
+    // 🩸 On RECHERCHE le point au clic : entre l'armement et le clic, un autre point a pu être supprimé, la
+    // session vidée ou le plan rechargé ; un index capturé à l'armement déplacerait le mauvais.
     const i = _indexPointSession(id, x, y);
     if (i === -1) {
       console.warn("[Editor] Point disparu pendant le repositionnement :", id);
@@ -898,16 +773,14 @@ window.repositionnerPointEditor = function(id, x, y) {
     const avant = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
     const ancX = pt.x, ancY = pt.y;
 
-    // Mutation EN PLACE : le point garde tout le reste — son `level` (jamais
-    // reattribue au niveau affiche : un repositionnement ne teleporte pas un
-    // point d'etage en douce), ses photos, ses tags, et `_srcCalque` s'il
-    // vient d'un calque ouvert a la modification.
+    // Mutation EN PLACE : le point garde son `level` (jamais réattribué au niveau affiché : pas de téléportation
+    // d'étage en douce), ses photos, ses tags et `_srcCalque` s'il vient d'un calque ouvert à la modification.
     pt.x = Math.round(nx * 100) / 100;
     pt.y = Math.round(ny * 100) / 100;
     if (window.KtaUid) window.KtaUid.touch(pt);
 
-    // Les liaisons inter-plan stockent les coords du point : sans ce recalage
-    // le lien partirait de l'ancienne position a l'export KMZ.
+    // Les liaisons inter-plan stockent les coords du point : sans recalage, le lien partirait de l'ancienne
+    // position à l'export KMZ.
     if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointMoved === "function"
         && window._currentLoadedPlanId) {
       try { window.InterPlanLinks.onPointMoved(window._currentLoadedPlanId, pt, ancX, ancY); }
@@ -933,7 +806,7 @@ window.repositionnerPointEditor = function(id, x, y) {
     '<span class="kta-iti-floater-icon">📌</span>' +
     '<span class="kta-iti-floater-msg"></span>' +
     '<button class="kta-btn kta-btn-ghost" id="kta-repo-cancel" type="button"></button>';
-  // Le nom vient de l'utilisateur : on l'injecte en TEXTE, jamais en HTML.
+  // Le nom vient de l'utilisateur : injecté en TEXTE, jamais en HTML.
   fl.querySelector(".kta-iti-floater-msg").textContent =
     window.I18n.t("editor.repo.floater", { nom: nom });
   const btnAnn = fl.querySelector("#kta-repo-cancel");
@@ -951,16 +824,13 @@ window.modifierPointEditor = function(id, x, y) {
     return;
   }
 
-  // Ferme la popup ouverte avant d'ouvrir la modale (sinon la popup
-  // reste accrochée au marker et masque le clic backdrop)
+  // Popup fermée avant la modale (sinon elle reste accrochée au marqueur et masque le clic sur le fond).
   if (window.map) try { window.map.closePopup(); } catch(e) {}
 
   afficherFormulaire(target.x, target.y, target);
 };
 
-// =========================
-// AJOUTER UN MARKER À LA CARTE
-// =========================
+// ── Ajouter un marqueur à la carte ──────────
 function _ajouterMarker(point) {
   if (!window.layerEditor) {
     console.error("layerEditor non défini");
@@ -969,90 +839,58 @@ function _ajouterMarker(point) {
 
   let icone = choisirIcone(point);
 
-  // Validation : si l'icône est invalide, utiliser le pin Leaflet natif.
-  // v174 : avec scaledMarkers ON, icone est un L.divIcon → options.iconUrl
-  // n'existe pas, on check _kta_iconUrl (backup posé par creerIcones).
+  // Icône invalide → pin Leaflet natif. Avec scaledMarkers, l'icône est un L.divIcon sans options.iconUrl :
+  // on teste _kta_iconUrl (posé par creerIcones).
   const hasUrl = icone && (icone._kta_iconUrl || (icone.options && icone.options.iconUrl));
   if (!icone || !hasUrl) {
     console.warn("[Editor] Icône invalide pour", point.nom, "— pin Leaflet par défaut");
     icone = new L.Icon.Default();
   }
 
-  // (P5 viewport culling) : détache l'addTo du constructeur pour
-  // pouvoir conditionner l'ajout selon le toggle viewportCull. Cohérent avec
-  // le pattern data layers (cf utils.js > ajouterPointsDepuisJSON).
+  // addTo détaché du constructeur (comme les calques, utils.js > ajouterPointsDepuisJSON).
   const marker = L.marker(convertCoord(point.x, point.y), { icon: icone });
-  // Popup avec boutons "Y aller" / "Itinéraire" / "Supprimer" — helper commun.
-  // 2e argument true → c'est un point de la session courante (listePoints) →
-  // bouton "🗑️ Supprimer" affiche dans la popup.
-  // passe layerInfo pour que le bouton ⭐ Favori
-  // puisse construire le snapshot avec le bon layerId/layerLabel.
-  // bindPopup reçoit une FONCTION (contenu régénéré à CHAQUE
-  // ouverture) au lieu d'un HTML figé au render. Sans ça, la section
-  // « Liaisons inter-plan » (et l'état ⭐ Favori) restait celle du moment du
-  // render : une liaison créée depuis le popup n'apparaissait qu'après un
-  // plan switch. Même pattern que les markers data layers (utils.js > popup
-  // LAZY H3) — bonus perf : le HTML n'est plus construit pour les popups
-  // jamais ouverts.
+  // Popup commune (Y aller / Itinéraire / Supprimer, ⭐ Favori avec layerInfo). ⚠️ bindPopup reçoit une
+  // FONCTION (contenu régénéré à CHAQUE ouverture) : un HTML figé montrerait des liaisons et un état Favori
+  // périmés. Bonus : rien n'est construit pour les popups jamais ouvertes.
   marker.bindPopup(function() {
     return (typeof window.buildPointPopupHtml === "function")
       ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: window.I18n.t("editor.popup.myAdds") })
       : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   }, window.KTA_POPUP_OPTS);
 
-  // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
+  // Double-clic sur le marqueur → zoom flyTo.
   if (typeof window.attachMarkerDblClickZoom === "function") {
     window.attachMarkerDblClickZoom(marker);
   }
 
-  // hydrate les miniatures photos dans le popup à l'ouverture
-  // (slot vide dans buildPointPopupHtml, rempli en async via popupopen).
+  // Miniatures photos de la popup hydratées à l'ouverture (slot vide rempli en async via popupopen).
   if (typeof window.attachPopupPhotos === "function") {
     window.attachPopupPhotos(marker, String(point.id || ""), point.uid);   // uid + nom
   }
 
-  // 🏗️ Multi-niveau (v148) : stocke le level sur le marker pour le filtre runtime.
-  // (Le point.level est aussi conserve dans listePoints, mais on duplique sur
-  // l'objet marker pour eviter une lookup au moment du filter visuel.)
+  // Multi-niveau : level copié sur le marqueur pour le filtre visuel (pas de recherche dans listePoints).
   marker._ktaLevel = Number.isInteger(point.level) ? point.level : 0;
-  // (KARMA "filtre par tag") : stocke aussi les tags sur le
-  // marker (1er tag est celui qui détermine l'icône → c'est le tag de
-  // filtrage). Cohérent avec data layer markers (cf utils.js > ajouterPointsDepuisJSON).
+  // Tags copiés aussi : le 1er détermine l'icône, c'est le tag de filtrage (comme les marqueurs de calque).
   marker._ktaTags = Array.isArray(point.tags) ? point.tags.slice() : [];
 
-  // Tracking pour permettre une suppression ciblée plus tard (sans clearLayers
-  // qui efface aussi roads/zones partageant le meme layerEditor).
+  // Suivi pour une suppression ciblée (pas de clearLayers, cf. _markersEditor).
   _markersEditor.push(marker);
 
-  // les points de SESSION ne sont PLUS JAMAIS
-  // soumis au viewport culling — un point créé à la main est précieux et
-  // rare (quelques dizaines max vs des milliers de points datalayer) : le
-  // masquer selon le viewport déroutait (« mon POI a disparu ») pour un gain
-  // perf négligeable. Le culling reste actif sur les markers DATALAYER
-  // (utils.js). _ktaLayer/_ktaVpHidden conservés pour la compat avec
-  // _refreshEditorMarkersViewport (réintégration de résidus).
+  // Les points de SESSION ne sont JAMAIS soumis au viewport culling (décision produit) : précieux et rares, les
+  // masquer déroute (« mon POI a disparu ») pour un gain négligeable. Le culling reste sur les marqueurs de
+  // calque (utils.js). _ktaLayer/_ktaVpHidden restent pour _refreshEditorMarkersViewport.
   marker._ktaLayer = window.layerEditor;
   marker._ktaVpHidden = false;
   marker.addTo(window.layerEditor);
 
-  // Applique le filtre niveau immediat sur ce nouveau marker (utile quand le
-  // user ajoute un point sur un niveau qui n'est pas dans visibleLevels —
-  // ex: il a filtre Niv 1 mais ajoute via le mode edition sans changer le
-  // niveau actif). Le marker se cache si pas visible.
+  // Filtre de niveau appliqué tout de suite : un point ajouté sur un niveau hors visibleLevels est caché.
   _appliquerFiltreNiveauSurMarker(marker);
 }
 
-// (P5 viewport culling) — Re-render les markers de la session
-// éditeur (_markersEditor) selon le viewport courant. Appelé par utils.js
-// > _refreshDataMarkersViewport au moveend/zoomend (chaînage cross-module).
-// Pattern strictement identique à _refreshDataMarkersViewport (mêmes
-// garanties idempotentes + toggle OFF = graceful reintegration).
+// Appelé par utils.js > _refreshDataMarkersViewport au moveend/zoomend. Les points de session étant exemptés
+// du culling (cf. _ajouterMarker), cette fonction ne fait plus que réintégrer d'éventuels marqueurs cachés
+// résiduels.
 window._refreshEditorMarkersViewport = function() {
-  // les points de session sont EXEMPTÉS du viewport
-  // culling (cf _ajouterMarker). Cette fonction — toujours appelée par le
-  // chaînage utils.js > _refreshDataMarkersViewport au moveend/zoomend — ne
-  // sert plus qu'à réintégrer d'éventuels markers cachés résiduels (état
-  // hérité d'une session ouverte sous une version antérieure).
   if (!Array.isArray(_markersEditor) || _markersEditor.length === 0) return;
   _markersEditor.forEach(function(m) {
     if (m && m._ktaVpHidden && m._ktaLayer) {
@@ -1062,13 +900,12 @@ window._refreshEditorMarkersViewport = function() {
   });
 };
 
-// 🏗️ Multi-niveau : helper de filtrage visuel d'un marker editor selon
-// APP_CONFIG.visibleLevels. Utilise setOpacity + pointer-events plutot
-// que remove/addLayer pour preserver l'integration avec layerEditor.
+// Filtre visuel d'un marqueur selon APP_CONFIG.visibleLevels : setOpacity + pointer-events plutôt que
+// remove/addLayer, pour rester dans layerEditor.
 function _appliquerFiltreNiveauSurMarker(marker) {
   if (!marker) return;
   let visible = true;
-  // 🏗️ Multi-niveau (feature off → tout visible, retro-compat)
+  // Multi-niveau inactif → tout visible.
   const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   if (multi) {
     const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
@@ -1076,8 +913,7 @@ function _appliquerFiltreNiveauSurMarker(marker) {
     const lvl = Number.isInteger(marker._ktaLevel) ? marker._ktaLevel : 0;
     if (visibles.indexOf(lvl) < 0) visible = false;
   }
-  // (KARMA "filtre par tag") : filtre runtime via FilterPanel.
-  // Lit le 1er tag du marker (_ktaTags ou .options.icon).
+  // Filtre de tags runtime (FilterPanel) sur le 1er tag du marqueur.
   if (visible && window._ktaRuntimeFilters && window._ktaRuntimeFilters.tags) {
     const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0])
                 || (marker._ktaTag)
@@ -1088,18 +924,15 @@ function _appliquerFiltreNiveauSurMarker(marker) {
   if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
 }
 
-// Filtre TOUS les markers editor courants. Appelle par interface.js
-// (window.appliquerFiltreNiveau) quand le filtre change.
+// Filtre tous les marqueurs editor (appelé par window.appliquerFiltreNiveau).
 window._applyLevelFilterToEditorPoints = function() {
   _markersEditor.forEach(_appliquerFiltreNiveauSurMarker);
 };
 
-// =========================
-// SUPPRIMER LE DERNIER POINT AJOUTÉ
-// =========================
+// ── Supprimer le dernier point ajouté ──────────
 function removeLastEditorPoint() {
   if (listePoints.length === 0) return false;
-  // Undo/Redo : snapshot before mutation
+  // Undo/Redo : instantané avant mutation.
   const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
   const removed = listePoints[listePoints.length - 1];
   listePoints.pop();
@@ -1113,14 +946,9 @@ function removeLastEditorPoint() {
   return true;
 }
 
-// =========================
-// RENDU DES POINTS
-// =========================
-// ⚠️ Ne PAS appeler layerEditor.clearLayers() ici : depuis suite 13, layerEditor
-// contient aussi roads + zones session (regroupes dans le calque "Mes annotations").
-// Un clearLayers retirerait TOUT le contenu, y compris roads et zones, ce qui
-// causait un bug "supprimer un point efface aussi mes routes" rapporte par user.
-// On track les markers editor dans _markersEditor et on retire UNIQUEMENT ceux-la.
+// ── Rendu des points ──────────
+// ⚠️ Jamais layerEditor.clearLayers() ici (il contient aussi roads et zones de session) : on retire seulement
+// les marqueurs de _markersEditor.
 window.renderEditorPoints = function() {
   if (!window.layerEditor) return;
   _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
@@ -1128,31 +956,22 @@ window.renderEditorPoints = function() {
   listePoints.forEach(_ajouterMarker);
 };
 
-// =========================
-// EXPORT GLOBAL
-// =========================
+// ── Export global ──────────
 window.initEditor             = initEditor;
 window.removeLastEditorPoint  = removeLastEditorPoint;
 window.getEditorPoints        = function() { return listePoints; };
-// ⚠️ Auto-render symmetric avec setRoads/setZones (qui appellent renderRoads/renderZones
-// en interne). Sans ça, les callers oubliaient parfois renderEditorPoints() après set,
-// et les markers restaient en mémoire (listePoints) sans être attachés au layerEditor.
-// Conséquence visible : le toggle du calque "Ajout" dans le contrôle des couches
-// Leaflet ne masquait pas les points restaurés par SessionPersist (les markers
-// étaient bien sur la map, mais hors du layerGroup que toggle l'overlay).
+// ⚠️ Rendu automatique, comme setRoads/setZones : sans lui, un appelant qui oublie renderEditorPoints() laisse
+// des points en mémoire hors du layerEditor (le calque « Ajout » du contrôle des couches ne les masque pas).
 window.setEditorPoints        = function(points) {
   listePoints = points || [];
-  // filet : tout point qui entre (restauration, import, annulation,
-  // tableur, Secours…) ressort avec un uid. N'écrase jamais un uid existant.
+  // Filet : tout point qui entre (restauration, import, annulation, tableur, Secours…) ressort avec un uid.
+  // N'écrase jamais un uid existant.
   if (window.KtaUid) window.KtaUid.ensureAll(listePoints, "pt");
   if (window.renderEditorPoints) window.renderEditorPoints();
 };
 
-// Supprime un point editor par id + coords (utilise depuis le bouton 🗑️ de la
-// popup d'un point — voir utils.js > buildPointPopupHtml). Le matching par id
-// + coords permet de disambiguer si plusieurs points ont meme id (peu probable
-// car id == nom, qui doit etre unique, mais safety net).
-// Si pas trouve par id+coords, fallback match par coords seules.
+// Supprime un point de session par id + coords (bouton 🗑️ de la popup, utils.js > buildPointPopupHtml), repli
+// sur les coords seules (cf. _indexPointSession).
 window.supprimerPointEditor = function(id, x, y) {
   if (typeof x !== "number" || typeof y !== "number") return;
 
@@ -1162,9 +981,8 @@ window.supprimerPointEditor = function(id, x, y) {
     return;
   }
 
-  // purge les liaisons inter-plan du point supprimé (le lien
-  // entier disparaît des 2 côtés + badge retiré — cf interPlanLinks.js).
-  // Capturé AVANT le splice (on a besoin de l'objet point pour le croisement).
+  // Liaisons inter-plan du point purgées (des deux côtés, cf. interPlanLinks.js), AVANT le splice (il faut
+  // l'objet point pour le croisement).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointDeleted === "function"
       && window._currentLoadedPlanId) {
     try {
@@ -1172,22 +990,17 @@ window.supprimerPointEditor = function(id, x, y) {
     } catch(e) { console.warn("[Editor] purge liaisons inter-plan :", e); }
   }
 
-  // 🚨 Q23 (audit ergonomie 13/09/2026) : la suppression n'écrivait RIEN dans
-  // l'historique — un ⏪ appliquait l'instantané précédent (pose d'un sommet…)
-  // et pouvait ressusciter le point EN annulant autre chose. Le commentaire
-  // de convertirObjet.js supposait pourtant ce filet. Désormais : snapshot
-  // avant, entrée d'historique, toast qui dit comment annuler (⏪, pas Ctrl+Z :
-  // un téléphone n'a pas de Ctrl).
+  // 🩸 La suppression ÉCRIT dans l'historique (instantané avant + entrée) : sinon un ⏪ appliquerait
+  // l'instantané précédent et pourrait ressusciter le point en annulant autre chose. Le toast dit comment
+  // annuler (⏪, pas Ctrl+Z : un téléphone n'a pas de Ctrl).
   const _avantSuppr = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
   const _nomSuppr   = String(listePoints[idx].nom || id || "");
-  // 📸 Ses photos NE sont PAS supprimées : elles deviennent « sans point » (🧰 Outils >
-  // 📸 Mes photos), où on les rattache ou recrée le point. Leur fiche est figée ici,
-  // à l'état exact du point — même une photo d'avant la fiche pourra recréer le point.
+  // Ses photos ne sont PAS supprimées : elles deviennent « sans point » (Outils > Mes photos), où on les
+  // rattache ou recrée le point. Leur fiche est figée ici, à l'état exact du point.
   if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
     window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, [listePoints[idx]]);
   }
 
-  // Retire du tableau + re-render (renderEditorPoints clear le layerEditor + re-add)
   listePoints.splice(idx, 1);
   if (window.renderEditorPoints) window.renderEditorPoints();
 
@@ -1198,8 +1011,7 @@ window.supprimerPointEditor = function(id, x, y) {
     window.OOMGuard.showToast(window.I18n.t("editor.toast.pointSupprime", { nom: _nomSuppr }), "info");
   }
 
-  // Ferme la popup ouverte (sinon elle reste affichee a l'emplacement du marker
-  // qui n'existe plus)
+  // Popup fermée (sinon elle reste à l'emplacement d'un marqueur disparu).
   if (window.map) try { window.map.closePopup(); } catch(e) {}
 
   console.log("[Editor] Point supprimé :", id, "à", x, y, "— restant :", listePoints.length);

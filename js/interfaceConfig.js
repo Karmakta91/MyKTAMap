@@ -5,53 +5,21 @@
  */
 
 // =========================
-// INTERFACE CONFIG — Modale Réglages + Perf ULTRA + Multi-niveau + Géoref
+// INTERFACE CONFIG — Modale ⚙️ Réglages du plan + Perf ULTRA + Multi-niveau + Géoréf
 // =========================
-// (P3 Lot 9 — découpe interface.js, DERNIER LOT) : module
-// extrait de js/interface.js (4 plages contiguës avant extraction)
-// pour réduire le volume du fichier principal.
-//
-// Plages d'origine (post-Lots 1-7) :
-//   689-1326  : PERF ULTRA + M-LVL section + GÉOREF (sections de la modale)
-//   CONFIG modale (afficherConfig + resetConfig — application immédiate depuis v1.92.0)
-//   1829-2228 : M-LVL modales et helpers (depuis v148)
-//   4226-4264 : M-LVL Leaflet control top-left (pastille niveau actif)
-//
-// Aucun changement de comportement runtime. Les fonctions exposées via
-// `window.*` sont strictement identiques à v1.30.1. 3 helpers
-// supplémentaires sont désormais exposés via window.* car ils étaient
-// appelés depuis interface.js par leur identifier local et doivent
-// continuer à fonctionner post-extraction (cf patches dans interface.js).
-//
-// 📋 API publique :
-//   - window.afficherConfig() / resetConfig()
-//   - window.appliquerFiltreNiveau()        Multi-niveau filtre
-//   - window.appliquerFiltreRuntime()       Filtre runtime tags
-//   - window._initLevelFilterControl()      Leaflet control niveau actif
-//   - window._ouvrirCreationJonction()      Modale création jonction
-//
-// 🔌 Dépendances externes (toutes via window.*) :
-//   - window.PerfUltra                      [perfUltra.js]
-//   - window.APP_CONFIG                     [config.js]
-//   - window.PLAN_CONFIG                    [config.js / plan-config]
-//   - window.PlanRegistry                   [planRegistry.js]
-//   - window.map / convertCoord            [map.js / utils.js]
-//   - window.afficherToast                  [refonteInterface.js]
-//   - localStorage["myktamap_*"]            [persistance prefs]
-//
-// 📍 Ordre de chargement (cf index.html) :
-//   - Doit charger APRÈS interface.js + interfaceMaintenance.js
-//     (le bloc EXPORT GLOBAL d'interface.js consomme les fonctions
-//     de ce module via window.*, mais l'ordre est cosmétique car
-//     posées au load avant DOMContentLoaded).
+// Expose : window.afficherConfig / resetConfig, appliquerFiltreNiveau (re-filtre tous les modules
+// level-aware), appliquerFiltreRuntime, ktaSetActiveLevel (source unique du niveau de travail),
+// _initLevelFilterControl (pastille niveau), _ouvrirCreationJonction, _ktaAnnulerModesClicCarte.
+// Dépend de (window.*) : PerfUltra, APP_CONFIG, PLAN_CONFIG, PlanRegistry, map, convertCoord, KmzExport.
+// ⚠️ Chargé APRÈS interface.js + interfaceMaintenance.js (index.html).
+// 🩸 Application immédiate : chaque champ s'enregistre à la modification, bornes vérifiées (_CFG_BORNES) ;
+// le reset ne touche que CE plan.
+// Garde-fous : check-reglages-immediats.js, check-portee-reglages.js, check-podometre-global.js.
+// Doc : docs/architecture/ui.md, docs/architecture/multilevel-pathfinding.md.
 
-// =========================
-// 🚀 PERF ULTRA — section de toggles dans la modale Réglages
-// =========================
-// Génère le HTML de la section "🚀 Mode Performance ULTRA" avec :
-//   - Toggle master "🚀 ULTRA" (preset qui active les 6 ensemble)
-//   - 6 toggles individuels pour ajustement fin par power users
-// Le binding des change events se fait dans _bindPerfUltraToggles après render.
+// ── Perf ULTRA : section de la modale Réglages ──────────
+// Interrupteur maître « ULTRA » (active les 6 leviers) + 6 interrupteurs fins ; binding dans
+// _bindPerfUltraToggles après le rendu.
 function _renderPerfUltraSection() {
   if (!window.PerfUltra) return "";
   const s = window.PerfUltra.getAll();
@@ -65,16 +33,13 @@ function _renderPerfUltraSection() {
         </span>
       </label>`;
   }
-  // 🏗️ Q60 (audit 13/09/2026) : « Afficher tous les niveaux au lancement » était
-  // lu par main.js mais n'avait plus AUCUNE case depuis le retrait des toggles
-  // du HOME. Rendu ici, hors ULTRA, seulement pour un plan multi-niveau.
+  // « Afficher tous les niveaux au lancement » (lu par main.js) : hors ULTRA, plan multi-niveau seulement.
   const rowNiveaux = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
     ? '<div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>' +
       row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux, "")
     : "";
-  // « 👁️ Ne rendre que les éléments visibles » (viewportCull) n'a plus de case
-  // depuis le 10/10/2026 (décision KARMA) : le levier reste piloté par le preset
-  // ULTRA, et une valeur déjà enregistrée pour le plan est toujours relue.
+  // « Ne rendre que les éléments visibles » (viewportCull) n'a pas de case (décision produit) : piloté par le
+  // preset ULTRA ; une valeur déjà enregistrée pour le plan est toujours relue.
   return `
     <div class="kta-aide-section">
       <p class="kta-perf-ultra-hint" style="margin:0 0 10px 0;">${window.I18n.t("config.perfultra.intro")}</p>
@@ -97,14 +62,13 @@ function _renderPerfUltraSection() {
     </div>`;
 }
 
-// Binding des change events sur les toggles PerfUltra après render.
 function _bindPerfUltraToggles() {
   if (!window.PerfUltra) return;
   const ultraEl = document.getElementById("cfg_perf_ultra");
   if (ultraEl) {
     ultraEl.addEventListener("change", function() {
       window.PerfUltra.setUltra(ultraEl.checked);
-      // Re-render la section pour refléter les nouveaux états individuels
+      // Re-rendu de la section pour refléter les états individuels.
       const m = document.getElementById("kta-cfg-modal");
       if (m) { _cfgFermer(); afficherConfig(); }
     });
@@ -116,41 +80,27 @@ function _bindPerfUltraToggles() {
     "cfg_perf_noTooltips":      "noTooltips",
     "cfg_perf_slowSave":        "slowSave",
     "cfg_perf_mobileZoomLimit": "mobileZoomLimit",
-    "cfg_perf_tousNiveaux":     "tousNiveaux"      // hors ULTRA (PerfUltra.set l'accepte depuis v1.92.0)
+    "cfg_perf_tousNiveaux":     "tousNiveaux"      // hors ULTRA (PerfUltra.set l'accepte)
   };
   Object.keys(map).forEach(function(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener("change", function() {
       window.PerfUltra.set(map[id], el.checked);
-      // Sync visuel du master ULTRA (coché si tous les autres le sont)
+      // Maître ULTRA coché si tous les autres le sont.
       if (ultraEl) ultraEl.checked = window.PerfUltra.isUltra();
     });
   });
 }
 
-// 🏗️ Multi-niveau : plus aucune section ici depuis v1.7.3 (activation par le
-// générateur). Les fonctions mortes `_renderMultiLevelSection` /
-// `_bindMultiLevelToggle` (jamais appelées, `#cfg_multiLevel` jamais rendu)
-// ont été retirées en v1.92.0 (Q60, audit ergonomie) avec leurs 4 clés i18n.
+// Multi-niveau : pas de section ici (activation par le générateur).
 
-// =========================
-// 🌐 GÉORÉFÉRENCEMENT GPS — section de la modale ⚙️ Configuration
-// =========================
-// (KARMA « rajoute la possibilité de faire le géo référencement
-// depuis les paramètres en mode map, auto remplis ensuite si je retourne
-// dans exporter »).
-//
-// Persistance via window.KmzExport.setCalibration(planId, c) — exactement
-// le même backend que la modale 📡 Export externe (sessionExporter.js).
-// Du coup, calibrage saisi ici → automatiquement pré-rempli quand l'user
-// va dans Export externe.
-//
-// Convention d'IDs : préfixe `cfg_kmz_` pour ne pas entrer en collision
-// avec les `kmz_A_x` etc. de sessionExporter (au cas où les 2 modales
-// seraient ouvertes en même temps — improbable mais propre).
+// ── Géoréférencement GPS : section de la modale Réglages ──────────
+// Persistance par window.KmzExport.setCalibration(planId, c), le même backend que la modale Export externe
+// (sessionExporter.js) : un calage saisi ici y est prérempli.
+// IDs préfixés `cfg_kmz_` : pas de collision avec les `kmz_A_x` de sessionExporter si les deux modales sont
+// ouvertes.
 function _renderCfgGeorefSection() {
-  // Pré-charge le calibrage actuel s'il existe
   const planId = window._currentLoadedPlanId || "default";
   const saved  = (window.KmzExport && window.KmzExport.getCalibration)
                   ? window.KmzExport.getCalibration(planId) : null;
@@ -161,13 +111,8 @@ function _renderCfgGeorefSection() {
   return '' +
     '<div class="kta-aide-section">' +
 
-      // ===== Point A =====
-      // ajout des 2 boutons d'aide à la saisie (parité
-      // UX avec la modale 💾 Enregistrer > 📡 Export externe) :
-      //   - 🔍 Chercher un point : autocomplete sur POI plan → fill x/y
-      //   - 📍 Cliquer carte : mode pick → clic sur la carte fill x/y
-      // Les coords GPS lat/lng restent saisies manuellement (l'app ne
-      // connaît pas le GPS du plan tant que la calibration n'existe pas).
+      // Point A, avec aide à la saisie (comme Export externe) : 🔍 chercher un point (x/y depuis un POI) ou
+      // 📍 cliquer sur la carte. Lat/lng restent saisis à la main (le plan n'a pas de GPS avant calibration).
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
         '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointA") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
@@ -176,7 +121,7 @@ function _renderCfgGeorefSection() {
           '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
           '<input type="number" id="cfg_kmz_A_y"   value="' + pA.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
           '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
-          // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
+          // Champ combiné lat/lng (format Google Maps).
           '<input type="text" id="cfg_kmz_A_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pA.lat, pA.lng) : (Number.isFinite(pA.lat) && Number.isFinite(pA.lng) ? pA.lat + ", " + pA.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8580, 2.2945">' +
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_A_err" style="display:none;"></div>' +
@@ -187,7 +132,6 @@ function _renderCfgGeorefSection() {
         '<div id="cfg_kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
-      // ===== Point B =====
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
         '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointB") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
@@ -196,22 +140,21 @@ function _renderCfgGeorefSection() {
           '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
           '<input type="number" id="cfg_kmz_B_y"   value="' + pB.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
           '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
-          // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
+          // Champ combiné lat/lng (format Google Maps).
           '<input type="text" id="cfg_kmz_B_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pB.lat, pB.lng) : (Number.isFinite(pB.lat) && Number.isFinite(pB.lng) ? pB.lat + ", " + pB.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">' +
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
-          // B ESTIMÉ depuis A + échelle + orientation Nord
-          // (northOffsetDeg per-plan, 0 par défaut = Nord en haut).
+          // B estimé depuis A + échelle + Nord du plan (northOffsetDeg, 0 = nord en haut).
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">🧭 ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ' + window.I18n.t("config.georef.estimeBadge") + '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
-      // ===== 📐 Point C (v1.73.0, OPTIONNEL — affine anti-déformation) =====
+      // Point C optionnel (affine anti-déformation).
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
         '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointC") + '</div>' +
         '<p style="font-size:11.5px; color:#8892a4; margin:2px 0 6px; line-height:1.45;">' + window.I18n.t("config.georef.pointCHint") + '</p>' +
@@ -266,8 +209,7 @@ function _bindCfgGeorefHandlers() {
     return Number.isFinite(n) ? n : null;
   }
 
-  // 🆕 hotfix21 — Bind validation live des inputs GPS combinés cfg_kmz_*_coords.
-  // Idempotent : ré-attaches sans risque si déjà bindé (cf. utils.js).
+  // Validation live des champs GPS combinés cfg_kmz_*_coords (idempotent, cf. utils.js).
   if (typeof window.attacherGpsValidationCombo === "function") {
     window.attacherGpsValidationCombo(
       document.getElementById("cfg_kmz_A_coords"),
@@ -279,18 +221,12 @@ function _bindCfgGeorefHandlers() {
     );
   }
 
-  // ESTIMER B depuis A + échelle + Nord calibré.
-  // `_bEstime` mémorise les valeurs posées : au save, si les inputs B sont
-  // toujours EXACTEMENT celles-là, le flag `estimated:true` est persisté avec
-  // la calibration (badge d'honnêteté). La moindre retouche manuelle des
-  // champs B = mesure de l'utilisateur → le flag tombe.
+  // Estimer B depuis A + échelle + Nord. `_bEstime` mémorise les valeurs posées : au save, si les champs B sont
+  // EXACTEMENT celles-là, `estimated:true` est persisté (badge d'honnêteté) ; la moindre retouche le fait tomber.
   let _bEstime = null;
   const _badgeEstime = document.getElementById("cfg_kmz_B_estime_badge");
-  // Badge relu depuis la calibration sauvée (3:a — visible tant que le B est
-  // estimé). ⚠️ RELUE ICI : `saved` vit dans _renderCfgGeorefSection (le
-  // générateur de HTML), pas dans cette fonction de binding — la référencer
-  // levait un ReferenceError au setup qui tuait TOUS les handlers suivants
-  // (chercher point, calibrer Nord…). Bug remonté par KARMA le 06/08.
+  // Badge relu depuis la calibration sauvée. 🩸 RELUE ICI : `saved` vit dans _renderCfgGeorefSection (le
+  // générateur de HTML) ; la référencer ici lèverait un ReferenceError qui tue TOUS les handlers suivants.
   const _calibSauvee = (window.KmzExport && window.KmzExport.getCalibration)
                          ? window.KmzExport.getCalibration(window._currentLoadedPlanId || "default") : null;
   if (_calibSauvee && _calibSauvee.pointB && _calibSauvee.pointB.estimated && _badgeEstime) {
@@ -302,7 +238,7 @@ function _bindCfgGeorefHandlers() {
     const ay = parseFloat(document.getElementById("cfg_kmz_A_y").value);
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const scale = window.APP_CONFIG && Number(window.APP_CONFIG.scale);
-    // REFUS explicites, pas de clamp (règle KARMA)
+    // Refus explicites, pas de bornage silencieux (décision produit).
     if (!Number.isFinite(ax) || !Number.isFinite(ay) || !coordsA || coordsA.invalid || coordsA.lat == null) {
       _setStatus(window.I18n.t("config.georef.estimerErrA"), "err"); return;
     }
@@ -315,7 +251,7 @@ function _bindCfgGeorefHandlers() {
     const pointA = { x: ax, y: ay, lat: coordsA.lat, lng: coordsA.lng };
     const b = coin && window.ktaEstimerPointB(pointA, coin, scale, north);
     if (!b) { _setStatus(window.I18n.t("config.georef.estimerErrCalc"), "err"); return; }
-    // Récap de confirmation — l'estimation N'EST PAS une mesure, on le dit.
+    // Récap de confirmation : une estimation N'EST PAS une mesure, on le dit.
     const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
     if (!(await window.ktaConfirm(window.I18n.t("config.georef.estimerConfirm",
           { dist: distM, scale: scale, north: north })))) return;
@@ -327,7 +263,6 @@ function _bindCfgGeorefHandlers() {
     if (_badgeEstime) _badgeEstime.style.display = "";
     _setStatus(window.I18n.t("config.georef.estimerOk"), "ok");
   });
-  // Toute édition manuelle d'un champ B invalide l'estimation (badge + flag)
   ["cfg_kmz_B_x", "cfg_kmz_B_y", "cfg_kmz_B_coords"].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.addEventListener("input", function() {
@@ -336,9 +271,8 @@ function _bindCfgGeorefHandlers() {
     });
   });
 
-  // 🆕 hotfix21 — Helper : lit l'input combiné "lat, lng", parse + applique
-  // border rouge + message inline si format invalide. Retourne {lat, lng}
-  // ou null (vide ou invalide). Le caller distingue via 2e param `errKey`.
+  // Lit le champ combiné « lat, lng » : bordure rouge + message si invalide. Rend {lat, lng} ou null (vide ou
+  // invalide) ; l'appelant distingue par `errKey`.
   function _readCoordsCombo(id, errId) {
     const el = document.getElementById(id);
     if (!el) return null;
@@ -366,8 +300,7 @@ function _bindCfgGeorefHandlers() {
       _setStatus(window.I18n.t("config.georef.errNoModule"), "err");
       return;
     }
-    // 🆕 hotfix21 — Lecture lat/lng via input combiné. Format invalide
-    // → border rouge + message + abort silencieux (la combo bloque le save).
+    // Format invalide → bordure rouge + message, le save est bloqué.
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
     const coordsC = _readCoordsCombo("cfg_kmz_C_coords", "cfg_kmz_C_err");
@@ -383,20 +316,18 @@ function _bindCfgGeorefHandlers() {
                 lat: coordsB ? coordsB.lat : null,
                 lng: coordsB ? coordsB.lng : null }
     };
-    // le B provient de l'estimation et n'a pas été retouché →
-    // le flag suit la calibration (badge d'honnêteté, relu à l'ouverture).
+    // B issu de l'estimation et non retouché → le drapeau suit la calibration.
     if (_bEstime &&
         String(document.getElementById("cfg_kmz_B_x").value) === _bEstime.x &&
         String(document.getElementById("cfg_kmz_B_y").value) === _bEstime.y) {
       c.pointB.estimated = true;
     }
-    // Validation : tous les champs requis (x, y, lat, lng pour A et B)
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
       _setStatus(window.I18n.t("config.georef.errAllRequired"), "err");
       return;
     }
-    // 📐 Point C : OPTIONNEL mais tout-ou-rien (un C partiel = oubli, pas un choix)
+    // Point C optionnel mais tout ou rien (C partiel = oubli).
     const _pcx = _readVal("cfg_kmz_C_x"), _pcy = _readVal("cfg_kmz_C_y");
     const _pcRempli = _pcx != null || _pcy != null || (coordsC && coordsC.lat != null);
     if (_pcRempli) {
@@ -406,9 +337,8 @@ function _bindCfgGeorefHandlers() {
       }
       c.pointC = { x: _pcx, y: _pcy, lat: coordsC.lat, lng: coordsC.lng };
     }
-    // Validation transform (lève si points colinéaires ou distance nulle ;
-    // un C colinéaire est TOLÉRÉ par le moteur — repli 2 points — mais ici,
-    // à la saisie, on préfère le signaler franchement)
+    // La transformation lève si points colinéaires ou distance nulle ; un C colinéaire est toléré par le moteur
+    // (repli 2 points) mais signalé franchement à la saisie.
     try {
       const _t = window.KmzExport.buildTransformCalib(c);
       if (c.pointC && _t.degenereC) {
@@ -419,7 +349,6 @@ function _bindCfgGeorefHandlers() {
       _setStatus(window.I18n.t("config.georef.errInvalidCalib", { msg: e.message }), "err");
       return;
     }
-    // Persistance
     const planId = window._currentLoadedPlanId || "default";
     window.KmzExport.setCalibration(planId, c);
     _setStatus(window.I18n.t("config.georef.okSaved"), "ok");
@@ -429,10 +358,8 @@ function _bindCfgGeorefHandlers() {
   });
 
   btnClear.addEventListener("click", function() {
-    // 🚨 Q58 (audit 13/09/2026) : « 🗑️ Effacer » supprimait la calibration
-    // PERSISTÉE (deux points GPS relevés en surface, qui déverrouillent la Vue
-    // OSM et les exports KMZ/GPX) sans un mot. Si une calibration est
-    // enregistrée pour ce plan → confirmation ; sinon simple vidage des champs.
+    // « Effacer » : une calibration ENREGISTRÉE (deux points relevés en surface, qui ouvrent Vue OSM et exports
+    // KMZ/GPX) n'est jamais supprimée sans confirmation ; sinon simple vidage des champs.
     const _planIdClear = window._currentLoadedPlanId || "default";
     let _persistee = false;
     try { _persistee = !!localStorage.getItem("myktamap_kmz_calib_" + _planIdClear); } catch(e) {}
@@ -445,7 +372,6 @@ function _bindCfgGeorefHandlers() {
     window.ktaConfirm(window.I18n.t("config.georef.confirmClear")).then(function(ok) { if (ok) _executerClear(); });
   });
   function _executerClear() {
-    // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
     ["A_x","A_y","A_coords","B_x","B_y","B_coords","C_x","C_y","C_coords"].forEach(function(k) {
       const el = document.getElementById("cfg_kmz_" + k);
       if (el) {
@@ -453,13 +379,11 @@ function _bindCfgGeorefHandlers() {
         el.classList.remove("kta-gps-invalid");
       }
     });
-    // Cache aussi les éventuels messages d'erreur restants
     ["cfg_kmz_A_err", "cfg_kmz_B_err", "cfg_kmz_C_err"].forEach(function(id) {
       const e = document.getElementById(id);
       if (e) { e.textContent = ""; e.style.display = "none"; }
     });
-    // Efface aussi la version persistée (préfixe identique à
-    // KMZ_CALIB_LS_PREFIX dans js/kmzExport.js).
+    // Efface aussi la version persistée (même préfixe que KMZ_CALIB_LS_PREFIX de js/kmzExport.js).
     try {
       const planId = window._currentLoadedPlanId || "default";
       localStorage.removeItem("myktamap_kmz_calib_" + planId);
@@ -467,10 +391,8 @@ function _bindCfgGeorefHandlers() {
     _setStatus(window.I18n.t("config.georef.cleared"), null);
   }
 
-  // boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
-  // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
-  // à sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic mais
-  // sur les IDs `cfg_kmz_*` (au lieu de `kmz_*`).
+  // Boutons 🔍 Chercher / 📍 Cliquer carte, comme sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic,
+  // sur les IDs `cfg_kmz_*`.
   ["A", "B", "C"].forEach(function(letter) {
     const btnSearch = document.getElementById("cfg_kmz_" + letter + "_search");
     const btnClick  = document.getElementById("cfg_kmz_" + letter + "_click");
@@ -479,10 +401,8 @@ function _bindCfgGeorefHandlers() {
   });
 }
 
-// ───────── 🔍 RECHERCHE POI (Géoref Réglages — v1.21.0-fix1) ─────────
-// Autocomplete inline qui réutilise window.SearchPoints.findByQuery
-// (déjà chargé par js/searchPoints.js). Pattern identique au picker
-// utilisé dans la modale Enregistrer KMZ.
+// ── Recherche POI (géoréf des Réglages) ──────────
+// Autocomplétion sur window.SearchPoints.findByQuery (js/searchPoints.js), comme le picker d'Enregistrer KMZ.
 function _cfgOuvrirRechercheGeoref(letter) {
   const res = document.getElementById("cfg_kmz_" + letter + "_search_results");
   if (!res) return;
@@ -540,10 +460,9 @@ function _cfgOuvrirRechercheGeoref(letter) {
   });
 }
 
-// ───────── 📍 MODE CLIC CARTE (Géoref Réglages — v1.21.0-fix1) ─────────
-// Masque temporairement la modale ⚙️ Réglages, active un listener
-// `map.on("click")` qui remplit x/y du Point cible et restaure la modale.
-// Pattern identique à sessionExporter.js > _kmzActiverModeClic.
+// ── Clic carte (géoréf des Réglages) ──────────
+// Masque la modale, un `map.on("click")` remplit x/y du point cible puis restaure la modale
+// (comme sessionExporter.js > _kmzActiverModeClic).
 let _cfgGeorefClickActive  = false;
 let _cfgGeorefClickHandler = null;
 
@@ -563,12 +482,9 @@ function _cfgActiverModeClicGeoref(letter) {
     if (cfgModal) cfgModal.style.display = "";
   };
   window.map.on("click", _cfgGeorefClickHandler);
-  // Cache la modale Réglages le temps du clic
   const cfgModal = document.getElementById("kta-cfg-modal");
   if (cfgModal) cfgModal.style.display = "none";
-  // Floater visuel pour indiquer le mode (réutilise les classes existantes
-  // .kta-iti-floater stylées par la mesure d'itinéraire — visuellement
-  // cohérent avec le picker de la modale Enregistrer KMZ).
+  // Floater du mode (classes .kta-iti-floater de la mesure d'itinéraire).
   const fl = document.createElement("div");
   fl.id = "kta-cfg-georef-click-floater";
   fl.className = "kta-iti-floater";
@@ -596,12 +512,9 @@ function _cfgDesactiverModeClicGeoref() {
   if (fl) fl.remove();
 }
 
-// ───────── 🧭 POSITION INITIALE TRACKER — pickers assistés ─────────
-// Parité UX stricte avec les pickers Géoréf ci-dessus, ciblant cfg_startX/Y :
-//   - 🔍 Choisir via un point : autocomplete POI → remplit startX/Y
-//   - 📍 Cliquer sur la carte : mode pick → clic plan → remplit startX/Y
-// startX/Y sont des entiers (parseInt au save) → on arrondit à l'entier.
-// Bindés par _bindCfgTrackerStartHandlers() après le rendu de la modale.
+// ── Position initiale du tracker : pickers assistés ──────────
+// Mêmes pickers que le géoréf, ciblant cfg_startX/Y (🔍 via un point, 📍 clic carte). Valeurs entières
+// (parseInt au save). Bindés par _bindCfgTrackerStartHandlers() après le rendu.
 function _cfgOuvrirRechercheStart() {
   const res = document.getElementById("cfg_start_search_results");
   if (!res) return;
@@ -705,23 +618,19 @@ function _cfgDesactiverModeClicStart() {
   if (fl) fl.remove();
 }
 
-// annule TOUS les modes « cliquer sur la carte » en cours (géoréf,
-// départ tracker, itinéraire, + tout floater pick résiduel) et retire la modale
-// config si elle avait été masquée par un picker. Appelé par afficherLoader()
-// (retour home) — sinon le floater et/ou la modale masquée restaient « ouverts »
-// par-dessus l'accueil, avec un handler map.on("click") orphelin.
+// Annule TOUS les modes « cliquer sur la carte » (géoréf, départ tracker, itinéraire, floater résiduel) et
+// retire la modale masquée par un picker. Appelé par afficherLoader() (retour accueil) : sinon floater ou modale
+// restent par-dessus l'accueil avec un map.on("click") orphelin.
 window._ktaAnnulerModesClicCarte = function() {
   try { _cfgDesactiverModeClicGeoref(); } catch(_) {}
   try { _cfgDesactiverModeClicStart(); } catch(_) {}
   try { if (typeof _desactiverModeClicCarte === "function") _desactiverModeClicCarte(); } catch(_) {}
-  // Filet de sécurité : retire tout floater pick résiduel (évitement, KMZ…).
+  // Filet : tout floater pick résiduel (évitement, KMZ…).
   try { document.querySelectorAll(".kta-iti-floater").forEach(function(f) { f.remove(); }); } catch(_) {}
-  // La modale config a pu être masquée (display:none) par un picker → on la
-  // retire pour ne pas la laisser fantôme au retour home.
+  // Modale masquée (display:none) par un picker : retirée.
   try { var m = document.getElementById("kta-cfg-modal"); if (m) m.remove(); } catch(_) {}
 };
 
-// Bind des 2 boutons de la section 🧭 Position initiale du tracker.
 function _bindCfgTrackerStartHandlers() {
   const btnSearch = document.getElementById("cfg_start_search");
   const btnClick  = document.getElementById("cfg_start_click");
@@ -729,29 +638,19 @@ function _bindCfgTrackerStartHandlers() {
   if (btnClick)  btnClick.addEventListener("click",  _cfgActiverModeClicStart);
 }
 
-// =========================
-// ⚙️ L4 (audit ergonomie 13/09/2026, décision KARMA 14/09) — UN SEUL ÉCRAN,
-// PORTÉE EXPLICITE, APPLICATION IMMÉDIATE
-// =========================
-// 🩸 AVANT : 9 champs (échelle, départ X/Y, pas ×3, nav intelligente ×3)
-// n'étaient écrits qu'au bouton « Appliquer » tout en bas ; la croix et le
-// clic hors modale les perdaient en silence, Échap ne fermait rien. Tout le
-// reste était déjà immédiat. Le reset écrasait AUSSI les préférences globales
-// (app_user_prefs) depuis une modale « par plan ». Wake lock et vocal
-// disparaissaient sans message quand le navigateur ne les a pas.
-// ICI : chaque champ s'enregistre à la modification (bornes vérifiées champ
-// par champ — rouge + toast si hors bornes, rien n'est écrit), plus de bouton
-// Appliquer, Échap ferme, chaque groupe porte sa portée et se replie, les
-// globaux de l'accueil se LISENT ici avec le chemin pour les changer, le
-// géoréférencement a sa sous-modale, le reset ne touche que CE plan.
+// ── Un seul écran, portée explicite, application immédiate ──────────
+// 🩸 Chaque champ s'enregistre à la modification, bornes vérifiées champ par champ (rouge + toast hors bornes,
+// rien n'est écrit) : pas de bouton Appliquer, croix / clic hors modale / Échap ne perdent rien. Chaque groupe
+// porte sa portée et se replie ; les globaux de l'accueil se LISENT ici avec le chemin pour les changer ; le
+// géoréf a sa sous-modale ; le reset ne touche que CE plan (jamais app_user_prefs). Wake lock et vocal
+// non supportés restent affichés avec la raison.
 
 const _CFG_STYLE_TITRE = "margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;";
 const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
 
-// Ouvre un groupe : titre cliquable (repli) + badge de portée + corps.
 function _cfgGroupeDebut(cle, portee, premier) {
   const t = window.I18n.t;
-  // « mixte » : la portée change d'une ligne à l'autre — chaque ligne la dit.
+  // « mixte » : la portée change d'une ligne à l'autre, chaque ligne la dit.
   const badge = portee === "plan"   ? '<span class="kta-cfg-scope kta-cfg-scope-plan">'   + t("config.scope.badgePlan")   + '</span>'
               : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
               : portee === "mixte"  ? '<span class="kta-cfg-scope kta-cfg-scope-mixte">'  + t("config.scope.badgeMixte")  + '</span>'
@@ -766,8 +665,8 @@ function _cfgGroupeDebut(cle, portee, premier) {
 }
 function _cfgGroupeFin() { return '</div></div>'; }
 
-// Partagé avec les Réglages de l'ACCUEIL (homeConfig.js, même balisage dans index.html) :
-// `cleLs` sépare la mémoire des deux fenêtres, qui ont des rubriques de même nom.
+// Partagé avec les Réglages de l'ACCUEIL (homeConfig.js, même balisage dans index.html) : `cleLs` sépare la
+// mémoire des deux fenêtres, qui ont des rubriques de même nom.
 function _bindCfgGroupes(modal, cleLs) {
   const LS     = cleLs || _CFG_LS_GROUPES;
   const lire   = function () {
@@ -779,11 +678,10 @@ function _bindCfgGroupes(modal, cleLs) {
     const cle   = g.getAttribute("data-cfg-group");
     const titre = g.querySelector(".kta-cfg-group-titre");
     if (!titre) return;
-    // Rôle et focus posés ICI, avec le clavier qui va avec (le balisage statique de l'accueil n'en porte pas).
+    // Rôle, focus et clavier posés ICI (le balisage statique de l'accueil n'en porte pas).
     titre.setAttribute("role", "button");
     titre.tabIndex = 0;
-    // Défaut : tout ouvert en colonnes (PC) ; sur écran étroit, tout replié
-    // sauf le premier groupe. Le choix de l'utilisateur est mémorisé.
+    // Défaut : tout ouvert (PC) ; écran étroit : tout replié sauf le premier groupe. Choix mémorisé.
     let replie = (typeof etat[cle] === "boolean") ? etat[cle] : (etroit && i > 0);
     const poser = function () {
       g.classList.toggle("kta-cfg-group-replie", replie);
@@ -804,8 +702,7 @@ function _bindCfgGroupes(modal, cleLs) {
 }
 window.ktaGroupesRepliables = _bindCfgGroupes;
 
-// 🌍 Les réglages de l'ACCUEIL, en lecture seule : on voit leur valeur d'ici,
-// et le chemin pour les changer — sans les rendre modifiables depuis un plan.
+// Réglages de l'ACCUEIL en lecture seule : leur valeur et le chemin pour les changer, jamais modifiables d'un plan.
 function _renderCfgGlobauxLectureSeule() {
   const t = window.I18n.t;
   const c = window.APP_CONFIG || {};
@@ -833,7 +730,7 @@ function _renderCfgGlobauxLectureSeule() {
   '</div>';
 }
 
-// 🌐 Géoréférencement : un lanceur dans le groupe, le formulaire dans SA sous-modale.
+// Géoréférencement : un lanceur dans le groupe, le formulaire dans SA sous-modale.
 function _renderCfgGeorefLanceur() {
   const t = window.I18n.t;
   return '<div class="kta-aide-section" id="cfg_georef_lanceur">' +
@@ -870,8 +767,7 @@ function _ouvrirSousModaleGeoref() {
       '</div>' +
       '<div class="kta-readme-modal-corps kta-cfg-sub-corps">' + _renderCfgGeorefSection() + '</div>' +
     '</div>';
-  // ENFANT de la modale Réglages : masquée avec elle pendant un « 📍 clic carte »,
-  // retirée avec elle au retour à l'accueil.
+  // ENFANT de la modale Réglages : masquée avec elle pendant un clic carte, retirée avec elle au retour accueil.
   parent.appendChild(sub);
   _bindCfgGeorefHandlers();
   const fermer = function () { _cfgDesactiverModeClicGeoref(); sub.remove(); _cfgRafraichirEtatGeoref(); };
@@ -886,8 +782,8 @@ function _bindCfgGeorefLanceur() {
 }
 
 // ── Application immédiate ──
-// Bornes = celles des champs (et de PODO_BORNES côté config.js, qui refuse
-// aussi). PUR : « check-reglages-immediats.js » l'EXÉCUTE.
+// Bornes = celles des champs (et de PODO_BORNES de config.js, qui refuse aussi). PUR : check-reglages-immediats.js
+// l'EXÉCUTE.
 const _CFG_BORNES = {
   cfg_scale:           { min: 0,   max: Infinity, strict: true },   // > 0, jamais de clamp
   cfg_startX:          { min: 0,   max: Infinity, entier: true },
@@ -932,7 +828,7 @@ function _cfgSignalerChangement() {
 }
 // Les trois réglages de podomètre partent ENSEMBLE, depuis APP_CONFIG (validés un à un).
 function _cfgAppliquerPodometre() {
-  // GLOBAL : vaut pour tous les plans (décision KARMA 17/09/2026)
+  // GLOBAL : vaut pour tous les plans (décision produit).
   if (typeof window.setGlobalPodometre !== "function") return;
   window.setGlobalPodometre({
     stepLength:    APP_CONFIG.stepLength,
@@ -940,8 +836,8 @@ function _cfgAppliquerPodometre() {
     stepCooldown:  APP_CONFIG.stepCooldown
   });
 }
-// Départ X/Y : les deux champs se règlent l'un après l'autre → 600 ms de calme
-// avant de replacer le suivi (UN reset, pas deux). Fermer la modale l'exécute.
+// Départ X/Y : les deux champs se règlent l'un après l'autre → 600 ms de calme avant de replacer le suivi
+// (UN reset, pas deux). Fermer la modale l'exécute.
 let _cfgDepartTimer = null, _cfgDepartFn = null;
 function _cfgAppliquerDepart() {
   clearTimeout(_cfgDepartTimer);
@@ -954,7 +850,7 @@ function _cfgAppliquerDepart() {
     APP_CONFIG.startX = rx.v;
     APP_CONFIG.startY = ry.v;
     if (typeof window.setPlanTracking === "function") window.setPlanTracking(null, { startX: rx.v, startY: ry.v });
-    // conservé : le suivi n'est replacé QUE si le départ a changé.
+    // Le suivi n'est replacé QUE si le départ a changé.
     if (typeof window.resetTrackingPosition === "function") window.resetTrackingPosition();
     _cfgToast(window.I18n.t("config.tracker.departToast"), "info");
   };
@@ -1021,7 +917,6 @@ function _cfgInstallerFermeture(modal) {
     if (m.style.display === "none") return;                      // picker carte / Nord en cours
     const sub = document.getElementById("kta-cfg-georef-modal");
     if (sub) { e.preventDefault(); if (sub._ktaFermer) sub._ktaFermer(); else sub.remove(); return; }
-    // Une autre modale par-dessus (Niveaux, Jonction, calibrage échelle…) : Échap lui revient.
     const dessus = document.querySelector(".kta-readme-modal-overlay:not(#kta-cfg-modal)");
     if (dessus && !m.contains(dessus)) return;
     e.preventDefault();
@@ -1032,7 +927,7 @@ function _cfgInstallerFermeture(modal) {
   if (croix) croix.addEventListener("click", _cfgFermer);
   const btn = document.getElementById("kta-cfg-fermer");
   if (btn) btn.addEventListener("click", _cfgFermer);
-  // Écouteurs, pas de onclick inline (CSP sans 'unsafe-inline', 07/10/2026).
+  // Écouteurs, pas de onclick inline (CSP sans 'unsafe-inline').
   const calib = document.getElementById("kta-cfg-calib-echelle");
   if (calib) calib.addEventListener("click", function () { if (typeof window.ouvrirCalibrageEchelle === "function") window.ouvrirCalibrageEchelle(); });
   const reset = document.getElementById("kta-cfg-reset");
@@ -1040,17 +935,14 @@ function _cfgInstallerFermeture(modal) {
   modal.addEventListener("click", function (e) { if (e.target === modal) _cfgFermer(); });
 }
 
-// =========================
-
-// CONFIG — modale plein écran
-// =========================
+// ── Modale Réglages (plein écran) ──────────
 function afficherConfig() {
   const existing = document.getElementById("kta-cfg-modal");
   if (existing) { _cfgFermer(); return; }
 
   const c = APP_CONFIG;
 
-  // Métadonnées du preset perf actif (pour l'affichage read-only)
+  // Métadonnées du preset perf actif (affichage en lecture seule).
   const _PRESET_LABELS = {
     "off":         { emoji: "💤", label: window.I18n.t("config.preset.off") },
     "auto":        { emoji: "🔄", label: window.I18n.t("config.preset.auto") },
@@ -1460,37 +1352,23 @@ function afficherConfig() {
   _bindReglagesImmediats();
   _bindCfgGeorefLanceur();
 
-  // Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
   if (typeof window.attacherBoutonCopierEchelleGps === "function") {
     window.attacherBoutonCopierEchelleGps(modal);
   }
 
-  // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
 
-  // (KARMA « rajoute la possibilité de faire le géo référencement
-  // depuis les paramètres en mode map, auto remplis ensuite si je retourne
-  // dans exporter ») : bind les handlers de la nouvelle section
-  // 🌐 Géoréférencement GPS. Sauve via KmzExport.setCalibration(planId, c)
-  // → pré-rempli automatiquement à l'ouverture de la modale 📡 Export externe
-  // (sessionExporter > _renderCalibrageCommun lit KmzExport.getCalibration).
-  // les handlers géoref sont posés à l'ouverture de la sous-modale)
+  // Handlers du géoréf posés à l'ouverture de sa sous-modale (KmzExport.setCalibration, relu par Export externe).
 
-  // 🧭 Position initiale du tracker : boutons 🔍 via un point / 📍 cliquer carte.
   _bindCfgTrackerStartHandlers();
 
-  // bouton "Activer le mode
-  // présentation" dans la section 🔍 Affichage. Sur mobile, la touche F
-  // est inaccessible faute de clavier physique → ce bouton est le seul
-  // chemin pour entrer dans le mode. Sortie : touche F/Échap (PC) ou
-  // bouton flottant ✕ injecté par presentationMode.js > activate().
+  // « Activer le mode présentation » : sur mobile (pas de touche F), le seul chemin vers ce mode. Sortie : F/Échap
+  // (PC) ou bouton flottant ✕ (presentationMode.js > activate()).
   const btnPresentation = document.getElementById("cfg_presentation_btn");
   if (btnPresentation) {
     btnPresentation.addEventListener("click", function() {
-      // Ferme la modale Réglages AVANT d'activer le mode (sinon le mode
-      // présentation laisse la modale ouverte par-dessus la carte).
+      // Fermer AVANT d'activer, sinon la modale reste par-dessus la carte.
       _cfgFermer();
-      // Active après un micro-délai pour laisser le DOM se nettoyer.
       setTimeout(function() {
         if (window.PresentationMode && typeof window.PresentationMode.activate === "function") {
           window.PresentationMode.activate();
@@ -1501,12 +1379,8 @@ function afficherConfig() {
     });
   }
 
-  // F2 + 🆕 v1.31.9 — Bouton dynamique "Démarrer / Quitter
-  // le mode incognito" selon l'état IncognitoMode.active.
-  //   • Pas incognito → "Démarrer" → IncognitoMode.launch() ouvre nouvelle
-  //     fenêtre ?incognito=1 (ne mute pas la fenêtre courante).
-  //   • Incognito → "Quitter" → IncognitoMode.quit() tente window.close()
-  //     puis fallback navigate sans ?incognito=1.
+  // Bouton « Démarrer / Quitter le mode incognito » selon IncognitoMode.active : Démarrer ouvre une NOUVELLE
+  // fenêtre ?incognito=1 ; Quitter tente window.close() puis navigue sans ?incognito=1.
   const btnIncognito = document.getElementById("cfg_incognito_btn");
   if (btnIncognito) {
     btnIncognito.addEventListener("click", function() {
@@ -1515,23 +1389,19 @@ function afficherConfig() {
         return;
       }
       if (window.IncognitoMode.active) {
-        // Confirm avant quit (perte de données potentielle)
+        // Confirmation avant de quitter (perte de données possible).
         window.ktaConfirm(window.I18n.t("config.incognito.confirmQuit")).then(function(ok) {
           if (ok) window.IncognitoMode.quit();
         });
       } else {
-        // passe par confirmAndLaunch() qui affiche la
-        // modale charte de garde-fou (description + risques + buttons).
-        // L'user peut Annuler dans la modale → no launch.
+        // confirmAndLaunch() : modale de garde-fou (description, risques), annulable.
         window.IncognitoMode.confirmAndLaunch();
       }
     });
   }
 
-  // toggle "Garder l'écran allumé".
-  // Visible UNIQUEMENT si l'API navigator.wakeLock est supportée par le
-  // browser (Chrome/Edge/Safari iOS 16.4+, PAS Firefox).
-  // Sync UI ↔ state via window.WakeLock.isEnabled() + setEnabled().
+  // « Garder l'écran allumé » (navigator.wakeLock : Chrome/Edge/Safari iOS 16.4+, pas Firefox), via
+  // window.WakeLock.isEnabled() / setEnabled().
   const wlRow = document.getElementById("cfg_wake_lock_row");
   const wlCb  = document.getElementById("cfg_wake_lock");
   if (wlRow && wlCb) {
@@ -1539,11 +1409,8 @@ function afficherConfig() {
       wlRow.style.display = "";  // révèle (default = none pour rétrocompat)
       wlCb.checked = window.WakeLock.isEnabled();
       wlCb.addEventListener("change", function() {
-        // 🩸 ON ATTEND LE RESULTAT REEL avant de parler. L ancienne
-        // version annonçait « ecran maintenu allume » sans jamais verifier que
-        // le verrou avait ete pose : quand le navigateur refusait, l app
-        // mentait, et on cherchait la panne du mauvais cote (constate sur
-        // iPhone en PWA, 06/09).
+        // 🩸 ON ATTEND LE RÉSULTAT RÉEL avant d'annoncer « écran maintenu allumé » : un navigateur peut refuser
+        // le verrou (iPhone en PWA).
         Promise.resolve(window.WakeLock.setEnabled(wlCb.checked)).then(function (ok) {
           if (!(window.OOMGuard && typeof window.OOMGuard.showToast === "function")) return;
           if (!wlCb.checked) {
@@ -1557,17 +1424,14 @@ function afficherConfig() {
         });
       });
     } else {
-      // 🩸 Q61 (audit 13/09/2026) : AFFICHÉ, désactivé, avec la raison — comme
-      // batterie et vibration. Masquer laissait croire que l'option n'existe
-      // pas ; Firefox n'a pas l'API, l'utilisateur doit le savoir.
+      // 🩸 AFFICHÉ, désactivé, avec la raison (comme batterie et vibration) : masquer laisserait croire que
+      // l'option n'existe pas.
       _capteurRefuse(wlRow, wlCb, document.getElementById("cfg_wake_lock_hint"), "config.capteurs.nonSupporte");
     }
   }
 
-  // toggle "⚪ Afficher les ronds aux intersections (ce plan)".
-  // L'option est PER-PLAN — déplacée de Configuration home suite feedback KARMA.
-  // Lecture initiale via getPlanShowsIntersections() (fallback global → true).
-  // Change handler : setPlanShowsIntersections() persiste LS per-plan + re-render.
+  // Fond conseillé et ronds aux intersections : réglages PAR PLAN (getPlanShowsIntersections, repli global → true ;
+  // setPlanShowsIntersections persiste et re-rend).
   const fondSel = document.getElementById("cfg_fond_plan");
   if (fondSel) {
     fondSel.value = (typeof window.getPlanFondChoisi === "function") ? window.getPlanFondChoisi() : "";
@@ -1591,14 +1455,8 @@ function afficherConfig() {
     });
   }
 
-  // Calibration Nord per-plan.
-  // Trois entrées d'action :
-  //   1. Champ angle numérique (saisie directe, blur → setPlanNorthOffset)
-  //   2. Bouton "📐 Calibrer (2 clics)" → ferme la modale et lance le picker
-  //      Sud → Nord sur la map. Retour de promesse = angle calculé, on
-  //      ré-ouvre la modale pour montrer la valeur (UX KARMA).
-  //   3. Bouton "↺ Reset" → resetPlanNorthOffset() retombe sur cascade.
-  // Update du status text à chaque action pour confirmation visuelle.
+  // Calibration du Nord par plan : champ d'angle (blur → setPlanNorthOffset), « Calibrer (2 clics) » (picker
+  // Sud → Nord sur la carte, puis réouverture pour montrer l'angle), « ↺ Reset » (resetPlanNorthOffset, cascade).
   (function _initNorthCalibration() {
     const block      = document.getElementById("cfg_north_block");
     const input      = document.getElementById("cfg_north_offset_input");
@@ -1649,11 +1507,8 @@ function afficherConfig() {
         }
         return;
       }
-      // Au lieu d'essayer de fermer la modale (pas de
-      // fonction publique), on suit le pattern existant du picker géoref
-      // (cf l~520) : on CACHE la modale Réglages via display:none le temps
-      // du picker, puis on la remontre à la fin. Sinon la modale (z>>map)
-      // capture les clics et le picker semble ne rien faire.
+      // Comme le picker géoréf : la modale est CACHÉE (display:none) le temps du picker, puis remontrée. Sinon
+      // elle (z >> carte) capte les clics et le picker semble ne rien faire.
       const cfgModal = document.getElementById("kta-cfg-modal");
       const _showCfgBack = function() {
         if (cfgModal) cfgModal.style.display = "";
@@ -1665,7 +1520,7 @@ function afficherConfig() {
         if (typeof window.setPlanNorthOffset === "function") {
           window.setPlanNorthOffset(null, deg);
         }
-        // _refreshStatus sera appelé via l'event kta:northOffsetChange
+        // _refreshStatus suit l'événement kta:northOffsetChange.
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t("config.display.north.calibratedToast", { deg: deg.toFixed(1) }), "info");
         }
@@ -1678,44 +1533,23 @@ function afficherConfig() {
       });
     });
 
-    // Re-render à chaud quand un autre composant change le Nord
     window.addEventListener("kta:northOffsetChange", _refreshStatus);
   })();
 
-  // Le picker calibration calques image VIVE désormais
-  // EXCLUSIVEMENT dans le générateur avancé (feedback KARMA :
-  // "on le fait que depuis générateur"). HTML cfg_imglayer_calib_block
-  // + IIFE _initImageLayerCalibUI complètement retirés des Réglages map
-  // mode pour éviter le doublon UX. Les helpers ImageLayerCalibration
-  // restent dispos côté runtime (map.js lit toujours la cascade LS
-  // legacy → plan-config.json pour rétrocompat des users v1.38.0).
+  // Calibration des calques image : seulement dans le générateur avancé (pas de doublon ici). Les helpers
+  // ImageLayerCalibration restent pour le runtime (map.js lit encore la cascade LS → plan-config.json).
 
-  // Pas de bouton d'import PDF Histoire dans Réglages : le
-  // mécanisme existant (modale Mode Histoire 📖 → onglet PDF → bouton import,
-  // feature v1.34.20) reste l'entrée unique côté session. Éviter le doublon
-  // UX. L'embarquement durable cross-utilisateurs se fait via le générateur
-  // avancé (`plan-config.json > plan.histoirePdf`).
+  // Pas d'import de PDF Histoire ici : l'entrée unique est la modale Mode Histoire (onglet PDF) ; l'embarquement
+  // durable passe par le générateur (`plan-config.json > plan.histoirePdf`).
 
-  // toggle "📳 Vibration haptique".
-  // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,
-  // iOS Safari NON par choix d'Apple). Sync UI ↔ APP_CONFIG.vibrationEnabled
-  // + persistence app_user_prefs.
-  // ⚠️ LE CABLAGE DE QUATRE REGLAGES GLOBAUX A ETE
-  // RETIRE D ICI avec leurs cases : taille des icones au zoom, ancrage des
-  // panneaux, magnetisme au dessin et son rayon. Ils se reglent desormais dans
-  // la ⚙️ Configuration de l ACCUEIL. Le laisser en place aurait ete inoffensif
-  // (les `getElementById` rendent null) mais trompeur : du code qui a l air de
-  // brancher une interface qui n existe plus.
+  // Vibration haptique : navigator.vibrate (Android oui, iOS Safari non), APP_CONFIG.vibrationEnabled +
+  // app_user_prefs.
+  // Taille des icônes au zoom, ancrage des panneaux, magnétisme et son rayon se règlent dans la ⚙️ Configuration
+  // de l'ACCUEIL : aucun câblage ici.
 
-  // LES DEUX CAPTEURS, ET CE QU'ON DIT QUAND ILS SONT REFUSÉS.
-  //
-  // 🩸 AVANT, une option dont le capteur manquait était simplement MASQUÉE.
-  // Sur iPhone, la vibration disparaissait donc de la modale : impossible pour
-  // l'utilisateur de savoir si l'option n'existe pas, s'il l'a ratée, ou si
-  // son téléphone refuse. On l'affiche désormais désactivée, avec la raison.
-  // Le rendu « capteur refusé » vit dans utils.js — partagé avec la modale
-  // d'accueil, qui porte exactement les mêmes options.
-  // ── 🔋 Batterie ──
+  // Capteurs refusés : option AFFICHÉE désactivée, avec la raison (masquée, l'utilisateur ne sait pas si elle
+  // existe, s'il l'a ratée ou si son téléphone refuse). Rendu partagé avec l'accueil (utils.js).
+  // ── Batterie ──
   const batRow = document.getElementById("cfg_batterie_row");
   const batCb  = document.getElementById("cfg_batterie");
   if (batRow && batCb) {
@@ -1729,10 +1563,8 @@ function afficherConfig() {
         if (typeof window.sauvegarderPrefsUtilisateur === "function") {
           window.sauvegarderPrefsUtilisateur();
         }
-        // 🩸 Couper l'écoute demande un rechargement : `getBattery()` a déjà
-        // posé ses écouteurs sur le BatteryManager, et rien ne permet de les
-        // retirer proprement. On le DIT plutôt que de laisser croire que
-        // c'est immédiat.
+        // 🩸 Couper l'écoute demande un rechargement : getBattery() a posé ses écouteurs sur le BatteryManager,
+        // impossibles à retirer proprement. On le DIT.
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t(batCb.checked
             ? "config.batterie.toastOn" : "config.batterie.toastOff"), "info");
@@ -1741,14 +1573,13 @@ function afficherConfig() {
     }
   }
 
-  // ── 🎬 Replay / 🔥 Heatmap ── (🧩 01/10/2026) Effet immédiat : les tuiles
-  // du menu Tracker sont filtrées à chaque ouverture, rien à recharger.
+  // ── Replay / Heatmap ── effet immédiat : les tuiles du menu Tracker sont filtrées à chaque ouverture.
   if (typeof window.ktaBrancherOptionnel === "function") {
     window.ktaBrancherOptionnel(document.getElementById("cfg_replay"), "replayEnabled", "config.replay");
     window.ktaBrancherOptionnel(document.getElementById("cfg_heatmap"), "heatmapEnabled", "config.heatmap");
   }
 
-  // ── 📳 Vibration haptique ──
+  // ── Vibration haptique ──
   const vibRow = document.getElementById("cfg_vibration_row");
   const vibCb  = document.getElementById("cfg_vibration");
   if (vibRow && vibCb) {
@@ -1767,11 +1598,8 @@ function afficherConfig() {
       });
     }
   }
-  // E1 : toggle "🎤 Commandes vocales (BETA)".
-  // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition
-  // ou webkitSpeechRecognition). Sync UI ↔ state via window.VoiceCommand.
-  // Note : reload requis après changement (le bouton mic flottant est
-  // injecté/retiré au boot du module selon localStorage).
+  // Commandes vocales (BETA) : Web Speech API (SpeechRecognition / webkitSpeechRecognition), window.VoiceCommand.
+  // Rechargement requis : le bouton micro est injecté/retiré au démarrage du module.
   const voiceRow = document.getElementById("cfg_voice_row");
   const voiceCb  = document.getElementById("cfg_voice");
   if (voiceRow && voiceCb) {
@@ -1790,21 +1618,17 @@ function afficherConfig() {
         }
       });
     } else {
-      // 🩸 Q61 : même traitement que les capteurs — affiché, désactivé, raison nommée.
+      // 🩸 Comme les capteurs : affiché, désactivé, raison nommée.
       _capteurRefuse(voiceRow, voiceCb, document.getElementById("cfg_voice_hint"), "config.capteurs.nonSupporte");
     }
   }
 
-  // 🏗️ Multi-niveau : rien ici (activation par le générateur, cf. v1.7.3).
 }
 
-// (L4) : `appliquerConfig` et son bouton n'existent plus — chaque
-// champ s'enregistre à la modification (cf. `_bindReglagesImmediats`).
+// Pas de `appliquerConfig` : chaque champ s'enregistre à la modification (cf. `_bindReglagesImmediats`).
 
-// 🚨 B6 (audit ergonomie 13/09/2026) : « Reset » agissait sans confirmation,
-// collé à « Appliquer », et effaçait le PARCOURS du tracker (polyline, pas,
-// timeline) en plus des réglages du plan. Confirmation chartée qui dit ce qui
-// part ; le bouton s'appelle désormais « ↺ Valeurs par défaut ».
+// « ↺ Valeurs par défaut » : confirmation chartée qui dit ce qui part (réglages du plan ET parcours du tracker :
+// polyline, pas, timeline).
 function resetConfig() {
   const _go = function() { _resetConfigExecuter(); };
   if (typeof window.ktaConfirm !== "function") {   // sans confirmation, pas de remise à zéro (repli sûr)
@@ -1817,13 +1641,9 @@ function resetConfig() {
   }).then(function(ok) { if (ok) _go(); });
 }
 function _resetConfigExecuter() {
-  // 🩸 L4 (v1.92.0) : le reset ne touche que CE plan. AVANT :
-  // Object.assign(APP_CONFIG, DEFAULT_CONFIG) + sauvegarderPrefsUtilisateur()
-  // → les préférences GLOBALES (vibration, batterie, icônes au zoom,
-  // magnétisme…) repartaient aussi à l'usine, depuis une modale « par plan ».
-  // ICI : on retire les surcharges du plan (échelle, podomètre, départ, nav
-  // intelligente, ronds, Nord) et on revient aux valeurs DU PLAN (plan-config),
-  // pas à l'usine de l'app.
+  // 🩸 Le reset ne touche que CE plan : surcharges retirées (échelle, podomètre, départ, nav intelligente, ronds,
+  // Nord), retour aux valeurs DU PLAN (plan-config). Jamais Object.assign(APP_CONFIG, DEFAULT_CONFIG) +
+  // sauvegarderPrefsUtilisateur(), qui remettrait aussi les préférences GLOBALES à l'usine.
   const pid = window._currentLoadedPlanId || "default";
   const D   = window.DEFAULT_CONFIG || {};
   const tr  = (window.PLAN_CONFIG && window.PLAN_CONFIG.tracking) || {};
@@ -1834,8 +1654,7 @@ function _resetConfigExecuter() {
   if (typeof window.resetPlanNorthOffset === "function") window.resetPlanNorthOffset(null);
   try { localStorage.removeItem("myktamap_plan_prefs_" + pid); } catch (e) {}
   APP_CONFIG.scale         = usine("scale");
-  // le podomètre revient à l'USINE de l'app (jamais aux valeurs du
-  // plan : le plan ne dit plus la foulée), et la pref globale est effacée.
+  // Le podomètre revient à l'USINE de l'app (le plan ne dit pas la foulée) et la pref globale est effacée.
   const U = window.KTA_TRACKING_USINE || {};
   APP_CONFIG.stepLength    = U.stepLength;
   APP_CONFIG.stepThreshold = U.stepThreshold;
@@ -1850,15 +1669,9 @@ function _resetConfigExecuter() {
   _cfgToast(window.I18n.t("config.confirm.resetFait"), "info");
 }
 
-// =========================
-// 🏗️ MULTI-NIVEAU — modales et helpers (depuis v148)
-// =========================
-// _ouvrirSelecteurNiveau : modal complète gérant 2 dimensions :
-//   1. NIVEAU ACTIF (single-select) → utilisé pour DESSINER nouvelles roads/points/zones
-//   2. NIVEAUX VISIBLES (multi-select) → filtre d'AFFICHAGE
-// Apparaît au clic sur la pastille "Niv X" dans le groupe Tracés.
-// Changer le niveau actif → coupe le mode road en cours ET reset le filtre
-// visible à [newActive] (mode focalisé par défaut).
+// ── Multi-niveau : modales et helpers ──────────
+// _ouvrirSelecteurNiveau (pastille « Niv X » du groupe Tracés) gère deux dimensions : NIVEAU ACTIF (un seul,
+// pour dessiner) et NIVEAUX VISIBLES (plusieurs, filtre d'affichage).
 function _ouvrirSelecteurNiveau(btnPastille) {
   if (document.getElementById("kta-niv-modal")) return;
 
@@ -1867,13 +1680,11 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
     ? APP_CONFIG.availableLevels.slice()
     : [-2, -1, 0, 1, 2];
-  // 🏗️ v154 : tri croissant pour affichage horizontal naturel -2 → +2 (gauche
-  // a droite = negatif a positif, comme un axe numerique). availableLevels en
-  // memoire peut etre dans n'importe quel ordre (apres push/unshift par les
-  // boutons +/-), on trie systematiquement avant rendu.
+  // Tri croissant pour l'affichage horizontal -2 → +2 : availableLevels peut être dans n'importe quel ordre
+  // (push/unshift des boutons +/-).
   levels.sort(function(a, b) { return a - b; });
 
-  // Segmented (niveau actif) : boutons radio visuels, encadres de [-] et [+]
+  // Segmented (niveau actif) encadré de [-] et [+].
   let segmented = "";
   levels.forEach(function(lvl) {
     const active = (lvl === cur);
@@ -1882,7 +1693,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
       '" data-level="' + lvl + '">' + lvl + '</button>';
   });
 
-  // Checkboxes (niveaux visibles) - meme ordre croissant
+  // Cases (niveaux visibles), même ordre croissant.
   let checkboxes = "";
   levels.forEach(function(lvl) {
     const checked = (visibles.indexOf(lvl) >= 0);
@@ -1904,7 +1715,6 @@ function _ouvrirSelecteurNiveau(btnPastille) {
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
-        // SECTION 1 : Niveau actif (single-select)
         '<div class="kta-niv-section">' +
           '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.active.titre") + '</div>' +
           '<div class="kta-niv-segmented">' +
@@ -1914,7 +1724,6 @@ function _ouvrirSelecteurNiveau(btnPastille) {
           '</div>' +
         '</div>' +
 
-        // SECTION 2 : Niveaux visibles (multi-select)
         '<div class="kta-niv-section">' +
           '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.visible.titre") + '</div>' +
           '<div class="kta-niv-vis-grid">' + checkboxes + '</div>' +
@@ -1927,9 +1736,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
           window.I18n.t("config.niveaux.warn") +
         '</p>' +
-        // accès à la saisie des profondeurs. Rangé ici parce
-        // qu'une profondeur EST une propriété du niveau : la chercher
-        // ailleurs que dans l'écran des niveaux serait une devinette.
+        // Saisie des profondeurs : une profondeur EST une propriété du niveau, elle vit dans cet écran.
         '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-prof" type="button"' +
           ' style="margin-top:10px;">📉 ' + window.I18n.t("prof.btn.saisir") + '</button>' +
       '</div>' +
@@ -1953,21 +1760,19 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     });
   }
 
-  // v155 : segmented en mode nowrap (scroll horizontal si trop de niveaux).
-  // Scroll vers le bouton actif pour qu'il soit visible a l'ouverture.
+  // Segmented en nowrap (défilement horizontal) : le bouton actif est amené en vue à l'ouverture.
   setTimeout(function() {
     const activeBtn = overlay.querySelector(".kta-niv-seg-btn.kta-actif");
     if (activeBtn && typeof activeBtn.scrollIntoView === "function") {
       try {
         activeBtn.scrollIntoView({ behavior: "instant", block: "nearest", inline: "center" });
       } catch(e) {
-        // Fallback Safari (pas de "instant" sur vieille version)
+        // Repli vieux Safari (pas de "instant").
         try { activeBtn.scrollIntoView({ block: "nearest", inline: "center" }); } catch(e2) {}
       }
     }
   }, 0);
 
-  // Clic sur un niveau actif : applique + ferme
   overlay.querySelectorAll(".kta-niv-seg-btn[data-level]").forEach(function(b) {
     b.addEventListener("click", function() {
       const lvl = parseInt(b.dataset.level, 10);
@@ -1977,7 +1782,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     });
   });
 
-  // Bouton + : ajoute un niveau au-dela du max existant (vers le haut)
+  // + : ajoute un niveau au-dessus du max.
   const addBtn = document.getElementById("kta-niv-add");
   if (addBtn) {
     addBtn.addEventListener("click", function() {
@@ -1989,7 +1794,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     });
   }
 
-  // 🏗️ v154 : Bouton − : ajoute un niveau en-dessous du min existant
+  // − : ajoute un niveau sous le min.
   const subBtn = document.getElementById("kta-niv-sub");
   if (subBtn) {
     subBtn.addEventListener("click", function() {
@@ -2001,7 +1806,6 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     });
   }
 
-  // Checkboxes filtre visible : toggle a la volee → applique le filtre
   overlay.querySelectorAll(".kta-niv-vis-box input[type=checkbox]").forEach(function(cb) {
     cb.addEventListener("change", function() {
       const lvl = parseInt(cb.dataset.level, 10);
@@ -2018,20 +1822,17 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     });
   });
 
-  // Quick action : "Tous" coche toutes les boites
   const allBtn = document.getElementById("kta-niv-vis-all");
   if (allBtn) {
     allBtn.addEventListener("click", function() {
       APP_CONFIG.visibleLevels = levels.slice();
       window.APP_CONFIG = APP_CONFIG;
-      // Update DOM checkboxes
       overlay.querySelectorAll(".kta-niv-vis-box input[type=checkbox]").forEach(function(cb) {
         cb.checked = true;
       });
       if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
     });
   }
-  // Quick action : "Actif seul"
   const activeBtn = document.getElementById("kta-niv-vis-active");
   if (activeBtn) {
     activeBtn.addEventListener("click", function() {
@@ -2046,43 +1847,18 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   }
 }
 
-// Applique le changement de niveau actif : coupe le mode road en cours (Q5),
-// reset le filtre visibles a [newActive] (mode focalise), met a jour la
-// pastille, propage le filtre a tous les modules.
+// Changement de niveau actif : délégué au helper unique (tout entier est valide, sous-sols compris).
 function _changerNiveauActif(newLevel) {
-  // v155 fix : retire le check newLevel < 0 qui bloquait les niveaux negatifs
-  // (reste de v148 quand availableLevels etait [0..3] strict). Depuis v154 on
-  // supporte les sous-sols (-1, -2, …), donc tout entier est valide.
-  // simple delegation — toute la logique vit dans le helper unique.
   window.ktaSetActiveLevel(newLevel, { source: "modale-niveaux" });
 }
 
-// SOURCE DE VÉRITÉ UNIQUE du niveau de travail.
-//
-// AVANT : 3 chemins concurrents écrivaient `APP_CONFIG.activeLevel` à la main
-// (modale Niveaux via _changerNiveauActif, modale ≡ Filtres ×2) et un seul
-// propageait réellement. Les 2 chemins de la modale ≡ se contentaient de
-// notifier `window._onLevelChange(...)` — un callback qui n'a **JAMAIS été
-// défini nulle part** : 7 appels tous gardés par `typeof === "function"`, donc
-// morts en silence. Conséquence vécue : changer le niveau actif depuis la
-// modale ≡ ne mettait à jour NI la pastille de la sidebar, NI les modules
-// level-aware. Le garde `typeof` a masqué le trou pendant des versions.
-//
-// ⚠️ CHANGEMENT DE SÉMANTIQUE ASSUMÉ (demande KARMA) : changer le niveau de
-// TRAVAIL n'écrase plus les niveaux AFFICHÉS. `_changerNiveauActif` faisait
-// `visibleLevels = [newLevel]` (« mode focalisé ») → passer au -2 faisait
-// DISPARAÎTRE toutes les galeries du -1. Rédhibitoire en exploration, et
-// bloquant pour la bascule automatique de C6 (franchir une jonction en
-// navigation ne doit pas effacer l'étage qu'on vient de quitter).
-//
-// Nouvelle règle = UNION : le niveau de travail s'AJOUTE aux niveaux visibles
-// s'il n'y est pas déjà. On garde l'invariant « tu vois toujours ce sur quoi
-// tu dessines » (sans quoi on dessinerait à l'aveugle) sans jamais rien
-// retirer de ce que l'user avait choisi d'afficher. Pour revenir à un seul
-// niveau, le bouton « Actif seul » existe toujours (modale ≡ et modale
-// Niveaux) — le mode focalisé devient un GESTE EXPLICITE au lieu d'un effet
-// de bord.
-//
+// SOURCE DE VÉRITÉ UNIQUE du niveau de travail : tous les chemins (modale Niveaux, modale ≡ Filtres) passent
+// ici. 🩸 Un callback optionnel gardé par `typeof === "function"` qui n'existe pas meurt en silence : la
+// propagation passe par appliquerFiltreNiveau, jamais par un `window._onLevelChange` hypothétique.
+// ⚠️ Changer le niveau de TRAVAIL n'écrase pas les niveaux AFFICHÉS (décision produit) : passer au -2 ne doit
+// pas faire disparaître le -1 (exploration, bascule automatique en franchissant une jonction). Règle = UNION :
+// le niveau de travail s'AJOUTE aux visibles (on voit toujours ce sur quoi on dessine), rien n'est retiré.
+// Le mode focalisé est un geste explicite (« Actif seul », modales ≡ et Niveaux).
 // @param {number} newLevel - entier (négatifs = sous-sols)
 // @param {Object} [opts]   - { source?: string } pour le log
 // @returns {boolean} true si appliqué
@@ -2091,27 +1867,24 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
   opts = opts || {};
   if (!window.APP_CONFIG) return false;
 
-  // Annule le tracé en cours (un tracé ne peut pas enjamber 2 niveaux).
+  // Annule le tracé en cours (un tracé n'enjambe pas deux niveaux).
   if (typeof _fermerModeRoad === "function") {
     try { _fermerModeRoad(); } catch(e) {}
   }
 
   APP_CONFIG.activeLevel = newLevel;
 
-  // UNION (et pas remplacement) — cf. bloc de commentaire ci-dessus.
+  // UNION, pas remplacement (cf. ci-dessus).
   if (!Array.isArray(APP_CONFIG.visibleLevels)) APP_CONFIG.visibleLevels = [];
   if (APP_CONFIG.visibleLevels.indexOf(newLevel) === -1) {
     APP_CONFIG.visibleLevels = APP_CONFIG.visibleLevels.concat([newLevel]);
   }
   window.APP_CONFIG = APP_CONFIG;
 
-  // Pastille sidebar (chiffre seul, pas de prefixe)
   const pill = document.getElementById("kta-niv-pastille-icone");
   if (pill) pill.textContent = String(newLevel);
 
-  // Propage a tous les modules level-aware (re-render roads/zones + filtres).
-  // C'est aussi lui qui resynchronise la modale ≡ si elle est ouverte
-  // (FilterPanel.onLevelChange).
+  // Propage à tous les modules level-aware ; resynchronise aussi la modale ≡ ouverte (FilterPanel.onLevelChange).
   if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
 
   console.log("[MultiNiveau] Niveau actif →", newLevel,
@@ -2120,98 +1893,83 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
   return true;
 };
 
-// 🏗️ Multi-niveau : helper global qui re-render / re-filtre TOUS les modules
-// level-aware. Appele apres tout changement de visibleLevels.
-// Chaque module expose _applyLevelFilterTo*() qui itere ses markers et
-// applique setOpacity selon le filtre courant.
+// Re-rend / re-filtre TOUS les modules level-aware après un changement de visibleLevels (chacun expose
+// _applyLevelFilterTo*()).
 window.appliquerFiltreNiveau = function() {
-  // 📡 Présences / itinéraires d'une installation reliée : atténuation « hors niveau » recalculée.
+  // Présences / itinéraires d'une installation reliée : atténuation « hors niveau » recalculée.
   if (window.KtaPresences && typeof window.KtaPresences.redessiner === "function") {
     try { window.KtaPresences.redessiner(); } catch(e) {}
   }
-  // 🚑 Carte du Mode Secours (itinéraires des équipes) : même atténuation hors niveau.
+  // Carte du Mode Secours (itinéraires des équipes) : même atténuation.
   if (window.SecoursMode && typeof window.SecoursMode.redessinerOverlay === "function") {
     try { window.SecoursMode.redessinerOverlay(); } catch(e) {}
   }
-  // Roads + zones de session : re-render complet (filtre applique au build)
+  // Roads + zones de session : re-rendu complet (filtre appliqué au build).
   if (typeof window.renderRoads === "function") {
     try { window.renderRoads(); } catch(e) {}
   }
   if (typeof window.renderZones === "function") {
     try { window.renderZones(); } catch(e) {}
   }
-  // structures de session re-render aussi au
-  // changement de niveau (sinon les piliers/murs restaient figés à
-  // la visibilité du niveau initial).
+  // Structures de session.
   if (typeof window.renderStructures === "function") {
     try { window.renderStructures(); } catch(e) {}
   }
-  // Markers / points des layers DATA (puits, cataphile, etc.)
+  // Points des calques DATA.
   if (typeof window._applyLevelFilterToDataPoints === "function") {
     try { window._applyLevelFilterToDataPoints(); } catch(e) {}
   }
-  // Routes embarquees dans les calques DATA (json.roads[])
+  // Routes embarquées des calques DATA (json.roads[]).
   if (typeof window._applyLevelFilterToDataRoads === "function") {
     try { window._applyLevelFilterToDataRoads(); } catch(e) {}
   }
-  // Zones embarquees dans les calques DATA (json.zones[])
+  // Zones embarquées des calques DATA (json.zones[]).
   if (typeof window._applyLevelFilterToDataZones === "function") {
     try { window._applyLevelFilterToDataZones(); } catch(e) {}
   }
-  // structures embarquées dans les calques DATA
-  // (json.structures[]). Sans cet appel, les piliers/murs data layer
-  // restaient figés à la visibilité du niveau initial au boot et ne
-  // re-filtraient pas au changement de niveau.
+  // Structures embarquées des calques DATA (json.structures[]).
   if (typeof window._applyLevelFilterToDataStructures === "function") {
     try { window._applyLevelFilterToDataStructures(); } catch(e) {}
   }
-  // Points editor (session)
+  // Points editor (session).
   if (typeof window._applyLevelFilterToEditorPoints === "function") {
     try { window._applyLevelFilterToEditorPoints(); } catch(e) {}
   }
-  // Tracker marker + polyline parcouru
+  // Marqueur et polyline du tracker.
   if (typeof window._applyLevelFilterToTracker === "function") {
     try { window._applyLevelFilterToTracker(); } catch(e) {}
   }
-  // 🏗️ v162 : Image layers (calques image du plan : legende, etc.) qui ont
-  // un champ `level`. Force addLayer/removeLayer selon visibleLevels. Modale
-  // Niveaux = authority (override le checkbox Leaflet).
+  // Calques image à champ `level` : addLayer/removeLayer selon visibleLevels (la modale Niveaux prime sur la
+  // case Leaflet).
   if (typeof window._applyLevelFilterToImageLayers === "function") {
     try { window._applyLevelFilterToImageLayers(); } catch(e) {}
   }
-  // (KARMA « logique de superposition ») : le plan PRINCIPAL est
-  // le niveau 0 — masqué net quand 0 est décoché (cf tiling.js).
+  // Le plan PRINCIPAL est le niveau 0 : masqué quand 0 est décoché (cf. tiling.js).
   if (typeof window._applyLevelFilterToBasePlan === "function") {
     try { window._applyLevelFilterToBasePlan(); } catch(e) {}
   }
 
-  // (KARMA "refonte filtre Leaflet") : sync M-LVL bidirectionnel.
-  // Quand visibleLevels change (via modale Niveaux), notifie FilterPanel pour
-  // qu'il rafraîchisse la section M-LVL si la modale est ouverte.
+  // Synchro avec FilterPanel : sa section multi-niveau se rafraîchit si la modale est ouverte.
   if (window.FilterPanel && typeof window.FilterPanel.onLevelChange === "function") {
     try { window.FilterPanel.onLevelChange(); } catch(e) {}
   }
 
-  // badges des liaisons inter-plan re-rendus au changement de
-  // niveau (ils respectent visibleLevels comme les markers — sinon un badge
-  // flottait sans son icône sur les niveaux masqués).
+  // Badges des liaisons inter-plan : ils respectent visibleLevels comme les marqueurs (sinon un badge flotte
+  // sans son icône sur un niveau masqué).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.refreshBadges === "function") {
     try { window.InterPlanLinks.refreshBadges(); } catch(e) {}
   }
 };
 
-// (KARMA "refonte filtre Leaflet") : helper global qui cascade
-// le re-render après changement des filtres runtime (tags, types, etc.).
-// Alias de appliquerFiltreNiveau car les modules level-aware appliquent
-// aussi window._ktaRuntimeFilters dans la même passe de rendu.
+// Re-rendu après changement des filtres runtime (tags, types…) : alias de appliquerFiltreNiveau, les modules
+// appliquent aussi window._ktaRuntimeFilters dans la même passe.
 window.appliquerFiltreRuntime = function() {
   if (typeof window.appliquerFiltreNiveau === "function") {
     window.appliquerFiltreNiveau();
   }
 };
 
-// _ouvrirCreationJonction : modal pour saisir fromLevel/toLevel avant
-// d'activer le mode tracé jonction.
+// Modale fromLevel/toLevel avant d'activer le tracé de jonction.
 function _ouvrirCreationJonction(btnSub) {
   if (document.getElementById("kta-jct-modal")) return;
 
@@ -2219,10 +1977,8 @@ function _ouvrirCreationJonction(btnSub) {
   const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
     ? APP_CONFIG.availableLevels.slice()
     : [-2, -1, 0, 1, 2];
-  // v154 : tri croissant pour cohrence avec la modale Niveaux
   levels.sort(function(a, b) { return a - b; });
 
-  // Options du select : tous les niveaux dispo
   function _optionsHtml(selectedLevel) {
     return levels.map(function(l) {
       return '<option value="' + l + '"' + (l === selectedLevel ? ' selected' : '') + '>' +
@@ -2230,7 +1986,7 @@ function _ouvrirCreationJonction(btnSub) {
     }).join('');
   }
 
-  // Defaut : depuis le niveau actif vers le niveau juste au-dessus
+  // Défaut : du niveau actif vers celui juste au-dessus.
   const defaultTo = (cur === 0 && levels.indexOf(1) >= 0) ? 1
                   : (cur + 1 <= Math.max.apply(null, levels) ? cur + 1
                   : Math.max.apply(null, levels));
@@ -2282,23 +2038,17 @@ function _ouvrirCreationJonction(btnSub) {
       return;
     }
     _cleanup();
-    // Stocke la meta pour que road.js > mousedown la lise au premier clic
+    // Meta lue par road.js > mousedown au premier clic.
     window._jonctionPendingMeta = { fromLevel: fromLvl, toLevel: toLvl };
-    // Active le mode tracé "jonction"
     _activerJonctionMode(btnSub, fromLvl, toLvl);
   });
 }
 
-// Active le mode tracé jonction (utilise le même pattern que _activerRoute
-// mais avec type "jonction" + icone reflet 🪜).
+// Mode tracé jonction (comme _activerRoute, type "jonction").
 function _activerJonctionMode(btnCible, fromLvl, toLvl) {
-  // Replique _activerRoute en inline : on est en scope module, alors que
-  // _activerRoute est dans initInterface (closure sur _groupes etc.).
-  //
-  // ⚠️ Bug v148.test : sans _desactiverTousLesModes() ici, activer la jonction
-  // alors qu'un autre mode est actif (✏️ point, 📐 mesure, ⬛ zone, etc.) laisse
-  // les 2 modes actifs en parallele → clic carte declenche plusieurs handlers
-  // contradictoires. Fix : on tue tout avant de demarrer la jonction.
+  // _activerRoute vit dans initInterface (closure sur _groupes) : répliqué ici en scope module.
+  // 🩸 _desactiverTousLesModes() d'abord : sinon un autre mode actif (point, mesure, zone…) reste en parallèle et
+  // un clic carte déclenche des handlers contradictoires.
   _desactiverTousLesModes();
 
   toggleRoadMode("jonction");  // sets window.modeRoad = "jonction"
@@ -2318,19 +2068,13 @@ function _activerJonctionMode(btnCible, fromLvl, toLvl) {
 }
 
 
-// =========================
-// 🏗️ MULTI-NIVEAU — Leaflet control top-left (pastille niveau actif)
-// =========================
-// Bouton carré 30x30 sous les boutons de zoom, style coherent avec les autres
-// controles Leaflet (.leaflet-bar). Au clic → ouvre la modale niveau (active +
-// visibles). Affiche le chiffre du niveau actif dans une pastille jaune.
-// Refresh automatique du chiffre via getElementById("kta-niv-pastille-icone")
-// dans _changerNiveauActif (l'ID est dans le span).
+// ── Multi-niveau : pastille du niveau actif (contrôle Leaflet en haut à gauche) ──────────
+// Bouton 30×30 sous le zoom (.leaflet-bar), chiffre du niveau actif ; clic → modale Niveaux. Le chiffre est
+// rafraîchi via l'ID kta-niv-pastille-icone.
 function _initLevelFilterControl() {
   if (!window.map) return;
   if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return;
-  // Pour eviter de dupliquer si initInterface est appele 2 fois (shouldn't
-  // happen mais safety net) : on detruit le precedent control si present.
+  // Filet : un contrôle précédent est détruit (initInterface appelé deux fois).
   if (window._levelFilterControl) {
     try { window.map.removeControl(window._levelFilterControl); } catch(e) {}
     window._levelFilterControl = null;
@@ -2340,12 +2084,12 @@ function _initLevelFilterControl() {
   ctrl.onAdd = function() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-level-control");
     const a   = L.DomUtil.create("a", "kta-level-btn", div);
-    a.href      = "#";   // pas « javascript: » (CSP stricte, 07/10/2026) ; le clic fait L.DomEvent.stop
+    a.href      = "#";   // pas « javascript: » (CSP stricte) ; le clic fait L.DomEvent.stop
     a.setAttribute("role", "button");
     a.title     = window.I18n.t("config.niveaux.controlTitle");
     a.innerHTML = '<span class="kta-niv-pastille" id="kta-niv-pastille-icone">' +
                   (APP_CONFIG.activeLevel || 0) + '</span>';
-    // Empeche les events de propager a la carte (clic-pan + zoom-wheel)
+  // Pas de propagation à la carte (clic-pan, molette).
     L.DomEvent.disableClickPropagation(div);
     L.DomEvent.disableScrollPropagation(div);
     L.DomEvent.on(a, "click", function(e) {
@@ -2359,16 +2103,10 @@ function _initLevelFilterControl() {
   console.log("[MultiNiveau] Level filter control créé (top-left)");
 }
 
-// ==========================================
-// EXPORTS WINDOW (v1.31.0 P3 Lot 9)
-// ==========================================
-// 3 fonctions publiques classiques (étaient dans le bloc EXPORT
-// GLOBAL de interface.js) :
+// ── Exports window ──────────
 window.afficherConfig  = afficherConfig;
 window.resetConfig     = resetConfig;
 
-// 2 helpers privés rendus publics (appelés depuis interface.js
-// par leur identifier local — patches en window.X dans interface.js
-// pour qu'ils continuent à fonctionner post-extraction) :
+// Helpers privés rendus publics : interface.js les appelle par window.X.
 window._initLevelFilterControl = _initLevelFilterControl;
 window._ouvrirCreationJonction  = _ouvrirCreationJonction;

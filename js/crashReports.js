@@ -1,33 +1,18 @@
 /*!
- * MyKTAMap — Crash Reports
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// CRASHREPORTS.JS — Archive automatique des kills mémoire détectés (depuis v1.20.0)
+// CRASHREPORTS.JS — Archive automatique des kills mémoire détectés
 // =========================
-// Quand OOMGuard détecte au boot qu'un kill a eu lieu (heartbeat marker pas
-// nettoyé proprement = pagehide/beforeunload jamais firé = OOM mobile très
-// probable), on archive ce qu'on peut récupérer :
-//   - killInfo (timestamp, ageSec, planId, userAgent)
-//   - 50 derniers logs du buffer debug.js (qui sont en localStorage, survivent
-//     au crash)
-//   - dernier snapshot SessionBackups du même plan (= état au plus récent
-//     auto-backup avant le crash, peut être assez vieux mais c'est mieux que
-//     rien)
-//
-// Stockage IDB dédié `myktamap_crashes` v1, store `crashes`, FIFO 5 entries.
-// Consultable depuis Memory Inspector (📊 Voir l'état mémoire) → section
-// « 📋 Derniers crashs » avec bouton « Voir détails » + « Supprimer ».
-//
-// Utile pour :
-//   - Diagnostiquer un bug qui crashe régulièrement (= pattern dans les logs)
-//   - Partager au mainteneur via un rapport texte
-//   - Confirmer qu'un fix a bien réglé un crash (= plus de nouveaux crashes)
-// =========================
+// Quand OOMGuard détecte au démarrage un kill (marqueur heartbeat non nettoyé : pagehide / beforeunload jamais
+// émis, OOM mobile très probable), on archive : killInfo (timestamp, ageSec, planId, userAgent), les 50 derniers
+// logs de debug.js (en localStorage, ils survivent au crash), les méta-infos du dernier instantané SessionBackups
+// du même plan.
+// IDB `myktamap_crashes` v1, store `crashes`, FIFO 5 entrées. Consultable dans l'inspecteur mémoire (« Derniers
+// crashs » : détails, suppression, rapport texte à partager).
 
 (function() {
   "use strict";
@@ -37,7 +22,7 @@
   const STORE      = "crashes";
   const MAX_KEEP   = 5;
 
-  // ───────── IndexedDB helpers ─────────
+  // ── Helpers IndexedDB ──────────
   function _openDb() {
     return new Promise(function(resolve, reject) {
       let req;
@@ -69,17 +54,14 @@
     });
   }
 
-  // ───────── API ─────────
+  // ── API ──────────
 
-  /**
-   * Sauve un crash report avec collecte automatique de contexte.
-   * @param {Object} killInfo - { ageSec, planId, userAgent } depuis OOMGuard
-   * @returns {Promise<Object|null>} l'entry sauvée ou null si échec
-   */
+  // Sauve un crash avec son contexte. killInfo = { ageSec, planId, userAgent } (OOMGuard) ; rend Promise de l'entrée
+  // sauvée, ou null.
   async function saveCrash(killInfo) {
     if (!killInfo) return null;
 
-    // 1. Logs récents depuis localStorage (debug.js buffer, survit au crash)
+    // 1. Logs récents (buffer debug.js en localStorage).
     let logs = [];
     try {
       const raw = localStorage.getItem("kta_debug_logs");
@@ -91,7 +73,7 @@
       console.warn("[CrashReports] lecture kta_debug_logs échec :", e);
     }
 
-    // 2. Dernier snapshot SessionBackups du même plan
+    // 2. Dernier instantané SessionBackups du même plan.
     let sessionSnap = null;
     try {
       if (window.SessionBackups && typeof window.SessionBackups.listAll === "function" && killInfo.planId) {
@@ -102,7 +84,6 @@
       console.warn("[CrashReports] lecture SessionBackups échec :", e);
     }
 
-    // 3. Build entry
     const now = Date.now();
     const entry = {
       id:         now,
@@ -115,9 +96,7 @@
       },
       appVersion: (window.__MKM__ && window.__MKM__.build) || "?",
       logs:       logs,
-      // Pour le snapshot session, on stocke uniquement les méta-infos (pas le
-      // payload complet qui peut être gros). L'user peut ouvrir le snapshot
-      // depuis Memory Inspector si besoin du contenu réel.
+      // Méta-infos seulement (le payload peut être gros) ; le contenu s'ouvre depuis l'inspecteur mémoire.
       sessionSnapMeta: sessionSnap ? {
         id:        sessionSnap.id,
         createdAt: sessionSnap.createdAt,
@@ -127,7 +106,6 @@
       } : null
     };
 
-    // 4. Write IDB
     try {
       await _withStore("readwrite", function(store) { return store.put(entry); });
     } catch(e) {
@@ -135,7 +113,7 @@
       return null;
     }
 
-    // 5. Enforce FIFO max 5
+    // FIFO : 5 au plus.
     try { await _enforceLimit(); } catch(e) {}
 
     console.warn("[CrashReports] 📋 Crash report archivé (id=" + entry.id +
@@ -144,10 +122,7 @@
     return entry;
   }
 
-  /**
-   * Liste tous les crash reports, triés desc par timestamp.
-   * @returns {Promise<Array>}
-   */
+  // Tous les crashs, par horodatage décroissant (Promise<Array>).
   function listAll() {
     return _withStore("readonly", function(store) {
       return new Promise(function(resolve, reject) {
@@ -165,23 +140,15 @@
     });
   }
 
-  /**
-   * Supprime 1 crash report par id.
-   */
   function remove(id) {
     return _withStore("readwrite", function(store) { store.delete(id); });
   }
 
-  /**
-   * Vide tous les crash reports.
-   */
   function clearAll() {
     return _withStore("readwrite", function(store) { store.clear(); });
   }
 
-  /**
-   * Enforce FIFO : garde les MAX_KEEP plus récents, supprime les autres.
-   */
+  // FIFO : garde les MAX_KEEP plus récents.
   function _enforceLimit() {
     return listAll().then(function(arr) {
       if (arr.length <= MAX_KEEP) return;
@@ -190,9 +157,7 @@
     });
   }
 
-  /**
-   * Formate 1 crash report en texte plain pour copier/coller (Discord, mail).
-   */
+  // Un crash en texte brut, à copier-coller (messagerie, mail).
   function formatReportText(entry) {
     if (!entry) return "";
     const lines = [];
@@ -226,7 +191,7 @@
     return lines.join("\n");
   }
 
-  // ───────── Export ─────────
+  // ── Export ──────────
   window.CrashReports = {
     saveCrash:        saveCrash,
     listAll:          listAll,

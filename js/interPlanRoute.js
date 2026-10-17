@@ -1,55 +1,40 @@
 /*!
- * MyKTAMap — Itinéraire inter-plan (v1.60.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// INTERPLANROUTE.JS — Itinéraire à travers les portails (depuis v1.60.0)
+// INTERPLANROUTE.JS — Itinéraire à travers les portails
 // =========================
-// « Je suis sur le plan A, je veux rejoindre un point du plan B relié par une
-// liaison » → leg A (ma position → point-portail côté A, Dijkstra du plan
-// courant) + traversée (0 m, décision 5:a) + leg B (point-portail côté B →
-// destination, Dijkstra sur les roads du plan B lues À DISTANCE).
-//
-// Décisions KARMA (A6 : 1:c 2:a 3:a 4:a 5:a 6:a) :
-//   - 2 entrées UX : modale Itinéraire (« 🌐 Destination sur un autre plan »)
-//     + recherche multi-plans (bouton 🧭 sur un résultat distant).
-//   - V1 : 1 portail max (plan adjacent). Multi-hop détecté → message
-//     informatif « pas de liaison directe (chemin via <plan> existe) ».
-//   - Plusieurs portails candidats → coût RÉEL comparé (≤ 5 testés, total min).
-//   - Après la traversée : leg B AUTO-TRACÉ à l'arrivée (pendingRoute).
-//   - Évitements : prefs du plan concerné appliquées à chaque leg
-//     (myktamap_route_avoid_<planId> — points + tags + zones par type).
-//   - ⚠️ Distances sommées en MÈTRES (px/scale par plan — les échelles
-//     diffèrent entre plans).
-//
-// GESTION D'ÉCHECS (exigence KARMA « bien gérer les cas impossibles ») —
-// chaque cas a son code + message i18n :
+// « Je suis sur le plan A, je veux rejoindre un point du plan B relié par une liaison » : leg A (ma position →
+// portail côté A, Dijkstra du plan courant) + traversée (0 m) + leg B (portail côté B → destination, Dijkstra sur
+// les roads du plan B lues À DISTANCE).
+//   - Entrées : modale Itinéraire (« Destination sur un autre plan ») + recherche multi-plans (🧭).
+//   - Single-hop par défaut (plan adjacent) ; plusieurs portails candidats → coût RÉEL comparé (≤ 5 testés).
+//     Multi-hop (A→B→C…) en option cochée : graphe de portails (cf. moteur multi-hop).
+//   - Après chaque traversée, le leg suivant est AUTO-TRACÉ à l'arrivée.
+//   - Évitements : préférences du plan concerné à chaque leg (myktamap_route_avoid_<planId>).
+//   - ⚠️ Distances sommées en MÈTRES (px / scale par plan : les échelles diffèrent).
+// Échecs : chaque cas a son code et son message i18n :
 //   NO_PLAN / NO_POS       : pas de plan chargé / pas de position tracker
 //   SAME_PLAN              : destination sur le plan courant (→ itinéraire classique)
 //   NO_LINK                : aucune liaison entre les 2 plans
 //   NO_DIRECT_LINK         : pas de liaison directe mais un chemin multi-plans existe
-//   DATA_UNREACHABLE       : données routing du plan B injoignables (offline)
-//   NO_ROADS_B             : le plan B n'a aucun tracé (pas de réseau)
+//   DATA_UNREACHABLE       : données de routage du plan B injoignables (hors ligne)
+//   NO_ROADS_B             : le plan B n'a aucun tracé
 //   ALL_FAILED             : tous les portails testés échouent (détail A/B)
-//
 // API : window.InterPlanRoute = { computeEtAfficher(dest), onPlanLoaded() }
 //   dest = { planId, planName?, x, y, level?, label? }
-// 100 % local (lecture plans same-origin/IDB déjà couverte par l'audit).
-// =========================
+// 100 % local. Doc : docs/architecture/multilevel-pathfinding.md, docs/ETUDE_GUIDAGE.md.
 
 (function() {
   "use strict";
 
   const MAX_CANDIDATS = 5;
-  // MULTI-HOP (décisions KARMA : 1:a 2:a 3:a 4:a, 5 = opt-in à
-  // cocher dans la recherche multi-plans). Itinéraire via plusieurs plans
-  // (A→B→C…) par Dijkstra sur le GRAPHE DE PORTAILS (nœuds = position,
-  // côtés de portail, destination ; arêtes intra-plan = coût Dijkstra réel
-  // en mètres, traversées = 0 m), avec évaluation PARESSEUSE des arêtes.
+  // Multi-hop (option à cocher dans la recherche multi-plans) : Dijkstra sur le GRAPHE DE PORTAILS (nœuds =
+  // position, côtés de portail, destination ; arêtes intra-plan = coût Dijkstra réel en mètres, traversées = 0 m),
+  // arêtes évaluées PARESSEUSEMENT.
   const MAX_HOPS             = 3;    // traversées max (= 4 plans, aligné BFS)
   const MAX_PORTALS_PER_PAIR = 5;    // portails gardés par frontière de plans
   const MAX_LEGS_COMPUTE     = 60;   // borne dure de Dijkstras intra-plan
@@ -76,9 +61,7 @@
     return (typeof window.formatDistance === "function") ? window.formatDistance(m, 0) : (Math.round(m) + " m");
   }
 
-  // ---------------------------------------------------------------
-  // Prefs d'évitement d'un plan (même clé que la modale Itinéraire)
-  // ---------------------------------------------------------------
+  // ── Préférences d'évitement d'un plan (même clé que la modale Itinéraire) ──────────
   function _avoidPrefs(planId) {
     try {
       const raw = localStorage.getItem("myktamap_route_avoid_" + planId);
@@ -95,11 +78,8 @@
     return { points: [], tags: [], zones: [], radius: 100 };
   }
 
-  // ---------------------------------------------------------------
-  // Méta-graphe des plans (BFS pour le message NO_DIRECT_LINK)
-  // ---------------------------------------------------------------
+  // ── Méta-graphe des plans (BFS pour NO_DIRECT_LINK) ──────────
   function _cheminDePlans(fromId, toId) {
-    // BFS de proche en proche sur les liaisons de chaque plan visité.
     const seen = {};
     const queue = [[fromId]];
     seen[fromId] = true;
@@ -120,17 +100,11 @@
     return null;
   }
 
-  // ---------------------------------------------------------------
-  // MOTEUR MULTI-HOP (graphe de portails, arêtes paresseuses)
-  // ---------------------------------------------------------------
-  // Nœuds : @start (ma position) + chaque CÔTÉ de portail + @dest.
-  // Arêtes : intra-plan (coût = Dijkstra réel en mètres, calculé
-  // PARESSEUSEMENT à l'expansion du nœud + mémoïsé) · traversée (0 m).
-  // Le Dijkstra global couvre AUSSI le cas direct (1 traversée) — quand la
-  // préférence multi-hop est cochée, ce moteur remplace entièrement le
-  // moteur single-hop.
+  // ── Moteur multi-hop (graphe de portails, arêtes paresseuses) ──────────
+  // Nœuds : @start (ma position) + chaque CÔTÉ de portail + @dest. Arêtes : intra-plan (Dijkstra réel en mètres,
+  // calculé à l'expansion du nœud et mémoïsé) · traversée (0 m). Couvre aussi le cas direct : coché, ce moteur
+  // remplace entièrement le single-hop.
 
-  // Adjacence du méta-graphe des plans : { planId: { voisinId: [liaisons] } }
   function _adjacencePlans() {
     const adj = {};
     const links = (window.InterPlanLinks.getAllLinks && window.InterPlanLinks.getAllLinks()) || [];
@@ -158,8 +132,8 @@
     return d;
   }
 
-  // Contexte routing d'un plan (chargé UNE fois par calcul). null = plan
-  // injoignable / sans réseau → écarté du graphe (4:a), consigné dans blocked.
+  // Contexte de routage d'un plan, chargé UNE fois par calcul. null = plan injoignable ou sans réseau → écarté du
+  // graphe, consigné dans blocked.
   async function _ctxPlan(planId, planA, blocked) {
     if (planId === planA) {
       const prefs = _avoidPrefs(planA);
@@ -180,7 +154,7 @@
       blocked.push(plan.name || planId);
       return null;
     }
-    // Évitements du plan distant (mêmes règles que le leg B single-hop)
+    // Évitements du plan distant (mêmes règles que le leg B single-hop).
     const prefs = _avoidPrefs(planId);
     let avoidPts = prefs.points.slice();
     if (prefs.tags.length > 0) {
@@ -206,16 +180,14 @@
     };
   }
 
-  // Un trajet intra-plan entre 2 points (coût en MÈTRES via l'échelle du plan).
-  // `via` optionnel = points de passage OBLIGATOIRES intercalés
-  // (étapes du plan A posées dans la modale Itinéraire, ordre planifié).
+  // Trajet intra-plan entre 2 points (coût en MÈTRES par l'échelle du plan). `via` optionnel = points de passage
+  // OBLIGATOIRES intercalés (étapes du plan A posées dans la modale Itinéraire, ordre planifié).
   function _viaWps(via) {
     return (via || []).map(function(v) {
       return { x: v.x, y: v.y, source: "search", label: v.label || "" };
     });
   }
-  // 🪧 Guidage (01/10/2026) : le trajet à vol d'oiseau jusqu'au tracé est
-  // compté, comme pour un itinéraire classique (décision K, ETUDE_GUIDAGE).
+  // Le trajet à vol d'oiseau jusqu'au tracé est compté, comme pour un itinéraire classique (ETUDE_GUIDAGE décision K).
   function _raccordsM(r, scale) {
     const px = (window.ItiGuidage && typeof window.ItiGuidage.longueurRaccordsPx === "function")
       ? window.ItiGuidage.longueurRaccordsPx(r) : 0;
@@ -234,7 +206,7 @@
       r = window.Pathfinder.computeRouteOnRoads(wps, ctx.roads, {
         zones: ctx.zones, avoidPoints: ctx.avoidPts,
         avoidZonesResolved: ctx.avoidZones, avoidRadius: ctx.radius,
-        echelle: ctx.scale,   // 🪧 carrefours et jonctions mesurés à l'échelle de CE plan
+        echelle: ctx.scale,   // carrefours et jonctions mesurés à l'échelle de CE plan
         profondeurs: ctx.profondeurs
       });
     }
@@ -254,13 +226,13 @@
       throw _err("TOO_FAR", _t("ipr.err.tooFar", { n: MAX_HOPS }));
     }
     const dTo = _bfsProfondeurs(adj, dest.planId);
-    // Plans pertinents = sur AU MOINS un chemin A→dest de longueur ≤ MAX_HOPS
+    // Plans pertinents : sur AU MOINS un chemin A→dest de longueur ≤ MAX_HOPS.
     const keep = {};
     Object.keys(dFrom).forEach(function(p) {
       if (dTo[p] !== undefined && dFrom[p] + dTo[p] <= MAX_HOPS) keep[p] = true;
     });
 
-    // Contextes routing (plans injoignables écartés — 4:a)
+    // Contextes de routage (plans injoignables écartés).
     const blocked = [];
     const ctxs = {};
     const keptIds = Object.keys(keep);
@@ -273,7 +245,7 @@
       throw _err("DATA_UNREACHABLE", _t("ipr.err.dataUnreachable", { plan: dest.planName || dest.planId }));
     }
 
-    // Nœuds : côtés de portail entre plans gardés (cap par frontière)
+    // Nœuds : côtés de portail entre plans gardés (plafond par frontière).
     const nodes = {};
     Object.keys(keep).forEach(function(p) {
       Object.keys(adj[p] || {}).forEach(function(q) {
@@ -294,7 +266,6 @@
     nodes["@start"] = { planId: planA, x: pos.x, y: pos.y, side: null, twinId: null };
     nodes["@dest"]  = { planId: dest.planId, x: dest.x, y: dest.y, side: null, twinId: null };
 
-    // Dijkstra paresseux sur le graphe de portails
     const dist = { "@start": 0 };
     const prev = {};       // nodeId → { from, type: "leg"|"traverse", leg? }
     const done = {};
@@ -310,7 +281,6 @@
       done[u] = true;
       const nu = nodes[u];
 
-      // Traversée du portail (0 m)
       if (nu.twinId && nodes[nu.twinId] && !done[nu.twinId]) {
         if (dist[nu.twinId] === undefined || du < dist[nu.twinId]) {
           dist[nu.twinId] = du;
@@ -318,7 +288,6 @@
         }
       }
 
-      // Arêtes intra-plan (paresseuses) vers les autres nœuds du même plan
       const ctx = ctxs[nu.planId];
       if (!ctx) continue;
       const cibles = Object.keys(nodes);
@@ -328,8 +297,7 @@
         const nv = nodes[v];
         if (nv.planId !== nu.planId) continue;
         if (budgetDepasse) continue;
-        // les arêtes PARTANT du départ passent par les étapes
-        // `via` du plan A (points de passage obligatoires, ordre planifié)
+        // Les arêtes PARTANT du départ passent par les étapes `via` du plan A (ordre planifié).
         const depuisStart = (u === "@start");
         const key = (depuisStart ? "@start|" : "") + nu.planId + "|" +
                     Math.round(nu.x) + "," + Math.round(nu.y) +
@@ -364,7 +332,6 @@
     console.log("[InterPlanRoute] Multi-hop : chemin trouvé (" + Math.round(dist["@dest"]) +
                 " m, " + legsComputed + " Dijkstra(s) intra-plan)");
 
-    // Reconstruction @start → @dest → legs par plan
     const ids = [];
     let cur = "@dest";
     while (cur) { ids.unshift(cur); cur = prev[cur] ? prev[cur].from : null; }
@@ -385,10 +352,8 @@
             fromWp: { x: nFrom.x, y: nFrom.y, source: (ids[i - 1] === "@start") ? "tracker" : "portal", label: fromLabel }
           };
         }
-        // 🪧 Deux morceaux bout à bout sur le même plan : seuls le départ du
-        // premier et l'arrivée du dernier restent (sinon une « arrivée » au
-        // milieu du trajet). Le raccord intermédiaire reste compté dans distM :
-        // cas rare, et le libellé de distance, lui, se relit sur la road.
+        // Deux morceaux bout à bout sur le même plan : seuls le départ du premier et l'arrivée du dernier restent
+        // (pas d'« arrivée » au milieu). Le raccord intermédiaire reste compté dans distM (cas rare).
         const racc = (pr.leg.raccords || []).filter(function(r) {
           return !(curLeg.raccords.length && r.role === "depart");
         });
@@ -403,7 +368,7 @@
         curLeg.toNode = nTo;
         curLeg.toId = ids[i];
       } else {
-        // Traversée : clôt le leg courant, portalOut = côté sortie + entrée suivante
+        // Traversée : clôt le leg courant ; portalOut = côté sortie + entrée suivante.
         const sortie = nFrom.side || {};
         const entree = nTo.side || {};
         curLeg.portalOut = {
@@ -426,8 +391,7 @@
       legs.push(curLeg);
     }
     legs.forEach(function(l) {
-      // le 1er leg (départ tracker) intercale les étapes `via`
-      // dans ses waypoints → l'itinéraire vivant peut les valider une à une.
+      // Le 1er leg (départ tracker) intercale les étapes `via` dans ses waypoints (validées une à une en route).
       const inter = (l.fromWp.source === "tracker") ? _viaWps(via) : [];
       l.waypoints = [l.fromWp].concat(inter).concat([l.toWp]);
       delete l.fromWp; delete l.toWp; delete l.toNode; delete l.toId;
@@ -436,9 +400,7 @@
     return { legs: legs, totalM: dist["@dest"], dest: dest };
   }
 
-  // ---------------------------------------------------------------
-  // CŒUR — calcul du meilleur itinéraire via portail
-  // ---------------------------------------------------------------
+  // ── Cœur : meilleur itinéraire via portail ──────────
   async function _compute(dest, via) {
     const planA = window._currentLoadedPlanId || null;
     if (!planA || !window.PLAN_CONFIG || !window.PLAN_CONFIG.plan) {
@@ -454,14 +416,12 @@
       throw _err("NO_POS", _t("iti.err.trackerPos"));
     }
 
-    // préférence multi-hop cochée → le moteur graphe de portails
-    // remplace ENTIÈREMENT le single-hop (il couvre aussi le cas direct, en
-    // optimal global toutes combinaisons de portails).
+    // Multi-hop coché → le graphe de portails remplace ENTIÈREMENT le single-hop (optimal global, cas direct compris).
     if (_multiHopEnabled()) {
       return await _computeMultiHop(dest, pos, planA, via || []);
     }
 
-    // 1) Portails candidats A ↔ B (registre, snapshots frais grâce à A5)
+    // 1) Portails candidats A ↔ B (registre, snapshots resynchronisés).
     const candidats = [];
     (window.InterPlanLinks.getLinksForPlan(planA) || []).forEach(function(l) {
       if (l.a && l.b && l.a.planId === planA && l.b.planId === dest.planId) {
@@ -472,13 +432,12 @@
     });
 
     if (candidats.length === 0) {
-      // 2:a — 1 hop max en V1, mais on INFORME si un chemin multi-plans existe
+      // Single-hop : on INFORME si un chemin multi-plans existe.
       const chemin = _cheminDePlans(planA, dest.planId);
       if (chemin && chemin.length > 2) {
         const viaId = chemin[1];
         const viaPlan = window.PlanRegistry ? window.PlanRegistry.findById(viaId) : null;
-        // le calcul multi-hop existe désormais — on indique la
-        // case à cocher (recherche multi-plans) au lieu d'un simple constat.
+        // Le message indique la case multi-hop à cocher (recherche multi-plans).
         throw _err("NO_DIRECT_LINK", _t("ipr.err.noDirectLink", {
           plan: dest.planName || dest.planId,
           via: (viaPlan && viaPlan.name) || viaId
@@ -487,7 +446,7 @@
       throw _err("NO_LINK", _t("ipr.err.noLink", { plan: dest.planName || dest.planId }));
     }
 
-    // Tri par distance euclidienne départ → portail (les MAX_CANDIDATS plus proches)
+    // Tri par distance euclidienne départ → portail (les MAX_CANDIDATS plus proches).
     candidats.sort(function(c1, c2) {
       const d1 = Math.hypot(c1.sortieA.x - pos.x, c1.sortieA.y - pos.y);
       const d2 = Math.hypot(c2.sortieA.x - pos.x, c2.sortieA.y - pos.y);
@@ -495,7 +454,7 @@
     });
     const testes = candidats.slice(0, MAX_CANDIDATS);
 
-    // 2) Données routing du plan B (roads + zones + scale) — lues à distance
+    // 2) Routage du plan B (roads + zones + scale), lu à distance.
     const planB = window.PlanRegistry ? window.PlanRegistry.findById(dest.planId) : null;
     if (!planB) throw _err("NO_LINK", _t("ipl.err.planAbsent", { plan: dest.planName || dest.planId }));
     const statsB = {};
@@ -507,9 +466,8 @@
       throw _err("NO_ROADS_B", _t("ipr.err.noRoadsB", { plan: planB.name || planB.id }));
     }
 
-    // 3) Évitements par plan (6:a) — leg A : prefs du plan courant (via
-    // computeRoute qui résout aussi les avoidTags) ; leg B : prefs du plan B,
-    // résolues ICI (tags → points du plan B, types de zones → zones objets).
+    // 3) Évitements par plan : leg A → préférences du plan courant (computeRoute résout les avoidTags) ; leg B →
+    // préférences du plan B résolues ICI (tags → points du plan B, types de zones → zones).
     const prefsA = _avoidPrefs(planA);
     const prefsB = _avoidPrefs(dest.planId);
     let avoidPtsB = prefsB.points.slice();
@@ -530,7 +488,7 @@
     const scaleA = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
     const scaleB = (routingB.scale && routingB.scale > 0) ? routingB.scale : 1;
 
-    // 4) Coût réel par candidat (3:a) — meilleur total en MÈTRES
+    // 4) Coût réel par candidat : meilleur total en MÈTRES.
     let best = null;
     const echecs = [];
     for (let i = 0; i < testes.length; i++) {
@@ -538,7 +496,7 @@
       const nomPortail = c.sortieA.pointNom || c.sortieA.pointId || (c.sortieA.x + "," + c.sortieA.y);
       let legA = null, legB = null;
       try {
-        // étapes `via` du plan A intercalées (ordre planifié)
+        // Étapes `via` du plan A intercalées (ordre planifié).
         legA = await window.Pathfinder.computeRoute(
           [{ x: pos.x, y: pos.y, source: "tracker", label: _t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) }) }]
             .concat(_viaWps(via))
@@ -556,7 +514,7 @@
           routingB.roads,
           { zones: routingB.zones, avoidPoints: avoidPtsB,
             avoidZonesResolved: avoidZonesB, avoidRadius: prefsB.radius,
-            echelle: scaleB,   // 🪧 carrefours et jonctions mesurés à l'échelle du plan B
+            echelle: scaleB,   // carrefours et jonctions mesurés à l'échelle du plan B
             profondeurs: routingB.profondeurs || {} });
       } catch(eB) {
         echecs.push({ portail: nomPortail, cote: "B", msg: eB.message || String(eB) });
@@ -587,23 +545,18 @@
     return best;
   }
 
-  // ---------------------------------------------------------------
-  // RENDU — chaîne de legs (🌀 v1.64.0 : généralisé multi-hop)
-  // ---------------------------------------------------------------
-  // _pendingChain = FILE des legs restants après le leg courant (RAM only).
-  // Chaque leg : { planId, planName, path, distM, waypoints, portalOut }
-  // portalOut = { nom, entree: {planId, planName, x, y, level, tag, pointNom} }
-  // (null sur le dernier leg = destination atteinte).
+  // ── Rendu : chaîne de legs ──────────
+  // _pendingChain = FILE des legs restants après le leg courant (RAM seulement).
+  // Leg : { planId, planName, path, distM, waypoints, portalOut } ; portalOut = { nom, entree: {planId, planName,
+  // x, y, level, tag, pointNom} } (null sur le dernier leg = destination atteinte).
   let _pendingChain = null;
-  // (KARMA « prendre le portail n'a pas de sens, on n'est pas à
-  // côté ») : le portail de SORTIE du plan courant, armé par « C'est parti »
-  // et à chaque arrivée intermédiaire. Sert à re-proposer la traversée quand
-  // l'user est physiquement au portail (« 📍 Je suis ici » sur le point).
+  // Portail de SORTIE du plan courant, armé par « C'est parti » et à chaque arrivée intermédiaire : la traversée
+  // est reproposée quand l'utilisateur est physiquement au portail (« Je suis ici » sur le point), pas avant.
   // { planId, sortie:{x,y}, portalOut, nextDistM }
   let _currentPortalOut = null;
 
-  // Croisements que le guidage annoncera sur une étape : un carrefour isolé,
-  // ou une zone de carrefours (membres qui partagent le même centre) = UN.
+  // Croisements annoncés par le guidage sur une étape : un carrefour isolé, ou une zone de carrefours (même
+  // centre) = UN.
   function _nbCroisements(carrefours) {
     const vus = {};
     let n = 0;
@@ -615,10 +568,8 @@
     return n;
   }
 
-  // `leg` porte aussi `raccords` / `carrefours` : le guidage
-  // annonce les croisements, le pointillé jusqu'au tracé est dessiné et compté.
-  // `suivants` = étapes des plans d'après : résumées sur la road (`suite`) pour
-  // que la feuille de route dise ce qui attend après le portail.
+  // `leg` porte `raccords` / `carrefours` (croisements annoncés, pointillé jusqu'au tracé dessiné et compté).
+  // `suivants` = étapes des plans d'après, résumées sur la road (`suite`) pour la feuille de route.
   function _tracerItinerary(leg, suivants) {
     if (!window.getRoads || !window.setRoads) return;
     const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
@@ -639,10 +590,8 @@
     window.setRoads(roads);
   }
 
-  // Adapte le résultat single-hop historique (préférence multi-hop OFF) au
-  // format chaîne — UN SEUL renderer/consommateur pour les deux moteurs.
-  // `via` = étapes du plan A, intercalées dans les waypoints du
-  // leg 0 (→ validation d'étapes par l'itinéraire vivant).
+  // Adapte le résultat single-hop au format chaîne : UN SEUL rendu pour les deux moteurs. `via` = étapes du plan A,
+  // intercalées dans les waypoints du leg 0.
   function _chainDepuisSingleHop(res, via) {
     const planA = window._currentLoadedPlanId;
     const nomA = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || planA;
@@ -681,8 +630,7 @@
     };
   }
 
-  // Arme le portail de sortie du plan courant (invite flottante + re-proposition
-  // au « je suis ici » sur le point-portail)
+  // Arme le portail de sortie du plan courant (invite flottante + « Je suis ici » sur le point-portail).
   function _armerPortailCourant(leg, nextDistM) {
     if (!leg || !leg.portalOut) { _currentPortalOut = null; return; }
     _currentPortalOut = {
@@ -694,7 +642,7 @@
     _afficherProchainPortail(leg.portalOut, _currentPortalOut.nextDistM);
   }
 
-  // Prend le prochain portail de la chaîne : goTo + recale (traversée physique)
+  // Prend le prochain portail : goTo + recalage (traversée physique).
   function _prendrePortail(portalOut) {
     _retirerProchainPortail();
     _currentPortalOut = null;
@@ -706,9 +654,8 @@
     }, { confirm: false, recalerTracker: true });   // traversée physique → tracker recalé
   }
 
-  // (3:a) — invite flottante « Portail suivant » après chaque
-  // arrivée intermédiaire (au-dessus du bouton ↩️ Retour, pas de timer :
-  // une navigation est en cours, l'invite reste jusqu'au clic ou ✕).
+  // Invite flottante « Portail suivant » après chaque arrivée intermédiaire (au-dessus du bouton ↩️ Retour), sans
+  // minuterie : une navigation est en cours, l'invite reste jusqu'au clic ou ✕.
   function _afficherProchainPortail(portalOut, distNextM) {
     _retirerProchainPortail();
     const div = document.createElement("div");
@@ -731,7 +678,7 @@
   }
 
   function _afficherResume(chain) {
-    // Étapes : Rejoindre portail (step1) · Traverser (step2) · … · Destination (step3)
+    // Étapes : rejoindre le portail · traverser · … · destination.
     let num = 0;
     const CERCLES = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
     function _cercle() { return CERCLES[num++] || "•"; }
@@ -774,21 +721,17 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
     document.getElementById("kta-ipr-take").addEventListener("click", function() {
       overlay.remove();
-      // PLUS de téléportation au calcul — le leg A est
-      // tracé, la file est armée, et l'user MARCHE. La traversée se fait
-      // quand il est au portail : invite flottante « 🌀 Portail suivant »
-      // (persistante, fermable), bouton ➜ du popup du point-portail, ou
-      // « 📍 Je suis ici » sur le point-portail qui re-propose l'invite.
+      // Pas de téléportation au calcul : le leg A est tracé, la file armée, l'utilisateur MARCHE. La traversée se
+      // fait au portail : invite « Portail suivant », bouton ➜ du popup du point-portail, ou « Je suis ici ».
       _pendingChain = chain.legs.slice(1);
       _armerPortailCourant(chain.legs[0], chain.legs[1] ? chain.legs[1].distM : 0);
     });
   }
 
-  // Entrée principale : calcule (spinner) puis affiche. Les erreurs codées
-  // sortent en modale d'information claire (exigence KARMA).
+  // Entrée principale : calcul (spinner) puis affichage ; les erreurs codées sortent en modale d'information.
   async function computeEtAfficher(dest, opts) {
     opts = opts || {};
-    // étapes du plan A à visiter AVANT le portail (modale Itinéraire)
+    // Étapes du plan A à visiter AVANT le portail (modale Itinéraire).
     const via = Array.isArray(opts.viaWaypoints) ? opts.viaWaypoints : [];
     let res;
     try {
@@ -800,13 +743,12 @@
       _afficherErreur(e);
       return;
     }
-    // format unique « chaîne de legs » (le single-hop est adapté)
+    // Format unique « chaîne de legs » (le single-hop est adapté).
     const chain = res.legs ? res : _chainDepuisSingleHop(res, via);
     _pendingChain = null;          // reset d'une éventuelle navigation précédente
     _currentPortalOut = null;
     _retirerProchainPortail();
-    // Trace le 1er leg (remplace l'itinéraire actif — même sémantique que
-    // « Y aller ») + flash sur le portail à rejoindre.
+    // 1er leg tracé (remplace l'itinéraire actif, comme « Y aller ») + flash sur le portail à rejoindre.
     const leg0 = chain.legs[0];
     _tracerItinerary(leg0, chain.legs.slice(1));
     try {
@@ -839,14 +781,10 @@
     console.warn("[InterPlanRoute] " + (e.code || "ERR") + " :", e.message);
   }
 
-  // ---------------------------------------------------------------
-  // Consommation de la CHAÎNE à chaque arrivée de portail (4:a + 🌀 v1.64.0)
-  // ---------------------------------------------------------------
-  // Appelé par main.js (fin de lancerApplication). Différé APRÈS le restore
-  // de session (qui ÉCRASE les roads) — même fenêtre que la triple passe de
-  // navigation (~2.6 s) + petite marge. À chaque plan atteint : le leg de CE
-  // plan est tracé, puis s'il reste des plans à traverser, l'invite
-  // « 🌀 Portail suivant » est proposée (3:a — zéro ressaisie).
+  // ── Consommation de la chaîne à chaque arrivée de portail ──────────
+  // Appelé par main.js (fin de lancerApplication), différé APRÈS le restore de session (qui ÉCRASE les roads) :
+  // même fenêtre que la triple passe de navigation (~2,6 s) + marge. Le leg de CE plan est tracé, puis l'invite
+  // « Portail suivant » est proposée s'il reste des plans (zéro ressaisie).
   function onPlanLoaded() {
     _retirerProchainPortail();   // invite du plan précédent obsolète
     if (!_pendingChain || _pendingChain.length === 0) return;
@@ -872,9 +810,8 @@
     }, 3000);
   }
 
-  // (2:a) — « 📍 Je suis ici » sur le point-portail de sortie du
-  // plan courant → re-propose la traversée (l'invite a pu être fermée).
-  // Appelé par tracking.js > _notifierRecalage, après le hook itinéraire.
+  // « Je suis ici » sur le point-portail de sortie → traversée reproposée (l'invite a pu être fermée). Appelé par
+  // tracking.js > _notifierRecalage, après le hook itinéraire.
   function onTrackerRecale(x, y, source) {
     if (source !== "point" || !_currentPortalOut) return;
     if ((window._currentLoadedPlanId || null) !== _currentPortalOut.planId) return;
@@ -884,28 +821,18 @@
     }
   }
 
-  // (audit « fermetures à la sortie du plan ») — purge de l'invite
-  // « Portail suivant ». contexte :
-  //   "home"   : sortie vers le HOME → invite retirée + CHAÎNE abandonnée
-  //              (_pendingChain/_currentPortalOut) — partir au home rompt la
-  //              navigation en cours (cohérent avec la pile de retour v1.58.1).
-  //   "switch" : changement de plan → invite retirée + portail courant
-  //              désarmé (ils appartiennent à l'ANCIEN plan) ; la CHAÎNE est
-  //              CONSERVÉE — c'est elle qui permet aux traversées goTo de
-  //              tracer le leg suivant à l'arrivée (onPlanLoaded la consomme
-  //              et ré-arme l'invite si le plan correspond).
+  // Purge de l'invite « Portail suivant » à la sortie du plan. contexte :
+  //   "home"   : retour à l'accueil → invite retirée + CHAÎNE abandonnée (_pendingChain / _currentPortalOut).
+  //   "switch" : changement de plan → invite retirée + portail courant désarmé (ANCIEN plan) ; la CHAÎNE est
+  //              conservée pour que les traversées goTo tracent le leg suivant (onPlanLoaded la consomme).
   function onPlanExit(contexte) {
     _retirerProchainPortail();
     _currentPortalOut = null;
     if (contexte === "home") { _pendingChain = null; return; }
-    // la suite n'était jamais abandonnée sur un
-    // switch : ouvrir le plan suivant par le sélecteur (sans prendre le
-    // portail) y traçait l'étape, écrasait l'itinéraire de ce plan et
-    // l'enregistrait dans sa session. On ne la poursuit plus que si :
+    // 🩸 La suite n'est poursuivie QUE si :
     //   • on part par une traversée PHYSIQUE (goTo recalerTracker) ;
-    //   • l'itinéraire du plan quitté n'a pas été REMPLACÉ par un autre — tant
-    //     que la chaîne court, le sien porte `suite` (gardée par la coupe et
-    //     la replanification). Absent, il a été clôturé au portail : normal.
+    //   • l'itinéraire du plan quitté n'a pas été REMPLACÉ (tant que la chaîne court, le sien porte `suite`).
+    // Sinon, ouvrir le plan suivant par le sélecteur y tracerait l'étape et écraserait l'itinéraire de ce plan.
     if (_pendingChain && _pendingChain.length) {
       const traverse = !!(window.InterPlanLinks &&
         typeof window.InterPlanLinks.traverseePhysiqueEnCours === "function" &&
@@ -920,8 +847,7 @@
     }
   }
 
-  // L'utilisateur supprime l'itinéraire (« 🗑️ Supprimer » / « ❌ Effacer ») :
-  // la suite sur les autres plans part avec lui.
+  // L'utilisateur supprime l'itinéraire (« Supprimer » / « Effacer ») : la suite sur les autres plans part avec lui.
   function abandonnerSuite() {
     if (_pendingChain) console.log("[InterPlanRoute] Suite abandonnée (itinéraire supprimé)");
     _pendingChain = null;
@@ -935,7 +861,7 @@
     onPlanLoaded:        onPlanLoaded,
     onTrackerRecale:     onTrackerRecale,
     onPlanExit:          onPlanExit,   // purge invite sortie/switch
-    // préférence multi-hop (case à cocher recherche multi-plans)
+    // Préférence multi-hop (case de la recherche multi-plans).
     isMultiHopEnabled:   _multiHopEnabled,
     setMultiHopEnabled:  _setMultiHopEnabled
   };

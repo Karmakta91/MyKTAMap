@@ -5,47 +5,29 @@
  */
 
 // =========================
-// INCOGNITO MODE — v1.31.8 F2
+// INCOGNITOMODE.JS — Mode incognito (aucune trace écrite)
 // =========================
-//
-// Active si URL contient ?incognito=1 (ou si window._kta_incognito = true
-// posé par un test). Quand actif, tout write vers localStorage / sessionStorage
-// est in-memory uniquement (Map vivante jusqu'au unload), et tout write IDB
-// (put / add / delete / clear) est silencieusement no-opé.
-//
-// Pourquoi cette stratégie :
-//   - L'utilisateur veut explorer un plan sans laisser de trace (session prêtée
-//     à un tiers, démo publique, plan sensible). Pattern : "navigation privée"
-//     du navigateur, mais limité à MyKTAMap.
-//   - On veut RIEN écrire de nouveau, MAIS on doit pouvoir LIRE l'existant
-//     (sinon les plans selfhost déjà importés, les préférences thème, etc.
-//     deviennent inaccessibles → app cassée).
-//   - Solution : intercepte les écritures (set + IDB writes), laisse les
-//     lectures intactes. Au unload du tab, la Map in-memory disparaît.
-//
-// Limites assumées :
-//   - Si un module legacy écrit DIRECTEMENT dans une référence Storage
-//     pré-capturée (rare, anti-pattern), le shim ne le voit pas.
-//   - Le cache Service Worker (assets statiques) reste actif — c'est OK,
-//     ce sont des fichiers app non identifiants.
-//   - Les cookies httpOnly serveur, hors scope (myktamap.fr n'en pose pas).
-//
-// API publique :
-//   window.IncognitoMode = {
-//     active:  true | false,    // état au boot, lecture seule
-//     isActive: function() { ... } // le même état, pour les appelants
-//     launch: function() { ... } // ouvre nouvelle fenêtre ?incognito=1
-//   }
-//
-// Charger SYNC TOUT EN HAUT de index.html (avant tout autre module qui
-// pourrait écrire en storage). Ordre : copyright → incognitoMode → autres.
+// Actif si l'URL contient ?incognito=1 (ou window._kta_incognito = true posé par un test). Alors toute écriture
+// localStorage / sessionStorage reste EN MÉMOIRE (Map vivante jusqu'au unload) et toute écriture IDB (put / add /
+// delete / clear) est un no-op silencieux.
+// Pourquoi : explorer un plan sans laisser de trace (appareil prêté, démo, plan sensible), comme la navigation
+// privée mais limité à MyKTAMap. 🔒 Rien de NOUVEAU n'est écrit, mais l'existant doit rester LISIBLE pour les
+// clés nécessaires (plans selfhost importés, déverrouillage) : on intercepte les écritures, pas les lectures IDB.
+// Limites assumées : un module qui écrirait dans une référence Storage pré-capturée échappe au shim ; le cache SW
+// (fichiers de l'app, non identifiants) reste actif ; cookies httpOnly hors périmètre (myktamap.fr n'en pose pas).
+// API : window.IncognitoMode = {
+//   active:   true | false,          // état au démarrage, lecture seule
+//   isActive: function() { ... },    // le même état, pour les appelants
+//   launch:   function() { ... }     // ouvre une nouvelle fenêtre ?incognito=1
+// }
+// ⚠️ Chargé SYNCHRONE TOUT EN HAUT de index.html (copyright → incognitoMode → autres), avant tout module qui
+// écrit en storage. Garde-fou : check-gate-instance.js (whitelist de lecture disque).
 
 (function() {
   "use strict";
 
   var URL_PARAM = "incognito";
 
-  // Détection robuste : query string OR override test global
   function _detect() {
     if (typeof window._kta_incognito === "boolean") return window._kta_incognito;
     try {
@@ -58,35 +40,24 @@
 
   var ACTIVE = _detect();
 
-  // -----------------------------------------------------------------------
-  // API publique (toujours posée — même si pas actif, pour que le bouton
-  // "🕵️ Démarrer mode incognito" dans Réglages puisse appeler .launch())
-  // -----------------------------------------------------------------------
+  // ── API publique (posée même inactive : le bouton des Réglages appelle .launch()) ──────────
   window.IncognitoMode = {
     active: ACTIVE,
-    // 🩸 la Vue OSM, son widget, le Mode Secours et la réparation
-    // du cache appelaient `isActive()`, qui n'existait pas : l'incognito ne les
-    // coupait PAS, contrairement à la doc. La fonction rend l'état du boot.
+    // 🩸 Vue OSM, son widget, Mode Secours et réparation du cache appellent `isActive()` : sans elle l'incognito
+    // ne les couperait pas. Rend l'état du démarrage.
     isActive: function() { return ACTIVE; },
-    // Sur une INSTALLATION RELIÉE (connexion serveur configurée), l'incognito n'a pas de sens :
-    // ce qu'on fait est synchronisé et noté par le serveur (annotations, position partagée, connexion), et le
-    // coffre chiffré / les plans gardés hors ligne ont besoin d'IndexedDB, que ce mode bloque. Rend vrai dès que
-    // l'état de connexion n'est ni « off » ni « invalide ». Lu à l'appel (ktaExtensions se charge après ce module).
+    // Sur une INSTALLATION RELIÉE (connexion serveur configurée), l'incognito n'a pas de sens : tout est synchronisé
+    // et noté par le serveur, et le coffre chiffré / les plans hors ligne ont besoin d'IndexedDB, que ce mode bloque.
+    // Vrai dès que l'état de connexion n'est ni « off » ni « invalide ». Lu à l'appel (ktaExtensions se charge après).
     indisponible: function() {
       try {
         var e = window.KtaExtensions && typeof window.KtaExtensions.etat === "function" ? window.KtaExtensions.etat().etat : "off";
         return e !== "off" && e !== "invalide";
       } catch (err) { return false; }
     },
-    // Ouvre une nouvelle fenêtre dans le même origin avec ?incognito=1.
-    // Conserve les autres params (ex: ?selfhost=…) pour le workflow combiné.
-    //
-    // flush SessionPersist AVANT le launch pour que la
-    // session courante de la fenêtre principale soit garantie persistée
-    // sur disque. Cas piégeux : l'user travaille, clique "Démarrer
-    // incognito", la fenêtre principale crash/se ferme avant le prochain
-    // tick auto-save → perte de la dernière modif. Le force:true bypass
-    // le throttle "main thread busy".
+    // Nouvelle fenêtre de même origine avec ?incognito=1, autres paramètres conservés (?selfhost=…).
+    // 🩸 SessionPersist est vidé (force:true, contourne le throttle) AVANT : si la fenêtre principale se ferme avant
+    // le prochain auto-save, la dernière modification serait perdue.
     launch: function() {
       if (window.IncognitoMode.indisponible()) {
         console.warn("[Incognito] indisponible sur une installation reliée");
@@ -102,36 +73,25 @@
         url.searchParams.set(URL_PARAM, "1");
         window.open(url.toString(), "_blank", "noopener");
       } catch (e) {
-        // Fallback (URL constructor indispo très ancien browser)
+        // Repli sans constructeur URL (très vieux navigateur).
         var sep = window.location.search ? "&" : "?";
         window.open(window.location.pathname + window.location.search + sep + URL_PARAM + "=1", "_blank", "noopener");
       }
     },
-    // garde-fou de confirmation AVANT launch. Affiche une
-    // modale charte (pattern modale "Mise à jour disponible") avec
-    // description + risques + boutons Annuler/Activer. Si confirmé →
-    // appelle launch() (qui flush SessionPersist + ouvre nouvelle fenêtre).
-    // Si annulé → no-op.
-    //
-    // En mode incognito DÉJÀ actif : on bypass la modale et on relance
-    // direct (cas légitime : tester depuis un état "frais", l'user sait
-    // déjà ce qu'est le mode incognito).
+    // Confirmation AVANT launch : modale charte (description, risques, Annuler / Activer) ; confirmé → launch().
+    // Déjà en incognito : relance directe, sans modale.
     confirmAndLaunch: function() {
       if (window.IncognitoMode.indisponible()) return;   // installation reliée : cf indisponible()
       if (ACTIVE) {
-        // Déjà en incognito → bypass confirm (cas légitime)
         window.IncognitoMode.launch();
         return;
       }
-      // Évite double-injection si déjà ouverte
       if (document.getElementById("kta-incognito-confirm-modal")) return;
 
       var modal = document.createElement("div");
       modal.id = "kta-incognito-confirm-modal";
       modal.className = "kta-readme-modal-overlay";
-      // HTML inspiré de afficherModaleUpdateDispo (interfaceAlerts.js)
-      // pour cohérence visuelle. Couleurs adaptées : violet/lavande pour
-      // l'incognito (vs ambre pour update).
+      // Même gabarit que afficherModaleUpdateDispo (interfaceAlerts.js), teintes violet/lavande.
       var t = window.I18n.t;
       modal.innerHTML =
         '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
@@ -187,14 +147,12 @@
       document.getElementById("kta-incog-confirm-cancel").addEventListener("click", _fermer);
       document.getElementById("kta-incog-confirm-accept").addEventListener("click", function() {
         _fermer();
-        // Appelle launch() qui flush SessionPersist + ouvre nouvelle fenêtre
         window.IncognitoMode.launch();
       });
-      // Clic backdrop = cancel (équivalent Annuler)
+      // Clic sur le fond = Annuler.
       modal.addEventListener("click", function(e) {
         if (e.target === modal) _fermer();
       });
-      // Escape ferme la modale (cohérent autres modales projet)
       document.addEventListener("keydown", function _onEsc(e) {
         if (e.key === "Escape" && document.getElementById("kta-incognito-confirm-modal")) {
           _fermer();
@@ -203,34 +161,25 @@
       });
     },
 
-    // quitter le mode incognito DEPUIS UN ONGLET INCOGNITO.
-    // Stratégie en cascade :
-    //   1. window.close() — marche uniquement si l'onglet a été ouvert par
-    //      script (launch() ci-dessus). Le browser BLOQUE silencieusement
-    //      les close() sur onglets ouverts manuellement par l'user.
-    //   2. Fallback : navigate vers la même URL SANS ?incognito=1. Reload
-    //      dans le tab courant en mode normal. L'user retrouve son contexte
-    //      mais perd les données in-memory de la session incognito.
-    // Si appelé hors d'un onglet incognito (= !ACTIVE), c'est un no-op
-    // (cas défensif : un module qui appellerait quit() par erreur).
+    // Quitter le mode DEPUIS UN ONGLET INCOGNITO, en cascade :
+    //   1. window.close() : ne marche que pour un onglet ouvert par script (launch()) ; le navigateur bloque en
+    //      silence les autres ;
+    //   2. repli : même URL SANS ?incognito=1 dans l'onglet courant (les données en mémoire sont perdues).
+    // Hors incognito (!ACTIVE) : no-op défensif.
     quit: function() {
       if (!ACTIVE) return;
-      // Tentative 1 : close
       try {
         window.close();
       } catch (_) {}
-      // Tentative 2 (après court délai pour laisser close() prendre effet) :
-      // si l'onglet est toujours là, on navigue en mode normal. Le browser
-      // n'a pas bloqué close → ce setTimeout ne fera juste rien (le contexte
-      // JS est déjà détruit).
+      // 2. Après un court délai : si l'onglet est encore là, navigation en mode normal (sinon le contexte JS est
+      // déjà détruit et rien ne se passe).
       setTimeout(function() {
         try {
           var url = new URL(window.location.href);
           url.searchParams["delete"](URL_PARAM);
-          // location.assign (pas replace) pour que le back permette retour à incognito
+          // assign (pas replace) : le bouton Retour ramène à l'incognito.
           window.location.assign(url.toString());
         } catch (e) {
-          // Fallback ultra-vieux browser
           window.location.href = window.location.pathname;
         }
       }, 100);
@@ -239,17 +188,14 @@
 
   if (!ACTIVE) return;
 
-  // -----------------------------------------------------------------------
-  // ACTIF — installation des shims
-  // -----------------------------------------------------------------------
+  // ── Actif : installation des shims ──────────
   console.warn(
     "%c🕵️ [IncognitoMode] ACTIF",
     "color:#a78bfa;font-weight:bold;font-size:13px;",
     "— localStorage + IndexedDB en mode in-memory. Aucune trace d'activité persistée (langue d'interface conservée)."
   );
 
-  // 1️⃣ Marker CSS sur <html> (la racine, pour que les sélecteurs body./html.
-  //    fonctionnent dès l'analyse du DOM même avant l'apparition de <body>)
+  // 1. Marqueur CSS sur <html> (la racine : sélecteurs valables avant l'apparition de <body>).
   function _markDom() {
     try { document.documentElement.classList.add("kta-incognito"); } catch (_) {}
   }
@@ -259,15 +205,12 @@
     document.addEventListener("DOMContentLoaded", _markDom);
   }
 
-  // 2️⃣ Shim Storage.prototype (localStorage + sessionStorage partagent la même prototype).
-  //    Pourquoi in-memory et pas pure no-op : un module qui set("k","v") puis
-  //    get("k") attend de retrouver "v". Sinon faux négatifs partout (ex: pref
-  //    thème mise à jour qui ne se relit pas, écouteurs visibility cassés).
-  //    Au unload : la Map disparaît avec le JS context → reload propre.
+  // 2. Shim Storage.prototype (localStorage et sessionStorage partagent le prototype).
+  //    En mémoire plutôt que no-op : un module qui set("k","v") puis get("k") attend "v" (sinon faux négatifs
+  //    partout). La Map disparaît avec le contexte JS au unload.
   try {
     var _memStorage = new Map();
 
-    // Sauvegarde référence aux originaux (pour debug / inspection runtime)
     var _origStorage = {
       setItem:    Storage.prototype.setItem,
       getItem:    Storage.prototype.getItem,
@@ -276,11 +219,8 @@
       key:        Storage.prototype.key
     };
 
-    // whitelist d'ÉCRITURE disque (write-through). La langue
-    // d'interface n'est PAS une trace d'activité privée mais une préférence
-    // d'affichage → KARMA veut qu'elle survive au relancement incognito. On
-    // l'écrit donc AUSSI sur le vrai disque (en plus du shim mémoire). À garder
-    // MINIMAL : seules des prefs UI non-sensibles ont le droit de persister.
+    // Écriture disque (write-through) autorisée pour des préférences d'affichage NON sensibles seulement (la
+    // langue survit au relancement, décision produit). À garder MINIMAL.
     var WRITE_DISK_WHITELIST = {
       "myktamap_app_lang": 1
     };
@@ -288,52 +228,38 @@
     Storage.prototype.setItem = function(k, v) {
       var key = String(k);
       _memStorage.set(key, String(v));
-      // Par défaut : PAS d'appel à _origStorage.setItem → bypass écriture disque.
-      // Exception write-through : prefs UI whitelistées (langue) persistées disque.
+      // Pas d'appel à _origStorage.setItem (pas d'écriture disque), sauf préférences whitelistées.
       if (WRITE_DISK_WHITELIST[key]) {
         try { _origStorage.setItem.call(this, key, String(v)); } catch (e) {}
       }
     };
 
-    // whitelist clés autorisées en READ disque (writes
-    // restent shimés en in-memory). Pour KARMA : on veut que la barrière
-    // UnlockGate community continue de "valider quand même le mdp" sans
-    // forcer l'user à re-saisir à chaque ouverture incognito. Le compteur
-    // de tentatives échouées est aussi whitelisté pour ne pas casser
-    // l'anti-bruteforce cross-fenêtre (sinon attaque par boucle de tabs).
+    // 🔒 Clés relues sur le DISQUE (les écritures restent en mémoire) : le déverrouillage de l'instance n'est pas
+    // redemandé à chaque ouverture incognito, et le compteur d'échecs reste partagé (sinon brute-force par
+    // boucle d'onglets).
     var READ_DISK_WHITELIST = {
       "myktamap_unlock_v1":          1, // UnlockGate — hash mdp community validé
-      // MÉMOIRE DU DÉVERROUILLAGE PAR MOT DE PASSE
-      // D'INSTANCE (v1.90.6). Sans elle en lecture disque, `isUnlocked()` en
-      // incognito lit bien le hash accepté (`myktamap_unlock_v1`, whitelisté)
-      // mais PAS cette mémoire → son test `v && k && v === k` échoue → la gate
-      // se réaffiche sur une instance à `accessHash`, forçant la re-saisie.
-      // Parité exacte avec le déverrouillage communautaire déjà hérité ci-dessus.
+      // Mémoire du déverrouillage par mot de passe d'INSTANCE : sans elle, `isUnlocked()` lit le hash accepté
+      // (`myktamap_unlock_v1`) mais pas cette mémoire, son test `v && k && v === k` échoue et la gate se
+      // réaffiche sur une instance à `accessHash`.
       "myktamap_unlock_instance_v1": 1, // UnlockGate — hash mdp d'instance validé
       "myktamap_unlock_attempts": 1, // UnlockGate — compteur tentatives échouées
       "myktamap_app_lang":        1  // langue d'interface :
-      // persiste en incognito (lue au boot + write-through ci-dessus). Préférence
-      // d'affichage non-sensible, pas une trace d'activité. Le thème, lui, reste
-      // oublié (pas whitelisté) — seule la langue est l'exception demandée.
+      // Préférence d'affichage non sensible (lue au démarrage + write-through). Le thème, lui, est oublié.
     };
 
     Storage.prototype.getItem = function(k) {
       var key = String(k);
-      // 1. Si on a écrit en in-memory, retourne la valeur in-memory (priorité)
+      // 1. Valeur écrite en mémoire : prioritaire.
       if (_memStorage.has(key)) return _memStorage.get(key);
-      // 2. Si clé whitelistée → on lit le disque réel (UX critique)
+      // 2. Clé whitelistée : disque réel.
       if (READ_DISK_WHITELIST[key]) {
         try {
           return _origStorage.getItem.call(this, key);
         } catch (e) { return null; }
       }
-      // 3. Sinon : null. On NE LIT PAS l'existant disque pour ne pas
-      //    permettre à un module de "récupérer" des données pré-incognito
-      //    (sinon l'incognito devient un demi-mesure : on lit l'historique).
-      //    Conséquence : la préférence de THÈME se résette au boot incognito
-      //    (cohérent avec le pattern navigation privée). La LANGUE, elle, est
-      //    whitelistée (lue ici depuis le disque) + write-through → elle persiste
-      //    (exception assumée v1.46.4 : préférence d'affichage non-sensible).
+      // 3. Sinon null : on NE LIT PAS l'existant disque (sinon un module récupérerait l'historique et l'incognito
+      //    ne serait qu'une demi-mesure). Le thème repart du défaut ; la langue est l'exception (whitelist).
       return null;
     };
 
@@ -350,30 +276,26 @@
       return (i >= 0 && i < keys.length) ? keys[i] : null;
     };
 
-    // length est un GETTER sur Storage.prototype — defineProperty requis
+    // `length` est un GETTER de Storage.prototype : defineProperty requis.
     Object.defineProperty(Storage.prototype, "length", {
       get: function() { return _memStorage.size; },
       configurable: true
     });
 
-    // Expose pour debug (impossible d'inspecter via DevTools sinon)
+    // Exposé pour le debug (invisible dans DevTools sinon).
     window.IncognitoMode._memStorage = _memStorage;
     window.IncognitoMode._origStorage = _origStorage;
   } catch (e) {
     console.warn("🕵️ [IncognitoMode] Impossible de shim Storage :", e);
   }
 
-  // 3️⃣ Shim IDBObjectStore.prototype writes (put/add/delete/clear).
-  //    Reads (get/getAll/openCursor/count) intacts → modules selfhost qui
-  //    lisent leurs handles, photos déjà existantes, etc. marchent.
-  //    Writes : on retourne un IDBRequest fake qui RÉUSSIT immédiatement
-  //    (pour ne pas faire crasher les callers qui attendent un onsuccess).
+  // 3. Shim des écritures IDBObjectStore.prototype (put/add/delete/clear). Lectures intactes (handles selfhost,
+  //    photos existantes). Une écriture rend un faux IDBRequest qui RÉUSSIT tout de suite (les appelants attendent
+  //    onsuccess).
   try {
     function _makeFakeIDBRequest(name) {
-      // On forge un objet ressemblant assez à IDBRequest pour que les
-      // callers usuels (`req.onsuccess = …`, `req.result`) tournent sans
-      // exception. setTimeout 0 pour que l'event arrive en mode async,
-      // cohérent avec l'API IDB native.
+      // Objet assez proche d'IDBRequest pour `req.onsuccess = …` / `req.result` ; setTimeout 0 : événement
+      // asynchrone comme l'API native.
       var req = {
         result:     undefined,
         error:      null,
@@ -421,30 +343,17 @@
     console.warn("🕵️ [IncognitoMode] Impossible de shim IDBObjectStore :", e);
   }
 
-  // 4️⃣ Inject un badge "INCOGNITO" SOUS le sous-titre des conteneurs
-  //    pour ne pas faire déborder le header / le titre sur mobile.
-  //    Préfixe aussi le <title> du tab pour que l'onglet reflète l'état
-  //    même quand l'user est sur la carte (où aucun titre app n'est visible).
-  //
-  //    avant on appendait le badge au #splashTitle et
-  //    .loader-titre-nom (inline) → débordait du cadre sur mobile (badge =
-  //    +90px de largeur en plus du nom MyKTAMap). Maintenant on inject
-  //    APRÈS le subtitle/tagline dans le parent, sur sa propre ligne.
-  //
-  //    Cibles :
-  //    - #splashBox > inject après #splashSubtitle (sa propre ligne)
-  //    - .loader-titre-textes > inject après .loader-titre-tagline (sa propre ligne)
-  //    - document.title (tab navigateur — permanent)
+  // 4. Badge « INCOGNITO » SOUS le sous-titre, sur sa propre ligne (accolé au titre, il déborde sur mobile), et
+  //    préfixe du <title> de l'onglet (visible aussi en mode carte).
+  //    Cibles : #splashBox (après #splashSubtitle), .loader-titre-textes (après .loader-titre-tagline),
+  //    document.title.
   function _injecterBadgeTitre() {
     try {
-      // Préfixe le <title> du tab
       if (document.title && document.title.indexOf("🕵️") !== 0) {
         document.title = "🕵️ " + document.title;
       }
-      // Helper : crée le badge avec classe block (CSS-driven layout)
       function _makeBadge() {
-        // Fallback FR défensif : le badge est injecté très tôt (setTimeout boot),
-        // window.I18n peut ne pas être prêt → on retombe sur le FR inline.
+        // Repli FR : le badge est injecté très tôt, window.I18n peut ne pas être prêt.
         function _t(key, fb) {
           try {
             if (window.I18n && typeof window.I18n.t === "function" && window.I18n.has(key)) {
@@ -459,20 +368,18 @@
         badge.title = _t("incognito.badge.tooltip", "Mode incognito actif — aucune donnée n'est sauvegardée");
         return badge;
       }
-      // 1) Splash : inject dans #splashBox APRÈS #splashSubtitle
       var splashBox     = document.getElementById("splashBox");
       var splashSubtitle = document.getElementById("splashSubtitle");
       if (splashBox && splashSubtitle && !splashBox.querySelector(".kta-incognito-badge")) {
         splashSubtitle.insertAdjacentElement("afterend", _makeBadge());
       }
-      // 2) Loader : inject dans .loader-titre-textes APRÈS .loader-titre-tagline
       document.querySelectorAll(".loader-titre-textes").forEach(function(container) {
         if (container.querySelector(".kta-incognito-badge")) return;
         var tagline = container.querySelector(".loader-titre-tagline");
         if (tagline) {
           tagline.insertAdjacentElement("afterend", _makeBadge());
         } else {
-          // Fallback : pas de tagline → append en fin
+          // Pas de tagline : ajout en fin.
           container.appendChild(_makeBadge());
         }
       });
@@ -487,7 +394,6 @@
       setTimeout(_injecterBadgeTitre, 200);
     });
   }
-  // Re-tentative tardive pour attraper les titres injectés par modules
-  // post-DOMContentLoaded (loader/splash apparaissent souvent après boot).
+  // Nouvelle tentative tardive : loader et splash apparaissent souvent après le démarrage.
   setTimeout(_injecterBadgeTitre, 1500);
 })();

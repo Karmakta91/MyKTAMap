@@ -6,45 +6,20 @@
  */
 
 // =========================
-// ✅ MODULE ACTIF depuis v1.21.2
+// HEATMAP.JS — Carte de chaleur (densité de présence) en overlay canvas
 // =========================
-// ⚠️ NE PAS SE FIER aux mentions "désactivé" qui traînent ailleurs :
-// ce module a été désactivé en v1.12.0 puis RÉACTIVÉ en v1.21.2 sur
-// décision KARMA ("on reactive [la heatmap]"). État vérifié le 01/08/2026 :
-//   - chargé par index.html (<script src="js/heatmap.js" defer>)
-//   - présent dans sw.js > ASSETS_TO_CACHE
-//   - consommé par 13 modules (tracking, osmView, secoursMode,
-//     sessionPersist/Exporter/Backups/Report, statsGlobales, tutorial,
-//     interface, interfaceDocs, main, cssLazy)
-// L'ancien en-tête décrivait une désactivation levée depuis, et donnait une
-// procédure de réactivation dont les 4 étapes étaient DÉJÀ appliquées —
-// il a induit en erreur lors d'un audit de dettes (01/08/2026). Si ce module
-// est un jour re-désactivé, réécrire ce bloc plutôt que d'empiler les états.
-//
-// Historique : désactivé en v1.12.0 (l'utilité n'était pas claire — le
-// tracker est session-only RAM, donc pas de cumul long terme). La
-// persistance de session ultérieure a levé cette objection.
-//
-// =========================
-// 🔥 HEATMAP — V2.4 (v1.11.4)
-// =========================
-// Overlay canvas rouge/jaune/vert/bleu qui visualise la densité de points
-// (tracker timeline, editor points, data layers points) sur le plan.
-//
-// Algorithme :
-//   1. Canvas Leaflet ImageOverlay aux dimensions du plan
-//   2. Pour chaque point source, dessine un gradient radial gaussien
-//      en mode additive blending → cumul d'intensité par pixel
-//   3. Colormap : valeurs faibles transparent → bleu → vert → jaune → rouge
-//
-// API publique :
-//   window.MyKTAMapHeatmap = {
-//     ouvrirModale()       - ouvre la modale config sources + radius + intensité
-//     afficher(opts)       - dessine l'overlay (clean + redraw)
-//     effacer()            - retire l'overlay et purge le canvas
-//     isVisible()          - bool
-//   };
-// =========================
+// Module ACTIF (chargé par index.html, précaché par sw.js, consommé par tracking, osmView, secoursMode,
+// statsGlobales, interface…). Activable dans les fonctionnalités optionnelles.
+// Sources : timeline du tracker, points de session, tracés / zones / structures, calques de données ; filtre
+// par niveau en multi-niveau.
+// Algorithme : canvas aux dimensions du plan (réduit), blobs gaussiens interpolés le long de SEGMENTS en
+// mélange additif, renormalisation sur le max (le plus dense = rouge), colormap bleu → vert → jaune → rouge.
+// API : window.MyKTAMapHeatmap = {
+//   ouvrirModale()  - modale sources + rayon + intensité
+//   afficher(opts)  - dessine l'overlay (efface + redessine)
+//   effacer()       - retire l'overlay et purge le canvas
+//   isVisible()     - bool
+// };
 
 (function() {
   "use strict";
@@ -55,19 +30,13 @@
   let _lastOpts    = null;  // pour le redraw au zoom
   let _overlayUrl  = null;  // (P0-4) : ObjectURL du dernier overlay (à revoke)
 
-  // Defaults
   const DEFAULT_RADIUS_PX = 40;     // rayon du gradient radial
   const DEFAULT_INTENSITY = 1.0;    // multiplicateur global
-  // seuil au-delà duquel _renderCanvas refuse de
-  // dessiner (warning OOMGuard à la place). Empêche les heatmaps avec
-  // millions de blobs qui bloquent le main thread >10s → ANR / kill OS.
-  // 50000 segments × ~10 samples/segment = 500k blobs canvas — déjà long
-  // mais survivable. Au-delà = abort avec message clair pour l'user.
+  // Au-delà, _renderCanvas refuse (avertissement OOMGuard) : des millions de blobs bloqueraient le thread
+  // principal > 10 s (ANR, kill OS). 50 000 segments × ~10 échantillons = 500 k blobs, long mais survivable.
   const MAX_SEGMENTS = 50000;
 
-  // ============================================================
-  // STYLES INJECTÉS
-  // ============================================================
+  // ── Styles injectés ──────────
   function _injecterStyles() {
     if (document.getElementById("kta-heatmap-styles")) return;
     const s = document.createElement("style");
@@ -145,36 +114,29 @@
     document.head.appendChild(s);
   }
 
-  // ============================================================
-  // COLORMAP — Heat (rouge → jaune → vert → bleu → transparent)
-  // ============================================================
-  // Valeur normalisée 0-1 → couleur RGBA
+  // ── Colormap ──────────
+  // Valeur normalisée 0-1 → RGBA.
   function _colorAt(value) {
     if (value <= 0) return [0, 0, 0, 0];
     const v = Math.min(1, value);
-    // Gradient inversé : bleu → vert → jaune → rouge (chaleur croissante)
-    // Stops à 0.2 / 0.5 / 0.8 / 1.0
+    // Bleu → vert → jaune → rouge (chaleur croissante), paliers à 0.2 / 0.5 / 0.8 / 1.0.
     let r, g, b, a;
     if (v < 0.2) {
-      // Transparent → bleu vif
       const t = v / 0.2;
       r = 30 * t; g = 80 * t; b = 200 * t; a = 0.5 * t;
     } else if (v < 0.5) {
-      // Bleu → vert
       const t = (v - 0.2) / 0.3;
       r = 30 + (50 - 30) * t;
       g = 80 + (220 - 80) * t;
       b = 200 - (200 - 80) * t;
       a = 0.5 + 0.2 * t;
     } else if (v < 0.8) {
-      // Vert → jaune
       const t = (v - 0.5) / 0.3;
       r = 50 + (250 - 50) * t;
       g = 220;
       b = 80 - 80 * t;
       a = 0.7 + 0.15 * t;
     } else {
-      // Jaune → rouge
       const t = (v - 0.8) / 0.2;
       r = 250;
       g = 220 - (220 - 50) * t;
@@ -184,38 +146,19 @@
     return [Math.round(r), Math.round(g), Math.round(b), Math.min(1, a)];
   }
 
-  // ============================================================
-  // RENDU CANVAS
-  // ============================================================
-  // (KARMA "je trouve les zone afficher par heatmap tres aléatoire") :
-  // refonte du rendu pour donner du sens à la heatmap.
-  //
-  // Avant : on dessinait UN blob gaussien par point ET la normalisation
-  // s'arrêtait au plafond `alpha = intensity * 0.4` (= 0.4 par blob, max 1.0).
-  // Si l'user avait peu de points dispersés → toute la heatmap stagnait dans
-  // le bleu/vert pâle, jamais de rouge → "joli mais random".
-  //
-  // Après :
-  // 1. Le collecteur passe désormais des SEGMENTS (paire de points + flag
-  //    closed pour les polygones zones) — les points isolés deviennent
-  //    `[{x,y,x,y}]` (segment dégénéré). On itère ces segments avec
-  //    interpolation : pour tracé/tracker/zone, plein de petites
-  //    contributions le long de la ligne → vraie traînée visible.
-  // 2. Après le pass additive, on cherche le MAX d'intensité atteint et
-  //    on RE-NORMALISE pour que le pixel le plus dense = rouge (1.0),
-  //    le moins dense visible = bleu (≈0.05). Plus de "joli stagne en vert".
+  // ── Rendu canvas ──────────
+  // 1. Le collecteur fournit des SEGMENTS (un point isolé = segment dégénéré) ; on interpole des blobs le long
+  //    de chacun → vraies traînées pour tracés, tracker et zones.
+  // 2. 🩸 Après le passage additif, on RENORMALISE sur le max atteint (pixel le plus dense = rouge, ≈0.05 =
+  //    bleu). Sans ça, des points épars stagnent dans le bleu/vert pâle et la carte paraît aléatoire.
   function _renderCanvas(segments, opts) {
     const pc = window.PLAN_CONFIG;
     if (!pc || !pc.plan) return null;
     const imgW = pc.plan.imageWidth  || 1000;
     const imgH = pc.plan.imageHeight || 1000;
 
-    // Downscale pour perf : on travaille sur un canvas avec un cap qui
-    // s'adapte à la mémoire device.
-    // avant cap fixe 2048×2048 = 16 Mo RGBA →
-    // +clone getImageData = 32 Mo → +toDataURL PNG ~10 Mo → pic transitoire
-    // ~40 Mo. iPhone PWA budget ~500 Mo → OOM sur plans ≥5000 px. On baisse
-    // à 1024 sur device low-mem (deviceMemory < 6 Go ou heuristique mobile).
+    // Canvas réduit, plafond selon la mémoire : 2048² = 16 Mo RGBA, + getImageData + PNG ≈ 40 Mo de pic, de quoi
+    // faire tomber une PWA iPhone (~500 Mo). 1024 sur appareil faible (deviceMemory < 6 Go ou mobile).
     const _lowMem = (typeof navigator.deviceMemory === "number" && navigator.deviceMemory < 6)
                     || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
     const MAX_DIM = _lowMem ? 1024 : 2048;
@@ -230,15 +173,13 @@
 
     const radius    = (opts.radius || DEFAULT_RADIUS_PX) * scale;
     const intensity = opts.intensity || DEFAULT_INTENSITY;
-    // Pas d'échantillonnage le long d'un segment : assez fin pour que les
-    // blobs se chevauchent (1 sample tous les radius/3 px) → traînée lisse.
-    // Cap inférieur à 2px pour ne pas exploser le nombre de blobs sur des
-    // segments très longs avec petit rayon.
+    // Pas d'échantillonnage : 1 blob tous les radius/3 px (chevauchement → traînée lisse), au moins 2 px (pas
+    // d'explosion sur les longs segments à petit rayon).
     const sampleStep = Math.max(2, radius * 0.33);
 
     ctx.globalCompositeOperation = "lighter";
 
-    // Helper : dessine 1 blob gaussien à (px, py) [coords canvas]
+    // Un blob gaussien en (px, py), coords canvas.
     const alphaCenter = Math.min(1, intensity * 0.18);  // un peu plus doux qu'avant pour profiter de la re-normalisation
     function _drawBlob(px, py) {
       const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
@@ -249,27 +190,18 @@
       ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
     }
 
-    // Helper : convertit un point plan {x, y} en coords canvas [px, py].
-    // (KARMA "il me met des zone ou il n'y a rien") : retire
-    // le flip Y bogué. Le canvas est overlay sur Leaflet avec bounds
-    // [[0,0], [imgH, imgW]], donc canvas pixel (0,0) est rendu à Leaflet
-    // (lat=imgH, lng=0) = haut du plan. Pour qu'un blob au canvas cy=py*scale
-    // tombe à Leaflet lat=imgH-py (= position du plan point (x,y) via
-    // convertCoord = [imgH-y, x]), il faut NE PAS appliquer le flip ici.
-    // L'ancien `(imgH - p.y) * scale` rendait la heatmap miroir verticalement,
-    // bug masqué tant que les blobs étaient isolés mais flagrant après le
-    // passage aux traînées continues (segments interpolés v1.21.2).
+    // Point plan {x, y} → coords canvas [px, py].
+    // 🩸 PAS de flip Y ici : l'overlay a pour bornes [[0,0], [imgH, imgW]], le pixel canvas (0,0) est rendu en
+    // haut du plan (lat = imgH). cy = py × scale tombe donc à lat = imgH - py, comme convertCoord. Un
+    // `(imgH - p.y) * scale` rendrait la carte en miroir vertical.
     function _toCanvas(p) {
       return [p.x * scale, p.y * scale];
     }
 
-    // 1. Pass additive — pour chaque segment [a, b] on dessine plusieurs
-    //    blobs régulièrement espacés entre a et b. Si a === b (point isolé),
-    //    on dessine 1 seul blob.
+    // 1. Passage additif : blobs régulièrement espacés de a à b (a === b → un seul blob).
     (segments || []).forEach(function(seg) {
       if (!seg || !seg.a) return;
       const [ax, ay] = _toCanvas(seg.a);
-      // Cas point isolé : a === b ou pas de b
       if (!seg.b || (seg.a.x === seg.b.x && seg.a.y === seg.b.y)) {
         _drawBlob(ax, ay);
         return;
@@ -289,9 +221,7 @@
       }
     });
 
-    // 2. Trouve le max d'intensité atteint dans le canvas. C'est notre
-    //    pivot pour la re-normalisation — sans ça, sur des données
-    //    sparse on resterait dans le bleu pâle (cf bug KARMA).
+    // 2. Max d'intensité atteint : pivot de la renormalisation.
     const imgData = ctx.getImageData(0, 0, W, H);
     const data = imgData.data;
     let maxAlpha = 0;
@@ -300,8 +230,7 @@
     }
     if (maxAlpha <= 0) return canvas;  // canvas vide
 
-    // 3. Applique le colormap avec normalisation : v_norm = alpha / maxAlpha
-    //    → le pixel le plus dense = 1.0 = rouge, le moins dense ≈ 0 = bleu/transparent.
+    // 3. Colormap normalisée : v = alpha / maxAlpha.
     const invMax = 1 / maxAlpha;
     for (let i = 0; i < data.length; i += 4) {
       const a = data[i + 3];
@@ -321,9 +250,7 @@
     return canvas;
   }
 
-  // ============================================================
-  // OVERLAY LEAFLET
-  // ============================================================
+  // ── Overlay Leaflet ──────────
   function _placerOverlay(canvas) {
     if (!window.map || !window.L) return;
     const pc = window.PLAN_CONFIG;
@@ -331,7 +258,7 @@
     const imgW = pc.plan.imageWidth  || 1000;
     const imgH = pc.plan.imageHeight || 1000;
 
-    // Cleanup éventuel — overlay précédent + ObjectURL associé.
+    // Overlay précédent et son ObjectURL nettoyés.
     if (_overlay) {
       try { window.map.removeLayer(_overlay); } catch(e) {}
       _overlay = null;
@@ -341,15 +268,11 @@
       _overlayUrl = null;
     }
 
-    // on remplace toDataURL → toBlob +
-    // URL.createObjectURL. Avant : toDataURL encode synchrone en base64 PNG
-    // (~10 Mo de string pour un canvas 2048²) puis Leaflet redécode dans
-    // un <img> → pic transitoire ~40 Mo. Avec toBlob, le PNG reste binaire
-    // en mémoire (1 seul payload, pas de doublon base64) et l'<img> stream
-    // directement depuis l'ObjectURL. Économie typique : ~10 Mo par render.
+    // toBlob + createObjectURL, pas toDataURL : pas de chaîne base64 de ~10 Mo encodée en synchrone puis redécodée
+    // (pic ~40 Mo) ; le PNG reste binaire et l'<img> lit l'ObjectURL directement.
     canvas.toBlob(function(blob) {
       if (!blob) {
-        // Safari iOS peut retourner null sur canvas trop gros (silencieux)
+        // Safari iOS peut rendre null en silence sur un canvas trop gros.
         console.warn("[Heatmap] canvas.toBlob a retourné null — canvas trop gros ?");
         return;
       }
@@ -363,23 +286,13 @@
     }, "image/png");
   }
 
-  // ============================================================
-  // COLLECTE DES SEGMENTS SOURCES
-  // ============================================================
-  // le collecteur retourne des SEGMENTS
-  // [{a:{x,y}, b:{x,y}}] et non plus des points. Le rendu interpole le
-  // long de chaque segment pour produire de vraies traînées continues
-  // (vs scatter de blobs aux vertices). Un point isolé est représenté
-  // par un segment dégénéré `{a:pt, b:null}` (rendu = 1 seul blob).
-  //
-  // Trois familles d'inputs :
-  //   • Trail : suite de points conceptuellement reliée (tracker timeline,
-  //             tracé road, polygone zone fermé, polyline structure)
-  //             → émet (n-1) segments + segment de fermeture si polygon.
-  //   • Point isolé : marker data layer, editor point, pilier structure
-  //             → émet 1 segment dégénéré.
+  // ── Collecte des segments sources ──────────
+  // Segments [{a:{x,y}, b:{x,y}}] ; point isolé = `{a:pt, b:null}` (un blob).
+  //   • Traînée : suite de points reliés (timeline du tracker, tracé, zone, polyline de structure) → n-1
+  //     segments + fermeture si polygone.
+  //   • Point isolé : marqueur de calque, point de session, pilier → 1 segment dégénéré.
 
-  // Helper : segmente une polyline {points:[{x,y}]}, polygone fermé si `closed`.
+  // Segmente une polyline {points:[{x,y}]} ; polygone fermé si `closed`.
   function _pushPolylineSegs(segs, pts, closed) {
     if (!Array.isArray(pts) || pts.length === 0) return;
     if (pts.length === 1) {
@@ -398,24 +311,18 @@
     }
   }
 
-  // (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
-  // helper qui détermine si un item (point/road/zone/structure) passe le filtre
-  // niveau. `levelSet` est un Set<number> | null (null = pas de filtre).
-  // Gestion spéciale jonctions interniveau : visible si fromLevel OU toLevel
-  // dans le set (cohérent avec le pattern `passeFiltreNiveau` de road.js).
+  // Filtre de niveau d'un objet. `levelSet` : Set<number> ou null (pas de filtre). Jonction : visible si
+  // fromLevel OU toLevel ∈ set (comme road.js > passeFiltreNiveau).
   function _passeFiltreLevel(item, levelSet) {
     if (!levelSet) return true;  // null = pas de filtre
     if (!item) return false;
-    // Jonction interniveau
     if (item.type === "jonction") {
       return levelSet.has(item.fromLevel || 0) || levelSet.has(item.toLevel || 0);
     }
-    // Item standard
     return levelSet.has(item.level || 0);
   }
 
-  // Helper : itère sur une liste d'items {points:[{x,y}]} ou points uniques {x,y}.
-  // 4e arg `levelSet` filtre par niveau (skip items hors set).
+  // Objets {points:[{x,y}]} ou points {x,y} → segments ; `levelSet` écarte les objets hors niveau.
   function _pushShapesAsSegs(segs, items, closed, levelSet) {
     if (!Array.isArray(items)) return;
     items.forEach(function(it) {
@@ -431,29 +338,22 @@
 
   function _collecterSegments(opts) {
     const segs = [];
-    // levelSet pour filtrage M-LVL. null = pas de filtre (M-LVL
-    // off OU user n'a pas restreint). Si présent, ne contient QUE les niveaux
-    // cochés par l'user dans la modale heatmap.
+    // null = pas de filtre (multi-niveau inactif ou non restreint) ; sinon les niveaux cochés dans la modale.
     const levelSet = (opts.levels instanceof Set) ? opts.levels : null;
 
-    // 🚶 Tracker timeline — chaîne ordonnée par t. On découpe la timeline
-    // en sous-séquences contiguës (= sans recalage / sans gap >5min). À
-    // l'intérieur d'une sous-séquence, chaque paire consécutive forme un
-    // segment marché.
-    //
-    //   - "start" : début d'une session, n'est PAS relié au point précédent.
-    //   - "recalage" : téléport (recalage manuel sur point) → coupe la chaîne.
-    //   - dt > 5min : pause longue → coupe la chaîne (pas de marche continue).
-    //   - 🆕 v1.21.3 : level pas dans levelSet → skip entry + casse la chaîne
-    //     (équivalent à un saut de niveau, on ne relie pas par un segment).
+    // Timeline du tracker, ordonnée par t, découpée en sous-séquences contiguës ; chaque paire consécutive d'une
+    // sous-séquence forme un segment marché. La chaîne est coupée par :
+    //   - "start" (début de session, non relié au précédent) ;
+    //   - "recalage" (téléport manuel sur un point) ;
+    //   - dt > 5 min (pause longue) ;
+    //   - un niveau hors levelSet (saut de niveau : pas de segment).
     if (opts.srcTracker && typeof window.getTrackingTimeline === "function") {
       const timeline = window.getTrackingTimeline() || [];
       const MAX_GAP_MS = 5 * 60 * 1000;  // 5 min
       let prev = null;
       timeline.forEach(function(p) {
         if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
-        // Filtre niveau (si actif). Le tracker timeline n'a pas de `type`
-        // jonction, donc on teste directement `p.level`.
+        // Filtre de niveau : la timeline n'a pas de type jonction, on teste p.level.
         if (levelSet && !levelSet.has(p.level || 0)) {
           prev = null;  // casse la chaîne
           return;
@@ -464,15 +364,14 @@
         if (prev && !isBreak) {
           segs.push({ a: { x: prev.x, y: prev.y }, b: { x: p.x, y: p.y } });
         } else {
-          // Point d'ancrage isolé (début/recalage) — on l'affiche quand même
-          // comme un blob, c'est sémantiquement "tu es passé là".
+          // Ancrage isolé (début / recalage) : un blob quand même (« tu es passé là »).
           segs.push({ a: { x: p.x, y: p.y }, b: null });
         }
         prev = p;
       });
     }
 
-    // ✏️ Editor points — points isolés (POIs). Filtre level par point.
+    // Points de session (POI), filtre de niveau par point.
     if (opts.srcEditor && typeof window.getEditorPoints === "function") {
       (window.getEditorPoints() || []).forEach(function(p) {
         if (typeof p.x !== "number" || typeof p.y !== "number") return;
@@ -481,30 +380,24 @@
       });
     }
 
-    // 🛣️ Tracés session — chaque road est une polyline OUVERTE
+    // Tracés de session : polylines OUVERTES.
     if (opts.srcRoads && typeof window.getRoads === "function") {
       _pushShapesAsSegs(segs, window.getRoads() || [], false, levelSet);
     }
 
-    // ⬛ Zones session — polygones FERMÉS (segment de fermeture last→first)
+    // Zones de session : polygones FERMÉS (segment last → first).
     if (opts.srcZones && typeof window.getZones === "function") {
       _pushShapesAsSegs(segs, window.getZones() || [], true, levelSet);
     }
 
-    // 🏛️ Structures — mix : piliers (point unique), murs/fronts (polylines)
+    // Structures : piliers (point) ou murs / fronts (polylines).
     if (opts.srcStructures && typeof window.getStructures === "function") {
       _pushShapesAsSegs(segs, window.getStructures() || [], false, levelSet);
     }
 
-    // 📊 Data layers — 4 sous-types filtrables INDÉPENDAMMENT (KARMA "rajoute
-    // la possibilité de filter les calque de donnée"). Les 4 registres sont
-    // peuplés AU CHARGEMENT du layer dans utils.js > ajouterPointsDepuisJSON,
-    // indépendamment du toggle de visibilité — donc inclus même si le data
-    // layer est actuellement masqué ("visible ou non").
-    //
-    // Rétrocompat : l'ancien `opts.srcDataLayers` (1 master toggle) est encore
-    // accepté → seed les 4 sous-flags à `true` si non explicitement set. Permet
-    // aux _lastOpts d'avant v1.21.2-dl-filter de continuer à fonctionner.
+    // Calques de données : 4 sous-types filtrables indépendamment. Les registres sont remplis AU CHARGEMENT du
+    // calque (utils.js > ajouterPointsDepuisJSON), indépendamment de sa visibilité : calque masqué inclus.
+    // Ancienne option `opts.srcDataLayers` (interrupteur unique) acceptée : elle coche les 4.
     const _legacyDL = (opts.srcDataLayers === true)
                       && (opts.srcDataPoints     === undefined)
                       && (opts.srcDataRoads      === undefined)
@@ -515,10 +408,8 @@
     const _dlZ = _legacyDL ? true : !!opts.srcDataZones;
     const _dlS = _legacyDL ? true : !!opts.srcDataStructures;
 
-    // 📍 Points isolés (markers L.marker en latlng → re-flip vers plan)
-    // NaN : `window._ktaDataMarkers` est un FLAT array de
-    // L.marker (cf. utils.js), pas un objet layerId → markers.
-    // filtre niveau via marker._ktaLevel (cf utils.js > ajouterPointsDepuisJSON).
+    // Points isolés (L.marker en latlng → retournés en coords plan). ⚠️ `window._ktaDataMarkers` est un tableau
+    // PLAT de L.marker (cf. utils.js), pas un objet layerId → marqueurs ; niveau via marker._ktaLevel.
     if (_dlP && Array.isArray(window._ktaDataMarkers)) {
       const pc = window.PLAN_CONFIG;
       const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
@@ -530,17 +421,16 @@
         }
       });
     }
-    // 🛣️ Tracés data layer (entry.points en coords plan {x,y}, polylines OUVERTES)
-    // entry.level (cf utils.js) + jonctions (entry.fromLevel/toLevel)
+    // Tracés de calque (entry.points en coords plan, polylines ouvertes), entry.level + jonctions.
     if (_dlR && Array.isArray(window._ktaDataPolylines)) {
       window._ktaDataPolylines.forEach(function(entry) {
-        // Skip les entries "circleMarker d'extrémité jonction" (pas de points)
+          // Les circleMarker d'extrémité de jonction n'ont pas de points.
         if (!entry || !Array.isArray(entry.points)) return;
         if (!_passeFiltreLevel(entry, levelSet)) return;
         _pushPolylineSegs(segs, entry.points, false);
       });
     }
-    // ⬛ Zones data layer (polygones FERMÉS)
+    // Zones de calque (polygones fermés).
     if (_dlZ && Array.isArray(window._ktaDataPolygons)) {
       window._ktaDataPolygons.forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
@@ -548,9 +438,8 @@
         _pushPolylineSegs(segs, entry.points, true);
       });
     }
-    // 🏛️ Structures data layer : mix polylines (front-1/2) + polygones
-    // (pilier-1/2/mur). Détection via type — cf STRUCTURE_STYLES_DATA
-    // utils.js > .isPolyline.
+    // Structures de calque : polylines (front-1/2) ou polygones (pilier-1/2, mur), selon le type (cf. utils.js >
+    // STRUCTURE_STYLES_DATA.isPolyline).
     if (_dlS && Array.isArray(window._ktaDataStructurePolygons)) {
       window._ktaDataStructurePolygons.forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
@@ -563,7 +452,7 @@
     return segs;
   }
 
-  // Compteur sync de vertices pour l'affichage des badges de la modale.
+  // Nombre de sommets, pour les badges de la modale.
   function _countVertices(items) {
     if (!Array.isArray(items)) return 0;
     let n = 0;
@@ -575,9 +464,7 @@
     return n;
   }
 
-  // ============================================================
-  // API PUBLIQUE
-  // ============================================================
+  // ── API publique ──────────
   function afficher(opts) {
     opts = opts || {};
     _lastOpts = opts;
@@ -589,9 +476,7 @@
       effacer();
       return;
     }
-    // garde-fou anti-ANR — au-delà de MAX_SEGMENTS,
-    // le pipeline canvas génère plusieurs millions de blobs et bloque le
-    // main thread >10s. Abort propre avec warning explicite plutôt que kill OS.
+    // Garde-fou anti-ANR : au-delà de MAX_SEGMENTS, abandon avec un avertissement explicite plutôt qu'un kill OS.
     if (segs.length > MAX_SEGMENTS) {
       console.warn("[Heatmap] Refus de rendre " + segs.length + " segments (max " + MAX_SEGMENTS + ")");
       if (window.OOMGuard && window.OOMGuard.showToast) {
@@ -607,7 +492,6 @@
     if (!canvas) return;
     _placerOverlay(canvas);
     if (window.OOMGuard && window.OOMGuard.showToast) {
-      // Compteur informatif : nb de segments + nb d'éléments "linéaires"
       let nLines = 0, nDots = 0;
       segs.forEach(function(s) { if (s.b) nLines++; else nDots++; });
       const parts = [];
@@ -622,8 +506,7 @@
       try { window.map.removeLayer(_overlay); } catch(e) {}
       _overlay = null;
     }
-    // revoke l'ObjectURL pour libérer le Blob PNG
-    // (sans ça, le Blob reste pinné en mémoire tant que le tab vit).
+    // ObjectURL révoquée, sinon le PNG reste en mémoire tant que l'onglet vit.
     if (_overlayUrl) {
       try { URL.revokeObjectURL(_overlayUrl); } catch(e) {}
       _overlayUrl = null;
@@ -634,20 +517,16 @@
 
   function isVisible() { return !!_overlay; }
 
-  // ============================================================
-  // MODALE UI
-  // ============================================================
+  // ── Modale ──────────
   function ouvrirModale() {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
 
-    // Compteurs live pour aider l'user à voir ce qu'il va activer
+    // Compteurs par source.
     const nTracker = (typeof window.getTrackingTimeline === "function") ? window.getTrackingTimeline().length : 0;
     const nEditor  = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []).length : 0;
-    // (KARMA "rajoute aussi road session, zone, structure") :
-    // tracés / zones / structures session. On compte les vertices car c'est
-    // ce qui sera réellement utilisé par la heatmap (un tracé long crée plus
-    // de chaleur qu'un tracé court — sémantique "densité de présence").
+    // Tracés / zones / structures de session comptés en SOMMETS (ce que la heatmap utilise : un long tracé chauffe
+    // plus qu'un court).
     const roadsArr  = (typeof window.getRoads      === "function") ? (window.getRoads()      || []) : [];
     const zonesArr  = (typeof window.getZones      === "function") ? (window.getZones()      || []) : [];
     const structArr = (typeof window.getStructures === "function") ? (window.getStructures() || []) : [];
@@ -657,14 +536,10 @@
     const nZonesPts   = _countVertices(zonesArr);
     const nStruct     = structArr.length;
     const nStructPts  = _countVertices(structArr);
-    // NaN : _ktaDataMarkers est un FLAT array de L.marker
-    // (cf. utils.js). Avant : Object.keys + index → NaN car .length sur un
-    // marker unique.
+    // ⚠️ _ktaDataMarkers est un tableau PLAT de L.marker (cf. utils.js).
     const nDataMarkers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
-    // (KARMA "rajoute la possibilité de filter les calque de donnée") :
-    // 4 compteurs séparés pour cocher/décocher indépendamment points / tracés /
-    // zones / structures côté data layer. _ktaDataPolylines peut contenir
-    // des "circleMarker d'extrémité jonction" sans `.points` → on les exclut.
+    // 4 compteurs de calque (points / tracés / zones / structures), cochés indépendamment ; les circleMarker
+    // d'extrémité de jonction (sans `.points`) sont exclus.
     function _countDataLayerEntries(arr) {
       if (!Array.isArray(arr)) return { n: 0, pts: 0 };
       let n = 0, pts = 0;
@@ -679,7 +554,7 @@
     const dlZones   = _countDataLayerEntries(window._ktaDataPolygons);
     const dlStructs = _countDataLayerEntries(window._ktaDataStructurePolygons);
 
-    // Default values (reprend les opts précédentes si dispo)
+    // Valeurs par défaut : options précédentes si disponibles.
     const o = _lastOpts || {};
     const radius    = o.radius    || DEFAULT_RADIUS_PX;
     const intensity = o.intensity || DEFAULT_INTENSITY;
@@ -688,8 +563,7 @@
     const srcRoads       = (o.srcRoads       !== undefined) ? o.srcRoads       : (nRoads   > 0);
     const srcZones       = (o.srcZones       !== undefined) ? o.srcZones       : (nZones   > 0);
     const srcStructures  = (o.srcStructures  !== undefined) ? o.srcStructures  : (nStruct  > 0);
-    // 4 sous-flags data layer. Rétrocompat : si _lastOpts a l'ancien
-    // srcDataLayers=true (1 master), seed les 4 à true.
+    // 4 sous-options de calque ; l'ancien `srcDataLayers=true` les coche toutes.
     const _legacyDL = (o.srcDataLayers === true)
                       && (o.srcDataPoints     === undefined)
                       && (o.srcDataRoads      === undefined)
@@ -700,12 +574,8 @@
     const srcDataZones      = (o.srcDataZones      !== undefined) ? o.srcDataZones      : (_legacyDL || dlZones.n     > 0);
     const srcDataStructures = (o.srcDataStructures !== undefined) ? o.srcDataStructures : (_legacyDL || dlStructs.n   > 0);
 
-    // (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
-    // détection M-LVL + construction de la liste des niveaux disponibles.
-    // - `availableLevels` : tous les niveaux du plan (cf APP_CONFIG, default [-2..2])
-    // - `visibleLevels`   : niveaux actuellement visibles sur la carte (modale Niveaux)
-    // - Default des checkboxes : niveaux visibles courants (si dispo dans _lastOpts,
-    //   on les reprend pour conserver le choix de l'user entre 2 ouvertures).
+    // Multi-niveau : niveaux disponibles (APP_CONFIG.availableLevels) ; cases cochées = choix précédent, sinon les
+    // niveaux visibles sur la carte.
     const _isMultiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     let _availableLevels = [];
     let _defaultLevelsSet = null;
@@ -716,7 +586,6 @@
       const _visibleLevels = Array.isArray(window.APP_CONFIG.visibleLevels)
                              ? window.APP_CONFIG.visibleLevels
                              : [0];
-      // Reprend les niveaux cochés au précédent run si présents, sinon visibles courants
       if (o.levels instanceof Set) {
         _defaultLevelsSet = o.levels;
       } else if (Array.isArray(o.levels)) {
@@ -797,10 +666,7 @@
             '</label>' +
           '</div>' +
 
-          // (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
-          // section "Niveaux" rendue UNIQUEMENT si multiLevel actif. Cases
-          // pré-cochées sur les niveaux actuellement visibles (cohérent avec
-          // la modale "Niveaux" globale de l'app).
+          // Section « Niveaux » seulement en multi-niveau, pré-cochée sur les niveaux visibles.
           (_isMultiLevel ?
             '<div class="kta-heatmap-section">' +
               '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
@@ -851,7 +717,6 @@
     document.getElementById("kta-heatmap-close").addEventListener("click", _close);
     modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
 
-    // Sliders live update
     const rEl = document.getElementById("kta-hm-radius");
     const iEl = document.getElementById("kta-hm-intensity");
     rEl.addEventListener("input", function() { document.getElementById("kta-hm-radius-val").textContent = rEl.value; });
@@ -862,9 +727,8 @@
       _close();
     });
 
-    // bouton "⇅ Tout" toggle global des 4 sous-cases data layer.
-    // Si au moins une case est cochée → tout décocher. Sinon → tout cocher
-    // (en respectant les disabled = on ne force pas une case sans données).
+    // « ⇅ Tout » des 4 sous-cases de calque : une cochée → tout décocher, sinon tout cocher (sauf les cases
+    // désactivées, sans données).
     const _dlAllBtn = document.getElementById("kta-hm-dl-toggleall");
     if (_dlAllBtn) {
       _dlAllBtn.addEventListener("click", function() {
@@ -878,8 +742,7 @@
       });
     }
 
-    // bouton "⇅ Tout" toggle des niveaux (M-LVL). Même pattern
-    // que le toggle data layers ci-dessus.
+    // « ⇅ Tout » des niveaux, même logique.
     const _lvlAllBtn = document.getElementById("kta-hm-lvl-toggleall");
     if (_lvlAllBtn) {
       _lvlAllBtn.addEventListener("click", function() {
@@ -891,10 +754,8 @@
     }
 
     document.getElementById("kta-hm-appliquer").addEventListener("click", function() {
-      // sources session (roads/zones/structures) + 4 sous-flags
-      // data layer indépendants (points/tracés/zones/structures). Les .checked
-      // sont guardés via `?.` car la checkbox peut être disabled / absente
-      // si la catégorie est vide (cf. rendu conditionnel ci-dessus).
+      // Sources de session + 4 sous-options de calque. `?.` sur .checked : une case peut être absente ou
+      // désactivée (catégorie vide).
       const opts = {
         srcTracker:        !!document.getElementById("kta-hm-src-tracker")?.checked,
         srcEditor:         !!document.getElementById("kta-hm-src-editor")?.checked,
@@ -908,9 +769,7 @@
         radius:            parseInt(rEl.value, 10),
         intensity:         parseFloat(iEl.value)
       };
-      // si M-LVL actif, lit les checkboxes niveau et construit
-      // un Set passé au collecteur. Si l'user a tout décoché, on envoie un
-      // Set vide → aucun niveau → heatmap vide (toast warning naturel).
+      // Multi-niveau : Set des niveaux cochés ; tout décoché = Set vide = heatmap vide (avertissement).
       if (_isMultiLevel) {
         const lvlSet = new Set();
         document.querySelectorAll(".kta-hm-lvl-cb").forEach(function(cb) {
@@ -926,9 +785,7 @@
     });
   }
 
-  // ============================================================
-  // API GLOBALE
-  // ============================================================
+  // ── API globale ──────────
   window.MyKTAMapHeatmap = {
     ouvrirModale: ouvrirModale,
     afficher:     afficher,

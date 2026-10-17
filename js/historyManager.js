@@ -6,52 +6,33 @@
  */
 
 // =========================
-// 📜 HISTORY MANAGER — Undo / Redo global (v1.10.4 / cible v1.11.0)
+// HISTORYMANAGER.JS — Undo / Redo global
 // =========================
-// Système d'historique RAM-only des mutations sur les 4 catégories
-// d'annotations dessinables :
-//   ✏️ Editor points  (window.getEditorPoints / setEditorPoints)
-//   🛣️ Tracés         (window.getRoads / resetRoads + setRoads)
-//   ⬛ Zones          (window.getZones / resetZones + setZones)
-//   🏛️ Structures     (window.getStructures / resetStructures + setStructures)
-//
-// Choix de design (KARMA "1:b · 2:a · 3:b · 4:c · 5:a · 6:a · 7:a · 8:c ·
-// 9:a · 10:b · 11:a+b") :
-//   - Périmètre : les 4 catégories ci-dessus. PHOTOS EXCLUES (suppression
-//     IDB irréversible — restore demanderait un cache RAM des blobs qui
-//     explose vite).
-//   - Granularité : action atomique (1 clic = 1 entrée).
-//   - Profondeur : 50 entrées FIFO (cap RAM raisonnable).
-//   - Activation : Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z + 2 boutons sidebar.
-//   - Persistance : RAM only (perte au reload — cohérent session active).
-//   - UX : toast discret via OOMGuard.showToast.
-//   - Approche : SNAPSHOT HYBRIDE — on prend une photo des arrays mutés
-//     uniquement à chaque action, via _captureState() qui retourne
-//     {editorPoints, roads, zones, structures} en deep clone.
-//   - Boutons grisés si pile vide.
-//   - Reset historique au plan switch + au reload (RAM-only).
-//
-// API publique : window.HistoryManager = {
-//   record(label, beforeState?) - push une entrée (beforeState optionnel,
-//                                  sinon on récupère via _captureState)
-//   captureState()              - retourne le snapshot complet pour
-//                                  appeler record(label, snap) plus tard
-//   recordAction(label, fn)     - helper : capture before → fn() → record
-//   undo() / redo()             - rétablit l'état précédent / suivant
-//   canUndo() / canRedo()       - booléens (pour griser les boutons)
-//   reset()                     - vide les piles (appelé au plan switch)
-//   onChange(cb)                - écoute des changements (UI sync)
+// Historique en RAM des mutations des 4 catégories dessinables : points de session (getEditorPoints /
+// setEditorPoints), tracés (getRoads / resetRoads + setRoads), zones (…Zones), structures (…Structures).
+//   - PHOTOS EXCLUES (suppression IDB irréversible ; tout restaurer demanderait un cache RAM des blobs).
+//   - 1 clic = 1 entrée ; 50 entrées FIFO ; Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z + 2 boutons de la sidebar (grisés si
+//     pile vide) ; toast discret (OOMGuard.showToast).
+//   - RAM seulement : piles vidées au changement de plan et au rechargement.
+//   - Instantanés (deep clone) par _captureState(), ciblés par catégorie.
+//   - Traces de suppression (uid) tenues ici, pour toutes les suppressions (cf. _tracerDepuis).
+// API : window.HistoryManager = {
+//   record(label, beforeState?, category?) - ajoute une entrée (beforeState capturé si omis)
+//   captureState(category?)     - instantané à passer plus tard à record(label, snap)
+//   recordAction(label, fn)     - capture avant → fn() → record
+//   undo() / redo()             - état précédent / suivant
+//   canUndo() / canRedo()       - booléens (boutons)
+//   reset()                     - vide les piles (changement de plan)
+//   onChange(cb)                - synchro UI
 // };
-// =========================
+// Doc : docs/architecture/session-data.md.
 
 (function() {
   "use strict";
 
-  // 🔢 Limite stricte (KARMA 3:b) — 50 actions FIFO
   const MAX_HISTORY = 50;
 
-  // 🌍 i18n — appelé au runtime (undo/redo), toujours après I18n.init().
-  // Fallback inline FR si I18n absent (jamais de crash, jamais de clé brute).
+  // i18n appelé au runtime (après I18n.init()), repli FR inline : jamais de crash ni de clé brute.
   function _t(key) {
     if (window.I18n && typeof window.I18n.t === "function") return window.I18n.t(key);
     return key === "history.undone" ? "↩ Annulé : "
@@ -63,15 +44,10 @@
   let undoStack = []; // [{label, snapshot, ts}]
   let redoStack = [];
 
-  // Listeners pour la sync UI (boutons + raccourcis)
   const _listeners = [];
 
-  // ============================================================
-  // CAPTURE / APPLICATION D'ÉTAT
-  // ============================================================
-  // Clone profond pour les arrays d'objets simples. Utilise
-  // structuredClone si dispo (Chrome 98+, Firefox 94+, Safari 15.4+),
-  // sinon fallback JSON.parse(JSON.stringify(...)).
+  // ── Capture / application d'état ──────────
+  // Clone profond : structuredClone si disponible, sinon JSON.parse(JSON.stringify(...)).
   function _deepCloneArray(arr) {
     if (!Array.isArray(arr)) return [];
     if (typeof structuredClone === "function") {
@@ -80,17 +56,10 @@
     try { return JSON.parse(JSON.stringify(arr)); } catch(e) { return []; }
   }
 
-  // (P0-1 RAM) — Capture CIBLÉE par catégorie.
-  // `category` ∈ "editorPoints" | "roads" | "zones" | "structures" → ne clone
-  // QUE cette catégorie (économie RAM ~4× sur les snapshots d'édition mono-
-  // catégorie, qui sont les plus fréquents : chaque point/sommet dessiné =
-  // 1 snapshot). null/undefined → clone TOUT (cas multi-catégories : import
-  // GPX, reset global, note popup cross-type).
-  //
-  // currentRoadIndex/currentZoneIndex/currentStructureIndex sont toujours
-  // inclus (3 numbers, négligeable) mais chacun n'est restauré au undo QUE si
-  // le snapshot contient aussi la catégorie correspondante (cf _applyState) —
-  // sinon un undo "zones" ne doit pas toucher au tracé en cours, etc.
+  // Capture CIBLÉE : `category` ∈ "editorPoints" | "roads" | "zones" | "structures" ne clone QUE cette catégorie
+  // (~4× moins de RAM pour les instantanés d'édition, de loin les plus fréquents) ; null → tout (import GPX, reset
+  // global, note de popup multi-types). currentRoadIndex / currentZoneIndex / currentStructureIndex sont toujours
+  // inclus mais restaurés SEULEMENT si leur catégorie est dans l'instantané (cf. _applyState).
   function _captureState(category) {
     const snap = {
       currentRoadIndex:      (window.getCurrentRoadIndex ? window.getCurrentRoadIndex() : -1),
@@ -113,41 +82,24 @@
     return snap;
   }
 
-  // Applique un snapshot complet via les setters publics existants.
-  // Pour roads/zones/structures, on passe par reset() + set() pour
-  // remplacer atomiquement le contenu (le `set` seul ajoute au lieu de
-  // remplacer dans certaines implémentations).
-  // (P0-1 RAM) — Applique SEULEMENT les catégories PRÉSENTES dans
-  // le snapshot. Crucial : on conditionne resetRoads/resetZones/resetStructures
-  // à la présence de la catégorie. Avant, resetRoads() était appelé
-  // INCONDITIONNELLEMENT → un snapshot ciblé "zones" aurait vidé les roads
-  // (bug de perte de données). Une catégorie absente du snapshot = inchangée
-  // par cette action = on ne la touche pas.
+  // Applique un instantané par les setters publics : reset() + set() pour remplacer atomiquement (`set` seul ajoute
+  // dans certaines implémentations).
+  // 🩸 SEULES les catégories PRÉSENTES sont touchées : resetRoads() inconditionnel viderait les roads sur un
+  // undo ciblé « zones » (perte de données). Catégorie absente = inchangée.
   function _applyState(s) {
     try {
       if (window.setEditorPoints && Array.isArray(s.editorPoints)) {
         window.setEditorPoints(s.editorPoints);
       }
-      // Préservation de window.modeRoad à travers undo/redo.
-      // KARMA bug "Ctrl+Z casse toujours la suite d'un tracé" :
-      // resetRoads() wipe window.modeRoad → null (cf road.js > resetRoads). Sans
-      // restauration, le mousedown handler check `if (!window.modeRoad) return`
-      // → le clic suivant après undo est avorté en silence → l'user voit son
-      // tracé restauré mais ne peut pas le continuer ("lien suivant cassé"
-      // perçu). v1.26.3-hotfix3 avait restauré currentRoad via index mais
-      // oublié modeRoad. Fix : on snapshot modeRoad AVANT le reset, on le
-      // restaure après seulement si on avait un tracé en cours à restaurer
-      // (sinon ressortir du mode est cohérent avec l'annulation d'une création).
+      // 🩸 window.modeRoad préservé : resetRoads() le remet à null (road.js), et le mousedown suivant
+      // (`if (!window.modeRoad) return`) serait avorté en silence — tracé restauré mais impossible à continuer.
+      // Sauvé AVANT le reset, restauré seulement s'il y avait un tracé en cours (sinon sortir du mode est
+      // cohérent avec l'annulation d'une création).
       const _savedModeRoad = (Array.isArray(s.roads) && typeof s.currentRoadIndex === "number" && s.currentRoadIndex >= 0)
         ? window.modeRoad
         : null;
-      // Même préservation pour zones et structures (parité KARMA
-      // « même principe pour zone et structure »). resetZones/resetStructures
-      // wipent aussi modeZone/modeStructure → null ; sans restauration, un Ctrl+Z
-      // en plein dessin tuait l'outil (clic suivant avorté par
-      // `if (!window.modeZone) return`) ET laissait la pastille allumée. On
-      // snapshot le mode AVANT le reset, on ne le restaure QUE s'il restait une
-      // forme en cours (index >= 0) — au vide, garder null = sortir du mode.
+      // Idem modeZone / modeStructure : sans restauration, un Ctrl+Z en plein dessin tue l'outil et laisse la
+      // pastille allumée. Restaurés seulement s'il reste une forme en cours (index >= 0).
       const _savedModeZone = (Array.isArray(s.zones) && typeof s.currentZoneIndex === "number" && s.currentZoneIndex >= 0)
         ? window.modeZone
         : null;
@@ -166,16 +118,13 @@
         if (window.resetStructures) window.resetStructures();
         if (window.setStructures) window.setStructures(s.structures);
       }
-      // Restaure le tracé en cours APRÈS setRoads
-      // (qui a remis currentRoad = null). Uniquement si le snapshot contient
-      // `roads` : un undo "zones"/"structures" ne doit PAS toucher au tracé
-      // en cours de dessin.
+      // Tracé en cours restauré APRÈS setRoads (qui remet currentRoad à null), seulement si l'instantané contient
+      // `roads` : un undo « zones » ne touche pas au tracé en cours.
       if (Array.isArray(s.roads) && window.setCurrentRoadByIndex
           && typeof s.currentRoadIndex === "number") {
         window.setCurrentRoadByIndex(s.currentRoadIndex);
       }
-      // idem zones/structures (APRÈS setZones/setStructures qui
-      // ont remis currentZone/currentStructure = null).
+      // Idem zones / structures, après setZones / setStructures.
       if (Array.isArray(s.zones) && window.setCurrentZoneByIndex
           && typeof s.currentZoneIndex === "number") {
         window.setCurrentZoneByIndex(s.currentZoneIndex);
@@ -184,11 +133,8 @@
           && typeof s.currentStructureIndex === "number") {
         window.setCurrentStructureByIndex(s.currentStructureIndex);
       }
-      // Restaure le mode road pour permettre la continuation
-      // du tracé après undo. Skip si on annulait la création même d'une
-      // nouvelle road (currentRoadIndex == -1 ou pas de roads dans snap) :
-      // dans ce cas garder modeRoad = null est cohérent (sortir du mode).
-      // même restauration pour zones/structures.
+      // Mode road (puis zones / structures) restauré pour continuer le tracé ; rien si on annulait la création
+      // même (currentRoadIndex == -1) : rester hors du mode.
       if (_savedModeRoad) {
         window.modeRoad = _savedModeRoad;
       }
@@ -203,18 +149,13 @@
     }
   }
 
-  // ============================================================
-  // TRACES DE SUPPRESSION (ETUDE_UID lot B, décisions 8 et 9)
-  // ============================================================
-  // Les traces sont tenues ICI, à un seul endroit, plutôt qu'à chacun des
-  // ~15 sites de suppression (gomme, popup, tout effacer, conversion, tableur,
-  // import GPX…) : toute action passe par record(), et un diff des uid entre
-  // l'instantané « avant » et l'état courant dit ce qui a disparu.
-  //   - Diff sur l'UNION des catégories de l'instantané : une conversion qui
-  //     fait passer un objet des tracés aux zones n'est pas une suppression.
-  //   - Pas de trace pour l'itinéraire calculé, ni pour un objet rapatrié d'un
-  //     calque (`_srcCalque`) : le restituer le rend à son calque, rien n'est
-  //     supprimé.
+  // ── Traces de suppression (ETUDE_UID décisions 8 et 9) ──────────
+  // Tenues ICI plutôt qu'aux ~15 sites de suppression (gomme, popup, tout effacer, conversion, tableur, import
+  // GPX…) : toute action passe par record(), et un diff des uid entre « avant » et l'état courant dit ce qui a
+  // disparu.
+  //   - Diff sur l'UNION des catégories : un objet converti des tracés aux zones n'est pas supprimé.
+  //   - Pas de trace pour l'itinéraire calculé, ni pour un objet rapatrié d'un calque (`_srcCalque`) : le restituer
+  //     le rend à son calque.
   const _CATS = ["editorPoints", "roads", "zones", "structures"];
   const _GETTERS = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
 
@@ -238,7 +179,6 @@
     return !!(o && !o._srcCalque && !(window.KtaUid && window.KtaUid.estTransitoire(o)));
   }
 
-  // Après une action enregistrée : disparu → trace ; réapparu → trace retirée.
   function _tracerDepuis(avant) {
     const K = window.KtaUid;
     if (!K || !avant) return;
@@ -247,10 +187,8 @@
     b.forEach(function(o, uid) { if (!a.has(uid)) K.untombstone(uid); });
   }
 
-  // Après un undo / redo : l'état revient en arrière, et revenir en arrière
-  // est une MODIFICATION (décision 9) — sinon une synchro garderait la version
-  // annulée, plus récente. Réapparu → trace retirée + touch ; disparu → trace ;
-  // présent des deux côtés mais différent → touch. Même uid dans tous les cas.
+  // Après undo / redo : revenir en arrière est une MODIFICATION (décision 9), sinon une synchro garderait la version
+  // annulée, plus récente. Réapparu → trace retirée + touch ; disparu → trace ; présent mais différent → touch.
   function _tracerRetour(avantRetour) {
     const K = window.KtaUid;
     if (!K || !avantRetour) return;
@@ -264,41 +202,32 @@
     a.forEach(function(o, uid) { if (!b.has(uid) && _laisseTrace(o)) K.tombstone(uid); });
   }
 
-  // ============================================================
-  // RECORD / UNDO / REDO
-  // ============================================================
-  // record(label, beforeState?, category?) — push une entrée d'historique.
-  //   beforeState : snapshot AVANT la mutation. Si omis, on capture
-  //                 l'état COURANT (utile si on appelle record() après
-  //                 la mutation et que l'appelant ne veut pas garder
-  //                 le snapshot avant manuellement).
-  //   category    : 🆕 v1.26.4 — "editorPoints"|"roads"|"zones"|"structures"
-  //                 pour un snapshot ciblé (économie RAM). null/absent = tout.
-  //                 ⚠️ DOIT correspondre à la catégorie réellement mutée par
-  //                 l'action, ET au category passé à captureState() pour le
-  //                 beforeState. Sinon l'undo ne restaurera pas la bonne data.
+  // ── Record / undo / redo ──────────
+  // record(label, beforeState?, category?)
+  //   beforeState : instantané AVANT la mutation ; omis → état COURANT (record() appelé après la mutation).
+  //   category    : "editorPoints"|"roads"|"zones"|"structures" (instantané ciblé) ; absent = tout.
+  //                 ⚠️ DOIT être la catégorie réellement mutée ET celle passée à captureState() pour beforeState,
+  //                 sinon l'undo ne restaure pas la bonne donnée.
   function record(label, beforeState, category) {
     const snap = beforeState || _captureState(category);
     try { _tracerDepuis(snap); } catch(e) { console.warn("[HistoryManager] traces de suppression :", e); }
-    // 🌍 i18n : fallback localisé (label absent) — clé history.action.default.
+    // Repli localisé si label absent (history.action.default).
     undoStack.push({ label: String(label || _t("history.action.default")), category: category || null, snapshot: snap, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) {
       undoStack.shift(); // FIFO sur dépassement
     }
-    // Toute nouvelle action efface le redo (= nouvelle branche d'historique)
+    // Toute nouvelle action efface le redo (nouvelle branche).
     if (redoStack.length > 0) redoStack = [];
     _notify();
   }
 
-  // recordAction(label, mutationFn, category?) — capture avant + run + record
   function recordAction(label, mutationFn, category) {
     const before = _captureState(category);
     let result;
     try {
       result = mutationFn();
     } catch(e) {
-      // En cas d'erreur de mutation, on NE record PAS (sinon undo
-      // pointerait sur un état artificiel).
+      // Mutation en erreur : PAS de record (l'undo pointerait sur un état artificiel).
       console.warn("[HistoryManager] mutation échouée, skip record :", e);
       throw e;
     }
@@ -310,13 +239,11 @@
     if (undoStack.length === 0) return false;
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     const entry = undoStack.pop();
-    // Capture ciblée sur la MÊME catégorie que l'entrée (cohérence pour redo).
+    // Capture ciblée sur la MÊME catégorie que l'entrée (cohérence du redo).
     const currentState = _captureState(entry.category);
     _applyState(entry.snapshot);
     try { _tracerRetour(currentState); } catch(e) { console.warn("[HistoryManager] traces (undo) :", e); }
-    // Push l'état COURANT (= post-mutation pré-undo) sur redo, avec le
-    // même label + catégorie : le user verra "↩ Annulé : <label>" et pourra
-    // redo pour rétablir l'état.
+    // État COURANT poussé sur redo avec le même label et la même catégorie (« ↩ Annulé : <label> »).
     redoStack.push({ label: entry.label, category: entry.category, snapshot: currentState, ts: Date.now() });
     if (redoStack.length > MAX_HISTORY) redoStack.shift();
     _showToast(_t("history.undone") + entry.label);
@@ -340,9 +267,7 @@
     return true;
   }
 
-  // ============================================================
-  // ÉTAT / NOTIFY
-  // ============================================================
+  // ── État / notification ──────────
   function canUndo() { return undoStack.length > 0; }
   function canRedo() { return redoStack.length > 0; }
 
@@ -368,9 +293,7 @@
     });
   }
 
-  // ============================================================
-  // UX FEEDBACK + SESSION PERSIST
-  // ============================================================
+  // ── Retour UX + sauvegarde de session ──────────
   function _showToast(msg) {
     if (window.OOMGuard && window.OOMGuard.showToast) {
       try { window.OOMGuard.showToast(msg, "info"); return; } catch(e) {}
@@ -378,24 +301,16 @@
     console.log("[HistoryManager] " + msg);
   }
 
-  // Force un save de session après chaque undo/redo (KARMA 7:a) pour ne
-  // pas perdre l'état si l'user reload juste après.
+  // Sauvegarde de session après chaque undo/redo (un rechargement juste après ne perd rien).
   function _saveSession() {
     if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
       try { window.SessionPersist.save({ force: true }); } catch(e) { /* silent */ }
     }
   }
 
-  // ============================================================
-  // RACCOURCIS CLAVIER (KARMA 4:c)
-  // ============================================================
-  // Ctrl+Z          → undo
-  // Ctrl+Y          → redo
-  // Ctrl+Shift+Z    → redo (convention Mac/Linux)
-  // Cmd+* sur Mac (e.metaKey aussi accepté)
-  //
-  // Anti-vol focus : ignore si l'user tape dans un input/textarea ou
-  // un élément contenteditable (l'undo natif de l'input doit fonctionner).
+  // ── Raccourcis clavier ──────────
+  // Ctrl+Z → undo ; Ctrl+Y et Ctrl+Shift+Z → redo ; Cmd sur Mac (e.metaKey).
+  // Ignorés dans un input / textarea / contenteditable (l'undo natif du champ doit marcher).
   document.addEventListener("keydown", function(e) {
     const isMod = e.ctrlKey || e.metaKey;
     if (!isMod) return;
@@ -421,9 +336,7 @@
     }
   });
 
-  // ============================================================
-  // API PUBLIQUE
-  // ============================================================
+  // ── API publique ──────────
   window.HistoryManager = {
     record:       record,
     captureState: _captureState,
@@ -434,7 +347,7 @@
     canRedo:      canRedo,
     reset:        reset,
     onChange:     onChange,
-    // Pour debug / introspection (lecture seule)
+    // Debug / introspection (lecture seule).
     _peek:        function() { return { undo: undoStack.slice(), redo: redoStack.slice() }; }
   };
 

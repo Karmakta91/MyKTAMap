@@ -6,38 +6,25 @@
  */
 
 // =========================
-// GPX IO — Import / Export GPX 1.1 (v1.14.0)
+// GPXIO.JS — Import / export GPX 1.1 de la session
 // =========================
-// Permet d'exporter une session MyKTAMap au format GPX 1.1 (compatible
-// apps spéléo / outdoor : TopoDroid, OsmAnd, Avenza, GPSies, Strava, etc.)
-// et d'importer un fichier GPX externe pour ajouter ses points/tracés aux
-// annotations de session du plan courant.
-//
-// Requiert un calibrage KMZ existant (2 points GPS) pour faire la
-// transformation plan ↔ WGS84. Si pas calibré, on alerte l'user.
-//
-// Format GPX 1.1 :
-//   - Points → <wpt lat="..." lon="..."> avec <name>, <desc>, <sym>, <type>
-//   - Tracés → <trk><name/><type/><trkseg><trkpt lat="..." lon="..."/></trkseg></trk>
-//
-// API publique :
-//   window.GpxIO = {
-//     exporter(opts)   → génère + télécharge un .gpx depuis la session courante
-//     parser(xmlString) → parse GPX XML → { metadata, waypoints, tracks }
-//     importer(file)    → lit file + parse + transforme + ajoute aux annotations
-//     verifierCalibrage() → bool — true si le plan courant a un calibrage utilisable
-//   };
-//
-// Note : pas de support GPX 1.0 (vieille spec) ni des extensions Garmin/Strava
-// custom — uniquement waypoints + tracks 1.1 standard.
-// =========================
+// Export de la session au format GPX 1.1 (TopoDroid, OsmAnd, Avenza, Strava…) et import d'un GPX externe dans
+// les annotations de session du plan courant. Requiert un calage (2 points GPS) pour la transformation
+// plan ↔ WGS84 ; sans calage, on prévient.
+// Format : points → <wpt lat lon> (<name>, <desc>, <sym>, <type>) ; tracés → <trk><trkseg><trkpt/></trkseg></trk>.
+// Pas de GPX 1.0 ni d'extensions Garmin/Strava : waypoints + tracks 1.1 standard.
+// API : window.GpxIO = {
+//   exporter(opts)      → génère + télécharge un .gpx depuis la session courante
+//   parser(xmlString)   → { metadata, waypoints, tracks }
+//   importer(file)      → lit, parse, transforme, ajoute aux annotations
+//   verifierCalibrage() → true si le plan courant a un calage utilisable
+// };
+// Doc : docs/architecture/exports.md.
 
 (function() {
   "use strict";
 
-  // ============================================================
-  // HELPERS COMMUNS
-  // ============================================================
+  // ── Helpers communs ──────────
   function _xmlEsc(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;")
@@ -63,22 +50,10 @@
     return (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "MyKTAMap session";
   }
 
-  // ============================================================
-  // CHECK CALIBRAGE
-  // ============================================================
-  //
-  // (KARMA : "bug export GPX malgré le calibrage il me dit
-  // que je ne l'ai pas fait") : avant ce fix, on cherchait `calib.transform`
-  // dans le calibrage persisté — MAIS `KmzExport.setCalibration` ne stocke
-  // que `{pointA, pointB}` (cf js/kmzExport.js > setCalibration),
-  // pas de champ `transform`. Le transform est calculé À LA DEMANDE via
-  // `buildTransform(planA, planB, gpsA, gpsB)`. Donc `verifierCalibrage()`
-  // retournait toujours `false` et l'export GPX bloquait avec "pas calibré"
-  // même quand le user avait bien saisi ses 8 champs.
-  //
-  // Fix : vérifie les 8 champs requis (x/y/lat/lng × pointA/pointB) puis
-  // calcule `transform` au vol. Symétrique exact à ce que fait KMZ
-  // (sessionExporter.js > _exportKmz).
+  // ── Vérification du calage ──────────
+  // 🩸 Le calage persisté ne contient que `{pointA, pointB}` (js/kmzExport.js > setCalibration), JAMAIS de
+  // `transform` : on vérifie les 8 champs (x/y/lat/lng × A/B) puis on calcule la transformation à la demande
+  // (`buildTransform`), comme le KMZ (sessionExporter.js > _exportKmz).
 
   function _calibComplet(calib) {
     if (!calib || !calib.pointA || !calib.pointB) return false;
@@ -93,15 +68,12 @@
     if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") return false;
     const calib = window.KmzExport.getCalibration(_currentPlanId());
     if (!_calibComplet(calib)) return false;
-    // Vérifie en plus que buildTransform ne lève pas (ex: 2 points identiques
-    // ou GPS à distance nulle → throw côté KmzExport.buildTransform pour
-    // signaler un calibrage dégénéré).
+    // buildTransform ne doit pas lever (points identiques, distance GPS nulle = calage dégénéré).
     if (typeof window.KmzExport.buildTransform !== "function") return false;
     try {
       window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
       return true;
     } catch(e) {
-      // Calibrage présent mais dégénéré (2 points identiques, etc.)
       return false;
     }
   }
@@ -118,20 +90,16 @@
     }
   }
 
-  // ============================================================
-  // EXPORTER — Génère + télécharge un .gpx
-  // ============================================================
-  //
-  // opts (tous optionnels — défaut = tout inclure) :
+  // ── Exporter : génère + télécharge un .gpx ──────────
+  // opts (tout optionnel, défaut = tout inclure) :
   //   {
-  //     incPoints:     bool (default true)   → editorPoints session
-  //     incEmbedded:   bool (default true)   → points embedded data layers
-  //     incRoads:      bool (default true)   → tracés session
-  //     incIti:        bool (default false)  → itinéraire (souvent éphémère)
-  //     filename:      string (default auto) → nom du fichier .gpx
+  //     incPoints:     bool (true)   → points de session
+  //     incEmbedded:   bool (true)   → points des calques
+  //     incRoads:      bool (true)   → tracés de session
+  //     incIti:        bool (false)  → itinéraire (souvent éphémère)
+  //     filename:      string (auto) → nom du fichier
   //   }
-  //
-  // Retourne { ok: bool, msg: string, counts: {wpts, trks} }
+  // Rend { ok: bool, msg: string, counts: {wpts, trks} }
   function exporter(opts) {
     opts = opts || {};
     if (!verifierCalibrage()) {
@@ -145,30 +113,25 @@
     const incEmbedded = opts.incEmbedded !== false;
     const incRoads    = opts.incRoads    !== false;
     const incIti      = opts.incIti      === true;
-    // Roundtrip légende plan-level (symétrique kmzExport).
-    // Si opts.planCustomLegend est présent et non-null, embed dans
-    // <extensions><myktamap:customLegend>...</myktamap:customLegend></extensions>
-    // sous <metadata>. Skip silencieux si null/absent.
+    // Légende du plan (aller-retour, comme kmzExport) : opts.planCustomLegend non nul → embarquée dans
+    // <metadata><extensions><myktamap:customLegend>.
     const planCustomLegend = (opts.planCustomLegend && typeof opts.planCustomLegend === "object")
                               ? opts.planCustomLegend : null;
 
-    // Collecte des annotations à exporter
     const sessionPoints   = incPoints && window.getEditorPoints ? (window.getEditorPoints() || []) : [];
     const embeddedPoints  = incEmbedded && window.getAllEmbeddedPoints ? (window.getAllEmbeddedPoints() || []) : [];
     const allPoints       = sessionPoints.concat(embeddedPoints);
 
     const sessionRoads = incRoads && window.getRoads ? (window.getRoads() || []) : [];
-    // Filtre itinéraire (= éphémère, généralement on ne veut pas l'exporter)
+    // Itinéraire exclu sauf demande (éphémère).
     const tracesAExporter = sessionRoads.filter(function(r) {
       if (!r || !Array.isArray(r.points) || r.points.length < 2) return false;
       if (r.type === "itinerary" && !incIti) return false;
       return true;
     });
 
-    // Génère le GPX XML
     const xml = _genererGpx(allPoints, tracesAExporter, t, planCustomLegend);
 
-    // Télécharge
     const planName = _currentPlanName().replace(/[^\w\-]+/g, "_");
     const date     = new Date().toISOString().split("T")[0];
     const filename = opts.filename || ("myktamap_" + planName + "_" + date + ".gpx");
@@ -185,30 +148,21 @@
     };
   }
 
-  // ============================================================
-  // GÉNÉRATEUR GPX 1.1
-  // ============================================================
+  // ── Générateur GPX 1.1 ──────────
   function _genererGpx(points, tracks, t, planCustomLegend) {
     const lines = [];
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-    // Ajout du namespace `xmlns:myktamap` au root <gpx> pour
-    // permettre l'extension `<myktamap:customLegend>` sous <metadata>.
-    // Strictement transparent pour les apps tierces (TopoDroid, OsmAnd…)
-    // qui ignorent les namespaces inconnus dans les `<extensions>` standards.
+    // Namespace `xmlns:myktamap` sur <gpx> pour `<myktamap:customLegend>` ; les apps tierces ignorent les
+    // namespaces inconnus dans `<extensions>`.
     lines.push('<gpx version="1.1" creator="MyKTAMap (myktamap.fr)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:myktamap="https://myktamap.fr/gpx/ext/v1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">');
 
-    // Métadonnées
     lines.push('  <metadata>');
     lines.push('    <name>' + _xmlEsc(_currentPlanName()) + '</name>');
     lines.push('    <desc>Export GPX depuis MyKTAMap — ' + points.length + ' point(s), ' + tracks.length + ' tracé(s)</desc>');
     lines.push('    <author><name>MyKTAMap</name><link href="https://myktamap.fr"><text>myktamap.fr</text></link></author>');
     lines.push('    <time>' + _isoNow() + '</time>');
-    // Roundtrip légende plan-level. Embed le state complet en
-    // JSON brut (CDATA inutile car _xmlEsc gère les & et < / > du JSON).
-    // Format ouvert {type, version, exportedAt, customLegend} aligné sur
-    // myktamap-extras.json côté KMZ (cf §59.2 CLAUDE.md). Les apps tierces
-    // ignorent les <extensions> sous <metadata>. Parsé par parser() côté
-    // import → utilisé par gpxImport.js > genererZipMyktamap au ré-import.
+    // Légende du plan en JSON brut (_xmlEsc gère & < >), format {type, version, exportedAt, customLegend} comme
+    // myktamap-extras.json du KMZ. Relu par parser() à l'import (gpxImport.js > genererZipMyktamap).
     if (planCustomLegend) {
       const extrasPayload = JSON.stringify({
         type:          "myktamap-gpx-extras",
@@ -222,27 +176,10 @@
     }
     lines.push('  </metadata>');
 
-    // 🩸 POURQUOI IL N'Y A PAS DE `<ele>` ICI, ET POURQUOI C'EST
-    // LE CHOIX HONNÊTE.
-    //
-    // Les profondeurs des niveaux existent depuis la v1.83.0, et le KMZ les
-    // écrit désormais (en `relativeToGround`, qui veut dire exactement ce
-    // qu'on mesure : SOUS LA SURFACE). Le réflexe serait de faire pareil en
-    // GPX avec `<ele>`.
-    //
-    // Ce serait faux. En GPX, `<ele>` est l'altitude AU-DESSUS DU NIVEAU DE
-    // LA MER — c'est ce que lisent les GPS et les logiciels de rando. Y
-    // écrire « -30 » pour une galerie à 30 m sous une colline à 100 m
-    // annoncerait un point à 30 m SOUS la mer : une erreur de 130 m,
-    // parfaitement plausible à l'œil, donc indétectable.
-    //
-    // Il faudrait l'altitude du terrain, que l'app ne connaît pas. L'inventer
-    // serait pire que de l'omettre. La profondeur part donc dans la
-    // DESCRIPTION, où elle est lue par un humain et par rien d'autre.
-    //
-    // C'est le même arbitrage que partout ailleurs dans ce projet : on ne
-    // remplit pas un champ normalisé avec une grandeur qui n'est pas la
-    // sienne.
+    // 🩸 PAS DE `<ele>` (décision produit). En GPX, `<ele>` est l'altitude AU-DESSUS DE LA MER : « -30 » pour une
+    // galerie à 30 m sous une colline à 100 m annoncerait un point 30 m sous la mer (130 m d'erreur, plausible donc
+    // indétectable). Il faudrait l'altitude du terrain, que l'app ne connaît pas. La profondeur part dans la
+    // DESCRIPTION, lue par un humain. (Le KMZ, lui, l'écrit en `relativeToGround`, qui veut dire « sous la surface ».)
     function _mentionProfondeur(level) {
       if (!Number.isInteger(level)) return "";
       if (typeof window.getProfondeurNiveau !== "function") return "";
@@ -257,7 +194,7 @@
       return desc ? (desc + " — " + m) : m;
     }
 
-    // Waypoints (= points editor + embedded)
+    // Waypoints (points de session + calques)
     points.forEach(function(p) {
       if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
       const ll = window.KmzExport.planToGps(t, p.x, p.y);
@@ -267,25 +204,23 @@
       const _dp = _descAvecProfondeur(p.description, p.level);
       if (_dp) lines.push('    <desc>' + _xmlEsc(_dp) + '</desc>');
       if (Array.isArray(p.tags) && p.tags.length > 0) {
-        // GPX <type> = tag principal
+        // <type> = tag principal
         lines.push('    <type>' + _xmlEsc(p.tags[0]) + '</type>');
-        // GPX <sym> = symbole (= aussi le tag pour lecture par autres apps)
+        // <sym> = tag aussi (lu par les autres apps)
         lines.push('    <sym>' + _xmlEsc(p.tags[0]) + '</sym>');
       }
       if (Number.isInteger(p.level)) {
-        // Niveau M-LVL stocké en cmt (commentaire libre, conservé par TopoDroid/OsmAnd)
+        // Niveau dans <cmt> (commentaire libre, conservé par TopoDroid / OsmAnd).
         lines.push('    <cmt>MyKTAMap level=' + p.level + '</cmt>');
       }
       lines.push('  </wpt>');
     });
 
-    // Tracks (= roads session)
+    // Tracks (tracés de session)
     tracks.forEach(function(r) {
       lines.push('  <trk>');
       lines.push('    <name>' + _xmlEsc(r.label || r.type || "Tracé") + '</name>');
-      // ajout de <desc> sur les tracks (description du road) pour
-      // roundtrip MyKTAMap. Avant ce fix, la description du tracé était
-      // perdue à l'export GPX (seul le name était écrit).
+      // <desc> du tracé (sa description, + profondeur), pour l'aller-retour.
       const _dr = _descAvecProfondeur(r.description, r.level);
       if (_dr) {
         lines.push('    <desc>' + _xmlEsc(_dr) + '</desc>');
@@ -309,9 +244,7 @@
     return lines.join("\n");
   }
 
-  // ============================================================
-  // PARSER GPX → { metadata, waypoints, tracks }
-  // ============================================================
+  // ── Parser GPX → { metadata, waypoints, tracks } ──────────
   function parser(xmlString) {
     if (!xmlString || typeof xmlString !== "string") {
       throw new Error(window.I18n.t("gpx.err.contentEmpty"));
@@ -319,7 +252,7 @@
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, "application/xml");
 
-    // Détecte erreur de parsing (DOMParser ajoute un <parsererror> en cas de XML mal formé)
+    // XML mal formé : DOMParser ajoute un <parsererror>.
     const parseError = doc.querySelector("parsererror");
     if (parseError) {
       throw new Error(window.I18n.t("gpx.err.malformed",
@@ -330,7 +263,6 @@
       throw new Error(window.I18n.t("gpx.err.notGpx"));
     }
 
-    // Métadonnées (optionnel)
     const metadata = {};
     const meta = root.getElementsByTagName("metadata")[0];
     if (meta) {
@@ -341,18 +273,13 @@
       if (descEl) metadata.desc = descEl.textContent.trim();
       if (timeEl) metadata.time = timeEl.textContent.trim();
 
-      // Roundtrip légende plan-level (symétrique kmzImport).
-      // Extrait `<extensions><myktamap:customLegend>` qui peut contenir
-      // soit le payload wrapper complet {type, version, exportedAt,
-      // customLegend} soit (legacy/permissif) directement l'état customLegend.
-      // Utilisé par gpxImport.js > genererZipMyktamap pour injecter dans
-      // planConfig.plan.customLegend au ré-import GPX → ZIP autonome.
-      // Ignoré silencieusement par importer() qui n'opère que sur session.
+      // Légende du plan (`<extensions><myktamap:customLegend>`) : enveloppe {type, version, exportedAt,
+      // customLegend} ou état brut. Utilisée par gpxImport.js > genererZipMyktamap (planConfig.plan.customLegend) ;
+      // ignorée par importer(), qui n'agit que sur la session.
       const extEl = meta.getElementsByTagName("extensions")[0];
       if (extEl) {
-        // getElementsByTagNameNS gère mal les fichiers sans déclaration namespace
-        // (cas où l'user a édité manuellement le GPX). On scanne tous les enfants
-        // direct par localName == "customLegend" pour être tolérant.
+        // Recherche par localName == "customLegend" sur les enfants directs : getElementsByTagNameNS échoue sur un
+        // GPX sans déclaration de namespace (édité à la main).
         let clEl = null;
         const children = extEl.children || [];
         for (let i = 0; i < children.length; i++) {
@@ -368,7 +295,6 @@
           if (raw) {
             try {
               const parsed = JSON.parse(raw);
-              // 2 formats acceptés : wrapper {type, customLegend} OU état brut
               if (parsed && parsed.customLegend && typeof parsed.customLegend === "object") {
                 metadata.customLegend = parsed.customLegend;
               } else if (parsed && (parsed.labels || parsed.hidden || parsed.customEntries)) {
@@ -382,7 +308,6 @@
       }
     }
 
-    // Waypoints
     const waypoints = [];
     const wpts = root.getElementsByTagName("wpt");
     for (let i = 0; i < wpts.length; i++) {
@@ -404,9 +329,7 @@
       waypoints.push(wpt);
     }
 
-    // Tracks (peut contenir plusieurs trkseg, on les concat en 1 seul tracé
-    // par <trk> pour simplifier — les segments multi sont rares en pratique
-    // pour des plans souterrains)
+    // Tracks : plusieurs trkseg concaténés en un seul tracé par <trk> (rare sous terre).
     const tracks = [];
     const trks = root.getElementsByTagName("trk");
     for (let i = 0; i < trks.length; i++) {
@@ -439,12 +362,9 @@
     return { metadata: metadata, waypoints: waypoints, tracks: tracks };
   }
 
-  // ============================================================
-  // IMPORTER — Lit file + parse + transforme + ajoute aux annotations
-  // ============================================================
-  // Retourne une Promise : { ok, msg, counts: {wpts, trks}, preview: {...} }
-  // Si confirmAdd=false, on retourne juste la preview sans toucher à la session
-  // (l'UI peut afficher une modale de confirmation puis re-appeler avec true).
+  // ── Importer : lit, parse, transforme, ajoute aux annotations ──────────
+  // Rend une Promise { ok, msg, counts: {wpts, trks}, preview }. confirmAdd=false → aperçu seul, session intacte
+  // (l'UI confirme puis rappelle avec true).
   function importer(file, opts) {
     opts = opts || {};
     const confirmAdd = opts.confirmAdd === true;
@@ -477,32 +397,30 @@
         const imgW = window.APP_CONFIG && window.APP_CONFIG.imageWidth  || 0;
         const imgH = window.APP_CONFIG && window.APP_CONFIG.imageHeight || 0;
 
-        // Transforme waypoints en points plan
         const nouveauxPoints = [];
         let outOfBoundsWpt = 0;
         parsed.waypoints.forEach(function(w) {
           const pos = window.KmzExport.gpsToPlan(t, w.lat, w.lng);
           if (!pos) return;
-          // Check si le point tombe dans les bounds du plan (sinon ignore ou warn)
+          // Point hors des limites du plan : ignoré ou signalé.
           if (imgW > 0 && imgH > 0) {
             if (pos.x < -50 || pos.x > imgW + 50 || pos.y < -50 || pos.y > imgH + 50) {
               outOfBoundsWpt++;
               return;
             }
           }
-          // Détecte le level depuis le commentaire "MyKTAMap level=N"
+          // Niveau depuis le commentaire "MyKTAMap level=N".
           let level = null;
           if (w.cmt && /MyKTAMap level=(-?\d+)/.test(w.cmt)) {
             level = parseInt(RegExp.$1, 10);
           }
-          // Détermine le tag (sym/type) — par défaut "info" si rien
+          // Tag : sym, sinon type, sinon "info".
           const tag = w.sym || w.type || "info";
           nouveauxPoints.push({
             id:          "gpx_" + Date.now() + "_" + nouveauxPoints.length,
             x:           Math.round(pos.x),
             y:           Math.round(pos.y),
-            // ⚠️ i18n « figé à la langue d'import » : fallback de nom écrit comme
-            // donnée d'annotation (affiché sur la carte). Non re-traduit ensuite.
+            // ⚠️ Nom de repli figé dans la langue d'import (donnée d'annotation, jamais retraduite).
             nom:         w.name || window.I18n.t("gpx.import.pointNameDefault"),
             description: w.desc || "",
             tags:        [tag],
@@ -510,7 +428,6 @@
           });
         });
 
-        // Transforme tracks en roads plan
         const nouveauxTraces = [];
         let outOfBoundsTrk = 0;
         parsed.tracks.forEach(function(trk) {
@@ -531,20 +448,13 @@
             outOfBoundsTrk++;
             return;
           }
-          // Détecte le level
           let level = null;
           if (trk.cmt && /MyKTAMap level=(-?\d+)/.test(trk.cmt)) {
             level = parseInt(RegExp.$1, 10);
           }
-          // Map type GPX → type road MyKTAMap (si reconnu).
-          // ajout de "jonction" pour roundtrip complet (sans ça,
-          // un tracé jonction exporté revenait en chemin à l'import).
-          // les types CUSTOM (`cust-…`) étaient rejetés ici et
-          // TOUS convertis en "chemin" : perte de donnée silencieuse, pas
-          // seulement de couleur. `gpxImport.js` (le lecteur du générateur)
-          // avait reçu ce même correctif en v1.21.1 ; ce lecteur-ci a été
-          // oublié. Deux importeurs GPX, deux comportements sur le même
-          // fichier — c'est cette asymétrie qu'on supprime.
+          // Type GPX → type de tracé : intégrés (jonction comprise) ET types CUSTOM (`cust-…`) gardés, sinon
+          // « chemin ». 🩸 Même règle que gpxImport.js : deux importeurs GPX ne doivent pas lire différemment le
+          // même fichier (rejeter un custom = perte de donnée silencieuse).
           const validTypes = ["principal", "secondaire", "chemin", "itinerary", "jonction"];
           const type = (trk.type &&
                         (validTypes.indexOf(trk.type) >= 0 || String(trk.type).indexOf("cust-") === 0))
@@ -552,8 +462,7 @@
           nouveauxTraces.push({
             id:          "gpx_trk_" + Date.now() + "_" + nouveauxTraces.length,
             type:        type,
-            // ⚠️ i18n « figé à la langue d'import » : fallback de label écrit comme
-            // donnée d'annotation (affiché sur la carte). Non re-traduit ensuite.
+            // ⚠️ Libellé de repli figé dans la langue d'import (donnée d'annotation, jamais retraduite).
             label:       trk.name || window.I18n.t("gpx.import.trackImportedDefault"),
             description: trk.desc || undefined,  // préserve la desc track
             points:      points,
@@ -570,18 +479,16 @@
         };
 
         if (!confirmAdd) {
-          // Preview only — l'UI doit demander confirmation et rappeler
+          // Aperçu seul : l'UI demande confirmation puis rappelle.
           return resolve({
             ok:      true,
             msg:     window.I18n.t("gpx.previewGenerated"),
             preview: preview,
-            // On stocke les nouveaux objets sur l'instance pour les commit
-            // ultérieur via un second appel à _appliquerImport()
+            // Objets gardés pour le commit ultérieur (_appliquerImport).
             _toApply: { points: nouveauxPoints, tracks: nouveauxTraces }
           });
         }
 
-        // confirmAdd === true → on ajoute direct aux annotations
         _appliquerImport(nouveauxPoints, nouveauxTraces);
         resolve({
           ok:      true,
@@ -594,26 +501,21 @@
     });
   }
 
-  // Applique l'import aux setters MyKTAMap (avec snapshot HistoryManager
-  // pour pouvoir undo si l'user regrette).
+  // Applique l'import aux setters, avec instantané HistoryManager (annulable).
   function _appliquerImport(points, tracks) {
-    // Snapshot avant pour Undo
     const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
 
-    // Ajout points session
     if (points.length > 0 && window.getEditorPoints && window.setEditorPoints) {
       const current = window.getEditorPoints() || [];
       window.setEditorPoints(current.concat(points));
       if (window.renderEditorPoints) window.renderEditorPoints();
     }
 
-    // Ajout tracés session
     if (tracks.length > 0 && window.getRoads && window.setRoads) {
       const current = window.getRoads() || [];
       window.setRoads(current.concat(tracks));
     }
 
-    // Record dans HistoryManager pour permettre Undo
     if (window.HistoryManager && _hb) {
       window.HistoryManager.record(
         window.I18n.t("history.action.importGpx", { points: points.length, tracks: tracks.length }),
@@ -622,9 +524,7 @@
     }
   }
 
-  // ============================================================
-  // HELPER DOWNLOAD
-  // ============================================================
+  // ── Téléchargement ──────────
   function _telechargerFichier(content, filename, mime) {
     const blob = new Blob([content], { type: mime || "text/plain" });
     const url  = URL.createObjectURL(blob);
@@ -637,9 +537,7 @@
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
-  // ============================================================
-  // EXPORT GLOBAL
-  // ============================================================
+  // ── Export global ──────────
   window.GpxIO = {
     exporter:           exporter,
     parser:             parser,

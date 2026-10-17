@@ -5,71 +5,28 @@
  */
 
 // =========================
-// ALERT CHECKER — diffusion d'alertes publiques (incendie, fermeture, migration, etc.)
+// ALERTCHECKER.JS — Alertes publiques du site (incendie, fermeture, migration…)
 // =========================
-// À chaque boot, fetch `alert.json` à la racine du site.
-// Affiche une (ou plusieurs) modales d'alerte à l'utilisateur si actives.
-// L'auteur active/désactive en éditant `alert.json` côté serveur.
-//
-// FORMAT alert.json (v163+, multi-alertes)
+// Au démarrage, lit `alert.json` à la racine du site (l'auteur l'édite côté serveur) et affiche les alertes actives.
+// Format :
 //   {
 //     "active": true|false,
 //     "alerts": [
-//       {
-//         "id":      "migration-myktamap-fr-2026",
-//         "level":   "info" | "warning" | "emergency",
-//         "title":   "...",
-//         "message": "...",
-//         "details": [...],
-//         "released": "2026-05-15T12:00:00Z"
-//       },
+//       { "id": "migration-2026", "level": "info" | "warning" | "emergency",
+//         "title": "...", "message": "...", "details": [...], "released": "2026-05-15T12:00:00Z" },
 //       ...
 //     ]
 //   }
-//
-// RETRO-COMPAT — ancien format mono-alerte (v144-v162) toujours supporté :
-//   {
-//     "active": true,
-//     "level":  "emergency",
-//     "title":  "...",
-//     ...
-//   }
-//   → Détecté via absence de champ `alerts[]` → wrappé en alerts:[{...}] avec
-//     un id généré (= released, ou hash du title si absent).
-//
-// PRIORITE D'AFFICHAGE
-//   emergency (rouge) > warning (orange) > info (bleu), puis tri par released
-//   descendant (plus récent en haut).
-//
-// AFFICHAGE — sélecteur si N>1, modale détail si N=1 (depuis v166)
-//   - 1 seule alerte : modale détail direct
-//   - Plusieurs alertes : sélecteur (liste classée par criticité), l'user
-//     choisit ce qui l'intéresse. UN click = UNE modale détail (v167+).
-//     Pas de cascade auto après acquit — l'user re-clique 🚨 pour voir une
-//     autre alerte (le sélecteur réapparaît avec ce qui reste).
-//   - L'user peut fermer le sélecteur (✕ / Échap / backdrop) sans rien lire.
-//
-//   Mode "click bouton 🚨" (manuel) : sélecteur affiche TOUTES les alertes
-//   actives même acquittées (badge "✓ acquittée" sur celles déjà lues).
-//   Mode "boot post-splash" : sélecteur n'affiche QUE les non acquittées.
-//
-// ACQUITTEMENT INDIVIDUEL
-//   localStorage["myktamap_alert_seen_<id>"] = released timestamp
-//   → permet d'acquitter migration sans toucher à incendie, et vice-versa.
-//
-// MIGRATION DEPUIS v162 (single seen)
-//   L'ancienne clé localStorage["myktamap_alert_seen"] est conservée et
-//   utilisée comme fallback pour les alertes sans `id` (= cas mono-alerte
-//   rétro-compat). Aucun reset au passage v163.
-//
-// API exposée :
-//   - window.AlertChecker.check()             — appelé au boot, scan + cascade
-//   - window.AlertChecker.notifySplashEnded() — appelé après le splash
-//   - window.AlertChecker.dismiss(id, ts)     — acquitte une alerte par id
-//   - window.AlertChecker.showCurrent()       — force re-affichage (bouton 🚨)
-//   - window.AlertChecker.getActiveAlerts()   — pour le badge dynamique
-//   - window.AlertChecker.onChange(cb)        — listener pour MAJ badge
-// =========================
+// Ancien format mono-alerte ({ "active", "level", "title", … } sans `alerts[]`) toujours accepté : enveloppé en
+// alerts:[{...}] avec un id généré (released, ou hash du titre).
+// Priorité : emergency (rouge) > warning (orange) > info (bleu), puis released décroissant.
+// Affichage : 1 alerte → modale détail ; plusieurs → sélecteur classé par criticité, UN clic = UNE modale (pas
+// d'enchaînement automatique, décision produit). Bouton 🚨 : TOUTES les alertes, acquittées comprises ; au
+// démarrage : les non acquittées seulement.
+// Acquittement par alerte : localStorage["myktamap_alert_seen_<id>"] = released ; l'ancienne clé
+// "myktamap_alert_seen" sert de repli aux alertes mono-format (id "legacy-*").
+// API : window.AlertChecker = { check(), notifySplashEnded(), dismiss(id, ts), showCurrent(), getActiveAlerts(),
+//   onChange(cb) }
 
 (function() {
   "use strict";
@@ -82,10 +39,9 @@
   let _pendingAlerts   = [];               // queue d'alertes à afficher après splash
   let _activeAlertsCache = [];             // dernier snapshot pour getActiveAlerts()
   const _changeListeners = [];             // callbacks pour MAJ badge
-  // alertes d'une EXTENSION (prise « alertes », KtaExtensions.alertesExtension) : mêmes champs,
-  // id « ext_… », champ source (« 🏢 Organisation… »). Fusionnées avec alert.json dans la même modale, le même
-  // badge, le même acquittement. Aucun appel réseau ajouté ici : l'extension fournit sa liste (et sa copie hors
-  // ligne) ; elle annonce un changement par mktm:alertes-changees → relecture et affichage des nouvelles.
+  // Alertes d'une EXTENSION (prise « alertes », KtaExtensions.alertesExtension) : mêmes champs, id « ext_… », champ
+  // source. Fusionnées avec alert.json (même modale, même badge, même acquittement). Aucun appel réseau ici :
+  // l'extension fournit sa liste (et sa copie hors ligne) et annonce un changement par mktm:alertes-changees.
   let _siteAlerts = [];                    // dernier alert.json lu (actif)
   let _extAlerts  = [];                    // dernière liste de l'extension
   const _montreesAuto = {};                // id → released déjà ouvert AUTOMATIQUEMENT (pas deux fois)
@@ -94,10 +50,9 @@
     try { return await window.KtaExtensions.alertesExtension(); } catch(e) { return []; }
   }
   function _toutes() { return _siteAlerts.concat(_extAlerts); }
-  // Non acquittées et pas encore ouvertes d'office : une liste relue (temps réel, retour au premier plan)
-  // n'ouvre que les NOUVELLES alertes (ou une alerte modifiée : released change).
-  // Une modale d'alerte (ou le sélecteur) déjà ouverte : on n'ouvre rien par-dessus (afficherModaleAlerte refuserait)
-  // et on ne marque rien — ce qui attend s'ouvre à sa fermeture (dismiss, appelé aussi par le sélecteur).
+  // Non acquittées et pas encore ouvertes d'office : une liste relue n'ouvre que les NOUVELLES alertes (ou une
+  // alerte dont released a changé). Une modale d'alerte (ou le sélecteur) déjà ouverte : rien par-dessus
+  // (afficherModaleAlerte refuserait), rien de marqué ; ce qui attend s'ouvre à sa fermeture (dismiss).
   let _enAttente = false;
   function _modaleOuverte() {
     return !!(document.getElementById("kta-alert-modal") || document.getElementById("kta-alert-selector-modal"));
@@ -109,20 +64,16 @@
     return l;
   }
 
-  // =========================
-  // NORMALISATION
-  // =========================
-  // Convertit l'ancien format mono-alerte en nouveau format alerts[].
-  // Retourne { active: bool, alerts: [...] }.
+  // ── Normalisation ──────────
+  // Ancien format mono-alerte → alerts[]. Rend { active: bool, alerts: [...] }.
   function _normaliserPayload(raw) {
     if (!raw || typeof raw !== "object") return { active: false, alerts: [] };
 
-    // Nouveau format : { active, alerts: [...] }
     if (Array.isArray(raw.alerts)) {
       const cleaned = raw.alerts
         .filter(function(a) { return a && typeof a === "object"; })
         .map(function(a) {
-          // Si id absent, on le génère depuis released ou title (pour acquit unique)
+          // Id absent : généré depuis released ou title (acquittement unique).
           if (!a.id) {
             a.id = a.released ? ("auto-" + a.released) :
                    a.title    ? ("auto-" + a.title.replace(/[^a-z0-9]/gi, "_").slice(0, 40)) :
@@ -133,8 +84,7 @@
       return { active: !!raw.active, alerts: cleaned };
     }
 
-    // Ancien format mono : { active, level, title, message, ... }
-    // → wrap dans alerts: [{...}] avec id basé sur released
+    // Ancien format : enveloppé dans alerts: [{...}], id basé sur released.
     if (raw.title || raw.message || raw.level) {
       const single = {
         id:       raw.released ? ("legacy-" + raw.released) : "legacy-mono",
@@ -150,10 +100,8 @@
     return { active: !!raw.active, alerts: [] };
   }
 
-  // =========================
-  // FILTRAGE & TRI
-  // =========================
-  // Retourne les alertes non acquittées, triées par priorité puis released.
+  // ── Filtrage et tri ──────────
+  // Alertes non acquittées, par priorité puis released.
   function _filtrerEtTrier(alerts) {
     const prioOrder = { emergency: 0, warning: 1, info: 2 };
     return alerts
@@ -165,28 +113,24 @@
         const pa = prioOrder[a.level] != null ? prioOrder[a.level] : 3;
         const pb = prioOrder[b.level] != null ? prioOrder[b.level] : 3;
         if (pa !== pb) return pa - pb;
-        // Même priorité → released descendant (plus récent en premier)
         const ra = a.released || "";
         const rb = b.released || "";
         return rb.localeCompare(ra);
       });
   }
 
-  // Retourne TOUTES les alertes actives (pour le badge, sans filtrer les acquittées).
-  // Sert au badge 🚨 dynamique qui colore selon le niveau max.
+  // TOUTES les alertes actives, acquittées comprises (le badge 🚨 se colore selon le niveau max).
   function getActiveAlerts() {
     return _activeAlertsCache.slice();
   }
 
-  // =========================
-  // ACQUITTEMENT
-  // =========================
+  // ── Acquittement ──────────
   function _getSeenForId(id) {
     if (!id) return null;
     try {
       const v = localStorage.getItem(LS_SEEN_PREFIX + id);
       if (v) return v;
-      // Fallback rétro-compat : ancienne clé mono pour les id "legacy-*"
+      // Repli : ancienne clé mono pour les id "legacy-*".
       if (id.indexOf("legacy-") === 0) {
         return localStorage.getItem(LS_SEEN_LEGACY);
       }
@@ -197,7 +141,6 @@
   function _setSeenForId(id, ts) {
     if (!id || !ts) return;
     try { localStorage.setItem(LS_SEEN_PREFIX + id, ts); } catch(e) {}
-    // Pour les legacy-mono, on update aussi l'ancienne clé pour cohérence
     if (id.indexOf("legacy-") === 0) {
       try { localStorage.setItem(LS_SEEN_LEGACY, ts); } catch(e) {}
     }
@@ -205,9 +148,7 @@
 
   function dismiss(id, ts) {
     if (id && ts) _setSeenForId(id, ts);
-    // Met à jour le cache (alerte enlevée des "non acquittées")
-    // Le cache _activeAlertsCache reste comme avant — c'est getActiveAlerts +
-    // tri qui distingue acquittées/non. Mais on notifie les listeners.
+    // Les listeners sont notifiés (getActiveAlerts + tri distinguent acquittées / non).
     _notifyChange();
     // Une alerte arrivée pendant que celle-ci était ouverte : à son tour (après le fondu de fermeture).
     if (_enAttente) {
@@ -219,21 +160,12 @@
     }
   }
 
-  // =========================
-  // AFFICHAGE — sélecteur si N > 1, modale détail si N == 1
-  // =========================
-  // v166 : remplace l'ancienne cascade automatique (qui enchaînait les modales
-  // sans laisser le choix à l'user) par un sélecteur quand N > 1. L'user voit
-  // la liste classée par criticité, choisit ce qui l'intéresse. Après acquit
-  // d'une alerte, si d'autres restent non acquittées → re-ouvre le sélecteur.
-  //
-  // `fromManualClick` : si true (click bouton 🚨), affiche TOUTES les alertes
-  // actives même acquittées dans le sélecteur. Si false (boot post-splash),
-  // ne montre que les non acquittées.
+  // ── Affichage : sélecteur si N > 1, modale détail si N == 1 ──────────
+  // `fromManualClick` (bouton 🚨) : toutes les alertes actives, acquittées comprises ; sinon (démarrage) les non
+  // acquittées seulement.
   function _afficherAlertes(alertsAaffich, fromManualClick, onDone) {
-    // onDone : signal de fin pour le séquenceur de premier
-    // lancement (js/firstRunFlow.js). Appelé à la fermeture de la modale
-    // d'alerte (ou immédiatement s'il n'y a rien / cas multi non bloquant).
+    // onDone : fin pour le séquenceur de premier lancement (js/firstRunFlow.js), à la fermeture de la modale
+    // (ou tout de suite s'il n'y a rien / cas multi non bloquant).
     const _od = function() { if (typeof onDone === "function") { try { onDone(); } catch(e) {} } };
     if (!alertsAaffich || alertsAaffich.length === 0) { _od(); return; }
     if (typeof window.afficherModaleAlerte !== "function") {
@@ -241,52 +173,40 @@
       _od();
       return;
     }
-    // Vibration haptique error pour signaler l'alerte serveur.
-    // Pas pour fromManualClick (= l'user a cliqué le bouton 🚨, il sait déjà
-    // qu'il va voir des alertes). Seulement quand l'app remonte une alerte
-    // automatiquement (au boot ou sur poll). Pref + support gérés par helper.
+    // Vibration d'erreur seulement pour une alerte remontée automatiquement (démarrage, relecture), pas au clic
+    // sur 🚨. Préférence et support gérés par le helper.
     if (!fromManualClick && window.kta_vibrate) {
-      // une alerte de niveau emergency vibre MÊME si la
-      // préférence de confort est OFF (classe urgence, cf utils.js).
+      // Une alerte emergency vibre MÊME si la préférence de confort est coupée (classe urgence, cf. utils.js).
       const critique = alertsAaffich.some(function(a) { return a && a.level === "emergency"; });
       if (critique && window.kta_vibrate.urgence) window.kta_vibrate.urgence.error();
       else window.kta_vibrate.error();
     }
 
-    // Cas simple : 1 seule alerte → modale détail direct.
-    // onDone câblé sur le onClose natif de afficherModaleAlerte(alert, onClose).
+    // 1 alerte → modale détail, onDone câblé sur le onClose de afficherModaleAlerte(alert, onClose).
     if (alertsAaffich.length === 1) {
       window.afficherModaleAlerte(alertsAaffich[0], _od);
       return;
     }
 
-    // Cas multi : sélecteur. L'user choisit. À l'acquit d'une, on rouvre le
-    // sélecteur s'il reste des non-acquittées (en mode boot uniquement).
+    // Plusieurs → sélecteur.
     if (typeof window.afficherSelecteurAlertes !== "function") {
-      // Fallback si le sélecteur est absent (vieille version interface.js)
+      // Repli si le sélecteur est absent.
       console.warn("[AlertChecker] afficherSelecteurAlertes absent — fallback modale détail 1ère alerte");
       window.afficherModaleAlerte(alertsAaffich[0], _od);
       return;
     }
 
-    // v167 : SUPPRESSION de la cascade auto après acquit. Le close de la
-    // modale détail ne re-ouvre PAS le sélecteur ni la modale suivante.
-    // L'user qui veut voir une autre alerte re-clique 🚨 → sélecteur
-    // réapparaît avec les alertes restantes. Comportement plus prévisible :
-    // "1 click = 1 alerte affichée".
-    //
-    // Avant v167 : enchaînait automatiquement les modales après acquit
-    // ("il m'ouvre les deux" remonté par KARMA), trop intrusif.
+    // Pas d'enchaînement après acquittement : fermer la modale ne rouvre ni le sélecteur ni la suivante ; pour une
+    // autre alerte, nouveau clic sur 🚨 (« 1 clic = 1 alerte », décision produit).
     window.afficherSelecteurAlertes(alertsAaffich, {
       fromBoot: !fromManualClick,
       onSelect: function(chosen) {
         window.afficherModaleAlerte(chosen);
-        // PAS de callback onClose → fermeture simple, pas de re-déclenchement
+        // Pas de onClose : fermeture simple.
       }
     });
-    // cas multi : on ne bloque PAS la file de premier lancement sur
-    // l'acquittement (l'user gère via le sélecteur / bouton 🚨). La suite de la
-    // séquence (légal, onboarding, PIN) peut s'enchaîner par-dessus le sélecteur.
+    // Cas multi : la file de premier lancement n'attend PAS l'acquittement (légal, onboarding, PIN peuvent suivre
+    // par-dessus le sélecteur).
     _od();
   }
 
@@ -306,14 +226,12 @@
       _pendingAlerts = [];
       _afficherAlertes(list, false, onDone);
     } else {
-      // rien à afficher : notifie tout de suite le séquenceur.
+      // Rien à afficher : le séquenceur est notifié tout de suite.
       if (typeof onDone === "function") { try { onDone(); } catch(e) {} }
     }
   }
 
-  // =========================
-  // LISTENERS POUR LE BADGE
-  // =========================
+  // ── Listeners du badge ──────────
   function onChange(cb) {
     if (typeof cb === "function") _changeListeners.push(cb);
   }
@@ -324,15 +242,11 @@
     });
   }
 
-  // (P6.A boot fetch timeout) : timeout 1500ms aligné avec
-  // proLicense.js + updateChecker.js. Évite qu'un réseau lent (ou un
-  // serveur lent à répondre sur /alert.json) laisse le fetch traîner
-  // jusqu'au timeout browser (~30 s) et retarde le flush des modales
-  // différées. 1500 ms = compromis offline-fail-fast / online-success.
+  // Délai de 1500 ms (comme proLicense.js et updateChecker.js) : un réseau ou un serveur lent ne doit pas faire
+  // traîner le fetch jusqu'au délai navigateur (~30 s) et retarder les modales différées.
   const FETCH_TIMEOUT_MS = 1500;
 
-  // Helper interne : fetch avec AbortController + cache-bust. Throw
-  // standard si timeout ou erreur HTTP, comme un fetch normal.
+  // Fetch avec AbortController + cache-bust ; lève sur délai ou erreur HTTP, comme un fetch normal.
   async function _fetchAlertJson() {
     const url = ALERT_URL + "?_=" + Date.now();
     const opts = { cache: "no-store" };
@@ -354,9 +268,7 @@
     }
   }
 
-  // =========================
-  // CHECK AU BOOT
-  // =========================
+  // ── Check au démarrage ──────────
   async function check() {
     let raw, statutSite = null;
     try {
@@ -391,8 +303,8 @@
     return { status: "shown", alerts: aShown };
   }
 
-  // Liste de l'extension changée (alerte lancée, modifiée, terminée ; clés prêtes ; retour au premier plan) :
-  // badge à jour, et les NOUVELLES alertes s'ouvrent comme au démarrage (après le splash).
+  // Liste de l'extension changée (alerte lancée, modifiée, terminée ; clés prêtes ; retour au premier plan) : badge
+  // à jour, et les NOUVELLES alertes s'ouvrent comme au démarrage (après le splash).
   async function _relireExtension() {
     _extAlerts = await _lireExtension();
     _activeAlertsCache = _toutes();
@@ -402,9 +314,7 @@
   }
   window.addEventListener("mktm:alertes-changees", function() { _relireExtension(); });
 
-  // =========================
-  // SHOW CURRENT (bouton 🚨 manuel)
-  // =========================
+  // ── Bouton 🚨 (affichage manuel) ──────────
   async function showCurrent() {
     let raw;
     let status = "ok";
@@ -428,10 +338,8 @@
     _extAlerts = await _lireExtension();
     const toutes = _toutes();
     if (toutes.length > 0) {
-      // v166 : si N>1, affiche un SELECTEUR (au lieu de la cascade auto).
-      // Si N=1, modale détail direct. fromManualClick=true → TOUTES les
-      // alertes visibles dans le sélecteur même acquittées (= l'user a
-      // explicitement demandé à les revoir). Site et extension mêlés (13/10/2026).
+      // Sélecteur (N > 1) ou modale (N = 1) ; fromManualClick=true → acquittées comprises (l'utilisateur demande à les
+      // revoir). Site et extension mêlés.
       const sorted = toutes.slice().sort(function(a, b) {
         const prio = { emergency: 0, warning: 1, info: 2 };
         const pa = prio[a.level] != null ? prio[a.level] : 3;
@@ -440,7 +348,6 @@
         return (b.released || "").localeCompare(a.released || "");
       });
       _afficherAlertes(sorted, true);  // true = fromManualClick
-      // MAJ cache et badge
       _activeAlertsCache = toutes.slice();
       _notifyChange();
       return { status: "shown", alerts: sorted };

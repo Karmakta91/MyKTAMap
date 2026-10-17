@@ -1,60 +1,38 @@
 /*!
- * MyKTAMap — Liaisons inter-plan (v1.57.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// INTERPLANLINKS.JS — Liaisons inter-plan (« portails ») (depuis v1.57.0)
+// INTERPLANLINKS.JS — Liaisons inter-plan (« portails »)
 // =========================
-// Lie un point A d'un plan X à un point B d'un plan Y (ex : deux réseaux
-// voisins reliés par une galerie, plan général ↔ plan de détail).
-//
-// Architecture (décisions KARMA 1:a 2:a 3:a 4:a 5:a 6:a) :
-//   - Liaison BIDIRECTIONNELLE, N liaisons par point, tout point liable
-//     (session OU datalayer, des 2 côtés).
-//   - « DB de croisement » = REGISTRE CENTRAL localStorage
-//     `myktamap_interplan_links_v1` — AUCUNE modification des datalayers
-//     (le popup d'un point est enrichi au runtime par croisement
-//     (planId, pointId/coords) → l'info « remonte » côté destination sans
-//     masquage ni point miroir).
-//   - Chaque côté porte un SNAPSHOT (planName, pointNom, x, y, level) →
-//     affichable même si le plan cible n'est pas présent sur l'appareil.
-//   - Ancrage : les ids PlanRegistry sont DÉTERMINISTES (slug nom+version /
-//     path) donc portables entre appareils.
-//   - Navigation : mini-confirmation → switch de plan (chargerPlanServeur /
-//     chargerPlanDuRegistre) → pan + flash sur le point cible.
-//   - Marquage visuel : CHOIX UTILISATEUR via le tag builtin « portail »
-//     (icône vortex icon/portail.png, cf TAGS_BUILTIN map.js) — l'ex-badge
-//     🌀 overlay automatique a été RETIRÉ en v1.59.0 (décision KARMA).
-//   - Mode datalayer « baked » : un point peut embarquer `interPlanLinks`
-//     (array de liens) dans son JSON → lu au popup (merge avec le registre,
-//     dédup par id). Lecture seule — « l'utiliser » sans l'éditer.
-//   - Export session : la clé `interPlanLinks` embarque les liaisons du plan
-//     courant (sessionExporter) ; l'import les fusionne dans le registre
-//     (interfaceImportExport) → session autoportante (pattern customLegend).
-//
+// Lie un point A d'un plan X à un point B d'un plan Y (réseaux voisins reliés par une galerie, plan général ↔
+// plan de détail).
+//   - Liaison BIDIRECTIONNELLE, N liaisons par point, tout point liable (session OU calque, des deux côtés).
+//   - Registre central localStorage `myktamap_interplan_links_v1` : AUCUNE modification des calques ; le popup
+//     d'un point est enrichi au runtime par croisement (planId, pointId/coords).
+//   - Chaque côté porte un SNAPSHOT (planName, pointNom, x, y, level) : affichable même si le plan cible n'est
+//     pas sur l'appareil. Les ids PlanRegistry sont DÉTERMINISTES (slug nom+version / path) donc portables.
+//   - Navigation : mini-confirmation → changement de plan → pan + flash sur le point cible.
+//   - Marquage visuel : CHOIX de l'utilisateur par le tag intégré « portail » (pas de badge automatique).
+//   - Calque « baked » : un point peut embarquer `interPlanLinks` (lecture seule, fusionné au popup, dédup par id).
+//   - Export de session : la clé `interPlanLinks` emporte les liaisons du plan ; l'import les fusionne.
 // API : window.InterPlanLinks = {
 //   getLinksForPoint(planId, point), createLink(a, b), removeLink(id),
 //   getLinksForPlan(planId), importLinks(links), buildPopupHtml(point, layerId),
 //   ouvrirCreation(id, x, y, nom, source), naviguerVers(linkId, side),
 //   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges()
 // };
-// 100 % local, aucune surface réseau nouvelle (fetch same-origin des plans
-// serveur déjà couverts par l'audit ; ZIP locaux lus depuis IndexedDB).
-// =========================
+// 100 % local, aucune surface réseau nouvelle (fetch same-origin des plans serveur, ZIP locaux en IndexedDB).
+// Garde-fous : check-uid.js, check-repositionner.js, check-xss.js. Doc : docs/architecture/multilevel-pathfinding.md.
 
 (function() {
   "use strict";
 
-  // « un plan est-il AFFICHÉ ? ». Le test historique
-  // `PLAN_CONFIG && PLAN_CONFIG.plan` restait VRAI au HOME (afficherLoader ne
-  // remet pas PLAN_CONFIG à null) : confirmation « changer de plan ? » posée
-  // depuis l'accueil, et surtout chemin court « déjà sur ce plan » emprunté à
-  // tort dans goTo → le clic sur une liaison vers le dernier plan ouvert ne
-  // chargeait rien. Source de vérité unique : window.ktaPlanAffiche (utils.js).
+  // « Un plan est-il AFFICHÉ ? » : source unique window.ktaPlanAffiche (utils.js). 🩸 `PLAN_CONFIG.plan` reste
+  // VRAI à l'accueil (afficherLoader ne le remet pas à null) : confirmation « changer de plan ? » depuis l'accueil
+  // et chemin court « déjà sur ce plan » pris à tort dans goTo (le clic ne chargeait rien).
   function _planAffiche() {
     return (typeof window.ktaPlanAffiche === "function")
       ? window.ktaPlanAffiche()
@@ -63,17 +41,13 @@
 
   const LS_KEY = "myktamap_interplan_links_v1";
 
-  // ---------------------------------------------------------------
-  // i18n + échappement
-  // ---------------------------------------------------------------
+  // ── i18n + échappement ──────────
   function _t(k, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
 
-  // ---------------------------------------------------------------
-  // REGISTRE (localStorage)
-  // ---------------------------------------------------------------
+  // ── Registre (localStorage) ──────────
   function _load() {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -89,8 +63,8 @@
     catch(e) { console.warn("[InterPlanLinks] écriture registre :", e); }
   }
 
-  // Identité d'un point pour le croisement : id si non vide, sinon coords
-  // arrondies (les points datalayer n'ont pas toujours d'id).
+  // Identité d'un point pour le croisement : id si non vide, sinon coords arrondies (les points de calque n'ont
+  // pas toujours d'id).
   function _pointKey(pointIdOrEmpty, x, y) {
     const id = String(pointIdOrEmpty || "").trim();
     if (id) return "id:" + id;
@@ -99,11 +73,9 @@
   function _sideKey(side) {
     return _pointKey(side.pointId, side.x, side.y);
   }
-  // (ETUDE_UID lot C2) — un côté de liaison désigne-t-il CE point ?
-  // L'uid d'abord (`pointUid`) : avec la clé par nom, supprimer un point
-  // effaçait aussi les liaisons de ses HOMONYMES. Repli par nom / coords pour
-  // un côté ancien ou un point sans uid (calque d'un vieux plan).
-  // `ancX/ancY` : position à utiliser pour le repli par coords (déplacement).
+  // Un côté de liaison désigne-t-il CE point ? L'uid d'abord (`pointUid`) : par le nom, supprimer un point
+  // effacerait aussi les liaisons de ses HOMONYMES. Repli nom / coords pour un côté ancien ou un point sans uid.
+  // `ancX/ancY` : position du repli par coords (déplacement).
   function _coteDuPoint(side, planId, point, ancX, ancY) {
     if (!side || side.planId !== planId || !point) return false;
     if (side.pointUid && point.uid) return side.pointUid === point.uid;
@@ -111,8 +83,7 @@
     return _sideKey(side) === _pointKey(point.id, x, y);
   }
 
-  // Toutes les liaisons dont UN côté matche (planId, point). Retourne
-  // [{ link, mySide: "a"|"b", other: <ref du côté opposé> }].
+  // Liaisons dont UN côté correspond à (planId, point) : [{ link, mySide: "a"|"b", other }].
   function getLinksForPoint(planId, point) {
     if (!planId || !point) return [];
     const out = [];
@@ -133,9 +104,8 @@
     });
   }
 
-  // (multi-hop) : registre complet en lecture — le méta-graphe des
-  // plans d'interPlanRoute en a besoin pour construire l'adjacence sans
-  // crawler plan par plan. Copie défensive.
+  // Registre complet en lecture (copie défensive) : le méta-graphe d'interPlanRoute construit l'adjacence sans
+  // parcourir plan par plan.
   function getAllLinks() {
     return _load().links.slice();
   }
@@ -169,8 +139,8 @@
     return false;
   }
 
-  // Les liaisons d'un plan passent sous un autre id (copie locale remplacée par
-  // sa version publiée). → nombre de côtés réécrits.
+  // Les liaisons d'un plan passent sous un autre id (copie locale remplacée par sa version publiée). Rend le
+  // nombre de côtés réécrits.
   function transfererPlan(ancienId, nouveauId) {
     if (!ancienId || !nouveauId || ancienId === nouveauId) return 0;
     const reg = _load();
@@ -182,8 +152,7 @@
     return n;
   }
 
-  // Fusionne des liaisons importées (export session / autre appareil).
-  // Dédup par id ; les liens sans id valide sont ignorés.
+  // Fusionne des liaisons importées (export de session, autre appareil) ; dédup par id, liens sans id ignorés.
   function importLinks(links) {
     if (!Array.isArray(links) || links.length === 0) return 0;
     const reg = _load();
@@ -202,9 +171,7 @@
     return added;
   }
 
-  // ---------------------------------------------------------------
-  // CONTEXTE PLAN COURANT
-  // ---------------------------------------------------------------
+  // ── Contexte plan courant ──────────
   function _currentPlanId() {
     return window._currentLoadedPlanId || null;
   }
@@ -212,24 +179,20 @@
     return (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || _currentPlanId() || "?";
   }
 
-  // ---------------------------------------------------------------
-  // SECTION POPUP — appelée par utils.js > buildPointPopupHtml
-  // ---------------------------------------------------------------
-  // Synchrone (registre en localStorage). Liste les liaisons du point
-  // (registre + éventuels liens EMBARQUÉS `point.interPlanLinks` d'un
-  // datalayer baked, dédup par id) + bouton « Lier à un autre plan ».
+  // ── Section popup (utils.js > buildPointPopupHtml) ──────────
+  // Synchrone : liaisons du point (registre + liens EMBARQUÉS `point.interPlanLinks`, dédup par id) + bouton
+  // « Lier à un autre plan ».
   function buildPopupHtml(point, layerId) {
     const planId = _currentPlanId();
     if (!planId) return "";
 
     const entries = getLinksForPoint(planId, point);
-    // Merge des liens baked du point (lecture seule, mode datalayer)
     if (Array.isArray(point.interPlanLinks)) {
       const seen = {};
       entries.forEach(function(e) { seen[e.link.id] = true; });
       point.interPlanLinks.forEach(function(l) {
         if (l && l.id && !seen[l.id] && l.a && l.b) {
-          // Détermine le côté local par croisement planId+point
+          // Côté local par croisement planId + point.
           const mySide = _coteDuPoint(l.a, planId, point) ? "a"
                        : _coteDuPoint(l.b, planId, point) ? "b" : "a";
           entries.push({ link: l, mySide: mySide, other: (mySide === "a") ? l.b : l.a, baked: true });
@@ -260,11 +223,10 @@
         '</div>';
     });
 
-    // Bouton de création — tout point est liable (6:a), y compris datalayer.
-    // level + 1er tag passés au snapshot (la bascule de niveau à
-    // l'arrivée et le check filtre tag en dépendent).
-    // 🔒 Valeurs en data-* échappés, action par l'écouteur de la fiche (utils.js > _ktaPopupAction) :
-    // jamais de donnée du point ou du plan dans un onclick (faille XSS du 05/10/2026).
+    // Création : tout point est liable, calques compris. level + 1er tag vont au snapshot (bascule de niveau à
+    // l'arrivée, contrôle du filtre de tags).
+    // 🔒 Valeurs en data-* échappées, action par l'écouteur de la fiche (utils.js > _ktaPopupAction) : jamais
+    // de donnée du point ou du plan dans un onclick (XSS).
     const source = (layerId === "editor") ? "session" : "data";
     const lvlArg = Number.isInteger(point.level) ? point.level : 0;
     const tagArg = String((Array.isArray(point.tags) && point.tags[0]) || "");
@@ -282,8 +244,7 @@
            '</div>';
   }
 
-  // (A3) — Confirmation de suppression FACTORISÉE (popup +
-  // gestionnaire). onDone appelé après suppression effective.
+  // Confirmation de suppression partagée (popup + gestionnaire) ; onDone après suppression effective.
   function _confirmerSuppression(linkId, onDone) {
     const modal = document.createElement("div");
     modal.className = "kta-readme-modal-overlay";
@@ -312,30 +273,19 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
   }
 
-  // Suppression depuis le popup (confirmation légère)
   function supprimerDepuisPopup(linkId) {
     _confirmerSuppression(linkId, function() {
       if (window.map) try { window.map.closePopup(); } catch(e) {}
     });
   }
 
-  // ---------------------------------------------------------------
-  // (D5) — ÉCART DE CALAGE D'UNE LIAISON
-  // ---------------------------------------------------------------
-  // Les deux bouts d'un portail désignent LE MÊME endroit physique, vu depuis
-  // deux plans. Projetés en GPS via le géoréf de LEUR plan respectif, ils
-  // devraient donc tomber au même point. La distance qui les sépare mesure
-  // directement la qualité du calage — et c'est la seule mesure de ce genre
-  // que l'app puisse produire, puisqu'il faut DEUX géoréfs pour la révéler.
-  //
-  // Retourne null (et non 0) quand la mesure est IMPOSSIBLE : plan absent de
-  // l'appareil, ou pas de géoréf. `0` voudrait dire « calage parfait » — le
-  // contraire de « je ne sais pas ». Les deux cas ne doivent jamais se
-  // confondre à l'affichage.
-  //
-  // ⚠️ Fonction UNIQUE, exposée en `InterPlanLinks.ecartCalage` : la Vue OSM
-  // la consomme au lieu d'en refaire une copie. C'est la leçon du bug des
-  // icônes portail du 02/09 — une copie locale finit toujours par diverger.
+  // ── Écart de calage d'une liaison ──────────
+  // Les deux bouts d'un portail désignent LE MÊME endroit vu depuis deux plans : projetés en GPS par le géoréf
+  // de LEUR plan, ils devraient coïncider. Leur distance mesure la qualité du calage.
+  // ⚠️ null (pas 0) quand la mesure est IMPOSSIBLE (plan absent, pas de géoréf) : 0 voudrait dire « calage
+  // parfait ». Les deux cas ne doivent jamais se confondre.
+  // ⚠️ Fonction UNIQUE, exposée en `InterPlanLinks.ecartCalage` : la Vue OSM la consomme au lieu d'en faire une
+  // copie (une copie locale finit toujours par diverger).
   function ecartCalage(link) {
     if (!link || !link.a || !link.b) return null;
     if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") return null;
@@ -351,8 +301,7 @@
     } catch (e) { return null; }
     if (!pa || !pb) return null;
     if (![pa.lat, pa.lng, pb.lat, pb.lng].every(Number.isFinite)) return null;
-    // Haversine. Leaflet ferait l'affaire, mais ce module est appelé depuis le
-    // HOME où aucune carte n'existe : pas de dépendance à `L` ici.
+    // Haversine sans Leaflet : appelé depuis l'accueil, où aucune carte n'existe.
     const R = 6371000, rad = Math.PI / 180;
     const dLat = (pb.lat - pa.lat) * rad, dLng = (pb.lng - pa.lng) * rad;
     const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -361,14 +310,9 @@
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
   }
 
-  // ---------------------------------------------------------------
-  // (A3) — GESTIONNAIRE DE LIAISONS (vue globale du registre)
-  // ---------------------------------------------------------------
-  // Modale listant TOUTES les liaisons (tous plans confondus, triées par date
-  // desc) : A ⇄ B avec état de disponibilité (⛔ si un plan est absent de
-  // l'appareil), bouton ➜ vers chaque côté disponible, 🗑️ suppression.
-  // Accessible depuis le HOME (bouton « 🌀 Mes liaisons ») — opère sans plan
-  // chargé (la navigation ➜ charge le plan cible, pipeline goTo).
+  // ── Gestionnaire de liaisons (vue globale du registre) ──────────
+  // Toutes les liaisons (tous plans, date décroissante) : A ⇄ B, disponibilité (⛔ plan absent de l'appareil),
+  // ➜ vers chaque côté disponible, 🗑️ suppression. Ouvert depuis l'accueil, sans plan chargé (➜ passe par goTo).
   const MGR_ID = "kta-ipl-mgr-modal";
 
   function ouvrirGestionnaire() {
@@ -386,7 +330,7 @@
           '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          // (A7, reco 1:a) : toggle Liste ⇄ Graphe
+          // Bascule Liste ⇄ Graphe.
           '<div class="kta-ipl-mgr-toggle">' +
             '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">📋 ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
             '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">🕸️ ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
@@ -410,8 +354,7 @@
              '</span>';
     }
 
-    // (A7, reco 3:a) : filtre de FRONTIÈRE — clic sur une arête du
-    // graphe → la liste ne montre que les liaisons entre ces 2 plans (chip ✕).
+    // Filtre de FRONTIÈRE : clic sur une arête du graphe → seules les liaisons entre ces 2 plans (chip ✕).
     let _filterPair = null;   // { a: planId, b: planId } ou null
 
     function _renderFilterChip() {
@@ -431,13 +374,9 @@
       if (x) x.addEventListener("click", function() { _filterPair = null; _render(); });
     }
 
-    // (D5) — écart de calage, affiché SEULEMENT quand il est
-    // mesurable (les deux plans présents ET géoréférencés). Pas de « — » ni
-    // de « n/a » : une colonne vide sur la plupart des lignes ferait croire à
-    // un défaut, alors que l'immense majorité des plans n'est pas géoréférencée.
-    // Volontairement AUCUN seuil de couleur : 20 m, c'est énorme sur une petite
-    // carrière et négligeable sur un réseau de 5 km. On donne le chiffre,
-    // l'utilisateur juge avec son échelle en tête.
+    // Écart de calage affiché SEULEMENT s'il est mesurable (pas de « — » qui ferait croire à un défaut sur la
+    // plupart des lignes). AUCUN seuil de couleur (décision produit) : 20 m, énorme sur une petite carrière,
+    // négligeable sur 5 km ; l'utilisateur juge.
     function _ecartHtml(l) {
       const m = (typeof ecartCalage === "function") ? ecartCalage(l) : null;
       if (m === null || !isFinite(m)) return "";
@@ -506,8 +445,7 @@
       });
     }
 
-    // (A7) : bascule Liste ⇄ Graphe. Le graphe est re-rendu à
-    // chaque bascule (données fraîches + layout adapté à la taille réelle).
+    // Bascule Liste ⇄ Graphe : graphe re-rendu à chaque bascule (données fraîches, taille réelle).
     const vList  = document.getElementById("kta-ipl-mgr-vlist");
     const vGraph = document.getElementById("kta-ipl-mgr-vgraph");
     const listEl  = document.getElementById("kta-ipl-mgr-list");
@@ -520,16 +458,11 @@
       vGraph.className = "kta-btn " + (graphe ? "kta-btn-primary" : "kta-btn-ghost");
       if (graphe && window.PlanNetwork) {
         window.PlanNetwork.render(graphEl, {
-          // reco 2:a — clic nœud = ouvrir le plan (ancré sur son premier
-          // portail si dispo, sinon simple switch sans pan)
+          // Clic nœud = ouvrir le plan (ancré sur son premier portail si possible, sinon simple changement).
           onOpenPlan: function(planId, anchorSide) {
-            // (KARMA « clic sur un nœud → fenêtre de chargement de
-            // fichier ») — GHOST CLICK : le nœud du graphe se déclenche au
-            // pointerup ; retirer l'overlay ICI fait atterrir le click que le
-            // navigateur génère juste après sur le HOME découvert — pile sur
-            // la drop-zone « 📦 Charger un plan », dont TOUT click ouvre le
-            // sélecteur de fichier (homeLoader). On avale ce click en phase
-            // capture (once) avec un filet 350 ms si aucun click ne suit.
+            // 🩸 GHOST CLICK : le nœud réagit au pointerup ; retirer l'overlay ICI fait tomber le click suivant
+            // sur l'accueil découvert, pile sur la zone « Charger un plan » (tout click y ouvre le sélecteur de
+            // fichier). On avale ce click en capture (once), filet de 350 ms si aucun ne suit.
             const avaler = function(ev) { ev.stopPropagation(); ev.preventDefault(); };
             document.addEventListener("click", avaler, { capture: true, once: true });
             setTimeout(function() {
@@ -543,7 +476,7 @@
             } : null;
             goTo(planId, cible, { confirm: _planAffiche() });
           },
-          // reco 3:a — clic arête = détail de la frontière (liste filtrée)
+          // Clic arête = détail de la frontière (liste filtrée).
           onEdgeClick: function(a, b) {
             _filterPair = { a: a, b: b };
             _basculer(false);
@@ -558,30 +491,17 @@
     _render();
   }
 
-  // ---------------------------------------------------------------
-  // LECTURE DES POINTS D'UN PLAN NON CHARGÉ
-  // ---------------------------------------------------------------
-  // Session : KtaSessionStore.lire(planId) (js/sessionStore.js) → editorPoints[].
-  // Datalayers : serveur → fetch path/plan-config.json + fichiers ;
-  //              local  → ZIP IndexedDB (PlanRegistry.getBlob) via JSZip.
-  // Retourne Promise<[{id, nom, x, y, tags, source, level}]>.
-  // (U2) : `stats` optionnel — objet rempli par la collecte :
-  // { dataError: bool } → true si les DATALAYERS du plan sont inaccessibles
-  // (serveur injoignable/404, ZIP absent d'IndexedDB) alors que la session
-  // reste lisible. Les appelants (picker liaison, recherche cross-plan)
-  // affichent alors un avertissement au lieu d'un « 0 points » muet.
-  // Résolution d'URL de datalayer à DOUBLE essai. Les
-  // plan-config mélangent 2 conventions pour `dataLayers[].file` : chemin
-  // RELATIF au dossier du plan (« chemin.json ») et chemin COMPLET depuis la
-  // racine web (« data/test2/chemin.json » — cas des plans serveur
-  // historiques). L'ancien code ne tentait que `path + "/" + file` → URL
-  // doublée (« data/test2/data/test2/chemin.json ») → 404 silencieux → la
-  // recherche multi-plans perdait les points datalayer ET le leg distant de
-  // l'itinéraire inter-plan voyait « 0 tracés » sur ces plans serveur.
-  // (Les plans ZIP locaux avaient déjà leur fallback `|| zip.file(file)`.)
+  // ── Lecture des points d'un plan non chargé ──────────
+  // Session : KtaSessionStore.lire(planId) (js/sessionStore.js) → editorPoints[]. Calques : serveur → fetch
+  // path/plan-config.json + fichiers ; local → ZIP IndexedDB (PlanRegistry.getBlob) via JSZip.
+  // Rend Promise<[{id, nom, x, y, tags, source, level}]>. `stats` optionnel : { dataError: true } si les
+  // CALQUES sont inaccessibles (serveur injoignable / 404, ZIP absent) alors que la session est lisible ; les
+  // appelants avertissent au lieu d'un « 0 points » muet.
+  // 🩸 URL de calque à DOUBLE essai : `dataLayers[].file` est soit RELATIF au dossier du plan (« chemin.json »),
+  // soit COMPLET depuis la racine web (« data/test2/chemin.json »). `path + "/" + file` seul doublerait l'URL
+  // (404 silencieux : points de calque et tracés distants perdus).
   async function _fetchLayerJson(basePath, file) {
-    // Chemin déjà complet (il commence par le dossier du plan) : on le prend tel quel, sans passer par
-    // l'URL doublée qui finit en 404 (bruit dans la console à chaque recherche multi-plans).
+    // Chemin déjà complet (commence par le dossier du plan) : pris tel quel, sans l'URL doublée (404 en console).
     let base = String(basePath);
     while (base.endsWith("/")) base = base.slice(0, -1);   // boucle, pas /\/+$/ (retour arrière, Sonar S8786)
     const f = String(file);
@@ -596,17 +516,15 @@
     throw new Error("datalayer introuvable : " + file);
   }
 
-  // Plan lu dans sa copie ZIP de l'appareil : local, ZIP de l'index, et plan fourni par une extension (« ext »,
-  // plan de l'installation, gardé après sa 1re ouverture). 13/10/2026 : « ext » manquait — ses points et son réseau
-  // étaient ignorés EN SILENCE (ni lus, ni signalés en dataError) : recherche multi-plans et itinéraire inter-plans
-  // calculés sur la seule session.
+  // Plan lu dans sa copie ZIP de l'appareil : local, ZIP de l'index, et plan d'extension (« ext », gardé après sa
+  // 1re ouverture). 🩸 Un type oublié ici est ignoré EN SILENCE (ni lu, ni signalé en dataError).
   function _planLuParZip(plan) {
     return plan.type === "local" || plan.type === "ext" || !!plan.zip;
   }
 
   async function _collecterPointsDuPlan(plan, stats) {
     const pts = [];
-    // 1) Points de session (toujours lisibles, tous types de plans)
+    // 1) Points de session (toujours lisibles).
     try {
       const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
@@ -620,7 +538,7 @@
       }
     } catch(e) { console.warn("[InterPlanLinks] session " + plan.id + " illisible :", e); }
 
-    // 2) Points des datalayers
+    // 2) Points des calques.
     try {
       if (plan.type === "server" && plan.path && !plan.zip) {
         const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
@@ -641,7 +559,7 @@
         if (!blob && stats) stats.dataError = true;   // (U2) : ZIP absent d'IDB
         if (blob) {
           const zip = await window.JSZip.loadAsync(blob);
-          // plan-config.json à la racine ou 1er trouvé
+          // plan-config.json à la racine, ou le 1er trouvé.
           let cfgFile = zip.file("plan-config.json");
           if (!cfgFile) {
             const cand = Object.keys(zip.files).find(function(n) { return /(^|\/)plan-config\.json$/.test(n); });
@@ -672,13 +590,8 @@
       if (stats) stats.dataError = true;   // (U2) : serveur injoignable / config illisible
     }
 
-    // 🆕 A5 : resync opportuniste — on vient de lire les points frais de ce
-    // plan (picker liaison / recherche cross-plan), autant en profiter pour
-    // rafraîchir les snapshots des liaisons qui le référencent. Skip si la
-    // lecture des datalayers a échoué (données partielles → un point data
-    // introuvable ne doit pas être interprété — les côtés retrouvés via la
-    // session restent resyncables sans risque, mais on privilégie la
-    // prudence : resync uniquement sur lecture complète).
+    // Resync opportuniste des snapshots des liaisons qui référencent ce plan (points frais), seulement sur une
+    // lecture COMPLÈTE : sur des données partielles, un point introuvable ne doit pas être interprété.
     if (!stats || !stats.dataError) {
       try { _resyncSnapshotsForPlan(plan.id, pts); } catch(e) {}
     }
@@ -686,20 +599,14 @@
     return pts;
   }
 
-  // ---------------------------------------------------------------
-  // (A6) — LECTURE ROUTING d'un plan NON chargé
-  // ---------------------------------------------------------------
-  // Même mécanique que _collecterPointsDuPlan mais pour les ROADS + ZONES
-  // (nécessaires au Dijkstra du leg distant : graphe + zones inaccessibles
-  // dures + zones évitables). Session localStorage (state.roads/zones) +
-  // datalayers (json.roads/zones, serveur fetch ou ZIP IndexedDB).
-  // stats.dataError = datalayers inaccessibles (le leg distant serait
-  // calculé sur un réseau PARTIEL → l'appelant doit refuser, pas deviner).
+  // ── Lecture du routage d'un plan non chargé ──────────
+  // Comme _collecterPointsDuPlan, pour ROADS + ZONES (Dijkstra du leg distant : graphe, zones inaccessibles et
+  // évitables) depuis la session et les calques. stats.dataError = calques inaccessibles : le leg serait
+  // calculé sur un réseau PARTIEL, l'appelant doit refuser, pas deviner.
   async function _collecterRoutingDuPlan(plan, stats) {
     const roads = [], zones = [];
     let scale = null;   // px/mètre du plan distant (cfg.tracking.scale) — nécessaire
-                        // pour sommer les distances des legs en MÈTRES (⚠️ les px
-                        // de 2 plans n'ont pas la même échelle)
+                        // pour sommer les legs en MÈTRES (⚠️ les px de deux plans n'ont pas la même échelle)
     let profondeursCfg = null;   // cfg.plan.niveauxProfondeur du plan distant
     function _absorber(objRoads, objZones) {
       (objRoads || []).forEach(function(r) {
@@ -709,7 +616,6 @@
         if (z && Array.isArray(z.points) && z.points.length >= 3) zones.push(z);
       });
     }
-    // 1) Session du plan
     try {
       const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
@@ -717,7 +623,6 @@
         _absorber(sess.roads, sess.zones);
       }
     } catch(e) { console.warn("[InterPlanLinks] session routing " + plan.id + " illisible :", e); }
-    // 2) Datalayers
     try {
       if (plan.type === "server" && plan.path && !plan.zip) {
         const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
@@ -761,11 +666,9 @@
       console.warn("[InterPlanLinks] routing datalayers " + plan.id + " illisibles :", e);
       if (stats) stats.dataError = true;
     }
-    // 3) Échelle et profondeurs de niveau du plan DISTANT, même cascade que le
-    //    plan ouvert (config.js : préférence per-plan > plan-config). Les
-    //    profondeurs pèsent les jonctions de niveau de son réseau — celles du
-    //    plan ouvert y seraient fausses. Lecture directe de la préférence :
-    //    getPlanProfondeurs(id) retombe sur le plan-config du plan OUVERT.
+    // 3) Échelle et profondeurs de niveau du plan DISTANT, même cascade que le plan ouvert (préférence par plan >
+    //    plan-config). 🩸 Lecture directe de la préférence : getPlanProfondeurs(id) retombe sur le plan-config
+    //    du plan OUVERT, faux pour les jonctions du réseau distant.
     let prefs = {};
     try {
       const rawPrefs = localStorage.getItem("myktamap_plan_prefs_" + plan.id);
@@ -782,9 +685,7 @@
     return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };
   }
 
-  // ---------------------------------------------------------------
-  // MODALE DE CRÉATION — picker plan cible → recherche point → créer
-  // ---------------------------------------------------------------
+  // ── Modale de création : plan cible → recherche du point → créer ──────────
   const MODAL_ID = "kta-ipl-modal";
 
   function _fermerModale() {
@@ -920,9 +821,7 @@
           _t("ipl.create.loadingFrom", { plan: _targetPlan.name || _targetPlan.id });
         const box = document.getElementById("kta-ipl-results");
         box.innerHTML = '<div class="kta-load-spinner" style="margin:18px auto;"></div>';
-        // (U2) : stats de collecte — si les datalayers du plan sont
-        // injoignables (serveur off, ZIP absent), on le DIT au lieu de laisser
-        // un « 0 points » muet.
+        // Calques du plan injoignables (serveur off, ZIP absent) : on le DIT au lieu d'un « 0 points » muet.
         const _stats = {};
         _targetPoints = await _collecterPointsDuPlan(_targetPlan, _stats);
         document.getElementById("kta-ipl-target-plan").textContent =
@@ -944,14 +843,10 @@
     });
   }
 
-  // ---------------------------------------------------------------
-  // NAVIGATION — goTo générique + pile de retour (v1.58.0)
-  // ---------------------------------------------------------------
-  // goTo(planId, target, opts) : navigation inter-plan RÉUTILISABLE —
-  // consommée par les liaisons (naviguerVers), le bouton ↩️ Retour et la
-  // recherche cross-plan. target = { x, y, level?, tag?, zoom?, label?,
-  // planName? }. opts = { confirm: bool (mini-modale avant switch),
-  // noStack: bool (ne pas empiler l'origine — cas du retour lui-même) }.
+  // ── Navigation : goTo générique + pile de retour ──────────
+  // goTo(planId, target, opts), utilisé par les liaisons (naviguerVers), le bouton ↩️ Retour et la recherche
+  // multi-plans. target = { x, y, level?, tag?, zoom?, label?, planName? } ; opts = { confirm: bool
+  // (mini-modale avant changement), noStack: bool (ne pas empiler l'origine : le retour lui-même) }.
   function goTo(planId, target, opts) {
     opts = opts || {};
     const plan = window.PlanRegistry ? window.PlanRegistry.findById(planId) : null;
@@ -960,12 +855,8 @@
       return;
     }
 
-    // (KARMA « si je sélectionne un point du plan en cours, pas de
-    // bouton retour ») : cible sur le PLAN COURANT → chemin court. Pas de
-    // rechargement du plan (inutile et lent), pas de confirmation (« changer
-    // de plan ? » n'a pas de sens), pas d'empilement ni de bouton Retour (on
-    // reste sur place) — juste bascule de niveau éventuelle + pan/flash
-    // immédiat (samePlan : une seule passe, rien ne recentre derrière).
+    // Cible sur le PLAN COURANT → chemin court : ni rechargement, ni confirmation, ni pile, ni bouton Retour ;
+    // seulement bascule de niveau éventuelle + pan/flash immédiat (samePlan : une seule passe).
     const planCharge = _planAffiche();
     if (planCharge && planId === _currentPlanId()) {
       if (!target) return;   // « ouvrir le plan » sans cible → déjà dessus
@@ -978,22 +869,16 @@
     }
 
     const doGo = async function() {
-      // empile l'ORIGINE (vue courante :
-      // plan + centre + niveau + zoom) avant de partir — pile N niveaux en
-      // RAM. Le retour (noStack) ne ré-empile pas (sinon ping-pong infini).
+      // L'ORIGINE (plan + centre + niveau + zoom) est empilée avant de partir (pile en RAM). Le retour (noStack)
+      // ne ré-empile pas (sinon ping-pong infini).
       if (!opts.noStack) _empilerOrigine();
       if (window.map) try { window.map.closePopup(); } catch(e) {}
       _retirerBoutonRetour();
-      // cible posée AVANT le switch — consommée par
-      // onPlanLoaded (fin de lancerApplication) ET par le fallback
-      // post-await. Sans ça, le recentrage de session post-chargement
-      // écrasait notre setView (« j'arrive sur ma position »).
-      // opts.recalerTracker → à l'arrivée, le TRACKER
-      // est recalé sur le point cible (traversée PHYSIQUE d'un portail —
-      // l'user y est réellement). Jamais posé par la recherche « voir ».
-      // (A7) : target peut être NULL (« ouvrir le plan » depuis le
-      // graphe, plan sans liaison → pas de point d'ancrage) → simple switch,
-      // pas de cible pendante ni de pan.
+      // Cible posée AVANT le changement, consommée par onPlanLoaded (fin de lancerApplication) ET par le repli
+      // après await : sinon le recentrage de session écrase notre setView.
+      // opts.recalerTracker → à l'arrivée, le TRACKER est recalé sur la cible (traversée PHYSIQUE d'un portail ;
+      // jamais par la recherche « voir »). target NULL (ouvrir un plan sans liaison depuis le graphe) = simple
+      // changement, sans cible ni pan.
       _pendingTarget = target
         ? { x: target.x, y: target.y, level: target.level,
             tag: target.tag, zoom: target.zoom,
@@ -1001,7 +886,7 @@
         : null;
       _pendingConsumed = false;
       try {
-        if (plan.type === "server" && !plan.zip) {   // 📦 plan ZIP : chargerPlanDuRegistre
+        if (plan.type === "server" && !plan.zip) {   // plan ZIP : chargerPlanDuRegistre
           await window.chargerPlanServeur(plan.path, plan);
         } else if (typeof window.chargerPlanDuRegistre === "function") {
           await window.chargerPlanDuRegistre(plan.id);
@@ -1047,7 +932,7 @@
     });
   }
 
-  // « Y aller » depuis une liaison (5:a : mini-confirmation puis switch).
+  // « Y aller » depuis une liaison (mini-confirmation puis changement).
   function naviguerVers(linkId, mySide) {
     const link = _load().links.find(function(l) { return l.id === linkId; })
       || _bakedLinkCache[linkId] || null;
@@ -1061,25 +946,18 @@
     }, { confirm: true, recalerTracker: true });   // traversée physique → tracker recalé
   }
 
-  // ---------------------------------------------------------------
-  // ↩️ PILE DE RETOUR (A2 — décisions 1:a 2:a 3:a)
-  // ---------------------------------------------------------------
-  // Pile en MÉMOIRE VIVE uniquement (perdue au reload — voulu). Chaque saut
-  // goTo (hors retour) empile l'origine ; le bouton flottant temporaire
-  // (15 s) dépile. Enchaîner 3 portails = 3 retours possibles.
+  // ── Pile de retour ──────────
+  // En MÉMOIRE VIVE seulement (perdue au rechargement, voulu). Chaque goTo (hors retour) empile l'origine ; le
+  // bouton flottant temporaire (15 s) dépile. 3 portails enchaînés = 3 retours.
   const _navStack = [];
   let _backBtnTimer = null;
 
-  // (audit KARMA « fermetures à la sortie du plan ») — purge des
-  // flottants de navigation. contexte :
-  //   "home"   : sortie vers le HOME (afficherLoader) → bouton Retour retiré
-  //              (mini-pastille comprise — elle n'a pas de timer) + pile vidée
-  //              (partir du home rompt la chaîne, cohérent v1.58.1).
-  //   "switch" : teardown d'un changement de plan. Si un _pendingTarget existe,
-  //              c'est un goTo (navigation intentionnelle qui gère déjà bouton
-  //              et pile) → no-op. Sinon = switch DIRECT (sélecteur du titre) →
-  //              la pile pointe vers un contexte périmé : bouton retiré + pile
-  //              vidée (bug bench : mini-pastille avec retour obsolète).
+  // Purge des flottants de navigation à la sortie du plan. contexte :
+  //   "home"   : retour à l'accueil → bouton Retour retiré (mini-pastille comprise, elle n'a pas de minuterie) +
+  //              pile vidée (partir de l'accueil rompt la chaîne).
+  //   "switch" : changement de plan. _pendingTarget présent = goTo (qui gère bouton et pile) → rien. Sinon
+  //              changement DIRECT (sélecteur du titre) : la pile pointe vers un contexte périmé → bouton retiré
+  //              + pile vidée.
   function onPlanExit(contexte) {
     if (contexte === "switch" && _pendingTarget) return;   // goTo en cours → géré
     _retirerBoutonRetour();
@@ -1087,13 +965,9 @@
   }
 
   function _empilerOrigine() {
-    // (KARMA « depuis une recherche du home, pas de bouton
-    // retour ») : au HOME, _currentLoadedPlanId ET window.map PERSISTENT du
-    // dernier plan chargé (le retour au loader ne les purge pas) → on
-    // empilait une fausse origine. Le marqueur fiable du home est
-    // PLAN_CONFIG === null (resetRuntimeAssets). Partir du home ROMPT aussi
-    // la chaîne de navigation : on vide la pile (pas de « retour » vers un
-    // vieux saut d'avant le passage au home).
+    // 🩸 À l'accueil, _currentLoadedPlanId et window.map PERSISTENT du dernier plan (le retour au loader ne les
+    // purge pas) : on empilerait une fausse origine. Marqueur fiable de l'accueil : PLAN_CONFIG === null
+    // (resetRuntimeAssets). Partir de l'accueil vide aussi la pile.
     if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.plan) {
       _navStack.length = 0;
       return;
@@ -1121,21 +995,12 @@
     if (b) try { b.remove(); } catch(e) {}
   }
 
-  // Bouton flottant « ↩️ Retour : <plan> » affiché après l'arrivée (2:a :
-  // temporaire, 15 s ou clic). La pile reste en RAM après expiration — le
-  // bouton réapparaîtra au prochain saut si des niveaux restent à dépiler.
-  //
-  // (U4, KARMA « pouvoir réduire ou supprimer ce bouton ») :
-  //   - [✕] ferme le bouton SANS déclencher le retour. 🆕 v1.73.0 (KARMA
-  //     « supprime les retours possibles — éviter un empilement inutile ») :
-  //     ✕ VIDE AUSSI LA PILE — fermer = renoncer à la chaîne de retours,
-  //     le bouton ne réapparaîtra pas au prochain saut avec du périmé ;
-  //   - [–] RÉDUIT en mini-pastille ↩️ discrète (clic pastille = ré-expansion,
-  //     jamais de retour direct depuis la pastille — anti-mauvais-clic).
-  //     Le choix « réduit » est MÉMORISÉ (localStorage) : les prochains sauts
-  //     affichent directement la pastille ; ré-expandre re-mémorise « plein ».
-  //   - En mode réduit, PAS de timer 15 s : la pastille ne pollue pas, elle
-  //     peut rester jusqu'au prochain événement.
+  // Bouton flottant « ↩️ Retour : <plan> » après l'arrivée, temporaire (15 s ou clic). La pile reste en RAM :
+  // le bouton revient au prochain saut s'il reste des niveaux.
+  //   - [✕] ferme SANS revenir et VIDE LA PILE (renoncer à la chaîne : pas de retour périmé au prochain saut) ;
+  //   - [–] RÉDUIT en mini-pastille ↩️ (clic = ré-expansion, jamais de retour direct : anti-mauvais-clic). Choix
+  //     MÉMORISÉ (localStorage) ; ré-expandre mémorise « plein » ;
+  //   - en mode réduit, PAS de minuterie de 15 s.
   const BACKBTN_MODE_KEY = "myktamap_backbtn_mode";   // "full" (défaut) | "mini"
 
   function _backBtnMode() {
@@ -1166,7 +1031,6 @@
     wrap.className = "kta-ipl-back-float" + (mode === "mini" ? " kta-ipl-back-mini" : "");
 
     if (mode === "mini") {
-      // Pastille discrète : clic = ré-expansion (jamais de retour direct).
       wrap.innerHTML = '<button type="button" class="kta-ipl-back-minibtn" title="' +
         _esc(_t("ipl.back.expandTitle")) + '">↩️' +
         (_navStack.length > 1 ? '<span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
@@ -1176,7 +1040,6 @@
         _afficherBoutonRetour("full");
       });
       document.documentElement.appendChild(wrap);
-      // Pas de timer en mode mini (la pastille ne pollue pas).
       return;
     }
 
@@ -1201,8 +1064,7 @@
     _backBtnTimer = setTimeout(_retirerBoutonRetour, 15000);
   }
 
-  // Cible de navigation en attente (posée par goTo, consommée une
-  // seule fois après le chargement du plan cible).
+  // Cible de navigation en attente (posée par goTo, consommée une seule fois après le chargement du plan cible).
   let _pendingTarget = null;
   let _pendingConsumed = false;
 
@@ -1212,10 +1074,8 @@
     const t = _pendingTarget;
     _pendingTarget = null;
 
-    // BASCULE DE NIVEAU : un portail amène AU niveau du point
-    // cible. Sans ça, arriver sur un plan multi-niveau affiché sur un autre
-    // niveau laissait le POI invisible (opacity 0 par le filtre) — l'user ne
-    // voyait que le badge 🌀 (« badge sans l'icône »).
+    // Bascule de niveau : un portail amène AU niveau du point cible (sinon, sur un plan multi-niveau affiché à un
+    // autre niveau, le POI reste invisible, opacité 0).
     if (Number.isInteger(t.level) && window.APP_CONFIG
         && Array.isArray(window.APP_CONFIG.visibleLevels)
         && window.APP_CONFIG.visibleLevels.indexOf(t.level) === -1
@@ -1226,9 +1086,8 @@
       } catch(e) { console.warn("[InterPlanLinks] bascule niveau échouée :", e); }
     }
 
-    // FILTRE TAG : si un filtre de tags runtime est actif et
-    // masque le tag du point cible, on N'Y TOUCHE PAS (jamais de reset de
-    // filtre sans avertir — règle projet) mais on prévient l'user par toast.
+    // Filtre de tags actif qui masque le tag de la cible : on N'Y TOUCHE PAS (jamais de reset de filtre sans
+    // avertir), on prévient par un toast.
     if (t.tag && window._ktaRuntimeFilters && window._ktaRuntimeFilters.tags
         && typeof window._ktaRuntimeFilters.tags.has === "function"
         && !window._ktaRuntimeFilters.tags.has(t.tag)) {
@@ -1237,45 +1096,33 @@
       }
     }
 
-    // cible sur le PLAN COURANT (samePlan) : une seule passe
-    // immédiate (aucun restore de session ne recentre derrière puisqu'il n'y
-    // a pas eu de rechargement) et PAS de bouton Retour (on n'a pas bougé de
-    // plan — et des restes de pile d'anciens sauts ne doivent pas réapparaître
-    // après un simple recentrage).
+    // Cible sur le PLAN COURANT : une seule passe immédiate (aucun restore ne recentre derrière) et PAS de bouton
+    // Retour (des restes de pile ne doivent pas réapparaître après un simple recentrage).
     if (t.samePlan) {
       _panEtFlash(t, true);
       return;
     }
 
-    // Triple passe : le restore de session (SessionPersist) et le tracker
-    // (« démarrage sur la dernière position », v1.49.0) recentrent la vue en
-    // async APRÈS la fin de lancerApplication. On repasse derrière eux à
-    // +600 ms (setView + flash), puis +1600/+2600 ms (setView silencieux)
-    // pour garder la main sur la vue finale.
+    // Triple passe : le restore de session (SessionPersist) et le tracker (« démarrage sur la dernière position »)
+    // recentrent en async APRÈS lancerApplication. On repasse à +600 ms (setView + flash), puis +1600 / +2600 ms
+    // (setView silencieux) pour garder la vue finale.
     _panEtFlash(t, true);
     setTimeout(function() { _panEtFlash(t, false); }, 1600);
     setTimeout(function() { _panEtFlash(t, false); }, 2600);
 
-    // propose le retour vers l'origine (bouton flottant 15 s)
-    // une fois l'arrivée peinte. Vaut pour TOUTES les navigations goTo (lien,
-    // recherche cross-plan) — après un retour, s'il reste des niveaux dans la
-    // pile, le bouton réapparaît pour continuer à dépiler.
+    // Retour vers l'origine proposé (bouton 15 s) une fois l'arrivée peinte, pour TOUTES les navigations goTo ;
+    // après un retour, il revient s'il reste des niveaux à dépiler.
     setTimeout(_afficherBoutonRetour, 900);
 
-    // (KARMA « recalage de position sur le point d'arrivée ») :
-    // traversée PHYSIQUE d'un portail → recale le tracker sur le point
-    // d'arrivée du plan cible, IMMÉDIATEMENT (le restore de session tracker
-    // est synchrone dans lancerApplication → déjà passé quand on consomme ;
-    // vérifié au bench t+3s). Re-assertion à +2.8 s UNIQUEMENT si quelque
-    // chose a bougé la position entre-temps (ceinture — évite double
-    // vibration/ancre timeline dans le cas nominal).
+    // Traversée PHYSIQUE d'un portail : tracker recalé sur le point d'arrivée IMMÉDIATEMENT (le restore du tracker
+    // est synchrone dans lancerApplication, déjà passé). Réassertion à +2,8 s SEULEMENT si la position a bougé
+    // entre-temps (évite double vibration / ancre de timeline).
     if (t.recale) {
       const _recaler = function() {
         if (typeof window.recalerTrackerSurPoint !== "function") return;
         try {
-          // `teleport` : une traversée de portail n'est PAS une distance
-          // parcourue sur CE plan — sans ce marqueur, elle gonflerait la
-          // distance estimée du Carnet (cf. tracking.js > _estimerSegmentDepuisAncre).
+          // `teleport` : une traversée n'est PAS une distance parcourue sur CE plan (sinon elle gonfle la
+          // distance estimée du Carnet, cf. tracking.js > _estimerSegmentDepuisAncre).
           window.recalerTrackerSurPoint(t.x, t.y,
             Number.isInteger(t.level) ? t.level : undefined, { teleport: true });
           console.log("[InterPlanLinks] Tracker recalé sur le point d'arrivée du portail (" +
@@ -1295,10 +1142,8 @@
     }
   }
 
-  // Pan (+ flash optionnel) sur la cible t = {x, y, zoom?}. Retry léger si la
-  // map du nouveau plan n'est pas encore opérationnelle. Le zoom n'est fourni
-  // que par le RETOUR (restauration de la vue d'origine) — les autres
-  // navigations conservent le zoom courant.
+  // Pan (+ flash optionnel) sur t = {x, y, zoom?}, nouvel essai si la carte du plan n'est pas prête. Le zoom
+  // n'est fourni que par le RETOUR (vue d'origine) ; ailleurs le zoom courant est gardé.
   function _panEtFlash(t, withFlash, attempt) {
     attempt = attempt || 0;
     const mapOk = window.map && typeof window.map.setView === "function"
@@ -1321,8 +1166,7 @@
     } catch(e) { console.warn("[InterPlanLinks] pan/flash échoué :", e); }
   }
 
-  // Cache des liens baked rencontrés au popup (pour naviguerVers depuis un
-  // lien embarqué absent du registre). Rempli par buildPopupHtml.
+  // Liens embarqués vus au popup (rempli par buildPopupHtml), pour naviguerVers vers un lien absent du registre.
   const _bakedLinkCache = {};
   const _origBuildPopupHtml = buildPopupHtml;
   buildPopupHtml = function(point, layerId) {
@@ -1334,31 +1178,18 @@
     return _origBuildPopupHtml(point, layerId);
   };
 
-  // ---------------------------------------------------------------
-  // (Ex-BADGES 🌀 — RETIRÉS en v1.59.0, décision KARMA « enlève le badge
-  // portail ») : le marquage visuel d'un point lié est désormais un CHOIX
-  // UTILISATEUR via le tag builtin « portail » (icône vortex dédiée,
-  // icon/portail.png — cf TAGS_BUILTIN dans map.js). Un point lié peut
-  // garder n'importe quel tag (aucun marquage) ou prendre le tag portail.
-  // refreshBadges reste exposée en NO-OP (compat : hook historique dans
-  // interfaceConfig.js > appliquerFiltreNiveau, anciens callers éventuels).
-  // ---------------------------------------------------------------
-  function refreshBadges() { /* no-op depuis v1.59.0 — cf commentaire */ }
+  // ── Badges ──────────
+  // Pas de badge automatique : le marquage d'un point lié est un CHOIX via le tag intégré « portail » (icône
+  // icon/portail.png, cf. map.js > TAGS_BUILTIN). refreshBadges reste exposée en no-op (appelée par
+  // interfaceConfig.js > appliquerFiltreNiveau).
+  function refreshBadges() { /* no-op, cf. ci-dessus */ }
 
-  // ---------------------------------------------------------------
-  // (A5) — RESYNC des SNAPSHOTS de liaisons
-  // ---------------------------------------------------------------
-  // Un snapshot (nom/coords/level/tag d'un côté) peut se périmer si le point
-  // est renommé ou déplacé après la création de la liaison. Principe : « le
-  // plan qui SAIT met à jour ses propres côtés » — resync silencieux :
-  //   1. au CHARGEMENT d'un plan (ses points en mémoire font autorité sur
-  //      les côtés qui le référencent — zéro fetch supplémentaire) ;
-  //   2. opportunistement quand collectPointsForPlan lit un plan distant
-  //      (picker liaison / recherche cross-plan — les points frais sont là).
-  // Au fil de l'usage normal, tous les snapshots convergent.
-  // Matching : par pointId (stable, suit un point déplacé) sinon par coords
-  // arrondies (points sans id — un déplacement change alors l'identité, on
-  // ne peut resynchroniser que le nom/level/tag d'un point retrouvé sur place).
+  // ── Resync des snapshots de liaisons ──────────
+  // Un snapshot (nom, coords, level, tag) se périme si le point est renommé ou déplacé. « Le plan qui SAIT met à
+  // jour ses propres côtés », en silence : au CHARGEMENT d'un plan (ses points font autorité, zéro fetch) et quand
+  // collectPointsForPlan lit un plan distant. Les snapshots convergent à l'usage.
+  // Correspondance par pointId (stable, suit un déplacement), sinon par coords arrondies (seuls nom / level / tag
+  // d'un point retrouvé sur place se resynchronisent).
   function _resyncSnapshotsForPlan(planId, pts) {
     if (!planId || !Array.isArray(pts) || pts.length === 0) return 0;
     const byId = {}, byXy = {};
@@ -1399,8 +1230,7 @@
     return changed;
   }
 
-  // Resync au chargement du plan courant : points session + datalayers déjà
-  // en mémoire via SearchPoints.getAllPoints (format [{point, layerId}]).
+  // Resync au chargement : points de session + calques déjà en mémoire (SearchPoints.getAllPoints, [{point, layerId}]).
   async function _resyncPlanCourant() {
     const pid = _currentPlanId();
     if (!pid || !window.SearchPoints || typeof window.SearchPoints.getAllPoints !== "function") return;
@@ -1412,20 +1242,16 @@
     } catch(e) { console.warn("[InterPlanLinks] resync plan courant échoué :", e); }
   }
 
-  // Hook appelé par main.js à la fin de lancerApplication (plan prêt).
+  // Appelé par main.js à la fin de lancerApplication (plan prêt).
   function onPlanLoaded() {
-    // consomme la cible de navigation pendante (« Y aller »
-    // depuis une liaison) — repasse derrière les recentrages de session.
+    // Cible pendante consommée après les recentrages de session.
     setTimeout(_consumePendingTarget, 600);
-    // 🆕 A5 : resync différé des snapshots des côtés locaux (laisse les
-    // datalayers async finir leur chargement — même délai que les stats plan).
+    // Resync différé des snapshots locaux (les calques async finissent de charger, même délai que les stats).
     setTimeout(_resyncPlanCourant, 2000);
   }
 
-  // purge des liaisons d'un point SUPPRIMÉ (hook appelé par
-  // editor.js > supprimerPointEditor). Le lien entier est retiré (une liaison
-  // sans l'un de ses deux bouts n'a plus de sens) → le badge disparaît
-  // immédiatement, des 2 côtés du registre.
+  // Point SUPPRIMÉ (editor.js > supprimerPointEditor) : la liaison entière est retirée (sans l'un de ses bouts
+  // elle n'a plus de sens), des deux côtés du registre.
   function onPointDeleted(planId, point) {
     if (!planId || !point) return 0;
     const reg = _load();
@@ -1442,11 +1268,9 @@
     return removed;
   }
 
-  // Migration douce des côtés de liaison du plan courant (ETUDE_UID
-  // décision 12) : un côté sans pointUid reçoit l'uid du point s'il le désigne
-  // sans ambiguïté — un seul point de ce nom, sinon l'homonyme à la même
-  // position (1 px). Ambigu : inchangé (reconnu par son nom). Les côtés des
-  // AUTRES plans ne sont pas touchés : leurs points ne sont pas chargés.
+  // Migration douce des côtés du plan courant (ETUDE_UID décision 12) : un côté sans pointUid reçoit l'uid du
+  // point s'il le désigne sans ambiguïté (un seul point de ce nom, sinon l'homonyme à 1 px près). Ambigu :
+  // inchangé. Les côtés des AUTRES plans ne sont pas touchés (leurs points ne sont pas chargés).
   function migrerVersUid(planId, points) {
     if (!planId || !Array.isArray(points)) return 0;
     const reg = _load();
@@ -1466,18 +1290,12 @@
     return n;
   }
 
-  // un point de session REPOSITIONNÉ (cf. editor.js >
-  // repositionnerPointEditor). La liaison SURVIT au déplacement : elle est
-  // indexée par `id:<id>` et un point de session en a toujours un.
-  //
-  // 🩸 Mais les coordonnées STOCKÉES dans le lien, elles, deviendraient
-  // périmées — et elles servent ailleurs : le tracé du lien à l'export KMZ
-  // (`planToGps(t, link.a.x, link.a.y)`) et le repli d'affichage quand le
-  // point n'a pas de nom. Sans ce recalage, déplacer un point relié ferait
-  // partir sa liaison de l'ancienne position dans le KMZ, sans rien dire.
-  //
-  // `ancX/ancY` = la position AVANT le clic : c'est la seule clé valable si
-  // le point n'a pas d'id (cas data layer) ; avec un id elle est ignorée.
+  // Point de session REPOSITIONNÉ (editor.js > repositionnerPointEditor) : la liaison survit (indexée par
+  // `id:<id>`).
+  // 🩸 Mais les coordonnées STOCKÉES dans le lien deviendraient périmées, et elles servent : tracé du lien à
+  // l'export KMZ (`planToGps(t, link.a.x, link.a.y)`) et repli d'affichage d'un point sans nom. Sans recalage,
+  // le lien partirait de l'ancienne position dans le KMZ, sans rien dire.
+  // `ancX/ancY` = position AVANT le clic : seule clé valable pour un point sans id (calque) ; ignorée avec un id.
   function onPointMoved(planId, point, ancX, ancY) {
     if (!planId || !point) return 0;
     const reg = _load();
@@ -1498,9 +1316,7 @@
     }
     return recales;
   }
-  // ---------------------------------------------------------------
-  // EXPORT
-  // ---------------------------------------------------------------
+  // ── Export ──────────
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
     getLinksForPlan:      getLinksForPlan,
@@ -1515,24 +1331,21 @@
     naviguerVers:         naviguerVers,
     supprimerDepuisPopup: supprimerDepuisPopup,
     onPlanLoaded:         onPlanLoaded,
-    // vrai pendant le changement de plan d'une traversée
-    // PHYSIQUE de portail (goTo recalerTracker) : interPlanRoute n'y poursuit
-    // l'itinéraire que dans ce cas (un plan ouvert autrement l'abandonne).
+    // Vrai pendant le changement de plan d'une traversée PHYSIQUE (goTo recalerTracker) : interPlanRoute ne
+    // poursuit l'itinéraire que dans ce cas.
     traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); },
     onPointDeleted:       onPointDeleted,
     migrerVersUid:        migrerVersUid,
     onPointMoved:         onPointMoved,   // recale les coords d'un point déplacé
     refreshBadges:        refreshBadges,
-    // navigation générique (liaisons, retour, recherche
-    // cross-plan) + lecture des points d'un plan non chargé (réutilisée par
-    // js/crossPlanSearch.js — zéro duplication du lecteur session/ZIP/serveur).
+    // Navigation générique + lecture des points d'un plan non chargé (aussi pour js/crossPlanSearch.js : un seul
+    // lecteur session / ZIP / serveur).
     goTo:                 goTo,
     collectPointsForPlan: _collecterPointsDuPlan,
     collectRoutingDataForPlan: _collecterRoutingDuPlan,   // (A6) — roads+zones d'un plan non chargé
-    // (A3) — gestionnaire global (bouton HOME « 🌀 Mes liaisons »)
+    // Gestionnaire global (bouton d'accueil « Mes liaisons »).
     ouvrirGestionnaire:   ouvrirGestionnaire,
-    // (D5) — écart de calage en mètres, ou null si non mesurable.
-    // Consommée par la Vue OSM : ne PAS en refaire une copie ailleurs.
+    // Écart de calage en mètres, ou null si non mesurable. Consommé par la Vue OSM : pas de copie ailleurs.
     ecartCalage:          ecartCalage
   };
 
