@@ -4,12 +4,13 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// ZONES POLYGONALES REMPLIES
-// =========================
-// Permet de tracer des zones fermées et remplies (remblais, effondrements)
-// — fermeture par re-clic sur le 1er point OU par bouton "Fermer la zone"
-// =========================
+// zones.js — tracé des zones polygonales remplies (eau, remblais, effondrement, inaccessible, cust-…).
+// Fermeture : re-clic sur le 1er sommet (≥ 3 sommets) ou bouton « Fermer la zone ».
+// Expose : window.initZones, toggleZoneMode, getZones/setZones, getCurrentZone(Index), …
+// 🩸 La zone INACCESSIBLE bloque le pathfinder (segment qui traverse le polygone retiré du graphe)
+//   et se peint avec le motif SVG d'index.html : renderer L.svg() dédié (le canvas l'ignore).
+// Styles : window.ktaResolveStyle (styleResolver.js), jamais de table locale.
+// Garde-fou : scripts/check-filets-donnees.js, scripts/check-uid.js, scripts/check-style-canon.js
 
 window.modeZone = null; // null | "remblais" | "effondrement" | "eau" | "inaccessible"
 
@@ -18,25 +19,12 @@ let currentZone = null;
 let zoneLayers = [];      // polygones fermés (remplis)
 let previewLayer = null;  // polyline pointillée pendant le tracé
 
-// Tolérance en pixels pour détecter le re-clic sur le 1er point (en coords plan)
+// Tolérance du re-clic sur le 1er sommet (px, coordonnées plan).
 const CLOSE_TOLERANCE = 5;
 
-// =========================
-// STYLES
-// =========================
-// Les 4 types built-in ne sont plus declares ici : leurs valeurs
-// viennent de la table canonique de `js/styleResolver.js`.
-// Rappel qui ne se lit pas dans les valeurs : la zone INACCESSIBLE (v169)
-// bloque le pathfinder (tout segment qui traverse le polygone est retire du
-// graphe) et se peint en hachures 45° via le pattern SVG declare dans
-// index.html (id="kta-pattern-inaccessible"). Ce `url(#...)` EXIGE un renderer
-// L.svg() — un renderer canvas l'ignorerait et afficherait un aplat. D'ou le
-// renderer dedie ci-dessous.
-
-// Singleton SVG renderer dedie aux zones inaccessibles. Force pour que le
-// pattern url(#kta-pattern-inaccessible) s'applique correctement. Les autres
-// zones (eau/remblais/effondrement) utilisent le renderer par defaut Leaflet
-// (canvas si preferCanvas:true, sinon SVG) — pas concernees par ce renderer.
+// ── Styles ──────────────────────────────
+// Renderer SVG dédié à l'inaccessible (motif url(#kta-pattern-inaccessible)) ; les autres types
+// gardent le renderer par défaut de Leaflet.
 let _inaccessibleRenderer = null;
 function _getInaccessibleRenderer() {
   if (!_inaccessibleRenderer) {
@@ -51,10 +39,7 @@ const ZONE_STYLE_PREVIEW = {
   dashArray: "8 5"
 };
 
-// Résolution du style d'une zone — built-in ET types CUSTOM (LegendCustomization).
-// delegue integralement a window.ktaResolveStyle. Retourne un objet
-// NEUF a chaque appel (avant : l'objet partage de la table), donc un appelant
-// qui mute son style ne contamine plus les autres zones.
+// Built-in et custom via ktaResolveStyle : objet NEUF à chaque appel (le muter ne contamine rien).
 let _resolverManquantSignaleZ = false;
 function _resolveZoneStyle(type) {
   if (typeof window.ktaResolveStyle !== "function") {
@@ -67,22 +52,15 @@ function _resolveZoneStyle(type) {
   return window.ktaResolveStyle("zones", type);
 }
 
-// =========================
-// CIBLE DE RENDU — calque "Mes annotations"
-// =========================
-// Les zones de session sont rendues dans window.layerEditor (= calque
-// "Mes annotations"), comme les points editor et les roads de session.
-// Toggle unique pour masquer/afficher toutes les annotations utilisateur.
-// Fallback window.map si layerEditor pas encore créé (cas d'init précoce).
+// Cible de rendu : calque « Mes annotations » (window.layerEditor), comme points et tracés de
+// session ; window.map tant qu'il n'existe pas.
 function _zoneTarget() {
   return window.layerEditor || window.map;
 }
 
-// =========================
-// INIT
-// =========================
+// ── Init ──────────────────────────────
 function initZones() {
-  // Reset complet (changement de plan)
+  // Changement de plan : remise à zéro complète.
   zonesData = [];
   currentZone = null;
 
@@ -111,11 +89,9 @@ function initZones() {
     const x = e.latlng.lng;
     const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
-    // Undo/Redo : snapshot avant toute mutation (création de
-    // currentZone, ajout d'un sommet, fermeture par retour au 1er point).
+    // Undo : capture AVANT toute mutation (création, sommet, fermeture).
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
     const _isNewZone = !currentZone;
-    // label custom = user-defined
     let _typeLabel;
     if (window.LegendCustomization && String(window.modeZone).startsWith("cust-")) {
       const e = window.LegendCustomization.findCustomEntry(window.modeZone);
@@ -133,8 +109,7 @@ function initZones() {
         type: window.modeZone,
         points: []
       };
-      // 🏗️ Multi-niveau (v148) : tag la zone avec le niveau actif si la
-      // feature est ON pour ce plan. Sinon → aucun champ level (retro-compat).
+      // Multi-niveau actif : la zone prend le niveau actif ; sinon aucun champ level.
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         currentZone.level = window.APP_CONFIG.activeLevel || 0;
       }
@@ -142,7 +117,6 @@ function initZones() {
       zonesData.push(currentZone);
     }
 
-    // Si le clic est proche du 1er point ET qu'on a au moins 3 points → fermer
     if (currentZone.points.length >= 3) {
       const p0 = currentZone.points[0];
       const dx = x - p0.x;
@@ -153,9 +127,8 @@ function initZones() {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeLabel }), _historyBefore, "zones");
         }
-        // 🐛 fix : fermeture au clic = on éteint aussi l'outil (sinon le bouton
-        // reste actif + window.modeZone armé → le clic suivant relance une zone
-        // dans un état incohérent). _fermerModeZone gère désactivation + UI.
+        // 🩸 Fermer éteint aussi l'outil : sinon modeZone reste armé et le clic suivant
+        // relance une zone dans un état incohérent.
         if (typeof window._fermerModeZone === "function") window._fermerModeZone();
         return;
       }
@@ -173,14 +146,9 @@ function initZones() {
   });
 }
 
-// =========================
-// ACTIVER / DÉSACTIVER UN TYPE
-// =========================
-// 🚨 Q24 (audit ergonomie 13/09/2026) : retaper la pastille ou changer de
-// type DÉTRUISAIT la zone en cours sans un mot ni historique, alors que le
-// même geste VALIDE un tracé. Désormais : ≥ 3 sommets → la zone est FERMÉE
-// (validée, historisée, comme le re-clic sur le 1er sommet) ; sinon elle est
-// abandonnée avec un toast et une entrée d'historique (⏪ la rend).
+// ── Activer / désactiver un type ──────────────────────────────
+// 🩸 Retaper la pastille ou changer de type ne détruit jamais la zone en cours en silence :
+// ≥ 3 sommets → FERMÉE et historisée ; sinon abandonnée avec toast et entrée d'historique.
 function _labelTypeZone(type) {
   if (window.LegendCustomization && String(type).startsWith("cust-")) {
     const e = window.LegendCustomization.findCustomEntry(type);
@@ -219,8 +187,6 @@ function _resoudreZoneEnCours() {
 }
 function toggleZoneMode(type) {
   if (window.modeZone !== type && typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
-  // Changement de type ou désactivation du même type : la zone en cours est
-  // fermée si elle est valide, abandonnée sinon (cf _resoudreZoneEnCours).
   if (currentZone && window.modeZone !== type) _resoudreZoneEnCours();
 
   if (window.modeZone === type) {
@@ -231,34 +197,28 @@ function toggleZoneMode(type) {
     currentZone = null;
   }
 
-  // re-render TOUS les layers session + sync data layer
-  // KMZ. Cf utils.js > _kta_syncAllNoteUiForModeChange.
+  // Re-rendu de tous les calques de session + calques de données (utils.js).
   if (typeof window._kta_syncAllNoteUiForModeChange === "function") {
     window._kta_syncAllNoteUiForModeChange();
   } else {
-    renderZones();  // fallback si utils.js pas chargé
+    renderZones();
   }
   console.log("[Zones] Mode :", window.modeZone);
 }
 
-// =========================
-// FERMER LA ZONE EN COURS
-// =========================
+// ── Fermer la zone en cours ──────────────────────────────
 function fermerZoneEnCours() {
   if (!currentZone || currentZone.points.length < 3) {
     return false;
   }
-  // La fermeture est implicite : on ne stocke pas le point répété
+  // Fermeture implicite : le 1er point n'est pas répété.
   currentZone = null;
   renderZones();
   return true;
 }
 
-// =========================
-// RENDU
-// =========================
+// ── Rendu ──────────────────────────────
 function renderZones() {
-  // Vider les layers existants — .remove() détache où qu'ils soient (map ou layerEditor)
   zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   zoneLayers = [];
 
@@ -267,13 +227,10 @@ function renderZones() {
     previewLayer = null;
   }
 
-  // Trier l'affichage : eau d'abord (en arrière), puis remblais, puis effondrements, puis inaccessible (au-dessus)
-  // — la zone en cours reste à sa position pour éviter qu'elle saute pendant le tracé
-  // L'inaccessible est en haut car elle a une fonction "bloquante" (pathfinder) que
-  // l'utilisateur doit voir clairement.
+  // Ordre d'empilement : eau, remblais, effondrement, inaccessible au-dessus (elle bloque le
+  // pathfinder, elle doit se voir).
   const ordreType = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
   const zonesAffichage = [...zonesData].sort(function(a, b) {
-    // currentZone garde sa priorité naturelle de tracé (en dernier dans le tableau)
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;
     return oa - ob;
@@ -281,49 +238,41 @@ function renderZones() {
 
   const target = _zoneTarget();
 
-  // 🏗️ Multi-niveau (v148) : pre-calcul du filtre. Si la feature est OFF →
-  // toutes les zones visibles (retro-compat). Si ON → seul level ∈ visibleLevels.
-  // Les zones sans level (pre-v148) sont traitees comme level 0.
+  // Multi-niveau : seules les zones de visibleLevels ; sans champ level = niveau 0.
   const _multiLevelOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const _visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
                           ? window.APP_CONFIG.visibleLevels : [0];
   function _zonePasseFiltre(zone) {
     if (!_multiLevelOn) return true;
-    // Zone EN COURS DE TRACÉ : toujours visible peu importe le filtre (sinon
-    // l'utilisateur ne voit pas la zone qu'il dessine si son niveau actuel
-    // n'est pas dans visibleLevels). Cf bug report user v148.test, fix
-    // symétrique avec road.js > _passeFiltreNiveau.
+    // 🩸 La zone en cours de tracé reste visible quel que soit le filtre (comme
+    // road.js > _passeFiltreNiveau).
     if (zone === currentZone) return true;
     const lvl = Number.isInteger(zone.level) ? zone.level : 0;
     return _visibleLevels.indexOf(lvl) >= 0;
   }
 
-  // Pour chaque zone, déterminer si elle est fermée (= pas la zone courante)
   zonesAffichage.forEach(function(zone) {
     if (!zone.points || zone.points.length === 0) return;
     if (!_zonePasseFiltre(zone)) return;
 
-    // (KARMA "filtre par type de zone") : runtime type filter
-    // via FilterPanel. currentZone bypass (zone en cours de dessin doit
-    // rester visible peu importe le filtre).
+    // Filtre par type (FilterPanel), sauf pour la zone en cours.
     if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
         && zone !== currentZone) {
       if (!window._ktaRuntimeFilters.zoneTypes.has(zone.type)) return;
     }
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-    // résolution dynamique (custom support)
     const style = _resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais");
 
     if (zone === currentZone) {
-      // Zone en cours de tracé → polyline pointillée (aperçu)
+      // En cours de tracé : aperçu en pointillés.
       if (zone.points.length >= 1) {
         const previewStyle = Object.assign({}, ZONE_STYLE_PREVIEW, {
           color: style.color
         });
         previewLayer = L.polyline(latlngs, previewStyle).addTo(target);
 
-        // Afficher un petit cercle sur le 1er point pour indiquer la fermeture possible
+        // Cercle sur le 1er sommet : la fermeture est possible.
         if (zone.points.length >= 3) {
           const p0 = zone.points[0];
           const marker = L.circleMarker(convertCoord(p0.x, p0.y), {
@@ -338,27 +287,17 @@ function renderZones() {
         }
       }
     } else {
-      // Zone fermée → polygone rempli.
-      // 🚫 Cas spécial inaccessible : force le SVG renderer pour que le pattern
-      // url(#kta-pattern-inaccessible) s'affiche (canvas l'ignorerait).
       const polygonOpts = (zone.type === "inaccessible")
         ? Object.assign({}, style, { renderer: _getInaccessibleRenderer() })
         : style;
       const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
 
-      // popup au clic pour éditer la note (description)
-      // Capture l'index de la zone dans la closure pour pouvoir lire/écrire
-      // la dernière valeur même si zonesData change (renderZones).
-      //
-      // on ne binde le popup que si aucun mode édition
-      // n'est actif (sinon le clic sur un polygone zone ouvre la popup ET
-      // ajoute un point au tracé en cours — UX cassée). Re-render au toggle
-      // mode → re-bind du popup. Idem pattern road.js / structures.js.
+      // Popup de note seulement hors mode édition : sinon le clic ouvre la popup ET ajoute un
+      // sommet au tracé en cours (même règle que road.js / structures.js).
       if (typeof window.attacherNotePopup === "function" &&
           window._aucunModeEditionActif()) {
-        const _zoneRef = zone;  // référence directe à l'objet
-        // titre popup résolu via LC
+        const _zoneRef = zone;
         const _zoneEmojis = {
           eau:          "💧",
           remblais:     "⬛",
@@ -388,7 +327,7 @@ function renderZones() {
           function() { return _zoneRef.description; },
           function(v) { _zoneRef.description = v; if (window.KtaUid) window.KtaUid.touch(_zoneRef); },
           _zonePopupTitle(zone.type),
-          // reclassement depuis la popup (cf. convertirObjet.js).
+          // Reclassement depuis la popup (convertirObjet.js).
           { convertir: { famille: "zones", obj: _zoneRef } }
         );
       }
@@ -396,9 +335,7 @@ function renderZones() {
   });
 }
 
-// =========================
-// RESET COMPLET
-// =========================
+// ── Reset complet ──────────────────────────────
 function resetZones() {
   zonesData = [];
   currentZone = null;
@@ -413,14 +350,9 @@ function resetZones() {
   }
 }
 
-// =========================
-// SUPPRIMER LA DERNIÈRE ZONE FERMÉE
-// =========================
+// ── Supprimer la zone en cours ou la dernière fermée ──────────────────────────────
 function removeLastZone() {
-  // (KARMA "on doit pouvoir supprimer d'un coup le tracé en cours,
-  // que last zone fermé actuellement") : priorité à la zone EN COURS si elle
-  // existe, sinon la dernière zone fermée.
-  // Undo/Redo : snapshot before (couvre les 2 branches).
+  // Priorité à la zone EN COURS, sinon la dernière fermée ; capture undo pour les deux.
   const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
   if (currentZone) {
     const idx = zonesData.indexOf(currentZone);
@@ -432,7 +364,6 @@ function removeLastZone() {
     }
     return true;
   }
-  // Pas de zone en cours → supprime la dernière zone fermée
   if (zonesData.length === 0) return false;
   const removed = zonesData.pop();
   renderZones();
@@ -443,19 +374,17 @@ function removeLastZone() {
   return true;
 }
 
-// =========================
-// SUPPRIMER LE DERNIER POINT DE LA ZONE EN COURS
-// =========================
+// ── Supprimer le dernier sommet ──────────────────────────────
 function removeLastZonePoint() {
   if (!currentZone || currentZone.points.length === 0) {
-    // Pas de zone en cours : retirer le dernier point de la dernière zone fermée
+    // Sans zone en cours : sur la dernière zone fermée.
     if (zonesData.length === 0) return false;
     const last = zonesData[zonesData.length - 1];
     if (!last.points || last.points.length === 0) return false;
     last.points.pop();
     if (window.KtaUid) window.KtaUid.touch(last);
     if (last.points.length < 3) {
-      // Plus assez de points → supprimer la zone entière
+      // Moins de 3 sommets : la zone entière part.
       zonesData.pop();
     }
     renderZones();
@@ -473,34 +402,26 @@ function removeLastZonePoint() {
   return true;
 }
 
-// =========================
-// EXPORT / IMPORT
-// =========================
+// ── Export / import ──────────────────────────────
 window.getZones = function() {
   return zonesData;
 };
 
 window.setZones = function(zones) {
   zonesData = zones || [];
-  // filet : toute zone qui entre ressort avec un uid (cf ktaUid.js).
+  // Filet : toute zone qui entre ressort avec un uid (ktaUid.js).
   if (window.KtaUid) window.KtaUid.ensureAll(zonesData, "zn");
   currentZone = null;
   renderZones();
 };
 
-// Lecture seule : retourne la zone en cours de tracé (ou null si aucune
-// zone active). Utilisé par interface.js pour fermer le mode quand une
-// suppression vient d'effacer la zone en cours (cohérent avec getCurrentRoad).
+// Lecture seule (interface.js ferme le mode quand une suppression a effacé la zone en cours).
 window.getCurrentZone = function() {
   return currentZone || null;
 };
 
-// Parité avec le tracé : préservation de currentZone à travers
-// undo/redo (cf road.js getCurrentRoadIndex/setCurrentRoadByIndex). Sans ça,
-// _applyState remettait modeZone à null au moindre Ctrl+Z (resetZones le wipe,
-// setZones remet currentZone = null) → outil mort dès le 1er undo, continuation
-// cassée, et pastille bloquée « allumée mais morte ». HistoryManager capture
-// désormais l'index de la zone en cours et le restaure après _applyState.
+// 🩸 HistoryManager capture l'index de la zone en cours et le restaure après _applyState
+// (comme road.js) : sinon setZones remet currentZone à null et l'outil meurt au 1er Ctrl+Z.
 window.getCurrentZoneIndex = function() {
   if (!currentZone) return -1;
   return zonesData.indexOf(currentZone);
@@ -513,9 +434,7 @@ window.setCurrentZoneByIndex = function(idx) {
   }
 };
 
-// =========================
-// EXPORT GLOBAL
-// =========================
+// ── Exports globaux ──────────────────────────────
 window.initZones             = initZones;
 window.toggleZoneMode        = toggleZoneMode;
 window.fermerZoneEnCours     = fermerZoneEnCours;

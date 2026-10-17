@@ -1,44 +1,18 @@
 /*!
- * MyKTAMap — js/sortieUrgence.js (v1.35.0)
- * Mode Sortie d'urgence : identifie les POIs "sortie" (Puits/Escalier/Cavage
- * ouvert OU tag "entrée") et calcule l'itinéraire vers la plus proche depuis
- * la position tracker. Pathfinder = navigable réel (multi-niveau OK).
- *
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// SORTIE URGENCE — v1.35.0
-// =========================
-// Cas d'usage : cataphile bloqué/blessé, batterie faible, doit ressortir VITE.
-// Le user tape sur le bouton 🚨 (status bar) → l'app :
-//   1. Liste les POIs candidats (tags = type-sortie OU "entrée")
-//   2. Calcule la distance pathfinder depuis position tracker vers chaque
-//   3. Trie par distance navigable réelle (vrai chemin, pas vol d'oiseau)
-//   4. Affiche la plus proche + bouton "Tracer l'itinéraire"
-//   5. Lien discret "Autres sorties" pour les alternatives
-//
-// Critère "sortie" (validé KARMA) :
-//   - tag in {"Puits à échelon ouvert", "Escalier de service ouvert",
-//             "Cavage ouvert"}
-//   - OU tag = "entrée"
-// Matching case-insensitive + trim accents pour robustesse user.
-//
-// Cas dégradés :
-//   - Tracker inactif → demande clic carte (mode picker)
-//   - Pas de POI candidat → toast "Aucune sortie identifiée sur ce plan"
-//   - Pathfinder fail pour une sortie → fallback distance euclidienne pour
-//     elle seule (warning silencieux, on prend ce qu'on a)
-//
-// Vibration : trouvée → medium ; aucune → error
-//
-// API publique :
-//   window.SortieUrgence.declencher()        — entrée principale
-//   window.SortieUrgence.declencherDepuis(x, y) — variante origine custom
-//   window.SortieUrgence.isActive()          — modale ouverte ?
-//   window.SortieUrgence.relancerDepuis(pos) — sorties les plus proches d'ici (guidage, écart)
-// =========================
+// sortieUrgence.js — Sortie d'urgence : trouve les POI de sortie (cavage / puits à échelon / escalier de service
+// OUVERTS, ou entrée), les classe par distance navigable réelle (Pathfinder, multi-niveau) depuis la position, et
+// propose de tracer l'itinéraire vers la plus proche (+ « Autres sorties »).
+// Cas dégradés : position jamais confirmée → picker « Où es-tu ? » ; aucun candidat → toast ; Pathfinder en échec
+//   pour une sortie → distance à vol d'oiseau, affichée comme NON vérifiée, en fin de liste.
+// Vibration : trouvée → medium ; aucune → error.
+// Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos)
+// Garde-fous : scripts/check-guidage.js, scripts/check-position-confirmee.js · Doc : docs/architecture/tracking.md
 
 (function() {
   "use strict";
@@ -49,34 +23,24 @@
   let _pickHandler = null;         // handler temporaire map.on("click")
   let _lastResultats = null;       // résultats sortés du dernier calcul (cache)
 
-  // ========== CONSTANTES ==========
-  // Codes courts (pas libellés). KARMA a confirmé que les tags
-  // dans les POIs sont des codes : cao / peo / eso (et leurs équivalents
-  // fermés caf / pef / esf qu'on EXCLUT car non-traversables).
-  //   cao = Cavage Ouvert
-  //   peo = Puits à Échelon Ouvert
-  //   eso = Escalier de Service Ouvert
-  // Comparaison normalisée (lowercase + trim).
+  // ── Constantes ──────────────
+  // Les tags des POI sont des CODES : cao (cavage ouvert), peo (puits à échelon ouvert), eso (escalier de service
+  // ouvert). Les fermés (caf / pef / esf) sont EXCLUS, non traversables. Comparaison lowercase + trim.
   const TYPES_SORTIE = [
     "cao",
     "peo",
     "eso"
   ];
-  // Tags « entrée » : un POI marqué comme entrée est aussi une sortie (un
-  // cataphile peut ressortir par où il est entré). Le libellé libre `entrée`
-  // (avec ou sans accent) ET le tag INTÉGRÉ « Point d'entrée du plan »
-  // (`entree_plan`, map.js > TAGS_BUILTIN). 🚨 Q3 de l'audit ergonomie du
-  // 13/09/2026 : seul `entrée` était reconnu — un plan balisé avec l'outil
-  // prévu pour ça n'avait « aucune sortie identifiée ».
+  // Tags « entrée » : on ressort par où on est entré. Le libellé libre `entrée` (avec ou sans accent) ET le tag
+  // intégré `entree_plan` (map.js > TAGS_BUILTIN), sinon un plan balisé avec l'outil prévu n'a « aucune sortie ».
   const TAGS_ENTREE = ["entrée", "entree", "entree_plan"];
 
-  // ========== HELPERS ==========
+  // ── Helpers ──────────────
   function _norm(s) {
     return String(s || "").trim().toLowerCase();
   }
 
-  // Test si un POI matche le critère sortie (tags ∩ TYPES_SORTIE ≠ ∅ OU
-  // tags ⊇ {entrée}). Robuste à l'absence de tags.
+  // Sortie si tags ∩ TYPES_SORTIE ≠ ∅ ou tag entrée. Robuste à l'absence de tags.
   function _estUneSortie(point) {
     if (!point || !Array.isArray(point.tags) || point.tags.length === 0) return false;
     const tagsNorm = point.tags.map(_norm);
@@ -84,7 +48,7 @@
     return tagsNorm.some(function(t) { return TYPES_SORTIE.indexOf(t) >= 0; });
   }
 
-  // Récupère tous les POIs du plan courant (session + data layers embarqués).
+  // POI du plan courant (session + data layers embarqués)
   function _tousLesPoints() {
     const out = [];
     if (typeof window.getEditorPoints === "function") {
@@ -98,22 +62,15 @@
     return out;
   }
 
-  // Distance euclidienne au sol (ignore niveaux + murs — fallback uniquement).
+  // Distance euclidienne au sol (ignore niveaux et murs — repli uniquement)
   function _distEucl(a, b) {
     const dx = a.x - b.x;
     const dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  // Format distance pour UI (réutilise window.formatDistance si dispo,
-  // sinon fallback simple en pixels).
-  // KARMA bug "relevé réel : 4.63 km au lieu de 944,5 m" :
-  // `distPx` est une somme de distances euclidiennes en **pixels plan**
-  // (cf _calculerDistPathfinder) mais `window.formatDistance`
-  // attend des **mètres** (cf utils.js > formatDistance). On oubliait la conversion
-  // `/ APP_CONFIG.scale` (pixels par mètre) — du coup la distance affichée
-  // était multipliée par le ratio scale (~4.9 sur un relevé réel).
-  // Cohérent avec lostMode.js et measure.js qui font cette conversion.
+  // 🩸 `distPx` est en PIXELS plan et window.formatDistance attend des MÈTRES : diviser par APP_CONFIG.scale
+  // (px/m), sinon la distance est multipliée par l'échelle. Comme lostMode.js et measure.js.
   function _formatDist(distPx) {
     const scale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number"
                    && window.APP_CONFIG.scale > 0)
@@ -123,19 +80,17 @@
     if (typeof window.formatDistance === "function") {
       return window.formatDistance(distM, 0);
     }
-    // Fallback maison si formatDistance pas chargé
+    // Repli si formatDistance n'est pas chargé
     if (scale === 1) return Math.round(distPx) + " px";
     return distM < 1000
       ? distM.toFixed(0) + " m"
       : (distM / 1000).toFixed(2) + " km";
   }
 
-  // ========== PATHFINDER WRAP ==========
-  // Calcule la distance navigable réelle via window.Pathfinder.computeRoute.
-  // Retourne Promise<{ distPx, path } | null>. Échec → null (la sortie
-  // sera triée à la fin avec sa distance euclidienne en fallback).
-  // `contraintes` (facultatif, Mode Secours « 🚑 Évacuer », options brancard) :
-  // { avoidZones: [types], respecterInaccessibles: bool }. Absent = calcul historique.
+  // ── Pathfinder ──────────────
+  // Distance navigable via window.Pathfinder.computeRoute → Promise<{ distPx, path } | null> (null = échec, la
+  // sortie est classée en fin avec sa distance à vol d'oiseau).
+  // `contraintes` (facultatif, Mode Secours « Évacuer », brancard) : { avoidZones: [types], respecterInaccessibles }.
   function _calculerDistPathfinder(origine, cible, contraintes) {
     if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
       return Promise.resolve(null);
@@ -144,7 +99,7 @@
       { x: origine.x, y: origine.y, source: "tracker",     label: "Position" },
       { x: cible.x,   y: cible.y,   source: "search",      label: cible.nom || "Sortie" }
     ];
-    // Niveau connu → calage sur une galerie de CE niveau (pathfinder, 4.2).
+    // Niveau connu → calage sur une galerie de CE niveau
     if (Number.isInteger(origine.level)) waypoints[0].level = origine.level;
     if (Number.isInteger(cible.level))   waypoints[1].level = cible.level;
     const c = contraintes || null;
@@ -156,19 +111,15 @@
       respecterInaccessibles: !(c && c.respecterInaccessibles === false)
     }).then(function(res) {
       if (!res || !Array.isArray(res.path) || res.path.length < 2) return null;
-      // Calcule la longueur cumulée du path (en px plan).
+      // Longueur cumulée du path (px plan)
       let d = 0;
       for (let i = 1; i < res.path.length; i++) {
         d += _distEucl(res.path[i - 1], res.path[i]);
       }
-      // Une zone (inaccessible, ou évitée en brancard) qui coupe la galerie d'une sortie ne
-      // la rend pas injoignable : le moteur cale la sortie sur la galerie restante la plus
-      // proche et le chemin s'arrête court — la sortie passait devant à tort. Les écarts de
-      // calage (départ et arrivée) comptent dans la distance (06/10/2026). Au-delà de 10 m
-      // d'écart, le chemin est « coupé » : en brancard, la sortie n'est atteinte qu'en
-      // traversant ce qu'on voulait éviter ; en mode classique (10/10/2026, décision KARMA),
-      // une zone inaccessible ou une galerie non tracée sépare le chemin de la sortie. Même
-      // seuil, même rang (après les chemins entiers), alerte dans la fenêtre.
+      // ⚠️ Une zone qui coupe la galerie d'une sortie ne la rend pas injoignable : le moteur cale sur la galerie
+      // restante et le chemin s'arrête court. Les écarts de calage (départ, arrivée) comptent donc dans la
+      // distance, et au-delà de 10 m le chemin est « coupé » (brancard : traverse ce qu'on évite ; classique :
+      // zone inaccessible ou galerie non tracée) — classé après les chemins entiers, alerte dans la fenêtre.
       const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
       const ecart = _distEucl(origine, res.path[0]) + _distEucl(res.path[res.path.length - 1], cible);
       d += ecart;
@@ -180,12 +131,10 @@
     });
   }
 
-  // ========== PIPELINE ==========
-  // Trouve toutes les sorties, calcule leurs distances pathfinder, trie.
-  // Retourne Promise<[{point, distPx, path, fallback}, ...]>.
-  // `supp` (facultatif) : candidats en plus des POI tagués — Mode Secours (30/09) :
-  // les accès des équipes du scénario, que le plan ne tague pas forcément. Un
-  // candidat à moins de 10 m d'un POI de sortie ne s'ajoute pas (doublon).
+  // ── Pipeline ──────────────
+  // Toutes les sorties, distances Pathfinder, tri → Promise<[{point, distPx, path, fallback}, ...]>.
+  // `supp` (facultatif, Mode Secours) : accès des équipes en plus des POI tagués ; un candidat à moins de 10 m
+  // d'un POI de sortie est un doublon.
   function _calculerToutesSorties(origine, supp, contraintes) {
     const points = _tousLesPoints();
     const sorties = points.filter(_estUneSortie);
@@ -197,9 +146,7 @@
     });
     if (sorties.length === 0) return Promise.resolve([]);
 
-    // On limite à 15 sorties les plus proches en euclidien d'abord pour
-    // éviter de spam le pathfinder sur des cas extrêmes (plan avec 100+
-    // entrées tagées). En pratique, un plan typique en a < 10.
+    // 15 plus proches à vol d'oiseau seulement : pas de rafale de Pathfinder sur un plan à 100+ entrées.
     const presort = sorties.map(function(p) {
       return { point: p, dEucl: _distEucl(origine, p) };
     }).sort(function(a, b) { return a.dEucl - b.dEucl; }).slice(0, 15);
@@ -210,23 +157,21 @@
           return { point: item.point, distPx: pf.distPx, path: pf.path, fallback: false,
                    contourne: pf.contourne, ecartM: pf.ecartM };
         }
-        // Fallback : distance euclidienne (sortie inaccessible par pathfinder,
-        // on l'inclut quand même mais marquée fallback dans l'UI).
+        // Repli : distance euclidienne, sortie gardée mais marquée fallback
         return { point: item.point, distPx: item.dEucl, path: null, fallback: true };
       });
     })).then(function(resultats) {
       return resultats.sort(function(a, b) {
-        // Les non-fallback d'abord (= vraiment atteignables), puis par dist.
+        // Atteignables d'abord, puis par distance
         if (a.fallback !== b.fallback) return a.fallback ? 1 : -1;
-        // Un chemin entier passe avant un chemin coupé (brancard : qui traverse une zone à
-        // éviter ; classique : qui s'arrête à plus de 10 m de la sortie ou de la position).
+        // Chemin entier avant chemin coupé (> 10 m de la sortie ou de la position, ou zone à éviter traversée)
         if (!!a.contourne !== !!b.contourne) return a.contourne ? 1 : -1;
         return a.distPx - b.distPx;
       });
     });
   }
 
-  // ========== UI MODALE ==========
+  // ── Modale ──────────────
   function _ouvrirModale(html) {
     _fermerModale();
     _modal = document.createElement("div");
@@ -244,7 +189,7 @@
     document.getElementById("kta-sortie-close").addEventListener("click", _fermerModale);
     _modal.addEventListener("click", function(e) {
       if (e.target === _modal) { _fermerModale(); return; }
-      // Boutons du résultat : délégation (aucun gestionnaire inline — CSP sans 'unsafe-inline', 07/10/2026).
+      // Boutons du résultat : délégation (CSP sans 'unsafe-inline')
       const b = e.target.closest && e.target.closest("[data-sortie-action]");
       if (!b) return;
       e.preventDefault();
@@ -266,8 +211,7 @@
     if (e.key === "Escape" && _modal) _fermerModale();
   }
 
-  // Ligne d'état sous le résultat : d'où part le calcul. Un ÉTAT, pas un
-  // avertissement — un avertissement dans une modale d'urgence est ignoré.
+  // Ligne d'état « d'où part le calcul » : un ÉTAT, pas un avertissement (ignoré dans une modale d'urgence).
   function _texteOrigine(meta) {
     const mode = meta && meta.mode;
     if (mode === "clic") return window.I18n.t("sortie.origine.clic");
@@ -283,9 +227,8 @@
     return window.I18n.t("sortie.origine.suivi");
   }
 
-  // Options brancard (Mode Secours) : rappel de ce que le calcul évite, et alerte si la
-  // meilleure sortie n'est atteignable qu'en traversant une zone demandée « à éviter ».
-  // Sans options (sortie classique) : même alerte si le meilleur chemin est coupé (> 10 m).
+  // Options brancard : rappel de ce qui est évité + alerte si la meilleure sortie n'est atteignable qu'en
+  // traversant une zone « à éviter ». Sans options : même alerte si le meilleur chemin est coupé (> 10 m).
   function _htmlContraintes(meta, meilleure) {
     const c = meta && meta.contraintes;
     if (!c) {
@@ -314,7 +257,7 @@
 
   function _rendreContenuPrincipal(resultats, origine, meta) {
     if (!resultats || resultats.length === 0) {
-      // 🚨 classe urgence : vibre même si la préférence de confort est OFF
+      // Classe urgence : vibre même si la préférence de confort est OFF
       if (window.kta_vibrate && window.kta_vibrate.urgence) window.kta_vibrate.urgence.error();
       else if (window.kta_vibrate) window.kta_vibrate.error();
       return (
@@ -333,18 +276,13 @@
     const meilleure = resultats[0];
     const safeNom = window.ktaEsc(meilleure.point.nom || window.I18n.t("sortie.item.sansNom"));
     const distTxt = _formatDist(meilleure.distPx);
-    // 🚨 Q4 (audit 13/09/2026) : une sortie « à vol d'oiseau » était présentée
-    // comme atteignable, avec un « ≈ » gris de 12 px expliqué dans un title
-    // invisible au doigt. Désormais en toutes lettres, et si AUCUNE sortie
-    // n'a de chemin vérifié (Pathfinder absent, réseau coupé), un bandeau
-    // le dit avant tout.
+    // 🩸 Une sortie à vol d'oiseau est dite NON vérifiée en toutes lettres ; si AUCUNE n'a de chemin vérifié
+    // (Pathfinder absent, réseau coupé), un bandeau le dit avant tout.
     const fallbackTxt = meilleure.fallback
       ? '<div class="kta-sortie-fallback-txt">⚠️ ' + window.I18n.t("sortie.fallback.label") + '</div>'
       : '';
     const tousFallback = resultats.every(function(r) { return r.fallback; });
-    // plan SANS AUCUN TRACÉ : on le dit en
-    // clair, avant tout. Le bandeau générique « aucun chemin vérifié » ne
-    // disait pas pourquoi, ni que le guidage n'aurait rien à indiquer.
+    // Plan SANS AUCUN TRACÉ : dit en clair, avant tout (le guidage n'aurait rien à indiquer).
     const sansTrace = !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
                          !window.Pathfinder.aDesTraces());
     const bandeau = sansTrace
@@ -356,7 +294,7 @@
       ? ' <span class="kta-sortie-niveau">' + window.I18n.t("sortie.item.niveau", { level: meilleure.point.level }) + '</span>'
       : '';
 
-    // Cache pour le bouton "Tracer" (l'origine y est réutilisée telle quelle)
+    // Cache pour « Tracer » (origine réutilisée telle quelle)
     _lastResultats = { resultats: resultats, origine: origine, meta: meta || null };
 
     let html =
@@ -391,8 +329,7 @@
       let sepPose = false;
       for (let i = 1; i < resultats.length; i++) {
         const r = resultats[i];
-        // Les non vérifiées sont déjà triées en fin de liste : un séparateur
-        // explicite les relègue visuellement (Q4).
+        // Séparateur avant les non vérifiées (déjà en fin de liste)
         if (r.fallback && !sepPose) {
           html += '<li class="kta-sortie-alt-sep">' + window.I18n.t("sortie.fallback.sep") + '</li>';
           sepPose = true;
@@ -419,8 +356,7 @@
     return html;
   }
 
-  // Déclenche le tracé de la meilleure (idx 0) → ferme la modale + délègue
-  // à window.itineraireYAller.
+  // Trace la meilleure (idx 0) : ferme la modale, délègue à window.itineraireYAller.
   SU._tracerMeilleure = function() { SU._tracerIndex(0); };
 
   SU._tracerIndex = function(idx) {
@@ -429,14 +365,11 @@
     if (!r || !r.point) return;
     _fermerModale();
     if (typeof window.itineraireYAller === "function") {
-      // 🚨 B1 (audit 13/09/2026) : on passe l'ORIGINE du calcul. Sans ça,
-      // itineraireYAller re-testait la position du tracker — cul-de-sac dès
-      // que la sortie avait été calculée depuis un point tapé.
-      // 🪧 urgence:true (guidage, décisions A/C/G) : bandeau de guidage sans
-      // croix, et un écart propose la sortie la plus proche d'ici.
+      // 🩸 L'ORIGINE du calcul est transmise : sinon itineraireYAller reteste la position du tracker, cul-de-sac
+      // quand la sortie a été calculée depuis un point tapé. urgence:true : bandeau de guidage sans croix, un écart
+      // propose la sortie la plus proche d'ici.
       const m = _lastResultats.meta || {};
-      // Évacuation (Mode Secours) : le tracé et ses recalculs gardent les contraintes du
-      // classement et les accès du scénario — sinon le chemin tracé pouvait différer du classé.
+      // Évacuation : tracé et recalculs gardent contraintes et accès du scénario (sinon le tracé diffère du classé).
       const evac = (m.contraintes || m.supp) ? { contraintes: m.contraintes || null, supp: m.supp || null } : null;
       window.itineraireYAller(r.point.x, r.point.y,
         r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
@@ -454,17 +387,11 @@
     if (btn) btn.textContent = btn.textContent.replace(/^[▾▸]/, ul.style.display === "none" ? "▾" : "▸");
   };
 
-  // ========== ENTRÉES ==========
-  // Entrée principale — règle « instant T » (décision KARMA 13/09/2026) :
-  //   • suivi actif OU position confirmée depuis le chargement du plan → on
-  //     part de la position du tracker à l'instant T, SANS question ;
-  //   • jamais confirmée (= encore le départ du plan, ou après un reset) →
-  //     c'est le SEUL cas où l'on demande « Où es-tu ? », par le picker
-  //     partagé (1 tap sur la carte, qui recale aussi le tracker).
-  // 🚨 B1 de l'audit ergonomie : avant, getTrackingPosition() renvoyait
-  // TOUJOURS une position (le départ du plan) — la branche « pas de tracker »
-  // était morte, et la sortie la plus proche de l'ENTRÉE du plan était
-  // présentée comme la plus proche de l'utilisateur.
+  // ── Entrées ──────────────
+  // Règle « instant T » (décision produit) : suivi actif OU position confirmée depuis le chargement du plan → on
+  // part de la position du tracker, SANS question ; jamais confirmée → SEUL cas où l'on demande « Où es-tu ? »
+  // (picker partagé, qui recale aussi le tracker). 🩸 getTrackingPosition() rend TOUJOURS une position (le départ
+  // du plan) : se fier à elle seule donnerait la sortie la plus proche de l'ENTRÉE.
   function declencher() {
     const pos = (typeof window.getTrackingPosition === "function")
       ? window.getTrackingPosition()
@@ -483,10 +410,8 @@
     SU._modePickerCarte();
   }
 
-  // Variante : déclenche depuis une position arbitraire (utilisée par la
-  // commande vocale qui pourrait passer un POI de référence à l'avenir).
-  // Mode Secours (A3, 29/09/2026) : l'évacuation part de la VICTIME, niveau compris —
-  // sans lui, une victime au −1 était calée sur la galerie la plus proche, tous niveaux.
+  // Depuis une position arbitraire. Mode Secours : l'évacuation part de la VICTIME, niveau compris (sans lui, une
+  // victime au −1 est calée sur la galerie la plus proche, tous niveaux).
   // `opts.sortiesSupp` : [{ x, y, level?, nom }] — candidats en plus (Mode Secours).
   function declencherDepuis(x, y, level, opts) {
     if (typeof x !== "number" || typeof y !== "number") {
@@ -506,13 +431,11 @@
         '<p>' + window.I18n.t("sortie.loader") + '</p>' +
       '</div>'
     );
-    // yield-to-paint AVANT le batch de Pathfinder.computeRoute
-    // (jusqu'à 15 Dijkstra SYNC bloquants). Sans une frame peinte ici, le
-    // spinner de la modale ne s'affiche pas et l'écran fige « sans rien
-    // montrer » — même cause que l'overlay itinéraire (cf computeLoader.js).
+    // 🩸 Yield-to-paint AVANT la rafale de computeRoute (jusqu'à 15 Dijkstra SYNC) : sans frame peinte, le spinner
+    // ne s'affiche pas et l'écran fige (comme l'overlay itinéraire, cf computeLoader.js).
     await new Promise(function(r) { requestAnimationFrame(function() { setTimeout(r, 0); }); });
     _calculerToutesSorties(origine, meta && meta.supp, meta && meta.contraintes).then(function(resultats) {
-      // On peut être interrompu si l'user ferme la modale entre temps
+      // La modale a pu être fermée entre-temps
       if (!_modal) return;
       const corps = _modal.querySelector(".kta-sortie-urgence-corps");
       if (corps) corps.innerHTML = _rendreContenuPrincipal(resultats, origine, meta);
@@ -525,16 +448,15 @@
       window.ktaAlerte(window.I18n.t("sortie.erreur.carteIndispo"), { type: "erreur" });
       return;
     }
-    // Picker partagé (utils.js) : floater « Où es-tu ? » avec Annuler, clic
-    // capturé même sur un marqueur, et le tap RECALE le tracker (position
-    // confirmée pour la suite : « Tracer », Urgence XL, « Y aller »).
+    // Picker partagé (utils.js) : floater « Où es-tu ? » + Annuler, clic capturé même sur un marqueur, et le tap
+    // RECALE le tracker (position confirmée pour « Tracer », Urgence XL, « Y aller »).
     if (typeof window.ktaDemanderPositionCarte === "function") {
       window.ktaDemanderPositionCarte(function(p) {
         _lancer({ x: p.x, y: p.y }, { mode: "clic" });
       }, { icone: "🚨", texte: window.I18n.t("sortie.pick.floater") });
       return;
     }
-    // Repli (helper absent) : ancien picker nu, sans floater.
+    // Repli (helper absent) : picker nu, sans floater
     _isPicking = true;
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(window.I18n.t("sortie.toast.pickPosition"), "info");
@@ -555,15 +477,12 @@
 
   SU._fermer = function() { _fermerModale(); };
 
-  // Guidage, décision G : en sortie d'urgence, un écart ne
-  // relance pas le chemin vers la MÊME sortie mais vers la plus proche D'ICI
-  // — quelqu'un qui a dévié est peut-être plus près d'une autre. Même modale
-  // que le déclenchement : l'utilisateur confirme en touchant « Tracer ».
+  // Écart en guidage d'urgence : relance vers la sortie la plus proche D'ICI (pas la même), même modale ;
+  // l'utilisateur confirme en touchant « Tracer ».
   SU.relancerDepuis = function(pos) {
     if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") { declencher(); return; }
     const etat = (typeof window.getTrackingPositionEtat === "function")
       ? window.getTrackingPositionEtat() : null;
-    // Une évacuation recalculée garde ses options brancard et les accès du scénario.
     const road = (typeof window.getRoads === "function" ? window.getRoads() : [])
       .find(function(r) { return r && r.type === "itinerary" && r.evacuation; });
     const evac = road ? road.evacuation : null;
@@ -575,7 +494,7 @@
     });
   };
 
-  // ========== EXPORT ==========
+  // ── Export ──────────────
   SU.declencher       = declencher;
   SU.declencherDepuis = declencherDepuis;
   SU.isActive         = function() { return !!_modal; };

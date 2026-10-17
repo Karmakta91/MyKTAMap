@@ -1,37 +1,15 @@
 /*!
- * MyKTAMap — Mode présentation (U1)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// PRESENTATIONMODE.JS — Mode présentation (depuis v1.21.0)
-// =========================
-// Cache header + sidebars + footer pour libérer toute la surface visuelle
-// pour la carte. Garde : zoom Leaflet (.leaflet-control-zoom) + widget
-// boussole (kta-compass-widget) — utiles pour navigation pendant démo.
-//
-// Activation : touche `F` (toggle). Aussi via API window.PresentationMode.
-// Désactivation : F à nouveau OU Échap.
-//
-// Anti-vol focus + skip modale (cohérent avec shortcuts.js U4).
-//
-// Au activate : toast OOMGuard "Mode présentation activé — F ou Échap pour
-// sortir" (3s, info). Au deactivate : silencieux.
-//
-// Le mode présentation désactive aussi les raccourcis U4 (E/M/Z/S/T/L/B/R)
-// pour éviter qu'un raccourci accidentel ouvre un panneau pendant la démo.
-// Le flag est lu par shortcuts.js via window.PresentationMode.isActive().
-//
-// API : window.PresentationMode = {
-//   activate(),
-//   deactivate(),
-//   toggle(),
-//   isActive()
-// };
-// =========================
+// presentationMode.js — mode présentation : masque header, sidebars et footer ; garde le zoom Leaflet et la
+// boussole (kta-compass-widget). Touche `F` (bascule), Échap pour sortir, bouton ✕ sur mobile.
+// Coupe aussi les raccourcis d'outils de shortcuts.js (qui lit window.PresentationMode.isActive()) : pas de
+// panneau ouvert par accident pendant une démo. Toast d'aide à l'activation, rien à la sortie.
+// Expose : window.PresentationMode — activate(), deactivate(), toggle(), isActive()
 
 (function() {
   "use strict";
@@ -63,16 +41,14 @@
     return false;
   }
 
-  // bouton flottant ✕ pour sortir sur mobile (touche F
-  // et Échap inaccessibles sans clavier physique). Petit, semi-transparent
-  // en haut-droite. Position safe-area-aware iOS PWA.
+  // Bouton flottant ✕ (F et Échap inaccessibles sans clavier physique), safe-area iOS PWA.
   function _createExitButton() {
     if (document.getElementById("kta-presentation-exit-btn")) return;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.id = "kta-presentation-exit-btn";
     btn.className = "kta-presentation-exit-btn";
-    // 🌍 i18n : aria-label = même clé que .title (recâblage, pas de doublon).
+    // aria-label = même clé i18n que .title
     btn.setAttribute("aria-label", window.I18n.t("presentation.exitBtn"));
     btn.title = window.I18n.t("presentation.exitBtn");
     btn.innerHTML = "✕";
@@ -93,15 +69,11 @@
     if (_active) return;
     _active = true;
     document.body.classList.add(BODY_CLASS);
-    // Bouton flottant ✕ pour sortir sur mobile (touche F inaccessible)
     _createExitButton();
-    // Force Leaflet à recalculer la taille de la carte (header + footer cachés
-    // → plus d'espace dispo). Sans ça, certains rendus peuvent rester sur
-    // les anciennes dimensions jusqu'à un drag/zoom user.
+    // invalidateSize : header + footer cachés, sinon la carte garde ses anciennes dimensions jusqu'au prochain geste.
     if (window.map && typeof window.map.invalidateSize === "function") {
       try { window.map.invalidateSize({ animate: false }); } catch(e) {}
     }
-    // Toast d'aide (3s) pour rappeler comment sortir
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(
         window.I18n.t("presentation.toast.activated"),
@@ -128,24 +100,23 @@
     return _active === true;
   }
 
-  // ─────────  KEYDOWN LISTENER GLOBAL ─────────
+  // ── Clavier ──────────────
 
   document.addEventListener("keydown", function(e) {
-    // Pas de modificateurs (F11 reste accessible OS, Ctrl+F = browser find)
+    // Sans modificateur (F11 reste à l'OS, Ctrl+F à la recherche du navigateur)
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-    // Anti-vol focus + skip modale
+    // Pas de vol de focus, rien sous une modale
     if (_isInputFocused()) return;
     if (_isModaleBloquante()) return;
 
     const key = (e.key || "").toLowerCase();
-    // Touche F : toggle (entrée OU sortie)
     if (key === "f") {
       e.preventDefault();
       e.stopPropagation();
       toggle();
       return;
     }
-    // Touche Échap : sortie uniquement (si actif)
+    // Échap : sortie seulement
     if ((key === "escape" || key === "esc") && _active) {
       e.preventDefault();
       e.stopPropagation();
@@ -154,7 +125,7 @@
     }
   });
 
-  // ─────────  API PUBLIQUE ─────────
+  // ── API publique ──────────────
 
   window.PresentationMode = {
     activate:   activate,

@@ -4,36 +4,19 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// PLAN REGISTRY — Gestion des plans connus
-// =========================
-// Stocke et gère la liste des plans (serveur découverts + locaux ZIP) avec :
-//   • Persistance localStorage
-//   • Stockage des FileSystemFileHandle dans IndexedDB pour ré-ouverture rapide
-//   • Export / import de la liste (fichier MAIN.config)
-//
-// Format storage :
-// {
-//   version: "1.0",
-//   lastPlanId: "server_data_test1" | "local_planmarseille_v1" | null,
-//   plans: [
-//     { id, type:"server", path, name, version, author, discovered, lastOpened, addedAt, perfPreset? },
-//     { id, type:"local",  name, version, originalFilename, fileSize, fsHandleId?, lastOpened, addedAt, perfPreset? }
-//   ]
-// }
-//
-// DOSSIERS DE « MES PLANS » (étude archivée sous le tag Git `archive-docs-2026-09-30`) :
-//   folders:   [{ id, name, color, order, collapsed, src: "user"|"index" }]   ← absent tant qu'aucun dossier
-//   plansView: "all" | "folders"                                              ← absent = jamais choisi
-//   par plan : folderId (absent = Non classés), folderSrc: "user"|"index"
-//   Doctrine v1.90.1 étendue : l'index serveur PROPOSE, l'utilisateur DISPOSE.
-//
-// `perfPreset` (optionnel) : "auto" | "quality" | "balanced" | "performance"
-//   → choix de mode performance mémorisé pour CE plan (champ ajouté en v2).
-//   → absent = aucun choix mémorisé, le loader affichera "auto" par défaut.
-//
-// API publique : window.PlanRegistry
-// =========================
+// planRegistry.js — registre des plans connus (serveur découverts + ZIP locaux) : localStorage
+//   ["myktamap_plans"], handles et blobs ZIP en IndexedDB, export/import de la liste (.config).
+// Expose : window.PlanRegistry.
+// Format : { version, lastPlanId, plans: [
+//   { id, type:"server", path, name, version, author, discovered, lastOpened, addedAt, perfPreset? },
+//   { id, type:"local",  name, version, originalFilename, fileSize, fsHandleId?, lastOpened, addedAt, perfPreset? } ],
+//   folders?: [{ id, name, color, order, collapsed, src: "user"|"index", rule? }], plansView?: "all"|"folders" }
+//   Par plan, en option : folderId/folderSrc, pinned, tags/tagsSrc, displayName, tiledV2, multiLevel.
+// ⚠️ Doctrine : l'index serveur PROPOSE, l'utilisateur DISPOSE (étiquettes, dossiers) (décision produit).
+// 🩸 perfPreset garde les valeurs historiques ("quality", "balanced", "performance") en plus de
+//   "auto"/"off" : un preset mémorisé ne doit jamais devenir invalide.
+// Garde-fous : scripts/check-plan-folders.js, scripts/check-plan-tags.js, scripts/check-tags-index.js,
+//   scripts/check-import-masse.js · Doc : docs/architecture/plans-loader.md
 
 (function() {
   "use strict";
@@ -41,23 +24,17 @@
   const STORAGE_KEY = "myktamap_plans";
   const IDB_NAME    = "myktamap_handles";
   const IDB_STORE   = "handles";
-  const IDB_BLOBS   = "blobs"; // store séparé pour les fichiers ZIP stockés en local
+  const IDB_BLOBS   = "blobs"; // ZIP stockés en local
 
-  // Helper i18n — appelé quand l'erreur est construite (import / save = action
-  // user), jamais au load → dicos prêts. Fallback = clé si I18n absent.
+  // Appelé à la construction d'une erreur (action utilisateur), jamais au chargement.
   function t(k, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
 
   let _data = null;
 
-  // ========== INIT ==========
-  // (bug KARMA « import de profil : la liste n'apparaît qu'après
-  // F5, sans les archives ») — applyProfile écrit `myktamap_plans` DIRECT
-  // dans le localStorage : l'état RAM (_data) devenait obsolète, findById ne
-  // voyait pas les plans importés → la restauration d'archives les classait
-  // tous « orphelins ». reload() force la relecture du LS ; à appeler après
-  // toute écriture externe de la clé.
+  // 🩸 À appeler après toute écriture EXTERNE de la clé (applyProfile l'écrit directement) : sinon
+  // _data est périmé, findById ne voit pas les plans importés et leurs archives passent « orphelines ».
   function reload() {
     _data = null;
     return init();
@@ -89,7 +66,7 @@
     }
   }
 
-  // ========== ID GENERATORS ==========
+  // ── Identifiants ──────────────────────────────
   function _slug(s) {
     return String(s || "")
       .toLowerCase()
@@ -108,7 +85,7 @@
     return "local_" + base;
   }
 
-  // ========== ACCESSEURS ==========
+  // ── Lecture, ajout, retrait ──────────────────────────────
   function getAll() {
     init();
     return _data.plans.slice();
@@ -142,7 +119,7 @@
     _save();
   }
 
-  // ========== ADD / UPDATE ==========
+  // Fusionne : les champs absents de `plan` (addedAt, lastOpened, drapeaux) sont conservés.
   function addOrUpdate(plan) {
     init();
     if (!plan || !plan.id) {
@@ -151,7 +128,6 @@
     }
     const idx = _data.plans.findIndex(function(p) { return p.id === plan.id; });
     if (idx >= 0) {
-      // Merge en préservant addedAt et lastOpened existants si non fournis
       _data.plans[idx] = Object.assign({}, _data.plans[idx], plan);
     } else {
       if (!plan.addedAt) plan.addedAt = new Date().toISOString();
@@ -178,30 +154,23 @@
     _data.plans.splice(idx, 1);
     if (_data.lastPlanId === id) _data.lastPlanId = null;
     _save();
-    // Aussi supprimer le handle FS et le blob ZIP associés
     removeHandle(id);
     removeBlob(id);
     return true;
   }
 
-  // PURGE des données associées à
-  // un plan (appelée par le 🗑️ de la modale ℹ️ Infos et le nettoyeur
-  // d'orphelins de l'inspecteur DB). Supprime : session auto (KtaSessionStore), géoref/
-  // calibration KMZ (LS), photos (IDB), backups (IDB). PRÉSERVE
-  // volontairement : le Carnet et les PDF/notes du Mode Histoire (famille
-  // « Récits » — l'HISTOIRE survit aux plans, design v1.69) et les liaisons
-  // inter-plans (nœuds fantômes gérés par le graphe, réutilisables si le
-  // plan revient). Chaque module externe est optionnel (gardes défensives).
+  // Purge les données d'un plan (🗑️ de ℹ️ Infos, nettoyeur d'orphelins) : session, stats du profil,
+  // calage KMZ, photos, sauvegardes. PRÉSERVE le Carnet, les récits du Mode Histoire et les liaisons
+  // inter-plans, qui survivent au plan (décision produit). Chaque module externe est optionnel.
   async function purgeAssociatedData(id) {
     const bilan = { session: false, calib: false, photos: 0, backups: 0 };
     if (!id) return bilan;
     try {
       const S = window.KtaSessionStore;
       if (S.lire(id) != null) bilan.session = true;
-      S.retirer(id);   // + son ancienne copie localStorage d'avant la migration IndexedDB
+      S.retirer(id);   // retire aussi l'ancienne copie localStorage
     } catch(e) {}
-    // Statistiques du plan (cache du profil) : elles partent avec lui (13/10/2026 — un plan ☁️ retiré à la
-    // déconnexion ne doit rien laisser de son contenu, ni décomptes ni noms de types).
+    // 🔒 Un plan ☁️ retiré à la déconnexion ne laisse rien de son contenu, pas même ses décomptes.
     try { localStorage.removeItem("myktamap_plan_stats_v1_" + id); } catch(e) {}
     try {
       if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {
@@ -218,11 +187,9 @@
     return bilan;
   }
 
-  // ☁️ TRANSFERT des données associées d'un plan vers un autre id : la copie
-  // locale d'un plan publié est remplacée par sa version ☁️ (même archive).
-  // Session (KtaSessionStore, planId réécrit), calage, photos, favoris, liaisons. Refusé si
-  // la cible a déjà une session : on n'écrase jamais. Les sauvegardes de
-  // session restent à l'ancien id (purgées avec lui) — instantanés du passé.
+  // Transfère session (planId réécrit), calage, photos, favoris et liaisons vers un autre id (copie
+  // locale remplacée par sa version ☁️). Refusé si la cible a déjà une session : jamais d'écrasement.
+  // Les sauvegardes restent à l'ancien id (purgées avec lui).
   async function transferAssociatedData(ancienId, nouveauId) {
     const bilan = { ok: false, session: false, calib: false, photos: 0, favoris: 0, liaisons: 0 };
     if (!ancienId || !nouveauId || ancienId === nouveauId) return bilan;
@@ -268,34 +235,24 @@
     _save();
   }
 
-  // ========== PERF PRESET (PAR PLAN) ==========
   const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
 
-  // Récupère le preset perf mémorisé pour un plan, ou null si jamais réglé.
-  // ═══ 🏷️ v1.78.0 — ORGANISATION DE LA LISTE (décision KARMA 1+3+4) ═══
-  // `pinned` (bool) et `tags` (string[]) sont des MÉTADONNÉES UTILISATEUR
-  // locales : elles vivent dans le registre (LS), ne voyagent PAS avec les
-  // ZIP, mais suivent l'export de profil (qui embarque le registre entier)
-  // et l'export .config (exportToFile clone tout).
+  // ── Organisation de la liste ──────────────────────────────
+  // `pinned`, `tags`, `displayName` : métadonnées utilisateur LOCALES. Elles ne voyagent pas avec
+  // les ZIP, mais suivent l'export de profil et l'export .config.
 
-  // Épingle/désépingle un plan (remonte en tête de liste). true si appliqué.
   function setPinned(id, pinned) {
     init();
     const p = findById(id);
     if (!p) { console.warn("[PlanRegistry] setPinned : plan introuvable", id); return false; }
     if (pinned) p.pinned = true;
-    else delete p.pinned;          // pas de false qui traîne dans le LS
+    else delete p.pinned;          // jamais de `false` stocké
     _save();
     return true;
   }
 
-  // (KARMA « deux plans du même réseau d'auteurs différents — renommer
-  // depuis le HOME pour différencier ») — NOM D'AFFICHAGE local. On ne
-  // touche JAMAIS à `name` (le vrai nom du plan-config) : il sert aux
-  // vérifications fonctionnelles (nameMatch de la re-sélection de ZIP,
-  // double-check de session, détection de doublon, nom de fichier du 💾).
-  // `displayName` n'est qu'un HABILLAGE local — il suit l'export de profil
-  // et l'export .config comme tags/pinned.
+  // 🩸 Nom d'affichage local : JAMAIS toucher à `name` (vrai nom du plan-config), qui sert aux
+  // contrôles (re-sélection du ZIP, double-check de session, doublons, nom de fichier).
   function setDisplayName(id, nom) {
     init();
     const p = findById(id);
@@ -307,33 +264,15 @@
     return true;
   }
 
-  // Libellé à AFFICHER pour un plan (entrée ou id) : displayName > name > id.
-  // Toute surface d'affichage passe par ici ; les usages FONCTIONNELS de
-  // `name` (nameMatch, fichiers) ne doivent PAS l'utiliser.
+  // ⚠️ Libellé d'AFFICHAGE (displayName > name > id) ; jamais pour un usage fonctionnel de `name`.
   function displayName(planOuId) {
     const p = (planOuId && typeof planOuId === "object") ? planOuId : findById(planOuId);
     if (!p) return String(planOuId || "");
     return p.displayName || p.name || p.id;
   }
 
-  // Remplace les tags d'un plan. Normalisation : trim, vides éliminés,
-  // doublons (insensible casse) éliminés, 12 tags max de 24 chars max —
-  // refus au-delà de la troncature silencieuse serait pire : on tronque en
-  // loggant (métadonnée cosmétique, pas un réglage expert).
-  // `origine` : "user" (défaut, édition dans ℹ️ Infos) ou
-  // "index" (tags proposés par `data/index.json`, cf decouvrirPlansServeur).
-  // 🩸 Sans cette distinction, la découverte réécrirait les tags à CHAQUE boot
-  // et effacerait ceux que l'utilisateur a posés — exactement le ping-pong
-  // corrigé sur `version` en v1.88.0. L'index PROPOSE, l'utilisateur DISPOSE.
-  // troisième origine, "config" : les étiquettes écrites dans
-  // `plan-config.json > plan.tags` par le Générateur (champ 🏷️ Étiquettes) ou
-  // ses convertisseurs KMZ / GPX / SIG. Même doctrine que l'index : le FICHIER
-  // propose, l'utilisateur dispose, et l'index (le déployeur) passe avant le
-  // fichier sur un plan serveur. Cf. `main.js > startImportedPlan` et
-  // `importMasse.js > importer` pour l'application de la règle.
-  //
-  // La normalisation vit dans `normaliserTags` — UNE fonction pour l'app :
-  // ℹ️ Infos, l'index, le Générateur et ses trois convertisseurs y passent.
+  // ⚠️ SEULE normalisation des étiquettes de l'app (ℹ️ Infos, index, Générateur et convertisseurs) :
+  // trim, vides et doublons (casse ignorée) retirés, 12 au plus de 24 caractères, tronqués sans refus.
   function normaliserTags(tags) {
     const vus = {};
     return (Array.isArray(tags) ? tags : [])
@@ -348,6 +287,9 @@
       .slice(0, 12);
   }
 
+  // `origine` : "user" (défaut), "index" (data/index.json) ou "config" (plan-config > plan.tags).
+  // 🩸 Sans origine, la découverte réécrirait les étiquettes à chaque démarrage et effacerait celles
+  // de l'utilisateur. Sur un plan serveur, l'index passe avant le fichier (main.js, importMasse.js).
   function setTags(id, tags, origine) {
     init();
     const p = findById(id);
@@ -358,11 +300,8 @@
       p.tagsSrc = (origine === "index" || origine === "config") ? origine : "user";
     } else {
       delete p.tags;
-      // 🩸 VIDER EST UN CHOIX, PAS UNE ABSENCE. Si on effaçait aussi
-      // l'origine, la découverte verrait un plan « sans tags édités » et
-      // REPROPOSERAIT ceux de l'index au démarrage suivant : l'utilisateur
-      // effacerait, et ils reviendraient tout seuls. On garde donc la trace
-      // du refus — seule une reprise en main par l'index la relâche.
+      // 🩸 Vider est un CHOIX : l'origine "user" reste, sinon l'index reproposerait ses étiquettes
+      // au démarrage suivant.
       if (origine === "index" || origine === "config") delete p.tagsSrc;
       else p.tagsSrc = "user";
     }
@@ -378,7 +317,6 @@
       : null;
   }
 
-  // Mémorise le preset perf pour un plan. Retourne true si modification appliquée.
   function setPerfPreset(id, preset) {
     init();
     if (_PERF_VALID.indexOf(preset) < 0) {
@@ -390,25 +328,15 @@
       console.warn("[PlanRegistry] setPerfPreset : plan introuvable", id);
       return false;
     }
-    if (p.perfPreset === preset) return true; // pas de changement
+    if (p.perfPreset === preset) return true;
     p.perfPreset = preset;
     _save();
     return true;
   }
 
-  // ========== MULTI-NIVEAU (PAR PLAN, depuis v148) ==========
-  // Opt-in par plan : quand multiLevel = true, l'UI affiche un sélecteur de
-  // niveau dans le groupe Tracés + une sous-action 🪜 Jonction interniveau,
-  // et les roads dessinees sont taguees avec un champ `level` (0, 1, 2…).
-  // Quand multiLevel = false (defaut) → comportement strictement identique a
-  // v147 (aucun champ level sur les roads, aucun selecteur visible).
-  // Retro-compat absolue : plans existants restent intacts tant que le
-  // toggle n'est pas active dans ⚙️ Reglages.
-  //
-  // Depuis v148.2 : le 2e parametre `fallbackIfUnset` permet a main.js de
-  // passer la valeur `plan.multiLevel` du plan-config.json comme defaut.
-  // Si l'utilisateur a explicitement set la valeur via ⚙️ Reglages (true
-  // ou false), elle prime sur le fallback. Sinon, on prend le defaut du ZIP.
+  // ── Multi-niveau (opt-in par plan) ──────────────────────────────
+  // Actif : sélecteur de niveau, jonctions, champ `level` sur les tracés. Inactif : aucun `level`.
+  // Un choix explicite (⚙️ Réglages, true OU false) prime sur `fallbackIfUnset` (plan-config du ZIP).
   function getMultiLevel(id, fallbackIfUnset) {
     init();
     const p = findById(id);
@@ -430,22 +358,9 @@
     return true;
   }
 
-  // ========== SYNC MODE FLAGS (v170 — bug re-sélection ZIP) ==========
-  // Aligne les flags `tiledV2` et `multiLevel` du registre sur ce qui est
-  // déclaré dans un plan-config.json fraîchement uploadé. Différent de
-  // addOrUpdate qui MERGE (préserve les flags existants si la nouvelle entry
-  // ne les redéclare pas) : ici on SET ou DELETE explicitement selon le
-  // ZIP source de vérité.
-  //
-  // Cas d'usage : user reset + import sauvegarde liste (registre = tiledV2:true)
-  // puis re-sélectionne un ZIP V1 du même plan → on doit aligner les flags
-  // pour éviter une incohérence visuelle (badge V2 sur un plan V1) et tout
-  // crash runtime potentiel (si un module lit le flag du registre au lieu
-  // de PLAN_CONFIG).
-  //
-  // flags : { tiledV2: boolean, multiLevel: boolean }
-  // - true  → set le flag à true
-  // - false → delete le flag (= absent dans le registre = V1 / mono-niveau)
+  // Aligne `tiledV2` / `multiLevel` sur le plan-config du ZIP chargé (source de vérité) : true → posé,
+  // false → retiré. 🩸 addOrUpdate fusionne et garderait un ancien drapeau : un ZIP V1 re-sélectionné
+  // après import d'une liste resterait marqué V2.
   function syncModeFlags(id, flags) {
     init();
     const p = findById(id);
@@ -472,20 +387,18 @@
     return changed;
   }
 
-  // ========== EXPORT / IMPORT ==========
+  // ── Export / import de la liste ──────────────────────────────
   function exportToFile() {
     init();
     const exported = {
       type: "myktamap-plans-list",
       version: _data.version,
       exported_at: new Date().toISOString(),
-      // Retirer les fsHandleId (non portables)
       plans: _data.plans.map(function(p) {
         const clone = Object.assign({}, p);
-        delete clone.fsHandleId;
+        delete clone.fsHandleId;   // non portable
         return clone;
       }),
-      // les dossiers voyagent avec la liste (comme avec le profil)
       folders: (_data.folders || []).map(function(f) { return Object.assign({}, f); })
     };
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
@@ -516,8 +429,7 @@
 
     init();
 
-    // les dossiers de la liste importée : fusion par nom
-    // (ou remplacement), et le folderId des plans qui arrivent est traduit.
+    // Dossiers fusionnés par nom (ou remplacés) ; le folderId des plans importés est traduit.
     const fusion = fusionnerDossiers(_data.folders, payload.folders, mode);
     const traduire = function(p) {
       if (p && p.folderId) {
@@ -531,14 +443,13 @@
     if (mode === "replace") {
       _data.plans = payload.plans.slice().map(traduire);
     } else {
-      // merge : pour chaque plan importé, ajouter ou ignorer si id déjà présent
+      // merge : un id déjà connu garde la version locale.
       payload.plans.forEach(function(p) {
         if (!p || !p.id) return;
         const existing = findById(p.id);
         if (!existing) {
           _data.plans.push(traduire(p));
         }
-        // Si existe déjà, on ne touche pas (on garde notre version)
       });
     }
     _save();
@@ -563,31 +474,21 @@
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // DOSSIERS DE « MES PLANS » (décisions KARMA 1-11 de
-  // l'étude du même jour). Un dossier = une section nommée ; un plan est
-  // dans UN dossier au plus (`folderId`), sinon « Non classés ».
-  // 🩸 MÊME DOCTRINE QUE LES ÉTIQUETTES (v1.90.1) : l'index serveur PROPOSE
-  // (`src`/`folderSrc` = "index"), l'utilisateur DISPOSE ("user"). Un
-  // dossier déclaré par l'index est VERROUILLÉ (ni renommé ni supprimé) tant
-  // que l'index le déclare — sinon il reviendrait au boot suivant, le
-  // ping-pong déjà corrigé sur `version` (v1.88.0). Il est LIBÉRÉ, jamais
-  // supprimé, le jour où l'index ne le déclare plus. Un plan déplacé à la
-  // main n'est jamais repris par l'index. Toute la normalisation vit ici :
-  // l'écran, la découverte, ConfAdmin et l'import de profil y passent.
-  // ═══════════════════════════════════════════════════════════════════
+  // ── Dossiers de « Mes plans » ──────────────────────────────
+  // Un plan est dans UN dossier au plus (`folderId`), sinon « Non classés ». Toute la normalisation
+  // vit ici (écran, découverte, ConfAdmin, import de profil).
+  // 🩸 Un dossier de l'index (`src` "index") est VERROUILLÉ tant que l'index le déclare (sinon il
+  // reviendrait au démarrage), puis LIBÉRÉ, jamais supprimé. Un plan rangé à la main n'est jamais repris.
   const FOLDER_NAME_MAX = 40;
   const FOLDER_COLORS = ["#8cb4ff", "#f4c542", "#7ed6a5", "#ff9f7a", "#c39bff", "#7fd8e6", "#ff7aa8", "#b8c4d6"];
 
   function _nomDossier(nom) { return String(nom || "").trim().replace(/\s+/g, " ").slice(0, FOLDER_NAME_MAX); }
-  // 🏷️ Marche 2 — RÈGLE PAR ÉTIQUETTE : un dossier peut « inclure aussi les
-  // plans étiquetés X ». Normalisée comme les étiquettes ; vide = pas de règle.
+  // Règle par étiquette : le dossier inclut aussi les plans étiquetés X. Vide = pas de règle.
   function _regleDossier(rule) {
     const tags = normaliserTags(rule && rule.tags);
     return tags.length ? { tags: tags } : null;
   }
-  // Le dossier qu'une RÈGLE donnerait à ce plan (le premier dans l'ordre des
-  // dossiers), en respectant ses exclusions — jamais le rangement manuel.
+  // Premier dossier (dans l'ordre) dont la règle prend ce plan, hors exclusions.
   function _dossierParRegle(p) {
     if (!p) return null;
     const tags = (Array.isArray(p.tags) ? p.tags : []).map(function(x) { return String(x).toLowerCase(); });
@@ -620,18 +521,15 @@
     init();
     return (_data.folders || []).find(function(f) { return f.id === id; }) || null;
   }
-  // Même nom, casse ignorée = même dossier. C'est la clé de fusion de l'import
-  // de profil et de l'index : jamais deux « Secteur ».
+  // Même nom, casse ignorée = même dossier : clé de fusion (import de profil, index).
   function findFolderByName(nom) {
     init();
     const k = _nomDossier(nom).toLowerCase();
     if (!k) return null;
     return (_data.folders || []).find(function(f) { return String(f.name).toLowerCase() === k; }) || null;
   }
-  // Crée un dossier, ou rend celui qui porte déjà ce nom (ou cet id).
-  // opts : { id?, color?, order?, src? }. L'index reprend nom/couleur/ordre
-  // d'un dossier qu'il déclare ; un dossier "user" homonyme DEVIENT celui de
-  // l'index (verrouillé) plutôt que d'être doublé.
+  // Crée un dossier ou rend celui de même nom/id. opts : { id?, color?, order?, src?, rule? }.
+  // Un dossier "user" homonyme d'un dossier de l'index DEVIENT celui de l'index, sans doublon.
   function createFolder(nom, opts) {
     init();
     opts = opts || {};
@@ -685,8 +583,7 @@
     if (!f) return false;
     f.collapsed = !!collapsed; _save(); return true;
   }
-  // Monter/descendre d'un cran (delta ±1). Renumérote tout : l'ordre est
-  // toujours dense, l'index peut ensuite imposer le sien.
+  // Un cran (delta ±1) ; renumérote tout pour garder un ordre dense.
   function moveFolder(id, delta) {
     const list = getFolders();
     const i = list.findIndex(function(f) { return f.id === id; });
@@ -698,8 +595,7 @@
     list.forEach(function(x, k) { x.order = k; });
     _save(); return true;
   }
-  // Supprimer un dossier ne supprime JAMAIS un plan : ils repassent en
-  // Non classés. Refusé sur un dossier de l'index (il reviendrait).
+  // Ne supprime JAMAIS un plan (retour en Non classés). Refusé sur un dossier de l'index.
   function deleteFolder(id) {
     init();
     const f = findFolder(id);
@@ -715,9 +611,8 @@
     _save(); return true;
   }
   // Range un plan (folderId) ou le sort (null). origine "user" | "index".
-  // 🩸 L'index ne passe JAMAIS par-dessus un geste de l'utilisateur ; sortir
-  // un plan à la main est un CHOIX mémorisé (folderSrc "user" sans dossier),
-  // comme vider ses étiquettes — sinon l'index le rangerait à nouveau au boot.
+  // 🩸 L'index ne passe jamais par-dessus un geste de l'utilisateur : sortir un plan à la main est
+  // mémorisé (folderSrc "user" sans dossier), sinon l'index le rangerait à nouveau au démarrage.
   function setPlanFolder(planId, folderId, origine) {
     init();
     const p = findById(planId);
@@ -725,10 +620,8 @@
     const src = (origine === "index") ? "index" : "user";
     if (src === "index" && p.folderSrc === "user") return false;
     if (folderId && !findFolder(folderId)) return false;
-    // 🏷️ Marche 2 — si une RÈGLE capture ce plan et que l'utilisateur le sort
-    // (ou le range ailleurs) à la main, on mémorise une EXCLUSION pour ce
-    // dossier : sinon la règle le reprendrait au rendu suivant. Le remettre à
-    // la main dans le dossier à règle lève l'exclusion.
+    // 🩸 Sorti à la main d'un dossier à règle → EXCLUSION mémorisée, sinon la règle le reprend au
+    // rendu suivant. Le remettre à la main dans ce dossier lève l'exclusion.
     if (src === "user") {
       const parRegle = _dossierParRegle(p);
       if (parRegle && parRegle !== folderId) {
@@ -746,23 +639,19 @@
     }
     _save(); return true;
   }
-  // Le dossier EFFECTIF d'un plan : un folderId orphelin (dossier disparu,
-  // profil partiel) vaut Non classés — jamais une erreur.
+  // Dossier EFFECTIF : rangement manuel, sinon règle. Un folderId orphelin vaut Non classés, sans erreur.
   function planFolderId(p) {
-    if (p && p.folderId && findFolder(p.folderId)) return p.folderId;   // le rangement manuel prime
-    return _dossierParRegle(p);                                          // sinon la règle, sauf exclusion
+    if (p && p.folderId && findFolder(p.folderId)) return p.folderId;
+    return _dossierParRegle(p);
   }
-  // Vrai si le plan est dans son dossier PAR RÈGLE (pas rangé à la main).
   function planFolderByRule(p) {
     return !!(p && !(p.folderId && findFolder(p.folderId)) && _dossierParRegle(p));
   }
   function getPlansView() { init(); return _data.plansView === "folders" ? "folders" : "all"; }
   function hasPlansViewChoice() { init(); return _data.plansView === "folders" || _data.plansView === "all"; }
   function setPlansView(mode) { init(); _data.plansView = (mode === "folders") ? "folders" : "all"; _save(); return _data.plansView; }
-  // Dossiers déclarés par data/index.json (ConfAdmin). Rend la table
-  // { idDéclaré → idRéel } : un dossier "user" homonyme est repris sous SON
-  // id, la découverte doit donc traduire le `folder` de chaque plan.
-  // Un dossier "index" plus déclaré est LIBÉRÉ (src "user"), jamais supprimé.
+  // Dossiers de data/index.json. Rend { idDéclaré → idRéel } : un homonyme "user" garde SON id, la
+  // découverte doit traduire le `folder` de chaque plan. Un dossier "index" plus déclaré passe "user".
   function applyIndexFolders(liste) {
     init();
     const table = {};
@@ -778,13 +667,9 @@
     return table;
   }
 
-  // Fusion PURE de dossiers importés (liste .config ou profil) dans une liste
-  // locale — aucun accès à _data, aucune sauvegarde : l'appelant écrit.
-  // mode "replace" : les importés remplacent ; "merge" : même nom (casse
-  // ignorée) = même dossier, l'id local gagne. Rend { folders, table } où
-  // table = { idImporté → idRéel } pour remapper le folderId des plans qui
-  // arrivent. Un dossier importé arrive TOUJOURS "user" : le verrou "index"
-  // n'a de sens que si l'index LOCAL le redéclare à la prochaine découverte.
+  // Fusion PURE (ni _data ni sauvegarde : l'appelant écrit). "replace" : les importés remplacent ;
+  // "merge" : même nom = même dossier, l'id local gagne. Rend { folders, table: idImporté → idRéel }.
+  // Un dossier importé arrive TOUJOURS "user" : seul l'index local peut le reverrouiller.
   function fusionnerDossiers(locaux, importes, mode) {
     const base = (mode === "replace") ? [] : (Array.isArray(locaux) ? locaux : []).map(function(f) { return Object.assign({}, f); });
     const table = {};
@@ -809,11 +694,11 @@
     return { folders: base, table: table };
   }
 
-  // ========== INDEXED DB POUR FILE SYSTEM HANDLES + BLOBS ZIP ==========
+  // ── IndexedDB : handles et blobs ZIP ──────────────────────────────
   function _openIDB() {
     return new Promise(function(resolve, reject) {
       if (!("indexedDB" in window)) { resolve(null); return; }
-      // Version 2 : on ajoute le store "blobs" pour le stockage mobile
+      // Version 2 = store "blobs".
       const req = indexedDB.open(IDB_NAME, 2);
       req.onupgradeneeded = function() {
         const db = req.result;
@@ -867,7 +752,6 @@
     return typeof window.showOpenFilePicker === "function";
   }
 
-  // Demande la permission de lecture sur un handle. Retourne true/false.
   async function ensureHandlePermission(handle) {
     if (!handle || !handle.queryPermission) return false;
     try {
@@ -880,10 +764,8 @@
     }
   }
 
-  // ========== STOCKAGE BLOB ZIP (mobile + fallback) ==========
-
-  // Demande au navigateur de marquer le stockage comme "persistant"
-  // → empêche la purge automatique sur iOS Safari et Chrome Android
+  // ── Blobs ZIP (mobile, ou sans accès fichiers) ──────────────────────────────
+  // Stockage « persistant » : évite la purge automatique (iOS Safari, Chrome Android).
   async function requestPersistentStorage() {
     if (!navigator.storage || !navigator.storage.persist) return false;
     try {
@@ -893,23 +775,13 @@
     } catch(e) { return false; }
   }
 
-  // Stocke un Blob (le ZIP entier) dans IndexedDB
-  // Retourne un objet { ok: true } ou { ok: false, error: "..." }
+  // → { ok: true } | { ok: false, error }
   async function saveBlob(id, blob) {
     if (!blob) return { ok: false, error: t("planreg.err.noFileShort") };
-    // 🩸 UNE COPIE, PAS UNE RÉFÉRENCE. Chromium range un `File`
-    // issu d'un sélecteur ou d'un dépôt PAR RÉFÉRENCE au fichier sur le
-    // disque : IndexedDB rend ensuite un objet de la bonne taille, mais sa
-    // LECTURE échoue dès que le fichier d'origine a été modifié, déplacé ou
-    // supprimé (NotReadableError / NotFoundError). Vécu par KARMA après un
-    // import multiple — « ça marche uniquement pour le dernier plan » : le
-    // seul qui venait d'être rouvert avait été ré-enregistré depuis la
-    // mémoire. Mesuré (Chromium) : plan1.zip modifié → illisible, plan2.zip
-    // supprimé → introuvable, plan3 intact → lisible. On lit donc le contenu
-    // et on range un Blob DÉTACHÉ du disque. Coût : le poids du ZIP en
-    // mémoire une fois, le temps de l'écriture — un chargement le lit
-    // entièrement de toute façon. Un Blob déjà en mémoire (export de profil,
-    // `new File([blob])` d'un blob rangé) n'est pas recopié.
+    // 🩸 Ranger une COPIE, jamais le `File` : Chromium le stocke PAR RÉFÉRENCE au disque, et sa
+    // lecture échoue (NotReadableError / NotFoundError) dès que le ZIP d'origine est modifié,
+    // déplacé ou supprimé. Coût : le ZIP en mémoire le temps de l'écriture. Un Blob en mémoire
+    // n'est pas recopié.
     if (typeof File !== "undefined" && blob instanceof File) {
       try { blob = new Blob([await blob.arrayBuffer()], { type: blob.type || "application/zip" }); }
       catch (e) { return { ok: false, error: (e && e.name) || t("planreg.err.unexpected") }; }
@@ -926,7 +798,6 @@
           resolve({ ok: false, error: (tx.error && tx.error.name) || t("planreg.err.idbError") });
         };
         tx.onabort = function() {
-          // Souvent déclenché par QuotaExceededError
           const err = tx.error;
           if (err && err.name === "QuotaExceededError") {
             resolve({ ok: false, error: t("planreg.err.quotaExceeded") });
@@ -962,7 +833,6 @@
     });
   }
 
-  // Estimation du quota disponible (utile pour avertir avant de stocker)
   async function getStorageEstimate() {
     if (!navigator.storage || !navigator.storage.estimate) return null;
     try {
@@ -970,7 +840,6 @@
     } catch(e) { return null; }
   }
 
-  // ========== EXPORTS ==========
   window.PlanRegistry = {
     init:                 init,
     getAll:               getAll,
@@ -979,13 +848,13 @@
     getLastOpened:        getLastOpened,
     setLastPlanId:        setLastPlanId,
     addOrUpdate:          addOrUpdate,
-    reload:               reload,      // resync RAM après écriture LS externe
-    purgeAssociatedData:  purgeAssociatedData,  // session/géoref/photos/backups d'un plan
-    transferAssociatedData: transferAssociatedData, // ☁️ copie locale → version publiée
+    reload:               reload,
+    purgeAssociatedData:  purgeAssociatedData,
+    transferAssociatedData: transferAssociatedData,
     setPinned:            setPinned,
     setTags:              setTags,
     setDisplayName:       setDisplayName,
-    displayName:          displayName,    // libellé d'affichage
+    displayName:          displayName,
     markOpened:           markOpened,
     remove:               remove,
     removeAll:            removeAll,
@@ -1000,7 +869,6 @@
     genServerId:          genServerId,
     genLocalId:           genLocalId,
     normaliserTags:       normaliserTags,
-    // dossiers de « Mes plans »
     getFolders:           getFolders,
     findFolder:           findFolder,
     findFolderByName:     findFolderByName,
@@ -1012,8 +880,8 @@
     deleteFolder:         deleteFolder,
     setPlanFolder:        setPlanFolder,
     planFolderId:         planFolderId,
-    planFolderByRule:     planFolderByRule,   // 🏷️ marche 2
-    setFolderRule:        setFolderRule,      // 🏷️ marche 2
+    planFolderByRule:     planFolderByRule,
+    setFolderRule:        setFolderRule,
     getPlansView:         getPlansView,
     hasPlansViewChoice:   hasPlansViewChoice,
     setPlansView:         setPlansView,
@@ -1025,7 +893,6 @@
     removeHandle:         removeHandle,
     hasFsAccess:          hasFsAccess,
     ensureHandlePermission: ensureHandlePermission,
-    // Stockage Blob (mobile + fallback)
     saveBlob:             saveBlob,
     getBlob:              getBlob,
     removeBlob:           removeBlob,

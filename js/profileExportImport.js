@@ -1,66 +1,22 @@
 /*!
- * MyKTAMap — Export / Import de profil utilisateur complet
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// PROFILEEXPORTIMPORT.JS — Profil complet (depuis v1.22.0)
-// =========================
-// Remplace l'ancien "export liste de plans" (myktamap-plans-list) par un
-// vrai export de PROFIL UTILISATEUR comprenant :
-//   - Liste des plans (registry, méta seulement — pas les ZIPs binaires)
-//   - Préférences utilisateur (app_user_prefs + theme + ...)
-//   - Favoris (toutes les listes par plan)
-//   - Sessions actives (KtaSessionStore : une par plan)
-//   - 📔 Le Carnet (IDB `myktamap_journal` > `sorties`) — 🆕 v1.74.0, coché
-//     par défaut. Refs photos seulement, ~2-8 Ko/sortie (plafond 500).
-//   - Snapshots IDB (myktamap_backups, FIFO 10/plan)
-//   - Tutorial seen flag
-//   - Photos POI (OPTIONNEL — case décochée par défaut car potentiellement lourd)
-//   - Crash reports (OPTIONNEL — case décochée par défaut car sensible)
-//
-// EXCLUS PAR DESIGN :
-//   - Les ZIPs binaires des plans en dur (`myktamap_handles > blobs`) :
-//     trop lourds pour un fichier d'export, et l'user devra de toute façon
-//     re-déposer ses fichiers ZIP sur le nouvel appareil. Les méta du
-//     registry suffisent à reconstruire la liste.
-//   - PIN/Face ID local (`myktamap_pin_v1`) + UnlockGate communautaire
-//     (`myktamap_unlock_v1`) : décision KARMA "Non jamais" — risque de
-//     fuite si l'export est partagé par erreur. L'user redéfinit son PIN
-//     sur le nouvel appareil.
-//   - ☁️ Les plans d'une ORGANISATION (registre `type: "ext"`) et tout ce qui
-//     s'y rattache, par les modales seulement (option `exclureExtensions`,
-//     cf _sansPlansExtension) : ils se récupèrent en se connectant.
-//
-// FORMAT FICHIER :
-//   JSON unique versionné `{type: "myktamap-profile-export", version: 1, ...}`.
-//   Photos POI en base64 inline si incluses (= simplicité vs ZIP+binaires
-//   séparés). Fichier potentiellement gros si photos cochées.
-//
-// RÉTRO-COMPATIBILITÉ :
-//   Détection du `type` à l'import :
-//     - "myktamap-profile-export" (nouveau v1.22.0) → flow complet par sections
-//     - "myktamap-plans-list" (legacy ≤ v1.21.x) → flow legacy registry-only
-//
-// API : window.ProfileExportImport = {
-//   buildProfile(opts),           // assemble selon opts.sections (checkboxes)
-//                                 // opts.exclureExtensions (modales seulement) : rien d'un plan ☁️
-//   computeSectionSizes(),        // pour afficher les MB par section
-//   exportToFile(opts),           // build + Blob + download (JSON classique)
-//   buildProfileArchive(opts),    // 📦 v1.79.0 : conteneur ZIP profil.json + plans/<id>.zip
-//   exportArchiveToFile(opts),    // 📦 v1.79.0 : build conteneur + download .zip
-//   parseProfile(input),          // valide + retourne {ok, profile, format, error}
-//   computeImportStats(profile),  // pour preview UI avant apply
-//   applyProfile(profile, opts),  // injecte dans le système (mode merge/replace)
-//   isLegacyFormat(input)         // helper détection rétro-compat
-// };
-// Import : ouvrirImportModale détecte le CONTENEUR au contenu (signature
-// « PK ») — un .zip contient profil.json (parsé comme un profil normal) et
-// ses archives sont restaurées APRÈS applyProfile (_restaurerArchives).
-// =========================
+// profileExportImport.js — export / import du profil utilisateur complet, par sections : registre des plans
+// (méta), préférences, données par plan, favoris, sessions, Carnet, snapshots, tutoriel, profil, et en
+// opt-in photos POI, PDF du Mode Histoire, rapports de crash.
+// Format : JSON `{type: "myktamap-profile-export", version: 1, …}` (photos en base64), ou conteneur ZIP
+// profil.json + plans/<id>.zip si des archives de plans sont cochées. "myktamap-plans-list" (ancien
+// format, registre seul) reste importable.
+// Expose : window.ProfileExportImport (buildProfile, computeSectionSizes, exportToFile, buildProfileArchive,
+//   exportArchiveToFile, parseProfile, computeImportStats, applyProfile(profile, {mode: merge|replace}),
+//   isLegacyFormat, ouvrirExportModale, ouvrirImportModale).
+// 🔒 Jamais exportés : PIN / Face ID et UnlockGate (fuite si le fichier circule ; décision produit).
+// ZIP des plans hors archives cochées : non exportés (trop lourds), le registre suffit à la liste.
+// ☁️ Plans d'organisation (registre `type: "ext"`) : écartés par les modales (`exclureExtensions`).
+// Garde-fou : scripts/check-profile-histpdf.js, scripts/check-kiosque-serveur.js
 
 (function() {
   "use strict";
@@ -69,44 +25,32 @@
   const FORMAT_VERSION     = 1;
   const LEGACY_FORMAT_TYPE = "myktamap-plans-list";
 
-  // Clés localStorage incluses dans la section "preferences"
+  // Section "preferences". ⚠️ Seules ces clés sont écrites à l'import (garde anti-pollution).
   const PREF_KEYS = [
     "app_user_prefs",
     "myktamap_theme_v1",
     "myktamap_planner_mode",
     "myktamap_freehand_prefs_v1",
     "myktamap_loader_show_server_plans",
-    "myktamap_perf_toggles",        // legacy — plus lue depuis v1.59.0 (per-plan), gardée pour compat vieux exports
+    "myktamap_perf_toggles",        // ancienne clé globale, plus lue : gardée pour les vieux exports
     "myktamap_last_version_data",
-    "myktamap_total_time_ms",       // temps cumulé (rang/badge profil) — sinon perdu à migration device
-    "myktamap_achievements_v1",     // hauts faits débloqués (ids + dates)
-    "myktamap_home_footer_replie_v1", // footer HOME replié (demande KARMA « sauvegardé dans le profil »)
-    "myktamap_journal_enabled",     // carnet activé/désactivé — voyage avec la section carnet
-    "myktamap_wallpaper_prefs_v1",  // réglages d'affichage du fond (voile, cadrage, mode).
-                                    // ⚠️ L'IMAGE elle-même ne voyage pas encore (elle vit en IDB avec
-                                    // l'avatar) — ces réglages arrivent donc sans leur image tant que
-                                    // ce point du backlog n'est pas traité.
-    // (KARMA « la db des liaisons est-elle exportée ? » → non) :
-    // le REGISTRE DES LIAISONS INTER-PLAN est une donnée globale cross-plan —
-    // sans lui, une migration d'appareil perdait tout le réseau de portails.
-    // À l'import : cas spécial FUSION par id (cf _applyImport) au lieu d'un
-    // écrasement, pour ne pas perdre les liaisons créées sur l'appareil cible.
+    "myktamap_total_time_ms",       // temps cumulé (rang du profil)
+    "myktamap_achievements_v1",
+    "myktamap_home_footer_replie_v1",
+    "myktamap_journal_enabled",
+    "myktamap_wallpaper_prefs_v1",  // ⚠️ réglages seulement : l'image du fond (IDB, avec l'avatar) ne voyage pas
+    // Liaisons inter-plan (registre global des portails) : FUSIONNÉES par id à l'import, pour garder celles
+    // de l'appareil cible.
     "myktamap_interplan_links_v1",
-    "myktamap_ipr_multihop_v1",     // case « itinéraire via plusieurs plans » (v1.64.0)
-    "myktamap_backbtn_mode"         // préférence bouton Retour réduit/complet (v1.61.0)
+    "myktamap_ipr_multihop_v1",
+    "myktamap_backbtn_mode"
   ];
 
-  // Préfixes localStorage per-plan inclus dans la section
-  // "perPlanLs" (audit KARMA : la georef GPS, les calibrations de calques
-  // image et la note libre Mode Histoire n'étaient pas sauvegardés dans le
-  // profile exporté → perdus à reset/migration device).
-  //
-  // ⚠️ Si tu ajoutes un nouveau préfixe per-plan dans l'app, pense à
-  // l'ajouter ici sinon il sera ABSENT de l'export profile (= dette
-  // user-facing silencieuse).
+  // Section "perPlanLs" : préfixes des clés localStorage par plan.
+  // 🩸 Un nouveau préfixe par plan dans l'app doit être ajouté ici, sinon il manque à l'export, sans un mot.
   const PER_PLAN_PREFIXES = [
-    "myktamap_kmz_calib_",        // GPS georef plan (pointA/B {x,y,lat,lng})
-    "myktamap_plan_prefs_",       // prefs cascade per-plan (calibrations image layers v1.38.0, Nord, etc.)
+    "myktamap_kmz_calib_",        // géoréf GPS (pointA/B {x,y,lat,lng})
+    "myktamap_plan_prefs_",       // préférences par plan (calibrations des calques image, Nord…)
     "myktamap_route_avoid_",      // avoidances itinéraire Pathfinder
     "myktamap_note_libre_",       // note libre Mode Histoire (markdown user)
     "myktamap_perf_toggles_v2_"   // toggles Perf ULTRA PER-PLAN (ex-clé globale)
@@ -154,21 +98,13 @@
     }
   }
 
-  // ───────── ☁️ PLANS D'UNE ORGANISATION (11/10/2026) ─────────
-  // Un plan fourni par une extension (registre `type: "ext"`, badge ☁️)
-  // appartient à l'organisation, pas à l'utilisateur : ni lui, ni sa session,
-  // ni ses photos ne partent dans le profil EXPORTÉ PAR L'UTILISATEUR (fichier
-  // en clair, même si l'organisation chiffre ses données), et un profil
-  // importé n'en restaure aucun (plans fantômes d'une autre organisation,
-  // annotations venues d'ailleurs). Ils se récupèrent en se connectant.
-  // Option explicite `exclureExtensions: true`, posée par les SEULES modales
-  // (export/import) : un appel programmatique sans l'option garde le
-  // comportement historique. Sans plan ☁️ sur l'appareil ni dans le fichier,
-  // rien ne change.
-  // Reconnaissance : l'entrée de registre `type: "ext"` (appareil + fichier
-  // importé), ou à défaut l'id sorti de la fabrique des plans d'extension
-  // (`ktaEstIdRegistreExtension`, main.js) — une session sans sa ligne de
-  // registre reste reconnue.
+  // ── ☁️ Plans d'une organisation ──────────────
+  // 🔒 Un plan fourni par une extension appartient à l'organisation : ni lui, ni sa session, ni ses photos
+  // ne partent dans le fichier (en clair), et un import n'en restaure aucun (plans fantômes d'une autre
+  // organisation). Ils se récupèrent en se connectant. Seules les modales posent `exclureExtensions: true` ;
+  // un appel programmatique sans l'option garde tout.
+  // Reconnaissance : registre `type: "ext"` (appareil + fichier), sinon l'id de la fabrique des plans
+  // d'extension (main.js > ktaEstIdRegistreExtension) : une session sans sa ligne de registre reste reconnue.
 
   function _estIdFabriqueExtension(id) {
     if (typeof window.ktaEstIdRegistreExtension === "function") return window.ktaEstIdRegistreExtension(id);
@@ -213,8 +149,7 @@
         return p;
       });
       if (r.lastPlanId && ext(r.lastPlanId)) r.lastPlanId = null;
-      // Dossiers fournis par l'extension (même fabrique d'id) : leurs noms sont
-      // ceux de l'organisation.
+      // Dossiers fournis par l'extension (même fabrique d'id) : noms de l'organisation.
       if (Array.isArray(r.folders)) {
         r.folders = r.folders.filter(function(f) { return !(f && _estIdFabriqueExtension(f.id)); });
         if (!r.folders.length) delete r.folders;
@@ -268,16 +203,11 @@
     return { sections: out, plans: vus };
   }
 
-  // ───────── COLLECTE PAR SECTION ─────────
-
+  // ── Collecte par section ──────────────
   function _collectRegistry() {
-    // Réutilise l'export legacy de PlanRegistry mais on sépare en "plans" only
-    // (sans le wrapper {type, version, exported_at, ...}). Retire fsHandleId.
+    // Lu directement dans localStorage (PlanRegistry n'expose pas de getAll), sans fsHandleId.
     if (!window.PlanRegistry) return null;
     try {
-      // PlanRegistry n'a pas de getAll() public — on lit via findById + boucle
-      // mais c'est mieux d'utiliser exportToFile en mode "build only".
-      // Alternative : on lit directement le localStorage "myktamap_plans".
       const raw = localStorage.getItem("myktamap_plans");
       if (!raw) return { plans: [] };
       const parsed = _safeJsonParse(raw);
@@ -287,7 +217,7 @@
         delete clone.fsHandleId;  // non portable
         return clone;
       });
-      // les dossiers et le mode voyagent avec le registre
+      // Les dossiers et le mode d'affichage voyagent avec le registre.
       const out = { plans: plans, lastPlanId: parsed.lastPlanId || null };
       if (Array.isArray(parsed.folders) && parsed.folders.length) out.folders = parsed.folders.map(function(f) { return Object.assign({}, f); });
       if (parsed.plansView) out.plansView = parsed.plansView;
@@ -304,7 +234,6 @@
       try {
         const raw = localStorage.getItem(key);
         if (raw == null) return;
-        // Tente parser JSON, sinon stocke en raw string
         const parsed = _safeJsonParse(raw);
         prefs[key] = (parsed != null) ? parsed : raw;
       } catch(e) {}
@@ -312,12 +241,7 @@
     return prefs;
   }
 
-  // Scan localStorage pour tous les préfixes per-plan PER_PLAN_PREFIXES.
-  // Retourne un objet { "<full-ls-key>": <parsed-value-or-string> } prêt à être
-  // re-injecté tel quel via setItem au moment de l'import.
-  // Le format est PLATEAU et conserve la full key (préfixe + planId) pour
-  // robustesse : pas besoin de re-construire la key côté import, on loop juste
-  // sur les entries.
+  // → { "<clé complète préfixe+planId>": valeur JSON ou texte brut }, réinjecté tel quel à l'import.
   function _collectPerPlanLsKeys() {
     const out = {};
     try {
@@ -328,8 +252,7 @@
         if (!hit) continue;
         const raw = localStorage.getItem(key);
         if (raw == null) continue;
-        // Tente JSON, sinon raw string (note libre = markdown plain text)
-        const parsed = _safeJsonParse(raw);
+        const parsed = _safeJsonParse(raw);   // la note libre est du texte brut
         out[key] = (parsed != null) ? parsed : raw;
       }
     } catch(e) {
@@ -341,7 +264,6 @@
   function _collectFavoris() {
     if (!window.Favoris || typeof window.Favoris.exportToJson !== "function") return null;
     try {
-      // exportToJson retourne le format complet, on ne garde que byPlan + meta
       const payload = window.Favoris.exportToJson({ scope: "all" });
       return {
         byPlan:      payload.byPlan || {},
@@ -354,7 +276,7 @@
   }
 
   function _collectSessions() {
-    // Toutes les sessions par plan (KtaSessionStore : IndexedDB, ou localStorage en repli)
+    // KtaSessionStore (IndexedDB, ou localStorage en repli).
     const sessions = {};
     try {
       const st = window.KtaSessionStore;
@@ -363,8 +285,7 @@
         const parsed = _safeJsonParse(st.lire(planId));
         if (parsed) sessions[planId] = parsed;
       });
-      // Inclure aussi le legacy slot unique si présent (cas user qui upgrade
-      // depuis v1.16.0 sans avoir bouté en v1.16.1+)
+      // Ancien slot unique encore présent (jamais migré) : exporté aussi.
       const legacyRaw = localStorage.getItem("myktamap_session_v1");
       if (legacyRaw) {
         const legacyParsed = _safeJsonParse(legacyRaw);
@@ -376,18 +297,13 @@
     return sessions;
   }
 
-  // LE CARNET (IDB `myktamap_journal` > `sorties`).
-  // Dette soldée : le carnet était la SEULE donnée user qui ne voyageait pas
-  // avec le profil (changement d'appareil = historique de sorties perdu).
-  // Volume : ~2-8 Ko par sortie, plafond 500 → ~4 Mo pire cas, aucune image
-  // (le carnet ne stocke que des REFS photos) → coché par défaut.
-  // On exporte AUSSI les records `status: "encours"` : le balayage au boot
-  // (`Journal > _balayerEnCours`) les clôturera proprement à l'arrivée.
+  // Carnet (IDB `myktamap_journal` > `sorties`) : ~2-8 Ko par sortie, plafond 500, refs photos seulement →
+  // coché par défaut. Les sorties `status: "encours"` partent aussi : Journal > _balayerEnCours les clôt à
+  // l'arrivée.
   async function _collectCarnet() {
     if (!window.Journal || typeof window.Journal.list !== "function") return [];
     try {
-      // flush() d'abord : la sortie en cours n'est écrite en IDB que toutes les
-      // 30 s — sans ça, exporter juste après une sortie perd les dernières minutes.
+      // 🩸 flush() d'abord : la sortie en cours n'est écrite en IDB que toutes les 30 s.
       if (typeof window.Journal.flush === "function") {
         try { await window.Journal.flush(); } catch(e) {}
       }
@@ -421,7 +337,6 @@
   async function _collectPhotos(estExt) {
     if (!window.MyKTAMapPhotos) return { photos: [], note: "Module MyKTAMapPhotos indisponible" };
     try {
-      // On boucle tous les plans connus du registry et on récupère leurs photos
       const reg = _collectRegistry();
       if (!reg || !Array.isArray(reg.plans)) return { photos: [] };
       const allPhotos = [];
@@ -432,7 +347,6 @@
           const photos = await window.MyKTAMapPhotos.getAllPhotosForPlan(p.id);
           if (!Array.isArray(photos)) continue;
           for (const ph of photos) {
-            // ph = { id, pointId, mime, size, blob, ... } — on encode le blob en base64
             const blob = await window.MyKTAMapPhotos.getBlob(ph.id);
             if (!blob) continue;
             const b64 = await _blobToBase64(blob);
@@ -443,8 +357,8 @@
               mime:     ph.mime || blob.type || "image/jpeg",
               size:     ph.size || blob.size || 0,
               addedAt:  ph.addedAt || null,
-              fiche:    ph.fiche || undefined,   // 📸 fiche du point (retrouver une photo sans point)
-              data:     b64   // base64-encoded blob content
+              fiche:    ph.fiche || undefined,   // fiche du point (retrouver une photo sans point)
+              data:     b64
             });
           }
         } catch(e) {
@@ -458,14 +372,8 @@
     }
   }
 
-  // PDF du Mode Histoire (dette D1). L'onglet 📖 Récits arrivait
-  // sur un nouvel appareil avec ses notes libres mais SANS les documents : le
-  // carnet voyageait depuis v1.74.0, pas eux. Même régime que les photos —
-  // OPT-IN strict (`include.histoirePdfs === true`), car un plan peut porter
-  // jusqu'à 100 Mo de PDF (plafond de modeHistoire.js) : cocher par défaut
-  // ferait exploser des exports en silence.
-  // Lecture via `window.JournalUi.histoire` — le schéma IDB n'est PAS
-  // redupliqué ici (cf. le commentaire de l'API côté journalUi.js).
+  // PDF du Mode Histoire : OPT-IN strict comme les photos, un plan peut porter 100 Mo de PDF.
+  // 🩸 Lecture via window.JournalUi.histoire, jamais en rouvrant la base ici (schéma déjà dupliqué ailleurs).
   async function _collectHistoirePdfs(estExt) {
     const api = window.JournalUi && window.JournalUi.histoire;
     if (!api || typeof api.lister !== "function") {
@@ -490,8 +398,7 @@
             data:    await _blobToBase64(rec.blob)
           });
         } catch(e) {
-          // Un document illisible ne doit pas faire échouer TOUT l'export :
-          // on le saute en le disant, le reste part.
+          // Document illisible : sauté en le disant, le reste part.
           console.warn("[ProfileExportImport] PDF histoire " + m.id + " ignoré :", e);
         }
       }
@@ -512,9 +419,7 @@
     }
   }
 
-  // Karma_dev — section "user" (surnom + photo profil)
-  // Photo profil est petite (max 512px côté long, JPEG q88 ≈ 30-60 KB),
-  // donc base64 inline = OK sans bascule ZIP obligatoire.
+  // Section "user" (surnom + photo, ≤ 512 px, ~30-60 Ko : base64 inline acceptable).
   async function _collectUser() {
     if (!window.UserProfile) return null;
     try {
@@ -557,18 +462,16 @@
     }
   }
 
-  // ───────── BUILD PROFIL ─────────
-
+  // ── Construction du profil ──────────────
   /**
-   * Assemble le profil selon les sections demandées.
-   * @param {Object} opts - { include: { registry, preferences, favoris, sessions, carnet, backups, tutorial, photos, crashes },
-   *                          exclureExtensions: bool (☁️ chemin utilisateur : rien d'un plan d'organisation) }
-   * @returns {Promise<Object>} le profil complet sérialisable
+   * @param {Object} opts - { include: { registry, preferences, perPlanLs, favoris, sessions, tutorial, user, carnet,
+   *                          backups, photos, histoirePdfs, crashes }, exclureExtensions: bool }
+   *                          (photos, histoirePdfs, crashes : opt-in `=== true` ; le reste : `!== false`)
+   * @returns {Promise<Object>} le profil sérialisable
    */
   async function buildProfile(opts) {
     opts = opts || {};
     const include = opts.include || {};
-    // ☁️ Chemin utilisateur seulement (modale d'export) — cf _sansPlansExtension.
     const estExt = opts.exclureExtensions === true ? _predicatExtension() : null;
     const profile = {
       type:       FORMAT_TYPE,
@@ -583,25 +486,23 @@
     if (include.favoris !== false)     profile.sections.favoris     = _collectFavoris();
     if (include.sessions !== false)    profile.sections.sessions    = _collectSessions();
     if (include.tutorial !== false)    profile.sections.tutorial    = _collectTutorial();
-    // Async sections
     if (include.user !== false)        profile.sections.user        = await _collectUser();
     if (include.carnet !== false)      profile.sections.carnet      = await _collectCarnet();
     if (include.backups !== false)     profile.sections.backups     = await _collectBackups();
     if (include.photos === true)       profile.sections.photos      = await _collectPhotos(estExt);
-    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(estExt); // (D1)
+    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(estExt);
     if (include.crashes === true)      profile.sections.crashes     = await _collectCrashes();
     if (estExt) profile.sections = _sansPlansExtension(profile.sections, estExt).sections;
     return profile;
   }
 
   /**
-   * Calcule les tailles estimées des sections (avant export) pour affichage UI.
+   * Tailles estimées par section, pour l'écran d'export.
    * @returns {Promise<Object>} { registry: {count, bytes}, preferences: {...}, ... }
    */
   async function computeSectionSizes(opts) {
     const sizes = {};
-    // ☁️ Mêmes exclusions que buildProfile (modale d'export) : les tailles
-    // affichées sont celles du fichier qui partira.
+    // Mêmes exclusions ☁️ que buildProfile : les tailles affichées sont celles du fichier qui partira.
     const estExt = (opts && opts.exclureExtensions === true) ? _predicatExtension() : null;
     const filtrer = function(nom, val) {
       if (!estExt || val == null) return val;
@@ -614,19 +515,16 @@
       count: (reg && reg.plans) ? reg.plans.length : 0,
       bytes: reg ? JSON.stringify(reg).length : 0
     };
-    // Preferences
     const prefs = _collectPreferences();
     sizes.preferences = {
       count: Object.keys(prefs).length,
       bytes: JSON.stringify(prefs).length
     };
-    // perPlanLs (georef GPS + calibrations layers + avoidances iti + note Histoire)
     const perPlan = filtrer("perPlanLs", _collectPerPlanLsKeys());
     sizes.perPlanLs = {
       count: Object.keys(perPlan).length,
       bytes: JSON.stringify(perPlan).length
     };
-    // Favoris
     const favs = filtrer("favoris", _collectFavoris());
     let favCount = 0;
     if (favs && favs.byPlan) {
@@ -638,15 +536,12 @@
       count: favCount,
       bytes: favs ? JSON.stringify(favs).length : 0
     };
-    // Sessions
     const sess = filtrer("sessions", _collectSessions());
     sizes.sessions = {
       count: Object.keys(sess).length,
       bytes: JSON.stringify(sess).length
     };
-    // Tutorial
     sizes.tutorial = { count: 1, bytes: 20 };
-    // User profile (v1.21.0 Karma_dev) — async (peut contenir photo)
     if (window.UserProfile && typeof window.UserProfile.get === "function") {
       try {
         const snap = window.UserProfile.get();
@@ -662,7 +557,6 @@
     } else {
       sizes.user = { count: 0, bytes: 0 };
     }
-    // Carnet (async) — 🆕 v1.74.0
     try {
       const carnet = filtrer("carnet", await _collectCarnet());
       sizes.carnet = {
@@ -670,7 +564,6 @@
         bytes: JSON.stringify(carnet).length
       };
     } catch(e) { sizes.carnet = { count: 0, bytes: 0 }; }
-    // Backups (async)
     try {
       const backups = filtrer("backups", await _collectBackups());
       sizes.backups = {
@@ -678,7 +571,7 @@
         bytes: JSON.stringify(backups).length
       };
     } catch(e) { sizes.backups = { count: 0, bytes: 0 }; }
-    // Photos (count + bytes IDB total, sans collecter le base64 qui serait lent)
+    // Photos : tailles IDB × 1,34 (base64), sans encoder (trop lent).
     if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.getAllPhotosForPlan === "function") {
       try {
         const reg2 = filtrer("registry", _collectRegistry());
@@ -693,17 +586,13 @@
             }
           }
         }
-        // base64 inflation factor ~1.33x
         sizes.photos = { count: count, bytes: Math.round(bytes * 1.34) };
       } catch(e) { sizes.photos = { count: 0, bytes: 0 }; }
     } else {
       sizes.photos = { count: 0, bytes: 0 };
     }
-    // PDF du Mode Histoire (D1). Compte + poids depuis les
-    // MÉTADONNÉES seulement (`lister()` ne charge aucun blob) : lire les
-    // documents pour estimer coûterait jusqu'à 100 Mo de RAM par plan, alors
-    // que l'écran d'export doit s'afficher tout de suite. Même facteur
-    // d'inflation base64 (~1,34×) que les photos.
+    // PDF : depuis les MÉTADONNÉES seulement (lister() ne charge aucun blob ; lire les documents coûterait
+    // jusqu'à 100 Mo de RAM par plan avant d'afficher l'écran).
     if (window.JournalUi && window.JournalUi.histoire && typeof window.JournalUi.histoire.lister === "function") {
       try {
         const docs = await window.JournalUi.histoire.lister();
@@ -717,7 +606,6 @@
     } else {
       sizes.histoirePdfs = { count: 0, bytes: 0 };
     }
-    // Crashes
     try {
       const crashes = filtrer("crashes", await _collectCrashes());
       sizes.crashes = {
@@ -735,9 +623,6 @@
     return sizes;
   }
 
-  /**
-   * Build + Blob + download du profil.
-   */
   async function exportToFile(opts) {
     const profile = await buildProfile(opts || {});
     const json = JSON.stringify(profile, null, 2);
@@ -752,15 +637,10 @@
     return { ok: true, filename: filename, bytes: json.length };
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // ARCHIVES DE PLANS DANS L'EXPORT (backlog §3, GO KARMA)
-  // ═══════════════════════════════════════════════════════════
-  // Conteneur ZIP « profil complet » : profil.json (le profil actuel à
-  // l'identique — parseProfile/applyProfile réutilisés tels quels) +
-  // plans/<id>.zip (archives sélectionnées, STORE : déjà compressées, la
-  // recompression coûterait du temps pour rien). Décisions backlog : pas de
-  // base64 inline (+33 % et tout en RAM), sélection par plan + garde-fou de
-  // taille en VALIDATION (encadré + confirmation, jamais de clamp silencieux).
+  // ── Archives de plans dans l'export ──────────────
+  // Conteneur ZIP : profil.json (profil identique, parseProfile/applyProfile tels quels) + plans/<id>.zip en
+  // STORE (déjà compressés). Pas de base64 inline (+33 %, tout en RAM). Garde-fou de taille par
+  // CONFIRMATION, jamais de coupe silencieuse (décision produit).
 
   const SEUIL_ARCHIVES_IOS = 50 * 1048576;   // Safari iOS fragile sur les gros blobs
   const SEUIL_ARCHIVES_STD = 500 * 1048576;  // pic RAM generateAsync (desktop/Android)
@@ -772,26 +652,20 @@
   }
   function _seuilArchives() { return _estIOS() ? SEUIL_ARCHIVES_IOS : SEUIL_ARCHIVES_STD; }
 
-  // Plans dont l'archive est mémorisée dans l'app (flag storedBlob). La
-  // taille vient du registre (fileSize) — zéro lecture IDB pour l'UI.
-  // ⚠️ storedBlob n'est qu'un FLAG : l'éviction par quota est détectée au
-  // moment de l'export (getBlob vide → plan signalé, jamais un zip muet).
+  // Plans dont l'archive est mémorisée (storedBlob) ; taille lue dans le registre, sans IDB.
+  // ⚠️ storedBlob n'est qu'un drapeau : une éviction par quota se voit à l'export (plan signalé).
   function _listerPlansArchivables() {
     if (!window.PlanRegistry) return [];
     return (window.PlanRegistry.getAll() || [])
       .filter(function(p) { return p && p.type === "local" && p.storedBlob === true; })
-      // (prise « filtre d'export ») : une extension peut refuser
-      // l'archive d'un plan (plan partagé dont on n'est pas propriétaire).
-      // Une prise qui échoue REFUSE. ⚠️ Retirer le bouton n'empêche pas la
-      // copie d'un plan qu'on peut lire (données sur l'appareil).
+      // Prise « filtre d'export » : une extension peut refuser l'archive d'un plan ; une prise qui échoue
+      // REFUSE. ⚠️ Ça n'empêche pas de copier un plan lisible sur l'appareil.
       .filter(function(p) { return !window.KtaExtensions || window.KtaExtensions.exportAutorise(p.id); })
       .map(function(p) { return { id: p.id, name: p.name || p.id, bytes: p.fileSize || 0 }; });
   }
 
   /**
-   * Assemble le conteneur ZIP : profil.json + plans/<id>.zip.
-   * opts.include = sections du profil ; opts.planIds = archives à embarquer.
-   * Lecture SÉQUENTIELLE des blobs (un seul en RAM côté lecture à la fois).
+   * opts.include = sections ; opts.planIds = archives. Blobs lus un par un (un seul en RAM côté lecture).
    * @returns {Promise<{blob, nb, sautes: string[]}>}
    */
   async function buildProfileArchive(opts) {
@@ -829,12 +703,9 @@
   }
 
   /**
-   * Restaure les archives d'un conteneur APRÈS applyProfile (le registre
-   * contient alors les entrées importées → rattachement par id). Séquentiel :
-   * un blob en RAM à la fois. Politique fusion : un plan déjà présent AVEC
-   * une archive locale VIVANTE garde la sienne (cohérent registre) ; en
-   * remplacement, celle du profil gagne. QuotaExceeded → échec DU PLAN,
-   * le lot continue (bilan chiffré).
+   * ⚠️ APRÈS applyProfile : le rattachement se fait par id dans le registre importé. Un blob à la fois.
+   * Fusion : une archive locale vivante est gardée ; remplacement : celle du fichier gagne.
+   * Échec d'un plan (quota) → noté, le lot continue.
    * @returns {Promise<{restaures, conserves, orphelins, echecs: string[]}>}
    */
   async function _restaurerArchives(zipConteneur, mode, estExt) {
@@ -844,8 +715,7 @@
       if (!entry.dir && /\.zip$/i.test(chemin)) entrees.push({ id: chemin.replace(/\.zip$/i, ""), entry: entry });
     });
     for (const e of entrees) {
-      // ☁️ L'archive d'un plan d'organisation ne s'installe jamais depuis un
-      // fichier (elle écraserait celle que fournit l'organisation).
+      // ☁️ Jamais depuis un fichier : elle écraserait celle de l'organisation.
       if (estExt && estExt(e.id)) { bilan.extIgnores.push(e.id); continue; }
       const p = window.PlanRegistry ? window.PlanRegistry.findById(e.id) : null;
       if (!p) { bilan.orphelins++; continue; }   // pas d'entrée registre → blob sans foyer
@@ -869,38 +739,28 @@
     return bilan;
   }
 
-  // ───────── PARSE / DÉTECTION FORMAT ─────────
-
-  /**
-   * Détecte si le payload est l'ancien format myktamap-plans-list.
-   */
+  // ── Lecture et détection du format ──────────────
   function isLegacyFormat(input) {
     const payload = (typeof input === "string") ? _safeJsonParse(input) : input;
     return !!(payload && payload.type === LEGACY_FORMAT_TYPE && Array.isArray(payload.plans));
   }
 
-  /**
-   * Parse + valide. Retourne { ok, profile?, format: "profile"|"legacy", error? }.
-   * Format normalisé pour les 2 cas (legacy converti en profil minimal).
-   */
+  // → { ok, profile?, format: "profile"|"legacy", error? } ; l'ancien format devient un profil minimal.
   function parseProfile(input) {
     const payload = (typeof input === "string") ? _safeJsonParse(input) : input;
     if (!payload || typeof payload !== "object") {
       return { ok: false, error: window.I18n.t("profileio.err_json_invalid") };
     }
-    // Nouveau format v1.22.0+
     if (payload.type === FORMAT_TYPE) {
       if (!payload.sections || typeof payload.sections !== "object") {
         return { ok: false, error: window.I18n.t("profileio.err_sections_missing") };
       }
       return { ok: true, format: "profile", profile: payload };
     }
-    // Legacy format ≤ v1.21.x : conversion en profil minimal (registry only)
     if (payload.type === LEGACY_FORMAT_TYPE) {
       if (!Array.isArray(payload.plans)) {
         return { ok: false, error: window.I18n.t("profileio.err_legacy_plans_missing") };
       }
-      // Wrap dans un profil minimal pour réutiliser applyProfile()
       return {
         ok:     true,
         format: "legacy",
@@ -918,9 +778,7 @@
     return { ok: false, error: window.I18n.t("profileio.err_unknown_type") };
   }
 
-  /**
-   * Pour le preview UI avant apply.
-   */
+  // Compteurs pour l'aperçu d'import.
   function computeImportStats(profile) {
     if (!profile || !profile.sections) return null;
     const s = profile.sections;
@@ -937,20 +795,18 @@
       backups:     s.backups     ? (Array.isArray(s.backups) ? s.backups.length : 0) : 0,
       tutorial:    s.tutorial    ? (s.tutorial.seen ? 1 : 0) : 0,
       photos:      (s.photos && Array.isArray(s.photos.photos)) ? s.photos.photos.length : 0,
-      histoirePdfs: (s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)) ? s.histoirePdfs.docs.length : 0, // (D1)
+      histoirePdfs: (s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)) ? s.histoirePdfs.docs.length : 0,
       crashes:     s.crashes     ? (Array.isArray(s.crashes) ? s.crashes.length : 0) : 0,
       appVersion:  profile.appVersion || "?",
       exportedAt:  profile.exportedAt || "?"
     };
   }
 
-  // ───────── APPLY (= injection dans le système) ─────────
-
-  // Écrit `records` dans un store IDB (keyPath "id") et ferme la base.
-  // vider : mode « replace ». garder(record) → bool : ce que le vidage épargne
-  // (☁️ données d'un plan d'organisation) ; absent = vidage total historique.
-  // Lecture puis suppressions puis écritures DANS LA MÊME transaction, dans
-  // cet ordre : un curseur ouvert avant les put() effacerait les nouveaux.
+  // ── Application du profil ──────────────
+  // Écrit `records` dans un store IDB (keyPath "id") et ferme la base. vider : mode « replace ».
+  // garder(record) → bool : ce que le vidage épargne (☁️) ; absent = vidage total.
+  // 🩸 Lecture, suppressions puis écritures dans la MÊME transaction et dans cet ordre : un curseur ouvert
+  // avant les put() effacerait les nouveaux.
   function _remplirStore(db, nom, records, vider, garder) {
     return new Promise(function(resolve, reject) {
       const tx = db.transaction([nom], "readwrite");
@@ -973,12 +829,11 @@
   }
 
   /**
-   * Injecte le profil dans le système.
    * @param {Object} profile - retourné par parseProfile()
    * @param {Object} opts - { mode: "merge"|"replace", include: { sectionName: bool },
-   *                          exclureExtensions: bool (☁️ modale d'import : rien d'un plan d'organisation
-   *                          n'est restauré, ni effacé en mode « replace » → result.ignores) }
-   * @returns {Promise<Object>} résultat avec compteurs par section
+   *                          exclureExtensions: bool (☁️ rien d'un plan d'organisation n'est restauré, ni
+   *                          effacé en « replace » → result.ignores) }
+   * @returns {Promise<Object>} compteurs par section
    */
   async function applyProfile(profile, opts) {
     if (!profile || !profile.sections) return { ok: false, error: "Profil invalide" };
@@ -991,10 +846,8 @@ photos: false, histoirePdfs: false, crashes: false
     };
     let s = profile.sections;
     const result = { ok: true, mode: mode, applied: {} };
-    // ☁️ Chemin utilisateur seulement (modale d'import) — cf _sansPlansExtension.
-    // Ce qui appartient à un plan d'organisation est IGNORÉ à l'arrivée et, en
-    // mode « replace », ce que l'appareil en a déjà est CONSERVÉ (il se
-    // resynchronise avec l'organisation, pas avec un fichier).
+    // ☁️ Ignoré à l'arrivée ; en « replace », ce que l'appareil en a est CONSERVÉ (resynchronisé avec
+    // l'organisation, pas avec un fichier).
     const estExt = opts.exclureExtensions === true
       ? _predicatExtension(s.registry && s.registry.plans) : null;
     if (estExt) {
@@ -1015,11 +868,8 @@ photos: false, histoirePdfs: false, crashes: false
         const dossiersExtLocaux = estExt ? (store.folders || []).filter(function(f) {
           return f && _estIdFabriqueExtension(f.id);
         }) : [];
-        // DOSSIERS : fusion par nom (casse ignorée, l'id local
-        // gagne) en mode Fusionner, remplacement en mode Remplacer ; le
-        // folderId des plans qui ARRIVENT est traduit. Les plans déjà présents
-        // ne sont pas touchés (règle anti-doublon ci-dessous) : leur rangement
-        // local gagne. Normalisation unique : PlanRegistry.fusionnerDossiers.
+        // Dossiers (PlanRegistry.fusionnerDossiers) : fusion par nom, casse ignorée, l'id local gagne ; le
+        // folderId des plans qui ARRIVENT est traduit, le rangement des plans déjà présents ne bouge pas.
         const fusion = (window.PlanRegistry && typeof window.PlanRegistry.fusionnerDossiers === "function")
           ? window.PlanRegistry.fusionnerDossiers(store.folders, s.registry.folders, mode)
           : { folders: (mode === "replace") ? [] : (store.folders || []), table: {} };
@@ -1051,9 +901,8 @@ photos: false, histoirePdfs: false, crashes: false
         }
         if (s.registry.lastPlanId && !store.lastPlanId) store.lastPlanId = s.registry.lastPlanId;
         localStorage.setItem("myktamap_plans", JSON.stringify(store));
-        // resync la RAM de PlanRegistry : sans ça, findById ne
-        // voyait pas les plans importés (liste invisible avant F5, et la
-        // restauration d'archives les classait tous « orphelins »).
+        // 🩸 Recharger la RAM de PlanRegistry : sinon findById ignore les plans importés (liste invisible
+        // avant F5, archives toutes classées « orphelins »).
         if (window.PlanRegistry && typeof window.PlanRegistry.reload === "function") {
           window.PlanRegistry.reload();
         }
@@ -1063,18 +912,17 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── Preferences ───
+    // ─── Préférences ───
     if (include.preferences !== false && s.preferences && typeof s.preferences === "object") {
       try {
         let appliquees = 0;
         Object.keys(s.preferences).forEach(function(key) {
-          // Garde anti-pollution (comme perPlanLs) : seules les préférences que l'export produit sont écrites.
-          // Un fichier ne peut pas poser une autre clé (session, extension, réglage de sécurité).
+          // 🔒 Garde anti-pollution : un fichier ne peut pas poser une autre clé (session, extension, sécurité).
           if (PREF_KEYS.indexOf(key) === -1) return;
           const val = s.preferences[key];
           if (val == null) return;
           appliquees++;
-          // app_user_prefs en mode merge : on fusionne les sous-clés
+          // app_user_prefs en fusion : sous-clés fusionnées.
           if (key === "app_user_prefs" && mode === "merge") {
             const existingRaw = localStorage.getItem(key);
             const existing = _safeJsonParse(existingRaw) || {};
@@ -1082,16 +930,12 @@ photos: false, histoirePdfs: false, crashes: false
             localStorage.setItem(key, JSON.stringify(merged));
           } else if (key === "myktamap_interplan_links_v1" && mode === "merge"
                      && window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
-            // registre des liaisons → FUSION par id (jamais
-            // d'écrasement en mode merge — les liaisons déjà créées sur
-            // l'appareil cible sont préservées, dédup par link.id via l'API
-            // existante v1.57). Mode replace → setItem direct (branche else).
+            // Liaisons : fusion par link.id (InterPlanLinks.importLinks), celles de l'appareil restent.
             const links = (val && Array.isArray(val.links)) ? val.links : [];
             const added = window.InterPlanLinks.importLinks(links);
             console.log("[ProfileExportImport] Liaisons inter-plan fusionnées : +" + added);
           } else if (key === "myktamap_interplan_links_v1" && estExt && val && Array.isArray(val.links)) {
-            // ☁️ Remplacement : les liaisons locales qui touchent un plan
-            // d'organisation restent (le fichier n'en apporte plus aucune).
+            // ☁️ Remplacement : les liaisons locales touchant un plan d'organisation restent.
             const local = _safeJsonParse(localStorage.getItem(key));
             const gardees = (local && Array.isArray(local.links) ? local.links : []).filter(function(l) {
               return l && ((l.a && estExt(l.a.planId)) || (l.b && estExt(l.b.planId)));
@@ -1102,7 +946,6 @@ photos: false, histoirePdfs: false, crashes: false
               links: val.links.concat(gardees.filter(function(l) { return !ids[l.id]; }))
             })));
           } else {
-            // Autres clés : remplacement direct (replace ou merge, c'est juste un toggle)
             localStorage.setItem(key,
               typeof val === "string" ? val : JSON.stringify(val));
           }
@@ -1113,24 +956,17 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── Per-plan localStorage keys (georef + calibrations + avoidances + notes) ───
-    // Sémantique merge vs replace :
-    //   - merge : skip une clé si déjà présente localement (= préserve les
-    //     changements locaux faits depuis l'export, ex: user a re-saisi sa
-    //     georef sur le device cible)
-    //   - replace : écrasement total (cohérent avec les autres sections en
-    //     mode replace)
-    // ⚠️ Garde anti-pollution : on filtre les keys contre PER_PLAN_PREFIXES
-    // au moment de la restauration, pour ne pas injecter une clé arbitraire
-    // si un profil édité à la main contient des clés hors préfixes attendus.
+    // ─── Clés par plan ───
+    // Fusion : une clé déjà présente localement est gardée ; remplacement : écrasée.
+    // 🔒 Garde anti-pollution : seules les clés des PER_PLAN_PREFIXES (profil édité à la main).
     if (include.perPlanLs !== false && s.perPlanLs && typeof s.perPlanLs === "object") {
       try {
         let n = 0;
         Object.keys(s.perPlanLs).forEach(function(key) {
           if (!key) return;
           const allowed = PER_PLAN_PREFIXES.some(function(prefix) { return key.startsWith(prefix); });
-          if (!allowed) return; // garde anti-pollution
-          if (mode === "merge" && localStorage.getItem(key) != null) return; // skip si déjà présent
+          if (!allowed) return;
+          if (mode === "merge" && localStorage.getItem(key) != null) return;
           const val = s.perPlanLs[key];
           if (val == null) return;
           localStorage.setItem(key,
@@ -1169,14 +1005,11 @@ photos: false, histoirePdfs: false, crashes: false
         const ecritures = [];
         Object.keys(s.sessions).forEach(function(planId) {
           if (planId === "__legacy__") {
-            // Le slot legacy myktamap_session_v1 sera migré au prochain boot par
-            // sessionPersist.js > _migrerAncienSlotUniqueSiBesoin. On écrit dans
-            // la clé legacy.
+            // Ancien slot : migré au boot suivant par sessionPersist.js > _migrerAncienSlotUniqueSiBesoin.
             localStorage.setItem("myktamap_session_v1", JSON.stringify(s.sessions[planId]));
           } else {
             if (mode === "merge") {
-              // Skip si on a déjà une session pour ce plan (= ne pas écraser la
-              // session en cours de l'user sur le nouvel appareil)
+              // La session déjà présente sur l'appareil gagne.
               if (st.lire(planId) != null) return;
             }
             // Écriture ATTENDUE : l'import se termine par un rechargement proposé.
@@ -1191,14 +1024,12 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── Carnet / sorties (IDB myktamap_journal) — 🆕 v1.74.0 ───
+    // ─── Carnet (IDB myktamap_journal) ───
     if (include.carnet !== false && Array.isArray(s.carnet) && s.carnet.length > 0) {
       console.log("[ProfileExportImport] import : section carnet…");
       try {
-        // Open IDB direct (même raison que les backups : Journal n'expose pas
-        // d'API d'import bulk). ⚠️ L'index `by_start` DOIT être créé ici aussi :
-        // si la base n'existe pas encore sur cet appareil, c'est nous qui la
-        // créons — sans l'index, la purge FIFO de journal.js casserait.
+        // IDB ouverte ici (Journal n'a pas d'import en masse). 🩸 Créer aussi l'index `by_start` : si la base
+        // naît ici, la purge FIFO de journal.js casserait sans lui.
         const db = await new Promise(function(resolve, reject) {
           const req = indexedDB.open("myktamap_journal", 1);
           req.onupgradeneeded = function() {
@@ -1211,7 +1042,7 @@ photos: false, histoirePdfs: false, crashes: false
           req.onsuccess = function() { resolve(req.result); };
           req.onerror   = function() { reject(req.error); };
         });
-        // Filtre défensif : un record sans id ferait échouer put() (keyPath).
+        // Sans id, put() échoue (keyPath).
         const sorties = s.carnet.filter(function(r) { return r && typeof r === "object" && r.id; });
         await _remplirStore(db, "sorties", sorties, mode === "replace", garderExt);
         result.applied.carnet = s.carnet.length;
@@ -1224,8 +1055,7 @@ photos: false, histoirePdfs: false, crashes: false
     if (include.backups !== false && Array.isArray(s.backups) && s.backups.length > 0) {
       console.log("[ProfileExportImport] import : section backups…");
       try {
-        // Open IDB direct (on évite la dépendance circulaire avec SessionBackups
-        // qui ne fournit pas d'API d'import bulk)
+        // IDB ouverte ici : SessionBackups n'a pas d'import en masse (et dépendance circulaire évitée).
         const db = await new Promise(function(resolve, reject) {
           const req = indexedDB.open("myktamap_backups", 1);
           req.onupgradeneeded = function() {
@@ -1242,7 +1072,7 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── Tutorial seen ───
+    // ─── Tutoriel vu ───
     if (include.tutorial !== false && s.tutorial && typeof s.tutorial === "object") {
       try {
         if (s.tutorial.seen) localStorage.setItem("myktamap_tutorial_seen_v1", "1");
@@ -1250,20 +1080,19 @@ photos: false, histoirePdfs: false, crashes: false
       } catch(e) {}
     }
 
-    // ─── Photos POI (si présentes dans le profil ET incluses) ───
+    // ─── Photos POI ───
     if (include.photos !== false && s.photos && Array.isArray(s.photos.photos) && s.photos.photos.length > 0
         && window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.restorePhoto === "function") {
       try {
         if (mode === "replace" && estExt && typeof window.MyKTAMapPhotos.listerTout === "function"
             && typeof window.MyKTAMapPhotos.deletePhotosForPlan === "function") {
-          // ☁️ Wipe des photos de tous les plans SAUF ceux d'une organisation
+          // ☁️ Vidage de tous les plans SAUF ceux d'une organisation.
           const plans = new Set();
           (await window.MyKTAMapPhotos.listerTout()).forEach(function(ph) {
             if (ph && ph.planId && !estExt(ph.planId)) plans.add(ph.planId);
           });
           for (const pid of plans) await window.MyKTAMapPhotos.deletePhotosForPlan(pid);
         } else if (mode === "replace") {
-          // Wipe toutes les photos de tous les plans existants
           if (typeof window.MyKTAMapPhotos.clearAll === "function") {
             await window.MyKTAMapPhotos.clearAll();
           }
@@ -1283,7 +1112,7 @@ photos: false, histoirePdfs: false, crashes: false
               createdAt: ph.addedAt || Date.now(),
               fiche:     ph.fiche,
               blob:      blob
-            }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
+            }, { source: "import" });   // restauration de l'app (≠ dépôt d'une extension)
             n++;
           } catch(e) {
             console.warn("[ProfileExportImport] restore photo " + ph.id + " échec :", e);
@@ -1295,13 +1124,9 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── 🆕 v1.81.0 — PDF du Mode Histoire (dette D1) ───
-    // Restauration document par document : un PDF illisible ou une base restée
-    // en v1 ne doit pas faire échouer le reste de l'import. Pas de wipe en mode
-    // « replace » : contrairement aux photos, il n'existe pas d'API de purge
-    // globale ici, et `restaurer()` fait un `put` — réimporter le même profil
-    // écrase donc les mêmes ids sans créer de doublon (idempotent), ce qui est
-    // le comportement voulu dans les deux modes.
+    // ─── PDF du Mode Histoire ───
+    // Document par document : un PDF illisible ne fait pas échouer l'import. Pas de vidage en « replace » :
+    // restaurer() fait un put, réimporter écrase les mêmes ids sans doublon (idempotent).
     if (include.histoirePdfs !== false && s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)
         && s.histoirePdfs.docs.length > 0
         && window.JournalUi && window.JournalUi.histoire
@@ -1324,10 +1149,8 @@ photos: false, histoirePdfs: false, crashes: false
       }
       result.applied.histoirePdfs = n;
       if (v1) {
-        // Base encore au schéma v1 (1 PDF par plan) : y écrire écraserait le
-        // document existant. On s'arrête et on le DIT, plutôt que d'abîmer des
-        // données en silence. Ouvrir le Mode Histoire une fois déclenche la
-        // migration, puis le réimport passe.
+        // 🩸 Base encore à l'ancien schéma (1 PDF par plan) : y écrire écraserait le document existant. On
+        // s'arrête en le disant ; ouvrir le Mode Histoire une fois migre la base, puis le réimport passe.
         result.warnings = result.warnings || [];
         result.warnings.push("histoirePdfs:v1");
         console.warn("[ProfileExportImport] PDF histoire NON restaurés : base au schéma v1. " +
@@ -1335,7 +1158,7 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── User profile (v1.21.0 Karma_dev — surnom + photo) ───
+    // ─── Profil (surnom + photo) ───
     if (include.user !== false && s.user) {
       try {
         console.log("[ProfileExportImport] import : section user…");
@@ -1346,7 +1169,7 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // ─── Crashes (debug only, écriture IDB myktamap_crashes) ───
+    // ─── Rapports de crash (IDB myktamap_crashes) ───
     if (include.crashes !== false && Array.isArray(s.crashes) && s.crashes.length > 0) {
       try {
         const db = await new Promise(function(resolve, reject) {
@@ -1368,16 +1191,13 @@ photos: false, histoirePdfs: false, crashes: false
     return result;
   }
 
-  // ===========================================================
-  // UI : MODALE EXPORT
-  // ===========================================================
-
+  // ── Modale d'export ──────────────
   function _escHtml(s) { return window.ktaEsc(s); }
 
   async function ouvrirExportModale() {
     _fermerModales();
 
-    // Loader initial pendant le calcul async des tailles
+    // Chargement affiché pendant le calcul des tailles.
     const overlay = document.createElement("div");
     overlay.id = "kta-profile-export-modal";
     overlay.className = "kta-readme-modal-overlay";
@@ -1402,7 +1222,6 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerModales(); });
     document.addEventListener("keydown", _onEscape);
 
-    // Calcul async des tailles
     let sizes;
     try { sizes = await computeSectionSizes({ exclureExtensions: true }); }
     catch(e) {
@@ -1442,10 +1261,8 @@ photos: false, histoirePdfs: false, crashes: false
     html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
     html += '</div>';
 
-    // ARCHIVES DE PLANS : sous-liste des plans mémorisés
-    // (storedBlob), décochés par défaut (sélection voulue, pas de gros
-    // fichier surprise). Cocher au moins un → l'export bascule en conteneur
-    // ZIP (profil.json + plans/). Tailles depuis le registre (fileSize).
+    // Archives de plans : décochées par défaut (pas de gros fichier surprise, décision produit). Une seule
+    // cochée → l'export devient un conteneur ZIP.
     const archivables = _listerPlansArchivables();
     if (archivables.length) {
       html += '<div class="kta-profile-sections" style="margin-top:10px;">';
@@ -1474,7 +1291,6 @@ photos: false, histoirePdfs: false, crashes: false
 
     corps.innerHTML = html;
 
-    // case « tout » + recalcul du total sur les archives
     const cbAll = document.getElementById("kta-profile-arch-all");
     if (cbAll) {
       cbAll.addEventListener("change", function() {
@@ -1486,7 +1302,6 @@ photos: false, histoirePdfs: false, crashes: false
       });
     }
 
-    // Bind change handlers pour recalculer le total
     corps.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
       cb.addEventListener("change", function() {
         _majTotalEstime(sizes);
@@ -1494,7 +1309,6 @@ photos: false, histoirePdfs: false, crashes: false
     });
     _majTotalEstime(sizes);
 
-    // Activer le bouton Exporter
     const btnGo = document.getElementById("kta-profile-export-go");
     if (btnGo) {
       btnGo.disabled = false;
@@ -1503,8 +1317,7 @@ photos: false, histoirePdfs: false, crashes: false
         corps.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
           include[cb.dataset.section] = cb.checked;
         });
-        // archives cochées → export CONTENEUR ZIP ; aucune →
-        // JSON classique (comportement historique bit-à-bit).
+        // Archives cochées → conteneur ZIP ; aucune → JSON classique.
         const planIds = [];
         let octetsArchives = 0;
         corps.querySelectorAll('input[data-plan-zip]:checked').forEach(function(cb) {
@@ -1520,8 +1333,7 @@ photos: false, histoirePdfs: false, crashes: false
             : exportToFile({ include: include, exclureExtensions: true });
           promesse.then(function(res) {
             btnGo.textContent = "✅ " + window.I18n.t("profileio.exported_done");
-            // Archives évincées par le quota → dit franchement, pas un zip muet.
-            // La fermeture de la modale attend que le message soit lu (comme la popup native bloquante d'avant).
+            // Archives évincées par le quota : dit franchement ; la modale attend que le message soit lu.
             const lu = (res.sautes && res.sautes.length)
               ? window.ktaAlerte("⚠️ " + window.I18n.t("profileio.arch_sautes", { n: res.sautes.length }) +
                   "\n" + res.sautes.join("\n"))
@@ -1541,8 +1353,7 @@ photos: false, histoirePdfs: false, crashes: false
           });
         };
 
-        // Garde-fou de taille : VALIDATION explicite au-delà du seuil
-        // plateforme (iOS 50 Mo / 500 Mo ailleurs), jamais de clamp.
+        // Au-delà du seuil (iOS 50 Mo / 500 Mo ailleurs) : confirmation, jamais de coupe.
         if (planIds.length && octetsArchives > _seuilArchives()) {
           const msg = window.I18n.t(_estIOS() ? "profileio.arch_seuil_ios" : "profileio.arch_seuil_std",
                                     { taille: _formatBytes(octetsArchives), seuil: _formatBytes(_seuilArchives()) });
@@ -1578,9 +1389,8 @@ photos: false, histoirePdfs: false, crashes: false
     corps.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
       if (cb.checked) totalBytes += parseInt(cb.dataset.bytes, 10) || 0;
     });
-    // overhead JSON wrapper (~200 bytes) + indent (~2x sur le total)
+    // Enveloppe JSON + indentation ; les archives (STORE) comptent pour leur taille.
     totalBytes = Math.round(totalBytes * 1.1) + 200;
-    // archives (STORE : taille ≈ somme des ZIP, sans marge)
     let octetsArchives = 0;
     corps.querySelectorAll('input[data-plan-zip]:checked').forEach(function(cb) {
       octetsArchives += parseInt(cb.dataset.bytes, 10) || 0;
@@ -1588,8 +1398,7 @@ photos: false, histoirePdfs: false, crashes: false
     totalBytes += octetsArchives;
     const el = document.getElementById("kta-profile-export-totalsize");
     if (el) el.textContent = _formatBytes(totalBytes);
-    // Encadré rouge de dépassement (l'export reste possible — confirmation
-    // explicite au clic, cf garde-fou du bouton).
+    // Encadré de dépassement : l'export reste possible, après confirmation au clic.
     const warn = document.getElementById("kta-profile-arch-warn");
     if (warn) {
       if (octetsArchives > _seuilArchives()) {
@@ -1602,18 +1411,11 @@ photos: false, histoirePdfs: false, crashes: false
     }
   }
 
-  // ===========================================================
-  // UI : MODALE IMPORT
-  // ===========================================================
-
+  // ── Modale d'import ──────────────
   async function ouvrirImportModale(file) {
-    // 🔒 REFUS EN KIOSQUE, AU GOULOT ET PAS SUR UN
-    // BOUTON. Un import de profil restaure les ARCHIVES ZIP : sur une
-    // instance `serverPlansOnly`, il remettait des plans locaux que le mode
-    // interdit, et pouvait réécrire les préférences d'affichage des plans
-    // serveur — vidant l'accueil. Cacher le bouton n'aurait rien fermé :
-    // la modale se déclenche depuis au moins deux endroits, et le sera
-    // peut-être depuis un troisième demain.
+    // 🔒 Refus en kiosque ICI, au goulot, pas sur un bouton : l'import restaure des archives ZIP (plans
+    // locaux interdits en `serverPlansOnly`) et des préférences qui peuvent vider l'accueil. La modale
+    // s'ouvre depuis plusieurs endroits.
     if (typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul()) {
       window.ktaAlerte(window.I18n.t("profileio.kiosque_refus"));
       return;
@@ -1621,11 +1423,10 @@ photos: false, histoirePdfs: false, crashes: false
     if (!file) { window.ktaAlerte(window.I18n.t("profileio.no_file")); return; }
     _fermerModales();
 
-    // détection CONTENEUR au contenu (signature ZIP « PK »),
-    // pas à l'extension : un conteneur renommé .json reste importable, un
-    // JSON renommé .zip est refusé proprement par JSZip.
+    // Conteneur détecté au CONTENU (signature « PK »), pas à l'extension : un conteneur renommé .json reste
+    // importable, un JSON renommé .zip est refusé proprement par JSZip.
     let text;
-    let zipConteneur = null;   // JSZip lazy si conteneur — gardé pour la restauration
+    let zipConteneur = null;   // gardé pour la restauration des archives
     let nbArchives = 0;
     try {
       const entete = new Uint8Array(await file.slice(0, 2).arrayBuffer());
@@ -1655,8 +1456,7 @@ photos: false, histoirePdfs: false, crashes: false
 
     const profile = parsed.profile;
     const isLegacy = (parsed.format === "legacy");
-    // ☁️ L'aperçu compte ce qui sera VRAIMENT restauré (plans d'organisation
-    // retirés, comme le fera applyProfile avec exclureExtensions).
+    // ☁️ L'aperçu compte ce qui sera VRAIMENT restauré (mêmes exclusions qu'applyProfile).
     const estExt = _predicatExtension(profile.sections.registry && profile.sections.registry.plans);
     const stats = computeImportStats({ sections: _sansPlansExtension(profile.sections, estExt).sections,
                                        appVersion: profile.appVersion, exportedAt: profile.exportedAt });
@@ -1673,8 +1473,7 @@ photos: false, histoirePdfs: false, crashes: false
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-import-corps">' +
           _renderImportContent(profile, stats, isLegacy, file.name) +
-          // ligne archives si conteneur (case cochée par défaut :
-          // c'est la raison d'être d'un profil complet)
+          // Archives cochées par défaut : raison d'être d'un profil complet.
           (nbArchives ? (
             '<label class="kta-profile-row" style="margin-top:8px;">' +
               '<input type="checkbox" id="kta-profile-import-archives" checked>' +
@@ -1717,9 +1516,7 @@ photos: false, histoirePdfs: false, crashes: false
             { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }), { type: "erreur" });
           return;
         }
-        // restauration des archives APRÈS le registre (le
-        // rattachement par id exige les entrées importées). Séquentiel,
-        // bilan intégré à la modale de fin.
+        // Archives APRÈS le registre (rattachement par id) ; bilan dans la modale de fin.
         const cbArch = document.getElementById("kta-profile-import-archives");
         if (zipConteneur && cbArch && cbArch.checked) {
           btn.textContent = "⏳ " + window.I18n.t("profileio.arch_restauration");
@@ -1729,19 +1526,13 @@ photos: false, histoirePdfs: false, crashes: false
         btn.textContent = "✅ " + window.I18n.t("profileio.imported_done");
         setTimeout(function() {
           _fermerModales();
-          // Refresh GRANULAIRE des modules qui supportent le live update.
-          // Pour les autres (prefs, thème, perfPreset, tutoriel flag, etc.),
-          // on propose un reload doux via modale charte.
+          // Rafraîchit ce qui sait le faire à chaud ; le reste (thème, préférences…) attend le rechargement proposé.
           _refreshAfterImport().then(function() {
             _afficherModaleImportTermine(res, mode);
           });
         }, 800);
       }).catch(function(e) {
-        // FILET : sans ce catch, toute exception dans la chaîne
-        // (applyProfile ou restauration) laissait le bouton figé sur
-        // « Import en cours » POUR TOUJOURS, sans un mot (unhandled
-        // rejection visible qu'en console). L'user voit l'erreur, le bouton
-        // revit, il peut réessayer.
+        // 🩸 Filet : sans ce catch, une exception fige le bouton sur « Import en cours » sans un mot.
         console.error("[ProfileExportImport] import échoué :", e);
         btn.disabled = false; btn.textContent = orig;
         window.ktaAlerte(window.I18n.t("profileio.import_fail", { error: (e && e.message) || String(e) }),
@@ -1750,52 +1541,35 @@ photos: false, histoirePdfs: false, crashes: false
     });
   }
 
-  /**
-   * Refresh granulaire des modules qui supportent le live update après import.
-   * Les modules qui ne supportent PAS le live (thème, perfPreset, etc.)
-   * nécessiteront un reload via _afficherModaleImportTermine.
-   */
+  // Rafraîchissement à chaud après import : liste des plans, profil, favoris du plan courant.
+  // (SessionBackups notifie déjà par onChange.)
   async function _refreshAfterImport() {
-    // (1) Liste des plans visible côté loader
     if (typeof window.refreshPlansList === "function") {
       try { window.refreshPlansList(); } catch(e) {}
     }
-    // (2) Bandeau profil utilisateur (force re-init IDB + notify listeners)
     if (window.UserProfile && typeof window.UserProfile.init === "function") {
       try {
-        // _initialized flag est privé au module, on force le re-read en
-        // appelant init() qui early-return si déjà initialisé. Mais comme
-        // _restoreUser a déjà appelé setSurnom + setPhoto qui notifient,
-        // les listeners devraient déjà avoir été déclenchés. Belt-and-suspenders.
+        // Par précaution : setSurnom / setPhoto ont déjà notifié.
         await window.UserProfile.init();
       } catch(e) {}
     }
-    // (3) Favoris : reload du plan courant si applicable
     if (window.Favoris && window._currentLoadedPlanId && typeof window.Favoris.loadPlan === "function") {
       try { window.Favoris.loadPlan(window._currentLoadedPlanId); } catch(e) {}
     }
-    // (4) SessionBackups : ses listeners notifient via onChange (déjà ok)
     return true;
   }
 
-  /**
-   * Modale custom charte (cf §35 CLAUDE.md, pattern Promise-based) qui
-   * confirme l'import + propose un reload doux pour garantir que TOUT est
-   * pris en compte (thème, prefs, perfPreset, tutoriel flag, etc. qui ne
-   * supportent pas le live update).
-   */
+  // Fin d'import : résumé + rechargement proposé, pour ce qui ne se met pas à jour à chaud.
   function _afficherModaleImportTermine(res, mode) {
-    // Cleanup éventuel
     const ex = document.getElementById("kta-profile-import-done-modal");
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
 
     const T = window.I18n.t.bind(window.I18n);
-    // Construit le résumé des sections appliquées
     const SECTION_LABELS = {
       user:        "👤 " + T("profileio.done_sec_user"),
       registry:    "🗂️ " + T("profileio.done_sec_registry"),
       preferences: "⚙️ " + T("profileio.done_sec_preferences"),
-      perPlanLs:   T("profileio.done_sec_perPlanLs"),  // affichait « perPlanLs » brut
+      perPlanLs:   T("profileio.done_sec_perPlanLs"),
       favoris:     "⭐ " + T("profileio.done_sec_favoris"),
       sessions:    "💾 " + T("profileio.done_sec_sessions"),
       carnet:      "📔 " + T("profileio.done_sec_carnet"),
@@ -1812,7 +1586,6 @@ photos: false, histoirePdfs: false, crashes: false
         parts.push('<li><strong>' + lbl + '</strong> : ' + res.applied[k] + '</li>');
       }
     });
-    // bilan des archives restaurées (si conteneur)
     if (res.archives) {
       const a = res.archives;
       let lbl = T("profileio.arch_bilan", { n: a.restaures });
@@ -1825,8 +1598,7 @@ photos: false, histoirePdfs: false, crashes: false
           _escHtml(a.echecs.join(", ")) + '</li>');
       }
     }
-    // ☁️ Plans d'organisation ignorés (fichier : sections + archives)
-    // (une archive dont le plan est déjà compté ne l'est qu'une fois)
+    // ☁️ Plans d'organisation ignorés, sections et archives, chacun compté une fois.
     const idsExt = new Set((res.ignores && res.ignores.ids) || []);
     ((res.archives && res.archives.extIgnores) || []).forEach(function(id) { idsExt.add(id); });
     const nExt = idsExt.size;
@@ -1879,14 +1651,13 @@ photos: false, histoirePdfs: false, crashes: false
     document.getElementById("kta-profile-import-done-close").addEventListener("click", _close);
     document.getElementById("kta-profile-import-done-later").addEventListener("click", _close);
     document.getElementById("kta-profile-import-done-reload").addEventListener("click", function() {
-      // Reload pleine page : garantit que TOUS les modules relisent leur état
       try { window.location.reload(); }
       catch(e) { window.location.assign(window.location.href); }
     });
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     document.addEventListener("keydown", _onEsc);
 
-    // Focus auto sur "Recharger" (action recommandée)
+    // Focus sur « Recharger », l'action recommandée.
     setTimeout(function() {
       const btn = document.getElementById("kta-profile-import-done-reload");
       if (btn) btn.focus();
@@ -1897,7 +1668,6 @@ photos: false, histoirePdfs: false, crashes: false
     const T = window.I18n.t.bind(window.I18n);
     let html = '';
 
-    // Banner : legacy vs nouveau format
     if (isLegacy) {
       html += '<div class="kta-profile-banner kta-profile-banner-legacy">' +
                 '⚠️ ' + T("profileio.import_banner_legacy") +
@@ -1918,7 +1688,6 @@ photos: false, histoirePdfs: false, crashes: false
     }
     html += '</div>';
 
-    // Sections présentes dans le profil
     html += '<div class="kta-profile-sections">';
     if (stats.user > 0)    html += _renderImportSection("user",     "👤", T("profileio.sec_user_label"),     stats.user);
     html += _renderImportSection("registry",    "🗂️", T("profileio.import_sec_registry"),  stats.registry);
@@ -1934,7 +1703,6 @@ photos: false, histoirePdfs: false, crashes: false
     if (stats.crashes > 0) html += _renderImportSection("crashes", "📋", T("profileio.sec_crashes_label"),   stats.crashes);
     html += '</div>';
 
-    // Mode merge / replace
     html += '<div class="kta-profile-mode">';
     html += '<div class="kta-profile-mode-titre">' + T("profileio.mode_title") + '</div>';
     html += '<label class="kta-profile-mode-row">' +
@@ -1963,7 +1731,6 @@ photos: false, histoirePdfs: false, crashes: false
            '</label>';
   }
 
-  // ───────── HELPERS UI ─────────
   function _fermerModales() {
     document.removeEventListener("keydown", _onEscape);
     ["kta-profile-export-modal", "kta-profile-import-modal"].forEach(function(id) {
@@ -1976,7 +1743,6 @@ photos: false, histoirePdfs: false, crashes: false
     if (e.key === "Escape" || e.key === "Esc") _fermerModales();
   }
 
-  // ───────── EXPORT API ─────────
   window.ProfileExportImport = {
     buildProfile:        buildProfile,
     computeSectionSizes: computeSectionSizes,
@@ -1987,15 +1753,12 @@ photos: false, histoirePdfs: false, crashes: false
     computeImportStats:  computeImportStats,
     applyProfile:        applyProfile,
     isLegacyFormat:      isLegacyFormat,
-    // UI
     ouvrirExportModale:  ouvrirExportModale,
     ouvrirImportModale:  ouvrirImportModale,
     fermerModales:       _fermerModales,
-    // Constants exposed for UI labels
     FORMAT_TYPE:         FORMAT_TYPE,
     FORMAT_VERSION:      FORMAT_VERSION,
     LEGACY_FORMAT_TYPE:  LEGACY_FORMAT_TYPE,
-    // Helpers
     _formatBytes:        _formatBytes
   };
 })();

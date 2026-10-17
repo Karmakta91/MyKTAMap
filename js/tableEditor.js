@@ -4,23 +4,16 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// TABLE EDITOR — Éditeur de fichiers JSON sous forme de tableau
-// =========================
-// Permet de charger un fichier .json (calque ou session), d'éditer son
-// contenu dans un tableau interactif et de le sauvegarder.
-//
-// Workflow :
-//   1. Modale d'import (drag & drop ou file picker)
-//   2. Détection du format : "data" (calque) ou "editorPoints" (session)
-//   3. Tableau interactif avec édition inline
-//   4. Sauvegarde via 3 options : téléchargement, calque, session
-// =========================
+// tableEditor.js — édite en tableau un JSON (calque ou session), le plan en cours ou un ZIP importé ;
+//   héberge aussi la conversion de résolution et le dédoublonnage de sommets.
+// Expose : window.ouvrirTableEditor.
+// ⚠️ Calques de données : export seulement ; seule la SESSION (editorPoints) se remplace en direct.
+// 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
+// Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
 (function() {
   "use strict";
 
-  // ========== ÉTAT ==========
   let _modal      = null;
   let _data       = [];           // tableau d'objets (lignes éditées : points OU roads/zones/structures)
   let _colonnes   = [];           // colonnes détectées
@@ -28,9 +21,8 @@
   let _selection  = new Set();    // indices sélectionnés
   let _tri        = { col: null, asc: true };
   let _filtre     = "";
-  // _kind = quel tableau on édite dans la source :
-  //   "data" | "editorPoints" (= points complets x/y/tags)
-  //   "roads" | "zones" | "structures" (= note/type/niveau éditables, géométrie `points` 🔒)
+  // Tableau édité : "data" | "editorPoints" (points x/y/tags) ou "roads" | "zones" | "structures"
+  // (type/note/niveau éditables, géométrie `points` en lecture seule).
   let _kind       = null;
   let _format     = null;         // alias historique : "data" | "editorPoints" (rétro-compat interne)
   let _sourceObj  = null;         // objet JSON COMPLET du fichier source (pour re-sérialiser sans perdre les autres tableaux)
@@ -38,7 +30,6 @@
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
 
-  // Tableaux éditables reconnus dans une source + leur icône/typage
   var _ARRAYS_EDITABLES = [
     { key: "data",         emoji: "📍", points: true  },
     { key: "editorPoints", emoji: "📍", points: true  },
@@ -48,16 +39,13 @@
   ];
   function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
   function _estSession() { return _kind === "editorPoints"; }
-  // préfixe d'uid de la famille éditée (cf js/ktaUid.js).
   function _prefixeUid() {
     return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
   }
   function _toucher(obj) { if (window.KtaUid && obj) window.KtaUid.touch(obj); }
-  // Titre d'une carte source : la carte a déjà son icône, on retire l'emoji de tête de la clé (gardé
-  // ailleurs, ex. titre de la fenêtre de fusion).
+  // La carte source a déjà son icône : l'emoji de tête de la clé i18n est retiré ici seulement.
   function _sansIcone(s) { return String(s).replace(/^[^\p{L}\p{N}]+/u, ""); }
 
-  // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
     if (document.getElementById("kta-tbl-styles")) return;
     const s = document.createElement("style");
@@ -300,22 +288,19 @@
     document.head.appendChild(s);
   }
 
-  // ========== ENTRÉE PUBLIQUE ==========
   window.ouvrirTableEditor = function() {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
     _afficherAccueil();
   };
 
-  // ========== UTILITAIRES SOURCE ==========
+  // ── Sources ──────────────────────────────
   function _basename(path) {
     return String(path || "").split(/[\\/]/).pop().split("?")[0] || "";
   }
   function _escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
-  // Collecte les tableaux éditables (data/editorPoints/roads/zones/structures)
-  // présents et non vides dans `obj`, en réutilisant l'objet source COMPLET
-  // (pour re-sérialiser sans perdre les autres tableaux au téléchargement).
+  // Tableaux éditables non vides de `obj` ; l'objet COMPLET est gardé pour re-sérialiser sans perte.
   function _collecterEntreesEditables(obj, baseLabel, fileName, entries) {
     if (!obj || typeof obj !== "object") return;
     _ARRAYS_EDITABLES.forEach(function(def) {
@@ -330,12 +315,10 @@
     });
   }
 
-  // ========== ÉCRAN D'ACCUEIL — 3 SOURCES ==========
   function _afficherAccueil(errMsg) {
     if (_modal) { _modal.remove(); _modal = null; }
-    // PLAN_CONFIG survit au retour HOME (afficherLoader ne le remet
-    // pas à null) → la carte « 🗺️ plan en cours » s'affichait depuis l'accueil
-    // et menait à un plan qui n'est plus à l'écran. Cf. gotchas.md § PLAN_CONFIG.
+    // 🩸 PLAN_CONFIG survit au retour à l'accueil : sans ce test, « plan en cours » mènerait à un plan
+    // qui n'est plus affiché (gotchas.md § PLAN_CONFIG).
     var planAffiche = (typeof window.ktaPlanAffiche === "function") ? window.ktaPlanAffiche() : true;
     var planDispo = planAffiche && !!(window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.dataLayers) && window.PLAN_CONFIG.dataLayers.length);
     var modal = document.createElement("div");
@@ -424,12 +407,9 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
-    // même flux d'import que JSON, mais la dialog de conversion
-    // s'ouvrira automatiquement une fois le tableau affiché.
     document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
     document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup);
-    // délègue au fusionneur existant (onglet « Fusion » de la
-    // modale d'export de session), ouvert en mode solo comme depuis le HOME.
+    // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();
       if (typeof window.ouvrirExportSessionModal === "function") {
@@ -438,7 +418,6 @@
         console.warn("[TableEditor] ouvrirExportSessionModal indisponible");
       }
     });
-    // 🔄 Conversion session ↔ calques de données : onglet Conversion de l'export, en solo.
     document.getElementById("kta-tbl-src-conv").addEventListener("click", function() {
       fermer();
       if (typeof window.ouvrirExportSessionModal === "function") {
@@ -465,16 +444,13 @@
     _modal = modal;
   }
 
-  // ========== SOURCE : PLAN EN COURS ==========
   function _listerDatalayersPlanCourant() {
     var config = window.PLAN_CONFIG;
     if (!config || !Array.isArray(config.dataLayers) || !config.dataLayers.length) {
       _afficherAccueil(window.I18n.t("tabledit.err.planVide")); return;
     }
     _afficherChargement(window.I18n.t("tabledit.source.planCourant"));
-    // `lc.file` est déjà une URL fetchable (blob: pour ZIP, chemin serveur sinon)
-    // — résolue par config.js > getRuntimeAssetUrl. On relit le JSON SANS toucher
-    // au live (aucun chargement sur la carte).
+    // `lc.file` est déjà une URL (config.js > getRuntimeAssetUrl) ; relu sans toucher à la carte.
     var jobs = config.dataLayers.map(function(lc) {
       return fetch(lc.file)
         .then(function(r) { return r.ok ? r.json() : null; })
@@ -495,7 +471,6 @@
     });
   }
 
-  // ========== SOURCE : ZIP IMPORTÉ ==========
   function _traiterZipImporte(file) {
     if (typeof JSZip === "undefined") { _afficherAccueil(window.I18n.t("tabledit.err.zipInvalide")); return; }
     _afficherChargement(window.I18n.t("tabledit.source.zip"));
@@ -532,7 +507,6 @@
     });
   }
 
-  // ========== SÉLECTEUR DE CALQUE ==========
   function _afficherSelecteurCalque(entries, titre) {
     if (_modal) { _modal.remove(); _modal = null; }
     var rows = entries.map(function(e, i) {
@@ -572,7 +546,6 @@
     });
   }
 
-  // ========== CHARGEMENT D'UNE ENTRÉE → TABLEAU ==========
   function _chargerEntree(entry) {
     _sourceObj  = entry.sourceObj;
     _kind       = entry.kind;
@@ -587,7 +560,6 @@
     _afficherTableau();
   }
 
-  // ========== IMPORT D'UN FICHIER JSON (1 des 3 sources) ==========
   function _afficherImport() {
     const modal = document.createElement("div");
     modal.id = "kta-tbl-modal";
@@ -635,7 +607,6 @@
 
     const fermer = function() { if (_modal) { _modal.remove(); _modal = null; } };
     document.getElementById("kta-tbl-close-import").addEventListener("click", fermer);
-    // « ← Retour » → revient à l'écran d'accueil (3 sources)
     document.getElementById("kta-tbl-annuler-import").addEventListener("click", function() { _afficherAccueil(); });
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
   }
@@ -652,9 +623,7 @@
     reader.onload = function(e) {
       try {
         const json = JSON.parse(e.target.result);
-        // Un fichier peut contenir plusieurs tableaux éditables (ex : session
-        // = editorPoints + roads + zones). On les collecte, puis : 1 seul →
-        // tableau direct ; plusieurs → sélecteur.
+        // Plusieurs tableaux éditables (une session) → sélecteur ; un seul → tableau direct.
         const entries = [];
         _collecterEntreesEditables(json, _basename(file.name), file.name, entries);
         if (!entries.length) throw new Error(window.I18n.t("tabledit.import.err.noData"));
@@ -668,33 +637,23 @@
     reader.readAsText(file);
   }
 
-  // ========== DÉTECTION DES COLONNES ==========
+  // ── Tableau ──────────────────────────────
   function _detecterColonnes(data) {
     const set = new Set();
     data.forEach(function(p) {
       Object.keys(p).forEach(function(k) { set.add(k); });
     });
-    // l'identité n'est pas une donnée à éditer : `uid` et
-    // `updatedAt` restent sur les objets mais ne deviennent jamais des colonnes
-    // (une cellule modifiable permettrait de casser l'identité d'un objet).
+    // 🩸 L'identité n'est pas éditable : une cellule `uid` permettrait de casser l'identité d'un objet.
     set.delete("uid");
     set.delete("updatedAt");
-    // Ordre privilégié pour les clés courantes.
-    // 🏗️ v169 (Karma_dev) : ajout de "level" juste après "y" pour que les
-    // plans multi-niveau aient la colonne niveau visible à côté des coords
-    // (cohérence visuelle x/y/level). Sans ça, level passait en queue de
-    // tableau via le fallback set.forEach (P3 audit Karma_dev).
-    // "type" en tête + "points" (géométrie, lecture seule) près de
-    // la queue → couvre points ET roads/zones/structures avec un ordre lisible.
+    // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
     const ordreCourant = ["id", "type", "nom", "x", "y", "level", "tags", "etat", "description", "points", "profondeur", "date_update"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
-    // Ajouter les autres en queue
     set.forEach(function(k) { ordonnees.push(k); });
     return ordonnees;
   }
 
-  // ========== ÉTAPE 2 — TABLEAU INTERACTIF ==========
   function _afficherTableau() {
     if (_modal) _modal.remove();
     const modal = document.createElement("div");
@@ -749,7 +708,6 @@
     _construireCorps();
     _miseAJourInfos();
 
-    // Listeners
     document.getElementById("kta-tbl-close").addEventListener("click", _tenterFermer);
     document.getElementById("kta-tbl-annuler").addEventListener("click", _tenterFermer);
     modal.addEventListener("click", function(e) { if (e.target === modal) _tenterFermer(); });
@@ -772,7 +730,6 @@
     document.getElementById("kta-tbl-save").addEventListener("click", _menuSauvegarde);
   }
 
-  // ========== EN-TÊTE ==========
   function _construireEntete() {
     const thead = _modal.querySelector("thead");
     let html = "<tr>";
@@ -785,7 +742,6 @@
     html += "</tr>";
     thead.innerHTML = html;
 
-    // Listeners en-têtes
     thead.querySelectorAll("th[data-col]").forEach(function(th) {
       th.addEventListener("click", function() { _trierColonne(th.dataset.col); });
     });
@@ -798,14 +754,12 @@
     });
   }
 
-  // ========== CORPS DU TABLEAU ==========
   function _construireCorps() {
     const tbody = _modal.querySelector("tbody");
     const config = window.PLAN_CONFIG;
     const imgW = config?.plan?.imageWidth  || 0;
     const imgH = config?.plan?.imageHeight || 0;
 
-    // Avertissement gros volume
     const warnWrap = document.getElementById("kta-tbl-warn-big-wrap");
     if (warnWrap) {
       if (_data.length > 1000) {
@@ -815,7 +769,6 @@
       }
     }
 
-    // Tri
     let indices = _data.map(function(_, i) { return i; });
     if (_tri.col) {
       indices.sort(function(a, b) {
@@ -828,7 +781,6 @@
       });
     }
 
-    // Filtre
     if (_filtre) {
       indices = indices.filter(function(i) {
         const p = _data[i];
@@ -848,12 +800,10 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        // "points" (géométrie roads/zones/structures) = lecture seule.
         const ro = (col === "id" || col === "points");
         let cls = "";
         if (ro) cls += "col-readonly";
 
-        // Validation coords hors limites
         if (col === "x" && imgW && (v < 0 || v > imgW)) cls += (cls ? " " : "") + "col-error";
         if (col === "y" && imgH && (v < 0 || v > imgH)) cls += (cls ? " " : "") + "col-error";
 
@@ -861,7 +811,6 @@
         if (col === "tags") {
           contenu = _renderTagsCellule(idx, v);
         } else if (col === "points") {
-          // Géométrie : résumé non éditable « N points »
           contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
         } else if (Array.isArray(v)) {
           contenu = _escapeHtml(v.join(", "));
@@ -880,12 +829,10 @@
     });
     tbody.innerHTML = html;
 
-    // Listeners
     tbody.querySelectorAll("input[data-row-check]").forEach(function(cb) {
       cb.addEventListener("click", function(e) {
         const idx = parseInt(cb.dataset.rowCheck);
 
-        // Shift-click : sélection plage
         if (e.shiftKey && _lastSelectedIdx !== null) {
           const visibles = _indexVisibles();
           const i1 = visibles.indexOf(_lastSelectedIdx);
@@ -908,7 +855,6 @@
         else            _selection.delete(idx);
         _lastSelectedIdx = idx;
         _miseAJourInfos();
-        // Toggle classe visuelle ligne
         const tr = cb.closest("tr");
         if (tr) tr.classList.toggle("kta-tbl-selected", cb.checked);
       });
@@ -920,7 +866,6 @@
         const col = td.dataset.col;
         if (col === "id" || col === "points") return; // lecture seule (id + géométrie)
         if (col === "tags") {
-          // Si clic sur ×, retirer le tag
           const removeBtn = e.target.closest("[data-tag-remove]");
           if (removeBtn) {
             const idx = parseInt(td.dataset.idx);
@@ -932,7 +877,6 @@
             _miseAJourInfos();
             return;
           }
-          // Sinon ouvrir le dropdown
           _afficherDropdownTags(td, parseInt(td.dataset.idx));
           return;
         }
@@ -942,14 +886,13 @@
     });
   }
 
-  // ========== ÉDITION D'UNE CELLULE ==========
+  // ── Édition ──────────────────────────────
   function _editerCellule(td) {
     const idx = parseInt(td.dataset.idx);
     const col = td.dataset.col;
     const p = _data[idx];
     const valOrig = p[col];
 
-    // Sauvegarder le HTML pour annuler
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 
@@ -959,14 +902,9 @@
     input.value = valOrig === undefined || valOrig === null ? "" : valOrig;
     if (isNum && col !== "profondeur") input.step = "1";
 
-    // (F20) — la colonne `type` était un champ texte TOTALEMENT
-    // libre : une faute de frappe (`pilierr-1`, `cust-` tronqué…) créait un
-    // objet orphelin, rendu en couleur de repli sans aucun signal. On ne
-    // BLOQUE pas (un type inconnu peut être voulu, ex. futur custom), mais :
-    //   1. une <datalist> propose les types VALIDES du tableau courant
-    //      (built-in du canon + customs de la légende) ;
-    //   2. à la validation, un type hors liste est signalé en console.
-    // Le bandeau « types orphelins » de ≡ Légende (F23) prend le relais.
+    // 🩸 Colonne `type` : une faute de frappe crée un objet orphelin, rendu en couleur de repli. Pas de
+    // blocage (un type inconnu peut être voulu) : une <datalist> propose les types valides (canon +
+    // légende) et un type hors liste est signalé en console ; ≡ Légende signale aussi les orphelins.
     let _typesValides = null;
     let _dlTypes = null;
     if (col === "type" && !_estPoints()) {
@@ -1014,7 +952,6 @@
         p[col] = nouvelle;
         _toucher(p);
         _modifie = true;
-        // F20 : type hors de la liste des types connus → signal, pas blocage.
         if (_typesValides && _typesValides.length && nouvelle &&
             _typesValides.indexOf(nouvelle) === -1) {
           console.warn("[TableEditor] type « " + nouvelle + " » inconnu de la légende — " +
@@ -1036,7 +973,6 @@
       if (e.key === "Enter") {
         e.preventDefault();
         valider();
-        // Passer à la même colonne sur la ligne en dessous
         _focusVoisin(idx, col, "down");
       } else if (e.key === "Escape") {
         e.preventDefault();
@@ -1061,7 +997,7 @@
     if (direction === "right" && posCol < _colonnes.length - 1) nCol = _colonnes[posCol + 1];
     if (direction === "left"  && posCol > 0)                    nCol = _colonnes[posCol - 1];
 
-    // Skip "id" en lecture seule
+    // "id" est en lecture seule : sauté.
     if (nCol === "id" && (direction === "right" || direction === "left")) {
       const newPos = direction === "right" ? _colonnes.indexOf(nCol) + 1 : _colonnes.indexOf(nCol) - 1;
       if (newPos >= 0 && newPos < _colonnes.length) nCol = _colonnes[newPos];
@@ -1073,7 +1009,7 @@
     }, 50);
   }
 
-  // ========== TAGS — RENDU ET DROPDOWN ==========
+  // ── Étiquettes ──────────────────────────────
   function _renderTagsCellule(idx, tags) {
     if (!Array.isArray(tags)) tags = [];
     let html = "";
@@ -1086,7 +1022,6 @@
   }
 
   function _afficherDropdownTags(anchor, idx) {
-    // Fermer dropdown précédent
     const prev = document.getElementById("kta-tag-dd");
     if (prev) prev.remove();
 
@@ -1094,7 +1029,7 @@
     const icons = config.icons || {};
     const exclu = ["default", "track"];
 
-    // Tags disponibles : tous ceux dans icons + ceux déjà utilisés ailleurs dans _data
+    // Proposés : tags des icônes + tags déjà utilisés dans _data.
     const tagsExistants = new Set();
     Object.keys(icons).forEach(function(t) { if (!exclu.includes(t)) tagsExistants.add(t); });
     _data.forEach(function(p) {
@@ -1103,7 +1038,6 @@
 
     const tagsActifs = _data[idx].tags || [];
 
-    // Créer le dropdown
     const dd = document.createElement("div");
     dd.id = "kta-tag-dd";
     dd.className = "kta-tag-dropdown";
@@ -1124,16 +1058,12 @@
     dd.innerHTML = html;
     document.body.appendChild(dd);
 
-    // Position
     const rect = anchor.getBoundingClientRect();
     dd.style.left = rect.left + "px";
     dd.style.top  = (rect.bottom + 4) + "px";
-    // Garder la liste DANS la zone visible : `visualViewport` (clavier, barres
-    // du navigateur mobile) sinon innerWidth/innerHeight. En paysage téléphone
-    // (360-390 px de haut), ni le dessous ni le dessus de l'ancre ne loge les
-    // 280 px de la liste : on prend le côté le plus spacieux, on borne la
-    // hauteur à l'espace dispo (défilement interne) et `top` ne passe jamais
-    // au-dessus de l'écran.
+    // 🩸 Liste gardée dans la zone visible (`visualViewport`, sinon innerWidth/innerHeight). En paysage
+    // téléphone, ni dessous ni dessus ne logent ses 280 px : côté le plus spacieux, hauteur bornée
+    // (défilement interne), `top` jamais au-dessus de l'écran.
     setTimeout(function() {
       const vv    = window.visualViewport || null;
       const vTop  = vv ? vv.offsetTop : 0;
@@ -1161,7 +1091,6 @@
       }
     }, 0);
 
-    // Listeners options
     dd.querySelectorAll("[data-tag]").forEach(function(opt) {
       opt.addEventListener("click", function() {
         const t = opt.dataset.tag;
@@ -1178,7 +1107,6 @@
       });
     });
 
-    // Création nouveau tag
     const newInput = document.getElementById("kta-tag-new");
     newInput.addEventListener("keydown", function(e) {
       if (e.key === "Enter") {
@@ -1197,7 +1125,6 @@
       }
     });
 
-    // Fermer au clic extérieur
     setTimeout(function() {
       function onClicExt(e) {
         if (!dd.contains(e.target) && !anchor.contains(e.target)) {
@@ -1209,7 +1136,6 @@
     }, 0);
   }
 
-  // ========== TRI ==========
   function _trierColonne(col) {
     if (col === "tags") return; // tags pas triables
     if (_tri.col === col) {
@@ -1222,7 +1148,7 @@
     _construireCorps();
   }
 
-  // ========== AJOUT / SUPPRESSION / DUPLICATION ==========
+  // ── Lignes ──────────────────────────────
   function _ajouterLigne() {
     const nouv = {};
     _colonnes.forEach(function(c) {
@@ -1236,7 +1162,6 @@
     _modifie = true;
     _construireCorps();
     _miseAJourInfos();
-    // Scroller en bas
     const wrap = _modal.querySelector(".kta-tbl-wrap");
     if (wrap) wrap.scrollTop = wrap.scrollHeight;
   }
@@ -1257,12 +1182,10 @@
     if (_selection.size === 0) return;
     const indices = [..._selection].sort(function(a, b) { return a - b; });
     indices.forEach(function(i) {
-      // 🩸 une copie JSON recopierait l'uid : deux objets distincts
-      // partageraient une identité, et la future fusion « le plus récent gagne »
-      // en perdrait un. La copie reçoit un uid neuf.
+      // 🩸 Uid NEUF : une copie JSON partagerait l'identité, et la fusion « le plus récent gagne » en
+      // perdrait un.
       const copie = window.KtaUid ? window.KtaUid.cloneNeuf(_data[i], _prefixeUid())
                                   : JSON.parse(JSON.stringify(_data[i]));
-      // Ajouter "_copie" à l'id si présent
       if (copie.id) copie.id = String(copie.id) + "_copie";
       _data.push(copie);
     });
@@ -1272,7 +1195,7 @@
     _miseAJourInfos();
   }
 
-  // ========== APERÇU SUR LA CARTE ==========
+  // ── Aperçu sur la carte ──────────────────────────────
   function _apercuCarte() {
     if (_selection.size === 0) {
       window.ktaAlerte(window.I18n.t("tabledit.preview.err.aucuneLigne"));
@@ -1283,7 +1206,6 @@
       return;
     }
 
-    // Récupérer les points sélectionnés
     const points = [..._selection].map(function(i) { return _data[i]; })
       .filter(function(p) { return typeof p.x === "number" && typeof p.y === "number"; });
     if (points.length === 0) {
@@ -1291,10 +1213,9 @@
       return;
     }
 
-    // Masquer la modale (mais ne pas la supprimer)
+    // Masquée, pas supprimée : le bandeau de retour la réaffiche.
     _modal.style.display = "none";
 
-    // Créer les markers temporaires
     const tempLayer = L.layerGroup();
     points.forEach(function(p) {
       const m = L.circleMarker([APP_CONFIG.imageHeight - p.y, p.x], {
@@ -1310,13 +1231,11 @@
     });
     tempLayer.addTo(window.map);
 
-    // Centrer la carte sur les points
     const bounds = L.latLngBounds(points.map(function(p) {
       return [APP_CONFIG.imageHeight - p.y, p.x];
     }));
     window.map.fitBounds(bounds.pad(0.2));
 
-    // Banner avec bouton retour
     const banner = document.createElement("div");
     banner.id = "kta-tbl-preview-banner";
     banner.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.92); color:#fff; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.5); border:1px solid rgba(140,180,255,0.5); display:flex; gap:12px; align-items:center;";
@@ -1333,7 +1252,6 @@
     });
   }
 
-  // ========== INFOS HEADER ==========
   function _miseAJourInfos() {
     const infoEl = document.getElementById("kta-tbl-info");
     if (!infoEl) return;
@@ -1359,7 +1277,6 @@
 
     infoEl.innerHTML = html;
 
-    // Selection
     const selEl = document.getElementById("kta-tbl-selection-info");
     if (selEl) {
       selEl.textContent = _selection.size === 0
@@ -1370,7 +1287,6 @@
     document.getElementById("kta-tbl-duplicate").disabled = _selection.size === 0;
   }
 
-  // ========== UTILITAIRES ==========
   function _indexVisibles() {
     let indices = _data.map(function(_, i) { return i; });
     if (_tri.col) {
@@ -1399,7 +1315,7 @@
   function _escapeHtml(s) { return window.ktaEsc(s); }
   function _escapeAttr(s) { return window.ktaEsc(s); }
 
-  // ========== FERMETURE AVEC CONFIRMATION ==========
+  // ── Fermeture et sauvegarde ──────────────────────────────
   function _tenterFermer() {
     if (!_modifie) {
       _modal.remove();
@@ -1446,10 +1362,8 @@
     });
   }
 
-  // ========== MENU DE SAUVEGARDE ==========
-  // règle « no live » pour les datalayers (data/roads/zones/structures) :
-  // export-only + note « repasser par le Générateur ». Seule la SESSION
-  // (editorPoints) garde le remplacement live (`Remplacer la session`).
+  // ⚠️ Calques de données : export seulement (repasser par le Générateur) (décision produit). Seule la
+  // SESSION (editorPoints) se remplace en direct.
   function _menuSauvegarde() {
     const estSession = _estSession();
 
@@ -1498,7 +1412,6 @@
     }
   }
 
-  // ========== TÉLÉCHARGEMENT ==========
   function _telecharger() {
     const obj = _construireObjetSortie();
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -1510,10 +1423,7 @@
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
-  // Re-sérialise l'objet source COMPLET en n'y remplaçant que le tableau édité
-  // (_kind) → préserve TOUS les autres tableaux/champs (type, version, measure,
-  // customLegend, autres calques d'un même fichier…). Évite toute perte au
-  // téléchargement, quelle que soit la source (plan en cours / ZIP / JSON).
+  // ⚠️ Objet source COMPLET, seul le tableau édité (_kind) est remplacé : aucun autre champ perdu.
   function _construireObjetSortie() {
     var base = (_sourceObj && typeof _sourceObj === "object") ? _sourceObj : {};
     var obj;
@@ -1522,53 +1432,37 @@
     return obj;
   }
 
-  // ========== REMPLACEMENT SESSION (live — uniquement editorPoints) ==========
   function _remplacerSession() {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
     if (!window.setEditorPoints) {
       window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
       return;
     }
-    // 📸 Fiche des photos des points (retrouver le point s'il disparaît) : les points
-    // d'AVANT d'abord, puis ceux d'après qui l'emportent — un point retiré par le
-    // tableau garde ainsi la fiche de son dernier état, ses photos restent « sans point ».
+    // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche
+    // de son dernier état, ses photos restent « sans point ».
     const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
     if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
       window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(_data));
     }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
-    // Carte masquée par l'éditeur : le résultat ne se voit pas → toast warn (visible en « Essentielles »).
+    // Carte masquée : toast warn, visible même en notifications « Essentielles ».
     const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
     if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "warn", { important: true });
     else window.ktaAlerte(msgOk);
   }
 
-  // =========================
-  // 🔁 CONVERTIR LA RÉSOLUTION (v1.76.2 — phases 1+2, topo KARMA « migrer
-  // les données d'une carrière d'un scan A vers un scan B »)
-  // =========================
-  // Phase 1 : homothétie (résolutions source/destination).
-  // Phase 2 (retour terrain KARMA : « échelle bonne mais décalé, les origines
-  // diffèrent ») : RECALAGE par correspondance — « POINT A sur plan X =
-  // POINT B sur plan Y » + rotation optionnelle (décalage du Nord entre les
-  // deux plans). Avec DEUX paires, échelle et rotation sont DÉDUITES (mêmes
-  // maths que le géoref 2 points, en pixel→pixel — cf. docs/MATHS.md §4).
-  //
-  // Tout passe par UNE transformation affine M = {a,b,c,d,e,f} :
-  //   x' = a·x + b·y + e ;  y' = c·x + d·y + f
-  // Les trois modes ne sont que trois façons de la remplir.
+  // ── Convertir la résolution ──────────────────────────────
+  // Migre des données d'un scan vers un autre. Trois modes : homothétie (résolutions), recalage sur
+  // UNE paire de points (+ rotation du Nord), ou DEUX paires (échelle et rotation déduites, comme le
+  // géoref 2 points). Tous remplissent une affine M = {a,b,c,d,e,f} : x' = a·x + b·y + e ; y' = c·x + d·y + f.
 
-  // Matrice de la phase 1 : homothétie pure.
   function _matriceHomothetie(kX, kY) {
     return { a: kX, b: 0, c: 0, d: kY, e: 0, f: 0 };
   }
 
-  // Matrice « 1 paire » : échelle des résolutions + rotation θ (degrés,
-  // HORAIRE à l'écran — même sens visuel que northOffsetDeg), le tout CLOUÉ
-  // sur la paire de correspondance : ancreA tombe exactement sur ancreB.
-  // En repère image (y vers le bas), la matrice [cos −sin ; sin cos] tourne
-  // dans le sens horaire visuel — vérifié par le garde-fou sur les 2 axes.
+  // « 1 paire » : échelle + rotation θ (degrés, HORAIRE à l'écran comme northOffsetDeg), ancreA → ancreB
+  // exactement. ⚠️ Repère image (y vers le bas) : [cos −sin ; sin cos] tourne dans le sens horaire visuel.
   function _matriceRecalage(kX, kY, thetaDeg, ancreA, ancreB) {
     if (!ancreA || !ancreB) return null;
     const t = ((Number(thetaDeg) || 0) * Math.PI) / 180;
@@ -1579,9 +1473,8 @@
              f: ancreB.y - (c * ancreA.x + d * ancreA.y) };
   }
 
-  // Matrice « 2 paires » : échelle UNIFORME et rotation déduites des deux
-  // vecteurs A1→A2 et B1→B2, translation clouée sur la paire 1. Rend null si
-  // une base est trop courte (< 10 px : transformation dégénérée, refus).
+  // « 2 paires » : échelle UNIFORME et rotation déduites de A1→A2 et B1→B2, translation sur la paire 1.
+  // null si une base fait moins de 10 px (transformation dégénérée).
   function _matriceDeuxPaires(A1, B1, A2, B2) {
     const dxA = A2.x - A1.x, dyA = A2.y - A1.y;
     const dxB = B2.x - B1.x, dyB = B2.y - B1.y;
@@ -1597,9 +1490,8 @@
              _s: s, _thetaDeg: theta * 180 / Math.PI };
   }
 
-  // Fonction PURE (extraite par le garde-fou check-resolution-convert) :
-  // applique la matrice affine M à tous les champs coordonnées connus de
-  // l'objet fichier (cf. docs/architecture/data-formats.md). Compte par tableau.
+  // ⚠️ Fonction PURE, extraite et exécutée par check-resolution-convert.js : applique M à tous les champs
+  // de coordonnées (docs/architecture/data-formats.md) et compte par tableau.
   function _transformerCoordsFichier(obj, M) {
     const compte = {};
     if (!obj || typeof obj !== "object" || !M) return compte;
@@ -1613,12 +1505,10 @@
       }
       return 0;
     };
-    // Points « plats » (x/y au premier niveau de chaque ligne)
     ["data", "editorPoints"].forEach(function(k) {
       if (!Array.isArray(obj[k])) return;
       compte[k] = obj[k].reduce(function(n, row) { return n + pt(row); }, 0);
     });
-    // Géométries (points: [{x,y}…])
     ["roads", "zones", "structures"].forEach(function(k) {
       if (!Array.isArray(obj[k])) return;
       compte[k] = 0;
@@ -1626,8 +1516,7 @@
         if (g && Array.isArray(g.points)) compte[k] += g.points.reduce(function(n, p) { return n + pt(p); }, 0);
       });
     });
-    // Mesures — DEUX formes selon la source : calque `{points:[…]}`,
-    // session `[…]` (tableau direct). measureSurface : tableau direct.
+    // 🩸 measure a DEUX formes : calque `{points:[…]}`, session `[…]`. measureSurface : tableau direct.
     ["measure", "measureSurface"].forEach(function(k) {
       const m = obj[k];
       if (!m) return;
@@ -1637,19 +1526,11 @@
     return compte;
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // DÉDOUBLONNAGE (demande KARMA, suite au bug clic-carte
-  // multiplié : N sommets confondus empilés par clic dans les dessins de
-  // tracés/zones/structures et les mesures — invisibles à l'écran, mais
-  // sessions et exports gonflés)
-  // ═══════════════════════════════════════════════════════════
-  // Fonction PURE : retire les sommets IDENTIQUES CONSÉCUTIFS (x, y, level)
-  // des géométries et mesures. Les POI (data/editorPoints) ne sont PAS
-  // touchés : deux points volontairement superposés sont légitimes.
-  // Un objet n'est supprimé QUE si le nettoyage l'a réduit sous son minimum
-  // (tracé/ligne < 2, zone/polygone < 3) — un objet déjà petit mais sans
-  // doublon n'est jamais touché (cas : structure custom polyline à 2
-  // sommets, dont la géométrie vit dans la légende, pas dans l'objet).
+  // ── Dédoublonnage ──────────────────────────────
+  // Fonction PURE : retire les sommets IDENTIQUES CONSÉCUTIFS (x, y, level) des géométries et mesures
+  // (invisibles, ils gonflent sessions et exports). Les POI ne sont pas touchés (superposition légitime).
+  // ⚠️ Un objet n'est supprimé QUE si le nettoyage l'a réduit sous son minimum (ligne < 2, polygone < 3) :
+  // un objet déjà petit sans doublon reste (structure custom à 2 sommets).
   function _dedupliquerFichier(obj) {
     const bilan = { sommets: 0, objets: 0 };
     if (!obj || typeof obj !== "object") return bilan;
@@ -1681,8 +1562,7 @@
         return true;
       });
     });
-    // Mesures — deux formes selon la source : calque `{points:[…]}`, session
-    // tableau direct (même dualité que _transformerCoordsFichier).
+    // Mêmes deux formes de mesure que dans _transformerCoordsFichier.
     ["measure", "measureSurface"].forEach(function(k) {
       const m = obj[k];
       if (!m) return;
@@ -1695,7 +1575,7 @@
   function _ouvrirDedup() {
     const t = function(k, p) { return window.I18n.t(k, p); };
     const sub = document.createElement("div");
-    // ⚠️ kta-readme-modal-overlay, PAS "kta-readme-modal" (bug du 07/08).
+    // 🩸 kta-readme-modal-overlay, PAS "kta-readme-modal" (classe inexistante → modale invisible).
     sub.className = "kta-readme-modal-overlay";
     sub.style.zIndex = "100001";
     sub.innerHTML = `
@@ -1733,8 +1613,7 @@
       $("kta-tbl-dedup-go").disabled = !fichiers.length;
     });
 
-    // Nettoyage : chaque fichier modifié est retéléchargé « <nom>_dedup.json ».
-    // Un fichier illisible n'interrompt PAS le lot (pattern du convertisseur).
+    // Chaque fichier modifié est retéléchargé « <nom>_dedup.json » ; un fichier illisible n'arrête pas le lot.
     $("kta-tbl-dedup-go").addEventListener("click", function() {
       if (!fichiers.length) return;
       const bilans = [], echecs = [];
@@ -1777,8 +1656,7 @@
     const w0 = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || "";
     const h0 = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || "";
     const sub = document.createElement("div");
-    // ⚠️ kta-readme-modal-overlay, PAS "kta-readme-modal" (classe inexistante
-    // → modale invisible, bug du 07/08).
+    // 🩸 Même piège de classe que ci-dessus.
     sub.className = "kta-readme-modal-overlay";
     sub.style.zIndex = "100001";
     const champRes = function(id, w, h, hint) {
@@ -1848,7 +1726,7 @@
     $("kta-tbl-resol-annuler").addEventListener("click", fermer);
     sub.addEventListener("click", function(e) { if (e.target === sub) fermer(); });
 
-    // 📷 dimensions depuis une image — parseur d'en-têtes binaire (32K ok)
+    // Dimensions lues dans l'en-tête binaire d'une image (32 Ko suffisent).
     ["src", "dst"].forEach(function(cote) {
       $("kta-tbl-resol-" + cote + "_img").addEventListener("change", function(e) {
         const f = e.target.files && e.target.files[0];
@@ -1866,7 +1744,6 @@
       });
     });
 
-    // 📄 fichiers de données (un ou plusieurs .json)
     let fichiers = [];
     $("kta-tbl-resol-files").addEventListener("change", function(e) {
       fichiers = Array.prototype.slice.call(e.target.files || []);
@@ -1952,8 +1829,7 @@
     });
     recap();
 
-    // Conversion : chaque fichier est lu, transformé, retéléchargé
-    // « <nom>_conv.json ». Un fichier illisible n'interrompt PAS le lot.
+    // Chaque fichier est retéléchargé « <nom>_conv.json » ; un fichier illisible n'arrête pas le lot.
     $("kta-tbl-resol-go").addEventListener("click", function() {
       const res = construireMatrice();
       if (!res.M || !fichiers.length) return;   // refus, pas de clamp

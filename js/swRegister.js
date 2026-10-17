@@ -4,40 +4,22 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// SWREGISTER.JS — enregistrement du Service Worker (ex-bloc <script> inline d'index.html)
-// =========================
-// Sorti d'index.html le 07/10/2026 pour la CSP stricte (script-src sans 'unsafe-inline'). Code INCHANGÉ,
-// chargé au même endroit (fin de body), sans defer.
+// swRegister.js — enregistrement du Service Worker, kill switch ?killsw=1, nettoyage du
+// cache-buster ?_=. Script externe (pas de <script> inline : CSP script-src 'self'), chargé en fin
+// de body, sans defer.
+// Doc : docs/architecture/infra-versioning.md
 
-// Enregistrement Service Worker (PWA)
 if ("serviceWorker" in navigator) {
-  // Hook "controllerchange" pour notifier l'user quand un
-  // nouveau SW prend le contrôle pendant la session. Cas typique : on a
-  // bumpé CACHE_NAME côté serveur (ex: -fixes2), le SW s'install + activate
-  // + skipWaiting + clients.claim → controllerchange fire → on affiche
-  // un toast non-bloquant pour expliquer pourquoi le reload a fetché des
-  // nouveaux assets. Sans ce hook, l'user ne voit rien et peut se demander
-  // pourquoi "ça réagit différemment d'un coup".
-  //
-  // Garde-fou : on skip le PREMIER controllerchange si la page n'avait pas
-  // de controller au load (= cas du tout premier install PWA). On ne veut
-  // notifier que les "vraies" updates (= ancien controller → nouveau).
+  // Nouveau SW aux commandes pendant la session (nouveau CACHE_NAME) : log, toast en debugMode.
+  // Le PREMIER controllerchange d'une page sans controller (1re installation) est ignoré.
   let _swIsInitialControl = !navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", function() {
     if (_swIsInitialControl) {
       _swIsInitialControl = false;
-      // Premier install — pas de toast, c'est normal
       return;
     }
-    // Vraie update : un ancien controller a été remplacé.
-    // Log console TOUJOURS (utile pour debug + traçabilité dans 🐛 Logs).
     console.log("[PWA] 🔄 Nouveau SW a pris le contrôle (cache mis à jour)");
-    // (KARMA "popup style log de dev en mode mise à jour") :
-    // Toast UNIQUEMENT en debugMode. En prod, l'user ne voit rien — le
-    // log console reste pour les devs qui inspectent. Avant : toast à
-    // CHAQUE bump cache → spam visuel sur les cycles dev fréquents
-    // (v1.23.x → v1.24.0 → v1.24.1 ... 10+ updates en 24h).
+    // Toast en debugMode seulement (décision produit) : sinon un toast à chaque nouvelle version.
     const debugOn = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode === true);
     if (debugOn && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
@@ -48,22 +30,9 @@ if ("serviceWorker" in navigator) {
     }
   });
 
-  // 🆘 hotfix19 — Kill switch d'urgence pour les users avec SW/cache coincés.
-  // Usage : taper "https://<domaine>/?killsw=1" dans la barre d'adresse.
-  // Au load, le script détecte le param, unregister TOUS les SW + caches.delete()
-  // TOUS les caches, puis affiche un alert + reload propre vers la même URL
-  // sans le param. Équivalent fonctionnel du "💥 Tout réinitialiser" loader
-  // mais sans devoir charger l'app (utile quand l'app elle-même refuse de
-  // boot à cause d'un SW coincé qui sert un cache cassé).
-  //
-  // KARMA quote : "bon rien a faire sur mobile [...] j'ai supprimer l'icone
-  // du PWA, rester cache depuis chrome, restart de l'appareil, utilisation
-  // de la wifi plutot que 4g, j'ai meme tout roalback ce qui fonctionne
-  // aujourd'hui en prod et pareil"
-  //
-  // localStorage / IndexedDB SONT PRÉSERVÉS — ce kill switch ne supprime
-  // QUE le SW et les caches HTTP/PWA. Les plans mémorisés, sessions,
-  // photos, etc. restent intacts.
+  // Kill switch d'urgence « /?killsw=1 » : désinscrit TOUS les SW, vide TOUS les caches, alerte
+  // puis recharge sans le paramètre — sans charger l'app (SW coincé qui sert un cache cassé).
+  // ⚠️ localStorage et IndexedDB sont PRÉSERVÉS (plans, sessions, photos).
   (function _killSwIfRequested() {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -97,38 +66,20 @@ if ("serviceWorker" in navigator) {
     }
     Promise.all(tasks).then(function() {
       const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-      // Natif voulu : kill switch lancé pendant le parsing (utils.js est en defer) dans une app
-      // supposée cassée ; alert() bloque, donc le message est lu AVANT le location.replace.
+      // alert() natif voulu : utils.js (defer) n'est pas chargé, et il bloque avant le replace.
       try { alert(_t("home.misc.killSwUrlDone")); } catch (e) {}   // popup-native-ok : kill switch avant utils.js
-      // Reload vers la même URL SANS le param killsw, force = true pour bypass
-      // tout cache HTTP résiduel.
+      // Même URL SANS le paramètre.
       const cleanUrl = window.location.pathname +
                        (window.location.hash || "");
       window.location.replace(cleanUrl);
     });
-    // Court-circuit l'enregistrement SW normal (le reload va le re-registrer
-    // proprement via le code ci-dessous)
+    // Court-circuite l'enregistrement normal (le rechargement le refera).
     throw new Error("[PWA] kill switch — short-circuit normal load");
   })();
 
-  // Nettoyage du cache-buster `?_=<timestamp>` (retour KARMA
-  // « pourquoi j'ai un truc comme ça qui s'ajoute à mon URL »).
-  //
-  // POURQUOI IL EXISTE : `killsw.html` recharge via `/?_=<timestamp>` parce
-  // que purger le Service Worker et ses caches NE VIDE PAS le cache HTTP du
-  // navigateur — sans URL unique, le reload pouvait re-servir depuis le
-  // disque l'`index.html` périmé qu'on venait justement de fuir.
-  //
-  // POURQUOI ON L'EFFACE ENSUITE : une fois ce script exécuté, la requête
-  // fraîche a EU LIEU — le paramètre n'a plus aucune utilité. Le laisser
-  // inquiète l'utilisateur, et surtout il se FIGE dans un favori ou dans le
-  // `start_url` si quelqu'un ajoute l'app à son écran d'accueil depuis cette
-  // URL. Aligne aussi le comportement sur celui de `?killsw=1`, qui nettoie
-  // déjà son paramètre (cf. plus haut).
-  //
-  // `replaceState` : on remplace l'entrée d'historique au lieu d'en ajouter
-  // une — sinon le bouton Retour ramènerait sur l'URL sale.
-  // Les autres paramètres (`incognito`…) et le hash sont PRÉSERVÉS.
+  // Cache-buster `?_=<timestamp>` de killsw.html (purger le SW ne vide pas le cache HTTP) : la
+  // requête fraîche a eu lieu, on l'efface — sinon il se fige dans un favori ou le start_url.
+  // replaceState (pas d'entrée d'historique sale) ; autres paramètres et hash PRÉSERVÉS.
   (function _nettoyerCacheBuster() {
     try {
       if (!window.history || typeof history.replaceState !== "function") return;
@@ -147,10 +98,7 @@ if ("serviceWorker" in navigator) {
       .then(function (reg) {
         console.log("[PWA] Service Worker enregistré", reg);
 
-        // Log updatefound pour traçabilité (visible dans
-        // 🐛 Logs détaillés si debugMode ON). Aide à diagnostiquer le cas
-        // où un nouveau SW s'install mais n'arrive jamais à activate
-        // (ex: bug du SW lui-même).
+        // Trace updatefound / statechange : diagnostique un SW qui s'installe sans jamais s'activer.
         reg.addEventListener("updatefound", function() {
           const newSw = reg.installing;
           if (!newSw) return;

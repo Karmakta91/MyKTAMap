@@ -1,33 +1,16 @@
 /*!
- * MyKTAMap — Gamification du profil : rangs / badges (v1.52.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// PROFILEGAMIFICATION.JS — Rangs de profil "PRO mais FUN" (depuis v1.52.0)
-// =========================
-// Calcul PUR (aucun DOM, aucun localStorage, aucun réseau) : prend des
-// métriques { plans, hours, km } et renvoie le rang + le score + la
-// progression. Le plumbing (lecture des compteurs, rendu de l'anneau/puce)
-// vit dans index.html (réutilise _readTotalTimeMs / PlanRegistry / cache
-// stats par plan). 100 % local, offline.
-//
-// RANGS — seuils STATIQUES à atteindre (choix KARMA : pas de score qui pilote
-// le badge). On atteint un rang quand plans ET heures ET km >= ses 3 seuils
-// (logique « maillon faible »). Les seuils sont monotones croissants sur les
-// 3 axes → computeRank s'arrête au 1er palier non atteint.
-//
-// API : window.ProfileGamification = {
-//   RANKS,                       // table ordonnée (ascendant)
-//   computeRank({plans,hours,km}) -> rankObj
-//   getScore({plans,hours,km})    -> number (BONUS d'affichage, n'influence PAS le rang)
-//   getProgress({plans,hours,km}) -> { current, next|null, missing|null, pct }
-//   nom(rank), label(rank)        // libellé localisé (+ emoji)
-// };
-// =========================
+// profileGamification.js — rangs du profil. Calcul PUR (ni DOM, ni stockage, ni réseau) : { plans, hours, km }
+// → rang, score, progression. Lecture des compteurs et rendu dans index.html.
+// Seuils STATIQUES (décision produit) : un rang est atteint quand plans ET heures ET km dépassent ses 3 seuils
+// (maillon faible) ; seuils croissants sur les 3 axes, computeRank s'arrête au 1er palier manqué.
+// Expose : window.ProfileGamification — RANKS, computeRank, rankByMetrics, getScore (décoratif, n'influence PAS
+//   le rang), getProgress → { current, next|null, missing|null, pct }, nom(rank), label(rank)
 
 (function() {
   "use strict";
@@ -39,9 +22,8 @@
     { id: "expert",      emoji: "🥇", ring: "#f4c542", plans: 10, hours: 20, km: 75  },
     { id: "maitre",      emoji: "🏅", ring: "#ff8c42", plans: 15, hours: 40, km: 130 },
     { id: "grandmaitre", emoji: "⚜️", ring: "#b388ff", plans: 25, hours: 60, km: 200 },
-    // Easter egg — rang SECRET au-dessus de Grand Maître, débloqué
-    // UNIQUEMENT si le pseudo du profil = « Karma ». Seuils Infinity = jamais
-    // atteignable par les métriques (cf override dans computeRank / _isKarma).
+    // Rang SECRET au-dessus de Grand Maître, seulement si le pseudo du profil est « Karma » (décision produit).
+    // Seuils Infinity : jamais atteint par les métriques.
     { id: "legende",     emoji: "👑", ring: "#e0a51a", plans: Infinity, hours: Infinity, km: Infinity }
   ];
 
@@ -54,7 +36,7 @@
     };
   }
 
-  // 🥚 Easter egg : pseudo "Karma" (insensible à la casse) → rang secret Légende.
+  // Pseudo "Karma" (insensible à la casse) → rang secret Légende.
   function _isKarma() {
     try {
       if (window.UserProfile && typeof window.UserProfile.get === "function") {
@@ -70,8 +52,7 @@
     return null;
   }
 
-  // Rang d'après les MÉTRIQUES seules (ignore l'Easter egg) — sert à afficher
-  // le « vrai » rang mérité quand on est Légende via le pseudo Karma.
+  // Rang d'après les MÉTRIQUES seules : le rang mérité, affiché quand on est Légende par le pseudo.
   function rankByMetrics(metrics) {
     const m = _safe(metrics);
     let r = RANKS[0];
@@ -84,12 +65,11 @@
   }
 
   function computeRank(metrics) {
-    if (_isKarma()) { const lg = _legende(); if (lg) return lg; }  // 🥚 override secret
+    if (_isKarma()) { const lg = _legende(); if (lg) return lg; }  // rang secret
     return rankByMetrics(metrics);
   }
 
-  // Score = simple total (plans + heures + km). Purement décoratif (KARMA :
-  // « on peut scorer en plus »), n'entre PAS dans le calcul du rang.
+  // Score = plans + heures + km, purement décoratif.
   function getScore(metrics) {
     const m = _safe(metrics);
     return Math.round(m.plans + m.hours + m.km);
@@ -100,9 +80,7 @@
     const cur = computeRank(m);
     const idx = RANKS.indexOf(cur);
     const nxt = (idx >= 0 && idx < RANKS.length - 1) ? RANKS[idx + 1] : null;
-    // Max atteint si dernier rang OU si le suivant est l'Easter egg "legende"
-    // (seuils Infinity → pas un "next" normal). Si on EST Karma (cur=legende),
-    // idx = dernier → next null également.
+    // Max atteint au dernier rang, ou si le suivant est le rang secret (seuils Infinity) ; en Légende, next = null.
     if (!nxt || nxt.id === "legende") {
       return { current: cur, next: null, missing: null, pct: 100 };
     }
@@ -112,7 +90,7 @@
       hours: Math.max(0, next.hours - m.hours),
       km:    Math.max(0, next.km    - m.km)
     };
-    // Progression = maillon le plus faible (ratio min sur les 3 seuils du next).
+    // Progression = maillon le plus faible (ratio min sur les 3 seuils du suivant)
     const ratios = [];
     if (next.plans > 0) ratios.push(m.plans / next.plans);
     if (next.hours > 0) ratios.push(m.hours / next.hours);
@@ -124,7 +102,7 @@
 
   function nom(rank) {
     const key = "rank." + ((rank && rank.id) || "touriste");
-    // garde `v !== key` mort depuis l'humanisation H1 → has().
+    // has() : t() ne rend jamais la clé brute
     if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
       return window.I18n.t(key);
     }

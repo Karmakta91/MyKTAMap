@@ -5,26 +5,17 @@
  */
 
 // =====================================================================
-// 📉 profondeurNiveaux.js — profondeur des niveaux + profil en long
+// profondeurNiveaux.js — profondeur des niveaux (saisie) + profil en long d'un itinéraire
 // =====================================================================
-// LE TROU QU'IL COMBLE : un niveau n'était qu'un ENTIER NU (-1, 0, +1). Aucune
-// altitude nulle part dans le projet — `kmzExport.js` écrivait même `alt = 0`
-// en dur, et le GPX n'émettait aucun `<ele>`. Un relevé à six étages sortait
-// donc plat, et une descente de 30 m ne comptait pas un mètre.
-//
-// RÉFÉRENCE : la SURFACE, négatif vers le bas (arbitrage KARMA). Niveau 0 à
-// -25 m par défaut, pas de 5 m entre étages. Le stockage et la cascade vivent
-// dans `config.js` (`getPlanProfondeurs` / `setPlanProfondeurs`) — ce module
-// n'est que l'interface et le calcul du profil.
-//
-// 🩸 CE QUE LA PROFONDEUR CORRIGE, AU-DELÀ DU PROFIL : le coût d'une jonction
-// était sa longueur DANS LE PLAN. Un puits dessiné sur 3 px entre deux étages
-// distants de 12 m comptait pour 3 px — les distances multi-niveaux étaient
-// sous-comptées, et Dijkstra préférait toujours le puits au détour à plat.
-// Corrigé dans `pathfinder.js > _poidsSegment`, mais UNIQUEMENT quand les deux
-// niveaux ont une profondeur : un plan qui n'en a pas garde son ancien calcul,
-// au pixel près.
-// =====================================================================
+// Un niveau est un entier (-1, 0, +1) ; ce module lui associe une profondeur en mètres.
+// ⚠️ Référence = la SURFACE, négatif vers le bas (décision produit) : niveau 0 à -25 m par défaut,
+//   5 m entre étages. Stockage et cascade dans config.js (getPlanProfondeurs / setPlanProfondeurs) ;
+//   ici l'interface et le calcul du profil seulement.
+// 🩸 Une jonction coûte aussi sa différence de profondeur (pathfinder.js > _poidsSegment), sinon un
+//   puits de 3 px entre deux étages à 12 m est sous-compté — UNIQUEMENT si les deux niveaux ont une
+//   profondeur : un plan sans profondeur garde le calcul au pixel.
+// Expose : window.ProfondeurNiveaux { ouvrirSaisie, ouvrirProfil(path), construireProfil(path) }
+// Doc : docs/architecture/multilevel-pathfinding.md
 
 (function () {
   "use strict";
@@ -40,9 +31,7 @@
     return l.sort(function (a, b) { return b - a; });   // du haut vers le bas
   }
 
-  // ─────────────────────────────────────────────
-  // SAISIE
-  // ─────────────────────────────────────────────
+  // ── Saisie ──────────────────────────────
   function ouvrirSaisie() {
     const dejaLa = document.getElementById("kta-prof-modal");
     if (dejaLa) { dejaLa.remove(); return; }
@@ -51,8 +40,7 @@
     const table   = (typeof window.getPlanProfondeurs === "function")
       ? window.getPlanProfondeurs() : {};
     const vierge  = Object.keys(table).length === 0;
-    // Rien de saisi → on PROPOSE, on n'impose pas : les champs sont pré-remplis
-    // mais rien n'est enregistré tant que l'utilisateur n'a pas validé.
+    // Rien de saisi : champs PRÉ-REMPLIS, rien n'est enregistré avant validation.
     const propose = (vierge && typeof window.proposerProfondeurs === "function")
       ? window.proposerProfondeurs(niveaux) : {};
 
@@ -102,8 +90,7 @@
     document.getElementById("kta-prof-close").addEventListener("click", fermer);
     modal.addEventListener("click", function (e) { if (e.target === modal) fermer(); });
 
-    // « Sans profondeur » grise le champ : les deux états s'excluent, et le
-    // laisser saisissable donnerait à croire que la valeur compte encore.
+    // « Sans profondeur » grise le champ (sinon la valeur semble encore compter).
     modal.querySelectorAll("[data-sans]").forEach(function (cb) {
       cb.addEventListener("change", function () {
         const champ = modal.querySelector('.kta-prof-val[data-niv="' + cb.getAttribute("data-sans") + '"]');
@@ -123,8 +110,7 @@
         const cb = modal.querySelector('[data-sans="' + k + '"]');
         if (cb && cb.checked) { out[k] = null; return; }
         const v = parseFloat(el.value);
-        // Un champ vide n'est pas un zéro : c'est « non renseigné ». On ne
-        // l'écrit pas, sinon un oubli de saisie deviendrait « au ras du sol ».
+        // 🩸 Champ vide = « non renseigné », jamais 0 (un oubli deviendrait « au ras du sol »).
         if (Number.isFinite(v)) out[k] = v;
       });
       if (typeof window.setPlanProfondeurs === "function") window.setPlanProfondeurs(null, out);
@@ -132,28 +118,20 @@
     });
   }
 
-  // ─────────────────────────────────────────────
-  // PROFIL EN LONG
-  // ─────────────────────────────────────────────
-  // Construit le profil à partir d'un chemin rendu par `Pathfinder.computeRoute`
-  // (chaque point porte `level`, ajouté en v1.83.0 — il était calculé puis jeté).
-  //
-  // Deux subtilités qui ne se devinent pas :
-  //   • un point de `level: null` est INDÉTERMINÉ — nœud d'intersection à
-  //     plusieurs niveaux, ou milieu de jonction qui n'est à aucun étage mais
-  //     ENTRE deux. On INTERPOLE entre les profondeurs connues qui l'encadrent :
-  //     c'est exactement ce qu'est un puits.
-  //   • un niveau « sans profondeur » (le +1 du topo historique de l'import SIG)
-  //     se comporte comme non renseigné. Le profil le signale au lieu de mentir.
+  // ── Profil en long ──────────────────────────────
+  // À partir d'un chemin de Pathfinder.computeRoute (chaque point porte `level`).
+  // 🩸 `level: null` = INDÉTERMINÉ (intersection multi-niveaux, milieu de jonction) : interpolé entre
+  //   les profondeurs connues qui l'encadrent — c'est un puits. Un niveau « sans profondeur » (+1
+  //   conventionnel de l'import SIG) compte comme non renseigné, et le profil le signale.
   function construireProfil(path) {
     if (!Array.isArray(path) || path.length < 2) return null;
     const echelle = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)
       ? Number(window.APP_CONFIG.scale) : null;
-    if (!echelle) return null;                    // sans échelle, pas de mètres
+    if (!echelle) return null;
     const zDe = (typeof window.getProfondeurNiveau === "function")
       ? window.getProfondeurNiveau : function () { return null; };
 
-    // 1) distance cumulée (mètres) + profondeur connue par point
+    // 1) distance cumulée (m) + profondeur connue par point
     const pts = [];
     let cumul = 0;
     for (let i = 0; i < path.length; i++) {
@@ -164,8 +142,7 @@
       pts.push({ d: cumul, z: (lvl === null ? null : zDe(lvl)), level: lvl });
     }
 
-    // 2) interpolation des trous ENCADRÉS. Un trou en bout de chemin n'est pas
-    //    interpolable : on le laisse à null plutôt que de l'extrapoler.
+    // 2) 🩸 seuls les trous ENCADRÉS s'interpolent : en bout de chemin, null (jamais d'extrapolation).
     let connus = 0;
     pts.forEach(function (p) { if (p.z !== null) connus++; });
     if (connus < 2) return { pts: pts, connus: connus, incomplet: true, longueur: cumul };
@@ -179,7 +156,7 @@
       pts[i].interpole = true;
     }
 
-    // 3) dénivelé cumulé — le chiffre qu'un spéléo regarde en premier.
+    // 3) dénivelé cumulé
     let montee = 0, descente = 0, zMin = Infinity, zMax = -Infinity;
     let prev = null;
     pts.forEach(function (p) {
@@ -205,12 +182,8 @@
     };
   }
 
-  // ─────────────────────────────────────────────
-  // RENDU DU PROFIL
-  // ─────────────────────────────────────────────
-  // SVG et non canvas : le tracé est net à tout zoom, il s'imprime, et les
-  // repères de niveau sont du texte sélectionnable. Une centaine de points au
-  // plus — le canvas n'apporterait rien ici.
+  // ── Rendu du profil ──────────────────────────────
+  // SVG plutôt que canvas : net à tout zoom, imprimable, repères sélectionnables (≈ 100 points).
   function ouvrirProfil(path) {
     const dejaLa = document.getElementById("kta-profil-modal");
     if (dejaLa) dejaLa.remove();
@@ -223,11 +196,10 @@
 
     let corps;
     if (!p) {
-      // Pas d'échelle : on le DIT, au lieu d'afficher un graphe vide.
+      // Sans échelle : on le dit, pas de graphe vide.
       corps = '<p class="kta-prof-hint">' + _esc(_t("prof.profil.sansEchelle")) + '</p>';
     } else if (p.connus < 2) {
-      // Aucune profondeur saisie : c'est l'état de tout plan d'avant cette
-      // version. On explique et on propose le geste, plutôt qu'un vide.
+      // Aucune profondeur saisie : explication + bouton de saisie.
       corps = '<p class="kta-prof-hint">' + _esc(_t("prof.profil.vide")) + '</p>' +
               '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-profil-saisir" type="button">📉 ' +
                 _esc(_t("prof.btn.saisir")) + '</button>';
@@ -241,8 +213,7 @@
       const d = dessinables.map(function (q, i) {
         return (i ? "L" : "M") + sx(q.d).toFixed(1) + " " + sy(q.z).toFixed(1);
       }).join(" ");
-      // Une graduation par niveau réellement traversé — pas une grille
-      // arbitraire : ce sont les étages qui font sens ici.
+      // Une graduation par niveau traversé, pas une grille arbitraire.
       const vus = {};
       p.pts.forEach(function (q) { if (Number.isInteger(q.level) && q.z !== null) vus[q.level] = q.z; });
       const reperes = Object.keys(vus).map(function (n) {

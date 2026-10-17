@@ -1,57 +1,35 @@
 /*!
- * MyKTAMap — Vue « réseau de plans » (v1.65.0 — A7)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// PLANNETWORK.JS — Graphe visuel de la bibliothèque (A7)
-// =========================
-// Plans = nœuds, portails = arêtes (épaisseur = nb de liaisons entre les
-// 2 plans). Rendu SVG vanilla (zéro lib), layout force PRÉCALCULÉ (~150
-// itérations à l'ouverture, aucune animation continue = zéro coût batterie),
-// nœuds déplaçables au pointeur. Décisions KARMA (reco A7 1:a 2:a 3:a 4:a) :
-//   - Vue intégrée au gestionnaire « 🌀 Mes liaisons » (toggle Liste ⇄ Graphe)
-//   - Clic nœud = ouvrir le plan (pipeline goTo — confirmation si plan chargé)
-//   - Clic arête = détail de la frontière (le gestionnaire filtre sa liste)
-//   - Nœud = pastille + nom + badges de mode + compteur de liaisons
-//
-// Données : PlanRegistry.getAll() (nœuds) + InterPlanLinks.getAllLinks()
-// (arêtes). Les plans référencés par une liaison mais ABSENTS du registre
-// deviennent des nœuds « fantômes » ⛔ (nom issu du snapshot de liaison).
-// Les plans sans aucune liaison sont rangés dans une bande dédiée en bas.
-//
-// API : window.PlanNetwork.render(containerEl, {
-//   onOpenPlan(planId, anchorSide|null),   // clic nœud présent
-//   onEdgeClick(planIdA, planIdB)          // clic arête (détail frontière)
-// })
-// 100 % local — aucun réseau.
-// =========================
+// planNetwork.js — graphe de la bibliothèque dans « Mes liaisons » (bascule Liste ⇄ Graphe) :
+// plans = nœuds (pastille, nom, badges, compteur), portails = arêtes (épaisseur = nb de liaisons).
+// SVG sans librairie, layout force PRÉCALCULÉ à l'ouverture (aucune animation continue : batterie),
+// nœuds déplaçables. Plan lié mais absent du registre → nœud fantôme ⛔ ; plans sans liaison →
+// bande en bas. Données : PlanRegistry.getAll() + InterPlanLinks.getAllLinks(). 100 % local.
+// Expose : window.PlanNetwork.render(containerEl, { onOpenPlan(planId, anchorSide | null),
+//   onEdgeClick(planIdA, planIdB) })
 
 (function() {
   "use strict";
 
   const SVG_NS = "http://www.w3.org/2000/svg";
   const NODE_R = 22;               // rayon pastille
-  const ITERATIONS = 150;          // itérations du layout force (précalculé)
+  const ITERATIONS = 150;
   const SPRING_LEN = 150;          // longueur de repos des arêtes (px)
-  const REPULSE_K = 26000;         // constante de répulsion entre nœuds
-  // Bande « plans isolés » : séparateur+titre puis rangées de pastilles.
-  // (KARMA « le titre est trop proche de l'icône ») : la pastille
-  // s'étend de -R au-dessus de son centre et nom+badges descendent à +47 —
-  // le centre de rangée doit laisser ~30px au titre et chaque rangée ~70px.
-  const ISO_TITLE_H = 30;          // hauteur séparateur + titre
-  const ISO_ROW_H   = 70;          // hauteur d'une rangée de plans isolés
+  const REPULSE_K = 26000;
+  // Bande des plans isolés : la pastille monte de -R, nom + badges descendent à +47 → 30 px
+  // pour le titre, 70 px par rangée.
+  const ISO_TITLE_H = 30;
+  const ISO_ROW_H   = 70;
 
   function _t(k, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
 
-  // ---------------------------------------------------------------
-  // DONNÉES → nœuds + arêtes
-  // ---------------------------------------------------------------
+  // ── Données → nœuds + arêtes ──────────────────────────────
   function _collecter() {
     const nodes = {};   // planId → { id, name, present, badges, linkCount, anchorSide }
     const plans = (window.PlanRegistry && window.PlanRegistry.getAll)
@@ -73,15 +51,14 @@
       if (l.a.planId === l.b.planId) return;
       [l.a, l.b].forEach(function(side) {
         if (!nodes[side.planId]) {
-          // Plan absent du registre → nœud fantôme ⛔ (nom du snapshot)
+          // Absent du registre : nœud fantôme (nom de l'instantané de liaison).
           nodes[side.planId] = { id: side.planId, name: side.planName || side.planId,
                                  present: false, badges: [], linkCount: 0, anchorSide: null };
         }
       });
       nodes[l.a.planId].linkCount++;
       nodes[l.b.planId].linkCount++;
-      // Point d'ancrage pour « ouvrir le plan » : premier côté de liaison
-      // rencontré sur ce plan (l'arrivée sur un portail est un repère utile)
+      // Ancrage d'ouverture : premier côté de liaison rencontré (arrivée sur un portail).
       if (!nodes[l.a.planId].anchorSide) nodes[l.a.planId].anchorSide = l.a;
       if (!nodes[l.b.planId].anchorSide) nodes[l.b.planId].anchorSide = l.b;
       const key = (l.a.planId < l.b.planId)
@@ -100,13 +77,11 @@
     };
   }
 
-  // ---------------------------------------------------------------
-  // LAYOUT FORCE (précalculé, pas d'animation)
-  // ---------------------------------------------------------------
+  // ── Layout force (précalculé) ──────────────────────────────
   function _layout(nodes, edges, W, H) {
     const n = nodes.length;
     if (n === 0) return;
-    // Init en cercle (déterministe : pas de Math.random → rendu stable)
+    // Départ en cercle, déterministe (pas de Math.random : rendu stable).
     nodes.forEach(function(nd, i) {
       const a = (2 * Math.PI * i) / n;
       nd.x = W / 2 + Math.cos(a) * Math.min(W, H) * 0.30;
@@ -118,7 +93,6 @@
 
     for (let it = 0; it < ITERATIONS; it++) {
       const cool = 1 - it / ITERATIONS;           // refroidissement linéaire
-      // Répulsion entre toutes les paires
       for (let i = 0; i < n; i++) {
         const a = nodes[i];
         let fx = 0, fy = 0;
@@ -133,12 +107,10 @@
           fx += (dx / d) * f;
           fy += (dy / d) * f;
         }
-        // Gravité douce vers le centre
         fx += (W / 2 - a.x) * 0.02;
         fy += (H / 2 - a.y) * 0.02;
         a._fx = fx; a._fy = fy;
       }
-      // Ressorts sur les arêtes
       edges.forEach(function(e) {
         const a = byId[e.a], b = byId[e.b];
         if (!a || !b) return;
@@ -149,7 +121,6 @@
         a._fx += ux * f; a._fy += uy * f;
         b._fx -= ux * f; b._fy -= uy * f;
       });
-      // Application (amortie + clamp dans la boîte)
       const MARGIN = NODE_R + 14;
       nodes.forEach(function(nd) {
         nd.x = Math.max(MARGIN, Math.min(W - MARGIN, nd.x + nd._fx * 0.02 * cool));
@@ -158,9 +129,7 @@
     }
   }
 
-  // ---------------------------------------------------------------
-  // RENDU SVG
-  // ---------------------------------------------------------------
+  // ── Rendu SVG ──────────────────────────────
   function _el(tag, attrs) {
     const e = document.createElementNS(SVG_NS, tag);
     Object.keys(attrs || {}).forEach(function(k) { e.setAttribute(k, attrs[k]); });
@@ -180,22 +149,17 @@
     const W = Math.max(320, containerEl.clientWidth || 560);
     const hasIsolated = data.isolated.length > 0;
     const graphH = (data.linked.length > 0) ? Math.max(300, Math.min(460, 200 + data.linked.length * 34)) : 0;
-    // la hauteur compte TOUTES les rangées d'isolés (avant :
-    // une seule → 2e rangée coupée en bas)
+    // Hauteur : TOUTES les rangées d'isolés.
     const perRow  = Math.max(1, Math.floor(W / 130));
     const isoRows = hasIsolated ? Math.ceil(data.isolated.length / perRow) : 0;
     const H = graphH + (hasIsolated ? ISO_TITLE_H + isoRows * ISO_ROW_H + 10 : 0);
 
     _layout(data.linked, data.edges, W, graphH || 1);
 
-    // Bande « plans isolés » en bas — centres de rangée SOUS le titre
     if (hasIsolated) {
       data.isolated.forEach(function(nd, i) {
-        // (KARMA « la deuxième colonne, les titres sortent du
-        // cadre ») — marges SYMÉTRIQUES : l'ancien pas (W-110) posait la
-        // dernière colonne à x = W-40, et le nom centré (jusqu'à ~100 px de
-        // large) débordait du viewBox à droite. W-140 → dernière colonne à
-        // W-70, même marge que la première.
+        // 🩸 Marges SYMÉTRIQUES (70 px de chaque côté) : le nom centré (~100 px) déborde sinon du
+        // viewBox à droite.
         nd.x = 70 + (i % perRow) * ((W - 140) / Math.max(1, perRow - 1) || 0);
         if (perRow === 1) nd.x = W / 2;
         nd.y = graphH + ISO_TITLE_H + 28 + Math.floor(i / perRow) * ISO_ROW_H;
@@ -212,7 +176,7 @@
     const byId = {};
     data.linked.concat(data.isolated).forEach(function(nd) { byId[nd.id] = nd; });
 
-    // --- Arêtes (dessous) + zone de clic élargie
+    // Arêtes dessous, avec zone de clic élargie.
     const edgeLayer = _el("g", {});
     svg.appendChild(edgeLayer);
     data.edges.forEach(function(e) {
@@ -247,7 +211,6 @@
       }
     });
 
-    // Séparateur + titre de la bande isolés
     if (hasIsolated && data.linked.length > 0) {
       svg.appendChild(_el("line", {
         x1: 12, y1: graphH + 6, x2: W - 12, y2: graphH + 6, class: "kta-pnet-sep"
@@ -257,7 +220,6 @@
       svg.appendChild(t);
     }
 
-    // --- Nœuds
     const currentId = window._currentLoadedPlanId || null;
     const nodeLayer = _el("g", {});
     svg.appendChild(nodeLayer);
@@ -295,7 +257,7 @@
         : nd.name + " — " + _t("pnet.absentTitle");
       g.appendChild(title);
 
-      // Drag (pointer events) + clic (si pas de drag significatif)
+      // Glisser (pointer events) ; clic seulement sans déplacement significatif.
       let drag = null;
       g.addEventListener("pointerdown", function(ev) {
         ev.preventDefault();
@@ -311,7 +273,6 @@
         nd.x = pt.x - drag.dx;
         nd.y = pt.y - drag.dy;
         g.setAttribute("transform", "translate(" + nd.x + "," + nd.y + ")");
-        // Arêtes connectées suivent
         data.edges.forEach(function(e) {
           if (e.a !== nd.id && e.b !== nd.id) return;
           const a = byId[e.a], b = byId[e.b];
@@ -340,7 +301,7 @@
     containerEl.appendChild(svg);
   }
 
-  // Coordonnées pointeur → repère SVG (viewBox)
+  // Pointeur → repère du viewBox.
   function _svgPoint(svg, ev) {
     const r = svg.getBoundingClientRect();
     const vb = svg.viewBox.baseVal;

@@ -1,62 +1,18 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
- * Voir LICENSE a la racine du projet.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// THEME MANAGER — v1.13.0 (étendu en v1.13.0-fix2)
-// =========================
-// Toggle thème clair/sombre GLOBAL (KARMA "active le mode clair partout").
-//
-// - Persistance globale en localStorage (KARMA choix B:a), pas par plan.
-//   Le user qui choisit clair l'a partout, toujours.
-// - Background base mode clair = #f0e8d8 (beige cataphile, KARMA choix D:b)
-//   déjà utilisé en mode urgence light → cohérence.
-// - Accent jaune #f4c542 conservé (KARMA choix E:a) → cohérence charte.
-//
-// Activation = ajoute `body.kta-theme-light`. Le reste est en CSS pur via
-// `body.kta-theme-light .selector { ... }` overrides.
-//
-// API publique :
-//   window.ThemeManager = {
-//     init()        → lit localStorage et applique au boot (idempotent)
-//     getCurrent()  → "dark" | "light"
-//     setTheme(t)   → applique + persiste + notify listeners
-//     toggleTheme() → flip dark <-> light
-//     onChange(cb)  → s'abonner aux changements (cb reçoit "dark"|"light")
-//     isLight()     → bool helper
-//   };
-//
-// Scope :
-//   ✅ Couvert (mode clair s'applique) :
-//      - Loader plein écran (#planLoaderOverlay)
-//      - Modale Configuration home (#loaderConfigModal)
-//      - Modale Documentation (kta-readme-modal-* pattern)
-//      - Modale Audit réseau (loaderNetDocModal + loaderNetLogModal)
-//      - Modale Aide (kta-aide-* pattern)
-//      - Modale Plan switcher home
-//      - Mode carte entier (sidebar, header, footer, container Leaflet)
-//      - Toutes les modales ouvertes en mode carte (Session, Recherche,
-//        Itinéraire, Mesure, Édition, Export, Réglages, Légende, M-LVL,
-//        Replay tracker, etc.)
-//      - Popups Leaflet + tooltips + zoom controls
-//      - Toasts (OOMGuard.showToast)
-//
-//   ❌ Volontairement non couvert (reste dark) :
-//      - Splash KARMA animé (cinématique de lancement, contrastes dark
-//        nécessaires pour l'animation fade)
-//      - Viewer photos plein écran (cohérent pour lire les photos)
-//
-// Toggle UI à 2 endroits (mêmes prefs, sync via onChange) :
-//   - Sidebar gauche → ⚙️ Paramètres → ☀️/🌙 Thème (mode carte)
-//   - Modale Configuration home → checkbox "☀️ Activer le thème CLAIR"
-//
-// Le mode urgence garde son propre toggle 🔆/🌑 LOCAL mais on synchronise
-// son état initial avec ThemeManager au boot de l'overlay (cf
-// emergencyMode.js > activer()).
-// =========================
+// themeManager.js — thème clair/sombre GLOBAL (localStorage, pas par plan ; décision produit).
+// Clair = classe `kta-theme-light` sur <html> ET <body>, le reste est en CSS. Fond clair #f0e8d8
+// (celui du mode urgence), accent #f4c542 conservé.
+// Restent sombres (décision produit) : le splash animé et le visualiseur photo plein écran.
+// Bascules : Paramètres de la carte et Configuration du HOME (synchronisées par onChange). Le mode
+// urgence a sa bascule locale, initialisée depuis ThemeManager (emergencyMode.js > activer).
+// Expose : window.ThemeManager { init (idempotent), getCurrent → "dark" | "light", setTheme,
+//   setThemeAndReload, toggleTheme, onChange(cb), isLight }
+// Doc : docs/architecture/ui.md
 
 (function() {
   "use strict";
@@ -67,9 +23,7 @@
   let _current = "dark";
   const _listeners = [];
 
-  // ============================================================
-  // STATE I/O
-  // ============================================================
+  // ── Persistance ──────────────────────────────
   function _readPersisted() {
     try {
       const v = localStorage.getItem(LS_KEY);
@@ -81,18 +35,10 @@
     try { localStorage.setItem(LS_KEY, theme); } catch(e) {}
   }
 
-  // ============================================================
-  // APPLICATION DOM
-  // ============================================================
+  // ── Application au DOM ──────────────────────────────
   function _applyToDom(theme) {
-    // (KARMA "tous les modals se chargent en mode sombre") :
-    // beaucoup de modales sont append à document.documentElement (= <html>),
-    // pas à <body>. Le selector `body.kta-theme-light .modal` ne matchait
-    // donc jamais parce que la modale est SIBLING de body, pas descendante.
-    // Fix : on applique la classe à <html> (documentElement) en plus de body.
-    // Le CSS continue d'utiliser `body.kta-theme-light` partout pour le
-    // contenu intra-body, ET les modales sont désormais couvertes par
-    // `.kta-theme-light .modal` (ou tout sélecteur sans prefix body).
+    // 🩸 Classe aussi sur <html> : beaucoup de modales sont ajoutées à documentElement, sœurs de
+    // <body> — `body.kta-theme-light .modal` ne les atteint pas, `.kta-theme-light .modal` si.
     const html = document.documentElement;
     const body = document.body;
     if (html) {
@@ -103,8 +49,7 @@
       body.classList.toggle("kta-theme-light", theme === "light");
       body.classList.toggle("kta-theme-dark",  theme === "dark");
     }
-    // Meta theme-color (statusbar mobile) — change la couleur du chrome
-    // browser sur iOS/Android pour matcher le thème.
+    // theme-color : barre d'état mobile.
     let meta = document.querySelector("meta[name='theme-color']");
     if (!meta) {
       meta = document.createElement("meta");
@@ -120,9 +65,7 @@
     });
   }
 
-  // ============================================================
-  // API PUBLIQUE
-  // ============================================================
+  // ── API ──────────────────────────────
   function init() {
     _current = _readPersisted();
     _applyToDom(_current);
@@ -155,13 +98,8 @@
     return setTheme(_current === "dark" ? "light" : "dark");
   }
 
-  // changement de thème = reload complet de l'app.
-  // Le swap "live" via _applyToDom marchait à 90% mais a toujours laissé
-  // des bugs résiduels sur le bandeau top / certains modals chargés avant
-  // le toggle. Plus simple et bullet-proof : on persiste le choix en
-  // localStorage puis location.reload() — au boot l'app se reconstruit
-  // dans le bon thème sans aucun état héritant.
-  // Si le thème demandé est déjà actif → no-op (pas de reload inutile).
+  // 🩸 Changement de thème = persistance puis rechargement : la bascule à chaud laisse des restes
+  // (bandeau, modales construites avant). Thème déjà actif → rien.
   function setThemeAndReload(theme) {
     if (VALID_THEMES.indexOf(theme) < 0) {
       console.warn("[ThemeManager] setThemeAndReload : valeur invalide", theme);
@@ -179,9 +117,7 @@
     _listeners.push(cb);
   }
 
-  // ============================================================
-  // EXPORT GLOBAL
-  // ============================================================
+  // ── Export global ──────────────────────────────
   window.ThemeManager = {
     init:              init,
     getCurrent:        getCurrent,
@@ -192,10 +128,7 @@
     isLight:           isLight
   };
 
-  // Auto-init au chargement (le DOM body est dispo car ce script est chargé
-  // dans <head> tard ou en fin de body). Si appelé trop tôt, init() devra
-  // être ré-appelé après DOMContentLoaded — mais main.js le fait déjà
-  // explicitement au début de lancerApplication() pour garantir l'ordre.
+  // Auto-init (au DOMContentLoaded si body manque) ; main.js > lancerApplication le rappelle.
   if (document.body) {
     init();
   } else {

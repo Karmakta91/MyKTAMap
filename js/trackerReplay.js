@@ -1,50 +1,29 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
- * Voir LICENSE a la racine du projet.
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// 🎬 TRACKER REPLAY — v1.11.3 (V2.3)
-// =========================
-// Module modale plein écran pour rejouer le parcours tracker à partir de
-// la timeline datée (cf. tracking.js > getTrackingTimeline). Permet aussi
-// l'export CSV des points pour analyse externe.
-//
-// Choix de design (KARMA "1:c · 2:c · 3:a · 4:a+c · 5:c · 6:c · 7:c · 8:a · 9:a+b · 10:b") :
-//   1:c → recalages anchors + points PDR datés
-//   2:c → Date.now() + delta depuis start (cf tracking.js _pushTimelinePoint)
-//   3:a → RAM only (= cohérent tracker expérimental)
-//   4:a+c → modale replay + export CSV
-//   5:c → marker mobile sur trail entier visible
-//   6:c → sélecteur 0.5x / 1x / 2x / 5x / 10x
-//   7:c → bouton 🎬 dans groupe Tracker (visible si timeline non vide)
-//   8:a → bouton export dans la modale Replay
-//   9:a+b → CSV avec epoch + delta + niveau MLVL
-//   10:b → marker + horodatage live (HH:MM:SS + +Xmin Ys)
-//
-// API publique :
-//   window.MyKTAMapTrackerReplay = {
-//     ouvrirModale()    - ouvre la modale replay (no-op si timeline vide)
-//     fermer()          - cleanup (utilisé par plan switch)
-//   };
-// =========================
+// trackerReplay.js — rejoue le parcours du tracker depuis sa timeline datée
+// (tracking.js > getTrackingTimeline : recalages + points PDR, t = Date.now(), deltaMs depuis le
+// départ ; en RAM seulement) : trail entier + marqueur mobile, vitesse 0.5× à 10×, export CSV.
+// Au play, la modale passe en panneau compact pour laisser voir et toucher la carte.
+// Expose : window.MyKTAMapTrackerReplay { ouvrirModale (rien si timeline vide), fermer (changement
+//   de plan) }
+// Doc : docs/architecture/tracking.md
 
 (function() {
   "use strict";
 
   let _modal       = null;
-  let _trailLayer  = null;  // polyline grise du trail entier
-  let _markerLayer = null;  // marker mobile orange/jaune
+  let _trailLayer  = null;
+  let _markerLayer = null;
   let _playTimer   = null;
   let _currentIdx  = 0;
   let _speed       = 1;     // 0.5 / 1 / 2 / 5 / 10
-  let _timeline    = [];    // snapshot au moment de l'ouverture
+  let _timeline    = [];    // copie prise à l'ouverture
 
-  // ============================================================
-  // STYLES INJECTÉS (idempotent)
-  // ============================================================
+  // ── Styles injectés (idempotent) ──────────────────────────────
   function _injecterStyles() {
     if (document.getElementById("kta-trkrepl-styles")) return;
     const s = document.createElement("style");
@@ -231,9 +210,7 @@
     document.head.appendChild(s);
   }
 
-  // ============================================================
-  // HELPERS — FORMAT TEMPS
-  // ============================================================
+  // ── Format du temps ──────────────────────────────
   function _formatHHMMSS(ts) {
     const d = new Date(ts);
     const hh = String(d.getHours()).padStart(2, "0");
@@ -257,14 +234,11 @@
     return "•";
   }
 
-  // ============================================================
-  // OUVERTURE / FERMETURE
-  // ============================================================
+  // ── Ouverture / fermeture ──────────────────────────────
   function ouvrirModale() {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
 
-    // Snapshot timeline au moment de l'ouverture
     _timeline = (typeof window.getTrackingTimeline === "function")
       ? window.getTrackingTimeline()
       : [];
@@ -298,13 +272,11 @@
       '<div class="kta-readme-modal-boite kta-trkrepl-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
           '<span class="kta-readme-modal-titre">' + window.I18n.t("replay.modal.titre") + '</span>' +
-          // bouton ⛶ pour toggle mode compact / normal
           '<button class="kta-trkrepl-btn-icon" id="kta-trkrepl-fullscreen" type="button" title="' + window.I18n.t("replay.compact.reduce") + '" style="margin-right:8px;">▭</button>' +
           '<button class="kta-panneau-close" id="kta-trkrepl-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
-          // Bloc info — horodatage live (KARMA 10:b)
           '<div class="kta-trkrepl-info">' +
             '<div class="kta-trkrepl-info-bloc">' +
               '<div class="kta-trkrepl-info-label">' + window.I18n.t("replay.info.heure") + '</div>' +
@@ -318,10 +290,8 @@
             '</div>' +
           '</div>' +
 
-          // Timeline slider
           '<input type="range" class="kta-trkrepl-timeline" id="kta-trkrepl-slider" min="0" max="' + (_timeline.length - 1) + '" value="0" step="1">' +
 
-          // Contrôles play/pause/restart + vitesse
           '<div class="kta-trkrepl-controls">' +
             '<button class="kta-trkrepl-btn" id="kta-trkrepl-restart" title="' + window.I18n.t("replay.btn.restart") + '">⏮️</button>' +
             '<button class="kta-trkrepl-btn kta-trkrepl-btn-primary" id="kta-trkrepl-playpause" title="' + window.I18n.t("replay.btn.playpause") + '">▶️</button>' +
@@ -338,7 +308,6 @@
             '</div>' +
           '</div>' +
 
-          // Bouton export CSV
           '<div class="kta-trkrepl-export">' +
             '<div class="kta-trkrepl-export-info">' + _exportInfo + '</div>' +
             '<button class="kta-trkrepl-btn" id="kta-trkrepl-export-csv">' + window.I18n.t("replay.export.btn") + '</button>' +
@@ -354,11 +323,9 @@
     _renderMarkerAtIdx(0);
     _updateInfoUI();
 
-    // Bind events
     document.getElementById("kta-trkrepl-close").addEventListener("click", fermer);
-    // clic backdrop ferme UNIQUEMENT en mode normal.
-    // En mode compact, le backdrop est transparent et pass-through (l'user
-    // veut interagir avec la carte derrière, pas fermer la modale).
+    // ⚠️ Le fond ne ferme qu'en mode normal : en compact il est transparent et laisse passer les
+    // clics vers la carte.
     modal.addEventListener("click", function(e) {
       if (e.target === modal && !modal.classList.contains("kta-trkrepl-modal-compact")) {
         fermer();
@@ -366,7 +333,6 @@
     });
     document.addEventListener("keydown", _onKey);
 
-    // Bouton ⛶ toggle compact / normal
     const btnFs = document.getElementById("kta-trkrepl-fullscreen");
     if (btnFs) {
       btnFs.addEventListener("click", function() {
@@ -400,7 +366,6 @@
     document.getElementById("kta-trkrepl-playpause").addEventListener("click", _togglePlay);
     document.getElementById("kta-trkrepl-speed-sel").addEventListener("change", function(e) {
       _speed = parseFloat(e.target.value) || 1;
-      // Si en cours de play, on redémarre avec la nouvelle vitesse
       if (_playTimer) { _stopPlay(); _startPlay(); }
     });
     document.getElementById("kta-trkrepl-export-csv").addEventListener("click", _exportCSV);
@@ -422,15 +387,12 @@
     document.removeEventListener("keydown", _onKey);
   }
 
-  // ============================================================
-  // RENDU CARTE — trail + marker mobile
-  // ============================================================
+  // ── Rendu carte : trail + marqueur mobile ──────────────────────────────
   function _renderTrailOnMap() {
     if (!window.map || !window.L) return;
     if (_trailLayer) try { window.map.removeLayer(_trailLayer); } catch(e) {}
 
-    // Convertit la timeline en latlngs pour Leaflet (skip "recalage" qui
-    // sont des téléportations, pas des segments physiques continus).
+    // Un recalage est une téléportation : il coupe le trail en segments.
     const segments = [];
     let current = [];
     for (let i = 0; i < _timeline.length; i++) {
@@ -443,7 +405,7 @@
     }
     if (current.length > 1) segments.push(current);
 
-    // Une seule polyline avec multi-segments (économise le coût compositing)
+    // Une seule polyline multi-segments (moins de compositing).
     _trailLayer = L.polyline(segments, {
       color: "#ffaa00",
       weight: 4,
@@ -469,8 +431,7 @@
     } else {
       _markerLayer.setLatLng(latlng);
     }
-    // Auto-pan si le marker sort de la viewport (mais sans animation pour
-    // ne pas surcharger Leaflet pendant le replay rapide).
+    // Recentrage sans animation (replay rapide).
     try {
       const bounds = window.map.getBounds();
       if (!bounds.contains(latlng)) {
@@ -493,9 +454,7 @@
                                        (Number.isInteger(p.level) ? window.I18n.t("replay.info.levelSuffix", { lvl: p.level }) : "");
   }
 
-  // ============================================================
-  // PLAY / PAUSE
-  // ============================================================
+  // ── Play / pause ──────────────────────────────
   function _togglePlay() {
     if (_playTimer) _stopPlay(); else _startPlay();
   }
@@ -503,15 +462,11 @@
   function _startPlay() {
     if (_playTimer) return;
     if (_currentIdx >= _timeline.length - 1) {
-      // Fin atteinte → restart auto
       _currentIdx = 0;
     }
     const btn = document.getElementById("kta-trkrepl-playpause");
     if (btn) btn.textContent = "⏸️";
-    // (KARMA "modal reste ouvert, tout se passe derrière") :
-    // au play, on réduit la modale en floater compact bas-centre +
-    // overlay backdrop transparent pour que l'user voie la carte avec le
-    // marker mobile + trail. Bouton ⛶ pour revenir taille normale.
+    // Au play : panneau compact en bas, la carte reste visible (bouton ⛶ pour revenir).
     _setCompactMode(true);
     _tickPlay();
   }
@@ -522,9 +477,6 @@
     if (btn) btn.textContent = "▶️";
   }
 
-  // toggle mode compact (floater bas-centre vs modal plein).
-  // Le mode compact retire l'overlay backdrop pour laisser cliquable la carte
-  // dessous ET réduit la modal en panneau bottom-center compact.
   function _setCompactMode(compact) {
     if (!_modal) return;
     const box = _modal.querySelector(".kta-trkrepl-modal-boite");
@@ -534,7 +486,6 @@
     } else {
       _modal.classList.remove("kta-trkrepl-modal-compact");
     }
-    // Mise à jour du bouton ⛶/⛶
     const btnFs = document.getElementById("kta-trkrepl-fullscreen");
     if (btnFs) btnFs.textContent = compact ? "⛶" : "▭";
     if (btnFs) btnFs.title = compact ? window.I18n.t("replay.compact.enlarge") : window.I18n.t("replay.compact.reduce");
@@ -545,11 +496,10 @@
       _stopPlay();
       return;
     }
-    // Calcul du delai jusqu'au prochain point selon la vitesse
     const curr = _timeline[_currentIdx];
     const next = _timeline[_currentIdx + 1];
     let interval = next.deltaMs - curr.deltaMs;
-    // Bornes : min 50ms (pas plus de 20 frames/s), max 5000ms (long stop)
+    // Bornes : 50 ms (≤ 20 images/s) à 5 s (long arrêt).
     interval = Math.max(50, Math.min(5000, interval / _speed));
 
     _playTimer = setTimeout(function() {
@@ -572,12 +522,9 @@
     _updateInfoUI();
   }
 
-  // ============================================================
-  // EXPORT CSV (KARMA 9:a+b)
-  // ============================================================
+  // ── Export CSV ──────────────────────────────
   function _exportCSV() {
-    // Format CSV : header + 1 ligne par point
-    // Colonnes : timestamp_ms_epoch, delta_ms_since_start, x_plan, y_plan, type, level (si MLVL)
+    // Une ligne par point ; colonne level seulement en multi-niveau.
     const mlvl = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
     const lines = [];
     const headers = ["timestamp_ms_epoch", "delta_ms_since_start", "x_plan", "y_plan", "type"];
@@ -618,9 +565,7 @@
     }
   }
 
-  // ============================================================
-  // API PUBLIQUE
-  // ============================================================
+  // ── API ──────────────────────────────
   window.MyKTAMapTrackerReplay = {
     ouvrirModale: ouvrirModale,
     fermer:       fermer

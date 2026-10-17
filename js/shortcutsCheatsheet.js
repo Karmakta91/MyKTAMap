@@ -1,23 +1,14 @@
 /*!
- * MyKTAMap — Cheatsheet des raccourcis clavier (v1.51.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// SHORTCUTSCHEATSHEET.JS — Modale d'aide des raccourcis (depuis v1.51.0)
-// =========================
-// Modale auto-générée : la liste des raccourcis "outils" vient de
-// window.KtaShortcuts.listMapping() (source de vérité = shortcuts.js, plus
-// aucune liste à maintenir à la main), + un bloc fixe des combos globales
-// (Ctrl+Z/Y, Ctrl+K, F, ?, Échap). Ouverte par la touche "?" (cf shortcuts.js)
-// ou un lien dans le hub d'Aide.
-//
-// API : window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen };
-// 100 % local, aucune surface réseau.
-// =========================
+// shortcutsCheatsheet.js — modale d'aide des raccourcis, générée depuis window.KtaShortcuts.listMapping()
+// (source de vérité : shortcuts.js) + un bloc fixe des combos globales (Ctrl+Z/Y, Ctrl+K, F, ?, Échap).
+// Ouverte par « ? » ou depuis le hub d'Aide.
+// Expose : window.ShortcutsCheatsheet — ouvrir, fermer, toggle, isOpen
 
 (function() {
   "use strict";
@@ -25,9 +16,7 @@
   const OVERLAY_ID = "kta-cheatsheet-modal";
   let _escHandler = null;
 
-  // action ("group:edition" / "fn:legende") → clé i18n du libellé localisé
-  // (emoji + texte, cohérent fr/en/es). Fallback sur le label brut de
-  // listMapping() si la clé manque.
+  // Action ("group:edition" / "fn:legende") → clé i18n du libellé ; repli sur le label de listMapping().
   const ACTION_LABEL = {
     "group:edition":    "cheatsheet.tool.edition",
     "group:mesure":     "cheatsheet.tool.mesure",
@@ -40,8 +29,7 @@
     "fn:recherche":     "cheatsheet.tool.recherche"
   };
 
-  // garde `v !== key` mort depuis l'humanisation H1 (t() ne
-  // retourne plus jamais la clé brute) → has() teste la présence réelle.
+  // has() : t() ne rend jamais la clé brute
   function _t(key, fallback) {
     if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
       return window.I18n.t(key);
@@ -79,7 +67,6 @@
            "</div>";
   }
 
-  // Raccourcis "outils" depuis listMapping() (auto).
   function _toolRows() {
     const list = (window.KtaShortcuts && typeof window.KtaShortcuts.listMapping === "function")
                    ? window.KtaShortcuts.listMapping() : [];
@@ -89,7 +76,7 @@
     }).join("");
   }
 
-  // Combos globales (hors MAPPING — vivent dans d'autres modules).
+  // Combos globales (hors MAPPING, gérées par d'autres modules)
   function _comboRows() {
     const rows = [
       ["Ctrl+Z", _t("cheatsheet.undo", "Annuler")],
@@ -121,7 +108,7 @@
           '<div class="kta-cheat-sectitre">' + _t("cheatsheet.globalTitre", "Actions globales") + "</div>" +
           '<div class="kta-cheat-grille">' + _comboRows() + "</div>" +
           '<p class="kta-cheat-note">' +
-            // 🧩 Replay optionnel (01/10/2026) : pas de mode d'emploi d'un outil masqué.
+            // Replay facultatif : pas de mode d'emploi d'un outil masqué.
             (window.APP_CONFIG && window.APP_CONFIG.replayEnabled === true
               ? _t("cheatsheet.replayHint", "Dans le Replay : Espace = lecture, ← → = défilement, Échap = fermer.") + " "
               : "") +

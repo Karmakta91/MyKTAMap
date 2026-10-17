@@ -3,29 +3,16 @@
  * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
-// =====================================================================
-// 🧹 secoursBalayage.js — découpage en secteurs + parcours de balayage
-// =====================================================================
-// Lot C1 de l'audit Secours (docs/audits/2026-09-29_audit-secours-v1.md §5),
-// décisions KARMA du 15/10/2026 (QCM) : un seul découpage sur tout le réseau,
-// jonctions comprises ; deux modes de parcours, « ossature » (sans culs-de-sac,
-// reconnaissance) et « complet » (fouille).
-//
-// Pourquoi : un balayage saisi en étapes ne couvrait que 62 à 72 % des galeries
-// d'un secteur (mesuré) — le plus court chemin entre deux étapes saute les
-// boucles. Ici on calcule un CIRCUIT qui passe sur chaque galerie au moins une
-// fois (postier chinois rural : appariement des carrefours impairs puis circuit
-// eulérien), les culs-de-sac en aller-retour d'office.
-//
-// Calcul PUR sur le graphe de `Pathfinder.buildNetworkGraph()` : aucune
-// interface, aucun état. Garde-fou : scripts/check-secours-balayage.js.
-//
-// Le graphe garde ses segments d'origine et AJOUTE des nœuds aux croisements et
-// aux T (reliés aux deux extrémités du segment coupé). Une « pièce » = un bout
-// de galerie entre deux nœuds consécutifs d'un même segment : c'est l'unité à
-// couvrir et l'unité de charge d'un secteur.
-//
-// API : window.SecoursBalayage = { pieces, decouper, parcours }
+// secoursBalayage.js — Mode Secours : découpage du réseau en secteurs (jonctions comprises) et parcours
+//   de balayage, « ossature » (sans culs-de-sac, reconnaissance) ou « complet » (fouille).
+// Expose : window.SecoursBalayage (pieces, decouper, parcours, enveloppe).
+// Calcul PUR sur le graphe de `Pathfinder.buildNetworkGraph()` : aucune interface, aucun état.
+// 🩸 Un balayage en étapes ne couvre qu'une partie des galeries (le plus court chemin saute les boucles) :
+//   d'où un CIRCUIT sur chaque galerie (postier chinois rural : appariement des carrefours impairs, puis
+//   circuit eulérien), culs-de-sac en aller-retour.
+// ⚠️ Le graphe AJOUTE des nœuds aux croisements et aux T. « Pièce » = bout de galerie entre deux nœuds
+//   consécutifs d'un même segment : unité à couvrir et unité de charge d'un secteur.
+// Garde-fou : scripts/check-secours-balayage.js · Doc : docs/architecture/secours.md
 (function() {
   "use strict";
 
@@ -88,9 +75,8 @@
   }
 
   // ---------- Pièces de galerie ----------
-  // Rend [{ a, b, len, seg }] : `seg` = index dans graph.segments (dont `road`,
-  // le tracé d'origine, et `level`). Mémo par graphe (le graphe de roadGraph.js
-  // est mis en cache tant que les tracés ne bougent pas).
+  // → [{ a, b, len, seg }] (`seg` = index dans graph.segments). Mémo par graphe (roadGraph.js le garde
+  // en cache tant que les tracés ne bougent pas).
   const _memoPieces = new WeakMap();
   function pieces(graph) {
     if (!graph || !Array.isArray(graph.segments)) return [];
@@ -133,10 +119,8 @@
     return out;
   }
 
-  // Réseau PROPRE pour tous les calculs : les pièces, plus les raccords du graphe
-  // (T, extrémités voisines) — SANS les arêtes d'origine qui enjambent un
-  // croisement (a → b d'un segment coupé) : elles feraient sauter un secteur
-  // par-dessus le voisin et sauter des carrefours au parcours.
+  // 🩸 Réseau PROPRE : pièces + raccords, SANS les arêtes d'origine qui enjambent un croisement (a → b
+  // d'un segment coupé) : un secteur sauterait par-dessus son voisin, le parcours sauterait des carrefours.
   const _memoAdj = new WeakMap();
   function _adj(graph) {
     const m = _memoAdj.get(graph);
@@ -182,9 +166,8 @@
     return best;
   }
 
-  // Croissance : un Dijkstra par secteur, avancé pas à pas ; à chaque pas, le
-  // secteur le moins chargé prend les pièces libres du nœud le plus proche de son
-  // germe. Rend { secteurs, proprio }.
+  // Un Dijkstra par secteur, pas à pas : le moins chargé prend les pièces libres du nœud le plus proche
+  // de son germe. → { secteurs, proprio }.
   function _croitre(graph, P, incid, germes) {
     const N = graph.nodes.length;
     const proprio = new Int32Array(P.length).fill(-1);
@@ -197,7 +180,6 @@
     });
     let actifs = secteurs.length;
     while (actifs > 0) {
-      // Le moins chargé de ceux qui peuvent encore grandir.
       let s = null;
       secteurs.forEach(function(x) { if (!x.fini && (!s || x.charge < s.charge)) s = x; });
       let pris = false;
@@ -207,8 +189,6 @@
         // Arrivé par une pièce qu'un voisin a prise entre-temps : ce nœud n'est plus
         // relié au secteur par ses galeries — on l'oublie (il pourra être rejoint autrement).
         if (s.par[u] >= 0 && proprio[s.par[u]] !== s.idx && proprio[s.par[u]] !== -1) { s.dist[u] = Infinity; continue; }
-        // Les pièces libres de ce nœud reviennent au secteur ; on ne traverse
-        // que ce qui est libre ou à soi (un secteur ne passe pas chez le voisin).
         incid[u].forEach(function(pi) {
           if (proprio[pi] === -1) {
             proprio[pi] = s.idx;
@@ -218,8 +198,7 @@
         _adj(graph)[u].forEach(function(e) {
           const nd = d + e.weight;
           if (nd >= s.dist[e.to]) return;
-          // Passage permis : par une pièce libre ou à soi, ou par un raccord vers un nœud
-          // qui touche une pièce libre / à soi (jamais à travers la galerie d'un voisin).
+          // ⚠️ Jamais à travers la galerie d'un voisin : pièce libre ou à soi, ou raccord vers un tel nœud.
           if (e.p !== undefined) {
             if (proprio[e.p] !== -1 && proprio[e.p] !== s.idx) return;
           } else if (incid[e.to].length && !incid[e.to].some(function(pi) {
@@ -234,13 +213,9 @@
   }
 
   // ---------- Découpage en N secteurs ----------
-  // opts = { n, depart?: {x, y}, departs?: [{x, y}] (accès : les germes s'en écartent ;
-  // chaque secteur reçoit `acces` = index du plus proche par les galeries) }. Croissance équilibrée SUR LE GRAPHE : à chaque
-  // pas, le secteur le moins chargé prend la pièce libre la plus proche de son
-  // germe (secteurs continus par les galeries). Germes écartés au maximum
-  // (le plus loin du départ, puis le plus loin des germes déjà posés).
-  // Rend { secteurs: [{ pieces: [idx], longueur }], horsReseau: [idx], total }
-  // `horsReseau` = pièces qu'aucun chemin ne relie au départ (inatteignables).
+  // opts = { n, depart?: {x, y}, departs?: [{x, y}] } (accès : les germes s'en écartent ; chaque secteur
+  // reçoit `acces` = index du plus proche par les galeries). Secteurs continus par les galeries ; germes
+  // écartés au maximum. → { secteurs: [{ pieces, longueur }], horsReseau (inatteignables), total }.
   function decouper(graph, opts) {
     opts = opts || {};
     const P = pieces(graph);
@@ -255,7 +230,6 @@
     if (!nDeparts.length && P.length) nDeparts.push(P[0].a);
     if (!nDeparts.length || !P.length) return { secteurs: [], horsReseau: P.map(function(_, i) { return i; }), total: 0 };
     const d0 = _dijkstra(graph, nDeparts).dist;
-    // Germes : nœuds porteurs de pièces, atteignables.
     let germes = [];
     let minD = d0.slice();
     for (let s = 0; s < nb; s++) {
@@ -269,10 +243,9 @@
       const di = _dijkstra(graph, [best]).dist;
       for (let i = 0; i < N; i++) if (di[i] < minD[i]) minD[i] = di[i];
     }
-    // Recentrage (Lloyd sur le graphe) : des germes posés en bout de réseau
-    // s'y enferment (mesuré : secteurs de 4,5 à 19,6 km sur un réseau de 87 km).
-    // Après chaque croissance, chaque germe va au nœud de son secteur le plus
-    // proche du centre de gravité de ses galeries ; on garde le plus équilibré.
+    // 🩸 Recentrage (Lloyd sur le graphe) : un germe en bout de réseau s'y enferme (un secteur peut faire 4 fois
+    // un autre). Chaque germe va au nœud le plus proche du centre de ses galeries ; on
+    // garde le découpage le plus équilibré.
     let meilleur = null, meilleurRatio = Infinity;
     for (let tour = 0; tour < 12; tour++) {
       const essai = _croitre(graph, P, incid, germes);
@@ -322,9 +295,8 @@
   }
 
   // ---------- Parcours de balayage d'un ensemble de pièces ----------
-  // opts = { depart: {x, y}, arrivee?: {x, y} (défaut : retour au départ),
-  //          mode: "complet" | "ossature" }
-  // Rend { path: [{x, y, level}], longueur, couvert, aCouvrir, nbPieces } ou null.
+  // opts = { depart, arrivee? (défaut : retour au départ), mode: "complet" | "ossature" }
+  // → { path: [{x, y, level}], longueur, couvert, aCouvrir, nbPieces } ou null.
   function parcours(graph, piecesIdx, opts) {
     opts = opts || {};
     const P = pieces(graph);
@@ -350,7 +322,6 @@
     const s = _nodeLePlusProche(graph, opts.depart);
     const t = opts.arrivee ? _nodeLePlusProche(graph, opts.arrivee) : s;
     if (s < 0 || t < 0) return null;
-    // Multigraphe à parcourir : arêtes { u, v, w } — pièces requises + raccords.
     const aretes = req.map(function(i) { return { u: P[i].a, v: P[i].b, w: P[i].len }; });
     const ajouterChemin = function(noeuds) {
       for (let k = 1; k < noeuds.length; k++) {
@@ -478,13 +449,9 @@
   }
 
   // ---------- Enveloppe d'un ensemble de galeries ----------
-  // (KARMA : « un polygone sous toute la zone, pas chaque galerie ») — un
-  // contour qui couvre tout un secteur, pour la carte. Sur une grille : galeries
-  // tracées, élargies de `fermeture` (les galeries voisines se rejoignent), trous
-  // bouchés, puis rétrécies jusqu'à garder `marge` autour des galeries ; contour des
-  // cellules pleines, angles adoucis (Chaikin). segs = [[{x, y}, {x, y}], …] (pixels
-  // plan) ; opts = { cellule, fermeture, marge } (pixels plan). Rend des anneaux
-  // [[{x, y}, …], …] — un par morceau séparé.
+  // Un contour pour TOUT le secteur, pas un par galerie (décision produit). Sur une grille : galeries
+  // élargies de `fermeture`, trous bouchés, rétrécies jusqu'à `marge`, contour adouci (Chaikin).
+  // segs = [[{x, y}, {x, y}], …], opts = { cellule, fermeture, marge } (pixels plan) → un anneau par morceau.
   function enveloppe(segs, opts) {
     opts = opts || {};
     if (!Array.isArray(segs) || !segs.length) return [];

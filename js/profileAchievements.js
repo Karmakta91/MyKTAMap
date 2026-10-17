@@ -1,30 +1,16 @@
 /*!
- * MyKTAMap — Hauts faits / succès du profil (v1.53.0)
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
 // =========================
-// PROFILEACHIEVEMENTS.JS — Hauts faits (succès one-shot, depuis v1.53.0)
-// =========================
-// Catalogue de "hauts faits" à débloquer (≠ le rang continu de
-// profileGamification.js). 8 familles × 4 paliers (🥉 I · 🥈 II · 🥇 III ·
-// 👑 IV) = 32 succès. Un succès est débloqué quand sa métrique >= son seuil.
-// Module PUR : prend des métriques { plans, plansGeoref, km, hours, pois,
-// roads, zones, structures } et renvoie la liste + l'état. Le plumbing
-// (persistance des débloqués, toast, rendu grille) vit dans index.html.
-//
-// API : window.ProfileAchievements = {
-//   FAMILIES, TIER_ICONS, total,
-//   list(metrics)        -> [{id, familyId, emoji, tier, tierIcon, tierRoman,
-//                             metric, value, seuil, seuilLabel, unlocked, pct, nom}]
-//   unlockedIds(metrics) -> [id, ...] (succès dont le seuil est atteint)
+// profileAchievements.js — hauts faits du profil (succès one-shot, ≠ rang de profileGamification.js) :
+// 8 familles × 4 paliers (I à IV) + spéciaux. Module PUR : métriques { plans, plansGeoref, km, hours, pois,
+// roads, zones, structures } → liste + état. Persistance des débloqués, toast et grille dans index.html.
+// Expose : window.ProfileAchievements — FAMILIES, TIER_ICONS, total, list(metrics) → [{id, familyId, emoji,
+//   tier, tierIcon, tierRoman, metric, value, seuil, seuilLabel, unlocked, pct, nom}], unlockedIds(metrics),
 //   byId(id, metrics), nom(familyId), label(ach)
-// };
-// 100 % local, offline.
-// =========================
 
 (function() {
   "use strict";
@@ -32,7 +18,7 @@
   const TIER_ICONS = ["🥉", "🥈", "🥇", "👑"];  // I · II · III · IV (couronne = IV)
   const TIER_ROMAN = ["I", "II", "III", "IV"];
 
-  // metric = clé de _collectGamifMetrics (index.html). unit = format d'affichage.
+  // metric = clé de _collectGamifMetrics (index.html) ; unit = format d'affichage.
   const FAMILIES = [
     { id: "cartographe", emoji: "🗺️", metric: "plans",       unit: "plans", seuils: [1, 10, 20, 30] },
     { id: "geometre",    emoji: "🌐", metric: "plansGeoref", unit: "plans", seuils: [1, 5, 7, 15] },
@@ -44,9 +30,8 @@
     { id: "batisseur",   emoji: "🏛️", metric: "structures",  unit: "",      seuils: [20, 150, 400, 600] }
   ];
 
-  // Hauts faits "Spéciaux" (one-shot, fun). Dérivés du même objet
-  // de métriques (+ hasTracked / maxLevels / maxTrackerH / score, calculés
-  // inline). `completiste` reçoit un contexte { tieredUnlocked }.
+  // Spéciaux : mêmes métriques (+ hasTracked / maxLevels / maxTrackerH / score) ; `completiste` reçoit
+  // { tieredUnlocked }.
   const TIERED_TOTAL = FAMILIES.length * 4;  // 32
   const SPECIALS = [
     { id: "toucheatout", emoji: "🎨", check: function(m)      { return (m.pois||0)>=1 && (m.roads||0)>=1 && (m.zones||0)>=1 && (m.structures||0)>=1; } },
@@ -57,8 +42,7 @@
     { id: "completiste", emoji: "🏆", check: function(m, ctx) { return !!ctx && ctx.tieredUnlocked >= TIERED_TOTAL; } }
   ];
 
-  // garde `v !== key` mort depuis l'humanisation H1 (t() ne
-  // retourne plus jamais la clé brute) → has() teste la présence réelle.
+  // has() : t() ne rend jamais la clé brute
   function _t(key, fb) {
     if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
       return window.I18n.t(key);
@@ -103,7 +87,6 @@
         });
       });
     });
-    // spéciaux one-shot. completiste lit le nb de tiered débloqués.
     const tieredUnlocked = out.filter(function(a) { return a.unlocked; }).length;
     const ctx = { tieredUnlocked: tieredUnlocked };
     SPECIALS.forEach(function(s) {

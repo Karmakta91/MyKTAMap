@@ -1,27 +1,16 @@
 /*!
- * MyKTAMap — Tutoriel premier-lancement
- * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.fr
- *
- * Licence : CC BY-NC-SA 4.0
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// =========================
-// TUTORIAL.JS — Onboarding : cartes séquentielles du premier lancement
-// =========================
-// Affiché AUTOMATIQUEMENT au tout premier lancement (flag localStorage
-// `myktamap_tutorial_seen_v1`, séquencé par firstRunFlow.js), réaffichable
-// depuis le bouton 🎓 de la modale 📖 Documentation.
-//
-// 🎯 RÔLE : faire démarrer, pas tout montrer. Une carte = un geste utile au
-// premier jour, dans l'ordre du guide (Premiers pas → Urgence → Carte →
-// Recherche → Tracker → Itinéraire → Annoter → Données → Réglages). Le
-// détail vit dans le guide et l'Aide ❓ ; ce qui est désactivé par défaut,
-// réservé aux créateurs de plans ou au Mode Secours n'a pas de carte.
-// Refonte du 03/10/2026 (KARMA : « éviter l'indigestion ») : 27 → 11 cartes.
-//
-// API : window.Tutorial = { ouvrir, fermer, isFirstLaunch, markAsSeen }
-// =========================
+// tutorial.js — cartes du premier lancement (`myktamap_tutorial_seen_v1`, séquencé par
+// firstRunFlow.js), réouvrables depuis la Documentation.
+// Rôle : faire démarrer, pas tout montrer (décision produit) : une carte = un geste utile au premier
+// jour, dans l'ordre du guide ; le détail vit dans le guide et l'Aide. Ce qui est désactivé par
+// défaut, réservé aux créateurs de plans ou au Mode Secours n'a pas de carte.
+// Expose : window.Tutorial { ouvrir(onClose), fermer, isFirstLaunch, markAsSeen }
+// Garde-fou : scripts/check-i18n.js
 
 (function() {
   "use strict";
@@ -29,12 +18,9 @@
   const LS_KEY  = "myktamap_tutorial_seen_v1";
   const MODAL_ID = "kta-tutorial-modal";
 
-  // Cartes : { cle, emoji, hint? }. Le texte vit dans les dicos :
-  // tutorial.card.<cle>.titre / .texte (HTML autorisé) / .hint (si hint:true).
-  // ⚠️ Les clés sont NOMMÉES, pas numérotées : jusqu'au 03/10/2026 le rang
-  // faisait la clé (`card{NN}`), et insérer ou retirer une carte renumérotait
-  // toutes les suivantes dans les trois dicos. Réordonner = déplacer une ligne.
-  // Pas d'image : emoji et texte seulement, pour rester hors-ligne.
+  // Cartes { cle, emoji, hint? } ; texte dans les dicos : tutorial.card.<cle>.titre / .texte
+  // (HTML autorisé) / .hint. ⚠️ Clés NOMMÉES, jamais numérotées : réordonner = déplacer une ligne,
+  // sans renuméroter les trois dicos. Pas d'image (hors ligne).
   const STRUCTURE = [
     { cle: "bienvenue",          emoji: "🌟", hint: true },
     { cle: "avant-de-descendre", emoji: "📱" },
@@ -49,15 +35,13 @@
     { cle: "reglages",           emoji: "⚙️" },
   ];
 
-  // Alias préfixant DÉTECTÉ par check-i18n : les appels _t("skip")… sont
-  // vérifiés au canal bloquant (clé manquante = CI rouge).
+  // Alias préfixant reconnu par check-i18n : les _t("…") sont vérifiés (clé manquante = rouge).
   function _t(key) {
     return (window.I18n && window.I18n.t) ? window.I18n.t("tutorial.ui." + key) : key;
   }
 
-  // Cartes construites AU RENDU depuis le dico (jamais au load — règle
-  // i18n du repo). Le littéral "tutorial." + … est reconnu comme préfixe
-  // dynamique par le scanner : toutes les clés card.<cle>.* restent couvertes.
+  // Construites AU RENDU, jamais au load. Le littéral "tutorial." + … est un préfixe dynamique
+  // reconnu par check-i18n : les clés card.<cle>.* restent couvertes.
   function _cards() {
     const t = function(suffixe) {
       return (window.I18n && window.I18n.t) ? window.I18n.t("tutorial." + suffixe) : suffixe;
@@ -72,14 +56,11 @@
 
   let _currentIdx = 0;
 
-  // ────────── HELPERS ──────────
+  // ── Outils ───────────────────────────────────────────
 
   function isFirstLaunch() {
-    // Skip onboarding en mode incognito. Cohérent avec
-    // le pattern "no traces" : pas d'auto-trigger du tutoriel (l'user peut
-    // toujours l'ouvrir manuellement via le menu Aide s'il veut). Sans ce
-    // guard, le shim Storage retourne null → isFirstLaunch retourne true →
-    // tutoriel s'affiche à CHAQUE boot incognito → bruit UX.
+    // 🩸 Incognito : jamais automatique — le Storage factice rend null et le tutoriel s'ouvrirait
+    // à CHAQUE démarrage.
     if (window.IncognitoMode && window.IncognitoMode.active) return false;
     try { return !localStorage.getItem(LS_KEY); } catch(e) { return false; }
   }
@@ -90,7 +71,7 @@
 
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
-  // ────────── RENDER ──────────
+  // ── Rendu ────────────────────────────────────────────
 
   function _buildModalHtml() {
     return ''
@@ -124,7 +105,7 @@
     let html = '<div class="kta-tutorial-card">';
     html += '<div class="kta-tutorial-card-emoji" aria-hidden="true">' + card.emoji + '</div>';
     html += '<div class="kta-tutorial-card-titre">' + _escapeHtml(card.titre) + '</div>';
-    // texte = HTML autorisé volontairement (cards hardcodées, contenu de confiance)
+    // 🔒 texte = HTML voulu : vient des dicos de l'app, contenu de confiance.
     html += '<div class="kta-tutorial-card-texte">' + card.texte + '</div>';
     if (card.hint) {
       html += '<div class="kta-tutorial-card-hint">' + _escapeHtml(card.hint) + '</div>';
@@ -132,7 +113,7 @@
     html += '</div>';
     corps.innerHTML = html;
 
-    // Progression : pastilles cliquables (navigation directe)
+    // Pastilles de progression cliquables (accès direct à une carte).
     const prog = document.getElementById("kta-tutorial-progress");
     if (prog) {
       let dots = "";
@@ -142,7 +123,6 @@
         dots += '<button type="button" class="' + cls + '" data-card-idx="' + i + '" aria-label="' + _t("gotoCard") + (i + 1) + '"></button>';
       }
       prog.innerHTML = dots;
-      // Bind nav directe (utile si l'user veut revenir vite à une carte)
       prog.querySelectorAll(".kta-tutorial-dot").forEach(function(b) {
         b.addEventListener("click", function() {
           const i = parseInt(b.dataset.cardIdx, 10);
@@ -163,7 +143,7 @@
       nextBtn.textContent = isLast ? _t("finish") : _t("next");
     }
     if (skipBtn) {
-      // Cacher "Passer" sur la dernière carte (= bouton Terminer suffit)
+      // Dernière carte : « Terminer » suffit.
       skipBtn.style.visibility = (_currentIdx === lastIdx) ? "hidden" : "visible";
     }
   }
@@ -182,13 +162,11 @@
       _renderCard(_currentIdx);
       _updateNavButtons();
     } else {
-      // Dernière carte → Terminer
       _finish();
     }
   }
 
-  // _toggleLang supprimée — la langue du tutoriel suit le
-  // choix global (gate / ⚙️ Config), plus de bascule interne.
+  // Langue = choix global (gate / Config), pas de bascule propre au tutoriel.
 
 
   function _finish() {
@@ -203,20 +181,15 @@
     if (e.key === "Enter")      { _onNext(); return; }
   }
 
-  // ────────── API PUBLIQUE ──────────
-
-  // Callback de fermeture (onClose) pour le séquenceur de premier
-  // lancement (js/firstRunFlow.js). Appelé UNE FOIS à la fermeture du tutoriel
-  // (✕ / Passer). Défini après le fermer() initial pour ne pas se déclencher à
-  // tort à la ré-ouverture.
+  // ── API ──────────────────────────────────────────────
+  // onClose (firstRunFlow.js) : appelé UNE FOIS à la fermeture. ⚠️ Posé APRÈS le fermer() initial
+  // d'ouvrir(), sinon une réouverture le déclencherait à tort.
   let _tutorialOnClose = null;
 
   function ouvrir(onClose) {
     fermer();
     _tutorialOnClose = (typeof onClose === "function") ? onClose : null;
     _currentIdx = 0;
-    // plus de resync de langue locale — _cards()/_t() lisent
-    // le dico I18n au rendu, la langue globale est toujours la bonne.
 
     const overlay = document.createElement("div");
     overlay.id        = MODAL_ID;
@@ -224,16 +197,14 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    // Bind toggle langue
 
     document.getElementById("kta-tutorial-close").addEventListener("click", function() {
-      // Fermeture explicite via ✕ = considère comme "skip" (marque seen pour ne pas re-popup)
+      // ✕ vaut « Passer » : marqué vu.
       markAsSeen();
       fermer();
     });
     overlay.addEventListener("click", function(e) {
-      // Pas de close sur backdrop (= éviter dismiss accidentel pendant la lecture)
-      // L'user doit cliquer ✕ ou "Passer" explicitement.
+      // Pas de fermeture au clic sur le fond (lecture) : ✕ ou « Passer » seulement.
     });
     document.addEventListener("keydown", _onKey);
 
@@ -252,20 +223,18 @@
     document.removeEventListener("keydown", _onKey);
     const ex = document.getElementById(MODAL_ID);
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
-    // notifie le séquenceur (une seule fois)
     const cb = _tutorialOnClose;
     _tutorialOnClose = null;
     if (cb) { try { cb(); } catch(e) { console.warn("[Tutorial] onClose :", e); } }
   }
 
-  // ────────── EXPORT ──────────
   window.Tutorial = {
     ouvrir:         ouvrir,
     fermer:         fermer,
     isFirstLaunch:  isFirstLaunch,
     markAsSeen:     markAsSeen,
-    // Pour Memory Inspector / debug
+    // Diagnostic :
     _LS_KEY:        LS_KEY,
-    _CARDS_COUNT:   STRUCTURE.length  // une seule structure, langues dans les dicos
+    _CARDS_COUNT:   STRUCTURE.length
   };
 })();
