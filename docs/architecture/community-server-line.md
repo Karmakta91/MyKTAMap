@@ -189,6 +189,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   bouton ; `action` + `lien` facultatifs donnent un petit lien) ; `type: "fin"` = action à part, en bas (déconnexion).
   Dans « Mon profil », le compte (`compte() → { pseudo, libelle, details? }`) s'affiche en carte : pseudo, rôle en
   pastille, `details` en dessous (ex. l'organisation).
+- **Pastille d'en-tête** : la prise `pastilleHome() → { icone, titre, url } | null` ajoute UNE pastille à l'en-tête
+  de l'accueil, juste après 📖 ; un clic ouvre `url` dans un nouvel onglet (`noopener`). 🔒 `https://` seulement,
+  icône ≤ 4 caractères, titre ≤ 60, rendu en `textContent` ; forme inattendue, erreur ou `null` → aucune pastille.
+  Elle suit `mktm:compte-changed`. Aucune requête de l'app (c'est un lien). Tests : `check-extensions.js`.
 - **Tuile d'outils** (11/10/2026) : la prise `outilHome() → { libelle } | null` ajoute UNE tuile à 🧰 Outils de
   l'accueil ; elle ouvre une fenêtre avec la carte du compte et les actions du lieu « outils »
   (`actionsCompte("outils")`, mêmes rubriques). « Mon profil » garde la carte, avec un lien « Gérer › <tuile> ».

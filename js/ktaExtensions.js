@@ -340,9 +340,10 @@
     // Les écrans déjà dessinés (Mode Développeur…) se redessinent : une extension arrive APRÈS l'accueil.
     try { window.dispatchEvent(new CustomEvent("mktm:extensions-changees")); } catch (e) { /* rien */ }
     if (ext.outilHome) _poserOutilHome();
+    if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -743,6 +744,48 @@
   }
   function _lancerAction(a) {
     try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
+  }
+
+  // ── Pastille d'extension dans l'en-tête de l'accueil (prise d'INFORMATION « pastilleHome ») ──
+  // ext.pastilleHome() → { icone (≤ 4 car.), titre (≤ 60 car.), url } ou null : UNE pastille à côté de 📖, qui
+  // ouvre l'URL dans un nouvel onglet. 🔒 https:// seulement, rendu en textContent : forme inattendue = rien.
+  // Aucune requête de l'app : c'est un lien que l'utilisateur choisit d'ouvrir.
+  function pastilleHome() {
+    const ext = _prise("pastilleHome");
+    if (!ext || typeof ext.pastilleHome !== "function") return null;
+    try {
+      const p = ext.pastilleHome();
+      if (!p || typeof p.icone !== "string" || typeof p.titre !== "string" || typeof p.url !== "string") return null;
+      const icone = p.icone.trim(), titre = p.titre.trim(), url = p.url.trim();
+      if (!icone || !titre || [...icone].length > 4) return null;
+      let u;
+      try { u = new URL(url); } catch (e) { return null; }
+      if (u.protocol !== "https:") return null;
+      return { icone: icone, titre: titre.slice(0, 60), url: u.href };
+    } catch (e) { console.warn("[Extensions] pastilleHome :", e); return null; }
+  }
+  // Pose (ou retire) la pastille juste après 📖, à la déclaration d'une extension et quand le compte change.
+  function _poserPastilleHome() {
+    if (typeof document === "undefined" || !document.getElementById) return;
+    const aide = document.getElementById("loaderHelpBtn");
+    const vieux = document.getElementById("loaderExtPastilleBtn");
+    const p = pastilleHome();
+    if (!p) { if (vieux) vieux.remove(); return; }
+    if (!aide || !aide.parentNode) return;
+    const b = vieux || document.createElement("button");
+    b.type = "button";
+    b.id = "loaderExtPastilleBtn";
+    b.className = "loader-btn-help";
+    b.textContent = p.icone;
+    b.title = p.titre;
+    b.setAttribute("aria-label", p.titre);
+    b.dataset.url = p.url;
+    if (!vieux) {
+      b.addEventListener("click", function () {
+        if (b.dataset.url) window.open(b.dataset.url, "_blank", "noopener,noreferrer");
+      });
+      aide.parentNode.insertBefore(b, aide.nextSibling);
+    }
   }
 
   // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome ») ──
@@ -1423,8 +1466,10 @@
   // La tuile suit le compte (connexion, déconnexion) et l'accueil (posée une fois le DOM prêt).
   if (typeof window.addEventListener === "function") {
     window.addEventListener("mktm:compte-changed", _poserOutilHome);
+    window.addEventListener("mktm:compte-changed", _poserPastilleHome);
     if (typeof document !== "undefined" && document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", _poserOutilHome);
+      document.addEventListener("DOMContentLoaded", _poserPastilleHome);
     }
   }
 
@@ -1493,6 +1538,7 @@
     quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
     outilHome: outilHome,
+    pastilleHome: pastilleHome,
     ouvrirOutilHome: ouvrirOutilHome,
     valider: valider,
     etatDe: etatDe,

@@ -108,6 +108,9 @@ node scripts/check-map-listeners.js || exit $?
 # Reglages de podometre recopies en dur qui divergent de config.js > DEFAULT_CONFIG.
 node scripts/check-tracking-defaults.js || exit $?
 
+# Timeline du suivi : src, tp, estM, estSrc survivent au rechargement (sinon recalages et distance sous-comptes).
+node scripts/check-timeline-restore.js || exit $?
+
 # Valeurs hors bornes d'un plan-config (echelle, dimensions, depart) ramenees a l'usine.
 node scripts/check-plan-config-borne.js || exit $?
 

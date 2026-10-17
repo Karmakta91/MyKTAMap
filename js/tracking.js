@@ -1081,7 +1081,10 @@ window.resetTrackingTimeline = function() {
 
 // Restauration depuis SessionPersist / SessionBackups : la timeline survit aux reloads (heatmap multi-sessions).
 // Seules les entrées à x/y/t/type valides sont gardées (payload tiers possible).
-// ⚠️ Champs repris : x, y, t, type, deltaMs, level — src, tp, estM, estSrc ne sont PAS restaurés.
+// ⚠️ Champs repris : x, y, t, type, deltaMs, level, src (« click » | « point »), tp (téléportation),
+// estM/estSrc (distance estimée « vol » | « reseau ») — chacun seulement s'il est valide. Sans eux, les recalages
+// sur point, les téléportations et la distance estimée sont sous-comptés après un rechargement.
+// Garde-fou : scripts/check-timeline-restore.js.
 window.setTrackingTimeline = function(timeline, startTs) {
   if (!Array.isArray(timeline)) return;
   const cleaned = [];
@@ -1093,6 +1096,10 @@ window.setTrackingTimeline = function(timeline, startTs) {
     const out = { x: e.x, y: e.y, t: e.t, type: e.type };
     if (typeof e.deltaMs === "number") out.deltaMs = e.deltaMs;
     if (Number.isInteger(e.level))     out.level   = e.level;
+    if (e.src === "point" || e.src === "click") out.src = e.src;
+    if (e.tp === 1)                    out.tp      = 1;
+    if (typeof e.estM === "number" && isFinite(e.estM) && e.estM >= 0) out.estM = e.estM;
+    if (e.estSrc === "vol" || e.estSrc === "reseau") out.estSrc = e.estSrc;
     cleaned.push(out);
   });
   _trackingTimeline = cleaned;

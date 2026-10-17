@@ -460,6 +460,8 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **Divers** : option « ➕ Boutons de zoom +/− » (défaut OFF, `2ef3cee`) ; Secours : itinéraires d'équipe atténués hors niveau, « Y aller » prévient (`0e82bef`) ; jonction interniveau en légende seulement en multi-niveau (`a66b99a`) ; conversion depuis l'accueil limitée à « data layer → session » (`7e5d4ca`) ; plus de fausse alerte « arrêt brutal » quand l'app reste ouverte dans un autre onglet (`4371d81`).
 - **Code** : nettoyage des commentaires (audit `2026-10-16_audit-commentaires-v1.md`) — 43 577 → 18 340 lignes de commentaire, code prouvé identique fichier par fichier ; convention dans `CLAUDE.md` ; `scripts/check-commentaires.js` (aucune version citée en commentaire, plafond 0) ; 16 garde-fous réancrés sur `// 🏷️ ancre:` et 2 faux verts réparés (`a3bfdb0`). Données réelles retirées de commentaires au passage.
 - **Porte de release** : `scripts/smoke/checkup-panneaux-geometrie.js` (4 formats × centré/ancré × 4 panneaux).
+- **Suivi** : la timeline restaurée au rechargement garde `src`, `tp`, `estM`, `estSrc` (recalages sur point, téléportations et distance estimée n'étaient plus comptés après un reload) — garde-fou `check-timeline-restore.js`.
+- **Prise d'extension `pastilleHome`** : une pastille à côté de 📖 dans l'en-tête de l'accueil (lien https ouvert en nouvel onglet, rien sans extension) — contrat dans `community-server-line.md`.
 
 #### v2.16.0 (15/10/2026) — Secteurs de secours, KMZ sur téléphone (branche `Karma_dev`)
 

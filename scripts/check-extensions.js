@@ -821,6 +821,31 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("outilHome : la tuile suit le compte (mktm:compte-changed) et la fenêtre montre le lieu « outils »",
       EXT.includes('addEventListener("mktm:compte-changed", _poserOutilHome)') &&
       EXT.includes('blocActionsCompte("outils", "")'));
+    // ── Pastille d'extension dans l'en-tête de l'accueil ──
+    const { K: P0 } = nouveauContexte(null);
+    t("pastilleHome : sans extension → null (aucune pastille)", P0.pastilleHome() === null);
+    const { K: P1 } = nouveauContexte(null);
+    P1.register({ nom: "p1", apiVersion: 1,
+      pastilleHome: () => ({ icone: " 🏢 ", titre: " Documentation pro ", url: "https://doc.example.org/pro.html" }) });
+    const p1 = P1.pastilleHome();
+    t("pastilleHome : icône, titre et URL https lus et nettoyés",
+      !!p1 && p1.icone === "🏢" && p1.titre === "Documentation pro" && p1.url === "https://doc.example.org/pro.html");
+    const refus = [
+      { icone: "🏢", titre: "x", url: "http://doc.example.org/" },
+      { icone: "🏢", titre: "x", url: "javascript:alert(1)" },
+      { icone: "🏢", titre: "", url: "https://doc.example.org/" },
+      { icone: "abcdefgh", titre: "x", url: "https://doc.example.org/" },
+      { icone: "🏢", titre: "x" }
+    ].every((v, k) => { const { K } = nouveauContexte(null);
+      K.register({ nom: "pr" + k, apiVersion: 1, pastilleHome: () => v }); return K.pastilleHome() === null; });
+    t("🔒 pastilleHome : http, javascript:, titre vide, icône trop longue ou URL absente → aucune pastille", refus);
+    const { K: P2 } = nouveauContexte(null);
+    P2.register({ nom: "p2", apiVersion: 1, pastilleHome: () => { throw new Error("x"); } });
+    t("pastilleHome : une erreur de l'extension → aucune pastille", P2.pastilleHome() === null);
+    t("pastilleHome : posée après 📖, rendue en textContent, ouverte en noopener, suit le compte",
+      EXT.includes('aide.parentNode.insertBefore(b, aide.nextSibling)') && EXT.includes("b.textContent = p.icone") &&
+      EXT.includes('"_blank", "noopener,noreferrer"') &&
+      EXT.includes('addEventListener("mktm:compte-changed", _poserPastilleHome)'));
     t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
       /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
