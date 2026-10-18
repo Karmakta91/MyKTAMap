@@ -111,6 +111,18 @@ function _ktaSourceAlerte(a) {
   return ext ? window.I18n.t("alerts.source.site") : "";
 }
 
+// Date de publication lisible : un horodatage ISO complet (alertes d'extension) passe en date + heure locales ;
+// une date seule (alert.json, « 2026-10-18 ») reste telle quelle (la convertir la décalerait d'un jour selon le
+// fuseau). ⚠️ `released` reste l'ISO brut partout ailleurs : il sert à reconnaître une alerte modifiée.
+function _dateLisible(released) {
+  const s = String(released || "");
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR",
+    { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 window.afficherSelecteurAlertes = function(alerts, opts) {
   if (!Array.isArray(alerts) || alerts.length === 0) return;
   if (document.getElementById("kta-alert-selector-modal")) return;
@@ -218,7 +230,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
 
   const source = _ktaSourceAlerte(alert);
   const footerInfo = (source ? '<div class="kta-alert-released">' + _esc(source) + '</div>' : '') + (released
-    ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(released) }) + '</div>'
+    ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(_dateLisible(released)) }) + '</div>'
     : '');
 
   const modal = document.createElement("div");
