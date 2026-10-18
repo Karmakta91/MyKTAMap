@@ -318,6 +318,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     est posée ; l'extension la honore au démarrage (aucune reconnexion seule, session fermée au retour du réseau).
   - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
     d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
+- **Carnet (sorties)** : `mktm:journal-sortie-demarree` (`{ id, planId, origine: "manuel" }`) au démarrage MANUEL d'une
+  sortie (`Journal.demarrer`), `mktm:journal-sortie-cloturee` (`{ id, planId }`) à sa clôture manuelle
+  (`Journal.cloturer`). L'ouverture automatique à chaque plan, la reprise, la suspension et l'archivage automatique
+  n'émettent rien (gestes de l'app, pas de l'utilisateur). `planId` = identifiant community du plan
+  (`_currentLoadedPlanId`). No-op sans écouteur ; garde-fou `check-journal-demarrage.js`.
 - **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
   d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
   FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,

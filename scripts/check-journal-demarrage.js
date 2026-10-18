@@ -48,8 +48,9 @@ const RFI = lire("js/refonteInterface.js");
   if (src) {
     // `_ouvrir` (qui clôture la sortie en cours) remplacée par un mouchard.
     const jouer = function (etat) {
-      const appels = [];
+      const appels = [], annonces = [];
       const sb = {
+        _annoncer: function (type, d) { annonces.push({ type: type, d: d }); },
         _cur: etat.cur || null,
         window: { _currentLoadedPlanId: etat.planId || null },
         _planNameCourant: function () { return "Plan test"; },
@@ -59,7 +60,7 @@ const RFI = lire("js/refonteInterface.js");
       };
       let err = null;
       try { vm.runInNewContext(src + "\nresultat = demarrer();", sb, { filename: "journal.demarrer.js" }); } catch (e) { err = e.message; }
-      return { r: sb.resultat, appels: appels, err: err };
+      return { r: sb.resultat, appels: appels, annonces: annonces, err: err };
     };
 
     const nominal = jouer({ planId: "plan-a" });
@@ -85,6 +86,12 @@ const RFI = lire("js/refonteInterface.js");
     const echec = jouer({ planId: "plan-a", ouvertureEchoue: true });
     t("une ouverture qui échoue n'est pas annoncée comme réussie",
       echec.r && echec.r.ok === false && echec.r.raison === "echec");
+    t("🧩 démarrage réussi : UN événement mktm:journal-sortie-demarree { id, planId, origine: manuel }",
+      nominal.annonces.length === 1 && nominal.annonces[0].type === "mktm:journal-sortie-demarree" &&
+      nominal.annonces[0].d.id === "srt_test" && nominal.annonces[0].d.planId === "plan-a" &&
+      nominal.annonces[0].d.origine === "manuel");
+    t("🧩 refus ou échec : aucun événement",
+      dejaEnCours.annonces.length === 0 && sansPlan.annonces.length === 0 && echec.annonces.length === 0);
   }
 }
 
@@ -111,6 +118,10 @@ const RFI = lire("js/refonteInterface.js");
     !/if \(isEnabled\(\)\) \{\n\s*setTimeout/.test(bas));
   t("clôturer ne rouvre une sortie que par le chemin automatique (carnet décoché : rien ne repart)",
     /function cloturer\(\)[\s\S]{0,900}onPlanLoaded\(planId, planName\);/.test(JRN));
+  t("🧩 la clôture MANUELLE annonce mktm:journal-sortie-cloturee { id, planId } (et elle seule)",
+    /function cloturer\(\)[\s\S]{0,400}_annoncer\("mktm:journal-sortie-cloturee", \{ id: id, planId: planId \|\| null \}\);/.test(JRN) &&
+    (JRN.match(/mktm:journal-sortie-cloturee", \{/g) || []).length === 1 &&
+    (JRN.match(/_annoncer\("mktm:journal-sortie-demarree"/g) || []).length === 1);
   t("la sortie garde son origine (ouvertePar)", /ouvertePar:\s*\(origine === "manuel"\) \? "manuel" : "auto",/.test(JRN));
 }
 
