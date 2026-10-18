@@ -462,6 +462,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **Porte de release** : `scripts/smoke/checkup-panneaux-geometrie.js` (4 formats × centré/ancré × 4 panneaux).
 - **Suivi** : la timeline restaurée au rechargement garde `src`, `tp`, `estM`, `estSrc` (recalages sur point, téléportations et distance estimée n'étaient plus comptés après un reload) — garde-fou `check-timeline-restore.js`.
 - **Prise d'extension `pastilleHome`** : une pastille à côté de 📖 dans l'en-tête de l'accueil (lien https ouvert en nouvel onglet, rien sans extension) — contrat dans `community-server-line.md`.
+- **Prise `outilHome` en liste** : une extension peut poser jusqu’à 3 tuiles dans 🧰 Outils (une tuile peut ouvrir sa propre fenêtre), la forme d’origine reste valable (`751eda3`). **Événements du Carnet** `mktm:journal-sortie-demarree` / `-cloturee` au démarrage et à la clôture manuels d’une sortie (`7d343af`). Sans extension, rien ne change — contrat dans `community-server-line.md`.
 
 #### v2.16.0 (15/10/2026) — Secteurs de secours, KMZ sur téléphone (branche `Karma_dev`)
 
