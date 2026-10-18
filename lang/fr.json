@@ -413,6 +413,7 @@
   "export.filtre.tous": "tout le monde",
   "export.filtre.raz": "Tout garder",
   "export.filtre.retenus": "{n} annotation(s) retenue(s) sur {total} — le reste (suivi, mesures, notes) part tel quel.",
+  "export.filtre.impose": "Plan d'un autre compte : seuls tes ajouts partent (ni ceux des autres, ni les copies de calque, ni les suppressions).",
   "export.btn.generating": "Génération…",
   "export.btn.generatingKmz": "Génération KMZ...",
   "export.calib.apercuPrompt": "Renseigne les 2 points pour voir l'aperçu...",

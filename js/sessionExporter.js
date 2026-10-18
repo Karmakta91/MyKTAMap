@@ -36,6 +36,9 @@
   let _modal = null;
   // Filtre d'export (onglets Complet et Avancé) : période et/ou auteur. Remis à zéro à chaque ouverture.
   let _filtre = { du: "", au: "", auteur: "" };
+  // 🔒 Export limité par l'installation (plan d'un autre compte, window.ktaExportLimite) : pseudo IMPOSÉ au filtre
+  // auteur, non modifiable ; les copies de calque (`_srcCalque`) ne partent jamais. null = export libre.
+  let _auteurImpose = null;
   let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern" | "fusion"
 
   // Fusion de calques : _fusionInputs = [{name, json}] ; _fusionMerged = résultat + dupIds (alerte seulement).
@@ -506,13 +509,16 @@
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
     const tab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
     // Verrou de l'installation : la SESSION seulement (complet, avancé, conversion). Export externe (KMZ / GPX)
-    // et Fusion (fichiers téléversés) passent.
+    // et Fusion (fichiers téléversés) passent. Complet et Avancé savent se limiter à un auteur ; la conversion non.
     if (tab === "full" || tab === "advanced" || tab === "conversion") {
-      if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
+      if (typeof window.ktaExportPlanRefuse === "function" &&
+          window.ktaExportPlanRefuse({ limitePermise: tab !== "conversion" })) return;
     }
     _injecterStyles();
     if (_modal) _fermer();
-    _filtre = { du: "", au: "", auteur: "" };
+    _auteurImpose = ((tab === "full" || tab === "advanced") && typeof window.ktaExportLimite === "function")
+      ? (window.ktaExportLimite() || null) : null;
+    _filtre = { du: "", au: "", auteur: _auteurImpose || "" };
     // initialTab optionnel (ex. "fusion" depuis l'Éditeur de données) ; défaut "full".
     _activeTab = tab;
     const fmt = opts && opts.format;
@@ -524,7 +530,8 @@
 
   // ── Filtre (période / auteur) ──────────────
   function _filtreActif() {
-    return (_activeTab === "full" || _activeTab === "advanced") && !!(_filtre.du || _filtre.au || _filtre.auteur);
+    return (_activeTab === "full" || _activeTab === "advanced") &&
+      !!(_auteurImpose || _filtre.du || _filtre.au || _filtre.auteur);
   }
   function _auteurDe(o) {
     const X = window.KtaExtensions;
@@ -547,8 +554,22 @@
       if (_filtre.du && ts < new Date(_filtre.du + "T00:00:00").getTime()) return false;
       if (_filtre.au && ts > new Date(_filtre.au + "T23:59:59.999").getTime()) return false;
     }
-    if (_filtre.auteur && _auteurDe(o) !== _filtre.auteur) return false;
+    if (_auteurImpose) {
+      // Une copie de calque est le contenu du plan, pas un ajout, quel que soit l'auteur que la synchro lui prête.
+      if (o._srcCalque !== undefined || _auteurDe(o) !== _auteurImpose) return false;
+    } else if (_filtre.auteur && _auteurDe(o) !== _filtre.auteur) return false;
     return true;
+  }
+  // Photos à embarquer : celles des points retenus quand un filtre agit (sinon celles d'objets écartés
+  // partiraient), toutes sinon (null).
+  function _idsPhotosRetenues(points) {
+    return _filtreActif() ? _idsPhotosDe(points) : null;
+  }
+  // Clés de photos de ces points : une photo est rangée sous l'uid du point, ou sous son nom (anciennes).
+  function _idsPhotosDe(points) {
+    return new Set([].concat.apply([], (points || []).map(function(p) {
+      return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")];
+    })));
   }
   function _filtrer(liste) {
     const l = Array.isArray(liste) ? liste : [];
@@ -564,7 +585,10 @@
     const parAuteur = !!(X && typeof X.aPrise === "function" && X.aPrise("auteurObjet"));
     const tous = _brut();
     let optAuteurs = "";
-    if (parAuteur) {
+    if (_auteurImpose) {
+      const nom = window.ktaEsc(_auteurImpose);
+      optAuteurs = '<option value="' + nom + '" selected>' + nom + '</option>';
+    } else if (parAuteur) {
       const noms = {};
       tous.forEach(function(o) { const a = _auteurDe(o); if (a) noms[a] = true; });
       optAuteurs = '<option value="">' + window.ktaEsc(t("export.filtre.tous")) + '</option>' +
@@ -578,9 +602,13 @@
         '<div class="kta-ses-filtre-ligne">' +
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
           '<label>' + window.ktaEsc(t("export.filtre.au")) + ' <input type="date" id="ses_filtre_au" value="' + window.ktaEsc(_filtre.au) + '"></label>' +
-          (parAuteur ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) + ' <select id="ses_filtre_auteur">' + optAuteurs + '</select></label>' : '') +
-          (_filtreActif() ? '<button type="button" class="kta-ses-btn kta-ses-btn-secondary" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
+          ((parAuteur || _auteurImpose) ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) +
+            ' <select id="ses_filtre_auteur"' + (_auteurImpose ? ' disabled' : '') + '>' + optAuteurs +
+            '</select></label>' : '') +
+          ((_filtre.du || _filtre.au || (_filtre.auteur && !_auteurImpose)) ? '<button type="button" class="kta-ses-btn kta-ses-btn-secondary" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
         '</div>' +
+        (_auteurImpose ? '<div class="kta-ses-filtre-bilan kta-tx-warn" id="ses_filtre_impose">🔒 ' +
+          window.ktaEsc(t("export.filtre.impose")) + '</div>' : '') +
         '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
           ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : "") + '</div>' +
       '</div>';
@@ -590,13 +618,13 @@
       const id = e.target && e.target.id;
       if (id === "ses_filtre_du") _filtre.du = e.target.value || "";
       else if (id === "ses_filtre_au") _filtre.au = e.target.value || "";
-      else if (id === "ses_filtre_auteur") _filtre.auteur = e.target.value || "";
+      else if (id === "ses_filtre_auteur") { if (!_auteurImpose) _filtre.auteur = e.target.value || ""; }
       else return;
       _renderTab();
     });
     modal.addEventListener("click", function(e) {
       if (!e.target || e.target.id !== "ses_filtre_raz") return;
-      _filtre = { du: "", au: "", auteur: "" };
+      _filtre = { du: "", au: "", auteur: _auteurImpose || "" };
       _renderTab();
     });
   }
@@ -815,7 +843,7 @@
     const counter = document.getElementById("full_photos_count");
     const cb      = document.getElementById("full_photos");
     if (!section || !counter) return;
-    _collecterPhotosPlan(null).then(function(pack) {
+    _collecterPhotosPlan(_idsPhotosRetenues(_compter().points)).then(function(pack) {
       if (pack.photos.length === 0) {
         section.style.display = "none";
         if (cb) cb.checked = false;
@@ -1872,8 +1900,9 @@
     const anonymize   = !!(anonymizeCb && anonymizeCb.checked);
 
     // 🔒 L'anonymisation garde les photos : elles sont ré-encodées (strip EXIF/GPS) plus bas.
-    const photosPromise = inclurePhotos
-      ? _collecterPhotosPlan(null)
+    const idsPhotos = _idsPhotosRetenues(d.points);
+    const photosPromise = (inclurePhotos && !(idsPhotos && idsPhotos.size === 0))
+      ? _collecterPhotosPlan(idsPhotos)
       : Promise.resolve({ photos: [], totalSize: 0 });
 
     // Mode Histoire (note + PDF) collecté en parallèle ; ignoré en anonymisé (contenu personnel).
@@ -1915,6 +1944,11 @@
         // Traces de suppression : un réimport ne ressuscite pas un objet supprimé. Jamais en anonymisé.
         tombstones: window.KtaUid ? window.KtaUid.getTombstones() : []
       };
+      // 🔒 Export limité à ses ajouts : ni les traces (suppressions de tout le monde), ni les liaisons du plan.
+      if (_auteurImpose) {
+        delete session.tombstones;
+        delete session.interPlanLinks;
+      }
 
       // Tracker : position (marker), path (polyline runtime), timeline datée [{x,y,t,deltaMs,type,level?}],
       // startTs. Champ absent si ni timeline ni path (rien tracké) : les anciens imports l'ignorent.
@@ -2066,7 +2100,7 @@
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
+      ? _idsPhotosDe(filteredPoints)
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)
@@ -2094,7 +2128,7 @@
             window.LegendCustomization.isSessionStateEmpty && !window.LegendCustomization.isSessionStateEmpty()) {
           session.customLegend = window.LegendCustomization.getSessionState();
         }
-        if (window.InterPlanLinks && window._currentLoadedPlanId) {
+        if (window.InterPlanLinks && window._currentLoadedPlanId && !_auteurImpose) {
           const _ipl = window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId);
           if (_ipl.length > 0) session.interPlanLinks = _ipl;
         }
@@ -2250,7 +2284,7 @@
     const inclurePhotosCb = document.getElementById("conv_ed2data_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
+      ? _idsPhotosDe(filteredPoints)
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)

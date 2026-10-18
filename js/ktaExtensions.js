@@ -313,7 +313,7 @@
   //     plans:    { lister: () → Promise<[{id,name,version?,tags?}]>,
   //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
   //     importAutorise: function () → bool,                 // permission (synchrone)
-  //     exportAutorise: function (planId) → bool,           // permission (synchrone)
+  //     exportAutorise: function (planId) → bool | { auteur }, // permission (synchrone), { auteur } = ses ajouts
   //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
   //   })
   // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
@@ -521,7 +521,27 @@
     try { return ext.profilJeu() !== false; }
     catch (e) { console.warn("[Extensions] profilJeu :", e); return true; }
   }
-  function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+  // Export de session : la prise rend true (tout), false (refus) ou { auteur: "<pseudo>" } = export permis, limité
+  // aux objets créés par cet auteur. 🔒 Toute autre forme, ou une erreur = refus. → "tout" | { auteur } | null.
+  function _droitExport(planId) {
+    const ext = _prise("exportAutorise");
+    if (!ext) return "tout";
+    let v;
+    try { v = ext.exportAutorise(planId); }
+    catch (e) { console.warn("[Extensions] « exportAutorise » a échoué → refus :", e); return null; }
+    if (v === true) return "tout";
+    if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+    const cles = Object.keys(v);   // propres seulement : un `auteur` hérité ne compte pas
+    const brut = cles.length === 1 && cles[0] === "auteur" ? v.auteur : null;
+    if (typeof brut !== "string") return null;
+    const auteur = brut.trim().slice(0, 40);
+    return auteur ? { auteur: auteur } : null;
+  }
+  // ⚠️ Booléen : true seulement pour « tout ». Un export limité vaut REFUS pour tout appelant qui ne sait pas
+  // filtrer (export de profil, export d'un calque).
+  function exportAutorise(planId) { return _droitExport(planId) === "tout"; }
+  // Pseudo auquel l'export est limité, sinon null (tout permis, ou refusé).
+  function exportLimite(planId) { const d = _droitExport(planId); return d && d !== "tout" ? d.auteur : null; }
   // Avant un effacement complet (« Tout réinitialiser ») : l'extension ferme sa session (cookie HttpOnly,
   // ineffaçable par la page — sinon reconnexion seule au démarrage suivant). Attente bornée à 3 s ; true si
   // fait (ou sans extension), false sinon → l'appelant pose, APRÈS l'effacement, la marque
@@ -1507,6 +1527,7 @@
     requete: requete,
     importAutorise: importAutorise,
     exportAutorise: exportAutorise,
+    exportLimite: exportLimite,
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
     profilStatsExtension: profilStatsExtension,
@@ -1573,18 +1594,27 @@
   };
 
   // ── Goulots pour le reste de l'app (sans extension : toujours « permis ») ──
-  // Export de la SESSION du plan ouvert (complet, avancé, conversion) : refusé = message (marqué important,
-  // visible même en mode « Essentielles »). KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche ne
-  // passent pas ici : seule la session (ce qu'on a écrit sur le plan) est gardée.
-  window.ktaExportPlanRefuse = function () {
+  // Export de la SESSION du plan ouvert (complet, avancé, conversion, calque rapatrié) : refusé = message (marqué
+  // important, visible même en mode « Essentielles »). KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche
+  // ne passent pas ici : seule la session (ce qu'on a écrit sur le plan) est gardée.
+  // `opts.limitePermise` : l'appelant sait limiter l'export à un auteur (ktaExportLimite) ; sinon un export limité
+  // est refusé.
+  window.ktaExportPlanRefuse = function (opts) {
     const id = window._currentLoadedPlanId;
     // Plan affiché seulement : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
     if (!id || exportAutorise(id)) return false;
+    if (opts && opts.limitePermise === true && exportLimite(id)) return false;
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(_t("ext.export.refuse"), "warn", { important: true });
     }
     return true;
+  };
+  // Pseudo auquel l'export de session du plan OUVERT est limité, sinon null.
+  window.ktaExportLimite = function () {
+    const id = window._currentLoadedPlanId;
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    return id ? exportLimite(id) : null;
   };
   // 🔒 À chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée. Appelée par main.js en fin
   // de chargement.

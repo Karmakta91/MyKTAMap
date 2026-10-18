@@ -462,6 +462,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **Porte de release** : `scripts/smoke/checkup-panneaux-geometrie.js` (4 formats × centré/ancré × 4 panneaux).
 - **Suivi** : la timeline restaurée au rechargement garde `src`, `tp`, `estM`, `estSrc` (recalages sur point, téléportations et distance estimée n'étaient plus comptés après un reload) — garde-fou `check-timeline-restore.js`.
 - **Prise d'extension `pastilleHome`** : une pastille à côté de 📖 dans l'en-tête de l'accueil (lien https ouvert en nouvel onglet, rien sans extension) — contrat dans `community-server-line.md`.
+- **Calques et installation reliée** : un calque ouvert à la modification sur un autre appareil se recale à la synchro (calque d'origine masqué, Exporter / Restituer proposés, plus de « rapatrier » en double ; les copies sont datées du rapatriement pour partir en entier, `7055cf5`) ; prise `exportAutorise` → `{ auteur }` = export de session limité à ses ajouts (« Créé par » imposé, copies de calque, traces et liaisons exclues ; conversion et export de calque refusés) — contrat dans `community-server-line.md` §3. La restitution d'un calque reste locale à l'appareil.
 
 #### v2.16.0 (15/10/2026) — Secteurs de secours, KMZ sur téléphone (branche `Karma_dev`)
 

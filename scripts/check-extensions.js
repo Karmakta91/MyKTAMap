@@ -87,6 +87,50 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 gate déléguée en échec → la promesse REJETTE (l'appelant n'ouvre rien)", rejete);
   }
 
+  // ── 3 bis. EXPORT LIMITÉ À SES AJOUTS ({ auteur }) ──────
+  {
+    const avec = (v) => { const c = nouveauContexte(null); c.K.register({ nom: "e", apiVersion: 1, exportAutorise: () => v }); return c; };
+    const { K, w } = avec({ auteur: " Alice " });
+    t("export limité : exportAutorise reste un REFUS pour qui ne sait pas filtrer (profil, calque)", K.exportAutorise("ext_p") === false);
+    t("export limité : exportLimite rend le pseudo (nettoyé)", K.exportLimite("ext_p") === "Alice");
+    w._currentLoadedPlanId = "ext_p";
+    t("🔒 goulot : sans limitePermise → refusé (conversion, export du calque)", w.ktaExportPlanRefuse() === true);
+    t("goulot : avec limitePermise → passe (complet, avancé)", w.ktaExportPlanRefuse({ limitePermise: true }) === false);
+    t("ktaExportLimite : le pseudo du plan ouvert", w.ktaExportLimite() === "Alice");
+    const tout = avec(true);
+    tout.w._currentLoadedPlanId = "ext_p";
+    t("true = tout : exportLimite null, rien de refusé", tout.K.exportLimite("ext_p") === null && tout.w.ktaExportPlanRefuse() === false);
+    const refus = avec(false);
+    refus.w._currentLoadedPlanId = "ext_p";
+    t("false = refus, même avec limitePermise",
+      refus.w.ktaExportPlanRefuse({ limitePermise: true }) === true && refus.w.ktaExportLimite() === null);
+    const formes = [{ auteur: "" }, { auteur: "   " }, { auteur: 5 }, { auteur: "x", tout: true }, ["x"], "x", 1, null,
+      Object.create({ auteur: "x" })];
+    t("🔒 toute autre forme ({ auteur: '' }, autre clé, tableau, texte, nombre, prototype) → REFUS",
+      formes.every((v) => { const c = avec(v); c.w._currentLoadedPlanId = "ext_p";
+        return c.K.exportAutorise("ext_p") === false && c.K.exportLimite("ext_p") === null &&
+          c.w.ktaExportPlanRefuse({ limitePermise: true }) === true; }));
+    const panne = nouveauContexte(null);
+    panne.K.register({ nom: "p", apiVersion: 1, exportAutorise() { throw new Error("x"); } });
+    panne.w._currentLoadedPlanId = "ext_p";
+    t("🩸 prise en erreur → refus, même avec limitePermise", panne.w.ktaExportPlanRefuse({ limitePermise: true }) === true);
+    const SE = lire("js/sessionExporter.js"), CSE = lire("js/calqueSession.js"), FPN = lire("js/filterPanel.js");
+    t("modal d'export : limite permise pour Complet et Avancé seulement, jamais la conversion",
+      SE.indexOf('window.ktaExportPlanRefuse({ limitePermise: tab !== "conversion" })') > 0 &&
+      SE.indexOf('_auteurImpose = ((tab === "full" || tab === "advanced") && typeof window.ktaExportLimite === "function")') > 0);
+    t("🔒 modal d'export limité : auteur imposé, select désactivé, mention, copies de calque jamais retenues",
+      SE.indexOf("(_auteurImpose ? ' disabled' : '')") > 0 && SE.indexOf('t("export.filtre.impose")') > 0 &&
+      SE.indexOf("if (o._srcCalque !== undefined || _auteurDe(o) !== _auteurImpose) return false;") > 0 &&
+      SE.indexOf('if (!_auteurImpose) _filtre.auteur = e.target.value') > 0 &&
+      SE.indexOf('_filtre = { du: "", au: "", auteur: _auteurImpose || "" };') > 0);
+    t("🔒 export limité : ni traces ni liaisons, photos des seuls points retenus",
+      /if \(_auteurImpose\) \{\n\s*delete session\.tombstones;\n\s*delete session\.interPlanLinks;/.test(SE) &&
+      SE.indexOf("_collecterPhotosPlan(idsPhotos)") > 0 && SE.indexOf("function _idsPhotosRetenues(points)") > 0);
+    t("🔒 export d'un calque rapatrié : droit d'exporter TOUT le plan (goulot sans limitePermise)",
+      /window\.ktaExportPlanRefuse\(\)\) \{\n\s*return \{ ok: false, code: "exportRefuse" \};/.test(CSE) &&
+      FPN.indexOf('r.code === "exportRefuse") return Promise.resolve(false)') > 0);
+  }
+
   // ── Réseau perdu / revenu ──────
   // 🩸 L'état suit le réseau en continu : établi au démarrage seulement, l'accueil afficherait
   // « connectée » hors réseau et l'ouverture d'un plan d'extension attendrait sans fin.
@@ -510,7 +554,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const ouvrir = (iO >= 0 && jO > iO) ? SE.slice(iO, jO) : "";
     t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
       /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) &&
-      ouvrir.indexOf('_filtre = { du: "", au: "", auteur: "" };') >= 0);
+      ouvrir.indexOf('_filtre = { du: "", au: "", auteur: _auteurImpose || "" };') >= 0);
   }
 
   // ── 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ──────

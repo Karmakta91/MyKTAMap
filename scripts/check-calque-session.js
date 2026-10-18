@@ -127,6 +127,15 @@ const CALQUE = {
 
   // ───────── 2 bis. L'EXPORT QUI FERME LA BOUCLE VERS LE ZIP ─────────
   {
+    // 🔒 Le fichier EST le contenu du calque : refusé quand l'installation ne permet pas d'exporter tout le plan.
+    const m = monter(CALQUE);
+    await m.CS.rapatrier("sig");
+    m.ctx.ktaExportPlanRefuse = function (opts) { return !(opts && opts.limitePermise); };
+    const ex = m.CS.exporterCalque("sig");
+    t("🔒 export du calque refuse par le goulot (sans limitePermise) : rien n'est telecharge",
+      ex.ok === false && ex.code === "exportRefuse" && m.ctx.__telecharge !== true);
+  }
+  {
     const m = monter(CALQUE);
     await m.CS.rapatrier("sig");
     m.etat.roads.push({ type: "principal", points: [{ x: 7, y: 7 }] });   // cree a la main

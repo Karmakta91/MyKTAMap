@@ -914,6 +914,7 @@
     if (!CS || !id) return Promise.resolve(false);
     let r = null;
     try { r = CS.exporterCalque(id); } catch (e) { console.warn("[FilterPanel] export du calque :", e); }
+    if (r && r.code === "exportRefuse") return Promise.resolve(false);   // déjà dit par ktaExportPlanRefuse
     if (!r || !r.ok) {
       return window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" })
         .then(function () { return false; });

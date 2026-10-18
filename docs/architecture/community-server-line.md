@@ -61,7 +61,7 @@ photos restent locales et exportables).
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
+> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
@@ -247,6 +247,17 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   entrées non conformes écartées, sans carte : `false`.
 - **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
   « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
+  C'est l'extension qui dit qui a créé un objet, y compris un objet créé ici et pas encore envoyé : l'app ne devine
+  jamais un auteur.
+- **Export limité à ses ajouts** : la prise de permission `exportAutorise(planId)` rend `true` (tout), `false` (refus) ou
+  `{ auteur: "<pseudo>" }` = export de session permis, **limité aux objets créés par cet auteur** (`auteurObjet`). 🔒
+  Toute autre forme (pseudo vide, autre clé, tableau, texte…) ou une erreur = refus. `KtaExtensions.exportAutorise(id)`
+  reste un booléen, vrai pour « tout » seulement : un appelant qui ne sait pas filtrer (export de profil, export d'un
+  calque rapatrié) refuse un export limité ; `KtaExtensions.exportLimite(id)` / `window.ktaExportLimite()` (plan ouvert)
+  rendent le pseudo ou `null`. Goulot : `window.ktaExportPlanRefuse({ limitePermise: true })` laisse passer un export
+  limité (Complet et Avancé, filtre « Créé par » imposé et verrouillé, copies de calque, traces et liaisons exclues,
+  photos des seuls points retenus) ; sans `limitePermise` (conversion, calque) il le refuse. Détail : `exports.md` §4.
+  Sans extension : rien ne change (`scripts/check-extensions.js`).
 - **Dictionnaires d'une extension** : `I18n.ajouter(code, dico)` → nombre de clés retenues (textes, clés `[\w.-]`,
   langues connues seulement). Gardés à part et refusionnés à chaque chargement du dico (paresseux, `reload`) ; une clé
   de l'app n'est **jamais** écrasée — préfixe propre recommandé (`pro.`). Le texte d'une extension n'entre jamais dans
@@ -311,8 +322,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     modifié ou supprimé par la synchro pendant l'édition (avant : modification écrasée sans le savoir).
   - Prise `lectureSeule(idExt) → bool` (droit « lire ») : goulot `window.ktaEditionRefusee()` — ni ✏️ ni 🗑️
     dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
-  - Goulot `window.ktaExportPlanRefuse()` (plan affiché seulement) : `exportAutorise` vaut désormais pour
-    l'export de session (JSON, ZIP, KMZ, GPX) et l'export image/PDF, plus seulement l'export de profil.
+  - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
+    **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
+    KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
   - Prise `avantReinitialisation() → Promise<bool>` : « Tout réinitialiser » l'attend (3 s max) AVANT d'effacer —
     l'extension y ferme sa session (cookie HttpOnly : la page ne peut pas l'effacer, l'appli se reconnectait
     seule). `false` (hors ligne) → après l'effacement, seule la marque `KtaExtensions.CLE_DECONNEXION_EN_ATTENTE`

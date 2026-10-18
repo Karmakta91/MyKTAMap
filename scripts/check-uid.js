@@ -351,8 +351,9 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("popup : points des calques — uid transmis", /window\.attachPopupPhotos\(marker, String\(p\.id \|\| ""\), p\.uid\)/.test(UT));
 
   // Exports et stats
-  t("exports : les photos d'un point se collectent sous son uid ET son nom (2 sites)",
-    (SE.match(/p\.uid \? \[String\(p\.uid\), String\(p\.id \|\| ""\)\] : \[String\(p\.id \|\| ""\)\]/g) || []).length === 2);
+  t("exports : les photos d'un point se collectent sous son uid ET son nom (une règle, Complet / Avancé / conversion)",
+    (SE.match(/p\.uid \? \[String\(p\.uid\), String\(p\.id \|\| ""\)\] : \[String\(p\.id \|\| ""\)\]/g) || []).length === 1 &&
+    (SE.match(/_idsPhotosDe\(filteredPoints\)/g) || []).length === 2 && /return _filtreActif\(\) \? _idsPhotosDe\(points\) : null;/.test(SE));
   t("export : rattachement photo → point par uid puis nom", /const parUid = pt\.uid \? \(parPoint\[String\(pt\.uid\)\] \|\| \[\]\) : \[\];/.test(SE));
   t("export anonymisé : les photos rangées sous l'uid suivent le code anonymisé", /if \(p\.uid\) idMap\[String\(p\.uid\)\] = code;/.test(SE));
   t("stats photos : un uid affiche le nom du point", /if \(p\.uid\) nomByPid\[String\(p\.uid\)\] = lib;/.test(RI));

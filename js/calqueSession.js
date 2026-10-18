@@ -213,6 +213,11 @@ window.CalqueSession = (function () {
   // La marque `_srcCalque` est RETIRÉE (outil interne de session, rien à faire dans un ZIP partagé).
   function exporterCalque(id) {
     if (!estRapatrie(id)) return { ok: false, code: "pasRapatrie" };
+    // 🔒 Le fichier EST le contenu du calque : il faut le droit d'exporter tout le plan (un export limité aux
+    // ajouts d'un auteur ne suffit pas). Le refus se dit par le goulot (message).
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) {
+      return { ok: false, code: "exportRefuse" };
+    }
     const payload = { data: [], roads: [], zones: [], structures: [] };
     let horsCalque = 0;
     FAMILLES.forEach(function (fam) {

@@ -413,6 +413,7 @@
   "export.filtre.tous": "everyone",
   "export.filtre.raz": "Keep everything",
   "export.filtre.retenus": "{n} annotation(s) kept out of {total} — the rest (tracking, measurements, notes) is exported as is.",
+  "export.filtre.impose": "Map of another account: only your own additions are exported (not other people's, nor layer copies, nor deletions).",
   "export.btn.generating": "Generating…",
   "export.btn.generatingKmz": "Generating KMZ...",
   "export.calib.apercuPrompt": "Fill both points to see the preview...",
