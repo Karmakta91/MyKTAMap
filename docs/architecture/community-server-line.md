@@ -413,14 +413,26 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent
   à la déconnexion. Texte seulement, 40 / 24 caractères max ; erreur ou forme inattendue = `null` (profil
   local). L'extension annonce un changement par `notifierCompte()` (événement `mktm:compte-changed`).
-- **Version d'un module** : le SW met en cache un module au premier chargement et le sert ensuite depuis
-  ce cache (règle par défaut, à l'URL exacte). Une nouvelle version passe donc par un **nouveau chemin**
-  dans `index.json` (`pro/connexion.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. Sans
-  suffixe, la mise à jour n'arriverait qu'au prochain bump de `CACHE_NAME` community.
+- **Version d'un module** : les modules déclarés (`config.serverConnection.modules`) sont préchargés dès que
+  l'index est lu en ligne dans le cache durable `myktamap-ext-modules` (il survit aux releases community) et
+  servis **cache d'abord, à l'URL exacte**. Une nouvelle version passe donc par un **nouveau chemin** dans
+  `index.json` (`x/mod.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. ⚠️ Sans nouveau `?v=`,
+  un module modifié reste périmé sur les appareils, même après une release community. Il en va de même
+  d'un script chargé par une page du dossier (sa balise porte son propre `?v=`).
+- **Pages et feuilles de style des dossiers de modules** : un dossier de module = le dossier d'un module
+  déclaré (`x/mod.js` → `x/`, `x/lang/fr.js` → `x/lang/`), **strictement sous** le scope du SW (un module
+  posé à la racine ne fait rien passer). Leurs `.html` / `.css` (et toute navigation dans ces dossiers)
+  sont servis **réseau d'abord** (`no-store`, délai 3 s), copie gardée dans le cache durable
+  `myktamap-ext-pages` sous l'URL **sans requête** (🔒 un jeton passé en requête ne reste pas sur
+  l'appareil) ; hors ligne, panne ou 5xx → la copie ; une réponse du serveur (404, redirection) est
+  transmise telle quelle. Le SW réveillé sans mémoire relit les dossiers dans l'index en cache ; `index.html`
+  et les fichiers de l'app restent cache d'abord, sans lecture supplémentaire. Sans module déclaré
+  (myktamap.fr) : aucun dossier, rien ne change. Garde-fou : `scripts/check-extensions.js` §8 (vrai `sw.js`
+  dans un `vm`, faux caches et faux réseau).
 - **Service Worker** : les modules greffés ne sont **jamais** dans `ASSETS_TO_CACHE`. Ils
-  doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
-  cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de
-  bumper `CACHE_NAME` côté community.
+  doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : les caches
+  `myktamap-ext-` sont gardés à l'activation, pour qu'une release pro n'impose pas de bumper
+  `CACHE_NAME` côté community.
 - **ConfAdmin** (décision de l'auteur) : l'outil déployeur community propose un bloc
   « Connexion serveur » (état, API, modules), **replié par défaut** et présenté comme réservé
   aux instances qui greffent des modules. Il reste hors `ASSETS_TO_CACHE`.

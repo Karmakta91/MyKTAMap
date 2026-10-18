@@ -99,6 +99,13 @@ L'auteur active/désactive **en éditant uniquement ce fichier** :
 
 **Pour ajouter un nouveau fichier live-config** (futur) : créer le `.json` à la racine, NE PAS le mettre dans `ASSETS_TO_CACHE`, créer un module `js/xxxChecker.js` qui suit le pattern (fetch cache-bust + queue splash + notifySplashEnded). Toujours documenter le commentaire d'en-tête de `sw.js` pour rappeler "NE PAS cacher".
 
+**Stratégies du Service Worker** (liste à jour : en-tête de `sw.js`) : réseau seul pour les fichiers de contrôle
+ci-dessus, `killsw.html`, les ZIP de plan déclarés, les sondes de fraîcheur et les requêtes d'extension ou
+authentifiées ; **réseau d'abord** (délai court, repli sur la copie hors ligne) pour `docs/applications/`,
+`lang/*.json`, `data/index.json` et, sur une installation qui déclare des modules, les pages et feuilles de style
+de leurs dossiers (contrat : `community-server-line.md` §3) ; **cache d'abord** pour tout le reste, dont l'app
+elle-même — ce qui n'a pas de `?v=` n'y change qu'au bump de `CACHE_NAME`.
+
 ---
 
 ### 22. Sources de vérité version & Badge version footer (depuis 13/05/2026)

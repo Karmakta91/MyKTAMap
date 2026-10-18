@@ -1101,6 +1101,108 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 aucun module greffé (pro/) précaché par community", assets.length > 0 && !/["']\.?\/?pro\//.test(assets));
   }
 
+  // ── 8. SERVICE WORKER : PAGES DES DOSSIERS DE MODULES EN RÉSEAU D'ABORD (vrai sw.js) ──────
+  // Faux caches, faux réseau ; chaque bac = un SW qui démarre sans mémoire.
+  {
+    const SCOPE = "https://inst.test/";
+    const SWSRC = lire("sw.js");
+    const NOM_CACHE = SWSRC.match(/const CACHE_NAME = "([^"]+)"/)[1];
+    const rep = (corps, status) => ({ corps, status: status || 200, ok: (status || 200) < 300, type: "basic",
+      clone() { return rep(corps, status); }, text() { return Promise.resolve(corps); } });
+    const bac = (modules) => {
+      const magasins = {}, appels = [];
+      const b = { reseau: () => Promise.reject(new Error("hors ligne")), appels, magasins };
+      const abs = (r) => new URL(typeof r === "string" ? r : r.url, SCOPE).href;
+      const magasin = (nom) => {
+        const m = magasins[nom] = magasins[nom] || new Map();
+        return {
+          match(r, o) {
+            const u = abs(r);
+            if (o && o.ignoreSearch) {
+              for (const [k, v] of m) if (k.split("?")[0] === u.split("?")[0]) return Promise.resolve(v);
+            }
+            return Promise.resolve(m.get(u));
+          },
+          put(r, x) { m.set(abs(r), x); return Promise.resolve(); },
+          keys() { return Promise.resolve([...m.keys()].map((url) => ({ url }))); },
+          delete(r) { return Promise.resolve(m.delete(r.url)); },
+        };
+      };
+      const ecoutes = {};
+      function Response(corps, init) { return rep(corps, init && init.status); }
+      const ctx = vm.createContext({
+        self: { registration: { scope: SCOPE }, location: { origin: "https://inst.test" },
+          addEventListener(type, f) { ecoutes[type] = f; } },
+        caches: { open: (n) => Promise.resolve(magasin(n)), has: (n) => Promise.resolve(n in magasins),
+          keys: () => Promise.resolve(Object.keys(magasins)) },
+        fetch: (r) => { appels.push(abs(r)); return b.reseau(abs(r)); },
+        Response, URL, Set, Map, Promise, Error, Date, console: { log() {}, warn() {}, error() {} },
+        // Délais du SW raccourcis ; l'éviction (30 s) n'est pas jouée.
+        setTimeout: (f, ms) => (ms >= 10000 ? 0 : setTimeout(f, Math.min(ms, 20))), clearTimeout,
+      });
+      vm.runInContext(SWSRC, ctx, { filename: "sw.js" });
+      b.principal = magasin(NOM_CACHE);
+      b.principal.put(SCOPE + "data/index.json", rep(JSON.stringify({ config: { serverConnection: { state: "on", modules } } })));
+      b.demander = (url, destination) => {
+        let p = null;
+        ecoutes.fetch({ request: { method: "GET", url: SCOPE + url, destination: destination || "", headers: { get: () => null } },
+          respondWith(x) { p = Promise.resolve(x); } });
+        return p ? p.then((r) => r && r.corps) : Promise.resolve("(non intercepté)");
+      };
+      return b;
+    };
+    const avec = bac(["ext/lang/fr.js?v=1", "ext/mod.js?v=2"]);
+    let version = "page v1";
+    avec.reseau = (u) => Promise.resolve(rep(version + " " + u));
+    t("SW réveillé sans mémoire : la page d'un dossier de module vient du réseau",
+      /^page v1 /.test(await avec.demander("ext/compte.html", "document")));
+    version = "page v2";
+    t("🩸 page modifiée sur le serveur : vue à jour au chargement suivant (plus de copie figée)",
+      /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
+    t("feuille de style d'un sous-dossier de module : réseau d'abord", /^page v2 /.test(await avec.demander("ext/lang/x.css", "style")));
+    avec.reseau = () => Promise.reject(new Error("hors ligne"));
+    t("hors ligne : la dernière copie est servie",
+      /^page v2 .*ext\/compte\.html$/.test(await avec.demander("ext/compte.html", "document")));
+    avec.reseau = () => new Promise(() => {});
+    t("réseau muet : la copie est servie après le délai", /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
+    avec.reseau = () => Promise.resolve(rep("erreur", 503));
+    t("serveur en erreur (5xx) : la copie est servie", /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
+    avec.reseau = () => Promise.resolve(rep("absente", 404));
+    t("réponse du serveur (404) : transmise telle quelle, jamais la copie", (await avec.demander("ext/compte.html", "document")) === "absente");
+    avec.reseau = () => Promise.resolve(rep("invitation"));
+    await avec.demander("ext/invitation.html?jeton=secret", "document");
+    await new Promise((r) => setTimeout(r, 30));
+    const clesPages = [...(avec.magasins["myktamap-ext-pages"] || new Map()).keys()];
+    t("🔒 copie d'une page gardée SANS sa requête (un jeton ne reste pas sur l'appareil)",
+      clesPages.length >= 3 && clesPages.every((k) => k.indexOf("?") < 0));
+    avec.appels.length = 0;
+    avec.reseau = () => Promise.reject(new Error("hors ligne"));
+    avec.principal.put(SCOPE + "index.html", rep("app"));
+    avec.principal.put(SCOPE + "css/style.css", rep("css app"));
+    avec.principal.put(SCOPE + "ext/mod.js?v=2", rep("module"));
+    t("🩸 démarrage de l'app : index.html, css/ et les modules (?v=) restent en cache d'abord, sans réseau",
+      (await avec.demander("index.html", "document")) === "app" && (await avec.demander("css/style.css", "style")) === "css app" &&
+      (await avec.demander("ext/mod.js?v=2", "script")) === "module" && avec.appels.length === 0);
+
+    const sans = bac([]);
+    sans.principal.put(SCOPE + "ext/compte.html", rep("copie"));
+    sans.reseau = () => Promise.resolve(rep("neuf"));
+    t("sans module déclaré : rien ne change (cache d'abord, aucun cache de pages créé)",
+      (await sans.demander("ext/compte.html", "document")) === "copie" && !("myktamap-ext-pages" in sans.magasins));
+    sans.reseau = (u) => Promise.resolve(rep(/index\.json/.test(u)
+      ? JSON.stringify({ config: { serverConnection: { state: "on", modules: ["ext/mod.js?v=1"] } } }) : "neuf"));
+    await sans.demander("data/index.json");
+    await new Promise((r) => setTimeout(r, 30));
+    t("index relu en ligne qui déclare un module : ses pages passent en réseau d'abord sans attendre un réveil",
+      (await sans.demander("ext/compte.html", "document")) === "neuf");
+    const racine = bac(["mod.js?v=1"]);
+    racine.principal.put(SCOPE + "page.html", rep("copie"));
+    racine.principal.put(SCOPE + "css/style.css", rep("css app"));
+    t("🩸 module posé à la racine : l'app elle-même ne passe pas en réseau d'abord",
+      (await racine.demander("page.html", "document")) === "copie" &&
+      (await racine.demander("css/style.css", "style")) === "css app" && racine.appels.length === 0);
+  }
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 points d'extension : neutres sans extension, fermés quand une permission échoue, jamais de repli sur la gate community");

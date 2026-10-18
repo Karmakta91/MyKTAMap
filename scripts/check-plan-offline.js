@@ -380,6 +380,7 @@ async function _fraicheur() {
   self0.clients = { claim: noop, matchAll: async () => [] };
   self0.console = { log: noop, warn: noop, error: noop };
   self0.location = { origin: "http://x", href: "http://x/" };
+  self0.registration = { scope: "http://x/" };
   self0.caches = { open: async () => ({ match: async () => null, put: async () => {},
                                         keys: async () => [], add: async () => {}, delete: async () => true }),
                    keys: async () => [], match: async () => null, delete: async () => true };
@@ -411,6 +412,7 @@ async function _fraicheur() {
       ["dico i18n",            "http://x/lang/fr.json"],
       ["doc applicative",      "http://x/docs/applications/README_USER.md"],
       ["asset ordinaire",      "http://x/js/map.js"],
+      ["page d'un sous-dossier", "http://x/ext/page.html"],
       ["tuile OSM",            "https://a.tile.openstreetmap.org/12/2048/1362.png"]
     ];
     cas.forEach(function (c) {
