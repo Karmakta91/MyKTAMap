@@ -783,6 +783,61 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       !!K.appliquerChangements({ roads: [{ uid: "rd_cop44444", type: "chemin", points: [], updatedAt: 500, _srcCalque: "c1" }], tombstones: [] }));
   }
 
+  // ── 6 ter quater. RESTITUTION D'UN CALQUE PARTAGÉE (vrai calqueSession.js) ──────
+  // Une restitution n'est JAMAIS une trace de suppression : elle retire chez les autres les copies marquées du
+  // calque datées au plus tard de T, et rien d'autre (un objet du calque ne porte pas la marque).
+  {
+    const { K, w } = nouveauContexte(null);
+    const vm5 = require("vm");
+    const ctx5 = vm5.createContext(w);
+    vm5.runInContext(lire("js/ktaUid.js"), ctx5, { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_mien1111", name: "Mon point", updatedAt: 100 }];
+    let roads = [];
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; };
+    w.getRoads = () => roads; w.setRoads = (r) => { roads = r; }; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.PLAN_CONFIG = { dataLayers: [{ id: "c1", file: "c1.json" }] };
+    w.dataLayerGroups = { c1: { __id: "c1" } };
+    const surCarte = { c1: true };
+    w.map = { hasLayer: (g) => !!surCarte[g.__id], removeLayer: (g) => { surCarte[g.__id] = false; },
+      addLayer: (g) => { surCarte[g.__id] = true; } };
+    w.I18n = { t: (k) => k };
+    vm5.runInContext(lire("js/calqueSession.js"), ctx5, { filename: "calqueSession.js" });
+    const copie = (uid, maj, R) => ({ uid, type: "chemin", points: [], updatedAt: maj, _srcCalque: "c1", _srcCalqueDepuis: R });
+    K.appliquerChangements({ roads: [copie("rd_cop10000", 150, 100), copie("rd_cop20000", 150, 100)], tombstones: [] });
+    t("copies reçues → calque en modification, original masqué",
+      w.CalqueSession.estRapatrie("c1") && surCarte.c1 === false && roads.length === 2);
+    const res = K.appliquerChangements({ roads: [copie("rd_cop20000", 300, 100)], tombstones: [],
+      restitutions: [{ calque: "c1", avant: 200 }] });
+    t("🩸 restitution reçue : la copie datée avant T est RETIRÉE",
+      !roads.some((r) => r.uid === "rd_cop10000") && res.calques.retires === 1);
+    const gardee = roads.find((r) => r.uid !== "rd_cop20000");
+    t("🩸 copie modifiée APRÈS T : gardée, marque retirée, uid dérivé (jamais celui du calque)",
+      res.calques.gardes === 1 && !!gardee && gardee._srcCalque === undefined && gardee.updatedAt === 300 &&
+      !roads.some((r) => r.uid === "rd_cop20000"));
+    t("…le calque d'origine revient (plus aucune copie marquée)", !w.CalqueSession.estRapatrie("c1") && surCarte.c1 === true);
+    t("🔒 la restitution ne crée AUCUNE trace de suppression", w.KtaUid.getTombstones().length === 0);
+    t("mon point (sans marque) est intact", pts.length === 1 && pts[0].uid === "pt_mien1111");
+    K.appliquerChangements({ roads: [copie("rd_cop10000", 150, 100)], tombstones: [] });
+    t("🩸 copie périmée reçue APRÈS la restitution : retirée aussi (restitutions retenues)",
+      !roads.some((r) => r.uid === "rd_cop10000") && surCarte.c1 === true);
+    K.appliquerChangements({ roads: [copie("rd_cop10000", 500, 500)], tombstones: [] });
+    t("nouveau rapatriement après T : la copie reste, le calque repasse en modification",
+      roads.some((r) => r.uid === "rd_cop10000") && w.CalqueSession.estRapatrie("c1"));
+    t("changementsDepuis : les restitutions faites ici sont exposées (aucune ici)",
+      Array.isArray(K.changementsDepuis(0).restitutions) && K.changementsDepuis(0).restitutions.length === 0);
+    w._currentLoadedPlanId = "ext_p1";
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext", extId: "p1" } : null) };
+    const rr = w.CalqueSession.restituer("c1");
+    const ch = K.changementsDepuis(0).restitutions;
+    t("restitution ici sur un plan d'extension → changementsDepuis la donne { calque, avant, uids }",
+      rr.partagee === true && ch.length === 1 && ch[0].calque === "c1" && ch[0].avant >= 500 &&
+      JSON.stringify(ch[0].uids) === JSON.stringify(["rd_cop10000"]));
+    t("…et plus après son instant", K.changementsDepuis(ch[0].avant).restitutions.length === 0);
+    t("🔒 restituer ne crée aucune trace", w.KtaUid.getTombstones().length === 0);
+  }
+
   // ── 6 quater. ACTIONS DU COMPTE ──────
   {
     const { K } = nouveauContexte(null);

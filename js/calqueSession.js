@@ -23,9 +23,13 @@
 //   1. « Effacer la session » doit RENDRE le calque : copie et verrou tombent ensemble, sinon plan vide.
 //   2. Au chargement, le verrou ne s'applique QUE SI la copie est là (sauvegarde ratée sur quota → plan vide
 //      sans explication) : appliquerVerrous() vérifie AVANT de masquer, et déverrouille en le disant.
+// 🩸 Plan d'extension (☁️) : la restitution se PARTAGE sans trace de suppression (une trace sur l'uid d'une copie,
+//   exportée puis fusionnée, détruirait l'objet du calque). Un enregistrement par calque « restitué à T »
+//   (restitutionsDepuis → synchro sortante ; appliquerRestitutions ← synchro entrante), gardé dans l'état LOCAL
+//   de la session (jamais dans un fichier de session ni de calque). Règle : docs/architecture/session-data.md.
 // API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
 //   exporterCalque, compterCopie, appliquerVerrous, resynchroniser (import de session, synchro), getSessionState,
-//   loadSessionState, CLE_SOURCE }
+//   loadSessionState, restitutionsDepuis, appliquerRestitutions, CLE_SOURCE, CLE_DEPUIS }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
 // check-calque-session.js.
 
@@ -35,10 +39,17 @@ window.CalqueSession = (function () {
   // Marqueur posé sur CHAQUE objet rapatrié : il rend la restitution possible (on sait quoi retirer) et dit à
   // l'export quel calque il remplace. Préfixe `_` = interne.
   const CLE_SOURCE = "_srcCalque";
+  // Instant du rapatriement (ms), posé avec la marque : une restitution « à T » ne touche que les copies d'un
+  // rapatriement antérieur à T — celles d'un nouveau rapatriement (après T) restent.
+  const CLE_DEPUIS = "_srcCalqueDepuis";
 
-  // Ids des calques rapatriés : TOUT l'état persistant du module (les objets vivent dans la session, le verrou se
-  // déduit).
+  // Ids des calques rapatriés (les objets vivent dans la session, le verrou se déduit).
   let _rapatries = [];
+  // Restitutions connues sur ce plan : { calqueId: T } (la plus récente), et celles faites ICI à envoyer :
+  // { calqueId: { avant: T, uids: [...] } } — les uids servent au serveur, qui ne lit pas un objet chiffré.
+  let _restitutions = {};
+  let _aEnvoyer = {};
+  const MAX_ID = 200;
 
   function _log(msg, extra) {
     if (extra !== undefined) console.log("[CalqueSession] " + msg, extra);
@@ -161,6 +172,7 @@ window.CalqueSession = (function () {
           const copies = src.map(function (o) {
             const c = JSON.parse(JSON.stringify(o));
             c[CLE_SOURCE] = id;
+            c[CLE_DEPUIS] = maintenant;
             c.updatedAt = maintenant;
             return c;
           });
@@ -185,23 +197,137 @@ window.CalqueSession = (function () {
 
   // ── Restitution ──────────
   // Retire de la session TOUT ce qui porte la marque du calque, lève le verrou, remet le calque sur la carte. Les
-  // objets CRÉÉS depuis (sans la marque) ne sont pas touchés.
-  function restituer(id) {
+  // objets CRÉÉS depuis (sans la marque) ne sont pas touchés. Sur un plan d'extension modifiable, la restitution
+  // est notée pour les autres appareils (« restitué à T » + uids retirés) ; `opts.local` = jamais notée
+  // (« Effacer la session » : la copie du serveur doit revenir, pas disparaître chez tout le monde).
+  function restituer(id, opts) {
     if (!estRapatrie(id)) return { ok: false, code: "pasRapatrie" };
     let retires = 0;
+    let T = Date.now();
+    const uids = [];
     FAMILLES.forEach(function (fam) {
       const avant = _lire(fam);
-      const apres = avant.filter(function (o) { return !o || o[CLE_SOURCE] !== id; });
+      const apres = avant.filter(function (o) {
+        if (!o || o[CLE_SOURCE] !== id) return true;
+        if (typeof o.uid === "string" && o.uid) uids.push(o.uid);
+        // T couvre toutes les copies retirées ici, même datées un peu en avance.
+        if (typeof o.updatedAt === "number" && isFinite(o.updatedAt) && o.updatedAt > T) T = o.updatedAt;
+        return false;
+      });
       if (apres.length !== avant.length) {
         retires += (avant.length - apres.length);
         _ecrire(fam, apres);
       }
     });
     _rapatries = _rapatries.filter(function (x) { return x !== id; });
+    const partagee = !(opts && opts.local === true) && _restitutionPartagee();
+    if (partagee) {
+      _restitutions[id] = Math.max(_restitutions[id] || 0, T);
+      const deja = _aEnvoyer[id] ? _aEnvoyer[id].uids : [];
+      _aEnvoyer[id] = { avant: _restitutions[id], uids: Array.from(new Set(deja.concat(uids))) };
+    }
     _afficher(id);
     _persister();
-    _log("calque « " + id + " » restitue — " + retires + " objet(s) retire(s) de la session");
-    return { ok: true, retires: retires };
+    _log("calque « " + id + " » restitue — " + retires + " objet(s) retire(s) de la session" +
+         (partagee ? " (restitution partagee, avant " + T + ")" : ""));
+    return { ok: true, retires: retires, partagee: partagee };
+  }
+
+  // Plan d'extension ouvert et modifiable : seul cas où la restitution part aux autres. Notée sur un plan en
+  // lecture seule, elle partirait plus tard, périmée, si le droit change.
+  function _restitutionPartagee() {
+    const PR = window.PlanRegistry, id = window._currentLoadedPlanId;
+    const e = (PR && typeof PR.findById === "function" && id) ? PR.findById(id) : null;
+    if (!e || e.type !== "ext") return false;
+    const X = window.KtaExtensions;
+    try { return !(X && typeof X.lectureSeule === "function" && X.lectureSeule(id)); } catch (er) { return false; }
+  }
+
+  // ── Restitution partagée : sortante ──────────
+  // Restitutions faites ICI après `ts` (ms) : [{ calque, avant, uids }] (copies).
+  function restitutionsDepuis(ts) {
+    const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
+    return Object.keys(_aEnvoyer).filter(function (id) { return _aEnvoyer[id].avant > seuil; }).map(function (id) {
+      return { calque: id, avant: _aEnvoyer[id].avant, uids: _aEnvoyer[id].uids.slice() };
+    });
+  }
+
+  // uid d'une copie GARDÉE après une restitution (cf. appliquerRestitutions) : dérivé de l'uid et de T, donc le
+  // même sur tous les appareils (pas de doublon entre eux), et différent de l'objet du calque (une trace de
+  // suppression sur lui ne vise jamais l'original). Même préfixe : celui de la copie.
+  function _uidGarde(uid, T) {
+    const h = function (graine) {
+      let x = graine >>> 0;
+      for (let i = 0; i < uid.length; i++) { x ^= uid.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; }
+      return x.toString(36);
+    };
+    const pre = /^(pt|rd|zn|st)_/.test(uid) ? uid.slice(0, 3) : "pt_";
+    return pre + h(2166136261) + h(1315423911) + "_r" + Math.floor(T).toString(36);
+  }
+
+  // ── Restitution partagée : entrante ──────────
+  // `liste` = [{ calque, avant }] d'un autre appareil, ajoutée aux restitutions connues ; puis TOUTES sont
+  // appliquées (une copie périmée arrivée après coup est traitée pareil). Copie marquée du calque L restitué à T :
+  //   - rapatriée après T (`_srcCalqueDepuis` > T) : intacte, le calque est de nouveau en modification ;
+  //   - modifiée au plus tard à T : RETIRÉE, la restitution l'emporte (décision produit) ;
+  //   - modifiée APRÈS T : GARDÉE en objet ordinaire (uid dérivé, marque retirée, date inchangée) et signalée —
+  //     rien de perdu, et le calque d'origine n'est pas masqué pour quelques objets ;
+  //   - sans date de rapatriement et modifiée après T : intacte (provenance inconnue ; la convertir changerait
+  //     peut-être tout un calque rapatrié en objets « à la main »).
+  // Ne touche JAMAIS un objet sans la marque. → { retires, gardes, change } ; l'appelant resynchronise.
+  function appliquerRestitutions(liste) {
+    let nouvelle = false;
+    (Array.isArray(liste) ? liste : []).forEach(function (r) {
+      if (!r || typeof r.calque !== "string" || !r.calque || r.calque.length > MAX_ID) return;
+      const T = Number(r.avant);
+      if (!isFinite(T) || T <= 0) return;
+      if (!(_restitutions[r.calque] >= T)) { _restitutions[r.calque] = T; nouvelle = true; }
+    });
+    let retires = 0, gardes = 0;
+    const parCalque = {};
+    FAMILLES.forEach(function (fam) {
+      const avant = _lire(fam);
+      const apres = [];
+      const deja = new Set(avant.map(function (o) { return o && o.uid; }));
+      const index = new Map();   // uid → position dans `apres`
+      const poser = function (o) {
+        const k = (o && o.uid) ? index.get(o.uid) : undefined;
+        if (k === undefined) { if (o && o.uid) index.set(o.uid, apres.length); apres.push(o); return; }
+        // Copie déjà gardée (autre tour, autre appareil) : la plus récente reste, pas de doublon.
+        if ((Number(o.updatedAt) || 0) > (Number(apres[k].updatedAt) || 0)) apres[k] = o;
+      };
+      let change = false;
+      avant.forEach(function (o) {
+        const L = o ? o[CLE_SOURCE] : undefined;
+        const T = (L !== undefined) ? _restitutions[L] : undefined;
+        if (T === undefined) { poser(o); return; }
+        const R = o[CLE_DEPUIS];
+        if (typeof R === "number" && R > T) { poser(o); return; }
+        if ((Number(o.updatedAt) || 0) <= T) { retires++; change = true; return; }
+        if (typeof R !== "number") { poser(o); return; }
+        const c = JSON.parse(JSON.stringify(o));
+        delete c[CLE_SOURCE];
+        delete c[CLE_DEPUIS];
+        c.uid = _uidGarde(String(o.uid || ""), T);
+        change = true;
+        if (!deja.has(c.uid)) { gardes++; parCalque[L] = (parCalque[L] || 0) + 1; }
+        poser(c);
+      });
+      if (change) _ecrire(fam, apres);
+    });
+    const change = retires > 0 || gardes > 0;
+    if (change || nouvelle) _persister();
+    if (change) _log("restitution recue — " + retires + " copie(s) retiree(s), " + gardes + " gardee(s) en session");
+    if (gardes && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      Object.keys(parCalque).forEach(function (L) {
+        const lc = _cfgCalque(L);
+        try {
+          window.OOMGuard.showToast(window.I18n.t("calque.restitution.gardes",
+            { n: parCalque[L], calque: (lc && lc.label) || L }), "warn");
+        } catch (e) {}
+      });
+    }
+    return { retires: retires, gardes: gardes, change: change };
   }
 
   // ── Retour vers le ZIP : UN fichier de la forme de l'original ──────────
@@ -228,6 +354,7 @@ window.CalqueSession = (function () {
         if (o[CLE_SOURCE] === id) {
           const c = JSON.parse(JSON.stringify(o));
           delete c[CLE_SOURCE];
+          delete c[CLE_DEPUIS];
           payload[cible].push(c);
         } else if (o[CLE_SOURCE] === undefined) {
           // Objet créé à la main en session : il n'appartient pas au calque, on ne l'y verse pas d'autorité. On le
@@ -323,6 +450,7 @@ window.CalqueSession = (function () {
           if (presents.indexOf(id) < 0) presents.push(id);
         } else {
           delete o[CLE_SOURCE];   // mutation en place : l'objet EST celui de la session
+          delete o[CLE_DEPUIS];
           orphelins++;
         }
       });
@@ -339,13 +467,36 @@ window.CalqueSession = (function () {
   }
 
   // ── Persistance (hooks SessionPersist, comme LegendCustomization) ──────────
+  // ⚠️ État LOCAL (sauvegarde de session de l'appareil) : un fichier de session n'emporte ni la liste ni les
+  // restitutions (sessionExporter.js ne lit pas getSessionState).
   function getSessionState() {
-    return _rapatries.length ? { rapatries: _rapatries.slice() } : null;
+    const st = {};
+    if (_rapatries.length) st.rapatries = _rapatries.slice();
+    if (Object.keys(_restitutions).length) st.restitutions = Object.assign({}, _restitutions);
+    if (Object.keys(_aEnvoyer).length) st.aEnvoyer = JSON.parse(JSON.stringify(_aEnvoyer));
+    return Object.keys(st).length ? st : null;
   }
 
   function loadSessionState(st) {
-    const src = (st && typeof st === "object" && Array.isArray(st.rapatries)) ? st.rapatries : [];
+    const o = (st && typeof st === "object") ? st : {};
+    const src = Array.isArray(o.rapatries) ? o.rapatries : [];
     _rapatries = src.filter(function (x) { return typeof x === "string" && x; });
+    _restitutions = {};
+    _aEnvoyer = {};
+    const okId = function (k) { return typeof k === "string" && k && k.length <= MAX_ID; };
+    const okT = function (T) { return typeof T === "number" && isFinite(T) && T > 0; };
+    if (o.restitutions && typeof o.restitutions === "object") {
+      Object.keys(o.restitutions).forEach(function (k) {
+        if (okId(k) && okT(o.restitutions[k])) _restitutions[k] = o.restitutions[k];
+      });
+    }
+    if (o.aEnvoyer && typeof o.aEnvoyer === "object") {
+      Object.keys(o.aEnvoyer).forEach(function (k) {
+        const r = o.aEnvoyer[k];
+        if (!okId(k) || !r || !okT(r.avant) || !Array.isArray(r.uids)) return;
+        _aEnvoyer[k] = { avant: r.avant, uids: r.uids.filter(function (u) { return typeof u === "string" && u; }) };
+      });
+    }
   }
 
   function _persister() {
@@ -360,6 +511,7 @@ window.CalqueSession = (function () {
 
   return {
     CLE_SOURCE:             CLE_SOURCE,
+    CLE_DEPUIS:             CLE_DEPUIS,
     estRapatrie:            estRapatrie,
     listeRapatries:         listeRapatries,
     compterCopie:           compterCopie,
@@ -369,6 +521,8 @@ window.CalqueSession = (function () {
     restituer:              restituer,
     exporterCalque:         exporterCalque,
     resynchroniser:         resynchroniser,
+    restitutionsDepuis:     restitutionsDepuis,
+    appliquerRestitutions:  appliquerRestitutions,
     appliquerVerrous:       appliquerVerrous,
     getSessionState:        getSessionState,
     loadSessionState:       loadSessionState

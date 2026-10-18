@@ -158,6 +158,8 @@ const CALQUE = {
     t("export : l'objet cree a la main n'y est pas", p.roads.length === 2);
     t("🧹 export : la marque interne `_srcCalque` est RETIREE",
       p.roads.concat(p.zones, p.structures, p.data).every(function (o) { return o._srcCalque === undefined; }));
+    t("🧹 export : l'instant du rapatriement `_srcCalqueDepuis` aussi",
+      p.roads.concat(p.zones, p.structures, p.data).every(function (o) { return o._srcCalqueDepuis === undefined; }));
     t("export : la session n'est pas alteree par l'export",
       m.CS.compterCopie("sig") === 4 && m.CS.estRapatrie("sig") === true);
   }
@@ -309,6 +311,88 @@ const CALQUE = {
     const m = monter(CALQUE);
     delete m.ctx.PLAN_CONFIG;
     t("resynchroniser sans plan : ne touche a rien", m.CS.resynchroniser() === null);
+  }
+
+  // ───────── 4 ter. 🩸 RESTITUTION PARTAGÉE (plan d'extension) ─────────
+  // Jamais une trace de suppression (une trace sur l'uid d'une copie, exportée puis fusionnée, détruirait
+  // l'objet du calque) : un enregistrement « calque restitué à T », local à la session de l'appareil.
+  {
+    const AVEC_UID = { roads: [{ uid: "rd_c1aaaaaa", type: "a", points: [] }, { uid: "rd_c1bbbbbb", type: "b", points: [] }] };
+    const ext = function (m, lecture) {
+      m.ctx._currentLoadedPlanId = "ext_p1";
+      m.ctx.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext" } : null) };
+      m.ctx.KtaExtensions = { lectureSeule: () => !!lecture };
+    };
+    const m = monter(AVEC_UID);
+    await m.CS.rapatrier("sig");
+    t("rapatrier : chaque copie porte l'instant du rapatriement (_srcCalqueDepuis)",
+      m.CS.CLE_DEPUIS === "_srcCalqueDepuis" && m.etat.roads.every((o) => typeof o._srcCalqueDepuis === "number"));
+    m.CS.restituer("sig");
+    t("plan local : la restitution n'est PAS notée (rien à envoyer)",
+      m.CS.restitutionsDepuis(0).length === 0 && m.CS.getSessionState() === null);
+
+    const m2 = monter(AVEC_UID);
+    ext(m2);
+    await m2.CS.rapatrier("sig");
+    const r2 = m2.CS.restituer("sig");
+    const env = m2.CS.restitutionsDepuis(0);
+    t("plan d'extension : restitution notée { calque, avant, uids } (uids = copies retirées)",
+      r2.partagee === true && env.length === 1 && env[0].calque === "sig" &&
+      JSON.stringify(env[0].uids.slice().sort()) === JSON.stringify(["rd_c1aaaaaa", "rd_c1bbbbbb"]));
+    t("…seulement si postérieure au seuil", m2.CS.restitutionsDepuis(env[0].avant).length === 0);
+    const st = m2.CS.getSessionState();
+    t("…gardée dans l'état LOCAL de la session (relu au chargement)", !!st && st.restitutions.sig === env[0].avant &&
+      (function () { const m3 = monter(AVEC_UID); m3.CS.loadSessionState(st); return m3.CS.restitutionsDepuis(0).length === 1; })());
+    t("🔒 le fichier de session ne l'emporte pas (sessionExporter ne lit pas l'état du module)",
+      fs.readFileSync("js/sessionExporter.js", "utf8").indexOf("CalqueSession") < 0);
+
+    const m4 = monter(AVEC_UID);
+    ext(m4, true);
+    await m4.CS.rapatrier("sig");
+    t("plan en lecture seule : restitution locale seulement", m4.CS.restituer("sig").partagee === false &&
+      m4.CS.restitutionsDepuis(0).length === 0);
+    const m5 = monter(AVEC_UID);
+    ext(m5);
+    await m5.CS.rapatrier("sig");
+    t("« Effacer la session » (opts.local) : jamais notée", m5.CS.restituer("sig", { local: true }).partagee === false &&
+      m5.CS.restitutionsDepuis(0).length === 0);
+
+    // Réception : copies marquées de quatre provenances, un objet du calque non marqué, un autre calque.
+    const marque = (uid, maj, R, L) => ({ uid, type: "a", points: [], updatedAt: maj, _srcCalque: L || "sig",
+      _srcCalqueDepuis: R });
+    const session = () => ({ roads: [
+      marque("rd_avant0001", 150, 100),             // modifiée avant T → retirée
+      marque("rd_apres0001", 300, 100),             // modifiée après T → gardée (uid dérivé)
+      marque("rd_neuve0001", 400, 400),             // nouveau rapatriement après T → intacte
+      { uid: "rd_sansR0001", type: "a", points: [], updatedAt: 300, _srcCalque: "sig" },   // provenance inconnue
+      { uid: "rd_main00001", type: "a", points: [], updatedAt: 50 },                       // sans marque
+      marque("rd_autre0001", 150, 100, "puits")      // autre calque
+    ] });
+    const m6 = monter(AVEC_UID, session());
+    m6.ctx.PLAN_CONFIG.dataLayers.push({ id: "puits", file: "data/puits.json" });
+    const a = m6.CS.appliquerRestitutions([{ calque: "sig", avant: 200 }]);
+    const uids = m6.etat.roads.map((o) => o.uid);
+    const garde = m6.etat.roads.find((o) => /_r/.test(o.uid) && o.updatedAt === 300 && o._srcCalque === undefined);
+    t("🩸 reçue : copie modifiée avant T retirée", uids.indexOf("rd_avant0001") < 0 && a.retires === 1);
+    t("🩸 reçue : copie modifiée après T GARDÉE, marque retirée, uid dérivé, date inchangée",
+      a.gardes === 1 && !!garde && garde._srcCalqueDepuis === undefined && uids.indexOf("rd_apres0001") < 0);
+    t("reçue : copie d'un rapatriement postérieur à T intacte", uids.indexOf("rd_neuve0001") >= 0);
+    t("reçue : copie sans date de rapatriement, modifiée après T, intacte", uids.indexOf("rd_sansR0001") >= 0);
+    t("🔒 reçue : objet sans marque intact", uids.indexOf("rd_main00001") >= 0);
+    t("reçue : copie d'un AUTRE calque intacte", uids.indexOf("rd_autre0001") >= 0);
+    const m7 = monter(AVEC_UID, session());
+    m7.CS.appliquerRestitutions([{ calque: "sig", avant: 200 }]);
+    t("uid dérivé identique sur un autre appareil (pas de doublon entre eux)",
+      m7.etat.roads.some((o) => o.uid === garde.uid));
+    m6.etat.roads.push(marque("rd_apres0001", 300, 100));
+    const b = m6.CS.appliquerRestitutions([]);
+    t("🩸 la même copie revenue (relecture complète) : reconvertie SANS doublon ni nouveau signalement",
+      m6.etat.roads.filter((o) => o.uid === garde.uid).length === 1 && b.gardes === 0 &&
+      !m6.etat.roads.some((o) => o.uid === "rd_apres0001"));
+    const n = m6.etat.roads.length;
+    const c = m6.CS.appliquerRestitutions([{ calque: "sig", avant: 150 }, { calque: 42, avant: 9 }, { calque: "x", avant: -1 }]);
+    t("une restitution plus ancienne ou invalide ne change rien", !c.change && m6.etat.roads.length === n &&
+      m6.CS.getSessionState().restitutions.sig === 200 && !("x" in m6.CS.getSessionState().restitutions));
   }
 
   // ───────── etat corrompu ─────────

@@ -66,7 +66,7 @@ photos restent locales et exportables).
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
-> `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
+> `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
@@ -217,8 +217,21 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
   (décision produit). Un rapatriement date ses copies du moment (`updatedAt`), sinon une synchro incrémentale n'en
-  enverrait que les copies retouchées. ⚠️ La restitution, elle, reste locale (aucune trace de suppression sur
-  une copie : elle porte l'uid de l'objet du calque).
+  enverrait que les copies retouchées.
+- **Restitution d'un calque** (plan d'extension modifiable) : ⚠️ **jamais une trace de suppression** — une copie
+  porte l'uid de l'objet du calque, une trace sur elle (exportée, puis passée par « Fusion de calques » ou l'import
+  ZIP du Générateur) détruirait l'original. À la place, UN enregistrement par calque « restitué à T » :
+  `changementsDepuis(ts).restitutions = [{ calque, avant, uids }]` (restitutions faites ICI après `ts` ; `uids` =
+  copies retirées, pour un serveur qui ne lit pas l'objet chiffré) ; entrant, `appliquerChangements({ …,
+  restitutions: [{ calque, avant }] })` retire les copies marquées `_srcCalque === calque` modifiées au plus tard
+  à `avant`, garde en objet ordinaire (uid dérivé, signalé) une copie modifiée après, laisse celles d'un
+  rapatriement postérieur (`_srcCalqueDepuis` > `avant`), puis recale l'état (`resynchroniser`) ; retour
+  `calques: { retires, gardes }`. Les restitutions connues sont retenues dans l'état **local** de la session
+  (`calquesSession`) et rejouées à chaque arrivée de copie marquée (une copie périmée ne ressuscite pas le
+  verrou) ; jamais dans un fichier de session ou de calque. Une restitution sur un plan en lecture seule, ou par
+  « Effacer la session », n'est pas notée. L'extension ne doit ni la changer en traces ni la mettre dans un
+  export ; le droit de l'envoyer est celui d'envoyer des objets (« modifier »). Règle complète :
+  `session-data.md` §Rapatrier. Garde-fous : `check-extensions.js`, `check-calque-session.js`.
 - **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,

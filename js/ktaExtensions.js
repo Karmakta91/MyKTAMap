@@ -628,7 +628,9 @@
   }
 
   // ── Journal des changements (information) ──
-  // Depuis `ts` (ms) : objets dont updatedAt > ts et traces de suppression postérieures (synchro incrémentale).
+  // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
+  // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
+  // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
   function changementsDepuis(ts) {
     const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
     const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
@@ -637,7 +639,9 @@
       roads:        f(window.getRoads && window.getRoads()).filter(function (o) { return o.type !== "itinerary"; }),
       zones:        f(window.getZones && window.getZones()),
       structures:   f(window.getStructures && window.getStructures()),
-      tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; })
+      tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; }),
+      restitutions: (window.CalqueSession && typeof window.CalqueSession.restitutionsDepuis === "function")
+                      ? window.CalqueSession.restitutionsDepuis(seuil) : []
     };
   }
 
@@ -975,8 +979,10 @@
   // ── Changements reçus (synchro entrante) ──
   // Applique au plan OUVERT des objets et traces de suppression d'un autre appareil : même règle que la fusion
   // de sessions (KtaUid.fusionnerCalques — par uid, le plus récent gagne, une trace postérieure l'emporte, un
-  // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. → { fusionnes, supprimes }
-  // ou null (aucun plan ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
+  // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. `lot.restitutions` =
+  // [{ calque, avant }] : calques rendus à leur original ailleurs (CalqueSession.appliquerRestitutions, jamais
+  // une trace de suppression). → { fusionnes, supprimes, calques: { retires, gardes } } ou null (aucun plan
+  // ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
   function appliquerChangements(lot) {
     if (!lot || typeof lot !== "object" || !window.KtaUid ||
         typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
@@ -1051,7 +1057,16 @@
     if (touches.roads && window.setRoads) { const l = r.roads.concat(horsFusion); window.setRoads(l); reprendre("setCurrentRoadByIndex", l, cRoad); }
     if (touches.zones && window.setZones) { window.setZones(r.zones); reprendre("setCurrentZoneByIndex", r.zones, cZone); }
     if (touches.structures && window.setStructures) { window.setStructures(r.structures); reprendre("setCurrentStructureByIndex", r.structures, cStruct); }
-    const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures;
+    // Restitutions : appliquées APRÈS la fusion (une copie périmée reçue dans ce lot est traitée aussi), et à
+    // chaque arrivée de copie marquée (restitutions déjà connues).
+    const restRecues = (Array.isArray(lot.restitutions) ? lot.restitutions : []).filter(function (x) {
+      return x && typeof x === "object";
+    }).slice(0, 200).map(function (x) { return { calque: x.calque, avant: x.avant }; });
+    let rest = null;
+    if (cle && typeof CS.appliquerRestitutions === "function" && (restRecues.length || recalerCalques)) {
+      try { rest = CS.appliquerRestitutions(restRecues); } catch (e) { console.warn("[Extensions] restitutions :", e); }
+    }
+    const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures && !(rest && rest.change);
     // L'annulation remet une photo COMPLÈTE d'une famille : après une réception, elle effacerait ce que les
     // autres viennent d'ajouter. L'historique repart de zéro (message seulement s'il y avait de quoi annuler).
     if (!rien && window.HistoryManager && typeof window.HistoryManager.reset === "function") {
@@ -1062,7 +1077,7 @@
         window.OOMGuard.showToast(_t("ext.sync.annulationVidee"), "info", { groupe: "ext-annulation" });
       }
     }
-    if (recalerCalques) {
+    if (recalerCalques || (rest && rest.change)) {
       try { CS.resynchroniser(); } catch (e) { console.warn("[Extensions] calques en modification :", e); }
     }
     if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
@@ -1070,7 +1085,8 @@
     if (!rien) {
       try { window.dispatchEvent(new CustomEvent("mktm:changements-appliques")); } catch (e) { /* rien */ }
     }
-    return { fusionnes: r.fusionnes, supprimes: r.supprimes };
+    return { fusionnes: r.fusionnes, supprimes: r.supprimes,
+      calques: { retires: rest ? rest.retires : 0, gardes: rest ? rest.gardes : 0 } };
   }
   // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).
   const _recusADistance = new Set();

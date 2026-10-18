@@ -1528,6 +1528,22 @@ Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d
 
 3. **À l'import d'une session, la liste se DÉDUIT des marques.** Le fichier session emporte les objets marqués `_srcCalque`, **pas** `calquesSession` (propre à la sauvegarde locale). Sans recalage : sur un autre appareil, le calque d'origine se réaffiche par-dessus sa copie (doublon) et « Exporter » refuse (`pasRapatrie`) ; et une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (`appliquerVerrous` ne tourne qu'au rechargement). `resynchroniser()`, appelée par l'import (`interfaceImportExport.js`, après les setters), reconstruit `_rapatries` depuis les marques présentes **et connues du plan ouvert**, masque / réaffiche en conséquence, et **retire** les marques de calques inconnus (session d'un autre plan → objets « créés à la main », comptés à l'export). Déduire plutôt qu'exporter la liste : une seule source de vérité, et les sessions déjà exportées marchent sans être refaites.
 
+### ☁️ Restitution partagée (plan d'extension)
+
+Sur un plan ☁️, le calque rapatrié par un compte est vu « en modification » par tous (copies synchronisées, état recalé sur les marques). Sa **restitution** doit donc se propager — mais **jamais par une trace de suppression** : la copie porte l'uid de l'objet du calque, et une trace sur cet uid, emportée par l'export complet puis passée par « Fusion de calques » ou l'import ZIP du Générateur, **détruirait l'objet original** (`historyManager.js > _laisseTrace` n'en émet pas).
+
+- **Sortante** : `restituer(id)` note `{ avant: T, uids }` (T ≥ toute copie retirée ; `uids` = copies retirées) quand le plan ouvert est un plan d'extension **modifiable**. `restitutionsDepuis(ts)` les donne à `KtaExtensions.changementsDepuis`. Pas de note sur un plan en lecture seule (elle partirait plus tard, périmée, si le droit change), ni par « Effacer la session » (`restituer(id, { local: true })` : la copie du serveur doit revenir, pas disparaître chez tous).
+- **Entrante** : `appliquerRestitutions([{ calque, avant }])` retient la plus récente par calque, puis applique toutes les restitutions connues. Pour une copie marquée du calque L restitué à T :
+
+| Copie | Sort | Pourquoi |
+|---|---|---|
+| rapatriée après T (`_srcCalqueDepuis` > T) | intacte | nouveau rapatriement : le calque est de nouveau en modification |
+| modifiée au plus tard à T | **retirée** | la restitution l'emporte sur les corrections antérieures non exportées (décision produit) |
+| modifiée après T | **gardée** en objet ordinaire, marque retirée, uid dérivé de (uid, T), date inchangée, toast | rien de perdu ; la garder marquée masquerait tout le calque pour quelques objets. L'uid dérivé est le même sur tous les appareils (pas de doublon entre eux) et n'est pas celui du calque (une suppression ultérieure ne vise jamais l'original). Doublon visible de l'objet du calque, **annoncé** |
+| sans `_srcCalqueDepuis`, modifiée après T | intacte | provenance inconnue (copie antérieure à cette règle) : la convertir pourrait changer tout un calque rapatrié en objets « à la main » |
+
+Un objet **sans marque** n'est jamais touché. Les restitutions connues sont rejouées à chaque arrivée de copie marquée (`ktaExtensions.js > appliquerChangements`) : une copie périmée renvoyée par un appareil en retard ne remet pas le verrou. Limites acceptées : horloges des appareils (T et `updatedAt` sont des heures d'appareil, comme toute la synchro) ; une restitution faite puis « Effacer la session » avant l'envoi n'est pas propagée (les copies reviennent du serveur, rien n'est perdu).
+
 ### 💾 Le retour vers le ZIP
 
 `exporterCalque(id)` produit **UN** fichier de la forme du calque d'origine. *Le convertisseur « session → data layer » ne pouvait pas servir : il éclate la sortie en `points.json` + `roads.json` + `zones.json` + `structure.json`, voire un fichier par type — **quatre fichiers ne remplacent pas une ligne**.*
@@ -1544,12 +1560,13 @@ Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].fil
 ### État persisté
 
 ```json
-"calquesSession": { "rapatries": ["sig"] }
+"calquesSession": { "rapatries": ["sig"], "restitutions": { "sig": 1760000000000 },
+                    "aEnvoyer": { "sig": { "avant": 1760000000000, "uids": ["rd_…"] } } }
 ```
 
-Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque`. `null` tant que rien n'est rapatrié → **zéro octet** pour qui ne s'en sert pas.
+Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
 
-**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 97 assertions, le vrai module chargé dans un `vm`, câblage de l'import de session compris.
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 118 assertions, le vrai module chargé dans un `vm`, câblage de l'import de session compris.
 
 ---
 

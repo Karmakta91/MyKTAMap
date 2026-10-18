@@ -370,7 +370,7 @@
     if (window.CalqueSession && typeof window.CalqueSession.listeRapatries === "function") {
       try {
         window.CalqueSession.listeRapatries().forEach(function(id) {
-          window.CalqueSession.restituer(id);
+          window.CalqueSession.restituer(id, { local: true });   // pas une restitution partagée
         });
         window.CalqueSession.loadSessionState(null);
       } catch(e) { console.warn("[SessionPersist] liberation des calques :", e); }
