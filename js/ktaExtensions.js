@@ -813,16 +813,28 @@
   }
 
   // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome ») ──
-  // ext.outilHome() → { libelle } (40 car.) ou null : UNE tuile dans 🧰 Outils de l'accueil, qui ouvre le bloc
-  // du compte au lieu « outils ». Sans extension (ou null) : aucune tuile. Erreur ou forme inattendue = rien.
-  function outilHome() {
+  // ext.outilHome() → { libelle } (40 car.), une LISTE de 3 tuiles au plus, ou null. Une tuile sans `ouvrir` ouvre
+  // le bloc du compte au lieu « outils » ; avec `ouvrir` (fonction), le clic l'appelle (l'extension montre sa
+  // fenêtre). Sans extension (ou null) : aucune tuile. Erreur ou forme inattendue = rien ; entrée invalide écartée.
+  const OUTILS_HOME_MAX = 3;
+  function outilsHome() {
     const ext = _prise("outilHome");
-    if (!ext || typeof ext.outilHome !== "function") return null;
+    if (!ext || typeof ext.outilHome !== "function") return [];
     try {
-      const o = ext.outilHome();
-      if (!o || typeof o.libelle !== "string" || !o.libelle.trim()) return null;
-      return { libelle: o.libelle.trim().slice(0, 40) };
-    } catch (e) { console.warn("[Extensions] outilHome :", e); return null; }
+      const r = ext.outilHome();
+      const l = Array.isArray(r) ? r : (r ? [r] : []);
+      return l.filter(function (o) { return o && typeof o.libelle === "string" && o.libelle.trim(); })
+        .slice(0, OUTILS_HOME_MAX).map(function (o) {
+          const t = { libelle: o.libelle.trim().slice(0, 40) };
+          if (typeof o.ouvrir === "function") t.ouvrir = o.ouvrir;
+          return t;
+        });
+    } catch (e) { console.warn("[Extensions] outilHome :", e); return []; }
+  }
+  // Première tuile (forme d'origine, un seul objet) ; null sans tuile.
+  function outilHome() {
+    const l = outilsHome();
+    return l.length ? { libelle: l[0].libelle } : null;
   }
   function _fermerOutilHome() {
     const ov = document.getElementById("kta-ext-outil-modal");
@@ -830,9 +842,16 @@
     if (ov.__esc) document.removeEventListener("keydown", ov.__esc, true);
     ov.remove();
   }
-  function ouvrirOutilHome() {
-    const o = outilHome();
+  // Ouvre la tuile `rang` (0 par défaut). Tuile de l'extension (`ouvrir`) : son erreur est journalisée, jamais levée.
+  function ouvrirOutilHome(rang) {
+    const l = outilsHome();
+    const o = l[typeof rang === "number" ? rang : 0];
     if (!o) return false;
+    if (o.ouvrir) {
+      _fermerOutilHome();
+      try { o.ouvrir(); } catch (e) { console.warn("[Extensions] outilHome.ouvrir :", e); }
+      return true;
+    }
     _fermerOutilHome();
     // Une action ouvre souvent sa propre fenêtre (clés, 2FA, kit) : on referme celle-ci d'abord.
     const ov = document.createElement("div");
@@ -866,19 +885,30 @@
     return true;
   }
   // Pose (ou retire) la tuile, à la déclaration d'une extension et au chargement.
+  // Ids : loaderExtOutilBtn (1re tuile), loaderExtOutilBtn2, loaderExtOutilBtn3 ; une tuile disparue est retirée.
   function _poserOutilHome() {
     if (typeof document === "undefined" || !document.querySelector) return;
     const zone = document.querySelector(".loader-secondary-actions");
-    const vieux = document.getElementById("loaderExtOutilBtn");
-    const o = outilHome();
-    if (!o) { if (vieux) vieux.remove(); return; }
-    if (!zone) return;
-    const b = vieux || document.createElement("button");
-    b.type = "button";
-    b.id = "loaderExtOutilBtn";
-    b.className = "loader-btn-secondary";
-    b.textContent = o.libelle;
-    if (!vieux) { b.addEventListener("click", ouvrirOutilHome); zone.insertBefore(b, zone.firstChild); }
+    const l = outilsHome();
+    let avant = zone ? zone.firstChild : null;
+    for (let i = 0; i < OUTILS_HOME_MAX; i++) {
+      const id = "loaderExtOutilBtn" + (i ? String(i + 1) : "");
+      const vieux = document.getElementById(id);
+      const o = l[i];
+      if (!o) { if (vieux) vieux.remove(); continue; }
+      if (!zone) continue;
+      const b = vieux || document.createElement("button");
+      b.type = "button";
+      b.id = id;
+      b.className = "loader-btn-secondary";
+      b.textContent = o.libelle;
+      b.dataset.rang = String(i);
+      if (!vieux) {
+        b.addEventListener("click", function () { ouvrirOutilHome(Number(b.dataset.rang) || 0); });
+        zone.insertBefore(b, avant);
+      }
+      avant = b.nextSibling;
+    }
   }
   // Bloc prêt à insérer, null si rien à montrer. Lieux : « profil », « config », « outils ». Profil et outils :
   // carte du compte (pseudo, rôle en pastille, précision), rubriques, puis l'action « fin ». Dans « Mon
@@ -903,11 +933,14 @@
       if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
       carte.appendChild(ligne);
       if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
-      const outil = lieu === "profil" ? outilHome() : null;
+      // Lien vers la première tuile du COMPTE (sans `ouvrir` propre).
+      const tuiles = lieu === "profil" ? outilsHome() : [];
+      const rangCompte = tuiles.findIndex(function (o) { return !o.ouvrir; });
+      const outil = rangCompte >= 0 ? tuiles[rangCompte] : null;
       if (outil) {
         const lien = el("button", "kta-ext-compte-gerer", outil.libelle + "  ›");
         lien.type = "button";
-        lien.addEventListener("click", ouvrirOutilHome);
+        lien.addEventListener("click", function () { ouvrirOutilHome(rangCompte); });
         carte.appendChild(lien);
       }
       bloc.appendChild(carte);
@@ -1597,6 +1630,7 @@
     quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
     outilHome: outilHome,
+    outilsHome: outilsHome,
     pastilleHome: pastilleHome,
     ouvrirOutilHome: ouvrirOutilHome,
     valider: valider,

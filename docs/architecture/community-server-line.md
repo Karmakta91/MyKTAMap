@@ -193,10 +193,15 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   de l'accueil, juste après 📖 ; un clic ouvre `url` dans un nouvel onglet (`noopener`). 🔒 `https://` seulement,
   icône ≤ 4 caractères, titre ≤ 60, rendu en `textContent` ; forme inattendue, erreur ou `null` → aucune pastille.
   Elle suit `mktm:compte-changed`. Aucune requête de l'app (c'est un lien). Tests : `check-extensions.js`.
-- **Tuile d'outils** (11/10/2026) : la prise `outilHome() → { libelle } | null` ajoute UNE tuile à 🧰 Outils de
-  l'accueil ; elle ouvre une fenêtre avec la carte du compte et les actions du lieu « outils »
-  (`actionsCompte("outils")`, mêmes rubriques). « Mon profil » garde la carte, avec un lien « Gérer › <tuile> ».
-  Sans extension, ou `null` (non connecté), aucune tuile ; la tuile suit `mktm:compte-changed`.
+- **Tuiles d'outils** (11/10/2026) : la prise `outilHome() → { libelle } | [{ libelle, ouvrir? }] | null` ajoute
+  une tuile (objet) ou une LISTE de **3 tuiles au plus** à 🧰 Outils de l'accueil, dans l'ordre donné (ids
+  `loaderExtOutilBtn`, `loaderExtOutilBtn2`, `loaderExtOutilBtn3`). Une tuile **sans** `ouvrir` ouvre une fenêtre avec
+  la carte du compte et les actions du lieu « outils » (`actionsCompte("outils")`, mêmes rubriques) ; une tuile
+  **avec** `ouvrir` (fonction) l'appelle au clic : l'extension montre sa propre fenêtre (erreur journalisée, jamais
+  levée). Entrée sans libellé, ou `ouvrir` qui n'est pas une fonction : écartée / ignoré. « Mon profil » garde la
+  carte, avec un lien « Gérer › <tuile> » vers la première tuile du compte. Lecture : `outilsHome()` (liste
+  nettoyée), `outilHome()` (première tuile, forme d'origine), `ouvrirOutilHome(rang)`. Sans extension, ou `null`
+  (non connecté), aucune tuile ; les tuiles suivent `mktm:compte-changed`. Tests : `check-extensions.js`.
 - **Outils du Mode Développeur** (10/10/2026) : la prise `outilsDev() → [{ libelle, page }]` ajoute des boutons à la
   section 🛠️ Mode Développeur, **seulement quand il est actif** ; `page` est une page `.html` du même site (chemin
   relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,
@@ -344,6 +349,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     est posée ; l'extension la honore au démarrage (aucune reconnexion seule, session fermée au retour du réseau).
   - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
     d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
+- **Carnet (sorties)** : `mktm:journal-sortie-demarree` (`{ id, planId, origine: "manuel" }`) au démarrage MANUEL d'une
+  sortie (`Journal.demarrer`), `mktm:journal-sortie-cloturee` (`{ id, planId }`) à sa clôture manuelle
+  (`Journal.cloturer`). L'ouverture automatique à chaque plan, la reprise, la suspension et l'archivage automatique
+  n'émettent rien (gestes de l'app, pas de l'utilisateur). `planId` = identifiant community du plan
+  (`_currentLoadedPlanId`). No-op sans écouteur ; garde-fou `check-journal-demarrage.js`.
 - **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
   d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
   FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,

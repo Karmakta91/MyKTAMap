@@ -947,6 +947,24 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: O3 } = nouveauContexte(null);
     O3.register({ nom: "o3", apiVersion: 1, outilHome: () => null });
     t("outilHome : erreur ou null (non connecté) → aucune tuile", O2.outilHome() === null && O3.outilHome() === null);
+    t("outilHome : forme d'origine (un objet) = une tuile dans la liste",
+      O1.outilsHome().length === 1 && O1.outilsHome()[0].libelle === "🏢 Mon organisation" && !O1.outilsHome()[0].ouvrir &&
+      O3.outilsHome().length === 0);
+    const { K: O4 } = nouveauContexte(null);
+    let ouverte = 0;
+    O4.register({ nom: "o4", apiVersion: 1, outilHome: () => [{ libelle: "A" }, null, { libelle: " " },
+      { libelle: "B", ouvrir: () => { ouverte++; } }, { libelle: "C", ouvrir: "pas une fonction" }, { libelle: "D" }] });
+    const l4 = O4.outilsHome();
+    t("outilHome : liste — entrées invalides écartées, 3 tuiles au plus, `ouvrir` gardé si c'est une fonction",
+      l4.length === 3 && l4[0].libelle === "A" && l4[1].libelle === "B" && typeof l4[1].ouvrir === "function" &&
+      l4[2].libelle === "C" && !l4[2].ouvrir && O4.outilHome().libelle === "A" && !("ouvrir" in O4.outilHome()));
+    t("outilHome : une tuile avec `ouvrir` l'appelle au clic ; rang inconnu → false",
+      O4.ouvrirOutilHome(1) === true && ouverte === 1 && O4.ouvrirOutilHome(7) === false);
+    const { K: O5 } = nouveauContexte(null);
+    O5.register({ nom: "o5", apiVersion: 1, outilHome: () => [{ libelle: "X", ouvrir: () => { throw new Error("x"); } }] });
+    t("outilHome : `ouvrir` qui échoue → journalisé, jamais levé", O5.ouvrirOutilHome(0) === true);
+    t("outilHome : le lien de « Mon profil » vise la 1re tuile du compte (sans `ouvrir`)",
+      EXT.includes("tuiles.findIndex(function (o) { return !o.ouvrir; })"));
     t("outilHome : la tuile suit le compte (mktm:compte-changed) et la fenêtre montre le lieu « outils »",
       EXT.includes('addEventListener("mktm:compte-changed", _poserOutilHome)') &&
       EXT.includes('blocActionsCompte("outils", "")'));

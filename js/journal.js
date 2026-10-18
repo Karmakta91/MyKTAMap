@@ -433,7 +433,16 @@
     const planId = window._currentLoadedPlanId || null;
     if (!planId) return { ok: false, raison: "sansPlan" };
     const r = _ouvrir(planId, _planNameCourant(), "manuel");
+    if (r) _annoncer("mktm:journal-sortie-demarree", { id: r.id, planId: planId, origine: "manuel" });
     return r ? { ok: true, id: r.id } : { ok: false, raison: "echec" };
+  }
+
+  // ⚠️ Événements d'extension (no-op sans écouteur) : `mktm:journal-sortie-demarree` { id, planId, origine:
+  // "manuel" } au démarrage MANUEL d'une sortie, `mktm:journal-sortie-cloturee` { id, planId } à la clôture
+  // manuelle. L'ouverture automatique à chaque plan, la reprise, la suspension et l'archivage automatique n'en
+  // émettent pas : ce sont des gestes de l'app, pas de l'utilisateur.
+  function _annoncer(type, detail) {
+    try { window.dispatchEvent(new CustomEvent(type, { detail: detail })); } catch (e) { /* rien */ }
   }
 
   function _ouvrir(planId, planName, origine) {
@@ -676,7 +685,9 @@
     if (!_cur) return Promise.resolve(null);
     const planId = _cur.planId, planName = _cur.planName;
     // 🩸 La suivante ne repart QUE si le carnet est actif (sortie démarrée à la main carnet décoché).
+    const id = _cur.id;
     return _finaliser("manual").then(function(rec) {
+      _annoncer("mktm:journal-sortie-cloturee", { id: id, planId: planId || null });
       onPlanLoaded(planId, planName);
       return rec;
     });
