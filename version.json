@@ -1,9 +1,8 @@
 {
-  "version": "v2.17.0",
-  "released": "2026-10-17",
+  "version": "v2.18.0",
+  "released": "2026-10-18",
   "notes": [
-    "⬆️ Exporter : un seul bouton ouvre un lanceur à tuiles (image, PDF, session, KMZ, GPX) ; sur iPhone, l'export image propose « 📱 Max iPhone » quand le plan est trop grand, et l'image sort enfin.",
-    "📱 Sur téléphone : les panneaux Tracés, Zones et Structures tiennent entre les barres même en paysage (« Fermer la structure » toujours atteignable), toucher la carte pour les fermer n'ajoute plus de point, et les croix de fermeture sont plus grandes au doigt.",
-    "➕ Les boutons de zoom +/− deviennent une option de ⚙️ Configuration (désactivés par défaut : on zoome au doigt ou à la molette)."
+    "🤝 Installation reliée : un calque ouvert à la modification par un autre compte apparaît comme tel chez toi (original masqué, « Exporter » et « Restaurer » proposés), et sa restauration revient sur tous les appareils.",
+    "⬆️ Sur le plan d'un autre compte, tu peux maintenant exporter tes propres ajouts (filtre « Créé par » fixé sur toi)."
   ]
 }

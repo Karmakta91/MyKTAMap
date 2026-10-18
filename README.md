@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.17.0` (17/10/2026)
+## 📦 Version courante — `v2.18.0` (18/10/2026)
 
-> ⬆️ **v2.17.0 — Exports et ergonomie téléphone, code allégé** : lanceur d'export à tuiles (Conversion et Fusion rangées dans l'Éditeur de données), « 📱 Max iPhone » pour l'export image d'un grand plan, PDF d'un très grand plan ; audit ergonomie PC/mobile soldé hors G1 (panneaux d'outils entre les barres, toucher la carte pour fermer ne trace plus, fond et croix 40 px au doigt, modales en dvh, liste de tags dans l'écran, dézoom anti-crash aussi en paysage téléphone) ; option « ➕ Boutons de zoom » (défaut OFF) ; nettoyage des commentaires du code (−58 %, ~25 000 lignes) avec garde-fou `check-commentaires.js` ; checkup `checkup-panneaux-geometrie.js` dans la porte de release.
+> 🤝 **v2.18.0 — Calques et export à plusieurs comptes** : sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage (sans trace de suppression) ; export de session limité à ses propres ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste (3 tuiles) et événements du Carnet ; schéma de l'outillage de l'IA (`docs/ia-architecture.svg`). Sans extension, rien ne change.
 
 ## 📑 Sommaire
 
@@ -453,6 +453,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
+#### v2.18.0 (18/10/2026) — Calques et export à plusieurs comptes (branche `Karma_dev`)
+
+- **Calques et installation reliée** : un calque ouvert à la modification sur un autre appareil se recale à la synchro (calque d'origine masqué, Exporter / Restituer proposés, plus de « rapatrier » en double ; les copies sont datées du rapatriement pour partir en entier, `7055cf5`) ; prise `exportAutorise` → `{ auteur }` = export de session limité à ses ajouts (« Créé par » imposé, copies de calque, traces et liaisons exclues ; conversion et export de calque refusés) — contrat dans `community-server-line.md` §3. La restitution d'un calque se propage aux autres appareils du plan, sans trace de suppression (`bf3a90c`).
+- **Prise `outilHome` en liste** : une extension peut poser jusqu’à 3 tuiles dans 🧰 Outils (une tuile peut ouvrir sa propre fenêtre), la forme d’origine reste valable (`751eda3`). **Événements du Carnet** `mktm:journal-sortie-demarree` / `-cloturee` au démarrage et à la clôture manuels d’une sortie (`7d343af`). Sans extension, rien ne change — contrat dans `community-server-line.md`.
+- **Docs** : `docs/IA_POUR_LES_NULS.md` §4.5 (schéma `docs/ia-architecture.svg` : ce que l'IA lit au démarrage, à chaque action, à la demande et en délégation), agents dédiés et skill d'intégration (§9.2, §9.3).
+
 #### v2.17.0 (17/10/2026) — Exports et ergonomie téléphone, code allégé (branche `Karma_dev`)
 
 - **Exports** : lanceur à tuiles « ⬆️ Exporter » (`ec78279`) ; la tuile KMZ / GPX ne redemande plus le format (`9350e3e`) ; PDF d'un très grand plan (canvas plafonné, `165bb2b`) ; bloc « Ne garder que » à la charte (`3e390ca`) ; verrou de l'installation sur l'export de session seulement, refus toujours dit (`4db6357`) ; « Télécharger le ZIP » pour un plan de l'installation (`15274fb`) ; export image : « 📱 Max iPhone » quand aucune résolution ne tient sous 16,7 Mpx, taille affichée = taille produite, Échap/Annuler sans perte au calage KMZ et au placement de la légende (`18b530d`).
@@ -462,8 +468,6 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **Porte de release** : `scripts/smoke/checkup-panneaux-geometrie.js` (4 formats × centré/ancré × 4 panneaux).
 - **Suivi** : la timeline restaurée au rechargement garde `src`, `tp`, `estM`, `estSrc` (recalages sur point, téléportations et distance estimée n'étaient plus comptés après un reload) — garde-fou `check-timeline-restore.js`.
 - **Prise d'extension `pastilleHome`** : une pastille à côté de 📖 dans l'en-tête de l'accueil (lien https ouvert en nouvel onglet, rien sans extension) — contrat dans `community-server-line.md`.
-- **Calques et installation reliée** : un calque ouvert à la modification sur un autre appareil se recale à la synchro (calque d'origine masqué, Exporter / Restituer proposés, plus de « rapatrier » en double ; les copies sont datées du rapatriement pour partir en entier, `7055cf5`) ; prise `exportAutorise` → `{ auteur }` = export de session limité à ses ajouts (« Créé par » imposé, copies de calque, traces et liaisons exclues ; conversion et export de calque refusés) — contrat dans `community-server-line.md` §3. La restitution d'un calque se propage aux autres appareils du plan, sans trace de suppression (`bf3a90c`).
-- **Prise `outilHome` en liste** : une extension peut poser jusqu’à 3 tuiles dans 🧰 Outils (une tuile peut ouvrir sa propre fenêtre), la forme d’origine reste valable (`751eda3`). **Événements du Carnet** `mktm:journal-sortie-demarree` / `-cloturee` au démarrage et à la clôture manuels d’une sortie (`7d343af`). Sans extension, rien ne change — contrat dans `community-server-line.md`.
 
 #### v2.16.0 (15/10/2026) — Secteurs de secours, KMZ sur téléphone (branche `Karma_dev`)
 
@@ -9506,6 +9510,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> ⬆️ **v2.17.0 — Exports et ergonomie téléphone, code allégé** : lanceur d'export à tuiles (Conversion et Fusion rangées dans l'Éditeur de données), « 📱 Max iPhone » pour l'export image d'un grand plan, PDF d'un très grand plan ; audit ergonomie PC/mobile soldé hors G1 (panneaux d'outils entre les barres, toucher la carte pour fermer ne trace plus, fond et croix 40 px au doigt, modales en dvh, liste de tags dans l'écran, dézoom anti-crash aussi en paysage téléphone) ; option « ➕ Boutons de zoom » (défaut OFF) ; nettoyage des commentaires du code (−58 %, ~25 000 lignes) avec garde-fou `check-commentaires.js` ; checkup `checkup-panneaux-geometrie.js` dans la porte de release.
 
 > Le haut du README ne garde que la version en cours ; à chaque bump, son résumé descend ici, en tête de liste.
 

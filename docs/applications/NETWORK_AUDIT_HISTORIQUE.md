@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.18.0 (calques et export à plusieurs comptes)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Les nouvelles prises (export limité à ses ajouts, tuiles d'outils, événements du Carnet, recalage et restitution des calques) sont locales : sans installation reliée, rien ne part. Sur une installation reliée, la restitution d'un calque voyage avec la synchro déjà existante, vers le serveur de cette installation seulement.
+
 ### v2.17.0 (exports, ergonomie téléphone, code allégé)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Le lanceur d'export, l'option « Max iPhone », les correctifs
