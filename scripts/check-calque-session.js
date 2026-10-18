@@ -105,6 +105,10 @@ const CALQUE = {
   t("marquage : les 5 objets portent `_srcCalque` = sig",
     tous.length === 5 && tous.every(function (o) { return o._srcCalque === "sig"; }));
 
+  t("🩸 synchro : les copies sont datees du rapatriement (updatedAt), sinon une synchro incrementale les ignore",
+    tous.every(function (o) { return typeof o.updatedAt === "number" && Date.now() - o.updatedAt < 60000; }));
+  t("la date du releve (date_update) n'est pas touchee", etat.editorPoints[0].date_update === undefined);
+
   etat.roads[0].type = "MODIFIE";
   etat.roads[0].points[0].x = 999;
   t("copie defensive : le calque source n'est pas mute (type)", avantRoad.type === "secondaire");

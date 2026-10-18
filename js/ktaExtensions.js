@@ -1008,6 +1008,25 @@
     };
     const cRoad = enCours("getCurrentRoad"), cZone = enCours("getCurrentZone"), cStruct = enCours("getCurrentStructure");
     const touches = { data: touche("data"), roads: touche("roads"), zones: touche("zones"), structures: touche("structures") };
+    // Calque ouvert à la modification ailleurs (copies marquées) : l'état « rapatrié » est local à l'appareil,
+    // il se déduit des marques (CalqueSession.resynchroniser). Seulement si une copie marquée arrive, ou si une
+    // copie d'ici disparaît : un tour sans rien de tel ne relance ni journal ni sauvegarde.
+    const CS = window.CalqueSession;
+    const cle = CS && CS.CLE_SOURCE;
+    let recalerCalques = false;
+    if (cle && typeof CS.resynchroniser === "function") {
+      const FAMS = ["data", "roads", "zones", "structures"];
+      recalerCalques = FAMS.some(function (fam) {
+        return touches[fam] && distant[fam].filter(nouveau(fam)).some(function (o) { return o[cle] !== undefined; });
+      });
+      if (!recalerCalques) {
+        const restants = new Set();
+        FAMS.forEach(function (fam) { r[fam].forEach(function (o) { if (o && o.uid) restants.add(o.uid); }); });
+        recalerCalques = FAMS.some(function (fam) {
+          return touches[fam] && local[fam].some(function (o) { return o && o[cle] !== undefined && o.uid && !restants.has(o.uid); });
+        });
+      }
+    }
     if (touches.data) window.setEditorPoints(r.data);
     if (touches.roads && window.setRoads) { const l = r.roads.concat(horsFusion); window.setRoads(l); reprendre("setCurrentRoadByIndex", l, cRoad); }
     if (touches.zones && window.setZones) { window.setZones(r.zones); reprendre("setCurrentZoneByIndex", r.zones, cZone); }
@@ -1022,6 +1041,9 @@
       if (avait && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(_t("ext.sync.annulationVidee"), "info", { groupe: "ext-annulation" });
       }
+    }
+    if (recalerCalques) {
+      try { CS.resynchroniser(); } catch (e) { console.warn("[Extensions] calques en modification :", e); }
     }
     if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
     // Le plan ouvert a changé : les statistiques (cache par plan du profil) se recalculent.

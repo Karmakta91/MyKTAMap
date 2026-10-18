@@ -709,6 +709,36 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("⏪ un vrai objet reçu (d'un autre) → l'historique repart de zéro, comme avant", resets === 1 && ecritures === 1);
   }
 
+  // ── 6 ter ter. CALQUE OUVERT À LA MODIFICATION AILLEURS (copies marquées reçues) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    const vm4 = require("vm");
+    vm4.runInContext(lire("js/ktaUid.js"), vm4.createContext(w), { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_loc11111", name: "Ici", updatedAt: 100 }];
+    let roads = [];
+    let recalages = 0;
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; };
+    w.getRoads = () => roads; w.setRoads = (r) => { roads = r; }; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.CalqueSession = { CLE_SOURCE: "_srcCalque", resynchroniser() { recalages++; return {}; } };
+    K.appliquerChangements({ editorPoints: [{ uid: "pt_aut22222", name: "Point d'un autre", updatedAt: 200 }], tombstones: [] });
+    t("objet reçu sans marque de calque → pas de recalage des calques", recalages === 0);
+    K.appliquerChangements({ roads: [{ uid: "rd_cop33333", type: "chemin", points: [], updatedAt: 300, _srcCalque: "c1" }], tombstones: [] });
+    t("🩸 copie de calque reçue → recalage (calque d'origine masqué, Exporter/Restituer, plus de « rapatrier »)",
+      recalages === 1 && roads.some((r) => r._srcCalque === "c1"));
+    K.appliquerChangements({ roads: [{ uid: "rd_cop33333", type: "chemin", points: [], updatedAt: 300, _srcCalque: "c1" }], tombstones: [] });
+    t("écho de la même copie (rien de nouveau) → pas de recalage, ni journal ni sauvegarde", recalages === 1);
+    K.appliquerChangements({ tombstones: [{ uid: "rd_cop33333", deletedAt: 400 }] });
+    t("🩸 copie d'ici supprimée par la synchro → recalage (calque libéré s'il n'a plus de copie)",
+      recalages === 2 && roads.length === 0);
+    K.appliquerChangements({ editorPoints: [], tombstones: [] });
+    t("tour vide → pas de recalage", recalages === 2);
+    delete w.CalqueSession;
+    t("sans module de calques : réception normale, aucune erreur",
+      !!K.appliquerChangements({ roads: [{ uid: "rd_cop44444", type: "chemin", points: [], updatedAt: 500, _srcCalque: "c1" }], tombstones: [] }));
+  }
+
   // ── 6 quater. ACTIONS DU COMPTE ──────
   {
     const { K } = nouveauContexte(null);

@@ -24,7 +24,7 @@
 //   2. Au chargement, le verrou ne s'applique QUE SI la copie est là (sauvegarde ratée sur quota → plan vide
 //      sans explication) : appliquerVerrous() vérifie AVANT de masquer, et déverrouille en le disant.
 // API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
-//   exporterCalque, compterCopie, appliquerVerrous, resynchroniser (après un import de session), getSessionState,
+//   exporterCalque, compterCopie, appliquerVerrous, resynchroniser (import de session, synchro), getSessionState,
 //   loadSessionState, CLE_SOURCE }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
 // check-calque-session.js.
@@ -153,9 +153,15 @@ window.CalqueSession = (function () {
           const src = _depuisCalque(json, fam);
           if (!src.length) return;
           // Copie DÉFENSIVE : l'objet du calque n'est pas muté et l'objet de session ne partage aucune référence.
+          // 🩸 `updatedAt` = maintenant (horloge de synchro, pas `date_update` qui reste la date du relevé) : la
+          // copie garde l'uid de l'original et sa date de génération ; une synchro qui n'envoie que « ce qui a
+          // changé depuis » n'en enverrait que les copies retouchées, et un autre appareil masquerait le calque
+          // pour n'en montrer que quelques objets.
+          const maintenant = Date.now();
           const copies = src.map(function (o) {
             const c = JSON.parse(JSON.stringify(o));
             c[CLE_SOURCE] = id;
+            c.updatedAt = maintenant;
             return c;
           });
           _ecrire(fam, _lire(fam).concat(copies));   // les setters redessinent
@@ -285,10 +291,12 @@ window.CalqueSession = (function () {
     return { verrouilles: _rapatries.slice(), liberes: perdus };
   }
 
-  // ── Import d'une session : la liste se DÉDUIT des marques ──────────
-  // 🩸 Un fichier de session emporte les objets marqués, PAS `_rapatries` (sauvegarde locale seulement). Sans ce
-  // recalage : sur un autre appareil, le calque d'origine se réaffiche PAR-DESSUS sa copie et « Exporter » refuse
-  // (`pasRapatrie`) ; une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (piège 2).
+  // ── Import d'une session, objets reçus d'une synchro : la liste se DÉDUIT des marques ──────────
+  // 🩸 Un fichier de session ou une synchro emporte les objets marqués, PAS `_rapatries` (sauvegarde locale
+  // seulement). Sans ce recalage : sur un autre appareil, le calque d'origine se réaffiche PAR-DESSUS sa copie,
+  // « Exporter » refuse (`pasRapatrie`) et « rapatrier » est reproposé (doublons) ; une session importée SANS la
+  // copie d'un calque verrouillé le laisse masqué et vide (piège 2). Appelée par l'import de session et par
+  // KtaExtensions.appliquerChangements.
   // Reconstruire depuis les marques = une seule source de vérité, et les sessions déjà exportées marchent.
   // La marque d'un calque ABSENT du plan ouvert est retirée : l'objet devient « créé à la main », compté dans
   // l'alerte d'export au lieu de rester orphelin.
@@ -320,7 +328,7 @@ window.CalqueSession = (function () {
     _rapatries = presents;
     presents.forEach(_masquer);
     _persister();
-    _log("resynchronisation apres import — en modification : [" + presents.join(", ") +
+    _log("resynchronisation — en modification : [" + presents.join(", ") +
          "], liberes : [" + liberes.join(", ") + "], marques orphelines retirees : " + orphelins);
     return { rapatries: presents.slice(), liberes: liberes, orphelins: orphelins };
   }

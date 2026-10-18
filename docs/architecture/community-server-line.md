@@ -212,7 +212,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
   reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
-  `changementsDepuis(ts)`.
+  `changementsDepuis(ts)`. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
+  quand un objet reçu porte la marque `_srcCalque` (copie d'un calque), ou qu'une copie d'ici disparaît, l'état
+  se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
+  masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
+  (décision produit). Un rapatriement date ses copies du moment (`updatedAt`), sinon une synchro incrémentale n'en
+  enverrait que les copies retouchées. ⚠️ La restitution, elle, reste locale (aucune trace de suppression sur
+  une copie : elle porte l'uid de l'objet du calque).
 - **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
