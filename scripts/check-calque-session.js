@@ -11,6 +11,8 @@
 //   4. 🩸 le verrou ne s'applique QUE si la copie est là : sauvegarde sautée sur quota + verrou qui
 //      masque le calque = plan vide sans un mot. `appliquerVerrous` LIBÈRE dans ce cas ;
 //   5. 🩸 effacer la session rend le calque (`sessionPersist.js > clear()`), sinon le relevé disparaît ;
+//   5 bis. les ajouts intégrés (objets dessinés à la main rattachés au calque) : exportés, retirés à la
+//      restitution qui le DIT, sans trace de suppression, annulables par ⏪, refusés en lecture seule ;
 //   6. le câblage que l'extraction ne voit pas (script, précache, hooks de session, interface).
 // =====================================================================
 "use strict";
@@ -255,6 +257,139 @@ const CALQUE = {
       TAB.indexOf("window.setEditorPoints(_data)") >= 0);
   }
 
+  // ───────── 2 sexies. INTÉGRER DES AJOUTS (objets dessinés à la main) ─────────
+  // Un objet sans marque rejoint un calque en modification : il doit se comporter en copie (exporté avec le
+  // calque, retiré à sa restitution, aucune trace de suppression) et l'intégration s'annule par ⏪. Le VRAI
+  // historyManager.js est chargé dans le même `vm`.
+  {
+    const AVEC_UID = {
+      roads: [{ uid: "rd_cal00001", type: "principal", points: [{ x: 1, y: 1 }] }],
+      data:  [{ uid: "pt_cal00001", x: 10, y: 20, tags: ["pa"] }]
+    };
+    const session = () => ({
+      editorPoints: [{ uid: "pt_main0001", x: 5, y: 5, nom: "Ajout B", tags: ["pa"], updatedAt: 10 }],
+      roads: [{ uid: "rd_main0001", type: "chemin", points: [{ x: 0, y: 0 }], updatedAt: 10 },
+              { uid: "rd_iti00001", type: "itinerary", points: [{ x: 0, y: 0 }], updatedAt: 10 }],
+      zones: [{ uid: "zn_main0001", type: "eau", points: [], updatedAt: 10 }]
+    });
+    const monterAjouts = async function (lecture) {
+      const m = monter(AVEC_UID, session());
+      m.traces = [];
+      m.ctx.KtaUid = {
+        touch: (o) => { o.updatedAt = Date.now(); return o; },
+        estTransitoire: (o) => !!(o && o.type === "itinerary"),
+        tombstone: (u) => { m.traces.push(u); }, untombstone() {}
+      };
+      m.ctx.document.addEventListener = function () {};
+      m.ctx.ktaEditionRefusee = () => !!m.lecture;
+      vm.runInContext(fs.readFileSync("js/historyManager.js", "utf8"), m.ctx, { filename: "historyManager.js" });
+      await m.CS.rapatrier("sig");
+      m.lecture = !!lecture;
+      return m;
+    };
+
+    t("API : candidatsAjout / integrerAjouts / compterAjouts, CLE_AJOUT = _srcCalqueAjout",
+      ["candidatsAjout", "integrerAjouts", "compterAjouts"].every((f) => typeof monter(CALQUE).CS[f] === "function") &&
+      monter(CALQUE).CS.CLE_AJOUT === "_srcCalqueAjout");
+
+    const m = await monterAjouts();
+    const R0 = m.etat.roads.find((o) => o.uid === "rd_cal00001")._srcCalqueDepuis;
+    const cand = m.CS.candidatsAjout();
+    const uidsCand = [].concat(cand.editorPoints, cand.roads, cand.zones, cand.structures).map((o) => o.uid).sort();
+    t("candidats : les objets SANS marque, sans l'itinéraire ni les copies du calque",
+      JSON.stringify(uidsCand) === JSON.stringify(["pt_main0001", "rd_main0001", "zn_main0001"]));
+
+    t("intégrer : refusé sur un calque qui n'est pas en modification",
+      m.CS.integrerAjouts("puits", ["pt_main0001"]).code === "pasRapatrie");
+    t("intégrer : rien de choisi → refus, rien de touché",
+      m.CS.integrerAjouts("sig", []).code === "rienChoisi" && m.CS.compterAjouts("sig") === 0);
+
+    m.lecture = true;
+    const ro = m.CS.integrerAjouts("sig", ["pt_main0001"]);
+    t("🔒 intégrer : refusé en lecture seule, aucune marque posée",
+      ro.ok === false && ro.code === "lectureSeule" && m.etat.editorPoints[0]._srcCalque === undefined);
+    m.lecture = false;
+
+    const avantMaj = Date.now();
+    const r = m.CS.integrerAjouts("sig", ["pt_main0001", "rd_main0001", "rd_iti00001", "rd_cal00001", "inconnu"]);
+    const pt = m.etat.editorPoints.find((o) => o.uid === "pt_main0001");
+    const rd = m.etat.roads.find((o) => o.uid === "rd_main0001");
+    t("intégrer : seuls les candidats choisis (ni itinéraire, ni copie, ni uid inconnu)",
+      r.ok === true && r.total === 2 && r.stats.editorPoints === 1 && r.stats.roads === 1);
+    t("intégrer : marque du calque + marque d'ajout", pt._srcCalque === "sig" && rd._srcCalque === "sig" &&
+      pt._srcCalqueAjout === true && rd._srcCalqueAjout === true);
+    t("🩸 intégrer : date de rapatriement = celle des copies (une restitution reçue entre les deux le garde " +
+      "en objet ordinaire au lieu de laisser le calque masqué pour lui)", pt._srcCalqueDepuis === R0);
+    t("intégrer : objet daté pour la synchro (KtaUid.touch)", pt.updatedAt >= avantMaj && rd.updatedAt >= avantMaj);
+    t("intégrer : l'itinéraire et la zone non choisie restent hors calque",
+      m.etat.roads.find((o) => o.uid === "rd_iti00001")._srcCalque === undefined &&
+      m.etat.zones[0]._srcCalque === undefined);
+    t("intégrer : compterAjouts = 2, compterCopie compte copies + ajouts",
+      m.CS.compterAjouts("sig") === 2 && m.CS.compterCopie("sig") === 4);
+    t("un objet appartient à UN calque : déjà intégré, il n'est plus candidat",
+      m.CS.integrerAjouts("sig", ["pt_main0001"]).code === "rienChoisi" &&
+      m.CS.candidatsAjout().editorPoints.length === 0);
+    t("intégrer : une entrée d'historique", m.ctx.HistoryManager.canUndo() === true);
+
+    const ex = m.CS.exporterCalque("sig");
+    t("export : les ajouts intégrés partent dans le fichier du calque",
+      ex.ok && ex.total === 4 && ex.stats.data.some((o) => o.uid === "pt_main0001") &&
+      ex.stats.roads.some((o) => o.uid === "rd_main0001"));
+    t("export : le compte « hors calque » diminue d'autant (reste la zone ; l'itinéraire n'est pas compté)",
+      ex.horsCalque === 2);
+    t("🧹 export : la marque d'ajout est retirée du fichier",
+      ex.stats.data.concat(ex.stats.roads).every((o) => o._srcCalqueAjout === undefined && o._srcCalque === undefined));
+
+    // 🔒 Supprimer un objet intégré ne laisse PAS de trace : exporté, son uid est dans le fichier du calque.
+    const avantSuppr = m.ctx.HistoryManager.captureState("editorPoints");
+    m.etat.editorPoints = m.etat.editorPoints.filter((o) => o.uid !== "pt_main0001");
+    m.ctx.HistoryManager.record("suppr", avantSuppr, "editorPoints");
+    t("🔒 suppression d'un ajout intégré : aucune trace de suppression (elle viserait le fichier du calque)",
+      m.traces.indexOf("pt_main0001") < 0);
+    m.ctx.HistoryManager.undo();
+    t("  -> ⏪ rend le point supprimé, toujours intégré", m.CS.compterAjouts("sig") === 2);
+
+    m.ctx.HistoryManager.undo();
+    const pt2 = m.etat.editorPoints.find((o) => o.uid === "pt_main0001");
+    t("⏪ annule l'intégration : objets rendus sans marque", !!pt2 && pt2._srcCalque === undefined &&
+      pt2._srcCalqueAjout === undefined && m.CS.compterAjouts("sig") === 0 && m.CS.compterCopie("sig") === 2);
+    t("  -> et l'annulation est datée (la synchro l'envoie)", pt2.updatedAt >= avantMaj);
+    t("  -> sans trace de suppression", m.traces.length === 0);
+
+    m.lecture = true;
+    t("🔒 ⏪ refusé en lecture seule (garde existante)", m.ctx.HistoryManager.redo() === false);
+    m.lecture = false;
+
+    // Restitution : les ajouts intégrés partent avec le calque (la fenêtre le dit, cf. câblage plus bas).
+    const m2 = await monterAjouts();
+    m2.CS.integrerAjouts("sig", ["pt_main0001"]);
+    const rr = m2.CS.restituer("sig");
+    t("🩸 restitution : l'ajout intégré est retiré avec les copies",
+      rr.retires === 3 && !m2.etat.editorPoints.some((o) => o.uid === "pt_main0001"));
+    t("restitution : les autres dessins (zone, tracé, itinéraire) restent",
+      m2.etat.zones.length === 1 && m2.etat.roads.length === 2);
+
+    // Restitution reçue d'un autre appareil, postérieure au rapatriement : l'ajout modifié après T est GARDÉ en
+    // objet ordinaire (uid dérivé, jamais celui du fichier du calque), sans ses marques.
+    const m3 = await monterAjouts();
+    m3.CS.integrerAjouts("sig", ["pt_main0001"]);
+    const T = m3.etat.roads.find((o) => o.uid === "rd_cal00001")._srcCalqueDepuis + 1;
+    const pt3 = m3.etat.editorPoints.find((o) => o.uid === "pt_main0001");
+    pt3.updatedAt = Math.max(pt3.updatedAt, T + 1);
+    const ar = m3.CS.appliquerRestitutions([{ calque: "sig", avant: T }]);
+    const garde = m3.etat.editorPoints.find((o) => /_r/.test(o.uid));
+    t("restitution reçue : ajout modifié après T gardé, marques retirées, uid dérivé",
+      ar.gardes === 1 && !!garde && garde._srcCalque === undefined && garde._srcCalqueAjout === undefined &&
+      garde.uid !== "pt_main0001");
+
+    // Import d'une session d'un autre plan : marque inconnue retirée, marque d'ajout aussi.
+    const m4 = monter(CALQUE, { zones: [{ uid: "zn_x", type: "eau", points: [], _srcCalque: "autre",
+      _srcCalqueAjout: true }] });
+    m4.CS.resynchroniser();
+    t("import d'un autre plan : la marque d'ajout tombe avec la marque inconnue",
+      m4.etat.zones[0]._srcCalqueAjout === undefined && m4.etat.zones[0]._srcCalque === undefined);
+  }
+
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
   etat.roads.push({ type: "principal", points: [{ x: 0, y: 0 }] });   // cree a la main
   const rr = CS.restituer("sig");
@@ -426,7 +561,7 @@ const CALQUE = {
     /function clear\((?:opts)?\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
   // 🩸 Un <button> n'émet JAMAIS `change` : branché sur le listener `change` des cases, il est mort
   // sans erreur. On vérifie le TYPE D'ÉVÉNEMENT, pas seulement l'attribut.
-  ["rapatrier", "restituer", "exporter"].forEach(function (act) {
+  ["rapatrier", "restituer", "exporter", "integrer"].forEach(function (act) {
     const i = FP.indexOf("[data-calque-" + act + "]");
     const avant = i < 0 ? "" : FP.slice(0, i);
     const dernier = avant.lastIndexOf("addEventListener(\"");
@@ -434,6 +569,17 @@ const CALQUE = {
     t("🩸 cablage : « " + act + " » est branche sur CLICK (lu : " + type + ")", type === "click");
   });
 
+  t("cablage : « Intégrer des ajouts » seulement sur un calque en modification",
+    /\(rapatrie\s*\?\s*'<button[^;]*?data-calque-integrer=/.test(FP));
+  t("cablage : la fenêtre d'ajouts passe par CalqueSession.integrerAjouts, garde de lecture seule comprise",
+    /function _ouvrirAjouts[\s\S]{0,800}ktaEditionRefusee\(\)/.test(FP) && /CS\.integrerAjouts\(id, uids\)/.test(FP));
+  t("ajouts : rien n'est coché par défaut",
+    /<input type="checkbox" data-ajout-uid="' \+ _escAttr\(o\.uid\) \+ '">/.test(FP));
+  t("ajouts : filtre « Créé par » seulement avec la prise auteurObjet",
+    /parAuteur && liste\.total/.test(FP) && /aPrise\("auteurObjet"\)/.test(FP));
+  t("🩸 retour : la fenêtre de restitution DIT combien d'ajouts intégrés partent",
+    /CS\.compterAjouts\(id\)/.test(FP) && /filter\.calque\.ajoutsRetires/.test(FP) &&
+    (FP.match(/\+ ajouts, \{/g) || []).length === 2);
   t("cablage : le panneau de filtres porte les trois actions",
     /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP) && /data-calque-exporter/.test(FP));
   t("cablage : l export dit OU deposer le fichier (sinon il est inutilisable)",

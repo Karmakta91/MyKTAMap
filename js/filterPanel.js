@@ -486,6 +486,15 @@
                 '</label>' +
                 // « Exporter » seulement sur un calque rapatrié : le fichier se dépose sur la ligne de CE calque
                 // dans « Modifier un plan » (aucun doublon possible), ce qui ferme la boucle vers le ZIP.
+                // « Intégrer des ajouts » : rattacher au calque des objets dessinés à la main, pour qu'ils partent
+                // dans SON export.
+                (rapatrie
+                  ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
+                      'data-calque-integrer="' + _escAttr(id) + '" ' +
+                      'title="' + _escAttr(window.I18n.t("filter.calque.integrerTitle")) + '">' +
+                      _escHtml(window.I18n.t("filter.calque.integrer")) +
+                    '</button>'
+                  : '') +
                 (rapatrie
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       'data-calque-exporter="' + _escAttr(id) + '" ' +
@@ -715,6 +724,10 @@
         _exporterCalque(t.getAttribute("data-calque-exporter"));
         return;
       }
+      if (t.matches('[data-calque-integrer]')) {
+        _ouvrirAjouts(t.getAttribute("data-calque-integrer"));
+        return;
+      }
       if (t.matches('[data-action="show-all"]') || t.matches('[data-action="hide-all"]')) {
         const wantShow = t.matches('[data-action="show-all"]');
         const setName  = t.getAttribute("data-set");
@@ -861,8 +874,8 @@
   }
 
   // 🩸 CE QUE LA RESTITUTION DÉTRUIT : les objets qui portent la marque du calque, donc les corrections faites
-  // dessus (y compris par « Convertir », qui conserve la marque). Rien d'autre : structures, tracés, itinéraire et
-  // points dessinés à la main restent.
+  // dessus (y compris par « Convertir », qui conserve la marque) ET les ajouts intégrés au calque (comptés à part
+  // dans le message : ce sont des dessins de l'utilisateur). Les autres objets dessinés à la main restent.
   // Ce travail peut valoir des heures : on propose d'ABORD l'export (le fichier EST le calque corrigé). Deux
   // questions enchaînées plutôt qu'un confirm binaire : trois issues (exporter puis restituer · restituer quand
   // même · annuler), et un choix destructeur ne partage pas un bouton avec un choix sûr.
@@ -871,8 +884,10 @@
     if (!CS || !id) return;
     const n = CS.compterCopie(id);
     if (n <= 0) { _restituerVraiment(id); return; }   // rien à perdre
+    const a = (typeof CS.compterAjouts === "function") ? CS.compterAjouts(id) : 0;
+    const ajouts = a > 0 ? "\n\n" + window.I18n.t("filter.calque.ajoutsRetires", { a: a }) : "";
 
-    window.ktaConfirm(window.I18n.t("filter.calque.exportAvantMsg", { n: n }), {
+    window.ktaConfirm(window.I18n.t("filter.calque.exportAvantMsg", { n: n }) + ajouts, {
       titre:       window.I18n.t("filter.calque.exportAvantTitre"),
       okLabel:     window.I18n.t("filter.calque.exportAvantOui"),
       cancelLabel: window.I18n.t("filter.calque.exportAvantNon")
@@ -883,7 +898,7 @@
         return;
       }
       // Refus d'exporter → on redemande, et le message dit ce qui se perd.
-      window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }), {
+      window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }) + ajouts, {
         titre:       window.I18n.t("filter.calque.exportAvantTitre"),
         okLabel:     window.I18n.t("filter.calque.restituerOk"),
         cancelLabel: window.I18n.t("filter.calque.restituerAnnuler")
@@ -925,6 +940,167 @@
                                                           : "filter.calque.exporte",
                                          { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }))
       .then(function () { return true; });
+  }
+
+  // ── Intégrer des ajouts (objets dessinés à la main) à un calque en modification ──────────
+  // Sous-fenêtre au-dessus du panneau : les objets de session SANS marque de calque, par famille, rien de coché ;
+  // filtre « Créé par » seulement avec la prise auteurObjet (installation reliée). Le travail est dans
+  // CalqueSession.integrerAjouts (marque, date, historique, refus en lecture seule).
+  const _AJOUTS_FAMILLES = [
+    { cle: "editorPoints", lc: "icones" }, { cle: "roads", lc: "traces" },
+    { cle: "zones", lc: "zones" }, { cle: "structures", lc: "structures" }
+  ];
+
+  function _libelleAjout(fam, o) {
+    if (fam.cle === "editorPoints") {
+      const tag = Array.isArray(o.tags) && o.tags.length ? o.tags[0] : "";
+      const type = tag ? _lcLabel("icones", tag, tag) : "";
+      const nom = o.nom || o.name || "";
+      return { nom: nom || type || "?", type: nom ? type : "" };
+    }
+    const type = _lcLabel(fam.lc, o.type, o.type);
+    return { nom: o.label || o.nom || type || "?", type: _emojiForType(fam.cle, o.type) + " " + type };
+  }
+
+  // Créateur connu par la prise auteurObjet, "" s'il est inconnu, undefined sans la prise.
+  function _auteurAjout(o) {
+    const X = window.KtaExtensions;
+    if (!X || typeof X.aPrise !== "function" || !X.aPrise("auteurObjet")) return undefined;
+    const a = X.auteurObjet(o.uid);
+    return (a && a.createur) ? String(a.createur) : "";
+  }
+
+  function _htmlAjouts(cand, parAuteur) {
+    const auteurs = {};
+    let total = 0, html = "";
+    _AJOUTS_FAMILLES.forEach(function (fam) {
+      const liste = cand[fam.cle] || [];
+      if (!liste.length) return;
+      html += '<div class="kta-fp-ajouts-groupe">' + _escHtml(window.I18n.t("filter.ajouts.famille." + fam.cle)) +
+              ' <span class="kta-fp-ajouts-meta">(' + liste.length + ')</span></div><div class="kta-fp-list">';
+      liste.forEach(function (o) {
+        total++;
+        const l = _libelleAjout(fam, o);
+        const auteur = parAuteur ? _auteurAjout(o) : undefined;
+        if (auteur) auteurs[auteur] = true;
+        const niv = (o.level !== undefined && o.level !== null && o.level !== "")
+          ? " · " + window.I18n.t("filter.ajouts.niveau", { n: o.level }) : "";
+        const meta = (l.type ? " · " + l.type : "") + niv + (auteur ? " · " + auteur : "");
+        html += '<label class="kta-fp-row-cb" data-ajout-auteur="' + _escAttr(auteur || "") + '">' +
+                  '<input type="checkbox" data-ajout-uid="' + _escAttr(o.uid) + '">' +
+                  '<span>' + _escHtml(l.nom) + '<span class="kta-fp-ajouts-meta">' + _escHtml(meta) + '</span></span>' +
+                '</label>';
+      });
+      html += '</div>';
+    });
+    return { html: html, total: total, auteurs: Object.keys(auteurs).sort(function (a, b) { return a.localeCompare(b); }) };
+  }
+
+  function _ouvrirAjouts(id) {
+    const CS = window.CalqueSession;
+    if (!CS || !id || typeof CS.candidatsAjout !== "function") return;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
+    const ancien = document.getElementById("kta-fp-ajouts");
+    if (ancien) ancien.remove();
+    const pc = window.PLAN_CONFIG;
+    const lc = (pc && Array.isArray(pc.dataLayers)) ? pc.dataLayers.find(function (d) { return d && d.id === id; }) : null;
+    const nomCalque = (lc && lc.label) || id;
+    const X = window.KtaExtensions;
+    const parAuteur = !!(X && typeof X.aPrise === "function" && X.aPrise("auteurObjet"));
+    const liste = _htmlAjouts(CS.candidatsAjout(), parAuteur);
+    const filtre = (parAuteur && liste.total)
+      ? '<label class="kta-fp-ajouts-filtre">' + _escHtml(window.I18n.t("filter.ajouts.creePar")) + ' ' +
+          '<select id="kta-fp-ajouts-auteur"><option value="">' + _escHtml(window.I18n.t("filter.ajouts.tous")) +
+          '</option>' + liste.auteurs.map(function (n) {
+            return '<option value="' + _escAttr(n) + '">' + _escHtml(n) + '</option>';
+          }).join("") + '</select></label>'
+      : "";
+
+    const ov = document.createElement("div");
+    ov.id = "kta-fp-ajouts";
+    ov.className = "kta-readme-modal-overlay";
+    ov.style.zIndex = "100001";   // sous-modale, au-dessus du panneau de filtres
+    ov.innerHTML =
+      '<div class="kta-readme-modal-boite kta-fp-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">' +
+            _escHtml(window.I18n.t("filter.ajouts.titre", { calque: nomCalque })) + '</span>' +
+          '<button class="kta-panneau-close" data-ajouts-fermer type="button">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-fp-corps">' +
+          '<p class="kta-fp-ajouts-intro">' + _escHtml(window.I18n.t("filter.ajouts.intro")) + '</p>' +
+          (liste.total
+            ? '<div class="kta-fp-ajouts-outils"><label class="kta-fp-ajouts-tout"><input type="checkbox" ' +
+                'id="kta-fp-ajouts-tout"> ' + _escHtml(window.I18n.t("filter.ajouts.toutCocher")) + '</label>' +
+                filtre + '</div>' + liste.html
+            : '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.ajouts.vide")) + '</div>') +
+        '</div>' +
+        '<div class="kta-fp-footer">' +
+          '<button type="button" class="kta-btn kta-btn-ghost" data-ajouts-fermer>' +
+            _escHtml(window.I18n.t("filter.ajouts.annuler")) + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-fp-ajouts-ok" disabled>' +
+            _escHtml(window.I18n.t("filter.ajouts.valider", { n: 0 })) + '</button>' +
+        '</div>' +
+      '</div>';
+
+    // Échap ferme la SOUS-fenêtre seulement (capture sur window : le panneau écoute Échap sur document).
+    function onKey(e) {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      fermerAjouts();
+    }
+    function fermerAjouts() {
+      window.removeEventListener("keydown", onKey, true);
+      ov.remove();
+    }
+    // Lignes visibles sous le filtre « Créé par » : « tout cocher » et la validation ne portent que sur elles.
+    function visibles() {
+      return Array.prototype.filter.call(ov.querySelectorAll("[data-ajout-uid]"), function (cb) {
+        return !cb.closest("label").hidden;
+      });
+    }
+    function maj() {
+      const v = visibles();
+      const n = v.filter(function (cb) { return cb.checked; }).length;
+      const ok = ov.querySelector("#kta-fp-ajouts-ok");
+      ok.disabled = n === 0;
+      ok.textContent = window.I18n.t("filter.ajouts.valider", { n: n });
+      const tout = ov.querySelector("#kta-fp-ajouts-tout");
+      if (tout) tout.checked = v.length > 0 && n === v.length;
+    }
+    ov.addEventListener("change", function (e) {
+      const t = e.target;
+      if (t.id === "kta-fp-ajouts-tout") {
+        visibles().forEach(function (cb) { cb.checked = t.checked; });
+      } else if (t.id === "kta-fp-ajouts-auteur") {
+        ov.querySelectorAll("[data-ajout-auteur]").forEach(function (row) {
+          row.hidden = !!t.value && row.getAttribute("data-ajout-auteur") !== t.value;
+        });
+      }
+      maj();
+    });
+    ov.addEventListener("click", function (e) {
+      const t = e.target;
+      if (t === ov || (t.closest && t.closest("[data-ajouts-fermer]"))) { fermerAjouts(); return; }
+      if (t.id !== "kta-fp-ajouts-ok") return;
+      const uids = visibles().filter(function (cb) { return cb.checked; }).map(function (cb) {
+        return cb.getAttribute("data-ajout-uid");
+      });
+      const r = CS.integrerAjouts(id, uids);
+      if (r && r.code === "lectureSeule") { fermerAjouts(); return; }   // déjà dit par la garde
+      if (!r || !r.ok) {
+        window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
+        return;
+      }
+      fermerAjouts();
+      refreshDataLayers();
+      _updateStatus();
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(window.I18n.t("filter.ajouts.ok", { n: r.total, calque: nomCalque }), "info");
+      }
+    });
+    window.addEventListener("keydown", onKey, true);
+    document.documentElement.appendChild(ov);
   }
 
   // ── Export ──────────
