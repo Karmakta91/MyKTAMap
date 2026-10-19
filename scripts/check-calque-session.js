@@ -10,7 +10,8 @@
 //   3. le retour chirurgical : seuls les objets marqués partent, les créations à la main restent ;
 //   4. 🩸 le verrou ne s'applique QUE si la copie est là : sauvegarde sautée sur quota + verrou qui
 //      masque le calque = plan vide sans un mot. `appliquerVerrous` LIBÈRE dans ce cas ;
-//   5. 🩸 effacer la session rend le calque (`sessionPersist.js > clear()`), sinon le relevé disparaît ;
+//   5. 🩸 effacer la session rend le calque (`sessionPersist.js > clear()`), sinon le relevé disparaît ; là où
+//      la restitution se partage, « rendre aussi à l'équipe » la note avant le vidage et elle survit à clear() ;
 //   6. le câblage que l'extraction ne voit pas (script, précache, hooks de session, interface).
 // =====================================================================
 "use strict";
@@ -78,7 +79,7 @@ const CALQUE = {
   const { CS } = monter(CALQUE);
   ["estRapatrie", "listeRapatries", "compterCopie", "peser", "occupationLocalStorage",
    "rapatrier", "restituer", "exporterCalque", "appliquerVerrous", "getSessionState", "loadSessionState",
-   "resynchroniser"]
+   "resynchroniser", "restitutionPartagee", "libelle"]
     .forEach(function (m) {
       t("API : CalqueSession." + m + "()", typeof CS[m] === "function");
     });
@@ -356,6 +357,20 @@ const CALQUE = {
     await m5.CS.rapatrier("sig");
     t("« Effacer la session » (opts.local) : jamais notée", m5.CS.restituer("sig", { local: true }).partagee === false &&
       m5.CS.restitutionsDepuis(0).length === 0);
+    t("plan d'extension modifiable : restitutionPartagee() vrai, plan local ou lecture seule : faux",
+      m5.CS.restitutionPartagee() === true && m4.CS.restitutionPartagee() === false && m.CS.restitutionPartagee() === false);
+    t("libelle : nom du calque, son id à défaut", m.CS.libelle("sig") === "Import SIG" && m.CS.libelle("inconnu") === "inconnu");
+    // « Rendre aussi les calques à l'équipe » : restitution partagée, puis l'effacement relit l'état en gardant les
+    // restitutions (forme exacte de sessionPersist.js > clear) — elle doit encore partir.
+    const m8 = monter(AVEC_UID);
+    ext(m8);
+    await m8.CS.rapatrier("sig");
+    m8.CS.restituer("sig");
+    const st8 = m8.CS.getSessionState();
+    m8.CS.loadSessionState(st8 ? { restitutions: st8.restitutions, aEnvoyer: st8.aEnvoyer } : null);
+    t("🩸 rendre à l'équipe puis effacer : la restitution reste à envoyer (uids compris), plus aucun calque rapatrié",
+      m8.CS.restitutionsDepuis(0).length === 1 && m8.CS.restitutionsDepuis(0)[0].uids.length === 2 &&
+      m8.CS.listeRapatries().length === 0);
 
     // Réception : copies marquées de quatre provenances, un objet du calque non marqué, un autre calque.
     const marque = (uid, maj, R, L) => ({ uid, type: "a", points: [], updatedAt: maj, _srcCalque: L || "sig",
@@ -424,6 +439,21 @@ const CALQUE = {
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
     // clear(opts) : `opts.snapshotFait` évite un double snapshot (déjà pris par la modale de restauration).
     /function clear\((?:opts)?\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
+  t("🩸 cablage : effacer la session GARDE les restitutions (sinon « rendre à l'équipe » ne part jamais)",
+    SP.indexOf("loadSessionState(st ? { restitutions: st.restitutions, aEnvoyer: st.aEnvoyer } : null)") > 0);
+  {
+    const i = SP.indexOf("data-action=\"clear\"]').addEventListener");
+    const h = i < 0 ? "" : SP.slice(i, i + 4000);
+    t("cablage : le choix « équipe / cet appareil » n'existe que si la restitution se partage",
+      h.indexOf("CS.restitutionPartagee())\n        ? CS.listeRapatries() : [];") > 0 ||
+      h.indexOf("CS.restitutionPartagee())\r\n        ? CS.listeRapatries() : [];") > 0);
+    t("cablage : trois issues (cet appareil / rendre à l'équipe / annuler)",
+      h.indexOf("autre:       { label: _t(\"session.btn.clearEquipe\"), valeur: \"equipe\" }") > 0 &&
+      h.indexOf("okLabel:     _t(\"session.btn.clearIci\")") > 0 && h.indexOf("go(choix === \"equipe\")") > 0);
+    t("🩸 cablage : la restitution partagée est notée AVANT le vidage (elle porte les uids des copies)",
+      h.indexOf("CS.restituer(id)") > 0 && h.indexOf("CS.restituer(id)") < h.indexOf("_viderEtatCourant()"));
+    t("🔒 cablage : les noms de calques sont échappés avant ktaConfirm (HTML)", h.indexOf("ktaEsc(CS.libelle(id))") > 0);
+  }
   // 🩸 Un <button> n'émet JAMAIS `change` : branché sur le listener `change` des cases, il est mort
   // sans erreur. On vérifie le TYPE D'ÉVÉNEMENT, pas seulement l'attribut.
   ["rapatrier", "restituer", "exporter"].forEach(function (act) {
