@@ -117,6 +117,10 @@ function etat(page, ids) {
     await page.evaluate(function () { document.querySelector('#kta-session-modal [data-action="clear"]').click(); });
     await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 10000);
     await page.waitForTimeout(500);   // garde anti-double-clic de ktaConfirm
+    // Plan local : la restitution ne se partage pas, la confirmation garde ses deux boutons.
+    if (await page.evaluate(function () { return !document.getElementById("kta-confirm-autre"); })) {
+      ok("plan local : confirmation à deux boutons (pas de choix « équipe »)");
+    } else pb("plan local : un choix « rendre à l'équipe » est proposé");
     await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
     await page.waitForTimeout(1500);
     const rendu = JSON.stringify({ copies: 0, rapatries: 0, affiches: 2,

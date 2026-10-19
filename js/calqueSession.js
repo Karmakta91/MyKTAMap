@@ -29,7 +29,8 @@
 //   de la session (jamais dans un fichier de session ni de calque). Règle : docs/architecture/session-data.md.
 // API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
 //   exporterCalque, compterCopie, appliquerVerrous, resynchroniser (import de session, synchro), getSessionState,
-//   loadSessionState, restitutionsDepuis, appliquerRestitutions, CLE_SOURCE, CLE_DEPUIS }
+//   loadSessionState, restitutionPartagee, libelle, restitutionsDepuis, appliquerRestitutions, CLE_SOURCE,
+//   CLE_DEPUIS }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
 // check-calque-session.js.
 
@@ -241,6 +242,12 @@ window.CalqueSession = (function () {
     if (!e || e.type !== "ext") return false;
     const X = window.KtaExtensions;
     try { return !(X && typeof X.lectureSeule === "function" && X.lectureSeule(id)); } catch (er) { return false; }
+  }
+
+  // Nom affiché d'un calque du plan ouvert (son id à défaut).
+  function libelle(id) {
+    const lc = _cfgCalque(id);
+    return (lc && lc.label) || id;
   }
 
   // ── Restitution partagée : sortante ──────────
@@ -521,6 +528,8 @@ window.CalqueSession = (function () {
     restituer:              restituer,
     exporterCalque:         exporterCalque,
     resynchroniser:         resynchroniser,
+    restitutionPartagee:    _restitutionPartagee,
+    libelle:                libelle,
     restitutionsDepuis:     restitutionsDepuis,
     appliquerRestitutions:  appliquerRestitutions,
     appliquerVerrous:       appliquerVerrous,
