@@ -2987,6 +2987,7 @@
   "photosgal.completer": "Recherche des photos de l'installation…",
   "photosgal.vide": "Aucune photo sur cet appareil.",
   "photosgal.total": "{n} photo(s) · {taille} sur cet appareil",
+  "photosgal.extSansPhoto": "{n} plan(s) ☁️ sans photo sur cet appareil (photos d'équipe possibles côté serveur)",
   "photosgal.planAbsent": "(plan absent de l'appareil)",
   "photosgal.planCompte": "{n} photo(s) · {taille}",
   "photosgal.retour": "← Tous les plans",

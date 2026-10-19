@@ -3000,6 +3000,7 @@
   "photosgal.completer": "Buscando las fotos de la instalación…",
   "photosgal.vide": "Ninguna foto en este dispositivo.",
   "photosgal.total": "{n} foto(s) · {taille} en este dispositivo",
+  "photosgal.extSansPhoto": "{n} plano(s) ☁️ sin foto en este dispositivo (puede haber fotos del equipo en el servidor)",
   "photosgal.planAbsent": "(mapa ausente del dispositivo)",
   "photosgal.planCompte": "{n} foto(s) · {taille}",
   "photosgal.retour": "← Todos los mapas",

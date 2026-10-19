@@ -2987,6 +2987,7 @@
   "photosgal.completer": "Looking for the installation's photos…",
   "photosgal.vide": "No photo on this device.",
   "photosgal.total": "{n} photo(s) · {taille} on this device",
+  "photosgal.extSansPhoto": "{n} ☁️ map(s) with no photo on this device (team photos may exist on the server)",
   "photosgal.planAbsent": "(plan not on this device)",
   "photosgal.planCompte": "{n} photo(s) · {taille}",
   "photosgal.retour": "← All plans",

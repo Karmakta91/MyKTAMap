@@ -297,10 +297,13 @@
       e.n++; e.taille += ph.size || 0;
       parPlan.set(ph.planId, e);
     });
-    // Installation reliée : des photos de l'équipe peuvent manquer sur l'appareil.
+    // Installation reliée : les plans ☁️ sans AUCUNE photo sur cet appareil ne sont pas LISTÉS (sinon toute
+    // l'organisation s'affiche en « 0 photo »), mais on dit COMBIEN, pour ne pas masquer que des photos d'équipe
+    // peuvent exister côté serveur. (décision produit)
+    let _extSansPhoto = 0;
     if (_extPhotos() && window.PlanRegistry && typeof window.PlanRegistry.getAll === "function") {
       (window.PlanRegistry.getAll() || []).forEach(function (p) {
-        if (p && p.type === "ext" && !parPlan.has(p.id)) parPlan.set(p.id, { n: 0, taille: 0 });
+        if (p && p.type === "ext" && !parPlan.has(p.id)) _extSansPhoto++;
       });
     }
     if (!_corps()) return;
@@ -311,6 +314,9 @@
       html += '<p class="kta-ipl-empty">' + _esc(_t("photosgal.vide")) + '</p>';
     } else {
       html += '<p class="kta-phg-total">' + _esc(_t("photosgal.total", { n: tout.length, taille: _taille(total) })) + '</p>';
+      if (_extSansPhoto > 0) {
+        html += '<p class="kta-phg-total kta-tx-muted">' + _esc(_t("photosgal.extSansPhoto", { n: _extSansPhoto })) + '</p>';
+      }
       html += lignes.map(function (id) {
         const e = parPlan.get(id);
         const absent = !_plan(id);
