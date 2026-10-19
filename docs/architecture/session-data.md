@@ -1553,9 +1553,39 @@ Un objet **sans marque** n'est jamais touché. Les restitutions connues sont rej
 Trois règles dans l'export :
 - 🩸 **Les tableaux vides sont ÉCRITS, pas omis.** C'est un remplacement : `zones: []` est la seule façon de dire « j'ai tout supprimé ». Les omettre annulerait la suppression au rechargement.
 - 🧹 La marque interne **`_srcCalque` est retirée** — elle n'a rien à faire dans le ZIP d'un plan partagé.
-- ⚠️ Les objets **créés à la main** pendant la session ne partent pas (ils n'appartiennent pas au calque) mais sont **comptés et annoncés** : les verser d'office déciderait à la place de l'utilisateur, les taire lui ferait croire tout embarqué.
+- ⚠️ Les objets **créés à la main** pendant la session ne partent pas (ils n'appartiennent pas au calque) mais sont **comptés et annoncés** : les verser d'office déciderait à la place de l'utilisateur, les taire lui ferait croire tout embarqué. L'utilisateur les rattache lui-même par « ➕ Intégrer des ajouts » (ci-dessous).
 
 Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].file` est résolu au chargement (`config.js > cloneAndResolvePlanConfig`) et vaut souvent une URL `blob:` sur un plan importé.
+
+### ➕ Intégrer des ajouts
+
+Besoin : plusieurs comptes corrigent un calque ensemble ; celui qui exporte doit pouvoir y verser les objets **dessinés à la
+main** (les siens ou ceux d'un autre), sinon ils restent hors du fichier. Bouton **« ➕ Intégrer des ajouts »** sur la ligne
+d'un calque en modification (`filterPanel.js > _ouvrirAjouts`) : sous-fenêtre (z-index 100001) qui liste les candidats
+par famille (nom, type, niveau), rien de coché, « Tout cocher », filtre **« Créé par »** seulement avec la prise
+`auteurObjet` (« tout cocher » et la validation ne portent que sur les lignes visibles). Moteur :
+`CalqueSession.candidatsAjout()` / `integrerAjouts(id, uids)` / `compterAjouts(id)`.
+
+- **Candidats** : objets de session **sans** `_srcCalque`, avec uid, hors itinéraire calculé. Un objet appartient à UN
+  calque ; une copie (uid d'un objet de calque) ne change jamais de calque.
+- **Marques posées** : `_srcCalque = id`, `_srcCalqueAjout = true`, et **`_srcCalqueDepuis` = la date de rapatriement des
+  copies du calque** (la plus récente ; maintenant s'il n'y en a pas), puis `KtaUid.touch` (la synchro l'envoie).
+  L'objet se comporte ainsi en **copie retouchée maintenant** :
+
+| Situation | Effet | Pourquoi |
+|---|---|---|
+| Export du calque | part dans le fichier, marques retirées | il appartient au calque ; « hors calque » diminue d'autant |
+| Restitution locale ou reçue (T ≥ sa date) | retiré (serveur en clair : retiré avec les copies marquées) | même règle que les copies ; **la fenêtre de restitution l'annonce** (`filter.calque.ajoutsRetires`, compte `compterAjouts`) |
+| Restitution reçue postérieure au rapatriement mais **antérieure** à l'intégration | **gardé** en objet ordinaire, uid dérivé, marques retirées | avec l'instant de l'intégration comme date, il resterait marqué et laisserait le calque masqué pour lui seul |
+| Suppression | **aucune trace** (`historyManager.js > _laisseTrace`) | 🔒 une fois exporté, son uid EST dans le fichier du calque : une trace, passée par la fusion de calques, l'y détruirait |
+| ⏪ | une entrée d'historique (toutes catégories) rend les objets sans marque, datés à nouveau par l'historique | annulable comme tout dessin |
+| Lecture seule | refusé (`ktaEditionRefusee`, qui le dit) | même garde que les outils de dessin |
+
+`_srcCalqueAjout` ne sert qu'au compte de la restitution ; il tombe avec la marque (export, copie gardée, marque orpheline
+de `resynchroniser`). Effet de bord voulu : un ajout intégré est du contenu de calque, il ne part plus dans un export de
+session limité à ses ajouts (`sessionExporter.js > _garder`, copies exclues). Limite : intégrer, exporter le calque, annuler
+l'intégration puis supprimer l'objet laisse une trace sur un uid présent dans le fichier exporté (suppression explicite
+de l'utilisateur).
 
 ### État persisté
 
@@ -1564,9 +1594,9 @@ Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].fil
                     "aEnvoyer": { "sig": { "avant": 1760000000000, "uids": ["rd_…"] } } }
 ```
 
-Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
+Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement ; `_srcCalqueAjout` sur un ajout intégré). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
 
-**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 118 assertions, le vrai module chargé dans un `vm`, câblage de l'import de session compris.
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 150 assertions, le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris.
 
 ---
 

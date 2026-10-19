@@ -27,10 +27,12 @@
 //   exportée puis fusionnée, détruirait l'objet du calque). Un enregistrement par calque « restitué à T »
 //   (restitutionsDepuis → synchro sortante ; appliquerRestitutions ← synchro entrante), gardé dans l'état LOCAL
 //   de la session (jamais dans un fichier de session ni de calque). Règle : docs/architecture/session-data.md.
+// Ajouts intégrés : un objet dessiné à la main peut rejoindre un calque en modification (integrerAjouts) ; il se
+//   comporte alors en copie (exporté avec le calque, retiré à sa restitution).
 // API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
 //   exporterCalque, compterCopie, appliquerVerrous, resynchroniser (import de session, synchro), getSessionState,
-//   loadSessionState, restitutionPartagee, libelle, restitutionsDepuis, appliquerRestitutions, CLE_SOURCE,
-//   CLE_DEPUIS }
+//   loadSessionState, restitutionPartagee, libelle, restitutionsDepuis, appliquerRestitutions, candidatsAjout,
+//   integrerAjouts, compterAjouts, CLE_SOURCE, CLE_DEPUIS, CLE_AJOUT }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
 // check-calque-session.js.
 
@@ -43,6 +45,9 @@ window.CalqueSession = (function () {
   // Instant du rapatriement (ms), posé avec la marque : une restitution « à T » ne touche que les copies d'un
   // rapatriement antérieur à T — celles d'un nouveau rapatriement (après T) restent.
   const CLE_DEPUIS = "_srcCalqueDepuis";
+  // Posée (true) avec la marque sur un objet dessiné à la main puis intégré au calque : seule différence avec une
+  // copie, elle permet à la restitution de dire combien d'AJOUTS elle retire. Retirée avec la marque.
+  const CLE_AJOUT = "_srcCalqueAjout";
 
   // Ids des calques rapatriés (les objets vivent dans la session, le verrou se déduit).
   let _rapatries = [];
@@ -315,6 +320,7 @@ window.CalqueSession = (function () {
         const c = JSON.parse(JSON.stringify(o));
         delete c[CLE_SOURCE];
         delete c[CLE_DEPUIS];
+        delete c[CLE_AJOUT];
         c.uid = _uidGarde(String(o.uid || ""), T);
         change = true;
         if (!deja.has(c.uid)) { gardes++; parCalque[L] = (parCalque[L] || 0) + 1; }
@@ -335,6 +341,89 @@ window.CalqueSession = (function () {
       });
     }
     return { retires: retires, gardes: gardes, change: change };
+  }
+
+  // ── Intégrer des ajouts : un objet dessiné à la main rejoint un calque en modification ──────────
+  // L'objet reçoit la marque ET la date de rapatriement des copies du calque (pas l'instant de l'intégration) : il
+  // se comporte en copie retouchée maintenant.
+  //   - exporté avec le calque (exporterCalque lit la marque), retiré à sa restitution locale ou reçue ;
+  //   - 🔒 aucune trace de suppression (historyManager.js > _laisseTrace) : une fois exporté, son uid EST dans le
+  //     fichier du calque, une trace le détruirait par la fusion de calques ;
+  //   - une restitution reçue postérieure au rapatriement mais antérieure à l'intégration le GARDE en objet
+  //     ordinaire sous un uid dérivé (règle des copies modifiées après T) : avec l'instant de l'intégration, il
+  //     resterait marqué et laisserait le calque masqué pour lui seul.
+  // Seuls les objets SANS marque sont candidats : un objet appartient à un seul calque, et une copie (uid d'un objet
+  // de calque) ne change jamais de calque. L'itinéraire calculé n'en est pas un.
+  function _estCandidat(o) {
+    return !!o && o[CLE_SOURCE] === undefined && o.type !== "itinerary" && typeof o.uid === "string" && !!o.uid;
+  }
+
+  // { editorPoints: [...], roads: [...], zones: [...], structures: [...] } (références de session, lecture seule).
+  function candidatsAjout() {
+    const out = {};
+    FAMILLES.forEach(function (fam) { out[fam.cle] = _lire(fam).filter(_estCandidat); });
+    return out;
+  }
+
+  // Objets intégrés à ce calque (ils partiront à sa restitution : la fenêtre le dit).
+  function compterAjouts(id) {
+    let n = 0;
+    FAMILLES.forEach(function (fam) {
+      _lire(fam).forEach(function (o) { if (o && o[CLE_SOURCE] === id && o[CLE_AJOUT] === true) n++; });
+    });
+    return n;
+  }
+
+  // Date du rapatriement en cours : la plus récente des copies (une copie d'un rapatriement plus ancien a été
+  // retirée par sa restitution). Aucune copie datée (rapatriement antérieur à la date) : maintenant.
+  function _depuisCopies(id) {
+    let R = 0;
+    FAMILLES.forEach(function (fam) {
+      _lire(fam).forEach(function (o) {
+        if (o && o[CLE_SOURCE] === id && typeof o[CLE_DEPUIS] === "number" && isFinite(o[CLE_DEPUIS]) &&
+            o[CLE_DEPUIS] > R) R = o[CLE_DEPUIS];
+      });
+    });
+    return R > 0 ? R : Date.now();
+  }
+
+  // `uids` = objets choisis. 🔒 Refus en lecture seule (garde des outils de dessin, qui le dit). Une seule entrée
+  // d'historique (⏪ rend les objets tels qu'avant) ; chaque objet est daté (KtaUid.touch) pour partir à la synchro.
+  // → { ok:true, total, stats } ou { ok:false, code }.
+  function integrerAjouts(id, uids) {
+    if (!estRapatrie(id)) return { ok: false, code: "pasRapatrie" };
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) {
+      return { ok: false, code: "lectureSeule" };
+    }
+    const voulus = new Set((Array.isArray(uids) ? uids : []).filter(function (u) { return typeof u === "string" && u; }));
+    if (!voulus.size) return { ok: false, code: "rienChoisi" };
+    const H = window.HistoryManager;
+    const avant = (H && typeof H.captureState === "function") ? H.captureState() : null;
+    const R = _depuisCopies(id);
+    const K = window.KtaUid;
+    const stats = { editorPoints: 0, roads: 0, zones: 0, structures: 0 };
+    let total = 0;
+    FAMILLES.forEach(function (fam) {
+      const arr = _lire(fam);
+      let n = 0;
+      arr.forEach(function (o) {
+        if (!_estCandidat(o) || !voulus.has(o.uid)) return;
+        o[CLE_SOURCE] = id;
+        o[CLE_DEPUIS] = R;
+        o[CLE_AJOUT] = true;
+        if (K && typeof K.touch === "function") K.touch(o); else o.updatedAt = Date.now();
+        n++;
+      });
+      if (n) { _ecrire(fam, arr.slice()); stats[fam.cle] = n; total += n; }
+    });
+    if (!total) return { ok: false, code: "rienChoisi" };
+    if (avant && typeof H.record === "function") {
+      try { H.record(window.I18n.t("calque.ajouts.historique", { n: total }), avant); }
+      catch (e) { console.warn("[CalqueSession] historique de l'integration :", e); }
+    }
+    _persister();
+    _log("calque « " + id + " » : " + total + " ajout(s) integre(s)", stats);
+    return { ok: true, total: total, stats: stats };
   }
 
   // ── Retour vers le ZIP : UN fichier de la forme de l'original ──────────
@@ -362,6 +451,7 @@ window.CalqueSession = (function () {
           const c = JSON.parse(JSON.stringify(o));
           delete c[CLE_SOURCE];
           delete c[CLE_DEPUIS];
+          delete c[CLE_AJOUT];
           payload[cible].push(c);
         } else if (o[CLE_SOURCE] === undefined) {
           // Objet créé à la main en session : il n'appartient pas au calque, on ne l'y verse pas d'autorité. On le
@@ -458,6 +548,7 @@ window.CalqueSession = (function () {
         } else {
           delete o[CLE_SOURCE];   // mutation en place : l'objet EST celui de la session
           delete o[CLE_DEPUIS];
+          delete o[CLE_AJOUT];
           orphelins++;
         }
       });
@@ -519,6 +610,7 @@ window.CalqueSession = (function () {
   return {
     CLE_SOURCE:             CLE_SOURCE,
     CLE_DEPUIS:             CLE_DEPUIS,
+    CLE_AJOUT:              CLE_AJOUT,
     estRapatrie:            estRapatrie,
     listeRapatries:         listeRapatries,
     compterCopie:           compterCopie,
@@ -533,6 +625,9 @@ window.CalqueSession = (function () {
     restitutionsDepuis:     restitutionsDepuis,
     appliquerRestitutions:  appliquerRestitutions,
     appliquerVerrous:       appliquerVerrous,
+    candidatsAjout:         candidatsAjout,
+    compterAjouts:          compterAjouts,
+    integrerAjouts:         integrerAjouts,
     getSessionState:        getSessionState,
     loadSessionState:       loadSessionState
   };
