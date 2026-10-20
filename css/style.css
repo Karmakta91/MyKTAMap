@@ -17124,6 +17124,23 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* ⚠️ Seule exception : un indicateur de chargement garde un signe de vie. La rotation devient une pulsation
+     d'opacité lente (aucun déplacement). La classe bat le `*` (même !important, plus spécifique) et le style
+     inline. Un nouvel indicateur qui tourne rejoint cette liste ou porte .kta-charge-tourne. Le splash a sa
+     propre règle (js/ktaSplash.js). */
+  .kta-load-spinner,
+  .kta-sortie-spinner,
+  .kta-poi-photo-spinner,
+  .kta-charge-tourne {
+    animation-name: kta-charge-pulse !important;
+    animation-duration: 2.4s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+@keyframes kta-charge-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
 }
 
 /* ── Accessibilité : :focus-visible — contour --kta-focus au clavier seulement (ui.md §88.2) ── */

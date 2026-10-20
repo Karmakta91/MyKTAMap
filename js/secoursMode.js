@@ -5582,7 +5582,7 @@
         "font-size:16px"
       ].join(";");
       overlay.innerHTML =
-        '<div style="font-size:42px;animation:kta-spin 1.4s linear infinite;">🛰️</div>' +
+        '<div class="kta-charge-tourne" style="font-size:42px;animation:kta-spin 1.4s linear infinite;">🛰️</div>' +
         '<div style="font-weight:700;">' + _ctx.icon + ' ' + _escHtml(_ctx.title) + '</div>' +
         '<div style="font-size:12px;color:' + ovMuted + ';max-width:340px;text-align:center;">' +
           _escHtml(_ctx.sub) +
