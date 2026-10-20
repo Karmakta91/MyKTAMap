@@ -229,15 +229,19 @@
   accent-color: #f4c542;
 }
 
-/* 🔄 v1.85.0 — ligne de calque de donnees : la case a cocher garde toute la
-   largeur, l action de rapatriement se pose a droite sans la retrecir. */
+/* Ligne de calque de donnees : la case a cocher et le nom d abord, les actions a droite.
+   🩸 Un calque en modification porte jusqu a 3 boutons qui ne retrecissent pas (Integrer, Exporter,
+   Restaurer) : sans retour a la ligne, le nom tombait a zero et les boutons debordaient de la fenetre sur
+   telephone. Le nom garde 10em, les boutons passent dessous quand la place manque. */
 .kta-fp-calque-ligne {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 6px;
 }
 .kta-fp-calque-ligne .kta-fp-row-cb {
-  flex: 1 1 auto;
+  flex: 1 1 10em;
   min-width: 0;
 }
 .kta-fp-calque-ligne .kta-fp-row-cb > span {
