@@ -9,7 +9,8 @@
 //   2. accueil lent (main.js retardé) : le splash attend que #planLoaderOverlay soit affiché ;
 //   3. clic pendant l'animation, accueil prêt : fondu aussitôt ; accueil pas prêt (et Échap) : image finale,
 //      puis attente de l'accueil ;
-//   4. réouverture le même jour : version courte (~1 s) ;
+//   4. deux ouvertures de suite : la seconde rejoue l'animation complète (pas de version raccourcie), et la clé
+//      d'une ancienne version courte est retirée ;
 //   5. plafond de sécurité : fondu à 12 s même si l'accueil n'arrive pas ;
 //   6. mouvement réduit : image finale directe ;
 //   7. coût au démarrage, processeur ralenti ×4 : affichage de l'accueil et tâches longues (informatif).
@@ -107,6 +108,9 @@ async function ouvrir(nav, opts) {
       await route.continue();
     });
   }
+  if (opts.ancienneCle) {
+    await p.addInitScript(function () { localStorage.setItem("myktamap_splash_jour_v1", "2026-1-1"); });
+  }
   if (opts.cpu) {
     const cdp = await ctx.newCDPSession(p);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: opts.cpu });
@@ -164,22 +168,26 @@ async function premiereOuverture(nav, nom, w, h) {
   await new Promise(function (r) { setTimeout(r, 300); });
   const nav = await lancerNavigateur(chromium);
   try {
-    // 1. Première ouverture (téléphone, puis PC) ; 4. le contexte téléphone sert à la réouverture.
+    // 1. Première ouverture (téléphone, puis PC) ; 4. le contexte téléphone sert à la seconde ouverture.
     const ctxTel = await premiereOuverture(nav, "téléphone 390", 390, 844);
     const ctxPc = await premiereOuverture(nav, "PC 1280", 1280, 800);
     await ctxPc.close();
 
-    console.log("— téléphone : réouverture le même jour —");
+    console.log("— téléphone : seconde ouverture de suite —");
     {
-      const { p } = await ouvrir(nav, { nom: "courte", ctx: ctxTel });
-      await attendreA(p, 400);
+      const { p } = await ouvrir(nav, { nom: "seconde", ctx: ctxTel, ancienneCle: true });
+      await attendreA(p, 1000);
       const a = await p.evaluate(etatSplash);
-      if (a && a.version === "courte" && a.traces === 38) ok("version courte : réseau déjà dessiné");
-      else pb("version courte attendue : " + JSON.stringify(a));
-      const s = await attendreRetrait(p, 8000);
-      const attendu = Math.max(1000, s.accueil || 0);
-      if (s.fondu !== null && s.fondu >= 950 && s.fondu <= attendu + 400) ok("fondu à " + s.fondu + " ms (accueil " + s.accueil + " ms)");
-      else pb("version courte : fondu " + s.fondu + " ms, accueil " + s.accueil + " ms");
+      if (a && a.version === "longue" && a.traces < a.chemins) ok("la seconde ouverture rejoue le tracé (" + a.traces + "/38 à 1 s)");
+      else pb("seconde ouverture : animation complète attendue, obtenu " + JSON.stringify(a));
+      const cle = await p.evaluate(function () { return localStorage.getItem("myktamap_splash_jour_v1"); });
+      if (cle === null) ok("clé de l'ancienne version courte retirée"); else pb("clé myktamap_splash_jour_v1 encore là : " + cle);
+      await attendreA(p, 3700);
+      const b = await p.evaluate(etatSplash);
+      if (b && b.traces === 38) ok("image finale complète à 3,7 s"); else pb("seconde ouverture à 3,7 s : " + JSON.stringify(b));
+      const t = await attendreRetrait(p, 8000);
+      if (t.fondu !== null && t.fondu >= 3950) ok("fondu à la fin de l'animation (" + t.fondu + " ms)");
+      else pb("seconde ouverture : fondu " + t.fondu + " ms (attendu ≥ 4000)");
       await p.close();
     }
     await ctxTel.close();

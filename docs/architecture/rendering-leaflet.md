@@ -91,7 +91,7 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
 
 ### 6. Splash screen
 
-État actuel : `ui.md` §41.15.5 (rendu, versions longue / courte / réduite, fermeture quand l'accueil est
+État actuel : `ui.md` §41.15.5 (rendu, version longue à chaque ouverture, réduite, fermeture quand l'accueil est
 affiché, passage au clic, plafond). En bref : HTML statique visible avant tout JS, `js/ktaSplash.js` juste après,
 fermeture par `main.js > _splashEnd(pret)` ; une seule fois par session (un changement de plan ne le ré-affiche
 pas). Le splash n'affiche jamais « -pro » : le suffixe et sa révélation vivent dans l'en-tête de l'accueil

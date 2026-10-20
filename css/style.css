@@ -3977,7 +3977,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
    ⚠️ Une seule lecture, en `both` : chaque élément reste dans son état final jusqu'au fondu. L'état de BASE de
    chaque règle est l'image finale : `.kta-splash-fini` (passer, mouvement réduit) coupe les animations et l'affiche.
    ⚠️ Version longue : tracé complet à ~3,4 s (1,68 s + 37 × 45 ms) ; js/ktaSplash.js > DUREE_LONGUE_MS (4 s) en
-   tient compte. Version courte (.kta-splash-courte) : réseau déjà dessiné, rose et titre en fondu, < 1 s. */
+   tient compte. Jouée en entier à chaque ouverture (décision produit). */
 
 #splashOverlay {
   position: fixed;
@@ -4118,18 +4118,6 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 @keyframes kta-splash-fondu {
   from { opacity: 0; }
   to   { opacity: 1; }
-}
-
-/* Version courte : seuls la rose et le titre arrivent en fondu. */
-#splashOverlay.kta-splash-courte .kta-splash-galeries path,
-#splashOverlay.kta-splash-courte .kta-splash-eau,
-#splashOverlay.kta-splash-courte .kta-splash-pictos image,
-#splashOverlay.kta-splash-courte .kta-splash-coin {
-  animation: none;
-}
-#splashOverlay.kta-splash-courte .kta-splash-rose,
-#splashOverlay.kta-splash-courte #splashBox {
-  animation: kta-splash-fondu 0.6s ease-out 0.2s both;
 }
 
 /* Image finale directe : animation passée (clic, Échap) ou mouvement réduit. */
@@ -4321,7 +4309,6 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
     gap: 12px;
     animation-name: kta-splash-titre-x;
   }
-  #splashOverlay.kta-splash-courte #splashBox { animation-name: kta-splash-fondu; }
   #splashTitle { font-size: clamp(30px, 7vh, 56px); }
   #splashSubtitle { font-size: clamp(12px, 2vh, 16px); }
   #splashLicense { margin-top: clamp(14px, 3.5vh, 28px); }

@@ -10,8 +10,8 @@
 // Expose : window.KtaSplash { version, finAnimation() → Promise, fermer(pret?) → Promise, surFermeture(cb) }.
 // ⚠️ Fermeture = au plus tard de (fin d'animation, écran prêt) : fermer(pret) attend les deux, puis deux images (le
 //    HOME est peint). Quoi qu'il arrive, fondu PLAFOND_MS après le début de la navigation (performance.now()).
-// ⚠️ Versions : « longue » à la première ouverture du jour (date locale, clé LS_JOUR) ; « courte » ensuite (réseau
-//    déjà dessiné, rose et titre en fondu) ; mouvement réduit = image finale directe, puis fondu.
+// ⚠️ Versions : « longue » à CHAQUE ouverture (décision produit : pas de version raccourcie) ; mouvement réduit =
+//    image finale directe, puis fondu.
 // ⚠️ Un clic ou Échap passe l'animation : fondu si l'accueil est prêt, sinon image finale et attente de l'accueil.
 // 🩸 Au clic, jamais au pointerdown : le clic qui suit traverserait le fondu (pointer-events: none) et toucherait
 //    l'accueil dessous.
@@ -21,24 +21,17 @@
   "use strict";
 
   const DUREE_LONGUE_MS = 4000;   // tracé complet à ~3,4 s (css), puis l'image finale reste un instant
-  const DUREE_COURTE_MS = 1000;
   const PLAFOND_MS      = 12000;  // depuis le début de la navigation
   const FONDU_MS        = 500;    // transition d'opacité (0,4 s) + marge avant le retrait du DOM
-  const LS_JOUR         = "myktamap_splash_jour_v1";
+  // Clé d'une version courte abandonnée, encore présente chez des testeurs : retirée, elle ne sert plus.
+  const LS_ANCIENNE     = "myktamap_splash_jour_v1";
 
   const el = document.getElementById("splashOverlay");
-
-  function _jour() {
-    const d = new Date();
-    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
-  }
+  try { localStorage.removeItem(LS_ANCIENNE); } catch (e) { /* stockage bloqué : rien à retirer */ }
 
   let reduit = false;
   try { reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { /* pas de media query */ }
-  let dejaVu = false;
-  try { dejaVu = localStorage.getItem(LS_JOUR) === _jour(); } catch (e) { /* stockage bloqué : version longue */ }
-  const version = reduit ? "reduite" : (dejaVu ? "courte" : "longue");
-  if (el && version === "courte") el.classList.add("kta-splash-courte");
+  const version = reduit ? "reduite" : "longue";
   if (el && version === "reduite") el.classList.add("kta-splash-fini");
 
   // ── Fin d'animation ──
@@ -48,13 +41,9 @@
   function _terminerAnimation() {
     if (_finAnimFaite) return;
     _finAnimFaite = true;
-    if (version === "longue") {
-      try { localStorage.setItem(LS_JOUR, _jour()); } catch (e) { /* version longue au prochain démarrage */ }
-    }
     _resoudreFinAnim();
   }
-  const _duree = version === "longue" ? DUREE_LONGUE_MS : (version === "courte" ? DUREE_COURTE_MS : 0);
-  setTimeout(_terminerAnimation, _duree);
+  setTimeout(_terminerAnimation, version === "longue" ? DUREE_LONGUE_MS : 0);
 
   // ── Fondu et retrait ──
   let _pret = false;

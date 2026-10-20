@@ -438,11 +438,11 @@ ils suivent l'échelle du réseau. Chaque galerie porte `pathLength="1"` (tiret 
 **Versions** (`js/ktaSplash.js`, premier script d'`index.html`, choisit avant la première peinture) :
 | Version | Quand | Durée |
 |---|---|---|
-| longue | première ouverture du jour (date locale, `localStorage["myktamap_splash_jour_v1"]`, écrite à la fin de l'animation) | 4 s (tracé complet à ~3,4 s, puis image finale) |
-| courte | ouvertures suivantes du même jour | 1 s : réseau déjà dessiné, rose et titre en fondu |
+| longue | **chaque** ouverture (décision produit : pas de version raccourcie) | 4 s (tracé complet à ~3,4 s, puis image finale) |
 | réduite | `prefers-reduced-motion: reduce` | 0 : image finale directe, puis fondu |
 
-Une seule lecture, en `both` : l'image finale reste jusqu'au fondu. L'état de base de chaque règle CSS est l'image
+La clé `myktamap_splash_jour_v1` d'une version courte abandonnée est retirée au démarrage (`removeItem`
+silencieux). Une seule lecture, en `both` : l'image finale reste jusqu'au fondu. L'état de base de chaque règle CSS est l'image
 finale ; `.kta-splash-fini` coupe les animations.
 
 **Fermeture** = au plus tard de (fin d'animation, écran suivant affiché), puis fondu 0,4 s et retrait du DOM :
@@ -464,7 +464,7 @@ finale ; `.kta-splash-fini` coupe les animations.
 **Une seule fois par session** : un changement de plan ne ré-affiche pas le splash.
 
 **Preuve** : `scripts/smoke/checkup-splash.js` (téléphone 390 et PC 1280 : image finale complète, accueil lent /
-rapide, passage au clic et à Échap, version courte, plafond, mouvement réduit, coût au démarrage processeur ×4).
+rapide, passage au clic et à Échap, seconde ouverture rejouée en entier, plafond, mouvement réduit, coût au démarrage processeur ×4).
 
 `Dijkstra` (crédits) = l'algorithme du plus court chemin de `js/pathfinder.js > _dijkstra()`, pas une librairie.
 Les mêmes crédits figurent au pied de l'accueil (`.kta-loader-credits`) et de la Documentation
