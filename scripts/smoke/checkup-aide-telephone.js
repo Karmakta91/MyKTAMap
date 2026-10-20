@@ -35,7 +35,10 @@ const FORMATS = [
 const problemes = [];
 function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
 function ok(msg) { console.log("  ✅ " + msg); }
-function verifier(cond, msg, detail) { if (cond) ok(msg); else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : "")); }
+function verifier(cond, msg, detail) {
+  if (cond) ok(msg);
+  else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : ""));
+}
 
 function etat(page) {
   return page.evaluate(function () {
@@ -83,7 +86,8 @@ function etat(page) {
       sous: !!document.getElementById("kta-aide-submodal"),
       enFiche: !!(hub && hub.classList.contains("kta-aide-en-fiche")),
       fiche: visible(document.querySelector("#kta-aide-modal .kta-aide-fiche-vue .kta-aide-section")),
-      lignesVisibles: Array.prototype.filter.call(document.querySelectorAll("#kta-aide-modal .kta-aide-row"), visible).length,
+      lignesVisibles: Array.prototype.filter.call(document.querySelectorAll("#kta-aide-modal .kta-aide-row"),
+        visible).length,
       back: visible(back),
       ratio: ratio,
       croix: croix,
@@ -94,7 +98,8 @@ function etat(page) {
 }
 
 async function parcours(nav, f, theme) {
-  const ctx = await nav.newContext({ viewport: f.viewport, isMobile: !!f.mobile, hasTouch: !!f.mobile, serviceWorkers: "block" });
+  const ctx = await nav.newContext({ viewport: f.viewport, isMobile: !!f.mobile, hasTouch: !!f.mobile,
+    serviceWorkers: "block" });
   const page = await ctx.newPage();
   page.on("pageerror", function (e) { pb(f.nom + " / " + theme + " : erreur de page " + String(e).slice(0, 200)); });
   await page.addInitScript(function (ls) { for (const k in ls) localStorage.setItem(k, ls[k]); },
@@ -102,9 +107,13 @@ async function parcours(nav, f, theme) {
   const tag = f.nom + " / " + theme;
   try {
     await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
-    await attendre(page, function () { return typeof window.afficherAide === "function" && !document.getElementById("splashOverlay"); }, 25000);
+    await attendre(page, function () {
+      return typeof window.afficherAide === "function" && !document.getElementById("splashOverlay");
+    }, 25000);
     await page.evaluate(function () { window.afficherAide(); });
-    await attendre(page, function () { return document.querySelectorAll("#kta-aide-modal .kta-aide-row").length > 10; }, 5000);
+    await attendre(page, function () {
+      return document.querySelectorAll("#kta-aide-modal .kta-aide-row").length > 10;
+    }, 5000);
     // Défiler le hub, puis ouvrir la fiche d'une ligne visible plus bas. 🩸 Playwright fait défiler la cible
     // avant de cliquer : on la met en vue d'abord, sinon la position relevée n'est pas celle du clic.
     await page.evaluate(function () { const c = document.getElementById("kta-aide-corps"); c.scrollTop = 300; });
@@ -125,14 +134,16 @@ async function parcours(nav, f, theme) {
     if (f.enPlace) {
       verifier(!e1.sous && e1.enFiche && e1.fiche, tag + " : la fiche remplace le hub (pas de sous-fenêtre)", e1);
       verifier(e1.lignesVisibles === 0, tag + " : le hub est masqué pendant la fiche", e1.lignesVisibles);
-      verifier(e1.voiles === 1 && e1.croix === 1, tag + " : un voile, une croix", { voiles: e1.voiles, croix: e1.croix });
+      verifier(e1.voiles === 1 && e1.croix === 1, tag + " : un voile, une croix",
+        { voiles: e1.voiles, croix: e1.croix });
       verifier(e1.back && e1.ratio >= 4.5, tag + " : « ← Retour » visible et lisible (" + e1.ratio + ":1)", e1.ratio);
       verifier(e1.scroll === 0, tag + " : la fiche s'ouvre en haut", e1.scroll);
       await page.locator("#kta-aide-back").click();
       await page.waitForTimeout(200);
       const e2 = await etat(page);
       verifier(e2.hub && !e2.enFiche && e2.lignesVisibles > 5, tag + " : Retour rend le hub", e2);
-      verifier(Math.abs(e2.scroll - scrollAvant) <= 2, tag + " : même position de défilement (" + scrollAvant + " → " + e2.scroll + ")");
+      verifier(Math.abs(e2.scroll - scrollAvant) <= 2,
+        tag + " : même position de défilement (" + scrollAvant + " → " + e2.scroll + ")");
       await cible.click();
       await page.waitForTimeout(200);
       await page.keyboard.press("Escape");
@@ -162,15 +173,19 @@ async function parcours(nav, f, theme) {
 }
 
 async function mouvementReduit(nav) {
-  const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block", reducedMotion: "reduce" });
+  const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block",
+    reducedMotion: "reduce" });
   const page = await ctx.newPage();
   await page.addInitScript(function (ls) { for (const k in ls) localStorage.setItem(k, ls[k]); }, LS_PREGATES);
   try {
     await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
-    await attendre(page, function () { return !!window.OOMGuard && !document.getElementById("splashOverlay"); }, 25000);
+    await attendre(page, function () {
+      return !!window.OOMGuard && !document.getElementById("splashOverlay");
+    }, 25000);
     const a = await page.evaluate(function () {
       const out = {};
-      ["kta-load-spinner", "kta-sortie-spinner", "kta-poi-photo-spinner", "kta-charge-tourne", "kta-readme-modal-overlay"].forEach(function (c) {
+      ["kta-load-spinner", "kta-sortie-spinner", "kta-poi-photo-spinner", "kta-charge-tourne",
+        "kta-readme-modal-overlay"].forEach(function (c) {
         const d = document.createElement("div");
         d.className = c;
         document.body.appendChild(d);
@@ -186,7 +201,8 @@ async function mouvementReduit(nav) {
         "mouvement réduit : ." + c + " pulse (" + x.nom + " " + x.duree + ")", x);
     });
     const o = a["kta-readme-modal-overlay"];
-    verifier(parseFloat(o.duree) < 0.01, "mouvement réduit : l'ouverture d'une fenêtre reste coupée (" + o.duree + ")", o);
+    verifier(parseFloat(o.duree) < 0.01,
+      "mouvement réduit : l'ouverture d'une fenêtre reste coupée (" + o.duree + ")", o);
   } catch (e) {
     pb("mouvement réduit : exception du harnais : " + (e && e.message));
   } finally {
