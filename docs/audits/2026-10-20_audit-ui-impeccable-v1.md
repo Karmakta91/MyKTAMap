@@ -3,6 +3,12 @@
 > Phase 1 seulement : constats et propositions. **Aucun fichier de l'app n'est modifié** (`js/`, `css/`,
 > `index.html`, `sw.js`, `lang/`).
 >
+> **État au 20/10/2026 (branche `ui-impeccable`)** : faits — E1, E2, E4, F7, M3 (bouton principal **bleu** dans
+> les deux thèmes, décision KARMA) et la charte en jetons (E5 en partie : plus de surcharge `[style*=…]` de
+> couleur, mais les règles claires historiques restent). Remesure par la même méthode, étendue à 30 écrans :
+> 182 textes sous AA → 0, hors splash (14, lot à part). Ouvert : E3, M1, M2, M4, M5 (splash : direction A,
+> toujours sombre, maquette d'abord), M6, M7, F1–F6.
+>
 > **Grille** : la skill communautaire « Impeccable » de Paul Bakaus (Apache 2.0), version 4.7.0. Elle a été lue
 > hors dépôt comme des données, jamais installée. Sont utilisés : `SKILL.md`, ses commandes `audit` et
 > `critique`, et ses références `craft-floor`, `operate`, `typeset`, `colorize`, `layout`, `animate`, plus le
