@@ -8594,7 +8594,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   to { opacity: 0; }
 }
 
-/* ══ Toasts empilés (OOMGuard.showToast) ══════════════════════════════════════════════════════════════
+/* ══ Toasts empilés (OOMGuard.showToast) et consigne des CGU ═══════════════════════════════════════════
    ⚠️ Contrat : les toasts vivent dans la pile #kta-toasts (js/oomGuard.js > _renderToast), le plus récent en
    bas, 3 visibles au plus. Le type se lit à l'icône ET au liseré gauche : info = interaction, success = ok,
    warn = doré, error = erreur. Tout passe par les jetons : le thème clair n'a rien à surcharger (seule
@@ -8676,7 +8676,18 @@ html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow)
 @media (prefers-reduced-motion: reduce) {
   .kta-toast, .kta-toast-leaving { animation-duration: 0.01s; }
 }
-/* ══ fin des toasts empilés ══ */
+/* « J'accepte » des CGU inactif : la consigne dit pourquoi, à gauche du bouton, tant que la case est vide
+   (js/legalGate.js > ouvrirGate). Le bouton inactif lui-même : règle .kta-legal-accept:disabled. */
+.kta-legal-actions { align-items: center; }
+.kta-legal-hint {
+  flex: 1;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--kta-texte-3);
+}
+.kta-legal-hint[hidden] { display: none; }
+/* ══ fin des toasts empilés et de la consigne des CGU ══ */
 
 /* ── Itinéraire : modale + waypoints ── */
 .kta-iti-modal-boite {

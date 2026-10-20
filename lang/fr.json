@@ -3145,6 +3145,7 @@
   "legal.gate.pointRespect": "🤝 Respectez la loi, les propriétaires des lieux, le patrimoine souterrain et votre propre sécurité.",
   "legal.gate.checkbox": "J'ai lu et compris. J'utilise l'application en connaissance de cause et sous ma seule responsabilité.",
   "legal.gate.accept": "J'accepte",
+  "legal.gate.hint": "Coche la case pour continuer.",
   "legal.gate.readFull": "Lire le texte intégral (arrêté + réponse du Sénat)",
   "legal.full.titre": "Textes de référence",
   "legal.full.back": "← Retour",

@@ -206,7 +206,9 @@
             '</label>' +
           '</div>' +
           '<div class="kta-conv-actions kta-legal-actions">' +
-            '<button class="kta-btn kta-btn-primary kta-legal-accept" id="kta-legal-accept" type="button" disabled>' +
+            '<p class="kta-legal-hint" id="kta-legal-hint">' + _esc(_t("legal.gate.hint")) + '</p>' +
+            '<button class="kta-btn kta-btn-primary kta-legal-accept" id="kta-legal-accept" type="button" disabled' +
+              ' aria-describedby="kta-legal-hint">' +
               _esc(_t("legal.gate.accept")) + '</button>' +
           '</div>' +
         '</div>';
@@ -214,8 +216,11 @@
 
       const cb     = document.getElementById("kta-legal-cb");
       const accept = document.getElementById("kta-legal-accept");
+      const hint   = document.getElementById("kta-legal-hint");
+      // La consigne ne parle que tant que le bouton est inactif : cochée, la case suffit.
       cb.addEventListener("change", function() {
         accept.disabled = !cb.checked;
+        hint.hidden = cb.checked;
       });
       document.getElementById("kta-legal-readfull").addEventListener("click", _ouvrirTexteIntegral);
       accept.addEventListener("click", function() {
