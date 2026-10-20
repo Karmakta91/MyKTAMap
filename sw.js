@@ -244,6 +244,8 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Splash de démarrage : premier script d'index.html (version, fermeture, plafond)
   "./js/ktaSplash.js",
+  // Worker des galeries du splash (new Worker dans ktaSplash.js) : absent du cache, le splash garde son SVG animé
+  "./js/ktaSplashWorker.js",
   // Copyright + watermark + détection DevTools : premier module après le splash
   "./js/copyright.js",
   // I18n — helper multi-langue (window.I18n). Chargé tôt dans

@@ -4004,12 +4004,15 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 
 /* Le dessin garde ses proportions (viewBox, `meet`) dans la place laissée par les textes. */
 .kta-splash-scene {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   width: min(84vw, 420px);
 }
-/* Calque à part : à chaque image du tracé, seul le dessin se repeint, pas les textes ombrés du splash. */
-#splashReseau {
+/* Calques à part : à chaque image, seul le dessin se repeint, pas les textes ombrés du splash. Ordre : eau et
+   galeries SVG, canvas des galeries (js/ktaSplash.js, worker), pictos et rose. */
+#splashReseau,
+#splashReperes {
   display: block;
   width: 100%;
   height: 100%;
@@ -4017,6 +4020,18 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   will-change: transform;
   contain: layout paint;
 }
+#splashReseauCanvas,
+#splashReperes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#splashReseauCanvas { display: block; }
+/* Le worker dessine les galeries : le SVG ne les montre plus (ni double trait, ni animation sur le fil principal :
+   un élément display:none n'anime pas). */
+#splashOverlay.kta-splash-canvas .kta-splash-galeries { display: none; }
 
 .kta-splash-galeries path {
   fill: none;
@@ -4115,9 +4130,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   text-transform: uppercase;
 }
 
-/* 🩸 Scène en pause tant que les scripts de l'app s'exécutent (js/ktaSplash.js > _demarrer pose .kta-splash-go) :
-   le tracé tourne sur le fil principal et saccadait au début sur iPhone. Les coins (opacité seule) jouent dès
-   l'affichage. */
+/* 🩸 Scène en pause tant que les scripts de l'app s'exécutent (js/ktaSplash.js > _demarrer pose .kta-splash-go,
+   que le worker des galeries attend aussi) : le tracé SVG tourne sur le fil principal et saccadait au début sur
+   iPhone. Les coins (opacité seule) jouent dès l'affichage. */
 #splashOverlay:not(.kta-splash-go) .kta-splash-galeries path,
 #splashOverlay:not(.kta-splash-go) .kta-splash-eau,
 #splashOverlay:not(.kta-splash-go) .kta-splash-pictos image,
