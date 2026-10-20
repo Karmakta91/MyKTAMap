@@ -43,9 +43,9 @@
         const r = s[i];
         sessionPts += (r && Array.isArray(r.points)) ? r.points.length : 0;
         if (!r) continue;
-        niveaux = Math.imul(niveaux ^ ((r.level | 0) & 0xff), 16777619);
-        niveaux = Math.imul(niveaux ^ ((r.fromLevel | 0) & 0xff), 16777619);
-        niveaux = Math.imul(niveaux ^ ((r.toLevel | 0) & 0xff), 16777619);
+        niveaux = Math.imul(niveaux ^ (r.level & 0xff), 16777619);
+        niveaux = Math.imul(niveaux ^ (r.fromLevel & 0xff), 16777619);
+        niveaux = Math.imul(niveaux ^ (r.toLevel & 0xff), 16777619);
       }
     }
     let embeddedCount = 0;
