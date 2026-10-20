@@ -26,10 +26,30 @@ Décidé en QCM avec KARMA.
 
 Demande KARMA : sur la fiche d'un POI, d'un tracé, d'une zone ou d'une structure de **session**, choisir son niveau.
 
+Décidé en QCM avec KARMA (20/10/2026) :
+- **Où** : une liste « Niveau » dans la fiche des tracés, zones et structures (à côté de 🔄 Convertir) et dans le
+  formulaire d'édition d'un POI ; absente sur un plan à un seul niveau et pendant un tracé en cours de dessin.
+- **Jonctions interniveau** : hors lot (pas de fiche aujourd'hui ; les supprimer et les recréer).
+- **Objet de calque** : pas de liste (lecture seule, le rapatrier d'abord).
+- **Niveau cible masqué par le filtre** : un message « déplacé au niveau N (masqué par le filtre) », la vue reste sur
+  le niveau en cours.
+
+État du code (lu le 20/10/2026) :
+- Champ `level` (entier, absent = 0, seulement si `APP_CONFIG.multiLevel`) ; jonctions : `fromLevel`/`toLevel`.
+- Modèle à copier : `convertirObjet.js > convertir` (garde lecture seule, `HistoryManager.captureState`, mutation +
+  `KtaUid.touch`, setter, `HistoryManager.record`, `SessionPersist.save`) ; fiche commune `utils.js >
+  attacherNotePopup`. POI : `editor.js > afficherFormulaire` (portée d'annulation `editorPoints`), puis
+  `MyKTAMapPhotos.majFichesPoints` (la fiche photo copie le niveau).
+- 🩸 Graphe de navigation `roadGraph.js` : sa signature (nombre de tracés et de points) ne voit pas un changement de
+  niveau → l'invalider. `interPlanLinks.js` garde un instantané du niveau des points liés → le rafraîchir.
+- La liste doit contenir le niveau actuel même s'il sort de `availableLevels`.
+
 - Aujourd'hui le niveau est fixé à la création (`editor.js`, `road.js`, `structures.js` : niveau affiché) ; seul
   « Convertir cet objet » touche la fiche, sans le niveau.
 - Liste des niveaux du plan (`plan-config`), absente sur un plan à un seul niveau.
-- 🩸 `structures.js` pose `niveau − 1` dans un cas : le comprendre avant de toucher.
+- 🩸 `structures.js` pose `activeLevel − 1` pour `pilier-2` / `front-2` (la « 2e masse », niveau du dessous vu
+  d'ici, décision produit) : c'est seulement le niveau par défaut à la création, la valeur stockée est le vrai
+  niveau. Un changement écrit la valeur choisie, sans réappliquer le − 1.
 - Tracés qui servent de jonction interniveau ; graphe d'itinéraire à reconstruire après le changement.
 - Objet d'un calque : le rapatrier d'abord (lecture seule sinon).
 - `KtaUid.touch` (synchro) ; ⏪ annulable ; photos et liaisons suivent l'objet.
