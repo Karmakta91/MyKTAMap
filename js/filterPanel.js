@@ -468,6 +468,9 @@
     // savent redessiner). ⚠️ Cette section est le SEUL point de contrôle de la visibilité d'un calque : le verrou
     // se pose ICI et nulle part ailleurs, sinon deux contrôles se disputent le même état.
     const CS = window.CalqueSession;
+    // ⚠️ Silencieux : un rendu ne doit pas afficher le message de refus. Les refus au clic restent (défense en
+    // profondeur : _ouvrirAjouts, CalqueSession.integrerAjouts / exporterCalque).
+    const lectureSeule = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true) === true;
     let html = '<div class="kta-fp-list">';
     ids.forEach(function(id) {
       const visible = window.map && window.map.hasLayer(groups[id]);
@@ -476,6 +479,9 @@
         // Le calque « editor » EST la session : rien à rapatrier.
       const rapatriable = !!(CS && lc && lc.file && id !== "editor");
       const rapatrie    = !!(CS && CS.estRapatrie(id));
+      // 🔒 Plan ouvert en lecture seule : ni intégration ni export proposés (même règle que les outils de dessin
+      // grisés). La restitution reste : locale, elle ne part pas aux autres (CalqueSession > _restitutionPartagee).
+      const modifiable  = rapatrie && !lectureSeule;
       html += '<div class="kta-fp-calque-ligne">' +
                 '<label class="kta-fp-row-cb">' +
                   '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' + (visible ? " checked" : "") + '>' +
@@ -488,14 +494,14 @@
                 // dans « Modifier un plan » (aucun doublon possible), ce qui ferme la boucle vers le ZIP.
                 // « Intégrer des ajouts » : rattacher au calque des objets dessinés à la main, pour qu'ils partent
                 // dans SON export.
-                (rapatrie
+                (modifiable
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       'data-calque-integrer="' + _escAttr(id) + '" ' +
                       'title="' + _escAttr(window.I18n.t("filter.calque.integrerTitle")) + '">' +
                       _escHtml(window.I18n.t("filter.calque.integrer")) +
                     '</button>'
                   : '') +
-                (rapatrie
+                (modifiable
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       'data-calque-exporter="' + _escAttr(id) + '" ' +
                       'title="' + _escAttr(window.I18n.t("filter.calque.exporterTitle")) + '">' +
@@ -1102,6 +1108,12 @@
     window.addEventListener("keydown", onKey, true);
     document.documentElement.appendChild(ov);
   }
+
+  // Droit gagné ou perdu panneau ouvert : les boutons des calques suivent (mêmes événements que
+  // interface.js > _majOutilsLectureSeule).
+  ["mktm:compte-changed", "mktm:plans-extension-changes", "mktm:connexion-changed"].forEach(function (ev) {
+    window.addEventListener(ev, function () { try { refreshDataLayers(); } catch (e) { /* affichage seulement */ } });
+  });
 
   // ── Export ──────────
   window.FilterPanel = {

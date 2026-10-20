@@ -1579,7 +1579,7 @@ par famille (nom, type, niveau), rien de coché, « Tout cocher », filtre **« 
 | Restitution reçue postérieure au rapatriement mais **antérieure** à l'intégration | **gardé** en objet ordinaire, uid dérivé, marques retirées | avec l'instant de l'intégration comme date, il resterait marqué et laisserait le calque masqué pour lui seul |
 | Suppression | **aucune trace** (`historyManager.js > _laisseTrace`) | 🔒 une fois exporté, son uid EST dans le fichier du calque : une trace, passée par la fusion de calques, l'y détruirait |
 | ⏪ | une entrée d'historique (toutes catégories) rend les objets sans marque, datés à nouveau par l'historique | annulable comme tout dessin |
-| Lecture seule | refusé (`ktaEditionRefusee`, qui le dit) | même garde que les outils de dessin |
+| Lecture seule | boutons « ➕ Intégrer des ajouts » et « 💾 Exporter » **absents** de la ligne (`ktaEditionRefusee(true)`, relu sur les événements de l'extension) ; « ↩️ Restaurer » reste (restitution locale, non partagée) ; appel direct refusé (`ktaEditionRefusee`, qui le dit) | même règle que les outils de dessin grisés ; le refus au clic reste en défense en profondeur |
 
 `_srcCalqueAjout` ne sert qu'au compte de la restitution ; il tombe avec la marque (export, copie gardée, marque orpheline
 de `resynchroniser`). Effet de bord voulu : un ajout intégré est du contenu de calque, il ne part plus dans un export de
@@ -1596,7 +1596,7 @@ de l'utilisateur).
 
 Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement ; `_srcCalqueAjout` sur un ajout intégré). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
 
-**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 150 assertions, le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris.
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 166 assertions, le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris.
 
 ---
 

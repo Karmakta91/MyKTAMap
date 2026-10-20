@@ -600,9 +600,47 @@ const CALQUE = {
   });
 
   t("cablage : « Intégrer des ajouts » seulement sur un calque en modification",
-    /\(rapatrie\s*\?\s*'<button[^;]*?data-calque-integrer=/.test(FP));
+    /\(modifiable\s*\?\s*'<button[^;]*?data-calque-integrer=/.test(FP) && /modifiable\s*=\s*rapatrie &&/.test(FP));
   t("cablage : la fenêtre d'ajouts passe par CalqueSession.integrerAjouts, garde de lecture seule comprise",
     /function _ouvrirAjouts[\s\S]{0,800}ktaEditionRefusee\(\)/.test(FP) && /CS\.integrerAjouts\(id, uids\)/.test(FP));
+  // 🔒 Lecture seule : « Intégrer » et « Exporter » ABSENTS de la ligne (même règle que les outils de dessin,
+  // ktaEditionRefusee en silencieux), « Restituer » présent ; sans extension, rien ne change. Le VRAI rendu, extrait
+  // du panneau et joué dans un vm.
+  {
+    const i = FP.indexOf("function _renderDataLayersSection()");
+    const j = FP.indexOf("function refreshDataLayers()");
+    const code = (i < 0 || j < i) ? "" : FP.slice(i, j);
+    const rendre = function (refus) {
+      const appels = [];
+      const ctx = {
+        PLAN_CONFIG: { dataLayers: [{ id: "sig", label: "Import SIG", file: "data/sig.json" }] },
+        dataLayerGroups: { sig: {} },
+        map: { hasLayer: () => true },
+        I18n: { t: (k) => k },
+        CalqueSession: { estRapatrie: () => true },
+        _escAttr: String, _escHtml: String
+      };
+      if (refus !== undefined) ctx.ktaEditionRefusee = function (s) { appels.push(s); return refus; };
+      ctx.window = ctx;
+      vm.createContext(ctx);
+      let html = "";
+      try { html = vm.runInContext(code + "\n_renderDataLayersSection();", ctx); } catch (e) { html = ""; }
+      return { html: String(html), appels: appels };
+    };
+    const sans = rendre(undefined), ecrit = rendre(false), ro = rendre(true);
+    const a = (h, act) => h.indexOf("data-calque-" + act + "=") >= 0;
+    t("🔒 boutons : rendu extrait du panneau", code.length > 0 && a(sans.html, "restituer"));
+    t("🔒 boutons : sans extension, intégrer + exporter + restituer présents",
+      a(sans.html, "integrer") && a(sans.html, "exporter") && a(sans.html, "restituer"));
+    t("🔒 boutons : plan modifiable, intégrer + exporter + restituer présents",
+      a(ecrit.html, "integrer") && a(ecrit.html, "exporter") && a(ecrit.html, "restituer"));
+    t("🔒 boutons : lecture seule, intégrer et exporter ABSENTS, restituer présent",
+      !a(ro.html, "integrer") && !a(ro.html, "exporter") && a(ro.html, "restituer"));
+    t("🔒 boutons : la règle est lue en silencieux (pas de message au rendu)",
+      ro.appels.length > 0 && ro.appels.every((s) => s === true));
+    t("🔒 boutons : le panneau suit un droit qui change (événements de l'extension)",
+      /"mktm:plans-extension-changes"[\s\S]{0,200}refreshDataLayers\(\)/.test(FP));
+  }
   t("ajouts : rien n'est coché par défaut",
     /<input type="checkbox" data-ajout-uid="' \+ _escAttr\(o\.uid\) \+ '">/.test(FP));
   t("ajouts : filtre « Créé par » seulement avec la prise auteurObjet",
