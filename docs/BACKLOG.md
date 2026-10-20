@@ -46,10 +46,10 @@
   sans attribut inline).
   `qui: KARMA · action: les marquer « Accepté » dans l'interface Sonar locale
   · fini: 0 bug ouvert sur le projet MyKTAMap · depuis: 09/10/2026 · taille: XS`
-- **Ménage des branches et des copies** — 8 branches `g*` non mergées, copie de travail restée sur une branche déjà
-  mergée, PR Dependabot en attente (les PR de sécurité ne sont pas lues).
-  `qui: KARMA · action: supprimer les branches mortes, fusionner ou fermer chaque PR Dependabot
-  · fini: aucune branche morte, 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
+- **PR Dependabot en attente** — branches et copies mortes supprimées le 20/10 (✅ vérifié : reprises dans
+  `Karma_dev`). Restent 8 PR : actions GitHub (`setup-node`, `docker/*`) et Playwright du smoke.
+  `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte) avant le gel
+  · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 
 ## Ensuite
 
