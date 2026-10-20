@@ -65,10 +65,11 @@
     </defs>
   </svg>
 
-  <!-- Splash : affiché par défaut, fermé par main.js après l'init (4 s minimum). -->
+  <!-- Splash de démarrage : affiché par défaut ; js/ktaSplash.js (juste après) choisit la version, main.js le ferme
+       quand l'accueil est affiché. Toujours sombre (décision produit). -->
   <div id="splashOverlay">
     <!-- Crédit Claude en haut à gauche, symétrique de la version ; teinte « clay » #d97757, distincte du doré. -->
-    <div id="splashClaudeCorner" aria-hidden="true">
+    <div id="splashClaudeCorner" class="kta-splash-coin" aria-hidden="true">
       <span class="splash-claude-mark">✦</span>
       <span class="splash-claude-text">
         <span class="splash-claude-main" data-i18n="home.splash.craftedWith">Conçu avec Claude</span>
@@ -76,46 +77,109 @@
       </span>
     </div>
     <!-- Version remplie par main.js > _splashStart depuis window.__MKM__.build (aucune valeur en dur). -->
-    <div id="splashVersion" aria-hidden="true"></div>
+    <div id="splashVersion" class="kta-splash-coin" aria-hidden="true"></div>
 
-    <div id="splashBox">
-      <!-- Rose des vents statique (même asset que la boussole et l'en-tête), entrée animée splashLogoIn ;
-           l'arc doré qui tourne autour sert d'indicateur de chargement. -->
-      <div id="splashCompassWrap">
-        <img src="icon/compass.svg" alt="MyKTAMap" id="splashLogo">
-        <svg id="splashSpinArc" viewBox="0 0 220 220" aria-hidden="true">
-          <circle cx="110" cy="110" r="104" fill="none" stroke-linecap="round" stroke-dasharray="90 565"></circle>
-        </svg>
+    <!-- Réseau fictif qui se dessine : 38 galeries (pathLength="1", ordre --i), eau en bande sous trois galeries,
+         une zone inaccessible hachurée, pictos et rose dans le même repère (ils suivent l'échelle du dessin). -->
+    <div class="kta-splash-scene" aria-hidden="true">
+      <svg id="splashReseau" viewBox="-12 -12 364 606">
+      <defs>
+        <pattern id="kta-splash-hachure" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+          <rect width="7" height="7" fill="#5a0a0a"/>
+          <rect width="7" height="7" fill="#cc0000" opacity="0.45"/>
+          <line x1="0" y1="0" x2="0" y2="7" stroke="#1a1f2e" stroke-width="2"/>
+        </pattern>
+      </defs>
+      <g class="kta-splash-eau">
+        <path d="M254 556L255 551L257 542L253 535L245 529L239 524L236 520L227 514L214 508"/>
+        <path d="M154 452L160 451L169 451L177 452L183 454L185 458L185 462L185 467"/>
+        <path d="M269 350L276 352L287 356L295 358L301 356L305 354L308 351"/>
+        <path class="kta-splash-inaccessible" d="M240 450L241 454L242 460L242 464L241 466L242 469L245 476L246 481L244 487L243 490"/>
+      </g>
+      <g class="kta-splash-galeries">
+        <path pathLength="1" style="--i:0" d="M176 286L176 285L175 285L174 284L175 282L167 248L151 181L144 146L144 143L134 136L113 125L104 116L108 109L104 101L92 92L80 86L68 84L60 80L53 74L51 70L51 67L51 65L49 63L50 60L53 55L48 42L32 22L23 11L21 10L21 7L24 2L25 0"/>
+        <path pathLength="1" style="--i:1" d="M55 53L57 51L61 49L68 51L80 57L87 62L90 64L90 69L87 75L85 78L83 78L83 76L85 72L82 68L75 63L72 59L73 55L73 53"/>
+        <path pathLength="1" style="--i:2" d="M67 87L69 87L73 88L76 87L78 86L79 85"/>
+        <path pathLength="1" style="--i:3" d="M118 127L119 126L120 123L123 118L129 110L133 105L133 102L132 101L129 100L129 97L130 93L131 91"/>
+        <path pathLength="1" style="--i:4" d="M204 413L201 414L196 414L188 412L177 407L166 406L154 407L145 408L138 408L132 407L128 405L132 395L146 378L158 353L169 322L173 307L171 306L173 296L179 276L182 267"/>
+        <path pathLength="1" style="--i:5" d="M306 348L307 347L309 345L311 340L314 334L321 327L334 319L335 325L326 346L322 358L322 359L321 362L319 365L318 368L319 372L317 376L314 378L310 386L305 399L302 408L303 412L305 417L309 421L309 425L307 430L304 433L301 435L298 437L298 440L296 442L295 442L293 446L291 454L288 458L286 458L285 460L285 463L283 468L280 474L274 484L264 497L256 505L252 509L249 511"/>
+        <path pathLength="1" style="--i:6" d="M311 337L275 323"/>
+        <path pathLength="1" style="--i:7" d="M264 352L265 351L269 350L276 352L287 356L295 358L301 356L305 354L308 351L306 349L301 347L299 343L299 337L298 333L296 331L293 331L288 332L282 331L273 328L269 327"/>
+        <path pathLength="1" style="--i:8" d="M299 346L295 357"/>
+        <path pathLength="1" style="--i:9" d="M221 387L221 384L220 377L219 371L216 365L219 358L227 349L233 347L236 350L241 352L248 353L254 353L259 351L262 350L263 351L263 353L261 355L259 356L257 356L256 356L255 354L255 353"/>
+        <path pathLength="1" style="--i:10" d="M307 354L307 356L306 361L305 365L302 368L299 371L295 373L291 374L289 373L287 373"/>
+        <path pathLength="1" style="--i:11" d="M203 399L207 397L215 392L220 386L221 380L222 377"/>
+        <path pathLength="1" style="--i:12" d="M221 382L224 383L228 386L230 388L230 389L229 389L226 387L223 388L221 392L220 395L221 397L220 398L218 399L216 402L214 408L213 410"/>
+        <path pathLength="1" style="--i:13" d="M254 556L255 551L257 542L253 535L245 529L239 524L236 520L227 514L214 508L207 501L207 491L209 477L211 459L211 450L207 450L203 448L201 445L204 437L211 424L215 416L215 413L213 411L209 410L206 407L205 403L203 399L199 396L197 394"/>
+        <path pathLength="1" style="--i:14" d="M215 405L216 406L217 407L219 408L221 407L222 404L221 400L221 398"/>
+        <path pathLength="1" style="--i:15" d="M215 412L215 411L216 410L216 409L215 408L214 408"/>
+        <path pathLength="1" style="--i:16" d="M191 435L207 409"/>
+        <path pathLength="1" style="--i:17" d="M207 409L209 419L214 439L215 450L214 450L213 450"/>
+        <path pathLength="1" style="--i:18" d="M215 417L219 420L228 426L233 429L235 429L238 433L240 441L243 445L247 446L248 447"/>
+        <path pathLength="1" style="--i:19" d="M282 469L279 467L275 464L273 460L274 458L273 454L270 449L262 447L248 448L241 448"/>
+        <path pathLength="1" style="--i:20" d="M216 450L226 449"/>
+        <path pathLength="1" style="--i:21" d="M181 452L186 452L197 452L203 451L204 450L205 450"/>
+        <path pathLength="1" style="--i:22" d="M240 450L241 454L242 460L242 464L241 466L242 469L245 476L246 481L244 487L243 490L244 493L245 494L248 494L251 497L253 504L255 507"/>
+        <path pathLength="1" style="--i:23" d="M133 462L135 464L140 466L143 467L145 466L148 462L150 456L152 453L154 452L160 451L169 451L177 452L183 454L185 458L185 462L185 467L187 472L187 478L185 483L183 486"/>
+        <path pathLength="1" style="--i:24" d="M186 455L188 456L193 457L198 459L204 463L207 464"/>
+        <path pathLength="1" style="--i:25" d="M146 465L149 470L155 480L158 488L157 493L160 499L168 506L171 510"/>
+        <path pathLength="1" style="--i:26" d="M135 503L135 502L134 500L136 498L141 497L145 492L151 481L154 475"/>
+        <path pathLength="1" style="--i:27" d="M157 496L155 498L152 501L151 505L154 511L155 513"/>
+        <path pathLength="1" style="--i:28" d="M206 498L197 501L180 507L172 512L173 517L178 526L188 538L192 544"/>
+        <path pathLength="1" style="--i:29" d="M140 498L150 503"/>
+        <path pathLength="1" style="--i:30" d="M155 511L156 511L158 510L160 507L162 502L163 500"/>
+        <path pathLength="1" style="--i:31" d="M249 562L244 558L235 551L226 549L219 550L214 544L212 531L208 525L202 525L198 524L196 521L193 519L190 519L189 518L188 516L188 515L190 515L192 515L193 516L197 516L204 514L207 511L207 507L207 505"/>
+        <path pathLength="1" style="--i:32" d="M167 535L168 534L169 533L170 531L170 529L168 526L165 522L163 518L163 515L161 513L157 513L153 514L150 516L149 520L151 527L151 530"/>
+        <path pathLength="1" style="--i:33" d="M165 522L173 519"/>
+        <path pathLength="1" style="--i:34" d="M200 526L199 527L199 531L197 535L194 539L192 544L191 549L185 552L173 551L167 552L167 553L167 553"/>
+        <path pathLength="1" style="--i:35" d="M192 544L196 544L205 544L211 546L214 549L215 550"/>
+        <path pathLength="1" style="--i:36" d="M272 561L271 559L267 557L263 555L257 556L253 558L249 562L248 564"/>
+        <path pathLength="1" style="--i:37" d="M0 558L4 561L11 566L46 567L108 565L142 562L147 559L151 558L155 558L159 559L165 562L178 563L198 561L221 562L246 564L261 566L265 566L268 565L268 564L270 563L273 561L275 563L277 569L280 574L284 580L286 582"/>
+      </g>
+      <g class="kta-splash-pictos">
+        <image href="icon/peo.png" x="12" y="-12" width="26" height="26"/>
+        <image href="icon/pb.png" x="321" y="306" width="26" height="26"/>
+        <image href="icon/house.png" x="179" y="504" width="26" height="26"/>
+        <image href="icon/plaque.png" x="245" y="344" width="19" height="19"/>
+        <image href="icon/plaque.png" x="123" y="452" width="19" height="19"/>
+        <image href="icon/plaque.png" x="198" y="400" width="19" height="19"/>
+      </g>
+      <image class="kta-splash-rose" href="icon/compass.svg" x="231" y="94" width="110" height="110"/>
+      </svg>
+    </div>
+
+    <div class="kta-splash-textes">
+      <!-- Le splash n'affiche jamais « -pro » (décision produit) : le suffixe vit dans l'en-tête de l'accueil.
+           Le badge incognito s'insère après #splashSubtitle (js/incognitoMode.js). -->
+      <div id="splashBox">
+        <div id="splashTitle">MyKTAMap</div>
+        <div id="splashSubtitle" data-i18n="home.tagline">Cartographie souterraine</div>
       </div>
-      <!-- Le splash n'affiche jamais « -pro » (décision produit) : le suffixe vit dans l'en-tête de l'accueil. -->
-      <div id="splashTitle"><span class="kta-titre-base">MyKTAMap</span></div>
-      <div id="splashSubtitle" data-i18n="home.tagline">Cartographie souterraine</div>
+      <!-- Licence : variantes community / pro basculées par la classe .kta-instance-pro (js/proLicense.js). -->
+      <div id="splashLicense" class="kta-splash-coin">
+        <span class="kta-licence-community">
+          <span data-i18n="home.splash.licenceFree">Licence libre — usage non commercial</span>
+        </span>
+        <span class="kta-licence-pro">
+          ✓ <span data-i18n="home.splash.proEdition">Édition professionnelle</span><br>
+          <span class="splash-license-detail splash-license-detail-pro" data-i18n="home.splash.proLicense">Licence active · Tous droits réservés</span>
+        </span>
+      </div>
     </div>
 
-    <!-- Licence en bas du splash (position absolue, hors du flux de #splashBox). Variantes community / pro
-         basculées par la classe .kta-instance-pro (js/proLicense.js). -->
-    <div id="splashLicense">
-      <span class="kta-licence-community">
-        <span data-i18n="home.splash.licenceFree">Licence libre — usage non commercial</span><br>
-        <span class="splash-license-detail" data-i18n="home.splash.ethos">Pas de revente, pas de service payant, pas de monétisation</span>
-      </span>
-      <span class="kta-licence-pro">
-        ✓ <span data-i18n="home.splash.proEdition">Édition professionnelle</span><br>
-        <span class="splash-license-detail splash-license-detail-pro" data-i18n="home.splash.proLicense">Licence active · Tous droits réservés</span>
-      </span>
-    </div>
-
-    <!-- Signature KARMA : révélée de gauche à droite par clip-path + steps(5), une étape par lettre. -->
-    <div id="splashKarmaCorner" aria-hidden="true">
+    <div id="splashKarmaCorner" class="kta-splash-coin" aria-hidden="true">
       <img src="icon/karma.png" alt="KARMA" id="splashKarmaImg">
     </div>
 
     <!-- Crédits librairies + algorithme (Dijkstra = pathfinder), en bas à gauche, 2 lignes de 3 : le <br> force
-         la coupure, #splashLeafletCredit double sa hauteur en CSS, la signature s'aligne sur la 2e ligne. -->
-    <div id="splashLeafletCredit">🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</div>
+         la coupure, la signature s'aligne sur la 2e ligne. -->
+    <div id="splashLeafletCredit" class="kta-splash-coin">🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</div>
   </div>
+  <!-- ⚠️ ktaSplash.js : SYNCHRONE et juste après le splash (mouvement réduit lu avant la première peinture,
+       plafond de sécurité armé dès le début). -->
+  <script src="js/ktaSplash.js"></script>
 
-  <!-- copyright.js : filigrane, bannière console, détection DevTools. Chargé EN PREMIER (n'écrit rien). -->
+  <!-- copyright.js : filigrane, bannière console, détection DevTools. Premier module après le splash (n'écrit rien). -->
   <script src="js/copyright.js"></script>
 
   <!-- ⚠️ langManager.js pose window.I18n pour tous les modules suivants (aucune requête, aucun stockage).

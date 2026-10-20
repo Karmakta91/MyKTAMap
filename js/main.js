@@ -1441,55 +1441,51 @@ function afficherLoader() {
 }
 
 // ── Splash de démarrage ──────────────────────
-// Durée minimale : assez pour percevoir l'animation et le logo (décision produit).
-const SPLASH_MIN_DURATION_MS = 3500;
-let _splashShownAt = null;
+// Animation, versions, passage au clic et plafond : js/ktaSplash.js. Ici, le boot dit QUAND l'écran suivant est prêt.
+// ⚠️ Avant une gate : _splashAvantGate() attend seulement la fin de l'animation ; le splash reste DESSOUS (toutes
+// les gates sont au-dessus de 9999) et couvre le temps mort jusqu'à l'accueil. 🩸 Le fermer avant une gate qui ne
+// dessine rien (session déjà ouverte, licence qui contourne la gate) laissait un écran vide jusqu'à l'accueil.
+// _splashEnd(pret) ferme une fois l'animation finie ET `pret` résolu (puis deux images : l'écran est peint).
 
 function _splashStart() {
-  // Le splash est affiché par index.html ; on note seulement l'heure de début.
-  const splash = document.getElementById("splashOverlay");
-  if (!splash) return;
-  _splashShownAt = Date.now();
-
   // Version lue sur window.__MKM__.build (js/copyright.js) : jamais en dur.
   const ver = document.getElementById("splashVersion");
   if (ver) {
     const b = (window.__MKM__ && window.__MKM__.build) ? String(window.__MKM__.build) : "";
     ver.textContent = b ? (b.charAt(0) === "v" ? b : "v" + b) : "";
   }
-
+  if (window.KtaSplash) window.KtaSplash.surFermeture(_apresSplash);
 }
 
-async function _splashEnd() {
+// Splash retiré du DOM (fermeture normale ou plafond de sécurité).
+function _apresSplash() {
+  // Toasts en attente et modale de mise à jour détectée pendant le splash.
+  if (window.OOMGuard) window.OOMGuard.flushPendingToasts();
+  if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
+    window.UpdateChecker.notifySplashEnded();
+  }
+  // ⚠️ Séquenceur de premier lancement (js/firstRunFlow.js) : une étape à la fois — alerte critique →
+  // conditions d'utilisation → onboarding → proposition PIN — pour qu'elles ne se superposent pas. Il appelle
+  // lui-même AlertChecker.notifySplashEnded. Rejoué à chaque boot, les étapes faites se sautent.
+  if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
+    window.FirstRunFlow.run();
+  } else if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
+    // Module absent : au moins les alertes.
+    window.AlertChecker.notifySplashEnded();
+  }
+}
+
+async function _splashAvantGate() {
+  if (window.KtaSplash) await window.KtaSplash.finAnimation();
+}
+
+async function _splashEnd(pret) {
+  if (window.KtaSplash) { await window.KtaSplash.fermer(pret); return; }
+  // js/ktaSplash.js absent (cache incomplet) : retrait direct, l'app ne reste jamais derrière le splash.
   const splash = document.getElementById("splashOverlay");
   if (!splash) return;
-
-  if (_splashShownAt) {
-    const elapsed = Date.now() - _splashShownAt;
-    const remaining = SPLASH_MIN_DURATION_MS - elapsed;
-    if (remaining > 0) {
-      await new Promise(function(r) { setTimeout(r, remaining); });
-    }
-  }
-
-  splash.classList.add("fading");
-  setTimeout(function() {
-    if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
-    // Splash parti : toasts en attente et modale de mise à jour détectée pendant le splash.
-    if (window.OOMGuard) window.OOMGuard.flushPendingToasts();
-    if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
-      window.UpdateChecker.notifySplashEnded();
-    }
-    // ⚠️ Séquenceur de premier lancement (js/firstRunFlow.js) : une étape à la fois — alerte critique →
-    // conditions d'utilisation → onboarding → proposition PIN — pour qu'elles ne se superposent pas. Il appelle
-    // lui-même AlertChecker.notifySplashEnded. Rejoué à chaque boot, les étapes faites se sautent.
-    if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
-      window.FirstRunFlow.run();
-    } else if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
-      // Module absent : au moins les alertes.
-      window.AlertChecker.notifySplashEnded();
-    }
-  }, 500);
+  splash.parentNode.removeChild(splash);
+  _apresSplash();
 }
 
 // ── i18n du DOM (HOME statique) ──────────────────────
@@ -1639,7 +1635,7 @@ window.proposerRedemarrageLangue = function() {
   if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
       && !window.LegalGate.isAccepted()
       && !(window.IncognitoMode && window.IncognitoMode.active)) {
-    await _splashEnd();
+    await _splashAvantGate();
     try { await window.LegalGate.ouvrirGate(); }
     catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
   }
@@ -1690,17 +1686,17 @@ window.proposerRedemarrageLangue = function() {
   let _gateDelegueeOk = false;
   if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
     const _mods = await window.KtaExtensions.chargerModules();
-    // 🩸 Splash terminé AVANT la gate déléguée : gate.ouvrir() dessine son écran tout de suite, par-dessus le
-    // splash encore affiché sinon.
-    if (_mods && _mods.demandes > 0) await _splashEnd();
+    // 🩸 Animation finie AVANT la gate déléguée : gate.ouvrir() dessine son écran tout de suite, par-dessus une
+    // animation en cours sinon. Le splash reste dessous : une session déjà ouverte ne dessine rien.
+    if (_mods && _mods.demandes > 0) await _splashAvantGate();
     const _gate = window.KtaExtensions.gateDeleguee();
     if (_gate) {
-      await _splashEnd();
       try { await _gate; _gateDelegueeOk = true; console.log("[Main] Gate déléguée franchie"); }
       catch (e) {
         // 🔒 JAMAIS de repli sur la gate community : le code communautaire, diffusé largement, ouvrirait une
         // instance privée.
         console.warn("[Main] Gate déléguée en échec :", e);
+        await _splashEnd();
         await _ktaInstanceIndisponible(_motifBlocage());
       }
     } else if (_mods && _mods.demandes > 0 && _mods.echecs > 0) {
@@ -1714,7 +1710,7 @@ window.proposerRedemarrageLangue = function() {
   // déverrouillé (cas courant) → étape sautée sans overlay.
   // ⚠️ ouvrirGate() ne résout pas pendant un verrou temporisé : le boot attend là (volontaire).
   if (!_gateDelegueeOk && window.UnlockGate && !window.UnlockGate.isUnlocked()) {
-    await _splashEnd();
+    await _splashAvantGate();
 
     // Licence pro active → la gate community est contournée (sinon gate ET bouton d'import de licence au 1er boot).
     // isPro() déjà vrai → immédiat ; sinon attente max 2 s de mktm:license-changed (fetch /Licence-pro.json) ;
@@ -1775,7 +1771,7 @@ window.proposerRedemarrageLangue = function() {
   // rien ; sinon gate PIN jusqu'au déverrouillage (verrou temporisé, jamais définitif : décision produit).
   if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
       && !window.MyKTAMapPinLock.isUnlocked()) {
-    await _splashEnd();
+    await _splashAvantGate();
     console.log("[Main] Gate PIN ouverte (pas encore déverrouillé)…");
     await window.MyKTAMapPinLock.ouvrirGate();
     console.log("[Main] Gate PIN franchie → init normale");
@@ -1898,9 +1894,9 @@ window.proposerRedemarrageLangue = function() {
           await _splashEnd();
           return;
         }
-        // Application lancée en parallèle de la fin du splash.
+        // Application lancée sous le splash ; il se ferme quand le plan est affiché (ou au plafond).
         const appPromise = lancerApplication();
-        await _splashEnd();
+        await _splashEnd(appPromise);
         await appPromise;
         return;
       } catch(err) {
@@ -1909,6 +1905,8 @@ window.proposerRedemarrageLangue = function() {
     }
   }
 
+  // ⚠️ « Accueil affiché » = retour d'afficherLoader : #planLoaderOverlay visible et liste remplie (refreshPlansList
+  // est synchrone) ; _splashEnd attend ensuite deux images, l'accueil est peint quand le fondu commence.
   console.log("[Main] Affichage du home avec liste des plans");
   afficherLoader();
   await _splashEnd();

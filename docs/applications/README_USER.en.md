@@ -150,6 +150,8 @@ In Chrome, open `myktamap.fr`, click **Install** at the right of the address bar
 
 ### 📦 Load a map
 
+When the app opens, the **startup screen** draws a gallery (about 4 s), then gives way to the home screen as soon as it is ready. A tap, a click or Esc skips it. If your device is set to reduce motion, it appears without animation.
+
 The home screen offers:
 
 - **▶️ Resume [name]** — reopens the last map you used.

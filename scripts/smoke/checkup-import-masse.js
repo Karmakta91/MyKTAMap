@@ -53,7 +53,7 @@ async function fabriquerZip(dossier, i) {
 async function ouvrirAccueil(ctx) {
   const p = await ctx.newPage();
   await p.goto(URL, { waitUntil: "domcontentloaded" });
-  // Le splash est RETIRÉ du DOM après ~3,5 s
+  // Le splash est RETIRÉ du DOM après ~4 s
   await p.waitForSelector("#splashOverlay", { state: "detached", timeout: 25000 }).catch(function () {});
   await p.waitForTimeout(700);
   await p.evaluate(function () { const m = document.getElementById("kta-alert-modal"); if (m) m.remove(); });
