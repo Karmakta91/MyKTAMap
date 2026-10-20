@@ -803,7 +803,7 @@ function afficherAide() {
 
   document.documentElement.appendChild(modal);
 
-  function _closeAll() { _aideFermerSousModal(); modal.remove(); }
+  function _closeAll() { _aideFermerSousModal(); _aideRetourHub(modal); modal.remove(); }
   document.getElementById("kta-aide-close").addEventListener("click", _closeAll);
   modal.addEventListener("click", function (e) { if (e.target === modal) _closeAll(); });
 
@@ -1004,9 +1004,80 @@ function _aideRendreHub(corps) {
   });
 }
 
-// Sous-modale : UNE section + ← Retour (z-index 100001, au-dessus du hub).
+// Fiche sur téléphone : elle REMPLACE le contenu du hub (un voile, une croix) au lieu de s'empiler dessus.
+// ⚠️ « Téléphone » = largeur ≤ 600 px, ou écran tactile de moins de 500 px de haut (téléphone en paysage) :
+// c'est la place qui manque pour deux fenêtres, pas le type de pointeur (une tablette garde la sous-fenêtre).
+// Relu à chaque ouverture : tourner l'appareil vaut pour la fiche suivante. PC : sous-fenêtre, inchangé.
+const AIDE_FICHE_EN_PLACE_MQ = "(max-width: 600px), (max-height: 500px) and (pointer: coarse)";
+function _aideFicheEnPlace() {
+  try { return !!(window.matchMedia && window.matchMedia(AIDE_FICHE_EN_PLACE_MQ).matches); }
+  catch (e) { return false; }
+}
+
+// Section reconstruite depuis les dicos (titre + corps) : un seul rendu pour la sous-fenêtre et le hub.
+function _aideBlocSection(section) {
+  const bloc = document.createElement("div");
+  bloc.className = "kta-aide-section";
+  const t = document.createElement("div");
+  t.className = "kta-aide-section-titre";
+  _aidePoserTitre(t, section);
+  bloc.appendChild(t);
+  const c = document.createElement("div");
+  c.innerHTML = section.html || "";
+  while (c.firstChild) bloc.appendChild(c.firstChild);
+  return bloc;
+}
+
+// 🩸 Le hub n'est pas reconstruit : il est masqué (classe sur l'overlay), ce qui garde la recherche tapée et,
+// au retour, la position de défilement relevée à l'ouverture de la fiche.
+function _aideOuvrirFicheDansHub(modal, section) {
+  const corps = modal.querySelector("#kta-aide-corps");
+  const head = modal.querySelector(".kta-readme-modal-header");
+  if (!corps || !head) return false;
+  _aideRetourHub(modal);
+  modal.__aideScroll = corps.scrollTop;
+  const fiche = document.createElement("div");
+  fiche.className = "kta-aide-fiche-vue";
+  fiche.appendChild(_aideBlocSection(section));
+  corps.appendChild(fiche);
+  const back = document.createElement("button");
+  back.type = "button";
+  back.id = "kta-aide-back";
+  back.className = "kta-aide-submodal-back kta-aide-back-hub";
+  back.textContent = "← " + (window.I18n ? window.I18n.t("aide.ui.back") : "");
+  back.addEventListener("click", function() { _aideRetourHub(modal); });
+  head.insertBefore(back, head.firstChild);
+  modal.classList.add("kta-aide-en-fiche");
+  corps.scrollTop = 0;
+  // Échap revient au hub (comme la croix de la sous-fenêtre sur PC) ; l'échappement global fermerait tout.
+  modal.__aideEsc = function(e) {
+    if (e.key !== "Escape" && e.key !== "Esc") return;
+    if (!modal.isConnected) { document.removeEventListener("keydown", modal.__aideEsc, true); return; }
+    e.stopPropagation();
+    e.preventDefault();
+    _aideRetourHub(modal);
+  };
+  document.addEventListener("keydown", modal.__aideEsc, true);
+  try { back.focus({ preventScroll: true }); } catch (e) { /* focus facultatif */ }
+  return true;
+}
+
+function _aideRetourHub(modal) {
+  if (!modal) return;
+  if (modal.__aideEsc) { document.removeEventListener("keydown", modal.__aideEsc, true); modal.__aideEsc = null; }
+  if (!modal.classList.contains("kta-aide-en-fiche")) return;
+  modal.querySelectorAll(".kta-aide-fiche-vue, .kta-aide-back-hub").forEach(function(el) { el.remove(); });
+  modal.classList.remove("kta-aide-en-fiche");
+  const corps = modal.querySelector("#kta-aide-corps");
+  if (corps) corps.scrollTop = modal.__aideScroll || 0;
+}
+
+// Sous-modale : UNE section + ← Retour (z-index 100001, au-dessus du hub). Sur téléphone, hub ouvert : la fiche
+// prend la place du hub (_aideOuvrirFicheDansHub). Ouverte par le ❓ d'une fenêtre (sans hub) : sous-modale.
 function _aideOuvrirSousModal(section) {
   _aideFermerSousModal();
+  const hub = document.getElementById("kta-aide-modal");
+  if (hub && section && _aideFicheEnPlace() && _aideOuvrirFicheDansHub(hub, section)) return;
   const ov = document.createElement("div");
   ov.id = "kta-aide-submodal";
   ov.className = "kta-readme-modal-overlay kta-aide-submodal";
@@ -1020,20 +1091,8 @@ function _aideOuvrirSousModal(section) {
       '<div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-sub-corps"></div>' +
     "</div>";
   document.documentElement.appendChild(ov);
-  // Section reconstruite depuis les dicos (titre + corps).
   const corps = ov.querySelector("#kta-aide-sub-corps");
-  if (corps && section) {
-    const bloc = document.createElement("div");
-    bloc.className = "kta-aide-section";
-    const t = document.createElement("div");
-    t.className = "kta-aide-section-titre";
-    _aidePoserTitre(t, section);
-    bloc.appendChild(t);
-    const c = document.createElement("div");
-    c.innerHTML = section.html || "";
-    while (c.firstChild) bloc.appendChild(c.firstChild);
-    corps.appendChild(bloc);
-  }
+  if (corps && section) corps.appendChild(_aideBlocSection(section));
 
   document.getElementById("kta-aide-back").addEventListener("click", _aideFermerSousModal);
   document.getElementById("kta-aide-sub-close").addEventListener("click", _aideFermerSousModal);

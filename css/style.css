@@ -1206,7 +1206,11 @@ body.kta-theme-light .kta-kbd {
   font-size: 13px;
   cursor: pointer;
 }
-.kta-aide-submodal-back:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.kta-aide-submodal-back:hover {
+  background: var(--kta-info-fond);
+  border-color: var(--kta-info-bord);
+  color: var(--kta-texte);
+}
 body.kta-theme-light .kta-aide-hub-search {
   background: #fff;
   border-color: rgba(0, 0, 0, 0.15);
@@ -19999,14 +20003,22 @@ button.kta-cfg-ligne-action {
    prend la largeur de sa colonne de lecture. ⚠️ L'id bat les paliers !important de .kta-aide-modal-boite. */
 #kta-aide-submodal .kta-aide-modal-boite { max-width: 680px !important; width: min(680px, 96vw) !important; }
 #kta-aide-sub-corps { columns: auto; column-rule: none; }
-#kta-aide-sub-corps .kta-aide-section { font-size: 15px; }
-#kta-aide-sub-corps .kta-aide-p,
-#kta-aide-sub-corps .kta-aide-liste,
-#kta-aide-sub-corps .kta-aide-grille,
-#kta-aide-sub-corps .kta-aide-grille span:not(.kta-aide-icone) { font-size: 15px; line-height: 1.55; }
-#kta-aide-sub-corps .kta-aide-note,
-#kta-aide-sub-corps .kta-aide-sousliste { font-size: 13px; }
-#kta-aide-sub-corps .kta-aide-section > * { max-width: 61ch; }
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-section { font-size: 15px; }
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-p,
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-liste,
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-grille,
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-grille span:not(.kta-aide-icone) {
+  font-size: 15px;
+  line-height: 1.55;
+}
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-note,
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-sousliste { font-size: 13px; }
+:is(#kta-aide-sub-corps, .kta-aide-fiche-vue) .kta-aide-section > * { max-width: 61ch; }
+/* Fiche dans le hub, sur téléphone (js/interfaceDocs.js > _aideOuvrirFicheDansHub) : le hub est masqué, pas
+   détruit ; « ← Retour » prend la place du titre dans l'en-tête, la croix ferme l'Aide. */
+#kta-aide-modal.kta-aide-en-fiche #kta-aide-corps > :not(.kta-aide-fiche-vue),
+#kta-aide-modal.kta-aide-en-fiche .kta-readme-modal-header > .kta-readme-modal-titre { display: none !important; }
+#kta-aide-modal .kta-aide-back-hub { margin-right: auto; }
 
 /* En-tête de la Documentation sur téléphone : le titre se tronque, la croix reste entière à l'écran. */
 .kta-readme-modal-header > .kta-panneau-close { flex-shrink: 0; }
