@@ -21,8 +21,10 @@ let map, bounds, collisionCanvas, collisionCtx;
 // la variable module `map`, toujours la carte courante.
 function _ktaPickCaptureClick(domEvt) {
   if (!(window._modeClicCarteActif && window._modeClicCarteActif())) return;
+  // Garder zoom & co. 🩸 Et la fiche (popup) : un bouton qui ARME un mode (« Repositionner ») le fait pendant la
+  // capture de CE clic (document avant #map) ; sans cette exclusion, le même clic devenait la position choisie.
   if (domEvt.target && domEvt.target.closest &&
-      domEvt.target.closest(".leaflet-control")) return;  // garder zoom & co
+      domEvt.target.closest(".leaflet-control, .leaflet-popup")) return;
   let latlng;
   try { latlng = map.mouseEventToLatLng(domEvt); } catch(_) { return; }
   domEvt.stopImmediatePropagation();
