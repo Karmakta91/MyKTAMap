@@ -20006,10 +20006,10 @@ button.kta-cfg-ligne-action {
 .kta-cfg-ligne-action-chevron { flex: 0 0 auto; font-size: 18px; line-height: 1; color: var(--kta-texte-3); }
 .kta-cfg-ligne-action:focus-visible { outline: 2px solid var(--kta-focus); outline-offset: 2px; }
 
-/* Documentation : colonne de lecture ≈ 72 caractères, corps à 15 px (le sommaire garde sa colonne). Les titres
-   suivent pour rester au-dessus du corps. 🩸 1ch = largeur du « 0 », plus large qu'une lettre moyenne : 72ch
-   donnait 85 caractères par ligne mesurés en Arial 15 px ; 61ch en donne ≈ 72. */
-.kta-readme-corps { font-size: 15px; line-height: 1.65; max-width: 61ch; margin-inline: auto; }
+/* Documentation : colonne large et centrée (décision produit : profiter de la place sur PC, ≈ 118 caractères
+   par ligne à 15 px ; l'audit Impeccable visait 45-75). Corps à 15 px, titres au-dessus du corps.
+   🩸 1ch = largeur du « 0 », plus large qu'une lettre moyenne : 100ch ≈ 118 caractères mesurés en Arial. */
+.kta-readme-corps { font-size: 15px; line-height: 1.65; max-width: 100ch; margin-inline: auto; }
 .kta-readme-corps h3 { font-size: 16px; }
 .kta-readme-corps h4 { font-size: 15px; }
 .kta-readme-corps .kta-readme-table { font-size: 14px; }
