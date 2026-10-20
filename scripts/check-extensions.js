@@ -519,8 +519,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 fiche d'un tracé / zone / structure : lecture seule = mode lecture (ni note, ni Convertir, ni 🗑️)",
       /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
     const CV = lire("js/convertirObjet.js");
-    t("🩸 conversion / suppression d'objet : gardées à l'entrée",
-      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir("].every((f) =>
+    t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
+      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
+       "function changerNiveau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);
     let evts = 0;

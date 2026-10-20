@@ -5,7 +5,7 @@
  */
 
 // =====================================================================
-// CONVERTIROBJET.JS — Changer un objet de TYPE, et au besoin de FAMILLE (aussi : supprimer, convertir un lot)
+// CONVERTIROBJET.JS — Changer un objet de TYPE, et au besoin de FAMILLE (aussi : supprimer, lot, niveau)
 // =====================================================================
 // Pourquoi ce n'est pas cosmétique : à l'import SIG, tout part souvent en « front de taille » (la géométrie ne dit
 // pas ce que l'objet EST). Or le Pathfinder ne construit son graphe QUE sur les `roads` (getRoads +
@@ -202,6 +202,41 @@
     return true;
   }
 
+  // ── Changer le niveau (liste « Niveau » de la même popup) ──────────
+  // Mutation EN PLACE (même objet, même uid) puis réécriture de la famille par son setteur (re-rendu filtré).
+  // ⚠️ La valeur choisie est écrite telle quelle : le « niveau − 1 » de pilier-2 / front-2 (structures.js) n'est
+  // qu'un défaut de création, jamais réappliqué ici.
+  // Jonction (fromLevel / toLevel) et itinéraire : refusés, ils n'ont pas de `level`.
+  // 🩸 Le graphe de navigation (roadGraph.js) est invalidé : un changement de niveau ne change ni le nombre de
+  // tracés ni celui des sommets.
+  function changerNiveau(famille, obj, niveau) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
+    if (!obj || !famille || !Number.isInteger(niveau)) return false;
+    if (CIBLES_INTERDITES[obj.type]) return false;
+    const ecrire = _ecrivain(famille);
+    if (typeof ecrire !== "function") {
+      console.warn("[Convertir] setteur manquant pour le niveau :", famille);
+      return false;
+    }
+    const liste = _lire(famille).slice();
+    if (liste.indexOf(obj) < 0) {
+      console.warn("[Convertir] objet introuvable dans", famille);
+      return false;
+    }
+    if ((Number.isInteger(obj.level) ? obj.level : 0) === niveau) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState(famille) : null;
+    obj.level = niveau;
+    if (window.KtaUid) window.KtaUid.touch(obj);
+    ecrire(liste);
+    if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("niveauObjet.histoire", { n: niveau > 0 ? "+" + niveau : niveau }), avant, famille);
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
   // ── Conversion d'un lot ──────────
   // `items` = [{ famille, obj }].
   // 🩸 UN SEUL INSTANTANÉ, UNE ÉCRITURE PAR FAMILLE, UN SEUL RENDU : N appels à `convertir()` donneraient N re-rendus
@@ -381,6 +416,7 @@
     convertirLot:  convertirLot,   // N objets d un coup
     listerCiblesLot: listerCiblesLot,
     supprimer:     supprimer,   // depuis la popup de l objet
+    changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert
   };

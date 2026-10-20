@@ -22,7 +22,7 @@
 //   getLinksForPoint(planId, point), createLink(a, b), removeLink(id),
 //   getLinksForPlan(planId), importLinks(links), buildPopupHtml(point, layerId),
 //   ouvrirCreation(id, x, y, nom, source), naviguerVers(linkId, side),
-//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges()
+//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged
 // };
 // 100 % local, aucune surface réseau nouvelle (fetch same-origin des plans serveur, ZIP locaux en IndexedDB).
 // Garde-fous : check-uid.js, check-repositionner.js, check-xss.js. Doc : docs/architecture/multilevel-pathfinding.md.
@@ -1316,6 +1316,29 @@
     }
     return recales;
   }
+
+  // NIVEAU d'un point de session changé (editor.js > afficherFormulaire) : le snapshot `level` d'un côté sert à
+  // l'arrivée par le portail (bascule sur le niveau du point cible) ; périmé, il ouvrirait l'ancien étage.
+  // 🩸 Un ⏪ ne repasse pas ici : le resync du chargement (_resyncSnapshotsForPlan) rattrape au plan suivant.
+  function onPointLevelChanged(planId, point) {
+    if (!planId || !point) return 0;
+    const lvl = Number.isInteger(point.level) ? point.level : 0;
+    const reg = _load();
+    let n = 0;
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(cote) {
+        const side = l[cote];
+        if (!_coteDuPoint(side, planId, point) || (side.level || 0) === lvl) return;
+        side.level = lvl;
+        n++;
+      });
+    });
+    if (n > 0) {
+      _save(reg);
+      console.log("[InterPlanLinks] " + n + " côté(s) de liaison mis au niveau " + lvl);
+    }
+    return n;
+  }
   // ── Export ──────────
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
@@ -1337,6 +1360,7 @@
     onPointDeleted:       onPointDeleted,
     migrerVersUid:        migrerVersUid,
     onPointMoved:         onPointMoved,   // recale les coords d'un point déplacé
+    onPointLevelChanged:  onPointLevelChanged,   // recale le niveau d'un point changé d'étage
     refreshBadges:        refreshBadges,
     // Navigation générique + lecture des points d'un plan non chargé (aussi pour js/crossPlanSearch.js : un seul
     // lecteur session / ZIP / serveur).

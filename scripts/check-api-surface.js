@@ -303,6 +303,47 @@ function charger(fichier, nomGlobal, prealables) {
   t("suppr : une famille inconnue est refusée", CV.supprimer("bidon", jumeauA) === false);
   t("suppr : aucun refus n'a laissé d'entrée d'historique", journal.record.length === avantRefus);
 
+  // ── Le niveau (liste « Niveau » de la même popup) ──
+  t("niveau : l'API est exposée", typeof CV.changerNiveau === "function");
+  const journalNiv = { touch: 0, inval: 0, cats: [] };
+  w.KtaUid = { touch: function (o) { journalNiv.touch++; o.updatedAt = 42; } };
+  w.RoadGraph = { invalidate: function () { journalNiv.inval++; } };
+  w.HistoryManager = {
+    captureState: function (cat) { journalNiv.cats.push(cat); return { cat: cat }; },
+    record: function (label, avant, cat) { journal.record.push({ label: label, avant: avant, cat: cat }); }
+  };
+  const galerie = { type: "principal", level: 0, uid: "rd_g", points: [{ x: 0, y: 0 }, { x: 3, y: 3 }] };
+  R = [galerie];
+  const nRec = journal.record.length, nSave = journal.saves;
+  t("niveau : l'opération réussit", CV.changerNiveau("roads", galerie, -2) === true);
+  t("niveau : MÊME objet muté en place (référence et uid gardés)", R[0] === galerie && galerie.uid === "rd_g");
+  t("niveau : la valeur choisie est écrite", galerie.level === -2);
+  t("niveau : touch appelé (synchro)", journalNiv.touch === 1 && galerie.updatedAt === 42);
+  t("🩸 niveau : le graphe de navigation est invalidé", journalNiv.inval === 1);
+  t("niveau : instantané CIBLÉ sur la famille, entrée d'historique de la même famille",
+    journalNiv.cats[0] === "roads" && journal.record.length === nRec + 1 && journal.record[nRec].cat === "roads");
+  t("niveau : session sauvegardée", journal.saves === nSave + 1);
+  // 🩸 pilier-2 / front-2 naissent à « niveau actif − 1 » : un changement écrit la valeur telle quelle.
+  const p2 = { type: "pilier-2", level: -1, points: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] };
+  S = [p2];
+  t("🩸 niveau : pilier-2 reçoit la valeur choisie, sans le « − 1 » de la création",
+    CV.changerNiveau("structures", p2, 1) === true && p2.level === 1);
+  const zoneSansNiv = { type: "eau", points: [] };
+  Z = [zoneSansNiv];
+  const nRec2 = journal.record.length;
+  t("niveau : même niveau (absent = 0) → refus, rien d'écrit",
+    CV.changerNiveau("zones", zoneSansNiv, 0) === false && !("level" in zoneSansNiv) && journal.record.length === nRec2);
+  t("niveau : une zone sans level reçoit le niveau choisi", CV.changerNiveau("zones", zoneSansNiv, 2) === true && zoneSansNiv.level === 2);
+  const joncN = { type: "jonction", fromLevel: 0, toLevel: 1, points: [] };
+  R = [joncN];
+  t("niveau : une jonction est refusée (fromLevel / toLevel, hors de cette liste)",
+    CV.changerNiveau("roads", joncN, 3) === false && !("level" in joncN));
+  t("niveau : un objet absent de sa famille est refusé", CV.changerNiveau("roads", { type: "chemin" }, 1) === false);
+  t("niveau : un niveau non entier est refusé", CV.changerNiveau("zones", zoneSansNiv, "1") === false);
+  w.ktaEditionRefusee = function () { return true; };
+  t("🔒 niveau : lecture seule → refus", CV.changerNiveau("zones", zoneSansNiv, -1) === false && zoneSansNiv.level === 2);
+  delete w.ktaEditionRefusee;
+
   // ── le câblage, que l'extraction ne voit pas ──
   {
     const U = fs.readFileSync("js/utils.js", "utf8");
@@ -317,7 +358,48 @@ function charger(fichier, nomGlobal, prealables) {
     const iSup = U.indexOf("kta-note-popup-supprimer\");");
     t("🩸 câblage : la popup est FERMÉE (sinon elle survit à son layer détruit)",
       iSup > 0 && U.slice(iSup, iSup + 900).indexOf("closePopup") >= 0);
-    ["convert.btnSuppr", "convert.toastSuppr", "convert.histoireSuppr"].forEach(function (k) {
+    t("câblage : la liste « Niveau » est dans la popup et appelle KtaConvertir.changerNiveau",
+      U.indexOf("kta-note-popup-niveau") >= 0 &&
+      /KtaConvertir\.changerNiveau\(opts\.convertir\.famille, opts\.convertir\.obj, n\)/.test(U));
+    // 🩸 La popup quittée reste dans le DOM pendant son fondu : chercher dans tout le document branchait ses
+    // boutons à elle, ceux de la nouvelle fiche restaient morts.
+    t("🩸 câblage : les écouteurs de la fiche sont cherchés DANS la popup ouverte (evt.popup.getElement)",
+      /const popupRoot = racine\.querySelector\("\.leaflet-popup-content \.kta-note-popup"\)/.test(U) &&
+      /evt\.popup\.getElement\(\)/.test(U));
+    const iNiv = U.indexOf("nivSel.addEventListener(\"change\"");
+    t("🩸 câblage : la popup est fermée AVANT changerNiveau (le setteur détruit le layer)",
+      iNiv > 0 && U.indexOf("closePopup", iNiv) < U.indexOf("changerNiveau(", iNiv));
+    // Niveaux proposés (utils.js, extrait du fichier : il ne se charge pas sans Leaflet).
+    const a = U.indexOf("window.ktaNiveauxProposes = function");
+    const b = U.indexOf("window.ktaOptionsNiveauHtml = function");
+    const wn = { APP_CONFIG: { multiLevel: true, availableLevels: [2, -1, 0, 1] },
+                 _aucunModeEditionActif: function () { return true; } };
+    let NP = null;
+    try {
+      vm.runInContext("var window = this;" + U.slice(a, b), vm.createContext(wn));
+      NP = wn.ktaNiveauxProposes;
+    } catch (e) { console.log("   ↳ " + e.message); }
+    t("niveaux proposés : bloc extrait de utils.js", a > 0 && b > a && typeof NP === "function");
+    if (NP) {
+      t("niveaux proposés : triés", JSON.stringify(NP(0)) === "[-1,0,1,2]");
+      t("🩸 niveaux proposés : le niveau ACTUEL y est même hors availableLevels",
+        JSON.stringify(NP(-4)) === "[-4,-1,0,1,2]");
+      t("niveaux proposés : pas de doublon", JSON.stringify(NP(1)) === "[-1,0,1,2]");
+      wn._aucunModeEditionActif = function () { return false; };
+      t("niveaux proposés : aucune liste pendant un dessin", NP(0) === null);
+      wn._aucunModeEditionActif = function () { return true; };
+      wn.APP_CONFIG.multiLevel = false;
+      t("niveaux proposés : aucune liste hors multi-niveau", NP(0) === null);
+      t("libellé signé : +2 / 0 / -1",
+        wn.ktaFormatNiveau(2) === "+2" && wn.ktaFormatNiveau(0) === "0" && wn.ktaFormatNiveau(-1) === "-1");
+    }
+    const E = fs.readFileSync("js/editor.js", "utf8");
+    t("câblage : le formulaire d'un POI porte la liste « Niveau » (édition seulement)",
+      /isEdit && typeof window\.ktaOptionsNiveauHtml === "function"/.test(E) && E.indexOf('id="kta-poi-niveau"') >= 0);
+    t("câblage : un POI changé de niveau recale ses liaisons inter-plan",
+      /InterPlanLinks\.onPointLevelChanged\(planId, existingPoint\)/.test(E));
+    ["convert.btnSuppr", "convert.toastSuppr", "convert.histoireSuppr", "niveauObjet.label", "niveauObjet.option",
+     "niveauObjet.histoire", "niveauObjet.toastDeplace", "niveauObjet.toastMasque"].forEach(function (k) {
       ["fr", "en", "es"].forEach(function (l) {
         const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
         t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);

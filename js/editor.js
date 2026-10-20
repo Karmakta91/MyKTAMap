@@ -142,6 +142,10 @@ function afficherFormulaire(x, y, existingPoint) {
                        ? existingPoint.tags[0]
                        : "";
   const nomInitial   = isEdit ? (existingPoint.nom || "") : "";
+  // Liste « Niveau » : ÉDITION seulement (à l'ajout, le point prend le niveau actif), "" hors multi-niveau.
+  const niveauInitial = (isEdit && Number.isInteger(existingPoint.level)) ? existingPoint.level : 0;
+  const optionsNiveau = (isEdit && typeof window.ktaOptionsNiveauHtml === "function")
+    ? window.ktaOptionsNiveauHtml(niveauInitial) : "";
   const descInitial  = isEdit ? (existingPoint.description || "") : "";
 
   // Échappement du préremplissage (une apostrophe casserait l'attribut value).
@@ -203,6 +207,9 @@ function afficherFormulaire(x, y, existingPoint) {
 
             <label class="kta-cfg-label">${window.I18n.t("editor.field.type")}</label>
             <select class="kta-cfg-input" id="kta-poi-type">${_buildTypeOptionsHTML(tagInitial)}</select>
+            ${optionsNiveau ? `
+            <label class="kta-cfg-label" for="kta-poi-niveau">${_esc(window.I18n.t("niveauObjet.label"))}</label>
+            <select class="kta-cfg-input" id="kta-poi-niveau">${optionsNiveau}</select>` : ""}
           </div>
 
           <div id="kta-poi-newtag-wrap" style="display:none; margin-top:8px;">
@@ -634,12 +641,22 @@ function afficherFormulaire(x, y, existingPoint) {
         existingPoint.id          = nom;  // garde id === nom (rétro-compat)
         existingPoint.tags        = tag ? [tag] : [];
         existingPoint.description = desc;
+        // Multi-niveau : le level ne change QUE par la liste « Niveau » (jamais re-tagué sur le niveau actif,
+        // surprenant si l'utilisateur a changé de niveau entre-temps). Inchangé → aucun champ écrit (un point
+        // sans `level` reste sans `level`).
+        const selNiveau = document.getElementById("kta-poi-niveau");
+        const niveauChoisi = selNiveau ? parseInt(selNiveau.value, 10) : NaN;
+        const niveauChange = Number.isInteger(niveauChoisi) && niveauChoisi !== niveauInitial;
+        if (niveauChange) existingPoint.level = niveauChoisi;
         // touch : updatedAt (ms) + date_update (jour), en un seul geste.
         if (window.KtaUid) window.KtaUid.touch(existingPoint);
         else existingPoint.date_update = new Date().toISOString().split("T")[0];
-        // Multi-niveau : le level d'origine est gardé (pas de re-tag sur le niveau actif, surprenant si
-        // l'utilisateur a changé de niveau entre-temps). Re-rendu complet (icône, nom, popup).
+        // Re-rendu complet (icône, nom, popup, marker._ktaLevel et filtre de niveau).
         if (window.renderEditorPoints) window.renderEditorPoints();
+        if (niveauChange && window.InterPlanLinks && typeof window.InterPlanLinks.onPointLevelChanged === "function") {
+          try { window.InterPlanLinks.onPointLevelChanged(planId, existingPoint); }
+          catch(err) { console.warn("[Editor] niveau des liaisons inter-plan :", err); }
+        }
         console.log("[Editor] Point modifié :", nom, "à", x, y);
         // Fiche des photos du point remise à jour (nom, type…).
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints) {
@@ -647,6 +664,10 @@ function afficherFormulaire(x, y, existingPoint) {
         }
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("editor.undo.editPoint", { nom: nom }), _historyBefore, "editorPoints");
+        }
+        if (niveauChange) {
+          if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+          if (typeof window.ktaSignalerNiveauObjet === "function") window.ktaSignalerNiveauObjet(niveauChoisi);
         }
       } else {
         const point = {

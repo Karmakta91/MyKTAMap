@@ -161,6 +161,12 @@ t("note d'un objet (tracé, zone, structure) : touch",
   /_structRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_structRef\);/.test(STRUCT));
 t("conversion : l'uid suit et la conversion appelle touch (simple et par lot)",
   (CONV.match(/KtaUid\.touch\(neuf\)/g) || []).length === 2);
+t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation",
+  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
+t("changement de niveau d'un POI : posé AVANT le touch de la modification",
+  iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&
+  EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) - iNivPt < 200);
 
 // Tableur
 t("🩸 tableur « Dupliquer » : uid neuf (cloneNeuf), jamais une copie JSON brute", /window\.KtaUid \? window\.KtaUid\.cloneNeuf\(_data\[i\], _prefixeUid\(\)\)/.test(TBL));

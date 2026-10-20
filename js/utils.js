@@ -8,7 +8,8 @@
 // =====================================================================
 // Expose : convertCoord, icônes de point (choisirIcone, getIconUrlForPoint), formats (formatDistance,
 // formatSurface, polygonArea[M2], GPS parse/format), fenêtres chartées (window.ktaConfirm, window.ktaAlerte),
-// cohérence échelle ↔ géoréf, popups de note (attacherNotePopup) et de point (buildPointPopupHtml),
+// cohérence échelle ↔ géoréf, popups de note (attacherNotePopup) et de point (buildPointPopupHtml), sélecteur
+// de niveau d'un objet de session (ktaNiveauxProposes, ktaOptionsNiveauHtml, ktaSignalerNiveauObjet),
 // picker « Où es-tu ? », transparence des tuiles (ktaTileExt, ktaDetecterAlpha), rendu des data layers
 // (ajouterPointsDepuisJSON) et garde des modes clic-carte (_modeClicCarteActif).
 // Dépend de : APP_CONFIG / PLAN_CONFIG, Leaflet (window.map), window.I18n, window.ktaEsc (langManager.js).
@@ -758,6 +759,57 @@ window._kta_syncAllNoteUiForModeChange = function() {
   }
 };
 
+// ── Niveau d'un objet de session (fiche d'un tracé / zone / structure, formulaire d'un POI) ──────────
+// ⚠️ ktaNiveauxProposes(actuel) → niveaux triés de availableLevels + `actuel`, ou null hors multi-niveau ET pendant
+// un dessin (modeRoad / modeZone / modeStructure) : pas de liste dans ces deux cas (décision produit).
+// 🩸 `actuel` est toujours dans la liste, même hors availableLevels : sinon le <select> afficherait un autre niveau
+// que celui de l'objet et le moindre « change » le déplacerait en silence.
+window.ktaNiveauxProposes = function(actuel) {
+  const c = window.APP_CONFIG;
+  if (!c || c.multiLevel !== true) return null;
+  if (typeof window._aucunModeEditionActif === "function" && !window._aucunModeEditionActif()) return null;
+  const lvl = Number.isInteger(actuel) ? actuel : 0;
+  const base = (Array.isArray(c.availableLevels) && c.availableLevels.length) ? c.availableLevels : [0];
+  const vus = {};
+  const out = [];
+  base.concat([lvl]).forEach(function(n) {
+    if (!Number.isInteger(n) || vus[n]) return;
+    vus[n] = true;
+    out.push(n);
+  });
+  return out.sort(function(a, b) { return a - b; });
+};
+
+// Libellé signé d'un niveau (« -1 », « 0 », « +2 »), comme la fenêtre « Convertir ».
+window.ktaFormatNiveau = function(n) {
+  return (Number.isInteger(n) && n > 0) ? "+" + n : String(Number.isInteger(n) ? n : 0);
+};
+
+// <option> du sélecteur de niveau, `actuel` sélectionné ; "" si pas de liste (cf ktaNiveauxProposes).
+window.ktaOptionsNiveauHtml = function(actuel) {
+  const niveaux = window.ktaNiveauxProposes(actuel);
+  if (!niveaux) return "";
+  const lvl = Number.isInteger(actuel) ? actuel : 0;
+  return niveaux.map(function(n) {
+    return '<option value="' + n + '"' + (n === lvl ? " selected" : "") + '>' +
+             window.ktaEsc(window.I18n.t("niveauObjet.option", { n: window.ktaFormatNiveau(n) })) +
+           '</option>';
+  }).join("");
+};
+
+// Toast après un changement de niveau. La vue ne bascule PAS sur le niveau cible (décision produit) : si le filtre
+// le masque, l'objet disparaît de la carte, d'où un toast « warn » (toujours montré) plutôt qu'« info ».
+window.ktaSignalerNiveauObjet = function(n) {
+  if (!window.OOMGuard || typeof window.OOMGuard.showToast !== "function") return;
+  const c = window.APP_CONFIG || {};
+  const visibles = Array.isArray(c.visibleLevels) ? c.visibleLevels : [0];
+  const masque = visibles.indexOf(n) < 0;
+  window.OOMGuard.showToast(
+    window.I18n.t(masque ? "niveauObjet.toastMasque" : "niveauObjet.toastDeplace",
+      { n: window.ktaFormatNiveau(n) }),
+    masque ? "warn" : "info");
+};
+
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
   opts = opts || {};
@@ -771,6 +823,20 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   _majMode();
 
   function _esc(s) { return window.ktaEsc(s); }
+
+  // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
+  // toLevel, hors de cette liste) ni itinéraire ; "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes).
+  function _niveauHtml() {
+    const o = opts.convertir && opts.convertir.obj;
+    if (!o || o.type === "jonction" || o.type === "itinerary") return "";
+    if (typeof window.ktaOptionsNiveauHtml !== "function") return "";
+    const options = window.ktaOptionsNiveauHtml(Number.isInteger(o.level) ? o.level : 0);
+    if (!options) return "";
+    return '<label class="kta-note-popup-niveau-ligne">' +
+             '<span>' + _esc(window.I18n.t("niveauObjet.label")) + '</span>' +
+             '<select class="kta-note-popup-niveau">' + options + '</select>' +
+           '</label>';
+  }
 
   function _renderPopupHtml() {
     const current = getDescr() || "";
@@ -807,6 +873,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                      '</button>'
                    : '') +
                '</div>' +
+               _niveauHtml() +
                // Supprimer : ligne séparée, classe danger (comme la popup d'un point, une action destructrice ne se
                // pose pas à côté de « Sauver »). `opts.convertir` = { famille, obj } sert aux DEUX boutons.
                (opts.convertir
@@ -856,6 +923,19 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
           if (ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
             window.OOMGuard.showToast(window.I18n.t("convert.toastSuppr"), "info");
+          }
+        });
+      }
+      // Niveau : appliqué au choix, comme un bouton de Convertir. 🩸 Popup fermée AVANT le setteur : il re-rend la
+      // famille, le layer porteur est détruit et une popup accrochée à un layer mort resterait à l'écran.
+      const nivSel = popupRoot.querySelector(".kta-note-popup-niveau");
+      if (nivSel && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveau) {
+        nivSel.addEventListener("change", function () {
+          const n = parseInt(nivSel.value, 10);
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveau(opts.convertir.famille, opts.convertir.obj, n)
+              && typeof window.ktaSignalerNiveauObjet === "function") {
+            window.ktaSignalerNiveauObjet(n);
           }
         });
       }
