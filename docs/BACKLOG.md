@@ -28,8 +28,8 @@
 
 ## Maintenant
 
-- **Train : sortir la v2.18 en prod** — 🧊 **`Karma_dev` gelé depuis le 20/10 ~14 h 30** (48 h, raccourcissable par
-  KARMA) : n'y entrent que les corrections trouvées au trempage. Notes réécrites le 20/10. Porte : `docs/RELEASE_GATE.md`.
+- **Train : sortir la v2.18 en prod** — 🧊 **`Karma_dev` gelé** ; la vague s'est élargie le 20/10 (décision KARMA) au nouvel écran
+  de démarrage et à l'audit Impeccable (charte en jetons) : **trempage de 48 h en sombre ET en clair**, dev + pro, à partir de cette intégration. Porte : `docs/RELEASE_GATE.md`.
   `qui: KARMA · action: Sonar (faux positifs acceptés), PR Dependabot, trempage dev + pro (menu 9), porte, merge-main
   · fini: main mergé, etat-sites.ps1 vert · depuis: 18/10/2026 · taille: M`
 - **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA (plan multi-niveau, iPhone PWA et PC) : une partie des POI
