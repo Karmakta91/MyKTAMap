@@ -56,7 +56,7 @@
         align-items: center;
         gap: 8px;
         font-size: 13px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         padding: 4px 6px;
         border-radius: 4px;
         cursor: pointer;
@@ -199,7 +199,7 @@
           <div id="kta-export-rapide" style="display:${modeInitial === 'rapide' ? 'block' : 'none'};">
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">${T("imgexport.rapide.contenu.titre")}</div>
-              <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">
+              <p style="font-size:13px; color:var(--kta-texte-2); margin:0; line-height:1.7;">
                 ${T("imgexport.rapide.contenu.image")}<br>
                 ${T("imgexport.rapide.contenu.annotations", {
                   points: nbPoints, roads: nbRoads, zones: nbZones,
@@ -208,7 +208,7 @@
                     : ''
                 })}<br>
                 ${_niveauxRapideTxt
-                  ? '<span style="color:#f4c542;">🏗️ ' + _niveauxRapideTxt + '</span>' + T("imgexport.rapide.contenu.niveauxAstuce") + '<br>'
+                  ? '<span style="color:var(--kta-accent-texte);">🏗️ ' + _niveauxRapideTxt + '</span>' + T("imgexport.rapide.contenu.niveauxAstuce") + '<br>'
                   : ''}
                 ${T("imgexport.rapide.contenu.format")}<br>
                 ${nbMesure > 0 ? T("imgexport.rapide.contenu.mesureDist", { count: nbMesure }) + '<br>' : ''}
@@ -233,22 +233,22 @@
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="image" checked>
-                  <span>${T("imgexport.fond.image")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.imageNote")}</span></span>
+                  <span>${T("imgexport.fond.image")} <span style="color:var(--kta-texte-3); font-size:11px;">${T("imgexport.fond.imageNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="white">
-                  <span>${T("imgexport.fond.blanc")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.blancNote")}</span></span>
+                  <span>${T("imgexport.fond.blanc")} <span style="color:var(--kta-texte-3); font-size:11px;">${T("imgexport.fond.blancNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="black">
-                  <span>${T("imgexport.fond.noir")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.noirNote")}</span></span>
+                  <span>${T("imgexport.fond.noir")} <span style="color:var(--kta-texte-3); font-size:11px;">${T("imgexport.fond.noirNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="transparent">
-                  <span>${T("imgexport.fond.transparent")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.transparentNote")}</span></span>
+                  <span>${T("imgexport.fond.transparent")} <span style="color:var(--kta-texte-3); font-size:11px;">${T("imgexport.fond.transparentNote")}</span></span>
                 </label>
               </div>
-              <div id="kta-export-bg-info" style="display:none; margin-top:8px; padding:8px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.25); border-radius:6px; font-size:11.5px; color:#c8d0e0; line-height:1.5;">
+              <div id="kta-export-bg-info" style="display:none; margin-top:8px; padding:8px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.25); border-radius:6px; font-size:11.5px; color:var(--kta-texte-2); line-height:1.5;">
                 ${T("imgexport.fond.info")}
               </div>
             </div>
@@ -341,7 +341,7 @@
                      (rename + show/hide par entrée + entrées custom). Section
                      collapsible pour pas alourdir la modale au défaut. -->
                 <details class="kta-legend-custom-details" style="margin-top:14px; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px;">
-                  <summary style="cursor:pointer; font-weight:600; color:#e8eaf0; padding:4px; user-select:none;">
+                  <summary style="cursor:pointer; font-weight:600; color:var(--kta-texte); padding:4px; user-select:none;">
                     ${T("imgexport.legende.custom.titre")}
                   </summary>
                   <div id="kta-legend-custom-body" style="margin-top:10px;">
@@ -376,7 +376,7 @@
                   <label class="kta-export-radio-row"><input type="radio" name="resol" value="0.25"><span>¼</span></label>
                 </div>
               </div>
-              <p id="kta-export-resol-info" style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45;"></p>
+              <p id="kta-export-resol-info" style="font-size:11.5px; color:var(--kta-texte-3); margin:8px 0 0; line-height:1.45;"></p>
             </div>
 
             <!-- Aperçu -->
@@ -385,7 +385,7 @@
               <div style="display:flex; justify-content:center; background:rgba(255,255,255,0.04); border-radius:6px; padding:8px;">
                 <canvas id="kta-export-preview" width="320" height="200" style="max-width:100%; border:1px solid rgba(255,255,255,0.1); border-radius:4px;"></canvas>
               </div>
-              <p id="kta-export-preview-info" style="font-size:11px; color:#8892a4; margin:6px 0 0; text-align:center;"></p>
+              <p id="kta-export-preview-info" style="font-size:11px; color:var(--kta-texte-3); margin:6px 0 0; text-align:center;"></p>
             </div>
 
           </div>
@@ -429,7 +429,7 @@
     if (!cont) return;
     const layers = config.imageLayers || [];
     if (layers.length === 0) {
-      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' + window.I18n.t("imgexport.calquesImage.aucun") + '</p>';
+      cont.innerHTML = '<p style="font-size:12px; color:var(--kta-texte-3); margin:0;">' + window.I18n.t("imgexport.calquesImage.aucun") + '</p>';
       return;
     }
     cont.innerHTML = layers.map(function(l) {
@@ -446,7 +446,7 @@
     if (!cont) return;
     const layers = config.dataLayers || [];
     if (layers.length === 0) {
-      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' + window.I18n.t("imgexport.calquesData.aucun") + '</p>';
+      cont.innerHTML = '<p style="font-size:12px; color:var(--kta-texte-3); margin:0;">' + window.I18n.t("imgexport.calquesData.aucun") + '</p>';
       return;
     }
 
@@ -596,7 +596,7 @@
         const label = item.isUntagged ? "<em>" + window.I18n.t("imgexport.tag.sansTag") + "</em>" : _escapeHtmlExport(item.tag);
         return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-layer-tag-of="${layerCfg.id}" checked>
-          <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
+          <span>${iconHtml}${label} <span style="color:var(--kta-texte-3);">(${item.count})</span></span>
         </label>`;
       }).join("");
     }
@@ -612,7 +612,7 @@
         const id = "export_layer_" + safeId + "_road_" + t;
         html += `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-layer-roadtype-of="${layerCfg.id}" checked>
-          <span>${roadLabels[t]} <span style="color:#8892a4;">(${roadTypes[t]})</span></span>
+          <span>${roadLabels[t]} <span style="color:var(--kta-texte-3);">(${roadTypes[t]})</span></span>
         </label>`;
       });
     }
@@ -629,7 +629,7 @@
         const id = "export_layer_" + safeId + "_zone_" + t;
         html += `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-layer-zonetype-of="${layerCfg.id}" checked>
-          <span>${zoneLabels[t]} <span style="color:#8892a4;">(${zoneTypes[t]})</span></span>
+          <span>${zoneLabels[t]} <span style="color:var(--kta-texte-3);">(${zoneTypes[t]})</span></span>
         </label>`;
       });
     }
@@ -762,7 +762,7 @@
              ' background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.20);' +
              ' border-radius:6px; cursor:pointer;">' +
              '<input type="checkbox" data-level="' + lvl + '" id="ann_level_' + lvl + '" ' + checked + '>' +
-             '<span style="font-family:monospace; font-weight:600; color:#f4c542; margin-left:6px;">' + window.I18n.t("imgexport.niveau.court", { lvl: lvl }) + '</span>' +
+             '<span style="font-family:monospace; font-weight:600; color:var(--kta-accent-texte); margin-left:6px;">' + window.I18n.t("imgexport.niveau.court", { lvl: lvl }) + '</span>' +
              '</label>';
     }).join("");
   }
@@ -777,7 +777,7 @@
       const dim = count === 0 ? "opacity:0.4;" : "";
       return `<label class="kta-export-cb-row" style="${dim}">
         <input type="checkbox" id="ann_${id}" ${checked} ${disabled}>
-        <span>${label} ${count !== null ? '<span style="color:#8892a4;">(' + count + ')</span>' : ''}</span>
+        <span>${label} ${count !== null ? '<span style="color:var(--kta-texte-3);">(' + count + ')</span>' : ''}</span>
       </label>`;
     }
 
@@ -787,7 +787,7 @@
       const dim = count === 0 ? "opacity:0.4;" : "";
       return `<label class="kta-export-cb-row" style="${dim}margin-left:24px;font-size:12px;">
         <input type="checkbox" id="ann_${id}" ${checked} ${disabled}>
-        <span>${label} <span style="color:#8892a4;">(${count})</span></span>
+        <span>${label} <span style="color:var(--kta-texte-3);">(${count})</span></span>
       </label>`;
     }
 
@@ -862,7 +862,7 @@
         const label = item.isUntagged ? "<em>" + window.I18n.t("imgexport.tag.sansTag") + "</em>" : _escapeHtmlExport(item.tag);
         return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-session-tag="1" checked>
-          <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
+          <span>${iconHtml}${label} <span style="color:var(--kta-texte-3);">(${item.count})</span></span>
         </label>`;
       }).join("");
     }
@@ -956,7 +956,7 @@
     if (!cont) return;
     const LC = window.LegendCustomization;
     if (!LC) {
-      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' +
+      cont.innerHTML = '<p style="font-size:12px; color:var(--kta-texte-3); margin:0;">' +
         window.I18n.t("imgexport.legende.custom.moduleKo") + '</p>';
       return;
     }
@@ -1387,7 +1387,7 @@
       txt += " " + window.I18n.t("imgexport.format.resol.iosMax");
     }
     el.textContent = txt;
-    el.style.color = (w * h > SEUIL_PX_EXPORT) ? "#f4c542" : "#8892a4";
+    el.style.color = (w * h > SEUIL_PX_EXPORT) ? "var(--kta-accent-texte)" : "var(--kta-texte-3)";
   }
 
   function _restaurerEtat(etat) {

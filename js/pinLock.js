@@ -642,7 +642,7 @@
         '<div class="kta-pin-gate-lockout-explication">' +
           '<p>' + t("pin.lockout.attente") + '</p>' +
           '<div class="kta-pin-gate-countdown" id="kta-pin-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
-          '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
+          '<p style="font-style:italic; color:var(--kta-texte-3); margin-top:10px;">' +
           t("pin.lockout.escalade") + '</p>' +
           // Doc lisible pendant le verrou ; ne change rien au verrouillage.
           '<button type="button" id="kta-pin-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("pin.gate.docTitle") + '">' +
@@ -712,22 +712,22 @@
           '<span class="kta-readme-modal-titre">' + t("pin.proposal.titre") + '</span>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="font-size:14px; line-height:1.55; color:#e8eaf0; margin:0 0 14px 0;">' +
+          '<p style="font-size:14px; line-height:1.55; color:var(--kta-texte); margin:0 0 14px 0;">' +
             t("pin.proposal.intro") +
           '</p>' +
           '<div class="kta-pin-proposal-info">' +
             '<div class="kta-pin-proposal-info-titre">' + t("pin.proposal.usageTitre") + '</div>' +
             '<p>' + t("pin.proposal.usageDesc") + '</p>' +
           '</div>' +
-          '<div class="kta-pin-proposal-info" style="background:rgba(244,197,66,0.06); border-color:rgba(244,197,66,0.25);">' +
-            '<div class="kta-pin-proposal-info-titre" style="color:#f4c542;">' + t("pin.proposal.warnTitre") + '</div>' +
-            '<ul style="margin:6px 0 0 18px; padding:0; line-height:1.5; color:#c8d0e0; font-size:13px;">' +
+          '<div class="kta-pin-proposal-info" style="background:var(--kta-accent-fond); border-color:var(--kta-accent-bord);">' +
+            '<div class="kta-pin-proposal-info-titre" style="color:var(--kta-accent-texte);">' + t("pin.proposal.warnTitre") + '</div>' +
+            '<ul style="margin:6px 0 0 18px; padding:0; line-height:1.5; color:var(--kta-texte-2); font-size:13px;">' +
               '<li>' + t("pin.proposal.warnNoRecovery") + '</li>' +
               '<li>' + t("pin.proposal.warnLockout") + '</li>' +
               '<li>' + t("pin.proposal.warnBarrier") + '</li>' +
             '</ul>' +
           '</div>' +
-          '<p style="font-size:12.5px; color:#8892a4; margin:14px 0 0 0; line-height:1.5; font-style:italic;">' +
+          '<p style="font-size:12.5px; color:var(--kta-texte-3); margin:14px 0 0 0; line-height:1.5; font-style:italic;">' +
             t("pin.proposal.laterHint") +
           '</p>' +
         '</div>' +
@@ -736,7 +736,7 @@
             t("pin.proposal.btnNo") +
           '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-pin-proposal-oui" type="button" ' +
-            'style="background:rgba(244,197,66,0.18); border-color:rgba(244,197,66,0.5); color:#f4c542;">' +
+            'style="background:rgba(244,197,66,0.18); border-color:rgba(244,197,66,0.5); color:var(--kta-accent-texte);">' +
             t("pin.proposal.btnYes") +
           '</button>' +
         '</div>' +

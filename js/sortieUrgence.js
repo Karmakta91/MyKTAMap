@@ -264,7 +264,7 @@
         '<p class="kta-sortie-err">' +
           window.I18n.t("sortie.aucune.titre") +
         '</p>' +
-        '<p style="font-size:12px; color:#8892a4;">' +
+        '<p style="font-size:12px; color:var(--kta-texte-3);">' +
           window.I18n.t("sortie.aucune.detail") +
         '</p>'
       );

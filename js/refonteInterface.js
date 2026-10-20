@@ -371,7 +371,7 @@
         '</span>' +
         // Compte à rebours « verrou sur tracé suspendu », caché par défaut, piloté par interface.js
         // (_afficherBadgeVerrou / _majBadgeVerrou / _reactiverVerrou). Clic → réactive le verrou.
-        '<span class="kta-refonte-stat kta-refonte-stat-clickable" id="kta-refonte-stat-verrou" style="display:none; color:#f4c542;" title="' + window.I18n.t("tracker.verrou.statTitle") + '">' +
+        '<span class="kta-refonte-stat kta-refonte-stat-clickable" id="kta-refonte-stat-verrou" style="display:none; color:var(--kta-accent-texte);" title="' + window.I18n.t("tracker.verrou.statTitle") + '">' +
           '<span class="kta-refonte-stat-icon">🔓</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
         // Pas de batterie dans le footer : le chip du header suffit (le mode urgence a son propre bloc XL).
@@ -1410,14 +1410,14 @@
         const duree = (min < 1 ? window.I18n.t("jrn.dur.lessMin") : (min + " min"));
         // Nature annoncée EN DIRECT (sortie ou travail sur plan), pas découverte après coup.
         const terrain = (cur.type === "terrain");
-        html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+        html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
                   (terrain
                     ? window.I18n.t("jrn.section.encours", {
                         duree: duree, dist: window.formatDistance(cur.distM || 0, 0), n: nbAj })
                     : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj }));
         // Part ESTIMÉE (« 📍 Je suis ici », réseau ou vol d'oiseau) annoncée à part, jamais noyée dans le total.
         if (terrain && (cur.distEstimeeM || 0) > 0) {
-          html += ' <span style="color:#8cb4ff;">' +
+          html += ' <span style="color:var(--kta-interaction);">' +
                     window.I18n.t("jrn.section.dontEstime", {
                       dist: window.formatDistance(cur.distEstimeeM, 0) }) +
                   '</span>';
@@ -1425,7 +1425,7 @@
         html += '</div>';
         // Correction du classement depuis l'écran plan : pose `typeManuel`, plus de recalcul auto.
         html += '<div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">' +
-                  '<span style="font-size:11px; color:#8892a4;">' +
+                  '<span style="font-size:11px; color:var(--kta-texte-3);">' +
                     window.I18n.t("jrn.section.natureLabel") + '</span>' +
                   '<button type="button" class="kta-btn kta-btn-small ' +
                     (terrain ? 'kta-btn-primary' : 'kta-btn-ghost') + '" data-kta-jrn-type="terrain"' +
@@ -1434,13 +1434,13 @@
                     (terrain ? 'kta-btn-ghost' : 'kta-btn-primary') + '" data-kta-jrn-type="bureau"' +
                     ' id="kta-refonte-session-carnet-type-bureau">🖥️</button>' +
                   (cur.typeManuel
-                    ? '<span style="font-size:11px; color:#8892a4;">' +
+                    ? '<span style="font-size:11px; color:var(--kta-texte-3);">' +
                         window.I18n.t("jrn.section.natureFigee") + '</span>'
                     : '') +
                 '</div>';
       } else {
         // Sans sortie en cours, on DIT comment en ouvrir une (carnet décoché compris).
-        html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+        html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
                   window.I18n.t("jrn.section.aucune") + ' ' +
                   window.I18n.t("jrn.section.aucuneHint") +
                 '</div>';
@@ -1482,7 +1482,7 @@
               '</button>' +
               '<input type="file" id="kta-refonte-session-favoris-import-file" accept=".json,application/json" style="display:none;">' +
             '</div>';
-    html += '<div id="kta-refonte-session-favoris-status" style="font-size:11.5px; color:#8892a4; min-height:14px; font-style:italic;"></div>';
+    html += '<div id="kta-refonte-session-favoris-status" style="font-size:11.5px; color:var(--kta-texte-3); min-height:14px; font-style:italic;"></div>';
     html += '</div>';
 
     // ── Mémoire des sessions ──
@@ -1494,7 +1494,7 @@
     // Hydratés async (SessionBackups.listAll) ; boutons « Snapshot maintenant » et « Tout vider ».
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-backups-section">';
     html += '<div class="kta-refonte-session-section-titre">📦 ' + window.I18n.t("ui.refonte.section_backups") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-backups-badge">…</span></div>';
-    html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+    html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
               window.I18n.t("ui.refonte.backups_desc") +
             '</div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
@@ -1506,7 +1506,7 @@
               '</button>' +
             '</div>';
     html += '<div id="kta-refonte-session-backups-list">' +
-              '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + window.I18n.t("ui.refonte.loading") + '</div>' +
+              '<div style="font-size:12px; color:var(--kta-texte-3); font-style:italic;">' + window.I18n.t("ui.refonte.loading") + '</div>' +
             '</div>';
     html += '</div>';
 
@@ -1699,7 +1699,7 @@
       const badgeEl = document.getElementById("kta-refonte-session-backups-badge");
       if (!listEl || !badgeEl) return;
       if (!window.SessionBackups || typeof window.SessionBackups.listAll !== "function") {
-        listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + window.I18n.t("ui.refonte.backups_module_unavailable") + '</div>';
+        listEl.innerHTML = '<div style="font-size:12px; color:var(--kta-texte-3); font-style:italic;">' + window.I18n.t("ui.refonte.backups_module_unavailable") + '</div>';
         badgeEl.textContent = "—";
         return;
       }
@@ -1734,7 +1734,7 @@
           const emptyMsg = currentPlanId
             ? window.I18n.t("ui.refonte.backups_empty_plan")
             : window.I18n.t("ui.refonte.backups_empty");
-          listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + emptyMsg + '</div>';
+          listEl.innerHTML = '<div style="font-size:12px; color:var(--kta-texte-3); font-style:italic;">' + emptyMsg + '</div>';
           return;
         }
         function _esc(s) { return window.ktaEsc(s); }
@@ -1816,7 +1816,7 @@
           });
         });
       }).catch(function(err) {
-        listEl.innerHTML = '<div style="font-size:12px; color:#ff8c8c;">' +
+        listEl.innerHTML = '<div style="font-size:12px; color:var(--kta-erreur);">' +
                             window.I18n.t("ui.refonte.backups_load_error", { err: (err && err.message ? err.message : String(err)) }) + '</div>';
       });
     }
@@ -2181,18 +2181,18 @@
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(244,197,66,0.4); box-shadow:0 0 32px rgba(244,197,66,0.18);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(244,197,66,0.25);">' +
-            '<div class="kta-readme-modal-titre" style="color:#f4c542;">' + titre + '</div>' +
+            '<div class="kta-readme-modal-titre" style="color:var(--kta-accent-texte);">' + titre + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-rint-close" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
           '</div>' +
-          '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+          '<div class="kta-readme-modal-corps" style="color:var(--kta-texte-2);">' +
             '<p style="margin:0 0 14px 0; line-height:1.55;">' +
-              window.I18n.t("ui.refonte.modal_switch_intro", { cible: '<strong style="color:#f4c542;">' + labelCible + '</strong>' }) +
+              window.I18n.t("ui.refonte.modal_switch_intro", { cible: '<strong style="color:var(--kta-accent-texte);">' + labelCible + '</strong>' }) +
             '</p>' +
-            '<p style="margin:0 0 14px 0; line-height:1.55; font-size:13px; color:#8892a4;">' +
+            '<p style="margin:0 0 14px 0; line-height:1.55; font-size:13px; color:var(--kta-texte-3);">' +
               description +
             '</p>' +
             '<div style="background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.22); border-radius:8px; padding:10px 14px; margin-bottom:0;">' +
-              '<div style="font-weight:600; color:#f4c542; margin-bottom:6px;">✅ ' + window.I18n.t("ui.refonte.modal_switch_preserved_titre") + '</div>' +
+              '<div style="font-weight:600; color:var(--kta-accent-texte); margin-bottom:6px;">✅ ' + window.I18n.t("ui.refonte.modal_switch_preserved_titre") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_plans") + '</li>' +
                 '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_sessions") + '</li>' +

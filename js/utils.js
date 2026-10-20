@@ -461,14 +461,14 @@ window.ktaConfirm = function(message, opts) {
           '<span class="kta-readme-modal-titre">' + (opts.titre || t("ui.confirm.title", "Confirmation")) + '</span>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
-          '<p style="white-space:pre-line; line-height:1.55; margin:0 0 14px; color:#c8d0e0;">' + message + '</p>' +
+          '<p style="white-space:pre-line; line-height:1.55; margin:0 0 14px; color:var(--kta-texte-2);">' + message + '</p>' +
           (opts.caseACocher
-            ? '<label style="display:flex; gap:8px; align-items:flex-start; margin:0 0 14px; color:#e8eaf0;' +
+            ? '<label style="display:flex; gap:8px; align-items:flex-start; margin:0 0 14px; color:var(--kta-texte);' +
                 ' line-height:1.45; cursor:pointer;"><input type="checkbox" id="kta-confirm-case"' +
                 (opts.caseACocher.coche ? ' checked' : '') + ' style="margin-top:2px;"> <span></span></label>'
             : '') +
           (opts.nombre
-            ? '<label style="display:flex; gap:8px; align-items:center; margin:0 0 14px; color:#e8eaf0;">' +
+            ? '<label style="display:flex; gap:8px; align-items:center; margin:0 0 14px; color:var(--kta-texte);">' +
                 '<span></span><input type="number" id="kta-confirm-nombre" inputmode="numeric" style="width:6em;"' +
                 ' min="' + (Number.isFinite(opts.nombre.min) ? opts.nombre.min : 0) + '"' +
                 (Number.isFinite(opts.nombre.max) ? ' max="' + opts.nombre.max + '"' : '') +
@@ -476,7 +476,7 @@ window.ktaConfirm = function(message, opts) {
             : '') +
           // Label, valeur et placeholder posés par le DOM, jamais concaténés au HTML.
           (opts.texte
-            ? '<label style="display:flex; flex-direction:column; gap:6px; margin:0 0 14px; color:#e8eaf0;">' +
+            ? '<label style="display:flex; flex-direction:column; gap:6px; margin:0 0 14px; color:var(--kta-texte);">' +
                 '<span></span><input type="text" id="kta-confirm-texte" style="width:100%; box-sizing:border-box;">' +
               '</label>'
             : '') +

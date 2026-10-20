@@ -62,13 +62,13 @@
 
       .kta-tbl-toolbar {
         display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-        padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding: 10px 0; border-bottom: 1px solid var(--kta-bordure);
       }
       .kta-tbl-toolbar input[type="text"] {
         flex: 1; min-width: 200px;
       }
       .kta-tbl-info {
-        font-size: 12px; color: #8892a4;
+        font-size: 12px; color: var(--kta-texte-3);
         padding: 8px 0;
       }
       .kta-tbl-info .modif {
@@ -78,7 +78,7 @@
       .kta-tbl-wrap {
         flex: 1; min-height: 0;
         overflow: auto;
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid var(--kta-bordure);
         border-radius: 6px;
         background: rgba(255,255,255,0.02);
       }
@@ -87,7 +87,7 @@
       }
       .kta-tbl th {
         position: sticky; top: 0; z-index: 2;
-        background: #1a1f2e; color: #8cb4ff;
+        background: var(--kta-surface); color: var(--kta-interaction);
         padding: 8px 10px; text-align: left; font-weight: 600;
         cursor: pointer; user-select: none;
         border-bottom: 1px solid rgba(140,180,255,0.2);
@@ -104,14 +104,14 @@
       .kta-tbl tbody tr.kta-tbl-selected { background: rgba(140,180,255,0.1); }
       .kta-tbl tbody td {
         padding: 6px 10px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         vertical-align: middle;
       }
       .kta-tbl td.col-check {
         text-align: center;
       }
       .kta-tbl td.col-readonly {
-        color: #6a7488; cursor: not-allowed;
+        color: var(--kta-texte-3); cursor: not-allowed;
         background: rgba(255,255,255,0.02);
       }
       .kta-tbl td.col-error {
@@ -144,14 +144,14 @@
         background: rgba(140,180,255,0.15);
         border: 1px solid rgba(140,180,255,0.3);
         border-radius: 10px;
-        font-size: 11px; color: #c0c8d8;
+        font-size: 11px; color: var(--kta-texte-2);
       }
       .kta-tag-chip-x {
         cursor: pointer; color: #ff8888; font-weight: bold;
       }
       .kta-tag-chip-x:hover { color: #ff4444; }
       .kta-tag-add {
-        font-size: 11px; color: #8cb4ff; cursor: pointer;
+        font-size: 11px; color: var(--kta-interaction); cursor: pointer;
         padding: 2px 6px; border: 1px dashed rgba(140,180,255,0.4);
         border-radius: 10px; margin: 1px 2px;
       }
@@ -160,7 +160,7 @@
       /* Dropdown tags */
       .kta-tag-dropdown {
         position: fixed;
-        background: #1a1f2e;
+        background: var(--kta-surface);
         border: 1px solid rgba(140,180,255,0.4);
         border-radius: 6px;
         padding: 6px;
@@ -185,17 +185,17 @@
         background: rgba(255,255,255,0.05); border-radius: 3px;
       }
       .kta-tag-option .check {
-        margin-left: auto; color: #8cb4ff;
+        margin-left: auto; color: var(--kta-interaction);
       }
       .kta-tag-create {
-        border-top: 1px solid rgba(255,255,255,0.08);
+        border-top: 1px solid var(--kta-bordure);
         margin-top: 4px; padding-top: 4px;
       }
       .kta-tag-create input {
         width: 100%; box-sizing: border-box;
         padding: 4px 8px;
         background: rgba(255,255,255,0.06);
-        color: #e8eaf0;
+        color: var(--kta-texte);
         border: 1px solid rgba(255,255,255,0.12);
         border-radius: 4px;
         font-size: 12px;
@@ -208,7 +208,7 @@
         gap: 10px;
       }
       .kta-tbl-selection-info {
-        font-size: 13px; color: #c0c8d8;
+        font-size: 13px; color: var(--kta-texte-2);
       }
 
       /* Drop zone import */
@@ -219,12 +219,12 @@
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
       }
       .kta-tbl-drop:hover, .kta-tbl-drop.dragover {
         background: rgba(140,180,255,0.06);
         border-color: rgba(140,180,255,0.5);
-        color: #e8eaf0;
+        color: var(--kta-texte);
       }
 
       /* Avertissement gros volume */
@@ -249,7 +249,7 @@
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(140,180,255,0.2);
         border-radius: 8px; cursor:pointer; transition: all 0.15s;
-        color:#e8eaf0; font-family:inherit;
+        color:var(--kta-texte); font-family:inherit;
       }
       .kta-tbl-source-card:hover:not([disabled]) {
         background: rgba(140,180,255,0.08);
@@ -259,7 +259,7 @@
       .kta-tbl-source-ico { font-size:28px; line-height:1; flex:0 0 auto; }
       .kta-tbl-source-txt { display:flex; flex-direction:column; gap:2px; }
       .kta-tbl-source-titre { font-weight:600; font-size:14px; }
-      .kta-tbl-source-hint { font-size:12px; color:#8892a4; line-height:1.4; }
+      .kta-tbl-source-hint { font-size:12px; color:var(--kta-texte-3); line-height:1.4; }
 
       /* 🆕 Sélecteur de calque */
       .kta-tbl-entries { display:flex; flex-direction:column; gap:8px; margin-top:4px; max-height:60vh; overflow:auto; }
@@ -269,13 +269,13 @@
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 7px; cursor:pointer; transition: all 0.15s;
-        color:#e8eaf0; font-family:inherit;
+        color:var(--kta-texte); font-family:inherit;
       }
       .kta-tbl-entry:hover { background: rgba(140,180,255,0.08); border-color: rgba(140,180,255,0.45); }
       .kta-tbl-entry-ico { font-size:20px; flex:0 0 auto; }
       .kta-tbl-entry-label { font-weight:600; font-size:13px; flex:1; }
-      .kta-tbl-entry-count { font-size:12px; color:#8cb4ff; }
-      .kta-tbl-entry-file { font-size:11px; color:#6a7488; }
+      .kta-tbl-entry-count { font-size:12px; color:var(--kta-interaction); }
+      .kta-tbl-entry-file { font-size:11px; color:var(--kta-texte-3); }
 
       /* 🆕 Note "datalayer = export only" dans le menu sauvegarde */
       .kta-tbl-gen-note {
@@ -437,7 +437,7 @@
     modal.id = "kta-tbl-modal";
     modal.className = "kta-readme-modal-overlay";
     modal.innerHTML = '<div class="kta-readme-modal-boite" style="max-width:420px; height:auto;">'
-      + '<div class="kta-readme-modal-corps" style="padding:30px; text-align:center; color:#c8d0e0;">'
+      + '<div class="kta-readme-modal-corps" style="padding:30px; text-align:center; color:var(--kta-texte-2);">'
       + '<div style="font-size:28px;">⏳</div><div style="margin-top:10px;">' + _escapeHtml(msg || "") + '</div>'
       + '</div></div>';
     document.documentElement.appendChild(modal);
@@ -527,7 +527,7 @@
           <button class="kta-panneau-close" id="kta-tbl-sel-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:13px; color:#8892a4; margin:0 0 12px; line-height:1.5;">${window.I18n.t("tabledit.selecteur.aide")}</p>
+          <p style="font-size:13px; color:var(--kta-texte-3); margin:0 0 12px; line-height:1.5;">${window.I18n.t("tabledit.selecteur.aide")}</p>
           <div class="kta-tbl-entries">${rows}</div>
           <div class="kta-conv-actions" style="margin-top:14px;">
             <button class="kta-btn kta-btn-ghost" id="kta-tbl-sel-retour">${window.I18n.t("tabledit.selecteur.retour")}</button>
@@ -694,7 +694,7 @@
             </div>
           </div>
 
-          <div class="kta-conv-actions" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
+          <div class="kta-conv-actions" style="border-top:1px solid var(--kta-bordure); padding-top:12px;">
             <button class="kta-btn kta-btn-ghost"   id="kta-tbl-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
             <button class="kta-btn kta-btn-primary" id="kta-tbl-save">${window.I18n.t("tabledit.editor.sauvegarder")}</button>
           </div>
@@ -1335,7 +1335,7 @@
           <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.sortie.titre")}</span>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:14px; color:#c0c8d8; margin:0 0 16px; line-height:1.5;">
+          <p style="font-size:14px; color:var(--kta-texte-2); margin:0 0 16px; line-height:1.5;">
             ${window.I18n.t("tabledit.sortie.texte")}
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1377,7 +1377,7 @@
           <button class="kta-panneau-close" id="save-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
+          <p style="font-size:13px; color:var(--kta-texte-3); margin:0 0 14px; line-height:1.5;">
             ${window.I18n.t("tabledit.save.aide")}
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1585,12 +1585,12 @@
           <button class="kta-panneau-close" id="kta-tbl-dedup-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps" style="font-size:13px;">
-          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${t("tabledit.dedup.note")}</p>
+          <p style="color:var(--kta-texte-3); margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${t("tabledit.dedup.note")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${t("tabledit.dedup.fichiers")}</div>
           <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${t("tabledit.dedup.choisirFichiers")}
             <input type="file" id="kta-tbl-dedup-files" accept=".json,application/json" multiple style="display:none;">
           </label>
-          <div id="kta-tbl-dedup-files-liste" style="font-size:12px; color:#c8d0e0; margin:2px 0 6px;">${t("tabledit.dedup.aucunFichier")}</div>
+          <div id="kta-tbl-dedup-files-liste" style="font-size:12px; color:var(--kta-texte-2); margin:2px 0 6px;">${t("tabledit.dedup.aucunFichier")}</div>
           <div class="kta-conv-actions" style="margin-top:12px;">
             <button class="kta-btn kta-btn-ghost"   id="kta-tbl-dedup-annuler">${t("tabledit.editor.annuler")}</button>
             <button class="kta-btn kta-btn-primary" id="kta-tbl-dedup-go" disabled>🧹 ${t("tabledit.dedup.nettoyer")}</button>
@@ -1669,7 +1669,7 @@
         <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
           <input type="file" id="${id}_img" accept="image/*" style="display:none;">
         </label>
-        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>` : ""}`;
+        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:var(--kta-texte-3);">${hint}</span>` : ""}`;
     };
     // Paire de correspondance : xA,yA (plan source) → xB,yB (plan destination)
     const champPaire = function(id, titre, hint) {
@@ -1680,7 +1680,7 @@
           <input class="kta-cfg-input" id="${id}_xb" type="number" step="any" placeholder="xB">
           <input class="kta-cfg-input" id="${id}_yb" type="number" step="any" placeholder="yB">
         </div>
-        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>` : ""}`;
+        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:var(--kta-texte-3);">${hint}</span>` : ""}`;
     };
     sub.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:500px; height:auto; max-height:90vh;">
@@ -1689,28 +1689,28 @@
           <button class="kta-panneau-close" id="kta-tbl-resol-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps" style="font-size:13px;">
-          <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
-          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
+          <p style="color:var(--kta-texte-3); margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
+          <p style="color:var(--kta-texte-3); margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
           ${champRes("kta-tbl-resol-src", "", "", "")}
           <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
           ${champRes("kta-tbl-resol-dst", w0, h0, "")}
 
           <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">🎯 ${window.I18n.t("tabledit.resol.recalTitre")}</div>
-          <p style="color:#8892a4; margin:2px 0 4px; line-height:1.45; font-size:11.5px;">${window.I18n.t("tabledit.resol.recalIntro")}</p>
+          <p style="color:var(--kta-texte-3); margin:2px 0 4px; line-height:1.45; font-size:11.5px;">${window.I18n.t("tabledit.resol.recalIntro")}</p>
           ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), "")}
           <div class="kta-planner-grille" style="margin:8px 0 2px;">
             <label class="kta-cfg-label" for="kta-tbl-resol-theta">${window.I18n.t("tabledit.resol.rotation")}</label>
             <input class="kta-cfg-input" id="kta-tbl-resol-theta" type="number" step="any" value="0">
           </div>
-          <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${window.I18n.t("tabledit.resol.rotationHint")}</span>
+          <span class="kta-planner-hint" style="font-size:11px; color:var(--kta-texte-3);">${window.I18n.t("tabledit.resol.rotationHint")}</span>
           ${champPaire("kta-tbl-resol-p2", window.I18n.t("tabledit.resol.paire2"), window.I18n.t("tabledit.resol.paire2Hint"))}
 
           <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">${window.I18n.t("tabledit.resol.fichiers")}</div>
           <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${window.I18n.t("tabledit.resol.choisirFichiers")}
             <input type="file" id="kta-tbl-resol-files" accept=".json,application/json" multiple style="display:none;">
           </label>
-          <div id="kta-tbl-resol-files-liste" style="font-size:12px; color:#c8d0e0; margin:2px 0 6px;">${window.I18n.t("tabledit.resol.aucunFichier")}</div>
+          <div id="kta-tbl-resol-files-liste" style="font-size:12px; color:var(--kta-texte-2); margin:2px 0 6px;">${window.I18n.t("tabledit.resol.aucunFichier")}</div>
           <div id="kta-tbl-resol-recap" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; margin-top:6px; font-family:'Courier New',monospace; font-size:12px; min-height:36px;">—</div>
           <div id="kta-tbl-resol-warn" style="display:none; border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px;"></div>
           <div class="kta-conv-actions" style="margin-top:12px;">

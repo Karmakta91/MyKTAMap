@@ -57,7 +57,7 @@
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   background: rgba(244, 197, 66, 0.10);
   user-select: none;
   list-style: none;
@@ -67,7 +67,7 @@
   content: "▸";
   display: inline-block;
   width: 14px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 10px;
   transition: transform 0.15s ease;
 }
@@ -82,7 +82,7 @@
   background: rgba(10, 13, 24, 0.35);
 }
 .kta-fp-section-empty {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
   font-size: 12px;
   padding: 4px 0;
@@ -97,7 +97,7 @@
 }
 .kta-fp-mini-btn {
   background: rgba(140, 180, 255, 0.10);
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   border: 1px solid rgba(140, 180, 255, 0.25);
   border-radius: 6px;
   padding: 4px 9px;
@@ -130,12 +130,12 @@
   gap: 7px;
   padding: 6px 9px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--kta-bordure);
   border-radius: 7px;
   cursor: pointer;
   user-select: none;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   transition: background 0.12s, border-color 0.12s, opacity 0.12s;
   min-height: 32px;
 }
@@ -175,7 +175,7 @@
 .kta-fp-chip-count {
   flex-shrink: 0;
   background: rgba(244, 197, 66, 0.18);
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-size: 10px;
   font-weight: 600;
   padding: 2px 7px;
@@ -190,11 +190,11 @@
 }
 .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label {
   text-decoration: line-through;
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-count {
   background: rgba(255, 255, 255, 0.06);
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 
 /* Liste simple (Image layers + Data layers) — pas de grid, juste empilées */
@@ -214,7 +214,7 @@
   cursor: pointer;
   user-select: none;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   transition: background 0.12s;
 }
 .kta-fp-row-cb:hover {
@@ -256,7 +256,7 @@
 /* Un calque rapatrie est masque d office : le dire DANS son libelle, pour que
    la case decochee ne passe pas pour un choix de l utilisateur. */
 .kta-fp-calque-remplace {
-  color: #ffb380;
+  color: var(--kta-avert);
   font-style: normal;
   font-size: 11px;
 }
@@ -274,7 +274,7 @@
   display: block;
   font-size: 11px;
   font-weight: 600;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -287,7 +287,7 @@
 .kta-fp-lvl-btn {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   padding: 5px 11px;
   font-size: 12px;
   border-radius: 6px;
@@ -322,7 +322,7 @@
 }
 .kta-fp-status {
   font-size: 11px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
 }
 
@@ -368,7 +368,7 @@ html.kta-theme-light .kta-fp-section-body {
 }
 body.kta-theme-light .kta-fp-section-empty,
 html.kta-theme-light .kta-fp-section-empty {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-fp-chip,
 html.kta-theme-light .kta-fp-chip {
@@ -387,7 +387,7 @@ html.kta-theme-light .kta-fp-chip.kta-fp-chip-off {
 }
 body.kta-theme-light .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label,
 html.kta-theme-light .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label {
-  color: var(--kta-light-text-dim, #8a8270) !important;
+  color: var(--kta-light-text-dim) !important;
 }
 body.kta-theme-light .kta-fp-row-cb,
 html.kta-theme-light .kta-fp-row-cb {
@@ -411,7 +411,7 @@ html.kta-theme-light .kta-fp-mini-btn:hover {
 }
 body.kta-theme-light .kta-fp-sublabel,
 html.kta-theme-light .kta-fp-sublabel {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-fp-lvl-btn,
 html.kta-theme-light .kta-fp-lvl-btn {
@@ -453,7 +453,7 @@ html.kta-theme-light .kta-fp-status {
   gap: 8px;
   margin-bottom: 8px;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-fp-ajouts-tout,
 .kta-fp-ajouts-filtre {
@@ -464,8 +464,8 @@ html.kta-theme-light .kta-fp-status {
 }
 .kta-fp-ajouts-tout input { accent-color: #f4c542; }
 .kta-fp-ajouts-filtre select {
-  background: #0a0d18;
-  color: #e8eaf0;
+  background: var(--kta-fond);
+  color: var(--kta-texte);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   padding: 2px 4px;
@@ -475,10 +475,10 @@ html.kta-theme-light .kta-fp-status {
   margin: 10px 0 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-fp-ajouts-meta {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 11px;
 }
 .kta-fp-row-cb[hidden] { display: none; }
@@ -490,7 +490,7 @@ html.kta-theme-light .kta-fp-ajouts-outils {
 }
 body.kta-theme-light .kta-fp-ajouts-meta,
 html.kta-theme-light .kta-fp-ajouts-meta {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-fp-ajouts-groupe,
 html.kta-theme-light .kta-fp-ajouts-groupe {

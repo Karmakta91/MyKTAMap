@@ -1607,7 +1607,7 @@ photos: false, histoirePdfs: false, crashes: false
     }
     const summaryHtml = parts.length
       ? '<ul style="margin:8px 0 12px 18px; padding:0;">' + parts.join("") + '</ul>'
-      : '<p style="font-style:italic; color:#8892a4;">' + T("profileio.done_nothing") + '</p>';
+      : '<p style="font-style:italic; color:var(--kta-texte-3);">' + T("profileio.done_nothing") + '</p>';
 
     const overlay = document.createElement("div");
     overlay.id = "kta-profile-import-done-modal";
@@ -1616,7 +1616,7 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto !important; max-height:88vh !important; border-color:rgba(110,226,135,0.55); box-shadow:0 0 24px rgba(110,226,135,0.18);">' +
         '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(110,226,135,0.25);">' +
-          '<span class="kta-readme-modal-titre" style="color:#6ee287;">✅ ' + T("profileio.done_title") + '</span>' +
+          '<span class="kta-readme-modal-titre" style="color:var(--kta-ok);">✅ ' + T("profileio.done_title") + '</span>' +
           '<button type="button" class="kta-panneau-close" id="kta-profile-import-done-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -1627,7 +1627,7 @@ photos: false, histoirePdfs: false, crashes: false
           '<div style="background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; padding:10px 12px; margin:10px 0;">' +
             '🔄 ' + T("profileio.done_reload_reco") +
           '</div>' +
-          '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
+          '<p style="font-size:12px; color:var(--kta-texte-3); font-style:italic; margin:8px 0 0;">' +
             T("profileio.done_reload_later") +
           '</p>' +
         '</div>' +

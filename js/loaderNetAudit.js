@@ -84,7 +84,7 @@
         ? window.I18n.t(k, params || {}) : fb;
     };
     if (log.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#8892a4;">' +
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--kta-texte-3);">' +
         _nt("netlog.empty", "Aucune requête capturée pour le moment. Utilise l'app, recharge un plan, ou ferme/rouvre cette modale.") +
         '</td></tr>';
     } else {

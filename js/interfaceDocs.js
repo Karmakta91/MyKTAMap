@@ -398,7 +398,7 @@ function _setupReadmeSearch() {
 
 function _chargerReadme(fichier, opts) {
   opts = opts || {};
-  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>", opts);
+  _ouvrirReadmeModal("<p style='color:var(--kta-texte-3); text-align:center; padding:20px;'>⏳ Chargement…</p>", opts);
   fetch(fichier)
     .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier); return res.text(); })
     .then(function(md) {
@@ -1185,28 +1185,28 @@ window.afficherModaleAideIA = function() {
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.profil.titre") + '</div>' +
-          '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#c8d0e0;">' +
+          '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--kta-texte-2);">' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="usage" checked> <span><strong>' + window.I18n.t("aiia.profil.usage") + '</strong> — ' + window.I18n.t("aiia.profil.usage.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="diagnostic"> <span><strong>' + window.I18n.t("aiia.profil.diagnostic") + '</strong> — ' + window.I18n.t("aiia.profil.diagnostic.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="plans"> <span><strong>' + window.I18n.t("aiia.profil.plans") + '</strong> — ' + window.I18n.t("aiia.profil.plans.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="complet"> <span><strong>' + window.I18n.t("aiia.profil.complet") + '</strong> — ' + window.I18n.t("aiia.profil.complet.desc") + '</span></label>' +
           '</div>' +
-          '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer; margin-top:10px; font-size:13px; color:#c8d0e0;">' +
+          '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer; margin-top:10px; font-size:13px; color:var(--kta-texte-2);">' +
             '<input type="checkbox" id="kta-aide-ia-etat"> <span>' + window.I18n.t("aiia.etat.label") + '</span>' +
           '</label>' +
-          '<p style="color:#8892a4; line-height:1.5; font-size:11px; margin:4px 0 0 24px;">' + window.I18n.t("aiia.etat.note") + '</p>' +
+          '<p style="color:var(--kta-texte-3); line-height:1.5; font-size:11px; margin:4px 0 0 24px;">' + window.I18n.t("aiia.etat.note") + '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.privacy.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+          '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.privacy.body") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.prompt.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
+          '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
             window.I18n.t("aiia.prompt.intro") +
           '</p>' +
           '<div class="kta-aide-ia-prompt-wrap">' +
@@ -1219,7 +1219,7 @@ window.afficherModaleAideIA = function() {
 
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.note.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+          '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.note.body") +
           '</p>' +
         '</div>' +
@@ -1229,7 +1229,7 @@ window.afficherModaleAideIA = function() {
           '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-copyctx"  type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.copyCtx") + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.download") + '</button>' +
         '</div>' +
-        '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:#8892a4; min-height:18px; text-align:center;"></div>' +
+        '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:var(--kta-texte-3); min-height:18px; text-align:center;"></div>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);

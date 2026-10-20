@@ -265,7 +265,7 @@
           '<span class="kta-readme-modal-titre" style="color:#ff8a8a;">' + t("battery.critical.titre", { n: lvl }) + '</span>' +
           '<button class="kta-panneau-close" id="kta-bat-close" type="button">✕</button>' +
         '</div>' +
-        '<div class="kta-readme-modal-corps" style="padding:18px; color:#c8d0e0; line-height:1.6;">' +
+        '<div class="kta-readme-modal-corps" style="padding:18px; color:var(--kta-texte-2); line-height:1.6;">' +
           '<p style="font-size:14px; color:#ff8a8a; font-weight:600;">' + t("battery.critical.intro") + '</p>' +
           '<p style="font-size:13.5px;">' + t("battery.critical.actionLabel") + '</p>' +
           '<ul style="font-size:13px; margin:8px 0 14px 4px; padding-left:18px; line-height:1.7;">' +
@@ -274,7 +274,7 @@
             '<li>' + t("battery.critical.tip.eco") + '</li>' +
             '<li>' + t("battery.critical.tip.surface") + '</li>' +
           '</ul>' +
-          '<p style="font-size:12.5px; color:#8892a4; font-style:italic;">' + t("battery.critical.note") + '</p>' +
+          '<p style="font-size:12.5px; color:var(--kta-texte-3); font-style:italic;">' + t("battery.critical.note") + '</p>' +
         '</div>' +
         '<div class="kta-conv-actions" style="padding:14px 18px 18px; gap:8px;">' +
           '<button class="kta-btn kta-btn-ghost"   id="kta-bat-perf" type="button">' + t("battery.critical.btnConfig") + '</button>' +

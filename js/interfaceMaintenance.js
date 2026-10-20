@@ -37,7 +37,7 @@ function ouvrirCalibrageEchelle() {
       </div>
       <div class="kta-readme-modal-corps">
 
-        <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
+        <p style="font-size:13px; color:var(--kta-texte-3); margin:0 0 14px; line-height:1.5;">
           ${_t("maint.calib.intro")}
         </p>
 
@@ -58,9 +58,9 @@ function ouvrirCalibrageEchelle() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${_t("maint.calib.sectionResult")}</div>
           <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
-            <div style="color:#8892a4;">${_t("maint.calib.newScale")}</div>
-            <div id="calib_resultat" style="font-size:22px; color:#8cb4ff; font-weight:600; margin-top:4px;">—</div>
-            <div id="calib_formule" style="font-size:11px; color:#6a7488; margin-top:6px;"></div>
+            <div style="color:var(--kta-texte-3);">${_t("maint.calib.newScale")}</div>
+            <div id="calib_resultat" style="font-size:22px; color:var(--kta-interaction); font-weight:600; margin-top:4px;">—</div>
+            <div id="calib_formule" style="font-size:11px; color:var(--kta-texte-3); margin-top:6px;"></div>
           </div>
         </div>
 

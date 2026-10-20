@@ -1749,7 +1749,7 @@ function _confirmerReactivationVerrou() {
         '<span class="kta-readme-modal-titre">' + window.I18n.t("tracker.verrou.reactivTitre") + '</span>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="font-size:14px; color:#c0c8d8; margin:0 0 16px; line-height:1.5;">' + window.I18n.t("tracker.verrou.reactivTexte") + '</p>' +
+        '<p style="font-size:14px; color:var(--kta-texte-2); margin:0 0 16px; line-height:1.5;">' + window.I18n.t("tracker.verrou.reactivTexte") + '</p>' +
         '<div style="display:flex; gap:8px;">' +
           '<button class="kta-btn kta-btn-ghost"   id="kta-verrou-react-non" style="flex:1;">' + window.I18n.t("tracker.verrou.reactivNon") + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-verrou-react-oui" style="flex:1;">' + window.I18n.t("tracker.verrou.reactivOui") + '</button>' +

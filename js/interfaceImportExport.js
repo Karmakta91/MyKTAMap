@@ -179,7 +179,7 @@ window.ouvrirImportGpx = function(fichierInitial) {
   function _traiterFichier(file) {
     if (!file) return;
 
-    previewEl.innerHTML = '<p style="color:#8892a4;">' + window.I18n.t("impexp.gpx.reading") + '</p>';
+    previewEl.innerHTML = '<p style="color:var(--kta-texte-3);">' + window.I18n.t("impexp.gpx.reading") + '</p>';
 
     window.GpxIO.importer(file, { confirmAdd: false }).then(function(r) {
       if (!r.ok) {
@@ -282,7 +282,7 @@ function ouvrirImportSession(fichierInitial) {
       </div>
       <div class="kta-readme-modal-corps">
 
-        <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
+        <p style="font-size:13px; color:var(--kta-texte-3); margin:0 0 14px; line-height:1.5;">
           ${window.I18n.t("impexp.session.intro")}
         </p>
 
@@ -296,7 +296,7 @@ function ouvrirImportSession(fichierInitial) {
 
         <div id="kta-import-apercu-wrap" class="kta-conv-champ" style="display:none;">
           <label class="kta-conv-label">${window.I18n.t("impexp.session.previewLabel")}</label>
-          <div id="kta-import-apercu" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-size:13px; color:#e8eaf0;"></div>
+          <div id="kta-import-apercu" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-size:13px; color:var(--kta-texte);"></div>
         </div>
 
         <div class="kta-aide-section" id="kta-import-warn" style="display:none; border-color:rgba(255,200,100,0.3); background:rgba(255,180,80,0.06);">

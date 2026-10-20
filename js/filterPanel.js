@@ -815,7 +815,7 @@
     majBadge();
     if (active.length === 0) {
       el.textContent = window.I18n.t("filter.status.none");
-      el.style.color = "#8892a4";
+      el.style.color = "var(--kta-texte-3)";
     } else {
       el.textContent = window.I18n.t("filter.status.active", { list: active.join(", ") });
       el.style.color = "#f4c542";

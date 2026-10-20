@@ -131,7 +131,7 @@ function _confirmRemplacerItineraire(onConfirm, actif) {
   modal.className = "kta-readme-modal-overlay";
   modal.innerHTML =
     '<div class="kta-modal" style="max-width:420px;">' +
-      '<div class="kta-modal-icon" style="color:#f4c542;">⚠️</div>' +
+      '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">⚠️</div>' +
       '<div class="kta-modal-titre">' + (equipe !== null ? esc(T("iti.replace.secoursTitre")) : T("iti.replace.titre")) + '</div>' +
       '<div class="kta-modal-texte">' +
         (equipe !== null ? esc(T("iti.replace.secoursTexte", { equipe: equipe })) : T("iti.replace.texte")) +
@@ -1276,7 +1276,7 @@ function _htmlSectionAvoidItineraire(prefs) {
           '<div style="display:flex; align-items:center; gap:8px;">' +
             '<input type="number" id="kta-iti-avoid-radius" class="kta-cfg-input" ' +
               'value="' + radiusVal + '" min="0" max="500" step="10" style="width:90px;">' +
-            '<span style="font-size:12px; color:#8892a4;">' + window.I18n.t("iti.avoid.marginUnit") + '</span>' +
+            '<span style="font-size:12px; color:var(--kta-texte-3);">' + window.I18n.t("iti.avoid.marginUnit") + '</span>' +
           '</div>' +
         '</div>' +
 
@@ -1377,7 +1377,7 @@ function _bindAvoidSectionHandlers() {
           const sub   = p.id  ? p.id : "";
           return '<div class="kta-iti-search-result" data-idx="' + i + '">' +
                    '<strong>' + _esc(label) + '</strong>' +
-                   (sub ? ' <span style="color:#8892a4;">(' + _esc(sub) + ')</span>' : '') +
+                   (sub ? ' <span style="color:var(--kta-texte-3);">(' + _esc(sub) + ')</span>' : '') +
                  '</div>';
         }).join("");
         searchRes.style.display = "block";

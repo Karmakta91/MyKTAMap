@@ -38,15 +38,15 @@
         // Aide), trop pour une confirmation courte.
         '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
-            '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">' + _t("home.maint.forceUpdate.title") + '</div>' +
+            '<div class="kta-readme-modal-titre" style="color:var(--kta-interaction);">' + _t("home.maint.forceUpdate.title") + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
           '</div>' +
-          '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+          '<div class="kta-readme-modal-corps" style="color:var(--kta-texte-2);">' +
             '<p style="margin:0 0 14px 0; line-height:1.55;">' +
               _t("home.maint.forceUpdate.body") +
             '</p>' +
             '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-              '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">' + _t("home.maint.forceUpdate.kept") + '</div>' +
+              '<div style="font-weight:600; color:var(--kta-interaction); margin-bottom:6px;">' + _t("home.maint.forceUpdate.kept") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>' + _t("home.maint.keptPlans") + '</li>' +
                 '<li>' + _t("home.maint.keptSessions") + '</li>' +
@@ -55,13 +55,13 @@
               '</ul>' +
             '</div>' +
             '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
-              '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">' + _t("home.maint.forceUpdate.conditions") + '</div>' +
+              '<div style="font-weight:600; color:var(--kta-avert); margin-bottom:6px;">' + _t("home.maint.forceUpdate.conditions") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>' + _t("home.maint.forceUpdate.condInternet") + '</li>' +
                 '<li>' + _t("home.maint.forceUpdate.condReload") + '</li>' +
               '</ul>' +
             '</div>' +
-            '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+            '<p style="margin:0; font-style:italic; color:var(--kta-texte-3); font-size:13px;">' +
               _t("home.maint.forceUpdate.hint") +
             '</p>' +
           '</div>' +
@@ -107,15 +107,15 @@
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,180,128,0.4); box-shadow:0 0 32px rgba(255,180,128,0.18);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,180,128,0.25);">' +
-            '<div class="kta-readme-modal-titre" style="color:#ffb380;">' + _t("home.maint.killSw.title") + '</div>' +
+            '<div class="kta-readme-modal-titre" style="color:var(--kta-avert);">' + _t("home.maint.killSw.title") + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-ks-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
           '</div>' +
-          '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+          '<div class="kta-readme-modal-corps" style="color:var(--kta-texte-2);">' +
             '<p style="margin:0 0 14px 0; line-height:1.55;">' +
               _t("home.maint.killSw.body") +
             '</p>' +
             '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-              '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">' + _t("home.maint.killSw.kept") + '</div>' +
+              '<div style="font-weight:600; color:var(--kta-interaction); margin-bottom:6px;">' + _t("home.maint.killSw.kept") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>' + _t("home.maint.keptPlans") + '</li>' +
                 '<li>' + _t("home.maint.keptSessions") + '</li>' +
@@ -125,14 +125,14 @@
               '</ul>' +
             '</div>' +
             '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
-              '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">' + _t("home.maint.killSw.effects") + '</div>' +
+              '<div style="font-weight:600; color:var(--kta-avert); margin-bottom:6px;">' + _t("home.maint.killSw.effects") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>' + _t("home.maint.killSw.effectRedownload") + '</li>' +
                 '<li>' + _t("home.maint.killSw.effectInternet") + '</li>' +
                 '<li>' + _t("home.maint.killSw.effectOffline") + '</li>' +
               '</ul>' +
             '</div>' +
-            '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+            '<p style="margin:0; font-style:italic; color:var(--kta-texte-3); font-size:13px;">' +
               _t("home.maint.killSw.hint") +
             '</p>' +
           '</div>' +
@@ -181,15 +181,15 @@
           '<div class="kta-readme-modal-titre" style="color:#ff6b6b;">' + _t("home.maint.killSw.offlineTitle") + '</div>' +
           '<button class="kta-panneau-close" type="button" id="kta-kso-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
         '</div>' +
-        '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+        '<div class="kta-readme-modal-corps" style="color:var(--kta-texte-2);">' +
           '<p style="margin:0 0 14px 0; line-height:1.55;">' +
             _t("home.maint.killSw.offlineBody") +
           '</p>' +
           '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
-            '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">' + _t("home.maint.killSw.offlineNoLoss") + '</div>' +
+            '<div style="font-weight:600; color:var(--kta-interaction); margin-bottom:6px;">' + _t("home.maint.killSw.offlineNoLoss") + '</div>' +
             '<p style="margin:0; line-height:1.55;">' + _t("home.maint.killSw.offlineNoLossBody") + '</p>' +
           '</div>' +
-          '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+          '<p style="margin:0; font-style:italic; color:var(--kta-texte-3); font-size:13px;">' +
             _t("home.maint.killSw.offlineRetryHint") +
           '</p>' +
         '</div>' +

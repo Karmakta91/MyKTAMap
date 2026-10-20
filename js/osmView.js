@@ -394,10 +394,10 @@
         const html =
           '<div style="font-size:13px; min-width:140px; max-width:260px;">' +
             '<b>' + _escapeHtml(p.nom || window.I18n.t("osm.poi.popup.noName")) + '</b><br>' +
-            '<span style="color:#c8d0e0; font-size:12px;">' +
+            '<span style="color:var(--kta-texte-2); font-size:12px;">' +
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvl +
             '</span>' +
-            (desc ? '<br><span style="color:#8892a4; font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
+            (desc ? '<br><span style="color:var(--kta-texte-3); font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
           '</div>';
         marker.bindPopup(html, {
           closeButton: true,
@@ -584,7 +584,7 @@
         _myGpsMarker.bindPopup(
           '<div style="font-size:13px; min-width:140px;">' +
             '<b>' + window.I18n.t("osm.gps.popup.title") + '</b><br>' +
-            '<span style="font-size:11.5px; color:#8892a4;">' +
+            '<span style="font-size:11.5px; color:var(--kta-texte-3);">' +
               lat.toFixed(5) + ", " + lng.toFixed(5) + '<br>' +
               window.I18n.t("osm.gps.popup.accuracy", { acc: Math.round(acc) }) +
             '</span>' +
@@ -1379,7 +1379,7 @@
         // Enveloppe repliable des 3 bandeaux ; #kta-osm-map prend la place libérée (flex: 1 1 auto).
         '<div id="kta-osm-controls-wrapper">' +
         // flex-wrap + row-gap : avec ~10 bascules le bandeau passe à la ligne au lieu de déborder hors de la modale
-        '<div style="display:flex; flex-wrap:wrap; gap:10px; row-gap:6px; align-items:center; padding:8px 14px; background:rgba(140,180,255,0.06); border-bottom:1px solid rgba(140,180,255,0.18); font-size:12.5px; color:#c8d0e0;">' +
+        '<div style="display:flex; flex-wrap:wrap; gap:10px; row-gap:6px; align-items:center; padding:8px 14px; background:rgba(140,180,255,0.06); border-bottom:1px solid rgba(140,180,255,0.18); font-size:12.5px; color:var(--kta-texte-2);">' +
           '<span>' + window.I18n.t("osm.opacity.label") + '</span>' +
           '<input type="range" id="kta-osm-opacity" min="0" max="100" value="' + Math.round(_opacity * 100) + '" style="flex:1 1 auto; max-width:240px;">' +
           '<span id="kta-osm-opacity-val" style="width:38px; text-align:right;">' + Math.round(_opacity * 100) + '%</span>' +
@@ -1403,7 +1403,7 @@
           // « Cacher pour hors ligne » : tuiles visibles + zoom ±1 en IDB. Cache GLOBAL (myktamap_osm_tiles, z/x/y)
           // partagé avec la Vue OSM du HOME et le Mode Secours.
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-cache-btn" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.cache.btn.title")) + '">' + window.I18n.t("osm.cache.btn") + '</button>' +
-          '<span id="kta-osm-cache-stats" style="color:#8892a4; font-size:11.5px;" title="' + _escapeHtml(window.I18n.t("osm.cache.stats.title")) + '">' + window.I18n.t("osm.cache.stats.loading") + '</span>' +
+          '<span id="kta-osm-cache-stats" style="color:var(--kta-texte-3); font-size:11.5px;" title="' + _escapeHtml(window.I18n.t("osm.cache.stats.title")) + '">' + window.I18n.t("osm.cache.stats.loading") + '</span>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;" title="' + _escapeHtml(window.I18n.t("osm.toggle.plan.title")) + '">' +
             '<input type="checkbox" id="kta-osm-plan-toggle" ' + (_planTilesVisible ? "checked" : "") + ' style="margin:0;">' +
             window.I18n.t("osm.toggle.plan") +
@@ -1442,20 +1442,20 @@
           '<span style="flex:1 1 auto;"></span>' +
         '</div>' +
         // 2e ligne : chips de niveaux (plan multi-niveau seulement)
-        '<div id="kta-osm-levels-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(244,197,66,0.04); border-bottom:1px solid rgba(244,197,66,0.18); font-size:12px; color:#c8d0e0; flex-wrap:wrap;">' +
+        '<div id="kta-osm-levels-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(244,197,66,0.04); border-bottom:1px solid rgba(244,197,66,0.18); font-size:12px; color:var(--kta-texte-2); flex-wrap:wrap;">' +
           '<span>' + window.I18n.t("osm.levels.label") + '</span>' +
           '<span id="kta-osm-levels-chips" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></span>' +
-          '<span style="color:#8892a4; font-size:11px; margin-left:auto;">' + window.I18n.t("osm.levels.hint") + '</span>' +
+          '<span style="color:var(--kta-texte-3); font-size:11px; margin-left:auto;">' + window.I18n.t("osm.levels.hint") + '</span>' +
         '</div>' +
         // 3e ligne : chips de tags (filtre local)
-        '<div id="kta-osm-tags-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(140,180,255,0.04); border-bottom:1px solid rgba(140,180,255,0.16); font-size:12px; color:#c8d0e0; flex-wrap:wrap;">' +
+        '<div id="kta-osm-tags-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(140,180,255,0.04); border-bottom:1px solid rgba(140,180,255,0.16); font-size:12px; color:var(--kta-texte-2); flex-wrap:wrap;">' +
           '<span title="' + _escapeHtml(window.I18n.t("osm.tags.label.title")) + '">' + window.I18n.t("osm.tags.label") + '</span>' +
           '<span id="kta-osm-tags-chips" style="display:inline-flex; gap:5px; flex-wrap:wrap;"></span>' +
-          '<span style="color:#8892a4; font-size:11px; margin-left:auto;">' + window.I18n.t("osm.tags.hint") + '</span>' +
+          '<span style="color:var(--kta-texte-3); font-size:11px; margin-left:auto;">' + window.I18n.t("osm.tags.hint") + '</span>' +
         '</div>' +
         // fin de l'enveloppe repliable
         '</div>' +
-        '<div id="kta-osm-map" style="flex:1 1 auto; background:#0a0d18;"></div>' +
+        '<div id="kta-osm-map" style="flex:1 1 auto; background:var(--kta-fond);"></div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
     overlay.querySelector("#kta-osm-close").addEventListener("click", close);
@@ -2026,7 +2026,7 @@
     const mapDiv = document.getElementById("kta-osm-map");
     if (!mapDiv) return;
     mapDiv.innerHTML =
-      '<div style="display:flex; align-items:center; justify-content:center; height:100%; padding:20px; color:#ffb380; text-align:center; font-size:14px;">' +
+      '<div style="display:flex; align-items:center; justify-content:center; height:100%; padding:20px; color:var(--kta-avert); text-align:center; font-size:14px;">' +
         msg +
       '</div>';
   }
@@ -2090,7 +2090,7 @@
       '<div class="kta-modal" style="max-width:340px;">' +
         '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
         '<div class="kta-modal-titre">' + window.I18n.t("osm.ping.title") + '</div>' +
-        '<div class="kta-modal-texte" style="font-size:13px; color:#8892a4;">' + window.I18n.t("osm.ping.text") + '</div>' +
+        '<div class="kta-modal-texte" style="font-size:13px; color:var(--kta-texte-3);">' + window.I18n.t("osm.ping.text") + '</div>' +
       '</div>';
     document.documentElement.appendChild(waitOverlay);
 

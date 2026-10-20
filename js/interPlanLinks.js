@@ -252,7 +252,7 @@
     modal.style.zIndex = "100002";   // au-dessus du gestionnaire (99999)
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:380px;">' +
-        '<div class="kta-modal-icon" style="color:#f4c542;">🌀</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">🌀</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.remove.titre")) + '</div>' +
         '<div class="kta-modal-texte">' + _esc(_t("ipl.remove.texte")) + '</div>' +
         '<div class="kta-modal-actions">' +
@@ -911,12 +911,12 @@
     modal.style.display = "flex";
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:400px;">' +
-        '<div class="kta-modal-icon" style="color:#8cb4ff;">🌀</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">🌀</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.nav.titre")) + '</div>' +
         '<div class="kta-modal-texte">' +
           _esc(_t("ipl.nav.texte", { plan: plan.name || planId,
                                      point: (target && (target.label || (target.x + "," + target.y))) || (plan.name || planId) })) +
-          '<br><span style="font-size:12px; color:#8892a4;">' + _esc(_t("ipl.nav.sessionSaved")) + '</span>' +
+          '<br><span style="font-size:12px; color:var(--kta-texte-3);">' + _esc(_t("ipl.nav.sessionSaved")) + '</span>' +
         '</div>' +
         '<div class="kta-modal-actions">' +
           '<button class="kta-btn kta-btn-ghost" id="kta-ipl-nav-no" type="button">' + _esc(_t("ui.btn.cancel")) + '</button>' +

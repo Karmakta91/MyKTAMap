@@ -419,7 +419,7 @@
             '<div id="kta-histoire-pdf-wrap" class="kta-histoire-pdf-wrap">' +
               '<div class="kta-histoire-pdf-empty" id="kta-histoire-pdf-empty">' +
                 '<p>' + t("histoire.pdf.empty.titre") + '</p>' +
-                '<p style="font-size:12px; color:#8892a4;">' + t("histoire.pdf.empty.hint") + '</p>' +
+                '<p style="font-size:12px; color:var(--kta-texte-3);">' + t("histoire.pdf.empty.hint") + '</p>' +
               '</div>' +
             '</div>' +
           '</div>' +

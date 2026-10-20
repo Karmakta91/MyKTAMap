@@ -46,17 +46,17 @@
           '<span class="kta-readme-modal-titre">' + window.I18n.t("imgcal.titre") + '</span>' +
           '<button class="kta-panneau-close" type="button" id="kta-ilc-close" aria-label="' + window.I18n.t("imgcal.close") + '">&times;</button>' +
         '</div>' +
-        '<div class="kta-imglayer-calib-step" id="kta-ilc-step" style="padding:10px 16px; background:rgba(140,180,255,0.08); border-bottom:1px solid rgba(140,180,255,0.2); color:#c8d0e0; font-size:13px;">' +
+        '<div class="kta-imglayer-calib-step" id="kta-ilc-step" style="padding:10px 16px; background:rgba(140,180,255,0.08); border-bottom:1px solid rgba(140,180,255,0.2); color:var(--kta-texte-2); font-size:13px;">' +
           window.I18n.t("imgcal.init") +
         '</div>' +
         '<div class="kta-imglayer-calib-split" style="display:flex; gap:0; flex:1; min-height:400px; max-height:60vh;">' +
           '<div class="kta-imglayer-calib-pane kta-imglayer-calib-left" style="flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,0.1);">' +
-            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:#8892a4; text-align:center;">' + window.I18n.t("imgcal.pane.source") + '</div>' +
-            '<div id="kta-ilc-mini-left" style="flex:1; background:#0a0d18;"></div>' +
+            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:var(--kta-texte-3); text-align:center;">' + window.I18n.t("imgcal.pane.source") + '</div>' +
+            '<div id="kta-ilc-mini-left" style="flex:1; background:var(--kta-fond);"></div>' +
           '</div>' +
           '<div class="kta-imglayer-calib-pane kta-imglayer-calib-right" style="flex:1; display:flex; flex-direction:column;">' +
-            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:#8892a4; text-align:center;">' + window.I18n.t("imgcal.pane.target") + '</div>' +
-            '<div id="kta-ilc-mini-right" style="flex:1; background:#0a0d18;"></div>' +
+            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:var(--kta-texte-3); text-align:center;">' + window.I18n.t("imgcal.pane.target") + '</div>' +
+            '<div id="kta-ilc-mini-right" style="flex:1; background:var(--kta-fond);"></div>' +
           '</div>' +
         '</div>' +
         '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; padding:12px 16px;">' +

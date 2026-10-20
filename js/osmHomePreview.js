@@ -539,7 +539,7 @@
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
-                'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: #f4c542;">' +
+                'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: var(--kta-accent-texte);">' +
           '≡' +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFullBtn" type="button" ' +
@@ -1175,13 +1175,13 @@
         const popupHtml =
           '<div style="font-size:13px; min-width:140px; max-width:260px;">' +
             '<b>' + _escapeHtml(nom) + '</b><br>' +
-            '<span style="color:#c8d0e0; font-size:12px;">' +
+            '<span style="color:var(--kta-texte-2); font-size:12px;">' +
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvlSfx +
             '</span>' +
-            (desc ? '<br><span style="color:#8892a4; font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
+            (desc ? '<br><span style="color:var(--kta-texte-3); font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
             // le point de session est NOMMÉ comme tel : la Vue OSM montre l'état enregistré
             (layer.estSession
-              ? '<br><span style="color:#f4c542; font-size:10.5px;">📝 ' +
+              ? '<br><span style="color:var(--kta-accent-texte); font-size:10.5px;">📝 ' +
                 _escapeHtml(window.I18n.t("osm_home.session.badge")) + '</span>'
               : '') +
           '</div>';
@@ -1570,7 +1570,7 @@
         _myGpsMarkerHome.bindPopup(
           '<div style="font-size:13px; min-width:140px;">' +
             '<b>' + window.I18n.t("osm_home.gps.popupTitle") + '</b><br>' +
-            '<span style="font-size:11.5px; color:#8892a4;">' +
+            '<span style="font-size:11.5px; color:var(--kta-texte-3);">' +
               lat.toFixed(5) + ", " + lng.toFixed(5) + '<br>' +
               window.I18n.t("osm_home.gps.accuracy", { acc: Math.round(acc) }) +
             '</span>' +
@@ -3002,13 +3002,13 @@
       ov.className = "kta-osm-home-notcached";
       ov.style.cssText =
         "position:absolute; inset:0; background:rgba(10,13,24,0.92); " +
-        "color:#e8eaf0; display:flex; flex-direction:column; align-items:center; " +
+        "color:var(--kta-texte); display:flex; flex-direction:column; align-items:center; " +
         "justify-content:center; text-align:center; padding:20px; z-index:500; " +
         "border-radius:6px; gap:8px;";
       ov.innerHTML =
         '<div style="font-size:32px;">📴</div>' +
-        '<div style="font-weight:600; color:#f4c542;">' + window.I18n.t("osm_home.notcached.title") + '</div>' +
-        '<div style="font-size:12.5px; color:#c8d0e0; max-width:280px; line-height:1.4;">' +
+        '<div style="font-weight:600; color:var(--kta-accent-texte);">' + window.I18n.t("osm_home.notcached.title") + '</div>' +
+        '<div style="font-size:12.5px; color:var(--kta-texte-2); max-width:280px; line-height:1.4;">' +
           window.I18n.t("osm_home.notcached.body") +
         '</div>';
       mapDiv.style.position = "relative";

@@ -219,7 +219,7 @@
 
           '<div class="kta-oom-section kta-oom-tech">' +
             '<div class="kta-oom-section-titre">' + t("oom.kill.techTitle") + '</div>' +
-            '<p style="font-size:11px; color:#8892a4; margin:0;">' +
+            '<p style="font-size:11px; color:var(--kta-texte-3); margin:0;">' +
               t("oom.kill.tech.plan") + ' <code>' + planTxt + '</code><br>' +
               (ageSec ? t("oom.kill.tech.lastActivity", { n: ageSec }) + '<br>' : '') +
               t("oom.kill.tech.mode") + ' ' + modeTxt +
@@ -458,12 +458,12 @@
           '<p class="kta-v2-error-message">' +
             t("oom.v2.intro", { nom: nomTxt, taille: sizeTxt }) +
           '</p>' +
-          '<p style="font-size:13px; color:#c8d0e0; line-height:1.5; margin:10px 0;">' +
+          '<p style="font-size:13px; color:var(--kta-texte-2); line-height:1.5; margin:10px 0;">' +
             t("oom.v2.explain") +
           '</p>' +
           '<div class="kta-v2-warn-section kta-v2-warn-section-good">' +
             '<div class="kta-v2-warn-section-titre">' + t("oom.v2.solutionsTitle") + '</div>' +
-            '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:#c8d0e0; line-height:1.6;">' +
+            '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:var(--kta-texte-2); line-height:1.6;">' +
               '<li>' + t("oom.v2.sol.pc") + '</li>' +
               '<li>' + t("oom.v2.sol.resize") + '</li>' +
               '<li>' + t("oom.v2.sol.closeApps") + '</li>' +

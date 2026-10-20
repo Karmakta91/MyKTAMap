@@ -48,7 +48,7 @@
         width: 100%; box-sizing: border-box;
         padding: 10px 14px;
         background: rgba(255,255,255,0.06);
-        color: #e8eaf0;
+        color: var(--kta-texte);
         border: 1px solid rgba(140,180,255,0.3);
         border-radius: 8px;
         outline: none;
@@ -61,7 +61,7 @@
       }
 
       .kta-search-info {
-        font-size: 12px; color: #8892a4;
+        font-size: 12px; color: var(--kta-texte-3);
       }
       .kta-search-info-row {
         display: flex; align-items: center; justify-content: space-between;
@@ -71,7 +71,7 @@
       .kta-search-clear-filters {
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.10);
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         font-size: 11px;
         padding: 4px 10px;
         border-radius: 5px;
@@ -107,7 +107,7 @@
         flex-shrink: 0;
         font-size: 10px;
         font-weight: 700;
-        color: #8cb4ff;
+        color: var(--kta-interaction);
         letter-spacing: 0.08em;
         text-transform: uppercase;
         padding-top: 5px;
@@ -122,7 +122,7 @@
       .kta-search-chip {
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.10);
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         font-size: 11px;
         padding: 3px 9px;
         border-radius: 999px;
@@ -135,7 +135,7 @@
       .kta-search-chip:hover:not(.active) {
         background: rgba(255,255,255,0.08);
         border-color: rgba(255,255,255,0.18);
-        color: #e8eaf0;
+        color: var(--kta-texte);
       }
       .kta-search-chip.active {
         background: #f4c542;
@@ -178,14 +178,14 @@
         flex: 1; min-width: 0;
       }
       .kta-search-name {
-        font-size: 14px; font-weight: 600; color: #e8eaf0;
+        font-size: 14px; font-weight: 600; color: var(--kta-texte);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
       .kta-search-name .kta-search-id {
-        color: #8cb4ff; font-weight: 500; margin-right: 6px;
+        color: var(--kta-interaction); font-weight: 500; margin-right: 6px;
       }
       .kta-search-meta {
-        font-size: 12px; color: #8892a4;
+        font-size: 12px; color: var(--kta-texte-3);
         margin-top: 2px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
@@ -195,7 +195,7 @@
         background: rgba(140,180,255,0.12);
         border: 1px solid rgba(140,180,255,0.25);
         border-radius: 8px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         margin-right: 6px;
         font-size: 11px;
       }
@@ -206,17 +206,17 @@
         border-radius: 6px;
         margin-right: 4px;
         font-size: 11px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
       }
       .kta-search-coords {
-        font-size: 11px; color: #6a7488;
+        font-size: 11px; color: var(--kta-texte-3);
         font-family: 'Courier New', monospace;
       }
 
       .kta-search-empty {
         text-align: center;
         padding: 40px 20px;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-size: 13px;
       }
       .kta-search-empty .empty-icon {
@@ -227,7 +227,7 @@
       .kta-search-more {
         text-align: center;
         padding: 10px;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-size: 12px;
         font-style: italic;
       }
@@ -348,7 +348,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("search.modal.titre")} <span style="font-size:11px; color:#8892a4; font-weight:400; margin-left:8px;">Ctrl+K</span></span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("search.modal.titre")} <span style="font-size:11px; color:var(--kta-texte-3); font-weight:400; margin-left:8px;">Ctrl+K</span></span>
           <button class="kta-panneau-close" id="kta-search-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -916,8 +916,8 @@
     KIND_ORDER.forEach(function(kind) {
       const items = groups[kind];
       if (!items || items.length === 0) return;
-      html += '<div class="kta-search-group-header" style="padding:8px 6px 4px; font-size:11px; color:#8cb4ff; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid rgba(255,255,255,0.04); margin-top:4px;">';
-      html += _escapeHtml(KIND_HEADERS[kind]) + ' <span style="color:#8892a4; font-weight:400;">(' + items.length + ')</span>';
+      html += '<div class="kta-search-group-header" style="padding:8px 6px 4px; font-size:11px; color:var(--kta-interaction); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid rgba(255,255,255,0.04); margin-top:4px;">';
+      html += _escapeHtml(KIND_HEADERS[kind]) + ' <span style="color:var(--kta-texte-3); font-weight:400;">(' + items.length + ')</span>';
       html += '</div>';
       items.forEach(function(it) {
         const isFirst = !firstResultMarked && query;

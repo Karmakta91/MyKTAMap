@@ -194,8 +194,8 @@ function afficherFormulaire(x, y, existingPoint) {
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("editor.section.position")}</div>
-          <div style="font-size:13px; color:#8892a4; padding:4px 0;">
-            X : <strong style="color:#e8eaf0;">${x}</strong> — Y : <strong style="color:#e8eaf0;">${y}</strong>
+          <div style="font-size:13px; color:var(--kta-texte-3); padding:4px 0;">
+            X : <strong style="color:var(--kta-texte);">${x}</strong> — Y : <strong style="color:var(--kta-texte);">${y}</strong>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ function afficherFormulaire(x, y, existingPoint) {
           <div id="kta-poi-newtag-wrap" style="display:none; margin-top:8px;">
             <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">${window.I18n.t("editor.field.newTag")}</label>
             <input class="kta-cfg-input" id="kta-poi-newtag" type="text" placeholder="${window.I18n.t("editor.field.newTagPlaceholder")}" autocomplete="off">
-            <p style="font-size:11px; color:#8892a4; margin:4px 0 0;">
+            <p style="font-size:11px; color:var(--kta-texte-3); margin:4px 0 0;">
               ${window.I18n.t("editor.field.newTagHint")}
             </p>
           </div>

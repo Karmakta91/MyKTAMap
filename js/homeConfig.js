@@ -637,10 +637,10 @@
           document.getElementById("loaderPinDisableBtn").addEventListener("click", _lancerDesactivationPin);
         } else {
           iconEl.textContent = "○";
-          iconEl.style.color = "#8892a4";
+          iconEl.style.color = "var(--kta-texte-3)";
           textEl.innerHTML = _t("pin.setup.statusDisabled");
           actionsEl.innerHTML =
-            '<button class="loader-btn-secondary" type="button" id="loaderPinEnableBtn" style="background:rgba(244,197,66,0.15); border-color:rgba(244,197,66,0.4); color:#f4c542;">' +
+            '<button class="loader-btn-secondary" type="button" id="loaderPinEnableBtn" style="background:rgba(244,197,66,0.15); border-color:rgba(244,197,66,0.4); color:var(--kta-accent-texte);">' +
               _t("pin.setup.enableBtn") +
             '</button>';
           document.getElementById("loaderPinEnableBtn").addEventListener("click", _lancerActivationPin);
@@ -661,8 +661,8 @@
               '<input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" ' +
                 'maxlength="6" id="ktaPinPromptInput" ' +
                 'style="display:block; width:100%; margin:14px 0 6px; padding:12px; font-size:22px; ' +
-                'text-align:center; letter-spacing:8px; background:#0a0d18; border:2px solid rgba(244,197,66,0.3); ' +
-                'border-radius:8px; color:#f4c542; font-family:monospace; box-sizing:border-box;" placeholder="••••">' +
+                'text-align:center; letter-spacing:8px; background:var(--kta-fond); border:2px solid rgba(244,197,66,0.3); ' +
+                'border-radius:8px; color:var(--kta-accent-texte); font-family:monospace; box-sizing:border-box;" placeholder="••••">' +
               '<div class="kta-modal-actions" style="margin-top:10px;">' +
                 '<button class="kta-btn kta-btn-ghost"   id="ktaPinPromptCancel">' + _t("pin.setup.cancel") + '</button>' +
                 '<button class="kta-btn kta-btn-primary" id="ktaPinPromptOk">' + (confirmLabel || _t("pin.setup.validate")) + '</button>' +
