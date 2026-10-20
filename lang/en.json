@@ -1588,6 +1588,8 @@
   "home.profile.exportBtn": "📤 Export my profile",
   "home.profile.exportFooterHint": "The PIN and access code are never exported.",
   "home.profile.welcomeName": "Welcome, {pseudo}",
+  "home.profile.greeting": "Welcome",
+  "home.splash.ethos": "No resale, no paid service, no monetization",
   "home.profile.importBtn": "📥 Import a profile",
   "home.profile.moduleUnavailable": "UserProfile module unavailable.",
   "home.profile.compteTitre": "👤 Account on this installation",
