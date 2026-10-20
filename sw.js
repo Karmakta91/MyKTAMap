@@ -242,7 +242,9 @@ const ASSETS_TO_CACHE = [
   "./css/style-filtres.css",
 
   // JS principaux
-  // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
+  // Splash de démarrage : premier script d'index.html (version, fermeture, plafond)
+  "./js/ktaSplash.js",
+  // Copyright + watermark + détection DevTools : premier module après le splash
   "./js/copyright.js",
   // I18n — helper multi-langue (window.I18n). Chargé tôt dans
   // index.html (après copyright). Précharge lang/fr.json + langue active.
@@ -555,6 +557,7 @@ const CRITICAL_APP_SHELL = [
   "./index.html",
   "./",
   "./css/style.css",
+  "./js/ktaSplash.js",
   "./js/copyright.js",
   // I18n + dico fallback. langManager.js est AWAIT-é au boot (main.js) et
   // fr.json est le fallback universel → tous deux critiques pour un boot offline

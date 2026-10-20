@@ -13,7 +13,7 @@
 // =========================
 // COPYRIGHT.JS — Watermark + banniere console + detection F12 (debug only)
 // =========================
-// Ce module est charge EN PREMIER dans index.html (avant tous les autres scripts).
+// Ce module est charge EN PREMIER dans index.html, apres le seul js/ktaSplash.js (qui n'en lit rien).
 // Il fait 3 choses :
 //   1. Pose un watermark global accessible via window.__MKM__ (signature de build,
 //      utile pour prouver l'origine du code en cas de copie)

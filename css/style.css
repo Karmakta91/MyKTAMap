@@ -3971,20 +3971,30 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 
 
-/* ── Splash screen ── */
+/* ── Splash de démarrage (js/ktaSplash.js) ── */
+/* Toujours sombre, quel que soit le thème (décision produit) : aucune règle de thème clair ne vise le splash.
+   Portrait : réseau en haut, titre et licence dessous ; paysage : titre à gauche, réseau à droite.
+   ⚠️ Une seule lecture, en `both` : chaque élément reste dans son état final jusqu'au fondu. L'état de BASE de
+   chaque règle est l'image finale : `.kta-splash-fini` (passer, mouvement réduit) coupe les animations et l'affiche.
+   ⚠️ Version longue : tracé complet à ~3,4 s (1,68 s + 37 × 45 ms) ; js/ktaSplash.js > DUREE_LONGUE_MS (4 s) en
+   tient compte. Version courte (.kta-splash-courte) : réseau déjà dessiné, rose et titre en fondu, < 1 s. */
 
 #splashOverlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  /* dégradé `at center` : effet « tunnel » */
-  background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
+  background: #0a0d18;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  box-sizing: border-box;
+  padding: calc(64px + env(safe-area-inset-top, 0px)) 16px calc(92px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
   opacity: 1;
   transition: opacity 0.4s ease-out;
   pointer-events: all;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #splashOverlay.fading {
@@ -3992,112 +4002,159 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   pointer-events: none;
 }
 
-#splashBox {
+/* Le dessin garde ses proportions (viewBox, `meet`) dans la place laissée par les textes. */
+.kta-splash-scene {
+  flex: 1 1 0;
+  min-height: 0;
+  width: min(84vw, 420px);
+}
+#splashReseau {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.kta-splash-galeries path {
+  fill: none;
+  stroke: #c8d0e0;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+  /* pathLength="1" sur chaque chemin : le tiret couvre la longueur exacte, sans mesure. 🩸 Départ à 1,01 et
+     période 3 : un tiret de longueur nulle au bord garderait son bout rond (un point avant le tracé). */
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 0;
+  animation: kta-splash-trace 1.68s cubic-bezier(0.45, 0.05, 0.3, 1) calc(var(--i) * 45ms) both;
+}
+@keyframes kta-splash-trace {
+  from { stroke-dashoffset: 1.01; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.kta-splash-eau path {
+  fill: none;
+  stroke: #3aa9e8;
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.38;
+}
+.kta-splash-eau path.kta-splash-inaccessible {
+  stroke: url(#kta-splash-hachure);
+  stroke-width: 11;
+  opacity: 0.85;
+}
+.kta-splash-eau {
+  animation: kta-splash-fondu 0.68s ease-out 1.52s both;
+}
+
+/* Pictos et rose : transform-box pour grandir / pivoter autour de leur propre centre. */
+.kta-splash-pictos image,
+.kta-splash-rose {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.kta-splash-pictos image {
+  animation: kta-splash-picto 0.64s ease-out 1.76s both;
+}
+@keyframes kta-splash-picto {
+  0%    { opacity: 0; transform: scale(0.3); }
+  62.5% { opacity: 1; transform: scale(1.15); }
+  100%  { opacity: 1; transform: scale(1); }
+}
+.kta-splash-rose {
+  filter: drop-shadow(0 0 10px rgba(244, 197, 66, 0.12));
+  animation: kta-splash-rose 0.72s ease-out 1.84s both;
+}
+@keyframes kta-splash-rose {
+  from { opacity: 0; transform: scale(0.55) rotate(-60deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.kta-splash-textes {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  /* contenu dans la safe-area ; le fond, lui, va jusqu'aux bords */
-  padding: calc(30px + env(safe-area-inset-top, 0px)) 40px calc(30px + env(safe-area-inset-bottom, 0px));
-  max-width: 460px;
-  width: 90%;
+  margin-top: 8px;
 }
-
-#splashCompassWrap {
-  position: relative;
-  width: 220px;
-  height: 220px;
+#splashBox {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  animation: kta-splash-titre-y 0.6s ease-out 2.2s both;
 }
-
-#splashLogo {
-  width: 180px;
-  height: 180px;
-  object-fit: contain;
-  background: transparent;
-  animation: splashLogoIn 3.5s ease-out both;
-  /* halo léger : plus fort, il dessine une zone carrée */
-  filter: drop-shadow(0 0 18px rgba(244, 197, 66, 0.10));
+@keyframes kta-splash-titre-y {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-/* « Boussole qui se calibre » : entrée avec un tour (0-25 %), oscillations amorties autour du nord
-   (25-100 %), arrêt à 0°. */
-@keyframes splashLogoIn {
-  0%   { opacity: 0; transform: scale(0.55) rotate(-360deg); }
-  25%  { opacity: 1; transform: scale(1.05) rotate(35deg);   }  /* swing : dépassement initial */
-  45%  { opacity: 1; transform: scale(1.00) rotate(-15deg);  }  /* contre-swing */
-  65%  { opacity: 1; transform: scale(1.00) rotate(7deg);    }  /* oscillation amortie */
-  82%  { opacity: 1; transform: scale(1.00) rotate(-3deg);   }  /* plus faible */
-  93%  { opacity: 1; transform: scale(1.00) rotate(1deg);    }  /* presque calibré */
-  100% { opacity: 1; transform: scale(1.00) rotate(0deg);    }  /* nord trouvé */
+@keyframes kta-splash-titre-x {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
-
 #splashTitle {
   font-size: 36px;
   font-weight: 700;
+  line-height: 1.15;
   letter-spacing: 0.08em;
   color: #f4c542;
-  margin-top: 22px;
   text-shadow: 0 2px 18px rgba(244, 197, 66, 0.25);
-  animation: splashTextIn 0.6s ease-out 0.3s both;
 }
-
 #splashSubtitle {
   font-size: 14px;
   color: #8892a4;
-  margin-top: 4px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  /* Même révélation gauche → droite que « MyKTAMap » (kta-titre-base-reveal), enchaînée après lui ; la boîte
-     fait la largeur du texte.
-     ⚠️ Ligne d'arrivée commune : TOUS les textes du splash finissent à 2,2 s (départs décalés) ; la boussole
-     trouve son nord à 3,5 s. */
-  animation: splashTextIn 0.6s ease-out 0.45s both,
-             kta-titre-base-reveal 1.3s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
 }
 
-@keyframes splashTextIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Coins, licence, crédits et signature : fondu au début (0,4 → 1 s). */
+.kta-splash-coin {
+  animation: kta-splash-fondu 0.6s ease-out 0.4s both;
+}
+@keyframes kta-splash-fondu {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-/* Arc doré rotatif = indicateur de chargement continu, tant que le splash est affiché ; indépendant de
-   l'entrée de la rose (splashLogoIn, ~3,5 s). */
-#splashSpinArc {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  transform-origin: center;
-  animation: splashArcSpin 1.5s linear infinite;
+/* Version courte : seuls la rose et le titre arrivent en fondu. */
+#splashOverlay.kta-splash-courte .kta-splash-galeries path,
+#splashOverlay.kta-splash-courte .kta-splash-eau,
+#splashOverlay.kta-splash-courte .kta-splash-pictos image,
+#splashOverlay.kta-splash-courte .kta-splash-coin {
+  animation: none;
 }
-#splashSpinArc circle {
-  stroke: #f4c542;
-  stroke-width: 2.5;
-  opacity: 0.85;
-  filter: drop-shadow(0 0 5px rgba(244, 197, 66, 0.45));
+#splashOverlay.kta-splash-courte .kta-splash-rose,
+#splashOverlay.kta-splash-courte #splashBox {
+  animation: kta-splash-fondu 0.6s ease-out 0.2s both;
 }
 
-@keyframes splashArcSpin {
-  from { transform: rotate(0deg);   }
-  to   { transform: rotate(360deg); }
+/* Image finale directe : animation passée (clic, Échap) ou mouvement réduit. */
+#splashOverlay.kta-splash-fini *,
+#splashOverlay.kta-splash-fini *::before,
+#splashOverlay.kta-splash-fini *::after {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #splashOverlay *,
+  #splashOverlay *::before,
+  #splashOverlay *::after {
+    animation: none !important;
+  }
 }
 
 /* Crédit Claude (haut-gauche, teinte « clay » #d97757) + version (haut-droite), symétriques. */
 #splashClaudeCorner {
   position: absolute;
   top: calc(18px + env(safe-area-inset-top, 0px));
-  left: 22px;
+  left: calc(22px + env(safe-area-inset-left, 0px));
   display: flex;
   align-items: center;
-  gap: 9px;
-  z-index: 2;
-  user-select: none;
+  gap: 8px;
   pointer-events: none;
-  animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
 }
 .splash-claude-mark {
   font-size: 19px;
@@ -4108,6 +4165,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 .splash-claude-text {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   line-height: 1.25;
   text-align: left;
 }
@@ -4126,54 +4184,33 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 #splashVersion {
   position: absolute;
   top: calc(20px + env(safe-area-inset-top, 0px));
-  right: 22px;
+  right: calc(22px + env(safe-area-inset-right, 0px));
   font-size: 13px;
   font-weight: 700;
-  color: #f4c542;  /* accent charte, gras, plus visible */
+  color: #f4c542;
   text-shadow: 0 0 10px rgba(244, 197, 66, 0.35);
   letter-spacing: 0.06em;
   font-family: 'Courier New', monospace;
-  z-index: 2;
-  user-select: none;
   pointer-events: none;
-  animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
 }
 
-
-
-/* Licence en absolute au bas du splash, au-dessus de la signature et des crédits.
-
-   🩸 Centrage par left:0 + right:0 + text-align:center, jamais left:50% + translateX(-50%) : l'animation
-   splashTextIn redéfinit `transform` et écrase le translateX (bord gauche au centre de l'écran). */
+/* Licence sous le titre (dans le flux de .kta-splash-textes). */
 #splashLicense {
-  position: absolute;
-  /* centrée dans le vide entre la tagline et le pied (libs, signature) : vh suit la hauteur d'écran */
-  bottom: calc(19vh + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
-  padding: 0 28px;
-  box-sizing: border-box;
+  margin-top: 22px;
   font-size: 11px;
-  color: #8892a4;  /* checkup thème (C4) */
+  color: #8892a4;
   line-height: 1.6;
   letter-spacing: 0.02em;
-  text-align: center;
-  user-select: none;
   pointer-events: none;
-  /* splashTextIn n'anime que translateY : pas de conflit avec left/right */
-  animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
-  z-index: 2;
 }
-
 .splash-license-detail {
   font-size: 10px;
-  color: #8892a4;  /* checkup thème (C4) */
+  color: #8892a4;
   font-style: italic;
 }
 
 /* Variante « Édition professionnelle » : seulement avec .kta-instance-pro (posée par js/proLicense.js sur
    <html>/<body>). Ambre charte, sous-texte en italique.
-
    ⚠️ Ciblé #splashLicense > .kta-licence-pro : la mention community a les mêmes enfants. */
 #splashLicense .kta-licence-pro {
   color: #f4c542;
@@ -4188,7 +4225,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   letter-spacing: 0.01em;
 }
 
-/* Licence en « pill » bordé charte, centrée par le text-align de #splashLicense.
+/* Licence en « pill » bordé charte.
    ⚠️ display scopé #splashLicense pour ne pas casser la bascule community/pro (.kta-instance-pro). */
 #splashLicense .kta-licence-community,
 #splashLicense .kta-licence-pro {
@@ -4212,122 +4249,90 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   color: #f4c542;
   font-weight: 500;
 }
-/* Thème clair */
-html.kta-theme-light #splashLicense .kta-licence-community,
-html.kta-theme-light #splashLicense .kta-licence-pro {
-  background: rgba(201, 153, 31, 0.12) !important;
-  border-color: rgba(201, 153, 31, 0.40) !important;
-}
-html.kta-theme-light #splashLicense .kta-licence-community > span:first-child {
-  color: #8b5a00 !important;
-}
-/* Thème clair */
-html.kta-theme-light #splashLicense .kta-licence-pro,
-body.kta-theme-light #splashLicense .kta-licence-pro {
-  color: #b8860b;
-  text-shadow: 0 0 16px rgba(184, 134, 11, 0.20);
-}
-html.kta-theme-light .splash-license-detail-pro,
-body.kta-theme-light .splash-license-detail-pro {
-  color: rgba(184, 134, 11, 0.80) !important;
-}
 
-/* Signature en bas à droite du splash, révélée lettre par lettre (clip-path: inset()) après le logo et le
-   titre. */
+/* Signature en bas à droite. 28px : hors des coins arrondis d'écran (PWA bord à bord) ; safe-area pour
+   l'encoche latérale en paysage. */
 #splashKarmaCorner {
   position: absolute;
-  /* 28px : hors des coins arrondis d'écran (PWA bord à bord) ; safe-area pour l'encoche latérale en paysage. */
   bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   right: calc(28px + env(safe-area-inset-right, 0px));
-  z-index: 2;
   pointer-events: none;
-  user-select: none;
   /* lueur dorée : rend visible une image petite sans la grossir */
   filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45))
           drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
-
 #splashKarmaImg {
   height: 20px;
   width: auto;
   display: block;
-  /* 5 paliers explicites en cubic-bezier : la révélation glisse d'une lettre à l'autre (steps() saccade). */
-  clip-path: inset(0 100% 0 0);
-  animation: kta-splash-karma-reveal 1.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.8s forwards;   /* finit à 2,2 s */
-}
-
-@keyframes kta-splash-karma-reveal {
-  0%   { clip-path: inset(0 100% 0 0); }   /* tout caché */
-  20%  { clip-path: inset(0 80%  0 0); }   /* K visible */
-  40%  { clip-path: inset(0 60%  0 0); }   /* + A */
-  60%  { clip-path: inset(0 40%  0 0); }   /* + R */
-  80%  { clip-path: inset(0 20%  0 0); }   /* + M */
-  100% { clip-path: inset(0 0    0 0); }   /* + A finale */
-}
-
-/* la signature suit le fondu du splash */
-#splashOverlay.fading #splashKarmaCorner {
-  opacity: 0;
-  transition: opacity 0.3s ease-out;
 }
 
 /* Crédit des librairies en bas à gauche (le bas-droit porte la signature). */
 #splashLeafletCredit {
   position: absolute;
-  /* 28px : même raison que #splashKarmaCorner (coins arrondis) */
   bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   left: calc(28px + env(safe-area-inset-left, 0px));
   font-size: 11px;
-  color: #8892a4;  /* checkup thème (C4) */
+  color: #8892a4;
   letter-spacing: 0.02em;
   /* 2 lignes de 3 librairies (<br> dans le HTML), 20px chacune ; la signature (20px, bottom 28px) s'aligne
      sur la 2e ligne. Aligné à gauche : centrées, des lignes inégales flottent. */
-  height: 40px;
   line-height: 20px;
-  display: block;
   text-align: left;
-  user-select: none;
-  pointer-events: none;
   white-space: nowrap;
-  /* opacité seule : pas de transform à préserver */
-  animation: splashLeafletFadeIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
-}
-
-@keyframes splashLeafletFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  pointer-events: none;
 }
 
 @media (max-width: 480px) {
-  #splashLogo { width: 130px; height: 130px; }
-  #splashTitle { font-size: 28px; margin-top: 18px; }
-  #splashSubtitle { font-size: 12px; }
-  #splashCompassWrap { width: 165px; height: 165px; }
   #splashKarmaImg { height: 18px; }
-  #splashLeafletCredit {
-    font-size: 10px;
-    /* 2 × 18px ; la signature (18px) reste sur la 2e ligne */
-    height: 36px;
-    line-height: 18px;
-  }
-  #splashLicense { bottom: calc(19vh + env(safe-area-inset-bottom, 0px)); }
+  #splashLeafletCredit { font-size: 10px; line-height: 18px; }
 }
 
-@media (max-height: 500px) and (orientation: landscape) {
-  #splashLogo { width: 90px; height: 90px; }
-  #splashTitle { font-size: 22px; margin-top: 12px; }
-  #splashSubtitle { font-size: 10px; }
-  #splashCompassWrap { width: 120px; height: 120px; }
+/* Portrait court (petit téléphone, fenêtre basse) : textes resserrés, le dessin garde la place restante. */
+@media (orientation: portrait) and (max-height: 680px) {
+  #splashOverlay { padding-top: calc(56px + env(safe-area-inset-top, 0px)); }
+  #splashTitle { font-size: 30px; }
+  #splashSubtitle { font-size: 12px; }
+  #splashLicense { margin-top: 14px; }
+}
+
+/* Paysage (PC, tablette, téléphone couché) : titre à gauche, réseau à droite. */
+@media (orientation: landscape) {
+  #splashOverlay {
+    flex-direction: row-reverse;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(32px, 9vw, 150px);
+    padding: calc(60px + env(safe-area-inset-top, 0px)) 24px calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  .kta-splash-scene {
+    flex: 0 0 auto;
+    height: 100%;
+    width: auto;
+    aspect-ratio: 364 / 606;
+  }
+  .kta-splash-textes {
+    align-items: flex-start;
+    text-align: left;
+    margin-top: 0;
+  }
+  #splashBox {
+    align-items: flex-start;
+    gap: 12px;
+    animation-name: kta-splash-titre-x;
+  }
+  #splashOverlay.kta-splash-courte #splashBox { animation-name: kta-splash-fondu; }
+  #splashTitle { font-size: clamp(30px, 7vh, 56px); }
+  #splashSubtitle { font-size: clamp(12px, 2vh, 16px); }
+  #splashLicense { margin-top: clamp(14px, 3.5vh, 28px); }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  #splashOverlay {
+    padding-top: calc(44px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
   #splashKarmaImg { height: 16px; }
-  #splashLeafletCredit {
-    /* 2 × 16px */
-    height: 32px;
-    line-height: 16px;
-  }
-  #splashLicense {
-    font-size: 10px;
-    bottom: calc(16vh + env(safe-area-inset-bottom, 0px));
-  }
+  #splashLeafletCredit { line-height: 16px; }
 }
 
 /* ── Loader : charte sombre ── */
@@ -4946,7 +4951,7 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
 
 .loader-titre-tagline {
   /* Même révélation et même arrivée que « MyKTAMap » dans l'en-tête ; le « -pro » d'une installation arrive
-     ensuite, comme le « 2 » du splash. */
+     ensuite. */
   animation: kta-titre-base-reveal 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.4s both;
   font-size: 11px;
   color: #f4c542;
@@ -9636,14 +9641,14 @@ body.kta-instance-pro .kta-licence-pro {
   display: inline;
 }
 
-/* Suffixe « -pro » (span après MyKTAMap dans #splashTitle et .loader-titre-nom) : porte aussi
+/* Suffixe « -pro » (span après MyKTAMap dans .loader-titre-nom ; jamais dans le splash) : porte aussi
    .kta-licence-pro, donc invisible en community. */
 .kta-titre-suffix-pro {
   color: #f4c542;
   font-weight: 600;
   letter-spacing: 0.5px;
   margin-left: 1px;
-  /* Révélation gauche → droite après « MyKTAMap » (même clip-path que la signature du splash).
+  /* Révélation gauche → droite après « MyKTAMap » (même clip-path que le mot « MyKTAMap »).
      🩸 Pas de display: inline-block ici : spécificité égale, il écraserait le display: none de
      .kta-licence-pro en community. Le display vient de la règle html.kta-instance-pro plus bas. */
   clip-path: inset(0 100% 0 0);
@@ -9656,7 +9661,7 @@ body.kta-instance-pro .kta-titre-suffix-pro {
   display: inline-block;
 }
 
-/* Délais : splash 1,75 s (0,45 départ + 1,0 révélation + 0,3 pause), header 1,4 s (0,1 + 1,0 + 0,3). */
+/* Délais : 1,75 s par défaut, header 1,4 s (0,1 départ + 1,0 révélation + 0,3 pause). */
 .loader-titre-nom .kta-titre-suffix-pro {
   animation-delay: 1.4s;
 }
@@ -9670,17 +9675,11 @@ body.kta-instance-pro .kta-titre-suffix-pro {
 }
 
 /* Révélation du mot « MyKTAMap » (span .kta-titre-base), jouée avant le « -pro » ; community et
-   pro, seul le délai change (splash / header). */
+   pro, seul le délai change. */
 .kta-titre-base {
   display: inline-block;
   clip-path: inset(0 100% 0 0);
   animation: kta-titre-base-reveal 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.1s forwards;
-}
-
-/* Splash : 0,45 s, synchro avec splashTextIn (translation Y + révélation X). */
-#splashTitle .kta-titre-base {
-  animation-delay: 0.45s;
-  animation-duration: 1.75s;   /* 0,45 → 2,2 s : ligne d'arrivée commune du splash */
 }
 
 @keyframes kta-titre-base-reveal {
@@ -14279,7 +14278,7 @@ html.kta-theme-light #kta-alert-charte {
   background: rgba(40, 32, 20, 0.85) !important;
 }
 
-/* ── Thème clair : sélecteur de plan + splash de chargement ── */
+/* ── Thème clair : sélecteur de plan ── */
 /* ⚠️ Les classes sont .kta-plan-switcher-* (pas .kta-refonte-plan-switch-*). */
 
 html.kta-theme-light .kta-plan-switcher-overlay {
@@ -14361,43 +14360,6 @@ html.kta-theme-light .kta-plan-switcher-cta:hover,
 html.kta-theme-light .kta-plan-switcher-cta:focus-visible {
   background: #d9a82e !important;
   color: #1a1612 !important;
-}
-
-/* Splash de chargement d'un plan : dégradé beige, titre et animations inchangés. */
-html.kta-theme-light #splashOverlay {
-  background: radial-gradient(ellipse at center, #f0e8d8 0%, #c9b88f 100%) !important;
-}
-html.kta-theme-light #splashTitle {
-  color: #8b5a00 !important;
-  text-shadow: 0 2px 18px rgba(244, 197, 66, 0.45) !important;
-}
-html.kta-theme-light #splashSubtitle {
-  color: #6b6354 !important;
-}
-/* Arc, crédits et version assombris : le doré charte est illisible sur beige. */
-html.kta-theme-light #splashSpinArc circle {
-  stroke: #b8860b !important;
-  opacity: 0.9 !important;
-}
-html.kta-theme-light .splash-claude-mark,
-html.kta-theme-light .splash-claude-main {
-  color: #c15f3f !important;
-}
-html.kta-theme-light .splash-claude-sub {
-  color: #6b6354 !important;
-}
-html.kta-theme-light #splashVersion {
-  color: #b8860b !important;
-}
-html.kta-theme-light #splashLicense {
-  color: #6b6354 !important;
-}
-html.kta-theme-light .splash-license-detail {
-  color: #8a8270 !important;
-}
-html.kta-theme-light #splashCredits,
-html.kta-theme-light .splash-credits {
-  color: #6b6354 !important;
 }
 
 /* ── Thème clair : barrière d'accès (#kta-unlock-overlay), PIN, proposition de PIN ── */
