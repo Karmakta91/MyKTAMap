@@ -100,6 +100,7 @@ function etatSplash() {
     pictosVisibles: pictos.filter(function (i) { return op(i) > 0.99; }).length,
     rose: op(sp.querySelector(".kta-splash-rose")),
     titre: op(document.getElementById("splashBox")),
+    licence: op(document.getElementById("splashLicense")),
     titreTexte: (document.getElementById("splashTitle") || {}).textContent,
     ethos: !!sp.querySelector('[data-i18n="home.splash.ethos"]'),
     fond: getComputedStyle(sp).backgroundColor,
@@ -308,6 +309,9 @@ async function premiereOuverture(nav, nom, w, h, dpr) {
   else pb("démarrage de la scène : " + debut + " ms (attendu ≤ 2500)");
   const a1 = await p.evaluate(etatSplash);
   verifierMode(a1, "canvas", "à 1 s");
+  // 🩸 La licence arrive avec le titre (scène), pas avec les coins : sur le pro, elle restait seule à l'écran.
+  if (a1 && a1.licence < 0.05) ok("licence pas encore affichée 1 s après le démarrage (arrive avec le titre)");
+  else pb("licence déjà visible 1 s après le démarrage (opacité " + (a1 && a1.licence) + ")");
   if (a1) await verifierEnCours(nav, p, w, h, dpr, a1, "worker");
   await attendreApresDebut(p, 3700);
   const fin = await p.evaluate(etatSplash);
@@ -322,6 +326,7 @@ async function premiereOuverture(nav, nom, w, h, dpr) {
   } else pb("taille du canvas : " + JSON.stringify(bilan && bilan.pixels) + " pour " + JSON.stringify(fin.canvasCss) + " × " + dpr);
   if (fin.pictos === 6 && fin.pictosVisibles === 6) ok("6 pictos visibles"); else pb("pictos : " + fin.pictosVisibles + "/" + fin.pictos);
   if (fin.rose > 0.99) ok("rose visible"); else pb("rose opacité " + fin.rose);
+  if (fin.licence > 0.99) ok("licence visible à la fin"); else pb("licence opacité " + fin.licence + " à la fin");
   if (fin.titre > 0.99 && fin.titreTexte === "MyKTAMap") ok("titre « MyKTAMap » visible, sans suffixe");
   else pb("titre : opacité " + fin.titre + ", texte « " + fin.titreTexte + " »");
   if (!fin.ethos) ok("ligne « pas de revente… » absente"); else pb("la ligne ethos est encore dans le splash");

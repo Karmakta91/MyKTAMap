@@ -4178,7 +4178,8 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 #splashOverlay:not(.kta-splash-go) .kta-splash-eau,
 #splashOverlay:not(.kta-splash-go) .kta-splash-pictos image,
 #splashOverlay:not(.kta-splash-go) .kta-splash-rose,
-#splashOverlay:not(.kta-splash-go) #splashBox {
+#splashOverlay:not(.kta-splash-go) #splashBox,
+#splashOverlay:not(.kta-splash-go) #splashLicense {
   animation-play-state: paused;
 }
 
@@ -4254,7 +4255,10 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 
 /* Licence sous le titre (dans le flux de .kta-splash-textes). */
+/* 🩸 La licence arrive AVEC le titre (scène), pas avec les coins : sur le pro l'accueil est prêt tard et la
+   pastille « Édition professionnelle » restait seule à l'écran bien avant le reste. */
 #splashLicense {
+  animation: kta-splash-fondu 0.6s ease-out 2.4s both;
   margin-top: 22px;
   font-size: 11px;
   color: #8892a4;
