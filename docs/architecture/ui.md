@@ -428,10 +428,11 @@ Reset dans `_resetRotationTrackerMarker()` pour repartir propre au prochain Play
 
 **Rendu** (`index.html > #splashOverlay`, `css/style.css` bloc « Splash de démarrage ») : un réseau **fictif**
 de 38 galeries se trace une fois, puis l'eau (bande bleue sous trois galeries), une zone inaccessible hachurée,
-six pictos du catalogue (`peo`, `pb`, `house`, 3 × `plaque`), la rose (`icon/compass.svg`) et le titre. Tout le
-dessin vit dans un seul SVG inline (`viewBox -12 -12 364 606`) : pictos et rose sont des `<image>` du même repère,
-ils suivent l'échelle du réseau. Chaque galerie porte `pathLength="1"` (tiret exact sans mesure) et `--i` (ordre,
-45 ms d'écart).
+six pictos du catalogue (`peo`, `pb`, `house`, 3 × `plaque`), la rose (`icon/compass.svg`) et le titre. Trois
+calques superposés, même repère (`viewBox -12 -12 364 606`, recadrage `meet`) : `#splashReseau` (eau, galeries),
+le canvas des galeries `#splashReseauCanvas` (inséré par `ktaSplash.js`, voir ci-dessous), `#splashReperes` (pictos
+et rose en `<image>`, au-dessus des galeries) ; pictos et rose suivent l'échelle du réseau. Chaque galerie porte
+`pathLength="1"` (tiret exact sans mesure) et `--i` (ordre, 45 ms d'écart).
 - **Mise en page** : portrait = réseau en haut, titre, sous-titre et licence dessous ; paysage (PC, tablette,
   téléphone couché) = titre à gauche, réseau à droite (`@media (orientation: landscape)`). Coins : « Conçu avec
   Claude » (`#d97757`) et version (or, monospace, `main.js > _splashStart` depuis `__MKM__.build`) en haut ;
@@ -457,8 +458,39 @@ démarrage de l'app (scripts puis construction de l'accueil), il saccadait au d�
 3 tâches longues, ~0,75 s, dans la première seconde du tracé). La scène (galeries, eau, pictos, rose, titre) reste en
 pause (`animation-play-state`) jusqu'à `.kta-splash-go`, posée par `ktaSplash.js > _demarrer` quand l'accueil est prêt
 (`fermer(pret)`), ou dès qu'une gate attend la fin d'animation (`finAnimation()`), ou au clic, ou au plus tard à 2,5 s.
-Les 4 s se comptent depuis ce démarrage ; seuls les coins (opacité) jouent avant. Mesuré ×4 après : 0 tâche longue
-pendant le tracé ; scène démarrée vers 2,3 s (×4) et 0,5-0,8 s (sans ralenti).
+Les 4 s se comptent depuis ce démarrage ; seuls les coins (opacité) jouent avant. Scène démarrée vers 2,1-2,3 s
+(×4) et 0,4-0,8 s (sans ralenti) ; au plafond de 2,5 s, des tâches longues de l'app tombent encore pendant le tracé.
+
+**Galeries dans un worker** (`js/ktaSplashWorker.js`) : 🩸 démarré accueil prêt, le tracé SVG restait sur le fil
+principal, et la moindre tâche longue le figeait (début saccadé sur iPhone). Les 38 galeries sont dessinées dans un
+`<canvas>` transféré au worker (`transferControlToOffscreen`, `OffscreenCanvas` 2D, `requestAnimationFrame` du worker,
+minuteur 16 ms s'il manque) : chaque image se calcule et s'affiche sans le fil principal.
+- ⚠️ **Une seule source** : `ktaSplash.js > _lireChemins` lit l'attribut `d` des chemins (M puis L absolus) et le
+  `viewBox` ; `_lireRythme` lit dans le style calculé la durée (1,68 s), le délai de chaque chemin (`--i` × 45 ms), la
+  courbe (`cubic-bezier`), la couleur, l'épaisseur, l'opacité et les bouts ronds. Seul le départ du tiret (1,01, la
+  clé `kta-splash-trace`) est recopié dans le worker (`DEPART`). Un chemin hors format, une autre courbe ou un
+  `preserveAspectRatio` → SVG animé.
+- **Lancement** : au premier rappel du `ResizeObserver` du canvas (style et mise en page déjà faits) — 🩸 un
+  `getComputedStyle` / `getBoundingClientRect` au chargement du script forçait le style et la mise en page de la
+  page en cours d'analyse (~0,25 s à ×4, avant la première peinture). Taille en pixels CSS du `ResizeObserver`,
+  densité `devicePixelRatio` relue au `resize` de la fenêtre : le worker redimensionne le canvas et redessine
+  (rotation du téléphone).
+- **Horloge** : `go { debut }` en `performance.timeOrigin + performance.now()`, commune aux deux fils ; le worker
+  rattrape une scène déjà partie. `fin` (clic / Échap avant l'accueil) → image finale aussitôt. Mouvement réduit :
+  pas de worker, SVG fixe.
+- **Bascule** : le SVG des galeries n'est masqué (`.kta-splash-canvas` → `display: none`, qui arrête aussi son
+  animation) qu'à la réponse `pret` du worker (premier dessin fait) ; avant, il est en pause donc vide.
+- **Repli = SVG animé**, sans régression : API absente (`Worker`, `OffscreenCanvas`, `transferControlToOffscreen`,
+  `ResizeObserver`), erreur du worker (fichier introuvable hors ligne compris), message `echec`, ou pas de réponse
+  en 300 ms de fil principal libre (🩸 un minuteur échu pendant les scripts de démarrage passerait avant la réponse
+  déjà arrivée). Worker tombé après la bascule : chaque chemin SVG reprend à l'instant voulu (délai négatif).
+  `KtaSplash.trace()` → `{ mode: "canvas" | "svg", motif, bilan }` (bilan = instants des images du worker, taille du
+  canvas en pixels physiques).
+- **CSP** : `worker-src 'self' blob:` déjà présent dans toutes les politiques (`docker/nginx-docker.conf`,
+  `docs/nginx-csp-config.conf`, `docs/nginx-myktamap.conf`) ; worker = fichier local, rien d'inline. Précaché
+  (`sw.js > ASSETS_TO_CACHE`) ; absent du cache, le splash garde son SVG.
+- Mesuré (Chromium sans écran, densité 3) : tâche longue de 500 ms sur le fil principal pendant le tracé → 82-83
+  images du worker dans la fenêtre, plus grand écart 6 ms, normal comme ×4. Non vérifié sur Safari réel.
 
 **Fermeture** = au plus tard de (fin d'animation, écran suivant affiché), puis fondu 0,4 s et retrait du DOM :
 - `main.js > _splashEnd(pret)` → `KtaSplash.fermer(pret)` : attend la fin d'animation ET `pret`, puis deux images.
@@ -478,8 +510,11 @@ pendant le tracé ; scène démarrée vers 2,3 s (×4) et 0,5-0,8 s (sans ralent
 
 **Une seule fois par session** : un changement de plan ne ré-affiche pas le splash.
 
-**Preuve** : `scripts/smoke/checkup-splash.js` (téléphone 390 et PC 1280 : image finale complète, accueil lent /
-rapide, passage au clic et à Échap, seconde ouverture rejouée en entier, plafond, mouvement réduit, coût au démarrage processeur ×4).
+**Preuve** : `scripts/smoke/checkup-splash.js` (téléphone 390 densité 3 et PC 1280 : galeries du worker sans
+double SVG, tracé en cours puis image finale complète — pixels du canvas comparés à l'image finale du SVG —, canvas
+en pleine densité ; replis sans OffscreenCanvas, worker introuvable, muet, tombé en route ; tâche longue de 500 ms
+pendant le tracé, normal et ×4 ; rotation ; accueil lent / rapide, passage au clic et à Échap, seconde ouverture
+rejouée en entier, plafond, mouvement réduit, coût au démarrage processeur ×4).
 
 `Dijkstra` (crédits) = l'algorithme du plus court chemin de `js/pathfinder.js > _dijkstra()`, pas une librairie.
 Les mêmes crédits figurent au pied de l'accueil (`.kta-loader-credits`) et de la Documentation

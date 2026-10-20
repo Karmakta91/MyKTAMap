@@ -80,7 +80,10 @@
     <div id="splashVersion" class="kta-splash-coin" aria-hidden="true"></div>
 
     <!-- Réseau fictif qui se dessine : 38 galeries (pathLength="1", ordre --i), eau en bande sous trois galeries,
-         une zone inaccessible hachurée, pictos et rose dans le même repère (ils suivent l'échelle du dessin). -->
+         une zone inaccessible hachurée, pictos et rose dans le même repère (ils suivent l'échelle du dessin).
+         ⚠️ Trois calques superposés, même viewBox : #splashReseau (eau, galeries), le canvas des galeries inséré
+         par js/ktaSplash.js (worker), #splashReperes (pictos, rose, au-dessus des galeries). Les chemins et le
+         viewBox sont la seule source de la géométrie, lue aussi par le worker. -->
     <div class="kta-splash-scene" aria-hidden="true">
       <svg id="splashReseau" viewBox="-12 -12 364 606">
       <defs>
@@ -136,6 +139,8 @@
         <path pathLength="1" style="--i:36" d="M272 561L271 559L267 557L263 555L257 556L253 558L249 562L248 564"/>
         <path pathLength="1" style="--i:37" d="M0 558L4 561L11 566L46 567L108 565L142 562L147 559L151 558L155 558L159 559L165 562L178 563L198 561L221 562L246 564L261 566L265 566L268 565L268 564L270 563L273 561L275 563L277 569L280 574L284 580L286 582"/>
       </g>
+      </svg>
+      <svg id="splashReperes" viewBox="-12 -12 364 606">
       <g class="kta-splash-pictos">
         <image href="icon/peo.png" x="12" y="-12" width="26" height="26"/>
         <image href="icon/pb.png" x="321" y="306" width="26" height="26"/>

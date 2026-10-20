@@ -244,7 +244,7 @@ connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstree
 script-src 'self'                             ← en vigueur depuis la bascule du 10/10/2026 (40.7.1)
 style-src 'self' 'unsafe-inline'              ← assumé (style="…" partout ; un style injecté n'exécute rien)
 img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
-worker-src 'self' blob:                       ← Service Worker
+worker-src 'self' blob:                       ← Service Worker, worker du splash (js/ktaSplashWorker.js)
 frame-ancestors 'none'                        ← anti-clickjacking
 ```
 
