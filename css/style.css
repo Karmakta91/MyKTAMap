@@ -13806,7 +13806,6 @@ body.kta-theme-light #allPlansList li:hover {
 
 body.kta-theme-light #importListBtn,
 body.kta-theme-light #exportListBtn,
-body.kta-theme-light #loaderPlannerBtn,
 /* #loaderResetBtn absent exprès : il garde le style « danger » clair (.loader-btn-danger) */
 body.kta-theme-light #loaderForceUpdateBtn,
 body.kta-theme-light #loaderDepannageBtn,
@@ -14704,10 +14703,6 @@ html.kta-theme-light #loadPlanBtn:hover {
   background: var(--kta-primaire-survol);
 }
 
-html.kta-theme-light #loaderPlannerBtn {
-  border-radius: 10px !important;
-  padding: 11px 18px !important;
-}
 
 
 html.kta-theme-light .loader-plans-filter-row {
