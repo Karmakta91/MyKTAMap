@@ -18,7 +18,7 @@
 
 ## 📦 Version courante — `v2.18.0` (18/10/2026)
 
-> 🤝 **v2.18.0 — Calques et export à plusieurs comptes** : sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage (sans trace de suppression) ; export de session limité à ses propres ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste (3 tuiles) et événements du Carnet ; schéma de l'outillage de l'IA (`docs/ia-architecture.svg`). Sans extension, rien ne change.
+> 🤝 **v2.18.0 — Niveau d'un objet, calques et export à plusieurs comptes** : 🏗️ le niveau d'un objet de session se change depuis sa fiche (plan multi-niveau, ⏪ annule) ; sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage, « ➕ Intégrer des ajouts », « Effacer la session » qui propose de rendre les calques, export limité à ses ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste et événements du Carnet ; correctifs Repositionner, fiches enchaînées, Mes photos. Sans extension, rien ne change hors du niveau d'un objet et des correctifs.
 
 ## 📑 Sommaire
 
@@ -453,7 +453,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### v2.18.0 (18/10/2026) — Calques et export à plusieurs comptes (branche `Karma_dev`)
+#### v2.18.0 (18/10/2026) — Niveau d'un objet, calques et export à plusieurs comptes (branche `Karma_dev`)
 
 - **Calques et installation reliée** : un calque ouvert à la modification sur un autre appareil se recale à la synchro (calque d'origine masqué, Exporter / Restituer proposés, plus de « rapatrier » en double ; les copies sont datées du rapatriement pour partir en entier, `7055cf5`) ; prise `exportAutorise` → `{ auteur }` = export de session limité à ses ajouts (« Créé par » imposé, copies de calque, traces et liaisons exclues ; conversion et export de calque refusés) — contrat dans `community-server-line.md` §3. La restitution d'un calque se propage aux autres appareils du plan, sans trace de suppression (`bf3a90c`).
 - **➕ Intégrer des ajouts** (≡ Filtres, ligne d'un calque en modification) : des objets dessinés à la main (points, tracés hors itinéraire, zones, structures ; filtre « Créé par » avec la prise `auteurObjet`) rejoignent le calque et partent dans son export ; ils se comportent en copie (date du rapatriement, aucune trace de suppression, retirés à la restitution, que la fenêtre annonce) ; ⏪ annule ; refusé en lecture seule, où « Intégrer des ajouts » et « Exporter » ne s'affichent même pas (« Restaurer » reste). `CalqueSession.integrerAjouts`, garde-fou `check-calque-session.js`.
@@ -462,6 +462,8 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **Service Worker, installation qui déclare des modules** : les pages et feuilles de style des dossiers de ces modules sont lues **réseau d’abord** (repli sur la dernière copie hors ligne, gardée sans sa requête) — une page modifiée sur le serveur n’attend plus le prochain changement de version de l’app ; `index.html` et l’app restent en cache d’abord. Sans module déclaré (myktamap.fr), rien ne change, aucune requête nouvelle. Contrat dans `community-server-line.md` §3, preuve `check-extensions.js` §8.
 - **Docs** : `docs/IA_POUR_LES_NULS.md` §4.5 (schéma `docs/ia-architecture.svg` : ce que l'IA lit au démarrage, à chaque action, à la demande et en délégation), agents dédiés et skill d'intégration (§9.2, §9.3).
 - **« Effacer la session » sur une installation reliée** : avec des calques en modification, la confirmation propose « Effacer sur cet appareil seulement » (les calques reviennent depuis le serveur, en modification, et la fenêtre l'annonce) ou « Rendre aussi les calques à l'équipe » (restitution partagée, calques nommés, perte des retouches non exportées des autres annoncée) ; avant, l'effacement rendait les calques puis la synchro les remettait en modification sans rien dire. Les restitutions survivent à l'effacement. Checkup `scripts/smoke/checkup-calque-effacer.js`.
+- **📌 Repositionner un point** : le clic sur « Repositionner » de la fiche ne pose plus le point sous le bouton (le bouton arme le mode pendant la capture de son propre clic, que `map.js > _ktaPickCaptureClick` réémettait comme position) : un clic né dans une fiche est ignoré, comme un contrôle Leaflet. Garde-fou `check-repositionner.js` §8, checkup `scripts/smoke/checkup-repositionner.js` (`bedda9c`).
+- **Mes photos** : les plans ☁️ d'une installation reliée sans photo sur l'appareil ne sont plus listés (`cf4e7a6`).
 - **Alertes** : la date « Publié le » d'une alerte d'extension (horodatage ISO) s'affiche en date et heure locales au lieu du texte brut ; une date seule d'`alert.json` reste telle quelle (`interfaceAlerts.js > _dateLisible`).
 
 #### v2.17.0 (17/10/2026) — Exports et ergonomie téléphone, code allégé (branche `Karma_dev`)
