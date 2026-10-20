@@ -4111,6 +4111,17 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   text-transform: uppercase;
 }
 
+/* 🩸 Scène en pause tant que les scripts de l'app s'exécutent (js/ktaSplash.js > _demarrer pose .kta-splash-go) :
+   le tracé tourne sur le fil principal et saccadait au début sur iPhone. Les coins (opacité seule) jouent dès
+   l'affichage. */
+#splashOverlay:not(.kta-splash-go) .kta-splash-galeries path,
+#splashOverlay:not(.kta-splash-go) .kta-splash-eau,
+#splashOverlay:not(.kta-splash-go) .kta-splash-pictos image,
+#splashOverlay:not(.kta-splash-go) .kta-splash-rose,
+#splashOverlay:not(.kta-splash-go) #splashBox {
+  animation-play-state: paused;
+}
+
 /* Coins, licence, crédits et signature : fondu au début (0,4 → 1 s). */
 .kta-splash-coin {
   animation: kta-splash-fondu 0.6s ease-out 0.4s both;

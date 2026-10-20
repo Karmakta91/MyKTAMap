@@ -124,6 +124,17 @@ async function attendreA(p, tMs) {
   const t = await p.evaluate(function () { return performance.now(); });
   if (tMs > t) await p.waitForTimeout(tMs - t);
 }
+// La scène démarre une fois les scripts exécutés (KtaSplash.debut()) : les instants du tracé se comptent de là.
+async function attendreApresDebut(p, ms) {
+  const fin = Date.now() + 5000;
+  let d = null;
+  while (d === null && Date.now() < fin) {
+    d = await p.evaluate(function () { return window.KtaSplash && window.KtaSplash.debut ? window.KtaSplash.debut() : null; });
+    if (d === null) await p.waitForTimeout(50);
+  }
+  await attendreA(p, (d || 0) + ms);
+  return d;
+}
 async function attendreRetrait(p, delaiMs) {
   const fin = Date.now() + delaiMs;
   while (Date.now() < fin) {
@@ -143,7 +154,9 @@ async function premiereOuverture(nav, nom, w, h) {
   else pb("version attendue « longue », obtenue " + (a1 && a1.version));
   if (a1 && a1.traces < a1.chemins) ok("à 1 s, le réseau se dessine (" + a1.traces + "/" + a1.chemins + " tracés)");
   else pb("à 1 s, aucune animation en cours (" + JSON.stringify(a1) + ")");
-  await attendreA(p, 3700);
+  const debut = await attendreApresDebut(p, 3700);
+  if (debut !== null && debut <= 2500) ok("scène démarrée accueil prêt (" + debut + " ms, au plus tard 2,5 s)");
+  else pb("démarrage de la scène : " + debut + " ms (attendu ≤ 2500)");
   const fin = await p.evaluate(etatSplash);
   if (!fin) { pb("splash déjà retiré à 3,7 s (animation coupée)"); return ctx; }
   if (fin.chemins === 38 && fin.traces === 38) ok("image finale : 38/38 galeries tracées");
@@ -182,7 +195,7 @@ async function premiereOuverture(nav, nom, w, h) {
       else pb("seconde ouverture : animation complète attendue, obtenu " + JSON.stringify(a));
       const cle = await p.evaluate(function () { return localStorage.getItem("myktamap_splash_jour_v1"); });
       if (cle === null) ok("clé de l'ancienne version courte retirée"); else pb("clé myktamap_splash_jour_v1 encore là : " + cle);
-      await attendreA(p, 3700);
+      await attendreApresDebut(p, 3700);
       const b = await p.evaluate(etatSplash);
       if (b && b.traces === 38) ok("image finale complète à 3,7 s"); else pb("seconde ouverture à 3,7 s : " + JSON.stringify(b));
       const t = await attendreRetrait(p, 8000);

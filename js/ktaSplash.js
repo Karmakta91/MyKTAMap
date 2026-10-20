@@ -7,7 +7,7 @@
 // ktaSplash.js — écran de démarrage : le réseau se dessine une fois, l'écran se ferme quand l'accueil est affiché.
 // Chargé juste après #splashOverlay (index.html), avant tout autre script : choisit la version avant la première
 // peinture et arme le plafond de sécurité. Le rendu et les animations vivent dans css/style.css (bloc splash).
-// Expose : window.KtaSplash { version, finAnimation() → Promise, fermer(pret?) → Promise, surFermeture(cb) }.
+// Expose : window.KtaSplash { version, debut(), finAnimation() → Promise, fermer(pret?) → Promise, surFermeture(cb) }.
 // ⚠️ Fermeture = au plus tard de (fin d'animation, écran prêt) : fermer(pret) attend les deux, puis deux images (le
 //    HOME est peint). Quoi qu'il arrive, fondu PLAFOND_MS après le début de la navigation (performance.now()).
 // ⚠️ Versions : « longue » à CHAQUE ouverture (décision produit : pas de version raccourcie) ; mouvement réduit =
@@ -43,7 +43,20 @@
     _finAnimFaite = true;
     _resoudreFinAnim();
   }
-  setTimeout(_terminerAnimation, version === "longue" ? DUREE_LONGUE_MS : 0);
+  // 🩸 Le tracé (stroke-dashoffset) se calcule sur le fil principal : lancé pendant le démarrage de l'app (scripts,
+  //    puis construction de l'accueil), il saccadait au début (iPhone ; mesuré ×4 : ~0,8 s de tâches longues dans
+  //    la 1re seconde du tracé). La scène attend `.kta-splash-go`, posée quand l'ACCUEIL est prêt (fermer(pret)),
+  //    ou dès qu'on attend la fin d'animation (finAnimation() : une gate va s'afficher, l'accueil ne viendra pas
+  //    avant), ou au clic, ou au plus tard à DEMARRAGE_MAX_MS. Les coins (opacité seule) jouent dès l'affichage.
+  const DEMARRAGE_MAX_MS = 2500;
+  let _debut = null;
+  function _demarrer() {
+    if (_debut !== null) return;
+    _debut = Math.round(performance.now());
+    if (el) el.classList.add("kta-splash-go");
+    setTimeout(_terminerAnimation, version === "longue" ? DUREE_LONGUE_MS : 0);
+  }
+  setTimeout(_demarrer, Math.max(0, DEMARRAGE_MAX_MS - performance.now()));
 
   // ── Fondu et retrait ──
   let _pret = false;
@@ -78,7 +91,7 @@
   function fermer(pret) {
     if (_fermeture) return _fermeture;
     const _ecran = Promise.resolve(pret).catch(function () { /* écran en échec : on ferme quand même */ })
-      .then(_deuxImages).then(function () { _pret = true; });
+      .then(_deuxImages).then(function () { _pret = true; _demarrer(); });
     _fermeture = Promise.all([_finAnim, _ecran]).then(function () { _fondu("accueil"); });
     return _fermeture;
   }
@@ -88,6 +101,7 @@
     if (_enFondu) return;
     if (_pret) { _terminerAnimation(); _fondu("passé"); return; }
     if (el) el.classList.add("kta-splash-fini");
+    _demarrer();
     _terminerAnimation();
   }
   function _surTouche(ev) {
@@ -106,7 +120,8 @@
 
   window.KtaSplash = {
     version: version,
-    finAnimation: function () { return _finAnim; },
+    debut: function () { return _debut; },   // instant (ms) où la scène démarre ; null avant
+    finAnimation: function () { _demarrer(); return _finAnim; },
     fermer: fermer,
     surFermeture: function (cb) {
       if (typeof cb !== "function") return;

@@ -445,6 +445,14 @@ La clé `myktamap_splash_jour_v1` d'une version courte abandonnée est retirée 
 silencieux). Une seule lecture, en `both` : l'image finale reste jusqu'au fondu. L'état de base de chaque règle CSS est l'image
 finale ; `.kta-splash-fini` coupe les animations.
 
+**Démarrage de la scène** : 🩸 le tracé (`stroke-dashoffset`) se calcule sur le fil principal. Lancé pendant le
+démarrage de l'app (scripts puis construction de l'accueil), il saccadait au début sur iPhone (mesuré processeur ×4 :
+3 tâches longues, ~0,75 s, dans la première seconde du tracé). La scène (galeries, eau, pictos, rose, titre) reste en
+pause (`animation-play-state`) jusqu'à `.kta-splash-go`, posée par `ktaSplash.js > _demarrer` quand l'accueil est prêt
+(`fermer(pret)`), ou dès qu'une gate attend la fin d'animation (`finAnimation()`), ou au clic, ou au plus tard à 2,5 s.
+Les 4 s se comptent depuis ce démarrage ; seuls les coins (opacité) jouent avant. Mesuré ×4 après : 0 tâche longue
+pendant le tracé ; scène démarrée vers 2,3 s (×4) et 0,5-0,8 s (sans ralenti).
+
 **Fermeture** = au plus tard de (fin d'animation, écran suivant affiché), puis fondu 0,4 s et retrait du DOM :
 - `main.js > _splashEnd(pret)` → `KtaSplash.fermer(pret)` : attend la fin d'animation ET `pret`, puis deux images.
   Accueil : appelé juste après `afficherLoader()` (synchrone : `#planLoaderOverlay` visible, liste remplie) ;
