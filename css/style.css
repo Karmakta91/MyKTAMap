@@ -8742,6 +8742,9 @@ html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow)
   padding: 4px 0;
 }
 .kta-iti-avoid-details summary::-webkit-details-marker { display: none; }
+/* 🩸 Le marqueur standard aussi : sans lui, les navigateurs récents affichaient leur flèche ET celle du ::before. */
+.kta-iti-avoid-details summary { list-style: none; }
+.kta-iti-avoid-details summary::marker { content: ""; }
 .kta-iti-avoid-details summary::before {
   content: "▶ ";
   display: inline-block;
