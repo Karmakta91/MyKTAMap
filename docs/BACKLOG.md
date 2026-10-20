@@ -51,6 +51,23 @@
   `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte) avant le gel
   · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 
+- **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
+  gardée relue », quelque chose réécrit encore les copies.
+  `qui: KARMA · action: ouvrir plusieurs plans puis envoyer le journal · fini: journal lu, aucune réécriture en boucle
+  · depuis: 14/10/2026 · taille: XS`
+- **Test appareil : Mode Secours sur iPhone** — « Suivre mon parcours » (permission des capteurs dans le geste),
+  recalage à la validation d'une étape (question au-delà de 30 m), écran XL avec un long itinéraire, « Retour
+  impératif ».
+  `qui: KARMA · action: jouer les 4 gestes sur iPhone · fini: 4 gestes vus conformes, ou bugs ouverts
+  · depuis: 30/09/2026 · taille: S`
+- **Test appareil : export KMZ « Très nette »** — « Nette » validé sur iPhone ; « Très nette » (16 images) jamais
+  essayé.
+  `qui: KARMA · action: exporter en « Très nette » et ouvrir dans Google Earth · fini: KMZ ouvert, ou bug ouvert
+  · depuis: 15/10/2026 · taille: XS`
+- **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
+  plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
+  `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
+  · taille: S`
 ## Ensuite
 
 - **Mettre à jour le plan (assistant)** — décidé en QCM : de la session et des calques au Générateur en mode Modifier,
@@ -73,27 +90,10 @@
 - **Test appareil : stockage saturé** — bandeau persistant + 💾 Exporter tant que la sauvegarde échoue.
   `qui: KARMA · action: saturer un téléphone de test · fini: bandeau et export vus, ou bug ouvert · depuis: 13/09/2026
   · taille: S`
-- **Test appareil : Mode Secours sur iPhone** — « Suivre mon parcours » (permission des capteurs dans le geste),
-  recalage à la validation d'une étape (question au-delà de 30 m), écran XL avec un long itinéraire, « Retour
-  impératif ».
-  `qui: KARMA · action: jouer les 4 gestes sur iPhone · fini: 4 gestes vus conformes, ou bugs ouverts
-  · depuis: 30/09/2026 · taille: S`
-- **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
-  plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
-  `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
-  · taille: S`
 - **Test appareil : balayage Secours** — temps de « Découper en secteurs » sur un vieux téléphone ; « Suivre mon
   parcours » en balayage (un écart rejoint le circuit là où l'équipe en était, pas au début).
   `qui: KARMA · action: chronométrer le découpage, faire un écart sur le terrain
   · fini: durée notée, reprise vue au bon endroit · depuis: 15/10/2026 · taille: S`
-- **Test appareil : export KMZ « Très nette »** — « Nette » validé sur iPhone ; « Très nette » (16 images) jamais
-  essayé.
-  `qui: KARMA · action: exporter en « Très nette » et ouvrir dans Google Earth · fini: KMZ ouvert, ou bug ouvert
-  · depuis: 15/10/2026 · taille: XS`
-- **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
-  gardée relue », quelque chose réécrit encore les copies.
-  `qui: KARMA · action: ouvrir plusieurs plans puis envoyer le journal · fini: journal lu, aucune réécriture en boucle
-  · depuis: 14/10/2026 · taille: XS`
 - **Test appareil : chiffres du guide** — repris sans vérification : stockage par appareil (~50 Mo Safari, ~1 Go app
   installée), chemin d'installation sur Chrome Android.
   `qui: KARMA · action: relever les deux chiffres et le chemin sur appareil
