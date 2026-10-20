@@ -486,7 +486,7 @@ La section **« 💼 Édition professionnelle »** du profil n'apparaît que si 
 (badge ✓ + « instance pro déployée »). Plus d'import ni de retrait : une licence importée sur un appareil
 (source « locale », v1.28.4 → 09/10/2026) n'activait **aucune** fonction pro — la règle E exige une licence SERVEUR
 pour charger les modules — et ne servait qu'à passer la gate community. `check-gate-instance.js` refuse son retour
-(gate, profil, `importFile` / `removeLocal`). `_proHashShort` / `_proSourceLabel` : mort documenté (BACKLOG).
+(gate, profil, `importFile` / `removeLocal`). `_proHashShort` / `_proSourceLabel` : mort documenté, gardé exprès (`docs/DECISIONS_FERMEES.md`).
 
 #### 77.6 Sécurité juridique
 

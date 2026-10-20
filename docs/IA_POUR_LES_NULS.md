@@ -134,8 +134,10 @@ Le fichier de contexte ne **contient** pas la connaissance : il dit **où elle e
 
 - **`docs/architecture/<sujet>.md`** : un fichier par sous-système. Lu à la demande, jamais d'office.
   Il décrit l'**état actuel** : on le réécrit, on n'y empile pas l'historique.
-- **`docs/BACKLOG.md`** : ce qui reste à faire, avec pour chaque entrée son **niveau de preuve** (§11.3).
-  L'IA doit le lire **avant** d'annoncer qu'une fonctionnalité manque.
+- **`docs/BACKLOG.md`** : ce qui reste à faire, rangé par horizon (Maintenant, plafonné ; Ensuite ; Plus tard ;
+  Entrant), chaque entrée avec son **niveau de preuve** (§11.3) et sa prochaine action. L'IA doit le lire **avant**
+  d'annoncer qu'une fonctionnalité manque. À côté : `docs/IDEES.md` (pistes et leur déclencheur) et
+  `docs/DECISIONS_FERMEES.md` (sujets enterrés et pourquoi), à lire avant de reproposer un sujet.
 - **`docs/RELEASE_GATE.md`** : la porte de mise en production (§7).
 - **`docs/architecture/gotchas.md`** : les pièges connus, ceux qu'on a payés.
 - **`README.md`** : le journal des versions (§11.1).
@@ -763,7 +765,9 @@ release vérifie que trois d'entre eux ont bougé :
 | Document | Rôle | Règle d'or |
 |---|---|---|
 | `README.md` | **Journal** des versions, référentiel des modules, conventions | Une entrée par version, **en tête du journal**, jamais en tête de fichier. Chaque entrée raconte : demande, diagnostic (🩸), correction (🩹), garde-fou (🛡️), tests |
-| `docs/BACKLOG.md` | **Ce qui reste à faire**, dettes, sujets enterrés | Une entrée soldée est **supprimée**, pas barrée. Le seul état stable est « ouvert » |
+| `docs/BACKLOG.md` | **Ce qui reste à faire**, par horizon : Maintenant (10 au plus), Ensuite, Plus tard, Entrant (demandes reçues pendant un lot) | Une entrée soldée est **supprimée**, pas barrée. Chaque entrée dit **qui** fait la prochaine **action**, quand c'est **fini**, **depuis** quand elle est ouverte et sa **taille** ; corps de 3 lignes, le reste dans une étude. Un garde-fou en avertissement vérifie la forme |
+| `docs/IDEES.md` | Pistes gardées, pas du travail | Chacune dit son **déclencheur** ; au déclencheur, elle passe au backlog |
+| `docs/DECISIONS_FERMEES.md` | Sujets enterrés, acceptés, leçons, décisions closes | Chacun dit **pourquoi** ; on ne rouvre qu'avec un fait nouveau |
 | `docs/architecture/<sujet>.md` | Source de vérité technique par sous-système | **L'état actuel, pas l'historique** : on réécrit la partie concernée, on n'empile pas de section par version |
 | `docs/architecture/gotchas.md` | Pièges connus, renommages | Chaque piège raconte pourquoi il a survécu si longtemps |
 | `docs/audits/` | Rapports d'audit datés + index | Archivés **immédiatement** (§10.1) |
