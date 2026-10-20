@@ -9,7 +9,7 @@
 //   3. après scroll, le footer est entièrement dans la viewport ;
 //   4. avant tout scroll, « Charger ce plan » est dans la partie VISIBLE de #panelZip, et à ≥ 800 px de
 //      haut #panelZip ne cache rien (sinon le bouton part dans le scroll interne, page non débordante).
-// 🩸 Le splash (retiré du DOM après ~3,5 s) et la modale « Accès hors-ligne » (SW bloqué) figent
+// 🩸 Le splash (retiré du DOM après ~4 s) et la modale « Accès hors-ligne » (SW bloqué) figent
 //    `scrollHeight` et interceptent la molette : mesurer trop tôt invente un bug de scroll. Le script
 //    attend le DÉTACHEMENT du splash, retire la modale, et refuse de conclure sans l'avoir fait.
 // ⚠️ Ni thème clair ni colonne OSM (pas de réseau). Zoom navigateur émulé comme Chrome (viewport =
@@ -66,7 +66,7 @@ async function testerConfig(nav, W, H, zoom) {
     }, LS);
     await p.goto(URL, { waitUntil: "domcontentloaded" });
 
-    // 1) Le splash est RETIRÉ DU DOM après ~3,5 s (main.js > _splashEnd).
+    // 1) Le splash est RETIRÉ DU DOM après ~4 s (js/ktaSplash.js).
     //    🩸 Pas `display`/`opacity`/`offsetParent` : en `position:fixed`, `offsetParent` vaut null même
     //    quand il couvre tout l'écran.
     await p.waitForSelector("#splashOverlay", { state: "detached", timeout: 25000 })

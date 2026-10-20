@@ -4,7 +4,7 @@
 // server.js — serveur statique minimal (zéro dépendance) des harnais navigateur
 // =====================================================================
 // Sert la racine du dépôt en HTTP local (Service Worker, fetch same-origin, data/index.json).
-// Requis par smoke.js et les checkups ; seul : node scripts/smoke/server.js [port] (défaut 8123).
+// Requis par smoke.js et les checkups ; seul : node scripts/smoke/server.js [port] (défaut SMOKE_PORT, puis 8123).
 // =====================================================================
 "use strict";
 
@@ -13,7 +13,8 @@ const fs = require("fs");
 const path = require("path");
 
 const RACINE = path.resolve(__dirname, "..", "..");
-const PORT = parseInt(process.argv[2], 10) || 8123;
+// SMOKE_PORT : deux copies de travail qui lancent un harnais en même temps ne se disputent pas le port.
+const PORT = parseInt(process.argv[2] || process.env.SMOKE_PORT, 10) || 8123;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
