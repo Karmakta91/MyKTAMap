@@ -28,20 +28,11 @@
 
 ## Maintenant
 
-- **Détails de la session : sections repliables** — avec 1000+ points ajoutés, la liste noie la modale. Points,
-  Tracés, Zones, Structures et Photos deviennent repliables ; ouvertes jusqu'à 8 lignes, repliées au-delà.
-  `qui: Claude · action: coder dans refonteInterface.js > _afficherModaleSessionDetail, checkup de la modale
-  · fini: 1000 points repliés à l'ouverture, badge visible, thème clair OK · depuis: 21/10/2026 · taille: S`
 - **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA (plan multi-niveau, iPhone PWA et PC) : une partie des POI
   paraît derrière les tuiles ; case 🖼️ Plan décochée → nettes. ⚠️ Revu par KARMA (21/10), pas au harnais (Chromium).
   Journal d'enquête : `git log -S"sous les tuiles" -- docs/BACKLOG.md`.
   `qui: KARMA · action: donner le parcours exact (navigateur PC, changement de niveau ou de plan, réouverture)
   · fini: reproduit et corrigé, ou fermé « non reproduit » avec ce parcours · depuis: 16/10/2026 · taille: S`
-- **Sonar : faux positifs à accepter** — `mdParser.js` ×2 (caractères de contrôle = balises internes), `css/style.css`
-  ×2 (`height: 44px` = repli avant `calc(env(safe-area…))`), `index.html` barre de profil (clavier géré en JS, CSP
-  sans attribut inline).
-  `qui: KARMA · action: les marquer « Accepté » dans l'interface Sonar locale
-  · fini: 0 bug ouvert sur le projet MyKTAMap · depuis: 09/10/2026 · taille: XS`
 - **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
   ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
   Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.

@@ -1166,6 +1166,8 @@
     if (!document.getElementById("kta-refonte-session-modal")) _afficherModaleSessionDetail();
   };
 
+  const SEUIL_REPLI_SESSION = 8;   // lignes au-delà desquelles une section de la modale arrive repliée
+
   function _afficherModaleSessionDetail() {
     const existing = document.getElementById("kta-refonte-session-modal");
     if (existing) { existing.remove(); return; }
@@ -1195,6 +1197,20 @@
       return distM.toFixed(1) + " m";
     }
 
+    // Sections repliables : une liste longue (1000+ points) ne doit pas noyer le reste de la modale.
+    // Ouverte d'office jusqu'à SEUIL_REPLI_SESSION lignes, repliée au-delà ; le badge garde le total.
+    function _debutSection(titre, badge, nbLignes) {
+      const ouvert = nbLignes <= SEUIL_REPLI_SESSION ? ' open' : '';
+      return '<details class="kta-refonte-session-section kta-session-repli"' + ouvert + '>' +
+        '<summary class="kta-refonte-session-section-titre">' + titre +
+        ' <span class="kta-refonte-session-badge">' + badge + '</span></summary>';
+    }
+    function _nbTypes(arr) {
+      const vus = {};
+      arr.forEach(function (o) { vus[o.type || "?"] = 1; });
+      return Object.keys(vus).length;
+    }
+
     // ── Stats agrégées en tête ──
     const _stats = _calculerStatsAggregees(points, roads, zones, structures, mesure, scale);
     let html = _genererStatsAggregeesHTML(_stats, multiLevel);
@@ -1209,8 +1225,7 @@
     // « Enregistré il y a N s » en tête.
     html += _ligneDerniereSauvegarde();
 
-    html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">📍 ' + window.I18n.t("ui.refonte.section_points_added") + ' <span class="kta-refonte-session-badge">' + points.length + '</span></div>';
+    html += _debutSection('📍 ' + window.I18n.t("ui.refonte.section_points_added"), points.length, points.length);
     if (points.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_points") + '</div>';
     } else {
@@ -1229,12 +1244,11 @@
       });
       html += '</ul>';
     }
-    html += '</div>';
+    html += '</details>';
 
     const roadsNonIti = roads.filter(function(r) { return r.type !== "itinerary"; });
     const itineraire  = roads.find(function(r) { return r.type === "itinerary"; });
-    html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">🛣 ' + window.I18n.t("ui.refonte.section_roads") + ' <span class="kta-refonte-session-badge">' + roadsNonIti.length + '</span></div>';
+    html += _debutSection('🛣 ' + window.I18n.t("ui.refonte.section_roads"), roadsNonIti.length, _nbTypes(roadsNonIti));
     if (roadsNonIti.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_roads") + '</div>';
     } else {
@@ -1262,10 +1276,9 @@
       });
       html += '</ul>';
     }
-    html += '</div>';
+    html += '</details>';
 
-    html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">⬛ ' + window.I18n.t("ui.refonte.section_zones") + ' <span class="kta-refonte-session-badge">' + zones.length + '</span></div>';
+    html += _debutSection('⬛ ' + window.I18n.t("ui.refonte.section_zones"), zones.length, _nbTypes(zones));
     if (zones.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_zones") + '</div>';
     } else {
@@ -1294,10 +1307,10 @@
       });
       html += '</ul>';
     }
-    html += '</div>';
+    html += '</details>';
 
-    html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">🏛️ ' + window.I18n.t("ui.refonte.section_structures") + ' <span class="kta-refonte-session-badge">' + structures.length + '</span></div>';
+    html += _debutSection('🏛️ ' + window.I18n.t("ui.refonte.section_structures"), structures.length,
+                          _nbTypes(structures));
     if (structures.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_structures") + '</div>';
     } else {
@@ -1327,13 +1340,14 @@
       });
       html += '</ul>';
     }
-    html += '</div>';
+    html += '</details>';
 
     // Photos : « Chargement… » puis hydratation async (total, taille, détail par point)
-    html += '<div class="kta-refonte-session-section" id="kta-refonte-session-photos-section">';
-    html += '<div class="kta-refonte-session-section-titre">📸 ' + window.I18n.t("ui.refonte.section_photos") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></div>';
+    // Ouverte pendant le chargement ; _hydraterPhotosModaleSession la replie au-delà de SEUIL_REPLI_SESSION.
+    html += '<details class="kta-refonte-session-section kta-session-repli" id="kta-refonte-session-photos-section" open>';
+    html += '<summary class="kta-refonte-session-section-titre">📸 ' + window.I18n.t("ui.refonte.section_photos") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></summary>';
     html += '<div id="kta-refonte-session-photos-body" class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.loading") + '</div>';
-    html += '</div>';
+    html += '</details>';
 
     const tFoo = !!(window.getTrackingPosition && window.getTrackingPosition());
     const mesureSurfDetail = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
@@ -2041,6 +2055,8 @@
 
       body.className = "";  // retire la classe "empty"
       body.innerHTML = html;
+      const section = document.getElementById("kta-refonte-session-photos-section");
+      if (section && Object.keys(byPoint).length > SEUIL_REPLI_SESSION) section.open = false;
     }).catch(function(e) {
       console.warn("[RefonteInterface] _hydraterPhotosModaleSession :", e);
       badge.textContent = "?";

@@ -11930,6 +11930,25 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   gap: 8px;
 }
 
+/* Section repliable (<details>) : le titre est le bouton, flèche à droite ; repliée, plus de marge sous le titre. */
+.kta-session-repli > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kta-session-repli > summary::-webkit-details-marker { display: none; }
+.kta-session-repli > summary::marker { content: ""; }
+.kta-session-repli > summary::after {
+  content: "▾";
+  margin-left: auto;
+  color: var(--kta-texte-3);
+  transition: transform 0.15s ease;
+}
+.kta-session-repli:not([open]) > summary { margin-bottom: 0; }
+.kta-session-repli:not([open]) > summary::after { transform: rotate(-90deg); }
+.kta-session-repli > summary:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+
 .kta-refonte-session-badge {
   display: inline-block;
   background: rgba(244, 197, 66, 0.18);

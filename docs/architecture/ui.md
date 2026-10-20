@@ -278,7 +278,15 @@ Compteurs du header (📍 N · 🛣 N · ⬛ N) cliquables → modale qui liste 
 | 📍 Points ajoutés | Liste avec nom / tag / coord / niveau si multi-niveau |
 | 🛣 Tracés | Regroupement par type (Principal/Secondaire/Chemin/Jonction) avec compteur + distance totale par type |
 | ⬛ Zones | Regroupement par type (Eau/Remblais/Effondrement/Inaccessible) avec compteur |
+| 🏛️ Structures | Regroupement par type avec compteur |
+| 📸 Photos | Total, détail par point, taille (hydratation asynchrone) |
 | 📊 Autres mesures | Mesure simple (si points ≥ 2), Itinéraire actif (distance + nb waypoints), Tracker (position si actif) |
+
+**Sections repliables** : Points, Tracés, Zones, Structures et Photos sont des `<details class="kta-session-repli">`
+(le titre est le `<summary>`, flèche `::after`, badge du total toujours visible). Ouvertes d'office jusqu'à
+`SEUIL_REPLI_SESSION` (8) lignes affichées, repliées au-delà : une session de 1000+ points ne noie plus la modale.
+Photos s'ouvre pendant le chargement et se replie après l'hydratation si plus de 8 points ont des photos.
+Checkup : `scripts/smoke/checkup-session-repli.js` (téléphone / PC, sombre / clair).
 
 Fonction `_afficherModaleSessionDetail()` dans `refonteInterface.js`. Pattern `.kta-readme-modal-overlay` + box max-width 560px + sections card-stack. Recalcule en live à chaque ouverture. Toggle re-clic = reopen direct (cleanup d'instance précédente).
 
