@@ -645,7 +645,7 @@ function afficherFormulaire(x, y, existingPoint) {
         // surprenant si l'utilisateur a changé de niveau entre-temps). Inchangé → aucun champ écrit (un point
         // sans `level` reste sans `level`).
         const selNiveau = document.getElementById("kta-poi-niveau");
-        const niveauChoisi = selNiveau ? parseInt(selNiveau.value, 10) : NaN;
+        const niveauChoisi = selNiveau ? Number.parseInt(selNiveau.value, 10) : Number.NaN;
         const niveauChange = Number.isInteger(niveauChoisi) && niveauChoisi !== niveauInitial;
         if (niveauChange) existingPoint.level = niveauChoisi;
         // touch : updatedAt (ms) + date_update (jour), en un seul geste.

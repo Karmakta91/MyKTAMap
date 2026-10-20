@@ -85,7 +85,9 @@ function _dossiersDe(urls) {
   const scope = self.registration.scope;
   const vus = new Set();
   (urls || []).forEach(function(u) {
-    const d = u.split(/[?#]/)[0].replace(/[^/]*$/, "");
+    // Dossier = jusqu'au dernier « / » (lastIndexOf : pas de [^/]*$, retour arrière super-linéaire, Sonar).
+    const sansRequete = u.split(/[?#]/)[0];
+    const d = sansRequete.slice(0, sansRequete.lastIndexOf("/") + 1);
     if (d.indexOf(scope) === 0 && d.length > scope.length) vus.add(d);
   });
   return Array.from(vus);

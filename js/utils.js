@@ -931,7 +931,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       const nivSel = popupRoot.querySelector(".kta-note-popup-niveau");
       if (nivSel && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveau) {
         nivSel.addEventListener("change", function () {
-          const n = parseInt(nivSel.value, 10);
+          const n = Number.parseInt(nivSel.value, 10);
           try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
           if (window.KtaConvertir.changerNiveau(opts.convertir.famille, opts.convertir.obj, n)
               && typeof window.ktaSignalerNiveauObjet === "function") {

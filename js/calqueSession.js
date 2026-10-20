@@ -217,7 +217,7 @@ window.CalqueSession = (function () {
         if (!o || o[CLE_SOURCE] !== id) return true;
         if (typeof o.uid === "string" && o.uid) uids.push(o.uid);
         // T couvre toutes les copies retirées ici, même datées un peu en avance.
-        if (typeof o.updatedAt === "number" && isFinite(o.updatedAt) && o.updatedAt > T) T = o.updatedAt;
+        if (typeof o.updatedAt === "number" && Number.isFinite(o.updatedAt) && o.updatedAt > T) T = o.updatedAt;
         return false;
       });
       if (apres.length !== avant.length) {
@@ -258,7 +258,7 @@ window.CalqueSession = (function () {
   // ── Restitution partagée : sortante ──────────
   // Restitutions faites ICI après `ts` (ms) : [{ calque, avant, uids }] (copies).
   function restitutionsDepuis(ts) {
-    const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
+    const seuil = (typeof ts === "number" && Number.isFinite(ts)) ? ts : 0;
     return Object.keys(_aEnvoyer).filter(function (id) { return _aEnvoyer[id].avant > seuil; }).map(function (id) {
       return { calque: id, avant: _aEnvoyer[id].avant, uids: _aEnvoyer[id].uids.slice() };
     });
@@ -270,7 +270,7 @@ window.CalqueSession = (function () {
   function _uidGarde(uid, T) {
     const h = function (graine) {
       let x = graine >>> 0;
-      for (let i = 0; i < uid.length; i++) { x ^= uid.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; }
+      for (let i = 0; i < uid.length; i++) { x ^= uid.codePointAt(i); x = Math.imul(x, 16777619) >>> 0; }
       return x.toString(36);
     };
     const pre = /^(pt|rd|zn|st)_/.test(uid) ? uid.slice(0, 3) : "pt_";
@@ -292,7 +292,7 @@ window.CalqueSession = (function () {
     (Array.isArray(liste) ? liste : []).forEach(function (r) {
       if (!r || typeof r.calque !== "string" || !r.calque || r.calque.length > MAX_ID) return;
       const T = Number(r.avant);
-      if (!isFinite(T) || T <= 0) return;
+      if (!Number.isFinite(T) || T <= 0) return;
       if (!(_restitutions[r.calque] >= T)) { _restitutions[r.calque] = T; nouvelle = true; }
     });
     let retires = 0, gardes = 0;
@@ -380,7 +380,7 @@ window.CalqueSession = (function () {
     let R = 0;
     FAMILLES.forEach(function (fam) {
       _lire(fam).forEach(function (o) {
-        if (o && o[CLE_SOURCE] === id && typeof o[CLE_DEPUIS] === "number" && isFinite(o[CLE_DEPUIS]) &&
+        if (o && o[CLE_SOURCE] === id && typeof o[CLE_DEPUIS] === "number" && Number.isFinite(o[CLE_DEPUIS]) &&
             o[CLE_DEPUIS] > R) R = o[CLE_DEPUIS];
       });
     });
@@ -582,7 +582,7 @@ window.CalqueSession = (function () {
     _restitutions = {};
     _aEnvoyer = {};
     const okId = function (k) { return typeof k === "string" && k && k.length <= MAX_ID; };
-    const okT = function (T) { return typeof T === "number" && isFinite(T) && T > 0; };
+    const okT = function (T) { return typeof T === "number" && Number.isFinite(T) && T > 0; };
     if (o.restitutions && typeof o.restitutions === "object") {
       Object.keys(o.restitutions).forEach(function (k) {
         if (okId(k) && okT(o.restitutions[k])) _restitutions[k] = o.restitutions[k];

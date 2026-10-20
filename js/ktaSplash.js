@@ -84,15 +84,16 @@
   let _taille = "";
 
   function _ms(v) {
-    const m = /^(-?\d*\.?\d+)(m?s)$/.exec(String(v).trim());
-    return m ? parseFloat(m[1]) * (m[2] === "s" ? 1000 : 1) : NaN;
+    // Nombre sans ambiguïté (pas de \d*\.?\d+ : retour arrière super-linéaire, Sonar).
+    const m = /^(-?(?:\d+(?:\.\d+)?|\.\d+))(m?s)$/.exec(String(v).trim());
+    return m ? Number.parseFloat(m[1]) * (m[2] === "s" ? 1000 : 1) : Number.NaN;
   }
   function _lireChemins(chemins) {
     const out = [];
     for (let i = 0; i < chemins.length; i++) {
       const d = chemins[i].getAttribute("d") || "";
       if (!/^M[ML\d.,\s-]+$/.test(d) || d.indexOf("M", 1) !== -1) return null;
-      const n = (d.match(/-?\d*\.?\d+/g) || []).map(Number);
+      const n = (d.match(/-?(?:\d+(?:\.\d+)?|\.\d+)/g) || []).map(Number);
       if (n.length < 4 || n.length % 2) return null;
       out.push(n);
     }
@@ -108,13 +109,13 @@
       delais: chemins.map(function (p) { return _ms(getComputedStyle(p).animationDelay); }),
       courbe: courbe,
       couleur: cs.stroke,
-      largeur: parseFloat(cs.strokeWidth),
-      opacite: parseFloat(cs.opacity),
+      largeur: Number.parseFloat(cs.strokeWidth),
+      opacite: Number.parseFloat(cs.opacity),
       bout: cs.strokeLinecap,
       jonction: cs.strokeLinejoin
     };
-    const nombres = [r.duree, r.largeur, r.opacite].concat(r.delais, courbe || [NaN]);
-    if (!courbe || courbe.length !== 4 || !(r.duree > 0) || !nombres.every(isFinite) || !/^rgb/.test(r.couleur)) {
+    const nombres = [r.duree, r.largeur, r.opacite].concat(r.delais, courbe || [Number.NaN]);
+    if (!courbe || courbe.length !== 4 || !(r.duree > 0) || !nombres.every(Number.isFinite) || !/^rgb/.test(r.couleur)) {
       return null;
     }
     return r;

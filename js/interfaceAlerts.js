@@ -118,7 +118,7 @@ function _dateLisible(released) {
   const s = String(released || "");
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s;
   const d = new Date(s);
-  if (isNaN(d.getTime())) return s;
+  if (Number.isNaN(d.getTime())) return s;
   return d.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR",
     { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
