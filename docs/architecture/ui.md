@@ -83,7 +83,7 @@ Structure type :
 |---|---|---|
 | Message à **lire pour agir** (erreur qui bloque, consigne) | `window.ktaAlerte(message, opts)` → `Promise` (résolue à la fermeture) | message **texte** (échappé, retours à la ligne gardés) ; `opts.html: true` pour un message déjà sûr ; `opts.type: "erreur"`, `opts.titre`, `opts.okLabel`, `opts.zIndex` |
 | **Choix** (oui / non, saisie) | `window.ktaConfirm(message, opts)` → `Promise<boolean>` | voir le contrat ci-dessous |
-| **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `warn` / `error` ; réglage de notifications ci-dessous |
+| **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `success` (une réussite) / `warn` / `error` ; réglage de notifications ci-dessous |
 
 **Contrat de `ktaConfirm`** (en-tête de la fonction dans `js/utils.js`) :
 - ⚠️ **`message`, `opts.titre`, `opts.okLabel`, `opts.cancelLabel` sont insérés en HTML** (voulu : des appelants
@@ -111,11 +111,18 @@ Structure type :
   **refuse** l'action dans ce cas (jamais « confirmé par défaut »).
 
 **Toasts et réglage de notifications** (`js/oomGuard.js`, un seul goulot, décision pure `_decisionToast` rejouée
-par `scripts/check-notifs.js`) : niveau `all` (tout, vibration sur warn/error) · `essential` (plus d'`info`, les
-`warn` restent) · `silent` (seuls les `warn` marqués **`{ important: true }`** et les `error`). Un `warn` que
-l'utilisateur ne peut pas deviner autrement (refus « Lecture seule », fin d'un import dont les objets sont hors
-vue, session remplacée depuis la table, PDF trop lourd ajouté à l'histoire) porte `important: true`.
+par `scripts/check-notifs.js`) : niveau `all` (tout, vibration sur warn/error) · `essential` (défaut : plus
+d'`info`, les `success` et `warn` restent) · `silent` (seuls les `success` / `warn` marqués
+**`{ important: true }`** et les `error`). Un `success` ne vibre jamais. Un toast que l'utilisateur ne peut pas
+deviner autrement (refus « Lecture seule », fin d'un import dont les objets sont hors vue, session remplacée depuis
+la table, PDF trop lourd ajouté à l'histoire) porte `important: true`. Une réussite s'émet en `success` (icône ✅,
+liseré `--kta-ok`), jamais en `warn` : ⚠️ sur une réussite ment sur ce qui s'est passé.
 `opts.groupe` fusionne les toasts d'un même groupe émis à quelques ms d'écart.
+- **Pile** : les toasts s'empilent dans `#kta-toasts` (sous l'en-tête, centrée), le plus récent en bas, **3 visibles
+  au plus** ; au-delà, le plus ancien part, une erreur en dernier. Un message identique déjà affiché redescend au
+  lieu de doubler. `info` et `success` partent seuls après 6 s, `warn` et `error` après 10 s. Le plus récent
+  porte l'id `#kta-toast`. Échap ferme le plus récent. Couleurs : jetons seulement (bloc « Toasts empilés » de
+  `css/style.css`), rien de propre au thème clair hors l'ombre. Checkup : `scripts/smoke/checkup-toasts.js`.
 
 **Lecture seule** (plan en droit « lire ») : tout point d'entrée qui modifie les objets du plan commence par
 `if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;` — la fonction
@@ -583,7 +590,7 @@ portent encore beaucoup. On les retire écran par écran, quand la règle de bas
 - **Recherche unifiée Ctrl+K** : `.kta-search-input-wrap` + `input` (fond blanc + focus jaune), `.kta-search-result-item` + hover/selected, `.kta-search-filter-chip` + active, `.kta-search-group-titre`
 - **Labels Leaflet** : `.kta-measure-distance` + `.kta-iti-distance` + segments + angles
 - **Leaflet natif** : `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-control-layers-*`, `.leaflet-bar`
-- **Toasts** : `.kta-toast`, `.kta-toast-msg`, `.kta-toast-icon`, `.kta-toast-close`, `.kta-toast-info/error` (border-left adaptée)
+- **Toasts** : pile `.kta-toasts` et `.kta-toast-*`, écrits en jetons (aucune règle claire propre, hors l'ombre)
 - **Modales progress `.kta-modal-*`** : Mise à jour en cours, Reset en cours, Session en cours, Yes/No
 - **Modale Choix suppression** : `.kta-choix-suppr-*`
 - **Modale chargement plan** : `.kta-load-overlay` + `.kta-load-box` + `.kta-load-spinner` (ocre)

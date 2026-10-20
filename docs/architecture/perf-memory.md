@@ -91,7 +91,7 @@ iOS Safari et Android Chrome tuent silencieusement les PWA qui dépassent leur b
 
 **API `window.OOMGuard`** :
 - `start()` — démarre l'heartbeat
-- `showToast(message, type)` — toast court (`warn`/`error`/`info`), file derrière le splash
+- `showToast(message, type, opts)` — toast court (`info`/`success`/`warn`/`error`), empilé (3 au plus), file derrière le splash (contrat : `docs/architecture/ui.md`, toasts)
 - `flushPendingToasts()` — vide la file (appelé depuis `_splashEnd`)
 
 **Toast quota** : `sessionPersist.js` détecte `QuotaExceededError` au save et appelle `OOMGuard.showToast(...)` pour avertir l'utilisateur d'exporter manuellement (anti-spam : 1 fois max tant que le quota dure).
