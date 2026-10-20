@@ -36,7 +36,7 @@
       overlay.innerHTML =
         // height:auto + max-height:92vh : la boîte de base prend min(92vh, 1100px) sur PC (utile pour Doc,
         // Aide), trop pour une confirmation courte.
-        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
+        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
             '<div class="kta-readme-modal-titre" style="color:var(--kta-interaction);">' + _t("home.maint.forceUpdate.title") + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
@@ -105,7 +105,7 @@
       overlay.style.display = "flex";
 
       overlay.innerHTML =
-        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,180,128,0.4); box-shadow:0 0 32px rgba(255,180,128,0.18);">' +
+        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,180,128,0.4);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,180,128,0.25);">' +
             '<div class="kta-readme-modal-titre" style="color:var(--kta-avert);">' + _t("home.maint.killSw.title") + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-ks-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
@@ -176,7 +176,7 @@
     overlay.style.display = "flex";
 
     overlay.innerHTML =
-      '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,107,107,0.4); box-shadow:0 0 32px rgba(255,107,107,0.18);">' +
+      '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,107,107,0.4);">' +
         '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,107,107,0.25);">' +
           '<div class="kta-readme-modal-titre" style="color:#ff6b6b;">' + _t("home.maint.killSw.offlineTitle") + '</div>' +
           '<button class="kta-panneau-close" type="button" id="kta-kso-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +

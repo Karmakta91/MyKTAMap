@@ -335,7 +335,6 @@ html, body {
   font-weight: 700;
   color: var(--kta-accent-texte);
   letter-spacing: 0.02em;
-  text-shadow: 0 0 8px rgba(244, 197, 66, 0.25);
 }
 
 /* Croix : style global .kta-panneau-close. */
@@ -366,7 +365,6 @@ html, body {
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--kta-ok);
-  text-shadow: 0 0 4px rgba(76, 200, 100, 0.55);
 }
 .kta-plan-switcher-current-label {
   font-size: 10px;
@@ -384,7 +382,6 @@ html, body {
   font-weight: 700;
   color: var(--kta-accent-texte);
   margin-bottom: 4px;
-  text-shadow: 0 0 8px rgba(244, 197, 66, 0.20);
 }
 .kta-plan-switcher-current-icon {
   font-size: 14px;
@@ -2784,8 +2781,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   background: #141823;
   border: 1px solid rgba(244, 197, 66, 0.25);
   border-radius: 14px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65),
-              0 0 32px rgba(244, 197, 66, 0.10);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
   padding: 32px 28px 24px;
   max-width: 440px;
   width: 100%;
@@ -2796,7 +2792,6 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
 .kta-unlock-icon {
   font-size: 48px;
   margin-bottom: 12px;
-  filter: drop-shadow(0 0 12px rgba(244, 197, 66, 0.4));
 }
 
 .kta-unlock-titre {
@@ -3479,7 +3474,6 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   color: var(--kta-accent-texte);
   font-size: 28px;
   line-height: 1;
-  box-shadow: 0 0 24px rgba(244, 197, 66, 0.18);
 }
 
 .kta-session-modal-titre {
@@ -4970,9 +4964,6 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   height: 36px;
   flex-shrink: 0;
   object-fit: contain;
-  /* halo jaune, rappel du splash */
-  filter: drop-shadow(0 0 10px rgba(244, 197, 66, 0.35))
-          drop-shadow(0 0 4px rgba(244, 197, 66, 0.20));
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -5011,8 +5002,6 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   .loader-titre-logo {
     width: 44px;
     height: 44px;
-    filter: drop-shadow(0 0 14px rgba(244, 197, 66, 0.40))
-            drop-shadow(0 0 6px rgba(244, 197, 66, 0.22));
   }
   .loader-titre-nom {
     font-size: 22px;
@@ -6577,7 +6566,6 @@ html.kta-theme-light .kta-cfg-input option {
 .kta-pin-gate-icon {
   font-size: 44px;
   margin-bottom: 8px;
-  filter: drop-shadow(0 0 14px rgba(244, 197, 66, 0.4));
 }
 
 .kta-pin-gate-titre {
@@ -7608,7 +7596,7 @@ html.kta-theme-light .kta-ipl-search {
   background: rgba(26, 31, 46, 0.94);
   border: 1.5px solid rgba(244, 197, 66, 0.6);
   border-radius: 22px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 8px rgba(244, 197, 66, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   animation: kta-ipl-back-in 260ms ease-out;
   max-width: 82vw;
   overflow: hidden;
@@ -8008,7 +7996,7 @@ html.kta-theme-light .kta-xps-multihop { color: #3a4358; }
   border: 1px solid rgba(140, 180, 255, 0.55);
   border-radius: 10px;
   padding: 6px 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 14px rgba(140, 180, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
@@ -10547,7 +10535,7 @@ a.kta-level-btn {
   text-align: center;
   max-width: 440px;
   width: 90%;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 32px rgba(140, 180, 255, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
 .kta-load-spinner {
   width: 48px;
@@ -10637,7 +10625,7 @@ a.kta-level-btn {
 /* ── Modale d'erreur de génération V2 (échec de _genererTuilesV2, accent violet) ── */
 .kta-v2-error-boite {
   border: 1px solid rgba(255, 107, 107, 0.40);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(255, 107, 107, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
   max-width: 560px;
 }
 .kta-v2-error-header .kta-readme-modal-titre {
@@ -10678,7 +10666,7 @@ a.kta-level-btn {
 
 .kta-v2-warn-boite {
   border: 1px solid rgba(180, 82, 255, 0.40);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(180, 82, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
   max-width: 560px;
   /* Containment : hauteur auto bornée à 88vh + flex column, sinon le corps
      déborde de la boîte au lieu de scroller. */
@@ -10749,7 +10737,7 @@ a.kta-level-btn {
    comme les modales OOM/offline. */
 .kta-tracker-warn-boite {
   border: 1px solid rgba(255, 107, 107, 0.35);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(255, 107, 107, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
   max-width: 560px;
 }
 
@@ -10839,7 +10827,7 @@ a.kta-level-btn {
 }
 .kta-compass-widget:hover {
   border-color: rgba(244, 197, 66, 0.55);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 18px rgba(244, 197, 66, 0.10);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
 }
 
 .kta-compass-rose-wrap {
@@ -10855,7 +10843,6 @@ a.kta-level-btn {
   width: 100px;
   height: 100px;
   object-fit: contain;
-  filter: drop-shadow(0 0 6px rgba(244, 197, 66, 0.18));
   /* ⚠️ Pas de transition : le lissage est en rAF, une transition ajoute du lag. */
   transform-origin: 50% 50%;
   pointer-events: none;        /* le widget gère le close, pas la rose */
@@ -10924,7 +10911,6 @@ body.kta-multilevel-active .kta-compass-widget {
   width: 240px;
   height: 240px;
   object-fit: contain;
-  filter: drop-shadow(0 0 16px rgba(244, 197, 66, 0.22));
   transform-origin: 50% 50%;
   pointer-events: none;
 }
@@ -11344,15 +11330,13 @@ body.kta-refonte-v1 .kta-refonte-header-home-img {
   height: 26px;
   width: auto;
   display: block;
-  filter: drop-shadow(0 0 4px rgba(244, 197, 66, 0.40));
-  transition: transform 0.15s, filter 0.15s;
+  transition: transform 0.15s;
   pointer-events: none;  /* clics passent au bouton parent */
   -webkit-user-drag: none;
   user-select: none;
 }
 body.kta-refonte-v1 .kta-refonte-header-home:hover .kta-refonte-header-home-img {
   transform: scale(1.08);
-  filter: drop-shadow(0 0 6px rgba(244, 197, 66, 0.65));
 }
 
 body.kta-refonte-v1 .kta-refonte-header-title-wrap {
@@ -11392,7 +11376,6 @@ body.kta-refonte-v1 .kta-refonte-header-title:focus-visible {
 body.kta-refonte-v1 #kta-refonte-plan-name {
   color: var(--kta-accent-texte);
   font-weight: 700;
-  text-shadow: 0 0 8px rgba(244, 197, 66, 0.25);
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -12094,7 +12077,6 @@ body.kta-refonte-v1 .kta-refonte-stat-val {
   color: var(--kta-accent-texte);
   font-weight: 700;
   font-size: 12px;
-  text-shadow: 0 0 4px rgba(244, 197, 66, 0.18);
 }
 body.kta-refonte-v1 .kta-refonte-stat-empty {
   filter: grayscale(1);
@@ -13128,7 +13110,6 @@ body.kta-theme-light .kta-measure-angle-label {
   font-size: 56px;
   line-height: 1;
   margin: 4px 0 14px;
-  text-shadow: 0 0 24px rgba(244, 197, 66, 0.32);
   animation: kta-theme-icone-pulse 2.4s ease-in-out infinite;
 }
 @keyframes kta-theme-icone-pulse {
@@ -13208,10 +13189,6 @@ html.kta-theme-light .kta-theme-confirm-hint {
   background: rgba(244, 197, 66, 0.18) !important;
   border-left-color: rgba(161, 110, 16, 0.55) !important;
 }
-body.kta-theme-light .kta-theme-confirm-icone,
-html.kta-theme-light .kta-theme-confirm-icone {
-  text-shadow: 0 0 24px rgba(161, 110, 16, 0.35);
-}
 body.kta-theme-light .kta-theme-confirm-actions,
 html.kta-theme-light .kta-theme-confirm-actions {
   border-top-color: var(--kta-light-border) !important;
@@ -13241,7 +13218,6 @@ html.kta-theme-light .kta-session-modal-icon {
   background: rgba(244, 197, 66, 0.30) !important;
   border-color: rgba(161, 110, 16, 0.55) !important;
   color: #a16e10 !important;
-  box-shadow: 0 0 24px rgba(244, 197, 66, 0.30) !important;
 }
 body.kta-theme-light .kta-session-modal-titre,
 html.kta-theme-light .kta-session-modal-titre {
@@ -14647,8 +14623,7 @@ html.kta-theme-light .kta-load-box {
   background: var(--kta-surface) !important;
   border: 1px solid rgba(244, 197, 66, 0.45) !important;
   color: var(--kta-texte) !important;
-  box-shadow: 0 12px 40px rgba(80, 60, 30, 0.25),
-              0 0 32px rgba(244, 197, 66, 0.18) !important;
+  box-shadow: 0 12px 40px rgba(80, 60, 30, 0.25) !important;
 }
 html.kta-theme-light .kta-load-spinner {
   border: 4px solid rgba(244, 197, 66, 0.18) !important;
@@ -15096,8 +15071,7 @@ body.kta-theme-light .kta-compass-widget {
 }
 body.kta-theme-light .kta-compass-widget:hover {
   border-color: var(--kta-light-accent-hover) !important;
-  box-shadow: 0 6px 24px var(--kta-light-shadow),
-              0 0 18px rgba(244, 197, 66, 0.18) !important;
+  box-shadow: 0 6px 24px var(--kta-light-shadow) !important;
 }
 
 body.kta-theme-light .kta-compass-close {

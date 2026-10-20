@@ -2179,7 +2179,7 @@
 
       // Accent doré : action d'interface, ni destructive (rouge) ni informative (bleu).
       overlay.innerHTML =
-        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(244,197,66,0.4); box-shadow:0 0 32px rgba(244,197,66,0.18);">' +
+        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(244,197,66,0.4);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(244,197,66,0.25);">' +
             '<div class="kta-readme-modal-titre" style="color:var(--kta-accent-texte);">' + titre + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-rint-close" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +

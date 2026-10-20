@@ -1614,7 +1614,7 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100001";
     overlay.innerHTML =
-      '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto !important; max-height:88vh !important; border-color:rgba(110,226,135,0.55); box-shadow:0 0 24px rgba(110,226,135,0.18);">' +
+      '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto !important; max-height:88vh !important; border-color:rgba(110,226,135,0.55);">' +
         '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(110,226,135,0.25);">' +
           '<span class="kta-readme-modal-titre" style="color:var(--kta-ok);">✅ ' + T("profileio.done_title") + '</span>' +
           '<button type="button" class="kta-panneau-close" id="kta-profile-import-done-close" aria-label="' + T("profileio.close") + '">✕</button>' +
