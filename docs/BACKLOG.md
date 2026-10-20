@@ -28,27 +28,24 @@
 
 ## Maintenant
 
-- **Train : sortir la v2.18 en prod** — 🧊 **`Karma_dev` gelé** ; la vague s'est élargie le 20/10 (décision KARMA) au nouvel écran
-  de démarrage et à l'audit Impeccable (charte en jetons) : **trempage de 48 h en sombre ET en clair**, dev + pro, à partir de cette intégration. Porte : `docs/RELEASE_GATE.md`.
-  `qui: KARMA · action: Sonar (faux positifs acceptés), PR Dependabot, trempage dev + pro (menu 9), porte, merge-main
-  · fini: main mergé, etat-sites.ps1 vert · depuis: 18/10/2026 · taille: M`
+- **Détails de la session : sections repliables** — avec 1000+ points ajoutés, la liste noie la modale. Points,
+  Tracés, Zones, Structures et Photos deviennent repliables ; ouvertes jusqu'à 8 lignes, repliées au-delà.
+  `qui: Claude · action: coder dans refonteInterface.js > _afficherModaleSessionDetail, checkup de la modale
+  · fini: 1000 points repliés à l'ouverture, badge visible, thème clair OK · depuis: 21/10/2026 · taille: S`
 - **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA (plan multi-niveau, iPhone PWA et PC) : une partie des POI
-  paraît derrière les tuiles ; case 🖼️ Plan décochée ou opacité 0 % → nettes. ✅ Non reproduit au harnais (Chromium).
+  paraît derrière les tuiles ; case 🖼️ Plan décochée → nettes. ⚠️ Revu par KARMA (21/10), pas au harnais (Chromium).
   Journal d'enquête : `git log -S"sous les tuiles" -- docs/BACKLOG.md`.
   `qui: KARMA · action: donner le parcours exact (navigateur PC, changement de niveau ou de plan, réouverture)
   · fini: reproduit et corrigé, ou fermé « non reproduit » avec ce parcours · depuis: 16/10/2026 · taille: S`
-- **Retour testeur « inutilisable dans les seconds niveaux »** — retour prod ; on ne sait pas ce qui est cassé (plan,
-  itinéraire, lisibilité ?). La jauge de stockage et les alertes de saturation sont livrées depuis.
-  `qui: KARMA · action: demander au testeur le plan et le geste · fini: symptôme reproductible écrit, ou entrée fermée
-  · depuis: 10/10/2026 · taille: XS`
 - **Sonar : faux positifs à accepter** — `mdParser.js` ×2 (caractères de contrôle = balises internes), `css/style.css`
   ×2 (`height: 44px` = repli avant `calc(env(safe-area…))`), `index.html` barre de profil (clavier géré en JS, CSP
   sans attribut inline).
   `qui: KARMA · action: les marquer « Accepté » dans l'interface Sonar locale
   · fini: 0 bug ouvert sur le projet MyKTAMap · depuis: 09/10/2026 · taille: XS`
-- **PR Dependabot en attente** — branches et copies mortes supprimées le 20/10 (✅ vérifié : reprises dans
-  `Karma_dev`). Restent 8 PR : actions GitHub (`setup-node`, `docker/*`) et Playwright du smoke.
-  `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte) avant le gel
+- **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
+  ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
+  Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.
+  `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte)
   · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 
 - **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
