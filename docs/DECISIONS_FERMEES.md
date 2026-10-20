@@ -42,6 +42,7 @@
 | **Guidage : voix / vibration, validation terrain des seuils** | Enterré le 29/09 |
 | **Briefing pompiers sans accord OSM** | Laissé en l'état (30/09) |
 | **Créer un tag depuis l'éditeur « comme ➕ Nouveau type… »** | « ➕ Créer un nouveau tag… » suffit (09/10) |
+| **D-light-icons** (thème clair PC : émojis hors cadre à zoom 100 %) | Enterré le 20/10/2026 : non reproduit au harnais depuis le 09/08. Rouvrir s'il réapparaît, avec une capture DevTools (`text-indent` / `display` du bouton touché) ; pistes : extension navigateur, échelle Windows 125 % |
 
 ## Leçons du nettoyage de code
 

@@ -123,10 +123,6 @@
   secours.
   `qui: KARMA · action: confirmer « pas de voie de secours » ou en demander une
   · fini: décision écrite dans security-legal.md · depuis: 04/10/2026 · taille: XS`
-- **D-light-icons** — 🔬 thème clair PC : émojis hors cadre à zoom 100 % (OK à 90 %), non reproduit au harnais ;
-  pistes : extension navigateur, échelle Windows 125 %.
-  `qui: KARMA · action: fournir une capture DevTools (text-indent, display d'un bouton touché), sinon fermer au tri
-  · fini: reproduit et corrigé, ou enterré · depuis: 09/08/2026 · taille: S`
 - **Secours : deux interventions simultanées sur un même plan** — 🔬 jamais vérifié.
   `qui: Claude · action: jouer deux interventions au harnais sur le même plan
   · fini: comportement constaté, bug ouvert s'il y a lieu · depuis: 06/10/2026 · taille: S`
