@@ -1446,9 +1446,9 @@
     }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
-    // Carte masquée : toast warn, visible même en notifications « Essentielles ».
+    // Carte masquée : toast succès, important (visible même en Silence).
     const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
-    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "warn", { important: true });
+    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
     else window.ktaAlerte(msgOk);
   }
 

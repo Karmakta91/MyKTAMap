@@ -10,14 +10,17 @@
 // iOS Safari (et Android Chrome) tuent sans événement une PWA au-delà de ~500 Mo : un témoin localStorage,
 // rafraîchi par battement tant que l'app vit, est effacé à beforeunload/pagehide. Au boot suivant, témoin
 // récent présent → kill brutal probable → modale d'explication.
-// Expose window.OOMGuard : start() (après lancerApplication) · showToast(msg, type, opts) (file d'attente
-//   derrière le splash ; opts.important survit à « Silence » ; opts.groupe fusionne les toasts émis à
-//   quelques ms d'écart) · toastAutorise(type, opts) (même décision pour un toast maison) ·
-//   niveauNotifs() / setNiveauNotifs("all"|"essential"|"silent") · flushPendingToasts() (depuis _splashEnd).
+// Expose window.OOMGuard : start() (après lancerApplication) · showToast(msg, type, opts) — type info / success
+//   / warn / error, file d'attente derrière le splash ; opts.important survit à « Silence » ; opts.groupe
+//   fusionne les toasts émis à quelques ms d'écart · toastAutorise(type, opts) (même décision pour un toast
+//   maison) · niveauNotifs() / setNiveauNotifs("all"|"essential"|"silent") · flushPendingToasts().
 // ⚠️ UN SEUL GOULOT pour les toasts, décision PURE `_decisionToast` (exécutée par scripts/check-notifs.js) :
 //   all = tout, vibration sur warn/error · essential = pas d'« info » (confirmation d'un geste visible),
-//   warn sans vibration · silent = warn importants et erreurs seulement. Les alertes serveur (alertChecker)
-//   et les modales de décision ne passent PAS ici.
+//   success et warn sans vibration · silent = success / warn importants et erreurs seulement. Un succès ne
+//   vibre jamais. Les alertes serveur (alertChecker) et les modales de décision ne passent PAS ici.
+// ⚠️ Les toasts s'EMPILENT dans #kta-toasts (le plus récent en bas, TOASTS_MAX visibles) : un nouveau toast
+//   ne remplace plus le précédent. Au-delà du plafond, le plus ancien part — une erreur en dernier. Le plus
+//   récent porte l'id #kta-toast (lu par les checkups).
 // =========================
 
 (function() {
@@ -38,16 +41,54 @@
   let _pendingV2CrashInfo = null;                    // kill pendant une génération V2 → modale spécifique
 
   // ── Toast ──
+  const TOASTS_MAX = 3;
+  const ICONES_TOAST = { info: "ℹ️", success: "✅", warn: "⚠️", error: "❌" };
+  const _fermetures = new WeakMap();   // toast → sa fonction de fermeture (minuterie, croix, plafond)
+  // Type connu ou « warn » : même normalisation que la décision.
+  function _typeToast(type) {
+    return (type === "info" || type === "success" || type === "error") ? type : "warn";
+  }
+  function _pileToasts() {
+    let pile = document.getElementById("kta-toasts");
+    if (!pile) {
+      pile = document.createElement("div");
+      pile.id = "kta-toasts";
+      pile.className = "kta-toasts";
+      pile.setAttribute("aria-live", "polite");
+      document.body.appendChild(pile);
+    }
+    return pile;
+  }
   function _renderToast(message, type) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    const existing = document.getElementById("kta-toast");
-    if (existing) existing.remove();
+    type = _typeToast(type);
+    const pile = _pileToasts();
+    let visibles = Array.prototype.filter.call(pile.children, function(el) {
+      return !el.classList.contains("kta-toast-leaving");
+    });
+    // Même message déjà affiché : il redescend en bas au lieu d'occuper une deuxième place.
+    visibles.forEach(function(el) {
+      const m = el.querySelector(".kta-toast-msg");
+      if (el.getAttribute("data-kta-type") === type && m && m.textContent === message) el.remove();
+    });
+    visibles = visibles.filter(function(el) { return el.parentNode === pile; });
+    // 🩸 Plafond : le plus ancien part, mais une erreur après tout le reste (un succès ne doit pas la chasser).
+    while (visibles.length >= TOASTS_MAX) {
+      const victime = visibles.find(function(el) { return el.getAttribute("data-kta-type") !== "error"; })
+        || visibles[0];
+      visibles = visibles.filter(function(el) { return el !== victime; });
+      const fermer = _fermetures.get(victime);
+      if (fermer) fermer(); else victime.remove();
+    }
+    const ancien = document.getElementById("kta-toast");
+    if (ancien) ancien.removeAttribute("id");
 
     const toast = document.createElement("div");
     toast.id = "kta-toast";
     toast.className = "kta-toast kta-toast-" + type;
+    toast.setAttribute("data-kta-type", type);
 
-    const icon = type === "error" ? "❌" : type === "info" ? "ℹ️" : "⚠️";
+    const icon = ICONES_TOAST[type];
     toast.innerHTML =
       '<span class="kta-toast-icon"></span>' +
       '<span class="kta-toast-msg"></span>' +
@@ -55,18 +96,23 @@
     toast.querySelector(".kta-toast-icon").textContent = icon;
     toast.querySelector(".kta-toast-msg").textContent  = message;
 
-    document.body.appendChild(toast);
+    pile.appendChild(toast);
 
+    let parti = false;
     function dismiss() {
+      if (parti) return;
+      parti = true;
+      if (toast.id === "kta-toast") toast.removeAttribute("id");
       toast.classList.add("kta-toast-leaving");
       setTimeout(function() { toast.remove(); }, 250);
     }
+    _fermetures.set(toast, dismiss);
 
     toast.querySelector(".kta-toast-close").addEventListener("click", dismiss);
 
-    const autoMs = type === "info" ? 6000 : 10000;
+    const autoMs = (type === "info" || type === "success") ? 6000 : 10000;
     setTimeout(function() {
-      if (document.body.contains(toast)) dismiss();
+      if (toast.parentNode) dismiss();
     }, autoMs);
   }
 
@@ -88,9 +134,11 @@
   }
   // Décision PURE : { afficher, vibrer }. Extraite et exécutée par le garde-fou.
   function _decisionToast(niveau, type, opts) {
-    type = (type === "info" || type === "error") ? type : "warn";
+    type = (type === "info" || type === "success" || type === "error") ? type : "warn";
     const important = !!(opts && opts.important);
     if (type === "error") return { afficher: true, vibrer: true };
+    // Succès : visible par défaut comme un warn, jamais de vibration (elle signale un problème).
+    if (type === "success") return { afficher: niveau !== "silent" || important, vibrer: false };
     if (type === "warn") {
       if (niveau === "all")       return { afficher: true, vibrer: true };
       if (niveau === "essential") return { afficher: true, vibrer: false };
@@ -103,7 +151,7 @@
   // ── Regroupement : toasts d'un même groupe à quelques ms d'écart (restauration au chargement) → UN seul ──
   const GROUPE_FENETRE_MS = 1200;
   const _groupes = {};
-  const POIDS = { info: 0, warn: 1, error: 2 };
+  const POIDS = { info: 0, success: 0.5, warn: 1, error: 2 };
   function _grouper(groupe, message, type, opts) {
     const g = _groupes[groupe] || (_groupes[groupe] = { items: [], timer: null });
     g.items.push({ message: message, type: type, opts: opts });
@@ -112,7 +160,11 @@
       const items = g.items; delete _groupes[groupe];
       if (!items.length) return;
       let type2 = "info", important = false;
-      items.forEach(function(it) { if (POIDS[it.type] > POIDS[type2]) type2 = it.type; if (it.opts && it.opts.important) important = true; });
+      items.forEach(function(it) {
+        const ty = _typeToast(it.type);
+        if (POIDS[ty] > POIDS[type2]) type2 = ty;
+        if (it.opts && it.opts.important) important = true;
+      });
       // Message identique affiché une fois : répéter un geste refusé n'allonge pas le toast.
       const vus = {};
       const uniques = items.map(function(it) { return it.message; })
@@ -163,8 +215,7 @@
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
         if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // vibration décidée à l'émission
-        if (_toastQueue.length > 0) break; // un seul à la fois (le 2e replacerait le 1er)
-      }
+      }   // tous à la suite : ils s'empilent, le plafond garde les plus récents
     }, 400);
   }
 
@@ -484,7 +535,6 @@
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
         if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // vibration décidée à l'émission
-        if (_toastQueue.length > 0) break;
       }
     }
     function _onKey(e) { if (e.key === "Escape") fermer(); }

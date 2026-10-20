@@ -8594,59 +8594,66 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   to { opacity: 0; }
 }
 
-/* ── Toast (OOMGuard, etc.) : carte dark, accent sur la barre gauche selon le type ── */
-.kta-toast {
+/* ══ Toasts empilés (OOMGuard.showToast) ══════════════════════════════════════════════════════════════
+   ⚠️ Contrat : les toasts vivent dans la pile #kta-toasts (js/oomGuard.js > _renderToast), le plus récent en
+   bas, 3 visibles au plus. Le type se lit à l'icône ET au liseré gauche : info = interaction, success = ok,
+   warn = doré, error = erreur. Tout passe par les jetons : le thème clair n'a rien à surcharger (seule
+   l'ombre change).
+   🩸 Chaque toast garde z-index 100000 (positionné) : utils.js > _findTopEscapableOverlay lit le z-index de
+   .kta-toast pour qu'Échap ferme le toast avant la fenêtre dessous.
+   🩸 La pile laisse passer les touchers (sauf la croix) : sinon elle bloque la fenêtre dessous pendant 10 s. */
+.kta-toasts {
   position: fixed;
   top: calc(60px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
-  max-width: min(440px, calc(100vw - 24px));
+  width: min(440px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 100000;
+  pointer-events: none;
+}
+.kta-toast {
+  position: relative;
+  z-index: 100000;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--kta-surface);
   border: 1px solid var(--kta-bordure);
-  border-left: 3px solid #f4c542;
+  border-left: 3px solid var(--kta-accent-texte);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   padding: 11px 12px 11px 13px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  z-index: 100000;
   font-size: 13px;
   color: var(--kta-texte-2);
   line-height: 1.45;
   animation: kta-toast-in 0.3s ease-out both;
-  /* le message laisse passer les touchers (sauf sa croix) : sinon il bloque la fenêtre
-     dessous pendant 10 s */
   pointer-events: none;
 }
-.kta-toast-close { pointer-events: auto; }
-
-.kta-toast-error {
-  border-left-color: #ff6b6b;
-}
-
-.kta-toast-info {
-  border-left-color: #8cb4ff;
-}
-
-.kta-toast-leaving {
-  animation: kta-toast-out 0.25s ease-in both;
-}
-
+.kta-toast-info    { border-left-color: var(--kta-interaction); }
+.kta-toast-success { border-left-color: var(--kta-ok); }
+.kta-toast-error   { border-left-color: var(--kta-erreur); }
+.kta-toast-leaving { animation: kta-toast-out 0.25s ease-in both; }
 .kta-toast-icon {
   font-size: 16px;
   line-height: 1.4;
   flex-shrink: 0;
+  color: var(--kta-texte);
 }
-
 .kta-toast-msg {
   flex: 1;
-  word-wrap: break-word;
+  min-width: 0;
+  overflow-wrap: anywhere;
   white-space: pre-line;   /* un message peut regrouper plusieurs lignes (lancement Secours) */
   color: var(--kta-texte);
 }
-
 .kta-toast-close {
+  pointer-events: auto;
   background: transparent;
   border: none;
   color: var(--kta-texte-3);
@@ -8656,20 +8663,20 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   flex-shrink: 0;
   transition: color 0.15s;
 }
-
-.kta-toast-close:hover {
-  color: var(--kta-texte);
-}
-
+.kta-toast-close:hover { color: var(--kta-texte); }
+html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow); }
 @keyframes kta-toast-in {
-  from { opacity: 0; transform: translate(-50%, -10px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes kta-toast-out {
-  from { opacity: 1; transform: translate(-50%, 0); }
-  to   { opacity: 0; transform: translate(-50%, -10px); }
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-10px); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .kta-toast, .kta-toast-leaving { animation-duration: 0.01s; }
+}
+/* ══ fin des toasts empilés ══ */
 
 /* ── Itinéraire : modale + waypoints ── */
 .kta-iti-modal-boite {
@@ -13090,34 +13097,6 @@ body.kta-theme-light .kta-measure-angle-label {
   border: 1px solid var(--kta-light-border);
 }
 
-/* Toasts (OOMGuard.showToast). 🩸 .kta-toast-msg / -close / -icon ont leur
-   propre couleur claire en dur : l'override de .kta-toast seul ne suffit pas. */
-body.kta-theme-light .kta-toast {
-  background: var(--kta-light-bg-elevated) !important;
-  color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-border-strong) !important;
-  border-left: 3px solid var(--kta-light-accent) !important;
-  box-shadow: 0 4px 16px var(--kta-light-shadow) !important;
-}
-body.kta-theme-light .kta-toast-msg {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-toast-icon {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-toast-close {
-  color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light .kta-toast-close:hover {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-toast-error {
-  border-left-color: #c0392b !important;
-}
-body.kta-theme-light .kta-toast-info {
-  border-left-color: #0a4f6b !important;
-}
-
 /* ── Modale de confirmation du changement de thème ── */
 /* ⚠️ Affichée AVANT le reload, dans le thème qu'on quitte : les 2 variantes comptent. */
 .kta-theme-confirm-overlay {
@@ -15046,27 +15025,6 @@ html.kta-theme-light #loaderNetDocWhitelist {
 }
 html.kta-theme-light #loaderNetLogMeta {
   color: var(--kta-texte-3) !important;
-}
-
-html.kta-theme-light .kta-toast {
-  background: var(--kta-surface) !important;
-  color: var(--kta-texte) !important;
-  border: 1px solid rgba(0,0,0,0.22) !important;
-  border-left: 3px solid #f4c542 !important;
-  box-shadow: 0 4px 16px rgba(80,60,30,0.18) !important;
-}
-html.kta-theme-light .kta-toast-msg,
-html.kta-theme-light .kta-toast-icon {
-  color: var(--kta-texte) !important;
-}
-html.kta-theme-light .kta-toast-close {
-  color: var(--kta-texte-3) !important;
-}
-html.kta-theme-light .kta-toast-error {
-  border-left-color: #c0392b !important;
-}
-html.kta-theme-light .kta-toast-info {
-  border-left-color: #0a4f6b !important;
 }
 
 html.kta-theme-light .kta-tracker-replay-modal,

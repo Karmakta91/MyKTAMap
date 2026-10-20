@@ -87,10 +87,11 @@ function importerSessionJSON(file) {
         window.InterPlanLinks.importLinks(data.interPlanLinks || []);
       }
 
-      // Rien d'autre ne signale la fin (points hors vue) : toast warn, visible par défaut.
+      // Rien d'autre ne signale la fin (points hors vue) : toast succès, important (visible même en Silence).
       const msgFin = window.I18n.t("impexp.importDone");
-      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgFin, "warn", { important: true });
-      else window.ktaAlerte(msgFin);
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(msgFin, "success", { important: true });
+      } else window.ktaAlerte(msgFin);
     } catch (err) {
       console.error(err);
       window.ktaAlerte(window.I18n.t("impexp.importError"), { type: "erreur" });
