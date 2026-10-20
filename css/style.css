@@ -4008,11 +4008,14 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   min-height: 0;
   width: min(84vw, 420px);
 }
+/* Calque à part : à chaque image du tracé, seul le dessin se repeint, pas les textes ombrés du splash. */
 #splashReseau {
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
+  will-change: transform;
+  contain: layout paint;
 }
 
 .kta-splash-galeries path {
@@ -4064,8 +4067,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   62.5% { opacity: 1; transform: scale(1.15); }
   100%  { opacity: 1; transform: scale(1); }
 }
+/* 🩸 Pas de filter (drop-shadow) dans le SVG : Safari quitte son rendu rapide pour TOUTE la scène et le début du
+   tracé saccadait (iPhone). */
 .kta-splash-rose {
-  filter: drop-shadow(0 0 10px rgba(244, 197, 66, 0.12));
   animation: kta-splash-rose 0.72s ease-out 1.84s both;
 }
 @keyframes kta-splash-rose {
