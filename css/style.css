@@ -3263,8 +3263,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   font-size: 18px;
   color: var(--kta-interaction);
   margin: 32px 0 12px;
-  padding: 2px 0 2px 12px;
-  border-left: 3px solid #8cb4ff;
+  padding: 6px 12px;
+  background: var(--kta-info-fond);
+  border-radius: 6px;
   scroll-margin-top: 12px;
 }
 
@@ -7376,9 +7377,9 @@ html.kta-theme-light .kta-cfg-input option {
   color: var(--kta-texte-2);
   padding: 8px 12px;
   margin-bottom: 8px;
-  background: rgba(140, 180, 255, 0.06);
-  border-left: 3px solid rgba(140, 180, 255, 0.35);
-  border-radius: 4px;
+  background: var(--kta-info-fond);
+  border: 1px solid var(--kta-info-bord);
+  border-radius: 6px;
 }
 .kta-legal-readfull {
   display: inline-block;
