@@ -66,3 +66,11 @@ scripts/i18n-orphelines.txt
 /tmp/
 devmyktamap
 data/index.json
+
+# design-sync (outils et sorties régénérés, jamais commités)
+.ds-sync/
+ds-bundle/
+.ds-pkg/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

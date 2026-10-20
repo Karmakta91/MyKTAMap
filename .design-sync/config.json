@@ -1,0 +1,11 @@
+{
+  "projectId": "4014602a-6339-46ce-8e96-5d1b8e3dbe58",
+  "shape": "package",
+  "pkg": "myktamap-charte",
+  "globalName": "MyKTAMap",
+  "cssEntry": "charte.css",
+  "guidelinesGlob": [
+    "../docs/architecture/ui.md"
+  ],
+  "readmeHeader": ".design-sync/conventions.md"
+}
