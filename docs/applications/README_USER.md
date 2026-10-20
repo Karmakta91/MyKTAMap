@@ -758,6 +758,7 @@ Un tap sur **un tracé, une zone ou une structure que tu as dessinés** ouvre sa
 | **Zone de texte** | Une note libre — état du passage, observation, rappel |
 | **💾 Sauver la note** | Enregistre la note et referme la bulle |
 | **🔄 Convertir** | Change le **type** de l'objet, et au besoin sa **famille** |
+| **Niveau** | Sur un plan multi-niveau : déplace l'objet sur un autre niveau (voir 🏗️ Mode multi-niveau) |
 | **🗑️ Supprimer** | Retire l'objet (en rouge, sur sa propre ligne) |
 
 Un objet venu d'un calque de données ouvre une bulle en lecture seule.
@@ -843,6 +844,12 @@ Une **pastille jaune** sous les boutons de zoom affiche le **niveau actif**. Un 
 - **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. Une jonction reste visible si l'un de ses deux niveaux l'est.
 
 Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle-même. Les mêmes réglages existent dans ≡ **Filtres**. À l'export image, **🎨 Avancé → 🏗️ Niveaux à exporter** choisit les niveaux indépendamment de l'affichage.
+
+### 🔀 Changer le niveau d'un objet
+
+Un objet a pris le mauvais niveau ? Dans la bulle d'un tracé, d'une zone ou d'une structure que tu as dessinés, la liste **Niveau** (sous 🔄 Convertir) le déplace aussitôt ; pour un point, c'est la liste **Niveau** de **✏️ Modifier**, enregistrée avec le reste de la fiche. Le niveau actuel de l'objet est toujours proposé, même s'il sort de la liste du plan. Si le niveau choisi est masqué par le filtre, l'objet disparaît de la carte et un message le dit : la vue reste sur ton niveau. **⏪** annule.
+
+Pas de liste sur une jonction (supprime-la et retrace-la), sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
 
 ### 🪜 Tracer une jonction interniveau
 

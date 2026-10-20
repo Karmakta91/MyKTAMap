@@ -58,11 +58,6 @@
   intégrés. Décisions : `docs/ETUDE_MAJ_PLAN.md`.
   `qui: Claude · action: lot après le guide utilisateur de l'installation (une feature phare à la fois)
   · fini: assistant intégré, doc d'architecture à jour · depuis: 19/10/2026 · taille: L`
-- **Changer le niveau d'un objet** — sur la fiche d'un POI, d'un tracé, d'une zone ou d'une structure de session,
-  choisir son niveau (fixé à la création aujourd'hui). Pièges et périmètre : `docs/ETUDE_MAJ_PLAN.md` § Niveau d'un
-  objet.
-  `qui: Claude · action: lot (QCM fait le 20/10, décisions dans l'étude)
-  · fini: niveau modifiable et annulable, garde-fou étendu · depuis: 19/10/2026 · taille: M · lot: niveau-objet`
 - **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair

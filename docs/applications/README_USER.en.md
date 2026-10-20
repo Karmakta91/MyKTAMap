@@ -758,6 +758,7 @@ A tap on **a path, a zone or a structure you drew** opens its popup:
 | **Text area** | A free note — state of the passage, observation, reminder |
 | **💾 Save note** | Saves the note and closes the popup |
 | **🔄 Convert** | Changes the object's **type**, and if needed its **family** |
+| **Level** | On a multi-level map: moves the object to another level (see 🏗️ Multi-level mode) |
 | **🗑️ Delete** | Removes the object (in red, on its own row) |
 
 An object from a data layer opens a read-only popup.
@@ -843,6 +844,12 @@ A **yellow pill** under the zoom buttons shows the **active level**. A tap opens
 - **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. A junction stays visible if either of its two levels is.
 
 If the map contains elements on other levels, the list extends by itself. The same settings exist in ≡ **Filters**. For image export, **🎨 Advanced → 🏗️ Levels to export** chooses the levels independently of what is displayed.
+
+### 🔀 Changing an object's level
+
+An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
+
+No list on a junction (delete it and draw it again), on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
 ### 🪜 Drawing an inter-level junction
 

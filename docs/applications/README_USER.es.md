@@ -758,6 +758,7 @@ Un toque en **un trazado, una zona o una estructura que hayas dibujado** abre su
 | **Área de texto** | Una nota libre — estado del paso, observación, recordatorio |
 | **💾 Guardar la nota** | Guarda la nota y cierra la ventana |
 | **🔄 Convertir** | Cambia el **tipo** del objeto y, si hace falta, su **familia** |
+| **Nivel** | En un mapa multinivel: mueve el objeto a otro nivel (ver 🏗️ Modo multinivel) |
 | **🗑️ Eliminar** | Quita el objeto (en rojo, en su propia línea) |
 
 Un objeto que viene de una capa de datos abre una ventana de solo lectura.
@@ -843,6 +844,12 @@ Una **pastilla amarilla** bajo los botones de zoom muestra el **nivel activo**. 
 - **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. Una unión sigue visible si uno de sus dos niveles lo está.
 
 Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mismos ajustes están en ≡ **Filtros**. En la exportación de imagen, **🎨 Avanzado → 🏗️ Niveles a exportar** elige los niveles con independencia de lo que se muestra.
+
+### 🔀 Cambiar el nivel de un objeto
+
+¿Un objeto quedó en el nivel equivocado? En la ventana de un trazado, una zona o una estructura que hayas dibujado, la lista **Nivel** (bajo 🔄 Convertir) lo mueve al instante; para un punto, es la lista **Nivel** de **✏️ Editar**, guardada con el resto de la ficha. El nivel actual del objeto siempre se propone, aunque esté fuera de la lista del mapa. Si el nivel elegido está oculto por el filtro, el objeto desaparece del mapa y un mensaje lo indica: la vista se queda en tu nivel. **⏪** lo deshace.
+
+No hay lista en una unión (bórrala y vuelve a trazarla), en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 
 ### 🪜 Trazar una unión entre niveles
 
