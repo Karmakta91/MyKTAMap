@@ -599,6 +599,17 @@ sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a
   `docs/audits/2026-10-20_audit-ui-impeccable-v1.md`). Seul le splash reste hors contrat (lot à part).
 - **Bouton principal bleu dans les deux thèmes** (décision produit) : `.kta-btn-primary`, `#loadPlanBtn`, « J'accepte »
   des CGU. Le doré reste l'accent (titres, onglet actif, cases cochées).
+- **Lueurs (ombre colorée sans décalage, `0 0 Npx`) réservées à un état** : POI ou tracé en surbrillance,
+  itinéraire, mode actif, Tracker allumé, alerte publique, urgence et mode XL, Mode Secours, mémoire critique,
+  rangs du profil, focus. Un titre, une icône ou une fenêtre statique n'en porte pas. Une ombre noire ou blanche de
+  lisibilité (texte posé sur la carte) n'est pas une lueur. Hors champ : le splash (couleurs d'origine).
+- **Liseré latéral épais** (`border-left` ≥ 2 px) : seulement là où il code un type ou un état (toasts, niveaux
+  d'alerte, Mode Secours). Un encadré ou un titre prend un fond teinté (`--kta-info-fond`, filet
+  `--kta-info-bord`) : points des CGU, titres `h2` de la Documentation.
+- **Mouvement réduit** (`prefers-reduced-motion`, bloc « Accessibilité » de `css/style.css`) : toute animation est
+  coupée (0,01 ms), sauf les indicateurs de chargement (`.kta-load-spinner`, `.kta-sortie-spinner`,
+  `.kta-poi-photo-spinner`, `.kta-charge-tourne`), qui pulsent en opacité (`kta-charge-pulse`, 2,4 s) au lieu de
+  tourner. Le splash a sa règle (`js/ktaSplash.js`).
 - **Jamais d'opacité pour griser du texte** : compteur vide, tuile indisponible ou bouton désactivé passent par
   `--kta-texte-3` (et `filter: grayscale(1)` pour l'icône). L'opacité faisait tomber le texte à 2–3:1.
 - **Classes `.kta-tx-*`** (dicos, alertes) : une règle par classe, sur le jeton. Le second sélecteur
@@ -1758,7 +1769,8 @@ KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouv
 #### 93.3 Le hub d'Aide (`interfaceDocs.js`) — état actuel
 - **Contenu dans les dicos** : `aide.sec.<slug>.titre` / `.html` (HTML voulu, classes `kta-aide-*` du CSS), `aide.sec.<slug>.raccourci` (facultatif), `aide.cat.<cle>`, `aide.ui.*`, `aide.intro`. Une fiche = une **référence rapide** d'une fonction, qui renvoie au 📖 guide pour le détail — pas un second guide.
 - **`AIDE_SECTIONS`** : ordre canonique des slugs (un slug ne se renomme jamais). **`AIDE_CATEGORIES`** : `{cle, slugs}`, 8 catégories alignées sur les chapitres du guide — Prise en main · Urgence · Carte et recherche · Se repérer et itinéraire · Annoter · Mes données et partage · Réglages et dépannage · Pour aller plus loin (désactivé par défaut, Mode Secours, créateurs de plans). Filet « Autres » pour une fiche non rangée.
-- **Hub** : intro, recherche (titre + corps, accents tolérés), ligne épinglée ⌨️ Raccourcis → `ShortcutsCheatsheet.ouvrir()`, lignes par catégorie. Un clic ouvre la **sous-modale** `.kta-aide-submodal` (z-index 100001) : ← Retour, ✕, clic-fond, Échap.
+- **Hub** : intro, recherche (titre + corps, accents tolérés), ligne épinglée ⌨️ Raccourcis → `ShortcutsCheatsheet.ouvrir()`, lignes par catégorie. Sur PC, un clic ouvre la **sous-modale** `.kta-aide-submodal` (z-index 100001) : ← Retour, ✕, clic-fond, Échap.
+- **Sur téléphone, la fiche remplace le hub** (`_aideOuvrirFicheDansHub`) : un voile, une croix (qui ferme l'Aide). « ← Retour » prend la place du titre dans l'en-tête et rend le hub à la même position de défilement, recherche tapée comprise (le hub est masqué par la classe `.kta-aide-en-fiche`, pas reconstruit) ; Échap revient au hub. « Téléphone » = `AIDE_FICHE_EN_PLACE_MQ` : largeur ≤ 600 px, ou tactile de moins de 500 px de haut (paysage). Critère de place, pas de pointeur : une tablette garde la sous-fenêtre. Ouverte par un ❓ contextuel (hub fermé), la fiche reste une sous-modale. Checkup : `scripts/smoke/checkup-aide-telephone.js`.
 - **❓ contextuel** : `AIDE_PAR_MODALE` (id de modale → slug), bouton posé par un `MutationObserver` dans l'en-tête `.kta-readme-modal-header` / `.kta-tracker-modal-header`, juste avant la croix ; interrupteur `myktamap_aide_contextuelle`. `ktaOuvrirAideSection(slug)` ouvre une fiche sans passer par le hub.
 - 🛡️ `check-aide-sections.js` (chaque slug a ses clés dans les 3 dicos, chaque slug rangé une fois, aucune clé `aide.*` orpheline, pas de balisage dans un titre) · `check-aide-contextuelle.js` (chaque id de la table existe dans le code, chaque slug est une fiche).
 
