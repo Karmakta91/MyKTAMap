@@ -417,21 +417,58 @@ Fix dans `tracking.js > _applyRotationToTrackerMarker()` :
 
 Reset dans `_resetRotationTrackerMarker()` pour repartir propre au prochain Play.
 
-##### 41.15.5 Splash KARMA animé (fix15 / fix16)
+##### 41.15.5 Splash de démarrage — « la galerie qui se dessine »
 
-- Retrait du bloc `#splashAuthor` ("Par [karma.png]" centré dans le footer)
-- Ajout d'un nouveau `#splashKarmaCorner` en `position: absolute; bottom: 28; right: 28` (28 au lieu de 14 pour anti-clip bord arrondi écrans modernes, KARMA fix17)
-- Image karma.png 20px (au lieu de 32px) + drop-shadow doré + animation `clip-path: inset(0 100% 0 0)` → `inset(0 0 0 0)`
-- Animation : 5 keyframes explicites (0/20/40/60/80/100%) avec `cubic-bezier(0.45, 0.05, 0.55, 0.95)` (ease-in-out doux) → effet "K-A-R-M-A" lettre par lettre avec transitions smooth. Durée 1.8s, délai 0.8s
-- Fade-out synchronisé avec `splashOverlay.fading`
+**Rendu** (`index.html > #splashOverlay`, `css/style.css` bloc « Splash de démarrage ») : un réseau **fictif**
+de 38 galeries se trace une fois, puis l'eau (bande bleue sous trois galeries), une zone inaccessible hachurée,
+six pictos du catalogue (`peo`, `pb`, `house`, 3 × `plaque`), la rose (`icon/compass.svg`) et le titre. Tout le
+dessin vit dans un seul SVG inline (`viewBox -12 -12 364 606`) : pictos et rose sont des `<image>` du même repère,
+ils suivent l'échelle du réseau. Chaque galerie porte `pathLength="1"` (tiret exact sans mesure) et `--i` (ordre,
+45 ms d'écart).
+- **Mise en page** : portrait = réseau en haut, titre, sous-titre et licence dessous ; paysage (PC, tablette,
+  téléphone couché) = titre à gauche, réseau à droite (`@media (orientation: landscape)`). Coins : « Conçu avec
+  Claude » (`#d97757`) et version (or, monospace, `main.js > _splashStart` depuis `__MKM__.build`) en haut ;
+  crédits librairies en bas à gauche, signature `karma.png` en bas à droite.
+- **Toujours sombre** (`#0a0d18`), quel que soit le thème (décision produit) : aucune règle `kta-theme-light` ne
+  vise le splash.
+- **Licence** : « Licence libre — usage non commercial » (pastille dorée) ; variante pro « Édition professionnelle
+  · Licence active » par `.kta-instance-pro` ; installation reliée : jamais la mention community
+  (`check-extensions.js`). Le titre n'affiche jamais « -pro » (décision produit).
 
-Crédits libs/algo au splash : `🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra` en bas-gauche (déplacé du centre pour libérer le coin droit pour KARMA).
+**Versions** (`js/ktaSplash.js`, premier script d'`index.html`, choisit avant la première peinture) :
+| Version | Quand | Durée |
+|---|---|---|
+| longue | première ouverture du jour (date locale, `localStorage["myktamap_splash_jour_v1"]`, écrite à la fin de l'animation) | 4 s (tracé complet à ~3,4 s, puis image finale) |
+| courte | ouvertures suivantes du même jour | 1 s : réseau déjà dessiné, rose et titre en fondu |
+| réduite | `prefers-reduced-motion: reduce` | 0 : image finale directe, puis fondu |
 
-`Dijkstra` réfère à l'algorithme du plus court chemin implémenté dans `js/pathfinder.js > _dijkstra()`. KARMA s'en souvenait phonétiquement comme "djakarta" — pas une lib externe mais un classique informatique (Edsger Dijkstra, 1956) qu'on implémente nous-mêmes.
+Une seule lecture, en `both` : l'image finale reste jusqu'au fondu. L'état de base de chaque règle CSS est l'image
+finale ; `.kta-splash-fini` coupe les animations.
 
-Ces mêmes 3 crédits ajoutés au :
-- Footer du home (`.kta-loader-credits` sous le copyright)
-- Footer de la modale Documentation (`.kta-readme-modal-footer`)
+**Fermeture** = au plus tard de (fin d'animation, écran suivant affiché), puis fondu 0,4 s et retrait du DOM :
+- `main.js > _splashEnd(pret)` → `KtaSplash.fermer(pret)` : attend la fin d'animation ET `pret`, puis deux images.
+  Accueil : appelé juste après `afficherLoader()` (synchrone : `#planLoaderOverlay` visible, liste remplie) ;
+  plan racine chargé d'office : `pret` = la promesse de `lancerApplication()`.
+- Avant une gate (conditions d'utilisation, gate déléguée, code d'accès, PIN) : `_splashAvantGate()` attend
+  seulement la fin de l'animation ; le splash reste **dessous** (toutes les gates sont au-dessus de 9999) et couvre
+  le temps mort jusqu'à l'accueil. Une gate qui ne dessine rien (session déjà ouverte, licence qui contourne le code)
+  ne laisse plus d'écran vide. Écran « Installation indisponible » : le splash se ferme avant lui.
+- **Passer** : clic / toucher / Échap. Accueil prêt → fondu aussitôt ; sinon image finale et attente. Écouté au
+  `click`, jamais au `pointerdown` (le clic suivant traverserait le fondu et toucherait l'accueil). Aucun texte
+  « touche pour passer ».
+- **Plafond** : fondu 12 s après le début de la navigation (`performance.now()`), quoi qu'il arrive. Les
+  rappels de fin (`main.js > _apresSplash` : toasts en file, mise à jour, `FirstRunFlow.run()`) passent par
+  `KtaSplash.surFermeture` et partent aussi dans ce cas.
+- Sans `js/ktaSplash.js` (cache incomplet), `_splashEnd` retire le splash tout de suite.
+
+**Une seule fois par session** : un changement de plan ne ré-affiche pas le splash.
+
+**Preuve** : `scripts/smoke/checkup-splash.js` (téléphone 390 et PC 1280 : image finale complète, accueil lent /
+rapide, passage au clic et à Échap, version courte, plafond, mouvement réduit, coût au démarrage processeur ×4).
+
+`Dijkstra` (crédits) = l'algorithme du plus court chemin de `js/pathfinder.js > _dijkstra()`, pas une librairie.
+Les mêmes crédits figurent au pied de l'accueil (`.kta-loader-credits`) et de la Documentation
+(`.kta-readme-modal-footer`).
 
 ##### 41.15.6 Couleur Leaflet alignée à la charte (fix17)
 
@@ -551,7 +588,6 @@ body.kta-theme-light {
 ✅ Couvert :
 - **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`, `.loader-btn-resume` (bouton Reprendre), `.zip-drop-zone`
 - **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `.loader-btn-ghost`, `.loader-btn-mini`, `.loader-btn-fs`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
-- **Splash chargement plan** : `#splashOverlay` (radial gradient beige), `#splashTitle` (ocre), `#splashSubtitle`, `#splashProgressTrack/Bar`, `.splash-scale-bar` (bandes alternées ocre)
 - **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`, `.kta-net-paranoia-toggle` (case à cocher générique de la Configuration, nom historique)
 - **Modale Audit** : `#loaderNetDocModal`, `#loaderNetLogModal`, `#loaderNetLogTbody`, `#loaderNetDocWhitelist`
 - **Auth gates** : `#kta-unlock-overlay` (code communautaire), `.kta-pin-gate-overlay` (PIN keypad), `.kta-pin-gate-bio-btn` (biométrie), `.kta-pin-proposal-boite` (post-update), `.kta-pin-gate-overlay-lockout`
@@ -575,7 +611,7 @@ body.kta-theme-light {
 - **Stats agrégées + détail Session active** : `.kta-refonte-stats-*` + `.kta-refonte-session-*`
 
 ❌ Volontairement non couverts (restent dark) :
-- **Splash KARMA cinématique** au tout début du boot (animation rotation boussole, contrastes dark requis pour l'effet fade-in lettres)
+- **Splash de démarrage** (§41.15.5) : toujours sombre, quel que soit le thème
 - **Viewer photos plein écran** (overlay sombre par essence pour bonne lecture des photos)
 
 #### 53.5 Sync mode urgence

@@ -150,6 +150,8 @@ Dans Chrome, ouvre `myktamap.fr`, clique sur **Installer** à droite de la barre
 
 ### 📦 Charger un plan
 
+À l'ouverture, l'**écran de démarrage** dessine une galerie (environ 4 s la première fois de la journée, 1 s ensuite) puis laisse la place à l'accueil dès qu'il est prêt. Un toucher, un clic ou Échap le passe. Si ton appareil demande de réduire les animations, il s'affiche sans mouvement.
+
 L'écran d'accueil propose :
 
 - **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé.

@@ -150,6 +150,8 @@ En Chrome, abre `myktamap.fr`, haz clic en **Instalar** a la derecha de la barra
 
 ### 📦 Cargar un mapa
 
+Al abrir la app, la **pantalla de arranque** dibuja una galería (unos 4 s la primera vez del día, 1 s después) y deja paso a la pantalla de inicio en cuanto está lista. Un toque, un clic o Esc la salta. Si tu dispositivo pide reducir las animaciones, aparece sin movimiento.
+
 La pantalla de inicio ofrece:
 
 - **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado.
