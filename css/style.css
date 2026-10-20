@@ -4146,15 +4146,15 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  animation: kta-splash-titre-y 0.6s ease-out 2.2s both;
+  /* 🩸 Une seule animation pour les deux orientations, le sens d'arrivée passe par des variables : changer
+     d'animation-name en tournant le téléphone relançait l'animation (titre invisible ~2 s). */
+  --kta-splash-titre-dx: 0;
+  --kta-splash-titre-dy: 8px;
+  animation: kta-splash-titre 0.6s ease-out 2.2s both;
 }
-@keyframes kta-splash-titre-y {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes kta-splash-titre-x {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
+@keyframes kta-splash-titre {
+  from { opacity: 0; transform: translate(var(--kta-splash-titre-dx), var(--kta-splash-titre-dy)); }
+  to   { opacity: 1; transform: translate(0, 0); }
 }
 #splashTitle {
   font-size: 36px;
@@ -4378,7 +4378,8 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   #splashBox {
     align-items: flex-start;
     gap: 12px;
-    animation-name: kta-splash-titre-x;
+    --kta-splash-titre-dx: -10px;
+    --kta-splash-titre-dy: 0;
   }
   #splashTitle { font-size: clamp(30px, 7vh, 56px); }
   #splashSubtitle { font-size: clamp(12px, 2vh, 16px); }
