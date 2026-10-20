@@ -1,14 +1,15 @@
 # Audit d'interface « Impeccable » — PC et téléphone, sombre et clair (v1, 20/10/2026)
 
-> Phase 1 seulement : constats et propositions. **Aucun fichier de l'app n'est modifié** (`js/`, `css/`,
-> `index.html`, `sw.js`, `lang/`).
+> Rapport de la phase 1 (constats et propositions, sans modification de l'app). Les corrections ont suivi dans les
+> branches `ui-impeccable`, `ui-toasts`, `ui-finitions` et `ui-faibles`.
 >
-> **État au 20/10/2026 (branche `ui-impeccable`)** : faits — E1, E2, E4, F7, M3 (bouton principal **bleu** dans
-> les deux thèmes, décision KARMA) et la charte en jetons (E5 en partie : plus de surcharge `[style*=…]` de
-> couleur, mais les règles claires historiques restent). Remesure par la même méthode, étendue à 30 écrans :
-> 182 textes sous AA → 0, hors splash (14, lot à part). Fait ensuite (branche `ui-toasts`) : E3 (type succès,
-> toasts empilés, 3 visibles) et, pour F7, la consigne « Coche la case pour continuer ». Ouvert : M1, M2, M4, M5
-> (splash : direction A, toujours sombre, maquette d'abord), M6, M7, F1–F6.
+> **État au 20/10/2026 : audit soldé** (décision KARMA : « on clôture Impeccable »). Faits — E1, E2, E3, E4, M2,
+> M3 (bouton principal **bleu** dans les deux thèmes, décision KARMA), M5 (nouveau splash, direction A, toujours
+> sombre), M6, M7, F1–F7. Remesure des contrastes par la même méthode, étendue à 30 écrans : 182 textes sous AA →
+> 0, hors splash. En partie — E5 : la charte est en jetons communs aux deux thèmes (plus aucune surcharge
+> `[style*=…]` de couleur) ; le nettoyage des règles claires historiques est reporté. Reportés au `BACKLOG.md`
+> (« Plus tard ») : M1 (échelle typographique), nettoyage des surcharges du thème clair (E5), rails latéraux de la
+> carte au doigt (reste de M4). Chaque constat porte son état ci-dessous.
 >
 > **Grille** : la skill communautaire « Impeccable » de Paul Bakaus (Apache 2.0), version 4.7.0. Elle a été lue
 > hors dépôt comme des données, jamais installée. Sont utilisés : `SKILL.md`, ses commandes `audit` et
@@ -72,6 +73,8 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
 ## Élevé
 
 **E1 — Thème clair : des couleurs du sombre restent dans les écrans** · [Certain] (mesuré)
+- **État** : fait (`ui-impeccable`) : couleurs en jetons ; « ← Retour » de l'Aide, sommaire de la Documentation et
+  statut des Filtres remesurés au-dessus de 4,5:1 en clair.
 - Écran : Aide → une fiche (PC et téléphone). Le bouton « ← Retour » (`#kta-aide-back`) est en `#c8d0e0` sur
   `#e7dec8`, soit **1,16:1**. Documentation : le bouton du sommaire (`#kta-readme-toc-toggle`) mesure **1,15:1**
   au repos et **1,16:1** actif (doré `#f4c542` sur `#e7d9b5`). Filtres : le statut `#kta-fp-status` est en
@@ -83,6 +86,8 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
 - Proposition : à court terme, ajouter les trois surcharges manquantes. Le vrai correctif est E5.
 
 **E2 — Thème clair : les barres du haut et du bas de la carte sont peu lisibles** · [Certain] (mesuré)
+- **État** : fait (`ui-impeccable`) : texte secondaire et icônes des barres claires sur `--kta-texte-3`
+  (`#4a4438`).
 - Écran : carte, barre d'en-tête et barre d'état, en clair, PC et téléphone. Mesures : icônes des compteurs
   `#989181` sur `#e1d8c1` à **2,21:1**, icônes de statistiques `#7c7669` à **3,18:1**. Le texte secondaire
   `#6b6354` sur le fond de barre `#c9b88f` ne fait que **3,03:1** (calculé).
@@ -91,6 +96,8 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   `#6b5a3a` (4,70:1 sur `#e1d8c1`). Voir la section Charte.
 
 **E3 — Les toasts mentent sur leur type et s'écrasent entre eux** · [Certain] (code lu + mesuré)
+- **État** : fait (`ui-toasts`) : type succès, toasts empilés (3 visibles), une erreur part en dernier ;
+  `scripts/smoke/checkup-toasts.js`.
 - `js/oomGuard.js > _renderToast` supprime le toast affiché avant de poser le suivant. L'icône ne connaît que
   `error` / `info` / « le reste = ⚠️ ». Il n'existe aucun type succès. Les confirmations qui doivent survivre au
   mode silencieux passent donc en `warn` : `tableEditor.js` (« msgOk »), `interfaceImportExport.js` (fin
@@ -105,6 +112,7 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   `warn`.
 
 **E4 — Thème sombre : textes de pied de page et descriptions sous AA** · [Certain] (mesuré)
+- **État** : fait (`ui-impeccable`) : les gris hors charte ramenés à `--kta-texte-3` (`#98a1b3`).
 - HOME, crédits et contact du pied : `#6c7689` sur `#1a1f2e` à **3,59:1**, en 10,5–11 px. Version du pied
   (`#loaderCopyrightVersion`) : `#6a7488` sur `#1f2332` à **3,31:1**. Export, description du sens de conversion
   (`.kta-conv-sens-desc`) : `#6a7283` sur `#232836` à **3,05:1**, en 11 px. Popup d'un POI, bouton « copier les
@@ -116,6 +124,9 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
 - Proposition : ramener tous ces gris au gris secondaire de la charte (voir la section Charte).
 
 **E5 — Le thème clair n'a pas de système, seulement des surcharges** · [Certain] (comptage)
+- **État** : en partie. Fait : jetons communs aux deux thèmes, le clair redéfinit les jetons, plus aucune surcharge
+  `[style*=…]` de couleur. Reporté au `BACKLOG.md` : retirer les règles claires historiques (~1 780 sélecteurs
+  `.kta-theme-light`). Non posé : le garde-fou contre une couleur en dur dans `style=`.
 - Les jetons `--kta-light-*` existent (`css/style.css`, bloc des variables du thème clair). Le sombre n'en a
   **aucun** : ses couleurs sont écrites en dur, dans le CSS et dans 1 256 attributs `style="…"` du JS. Le clair
   les rattrape une à une : 1 419 sélecteurs, dont 38 lisent le texte même de l'attribut `style`
@@ -133,6 +144,7 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
 ## Moyen
 
 **M1 — Échelle typographique à 30 tailles, corps trop petit** · [Certain] (comptage + DOM)
+- **État** : reporté au `BACKLOG.md` (« Échelle typographique », L).
 - Dans le code : 12 px ×366, 13 px ×317, 11 px ×198, 14 px ×127, 11,5 px ×107, 12,5 px ×80, 10 px ×43, 10,5 px
   ×23… soit 30 valeurs distinctes. Dans le rendu : sur 1 486 textes, 205 (14 %) font moins de 12 px, dont 66 à
   10,5 px ou moins (9 px ×4).
@@ -144,6 +156,7 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   (titre d'écran). Les 30 valeurs s'y ramènent. Un plancher de 11 px pour tout texte cliquable.
 
 **M2 — Lignes trop longues dans la Documentation** · [Certain] (mesuré)
+- **État** : fait (`ui-finitions`) : corps 15 px, colonne de 61ch (≈ 72 caractères mesurés), centrée sur PC.
 - Paragraphes en 14 px dans une colonne de 908 px à 1280, de 1 503 px à 1920 : 105–145 puis 128–218 caractères
   par ligne.
 - Règles Impeccable : `line-length` (> 80 caractères), `typeset` (45–75 en mode Read).
@@ -151,6 +164,8 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   colonne). Corps à 15 px, interligne 1,6 (déjà 1,7).
 
 **M3 — Le bouton primaire change de couleur selon le thème** · [Certain] (CSS lu + captures)
+- **État** : fait (`ui-impeccable`) : bouton principal **bleu** dans les deux thèmes (`--kta-primaire` `#1a5fd6`),
+  décision KARMA ; le doré reste l'accent.
 - `.kta-btn-primary` est bleu `#1f6feb` en sombre et doré `--kta-light-accent` en clair. Sur les captures, les
   actions principales suivent ce schéma : « Charger ce plan », « Télécharger », « Nouveau scénario », « Activer
   le mode présentation ». Les titres de fenêtre sont bleu
@@ -163,6 +178,8 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   titres en texte principal. Voir « Ce qu'on écarte » pour la variante qui garde le bleu.
 
 **M4 — Cibles tactiles sur téléphone** · [Certain] (mesuré en 390×844)
+- **État** : en partie (`ui-finitions`) : croix et copie GPS à 32 px de zone, 44 px au doigt, liens du sommaire à
+  40 px au doigt (décision KARMA), marque inchangée. Reporté au `BACKLOG.md` : les rails latéraux de la carte.
 - Sous 24 px (plancher WCAG 2.5.8) : croix des toasts 19×19, bouton « copier les coordonnées » de la popup
   22×17, flèche du sommaire de la Documentation 18×22, liens du sommaire 22 px de haut (×44), bouton « Lire le
   texte intégral » des CGU 17 px de haut.
@@ -175,6 +192,9 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   `pointer: coarse`. Croix et boutons de copie à 32 px minimum.
 
 **M5 — Splash : attente plus longue que nécessaire, et doc en retard sur le code** · [Certain] (mesuré)
+- **État** : fait (`Karma_dev`) : nouveau splash « la galerie qui se dessine » (direction A), toujours sombre,
+  fermé au plus tard de la fin d'animation et de l'accueil prêt (`docs/architecture/ui.md` §41.15.5). Sa suite vit
+  dans un lot splash à part.
 - `js/main.js > _splashStart` lance le chrono de 3,5 s après l'exécution de tous les scripts, pas à la
   navigation. Mesuré en profil téléphone : fondu à 3,9–4,2 s en local, à 5,1–5,9 s avec le CPU ralenti 4×.
   Retrait complet à 4,4–6,6 s. Ce temps de chargement ne se cache donc pas sous l'animation : il s'y ajoute.
@@ -190,6 +210,8 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   sombre ou clair, puis aligner la doc ou le CSS. Voir la section Splash.
 
 **M6 — Réglages : la hiérarchie met en avant une action rare** · [Probable] (captures)
+- **État** : fait (`ui-finitions`) : le mode présentation devient une ligne d'action ; titres de groupe en 14 px
+  gras, texte principal, sans capitales.
 - Le plus gros élément de la fenêtre est le bouton bleu plein « Activer le mode présentation », placé en tête de
   la colonne de gauche. Les titres de groupe sont de petites capitales de 12 px, dorées ou bleues : ils pèsent
   moins que les cases à cocher qu'ils annoncent.
@@ -200,6 +222,7 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
   meilleure idée de l'écran.
 
 **M7 — Thème clair : cartes imbriquées sur le HOME** · [Certain] (captures)
+- **État** : fait (`ui-finitions`) : en clair, une seule enveloppe (la colonne), comme en sombre.
 - En clair, « Mes plans », « Vue OSM », « Ajouter un plan » et « Outils » sont des cartes posées dans une
   colonne-carte (bordure et ombre deux fois). En sombre, la même structure s'affiche à plat. La structure change
   donc avec le thème.
@@ -213,15 +236,27 @@ même d'Impeccable (« choisir clair ou sombre selon la scène, pas selon la cat
 version, signature, arc. Ailleurs : badges, titre de l'affichage XL. Règle `dark-glow`. Proposition : les garder
 là où elles portent un état (POI sélectionné, urgence), et les retirer des textes statiques.
 
+- **État** : fait (`ui-faibles`) : lueurs retirées des titres, du nom du plan, des valeurs de la barre, des logos,
+  des icônes de fenêtre, de la rose de la boussole, des boutons flottants et des fenêtres statiques ; gardées sur
+  les états (surbrillance, itinéraire, mode actif, Tracker, alertes, urgence, Mode Secours, rangs, focus). Splash
+  non touché (décision KARMA). Règle : `docs/architecture/ui.md` §53.3.
+
 **F2 — Liserés latéraux épais** · [Certain] (comptage)
 74 `border-left` de 2 à 9 px : toasts (3 px), encadrés des CGU, titres de la Documentation. Règle `side-tab`.
 Proposition : sur les toasts, le liseré double l'icône, on peut le garder (voir « Ce qu'on écarte »). Sur les
 encadrés des CGU et les titres de la Documentation, il est décoratif : un fond teinté suffit.
 
+- **État** : fait (`ui-faibles`) : points des CGU et titres `h2` de la Documentation en fond teinté
+  (`--kta-info-fond`), contraste du texte gardé (7,06:1 sombre, 15,1:1 clair pour les titres) ; liseré des toasts
+  gardé (« Ce qu'on écarte »).
+
 **F3 — Petite étiquette au-dessus du titre** · [Certain] (capture)
 « BIENVENUE » en petites capitales au-dessus de « Mon profil » sur le HOME. C'est la seule règle qu'Impeccable
 pose en interdiction absolue (`kicker-above-heading`). Proposition : la supprimer, ou l'intégrer au titre
 (« Bienvenue, Touriste »).
+
+- **État** : fait (`ui-finitions`) : « Bienvenue, <pseudo> » devient le titre du bandeau, plus d'étiquette
+  au-dessus.
 
 **F4 — Mouvement réduit : coupure globale** · [Certain] (CSS lu)
 `css/style.css` (bloc « Accessibilité : prefers-reduced-motion ») ramène toute animation à 0,01 ms. Au splash,
@@ -229,20 +264,32 @@ l'arc de chargement s'arrête : l'utilisateur n'a plus aucun signe que l'app tra
 sensitivity (« une coupure globale à 0,01 ms détruit un retour utile »). Proposition : en mouvement réduit,
 remplacer la rotation de l'arc par une pulsation d'opacité lente. Le reste peut garder la coupure.
 
+- **État** : fait (`ui-faibles`) : en mouvement réduit, les indicateurs de chargement pulsent en opacité (2,4 s) ;
+  le reste garde la coupure. Splash : sa propre règle (image finale directe).
+
 **F5 — Focus clavier invisible sur 3 arrêts du HOME** · [Certain] (mesuré)
 Champ « Chercher un point dans tous mes plans », barre du profil, filtre « Filtrer par nom ». Ni contour ni
 ombre au focus. Proposition : la règle `:focus-visible` existante, étendue aux champs `input` du HOME et aux
 `div` focalisables.
+
+- **État** : fait (`ui-finitions`) : focus visible sur la recherche, la barre du profil et le filtre du HOME.
 
 **F6 — Aide sur téléphone : une fenêtre sur une fenêtre** · [Certain] (capture)
 La fiche s'ouvre en sous-fenêtre au-dessus du hub : deux voiles, deux croix, et le « ← Retour » illisible en
 clair (E1). Règle `operate` › Constraints (« la modale comme premier réflexe »). Proposition : sur téléphone, la
 fiche remplace le contenu du hub, avec le Retour en tête.
 
+- **État** : fait (`ui-faibles`) : sur téléphone (≤ 600 px, ou tactile de moins de 500 px de haut), la fiche
+  remplace le hub, « ← Retour » en tête rend le hub à la même position ; PC inchangé.
+  `scripts/smoke/checkup-aide-telephone.js`.
+
 **F7 — Boutons désactivés à peine visibles** · [Certain] (mesuré)
 « J'accepte » des CGU, tant que la case n'est pas cochée : 2,37:1 en sombre, 2,16:1 en clair. WCAG exempte les
 commandes inactives. Mais c'est la première décision de l'utilisateur, et le bouton se lit à peine comme un
 bouton. Proposition : texte désactivé ≥ 3:1, ou une phrase « Cochez la case pour continuer ».
+
+- **État** : fait (`ui-impeccable`, `ui-toasts`) : bouton inactif grisé par les jetons (≥ 3:1) et consigne « Coche
+  la case pour continuer ».
 
 ---
 
@@ -287,6 +334,9 @@ sommaire.
 | Corps à 16 px minimum | En Operate, Impeccable admet un corps plus dense. On fixe un plancher à 11 px et un corps à 14–15 px (M1) |
 | Liseré latéral des toasts (`side-tab`) | Sur un toast, il code le type à la périphérie de l'œil, utile en sortie. On le garde, mais avec le bon type (E3) |
 | Coupure globale du mouvement réduit | On la garde : c'est simple et conforme à WCAG 2.3.3. Seule exception proposée : l'arc du splash (F4) |
+
+À la clôture : ces écarts tiennent. L'exception du mouvement réduit couvre tous les indicateurs de chargement, pas
+seulement l'arc du splash (F4). **Emoji ou icônes dessinées : non tranché**, sans entrée au backlog.
 
 ---
 
@@ -362,6 +412,9 @@ pour le moindre coût, et ne demande ni police ni calque plein écran.
 ---
 
 ## Action KARMA
+
+À la clôture : 3 est tranché sauf les emoji (M3 bleu, M5 et direction A faits, E5 ouvert en partie) ; 1 et 2
+restent à confirmer par KARMA.
 
 1. **Jeton Sonar.** L'API du SonarQube local répond, mais demande un jeton (HTTP 401 sur `api/issues/search` et
    `api/components/show`). Les problèmes de contraste et d'accessibilité vus par Sonar ne sont donc pas

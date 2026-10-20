@@ -121,6 +121,20 @@
 - **Secours : deux interventions simultanées sur un même plan** — 🔬 jamais vérifié.
   `qui: Claude · action: jouer deux interventions au harnais sur le même plan
   · fini: comportement constaté, bug ouvert s'il y a lieu · depuis: 06/10/2026 · taille: S`
+- **Échelle typographique** — ✅ vérifié 20/10 : ~35 tailles de texte dans `css/` ; 11 / 11,5 / 12 / 12,5 / 13 px se
+  suivent à moins de 5 %. Reste de l'audit d'interface (M1) : 6 rôles proposés (11 méta, 12,5 libellé, 14 corps,
+  15 lecture, 18 titre de fenêtre, 24 titre d'écran), plancher de 11 px pour tout texte cliquable.
+  `qui: Claude · action: proposer en QCM les jetons de taille et l'ordre des écrans, puis les poser écran par écran
+  · fini: tailles en jetons, plus aucune valeur hors échelle dans css/ · depuis: 20/10/2026 · taille: L`
+- **Thème clair : nettoyer les surcharges historiques** — ✅ vérifié 20/10 : ~1 780 sélecteurs `.kta-theme-light`
+  dans `css/`, dont beaucoup en `!important`, devenus inutiles là où la règle de base est écrite en jetons
+  (`docs/architecture/ui.md` §53.3).
+  `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
+  · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
+- **Rails latéraux de la carte au doigt** — boutons des rails à 36 × 36 px, sous les 44 px d'Impeccable ; gardés
+  pour la surface utile de la carte (décision KARMA 20/10, M4 de l'audit d'interface).
+  `qui: Claude · action: agrandir la zone de toucher sous pointer coarse sans grossir la marque ni chevaucher
+  · fini: zone de toucher 44 px au doigt, checkup des panneaux vert · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
 
