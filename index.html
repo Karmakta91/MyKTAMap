@@ -253,9 +253,8 @@
             <span class="kta-loader-profile-badge" id="kta-loader-profile-badge" aria-hidden="true" style="display:none;"></span>
           </div>
           <div class="kta-loader-profile-info">
-            <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting" data-i18n="home.profile.greeting">Bienvenue</div>
-            <!-- ⚠️ Surnom dynamique : PAS de data-i18n (_applyI18nDom écraserait le pseudo). Rempli et traduit par
-                 _refreshLoaderProfileBar via I18n.t("home.profile.placeholder"). -->
+            <!-- ⚠️ Titre dynamique « Bienvenue, <pseudo> » : PAS de data-i18n (_applyI18nDom écraserait le pseudo).
+                 Rempli et traduit par _refreshLoaderProfileBar (home.profile.welcomeName / home.profile.placeholder). -->
             <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
             <div class="kta-loader-profile-rank" id="kta-loader-profile-rank"></div>
           </div>
@@ -444,7 +443,7 @@
              clés config.group.* partagées avec elle. -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.application">
-        <div class="kta-cfg-group-titre" style="margin:4px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.application">🌍 Application</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre kta-cfg-group-titre-premier"><span class="kta-cfg-group-libelle" data-i18n="config.group.application">🌍 Application</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Langue globale (myktamap_app_lang) : options peuplées par main.js > _initHomeLangSelect() depuis
@@ -460,7 +459,7 @@
         </div></div><!-- /kta-cfg-group -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.affichage">
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.affichage">🎨 Affichage</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.affichage">🎨 Affichage</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Réglages GLOBAUX, valables pour tous les plans : ils vivent ici, pas dans la config du mode plan,
@@ -537,7 +536,7 @@
              modale du mode plan (APP_CONFIG + app_user_prefs). Une option dont le capteur manque n'est PAS masquée :
              elle s'affiche désactivée avec sa raison (window.ktaCapteurRefuse). -->
         <div class="kta-cfg-group" data-cfg-group="config.group.optionnels">
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">🧩 Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">🧩 Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
         <div class="kta-aide-section">
           <label class="kta-net-paranoia-toggle" id="loaderReplayRow">
@@ -577,7 +576,7 @@
         </div></div><!-- /kta-cfg-group -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.privacy">
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.privacy">🔒 Confidentialité &amp; sécurité</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.privacy">🔒 Confidentialité &amp; sécurité</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Carnet : réglage GLOBAL (myktamap_journal_enabled), ouvert depuis l'accueil — le régler depuis un plan
@@ -649,7 +648,7 @@
         </div></div><!-- /kta-cfg-group -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.system">
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.system">🛠️ Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.system">🛠️ Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Mode Développeur, protégé par mot de passe (hash SHA-256) : logs détaillés et leur affichage, ConfAdmin,

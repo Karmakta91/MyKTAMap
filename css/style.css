@@ -5112,13 +5112,6 @@ html.kta-theme-light .kta-cfg-input option {
   color: #2a2118;
 }
 
-/* En-têtes de groupe des réglages : couleur posée en INLINE (#f4c542), illisible sur le crème du thème clair.
-   ⚠️ !important requis pour battre l'inline ; le sombre garde le jaune. */
-body.kta-theme-light .kta-cfg-group-titre,
-html.kta-theme-light .kta-cfg-group-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-
 /* ── Mode Performance ULTRA : toggles de la modale Réglages ── */
 .kta-perf-ultra-row {
   display: flex;
@@ -13770,10 +13763,9 @@ body.kta-theme-light #planLoaderBox .kta-titre-suffix-pro {
   color: #f4c542;
 }
 
-/* Cartes de la HOME : claires, bordure marquée. */
-body.kta-theme-light #myPlansBox,
-body.kta-theme-light #resumeBox,
-body.kta-theme-light #panelZip {
+/* « Reprendre » : carte claire, bordure marquée. Mes plans, Vue OSM et Ajouter un plan n'en ont pas : leur
+   colonne (.loader-col) est déjà la carte, comme en sombre. */
+body.kta-theme-light #resumeBox {
   background: var(--kta-light-bg-elevated) !important;
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-bg-bar-border) !important;
@@ -14613,52 +14605,6 @@ html.kta-theme-light .kta-pin-gate-lockout-explication {
 }
 html.kta-theme-light .kta-pin-gate-lockout-explication p {
   color: #4a3f30 !important;
-}
-
-/* ── Thème clair : cartes arrondies de la HOME ── */
-/* #myPlansBox = une carte ; « Ajouter un plan » = .loader-section-head (haut
-   arrondi) + .loader-panel #panelZip (bas arrondi) fusionnés en une carte. */
-
-html.kta-theme-light #myPlansBox {
-  background: var(--kta-surface) !important;
-  border: 1px solid rgba(154, 135, 84, 0.35) !important;
-  border-radius: 14px !important;
-  padding: 14px 18px 16px !important;
-  margin-bottom: 14px !important;
-  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
-}
-html.kta-theme-light #myPlansBox .loader-section-head {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
-  border-radius: 0 !important;
-  padding: 2px 0 10px 0 !important;
-  margin: 0 0 10px 0 !important;
-  color: var(--kta-texte) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-}
-
-html.kta-theme-light .loader-col-actions > .loader-section-head {
-  background: var(--kta-surface) !important;
-  border: 1px solid rgba(154, 135, 84, 0.35) !important;
-  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
-  border-radius: 14px 14px 0 0 !important;
-  padding: 12px 18px !important;
-  margin: 0 !important;
-  color: var(--kta-texte) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  box-shadow: 0 -1px 0 0 transparent !important;
-}
-html.kta-theme-light .loader-col-actions > .loader-panel {
-  background: var(--kta-surface) !important;
-  border: 1px solid rgba(154, 135, 84, 0.35) !important;
-  border-top: none !important;
-  border-radius: 0 0 14px 14px !important;
-  padding: 14px 18px 16px !important;
-  margin: 0 0 14px 0 !important;
-  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
 }
 
 html.kta-theme-light .zip-drop-zone {
@@ -16165,12 +16111,6 @@ body.kta-theme-light .kta-feat-sp.kta-feat-unlocked { color: #1a1f2e; background
   gap: 2px;
   overflow: hidden;
 }
-.kta-loader-profile-greeting {
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--kta-texte-3);
-}
 .kta-loader-profile-surnom {
   font-size: 17px;
   font-weight: 700;
@@ -16257,9 +16197,6 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   }
   .kta-loader-profile-avatar-initial {
     font-size: 19px;
-  }
-  .kta-loader-profile-greeting {
-    font-size: 10px;
   }
   .kta-loader-profile-surnom {
     font-size: 15px;
@@ -16851,10 +16788,6 @@ html.kta-theme-light .kta-loader-profile-avatar-initial.kta-loader-profile-avata
   background: var(--kta-light-bg-deep, #e5dcc5) !important;
   color: var(--kta-texte-3) !important;
 }
-body.kta-theme-light .kta-loader-profile-greeting,
-html.kta-theme-light .kta-loader-profile-greeting {
-  color: var(--kta-texte-3) !important;
-}
 body.kta-theme-light .kta-loader-profile-surnom,
 html.kta-theme-light .kta-loader-profile-surnom {
   color: var(--kta-light-accent-text, #7a5a00) !important;
@@ -16933,17 +16866,6 @@ body.kta-presentation-mode #map {
 /* Boussole : son bottom dépend de --kta-statusbar-h, surchargée pour coller au vrai bas de l'écran. */
 body.kta-presentation-mode .kta-compass-widget {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
-}
-
-/* Section « Mode présentation » en tête de Réglages : centrée, accent doré, sans titre (action rapide). */
-.kta-cfg-presentation-section {
-  background: linear-gradient(135deg, rgba(244, 197, 66, 0.06), rgba(140, 180, 255, 0.04)) !important;
-  border-color: rgba(244, 197, 66, 0.25) !important;
-}
-body.kta-theme-light .kta-cfg-presentation-section,
-html.kta-theme-light .kta-cfg-presentation-section {
-  background: linear-gradient(135deg, rgba(244, 197, 66, 0.18), rgba(140, 180, 255, 0.08)) !important;
-  border-color: rgba(154, 135, 84, 0.40) !important;
 }
 
 /* Bouton ✕ de sortie sur mobile (pas de touche F) : fixed haut-droite, safe-area iOS, 40 % d'opacité,
@@ -17815,31 +17737,6 @@ body.kta-theme-light #planLoaderBox,
 html.kta-theme-light #planLoaderBox {
   background: var(--kta-light-bg, #f0e8d8) !important;
 }
-
-/* 2. Card Vue OSM : crème comme Mes plans / Ajouter. */
-body.kta-theme-light #ktaOsmHomeBox,
-html.kta-theme-light #ktaOsmHomeBox {
-  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
-  border: 1px solid rgba(154, 135, 84, 0.35) !important;
-  border-radius: 14px !important;
-  padding: 14px 18px 16px !important;
-  margin-bottom: 14px !important;
-  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
-}
-/* Titre de la card OSM transparent + bordure basse, comme #myPlansBox. */
-body.kta-theme-light #ktaOsmHomeBox .loader-section-head,
-html.kta-theme-light #ktaOsmHomeBox .loader-section-head {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
-  border-radius: 0 !important;
-  padding: 2px 0 10px 0 !important;
-  margin: 0 0 10px 0 !important;
-  color: var(--kta-texte) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-}
-
 
 /* ── Le Carnet (journal.js / journalUi.js) : modale liste + fiche de sortie (sous-modale) ── */
 
@@ -20094,3 +19991,137 @@ html.kta-theme-light .kta-phg-signal,
 html.kta-theme-light .kta-phg-floater { background: #ffffff; color: var(--kta-light-text, #1a1f2e); border-color: rgba(0, 0, 0, 0.12); }
 html.kta-theme-light .kta-phg-signal { border-left-color: #b8860b; }
 html.kta-theme-light .kta-phg-floater { border-left-color: #3a6fd8; }
+
+/* ══ Finitions d'interface : Réglages, HOME clair, lecture, cibles au doigt, focus clavier ══════════════════════
+   Jetons seulement, aucune couleur en dur. Source des constats : docs/audits/2026-10-20_audit-ui-impeccable-v1.md
+   (M2, M4, M6, M7, F3, F5). ⚠️ Bloc en fin de fichier : un @media n'ajoute aucune spécificité, l'ordre tranche. */
+
+/* Titre de groupe des Réglages (plan et accueil) : texte principal, 14 px gras, casse normale. La pastille de
+   portée reste la seule couleur de la ligne. Plus aucun style inline : ce bloc est la seule source. */
+.kta-cfg-group-titre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--kta-texte);
+  cursor: pointer;
+}
+.kta-cfg-group-titre.kta-cfg-group-titre-premier { margin-top: 2px; }
+.kta-cfg-group-titre:focus-visible { outline: 2px solid var(--kta-focus); }
+
+/* Ligne d'action (mode présentation) : même boîte que les lignes à cocher (.kta-perf-ultra-row), sur un <button>. */
+button.kta-cfg-ligne-action {
+  width: 100%;
+  margin: 0;
+  align-items: center;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.kta-cfg-ligne-action-icone { flex: 0 0 16px; font-size: 15px; line-height: 1; text-align: center; }
+.kta-cfg-ligne-action-chevron { flex: 0 0 auto; font-size: 18px; line-height: 1; color: var(--kta-texte-3); }
+.kta-cfg-ligne-action:focus-visible { outline: 2px solid var(--kta-focus); outline-offset: 2px; }
+
+/* Documentation : colonne de lecture ≈ 72 caractères, corps à 15 px (le sommaire garde sa colonne). Les titres
+   suivent pour rester au-dessus du corps. 🩸 1ch = largeur du « 0 », plus large qu'une lettre moyenne : 72ch
+   donnait 85 caractères par ligne mesurés en Arial 15 px ; 61ch en donne ≈ 72. */
+.kta-readme-corps { font-size: 15px; line-height: 1.65; max-width: 61ch; }
+.kta-readme-corps h3 { font-size: 16px; }
+.kta-readme-corps h4 { font-size: 15px; }
+.kta-readme-corps .kta-readme-table { font-size: 14px; }
+@media (max-width: 480px) {
+  .kta-readme-corps { font-size: 15px; }
+  .kta-readme-corps h2 { font-size: 17px; }
+  .kta-readme-corps h3 { font-size: 16px; }
+}
+/* Fiche d'Aide (sous-modale) : même règle de lecture. Chaque bloc borne SA ligne (son ch suit sa police). Une
+   fiche est UNE section : elle ne se coule plus dans les 2 colonnes du hub (.kta-aide-corps), et sa fenêtre
+   prend la largeur de sa colonne de lecture. ⚠️ L'id bat les paliers !important de .kta-aide-modal-boite. */
+#kta-aide-submodal .kta-aide-modal-boite { max-width: 680px !important; width: min(680px, 96vw) !important; }
+#kta-aide-sub-corps { columns: auto; column-rule: none; }
+#kta-aide-sub-corps .kta-aide-section { font-size: 15px; }
+#kta-aide-sub-corps .kta-aide-p,
+#kta-aide-sub-corps .kta-aide-liste,
+#kta-aide-sub-corps .kta-aide-grille,
+#kta-aide-sub-corps .kta-aide-grille span:not(.kta-aide-icone) { font-size: 15px; line-height: 1.55; }
+#kta-aide-sub-corps .kta-aide-note,
+#kta-aide-sub-corps .kta-aide-sousliste { font-size: 13px; }
+#kta-aide-sub-corps .kta-aide-section > * { max-width: 61ch; }
+
+/* En-tête de la Documentation sur téléphone : le titre se tronque, la croix reste entière à l'écran. */
+.kta-readme-modal-header > .kta-panneau-close { flex-shrink: 0; }
+.kta-readme-modal-header:has(#kta-readme-close) .kta-readme-modal-titre {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cibles : zone de toucher agrandie par un ::after transparent, la marque ne bouge pas. ⚠️ Le pseudo-élément
+   compte pour le clic de son élément ; il ne doit pas déborder sur une cible voisine (d'où les seules
+   extensions verticales dans les barres). Croix et copie : 32 px partout, 44 px au doigt. */
+.kta-panneau-close,
+.kta-readme-modal-close,
+.kta-popup-point .kta-popup-gps-copy { position: relative; }
+.kta-panneau-close::after,
+.kta-readme-modal-close::after,
+.kta-popup-point .kta-popup-gps-copy::after,
+.leaflet-container a.leaflet-popup-close-button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 32px);
+  height: max(100%, 32px);
+  transform: translate(-50%, -50%);
+}
+@media (pointer: coarse) {
+  .kta-aide-submodal-back,
+  .kta-readme-toc-toggle-btn { position: relative; }
+  .kta-panneau-close::after,
+  .kta-readme-modal-close::after,
+  .kta-popup-point .kta-popup-gps-copy::after,
+  .leaflet-container a.leaflet-popup-close-button::after { width: max(100%, 44px); height: max(100%, 44px); }
+  .kta-aide-submodal-back::after,
+  .kta-readme-toc-toggle-btn::after,
+  body.kta-refonte-v1 .kta-refonte-header-btn::after,
+  body.kta-refonte-v1 .kta-refonte-statusbar-toggle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  body.kta-refonte-v1 .kta-refonte-header-btn,
+  body.kta-refonte-v1 .kta-refonte-statusbar-toggle { position: relative; }
+  /* Sommaire de la Documentation : liens empilés sans interstice, aucun ::after possible sans chevaucher la
+     ligne voisine. Au doigt seulement, chaque lien passe à 40 px de haut (police et retraits inchangés). */
+  .kta-readme-toc-link { display: flex; align-items: center; min-height: 40px; box-sizing: border-box; }
+  .kta-readme-toc-toggle { width: 32px; height: 40px; }
+}
+
+/* Titre du bandeau profil « Bienvenue, <pseudo> » : 2 lignes au plus, sinon le pseudo disparaissait sous
+   l'ellipse dès 390 px (la salutation prend toute la ligne). */
+.kta-loader-profile-surnom {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+/* Focus clavier visible sur les 3 arrêts du HOME qui n'en avaient pas (même contour que .kta-btn:focus-visible). */
+#loaderSearchInput:focus-visible,
+#loaderPlansNameFilter:focus-visible,
+.kta-loader-profile-bar:focus-visible,
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar:focus-visible {
+  outline: 2px solid var(--kta-focus);
+  outline-offset: 2px;
+}

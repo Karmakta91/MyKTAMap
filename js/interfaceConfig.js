@@ -645,7 +645,7 @@ function _bindCfgTrackerStartHandlers() {
 // géoréf a sa sous-modale ; le reset ne touche que CE plan (jamais app_user_prefs). Wake lock et vocal
 // non supportés restent affichés avec la raison.
 
-const _CFG_STYLE_TITRE = "margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--kta-accent-texte);text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;";
+// Titre de groupe : style dans css/style.css (.kta-cfg-group-titre), partagé avec la Configuration de l'accueil.
 const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
 
 function _cfgGroupeDebut(cle, portee, premier) {
@@ -655,9 +655,9 @@ function _cfgGroupeDebut(cle, portee, premier) {
               : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
               : portee === "mixte"  ? '<span class="kta-cfg-scope kta-cfg-scope-mixte">'  + t("config.scope.badgeMixte")  + '</span>'
               : "";
-  const style = premier ? _CFG_STYLE_TITRE.replace("18px 0 6px", "2px 0 6px") : _CFG_STYLE_TITRE;
   return '<div class="kta-cfg-group" data-cfg-group="' + cle + '">' +
-         '<div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="' + style + '">' +
+         '<div class="kta-cfg-group-titre' + (premier ? " kta-cfg-group-titre-premier" : "") +
+           '" role="button" tabindex="0" aria-expanded="true">' +
            '<span class="kta-cfg-group-libelle">' + t(cle) + '</span>' + badge +
            '<span class="kta-cfg-group-chevron" aria-hidden="true">▾</span>' +
          '</div>' +
@@ -970,23 +970,23 @@ function afficherConfig() {
              Les blocs ci-dessous sont DÉPLACÉS, pas réécrits : tous les id,
              class, data-i18n et listeners (attachés par id plus bas dans la
              fonction) restent strictement identiques. Chaque groupe est
-             précédé d'un en-tête .kta-cfg-group-titre (style inline discret).
+             précédé d'un en-tête .kta-cfg-group-titre.
              ═══════════════════════════════════════════════════════════════ -->
 
         <!-- ════════ 1. 🌍 APPLICATION ════════ -->
         ${_cfgGroupeDebut("config.group.application", "global", true)}
 
-        <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
-             Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
-             (mobile-friendly + accessible en 1 vue). Avant : enfoui dans la
-             section 🔍 Affichage en bas. Plus pratique d'avoir cet accès
-             rapide visible dès l'ouverture des Réglages. Pour SORTIR sur
-             mobile : bouton flottant ✕ créé par presentationMode.js. -->
-        <div class="kta-aide-section kta-cfg-presentation-section">
-          <button class="kta-btn kta-btn-primary" type="button" id="cfg_presentation_btn"
-                  style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:14px;">
-            <span style="font-size:20px;">🎬</span>
-            <span><strong>${window.I18n.t("config.presentation.btn")}</strong></span>
+        <!-- Mode présentation : une ligne comme les autres, en tête du premier groupe (le seul ouvert d'office sur
+             téléphone, où c'est le seul chemin vers ce mode). Sortie : F / Échap, ou le ✕ flottant de
+             presentationMode.js. -->
+        <div class="kta-aide-section">
+          <button type="button" class="kta-perf-ultra-row kta-cfg-ligne-action" id="cfg_presentation_btn">
+            <span class="kta-cfg-ligne-action-icone" aria-hidden="true">🎬</span>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.presentation.btn")}</span>
+              <span class="kta-perf-ultra-hint">${window.I18n.t("config.presentation.hint")}</span>
+            </span>
+            <span class="kta-cfg-ligne-action-chevron" aria-hidden="true">›</span>
           </button>
         </div>
 
@@ -1185,10 +1185,6 @@ function afficherConfig() {
                feature v1.34.20). Pas de doublon dans Réglages — l'embarquement
                durable cross-utilisateurs se fait depuis le générateur avancé
                (plan-config.json > plan.histoirePdf). -->
-
-          <!-- 🆕 v1.21.0-fix3 (KARMA) : bouton "🎬 Activer le mode présentation"
-               DÉPLACÉ TOUT EN HAUT de la modale Réglages (avant la 1ère section)
-               pour accès en 1 vue dès l'ouverture, mobile-friendly. -->
 
           <!-- 🆕 v1.21.1+ (KARMA) : toggle Wake Lock API — empêche l'écran de
                s'éteindre tant que l'app est ouverte. Utile cataphile pour ne

@@ -41,7 +41,7 @@
           _refreshLoaderProfileBar();
           _appliquerFondEcran();
         });
-        // Re-rendu au changement de langue (salutation et placeholder viennent du dico ; le pseudo ne change pas).
+        // Re-rendu au changement de langue (« Bienvenue, … » et « Mon profil » viennent du dico ; le pseudo, jamais).
         if (window.I18n && window.I18n.onChange) {
           window.I18n.onChange(function() { _refreshLoaderProfileBar(); });
         }
@@ -140,7 +140,6 @@
         const snap = Object.assign({}, window.UserProfile.get(), _compte ? { surnom: _compte.pseudo } : {});
         const avatarWrap = document.getElementById("kta-loader-profile-avatar");
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
-        const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
         // ⚠️ Jeton incrémenté APRÈS les gardes de sortie : un appel stérile (DOM absent) brûlerait un numéro et
         // ferait abandonner un appel légitime en vol.
@@ -186,18 +185,16 @@
         // et les valeurs du bandeau resteraient à « — ».
         _hydrateProfileBarStats();
 
-        // Salutation et placeholder viennent du dico ; le pseudo (donnée utilisateur) n'est pas traduit.
-        const _tGreeting = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.greeting") : "Bienvenue";
-        const _tPlaceholder = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.placeholder") : "Mon profil";
+        // Titre « Bienvenue, <pseudo> » (sans pseudo : « Mon profil », l'invitation à le remplir). Le pseudo est une
+        // donnée utilisateur, jamais traduite : 🔒 posé par textContent (aucun HTML interprété).
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : null;
         const hasName = !!(snap.surnom && snap.surnom.trim());
         if (hasName) {
-          surnomEl.textContent = snap.surnom;
+          surnomEl.textContent = _t ? _t("home.profile.welcomeName", { pseudo: snap.surnom.trim() }) : snap.surnom;
           surnomEl.classList.remove("kta-loader-profile-surnom-empty");
-          if (greetingEl) greetingEl.textContent = _tGreeting;
         } else {
-          surnomEl.textContent = _tPlaceholder;
+          surnomEl.textContent = _t ? _t("home.profile.placeholder") : "Mon profil";
           surnomEl.classList.add("kta-loader-profile-surnom-empty");
-          if (greetingEl) greetingEl.textContent = _tGreeting;
         }
         // Avatar : photo si disponible, sinon initiale colorée.
         // 🩸 On RETIENT l'ancienne URL, on installe la nouvelle, et on ne révoque qu'APRÈS : révoquer avant
