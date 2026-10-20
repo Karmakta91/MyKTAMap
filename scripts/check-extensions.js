@@ -994,6 +994,39 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       EXT.includes('aide.parentNode.insertBefore(b, aide.nextSibling)') && EXT.includes("b.textContent = p.icone") &&
       EXT.includes('"_blank", "noopener,noreferrer"') &&
       EXT.includes('addEventListener("mktm:compte-changed", _poserPastilleHome)'));
+    // ── Prise « documentation » : un second guide dans 📖 Documentation ──
+    const { K: D0 } = nouveauContexte(null);
+    t("documentation : sans extension → null (guide classique direct)", D0.documentation() === null);
+    const { K: D1 } = nouveauContexte(null);
+    D1.register({ nom: "d1", apiVersion: 1, documentation: () => ({ titre: "  Guide B  ", fichiers: {
+      fr: "ext/docs/GUIDE.md?v=1.2", en: "ext/docs/GUIDE.en.md", es: "../GUIDE.es.md", de: "https://x.org/G.md",
+      it: "ext/G.html", XX: "ext/G.md" } }) });
+    const d1 = D1.documentation();
+    t("documentation : titre nettoyé, fichiers .md du même site gardés, le reste écarté",
+      !!d1 && d1.titre === "Guide B" && JSON.stringify(d1.fichiers) ===
+        JSON.stringify({ fr: "ext/docs/GUIDE.md?v=1.2", en: "ext/docs/GUIDE.en.md" }));
+    const refusDoc = [
+      { titre: "x", fichiers: { en: "ext/G.en.md" } },
+      { titre: " ", fichiers: { fr: "ext/G.md" } },
+      { titre: "x", fichiers: { fr: "//evil.org/G.md" } },
+      { titre: "x", fichiers: { fr: "/ext/G.md" } },
+      { titre: "x", fichiers: { fr: "ext/G.md?jeton=1" } },
+      { titre: "x", fichiers: "ext/G.md" },
+      null
+    ].every((v, k) => { const { K } = nouveauContexte(null);
+      K.register({ nom: "dr" + k, apiVersion: 1, documentation: () => v }); return K.documentation() === null; });
+    t("🔒 documentation : sans fr, titre vide, autre site, chemin absolu, requête, forme inattendue ou null → rien",
+      refusDoc);
+    const { K: D2 } = nouveauContexte(null);
+    D2.register({ nom: "d2", apiVersion: 1, documentation: () => { throw new Error("x"); } });
+    t("documentation : une erreur de l'extension → null", D2.documentation() === null);
+    const DOCS = lire("js/interfaceDocs.js");
+    t("🩸 documentation : la fenêtre ne lit la prise que si elle existe, sinon guide classique direct (myktamap.fr)",
+      DOCS.includes('K.aPrise("documentation"))') &&
+      /if \(!ext\) \{ _chargerReadme\(_readmePathForLang\(lang\)/.test(DOCS));
+    t("documentation : choix des deux guides, la langue changée garde le guide affiché",
+      DOCS.includes('bouton("kta-readme-choix-classique"') && DOCS.includes('bouton("kta-readme-choix-extension"') &&
+      DOCS.includes("guide:          modal.dataset.guide"));
     t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
       /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
@@ -1161,6 +1194,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 page modifiée sur le serveur : vue à jour au chargement suivant (plus de copie figée)",
       /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
     t("feuille de style d'un sous-dossier de module : réseau d'abord", /^page v2 /.test(await avec.demander("ext/lang/x.css", "style")));
+    avec.principal.put(SCOPE + "ext/docs/G.md", rep("copie figée"));
+    t("🩸 guide Markdown (.md) d'un dossier de module : réseau d'abord, jamais une copie figée",
+      /^page v2 /.test(await avec.demander("ext/docs/G.md")));
     avec.reseau = () => Promise.reject(new Error("hors ligne"));
     t("hors ligne : la dernière copie est servie",
       /^page v2 .*ext\/compte\.html$/.test(await avec.demander("ext/compte.html", "document")));

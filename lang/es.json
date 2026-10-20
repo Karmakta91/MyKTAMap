@@ -5431,6 +5431,8 @@
   "aide.ui.empty": "No se ha encontrado ninguna sección.",
   "docs.tocToggle": "Mostrar u ocultar el índice",
   "docs.tutorielBtn": "(Re)ver el tutorial de bienvenida",
+  "docs.choix.titre": "¿Qué documentación?",
+  "docs.choix.classique": "Clásica",
   "docs.erreurChargement": "No se puede cargar",
   "docs.search.count": "{i} / {n}",
   "docs.search.nextTitle": "Resultado siguiente (Intro)",

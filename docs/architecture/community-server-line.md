@@ -207,6 +207,15 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,
   10 au plus. Une extension déclarée après l'accueil fait redessiner la section (événement
   `mktm:extensions-changees`, émis par `register`). Sans extension, rien n'apparaît.
+- **Guide dans 📖 Documentation** : la prise `documentation() → { titre, fichiers: { fr, en?, es? } } | null` ajoute
+  UN second guide Markdown à la fenêtre Documentation (`js/interfaceDocs.js > afficherReadme`). Avec la prise,
+  l'ouverture propose d'abord « Classique » ou `titre` (fenêtre `kta-readme-choix`) ; le guide choisi s'ouvre dans la
+  MÊME fenêtre (en-tête, langue, 🤖 Aide IA, sommaire, recherche, rendu), titre « Documentation · `titre` », et un
+  changement de langue garde le guide affiché. Langue sans fichier → `fr`. 🔒 Fichiers du **même site** : chemin
+  relatif sans remontée ni `//`, terminé par `.md`, seul suffixe permis `?v=` ; `fr` obligatoire, titre ≤ 40 ;
+  Markdown échappé comme le guide classique. Forme inattendue, erreur ou `null` → guide classique direct, sans
+  choix ; sans extension, la fenêtre ne lit même pas la prise (`aPrise`). Le `.md` placé dans un dossier de module
+  est lu réseau d'abord (paragraphe Service Worker plus bas). Tests : `check-extensions.js`.
 - **Rubrique d'aide** (11/10/2026) : la prise `aide() → { titre, sections: [{ titre, html }] }` ajoute UNE rubrique
   à l'Aide intégrée, juste avant « Pour aller plus loin » (ex. la sécurité et les clés du pro). Lue au rendu (langue
   courante), 20 sections au plus ; HTML de mise en forme admis mais nettoyé (ni script, cadre, formulaire,
@@ -419,9 +428,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `index.json` (`x/mod.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. ⚠️ Sans nouveau `?v=`,
   un module modifié reste périmé sur les appareils, même après une release community. Il en va de même
   d'un script chargé par une page du dossier (sa balise porte son propre `?v=`).
-- **Pages et feuilles de style des dossiers de modules** : un dossier de module = le dossier d'un module
-  déclaré (`x/mod.js` → `x/`, `x/lang/fr.js` → `x/lang/`), **strictement sous** le scope du SW (un module
-  posé à la racine ne fait rien passer). Leurs `.html` / `.css` (et toute navigation dans ces dossiers)
+- **Pages, feuilles de style et guides des dossiers de modules** : un dossier de module = le dossier d'un module
+  déclaré (`x/mod.js` → `x/`, `x/lang/fr.js` → `x/lang/`, sous-dossiers compris), **strictement sous** le scope du
+  SW (un module posé à la racine ne fait rien passer). Leurs `.html` / `.css` / `.md` (et toute navigation dans ces dossiers)
   sont servis **réseau d'abord** (`no-store`, délai 3 s), copie gardée dans le cache durable
   `myktamap-ext-pages` sous l'URL **sans requête** (🔒 un jeton passé en requête ne reste pas sur
   l'appareil) ; hors ligne, panne ou 5xx → la copie ; une réponse du serveur (404, redirection) est

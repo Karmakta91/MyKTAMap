@@ -5502,6 +5502,8 @@
   "aide.ctx.btn": "Aide sur cette fenêtre",
   "docs.tocToggle": "Afficher ou masquer le sommaire",
   "docs.tutorielBtn": "(Re)voir le tutoriel de bienvenue",
+  "docs.choix.titre": "Quelle documentation ?",
+  "docs.choix.classique": "Classique",
   "docs.erreurChargement": "Impossible de charger",
   "docs.search.count": "{i} / {n}",
   "docs.search.nextTitle": "Résultat suivant (Entrée)",

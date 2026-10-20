@@ -8,10 +8,11 @@
 // INTERFACE DOCS — modales Documentation (README), Aide (hub + aide contextuelle), Aide IA
 // =========================
 // Expose : afficherReadme(opts) (docs/applications/README_USER{,.en,.es}.md ; opts.hideOnboarding et
-//   opts.overLocker pour l'ouvrir depuis UnlockGate / PinLock) · afficherAide() · afficherModaleAideIA()
-//   (docs/applications/AI_CONTEXT.md filtré par profil) · ktaOuvrirAideSection(slug) ·
-//   ktaDocNormaliser / ktaDocTrouver (recherche plein texte, exécutées par le garde-fou).
-// Dépend de : __MKM__.build, I18n (resolveContentLang, onChange), KtaExtensions.aide, ktaCopierTexte.
+//   opts.overLocker pour l'ouvrir depuis UnlockGate / PinLock ; opts.guide : second guide d'une extension) ·
+//   afficherAide() · afficherModaleAideIA() (docs/applications/AI_CONTEXT.md filtré par profil) ·
+//   ktaOuvrirAideSection(slug) · ktaDocNormaliser / ktaDocTrouver (recherche plein texte, exécutées par le garde-fou).
+// Dépend de : __MKM__.build, I18n (resolveContentLang, onChange), KtaExtensions.aide / .documentation,
+//   ktaCopierTexte.
 // ⚠️ Langue de la Documentation LOCALE (myktamap_readme_lang ≠ langue globale myktamap_app_lang) ;
 //   l'Aide, elle, vit dans les dicos (aide.*) et suit la langue globale.
 // Garde-fous : scripts/check-aide-sections.js, scripts/check-aide-contextuelle.js,
@@ -105,13 +106,69 @@ window.ktaDocTrouver = function(texte, q) {
   return res;
 };
 
+// opts.guide : « classique » | « extension » (guide d'une extension, prise KtaExtensions.documentation).
+// Sans prise : guide classique direct. Avec une prise et sans opts.guide : choix des deux guides d'abord.
 function afficherReadme(opts) {
   opts = opts || {};
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
   const lang = _getReadmeLang();
-  _chargerReadme(_readmePathForLang(lang), opts);
+  const K = window.KtaExtensions;
+  const ext = (opts.guide !== "classique" && K && typeof K.aPrise === "function" && K.aPrise("documentation"))
+    ? K.documentation() : null;
+  if (!ext) { _chargerReadme(_readmePathForLang(lang), Object.assign({}, opts, { guide: "classique" })); return; }
+  if (opts.guide === "extension") {
+    _chargerReadme(ext.fichiers[lang] || ext.fichiers.fr, Object.assign({}, opts, { titreGuide: ext.titre }));
+    return;
+  }
+  _choisirGuide(ext, opts);
+}
+
+// Choix « Classique » / guide de l'extension, dans le gabarit des fenêtres de la Documentation.
+function _choisirGuide(ext, opts) {
+  const vieux = document.getElementById("kta-readme-choix");
+  if (vieux) { vieux.remove(); return; }
+  const t = function (k) { return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k) : k; };
+  const ov = document.createElement("div");
+  ov.id = "kta-readme-choix";
+  ov.className = "kta-readme-modal-overlay";
+  if (opts.overLocker) ov.classList.add("kta-readme-over-locker");
+  const boite = document.createElement("div");
+  boite.className = "kta-readme-modal-boite";
+  boite.style.cssText = "max-width:420px; height:auto;";
+  const entete = document.createElement("div");
+  entete.className = "kta-readme-modal-header";
+  const titre = document.createElement("span");
+  titre.className = "kta-readme-modal-titre";
+  titre.textContent = t("docs.choix.titre");
+  const fermer = document.createElement("button");
+  fermer.className = "kta-panneau-close";
+  fermer.type = "button";
+  fermer.textContent = "✕";
+  entete.append(titre, fermer);
+  const corps = document.createElement("div");
+  corps.className = "kta-readme-modal-corps";
+  corps.style.cssText = "display:flex; flex-direction:column; gap:10px; font-size:13px;";
+  const bouton = function (id, libelle, guide) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.id = id;
+    b.className = "kta-btn kta-btn-primary";
+    b.textContent = libelle;
+    b.addEventListener("click", function () {
+      ov.remove();
+      afficherReadme(Object.assign({}, opts, { guide: guide }));
+    });
+    return b;
+  };
+  corps.append(bouton("kta-readme-choix-classique", "📖 " + t("docs.choix.classique"), "classique"),
+    bouton("kta-readme-choix-extension", "📖 " + ext.titre, "extension"));
+  boite.append(entete, corps);
+  ov.appendChild(boite);
+  fermer.addEventListener("click", function () { ov.remove(); });
+  ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+  document.documentElement.appendChild(ov);
 }
 
 // Sommaire latéral (desktop) / en haut (mobile), H2 + sous-H3 repliables.
@@ -461,6 +518,7 @@ function _ouvrirReadmeModal(html, opts) {
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
+  modal.dataset.guide = opts.titreGuide ? "extension" : "classique";
   // Ouverte depuis un écran de verrouillage : z-index au-dessus des deux gates, sinon inaccessible.
   if (opts.overLocker) modal.classList.add("kta-readme-over-locker");
   // header / [sidebar | corps scrollable (avec retour en haut)] / footer (crédit Leaflet).
@@ -495,7 +553,7 @@ function _ouvrirReadmeModal(html, opts) {
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
-        <span class="kta-readme-modal-titre">Documentation</span>
+        <span class="kta-readme-modal-titre">Documentation${opts.titreGuide ? " · " + window.ktaEsc(opts.titreGuide) : ""}</span>
         ${btnLang}
         ${btnAiia}
         ${btnOnboarding}
@@ -595,7 +653,8 @@ function _ouvrirReadmeModal(html, opts) {
       modal.remove();
       afficherReadme({
         overLocker:     wasOverLocker,
-        hideOnboarding: wasHideOnboard
+        hideOnboarding: wasHideOnboard,
+        guide:          modal.dataset.guide
       });
     });
   }

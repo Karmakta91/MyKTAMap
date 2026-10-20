@@ -343,7 +343,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -744,6 +744,28 @@
       });
       return sections.length ? { titre: r.titre.trim().slice(0, 60), sections: sections } : null;
     } catch (e) { console.warn("[Extensions] aide :", e); return null; }
+  }
+  // Prise d'INFORMATION « documentation » : UN second guide dans la fenêtre 📖 Documentation
+  // (js/interfaceDocs.js > afficherReadme), proposé à l'ouverture à côté du guide classique.
+  // ext.documentation() → { titre, fichiers: { fr, en?, es? } } ou null. 🔒 Fichiers Markdown du MÊME site :
+  // chemin relatif sans remontée ni « // », terminé par .md, un seul suffixe permis (?v=). `fr` obligatoire
+  // (repli de toute langue absente). Erreur, forme inattendue ou null = rien : guide classique direct.
+  const DOC_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.md(\?v=[A-Za-z0-9._-]{1,32})?$/;
+  function documentation() {
+    const ext = _prise("documentation");
+    if (!ext || typeof ext.documentation !== "function") return null;
+    try {
+      const r = ext.documentation();
+      if (!r || typeof r.titre !== "string" || !r.titre.trim() || !r.fichiers || typeof r.fichiers !== "object") return null;
+      const fichiers = {};
+      Object.keys(r.fichiers).slice(0, 8).forEach(function (code) {
+        const f = r.fichiers[code];
+        if (/^[a-z]{2}$/.test(code) && typeof f === "string" && DOC_RE.test(f) &&
+            f.indexOf("..") < 0 && f.indexOf("//") < 0) fichiers[code] = f;
+      });
+      if (!fichiers.fr) return null;
+      return { titre: r.titre.trim().slice(0, 40), fichiers: fichiers };
+    } catch (e) { console.warn("[Extensions] documentation :", e); return null; }
   }
   function actionsCompte(lieu) {
     const ext = _prise("actionsCompte");
@@ -1570,6 +1592,7 @@
     aPrise: aPrise,
     outilsDev: outilsDev,
     aide: aide,
+    documentation: documentation,
     signaler: signaler,
     chargerModules: chargerModules,
     modulesEtat: modulesEtat,

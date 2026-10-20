@@ -5502,6 +5502,8 @@
   "aide.ctx.btn": "Help about this window",
   "docs.tocToggle": "Show or hide the table of contents",
   "docs.tutorielBtn": "(Re)play the welcome tutorial",
+  "docs.choix.titre": "Which documentation?",
+  "docs.choix.classique": "Classic",
   "docs.erreurChargement": "Unable to load",
   "docs.search.count": "{i} / {n}",
   "docs.search.nextTitle": "Next result (Enter)",

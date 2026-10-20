@@ -70,10 +70,10 @@ function _modulesDeclares(texteIndex) {
     .filter(function(u) { return u && new URL(u).origin === self.location.origin; });
 }
 
-// PAGES ET FEUILLES DE STYLE DES DOSSIERS DE MODULES : RÉSEAU D'ABORD.
+// PAGES, FEUILLES DE STYLE ET GUIDES (.md) DES DOSSIERS DE MODULES : RÉSEAU D'ABORD.
 // Un dossier de module = le dossier d'un module déclaré (`x/mod.js` → `<scope>/x/`), strictement sous le
 // scope : un module posé à la racine ne fait jamais passer l'app elle-même (index.html, css/) en réseau
-// d'abord. Les .html/.css de ces dossiers ne portent pas de `?v=` : en cache d'abord, ils resteraient figés
+// d'abord. Les .html/.css/.md de ces dossiers ne portent pas de `?v=` : en cache d'abord, ils resteraient figés
 // jusqu'au prochain CACHE_NAME. Gardés dans un cache durable (préfixe ext) sous leur URL SANS requête —
 // 🔒 une requête de page peut porter un jeton (lien d'invitation) qui ne doit pas rester sur l'appareil.
 // Sans module déclaré (myktamap.fr) : aucun dossier, rien ne change.
@@ -99,13 +99,13 @@ function _dossiersExtPrets() {
     .catch(function() { return []; });
   return _dossiersExt;
 }
-// Candidat (synchrone, sans lecture de cache) : page ou feuille de style dans un sous-dossier du scope.
+// Candidat (synchrone, sans lecture de cache) : page, feuille de style ou guide dans un sous-dossier du scope.
 function _candidatPageExt(url, destination) {
   const chemin = url.split(/[?#]/)[0];
   const scope = self.registration && self.registration.scope;
   if (!scope || chemin.indexOf(scope) !== 0 || chemin.slice(scope.length).indexOf("/") < 0) return false;
   return destination === "document" || destination === "iframe" || destination === "style" ||
-    /(\.html?|\.css|\/)$/i.test(chemin);
+    /(\.html?|\.css|\.md|\/)$/i.test(chemin);
 }
 function _dansDossierExt(url, dossiers) {
   const chemin = url.split(/[?#]/)[0];
