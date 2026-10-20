@@ -831,7 +831,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     if (evt && evt.popup) evt.popup.setContent(fresh);
     if (mode === "readonly") return;
     setTimeout(function() {
-      const popupRoot = document.querySelector(".leaflet-popup-content .kta-note-popup");
+      // 🩸 Cherché DANS la popup ouverte, jamais dans tout le document : la popup qu'on vient de quitter reste dans le
+      // DOM le temps de son fondu (~200 ms) et passe AVANT dans l'ordre du document ; ses boutons recevraient les
+      // écouteurs et ceux de la nouvelle fiche resteraient morts (clic d'un objet à l'autre).
+      const racine = (evt && evt.popup && typeof evt.popup.getElement === "function" && evt.popup.getElement())
+        || document;
+      const popupRoot = racine.querySelector(".leaflet-popup-content .kta-note-popup");
       if (!popupRoot) return;
       const textarea = popupRoot.querySelector(".kta-note-popup-textarea");
       const saveBtn  = popupRoot.querySelector(".kta-note-popup-save");
