@@ -35,6 +35,17 @@
 - **Tendance des garde-fous** — le tableau de la CI (`ci.yml › tableau-garde-fous`) n'a pas d'historique d'une
   version à l'autre. Déclencheur : un garde-fou qui ralentit sans qu'on le voie venir.
 
+## Dettes connues, à solder quand on touche le module
+
+- **Badge « estimé » du point B de géoréf** — le Générateur ne pose pas `estimated` dans `plan.georef`
+  (`createConf.js`, bouton « estimer B ») : le badge ne survit pas au plan généré. Déclencheur : on touche le géoréf.
+- **`EMOJI_PAR_TAG` de l'export anonymisé** — table locale de `sessionExporter.js`, hors contrôle de
+  `check-icon-catalog.js` (format de sortie à arbitrer). Déclencheur : un tag ajouté ou l'export anonymisé retouché.
+- **Copies de `_pointInPolygon`** — le foyer canonique est `window.ktaPointInPolygon` ; des copies locales restent
+  (`session-data.md`). Déclencheur : on touche un des modules qui en portent une.
+- **Largeur des types personnalisés en Vue OSM** — le rendu tient parce que le repli tombe sur le gabarit « mur »
+  (`weight: 2`), pas par le canon (`vue-osm.md`). Déclencheur : on touche les styles de la Vue OSM.
+
 ## Mode Secours (suite de l'audit du 29/09)
 
 Rapport : `docs/audits/2026-09-29_audit-secours-v1.md`. Un commit par case.

@@ -650,7 +650,7 @@ function afficherPlanner() {
 
   // B estimé : A + échelle (#pl_scale) + Nord (#pl_northOffset) + dimensions de l'image. Mêmes règles que
   // ⚙️ Réglages (refus explicites, récap, badge « estimé »). Le champ `estimated` n'est pas écrit dans
-  // plan.georef (dette notée au BACKLOG).
+  // plan.georef (dette : docs/IDEES.md).
   const _btnEstimerGen = document.getElementById("pl_geo_B_estimer");
   if (_btnEstimerGen) _btnEstimerGen.addEventListener("click", async function() {
     const ax = parseFloat(document.getElementById("pl_geo_A_x").value);

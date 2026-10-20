@@ -955,7 +955,7 @@ plan, ça reste encore limite ».
 
 🩸 **Ce qui tenait lieu de solution était un accident.** Le commentaire posé en
 v1.82.0 le disait déjà : le rendu convenait parce que le repli des types
-personnalisés tombe sur le gabarit « mur » (`weight: 2`). Consigné au backlog
+personnalisés tombe sur le gabarit « mur » (`weight: 2`). Consigné dans `docs/IDEES.md`
 plutôt que corrigé à l'aveugle — demander le `weight` au canon aurait ramené
 10 px et refait l'aplat.
 

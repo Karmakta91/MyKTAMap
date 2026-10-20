@@ -15,7 +15,7 @@
 //   E3. précache `sw.js > ASSETS_TO_CACHE` + fichier présent : un oubli ne manque que HORS-LIGNE.
 //   E4. `editor.tag.<tag>` et `legendui.label.<tag>` dans les 3 dicos.
 // Volontairement hors contrôle : `sessionExporter.js > EMOJI_PAR_TAG` (format de sortie de l'export
-// anonymisé, à arbitrer ; consigné au BACKLOG).
+// anonymisé, à arbitrer ; docs/IDEES.md).
 // ⚠️ Contrôle statique de CLÉS : l'affichage réel d'une icône relève du smoke.
 // Ajouter un tag : skill `add-icon-tag`.
 // =====================================================================

@@ -1445,7 +1445,7 @@ qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
 **🧭 Dette adressée à moitié, sciemment.** `_pointInPolygon` vivait en **quatre** copies locales (`interface.js`,
 `pathfinder.js`, `secoursMode.js`…). Le module devient le **foyer canonique** (`window.ktaPointInPolygon`,
 `window.ktaDistPointSegment`) sans rouvrir les quatre : elles servent trois chemins de suppression qui fonctionnent, et on
-ne les touche pas dans une version non déployée. Migration au BACKLOG.
+ne les touche pas dans une version non déployée. Migration : `docs/IDEES.md`.
 
 **Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
 Leaflet**. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
