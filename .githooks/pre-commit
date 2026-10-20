@@ -66,6 +66,9 @@ node scripts/check-pdf-texte.js || exit $?
 # Popups natives : cliquet a 0 (ktaAlerte / ktaConfirm / toast).
 node scripts/check-popups-natives.js || exit $?
 
+# Forme du backlog : horizons, plafond de Maintenant, metadonnees des entrees (avertissement, jamais bloquant).
+node scripts/check-backlog.js
+
 # Commentaires = etat actuel : ni tag de version en tete, ni « ligne N », ni garde-fou absent ; cliquet.
 node scripts/check-commentaires.js || exit $?
 

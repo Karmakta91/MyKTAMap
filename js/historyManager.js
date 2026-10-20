@@ -156,6 +156,9 @@
   //   - Diff sur l'UNION des catégories : un objet converti des tracés aux zones n'est pas supprimé.
   //   - Pas de trace pour l'itinéraire calculé, ni pour un objet rapatrié d'un calque (`_srcCalque`) : le restituer
   //     le rend à son calque.
+  //     🩸 La copie porte l'uid de l'objet du CALQUE : sa trace, emportée par l'export complet puis passée par la
+  //     fusion de calques ou l'import ZIP du Générateur (KtaUid.fusionnerCalques), supprimerait l'original. Une
+  //     restitution ou une suppression de copie ne se propage donc pas à un autre appareil.
   const _CATS = ["editorPoints", "roads", "zones", "structures"];
   const _GETTERS = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
 

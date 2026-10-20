@@ -103,7 +103,7 @@
 
             '<div class="kta-aide-section">' +
               '<div class="kta-aide-section-titre">' + t("incognito.confirm.changes.title") + '</div>' +
-              '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.7;">' +
+              '<ul style="margin:8px 0 0 0; padding-left:22px; color:var(--kta-texte-2); font-size:13px; line-height:1.7;">' +
                 '<li>' + t("incognito.confirm.changes.b1") + '</li>' +
                 '<li>' + t("incognito.confirm.changes.b2") + '</li>' +
                 '<li>' + t("incognito.confirm.changes.b3") + '</li>' +
@@ -114,7 +114,7 @@
             '<div class="kta-aide-section">' +
               '<div class="kta-aide-section-titre">' + t("incognito.confirm.warn.title") + '</div>' +
               '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
-                '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
+                '<div style="color:var(--kta-texte-2); font-size:12.5px; line-height:1.55;">' +
                   t("incognito.confirm.warn.body") +
                 '</div>' +
               '</div>' +
@@ -122,7 +122,7 @@
 
             '<div class="kta-aide-section">' +
               '<div class="kta-aide-section-titre">' + t("incognito.confirm.usecases.title") + '</div>' +
-              '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.7;">' +
+              '<ul style="margin:8px 0 0 0; padding-left:22px; color:var(--kta-texte-2); font-size:13px; line-height:1.7;">' +
                 '<li>' + t("incognito.confirm.usecases.b1") + '</li>' +
                 '<li>' + t("incognito.confirm.usecases.b2") + '</li>' +
                 '<li>' + t("incognito.confirm.usecases.b3") + '</li>' +

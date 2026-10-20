@@ -8,10 +8,11 @@
 // INTERFACE DOCS — modales Documentation (README), Aide (hub + aide contextuelle), Aide IA
 // =========================
 // Expose : afficherReadme(opts) (docs/applications/README_USER{,.en,.es}.md ; opts.hideOnboarding et
-//   opts.overLocker pour l'ouvrir depuis UnlockGate / PinLock) · afficherAide() · afficherModaleAideIA()
-//   (docs/applications/AI_CONTEXT.md filtré par profil) · ktaOuvrirAideSection(slug) ·
-//   ktaDocNormaliser / ktaDocTrouver (recherche plein texte, exécutées par le garde-fou).
-// Dépend de : __MKM__.build, I18n (resolveContentLang, onChange), KtaExtensions.aide, ktaCopierTexte.
+//   opts.overLocker pour l'ouvrir depuis UnlockGate / PinLock ; opts.guide : second guide d'une extension) ·
+//   afficherAide() · afficherModaleAideIA() (docs/applications/AI_CONTEXT.md filtré par profil) ·
+//   ktaOuvrirAideSection(slug) · ktaDocNormaliser / ktaDocTrouver (recherche plein texte, exécutées par le garde-fou).
+// Dépend de : __MKM__.build, I18n (resolveContentLang, onChange), KtaExtensions.aide / .documentation,
+//   ktaCopierTexte.
 // ⚠️ Langue de la Documentation LOCALE (myktamap_readme_lang ≠ langue globale myktamap_app_lang) ;
 //   l'Aide, elle, vit dans les dicos (aide.*) et suit la langue globale.
 // Garde-fous : scripts/check-aide-sections.js, scripts/check-aide-contextuelle.js,
@@ -105,13 +106,69 @@ window.ktaDocTrouver = function(texte, q) {
   return res;
 };
 
+// opts.guide : « classique » | « extension » (guide d'une extension, prise KtaExtensions.documentation).
+// Sans prise : guide classique direct. Avec une prise et sans opts.guide : choix des deux guides d'abord.
 function afficherReadme(opts) {
   opts = opts || {};
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
   const lang = _getReadmeLang();
-  _chargerReadme(_readmePathForLang(lang), opts);
+  const K = window.KtaExtensions;
+  const ext = (opts.guide !== "classique" && K && typeof K.aPrise === "function" && K.aPrise("documentation"))
+    ? K.documentation() : null;
+  if (!ext) { _chargerReadme(_readmePathForLang(lang), Object.assign({}, opts, { guide: "classique" })); return; }
+  if (opts.guide === "extension") {
+    _chargerReadme(ext.fichiers[lang] || ext.fichiers.fr, Object.assign({}, opts, { titreGuide: ext.titre }));
+    return;
+  }
+  _choisirGuide(ext, opts);
+}
+
+// Choix « Classique » / guide de l'extension, dans le gabarit des fenêtres de la Documentation.
+function _choisirGuide(ext, opts) {
+  const vieux = document.getElementById("kta-readme-choix");
+  if (vieux) { vieux.remove(); return; }
+  const t = function (k) { return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k) : k; };
+  const ov = document.createElement("div");
+  ov.id = "kta-readme-choix";
+  ov.className = "kta-readme-modal-overlay";
+  if (opts.overLocker) ov.classList.add("kta-readme-over-locker");
+  const boite = document.createElement("div");
+  boite.className = "kta-readme-modal-boite";
+  boite.style.cssText = "max-width:420px; height:auto;";
+  const entete = document.createElement("div");
+  entete.className = "kta-readme-modal-header";
+  const titre = document.createElement("span");
+  titre.className = "kta-readme-modal-titre";
+  titre.textContent = t("docs.choix.titre");
+  const fermer = document.createElement("button");
+  fermer.className = "kta-panneau-close";
+  fermer.type = "button";
+  fermer.textContent = "✕";
+  entete.append(titre, fermer);
+  const corps = document.createElement("div");
+  corps.className = "kta-readme-modal-corps";
+  corps.style.cssText = "display:flex; flex-direction:column; gap:10px; font-size:13px;";
+  const bouton = function (id, libelle, guide) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.id = id;
+    b.className = "kta-btn kta-btn-primary";
+    b.textContent = libelle;
+    b.addEventListener("click", function () {
+      ov.remove();
+      afficherReadme(Object.assign({}, opts, { guide: guide }));
+    });
+    return b;
+  };
+  corps.append(bouton("kta-readme-choix-classique", "📖 " + t("docs.choix.classique"), "classique"),
+    bouton("kta-readme-choix-extension", "📖 " + ext.titre, "extension"));
+  boite.append(entete, corps);
+  ov.appendChild(boite);
+  fermer.addEventListener("click", function () { ov.remove(); });
+  ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+  document.documentElement.appendChild(ov);
 }
 
 // Sommaire latéral (desktop) / en haut (mobile), H2 + sous-H3 repliables.
@@ -341,7 +398,7 @@ function _setupReadmeSearch() {
 
 function _chargerReadme(fichier, opts) {
   opts = opts || {};
-  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>", opts);
+  _ouvrirReadmeModal("<p style='color:var(--kta-texte-3); text-align:center; padding:20px;'>⏳ Chargement…</p>", opts);
   fetch(fichier)
     .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier); return res.text(); })
     .then(function(md) {
@@ -461,6 +518,7 @@ function _ouvrirReadmeModal(html, opts) {
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
+  modal.dataset.guide = opts.titreGuide ? "extension" : "classique";
   // Ouverte depuis un écran de verrouillage : z-index au-dessus des deux gates, sinon inaccessible.
   if (opts.overLocker) modal.classList.add("kta-readme-over-locker");
   // header / [sidebar | corps scrollable (avec retour en haut)] / footer (crédit Leaflet).
@@ -495,7 +553,7 @@ function _ouvrirReadmeModal(html, opts) {
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
-        <span class="kta-readme-modal-titre">Documentation</span>
+        <span class="kta-readme-modal-titre">Documentation${opts.titreGuide ? " · " + window.ktaEsc(opts.titreGuide) : ""}</span>
         ${btnLang}
         ${btnAiia}
         ${btnOnboarding}
@@ -595,7 +653,8 @@ function _ouvrirReadmeModal(html, opts) {
       modal.remove();
       afficherReadme({
         overLocker:     wasOverLocker,
-        hideOnboarding: wasHideOnboard
+        hideOnboarding: wasHideOnboard,
+        guide:          modal.dataset.guide
       });
     });
   }
@@ -744,7 +803,7 @@ function afficherAide() {
 
   document.documentElement.appendChild(modal);
 
-  function _closeAll() { _aideFermerSousModal(); modal.remove(); }
+  function _closeAll() { _aideFermerSousModal(); _aideRetourHub(modal); modal.remove(); }
   document.getElementById("kta-aide-close").addEventListener("click", _closeAll);
   modal.addEventListener("click", function (e) { if (e.target === modal) _closeAll(); });
 
@@ -945,9 +1004,80 @@ function _aideRendreHub(corps) {
   });
 }
 
-// Sous-modale : UNE section + ← Retour (z-index 100001, au-dessus du hub).
+// Fiche sur téléphone : elle REMPLACE le contenu du hub (un voile, une croix) au lieu de s'empiler dessus.
+// ⚠️ « Téléphone » = largeur ≤ 600 px, ou écran tactile de moins de 500 px de haut (téléphone en paysage) :
+// c'est la place qui manque pour deux fenêtres, pas le type de pointeur (une tablette garde la sous-fenêtre).
+// Relu à chaque ouverture : tourner l'appareil vaut pour la fiche suivante. PC : sous-fenêtre, inchangé.
+const AIDE_FICHE_EN_PLACE_MQ = "(max-width: 600px), (max-height: 500px) and (pointer: coarse)";
+function _aideFicheEnPlace() {
+  try { return !!(window.matchMedia && window.matchMedia(AIDE_FICHE_EN_PLACE_MQ).matches); }
+  catch (e) { return false; }
+}
+
+// Section reconstruite depuis les dicos (titre + corps) : un seul rendu pour la sous-fenêtre et le hub.
+function _aideBlocSection(section) {
+  const bloc = document.createElement("div");
+  bloc.className = "kta-aide-section";
+  const t = document.createElement("div");
+  t.className = "kta-aide-section-titre";
+  _aidePoserTitre(t, section);
+  bloc.appendChild(t);
+  const c = document.createElement("div");
+  c.innerHTML = section.html || "";
+  while (c.firstChild) bloc.appendChild(c.firstChild);
+  return bloc;
+}
+
+// 🩸 Le hub n'est pas reconstruit : il est masqué (classe sur l'overlay), ce qui garde la recherche tapée et,
+// au retour, la position de défilement relevée à l'ouverture de la fiche.
+function _aideOuvrirFicheDansHub(modal, section) {
+  const corps = modal.querySelector("#kta-aide-corps");
+  const head = modal.querySelector(".kta-readme-modal-header");
+  if (!corps || !head) return false;
+  _aideRetourHub(modal);
+  modal.__aideScroll = corps.scrollTop;
+  const fiche = document.createElement("div");
+  fiche.className = "kta-aide-fiche-vue";
+  fiche.appendChild(_aideBlocSection(section));
+  corps.appendChild(fiche);
+  const back = document.createElement("button");
+  back.type = "button";
+  back.id = "kta-aide-back";
+  back.className = "kta-aide-submodal-back kta-aide-back-hub";
+  back.textContent = "← " + (window.I18n ? window.I18n.t("aide.ui.back") : "");
+  back.addEventListener("click", function() { _aideRetourHub(modal); });
+  head.insertBefore(back, head.firstChild);
+  modal.classList.add("kta-aide-en-fiche");
+  corps.scrollTop = 0;
+  // Échap revient au hub (comme la croix de la sous-fenêtre sur PC) ; l'échappement global fermerait tout.
+  modal.__aideEsc = function(e) {
+    if (e.key !== "Escape" && e.key !== "Esc") return;
+    if (!modal.isConnected) { document.removeEventListener("keydown", modal.__aideEsc, true); return; }
+    e.stopPropagation();
+    e.preventDefault();
+    _aideRetourHub(modal);
+  };
+  document.addEventListener("keydown", modal.__aideEsc, true);
+  try { back.focus({ preventScroll: true }); } catch (e) { /* focus facultatif */ }
+  return true;
+}
+
+function _aideRetourHub(modal) {
+  if (!modal) return;
+  if (modal.__aideEsc) { document.removeEventListener("keydown", modal.__aideEsc, true); modal.__aideEsc = null; }
+  if (!modal.classList.contains("kta-aide-en-fiche")) return;
+  modal.querySelectorAll(".kta-aide-fiche-vue, .kta-aide-back-hub").forEach(function(el) { el.remove(); });
+  modal.classList.remove("kta-aide-en-fiche");
+  const corps = modal.querySelector("#kta-aide-corps");
+  if (corps) corps.scrollTop = modal.__aideScroll || 0;
+}
+
+// Sous-modale : UNE section + ← Retour (z-index 100001, au-dessus du hub). Sur téléphone, hub ouvert : la fiche
+// prend la place du hub (_aideOuvrirFicheDansHub). Ouverte par le ❓ d'une fenêtre (sans hub) : sous-modale.
 function _aideOuvrirSousModal(section) {
   _aideFermerSousModal();
+  const hub = document.getElementById("kta-aide-modal");
+  if (hub && section && _aideFicheEnPlace() && _aideOuvrirFicheDansHub(hub, section)) return;
   const ov = document.createElement("div");
   ov.id = "kta-aide-submodal";
   ov.className = "kta-readme-modal-overlay kta-aide-submodal";
@@ -961,20 +1091,8 @@ function _aideOuvrirSousModal(section) {
       '<div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-sub-corps"></div>' +
     "</div>";
   document.documentElement.appendChild(ov);
-  // Section reconstruite depuis les dicos (titre + corps).
   const corps = ov.querySelector("#kta-aide-sub-corps");
-  if (corps && section) {
-    const bloc = document.createElement("div");
-    bloc.className = "kta-aide-section";
-    const t = document.createElement("div");
-    t.className = "kta-aide-section-titre";
-    _aidePoserTitre(t, section);
-    bloc.appendChild(t);
-    const c = document.createElement("div");
-    c.innerHTML = section.html || "";
-    while (c.firstChild) bloc.appendChild(c.firstChild);
-    corps.appendChild(bloc);
-  }
+  if (corps && section) corps.appendChild(_aideBlocSection(section));
 
   document.getElementById("kta-aide-back").addEventListener("click", _aideFermerSousModal);
   document.getElementById("kta-aide-sub-close").addEventListener("click", _aideFermerSousModal);
@@ -1126,28 +1244,28 @@ window.afficherModaleAideIA = function() {
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.profil.titre") + '</div>' +
-          '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#c8d0e0;">' +
+          '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--kta-texte-2);">' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="usage" checked> <span><strong>' + window.I18n.t("aiia.profil.usage") + '</strong> — ' + window.I18n.t("aiia.profil.usage.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="diagnostic"> <span><strong>' + window.I18n.t("aiia.profil.diagnostic") + '</strong> — ' + window.I18n.t("aiia.profil.diagnostic.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="plans"> <span><strong>' + window.I18n.t("aiia.profil.plans") + '</strong> — ' + window.I18n.t("aiia.profil.plans.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="complet"> <span><strong>' + window.I18n.t("aiia.profil.complet") + '</strong> — ' + window.I18n.t("aiia.profil.complet.desc") + '</span></label>' +
           '</div>' +
-          '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer; margin-top:10px; font-size:13px; color:#c8d0e0;">' +
+          '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer; margin-top:10px; font-size:13px; color:var(--kta-texte-2);">' +
             '<input type="checkbox" id="kta-aide-ia-etat"> <span>' + window.I18n.t("aiia.etat.label") + '</span>' +
           '</label>' +
-          '<p style="color:#8892a4; line-height:1.5; font-size:11px; margin:4px 0 0 24px;">' + window.I18n.t("aiia.etat.note") + '</p>' +
+          '<p style="color:var(--kta-texte-3); line-height:1.5; font-size:11px; margin:4px 0 0 24px;">' + window.I18n.t("aiia.etat.note") + '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.privacy.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+          '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.privacy.body") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.prompt.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
+          '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
             window.I18n.t("aiia.prompt.intro") +
           '</p>' +
           '<div class="kta-aide-ia-prompt-wrap">' +
@@ -1160,7 +1278,7 @@ window.afficherModaleAideIA = function() {
 
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.note.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+          '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.note.body") +
           '</p>' +
         '</div>' +
@@ -1170,7 +1288,7 @@ window.afficherModaleAideIA = function() {
           '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-copyctx"  type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.copyCtx") + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.download") + '</button>' +
         '</div>' +
-        '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:#8892a4; min-height:18px; text-align:center;"></div>' +
+        '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:var(--kta-texte-3); min-height:18px; text-align:center;"></div>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);

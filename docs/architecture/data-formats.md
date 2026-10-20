@@ -198,10 +198,11 @@ Profondeur **sous la surface**, en mètres, par niveau. **Trois états, et la di
 ### `calquesSession` (v1.85.0) — payload de session
 
 ```json
-"calquesSession": { "rapatries": ["sig"] }
+"calquesSession": { "rapatries": ["sig"], "restitutions": { "sig": 1760000000000 },
+                    "aEnvoyer": { "sig": { "avant": 1760000000000, "uids": ["rd_…"] } } }
 ```
 
-Les ids des **calques de données rapatriés** dans la session (cf. `session-data.md`). Ne porte QUE la liste : les objets, eux, vivent déjà dans `roads` / `zones` / `structures` / `editorPoints`, marqués `_srcCalque`. **`null` tant que rien n'est rapatrié** → zéro octet dans `localStorage` pour qui ne s'en sert pas.
+Les ids des **calques de données rapatriés** dans la session (cf. `session-data.md`). Les objets, eux, vivent déjà dans `roads` / `zones` / `structures` / `editorPoints`, marqués `_srcCalque` (+ `_srcCalqueDepuis`, instant du rapatriement, ms). Sur un plan d'extension seulement : `restitutions` (calque → dernière restitution connue, ms) et `aEnvoyer` (restitutions faites ici, avec les uids des copies retirées) — cf. `session-data.md` §Restitution partagée. Clés omises vides ; **`null` tant que rien n'est rapatrié ni restitué** → zéro octet dans `localStorage` pour qui ne s'en sert pas.
 
 ⚠️ **Absent du fichier session exporté** (sauvegarde locale uniquement). À l'import, la liste est **reconstruite depuis les marques `_srcCalque`** des objets (`CalqueSession.resynchroniser`) — elle ne peut donc pas contredire les copies.
 

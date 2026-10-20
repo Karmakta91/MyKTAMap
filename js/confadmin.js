@@ -458,7 +458,7 @@
       row.innerHTML = '<input type="checkbox" class="kta-ca-check" data-lk="' + _esc(l.id) + '"' +
         (ok && _linkSel[l.id] ? " checked" : "") + (ok ? "" : " disabled") + ">" +
         "<span>🌀 " + _coteLabel(l.a) + " ⇄ " + _coteLabel(l.b) +
-        (ok ? "" : ' <em style="color:#8892a4;">(plan non mappé)</em>') + "</span>";
+        (ok ? "" : ' <em style="color:var(--kta-texte-3);">(plan non mappé)</em>') + "</span>";
       box.appendChild(row);
     });
   }
@@ -595,7 +595,7 @@
     $("caOut").textContent = JSON.stringify(_construire(), null, 2);
     const cnx = _connexionSaisie(), etat = $("caCnxEtat");
     if (etat) {
-      etat.style.color = cnx.valide ? "#8892a4" : "#ff8c8c";
+      etat.style.color = cnx.valide ? "var(--kta-texte-3)" : "var(--kta-erreur)";
       etat.textContent = !cnx.valide
         ? "⛔ " + cnx.raison + " — index.json ne peut pas être téléchargé tant que ce n'est pas corrigé"
         : (cnx.champ ? "✅ connexion activée (les visiteurs voient son état dans le pied de page)" : "");

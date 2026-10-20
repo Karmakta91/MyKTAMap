@@ -111,6 +111,18 @@ function _ktaSourceAlerte(a) {
   return ext ? window.I18n.t("alerts.source.site") : "";
 }
 
+// Date de publication lisible : un horodatage ISO complet (alertes d'extension) passe en date + heure locales ;
+// une date seule (alert.json, « 2026-10-18 ») reste telle quelle (la convertir la décalerait d'un jour selon le
+// fuseau). ⚠️ `released` reste l'ISO brut partout ailleurs : il sert à reconnaître une alerte modifiée.
+function _dateLisible(released) {
+  const s = String(released || "");
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR",
+    { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 window.afficherSelecteurAlertes = function(alerts, opts) {
   if (!Array.isArray(alerts) || alerts.length === 0) return;
   if (document.getElementById("kta-alert-selector-modal")) return;
@@ -218,7 +230,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
 
   const source = _ktaSourceAlerte(alert);
   const footerInfo = (source ? '<div class="kta-alert-released">' + _esc(source) + '</div>' : '') + (released
-    ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(released) }) + '</div>'
+    ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(_dateLisible(released)) }) + '</div>'
     : '');
 
   const modal = document.createElement("div");
@@ -270,10 +282,10 @@ window.afficherModaleUpdateDispo = function(opts) {
                        : (remote.notes ? [remote.notes] : []);
 
   const notesHtml = notes.length
-    ? '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.6;">' +
+    ? '<ul style="margin:8px 0 0 0; padding-left:22px; color:var(--kta-texte-2); font-size:13px; line-height:1.6;">' +
         notes.map(function(n) { return '<li>' + window.ktaEsc(n) + '</li>'; }).join("") +
       '</ul>'
-    : '<p style="color:#8892a4; font-size:12px; font-style:italic; margin:8px 0 0 0;">' + window.I18n.t("alerts.update.noNotes") + '</p>';
+    : '<p style="color:var(--kta-texte-3); font-size:12px; font-style:italic; margin:8px 0 0 0;">' + window.I18n.t("alerts.update.noNotes") + '</p>';
 
   const modal = document.createElement("div");
   modal.id = "kta-update-modal";
@@ -287,15 +299,15 @@ window.afficherModaleUpdateDispo = function(opts) {
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("alerts.update.versionsTitre") + '</div>' +
-          '<div style="display:flex; align-items:center; gap:14px; padding:10px 14px; background:rgba(140,180,255,0.06); border-radius:8px; border:1px solid rgba(140,180,255,0.18);">' +
-            '<div style="font-size:12px; color:#8892a4;">' +
+          '<div style="display:flex; align-items:center; gap:14px; padding:10px 14px; background:var(--kta-info-fond); border-radius:8px; border:1px solid var(--kta-info-bord);">' +
+            '<div style="font-size:12px; color:var(--kta-texte-3);">' +
               window.I18n.t("alerts.update.installed") + '<br>' +
-              '<strong style="font-size:18px; color:#c8d0e0; font-family:ui-monospace,monospace;">' + localVersion + '</strong>' +
+              '<strong style="font-size:18px; color:var(--kta-texte-2); font-family:ui-monospace,monospace;">' + localVersion + '</strong>' +
             '</div>' +
-            '<div style="font-size:20px; color:#8cb4ff;">→</div>' +
-            '<div style="font-size:12px; color:#8892a4;">' +
+            '<div style="font-size:20px; color:var(--kta-interaction);">→</div>' +
+            '<div style="font-size:12px; color:var(--kta-texte-3);">' +
               window.I18n.t("alerts.update.available") + (released ? ' (' + released + ')' : '') + '<br>' +
-              '<strong style="font-size:18px; color:#f4c542; font-family:ui-monospace,monospace;">' + remoteVersion + '</strong>' +
+              '<strong style="font-size:18px; color:var(--kta-accent-texte); font-family:ui-monospace,monospace;">' + remoteVersion + '</strong>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -307,12 +319,12 @@ window.afficherModaleUpdateDispo = function(opts) {
 
         // Un seul mode de mise à jour : une ligne dit ce qui est rafraîchi et ce qui est gardé.
         '<div class="kta-aide-section">' +
-          '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55; margin-bottom:8px;">' +
+          '<div style="color:var(--kta-texte-2); font-size:12.5px; line-height:1.55; margin-bottom:8px;">' +
             window.I18n.t("alerts.update.softDesc") +
           '</div>' +
           // 🩸 Pas de « Reset complet » ici : il efface tout (sessions, photos, sauvegardes) sans recours et ne vit que
           // dans 🆘 Dépannage.
-          '<div style="color:#8892a4; font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
+          '<div style="color:var(--kta-texte-3); font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
         '</div>' +
 
         '<div style="display:flex; gap:10px; margin-top:14px;">' +

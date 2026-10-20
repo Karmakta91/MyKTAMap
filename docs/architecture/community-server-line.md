@@ -61,12 +61,12 @@ photos restent locales et exportables).
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
+> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
-> `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
+> `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
@@ -193,15 +193,29 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   de l'accueil, juste après 📖 ; un clic ouvre `url` dans un nouvel onglet (`noopener`). 🔒 `https://` seulement,
   icône ≤ 4 caractères, titre ≤ 60, rendu en `textContent` ; forme inattendue, erreur ou `null` → aucune pastille.
   Elle suit `mktm:compte-changed`. Aucune requête de l'app (c'est un lien). Tests : `check-extensions.js`.
-- **Tuile d'outils** (11/10/2026) : la prise `outilHome() → { libelle } | null` ajoute UNE tuile à 🧰 Outils de
-  l'accueil ; elle ouvre une fenêtre avec la carte du compte et les actions du lieu « outils »
-  (`actionsCompte("outils")`, mêmes rubriques). « Mon profil » garde la carte, avec un lien « Gérer › <tuile> ».
-  Sans extension, ou `null` (non connecté), aucune tuile ; la tuile suit `mktm:compte-changed`.
+- **Tuiles d'outils** (11/10/2026) : la prise `outilHome() → { libelle } | [{ libelle, ouvrir? }] | null` ajoute
+  une tuile (objet) ou une LISTE de **3 tuiles au plus** à 🧰 Outils de l'accueil, dans l'ordre donné (ids
+  `loaderExtOutilBtn`, `loaderExtOutilBtn2`, `loaderExtOutilBtn3`). Une tuile **sans** `ouvrir` ouvre une fenêtre avec
+  la carte du compte et les actions du lieu « outils » (`actionsCompte("outils")`, mêmes rubriques) ; une tuile
+  **avec** `ouvrir` (fonction) l'appelle au clic : l'extension montre sa propre fenêtre (erreur journalisée, jamais
+  levée). Entrée sans libellé, ou `ouvrir` qui n'est pas une fonction : écartée / ignoré. « Mon profil » garde la
+  carte, avec un lien « Gérer › <tuile> » vers la première tuile du compte. Lecture : `outilsHome()` (liste
+  nettoyée), `outilHome()` (première tuile, forme d'origine), `ouvrirOutilHome(rang)`. Sans extension, ou `null`
+  (non connecté), aucune tuile ; les tuiles suivent `mktm:compte-changed`. Tests : `check-extensions.js`.
 - **Outils du Mode Développeur** (10/10/2026) : la prise `outilsDev() → [{ libelle, page }]` ajoute des boutons à la
   section 🛠️ Mode Développeur, **seulement quand il est actif** ; `page` est une page `.html` du même site (chemin
   relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,
   10 au plus. Une extension déclarée après l'accueil fait redessiner la section (événement
   `mktm:extensions-changees`, émis par `register`). Sans extension, rien n'apparaît.
+- **Guide dans 📖 Documentation** : la prise `documentation() → { titre, fichiers: { fr, en?, es? } } | null` ajoute
+  UN second guide Markdown à la fenêtre Documentation (`js/interfaceDocs.js > afficherReadme`). Avec la prise,
+  l'ouverture propose d'abord « Classique » ou `titre` (fenêtre `kta-readme-choix`) ; le guide choisi s'ouvre dans la
+  MÊME fenêtre (en-tête, langue, 🤖 Aide IA, sommaire, recherche, rendu), titre « Documentation · `titre` », et un
+  changement de langue garde le guide affiché. Langue sans fichier → `fr`. 🔒 Fichiers du **même site** : chemin
+  relatif sans remontée ni `//`, terminé par `.md`, seul suffixe permis `?v=` ; `fr` obligatoire, titre ≤ 40 ;
+  Markdown échappé comme le guide classique. Forme inattendue, erreur ou `null` → guide classique direct, sans
+  choix ; sans extension, la fenêtre ne lit même pas la prise (`aPrise`). Le `.md` placé dans un dossier de module
+  est lu réseau d'abord (paragraphe Service Worker plus bas). Tests : `check-extensions.js`.
 - **Rubrique d'aide** (11/10/2026) : la prise `aide() → { titre, sections: [{ titre, html }] }` ajoute UNE rubrique
   à l'Aide intégrée, juste avant « Pour aller plus loin » (ex. la sécurité et les clés du pro). Lue au rendu (langue
   courante), 20 sections au plus ; HTML de mise en forme admis mais nettoyé (ni script, cadre, formulaire,
@@ -212,7 +226,26 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
   reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
-  `changementsDepuis(ts)`.
+  `changementsDepuis(ts)`. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
+  quand un objet reçu porte la marque `_srcCalque` (copie d'un calque), ou qu'une copie d'ici disparaît, l'état
+  se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
+  masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
+  (décision produit). Un rapatriement date ses copies du moment (`updatedAt`), sinon une synchro incrémentale n'en
+  enverrait que les copies retouchées.
+- **Restitution d'un calque** (plan d'extension modifiable) : ⚠️ **jamais une trace de suppression** — une copie
+  porte l'uid de l'objet du calque, une trace sur elle (exportée, puis passée par « Fusion de calques » ou l'import
+  ZIP du Générateur) détruirait l'original. À la place, UN enregistrement par calque « restitué à T » :
+  `changementsDepuis(ts).restitutions = [{ calque, avant, uids }]` (restitutions faites ICI après `ts` ; `uids` =
+  copies retirées, pour un serveur qui ne lit pas l'objet chiffré) ; entrant, `appliquerChangements({ …,
+  restitutions: [{ calque, avant }] })` retire les copies marquées `_srcCalque === calque` modifiées au plus tard
+  à `avant`, garde en objet ordinaire (uid dérivé, signalé) une copie modifiée après, laisse celles d'un
+  rapatriement postérieur (`_srcCalqueDepuis` > `avant`), puis recale l'état (`resynchroniser`) ; retour
+  `calques: { retires, gardes }`. Les restitutions connues sont retenues dans l'état **local** de la session
+  (`calquesSession`) et rejouées à chaque arrivée de copie marquée (une copie périmée ne ressuscite pas le
+  verrou) ; jamais dans un fichier de session ou de calque. Une restitution sur un plan en lecture seule, ou par
+  « Effacer la session », n'est pas notée. L'extension ne doit ni la changer en traces ni la mettre dans un
+  export ; le droit de l'envoyer est celui d'envoyer des objets (« modifier »). Règle complète :
+  `session-data.md` §Rapatrier. Garde-fous : `check-extensions.js`, `check-calque-session.js`.
 - **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
@@ -241,6 +274,17 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   entrées non conformes écartées, sans carte : `false`.
 - **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
   « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
+  C'est l'extension qui dit qui a créé un objet, y compris un objet créé ici et pas encore envoyé : l'app ne devine
+  jamais un auteur.
+- **Export limité à ses ajouts** : la prise de permission `exportAutorise(planId)` rend `true` (tout), `false` (refus) ou
+  `{ auteur: "<pseudo>" }` = export de session permis, **limité aux objets créés par cet auteur** (`auteurObjet`). 🔒
+  Toute autre forme (pseudo vide, autre clé, tableau, texte…) ou une erreur = refus. `KtaExtensions.exportAutorise(id)`
+  reste un booléen, vrai pour « tout » seulement : un appelant qui ne sait pas filtrer (export de profil, export d'un
+  calque rapatrié) refuse un export limité ; `KtaExtensions.exportLimite(id)` / `window.ktaExportLimite()` (plan ouvert)
+  rendent le pseudo ou `null`. Goulot : `window.ktaExportPlanRefuse({ limitePermise: true })` laisse passer un export
+  limité (Complet et Avancé, filtre « Créé par » imposé et verrouillé, copies de calque, traces et liaisons exclues,
+  photos des seuls points retenus) ; sans `limitePermise` (conversion, calque) il le refuse. Détail : `exports.md` §4.
+  Sans extension : rien ne change (`scripts/check-extensions.js`).
 - **Dictionnaires d'une extension** : `I18n.ajouter(code, dico)` → nombre de clés retenues (textes, clés `[\w.-]`,
   langues connues seulement). Gardés à part et refusionnés à chaque chargement du dico (paresseux, `reload`) ; une clé
   de l'app n'est **jamais** écrasée — préfixe propre recommandé (`pro.`). Le texte d'une extension n'entre jamais dans
@@ -305,14 +349,20 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     modifié ou supprimé par la synchro pendant l'édition (avant : modification écrasée sans le savoir).
   - Prise `lectureSeule(idExt) → bool` (droit « lire ») : goulot `window.ktaEditionRefusee()` — ni ✏️ ni 🗑️
     dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
-  - Goulot `window.ktaExportPlanRefuse()` (plan affiché seulement) : `exportAutorise` vaut désormais pour
-    l'export de session (JSON, ZIP, KMZ, GPX) et l'export image/PDF, plus seulement l'export de profil.
+  - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
+    **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
+    KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
   - Prise `avantReinitialisation() → Promise<bool>` : « Tout réinitialiser » l'attend (3 s max) AVANT d'effacer —
     l'extension y ferme sa session (cookie HttpOnly : la page ne peut pas l'effacer, l'appli se reconnectait
     seule). `false` (hors ligne) → après l'effacement, seule la marque `KtaExtensions.CLE_DECONNEXION_EN_ATTENTE`
     est posée ; l'extension la honore au démarrage (aucune reconnexion seule, session fermée au retour du réseau).
   - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
     d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
+- **Carnet (sorties)** : `mktm:journal-sortie-demarree` (`{ id, planId, origine: "manuel" }`) au démarrage MANUEL d'une
+  sortie (`Journal.demarrer`), `mktm:journal-sortie-cloturee` (`{ id, planId }`) à sa clôture manuelle
+  (`Journal.cloturer`). L'ouverture automatique à chaque plan, la reprise, la suspension et l'archivage automatique
+  n'émettent rien (gestes de l'app, pas de l'utilisateur). `planId` = identifiant community du plan
+  (`_currentLoadedPlanId`). No-op sans écouteur ; garde-fou `check-journal-demarrage.js`.
 - **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
   d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
   FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,
@@ -372,14 +422,26 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent
   à la déconnexion. Texte seulement, 40 / 24 caractères max ; erreur ou forme inattendue = `null` (profil
   local). L'extension annonce un changement par `notifierCompte()` (événement `mktm:compte-changed`).
-- **Version d'un module** : le SW met en cache un module au premier chargement et le sert ensuite depuis
-  ce cache (règle par défaut, à l'URL exacte). Une nouvelle version passe donc par un **nouveau chemin**
-  dans `index.json` (`pro/connexion.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. Sans
-  suffixe, la mise à jour n'arriverait qu'au prochain bump de `CACHE_NAME` community.
+- **Version d'un module** : les modules déclarés (`config.serverConnection.modules`) sont préchargés dès que
+  l'index est lu en ligne dans le cache durable `myktamap-ext-modules` (il survit aux releases community) et
+  servis **cache d'abord, à l'URL exacte**. Une nouvelle version passe donc par un **nouveau chemin** dans
+  `index.json` (`x/mod.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. ⚠️ Sans nouveau `?v=`,
+  un module modifié reste périmé sur les appareils, même après une release community. Il en va de même
+  d'un script chargé par une page du dossier (sa balise porte son propre `?v=`).
+- **Pages, feuilles de style et guides des dossiers de modules** : un dossier de module = le dossier d'un module
+  déclaré (`x/mod.js` → `x/`, `x/lang/fr.js` → `x/lang/`, sous-dossiers compris), **strictement sous** le scope du
+  SW (un module posé à la racine ne fait rien passer). Leurs `.html` / `.css` / `.md` (et toute navigation dans ces dossiers)
+  sont servis **réseau d'abord** (`no-store`, délai 3 s), copie gardée dans le cache durable
+  `myktamap-ext-pages` sous l'URL **sans requête** (🔒 un jeton passé en requête ne reste pas sur
+  l'appareil) ; hors ligne, panne ou 5xx → la copie ; une réponse du serveur (404, redirection) est
+  transmise telle quelle. Le SW réveillé sans mémoire relit les dossiers dans l'index en cache ; `index.html`
+  et les fichiers de l'app restent cache d'abord, sans lecture supplémentaire. Sans module déclaré
+  (myktamap.fr) : aucun dossier, rien ne change. Garde-fou : `scripts/check-extensions.js` §8 (vrai `sw.js`
+  dans un `vm`, faux caches et faux réseau).
 - **Service Worker** : les modules greffés ne sont **jamais** dans `ASSETS_TO_CACHE`. Ils
-  doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
-  cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de
-  bumper `CACHE_NAME` côté community.
+  doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : les caches
+  `myktamap-ext-` sont gardés à l'activation, pour qu'une release pro n'impose pas de bumper
+  `CACHE_NAME` côté community.
 - **ConfAdmin** (décision de l'auteur) : l'outil déployeur community propose un bloc
   « Connexion serveur » (état, API, modules), **replié par défaut** et présenté comme réservé
   aux instances qui greffent des modules. Il reste hors `ASSETS_TO_CACHE`.

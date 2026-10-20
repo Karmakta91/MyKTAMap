@@ -96,9 +96,9 @@ process.stdin.on("end", () => {
       block("Pousser des tags = publier une version : c'est KARMA qui le fait (merge-main).");
     }
 
-    // 5) site-public : branche publiée, écrite par la CI seule
-    if (/\bsite-public\b/.test(norm)) {
-      block("La branche 'site-public' n'est écrite que par la CI : jamais de push à la main.");
+    // 5) site-public / site-interne (dépôt doc) : branches publiées, écrites par la CI seule
+    if (/\bsite-(public|interne)\b/.test(norm)) {
+      block("Les branches 'site-public' et 'site-interne' ne sont écrites que par la CI : jamais de push à la main.");
     }
 
     // 6) push vers main, dans TOUT dépôt : un merge sur main part en ligne tout seul

@@ -412,7 +412,7 @@
           const esc = window.ktaEsc;
           ov.innerHTML =
             '<div class="kta-modal" style="max-width:440px;">' +
-              '<div class="kta-modal-icon" style="color:#f4c542;">🔄</div>' +
+              '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">🔄</div>' +
               '<div class="kta-modal-titre">' + esc(t("home.dup.titre")) + '</div>' +
               '<div class="kta-modal-texte">' +
                 esc(t("home.dup.texte", {
@@ -420,7 +420,7 @@
                   vA:  existant.version || tiret,
                   vB:  nouvelleVersion || tiret
                 })) +
-                '<br><span style="font-size:12px; color:#8892a4;">' + esc(t("home.dup.note")) + '</span>' +
+                '<br><span style="font-size:12px; color:var(--kta-texte-3);">' + esc(t("home.dup.note")) + '</span>' +
               '</div>' +
               '<div class="kta-modal-actions" style="flex-wrap:wrap;">' +
                 '<button class="kta-btn kta-btn-ghost" id="kta-dup-cancel" type="button">' + esc(t("ui.btn.cancel")) + '</button>' +
@@ -1216,20 +1216,20 @@ function planRowHTML(plan) {
           modal.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
-                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + _t("home.plans.nameKO.title") + '</span>' +
+                '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + _t("home.plans.nameKO.title") + '</span>' +
                 '<button class="kta-panneau-close" id="kta-zipname-error-close">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
-                '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">' +
+                '<p style="font-size:13px; color:var(--kta-texte-2); line-height:1.6; margin:0 0 14px;">' +
                   _t("home.plans.nameKO.body") +
                 '</p>' +
                 '<div style="display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:13px; padding:10px 12px; background:rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.22); border-radius:6px; margin-bottom:14px;">' +
-                  '<span style="color:#8892a4; white-space:nowrap;">' + _t("home.plans.nameKO.targetLabel") + '</span>' +
-                  '<strong style="color:#e8eaf0; word-break:break-word;">' + escapeHtml(planName) + '</strong>' +
-                  '<span style="color:#8892a4; white-space:nowrap;">' + _t("home.plans.nameKO.providedLabel") + '</span>' +
-                  '<strong style="color:#ff8c8c; word-break:break-word;">' + escapeHtml(zipName) + '</strong>' +
+                  '<span style="color:var(--kta-texte-3); white-space:nowrap;">' + _t("home.plans.nameKO.targetLabel") + '</span>' +
+                  '<strong style="color:var(--kta-texte); word-break:break-word;">' + escapeHtml(planName) + '</strong>' +
+                  '<span style="color:var(--kta-texte-3); white-space:nowrap;">' + _t("home.plans.nameKO.providedLabel") + '</span>' +
+                  '<strong style="color:var(--kta-erreur); word-break:break-word;">' + escapeHtml(zipName) + '</strong>' +
                 '</div>' +
-                '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:0 0 14px; font-style:italic;">' +
+                '<p style="font-size:12.5px; color:var(--kta-texte-3); line-height:1.5; margin:0 0 14px; font-style:italic;">' +
                   _t("home.plans.nameKO.hint") +
                 '</p>' +
                 '<div style="display:flex; justify-content:flex-end;">' +
@@ -1263,10 +1263,10 @@ function planRowHTML(plan) {
 
           const lignesHtml = discordances.map(function(d) {
             return '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:8px;">' +
-                     '<div style="font-size:13px; font-weight:600; color:#ffb380; margin-bottom:6px;">' + escapeHtml(d.flag) + '</div>' +
-                     '<div style="font-size:12px; color:#c0c8d8; line-height:1.6;">' +
-                       '<span style="color:#8892a4;">' + _t("home.plans.modeWarn.savedLabel") + '</span> ' + escapeHtml(d.avant) + '<br>' +
-                       '<span style="color:#8892a4;">' + _t("home.plans.modeWarn.zipLabel") + '</span> <strong style="color:#e8eaf0;">' + escapeHtml(d.apres) + '</strong>' +
+                     '<div style="font-size:13px; font-weight:600; color:var(--kta-avert); margin-bottom:6px;">' + escapeHtml(d.flag) + '</div>' +
+                     '<div style="font-size:12px; color:var(--kta-texte-2); line-height:1.6;">' +
+                       '<span style="color:var(--kta-texte-3);">' + _t("home.plans.modeWarn.savedLabel") + '</span> ' + escapeHtml(d.avant) + '<br>' +
+                       '<span style="color:var(--kta-texte-3);">' + _t("home.plans.modeWarn.zipLabel") + '</span> <strong style="color:var(--kta-texte);">' + escapeHtml(d.apres) + '</strong>' +
                      '</div>' +
                    '</div>';
           }).join("");
@@ -1277,15 +1277,15 @@ function planRowHTML(plan) {
           modal.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh; border:1px solid rgba(255,179,128,0.35);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,179,128,0.20);">' +
-                '<span class="kta-readme-modal-titre" style="color:#ffb380;">' + _t("home.plans.modeWarn.title") + '</span>' +
+                '<span class="kta-readme-modal-titre" style="color:var(--kta-avert);">' + _t("home.plans.modeWarn.title") + '</span>' +
                 '<button class="kta-panneau-close" id="kta-mode-warn-close">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
-                '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
+                '<p style="font-size:13px; color:var(--kta-texte-2); line-height:1.6; margin:0 0 12px;">' +
                   _t("home.plans.modeWarn.body", { nom: escapeHtml(planName) }) +
                 '</p>' +
                 lignesHtml +
-                '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:12px 0 16px; font-style:italic;">' +
+                '<p style="font-size:12.5px; color:var(--kta-texte-3); line-height:1.5; margin:12px 0 16px; font-style:italic;">' +
                   _t("home.plans.modeWarn.hint") +
                 '</p>' +
                 '<div style="display:flex; gap:10px; justify-content:flex-end;">' +
@@ -1376,13 +1376,13 @@ function planRowHTML(plan) {
                 '<option value="off"'  + (_presetCur === "off"  ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetOff"))  + '</option>' +
               '</select>' +
               '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
-                '<span id="kta-plan-tiling-status" style="font-size:12px; color:#8892a4;"></span>' +
+                '<span id="kta-plan-tiling-status" style="font-size:12px; color:var(--kta-texte-3);"></span>' +
               '</div>' +
             '</div>';
         }
 
         const tableHtml = rows.map(function(r) {
-          const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:#c8d0e0;"' : '';
+          const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:var(--kta-texte-2);"' : '';
           return '<tr>' +
                    '<td class="kta-info-key">' + escapeHtml(r.label) + '</td>' +
                    '<td class="kta-info-val"' + valStyle + '>' + escapeHtml(r.value) + '</td>' +
@@ -1402,7 +1402,7 @@ function planRowHTML(plan) {
           return '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
                  'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
                  '</button>' +
-                 '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                 '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' +
                  escapeHtml(raison) + '</div>';
         };
         if (_ext) {
@@ -1422,7 +1422,7 @@ function planRowHTML(plan) {
             dlHtml = '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
                      'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
                      '</button>' +
-                     '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                     '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' +
                      escapeHtml(raison) + '</div>';
           }
         }
@@ -1437,7 +1437,7 @@ function planRowHTML(plan) {
               '<div style="font-weight:600; margin-bottom:6px;">💾 ' +
                 escapeHtml(_t("home.plans.offline.titre")) + '</div>' +
               '<div id="kta-plan-offline-zone" style="min-height:28px;">' +
-                '<span style="font-size:12px; color:#8892a4;">⏳</span>' +
+                '<span style="font-size:12px; color:var(--kta-texte-3);">⏳</span>' +
               '</div>' +
             '</div>';
         }
@@ -1462,9 +1462,9 @@ function planRowHTML(plan) {
                   'value="' + escapeHtml(plan.displayName || "") + '">' +
                 '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
                   '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-rename-save">💾 ' + escapeHtml(_t("home.plans.info.renameSave")) + '</button>' +
-                  '<span id="kta-plan-rename-status" style="font-size:12px; color:#8892a4;"></span>' +
+                  '<span id="kta-plan-rename-status" style="font-size:12px; color:var(--kta-texte-3);"></span>' +
                 '</div>' +
-                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.renameHint")) + '</div>' +
+                '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.renameHint")) + '</div>' +
               '</div>' +
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                 '<div style="font-weight:600; margin-bottom:6px;">🏷️ ' + escapeHtml(_t("home.plans.info.tagsTitle")) + '</div>' +
@@ -1473,9 +1473,9 @@ function planRowHTML(plan) {
                   'value="' + escapeHtml(Array.isArray(plan.tags) ? plan.tags.join(", ") : "") + '">' +
                 '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
                   '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-tags-save">💾 ' + escapeHtml(_t("home.plans.info.tagsSave")) + '</button>' +
-                  '<span id="kta-plan-tags-status" style="font-size:12px; color:#8892a4;"></span>' +
+                  '<span id="kta-plan-tags-status" style="font-size:12px; color:var(--kta-texte-3);"></span>' +
                 '</div>' +
-                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tagsHint")) + '</div>' +
+                '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tagsHint")) + '</div>' +
               '</div>' +
               tuilageHtml +
               (dlHtml ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
@@ -1491,7 +1491,7 @@ function planRowHTML(plan) {
                     '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-publish">☁️ ' +
                       escapeHtml(_t("home.plans.info.publishBtn")) + '</button>' +
                     '<div id="kta-plan-publish-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
-                    '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                    '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' +
                       escapeHtml(_t("home.plans.info.publishHint")) + '</div>' +
                   '</div>'
                 : '') +
@@ -1534,25 +1534,25 @@ function planRowHTML(plan) {
             } else if (st.etat === "partiel") {
               // 🩸 Plan utilisable : tout ce que le serveur a servi est là. Ce qui manque, il ne l'a pas : on le
               // DIT au lieu d'un « incomplet » perpétuel.
-              html += '<span style="color:#f4c542;">' +
+              html += '<span style="color:var(--kta-accent-texte);">' +
                       escapeHtml(_t("home.plans.offline.partiel", { n: st.manquants.length })) +
                       '</span>';
             } else if (st.etat === "incomplet") {
-              html += '<span style="color:#f4c542;">' +
+              html += '<span style="color:var(--kta-accent-texte);">' +
                       escapeHtml(_t("home.plans.offline.incomplet", { present: st.present, total: st.total })) +
                       '</span>';
             } else {
-              html += '<span style="color:#8892a4;">' + escapeHtml(_t("home.plans.offline.absent")) + '</span>';
+              html += '<span style="color:var(--kta-texte-3);">' + escapeHtml(_t("home.plans.offline.absent")) + '</span>';
             }
             html += '</div>';
 
             // 🩸 On NOMME les fichiers manquants : « 9 sur 10 » sans dire lequel ne permet pas de corriger.
             if (st.manquants && st.manquants.length) {
               const apercu = st.manquants.slice(0, 5);
-              html += '<div style="font-size:11px; color:#8892a4; margin:-4px 0 8px; line-height:1.5;">' +
+              html += '<div style="font-size:11px; color:var(--kta-texte-3); margin:-4px 0 8px; line-height:1.5;">' +
                         escapeHtml(_t("home.plans.offline.manquantsTitre")) + '<br>' +
                         apercu.map(function (u) {
-                          return '<span style="font-family:monospace; font-size:10.5px; color:#c8d0e0;">' +
+                          return '<span style="font-family:monospace; font-size:10.5px; color:var(--kta-texte-2);">' +
                                  escapeHtml(u) + '</span>';
                         }).join('<br>') +
                         (st.manquants.length > apercu.length
@@ -1577,7 +1577,7 @@ function planRowHTML(plan) {
             zone.innerHTML = html;
 
             const lancer = async function () {
-              zone.innerHTML = '<div style="font-size:12px; color:#8cb4ff;" id="kta-offline-prog">⏳</div>';
+              zone.innerHTML = '<div style="font-size:12px; color:var(--kta-interaction);" id="kta-offline-prog">⏳</div>';
               const prog = document.getElementById("kta-offline-prog");
               try {
                 const r = await window.PlanOffline.precacher(plan, function (p2) {
@@ -1614,7 +1614,7 @@ function planRowHTML(plan) {
             // 🩸 « À jour » seulement si des sondes ont abouti ; sinon « impossible de vérifier ».
             if (st.etat === "complet" || st.etat === "partiel") {
               const ligne = document.createElement("div");
-              ligne.style.cssText = "font-size:11.5px; margin-top:8px; line-height:1.45; color:#8892a4;";
+              ligne.style.cssText = "font-size:11.5px; margin-top:8px; line-height:1.45; color:var(--kta-texte-3);";
               ligne.textContent = _t("home.plans.offline.majCheck");
               zone.appendChild(ligne);
               window.PlanOffline.verifierMaj(plan).then(function (v) {
@@ -2796,10 +2796,10 @@ function planRowHTML(plan) {
               <button class="kta-panneau-close" id="planIntrFermer">✕</button>
             </div>
             <div class="kta-readme-modal-corps" style="padding:18px;">
-              <p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">
+              <p style="font-size:13px; color:var(--kta-texte-2); line-height:1.6; margin:0 0 14px;">
                 ${explication}
               </p>
-              <p style="font-size:13px; color:#e8eaf0; margin:0 0 12px;">${_t("home.plans.notFound.prompt")}</p>
+              <p style="font-size:13px; color:var(--kta-texte); margin:0 0 12px;">${_t("home.plans.notFound.prompt")}</p>
               <div style="display:flex; flex-direction:column; gap:8px;">
                 ${canRetry ? '<button class="kta-btn kta-btn-primary" data-action="retry">' + _t("home.plans.notFound.retry") + '</button>' : ''}
                 ${canReSelect ? '<button class="kta-btn kta-btn-primary" data-action="reselect">' + _t("home.plans.notFound.reselect") + '</button>' : ''}

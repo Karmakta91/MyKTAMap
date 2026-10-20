@@ -87,6 +87,50 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 gate déléguée en échec → la promesse REJETTE (l'appelant n'ouvre rien)", rejete);
   }
 
+  // ── 3 bis. EXPORT LIMITÉ À SES AJOUTS ({ auteur }) ──────
+  {
+    const avec = (v) => { const c = nouveauContexte(null); c.K.register({ nom: "e", apiVersion: 1, exportAutorise: () => v }); return c; };
+    const { K, w } = avec({ auteur: " Alice " });
+    t("export limité : exportAutorise reste un REFUS pour qui ne sait pas filtrer (profil, calque)", K.exportAutorise("ext_p") === false);
+    t("export limité : exportLimite rend le pseudo (nettoyé)", K.exportLimite("ext_p") === "Alice");
+    w._currentLoadedPlanId = "ext_p";
+    t("🔒 goulot : sans limitePermise → refusé (conversion, export du calque)", w.ktaExportPlanRefuse() === true);
+    t("goulot : avec limitePermise → passe (complet, avancé)", w.ktaExportPlanRefuse({ limitePermise: true }) === false);
+    t("ktaExportLimite : le pseudo du plan ouvert", w.ktaExportLimite() === "Alice");
+    const tout = avec(true);
+    tout.w._currentLoadedPlanId = "ext_p";
+    t("true = tout : exportLimite null, rien de refusé", tout.K.exportLimite("ext_p") === null && tout.w.ktaExportPlanRefuse() === false);
+    const refus = avec(false);
+    refus.w._currentLoadedPlanId = "ext_p";
+    t("false = refus, même avec limitePermise",
+      refus.w.ktaExportPlanRefuse({ limitePermise: true }) === true && refus.w.ktaExportLimite() === null);
+    const formes = [{ auteur: "" }, { auteur: "   " }, { auteur: 5 }, { auteur: "x", tout: true }, ["x"], "x", 1, null,
+      Object.create({ auteur: "x" })];
+    t("🔒 toute autre forme ({ auteur: '' }, autre clé, tableau, texte, nombre, prototype) → REFUS",
+      formes.every((v) => { const c = avec(v); c.w._currentLoadedPlanId = "ext_p";
+        return c.K.exportAutorise("ext_p") === false && c.K.exportLimite("ext_p") === null &&
+          c.w.ktaExportPlanRefuse({ limitePermise: true }) === true; }));
+    const panne = nouveauContexte(null);
+    panne.K.register({ nom: "p", apiVersion: 1, exportAutorise() { throw new Error("x"); } });
+    panne.w._currentLoadedPlanId = "ext_p";
+    t("🩸 prise en erreur → refus, même avec limitePermise", panne.w.ktaExportPlanRefuse({ limitePermise: true }) === true);
+    const SE = lire("js/sessionExporter.js"), CSE = lire("js/calqueSession.js"), FPN = lire("js/filterPanel.js");
+    t("modal d'export : limite permise pour Complet et Avancé seulement, jamais la conversion",
+      SE.indexOf('window.ktaExportPlanRefuse({ limitePermise: tab !== "conversion" })') > 0 &&
+      SE.indexOf('_auteurImpose = ((tab === "full" || tab === "advanced") && typeof window.ktaExportLimite === "function")') > 0);
+    t("🔒 modal d'export limité : auteur imposé, select désactivé, mention, copies de calque jamais retenues",
+      SE.indexOf("(_auteurImpose ? ' disabled' : '')") > 0 && SE.indexOf('t("export.filtre.impose")') > 0 &&
+      SE.indexOf("if (o._srcCalque !== undefined || _auteurDe(o) !== _auteurImpose) return false;") > 0 &&
+      SE.indexOf('if (!_auteurImpose) _filtre.auteur = e.target.value') > 0 &&
+      SE.indexOf('_filtre = { du: "", au: "", auteur: _auteurImpose || "" };') > 0);
+    t("🔒 export limité : ni traces ni liaisons, photos des seuls points retenus",
+      /if \(_auteurImpose\) \{\n\s*delete session\.tombstones;\n\s*delete session\.interPlanLinks;/.test(SE) &&
+      SE.indexOf("_collecterPhotosPlan(idsPhotos)") > 0 && SE.indexOf("function _idsPhotosRetenues(points)") > 0);
+    t("🔒 export d'un calque rapatrié : droit d'exporter TOUT le plan (goulot sans limitePermise)",
+      /window\.ktaExportPlanRefuse\(\)\) \{\n\s*return \{ ok: false, code: "exportRefuse" \};/.test(CSE) &&
+      FPN.indexOf('r.code === "exportRefuse") return Promise.resolve(false)') > 0);
+  }
+
   // ── Réseau perdu / revenu ──────
   // 🩸 L'état suit le réseau en continu : établi au démarrage seulement, l'accueil afficherait
   // « connectée » hors réseau et l'ouverture d'un plan d'extension attendrait sans fin.
@@ -475,8 +519,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 fiche d'un tracé / zone / structure : lecture seule = mode lecture (ni note, ni Convertir, ni 🗑️)",
       /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
     const CV = lire("js/convertirObjet.js");
-    t("🩸 conversion / suppression d'objet : gardées à l'entrée",
-      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir("].every((f) =>
+    t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
+      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
+       "function changerNiveau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);
     let evts = 0;
@@ -510,7 +555,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const ouvrir = (iO >= 0 && jO > iO) ? SE.slice(iO, jO) : "";
     t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
       /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) &&
-      ouvrir.indexOf('_filtre = { du: "", au: "", auteur: "" };') >= 0);
+      ouvrir.indexOf('_filtre = { du: "", au: "", auteur: _auteurImpose || "" };') >= 0);
   }
 
   // ── 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ──────
@@ -709,6 +754,91 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("⏪ un vrai objet reçu (d'un autre) → l'historique repart de zéro, comme avant", resets === 1 && ecritures === 1);
   }
 
+  // ── 6 ter ter. CALQUE OUVERT À LA MODIFICATION AILLEURS (copies marquées reçues) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    const vm4 = require("vm");
+    vm4.runInContext(lire("js/ktaUid.js"), vm4.createContext(w), { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_loc11111", name: "Ici", updatedAt: 100 }];
+    let roads = [];
+    let recalages = 0;
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; };
+    w.getRoads = () => roads; w.setRoads = (r) => { roads = r; }; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.CalqueSession = { CLE_SOURCE: "_srcCalque", resynchroniser() { recalages++; return {}; } };
+    K.appliquerChangements({ editorPoints: [{ uid: "pt_aut22222", name: "Point d'un autre", updatedAt: 200 }], tombstones: [] });
+    t("objet reçu sans marque de calque → pas de recalage des calques", recalages === 0);
+    K.appliquerChangements({ roads: [{ uid: "rd_cop33333", type: "chemin", points: [], updatedAt: 300, _srcCalque: "c1" }], tombstones: [] });
+    t("🩸 copie de calque reçue → recalage (calque d'origine masqué, Exporter/Restituer, plus de « rapatrier »)",
+      recalages === 1 && roads.some((r) => r._srcCalque === "c1"));
+    K.appliquerChangements({ roads: [{ uid: "rd_cop33333", type: "chemin", points: [], updatedAt: 300, _srcCalque: "c1" }], tombstones: [] });
+    t("écho de la même copie (rien de nouveau) → pas de recalage, ni journal ni sauvegarde", recalages === 1);
+    K.appliquerChangements({ tombstones: [{ uid: "rd_cop33333", deletedAt: 400 }] });
+    t("🩸 copie d'ici supprimée par la synchro → recalage (calque libéré s'il n'a plus de copie)",
+      recalages === 2 && roads.length === 0);
+    K.appliquerChangements({ editorPoints: [], tombstones: [] });
+    t("tour vide → pas de recalage", recalages === 2);
+    delete w.CalqueSession;
+    t("sans module de calques : réception normale, aucune erreur",
+      !!K.appliquerChangements({ roads: [{ uid: "rd_cop44444", type: "chemin", points: [], updatedAt: 500, _srcCalque: "c1" }], tombstones: [] }));
+  }
+
+  // ── 6 ter quater. RESTITUTION D'UN CALQUE PARTAGÉE (vrai calqueSession.js) ──────
+  // Une restitution n'est JAMAIS une trace de suppression : elle retire chez les autres les copies marquées du
+  // calque datées au plus tard de T, et rien d'autre (un objet du calque ne porte pas la marque).
+  {
+    const { K, w } = nouveauContexte(null);
+    const vm5 = require("vm");
+    const ctx5 = vm5.createContext(w);
+    vm5.runInContext(lire("js/ktaUid.js"), ctx5, { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_mien1111", name: "Mon point", updatedAt: 100 }];
+    let roads = [];
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; };
+    w.getRoads = () => roads; w.setRoads = (r) => { roads = r; }; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.PLAN_CONFIG = { dataLayers: [{ id: "c1", file: "c1.json" }] };
+    w.dataLayerGroups = { c1: { __id: "c1" } };
+    const surCarte = { c1: true };
+    w.map = { hasLayer: (g) => !!surCarte[g.__id], removeLayer: (g) => { surCarte[g.__id] = false; },
+      addLayer: (g) => { surCarte[g.__id] = true; } };
+    w.I18n = { t: (k) => k };
+    vm5.runInContext(lire("js/calqueSession.js"), ctx5, { filename: "calqueSession.js" });
+    const copie = (uid, maj, R) => ({ uid, type: "chemin", points: [], updatedAt: maj, _srcCalque: "c1", _srcCalqueDepuis: R });
+    K.appliquerChangements({ roads: [copie("rd_cop10000", 150, 100), copie("rd_cop20000", 150, 100)], tombstones: [] });
+    t("copies reçues → calque en modification, original masqué",
+      w.CalqueSession.estRapatrie("c1") && surCarte.c1 === false && roads.length === 2);
+    const res = K.appliquerChangements({ roads: [copie("rd_cop20000", 300, 100)], tombstones: [],
+      restitutions: [{ calque: "c1", avant: 200 }] });
+    t("🩸 restitution reçue : la copie datée avant T est RETIRÉE",
+      !roads.some((r) => r.uid === "rd_cop10000") && res.calques.retires === 1);
+    const gardee = roads.find((r) => r.uid !== "rd_cop20000");
+    t("🩸 copie modifiée APRÈS T : gardée, marque retirée, uid dérivé (jamais celui du calque)",
+      res.calques.gardes === 1 && !!gardee && gardee._srcCalque === undefined && gardee.updatedAt === 300 &&
+      !roads.some((r) => r.uid === "rd_cop20000"));
+    t("…le calque d'origine revient (plus aucune copie marquée)", !w.CalqueSession.estRapatrie("c1") && surCarte.c1 === true);
+    t("🔒 la restitution ne crée AUCUNE trace de suppression", w.KtaUid.getTombstones().length === 0);
+    t("mon point (sans marque) est intact", pts.length === 1 && pts[0].uid === "pt_mien1111");
+    K.appliquerChangements({ roads: [copie("rd_cop10000", 150, 100)], tombstones: [] });
+    t("🩸 copie périmée reçue APRÈS la restitution : retirée aussi (restitutions retenues)",
+      !roads.some((r) => r.uid === "rd_cop10000") && surCarte.c1 === true);
+    K.appliquerChangements({ roads: [copie("rd_cop10000", 500, 500)], tombstones: [] });
+    t("nouveau rapatriement après T : la copie reste, le calque repasse en modification",
+      roads.some((r) => r.uid === "rd_cop10000") && w.CalqueSession.estRapatrie("c1"));
+    t("changementsDepuis : les restitutions faites ici sont exposées (aucune ici)",
+      Array.isArray(K.changementsDepuis(0).restitutions) && K.changementsDepuis(0).restitutions.length === 0);
+    w._currentLoadedPlanId = "ext_p1";
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext", extId: "p1" } : null) };
+    const rr = w.CalqueSession.restituer("c1");
+    const ch = K.changementsDepuis(0).restitutions;
+    t("restitution ici sur un plan d'extension → changementsDepuis la donne { calque, avant, uids }",
+      rr.partagee === true && ch.length === 1 && ch[0].calque === "c1" && ch[0].avant >= 500 &&
+      JSON.stringify(ch[0].uids) === JSON.stringify(["rd_cop10000"]));
+    t("…et plus après son instant", K.changementsDepuis(ch[0].avant).restitutions.length === 0);
+    t("🔒 restituer ne crée aucune trace", w.KtaUid.getTombstones().length === 0);
+  }
+
   // ── 6 quater. ACTIONS DU COMPTE ──────
   {
     const { K } = nouveauContexte(null);
@@ -818,6 +948,24 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: O3 } = nouveauContexte(null);
     O3.register({ nom: "o3", apiVersion: 1, outilHome: () => null });
     t("outilHome : erreur ou null (non connecté) → aucune tuile", O2.outilHome() === null && O3.outilHome() === null);
+    t("outilHome : forme d'origine (un objet) = une tuile dans la liste",
+      O1.outilsHome().length === 1 && O1.outilsHome()[0].libelle === "🏢 Mon organisation" && !O1.outilsHome()[0].ouvrir &&
+      O3.outilsHome().length === 0);
+    const { K: O4 } = nouveauContexte(null);
+    let ouverte = 0;
+    O4.register({ nom: "o4", apiVersion: 1, outilHome: () => [{ libelle: "A" }, null, { libelle: " " },
+      { libelle: "B", ouvrir: () => { ouverte++; } }, { libelle: "C", ouvrir: "pas une fonction" }, { libelle: "D" }] });
+    const l4 = O4.outilsHome();
+    t("outilHome : liste — entrées invalides écartées, 3 tuiles au plus, `ouvrir` gardé si c'est une fonction",
+      l4.length === 3 && l4[0].libelle === "A" && l4[1].libelle === "B" && typeof l4[1].ouvrir === "function" &&
+      l4[2].libelle === "C" && !l4[2].ouvrir && O4.outilHome().libelle === "A" && !("ouvrir" in O4.outilHome()));
+    t("outilHome : une tuile avec `ouvrir` l'appelle au clic ; rang inconnu → false",
+      O4.ouvrirOutilHome(1) === true && ouverte === 1 && O4.ouvrirOutilHome(7) === false);
+    const { K: O5 } = nouveauContexte(null);
+    O5.register({ nom: "o5", apiVersion: 1, outilHome: () => [{ libelle: "X", ouvrir: () => { throw new Error("x"); } }] });
+    t("outilHome : `ouvrir` qui échoue → journalisé, jamais levé", O5.ouvrirOutilHome(0) === true);
+    t("outilHome : le lien de « Mon profil » vise la 1re tuile du compte (sans `ouvrir`)",
+      EXT.includes("tuiles.findIndex(function (o) { return !o.ouvrir; })"));
     t("outilHome : la tuile suit le compte (mktm:compte-changed) et la fenêtre montre le lieu « outils »",
       EXT.includes('addEventListener("mktm:compte-changed", _poserOutilHome)') &&
       EXT.includes('blocActionsCompte("outils", "")'));
@@ -846,6 +994,39 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       EXT.includes('aide.parentNode.insertBefore(b, aide.nextSibling)') && EXT.includes("b.textContent = p.icone") &&
       EXT.includes('"_blank", "noopener,noreferrer"') &&
       EXT.includes('addEventListener("mktm:compte-changed", _poserPastilleHome)'));
+    // ── Prise « documentation » : un second guide dans 📖 Documentation ──
+    const { K: D0 } = nouveauContexte(null);
+    t("documentation : sans extension → null (guide classique direct)", D0.documentation() === null);
+    const { K: D1 } = nouveauContexte(null);
+    D1.register({ nom: "d1", apiVersion: 1, documentation: () => ({ titre: "  Guide B  ", fichiers: {
+      fr: "ext/docs/GUIDE.md?v=1.2", en: "ext/docs/GUIDE.en.md", es: "../GUIDE.es.md", de: "https://x.org/G.md",
+      it: "ext/G.html", XX: "ext/G.md" } }) });
+    const d1 = D1.documentation();
+    t("documentation : titre nettoyé, fichiers .md du même site gardés, le reste écarté",
+      !!d1 && d1.titre === "Guide B" && JSON.stringify(d1.fichiers) ===
+        JSON.stringify({ fr: "ext/docs/GUIDE.md?v=1.2", en: "ext/docs/GUIDE.en.md" }));
+    const refusDoc = [
+      { titre: "x", fichiers: { en: "ext/G.en.md" } },
+      { titre: " ", fichiers: { fr: "ext/G.md" } },
+      { titre: "x", fichiers: { fr: "//evil.org/G.md" } },
+      { titre: "x", fichiers: { fr: "/ext/G.md" } },
+      { titre: "x", fichiers: { fr: "ext/G.md?jeton=1" } },
+      { titre: "x", fichiers: "ext/G.md" },
+      null
+    ].every((v, k) => { const { K } = nouveauContexte(null);
+      K.register({ nom: "dr" + k, apiVersion: 1, documentation: () => v }); return K.documentation() === null; });
+    t("🔒 documentation : sans fr, titre vide, autre site, chemin absolu, requête, forme inattendue ou null → rien",
+      refusDoc);
+    const { K: D2 } = nouveauContexte(null);
+    D2.register({ nom: "d2", apiVersion: 1, documentation: () => { throw new Error("x"); } });
+    t("documentation : une erreur de l'extension → null", D2.documentation() === null);
+    const DOCS = lire("js/interfaceDocs.js");
+    t("🩸 documentation : la fenêtre ne lit la prise que si elle existe, sinon guide classique direct (myktamap.fr)",
+      DOCS.includes('K.aPrise("documentation"))') &&
+      /if \(!ext\) \{ _chargerReadme\(_readmePathForLang\(lang\)/.test(DOCS));
+    t("documentation : choix des deux guides, la langue changée garde le guide affiché",
+      DOCS.includes('bouton("kta-readme-choix-classique"') && DOCS.includes('bouton("kta-readme-choix-extension"') &&
+      DOCS.includes("guide:          modal.dataset.guide"));
     t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
       /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
@@ -952,6 +1133,111 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("panneau Configuration : bloc « Installation » en tête", /blocActionsCompte\("config"/.test(lire("js/homeConfig.js")));
     const assets = (SW.match(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/) || [""])[0];
     t("🩸 aucun module greffé (pro/) précaché par community", assets.length > 0 && !/["']\.?\/?pro\//.test(assets));
+  }
+
+  // ── 8. SERVICE WORKER : PAGES DES DOSSIERS DE MODULES EN RÉSEAU D'ABORD (vrai sw.js) ──────
+  // Faux caches, faux réseau ; chaque bac = un SW qui démarre sans mémoire.
+  {
+    const SCOPE = "https://inst.test/";
+    const SWSRC = lire("sw.js");
+    const NOM_CACHE = SWSRC.match(/const CACHE_NAME = "([^"]+)"/)[1];
+    const rep = (corps, status) => ({ corps, status: status || 200, ok: (status || 200) < 300, type: "basic",
+      clone() { return rep(corps, status); }, text() { return Promise.resolve(corps); } });
+    const bac = (modules) => {
+      const magasins = {}, appels = [];
+      const b = { reseau: () => Promise.reject(new Error("hors ligne")), appels, magasins };
+      const abs = (r) => new URL(typeof r === "string" ? r : r.url, SCOPE).href;
+      const magasin = (nom) => {
+        const m = magasins[nom] = magasins[nom] || new Map();
+        return {
+          match(r, o) {
+            const u = abs(r);
+            if (o && o.ignoreSearch) {
+              for (const [k, v] of m) if (k.split("?")[0] === u.split("?")[0]) return Promise.resolve(v);
+            }
+            return Promise.resolve(m.get(u));
+          },
+          put(r, x) { m.set(abs(r), x); return Promise.resolve(); },
+          keys() { return Promise.resolve([...m.keys()].map((url) => ({ url }))); },
+          delete(r) { return Promise.resolve(m.delete(r.url)); },
+        };
+      };
+      const ecoutes = {};
+      function Response(corps, init) { return rep(corps, init && init.status); }
+      const ctx = vm.createContext({
+        self: { registration: { scope: SCOPE }, location: { origin: "https://inst.test" },
+          addEventListener(type, f) { ecoutes[type] = f; } },
+        caches: { open: (n) => Promise.resolve(magasin(n)), has: (n) => Promise.resolve(n in magasins),
+          keys: () => Promise.resolve(Object.keys(magasins)) },
+        fetch: (r) => { appels.push(abs(r)); return b.reseau(abs(r)); },
+        Response, URL, Set, Map, Promise, Error, Date, console: { log() {}, warn() {}, error() {} },
+        // Délais du SW raccourcis ; l'éviction (30 s) n'est pas jouée.
+        setTimeout: (f, ms) => (ms >= 10000 ? 0 : setTimeout(f, Math.min(ms, 20))), clearTimeout,
+      });
+      vm.runInContext(SWSRC, ctx, { filename: "sw.js" });
+      b.principal = magasin(NOM_CACHE);
+      b.principal.put(SCOPE + "data/index.json", rep(JSON.stringify({ config: { serverConnection: { state: "on", modules } } })));
+      b.demander = (url, destination) => {
+        let p = null;
+        ecoutes.fetch({ request: { method: "GET", url: SCOPE + url, destination: destination || "", headers: { get: () => null } },
+          respondWith(x) { p = Promise.resolve(x); } });
+        return p ? p.then((r) => r && r.corps) : Promise.resolve("(non intercepté)");
+      };
+      return b;
+    };
+    const avec = bac(["ext/lang/fr.js?v=1", "ext/mod.js?v=2"]);
+    let version = "page v1";
+    avec.reseau = (u) => Promise.resolve(rep(version + " " + u));
+    t("SW réveillé sans mémoire : la page d'un dossier de module vient du réseau",
+      /^page v1 /.test(await avec.demander("ext/compte.html", "document")));
+    version = "page v2";
+    t("🩸 page modifiée sur le serveur : vue à jour au chargement suivant (plus de copie figée)",
+      /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
+    t("feuille de style d'un sous-dossier de module : réseau d'abord", /^page v2 /.test(await avec.demander("ext/lang/x.css", "style")));
+    avec.principal.put(SCOPE + "ext/docs/G.md", rep("copie figée"));
+    t("🩸 guide Markdown (.md) d'un dossier de module : réseau d'abord, jamais une copie figée",
+      /^page v2 /.test(await avec.demander("ext/docs/G.md")));
+    avec.reseau = () => Promise.reject(new Error("hors ligne"));
+    t("hors ligne : la dernière copie est servie",
+      /^page v2 .*ext\/compte\.html$/.test(await avec.demander("ext/compte.html", "document")));
+    avec.reseau = () => new Promise(() => {});
+    t("réseau muet : la copie est servie après le délai", /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
+    avec.reseau = () => Promise.resolve(rep("erreur", 503));
+    t("serveur en erreur (5xx) : la copie est servie", /^page v2 /.test(await avec.demander("ext/compte.html", "document")));
+    avec.reseau = () => Promise.resolve(rep("absente", 404));
+    t("réponse du serveur (404) : transmise telle quelle, jamais la copie", (await avec.demander("ext/compte.html", "document")) === "absente");
+    avec.reseau = () => Promise.resolve(rep("invitation"));
+    await avec.demander("ext/invitation.html?jeton=secret", "document");
+    await new Promise((r) => setTimeout(r, 30));
+    const clesPages = [...(avec.magasins["myktamap-ext-pages"] || new Map()).keys()];
+    t("🔒 copie d'une page gardée SANS sa requête (un jeton ne reste pas sur l'appareil)",
+      clesPages.length >= 3 && clesPages.every((k) => k.indexOf("?") < 0));
+    avec.appels.length = 0;
+    avec.reseau = () => Promise.reject(new Error("hors ligne"));
+    avec.principal.put(SCOPE + "index.html", rep("app"));
+    avec.principal.put(SCOPE + "css/style.css", rep("css app"));
+    avec.principal.put(SCOPE + "ext/mod.js?v=2", rep("module"));
+    t("🩸 démarrage de l'app : index.html, css/ et les modules (?v=) restent en cache d'abord, sans réseau",
+      (await avec.demander("index.html", "document")) === "app" && (await avec.demander("css/style.css", "style")) === "css app" &&
+      (await avec.demander("ext/mod.js?v=2", "script")) === "module" && avec.appels.length === 0);
+
+    const sans = bac([]);
+    sans.principal.put(SCOPE + "ext/compte.html", rep("copie"));
+    sans.reseau = () => Promise.resolve(rep("neuf"));
+    t("sans module déclaré : rien ne change (cache d'abord, aucun cache de pages créé)",
+      (await sans.demander("ext/compte.html", "document")) === "copie" && !("myktamap-ext-pages" in sans.magasins));
+    sans.reseau = (u) => Promise.resolve(rep(/index\.json/.test(u)
+      ? JSON.stringify({ config: { serverConnection: { state: "on", modules: ["ext/mod.js?v=1"] } } }) : "neuf"));
+    await sans.demander("data/index.json");
+    await new Promise((r) => setTimeout(r, 30));
+    t("index relu en ligne qui déclare un module : ses pages passent en réseau d'abord sans attendre un réveil",
+      (await sans.demander("ext/compte.html", "document")) === "neuf");
+    const racine = bac(["mod.js?v=1"]);
+    racine.principal.put(SCOPE + "page.html", rep("copie"));
+    racine.principal.put(SCOPE + "css/style.css", rep("css app"));
+    t("🩸 module posé à la racine : l'app elle-même ne passe pas en réseau d'abord",
+      (await racine.demander("page.html", "document")) === "copie" &&
+      (await racine.demander("css/style.css", "style")) === "css app" && racine.appels.length === 0);
   }
 
   console.log("");

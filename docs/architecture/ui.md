@@ -83,7 +83,7 @@ Structure type :
 |---|---|---|
 | Message à **lire pour agir** (erreur qui bloque, consigne) | `window.ktaAlerte(message, opts)` → `Promise` (résolue à la fermeture) | message **texte** (échappé, retours à la ligne gardés) ; `opts.html: true` pour un message déjà sûr ; `opts.type: "erreur"`, `opts.titre`, `opts.okLabel`, `opts.zIndex` |
 | **Choix** (oui / non, saisie) | `window.ktaConfirm(message, opts)` → `Promise<boolean>` | voir le contrat ci-dessous |
-| **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `warn` / `error` ; réglage de notifications ci-dessous |
+| **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `success` (une réussite) / `warn` / `error` ; réglage de notifications ci-dessous |
 
 **Contrat de `ktaConfirm`** (en-tête de la fonction dans `js/utils.js`) :
 - ⚠️ **`message`, `opts.titre`, `opts.okLabel`, `opts.cancelLabel` sont insérés en HTML** (voulu : des appelants
@@ -111,11 +111,18 @@ Structure type :
   **refuse** l'action dans ce cas (jamais « confirmé par défaut »).
 
 **Toasts et réglage de notifications** (`js/oomGuard.js`, un seul goulot, décision pure `_decisionToast` rejouée
-par `scripts/check-notifs.js`) : niveau `all` (tout, vibration sur warn/error) · `essential` (plus d'`info`, les
-`warn` restent) · `silent` (seuls les `warn` marqués **`{ important: true }`** et les `error`). Un `warn` que
-l'utilisateur ne peut pas deviner autrement (refus « Lecture seule », fin d'un import dont les objets sont hors
-vue, session remplacée depuis la table, PDF trop lourd ajouté à l'histoire) porte `important: true`.
+par `scripts/check-notifs.js`) : niveau `all` (tout, vibration sur warn/error) · `essential` (défaut : plus
+d'`info`, les `success` et `warn` restent) · `silent` (seuls les `success` / `warn` marqués
+**`{ important: true }`** et les `error`). Un `success` ne vibre jamais. Un toast que l'utilisateur ne peut pas
+deviner autrement (refus « Lecture seule », fin d'un import dont les objets sont hors vue, session remplacée depuis
+la table, PDF trop lourd ajouté à l'histoire) porte `important: true`. Une réussite s'émet en `success` (icône ✅,
+liseré `--kta-ok`), jamais en `warn` : ⚠️ sur une réussite ment sur ce qui s'est passé.
 `opts.groupe` fusionne les toasts d'un même groupe émis à quelques ms d'écart.
+- **Pile** : les toasts s'empilent dans `#kta-toasts` (sous l'en-tête, centrée), le plus récent en bas, **3 visibles
+  au plus** ; au-delà, le plus ancien part, une erreur en dernier. Un message identique déjà affiché redescend au
+  lieu de doubler. `info` et `success` partent seuls après 6 s, `warn` et `error` après 10 s. Le plus récent
+  porte l'id `#kta-toast`. Échap ferme le plus récent. Couleurs : jetons seulement (bloc « Toasts empilés » de
+  `css/style.css`), rien de propre au thème clair hors l'ombre. Checkup : `scripts/smoke/checkup-toasts.js`.
 
 **Lecture seule** (plan en droit « lire ») : tout point d'entrée qui modifie les objets du plan commence par
 `if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;` — la fonction
@@ -383,11 +390,11 @@ défaut). Plus de réglage global ni de bouton sur l'accueil. Calcul sauté au-d
 
 #### ⚙️ Modale Réglages (mode carte) — état v1.92.0 (L4, audit ergonomie)
 
-`js/interfaceConfig.js > afficherConfig()`. **Huit groupes**, chacun rendu par `_cfgGroupeDebut(cle, portee)` … `_cfgGroupeFin()` (`.kta-cfg-group` > titre `.kta-cfg-group-titre` cliquable avec badge de portée `.kta-cfg-scope-plan` / `-global` > `.kta-cfg-group-corps`) ; repli mémorisé dans `localStorage.myktamap_cfg_groupes_v1`, replié par défaut sur écran étroit sauf le premier groupe. **Même mécanique dans la Configuration de l'ACCUEIL** (`#loaderConfigModal`) : ses 5 rubriques portent le même balisage, écrit dans `index.html` (`data-i18n` sur `.kta-cfg-group-libelle`, pas sur le titre, sinon la traduction effacerait le chevron), liées une fois à la 1re ouverture par `homeConfig.js` via `window.ktaGroupesRepliables(modale, "myktamap_home_cfg_groupes_v1")` — mémoire séparée, les deux fenêtres ont des rubriques de même nom.
+`js/interfaceConfig.js > afficherConfig()`. **Huit groupes**, chacun rendu par `_cfgGroupeDebut(cle, portee)` … `_cfgGroupeFin()` (`.kta-cfg-group` > titre `.kta-cfg-group-titre` cliquable avec badge de portée `.kta-cfg-scope-plan` / `-global` > `.kta-cfg-group-corps`). Le titre est en texte principal, 14 px gras, sans capitales : son style vit dans `css/style.css` seul (bloc « Finitions d'interface »), aucun `style=` inline, ni ici ni dans `index.html` ; repli mémorisé dans `localStorage.myktamap_cfg_groupes_v1`, replié par défaut sur écran étroit sauf le premier groupe. **Même mécanique dans la Configuration de l'ACCUEIL** (`#loaderConfigModal`) : ses 5 rubriques portent le même balisage, écrit dans `index.html` (`data-i18n` sur `.kta-cfg-group-libelle`, pas sur le titre, sinon la traduction effacerait le chevron), liées une fois à la 1re ouverture par `homeConfig.js` via `window.ktaGroupesRepliables(modale, "myktamap_home_cfg_groupes_v1")` — mémoire séparée, les deux fenêtres ont des rubriques de même nom.
 
 | # | Groupe (clé) | Portée | Contenu |
 |---|---|---|---|
-| 1 | 🌍 `config.group.application` | 🌍 tous | 🎬 mode présentation · **🏠 Réglés depuis l'accueil** (lecture seule : langue, thème, icônes au zoom, panneaux ancrés, magnétisme, **carnet des sorties** ; bouton → `_retourLoaderAvecConfirm`) |
+| 1 | 🌍 `config.group.application` | 🌍 tous | 🎬 mode présentation (une ligne d'action `.kta-cfg-ligne-action`, en tête du groupe : le seul ouvert d'office sur téléphone) · **🏠 Réglés depuis l'accueil** (lecture seule : langue, thème, icônes au zoom, panneaux ancrés, magnétisme, **carnet des sorties** ; bouton → `_retourLoaderAvecConfirm`) |
 | 2 | 📐 `config.group.planCalib` | 📍 ce plan | bandeau cohérence · échelle (`setPlanScale`) · Nord (`setPlanNorthOffset`) · **lanceur 🌐 Géoref** (`#cfg_georef_open`, état `#cfg_georef_etat`) → sous-modale `#kta-cfg-georef-modal` (enfant de `#kta-cfg-modal`, rendue par `_renderCfgGeorefSection`, handlers `_bindCfgGeorefHandlers` posés à l'ouverture) |
 | 3 | 📍 `config.group.navTracker` | 📍 ce plan | départ X/Y (+ pickers) · podomètre ×3 · nav intelligente ×3 |
 | 4 | 🎨 `config.group.affichage` | 📍/🌍 mixte (badge « selon la ligne », chaque ligne dit la sienne) | ronds (ce plan) · wake lock · vocal (tous plans) |
@@ -417,21 +424,101 @@ Fix dans `tracking.js > _applyRotationToTrackerMarker()` :
 
 Reset dans `_resetRotationTrackerMarker()` pour repartir propre au prochain Play.
 
-##### 41.15.5 Splash KARMA animé (fix15 / fix16)
+##### 41.15.5 Splash de démarrage — « la galerie qui se dessine »
 
-- Retrait du bloc `#splashAuthor` ("Par [karma.png]" centré dans le footer)
-- Ajout d'un nouveau `#splashKarmaCorner` en `position: absolute; bottom: 28; right: 28` (28 au lieu de 14 pour anti-clip bord arrondi écrans modernes, KARMA fix17)
-- Image karma.png 20px (au lieu de 32px) + drop-shadow doré + animation `clip-path: inset(0 100% 0 0)` → `inset(0 0 0 0)`
-- Animation : 5 keyframes explicites (0/20/40/60/80/100%) avec `cubic-bezier(0.45, 0.05, 0.55, 0.95)` (ease-in-out doux) → effet "K-A-R-M-A" lettre par lettre avec transitions smooth. Durée 1.8s, délai 0.8s
-- Fade-out synchronisé avec `splashOverlay.fading`
+**Rendu** (`index.html > #splashOverlay`, `css/style.css` bloc « Splash de démarrage ») : un réseau **fictif**
+de 38 galeries se trace une fois, puis l'eau (bande bleue sous trois galeries), une zone inaccessible hachurée,
+six pictos du catalogue (`peo`, `pb`, `house`, 3 × `plaque`), la rose (`icon/compass.svg`) et le titre. Trois
+calques superposés, même repère (`viewBox -12 -12 364 606`, recadrage `meet`) : `#splashReseau` (eau, galeries),
+le canvas des galeries `#splashReseauCanvas` (inséré par `ktaSplash.js`, voir ci-dessous), `#splashReperes` (pictos
+et rose en `<image>`, au-dessus des galeries) ; pictos et rose suivent l'échelle du réseau. Chaque galerie porte
+`pathLength="1"` (tiret exact sans mesure) et `--i` (ordre, 45 ms d'écart).
+- **Mise en page** : portrait = réseau en haut, titre, sous-titre et licence dessous ; paysage (PC, tablette,
+  téléphone couché) = titre à gauche, réseau à droite (`@media (orientation: landscape)`). Coins : « Conçu avec
+  Claude » (`#d97757`) et version (or, monospace, `main.js > _splashStart` depuis `__MKM__.build`) en haut ;
+  crédits librairies en bas à gauche, signature `karma.png` en bas à droite.
+- **Toujours sombre** (`#0a0d18`), quel que soit le thème (décision produit) : aucune règle `kta-theme-light` ne
+  vise le splash.
+- **Licence** : « Licence libre — usage non commercial » (pastille dorée) ; variante pro « Édition professionnelle
+  · Licence active » par `.kta-instance-pro` ; installation reliée : jamais la mention community
+  (`check-extensions.js`). Le titre n'affiche jamais « -pro » (décision produit).
 
-Crédits libs/algo au splash : `🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra` en bas-gauche (déplacé du centre pour libérer le coin droit pour KARMA).
+**Versions** (`js/ktaSplash.js`, premier script d'`index.html`, choisit avant la première peinture) :
+| Version | Quand | Durée |
+|---|---|---|
+| longue | **chaque** ouverture (décision produit : pas de version raccourcie) | 4 s (tracé complet à ~3,4 s, puis image finale) |
+| réduite | `prefers-reduced-motion: reduce` | 0 : image finale directe, puis fondu |
 
-`Dijkstra` réfère à l'algorithme du plus court chemin implémenté dans `js/pathfinder.js > _dijkstra()`. KARMA s'en souvenait phonétiquement comme "djakarta" — pas une lib externe mais un classique informatique (Edsger Dijkstra, 1956) qu'on implémente nous-mêmes.
+La clé `myktamap_splash_jour_v1` d'une version courte abandonnée est retirée au démarrage (`removeItem`
+silencieux). Une seule lecture, en `both` : l'image finale reste jusqu'au fondu. L'état de base de chaque règle CSS est l'image
+finale ; `.kta-splash-fini` coupe les animations.
 
-Ces mêmes 3 crédits ajoutés au :
-- Footer du home (`.kta-loader-credits` sous le copyright)
-- Footer de la modale Documentation (`.kta-readme-modal-footer`)
+**Démarrage de la scène** : 🩸 le tracé (`stroke-dashoffset`) se calcule sur le fil principal. Lancé pendant le
+démarrage de l'app (scripts puis construction de l'accueil), il saccadait au début sur iPhone (mesuré processeur ×4 :
+3 tâches longues, ~0,75 s, dans la première seconde du tracé). La scène (galeries, eau, pictos, rose, titre) reste en
+pause (`animation-play-state`) jusqu'à `.kta-splash-go`, posée par `ktaSplash.js > _demarrer` quand l'accueil est prêt
+(`fermer(pret)`), ou dès qu'une gate attend la fin d'animation (`finAnimation()`), ou au clic, ou au plus tard à 2,5 s.
+Les 4 s se comptent depuis ce démarrage ; seuls les coins (opacité) jouent avant. Scène démarrée vers 2,1-2,3 s
+(×4) et 0,4-0,8 s (sans ralenti) ; au plafond de 2,5 s, des tâches longues de l'app tombent encore pendant le tracé.
+
+**Galeries dans un worker** (`js/ktaSplashWorker.js`) : 🩸 démarré accueil prêt, le tracé SVG restait sur le fil
+principal, et la moindre tâche longue le figeait (début saccadé sur iPhone). Les 38 galeries sont dessinées dans un
+`<canvas>` transféré au worker (`transferControlToOffscreen`, `OffscreenCanvas` 2D, `requestAnimationFrame` du worker,
+minuteur 16 ms s'il manque) : chaque image se calcule et s'affiche sans le fil principal.
+- ⚠️ **Une seule source** : `ktaSplash.js > _lireChemins` lit l'attribut `d` des chemins (M puis L absolus) et le
+  `viewBox` ; `_lireRythme` lit dans le style calculé la durée (1,68 s), le délai de chaque chemin (`--i` × 45 ms), la
+  courbe (`cubic-bezier`), la couleur, l'épaisseur, l'opacité et les bouts ronds. Seul le départ du tiret (1,01, la
+  clé `kta-splash-trace`) est recopié dans le worker (`DEPART`). Un chemin hors format, une autre courbe ou un
+  `preserveAspectRatio` → SVG animé.
+- **Lancement** : au premier rappel du `ResizeObserver` du canvas (style et mise en page déjà faits) — 🩸 un
+  `getComputedStyle` / `getBoundingClientRect` au chargement du script forçait le style et la mise en page de la
+  page en cours d'analyse (~0,25 s à ×4, avant la première peinture). Taille en pixels CSS du `ResizeObserver`,
+  densité `devicePixelRatio` relue au `resize` de la fenêtre : le worker redimensionne le canvas et redessine
+  (rotation du téléphone).
+- **Horloge** : `go { debut }` en `performance.timeOrigin + performance.now()`, commune aux deux fils ; le worker
+  rattrape une scène déjà partie. `fin` (clic / Échap avant l'accueil) → image finale aussitôt. Mouvement réduit :
+  pas de worker, SVG fixe.
+- **Bascule** : le SVG des galeries n'est masqué (`.kta-splash-canvas` → `display: none`, qui arrête aussi son
+  animation) qu'à la réponse `pret` du worker (premier dessin fait) ; avant, il est en pause donc vide.
+- **Repli = SVG animé**, sans régression : API absente (`Worker`, `OffscreenCanvas`, `transferControlToOffscreen`,
+  `ResizeObserver`), erreur du worker (fichier introuvable hors ligne compris), message `echec`, ou pas de réponse
+  en 300 ms de fil principal libre (🩸 un minuteur échu pendant les scripts de démarrage passerait avant la réponse
+  déjà arrivée). Worker tombé après la bascule : chaque chemin SVG reprend à l'instant voulu (délai négatif).
+  `KtaSplash.trace()` → `{ mode: "canvas" | "svg", motif, bilan }` (bilan = instants des images du worker, taille du
+  canvas en pixels physiques).
+- **CSP** : `worker-src 'self' blob:` déjà présent dans toutes les politiques (`docker/nginx-docker.conf`,
+  `docs/nginx-csp-config.conf`, `docs/nginx-myktamap.conf`) ; worker = fichier local, rien d'inline. Précaché
+  (`sw.js > ASSETS_TO_CACHE`) ; absent du cache, le splash garde son SVG.
+- Mesuré (Chromium sans écran, densité 3) : tâche longue de 500 ms sur le fil principal pendant le tracé → 82-83
+  images du worker dans la fenêtre, plus grand écart 6 ms, normal comme ×4. Non vérifié sur Safari réel.
+
+**Fermeture** = au plus tard de (fin d'animation, écran suivant affiché), puis fondu 0,4 s et retrait du DOM :
+- `main.js > _splashEnd(pret)` → `KtaSplash.fermer(pret)` : attend la fin d'animation ET `pret`, puis deux images.
+  Accueil : appelé juste après `afficherLoader()` (synchrone : `#planLoaderOverlay` visible, liste remplie) ;
+  plan racine chargé d'office : `pret` = la promesse de `lancerApplication()`.
+- Avant une gate (conditions d'utilisation, gate déléguée, code d'accès, PIN) : `_splashAvantGate()` attend
+  seulement la fin de l'animation ; le splash reste **dessous** (toutes les gates sont au-dessus de 9999) et couvre
+  le temps mort jusqu'à l'accueil. Une gate qui ne dessine rien (session déjà ouverte, licence qui contourne le code)
+  ne laisse plus d'écran vide. Écran « Installation indisponible » : le splash se ferme avant lui.
+- **Passer** : clic / toucher / Échap. Accueil prêt → fondu aussitôt ; sinon image finale et attente. Écouté au
+  `click`, jamais au `pointerdown` (le clic suivant traverserait le fondu et toucherait l'accueil). Aucun texte
+  « touche pour passer ».
+- **Plafond** : fondu 12 s après le début de la navigation (`performance.now()`), quoi qu'il arrive. Les
+  rappels de fin (`main.js > _apresSplash` : toasts en file, mise à jour, `FirstRunFlow.run()`) passent par
+  `KtaSplash.surFermeture` et partent aussi dans ce cas.
+- Sans `js/ktaSplash.js` (cache incomplet), `_splashEnd` retire le splash tout de suite.
+
+**Une seule fois par session** : un changement de plan ne ré-affiche pas le splash.
+
+**Preuve** : `scripts/smoke/checkup-splash.js` (téléphone 390 densité 3 et PC 1280 : galeries du worker sans
+double SVG, tracé en cours puis image finale complète — pixels du canvas comparés à l'image finale du SVG —, canvas
+en pleine densité ; replis sans OffscreenCanvas, worker introuvable, muet, tombé en route ; tâche longue de 500 ms
+pendant le tracé, normal et ×4 ; rotation ; accueil lent / rapide, passage au clic et à Échap, seconde ouverture
+rejouée en entier, plafond, mouvement réduit, coût au démarrage processeur ×4).
+
+`Dijkstra` (crédits) = l'algorithme du plus court chemin de `js/pathfinder.js > _dijkstra()`, pas une librairie.
+Les mêmes crédits figurent au pied de l'accueil (`.kta-loader-credits`) et de la Documentation
+(`.kta-readme-modal-footer`).
 
 ##### 41.15.6 Couleur Leaflet alignée à la charte (fix17)
 
@@ -518,40 +605,67 @@ Module `js/themeManager.js` (~150 lignes IIFE) → `window.ThemeManager = { init
 
 Les 2 toggles sont **synchronisés via `ThemeManager.onChange()`** — changer depuis l'un met à jour l'autre automatiquement.
 
-#### 53.3 Stratégie CSS (~1200 lignes au final)
+#### 53.3 Jetons de couleur (charte) — la base des deux thèmes
 
-Tout dans `css/style.css` en fin de fichier, scoped sur **`body.kta-theme-light .selector`** (pour le contenu intra-body) ET **`html.kta-theme-light .selector`** (pour les modales appendées à `documentElement` qui sont sibling de body). Variables CSS dédiées :
+Les couleurs de la charte sont des **jetons CSS** définis en tête de `css/style.css` (`:root`, valeurs du sombre)
+et **redéfinis** par le thème clair (`html.kta-theme-light, body.kta-theme-light`, bloc des `--kta-light-*`). Une
+règle ou un `style="…"` posé par le JS écrit `color: var(--kta-texte-3)`, jamais `#8892a4` : le clair suit seul,
+sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a4"]`) ont disparu ; il en reste
+4, qui ne touchent pas aux couleurs (`display`, `scale`).
 
-```css
-body.kta-theme-light {
-  --kta-light-bg:            #f0e8d8;  /* body + container Leaflet (beige cataphile) */
-  --kta-light-bg-bar:        #c9b88f;  /* header + footer + sidebar + icônes (brun-beige) */
-  --kta-light-bg-bar-deep:   #b8a576;  /* hover sur bar items */
-  --kta-light-bg-bar-border: #9a8754;  /* bordure forte entre bar/body */
-  --kta-light-bg-elevated:   #fdf8eb;  /* modales + cards (presque blanc) */
-  --kta-light-bg-deep:       #e5dcc5;  /* table headers + sidebar interne */
-  --kta-light-text:          #2a2620;
-  --kta-light-text-muted:    #6b6354;
-  --kta-light-text-dim:      #8a8270;
-  --kta-light-border:        rgba(0,0,0,0.12);
-  --kta-light-border-strong: rgba(0,0,0,0.22);
-  --kta-light-accent:        #f4c542;  /* jaune charte conservé */
-  --kta-light-accent-hover:  #d9a82e;
-  --kta-light-accent-bg:     rgba(244,197,66,0.22);
-  --kta-light-shadow:        rgba(80,60,30,0.18);
-}
-```
+| Jeton | Rôle | Sombre | Clair |
+|---|---|---|---|
+| `--kta-fond` | fond de page | `#0a0d18` | `#f0e8d8` |
+| `--kta-surface` / `--kta-surface-2` | fenêtres, cartes / surface élevée | `#1a1f2e` / `#232838` | `#fdf8eb` / `#e5dcc5` |
+| `--kta-texte` | texte principal | `#e8eaf0` | `#2a2620` |
+| `--kta-texte-2` | texte secondaire | `#c8d0e0` | `#3d372d` |
+| `--kta-texte-3` | méta, aides, compteurs | `#98a1b3` | `#5f5848` (`#4a4438` sur les barres) |
+| `--kta-accent` | doré : titres, état actif, fonds | `#f4c542` | `#f4c542` |
+| `--kta-accent-texte` | doré écrit en texte | `#f4c542` | `#7a5a00` |
+| `--kta-interaction` | liens, commandes | `#8cb4ff` | `#1e5f99` |
+| `--kta-primaire` (+ `-survol`, `--kta-sur-primaire`) | fond du bouton d'action principale | `#1a5fd6` (`#2563eb`), texte blanc | idem |
+| `--kta-focus` | contour clavier | `#f4c542` | `#7a5a00` |
+| `--kta-ok` / `--kta-avert` / `--kta-erreur` | états | `#6ee287` / `#ffb380` / `#ff8c8c` | `#176530` / `#8b3a00` / `#a01818` |
+| `--kta-bordure` | séparateurs | blanc 8 % | `rgba(20,30,50,0.14)` |
+| `--kta-info-fond/-bord`, `--kta-accent-fond/-bord`, `--kta-ok-fond/-bord`, `--kta-erreur-fond/-bord` | encadrés teintés | | |
 
-**Pourquoi 2 prefixes selector ?** Beaucoup de modales sont créées via `document.documentElement.appendChild(modal)` (cf grep dans `js/*.js`) — elles sont enfant direct de `<html>`, sibling de `<body>`. Le selector `body.kta-theme-light .modal` ne matche pas. D'où `html.kta-theme-light .modal` en complément.
+- **Contrat** : chaque couple texte / fond de ce tableau tient **4,5:1** (WCAG AA). Mesuré dans le DOM sur 2 471
+  textes de 30 écrans, PC 1280 et téléphone 390, dans les deux thèmes (méthode :
+  `docs/audits/2026-10-20_audit-ui-impeccable-v1.md`). Seul le splash reste hors contrat (lot à part).
+- **Bouton principal bleu dans les deux thèmes** (décision produit) : `.kta-btn-primary`, `#loadPlanBtn`, « J'accepte »
+  des CGU. Le doré reste l'accent (titres, onglet actif, cases cochées).
+- **Lueurs (ombre colorée sans décalage, `0 0 Npx`) réservées à un état** : POI ou tracé en surbrillance,
+  itinéraire, mode actif, Tracker allumé, alerte publique, urgence et mode XL, Mode Secours, mémoire critique,
+  rangs du profil, focus. Un titre, une icône ou une fenêtre statique n'en porte pas. Une ombre noire ou blanche de
+  lisibilité (texte posé sur la carte) n'est pas une lueur. Hors champ : le splash (couleurs d'origine).
+- **Liseré latéral épais** (`border-left` ≥ 2 px) : seulement là où il code un type ou un état (toasts, niveaux
+  d'alerte, Mode Secours). Un encadré ou un titre prend un fond teinté (`--kta-info-fond`, filet
+  `--kta-info-bord`) : points des CGU, titres `h2` de la Documentation.
+- **Mouvement réduit** (`prefers-reduced-motion`, bloc « Accessibilité » de `css/style.css`) : toute animation est
+  coupée (0,01 ms), sauf les indicateurs de chargement (`.kta-load-spinner`, `.kta-sortie-spinner`,
+  `.kta-poi-photo-spinner`, `.kta-charge-tourne`), qui pulsent en opacité (`kta-charge-pulse`, 2,4 s) au lieu de
+  tourner. Le splash a sa règle (`js/ktaSplash.js`).
+- **Jamais d'opacité pour griser du texte** : compteur vide, tuile indisponible ou bouton désactivé passent par
+  `--kta-texte-3` (et `filter: grayscale(1)` pour l'icône). L'opacité faisait tomber le texte à 2–3:1.
+- **Classes `.kta-tx-*`** (dicos, alertes) : une règle par classe, sur le jeton. Le second sélecteur
+  (`:root .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-…`) bat le filet clair des fenêtres.
+- **Restent en dur, sans jeton** : le splash, la visionneuse photo et le mode urgence (palette et thème locaux),
+  les couleurs de tracés et zones (`ktaResolveStyle`), et quelques fonds sombres hors charte (`#2a3145`…).
+- Les variables `--kta-light-*` restent pour le reste du thème clair (barres, bordures) ;
+  `--kta-light-text-muted` / `-dim` valent `#5f5848` / `#6e6656`.
 
-**Pourquoi `!important` partout ?** De nombreux modules JS (searchPoints.js, sessionExporter.js, etc.) injectent leurs styles via `<style>` inline. Ces styles externes battent les CSS du fichier sans `!important`. On force avec `!important` pour gagner la spécificité.
+**Pourquoi 2 préfixes de sélecteur ?** Beaucoup de modales sont créées via `document.documentElement.appendChild`
+— enfant de `<html>`, sœur de `<body>` : `body.kta-theme-light .modal` ne les atteint pas. Les jetons, eux,
+cascadent depuis `<html>` : une règle de base écrite en jetons n'a besoin d'aucun des deux.
+
+**`!important` restants** : les règles claires historiques (environ 1 860 sélecteurs `.kta-theme-light`) en
+portent encore beaucoup. On les retire écran par écran, quand la règle de base écrite en jetons suffit.
 
 #### 53.4 Scope final (toute l'app)
 
 ✅ Couvert :
 - **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`, `.loader-btn-resume` (bouton Reprendre), `.zip-drop-zone`
 - **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `.loader-btn-ghost`, `.loader-btn-mini`, `.loader-btn-fs`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
-- **Splash chargement plan** : `#splashOverlay` (radial gradient beige), `#splashTitle` (ocre), `#splashSubtitle`, `#splashProgressTrack/Bar`, `.splash-scale-bar` (bandes alternées ocre)
 - **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`, `.kta-net-paranoia-toggle` (case à cocher générique de la Configuration, nom historique)
 - **Modale Audit** : `#loaderNetDocModal`, `#loaderNetLogModal`, `#loaderNetLogTbody`, `#loaderNetDocWhitelist`
 - **Auth gates** : `#kta-unlock-overlay` (code communautaire), `.kta-pin-gate-overlay` (PIN keypad), `.kta-pin-gate-bio-btn` (biométrie), `.kta-pin-proposal-boite` (post-update), `.kta-pin-gate-overlay-lockout`
@@ -560,22 +674,22 @@ body.kta-theme-light {
 - **Sidebars Leaflet** : `.leaflet-bar a` (boutons groupes, fond brun-beige), `.leaflet-bar a.kta-sub` (sous-actions, fond brun-beige), `.leaflet-bar a.kta-actif` (vert), `.leaflet-bar a.kta-group-mode-actif` (fond **blanc solide** + bordure jaune charte — KARMA fix "icône actif fond blanc pas transparent")
 - **Modales du pattern principal** : `.kta-readme-modal-*` (Session, Recherche, Itinéraire, Mesure, Édition, Export, Réglages, Aide, Doc IA, Légende, M-LVL, Replay) — couvre aussi les descendants h1/h2/h3/p/li/span/strong/em/div via catch-all `* { color: var(--kta-light-text) !important }` dans `html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps`
 - **Sommaire / TOC** : `.kta-readme-toc-row/-link/-link-h2/-link-h3/-bullet/-toggle/-sublist` — hiérarchie restaurée (H2 bold foncé, H3 muted, border-left ocre, hover jaune)
-- **Modale Update** (depuis badge version footer) : `#kta-update-modal` avec overrides des inline styles via attribute selectors `[style*="rgba(140,180,255"]` etc.
+- **Modale Update** (depuis badge version footer) : `#kta-update-modal`, encadré des versions en `--kta-info-fond` / `--kta-info-bord`
 - **Modale Enregistrer session** : `#kta-session-export-modal` + boutons `.kta-ses-btn-*` + items `.kta-ses-cb-row/.kta-ses-radio-row/.kta-ses-summary`
 - **Onglets Mode rapide/avancé** : `.kta-conv-sens-btn` + `.active` (jaune charte plein)
 - **Recherche unifiée Ctrl+K** : `.kta-search-input-wrap` + `input` (fond blanc + focus jaune), `.kta-search-result-item` + hover/selected, `.kta-search-filter-chip` + active, `.kta-search-group-titre`
 - **Labels Leaflet** : `.kta-measure-distance` + `.kta-iti-distance` + segments + angles
 - **Leaflet natif** : `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-control-layers-*`, `.leaflet-bar`
-- **Toasts** : `.kta-toast`, `.kta-toast-msg`, `.kta-toast-icon`, `.kta-toast-close`, `.kta-toast-info/error` (border-left adaptée)
+- **Toasts** : pile `.kta-toasts` et `.kta-toast-*`, écrits en jetons (aucune règle claire propre, hors l'ombre)
 - **Modales progress `.kta-modal-*`** : Mise à jour en cours, Reset en cours, Session en cours, Yes/No
 - **Modale Choix suppression** : `.kta-choix-suppr-*`
 - **Modale chargement plan** : `.kta-load-overlay` + `.kta-load-box` + `.kta-load-spinner` (ocre)
-- **Boutons généraux** : `.kta-btn`, `.kta-btn-primary` (jaune), `.kta-btn-secondary`, `.kta-btn-ghost`, `.kta-btn-link`, `.kta-btn-danger`
+- **Boutons généraux** : `.kta-btn`, `.kta-btn-primary` (bleu `--kta-primaire`, comme en sombre), `.kta-btn-secondary`, `.kta-btn-ghost`, `.kta-btn-link`, `.kta-btn-danger`
 - **Alertes publiques** : `.kta-alert-*` (emergency rouge kept dramatique, warning orange, info bleu, absent neutre, selector cascade)
 - **Stats agrégées + détail Session active** : `.kta-refonte-stats-*` + `.kta-refonte-session-*`
 
-❌ Volontairement non couverts (restent dark) :
-- **Splash KARMA cinématique** au tout début du boot (animation rotation boussole, contrastes dark requis pour l'effet fade-in lettres)
+❌ Volontairement non couverts (restent sombres) :
+- **Splash de démarrage** (§41.15.5) : toujours sombre, quel que soit le thème
 - **Viewer photos plein écran** (overlay sombre par essence pour bonne lecture des photos)
 
 #### 53.5 Sync mode urgence
@@ -604,6 +718,9 @@ Le toggle local du mode urgence ne propage PAS à `ThemeManager` (volontaire —
 
 **Ajouter une modale qui supporte le thème** :
 
+0. **Toujours** : écrire les couleurs en jetons (`var(--kta-texte-3)`, `var(--kta-surface)`…), en CSS comme dans
+   le `style="…"` posé par le JS. Le thème clair suit sans règle de plus (§53.3).
+
 1. **Pattern A (recommandé)** : utilise `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` → couvert automatiquement via les règles catch-all `html.kta-theme-light .kta-readme-modal-overlay *`. Si ta modale a un contenu **COURT**, ajoute aussi sur sa classe spécifique :
    ```css
    .ma-modal-boite {
@@ -614,7 +731,9 @@ Le toggle local du mode urgence ne propage PAS à `ThemeManager` (volontaire —
    ```
    pour éviter le bug 88vh étiré (cf §53.9 ci-dessous).
 
-2. **Pattern B (modale custom hors `kta-readme-modal-*`)** : il faut écrire les overrides manuellement avec `html.kta-theme-light .ma-classe { ... !important }` dans `style.css`. **Toujours utiliser `!important`** car de nombreux modules injectent leurs styles en `<style>` inline qui battent CSS externe non-important.
+2. **Pattern B (modale custom hors `kta-readme-modal-*`)** : avec des jetons, rien à écrire. Une couleur sans
+   jeton (fond teinté propre à la fenêtre) se surcharge avec `html.kta-theme-light .ma-classe { … }`, avec
+   `!important` seulement si un `<style>` injecté par le module la bat.
 
 3. **Si tu append la modale à `document.documentElement`** (pattern majoritaire dans le projet) : utilise le sélecteur `html.kta-theme-light .ma-classe` (PAS `body.kta-theme-light`) — sinon la classe `.kta-theme-light` sur `<body>` ne peut pas matcher car la modale est sibling de body.
 
@@ -633,8 +752,9 @@ if (window.ThemeManager) {
 - ❌ Stocker le thème ailleurs qu'en `localStorage["myktamap_theme_v1"]` (= source de vérité unique)
 - ❌ Appliquer la classe `.kta-theme-light` à un autre élément que `<html>` et `<body>` (les modales ajoutées à `documentElement` doivent matcher via `html.kta-theme-light .modal`)
 - ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe directement (pas notifié, pas persisté, désync entre les 2 toggles UI sidebar/Config-home)
-- ❌ Inventer de nouvelles couleurs custom — utilise les variables `--kta-light-*` pour la cohérence
-- ❌ Oublier `!important` dans les overrides — les styles inline injectés par certains modules (searchPoints.js, sessionExporter.js, sidebar par `<style>`) battent les CSS externes non-important
+- ❌ Inventer de nouvelles couleurs — utilise les jetons `--kta-*` (§53.3), puis `--kta-light-*`
+- ❌ Cibler un style inline par sélecteur d'attribut (`[style*="color:#…"]`) : changer un espace dans le JS casse la surcharge sans erreur. Mettre le jeton dans le `style=` à la place
+- ❌ Griser du texte par `opacity` : passer par `--kta-texte-3`
 
 #### 53.9 Bug 88vh étiré sur modales courtes (fix général)
 
@@ -1684,7 +1804,8 @@ KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouv
 #### 93.3 Le hub d'Aide (`interfaceDocs.js`) — état actuel
 - **Contenu dans les dicos** : `aide.sec.<slug>.titre` / `.html` (HTML voulu, classes `kta-aide-*` du CSS), `aide.sec.<slug>.raccourci` (facultatif), `aide.cat.<cle>`, `aide.ui.*`, `aide.intro`. Une fiche = une **référence rapide** d'une fonction, qui renvoie au 📖 guide pour le détail — pas un second guide.
 - **`AIDE_SECTIONS`** : ordre canonique des slugs (un slug ne se renomme jamais). **`AIDE_CATEGORIES`** : `{cle, slugs}`, 8 catégories alignées sur les chapitres du guide — Prise en main · Urgence · Carte et recherche · Se repérer et itinéraire · Annoter · Mes données et partage · Réglages et dépannage · Pour aller plus loin (désactivé par défaut, Mode Secours, créateurs de plans). Filet « Autres » pour une fiche non rangée.
-- **Hub** : intro, recherche (titre + corps, accents tolérés), ligne épinglée ⌨️ Raccourcis → `ShortcutsCheatsheet.ouvrir()`, lignes par catégorie. Un clic ouvre la **sous-modale** `.kta-aide-submodal` (z-index 100001) : ← Retour, ✕, clic-fond, Échap.
+- **Hub** : intro, recherche (titre + corps, accents tolérés), ligne épinglée ⌨️ Raccourcis → `ShortcutsCheatsheet.ouvrir()`, lignes par catégorie. Sur PC, un clic ouvre la **sous-modale** `.kta-aide-submodal` (z-index 100001) : ← Retour, ✕, clic-fond, Échap.
+- **Sur téléphone, la fiche remplace le hub** (`_aideOuvrirFicheDansHub`) : un voile, une croix (qui ferme l'Aide). « ← Retour » prend la place du titre dans l'en-tête et rend le hub à la même position de défilement, recherche tapée comprise (le hub est masqué par la classe `.kta-aide-en-fiche`, pas reconstruit) ; Échap revient au hub. « Téléphone » = `AIDE_FICHE_EN_PLACE_MQ` : largeur ≤ 600 px, ou tactile de moins de 500 px de haut (paysage). Critère de place, pas de pointeur : une tablette garde la sous-fenêtre. Ouverte par un ❓ contextuel (hub fermé), la fiche reste une sous-modale. Checkup : `scripts/smoke/checkup-aide-telephone.js`.
 - **❓ contextuel** : `AIDE_PAR_MODALE` (id de modale → slug), bouton posé par un `MutationObserver` dans l'en-tête `.kta-readme-modal-header` / `.kta-tracker-modal-header`, juste avant la croix ; interrupteur `myktamap_aide_contextuelle`. `ktaOuvrirAideSection(slug)` ouvre une fiche sans passer par le hub.
 - 🛡️ `check-aide-sections.js` (chaque slug a ses clés dans les 3 dicos, chaque slug rangé une fois, aucune clé `aide.*` orpheline, pas de balisage dans un titre) · `check-aide-contextuelle.js` (chaque id de la table existe dans le code, chaque slug est une fiche).
 

@@ -1,9 +1,11 @@
 {
-  "version": "v2.17.0",
-  "released": "2026-10-17",
+  "version": "v2.18.0",
+  "released": "2026-10-18",
   "notes": [
-    "⬆️ Exporter : un seul bouton ouvre un lanceur à tuiles (image, PDF, session, KMZ, GPX) ; sur iPhone, l'export image propose « 📱 Max iPhone » quand le plan est trop grand, et l'image sort enfin.",
-    "📱 Sur téléphone : les panneaux Tracés, Zones et Structures tiennent entre les barres même en paysage (« Fermer la structure » toujours atteignable), toucher la carte pour les fermer n'ajoute plus de point, et les croix de fermeture sont plus grandes au doigt.",
-    "➕ Les boutons de zoom +/− deviennent une option de ⚙️ Configuration (désactivés par défaut : on zoome au doigt ou à la molette)."
+    "✨ Nouvel écran de démarrage : un réseau de galeries se dessine jusqu'à la rose des vents, et il attend que l'accueil soit prêt (touche l'écran pour passer).",
+    "🎨 Interface plus lisible : couleurs revues (thème clair surtout), bouton principal bleu, messages qui s'empilent au lieu de s'effacer (avec un vrai message de réussite), Réglages et Documentation plus clairs, boutons plus faciles au doigt.",
+    "🏗️ Plan à plusieurs niveaux : change le niveau d'un point, d'un tracé, d'une zone ou d'une structure depuis sa fiche (⏪ pour annuler).",
+    "🤝 Installation reliée, calques à plusieurs : « ➕ Intégrer des ajouts », « Effacer la session » qui propose de rendre les calques à l'équipe, export de tes propres ajouts sur le plan d'un autre compte.",
+    "🛠️ Corrigés : « Repositionner » attend ton clic sur la carte, les fiches enchaînées répondent, « Mes photos » ne liste plus les plans ☁️ sans photo."
   ]
 }

@@ -851,7 +851,7 @@
               html += '</div>';
               return html;
             })() +
-            '<p style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45; font-style:italic;">' +
+            '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:8px 0 0; line-height:1.45; font-style:italic;">' +
               _t("lost.vitesse.hint") +
             '</p>' +
           '</div>' +
@@ -865,7 +865,7 @@
             '<button class="kta-btn kta-btn-ghost"   id="kta-lost-fermer"   type="button" style="flex:1 1 130px;" title="' + _t("lost.btn.fermerTitle") + '">' + _t("lost.btn.fermer") + '</button>' +
             '<button class="kta-btn kta-btn-primary" id="kta-lost-calc"     type="button" style="flex:2 1 200px;">' + _t("lost.btn.calc") + '</button>' +
           '</div>' +
-          '<p style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45; font-style:italic;">' +
+          '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:8px 0 0; line-height:1.45; font-style:italic;">' +
             _t("lost.fermer.hint") +
           '</p>' +
 

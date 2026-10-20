@@ -116,7 +116,9 @@ APP_CONFIG.multiLevel ←
 - `availableLevels: number[]` — niveaux disponibles dans le sélecteur (**default `[-2, -1, 0, 1, 2]` depuis v154**, symétrique autour de 0). Extensible via boutons `+` (max+1) et `−` (min−1) dans la modale. Auto-étendu au boot par `window._etendreAvailableLevelsSiBesoin()` si les data layers contiennent des niveaux hors range.
 
 **Données persistées** :
-- Roads : `road.level: number` (création) OU `{ type: "jonction", fromLevel, toLevel }`
+- Roads : `road.level: number` OU `{ type: "jonction", fromLevel, toLevel }`
+- Structures : `structure.level: number` (`pilier-2` / `front-2` naissent à `activeLevel − 1`, la « 2e masse » vue
+  d'ici : défaut de création seulement, la valeur stockée est le vrai niveau)
 - Zones : `zone.level: number`
 - Editor points : `point.level: number`
 - Data layer items : `level: number` optionnel dans le JSON (`puits.json`, etc.)
@@ -217,6 +219,41 @@ window.passeFiltreNiveau = function(item) {
 
 ⚠️ **Reset au plan switch** : `lancerApplication` reset `activeLevel = 0`, `visibleLevels = [0]`, vide les registres `_ktaDataMarkers/Polylines/Polygons` (ils seront re-remplis par `ajouterPointsDepuisJSON`).
 
+
+#### 26.10 Changer le niveau d'un objet de session
+
+Le niveau est posé à la création (niveau actif) et se change ensuite par une liste **« Niveau »** :
+- **Tracé, zone, structure** : fiche commune `utils.js > attacherNotePopup`, ligne sous 🔄 Convertir. Le choix
+  s'applique tout de suite par `convertirObjet.js > changerNiveau(famille, obj, niveau)` (`KtaConvertir`).
+- **POI** : formulaire d'**édition** `editor.js > afficherFormulaire` (pas à l'ajout : le point prend le niveau
+  actif) ; le niveau part avec le reste de la fiche au clic sur Enregistrer, dans la même entrée d'historique.
+- **Pas de liste** : plan à un seul niveau, pendant un dessin (`modeRoad` / `modeZone` / `modeStructure`), objet de
+  calque (fiche en lecture seule : le rapatrier d'abord), plan en lecture seule, **jonction** (`fromLevel` /
+  `toLevel` : la supprimer et la recréer) et itinéraire. Source unique : `utils.js > ktaNiveauxProposes`.
+- La liste = `availableLevels` triés **+ le niveau actuel de l'objet** même s'il en sort : sinon le `<select>`
+  afficherait un autre niveau et le moindre changement déplacerait l'objet sans le dire.
+- `pilier-2` / `front-2` : la valeur choisie est écrite telle quelle, le « − 1 » de la création n'est pas réappliqué.
+- **Niveau cible masqué par le filtre** : l'objet quitte la carte, la vue reste sur le niveau en cours (décision
+  produit), toast `warn` « déplacé au niveau N (masqué par le filtre) » (`ktaSignalerNiveauObjet`) ; visible : toast
+  `info`.
+
+Séquence (modèle de `convertir`) : garde `ktaEditionRefusee()` → `HistoryManager.captureState(famille)` → mutation
+**en place** + `KtaUid.touch` → setteur de la famille (re-rendu filtré) → `RoadGraph.invalidate()` →
+`HistoryManager.record(…, famille)` → `SessionPersist.save()`. Annulable ⏪ / Ctrl+Z.
+
+Ce qui suit l'objet :
+- 🩸 **Graphe de navigation** (`roadGraph.js`) : sa signature compte tracés et sommets, **et une empreinte des
+  niveaux** (`level`, `fromLevel`, `toLevel`) ; sans elle un changement de niveau, ou son annulation, laissait le
+  map-matching sur l'ancien étage.
+- **POI** : `renderEditorPoints` recopie `marker._ktaLevel` et réapplique le filtre ; `MyKTAMapPhotos.majFichesPoints`
+  met la fiche des photos au nouveau niveau ; `InterPlanLinks.onPointLevelChanged` recale le snapshot `level` des
+  liaisons inter-plan (bascule de niveau à l'arrivée par le portail). Un ⏪ ne recale pas ce snapshot : le resync
+  du chargement (`_resyncSnapshotsForPlan`) le rattrape.
+- 🩸 **Fiche commune** : les écouteurs sont branchés dans la popup ouverte (`evt.popup.getElement()`), pas dans tout
+  le document : la popup qu'on quitte reste dans le DOM pendant son fondu et recevait les écouteurs à la place.
+
+Garde-fous : `check-api-surface.js` (changerNiveau dans un `vm`, liste proposée, câblage), `check-uid.js` (touch),
+`check-extensions.js` (garde lecture seule) · parcours réel : `scripts/smoke/checkup-niveau-objet.js`.
 ---
 
 ### 31. Zone "Inaccessible" + Préférences d'évitement itinéraire (depuis v169 / Karma_dev)

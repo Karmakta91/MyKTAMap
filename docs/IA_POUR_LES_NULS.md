@@ -9,7 +9,8 @@
 > l'application : ils ne sont pas tous publiés, et le document se comprend sans eux.
 >
 > Rédigé le 16/09/2026 (v1.95.0), mis à jour le 10/10/2026 (v2.13.2 : intégration continue, marque verte,
-> déploiement automatique, dépendances, dépôt client, travail en vagues multi-agents). Auteur : KARMA + Claude.
+> déploiement automatique, dépendances, dépôt client, travail en vagues multi-agents) et le 18/10/2026 (schéma
+> d'ensemble §4.5, agents dédiés et skill d'intégration). Auteur : KARMA + Claude.
 
 ---
 
@@ -133,14 +134,18 @@ Le fichier de contexte ne **contient** pas la connaissance : il dit **où elle e
 
 - **`docs/architecture/<sujet>.md`** : un fichier par sous-système. Lu à la demande, jamais d'office.
   Il décrit l'**état actuel** : on le réécrit, on n'y empile pas l'historique.
-- **`docs/BACKLOG.md`** : ce qui reste à faire, avec pour chaque entrée son **niveau de preuve** (§11.3).
-  L'IA doit le lire **avant** d'annoncer qu'une fonctionnalité manque.
+- **`docs/BACKLOG.md`** : ce qui reste à faire, rangé par horizon (Maintenant, plafonné ; Ensuite ; Plus tard ;
+  Entrant), chaque entrée avec son **niveau de preuve** (§11.3) et sa prochaine action. L'IA doit le lire **avant**
+  d'annoncer qu'une fonctionnalité manque. À côté : `docs/IDEES.md` (pistes et leur déclencheur) et
+  `docs/DECISIONS_FERMEES.md` (sujets enterrés et pourquoi), à lire avant de reproposer un sujet.
 - **`docs/RELEASE_GATE.md`** : la porte de mise en production (§7).
 - **`docs/architecture/gotchas.md`** : les pièges connus, ceux qu'on a payés.
 - **`README.md`** : le journal des versions (§11.1).
-- **Les compétences (« skills »)** : des procédures pas à pas que l'IA charge **uniquement quand on les invoque**
-  (ici : préparer une release, ajouter un type d'icône, ajouter un type de zone). Elles vivent dans
-  `.claude/skills/<nom>/SKILL.md`.
+- **Les compétences (« skills »)** : des procédures pas à pas que l'IA charge **uniquement quand le sujet arrive**
+  (seuls leur nom et leur description sont lus au démarrage). Elles vivent dans `.claude/skills/<nom>/SKILL.md`.
+  Celles du moteur public restent dans son dépôt (préparer une release, ajouter un type d'icône, ajouter un type de
+  zone) ; celles de l'outillage interne vivent dans le dépôt privé (§4.5).
+- **Les agents dédiés** : un fichier qui décrit une fois pour toutes un type de mission déléguée (§9.2).
 - **La mémoire de l'IA** (§12) : hors dépôt, pour les préférences et décisions.
 
 ### 4.4 Économiser les tokens : le fichier de contexte qui **sait où chercher**
@@ -157,7 +162,8 @@ est chargé à la demande**.
 | **Le contexte auto-chargé tient en une page** | `CLAUDE.md` est passé d'un monolithe à une version « slim » (v1.29.4) : l'ancien contenu détaillé a été découpé en `docs/architecture/*.md`, et `gotchas.md` en porte l'en-tête « extrait de l'ancien CLAUDE.md, lu à la demande » |
 | **Un tableau « Où chercher » plutôt que du contenu** | Sujet → fichier. L'IA lit **un** fichier de 50 Ko au lieu de vingt |
 | **Un ordre de lecture en cas de doute** | « Si perdu : 1. journal, 2. doc du sujet, 3. topo » évite qu'elle lise tout |
-| **Les procédures rares vivent dans des skills** | Chargées uniquement quand on tape `/release` ou `/add-icon-tag`. Zéro coût le reste du temps |
+| **Les procédures rares vivent dans des skills** | Chargées uniquement quand on tape `/release` ou quand le sujet arrive (intégrer une branche, écrire un scénario de test). Au démarrage, seule leur ligne de description coûte |
+| **Les consignes répétées vivent dans un agent dédié** | Une mission déléguée ne redit plus les 20 lignes de règles (copie de travail, pile de test, preuves, rapport) : l'agent les porte, la mission ne dit que la tâche |
 | **La mémoire a un index d'une ligne par souvenir** | Seul l'index est chargé ; le corps du souvenir n'est lu que s'il est pertinent |
 | **Les fichiers de code portent un en-tête** | Chaque module commence par un bloc qui dit ce qu'il fait et ses pièges : l'IA peut lire 40 lignes au lieu de 4 000 |
 | **On ne colle pas des fichiers entiers dans la conversation** | On donne le chemin. L'IA lit ce dont elle a besoin, avec `grep` avant `cat` |
@@ -170,6 +176,38 @@ contexte dépasse 150 lignes de règles. Dans les deux cas, on découpe et on po
 **Le piège inverse** : un tableau « Où chercher » qui ment. Ici, le tableau des garde-fous d'une doc
 d'architecture a compté 14 lignes pendant que le hook en câblait 22 (§14). Une table d'orientation se met
 à jour **le même jour** que ce qu'elle décrit, sinon elle coûte plus qu'elle ne rapporte.
+
+### 4.5 Le schéma d'ensemble : ce que l'IA lit, d'où, et quand
+
+![Architecture de l'IA de code : le poste, le dépôt public, le dépôt privé, et les quatre moments d'une session](ia-architecture.svg)
+
+Trois endroits sur le disque :
+
+| Endroit | Ce qu'il contient | Pourquoi là |
+|---|---|---|
+| **Le poste** (dossier de l'outil d'IA, hors dépôts) | Un fichier de contexte de quelques lignes qui **importe** la carte de l'écosystème ; la mémoire de l'IA (§12) ; des **liens** (jonctions) vers les skills et agents internes | C'est le seul endroit lu quel que soit le dépôt ouvert |
+| **Le dépôt public** | Son fichier de contexte, sa session (`.claude/` : permissions, hooks), les skills du moteur, la doc d'architecture, les garde-fous Git et la CI | Un contributeur externe doit tout y trouver ; **aucun outillage interne** n'y entre |
+| **Le dépôt privé** | Son fichier de contexte, la **carte de l'écosystème** (source unique), sa session, les skills et agents de l'outillage interne | Versionné, relu, jamais exporté chez un client |
+
+Quatre moments dans une session :
+
+1. **Au démarrage**, l'IA lit toujours la même chose, et c'est pour ça que ça doit rester court : le fichier de
+   contexte du poste et la carte qu'il importe, le fichier de contexte du **dépôt ouvert**, l'index de la mémoire,
+   et le **nom + la description** de chaque skill et agent (pas leur contenu).
+2. **À chaque action**, les garde-fous du **dépôt où la session a été ouverte** s'appliquent : permissions (lectures
+   refusées), hook avant chaque commande, hook après chaque écriture (§5.1).
+3. **À la demande**, et seulement quand le sujet arrive : le contenu d'une skill, un fichier de
+   `docs/architecture/`, un souvenir, le code.
+4. **Pour déléguer**, un agent dédié reçoit sa mission, travaille dans sa copie (§9), puis une skill d'intégration
+   ramène son travail et le revérifie.
+
+**Pourquoi des liens plutôt que des copies** : une skill interne recopiée sur le poste diverge du dépôt dès la
+première correction. Le lien (une jonction Windows, un lien symbolique ailleurs) garde **une seule source**,
+versionnée, et la rend visible depuis n'importe quel dépôt ouvert. Le prix : un nouveau poste doit recréer les
+liens (une commande par dossier, écrite dans le fichier de contexte du poste).
+
+> **📦 Dans ce dépôt** : `.claude/settings.json`, `.claude/hooks/`, `.claude/skills/` (moteur public). Les skills
+> et l'agent de l'outillage interne, et la carte de l'écosystème, vivent dans le dépôt privé.
 
 ---
 
@@ -602,12 +640,24 @@ la mission contient un **contrat** : le nom exact, les paramètres, le format, l
 le contrat, pas contre le code de l'autre, qui n'existe pas encore. Sans contrat, l'intégration découvre deux
 interprétations incompatibles.
 
+Ce qui ne change pas d'une mission à l'autre (créer sa copie, lire les fichiers de contexte, ce qu'il ne faut jamais
+lire, sa pile de test, les preuves, le format des commits et du rapport) n'est plus réécrit à chaque fois : un
+**agent dédié** le porte (§4.5). La mission ne dit que la tâche, la base de départ et les décisions du propriétaire.
+On y gagne des tokens, et surtout plus aucun oubli d'une règle dans une mission écrite à la hâte.
+
 ### 9.3 Intégrer, puis tester tout, entre chaque vague
 
 À la fin d'une vague, l'intégratrice fusionne les branches des agents **une par une**, règle les conflits, puis
 lance la **suite complète** (pas la suite rapide) avant de lancer la vague suivante. Les vagues sont
 **séquentielles** : la vague 2 part de la vague 1 intégrée et testée. Empiler une vague sur une autre non testée,
 c'est ne plus savoir laquelle a cassé quoi.
+
+L'intégration a ses conflits **prévisibles**, toujours les mêmes : deux agents qui montent le numéro de version
+d'un même module, ajoutent chacun leur scénario à la même liste, ou prennent le même numéro de test ou de
+migration. Une **skill d'intégration** les traite de la même façon à chaque fois (la version la plus haute, l'union
+des listes, la renumérotation de ce qui n'est pas encore livré) et dit ce qui n'a pas été rejoué. Deux piles de test
+qui se disputent un port, c'est aussi un conflit d'intégration : l'outil refuse un numéro de pile qui contredit
+celui déjà attribué à une copie, plutôt que de lancer une pile à moitié cassée.
 
 ### 9.4 Le rapport de l'agent, et l'intégratrice qui revérifie elle-même
 
@@ -715,7 +765,9 @@ release vérifie que trois d'entre eux ont bougé :
 | Document | Rôle | Règle d'or |
 |---|---|---|
 | `README.md` | **Journal** des versions, référentiel des modules, conventions | Une entrée par version, **en tête du journal**, jamais en tête de fichier. Chaque entrée raconte : demande, diagnostic (🩸), correction (🩹), garde-fou (🛡️), tests |
-| `docs/BACKLOG.md` | **Ce qui reste à faire**, dettes, sujets enterrés | Une entrée soldée est **supprimée**, pas barrée. Le seul état stable est « ouvert » |
+| `docs/BACKLOG.md` | **Ce qui reste à faire**, par horizon : Maintenant (10 au plus), Ensuite, Plus tard, Entrant (demandes reçues pendant un lot) | Une entrée soldée est **supprimée**, pas barrée. Chaque entrée dit **qui** fait la prochaine **action**, quand c'est **fini**, **depuis** quand elle est ouverte et sa **taille** ; corps de 3 lignes, le reste dans une étude. Un garde-fou en avertissement vérifie la forme |
+| `docs/IDEES.md` | Pistes gardées, pas du travail | Chacune dit son **déclencheur** ; au déclencheur, elle passe au backlog |
+| `docs/DECISIONS_FERMEES.md` | Sujets enterrés, acceptés, leçons, décisions closes | Chacun dit **pourquoi** ; on ne rouvre qu'avec un fait nouveau |
 | `docs/architecture/<sujet>.md` | Source de vérité technique par sous-système | **L'état actuel, pas l'historique** : on réécrit la partie concernée, on n'empile pas de section par version |
 | `docs/architecture/gotchas.md` | Pièges connus, renommages | Chaque piège raconte pourquoi il a survécu si longtemps |
 | `docs/audits/` | Rapports d'audit datés + index | Archivés **immédiatement** (§10.1) |

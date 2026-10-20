@@ -192,13 +192,13 @@
     // Verdict en tête.
     if (diff.missing.length === 0) {
       html +=
-        '<div class="kta-mem-section" style="border-color:rgba(166,215,133,0.4); background:rgba(166,215,133,0.05);">' +
+        '<div class="kta-mem-section" style="border-color:var(--kta-ok-bord); background:var(--kta-ok-fond);">' +
           '<div class="kta-mem-section-titre" style="color:#a6d785;">' + _t("verdict.ok.titre") + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ok.line", { count: diff.present.length, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
         '</div>';
     } else {
       html +=
-        '<div class="kta-mem-section" style="border-color:rgba(244,107,107,0.4); background:rgba(244,107,107,0.05);">' +
+        '<div class="kta-mem-section" style="border-color:var(--kta-erreur-bord); background:var(--kta-erreur-fond);">' +
           '<div class="kta-mem-section-titre" style="color:#f46b6b;">' + _t("verdict.ko.titre") + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ko.line", { count: diff.missing.length, total: total, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ko.coverage", { pct: presentPct, present: diff.present.length, total: total }) + '</div>' +
@@ -206,7 +206,7 @@
             '<button type="button" id="kta-sw-inspector-refetch" class="kta-btn kta-btn-primary" style="font-size:13px; padding:8px 14px;">' +
               _t("btn.refetch", { count: diff.missing.length }) +
             '</button>' +
-            '<span id="kta-sw-inspector-refetch-status" style="margin-left:10px; font-size:12px; color:#8892a4;"></span>' +
+            '<span id="kta-sw-inspector-refetch-status" style="margin-left:10px; font-size:12px; color:var(--kta-texte-3);"></span>' +
           '</div>' +
         '</div>';
     }
@@ -229,7 +229,7 @@
                        '</span></div>';
               }
               return '<div>' + _escapeHtml(a) +
-                     ' <span style="color:#8892a4; font-family:sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
+                     ' <span style="color:var(--kta-texte-3); font-family:sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
             }).join('') +
           '</div>' +
         '</div>';
@@ -260,8 +260,8 @@
         interpretation = _t("diag.quota");
       }
       html +=
-        '<div class="kta-mem-section" style="border-color:rgba(140,180,255,0.4); background:rgba(140,180,255,0.05);">' +
-          '<div class="kta-mem-section-titre" style="color:#8cb4ff;">' + _t("failures.titre", { count: failures.length }) + '</div>' +
+        '<div class="kta-mem-section" style="border-color:var(--kta-info-bord-fort); background:var(--kta-info-fond);">' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-interaction);">' + _t("failures.titre", { count: failures.length }) + '</div>' +
           '<div class="kta-mem-line">' + statsLine + '</div>' +
           (interpretation
             ? '<div class="kta-mem-line" style="margin-top:8px; font-size:12.5px;">' + interpretation + '</div>'
@@ -304,9 +304,9 @@
       + '<div class="kta-readme-modal-boite" style="max-width:780px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">'
       +   '<div class="kta-readme-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.1);">'
       +     '<span class="kta-readme-modal-titre">' + _t("titre") + '</span>'
-      +     '<button type="button" id="kta-sw-inspector-close" aria-label="' + _t("close") + '" style="background:none; border:none; color:#e8eaf0; font-size:24px; cursor:pointer; padding:0 6px;">×</button>'
+      +     '<button type="button" id="kta-sw-inspector-close" aria-label="' + _t("close") + '" style="background:none; border:none; color:var(--kta-texte); font-size:24px; cursor:pointer; padding:0 6px;">×</button>'
       +   '</div>'
-      +   '<div class="kta-readme-modal-contenu" id="kta-sw-inspector-body" style="flex:1 1 auto; overflow-y:auto; padding:16px 18px; font-size:13px; color:#c8d0e0; line-height:1.5;">'
+      +   '<div class="kta-readme-modal-contenu" id="kta-sw-inspector-body" style="flex:1 1 auto; overflow-y:auto; padding:16px 18px; font-size:13px; color:var(--kta-texte-2); line-height:1.5;">'
       +     '<div style="text-align:center; padding:30px;">' + _t("loading") + '</div>'
       +   '</div>'
       + '</div>';
@@ -333,11 +333,11 @@
       if (e && e.name === "ModalClosedError") return;
       if (!bodyEl.isConnected) return;
       bodyEl.innerHTML =
-        '<div class="kta-mem-section" style="border-color:rgba(244,107,107,0.4); background:rgba(244,107,107,0.05);">' +
+        '<div class="kta-mem-section" style="border-color:var(--kta-erreur-bord); background:var(--kta-erreur-fond);">' +
           '<div class="kta-mem-section-titre" style="color:#f46b6b;">' + _t("error.titre") + '</div>' +
           '<div class="kta-mem-line">' + _escapeHtml(e.message || String(e)) + '</div>' +
           '<div class="kta-mem-line kta-mem-dim" style="margin-top:6px;">' +
-            _t("error.hint", { link: '<a href="/killsw.html" style="color:#8cb4ff;">' + _t("error.resetLink") + '</a>' }) +
+            _t("error.hint", { link: '<a href="/killsw.html" style="color:var(--kta-interaction);">' + _t("error.resetLink") + '</a>' }) +
           '</div>' +
         '</div>';
     }

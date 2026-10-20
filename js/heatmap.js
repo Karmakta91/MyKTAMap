@@ -68,7 +68,7 @@
         gap: 10px;
         padding: 5px 0;
         font-size: 13px;
-        color: #e8eaf0;
+        color: var(--kta-texte);
         cursor: pointer;
       }
       .kta-heatmap-cb-row input[type="checkbox"] {
@@ -78,7 +78,7 @@
       }
       .kta-heatmap-cb-count {
         margin-left: auto;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-size: 12px;
       }
       .kta-heatmap-slider-row {
@@ -89,7 +89,7 @@
       }
       .kta-heatmap-slider-label {
         font-size: 12px;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         min-width: 80px;
       }
       .kta-heatmap-slider {
@@ -606,7 +606,7 @@
           '<button class="kta-panneau-close" id="kta-heatmap-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="padding:14px 16px;">' +
-          '<p style="font-size:13px; color:#c8d0e0; margin-top:0; line-height:1.4;">' +
+          '<p style="font-size:13px; color:var(--kta-texte-2); margin-top:0; line-height:1.4;">' +
             window.I18n.t("heatmap.modal.help") +
           '</p>' +
 
@@ -641,7 +641,7 @@
 
           '<div class="kta-heatmap-section">' +
             '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
-              '<span>' + window.I18n.t("heatmap.section.data") + ' <span style="font-size:10px; color:#8892a4; font-weight:400; text-transform:none; letter-spacing:0;">' + window.I18n.t("heatmap.section.dataHint") + '</span></span>' +
+              '<span>' + window.I18n.t("heatmap.section.data") + ' <span style="font-size:10px; color:var(--kta-texte-3); font-weight:400; text-transform:none; letter-spacing:0;">' + window.I18n.t("heatmap.section.dataHint") + '</span></span>' +
               '<button type="button" id="kta-hm-dl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="' + window.I18n.t("heatmap.data.toggleAllTitle") + '">' + window.I18n.t("heatmap.toggleAll") + '</button>' +
             '</div>' +
             '<label class="kta-heatmap-cb-row">' +

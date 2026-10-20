@@ -244,7 +244,7 @@ connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstree
 script-src 'self'                             ← en vigueur depuis la bascule du 10/10/2026 (40.7.1)
 style-src 'self' 'unsafe-inline'              ← assumé (style="…" partout ; un style injecté n'exécute rien)
 img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
-worker-src 'self' blob:                       ← Service Worker
+worker-src 'self' blob:                       ← Service Worker, worker du splash (js/ktaSplashWorker.js)
 frame-ancestors 'none'                        ← anti-clickjacking
 ```
 
@@ -486,7 +486,7 @@ La section **« 💼 Édition professionnelle »** du profil n'apparaît que si 
 (badge ✓ + « instance pro déployée »). Plus d'import ni de retrait : une licence importée sur un appareil
 (source « locale », v1.28.4 → 09/10/2026) n'activait **aucune** fonction pro — la règle E exige une licence SERVEUR
 pour charger les modules — et ne servait qu'à passer la gate community. `check-gate-instance.js` refuse son retour
-(gate, profil, `importFile` / `removeLocal`). `_proHashShort` / `_proSourceLabel` : mort documenté (BACKLOG).
+(gate, profil, `importFile` / `removeLocal`). `_proHashShort` / `_proSourceLabel` : mort documenté, gardé exprès (`docs/DECISIONS_FERMEES.md`).
 
 #### 77.6 Sécurité juridique
 

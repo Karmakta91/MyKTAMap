@@ -90,7 +90,7 @@ let DEFAULT_CONFIG = {
   // Cercles aux intersections de tracés (road.js > renderRoads), à chaud sans reload.
   // ⚠️ OFF par défaut (décision produit) : _calculerIntersectionsRoads pose aussi un cercle quand une EXTRÉMITÉ
   // passe à moins de ROAD_PROXIMITY_TOLERANCE d'un segment voisin — deux tracés qui se frôlent affichent un faux
-  // contact. Dette : docs/BACKLOG.md (« cercles d'intersection »).
+  // contact. Décision D0 : docs/DECISIONS_FERMEES.md.
   showRoadIntersections: false,
 
   // Nav intelligente (map-matching du tracker sur les tracés), lue à chaud par tracking.js > avancer(). Réglée PAR

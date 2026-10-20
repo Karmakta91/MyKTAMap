@@ -305,7 +305,7 @@
           '<button class="kta-panneau-close" id="kta-voice-aide-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="font-size:13px; color:#c8d0e0; line-height:1.6; margin-top:0;">' +
+          '<p style="font-size:13px; color:var(--kta-texte-2); line-height:1.6; margin-top:0;">' +
             _t("voice.aide.intro") +
           '</p>' +
           listHtml +

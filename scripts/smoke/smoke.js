@@ -14,7 +14,7 @@ const fs = require("fs");
 const { chromium } = require("playwright");
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 
-const PORT = 8123;
+const PORT = parseInt(process.env.SMOKE_PORT, 10) || 8123;   // même port que server.js
 const BASE = "http://127.0.0.1:" + PORT;
 
 // 🩸 Ne pas exiger un plan par son nom : `data/` (hors Git) peut ne contenir que des relevés réels. Le

@@ -28,16 +28,24 @@
     return types + "|" + (opts.includeZones ? "z1" : "z0");
   }
 
-  // Signature bon marché : tracés de session + total de leurs points (capte le dessin) + nombre
-  // de tracés embarqués (en lecture seule : un compteur suffit, O(1)).
+  // Signature bon marché : tracés de session + total de leurs points (capte le dessin) + empreinte de leurs
+  // niveaux + nombre de tracés embarqués (en lecture seule : un compteur suffit, O(1)).
+  // 🩸 L'empreinte des niveaux est indispensable : changer le niveau d'un tracé (ou l'annuler par ⏪) ne change ni
+  // le nombre de tracés ni celui des sommets, et le graphe périmé garderait l'ancien niveau.
   function _computeSig() {
     let sessionCount = 0;
     let sessionPts   = 0;
+    let niveaux      = 0;
     if (typeof window.getRoads === "function") {
       const s = window.getRoads() || [];
       sessionCount = s.length;
       for (let i = 0; i < s.length; i++) {
-        sessionPts += (s[i] && Array.isArray(s[i].points)) ? s[i].points.length : 0;
+        const r = s[i];
+        sessionPts += (r && Array.isArray(r.points)) ? r.points.length : 0;
+        if (!r) continue;
+        niveaux = Math.imul(niveaux ^ (r.level & 0xff), 16777619);
+        niveaux = Math.imul(niveaux ^ (r.fromLevel & 0xff), 16777619);
+        niveaux = Math.imul(niveaux ^ (r.toLevel & 0xff), 16777619);
       }
     }
     let embeddedCount = 0;
@@ -48,7 +56,7 @@
       const e = window.getEmbeddedRoads() || [];
       embeddedCount = e.length;
     }
-    return sessionCount + ":" + sessionPts + ":" + embeddedCount;
+    return sessionCount + ":" + sessionPts + ":" + niveaux + ":" + embeddedCount;
   }
 
   function invalidate() {

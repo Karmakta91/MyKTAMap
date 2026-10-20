@@ -2856,14 +2856,14 @@
       g.zoneRoadIds.forEach(function(k) { if (!connues[k]) n++; });
     });
     return n ? '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
-               ' padding:10px 12px; margin:14px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
+               ' padding:10px 12px; margin:14px 0; color:var(--kta-avert); font-size:13px; line-height:1.5;">⚠️ ' +
                _escHtml(t("secours.import.warnTracesIntrouvables", { n: n })) + '</div>'
              : "";
   }
   function _blocEcartVersion(planFichier) {
     const w = _ecartVersionPlan(planFichier);
     return w ? '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
-               ' padding:10px 12px; margin:14px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' + _escHtml(w) + '</div>'
+               ' padding:10px 12px; margin:14px 0; color:var(--kta-avert); font-size:13px; line-height:1.5;">⚠️ ' + _escHtml(w) + '</div>'
              : "";
   }
 
@@ -3162,7 +3162,7 @@
     const groupes = Array.isArray(sc.groupes) ? sc.groupes : [];
     let equipesHtml = "";
     if (groupes.length === 0) {
-      equipesHtml = '<p style="color:#8892a4; font-style:italic; margin:8px 0 0;">' + t("secours.import.aucuneEquipe") + '</p>';
+      equipesHtml = '<p style="color:var(--kta-texte-3); font-style:italic; margin:8px 0 0;">' + t("secours.import.aucuneEquipe") + '</p>';
     } else {
       const visibles = groupes.slice(0, 8);
       equipesHtml = '<ul class="kta-secours-import-preview-equipes">';
@@ -3186,7 +3186,7 @@
                        '</li>';
       });
       if (groupes.length > 8) {
-        equipesHtml += '<li style="color:#8892a4; font-style:italic;">' + t("secours.import.autres", { n: (groupes.length - 8) }) + '</li>';
+        equipesHtml += '<li style="color:var(--kta-texte-3); font-style:italic;">' + t("secours.import.autres", { n: (groupes.length - 8) }) + '</li>';
       }
       equipesHtml += '</ul>';
     }
@@ -3195,7 +3195,7 @@
     if (warning) {
       const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.import.planCourant");
       const importedPlanName = planSrc.name || t("secours.import.planInconnu");
-      warningBlock = '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
+      warningBlock = '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:var(--kta-avert);">' +
                        '⚠️ <strong>' + t("secours.import.warnTitre") + '</strong><br>' +
                        '<span style="font-size:13px; line-height:1.5;">' +
                          t("secours.import.warnBody", { planSource: _escHtml(importedPlanName), planCourant: _escHtml(currentPlanName) }) +
@@ -3211,10 +3211,10 @@
       // Des saisies d'intervention (en cours OU terminée) existent ici : « Remplacer » les efface.
       const enCours = !!existant.execution;
       existeBlock = '<div style="background:rgba(140,180,255,0.10); border:1px solid rgba(140,180,255,0.45);' +
-                    ' border-radius:6px; padding:10px 12px; margin:14px 0; color:#c8d0e0; font-size:13px; line-height:1.5;">' +
-                      '<strong class="kta-tx-info" style="color:#8cb4ff;">' + t("secours.import.existeTitre") + '</strong><br>' +
+                    ' border-radius:6px; padding:10px 12px; margin:14px 0; color:var(--kta-texte-2); font-size:13px; line-height:1.5;">' +
+                      '<strong class="kta-tx-info" style="color:var(--kta-interaction);">' + t("secours.import.existeTitre") + '</strong><br>' +
                       t("secours.import.existeBody", { nom: _escHtml(existant.nom || t("secours.import.sansNom")) }) +
-                      (enCours ? '<br><span class="kta-tx-warn" style="color:#ffb380;">⚠️ ' + t("secours.import.existeExecution") +
+                      (enCours ? '<br><span class="kta-tx-warn" style="color:var(--kta-avert);">⚠️ ' + t("secours.import.existeExecution") +
                                  '</span>' : '') +
                       '<label style="display:flex; gap:8px; margin-top:8px; cursor:pointer;">' +
                         '<input type="radio" name="kta-sec-import-mode" value="remplacer" checked> ' +
@@ -3226,7 +3226,7 @@
     }
 
     const inner = '<div class="kta-readme-modal-header">' +
-                    '<h2 class="kta-tx-info" style="margin:0; color:#8cb4ff;">' + t("secours.import.previewTitre") + '</h2>' +
+                    '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">' + t("secours.import.previewTitre") + '</h2>' +
                     '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
                   '</div>' +
                   '<div class="kta-readme-modal-corps">' +
@@ -3248,7 +3248,7 @@
                     '</div>' +
 
                     '<div class="kta-secours-import-preview-section">' +
-                      '<h3 style="margin:14px 0 6px 0; color:#f4c542;">' + t("secours.import.equipesIncluses", { n: groupes.length }) + '</h3>' +
+                      '<h3 style="margin:14px 0 6px 0; color:var(--kta-accent-texte);">' + t("secours.import.equipesIncluses", { n: groupes.length }) + '</h3>' +
                       equipesHtml +
                     '</div>' +
 
@@ -3336,12 +3336,12 @@
       const nbGroupes = (sc.groupes || []).length;
       inner += '<p>' + t(result.remplace ? "secours.import.resOkRemplace" : "secours.import.resOkBody",
                          { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
-               '<p style="color:#8892a4; font-size:13px;">' +
+               '<p style="color:var(--kta-texte-3); font-size:13px;">' +
                  t("secours.import.resOkSource", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '<br>' +
                  t("secours.import.resOkEquipes", { n: nbGroupes }) +
                '</p>';
       if (result.warning) {
-        inner += '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb380;">' +
+        inner += '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:var(--kta-avert);">' +
                    '⚠️ <strong>' + t("secours.import.avertissement") + '</strong> ' + _escHtml(result.warning) +
                  '</div>';
       }
@@ -3355,7 +3355,7 @@
                '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-family:monospace; font-size:13px; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
-               '<p style="color:#8892a4; font-size:13px;">' +
+               '<p style="color:var(--kta-texte-3); font-size:13px;">' +
                  t("secours.import.resKoHint") +
                '</p>' +
                '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
@@ -3921,10 +3921,10 @@
                  ' ' + t("secours.conflit.import") +
                '</li>';
       }).join("");
-      const extra = conflits.length > 6 ? '<li style="color:#8892a4; font-style:italic;">' + t("secours.conflit.autres", { n: (conflits.length - 6) }) + '</li>' : "";
+      const extra = conflits.length > 6 ? '<li style="color:var(--kta-texte-3); font-style:italic;">' + t("secours.conflit.autres", { n: (conflits.length - 6) }) + '</li>' : "";
       conflitsBlock =
-        '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:#e8eaf0;">' +
-          '<strong style="color:#f4c542;">' + t("secours.conflit.titre", { n: conflits.length }) + '</strong> ' + t("secours.conflit.intro") +
+        '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:var(--kta-texte);">' +
+          '<strong style="color:var(--kta-accent-texte);">' + t("secours.conflit.titre", { n: conflits.length }) + '</strong> ' + t("secours.conflit.intro") +
           '<ul style="margin:8px 0 4px 18px; padding:0; font-size:13px; line-height:1.6;">' + lignes + extra + '</ul>' +
           '<div style="font-size:12px; color:#a8b3c8; margin-top:6px;">' +
             t("secours.conflit.politique") +
@@ -3935,14 +3935,14 @@
     let warningBlock = "";
     if (warning) {
       warningBlock =
-        '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
+        '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:var(--kta-avert);">' +
           '⚠️ <strong>' + _escHtml(warning) + '</strong>' +
         '</div>';
     }
 
     const inner =
       '<div class="kta-readme-modal-header">' +
-        '<h2 class="kta-tx-ok" style="margin:0; color:#6ee287;">' + t("secours.rapportPreview.titre") + '</h2>' +
+        '<h2 class="kta-tx-ok" style="margin:0; color:var(--kta-ok);">' + t("secours.rapportPreview.titre") + '</h2>' +
         '<button class="kta-readme-modal-close" data-action="cancel-rapport-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
@@ -3964,7 +3964,7 @@
         '</div>' +
 
         '<div class="kta-secours-import-preview-section">' +
-          '<h3 style="margin:14px 0 6px 0; color:#f4c542;">' + t("secours.rapportPreview.contenuTitre") + '</h3>' +
+          '<h3 style="margin:14px 0 6px 0; color:var(--kta-accent-texte);">' + t("secours.rapportPreview.contenuTitre") + '</h3>' +
           '<ul style="margin:0; padding-left:20px; line-height:1.7;">' +
             '<li>' + t("secours.rapportPreview.nbEtapes", { n: nbEtapes }) + '</li>' +
             '<li>' + t("secours.rapportPreview.nbPhotos", { n: nbPhotos }) + '</li>' +
@@ -3975,7 +3975,7 @@
         warningBlock +
         _blocEcartVersion(payload.plan) +
 
-        '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid #8cb4ff; padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:#c8d0e0;">' +
+        '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid #8cb4ff; padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:var(--kta-texte-2);">' +
           t("secours.rapportPreview.snapshotHint") +
         '</div>' +
 
@@ -4039,7 +4039,7 @@
                '<div style="background:rgba(110, 226, 138, 0.08); border:1px solid rgba(110, 226, 138, 0.35); border-radius:6px; padding:12px 14px; margin:12px 0; font-size:14px; line-height:1.7;">' +
                  '✅ ' + t("secours.rapportRes.etapesFusionnees", { n: (stats.etapesFusionnees || 0) }) + '<br>' +
                  '📷 ' + t("secours.rapportRes.photosImportees", { n: (stats.photosImportees || 0) }) +
-                 ((stats.photosDejaPresentes || 0) > 0 ? ' <span style="color:#8892a4;">' + t("secours.rapportRes.photosDejaPresentes", { n: stats.photosDejaPresentes }) + '</span>' : '') + '<br>' +
+                 ((stats.photosDejaPresentes || 0) > 0 ? ' <span style="color:var(--kta-texte-3);">' + t("secours.rapportRes.photosDejaPresentes", { n: stats.photosDejaPresentes }) + '</span>' : '') + '<br>' +
                  ((stats.etapesSkipped || 0) > 0 ? '⏭️ ' + t("secours.rapportRes.etapesSkipped", { n: stats.etapesSkipped }) + '<br>' : '') +
                  ((stats.photosSkipped || 0) > 0 ? '⚠️ ' + t("secours.rapportRes.photosSkipped", { n: stats.photosSkipped }) + '<br>' : '') +
                '</div>';
@@ -4051,14 +4051,14 @@
       }
       if (Array.isArray(stats.avis) && stats.avis.length > 0) {
         inner += '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
-                 ' padding:10px 12px; margin:10px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
+                 ' padding:10px 12px; margin:10px 0; color:var(--kta-avert); font-size:13px; line-height:1.5;">⚠️ ' +
                  stats.avis.map(_escHtml).join('<br>⚠️ ') + '</div>';
       }
       if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
         const lis = stats.warnings.map(function(w) { return '<li>' + _escHtml(w) + '</li>'; }).join("");
         inner += '<details style="margin:10px 0; font-size:13px;">' +
-                   '<summary style="cursor:pointer; color:#f4c542;">' + t("secours.rapportRes.warningsSummary", { n: stats.warnings.length }) + '</summary>' +
-                   '<ul style="margin:8px 0 0 20px; padding:0; color:#c8d0e0; line-height:1.6;">' + lis + '</ul>' +
+                   '<summary style="cursor:pointer; color:var(--kta-accent-texte);">' + t("secours.rapportRes.warningsSummary", { n: stats.warnings.length }) + '</summary>' +
+                   '<ul style="margin:8px 0 0 20px; padding:0; color:var(--kta-texte-2); line-height:1.6;">' + lis + '</ul>' +
                  '</details>';
       }
       inner += '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
@@ -4070,7 +4070,7 @@
                '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-size:13px; line-height:1.5; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
-               '<p style="color:#8892a4; font-size:13px;">' +
+               '<p style="color:var(--kta-texte-3); font-size:13px;">' +
                  t("secours.rapportRes.koHint") +
                '</p>' +
                '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
@@ -5221,7 +5221,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid #8cb4ff;">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 class="kta-tx-info" style="margin:0; color:#8cb4ff;">📤 ' + _escHtml(apercuTitre) + '</h2>' +
+          '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">📤 ' + _escHtml(apercuTitre) + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -5582,7 +5582,7 @@
         "font-size:16px"
       ].join(";");
       overlay.innerHTML =
-        '<div style="font-size:42px;animation:kta-spin 1.4s linear infinite;">🛰️</div>' +
+        '<div class="kta-charge-tourne" style="font-size:42px;animation:kta-spin 1.4s linear infinite;">🛰️</div>' +
         '<div style="font-weight:700;">' + _ctx.icon + ' ' + _escHtml(_ctx.title) + '</div>' +
         '<div style="font-size:12px;color:' + ovMuted + ';max-width:340px;text-align:center;">' +
           _escHtml(_ctx.sub) +
@@ -7976,7 +7976,7 @@
                          t("secours.phaseModal.equipesHint") +
                        '</p>';
     if (s.groupes.length === 0) {
-      html += '<p class="kta-secours-hint" style="color:#f4c542;">' + t("secours.phaseModal.aucuneEquipe") + '</p>';
+      html += '<p class="kta-secours-hint" style="color:var(--kta-accent-texte);">' + t("secours.phaseModal.aucuneEquipe") + '</p>';
     } else {
       html += '<div class="kta-secours-phase-equipes-list">';
       s.groupes.forEach(function(g) {
@@ -7993,7 +7993,7 @@
     }
     html += '</div>' +
                    '</div>' +
-                   '<div class="kta-readme-modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 18px; border-top:1px solid rgba(255,255,255,0.08);">' +
+                   '<div class="kta-readme-modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 18px; border-top:1px solid var(--kta-bordure);">' +
                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-phase-modal">' + t("secours.btn.annulerSimple") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-phase-modal" data-edit-idx="' + (isEdit ? editPhaseIdx : "") + '">' +
                        (isEdit ? t("secours.btn.enregistrer") : t("secours.btn.creerPhase")) +
@@ -8101,7 +8101,7 @@
                        '<textarea id="kta-sec-debrief-text" rows="8" maxlength="5000" style="width:100%;box-sizing:border-box;" placeholder="' + _escAttr(t("secours.debrief.placeholder")) + '">' + _escHtml(existingDebrief) + '</textarea>' +
                      '</div>' +
                      '<div class="kta-secours-debrief-equipes" style="margin-top:14px;">' +
-                       '<div style="font-size:13px;color:#8892a4;margin-bottom:6px;">' +
+                       '<div style="font-size:13px;color:var(--kta-texte-3);margin-bottom:6px;">' +
                          '<strong>' + t("secours.debrief.equipesActuelles", { n: equipesActuelles.length }) + '</strong>' +
                        '</div>' +
                        '<div style="font-size:12px;color:#a8b3c8;">' +
@@ -8111,7 +8111,7 @@
                        '</div>';
     if (aSuivante) {
       html += '<div style="margin-top:10px;padding:10px;background:rgba(140,180,255,0.10);border-left:3px solid rgba(140,180,255,0.55);border-radius:4px;">' +
-                '<div class="kta-tx-info" style="font-size:13px;color:#8cb4ff;margin-bottom:4px;">' +
+                '<div class="kta-tx-info" style="font-size:13px;color:var(--kta-interaction);margin-bottom:4px;">' +
                   '➡️ <strong>' + t("secours.debrief.phaseSuivante") + '</strong> ' + _escHtml(nextPhase.nom) +
                 '</div>' +
                 '<div style="font-size:12px;color:#a8b3c8;">' +
@@ -8122,12 +8122,12 @@
                 '</div>' +
               '</div>';
     } else {
-      html += '<div style="margin-top:10px;padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:#f4c542;">' +
+      html += '<div style="margin-top:10px;padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:var(--kta-accent-texte);">' +
                 t("secours.debrief.pasDeSuivante") +
               '</div>';
     }
     html += '</div></div>' +
-                   '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
+                   '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--kta-bordure);">' +
                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-debrief-modal">' + t("secours.btn.annulerSimple") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-debrief-modal">' +
                        (aSuivante ? t("secours.btn.terminerPhase") : t("secours.btn.terminerPlan")) +
@@ -8201,20 +8201,20 @@
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
                      '<div style="margin-bottom:12px;">' +
-                       '<div style="font-size:15px;color:#e8eaf0;margin-bottom:6px;">' +
+                       '<div style="font-size:15px;color:var(--kta-texte);margin-bottom:6px;">' +
                          '<strong>' + _escHtml(nextPhase.nom) + '</strong>' +
                        '</div>' +
-                       '<div style="font-size:13px;color:#8892a4;">' +
+                       '<div style="font-size:13px;color:var(--kta-texte-3);">' +
                          t("secours.launchNext.equipesParticipantes", { n: equipes.length }) +
                        '</div>' +
                      '</div>';
     if (equipes.length === 0) {
-      html += '<div style="padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:#f4c542;">' +
+      html += '<div style="padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:var(--kta-accent-texte);">' +
                 t("secours.launchNext.aucuneEquipe") +
               '</div>';
     } else {
       html += '<div style="font-size:12px;color:#a8b3c8;margin-bottom:6px;">' + t("secours.launchNext.equipesLabel") + '</div>' +
-              '<div style="font-size:13px;color:#e8eaf0;">' +
+              '<div style="font-size:13px;color:var(--kta-texte);">' +
                 equipes.map(function(g) {
                   const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
                   return '<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;">' +
@@ -8225,7 +8225,7 @@
               '</div>';
     }
     html += '</div>' +
-                   '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
+                   '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--kta-bordure);">' +
                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-launchnext">' + t("secours.btn.plusTard") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-launchnext"' + (equipes.length === 0 ? ' disabled' : '') + '>' +
                        t("secours.btn.demarrerPhase", { phase: _escHtml(nextPhase.nom) }) +
@@ -8686,7 +8686,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid #f4c542;">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 class="kta-tx-accent" style="margin:0; color:#f4c542;">' + t("secours.lancer.titre") + '</h2>' +
+          '<h2 class="kta-tx-accent" style="margin:0; color:var(--kta-accent-texte);">' + t("secours.lancer.titre") + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -10634,7 +10634,7 @@
 
     let etapesHtml = '';
     if (etapes.length === 0) {
-      etapesHtml = '<p style="color:#8892a4; font-style:italic;">' + t("secours.opDetails.aucuneEtape") + '</p>';
+      etapesHtml = '<p style="color:var(--kta-texte-3); font-style:italic;">' + t("secours.opDetails.aucuneEtape") + '</p>';
     } else {
       etapesHtml = '<ol class="kta-secours-op-details-etapes">';
       etapes.forEach(function(et) {
@@ -10679,7 +10679,7 @@
           '<button class="kta-readme-modal-close" data-action="close-op-details" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="margin:0 0 12px 0; color:#8892a4; font-size:13px;">' + t("secours.opDetails.sousTitre") + '</p>' +
+          '<p style="margin:0 0 12px 0; color:var(--kta-texte-3); font-size:13px;">' + t("secours.opDetails.sousTitre") + '</p>' +
           etapesHtml +
           '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
             '<button class="kta-btn kta-btn-secondary" data-action="close-op-details">' + t("secours.btn.fermer") + '</button>' +
@@ -11093,7 +11093,7 @@
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="color:#c8d0e0;">' + t("secours.zoneMode.intro") + '</p>' +
+          '<p style="color:var(--kta-texte-2);">' + t("secours.zoneMode.intro") + '</p>' +
           '<div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">' +
             '<button class="kta-btn kta-btn-primary" data-mode="polygon" style="text-align:left;">' +
               '<strong>' + t("secours.zoneMode.polygoneTitre") + '</strong><br>' +

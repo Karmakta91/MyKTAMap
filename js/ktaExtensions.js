@@ -313,7 +313,7 @@
   //     plans:    { lister: () → Promise<[{id,name,version?,tags?}]>,
   //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
   //     importAutorise: function () → bool,                 // permission (synchrone)
-  //     exportAutorise: function (planId) → bool,           // permission (synchrone)
+  //     exportAutorise: function (planId) → bool | { auteur }, // permission (synchrone), { auteur } = ses ajouts
   //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
   //   })
   // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
@@ -343,7 +343,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -521,7 +521,27 @@
     try { return ext.profilJeu() !== false; }
     catch (e) { console.warn("[Extensions] profilJeu :", e); return true; }
   }
-  function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+  // Export de session : la prise rend true (tout), false (refus) ou { auteur: "<pseudo>" } = export permis, limité
+  // aux objets créés par cet auteur. 🔒 Toute autre forme, ou une erreur = refus. → "tout" | { auteur } | null.
+  function _droitExport(planId) {
+    const ext = _prise("exportAutorise");
+    if (!ext) return "tout";
+    let v;
+    try { v = ext.exportAutorise(planId); }
+    catch (e) { console.warn("[Extensions] « exportAutorise » a échoué → refus :", e); return null; }
+    if (v === true) return "tout";
+    if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+    const cles = Object.keys(v);   // propres seulement : un `auteur` hérité ne compte pas
+    const brut = cles.length === 1 && cles[0] === "auteur" ? v.auteur : null;
+    if (typeof brut !== "string") return null;
+    const auteur = brut.trim().slice(0, 40);
+    return auteur ? { auteur: auteur } : null;
+  }
+  // ⚠️ Booléen : true seulement pour « tout ». Un export limité vaut REFUS pour tout appelant qui ne sait pas
+  // filtrer (export de profil, export d'un calque).
+  function exportAutorise(planId) { return _droitExport(planId) === "tout"; }
+  // Pseudo auquel l'export est limité, sinon null (tout permis, ou refusé).
+  function exportLimite(planId) { const d = _droitExport(planId); return d && d !== "tout" ? d.auteur : null; }
   // Avant un effacement complet (« Tout réinitialiser ») : l'extension ferme sa session (cookie HttpOnly,
   // ineffaçable par la page — sinon reconnexion seule au démarrage suivant). Attente bornée à 3 s ; true si
   // fait (ou sans extension), false sinon → l'appelant pose, APRÈS l'effacement, la marque
@@ -608,7 +628,9 @@
   }
 
   // ── Journal des changements (information) ──
-  // Depuis `ts` (ms) : objets dont updatedAt > ts et traces de suppression postérieures (synchro incrémentale).
+  // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
+  // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
+  // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
   function changementsDepuis(ts) {
     const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
     const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
@@ -617,7 +639,9 @@
       roads:        f(window.getRoads && window.getRoads()).filter(function (o) { return o.type !== "itinerary"; }),
       zones:        f(window.getZones && window.getZones()),
       structures:   f(window.getStructures && window.getStructures()),
-      tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; })
+      tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; }),
+      restitutions: (window.CalqueSession && typeof window.CalqueSession.restitutionsDepuis === "function")
+                      ? window.CalqueSession.restitutionsDepuis(seuil) : []
     };
   }
 
@@ -721,6 +745,28 @@
       return sections.length ? { titre: r.titre.trim().slice(0, 60), sections: sections } : null;
     } catch (e) { console.warn("[Extensions] aide :", e); return null; }
   }
+  // Prise d'INFORMATION « documentation » : UN second guide dans la fenêtre 📖 Documentation
+  // (js/interfaceDocs.js > afficherReadme), proposé à l'ouverture à côté du guide classique.
+  // ext.documentation() → { titre, fichiers: { fr, en?, es? } } ou null. 🔒 Fichiers Markdown du MÊME site :
+  // chemin relatif sans remontée ni « // », terminé par .md, un seul suffixe permis (?v=). `fr` obligatoire
+  // (repli de toute langue absente). Erreur, forme inattendue ou null = rien : guide classique direct.
+  const DOC_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.md(\?v=[A-Za-z0-9._-]{1,32})?$/;
+  function documentation() {
+    const ext = _prise("documentation");
+    if (!ext || typeof ext.documentation !== "function") return null;
+    try {
+      const r = ext.documentation();
+      if (!r || typeof r.titre !== "string" || !r.titre.trim() || !r.fichiers || typeof r.fichiers !== "object") return null;
+      const fichiers = {};
+      Object.keys(r.fichiers).slice(0, 8).forEach(function (code) {
+        const f = r.fichiers[code];
+        if (/^[a-z]{2}$/.test(code) && typeof f === "string" && DOC_RE.test(f) &&
+            f.indexOf("..") < 0 && f.indexOf("//") < 0) fichiers[code] = f;
+      });
+      if (!fichiers.fr) return null;
+      return { titre: r.titre.trim().slice(0, 40), fichiers: fichiers };
+    } catch (e) { console.warn("[Extensions] documentation :", e); return null; }
+  }
   function actionsCompte(lieu) {
     const ext = _prise("actionsCompte");
     if (!ext || typeof ext.actionsCompte !== "function") return [];
@@ -789,16 +835,28 @@
   }
 
   // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome ») ──
-  // ext.outilHome() → { libelle } (40 car.) ou null : UNE tuile dans 🧰 Outils de l'accueil, qui ouvre le bloc
-  // du compte au lieu « outils ». Sans extension (ou null) : aucune tuile. Erreur ou forme inattendue = rien.
-  function outilHome() {
+  // ext.outilHome() → { libelle } (40 car.), une LISTE de 3 tuiles au plus, ou null. Une tuile sans `ouvrir` ouvre
+  // le bloc du compte au lieu « outils » ; avec `ouvrir` (fonction), le clic l'appelle (l'extension montre sa
+  // fenêtre). Sans extension (ou null) : aucune tuile. Erreur ou forme inattendue = rien ; entrée invalide écartée.
+  const OUTILS_HOME_MAX = 3;
+  function outilsHome() {
     const ext = _prise("outilHome");
-    if (!ext || typeof ext.outilHome !== "function") return null;
+    if (!ext || typeof ext.outilHome !== "function") return [];
     try {
-      const o = ext.outilHome();
-      if (!o || typeof o.libelle !== "string" || !o.libelle.trim()) return null;
-      return { libelle: o.libelle.trim().slice(0, 40) };
-    } catch (e) { console.warn("[Extensions] outilHome :", e); return null; }
+      const r = ext.outilHome();
+      const l = Array.isArray(r) ? r : (r ? [r] : []);
+      return l.filter(function (o) { return o && typeof o.libelle === "string" && o.libelle.trim(); })
+        .slice(0, OUTILS_HOME_MAX).map(function (o) {
+          const t = { libelle: o.libelle.trim().slice(0, 40) };
+          if (typeof o.ouvrir === "function") t.ouvrir = o.ouvrir;
+          return t;
+        });
+    } catch (e) { console.warn("[Extensions] outilHome :", e); return []; }
+  }
+  // Première tuile (forme d'origine, un seul objet) ; null sans tuile.
+  function outilHome() {
+    const l = outilsHome();
+    return l.length ? { libelle: l[0].libelle } : null;
   }
   function _fermerOutilHome() {
     const ov = document.getElementById("kta-ext-outil-modal");
@@ -806,9 +864,16 @@
     if (ov.__esc) document.removeEventListener("keydown", ov.__esc, true);
     ov.remove();
   }
-  function ouvrirOutilHome() {
-    const o = outilHome();
+  // Ouvre la tuile `rang` (0 par défaut). Tuile de l'extension (`ouvrir`) : son erreur est journalisée, jamais levée.
+  function ouvrirOutilHome(rang) {
+    const l = outilsHome();
+    const o = l[typeof rang === "number" ? rang : 0];
     if (!o) return false;
+    if (o.ouvrir) {
+      _fermerOutilHome();
+      try { o.ouvrir(); } catch (e) { console.warn("[Extensions] outilHome.ouvrir :", e); }
+      return true;
+    }
     _fermerOutilHome();
     // Une action ouvre souvent sa propre fenêtre (clés, 2FA, kit) : on referme celle-ci d'abord.
     const ov = document.createElement("div");
@@ -842,19 +907,30 @@
     return true;
   }
   // Pose (ou retire) la tuile, à la déclaration d'une extension et au chargement.
+  // Ids : loaderExtOutilBtn (1re tuile), loaderExtOutilBtn2, loaderExtOutilBtn3 ; une tuile disparue est retirée.
   function _poserOutilHome() {
     if (typeof document === "undefined" || !document.querySelector) return;
     const zone = document.querySelector(".loader-secondary-actions");
-    const vieux = document.getElementById("loaderExtOutilBtn");
-    const o = outilHome();
-    if (!o) { if (vieux) vieux.remove(); return; }
-    if (!zone) return;
-    const b = vieux || document.createElement("button");
-    b.type = "button";
-    b.id = "loaderExtOutilBtn";
-    b.className = "loader-btn-secondary";
-    b.textContent = o.libelle;
-    if (!vieux) { b.addEventListener("click", ouvrirOutilHome); zone.insertBefore(b, zone.firstChild); }
+    const l = outilsHome();
+    let avant = zone ? zone.firstChild : null;
+    for (let i = 0; i < OUTILS_HOME_MAX; i++) {
+      const id = "loaderExtOutilBtn" + (i ? String(i + 1) : "");
+      const vieux = document.getElementById(id);
+      const o = l[i];
+      if (!o) { if (vieux) vieux.remove(); continue; }
+      if (!zone) continue;
+      const b = vieux || document.createElement("button");
+      b.type = "button";
+      b.id = id;
+      b.className = "loader-btn-secondary";
+      b.textContent = o.libelle;
+      b.dataset.rang = String(i);
+      if (!vieux) {
+        b.addEventListener("click", function () { ouvrirOutilHome(Number(b.dataset.rang) || 0); });
+        zone.insertBefore(b, avant);
+      }
+      avant = b.nextSibling;
+    }
   }
   // Bloc prêt à insérer, null si rien à montrer. Lieux : « profil », « config », « outils ». Profil et outils :
   // carte du compte (pseudo, rôle en pastille, précision), rubriques, puis l'action « fin ». Dans « Mon
@@ -879,11 +955,14 @@
       if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
       carte.appendChild(ligne);
       if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
-      const outil = lieu === "profil" ? outilHome() : null;
+      // Lien vers la première tuile du COMPTE (sans `ouvrir` propre).
+      const tuiles = lieu === "profil" ? outilsHome() : [];
+      const rangCompte = tuiles.findIndex(function (o) { return !o.ouvrir; });
+      const outil = rangCompte >= 0 ? tuiles[rangCompte] : null;
       if (outil) {
         const lien = el("button", "kta-ext-compte-gerer", outil.libelle + "  ›");
         lien.type = "button";
-        lien.addEventListener("click", ouvrirOutilHome);
+        lien.addEventListener("click", function () { ouvrirOutilHome(rangCompte); });
         carte.appendChild(lien);
       }
       bloc.appendChild(carte);
@@ -955,8 +1034,10 @@
   // ── Changements reçus (synchro entrante) ──
   // Applique au plan OUVERT des objets et traces de suppression d'un autre appareil : même règle que la fusion
   // de sessions (KtaUid.fusionnerCalques — par uid, le plus récent gagne, une trace postérieure l'emporte, un
-  // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. → { fusionnes, supprimes }
-  // ou null (aucun plan ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
+  // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. `lot.restitutions` =
+  // [{ calque, avant }] : calques rendus à leur original ailleurs (CalqueSession.appliquerRestitutions, jamais
+  // une trace de suppression). → { fusionnes, supprimes, calques: { retires, gardes } } ou null (aucun plan
+  // ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
   function appliquerChangements(lot) {
     if (!lot || typeof lot !== "object" || !window.KtaUid ||
         typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
@@ -1008,11 +1089,39 @@
     };
     const cRoad = enCours("getCurrentRoad"), cZone = enCours("getCurrentZone"), cStruct = enCours("getCurrentStructure");
     const touches = { data: touche("data"), roads: touche("roads"), zones: touche("zones"), structures: touche("structures") };
+    // Calque ouvert à la modification ailleurs (copies marquées) : l'état « rapatrié » est local à l'appareil,
+    // il se déduit des marques (CalqueSession.resynchroniser). Seulement si une copie marquée arrive, ou si une
+    // copie d'ici disparaît : un tour sans rien de tel ne relance ni journal ni sauvegarde.
+    const CS = window.CalqueSession;
+    const cle = CS && CS.CLE_SOURCE;
+    let recalerCalques = false;
+    if (cle && typeof CS.resynchroniser === "function") {
+      const FAMS = ["data", "roads", "zones", "structures"];
+      recalerCalques = FAMS.some(function (fam) {
+        return touches[fam] && distant[fam].filter(nouveau(fam)).some(function (o) { return o[cle] !== undefined; });
+      });
+      if (!recalerCalques) {
+        const restants = new Set();
+        FAMS.forEach(function (fam) { r[fam].forEach(function (o) { if (o && o.uid) restants.add(o.uid); }); });
+        recalerCalques = FAMS.some(function (fam) {
+          return touches[fam] && local[fam].some(function (o) { return o && o[cle] !== undefined && o.uid && !restants.has(o.uid); });
+        });
+      }
+    }
     if (touches.data) window.setEditorPoints(r.data);
     if (touches.roads && window.setRoads) { const l = r.roads.concat(horsFusion); window.setRoads(l); reprendre("setCurrentRoadByIndex", l, cRoad); }
     if (touches.zones && window.setZones) { window.setZones(r.zones); reprendre("setCurrentZoneByIndex", r.zones, cZone); }
     if (touches.structures && window.setStructures) { window.setStructures(r.structures); reprendre("setCurrentStructureByIndex", r.structures, cStruct); }
-    const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures;
+    // Restitutions : appliquées APRÈS la fusion (une copie périmée reçue dans ce lot est traitée aussi), et à
+    // chaque arrivée de copie marquée (restitutions déjà connues).
+    const restRecues = (Array.isArray(lot.restitutions) ? lot.restitutions : []).filter(function (x) {
+      return x && typeof x === "object";
+    }).slice(0, 200).map(function (x) { return { calque: x.calque, avant: x.avant }; });
+    let rest = null;
+    if (cle && typeof CS.appliquerRestitutions === "function" && (restRecues.length || recalerCalques)) {
+      try { rest = CS.appliquerRestitutions(restRecues); } catch (e) { console.warn("[Extensions] restitutions :", e); }
+    }
+    const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures && !(rest && rest.change);
     // L'annulation remet une photo COMPLÈTE d'une famille : après une réception, elle effacerait ce que les
     // autres viennent d'ajouter. L'historique repart de zéro (message seulement s'il y avait de quoi annuler).
     if (!rien && window.HistoryManager && typeof window.HistoryManager.reset === "function") {
@@ -1023,12 +1132,16 @@
         window.OOMGuard.showToast(_t("ext.sync.annulationVidee"), "info", { groupe: "ext-annulation" });
       }
     }
+    if (recalerCalques || (rest && rest.change)) {
+      try { CS.resynchroniser(); } catch (e) { console.warn("[Extensions] calques en modification :", e); }
+    }
     if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
     // Le plan ouvert a changé : les statistiques (cache par plan du profil) se recalculent.
     if (!rien) {
       try { window.dispatchEvent(new CustomEvent("mktm:changements-appliques")); } catch (e) { /* rien */ }
     }
-    return { fusionnes: r.fusionnes, supprimes: r.supprimes };
+    return { fusionnes: r.fusionnes, supprimes: r.supprimes,
+      calques: { retires: rest ? rest.retires : 0, gardes: rest ? rest.gardes : 0 } };
   }
   // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).
   const _recusADistance = new Set();
@@ -1479,12 +1592,14 @@
     aPrise: aPrise,
     outilsDev: outilsDev,
     aide: aide,
+    documentation: documentation,
     signaler: signaler,
     chargerModules: chargerModules,
     modulesEtat: modulesEtat,
     requete: requete,
     importAutorise: importAutorise,
     exportAutorise: exportAutorise,
+    exportLimite: exportLimite,
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
     profilStatsExtension: profilStatsExtension,
@@ -1538,6 +1653,7 @@
     quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
     outilHome: outilHome,
+    outilsHome: outilsHome,
     pastilleHome: pastilleHome,
     ouvrirOutilHome: ouvrirOutilHome,
     valider: valider,
@@ -1551,18 +1667,27 @@
   };
 
   // ── Goulots pour le reste de l'app (sans extension : toujours « permis ») ──
-  // Export de la SESSION du plan ouvert (complet, avancé, conversion) : refusé = message (marqué important,
-  // visible même en mode « Essentielles »). KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche ne
-  // passent pas ici : seule la session (ce qu'on a écrit sur le plan) est gardée.
-  window.ktaExportPlanRefuse = function () {
+  // Export de la SESSION du plan ouvert (complet, avancé, conversion, calque rapatrié) : refusé = message (marqué
+  // important, visible même en mode « Essentielles »). KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche
+  // ne passent pas ici : seule la session (ce qu'on a écrit sur le plan) est gardée.
+  // `opts.limitePermise` : l'appelant sait limiter l'export à un auteur (ktaExportLimite) ; sinon un export limité
+  // est refusé.
+  window.ktaExportPlanRefuse = function (opts) {
     const id = window._currentLoadedPlanId;
     // Plan affiché seulement : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
     if (!id || exportAutorise(id)) return false;
+    if (opts && opts.limitePermise === true && exportLimite(id)) return false;
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(_t("ext.export.refuse"), "warn", { important: true });
     }
     return true;
+  };
+  // Pseudo auquel l'export de session du plan OUVERT est limité, sinon null.
+  window.ktaExportLimite = function () {
+    const id = window._currentLoadedPlanId;
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    return id ? exportLimite(id) : null;
   };
   // 🔒 À chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée. Appelée par main.js en fin
   // de chargement.

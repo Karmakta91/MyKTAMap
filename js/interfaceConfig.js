@@ -35,7 +35,7 @@ function _renderPerfUltraSection() {
   }
   // « Afficher tous les niveaux au lancement » (lu par main.js) : hors ULTRA, plan multi-niveau seulement.
   const rowNiveaux = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
-    ? '<div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>' +
+    ? '<div style="border-top:1px solid var(--kta-bordure); margin:10px 0; padding-top:8px;"></div>' +
       row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux, "")
     : "";
   // « Ne rendre que les éléments visibles » (viewportCull) n'a pas de case (décision produit) : piloté par le
@@ -45,7 +45,7 @@ function _renderPerfUltraSection() {
       <p class="kta-perf-ultra-hint" style="margin:0 0 10px 0;">${window.I18n.t("config.perfultra.intro")}</p>
       ${row("cfg_perf_ultra", window.I18n.t("config.perfultra.ultra.label"), s.ultra,
             "")}
-      <div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>
+      <div style="border-top:1px solid var(--kta-bordure); margin:10px 0; padding-top:8px;"></div>
       ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
             "")}
       ${row("cfg_perf_animOff", window.I18n.t("config.perfultra.animOff.label"), s.animOff,
@@ -150,14 +150,14 @@ function _renderCfgGeorefSection() {
           // B estimé depuis A + échelle + Nord du plan (northOffsetDeg, 0 = nord en haut).
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">🧭 ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
         '</div>' +
-        '<div id="cfg_kmz_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ' + window.I18n.t("config.georef.estimeBadge") + '</div>' +
+        '<div id="cfg_kmz_B_estime_badge" class="kta-planner-info" style="display:none; color:var(--kta-accent-texte); margin:4px 0 0;">≈ ' + window.I18n.t("config.georef.estimeBadge") + '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       // Point C optionnel (affine anti-déformation).
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
         '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointC") + '</div>' +
-        '<p style="font-size:11.5px; color:#8892a4; margin:2px 0 6px; line-height:1.45;">' + window.I18n.t("config.georef.pointCHint") + '</p>' +
+        '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:2px 0 6px; line-height:1.45;">' + window.I18n.t("config.georef.pointCHint") + '</p>' +
         '<div class="kta-kmz-pt-grille">' +
           '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
           '<input type="number" id="cfg_kmz_C_x"   value="' + pC.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
@@ -195,7 +195,7 @@ function _bindCfgGeorefHandlers() {
 
   function _setStatus(msg, type) {
     if (!statusEl) return;
-    const color = (type === "ok") ? "#6ce28a" : (type === "err") ? "#ff8080" : "#8892a4";
+    const color = (type === "ok") ? "var(--kta-ok)" : (type === "err") ? "var(--kta-erreur)" : "var(--kta-texte-3)";
     statusEl.style.color = color;
     statusEl.textContent = msg || "";
   }
@@ -645,7 +645,7 @@ function _bindCfgTrackerStartHandlers() {
 // géoréf a sa sous-modale ; le reset ne touche que CE plan (jamais app_user_prefs). Wake lock et vocal
 // non supportés restent affichés avec la raison.
 
-const _CFG_STYLE_TITRE = "margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;";
+// Titre de groupe : style dans css/style.css (.kta-cfg-group-titre), partagé avec la Configuration de l'accueil.
 const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
 
 function _cfgGroupeDebut(cle, portee, premier) {
@@ -655,9 +655,9 @@ function _cfgGroupeDebut(cle, portee, premier) {
               : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
               : portee === "mixte"  ? '<span class="kta-cfg-scope kta-cfg-scope-mixte">'  + t("config.scope.badgeMixte")  + '</span>'
               : "";
-  const style = premier ? _CFG_STYLE_TITRE.replace("18px 0 6px", "2px 0 6px") : _CFG_STYLE_TITRE;
   return '<div class="kta-cfg-group" data-cfg-group="' + cle + '">' +
-         '<div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="' + style + '">' +
+         '<div class="kta-cfg-group-titre' + (premier ? " kta-cfg-group-titre-premier" : "") +
+           '" role="button" tabindex="0" aria-expanded="true">' +
            '<span class="kta-cfg-group-libelle">' + t(cle) + '</span>' + badge +
            '<span class="kta-cfg-group-chevron" aria-hidden="true">▾</span>' +
          '</div>' +
@@ -970,23 +970,23 @@ function afficherConfig() {
              Les blocs ci-dessous sont DÉPLACÉS, pas réécrits : tous les id,
              class, data-i18n et listeners (attachés par id plus bas dans la
              fonction) restent strictement identiques. Chaque groupe est
-             précédé d'un en-tête .kta-cfg-group-titre (style inline discret).
+             précédé d'un en-tête .kta-cfg-group-titre.
              ═══════════════════════════════════════════════════════════════ -->
 
         <!-- ════════ 1. 🌍 APPLICATION ════════ -->
         ${_cfgGroupeDebut("config.group.application", "global", true)}
 
-        <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
-             Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
-             (mobile-friendly + accessible en 1 vue). Avant : enfoui dans la
-             section 🔍 Affichage en bas. Plus pratique d'avoir cet accès
-             rapide visible dès l'ouverture des Réglages. Pour SORTIR sur
-             mobile : bouton flottant ✕ créé par presentationMode.js. -->
-        <div class="kta-aide-section kta-cfg-presentation-section">
-          <button class="kta-btn kta-btn-primary" type="button" id="cfg_presentation_btn"
-                  style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:14px;">
-            <span style="font-size:20px;">🎬</span>
-            <span><strong>${window.I18n.t("config.presentation.btn")}</strong></span>
+        <!-- Mode présentation : une ligne comme les autres, en tête du premier groupe (le seul ouvert d'office sur
+             téléphone, où c'est le seul chemin vers ce mode). Sortie : F / Échap, ou le ✕ flottant de
+             presentationMode.js. -->
+        <div class="kta-aide-section">
+          <button type="button" class="kta-perf-ultra-row kta-cfg-ligne-action" id="cfg_presentation_btn">
+            <span class="kta-cfg-ligne-action-icone" aria-hidden="true">🎬</span>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.presentation.btn")}</span>
+              <span class="kta-perf-ultra-hint">${window.I18n.t("config.presentation.hint")}</span>
+            </span>
+            <span class="kta-cfg-ligne-action-chevron" aria-hidden="true">›</span>
           </button>
         </div>
 
@@ -1043,15 +1043,15 @@ function afficherConfig() {
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
               <input type="number" id="cfg_north_offset_input" min="0" max="359" step="1" value="0"
                      style="flex:0 0 90px; padding:6px 8px; border-radius:6px;
-                            background:rgba(255,255,255,0.06); color:#e8eaf0;
+                            background:rgba(255,255,255,0.06); color:var(--kta-texte);
                             border:1px solid rgba(255,255,255,0.12); font-weight:600;">
-              <span style="color:#8892a4; font-size:12px;">°</span>
+              <span style="color:var(--kta-texte-3); font-size:12px;">°</span>
               <button type="button" id="cfg_north_picker_btn" class="kta-btn"
                       style="flex:1 1 auto; min-width:140px;">${window.I18n.t("config.display.north.calibrate")}</button>
               <button type="button" id="cfg_north_reset_btn" class="kta-btn"
                       style="flex:0 0 auto;" title="${window.I18n.t("config.display.north.resetTitle")}">${window.I18n.t("config.display.north.reset")}</button>
             </div>
-            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
+            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:var(--kta-texte-3); min-height:14px;"></div>
           </div>
         </div>
 
@@ -1186,10 +1186,6 @@ function afficherConfig() {
                durable cross-utilisateurs se fait depuis le générateur avancé
                (plan-config.json > plan.histoirePdf). -->
 
-          <!-- 🆕 v1.21.0-fix3 (KARMA) : bouton "🎬 Activer le mode présentation"
-               DÉPLACÉ TOUT EN HAUT de la modale Réglages (avant la 1ère section)
-               pour accès en 1 vue dès l'ouverture, mobile-friendly. -->
-
           <!-- 🆕 v1.21.1+ (KARMA) : toggle Wake Lock API — empêche l'écran de
                s'éteindre tant que l'app est ouverte. Utile cataphile pour ne
                pas avoir à débloquer son téléphone toutes les 30s en cavité.
@@ -1316,12 +1312,12 @@ function afficherConfig() {
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
             <div style="flex:1;">
-              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">${window.I18n.t("config.debug.perfMode")}</div>
-              <div style="font-size:11px; color:#8892a4; margin-top:2px;">${window.I18n.t("config.debug.perfModeHint")}</div>
+              <div style="font-size:13px; font-weight:600; color:var(--kta-texte);">${window.I18n.t("config.debug.perfMode")}</div>
+              <div style="font-size:11px; color:var(--kta-texte-3); margin-top:2px;">${window.I18n.t("config.debug.perfModeHint")}</div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid var(--kta-bordure);">
               <span style="font-size:22px;">${presetMeta.emoji}</span>
-              <span style="font-size:15px; font-weight:600; color:#e8eaf0;">${presetMeta.label}</span>
+              <span style="font-size:15px; font-weight:600; color:var(--kta-texte);">${presetMeta.label}</span>
             </div>
           </div>
         </div>
@@ -1476,7 +1472,7 @@ function afficherConfig() {
       input.value = Math.round(cur);
       if (cur === 0) {
         status.textContent = window.I18n.t("config.north.statusDefault");
-        status.style.color = "#8892a4";
+        status.style.color = "var(--kta-texte-3)";
       } else {
         status.textContent = window.I18n.t("config.north.statusCalibrated", { deg: cur.toFixed(1) });
         status.style.color = "#f4c542";
@@ -1733,7 +1729,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
           '</div>' +
         '</div>' +
 
-        '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
+        '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:6px 0 0 0; line-height:1.5;">' +
           window.I18n.t("config.niveaux.warn") +
         '</p>' +
         // Saisie des profondeurs : une profondeur EST une propriété du niveau, elle vit dans cet écran.
@@ -2007,7 +2003,7 @@ function _ouvrirCreationJonction(btnSub) {
           '<label class="kta-cfg-label">' + window.I18n.t("config.jonction.toLabel") + '</label>' +
           '<select class="kta-cfg-input" id="kta-jct-to">' + _optionsHtml(defaultTo) + '</select>' +
         '</div>' +
-        '<p style="font-size:11.5px; color:#8892a4; margin:12px 0 0 0; line-height:1.5;">' +
+        '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:12px 0 0 0; line-height:1.5;">' +
           window.I18n.t("config.jonction.hint") +
         '</p>' +
       '</div>' +

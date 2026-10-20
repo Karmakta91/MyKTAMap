@@ -150,6 +150,8 @@ Dans Chrome, ouvre `myktamap.fr`, clique sur **Installer** à droite de la barre
 
 ### 📦 Charger un plan
 
+À l'ouverture, l'**écran de démarrage** dessine une galerie (environ 4 s) puis laisse la place à l'accueil dès qu'il est prêt. Un toucher, un clic ou Échap le passe. Si ton appareil demande de réduire les animations, il s'affiche sans mouvement.
+
 L'écran d'accueil propose :
 
 - **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé.
@@ -367,7 +369,7 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 
 *Exemple : pour ne voir que deux sortes de puits, 🏷️ Tags → 🚫 Aucun, puis recoche les deux tags voulus.*
 
-> 🔄 **Corriger un calque de données** — un calque livré avec le plan se masque mais ne s'édite pas. Le bouton **🔄 Modifier** de sa ligne le copie dans ta session, où tous tes outils s'appliquent (par exemple 🔄 Convertir cet objet) ; l'original se masque (« en cours de modification — afficher quand même » permet de comparer). Avant d'agir, l'app t'annonce la place que prendra la copie et celle qu'occupent déjà tes sessions. **↩️ Restaurer** abandonne tes modifications ; **💾 Exporter** produit le fichier corrigé de **ce calque seul**, à redonner au plan via 🏗️ Générateur → « Modifier un plan », bouton « Choisir » sur la ligne du calque : il remplace l'ancien contenu. Ce que tu as dessiné toi-même n'en fait pas partie (l'app te dit combien d'objets restent hors du fichier). Effacer la session restaure les calques ouverts à la modification ; réimporter ta session sur ce plan les remet en modification.
+> 🔄 **Corriger un calque de données** — un calque livré avec le plan se masque mais ne s'édite pas. Le bouton **🔄 Modifier** de sa ligne le copie dans ta session, où tous tes outils s'appliquent (par exemple 🔄 Convertir cet objet) ; l'original se masque (« en cours de modification — afficher quand même » permet de comparer). Avant d'agir, l'app t'annonce la place que prendra la copie et celle qu'occupent déjà tes sessions. **↩️ Restaurer** abandonne tes modifications ; **💾 Exporter** produit le fichier corrigé de **ce calque seul**, à redonner au plan via 🏗️ Générateur → « Modifier un plan », bouton « Choisir » sur la ligne du calque : il remplace l'ancien contenu. Ce que tu as dessiné toi-même n'en fait pas partie (l'app te dit combien d'objets restent hors du fichier), sauf si tu l'y rattaches : **➕ Intégrer des ajouts**, sur la ligne du calque, liste tes dessins du plan par famille (rien de coché d'avance, « Tout cocher », filtre « Créé par » sur une installation reliée) ; les objets choisis partent alors dans le fichier du calque, et ⏪ annule. Un objet intégré appartient au calque : le restaurer le retire aussi, et la fenêtre de restauration dit combien. Effacer la session restaure les calques ouverts à la modification ; réimporter ta session sur ce plan les remet en modification. Sur une installation reliée, « Effacer la session » te laisse choisir : **effacer sur cet appareil seulement** (les calques ouverts à la modification par l'équipe reviennent depuis le serveur, toujours en modification) ou **rendre aussi les calques à l'équipe** (ils reviennent à leur original pour tous, et les retouches que les autres n'ont pas exportées sur ces copies sont perdues). Sur une installation reliée, un calque ouvert à la modification par un autre compte apparaît aussi comme tel chez toi, et le restaurer le restaure sur tous les appareils (une copie modifiée depuis reste, signalée comme doublon).
 
 ### 🗺️ Légende
 
@@ -758,6 +760,7 @@ Un tap sur **un tracé, une zone ou une structure que tu as dessinés** ouvre sa
 | **Zone de texte** | Une note libre — état du passage, observation, rappel |
 | **💾 Sauver la note** | Enregistre la note et referme la bulle |
 | **🔄 Convertir** | Change le **type** de l'objet, et au besoin sa **famille** |
+| **Niveau** | Sur un plan multi-niveau : déplace l'objet sur un autre niveau (voir 🏗️ Mode multi-niveau) |
 | **🗑️ Supprimer** | Retire l'objet (en rouge, sur sa propre ligne) |
 
 Un objet venu d'un calque de données ouvre une bulle en lecture seule.
@@ -843,6 +846,12 @@ Une **pastille jaune** sous les boutons de zoom affiche le **niveau actif**. Un 
 - **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. Une jonction reste visible si l'un de ses deux niveaux l'est.
 
 Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle-même. Les mêmes réglages existent dans ≡ **Filtres**. À l'export image, **🎨 Avancé → 🏗️ Niveaux à exporter** choisit les niveaux indépendamment de l'affichage.
+
+### 🔀 Changer le niveau d'un objet
+
+Un objet a pris le mauvais niveau ? Dans la bulle d'un tracé, d'une zone ou d'une structure que tu as dessinés, la liste **Niveau** (sous 🔄 Convertir) le déplace aussitôt ; pour un point, c'est la liste **Niveau** de **✏️ Modifier**, enregistrée avec le reste de la fiche. Le niveau actuel de l'objet est toujours proposé, même s'il sort de la liste du plan. Si le niveau choisi est masqué par le filtre, l'objet disparaît de la carte et un message le dit : la vue reste sur ton niveau. **⏪** annule.
+
+Pas de liste sur une jonction (supprime-la et retrace-la), sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
 
 ### 🪜 Tracer une jonction interniveau
 
@@ -978,7 +987,7 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 
 - **💾 Export complet** — toute la session en un fichier, à réimporter plus tard : points, tracés, zones, structures, mesures et suivi du tracker (position, chemin, chronologie : le replay fonctionne après réimport). `.json`, ou `.zip` si tu coches les photos. L'option **🛡️ Anonymiser pour partage public** remplace les noms par des codes et retire le suivi.
 - **🎨 Export avancé** — tu choisis : points (par icône, y compris « sans tag »), tracés, zones et structures (par type), mesures, tracker (un compteur montre ce qu'il contient). Sortie en **un seul fichier session** réimportable, ou en **ZIP multi-fichiers** (un par catégorie).
-- **🔎 Ne garder que** (en tête des deux) — limite les points, tracés, zones et structures à une **période** (date de leur dernière modification) et, sur une installation reliée, à leur auteur (**Créé par**) ; un compteur dit combien partent. Suivi, mesures et notes partent tels quels.
+- **🔎 Ne garder que** (en tête des deux) — limite les points, tracés, zones et structures à une **période** (date de leur dernière modification) et, sur une installation reliée, à leur auteur (**Créé par**) ; un compteur dit combien partent. Sur le plan ☁️ d'un autre compte, l'export reste possible mais limité à **tes** ajouts : « Créé par » est fixé sur toi. Suivi, mesures et notes partent tels quels.
 
 ### 🖼️ Exporter en image
 

@@ -36,6 +36,9 @@
   let _modal = null;
   // Filtre d'export (onglets Complet et Avancé) : période et/ou auteur. Remis à zéro à chaque ouverture.
   let _filtre = { du: "", au: "", auteur: "" };
+  // 🔒 Export limité par l'installation (plan d'un autre compte, window.ktaExportLimite) : pseudo IMPOSÉ au filtre
+  // auteur, non modifiable ; les copies de calque (`_srcCalque`) ne partent jamais. null = export libre.
+  let _auteurImpose = null;
   let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern" | "fusion"
 
   // Fusion de calques : _fusionInputs = [{name, json}] ; _fusionMerged = résultat + dupIds (alerte seulement).
@@ -86,7 +89,7 @@
 
       .kta-ses-intro {
         font-size: 13px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         margin-bottom: 16px;
         line-height: 1.5;
       }
@@ -97,7 +100,7 @@
       .kta-ses-section-title {
         font-size: 12px;
         font-weight: 600;
-        color: #8cb4ff;
+        color: var(--kta-interaction);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 8px;
@@ -109,7 +112,7 @@
         gap: 10px;
         padding: 6px 4px;
         font-size: 13px;
-        color: #e8eaf0;
+        color: var(--kta-texte);
         cursor: pointer;
         border-radius: 4px;
       }
@@ -122,7 +125,7 @@
         accent-color: #8cb4ff;
       }
       .kta-ses-cb-row .kta-ses-count {
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-size: 12px;
       }
       .kta-ses-cb-sub {
@@ -136,7 +139,7 @@
         gap: 8px;
         padding: 6px 4px;
         font-size: 13px;
-        color: #e8eaf0;
+        color: var(--kta-texte);
         cursor: pointer;
         border-radius: 4px;
       }
@@ -147,7 +150,7 @@
         accent-color: #8cb4ff;
       }
       .kta-ses-radio-row .kta-ses-radio-hint {
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-size: 12px;
         margin-left: 4px;
       }
@@ -158,14 +161,14 @@
         border-radius: 6px;
         padding: 12px 14px;
         font-size: 13px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         line-height: 1.7;
       }
       .kta-ses-summary strong {
-        color: #e8eaf0;
+        color: var(--kta-texte);
       }
       .kta-ses-summary .kta-ses-zero {
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-style: italic;
       }
 
@@ -207,7 +210,7 @@
       }
       .kta-ses-btn-secondary {
         background: rgba(255,255,255,0.06);
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         border: 1px solid rgba(255,255,255,0.12);
       }
       .kta-ses-btn-secondary:hover {
@@ -225,7 +228,7 @@
       .kta-kmz-section-titre {
         font-size: 13px;
         font-weight: 600;
-        color: #8cb4ff;
+        color: var(--kta-interaction);
         margin-bottom: 8px;
       }
       .kta-kmz-pt-grille {
@@ -237,7 +240,7 @@
       }
       .kta-kmz-lbl {
         font-size: 12px;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         text-align: right;
       }
       .kta-kmz-input {
@@ -254,7 +257,7 @@
         margin-top: 6px;
         padding: 8px;
         background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid var(--kta-bordure);
         border-radius: 4px;
         max-height: 200px;
         overflow-y: auto;
@@ -268,7 +271,7 @@
         cursor: pointer;
         border-radius: 4px;
         font-size: 12.5px;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         transition: background 0.12s;
         display: flex;
         flex-wrap: wrap;
@@ -277,19 +280,19 @@
       }
       .kta-kmz-search-item:hover {
         background: rgba(140,180,255,0.14);
-        color: #e8eaf0;
+        color: var(--kta-texte);
       }
       .kta-kmz-search-item strong {
-        color: #8cb4ff;
+        color: var(--kta-interaction);
         font-weight: 600;
       }
       .kta-kmz-search-item .kta-kmz-search-meta {
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-size: 11px;
       }
       .kta-kmz-search-empty {
         padding: 8px 10px;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         font-style: italic;
         font-size: 12px;
         text-align: center;
@@ -299,7 +302,7 @@
         background: rgba(0,0,0,0.20);
         border-radius: 4px;
         font-size: 12px;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
       }
       .kta-kmz-coins-grille {
         display: grid;
@@ -308,7 +311,7 @@
       }
       .kta-kmz-coins-grille code {
         font-size: 11px;
-        color: #f4c542;
+        color: var(--kta-accent-texte);
       }
       .kta-kmz-chips {
         display: flex;
@@ -325,7 +328,7 @@
         border: 1px solid rgba(255,255,255,0.12);
         border-radius: 12px;
         font-size: 12px;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         cursor: pointer;
       }
       .kta-kmz-chip-niveau:hover {
@@ -342,7 +345,7 @@
         margin: 4px 0 8px 28px;
         padding: 4px 6px;
         font-size: 12px;
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
       }
       /* 15/10/2026 — choix de netteté KMZ : la liste ne déborde jamais (capture iPhone : 870 px de large,
          tout le contenu décalé à gauche), fond sombre de la charte au lieu du blanc natif. */
@@ -358,8 +361,8 @@
         flex: 1;
         min-width: 0;
         max-width: 100%;
-        background: #0a0d18;
-        color: #e8eaf0;
+        background: var(--kta-fond);
+        color: var(--kta-texte);
         border: 1px solid rgba(140,180,255,0.35);
         border-radius: 6px;
         padding: 4px 6px;
@@ -374,7 +377,7 @@
         pointer-events: none;
       }
       .kta-kmz-opacity-lbl {
-        color: #8892a4;
+        color: var(--kta-texte-3);
         white-space: nowrap;
       }
       .kta-kmz-opacity-slider {
@@ -386,7 +389,7 @@
       .kta-kmz-opacity-val {
         font-family: monospace;
         font-size: 12px;
-        color: #f4c542;
+        color: var(--kta-accent-texte);
         min-width: 36px;
         text-align: right;
       }
@@ -397,7 +400,7 @@
         gap: 4px;
         padding: 4px;
         background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid var(--kta-bordure);
         border-radius: 8px;
         margin-bottom: 8px;
       }
@@ -405,7 +408,7 @@
         flex: 1;
         padding: 8px 12px;
         background: transparent;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         border: 1px solid transparent;
         border-radius: 6px;
         cursor: pointer;
@@ -415,7 +418,7 @@
         transition: all 0.12s;
       }
       .kta-ses-fmt-pill:hover {
-        color: #c0c8d8;
+        color: var(--kta-texte-2);
         background: rgba(140,180,255,0.06);
       }
       .kta-ses-fmt-pill.active {
@@ -431,7 +434,7 @@
         line-height: 1.5;
       }
       .kta-ses-fmt-desc strong {
-        color: #e8eaf0;
+        color: var(--kta-texte);
       }
 
       /* Theme light : sélecteur format + onglets unifiés */
@@ -468,21 +471,21 @@
       .kta-fusion-file { display: flex; justify-content: space-between; gap: 10px;
         padding: 6px 10px; background: rgba(140,180,255,0.07); border-radius: 6px;
         font-size: 0.86em; }
-      .kta-fusion-file-name { color: #c8d0e0; word-break: break-all; }
-      .kta-fusion-file-cats { color: #8892a4; white-space: nowrap; }
+      .kta-fusion-file-name { color: var(--kta-texte-2); word-break: break-all; }
+      .kta-fusion-file-cats { color: var(--kta-texte-3); white-space: nowrap; }
       .kta-fusion-clear-btn { float: right; background: none; border: 1px solid #8892a4;
-        color: #c8d0e0; border-radius: 6px; padding: 1px 8px; font-size: 0.8em; cursor: pointer; }
-      .kta-fusion-clear-btn:hover { border-color: #ff8c8c; color: #ff8c8c; }
+        color: var(--kta-texte-2); border-radius: 6px; padding: 1px 8px; font-size: 0.8em; cursor: pointer; }
+      .kta-fusion-clear-btn:hover { border-color: #ff8c8c; color: var(--kta-erreur); }
       .kta-fusion-warn { margin-top: 8px; padding: 8px 10px; border-radius: 6px;
         background: rgba(244,197,66,0.12); border: 1px solid rgba(244,197,66,0.4);
-        color: #f4c542; font-size: 0.86em; }
+        color: var(--kta-accent-texte); font-size: 0.86em; }
       .kta-ses-filtre { margin: 0 0 12px; padding: 8px 10px; border: 1px solid #2a3144; border-radius: 8px; }
-      .kta-ses-filtre-titre { font-weight: 700; color: #f4c542; margin-bottom: 6px; font-size: 0.92em; }
+      .kta-ses-filtre-titre { font-weight: 700; color: var(--kta-accent-texte); margin-bottom: 6px; font-size: 0.92em; }
       .kta-ses-filtre-ligne { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 0.9em; }
       /* 15/10/2026 (capture iPhone) : « Du » / « au » en noir sur fond sombre, dates et bouton en blanc natif. */
-      .kta-ses-filtre-ligne label { display: flex; align-items: center; gap: 6px; color: #c8d0e0; min-width: 0; }
+      .kta-ses-filtre-ligne label { display: flex; align-items: center; gap: 6px; color: var(--kta-texte-2); min-width: 0; }
       .kta-ses-filtre-ligne input, .kta-ses-filtre-ligne select {
-        background: #0a0d18; color: #e8eaf0; border: 1px solid rgba(140,180,255,0.35); border-radius: 6px;
+        background: var(--kta-fond); color: var(--kta-texte); border: 1px solid rgba(140,180,255,0.35); border-radius: 6px;
         padding: 4px 6px; font: inherit; color-scheme: dark; min-width: 0; max-width: 100%; min-height: 30px;
       }
       .kta-ses-filtre-ligne input[type="date"] { width: 10em; }
@@ -492,7 +495,7 @@
       body.kta-theme-light .kta-ses-filtre-ligne select, html.kta-theme-light .kta-ses-filtre-ligne select {
         background: #fff; color: #1a1f2e; border-color: rgba(0,0,0,0.2); color-scheme: light;
       }
-      .kta-ses-filtre-bilan { margin-top: 6px; font-size: 0.82em; color: #8892a4; }
+      .kta-ses-filtre-bilan { margin-top: 6px; font-size: 0.82em; color: var(--kta-texte-3); }
     `;
     document.head.appendChild(s);
   }
@@ -506,13 +509,16 @@
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
     const tab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
     // Verrou de l'installation : la SESSION seulement (complet, avancé, conversion). Export externe (KMZ / GPX)
-    // et Fusion (fichiers téléversés) passent.
+    // et Fusion (fichiers téléversés) passent. Complet et Avancé savent se limiter à un auteur ; la conversion non.
     if (tab === "full" || tab === "advanced" || tab === "conversion") {
-      if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
+      if (typeof window.ktaExportPlanRefuse === "function" &&
+          window.ktaExportPlanRefuse({ limitePermise: tab !== "conversion" })) return;
     }
     _injecterStyles();
     if (_modal) _fermer();
-    _filtre = { du: "", au: "", auteur: "" };
+    _auteurImpose = ((tab === "full" || tab === "advanced") && typeof window.ktaExportLimite === "function")
+      ? (window.ktaExportLimite() || null) : null;
+    _filtre = { du: "", au: "", auteur: _auteurImpose || "" };
     // initialTab optionnel (ex. "fusion" depuis l'Éditeur de données) ; défaut "full".
     _activeTab = tab;
     const fmt = opts && opts.format;
@@ -524,7 +530,8 @@
 
   // ── Filtre (période / auteur) ──────────────
   function _filtreActif() {
-    return (_activeTab === "full" || _activeTab === "advanced") && !!(_filtre.du || _filtre.au || _filtre.auteur);
+    return (_activeTab === "full" || _activeTab === "advanced") &&
+      !!(_auteurImpose || _filtre.du || _filtre.au || _filtre.auteur);
   }
   function _auteurDe(o) {
     const X = window.KtaExtensions;
@@ -547,8 +554,22 @@
       if (_filtre.du && ts < new Date(_filtre.du + "T00:00:00").getTime()) return false;
       if (_filtre.au && ts > new Date(_filtre.au + "T23:59:59.999").getTime()) return false;
     }
-    if (_filtre.auteur && _auteurDe(o) !== _filtre.auteur) return false;
+    if (_auteurImpose) {
+      // Une copie de calque est le contenu du plan, pas un ajout, quel que soit l'auteur que la synchro lui prête.
+      if (o._srcCalque !== undefined || _auteurDe(o) !== _auteurImpose) return false;
+    } else if (_filtre.auteur && _auteurDe(o) !== _filtre.auteur) return false;
     return true;
+  }
+  // Photos à embarquer : celles des points retenus quand un filtre agit (sinon celles d'objets écartés
+  // partiraient), toutes sinon (null).
+  function _idsPhotosRetenues(points) {
+    return _filtreActif() ? _idsPhotosDe(points) : null;
+  }
+  // Clés de photos de ces points : une photo est rangée sous l'uid du point, ou sous son nom (anciennes).
+  function _idsPhotosDe(points) {
+    return new Set([].concat.apply([], (points || []).map(function(p) {
+      return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")];
+    })));
   }
   function _filtrer(liste) {
     const l = Array.isArray(liste) ? liste : [];
@@ -564,7 +585,10 @@
     const parAuteur = !!(X && typeof X.aPrise === "function" && X.aPrise("auteurObjet"));
     const tous = _brut();
     let optAuteurs = "";
-    if (parAuteur) {
+    if (_auteurImpose) {
+      const nom = window.ktaEsc(_auteurImpose);
+      optAuteurs = '<option value="' + nom + '" selected>' + nom + '</option>';
+    } else if (parAuteur) {
       const noms = {};
       tous.forEach(function(o) { const a = _auteurDe(o); if (a) noms[a] = true; });
       optAuteurs = '<option value="">' + window.ktaEsc(t("export.filtre.tous")) + '</option>' +
@@ -578,9 +602,13 @@
         '<div class="kta-ses-filtre-ligne">' +
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
           '<label>' + window.ktaEsc(t("export.filtre.au")) + ' <input type="date" id="ses_filtre_au" value="' + window.ktaEsc(_filtre.au) + '"></label>' +
-          (parAuteur ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) + ' <select id="ses_filtre_auteur">' + optAuteurs + '</select></label>' : '') +
-          (_filtreActif() ? '<button type="button" class="kta-ses-btn kta-ses-btn-secondary" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
+          ((parAuteur || _auteurImpose) ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) +
+            ' <select id="ses_filtre_auteur"' + (_auteurImpose ? ' disabled' : '') + '>' + optAuteurs +
+            '</select></label>' : '') +
+          ((_filtre.du || _filtre.au || (_filtre.auteur && !_auteurImpose)) ? '<button type="button" class="kta-ses-btn kta-ses-btn-secondary" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
         '</div>' +
+        (_auteurImpose ? '<div class="kta-ses-filtre-bilan kta-tx-warn" id="ses_filtre_impose">🔒 ' +
+          window.ktaEsc(t("export.filtre.impose")) + '</div>' : '') +
         '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
           ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : "") + '</div>' +
       '</div>';
@@ -590,13 +618,13 @@
       const id = e.target && e.target.id;
       if (id === "ses_filtre_du") _filtre.du = e.target.value || "";
       else if (id === "ses_filtre_au") _filtre.au = e.target.value || "";
-      else if (id === "ses_filtre_auteur") _filtre.auteur = e.target.value || "";
+      else if (id === "ses_filtre_auteur") { if (!_auteurImpose) _filtre.auteur = e.target.value || ""; }
       else return;
       _renderTab();
     });
     modal.addEventListener("click", function(e) {
       if (!e.target || e.target.id !== "ses_filtre_raz") return;
-      _filtre = { du: "", au: "", auteur: "" };
+      _filtre = { du: "", au: "", auteur: _auteurImpose || "" };
       _renderTab();
     });
   }
@@ -815,7 +843,7 @@
     const counter = document.getElementById("full_photos_count");
     const cb      = document.getElementById("full_photos");
     if (!section || !counter) return;
-    _collecterPhotosPlan(null).then(function(pack) {
+    _collecterPhotosPlan(_idsPhotosRetenues(_compter().points)).then(function(pack) {
       if (pack.photos.length === 0) {
         section.style.display = "none";
         if (cb) cb.checked = false;
@@ -882,7 +910,7 @@
             <span class="kta-ses-count" id="full_photos_count">${t("export.loading")}</span>
           </span>
         </label>
-        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+        <p style="font-size:11.5px; color:var(--kta-texte-3); font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
           ${t("export.full.photosHint")}
         </p>
       </div>
@@ -893,7 +921,7 @@
           <input type="checkbox" id="full_anonymize">
           <span>${t("export.full.anonymizeLabel")}</span>
         </label>
-        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+        <p style="font-size:11.5px; color:var(--kta-texte-3); font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
           ${t("export.full.anonymizeHint")}
         </p>
       </div>
@@ -1006,7 +1034,7 @@
             <span class="kta-ses-count" id="adv_photos_count">${t("export.loading")}</span>
           </span>
         </label>
-        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+        <p style="font-size:11.5px; color:var(--kta-texte-3); font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
           ${t("export.adv.photosHint")}
         </p>
       </div>
@@ -1181,7 +1209,7 @@
             <span class="kta-ses-count" id="conv_ed2data_photos_count">${t("export.loading")}</span>
           </span>
         </label>
-        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+        <p style="font-size:11.5px; color:var(--kta-texte-3); font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
           ${t("export.conv.photosHint")}
         </p>
       </div>
@@ -1872,8 +1900,9 @@
     const anonymize   = !!(anonymizeCb && anonymizeCb.checked);
 
     // 🔒 L'anonymisation garde les photos : elles sont ré-encodées (strip EXIF/GPS) plus bas.
-    const photosPromise = inclurePhotos
-      ? _collecterPhotosPlan(null)
+    const idsPhotos = _idsPhotosRetenues(d.points);
+    const photosPromise = (inclurePhotos && !(idsPhotos && idsPhotos.size === 0))
+      ? _collecterPhotosPlan(idsPhotos)
       : Promise.resolve({ photos: [], totalSize: 0 });
 
     // Mode Histoire (note + PDF) collecté en parallèle ; ignoré en anonymisé (contenu personnel).
@@ -1915,6 +1944,11 @@
         // Traces de suppression : un réimport ne ressuscite pas un objet supprimé. Jamais en anonymisé.
         tombstones: window.KtaUid ? window.KtaUid.getTombstones() : []
       };
+      // 🔒 Export limité à ses ajouts : ni les traces (suppressions de tout le monde), ni les liaisons du plan.
+      if (_auteurImpose) {
+        delete session.tombstones;
+        delete session.interPlanLinks;
+      }
 
       // Tracker : position (marker), path (polyline runtime), timeline datée [{x,y,t,deltaMs,type,level?}],
       // startTs. Champ absent si ni timeline ni path (rien tracké) : les anciens imports l'ignorent.
@@ -2066,7 +2100,7 @@
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
+      ? _idsPhotosDe(filteredPoints)
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)
@@ -2094,7 +2128,7 @@
             window.LegendCustomization.isSessionStateEmpty && !window.LegendCustomization.isSessionStateEmpty()) {
           session.customLegend = window.LegendCustomization.getSessionState();
         }
-        if (window.InterPlanLinks && window._currentLoadedPlanId) {
+        if (window.InterPlanLinks && window._currentLoadedPlanId && !_auteurImpose) {
           const _ipl = window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId);
           if (_ipl.length > 0) session.interPlanLinks = _ipl;
         }
@@ -2250,7 +2284,7 @@
     const inclurePhotosCb = document.getElementById("conv_ed2data_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
+      ? _idsPhotosDe(filteredPoints)
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)
@@ -2993,7 +3027,7 @@
       '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.calib.apercuTitre") + '</div>' +
         '<div id="kmz_apercu" class="kta-kmz-apercu">' +
-          '<em style="color:#8892a4;">' + t("export.calib.apercuPrompt") + '</em>' +
+          '<em style="color:var(--kta-texte-3);">' + t("export.calib.apercuPrompt") + '</em>' +
         '</div>' +
       '</div>';
   }
@@ -3084,7 +3118,7 @@
       const disabled = isZero ? "disabled" : "";
       const dim      = isZero ? "opacity:0.5;" : "";
       const isChecked= (checked && !isZero) ? "checked" : "";
-      const cnt      = hasCount ? ' <span style="color:#8892a4;">(' + count + ')</span>' : '';
+      const cnt      = hasCount ? ' <span style="color:var(--kta-texte-3);">(' + count + ')</span>' : '';
       return '<label class="kta-ses-cb-row" style="' + dim + '">' +
                '<input type="checkbox" id="' + id + '" ' + isChecked + ' ' + disabled + '>' +
                '<span>' + label + cnt + '</span>' +
@@ -3097,7 +3131,7 @@
       const isChecked= (count > 0 && checked) ? "checked" : "";
       return '<label class="kta-ses-cb-row" style="' + dim + 'margin-left:24px;font-size:12px;padding:3px 4px;">' +
                '<input type="checkbox" id="' + id + '" ' + isChecked + ' ' + disabled + '>' +
-               '<span>' + label + ' <span style="color:#8892a4;">(' + count + ')</span></span>' +
+               '<span>' + label + ' <span style="color:var(--kta-texte-3);">(' + count + ')</span></span>' +
              '</label>';
     }
 
@@ -3112,7 +3146,7 @@
         const label = item.isUntagged ? t("export.untagged") : item.tag;
         return '<label class="kta-ses-cb-row" style="margin-left:24px;font-size:12px;padding:3px 4px;">' +
                  '<input type="checkbox" id="kmz_inc_points_tag_' + safeTag + '" data-tag="' + item.tag + '" checked>' +
-                 '<span>' + iconHtml + label + ' <span style="color:#8892a4;">(' + item.count + ')</span></span>' +
+                 '<span>' + iconHtml + label + ' <span style="color:var(--kta-texte-3);">(' + item.count + ')</span></span>' +
                '</label>';
       }).join("");
     }
@@ -3140,7 +3174,7 @@
           ? '<div id="kmz_img_unique_wrap" style="margin-left:24px;font-size:12px;padding:3px 4px;">' +
               '<label class="kta-ses-cb-row" style="padding:0;">' +
                 '<input type="checkbox" id="kmz_img_unique" checked>' +
-                '<span>' + t("export.kmz.imageUnique") + ' <span style="color:#8892a4;">' + t("export.kmz.imageUniqueAide") + '</span></span>' +
+                '<span>' + t("export.kmz.imageUnique") + ' <span style="color:var(--kta-texte-3);">' + t("export.kmz.imageUniqueAide") + '</span></span>' +
               '</label>' +
               '<label class="kta-kmz-nettete">' + '<span class="kta-kmz-opacity-lbl">' + t("export.kmz.nettete") + '</span>' +
                 '<select id="kmz_img_nettete">' +
@@ -3319,7 +3353,7 @@
                c.pointB.x != null && c.pointB.y != null &&
                c.pointB.lat != null && c.pointB.lng != null;
     if (!ok) {
-      target.innerHTML = '<em style="color:#8892a4;">' + t("export.calib.apercuPromptFull") + '</em>';
+      target.innerHTML = '<em style="color:var(--kta-texte-3);">' + t("export.calib.apercuPromptFull") + '</em>';
       return;
     }
     if (!window.KmzExport) {
@@ -3350,9 +3384,9 @@
         '<div>' + t("export.calib.cornerBR") + ' <code>' + fmt(cBR) + '</code></div>' +
       '</div>' +
       '<div style="margin-top:8px;">' +
-        '<a href="' + gmapsUrl + '" id="kmz_apercu_gmaps_link" target="_blank" rel="noopener" style="color:#8cb4ff;">' + t("export.calib.gmapsLink") + '</a>' +
+        '<a href="' + gmapsUrl + '" id="kmz_apercu_gmaps_link" target="_blank" rel="noopener" style="color:var(--kta-interaction);">' + t("export.calib.gmapsLink") + '</a>' +
       '</div>' +
-      '<div style="margin-top:6px; font-size:11.5px; color:#8892a4;">' +
+      '<div style="margin-top:6px; font-size:11.5px; color:var(--kta-texte-3);">' +
         t("export.calib.scaleLabel") + ' <strong>' + transform.metresParPixel.toFixed(3) + ' m/px</strong>' +
         ' · ' + t("export.calib.rotationLabel") + ' <strong>' + (transform.rotation * 180 / Math.PI).toFixed(1) + '°</strong>' +
       '</div>';

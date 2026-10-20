@@ -195,7 +195,7 @@
             }).join("") + '</div>' : '') +
             (svg ? '<div class="kta-jrn-trace-wrap">' + svg +
                      (traceAffinee
-                       ? '<div style="font-size:11px; color:#8892a4; text-align:center; margin-top:4px;">' +
+                       ? '<div style="font-size:11px; color:var(--kta-texte-3); text-align:center; margin-top:4px;">' +
                            _esc(_t("jrn.fiche.traceAffinee")) + '</div>'
                        : '') +
                    '</div>' : '') +

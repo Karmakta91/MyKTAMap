@@ -85,15 +85,15 @@ function afficherLegende() {
     const details = orphelins.map(function(o) {
       return '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:3px 0;">' +
              '<code style="font-size:11px; word-break:break-all; min-width:0;">' + _escHtml(o.type) + '</code>' +
-             '<span style="color:#8892a4;">(' + o.nb + ')</span>' +
+             '<span style="color:var(--kta-texte-3);">(' + o.nb + ')</span>' +
              '<button type="button" class="kta-orphan-link" data-otype="' + _escHtml(o.type) + '" data-ocat="' + o.categorie + '"' +
-             ' style="font-size:11px; padding:1px 6px; cursor:pointer; background:transparent; border:1px solid rgba(140,180,255,0.4); color:#8cb4ff; border-radius:4px; flex:0 0 auto;">➕ ' +
+             ' style="font-size:11px; padding:1px 6px; cursor:pointer; background:transparent; border:1px solid rgba(140,180,255,0.4); color:var(--kta-interaction); border-radius:4px; flex:0 0 auto;">➕ ' +
              window.I18n.t("legendui.orphans.lier") + '</button></div>';
     }).join("");
-    return `<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.5; color:#e8eaf0;">
+    return `<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.5; color:var(--kta-texte);">
         ⚠️ ${window.I18n.t("legendui.orphans.intro", { objets: totalObjets, types: orphelins.length })}
         ${details}
-        <span style="color:#8892a4;">${window.I18n.t("legendui.orphans.aide")}</span>
+        <span style="color:var(--kta-texte-3);">${window.I18n.t("legendui.orphans.aide")}</span>
       </div>`;
   }
   function _escHtml(s) { return window.ktaEsc(s); }
@@ -110,7 +110,7 @@ function afficherLegende() {
   }
 
   if (!icons) {
-    contenuIcones = `<p style="color:#8892a4; text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
+    contenuIcones = `<p style="color:var(--kta-texte-3); text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
   } else {
     const GROUPES = [
       { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
@@ -379,7 +379,7 @@ function afficherLegende() {
 
     let icx = "";
     if (!icons) {
-      icx = `<p style="color:#8892a4; text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
+      icx = `<p style="color:var(--kta-texte-3); text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
     } else {
       const GROUPES2 = [
         { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },

@@ -99,6 +99,13 @@ L'auteur active/désactive **en éditant uniquement ce fichier** :
 
 **Pour ajouter un nouveau fichier live-config** (futur) : créer le `.json` à la racine, NE PAS le mettre dans `ASSETS_TO_CACHE`, créer un module `js/xxxChecker.js` qui suit le pattern (fetch cache-bust + queue splash + notifySplashEnded). Toujours documenter le commentaire d'en-tête de `sw.js` pour rappeler "NE PAS cacher".
 
+**Stratégies du Service Worker** (liste à jour : en-tête de `sw.js`) : réseau seul pour les fichiers de contrôle
+ci-dessus, `killsw.html`, les ZIP de plan déclarés, les sondes de fraîcheur et les requêtes d'extension ou
+authentifiées ; **réseau d'abord** (délai court, repli sur la copie hors ligne) pour `docs/applications/`,
+`lang/*.json`, `data/index.json` et, sur une installation qui déclare des modules, les pages et feuilles de style
+de leurs dossiers (contrat : `community-server-line.md` §3) ; **cache d'abord** pour tout le reste, dont l'app
+elle-même — ce qui n'a pas de `?v=` n'y change qu'au bump de `CACHE_NAME`.
+
 ---
 
 ### 22. Sources de vérité version & Badge version footer (depuis 13/05/2026)
@@ -669,6 +676,7 @@ documentées ici pour la doctrine.
 | `check-uid.js` | identifiants stables (v2.1.0) + traces de suppression et fusion (v2.2.0, `historyManager` exécuté sur de faux tableaux) : exécute `js/ktaUid.js` (doublons régénérés, jamais d'écrasement, copie = uid neuf) + câblage des sites (setters, migration, touch, calques, Générateurs, rien vers KMZ/GPX) | — (préventif, né avec la fonction ; vise la perte silencieuse d'un objet à la future fusion) |
 | `check-extensions.js` | points d'extension (v2.7.0) : `ktaExtensions.js` exécuté — permission en échec = refus, gate déléguée en échec jamais remplacée par la gate community, garde des requêtes (états, origine), aucun module sur instance OFF, no-op sans extension ; câblage boot / import / export / plans ext / Générateur / SW | — (préventif, né avec la fonction) |
 | `check-modal-lifecycle.js` | cycle de vie des modales (**advisory**) | fuites de modales v1.44 |
+| `check-backlog.js` | forme de `docs/BACKLOG.md` : horizons connus, Maintenant ≤ 10, métadonnées `qui · action · fini · depuis · taille` des entrées (**advisory** ; `--sabotages` rejoue 11 cas) | backlog de 100 entrées sans prochaine action ni critère de fin |
 | `check-api-surface.js` | charge RÉELLEMENT les modules IIFE en VM, vérifie chaque export annoncé + comportements (repeinture après mutation, survie de l'override au save/load, migration `hidden` tableau, dédup collisions d'id) | `WALLPAPER_MAX_PX` (01/08) puis `DEFAULT_RENDERS` (04/08) : export fantôme → module mort au boot, `node -c` passe |
 | `check-prefs-survival.js` | toute pref écrite est bien relue par `buildAppConfigFromPlan` | magnétisme perdu au chargement de plan (03/08) |
 | `check-style-canon.js` | AUCUNE table de couleurs locale ne réapparaît (hex + `weight` + `fillOpacity` ; `width:` KML volontairement non assimilé) | 25 tables recopiées ; `inaccessible` absent de `ZS_EMBED` |

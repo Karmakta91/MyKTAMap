@@ -366,7 +366,7 @@ function afficherPlanner() {
               <label class="kta-cfg-label">${window.I18n.t("gen.vierge.hauteur")} <span class="kta-planner-req">*</span></label>
               <input class="kta-cfg-input" id="pl_vierge_h" type="number" min="500" max="12000" step="100" value="4000">
             </div>
-            <p class="kta-planner-hint" style="margin:6px 0 10px 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.vierge.limites")}</p>
+            <p class="kta-planner-hint" style="margin:6px 0 10px 0; font-size:11.5px; color:var(--kta-texte-3);">${window.I18n.t("gen.vierge.limites")}</p>
 
             <div class="kta-cfg-label" style="margin-top:6px;">${window.I18n.t("gen.vierge.couleurFond")}</div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
@@ -397,7 +397,7 @@ function afficherPlanner() {
                     style="margin-top:14px; width:100%; padding:10px;">
               ${window.I18n.t("gen.vierge.genererBtn")}
             </button>
-            <div id="pl_vierge_status" style="margin-top:8px; font-size:12px; color:#8892a4; min-height:18px;"></div>
+            <div id="pl_vierge_status" style="margin-top:8px; font-size:12px; color:var(--kta-texte-3); min-height:18px;"></div>
           </div>
 
           <!-- 🎨 07/10/2026 — Fond conseillé (plan.fondConseille) : vu dans l'app sous les parties transparentes du
@@ -580,7 +580,7 @@ function afficherPlanner() {
             <div class="kta-kmz-pt-actions">
               <button class="kta-btn kta-btn-ghost kta-btn-small" id="pl_geo_B_estimer" type="button" title="${window.I18n.t("config.georef.estimerTitle")}">🧭 ${window.I18n.t("config.georef.estimerBtn")}</button>
             </div>
-            <div id="pl_geo_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ${window.I18n.t("config.georef.estimeBadge")}</div>
+            <div id="pl_geo_B_estime_badge" class="kta-planner-info" style="display:none; color:var(--kta-accent-texte); margin:4px 0 0;">≈ ${window.I18n.t("config.georef.estimeBadge")}</div>
           </div>
           <!-- 📐 v1.73.0 : Point C OPTIONNEL — affine anti-déformation (assemblages) -->
           <div class="kta-kmz-section" style="margin:8px 0;">
@@ -596,7 +596,7 @@ function afficherPlanner() {
             </div>
             <div class="kta-gps-coords-error" id="pl_geo_C_err" style="display:none;"></div>
           </div>
-          <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
+          <div id="pl_geo_status" style="font-size:12px; color:var(--kta-texte-3); margin:6px 2px 0; min-height:18px;"></div>
         </div>
 
         <!-- 📖 v1.37.0 — PDF Histoire (optionnel, avancé). Embed dans le ZIP
@@ -650,7 +650,7 @@ function afficherPlanner() {
 
   // B estimé : A + échelle (#pl_scale) + Nord (#pl_northOffset) + dimensions de l'image. Mêmes règles que
   // ⚙️ Réglages (refus explicites, récap, badge « estimé »). Le champ `estimated` n'est pas écrit dans
-  // plan.georef (dette notée au BACKLOG).
+  // plan.georef (dette : docs/IDEES.md).
   const _btnEstimerGen = document.getElementById("pl_geo_B_estimer");
   if (_btnEstimerGen) _btnEstimerGen.addEventListener("click", async function() {
     const ax = parseFloat(document.getElementById("pl_geo_A_x").value);
@@ -1793,7 +1793,7 @@ function _genererImageVierge() {
   const setStatus = function(msg, color) {
     if (statusEl) {
       statusEl.textContent = msg;
-      statusEl.style.color = color || "#8892a4";
+      statusEl.style.color = color || "var(--kta-texte-3)";
     }
   };
 
@@ -1946,7 +1946,7 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     <input type="file" id="${id}_file" accept="image/*" style="display:none">
     <span class="kta-planner-icon-path" id="${id}_path"
       title="${_pathTitle}"
-      style="font-size:11px;color:#8892a4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:6px;">
+      style="font-size:11px;color:var(--kta-texte-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:6px;">
       ${_pathLabel}
     </span>
     ${sys ? "" : `<button class="kta-planner-remove-btn" data-remove="${id}">✕</button>`}
@@ -2039,10 +2039,10 @@ function _ajouterImageLayer(prefill) {
     <!-- 🆕 v1.38.1 — Section calibration 2 ancres (embarquée durablement dans plan-config.json).
          Hint auto-affiché : dims layer vs dims plan → ✅ inutile / ⚠️ utile. Stocké dans item._calibration. -->
     <div class="kta-planner-calib-section" style="margin-top:8px; padding:6px 8px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px dashed rgba(255,255,255,0.1);">
-      <div style="font-size:11.5px; color:#8892a4; margin-bottom:4px;">
+      <div style="font-size:11.5px; color:var(--kta-texte-3); margin-bottom:4px;">
         📐 <strong>${window.I18n.t("gen.calib.titre")}</strong>
       </div>
-      <div id="${id}_calib_hint" style="font-size:11px; color:#8892a4; margin-bottom:4px; min-height:14px;">${window.I18n.t("gen.calib.hintChoisir")}</div>
+      <div id="${id}_calib_hint" style="font-size:11px; color:var(--kta-texte-3); margin-bottom:4px; min-height:14px;">${window.I18n.t("gen.calib.hintChoisir")}</div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <button type="button" class="kta-planner-add-btn" id="${id}_calib_btn" disabled>${window.I18n.t("gen.calib.calibrerBtn")}</button>
         <button type="button" class="kta-planner-add-btn" id="${id}_calib_reset_btn" style="display:none;">${window.I18n.t("gen.calib.resetBtn")}</button>
@@ -2111,13 +2111,13 @@ function _ajouterImageLayer(prefill) {
     const planW = parseInt(document.getElementById("pl_width")?.value || "0", 10);
     const planH = parseInt(document.getElementById("pl_height")?.value || "0", 10);
     if (!planW || !planH) {
-      hintEl.innerHTML = '<span style="color:#8892a4;">' + window.I18n.t("gen.calib.hintPlanPasCharge") + '</span>';
+      hintEl.innerHTML = '<span style="color:var(--kta-texte-3);">' + window.I18n.t("gen.calib.hintPlanPasCharge") + '</span>';
       calibBtn.disabled = true;
       return;
     }
     _getLayerSourceInfo().then(function(info) {
       if (!info) {
-        hintEl.innerHTML = '<span style="color:#8892a4;">' + window.I18n.t("gen.calib.hintChoisir") + '</span>';
+        hintEl.innerHTML = '<span style="color:var(--kta-texte-3);">' + window.I18n.t("gen.calib.hintChoisir") + '</span>';
         calibBtn.disabled = true;
         return;
       }
@@ -2126,7 +2126,7 @@ function _ajouterImageLayer(prefill) {
         hintEl.innerHTML = '<span style="color:#7dd87d;">' + window.I18n.t("gen.calib.hintMeme", { w: info.width, h: info.height }) + '</span>';
         calibBtn.disabled = false;  // on autorise quand même au cas où
       } else {
-        hintEl.innerHTML = '<span style="color:#f4c542;">' + window.I18n.t("gen.calib.hintDiff", { w: info.width, h: info.height, pw: planW, ph: planH }) + '</span>';
+        hintEl.innerHTML = '<span style="color:var(--kta-accent-texte);">' + window.I18n.t("gen.calib.hintDiff", { w: info.width, h: info.height, pw: planW, ph: planH }) + '</span>';
         calibBtn.disabled = false;
       }
       // Blob URL libérée : le picker en recrée une.
@@ -2561,7 +2561,7 @@ function _afficherErreurV2(titre, message) {
         '<p class="kta-v2-error-message">' + safeMessage + '</p>' +
         '<div class="kta-v2-warn-section kta-v2-warn-section-good">' +
           '<div class="kta-v2-warn-section-titre">' + window.I18n.t("gen.v2err.queFaire") + '</div>' +
-          '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:#c8d0e0; line-height:1.6;">' +
+          '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:var(--kta-texte-2); line-height:1.6;">' +
             '<li>' + window.I18n.t("gen.v2err.consPC") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consReduire") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consJpeg") + '</li>' +
@@ -3519,7 +3519,7 @@ async function _genererZip() {
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
               '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
             '</div>' +
-            '<p style="font-size:11.5px; color:#8892a4; margin:14px 0 0; line-height:1.5;">' +
+            '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:14px 0 0; line-height:1.5;">' +
               window.I18n.t("gen.v2prog.warn") +
             '</p>' +
           '</div>' +
@@ -3791,7 +3791,7 @@ function _afficherImporterKmz(prefilledFile) {
       </div>
       <div class="kta-readme-modal-corps" id="kta-kmz-imp-corps">
 
-        <div style="padding:8px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${window.I18n.t("gen.kmz.phase1")}</div>
+        <div style="padding:8px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; font-size:12px; color:var(--kta-texte-2); margin-bottom:14px;">${window.I18n.t("gen.kmz.phase1")}</div>
 
         <!-- 1. UPLOAD -->
         <div class="kta-aide-section" id="kta-kmz-imp-step-upload">
@@ -4005,9 +4005,9 @@ async function _kmzImpAnalyserFichier(file) {
 
     const docName = (kmlDoc.querySelector("Document > name")?.textContent || "").trim() || window.I18n.t("gen.kmz.sansNom");
     const overlaysExtra = overlays.length > 1
-      ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">${window.I18n.t("gen.kmz.overlaysExtra", { n: overlays.length - 1 })}</div>` : "";
+      ? `<div style="color:var(--kta-avert); font-size:12px; margin-top:4px;">${window.I18n.t("gen.kmz.overlaysExtra", { n: overlays.length - 1 })}</div>` : "";
     const mgWarn = mgCount > 0
-      ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">${window.I18n.t("gen.kmz.mgWarn", { n: mgCount })}</div>` : "";
+      ? `<div style="color:var(--kta-avert); font-size:12px; margin-top:4px;">${window.I18n.t("gen.kmz.mgWarn", { n: mgCount })}</div>` : "";
 
     // Légende du plan embarquée (`myktamap-extras.json` > customLegend) : une ligne de résumé le dit.
     // Absente (KMZ tiers ou ancien) : rien.
@@ -4034,7 +4034,7 @@ async function _kmzImpAnalyserFichier(file) {
                 if (renamed > 0) parts.push(renamed + " " + window.I18n.t(renamed > 1 ? "gen.legende.renommesP" : "gen.legende.renomme"));
                 if (hiddenN > 0) parts.push(hiddenN + " " + window.I18n.t(hiddenN > 1 ? "gen.legende.masquesP"  : "gen.legende.masque"));
                 if (customN > 0) parts.push(customN + " " + window.I18n.t(customN > 1 ? "gen.legende.customsP"   : "gen.legende.custom"));
-                legendInfo = `<div style="color:#6ce28a; font-size:12px; margin-top:6px;">
+                legendInfo = `<div style="color:var(--kta-ok); font-size:12px; margin-top:6px;">
                   ${window.I18n.t("gen.imp.legendeDetectee", { parts: parts.join(" · ") })}
                 </div>`;
               }
@@ -4049,14 +4049,14 @@ async function _kmzImpAnalyserFichier(file) {
     document.getElementById("kta-kmz-imp-resume").innerHTML = `
       <div>📄 <strong>${window.I18n.t("gen.kmz.docKml")}</strong> : ${_escHtml(docName)}</div>
       <div>🖼️ <strong>${window.I18n.t("gen.kmz.imagePlan")}</strong> : ${dims.width} × ${dims.height} px
-        <span style="color:#8892a4;">(${_escHtml(base.name || base.hrefBlob.type || "image")})</span></div>
+        <span style="color:var(--kta-texte-3);">(${_escHtml(base.name || base.hrefBlob.type || "image")})</span></div>
       <div>📐 <strong>${window.I18n.t("gen.kmz.echelleCalibrage")}</strong> : ${transform.metresParPixel.toFixed(3)} m/px
         · ${window.I18n.t("gen.kmz.rotation")} ${(transform.rotation * 180 / Math.PI).toFixed(1)}°</div>
       <div style="margin-top:8px;">
         📍 <strong>${ptCount}</strong> ${window.I18n.t("gen.kmz.points")}
         · 🛣️ <strong>${lsCount}</strong> ${window.I18n.t("gen.kmz.lignes")}
         · ⬛ <strong>${pgCount}</strong> ${window.I18n.t("gen.kmz.polygones")}
-        <span style="color:#8892a4;">${window.I18n.t("gen.kmz.placemarkTotal", { n: pmCount })}</span>
+        <span style="color:var(--kta-texte-3);">${window.I18n.t("gen.kmz.placemarkTotal", { n: pmCount })}</span>
       </div>
       ${legendInfo}${overlaysExtra}${mgWarn}
     `;
@@ -4092,19 +4092,19 @@ function _kmzImpAfficherModaleNonCompatible(fichier) {
   m.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
       '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
-        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + T("gen.kmzIncompat.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + T("gen.kmzIncompat.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-kmz-imp-incompat-close">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' + T("gen.kmzIncompat.txt") + '</p>' +
+        '<p style="font-size:13.5px; color:var(--kta-texte-2); line-height:1.6; margin:0 0 12px;">' + T("gen.kmzIncompat.txt") + '</p>' +
         (peutBasculer
-          ? '<div style="padding:10px 12px; background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8; line-height:1.55;">' +
+          ? '<div style="padding:10px 12px; background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:var(--kta-texte-2); line-height:1.55;">' +
               T("gen.kmzIncompat.sigTxt") +
-              '<div style="margin-top:8px; color:#6ce28a; font-weight:600;" id="kta-kmz-sig-compte">' +
+              '<div style="margin-top:8px; color:var(--kta-ok); font-weight:600;" id="kta-kmz-sig-compte">' +
                 T("gen.kmzIncompat.sigCompte", { s: DELAI }) +
               '</div>' +
             '</div>'
-          : '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' + T("gen.kmzIncompat.aide") + '</div>') +
+          : '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:var(--kta-texte-2);">' + T("gen.kmzIncompat.aide") + '</div>') +
         '<div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
           (peutBasculer
             ? '<button class="kta-btn kta-btn-ghost" id="kta-kmz-imp-incompat-rester">' + T("gen.kmzIncompat.rester") + '</button>' +
@@ -4152,13 +4152,13 @@ function _kmzImpAfficherModaleErrSansImage() {
   m.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
       '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
-        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + window.I18n.t("gen.kmzNoImg.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + window.I18n.t("gen.kmzNoImg.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-kmz-imp-noimg-close">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' + window.I18n.t("gen.kmzNoImg.txt1") + '</p>' +
-        '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">' + window.I18n.t("gen.kmzNoImg.txt2") + '</p>' +
-        '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' + window.I18n.t("gen.kmzNoImg.solutions") + '</div>' +
+        '<p style="font-size:13.5px; color:var(--kta-texte-2); line-height:1.6; margin:0 0 12px;">' + window.I18n.t("gen.kmzNoImg.txt1") + '</p>' +
+        '<p style="font-size:13px; color:var(--kta-texte-2); line-height:1.6; margin:0 0 14px;">' + window.I18n.t("gen.kmzNoImg.txt2") + '</p>' +
+        '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:var(--kta-texte-2);">' + window.I18n.t("gen.kmzNoImg.solutions") + '</div>' +
         '<div style="display:flex; justify-content:flex-end;">' +
           '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-noimg-ok">' + window.I18n.t("gen.btn.jaiCompris") + '</button>' +
         '</div>' +
@@ -4226,7 +4226,7 @@ async function _kmzImpGenerer() {
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
               '<div id="kta-kmz-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
             '</div>' +
-            '<p style="font-size:11.5px; color:#8892a4; margin:14px 0 0; line-height:1.5;">' +
+            '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:14px 0 0; line-height:1.5;">' +
               window.I18n.t("gen.v2prog.warn") +
             '</p>' +
           '</div>' +
@@ -4284,7 +4284,7 @@ async function _kmzImpGenerer() {
 
     const s = ingested.stats;
     status.innerHTML = window.I18n.t("gen.kmz.zipGenere") + " " +
-      "<span style='color:#c0c8d8;'>" + window.I18n.t("gen.kmz.statsGardes", { n: s.kept }) + " · " +
+      "<span style='color:var(--kta-texte-2);'>" + window.I18n.t("gen.kmz.statsGardes", { n: s.kept }) + " · " +
       window.I18n.t("gen.kmz.statsSautes", { n: s.skipped }) +
       (s.outOfBounds > 0 ? " · " + window.I18n.t("gen.kmz.statsHorsBounds", { n: s.outOfBounds }) : "") +
       (s.multiGeometry > 0 ? " · " + window.I18n.t("gen.kmz.statsMultiGeo", { n: s.multiGeometry }) : "") +
@@ -4503,8 +4503,8 @@ async function _gpxImpAnalyserFichier(file) {
     };
 
     const sourceLine = isMkm
-      ? '<div style="color:#6ce28a;">' + window.I18n.t("gen.gpx.sourceMkm") + '</div>'
-      : '<div style="color:#ffb380;">' + window.I18n.t("gen.gpx.sourceTiers") + '</div>';
+      ? '<div style="color:var(--kta-ok);">' + window.I18n.t("gen.gpx.sourceMkm") + '</div>'
+      : '<div style="color:var(--kta-avert);">' + window.I18n.t("gen.gpx.sourceTiers") + '</div>';
     const dLat = bounds.latMax - bounds.latMin;
     const dLng = bounds.lngMax - bounds.lngMin;
 
@@ -4523,7 +4523,7 @@ async function _gpxImpAnalyserFichier(file) {
         if (renamed > 0) parts.push(renamed + " " + window.I18n.t(renamed > 1 ? "gen.legende.renommesP" : "gen.legende.renomme"));
         if (hiddenN > 0) parts.push(hiddenN + " " + window.I18n.t(hiddenN > 1 ? "gen.legende.masquesP"  : "gen.legende.masque"));
         if (customN > 0) parts.push(customN + " " + window.I18n.t(customN > 1 ? "gen.legende.customsP"   : "gen.legende.custom"));
-        legendInfo = `<div style="color:#6ce28a; font-size:12px; margin-top:6px;">
+        legendInfo = `<div style="color:var(--kta-ok); font-size:12px; margin-top:6px;">
           ${window.I18n.t("gen.imp.legendeDetectee", { parts: parts.join(" · ") })}
         </div>`;
       }
@@ -4679,7 +4679,7 @@ function _afficherImporterSig(prefilledFile) {
       </div>
       <div class="kta-readme-modal-corps">
 
-        <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${T("gen.sig.crsInfo")}</div>
+        <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:var(--kta-texte-2); margin-bottom:14px;">${T("gen.sig.crsInfo")}</div>
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${T("gen.sig.fichierTitre")}</div>
@@ -4720,7 +4720,7 @@ function _afficherImporterSig(prefilledFile) {
           <label class="kta-planner-check" style="margin-top:8px; display:flex; align-items:flex-start; gap:8px;">
             <input type="checkbox" id="kta-sig-imp-couleurs-niveau" checked style="margin-top:3px;">
             <span><strong>🎨 ${T("gen.sig.couleursNiveauTitre")}</strong><br>
-            <span style="color:#8892a4; font-size:11.5px;">${T("gen.sig.couleursNiveauHint")}</span></span>
+            <span style="color:var(--kta-texte-3); font-size:11.5px;">${T("gen.sig.couleursNiveauHint")}</span></span>
           </label>
           <!-- 🏷️ v1.82.0 — renommer/recolorer SANS repasser par le générateur.
                KARMA : « obligé de repasser ensuite en génération normale pour
@@ -4728,7 +4728,7 @@ function _afficherImporterSig(prefilledFile) {
                que le générateur de plans, sur les entrées de cet import. -->
           <button type="button" class="kta-planner-btn" id="kta-sig-imp-legende"
                   style="margin-top:8px; display:none;">🏷️ ${T("gen.sig.legendeBtn")}</button>
-          <div id="kta-sig-imp-legende-etat" style="font-size:11.5px; color:#8892a4; margin-top:4px;"></div>
+          <div id="kta-sig-imp-legende-etat" style="font-size:11.5px; color:var(--kta-texte-3); margin-top:4px;"></div>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
         </div>
 
@@ -4844,13 +4844,13 @@ function _sigImpMajEtatLegende() {
   }
   // Le message ne dépend PAS de la visibilité du bouton : libellés et couleurs des types intégrés partent
   // dans le plan même si la couleur par niveau a été décochée.
-  let txt = "", couleur = "#8892a4";
+  let txt = "", couleur = "var(--kta-texte-3)";
   if (_sigLegendeReset) {
     txt = "⚠️ " + window.I18n.t("gen.sig.legendeReset");
-    couleur = "#ffb380";
+    couleur = "var(--kta-avert)";
   } else {
     const n = _sigImpCompterLegende(_sigPlanLegend);
-    if (n) { txt = "🏷️ " + window.I18n.t("gen.sig.legendeEdite", { n: n }); couleur = "#8cb4ff"; }
+    if (n) { txt = "🏷️ " + window.I18n.t("gen.sig.legendeEdite", { n: n }); couleur = "var(--kta-interaction)"; }
   }
   [eta, recap].forEach(function (el) {
     if (!el) return;
@@ -4927,7 +4927,7 @@ async function _sigImpAnalyserFichier(file) {
              + T("gen.sig.resume", {
                  p: data.points.length, l: data.lignes.length, z: data.polygones.length
                }) + '</div>'
-             + '<div style="color:#8892a4; font-size:12px; margin-top:4px;">'
+             + '<div style="color:var(--kta-texte-3); font-size:12px; margin-top:4px;">'
              + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
              + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
              + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
@@ -4935,17 +4935,17 @@ async function _sigImpAnalyserFichier(file) {
     // sans décider à la place de l'utilisateur).
     const _nSig = (data.points||[]).length + (data.lignes||[]).length + (data.polygones||[]).length;
     if (window.SigImport.WARN_FEATURES && _nSig > window.SigImport.WARN_FEATURES) {
-      html += '<div style="color:#ffb380; font-size:12px; margin-top:6px; padding:6px 8px;'
+      html += '<div style="color:var(--kta-avert); font-size:12px; margin-top:6px; padding:6px 8px;'
             + ' background:rgba(255,179,128,0.08); border-left:3px solid rgba(255,179,128,0.55);'
             + ' border-radius:3px;">⚠️ ' + T("gen.sig.beaucoupFeatures", { n: _nSig }) + '</div>';
     }
     if (_sigReproj > 0) {
-      html += '<div style="color:#8cb4ff; font-size:12px; margin-top:6px; padding:6px 8px;'
+      html += '<div style="color:var(--kta-interaction); font-size:12px; margin-top:6px; padding:6px 8px;'
             + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
             + ' border-radius:3px;">📐 ' + T("gen.sig.l93Converti", { n: _sigReproj }) + '</div>';
     }
     (data.avertissements || []).forEach(function(a) {
-      html += '<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';
+      html += '<div style="color:var(--kta-avert); font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';
     });
     document.getElementById("kta-sig-imp-resume").innerHTML = html;
     document.getElementById("kta-sig-imp-step-resume").style.display = "";
@@ -5096,7 +5096,7 @@ function _sigImpApercuNiveaux() {
   scan(d.points); scan(d.lignes); scan(d.polygones);
   const cles = Object.keys(compte).sort(function(a, b) { return Number(b) - Number(a); });
   if (!cles.length) { box.innerHTML = ""; return; }
-  box.innerHTML = '<div style="font-size:12px; color:#c8d0e0; padding:6px 8px;'
+  box.innerHTML = '<div style="font-size:12px; color:var(--kta-texte-2); padding:6px 8px;'
     + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
     + ' border-radius:3px;">🏔️ ' + T("gen.sig.niveauApercu", { n: cles.length }) + ' — '
     + cles.map(function(k) { return k + ' : ' + compte[k]; }).join(' · ') + '</div>';
@@ -5110,7 +5110,7 @@ function _sigImpRendreTables() {
   const box = document.getElementById("kta-sig-imp-map-tables");
   if (!box || !_sigImportState) return;
   const cle = document.getElementById("kta-sig-imp-colonne").value;
-  if (!cle) { box.innerHTML = '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapAucune") + '</div>'; return; }
+  if (!cle) { box.innerHTML = '<div style="color:var(--kta-texte-3); font-size:12px;">' + T("gen.sig.mapAucune") + '</div>'; return; }
 
   const parFam = window.SigImport.valeursParFamille(_sigImportState.data, cle);
   const catPour = { points: null, lignes: "traces", polygones: "zones" };
@@ -5128,7 +5128,7 @@ function _sigImpRendreTables() {
     vals.forEach(function(v) {
       const sugg = propose[v] || "";
       html += '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;">'
-           +  '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#c0c8d8;" title="' + _escAttrSig(v) + '">' + _escHtmlSig(v) + '</span>'
+           +  '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--kta-texte-2);" title="' + _escAttrSig(v) + '">' + _escHtmlSig(v) + '</span>'
            +  '<select class="kta-cfg-input" data-sig-fam="' + fam + '" data-sig-val="' + _escAttrSig(v) + '" style="flex:0 0 46%;">'
            +  (function() {
                 const opt = function(t) {
@@ -5147,7 +5147,7 @@ function _sigImpRendreTables() {
     });
     html += '</div>';
   });
-  box.innerHTML = html || '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
+  box.innerHTML = html || '<div style="color:var(--kta-texte-3); font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
 
   // 🩸 Changer le routage change les id des entrées de légende : celles déjà éditées seraient perdues sans
   // explication. On repart d'une légende vierge et le bouton le dit.

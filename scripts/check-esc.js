@@ -7,7 +7,8 @@
 // attribut value="…", un repli `function(x){return x;}` n'échappe RIEN. Sur tous les js/*.js (tout l'arbre,
 // pas l'index : rien à passer en CI) :
 //   1. ktaEsc défini une seule fois, dans js/langManager.js, et il échappe vraiment (exécuté) ;
-//   2. langManager.js est le 2e script d'index.html (après copyright.js, sans defer) ;
+//   2. langManager.js est le 2e script d'index.html (après copyright.js, sans defer ; js/ktaSplash.js, qui
+//      n'écrit aucun HTML, peut les précéder) ;
 //   3. aucune copie locale : une ligne qui produit « &amp; » ou « &lt; » (littéral entre guillemets) hors
 //      EXCEPTIONS ; un module garde au plus un alias (`function _esc(s) { return window.ktaEsc(s); }`) ;
 //   4. aucun repli « ktaEsc || function… » (ktaEsc est toujours là : un repli ne sert qu'à mal échapper).
@@ -59,8 +60,11 @@ const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
 // ── 2. Chargé avant ses utilisateurs ──────────
 {
   const html = lire("index.html");
-  const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((m) => m[1]);
-  t("index.html : langManager.js est le 2e script (après copyright.js), sans defer",
+  // js/ktaSplash.js passe devant (version du splash avant la première peinture) : il n'écrit aucun HTML.
+  const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((m) => m[1])
+    .filter((src) => src !== "js/ktaSplash.js");
+  t("js/ktaSplash.js (avant langManager.js) n'écrit aucun HTML", !/ktaEsc|innerHTML/.test(lire("js/ktaSplash.js")));
+  t("index.html : langManager.js est le 2e script (après copyright.js, hors splash), sans defer",
     scripts[0] === "js/copyright.js" && scripts[1] === "js/langManager.js" &&
     /<script src="js\/langManager\.js"><\/script>/.test(html), scripts.slice(0, 3).join(", "));
 }

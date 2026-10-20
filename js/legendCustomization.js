@@ -650,12 +650,12 @@ window.LegendCustomization = (function() {
         '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
           // La case ne masque RIEN sur la carte, seulement dans la BOÎTE de légende ; le masquage carte vit
           // dans 🔍 Filtres (deux contrôles concurrents sinon). On l'explique au lieu de la changer.
-          '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
+          '<p style="font-size:12px; color:var(--kta-texte-3); margin:0 0 12px 0; line-height:1.5;">' +
             window.I18n.t("legend.editor.hintVisibilite") +
           '</p>' +
           '<div id="kta-legend-editor-list"></div>' +
         '</div>' +
-        '<div style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
+        '<div style="padding:12px 16px; border-top:1px solid var(--kta-bordure); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
           '<div style="display:flex; gap:8px;">' +
             '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-add">' +
               window.I18n.t("legend.editor.add") +
@@ -909,7 +909,7 @@ window.LegendCustomization = (function() {
     wrap.innerHTML =
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
-          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">' +
+          '<h3 style="margin:0; font-size:16px; color:var(--kta-texte);">' +
             ((prefill && prefill.titre) || window.I18n.t("legend.add.title")) + '</h3>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-lc-add-close" style="padding:2px 8px;">✕</button>' +
         '</div>' +
@@ -929,11 +929,11 @@ window.LegendCustomization = (function() {
           '<div style="display:flex; gap:6px;">' +
             '<label class="kta-export-radio-row" style="flex:1;">' +
               '<input type="radio" name="kta-lc-add-geom" value="polygon" checked>' +
-              '<span>' + window.I18n.t("legend.add.polygon") + ' <span style="color:#8892a4; font-size:11px;">' + window.I18n.t("legend.add.polygonHint") + '</span></span>' +
+              '<span>' + window.I18n.t("legend.add.polygon") + ' <span style="color:var(--kta-texte-3); font-size:11px;">' + window.I18n.t("legend.add.polygonHint") + '</span></span>' +
             '</label>' +
             '<label class="kta-export-radio-row" style="flex:1;">' +
               '<input type="radio" name="kta-lc-add-geom" value="polyline">' +
-              '<span>' + window.I18n.t("legend.add.polyline") + ' <span style="color:#8892a4; font-size:11px;">' + window.I18n.t("legend.add.polylineHint") + '</span></span>' +
+              '<span>' + window.I18n.t("legend.add.polyline") + ' <span style="color:var(--kta-texte-3); font-size:11px;">' + window.I18n.t("legend.add.polylineHint") + '</span></span>' +
             '</label>' +
           '</div>' +
         '</div>' +

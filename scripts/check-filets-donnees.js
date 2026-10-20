@@ -48,9 +48,12 @@ function bloc(src, debut, fin) {
   const s = lire("js/sessionPersist.js");
   const clearBtn = bloc(s, "modal.querySelector('[data-action=\"clear\"]')", "modal.addEventListener(\"click\"");
   // Confirmation = SEUL chemin vers go() (hors repli « helper absent ») : garde exacte ET appel conditionné
-  // (une branche morte `if (false)` contenant le texte ne doit pas suffire).
+  // (une branche morte `if (false)` contenant le texte ne doit pas suffire). Deux formes : confirmation simple, et
+  // choix « cet appareil / rendre à l'équipe » quand la restitution des calques se partage.
   verif(clearBtn.includes('if (typeof window.ktaConfirm === "function") {') &&
-        /window\.ktaConfirm\(msg, \{[\s\S]*?\}\)\.then\(function\(ok\) \{ if \(ok\) go\(\); \}\);/.test(clearBtn),
+        /window\.ktaConfirm\(msg, \{[\s\S]*?\}\)\.then\(function\(ok\) \{ if \(ok\) go\(false\); \}\);/.test(clearBtn) &&
+        /window\.ktaConfirm\(msg \+ [\s\S]*?\}\)\.then\(function\(choix\) \{ if \(choix\) go\(choix === "equipe"\); \}\);/
+          .test(clearBtn),
         "🩸 « Effacer la session » passe par ktaConfirm (garde exacte + go() conditionné)");
   verif(clearBtn.includes('snapshot("before-clear-session")') && clearBtn.includes("snapshotFait: true"),
         "🩸 « Effacer la session » : snapshot attendu, puis clear({ snapshotFait })");

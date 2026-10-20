@@ -150,6 +150,8 @@ In Chrome, open `myktamap.fr`, click **Install** at the right of the address bar
 
 ### 📦 Load a map
 
+When the app opens, the **startup screen** draws a gallery (about 4 s), then gives way to the home screen as soon as it is ready. A tap, a click or Esc skips it. If your device is set to reduce motion, it appears without animation.
+
 The home screen offers:
 
 - **▶️ Resume [name]** — reopens the last map you used.
@@ -367,7 +369,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 
 *Example: to see only two kinds of shafts, 🏷️ Point tags → 🚫 None, then tick the two tags you want again.*
 
-> 🔄 **Correcting a data layer** — a layer shipped with the map can be hidden but not edited. The **🔄 Edit** button on its row copies it into your session, where all your tools apply (for instance 🔄 Convert this object); the original hides itself (“being edited — show anyway” lets you compare). Before acting, the app tells you how much space the copy will take and how much your sessions already use. **↩️ Restore** drops your changes; **💾 Export** produces the corrected file of **that layer only**, to hand back to the map via 🏗️ Generator → “Edit a plan”, “Choose” button on the layer's row: it replaces the old content. What you drew yourself is not part of it (the app tells you how many objects are left out of the file). Clearing the session restores the layers opened for editing; re-importing your session on this map puts them back in edit mode.
+> 🔄 **Correcting a data layer** — a layer shipped with the map can be hidden but not edited. The **🔄 Edit** button on its row copies it into your session, where all your tools apply (for instance 🔄 Convert this object); the original hides itself (“being edited — show anyway” lets you compare). Before acting, the app tells you how much space the copy will take and how much your sessions already use. **↩️ Restore** drops your changes; **💾 Export** produces the corrected file of **that layer only**, to hand back to the map via 🏗️ Generator → “Edit a plan”, “Choose” button on the layer's row: it replaces the old content. What you drew yourself is not part of it (the app tells you how many objects are left out of the file), unless you attach it: **➕ Add drawn objects**, on the layer's row, lists your drawings on the map by family (nothing ticked in advance, “Tick all”, “Created by” filter on a connected installation); the chosen objects then go into the layer's file, and ⏪ undoes it. An added object belongs to the layer: restoring the layer removes it too, and the restore window says how many. Clearing the session restores the layers opened for editing; re-importing your session on this map puts them back in edit mode. On a connected installation, “Clear the session” lets you choose: **clear on this device only** (layers opened for editing by the team come back from the server, still being edited) or **also give the layers back to the team** (they return to their original for everyone, and edits the others have not exported on these copies are lost). On a connected installation, a layer opened for editing by another account also shows as such on your side, and restoring it restores it on every device (a copy changed since then stays, flagged as a duplicate).
 
 ### 🗺️ Legend
 
@@ -758,6 +760,7 @@ A tap on **a path, a zone or a structure you drew** opens its popup:
 | **Text area** | A free note — state of the passage, observation, reminder |
 | **💾 Save note** | Saves the note and closes the popup |
 | **🔄 Convert** | Changes the object's **type**, and if needed its **family** |
+| **Level** | On a multi-level map: moves the object to another level (see 🏗️ Multi-level mode) |
 | **🗑️ Delete** | Removes the object (in red, on its own row) |
 
 An object from a data layer opens a read-only popup.
@@ -843,6 +846,12 @@ A **yellow pill** under the zoom buttons shows the **active level**. A tap opens
 - **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. A junction stays visible if either of its two levels is.
 
 If the map contains elements on other levels, the list extends by itself. The same settings exist in ≡ **Filters**. For image export, **🎨 Advanced → 🏗️ Levels to export** chooses the levels independently of what is displayed.
+
+### 🔀 Changing an object's level
+
+An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
+
+No list on a junction (delete it and draw it again), on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
 ### 🪜 Drawing an inter-level junction
 
@@ -978,7 +987,7 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 
 - **💾 Full export** — the whole session in one file, to import again later: points, paths, zones, structures, measurements and tracker data (position, trail, timeline: replay works after re-import). `.json`, or `.zip` if you tick the photos. The **🛡️ Anonymize for public sharing** option replaces names with codes and removes the tracker data.
 - **🎨 Advanced export** — you choose: points (by icon, including “no tag”), paths, zones and structures (by type), measurements, tracker (a counter shows what it holds). Output as a **📄 Single session file** that can be re-imported, or a **📦 Multi-file ZIP** (one per category).
-- **🔎 Keep only** (at the top of both) — limits points, paths, zones and structures to a **period** (date of their last change) and, on a connected installation, to their author (**Created by**); a counter shows how many go out. Tracking, measurements and notes are exported as they are.
+- **🔎 Keep only** (at the top of both) — limits points, paths, zones and structures to a **period** (date of their last change) and, on a connected installation, to their author (**Created by**); a counter shows how many go out. On another account's ☁️ map, export is still possible but limited to **your** additions: “Created by” is set to you. Tracking, measurements and notes are exported as they are.
 
 ### 🖼️ Exporting as an image
 

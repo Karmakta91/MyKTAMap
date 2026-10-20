@@ -20,7 +20,13 @@ et, sur une installation reliée, « Créé par » (prise `auteurObjet`, `commun
 `_compter()` sur les **annotations** (points, tracés, zones, structures) : résumé, photos des points retenus et fichier
 exporté suivent ; suivi, mesures et notes partent tels quels. Un objet sans date (ou sans auteur connu) n'est pas retenu
 par un filtre qui porte sur ce critère. Remis à zéro à chaque ouverture ; les autres onglets (conversion, fusion, KMZ,
-GPX) ne sont pas filtrés.
+GPX) ne sont pas filtrés. Les photos ne suivent que les points retenus, Complet compris.
+
+**Export limité par l'installation** (prise `exportAutorise` → `{ auteur }`, `community-server-line.md` §3 : plan d'un
+autre compte) : Complet et Avancé s'ouvrent avec « Créé par » **imposé** sur ce pseudo (liste désactivée, mention
+`export.filtre.impose`) ; les copies de calque (`_srcCalque`) ne partent jamais, ni les traces de suppression ni les
+liaisons inter-plan. La conversion, l'export d'un calque rapatrié (`CalqueSession.exporterCalque`) et l'export de profil
+restent refusés.
 
 ### 5. Légende exportée — 5 groupes équilibrés (depuis 06/05/2026)
 

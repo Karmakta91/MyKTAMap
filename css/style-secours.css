@@ -37,16 +37,16 @@
 .kta-secours-context-imported-titre {
   font-size: 12px;
   font-weight: 600;
-  color: #ff8c8c;
+  color: var(--kta-erreur);
   margin-bottom: 6px;
 }
 .kta-secours-context-imported-row {
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   padding: 3px 0;
 }
 .kta-secours-context-imported-row strong {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-secours-context-imported-actions {
   display: flex;
@@ -86,7 +86,7 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
 }
 .kta-secours-tool-block-desc {
   font-size: 11px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   line-height: 1.45;
   margin-bottom: 8px;
   font-style: italic;
@@ -109,7 +109,7 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   transition: opacity 0.15s;
 }
 .kta-secours-pause-input-wrap input[type="number"] {
@@ -118,7 +118,7 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(244, 197, 66, 0.40);
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 13px;
   text-align: center;
 }
@@ -133,7 +133,7 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   cursor: not-allowed;
 }
 .kta-secours-pause-unit {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 12px;
 }
 /* Thème clair */
@@ -149,7 +149,7 @@ html.kta-theme-light .kta-secours-pause-input-wrap input[type="number"] {
 }
 body.kta-theme-light .kta-secours-pause-unit,
 html.kta-theme-light .kta-secours-pause-unit {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-tool-block,
 html.kta-theme-light .kta-secours-tool-block {
@@ -162,7 +162,7 @@ html.kta-theme-light .kta-secours-tool-block-titre {
 }
 body.kta-theme-light .kta-secours-tool-block-desc,
 html.kta-theme-light .kta-secours-tool-block-desc {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 
 /* 🆕 v1.23.0 Phase 2 / Feature F — Favoris en accès rapide dans la modale
@@ -177,7 +177,7 @@ html.kta-theme-light .kta-secours-tool-block-desc {
 .kta-secours-pick-favoris-titre {
   font-size: 11px;
   font-weight: 600;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -190,7 +190,7 @@ html.kta-theme-light .kta-secours-tool-block-desc {
 .kta-secours-pick-favori {
   background: rgba(244, 197, 66, 0.20);
   border: 1px solid rgba(244, 197, 66, 0.40);
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   padding: 5px 10px;
   border-radius: 14px;
   font-size: 12px;
@@ -208,7 +208,7 @@ html.kta-theme-light .kta-secours-tool-block-desc {
 }
 .kta-secours-pick-favoris-more {
   font-size: 10px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
   margin-top: 5px;
 }
@@ -234,7 +234,7 @@ html.kta-theme-light .kta-secours-pick-favori:hover {
 }
 body.kta-theme-light .kta-secours-pick-favoris-more,
 html.kta-theme-light .kta-secours-pick-favoris-more {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 
 /* 🆕 v1.23.2 Phase 2 / Feature G — Bouton 📌 Assigner dans les résultats
@@ -250,7 +250,7 @@ html.kta-theme-light .kta-secours-pick-favoris-more {
   transform: translateY(-50%);
   background: rgba(255, 70, 70, 0.18);
   border: 1px solid rgba(255, 70, 70, 0.45);
-  color: #ff8c8c;
+  color: var(--kta-erreur);
   border-radius: 6px;
   padding: 5px 8px;
   font-size: 14px;
@@ -283,12 +283,12 @@ html.kta-theme-light .kta-secours-pick-favoris-more {
   border-left: 3px solid #8cb4ff;
   padding: 10px 12px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   border-radius: 4px;
   margin-bottom: 14px;
 }
 .kta-secours-assign-info strong {
-  color: #8cb4ff;
+  color: var(--kta-interaction);
 }
 .kta-secours-assign-roles {
   display: flex;
@@ -304,7 +304,7 @@ html.kta-theme-light .kta-secours-pick-favoris-more {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 6px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
 }
@@ -412,7 +412,7 @@ html.kta-theme-light .kta-secours-assign-role:hover {
 .kta-secours-import-preview-titre {
   font-size: 17px;
   font-weight: 700;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   margin-bottom: 10px;
 }
 .kta-secours-import-preview-grid {
@@ -420,7 +420,7 @@ html.kta-theme-light .kta-secours-assign-role:hover {
   grid-template-columns: 1fr 1fr;
   gap: 8px 14px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 @media (max-width: 480px) {
   .kta-secours-import-preview-grid { grid-template-columns: 1fr; }
@@ -461,7 +461,7 @@ html.kta-theme-light .kta-secours-assign-role:hover {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   background: rgba(255, 255, 255, 0.02);
   padding: 6px 10px;
   border-radius: 4px;
@@ -501,7 +501,7 @@ body.kta-theme-light .kta-secours-import-preview-label,
 html.kta-theme-light .kta-secours-import-preview-label,
 body.kta-theme-light .kta-secours-import-preview-meta,
 html.kta-theme-light .kta-secours-import-preview-meta {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-import-preview-equipes li,
 html.kta-theme-light .kta-secours-import-preview-equipes li {
@@ -509,18 +509,18 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   border-color: rgba(0, 0, 0, 0.10) !important;
 }
 .kta-secours-hint {
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   font-size: 13px;
   line-height: 1.5;
   margin: 0;
 }
 .kta-secours-hint strong {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-secours-empty {
   text-align: center;
   padding: 32px 16px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 .kta-secours-empty-icon {
   font-size: 48px;
@@ -533,7 +533,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   margin-top: 6px;
 }
 .kta-secours-empty-small {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 12px;
   font-style: italic;
   padding: 6px 0;
@@ -561,7 +561,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
 .kta-secours-list-info { flex: 1; min-width: 0; }
 .kta-secours-list-nom {
   font-weight: 600;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -586,7 +586,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   gap: 14px;
 }
 .kta-secours-form-titre {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-size: 16px;
   margin: 0;
 }
@@ -598,7 +598,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
 .kta-secours-form-row label {
   font-size: 12px;
   font-weight: 600;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-form-row input[type="text"],
 .kta-secours-form-row input[type="datetime-local"],
@@ -608,7 +608,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   border: 1px solid rgba(244, 197, 66, 0.25);
   border-radius: 6px;
   padding: 7px 10px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-family: inherit;
   font-size: 13px;
 }
@@ -624,7 +624,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   border-left: 3px solid #8cb4ff;
   padding: 8px 12px;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   border-radius: 4px;
 }
 .kta-secours-form-actions {
@@ -646,7 +646,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   background: transparent;
   border: none;
   border-bottom: 1px dashed rgba(244, 197, 66, 0.35);
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-size: 16px;
   font-weight: 600;
   padding: 4px 0;
@@ -672,7 +672,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   padding: 9px 12px;
   font-size: 13px;
   font-weight: 600;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   background: rgba(244, 197, 66, 0.10);
   user-select: none;
   list-style: none;
@@ -683,7 +683,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   content: "▸";
   display: inline-block;
   width: 14px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 10px;
   transition: transform 0.15s ease;
 }
@@ -702,7 +702,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
 }
 .kta-secours-groupe-card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--kta-bordure);
   border-radius: 6px;
   padding: 10px;
 }
@@ -732,7 +732,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   background: transparent;
   border: none;
   border-bottom: 1px dashed rgba(244, 197, 66, 0.30);
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 14px;
   font-weight: 600;
   padding: 4px 2px;
@@ -748,7 +748,7 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   flex-shrink: 0;
   background: transparent;
   border: none;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   font-size: 16px;
   line-height: 1;
   min-width: 32px;
@@ -780,7 +780,7 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   flex-shrink: 0;
   width: 90px;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-groupe-row input[type="text"],
 .kta-secours-groupe-row input[type="number"],
@@ -791,7 +791,7 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   border: 1px solid rgba(244, 197, 66, 0.20);
   border-radius: 4px;
   padding: 5px 8px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-family: inherit;
   font-size: 12px;
 }
@@ -806,7 +806,7 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   color: #a8b2c4;  /* libellé de carte, sombre : contraste ≥ 4,5 (KARMA 10/10/2026) */
 }
 .kta-secours-groupe-stats strong {
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-groupe-actions {
   display: flex;
@@ -820,15 +820,15 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   gap: 6px;
   margin: 6px 0;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   min-width: 0;
 }
 .kta-secours-parcours-mode select {
   flex: 1;
   min-width: 0;
   max-width: 100%;
-  background: #0a0d18;
-  color: #e8eaf0;
+  background: var(--kta-fond);
+  color: var(--kta-texte);
   border: 1px solid rgba(140,180,255,0.35);
   border-radius: 6px;
   padding: 4px 6px;
@@ -874,7 +874,7 @@ body.kta-theme-light .kta-secours-empty-small,
 html.kta-theme-light .kta-secours-empty-small,
 body.kta-theme-light .kta-secours-groupe-stats,
 html.kta-theme-light .kta-secours-groupe-stats {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-hint,
 html.kta-theme-light .kta-secours-hint,
@@ -1003,7 +1003,7 @@ html.kta-theme-light .kta-secours-floater-msg {
   line-height: 1.4;
 }
 .kta-secours-overlay-floater-info strong {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 @media (max-width: 480px) {
   .kta-secours-overlay-floater {
@@ -1038,7 +1038,7 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
 /* Hint format GPS sous l'input recherche (visible si plan calibré) */
 .kta-search-gps-hint {
   font-size: 12px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   line-height: 1.5;
   padding: 8px 10px;
   margin: 6px 0 0 0;
@@ -1051,10 +1051,10 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
   padding: 1px 5px;
   border-radius: 3px;
   font-size: 11px;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-search-gps-hint strong {
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 
 /* Card résultat GPS (single card au lieu de la liste de résultats classique) */
@@ -1084,22 +1084,22 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
 .kta-search-gps-card-titre {
   font-size: 15px;
   font-weight: 700;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-search-gps-card-subtitle {
   font-size: 12px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-family: ui-monospace, "SF Mono", Consolas, monospace;
 }
 .kta-search-gps-card-subtitle code {
   background: rgba(255, 255, 255, 0.06);
   padding: 1px 4px;
   border-radius: 3px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-search-gps-card-msg {
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   line-height: 1.5;
 }
 .kta-search-gps-card-msg code {
@@ -1107,7 +1107,7 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
   padding: 1px 4px;
   border-radius: 3px;
   font-size: 11px;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-search-gps-card-action {
   display: flex;
@@ -1118,7 +1118,7 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
 }
 .kta-search-gps-card-hint {
   font-size: 11px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
 }
 .kta-search-gps-poi-info {
@@ -1127,19 +1127,19 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
   border-radius: 4px;
   border-left: 3px solid #f4c542;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-search-gps-poi-info strong {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-size: 14px;
 }
 .kta-search-gps-poi-tags {
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 .kta-search-gps-poi-dist {
   margin-top: 4px;
   font-size: 11px;
-  color: #6ee287;
+  color: var(--kta-ok);
 }
 
 /* Variantes selon état (warning / error / ok / create) */
@@ -1148,34 +1148,34 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
   background: rgba(255, 179, 128, 0.06);
 }
 .kta-search-gps-card-warn .kta-search-gps-card-titre {
-  color: #ffb380;
+  color: var(--kta-avert);
 }
 .kta-search-gps-card-error {
   border-color: rgba(255, 140, 140, 0.30);
   background: rgba(255, 140, 140, 0.06);
 }
 .kta-search-gps-card-error .kta-search-gps-card-titre {
-  color: #ff8c8c;
+  color: var(--kta-erreur);
 }
 .kta-search-gps-card-ok {
   border-color: rgba(110, 226, 138, 0.30);
   background: rgba(110, 226, 138, 0.06);
 }
 .kta-search-gps-card-ok .kta-search-gps-card-titre {
-  color: #6ee287;
+  color: var(--kta-ok);
 }
 .kta-search-gps-card-create {
   border-color: rgba(140, 180, 255, 0.30);
   background: rgba(140, 180, 255, 0.06);
 }
 .kta-search-gps-card-create .kta-search-gps-card-titre {
-  color: #8cb4ff;
+  color: var(--kta-interaction);
 }
 
 /* Variants thème clair */
 body.kta-theme-light .kta-search-gps-hint,
 html.kta-theme-light .kta-search-gps-hint {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
   background: rgba(140, 180, 255, 0.10) !important;
 }
 body.kta-theme-light .kta-search-gps-hint strong,
@@ -1193,7 +1193,7 @@ html.kta-theme-light .kta-search-gps-card-msg {
 }
 body.kta-theme-light .kta-search-gps-card-subtitle,
 html.kta-theme-light .kta-search-gps-card-subtitle {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-search-gps-poi-info,
 html.kta-theme-light .kta-search-gps-poi-info {
@@ -1215,7 +1215,7 @@ html.kta-theme-light .kta-search-gps-poi-info {
 .kta-secours-parcours-titre {
   font-size: 11px;
   font-weight: 600;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -1233,7 +1233,7 @@ html.kta-theme-light .kta-search-gps-poi-info {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 5px;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-parcours-row[data-role="entree"] {
   border-left: 3px solid #00cc44;
@@ -1261,7 +1261,7 @@ html.kta-theme-light .kta-search-gps-poi-info {
   flex-shrink: 0;
   display: inline-block;
   background: rgba(244, 197, 66, 0.20);
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   border: 1px solid rgba(244, 197, 66, 0.40);
   padding: 2px 8px;
   border-radius: 10px;
@@ -1298,9 +1298,9 @@ html.kta-theme-light .kta-secours-groupe-level-chip {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kta-secours-parcours-label strong { color: #e8eaf0; }
-.kta-secours-parcours-lvl { color: #f4c542; font-size: 10px; }
-.kta-secours-parcours-todo { color: #8892a4; font-style: italic; }
+.kta-secours-parcours-label strong { color: var(--kta-texte); }
+.kta-secours-parcours-lvl { color: var(--kta-accent-texte); font-size: 10px; }
+.kta-secours-parcours-todo { color: var(--kta-texte-3); font-style: italic; }
 .kta-secours-parcours-btns {
   display: flex;
   gap: 3px;
@@ -1358,7 +1358,7 @@ html.kta-theme-light .kta-secours-groupe-level-chip {
   border: 1px solid rgba(244, 197, 66, 0.25);
   border-radius: 6px;
   padding: 9px 12px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-family: inherit;
   font-size: 13px;
 }
@@ -1382,9 +1382,9 @@ html.kta-theme-light .kta-secours-groupe-level-chip {
   gap: 2px;
   padding: 7px 10px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--kta-bordure);
   border-radius: 5px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
@@ -1395,24 +1395,24 @@ html.kta-theme-light .kta-secours-groupe-level-chip {
   border-color: rgba(244, 197, 66, 0.35);
 }
 .kta-secours-pick-result strong {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-size: 13px;
 }
 .kta-secours-pick-meta {
   font-size: 10px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 .kta-secours-pick-hint {
   padding: 12px;
   text-align: center;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
   font-size: 12px;
 }
 .kta-secours-pick-or {
   text-align: center;
   margin: 14px 0 10px 0;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 11px;
   letter-spacing: 1px;
 }
@@ -1430,7 +1430,7 @@ html.kta-theme-light .kta-secours-parcours {
 }
 body.kta-theme-light .kta-secours-parcours-titre,
 html.kta-theme-light .kta-secours-parcours-titre {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-parcours-row,
 html.kta-theme-light .kta-secours-parcours-row {
@@ -1449,7 +1449,7 @@ body.kta-theme-light .kta-secours-pick-hint,
 html.kta-theme-light .kta-secours-pick-hint,
 body.kta-theme-light .kta-secours-pick-or,
 html.kta-theme-light .kta-secours-pick-or {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light #kta-secours-pick-search,
 html.kta-theme-light #kta-secours-pick-search,
@@ -1493,7 +1493,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
 }
 .kta-secours-lancer-bandeau-sub {
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   line-height: 1.4;
 }
 .kta-secours-lancer-bandeau-actions {
@@ -1572,7 +1572,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
 .kta-secours-lancer-bandeau-disabled {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
   font-size: 13px;
 }
@@ -1581,14 +1581,14 @@ html.kta-theme-light .kta-secours-pick-result strong {
   border: 1px solid rgba(244, 197, 66, 0.50);
 }
 .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre {
-  color: #f4c542;
+  color: var(--kta-accent-texte);
 }
 .kta-secours-lancer-bandeau-active {
   background: linear-gradient(135deg, rgba(110, 226, 135, 0.15), rgba(110, 226, 135, 0.05));
   border: 1px solid rgba(110, 226, 135, 0.50);
 }
 .kta-secours-lancer-bandeau-active .kta-secours-lancer-bandeau-titre {
-  color: #6ee287;
+  color: var(--kta-ok);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1620,7 +1620,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
   padding: 12px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--kta-bordure);
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
 }
@@ -1643,12 +1643,12 @@ html.kta-theme-light .kta-secours-pick-result strong {
 .kta-secours-lancer-role-titre {
   font-weight: 600;
   font-size: 14px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   margin-bottom: 4px;
 }
 .kta-secours-lancer-role-desc {
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   line-height: 1.45;
   margin-bottom: 6px;
 }
@@ -1659,7 +1659,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(244, 197, 66, 0.40);
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 13px;
 }
 .kta-secours-lancer-equipe-select:disabled {
@@ -1686,7 +1686,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
        les enfants scroll de remonter visuellement
      • border-bottom marqué + box-shadow plus prononcée pour démarquer
        visuellement le header de la zone de scroll qui le suit. */
-  background: #1a1f2e;
+  background: var(--kta-surface);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-bottom-width: 2px;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
@@ -1703,7 +1703,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   flex: 1 1 200px;
   min-width: 0;
 }
@@ -1715,13 +1715,13 @@ html.kta-theme-light .kta-secours-pick-result strong {
   border: 1px solid rgba(0, 0, 0, 0.30);
 }
 .kta-secours-live-header-meta {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 13px;
 }
 .kta-secours-live-header-timer {
   font-size: 14px;
   font-weight: 600;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
   flex-shrink: 0;
 }
@@ -1732,7 +1732,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
   margin-left: 6px;
   padding: 2px 6px;
   background: rgba(255, 140, 0, 0.20);
-  color: #ffb380;
+  color: var(--kta-avert);
   border: 1px solid rgba(255, 140, 0, 0.50);
   border-radius: 3px;
   font-size: 11px;
@@ -1755,7 +1755,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
    les équipes ont leur étape sortie completée). */
 .kta-btn-phase-end {
   background: rgba(244, 197, 66, 0.14);
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   border: 1px solid rgba(244, 197, 66, 0.45);
   font-weight: 600;
 }
@@ -1765,7 +1765,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
 }
 .kta-btn-phase-end-ready {
   background: rgba(110, 226, 135, 0.18);
-  color: #6ee287;
+  color: var(--kta-ok);
   border-color: rgba(110, 226, 135, 0.65);
   box-shadow: 0 0 0 0 rgba(110, 226, 135, 0.55);
   animation: kta-phase-end-pulse 1.8s ease-in-out infinite;
@@ -1804,7 +1804,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   margin-left: 4px;
   padding: 2px 8px;
   background: rgba(244, 197, 66, 0.14);
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   border: 1px solid rgba(244, 197, 66, 0.40);
   border-radius: 10px;
   font-size: 12px;
@@ -1856,7 +1856,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
 }
 .kta-secours-phase-row-icon {
   opacity: 0.7;
@@ -1872,7 +1872,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 .kta-secours-phase-row-meta {
   grid-area: meta;
   font-size: 12px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 .kta-secours-phase-row-actions {
   grid-area: actions;
@@ -1897,22 +1897,22 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   .kta-secours-phase-row-actions { justify-content: flex-end; }
 }
 .kta-secours-phase-status-active {
-  color: #6ee287;
+  color: var(--kta-ok);
   font-weight: 600;
   font-size: 12px;
 }
 .kta-secours-phase-status-end {
-  color: #8cb4ff;
+  color: var(--kta-interaction);
   font-weight: 600;
   font-size: 12px;
 }
 .kta-secours-phase-status-paused {
-  color: #ffb380;
+  color: var(--kta-avert);
   font-weight: 600;
   font-size: 12px;
 }
 .kta-secours-phase-status-pending {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-size: 12px;
 }
 
@@ -1958,13 +1958,13 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-phase-equipe-nom {
   font-size: 13px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   flex: 1 1 auto;
   min-width: 0;
 }
 .kta-secours-phase-equipe-level {
   font-size: 11px;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   background: rgba(244, 197, 66, 0.12);
   padding: 1px 6px;
   border-radius: 3px;
@@ -1994,7 +1994,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s, transform 0.10s;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 11px;
 }
 .kta-secours-live-step:hover { transform: translateY(-1px); }
@@ -2024,7 +2024,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 .kta-secours-live-etape-titre {
   font-size: 15px;
   font-weight: 700;
-  color: #f4c542;
+  color: var(--kta-accent-texte);
   margin-bottom: 10px;
 }
 .kta-secours-live-etape-statut {
@@ -2035,7 +2035,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   border-radius: 4px;
   margin-bottom: 12px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-live-etape-textarea-wrap {
   display: flex;
@@ -2045,7 +2045,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-live-etape-textarea-wrap label {
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   font-weight: 600;
 }
 .kta-secours-live-etape-textarea {
@@ -2060,7 +2060,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(244, 197, 66, 0.30);
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
@@ -2078,7 +2078,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-live-etape-statuts-titre {
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -2095,7 +2095,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   background: rgba(255, 255, 255, 0.04);
   border: 1.5px solid var(--kta-statut-color, rgba(255, 255, 255, 0.30));
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.12s, transform 0.08s;
@@ -2142,7 +2142,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   width: 100%;
   height: 100%;
   font-size: 24px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
 }
 .kta-secours-live-photo-img {
   width: 100%;
@@ -2189,7 +2189,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   justify-content: space-between;
   gap: 6px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--kta-bordure);
   flex-wrap: wrap;
 }
 
@@ -2223,7 +2223,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   gap: 6px;
   font-weight: 700;
   font-size: 14px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   flex-wrap: wrap;
 }
 .kta-secours-op-card-swatch {
@@ -2235,7 +2235,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-op-card-badge-terminee {
   background: rgba(110, 226, 135, 0.25);
-  color: #6ee287;
+  color: var(--kta-ok);
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;
@@ -2272,7 +2272,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-op-card-obs {
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   font-style: italic;
   line-height: 1.4;
   word-break: break-word;
@@ -2342,13 +2342,13 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 .kta-secours-live-note-ts {
   margin-left: auto;
   font-size: 11px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-family: ui-monospace, monospace;
 }
 .kta-secours-live-note-del {
   background: transparent;
   border: none;
-  color: #ff8c8c;
+  color: var(--kta-erreur);
   cursor: pointer;
   font-size: 14px;
   padding: 2px 6px;
@@ -2360,7 +2360,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-live-note-texte {
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   line-height: 1.4;
   word-break: break-word;
 }
@@ -2369,7 +2369,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 .kta-secours-op-details-etapes {
   margin: 0;
   padding-left: 20px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-op-details-etapes li {
   padding: 8px 0;
@@ -2383,7 +2383,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   font-size: 13px;
 }
 .kta-secours-op-details-ts {
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-family: ui-monospace, monospace;
   font-size: 11px;
 }
@@ -2391,7 +2391,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   margin-top: 4px;
   margin-left: 0;
   font-size: 12px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
   font-style: italic;
   padding-left: 10px;
   border-left: 2px solid rgba(255, 255, 255, 0.10);
@@ -2401,7 +2401,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 .kta-secours-live-error {
   padding: 20px;
   text-align: center;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 .kta-secours-live-error p {
   margin-bottom: 12px;
@@ -2422,7 +2422,7 @@ body.kta-theme-light .kta-secours-lancer-bandeau-disabled,
 html.kta-theme-light .kta-secours-lancer-bandeau-disabled {
   background: rgba(0, 0, 0, 0.03) !important;
   border-color: rgba(0, 0, 0, 0.10) !important;
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-lancer-bandeau-cta,
 html.kta-theme-light .kta-secours-lancer-bandeau-cta {
@@ -2469,7 +2469,7 @@ html.kta-theme-light .kta-secours-live-header-titre {
 }
 body.kta-theme-light .kta-secours-live-header-meta,
 html.kta-theme-light .kta-secours-live-header-meta {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-live-header-timer,
 html.kta-theme-light .kta-secours-live-header-timer {
@@ -2494,7 +2494,7 @@ html.kta-theme-light .kta-secours-phase-row-head {
 }
 body.kta-theme-light .kta-secours-phase-row-meta,
 html.kta-theme-light .kta-secours-phase-row-meta {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-phase-status-active,
 html.kta-theme-light .kta-secours-phase-status-active {
@@ -2502,7 +2502,7 @@ html.kta-theme-light .kta-secours-phase-status-active {
 }
 body.kta-theme-light .kta-secours-phase-status-end,
 html.kta-theme-light .kta-secours-phase-status-end {
-  color: #1e5f99 !important;
+  color: var(--kta-interaction) !important;
 }
 body.kta-theme-light .kta-secours-phase-status-paused,
 html.kta-theme-light .kta-secours-phase-status-paused {
@@ -2510,7 +2510,7 @@ html.kta-theme-light .kta-secours-phase-status-paused {
 }
 body.kta-theme-light .kta-secours-phase-status-pending,
 html.kta-theme-light .kta-secours-phase-status-pending {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-phase-equipes-list,
 html.kta-theme-light .kta-secours-phase-equipes-list {
@@ -2567,13 +2567,13 @@ body.kta-theme-light .kta-secours-op-card-obs,
 html.kta-theme-light .kta-secours-op-card-obs,
 body.kta-theme-light .kta-secours-live-note-texte,
 html.kta-theme-light .kta-secours-live-note-texte {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-op-card-meta,
 html.kta-theme-light .kta-secours-op-card-meta,
 body.kta-theme-light .kta-secours-live-note-ts,
 html.kta-theme-light .kta-secours-live-note-ts {
-  color: var(--kta-light-text-dim, #8a8270) !important;
+  color: var(--kta-light-text-dim) !important;
 }
 
 /* ============================================================
@@ -2586,7 +2586,7 @@ html.kta-theme-light .kta-secours-live-note-ts {
   border: 1px solid rgba(140, 180, 255, 0.40);
 }
 .kta-secours-lancer-bandeau-archived .kta-secours-lancer-bandeau-titre {
-  color: #8cb4ff;
+  color: var(--kta-interaction);
 }
 
 /* Variant thème clair */
@@ -2615,7 +2615,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-archived .kta-secours-lancer-ba
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -2627,7 +2627,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-archived .kta-secours-lancer-ba
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
-  color: #c8d0e0;
+  color: var(--kta-texte-2);
 }
 
 .kta-secours-rapport-checkbox {
@@ -2645,7 +2645,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-archived .kta-secours-lancer-ba
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #e8eaf0;
+  color: var(--kta-texte);
   font-size: 14px;
 }
 .kta-secours-rapport-checkbox input[type="checkbox"] {
@@ -2659,7 +2659,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-archived .kta-secours-lancer-ba
   margin-top: 2px;
   margin-left: 24px;
   font-size: 11px;
-  color: #8892a4;
+  color: var(--kta-texte-3);
   font-style: italic;
 }
 
@@ -2720,7 +2720,7 @@ body.kta-theme-light .kta-secours-rapport-apercu-titre,
 html.kta-theme-light .kta-secours-rapport-apercu-titre,
 body.kta-theme-light .kta-secours-rapport-photos-hint,
 html.kta-theme-light .kta-secours-rapport-photos-hint {
-  color: var(--kta-light-text-muted, #6b6354) !important;
+  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-rapport-apercu-lines,
 html.kta-theme-light .kta-secours-rapport-apercu-lines {
@@ -2768,7 +2768,7 @@ html.kta-theme-light .kta-secours-rapport-checkbox > span {
 .kta-gps-coords-error {
   font-size: 12px;
   line-height: 1.45;
-  color: #ff8c8c;
+  color: var(--kta-erreur);
   padding: 6px 10px;
   margin: 6px 0 0;
   background: rgba(255, 140, 140, 0.06);
@@ -2807,7 +2807,7 @@ html.kta-theme-light .kta-gps-coords-error {
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
-  color: #8cb4ff;
+  color: var(--kta-interaction);
   letter-spacing: 0.02em;
   vertical-align: middle;
   white-space: nowrap;
@@ -2821,36 +2821,13 @@ html.kta-theme-light .kta-secours-imported-chip {
   color: #3856a8 !important;
 }
 
-/* =================================================================
-   🆕 v1.43.26 — Pattern B : theming light pour sous-modales Mode Secours
-   =================================================================
-   Cible les inline styles hardcoded dark (color:#8892a4, rgba blanc semi-
-   transparent pour bordures) qui restaient illisibles ou invisibles en
-   thème clair sur les modales Phase / Debrief / Rapport / Détails équipe.
-   Utilise attribute selectors sur `style*=` pour matcher les inline styles
-   sans devoir toucher au JS et casser de la rétro-compat.
-   ================================================================= */
-
-/* Texte gris pâle (#8892a4) → gris foncé lisible (#5a6878) en mode clair */
-body.kta-theme-light .kta-secours-sub-modal *[style*="color:#8892a4"],
-html.kta-theme-light .kta-secours-sub-modal *[style*="color:#8892a4"],
-body.kta-theme-light .kta-secours-sub-modal *[style*="color: #8892a4"],
-html.kta-theme-light .kta-secours-sub-modal *[style*="color: #8892a4"] {
-  color: #5a6878 !important;
-}
-
-/* Bordures et séparateurs blanc 8 % → gris foncé translucide en mode clair */
-body.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255,255,255,0.08)"],
-html.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255,255,255,0.08)"],
-body.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255, 255, 255, 0.08)"],
-html.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255, 255, 255, 0.08)"] {
-  border-color: rgba(20, 30, 50, 0.14) !important;
-}
+/* Sous-modales du Mode Secours en clair : textes et bordures inline passent par les jetons --kta-*
+   (css/style.css, en tête) ; il ne reste ici que les blocs propres à ces fenêtres. */
 
 /* Hints (descriptifs courts) : texte gris clair → gris foncé */
 body.kta-theme-light .kta-secours-sub-modal .kta-secours-hint,
 html.kta-theme-light .kta-secours-sub-modal .kta-secours-hint {
-  color: #5a6878 !important;
+  color: var(--kta-texte-3) !important;
 }
 
 /* Inputs texte (champs nom phase, debrief…) : fond clair + texte foncé.
@@ -2933,17 +2910,17 @@ body.kta-theme-light .kta-secours-victime-bandeau, html.kta-theme-light .kta-sec
 .kta-secours-retour {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px;
   margin: 6px 0; padding: 5px 8px; border-radius: 6px; font-size: 12px;
-  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.10); color: #c8d0e0;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.10); color: var(--kta-texte-2);
 }
 .kta-secours-retour-btns { display: flex; gap: 6px; }
 .kta-secours-retour--orange { background: rgba(255, 140, 0, 0.16); border-color: #ff8c00; color: #ffc98a; font-weight: 600; }
 .kta-secours-retour--rouge { background: rgba(255, 50, 50, 0.20); border-color: #ff3b3b; color: #ffc0c0; font-weight: 700; }
-.kta-secours-retour--rentree { color: #6ee287; }
+.kta-secours-retour--rentree { color: var(--kta-ok); }
 .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #c46a00; }
 body.kta-theme-light .kta-secours-retour, html.kta-theme-light .kta-secours-retour { background: #f3ecdc !important; color: #2a2620 !important; border-color: rgba(0,0,0,0.15) !important; }
 body.kta-theme-light .kta-secours-retour--orange, html.kta-theme-light .kta-secours-retour--orange { background: #ffe3bf !important; color: #8b3a00 !important; border-color: #c46a00 !important; }
 body.kta-theme-light .kta-secours-retour--rouge, html.kta-theme-light .kta-secours-retour--rouge { background: #fde2e0 !important; color: #a01818 !important; border-color: #c62828 !important; }
-body.kta-theme-light .kta-secours-retour--rentree, html.kta-theme-light .kta-secours-retour--rentree { color: #1e7a3a !important; }
+body.kta-theme-light .kta-secours-retour--rentree, html.kta-theme-light .kta-secours-retour--rentree { color: var(--kta-ok) !important; }
 body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange,
 html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #a85a00 !important; }
 
@@ -2967,9 +2944,9 @@ body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secour
 .kta-secours-mc-saisie textarea { flex: 1; min-width: 0; font-size: 13px; }
 .kta-secours-mc-liste { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 12.5px; }
 .kta-secours-mc-liste li { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
-.kta-secours-mc-h { font-variant-numeric: tabular-nums; color: #8cb4ff; margin-right: 4px; }
+.kta-secours-mc-h { font-variant-numeric: tabular-nums; color: var(--kta-interaction); margin-right: 4px; }
 .kta-secours-mc-note { font-style: italic; }
-body.kta-theme-light .kta-secours-mc-h, html.kta-theme-light .kta-secours-mc-h { color: #1e5f99 !important; }
+body.kta-theme-light .kta-secours-mc-h, html.kta-theme-light .kta-secours-mc-h { color: var(--kta-interaction) !important; }
 
 /* B9 (vague 7) : chef / effectif, personnes manquantes */
 .kta-secours-retour--manquant { background: rgba(255, 30, 30, 0.28); border: 2px solid #ff3b3b; color: #fff; font-weight: 800; }
@@ -3003,7 +2980,7 @@ body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-se
 
 /* Étiquette du site sur la carte OSM du briefing (capture PDF) : suit le thème (10/10/2026) */
 .kta-secours-osm-etiquette {
-  background: #1a1f2e; color: #f4c542; padding: 6px 14px; border-radius: 6px;
+  background: var(--kta-surface); color: var(--kta-accent-texte); padding: 6px 14px; border-radius: 6px;
   font-size: 14px; font-weight: 700; border: 2px solid #f4c542; white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }

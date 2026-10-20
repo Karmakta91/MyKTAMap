@@ -8,7 +8,8 @@
 //      coupe pas, l'utilisateur croit le réglage cassé ;
 //   2. une alerte importante (batterie 10 %, capteurs refusés) ou une erreur disparaît en « Silence » ;
 //   3. la vibration ne suit plus le réglage (« Essentielles » vibre sur « filtres restaurés ») ;
-//   4. les toasts de restauration au chargement ne sont plus regroupés.
+//   4. les toasts de restauration au chargement ne sont plus regroupés ;
+//   5. un toast efface le précédent (pile perdue), ou une réussite s'affiche en « warn » (⚠️ sur un succès).
 // La décision (_decisionToast) est EXÉCUTÉE, extraite du goulot. Usage : node scripts/check-notifs.js [racine]
 "use strict";
 const fs   = require("fs");
@@ -37,6 +38,10 @@ const OOM = lire("js/oomGuard.js");
       !jouer("silent", "info").afficher && !jouer("silent", "warn").afficher && jouer("silent", "warn", { important: true }).afficher && jouer("silent", "error").afficher);
     t("🩸 une ERREUR passe et vibre quel que soit le réglage", ["all", "essential", "silent"].every(function (n) { const d = jouer(n, "error"); return d.afficher && d.vibrer; }));
     t("type inconnu = warn (jamais promu en error, jamais rétrogradé en info)", jouer("essential", "bizarre").afficher && !jouer("silent", "bizarre").afficher);
+    t("succès : visible en « Toutes » et « Essentielles », jamais de vibration",
+      ["all", "essential"].every(function (n) { const d = jouer(n, "success"); return d.afficher && !d.vibrer; }));
+    t("🩸 succès : tu en « Silence » (sauf important, comme un warn), sans vibrer",
+      !jouer("silent", "success").afficher && jouer("silent", "success", { important: true }).afficher && !jouer("silent", "success", { important: true }).vibrer);
     t("niveau inconnu = « Toutes » n'est PAS supposé : un info est tu (le défaut sûr vit dans niveauNotifs)", !jouer("nimporte", "info").afficher);
   }
   t("niveauNotifs rend « essential » par défaut (KARMA 17/09) et refuse un niveau inconnu à l'écriture",
@@ -56,6 +61,14 @@ const OOM = lire("js/oomGuard.js");
   t("🩸 le toast maison de la Vue OSM demande la permission au goulot", /toastAutorise\("info"\)\) return;/.test(OSM));
   const autres = fs.readdirSync(path.join(ROOT, "js")).filter(function (f) { return f.endsWith(".js") && f !== "oomGuard.js"; })
     .filter(function (f) { return /createElement\("div"\)[\s\S]{0,120}kta-toast\b/.test(lire("js/" + f)); });
+  t("🩸 les toasts s'empilent : aucun rendu ne retire le toast précédent, plafond de 3 visibles",
+    /const TOASTS_MAX = 3;/.test(OOM) && /function _renderToast\([\s\S]{0,2000}while \(visibles\.length >= TOASTS_MAX\)/.test(OOM)
+    && !/getElementById\("kta-toast"\);\s*if \(existing\) existing\.remove\(\)/.test(OOM) && /pile\.appendChild\(toast\)/.test(OOM));
+  t("🩸 au plafond, une erreur part en dernier",
+    /visibles\.find\(function\(el\) \{ return el\.getAttribute\("data-kta-type"\) !== "error"; \}\)/.test(OOM));
+  t("la file du splash rend tous ses toasts (plus de « un seul à la fois »)", !/if \(_toastQueue\.length > 0\) break;/.test(OOM));
+  t("le type succès a son icône et sa classe",
+    /success: "✅"/.test(OOM) && /\.kta-toast-success\s*\{[^}]*var\(--kta-ok\)/.test(lire("css/style.css")));
   t("🩸 aucun autre module ne fabrique un #kta-toast à lui (un seul goulot)" + (autres.length ? " — " + autres.join(", ") : ""), autres.length === 0);
 }
 
@@ -63,6 +76,9 @@ const OOM = lire("js/oomGuard.js");
 {
   t("batterie 10 % survit au mode Silence (important)", /battery\.toast\.warn10[\s\S]{0,200}\{ important: true \}/.test(lire("js/batteryGuard.js")));
   t("capteurs refusés survit au mode Silence (important)", /capteursRefuses"\), "warn", \{ important: true \}/.test(lire("js/compass.js")));
+  t("🩸 les réussites ne s'affichent plus en warn : fin d'import de session, session remplacée depuis la table",
+    /msgFin = window\.I18n\.t\("impexp\.importDone"\);[\s\S]{0,120}showToast\(msgFin, "success"/.test(lire("js/interfaceImportExport.js"))
+    && /showToast\(msgOk, "success"/.test(lire("js/tableEditor.js")));
   t("les toasts de restauration au chargement sont regroupés (filtres, photos, optimisations)",
     /filtresRestaures[^\n]*groupe: "chargement"/.test(lire("js/sessionPersist.js")) && (lire("js/main.js").match(/groupe: "chargement"/g) || []).length >= 2);
 }

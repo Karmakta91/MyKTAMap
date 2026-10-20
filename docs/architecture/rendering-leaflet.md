@@ -26,16 +26,16 @@
 ### 1. Cycle de vie d'un plan
 
 ```
-F5 → splash visible (HTML statique)
+F5 → splash visible (HTML statique + js/ktaSplash.js : version, plafond 12 s)
    ↓
 initApp() dans main.js
-   ├─ _splashStart() (timestamp)
+   ├─ _splashStart() (version affichée, rappels de fin)
+   ├─ gates éventuelles : _splashAvantGate() (fin d'animation, splash dessous)
    ├─ PlanRegistry.init()
    ├─ decouvrirPlansServeur() ← lit data/index.json
    ├─ Si registre vide ET data/plan-config.json existe :
-   │   └─ chargement auto (rétro-compat)
-   ├─ Sinon → afficherLoader() (home avec liste)
-   └─ _splashEnd() (en parallèle, min 3s)
+   │   └─ chargement auto (rétro-compat) → _splashEnd(lancerApplication())
+   └─ Sinon → afficherLoader() (home avec liste) → _splashEnd()
 ```
 
 ---
@@ -91,17 +91,11 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
 
 ### 6. Splash screen
 
-- HTML statique dans `<body>` → visible AVANT tout JS.
-- `SPLASH_MIN_DURATION_MS = 3500` (constante dans `main.js`, depuis v1.8.1 — avant : 4000ms en v1.8.0 et antérieures).
-- `_splashStart()` au début de `initApp()`, `_splashEnd()` en parallèle de `lancerApplication()`.
-- **Une seule fois par session** (un changement de plan via 🗂️ ne ré-affiche PAS le splash).
-- Assets : `icon/mkm-full.png` (logo) + `icon/karma.png` (signature).
-- **Révélation du titre** : « MyKTAMap » se découvre de gauche à droite (`clip-path`, même easing
-  `cubic-bezier(0.45, 0.05, 0.55, 0.95)` que la signature KARMA). **Le splash n'affiche plus « -pro »**
-  depuis v2.0.0, même en édition pro (décision KARMA) : le suffixe et sa révélation restent dans
-  l'en-tête de l'accueil (`.loader-titre-nom`). Pièges de spécificité du suffixe : `security-legal.md §84`.
-- **Version en haut à droite** : accent charte (`#f4c542`, `#b8860b` en clair), en gras, 13 px. Le chiffre de version
-  majeure de biais (« 2 », v2.0.0) a été retiré le 14/10/2026 (KARMA), avec sa police manuscrite.
+État actuel : `ui.md` §41.15.5 (rendu, version longue à chaque ouverture, réduite, fermeture quand l'accueil est
+affiché, passage au clic, plafond). En bref : HTML statique visible avant tout JS, `js/ktaSplash.js` juste après,
+fermeture par `main.js > _splashEnd(pret)` ; une seule fois par session (un changement de plan ne le ré-affiche
+pas). Le splash n'affiche jamais « -pro » : le suffixe et sa révélation vivent dans l'en-tête de l'accueil
+(`.loader-titre-nom`, pièges de spécificité : `security-legal.md §84`).
 
 ---
 

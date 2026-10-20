@@ -10,7 +10,10 @@
 //   3. le retour chirurgical : seuls les objets marqués partent, les créations à la main restent ;
 //   4. 🩸 le verrou ne s'applique QUE si la copie est là : sauvegarde sautée sur quota + verrou qui
 //      masque le calque = plan vide sans un mot. `appliquerVerrous` LIBÈRE dans ce cas ;
-//   5. 🩸 effacer la session rend le calque (`sessionPersist.js > clear()`), sinon le relevé disparaît ;
+//   5. 🩸 effacer la session rend le calque (`sessionPersist.js > clear()`), sinon le relevé disparaît ; là où
+//      la restitution se partage, « rendre aussi à l'équipe » la note avant le vidage et elle survit à clear() ;
+//   5 bis. les ajouts intégrés (objets dessinés à la main rattachés au calque) : exportés, retirés à la
+//      restitution qui le DIT, sans trace de suppression, annulables par ⏪, refusés en lecture seule ;
 //   6. le câblage que l'extraction ne voit pas (script, précache, hooks de session, interface).
 // =====================================================================
 "use strict";
@@ -78,7 +81,7 @@ const CALQUE = {
   const { CS } = monter(CALQUE);
   ["estRapatrie", "listeRapatries", "compterCopie", "peser", "occupationLocalStorage",
    "rapatrier", "restituer", "exporterCalque", "appliquerVerrous", "getSessionState", "loadSessionState",
-   "resynchroniser"]
+   "resynchroniser", "restitutionPartagee", "libelle"]
     .forEach(function (m) {
       t("API : CalqueSession." + m + "()", typeof CS[m] === "function");
     });
@@ -105,6 +108,10 @@ const CALQUE = {
   t("marquage : les 5 objets portent `_srcCalque` = sig",
     tous.length === 5 && tous.every(function (o) { return o._srcCalque === "sig"; }));
 
+  t("🩸 synchro : les copies sont datees du rapatriement (updatedAt), sinon une synchro incrementale les ignore",
+    tous.every(function (o) { return typeof o.updatedAt === "number" && Date.now() - o.updatedAt < 60000; }));
+  t("la date du releve (date_update) n'est pas touchee", etat.editorPoints[0].date_update === undefined);
+
   etat.roads[0].type = "MODIFIE";
   etat.roads[0].points[0].x = 999;
   t("copie defensive : le calque source n'est pas mute (type)", avantRoad.type === "secondaire");
@@ -122,6 +129,15 @@ const CALQUE = {
   t("rapatrier un calque inconnu : refuse", r3.ok === false && r3.code === "calqueInconnu");
 
   // ───────── 2 bis. L'EXPORT QUI FERME LA BOUCLE VERS LE ZIP ─────────
+  {
+    // 🔒 Le fichier EST le contenu du calque : refusé quand l'installation ne permet pas d'exporter tout le plan.
+    const m = monter(CALQUE);
+    await m.CS.rapatrier("sig");
+    m.ctx.ktaExportPlanRefuse = function (opts) { return !(opts && opts.limitePermise); };
+    const ex = m.CS.exporterCalque("sig");
+    t("🔒 export du calque refuse par le goulot (sans limitePermise) : rien n'est telecharge",
+      ex.ok === false && ex.code === "exportRefuse" && m.ctx.__telecharge !== true);
+  }
   {
     const m = monter(CALQUE);
     await m.CS.rapatrier("sig");
@@ -145,6 +161,8 @@ const CALQUE = {
     t("export : l'objet cree a la main n'y est pas", p.roads.length === 2);
     t("🧹 export : la marque interne `_srcCalque` est RETIREE",
       p.roads.concat(p.zones, p.structures, p.data).every(function (o) { return o._srcCalque === undefined; }));
+    t("🧹 export : l'instant du rapatriement `_srcCalqueDepuis` aussi",
+      p.roads.concat(p.zones, p.structures, p.data).every(function (o) { return o._srcCalqueDepuis === undefined; }));
     t("export : la session n'est pas alteree par l'export",
       m.CS.compterCopie("sig") === 4 && m.CS.estRapatrie("sig") === true);
   }
@@ -240,6 +258,139 @@ const CALQUE = {
       TAB.indexOf("window.setEditorPoints(_data)") >= 0);
   }
 
+  // ───────── 2 sexies. INTÉGRER DES AJOUTS (objets dessinés à la main) ─────────
+  // Un objet sans marque rejoint un calque en modification : il doit se comporter en copie (exporté avec le
+  // calque, retiré à sa restitution, aucune trace de suppression) et l'intégration s'annule par ⏪. Le VRAI
+  // historyManager.js est chargé dans le même `vm`.
+  {
+    const AVEC_UID = {
+      roads: [{ uid: "rd_cal00001", type: "principal", points: [{ x: 1, y: 1 }] }],
+      data:  [{ uid: "pt_cal00001", x: 10, y: 20, tags: ["pa"] }]
+    };
+    const session = () => ({
+      editorPoints: [{ uid: "pt_main0001", x: 5, y: 5, nom: "Ajout B", tags: ["pa"], updatedAt: 10 }],
+      roads: [{ uid: "rd_main0001", type: "chemin", points: [{ x: 0, y: 0 }], updatedAt: 10 },
+              { uid: "rd_iti00001", type: "itinerary", points: [{ x: 0, y: 0 }], updatedAt: 10 }],
+      zones: [{ uid: "zn_main0001", type: "eau", points: [], updatedAt: 10 }]
+    });
+    const monterAjouts = async function (lecture) {
+      const m = monter(AVEC_UID, session());
+      m.traces = [];
+      m.ctx.KtaUid = {
+        touch: (o) => { o.updatedAt = Date.now(); return o; },
+        estTransitoire: (o) => !!(o && o.type === "itinerary"),
+        tombstone: (u) => { m.traces.push(u); }, untombstone() {}
+      };
+      m.ctx.document.addEventListener = function () {};
+      m.ctx.ktaEditionRefusee = () => !!m.lecture;
+      vm.runInContext(fs.readFileSync("js/historyManager.js", "utf8"), m.ctx, { filename: "historyManager.js" });
+      await m.CS.rapatrier("sig");
+      m.lecture = !!lecture;
+      return m;
+    };
+
+    t("API : candidatsAjout / integrerAjouts / compterAjouts, CLE_AJOUT = _srcCalqueAjout",
+      ["candidatsAjout", "integrerAjouts", "compterAjouts"].every((f) => typeof monter(CALQUE).CS[f] === "function") &&
+      monter(CALQUE).CS.CLE_AJOUT === "_srcCalqueAjout");
+
+    const m = await monterAjouts();
+    const R0 = m.etat.roads.find((o) => o.uid === "rd_cal00001")._srcCalqueDepuis;
+    const cand = m.CS.candidatsAjout();
+    const uidsCand = [].concat(cand.editorPoints, cand.roads, cand.zones, cand.structures).map((o) => o.uid).sort();
+    t("candidats : les objets SANS marque, sans l'itinéraire ni les copies du calque",
+      JSON.stringify(uidsCand) === JSON.stringify(["pt_main0001", "rd_main0001", "zn_main0001"]));
+
+    t("intégrer : refusé sur un calque qui n'est pas en modification",
+      m.CS.integrerAjouts("puits", ["pt_main0001"]).code === "pasRapatrie");
+    t("intégrer : rien de choisi → refus, rien de touché",
+      m.CS.integrerAjouts("sig", []).code === "rienChoisi" && m.CS.compterAjouts("sig") === 0);
+
+    m.lecture = true;
+    const ro = m.CS.integrerAjouts("sig", ["pt_main0001"]);
+    t("🔒 intégrer : refusé en lecture seule, aucune marque posée",
+      ro.ok === false && ro.code === "lectureSeule" && m.etat.editorPoints[0]._srcCalque === undefined);
+    m.lecture = false;
+
+    const avantMaj = Date.now();
+    const r = m.CS.integrerAjouts("sig", ["pt_main0001", "rd_main0001", "rd_iti00001", "rd_cal00001", "inconnu"]);
+    const pt = m.etat.editorPoints.find((o) => o.uid === "pt_main0001");
+    const rd = m.etat.roads.find((o) => o.uid === "rd_main0001");
+    t("intégrer : seuls les candidats choisis (ni itinéraire, ni copie, ni uid inconnu)",
+      r.ok === true && r.total === 2 && r.stats.editorPoints === 1 && r.stats.roads === 1);
+    t("intégrer : marque du calque + marque d'ajout", pt._srcCalque === "sig" && rd._srcCalque === "sig" &&
+      pt._srcCalqueAjout === true && rd._srcCalqueAjout === true);
+    t("🩸 intégrer : date de rapatriement = celle des copies (une restitution reçue entre les deux le garde " +
+      "en objet ordinaire au lieu de laisser le calque masqué pour lui)", pt._srcCalqueDepuis === R0);
+    t("intégrer : objet daté pour la synchro (KtaUid.touch)", pt.updatedAt >= avantMaj && rd.updatedAt >= avantMaj);
+    t("intégrer : l'itinéraire et la zone non choisie restent hors calque",
+      m.etat.roads.find((o) => o.uid === "rd_iti00001")._srcCalque === undefined &&
+      m.etat.zones[0]._srcCalque === undefined);
+    t("intégrer : compterAjouts = 2, compterCopie compte copies + ajouts",
+      m.CS.compterAjouts("sig") === 2 && m.CS.compterCopie("sig") === 4);
+    t("un objet appartient à UN calque : déjà intégré, il n'est plus candidat",
+      m.CS.integrerAjouts("sig", ["pt_main0001"]).code === "rienChoisi" &&
+      m.CS.candidatsAjout().editorPoints.length === 0);
+    t("intégrer : une entrée d'historique", m.ctx.HistoryManager.canUndo() === true);
+
+    const ex = m.CS.exporterCalque("sig");
+    t("export : les ajouts intégrés partent dans le fichier du calque",
+      ex.ok && ex.total === 4 && ex.stats.data.some((o) => o.uid === "pt_main0001") &&
+      ex.stats.roads.some((o) => o.uid === "rd_main0001"));
+    t("export : le compte « hors calque » diminue d'autant (reste la zone ; l'itinéraire n'est pas compté)",
+      ex.horsCalque === 2);
+    t("🧹 export : la marque d'ajout est retirée du fichier",
+      ex.stats.data.concat(ex.stats.roads).every((o) => o._srcCalqueAjout === undefined && o._srcCalque === undefined));
+
+    // 🔒 Supprimer un objet intégré ne laisse PAS de trace : exporté, son uid est dans le fichier du calque.
+    const avantSuppr = m.ctx.HistoryManager.captureState("editorPoints");
+    m.etat.editorPoints = m.etat.editorPoints.filter((o) => o.uid !== "pt_main0001");
+    m.ctx.HistoryManager.record("suppr", avantSuppr, "editorPoints");
+    t("🔒 suppression d'un ajout intégré : aucune trace de suppression (elle viserait le fichier du calque)",
+      m.traces.indexOf("pt_main0001") < 0);
+    m.ctx.HistoryManager.undo();
+    t("  -> ⏪ rend le point supprimé, toujours intégré", m.CS.compterAjouts("sig") === 2);
+
+    m.ctx.HistoryManager.undo();
+    const pt2 = m.etat.editorPoints.find((o) => o.uid === "pt_main0001");
+    t("⏪ annule l'intégration : objets rendus sans marque", !!pt2 && pt2._srcCalque === undefined &&
+      pt2._srcCalqueAjout === undefined && m.CS.compterAjouts("sig") === 0 && m.CS.compterCopie("sig") === 2);
+    t("  -> et l'annulation est datée (la synchro l'envoie)", pt2.updatedAt >= avantMaj);
+    t("  -> sans trace de suppression", m.traces.length === 0);
+
+    m.lecture = true;
+    t("🔒 ⏪ refusé en lecture seule (garde existante)", m.ctx.HistoryManager.redo() === false);
+    m.lecture = false;
+
+    // Restitution : les ajouts intégrés partent avec le calque (la fenêtre le dit, cf. câblage plus bas).
+    const m2 = await monterAjouts();
+    m2.CS.integrerAjouts("sig", ["pt_main0001"]);
+    const rr = m2.CS.restituer("sig");
+    t("🩸 restitution : l'ajout intégré est retiré avec les copies",
+      rr.retires === 3 && !m2.etat.editorPoints.some((o) => o.uid === "pt_main0001"));
+    t("restitution : les autres dessins (zone, tracé, itinéraire) restent",
+      m2.etat.zones.length === 1 && m2.etat.roads.length === 2);
+
+    // Restitution reçue d'un autre appareil, postérieure au rapatriement : l'ajout modifié après T est GARDÉ en
+    // objet ordinaire (uid dérivé, jamais celui du fichier du calque), sans ses marques.
+    const m3 = await monterAjouts();
+    m3.CS.integrerAjouts("sig", ["pt_main0001"]);
+    const T = m3.etat.roads.find((o) => o.uid === "rd_cal00001")._srcCalqueDepuis + 1;
+    const pt3 = m3.etat.editorPoints.find((o) => o.uid === "pt_main0001");
+    pt3.updatedAt = Math.max(pt3.updatedAt, T + 1);
+    const ar = m3.CS.appliquerRestitutions([{ calque: "sig", avant: T }]);
+    const garde = m3.etat.editorPoints.find((o) => /_r/.test(o.uid));
+    t("restitution reçue : ajout modifié après T gardé, marques retirées, uid dérivé",
+      ar.gardes === 1 && !!garde && garde._srcCalque === undefined && garde._srcCalqueAjout === undefined &&
+      garde.uid !== "pt_main0001");
+
+    // Import d'une session d'un autre plan : marque inconnue retirée, marque d'ajout aussi.
+    const m4 = monter(CALQUE, { zones: [{ uid: "zn_x", type: "eau", points: [], _srcCalque: "autre",
+      _srcCalqueAjout: true }] });
+    m4.CS.resynchroniser();
+    t("import d'un autre plan : la marque d'ajout tombe avec la marque inconnue",
+      m4.etat.zones[0]._srcCalqueAjout === undefined && m4.etat.zones[0]._srcCalque === undefined);
+  }
+
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
   etat.roads.push({ type: "principal", points: [{ x: 0, y: 0 }] });   // cree a la main
   const rr = CS.restituer("sig");
@@ -298,6 +449,102 @@ const CALQUE = {
     t("resynchroniser sans plan : ne touche a rien", m.CS.resynchroniser() === null);
   }
 
+  // ───────── 4 ter. 🩸 RESTITUTION PARTAGÉE (plan d'extension) ─────────
+  // Jamais une trace de suppression (une trace sur l'uid d'une copie, exportée puis fusionnée, détruirait
+  // l'objet du calque) : un enregistrement « calque restitué à T », local à la session de l'appareil.
+  {
+    const AVEC_UID = { roads: [{ uid: "rd_c1aaaaaa", type: "a", points: [] }, { uid: "rd_c1bbbbbb", type: "b", points: [] }] };
+    const ext = function (m, lecture) {
+      m.ctx._currentLoadedPlanId = "ext_p1";
+      m.ctx.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext" } : null) };
+      m.ctx.KtaExtensions = { lectureSeule: () => !!lecture };
+    };
+    const m = monter(AVEC_UID);
+    await m.CS.rapatrier("sig");
+    t("rapatrier : chaque copie porte l'instant du rapatriement (_srcCalqueDepuis)",
+      m.CS.CLE_DEPUIS === "_srcCalqueDepuis" && m.etat.roads.every((o) => typeof o._srcCalqueDepuis === "number"));
+    m.CS.restituer("sig");
+    t("plan local : la restitution n'est PAS notée (rien à envoyer)",
+      m.CS.restitutionsDepuis(0).length === 0 && m.CS.getSessionState() === null);
+
+    const m2 = monter(AVEC_UID);
+    ext(m2);
+    await m2.CS.rapatrier("sig");
+    const r2 = m2.CS.restituer("sig");
+    const env = m2.CS.restitutionsDepuis(0);
+    t("plan d'extension : restitution notée { calque, avant, uids } (uids = copies retirées)",
+      r2.partagee === true && env.length === 1 && env[0].calque === "sig" &&
+      JSON.stringify(env[0].uids.slice().sort()) === JSON.stringify(["rd_c1aaaaaa", "rd_c1bbbbbb"]));
+    t("…seulement si postérieure au seuil", m2.CS.restitutionsDepuis(env[0].avant).length === 0);
+    const st = m2.CS.getSessionState();
+    t("…gardée dans l'état LOCAL de la session (relu au chargement)", !!st && st.restitutions.sig === env[0].avant &&
+      (function () { const m3 = monter(AVEC_UID); m3.CS.loadSessionState(st); return m3.CS.restitutionsDepuis(0).length === 1; })());
+    t("🔒 le fichier de session ne l'emporte pas (sessionExporter ne lit pas l'état du module)",
+      fs.readFileSync("js/sessionExporter.js", "utf8").indexOf("CalqueSession") < 0);
+
+    const m4 = monter(AVEC_UID);
+    ext(m4, true);
+    await m4.CS.rapatrier("sig");
+    t("plan en lecture seule : restitution locale seulement", m4.CS.restituer("sig").partagee === false &&
+      m4.CS.restitutionsDepuis(0).length === 0);
+    const m5 = monter(AVEC_UID);
+    ext(m5);
+    await m5.CS.rapatrier("sig");
+    t("« Effacer la session » (opts.local) : jamais notée", m5.CS.restituer("sig", { local: true }).partagee === false &&
+      m5.CS.restitutionsDepuis(0).length === 0);
+    t("plan d'extension modifiable : restitutionPartagee() vrai, plan local ou lecture seule : faux",
+      m5.CS.restitutionPartagee() === true && m4.CS.restitutionPartagee() === false && m.CS.restitutionPartagee() === false);
+    t("libelle : nom du calque, son id à défaut", m.CS.libelle("sig") === "Import SIG" && m.CS.libelle("inconnu") === "inconnu");
+    // « Rendre aussi les calques à l'équipe » : restitution partagée, puis l'effacement relit l'état en gardant les
+    // restitutions (forme exacte de sessionPersist.js > clear) — elle doit encore partir.
+    const m8 = monter(AVEC_UID);
+    ext(m8);
+    await m8.CS.rapatrier("sig");
+    m8.CS.restituer("sig");
+    const st8 = m8.CS.getSessionState();
+    m8.CS.loadSessionState(st8 ? { restitutions: st8.restitutions, aEnvoyer: st8.aEnvoyer } : null);
+    t("🩸 rendre à l'équipe puis effacer : la restitution reste à envoyer (uids compris), plus aucun calque rapatrié",
+      m8.CS.restitutionsDepuis(0).length === 1 && m8.CS.restitutionsDepuis(0)[0].uids.length === 2 &&
+      m8.CS.listeRapatries().length === 0);
+
+    // Réception : copies marquées de quatre provenances, un objet du calque non marqué, un autre calque.
+    const marque = (uid, maj, R, L) => ({ uid, type: "a", points: [], updatedAt: maj, _srcCalque: L || "sig",
+      _srcCalqueDepuis: R });
+    const session = () => ({ roads: [
+      marque("rd_avant0001", 150, 100),             // modifiée avant T → retirée
+      marque("rd_apres0001", 300, 100),             // modifiée après T → gardée (uid dérivé)
+      marque("rd_neuve0001", 400, 400),             // nouveau rapatriement après T → intacte
+      { uid: "rd_sansR0001", type: "a", points: [], updatedAt: 300, _srcCalque: "sig" },   // provenance inconnue
+      { uid: "rd_main00001", type: "a", points: [], updatedAt: 50 },                       // sans marque
+      marque("rd_autre0001", 150, 100, "puits")      // autre calque
+    ] });
+    const m6 = monter(AVEC_UID, session());
+    m6.ctx.PLAN_CONFIG.dataLayers.push({ id: "puits", file: "data/puits.json" });
+    const a = m6.CS.appliquerRestitutions([{ calque: "sig", avant: 200 }]);
+    const uids = m6.etat.roads.map((o) => o.uid);
+    const garde = m6.etat.roads.find((o) => /_r/.test(o.uid) && o.updatedAt === 300 && o._srcCalque === undefined);
+    t("🩸 reçue : copie modifiée avant T retirée", uids.indexOf("rd_avant0001") < 0 && a.retires === 1);
+    t("🩸 reçue : copie modifiée après T GARDÉE, marque retirée, uid dérivé, date inchangée",
+      a.gardes === 1 && !!garde && garde._srcCalqueDepuis === undefined && uids.indexOf("rd_apres0001") < 0);
+    t("reçue : copie d'un rapatriement postérieur à T intacte", uids.indexOf("rd_neuve0001") >= 0);
+    t("reçue : copie sans date de rapatriement, modifiée après T, intacte", uids.indexOf("rd_sansR0001") >= 0);
+    t("🔒 reçue : objet sans marque intact", uids.indexOf("rd_main00001") >= 0);
+    t("reçue : copie d'un AUTRE calque intacte", uids.indexOf("rd_autre0001") >= 0);
+    const m7 = monter(AVEC_UID, session());
+    m7.CS.appliquerRestitutions([{ calque: "sig", avant: 200 }]);
+    t("uid dérivé identique sur un autre appareil (pas de doublon entre eux)",
+      m7.etat.roads.some((o) => o.uid === garde.uid));
+    m6.etat.roads.push(marque("rd_apres0001", 300, 100));
+    const b = m6.CS.appliquerRestitutions([]);
+    t("🩸 la même copie revenue (relecture complète) : reconvertie SANS doublon ni nouveau signalement",
+      m6.etat.roads.filter((o) => o.uid === garde.uid).length === 1 && b.gardes === 0 &&
+      !m6.etat.roads.some((o) => o.uid === "rd_apres0001"));
+    const n = m6.etat.roads.length;
+    const c = m6.CS.appliquerRestitutions([{ calque: "sig", avant: 150 }, { calque: 42, avant: 9 }, { calque: "x", avant: -1 }]);
+    t("une restitution plus ancienne ou invalide ne change rien", !c.change && m6.etat.roads.length === n &&
+      m6.CS.getSessionState().restitutions.sig === 200 && !("x" in m6.CS.getSessionState().restitutions));
+  }
+
   // ───────── etat corrompu ─────────
   {
     const m = monter(CALQUE);
@@ -327,9 +574,24 @@ const CALQUE = {
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
     // clear(opts) : `opts.snapshotFait` évite un double snapshot (déjà pris par la modale de restauration).
     /function clear\((?:opts)?\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
+  t("🩸 cablage : effacer la session GARDE les restitutions (sinon « rendre à l'équipe » ne part jamais)",
+    SP.indexOf("loadSessionState(st ? { restitutions: st.restitutions, aEnvoyer: st.aEnvoyer } : null)") > 0);
+  {
+    const i = SP.indexOf("data-action=\"clear\"]').addEventListener");
+    const h = i < 0 ? "" : SP.slice(i, i + 4000);
+    t("cablage : le choix « équipe / cet appareil » n'existe que si la restitution se partage",
+      h.indexOf("CS.restitutionPartagee())\n        ? CS.listeRapatries() : [];") > 0 ||
+      h.indexOf("CS.restitutionPartagee())\r\n        ? CS.listeRapatries() : [];") > 0);
+    t("cablage : trois issues (cet appareil / rendre à l'équipe / annuler)",
+      h.indexOf("autre:       { label: _t(\"session.btn.clearEquipe\"), valeur: \"equipe\" }") > 0 &&
+      h.indexOf("okLabel:     _t(\"session.btn.clearIci\")") > 0 && h.indexOf("go(choix === \"equipe\")") > 0);
+    t("🩸 cablage : la restitution partagée est notée AVANT le vidage (elle porte les uids des copies)",
+      h.indexOf("CS.restituer(id)") > 0 && h.indexOf("CS.restituer(id)") < h.indexOf("_viderEtatCourant()"));
+    t("🔒 cablage : les noms de calques sont échappés avant ktaConfirm (HTML)", h.indexOf("ktaEsc(CS.libelle(id))") > 0);
+  }
   // 🩸 Un <button> n'émet JAMAIS `change` : branché sur le listener `change` des cases, il est mort
   // sans erreur. On vérifie le TYPE D'ÉVÉNEMENT, pas seulement l'attribut.
-  ["rapatrier", "restituer", "exporter"].forEach(function (act) {
+  ["rapatrier", "restituer", "exporter", "integrer"].forEach(function (act) {
     const i = FP.indexOf("[data-calque-" + act + "]");
     const avant = i < 0 ? "" : FP.slice(0, i);
     const dernier = avant.lastIndexOf("addEventListener(\"");
@@ -337,6 +599,55 @@ const CALQUE = {
     t("🩸 cablage : « " + act + " » est branche sur CLICK (lu : " + type + ")", type === "click");
   });
 
+  t("cablage : « Intégrer des ajouts » seulement sur un calque en modification",
+    /\(modifiable\s*\?\s*'<button[^;]*?data-calque-integrer=/.test(FP) && /modifiable\s*=\s*rapatrie &&/.test(FP));
+  t("cablage : la fenêtre d'ajouts passe par CalqueSession.integrerAjouts, garde de lecture seule comprise",
+    /function _ouvrirAjouts[\s\S]{0,800}ktaEditionRefusee\(\)/.test(FP) && /CS\.integrerAjouts\(id, uids\)/.test(FP));
+  // 🔒 Lecture seule : « Intégrer » et « Exporter » ABSENTS de la ligne (même règle que les outils de dessin,
+  // ktaEditionRefusee en silencieux), « Restituer » présent ; sans extension, rien ne change. Le VRAI rendu, extrait
+  // du panneau et joué dans un vm.
+  {
+    const i = FP.indexOf("function _renderDataLayersSection()");
+    const j = FP.indexOf("function refreshDataLayers()");
+    const code = (i < 0 || j < i) ? "" : FP.slice(i, j);
+    const rendre = function (refus) {
+      const appels = [];
+      const ctx = {
+        PLAN_CONFIG: { dataLayers: [{ id: "sig", label: "Import SIG", file: "data/sig.json" }] },
+        dataLayerGroups: { sig: {} },
+        map: { hasLayer: () => true },
+        I18n: { t: (k) => k },
+        CalqueSession: { estRapatrie: () => true },
+        _escAttr: String, _escHtml: String
+      };
+      if (refus !== undefined) ctx.ktaEditionRefusee = function (s) { appels.push(s); return refus; };
+      ctx.window = ctx;
+      vm.createContext(ctx);
+      let html = "";
+      try { html = vm.runInContext(code + "\n_renderDataLayersSection();", ctx); } catch (e) { html = ""; }
+      return { html: String(html), appels: appels };
+    };
+    const sans = rendre(undefined), ecrit = rendre(false), ro = rendre(true);
+    const a = (h, act) => h.indexOf("data-calque-" + act + "=") >= 0;
+    t("🔒 boutons : rendu extrait du panneau", code.length > 0 && a(sans.html, "restituer"));
+    t("🔒 boutons : sans extension, intégrer + exporter + restituer présents",
+      a(sans.html, "integrer") && a(sans.html, "exporter") && a(sans.html, "restituer"));
+    t("🔒 boutons : plan modifiable, intégrer + exporter + restituer présents",
+      a(ecrit.html, "integrer") && a(ecrit.html, "exporter") && a(ecrit.html, "restituer"));
+    t("🔒 boutons : lecture seule, intégrer et exporter ABSENTS, restituer présent",
+      !a(ro.html, "integrer") && !a(ro.html, "exporter") && a(ro.html, "restituer"));
+    t("🔒 boutons : la règle est lue en silencieux (pas de message au rendu)",
+      ro.appels.length > 0 && ro.appels.every((s) => s === true));
+    t("🔒 boutons : le panneau suit un droit qui change (événements de l'extension)",
+      /"mktm:plans-extension-changes"[\s\S]{0,200}refreshDataLayers\(\)/.test(FP));
+  }
+  t("ajouts : rien n'est coché par défaut",
+    /<input type="checkbox" data-ajout-uid="' \+ _escAttr\(o\.uid\) \+ '">/.test(FP));
+  t("ajouts : filtre « Créé par » seulement avec la prise auteurObjet",
+    /parAuteur && liste\.total/.test(FP) && /aPrise\("auteurObjet"\)/.test(FP));
+  t("🩸 retour : la fenêtre de restitution DIT combien d'ajouts intégrés partent",
+    /CS\.compterAjouts\(id\)/.test(FP) && /filter\.calque\.ajoutsRetires/.test(FP) &&
+    (FP.match(/\+ ajouts, \{/g) || []).length === 2);
   t("cablage : le panneau de filtres porte les trois actions",
     /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP) && /data-calque-exporter/.test(FP));
   t("cablage : l export dit OU deposer le fichier (sinon il est inutilisable)",

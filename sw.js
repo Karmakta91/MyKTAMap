@@ -17,16 +17,18 @@
 //   cache, ils figeraient la mise à jour, les alertes et la sonde de santé).
 // Réseau seul (handler fetch) : killsw.html, Licence-pro.json, denylist.json (hors ligne : liste vide), ZIP
 //   de plan déclarés par l'index, sondes de fraîcheur, requêtes d'extension ou authentifiées.
-// Caches gardés à l'activation : CACHE_NAME, plans hors-ligne (PLAN_CACHE_PREFIX), modules greffés
-//   (EXT_CACHE_PREFIX) ; tout autre cache est supprimé.
+// Réseau d'abord : docs/applications, lang/*.json, data/index.json, pages et feuilles de style des dossiers
+//   de modules déclarés par l'index (cf _reseauDabordPageExt).
+// Caches gardés à l'activation : CACHE_NAME, plans hors-ligne (PLAN_CACHE_PREFIX), modules greffés et leurs
+//   pages (EXT_CACHE_PREFIX) ; tout autre cache est supprimé.
 // Pièges : 🩸 scripts/release/etat-sites.ps1 lit la PREMIÈRE occurrence du nom de cache versionné dans ce
 //   fichier : ne jamais le citer au-dessus de CACHE_NAME.
 // Garde-fous : scripts/check-icon-catalog.js (précache des icônes), scripts/check-plan-offline.js,
-//   scripts/check-html-integrite.js · Doc : docs/architecture/infra-versioning.md
+//   scripts/check-html-integrite.js, scripts/check-extensions.js (stratégies des modules déclarés) · Doc : docs/architecture/infra-versioning.md
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.17.0";
+const CACHE_NAME = "myktamap-cache-v2.18.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -54,18 +56,112 @@ function _estCacheExt(cle) { return typeof cle === "string" && cle.indexOf(EXT_C
 // (le cache principal, vidé au bump, ne les tient pas au-delà). Sans modules déclarés
 // (myktamap.fr) : ce cache n'existe pas.
 const MODULES_EXT_CACHE = EXT_CACHE_PREFIX + "modules";
-function _garderModulesDeclares(texteIndex) {
+// URL absolues des modules déclarés par un texte d'index ; null = index illisible.
+function _modulesDeclares(texteIndex) {
   let mods = [];
   try {
     const cfg = (JSON.parse(texteIndex) || {}).config || {};
     const sc = cfg.serverConnection || {};
     mods = Array.isArray(sc.modules) ? sc.modules : [];
-  } catch (e) { return Promise.resolve(); }
-  if (!mods.length) return Promise.resolve();   // aucun module déclaré : aucun cache créé
-  const urls = mods.filter(function(m) { return typeof m === "string" && m && m.indexOf("://") < 0 && m.indexOf("//") !== 0; })
+  } catch (e) { return null; }
+  return mods.filter(function(m) { return typeof m === "string" && m && m.indexOf("://") < 0 && m.indexOf("//") !== 0; })
     .slice(0, 20)
     .map(function(m) { try { return new URL(m, self.registration.scope).href; } catch (e) { return null; } })
     .filter(function(u) { return u && new URL(u).origin === self.location.origin; });
+}
+
+// PAGES, FEUILLES DE STYLE ET GUIDES (.md) DES DOSSIERS DE MODULES : RÉSEAU D'ABORD.
+// Un dossier de module = le dossier d'un module déclaré (`x/mod.js` → `<scope>/x/`), strictement sous le
+// scope : un module posé à la racine ne fait jamais passer l'app elle-même (index.html, css/) en réseau
+// d'abord. Les .html/.css/.md de ces dossiers ne portent pas de `?v=` : en cache d'abord, ils resteraient figés
+// jusqu'au prochain CACHE_NAME. Gardés dans un cache durable (préfixe ext) sous leur URL SANS requête —
+// 🔒 une requête de page peut porter un jeton (lien d'invitation) qui ne doit pas rester sur l'appareil.
+// Sans module déclaré (myktamap.fr) : aucun dossier, rien ne change.
+// 🩸 Le SW redémarre sans mémoire : les dossiers se relisent dans l'index en cache (une fois par réveil),
+// puis suivent chaque index lu en ligne (`_garderModulesDeclares`).
+const PAGES_EXT_CACHE = EXT_CACHE_PREFIX + "pages";
+let _dossiersExt = null;
+function _dossiersDe(urls) {
+  const scope = self.registration.scope;
+  const vus = new Set();
+  (urls || []).forEach(function(u) {
+    // Dossier = jusqu'au dernier « / » (lastIndexOf : pas de [^/]*$, retour arrière super-linéaire, Sonar).
+    const sansRequete = u.split(/[?#]/)[0];
+    const d = sansRequete.slice(0, sansRequete.lastIndexOf("/") + 1);
+    if (d.indexOf(scope) === 0 && d.length > scope.length) vus.add(d);
+  });
+  return Array.from(vus);
+}
+function _dossiersExtPrets() {
+  if (_dossiersExt) return _dossiersExt;
+  _dossiersExt = caches.open(CACHE_NAME)
+    .then(function(c) { return c.match("./data/index.json", { ignoreSearch: true }); })
+    .then(function(r) { return r ? r.text() : ""; })
+    .then(function(texte) { return _dossiersDe(_modulesDeclares(texte)); })
+    .catch(function() { return []; });
+  return _dossiersExt;
+}
+// Candidat (synchrone, sans lecture de cache) : page, feuille de style ou guide dans un sous-dossier du scope.
+function _candidatPageExt(url, destination) {
+  const chemin = url.split(/[?#]/)[0];
+  const scope = self.registration && self.registration.scope;
+  if (!scope || chemin.indexOf(scope) !== 0 || chemin.slice(scope.length).indexOf("/") < 0) return false;
+  return destination === "document" || destination === "iframe" || destination === "style" ||
+    /(\.html?|\.css|\.md|\/)$/i.test(chemin);
+}
+function _dansDossierExt(url, dossiers) {
+  const chemin = url.split(/[?#]/)[0];
+  return dossiers.some(function(d) { return chemin.indexOf(d) === 0; });
+}
+function _reseauDabordPageExt(request) {
+  const cle = request.url.split(/[?#]/)[0];
+  const reseau = fetch(request, { cache: "no-store" }).then(function(r) {
+    if (r && r.ok && r.type === "basic") {
+      const copie = r.clone();
+      caches.open(PAGES_EXT_CACHE).then(function(c) { return c.put(cle, copie); }).catch(function() {});
+    }
+    return r;
+  });
+  const enCache = function() {
+    return caches.open(PAGES_EXT_CACHE).then(function(c) { return c.match(cle); }).catch(function() { return null; });
+  };
+  const horsLigne = function() {
+    return new Response("Page indisponible hors ligne.",
+      { status: 504, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  };
+  // Réponse du serveur (même 404 ou redirection) = vérité ; 5xx, panne ou délai dépassé = copie gardée.
+  // Délai dépassé sans copie : on continue d'attendre le réseau (première visite sur réseau lent).
+  return new Promise(function(resoudre) {
+    let fini = false;
+    const finir = function(r) { if (!fini) { fini = true; clearTimeout(minuteur); resoudre(r); } };
+    const minuteur = setTimeout(function() {
+      enCache().then(function(c) { if (c) finir(c); });
+    }, 3000);
+    reseau.then(function(r) {
+      if (r.status >= 500) return enCache().then(function(c) { finir(c || r); });
+      finir(r);
+    }).catch(function() {
+      enCache().then(function(c) { finir(c || horsLigne()); });
+    });
+  });
+}
+
+function _garderModulesDeclares(texteIndex) {
+  const urls = _modulesDeclares(texteIndex);
+  if (!urls) return Promise.resolve();
+  const dossiers = _dossiersDe(urls);
+  _dossiersExt = Promise.resolve(dossiers);
+  // Copies de pages hors des dossiers actuels : retirées (sans créer le cache s'il n'existe pas).
+  caches.has(PAGES_EXT_CACHE).then(function(existe) {
+    if (!existe) return;
+    return caches.open(PAGES_EXT_CACHE).then(function(c) {
+      return c.keys().then(function(cles) {
+        return Promise.all(cles.filter(function(r) { return !_dansDossierExt(r.url, dossiers); })
+          .map(function(r) { return c.delete(r); }));
+      });
+    });
+  }).catch(function() {});
+  if (!urls.length) return Promise.resolve();   // aucun module déclaré : aucun cache créé
   return caches.open(MODULES_EXT_CACHE).then(function(cache) {
     return cache.keys().then(function(cles) {
       const voulues = new Set(urls);
@@ -148,7 +244,11 @@ const ASSETS_TO_CACHE = [
   "./css/style-filtres.css",
 
   // JS principaux
-  // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
+  // Splash de démarrage : premier script d'index.html (version, fermeture, plafond)
+  "./js/ktaSplash.js",
+  // Worker des galeries du splash (new Worker dans ktaSplash.js) : absent du cache, le splash garde son SVG animé
+  "./js/ktaSplashWorker.js",
+  // Copyright + watermark + détection DevTools : premier module après le splash
   "./js/copyright.js",
   // I18n — helper multi-langue (window.I18n). Chargé tôt dans
   // index.html (après copyright). Précharge lang/fr.json + langue active.
@@ -461,6 +561,7 @@ const CRITICAL_APP_SHELL = [
   "./index.html",
   "./",
   "./css/style.css",
+  "./js/ktaSplash.js",
   "./js/copyright.js",
   // I18n + dico fallback. langManager.js est AWAIT-é au boot (main.js) et
   // fr.json est le fallback universel → tous deux critiques pour un boot offline
@@ -1302,7 +1403,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
+  // PAGES ET FEUILLES DE STYLE DES DOSSIERS DE MODULES (cf _reseauDabordPageExt). Le test synchrone écarte
+  // d'emblée index.html et tout fichier à la racine : le démarrage hors ligne de l'app ne lit rien de plus.
+  if (_candidatPageExt(reqUrl, event.request.destination)) {
+    event.respondWith(_dossiersExtPrets().then(function(dossiers) {
+      return _dansDossierExt(reqUrl, dossiers) ? _reseauDabordPageExt(event.request) : _parDefaut();
+    }));
+    return;
+  }
+
+  event.respondWith(_parDefaut());
+  return;
+
+  // ⚠️ Déclarée en fonction (hissée) : les branches au-dessus peuvent s'y replier.
+  function _parDefaut() { return (
     // On scope `caches.match()` au
     // CACHE_NAME courant uniquement. Le `caches.match()` global cherche
     // dans TOUS les caches existants — y compris d'anciens caches pas
@@ -1398,5 +1512,5 @@ self.addEventListener("fetch", (event) => {
           });
         });
     })
-  );
+  ); }
 });

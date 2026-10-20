@@ -702,14 +702,14 @@
     overlay.style.display = "flex";
     overlay.innerHTML =
       '<div class="kta-modal" style="max-width:440px;">' +
-        '<div class="kta-modal-icon" style="color:#8cb4ff;">🧭</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">🧭</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipr.result.titre")) + '</div>' +
         '<div class="kta-modal-texte" style="text-align:left;">' +
           stepsHtml +
           '<div class="kta-ipr-total">' + _esc(_t("ipr.result.total", { dist: _fmtDist(chain.totalM) })) + '</div>' +
           (anyFallback
             ? '<div style="font-size:12px; color:#ff9933; margin-top:6px;">' + _esc(_t("ipr.result.fallback")) + '</div>' : '') +
-          '<div style="font-size:12px; color:#8892a4; margin-top:8px;">' + _esc(_t("ipr.result.hint")) + '</div>' +
+          '<div style="font-size:12px; color:var(--kta-texte-3); margin-top:8px;">' + _esc(_t("ipr.result.hint")) + '</div>' +
         '</div>' +
         '<div class="kta-modal-actions">' +
           '<button class="kta-btn kta-btn-ghost" id="kta-ipr-close" type="button">' + _esc(_t("ui.btn.cancel")) + '</button>' +

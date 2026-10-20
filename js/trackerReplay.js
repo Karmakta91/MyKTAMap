@@ -48,7 +48,7 @@
         padding: 8px 14px;
         border: 1px solid rgba(140, 180, 255, 0.3);
         background: rgba(140, 180, 255, 0.08);
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         border-radius: 6px;
         cursor: pointer;
         font-family: inherit;
@@ -72,12 +72,12 @@
       }
       .kta-trkrepl-speed-label {
         font-size: 12px;
-        color: #8892a4;
+        color: var(--kta-texte-3);
       }
       .kta-trkrepl-speed select {
         padding: 6px 10px;
         background: rgba(255,255,255,0.06);
-        color: #e8eaf0;
+        color: var(--kta-texte);
         border: 1px solid rgba(255,255,255,0.12);
         border-radius: 5px;
         font-family: inherit;
@@ -103,7 +103,7 @@
       }
       .kta-trkrepl-info-label {
         font-size: 11px;
-        color: #8892a4;
+        color: var(--kta-texte-3);
         text-transform: uppercase;
         letter-spacing: 0.06em;
         margin-bottom: 4px;
@@ -111,12 +111,12 @@
       .kta-trkrepl-info-value {
         font-size: 18px;
         font-weight: 700;
-        color: #f4c542;
+        color: var(--kta-accent-texte);
         font-variant-numeric: tabular-nums;
       }
       .kta-trkrepl-info-sub {
         font-size: 12px;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         margin-top: 2px;
       }
       .kta-trkrepl-export {
@@ -133,7 +133,7 @@
       }
       .kta-trkrepl-export-info {
         font-size: 12.5px;
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
       }
 
       /* Trail + marker mobile sur la carte principale (overlays Leaflet) */
@@ -195,7 +195,7 @@
       .kta-trkrepl-btn-icon {
         background: rgba(255,255,255,0.06);
         border: 1px solid rgba(255,255,255,0.14);
-        color: #c8d0e0;
+        color: var(--kta-texte-2);
         width: 32px;
         height: 32px;
         padding: 0;

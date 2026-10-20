@@ -340,5 +340,36 @@ function pointDeBase() {
   });
 }
 
+// ───────── 8. le clic sur « Repositionner » ne devient pas la position ─────────
+// Le bouton arme le mode pendant la capture du MÊME clic (écouteur sur document, avant #map) : map.js >
+// _ktaPickCaptureClick doit ignorer un clic né dans une fiche. Fonction CHARGÉE depuis map.js, pas recopiée.
+{
+  const MAP = fs.readFileSync("js/map.js", "utf8");
+  const m = /function _ktaPickCaptureClick\(domEvt\) \{[\s\S]*?\r?\n\}\r?\n/.exec(MAP);
+  t("map.js > _ktaPickCaptureClick trouvée", !!m);
+  if (m) {
+    const tirs = [];
+    const ctx = {
+      window: { _modeClicCarteActif: () => true },
+      map: {
+        mouseEventToLatLng: () => ({ lat: 1, lng: 2 }), mouseEventToContainerPoint: () => ({}),
+        mouseEventToLayerPoint: () => ({}), fire: (n) => tirs.push(n)
+      }
+    };
+    vm.createContext(ctx);
+    vm.runInContext(m[0] + "\nthis.f = _ktaPickCaptureClick;", ctx);
+    const evt = (sel) => ({
+      target: { closest: (s) => (s.split(",").some((x) => x.trim() === sel) ? {} : null) },
+      stopImmediatePropagation() {}, preventDefault() {}
+    });
+    ctx.f(evt(".leaflet-popup"));
+    t("🩸 clic dans une fiche (bouton Repositionner) : aucun clic carte réémis", tirs.length === 0);
+    ctx.f(evt(".leaflet-control"));
+    t("clic sur un contrôle Leaflet : ignoré", tirs.length === 0);
+    ctx.f(evt("aucun"));
+    t("clic sur la carte : réémis au picker", tirs.length === 1);
+  }
+}
+
 console.log(ko === 0 ? "\n🎉 repositionnement d'un POI : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

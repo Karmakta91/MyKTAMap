@@ -1445,7 +1445,7 @@ qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
 **🧭 Dette adressée à moitié, sciemment.** `_pointInPolygon` vivait en **quatre** copies locales (`interface.js`,
 `pathfinder.js`, `secoursMode.js`…). Le module devient le **foyer canonique** (`window.ktaPointInPolygon`,
 `window.ktaDistPointSegment`) sans rouvrir les quatre : elles servent trois chemins de suppression qui fonctionnent, et on
-ne les touche pas dans une version non déployée. Migration au BACKLOG.
+ne les touche pas dans une version non déployée. Migration : `docs/IDEES.md`.
 
 **Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
 Leaflet**. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
@@ -1523,10 +1523,26 @@ Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d
 
 ### 🩸 Les deux pièges, et pourquoi ils coûtent cher
 
-1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre.
+1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Ailleurs, confirmation inchangée. `clear()` garde les restitutions (`restitutions`, `aEnvoyer`) de l'état du module : celle qui vient d'être notée doit encore partir. Filet : `scripts/smoke/checkup-calque-effacer.js` (plan local, parcours réel : rechargement, fenêtre « session restaurée », effacement, panneau de filtres).
 2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
 
 3. **À l'import d'une session, la liste se DÉDUIT des marques.** Le fichier session emporte les objets marqués `_srcCalque`, **pas** `calquesSession` (propre à la sauvegarde locale). Sans recalage : sur un autre appareil, le calque d'origine se réaffiche par-dessus sa copie (doublon) et « Exporter » refuse (`pasRapatrie`) ; et une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (`appliquerVerrous` ne tourne qu'au rechargement). `resynchroniser()`, appelée par l'import (`interfaceImportExport.js`, après les setters), reconstruit `_rapatries` depuis les marques présentes **et connues du plan ouvert**, masque / réaffiche en conséquence, et **retire** les marques de calques inconnus (session d'un autre plan → objets « créés à la main », comptés à l'export). Déduire plutôt qu'exporter la liste : une seule source de vérité, et les sessions déjà exportées marchent sans être refaites.
+
+### ☁️ Restitution partagée (plan d'extension)
+
+Sur un plan ☁️, le calque rapatrié par un compte est vu « en modification » par tous (copies synchronisées, état recalé sur les marques). Sa **restitution** doit donc se propager — mais **jamais par une trace de suppression** : la copie porte l'uid de l'objet du calque, et une trace sur cet uid, emportée par l'export complet puis passée par « Fusion de calques » ou l'import ZIP du Générateur, **détruirait l'objet original** (`historyManager.js > _laisseTrace` n'en émet pas).
+
+- **Sortante** : `restituer(id)` note `{ avant: T, uids }` (T ≥ toute copie retirée ; `uids` = copies retirées) quand le plan ouvert est un plan d'extension **modifiable**. `restitutionsDepuis(ts)` les donne à `KtaExtensions.changementsDepuis`. Pas de note sur un plan en lecture seule (elle partirait plus tard, périmée, si le droit change), ni par « Effacer sur cet appareil seulement » (`restituer(id, { local: true })` : la copie du serveur revient, rien ne disparaît chez les autres). « Rendre aussi les calques à l'équipe » passe par la restitution partagée (§piège 1).
+- **Entrante** : `appliquerRestitutions([{ calque, avant }])` retient la plus récente par calque, puis applique toutes les restitutions connues. Pour une copie marquée du calque L restitué à T :
+
+| Copie | Sort | Pourquoi |
+|---|---|---|
+| rapatriée après T (`_srcCalqueDepuis` > T) | intacte | nouveau rapatriement : le calque est de nouveau en modification |
+| modifiée au plus tard à T | **retirée** | la restitution l'emporte sur les corrections antérieures non exportées (décision produit) |
+| modifiée après T | **gardée** en objet ordinaire, marque retirée, uid dérivé de (uid, T), date inchangée, toast | rien de perdu ; la garder marquée masquerait tout le calque pour quelques objets. L'uid dérivé est le même sur tous les appareils (pas de doublon entre eux) et n'est pas celui du calque (une suppression ultérieure ne vise jamais l'original). Doublon visible de l'objet du calque, **annoncé** |
+| sans `_srcCalqueDepuis`, modifiée après T | intacte | provenance inconnue (copie antérieure à cette règle) : la convertir pourrait changer tout un calque rapatrié en objets « à la main » |
+
+Un objet **sans marque** n'est jamais touché. Les restitutions connues sont rejouées à chaque arrivée de copie marquée (`ktaExtensions.js > appliquerChangements`) : une copie périmée renvoyée par un appareil en retard ne remet pas le verrou. Limites acceptées : horloges des appareils (T et `updatedAt` sont des heures d'appareil, comme toute la synchro) ; une restitution faite puis « Effacer la session » avant l'envoi part quand même (`clear()` garde `aEnvoyer`), mais les **traces de suppression** non envoyées, elles, sont jetées (décision produit, `_viderEtatCourant`).
 
 ### 💾 Le retour vers le ZIP
 
@@ -1537,19 +1553,50 @@ Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d
 Trois règles dans l'export :
 - 🩸 **Les tableaux vides sont ÉCRITS, pas omis.** C'est un remplacement : `zones: []` est la seule façon de dire « j'ai tout supprimé ». Les omettre annulerait la suppression au rechargement.
 - 🧹 La marque interne **`_srcCalque` est retirée** — elle n'a rien à faire dans le ZIP d'un plan partagé.
-- ⚠️ Les objets **créés à la main** pendant la session ne partent pas (ils n'appartiennent pas au calque) mais sont **comptés et annoncés** : les verser d'office déciderait à la place de l'utilisateur, les taire lui ferait croire tout embarqué.
+- ⚠️ Les objets **créés à la main** pendant la session ne partent pas (ils n'appartiennent pas au calque) mais sont **comptés et annoncés** : les verser d'office déciderait à la place de l'utilisateur, les taire lui ferait croire tout embarqué. L'utilisateur les rattache lui-même par « ➕ Intégrer des ajouts » (ci-dessous).
 
 Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].file` est résolu au chargement (`config.js > cloneAndResolvePlanConfig`) et vaut souvent une URL `blob:` sur un plan importé.
+
+### ➕ Intégrer des ajouts
+
+Besoin : plusieurs comptes corrigent un calque ensemble ; celui qui exporte doit pouvoir y verser les objets **dessinés à la
+main** (les siens ou ceux d'un autre), sinon ils restent hors du fichier. Bouton **« ➕ Intégrer des ajouts »** sur la ligne
+d'un calque en modification (`filterPanel.js > _ouvrirAjouts`) : sous-fenêtre (z-index 100001) qui liste les candidats
+par famille (nom, type, niveau), rien de coché, « Tout cocher », filtre **« Créé par »** seulement avec la prise
+`auteurObjet` (« tout cocher » et la validation ne portent que sur les lignes visibles). Moteur :
+`CalqueSession.candidatsAjout()` / `integrerAjouts(id, uids)` / `compterAjouts(id)`.
+
+- **Candidats** : objets de session **sans** `_srcCalque`, avec uid, hors itinéraire calculé. Un objet appartient à UN
+  calque ; une copie (uid d'un objet de calque) ne change jamais de calque.
+- **Marques posées** : `_srcCalque = id`, `_srcCalqueAjout = true`, et **`_srcCalqueDepuis` = la date de rapatriement des
+  copies du calque** (la plus récente ; maintenant s'il n'y en a pas), puis `KtaUid.touch` (la synchro l'envoie).
+  L'objet se comporte ainsi en **copie retouchée maintenant** :
+
+| Situation | Effet | Pourquoi |
+|---|---|---|
+| Export du calque | part dans le fichier, marques retirées | il appartient au calque ; « hors calque » diminue d'autant |
+| Restitution locale ou reçue (T ≥ sa date) | retiré (serveur en clair : retiré avec les copies marquées) | même règle que les copies ; **la fenêtre de restitution l'annonce** (`filter.calque.ajoutsRetires`, compte `compterAjouts`) |
+| Restitution reçue postérieure au rapatriement mais **antérieure** à l'intégration | **gardé** en objet ordinaire, uid dérivé, marques retirées | avec l'instant de l'intégration comme date, il resterait marqué et laisserait le calque masqué pour lui seul |
+| Suppression | **aucune trace** (`historyManager.js > _laisseTrace`) | 🔒 une fois exporté, son uid EST dans le fichier du calque : une trace, passée par la fusion de calques, l'y détruirait |
+| ⏪ | une entrée d'historique (toutes catégories) rend les objets sans marque, datés à nouveau par l'historique | annulable comme tout dessin |
+| Lecture seule | boutons « ➕ Intégrer des ajouts » et « 💾 Exporter » **absents** de la ligne (`ktaEditionRefusee(true)`, relu sur les événements de l'extension) ; « ↩️ Restaurer » reste (restitution locale, non partagée) ; appel direct refusé (`ktaEditionRefusee`, qui le dit) | même règle que les outils de dessin grisés ; le refus au clic reste en défense en profondeur |
+
+`_srcCalqueAjout` ne sert qu'au compte de la restitution ; il tombe avec la marque (export, copie gardée, marque orpheline
+de `resynchroniser`). Effet de bord voulu : un ajout intégré est du contenu de calque, il ne part plus dans un export de
+session limité à ses ajouts (`sessionExporter.js > _garder`, copies exclues). Limite : intégrer, exporter le calque, annuler
+l'intégration puis supprimer l'objet laisse une trace sur un uid présent dans le fichier exporté (suppression explicite
+de l'utilisateur).
 
 ### État persisté
 
 ```json
-"calquesSession": { "rapatries": ["sig"] }
+"calquesSession": { "rapatries": ["sig"], "restitutions": { "sig": 1760000000000 },
+                    "aEnvoyer": { "sig": { "avant": 1760000000000, "uids": ["rd_…"] } } }
 ```
 
-Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque`. `null` tant que rien n'est rapatrié → **zéro octet** pour qui ne s'en sert pas.
+Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement ; `_srcCalqueAjout` sur un ajout intégré). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
 
-**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 97 assertions, le vrai module chargé dans un `vm`, câblage de l'import de session compris.
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 166 assertions, le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris.
 
 ---
 

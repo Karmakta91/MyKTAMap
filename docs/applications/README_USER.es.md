@@ -150,6 +150,8 @@ En Chrome, abre `myktamap.fr`, haz clic en **Instalar** a la derecha de la barra
 
 ### 📦 Cargar un mapa
 
+Al abrir la app, la **pantalla de arranque** dibuja una galería (unos 4 s) y deja paso a la pantalla de inicio en cuanto está lista. Un toque, un clic o Esc la salta. Si tu dispositivo pide reducir las animaciones, aparece sin movimiento.
+
 La pantalla de inicio ofrece:
 
 - **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado.
@@ -367,7 +369,7 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 
 *Ejemplo: para ver solo dos clases de pozos, 🏷️ Tags de los puntos → 🚫 Ninguno, y vuelve a marcar los dos tags que quieras.*
 
-> 🔄 **Corregir una capa de datos** — una capa incluida con el mapa se puede ocultar pero no editar. El botón **🔄 Modificar** de su fila la copia en tu sesión, donde se aplican todas tus herramientas (por ejemplo 🔄 Convertir este objeto); la original se oculta («en modificación — mostrar de todos modos» permite comparar). Antes de actuar, la app te indica cuánto espacio ocupará la copia y cuánto ocupan ya tus sesiones. **↩️ Restaurar** descarta tus cambios; **💾 Exportar** genera el archivo corregido de **esa capa sola**, para devolverlo al mapa mediante 🏗️ Generador → «Modificar un mapa», botón «Elegir» en la fila de la capa: sustituye el contenido anterior. Lo que has dibujado tú no forma parte de él (la app te dice cuántos objetos quedan fuera del archivo). Borrar la sesión restaura las capas abiertas para modificar; reimportar tu sesión en este mapa las vuelve a poner en modificación.
+> 🔄 **Corregir una capa de datos** — una capa incluida con el mapa se puede ocultar pero no editar. El botón **🔄 Modificar** de su fila la copia en tu sesión, donde se aplican todas tus herramientas (por ejemplo 🔄 Convertir este objeto); la original se oculta («en modificación — mostrar de todos modos» permite comparar). Antes de actuar, la app te indica cuánto espacio ocupará la copia y cuánto ocupan ya tus sesiones. **↩️ Restaurar** descarta tus cambios; **💾 Exportar** genera el archivo corregido de **esa capa sola**, para devolverlo al mapa mediante 🏗️ Generador → «Modificar un mapa», botón «Elegir» en la fila de la capa: sustituye el contenido anterior. Lo que has dibujado tú no forma parte de él (la app te dice cuántos objetos quedan fuera del archivo), salvo si lo vinculas: **➕ Integrar añadidos**, en la fila de la capa, lista tus dibujos del mapa por familia (nada marcado de antemano, «Marcar todo», filtro «Creado por» en una instalación conectada); los objetos elegidos salen entonces en el archivo de la capa, y ⏪ lo deshace. Un objeto integrado pertenece a la capa: restaurarla también lo retira, y la ventana de restauración dice cuántos. Borrar la sesión restaura las capas abiertas para modificar; reimportar tu sesión en este mapa las vuelve a poner en modificación. En una instalación conectada, «Borrar la sesión» te deja elegir: **borrar solo en este dispositivo** (las capas abiertas para modificar por el equipo vuelven desde el servidor, todavía en modificación) o **devolver también las capas al equipo** (vuelven a su original para todos, y los retoques que los demás no hayan exportado en esas copias se pierden). En una instalación conectada, una capa abierta para modificar por otra cuenta aparece también así en tu lado, y restaurarla la restaura en todos los dispositivos (una copia modificada después se queda, marcada como duplicado).
 
 ### 🗺️ Leyenda
 
@@ -758,6 +760,7 @@ Un toque en **un trazado, una zona o una estructura que hayas dibujado** abre su
 | **Área de texto** | Una nota libre — estado del paso, observación, recordatorio |
 | **💾 Guardar la nota** | Guarda la nota y cierra la ventana |
 | **🔄 Convertir** | Cambia el **tipo** del objeto y, si hace falta, su **familia** |
+| **Nivel** | En un mapa multinivel: mueve el objeto a otro nivel (ver 🏗️ Modo multinivel) |
 | **🗑️ Eliminar** | Quita el objeto (en rojo, en su propia línea) |
 
 Un objeto que viene de una capa de datos abre una ventana de solo lectura.
@@ -843,6 +846,12 @@ Una **pastilla amarilla** bajo los botones de zoom muestra el **nivel activo**. 
 - **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. Una unión sigue visible si uno de sus dos niveles lo está.
 
 Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mismos ajustes están en ≡ **Filtros**. En la exportación de imagen, **🎨 Avanzado → 🏗️ Niveles a exportar** elige los niveles con independencia de lo que se muestra.
+
+### 🔀 Cambiar el nivel de un objeto
+
+¿Un objeto quedó en el nivel equivocado? En la ventana de un trazado, una zona o una estructura que hayas dibujado, la lista **Nivel** (bajo 🔄 Convertir) lo mueve al instante; para un punto, es la lista **Nivel** de **✏️ Editar**, guardada con el resto de la ficha. El nivel actual del objeto siempre se propone, aunque esté fuera de la lista del mapa. Si el nivel elegido está oculto por el filtro, el objeto desaparece del mapa y un mensaje lo indica: la vista se queda en tu nivel. **⏪** lo deshace.
+
+No hay lista en una unión (bórrala y vuelve a trazarla), en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 
 ### 🪜 Trazar una unión entre niveles
 
@@ -978,7 +987,7 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 
 - **💾 Exportación completa** — toda la sesión en un archivo, para volver a importarla más tarde: puntos, trazados, zonas, estructuras, mediciones y seguimiento del tracker (posición, camino, cronología: el replay funciona tras reimportar). `.json`, o `.zip` si marcas las fotos. La opción **🛡️ Anonimizar para compartir públicamente** sustituye los nombres por códigos y quita el seguimiento.
 - **🎨 Exportación avanzada** — tú eliges: puntos (por icono, incluido «sin etiqueta»), trazados, zonas y estructuras (por tipo), mediciones, tracker (un contador muestra lo que contiene). Salida en **📄 Un solo archivo de sesión** reimportable, o en **📦 ZIP multiarchivo** (uno por categoría).
-- **🔎 Conservar solo** (en cabecera de ambos) — limita los puntos, trazados, zonas y estructuras a un **periodo** (fecha de su última modificación) y, en una instalación conectada, a su autor (**Creado por**); un contador indica cuántos salen. Seguimiento, mediciones y notas se exportan tal cual.
+- **🔎 Conservar solo** (en cabecera de ambos) — limita los puntos, trazados, zonas y estructuras a un **periodo** (fecha de su última modificación) y, en una instalación conectada, a su autor (**Creado por**); un contador indica cuántos salen. En el mapa ☁️ de otra cuenta, la exportación sigue siendo posible pero limitada a **tus** añadidos: «Creado por» queda fijado en ti. Seguimiento, mediciones y notas se exportan tal cual.
 
 ### 🖼️ Exportar como imagen
 

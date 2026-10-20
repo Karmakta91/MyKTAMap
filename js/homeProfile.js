@@ -41,7 +41,7 @@
           _refreshLoaderProfileBar();
           _appliquerFondEcran();
         });
-        // Re-rendu au changement de langue (salutation et placeholder viennent du dico ; le pseudo ne change pas).
+        // Re-rendu au changement de langue (« Bienvenue, … » et « Mon profil » viennent du dico ; le pseudo, jamais).
         if (window.I18n && window.I18n.onChange) {
           window.I18n.onChange(function() { _refreshLoaderProfileBar(); });
         }
@@ -140,7 +140,6 @@
         const snap = Object.assign({}, window.UserProfile.get(), _compte ? { surnom: _compte.pseudo } : {});
         const avatarWrap = document.getElementById("kta-loader-profile-avatar");
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
-        const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
         // ⚠️ Jeton incrémenté APRÈS les gardes de sortie : un appel stérile (DOM absent) brûlerait un numéro et
         // ferait abandonner un appel légitime en vol.
@@ -186,18 +185,16 @@
         // et les valeurs du bandeau resteraient à « — ».
         _hydrateProfileBarStats();
 
-        // Salutation et placeholder viennent du dico ; le pseudo (donnée utilisateur) n'est pas traduit.
-        const _tGreeting = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.greeting") : "Bienvenue";
-        const _tPlaceholder = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.placeholder") : "Mon profil";
+        // Titre « Bienvenue, <pseudo> » (sans pseudo : « Mon profil », l'invitation à le remplir). Le pseudo est une
+        // donnée utilisateur, jamais traduite : 🔒 posé par textContent (aucun HTML interprété).
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : null;
         const hasName = !!(snap.surnom && snap.surnom.trim());
         if (hasName) {
-          surnomEl.textContent = snap.surnom;
+          surnomEl.textContent = _t ? _t("home.profile.welcomeName", { pseudo: snap.surnom.trim() }) : snap.surnom;
           surnomEl.classList.remove("kta-loader-profile-surnom-empty");
-          if (greetingEl) greetingEl.textContent = _tGreeting;
         } else {
-          surnomEl.textContent = _tPlaceholder;
+          surnomEl.textContent = _t ? _t("home.profile.placeholder") : "Mon profil";
           surnomEl.classList.add("kta-loader-profile-surnom-empty");
-          if (greetingEl) greetingEl.textContent = _tGreeting;
         }
         // Avatar : photo si disponible, sinon initiale colorée.
         // 🩸 On RETIENT l'ancienne URL, on installe la nouvelle, et on ne révoque qu'APRÈS : révoquer avant
@@ -1307,9 +1304,9 @@
           overlay.className = "kta-readme-modal-overlay";
           overlay.style.zIndex = "100001";  // au-dessus de la modale parente
           overlay.innerHTML =
-            '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto !important; max-height:88vh !important; border-color:rgba(255,140,140,0.55); box-shadow:0 0 24px rgba(255,140,140,0.18);">' +
+            '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto !important; max-height:88vh !important; border-color:rgba(255,140,140,0.55);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.25);">' +
-                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + _t("home.profile.resetTitle") + '</span>' +
+                '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + _t("home.profile.resetTitle") + '</span>' +
                 '<button type="button" class="kta-panneau-close" id="kta-profile-reset-close" aria-label="' + _t("home.profile.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
@@ -1925,7 +1922,7 @@
             totalDistStr = window.formatDistance(totalDistM, 0);
           } else if (totalDistM > 0 && nbPxOrphan > 0) {
             totalDistStr = window.formatDistance(totalDistM, 0) +
-                           ' <span style="color:#f4c542; font-size:10px;" title="' + nbPxOrphan + ' plan' + (nbPxOrphan > 1 ? "s" : "") + ' sans scale connue, distance en pixels uniquement">(+ ' + nbPxOrphan + ' ⚠️ px)</span>';
+                           ' <span style="color:var(--kta-accent-texte); font-size:10px;" title="' + nbPxOrphan + ' plan' + (nbPxOrphan > 1 ? "s" : "") + ' sans scale connue, distance en pixels uniquement">(+ ' + nbPxOrphan + ' ⚠️ px)</span>';
           } else if (totalDistPxOrphan > 0) {
             totalDistStr = (totalDistPxOrphan >= 1000
                             ? (totalDistPxOrphan / 1000).toFixed(1) + "k px"
@@ -1933,7 +1930,7 @@
           } else {
             totalDistStr = "—";
           }
-          const partialSuffix = nbPartial > 0 ? ', <span style="color:#f4c542;">' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + '</span>' : '';
+          const partialSuffix = nbPartial > 0 ? ', <span style="color:var(--kta-accent-texte);">' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + '</span>' : '';
           tfootEl.innerHTML =
             '<tr>' +
               '<th>Total (' + nbAvecData + ' avec données' + partialSuffix + ')</th>' +
@@ -1951,7 +1948,7 @@
 
         if (headerEl) {
           const partialNote = nbPartial > 0
-            ? ' <span style="color:#f4c542; font-size:11px;">(' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
+            ? ' <span style="color:var(--kta-accent-texte); font-size:11px;">(' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
             : '';
           headerEl.innerHTML = _t("home.profile.statsFinal", { n: plans.length, s: (plans.length > 1 ? "s" : "") }) + partialNote;
         }
@@ -2195,7 +2192,7 @@
         const piesContainer = document.createElement("div");
         piesContainer.id = "kta-profile-pies";
         piesContainer.className = "kta-profile-pies-wrap";
-        let html = '<div class="kta-profile-pies-header">📊 Répartition par catégorie <span style="color:#8892a4; font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
+        let html = '<div class="kta-profile-pies-header">📊 Répartition par catégorie <span style="color:var(--kta-texte-3); font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
         html += _chipsFiltre();
         html += '<div class="kta-profile-pies-grid">';
         activeSections.forEach(function(s) {
@@ -2256,12 +2253,12 @@
                 <span class="kta-readme-modal-titre">📂 Charger une liste de plans</span>
               </div>
               <div class="kta-readme-modal-corps" style="padding:18px;">
-                <p style="font-size:13px; color:#c0c8d8; line-height:1.5;">
+                <p style="font-size:13px; color:var(--kta-texte-2); line-height:1.5;">
                   Cette liste contient <strong>${stats.total}</strong> plan${stats.total > 1 ? "s" : ""}.<br>
-                  ${stats.newOnes > 0 ? '<strong style="color:#8cb4ff;">' + stats.newOnes + '</strong> nouveau(x), ' : ''}
-                  ${stats.duplicates > 0 ? '<span style="color:#8892a4;">' + stats.duplicates + ' déjà connu(s)</span>' : ''}
+                  ${stats.newOnes > 0 ? '<strong style="color:var(--kta-interaction);">' + stats.newOnes + '</strong> nouveau(x), ' : ''}
+                  ${stats.duplicates > 0 ? '<span style="color:var(--kta-texte-3);">' + stats.duplicates + ' déjà connu(s)</span>' : ''}
                 </p>
-                <p style="font-size:13px; color:#e8eaf0; margin-top:14px;">Que voulez-vous faire ?</p>
+                <p style="font-size:13px; color:var(--kta-texte); margin-top:14px;">Que voulez-vous faire ?</p>
                 <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
                   <button class="kta-btn kta-btn-primary" data-mode="replace">🔁 Remplacer ma liste actuelle</button>
                   <button class="kta-btn kta-btn-primary" data-mode="merge">➕ Fusionner (garder les deux)</button>

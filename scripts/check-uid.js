@@ -161,6 +161,12 @@ t("note d'un objet (tracé, zone, structure) : touch",
   /_structRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_structRef\);/.test(STRUCT));
 t("conversion : l'uid suit et la conversion appelle touch (simple et par lot)",
   (CONV.match(/KtaUid\.touch\(neuf\)/g) || []).length === 2);
+t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation",
+  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
+t("changement de niveau d'un POI : posé AVANT le touch de la modification",
+  iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&
+  EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) - iNivPt < 200);
 
 // Tableur
 t("🩸 tableur « Dupliquer » : uid neuf (cloneNeuf), jamais une copie JSON brute", /window\.KtaUid \? window\.KtaUid\.cloneNeuf\(_data\[i\], _prefixeUid\(\)\)/.test(TBL));
@@ -351,8 +357,9 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("popup : points des calques — uid transmis", /window\.attachPopupPhotos\(marker, String\(p\.id \|\| ""\), p\.uid\)/.test(UT));
 
   // Exports et stats
-  t("exports : les photos d'un point se collectent sous son uid ET son nom (2 sites)",
-    (SE.match(/p\.uid \? \[String\(p\.uid\), String\(p\.id \|\| ""\)\] : \[String\(p\.id \|\| ""\)\]/g) || []).length === 2);
+  t("exports : les photos d'un point se collectent sous son uid ET son nom (une règle, Complet / Avancé / conversion)",
+    (SE.match(/p\.uid \? \[String\(p\.uid\), String\(p\.id \|\| ""\)\] : \[String\(p\.id \|\| ""\)\]/g) || []).length === 1 &&
+    (SE.match(/_idsPhotosDe\(filteredPoints\)/g) || []).length === 2 && /return _filtreActif\(\) \? _idsPhotosDe\(points\) : null;/.test(SE));
   t("export : rattachement photo → point par uid puis nom", /const parUid = pt\.uid \? \(parPoint\[String\(pt\.uid\)\] \|\| \[\]\) : \[\];/.test(SE));
   t("export anonymisé : les photos rangées sous l'uid suivent le code anonymisé", /if \(p\.uid\) idMap\[String\(p\.uid\)\] = code;/.test(SE));
   t("stats photos : un uid affiche le nom du point", /if \(p\.uid\) nomByPid\[String\(p\.uid\)\] = lib;/.test(RI));
