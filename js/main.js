@@ -526,7 +526,8 @@ async function lancerApplication() {
     window._majOverlayChargement(window.I18n.t("main.loading.mapInit"));
   }
 
-  await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+  // 🩸 Jamais un requestAnimationFrame nu ici : il peut ne jamais venir (cf utils.js > ktaAttendreImage).
+  await window.ktaAttendreImage();
 
   await initMapFromConfig();
   await initDataFromConfig();

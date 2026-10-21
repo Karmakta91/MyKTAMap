@@ -134,6 +134,26 @@ function ktaPlanAffiche() {
 }
 window.ktaPlanAffiche = ktaPlanAffiche;
 
+// ── Attendre une image avant un travail lourd (le message affiché juste avant se peint d'abord) ──────────
+// 🩸 Onglet en arrière-plan, navigateur sans écran qui ne dessine plus : requestAnimationFrame peut ne JAMAIS venir
+// (ouverture d'un plan figée sur « Chargement en cours… »). Un minuteur prend le relais ; le premier des deux reprend,
+// l'autre ne fait rien. Toute attente d'image sur le chemin d'ouverture d'un plan passe par ici.
+function ktaAttendreImage(delaiMs) {
+  return new Promise(function(resolve) {
+    let repris = false;
+    let minuteur = null;
+    const reprendre = function() {
+      if (repris) return;
+      repris = true;
+      clearTimeout(minuteur);
+      resolve();
+    };
+    minuteur = setTimeout(reprendre, typeof delaiMs === "number" ? delaiMs : 1000);
+    requestAnimationFrame(reprendre);
+  });
+}
+window.ktaAttendreImage = ktaAttendreImage;
+
 // ── Surfaces ──────────
 // ⚠️ m² en entrée : < 10 000 m² → « X m² » (1 décimale sous 100 m²), sinon « X.XX ha ». Jamais de km²
 // (décision produit : les surfaces souterraines vont de 100 m² à quelques hectares).

@@ -110,6 +110,9 @@ qui parle au serveur.
   Une adresse d'API n'est pas un secret : l'index est public et c'est assumé.
 - `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`) : relatif, sans
   remontée, terminé par `.js`, avec un seul suffixe permis, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max).
+  ⚠️ Ordre de la liste = ordre d'**exécution** (`chargerModules` pose `async = false` : un script inséré par le JS
+  serait sinon exécuté dès son arrivée, dans le désordre). Un module en 404 ne retient pas les suivants ; un module
+  qui n'arrive pas les retient jusqu'à son arrivée. Contrôle : `check-extensions.js` (ordre et `async = false`).
 - `transparence` (facultatif) : page de transparence de l'installation, **même site**, chemin relatif terminé
   par `.html` (mêmes règles qu'un module, sans suffixe). Dès que l'état n'est pas OFF, la pastille ouvre cette
   page au lieu de l'audit réseau community (qui ne sait pas ce que l'installation fait des données). Champ dans
@@ -159,7 +162,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 | Point | Rôle | Pourquoi community |
 |---|---|---|
 | État de connexion + badge footer | Les états (OFF, INVALIDE, LICENCE, CONFIGURÉE, ON, DOWN), l'événement `mktm:*`, le badge **affiché partout, myktamap.fr compris** | Transparence active : la garantie se voit au lieu de se chercher dans l'audit |
-| Chargeur de modules | Lit `modules`, vérifie la règle E, injecte les scripts même origine | L'instance garde l'`index.html` community tel quel : zéro fork |
+| Chargeur de modules | Lit `modules`, vérifie la règle E, injecte les scripts même origine, **exécutés dans l'ordre de la liste** (`async = false`, téléchargés en parallèle) | L'instance garde l'`index.html` community tel quel : zéro fork |
 | Garde unique | Toute requête d'extension passe par lui ; hors ON il refuse avant envoi | Même leçon que `ktaKiosqueServeurSeul()` : le verrou est au goulot |
 | Gate déléguée | Un module peut remplacer la gate d'entrée (code communautaire / `accessHash`) par son propre écran | Décision de l'auteur : sur une instance connectée, le compte remplace la gate |
 | Journal des changements | « Ce qui a changé depuis telle date », horodatage par objet (point, tracé, zone, session…) | Indispensable au local-first et à la résolution des conflits |

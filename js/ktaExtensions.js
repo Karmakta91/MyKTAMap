@@ -374,6 +374,11 @@
   // ── Chargeur de modules (règle E : licence serveur ET « on ») ──
   // Scripts de `serverConnection.modules`, même origine. Promesse résolue quand tous ont fini (chargés ou en
   // échec, 8 s max chacun). Ne fait RIEN hors de l'état « configurée ».
+  // ⚠️ Contrat : les modules s'EXÉCUTENT dans l'ordre de la liste (téléchargés en parallèle).
+  // 🩸 Un script inséré par le JS est asynchrone par défaut : exécuté dès son arrivée, donc dans le désordre. Un
+  // module qui lisait au chargement celui déclaré avant lui le trouvait parfois absent, sans erreur (vu : temps réel
+  // jamais ouvert de la visite). `async = false` garde l'ordre ; un module en 404 ne retient pas les suivants, un
+  // module qui n'arrive pas les retient jusqu'à son arrivée.
   function chargerModules() {
     if (etatDe(_connexion, _sourceLicence()) !== "configuree") {
       _modules = { demandes: 0, charges: 0, echecs: 0, termine: true };
@@ -393,6 +398,7 @@
         const t = setTimeout(function () { fin(false); }, 8000);
         s.onload = function () { clearTimeout(t); fin(true); };
         s.onerror = function () { clearTimeout(t); fin(false); };
+        s.async = false;   // 🏷️ ancre:modules-ordre (check-extensions.js)
         s.src = src;
         document.head.appendChild(s);
       });
