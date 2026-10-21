@@ -526,7 +526,20 @@ async function lancerApplication() {
     window._majOverlayChargement(window.I18n.t("main.loading.mapInit"));
   }
 
-  await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+  // Une image avant la carte : le message ci-dessus s'affiche avant le travail lourd.
+  // 🩸 Onglet en arrière-plan, navigateur sans écran : requestAnimationFrame peut ne jamais venir → « Chargement en
+  // cours… » sans fin. Un minuteur (1 s) prend le relais ; le premier des deux reprend, l'autre ne fait rien.
+  await new Promise(function(resolve) {
+    let repris = false;
+    const reprendre = function() {
+      if (repris) return;
+      repris = true;
+      clearTimeout(minuteur);
+      resolve();
+    };
+    const minuteur = setTimeout(reprendre, 1000);
+    requestAnimationFrame(reprendre);
+  });
 
   await initMapFromConfig();
   await initDataFromConfig();

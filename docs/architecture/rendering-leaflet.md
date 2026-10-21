@@ -38,6 +38,11 @@ initApp() dans main.js
    └─ Sinon → afficherLoader() (home avec liste) → _splashEnd()
 ```
 
+`lancerApplication()` attend **une image** (`requestAnimationFrame`) avant `initMapFromConfig()`, pour que le message
+« mapInit » s'affiche avant le travail lourd. 🩸 Onglet en arrière-plan ou navigateur sans écran : l'image peut ne
+jamais venir (chargement figé sur « Chargement en cours… ») ; un minuteur de 1 s prend alors le relais, et le premier
+des deux reprend seul (pas de double exécution).
+
 ---
 
 ### 2. Cascade de résolution des icônes (depuis 06/05/2026)
