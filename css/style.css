@@ -7811,6 +7811,15 @@ html.kta-theme-light .kta-osm-qualite-ligne { color: var(--kta-light-text, #1a1f
 }
 html.kta-theme-light .kta-ipl-mgr-ecart { color: var(--kta-light-text-2, #4a5568); }
 .kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
+/* Mention d'une extension (« ☁️ Partagée… ») : elle cède la place aux noms des plans, jamais l'inverse. */
+.kta-ipl-mgr-row .kta-ipl-ext-info { flex: 0 1 auto; min-width: 0; margin: 0; }
+/* 🩸 Téléphone : une seule ligne écrasait les noms (largeur 0) et faisait déborder les boutons. Les deux plans
+   prennent toute la première ligne ; écart, mention et boutons passent dessous, boutons à droite. */
+@media (max-width: 600px) {
+  .kta-ipl-mgr-row { flex-wrap: wrap; row-gap: 6px; }
+  .kta-ipl-mgr-sides { flex: 1 1 100%; }
+  .kta-ipl-mgr-actions { margin-left: auto; }
+}
 html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
 
 /* Itinéraire inter-plan */
