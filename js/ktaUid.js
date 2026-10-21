@@ -11,7 +11,7 @@
 // Une identité qui survit au renommage, à la conversion, à l'annulation et à l'export pour chaque objet de
 // carte (point, tracé, zone, structure) : `uid` + `updatedAt` (ms). Décisions : docs/ETUDE_UID.md.
 //   genUid("pt") → "pt_lq3x9a_k2f8m1" · touch(obj) · ensure(obj, t, ts) · ensureAll(arr, t, ts, vus) ·
-//   cloneNeuf · sansIdentite · marquerCalqueTexte · get/setTombstones · fusionnerCalques (window.KtaUid).
+//   cloneNeuf · sansIdentite · marquerCalqueTexte · get/setTombstones · fusionnerCalques · preparerImport (window.KtaUid).
 // ⚠️ `id` d'un point reste son NOM (photos, favoris, liaisons, Secours) ; l'identité stable est `uid`.
 // 🩸 Le préfixe dit la famille À LA CRÉATION seulement (un « rd_ » peut vivre dans les zones après
 //   conversion) : ne jamais déduire la famille du préfixe.
@@ -243,7 +243,97 @@
     return out;
   }
 
+  // ── Import d'un fichier de session sur un plan partagé (synchronisé par uid + traces) ──
+  // `local` et `fichier` : { data, roads, zones, structures, tombstones } (uid déjà posés sur le fichier).
+  //   "ajouter"   : par uid, le plus récent gagne ; un objet effacé ici (trace postérieure ou égale) ne revient pas ;
+  //                 rien d'existant ne disparaît ; traces locales inchangées, celles du fichier ignorées.
+  //   "remplacer" : le fichier devient le contenu ; chaque objet local absent du fichier reçoit une trace (`now`),
+  //                 les traces du fichier s'ajoutent, celles d'un uid gardé tombent.
+  // ⚠️ Un objet du fichier qui gagne est HORODATÉ maintenant : la synchro n'envoie que ce qui a changé après son
+  //   dernier envoi (un objet d'un vieux fichier ne partirait jamais), et le serveur garde la version la plus récente.
+  // L'itinéraire calculé (estTransitoire) et les aperçus (_preview) restent tels qu'ici, jamais pris au fichier.
+  // Fonction pure : les objets du fichier sont copiés. → { data, roads, zones, structures, tombstones,
+  //   ajoutes, misAJour, supprimes }.
+  function preparerImport(local, fichier, mode, now) {
+    const FAM = ["data", "roads", "zones", "structures"];
+    const t0 = (typeof now === "number" && isFinite(now)) ? now : Date.now();
+    const horsJeu = function (o) { return estTransitoire(o) || !!(o && o._preview); };
+    const copie = function (a) {
+      return Array.isArray(a) ? JSON.parse(JSON.stringify(a.filter(function (o) { return o && typeof o === "object"; }))) : [];
+    };
+    const marquer = function (o) { touch(o); o.updatedAt = t0; return o; };
+    const loc = {}, fic = {}, garde = {};
+    FAM.forEach(function (f) {
+      const l = (local && Array.isArray(local[f])) ? local[f].filter(function (o) { return o && typeof o === "object"; }) : [];
+      garde[f] = l.filter(horsJeu);
+      loc[f] = l.filter(function (o) { return !horsJeu(o); });
+      fic[f] = copie(fichier && fichier[f]).filter(function (o) { return !horsJeu(o) && typeof o.uid === "string" && o.uid; });
+    });
+    const traces = new Map();
+    const lireTraces = function (liste) {
+      (Array.isArray(liste) ? liste : []).forEach(function (t) {
+        if (t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && isFinite(t.deletedAt)) {
+          traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
+        }
+      });
+    };
+    lireTraces(local && local.tombstones);
+    const out = { ajoutes: 0, misAJour: 0, supprimes: 0 };
+    const ici = new Map();   // uid → { fam, i } (objets d'ici)
+    FAM.forEach(function (f) {
+      loc[f].forEach(function (o, i) { if (typeof o.uid === "string" && o.uid) ici.set(o.uid, { fam: f, i: i }); });
+    });
+
+    if (mode === "remplacer") {
+      const gardes = new Set();
+      FAM.forEach(function (f) {
+        fic[f].forEach(function (o) {
+          const p = ici.get(o.uid);
+          const avant = p ? loc[p.fam][p.i] : null;
+          gardes.add(o.uid);
+          if (!avant) { marquer(o); out.ajoutes++; }
+          else if (avant.updatedAt !== o.updatedAt || p.fam !== f) { marquer(o); out.misAJour++; }
+        });
+      });
+      lireTraces(fichier && fichier.tombstones);
+      gardes.forEach(function (u) { traces.delete(u); });
+      ici.forEach(function (p, u) {
+        if (!gardes.has(u)) { traces.set(u, t0); out.supprimes++; }
+      });
+      FAM.forEach(function (f) { out[f] = fic[f].concat(garde[f]); });
+    } else {
+      const res = {};
+      FAM.forEach(function (f) { res[f] = loc[f].slice(); });
+      const pos = new Map(ici);
+      FAM.forEach(function (f) {
+        fic[f].forEach(function (o) {
+          const d = traces.get(o.uid);
+          if (d !== undefined && d >= (o.updatedAt || 0)) return;   // effacé ici après cette version
+          const p = pos.get(o.uid);
+          if (!p) {
+            pos.set(o.uid, { fam: f, i: res[f].length });
+            res[f].push(marquer(o));
+            out.ajoutes++;
+            return;
+          }
+          const avant = res[p.fam][p.i];
+          if ((o.updatedAt || 0) <= (avant.updatedAt || 0)) return;
+          marquer(o);
+          out.misAJour++;
+          if (p.fam === f) { res[f][p.i] = o; return; }
+          res[p.fam][p.i] = null;   // conversion : l'objet suit la famille de la version gagnante
+          pos.set(o.uid, { fam: f, i: res[f].length });
+          res[f].push(o);
+        });
+      });
+      FAM.forEach(function (f) { out[f] = res[f].filter(Boolean).concat(garde[f]); });
+    }
+    out.tombstones = Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; });
+    return out;
+  }
+
   window.KtaUid = {
+    preparerImport: preparerImport,
     fusionnerCalques: fusionnerCalques,
     genUid: genUid,
     touch: touch,

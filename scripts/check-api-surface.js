@@ -303,6 +303,31 @@ function charger(fichier, nomGlobal, prealables) {
   t("suppr : une famille inconnue est refusée", CV.supprimer("bidon", jumeauA) === false);
   t("suppr : aucun refus n'a laissé d'entrée d'historique", journal.record.length === avantRefus);
 
+  // 🩸 Référence PÉRIMÉE : une réception de synchro remplace l'objet par une copie de même uid ; la fiche (ou la
+  // fenêtre Convertir) garde l'ancienne. Sans repli par uid, le geste échouait sans un mot.
+  const toasts = [];
+  w.OOMGuard = { showToast: function (m, niveau) { toasts.push(niveau + ":" + m); } };
+  const vieux = { uid: "rd_vieux01", type: "principal", level: 0, points: [{ x: 1, y: 1 }, { x: 2, y: 2 }], updatedAt: 10 };
+  const copie = () => JSON.parse(JSON.stringify(vieux));
+  R = [copie(), temoin];
+  t("🩸 suppr : référence remplacée par une copie de même uid (réception) → supprimée quand même",
+    CV.supprimer("roads", vieux) === true && R.length === 1 && R[0] === temoin);
+  R = [Object.assign(copie(), { description: "note reçue" })];
+  t("🩸 niveau : référence périmée → c'est l'objet de la liste qui change",
+    CV.changerNiveau("roads", vieux, -1) === true && R[0].level === -1 && vieux.level === 0);
+  R = [Object.assign(copie(), { description: "note reçue" })]; S = [];
+  t("🩸 convert : référence périmée → la version courante est convertie (rien de la vieille copie)",
+    CV.convertir("roads", vieux, "structures", "front-2") === true && R.length === 0 && S.length === 1 &&
+    S[0].uid === "rd_vieux01" && S[0].description === "note reçue");
+  R = [temoin];
+  const nToasts = toasts.length;
+  t("🩸 suppr : objet absent même par uid (supprimé ailleurs) → refus DIT (toast d'avertissement)",
+    CV.supprimer("roads", vieux) === false && toasts.length === nToasts + 1 && /^warn:convert\.introuvable/.test(toasts[nToasts]));
+  t("…niveau et conversion aussi", CV.changerNiveau("roads", vieux, -3) === false && CV.convertir("roads", vieux, "zones", "eau") === false &&
+    toasts.length === nToasts + 3);
+  delete w.OOMGuard;
+  S = [{ type: "mur", points: [] }];
+
   // ── Le niveau (liste « Niveau » de la même popup) ──
   t("niveau : l'API est exposée", typeof CV.changerNiveau === "function");
   const journalNiv = { touch: 0, inval: 0, cats: [] };
@@ -343,6 +368,125 @@ function charger(fichier, nomGlobal, prealables) {
   w.ktaEditionRefusee = function () { return true; };
   t("🔒 niveau : lecture seule → refus", CV.changerNiveau("zones", zoneSansNiv, -1) === false && zoneSansNiv.level === 2);
   delete w.ktaEditionRefusee;
+
+  // ── Appliquer un tableau (« Appliquer à la session » de l'Éditeur de données) ──
+  t("tableau : l'API est exposée", typeof CV.appliquerTableau === "function");
+  {
+    const jt = { touch: 0, inval: 0, cats: [], rec: [] };
+    w.KtaUid = { touch: function (o) { jt.touch++; o.updatedAt = 99; } };
+    w.RoadGraph = { invalidate: function () { jt.inval++; } };
+    w.HistoryManager = {
+      captureState: function (cat) { jt.cats.push(cat); return { cat: cat }; },
+      record: function (label, avant, cat) { jt.rec.push({ label: label, cat: cat }); }
+    };
+    const pts = [{ x: 0, y: 0 }, { x: 4, y: 4 }];
+    const a = { uid: "rd_a", type: "principal", level: 0, description: "a", points: pts, updatedAt: 1 };
+    const b = { uid: "rd_b", type: "chemin", points: pts, updatedAt: 1 };
+    const c = { uid: "rd_c", type: "chemin", points: pts, updatedAt: 1 };
+    const iti = { uid: "rd_i", type: "itinerary", points: pts };
+    const copie = function (o) { return JSON.parse(JSON.stringify(o)); };
+    R = [a, b, c, iti];
+    const lignes = [copie(a), copie(b), { uid: "rd_n", type: "secondaire", points: pts }];
+    lignes[0].type = "secondaire"; lignes[0].level = -1; lignes[0].points = [];
+    lignes[1].description = "note neuve";
+    const sim = CV.appliquerTableau("roads", lignes, { simuler: true });
+    t("tableau : simulation = bilan sans écriture (1 ajout, 2 modifiés, 1 supprimé ; itinéraire hors compte)",
+      sim && sim.modifies === 2 && sim.ajoutes === 1 && sim.supprimes === 1 && R.length === 4 && jt.rec.length === 0);
+    const bil = CV.appliquerTableau("roads", lignes);
+    const na = R.find(function (o) { return o.uid === "rd_a"; });
+    t("tableau : type par le chemin de Convertir (nouvel objet, même uid, touch)",
+      na && na !== a && na.type === "secondaire" && a.type === "principal");
+    t("tableau : niveau posé, géométrie de la SESSION gardée (le tableau ne l'édite pas)",
+      na.level === -1 && na.points === pts);
+    t("tableau : autre colonne modifiée en place + touch", R.indexOf(b) >= 0 && b.description === "note neuve" && b.updatedAt === 99);
+    t("tableau : ligne d'uid inconnu ajoutée, objet absent du tableau retiré, itinéraire gardé",
+      R.some(function (o) { return o.uid === "rd_n"; }) && R.indexOf(c) < 0 && R.indexOf(iti) >= 0 && R.length === 4);
+    t("tableau : UN instantané ciblé, UNE entrée d'historique, graphe invalidé",
+      jt.cats.length === 1 && jt.cats[0] === "roads" && jt.rec.length === 1 && jt.rec[0].cat === "roads" && jt.inval === 1);
+    t("tableau : bilan rendu", bil && bil.modifies === 2 && bil.ajoutes === 1 && bil.supprimes === 1);
+    const nTouch = jt.touch;
+    t("tableau : rien de changé → rien d'écrit ni de touché",
+      CV.appliquerTableau("roads", R.map(copie)).modifies === 0 && jt.rec.length === 1 && jt.touch === nTouch);
+
+    const err = function (fam, l) { const r = CV.appliquerTableau(fam, l); return r && r.erreur; };
+    const z = { uid: "zn_z", type: "eau", points: pts };
+    Z = [z];
+    const e1 = err("zones", [Object.assign(copie(z), { type: "eua" })]);
+    t("tableau : type inconnu REFUSÉ, ligne et type nommés, rien d'écrit",
+      e1 && e1.code === "typeInconnu" && e1.ligne === 1 && e1.type === "eua" && Z[0] === z && z.type === "eau");
+    const f = { uid: "st_f", type: "front-1", points: pts };
+    S = [f];
+    const e2 = err("structures", [Object.assign(copie(f), { type: "pilier-1" })]);
+    t("tableau : type connu mais de l'autre géométrie (front → pilier) refusé", e2 && e2.code === "typeIncompatible");
+    R = [copie(b)];
+    const e3 = err("roads", [Object.assign(copie(b), { type: "jonction" })]);
+    t("tableau : jonction non posable depuis le tableau", e3 && e3.code === "typeInterdit");
+    const e4 = err("zones", [Object.assign(copie(z), { level: "2" })]);
+    t("tableau : niveau non entier refusé", e4 && e4.code === "niveau");
+    const e5 = err("zones", [copie(z), { type: "inconnu-x", points: pts }]);
+    t("tableau : une ligne ajoutée d'un type inconnu est refusée (ligne 2)", e5 && e5.code === "typeInconnu" && e5.ligne === 2);
+    t("tableau : un type orphelin INCHANGÉ ne bloque pas (donnée existante)",
+      (function () { const o = { uid: "zn_o", type: "cust-disparu", points: pts }; Z = [o];
+        const r = CV.appliquerTableau("zones", [Object.assign(copie(o), { description: "x" })]);
+        return r && !r.erreur && r.modifies === 1; })());
+    t("tableau : structure front-1 → front-2 et niveau, appliqués",
+      (function () { S = [f]; const r = CV.appliquerTableau("structures", [Object.assign(copie(f), { type: "front-2", level: 1 })]);
+        return r && r.modifies === 1 && S[0].type === "front-2" && S[0].level === 1 && S[0].uid === "st_f"; })());
+    w.ktaEditionRefusee = function () { return true; };
+    t("🔒 tableau : lecture seule → refus", CV.appliquerTableau("zones", [copie(z)]) === null);
+    delete w.ktaEditionRefusee;
+    t("tableau : famille inconnue refusée", CV.appliquerTableau("bidon", []) === null);
+    // Fichier ANCIEN : seule la cellule modifiée depuis le chargement s'applique (opts.origine).
+    {
+      const t1 = { uid: "rd_o1", type: "principal", description: "récente", level: 0, points: pts };
+      const t2 = { uid: "rd_o2", type: "secondaire", points: pts };
+      R = [t1, t2];
+      const vieux = [{ uid: "rd_o1", type: "principal", description: "ancienne", level: 0, points: pts },
+                     { uid: "rd_o2", type: "chemin", points: pts }];
+      const origines = new Map(vieux.map(function (l) { return [l, copie(l)]; }));
+      vieux[0].level = 2;
+      const r = CV.appliquerTableau("roads", vieux, { origine: function (l) { return origines.get(l) || null; } });
+      const n1 = R.find(function (o) { return o.uid === "rd_o1"; }) || {};
+      const n2 = R.find(function (o) { return o.uid === "rd_o2"; }) || {};
+      t("🩸 tableau + origine : seule la cellule modifiée part (niveau), la note plus récente de la session reste",
+        r && r.modifies === 1 && n1.level === 2 && n1.description === "récente", r);
+      t("🩸 tableau + origine : une ligne non touchée d'un fichier ancien ne change rien", n2.type === "secondaire");
+      // Supprimé depuis l'export (trace) : non touché = ignoré, modifié = réajouté.
+      w.KtaUid.getTombstones = function () { return [{ uid: "rd_o3", deletedAt: 5 }]; };
+      R = [n1];
+      const l3 = { uid: "rd_o3", type: "chemin", points: pts };
+      const o3 = new Map([[l3, copie(l3)]]);
+      const r3 = CV.appliquerTableau("roads", [copie(n1), l3], { origine: function (l) { return o3.get(l) || null; } });
+      t("🩸 tableau : ligne non touchée d'un objet supprimé depuis l'export → ignorée, comptée",
+        r3 && r3.ignores === 1 && r3.ajoutes === 0 && !R.some(function (o) { return o.uid === "rd_o3"; }), r3);
+      l3.level = 1;
+      const r4 = CV.appliquerTableau("roads", [copie(n1), l3], { origine: function (l) { return o3.get(l) || null; } });
+      t("tableau : la même ligne MODIFIÉE est réajoutée (geste explicite)",
+        r4 && r4.ignores === 0 && r4.ajoutes === 1 && R.some(function (o) { return o.uid === "rd_o3"; }), r4);
+      delete w.KtaUid.getTombstones;
+      // Points (POI) : même chemin, la liste fournie par l'appelant (opts.acces), aucune validation de type.
+      let P = [{ uid: "pt_a", nom: "A", x: 1, y: 1, tags: ["salle"], description: "récente" },
+               { uid: "pt_b", nom: "B", x: 2, y: 2, tags: [] }];
+      const cats = [];
+      w.HistoryManager = {
+        captureState: function (cat) { cats.push(cat); return { cat: cat }; },
+        record: function (label, avant, cat) { cats.push("rec:" + cat); }
+      };
+      const accesPts = { lire: function () { return P; }, ecrire: function (v) { P = v; }, categorie: "pts-test" };
+      const fic = [{ uid: "pt_a", nom: "A", x: 1, y: 1, tags: ["salle"], description: "ancienne" },
+                   { uid: "pt_b", nom: "B", x: 2, y: 2, tags: [] }];
+      const oP = new Map(fic.map(function (l) { return [l, copie(l)]; }));
+      fic[0].level = 2;
+      fic[1].nom = "B2"; fic[1].type = "libre";
+      const rp = CV.appliquerTableau("points", fic, { acces: accesPts, origine: function (l) { return oP.get(l) || null; } });
+      const pa = P.find(function (o) { return o.uid === "pt_a"; }) || {}, pb = P.find(function (o) { return o.uid === "pt_b"; }) || {};
+      t("tableau, points : seules les cellules modifiées (niveau de A, nom et champ type libre de B), note récente gardée",
+        rp && !rp.erreur && rp.modifies === 2 && pa.level === 2 && pa.description === "récente" && pb.nom === "B2" && pb.type === "libre", rp);
+      t("tableau, points : instantané et historique dans la catégorie fournie", cats.join(",") === "pts-test,rec:pts-test", cats);
+      const rq = CV.appliquerTableau("points", [copie(pa)], { acces: accesPts });
+      t("tableau, points : ligne retirée = suppression", rq && rq.supprimes === 1 && P.length === 1);
+    }
+  }
 
   // ── le câblage, que l'extraction ne voit pas ──
   {

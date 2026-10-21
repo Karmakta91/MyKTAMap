@@ -6411,6 +6411,11 @@ html.kta-theme-light .kta-cfg-input option {
   padding: 10px 12px;
 }
 
+/* Ligne remplie par l'assistant « Mettre à jour le plan » (createConf.js > _appliquerMaj). */
+.kta-planner-layer-maj {
+  border-color: var(--kta-accent);
+}
+
 .kta-planner-layer-header {
   display: flex;
   align-items: center;
@@ -20135,3 +20140,57 @@ button.kta-cfg-ligne-action {
   outline: 2px solid var(--kta-focus);
   outline-offset: 2px;
 }
+
+/* Recaler des données sur un autre scan (js/recalageScan.js). 🩸 [hidden] doit gagner sur les display des
+   classes : un panneau de méthode masqué qui reste affiché mélange deux méthodes à l'écran. */
+.kta-recal-boite { max-width: 520px; height: auto; max-height: 90vh; }
+.kta-recal-corps { font-size: 13px; }
+.kta-recal-corps [hidden] { display: none !important; }
+.kta-recal-note { color: var(--kta-texte-3); margin: 0 0 8px; line-height: 1.5; }
+.kta-recal-petit { font-size: 12px; }
+.kta-recal-titre-section { font-weight: 600; margin-top: 12px; }
+.kta-recal-sous-titre { margin-top: 8px; }
+.kta-recal-grille { margin: 4px 0 2px; }
+.kta-recal-fichier { margin: 4px 0 6px; display: inline-block; }
+.kta-recal-liste-fichiers { font-size: 12px; color: var(--kta-texte-2); margin: 2px 0 6px; overflow-wrap: anywhere; }
+.kta-recal-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.kta-recal-onglet.kta-actif {
+  border-color: var(--kta-accent);
+  color: var(--kta-accent-texte);
+  background: var(--kta-accent-fond);
+}
+.kta-recal-panneau { margin: 4px 0 6px; }
+.kta-recal-paire { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 2px; }
+.kta-recal-details { margin-top: 8px; }
+.kta-recal-details summary { cursor: pointer; color: var(--kta-texte-2); }
+.kta-recal-case { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--kta-texte-2); }
+.kta-recal-clic-choix { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kta-recal-clic-choix select { flex: 1 1 180px; min-width: 0; }
+.kta-recal-liste-reperes { margin-top: 6px; font-size: 12px; color: var(--kta-texte-2); }
+.kta-recal-repere {
+  display: flex; align-items: center; gap: 8px; padding: 3px 0;
+  border-bottom: 1px solid var(--kta-bordure);
+}
+.kta-recal-repere-nom { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--kta-texte); }
+.kta-recal-repere-ecart { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.kta-recal-suspect .kta-recal-repere-ecart { color: var(--kta-erreur); font-weight: 700; }
+.kta-recal-recap {
+  background: var(--kta-info-fond); border: 1px solid var(--kta-info-bord); border-radius: 6px;
+  padding: 10px 12px; margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--kta-texte-2); min-height: 36px;
+}
+.kta-recal-recap strong { color: var(--kta-texte); }
+.kta-recal-warn {
+  border: 1px solid var(--kta-accent-bord); background: var(--kta-accent-fond); border-radius: 6px;
+  padding: 8px 10px; margin-top: 8px; font-size: 12px; color: var(--kta-texte);
+}
+.kta-recal-warn.kta-recal-bloque { border-color: var(--kta-erreur-bord); background: var(--kta-erreur-fond); }
+.kta-recal-actions { margin-top: 12px; flex-wrap: wrap; }
+.kta-recal-barre {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  background: var(--kta-surface); border: 1px solid var(--kta-bordure); border-left: 3px solid var(--kta-accent);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55); padding: 10px 12px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; z-index: 100000;
+  font-size: 13px; color: var(--kta-texte); max-width: calc(100vw - 24px); box-sizing: border-box;
+}
+.kta-recal-barre-msg { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.kta-recal-barre .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }

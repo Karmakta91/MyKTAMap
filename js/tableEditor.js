@@ -5,9 +5,14 @@
  */
 
 // tableEditor.js — édite en tableau un JSON (calque ou session), le plan en cours ou un ZIP importé ;
-//   héberge aussi la conversion de résolution et le dédoublonnage de sommets.
+//   héberge aussi le dédoublonnage de sommets (le recalage sur un autre scan vit dans js/recalageScan.js).
 // Expose : window.ouvrirTableEditor.
-// ⚠️ Calques de données : export seulement ; seule la SESSION (editorPoints) se remplace en direct.
+// ⚠️ Calques de données : export seulement. Un fichier de SESSION s'applique en direct par « Appliquer à la session »
+//   (points, tracés, zones, structures : KtaConvertir.appliquerTableau, un seul chemin) : seules les cellules
+//   modifiées s'appliquent, mêmes chemins que la fiche, une entrée ⏪, type inconnu refusé.
+// ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : un objet retiré reçoit une trace de suppression (sinon il revient
+//   du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation chiffrée.
+// Plan multi-niveau : colonne « level » toujours présente, en liste (niveaux du plan + niveau actuel).
 // 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
 // Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
@@ -29,6 +34,9 @@
   let _sourceMeta = {};           // fileName (téléchargement + titre)
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
+  // Ligne → copie telle que chargée : « Appliquer à la session » n'applique que les cellules modifiées depuis.
+  // Ligne ajoutée ou dupliquée : pas d'origine (c'est un ajout).
+  let _origines   = new WeakMap();
 
   var _ARRAYS_EDITABLES = [
     { key: "data",         emoji: "📍", points: true  },
@@ -38,7 +46,49 @@
     { key: "structures",   emoji: "🏗️", points: false }
   ];
   function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
-  function _estSession() { return _kind === "editorPoints"; }
+  // Fichier de session (export « devmap-session », ou porteur de editorPoints) : ses tableaux s'appliquent en direct.
+  function _sourceEstSession() {
+    return !!(_sourceObj && (_sourceObj.type === "devmap-session" || Array.isArray(_sourceObj.editorPoints)));
+  }
+  function _estSession() { return _kind === "editorPoints" || (!_estPoints() && _sourceEstSession()); }
+  // Niveaux du plan affiché s'il est multi-niveau, sinon null (pas de liste, pas de colonne imposée).
+  // 🩸 APP_CONFIG garde multiLevel du dernier plan après le retour à l'accueil : le plan affiché tranche.
+  function _niveauxPlan() {
+    const c = window.APP_CONFIG;
+    if (!c || c.multiLevel !== true) return null;
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    return (Array.isArray(c.availableLevels) && c.availableLevels.length) ? c.availableLevels : [0];
+  }
+  // Liste d'une cellule : niveaux du plan + `actuel`, triés. 🩸 `actuel` toujours proposé, même hors liste, comme la
+  // fiche (utils.js > ktaNiveauxProposes) : sinon la liste afficherait un autre niveau que celui de l'objet.
+  function _niveauxProposes(actuel) {
+    const base = _niveauxPlan();
+    if (!base) return null;
+    const vus = {};
+    return base.concat([actuel]).filter(function(n) {
+      if (!Number.isInteger(n) || vus[n]) return false;
+      vus[n] = true;
+      return true;
+    }).sort(function(a, b) { return a - b; });
+  }
+  // Jonction (fromLevel / toLevel) et itinéraire n'ont pas de niveau unique : cellule en lecture seule.
+  function _sansNiveau(p) { return !_estPoints() && !!p && (p.type === "jonction" || p.type === "itinerary"); }
+  function _catTypes() { return (_kind === "roads") ? "traces" : _kind; }   // zones / structures = mêmes clés
+  // Types connus de la légende (canon + customs) pour la colonne `type`, ou [] (points, légende absente).
+  function _typesConnus() {
+    if (_estPoints()) return [];
+    const cat = _catTypes();
+    const out = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat).slice() : [];
+    if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
+      try {
+        window.LegendCustomization.listCustomEntries(cat).forEach(function(e) { if (e && e.id) out.push(e.id); });
+      } catch(e) {}
+    }
+    return out;
+  }
+  function _valTri(p, col) {
+    return (col === "level" && !Number.isInteger(p.level) && !_sansNiveau(p)) ? 0 : p[col];
+  }
   function _prefixeUid() {
     return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
   }
@@ -126,7 +176,7 @@
       .kta-tbl td.editing {
         padding: 0;
       }
-      .kta-tbl td.editing input {
+      .kta-tbl td.editing input, .kta-tbl td.editing select {
         width: 100%; box-sizing: border-box;
         padding: 6px 10px;
         background: #2a3145;
@@ -374,10 +424,7 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.convAide")}</span>
               </span>
             </button>
-            <!-- 🔁 v1.76.2 (demande KARMA) : la conversion de résolution est
-                 AUSSI une carte de cet accueil — clic → import JSON classique,
-                 puis la dialog de conversion s'ouvre toute seule sur le
-                 tableau (flag _resolAutoOpen consommé à l'ouverture). -->
+            <!-- 🔁 Recaler des données sur un autre scan : outil à part (js/recalageScan.js). -->
             <button class="kta-tbl-source-card" id="kta-tbl-src-resol">
               <span class="kta-tbl-source-ico">🔁</span>
               <span class="kta-tbl-source-txt">
@@ -407,7 +454,7 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
-    document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
+    document.getElementById("kta-tbl-src-resol").addEventListener("click", function() { fermer(); window.ktaOuvrirRecalageScan(); });
     document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup);
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
@@ -551,6 +598,8 @@
     _kind       = entry.kind;
     _format     = (entry.kind === "editorPoints") ? "editorPoints" : entry.kind; // alias interne
     _data       = (entry.sourceObj[entry.kind] || []).map(function(p) { return Object.assign({}, p); });
+    _origines   = new WeakMap();
+    _data.forEach(function(p) { _origines.set(p, JSON.parse(JSON.stringify(p))); });
     _sourceMeta = { fileName: entry.fileName || (entry.kind + ".json") };
     _modifie    = false;
     _selection  = new Set();
@@ -561,6 +610,8 @@
   }
 
   function _afficherImport() {
+    // 🩸 L'accueil est retiré : resté dessous, il survivait au tableau et réapparaissait à sa fermeture.
+    if (_modal) { _modal.remove(); _modal = null; }
     const modal = document.createElement("div");
     modal.id = "kta-tbl-modal";
     modal.className = "kta-readme-modal-overlay";
@@ -646,6 +697,7 @@
     // 🩸 L'identité n'est pas éditable : une cellule `uid` permettrait de casser l'identité d'un objet.
     set.delete("uid");
     set.delete("updatedAt");
+    if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
     const ordreCourant = ["id", "type", "nom", "x", "y", "level", "tags", "etat", "description", "points", "profondeur", "date_update"];
     const ordonnees = [];
@@ -759,6 +811,8 @@
     const config = window.PLAN_CONFIG;
     const imgW = config?.plan?.imageWidth  || 0;
     const imgH = config?.plan?.imageHeight || 0;
+    const typesConnus = _typesConnus();
+    const niveauxPlan = _niveauxPlan();
 
     const warnWrap = document.getElementById("kta-tbl-warn-big-wrap");
     if (warnWrap) {
@@ -772,8 +826,8 @@
     let indices = _data.map(function(_, i) { return i; });
     if (_tri.col) {
       indices.sort(function(a, b) {
-        const va = _data[a][_tri.col];
-        const vb = _data[b][_tri.col];
+        const va = _valTri(_data[a], _tri.col);
+        const vb = _valTri(_data[b], _tri.col);
         let cmp = 0;
         if (typeof va === "number" && typeof vb === "number") cmp = va - vb;
         else cmp = String(va || "").localeCompare(String(vb || ""));
@@ -800,9 +854,12 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        const ro = (col === "id" || col === "points");
+        const ro = (col === "id" || col === "points" || (col === "level" && _sansNiveau(p)));
         let cls = "";
         if (ro) cls += "col-readonly";
+        const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
+                             typesConnus.indexOf(v) < 0);
+        if (typeInconnu) cls += (cls ? " " : "") + "col-error";
 
         if (col === "x" && imgW && (v < 0 || v > imgW)) cls += (cls ? " " : "") + "col-error";
         if (col === "y" && imgH && (v < 0 || v > imgH)) cls += (cls ? " " : "") + "col-error";
@@ -812,6 +869,8 @@
           contenu = _renderTagsCellule(idx, v);
         } else if (col === "points") {
           contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
+        } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
+          contenu = _escapeHtml(window.ktaFormatNiveau(Number.isInteger(v) ? v : 0));
         } else if (Array.isArray(v)) {
           contenu = _escapeHtml(v.join(", "));
         } else if (v === undefined || v === null) {
@@ -821,7 +880,8 @@
         }
 
         const tooltip = (col === "x" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.x", { max: imgW })) + '"' :
-                        (col === "y" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.y", { max: imgH })) + '"' : "";
+                        (col === "y" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.y", { max: imgH })) + '"' :
+                        typeInconnu ? ' title="' + _escapeAttr(window.I18n.t("tabledit.type.inconnu")) + '"' : "";
 
         html += '<td class="' + cls + '" data-col="' + _escapeAttr(col) + '" data-idx="' + idx + '"' + tooltip + '>' + contenu + '</td>';
       });
@@ -865,6 +925,7 @@
         if (e.target.closest("input")) return;
         const col = td.dataset.col;
         if (col === "id" || col === "points") return; // lecture seule (id + géométrie)
+        if (col === "level" && _sansNiveau(_data[parseInt(td.dataset.idx)])) return;
         if (col === "tags") {
           const removeBtn = e.target.closest("[data-tag-remove]");
           if (removeBtn) {
@@ -893,6 +954,7 @@
     const p = _data[idx];
     const valOrig = p[col];
 
+    if (col === "level" && _niveauxPlan()) { _editerNiveau(td, idx); return; }
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 
@@ -902,25 +964,14 @@
     input.value = valOrig === undefined || valOrig === null ? "" : valOrig;
     if (isNum && col !== "profondeur") input.step = "1";
 
-    // 🩸 Colonne `type` : une faute de frappe crée un objet orphelin, rendu en couleur de repli. Pas de
-    // blocage (un type inconnu peut être voulu) : une <datalist> propose les types valides (canon +
-    // légende) et un type hors liste est signalé en console ; ≡ Légende signale aussi les orphelins.
+    // 🩸 Colonne `type` : une faute de frappe crée un objet orphelin, rendu en couleur de repli. Saisie libre
+    // (un fichier téléchargé peut porter un type à venir) : une <datalist> propose les types valides (canon +
+    // légende), un type hors liste passe la cellule en rouge et « Appliquer à la session » le REFUSE.
     let _typesValides = null;
     let _dlTypes = null;
     if (col === "type" && !_estPoints()) {
-      const cat = (_kind === "roads") ? "traces" : _kind;   // zones/structures = mêmes clés
-      _typesValides = [];
-      if (typeof window.ktaStyleBuiltins === "function") {
-        _typesValides = window.ktaStyleBuiltins(cat).slice();
-        if (cat === "traces") _typesValides.push("jonction", "itinerary");
-      }
-      if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
-        try {
-          window.LegendCustomization.listCustomEntries(cat).forEach(function(e) {
-            if (e && e.id) _typesValides.push(e.id);
-          });
-        } catch(e) {}
-      }
+      const cat = _catTypes();
+      _typesValides = _typesConnus();
       if (_typesValides.length) {
         _dlTypes = document.createElement("datalist");
         _dlTypes.id = "kta-te-types-" + cat;
@@ -941,6 +992,8 @@
     input.select();
 
     function valider() {
+      // 🩸 Le re-rendu retire l'input, ce qui déclenche son blur : sans ce retrait, valider repart dans valider.
+      input.removeEventListener("blur", valider);
       let nouvelle = input.value;
       if (isNum) {
         nouvelle = nouvelle === "" ? undefined : Number(nouvelle);
@@ -982,6 +1035,50 @@
         e.preventDefault();
         valider();
         _focusVoisin(idx, col, e.shiftKey ? "left" : "right");
+      }
+    });
+  }
+
+  // Cellule « level » d'un plan multi-niveau : une liste, jamais une saisie libre.
+  function _editerNiveau(td, idx) {
+    const p = _data[idx];
+    const actuel = Number.isInteger(p.level) ? p.level : 0;
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", window.I18n.t("niveauObjet.label"));
+    (_niveauxProposes(actuel) || [actuel]).forEach(function(n) {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = window.I18n.t("niveauObjet.option", { n: window.ktaFormatNiveau(n) });
+      if (n === actuel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    td.classList.add("editing");
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+    let fini = false;
+    function terminer(garder) {
+      if (fini) return;
+      fini = true;
+      const n = parseInt(sel.value, 10);
+      if (garder && Number.isInteger(n) && n !== actuel) {
+        p.level = n;
+        _toucher(p);
+        _modifie = true;
+      }
+      td.classList.remove("editing");
+      _construireCorps();
+      _miseAJourInfos();
+    }
+    sel.addEventListener("change", function() { terminer(true); });
+    sel.addEventListener("blur", function() { terminer(true); });
+    sel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { e.preventDefault(); terminer(false); }
+      else if (e.key === "Enter") { e.preventDefault(); terminer(true); _focusVoisin(idx, "level", "down"); }
+      else if (e.key === "Tab") {
+        e.preventDefault();
+        terminer(true);
+        _focusVoisin(idx, "level", e.shiftKey ? "left" : "right");
       }
     });
   }
@@ -1154,6 +1251,10 @@
     _colonnes.forEach(function(c) {
       if (c === "x" || c === "y" || c === "profondeur") nouv[c] = 0;
       else if (c === "tags") nouv[c] = [];
+      else if (c === "level") {   // 🩸 jamais "" : un niveau est un entier (niveau actif, sinon 0)
+        const a = window.APP_CONFIG && window.APP_CONFIG.activeLevel;
+        nouv[c] = Number.isInteger(a) ? a : 0;
+      }
       else nouv[c] = "";
     });
     if ("id" in nouv) nouv.id = "";
@@ -1291,8 +1392,8 @@
     let indices = _data.map(function(_, i) { return i; });
     if (_tri.col) {
       indices.sort(function(a, b) {
-        const va = _data[a][_tri.col];
-        const vb = _data[b][_tri.col];
+        const va = _valTri(_data[a], _tri.col);
+        const vb = _valTri(_data[b], _tri.col);
         let cmp = 0;
         if (typeof va === "number" && typeof vb === "number") cmp = va - vb;
         else cmp = String(va || "").localeCompare(String(vb || ""));
@@ -1362,8 +1463,8 @@
     });
   }
 
-  // ⚠️ Calques de données : export seulement (repasser par le Générateur) (décision produit). Seule la
-  // SESSION (editorPoints) se remplace en direct.
+  // ⚠️ Calques de données : export seulement (repasser par le Générateur) (décision produit). Seul un fichier de
+  // SESSION s'applique en direct : points remplacés, tracés / zones / structures appliqués.
   function _menuSauvegarde() {
     const estSession = _estSession();
 
@@ -1384,7 +1485,7 @@
             <button class="kta-btn kta-btn-primary" id="save-dl">
               ${window.I18n.t("tabledit.save.telecharger")}
             </button>
-            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.session")}</button>` : ""}
+            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.appliquer")}</button>` : ""}
           </div>
           ${estSession ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.save.datalayerNote")}</div>`}
         </div>
@@ -1404,10 +1505,12 @@
 
     if (estSession) {
       document.getElementById("save-session").addEventListener("click", function() {
-        _remplacerSession();
-        _modifie = false;
-        _miseAJourInfos();
         overlay.remove();
+        _appliquerSession().then(function(fait) {
+          if (!fait) return;   // refus ou confirmation annulée : le tableau garde ses modifications
+          _modifie = false;
+          _miseAJourInfos();
+        });
       });
     }
   }
@@ -1432,98 +1535,81 @@
     return obj;
   }
 
-  function _remplacerSession() {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
-    if (!window.setEditorPoints) {
+  // Plan affiché partagé par une extension → { remplacer } ; sinon null (plan local : ni droit ni confirmation).
+  function _partage() {
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    const K = window.KtaExtensions;
+    return (K && typeof K.importPartage === "function") ? K.importPartage(window._currentLoadedPlanId) : null;
+  }
+
+  function _origineDe(ligne) { return _origines.get(ligne) || null; }
+
+  // Ligne fautive sélectionnée et amenée à l'écran : son numéro suit l'ordre du fichier, pas le tri affiché.
+  function _montrerLigne(idx) {
+    if (!_modal || !_data[idx]) return;
+    _selection = new Set([idx]);
+    _construireCorps();
+    _miseAJourInfos();
+    const tr = _modal.querySelector('tr[data-idx="' + idx + '"]');
+    if (tr && tr.scrollIntoView) tr.scrollIntoView({ block: "center" });
+  }
+
+  // Un tableau d'un fichier de session → la session (KtaConvertir.appliquerTableau, points compris : seules les cellules
+  // modifiées, type et niveau par les chemins de la fiche, une entrée ⏪). Un type inconnu, ou incompatible avec
+  // l'objet, est REFUSÉ ici (le téléchargement garde la saisie libre). Plan partagé : retirer des objets exige
+  // `remplacer` de la prise (relu au clic, sinon refus nommé), puis une confirmation chiffrée.
+  // → Promise<bool> : true si la session a été modifiée (ou l'était déjà).
+  function _appliquerSession() {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);   // 🔒 lecture seule
+    const KC = window.KtaConvertir;
+    const planAffiche = (typeof window.ktaPlanAffiche === "function") ? window.ktaPlanAffiche() : true;
+    if (!planAffiche || !KC || typeof KC.appliquerTableau !== "function") {
       window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
-      return;
+      return Promise.resolve(false);
     }
-    // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche
-    // de son dernier état, ses photos restent « sans point ».
-    const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
-    if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
-      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(_data));
+    if (window.KtaUid) window.KtaUid.ensureAll(_data, _prefixeUid());
+    // Points : la liste est fournie ici (KtaConvertir ne la nomme pas) ; ⚠️ setEditorPoints garde l'objet ENTIER.
+    const famille = _estPoints() ? "points" : _kind;
+    const acces = _estPoints() ? { lire: window.getEditorPoints, ecrire: window.setEditorPoints, categorie: "editorPoints" } : null;
+    const options = function(o) { return Object.assign({ origine: _origineDe, acces: acces }, o || {}); };
+    const sim = KC.appliquerTableau(famille, _data, options({ simuler: true }));
+    if (!sim) return Promise.resolve(false);
+    if (sim.erreur) {
+      _montrerLigne(sim.erreur.ligne - 1);
+      window.ktaAlerte(window.I18n.t("tabledit.apply." + sim.erreur.code,
+        { ligne: sim.erreur.ligne, type: sim.erreur.type }), { type: "erreur" });
+      return Promise.resolve(false);
     }
-    window.setEditorPoints(_data);
-    if (window.renderEditorPoints) window.renderEditorPoints();
-    // Carte masquée : toast succès, important (visible même en Silence).
-    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
-    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
-    else window.ktaAlerte(msgOk);
-  }
-
-  // ── Convertir la résolution ──────────────────────────────
-  // Migre des données d'un scan vers un autre. Trois modes : homothétie (résolutions), recalage sur
-  // UNE paire de points (+ rotation du Nord), ou DEUX paires (échelle et rotation déduites, comme le
-  // géoref 2 points). Tous remplissent une affine M = {a,b,c,d,e,f} : x' = a·x + b·y + e ; y' = c·x + d·y + f.
-
-  function _matriceHomothetie(kX, kY) {
-    return { a: kX, b: 0, c: 0, d: kY, e: 0, f: 0 };
-  }
-
-  // « 1 paire » : échelle + rotation θ (degrés, HORAIRE à l'écran comme northOffsetDeg), ancreA → ancreB
-  // exactement. ⚠️ Repère image (y vers le bas) : [cos −sin ; sin cos] tourne dans le sens horaire visuel.
-  function _matriceRecalage(kX, kY, thetaDeg, ancreA, ancreB) {
-    if (!ancreA || !ancreB) return null;
-    const t = ((Number(thetaDeg) || 0) * Math.PI) / 180;
-    const co = Math.cos(t), si = Math.sin(t);
-    const a = kX * co, b = -kY * si, c = kX * si, d = kY * co;
-    return { a: a, b: b, c: c, d: d,
-             e: ancreB.x - (a * ancreA.x + b * ancreA.y),
-             f: ancreB.y - (c * ancreA.x + d * ancreA.y) };
-  }
-
-  // « 2 paires » : échelle UNIFORME et rotation déduites de A1→A2 et B1→B2, translation sur la paire 1.
-  // null si une base fait moins de 10 px (transformation dégénérée).
-  function _matriceDeuxPaires(A1, B1, A2, B2) {
-    const dxA = A2.x - A1.x, dyA = A2.y - A1.y;
-    const dxB = B2.x - B1.x, dyB = B2.y - B1.y;
-    const lenA = Math.hypot(dxA, dyA), lenB = Math.hypot(dxB, dyB);
-    if (lenA < 10 || lenB < 10) return null;
-    const s = lenB / lenA;
-    const theta = Math.atan2(dyB, dxB) - Math.atan2(dyA, dxA);
-    const co = Math.cos(theta), si = Math.sin(theta);
-    const a = s * co, b = -s * si, c = s * si, d = s * co;
-    return { a: a, b: b, c: c, d: d,
-             e: B1.x - (a * A1.x + b * A1.y),
-             f: B1.y - (c * A1.x + d * A1.y),
-             _s: s, _thetaDeg: theta * 180 / Math.PI };
-  }
-
-  // ⚠️ Fonction PURE, extraite et exécutée par check-resolution-convert.js : applique M à tous les champs
-  // de coordonnées (docs/architecture/data-formats.md) et compte par tableau.
-  function _transformerCoordsFichier(obj, M) {
-    const compte = {};
-    if (!obj || typeof obj !== "object" || !M) return compte;
-    const r2 = function(v) { return Math.round(v * 100) / 100; };  // centipixel : assez fin, JSON propre
-    const pt = function(p) {
-      if (p && typeof p.x === "number" && typeof p.y === "number") {
-        const x = p.x, y = p.y;
-        p.x = r2(M.a * x + M.b * y + M.e);
-        p.y = r2(M.c * x + M.d * y + M.f);
-        return 1;
+    const objets = window.I18n.t("tabledit.kind." + (_estPoints() ? "data" : _kind));
+    const appliquer = function() {
+      // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche de son
+      // dernier état, ses photos restent « sans point ».
+      const avantPts = _estPoints() ? JSON.parse(JSON.stringify(window.getEditorPoints() || [])) : null;
+      const b = KC.appliquerTableau(famille, _data, options());   // recalculé : la synchro a pu passer pendant la question
+      if (!b || b.erreur) return false;
+      if (avantPts && (b.modifies + b.ajoutes + b.supprimes) && window.MyKTAMapPhotos &&
+          window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
+        window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, avantPts.concat(window.getEditorPoints() || []));
       }
-      return 0;
+      const msgOk = ((b.modifies + b.ajoutes + b.supprimes)
+        ? window.I18n.t("tabledit.save.appliqueOk", b) : window.I18n.t("tabledit.save.rienAAppliquer")) +
+        (b.ignores ? " " + window.I18n.t("tabledit.save.ignorees", { n: b.ignores }) : "");
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
+      else window.ktaAlerte(msgOk);
+      return true;
     };
-    ["data", "editorPoints"].forEach(function(k) {
-      if (!Array.isArray(obj[k])) return;
-      compte[k] = obj[k].reduce(function(n, row) { return n + pt(row); }, 0);
-    });
-    ["roads", "zones", "structures"].forEach(function(k) {
-      if (!Array.isArray(obj[k])) return;
-      compte[k] = 0;
-      obj[k].forEach(function(g) {
-        if (g && Array.isArray(g.points)) compte[k] += g.points.reduce(function(n, p) { return n + pt(p); }, 0);
-      });
-    });
-    // 🩸 measure a DEUX formes : calque `{points:[…]}`, session `[…]`. measureSurface : tableau direct.
-    ["measure", "measureSurface"].forEach(function(k) {
-      const m = obj[k];
-      if (!m) return;
-      const arr = Array.isArray(m) ? m : (Array.isArray(m.points) ? m.points : null);
-      if (arr) compte[k] = arr.reduce(function(n, p) { return n + pt(p); }, 0);
-    });
-    return compte;
+    const partage = window.KtaUid ? _partage() : null;
+    if (!partage || !sim.supprimes) return Promise.resolve(appliquer());
+    // 🔒 Supprimer pour tous : permission relue maintenant (prise `importSession`, erreur = refus).
+    if (!partage.remplacer) {
+      window.ktaAlerte(window.I18n.t("tabledit.save.partage.refusObjets", { n: sim.supprimes, objets: objets }),
+        { type: "erreur" });
+      return Promise.resolve(false);
+    }
+    return window.ktaConfirm(window.I18n.t("tabledit.save.partage.confirmObjets", { n: sim.supprimes, objets: objets }), {
+      titre: window.I18n.t("tabledit.save.partage.titreAppliquer"),
+      okLabel: window.I18n.t("tabledit.save.partage.okAppliquer"), zIndex: 100003
+    }).then(function(ok) { return ok ? appliquer() : false; });
   }
 
   // ── Dédoublonnage ──────────────────────────────
@@ -1562,7 +1648,7 @@
         return true;
       });
     });
-    // Mêmes deux formes de mesure que dans _transformerCoordsFichier.
+    // Mêmes deux formes de mesure que dans recalageScan.js > transformerCoordsFichier.
     ["measure", "measureSurface"].forEach(function(k) {
       const m = obj[k];
       if (!m) return;
@@ -1646,217 +1732,6 @@
             let msg = t("tabledit.dedup.okMulti", { ok: ok, detail: bilans.join("\n") || "—" });
             if (echecs.length) msg += "\n\n⚠️ " + t("tabledit.dedup.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
             window.ktaAlerte(msg).then(function() { if (ok) fermer(); });   // bilan lu avant la fermeture
-          }
-        });
-      });
-    });
-  }
-
-  function _ouvrirConvertResolution() {
-    const w0 = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || "";
-    const h0 = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || "";
-    const sub = document.createElement("div");
-    // 🩸 Même piège de classe que ci-dessus.
-    sub.className = "kta-readme-modal-overlay";
-    sub.style.zIndex = "100001";
-    const champRes = function(id, w, h, hint) {
-      return `<div class="kta-planner-grille" style="margin:4px 0 2px;">
-          <label class="kta-cfg-label" for="${id}_w">${window.I18n.t("tabledit.resol.largeur")}</label>
-          <input class="kta-cfg-input" id="${id}_w" type="number" min="1" step="1" value="${w}">
-          <label class="kta-cfg-label" for="${id}_h">${window.I18n.t("tabledit.resol.hauteur")}</label>
-          <input class="kta-cfg-input" id="${id}_h" type="number" min="1" step="1" value="${h}">
-        </div>
-        <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
-          <input type="file" id="${id}_img" accept="image/*" style="display:none;">
-        </label>
-        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:var(--kta-texte-3);">${hint}</span>` : ""}`;
-    };
-    // Paire de correspondance : xA,yA (plan source) → xB,yB (plan destination)
-    const champPaire = function(id, titre, hint) {
-      return `<div class="kta-cfg-label" style="margin-top:8px;">${titre}</div>
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin:4px 0 2px;">
-          <input class="kta-cfg-input" id="${id}_xa" type="number" step="any" placeholder="xA">
-          <input class="kta-cfg-input" id="${id}_ya" type="number" step="any" placeholder="yA">
-          <input class="kta-cfg-input" id="${id}_xb" type="number" step="any" placeholder="xB">
-          <input class="kta-cfg-input" id="${id}_yb" type="number" step="any" placeholder="yB">
-        </div>
-        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:var(--kta-texte-3);">${hint}</span>` : ""}`;
-    };
-    sub.innerHTML = `
-      <div class="kta-readme-modal-boite" style="max-width:500px; height:auto; max-height:90vh;">
-        <div class="kta-readme-modal-entete">
-          <span class="kta-readme-modal-titre">🔁 ${window.I18n.t("tabledit.resol.titre")}</span>
-          <button class="kta-panneau-close" id="kta-tbl-resol-close">✕</button>
-        </div>
-        <div class="kta-readme-modal-corps" style="font-size:13px;">
-          <p style="color:var(--kta-texte-3); margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
-          <p style="color:var(--kta-texte-3); margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
-          <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
-          ${champRes("kta-tbl-resol-src", "", "", "")}
-          <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
-          ${champRes("kta-tbl-resol-dst", w0, h0, "")}
-
-          <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">🎯 ${window.I18n.t("tabledit.resol.recalTitre")}</div>
-          <p style="color:var(--kta-texte-3); margin:2px 0 4px; line-height:1.45; font-size:11.5px;">${window.I18n.t("tabledit.resol.recalIntro")}</p>
-          ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), "")}
-          <div class="kta-planner-grille" style="margin:8px 0 2px;">
-            <label class="kta-cfg-label" for="kta-tbl-resol-theta">${window.I18n.t("tabledit.resol.rotation")}</label>
-            <input class="kta-cfg-input" id="kta-tbl-resol-theta" type="number" step="any" value="0">
-          </div>
-          <span class="kta-planner-hint" style="font-size:11px; color:var(--kta-texte-3);">${window.I18n.t("tabledit.resol.rotationHint")}</span>
-          ${champPaire("kta-tbl-resol-p2", window.I18n.t("tabledit.resol.paire2"), window.I18n.t("tabledit.resol.paire2Hint"))}
-
-          <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">${window.I18n.t("tabledit.resol.fichiers")}</div>
-          <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${window.I18n.t("tabledit.resol.choisirFichiers")}
-            <input type="file" id="kta-tbl-resol-files" accept=".json,application/json" multiple style="display:none;">
-          </label>
-          <div id="kta-tbl-resol-files-liste" style="font-size:12px; color:var(--kta-texte-2); margin:2px 0 6px;">${window.I18n.t("tabledit.resol.aucunFichier")}</div>
-          <div id="kta-tbl-resol-recap" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; margin-top:6px; font-family:'Courier New',monospace; font-size:12px; min-height:36px;">—</div>
-          <div id="kta-tbl-resol-warn" style="display:none; border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px;"></div>
-          <div class="kta-conv-actions" style="margin-top:12px;">
-            <button class="kta-btn kta-btn-ghost"   id="kta-tbl-resol-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
-            <button class="kta-btn kta-btn-primary" id="kta-tbl-resol-go" disabled>${window.I18n.t("tabledit.resol.appliquer")}</button>
-          </div>
-        </div>
-      </div>`;
-    document.documentElement.appendChild(sub);
-    const $ = function(id) { return document.getElementById(id); };
-    const fermer = function() { sub.remove(); };
-    $("kta-tbl-resol-close").addEventListener("click", fermer);
-    $("kta-tbl-resol-annuler").addEventListener("click", fermer);
-    sub.addEventListener("click", function(e) { if (e.target === sub) fermer(); });
-
-    // Dimensions lues dans l'en-tête binaire d'une image (32 Ko suffisent).
-    ["src", "dst"].forEach(function(cote) {
-      $("kta-tbl-resol-" + cote + "_img").addEventListener("change", function(e) {
-        const f = e.target.files && e.target.files[0];
-        if (!f || typeof window.ktaLireDimensionsEntete !== "function") return;
-        f.slice(0, 1048576).arrayBuffer().then(function(buf) {
-          const dm = window.ktaLireDimensionsEntete(buf);
-          if (dm && dm.width > 0) {
-            $("kta-tbl-resol-" + cote + "_w").value = dm.width;
-            $("kta-tbl-resol-" + cote + "_h").value = dm.height;
-            recap();
-          } else {
-            window.ktaAlerte(window.I18n.t("tabledit.resol.errImage", { nom: f.name }), { type: "erreur" });
-          }
-        });
-      });
-    });
-
-    let fichiers = [];
-    $("kta-tbl-resol-files").addEventListener("change", function(e) {
-      fichiers = Array.prototype.slice.call(e.target.files || []);
-      $("kta-tbl-resol-files-liste").textContent = fichiers.length
-        ? fichiers.map(function(f) { return f.name; }).join(" · ")
-        : window.I18n.t("tabledit.resol.aucunFichier");
-      recap();
-    });
-
-    function lireRes() {
-      const v = function(id) { const x = parseInt($(id).value, 10); return (Number.isFinite(x) && x > 0) ? x : null; };
-      return { wA: v("kta-tbl-resol-src_w"), hA: v("kta-tbl-resol-src_h"),
-               wB: v("kta-tbl-resol-dst_w"), hB: v("kta-tbl-resol-dst_h") };
-    }
-    // Une paire : null = vide, {invalid:true} = partielle (refus), sinon {A,B}
-    function lirePaire(id) {
-      const v = function(sfx) { const x = parseFloat($(id + "_" + sfx).value); return Number.isFinite(x) ? x : null; };
-      const xa = v("xa"), ya = v("ya"), xb = v("xb"), yb = v("yb");
-      const remplis = [xa, ya, xb, yb].filter(function(x) { return x !== null; }).length;
-      if (remplis === 0) return null;
-      if (remplis < 4) return { invalid: true };
-      return { A: { x: xa, y: ya }, B: { x: xb, y: yb } };
-    }
-
-    // Construit la matrice selon le mode. Rend { M, mode, warn } ou { err }.
-    function construireMatrice() {
-      const r = lireRes();
-      const p1 = lirePaire("kta-tbl-resol-p1");
-      const p2 = lirePaire("kta-tbl-resol-p2");
-      if ((p1 && p1.invalid) || (p2 && p2.invalid)) return { err: window.I18n.t("tabledit.resol.errPaire") };
-      if (p2 && !p1) return { err: window.I18n.t("tabledit.resol.errPaire2Seule") };
-      if (p1 && p2) {
-        // Mode 2 paires : tout est déduit. Résolutions = contre-contrôle.
-        const M = _matriceDeuxPaires(p1.A, p1.B, p2.A, p2.B);
-        if (!M) return { err: window.I18n.t("tabledit.resol.errDegenere") };
-        let warn = null;
-        if (r.wA && r.wB) {
-          const kRes = r.wB / r.wA;
-          const ecart = Math.abs(M._s - kRes) / Math.max(M._s, kRes);
-          if (ecart > 0.02) warn = window.I18n.t("tabledit.resol.warnEchelle2p", { deduit: M._s.toFixed(4), res: kRes.toFixed(4) });
-        }
-        return { M: M, mode: "2p", warn: warn };
-      }
-      if (!r.wA || !r.hA || !r.wB || !r.hB) return { err: null };   // pas encore prêt (pas une erreur à afficher)
-      const kX = r.wB / r.wA, kY = r.hB / r.hA;
-      let warn = null;
-      const ecartAspect = Math.abs(kX - kY) / Math.max(kX, kY);
-      if (ecartAspect > 0.02) warn = window.I18n.t("tabledit.resol.warnAspect", { pct: (ecartAspect * 100).toFixed(1) });
-      if (p1) {
-        const theta = parseFloat($("kta-tbl-resol-theta").value) || 0;
-        return { M: _matriceRecalage(kX, kY, theta, p1.A, p1.B), mode: "1p", warn: warn, kX: kX, kY: kY, theta: theta };
-      }
-      return { M: _matriceHomothetie(kX, kY), mode: "homo", warn: warn, kX: kX, kY: kY };
-    }
-
-    function recap() {
-      const recapEl = $("kta-tbl-resol-recap"), warnEl = $("kta-tbl-resol-warn"), go = $("kta-tbl-resol-go");
-      const res = construireMatrice();
-      warnEl.style.display = "none";
-      if (res.err !== undefined && res.err !== null) {
-        recapEl.textContent = "—";
-        warnEl.style.display = ""; warnEl.innerHTML = "⚠️ " + res.err;
-        go.disabled = true; return;
-      }
-      if (!res.M) { recapEl.textContent = "—"; go.disabled = true; return; }
-      let html = "";
-      if (res.mode === "homo") {
-        html = window.I18n.t("tabledit.resol.modeHomo") + "<br>kX = <strong>" + res.kX.toFixed(4) + "</strong> · kY = <strong>" + res.kY.toFixed(4) + "</strong>";
-      } else if (res.mode === "1p") {
-        html = window.I18n.t("tabledit.resol.mode1p") + "<br>kX = <strong>" + res.kX.toFixed(4) + "</strong> · kY = <strong>" + res.kY.toFixed(4) + "</strong> · θ = <strong>" + res.theta + "°</strong>";
-      } else {
-        html = window.I18n.t("tabledit.resol.mode2p") + "<br>" + window.I18n.t("tabledit.resol.echelle") + " = <strong>" + res.M._s.toFixed(4) + "</strong> · θ = <strong>" + res.M._thetaDeg.toFixed(2) + "°</strong>";
-      }
-      if (fichiers.length) html += "<br>" + window.I18n.t("tabledit.resol.nbFichiers", { n: fichiers.length });
-      recapEl.innerHTML = html;
-      if (res.warn) { warnEl.style.display = ""; warnEl.innerHTML = "⚠️ " + res.warn; }
-      go.disabled = !fichiers.length;
-    }
-    ["src_w", "src_h", "dst_w", "dst_h", "theta",
-     "p1_xa", "p1_ya", "p1_xb", "p1_yb", "p2_xa", "p2_ya", "p2_xb", "p2_yb"].forEach(function(sfx) {
-      const el = $("kta-tbl-resol-" + sfx);
-      if (el) el.addEventListener("input", recap);
-    });
-    recap();
-
-    // Chaque fichier est retéléchargé « <nom>_conv.json » ; un fichier illisible n'arrête pas le lot.
-    $("kta-tbl-resol-go").addEventListener("click", function() {
-      const res = construireMatrice();
-      if (!res.M || !fichiers.length) return;   // refus, pas de clamp
-      const bilans = [], echecs = [];
-      let restants = fichiers.length;
-      fichiers.forEach(function(f) {
-        f.text().then(function(txt) {
-          const obj = JSON.parse(txt);
-          const compte = _transformerCoordsFichier(obj, res.M);
-          const total = Object.keys(compte).reduce(function(acc, k) { return acc + compte[k]; }, 0);
-          if (!total) { echecs.push(f.name + " (" + window.I18n.t("tabledit.resol.aucuneCoord") + ")"); return; }
-          const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = f.name.replace(/\.json$/i, "") + "_conv.json";
-          a.click();
-          setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
-          bilans.push(f.name + " → " + total);
-        }).catch(function() {
-          echecs.push(f.name + " (" + window.I18n.t("tabledit.resol.errLecture") + ")");
-        }).finally(function() {
-          restants--;
-          if (restants === 0) {
-            let msg = window.I18n.t("tabledit.resol.okMulti", { ok: bilans.length, detail: bilans.join("\n") || "—" });
-            if (echecs.length) msg += "\n\n⚠️ " + window.I18n.t("tabledit.resol.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
-            window.ktaAlerte(msg).then(function() { if (bilans.length) fermer(); });   // bilan lu avant la fermeture
           }
         });
       });

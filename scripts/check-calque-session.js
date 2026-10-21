@@ -254,8 +254,8 @@ const CALQUE = {
     t("🩸 POI : le Tableau copie l'objet ENTIER (Object.assign), pas une liste de champs",
       /\.map\(function \(?p\)? \{ return Object\.assign\(\{\}, p\); \}\)/.test(TAB) ||
       /Object\.assign\(\{\}, p\)/.test(TAB));
-    t("POI : le Tableau repose bien les points en session",
-      TAB.indexOf("window.setEditorPoints(_data)") >= 0);
+    t("POI : le Tableau applique les points à la session par le setteur (objet entier, appliquerTableau)",
+      /acces = _estPoints\(\) \? \{ lire: window\.getEditorPoints, ecrire: window\.setEditorPoints/.test(TAB));
   }
 
   // ───────── 2 sexies. INTÉGRER DES AJOUTS (objets dessinés à la main) ─────────

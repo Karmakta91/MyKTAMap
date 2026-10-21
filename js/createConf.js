@@ -9,7 +9,8 @@
 // =========================
 // Modale du Générateur (nouveau plan, mode Modifier d'un ZIP, assistant pas à pas, icônes, calques,
 // tuilage V2) et convertisseurs KMZ / GPX / SIG / GeoTIFF / image vers un ZIP de plan.
-// Expose : window.afficherPlanner, afficherImporterKmz/Gpx/Sig/GeoTiff/Image, MyKTAMapTilingV2,
+// Expose : window.afficherPlanner, ktaGenerateurMaj (mise à jour d'un plan, prérempli par js/majPlan.js),
+// afficherImporterKmz/Gpx/Sig/GeoTiff/Image, MyKTAMapTilingV2,
 // ktaLireDimensionsEntete.
 // 🩸 Le chemin d'une icône vit dans `dataset.ktaPath`, jamais dans un libellé affiché (cf. _ajouterIconRow).
 // 🩸 Tuilage V2 : chaque tuile est découpée depuis l'image source, sans canvas pleine résolution.
@@ -90,6 +91,11 @@ function _renderHistPdfListe() {
 // data/photos/ par _genererZip. Remises à zéro à chaque ouverture de la modale.
 let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
+// Mise à jour d'un plan (js/majPlan.js > window.ktaGenerateurMaj) : { calques: [{ id, label, payload }], legende,
+// onZip(blob, nomFichier, infos) }. Appliquée au formulaire une fois le ZIP du plan chargé ; présente, elle remplace
+// le téléchargement et la proposition « Publier » de fin de génération (l'assistant choisit la suite). Remise à
+// null à chaque ouverture de la modale.
+let _plannerMaj = null;
 
 // Légende du plan (source de `plan.customLegend`). null = pas de personnalisation, sinon l'état de
 // `LegendCustomization.getSessionState()` : { schemaVersion, labels, hidden, customEntries }.
@@ -698,6 +704,7 @@ function afficherPlanner() {
   setTimeout(_renderHistPdfListe, 0);
   _plannerPhotosFromZip = [];  // reset buffer photos ZIP
   _plannerMode       = "nouveau";
+  _plannerMaj        = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
@@ -1582,6 +1589,9 @@ async function _chargerZipModifier(file) {
     _plannerPhotosFromZip = [];  // reset buffer photos ZIP au reload (modifier)
 
     for (const entry of Object.values(zip.files).filter(function(f) { return !f.dir; })) {
+      // Tuiles V2 jamais relues : la génération les refait depuis l'image de base. Les extraire toutes en Blob
+      // coûterait la taille du plan en mémoire pour rien.
+      if (/^data\/tiles\/z-?\d+\//.test(entry.name)) continue;
       const name = entry.name.split("/").pop();
       if (!name) continue;
       const blob = await entry.async("blob");
@@ -1594,10 +1604,74 @@ async function _chargerZipModifier(file) {
     const config = JSON.parse(await planConfigFile.text());
     _preRemplirFormulaire(config);
     _plannerZipStatus(window.I18n.t("gen.zipModif.charge", { name: file.name }), false);
+    if (_plannerMaj) _appliquerMaj();
   } catch(err) {
     _plannerZipStatus("❌ " + (err.message || err), true);
   }
 }
+
+// ── Mise à jour d'un plan : formulaire prérempli par l'assistant ──────────
+// Chaque calque de `_plannerMaj.calques` remplace le fichier de SA ligne (même id) ou devient une ligne nouvelle.
+// Le fichier est posé sur la ligne (`item._ktaFichierMaj`), pas dans _plannerOrigAssets : deux calques ne se le
+// disputent pas par leur nom de fichier. Un fichier choisi ensuite à la main sur la ligne gagne.
+function _appliquerMaj() {
+  const maj = _plannerMaj;
+  if (!maj || maj.applique) return;
+  maj.applique = true;
+  const list = document.getElementById("pl_dataLayers_list");
+  const lignes = function() { return list ? list.querySelectorAll(".kta-planner-layer-item") : []; };
+  let remplaces = 0, nouveaux = 0;
+  const refuses = [];
+  (maj.calques || []).forEach(function(c) {
+    let item = null;
+    lignes().forEach(function(it) {
+      const inp = document.getElementById(it.dataset.layerId + "_id");
+      if (inp && inp.value.trim() === c.id) item = it;
+    });
+    if (item) remplaces++;
+    else {
+      const avant = lignes().length;
+      _ajouterDataLayer({ id: c.id, label: c.label || c.id, visible: true, file: "data/" + c.id + ".json" });
+      if (lignes().length === avant) { refuses.push(c.id); return; }   // 10 calques au plus
+      item = lignes()[lignes().length - 1];
+      nouveaux++;
+    }
+    item._ktaFichierMaj = _fichierJsonMaj(c.id + ".json", c.payload);
+    item.classList.add("kta-planner-layer-maj");
+    const nom = document.getElementById(item.dataset.layerId + "_file_nom");
+    if (nom) nom.textContent = window.I18n.t("gen.maj.fichierLigne", { fichier: c.id + ".json" });
+  });
+  if (maj.legende) _absorberLegendeCalque(maj.legende);
+  const cb = document.getElementById("pl_photos");
+  if (cb) cb.checked = true;
+  _majVisibiliteCheckboxPhotos();
+  _majCompteurPhotosPlanner();
+  _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }), false);
+  if (refuses.length) _plannerErreur(window.I18n.t("gen.maj.tropDeCalques", { ids: refuses.join(", ") }));
+}
+
+function _fichierJsonMaj(nom, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  try { return new File([blob], nom, { type: "application/json" }); }
+  catch (e) { blob.name = nom; return blob; }   // vieux Safari sans constructeur File
+}
+
+// Ouvre le Générateur en mode Modifier sur `opts.zip` (le ZIP actuel du plan), puis applique les calques de
+// l'assistant. Sans ZIP (plan sans archive sur l'appareil) : le Générateur attend qu'on dépose le ZIP, et
+// l'application se fait à ce dépôt. → Promise<bool> (ZIP chargé et formulaire prérempli).
+window.ktaGenerateurMaj = async function(opts) {
+  const ancien = document.getElementById("kta-planner-modal");
+  if (ancien) ancien.remove();
+  afficherPlanner();
+  _plannerMaj = Object.assign({}, opts || {}, { applique: false });
+  if (!opts || !opts.zip) {
+    _plannerZipStatus(window.I18n.t("gen.maj.deposerZip"), true);
+    return false;
+  }
+  _plannerMode = "modifier";
+  await _chargerZipModifier(opts.zip);
+  return !!(_plannerMaj && _plannerMaj.applique);
+};
 
 function _plannerZipStatus(msg, isErr) {
   const el = document.getElementById("kta-planner-zip-status");
@@ -2241,6 +2315,8 @@ function _ajouterDataLayer(prefill) {
       </span>
     </div>
   `;
+  // Nom du fichier d'origine dans le ZIP : il n'est pas toujours `<id>.json` (cf. _genererZip).
+  if (p.file) item.dataset.ktaFichier = String(p.file).split("/").pop();
 
   list.appendChild(item);
   _bindUploadLabel(id + "_file", id + "_file_nom");
@@ -2737,7 +2813,7 @@ function _lireDimensionsEntete(buf) {
   return null;
 }
 
-// Exposé : tableEditor (Convertir la résolution) lit les dimensions par le même parseur, sans décodage.
+// Exposé : recalageScan (Recaler des données sur un autre scan) lit les dimensions par le même parseur, sans décodage.
 window.ktaLireDimensionsEntete = _lireDimensionsEntete;
 
 function _lireImageDimensions(file) {
@@ -3332,7 +3408,12 @@ async function _genererZip() {
       const dlId    = document.getElementById(lid + "_id").value.trim();
       const dlLabel = document.getElementById(lid + "_label").value.trim() || dlId;
       const dlVis   = document.getElementById(lid + "_visible").value === "true";
-      const dlFile  = _getFile(lid + "_file", dlId + ".json");
+      // Ordre : fichier choisi sur la ligne, fichier de l'assistant de mise à jour, fichier d'origine de la ligne,
+      // puis `<id>.json`. 🩸 Sans le fichier d'origine, un calque dont le fichier ne porte pas son id ressortait
+      // VIDE du mode Modifier.
+      const dlFile  = _getFile(lid + "_file", null) || item._ktaFichierMaj ||
+                      (item.dataset.ktaFichier ? _getFile(null, item.dataset.ktaFichier) : null) ||
+                      _getFile(null, dlId + ".json");
 
       if (!dlId) { _plannerErreur(window.I18n.t("gen.gen.idManquantData")); throw new Error("abort"); }
 
@@ -3707,13 +3788,25 @@ async function _genererZip() {
 
     // ── Génération ──
     const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+    const nomZip = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + (tilingV2On ? "_v2" : "") + ".zip";
+
+    // Mise à jour d'un plan : l'assistant propose la suite (télécharger, remplacer, nouvelle version).
+    if (_plannerMaj && typeof _plannerMaj.onZip === "function") {
+      const maj = _plannerMaj;
+      _plannerMaj = null;
+      const mm = document.getElementById("kta-planner-modal");
+      if (mm) mm.remove();
+      try { maj.onZip(blob, nomZip, { nom: name, version: version }); }
+      catch (eMaj) { console.warn("[Planner] suite de la mise à jour :", eMaj); }
+      return;
+    }
+
     const url  = URL.createObjectURL(blob);
     // try/finally : blob URL toujours révoqué, même si a.click() lève (navigateur strict, sandbox).
     try {
       const a = document.createElement("a");
       a.href = url;
-      a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() +
-                   (tilingV2On ? "_v2" : "") + ".zip";
+      a.download = nomZip;
       a.click();
     } finally {
       URL.revokeObjectURL(url);

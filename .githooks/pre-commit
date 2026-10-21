@@ -123,6 +123,9 @@ node scripts/check-osm-etiquettes.js || exit $?
 # Calque de donnees rapatrie dans la session : jamais de verrou sans sa copie, copie defensive.
 node scripts/check-calque-session.js || exit $?
 
+# Mettre a jour le plan : groupes, fichiers de calque, retrait de session sans trace destructrice, cablage.
+node scripts/check-maj-plan.js || exit $?
+
 # Outils mesure / coordonnees de la Vue OSM : memes dans les deux vues, exclusifs, demontes a la fermeture.
 node scripts/check-osm-outils.js || exit $?
 

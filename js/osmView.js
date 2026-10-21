@@ -1754,11 +1754,19 @@
     return mapBounds.intersects(tileBbox);
   }
 
+  // 🩸 Une tuile se retire de _planLayer, pas seulement de la carte : overlay.remove() la laissait dans le
+  // groupe (et ne faisait rien case 🖼️ Plan décochée) ; recocher Plan reposait alors toutes les tuiles déjà
+  // vues, tous niveaux superposés. Garde-fou : scripts/smoke/checkup-osm-empilement.js.
+  function _retirerTuile(overlay) {
+    try {
+      if (_planLayer) _planLayer.removeLayer(overlay);
+      else overlay.remove();
+    } catch(e) {}
+  }
+
   // Retire tous les overlays (changement de niveau, close).
   function _cleanupAllTiles() {
-    for (const path in _tilesByPath) {
-      try { _tilesByPath[path].overlay.remove(); } catch(e) {}
-    }
+    for (const path in _tilesByPath) _retirerTuile(_tilesByPath[path].overlay);
     _tilesByPath = {};
   }
 
@@ -1768,7 +1776,7 @@
     for (const path in _tilesByPath) {
       const t = _tilesByPath[path];
       if (!_tileIntersectsBounds(t.tl, t.tr, t.bl, mapBounds)) {
-        try { t.overlay.remove(); } catch(e) {}
+        _retirerTuile(t.overlay);
         delete _tilesByPath[path];
         culled++;
       }
@@ -1916,7 +1924,9 @@
     }
 
     // ⚠️ featureGroup, pas layerGroup : seul featureGroup a getBounds() (_centerOnPlan en dépend)
-    _planLayer = L.featureGroup().addTo(_osmMap);
+    // case 🖼️ Plan décochée à la fermeture : encore décochée à la réouverture, les tuiles doivent suivre
+    _planLayer = L.featureGroup();
+    if (_planTilesVisible) _planLayer.addTo(_osmMap);
     // 🩸 Opacité sur le PANE, pas sur chaque tuile : deux tuiles qui se chevauchent (transition de niveau,
     // liseré d'un pixel) s'additionneraient (50 % + 50 % ≈ 75 %, zone plus sombre). Tuiles opaques dans un
     // pane dédié, sous les tracés (canvas, 400).

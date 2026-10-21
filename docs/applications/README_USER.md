@@ -304,8 +304,8 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Aide / Documentation / Légende** | 📚 | Aide, documentation, légende des icônes |
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, affichage… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver un point, un tracé, une zone ou une structure *(clic direct)* |
-| **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
-| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, export externe (KMZ / GPX) |
+| **Charger / Import** | ⬇️ | Importer une session ou un GPX (ouvre directement le choix du fichier) |
+| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, mise à jour du plan, export externe (KMZ / GPX) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
 | **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
@@ -370,6 +370,8 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 *Exemple : pour ne voir que deux sortes de puits, 🏷️ Tags → 🚫 Aucun, puis recoche les deux tags voulus.*
 
 > 🔄 **Corriger un calque de données** — un calque livré avec le plan se masque mais ne s'édite pas. Le bouton **🔄 Modifier** de sa ligne le copie dans ta session, où tous tes outils s'appliquent (par exemple 🔄 Convertir cet objet) ; l'original se masque (« en cours de modification — afficher quand même » permet de comparer). Avant d'agir, l'app t'annonce la place que prendra la copie et celle qu'occupent déjà tes sessions. **↩️ Restaurer** abandonne tes modifications ; **💾 Exporter** produit le fichier corrigé de **ce calque seul**, à redonner au plan via 🏗️ Générateur → « Modifier un plan », bouton « Choisir » sur la ligne du calque : il remplace l'ancien contenu. Ce que tu as dessiné toi-même n'en fait pas partie (l'app te dit combien d'objets restent hors du fichier), sauf si tu l'y rattaches : **➕ Intégrer des ajouts**, sur la ligne du calque, liste tes dessins du plan par famille (rien de coché d'avance, « Tout cocher », filtre « Créé par » sur une installation reliée) ; les objets choisis partent alors dans le fichier du calque, et ⏪ annule. Un objet intégré appartient au calque : le restaurer le retire aussi, et la fenêtre de restauration dit combien. Effacer la session restaure les calques ouverts à la modification ; réimporter ta session sur ce plan les remet en modification. Sur une installation reliée, « Effacer la session » te laisse choisir : **effacer sur cet appareil seulement** (les calques ouverts à la modification par l'équipe reviennent depuis le serveur, toujours en modification) ou **rendre aussi les calques à l'équipe** (ils reviennent à leur original pour tous, et les retouches que les autres n'ont pas exportées sur ces copies sont perdues). Sur une installation reliée, un calque ouvert à la modification par un autre compte apparaît aussi comme tel chez toi, et le restaurer le restaure sur tous les appareils (une copie modifiée depuis reste, signalée comme doublon).
+>
+> 🔄 **Mettre à jour le plan** — pour verser ton travail dans le plan lui-même : **⬆️ Exporter → 🔄 Mettre à jour le plan**, ou le bouton en tête des calques dans **≡ Filtres**. **1.** Les calques en modification sont cochés : chacun remplace son fichier. **2.** Tes objets dessinés à la main sont groupés par étiquette (points, selon leur première étiquette) ou par type (tracés, zones, structures) ; pour chaque groupe, choisis un calque du plan, un **nouveau calque** (tu lui donnes un nom) ou « Laisser dans la session ». **3.** Le Générateur s'ouvre en mode Modifier, déjà rempli avec le ZIP actuel du plan, ces calques et tes photos : vérifie, puis génère (si le ZIP du plan n'est pas sur l'appareil, il te demande de le déposer). **4.** Plan importé : **⬇️ Télécharger** ou **🔄 Remplacer le plan dans l'app** (même plan : ta session, ton calage et tes photos restent attachés). Plan d'une installation reliée : **☁️ Publier la nouvelle version** si ton droit le permet, sinon tu télécharges le ZIP pour la personne qui gère le plan. Plan du site : téléchargement, à transmettre à son administrateur. Après un remplacement ou une publication, l'app propose de **rendre les calques** (à toute l'équipe sur une installation reliée) et de **retirer de ta session les objets versés** — sinon ils s'affichent en double ; un objet retouché après la génération reste dans ta session, et l'app le dit.
 
 ### 🗺️ Légende
 
@@ -979,7 +981,7 @@ Dans la fenêtre Profil, **📤 Exporter mon profil** produit un fichier qui tra
 
 ## ⬆️ Sauvegarder et partager
 
-Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : il ouvre un lanceur à tuiles en trois parties — **🖼️ Image**, **💾 Session**, **🌍 Export externe**. Avant de partager une image, un PDF ou un KMZ, vérifie qu'il ne révèle rien de sensible (accès, lieu privé).
+Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : il ouvre un lanceur à tuiles en quatre parties — **🖼️ Image**, **💾 Session**, **🗺️ Plan** (🔄 Mettre à jour le plan, ci-dessus), **🌍 Export externe**. Avant de partager une image, un PDF ou un KMZ, vérifie qu'il ne révèle rien de sensible (accès, lieu privé).
 
 ### 📤 Exporter ta session
 
@@ -1033,7 +1035,7 @@ Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télé
 
 ### 📥 Importer un fichier (session ou GPX)
 
-**⬇️ Charger / Import → 📥 Importer un fichier** ouvre le choix du fichier ; l'app reconnaît son type.
+**⬇️ Charger / Import** ouvre directement le choix du fichier ; l'app reconnaît son type.
 
 - **Session MyKTAMap** (`.json`, ou `.zip` avec photos) : elle **remplace** ta session en cours (points, tracés, zones, mesure) ; ses photos, elles, **s'ajoutent** aux tiennes, sans en effacer aucune. Un aperçu montre ce qu'elle contient ; une sauvegarde de ta session actuelle est prise juste avant. **Importer** pour valider, **Annuler** pour ne rien changer.
 - **Fichier GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…) : ses points et tracés **s'ajoutent** à ta session. Le plan doit être géoréférencé. Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
@@ -1537,7 +1539,7 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 
 #### 📂 Modifier un plan existant
 
-Charge le ZIP du plan dans **📂 Charger un fichier** : le formulaire se remplit avec sa configuration. Change ce que tu veux (tags, icônes, calques, position de départ…) puis **📦 Générer le ZIP**.
+Charge le ZIP du plan dans **📂 Charger un fichier** : le formulaire se remplit avec sa configuration. Change ce que tu veux (tags, icônes, calques, position de départ…) puis **📦 Générer le ZIP**. Depuis un plan ouvert, **⬆️ Exporter → 🔄 Mettre à jour le plan** ouvre ce mode déjà rempli avec tes calques corrigés et tes dessins.
 
 Si le plan a des **photos attachées à ses points** sur ton appareil, la case **📸 Inclure les photos attachées** (cochée par défaut) les embarque dans le ZIP. Celui qui ouvre ce plan retrouve les photos dans les bulles des points. Décochée, le ZIP est plus léger, sans photos.
 
@@ -1681,7 +1683,7 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 
 ### 📊 Éditeur de données du plan
 
-**⬇️ → 📊 Éditeur de données du plan** sur la carte, ou **📊 Éditeur de données** sur l'accueil, ouvre un tableau pour **voir, modifier et exporter** les points, tracés, zones et structures d'un plan.
+**⬆️ Exporter → 📊 Éditeur de données du plan** (section 💾 Session) sur la carte, ou **📊 Éditeur de données** sur l'accueil, ouvre un tableau pour **voir, modifier et exporter** les points, tracés, zones et structures d'un plan.
 
 #### 📂 Ouvrir
 
@@ -1690,7 +1692,12 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 - **📄 Importer un fichier JSON** : un fichier de données ou de session.
 - **🔄 Convertir session ↔ calques** : transforme ta session en **calque de données** à intégrer à un plan (voir « 🏗️ Créer ou modifier un plan »). Même choix par catégorie et par icône ; granularité **Basique** (un fichier par catégorie) ou **Fine** (un fichier par type). Le tracker n'est jamais converti : une dérive figée dans un plan tromperait ses futurs utilisateurs. Une fois converties, ces données ne se modifient plus depuis l'app.
 - **🔗 Fusionner des calques** : regroupe plusieurs calques de données (`.json` ou `.zip`, issus de plusieurs sessions) en un seul jeu par catégorie. Un aperçu donne les totaux et signale les identifiants de points en double (gardés tels quels).
-- **🔁 Convertir la résolution** : passe tes fichiers de données d'un ancien scan à un nouveau scan du même plan. Indique les deux résolutions (ou laisse l'app les lire dans les images) ; si les marges diffèrent, ajoute un **repère commun** (le même pilier sur les deux plans), ou **deux**, et l'échelle et la rotation sont déduites. Liaisons inter-plans, géoréférencement et échelle restent à refaire sur le nouveau plan.
+- **🔁 Recaler des données sur un autre scan** : passe tes fichiers de données d'un scan à un autre scan du même plan (recadré, plus grand, plus petit). **Ouvre d'abord le plan de destination**, puis choisis tes fichiers `.json` :
+  - **Par les noms et identifiants** (le plus sûr, choisi d'office) : si les deux versions sortent du même Générateur, les objets qui gardent le même identifiant interne servent d'abord de repères (points, et sommets des tracés, zones et structures qui ont gardé leur nombre de sommets) ; puis les points qui portent le même nom dans tes fichiers et sur le plan ouvert servent de repères (majuscules, accents et ponctuation ignorés ; noms uniques d'au moins 4 caractères). L'app calcule l'échelle, la rotation et le décalage, écarte les homonymes qui ne collent pas et annonce la qualité (« 73 repères, écart médian 0 px, 90 % sous 1 px »). Si le scan est étiré, elle propose une transformation affine.
+  - **Repères cliqués** (quand les noms ne suffisent pas) : choisis un point de ton fichier dans la liste, puis clique sa position sur le plan ; au moins trois repères, éloignés les uns des autres. L'écart de chacun s'affiche : un mauvais clic ressort en rouge et reste hors du calcul.
+  - **Résolutions** (dernier recours) : seulement si les deux scans ont exactement le même cadrage. Si leurs proportions diffèrent de plus de 2 %, l'app refuse : il faut des noms ou des repères.
+  - **👁️ Aperçu sur le plan** : tes données recalées s'affichent en tireté par-dessus le plan avant le téléchargement ; l'aperçu disparaît à la fermeture de l'outil. Tu récupères ensuite des fichiers `_conv.json`.
+  - Depuis l'accueil (aucun plan ouvert), seules les résolutions et des repères saisis à la main sont possibles. Liaisons inter-plans, géoréférencement et échelle restent à refaire sur le nouveau plan.
 - **🧹 Dédoublonner les données** : retire les sommets identiques consécutifs des tracés, zones, structures et mesures, invisibles mais qui alourdissent les fichiers. Tu récupères un fichier `_dedup.json` et le compte de ce qui a été retiré ; les points ne sont jamais touchés.
 
 Si la source contient plusieurs jeux de données, un sélecteur te laisse choisir.
@@ -1700,7 +1707,8 @@ Si la source contient plusieurs jeux de données, un sélecteur te laisse choisi
 - **Clique une cellule** pour la modifier (sauf l'identifiant). **Tab** : cellule suivante · **Entrée** : ligne suivante · **Échap** : annuler.
 - Une coordonnée hors du plan passe en **rouge**.
 - La cellule **Tags** ouvre un sélecteur avec aperçu des icônes ; tu peux y créer un tag.
-- Pour les tracés, zones et structures, la **note**, le **type** et le **niveau** se modifient, mais pas la **géométrie** : redessine-la sur la carte.
+- Pour les tracés, zones et structures, la **note**, le **type** et le **niveau** se modifient, mais pas la **géométrie** : redessine-la sur la carte. Un type absent de la légende passe en **rouge**.
+- Sur un plan **multi-niveau**, la colonne **level** est toujours là (0 si l'objet n'a pas encore de niveau) et se choisit dans une liste des niveaux du plan.
 - Pour les points : recherche dans toutes les colonnes, tri par clic sur l'en-tête, sélection multiple (case + Maj+clic), **+ Ajouter ligne**, **📋 Dupliquer**, **🗑️ Supprimer**, **📍 Voir sur la carte**.
 
 #### 💾 Enregistrer
@@ -1708,7 +1716,7 @@ Si la source contient plusieurs jeux de données, un sélecteur te laisse choisi
 | Ce que tu édites | **💾 Sauvegarder** |
 |---|---|
 | **Données du plan** | Télécharge le fichier `.json` modifié. Pour l'appliquer, réimporte-le dans le **Générateur** : l'éditeur ne change jamais le plan affiché. |
-| **Ta session** | Télécharge le fichier, ou **✏️ Remplacer la session en cours** pour appliquer tout de suite. |
+| **Ta session** | Télécharge le fichier, ou applique tout de suite avec **✏️ Appliquer à la session en cours** (points, tracés, zones et structures) : seules les cellules que tu as modifiées s'appliquent, une ligne non touchée ne change rien même si le fichier est ancien ; un changement de type ou de niveau fait comme depuis la fiche de l'objet ; une ligne retirée du tableau est supprimée de la session ; un objet supprimé depuis l'export n'est pas recréé, sauf si tu as modifié sa ligne. Un type absent de la légende est refusé, avec le numéro de la ligne. **⏪** annule l'opération d'un coup. Sur un plan partagé par une installation, retirer des objets demande le droit de les supprimer pour tous, et une confirmation. |
 
 Si tu fermes avec des modifications non sauvegardées, l'app te propose de sauvegarder, de quitter sans sauvegarder ou de continuer.
 

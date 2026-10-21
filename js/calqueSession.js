@@ -29,10 +29,12 @@
 //   de la session (jamais dans un fichier de session ni de calque). Règle : docs/architecture/session-data.md.
 // Ajouts intégrés : un objet dessiné à la main peut rejoindre un calque en modification (integrerAjouts) ; il se
 //   comporte alors en copie (exporté avec le calque, retiré à sa restitution).
+// Nouvelle version du plan (js/majPlan.js) : contenuCalque (le fichier sans téléchargement), retirerIntegres (les
+//   objets à la main versés dans le plan quittent la session, trace datée sous le fichier).
 // API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
-//   exporterCalque, compterCopie, appliquerVerrous, resynchroniser (import de session, synchro), getSessionState,
-//   loadSessionState, restitutionPartagee, libelle, restitutionsDepuis, appliquerRestitutions, candidatsAjout,
-//   integrerAjouts, compterAjouts, CLE_SOURCE, CLE_DEPUIS, CLE_AJOUT }
+//   exporterCalque, contenuCalque, retirerIntegres, compterCopie, appliquerVerrous, resynchroniser (import de
+//   session, synchro), getSessionState, loadSessionState, restitutionPartagee, libelle, restitutionsDepuis,
+//   appliquerRestitutions, candidatsAjout, integrerAjouts, compterAjouts, CLE_SOURCE, CLE_DEPUIS, CLE_AJOUT }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
 // check-calque-session.js.
 
@@ -434,6 +436,19 @@ window.CalqueSession = (function () {
   // sinon les anciennes reviennent au rechargement (suppression annulée en silence).
   // La marque `_srcCalque` est RETIRÉE (outil interne de session, rien à faire dans un ZIP partagé).
   function exporterCalque(id) {
+    const r = contenuCalque(id);
+    if (!r.ok) return r;
+    // `file` est RÉSOLU au chargement (parfois en `blob:`), son basename n'est pas fiable ; l'id est celui de la
+    // ligne du Générateur.
+    const nom = id + ".json";
+    _telecharger(r.payload, nom);
+    _log("calque « " + id + " » exporte vers " + nom + " (" + r.total + " objets)");
+    return { ok: true, total: r.total, horsCalque: r.horsCalque, nom: nom, stats: r.payload };
+  }
+
+  // Même contenu qu'exporterCalque, sans téléchargement (assistant « Mettre à jour le plan »).
+  // → { ok:true, payload, total, horsCalque } ou { ok:false, code }.
+  function contenuCalque(id) {
     if (!estRapatrie(id)) return { ok: false, code: "pasRapatrie" };
     // 🔒 Le fichier EST le contenu du calque : il faut le droit d'exporter tout le plan (un export limité aux
     // ajouts d'un auteur ne suffit pas). Le refus se dit par le goulot (message).
@@ -463,12 +478,40 @@ window.CalqueSession = (function () {
 
     const total = payload.data.length + payload.roads.length
                 + payload.zones.length + payload.structures.length;
-    // `file` est RÉSOLU au chargement (parfois en `blob:`), son basename n'est pas fiable ; l'id est celui de la
-    // ligne du Générateur.
-    const nom = id + ".json";
-    _telecharger(payload, nom);
-    _log("calque « " + id + " » exporte vers " + nom + " (" + total + " objets)");
-    return { ok: true, total: total, horsCalque: horsCalque, nom: nom, stats: payload };
+    return { ok: true, payload: payload, total: total, horsCalque: horsCalque };
+  }
+
+  // ── Objets dessinés à la main versés dans une nouvelle version du plan : les retirer de la session ──────────
+  // L'assistant « Mettre à jour le plan » écrit ces objets dans un calque daté `ts` (leur `updatedAt` dans le
+  // fichier). 🩸 Une trace de suppression plus récente que `ts` détruirait l'objet du calque à une fusion
+  // (export complet → « Fusion de calques » ou import ZIP du Générateur) : la trace est posée à `ts - 1`, assez
+  // tard pour retirer la copie de session des autres appareils (modifiée au plus tard avant l'assistant), assez
+  // tôt pour que le fichier gagne toute fusion. Un objet modifié depuis (`updatedAt` ≥ ts) est GARDÉ : sa
+  // retouche n'est pas dans le fichier. Pas d'historique : la nouvelle version contient déjà les objets.
+  // Seuls les objets sans marque de calque sont visés. → { ok:true, retires, gardes } ou { ok:false, code }.
+  function retirerIntegres(uids, ts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) {
+      return { ok: false, code: "lectureSeule" };
+    }
+    const T = Number(ts);
+    if (!Number.isFinite(T) || T <= 1) return { ok: false, code: "dateInvalide" };
+    const voulus = new Set((Array.isArray(uids) ? uids : []).filter(function (u) { return typeof u === "string" && u; }));
+    const K = window.KtaUid;
+    let retires = 0, gardes = 0;
+    FAMILLES.forEach(function (fam) {
+      const avant = _lire(fam);
+      const apres = avant.filter(function (o) {
+        if (!_estCandidat(o) || !voulus.has(o.uid)) return true;
+        if ((Number(o.updatedAt) || 0) >= T) { gardes++; return true; }
+        if (K && typeof K.tombstone === "function") K.tombstone(o.uid, T - 1);
+        retires++;
+        return false;
+      });
+      if (apres.length !== avant.length) _ecrire(fam, apres);
+    });
+    if (retires) _persister();
+    _log(retires + " objet(s) integre(s) au plan retire(s) de la session, " + gardes + " garde(s) (modifie(s) depuis)");
+    return { ok: true, retires: retires, gardes: gardes };
   }
 
   function _telecharger(obj, nom) {
@@ -619,6 +662,8 @@ window.CalqueSession = (function () {
     rapatrier:              rapatrier,
     restituer:              restituer,
     exporterCalque:         exporterCalque,
+    contenuCalque:          contenuCalque,
+    retirerIntegres:        retirerIntegres,
     resynchroniser:         resynchroniser,
     restitutionPartagee:    _restitutionPartagee,
     libelle:                libelle,

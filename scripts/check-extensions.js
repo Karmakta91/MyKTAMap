@@ -295,6 +295,21 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.w.getRoads = () => [{ uid: "rd_a", updatedAt: 400, type: "principal" }, { uid: "rd_i", updatedAt: 500, type: "itinerary" }];
     c.w.getZones = () => []; c.w.getStructures = () => [];
     c.w.KtaUid = { getTombstones: () => [{ uid: "zn_x", deletedAt: 250 }, { uid: "zn_y", deletedAt: 50 }] };
+    const vide = c.K.changementsDepuis(0);
+    t("🔒 plan pas encore prêt (chargement) : journal vide — les objets du plan quitté ne partent pas vers le nouveau",
+      c.K.planPret() === false && vide.editorPoints.length === 0 && vide.roads.length === 0 && vide.tombstones.length === 0);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.K.planCharge("ext_1");
+    t("plan prêt : planPret() vrai, événement mktm:plan-pret", c.K.planPret() === true && c.w._emis.includes("mktm:plan-pret"));
+    c.w._currentLoadedPlanId = "ext_2";
+    t("🩸 un autre plan en cours de chargement n'est pas « prêt »", c.K.planPret() === false);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.w.ktaPlanAffiche = () => false;
+    t("plan prêt mais accueil affiché : pas prêt", c.K.planPret() === false);
+    delete c.w.ktaPlanAffiche;
+    c.K.quitterPlan("plan");
+    t("quitterPlan : plus prêt jusqu'au prochain planCharge", c.K.planPret() === false);
+    c.K.planCharge("ext_1");
     const ch = c.K.changementsDepuis(200);
     t("journal : objets modifiés après la date, et seulement eux", ch.editorPoints.length === 1 && ch.editorPoints[0].uid === "pt_b");
     t("journal : l'itinéraire calculé n'en fait pas partie", ch.roads.length === 1 && ch.roads[0].uid === "rd_a");
@@ -389,6 +404,82 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /ligne\.textContent = info;/.test(lire("js/ktaExtensions.js")) && /\.slice\(0, 120\)/.test(lire("js/ktaExtensions.js")));
   }
 
+  // ── 6 bis nonies. LIAISONS INTER-PLAN SYNCHRONISÉES PAR UNE EXTENSION (vrai interPlanLinks.js) ──────
+  {
+    const { K } = nouveauContexte(null);
+    const L0 = { id: "ipl_x", a: { planId: "p1" }, b: { planId: "p2" } };
+    t("liaisons sans extension : aucune info, aucune action, tout est modifiable",
+      K.liaisonInfo(L0) === "" && K.liaisonActions(L0).length === 0 && K.liaisonModifiable(L0) === true);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "lz", apiVersion: 1, liaisons: { info: () => { throw new Error("x"); },
+      actions: () => { throw new Error("x"); }, modifiable: () => { throw new Error("x"); } } });
+    t("🩸 prise « liaisons » en erreur : pas d'info, pas d'action, et MODIFIABLE = NON (permission)",
+      K2.liaisonInfo(L0) === "" && K2.liaisonActions(L0).length === 0 && K2.liaisonModifiable(L0) === false);
+    const { K: K3 } = nouveauContexte(null);
+    let vu = null;
+    K3.register({ nom: "lz3", apiVersion: 1, liaisons: { info: (l) => { vu = l; l.id = "change"; return "  " + "i".repeat(200); },
+      actions: () => [{ libelle: "A", action: () => 1 }, { libelle: "B", action: () => 2 }, { libelle: "C", action: () => 3 },
+        { libelle: "sans action" }], modifiable: () => "oui" } });
+    t("info en texte (80 car.), 2 actions au plus, modifiable vrai seulement si `true`",
+      K3.liaisonInfo(L0).length === 80 && K3.liaisonActions(L0).length === 2 && K3.liaisonModifiable(L0) === false);
+    t("🩸 l'extension reçoit une COPIE du lien (elle ne réécrit pas le registre)", vu && L0.id === "ipl_x");
+
+    // Vrai module, faux navigateur : registre, événements émis (avec leur détail), extension facultative.
+    const ipl = (ext) => {
+      const store = {}, emis = [];
+      const w = {
+        console: { log() {}, warn() {}, error() {} },
+        localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } },
+        CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
+        dispatchEvent(e) { emis.push(e); return true; }, addEventListener() {}, removeEventListener() {},
+        KtaExtensions: ext || undefined, setTimeout: setTimeout
+      };
+      w.window = w;
+      const ctx = vm.createContext(w);
+      vm.runInContext("var localStorage = window.localStorage, CustomEvent = window.CustomEvent, console = window.console;", ctx);
+      vm.runInContext(lire("js/interPlanLinks.js"), ctx, { filename: "interPlanLinks.js" });
+      const ev = () => emis.filter((e) => e.type === "mktm:liaisons-changees").map((e) => e.detail);
+      return { L: w.InterPlanLinks, ev, store };
+    };
+    const cote = (planId, uid) => ({ planId, pointUid: uid, pointId: uid, x: 1, y: 2 });
+    {
+      const { L, ev } = ipl(null);
+      const lien = L.createLink(cote("p1", "pt_a"), cote("p2", "pt_b"));
+      t("création : updatedAt posé, « creation » annoncée APRÈS l'écriture",
+        typeof lien.updatedAt === "number" && ev().length === 1 && ev()[0].action === "creation" && ev()[0].ids[0] === lien.id &&
+        !ev()[0].source && L.getAllLinks().length === 1);
+      L.onPointMoved("p1", { uid: "pt_a", id: "pt_a", x: 5, y: 6 });
+      t("point déplacé : côté recalé, « modification » annoncée",
+        ev()[1].action === "modification" && L.getAllLinks()[0].a.x === 5);
+      const r = L.appliquerExterne({ liens: [{ id: "ipl_ext", a: cote("p1", "pt_c"), b: cote("p3", "pt_d") }, { id: "sans_cotes" }],
+        retirer: [lien.id] });
+      const d = ev().slice(2);
+      t("🩸 dépôt d'une extension : écrit, retiré, annoncé avec source « extension » seulement (pas de renvoi)",
+        r.ecrites === 1 && r.retirees === 1 && d.length === 2 && d.every((x) => x.source === "extension") &&
+        L.getAllLinks().length === 1 && L.getAllLinks()[0].id === "ipl_ext");
+      L.importLinks([{ id: "ipl_imp", a: cote("p1", "pt_e"), b: cote("p4", "pt_f") }]);
+      t("import d'un export : annoncé « creation » avec source « import » (pas un geste de création)",
+        ev().slice(-1)[0].source === "import" && ev().slice(-1)[0].action === "creation");
+      L.onPointDeleted("p1", { uid: "pt_c", id: "pt_c" });
+      t("sans extension : supprimer le point retire sa liaison (« suppression » annoncée)",
+        ev().slice(-1)[0].action === "suppression" && !L.getAllLinks().some((l) => l.id === "ipl_ext"));
+    }
+    {
+      const ext = { liaisonModifiable: (l) => l.id !== "ipl_garde", liaisonInfo: () => "", liaisonActions: () => [] };
+      const { L, ev } = ipl(ext);
+      L.appliquerExterne({ liens: [{ id: "ipl_garde", a: cote("p1", "pt_a"), b: cote("p2", "pt_b") }] });
+      const avant = ev().length;
+      L.onPointDeleted("p1", { uid: "pt_a", id: "pt_a" });
+      t("🩸 liaison que l'extension dit non modifiable : gardée quand son point est supprimé, rien d'annoncé",
+        L.getAllLinks().length === 1 && ev().length === avant);
+    }
+    const IPL = lire("js/interPlanLinks.js");
+    t("🩸 suppression confirmée : refusée si l'extension dit la liaison non modifiable (🗑️ masquée aussi)",
+      /if \(lien && !_modifiable\(lien\)\) \{[\s\S]{0,200}ipl\.remove\.refuse/.test(IPL) &&
+      /\(e\.baked \|\| !_modifiable\(e\.link\)\) \? ''/.test(IPL) && /\(_modifiable\(l\) \? '<button class="kta-popup-btn kta-ipl-del"/.test(IPL));
+    t("info d'extension échappée dans la fiche et le gestionnaire", (IPL.match(/kta-ipl-ext-info">' \+ _esc\(info\)/g) || []).length === 2);
+  }
+
   // ── 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ──────
   {
     const HLp = lire("js/homeLoader.js");
@@ -409,6 +500,45 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       evts.indexOf("mktm:plans-extension-changes") >= 0);
     t("…et l'accueil relit la liste à cet événement",
       /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
+  }
+
+  // ── 6 bis quater bis. NOUVELLE VERSION D'UN PLAN (prise publierVersion) ──────
+  // 🔒 `autorise` est une permission : absente, fausse, mal typée ou en erreur = refus, et rien n'est envoyé.
+  {
+    const registre = { findById: (id) => (id === "ext_p1" ? { id: "ext_p1", type: "ext", extId: "p1" }
+      : id === "local_a" ? { id: "local_a", type: "local" } : null) };
+    const sans = nouveauContexte(null);
+    sans.w.PlanRegistry = registre;
+    let rejet = false;
+    await sans.K.publierVersion({ planId: "ext_p1", blob: null, nom: "n" }).catch(() => { rejet = true; });
+    t("sans extension : aucune version autorisée, publierVersion rejette (no-op)",
+      sans.K.versionAutorisee("ext_p1") === false && rejet);
+
+    const essai = async (autorise) => {
+      const c = nouveauContexte(null);
+      c.w.PlanRegistry = registre;
+      const envois = [];
+      c.K.register({ nom: "v", apiVersion: 1, publierVersion: { autorise: autorise,
+        publier: (a) => { envois.push(a); return Promise.resolve({ version: 2 }); } } });
+      let refus = false;
+      const r = await c.K.publierVersion({ planId: "ext_p1", blob: "B", nom: "N" }).catch(() => { refus = true; });
+      return { c, envois, refus, r };
+    };
+    const enErreur = await essai(() => { throw new Error("x"); });
+    t("autorise en erreur → refus, rien d'envoyé", enErreur.c.K.versionAutorisee("ext_p1") === false &&
+      enErreur.refus && enErreur.envois.length === 0);
+    const malType = await essai(() => "true");
+    t("autorise qui ne rend pas true (texte) → refus, rien d'envoyé", malType.refus && malType.envois.length === 0);
+    const non = await essai(() => false);
+    t("autorise false → refus, rien d'envoyé", non.refus && non.envois.length === 0);
+    const oui = await essai((id) => id === "p1");
+    t("autorise true → envoi sous l'id de l'EXTENSION (pas l'id du registre), avec le fichier et le nom",
+      !oui.refus && oui.envois.length === 1 && oui.envois[0].id === "p1" && oui.envois[0].blob === "B" &&
+      oui.envois[0].nom === "N" && oui.r && oui.r.version === 2);
+    t("…puis mktm:plans-extension-changes (la liste se relit)", oui.c.w._emis.indexOf("mktm:plans-extension-changes") >= 0);
+    t("plan local : jamais autorisé (la prise ne voit que les plans de l'extension)",
+      oui.c.K.versionAutorisee("local_a") === false);
+
   }
 
   // ── 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ──────
@@ -533,7 +663,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const CV = lire("js/convertirObjet.js");
     t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
       ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
-       "function changerNiveau("].every((f) =>
+       "function changerNiveau(", "function appliquerTableau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);
     let evts = 0;
@@ -720,6 +850,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
   {
     const { K, w } = nouveauContexte(null);
     t("sans plan ouvert : rien n'est appliqué (null)", K.appliquerChangements({ editorPoints: [] }) === null);
+    const MA = lire("js/main.js");
+    const iRestaure = MA.indexOf("window.SessionPersist.onPlanLoaded("), iPret = MA.indexOf("window.KtaExtensions.planCharge(");
+    t("🩸 main.js déclare le plan prêt APRÈS la restauration de session (sinon un lot reçu est écrasé)",
+      iRestaure > 0 && iPret > iRestaure && MA.indexOf("initEditor();") < iRestaure);
+    t("plan pas encore prêt : rien n'est appliqué (null, lot à redemander)", K.appliquerChangements({ editorPoints: [] }) === null);
+    K.planCharge();
     // Vrai moteur de fusion (ktaUid.js) + un plan ouvert simulé
     const vm2 = require("vm");
     const ctx = vm2.createContext(w);
@@ -749,7 +885,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
 
   // ── 6 ter bis. L'ÉCHO DE SES PROPRES ENVOIS NE VIDE PAS CTRL+Z ──────
   {
-    const { K, w } = nouveauContexte(null);
+    const { K, w } = nouveauContexte(null); K.planCharge();
     const vm3 = require("vm");
     vm3.runInContext(lire("js/ktaUid.js"), vm3.createContext(w), { filename: "ktaUid.js" });
     let pts = [{ uid: "pt_eeee5555", name: "Le mien", updatedAt: 500 }];
@@ -768,7 +904,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
 
   // ── 6 ter ter. CALQUE OUVERT À LA MODIFICATION AILLEURS (copies marquées reçues) ──────
   {
-    const { K, w } = nouveauContexte(null);
+    const { K, w } = nouveauContexte(null); K.planCharge();
     const vm4 = require("vm");
     vm4.runInContext(lire("js/ktaUid.js"), vm4.createContext(w), { filename: "ktaUid.js" });
     let pts = [{ uid: "pt_loc11111", name: "Ici", updatedAt: 100 }];
@@ -800,7 +936,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
   // Une restitution n'est JAMAIS une trace de suppression : elle retire chez les autres les copies marquées du
   // calque datées au plus tard de T, et rien d'autre (un objet du calque ne porte pas la marque).
   {
-    const { K, w } = nouveauContexte(null);
+    const { K, w } = nouveauContexte(null); K.planCharge();
     const vm5 = require("vm");
     const ctx5 = vm5.createContext(w);
     vm5.runInContext(lire("js/ktaUid.js"), ctx5, { filename: "ktaUid.js" });
@@ -840,7 +976,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       roads.some((r) => r.uid === "rd_cop10000") && w.CalqueSession.estRapatrie("c1"));
     t("changementsDepuis : les restitutions faites ici sont exposées (aucune ici)",
       Array.isArray(K.changementsDepuis(0).restitutions) && K.changementsDepuis(0).restitutions.length === 0);
-    w._currentLoadedPlanId = "ext_p1";
+    w._currentLoadedPlanId = "ext_p1"; K.planCharge("ext_p1");
     w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext", extId: "p1" } : null) };
     const rr = w.CalqueSession.restituer("c1");
     const ch = K.changementsDepuis(0).restitutions;
@@ -1053,6 +1189,90 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     // d'autres options peuvent suivre (`siAbsente: true` pour la fusion du réimport de session)
     t("restaurations de l'app marquées source « import » (session, plan ZIP, profil)",
       RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import"(?:, \w+: \w+)* \}\)/.test(lire(f))));
+  }
+
+  // ── 6 septies. IMPORT DE SESSION SUR UN PLAN PARTAGÉ (prise importSession + vrai ktaUid.js) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { type: "ext", extId: "p1" } : { type: "local" }) };
+    t("sans prise : aucun plan partagé (remplacement de l'app seule)", K.importPartage("ext_p1") === null);
+    let appels = 0, rep = { remplacer: true };
+    K.register({ nom: "imp", apiVersion: 1, importSession(id) { appels++; if (rep === "panne") throw new Error("x"); return id === "p1" ? rep : null; } });
+    t("plan local : null, la prise n'est même pas consultée", K.importPartage("local_1") === null && appels === 0);
+    t("plan partagé, remplacement permis → { remplacer: true }", K.importPartage("ext_p1").remplacer === true);
+    rep = { remplacer: "oui" };
+    t("🔒 remplacer non booléen → refusé (ajout seul)", K.importPartage("ext_p1").remplacer === false);
+    rep = "panne";
+    const e1 = K.importPartage("ext_p1");
+    t("🔒 prise en erreur → plan partagé, remplacement REFUSÉ (ajout seul)", !!e1 && e1.remplacer === false);
+    rep = 42;
+    t("🔒 forme inattendue → ajout seul", K.importPartage("ext_p1").remplacer === false);
+    rep = null;
+    t("prise qui rend null → plan non partagé", K.importPartage("ext_p1") === null);
+
+    const ctx = vm.createContext({ Date, JSON, Map, Set, Array, Object, Math, isFinite, crypto: undefined });
+    ctx.window = ctx;
+    vm.runInContext(lire("js/ktaUid.js"), ctx, { filename: "ktaUid.js" });
+    const U = ctx.KtaUid;
+    const loc = () => ({
+      data: [{ uid: "pt_x", name: "X", updatedAt: 100 }, { uid: "pt_y", name: "Y", updatedAt: 100 }],
+      roads: [{ uid: "rd_w", type: "galerie", points: [], updatedAt: 100 }, { type: "itinerary", points: [] }],
+      zones: [], structures: [], tombstones: [{ uid: "pt_d", deletedAt: 500 }]
+    });
+    const fic = () => ({
+      data: [{ uid: "pt_z", name: "Z", updatedAt: 50 }, { uid: "pt_x", name: "X du fichier", updatedAt: 200 },
+        { uid: "pt_y", name: "Y ancien", updatedAt: 50 }, { uid: "pt_d", name: "D effacé ici", updatedAt: 400 }],
+      roads: [{ type: "itinerary", points: [9] }], zones: [], structures: [], tombstones: [{ uid: "pt_q", deletedAt: 300 }]
+    });
+    const L1 = loc(), F1 = fic();
+    const a = U.preparerImport(L1, F1, "ajouter", 9000);
+    const nom = (r, u) => (r.data.find((o) => o.uid === u) || {}).name;
+    t("Ajouter : rien d'existant ne disparaît (X, Y, tracé, itinéraire d'ici)", nom(a, "pt_y") === "Y" && !!nom(a, "pt_x") &&
+      a.roads.length === 2 && a.roads.some((r) => r.type === "itinerary" && !r.points.length));
+    t("Ajouter : nouvel objet ajouté et horodaté maintenant (sinon la synchro ne l'envoie jamais)",
+      (a.data.find((o) => o.uid === "pt_z") || {}).updatedAt === 9000);
+    t("Ajouter : le plus récent gagne (X du fichier), le plus ancien perd (Y d'ici gardé)",
+      nom(a, "pt_x") === "X du fichier" && (a.data.find((o) => o.uid === "pt_y") || {}).updatedAt === 100);
+    t("🩸 Ajouter : un objet effacé ici après sa version du fichier ne ressuscite pas", !nom(a, "pt_d"));
+    t("Ajouter : traces locales inchangées, celles du fichier ignorées, aucune trace créée",
+      a.tombstones.length === 1 && a.tombstones[0].uid === "pt_d" && a.supprimes === 0 && a.ajoutes === 1 && a.misAJour === 1);
+    t("Ajouter : fonction pure (fichier et objets d'ici non modifiés)",
+      F1.data[0].updatedAt === 50 && L1.data[0].name === "X" && L1.data.length === 2);
+
+    const L2 = loc(), F2 = { data: [{ uid: "pt_x", name: "X", updatedAt: 100 }, { uid: "pt_z", name: "Z", updatedAt: 50 }],
+      roads: [], zones: [], structures: [], tombstones: [{ uid: "pt_q", deletedAt: 300 }, { uid: "pt_x", deletedAt: 90 }] };
+    const r = U.preparerImport(L2, F2, "remplacer", 9000);
+    const trace = (u) => (r.tombstones.find((x) => x.uid === u) || {}).deletedAt;
+    t("Remplacer : le contenu devient celui du fichier (X, Z), l'itinéraire d'ici reste",
+      r.data.map((o) => o.uid).join() === "pt_x,pt_z" && r.roads.length === 1 && r.roads[0].type === "itinerary");
+    t("🩸 Remplacer : chaque objet retiré (Y, tracé W) reçoit une trace datée de maintenant",
+      trace("pt_y") === 9000 && trace("rd_w") === 9000 && r.supprimes === 2);
+    t("Remplacer : objet identique non réhorodaté, objet nouveau horodaté",
+      r.data[0].updatedAt === 100 && r.data[1].updatedAt === 9000);
+    t("Remplacer : traces d'ici et du fichier gardées, sauf celle d'un objet gardé",
+      trace("pt_d") === 500 && trace("pt_q") === 300 && trace("pt_x") === undefined);
+    t("aucune trace pour l'itinéraire calculé", r.tombstones.every((x) => x.uid));
+
+    const IE = lire("js/interfaceImportExport.js");
+    t("câblage : la fenêtre d'import lit la prise (plan affiché) et propose les deux modes",
+      /K\.importPartage\(window\._currentLoadedPlanId\)/.test(IE) && /data-kta-import-mode="' \+ val/.test(IE) &&
+      /partage\.remplacer\s*\n?\s*\? _choixMode\("remplacer"/.test(IE));
+    t("câblage : plan partagé → KtaUid.preparerImport, traces du fichier jamais posées telles quelles",
+      /_preparerIdentitesImport\(dataParsee, !!mode\)/.test(IE) && /if \(!sansTraces\) window\.KtaUid\.setTombstones/.test(IE) &&
+      /KtaUid\.preparerImport\(_etatImportLocal\(\), _etatImportFichier\(dataParsee\), mode\)/.test(IE));
+    t("🔒 câblage : Remplacer relit le droit au clic et passe par ktaConfirm (nombre d'objets supprimés)",
+      /const p2 = _importPartage\(\);\s*\n\s*if \(!p2 \|\| !p2\.remplacer/.test(IE) && /ktaConfirm\(_tp\("confirmRemplacer", \{ n: n \}\)/.test(IE));
+    t("câblage : l'import direct (importerSessionJSON) renvoie un plan partagé vers la fenêtre",
+      /if \(_importPartage\(\)\) \{ ouvrirImportSession\(file\); return; \}/.test(IE));
+    const TE = lire("js/tableEditor.js");
+    t("Tableur : un seul chemin (points compris) — KtaConvertir.appliquerTableau, plan partagé lu par importPartage",
+      /K\.importPartage\(window\._currentLoadedPlanId\)/.test(TE) &&
+      /const sim = KC\.appliquerTableau\(famille, _data, options\(\{ simuler: true \}\)\);/.test(TE) &&
+      TE.indexOf("preparerImport") < 0 && TE.indexOf("_remplacerSession") < 0);
+    t("🔒 Tableur « Appliquer à la session » : plan partagé, une suppression exige `remplacer` (sinon refus nommé) puis ktaConfirm",
+      /if \(!partage \|\| !sim\.supprimes\) return Promise\.resolve\(appliquer\(\)\);/.test(TE) &&
+      /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refusObjets"/.test(TE) &&
+      /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirmObjets"/.test(TE));
   }
 
   // ── 7. CÂBLAGE (fichiers réels) ──────

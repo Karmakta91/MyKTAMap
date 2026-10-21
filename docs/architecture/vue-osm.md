@@ -117,6 +117,12 @@ Source 2 propagée automatiquement depuis source 1 au boot du plan (`_propagerGe
 
 Listener `zoomend/moveend` → `_renderLevel(targetZ)` qui swap niveau si changé OU add/remove tuiles cullées sinon.
 
+🩸 **Retirer une tuile = la retirer de `_planLayer`** (`_retirerTuile`), jamais `overlay.remove()` seul : la tuile
+restait dans le groupe (et rien n'était retiré case 🖼️ Plan décochée), et recocher Plan reposait toutes les tuiles
+déjà vues, tous niveaux superposés (217 tuiles de 4 niveaux au lieu de 12). `_planLayer` n'est ajouté à la carte
+que si la case est cochée : elle garde son état d'une ouverture à l'autre. Garde-fou :
+`scripts/smoke/checkup-osm-empilement.js` (avec, au pixel, « POI au-dessus des tuiles » à chaque cran de zoom).
+
 **Pattern viewport culling AABB** : 4e coin reconstruit par parallélogramme (`br = tr + bl - tl`), test `mapBounds.intersects(tileBbox)`. Pad 10% évite flash au pan rapide.
 
 ### 2.4 Layers data (v1.39.12 → v1.39.16)

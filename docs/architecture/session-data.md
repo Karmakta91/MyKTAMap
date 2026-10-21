@@ -55,6 +55,11 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 2. `lancerApplication()` finit, appelle `SessionPersist.onPlanLoaded(window._currentLoadedPlanId)`
 3. Si match → restore via setters (`setEditorPoints`, `resetRoads + setRoads`, `resetZones + setZones`, `setMeasurePoints`) + toast "Session restaurée"
 4. Polling auto-save démarre (1.5s)
+5. Fin de `lancerApplication()` : `KtaExtensions.planCharge(id)` → le plan est « prêt » pour une extension
+   (événement `mktm:plan-pret`). 🩸 Avant ce point, la mémoire tient encore les objets du plan quitté (ou rien) et
+   `initEditor` / la restauration les remplacent : `appliquerChangements` y refuse tout lot (`null`) et
+   `changementsDepuis` rend des listes vides — sinon un lot reçu pendant le chargement était écrasé sans bruit, et
+   un envoi pouvait partir vers le nouveau plan avec les objets de l'ancien (`community-server-line.md` §3).
 
 **Modale** : `.kta-session-modal-overlay` (centrée pleine page, pattern `kta-readme-modal`), boîte `.kta-session-modal-boite` avec icône ↻ dans cercle jaune `#f4c542`, titre + détail + 2 boutons (🗑️ Effacer / ✓ Continuer). Backdrop click + Échap = Continuer. Animations fade-in overlay + pop-in box.
 
@@ -64,6 +69,61 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 ```
 
 **Pourquoi polling et pas hooks ?** : pas besoin de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible. Risque zéro d'oublier un point de modification.
+
+#### 9.1 Import d'un fichier de session (`interfaceImportExport.js > ouvrirImportSession`)
+
+- **Plan local** (ou sans extension) : le fichier **remplace** points, tracés, zones, structures, mesure, suivi, note du
+  Mode Histoire et légende de session ; ses traces de suppression remplacent celles du plan ; snapshot
+  `before-import-session` attendu avant. Photos et documents du Mode Histoire **s'ajoutent** (jamais de purge).
+- **Plan partagé par une extension** (`KtaExtensions.importPartage` → `{ remplacer }`, `community-server-line.md` §3) :
+  la fenêtre propose **« Ajouter au plan »** (choisi par défaut) et, si la prise le permet, **« Remplacer pour toute
+  l'organisation »**. Les deux passent par `KtaUid.preparerImport(local, fichier, mode)` (fonction pure), snapshot
+  `before-import-session` compris :
+  - *Ajouter* : par uid, le plus récent gagne ; un objet effacé ici (trace postérieure ou égale) ne revient pas ; rien
+    d'existant ne disparaît ; traces d'ici inchangées, celles du fichier ignorées. Mesure, suivi et note libre d'ici
+    ne sont pas touchés ; la légende du fichier complète celle d'ici sans l'écraser.
+  - *Remplacer* : le droit est relu au clic, puis `ktaConfirm` annonce le nombre d'objets qui seront supprimés pour
+    tous ; chaque objet d'ici absent du fichier reçoit une **trace de suppression** (sans elle, la synchro ne voit
+    aucune suppression et les objets reviennent du serveur) ; le reste suit le remplacement local.
+  - ⚠️ Un objet du fichier qui gagne est **réhorodaté maintenant** : la synchro n'envoie que ce qui a changé depuis son
+    dernier envoi (l'objet d'un vieux fichier ne partirait jamais) et le serveur garde la version la plus récente.
+  - L'itinéraire calculé et les aperçus d'ici restent ; ceux du fichier sont ignorés. Calques en modification
+    (`CalqueSession.resynchroniser`) et liaisons inter-plans (`InterPlanLinks.importLinks`, fusion par id) : même
+    traitement dans tous les modes.
+- `importerSessionJSON(file)` (import direct, sans fenêtre) : sur un plan partagé, ouvre la fenêtre à la place.
+- **🧮 Tableur, « Appliquer à la session »** (points, tracés, zones, structures d'un fichier de session — `type:
+  "devmap-session"` ou porteur de `editorPoints` ; un calque de données, ou un `session_*.json` sans ce marqueur,
+  reste en téléchargement seul) : un seul chemin, `tableEditor.js > _appliquerSession` →
+  `KtaConvertir.appliquerTableau(famille, lignes, opts)`. Points : la liste est passée par l'appelant
+  (`opts.acces` = getEditorPoints / setEditorPoints, catégorie d'historique `editorPoints`), sans validation de
+  type ; fiches des photos mises à jour comme avant (`MyKTAMapPhotos.majFichesPoints`, points d'avant puis
+  d'après). Le tableau devient la
+  famille, **par uid** : ligne connue = l'objet de la session reçoit ses cellules modifiées par les chemins de la fiche (type par
+  `_versType`, comme 🔄 Convertir ; niveau par `_poserNiveau`, comme la liste « Niveau » ; autres colonnes en place +
+  `touch`) ; sa **géométrie reste celle de la session** (le tableau ne l'édite pas) ; objet sans différence : intact.
+  Ligne d'uid inconnu = ajout ; objet absent du tableau = suppression (trace posée par `HistoryManager.record`).
+  🩸 Un réimport ne ressuscite rien : une ligne dont l'uid porte une trace de suppression est **ignorée** si elle n'a
+  pas été modifiée au tableau (bilan : « N ligne(s) supprimée(s) depuis l'export, ignorée(s) »), **réajoutée** si une
+  cellule a changé (geste explicite ; trace retirée par `HistoryManager.record`, comme toute réapparition).
+  Itinéraire calculé et aperçus : gardés, jamais pris au tableau. Un instantané, une écriture, **une entrée ⏪**.
+  - Validation de TOUTES les lignes avant toute écriture, la première fautive arrête tout (fenêtre qui nomme la ligne
+    — ordre du fichier, ligne sélectionnée à l'écran — et le type) : type **inconnu** de la légende, type d'une autre
+    géométrie (règle ouvert / fermé de Convertir), `jonction` / `itinerary` posés au tableau, niveau non entier ou sur
+    une jonction. Un type orphelin **inchangé** ne bloque pas. Le téléchargement garde la saisie libre (cellule en
+    rouge seulement).
+  - ⚠️ **Seules les cellules modifiées s'appliquent** (décision produit, points compris) : chaque ligne est comparée
+    à sa copie prise au chargement (`_origines`, passée en `opts.origine`). Une ligne non touchée ne change rien,
+    même si le fichier est plus ancien que la session ; sur une ligne touchée, les autres champs gardent leur valeur
+    de session. Une colonne absente d'une ligne ne retire jamais un champ. Les traces de suppression du fichier sont
+    ignorées (≠ l'import de session §9.1).
+  - Plan partagé : même règle que les points (suppression ⇒ `remplacer` de la prise relu au clic, sinon refus nommé ;
+    puis `ktaConfirm` avec le nombre), compté par une simulation (`{ simuler: true }`).
+- **Colonne « level »** (plan affiché multi-niveau) : toujours présente pour les quatre tableaux, même sans aucun
+  champ `level` (affiché 0) ; la cellule est une liste = `availableLevels` + le niveau actuel de la ligne s'il en sort
+  (comme la fiche) ; lecture seule pour une jonction et l'itinéraire. Hors multi-niveau : colonne seulement si un objet
+  a un `level`, saisie numérique. Checkup : `scripts/smoke/checkup-tableur-session.js`.
+- Limite : un objet créé par un autre membre et pas encore reçu au moment de l'import ne reçoit pas de trace (il
+  reste après un « Remplacer »). Garde-fou : `scripts/check-extensions.js` §6 septies.
 
 ---
 
@@ -141,7 +201,7 @@ Renommer un point ne touche plus ses photos ; un point sans uid garde l'ancien c
 **Fiche du point** (`fiche: { nom, x, y, niveau, type, maj }`, coordonnées image comme dans la session) : de quoi
 retrouver le point s'il disparaît. Posée à l'ajout (état du formulaire), au rattachement et à la restauration si
 fournie ; remise à jour par `majFichesPoints(planId, points)` quand le point est enregistré (éditeur, tableau
-« Remplacer la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
+« Appliquer à la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
 Seules les fiches qui changent sont écrites. Jamais exigée : les anciennes photos n'en ont pas.
 
 **Saisie** — `editor.js > afficherFormulaire(x, y, existingPoint?)`, section 📸 : écriture IndexedDB dès l'ajout
@@ -1460,11 +1520,15 @@ KARMA, 05/09 : « rajoute, dans le truc pour convertir, un bouton supprimer ». 
 la barre latérale et son sélecteur, alors que la bulle tient déjà **la famille et l'objet lui-même** — c'est le seul
 endroit du code où les deux sont réunis. D'où `KtaConvertir.supprimer(famille, obj)`, voisine de `convertir()`.
 
-**🩸 L'identité est prise par RÉFÉRENCE, jamais par contenu.** `roads` et `zones` **n'ont pas d'`id`**
-(cf. `data-formats.md` : snapshot brut `{type, points, label?, level?}`), et deux tracés peuvent porter exactement le même
-type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de contenu
-supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon endroit.
-`indexOf(obj)` compare les références, et la bulle porte l'objet.
+**🩸 L'identité est prise par RÉFÉRENCE puis par `uid`, jamais par contenu.** Deux tracés peuvent porter exactement le
+même type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de
+contenu supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon
+endroit. La bulle porte l'objet ; `convertirObjet.js > _indexDe` le cherche d'abord par référence, puis par `uid` : une
+réception de synchro (plan d'une installation reliée) ou une restauration remplace l'objet par une **copie de même uid**,
+et la référence gardée par une fiche ou la fenêtre Convertir n'est plus dans la liste — la suppression, la conversion
+ou le changement de niveau échouaient alors sans un mot. Ils agissent sur la version **courante** de la liste.
+Introuvable même par `uid` (supprimé ailleurs entre-temps) : toast d'avertissement `convert.introuvable`, rien n'est
+écrit. Garde-fous : `check-api-surface.js` (référence périmée), `check-uid.js` (passage obligé par `_indexDe`).
 
 **⚖️ Pas de confirmation.** C'est le parti-pris déjà tenu pour la suppression d'un POINT (`supprimerPointEditor`), qui
 s'appuie sur `Ctrl+Z`. Un second dialogue là où le premier n'en a pas serait incohérent. Deux conséquences assumées :
@@ -1586,6 +1650,20 @@ de `resynchroniser`). Effet de bord voulu : un ajout intégré est du contenu de
 session limité à ses ajouts (`sessionExporter.js > _garder`, copies exclues). Limite : intégrer, exporter le calque, annuler
 l'intégration puis supprimer l'objet laisse une trace sur un uid présent dans le fichier exporté (suppression explicite
 de l'utilisateur).
+
+### 🔄 Verser la session dans une nouvelle version du plan
+
+L'assistant « Mettre à jour le plan » (`js/majPlan.js`, état complet : `plans-loader.md` § Mettre à jour le plan)
+enchaîne ce qui précède sans fichier intermédiaire : `contenuCalque(id)` rend le contenu d'« 💾 Exporter » sans le
+télécharger (même refus `pasRapatrie` / `exportRefuse`) ; après un remplacement ou une publication, les calques versés
+sont restitués et les objets dessinés à la main versés dans le plan quittent la session par
+`retirerIntegres(uids, T)` :
+- seuls les objets **sans marque** sont visés (les copies partent par la restitution) ;
+- 🩸 trace posée à **`T - 1`**, l'objet étant écrit dans le fichier avec `updatedAt = T` : la trace retire la copie de
+  session des autres appareils, mais ne peut pas détruire l'objet du fichier à une fusion (la règle « jamais de trace »
+  des copies vise une trace POSTÉRIEURE à l'objet du fichier) ;
+- objet modifié depuis (`updatedAt ≥ T`) : **gardé** et compté (sa retouche n'est pas dans le fichier) ;
+- aucune entrée d'historique (la nouvelle version contient déjà les objets) ; refus en lecture seule.
 
 ### État persisté
 

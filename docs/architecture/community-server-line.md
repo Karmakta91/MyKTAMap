@@ -61,7 +61,8 @@ photos restent locales et exportables).
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
+> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, publierVersion: { autorise(idExt) →
+> bool, publier({ id, blob, nom }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
@@ -228,8 +229,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
-  reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
-  `changementsDepuis(ts)`. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
+  reçus sont copiés ; la session est sauvegardée. Sans plan ouvert, ou plan pas encore **prêt** : `null`, rien
+  d'appliqué — ⚠️ l'extension garde alors son curseur et redemandera le lot. C'est le pendant entrant de
+  `changementsDepuis(ts)`. **Plan prêt** : `planPret()` est vrai seulement une fois le chargement fini et la session
+  restaurée (`main.js > lancerApplication` appelle `planCharge(id)` après `SessionPersist.onPlanLoaded`, émet
+  **`mktm:plan-pret`** `{ planId }`) ; `quitterPlan` le remet à faux. 🩸 Avant, la mémoire tient les objets du plan
+  quitté (ou rien) puis `initEditor` / la restauration les remplacent : un lot appliqué là était écrasé sans bruit
+  (curseur avancé, objets jamais reçus), et `changementsDepuis` aurait donné au nouveau plan les objets de l'ancien
+  — il rend des listes vides tant que le plan n'est pas prêt. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
   quand un objet reçu porte la marque `_srcCalque` (copie d'un calque), ou qu'une copie d'ici disparaît, l'état
   se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
@@ -339,6 +346,16 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
   registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
   relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Nouvelle version d'un plan ☁️** (assistant « Mettre à jour le plan », `plans-loader.md`) : prise
+  `publierVersion: { autorise(idExt) → bool, publier({ id: idExt, blob, nom }) → Promise }`. Côté app :
+  `KtaExtensions.versionAutorisee(registreId)` (🔒 permission : prise absente, autre valeur que `true` ou erreur =
+  refus) choisit les boutons — « ☁️ Publier la nouvelle version » seulement si vrai, sinon « ⬇️ Télécharger » seul ;
+  `KtaExtensions.publierVersion({ planId: registreId, blob, nom })` rejette sans rien envoyer si la permission est
+  refusée, sinon passe l'**id de l'extension** (pas celui du registre) et émet `mktm:plans-extension-changes` au succès.
+  C'est l'extension qui réserve la publication à un droit (le plus haut, décision produit) et son serveur qui le
+  revérifie à l'envoi : la prise ne choisit que l'interface. Sans extension : jamais autorisée, rejet, aucun effet.
+  L'assistant n'appelle jamais `publierPlan` (un plan neuf serait un doublon, pas une version). Preuve :
+  `check-extensions.js` §6 bis quater bis.
 - **Lire la session d'un plan non ouvert** (10/10/2026) : `window.KtaSessionStore.lire(planId)` → JSON texte | null
   (synchrone, depuis la mémoire ; `ids()` liste les plans qui en ont une, `ecrireDurable(planId, brut)` → Promise). Les
   sessions vivent en IndexedDB : `localStorage["myktamap_session_v1_<planId>"]` n'est plus qu'une ancienne copie gardée
@@ -352,6 +369,15 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     modifié ou supprimé par la synchro pendant l'édition (avant : modification écrasée sans le savoir).
   - Prise `lectureSeule(idExt) → bool` (droit « lire ») : goulot `window.ktaEditionRefusee()` — ni ✏️ ni 🗑️
     dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
+  - Prise `importSession(idExt) → { remplacer: bool } | null` : le plan est **partagé**, l'import d'un fichier de
+    session propose « Ajouter au plan » (fusion par uid, rien ne disparaît) et, si `remplacer === true`, « Remplacer
+    pour toute l'organisation » (confirmation avec le nombre d'objets supprimés ; une trace de suppression par objet
+    retiré, que la synchro propage). `null` / `false` = plan non partagé (remplacement local). Plan local ou du site :
+    jamais consultée. 🔒 Erreur ou forme inattendue = partagé, remplacement **refusé** (ajout seul) ; le droit est
+    relu au clic de « Remplacer ». Même règle pour « Appliquer à la session » du Tableur (points, tracés, zones,
+    structures) : sur un plan partagé, un objet retiré reçoit une trace ; s'il en retire,
+    il faut `remplacer === true` (sinon refus nommé, rien ne change) et une confirmation chiffrée. Côté community :
+    `KtaExtensions.importPartage(registreId)` ; détail : `session-data.md` §9.1.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
     **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
     KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
@@ -403,6 +429,19 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   effacerait les photos de l'équipe. Supprimer un point ne supprime jamais ses photos (« sans point »,
   `session-data.md` §42). API photos ajoutée pour l'extension : `listerPlan(planId)` (sans blob),
   `rattacher(photoIds, planId, pointId, fiche)`, `restorePhoto(record, opts?)`.
+- **Liaisons inter-plan** (`js/interPlanLinks.js`, registre de l'appareil) : **sortant**, événement
+  `mktm:liaisons-changees` sur `window`, `detail = { ids, action, source? }`, `action` ∈ `creation` | `modification` |
+  `suppression`, émis APRÈS l'écriture du registre (création, suppression, point déplacé / changé de niveau / supprimé,
+  resynchro des snapshots, rattachement à l'uid, plan transféré). Chaque liaison écrite porte `updatedAt` (ms).
+  `source: "import"` = fusion d'un export (session, ZIP, profil), pas un geste ; `source: "extension"` = déposé par
+  l'extension. **Entrant** : `InterPlanLinks.appliquerExterne({ liens, retirer })` (remplace ou ajoute par id, retire
+  les ids donnés ; annonce seulement avec `source: "extension"`) → `{ ecrites, retirees }`. **Prise** `liaisons: {
+  info(lien) → string, actions(lien) → [{ libelle, action }], modifiable(lien) → bool }` (synchrones, sur une COPIE du
+  lien) : info en texte sous la liaison (fiche du point, gestionnaire, confirmation de suppression ; 80 car.), actions
+  dans le gestionnaire « Mes liaisons » (2 au plus, 40 car.), `modifiable` est une **permission** (sans prise : oui ;
+  erreur : non) — non modifiable : ni 🗑️, suppression confirmée refusée (`ipl.remove.refuse`), liaison gardée quand son
+  point est supprimé. Côté community : `KtaExtensions.liaisonInfo` / `liaisonActions` / `liaisonModifiable`. Sans
+  extension : rien n'écoute, aucune info, tout reste modifiable (garde-fou `check-extensions.js`).
 - **Profil de l'utilisateur** (11/10/2026) : les modales d'export / import du profil ne transportent **rien** d'un
   plan ☁️ (registre `type: "ext"`, ou id reconnu par `ktaEstIdRegistreExtension`) — ni entrée, ni session, photos,
   favoris, liaisons, sauvegardes, carnet, archive : le fichier est en clair et un profil importé ne doit pas créer
