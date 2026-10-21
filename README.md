@@ -42,7 +42,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Affichage plan image haute résolution (tiling runtime V1, 5 presets) | `map.js`, `tiling.js`, `config.js` |
 | **Tuiles V2** build-time type Google Maps (4 niveaux de zoom, WebP/PNG si source transparente) | `createConf.js > _genererTuilesV2`, `tiling.js` |
-| **Multi-niveau (M-LVL)** : étages, jonctions interniveau, filtre de niveau, niveau d'un objet modifiable | `interface.js`, `config.js`, `convertirObjet.js` |
+| **Multi-niveau (M-LVL)** : étages, jonctions interniveau (fiche : note, niveaux reliés, suppression), filtre de niveau, niveau d'un objet modifiable | `interface.js`, `config.js`, `convertirObjet.js` |
 | Calques image (légende, surimpressions) + calibration 2 points | `map.js`, `imageLayerCalibration*.js` |
 | Calques de données (`devmap-data` JSON) | `utils.js > ajouterPointsDepuisJSON` |
 | Points d'intérêt : tags, notes, photos IDB (ré-encodées sans EXIF) | `editor.js`, `photos.js`, `photoViewer.js` |

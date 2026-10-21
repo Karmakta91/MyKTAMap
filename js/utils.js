@@ -849,6 +849,19 @@ window.ktaSignalerNiveauObjet = function(n) {
     masque ? "warn" : "info");
 };
 
+// Toast après un changement des niveaux d'une jonction : « warn » si aucun des deux bouts n'est affiché par le filtre
+// (la jonction quitte la carte, cf ktaSignalerNiveauObjet).
+window.ktaSignalerNiveauxJonction = function(de, vers) {
+  if (!window.OOMGuard || typeof window.OOMGuard.showToast !== "function") return;
+  const c = window.APP_CONFIG || {};
+  const visibles = Array.isArray(c.visibleLevels) ? c.visibleLevels : [0];
+  const masque = visibles.indexOf(de) < 0 && visibles.indexOf(vers) < 0;
+  window.OOMGuard.showToast(
+    window.I18n.t(masque ? "jonctionFiche.toastMasque" : "jonctionFiche.toast",
+      { de: window.ktaFormatNiveau(de), vers: window.ktaFormatNiveau(vers) }),
+    masque ? "warn" : "info");
+};
+
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
   opts = opts || {};
@@ -875,6 +888,33 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
              '<span>' + _esc(window.I18n.t("niveauObjet.label")) + '</span>' +
              '<select class="kta-note-popup-niveau">' + options + '</select>' +
            '</label>';
+  }
+
+  // Fiche d'une jonction (`opts.jonction`) : deux listes « Départ » (premier point, fromLevel) et « Arrivée » (dernier
+  // point, toLevel), appliquées ensemble par un bouton (un geste, une entrée ⏪). Chaque liste garde le niveau actuel
+  // de son bout même hors availableLevels (ktaNiveauxProposes) ; "" hors multi-niveau ou pendant un dessin.
+  function _niveauxJonctionHtml() {
+    const o = opts.convertir && opts.convertir.obj;
+    if (!o || typeof window.ktaOptionsNiveauHtml !== "function") return "";
+    const de = window.ktaOptionsNiveauHtml(Number.isInteger(o.fromLevel) ? o.fromLevel : 0);
+    const vers = window.ktaOptionsNiveauHtml(Number.isInteger(o.toLevel) ? o.toLevel : 0);
+    if (!de || !vers) return "";
+    return '<div class="kta-note-popup-jonction">' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("jonctionFiche.de")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-jct-de">' + de + '</select>' +
+             '</label>' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("jonctionFiche.vers")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-jct-vers">' + vers + '</select>' +
+             '</label>' +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-jct-appliquer" type="button">' +
+                 _esc(window.I18n.t("jonctionFiche.appliquer")) +
+               '</button>' +
+             '</div>' +
+             '<div class="kta-note-popup-jct-statut kta-tx-err" hidden></div>' +
+           '</div>';
   }
 
   function _renderPopupHtml() {
@@ -906,13 +946,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                  '</button>' +
                  // Reclasser l'objet : un vecteur SIG mal rangé (un front qui est une galerie) n'entre pas dans le graphe
                  // d'itinéraire, le Pathfinder ne lit que les tracés. La popup tient une référence directe sur l'objet.
-                 (opts.convertir
+                 // Jamais pour une jonction (décision produit) : ses niveaux se changent dans sa fiche.
+                 (opts.convertir && !opts.jonction
                    ? '<button class="kta-popup-btn kta-note-popup-convertir" type="button">' +
                        '🔄 ' + window.I18n.t("convert.btn") +
                      '</button>'
                    : '') +
                '</div>' +
-               _niveauHtml() +
+               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml()) +
                // Supprimer : ligne séparée, classe danger (comme la popup d'un point, une action destructrice ne se
                // pose pas à côté de « Sauver »). `opts.convertir` = { famille, obj } sert aux DEUX boutons.
                (opts.convertir
@@ -979,6 +1020,28 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
         });
       }
       const statusEl = popupRoot.querySelector(".kta-note-popup-status");
+      // Niveaux d'une jonction : deux niveaux identiques sont refusés DANS la fiche (elle reste ouverte, rien n'est
+      // écrit) ; sinon popup fermée AVANT le setteur, pour la même raison que la liste « Niveau ».
+      const jctBtn = popupRoot.querySelector(".kta-note-popup-jct-appliquer");
+      if (jctBtn && opts.jonction && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxJonction) {
+        jctBtn.addEventListener("click", function () {
+          const de = Number.parseInt(popupRoot.querySelector(".kta-note-popup-jct-de").value, 10);
+          const vers = Number.parseInt(popupRoot.querySelector(".kta-note-popup-jct-vers").value, 10);
+          if (de === vers) {
+            const statut = popupRoot.querySelector(".kta-note-popup-jct-statut");
+            if (statut) {
+              statut.textContent = window.I18n.t("jonctionFiche.memeNiveau");
+              statut.hidden = false;
+            }
+            return;
+          }
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveauxJonction(opts.convertir.obj, de, vers)
+              && typeof window.ktaSignalerNiveauxJonction === "function") {
+            window.ktaSignalerNiveauxJonction(de, vers);
+          }
+        });
+      }
       if (!textarea || !saveBtn) return;
 
       saveBtn.addEventListener("click", function() {

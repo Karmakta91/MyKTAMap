@@ -853,17 +853,19 @@ If the map contains elements on other levels, the list extends by itself. The sa
 
 An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
 
-No list on a junction (delete it and draw it again), on a layer object (🔄 Edit the layer first) or while a path is being drawn.
+A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
 ### 🪜 Drawing an inter-level junction
 
 A junction links two levels at the real spot of the passage (stairs, slope, shaft, ladder):
 
 1. **🛣️ Paths → 🪜 Inter-level junction**
-2. Choose the **Start level** (your active level by default) and the **End level** (the order does not matter: the route uses it both ways), then **OK — Draw the junction**
+2. Choose the **Start level** (your active level by default) and the **End level** (the route uses it both ways, but the first point you tap is on the start level), then **OK — Draw the junction**
 3. Tap as many points as you like, then press **🪜** again to confirm
 
 It appears in dotted magenta, with a dot at each end. **Without a junction, no route changes level.** Two staircases between the same levels = two junctions: the route takes the shorter one. It is erased like a path (🧹 Erase and correct).
+
+**Its card**: tap a junction you drew (not while drawing) to open **🪜 Junction L0 ↔ L+1**: its **note** (💾 Save the note), the **Start (1st point)** and **End (last point)** lists with **🪜 Change the levels** (two different levels required; the route follows at once), and **🗑️ Delete**. **⏪** undoes each step. No 🔄 Convert: a junction stays a junction.
 
 ### 🛠️ On the map creator's side
 

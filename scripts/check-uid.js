@@ -170,9 +170,11 @@ t("changement de niveau d'un tracé / zone / structure : touch juste après la m
   (CONV.match(/_poserNiveau\(/g) || []).length === 3);
 // 🩸 Une réception de synchro remplace un objet par une copie de même uid : la référence d'une fiche ouverte n'est plus
 // dans la liste. Toute recherche d'objet de session dans convertirObjet passe par _indexDe (référence, puis uid).
-t("convertirObjet : objet retrouvé par référence PUIS par uid (convertir, supprimer, niveau, lot), jamais indexOf seul",
-  (CONV.match(/_indexDe\(/g) || []).length === 5 && (CONV.match(/liste\.indexOf\(/g) || []).length === 1 &&
+t("convertirObjet : objet retrouvé par référence PUIS par uid (convertir, supprimer, niveau, niveaux d'une jonction, lot), jamais indexOf seul",
+  (CONV.match(/_indexDe\(/g) || []).length === 6 && (CONV.match(/liste\.indexOf\(/g) || []).length === 1 &&
   /liste\.findIndex\(function \(o\) \{ return o && o\.uid === obj\.uid; \}\)/.test(CONV));
+t("niveaux d'une jonction (sa fiche) : touch juste après la mutation des deux bouts",
+  /cible\.fromLevel = de;\s*cible\.toLevel = vers;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(cible\);/.test(CONV));
 const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
 t("changement de niveau d'un POI : posé AVANT le touch de la modification",
   iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&

@@ -853,17 +853,19 @@ Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle
 
 Un objet a pris le mauvais niveau ? Dans la bulle d'un tracé, d'une zone ou d'une structure que tu as dessinés, la liste **Niveau** (sous 🔄 Convertir) le déplace aussitôt ; pour un point, c'est la liste **Niveau** de **✏️ Modifier**, enregistrée avec le reste de la fiche. Le niveau actuel de l'objet est toujours proposé, même s'il sort de la liste du plan. Si le niveau choisi est masqué par le filtre, l'objet disparaît de la carte et un message le dit : la vue reste sur ton niveau. **⏪** annule.
 
-Pas de liste sur une jonction (supprime-la et retrace-la), sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
+Une jonction a sa propre fiche, avec ses deux niveaux (voir ci-dessous). Pas de liste sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
 
 ### 🪜 Tracer une jonction interniveau
 
 Une jonction relie deux niveaux à l'endroit réel du passage (escalier, pente, puits, échelle) :
 
 1. **🛣️ Tracés → 🪜 Jonction interniveau**
-2. Choisis le **Niveau de départ** (ton niveau actif, d'origine) et le **Niveau d'arrivée** (l'ordre est indifférent : l'itinéraire l'emprunte dans les deux sens), puis **OK — Tracer la jonction**
+2. Choisis le **Niveau de départ** (ton niveau actif, d'origine) et le **Niveau d'arrivée** (l'itinéraire l'emprunte dans les deux sens, mais le premier point posé est au niveau de départ), puis **OK — Tracer la jonction**
 3. Tape autant de points que tu veux, puis re-appuie sur **🪜** pour valider
 
 Elle apparaît en magenta pointillé, un rond à chaque bout. **Sans jonction, aucun itinéraire ne change de niveau.** Deux escaliers entre les mêmes niveaux = deux jonctions : l'itinéraire prend la plus courte. Elle s'efface comme un tracé (🧹 Effacer et corriger).
+
+**Sa fiche** : tape une jonction que tu as tracée (hors tracé en cours) pour ouvrir **🪜 Jonction N0 ↔ N+1** : sa **note** (💾 Sauver la note), les listes **Départ (1er point)** et **Arrivée (dernier point)** avec **🪜 Changer les niveaux** (deux niveaux différents obligatoires ; l'itinéraire suit aussitôt), et **🗑️ Supprimer**. **⏪** annule chaque geste. Pas de 🔄 Convertir : une jonction reste une jonction.
 
 ### 🛠️ Côté créateur du plan
 

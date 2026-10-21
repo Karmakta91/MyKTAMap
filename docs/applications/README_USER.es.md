@@ -853,17 +853,19 @@ Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mi
 
 ¿Un objeto quedó en el nivel equivocado? En la ventana de un trazado, una zona o una estructura que hayas dibujado, la lista **Nivel** (bajo 🔄 Convertir) lo mueve al instante; para un punto, es la lista **Nivel** de **✏️ Editar**, guardada con el resto de la ficha. El nivel actual del objeto siempre se propone, aunque esté fuera de la lista del mapa. Si el nivel elegido está oculto por el filtro, el objeto desaparece del mapa y un mensaje lo indica: la vista se queda en tu nivel. **⏪** lo deshace.
 
-No hay lista en una unión (bórrala y vuelve a trazarla), en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
+Una unión tiene su propia ficha, con sus dos niveles (ver más abajo). No hay lista en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 
 ### 🪜 Trazar una unión entre niveles
 
 Una unión enlaza dos niveles en el lugar real del paso (escalera, pendiente, pozo, escala):
 
 1. **🛣️ Trazados → 🪜 Unión entre niveles**
-2. Elige el **Nivel de salida** (tu nivel activo, por defecto) y el **Nivel de llegada** (el orden da igual: el itinerario la recorre en los dos sentidos) y luego **OK — Trazar la unión**
+2. Elige el **Nivel de salida** (tu nivel activo, por defecto) y el **Nivel de llegada** (el itinerario la recorre en los dos sentidos, pero el primer punto que pones está en el nivel de salida) y luego **OK — Trazar la unión**
 3. Toca tantos puntos como quieras y vuelve a pulsar **🪜** para validar
 
 Aparece en magenta punteado, con un círculo en cada extremo. **Sin unión, ningún itinerario cambia de nivel.** Dos escaleras entre los mismos niveles = dos uniones: el itinerario toma la más corta. Se borra como un trazado (🧹 Borrar y corregir).
+
+**Su ficha**: toca una unión que hayas trazado (fuera de un trazado en curso) para abrir **🪜 Unión N0 ↔ N+1**: su **nota** (💾 Guardar la nota), las listas **Salida (1.er punto)** y **Llegada (último punto)** con **🪜 Cambiar los niveles** (dos niveles distintos obligatorios; el itinerario lo sigue al instante) y **🗑️ Eliminar**. **⏪** deshace cada gesto. Sin 🔄 Convertir: una unión sigue siendo una unión.
 
 ### 🛠️ Del lado del creador del mapa
 

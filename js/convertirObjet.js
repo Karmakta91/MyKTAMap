@@ -16,8 +16,8 @@
 // La frontière porte les MINIMUMS DE POINTS (2 pour un front, 3 pour une zone) : la traverser obligerait à INVENTER
 // de la géométrie relevée. Refus assumé, et dit.
 // Conservés : `points`, `level`, `description` ; seul le type (donc la famille) change.
-// Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau) et `itinerary`
-// (trajet CALCULÉ, pas une donnée du relevé).
+// Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
+// changent par changerNiveauxJonction, jamais par Convertir) et `itinerary` (trajet CALCULÉ, pas une donnée du relevé).
 // ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; on le rapatrie d'abord (js/calqueSession.js).
 // Garde-fou : check-calque-session.js (🩸 ce fichier ne doit contenir AUCUNE mention du nom de liste des points de
 // session, même en commentaire).
@@ -252,6 +252,42 @@
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
     if (window.HistoryManager && avant && window.HistoryManager.record) {
       window.HistoryManager.record(_t("niveauObjet.histoire", { n: niveau > 0 ? "+" + niveau : niveau }), avant, famille);
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
+  // ── Changer les niveaux reliés par une jonction (fiche de la jonction) ──────────
+  // `de` = niveau du PREMIER point, `vers` = celui du DERNIER : le Pathfinder accroche le premier nœud à fromLevel et
+  // le dernier à toLevel (pathfinder.js > buildNetworkGraph), l'ordre n'est donc pas interchangeable.
+  // ⚠️ Deux niveaux DIFFÉRENTS obligatoires : une jonction sur un seul niveau ne relierait rien et passerait les
+  // filtres de niveau comme un pont. Les deux bouts changent en UN geste : un instantané, une entrée ⏪.
+  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro) puis graphe invalidé, comme changerNiveau.
+  function changerNiveauxJonction(obj, de, vers) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
+    if (!obj || obj.type !== "jonction" || !Number.isInteger(de) || !Number.isInteger(vers) || de === vers) return false;
+    const ecrire = _ecrivain("roads");
+    if (typeof ecrire !== "function") {
+      console.warn("[Convertir] setteur manquant pour les niveaux d'une jonction");
+      return false;
+    }
+    const liste = _lire("roads").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("roads");
+    const cible = liste[idx];
+    if (cible.type !== "jonction") return false;
+    const niv = function (n) { return Number.isInteger(n) ? n : 0; };
+    if (niv(cible.fromLevel) === de && niv(cible.toLevel) === vers) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("roads") : null;
+    cible.fromLevel = de;
+    cible.toLevel = vers;
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      const f = function (n) { return n > 0 ? "+" + n : String(n); };
+      window.HistoryManager.record(_t("jonctionFiche.histoire", { de: f(de), vers: f(vers) }), avant, "roads");
     }
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return true;
@@ -570,6 +606,7 @@
     listerCiblesLot: listerCiblesLot,
     supprimer:     supprimer,   // depuis la popup de l objet
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
+    changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
     appliquerTableau: appliquerTableau,   // « Appliquer à la session » du Tableur
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert
