@@ -5560,6 +5560,7 @@
   "convert.btnSuppr": "Delete",
   "convert.toastSuppr": "🗑️ Object deleted — Ctrl+Z to undo",
   "convert.histoireSuppr": "Delete an object",
+  "convert.introuvable": "⚠️ Object not found: it was deleted or replaced in the meantime. Nothing was changed.",
   "convert.selMulti": "🎯 Select several objects to convert",
   "convert.lotSource": "{n} objects selected",
   "convert.lotBilan": "🔄 {convertis} object(s) converted · {sautes} already of this type · {echecs} skipped — Ctrl+Z to undo",

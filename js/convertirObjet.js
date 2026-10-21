@@ -119,6 +119,23 @@
     return (s && typeof window[s] === "function") ? window[s] : null;
   }
 
+  // Position de l'objet dans sa liste : par RÉFÉRENCE d'abord (deux tracés sans uid peuvent être identiques), puis
+  // par uid. 🩸 Une réception de synchro (ou une restauration) remplace l'objet par une COPIE de même uid : la
+  // référence tenue par une fiche ou la fenêtre Convertir n'est plus dans la liste, l'uid si. → index, ou -1.
+  function _indexDe(liste, obj) {
+    const i = liste.indexOf(obj);
+    if (i >= 0 || !obj || typeof obj.uid !== "string" || !obj.uid) return i;
+    return liste.findIndex(function (o) { return o && o.uid === obj.uid; });
+  }
+  // Objet absent même par uid (supprimé ailleurs entre-temps) : dit, jamais un échec silencieux.
+  function _introuvable(famille) {
+    console.warn("[Convertir] objet introuvable dans", famille);
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(_t("convert.introuvable"), "warn");
+    }
+    return false;
+  }
+
   function convertir(famille, obj, familleCible, typeCible) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     if (!obj || !famille || !familleCible || !typeCible) return false;
@@ -145,16 +162,15 @@
       zones:      lire.zones().slice(),
       structures: lire.structures().slice()
     };
-    const idx = listes[famille].indexOf(obj);
-    if (idx < 0) {
-      console.warn("[Convertir] objet introuvable dans", famille);
-      return false;
-    }
+    const idx = _indexDe(listes[famille], obj);
+    if (idx < 0) return _introuvable(famille);
+    // L'objet de la liste fait foi (version courante, la référence reçue peut être périmée).
+    const actuel = listes[famille][idx];
     listes[famille].splice(idx, 1);
 
     // On repart de l'objet d'origine (rien n'est perdu, champs futurs compris) et on remplace le type ; fromLevel /
     // toLevel d'une jonction n'ont plus de sens ailleurs.
-    const neuf = Object.assign({}, obj, { type: typeCible });
+    const neuf = Object.assign({}, actuel, { type: typeCible });
     delete neuf.fromLevel;
     delete neuf.toLevel;
     // Même objet, autre nature : l'uid suit (Object.assign le recopie), la conversion est une modification
@@ -173,8 +189,8 @@
   }
 
   // ── Supprimer l'objet (même popup, référence directe sur l'objet) ──────────
-  // 🩸 IDENTITÉ PAR RÉFÉRENCE, jamais par contenu : `roads` et `zones` n'ont PAS d'id (data-formats.md) et deux tracés
-  // peuvent être identiques ; `indexOf(obj)` compare les références (la popup porte l'objet lui-même).
+  // 🩸 IDENTITÉ PAR RÉFÉRENCE puis par uid, jamais par contenu : deux tracés peuvent être identiques ; la popup porte
+  // l'objet lui-même, que la synchro a pu remplacer par une copie de même uid (_indexDe).
   // 🩸 PAS DE CONFIRMATION, comme la suppression d'un POINT (`supprimerPointEditor`) : le filet est l'instantané
   // d'historique (Ctrl+Z / ⏪), sans lui l'objet serait perdu pour de bon.
   function supprimer(famille, obj) {
@@ -186,11 +202,8 @@
       return false;
     }
     const liste = _lire(famille).slice();
-    const idx = liste.indexOf(obj);
-    if (idx < 0) {
-      console.warn("[Convertir] objet introuvable dans", famille);
-      return false;
-    }
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable(famille);
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState() : null;
     liste.splice(idx, 1);
@@ -219,15 +232,14 @@
       return false;
     }
     const liste = _lire(famille).slice();
-    if (liste.indexOf(obj) < 0) {
-      console.warn("[Convertir] objet introuvable dans", famille);
-      return false;
-    }
-    if ((Number.isInteger(obj.level) ? obj.level : 0) === niveau) return false;   // rien à annuler
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable(famille);
+    const cible = liste[idx];   // version courante (la référence reçue peut être une ancienne copie)
+    if ((Number.isInteger(cible.level) ? cible.level : 0) === niveau) return false;   // rien à annuler
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState(famille) : null;
-    obj.level = niveau;
-    if (window.KtaUid) window.KtaUid.touch(obj);
+    cible.level = niveau;
+    if (window.KtaUid) window.KtaUid.touch(cible);
     ecrire(liste);
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
     if (window.HistoryManager && avant && window.HistoryManager.record) {
@@ -267,10 +279,10 @@
     items.forEach(function (it) {
       if (!it || !it.obj || !listes[it.famille]) { bilan.echecs++; return; }
       if (it.famille === familleCible && it.obj.type === typeCible) { bilan.sautes++; return; }
-      const idx = listes[it.famille].indexOf(it.obj);
+      const idx = _indexDe(listes[it.famille], it.obj);
       if (idx < 0) { bilan.echecs++; return; }
+      const neuf = Object.assign({}, listes[it.famille][idx], { type: typeCible });
       listes[it.famille].splice(idx, 1);
-      const neuf = Object.assign({}, it.obj, { type: typeCible });
       delete neuf.fromLevel;
       delete neuf.toLevel;
       if (window.KtaUid) window.KtaUid.touch(neuf);   // (cf convertir)

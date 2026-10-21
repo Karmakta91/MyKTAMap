@@ -303,6 +303,31 @@ function charger(fichier, nomGlobal, prealables) {
   t("suppr : une famille inconnue est refusée", CV.supprimer("bidon", jumeauA) === false);
   t("suppr : aucun refus n'a laissé d'entrée d'historique", journal.record.length === avantRefus);
 
+  // 🩸 Référence PÉRIMÉE : une réception de synchro remplace l'objet par une copie de même uid ; la fiche (ou la
+  // fenêtre Convertir) garde l'ancienne. Sans repli par uid, le geste échouait sans un mot.
+  const toasts = [];
+  w.OOMGuard = { showToast: function (m, niveau) { toasts.push(niveau + ":" + m); } };
+  const vieux = { uid: "rd_vieux01", type: "principal", level: 0, points: [{ x: 1, y: 1 }, { x: 2, y: 2 }], updatedAt: 10 };
+  const copie = () => JSON.parse(JSON.stringify(vieux));
+  R = [copie(), temoin];
+  t("🩸 suppr : référence remplacée par une copie de même uid (réception) → supprimée quand même",
+    CV.supprimer("roads", vieux) === true && R.length === 1 && R[0] === temoin);
+  R = [Object.assign(copie(), { description: "note reçue" })];
+  t("🩸 niveau : référence périmée → c'est l'objet de la liste qui change",
+    CV.changerNiveau("roads", vieux, -1) === true && R[0].level === -1 && vieux.level === 0);
+  R = [Object.assign(copie(), { description: "note reçue" })]; S = [];
+  t("🩸 convert : référence périmée → la version courante est convertie (rien de la vieille copie)",
+    CV.convertir("roads", vieux, "structures", "front-2") === true && R.length === 0 && S.length === 1 &&
+    S[0].uid === "rd_vieux01" && S[0].description === "note reçue");
+  R = [temoin];
+  const nToasts = toasts.length;
+  t("🩸 suppr : objet absent même par uid (supprimé ailleurs) → refus DIT (toast d'avertissement)",
+    CV.supprimer("roads", vieux) === false && toasts.length === nToasts + 1 && /^warn:convert\.introuvable/.test(toasts[nToasts]));
+  t("…niveau et conversion aussi", CV.changerNiveau("roads", vieux, -3) === false && CV.convertir("roads", vieux, "zones", "eau") === false &&
+    toasts.length === nToasts + 3);
+  delete w.OOMGuard;
+  S = [{ type: "mur", points: [] }];
+
   // ── Le niveau (liste « Niveau » de la même popup) ──
   t("niveau : l'API est exposée", typeof CV.changerNiveau === "function");
   const journalNiv = { touch: 0, inval: 0, cats: [] };

@@ -5560,6 +5560,7 @@
   "convert.btnSuppr": "Eliminar",
   "convert.toastSuppr": "🗑️ Objeto eliminado: Ctrl+Z para deshacer",
   "convert.histoireSuppr": "Eliminar un objeto",
+  "convert.introuvable": "⚠️ Objeto no encontrado: se eliminó o reemplazó mientras tanto. No se ha modificado nada.",
   "convert.selMulti": "🎯 Seleccionar varios objetos para convertir",
   "convert.lotSource": "{n} objetos seleccionados",
   "convert.lotBilan": "🔄 {convertis} objeto(s) convertido(s) · {sautes} ya de este tipo · {echecs} omitido(s): Ctrl+Z para deshacer",

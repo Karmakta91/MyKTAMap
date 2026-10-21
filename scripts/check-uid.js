@@ -162,7 +162,12 @@ t("note d'un objet (tracé, zone, structure) : touch",
 t("conversion : l'uid suit et la conversion appelle touch (simple et par lot)",
   (CONV.match(/KtaUid\.touch\(neuf\)/g) || []).length === 2);
 t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation",
-  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+  /cible\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(cible\);/.test(CONV));
+// 🩸 Une réception de synchro remplace un objet par une copie de même uid : la référence d'une fiche ouverte n'est plus
+// dans la liste. Toute recherche d'objet de session dans convertirObjet passe par _indexDe (référence, puis uid).
+t("convertirObjet : objet retrouvé par référence PUIS par uid (convertir, supprimer, niveau, lot), jamais indexOf seul",
+  (CONV.match(/_indexDe\(/g) || []).length === 5 && (CONV.match(/\.indexOf\(/g) || []).length === 1 &&
+  /liste\.findIndex\(function \(o\) \{ return o && o\.uid === obj\.uid; \}\)/.test(CONV));
 const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
 t("changement de niveau d'un POI : posé AVANT le touch de la modification",
   iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&

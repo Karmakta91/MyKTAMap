@@ -1465,11 +1465,15 @@ KARMA, 05/09 : « rajoute, dans le truc pour convertir, un bouton supprimer ». 
 la barre latérale et son sélecteur, alors que la bulle tient déjà **la famille et l'objet lui-même** — c'est le seul
 endroit du code où les deux sont réunis. D'où `KtaConvertir.supprimer(famille, obj)`, voisine de `convertir()`.
 
-**🩸 L'identité est prise par RÉFÉRENCE, jamais par contenu.** `roads` et `zones` **n'ont pas d'`id`**
-(cf. `data-formats.md` : snapshot brut `{type, points, label?, level?}`), et deux tracés peuvent porter exactement le même
-type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de contenu
-supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon endroit.
-`indexOf(obj)` compare les références, et la bulle porte l'objet.
+**🩸 L'identité est prise par RÉFÉRENCE puis par `uid`, jamais par contenu.** Deux tracés peuvent porter exactement le
+même type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de
+contenu supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon
+endroit. La bulle porte l'objet ; `convertirObjet.js > _indexDe` le cherche d'abord par référence, puis par `uid` : une
+réception de synchro (plan d'une installation reliée) ou une restauration remplace l'objet par une **copie de même uid**,
+et la référence gardée par une fiche ou la fenêtre Convertir n'est plus dans la liste — la suppression, la conversion
+ou le changement de niveau échouaient alors sans un mot. Ils agissent sur la version **courante** de la liste.
+Introuvable même par `uid` (supprimé ailleurs entre-temps) : toast d'avertissement `convert.introuvable`, rien n'est
+écrit. Garde-fous : `check-api-surface.js` (référence périmée), `check-uid.js` (passage obligé par `_indexDe`).
 
 **⚖️ Pas de confirmation.** C'est le parti-pris déjà tenu pour la suppression d'un POINT (`supprimerPointEditor`), qui
 s'appuie sur `Ctrl+Z`. Un second dialogue là où le premier n'en a pas serait incohérent. Deux conséquences assumées :

@@ -5560,6 +5560,7 @@
   "convert.btnSuppr": "Supprimer",
   "convert.toastSuppr": "🗑️ Objet supprimé — Ctrl+Z pour annuler",
   "convert.histoireSuppr": "Supprimer un objet",
+  "convert.introuvable": "⚠️ Objet introuvable : il a été supprimé ou remplacé entre-temps. Rien n'a été modifié.",
   "convert.selMulti": "🎯 Sélectionner plusieurs objets à convertir",
   "convert.lotSource": "{n} objets sélectionnés",
   "convert.lotBilan": "🔄 {convertis} objet(s) converti(s) · {sautes} déjà de ce type · {echecs} ignoré(s) — Ctrl+Z pour annuler",
