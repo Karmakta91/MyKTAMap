@@ -226,6 +226,9 @@ const TE = fs.readFileSync("js/tableEditor.js", "utf8");
 t("câblage : index.html charge js/recalageScan.js", /src="js\/recalageScan\.js"/.test(IDX));
 t("câblage : le module est précaché (sw.js)", SW.indexOf('"./js/recalageScan.js"') >= 0);
 t("câblage : la tuile de l'Éditeur de données ouvre l'outil", TE.indexOf("window.ktaOuvrirRecalageScan()") >= 0);
+// 🩸 Une seconde copie du calcul dans tableEditor.js dériverait sans bruit (une seule source : recalageScan.js).
+t("câblage : plus aucune copie de l'ancien convertisseur dans tableEditor.js",
+  !/function _matrice|function _transformerCoordsFichier|_ouvrirConvertResolution/.test(TE));
 
 console.log(ko === 0 ? "\n🎉 recalage sur un autre scan : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko ? 1 : 0);
