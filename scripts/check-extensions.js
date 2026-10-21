@@ -1346,6 +1346,11 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /if \(X\.versionAutorisee\(cible\.id\)\) \{[\s\S]{0,400}X\.publierVersion\(\{ planId: cible\.id, blob: blob, nom: name \}\)/.test(GEN) &&
       (GEN.match(/X\.publierPlan\(/g) || []).length === 1 &&
       /if \(choix === "nouveau"\) \{\s*await envoyer\(function\(\) \{ return X\.publierPlan\(/.test(GEN));
+    t("Générateur : ZIP non reconnu ou homonymes → « Mettre à jour quel plan ☁️ ? » parmi les plans à gérer, avant tout plan neuf",
+      /const aGerer = _plannerMode === "modifier" \? _plansExtAGerer\(X\) : \[\];/.test(GEN) &&
+      /e\.type === "ext" && X\.versionAutorisee\(e\.id\)/.test(GEN) &&
+      /X\.publierVersion\(\{ planId: idChoisi, blob: blob, nom: name \}\)/.test(GEN) &&
+      /\} else if \(idChoisi === "" && peutNouveau\) \{\s*choix = "nouveau";/.test(GEN));
     t("Générateur : plan d'extension reconnu à l'empreinte de l'archive gardée, sinon à un nom unique",
       /async function _planExtensionDuZip\(\) \{/.test(GEN) &&
       /e\.type === "ext"/.test(GEN) && /memes\.length === 1 \?/.test(GEN));

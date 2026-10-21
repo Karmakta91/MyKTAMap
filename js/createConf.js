@@ -3866,9 +3866,24 @@ async function _genererZip() {
             choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionReservee"),
               { okLabel: window.I18n.t("ui.confirm.ok"), sansAnnuler: true, autre: autre });
           }
-        } else if (peutNouveau) {
-          choix = (await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
-                                           { okLabel: window.I18n.t("ext.publier.ok") })) ? "nouveau" : false;
+        } else {
+          // ZIP non reconnu (ou plusieurs homonymes) : l'utilisateur désigne lui-même le plan à mettre à jour
+          // parmi ceux qu'il gère, avant toute proposition de plan neuf.
+          const aGerer = _plannerMode === "modifier" ? _plansExtAGerer(X) : [];
+          if (aGerer.length) {
+            const idChoisi = await _choisirPlanExtAMettreAJour(aGerer, (_plannerSourceZip && _plannerSourceZip.nom) || name);
+            if (idChoisi) {
+              await envoyer(function() {
+                return X.publierVersion({ planId: idChoisi, blob: blob, nom: name });
+              });
+              dire(window.I18n.t("ext.publier.versionFait"), "success");
+            } else if (idChoisi === "" && peutNouveau) {
+              choix = "nouveau";
+            }
+          } else if (peutNouveau) {
+            choix = (await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
+                                             { okLabel: window.I18n.t("ext.publier.ok") })) ? "nouveau" : false;
+          }
         }
         if (choix === "nouveau") {
           await envoyer(function() { return X.publierPlan({ blob: blob, nom: name }); });
@@ -3921,6 +3936,45 @@ async function _planExtensionDuZip() {
   if (!nom) return null;
   const memes = ext.filter(function(e) { return String(e.name || "").trim().toLowerCase() === nom; });
   return memes.length === 1 ? { id: memes[0].id, name: memes[0].name, exact: false } : null;
+}
+
+// Plans d'extension que l'utilisateur peut mettre à jour (permission `versionAutorisee`), triés par nom.
+function _plansExtAGerer(X) {
+  const PR = window.PlanRegistry;
+  if (!PR || typeof PR.getAll !== "function" || typeof X.versionAutorisee !== "function") return [];
+  return (PR.getAll() || []).filter(function(e) {
+    return e && e.type === "ext" && X.versionAutorisee(e.id);
+  }).sort(function(a, b) { return String(a.name || "").localeCompare(String(b.name || "")); });
+}
+
+// « Mettre à jour quel plan ☁️ ? » → id registre choisi, "" (« Aucun : publier comme nouveau plan ») ou null
+// (annulé). Présélection : le premier plan du même nom que le ZIP, sinon « Aucun ». ⚠️ Le choix ne fait que
+// désigner le plan : la prise revérifie la permission et le serveur de l'extension le droit à l'envoi.
+// La liste est posée par le DOM (noms bruts en textContent) ; sa valeur est relue à chaque changement, la
+// fenêtre étant retirée avant la résolution de ktaConfirm.
+async function _choisirPlanExtAMettreAJour(plans, nomZip) {
+  const nom = String(nomZip || "").trim().toLowerCase();
+  const memeNom = plans.find(function(e) { return String(e.name || "").trim().toLowerCase() === nom; });
+  let valeur = memeNom ? memeNom.id : "";
+  const promesse = window.ktaConfirm(window.I18n.t("ext.publier.choixQuestion") +
+    '<br><select id="kta-gen-cible" style="width:100%; margin-top:10px;"></select>',
+    { titre: window.I18n.t("ext.publier.choixTitre"), okLabel: window.I18n.t("ext.publier.choixOk") });
+  const liste = document.getElementById("kta-gen-cible");
+  if (liste) {
+    const aucun = document.createElement("option");
+    aucun.value = "";
+    aucun.textContent = window.I18n.t("ext.publier.choixAucun");
+    liste.appendChild(aucun);
+    plans.forEach(function(e) {
+      const o = document.createElement("option");
+      o.value = e.id;
+      o.textContent = "☁️ " + (e.name || e.id);
+      liste.appendChild(o);
+    });
+    liste.value = valeur;
+    liste.addEventListener("change", function() { valeur = liste.value; });
+  }
+  return (await promesse) ? valeur : null;
 }
 
 window.afficherPlanner = afficherPlanner;
