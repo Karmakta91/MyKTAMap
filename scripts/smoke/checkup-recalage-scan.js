@@ -7,7 +7,8 @@
 // fichier « autre scan » = ces points passés par une similitude connue (×1,25, 4°, décalage), plus 3 homonymes
 // aberrants, un tracé et une zone. Vérifie, à la souris :
 //   1. depuis l'accueil (aucun plan) : seul le mode résolutions, message clair ;
-//   2. par les noms : 20 repères, écart ≈ 0, les 3 homonymes écartés ; le fichier téléchargé retombe sur le plan ;
+//   2. par les uid (10 points renommés) puis les noms : écart ≈ 0, les 3 aberrants écartés, sources annoncées ;
+//      le fichier téléchargé retombe sur le plan ;
 //   3. aperçu : calque temporaire sur la carte, retiré à la fermeture de l'outil ;
 //   4. repères cliqués : 4 clics dont un faux (signalé en rouge, laissé hors du calcul), retiré → recalage juste ;
 //   5. résolutions : proportions divergentes = refus bloquant ; mêmes proportions = autorisé.
@@ -85,7 +86,7 @@ async function telecharger(page, selecteur) {
 function ecartMax(obj, verite) {
   let m = 0;
   (obj.data || []).forEach(function (p) {
-    const v = verite[p.nom];
+    const v = verite[p.ref || p.nom];
     if (v) m = Math.max(m, Math.hypot(p.x - v.x, p.y - v.y));
   });
   return m;
@@ -142,7 +143,7 @@ function nbLayers(page) {
       let s = 12345;
       const r = function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
       for (let i = 0; i < 20; i++) {
-        const p = { id: "Repère checkup " + i, nom: "Repère checkup " + i, x: Math.round(W * (0.1 + 0.8 * r())),
+        const p = { id: "Repère checkup " + i, nom: "Repère checkup " + i, uid: "pt_chk" + i, x: Math.round(W * (0.1 + 0.8 * r())),
           y: Math.round(H * (0.1 + 0.8 * r())), tags: ["salle"], etat: "Non inspectée", description: "", source: "editor" };
         if (niv !== undefined) p.level = niv;
         pts.push(p);
@@ -154,10 +155,14 @@ function nbLayers(page) {
     });
     const noms = Object.keys(verite);
     const fichier = { data: [], roads: [], zones: [] };
-    noms.forEach(function (n) { const q = versAutreScan(verite[n]); fichier.data.push({ nom: n, x: q.x, y: q.y }); });
+    // Les 10 premiers ne se retrouvent QUE par leur uid (renommés dans le fichier), les 10 autres par leur nom.
+    noms.forEach(function (n, i) {
+      const q = versAutreScan(verite[n]);
+      fichier.data.push(i < 10 ? { nom: "Ancien scan " + i, uid: "pt_chk" + i, ref: n, x: q.x, y: q.y } : { nom: n, ref: n, x: q.x, y: q.y });
+    });
     // Homonymes aberrants : même nom qu'un point du plan, position fausse dans le fichier.
     ["Repère checkup 3", "Repère checkup 9", "Repère checkup 15"].forEach(function (n, i) {
-      const p = fichier.data.find(function (d) { return d.nom === n; });
+      const p = fichier.data.find(function (d) { return d.ref === n; });
       p.x += 400 + 150 * i; p.y -= 250 + 90 * i;
     });
     const g = function (k) { return versAutreScan(verite[noms[k]]); };
@@ -178,7 +183,8 @@ function nbLayers(page) {
                  ? document.querySelector("[data-recal-methode][aria-pressed=true]").getAttribute("data-recal-methode") : null };
     });
     verifier(recap.methode === "noms", "méthode par défaut avec un plan ouvert : par les noms", recap.methode);
-    verifier(/17 repères/.test(recap.txt) && /3 écarté/.test(recap.txt), "17 repères retenus, 3 homonymes écartés", recap.txt);
+    verifier(/17 repères/.test(recap.txt) && /3 écarté/.test(recap.txt), "17 repères retenus, 3 aberrants écartés", recap.txt);
+    verifier(/dont 8 par identifiant commun .* et 9 par le nom/.test(recap.txt), "annonce : 8 repères par uid, 9 par le nom", recap.txt);
     verifier(/médian 0 px/.test(recap.txt) || /median 0 px/.test(recap.txt), "écart médian 0 px annoncé", recap.txt);
     verifier(/1[,.]25|0[,.]8000/.test(recap.txt), "échelle inverse (0,8) annoncée", recap.txt);
     verifier(recap.go, "Télécharger actif");
@@ -217,7 +223,7 @@ function nbLayers(page) {
     await page.locator("#kta-recal-files").setInputFiles(FICH);
     await page.waitForTimeout(500);
     await page.locator("[data-recal-methode=clics]").click();
-    const cibles = ["Repère checkup 0", "Repère checkup 5", "Repère checkup 11", "Repère checkup 17"];
+    const cibles = ["Repère checkup 10", "Repère checkup 12", "Repère checkup 16", "Repère checkup 18"];
     for (let i = 0; i < cibles.length; i++) {
       const nom = cibles[i];
       await page.locator("#kta-recal-clic-point").selectOption({ label: nom });
@@ -243,7 +249,7 @@ function nbLayers(page) {
                visible: getComputedStyle(document.getElementById("kta-recal-modal")).display !== "none" };
     });
     verifier(etatClics.visible && etatClics.lignes === 4, "4 repères cliqués, l'outil revient après chaque clic", etatClics);
-    verifier(etatClics.suspects.length === 1 && etatClics.suspects[0] === "Repère checkup 11",
+    verifier(etatClics.suspects.length === 1 && etatClics.suspects[0] === "Repère checkup 16",
       "le mauvais clic est signalé en rouge, et lui seul", etatClics.suspects);
     await capture(page, "3-clics");
     await page.locator(".kta-recal-suspect button").click();

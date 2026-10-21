@@ -7,7 +7,7 @@
 // recalageScan.js — « Recaler des données sur un autre scan » (Éditeur de données) : des fichiers .json relevés
 //   sur un scan sont réécrits dans le repère d'un autre scan du même plan, téléchargés en `_conv.json`.
 // Expose : window.ktaOuvrirRecalageScan() (la modale) · window.KtaRecalageScan (calcul PUR, sans DOM).
-// Méthodes, de la meilleure à la pire : noms communs avec le plan ouvert (moindres carrés, homonymes aberrants
+// Méthodes, de la meilleure à la pire : uid puis noms communs avec le plan ouvert (moindres carrés, homonymes aberrants
 //   écartés) · repères cliqués sur le plan ouvert · rapport des résolutions (même cadrage seulement).
 // Sens : coordonnées du FICHIER → plan OUVERT. Toutes remplissent une affine M = {a,b,c,d,e,f} :
 //   x' = a·x + b·y + e ; y' = c·x + d·y + f.
@@ -115,7 +115,9 @@
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
         const nom = (p.nom !== undefined && p.nom !== null && String(p.nom).trim()) ? p.nom : p.id;
         if (nom === undefined || nom === null || !String(nom).trim()) return;
-        out.push({ nom: String(nom), x: p.x, y: p.y });
+        const q = { nom: String(nom), x: p.x, y: p.y };
+        if (typeof p.uid === "string" && p.uid) q.uid = p.uid;
+        out.push(q);
       });
     });
     return out;
@@ -145,6 +147,79 @@
     });
     paires.sort(function (p, q) { return p.nom < q.nom ? -1 : (p.nom > q.nom ? 1 : 0); });
     return { paires: paires, ambigus: ambigus };
+  }
+
+  const _valide = function (p) {
+    return p && typeof p.x === "number" && typeof p.y === "number" && Number.isFinite(p.x) && Number.isFinite(p.y);
+  };
+
+  // Objets porteurs d'un uid (points ET tracés / zones / structures) d'un fichier ou du plan : uid → liste
+  // (plus d'un élément = uid en double de ce côté, inutilisable).
+  function _indexUid(obj) {
+    const m = new Map();
+    if (!obj || typeof obj !== "object") return m;
+    const ajouter = function (uid, o) {
+      if (typeof uid !== "string" || !uid) return;
+      const l = m.get(uid);
+      if (l) l.push(o); else m.set(uid, [o]);
+    };
+    ["data", "editorPoints"].forEach(function (k) {
+      (Array.isArray(obj[k]) ? obj[k] : []).forEach(function (p) {
+        if (!p || !_valide(p)) return;
+        const nom = (p.nom !== undefined && p.nom !== null && String(p.nom).trim()) ? p.nom : (p.id || p.uid);
+        ajouter(p.uid, { geo: false, nom: String(nom), pts: [{ x: p.x, y: p.y }] });
+      });
+    });
+    ["roads", "zones", "structures"].forEach(function (k) {
+      (Array.isArray(obj[k]) ? obj[k] : []).forEach(function (g) {
+        if (!g || !Array.isArray(g.points)) return;
+        ajouter(g.uid, { geo: true, nom: String(g.nom || g.type || k), pts: g.points.filter(_valide), n: g.points.length });
+      });
+    });
+    return m;
+  }
+
+  // Paires par uid (même Générateur) : l'uid PRIME sur le nom. Un point = une paire ; un tracé / une zone / une
+  // structure = une paire par sommet, SEULEMENT avec le même nombre de sommets des deux côtés (sinon il a été
+  // retouché, ses sommets ne se correspondent plus un à un : objet ignoré). Un uid présent deux fois d'un côté est
+  // ignoré. Rend { paires (source "uid"), uidsA, uidsB (uid appariés), doubles, geoIgnores }.
+  function apparierParUid(objA, objB) {
+    const iA = _indexUid(objA), iB = _indexUid(objB);
+    const paires = [], uidsA = new Set(), uidsB = new Set();
+    let doubles = 0, geoIgnores = 0;
+    iA.forEach(function (lA, uid) {
+      const lB = iB.get(uid);
+      if (!lB) return;
+      if (lA.length !== 1 || lB.length !== 1) { doubles++; return; }
+      const a = lA[0], b = lB[0];
+      if (a.geo !== b.geo) return;
+      if (a.geo && (a.n !== b.n || a.pts.length !== a.n || b.pts.length !== b.n || a.n < 1)) { geoIgnores++; return; }
+      for (let i = 0; i < a.pts.length; i++) {
+        paires.push({ nom: a.geo ? a.nom + " #" + (i + 1) : a.nom, A: a.pts[i], B: b.pts[i], source: "uid" });
+      }
+      uidsA.add(uid); uidsB.add(uid);
+    });
+    return { paires: paires, uidsA: uidsA, uidsB: uidsB, doubles: doubles, geoIgnores: geoIgnores };
+  }
+
+  // Appariement complet : uid d'abord, puis noms sur les points restants (un objet apparié par uid n'est pas
+  // réapparié par son nom). Rend { paires, nUid, nNoms, ambigus, doubles, geoIgnores }.
+  function apparier(objA, objB) {
+    const u = apparierParUid(objA, objB);
+    const reste = function (obj, uids) {
+      return pointsNommes(obj).filter(function (p) { return !(p.uid && uids.has(p.uid)); });
+    };
+    const n = apparierParNoms(reste(objA, u.uidsA), reste(objB, u.uidsB));
+    n.paires.forEach(function (p) { p.source = "nom"; });
+    return { paires: u.paires.concat(n.paires), nUid: u.paires.length, nNoms: n.paires.length,
+             ambigus: n.ambigus, doubles: u.doubles, geoIgnores: u.geoIgnores };
+  }
+
+  // Répartition des repères (retenus) entre uid et noms, pour l'annonce de qualité.
+  function compterSources(paires) {
+    let uid = 0, nom = 0;
+    (paires || []).forEach(function (p) { if (p.source === "uid") uid++; else nom++; });
+    return { uid: uid, nom: nom };
   }
 
   function _centres(paires) {
@@ -382,6 +457,7 @@
     matriceHomothetie: matriceHomothetie, matriceRecalage: matriceRecalage, matriceDeuxPaires: matriceDeuxPaires,
     appliquer: appliquer, transformerCoordsFichier: transformerCoordsFichier,
     normaliserNom: normaliserNom, pointsNommes: pointsNommes, apparierParNoms: apparierParNoms,
+    apparierParUid: apparierParUid, apparier: apparier, compterSources: compterSources,
     similitudeMC: similitudeMC, affineMC: affineMC, ecarts: ecarts, statsEcarts: statsEcarts,
     seuilRejet: seuilRejet, estimerRobuste: estimerRobuste, estimerReperes: estimerReperes,
     ecartProportions: ecartProportions
@@ -404,20 +480,17 @@
     return !!(affiche && window.map && window.APP_CONFIG && window.APP_CONFIG.imageHeight);
   }
 
-  // Points nommés du plan ouvert : calques (marqueurs) + session.
-  function _pointsPlan() {
-    const out = [];
-    const ajouter = function (liste) {
-      (liste || []).forEach(function (p) {
-        if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
-        const nom = (p.nom !== undefined && p.nom !== null && String(p.nom).trim()) ? p.nom : p.id;
-        if (nom === undefined || nom === null || !String(nom).trim()) return;
-        out.push({ nom: String(nom), x: p.x, y: p.y });
-      });
+  // Le plan ouvert sous la forme d'un fichier (calques + session) : points, tracés, zones, structures.
+  function _objetPlan() {
+    const lire = function (nom) {
+      try { return (typeof window[nom] === "function" && window[nom]()) || []; } catch (e) { return []; }
     };
-    try { if (typeof window.getAllEmbeddedPoints === "function") ajouter(window.getAllEmbeddedPoints()); } catch (e) {}
-    try { if (typeof window.getEditorPoints === "function") ajouter(window.getEditorPoints()); } catch (e) {}
-    return out;
+    return {
+      data: lire("getAllEmbeddedPoints").concat(lire("getEditorPoints")),
+      roads: lire("getAllEmbeddedRoads").concat(lire("getRoads")),
+      zones: lire("getAllEmbeddedZones").concat(lire("getZones")),
+      structures: lire("getAllEmbeddedStructures").concat(lire("getStructures"))
+    };
   }
 
   function _couleurApercu() {
@@ -685,7 +758,11 @@
     function calculerNoms() {
       etat.noms = null; etat.nomsPaires = null; etat.utiliserAffine = false;
       if (!planOuvert || !etat.fichiers.length) return;
-      const app = apparierParNoms(pointsFichiers(), _pointsPlan());
+      const objF = { data: [], editorPoints: [], roads: [], zones: [], structures: [] };
+      etat.fichiers.forEach(function (f) {
+        Object.keys(objF).forEach(function (k) { if (Array.isArray(f.obj[k])) objF[k] = objF[k].concat(f.obj[k]); });
+      });
+      const app = apparier(objF, _objetPlan());
       etat.nomsPaires = app;
       etat.noms = estimerRobuste(app.paires);
       const wrap = $("kta-recal-affine-wrap");
@@ -804,7 +881,9 @@
         const st = aff ? r.affine.stats : r.stats;
         const ecartees = aff ? r.affine.ecartees : r.ecartees;
         const M = aff ? r.affine.M : r.M;
+        const src = compterSources(aff ? r.affine.retenues : r.retenues);
         let html = t("recalscan.noms.qualite", { n: st.n, med: px(st.mediane), p90: px(st.p90) }) + "<br>"
+          + t("recalscan.noms.sources", { uid: src.uid, noms: src.nom }) + "<br>"
           + t(aff ? "recalscan.recap.affine" : "recalscan.recap.similitude",
               { s: M._s.toFixed(4), theta: M._thetaDeg.toFixed(2) });
         if (ecartees.length) {

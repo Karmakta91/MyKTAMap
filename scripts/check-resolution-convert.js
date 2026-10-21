@@ -120,6 +120,33 @@ t("appariement : seuls les noms uniques des deux côtés (≥ 4 caractères) for
   app.paires.length === 1 && app.paires[0].nom === "Galerie Nord" && app.paires[0].B.x === 10, app);
 t("appariement : les noms portés deux fois sont comptés ambigus (pas devinés)", app.ambigus === 2, app.ambigus);
 
+// ── Appariement par uid (même Générateur), prioritaire sur le nom ──
+const fU = { data: [{ nom: "Sans nom commun 1", uid: "pt_a", x: 0, y: 0 }, { nom: "Galerie Nord", uid: "pt_b", x: 10, y: 0 },
+                    { nom: "Carrefour Est", x: 20, y: 5 }, { nom: "Double", uid: "pt_d", x: 1, y: 1 }, { nom: "Double2", uid: "pt_d", x: 2, y: 2 }],
+             roads: [{ type: "principal", uid: "rd_1", points: [{ x: 0, y: 0 }, { x: 5, y: 5 }, { x: 9, y: 9 }] },
+                     { type: "principal", uid: "rd_2", points: [{ x: 1, y: 0 }, { x: 2, y: 0 }] }],
+             zones: [{ type: "eau", uid: "zn_1", points: [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 2 }] }] };
+const pU = { data: [{ nom: "Autre nom", uid: "pt_a", x: 100, y: 100 }, { nom: "Galerie Nord", uid: "pt_b", x: 110, y: 100 },
+                    { nom: "Galerie Nord bis", x: 999, y: 999 }, { nom: "Carrefour Est", x: 120, y: 105 }, { nom: "Double", uid: "pt_d", x: 5, y: 5 }],
+             roads: [{ type: "principal", uid: "rd_1", points: [{ x: 100, y: 100 }, { x: 105, y: 105 }, { x: 109, y: 109 }] },
+                     { type: "principal", uid: "rd_2", points: [{ x: 101, y: 100 }, { x: 102, y: 100 }, { x: 103, y: 100 }] }],
+             zones: [{ type: "eau", uid: "zn_1", points: [{ x: 100, y: 101 }, { x: 101, y: 101 }, { x: 101, y: 102 }] }] };
+const U = K.apparierParUid(fU, pU);
+t("uid : un point apparié même si son nom diffère", U.paires.some(p => p.A.x === 0 && p.A.y === 0 && p.B.x === 100 && p.source === "uid"));
+t("uid : tracé et zone au même nombre de sommets → une paire par sommet",
+  U.paires.filter(p => /^principal #/.test(p.nom)).length === 3 && U.paires.filter(p => /^eau #/.test(p.nom)).length === 3);
+t("uid : tracé au nombre de sommets différent → ignoré (et compté)", U.geoIgnores === 1 && !U.paires.some(p => p.A.x === 1 && p.A.y === 0));
+t("uid : un uid présent deux fois d'un côté est ignoré", U.doubles === 1 && !U.paires.some(p => p.B.x === 5));
+const AP = K.apparier(fU, pU);
+t("mixte : uid d'abord, puis le nom sur les points restants (dont l'objet à uid en double, repris par son nom)",
+  AP.nUid === 2 + 3 + 3 && AP.nNoms === 2 &&
+  AP.paires.filter(p => p.source === "nom").map(p => p.nom).sort().join("|") === "Carrefour Est|Double", AP);
+t("mixte : un objet apparié par uid n'est pas réapparié par son nom",
+  AP.paires.filter(p => p.nom === "Galerie Nord").length === 1 && AP.paires.find(p => p.nom === "Galerie Nord").source === "uid");
+t("noms seuls : sans uid nulle part, l'appariement retombe sur les noms",
+  K.apparier({ data: [{ nom: "Carrefour Est", x: 1, y: 1 }] }, { data: [{ nom: "carrefour-est", x: 2, y: 2 }] }).nNoms === 1);
+t("sources comptées (uid / noms)", JSON.stringify(K.compterSources(AP.paires)) === JSON.stringify({ uid: 8, nom: 2 }));
+
 // ── Jeux fictifs : relevé de référence + version transformée ──
 function alea(graine) { let s = graine >>> 0; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
 function releve(n, graine) {
@@ -197,6 +224,17 @@ t("robuste : 30 % d'aberrants et bruit ±0,5 px → les 15 aberrants écartés, 
 R = K.estimerRobuste(paires(releve(40, 13), { a: 0.8, b: 0, c: 0, d: 0.84, e: -900, f: 10 }));
 t("robuste : scan étiré (0,80 × 0,84) → affine proposée et quasi exacte",
   R && R.affineMeilleure === true && R.affine.stats.p90 < 0.01, R && { sim: R.stats, aff: R.affine && R.affine.stats });
+
+// uid seul : noms tous différents d'un côté à l'autre, un objet déplacé à la main sur le nouveau scan (aberrant).
+const relU = releve(30, 31);
+const fichU = { data: relU.map((p, i) => ({ nom: "Ancien " + i, uid: "pt_u" + i, x: p.x, y: p.y })) };
+const planU = { data: relU.map((p, i) => Object.assign({ nom: "Nouveau " + i, uid: "pt_u" + i }, K.appliquer(VRAI2, p))) };
+planU.data[4].x += 700;
+const APu = K.apparier(fichU, planU);
+R = K.estimerRobuste(APu.paires);
+t("uid seul : 30 repères par uid, aucun par nom, l'objet déplacé est écarté, écart ≈ 0",
+  APu.nUid === 30 && APu.nNoms === 0 && R && R.ecartees.length === 1 && R.ecartees[0].nom === "Ancien 4" &&
+  R.stats.mediane < 0.01 && proche(R.M._s, 1.37, 1e-9), R && { st: R.stats, ec: R.ecartees });
 
 t("robuste : moins de 3 paires → refus « peu »", K.estimerRobuste(P.slice(0, 2)).err === "peu");
 t("robuste : repères tous confondus → refus « degenere »",
