@@ -28,12 +28,11 @@
 
 ## Maintenant
 
-- **Vue OSM : points sous les tuiles du plan** — ✅ 21/10 (Chrome avec GPU, plan réel, zooms 8 → 19, 4 niveaux) : aucune
-  tuile ne couvre un POI au pixel ; seules les icônes `danger`/`info`/`pa`/`pc`/`pe` (translucides) prennent la teinte
-  du plan, et les pictos du fond OSM sont sous le plan par construction. Journal : `git log -S"sous les tuiles"`.
-  `qui: KARMA · action: dire si les POI ternes sont ces 5 types ou des pictos OSM, puis choisir (fond opaque sous
-  l'icône en Vue OSM, ou icônes opaques au catalogue) · fini: choix codé, ou fermé « perception » · depuis: 16/10/2026
-  · taille: S`
+- **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA : toutes les icônes, sur un de ses deux écrans PC et sur iPhone.
+  ✅ 21/10 non reproduit au pixel (plan réel, Chrome et WebKit, échelles 1 / 1,25 / 1,5 / 2 / 3, bascule d'échelle en
+  direct, zooms 8 → 19) ; checkup `checkup-osm-empilement.js` aux 4 échelles. Journal : `git log -S"sous les tuiles"`.
+  `qui: KARMA · action: sur l'écran fautif, relever devicePixelRatio, version du navigateur et une capture du défaut
+  · fini: reproduit au harnais et corrigé, ou fermé « non reproduit » · depuis: 16/10/2026 · taille: S`
 - **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
   ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
   Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.
