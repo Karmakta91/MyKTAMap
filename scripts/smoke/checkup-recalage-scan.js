@@ -11,7 +11,10 @@
 //      le fichier téléchargé retombe sur le plan ;
 //   3. aperçu : calque temporaire sur la carte, retiré à la fermeture de l'outil ;
 //   4. repères cliqués : 4 clics dont un faux (signalé en rouge, laissé hors du calcul), retiré → recalage juste ;
-//   5. résolutions : proportions divergentes = refus bloquant ; mêmes proportions = autorisé.
+//   5. résolutions : proportions divergentes = refus bloquant ; mêmes proportions = autorisé ;
+//   6. session polluée par une copie NON convertie du fichier : les calques passent d'abord, l'échelle vraie est
+//      retrouvée (lus ensemble, calques et session donnaient l'identité) ;
+//   7. fichier déjà dans le repère des calques : alerte « même position », « Écarter » recalcule sur la session.
 // Usage : node scripts/smoke/checkup-recalage-scan.js   (SMOKE_PORT pour une autre copie ; RECAL_SHOTS=<dossier>
 // pour des captures)
 // =====================================================================
@@ -184,7 +187,8 @@ function nbLayers(page) {
     });
     verifier(recap.methode === "noms", "méthode par défaut avec un plan ouvert : par les noms", recap.methode);
     verifier(/17 repères/.test(recap.txt) && /3 écarté/.test(recap.txt), "17 repères retenus, 3 aberrants écartés", recap.txt);
-    verifier(/dont 8 par identifiant commun .* et 9 par le nom/.test(recap.txt), "annonce : 8 repères par uid, 9 par le nom", recap.txt);
+    verifier(/la session .*: 8 par identifiant commun .*, 9 par le nom/.test(recap.txt),
+      "annonce : repères pris dans la session (calques sans repère commun), 8 par uid, 9 par le nom", recap.txt);
     verifier(/médian 0 px/.test(recap.txt) || /median 0 px/.test(recap.txt), "écart médian 0 px annoncé", recap.txt);
     verifier(/1[,.]25|0[,.]8000/.test(recap.txt), "échelle inverse (0,8) annoncée", recap.txt);
     verifier(recap.go, "Télécharger actif");

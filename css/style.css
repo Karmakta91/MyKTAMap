@@ -20184,6 +20184,9 @@ button.kta-cfg-ligne-action {
   padding: 8px 10px; margin-top: 8px; font-size: 12px; color: var(--kta-texte);
 }
 .kta-recal-warn.kta-recal-bloque { border-color: var(--kta-erreur-bord); background: var(--kta-erreur-fond); }
+/* Alerte « même position » : texte et bouton Écarter côte à côte, le bouton passe dessous en étroit. */
+.kta-recal-identiques { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.kta-recal-identiques > span { flex: 1 1 240px; min-width: 0; }
 .kta-recal-actions { margin-top: 12px; flex-wrap: wrap; }
 .kta-recal-barre {
   position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);

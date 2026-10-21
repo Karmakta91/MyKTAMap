@@ -9,6 +9,10 @@
 // Expose : window.ktaOuvrirRecalageScan() (la modale) · window.KtaRecalageScan (calcul PUR, sans DOM).
 // Méthodes, de la meilleure à la pire : uid puis noms communs avec le plan ouvert (moindres carrés, homonymes aberrants
 //   écartés) · repères cliqués sur le plan ouvert · rapport des résolutions (même cadrage seulement).
+// 🩸 Le scan d'abord : repères cherchés dans les CALQUES du plan ; la session ne sert que s'ils en donnent moins de 3,
+//   sans ses paires identiques au fichier. Une session importée d'une ancienne version porte souvent une copie NON
+//   convertie du fichier : lue avec les calques, elle donnait l'identité. Repères majoritairement à la même position
+//   = alerte, avec le choix de les écarter.
 // Sens : coordonnées du FICHIER → plan OUVERT. Toutes remplissent une affine M = {a,b,c,d,e,f} :
 //   x' = a·x + b·y + e ; y' = c·x + d·y + f.
 // 🩸 Le rapport des résolutions n'est PAS l'échelle dès que le cadrage diffère entre deux scans (cas courant) :
@@ -25,6 +29,8 @@
   const PLANCHER_PX = 3;          // seuil de rejet minimal : sous ce plancher un écart n'est jamais aberrant
   const NOM_MIN = 4;              // un nom normalisé plus court (« P1 ») est trop banal pour apparier
   const PROPORTIONS_MAX = 0.02;   // au-delà, deux images n'ont pas le même cadrage
+  const IDENTIQUE_PX = 0.01;      // sous cet écart AVANT transformation, un repère est « à la même position »
+  const MIN_PAIRES = 3;
 
   function matriceHomothetie(kX, kY) {
     return { a: kX, b: 0, c: 0, d: kY, e: 0, f: 0 };
@@ -215,11 +221,53 @@
              ambigus: n.ambigus, doubles: u.doubles, geoIgnores: u.geoIgnores };
   }
 
-  // Répartition des repères (retenus) entre uid et noms, pour l'annonce de qualité.
+  // Répartition des repères (retenus) : uid / noms, et calques / session (`origine`), pour l'annonce de qualité.
   function compterSources(paires) {
-    let uid = 0, nom = 0;
-    (paires || []).forEach(function (p) { if (p.source === "uid") uid++; else nom++; });
-    return { uid: uid, nom: nom };
+    let uid = 0, nom = 0, calque = 0, session = 0;
+    (paires || []).forEach(function (p) {
+      if (p.source === "uid") uid++; else nom++;
+      if (p.origine === "session") session++; else calque++;
+    });
+    return { uid: uid, nom: nom, calque: calque, session: session };
+  }
+
+  // Repère à la même position dans le fichier et sur le plan, AVANT toute transformation.
+  function estIdentique(p) {
+    return !!(p && p.A && p.B && Math.abs(p.A.x - p.B.x) < IDENTIQUE_PX && Math.abs(p.A.y - p.B.y) < IDENTIQUE_PX);
+  }
+  function partIdentiques(paires) {
+    const n = Array.isArray(paires) ? paires.length : 0;
+    return n ? paires.filter(estIdentique).length / n : 0;
+  }
+
+  // Appariement avec le plan ouvert, le scan d'abord : calques (données du ZIP), puis la session seulement si les
+  // calques donnent moins de 3 paires ; une paire de session identique au fichier est ignorée (copie non convertie).
+  // opts.ecarterIdentiques : les paires identiques des calques sont retirées aussi (choix de l'utilisateur).
+  // Rend { paires (chacune avec `origine` "calque" | "session"), nUid, nNoms, ambigus, doubles, geoIgnores,
+  //   sessionIgnores, identiquesEcartes, sessionLue }.
+  function apparierPlan(objF, calques, session, opts) {
+    opts = opts || {};
+    const marquer = function (app, origine) { app.paires.forEach(function (p) { p.origine = origine; }); return app; };
+    const c = marquer(apparier(objF, calques), "calque");
+    let pc = c.paires, identiquesEcartes = 0;
+    if (opts.ecarterIdentiques) {
+      pc = pc.filter(function (p) { return !estIdentique(p); });
+      identiquesEcartes = c.paires.length - pc.length;
+    }
+    const out = { ambigus: c.ambigus, doubles: c.doubles, geoIgnores: c.geoIgnores, sessionIgnores: 0,
+                  identiquesEcartes: identiquesEcartes, sessionLue: false };
+    let paires = pc;
+    if (pc.length < MIN_PAIRES) {
+      const s = marquer(apparier(objF, session), "session");
+      const ps = s.paires.filter(function (p) { return !estIdentique(p); });
+      out.sessionIgnores = s.paires.length - ps.length;
+      out.sessionLue = true;
+      out.ambigus += s.ambigus; out.doubles += s.doubles; out.geoIgnores += s.geoIgnores;
+      paires = pc.concat(ps);
+    }
+    const src = compterSources(paires);
+    out.paires = paires; out.nUid = src.uid; out.nNoms = src.nom;
+    return out;
   }
 
   function _centres(paires) {
@@ -392,7 +440,7 @@
     opts = opts || {};
     const plancher = (typeof opts.plancher === "number") ? opts.plancher : PLANCHER_PX;
     const n = Array.isArray(paires) ? paires.length : 0;
-    if (n < 3) return { err: "peu", n: n };
+    if (n < MIN_PAIRES) return { err: "peu", n: n };
     let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
     paires.forEach(function (p) {
       xmin = Math.min(xmin, p.B.x); xmax = Math.max(xmax, p.B.x);
@@ -468,11 +516,12 @@
   }
 
   const CALCUL = {
-    PLANCHER_PX: PLANCHER_PX, NOM_MIN: NOM_MIN, PROPORTIONS_MAX: PROPORTIONS_MAX,
+    PLANCHER_PX: PLANCHER_PX, NOM_MIN: NOM_MIN, PROPORTIONS_MAX: PROPORTIONS_MAX, IDENTIQUE_PX: IDENTIQUE_PX,
     matriceHomothetie: matriceHomothetie, matriceRecalage: matriceRecalage, matriceDeuxPaires: matriceDeuxPaires,
     appliquer: appliquer, transformerCoordsFichier: transformerCoordsFichier,
     normaliserNom: normaliserNom, pointsNommes: pointsNommes, apparierParNoms: apparierParNoms,
-    apparierParUid: apparierParUid, apparier: apparier, compterSources: compterSources,
+    apparierParUid: apparierParUid, apparier: apparier, apparierPlan: apparierPlan, compterSources: compterSources,
+    estIdentique: estIdentique, partIdentiques: partIdentiques,
     similitudeMC: similitudeMC, affineMC: affineMC, ecarts: ecarts, statsEcarts: statsEcarts,
     seuilRejet: seuilRejet, estimerRobuste: estimerRobuste, estimerReperes: estimerReperes,
     ecartProportions: ecartProportions
@@ -495,17 +544,18 @@
     return !!(affiche && window.map && window.APP_CONFIG && window.APP_CONFIG.imageHeight);
   }
 
-  // Le plan ouvert sous la forme d'un fichier (calques + session) : points, tracés, zones, structures.
-  function _objetPlan() {
+  // Le plan ouvert sous la forme de deux fichiers, lus SÉPARÉMENT (cf. apparierPlan) : calques puis session.
+  function _lirePlan(noms) {
     const lire = function (nom) {
       try { return (typeof window[nom] === "function" && window[nom]()) || []; } catch (e) { return []; }
     };
-    return {
-      data: lire("getAllEmbeddedPoints").concat(lire("getEditorPoints")),
-      roads: lire("getAllEmbeddedRoads").concat(lire("getRoads")),
-      zones: lire("getAllEmbeddedZones").concat(lire("getZones")),
-      structures: lire("getAllEmbeddedStructures").concat(lire("getStructures"))
-    };
+    return { data: lire(noms[0]), roads: lire(noms[1]), zones: lire(noms[2]), structures: lire(noms[3]) };
+  }
+  function _objetCalques() {
+    return _lirePlan(["getAllEmbeddedPoints", "getAllEmbeddedRoads", "getAllEmbeddedZones", "getAllEmbeddedStructures"]);
+  }
+  function _objetSession() {
+    return _lirePlan(["getEditorPoints", "getRoads", "getZones", "getStructures"]);
   }
 
   function _couleurApercu() {
@@ -529,6 +579,7 @@
       noms: null,            // résultat estimerRobuste
       nomsPaires: null,
       utiliserAffine: false,
+      ecarterIdentiques: false,   // choix de l'utilisateur après l'alerte « même position »
       reperes: [],           // [{ nom, A, B }]
       apercu: null,          // L.layerGroup
       pickActif: false
@@ -620,6 +671,10 @@
 
           <div id="kta-recal-recap" class="kta-recal-recap" aria-live="polite">—</div>
           <div id="kta-recal-warn" class="kta-recal-warn" hidden></div>
+          <div id="kta-recal-identiques" class="kta-recal-warn kta-recal-identiques" hidden>
+            <span id="kta-recal-identiques-txt"></span>
+            <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-recal-ecarter">${t("recalscan.noms.ecarterIdentiques")}</button>
+          </div>
           <div class="kta-conv-actions kta-recal-actions">
             <button class="kta-btn kta-btn-ghost"   id="kta-recal-annuler">${t("recalscan.annuler")}</button>
             ${planOuvert ? `<button class="kta-btn kta-btn-ghost" id="kta-recal-apercu" disabled>👁️ ${t("recalscan.apercu")}</button>` : ""}
@@ -748,7 +803,7 @@
     // ── Fichiers ──
     $("kta-recal-files").addEventListener("change", function (e) {
       const liste = Array.prototype.slice.call(e.target.files || []);
-      etat.fichiers = []; etat.illisibles = []; etat.reperes = [];
+      etat.fichiers = []; etat.illisibles = []; etat.reperes = []; etat.ecarterIdentiques = false;
       Promise.all(liste.map(function (f) {
         return f.text().then(function (txt) { etat.fichiers.push({ name: f.name, obj: JSON.parse(txt) }); })
           .catch(function () { etat.illisibles.push(f.name); });
@@ -758,17 +813,27 @@
         let txt = noms.length ? noms.join(" · ") : t("recalscan.aucunFichier");
         if (etat.illisibles.length) txt += " — ⚠️ " + t("recalscan.illisibles", { liste: etat.illisibles.join(", ") });
         $("kta-recal-files-liste").textContent = txt;
-        // Indicateur peint AVANT le calcul (des milliers de paires peuvent prendre une seconde sur téléphone).
-        $("kta-recal-recap").textContent = "⏳ " + t("recalscan.calcul");
-        $("kta-recal-go").disabled = true;
-        if ($("kta-recal-apercu")) $("kta-recal-apercu").disabled = true;
-        setTimeout(function () {
-          if (!document.getElementById(ID)) return;   // outil fermé entre-temps
-          calculerNoms();
-          remplirChoixClic();
-          recap();
-        }, 40);
+        recalculerNoms(true);
       });
+    });
+
+    // Indicateur peint AVANT le calcul (des milliers de paires peuvent prendre une seconde sur téléphone).
+    function recalculerNoms(nouveauxFichiers) {
+      $("kta-recal-recap").textContent = "⏳ " + t("recalscan.calcul");
+      $("kta-recal-identiques").hidden = true;
+      $("kta-recal-go").disabled = true;
+      if ($("kta-recal-apercu")) $("kta-recal-apercu").disabled = true;
+      setTimeout(function () {
+        if (!document.getElementById(ID)) return;   // outil fermé entre-temps
+        calculerNoms();
+        if (nouveauxFichiers) remplirChoixClic();
+        recap();
+      }, 40);
+    }
+    $("kta-recal-ecarter").addEventListener("click", function () {
+      etat.ecarterIdentiques = true;
+      retirerApercu();
+      recalculerNoms(false);
     });
 
     function pointsFichiers() {
@@ -784,7 +849,7 @@
       etat.fichiers.forEach(function (f) {
         Object.keys(objF).forEach(function (k) { if (Array.isArray(f.obj[k])) objF[k] = objF[k].concat(f.obj[k]); });
       });
-      const app = apparier(objF, _objetPlan());
+      const app = apparierPlan(objF, _objetCalques(), _objetSession(), { ecarterIdentiques: etat.ecarterIdentiques });
       etat.nomsPaires = app;
       etat.noms = estimerRobuste(app.paires);
       const wrap = $("kta-recal-affine-wrap");
@@ -904,10 +969,14 @@
         const ecartees = aff ? r.affine.ecartees : r.ecartees;
         const M = aff ? r.affine.M : r.M;
         const src = compterSources(aff ? r.affine.retenues : r.retenues);
+        const app = etat.nomsPaires;
+        const origine = src.session ? (src.calque ? "mixte" : "session") : "calques";
         let html = t("recalscan.noms.qualite", { n: st.n, med: px(st.mediane), p90: px(st.p90) }) + "<br>"
-          + t("recalscan.noms.sources", { uid: src.uid, noms: src.nom }) + "<br>"
-          + t(aff ? "recalscan.recap.affine" : "recalscan.recap.similitude",
+          + t("recalscan.noms.sources", { origine: t("recalscan.noms.origine." + origine), uid: src.uid, noms: src.nom })
+          + "<br>" + t(aff ? "recalscan.recap.affine" : "recalscan.recap.similitude",
               { s: M._s.toFixed(4), theta: M._thetaDeg.toFixed(2) });
+        if (app.sessionIgnores) html += "<br>" + t("recalscan.noms.sessionIgnores", { n: app.sessionIgnores });
+        if (app.identiquesEcartes) html += "<br>" + t("recalscan.noms.identiquesEcartes", { n: app.identiquesEcartes });
         if (ecartees.length) {
           html += "<br>" + t("recalscan.noms.ecartes", { n: ecartees.length,
             liste: esc(ecartees.slice(0, 6).map(function (e) { return e.nom + " (" + px(e.ecart) + " px)"; }).join(", ")
@@ -915,7 +984,9 @@
         }
         let warn = null;
         if (st.p90 > 10) warn = t("recalscan.noms.warnQualite", { p90: px(st.p90) });
-        return { M: M, html: html, warn: warn };
+        // Majorité des repères retenus à la même position : fichier déjà dans ce repère, ou copie non convertie.
+        const part = partIdentiques(r.retenues);
+        return { M: M, html: html, warn: warn, identiques: part > 0.5 ? Math.round(part * 100) : 0 };
       }
       if (etat.methode === "clics") {
         const n = etat.reperes.length;
@@ -988,6 +1059,11 @@
       } else if (res.warn) {
         warnEl.hidden = false;
         warnEl.textContent = "⚠️ " + res.warn;
+      }
+      const boite = $("kta-recal-identiques");
+      boite.hidden = !(etat.methode === "noms" && res.identiques);
+      if (!boite.hidden) {
+        $("kta-recal-identiques-txt").textContent = "⚠️ " + t("recalscan.noms.warnIdentiques", { pct: res.identiques });
       }
       const pret = !!(res.M && !res.err && etat.fichiers.length);
       go.disabled = !pret;
