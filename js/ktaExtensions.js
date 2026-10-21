@@ -590,20 +590,21 @@
     return { remplacer: v.remplacer === true };
   }
 
-  // « Effacer la session » sur un plan d'extension : `effacerSession(idExt) → { miens, tout, auteur }` (ou sa
-  // promesse) dit que le plan est PARTAGÉ et ce que le compte peut supprimer pour tous — `miens` : les objets dont
-  // `auteurObjet(uid).createur === auteur` ; `tout` : tous les objets de la session. null / false rendus tels quels
-  // (pas en promesse) = plan non partagé.
+  // « Effacer la session » sur un plan d'extension : `effacerSession(idExt) → { miens, tout, auteur, enAttente? }` (ou
+  // sa promesse) dit que le plan est PARTAGÉ et ce que le compte peut supprimer pour tous — `miens` : les objets dont
+  // `auteurObjet(uid).createur === auteur` ; `tout` : tous les objets de la session ; `enAttente` : modifications de
+  // cet appareil pas encore envoyées (entier ≥ 0, absent = 0). null / false rendus tels quels (pas en promesse) =
+  // plan non partagé.
   // → null (sans prise, plan local ou du site, ou plan non partagé : fenêtre de l'app seule, SYNCHRONE) ou une
-  // promesse de { miens, tout, auteur }.
+  // promesse de { miens, tout, auteur, enAttente }.
   // 🔒 Erreur, rejet, forme inattendue ou réponse au-delà de DELAI_EFFACEMENT_MS = plan partagé, seul le vidage de
-  // l'appareil est permis. L'appelant relit la prise au moment de confirmer une suppression pour tous.
+  // l'appareil est permis, `enAttente: null` (nombre inconnu). L'appelant relit la prise pour une suppression pour tous.
   const DELAI_EFFACEMENT_MS = 8000;
   function effacementPartage(registreId) {
     const ext = _prise("effacerSession");
     const id = _idExtension(registreId);
     if (!ext || !id || typeof ext.effacerSession !== "function") return null;
-    const refus = { miens: false, tout: false, auteur: null };
+    const refus = { miens: false, tout: false, auteur: null, enAttente: null };
     let v;
     try { v = ext.effacerSession(id); }
     catch (e) { console.warn("[Extensions] « effacerSession » a échoué → vidage de l'appareil seul :", e); return Promise.resolve(refus); }
@@ -611,7 +612,9 @@
     const forme = function (r) {
       if (!r || typeof r !== "object" || Array.isArray(r)) return refus;
       const auteur = typeof r.auteur === "string" && r.auteur.trim() ? r.auteur.trim().slice(0, 40) : null;
-      return { miens: r.miens === true && !!auteur, tout: r.tout === true, auteur: auteur };
+      const n = r.enAttente;
+      return { miens: r.miens === true && !!auteur, tout: r.tout === true, auteur: auteur,
+        enAttente: (n === undefined || n === null) ? 0 : (Number.isInteger(n) && n >= 0 ? n : null) };
     };
     if (!v || typeof v.then !== "function") return Promise.resolve(forme(v));
     let delai;

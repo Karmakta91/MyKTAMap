@@ -10,7 +10,8 @@
 //    jonction seulement quand ses bouts portent les bons niveaux ; note modifiée ; suppression (trace) puis ⏪ ;
 //    pas de fiche pendant un dessin ; lecture seule.
 // B. 📊 Détails de la session → 🗑️ : la confirmation de l'app (plan local), annuler n'efface rien ; les trois choix
-//    d'un plan partagé (prise effacerSession simulée) ; en lecture seule, aux deux entrées, « Vider cet appareil » seul.
+//    d'un plan partagé (prise effacerSession simulée : N en attente → 3 choix, 0 → 2, rien de présélectionné) ; plan ☁️
+//    en lecture seule, aux deux entrées : « Rien à effacer : ce plan vient du serveur ».
 // 🩸 check-api-surface.js teste changerNiveauxJonction dans un `vm` ; seul ce parcours voit la popup, le re-rendu
 // filtré, les ronds et le graphe réel.
 // Usage : node scripts/smoke/checkup-jonction-fiche.js (SMOKE_PORT pour une autre copie)
@@ -343,6 +344,7 @@ async function clicEffacer(page) {
     const ov = document.getElementById("kta-confirm-oui").closest(".kta-readme-modal-overlay");
     const radios = [].slice.call(document.querySelectorAll("[data-kta-confirm-choix]"));
     return { texte: ov ? ov.textContent : "", choix: radios.map(function (r) { return r.value; }),
+      coche: radios.some(function (r) { return r.checked; }), okInactif: document.getElementById("kta-confirm-oui").disabled,
       auDessus: ov ? Number(getComputedStyle(ov).zIndex) > 99999 : false };
   });
 }
@@ -376,13 +378,25 @@ async function partieEffacer(page) {
   const s2 = await etatSession(page);
   verifier(!s2.pts.length && !s2.traces.length && !s2.details, "confirmer : session vidée, aucune trace, Détails fermés", s2);
 
-  // Plan partagé : trois choix, « mes ajouts ».
+  // Plan partagé, N modifications en attente d'envoi : trois choix, rien de présélectionné ; on annule.
+  await ouvrir(page);
+  await semerPoints(page);
+  await simulerExtension(page, { effacer: { miens: true, tout: true, auteur: "moi", enAttente: 4 } });
+  await ouvrirDetails(page);
+  const c2 = await clicEffacer(page);
+  verifier(c2.choix.join() === "appareil,miens,tout" && !c2.coche && c2.okInactif && /\(4 modification/.test(c2.texte),
+    "plan partagé, 4 en attente : trois choix (dont « Annuler … (4 modifications) »), rien de présélectionné, OK inactif", c2);
+  await page.click("#kta-confirm-non");
+  await page.waitForTimeout(400);
+
+  // Plan partagé, rien en attente : deux choix, « mes ajouts ».
   await ouvrir(page);
   await semerPoints(page);
   await simulerExtension(page, { effacer: { miens: true, tout: true, auteur: "moi" } });
   await ouvrirDetails(page);
   const c3 = await clicEffacer(page);
-  verifier(c3.choix.join() === "appareil,miens,tout", "plan partagé : les trois choix de l'effacement existant", c3.choix);
+  verifier(c3.choix.join() === "miens,tout" && !c3.coche && c3.okInactif,
+    "plan partagé, 0 en attente : deux choix (mes ajouts, tout), rien de présélectionné", c3);
   await page.evaluate(function () {
     document.querySelector('[data-kta-confirm-choix="miens"]').click();
     document.getElementById("kta-confirm-oui").click();
@@ -401,42 +415,40 @@ async function partieEffacer(page) {
   verifier(JSON.stringify(s3.traces) === "[\"pt_moi1\",\"pt_moi2\"]" && !s3.pts.length && !s3.details,
     "« mes ajouts » : une trace par objet à moi, appareil vidé, Détails fermés", s3);
 
-  // Lecture seule (même règle aux deux entrées) : bouton présent, « Vider cet appareil » seul, aucune trace.
-  const DROITS = { lectureSeule: true, effacer: { miens: true, tout: true, auteur: "moi" } };
-  const choixPuisOk = async function () {
-    await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 15000);
-    await page.waitForTimeout(450);
-    const choix = await page.evaluate(function () {
-      return [].slice.call(document.querySelectorAll("[data-kta-confirm-choix]")).map(function (r) { return r.value; });
-    });
-    await page.click("#kta-confirm-oui");
-    await page.waitForTimeout(900);
-    const seconde = await page.evaluate(function () { return !!document.getElementById("kta-confirm-oui"); });
-    await page.waitForTimeout(900);
-    return { choix: choix, seconde: seconde };
-  };
+  // Plan ☁️ en lecture seule (même règle aux deux entrées) : « Rien à effacer : ce plan vient du serveur ».
+  const DROITS = { lectureSeule: true, effacer: { miens: true, tout: true, auteur: "moi", enAttente: 3 } };
+  const rienTexte = await page.evaluate(function () { return window.I18n.t("session.partage.rienServeur"); });
   await ouvrir(page);
   await semerPoints(page);
   await simulerExtension(page, DROITS);
-  verifier(await ouvrirDetails(page), "🔒 lecture seule : bouton Effacer présent dans les Détails");
-  await page.click("#kta-refonte-session-effacer");
-  const r1 = await choixPuisOk();
+  await ouvrirDetails(page);
+  const bRo = await page.evaluate(function () {
+    const b = document.getElementById("kta-refonte-session-effacer");
+    return b ? { texte: b.textContent, inactif: b.disabled } : null;
+  });
+  verifier(bRo && bRo.inactif && bRo.texte === rienTexte, "🔒 lecture seule ☁️ (Détails) : bouton inactif « Rien à effacer : ce plan vient du serveur »", bRo);
   const s4 = await etatSession(page);
-  verifier(r1.choix.join() === "appareil" && !r1.seconde, "🔒 lecture seule (Détails) : « Vider cet appareil » seul, pas de seconde confirmation", r1);
-  verifier(!s4.pts.length && !s4.traces.length && !s4.details, "🔒 lecture seule (Détails) : appareil vidé, aucune trace", s4);
+  verifier(s4.pts.length === 3, "🔒 lecture seule ☁️ (Détails) : rien n'est effacé", s4);
 
-  await semerPoints(page);
   await page.evaluate(function () { return window.SessionPersist.save({ force: true }); });
   await page.waitForTimeout(1200);
   await ouvrir(page, true);
   await attendre(page, function () { return !!document.querySelector('#kta-session-modal [data-action="clear"]'); }, 10000);
   await simulerExtension(page, DROITS);
   await page.click('#kta-session-modal [data-action="clear"]');
-  const r2 = await choixPuisOk();
+  await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 15000);
+  await page.waitForTimeout(450);
+  const r2 = await page.evaluate(function () {
+    const ov = document.getElementById("kta-confirm-oui").closest(".kta-readme-modal-overlay");
+    return { texte: ov ? ov.textContent : "", choix: document.querySelectorAll("[data-kta-confirm-choix]").length,
+      annuler: !!document.getElementById("kta-confirm-non") };
+  });
+  await page.click("#kta-confirm-oui");
+  await page.waitForTimeout(600);
   const s5 = await etatSession(page);
-  verifier(r2.choix.join() === "appareil" && !r2.seconde,
-    "🔒 lecture seule (« Session précédente restaurée ») : « Vider cet appareil » seul", r2);
-  verifier(!s5.pts.length && !s5.traces.length, "🔒 lecture seule (« Session précédente restaurée ») : appareil vidé, aucune trace", s5);
+  verifier(r2.texte.indexOf(rienTexte) >= 0 && !r2.choix && !r2.annuler,
+    "🔒 lecture seule ☁️ (« Session précédente restaurée ») : message « Rien à effacer », sans fenêtre de choix", r2);
+  verifier(s5.pts.length === 3 && !s5.traces.length, "🔒 lecture seule ☁️ (« Session précédente restaurée ») : rien n'est effacé", s5);
 }
 
 (async function main() {

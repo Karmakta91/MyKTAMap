@@ -1525,7 +1525,7 @@
     html += '</div>';
 
     // ── Effacer la session : le MÊME parcours que la fenêtre « session restaurée » (SessionPersist.demanderEffacement :
-    // choix à trois options d'un plan partagé, case des calques, snapshot ; en lecture seule « Vider cet appareil » seul).
+    // choix d'un plan partagé, case des calques, snapshot).
     const _effacable = !!(window.SessionPersist && typeof window.SessionPersist.demanderEffacement === "function");
     if (_effacable) {
       html += '<div class="kta-refonte-session-section" id="kta-refonte-session-effacer-section">';
@@ -1533,8 +1533,11 @@
       html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
                 window.I18n.t("ui.refonte.effacer_desc") +
               '</div>';
-      html += '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-refonte-session-effacer">' +
-                window.I18n.t("session.btn.clear") +
+      // 🔒 Plan d'extension en lecture seule : tout vient du serveur, rien à effacer (bouton inactif qui le dit).
+      const _roServeur = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true);
+      html += '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-refonte-session-effacer"' +
+                (_roServeur ? ' disabled' : '') + '>' +
+                window.I18n.t(_roServeur ? "session.partage.rienServeur" : "session.btn.clear") +
               '</button>';
       html += '</div>';
     }

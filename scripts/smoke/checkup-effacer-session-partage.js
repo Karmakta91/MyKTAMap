@@ -6,10 +6,11 @@
 // =====================================================================
 // Rejoue la vraie fenêtre « session restaurée » → 🗑️ Effacer la session :
 //   1. plan local : la confirmation de l'app, sans choix ; aucune trace posée ;
-//   2. prise { miens, tout } : trois choix, nombres annoncés ; « Vider cet appareil » ne pose aucune trace ;
+//   2. prise { miens, tout, enAttente: 5 } : trois choix, rien de présélectionné (OK inactif), nombres annoncés ;
+//      « Annuler ce que cet appareil n'a pas encore envoyé » ne pose aucune trace ; 0 en attente sans droit : rien ;
 //   3. « Supprimer mes ajouts » : confirmation chiffrée, une trace par objet créé par le compte, anciennes gardées ;
 //   4. « Tout supprimer » : une trace par objet, datée après l'objet ;
-//   5. droit « modifier » ({ miens } seul) : pas de « tout » ; prise en erreur : « Vider cet appareil » seul ;
+//   5. droit « modifier » ({ miens } seul) : pas de « tout » ; prise en erreur : l'annulation seule, sans nombre ;
 //   6. droit retiré entre l'ouverture et la confirmation : refus nommé, rien n'est effacé.
 // 🩸 check-extensions.js lit le câblage ; seul ce parcours voit la fenêtre, les setters réels et l'ordre
 // snapshot → vidage → traces → sauvegarde.
@@ -91,7 +92,7 @@ async function simulerPrise(page, rep) {
         window.__appelsPrise++;
         if (rep === "panne") throw new Error("panne simulée");
         const r = (window.__appelsPrise > 1 && rep.suite) ? rep.suite : rep;
-        return Promise.resolve({ miens: r.miens, tout: r.tout, auteur: r.auteur });
+        return Promise.resolve({ miens: r.miens, tout: r.tout, auteur: r.auteur, enAttente: r.enAttente });
       },
       auteurObjet: function (uid) { return { createur: /^pt_moi/.test(uid) ? "moi" : "autre", modifiePar: null }; }
     });
@@ -108,7 +109,8 @@ async function effacer(page, valeur) {
     const radios = [].slice.call(document.querySelectorAll("[data-kta-confirm-choix]"));
     const ov = document.getElementById("kta-confirm-oui").closest(".kta-readme-modal-overlay");
     return { choix: radios.map(function (r) { return r.value; }),
-      aides: radios.map(function (r) { return r.parentNode.textContent; }), premiere: ov ? ov.textContent : "" };
+      aides: radios.map(function (r) { return r.parentNode.textContent; }), premiere: ov ? ov.textContent : "",
+      coche: radios.some(function (r) { return r.checked; }), okInactif: document.getElementById("kta-confirm-oui").disabled };
   });
   await page.evaluate(function (v) {
     const r = v ? document.querySelector('[data-kta-confirm-choix="' + v + '"]') : null;
@@ -159,21 +161,31 @@ async function effacer(page, valeur) {
     verif(!v1.choix.length && !v1.seconde, "plan local : confirmation de l'app, sans choix ni seconde confirmation", v1);
     verif(!v1.apres.pts.length && !v1.apres.traces.length, "plan local : session vidée, aucune trace (inchangé)", v1.apres);
 
-    // 2. Prise { miens, tout } : vider l'appareil.
+    // 2. Prise { miens, tout } avec 5 modifications en attente d'envoi : annuler ce qui n'est pas envoyé.
     await poserEtRouvrir(page);
-    await simulerPrise(page, { miens: true, tout: true, auteur: "moi" });
+    await simulerPrise(page, { miens: true, tout: true, auteur: "moi", enAttente: 5 });
     const v2 = await effacer(page, "appareil");
-    verif(v2.choix.join() === "appareil,miens,tout", "plan partagé, droit « gérer » : trois choix", v2.choix);
+    verif(v2.choix.join() === "appareil,miens,tout", "plan partagé, 5 en attente, droit « gérer » : trois choix", v2.choix);
+    verif(!v2.coche && v2.okInactif, "rien de présélectionné, bouton de confirmation inactif tant qu'on n'a pas choisi", v2);
+    verif(/\(5 modification/.test(v2.aides[0] || "") && /revient/.test(v2.aides[0] || ""),
+      "« Annuler ce que cet appareil n'a pas encore envoyé (5 modifications) », tout revient du serveur", v2.aides[0]);
     verif(/(^|\D)3 objet/.test(v2.aides[1] || "") && /(^|\D)4 objet/.test(v2.aides[2] || ""),
       "les choix annoncent 3 objets à moi, 4 en tout", v2.aides);
-    verif(/reviendra/.test(v2.aides[0] || ""), "« Vider cet appareil » dit que tout reviendra du serveur", v2.aides[0]);
     verif(!v2.seconde && !v2.apres.pts.length && !v2.apres.traces.length,
-      "Vider cet appareil : aucune seconde confirmation, aucune trace", v2.apres);
+      "annuler le non-envoyé : aucune seconde confirmation, aucune trace", v2.apres);
+
+    // 2 bis. Rien en attente (champ absent = 0) et aucun droit de suppression : rien à effacer.
+    await poserEtRouvrir(page);
+    await simulerPrise(page, { miens: false, tout: false, auteur: "moi" });
+    const v2b = await effacer(page, "");
+    verif(!v2b.choix.length && /Rien à effacer/.test(v2b.premiere) && JSON.stringify(v2b.apres.pts) === JSON.stringify(TOUS),
+      "0 en attente, aucun droit : « Rien à effacer », rien n'est effacé", v2b);
 
     // 3. Supprimer mes ajouts.
     await poserEtRouvrir(page);
     await simulerPrise(page, { miens: true, tout: true, auteur: "moi" });
     const v3 = await effacer(page, "miens");
+    verif(v3.choix.join() === "miens,tout" && !v3.coche, "0 en attente : deux choix seulement (mes ajouts, tout), rien de présélectionné", v3.choix);
     verif(!!v3.seconde && /(^|\D)3 objet/.test(v3.seconde), "mes ajouts : confirmation qui annonce 3 objets", v3.seconde);
     verif(JSON.stringify(v3.apres.traces) === JSON.stringify(["pt_ancien", "pt_moi1", "pt_moi2", "pt_moi3"]),
       "mes ajouts : une trace par objet à moi, aucune pour l'autre, l'ancienne gardée", v3.apres.traces);
@@ -193,12 +205,13 @@ async function effacer(page, valeur) {
     // 5. Droit « modifier », puis prise en erreur.
     await poserEtRouvrir(page);
     await simulerPrise(page, { miens: true, tout: false, auteur: "moi" });
-    const v5 = await effacer(page, "appareil");
-    verif(v5.choix.join() === "appareil,miens", "droit « modifier » : pas de « Tout supprimer »", v5.choix);
+    const v5 = await effacer(page, "miens");
+    verif(v5.choix.join() === "miens", "droit « modifier », 0 en attente : « mes ajouts » seul, pas de « Tout supprimer »", v5.choix);
     await poserEtRouvrir(page);
     await simulerPrise(page, "panne");
     const v6 = await effacer(page, "appareil");
-    verif(v6.choix.join() === "appareil" && !v6.apres.traces.length, "🔒 prise en erreur : « Vider cet appareil » seul, aucune trace", v6);
+    verif(v6.choix.join() === "appareil" && !/\(\d+ modification/.test(v6.aides[0] || "") && !v6.apres.traces.length,
+      "🔒 prise en erreur : « Annuler ce que cet appareil n'a pas encore envoyé » seul, sans nombre, aucune trace", v6);
 
     // 6. Droit retiré pendant que la fenêtre est ouverte.
     await poserEtRouvrir(page);
