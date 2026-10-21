@@ -1830,6 +1830,13 @@ function _preRemplirFormulaire(config) {
   Object.entries(config.icons || {}).forEach(function(e) {
     _ajouterIconRow(e[0], e[1], null, PLANNER_SYSTEME_TAGS.includes(e[0]));
   });
+  // Tags du catalogue venus APRÈS la création du plan (ex. `portail`, `entree_plan`) : proposés avec l'icône de
+  // l'app, pour pouvoir les personnaliser. Une icône déjà déclarée par le plan n'est jamais remplacée.
+  const _dejaDeclares = config.icons || {};
+  Object.entries(PLANNER_DEFAULT_ICONS).forEach(function(e) {
+    if (Object.prototype.hasOwnProperty.call(_dejaDeclares, e[0])) return;
+    _ajouterIconRow(e[0], e[1], null, PLANNER_SYSTEME_TAGS.includes(e[0]));
+  });
   if (icList && !icList.querySelector(".kta-planner-icon-row"))
     icList.innerHTML = '<p class="kta-planner-empty">' + window.I18n.t("gen.icons.videDefinie") + '</p>';
 }
