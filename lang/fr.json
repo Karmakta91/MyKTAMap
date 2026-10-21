@@ -2887,6 +2887,7 @@
   "ipl.remove.titre": "Supprimer la liaison ?",
   "ipl.remove.texte": "La liaison sera retirée des deux côtés sur cet appareil. Les points eux-mêmes ne sont pas modifiés.",
   "ipl.remove.ok": "Supprimer",
+  "ipl.remove.refuse": "Suppression refusée : il faut le droit de modifier les deux plans de cette liaison.",
   "ipl.toast.removed": "🌀 Liaison supprimée",
   "ipl.toast.created": "🌀 Liaison créée vers {plan} · {point}",
   "ipl.err.noPlan": "Aucun plan chargé — impossible de créer une liaison.",

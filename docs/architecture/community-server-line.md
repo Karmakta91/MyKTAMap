@@ -400,6 +400,19 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   effacerait les photos de l'équipe. Supprimer un point ne supprime jamais ses photos (« sans point »,
   `session-data.md` §42). API photos ajoutée pour l'extension : `listerPlan(planId)` (sans blob),
   `rattacher(photoIds, planId, pointId, fiche)`, `restorePhoto(record, opts?)`.
+- **Liaisons inter-plan** (`js/interPlanLinks.js`, registre de l'appareil) : **sortant**, événement
+  `mktm:liaisons-changees` sur `window`, `detail = { ids, action, source? }`, `action` ∈ `creation` | `modification` |
+  `suppression`, émis APRÈS l'écriture du registre (création, suppression, point déplacé / changé de niveau / supprimé,
+  resynchro des snapshots, rattachement à l'uid, plan transféré). Chaque liaison écrite porte `updatedAt` (ms).
+  `source: "import"` = fusion d'un export (session, ZIP, profil), pas un geste ; `source: "extension"` = déposé par
+  l'extension. **Entrant** : `InterPlanLinks.appliquerExterne({ liens, retirer })` (remplace ou ajoute par id, retire
+  les ids donnés ; annonce seulement avec `source: "extension"`) → `{ ecrites, retirees }`. **Prise** `liaisons: {
+  info(lien) → string, actions(lien) → [{ libelle, action }], modifiable(lien) → bool }` (synchrones, sur une COPIE du
+  lien) : info en texte sous la liaison (fiche du point, gestionnaire, confirmation de suppression ; 80 car.), actions
+  dans le gestionnaire « Mes liaisons » (2 au plus, 40 car.), `modifiable` est une **permission** (sans prise : oui ;
+  erreur : non) — non modifiable : ni 🗑️, suppression confirmée refusée (`ipl.remove.refuse`), liaison gardée quand son
+  point est supprimé. Côté community : `KtaExtensions.liaisonInfo` / `liaisonActions` / `liaisonModifiable`. Sans
+  extension : rien n'écoute, aucune info, tout reste modifiable (garde-fou `check-extensions.js`).
 - **Profil de l'utilisateur** (11/10/2026) : les modales d'export / import du profil ne transportent **rien** d'un
   plan ☁️ (registre `type: "ext"`, ou id reconnu par `ktaEstIdRegistreExtension`) — ni entrée, ni session, photos,
   favoris, liaisons, sauvegardes, carnet, archive : le fichier est en clair et un profil importé ne doit pas créer
