@@ -104,6 +104,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
 | 🖼️ Export PNG / JPG (Rapide / Avancé + légende dessinée) · 📄 PDF imprimable A0 → A4 | `exporter.js`, `pdfExport.js` |
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
+| 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
 | 💾 Backups multi-rotations sessions (10 FIFO IDB) | `sessionBackups.js` |
 | 📔 **Le Carnet** : archive automatique des sorties (durée, distance, ajouts, tracé, note) + timeline multi-plans | `journal.js`, `journalUi.js` |
@@ -277,6 +278,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | `exporter.js` | Export PNG / JPG + légende dessinée |
 | `pdfExport.js` | Export PDF imprimable (A0 → A4) |
 | `tableEditor.js` | Éditeur JSON en tableau (calque ou session) |
+| `recalageScan.js` | Recaler des données sur un autre scan (calcul pur `KtaRecalageScan` + modale) |
 | `searchPoints.js` | Recherche unifiée Ctrl+K |
 | `sessionExporter.js` | Export session Full / Avancé / conversion / externe / anonymisé |
 | `sessionReport.js` | Rapport de sortie (3 formats) |
