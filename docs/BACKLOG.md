@@ -28,10 +28,15 @@
 
 ## Maintenant
 
+- **Train : sortir la v2.19.0 en prod** — bumpée le 21/10 (avec la 0.12.0 du pro) : mise à jour du plan, Éditeur de
+  données appliqué à la session, recalage sur un autre scan, fiche des jonctions, effacer la session, correctif de la
+  synchro à l'ouverture d'un plan ☁️. Notes : `version.json`, `README.md` § v2.19.0.
+  `qui: KARMA · action: trempage dev + pro (menu 9) : modifier / supprimer une jonction, effacer la session ; porte
+  docs/RELEASE_GATE.md ; merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
 - **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA : toutes les icônes, sur un de ses deux écrans PC et sur iPhone.
   ✅ 21/10 non reproduit au pixel (plan réel, Chrome et WebKit, échelles 1 / 1,25 / 1,5 / 2 / 3, bascule d'échelle en
   direct, zooms 8 → 19) ; checkup `checkup-osm-empilement.js` aux 4 échelles. Journal : `git log -S"sous les tuiles"`.
-  `qui: KARMA · action: sur l'écran fautif, relever devicePixelRatio, version du navigateur et une capture du défaut
+  `qui: KARMA · action: sur l'écran fautif, coller la commande de vue-osm.md § Diagnostic (console F12) + une capture
   · fini: reproduit au harnais et corrigé, ou fermé « non reproduit » · depuis: 16/10/2026 · taille: S`
 - **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
   ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
@@ -58,6 +63,14 @@
   · taille: S`
 ## Ensuite
 
+- **Garde-fou `check-calque-session.js` contourné** — il interdit à `convertirObjet.js` de nommer les points de
+  session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
+  `qui: Claude · action: dire précisément ce qui est permis (accès fourni par l'appelant) et le vérifier
+  · fini: garde-fou qui décrit l'état actuel, sans contournement · depuis: 21/10/2026 · taille: XS`
+- **Convertir en lot prend une jonction** — la sélection multiple (`KtaConvertir.convertirLot`) accepte une jonction,
+  alors que la fiche ne propose plus « Convertir » pour elle.
+  `qui: Claude · action: l'exclure du lot comme de la fiche (CIBLES_INTERDITES) · fini: jonction absente du lot
+  · depuis: 21/10/2026 · taille: XS`
 - **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
@@ -93,6 +106,11 @@
 
 ## Plus tard
 
+- **Clés i18n gardées pour les pages en cache** — `home.profile.greeting`, `home.splash.ethos`,
+  `ui.subaction.importer` / `editJson`, `tabledit.save.session` / `sessionOk` / `partage.*`, `tabledit.resol.*` :
+  plus appelées, gardées une release (règle de `docs/architecture/i18n.md`).
+  `qui: Claude · action: les retirer des 3 dictionnaires à la release qui suit la v2.19.0 · fini: clés retirées
+  · depuis: 21/10/2026 · taille: XS`
 - **Sonar : jetons à régénérer** — ils expirent vers le 06/01/2027 : au-delà, `sonar-scan.ps1` sort en code 1 et
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027

@@ -1024,3 +1024,18 @@ Bug KARMA : *« je charge A, retour home → A ; je charge B, retour home → B,
 - `_demonterPlanOsm` retire une ligne fantôme de la pile (sauf le principal courant) et rend `true`.
 - `_initMiniMap`, quand elle détruit la carte, purge `_extraLayers` et sort ces ids de la pile : les plans ajoutés par « + » appartenaient à la carte morte et ne se ré-affichaient plus (fantômes silencieux). Effet assumé : après un aller-retour dans un plan, la pile se réduit au plan quitté ; `_extraOpacity` est gardé pour un re-ajout.
 - 🛡️ `scripts/check-osm-pile.js` **exécute** la règle et le démontage extraits du fichier (leçon v1.90.15 : un grep valide un fantôme).
+
+## Diagnostic : une icône paraît sous les tuiles du plan
+
+Non reproduit au harnais (plan réel, Chrome et WebKit, échelles 1 à 3, `scripts/smoke/checkup-osm-empilement.js`).
+Sur l'écran où le défaut se voit, Vue OSM ouverte, coller dans la console (F12) — chiffres seulement, aucune donnée
+de plan :
+
+```js
+(()=>{const c=document.getElementById("kta-osm-map"),p=c.querySelector(".leaflet-ktaOsmTuiles-pane"),m=c.querySelector(".leaflet-marker-pane"),t=c.querySelectorAll("img.leaflet-image-layer"),k=[...m.querySelectorAll(".leaflet-marker-icon")].slice(0,50);let n=0;k.forEach(e=>{const r=e.getBoundingClientRect(),s=document.elementsFromPoint(r.left+r.width/2,r.top+r.height/2);if(s[0]!==e&&s.indexOf(e)>s.findIndex(x=>x.classList&&x.classList.contains("leaflet-image-layer")))n++});return {dpr:devicePixelRatio,ua:navigator.userAgent,tuiles:t.length,horsPane:[...t].filter(i=>i.parentElement!==p).length,paneTuiles:getComputedStyle(p).zIndex+"/"+getComputedStyle(p).opacity,paneMarqueurs:getComputedStyle(m).zIndex,couvertsHitTest:n+"/"+k.length}})()
+```
+
+Lecture : `couvertsHitTest` > 0 → défaut dans la page (CSS, réglage, état) ; 0 alors que le défaut se voit → défaut
+de dessin du navigateur ou du GPU (joindre `chrome://gpu` et une capture). `horsPane` > 0 → tuiles posées hors du
+pane `ktaOsmTuiles` (opacité et ordre perdus).
+
