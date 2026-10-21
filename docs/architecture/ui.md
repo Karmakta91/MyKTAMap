@@ -1780,6 +1780,20 @@ Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Édit
 
 i18n : 23 clés `tabledit.*` ajoutées (accueil / source / selecteur / kind / err / col / geom / save.datalayerNote) fr/en/es. **Aucune nouvelle surface réseau** (lecture locale des calques, identique au boot).
 
+#### 91.4 Recaler des données sur un autre scan (`js/recalageScan.js`)
+
+Tuile 🔁 de l'accueil de l'Éditeur : ferme l'accueil et ouvre `window.ktaOuvrirRecalageScan()` (module à part ; `tableEditor.js` ne porte que l'appel). Réécrit des fichiers `.json` relevés sur un scan dans le repère du **plan ouvert** (sens : fichier → plan ouvert), téléchargés en `<nom>_conv.json` ; les originaux lus restent intacts en mémoire pour un autre essai.
+
+| Méthode | Condition | Calcul |
+|---|---|---|
+| 🔤 **Par les uid et les noms** (défaut) | plan ouvert | d'abord les paires par **`uid`** commun (deux versions du même Générateur) : un point = une paire ; un tracé / une zone / une structure = une paire par sommet **si** le nombre de sommets est le même des deux côtés (sinon objet ignoré) ; un uid porté deux fois d'un côté est ignoré pour l'uid (l'objet peut encore s'apparier par son nom). Objet du plan = calques + session (`getAllEmbedded*` + `getRoads/Zones/Structures/EditorPoints`). Un objet apparié par uid n'est **pas** réapparié par nom. Puis paires = noms **uniques des deux côtés** parmi les points restants (normalisés : NFD sans accents, minuscules, hors `[a-z0-9]` retiré ; ≥ 4 caractères) entre les points nommés des fichiers (`data`, `editorPoints` ; `nom`, sinon `id`) et ceux du plan (`getAllEmbeddedPoints` + `getEditorPoints`). Consensus de départ (similitude de 2 paires qui met le plus de paires d'accord, toutes les combinaisons jusqu'à 3 000, tirage déterministe au-delà ; au-delà de 1 000 paires, cherché sur un échantillon déterministe de 1 000, les moindres carrés et le rejet portant ensuite sur toutes ; indicateur « Calcul du recalage… » peint avant le calcul), puis similitude aux moindres carrés et rejet itératif (seuil 3 × médiane des retenus, plancher 3 px). Affine (6 paramètres) calculée de même, **proposée** (case à cocher) seulement si son 90e centile vaut ≤ 60 % de celui de la similitude et gagne ≥ 2 px. Refus sous 3 paires. Annonce : repères retenus, dont combien par uid et combien par nom. |
+| 📍 **Repères cliqués** | plan ouvert | point du fichier choisi dans une liste, position cliquée via `ktaDemanderPositionCarte` (`recaler:false`). ≥ 3 repères. Dès 4, la similitude de 2 repères à la plus petite **médiane** d'écarts désigne les suspects (> max(3 × 1,4826 × médiane, 5 px)) : rouges, hors du calcul. 🩸 Aux moindres carrés seuls, un mauvais clic sur 4 se répartit sur tous et aucun ne ressort. |
+| 📐 **Résolutions** | toujours (seule méthode depuis l'accueil) | homothétie kX, kY ; repères saisis à la main en option (1 repère + rotation, ou 2 repères). **Refus bloquant** de l'homothétie seule si les proportions divergent de plus de 2 % : deux scans recadrés n'ont pas l'échelle de leurs résolutions (mesuré sur deux scans réels d'un même plan : 585 px d'écart médian par les résolutions, 0 px par les noms). |
+
+**Aperçu** (plan ouvert) : copie recalée de chaque fichier dessinée dans un `L.layerGroup` temporaire (`convertCoord`, cercles pour les points, tireté pour tracés / zones / structures, couleur = valeur calculée de `--kta-accent` : le rendu canvas ne lit pas les variables CSS), outil masqué et barre « Retour / Télécharger », vue ajustée au résultat. Le calque part à la fermeture de l'outil et à tout changement du calcul. Niveaux ignorés (tout est dessiné).
+
+Calcul **pur** exposé sur `window.KtaRecalageScan` (sans DOM), éprouvé par `scripts/check-resolution-convert.js` ; parcours à la souris : `scripts/smoke/checkup-recalage-scan.js`. i18n `recalscan.*` (fr/en/es).
+
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)

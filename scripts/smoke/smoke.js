@@ -161,7 +161,7 @@ const sondesIcones = [];
     const configFermee = await page.locator("#loaderConfigModal").isVisible().catch(function () { return false; });
     if (configFermee) pb("config", "la modale Configuration ne se ferme pas"); else ok("Configuration fermée");
 
-    // ── 3. Éditeur de données + modale résolution ──────
+    // ── 3. Éditeur de données + recalage sur un autre scan ──────
     console.log("— 3. Éditeur de données —");
     const edOk = await page.evaluate(function () {
       if (typeof window.ouvrirTableEditor === "function") { window.ouvrirTableEditor(); return true; }
@@ -172,7 +172,7 @@ const sondesIcones = [];
     await modaleVisible("accueil éditeur", "#kta-tbl-modal");
     await page.locator("#kta-tbl-src-resol").click();
     // modale exposée à la classe CSS fantôme : dimensions exigées
-    await modaleVisible("convertisseur de résolution", ".kta-readme-modal-overlay:has(#kta-tbl-resol-go)");
+    await modaleVisible("recalage sur un autre scan", "#kta-recal-modal");
     await fermerModales();   // convertisseur
     await page.evaluate(function () { const b = document.getElementById("kta-tbl-close-accueil"); if (b) b.click(); });
     await page.waitForTimeout(300);

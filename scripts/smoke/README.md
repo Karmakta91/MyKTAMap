@@ -18,7 +18,7 @@ passe les gates (mdp communautaire, CGU, tutoriel, alerte, proposition PIN
 
 1. **Boot HOME** — en-tête + liste des plans peuplée
 2. **⚙️ Configuration** — section Mode Développeur présente, fermeture propre
-3. **📊 Éditeur de données** — accueil + modale du convertisseur **avec dimensions réelles** (une modale « présente mais invisible » est un échec)
+3. **📊 Éditeur de données** — accueil + modale « Recaler des données sur un autre scan » **avec dimensions réelles** (une modale « présente mais invisible » est un échec)
 4. **Chargement de `Relevé fictif de test`** (`data/test`, servi tel quel — plan **multi-niveau** depuis la refonte de `data/` par KARMA, donc l'étape traverse aussi le M-LVL)
 5. **⚙️ Réglages carte** — la section géoref se construit (bouton Estimer B)
 6. **≡ Légende**
@@ -58,6 +58,7 @@ structurels. Ces scripts les couvrent, chacun sur un axe précis.
 | `node checkup-repositionner.js` | **Repositionner un POI** à la souris : le clic sur « Repositionner » arme le mode sans déplacer le point (il prenait ce clic pour la position), puis le clic sur la carte y pose le POI et termine le mode |
 | `node checkup-splash.js` | **Splash de démarrage** en téléphone 390 et PC 1280 : image finale complète (38 galeries, pictos, rose), fermeture seulement quand l'accueil est affiché (accueil lent / rapide), clic et Échap, seconde ouverture rejouée en entier, plafond 12 s, mouvement réduit, coût au démarrage processeur ×4. `SPLASH_SHOTS=<dossier>` : captures |
 | `node checkup-osm-empilement.js` | **Vue OSM** sur le relevé fictif, auquel le checkup prête un tuilage V2 (tuiles en `data:` dans `RUNTIME_ASSETS`) et un calage fictif : à chaque cran de molette, après 🖼️ Plan décoché / recoché et à la réouverture, toutes les tuiles dans le pane `ktaOsmTuiles` (sous les marqueurs), un seul niveau à l'écran, case décochée respectée à la réouverture, et **au pixel** les icônes opaques identiques avec et sans tuiles, aux échelles d'affichage 1, 1,25, 1,5 et 2 (`OSM_ECHELLES=1,1.5` pour en choisir), une fois chaque marqueur à sa position calculée |
+| `node checkup-recalage-scan.js` | **Recaler des données sur un autre scan** sur le relevé fictif, jeux fictifs fabriqués au lancement (points de session + leur version passée par une similitude connue, 3 homonymes aberrants, un tracé, une zone) : accueil sans plan = résolutions seules ; par les noms = écart ≈ 0, aberrants écartés, fichier téléchargé qui retombe sur le plan ; aperçu ajouté puis retiré à la fermeture ; 4 repères cliqués dont un faux signalé seul ; proportions divergentes refusées. `RECAL_SHOTS=<dossier>` : captures |
 
 > ⚠️ `checkup-home-scroll.js` **abandonne** au lieu de conclure si un overlay
 > couvre encore la page. Le splash reste ~4 s puis est *retiré du DOM* — et
