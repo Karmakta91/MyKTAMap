@@ -1062,6 +1062,8 @@ Si 0 tag → section affiche "Aucun point dans cette session."
 - ❌ Appeler `_enumerateTags()` ou `_enumerateTypes()` dans une boucle de render — coûteux (itère session + embedded à chaque appel). Cache l'résultat si utilisé plusieurs fois dans la même passe de render
 - ❌ Modifier `window._ktaRuntimeFilters` directement depuis un autre module — passer par `FilterPanel.setFilters({...})` pour bénéficier de `_scheduleApply` + `_notify`
 
+**Raccourci « 🔄 Mettre à jour le plan… »** en tête de la section Calques de données (`_renderDataLayersSection`, `data-maj-plan`, branché dans le listener `click` comme les boutons de calque) : ferme le panneau et ouvre l'assistant (`MajPlan.ouvrir`, cf. `plans-loader.md`). Absent en lecture seule (`ktaEditionRefusee(true)`), comme « ➕ Intégrer des ajouts ».
+
 #### 64.12 Pour étendre
 
 **Ajouter un nouvel axe de filtre runtime** (ex: `photoTags` pour filtrer par tag photo) :
@@ -1792,7 +1794,7 @@ KARMA : « refondre le menu déroulé de tracker par un modal full screen plus e
 
 **CSS** (`css/style.css`) : `.kta-tracker-modal-*` (overlay z-99999, box gradient charte, grille 2 colonnes, tuiles tactiles) + override `body.kta-theme-light` + `safe-area-inset-bottom`. **Icônes 20px / tuile min-h 62px** → les 11 options + 3 titres de section tiennent **sans scroll même sur iPhone SE** (~570px < 92vh) ; `overflow-y:auto` du corps reste en filet de sécurité.
 
-i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Scope** : seul le groupe Tracker est en modal (les autres gardent le flyout). Aucune nouvelle surface réseau.
+i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Scope** : groupes Tracker et ⬆️ Exporter en modal (habillage `_MODAL_EXPORT` : sections 🖼️ Image, 💾 Session, 🗺️ Plan — tuile 🔄 Mettre à jour le plan, `js/majPlan.js` —, 🌍 Export externe) ; les autres gardent le flyout. Aucune nouvelle surface réseau.
 
 ---
 

@@ -337,6 +337,7 @@ const ASSETS_TO_CACHE = [
   "./js/convertirObjet.js",
   "./js/selectionMulti.js",
   "./js/calqueSession.js",
+  "./js/majPlan.js",
   // profondeur des niveaux + profil en long.
   "./js/profondeurNiveaux.js",
   // mesure dans la Vue OSM.

@@ -305,7 +305,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Settings** | ⚙️ | Map settings: scale, North, georeferencing, tracker, display… *(direct click)* |
 | **Search** | 🔍 | Find a point, a path, a zone or a structure *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX (opens the file picker directly) |
-| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, external export (KMZ / GPX) |
+| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, map update, external export (KMZ / GPX) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
 | **Measurement** | 📐 | Measure a distance or an area, clear |
@@ -370,6 +370,8 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 *Example: to see only two kinds of shafts, 🏷️ Point tags → 🚫 None, then tick the two tags you want again.*
 
 > 🔄 **Correcting a data layer** — a layer shipped with the map can be hidden but not edited. The **🔄 Edit** button on its row copies it into your session, where all your tools apply (for instance 🔄 Convert this object); the original hides itself (“being edited — show anyway” lets you compare). Before acting, the app tells you how much space the copy will take and how much your sessions already use. **↩️ Restore** drops your changes; **💾 Export** produces the corrected file of **that layer only**, to hand back to the map via 🏗️ Generator → “Edit a plan”, “Choose” button on the layer's row: it replaces the old content. What you drew yourself is not part of it (the app tells you how many objects are left out of the file), unless you attach it: **➕ Add drawn objects**, on the layer's row, lists your drawings on the map by family (nothing ticked in advance, “Tick all”, “Created by” filter on a connected installation); the chosen objects then go into the layer's file, and ⏪ undoes it. An added object belongs to the layer: restoring the layer removes it too, and the restore window says how many. Clearing the session restores the layers opened for editing; re-importing your session on this map puts them back in edit mode. On a connected installation, “Clear the session” lets you choose: **clear on this device only** (layers opened for editing by the team come back from the server, still being edited) or **also give the layers back to the team** (they return to their original for everyone, and edits the others have not exported on these copies are lost). On a connected installation, a layer opened for editing by another account also shows as such on your side, and restoring it restores it on every device (a copy changed since then stays, flagged as a duplicate).
+>
+> 🔄 **Updating the map** — to put your work into the map itself: **⬆️ Export → 🔄 Update the map**, or the button at the top of the layers in **≡ Filters**. **1.** Layers being edited are ticked: each one replaces its file. **2.** Your hand-drawn objects are grouped by tag (points, by their first tag) or by type (routes, zones, structures); for each group, choose a map layer, a **new layer** (you name it) or “Leave in the session”. **3.** The Generator opens in Edit mode, already filled with the map's current ZIP, those layers and your photos: check it, then generate (if the map's ZIP is not on the device, it asks you to drop it). **4.** Imported map: **⬇️ Download** or **🔄 Replace the map in the app** (same map: your session, calibration and photos stay attached). Map from a linked installation: **☁️ Publish the new version** if your right allows it, otherwise you download the ZIP for the person who manages the map. Site map: download, to pass on to its administrator. After a replacement or a publication, the app offers to **hand the layers back** (to the whole team on a linked installation) and to **remove the objects you put in from your session** — otherwise they show twice; an object changed after generation stays in your session, and the app says so.
 
 ### 🗺️ Legend
 
@@ -979,7 +981,7 @@ In the Profile window, **📤 Export my profile** produces a file that carries e
 
 ## ⬆️ Save and share
 
-Every export starts from the **⬆️ Export** group of the sidebar: it opens a tile launcher in three parts — **🖼️ Image**, **💾 Session**, **🌍 External export**. Before sharing an image, a PDF or a KMZ, check that it reveals nothing sensitive (entrances, private site).
+Every export starts from the **⬆️ Export** group of the sidebar: it opens a tile launcher in four parts — **🖼️ Image**, **💾 Session**, **🗺️ Map** (🔄 Update the map, above), **🌍 External export**. Before sharing an image, a PDF or a KMZ, check that it reveals nothing sensitive (entrances, private site).
 
 ### 📤 Exporting your session
 
@@ -1537,7 +1539,7 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 
 #### 📂 Edit an existing map
 
-Load the map's ZIP in **📂 Load a file**: the form fills in with its configuration. Change what you want (tags, icons, layers, start position…) then **📦 Generate ZIP**.
+Load the map's ZIP in **📂 Load a file**: the form fills in with its configuration. Change what you want (tags, icons, layers, start position…) then **📦 Generate ZIP**. From an open map, **⬆️ Export → 🔄 Update the map** opens this mode already filled with your corrected layers and your drawings.
 
 If the map has **photos attached to its points** on your device, the **📸 Include attached photos** box (ticked by default) packs them into the ZIP. Whoever opens that map finds the photos in the points' popups. Unticked, the ZIP is lighter, without photos.
 

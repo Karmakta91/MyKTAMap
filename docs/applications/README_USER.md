@@ -305,7 +305,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, affichage… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver un point, un tracé, une zone ou une structure *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX (ouvre directement le choix du fichier) |
-| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, export externe (KMZ / GPX) |
+| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, mise à jour du plan, export externe (KMZ / GPX) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
 | **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
@@ -370,6 +370,8 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 *Exemple : pour ne voir que deux sortes de puits, 🏷️ Tags → 🚫 Aucun, puis recoche les deux tags voulus.*
 
 > 🔄 **Corriger un calque de données** — un calque livré avec le plan se masque mais ne s'édite pas. Le bouton **🔄 Modifier** de sa ligne le copie dans ta session, où tous tes outils s'appliquent (par exemple 🔄 Convertir cet objet) ; l'original se masque (« en cours de modification — afficher quand même » permet de comparer). Avant d'agir, l'app t'annonce la place que prendra la copie et celle qu'occupent déjà tes sessions. **↩️ Restaurer** abandonne tes modifications ; **💾 Exporter** produit le fichier corrigé de **ce calque seul**, à redonner au plan via 🏗️ Générateur → « Modifier un plan », bouton « Choisir » sur la ligne du calque : il remplace l'ancien contenu. Ce que tu as dessiné toi-même n'en fait pas partie (l'app te dit combien d'objets restent hors du fichier), sauf si tu l'y rattaches : **➕ Intégrer des ajouts**, sur la ligne du calque, liste tes dessins du plan par famille (rien de coché d'avance, « Tout cocher », filtre « Créé par » sur une installation reliée) ; les objets choisis partent alors dans le fichier du calque, et ⏪ annule. Un objet intégré appartient au calque : le restaurer le retire aussi, et la fenêtre de restauration dit combien. Effacer la session restaure les calques ouverts à la modification ; réimporter ta session sur ce plan les remet en modification. Sur une installation reliée, « Effacer la session » te laisse choisir : **effacer sur cet appareil seulement** (les calques ouverts à la modification par l'équipe reviennent depuis le serveur, toujours en modification) ou **rendre aussi les calques à l'équipe** (ils reviennent à leur original pour tous, et les retouches que les autres n'ont pas exportées sur ces copies sont perdues). Sur une installation reliée, un calque ouvert à la modification par un autre compte apparaît aussi comme tel chez toi, et le restaurer le restaure sur tous les appareils (une copie modifiée depuis reste, signalée comme doublon).
+>
+> 🔄 **Mettre à jour le plan** — pour verser ton travail dans le plan lui-même : **⬆️ Exporter → 🔄 Mettre à jour le plan**, ou le bouton en tête des calques dans **≡ Filtres**. **1.** Les calques en modification sont cochés : chacun remplace son fichier. **2.** Tes objets dessinés à la main sont groupés par étiquette (points, selon leur première étiquette) ou par type (tracés, zones, structures) ; pour chaque groupe, choisis un calque du plan, un **nouveau calque** (tu lui donnes un nom) ou « Laisser dans la session ». **3.** Le Générateur s'ouvre en mode Modifier, déjà rempli avec le ZIP actuel du plan, ces calques et tes photos : vérifie, puis génère (si le ZIP du plan n'est pas sur l'appareil, il te demande de le déposer). **4.** Plan importé : **⬇️ Télécharger** ou **🔄 Remplacer le plan dans l'app** (même plan : ta session, ton calage et tes photos restent attachés). Plan d'une installation reliée : **☁️ Publier la nouvelle version** si ton droit le permet, sinon tu télécharges le ZIP pour la personne qui gère le plan. Plan du site : téléchargement, à transmettre à son administrateur. Après un remplacement ou une publication, l'app propose de **rendre les calques** (à toute l'équipe sur une installation reliée) et de **retirer de ta session les objets versés** — sinon ils s'affichent en double ; un objet retouché après la génération reste dans ta session, et l'app le dit.
 
 ### 🗺️ Légende
 
@@ -979,7 +981,7 @@ Dans la fenêtre Profil, **📤 Exporter mon profil** produit un fichier qui tra
 
 ## ⬆️ Sauvegarder et partager
 
-Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : il ouvre un lanceur à tuiles en trois parties — **🖼️ Image**, **💾 Session**, **🌍 Export externe**. Avant de partager une image, un PDF ou un KMZ, vérifie qu'il ne révèle rien de sensible (accès, lieu privé).
+Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : il ouvre un lanceur à tuiles en quatre parties — **🖼️ Image**, **💾 Session**, **🗺️ Plan** (🔄 Mettre à jour le plan, ci-dessus), **🌍 Export externe**. Avant de partager une image, un PDF ou un KMZ, vérifie qu'il ne révèle rien de sensible (accès, lieu privé).
 
 ### 📤 Exporter ta session
 
@@ -1537,7 +1539,7 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 
 #### 📂 Modifier un plan existant
 
-Charge le ZIP du plan dans **📂 Charger un fichier** : le formulaire se remplit avec sa configuration. Change ce que tu veux (tags, icônes, calques, position de départ…) puis **📦 Générer le ZIP**.
+Charge le ZIP du plan dans **📂 Charger un fichier** : le formulaire se remplit avec sa configuration. Change ce que tu veux (tags, icônes, calques, position de départ…) puis **📦 Générer le ZIP**. Depuis un plan ouvert, **⬆️ Exporter → 🔄 Mettre à jour le plan** ouvre ce mode déjà rempli avec tes calques corrigés et tes dessins.
 
 Si le plan a des **photos attachées à ses points** sur ton appareil, la case **📸 Inclure les photos attachées** (cochée par défaut) les embarque dans le ZIP. Celui qui ouvre ce plan retrouve les photos dans les bulles des points. Décochée, le ZIP est plus léger, sans photos.
 

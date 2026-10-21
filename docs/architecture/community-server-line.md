@@ -61,7 +61,8 @@ photos restent locales et exportables).
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
+> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, publierVersion: { autorise(idExt) →
+> bool, publier({ id, blob, nom }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
@@ -342,6 +343,16 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
   registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
   relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Nouvelle version d'un plan ☁️** (assistant « Mettre à jour le plan », `plans-loader.md`) : prise
+  `publierVersion: { autorise(idExt) → bool, publier({ id: idExt, blob, nom }) → Promise }`. Côté app :
+  `KtaExtensions.versionAutorisee(registreId)` (🔒 permission : prise absente, autre valeur que `true` ou erreur =
+  refus) choisit les boutons — « ☁️ Publier la nouvelle version » seulement si vrai, sinon « ⬇️ Télécharger » seul ;
+  `KtaExtensions.publierVersion({ planId: registreId, blob, nom })` rejette sans rien envoyer si la permission est
+  refusée, sinon passe l'**id de l'extension** (pas celui du registre) et émet `mktm:plans-extension-changes` au succès.
+  C'est l'extension qui réserve la publication à un droit (le plus haut, décision produit) et son serveur qui le
+  revérifie à l'envoi : la prise ne choisit que l'interface. Sans extension : jamais autorisée, rejet, aucun effet.
+  L'assistant n'appelle jamais `publierPlan` (un plan neuf serait un doublon, pas une version). Preuve :
+  `check-extensions.js` §6 bis quater bis.
 - **Lire la session d'un plan non ouvert** (10/10/2026) : `window.KtaSessionStore.lire(planId)` → JSON texte | null
   (synchrone, depuis la mémoire ; `ids()` liste les plans qui en ont une, `ecrireDurable(planId, brut)` → Promise). Les
   sessions vivent en IndexedDB : `localStorage["myktamap_session_v1_<planId>"]` n'est plus qu'une ancienne copie gardée

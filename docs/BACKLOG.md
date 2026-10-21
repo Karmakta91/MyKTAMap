@@ -58,11 +58,6 @@
   · taille: S`
 ## Ensuite
 
-- **Mettre à jour le plan (assistant)** — décidé en QCM : de la session et des calques au Générateur en mode Modifier,
-  puis nouvelle version du plan. Les lots préalables (calques effacés, ajouts intégrés, export en modification) sont
-  intégrés. Décisions : `docs/ETUDE_MAJ_PLAN.md`.
-  `qui: Claude · action: lot après le guide utilisateur de l'installation (une feature phare à la fois)
-  · fini: assistant intégré, doc d'architecture à jour · depuis: 19/10/2026 · taille: L`
 - **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair

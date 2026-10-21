@@ -1624,6 +1624,20 @@ session limité à ses ajouts (`sessionExporter.js > _garder`, copies exclues). 
 l'intégration puis supprimer l'objet laisse une trace sur un uid présent dans le fichier exporté (suppression explicite
 de l'utilisateur).
 
+### 🔄 Verser la session dans une nouvelle version du plan
+
+L'assistant « Mettre à jour le plan » (`js/majPlan.js`, état complet : `plans-loader.md` § Mettre à jour le plan)
+enchaîne ce qui précède sans fichier intermédiaire : `contenuCalque(id)` rend le contenu d'« 💾 Exporter » sans le
+télécharger (même refus `pasRapatrie` / `exportRefuse`) ; après un remplacement ou une publication, les calques versés
+sont restitués et les objets dessinés à la main versés dans le plan quittent la session par
+`retirerIntegres(uids, T)` :
+- seuls les objets **sans marque** sont visés (les copies partent par la restitution) ;
+- 🩸 trace posée à **`T - 1`**, l'objet étant écrit dans le fichier avec `updatedAt = T` : la trace retire la copie de
+  session des autres appareils, mais ne peut pas détruire l'objet du fichier à une fusion (la règle « jamais de trace »
+  des copies vise une trace POSTÉRIEURE à l'objet du fichier) ;
+- objet modifié depuis (`updatedAt ≥ T`) : **gardé** et compté (sa retouche n'est pas dans le fichier) ;
+- aucune entrée d'historique (la nouvelle version contient déjà les objets) ; refus en lecture seule.
+
 ### État persisté
 
 ```json

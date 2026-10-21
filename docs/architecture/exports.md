@@ -25,8 +25,8 @@ GPX) ne sont pas filtrés. Les photos ne suivent que les points retenus, Complet
 **Export limité par l'installation** (prise `exportAutorise` → `{ auteur }`, `community-server-line.md` §3 : plan d'un
 autre compte) : Complet et Avancé s'ouvrent avec « Créé par » **imposé** sur ce pseudo (liste désactivée, mention
 `export.filtre.impose`) ; les copies de calque (`_srcCalque`) ne partent jamais, ni les traces de suppression ni les
-liaisons inter-plan. La conversion, l'export d'un calque rapatrié (`CalqueSession.exporterCalque`) et l'export de profil
-restent refusés.
+liaisons inter-plan. La conversion, l'export d'un calque rapatrié (`CalqueSession.exporterCalque` / `contenuCalque`),
+l'assistant « Mettre à jour le plan » (`js/majPlan.js`) et l'export de profil restent refusés.
 
 ### 5. Légende exportée — 5 groupes équilibrés (depuis 06/05/2026)
 
