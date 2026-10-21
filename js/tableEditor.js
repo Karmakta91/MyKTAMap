@@ -1644,8 +1644,9 @@
     const appliquer = function() {
       const b = KC.appliquerTableau(_kind, _data, { origine: _origineDe });   // recalculé : la synchro a pu passer pendant la question
       if (!b || b.erreur) return false;
-      const msg = (b.modifies + b.ajoutes + b.supprimes)
-        ? window.I18n.t("tabledit.save.appliqueOk", b) : window.I18n.t("tabledit.save.rienAAppliquer");
+      const msg = ((b.modifies + b.ajoutes + b.supprimes)
+        ? window.I18n.t("tabledit.save.appliqueOk", b) : window.I18n.t("tabledit.save.rienAAppliquer")) +
+        (b.ignores ? " " + window.I18n.t("tabledit.save.ignorees", { n: b.ignores }) : "");
       if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msg, "success", { important: true });
       else window.ktaAlerte(msg);
       return true;

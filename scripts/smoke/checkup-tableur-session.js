@@ -313,6 +313,42 @@ async function main() {
       "🩸 fichier ancien : les autres champs de T1 gardent leur valeur plus récente de la session", recent);
     verifier(recent.t2.type === "secondaire", "🩸 fichier ancien : la ligne non touchée (T2) ne change rien", recent);
     await page.click("#kta-tbl-close");
+
+    // Supprimé depuis l'export : T2 effacé dans la session (trace de suppression), puis le fichier ancien réappliqué.
+    await page.evaluate(function () {
+      window.__toasts = [];
+      const orig = window.OOMGuard.showToast;
+      window.OOMGuard.showToast = function (m, ty, o) { window.__toasts.push(String(m)); return orig.call(window.OOMGuard, m, ty, o); };
+      const t2 = window.getRoads().find(function (o) { return o.uid === "rd_tab2"; });
+      window.KtaConvertir.supprimer("roads", t2);
+    });
+    const trace = function () {
+      return page.evaluate(function () {
+        return { present: window.getRoads().some(function (o) { return o.uid === "rd_tab2"; }),
+                 trace: window.KtaUid.getTombstones().some(function (t) { return t.uid === "rd_tab2"; }),
+                 toast: window.__toasts[window.__toasts.length - 1] || "" };
+      });
+    };
+    const s0 = await trace();
+    verifier(!s0.present && s0.trace, "T2 supprimé dans la session : trace de suppression posée", s0);
+    const appliquerNiveau = async function (uid, n) {
+      await ouvrirTableau(page, json, "roads");
+      const i = idxDe(json, "roads", uid);
+      await page.click('td[data-idx="' + i + '"][data-col="level"]');
+      await page.selectOption('td[data-idx="' + i + '"][data-col="level"] select', n);
+      await page.waitForTimeout(150);
+      await page.click("#kta-tbl-save");
+      await page.click("#save-session");
+      await page.waitForTimeout(600);
+      await page.click("#kta-tbl-close");
+    };
+    await appliquerNiveau("rd_tab", "2");
+    const s1 = await trace();
+    verifier(!s1.present && s1.trace, "🩸 ligne non touchée d'un objet supprimé depuis l'export : pas ressuscitée", s1);
+    verifier(/1 ligne/.test(s1.toast) && /ignor/.test(s1.toast), "…et le bilan l'annonce (« 1 ligne(s) … ignorées »)", s1.toast);
+    await appliquerNiveau("rd_tab2", "1");
+    const s2 = await trace();
+    verifier(s2.present && !s2.trace, "ligne MODIFIÉE d'un objet supprimé : réajoutée (geste explicite), trace retirée", s2);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {

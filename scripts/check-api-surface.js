@@ -426,6 +426,19 @@ function charger(fichier, nomGlobal, prealables) {
       t("🩸 tableau + origine : seule la cellule modifiée part (niveau), la note plus récente de la session reste",
         r && r.modifies === 1 && n1.level === 2 && n1.description === "récente", r);
       t("🩸 tableau + origine : une ligne non touchée d'un fichier ancien ne change rien", n2.type === "secondaire");
+      // Supprimé depuis l'export (trace) : non touché = ignoré, modifié = réajouté.
+      w.KtaUid.getTombstones = function () { return [{ uid: "rd_o3", deletedAt: 5 }]; };
+      R = [n1];
+      const l3 = { uid: "rd_o3", type: "chemin", points: pts };
+      const o3 = new Map([[l3, copie(l3)]]);
+      const r3 = CV.appliquerTableau("roads", [copie(n1), l3], { origine: function (l) { return o3.get(l) || null; } });
+      t("🩸 tableau : ligne non touchée d'un objet supprimé depuis l'export → ignorée, comptée",
+        r3 && r3.ignores === 1 && r3.ajoutes === 0 && !R.some(function (o) { return o.uid === "rd_o3"; }), r3);
+      l3.level = 1;
+      const r4 = CV.appliquerTableau("roads", [copie(n1), l3], { origine: function (l) { return o3.get(l) || null; } });
+      t("tableau : la même ligne MODIFIÉE est réajoutée (geste explicite)",
+        r4 && r4.ignores === 0 && r4.ajoutes === 1 && R.some(function (o) { return o.uid === "rd_o3"; }), r4);
+      delete w.KtaUid.getTombstones;
     }
   }
 

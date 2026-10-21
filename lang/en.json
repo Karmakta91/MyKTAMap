@@ -4814,6 +4814,7 @@
   "tabledit.save.appliquer": "✏️ Apply to the current session",
   "tabledit.save.appliqueOk": "Session updated: {modifies} changed, {ajoutes} added, {supprimes} deleted — ⏪ to undo.",
   "tabledit.save.rienAAppliquer": "Nothing to apply: the session already has these values.",
+  "tabledit.save.ignorees": "{n} row(s) deleted since the export, ignored.",
   "tabledit.save.histoirePoints": "Data editor: session points replaced",
   "tabledit.save.partage.confirmObjets": "{n} {objets} of the session missing from the table will be deleted for every member of the organisation at the next sync.",
   "tabledit.save.partage.refusObjets": "This plan is shared: applying the table would delete {n} {objets} for every member, which your right on this plan does not allow. Nothing was changed.",

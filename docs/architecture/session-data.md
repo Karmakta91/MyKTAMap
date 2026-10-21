@@ -98,6 +98,9 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
   `_versType`, comme 🔄 Convertir ; niveau par `_poserNiveau`, comme la liste « Niveau » ; autres colonnes en place +
   `touch`) ; sa **géométrie reste celle de la session** (le tableau ne l'édite pas) ; objet sans différence : intact.
   Ligne d'uid inconnu = ajout ; objet absent du tableau = suppression (trace posée par `HistoryManager.record`).
+  🩸 Un réimport ne ressuscite rien : une ligne dont l'uid porte une trace de suppression est **ignorée** si elle n'a
+  pas été modifiée au tableau (bilan : « N ligne(s) supprimée(s) depuis l'export, ignorée(s) »), **réajoutée** si une
+  cellule a changé (geste explicite ; trace retirée par `HistoryManager.record`, comme toute réapparition).
   Itinéraire calculé et aperçus : gardés, jamais pris au tableau. Un instantané, une écriture, **une entrée ⏪**.
   - Validation de TOUTES les lignes avant toute écriture, la première fautive arrête tout (fenêtre qui nomme la ligne
     — ordre du fichier, ligne sélectionnée à l'écran — et le type) : type **inconnu** de la légende, type d'une autre

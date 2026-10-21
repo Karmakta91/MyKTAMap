@@ -4814,6 +4814,7 @@
   "tabledit.save.appliquer": "✏️ Appliquer à la session en cours",
   "tabledit.save.appliqueOk": "Session mise à jour : {modifies} modifié(s), {ajoutes} ajouté(s), {supprimes} supprimé(s) — ⏪ pour annuler.",
   "tabledit.save.rienAAppliquer": "Rien à appliquer : la session a déjà ces valeurs.",
+  "tabledit.save.ignorees": "{n} ligne(s) supprimée(s) depuis l'export, ignorée(s).",
   "tabledit.save.histoirePoints": "Éditeur de données : points de la session remplacés",
   "tabledit.save.partage.confirmObjets": "{n} {objets} de la session absent(s) du tableau seront supprimés pour tous les membres de l'organisation, à la prochaine synchronisation.",
   "tabledit.save.partage.refusObjets": "Ce plan est partagé : appliquer le tableau supprimerait {n} {objets} pour tous les membres, ce que ton droit sur ce plan ne permet pas. Rien n'a été modifié.",

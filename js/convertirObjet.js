@@ -302,11 +302,14 @@
   //     toujours celle de la session (le Tableur ne l'édite pas). Objet sans changement : intact (pas de touch).
   //   - uid inconnu ou en double : ajout ; objet de la session absent du tableau : suppression (la trace de
   //     suppression est posée par HistoryManager.record, comme pour toute suppression).
+  //   - 🩸 uid inconnu MAIS tracé comme supprimé (KtaUid.getTombstones) : un réimport ne ressuscite rien. Ligne non
+  //     touchée → ignorée (comptée dans `ignores`) ; ligne modifiée → réajoutée (geste explicite), sa trace retirée par
+  //     HistoryManager.record comme pour toute réapparition.
   //   - itinéraire calculé et aperçus (`_preview`) : jamais pris au tableau, toujours gardés.
   // Toutes les lignes sont validées AVANT toute écriture : la première fautive arrête tout →
   // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau.
   // `opts.simuler` : rien n'est écrit (compte des suppressions avant la confirmation d'un plan partagé).
-  // UN instantané, UNE écriture, UNE entrée d'historique (comme le lot). → { modifies, ajoutes, supprimes } ou null.
+  // UN instantané, UNE écriture, UNE entrée d'historique (comme le lot). → { modifies, ajoutes, supprimes, ignores } ou null.
   function _typesConnus(cat) {
     const out = (typeof window.ktaStyleBuiltins === "function") ? (window.ktaStyleBuiltins(cat) || []).slice() : [];
     try {
@@ -333,6 +336,11 @@
     const session = _lire(famille);
     const parUid = new Map();
     session.forEach(function (o) { if (o && typeof o.uid === "string" && o.uid && !horsJeu(o)) parUid.set(o.uid, o); });
+    const traces = new Set();
+    if (window.KtaUid && typeof window.KtaUid.getTombstones === "function") {
+      (window.KtaUid.getTombstones() || []).forEach(function (t) { if (t && t.uid) traces.add(t.uid); });
+    }
+    let ignores = 0;
 
     // 1. Validation et plan des écritures, sans rien toucher.
     const plan = [];
@@ -342,6 +350,11 @@
       if (!l || typeof l !== "object" || horsJeu(l)) continue;
       const fautive = function (code) { return { erreur: { ligne: i + 1, code: code, type: String(l.type == null ? "" : l.type) } }; };
       const obj = (typeof l.uid === "string" && !vus.has(l.uid)) ? parUid.get(l.uid) : null;
+      const orig = (typeof opts.origine === "function") ? opts.origine(l) : null;
+      const touche = function (k) { return !orig || !meme(l[k], orig[k]); };
+      if (!obj && orig && traces.has(l.uid) && !Object.keys(l).some(function (k) {
+        return k !== "uid" && k !== "updatedAt" && touche(k);
+      })) { ignores++; continue; }
       if (!obj) {
         if (connus.indexOf(l.type) < 0) return fautive("typeInconnu");
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
@@ -349,8 +362,6 @@
         continue;
       }
       vus.add(l.uid);
-      const orig = (typeof opts.origine === "function") ? opts.origine(l) : null;
-      const touche = function (k) { return !orig || !meme(l[k], orig[k]); };
       const op = { obj: obj, type: null, niveau: null, champs: null };
       if (touche("type") && l.type !== obj.type) {
         const cibles = listerCibles(famille, obj.type).filter(function (c) { return c.famille === famille; })
@@ -372,7 +383,7 @@
       });
       plan.push(op);
     }
-    const bilan = { modifies: 0, ajoutes: 0, supprimes: 0 };
+    const bilan = { modifies: 0, ajoutes: 0, supprimes: 0, ignores: ignores };
     plan.forEach(function (op) {
       if (op.neuf) bilan.ajoutes++;
       else if (op.type || op.niveau !== null || op.champs) bilan.modifies++;
