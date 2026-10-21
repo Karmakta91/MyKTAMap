@@ -2737,7 +2737,7 @@ function _lireDimensionsEntete(buf) {
   return null;
 }
 
-// Exposé : tableEditor (Convertir la résolution) lit les dimensions par le même parseur, sans décodage.
+// Exposé : recalageScan (Recaler des données sur un autre scan) lit les dimensions par le même parseur, sans décodage.
 window.ktaLireDimensionsEntete = _lireDimensionsEntete;
 
 function _lireImageDimensions(file) {

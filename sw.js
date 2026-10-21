@@ -401,6 +401,7 @@ const ASSETS_TO_CACHE = [
   // 📦 Import multiple : N archives ajoutées à la liste sans ouverture
   "./js/importMasse.js",
   "./js/tableEditor.js",
+  "./js/recalageScan.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/planRegistry.js",

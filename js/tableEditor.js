@@ -407,7 +407,7 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
-    document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
+    document.getElementById("kta-tbl-src-resol").addEventListener("click", function() { fermer(); window.ktaOuvrirRecalageScan(); });
     document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup);
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
