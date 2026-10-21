@@ -2887,6 +2887,7 @@
   "ipl.remove.titre": "Remove the link?",
   "ipl.remove.texte": "The link will be removed on both sides on this device. The points themselves are not modified.",
   "ipl.remove.ok": "Remove",
+  "ipl.remove.refuse": "Removal refused: you need the right to edit both plans of this link.",
   "ipl.toast.removed": "🌀 Link removed",
   "ipl.toast.created": "🌀 Link created to {plan} · {point}",
   "ipl.err.noPlan": "No plan loaded — cannot create a link.",

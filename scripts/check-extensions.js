@@ -392,6 +392,82 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /ligne\.textContent = info;/.test(lire("js/ktaExtensions.js")) && /\.slice\(0, 120\)/.test(lire("js/ktaExtensions.js")));
   }
 
+  // ── 6 bis nonies. LIAISONS INTER-PLAN SYNCHRONISÉES PAR UNE EXTENSION (vrai interPlanLinks.js) ──────
+  {
+    const { K } = nouveauContexte(null);
+    const L0 = { id: "ipl_x", a: { planId: "p1" }, b: { planId: "p2" } };
+    t("liaisons sans extension : aucune info, aucune action, tout est modifiable",
+      K.liaisonInfo(L0) === "" && K.liaisonActions(L0).length === 0 && K.liaisonModifiable(L0) === true);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "lz", apiVersion: 1, liaisons: { info: () => { throw new Error("x"); },
+      actions: () => { throw new Error("x"); }, modifiable: () => { throw new Error("x"); } } });
+    t("🩸 prise « liaisons » en erreur : pas d'info, pas d'action, et MODIFIABLE = NON (permission)",
+      K2.liaisonInfo(L0) === "" && K2.liaisonActions(L0).length === 0 && K2.liaisonModifiable(L0) === false);
+    const { K: K3 } = nouveauContexte(null);
+    let vu = null;
+    K3.register({ nom: "lz3", apiVersion: 1, liaisons: { info: (l) => { vu = l; l.id = "change"; return "  " + "i".repeat(200); },
+      actions: () => [{ libelle: "A", action: () => 1 }, { libelle: "B", action: () => 2 }, { libelle: "C", action: () => 3 },
+        { libelle: "sans action" }], modifiable: () => "oui" } });
+    t("info en texte (80 car.), 2 actions au plus, modifiable vrai seulement si `true`",
+      K3.liaisonInfo(L0).length === 80 && K3.liaisonActions(L0).length === 2 && K3.liaisonModifiable(L0) === false);
+    t("🩸 l'extension reçoit une COPIE du lien (elle ne réécrit pas le registre)", vu && L0.id === "ipl_x");
+
+    // Vrai module, faux navigateur : registre, événements émis (avec leur détail), extension facultative.
+    const ipl = (ext) => {
+      const store = {}, emis = [];
+      const w = {
+        console: { log() {}, warn() {}, error() {} },
+        localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } },
+        CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
+        dispatchEvent(e) { emis.push(e); return true; }, addEventListener() {}, removeEventListener() {},
+        KtaExtensions: ext || undefined, setTimeout: setTimeout
+      };
+      w.window = w;
+      const ctx = vm.createContext(w);
+      vm.runInContext("var localStorage = window.localStorage, CustomEvent = window.CustomEvent, console = window.console;", ctx);
+      vm.runInContext(lire("js/interPlanLinks.js"), ctx, { filename: "interPlanLinks.js" });
+      const ev = () => emis.filter((e) => e.type === "mktm:liaisons-changees").map((e) => e.detail);
+      return { L: w.InterPlanLinks, ev, store };
+    };
+    const cote = (planId, uid) => ({ planId, pointUid: uid, pointId: uid, x: 1, y: 2 });
+    {
+      const { L, ev } = ipl(null);
+      const lien = L.createLink(cote("p1", "pt_a"), cote("p2", "pt_b"));
+      t("création : updatedAt posé, « creation » annoncée APRÈS l'écriture",
+        typeof lien.updatedAt === "number" && ev().length === 1 && ev()[0].action === "creation" && ev()[0].ids[0] === lien.id &&
+        !ev()[0].source && L.getAllLinks().length === 1);
+      L.onPointMoved("p1", { uid: "pt_a", id: "pt_a", x: 5, y: 6 });
+      t("point déplacé : côté recalé, « modification » annoncée",
+        ev()[1].action === "modification" && L.getAllLinks()[0].a.x === 5);
+      const r = L.appliquerExterne({ liens: [{ id: "ipl_ext", a: cote("p1", "pt_c"), b: cote("p3", "pt_d") }, { id: "sans_cotes" }],
+        retirer: [lien.id] });
+      const d = ev().slice(2);
+      t("🩸 dépôt d'une extension : écrit, retiré, annoncé avec source « extension » seulement (pas de renvoi)",
+        r.ecrites === 1 && r.retirees === 1 && d.length === 2 && d.every((x) => x.source === "extension") &&
+        L.getAllLinks().length === 1 && L.getAllLinks()[0].id === "ipl_ext");
+      L.importLinks([{ id: "ipl_imp", a: cote("p1", "pt_e"), b: cote("p4", "pt_f") }]);
+      t("import d'un export : annoncé « creation » avec source « import » (pas un geste de création)",
+        ev().slice(-1)[0].source === "import" && ev().slice(-1)[0].action === "creation");
+      L.onPointDeleted("p1", { uid: "pt_c", id: "pt_c" });
+      t("sans extension : supprimer le point retire sa liaison (« suppression » annoncée)",
+        ev().slice(-1)[0].action === "suppression" && !L.getAllLinks().some((l) => l.id === "ipl_ext"));
+    }
+    {
+      const ext = { liaisonModifiable: (l) => l.id !== "ipl_garde", liaisonInfo: () => "", liaisonActions: () => [] };
+      const { L, ev } = ipl(ext);
+      L.appliquerExterne({ liens: [{ id: "ipl_garde", a: cote("p1", "pt_a"), b: cote("p2", "pt_b") }] });
+      const avant = ev().length;
+      L.onPointDeleted("p1", { uid: "pt_a", id: "pt_a" });
+      t("🩸 liaison que l'extension dit non modifiable : gardée quand son point est supprimé, rien d'annoncé",
+        L.getAllLinks().length === 1 && ev().length === avant);
+    }
+    const IPL = lire("js/interPlanLinks.js");
+    t("🩸 suppression confirmée : refusée si l'extension dit la liaison non modifiable (🗑️ masquée aussi)",
+      /if \(lien && !_modifiable\(lien\)\) \{[\s\S]{0,200}ipl\.remove\.refuse/.test(IPL) &&
+      /\(e\.baked \|\| !_modifiable\(e\.link\)\) \? ''/.test(IPL) && /\(_modifiable\(l\) \? '<button class="kta-popup-btn kta-ipl-del"/.test(IPL));
+    t("info d'extension échappée dans la fiche et le gestionnaire", (IPL.match(/kta-ipl-ext-info">' \+ _esc\(info\)/g) || []).length === 2);
+  }
+
   // ── 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ──────
   {
     const HLp = lire("js/homeLoader.js");

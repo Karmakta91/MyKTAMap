@@ -343,7 +343,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -1546,6 +1546,37 @@
     try { const t = ext.infoObjet(uid); return typeof t === "string" ? t.trim().slice(0, 120) : ""; }
     catch (e) { console.warn("[Extensions] infoObjet :", e); return ""; }
   }
+  // Liaisons inter-plan qu'une extension synchronise : prise `liaisons: { info(lien) → string, actions(lien) →
+  // [{ libelle, action }], modifiable(lien) → bool }` (synchrones, `lien` = copie du registre). info : texte, 80 car. ;
+  // actions : 2 au plus ; modifiable est une PERMISSION — sans prise : oui, erreur : non. Sans extension : rien.
+  function _priseLiaisons(f) {
+    const ext = _prise("liaisons");
+    return ext && ext.liaisons && typeof ext.liaisons[f] === "function" ? ext.liaisons : null;
+  }
+  const _copieLien = function (l) { try { return JSON.parse(JSON.stringify(l)); } catch (e) { return null; } };
+  function liaisonInfo(lien) {
+    const p = _priseLiaisons("info");
+    if (!p || !lien) return "";
+    try { const t = p.info(_copieLien(lien)); return typeof t === "string" ? t.trim().slice(0, 80) : ""; }
+    catch (e) { console.warn("[Extensions] liaisons.info :", e); return ""; }
+  }
+  function liaisonActions(lien) {
+    const p = _priseLiaisons("actions");
+    if (!p || !lien) return [];
+    try {
+      const l = p.actions(_copieLien(lien));
+      return (Array.isArray(l) ? l : []).filter(function (a) {
+        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
+      }).slice(0, 2).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
+    } catch (e) { console.warn("[Extensions] liaisons.actions :", e); return []; }
+  }
+  function liaisonModifiable(lien) {
+    const p = _priseLiaisons("modifiable");
+    if (!p || !lien) return true;
+    try { return p.modifiable(_copieLien(lien)) === true; }
+    catch (e) { console.warn("[Extensions] liaisons.modifiable a échoué → refus :", e); return false; }
+  }
+
   // auteurObjet(uid) → { createur, modifiePar } : filtre « auteur » de l'export ; sans extension : null
   // (filtre non proposé).
   function auteurObjet(uid) {
@@ -1666,6 +1697,9 @@
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
+    liaisonInfo: liaisonInfo,
+    liaisonActions: liaisonActions,
+    liaisonModifiable: liaisonModifiable,
     photosCompleterPoint: photosCompleterPoint,
     photosCompleterPlan: photosCompleterPlan,
     badgePlan: badgePlan,

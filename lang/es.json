@@ -2901,6 +2901,7 @@
   "ipl.remove.titre": "¿Eliminar el enlace?",
   "ipl.remove.texte": "El enlace se eliminará en ambos lados en este dispositivo. Los puntos no se modifican.",
   "ipl.remove.ok": "Eliminar",
+  "ipl.remove.refuse": "Eliminación rechazada: necesitas el derecho de modificar los dos mapas de este enlace.",
   "ipl.toast.removed": "🌀 Enlace eliminado",
   "ipl.toast.created": "🌀 Enlace creado hacia {plan} · {point}",
   "ipl.err.noPlan": "Ningún mapa cargado — imposible crear un enlace.",
