@@ -651,7 +651,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const CV = lire("js/convertirObjet.js");
     t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
       ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
-       "function changerNiveau("].every((f) =>
+       "function changerNiveau(", "function appliquerTableau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);
     let evts = 0;
@@ -1253,13 +1253,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("câblage : l'import direct (importerSessionJSON) renvoie un plan partagé vers la fenêtre",
       /if \(_importPartage\(\)\) \{ ouvrirImportSession\(file\); return; \}/.test(IE));
     const TE = lire("js/tableEditor.js");
-    t("Tableur : plan partagé → traces par point retiré (preparerImport « remplacer »), plan local inchangé",
+    t("Tableur : un seul chemin (points compris) — KtaConvertir.appliquerTableau, plan partagé lu par importPartage",
       /K\.importPartage\(window\._currentLoadedPlanId\)/.test(TE) &&
-      /preparerImport\(etat\(\), Object\.assign\(etat\(\), \{ data: _data, tombstones: \[\] \}\), "remplacer"\)/.test(TE) &&
-      /if \(!partage\) \{ _appliquerRemplacement\(null\);/.test(TE) && /if \(prep\) window\.KtaUid\.setTombstones\(prep\.tombstones\)/.test(TE));
-    t("🔒 Tableur : un remplacement qui supprime exige `remplacer` (sinon refus nommé) puis ktaConfirm",
-      /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refus"/.test(TE) &&
-      /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirm", \{ n: n \}\)/.test(TE));
+      /const sim = KC\.appliquerTableau\(famille, _data, options\(\{ simuler: true \}\)\);/.test(TE) &&
+      TE.indexOf("preparerImport") < 0 && TE.indexOf("_remplacerSession") < 0);
+    t("🔒 Tableur « Appliquer à la session » : plan partagé, une suppression exige `remplacer` (sinon refus nommé) puis ktaConfirm",
+      /if \(!partage \|\| !sim\.supprimes\) return Promise\.resolve\(appliquer\(\)\);/.test(TE) &&
+      /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refusObjets"/.test(TE) &&
+      /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirmObjets"/.test(TE));
   }
 
   // ── 7. CÂBLAGE (fichiers réels) ──────

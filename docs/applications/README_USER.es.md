@@ -1702,7 +1702,8 @@ Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.
 - **Haz clic en una celda** para modificarla (salvo el identificador). **Tab**: celda siguiente · **Intro**: fila siguiente · **Esc**: cancelar.
 - Una coordenada fuera del mapa se pone en **rojo**.
 - La celda **Tags** abre un selector con vista previa de los iconos; puedes crear un tag desde ahí.
-- En trazados, zonas y estructuras se pueden modificar la **nota**, el **tipo** y el **nivel**, pero no la **geometría**: vuelve a dibujarla en el mapa.
+- En trazados, zonas y estructuras se pueden modificar la **nota**, el **tipo** y el **nivel**, pero no la **geometría**: vuelve a dibujarla en el mapa. Un tipo ausente de la leyenda se pone en **rojo**.
+- En un mapa **multinivel**, la columna **level** siempre está (0 si el objeto aún no tiene nivel) y se elige en una lista de los niveles del mapa.
 - En los puntos: búsqueda en todas las columnas, orden con clic en el encabezado, selección múltiple (casilla + Mayús+clic), **+ Añadir fila**, **📋 Duplicar**, **🗑️ Eliminar**, **📍 Ver en el mapa**.
 
 #### 💾 Guardar
@@ -1710,7 +1711,7 @@ Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.
 | Lo que editas | **💾 Guardar** |
 |---|---|
 | **Datos del mapa** | Descarga el archivo `.json` modificado. Para aplicarlo, vuelve a importarlo en el **Generador**: el editor nunca cambia el mapa mostrado. |
-| **Tu sesión** | Descarga el archivo, o **✏️ Reemplazar la sesión en curso** para aplicarlo al momento. |
+| **Tu sesión** | Descarga el archivo, o lo aplica al momento con **✏️ Aplicar a la sesión actual** (puntos, trazados, zonas y estructuras): solo se aplican las celdas que has modificado, una fila no tocada no cambia nada aunque el archivo sea antiguo; un cambio de tipo o de nivel funciona como desde la ficha del objeto; una fila quitada de la tabla se elimina de la sesión; un objeto eliminado desde la exportación no se vuelve a crear, salvo si has modificado su fila. Un tipo ausente de la leyenda se rechaza, con el número de la fila. **⏪** deshace toda la operación de una vez. En un mapa compartido por una instalación, quitar objetos exige el permiso de eliminarlos para todos, y una confirmación. |
 
 Si cierras con cambios sin guardar, la app te propone guardar, salir sin guardar o seguir editando.
 

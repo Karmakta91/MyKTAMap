@@ -7,9 +7,12 @@
 // tableEditor.js — édite en tableau un JSON (calque ou session), le plan en cours ou un ZIP importé ;
 //   héberge aussi la conversion de résolution et le dédoublonnage de sommets.
 // Expose : window.ouvrirTableEditor.
-// ⚠️ Calques de données : export seulement ; seule la SESSION (editorPoints) se remplace en direct.
-// ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : « Remplacer la session » pose une trace de suppression par point
-//   retiré (sinon il revient du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation.
+// ⚠️ Calques de données : export seulement. Un fichier de SESSION s'applique en direct par « Appliquer à la session »
+//   (points, tracés, zones, structures : KtaConvertir.appliquerTableau, un seul chemin) : seules les cellules
+//   modifiées s'appliquent, mêmes chemins que la fiche, une entrée ⏪, type inconnu refusé.
+// ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : un objet retiré reçoit une trace de suppression (sinon il revient
+//   du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation chiffrée.
+// Plan multi-niveau : colonne « level » toujours présente, en liste (niveaux du plan + niveau actuel).
 // 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
 // Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
@@ -31,6 +34,9 @@
   let _sourceMeta = {};           // fileName (téléchargement + titre)
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
+  // Ligne → copie telle que chargée : « Appliquer à la session » n'applique que les cellules modifiées depuis.
+  // Ligne ajoutée ou dupliquée : pas d'origine (c'est un ajout).
+  let _origines   = new WeakMap();
 
   var _ARRAYS_EDITABLES = [
     { key: "data",         emoji: "📍", points: true  },
@@ -40,7 +46,49 @@
     { key: "structures",   emoji: "🏗️", points: false }
   ];
   function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
-  function _estSession() { return _kind === "editorPoints"; }
+  // Fichier de session (export « devmap-session », ou porteur de editorPoints) : ses tableaux s'appliquent en direct.
+  function _sourceEstSession() {
+    return !!(_sourceObj && (_sourceObj.type === "devmap-session" || Array.isArray(_sourceObj.editorPoints)));
+  }
+  function _estSession() { return _kind === "editorPoints" || (!_estPoints() && _sourceEstSession()); }
+  // Niveaux du plan affiché s'il est multi-niveau, sinon null (pas de liste, pas de colonne imposée).
+  // 🩸 APP_CONFIG garde multiLevel du dernier plan après le retour à l'accueil : le plan affiché tranche.
+  function _niveauxPlan() {
+    const c = window.APP_CONFIG;
+    if (!c || c.multiLevel !== true) return null;
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    return (Array.isArray(c.availableLevels) && c.availableLevels.length) ? c.availableLevels : [0];
+  }
+  // Liste d'une cellule : niveaux du plan + `actuel`, triés. 🩸 `actuel` toujours proposé, même hors liste, comme la
+  // fiche (utils.js > ktaNiveauxProposes) : sinon la liste afficherait un autre niveau que celui de l'objet.
+  function _niveauxProposes(actuel) {
+    const base = _niveauxPlan();
+    if (!base) return null;
+    const vus = {};
+    return base.concat([actuel]).filter(function(n) {
+      if (!Number.isInteger(n) || vus[n]) return false;
+      vus[n] = true;
+      return true;
+    }).sort(function(a, b) { return a - b; });
+  }
+  // Jonction (fromLevel / toLevel) et itinéraire n'ont pas de niveau unique : cellule en lecture seule.
+  function _sansNiveau(p) { return !_estPoints() && !!p && (p.type === "jonction" || p.type === "itinerary"); }
+  function _catTypes() { return (_kind === "roads") ? "traces" : _kind; }   // zones / structures = mêmes clés
+  // Types connus de la légende (canon + customs) pour la colonne `type`, ou [] (points, légende absente).
+  function _typesConnus() {
+    if (_estPoints()) return [];
+    const cat = _catTypes();
+    const out = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat).slice() : [];
+    if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
+      try {
+        window.LegendCustomization.listCustomEntries(cat).forEach(function(e) { if (e && e.id) out.push(e.id); });
+      } catch(e) {}
+    }
+    return out;
+  }
+  function _valTri(p, col) {
+    return (col === "level" && !Number.isInteger(p.level) && !_sansNiveau(p)) ? 0 : p[col];
+  }
   function _prefixeUid() {
     return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
   }
@@ -128,7 +176,7 @@
       .kta-tbl td.editing {
         padding: 0;
       }
-      .kta-tbl td.editing input {
+      .kta-tbl td.editing input, .kta-tbl td.editing select {
         width: 100%; box-sizing: border-box;
         padding: 6px 10px;
         background: #2a3145;
@@ -553,6 +601,8 @@
     _kind       = entry.kind;
     _format     = (entry.kind === "editorPoints") ? "editorPoints" : entry.kind; // alias interne
     _data       = (entry.sourceObj[entry.kind] || []).map(function(p) { return Object.assign({}, p); });
+    _origines   = new WeakMap();
+    _data.forEach(function(p) { _origines.set(p, JSON.parse(JSON.stringify(p))); });
     _sourceMeta = { fileName: entry.fileName || (entry.kind + ".json") };
     _modifie    = false;
     _selection  = new Set();
@@ -563,6 +613,8 @@
   }
 
   function _afficherImport() {
+    // 🩸 L'accueil est retiré : resté dessous, il survivait au tableau et réapparaissait à sa fermeture.
+    if (_modal) { _modal.remove(); _modal = null; }
     const modal = document.createElement("div");
     modal.id = "kta-tbl-modal";
     modal.className = "kta-readme-modal-overlay";
@@ -648,6 +700,7 @@
     // 🩸 L'identité n'est pas éditable : une cellule `uid` permettrait de casser l'identité d'un objet.
     set.delete("uid");
     set.delete("updatedAt");
+    if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
     const ordreCourant = ["id", "type", "nom", "x", "y", "level", "tags", "etat", "description", "points", "profondeur", "date_update"];
     const ordonnees = [];
@@ -761,6 +814,8 @@
     const config = window.PLAN_CONFIG;
     const imgW = config?.plan?.imageWidth  || 0;
     const imgH = config?.plan?.imageHeight || 0;
+    const typesConnus = _typesConnus();
+    const niveauxPlan = _niveauxPlan();
 
     const warnWrap = document.getElementById("kta-tbl-warn-big-wrap");
     if (warnWrap) {
@@ -774,8 +829,8 @@
     let indices = _data.map(function(_, i) { return i; });
     if (_tri.col) {
       indices.sort(function(a, b) {
-        const va = _data[a][_tri.col];
-        const vb = _data[b][_tri.col];
+        const va = _valTri(_data[a], _tri.col);
+        const vb = _valTri(_data[b], _tri.col);
         let cmp = 0;
         if (typeof va === "number" && typeof vb === "number") cmp = va - vb;
         else cmp = String(va || "").localeCompare(String(vb || ""));
@@ -802,9 +857,12 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        const ro = (col === "id" || col === "points");
+        const ro = (col === "id" || col === "points" || (col === "level" && _sansNiveau(p)));
         let cls = "";
         if (ro) cls += "col-readonly";
+        const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
+                             typesConnus.indexOf(v) < 0);
+        if (typeInconnu) cls += (cls ? " " : "") + "col-error";
 
         if (col === "x" && imgW && (v < 0 || v > imgW)) cls += (cls ? " " : "") + "col-error";
         if (col === "y" && imgH && (v < 0 || v > imgH)) cls += (cls ? " " : "") + "col-error";
@@ -814,6 +872,8 @@
           contenu = _renderTagsCellule(idx, v);
         } else if (col === "points") {
           contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
+        } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
+          contenu = _escapeHtml(window.ktaFormatNiveau(Number.isInteger(v) ? v : 0));
         } else if (Array.isArray(v)) {
           contenu = _escapeHtml(v.join(", "));
         } else if (v === undefined || v === null) {
@@ -823,7 +883,8 @@
         }
 
         const tooltip = (col === "x" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.x", { max: imgW })) + '"' :
-                        (col === "y" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.y", { max: imgH })) + '"' : "";
+                        (col === "y" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.y", { max: imgH })) + '"' :
+                        typeInconnu ? ' title="' + _escapeAttr(window.I18n.t("tabledit.type.inconnu")) + '"' : "";
 
         html += '<td class="' + cls + '" data-col="' + _escapeAttr(col) + '" data-idx="' + idx + '"' + tooltip + '>' + contenu + '</td>';
       });
@@ -867,6 +928,7 @@
         if (e.target.closest("input")) return;
         const col = td.dataset.col;
         if (col === "id" || col === "points") return; // lecture seule (id + géométrie)
+        if (col === "level" && _sansNiveau(_data[parseInt(td.dataset.idx)])) return;
         if (col === "tags") {
           const removeBtn = e.target.closest("[data-tag-remove]");
           if (removeBtn) {
@@ -895,6 +957,7 @@
     const p = _data[idx];
     const valOrig = p[col];
 
+    if (col === "level" && _niveauxPlan()) { _editerNiveau(td, idx); return; }
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 
@@ -904,25 +967,14 @@
     input.value = valOrig === undefined || valOrig === null ? "" : valOrig;
     if (isNum && col !== "profondeur") input.step = "1";
 
-    // 🩸 Colonne `type` : une faute de frappe crée un objet orphelin, rendu en couleur de repli. Pas de
-    // blocage (un type inconnu peut être voulu) : une <datalist> propose les types valides (canon +
-    // légende) et un type hors liste est signalé en console ; ≡ Légende signale aussi les orphelins.
+    // 🩸 Colonne `type` : une faute de frappe crée un objet orphelin, rendu en couleur de repli. Saisie libre
+    // (un fichier téléchargé peut porter un type à venir) : une <datalist> propose les types valides (canon +
+    // légende), un type hors liste passe la cellule en rouge et « Appliquer à la session » le REFUSE.
     let _typesValides = null;
     let _dlTypes = null;
     if (col === "type" && !_estPoints()) {
-      const cat = (_kind === "roads") ? "traces" : _kind;   // zones/structures = mêmes clés
-      _typesValides = [];
-      if (typeof window.ktaStyleBuiltins === "function") {
-        _typesValides = window.ktaStyleBuiltins(cat).slice();
-        if (cat === "traces") _typesValides.push("jonction", "itinerary");
-      }
-      if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
-        try {
-          window.LegendCustomization.listCustomEntries(cat).forEach(function(e) {
-            if (e && e.id) _typesValides.push(e.id);
-          });
-        } catch(e) {}
-      }
+      const cat = _catTypes();
+      _typesValides = _typesConnus();
       if (_typesValides.length) {
         _dlTypes = document.createElement("datalist");
         _dlTypes.id = "kta-te-types-" + cat;
@@ -943,6 +995,8 @@
     input.select();
 
     function valider() {
+      // 🩸 Le re-rendu retire l'input, ce qui déclenche son blur : sans ce retrait, valider repart dans valider.
+      input.removeEventListener("blur", valider);
       let nouvelle = input.value;
       if (isNum) {
         nouvelle = nouvelle === "" ? undefined : Number(nouvelle);
@@ -984,6 +1038,50 @@
         e.preventDefault();
         valider();
         _focusVoisin(idx, col, e.shiftKey ? "left" : "right");
+      }
+    });
+  }
+
+  // Cellule « level » d'un plan multi-niveau : une liste, jamais une saisie libre.
+  function _editerNiveau(td, idx) {
+    const p = _data[idx];
+    const actuel = Number.isInteger(p.level) ? p.level : 0;
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", window.I18n.t("niveauObjet.label"));
+    (_niveauxProposes(actuel) || [actuel]).forEach(function(n) {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = window.I18n.t("niveauObjet.option", { n: window.ktaFormatNiveau(n) });
+      if (n === actuel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    td.classList.add("editing");
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+    let fini = false;
+    function terminer(garder) {
+      if (fini) return;
+      fini = true;
+      const n = parseInt(sel.value, 10);
+      if (garder && Number.isInteger(n) && n !== actuel) {
+        p.level = n;
+        _toucher(p);
+        _modifie = true;
+      }
+      td.classList.remove("editing");
+      _construireCorps();
+      _miseAJourInfos();
+    }
+    sel.addEventListener("change", function() { terminer(true); });
+    sel.addEventListener("blur", function() { terminer(true); });
+    sel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { e.preventDefault(); terminer(false); }
+      else if (e.key === "Enter") { e.preventDefault(); terminer(true); _focusVoisin(idx, "level", "down"); }
+      else if (e.key === "Tab") {
+        e.preventDefault();
+        terminer(true);
+        _focusVoisin(idx, "level", e.shiftKey ? "left" : "right");
       }
     });
   }
@@ -1156,6 +1254,10 @@
     _colonnes.forEach(function(c) {
       if (c === "x" || c === "y" || c === "profondeur") nouv[c] = 0;
       else if (c === "tags") nouv[c] = [];
+      else if (c === "level") {   // 🩸 jamais "" : un niveau est un entier (niveau actif, sinon 0)
+        const a = window.APP_CONFIG && window.APP_CONFIG.activeLevel;
+        nouv[c] = Number.isInteger(a) ? a : 0;
+      }
       else nouv[c] = "";
     });
     if ("id" in nouv) nouv.id = "";
@@ -1293,8 +1395,8 @@
     let indices = _data.map(function(_, i) { return i; });
     if (_tri.col) {
       indices.sort(function(a, b) {
-        const va = _data[a][_tri.col];
-        const vb = _data[b][_tri.col];
+        const va = _valTri(_data[a], _tri.col);
+        const vb = _valTri(_data[b], _tri.col);
         let cmp = 0;
         if (typeof va === "number" && typeof vb === "number") cmp = va - vb;
         else cmp = String(va || "").localeCompare(String(vb || ""));
@@ -1364,8 +1466,8 @@
     });
   }
 
-  // ⚠️ Calques de données : export seulement (repasser par le Générateur) (décision produit). Seule la
-  // SESSION (editorPoints) se remplace en direct.
+  // ⚠️ Calques de données : export seulement (repasser par le Générateur) (décision produit). Seul un fichier de
+  // SESSION s'applique en direct : points remplacés, tracés / zones / structures appliqués.
   function _menuSauvegarde() {
     const estSession = _estSession();
 
@@ -1386,7 +1488,7 @@
             <button class="kta-btn kta-btn-primary" id="save-dl">
               ${window.I18n.t("tabledit.save.telecharger")}
             </button>
-            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.session")}</button>` : ""}
+            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.appliquer")}</button>` : ""}
           </div>
           ${estSession ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.save.datalayerNote")}</div>`}
         </div>
@@ -1407,7 +1509,7 @@
     if (estSession) {
       document.getElementById("save-session").addEventListener("click", function() {
         overlay.remove();
-        _remplacerSession().then(function(fait) {
+        _appliquerSession().then(function(fait) {
           if (!fait) return;   // refus ou confirmation annulée : le tableau garde ses modifications
           _modifie = false;
           _miseAJourInfos();
@@ -1436,65 +1538,81 @@
     return obj;
   }
 
-  // Plan affiché partagé par une extension → { remplacer } ; sinon null (plan local : remplacement historique).
+  // Plan affiché partagé par une extension → { remplacer } ; sinon null (plan local : ni droit ni confirmation).
   function _partage() {
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
     const K = window.KtaExtensions;
     return (K && typeof K.importPartage === "function") ? K.importPartage(window._currentLoadedPlanId) : null;
   }
-  // Plan partagé : les points du tableau remplacent ceux de la session, une trace par point retiré
-  // (KtaUid.preparerImport, tracés / zones / structures inchangés).
-  function _preparerPartage() {
-    const etat = function() {
-      return { data: (window.getEditorPoints && window.getEditorPoints()) || [],
-        roads: (window.getRoads && window.getRoads()) || [], zones: (window.getZones && window.getZones()) || [],
-        structures: (window.getStructures && window.getStructures()) || [], tombstones: window.KtaUid.getTombstones() };
-    };
-    window.KtaUid.ensureAll(_data, "pt");
-    return window.KtaUid.preparerImport(etat(), Object.assign(etat(), { data: _data, tombstones: [] }), "remplacer");
+
+  function _origineDe(ligne) { return _origines.get(ligne) || null; }
+
+  // Ligne fautive sélectionnée et amenée à l'écran : son numéro suit l'ordre du fichier, pas le tri affiché.
+  function _montrerLigne(idx) {
+    if (!_modal || !_data[idx]) return;
+    _selection = new Set([idx]);
+    _construireCorps();
+    _miseAJourInfos();
+    const tr = _modal.querySelector('tr[data-idx="' + idx + '"]');
+    if (tr && tr.scrollIntoView) tr.scrollIntoView({ block: "center" });
   }
 
-  // → Promise<bool> : true si la session a été remplacée.
-  function _remplacerSession() {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);   // 🔒 lecture seule : la session ne se remplace pas
-    if (!window.setEditorPoints) {
+  // Un tableau d'un fichier de session → la session (KtaConvertir.appliquerTableau, points compris : seules les cellules
+  // modifiées, type et niveau par les chemins de la fiche, une entrée ⏪). Un type inconnu, ou incompatible avec
+  // l'objet, est REFUSÉ ici (le téléchargement garde la saisie libre). Plan partagé : retirer des objets exige
+  // `remplacer` de la prise (relu au clic, sinon refus nommé), puis une confirmation chiffrée.
+  // → Promise<bool> : true si la session a été modifiée (ou l'était déjà).
+  function _appliquerSession() {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);   // 🔒 lecture seule
+    const KC = window.KtaConvertir;
+    const planAffiche = (typeof window.ktaPlanAffiche === "function") ? window.ktaPlanAffiche() : true;
+    if (!planAffiche || !KC || typeof KC.appliquerTableau !== "function") {
       window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
       return Promise.resolve(false);
     }
-    const partage = window.KtaUid ? _partage() : null;
-    if (!partage) { _appliquerRemplacement(null); return Promise.resolve(true); }
-    const n = _preparerPartage().supprimes;
-    if (!n) { _appliquerRemplacement(_preparerPartage()); return Promise.resolve(true); }
-    // 🔒 Supprimer pour tous : permission relue maintenant (prise `importSession`, erreur = refus).
-    if (!partage.remplacer) {
-      window.ktaAlerte(window.I18n.t("tabledit.save.partage.refus", { n: n }), { type: "erreur" });
+    if (window.KtaUid) window.KtaUid.ensureAll(_data, _prefixeUid());
+    // Points : la liste est fournie ici (KtaConvertir ne la nomme pas) ; ⚠️ setEditorPoints garde l'objet ENTIER.
+    const famille = _estPoints() ? "points" : _kind;
+    const acces = _estPoints() ? { lire: window.getEditorPoints, ecrire: window.setEditorPoints, categorie: "editorPoints" } : null;
+    const options = function(o) { return Object.assign({ origine: _origineDe, acces: acces }, o || {}); };
+    const sim = KC.appliquerTableau(famille, _data, options({ simuler: true }));
+    if (!sim) return Promise.resolve(false);
+    if (sim.erreur) {
+      _montrerLigne(sim.erreur.ligne - 1);
+      window.ktaAlerte(window.I18n.t("tabledit.apply." + sim.erreur.code,
+        { ligne: sim.erreur.ligne, type: sim.erreur.type }), { type: "erreur" });
       return Promise.resolve(false);
     }
-    return window.ktaConfirm(window.I18n.t("tabledit.save.partage.confirm", { n: n }), {
-      titre: window.I18n.t("tabledit.save.partage.titre"), okLabel: window.I18n.t("tabledit.save.partage.ok"), zIndex: 100003
-    }).then(function(ok) {
-      if (!ok) return false;
-      _appliquerRemplacement(_preparerPartage());   // recalculé : la synchro a pu passer pendant la question
+    const objets = window.I18n.t("tabledit.kind." + (_estPoints() ? "data" : _kind));
+    const appliquer = function() {
+      // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche de son
+      // dernier état, ses photos restent « sans point ».
+      const avantPts = _estPoints() ? JSON.parse(JSON.stringify(window.getEditorPoints() || [])) : null;
+      const b = KC.appliquerTableau(famille, _data, options());   // recalculé : la synchro a pu passer pendant la question
+      if (!b || b.erreur) return false;
+      if (avantPts && (b.modifies + b.ajoutes + b.supprimes) && window.MyKTAMapPhotos &&
+          window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
+        window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, avantPts.concat(window.getEditorPoints() || []));
+      }
+      const msgOk = ((b.modifies + b.ajoutes + b.supprimes)
+        ? window.I18n.t("tabledit.save.appliqueOk", b) : window.I18n.t("tabledit.save.rienAAppliquer")) +
+        (b.ignores ? " " + window.I18n.t("tabledit.save.ignorees", { n: b.ignores }) : "");
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
+      else window.ktaAlerte(msgOk);
       return true;
-    });
-  }
-
-  // `prep` : résultat de _preparerPartage (plan partagé), ou null (les lignes du tableau telles quelles).
-  function _appliquerRemplacement(prep) {
-    if (prep) window.KtaUid.setTombstones(prep.tombstones);
-    const lignes = prep ? prep.data : _data;
-    // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche
-    // de son dernier état, ses photos restent « sans point ».
-    const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
-    if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
-      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(lignes));
+    };
+    const partage = window.KtaUid ? _partage() : null;
+    if (!partage || !sim.supprimes) return Promise.resolve(appliquer());
+    // 🔒 Supprimer pour tous : permission relue maintenant (prise `importSession`, erreur = refus).
+    if (!partage.remplacer) {
+      window.ktaAlerte(window.I18n.t("tabledit.save.partage.refusObjets", { n: sim.supprimes, objets: objets }),
+        { type: "erreur" });
+      return Promise.resolve(false);
     }
-    window.setEditorPoints(lignes);
-    if (window.renderEditorPoints) window.renderEditorPoints();
-    // Carte masquée : toast succès, important (visible même en Silence).
-    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: lignes.length });
-    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
-    else window.ktaAlerte(msgOk);
+    return window.ktaConfirm(window.I18n.t("tabledit.save.partage.confirmObjets", { n: sim.supprimes, objets: objets }), {
+      titre: window.I18n.t("tabledit.save.partage.titreAppliquer"),
+      okLabel: window.I18n.t("tabledit.save.partage.okAppliquer"), zIndex: 100003
+    }).then(function(ok) { return ok ? appliquer() : false; });
   }
 
   // ── Convertir la résolution ──────────────────────────────

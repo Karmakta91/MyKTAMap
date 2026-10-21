@@ -91,10 +91,37 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
     (`CalqueSession.resynchroniser`) et liaisons inter-plans (`InterPlanLinks.importLinks`, fusion par id) : même
     traitement dans tous les modes.
 - `importerSessionJSON(file)` (import direct, sans fenêtre) : sur un plan partagé, ouvre la fenêtre à la place.
-- **🧮 Tableur, « Remplacer la session »** (`tableEditor.js > _remplacerSession`) : plan local inchangé. Plan partagé :
-  même calcul (`KtaUid.preparerImport` en « remplacer », points seulement) — une trace par point de la session absent
-  du tableau ; s'il y en a, il faut `remplacer` de la prise (relu au clic, sinon refus nommé, rien ne change) puis
-  `ktaConfirm` qui annonce le nombre de points supprimés pour tous. Sans point retiré : ni droit ni confirmation.
+- **🧮 Tableur, « Appliquer à la session »** (points, tracés, zones, structures d'un fichier de session — `type:
+  "devmap-session"` ou porteur de `editorPoints` ; un calque de données, ou un `session_*.json` sans ce marqueur,
+  reste en téléchargement seul) : un seul chemin, `tableEditor.js > _appliquerSession` →
+  `KtaConvertir.appliquerTableau(famille, lignes, opts)`. Points : la liste est passée par l'appelant
+  (`opts.acces` = getEditorPoints / setEditorPoints, catégorie d'historique `editorPoints`), sans validation de
+  type ; fiches des photos mises à jour comme avant (`MyKTAMapPhotos.majFichesPoints`, points d'avant puis
+  d'après). Le tableau devient la
+  famille, **par uid** : ligne connue = l'objet de la session reçoit ses cellules modifiées par les chemins de la fiche (type par
+  `_versType`, comme 🔄 Convertir ; niveau par `_poserNiveau`, comme la liste « Niveau » ; autres colonnes en place +
+  `touch`) ; sa **géométrie reste celle de la session** (le tableau ne l'édite pas) ; objet sans différence : intact.
+  Ligne d'uid inconnu = ajout ; objet absent du tableau = suppression (trace posée par `HistoryManager.record`).
+  🩸 Un réimport ne ressuscite rien : une ligne dont l'uid porte une trace de suppression est **ignorée** si elle n'a
+  pas été modifiée au tableau (bilan : « N ligne(s) supprimée(s) depuis l'export, ignorée(s) »), **réajoutée** si une
+  cellule a changé (geste explicite ; trace retirée par `HistoryManager.record`, comme toute réapparition).
+  Itinéraire calculé et aperçus : gardés, jamais pris au tableau. Un instantané, une écriture, **une entrée ⏪**.
+  - Validation de TOUTES les lignes avant toute écriture, la première fautive arrête tout (fenêtre qui nomme la ligne
+    — ordre du fichier, ligne sélectionnée à l'écran — et le type) : type **inconnu** de la légende, type d'une autre
+    géométrie (règle ouvert / fermé de Convertir), `jonction` / `itinerary` posés au tableau, niveau non entier ou sur
+    une jonction. Un type orphelin **inchangé** ne bloque pas. Le téléchargement garde la saisie libre (cellule en
+    rouge seulement).
+  - ⚠️ **Seules les cellules modifiées s'appliquent** (décision produit, points compris) : chaque ligne est comparée
+    à sa copie prise au chargement (`_origines`, passée en `opts.origine`). Une ligne non touchée ne change rien,
+    même si le fichier est plus ancien que la session ; sur une ligne touchée, les autres champs gardent leur valeur
+    de session. Une colonne absente d'une ligne ne retire jamais un champ. Les traces de suppression du fichier sont
+    ignorées (≠ l'import de session §9.1).
+  - Plan partagé : même règle que les points (suppression ⇒ `remplacer` de la prise relu au clic, sinon refus nommé ;
+    puis `ktaConfirm` avec le nombre), compté par une simulation (`{ simuler: true }`).
+- **Colonne « level »** (plan affiché multi-niveau) : toujours présente pour les quatre tableaux, même sans aucun
+  champ `level` (affiché 0) ; la cellule est une liste = `availableLevels` + le niveau actuel de la ligne s'il en sort
+  (comme la fiche) ; lecture seule pour une jonction et l'itinéraire. Hors multi-niveau : colonne seulement si un objet
+  a un `level`, saisie numérique. Checkup : `scripts/smoke/checkup-tableur-session.js`.
 - Limite : un objet créé par un autre membre et pas encore reçu au moment de l'import ne reçoit pas de trace (il
   reste après un « Remplacer »). Garde-fou : `scripts/check-extensions.js` §6 septies.
 
@@ -174,7 +201,7 @@ Renommer un point ne touche plus ses photos ; un point sans uid garde l'ancien c
 **Fiche du point** (`fiche: { nom, x, y, niveau, type, maj }`, coordonnées image comme dans la session) : de quoi
 retrouver le point s'il disparaît. Posée à l'ajout (état du formulaire), au rattachement et à la restauration si
 fournie ; remise à jour par `majFichesPoints(planId, points)` quand le point est enregistré (éditeur, tableau
-« Remplacer la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
+« Appliquer à la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
 Seules les fiches qui changent sont écrites. Jamais exigée : les anciennes photos n'en ont pas.
 
 **Saisie** — `editor.js > afficherFormulaire(x, y, existingPoint?)`, section 📸 : écriture IndexedDB dès l'ajout

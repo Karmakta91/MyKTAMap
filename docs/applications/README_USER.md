@@ -1702,7 +1702,8 @@ Si la source contient plusieurs jeux de données, un sélecteur te laisse choisi
 - **Clique une cellule** pour la modifier (sauf l'identifiant). **Tab** : cellule suivante · **Entrée** : ligne suivante · **Échap** : annuler.
 - Une coordonnée hors du plan passe en **rouge**.
 - La cellule **Tags** ouvre un sélecteur avec aperçu des icônes ; tu peux y créer un tag.
-- Pour les tracés, zones et structures, la **note**, le **type** et le **niveau** se modifient, mais pas la **géométrie** : redessine-la sur la carte.
+- Pour les tracés, zones et structures, la **note**, le **type** et le **niveau** se modifient, mais pas la **géométrie** : redessine-la sur la carte. Un type absent de la légende passe en **rouge**.
+- Sur un plan **multi-niveau**, la colonne **level** est toujours là (0 si l'objet n'a pas encore de niveau) et se choisit dans une liste des niveaux du plan.
 - Pour les points : recherche dans toutes les colonnes, tri par clic sur l'en-tête, sélection multiple (case + Maj+clic), **+ Ajouter ligne**, **📋 Dupliquer**, **🗑️ Supprimer**, **📍 Voir sur la carte**.
 
 #### 💾 Enregistrer
@@ -1710,7 +1711,7 @@ Si la source contient plusieurs jeux de données, un sélecteur te laisse choisi
 | Ce que tu édites | **💾 Sauvegarder** |
 |---|---|
 | **Données du plan** | Télécharge le fichier `.json` modifié. Pour l'appliquer, réimporte-le dans le **Générateur** : l'éditeur ne change jamais le plan affiché. |
-| **Ta session** | Télécharge le fichier, ou **✏️ Remplacer la session en cours** pour appliquer tout de suite. |
+| **Ta session** | Télécharge le fichier, ou applique tout de suite avec **✏️ Appliquer à la session en cours** (points, tracés, zones et structures) : seules les cellules que tu as modifiées s'appliquent, une ligne non touchée ne change rien même si le fichier est ancien ; un changement de type ou de niveau fait comme depuis la fiche de l'objet ; une ligne retirée du tableau est supprimée de la session ; un objet supprimé depuis l'export n'est pas recréé, sauf si tu as modifié sa ligne. Un type absent de la légende est refusé, avec le numéro de la ligne. **⏪** annule l'opération d'un coup. Sur un plan partagé par une installation, retirer des objets demande le droit de les supprimer pour tous, et une confirmation. |
 
 Si tu fermes avec des modifications non sauvegardées, l'app te propose de sauvegarder, de quitter sans sauvegarder ou de continuer.
 

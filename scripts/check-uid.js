@@ -159,14 +159,19 @@ t("note d'un objet (tracé, zone, structure) : touch",
   /_roadRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_roadRef\);/.test(ROAD) &&
   /_zoneRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_zoneRef\);/.test(ZONES) &&
   /_structRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_structRef\);/.test(STRUCT));
-t("conversion : l'uid suit et la conversion appelle touch (simple et par lot)",
-  (CONV.match(/KtaUid\.touch\(neuf\)/g) || []).length === 2);
-t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation",
-  /cible\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(cible\);/.test(CONV));
+t("conversion : l'uid suit et la conversion appelle touch (une règle : fiche, lot, Éditeur de données)",
+  /function _versType\(obj, typeCible\) \{[\s\S]{0,200}if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  (CONV.match(/_versType\(/g) || []).length === 4);
+t("Éditeur de données « Appliquer à la session » : ligne ajoutée et colonne modifiée → touch",
+  /delete neuf\.uid;[^\n]*\n\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  /Object\.assign\(obj, op\.champs\);\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation (fiche et Éditeur de données)",
+  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV) &&
+  (CONV.match(/_poserNiveau\(/g) || []).length === 3);
 // 🩸 Une réception de synchro remplace un objet par une copie de même uid : la référence d'une fiche ouverte n'est plus
 // dans la liste. Toute recherche d'objet de session dans convertirObjet passe par _indexDe (référence, puis uid).
 t("convertirObjet : objet retrouvé par référence PUIS par uid (convertir, supprimer, niveau, lot), jamais indexOf seul",
-  (CONV.match(/_indexDe\(/g) || []).length === 5 && (CONV.match(/\.indexOf\(/g) || []).length === 1 &&
+  (CONV.match(/_indexDe\(/g) || []).length === 5 && (CONV.match(/liste\.indexOf\(/g) || []).length === 1 &&
   /liste\.findIndex\(function \(o\) \{ return o && o\.uid === obj\.uid; \}\)/.test(CONV));
 const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
 t("changement de niveau d'un POI : posé AVANT le touch de la modification",

@@ -1768,12 +1768,14 @@ Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Édit
 
 `_kind` ∈ {`data`, `editorPoints`, `roads`, `zones`, `structures`}. Helpers `_estPoints()` / `_estSession()`.
 - **Points** (`data`/`editorPoints`) : édition complète (inchangé) + boutons « Ajouter ligne » / « Voir carte ».
-- **Tracés / zones / structures** : `description`(= **la note**, cf `road.js:939`/`zones.js:377`/`structures.js:592`), `type`, `level` éditables ; colonne **`points` (géométrie) en lecture seule** (rendu « N points », classe `col-readonly`, bandeau `tabledit.geom.lecture`). `level` ajouté aux colonnes numériques. Boutons add/preview masqués (géométrie non créable au tableau).
+- **Tracés / zones / structures** : `description` (= **la note**), `type`, `level` éditables ; colonne **`points` (géométrie) en lecture seule** (rendu « N points », classe `col-readonly`, bandeau `tabledit.geom.lecture`). Boutons add/preview masqués (géométrie non créable au tableau).
+- **`type`** : saisie libre avec `<datalist>` des types connus (canon `ktaStyleBuiltins` + customs de la légende) ; un type hors liste passe la cellule en `col-error` (infobulle `tabledit.type.inconnu`).
+- **`level`** sur un plan affiché multi-niveau : colonne toujours présente (même sans champ `level`, affiché 0), cellule = `<select>` (`_editerNiveau`) des `availableLevels` + niveau actuel ; lecture seule pour jonction / itinéraire. Hors multi-niveau : saisie numérique, colonne seulement si un objet a un `level`.
 
 #### 91.3 Sauvegarde — règle « no live » datalayers (`_menuSauvegarde`)
 
 - **Datalayers** (`data`/`roads`/`zones`/`structures`) → **export-only** (`📥 Télécharger`) + note `tabledit.save.datalayerNote` (« réimporte dans le Générateur »). Le live-load `Remplacer le calque actif` (ancien `_remplacerCalque`/`_calqueCorrespondant`) est **supprimé**.
-- **Session** (`editorPoints`) → `📥 Télécharger` **ou** `✏️ Remplacer la session` live (`setEditorPoints`).
+- **Fichier de session** (`type: "devmap-session"` ou porteur de `editorPoints`) → `📥 Télécharger` **ou** `✏️ Appliquer à la session` en direct, points compris (`KtaConvertir.appliquerTableau` : seules les cellules modifiées, type et niveau par les chemins de la fiche, type inconnu refusé, une entrée ⏪). Règles et plan partagé : `session-data.md` §9.1.
 - `_construireObjetSortie()` = **clone profond** de `_sourceObj` (`JSON.parse(JSON.stringify)`) avec uniquement `obj[_kind] = _data` remplacé → **aucune perte** des autres tableaux/champs (type, version, measure, `customLegend`, autres calques d'un même fichier). Nom de téléchargement = `_sourceMeta.fileName`.
 
 i18n : 23 clés `tabledit.*` ajoutées (accueil / source / selecteur / kind / err / col / geom / save.datalayerNote) fr/en/es. **Aucune nouvelle surface réseau** (lecture locale des calques, identique au boot).

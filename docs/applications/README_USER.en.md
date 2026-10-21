@@ -1702,7 +1702,8 @@ If the source contains several datasets, a selector lets you choose.
 - **Click a cell** to edit it (except the identifier). **Tab**: next cell · **Enter**: next row · **Esc**: cancel.
 - A coordinate outside the map turns **red**.
 - The **Tags** cell opens a picker with icon previews; you can create a tag there.
-- For paths, zones and structures, the **note**, **type** and **level** can be edited, but not the **geometry**: redraw it on the map.
+- For paths, zones and structures, the **note**, **type** and **level** can be edited, but not the **geometry**: redraw it on the map. A type missing from the legend turns **red**.
+- On a **multi-level** map, the **level** column is always there (0 when the object has no level yet) and is picked from a list of the map's levels.
 - For points: search across all columns, sort by clicking the header, multiple selection (checkbox + Shift+click), **+ Add row**, **📋 Duplicate**, **🗑️ Delete**, **📍 View on map**.
 
 #### 💾 Saving
@@ -1710,7 +1711,7 @@ If the source contains several datasets, a selector lets you choose.
 | What you edit | **💾 Save** |
 |---|---|
 | **Map data** | Downloads the edited `.json` file. To apply it, re-import it in the **Generator**: the editor never changes the displayed map. |
-| **Your session** | Downloads the file, or **✏️ Replace the current session** to apply it right away. |
+| **Your session** | Downloads the file, or applies it right away with **✏️ Apply to the current session** (points, paths, zones and structures): only the cells you changed are applied, an untouched row changes nothing even if the file is old; a type or level change works as from the object's sheet; a row removed from the table is deleted from the session; an object deleted since the export is not recreated, unless you changed its row. A type missing from the legend is refused, with the row number. **⏪** undoes the whole operation at once. On a map shared by an installation, removing objects requires the right to delete them for everyone, and a confirmation. |
 
 If you close with unsaved changes, the app offers to save, quit without saving, or keep editing.
 
