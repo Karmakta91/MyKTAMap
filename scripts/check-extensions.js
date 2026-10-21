@@ -1116,6 +1116,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /const p2 = _importPartage\(\);\s*\n\s*if \(!p2 \|\| !p2\.remplacer/.test(IE) && /ktaConfirm\(_tp\("confirmRemplacer", \{ n: n \}\)/.test(IE));
     t("câblage : l'import direct (importerSessionJSON) renvoie un plan partagé vers la fenêtre",
       /if \(_importPartage\(\)\) \{ ouvrirImportSession\(file\); return; \}/.test(IE));
+    const TE = lire("js/tableEditor.js");
+    t("Tableur : plan partagé → traces par point retiré (preparerImport « remplacer »), plan local inchangé",
+      /K\.importPartage\(window\._currentLoadedPlanId\)/.test(TE) &&
+      /preparerImport\(etat\(\), Object\.assign\(etat\(\), \{ data: _data, tombstones: \[\] \}\), "remplacer"\)/.test(TE) &&
+      /if \(!partage\) \{ _appliquerRemplacement\(null\);/.test(TE) && /if \(prep\) window\.KtaUid\.setTombstones\(prep\.tombstones\)/.test(TE));
+    t("🔒 Tableur : un remplacement qui supprime exige `remplacer` (sinon refus nommé) puis ktaConfirm",
+      /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refus"/.test(TE) &&
+      /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirm", \{ n: n \}\)/.test(TE));
   }
 
   // ── 7. CÂBLAGE (fichiers réels) ──────

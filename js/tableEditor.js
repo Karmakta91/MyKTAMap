@@ -8,6 +8,8 @@
 //   héberge aussi la conversion de résolution et le dédoublonnage de sommets.
 // Expose : window.ouvrirTableEditor.
 // ⚠️ Calques de données : export seulement ; seule la SESSION (editorPoints) se remplace en direct.
+// ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : « Remplacer la session » pose une trace de suppression par point
+//   retiré (sinon il revient du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation.
 // 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
 // Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
@@ -1404,10 +1406,12 @@
 
     if (estSession) {
       document.getElementById("save-session").addEventListener("click", function() {
-        _remplacerSession();
-        _modifie = false;
-        _miseAJourInfos();
         overlay.remove();
+        _remplacerSession().then(function(fait) {
+          if (!fait) return;   // refus ou confirmation annulée : le tableau garde ses modifications
+          _modifie = false;
+          _miseAJourInfos();
+        });
       });
     }
   }
@@ -1432,22 +1436,63 @@
     return obj;
   }
 
+  // Plan affiché partagé par une extension → { remplacer } ; sinon null (plan local : remplacement historique).
+  function _partage() {
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    const K = window.KtaExtensions;
+    return (K && typeof K.importPartage === "function") ? K.importPartage(window._currentLoadedPlanId) : null;
+  }
+  // Plan partagé : les points du tableau remplacent ceux de la session, une trace par point retiré
+  // (KtaUid.preparerImport, tracés / zones / structures inchangés).
+  function _preparerPartage() {
+    const etat = function() {
+      return { data: (window.getEditorPoints && window.getEditorPoints()) || [],
+        roads: (window.getRoads && window.getRoads()) || [], zones: (window.getZones && window.getZones()) || [],
+        structures: (window.getStructures && window.getStructures()) || [], tombstones: window.KtaUid.getTombstones() };
+    };
+    window.KtaUid.ensureAll(_data, "pt");
+    return window.KtaUid.preparerImport(etat(), Object.assign(etat(), { data: _data, tombstones: [] }), "remplacer");
+  }
+
+  // → Promise<bool> : true si la session a été remplacée.
   function _remplacerSession() {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);   // 🔒 lecture seule : la session ne se remplace pas
     if (!window.setEditorPoints) {
       window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
-      return;
+      return Promise.resolve(false);
     }
+    const partage = window.KtaUid ? _partage() : null;
+    if (!partage) { _appliquerRemplacement(null); return Promise.resolve(true); }
+    const n = _preparerPartage().supprimes;
+    if (!n) { _appliquerRemplacement(_preparerPartage()); return Promise.resolve(true); }
+    // 🔒 Supprimer pour tous : permission relue maintenant (prise `importSession`, erreur = refus).
+    if (!partage.remplacer) {
+      window.ktaAlerte(window.I18n.t("tabledit.save.partage.refus", { n: n }), { type: "erreur" });
+      return Promise.resolve(false);
+    }
+    return window.ktaConfirm(window.I18n.t("tabledit.save.partage.confirm", { n: n }), {
+      titre: window.I18n.t("tabledit.save.partage.titre"), okLabel: window.I18n.t("tabledit.save.partage.ok"), zIndex: 100003
+    }).then(function(ok) {
+      if (!ok) return false;
+      _appliquerRemplacement(_preparerPartage());   // recalculé : la synchro a pu passer pendant la question
+      return true;
+    });
+  }
+
+  // `prep` : résultat de _preparerPartage (plan partagé), ou null (les lignes du tableau telles quelles).
+  function _appliquerRemplacement(prep) {
+    if (prep) window.KtaUid.setTombstones(prep.tombstones);
+    const lignes = prep ? prep.data : _data;
     // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche
     // de son dernier état, ses photos restent « sans point ».
     const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
     if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
-      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(_data));
+      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(lignes));
     }
-    window.setEditorPoints(_data);
+    window.setEditorPoints(lignes);
     if (window.renderEditorPoints) window.renderEditorPoints();
     // Carte masquée : toast succès, important (visible même en Silence).
-    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
+    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: lignes.length });
     if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
     else window.ktaAlerte(msgOk);
   }

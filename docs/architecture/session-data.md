@@ -86,6 +86,10 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
     (`CalqueSession.resynchroniser`) et liaisons inter-plans (`InterPlanLinks.importLinks`, fusion par id) : même
     traitement dans tous les modes.
 - `importerSessionJSON(file)` (import direct, sans fenêtre) : sur un plan partagé, ouvre la fenêtre à la place.
+- **🧮 Tableur, « Remplacer la session »** (`tableEditor.js > _remplacerSession`) : plan local inchangé. Plan partagé :
+  même calcul (`KtaUid.preparerImport` en « remplacer », points seulement) — une trace par point de la session absent
+  du tableau ; s'il y en a, il faut `remplacer` de la prise (relu au clic, sinon refus nommé, rien ne change) puis
+  `ktaConfirm` qui annonce le nombre de points supprimés pour tous. Sans point retiré : ni droit ni confirmation.
 - Limite : un objet créé par un autre membre et pas encore reçu au moment de l'import ne reçoit pas de trace (il
   reste après un « Remplacer »). Garde-fou : `scripts/check-extensions.js` §6 septies.
 
