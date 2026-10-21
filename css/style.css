@@ -6411,6 +6411,11 @@ html.kta-theme-light .kta-cfg-input option {
   padding: 10px 12px;
 }
 
+/* Ligne remplie par l'assistant « Mettre à jour le plan » (createConf.js > _appliquerMaj). */
+.kta-planner-layer-maj {
+  border-color: var(--kta-accent);
+}
+
 .kta-planner-layer-header {
   display: flex;
   align-items: center;
