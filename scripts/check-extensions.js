@@ -1351,6 +1351,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /e\.type === "ext" && X\.versionAutorisee\(e\.id\)/.test(GEN) &&
       /X\.publierVersion\(\{ planId: idChoisi, blob: blob, nom: name \}\)/.test(GEN) &&
       /\} else if \(idChoisi === "" && peutNouveau\) \{\s*choix = "nouveau";/.test(GEN));
+    t("🩸 Générateur : plusieurs homonymes → rien de présélectionné, validation inactive jusqu'au choix",
+      /let valeur = ambigu \? null :/.test(GEN) && /if \(ambigu\) \{\s*liste\.selectedIndex = 0;\s*ok\.disabled = true;/.test(GEN) &&
+      /return \(r && valeur !== null\) \? valeur : null;/.test(GEN));
     t("Générateur : plan d'extension reconnu à l'empreinte de l'archive gardée, sinon à un nom unique",
       /async function _planExtensionDuZip\(\) \{/.test(GEN) &&
       /e\.type === "ext"/.test(GEN) && /memes\.length === 1 \?/.test(GEN));

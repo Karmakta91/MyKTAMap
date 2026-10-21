@@ -3948,33 +3948,72 @@ function _plansExtAGerer(X) {
 }
 
 // « Mettre à jour quel plan ☁️ ? » → id registre choisi, "" (« Aucun : publier comme nouveau plan ») ou null
-// (annulé). Présélection : le premier plan du même nom que le ZIP, sinon « Aucun ». ⚠️ Le choix ne fait que
-// désigner le plan : la prise revérifie la permission et le serveur de l'extension le droit à l'envoi.
-// La liste est posée par le DOM (noms bruts en textContent) ; sa valeur est relue à chaque changement, la
-// fenêtre étant retirée avant la résolution de ktaConfirm.
+// (annulé). Présélection : le plan du même nom que le ZIP s'il est seul, sinon « Aucun ». 🩸 Plusieurs plans du
+// même nom : RIEN n'est présélectionné et la validation reste inactive jusqu'au choix (présélectionner l'un des
+// homonymes enverrait la version au hasard) ; chaque homonyme est distingué par ce que le registre sait déjà
+// (dossier, version, dernière ouverture, début de l'id), sans requête. ⚠️ Le choix ne fait que désigner le plan :
+// la prise revérifie la permission et le serveur de l'extension le droit à l'envoi. Liste posée par le DOM (noms
+// bruts en textContent) ; sa valeur est relue à chaque changement, la fenêtre étant retirée avant la résolution.
 async function _choisirPlanExtAMettreAJour(plans, nomZip) {
+  const cle = function(e) { return String(e.name || "").trim().toLowerCase(); };
   const nom = String(nomZip || "").trim().toLowerCase();
-  const memeNom = plans.find(function(e) { return String(e.name || "").trim().toLowerCase() === nom; });
-  let valeur = memeNom ? memeNom.id : "";
+  const memeNom = plans.filter(function(e) { return cle(e) === nom; });
+  const ambigu = memeNom.length > 1;
+  let valeur = ambigu ? null : (memeNom.length ? memeNom[0].id : "");
   const promesse = window.ktaConfirm(window.I18n.t("ext.publier.choixQuestion") +
     '<br><select id="kta-gen-cible" style="width:100%; margin-top:10px;"></select>',
     { titre: window.I18n.t("ext.publier.choixTitre"), okLabel: window.I18n.t("ext.publier.choixOk") });
   const liste = document.getElementById("kta-gen-cible");
-  if (liste) {
-    const aucun = document.createElement("option");
-    aucun.value = "";
-    aucun.textContent = window.I18n.t("ext.publier.choixAucun");
-    liste.appendChild(aucun);
-    plans.forEach(function(e) {
-      const o = document.createElement("option");
-      o.value = e.id;
-      o.textContent = "☁️ " + (e.name || e.id);
-      liste.appendChild(o);
-    });
-    liste.value = valeur;
-    liste.addEventListener("change", function() { valeur = liste.value; });
+  const ok = document.getElementById("kta-confirm-oui");
+  if (!liste || !ok) return (await promesse) ? valeur : null;
+  const compte = {};
+  plans.forEach(function(e) { compte[cle(e)] = (compte[cle(e)] || 0) + 1; });
+  const PR = window.PlanRegistry;
+  const loc = window.ktaLocale ? window.ktaLocale() : "fr-FR";
+  const detail = function(e) {
+    const d = [];
+    const dossier = (e.folderId && PR && typeof PR.findFolder === "function") ? PR.findFolder(e.folderId) : null;
+    if (dossier && dossier.name) d.push(window.I18n.t("ext.publier.choixDossier", { nom: dossier.name }));
+    if (e.version) d.push(window.I18n.t("ext.publier.choixVersion", { n: e.version }));
+    if (e.lastOpened) {
+      const dt = new Date(e.lastOpened);
+      if (!isNaN(dt)) d.push(window.I18n.t("ext.publier.choixOuvert", { date: dt.toLocaleDateString(loc) }));
+    }
+    d.push("#" + String(e.extId || e.id).replace(/^ext_/, "").slice(0, 8));
+    return d.join(" · ");
+  };
+  if (ambigu) {
+    const invite = document.createElement("option");
+    invite.value = "";
+    invite.disabled = true;
+    invite.textContent = window.I18n.t("ext.publier.choixInvite");
+    invite.setAttribute("data-invite", "1");
+    liste.appendChild(invite);
   }
-  return (await promesse) ? valeur : null;
+  const aucun = document.createElement("option");
+  aucun.value = "";
+  aucun.textContent = window.I18n.t("ext.publier.choixAucun");
+  liste.appendChild(aucun);
+  plans.forEach(function(e) {
+    const o = document.createElement("option");
+    o.value = e.id;
+    o.textContent = "☁️ " + (e.name || e.id) + (compte[cle(e)] > 1 ? " — " + detail(e) : "");
+    liste.appendChild(o);
+  });
+  if (ambigu) {
+    liste.selectedIndex = 0;
+    ok.disabled = true;
+  } else {
+    liste.value = valeur;
+  }
+  liste.addEventListener("change", function() {
+    const opt = liste.options[liste.selectedIndex];
+    if (!opt || opt.getAttribute("data-invite")) return;
+    valeur = liste.value;
+    ok.disabled = false;
+  });
+  const r = await promesse;
+  return (r && valeur !== null) ? valeur : null;
 }
 
 window.afficherPlanner = afficherPlanner;

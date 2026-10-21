@@ -647,7 +647,9 @@ nom du plan-config). En fin de génération, `_planExtensionDuZip()` cherche le 
 le registre (`entree.sha256`, posé à l'ouverture) ou que l'archive gardée de même taille → reconnu ; sinon UN SEUL
 plan ☁️ du même nom → « porte le nom de ». Plusieurs homonymes ou aucun : si l'utilisateur gère au moins un plan
 ☁️ (`versionAutorisee`), « Mettre à jour quel plan ☁️ ? » (`_choisirPlanExtAMettreAJour`, liste `#kta-gen-cible`
-dans `ktaConfirm`, présélection = premier plan du même nom, sinon « Aucun ») → `publierVersion` sur le plan choisi,
+dans `ktaConfirm`, présélection = le plan du même nom s'il est seul, sinon « Aucun » ; plusieurs homonymes : rien
+de présélectionné, validation inactive jusqu'au choix, chaque homonyme distingué par dossier, version, dernière
+ouverture et début d'id, lus dans le registre) → `publierVersion` sur le plan choisi,
 ou « Aucun : publier comme nouveau plan » ; sinon proposition de plan neuf comme avant. Reconnu et
 `versionAutorisee` → **☁️ Publier la nouvelle version** (`publierVersion`, même plan) ; reconnu sans le droit →
 explication, téléchargement seul. Dans les deux cas, **Publier comme nouveau plan** (3e bouton de `ktaConfirm`,
