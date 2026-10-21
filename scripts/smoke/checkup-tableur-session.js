@@ -215,7 +215,7 @@ async function main() {
       await page.click("#kta-tbl-close");
     }
 
-    // POI : tags + niveau, « Remplacer la session ».
+    // POI : tags + niveau, même « Appliquer à la session ».
     {
       const cols = await ouvrirTableau(page, json, "editorPoints");
       verifier(cols.indexOf("level") >= 0, "POI : colonne « level » présente sans aucun champ level", cols);
@@ -233,7 +233,7 @@ async function main() {
       await page.waitForTimeout(600);
       const e = await etat(page);
       verifier(e.pt && e.pt.level === -2 && JSON.stringify(e.pt.tags) === JSON.stringify(["puits"]),
-        "POI : tags et niveau remplacés dans la session", e.pt);
+        "POI : tags et niveau appliqués à la session", e.pt);
       await page.click("#kta-tbl-close");
     }
 
@@ -312,6 +312,28 @@ async function main() {
     verifier(recent.t1.description === "récente" && recent.t1.type === "principal",
       "🩸 fichier ancien : les autres champs de T1 gardent leur valeur plus récente de la session", recent);
     verifier(recent.t2.type === "secondaire", "🩸 fichier ancien : la ligne non touchée (T2) ne change rien", recent);
+    await page.click("#kta-tbl-close");
+
+    // POI, fichier ancien : la note du point a changé dans la session depuis ; seule la cellule niveau est modifiée.
+    await page.evaluate(function () {
+      const P = window.getEditorPoints().map(function (o) { return Object.assign({}, o); });
+      P.forEach(function (o) { if (o.uid === "pt_tab") { o.description = "note récente"; window.KtaUid.touch(o); } });
+      window.setEditorPoints(P);
+    });
+    await ouvrirTableau(page, json, "editorPoints");
+    await page.click('td[data-idx="0"][data-col="level"]');
+    await page.selectOption('td[data-idx="0"][data-col="level"] select', "1");
+    await page.waitForTimeout(150);
+    await page.click("#kta-tbl-save");
+    await page.click("#save-session");
+    await page.waitForTimeout(600);
+    const poi = await page.evaluate(function () {
+      const o = window.getEditorPoints().find(function (p) { return p.uid === "pt_tab"; }) || {};
+      return { level: o.level, description: o.description, tags: o.tags };
+    });
+    verifier(poi.level === 1, "POI, fichier ancien : la seule cellule modifiée (niveau) est appliquée", poi);
+    verifier(poi.description === "note récente" && JSON.stringify(poi.tags) === "[\"salle\"]",
+      "🩸 POI, fichier ancien : les autres champs gardent leur valeur plus récente de la session", poi);
     await page.click("#kta-tbl-close");
 
     // Supprimé depuis l'export : T2 effacé dans la session (trace de suppression), puis le fichier ancien réappliqué.

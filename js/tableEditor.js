@@ -7,9 +7,9 @@
 // tableEditor.js — édite en tableau un JSON (calque ou session), le plan en cours ou un ZIP importé ;
 //   héberge aussi la conversion de résolution et le dédoublonnage de sommets.
 // Expose : window.ouvrirTableEditor.
-// ⚠️ Calques de données : export seulement. Un fichier de SESSION s'applique en direct : « Remplacer la session »
-//   (points) ou « Appliquer à la session » (tracés / zones / structures, par KtaConvertir.appliquerTableau : mêmes
-//   chemins que la fiche, une entrée ⏪, type inconnu refusé).
+// ⚠️ Calques de données : export seulement. Un fichier de SESSION s'applique en direct par « Appliquer à la session »
+//   (points, tracés, zones, structures : KtaConvertir.appliquerTableau, un seul chemin) : seules les cellules
+//   modifiées s'appliquent, mêmes chemins que la fiche, une entrée ⏪, type inconnu refusé.
 // ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : un objet retiré reçoit une trace de suppression (sinon il revient
 //   du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation chiffrée.
 // Plan multi-niveau : colonne « level » toujours présente, en liste (niveaux du plan + niveau actuel).
@@ -1470,7 +1470,6 @@
   // SESSION s'applique en direct : points remplacés, tracés / zones / structures appliqués.
   function _menuSauvegarde() {
     const estSession = _estSession();
-    const libSession = _estPoints() ? "tabledit.save.session" : "tabledit.save.appliquer";
 
     const overlay = document.createElement("div");
     overlay.className = "kta-readme-modal-overlay";
@@ -1489,7 +1488,7 @@
             <button class="kta-btn kta-btn-primary" id="save-dl">
               ${window.I18n.t("tabledit.save.telecharger")}
             </button>
-            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t(libSession)}</button>` : ""}
+            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.appliquer")}</button>` : ""}
           </div>
           ${estSession ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.save.datalayerNote")}</div>`}
         </div>
@@ -1510,7 +1509,7 @@
     if (estSession) {
       document.getElementById("save-session").addEventListener("click", function() {
         overlay.remove();
-        (_estPoints() ? _remplacerSession() : _appliquerSession()).then(function(fait) {
+        _appliquerSession().then(function(fait) {
           if (!fait) return;   // refus ou confirmation annulée : le tableau garde ses modifications
           _modifie = false;
           _miseAJourInfos();
@@ -1539,72 +1538,11 @@
     return obj;
   }
 
-  // Plan affiché partagé par une extension → { remplacer } ; sinon null (plan local : remplacement historique).
+  // Plan affiché partagé par une extension → { remplacer } ; sinon null (plan local : ni droit ni confirmation).
   function _partage() {
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
     const K = window.KtaExtensions;
     return (K && typeof K.importPartage === "function") ? K.importPartage(window._currentLoadedPlanId) : null;
-  }
-  // Plan partagé : les points du tableau remplacent ceux de la session, une trace par point retiré
-  // (KtaUid.preparerImport, tracés / zones / structures inchangés).
-  function _preparerPartage() {
-    const etat = function() {
-      return { data: (window.getEditorPoints && window.getEditorPoints()) || [],
-        roads: (window.getRoads && window.getRoads()) || [], zones: (window.getZones && window.getZones()) || [],
-        structures: (window.getStructures && window.getStructures()) || [], tombstones: window.KtaUid.getTombstones() };
-    };
-    window.KtaUid.ensureAll(_data, "pt");
-    return window.KtaUid.preparerImport(etat(), Object.assign(etat(), { data: _data, tombstones: [] }), "remplacer");
-  }
-
-  // → Promise<bool> : true si la session a été remplacée.
-  function _remplacerSession() {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);   // 🔒 lecture seule : la session ne se remplace pas
-    if (!window.setEditorPoints) {
-      window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
-      return Promise.resolve(false);
-    }
-    const partage = window.KtaUid ? _partage() : null;
-    if (!partage) { _appliquerRemplacement(null); return Promise.resolve(true); }
-    const n = _preparerPartage().supprimes;
-    if (!n) { _appliquerRemplacement(_preparerPartage()); return Promise.resolve(true); }
-    // 🔒 Supprimer pour tous : permission relue maintenant (prise `importSession`, erreur = refus).
-    if (!partage.remplacer) {
-      window.ktaAlerte(window.I18n.t("tabledit.save.partage.refus", { n: n }), { type: "erreur" });
-      return Promise.resolve(false);
-    }
-    return window.ktaConfirm(window.I18n.t("tabledit.save.partage.confirm", { n: n }), {
-      titre: window.I18n.t("tabledit.save.partage.titre"), okLabel: window.I18n.t("tabledit.save.partage.ok"), zIndex: 100003
-    }).then(function(ok) {
-      if (!ok) return false;
-      _appliquerRemplacement(_preparerPartage());   // recalculé : la synchro a pu passer pendant la question
-      return true;
-    });
-  }
-
-  // `prep` : résultat de _preparerPartage (plan partagé), ou null (les lignes du tableau telles quelles).
-  function _appliquerRemplacement(prep) {
-    const avant = (window.HistoryManager && window.HistoryManager.captureState)
-      ? window.HistoryManager.captureState("editorPoints") : null;
-    if (prep) window.KtaUid.setTombstones(prep.tombstones);
-    const lignes = prep ? prep.data : _data;
-    // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche
-    // de son dernier état, ses photos restent « sans point ».
-    const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
-    if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
-      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(lignes));
-    }
-    window.setEditorPoints(lignes);
-    if (window.renderEditorPoints) window.renderEditorPoints();
-    // Un remplacement = une entrée ⏪ (les traces des points retirés sont posées par record, comme partout).
-    if (window.HistoryManager && avant && window.HistoryManager.record) {
-      window.HistoryManager.record(window.I18n.t("tabledit.save.histoirePoints"), avant, "editorPoints");
-    }
-    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
-    // Carte masquée : toast succès, important (visible même en Silence).
-    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: lignes.length });
-    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
-    else window.ktaAlerte(msgOk);
   }
 
   function _origineDe(ligne) { return _origines.get(ligne) || null; }
@@ -1619,9 +1557,10 @@
     if (tr && tr.scrollIntoView) tr.scrollIntoView({ block: "center" });
   }
 
-  // Tracés / zones / structures d'un fichier de session → la session (KtaConvertir.appliquerTableau : type et niveau
-  // par les chemins de la fiche, une entrée ⏪). Un type inconnu, ou incompatible avec l'objet, est REFUSÉ ici (le
-  // téléchargement, lui, garde la saisie libre). Plan partagé : même règle que « Remplacer la session ».
+  // Un tableau d'un fichier de session → la session (KtaConvertir.appliquerTableau, points compris : seules les cellules
+  // modifiées, type et niveau par les chemins de la fiche, une entrée ⏪). Un type inconnu, ou incompatible avec
+  // l'objet, est REFUSÉ ici (le téléchargement garde la saisie libre). Plan partagé : retirer des objets exige
+  // `remplacer` de la prise (relu au clic, sinon refus nommé), puis une confirmation chiffrée.
   // → Promise<bool> : true si la session a été modifiée (ou l'était déjà).
   function _appliquerSession() {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);   // 🔒 lecture seule
@@ -1632,7 +1571,11 @@
       return Promise.resolve(false);
     }
     if (window.KtaUid) window.KtaUid.ensureAll(_data, _prefixeUid());
-    const sim = KC.appliquerTableau(_kind, _data, { simuler: true, origine: _origineDe });
+    // Points : la liste est fournie ici (KtaConvertir ne la nomme pas) ; ⚠️ setEditorPoints garde l'objet ENTIER.
+    const famille = _estPoints() ? "points" : _kind;
+    const acces = _estPoints() ? { lire: window.getEditorPoints, ecrire: window.setEditorPoints, categorie: "editorPoints" } : null;
+    const options = function(o) { return Object.assign({ origine: _origineDe, acces: acces }, o || {}); };
+    const sim = KC.appliquerTableau(famille, _data, options({ simuler: true }));
     if (!sim) return Promise.resolve(false);
     if (sim.erreur) {
       _montrerLigne(sim.erreur.ligne - 1);
@@ -1640,15 +1583,22 @@
         { ligne: sim.erreur.ligne, type: sim.erreur.type }), { type: "erreur" });
       return Promise.resolve(false);
     }
-    const objets = window.I18n.t("tabledit.kind." + _kind);
+    const objets = window.I18n.t("tabledit.kind." + (_estPoints() ? "data" : _kind));
     const appliquer = function() {
-      const b = KC.appliquerTableau(_kind, _data, { origine: _origineDe });   // recalculé : la synchro a pu passer pendant la question
+      // Fiche des photos : points d'AVANT puis d'après (qui l'emportent) ; un point retiré garde la fiche de son
+      // dernier état, ses photos restent « sans point ».
+      const avantPts = _estPoints() ? JSON.parse(JSON.stringify(window.getEditorPoints() || [])) : null;
+      const b = KC.appliquerTableau(famille, _data, options());   // recalculé : la synchro a pu passer pendant la question
       if (!b || b.erreur) return false;
-      const msg = ((b.modifies + b.ajoutes + b.supprimes)
+      if (avantPts && (b.modifies + b.ajoutes + b.supprimes) && window.MyKTAMapPhotos &&
+          window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
+        window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, avantPts.concat(window.getEditorPoints() || []));
+      }
+      const msgOk = ((b.modifies + b.ajoutes + b.supprimes)
         ? window.I18n.t("tabledit.save.appliqueOk", b) : window.I18n.t("tabledit.save.rienAAppliquer")) +
         (b.ignores ? " " + window.I18n.t("tabledit.save.ignorees", { n: b.ignores }) : "");
-      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msg, "success", { important: true });
-      else window.ktaAlerte(msg);
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "success", { important: true });
+      else window.ktaAlerte(msgOk);
       return true;
     };
     const partage = window.KtaUid ? _partage() : null;

@@ -439,6 +439,27 @@ function charger(fichier, nomGlobal, prealables) {
       t("tableau : la même ligne MODIFIÉE est réajoutée (geste explicite)",
         r4 && r4.ignores === 0 && r4.ajoutes === 1 && R.some(function (o) { return o.uid === "rd_o3"; }), r4);
       delete w.KtaUid.getTombstones;
+      // Points (POI) : même chemin, la liste fournie par l'appelant (opts.acces), aucune validation de type.
+      let P = [{ uid: "pt_a", nom: "A", x: 1, y: 1, tags: ["salle"], description: "récente" },
+               { uid: "pt_b", nom: "B", x: 2, y: 2, tags: [] }];
+      const cats = [];
+      w.HistoryManager = {
+        captureState: function (cat) { cats.push(cat); return { cat: cat }; },
+        record: function (label, avant, cat) { cats.push("rec:" + cat); }
+      };
+      const accesPts = { lire: function () { return P; }, ecrire: function (v) { P = v; }, categorie: "pts-test" };
+      const fic = [{ uid: "pt_a", nom: "A", x: 1, y: 1, tags: ["salle"], description: "ancienne" },
+                   { uid: "pt_b", nom: "B", x: 2, y: 2, tags: [] }];
+      const oP = new Map(fic.map(function (l) { return [l, copie(l)]; }));
+      fic[0].level = 2;
+      fic[1].nom = "B2"; fic[1].type = "libre";
+      const rp = CV.appliquerTableau("points", fic, { acces: accesPts, origine: function (l) { return oP.get(l) || null; } });
+      const pa = P.find(function (o) { return o.uid === "pt_a"; }) || {}, pb = P.find(function (o) { return o.uid === "pt_b"; }) || {};
+      t("tableau, points : seules les cellules modifiées (niveau de A, nom et champ type libre de B), note récente gardée",
+        rp && !rp.erreur && rp.modifies === 2 && pa.level === 2 && pa.description === "récente" && pb.nom === "B2" && pb.type === "libre", rp);
+      t("tableau, points : instantané et historique dans la catégorie fournie", cats.join(",") === "pts-test,rec:pts-test", cats);
+      const rq = CV.appliquerTableau("points", [copie(pa)], { acces: accesPts });
+      t("tableau, points : ligne retirée = suppression", rq && rq.supprimes === 1 && P.length === 1);
     }
   }
 

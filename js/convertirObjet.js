@@ -309,6 +309,9 @@
   // Toutes les lignes sont validées AVANT toute écriture : la première fautive arrête tout →
   // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau.
   // `opts.simuler` : rien n'est écrit (compte des suppressions avant la confirmation d'un plan partagé).
+  // `opts.acces` = { lire, ecrire, categorie } : liste hors vecteurs (les POI du Tableur) — mêmes règles par uid,
+  // sans validation de type (un point n'en a pas), `categorie` = celle de l'historique. Ce module ne nomme pas cette
+  // liste (check-calque-session.js : « Convertir » ne gère pas les points) : c'est l'appelant qui la fournit.
   // UN instantané, UNE écriture, UNE entrée d'historique (comme le lot). → { modifies, ajoutes, supprimes, ignores } ou null.
   function _typesConnus(cat) {
     const out = (typeof window.ktaStyleBuiltins === "function") ? (window.ktaStyleBuiltins(cat) || []).slice() : [];
@@ -324,16 +327,19 @@
   function appliquerTableau(famille, lignes, opts) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return null;   // 🔒 lecture seule
     opts = opts || {};
-    const ecrire = _ecrivain(famille);
-    if (!CAT_DE_FAMILLE[famille] || typeof ecrire !== "function" || !Array.isArray(lignes)) return null;
-    const cat = CAT_DE_FAMILLE[famille];
-    const connus = _typesConnus(cat);
+    const acces = (opts.acces && typeof opts.acces.lire === "function") ? opts.acces : null;
+    const vecteur = !acces;
+    const ecrire = acces ? acces.ecrire : _ecrivain(famille);
+    if ((vecteur && !CAT_DE_FAMILLE[famille]) || typeof ecrire !== "function" || !Array.isArray(lignes)) return null;
+    const categorie = acces ? acces.categorie : famille;
+    const connus = vecteur ? _typesConnus(CAT_DE_FAMILLE[famille]) : null;
     const horsJeu = function (o) { return !!(o && (o.type === "itinerary" || o._preview)); };
     const niveauDe = function (o) { return Number.isInteger(o.level) ? o.level : 0; };
-    const PAS_COLONNE = { points: true, uid: true, updatedAt: true, type: true, level: true };
+    // date_update : posée par touch, jamais une saisie. `type` d'un vecteur : passe par _versType.
+    const PAS_COLONNE = { points: true, uid: true, updatedAt: true, date_update: true, type: vecteur, level: true };
     const meme = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
 
-    const session = _lire(famille);
+    const session = acces ? (acces.lire() || []) : _lire(famille);
     const parUid = new Map();
     session.forEach(function (o) { if (o && typeof o.uid === "string" && o.uid && !horsJeu(o)) parUid.set(o.uid, o); });
     const traces = new Set();
@@ -353,17 +359,17 @@
       const orig = (typeof opts.origine === "function") ? opts.origine(l) : null;
       const touche = function (k) { return !orig || !meme(l[k], orig[k]); };
       if (!obj && orig && traces.has(l.uid) && !Object.keys(l).some(function (k) {
-        return k !== "uid" && k !== "updatedAt" && touche(k);
+        return k !== "uid" && k !== "updatedAt" && k !== "date_update" && touche(k);
       })) { ignores++; continue; }
       if (!obj) {
-        if (connus.indexOf(l.type) < 0) return fautive("typeInconnu");
+        if (vecteur && connus.indexOf(l.type) < 0) return fautive("typeInconnu");
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
         plan.push({ neuf: l });
         continue;
       }
       vus.add(l.uid);
       const op = { obj: obj, type: null, niveau: null, champs: null };
-      if (touche("type") && l.type !== obj.type) {
+      if (vecteur && touche("type") && l.type !== obj.type) {
         const cibles = listerCibles(famille, obj.type).filter(function (c) { return c.famille === famille; })
           .map(function (c) { return c.type; });
         if (cibles.indexOf(l.type) < 0) {
@@ -394,7 +400,7 @@
 
     // 2. Écriture : un instantané, une liste, un rendu.
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
-      ? window.HistoryManager.captureState(famille) : null;
+      ? window.HistoryManager.captureState(categorie) : null;
     const liste = plan.map(function (op) {
       if (op.neuf) {
         const neuf = JSON.parse(JSON.stringify(op.neuf));
@@ -417,7 +423,7 @@
     }
     if (window.HistoryManager && avant && window.HistoryManager.record) {
       window.HistoryManager.record(_t("convert.histoireTableau", { n: bilan.modifies + bilan.ajoutes + bilan.supprimes }),
-        avant, famille);
+        avant, categorie);
     }
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return bilan;
