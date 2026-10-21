@@ -1773,7 +1773,7 @@ Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Édit
 #### 91.3 Sauvegarde — règle « no live » datalayers (`_menuSauvegarde`)
 
 - **Datalayers** (`data`/`roads`/`zones`/`structures`) → **export-only** (`📥 Télécharger`) + note `tabledit.save.datalayerNote` (« réimporte dans le Générateur »). Le live-load `Remplacer le calque actif` (ancien `_remplacerCalque`/`_calqueCorrespondant`) est **supprimé**.
-- **Fichier de session** (`type: "devmap-session"` ou porteur de `editorPoints`) → `📥 Télécharger` **ou**, en direct : `✏️ Remplacer la session` pour les points (`setEditorPoints`, une entrée ⏪), `✏️ Appliquer à la session` pour les tracés / zones / structures (`KtaConvertir.appliquerTableau` : type et niveau par les chemins de la fiche, type inconnu refusé, une entrée ⏪). Règles et plan partagé : `session-data.md` §9.1.
+- **Fichier de session** (`type: "devmap-session"` ou porteur de `editorPoints`) → `📥 Télécharger` **ou** `✏️ Appliquer à la session` en direct, points compris (`KtaConvertir.appliquerTableau` : seules les cellules modifiées, type et niveau par les chemins de la fiche, type inconnu refusé, une entrée ⏪). Règles et plan partagé : `session-data.md` §9.1.
 - `_construireObjetSortie()` = **clone profond** de `_sourceObj` (`JSON.parse(JSON.stringify)`) avec uniquement `obj[_kind] = _data` remplacé → **aucune perte** des autres tableaux/champs (type, version, measure, `customLegend`, autres calques d'un même fichier). Nom de téléchargement = `_sourceMeta.fileName`.
 
 i18n : 23 clés `tabledit.*` ajoutées (accueil / source / selecteur / kind / err / col / geom / save.datalayerNote) fr/en/es. **Aucune nouvelle surface réseau** (lecture locale des calques, identique au boot).

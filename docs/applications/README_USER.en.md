@@ -1709,7 +1709,7 @@ If the source contains several datasets, a selector lets you choose.
 | What you edit | **💾 Save** |
 |---|---|
 | **Map data** | Downloads the edited `.json` file. To apply it, re-import it in the **Generator**: the editor never changes the displayed map. |
-| **Your session** | Downloads the file, or applies it right away: **✏️ Replace the current session** for points, **✏️ Apply to the current session** for paths, zones and structures (only the cells you changed are applied; a type or level change works as from the object's sheet; a row removed from the table is deleted from the session). A type missing from the legend is refused, with the row number. **⏪** undoes the whole operation at once. On a map shared by an installation, removing objects requires the right to delete them for everyone, and a confirmation. |
+| **Your session** | Downloads the file, or applies it right away with **✏️ Apply to the current session** (points, paths, zones and structures): only the cells you changed are applied, an untouched row changes nothing even if the file is old; a type or level change works as from the object's sheet; a row removed from the table is deleted from the session; an object deleted since the export is not recreated, unless you changed its row. A type missing from the legend is refused, with the row number. **⏪** undoes the whole operation at once. On a map shared by an installation, removing objects requires the right to delete them for everyone, and a confirmation. |
 
 If you close with unsaved changes, the app offers to save, quit without saving, or keep editing.
 

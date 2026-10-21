@@ -354,8 +354,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     pour toute l'organisation » (confirmation avec le nombre d'objets supprimés ; une trace de suppression par objet
     retiré, que la synchro propage). `null` / `false` = plan non partagé (remplacement local). Plan local ou du site :
     jamais consultée. 🔒 Erreur ou forme inattendue = partagé, remplacement **refusé** (ajout seul) ; le droit est
-    relu au clic de « Remplacer ». Même règle pour « Remplacer la session » (points) et « Appliquer à la session »
-    (tracés / zones / structures) du Tableur : sur un plan partagé, un objet retiré reçoit une trace ; s'il en retire,
+    relu au clic de « Remplacer ». Même règle pour « Appliquer à la session » du Tableur (points, tracés, zones,
+    structures) : sur un plan partagé, un objet retiré reçoit une trace ; s'il en retire,
     il faut `remplacer === true` (sinon refus nommé, rien ne change) et une confirmation chiffrée. Côté community :
     `KtaExtensions.importPartage(registreId)` ; détail : `session-data.md` §9.1.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
