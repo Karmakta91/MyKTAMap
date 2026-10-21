@@ -333,6 +333,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 - **⭐ Favoritos**: exportar los de este mapa o todos, importar;
 - **📦 Backups recientes** de este mapa: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación. Las copias de **otra versión de este mapa** (reimportada o renombrada) también aparecen, marcadas con 📂, y se restauran en el mapa abierto;
 - **💾 Memoria de sesiones**: tus sesiones viven en el espacio que el navegador concede a la app en tu dispositivo — una parte de su espacio libre, compartida con tus mapas, tus fotos y tus copias de seguridad (ya sin el límite de 5 MB desde el 10/10/2026; tus sesiones existentes se trasladaron ahí automáticamente). El indicador muestra su llenado y los mapas cuya sesión más pesa; al 80 %, la app te avisa al abrir un mapa. Para liberar espacio: exporta tu sesión (💾 Guardar sesión) y luego borra la sesión o las fotos de un mapa antiguo, o quita un mapa que ya no uses. Si el navegador rechaza este almacenamiento (algunas navegaciones privadas), tus sesiones se quedan en el almacenamiento antiguo limitado a ~5 MB, y el indicador lo muestra;
+- **🗑️ Borrar la sesión**: el mismo borrado que la ventana «Sesión anterior restaurada» (ver 🧹 Borrar y corregir), en cualquier momento. En un mapa de solo lectura, solo se propone «Vaciar este dispositivo»;
 - el botón **📊 Estadísticas globales** (informe copiable, CSV, PDF).
 
 ### 🗺️ Leer el mapa
@@ -747,7 +748,7 @@ Las uniones 🪜 se borran como los demás trazados.
 
 **Un objeto concreto**: su ventana tiene un botón **🗑️ Eliminar**; para un punto, es **🗑️ Eliminar este punto**. Sin ventana de confirmación: todo se deshace con ⏪ (`Ctrl+Z`).
 
-**Todo el mapa**: cuando vuelves a abrir un mapa, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro mapa** (portales) se conservan: para quitar uno, elimina el propio punto. En un **mapa compartido con tu organización**, la ventana te hace elegir: **Vaciar este dispositivo** (todo lo que está en el servidor vuelve en la siguiente sincronización) o, según tus derechos, **Eliminar mis añadidos para toda la organización** o **Eliminarlo todo para la organización** (número de objetos anunciado antes; estas dos no se deshacen para los demás).
+**Todo el mapa**: cuando vuelves a abrir un mapa, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (también en cualquier momento en **📊 Detalles de la sesión**) (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro mapa** (portales) se conservan: para quitar uno, elimina el propio punto. En un **mapa compartido con tu organización**, la ventana te hace elegir: **Vaciar este dispositivo** (todo lo que está en el servidor vuelve en la siguiente sincronización) o, según tus derechos, **Eliminar mis añadidos para toda la organización** o **Eliminarlo todo para la organización** (número de objetos anunciado antes; estas dos no se deshacen para los demás).
 
 > ℹ️ Solo se borran **tus** objetos. Los del mapa o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde ≡ **Filtros** y exporta después la capa corregida.
 
@@ -853,17 +854,19 @@ Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mi
 
 ¿Un objeto quedó en el nivel equivocado? En la ventana de un trazado, una zona o una estructura que hayas dibujado, la lista **Nivel** (bajo 🔄 Convertir) lo mueve al instante; para un punto, es la lista **Nivel** de **✏️ Editar**, guardada con el resto de la ficha. El nivel actual del objeto siempre se propone, aunque esté fuera de la lista del mapa. Si el nivel elegido está oculto por el filtro, el objeto desaparece del mapa y un mensaje lo indica: la vista se queda en tu nivel. **⏪** lo deshace.
 
-No hay lista en una unión (bórrala y vuelve a trazarla), en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
+Una unión tiene su propia ficha, con sus dos niveles (ver más abajo). No hay lista en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 
 ### 🪜 Trazar una unión entre niveles
 
 Una unión enlaza dos niveles en el lugar real del paso (escalera, pendiente, pozo, escala):
 
 1. **🛣️ Trazados → 🪜 Unión entre niveles**
-2. Elige el **Nivel de salida** (tu nivel activo, por defecto) y el **Nivel de llegada** (el orden da igual: el itinerario la recorre en los dos sentidos) y luego **OK — Trazar la unión**
+2. Elige el **Nivel de salida** (tu nivel activo, por defecto) y el **Nivel de llegada** (el itinerario la recorre en los dos sentidos, pero el primer punto que pones está en el nivel de salida) y luego **OK — Trazar la unión**
 3. Toca tantos puntos como quieras y vuelve a pulsar **🪜** para validar
 
 Aparece en magenta punteado, con un círculo en cada extremo. **Sin unión, ningún itinerario cambia de nivel.** Dos escaleras entre los mismos niveles = dos uniones: el itinerario toma la más corta. Se borra como un trazado (🧹 Borrar y corregir).
+
+**Su ficha**: toca una unión que hayas trazado (fuera de un trazado en curso) para abrir **🪜 Unión N0 ↔ N+1**: su **nota** (💾 Guardar la nota), las listas **Salida (1.er punto)** y **Llegada (último punto)** con **🪜 Cambiar los niveles** (dos niveles distintos obligatorios; el itinerario lo sigue al instante) y **🗑️ Eliminar**. **⏪** deshace cada gesto. Sin 🔄 Convertir: una unión sigue siendo una unión.
 
 ### 🛠️ Del lado del creador del mapa
 

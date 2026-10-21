@@ -333,6 +333,7 @@ A click on the top counters opens the map's **dashboard**:
 - **⭐ Favorites**: export this map's or all of them, import;
 - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation. Copies from **another version of this map** (re-imported or renamed) also show up, marked 📂, and are restored into the open map;
 - **💾 Session memory**: your sessions live in the space the browser grants the app on your device — a share of its free space, shared with your maps, photos and backups (no more 5 MB cap since 10/10/2026; your existing sessions were moved there automatically). The gauge shows how full it is and which maps have the heaviest sessions; at 80 % the app warns you when you open a map. To free some room: export your session (📤 Export), then clear the session or photos of an old map, or remove a map you no longer need. If the browser refuses this storage (some private browsing modes), your sessions stay in the old storage capped at ~5 MB, and the gauge shows it;
+- **🗑️ Clear the session**: the same clearing as the “Previous session restored” window (see 🧹 Erase and correct), at any time. On a read-only map, only “Clear this device” is offered;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
 
 ### 🗺️ Reading the map
@@ -747,7 +748,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 **One specific object**: its popup has a **🗑️ Delete** button; for a point, it is **🗑️ Delete this point**. No confirmation window: everything can be undone with ⏪ (`Ctrl+Z`).
 
-**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself. On a **map shared with your organisation**, the window makes you choose: **Clear this device** (everything on the server comes back at the next sync) or, depending on your rights, **Delete my additions for the whole organisation** or **Delete everything for the organisation** (number of items shown first; these two cannot be undone for the others).
+**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (also at any time in **📊 Session details**) (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself. On a **map shared with your organisation**, the window makes you choose: **Clear this device** (everything on the server comes back at the next sync) or, depending on your rights, **Delete my additions for the whole organisation** or **Delete everything for the organisation** (number of items shown first; these two cannot be undone for the others).
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
@@ -853,17 +854,19 @@ If the map contains elements on other levels, the list extends by itself. The sa
 
 An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
 
-No list on a junction (delete it and draw it again), on a layer object (🔄 Edit the layer first) or while a path is being drawn.
+A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
 ### 🪜 Drawing an inter-level junction
 
 A junction links two levels at the real spot of the passage (stairs, slope, shaft, ladder):
 
 1. **🛣️ Paths → 🪜 Inter-level junction**
-2. Choose the **Start level** (your active level by default) and the **End level** (the order does not matter: the route uses it both ways), then **OK — Draw the junction**
+2. Choose the **Start level** (your active level by default) and the **End level** (the route uses it both ways, but the first point you tap is on the start level), then **OK — Draw the junction**
 3. Tap as many points as you like, then press **🪜** again to confirm
 
 It appears in dotted magenta, with a dot at each end. **Without a junction, no route changes level.** Two staircases between the same levels = two junctions: the route takes the shorter one. It is erased like a path (🧹 Erase and correct).
+
+**Its card**: tap a junction you drew (not while drawing) to open **🪜 Junction L0 ↔ L+1**: its **note** (💾 Save the note), the **Start (1st point)** and **End (last point)** lists with **🪜 Change the levels** (two different levels required; the route follows at once), and **🗑️ Delete**. **⏪** undoes each step. No 🔄 Convert: a junction stays a junction.
 
 ### 🛠️ On the map creator's side
 

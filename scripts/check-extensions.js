@@ -1312,11 +1312,17 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /const DELAI_EFFACEMENT_MS = \d+;/.test(EF) && /setTimeout\(function \(\) \{ r\(refus\); \}, DELAI_EFFACEMENT_MS\)/.test(EF));
 
     const SP = lire("js/sessionPersist.js"), UT = lire("js/utils.js");
-    const i = SP.indexOf("data-action=\"clear\"]').addEventListener");
+    // Parcours unique (fenêtre « session restaurée » et 📊 Détails de la session) : check-calque-session.js vérifie
+    // que les deux entrées l'appellent.
+    const i = SP.indexOf("function demanderEffacement(bouton, apres) {");
     const h = i < 0 ? "" : SP.slice(i, i + 4000);
     t("câblage : la fenêtre lit la prise (plan affiché) et ne remplace la fenêtre de l'app que si elle répond",
       /K\.effacementPartage\(window\._currentLoadedPlanId\)/.test(SP) &&
-      h.indexOf("if (partage) { _choisirEffacementPartage(partage, msg, calques, go, this); return; }") > 0);
+      h.indexOf("if (partage) { _choisirEffacementPartage(partage, msg, calques, go, bouton); return; }") > 0);
+    t("🔒 câblage : lecture seule → « Vider cet appareil » seul (droits forcés), ni calques rendus ni traces",
+      /const ro = typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\);/.test(h) &&
+      /\(ro && partageLu\) \? Promise\.resolve\(\{ miens: false, tout: false, auteur: null \}\)/.test(h) &&
+      /if \(ro\) \{ rendre = false; cibles = null; \}/.test(h) && /\(!ro && CS && typeof CS\.restitutionPartagee/.test(h));
     const ch = SP.slice(SP.indexOf("function _choisirEffacementPartage("), SP.indexOf("// ── Modale « session restaurée »"));
     t("câblage : « Vider cet appareil » toujours proposé ; « mes ajouts » si `miens`, « tout » si `tout`",
       /const options = \[\{ valeur: "appareil"/.test(ch) && /if \(droits\.miens\) \{\s*\n\s*options\.push\(\{ valeur: "miens"/.test(ch) &&

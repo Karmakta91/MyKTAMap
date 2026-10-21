@@ -333,6 +333,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer ;
 - **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation. Les copies d'une **autre version de ce plan** (réimportée ou renommée) apparaissent aussi, marquées 📂, et se restaurent dans le plan ouvert ;
 - **💾 Mémoire des sessions** : tes sessions vivent dans l'espace que le navigateur accorde à l'app sur ton appareil — une part de son espace libre, partagée avec tes plans, tes photos et tes sauvegardes (plus de plafond de 5 Mo depuis le 10/10/2026 ; tes sessions existantes y ont été déplacées automatiquement). La jauge montre son remplissage et les plans dont la session pèse le plus ; à 80 %, l'app te prévient à l'ouverture d'un plan. Pour faire de la place : exporte ta session (💾 Enregistrer session), puis efface la session ou les photos d'un vieux plan, ou retire un plan inutile. Si le navigateur refuse ce stockage (certaines navigations privées), tes sessions restent dans l'ancien stockage limité à ~5 Mo, et la jauge le montre ;
+- **🗑️ Effacer la session** : le même effacement que la fenêtre « Session précédente restaurée » (voir 🧹 Effacer et corriger), à tout moment. Sur un plan en lecture seule, seul « Vider cet appareil » est proposé ;
 - le bouton **📊 Stats globales** (rapport copiable, CSV, PDF).
 
 ### 🗺️ Lire le plan
@@ -747,7 +748,7 @@ Les jonctions 🪜 s'effacent comme les autres tracés.
 
 **Un objet précis** : sa bulle porte un bouton **🗑️ Supprimer** ; pour un point, c'est **🗑️ Supprimer ce point**. Pas de fenêtre de confirmation : tout s'annule avec ⏪ (`Ctrl+Z`).
 
-**Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups). Les points qui portent une **liaison vers un autre plan** (portails) sont gardés : pour en retirer un, supprime le point lui-même. Sur un **plan partagé avec ton organisation**, la fenêtre te fait choisir : **Vider cet appareil** (tout ce qui est sur le serveur revient à la synchro suivante) ou, selon tes droits, **Supprimer mes ajouts pour toute l'organisation** ou **Tout supprimer pour l'organisation** (nombre d'objets annoncé avant ; ces deux-là ne s'annulent pas pour les autres).
+**Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (aussi à tout moment dans **📊 Détails de la session**) (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups). Les points qui portent une **liaison vers un autre plan** (portails) sont gardés : pour en retirer un, supprime le point lui-même. Sur un **plan partagé avec ton organisation**, la fenêtre te fait choisir : **Vider cet appareil** (tout ce qui est sur le serveur revient à la synchro suivante) ou, selon tes droits, **Supprimer mes ajouts pour toute l'organisation** ou **Tout supprimer pour l'organisation** (nombre d'objets annoncé avant ; ces deux-là ne s'annulent pas pour les autres).
 
 > ℹ️ Seuls **tes** objets s'effacent. Ceux du plan ou d'un calque de données sont en lecture seule : ouvre d'abord leur calque à la modification depuis ≡ **Filtres**, puis exporte le calque corrigé.
 
@@ -853,17 +854,19 @@ Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle
 
 Un objet a pris le mauvais niveau ? Dans la bulle d'un tracé, d'une zone ou d'une structure que tu as dessinés, la liste **Niveau** (sous 🔄 Convertir) le déplace aussitôt ; pour un point, c'est la liste **Niveau** de **✏️ Modifier**, enregistrée avec le reste de la fiche. Le niveau actuel de l'objet est toujours proposé, même s'il sort de la liste du plan. Si le niveau choisi est masqué par le filtre, l'objet disparaît de la carte et un message le dit : la vue reste sur ton niveau. **⏪** annule.
 
-Pas de liste sur une jonction (supprime-la et retrace-la), sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
+Une jonction a sa propre fiche, avec ses deux niveaux (voir ci-dessous). Pas de liste sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
 
 ### 🪜 Tracer une jonction interniveau
 
 Une jonction relie deux niveaux à l'endroit réel du passage (escalier, pente, puits, échelle) :
 
 1. **🛣️ Tracés → 🪜 Jonction interniveau**
-2. Choisis le **Niveau de départ** (ton niveau actif, d'origine) et le **Niveau d'arrivée** (l'ordre est indifférent : l'itinéraire l'emprunte dans les deux sens), puis **OK — Tracer la jonction**
+2. Choisis le **Niveau de départ** (ton niveau actif, d'origine) et le **Niveau d'arrivée** (l'itinéraire l'emprunte dans les deux sens, mais le premier point posé est au niveau de départ), puis **OK — Tracer la jonction**
 3. Tape autant de points que tu veux, puis re-appuie sur **🪜** pour valider
 
 Elle apparaît en magenta pointillé, un rond à chaque bout. **Sans jonction, aucun itinéraire ne change de niveau.** Deux escaliers entre les mêmes niveaux = deux jonctions : l'itinéraire prend la plus courte. Elle s'efface comme un tracé (🧹 Effacer et corriger).
+
+**Sa fiche** : tape une jonction que tu as tracée (hors tracé en cours) pour ouvrir **🪜 Jonction N0 ↔ N+1** : sa **note** (💾 Sauver la note), les listes **Départ (1er point)** et **Arrivée (dernier point)** avec **🪜 Changer les niveaux** (deux niveaux différents obligatoires ; l'itinéraire suit aussitôt), et **🗑️ Supprimer**. **⏪** annule chaque geste. Pas de 🔄 Convertir : une jonction reste une jonction.
 
 ### 🛠️ Côté créateur du plan
 

@@ -871,19 +871,24 @@ function renderRoads() {
       });
     }
 
-    // Popup note au clic (types éditables : ni itinéraire ni jonction), portée par une polyline « ghost »
-    // TRANSPARENTE plus épaisse (weight + 14, mini 18) : zone tactile élargie, trait visible inchangé.
+    // Popup note au clic (tout sauf l'itinéraire), portée par une polyline « ghost » TRANSPARENTE plus épaisse
+    // (weight + 14, mini 18) : zone tactile élargie, trait visible inchangé. Jonction : sa fiche change ses niveaux
+    // (Départ / Arrivée) au lieu de Convertir (utils.js > attacherNotePopup, `opts.jonction`).
     // 🩸 Pas de ghost sur la road EN COURS (elle avalerait le clic du sommet suivant : bubblingMouseEvents false),
     // ni quand un mode d'édition est actif (elle avalerait les clics d'une nouvelle road/zone/structure).
     // renderRoads est rappelé à chaque bascule de mode.
     if (typeof window.attacherNotePopup === "function" &&
-        road.type !== "itinerary" && road.type !== "jonction" &&
+        road.type !== "itinerary" &&
         road !== currentRoad &&
         window._aucunModeEditionActif()) {
       const _roadRef = road;
       // Titre via LegendCustomization : customs ET built-in renommés.
       const _roadEmojis = { principal: "🟩", secondaire: "🟪", chemin: "🟨" };
       function _roadPopupTitle(t) {
+        if (t === "jonction") {
+          const _n = function(v) { return window.ktaFormatNiveau(Number.isInteger(v) ? v : 0); };
+          return window.I18n.t("jonctionFiche.titre", { de: _n(_roadRef.fromLevel), vers: _n(_roadRef.toLevel) });
+        }
         if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
           if (String(t).startsWith("cust-")) {
             const e = window.LegendCustomization.findCustomEntry(t);
@@ -918,8 +923,8 @@ function renderRoads() {
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; if (window.KtaUid) window.KtaUid.touch(_roadRef); },
         _roadPopupTitle(road.type),
-        // Reclassement depuis la popup (convertirObjet.js).
-        { convertir: { famille: "roads", obj: _roadRef } }
+        // Reclassement depuis la popup (convertirObjet.js) ; une jonction n'a que ses niveaux à changer.
+        { convertir: { famille: "roads", obj: _roadRef }, jonction: road.type === "jonction" }
       );
     }
 

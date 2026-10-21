@@ -156,13 +156,26 @@ Chaque module garde un registre de ses objets Leaflet (`_ktaDataMarkers`, `_ktaD
 #### 26.5 Jonctions interniveau
 
 Type spécial `"jonction"` :
-- `fromLevel`/`toLevel` : niveaux des 2 extrémités. **Sémantique symétrique** : Pathfinder traverse dans les 2 sens, l'ordre from/to n'affecte rien d'autre que l'étiquetage UI dans la modale de création. Une jonction `{from:0, to:1}` est strictement équivalente à `{from:1, to:0}` du point de vue du graph.
+- `fromLevel`/`toLevel` : niveaux des 2 extrémités. Pathfinder traverse dans les 2 sens, mais 🩸 **`fromLevel` est
+  le niveau du PREMIER point et `toLevel` celui du DERNIER** (`pathfinder.js > buildNetworkGraph`) : échanger les deux
+  sans inverser les points déconnecte la jonction (chaque bout ne s'accroche qu'aux tracés de son niveau).
 - N points (comme une polyline normale)
 - Style : magenta `#ff4ecb` weight 5 dashArray "10 6"
 - Marqueurs aux endpoints : `L.circleMarker` ∅14 (radius 7) bord magenta + intérieur blanc weight 3
 - Toujours visible si **au moins un** de `fromLevel`/`toLevel` ∈ `visibleLevels` (sinon cachée)
 - Exclue du calcul des cercles d'intersection (les middle points sont en transit vertical, pas des croisements physiques)
 - **Effacement** : aucun comportement spécial, traitée comme un tracé normal par tous les modes de 🧹 (sélection au clic, dernier tracé, tous les tracés). `resetRoads()` purge aussi les jonctions car même structure de données.
+- **Fiche au clic** (jonction de session, hors dessin) : `road.js` lui pose la polyline « ghost » des tracés et
+  `utils.js > attacherNotePopup` avec `opts.jonction`. Titre « 🪜 Jonction N0 ↔ N+1 » (`jonctionFiche.titre`) ;
+  **📝 note** comme un tracé ; **niveaux reliés** : listes Départ (premier point) / Arrivée (dernier point), chacune
+  = niveaux du plan + son niveau actuel (`ktaNiveauxProposes`), appliquées ensemble par un bouton ; **🗑️ Supprimer**
+  (`KtaConvertir.supprimer` : ⏪, trace de suppression pour la synchro). **Pas de 🔄 Convertir** (décision produit).
+  Lecture seule : fiche en lecture (note seule).
+- **Changer ses niveaux** : `convertirObjet.js > changerNiveauxJonction(obj, de, vers)`. ⚠️ Deux niveaux **différents**
+  obligatoires : le refus est dit dans la fiche (qui reste ouverte, rien n'est écrit). Sinon : `captureState("roads")`
+  → `fromLevel` / `toLevel` posés **en place** + `KtaUid.touch` → `setRoads` (re-rendu filtré : la jonction et ses
+  ronds suivent le filtre) → `RoadGraph.invalidate()` → **une** entrée d'historique → `SessionPersist.save()`. Toast
+  `info`, ou `warn` si aucun des deux niveaux n'est affiché (`ktaSignalerNiveauxJonction`).
 
 #### 26.6 Pathfinder niveau-aware (`pathfinder.js`)
 
@@ -228,8 +241,8 @@ Le niveau est posé à la création (niveau actif) et se change ensuite par une 
 - **POI** : formulaire d'**édition** `editor.js > afficherFormulaire` (pas à l'ajout : le point prend le niveau
   actif) ; le niveau part avec le reste de la fiche au clic sur Enregistrer, dans la même entrée d'historique.
 - **Pas de liste** : plan à un seul niveau, pendant un dessin (`modeRoad` / `modeZone` / `modeStructure`), objet de
-  calque (fiche en lecture seule : le rapatrier d'abord), plan en lecture seule, **jonction** (`fromLevel` /
-  `toLevel` : la supprimer et la recréer) et itinéraire. Source unique : `utils.js > ktaNiveauxProposes`.
+  calque (fiche en lecture seule : le rapatrier d'abord), plan en lecture seule, **jonction** (deux listes Départ /
+  Arrivée dans sa propre fiche, §26.5) et itinéraire. Source unique : `utils.js > ktaNiveauxProposes`.
 - La liste = `availableLevels` triés **+ le niveau actuel de l'objet** même s'il en sort : sinon le `<select>`
   afficherait un autre niveau et le moindre changement déplacerait l'objet sans le dire.
 - `pilier-2` / `front-2` : la valeur choisie est écrite telle quelle, le « − 1 » de la création n'est pas réappliqué.
@@ -252,8 +265,10 @@ Ce qui suit l'objet :
 - 🩸 **Fiche commune** : les écouteurs sont branchés dans la popup ouverte (`evt.popup.getElement()`), pas dans tout
   le document : la popup qu'on quitte reste dans le DOM pendant son fondu et recevait les écouteurs à la place.
 
-Garde-fous : `check-api-surface.js` (changerNiveau dans un `vm`, liste proposée, câblage), `check-uid.js` (touch),
-`check-extensions.js` (garde lecture seule) · parcours réel : `scripts/smoke/checkup-niveau-objet.js`.
+Garde-fous : `check-api-surface.js` (changerNiveau et changerNiveauxJonction dans un `vm`, liste proposée, câblage),
+`check-uid.js` (touch), `check-extensions.js` (garde lecture seule) · parcours réels :
+`scripts/smoke/checkup-niveau-objet.js`, `scripts/smoke/checkup-jonction-fiche.js` (fiche d'une jonction, itinéraire
+qui l'emprunte).
 ---
 
 ### 31. Zone "Inaccessible" + Préférences d'évitement itinéraire (depuis v169 / Karma_dev)

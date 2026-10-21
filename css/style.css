@@ -19060,15 +19060,17 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   margin: 8px 0;
 }
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
-.kta-note-popup-convertir {
+.kta-note-popup-convertir,
+.kta-note-popup-jct-appliquer {
   background: rgba(140, 180, 255, 0.14);
   border: 1px solid rgba(140, 180, 255, 0.30);
   color: var(--kta-texte-2);
 }
-.kta-note-popup-convertir:hover {
+.kta-note-popup-convertir:hover,
+.kta-note-popup-jct-appliquer:hover {
   background: rgba(140, 180, 255, 0.24);
 }
-/* Liste « Niveau » sous Convertir (multi-niveau, objet de session). */
+/* Liste « Niveau » sous Convertir (multi-niveau, objet de session) ; listes Départ / Arrivée d'une jonction. */
 .kta-note-popup-niveau-ligne {
   display: flex;
   align-items: center;
@@ -19077,7 +19079,8 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   font-size: 12px;
   color: var(--kta-texte-2);
 }
-.kta-note-popup-niveau {
+.kta-note-popup-niveau,
+.kta-note-popup-jct-niveau {
   flex: 1 1 auto;
   background: #0d1117;
   border: 1px solid rgba(140, 180, 255, 0.30);
@@ -19089,11 +19092,15 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
 body.kta-theme-light .kta-note-popup-niveau-ligne,
 html.kta-theme-light .kta-note-popup-niveau-ligne { color: #24304a; }
 body.kta-theme-light .kta-note-popup-niveau,
-html.kta-theme-light .kta-note-popup-niveau {
+html.kta-theme-light .kta-note-popup-niveau,
+body.kta-theme-light .kta-note-popup-jct-niveau,
+html.kta-theme-light .kta-note-popup-jct-niveau {
   background: var(--kta-light-bg);
   border-color: var(--kta-light-border-strong);
   color: var(--kta-light-text);
 }
+.kta-note-popup-jonction .kta-note-popup-actions { margin-top: 6px; }
+.kta-note-popup-jct-statut { margin-top: 6px; font-size: 12px; line-height: 1.4; }
 body.kta-theme-light .kta-convert-source { color: #1a1f2e; }
 body.kta-theme-light .kta-convert-choix {
   background: rgba(0, 0, 0, 0.03);

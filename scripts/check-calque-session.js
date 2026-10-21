@@ -577,11 +577,16 @@ const CALQUE = {
   t("🩸 cablage : effacer la session GARDE les restitutions (sinon « rendre à l'équipe » ne part jamais)",
     SP.indexOf("loadSessionState(st ? { restitutions: st.restitutions, aEnvoyer: st.aEnvoyer } : null)") > 0);
   {
-    const i = SP.indexOf("data-action=\"clear\"]').addEventListener");
+    // Un seul parcours d'effacement (SessionPersist.demanderEffacement), appelé par chaque entrée.
+    const i = SP.indexOf("function demanderEffacement(bouton, apres) {");
     const h = i < 0 ? "" : SP.slice(i, i + 4000);
+    const RI = fs.readFileSync("js/refonteInterface.js", "utf8");
+    t("cablage : la fenêtre « session restaurée » passe par demanderEffacement",
+      /data-action="clear"\]'\)\.addEventListener\("click", function\(\) \{\s*demanderEffacement\(this, fermer\);/.test(SP));
+    t("cablage : 📊 Détails de la session passe par le MÊME parcours (SessionPersist.demanderEffacement)",
+      /window\.SessionPersist\.demanderEffacement\(_btnEffacer, _close\)/.test(RI));
     t("cablage : le choix « équipe / cet appareil » n'existe que si la restitution se partage",
-      h.indexOf("CS.restitutionPartagee())\n        ? CS.listeRapatries() : [];") > 0 ||
-      h.indexOf("CS.restitutionPartagee())\r\n        ? CS.listeRapatries() : [];") > 0);
+      /CS\.restitutionPartagee\(\)\)\r?\n\s*\? CS\.listeRapatries\(\) : \[\];/.test(h));
     t("cablage : trois issues (cet appareil / rendre à l'équipe / annuler)",
       h.indexOf("autre:       { label: _t(\"session.btn.clearEquipe\"), valeur: \"equipe\" }") > 0 &&
       h.indexOf("okLabel:     _t(\"session.btn.clearIci\")") > 0 && h.indexOf("go(choix === \"equipe\")") > 0);

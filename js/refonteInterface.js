@@ -1524,6 +1524,21 @@
             '</div>';
     html += '</div>';
 
+    // ── Effacer la session : le MÊME parcours que la fenêtre « session restaurée » (SessionPersist.demanderEffacement :
+    // choix à trois options d'un plan partagé, case des calques, snapshot ; en lecture seule « Vider cet appareil » seul).
+    const _effacable = !!(window.SessionPersist && typeof window.SessionPersist.demanderEffacement === "function");
+    if (_effacable) {
+      html += '<div class="kta-refonte-session-section" id="kta-refonte-session-effacer-section">';
+      html += '<div class="kta-refonte-session-section-titre">🗑️ ' + window.I18n.t("ui.refonte.section_effacer") + '</div>';
+      html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
+                window.I18n.t("ui.refonte.effacer_desc") +
+              '</div>';
+      html += '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-refonte-session-effacer">' +
+                window.I18n.t("session.btn.clear") +
+              '</button>';
+      html += '</div>';
+    }
+
     const overlay = document.createElement("div");
     overlay.id = "kta-refonte-session-modal";
     overlay.className = "kta-readme-modal-overlay";
@@ -1552,6 +1567,15 @@
       if (e.target === overlay) _close();
     });
     document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
+
+    // La fenêtre reste ouverte pendant les confirmations (au-dessus d'elle) ; fermée une fois la session effacée,
+    // ses chiffres seraient faux.
+    const _btnEffacer = document.getElementById("kta-refonte-session-effacer");
+    if (_btnEffacer) {
+      _btnEffacer.addEventListener("click", function() {
+        window.SessionPersist.demanderEffacement(_btnEffacer, _close);
+      });
+    }
 
     const _btnCarnetClot = document.getElementById("kta-refonte-session-carnet-cloture");
     if (_btnCarnetClot) {

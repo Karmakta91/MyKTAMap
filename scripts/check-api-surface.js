@@ -369,6 +369,35 @@ function charger(fichier, nomGlobal, prealables) {
   t("🔒 niveau : lecture seule → refus", CV.changerNiveau("zones", zoneSansNiv, -1) === false && zoneSansNiv.level === 2);
   delete w.ktaEditionRefusee;
 
+  // ── Les niveaux d'une jonction (sa fiche) : de = premier point, vers = dernier, un geste ──
+  t("jonction : l'API est exposée", typeof CV.changerNiveauxJonction === "function");
+  const jct = { type: "jonction", uid: "rd_j", fromLevel: -1, toLevel: 0, points: [{ x: 0, y: 0 }, { x: 4, y: 0 }] };
+  const tem = { type: "chemin", level: 0, points: [] };
+  R = [tem, jct];
+  const j0 = { touch: journalNiv.touch, inval: journalNiv.inval, rec: journal.record.length, save: journal.saves,
+               cats: journalNiv.cats.length };
+  t("jonction : l'opération réussit", CV.changerNiveauxJonction(jct, 0, 1) === true);
+  t("jonction : MÊME objet muté en place, les deux bouts écrits", R[1] === jct && jct.fromLevel === 0 && jct.toLevel === 1);
+  t("jonction : pas de `level` posé (une jonction n'en a pas)", !("level" in jct));
+  t("jonction : touch (synchro), graphe invalidé, session sauvegardée",
+    journalNiv.touch === j0.touch + 1 && journalNiv.inval === j0.inval + 1 && journal.saves === j0.save + 1);
+  t("jonction : UNE entrée d'historique, instantané ciblé sur les tracés",
+    journal.record.length === j0.rec + 1 && journal.record[j0.rec].cat === "roads" &&
+    journalNiv.cats.length === j0.cats + 1 && journalNiv.cats[j0.cats] === "roads");
+  const j1 = journal.record.length;
+  t("⚠️ jonction : deux niveaux identiques refusés, rien d'écrit",
+    CV.changerNiveauxJonction(jct, 1, 1) === false && jct.fromLevel === 0 && jct.toLevel === 1 && journal.record.length === j1);
+  t("jonction : niveaux inchangés → refus sans entrée d'historique",
+    CV.changerNiveauxJonction(jct, 0, 1) === false && journal.record.length === j1);
+  t("jonction : niveaux non entiers refusés", CV.changerNiveauxJonction(jct, "0", 2) === false && jct.toLevel === 1);
+  t("jonction : un tracé ordinaire est refusé", CV.changerNiveauxJonction(tem, 0, 1) === false && !("fromLevel" in tem));
+  R = [tem, JSON.parse(JSON.stringify(jct))];
+  t("🩸 jonction : référence périmée (copie de même uid) → c'est l'objet de la liste qui change",
+    CV.changerNiveauxJonction(jct, -1, 1) === true && R[1].fromLevel === -1 && jct.fromLevel === 0);
+  w.ktaEditionRefusee = function () { return true; };
+  t("🔒 jonction : lecture seule → refus", CV.changerNiveauxJonction(R[1], 2, 1) === false && R[1].fromLevel === -1);
+  delete w.ktaEditionRefusee;
+
   // ── Appliquer un tableau (« Appliquer à la session » de l'Éditeur de données) ──
   t("tableau : l'API est exposée", typeof CV.appliquerTableau === "function");
   {
@@ -510,6 +539,17 @@ function charger(fichier, nomGlobal, prealables) {
     t("🩸 câblage : les écouteurs de la fiche sont cherchés DANS la popup ouverte (evt.popup.getElement)",
       /const popupRoot = racine\.querySelector\("\.leaflet-popup-content \.kta-note-popup"\)/.test(U) &&
       /evt\.popup\.getElement\(\)/.test(U));
+    // Fiche d'une jonction : ses niveaux, jamais Convertir ; refus de deux niveaux identiques dans la fiche.
+    t("câblage : la fiche d'une jonction appelle KtaConvertir.changerNiveauxJonction",
+      /KtaConvertir\.changerNiveauxJonction\(opts\.convertir\.obj, de, vers\)/.test(U));
+    t("câblage : pas de 🔄 Convertir sur la fiche d'une jonction", /opts\.convertir && !opts\.jonction/.test(U));
+    const iJct = U.indexOf("jctBtn.addEventListener(\"click\"");
+    t("🩸 câblage : deux niveaux identiques arrêtent AVANT la fermeture et l'écriture",
+      iJct > 0 && U.indexOf("de === vers", iJct) < U.indexOf("closePopup", iJct) &&
+      U.indexOf("closePopup", iJct) < U.indexOf("changerNiveauxJonction(", iJct));
+    const RD = fs.readFileSync("js/road.js", "utf8");
+    t("câblage : road.js ouvre une fiche pour la jonction (`opts.jonction`), pas pour l'itinéraire",
+      /jonction: road\.type === "jonction"/.test(RD) && !/road\.type !== "jonction" &&\s*road !== currentRoad/.test(RD));
     const iNiv = U.indexOf("nivSel.addEventListener(\"change\"");
     t("🩸 câblage : la popup est fermée AVANT changerNiveau (le setteur détruit le layer)",
       iNiv > 0 && U.indexOf("closePopup", iNiv) < U.indexOf("changerNiveau(", iNiv));

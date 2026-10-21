@@ -281,6 +281,8 @@ Compteurs du header (📍 N · 🛣 N · ⬛ N) cliquables → modale qui liste 
 | 🏛️ Structures | Regroupement par type avec compteur |
 | 📸 Photos | Total, détail par point, taille (hydratation asynchrone) |
 | 📊 Autres mesures | Mesure simple (si points ≥ 2), Itinéraire actif (distance + nb waypoints), Tracker (position si actif) |
+| 📔 Carnet · ⭐ Favoris · Mémoire · 📦 Snapshots | Sortie en cours, export / import des favoris, jauge de stockage, snapshots récents |
+| 🗑️ Effacer la session | Bouton danger : le parcours de la fenêtre « session restaurée » (`SessionPersist.demanderEffacement`, choix à trois options d'un plan partagé compris, `session-data.md` §9.0) ; en lecture seule, « Vider cet appareil » seul ; la modale se ferme une fois la session effacée |
 
 **Sections repliables** : Points, Tracés, Zones, Structures et Photos sont des `<details class="kta-session-repli">`
 (le titre est le `<summary>`, flèche `::after`, badge du total toujours visible). Ouvertes d'office jusqu'à

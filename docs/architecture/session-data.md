@@ -63,7 +63,10 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 
 **Modale** : `.kta-session-modal-overlay` (centrée pleine page, pattern `kta-readme-modal`), boîte `.kta-session-modal-boite` avec icône ↻ dans cercle jaune `#f4c542`, titre + détail + 2 boutons (🗑️ Effacer / ✓ Continuer). Backdrop click + Échap = Continuer. Animations fade-in overlay + pop-in box.
 
-**🗑️ Effacer la session** (`sessionPersist.js`, bouton de la modale) : confirmation chiffrée (`ktaConfirm`), snapshot
+**🗑️ Effacer la session** (`sessionPersist.js > demanderEffacement(bouton, apres)`, parcours UNIQUE appelé par le
+bouton de cette modale et par la section 🗑️ de **📊 Détails de la session** (`refonteInterface.js >
+_afficherModaleSessionDetail` ; la fenêtre reste ouverte sous les confirmations et se
+ferme une fois la session effacée)) : confirmation chiffrée (`ktaConfirm`), snapshot
 `before-clear-session` **attendu**, `_viderEtatCourant()` (objets, mesures, suivi, légende de session, traces de
 suppression — décision produit ; les points portails restent) puis `clear({ snapshotFait: true })` (slot retiré,
 calques rendus, événement `mktm:session-cleared`). Pas d'⏪ : l'effacement ne passe pas par l'historique, le filet est
@@ -84,8 +87,12 @@ le snapshot de 📦 Backups.
   portail. La case « ↩️ Rendre aussi les calques à l'équipe » remplace le 3e bouton quand des calques sont en
   modification (piège 1 ci-dessous). Erreur, rejet ou réponse au-delà de 8 s : « Vider cet appareil » seul. Le
   nombre annoncé ne compte que ce que l'appareil a reçu (d'où la promesse : l'extension peut se mettre à jour avant
-de répondre). Filet :
-  `scripts/smoke/checkup-effacer-session-partage.js`.
+de répondre). 🔒 **Plan en lecture seule** (`ktaEditionRefusee`) : même bouton aux deux entrées, mais « Vider cet
+  appareil » seul (décision produit) — ni « mes ajouts » ni « tout », pas de case des calques, aucune trace, rien
+  envoyé. Filets :
+  `scripts/smoke/checkup-effacer-session-partage.js` (fenêtre « session restaurée »),
+  `scripts/smoke/checkup-jonction-fiche.js` partie B (📊 Détails), `check-calque-session.js` (les deux entrées
+  passent par `demanderEffacement`).
 
 **Format storage** :
 ```json

@@ -46,7 +46,8 @@ function bloc(src, debut, fin) {
 // ── Q44 + B5 : sessionPersist ──────
 {
   const s = lire("js/sessionPersist.js");
-  const clearBtn = bloc(s, "modal.querySelector('[data-action=\"clear\"]')", "modal.addEventListener(\"click\"");
+  // Parcours unique d'effacement (fenêtre « session restaurée » et 📊 Détails de la session).
+  const clearBtn = bloc(s, "function demanderEffacement(bouton, apres) {", "// ── Modale « session restaurée »");
   // Confirmation = SEUL chemin vers go() (hors repli « helper absent ») : garde exacte ET appel conditionné
   // (une branche morte `if (false)` contenant le texte ne doit pas suffire). Deux formes : confirmation simple, et
   // choix « cet appareil / rendre à l'équipe » quand la restitution des calques se partage.
