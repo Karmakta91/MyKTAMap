@@ -262,7 +262,8 @@ async function initMapFromConfig() {
   if (!config?.plan) throw new Error("PLAN_CONFIG non chargé");
 
   cleanupExistingMap();
-  await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+  // 🩸 Jamais un requestAnimationFrame nu ici : il peut ne jamais venir (cf utils.js > ktaAttendreImage).
+  await window.ktaAttendreImage();
 
   const mapContainer = document.getElementById("map");
   if (!mapContainer) throw new Error("#map introuvable");
@@ -546,7 +547,9 @@ function initCollisionMap(imagePath) {
       resolve(); return;
     }
     const img = new Image();
-    requestAnimationFrame(function() { img.src = imagePath; });
+    // 🩸 Jamais un requestAnimationFrame nu ici : sans image, la collision ne se chargeait pas et l'ouverture du plan
+    // ne finissait jamais (cf utils.js > ktaAttendreImage).
+    window.ktaAttendreImage().then(function() { img.src = imagePath; });
     img.onload = function() {
       try {
         let w = img.width, h = img.height;
