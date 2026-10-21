@@ -333,7 +333,7 @@ A click on the top counters opens the map's **dashboard**:
 - **⭐ Favorites**: export this map's or all of them, import;
 - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation. Copies from **another version of this map** (re-imported or renamed) also show up, marked 📂, and are restored into the open map;
 - **💾 Session memory**: your sessions live in the space the browser grants the app on your device — a share of its free space, shared with your maps, photos and backups (no more 5 MB cap since 10/10/2026; your existing sessions were moved there automatically). The gauge shows how full it is and which maps have the heaviest sessions; at 80 % the app warns you when you open a map. To free some room: export your session (📤 Export), then clear the session or photos of an old map, or remove a map you no longer need. If the browser refuses this storage (some private browsing modes), your sessions stay in the old storage capped at ~5 MB, and the gauge shows it;
-- **🗑️ Clear the session**: the same clearing as the “Previous session restored” window (see 🧹 Erase and correct), at any time. Not shown on a read-only map;
+- **🗑️ Clear the session**: the same clearing as the “Previous session restored” window (see 🧹 Erase and correct), at any time. On a read-only map, only “Clear this device” is offered;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
 
 ### 🗺️ Reading the map

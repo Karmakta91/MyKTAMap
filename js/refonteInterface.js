@@ -1525,9 +1525,8 @@
     html += '</div>';
 
     // ── Effacer la session : le MÊME parcours que la fenêtre « session restaurée » (SessionPersist.demanderEffacement :
-    // choix à trois options d'un plan partagé, case des calques, snapshot). 🔒 Absent en lecture seule.
-    const _effacable = !!(window.SessionPersist && typeof window.SessionPersist.demanderEffacement === "function") &&
-      !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));
+    // choix à trois options d'un plan partagé, case des calques, snapshot ; en lecture seule « Vider cet appareil » seul).
+    const _effacable = !!(window.SessionPersist && typeof window.SessionPersist.demanderEffacement === "function");
     if (_effacable) {
       html += '<div class="kta-refonte-session-section" id="kta-refonte-session-effacer-section">';
       html += '<div class="kta-refonte-session-section-titre">🗑️ ' + window.I18n.t("ui.refonte.section_effacer") + '</div>';
@@ -1574,7 +1573,6 @@
     const _btnEffacer = document.getElementById("kta-refonte-session-effacer");
     if (_btnEffacer) {
       _btnEffacer.addEventListener("click", function() {
-        if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
         window.SessionPersist.demanderEffacement(_btnEffacer, _close);
       });
     }

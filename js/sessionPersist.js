@@ -708,17 +708,21 @@
   // session). Confirmation chiffrée, choix à trois options sur un plan partagé (_choisirEffacementPartage), case des
   // calques en modification, snapshot ATTENDU, puis toast qui dit où le retrouver. `bouton` est grisé pendant la
   // lecture des droits d'un plan partagé ; `apres` est appelé une fois la session effacée (fermer la fenêtre).
+  // 🔒 Plan en lecture seule (ktaEditionRefusee) : même bouton aux deux entrées, mais « Vider cet appareil » seul
+  // (décision produit) — ni « mes ajouts » ni « tout », pas de case des calques, aucune trace posée, rien envoyé.
   function demanderEffacement(bouton, apres) {
     const _t = _trModule;
     const n = _compterEtatCourant();
+    const ro = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true);
     // Plan dont la restitution se partage, avec des calques en modification : l'effacement local les verrait
     // revenir depuis la synchro. L'utilisateur choisit : effacer ici seulement, ou rendre aussi les calques à
     // tous (restitution partagée, notée AVANT le vidage : elle porte les uids des copies retirées).
     const CS = window.CalqueSession;
-    const calques = (CS && typeof CS.restitutionPartagee === "function" && CS.restitutionPartagee())
+    const calques = (!ro && CS && typeof CS.restitutionPartagee === "function" && CS.restitutionPartagee())
       ? CS.listeRapatries() : [];
     // `cibles` (plan partagé) : objets supprimés pour toute l'organisation, une trace chacun après le vidage.
     const go = function(rendre, cibles) {
+      if (ro) { rendre = false; cibles = null; }
       const snap = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
         ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-clear-session"); })
             .catch(function() { return null; })
@@ -749,7 +753,8 @@
     if (typeof window.ktaConfirm === "function") {
       const msg = (window.I18n && window.I18n.t)
         ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
-      const partage = _effacementPartage();
+      const partageLu = _effacementPartage();
+      const partage = (ro && partageLu) ? Promise.resolve({ miens: false, tout: false, auteur: null }) : partageLu;
       if (partage) { _choisirEffacementPartage(partage, msg, calques, go, bouton); return; }
       if (calques.length) {
         // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.

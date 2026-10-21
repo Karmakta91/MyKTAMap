@@ -333,7 +333,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 - **⭐ Favoritos**: exportar los de este mapa o todos, importar;
 - **📦 Backups recientes** de este mapa: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación. Las copias de **otra versión de este mapa** (reimportada o renombrada) también aparecen, marcadas con 📂, y se restauran en el mapa abierto;
 - **💾 Memoria de sesiones**: tus sesiones viven en el espacio que el navegador concede a la app en tu dispositivo — una parte de su espacio libre, compartida con tus mapas, tus fotos y tus copias de seguridad (ya sin el límite de 5 MB desde el 10/10/2026; tus sesiones existentes se trasladaron ahí automáticamente). El indicador muestra su llenado y los mapas cuya sesión más pesa; al 80 %, la app te avisa al abrir un mapa. Para liberar espacio: exporta tu sesión (💾 Guardar sesión) y luego borra la sesión o las fotos de un mapa antiguo, o quita un mapa que ya no uses. Si el navegador rechaza este almacenamiento (algunas navegaciones privadas), tus sesiones se quedan en el almacenamiento antiguo limitado a ~5 MB, y el indicador lo muestra;
-- **🗑️ Borrar la sesión**: el mismo borrado que la ventana «Sesión anterior restaurada» (ver 🧹 Borrar y corregir), en cualquier momento. No aparece en un mapa de solo lectura;
+- **🗑️ Borrar la sesión**: el mismo borrado que la ventana «Sesión anterior restaurada» (ver 🧹 Borrar y corregir), en cualquier momento. En un mapa de solo lectura, solo se propone «Vaciar este dispositivo»;
 - el botón **📊 Estadísticas globales** (informe copiable, CSV, PDF).
 
 ### 🗺️ Leer el mapa

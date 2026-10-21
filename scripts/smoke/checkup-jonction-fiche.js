@@ -10,7 +10,7 @@
 //    jonction seulement quand ses bouts portent les bons niveaux ; note modifiée ; suppression (trace) puis ⏪ ;
 //    pas de fiche pendant un dessin ; lecture seule.
 // B. 📊 Détails de la session → 🗑️ : la confirmation de l'app (plan local), annuler n'efface rien ; les trois choix
-//    d'un plan partagé (prise effacerSession simulée) ; bouton absent en lecture seule.
+//    d'un plan partagé (prise effacerSession simulée) ; en lecture seule, aux deux entrées, « Vider cet appareil » seul.
 // 🩸 check-api-surface.js teste changerNiveauxJonction dans un `vm` ; seul ce parcours voit la popup, le re-rendu
 // filtré, les ronds et le graphe réel.
 // Usage : node scripts/smoke/checkup-jonction-fiche.js (SMOKE_PORT pour une autre copie)
@@ -54,7 +54,7 @@ function ok(msg) { console.log("  ✅ " + msg); }
 function inf(msg) { console.log("  •  " + msg); }
 function verifier(cond, msg, detail) { if (cond) ok(msg); else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : "")); }
 
-async function ouvrir(page) {
+async function ouvrir(page, garderFenetre) {
   await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
   await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
@@ -63,8 +63,8 @@ async function ouvrir(page) {
     return !!window.PLAN_CONFIG && !!window.map && !!window.KtaConvertir && !!window.HistoryManager && !!window.Pathfinder;
   }, 20000);
   await page.waitForTimeout(3000);
-  // Une restauration de session peut ouvrir sa fenêtre : on la ferme sans rien effacer.
-  await page.evaluate(function () {
+  // Une restauration de session peut ouvrir sa fenêtre : on la ferme sans rien effacer (sauf si on la teste).
+  if (!garderFenetre) await page.evaluate(function () {
     const m = document.getElementById("kta-session-modal");
     if (m) { const k = m.querySelector('[data-action="keep"]'); if (k) k.click(); else m.remove(); }
   });
@@ -401,10 +401,42 @@ async function partieEffacer(page) {
   verifier(JSON.stringify(s3.traces) === "[\"pt_moi1\",\"pt_moi2\"]" && !s3.pts.length && !s3.details,
     "« mes ajouts » : une trace par objet à moi, appareil vidé, Détails fermés", s3);
 
-  // Lecture seule : bouton absent.
+  // Lecture seule (même règle aux deux entrées) : bouton présent, « Vider cet appareil » seul, aucune trace.
+  const DROITS = { lectureSeule: true, effacer: { miens: true, tout: true, auteur: "moi" } };
+  const choixPuisOk = async function () {
+    await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 15000);
+    await page.waitForTimeout(450);
+    const choix = await page.evaluate(function () {
+      return [].slice.call(document.querySelectorAll("[data-kta-confirm-choix]")).map(function (r) { return r.value; });
+    });
+    await page.click("#kta-confirm-oui");
+    await page.waitForTimeout(900);
+    const seconde = await page.evaluate(function () { return !!document.getElementById("kta-confirm-oui"); });
+    await page.waitForTimeout(900);
+    return { choix: choix, seconde: seconde };
+  };
   await ouvrir(page);
-  await simulerExtension(page, { lectureSeule: true });
-  verifier(!(await ouvrirDetails(page)), "🔒 lecture seule : pas de bouton Effacer dans les Détails");
+  await semerPoints(page);
+  await simulerExtension(page, DROITS);
+  verifier(await ouvrirDetails(page), "🔒 lecture seule : bouton Effacer présent dans les Détails");
+  await page.click("#kta-refonte-session-effacer");
+  const r1 = await choixPuisOk();
+  const s4 = await etatSession(page);
+  verifier(r1.choix.join() === "appareil" && !r1.seconde, "🔒 lecture seule (Détails) : « Vider cet appareil » seul, pas de seconde confirmation", r1);
+  verifier(!s4.pts.length && !s4.traces.length && !s4.details, "🔒 lecture seule (Détails) : appareil vidé, aucune trace", s4);
+
+  await semerPoints(page);
+  await page.evaluate(function () { return window.SessionPersist.save({ force: true }); });
+  await page.waitForTimeout(1200);
+  await ouvrir(page, true);
+  await attendre(page, function () { return !!document.querySelector('#kta-session-modal [data-action="clear"]'); }, 10000);
+  await simulerExtension(page, DROITS);
+  await page.click('#kta-session-modal [data-action="clear"]');
+  const r2 = await choixPuisOk();
+  const s5 = await etatSession(page);
+  verifier(r2.choix.join() === "appareil" && !r2.seconde,
+    "🔒 lecture seule (« Session précédente restaurée ») : « Vider cet appareil » seul", r2);
+  verifier(!s5.pts.length && !s5.traces.length, "🔒 lecture seule (« Session précédente restaurée ») : appareil vidé, aucune trace", s5);
 }
 
 (async function main() {

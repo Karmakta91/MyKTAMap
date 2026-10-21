@@ -333,7 +333,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer ;
 - **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation. Les copies d'une **autre version de ce plan** (réimportée ou renommée) apparaissent aussi, marquées 📂, et se restaurent dans le plan ouvert ;
 - **💾 Mémoire des sessions** : tes sessions vivent dans l'espace que le navigateur accorde à l'app sur ton appareil — une part de son espace libre, partagée avec tes plans, tes photos et tes sauvegardes (plus de plafond de 5 Mo depuis le 10/10/2026 ; tes sessions existantes y ont été déplacées automatiquement). La jauge montre son remplissage et les plans dont la session pèse le plus ; à 80 %, l'app te prévient à l'ouverture d'un plan. Pour faire de la place : exporte ta session (💾 Enregistrer session), puis efface la session ou les photos d'un vieux plan, ou retire un plan inutile. Si le navigateur refuse ce stockage (certaines navigations privées), tes sessions restent dans l'ancien stockage limité à ~5 Mo, et la jauge le montre ;
-- **🗑️ Effacer la session** : le même effacement que la fenêtre « Session précédente restaurée » (voir 🧹 Effacer et corriger), à tout moment. Absent sur un plan en lecture seule ;
+- **🗑️ Effacer la session** : le même effacement que la fenêtre « Session précédente restaurée » (voir 🧹 Effacer et corriger), à tout moment. Sur un plan en lecture seule, seul « Vider cet appareil » est proposé ;
 - le bouton **📊 Stats globales** (rapport copiable, CSV, PDF).
 
 ### 🗺️ Lire le plan
