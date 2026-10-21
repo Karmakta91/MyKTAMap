@@ -28,11 +28,12 @@
 
 ## Maintenant
 
-- **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA (plan multi-niveau, iPhone PWA et PC) : une partie des POI
-  paraît derrière les tuiles ; case 🖼️ Plan décochée → nettes. ⚠️ Revu par KARMA (21/10), pas au harnais (Chromium).
-  Journal d'enquête : `git log -S"sous les tuiles" -- docs/BACKLOG.md`.
-  `qui: KARMA · action: donner le parcours exact (navigateur PC, changement de niveau ou de plan, réouverture)
-  · fini: reproduit et corrigé, ou fermé « non reproduit » avec ce parcours · depuis: 16/10/2026 · taille: S`
+- **Vue OSM : points sous les tuiles du plan** — ✅ 21/10 (Chrome avec GPU, plan réel, zooms 8 → 19, 4 niveaux) : aucune
+  tuile ne couvre un POI au pixel ; seules les icônes `danger`/`info`/`pa`/`pc`/`pe` (translucides) prennent la teinte
+  du plan, et les pictos du fond OSM sont sous le plan par construction. Journal : `git log -S"sous les tuiles"`.
+  `qui: KARMA · action: dire si les POI ternes sont ces 5 types ou des pictos OSM, puis choisir (fond opaque sous
+  l'icône en Vue OSM, ou icônes opaques au catalogue) · fini: choix codé, ou fermé « perception » · depuis: 16/10/2026
+  · taille: S`
 - **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
   ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
   Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.
