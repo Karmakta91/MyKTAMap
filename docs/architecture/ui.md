@@ -86,6 +86,9 @@ Structure type :
 | **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `success` (une réussite) / `warn` / `error` ; réglage de notifications ci-dessous |
 
 **Contrat de `ktaConfirm`** (en-tête de la fonction dans `js/utils.js`) :
+- `opts.choix` (boutons radio, titre et aide en `textContent`) : `aucunParDefaut` = rien de coché, OK inactif tant
+  qu'on n'a pas choisi ; l'`okLabel` d'une option devient le texte du bouton OK (en `textContent`) quand elle est
+  cochée — le bouton dit l'action choisie, « Annuler » ferme sans rien faire.
 - ⚠️ **`message`, `opts.titre`, `opts.okLabel`, `opts.cancelLabel` sont insérés en HTML** (voulu : des appelants
   passent `<b>`, `<br>`, classes `.kta-tx-*`). **Toute donnée d'utilisateur ou de fichier** (nom de plan, de dossier,
   de fichier, libellé de point) passe par `window.ktaEsc` **avant** d'entrer dans le message — typiquement

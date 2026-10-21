@@ -384,7 +384,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     sur un plan **partagé**, rien de présélectionné, propose « ↻ Annuler ce que cet appareil n'a pas encore envoyé
     (N modifications) » seulement si `enAttente` (entier ≥ 0 : modifications de l'appareil pas encore envoyées pour ce
     plan ; **absent = 0**) est > 0 — tout ce qui est sur le serveur revient —, « Supprimer mes
-    ajouts pour toute l'organisation » si `miens === true` (objets dont `auteurObjet(uid).createur === auteur`) et
+    ajouts pour toute l'organisation » si `miens === true` (objets dont `auteurObjet(uid).createur === auteur` ; un
+    créateur inconnu — `auteurObjet` null ou sans `createur` — n'est jamais compté, la fenêtre en donne le nombre :
+    l'extension tient sa table d'auteurs à jour AVANT de répondre) et
     « Tout supprimer pour l'organisation » si `tout === true` ; une trace de suppression par objet visé (jamais pour
     une copie de calque), après confirmation chiffrée. La case « Rendre aussi les calques à l'équipe » reste dans la
     même fenêtre. `null` / `false` rendus tels quels = plan non partagé (fenêtre de l'app seule) ; plan local ou du

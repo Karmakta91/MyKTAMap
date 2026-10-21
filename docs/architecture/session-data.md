@@ -73,13 +73,17 @@ calques rendus, événement `mktm:session-cleared`). Pas d'⏪ : l'effacement ne
 le snapshot de 📦 Backups.
 - **Plan partagé par une extension** (`KtaExtensions.effacementPartage` → promesse de `{ miens, tout, auteur,
   enAttente }`, `community-server-line.md` §3) : la même confirmation porte un choix (`ktaConfirm`, `opts.choix` avec
-  `aucunParDefaut` : **rien de présélectionné**, OK inactif tant qu'on n'a pas choisi) :
+  `aucunParDefaut` : **rien de présélectionné**, OK inactif tant qu'on n'a pas choisi ; boutons « Annuler » et une
+  action qui prend le libellé du choix coché — `okLabel` de l'option : « ↻ Annuler le non-envoyé », « 🗑️ Supprimer
+  mes ajouts », « 🗑️ Tout supprimer ») :
   - **« ↻ Annuler ce que cet appareil n'a pas encore envoyé (N modifications) »** — seulement si `enAttente` > 0
     (décision produit : en ligne, la synchro part en quelques secondes et tout revient, vider l'appareil n'aurait pas
     de sens ; `null` = nombre inconnu, prise en erreur : proposé sans nombre) : l'effacement ci-dessus ; ces
     modifications ne partent pas, tout ce qui est sur le serveur revient (relecture complète par l'extension) ;
   - **« Supprimer mes ajouts pour toute l'organisation »** (`miens`) : objets dont `KtaExtensions.auteurObjet(uid)
-    .createur === auteur` ;
+    .createur === auteur`. Un objet dont le créateur est inconnu (`auteurObjet` null ou sans `createur`) n'est
+    **jamais** compté comme « mes ajouts » (décision produit : pas de suppression d'un objet d'autrui par erreur) ; la
+    fenêtre dit combien il y en a (« N objet(s) dont l'auteur est inconnu… »), seul « Tout supprimer » les couvre ;
   - **« Tout supprimer pour l'organisation »** (`tout`) : tous les objets de la session.
 
   Les deux derniers relisent la prise au clic (droit retiré : refus nommé, rien n'est effacé), puis une seconde
