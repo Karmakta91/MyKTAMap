@@ -304,7 +304,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Help / Documentation / Legend** | 📚 | Help, documentation, icon legend |
 | **Settings** | ⚙️ | Map settings: scale, North, georeferencing, tracker, display… *(direct click)* |
 | **Search** | 🔍 | Find a point, a path, a zone or a structure *(direct click)* |
-| **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
+| **Load / Import** | ⬇️ | Import a session or a GPX (opens the file picker directly) |
 | **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, external export (KMZ / GPX) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
@@ -1033,7 +1033,7 @@ So you can export only the shafts, or only the inaccessible zones. **Download** 
 
 ### 📥 Importing a file (session or GPX)
 
-**⬇️ Load / Import → 📥 Import a file** opens the file picker; the app recognises its type.
+**⬇️ Load / Import** opens the file picker directly; the app recognises its type.
 
 - **MyKTAMap session** (`.json`, or `.zip` with photos): it **replaces** your current session (points, tracks, zones, measurement); its photos, however, are **added** to yours, without deleting any. A preview shows what it holds; a backup of your current session is taken just before. **Import** to confirm, **Cancel** to change nothing.
 - **GPX file** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): its points and paths **are added** to your session. The map must be georeferenced. A preview comes before the addition, and **Ctrl+Z** undoes it.
@@ -1681,7 +1681,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 
 ### 📊 Plan data editor
 
-**⬇️ → 📊 Plan data editor** on the map, or **📊 Data editor** on the home screen, opens a table to **view, edit and export** a map's points, paths, zones and structures.
+**⬆️ Export → 📊 Plan data editor** (💾 Session section) on the map, or **📊 Data editor** on the home screen, opens a table to **view, edit and export** a map's points, paths, zones and structures.
 
 #### 📂 Opening
 
