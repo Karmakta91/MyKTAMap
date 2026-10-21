@@ -284,6 +284,106 @@ function nbLayers(page) {
     const eg = await remplir(10000, 8000, 8000, 6400);
     verifier(!eg.bloque && eg.go, "mêmes proportions : homothétie autorisée", eg);
     await fermerOutil(page);
+
+    // ── 6. Session polluée : elle porte une copie NON convertie du fichier ──
+    // 🩸 Cas réel : une session de l'ancienne version importée sur le nouveau plan. Si calques et session sont lus
+    // ensemble, chaque objet du calque est en double côté plan (écarté), et les seuls repères qui restent sont
+    // ceux de la copie, identiques au fichier : transformation ≈ identité, données posées non converties.
+    console.log("— 6. Session polluée par une copie non convertie du fichier —");
+    const calque = await page.evaluate(function () {
+      const pts = window.getAllEmbeddedPoints();
+      const cle = function (n) { return String(n || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, ""); };
+      const nb = {};
+      pts.forEach(function (p) { const k = cle(p.nom); nb[k] = (nb[k] || 0) + 1; });
+      return pts.filter(function (p) { return cle(p.nom).length >= 4 && nb[cle(p.nom)] === 1; })
+        .map(function (p) { return { nom: p.nom, x: p.x, y: p.y }; });
+    });
+    const W0 = await page.evaluate(function () { return { W: window.APP_CONFIG.imageWidth, H: window.APP_CONFIG.imageHeight }; });
+    inf(calque.length + " points nommés sans ambiguïté dans les calques du relevé fictif");
+    const fichier6 = { data: [], roads: [] };
+    calque.forEach(function (p) { const q = versAutreScan(p); fichier6.data.push({ nom: p.nom, ref: p.nom, x: q.x, y: q.y }); });
+    // Objets ajoutés sur l'ancien scan (absents des calques) : ils ne se retrouvent que dans la copie de session.
+    for (let i = 0; i < 8; i++) {
+      const q = versAutreScan({ x: W0.W * (0.15 + 0.09 * i), y: W0.H * (0.2 + 0.07 * i) });
+      fichier6.data.push({ nom: "Ajout ancien scan " + i, uid: "pt_ajout" + i, x: q.x, y: q.y });
+    }
+    for (let i = 0; i < 2; i++) {
+      fichier6.roads.push({ type: "principal", uid: "rd_ajout" + i, points: [0, 1, 2].map(function (k) {
+        return versAutreScan({ x: W0.W * (0.3 + 0.1 * k), y: W0.H * (0.3 + 0.2 * i + 0.05 * k) }); }) });
+    }
+    await page.evaluate(function (f) {
+      const copie = JSON.parse(JSON.stringify(f));
+      const niv = window.APP_CONFIG.multiLevel ? (window.APP_CONFIG.activeLevel || 0) : undefined;
+      window.setEditorPoints(copie.data.map(function (p) {
+        const q = { id: p.nom, nom: p.nom, x: p.x, y: p.y, tags: ["salle"], etat: "Non inspectée", description: "", source: "editor" };
+        if (p.uid) q.uid = p.uid;
+        if (niv !== undefined) q.level = niv;
+        return q;
+      }));
+      window.setRoads(copie.roads);
+    }, fichier6);
+    const FICH6 = path.join(TMP, "session-polluee.json");
+    fs.writeFileSync(FICH6, JSON.stringify(fichier6));
+    await ouvrirOutil(page);
+    await page.locator("#kta-recal-files").setInputFiles(FICH6);
+    await attendre(page, function () { return !/⏳/.test(document.getElementById("kta-recal-recap").textContent); }, 8000).catch(function () {});
+    await page.waitForTimeout(300);
+    const r6 = await page.evaluate(function () { return document.getElementById("kta-recal-recap").textContent; });
+    verifier(/0[,.]8000/.test(r6) && !/1[,.]0000/.test(r6), "session polluée : échelle 0,8 retrouvée (pas l'identité)", r6);
+    verifier(/calques du plan/.test(r6), "annonce : repères pris dans les calques du plan", r6);
+    verifier(/médian 0 px/.test(r6), "session polluée : écart médian 0 px", r6);
+    await capture(page, "5-session-polluee");
+    if (!(await page.evaluate(function () { return document.getElementById("kta-recal-go").disabled; }))) {
+      const dl6 = await telecharger(page, "#kta-recal-go");
+      const vCalque = {};
+      calque.forEach(function (p) { vCalque[p.nom] = p; });
+      const e6 = ecartMax(dl6.obj, vCalque);
+      verifier(e6 <= 0.02, "session polluée : les points recalés retombent sur ceux du calque (≤ 0,02 px)", e6);
+    } else {
+      pb("session polluée : Télécharger inactif");
+      await fermerOutil(page);
+    }
+
+    // ── 7. Fichier déjà dans le repère du plan (copie non convertie dans les calques) : alerte + écarter ──
+    console.log("— 7. Repères à la même position : alerte et « écarter » —");
+    await page.evaluate(function (v) {
+      const niv = window.APP_CONFIG.multiLevel ? (window.APP_CONFIG.activeLevel || 0) : undefined;
+      window.setEditorPoints(Object.keys(v).map(function (n) {
+        const p = { id: n, nom: n, x: v[n].x, y: v[n].y, tags: ["salle"], etat: "Non inspectée", description: "", source: "editor" };
+        if (niv !== undefined) p.level = niv;
+        return p;
+      }));
+      window.setRoads([]);
+    }, verite);
+    const fichier7 = { data: calque.map(function (p) { return { nom: p.nom, x: p.x, y: p.y }; }) };
+    noms.forEach(function (n) { const q = versAutreScan(verite[n]); fichier7.data.push({ nom: n, ref: n, x: q.x, y: q.y }); });
+    const FICH7 = path.join(TMP, "deja-dans-le-repere.json");
+    fs.writeFileSync(FICH7, JSON.stringify(fichier7));
+    await ouvrirOutil(page);
+    await page.locator("#kta-recal-files").setInputFiles(FICH7);
+    await attendre(page, function () { return !/⏳/.test(document.getElementById("kta-recal-recap").textContent); }, 8000).catch(function () {});
+    await page.waitForTimeout(300);
+    const a7 = await page.evaluate(function () {
+      const b = document.getElementById("kta-recal-ecarter");
+      const boite = document.getElementById("kta-recal-identiques");
+      return { bouton: !!b && !!boite && !boite.hidden && b.offsetWidth > 0, txt: boite ? boite.textContent : "",
+               recap: document.getElementById("kta-recal-recap").textContent };
+    });
+    verifier(a7.bouton && /même position/.test(a7.txt), "alerte « même position » affichée avec le bouton Écarter", a7);
+    await capture(page, "6-alerte-identiques");
+    if (a7.bouton) {
+      await page.locator("#kta-recal-ecarter").click();
+      await attendre(page, function () { return !/⏳/.test(document.getElementById("kta-recal-recap").textContent); }, 8000).catch(function () {});
+      await page.waitForTimeout(300);
+      const b7 = await page.evaluate(function () {
+        const boite = document.getElementById("kta-recal-identiques");
+        return { recap: document.getElementById("kta-recal-recap").textContent, alerte: !!boite && !boite.hidden };
+      });
+      verifier(/0[,.]8000/.test(b7.recap) && /session/.test(b7.recap) && /écarté/.test(b7.recap),
+        "écarter : recalcul sans eux, sur la session, échelle 0,8", b7.recap);
+      verifier(!b7.alerte, "écarter : l'alerte disparaît", b7);
+    }
+    await fermerOutil(page);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
