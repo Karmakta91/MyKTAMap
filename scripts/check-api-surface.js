@@ -344,6 +344,75 @@ function charger(fichier, nomGlobal, prealables) {
   t("🔒 niveau : lecture seule → refus", CV.changerNiveau("zones", zoneSansNiv, -1) === false && zoneSansNiv.level === 2);
   delete w.ktaEditionRefusee;
 
+  // ── Appliquer un tableau (« Appliquer à la session » de l'Éditeur de données) ──
+  t("tableau : l'API est exposée", typeof CV.appliquerTableau === "function");
+  {
+    const jt = { touch: 0, inval: 0, cats: [], rec: [] };
+    w.KtaUid = { touch: function (o) { jt.touch++; o.updatedAt = 99; } };
+    w.RoadGraph = { invalidate: function () { jt.inval++; } };
+    w.HistoryManager = {
+      captureState: function (cat) { jt.cats.push(cat); return { cat: cat }; },
+      record: function (label, avant, cat) { jt.rec.push({ label: label, cat: cat }); }
+    };
+    const pts = [{ x: 0, y: 0 }, { x: 4, y: 4 }];
+    const a = { uid: "rd_a", type: "principal", level: 0, description: "a", points: pts, updatedAt: 1 };
+    const b = { uid: "rd_b", type: "chemin", points: pts, updatedAt: 1 };
+    const c = { uid: "rd_c", type: "chemin", points: pts, updatedAt: 1 };
+    const iti = { uid: "rd_i", type: "itinerary", points: pts };
+    const copie = function (o) { return JSON.parse(JSON.stringify(o)); };
+    R = [a, b, c, iti];
+    const lignes = [copie(a), copie(b), { uid: "rd_n", type: "secondaire", points: pts }];
+    lignes[0].type = "secondaire"; lignes[0].level = -1; lignes[0].points = [];
+    lignes[1].description = "note neuve";
+    const sim = CV.appliquerTableau("roads", lignes, { simuler: true });
+    t("tableau : simulation = bilan sans écriture (1 ajout, 2 modifiés, 1 supprimé ; itinéraire hors compte)",
+      sim && sim.modifies === 2 && sim.ajoutes === 1 && sim.supprimes === 1 && R.length === 4 && jt.rec.length === 0);
+    const bil = CV.appliquerTableau("roads", lignes);
+    const na = R.find(function (o) { return o.uid === "rd_a"; });
+    t("tableau : type par le chemin de Convertir (nouvel objet, même uid, touch)",
+      na && na !== a && na.type === "secondaire" && a.type === "principal");
+    t("tableau : niveau posé, géométrie de la SESSION gardée (le tableau ne l'édite pas)",
+      na.level === -1 && na.points === pts);
+    t("tableau : autre colonne modifiée en place + touch", R.indexOf(b) >= 0 && b.description === "note neuve" && b.updatedAt === 99);
+    t("tableau : ligne d'uid inconnu ajoutée, objet absent du tableau retiré, itinéraire gardé",
+      R.some(function (o) { return o.uid === "rd_n"; }) && R.indexOf(c) < 0 && R.indexOf(iti) >= 0 && R.length === 4);
+    t("tableau : UN instantané ciblé, UNE entrée d'historique, graphe invalidé",
+      jt.cats.length === 1 && jt.cats[0] === "roads" && jt.rec.length === 1 && jt.rec[0].cat === "roads" && jt.inval === 1);
+    t("tableau : bilan rendu", bil && bil.modifies === 2 && bil.ajoutes === 1 && bil.supprimes === 1);
+    const nTouch = jt.touch;
+    t("tableau : rien de changé → rien d'écrit ni de touché",
+      CV.appliquerTableau("roads", R.map(copie)).modifies === 0 && jt.rec.length === 1 && jt.touch === nTouch);
+
+    const err = function (fam, l) { const r = CV.appliquerTableau(fam, l); return r && r.erreur; };
+    const z = { uid: "zn_z", type: "eau", points: pts };
+    Z = [z];
+    const e1 = err("zones", [Object.assign(copie(z), { type: "eua" })]);
+    t("tableau : type inconnu REFUSÉ, ligne et type nommés, rien d'écrit",
+      e1 && e1.code === "typeInconnu" && e1.ligne === 1 && e1.type === "eua" && Z[0] === z && z.type === "eau");
+    const f = { uid: "st_f", type: "front-1", points: pts };
+    S = [f];
+    const e2 = err("structures", [Object.assign(copie(f), { type: "pilier-1" })]);
+    t("tableau : type connu mais de l'autre géométrie (front → pilier) refusé", e2 && e2.code === "typeIncompatible");
+    R = [copie(b)];
+    const e3 = err("roads", [Object.assign(copie(b), { type: "jonction" })]);
+    t("tableau : jonction non posable depuis le tableau", e3 && e3.code === "typeInterdit");
+    const e4 = err("zones", [Object.assign(copie(z), { level: "2" })]);
+    t("tableau : niveau non entier refusé", e4 && e4.code === "niveau");
+    const e5 = err("zones", [copie(z), { type: "inconnu-x", points: pts }]);
+    t("tableau : une ligne ajoutée d'un type inconnu est refusée (ligne 2)", e5 && e5.code === "typeInconnu" && e5.ligne === 2);
+    t("tableau : un type orphelin INCHANGÉ ne bloque pas (donnée existante)",
+      (function () { const o = { uid: "zn_o", type: "cust-disparu", points: pts }; Z = [o];
+        const r = CV.appliquerTableau("zones", [Object.assign(copie(o), { description: "x" })]);
+        return r && !r.erreur && r.modifies === 1; })());
+    t("tableau : structure front-1 → front-2 et niveau, appliqués",
+      (function () { S = [f]; const r = CV.appliquerTableau("structures", [Object.assign(copie(f), { type: "front-2", level: 1 })]);
+        return r && r.modifies === 1 && S[0].type === "front-2" && S[0].level === 1 && S[0].uid === "st_f"; })());
+    w.ktaEditionRefusee = function () { return true; };
+    t("🔒 tableau : lecture seule → refus", CV.appliquerTableau("zones", [copie(z)]) === null);
+    delete w.ktaEditionRefusee;
+    t("tableau : famille inconnue refusée", CV.appliquerTableau("bidon", []) === null);
+  }
+
   // ── le câblage, que l'extraction ne voit pas ──
   {
     const U = fs.readFileSync("js/utils.js", "utf8");

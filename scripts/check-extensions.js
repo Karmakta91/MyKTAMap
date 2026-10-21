@@ -521,7 +521,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const CV = lire("js/convertirObjet.js");
     t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
       ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
-       "function changerNiveau("].every((f) =>
+       "function changerNiveau(", "function appliquerTableau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);
     let evts = 0;
@@ -1124,6 +1124,11 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🔒 Tableur : un remplacement qui supprime exige `remplacer` (sinon refus nommé) puis ktaConfirm",
       /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refus"/.test(TE) &&
       /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirm", \{ n: n \}\)/.test(TE));
+    t("🔒 Tableur « Appliquer à la session » (tracés / zones / structures) : plan partagé, une suppression exige `remplacer` puis ktaConfirm",
+      /const sim = KC\.appliquerTableau\(_kind, _data, \{ simuler: true \}\);/.test(TE) &&
+      /if \(!partage \|\| !sim\.supprimes\) return Promise\.resolve\(appliquer\(\)\);/.test(TE) &&
+      /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refusObjets"/.test(TE) &&
+      /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirmObjets"/.test(TE));
   }
 
   // ── 7. CÂBLAGE (fichiers réels) ──────

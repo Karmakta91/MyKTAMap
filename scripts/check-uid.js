@@ -159,10 +159,15 @@ t("note d'un objet (tracé, zone, structure) : touch",
   /_roadRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_roadRef\);/.test(ROAD) &&
   /_zoneRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_zoneRef\);/.test(ZONES) &&
   /_structRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_structRef\);/.test(STRUCT));
-t("conversion : l'uid suit et la conversion appelle touch (simple et par lot)",
-  (CONV.match(/KtaUid\.touch\(neuf\)/g) || []).length === 2);
-t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation",
-  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+t("conversion : l'uid suit et la conversion appelle touch (une règle : fiche, lot, Éditeur de données)",
+  /function _versType\(obj, typeCible\) \{[\s\S]{0,200}if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  (CONV.match(/_versType\(/g) || []).length === 4);
+t("Éditeur de données « Appliquer à la session » : ligne ajoutée et colonne modifiée → touch",
+  /delete neuf\.uid;[^\n]*\n\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  /Object\.assign\(obj, op\.champs\);\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation (fiche et Éditeur de données)",
+  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV) &&
+  (CONV.match(/_poserNiveau\(/g) || []).length === 3);
 const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
 t("changement de niveau d'un POI : posé AVANT le touch de la modification",
   iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&

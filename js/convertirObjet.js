@@ -119,6 +119,23 @@
     return (s && typeof window[s] === "function") ? window[s] : null;
   }
 
+  // Même objet, autre type : une seule règle pour la fiche, le lot et le Tableur. On repart de l'objet d'origine
+  // (rien n'est perdu, champs futurs compris) ; fromLevel / toLevel d'une jonction n'ont plus de sens ailleurs.
+  // L'uid suit (Object.assign le recopie), la conversion est une modification (ETUDE_UID décision 10).
+  function _versType(obj, typeCible) {
+    const neuf = Object.assign({}, obj, { type: typeCible });
+    delete neuf.fromLevel;
+    delete neuf.toLevel;
+    if (window.KtaUid) window.KtaUid.touch(neuf);
+    return neuf;
+  }
+
+  // Niveau posé EN PLACE (même objet, même uid) : une seule règle pour la fiche et le Tableur.
+  function _poserNiveau(obj, niveau) {
+    obj.level = niveau;
+    if (window.KtaUid) window.KtaUid.touch(obj);
+  }
+
   function convertir(famille, obj, familleCible, typeCible) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     if (!obj || !famille || !familleCible || !typeCible) return false;
@@ -152,15 +169,7 @@
     }
     listes[famille].splice(idx, 1);
 
-    // On repart de l'objet d'origine (rien n'est perdu, champs futurs compris) et on remplace le type ; fromLevel /
-    // toLevel d'une jonction n'ont plus de sens ailleurs.
-    const neuf = Object.assign({}, obj, { type: typeCible });
-    delete neuf.fromLevel;
-    delete neuf.toLevel;
-    // Même objet, autre nature : l'uid suit (Object.assign le recopie), la conversion est une modification
-    // (ETUDE_UID décision 10).
-    if (window.KtaUid) window.KtaUid.touch(neuf);
-    listes[familleCible].push(neuf);
+    listes[familleCible].push(_versType(obj, typeCible));
 
     const touchees = (famille === familleCible) ? [famille] : [famille, familleCible];
     touchees.forEach(function (f) { ecrire[f](listes[f]); });
@@ -226,8 +235,7 @@
     if ((Number.isInteger(obj.level) ? obj.level : 0) === niveau) return false;   // rien à annuler
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState(famille) : null;
-    obj.level = niveau;
-    if (window.KtaUid) window.KtaUid.touch(obj);
+    _poserNiveau(obj, niveau);
     ecrire(liste);
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
     if (window.HistoryManager && avant && window.HistoryManager.record) {
@@ -270,11 +278,7 @@
       const idx = listes[it.famille].indexOf(it.obj);
       if (idx < 0) { bilan.echecs++; return; }
       listes[it.famille].splice(idx, 1);
-      const neuf = Object.assign({}, it.obj, { type: typeCible });
-      delete neuf.fromLevel;
-      delete neuf.toLevel;
-      if (window.KtaUid) window.KtaUid.touch(neuf);   // (cf convertir)
-      listes[familleCible].push(neuf);
+      listes[familleCible].push(_versType(it.obj, typeCible));
       touchees[it.famille] = true;
       touchees[familleCible] = true;
       bilan.convertis++;
@@ -284,6 +288,121 @@
     Object.keys(touchees).forEach(function (f) { _ecrivain(f)(listes[f]); });
     if (window.HistoryManager && avant && window.HistoryManager.record) {
       window.HistoryManager.record(_t("convert.histoireLot", { n: bilan.convertis }), avant);
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return bilan;
+  }
+
+  // ── Appliquer un tableau (Tableur) à une famille de la session ──────────
+  // `lignes` : lignes du Tableur, uid posés. Le tableau DEVIENT la famille, par uid :
+  //   - uid connu : l'objet de la session est modifié — type par _versType (cibles de listerCibles, même famille),
+  //     niveau par _poserNiveau, autres colonnes en place + touch. Sa géométrie (`points`) reste celle de la session :
+  //     le Tableur ne l'édite pas. Objet sans différence : intact (pas de touch, rien à synchroniser).
+  //   - uid inconnu ou en double : ajout ; objet de la session absent du tableau : suppression (la trace de
+  //     suppression est posée par HistoryManager.record, comme pour toute suppression).
+  //   - itinéraire calculé et aperçus (`_preview`) : jamais pris au tableau, toujours gardés.
+  // Toutes les lignes sont validées AVANT toute écriture : la première fautive arrête tout →
+  // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau.
+  // `opts.simuler` : rien n'est écrit (compte des suppressions avant la confirmation d'un plan partagé).
+  // UN instantané, UNE écriture, UNE entrée d'historique (comme le lot). → { modifies, ajoutes, supprimes } ou null.
+  function _typesConnus(cat) {
+    const out = (typeof window.ktaStyleBuiltins === "function") ? (window.ktaStyleBuiltins(cat) || []).slice() : [];
+    try {
+      const LC = window.LegendCustomization;
+      if (LC && typeof LC.listCustomEntries === "function") {
+        (LC.listCustomEntries(cat) || []).forEach(function (e) { if (e && e.id) out.push(e.id); });
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  function appliquerTableau(famille, lignes, opts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return null;   // 🔒 lecture seule
+    opts = opts || {};
+    const ecrire = _ecrivain(famille);
+    if (!CAT_DE_FAMILLE[famille] || typeof ecrire !== "function" || !Array.isArray(lignes)) return null;
+    const cat = CAT_DE_FAMILLE[famille];
+    const connus = _typesConnus(cat);
+    const horsJeu = function (o) { return !!(o && (o.type === "itinerary" || o._preview)); };
+    const niveauDe = function (o) { return Number.isInteger(o.level) ? o.level : 0; };
+    const PAS_COLONNE = { points: true, uid: true, updatedAt: true, type: true, level: true };
+    const meme = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
+
+    const session = _lire(famille);
+    const parUid = new Map();
+    session.forEach(function (o) { if (o && typeof o.uid === "string" && o.uid && !horsJeu(o)) parUid.set(o.uid, o); });
+
+    // 1. Validation et plan des écritures, sans rien toucher.
+    const plan = [];
+    const vus = new Set();
+    for (let i = 0; i < lignes.length; i++) {
+      const l = lignes[i];
+      if (!l || typeof l !== "object" || horsJeu(l)) continue;
+      const fautive = function (code) { return { erreur: { ligne: i + 1, code: code, type: String(l.type == null ? "" : l.type) } }; };
+      const obj = (typeof l.uid === "string" && !vus.has(l.uid)) ? parUid.get(l.uid) : null;
+      if (!obj) {
+        if (connus.indexOf(l.type) < 0) return fautive("typeInconnu");
+        if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+        plan.push({ neuf: l });
+        continue;
+      }
+      vus.add(l.uid);
+      const op = { obj: obj, type: null, niveau: null, champs: null };
+      if (l.type !== obj.type) {
+        const cibles = listerCibles(famille, obj.type).filter(function (c) { return c.famille === famille; })
+          .map(function (c) { return c.type; });
+        if (cibles.indexOf(l.type) < 0) {
+          if (CIBLES_INTERDITES[l.type]) return fautive("typeInterdit");
+          return fautive(connus.indexOf(l.type) < 0 ? "typeInconnu" : "typeIncompatible");
+        }
+        op.type = l.type;
+      }
+      if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+      if (l.level != null && l.level !== niveauDe(obj)) {
+        if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
+        op.niveau = l.level;
+      }
+      Object.keys(l).forEach(function (k) {
+        if (PAS_COLONNE[k] || k.charAt(0) === "_" || l[k] === undefined || meme(l[k], obj[k])) return;
+        (op.champs = op.champs || {})[k] = l[k];
+      });
+      plan.push(op);
+    }
+    const bilan = { modifies: 0, ajoutes: 0, supprimes: 0 };
+    plan.forEach(function (op) {
+      if (op.neuf) bilan.ajoutes++;
+      else if (op.type || op.niveau !== null || op.champs) bilan.modifies++;
+    });
+    parUid.forEach(function (o, uid) { if (!vus.has(uid)) bilan.supprimes++; });
+    if (opts.simuler) return bilan;
+    if (!bilan.modifies && !bilan.ajoutes && !bilan.supprimes) return bilan;   // rien écrit, rien à annuler
+
+    // 2. Écriture : un instantané, une liste, un rendu.
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState(famille) : null;
+    const liste = plan.map(function (op) {
+      if (op.neuf) {
+        const neuf = JSON.parse(JSON.stringify(op.neuf));
+        if (typeof neuf.uid === "string" && parUid.has(neuf.uid)) delete neuf.uid;   // doublon : identité neuve
+        if (window.KtaUid) window.KtaUid.touch(neuf);
+        return neuf;
+      }
+      let obj = op.obj;
+      if (op.champs) {
+        Object.assign(obj, op.champs);
+        if (window.KtaUid) window.KtaUid.touch(obj);
+      }
+      if (op.type) obj = _versType(obj, op.type);
+      if (op.niveau !== null) _poserNiveau(obj, op.niveau);
+      return obj;
+    }).concat(session.filter(horsJeu));
+    ecrire(liste);
+    if (famille === "roads" && window.RoadGraph && typeof window.RoadGraph.invalidate === "function") {
+      window.RoadGraph.invalidate();
+    }
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("convert.histoireTableau", { n: bilan.modifies + bilan.ajoutes + bilan.supprimes }),
+        avant, famille);
     }
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return bilan;
@@ -417,6 +536,7 @@
     listerCiblesLot: listerCiblesLot,
     supprimer:     supprimer,   // depuis la popup de l objet
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
+    appliquerTableau: appliquerTableau,   // « Appliquer à la session » du Tableur
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert
   };
