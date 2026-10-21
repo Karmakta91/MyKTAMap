@@ -24,12 +24,13 @@ const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 function nouveauContexte(licence) {
   const store = {};
   const appelsFetch = [];
-  const scripts = [];
+  const scripts = [], elements = [];
   const w = {
     console: { log() {}, warn() {}, error() {} },
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
     document: { readyState: "complete", getElementById: () => null, addEventListener() {},
-                createElement: () => ({ set src(v) { scripts.push(v); } }), head: { appendChild() {} } },
+                createElement: () => { const e = { set src(v) { scripts.push(v); e._src = v; } }; elements.push(e); return e; },
+                head: { appendChild() {} } },
     MyKTAMapProLicense: { isPro: () => !!licence, getSource: () => licence || null },
     CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
     // Écouteurs et événements gardés (section réseau) ; `w._fetch` remplace le réseau pour un test.
@@ -45,7 +46,7 @@ function nouveauContexte(licence) {
   vm.runInContext("var localStorage = window.localStorage, document = window.document, CustomEvent = window.CustomEvent," +
                   " console = window.console, fetch = window.fetch;", ctx);
   vm.runInContext(lire("js/ktaExtensions.js"), ctx, { filename: "ktaExtensions.js" });
-  return { K: w.KtaExtensions, w, appelsFetch, scripts };
+  return { K: w.KtaExtensions, w, appelsFetch, scripts, elements };
 }
 const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", modules: ["pro/m.js"] } };
 
@@ -274,6 +275,17 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     sansLic.K.appliquerConfig(ON, true);
     const r2 = await sansLic.K.chargerModules();
     t("🩸 « on » sans licence serveur : aucun module chargé", r2.demandes === 0 && sansLic.scripts.length === 0);
+    // 🩸 Un script inséré par le JS est asynchrone par défaut (exécuté dès son arrivée, dans le désordre) : un module
+    // qui lit au chargement celui déclaré avant lui le trouvait parfois absent. async = false AVANT src garde l'ordre.
+    const ordre = nouveauContexte("server");
+    ordre.K.appliquerConfig({ serverConnection: Object.assign({}, ON.serverConnection,
+      { modules: ["pro/a.js", "pro/b.js", "pro/c.js"] }) }, true);
+    const fini = ordre.K.chargerModules();
+    const els = ordre.elements;
+    t("modules greffés dans l'ordre déclaré, chacun en async = false (exécution dans l'ordre de la liste)",
+      els.map((e) => e._src).join() === "pro/a.js,pro/b.js,pro/c.js" && els.every((e) => e.async === false));
+    els.forEach((e) => e.onerror && e.onerror());
+    await fini;
   }
 
   // ── 6. JOURNAL, EFFACEMENT, SECOURS ──────
