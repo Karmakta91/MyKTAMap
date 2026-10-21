@@ -355,7 +355,48 @@
   }
 
   // L.icon d'un POI en 26×26 (32 sur la carte principale : la vue OSM couvre plus large). null → icône Leaflet.
-  function _buildPoiIcon(p) {
+  // 🩸 Icônes translucides du catalogue (décision produit) : posées telles quelles sur les tuiles, elles prennent
+  // la teinte du plan et paraissent « sous » lui. Vue OSM seulement : un fond opaque de LEUR forme (alpha
+  // renforcé, couleur de surface de la charte) est dessiné sous l'icône. Carte principale et catalogue inchangés.
+  const TAGS_FOND_OPAQUE = { danger: 1, info: 1, pa: 1, pc: 1, pe: 1 };
+  const _iconesOpaques = {};   // url → data-URL (string) | Promise en cours | null (échec : icône d'origine)
+
+  function _iconeSurFond(url) {
+    if (Object.prototype.hasOwnProperty.call(_iconesOpaques, url)) return _iconesOpaques[url];
+    _iconesOpaques[url] = new Promise(function (resolve) {
+      const img = new Image();
+      img.onload = function () {
+        try {
+          const n = 52;   // 2× l'affichage (26 px) : net sur écran dense
+          const c = document.createElement("canvas");
+          c.width = n; c.height = n;
+          const ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0, n, n);
+          const d = ctx.getImageData(0, 0, n, n);
+          const fond = getComputedStyle(document.documentElement).getPropertyValue("--kta-surface").trim()
+            || "#1a1f2e";
+          const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(fond) || [0, "1a", "1f", "2e"];
+          const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+          for (let i = 0; i < d.data.length; i += 4) {
+            d.data[i] = r; d.data[i + 1] = g; d.data[i + 2] = b;
+            d.data[i + 3] = Math.min(255, d.data[i + 3] * 4);   // forme de l'icône, bords encore doux
+          }
+          ctx.putImageData(d, 0, 0);
+          ctx.drawImage(img, 0, 0, n, n);   // l'icône d'origine par-dessus son fond
+          _iconesOpaques[url] = c.toDataURL("image/png");
+        } catch (e) {
+          console.warn("[OsmView] fond opaque d'icône :", e);
+          _iconesOpaques[url] = null;
+        }
+        resolve(_iconesOpaques[url]);
+      };
+      img.onerror = function () { _iconesOpaques[url] = null; resolve(null); };
+      img.src = url;
+    });
+    return _iconesOpaques[url];
+  }
+
+  function _buildPoiIcon(p, marqueur) {
     let iconUrl = null;
     try {
       if (typeof window.getIconUrlForPoint === "function") {
@@ -363,6 +404,18 @@
       }
     } catch(e) {}
     if (!iconUrl) return null;
+    const tag = (p.tags && p.tags[0]) || "";
+    if (TAGS_FOND_OPAQUE[tag]) {
+      const pret = _iconeSurFond(iconUrl);
+      if (typeof pret === "string") iconUrl = pret;
+      else if (pret && typeof pret.then === "function" && marqueur) {
+        // pas encore prête : icône d'origine maintenant, remplacée dès que le fond est calculé
+        pret.then(function (dataUrl) {
+          if (!dataUrl || !marqueur.setIcon) return;
+          marqueur.setIcon(L.icon({ iconUrl: dataUrl, iconSize: [26, 26], iconAnchor: [13, 13] }));
+        });
+      }
+    }
     return L.icon({
       iconUrl: iconUrl,
       iconSize: [26, 26],
@@ -381,10 +434,12 @@
     for (const p of list) {
       const latlng = _proj.planToLatLng(p.x, p.y);
       if (!latlng) { skipped++; continue; }
-      const icon = _buildPoiIcon(p);
+      const porteur = {};   // reçoit le marqueur : _buildPoiIcon peut remplacer l'icône après coup
+      const icon = _buildPoiIcon(p, porteur);
       const opts = icon ? { icon: icon, interactive: true } : { interactive: true };
       try {
         const marker = L.marker(latlng, opts);
+        porteur.setIcon = function (ic) { marker.setIcon(ic); };
         // popup : la description d'abord, le tag en repli
         const tag  = (p.tags && p.tags[0]) || "default";
         const lvl  = (window.APP_CONFIG && window.APP_CONFIG.multiLevel)
