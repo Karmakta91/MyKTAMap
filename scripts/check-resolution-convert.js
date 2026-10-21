@@ -9,6 +9,8 @@
 //   - matrices saisies (homothétie, 1 repère + rotation, 2 repères) et leurs refus ;
 //   - recalage par les noms : normalisation, appariement des noms uniques, moindres carrés (similitude, affine),
 //     rejet des homonymes aberrants, cas dégénérés, déterminisme ;
+//   - le scan d'abord : calques avant la session, paires de session identiques au fichier ignorées (🩸 une copie
+//     non convertie du fichier en session donnait l'identité), alerte « même position » et « écarter » ;
 //   - repères cliqués : un mauvais clic est signalé ; proportions divergentes détectées ;
 //   - câblage : index.html, précache sw.js, appel depuis l'Éditeur de données.
 // Jeux de test FICTIFS, fabriqués ici (aucune donnée de relevé).
@@ -145,7 +147,11 @@ t("mixte : un objet apparié par uid n'est pas réapparié par son nom",
   AP.paires.filter(p => p.nom === "Galerie Nord").length === 1 && AP.paires.find(p => p.nom === "Galerie Nord").source === "uid");
 t("noms seuls : sans uid nulle part, l'appariement retombe sur les noms",
   K.apparier({ data: [{ nom: "Carrefour Est", x: 1, y: 1 }] }, { data: [{ nom: "carrefour-est", x: 2, y: 2 }] }).nNoms === 1);
-t("sources comptées (uid / noms)", JSON.stringify(K.compterSources(AP.paires)) === JSON.stringify({ uid: 8, nom: 2 }));
+t("sources comptées (uid / noms ; sans origine = calque)",
+  JSON.stringify(K.compterSources(AP.paires)) === JSON.stringify({ uid: 8, nom: 2, calque: 10, session: 0 }));
+t("même position : sous 0,01 px avant transformation, pas au-delà",
+  K.estIdentique({ A: { x: 10, y: 20 }, B: { x: 10.005, y: 20 } }) && !K.estIdentique({ A: { x: 10, y: 20 }, B: { x: 10.02, y: 20 } }) &&
+  !K.estIdentique(null) && K.partIdentiques([]) === 0);
 
 // ── Jeux fictifs : relevé de référence + version transformée ──
 function alea(graine) { let s = graine >>> 0; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -235,6 +241,55 @@ R = K.estimerRobuste(APu.paires);
 t("uid seul : 30 repères par uid, aucun par nom, l'objet déplacé est écarté, écart ≈ 0",
   APu.nUid === 30 && APu.nNoms === 0 && R && R.ecartees.length === 1 && R.ecartees[0].nom === "Ancien 4" &&
   R.stats.mediane < 0.01 && proche(R.M._s, 1.37, 1e-9), R && { st: R.stats, ec: R.ecartees });
+
+// ── Le scan d'abord : calques du plan, puis session ──
+// 🩸 Cas réel : la session du plan ouvert porte une copie NON convertie du fichier (session d'une ancienne version
+// importée). Fichier = ancien scan ; calques = mêmes objets convertis (uid communs) ; session = copie du fichier,
+// plus des objets absents des calques.
+const relP = releve(40, 61);
+const fichP = { data: relP.map((p, i) => ({ nom: "Objet " + i, uid: "pt_p" + i, x: p.x, y: p.y })),
+                roads: [{ type: "principal", uid: "rd_p", points: relP.slice(0, 3).map(p => ({ x: p.x, y: p.y })) }] };
+const ajoutsP = releve(12, 62).map((p, i) => ({ nom: "Ajout " + i, uid: "pt_aj" + i, x: p.x, y: p.y }));
+fichP.data = fichP.data.concat(ajoutsP);
+const calquesP = { data: relP.map((p, i) => Object.assign({ nom: "Objet " + i, uid: "pt_p" + i }, K.appliquer(VRAI, p))) };
+const sessionP = JSON.parse(JSON.stringify(fichP));
+const fusion = { data: calquesP.data.concat(sessionP.data), roads: sessionP.roads };
+const RA = K.estimerRobuste(K.apparier(fichP, fusion).paires);
+t("cause : calques et session lus ensemble → l'identité (le défaut à ne plus reproduire)",
+  RA && !RA.err && proche(RA.M._s, 1, 1e-9) && RA.stats.mediane === 0, RA && { s: RA.M && RA.M._s, st: RA.stats });
+let PL = K.apparierPlan(fichP, calquesP, sessionP);
+R = K.estimerRobuste(PL.paires);
+t("le scan d'abord : 40 repères des calques, session non lue, échelle vraie retrouvée",
+  !PL.sessionLue && PL.paires.length === 40 && PL.paires.every(p => p.origine === "calque") &&
+  R && proche(R.M._s, 0.8, 1e-9) && R.stats.mediane < 0.01, { PL: PL.paires.length, s: R && R.M && R.M._s });
+// Calques sans repère commun : la session sert, ses paires identiques au fichier sont ignorées.
+const sessionMixte = { data: sessionP.data.slice(0, 20).concat(relP.slice(20).map((p, i) =>
+  Object.assign({ nom: "Objet " + (20 + i), uid: "pt_p" + (20 + i) }, K.appliquer(VRAI, p)))) };
+PL = K.apparierPlan(fichP, { data: [] }, sessionMixte);
+R = K.estimerRobuste(PL.paires);
+t("calques vides : la session sert, ses 20 paires identiques au fichier ignorées et comptées",
+  PL.sessionLue && PL.sessionIgnores === 20 && PL.paires.length === 20 && PL.paires.every(p => p.origine === "session") &&
+  R && proche(R.M._s, 0.8, 1e-9), { ign: PL.sessionIgnores, n: PL.paires.length });
+PL = K.apparierPlan(fichP, { data: calquesP.data.slice(0, 2) }, sessionMixte);
+t("moins de 3 paires de calques : calques ET session (origine annoncée par paire)",
+  PL.sessionLue && PL.paires.filter(p => p.origine === "calque").length === 2 &&
+  PL.paires.filter(p => p.origine === "session").length === 20 &&
+  JSON.stringify(K.compterSources(PL.paires)) === JSON.stringify({ uid: 22, nom: 0, calque: 2, session: 20 }));
+t("session seule identique (rien d'autre) : refus « peu », pas l'identité",
+  K.estimerRobuste(K.apparierPlan(fichP, { data: [] }, sessionP).paires).err === "peu");
+// Fichier déjà dans le repère du plan (ou calque non converti) : majorité de repères à la même position.
+const calquesIdent = { data: fichP.data.slice(0, 30).map(p => Object.assign({}, p)) };
+PL = K.apparierPlan(fichP, calquesIdent, sessionMixte);
+R = K.estimerRobuste(PL.paires);
+t("repères à la même position dans les calques : majorité détectée (alerte)",
+  !PL.sessionLue && R && K.partIdentiques(R.retenues) > 0.5 && proche(R.M._s, 1, 1e-9), R && K.partIdentiques(R.retenues));
+PL = K.apparierPlan(fichP, calquesIdent, sessionMixte, { ecarterIdentiques: true });
+R = K.estimerRobuste(PL.paires);
+t("écarter : les 30 repères identiques retirés, la session prend le relais, échelle vraie",
+  PL.identiquesEcartes === 30 && PL.sessionLue && R && proche(R.M._s, 0.8, 1e-9) && K.partIdentiques(R.retenues) === 0,
+  { ec: PL.identiquesEcartes, s: R && R.M && R.M._s });
+t("repères décalés normalement : aucune alerte",
+  K.partIdentiques(K.estimerRobuste(K.apparierPlan(fichP, calquesP, sessionP).paires).retenues) === 0);
 
 t("robuste : moins de 3 paires → refus « peu »", K.estimerRobuste(P.slice(0, 2)).err === "peu");
 t("robuste : repères tous confondus → refus « degenere »",
