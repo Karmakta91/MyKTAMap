@@ -1043,6 +1043,81 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import"(?:, \w+: \w+)* \}\)/.test(lire(f))));
   }
 
+  // ── 6 septies. IMPORT DE SESSION SUR UN PLAN PARTAGÉ (prise importSession + vrai ktaUid.js) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { type: "ext", extId: "p1" } : { type: "local" }) };
+    t("sans prise : aucun plan partagé (remplacement de l'app seule)", K.importPartage("ext_p1") === null);
+    let appels = 0, rep = { remplacer: true };
+    K.register({ nom: "imp", apiVersion: 1, importSession(id) { appels++; if (rep === "panne") throw new Error("x"); return id === "p1" ? rep : null; } });
+    t("plan local : null, la prise n'est même pas consultée", K.importPartage("local_1") === null && appels === 0);
+    t("plan partagé, remplacement permis → { remplacer: true }", K.importPartage("ext_p1").remplacer === true);
+    rep = { remplacer: "oui" };
+    t("🔒 remplacer non booléen → refusé (ajout seul)", K.importPartage("ext_p1").remplacer === false);
+    rep = "panne";
+    const e1 = K.importPartage("ext_p1");
+    t("🔒 prise en erreur → plan partagé, remplacement REFUSÉ (ajout seul)", !!e1 && e1.remplacer === false);
+    rep = 42;
+    t("🔒 forme inattendue → ajout seul", K.importPartage("ext_p1").remplacer === false);
+    rep = null;
+    t("prise qui rend null → plan non partagé", K.importPartage("ext_p1") === null);
+
+    const ctx = vm.createContext({ Date, JSON, Map, Set, Array, Object, Math, isFinite, crypto: undefined });
+    ctx.window = ctx;
+    vm.runInContext(lire("js/ktaUid.js"), ctx, { filename: "ktaUid.js" });
+    const U = ctx.KtaUid;
+    const loc = () => ({
+      data: [{ uid: "pt_x", name: "X", updatedAt: 100 }, { uid: "pt_y", name: "Y", updatedAt: 100 }],
+      roads: [{ uid: "rd_w", type: "galerie", points: [], updatedAt: 100 }, { type: "itinerary", points: [] }],
+      zones: [], structures: [], tombstones: [{ uid: "pt_d", deletedAt: 500 }]
+    });
+    const fic = () => ({
+      data: [{ uid: "pt_z", name: "Z", updatedAt: 50 }, { uid: "pt_x", name: "X du fichier", updatedAt: 200 },
+        { uid: "pt_y", name: "Y ancien", updatedAt: 50 }, { uid: "pt_d", name: "D effacé ici", updatedAt: 400 }],
+      roads: [{ type: "itinerary", points: [9] }], zones: [], structures: [], tombstones: [{ uid: "pt_q", deletedAt: 300 }]
+    });
+    const L1 = loc(), F1 = fic();
+    const a = U.preparerImport(L1, F1, "ajouter", 9000);
+    const nom = (r, u) => (r.data.find((o) => o.uid === u) || {}).name;
+    t("Ajouter : rien d'existant ne disparaît (X, Y, tracé, itinéraire d'ici)", nom(a, "pt_y") === "Y" && !!nom(a, "pt_x") &&
+      a.roads.length === 2 && a.roads.some((r) => r.type === "itinerary" && !r.points.length));
+    t("Ajouter : nouvel objet ajouté et horodaté maintenant (sinon la synchro ne l'envoie jamais)",
+      (a.data.find((o) => o.uid === "pt_z") || {}).updatedAt === 9000);
+    t("Ajouter : le plus récent gagne (X du fichier), le plus ancien perd (Y d'ici gardé)",
+      nom(a, "pt_x") === "X du fichier" && (a.data.find((o) => o.uid === "pt_y") || {}).updatedAt === 100);
+    t("🩸 Ajouter : un objet effacé ici après sa version du fichier ne ressuscite pas", !nom(a, "pt_d"));
+    t("Ajouter : traces locales inchangées, celles du fichier ignorées, aucune trace créée",
+      a.tombstones.length === 1 && a.tombstones[0].uid === "pt_d" && a.supprimes === 0 && a.ajoutes === 1 && a.misAJour === 1);
+    t("Ajouter : fonction pure (fichier et objets d'ici non modifiés)",
+      F1.data[0].updatedAt === 50 && L1.data[0].name === "X" && L1.data.length === 2);
+
+    const L2 = loc(), F2 = { data: [{ uid: "pt_x", name: "X", updatedAt: 100 }, { uid: "pt_z", name: "Z", updatedAt: 50 }],
+      roads: [], zones: [], structures: [], tombstones: [{ uid: "pt_q", deletedAt: 300 }, { uid: "pt_x", deletedAt: 90 }] };
+    const r = U.preparerImport(L2, F2, "remplacer", 9000);
+    const trace = (u) => (r.tombstones.find((x) => x.uid === u) || {}).deletedAt;
+    t("Remplacer : le contenu devient celui du fichier (X, Z), l'itinéraire d'ici reste",
+      r.data.map((o) => o.uid).join() === "pt_x,pt_z" && r.roads.length === 1 && r.roads[0].type === "itinerary");
+    t("🩸 Remplacer : chaque objet retiré (Y, tracé W) reçoit une trace datée de maintenant",
+      trace("pt_y") === 9000 && trace("rd_w") === 9000 && r.supprimes === 2);
+    t("Remplacer : objet identique non réhorodaté, objet nouveau horodaté",
+      r.data[0].updatedAt === 100 && r.data[1].updatedAt === 9000);
+    t("Remplacer : traces d'ici et du fichier gardées, sauf celle d'un objet gardé",
+      trace("pt_d") === 500 && trace("pt_q") === 300 && trace("pt_x") === undefined);
+    t("aucune trace pour l'itinéraire calculé", r.tombstones.every((x) => x.uid));
+
+    const IE = lire("js/interfaceImportExport.js");
+    t("câblage : la fenêtre d'import lit la prise (plan affiché) et propose les deux modes",
+      /K\.importPartage\(window\._currentLoadedPlanId\)/.test(IE) && /data-kta-import-mode="' \+ val/.test(IE) &&
+      /partage\.remplacer\s*\n?\s*\? _choixMode\("remplacer"/.test(IE));
+    t("câblage : plan partagé → KtaUid.preparerImport, traces du fichier jamais posées telles quelles",
+      /_preparerIdentitesImport\(dataParsee, !!mode\)/.test(IE) && /if \(!sansTraces\) window\.KtaUid\.setTombstones/.test(IE) &&
+      /KtaUid\.preparerImport\(_etatImportLocal\(\), _etatImportFichier\(dataParsee\), mode\)/.test(IE));
+    t("🔒 câblage : Remplacer relit le droit au clic et passe par ktaConfirm (nombre d'objets supprimés)",
+      /const p2 = _importPartage\(\);\s*\n\s*if \(!p2 \|\| !p2\.remplacer/.test(IE) && /ktaConfirm\(_tp\("confirmRemplacer", \{ n: n \}\)/.test(IE));
+    t("câblage : l'import direct (importerSessionJSON) renvoie un plan partagé vers la fenêtre",
+      /if \(_importPartage\(\)\) \{ ouvrirImportSession\(file\); return; \}/.test(IE));
+  }
+
   // ── 7. CÂBLAGE (fichiers réels) ──────
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),

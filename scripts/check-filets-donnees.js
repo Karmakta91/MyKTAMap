@@ -36,7 +36,7 @@ function bloc(src, debut, fin) {
 {
   const s = lire("js/interfaceImportExport.js");
   const iSnap = s.indexOf('snapshot("before-import-session")');
-  const iSet  = s.indexOf("window.setEditorPoints(dataParsee.editorPoints");
+  const iSet  = s.indexOf("window.setEditorPoints(objets.data");   // objets = fichier (plan local) ou preparerImport
   verif(iSnap > 0, "🩸 import de session : snapshot « before-import-session » présent");
   verif(iSnap > 0 && iSet > iSnap, "🩸 import de session : le snapshot est déclenché AVANT l'écrasement des points");
   verif(/_snapAvant\.then\(/.test(s), "🩸 import de session : l'écrasement attend la promesse du snapshot");

@@ -349,6 +349,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     modifié ou supprimé par la synchro pendant l'édition (avant : modification écrasée sans le savoir).
   - Prise `lectureSeule(idExt) → bool` (droit « lire ») : goulot `window.ktaEditionRefusee()` — ni ✏️ ni 🗑️
     dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
+  - Prise `importSession(idExt) → { remplacer: bool } | null` : le plan est **partagé**, l'import d'un fichier de
+    session propose « Ajouter au plan » (fusion par uid, rien ne disparaît) et, si `remplacer === true`, « Remplacer
+    pour toute l'organisation » (confirmation avec le nombre d'objets supprimés ; une trace de suppression par objet
+    retiré, que la synchro propage). `null` / `false` = plan non partagé (remplacement local). Plan local ou du site :
+    jamais consultée. 🔒 Erreur ou forme inattendue = partagé, remplacement **refusé** (ajout seul) ; le droit est
+    relu au clic de « Remplacer ». Côté community : `KtaExtensions.importPartage(registreId)` ; détail des deux modes :
+    `session-data.md` §9.1.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
     **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
     KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
