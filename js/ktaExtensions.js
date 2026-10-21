@@ -315,6 +315,7 @@
   //     importAutorise: function () → bool,                 // permission (synchrone)
   //     exportAutorise: function (planId) → bool | { auteur }, // permission (synchrone), { auteur } = ses ajouts
   //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
+  //     publierVersion: { autorise(idExt) → bool, publier({ id, blob, nom }) → Promise } // nouvelle version
   //   })
   // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
   //    Prises d'INFORMATION : une erreur est journalisée et ignorée.
@@ -343,7 +344,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -622,6 +623,33 @@
     if (!ext) return Promise.reject(new Error("aucune publication disponible"));
     return Promise.resolve().then(function () { return ext.publierPlan(args); }).then(function (r) {
       // Le plan publié rejoint tout de suite la liste de l'accueil.
+      try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
+      return r;
+    });
+  }
+
+  // ── Nouvelle version d'un plan de l'extension (assistant « Mettre à jour le plan ») ──
+  // Prise `publierVersion: { autorise(idExt) → bool, publier({ id: idExt, blob, nom }) → Promise }`.
+  // ⚠️ `autorise` est une PERMISSION : absente, fausse ou en erreur = refus (l'assistant ne propose alors que le
+  // téléchargement). Elle ne fait que choisir les boutons : le serveur de l'extension revérifie le droit à l'envoi.
+  function versionAutorisee(registreId) {
+    const ext = _prise("publierVersion");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.publierVersion.autorise !== "function") return false;
+    try { return ext.publierVersion.autorise(id) === true; }
+    catch (e) { console.warn("[Extensions] « publierVersion.autorise » a échoué → refus :", e); return false; }
+  }
+  function publierVersion(args) {
+    const a = args || {};
+    const ext = _prise("publierVersion");
+    if (!ext || typeof ext.publierVersion.publier !== "function") {
+      return Promise.reject(new Error("aucune publication de version"));
+    }
+    if (!versionAutorisee(a.planId)) return Promise.reject(new Error("publication de version refusée"));
+    const id = _idExtension(a.planId);
+    return Promise.resolve().then(function () {
+      return ext.publierVersion.publier({ id: id, blob: a.blob, nom: a.nom });
+    }).then(function (r) {
       try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
       return r;
     });
@@ -1608,6 +1636,8 @@
     dossiersExtension: dossiersExtension,
     chargerPlanExtension: chargerPlanExtension,
     publierPlan: publierPlan,
+    versionAutorisee: versionAutorisee,
+    publierVersion: publierVersion,
     changementsDepuis: changementsDepuis,
     effacerDonneesExtension: effacerDonneesExtension,
     secoursAppliquer: secoursAppliquer,

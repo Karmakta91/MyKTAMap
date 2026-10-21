@@ -399,6 +399,45 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
   }
 
+  // ── 6 bis quater bis. NOUVELLE VERSION D'UN PLAN (prise publierVersion) ──────
+  // 🔒 `autorise` est une permission : absente, fausse, mal typée ou en erreur = refus, et rien n'est envoyé.
+  {
+    const registre = { findById: (id) => (id === "ext_p1" ? { id: "ext_p1", type: "ext", extId: "p1" }
+      : id === "local_a" ? { id: "local_a", type: "local" } : null) };
+    const sans = nouveauContexte(null);
+    sans.w.PlanRegistry = registre;
+    let rejet = false;
+    await sans.K.publierVersion({ planId: "ext_p1", blob: null, nom: "n" }).catch(() => { rejet = true; });
+    t("sans extension : aucune version autorisée, publierVersion rejette (no-op)",
+      sans.K.versionAutorisee("ext_p1") === false && rejet);
+
+    const essai = async (autorise) => {
+      const c = nouveauContexte(null);
+      c.w.PlanRegistry = registre;
+      const envois = [];
+      c.K.register({ nom: "v", apiVersion: 1, publierVersion: { autorise: autorise,
+        publier: (a) => { envois.push(a); return Promise.resolve({ version: 2 }); } } });
+      let refus = false;
+      const r = await c.K.publierVersion({ planId: "ext_p1", blob: "B", nom: "N" }).catch(() => { refus = true; });
+      return { c, envois, refus, r };
+    };
+    const enErreur = await essai(() => { throw new Error("x"); });
+    t("autorise en erreur → refus, rien d'envoyé", enErreur.c.K.versionAutorisee("ext_p1") === false &&
+      enErreur.refus && enErreur.envois.length === 0);
+    const malType = await essai(() => "true");
+    t("autorise qui ne rend pas true (texte) → refus, rien d'envoyé", malType.refus && malType.envois.length === 0);
+    const non = await essai(() => false);
+    t("autorise false → refus, rien d'envoyé", non.refus && non.envois.length === 0);
+    const oui = await essai((id) => id === "p1");
+    t("autorise true → envoi sous l'id de l'EXTENSION (pas l'id du registre), avec le fichier et le nom",
+      !oui.refus && oui.envois.length === 1 && oui.envois[0].id === "p1" && oui.envois[0].blob === "B" &&
+      oui.envois[0].nom === "N" && oui.r && oui.r.version === 2);
+    t("…puis mktm:plans-extension-changes (la liste se relit)", oui.c.w._emis.indexOf("mktm:plans-extension-changes") >= 0);
+    t("plan local : jamais autorisé (la prise ne voit que les plans de l'extension)",
+      oui.c.K.versionAutorisee("local_a") === false);
+
+  }
+
   // ── 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ──────
   {
     const { K, w } = nouveauContexte(null);
