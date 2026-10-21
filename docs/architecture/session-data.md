@@ -70,6 +70,34 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 
 **Pourquoi polling et pas hooks ?** : pas besoin de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible. Risque zéro d'oublier un point de modification.
 
+#### 9.1 Import d'un fichier de session (`interfaceImportExport.js > ouvrirImportSession`)
+
+- **Plan local** (ou sans extension) : le fichier **remplace** points, tracés, zones, structures, mesure, suivi, note du
+  Mode Histoire et légende de session ; ses traces de suppression remplacent celles du plan ; snapshot
+  `before-import-session` attendu avant. Photos et documents du Mode Histoire **s'ajoutent** (jamais de purge).
+- **Plan partagé par une extension** (`KtaExtensions.importPartage` → `{ remplacer }`, `community-server-line.md` §3) :
+  la fenêtre propose **« Ajouter au plan »** (choisi par défaut) et, si la prise le permet, **« Remplacer pour toute
+  l'organisation »**. Les deux passent par `KtaUid.preparerImport(local, fichier, mode)` (fonction pure), snapshot
+  `before-import-session` compris :
+  - *Ajouter* : par uid, le plus récent gagne ; un objet effacé ici (trace postérieure ou égale) ne revient pas ; rien
+    d'existant ne disparaît ; traces d'ici inchangées, celles du fichier ignorées. Mesure, suivi et note libre d'ici
+    ne sont pas touchés ; la légende du fichier complète celle d'ici sans l'écraser.
+  - *Remplacer* : le droit est relu au clic, puis `ktaConfirm` annonce le nombre d'objets qui seront supprimés pour
+    tous ; chaque objet d'ici absent du fichier reçoit une **trace de suppression** (sans elle, la synchro ne voit
+    aucune suppression et les objets reviennent du serveur) ; le reste suit le remplacement local.
+  - ⚠️ Un objet du fichier qui gagne est **réhorodaté maintenant** : la synchro n'envoie que ce qui a changé depuis son
+    dernier envoi (l'objet d'un vieux fichier ne partirait jamais) et le serveur garde la version la plus récente.
+  - L'itinéraire calculé et les aperçus d'ici restent ; ceux du fichier sont ignorés. Calques en modification
+    (`CalqueSession.resynchroniser`) et liaisons inter-plans (`InterPlanLinks.importLinks`, fusion par id) : même
+    traitement dans tous les modes.
+- `importerSessionJSON(file)` (import direct, sans fenêtre) : sur un plan partagé, ouvre la fenêtre à la place.
+- **🧮 Tableur, « Remplacer la session »** (`tableEditor.js > _remplacerSession`) : plan local inchangé. Plan partagé :
+  même calcul (`KtaUid.preparerImport` en « remplacer », points seulement) — une trace par point de la session absent
+  du tableau ; s'il y en a, il faut `remplacer` de la prise (relu au clic, sinon refus nommé, rien ne change) puis
+  `ktaConfirm` qui annonce le nombre de points supprimés pour tous. Sans point retiré : ni droit ni confirmation.
+- Limite : un objet créé par un autre membre et pas encore reçu au moment de l'import ne reçoit pas de trace (il
+  reste après un « Remplacer »). Garde-fou : `scripts/check-extensions.js` §6 septies.
+
 ---
 
 ### 16. Format de distance unifié m / km (depuis 09/05/2026)

@@ -343,7 +343,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -565,6 +565,22 @@
     if (!ext || !id) return false;
     try { return ext.lectureSeule(id) === true; }
     catch (e) { console.warn("[Extensions] « lectureSeule » a échoué → lecture seule :", e); return true; }
+  }
+
+  // Import d'un fichier de session sur un plan d'extension : `importSession(idExt) → { remplacer: bool }` dit que
+  // le plan est PARTAGÉ (l'app propose « Ajouter » et, si permis, « Remplacer pour tous ») ; null / false = plan
+  // non partagé (remplacement local). Plan local ou du site, sans prise : null (comportement de l'app seule).
+  // 🔒 Erreur ou forme inattendue = plan partagé, remplacement REFUSÉ (ajout seul).
+  function importPartage(registreId) {
+    const ext = _prise("importSession");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.importSession !== "function") return null;
+    let v;
+    try { v = ext.importSession(id); }
+    catch (e) { console.warn("[Extensions] « importSession » a échoué → ajout seul :", e); return { remplacer: false }; }
+    if (v === null || v === false) return null;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return { remplacer: false };
+    return { remplacer: v.remplacer === true };
   }
 
   // ── Gate déléguée ──
@@ -1690,6 +1706,7 @@
     rangerPlanExtension: rangerPlanExtension,
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
     lectureSeule: lectureSeule,
+    importPartage: importPartage,
     avantReinitialisation: avantReinitialisation,
     CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
     recuADistance: recuADistance,

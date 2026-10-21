@@ -316,7 +316,8 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("fusion de sessions : par uid (KtaUid.fusionnerCalques)", /const f = window\.KtaUid\.fusionnerCalques\(jsons\);/.test(SEB));
   t("fusion du Générateur : même règle", /window\.KtaUid\.fusionnerCalques\(parsedArr\)/.test(CCB));
   t("import par remplacement : identités préparées et traces du fichier AVANT les setters (2 chemins)",
-    (IIE.match(/_preparerIdentitesImport\((data|dataParsee)\);[^\n]*\n\s+if \(window\.setEditorPoints\)/g) || []).length === 2);
+    /_preparerIdentitesImport\(data\);[^\n]*\n\s+if \(window\.setEditorPoints\)/.test(IIE) &&
+    /_preparerIdentitesImport\(dataParsee, !!mode\);[\s\S]{0,1200}?if \(window\.setEditorPoints\)\s+window\.setEditorPoints\(objets\.data\)/.test(IIE));
 }
 
 // ── 4. Photos rattachées à l'uid ──────

@@ -255,7 +255,7 @@ const CALQUE = {
       /\.map\(function \(?p\)? \{ return Object\.assign\(\{\}, p\); \}\)/.test(TAB) ||
       /Object\.assign\(\{\}, p\)/.test(TAB));
     t("POI : le Tableau repose bien les points en session",
-      TAB.indexOf("window.setEditorPoints(_data)") >= 0);
+      TAB.indexOf("const lignes = prep ? prep.data : _data;") >= 0 && TAB.indexOf("window.setEditorPoints(lignes)") >= 0);
   }
 
   // ───────── 2 sexies. INTÉGRER DES AJOUTS (objets dessinés à la main) ─────────
