@@ -584,6 +584,40 @@
     return { remplacer: v.remplacer === true };
   }
 
+  // « Effacer la session » sur un plan d'extension : `effacerSession(idExt) → { miens, tout, auteur }` (ou sa
+  // promesse) dit que le plan est PARTAGÉ et ce que le compte peut supprimer pour tous — `miens` : les objets dont
+  // `auteurObjet(uid).createur === auteur` ; `tout` : tous les objets de la session. null / false rendus tels quels
+  // (pas en promesse) = plan non partagé.
+  // → null (sans prise, plan local ou du site, ou plan non partagé : fenêtre de l'app seule, SYNCHRONE) ou une
+  // promesse de { miens, tout, auteur }.
+  // 🔒 Erreur, rejet, forme inattendue ou réponse au-delà de DELAI_EFFACEMENT_MS = plan partagé, seul le vidage de
+  // l'appareil est permis. L'appelant relit la prise au moment de confirmer une suppression pour tous.
+  const DELAI_EFFACEMENT_MS = 8000;
+  function effacementPartage(registreId) {
+    const ext = _prise("effacerSession");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.effacerSession !== "function") return null;
+    const refus = { miens: false, tout: false, auteur: null };
+    let v;
+    try { v = ext.effacerSession(id); }
+    catch (e) { console.warn("[Extensions] « effacerSession » a échoué → vidage de l'appareil seul :", e); return Promise.resolve(refus); }
+    if (v === null || v === false) return null;
+    const forme = function (r) {
+      if (!r || typeof r !== "object" || Array.isArray(r)) return refus;
+      const auteur = typeof r.auteur === "string" && r.auteur.trim() ? r.auteur.trim().slice(0, 40) : null;
+      return { miens: r.miens === true && !!auteur, tout: r.tout === true, auteur: auteur };
+    };
+    if (!v || typeof v.then !== "function") return Promise.resolve(forme(v));
+    let delai;
+    return Promise.race([
+      Promise.resolve(v).then(function (r) { return r === null || r === false ? refus : forme(r); }, function (e) {
+        console.warn("[Extensions] « effacerSession » rejetée → vidage de l'appareil seul :", e);
+        return refus;
+      }),
+      new Promise(function (r) { delai = setTimeout(function () { r(refus); }, DELAI_EFFACEMENT_MS); })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+
   // ── Gate déléguée ──
   // null si aucune extension ne fournit de gate, sinon une promesse résolue quand l'accès est ouvert.
   // 🔒 Une gate qui échoue REJETTE : l'appelant affiche « instance indisponible », jamais la gate community.
@@ -1737,6 +1771,7 @@
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
     lectureSeule: lectureSeule,
     importPartage: importPartage,
+    effacementPartage: effacementPartage,
     avantReinitialisation: avantReinitialisation,
     CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
     recuADistance: recuADistance,

@@ -63,6 +63,30 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 
 **Modale** : `.kta-session-modal-overlay` (centrée pleine page, pattern `kta-readme-modal`), boîte `.kta-session-modal-boite` avec icône ↻ dans cercle jaune `#f4c542`, titre + détail + 2 boutons (🗑️ Effacer / ✓ Continuer). Backdrop click + Échap = Continuer. Animations fade-in overlay + pop-in box.
 
+**🗑️ Effacer la session** (`sessionPersist.js`, bouton de la modale) : confirmation chiffrée (`ktaConfirm`), snapshot
+`before-clear-session` **attendu**, `_viderEtatCourant()` (objets, mesures, suivi, légende de session, traces de
+suppression — décision produit ; les points portails restent) puis `clear({ snapshotFait: true })` (slot retiré,
+calques rendus, événement `mktm:session-cleared`). Pas d'⏪ : l'effacement ne passe pas par l'historique, le filet est
+le snapshot de 📦 Backups.
+- **Plan partagé par une extension** (`KtaExtensions.effacementPartage` → promesse de `{ miens, tout, auteur }`,
+  `community-server-line.md` §3) : la même confirmation porte un choix (`ktaConfirm`, `opts.choix`) :
+  - **« Vider cet appareil »** (toujours, coché par défaut) : l'effacement ci-dessus ; le texte dit que tout ce qui est
+    sur le serveur reviendra (relecture complète par l'extension), les objets de chacun compris ;
+  - **« Supprimer mes ajouts pour toute l'organisation »** (`miens`) : objets dont `KtaExtensions.auteurObjet(uid)
+    .createur === auteur` ;
+  - **« Tout supprimer pour l'organisation »** (`tout`) : tous les objets de la session.
+
+  Les deux derniers relisent la prise au clic (droit retiré : refus nommé, rien n'est effacé), puis une seconde
+  `ktaConfirm` donne le nombre d'objets. L'appareil est vidé comme au premier choix, puis les traces d'avant reviennent
+  et chaque objet visé reçoit la sienne (`_tracerEffacement`), datée après sa dernière modification connue (une trace
+  plus ancienne perdrait la fusion) ; la session est écrite tout de suite. La relecture complète ramène alors ce qui
+  n'est pas tracé. 🔒 Jamais de trace pour une copie de calque (uid d'un objet du calque), l'itinéraire calculé ou un
+  portail. La case « ↩️ Rendre aussi les calques à l'équipe » remplace le 3e bouton quand des calques sont en
+  modification (piège 1 ci-dessous). Erreur, rejet ou réponse au-delà de 8 s : « Vider cet appareil » seul. Le
+  nombre annoncé ne compte que ce que l'appareil a reçu (d'où la promesse : l'extension peut se mettre à jour avant
+de répondre). Filet :
+  `scripts/smoke/checkup-effacer-session-partage.js`.
+
 **Format storage** :
 ```json
 { "version": 1, "planId": "...", "savedAt": "ISO", "editorPoints": [...], "roads": [...], "zones": [...], "measure": [...] }
@@ -1587,7 +1611,10 @@ Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d
 
 ### 🩸 Les deux pièges, et pourquoi ils coûtent cher
 
-1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Ailleurs, confirmation inchangée. `clear()` garde les restitutions (`restitutions`, `aEnvoyer`) de l'état du module : celle qui vient d'être notée doit encore partir. Filet : `scripts/smoke/checkup-calque-effacer.js` (plan local, parcours réel : rechargement, fenêtre « session restaurée », effacement, panneau de filtres).
+1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Si l'extension répond aussi à `effacerSession` (plan partagé, §9 « Effacer la session »), ce choix
+devient la case « ↩️ Rendre aussi les calques à l'équipe » de la fenêtre à choix, valable pour les trois choix : les copies
+ne reçoivent jamais de trace, elles reviennent du serveur tant que la case n'est pas cochée. Ailleurs, confirmation
+inchangée. `clear()` garde les restitutions (`restitutions`, `aEnvoyer`) de l'état du module : celle qui vient d'être notée doit encore partir. Filet : `scripts/smoke/checkup-calque-effacer.js` (plan local, parcours réel : rechargement, fenêtre « session restaurée », effacement, panneau de filtres).
 2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
 
 3. **À l'import d'une session, la liste se DÉDUIT des marques.** Le fichier session emporte les objets marqués `_srcCalque`, **pas** `calquesSession` (propre à la sauvegarde locale). Sans recalage : sur un autre appareil, le calque d'origine se réaffiche par-dessus sa copie (doublon) et « Exporter » refuse (`pasRapatrie`) ; et une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (`appliquerVerrous` ne tourne qu'au rechargement). `resynchroniser()`, appelée par l'import (`interfaceImportExport.js`, après les setters), reconstruit `_rapatries` depuis les marques présentes **et connues du plan ouvert**, masque / réaffiche en conséquence, et **retire** les marques de calques inconnus (session d'un autre plan → objets « créés à la main », comptés à l'export). Déduire plutôt qu'exporter la liste : une seule source de vérité, et les sessions déjà exportées marchent sans être refaites.

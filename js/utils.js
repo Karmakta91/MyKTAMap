@@ -432,6 +432,8 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
 //   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
 //   dans l'objet passé (coche / valeur) après coup.
 //   opts.autre = {label, valeur} : 3e bouton (danger) ; la Promise rend alors `opts.autre.valeur`.
+//   opts.choix = {options: [{valeur, titre, aide?}], valeur?} : boutons radio (titre et aide en textContent), le
+//   premier coché si `valeur` n'en désigne aucun ; la Promise rend un booléen, le choix est relu dans opts.choix.valeur.
 // Fermeture : OK → true · Annuler / Échap / clic sur le fond → false. Fenêtres EMPILÉES : seule celle du
 // SOMMET réagit à Échap (pile du module, écouteur unique en capture sur window, qui passe avant les
 // écouteurs « Échap » des modales posés sur document). Clic sur le fond ignoré 300 ms après l'ouverture
@@ -462,6 +464,7 @@ window.ktaConfirm = function(message, opts) {
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
           '<p style="white-space:pre-line; line-height:1.55; margin:0 0 14px; color:var(--kta-texte-2);">' + message + '</p>' +
+          (opts.choix ? '<div id="kta-confirm-choix" style="margin:0 0 14px;"></div>' : '') +
           (opts.caseACocher
             ? '<label style="display:flex; gap:8px; align-items:flex-start; margin:0 0 14px; color:var(--kta-texte);' +
                 ' line-height:1.45; cursor:pointer;"><input type="checkbox" id="kta-confirm-case"' +
@@ -498,6 +501,37 @@ window.ktaConfirm = function(message, opts) {
     if (caseEl) caseEl.nextElementSibling.textContent = opts.caseACocher.label || "";
     const nombreEl = ov.querySelector("#kta-confirm-nombre");
     if (nombreEl) nombreEl.previousElementSibling.textContent = opts.nombre.label || "";
+    const choixEl = ov.querySelector("#kta-confirm-choix");
+    if (choixEl) {
+      const liste = Array.isArray(opts.choix.options) ? opts.choix.options.filter(Boolean) : [];
+      const coche = liste.some(function(o) { return o.valeur === opts.choix.valeur; }) ? opts.choix.valeur
+        : (liste[0] && liste[0].valeur);
+      liste.forEach(function(o) {
+        const lab = document.createElement("label");
+        lab.style.cssText = "display:flex; gap:8px; align-items:flex-start; margin:8px 0 0; cursor:pointer;" +
+          " line-height:1.45; color:var(--kta-texte);";
+        const r = document.createElement("input");
+        r.type = "radio";
+        r.name = "kta-confirm-choix";
+        r.value = String(o.valeur);
+        r.setAttribute("data-kta-confirm-choix", String(o.valeur));
+        r.checked = o.valeur === coche;
+        r.style.marginTop = "3px";
+        const txt = document.createElement("span");
+        const titre = document.createElement("strong");
+        titre.textContent = o.titre || "";
+        txt.appendChild(titre);
+        if (o.aide) {
+          const aide = document.createElement("span");
+          aide.style.cssText = "display:block; color:var(--kta-texte-3);";
+          aide.textContent = o.aide;
+          txt.appendChild(aide);
+        }
+        lab.appendChild(r);
+        lab.appendChild(txt);
+        choixEl.appendChild(lab);
+      });
+    }
     const texteEl = ov.querySelector("#kta-confirm-texte");
     if (texteEl) {
       texteEl.previousElementSibling.textContent = opts.texte.label || "";
@@ -515,6 +549,11 @@ window.ktaConfirm = function(message, opts) {
         opts.nombre.valeur = Number.isFinite(n) ? n : null;
       }
       if (texteEl && val) opts.texte.valeur = texteEl.value;
+      if (choixEl && val) {
+        const r = choixEl.querySelector('input[name="kta-confirm-choix"]:checked');
+        const o = r ? opts.choix.options.find(function(x) { return x && String(x.valeur) === r.value; }) : null;
+        opts.choix.valeur = o ? o.valeur : null;
+      }
       const i = _ktaConfirmPile.indexOf(annuler);
       if (i >= 0) _ktaConfirmPile.splice(i, 1);
       ov.remove();

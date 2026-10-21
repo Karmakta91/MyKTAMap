@@ -12,6 +12,9 @@
 // session de chaque plan reste dans son slot. Polling par empreinte + save forcé sur beforeunload et
 // visibilitychange. Restauration appelée par main.js via onPlanLoaded(planId).
 // Le tracé visible du tracker n'est pas persisté (seule sa timeline l'est).
+// ⚠️ Plan partagé par une extension (KtaExtensions.effacementPartage) : « Effacer la session » fait choisir entre
+//   vider l'appareil (tout revient de la synchro), supprimer mes ajouts ou tout supprimer pour l'organisation
+//   (une trace de suppression par objet visé, sinon les objets reviennent du serveur).
 // 🩸 Jamais localStorage["myktamap_session_v1_…"] en direct ailleurs qu'ici, dans sessionStore.js et utils.js.
 // Garde-fou : scripts/check-session-store.js · Doc : docs/architecture/session-data.md
 
@@ -586,13 +589,7 @@
     if (window.KtaUid) window.KtaUid.setTombstones([]);
     // 🩸 Un point qui porte une liaison inter-plan (portail) est gardé : la liaison vit dans son propre
     // registre et resterait orpheline. Pour le retirer : supprimer le point (InterPlanLinks.onPointDeleted).
-    let portails = [];
-    const IPL = window.InterPlanLinks;
-    if (IPL && typeof IPL.getLinksForPoint === "function" && typeof window.getEditorPoints === "function") {
-      portails = (window.getEditorPoints() || []).filter(function(p) {
-        try { return IPL.getLinksForPoint(_currentPlanId, p).length > 0; } catch(e) { return false; }
-      });
-    }
+    const portails = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []).filter(_estPortail) : [];
     if (window.setEditorPoints)  window.setEditorPoints(portails);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
@@ -608,6 +605,103 @@
       try { window.resetTrackingPosition(); } catch(e) {}
     }
     return portails.length;
+  }
+  function _estPortail(p) {
+    const IPL = window.InterPlanLinks;
+    if (!p || !IPL || typeof IPL.getLinksForPoint !== "function") return false;
+    try { return IPL.getLinksForPoint(_currentPlanId, p).length > 0; } catch(e) { return false; }
+  }
+
+  // ── « Effacer la session » sur un plan PARTAGÉ (KtaExtensions.effacementPartage) ──────────────
+  // Plan affiché partagé par une extension → promesse de { miens, tout, auteur } ; sinon null (fenêtre de l'app seule).
+  function _effacementPartage() {
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+    const K = window.KtaExtensions;
+    return (K && typeof K.effacementPartage === "function") ? K.effacementPartage(window._currentLoadedPlanId) : null;
+  }
+  // Objets d'une suppression pour toute l'organisation : tous (`tout`), ou ceux dont l'extension dit que le compte
+  // est le créateur. 🔒 Jamais une copie de calque (elle porte l'uid d'un objet du calque : une trace le détruirait
+  // par la fusion de calques, cf. historyManager.js > _laisseTrace), ni l'itinéraire calculé, ni un portail (gardé
+  // par _viderEtatCourant). → [{ uid, updatedAt }]
+  function _ciblesEffacement(tout, auteur) {
+    const K = window.KtaExtensions;
+    const out = [];
+    ["getEditorPoints", "getRoads", "getZones", "getStructures"].forEach(function(g) {
+      const liste = (typeof window[g] === "function" ? window[g]() : null) || [];
+      liste.forEach(function(o) {
+        if (!o || typeof o.uid !== "string" || !o.uid || o._srcCalque !== undefined || o._preview) return;
+        if ((window.KtaUid && window.KtaUid.estTransitoire(o)) || (g === "getEditorPoints" && _estPortail(o))) return;
+        if (!tout) {
+          const a = (K && typeof K.auteurObjet === "function") ? K.auteurObjet(o.uid) : null;
+          if (!auteur || !a || a.createur !== auteur) return;
+        }
+        out.push({ uid: o.uid, updatedAt: Number(o.updatedAt) || 0 });
+      });
+    });
+    return out;
+  }
+  // Après _viderEtatCourant (qui vide les traces) : celles d'avant reviennent (suppressions peut-être pas encore
+  // envoyées) et chaque objet visé reçoit la sienne. 🩸 Datée APRÈS sa dernière modification connue : une trace
+  // plus ancienne que l'objet perd la fusion et l'objet revient. → nombre de traces posées.
+  function _tracerEffacement(avant, cibles) {
+    const U = window.KtaUid;
+    if (!U) return 0;
+    U.setTombstones(avant);
+    const now = Date.now();
+    cibles.forEach(function(c) { U.tombstone(c.uid, Math.max(now, c.updatedAt + 1)); });
+    return cibles.length;
+  }
+  // Fenêtre du plan partagé : « Vider cet appareil » (tout revient du serveur), « Supprimer mes ajouts pour toute
+  // l'organisation » (`miens`), « Tout supprimer pour l'organisation » (`tout`), plus la case des calques en
+  // modification. 🔒 La prise est relue au moment de confirmer une suppression pour tous (droit retiré entre-temps :
+  // refus nommé, rien n'est effacé) ; la confirmation donne le nombre d'objets.
+  function _choisirEffacementPartage(attente, msg, calques, go, bouton) {
+    const _t = _trModule;
+    if (bouton) bouton.disabled = true;
+    attente.then(function(droits) {
+      if (bouton) bouton.disabled = false;
+      const options = [{ valeur: "appareil", titre: _t("session.partage.appareil"), aide: _t("session.partage.appareilAide") }];
+      if (droits.miens) {
+        options.push({ valeur: "miens", titre: _t("session.partage.miens"),
+          aide: _t("session.partage.miensAide", { n: _ciblesEffacement(false, droits.auteur).length }) });
+      }
+      if (droits.tout) {
+        options.push({ valeur: "tout", titre: _t("session.partage.tout"),
+          aide: _t("session.partage.toutAide", { n: _ciblesEffacement(true, null).length }) });
+      }
+      const choix = { options: options, valeur: "appareil" };
+      const opts = { titre: _t("session.confirm.clearTitle"), okLabel: _t("session.btn.clear"),
+        cancelLabel: _t("session.btn.keep"), choix: choix };
+      let texte = msg + "\n\n" + _t("session.partage.intro");
+      if (calques.length) {
+        // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.
+        const noms = calques.map(function(id) { return window.ktaEsc(window.CalqueSession.libelle(id)); }).join(", ");
+        texte += "\n\n" + _t("session.partage.calques", { calques: noms });
+        opts.caseACocher = { label: _t("session.btn.clearEquipe"), coche: false };
+      }
+      return window.ktaConfirm(texte, opts).then(function(ok) {
+        if (!ok) return null;
+        const rendre = !!(opts.caseACocher && opts.caseACocher.coche);
+        if (choix.valeur !== "miens" && choix.valeur !== "tout") { go(rendre, null); return null; }
+        const tout = choix.valeur === "tout";
+        return Promise.resolve(_effacementPartage()).then(function(d2) {
+          if (!d2 || !(tout ? d2.tout : d2.miens)) {
+            window.ktaAlerte(_t("session.partage.refuse"), { type: "erreur" });
+            return null;
+          }
+          const cibles = _ciblesEffacement(tout, d2.auteur);
+          if (!cibles.length) { window.ktaAlerte(_t("session.partage.aucun")); return null; }
+          return window.ktaConfirm(_t(tout ? "session.partage.confirmTout" : "session.partage.confirmMiens", { n: cibles.length }), {
+            titre: _t("session.partage.confirmTitre"),
+            okLabel: _t(tout ? "session.partage.okTout" : "session.partage.okMiens"),
+            cancelLabel: _t("ui.confirm.cancel")
+          }).then(function(ok2) { if (ok2) go(rendre, cibles); });
+        });
+      });
+    }).catch(function(e) {
+      if (bouton) bouton.disabled = false;
+      console.warn("[SessionPersist] effacement d'un plan partagé :", e);
+    });
   }
 
   // ── Modale « session restaurée » ──────────────
@@ -671,7 +765,8 @@
       const CS = window.CalqueSession;
       const calques = (CS && typeof CS.restitutionPartagee === "function" && CS.restitutionPartagee())
         ? CS.listeRapatries() : [];
-      const go = function(rendre) {
+      // `cibles` (plan partagé) : objets supprimés pour toute l'organisation, une trace chacun après le vidage.
+      const go = function(rendre, cibles) {
         const snap = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
           ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-clear-session"); })
               .catch(function() { return null; })
@@ -684,19 +779,26 @@
               catch(e) { console.warn("[SessionPersist] restitution :", e); }
             });
           }
+          const avant = (cibles && window.KtaUid) ? window.KtaUid.getTombstones() : null;
           const gardes = _viderEtatCourant();
+          const supprimes = avant ? _tracerEffacement(avant, cibles) : 0;
           clear({ snapshotFait: true });
+          if (supprimes) save({ force: true });   // les traces sont la seule chose qui reste : écrites tout de suite
           fermer();
           if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
             window.OOMGuard.showToast(_t(entry ? "session.toast.clearedSnap" : "session.toast.cleared") +
               (gardes ? " " + _trModule("session.toast.portailsGardes", { n: gardes }) : "") +
-              (rendus ? " " + _trModule("session.toast.calquesRendus", { n: rendus }) : ""), "info");
+              (rendus ? " " + _trModule("session.toast.calquesRendus", { n: rendus }) : "") +
+              (supprimes ? " " + _trModule("session.toast.supprimesOrga", { n: supprimes }) : ""),
+              supprimes ? "success" : "info");
           }
         });
       };
       if (typeof window.ktaConfirm === "function") {
         const msg = (window.I18n && window.I18n.t)
           ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
+        const partage = _effacementPartage();
+        if (partage) { _choisirEffacementPartage(partage, msg, calques, go, this); return; }
         if (calques.length) {
           // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.
           const noms = calques.map(function(id) { return window.ktaEsc(CS.libelle(id)); }).join(", ");

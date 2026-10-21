@@ -375,6 +375,16 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     structures) : sur un plan partagé, un objet retiré reçoit une trace ; s'il en retire,
     il faut `remplacer === true` (sinon refus nommé, rien ne change) et une confirmation chiffrée. Côté community :
     `KtaExtensions.importPartage(registreId)` ; détail : `session-data.md` §9.1.
+  - Prise `effacerSession(idExt) → { miens, tout, auteur } | Promise<…> | null` : « Effacer la session » sur un plan
+    **partagé** propose « Vider cet appareil » (toujours ; tout ce qui est sur le serveur revient), « Supprimer mes
+    ajouts pour toute l'organisation » si `miens === true` (objets dont `auteurObjet(uid).createur === auteur`) et
+    « Tout supprimer pour l'organisation » si `tout === true` ; une trace de suppression par objet visé (jamais pour
+    une copie de calque), après confirmation chiffrée. La case « Rendre aussi les calques à l'équipe » reste dans la
+    même fenêtre. `null` / `false` rendus tels quels = plan non partagé (fenêtre de l'app seule) ; plan local ou du
+    site : jamais consultée. 🔒 Exception, rejet, forme inattendue, `miens` sans `auteur` ou réponse au-delà de
+    8 s = « Vider cet appareil » seul ; la prise est relue au clic d'une suppression pour tous. Côté community :
+    `KtaExtensions.effacementPartage(registreId)` (null synchrone, ou promesse) ; détail : `session-data.md` §9.
+    Test : `check-extensions.js` §6 octies.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
     **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
     KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
@@ -383,7 +393,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     seule). `false` (hors ligne) → après l'effacement, seule la marque `KtaExtensions.CLE_DECONNEXION_EN_ATTENTE`
     est posée ; l'extension la honore au démarrage (aucune reconnexion seule, session fermée au retour du réseau).
   - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
-    d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
+    d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais). Après
+    une suppression pour l'organisation, les traces sont déjà posées quand l'événement part (écrites juste après) : la
+    relecture ne ramène que ce qui n'est pas tracé.
 - **Carnet (sorties)** : `mktm:journal-sortie-demarree` (`{ id, planId, origine: "manuel" }`) au démarrage MANUEL d'une
   sortie (`Journal.demarrer`), `mktm:journal-sortie-cloturee` (`{ id, planId }`) à sa clôture manuelle
   (`Journal.cloturer`). L'ouverture automatique à chaque plan, la reprise, la suspension et l'archivage automatique
