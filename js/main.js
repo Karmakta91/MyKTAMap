@@ -655,6 +655,14 @@ async function lancerApplication() {
 
   console.log("[Main] Application lancée");
 
+  // ⚠️ Plan prêt pour une extension (synchro entrante et sortante) : APRÈS la restauration de session, jamais
+  // avant — un lot reçu plus tôt serait écrasé par initEditor / onPlanLoaded (ktaExtensions.js > planPret).
+  if (window.KtaExtensions && typeof window.KtaExtensions.planCharge === "function") {
+    try { window.KtaExtensions.planCharge(window._currentLoadedPlanId || null); } catch(e) {
+      console.warn("[Main] KtaExtensions.planCharge échec :", e);
+    }
+  }
+
   // Badges de liaison inter-plan sur les points liés (js/interPlanLinks.js, différé interne).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanLoaded === "function") {
     try { window.InterPlanLinks.onPlanLoaded(); } catch(e) {

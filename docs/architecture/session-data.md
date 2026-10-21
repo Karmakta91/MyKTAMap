@@ -55,6 +55,11 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 2. `lancerApplication()` finit, appelle `SessionPersist.onPlanLoaded(window._currentLoadedPlanId)`
 3. Si match → restore via setters (`setEditorPoints`, `resetRoads + setRoads`, `resetZones + setZones`, `setMeasurePoints`) + toast "Session restaurée"
 4. Polling auto-save démarre (1.5s)
+5. Fin de `lancerApplication()` : `KtaExtensions.planCharge(id)` → le plan est « prêt » pour une extension
+   (événement `mktm:plan-pret`). 🩸 Avant ce point, la mémoire tient encore les objets du plan quitté (ou rien) et
+   `initEditor` / la restauration les remplacent : `appliquerChangements` y refuse tout lot (`null`) et
+   `changementsDepuis` rend des listes vides — sinon un lot reçu pendant le chargement était écrasé sans bruit, et
+   un envoi pouvait partir vers le nouveau plan avec les objets de l'ancien (`community-server-line.md` §3).
 
 **Modale** : `.kta-session-modal-overlay` (centrée pleine page, pattern `kta-readme-modal`), boîte `.kta-session-modal-boite` avec icône ↻ dans cercle jaune `#f4c542`, titre + détail + 2 boutons (🗑️ Effacer / ✓ Continuer). Backdrop click + Échap = Continuer. Animations fade-in overlay + pop-in box.
 

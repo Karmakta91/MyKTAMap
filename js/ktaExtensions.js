@@ -631,7 +631,12 @@
   // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
   // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
   // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
+  // 🔒 Plan pas encore prêt (chargement en cours) : listes vides — la mémoire peut encore tenir les objets du plan
+  // quitté, qui partiraient sinon vers le nouveau (cf. planPret).
   function changementsDepuis(ts) {
+    if (!planPret()) {
+      return { editorPoints: [], roads: [], zones: [], structures: [], tombstones: [], restitutions: [] };
+    }
     const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
     const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
     return {
@@ -1037,8 +1042,10 @@
   // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. `lot.restitutions` =
   // [{ calque, avant }] : calques rendus à leur original ailleurs (CalqueSession.appliquerRestitutions, jamais
   // une trace de suppression). → { fusionnes, supprimes, calques: { retires, gardes } } ou null (aucun plan
-  // ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
+  // ouvert, ou plan pas encore prêt : RIEN n'est appliqué). Objets reçus copiés : rien de partagé avec l'appelant.
+  // ⚠️ null = lot à redemander : l'extension ne doit pas avancer son curseur (cf. planPret).
   function appliquerChangements(lot) {
+    if (!planPret()) return null;
     if (!lot || typeof lot !== "object" || !window.KtaUid ||
         typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
     const copie = function (a) {
@@ -1494,9 +1501,25 @@
     if (ov) ov.remove();
     _panneauCorps = null;
   }
+  // ── Plan prêt (fin de chargement) ──
+  // Entre le début du chargement d'un plan et la restauration de sa session, la mémoire tient encore les objets
+  // du plan quitté (ou rien), puis main.js > lancerApplication la remplace (initEditor, SessionPersist.onPlanLoaded).
+  // 🩸 Un lot appliqué dans cette fenêtre est écrasé sans bruit ; un envoi y partirait avec les objets de l'AUTRE
+  // plan. planCharge(id) est appelé par main.js une fois la session restaurée ; quitterPlan le remet à faux.
+  // planPret() : vrai seulement pour ce plan-là, affiché. Signal : `mktm:plan-pret` { planId }.
+  let _planPret = null;
+  function planCharge(planId) {
+    _planPret = { id: planId || null };
+    try { window.dispatchEvent(new CustomEvent("mktm:plan-pret", { detail: { planId: planId || null } })); } catch (e) { /* rien */ }
+  }
+  function planPret() {
+    if (!_planPret || _planPret.id !== (window._currentLoadedPlanId || null)) return false;
+    return typeof window.ktaPlanAffiche !== "function" || window.ktaPlanAffiche();
+  }
   // Sortie du plan (main.js : changement de plan, retour à l'accueil) : panneau fermé, présences et
   // itinéraires effacés, extension prévenue (mktm:plan-ferme).
   function quitterPlan(versOu) {
+    _planPret = null;
     fermerPanneau();
     try { if (window.KtaPresences) window.KtaPresences.reinitialiser(); } catch (e) { /* rien */ }
     try { window.dispatchEvent(new CustomEvent("mktm:plan-ferme", { detail: { vers: versOu || "plan" } })); } catch (e) { /* rien */ }
@@ -1651,6 +1674,8 @@
     rafraichirPanneau: rafraichirPanneau,
     fermerPanneau: fermerPanneau,
     quitterPlan: quitterPlan,
+    planCharge: planCharge,
+    planPret: planPret,
     blocActionsCompte: blocActionsCompte,
     outilHome: outilHome,
     outilsHome: outilsHome,

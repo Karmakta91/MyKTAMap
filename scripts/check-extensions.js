@@ -283,6 +283,21 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.w.getRoads = () => [{ uid: "rd_a", updatedAt: 400, type: "principal" }, { uid: "rd_i", updatedAt: 500, type: "itinerary" }];
     c.w.getZones = () => []; c.w.getStructures = () => [];
     c.w.KtaUid = { getTombstones: () => [{ uid: "zn_x", deletedAt: 250 }, { uid: "zn_y", deletedAt: 50 }] };
+    const vide = c.K.changementsDepuis(0);
+    t("🔒 plan pas encore prêt (chargement) : journal vide — les objets du plan quitté ne partent pas vers le nouveau",
+      c.K.planPret() === false && vide.editorPoints.length === 0 && vide.roads.length === 0 && vide.tombstones.length === 0);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.K.planCharge("ext_1");
+    t("plan prêt : planPret() vrai, événement mktm:plan-pret", c.K.planPret() === true && c.w._emis.includes("mktm:plan-pret"));
+    c.w._currentLoadedPlanId = "ext_2";
+    t("🩸 un autre plan en cours de chargement n'est pas « prêt »", c.K.planPret() === false);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.w.ktaPlanAffiche = () => false;
+    t("plan prêt mais accueil affiché : pas prêt", c.K.planPret() === false);
+    delete c.w.ktaPlanAffiche;
+    c.K.quitterPlan("plan");
+    t("quitterPlan : plus prêt jusqu'au prochain planCharge", c.K.planPret() === false);
+    c.K.planCharge("ext_1");
     const ch = c.K.changementsDepuis(200);
     t("journal : objets modifiés après la date, et seulement eux", ch.editorPoints.length === 1 && ch.editorPoints[0].uid === "pt_b");
     t("journal : l'itinéraire calculé n'en fait pas partie", ch.roads.length === 1 && ch.roads[0].uid === "rd_a");
@@ -708,6 +723,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
   {
     const { K, w } = nouveauContexte(null);
     t("sans plan ouvert : rien n'est appliqué (null)", K.appliquerChangements({ editorPoints: [] }) === null);
+    const MA = lire("js/main.js");
+    const iRestaure = MA.indexOf("window.SessionPersist.onPlanLoaded("), iPret = MA.indexOf("window.KtaExtensions.planCharge(");
+    t("🩸 main.js déclare le plan prêt APRÈS la restauration de session (sinon un lot reçu est écrasé)",
+      iRestaure > 0 && iPret > iRestaure && MA.indexOf("initEditor();") < iRestaure);
+    t("plan pas encore prêt : rien n'est appliqué (null, lot à redemander)", K.appliquerChangements({ editorPoints: [] }) === null);
+    K.planCharge();
     // Vrai moteur de fusion (ktaUid.js) + un plan ouvert simulé
     const vm2 = require("vm");
     const ctx = vm2.createContext(w);
@@ -737,7 +758,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
 
   // ── 6 ter bis. L'ÉCHO DE SES PROPRES ENVOIS NE VIDE PAS CTRL+Z ──────
   {
-    const { K, w } = nouveauContexte(null);
+    const { K, w } = nouveauContexte(null); K.planCharge();
     const vm3 = require("vm");
     vm3.runInContext(lire("js/ktaUid.js"), vm3.createContext(w), { filename: "ktaUid.js" });
     let pts = [{ uid: "pt_eeee5555", name: "Le mien", updatedAt: 500 }];
@@ -756,7 +777,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
 
   // ── 6 ter ter. CALQUE OUVERT À LA MODIFICATION AILLEURS (copies marquées reçues) ──────
   {
-    const { K, w } = nouveauContexte(null);
+    const { K, w } = nouveauContexte(null); K.planCharge();
     const vm4 = require("vm");
     vm4.runInContext(lire("js/ktaUid.js"), vm4.createContext(w), { filename: "ktaUid.js" });
     let pts = [{ uid: "pt_loc11111", name: "Ici", updatedAt: 100 }];
@@ -788,7 +809,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
   // Une restitution n'est JAMAIS une trace de suppression : elle retire chez les autres les copies marquées du
   // calque datées au plus tard de T, et rien d'autre (un objet du calque ne porte pas la marque).
   {
-    const { K, w } = nouveauContexte(null);
+    const { K, w } = nouveauContexte(null); K.planCharge();
     const vm5 = require("vm");
     const ctx5 = vm5.createContext(w);
     vm5.runInContext(lire("js/ktaUid.js"), ctx5, { filename: "ktaUid.js" });
@@ -828,7 +849,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       roads.some((r) => r.uid === "rd_cop10000") && w.CalqueSession.estRapatrie("c1"));
     t("changementsDepuis : les restitutions faites ici sont exposées (aucune ici)",
       Array.isArray(K.changementsDepuis(0).restitutions) && K.changementsDepuis(0).restitutions.length === 0);
-    w._currentLoadedPlanId = "ext_p1";
+    w._currentLoadedPlanId = "ext_p1"; K.planCharge("ext_p1");
     w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext", extId: "p1" } : null) };
     const rr = w.CalqueSession.restituer("c1");
     const ch = K.changementsDepuis(0).restitutions;

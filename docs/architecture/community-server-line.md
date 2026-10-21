@@ -225,8 +225,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
-  reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
-  `changementsDepuis(ts)`. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
+  reçus sont copiés ; la session est sauvegardée. Sans plan ouvert, ou plan pas encore **prêt** : `null`, rien
+  d'appliqué — ⚠️ l'extension garde alors son curseur et redemandera le lot. C'est le pendant entrant de
+  `changementsDepuis(ts)`. **Plan prêt** : `planPret()` est vrai seulement une fois le chargement fini et la session
+  restaurée (`main.js > lancerApplication` appelle `planCharge(id)` après `SessionPersist.onPlanLoaded`, émet
+  **`mktm:plan-pret`** `{ planId }`) ; `quitterPlan` le remet à faux. 🩸 Avant, la mémoire tient les objets du plan
+  quitté (ou rien) puis `initEditor` / la restauration les remplacent : un lot appliqué là était écrasé sans bruit
+  (curseur avancé, objets jamais reçus), et `changementsDepuis` aurait donné au nouveau plan les objets de l'ancien
+  — il rend des listes vides tant que le plan n'est pas prêt. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
   quand un objet reçu porte la marque `_srcCalque` (copie d'un calque), ou qu'une copie d'ici disparaît, l'état
   se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
