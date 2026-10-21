@@ -406,6 +406,7 @@
   "recalscan.apercuRetour": "Retour à l'outil",
   "recalscan.aucunFichier": "Aucun fichier choisi.",
   "recalscan.aucuneCoord": "aucune coordonnée reconnue dans ce fichier",
+  "recalscan.calcul": "Calcul du recalage…",
   "recalscan.choisirFichiers": "Choisir un ou plusieurs .json",
   "recalscan.clics.aide": "Choisis un point du fichier, puis clique sa position sur le plan ouvert. Trois repères au moins, éloignés les uns des autres : l'écart de chacun montre un mauvais clic.",
   "recalscan.clics.aucun": "Aucun repère pour l'instant.",

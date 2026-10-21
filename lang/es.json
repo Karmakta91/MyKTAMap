@@ -406,6 +406,7 @@
   "recalscan.apercuRetour": "Volver a la herramienta",
   "recalscan.aucunFichier": "Ningún archivo elegido.",
   "recalscan.aucuneCoord": "ninguna coordenada reconocida en este archivo",
+  "recalscan.calcul": "Calculando el recalado…",
   "recalscan.choisirFichiers": "Elegir uno o varios .json",
   "recalscan.clics.aide": "Elige un punto del archivo y pulsa su posición en el mapa abierto. Al menos tres referencias, alejadas entre sí: la desviación de cada una delata un mal clic.",
   "recalscan.clics.aucun": "Ninguna referencia por ahora.",

@@ -406,6 +406,7 @@
   "recalscan.apercuRetour": "Back to the tool",
   "recalscan.aucunFichier": "No file chosen.",
   "recalscan.aucuneCoord": "no coordinate recognised in this file",
+  "recalscan.calcul": "Computing the realignment…",
   "recalscan.choisirFichiers": "Choose one or more .json",
   "recalscan.clics.aide": "Pick a point from the file, then click its position on the open map. At least three landmarks, far apart: each one's gap reveals a bad click.",
   "recalscan.clics.aucun": "No landmark yet.",

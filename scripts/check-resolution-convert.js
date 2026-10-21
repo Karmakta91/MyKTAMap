@@ -243,6 +243,15 @@ const grand = paires(releve(2000, 77), VRAI, 0.3, 5);
 const t0 = Date.now();
 R = K.estimerRobuste(grand);
 t("robuste : 2 000 repères traités en moins de 4 s", R && !R.err && Date.now() - t0 < 4000, Date.now() - t0);
+// 10 000 paires (sommets de tracés appariés par uid) : recherche de départ échantillonnée, rejet sur tout.
+// Borne large : quelques centaines de ms sur poste ; un retour au quadratique la dépasse nettement.
+const tres = avecAberrants(paires(releve(10000, 55), VRAI2, 0.3, 9), 400, 41);
+const t1 = Date.now();
+R = K.estimerRobuste(tres);
+const dt1 = Date.now() - t1;
+t("robuste : 10 000 paires (4 % d'aberrants) en moins de 5 s, aberrants tous écartés, écart < 0,5 px",
+  R && !R.err && dt1 < 5000 && R.ecartees.filter(e => /homonyme/.test(e.nom)).length === 400 &&
+  R.stats.n >= 9600 - 5 && R.stats.mediane < 0.5, R && { ms: dt1, st: R.stats, ec: R.ecartees.length });
 
 // ── Repères cliqués ──
 const clics = paires(releve(4, 99), VRAI, 1, 8);

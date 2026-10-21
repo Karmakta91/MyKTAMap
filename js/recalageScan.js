@@ -311,7 +311,21 @@
 
   // Consensus de départ : la similitude de deux paires qui met le plus de paires d'accord (tolérance large).
   // 🩸 Sans lui, un homonyme très loin tire le premier ajustement et le rejet itératif écarte les bons repères.
-  function _consensus(paires, tol) {
+  // ⚠️ Coût : combinaisons × paires évaluées. Au-delà de ECHANTILLON paires (les sommets des tracés appariés par
+  // uid en donnent des milliers), la recherche se fait sur un échantillon déterministe ; moindres carrés et rejet
+  // portent ensuite sur TOUTES les paires.
+  const ECHANTILLON = 1000;
+  function _consensus(tout, tol) {
+    let paires = tout;
+    if (tout.length > ECHANTILLON) {
+      const melange = _lcg(tout.length * 104729 + 3);
+      const idx = tout.map(function (_, i) { return i; });
+      for (let i = 0; i < ECHANTILLON; i++) {
+        const j = i + Math.floor(melange() * (idx.length - i));
+        const x = idx[i]; idx[i] = idx[j]; idx[j] = x;
+      }
+      paires = idx.slice(0, ECHANTILLON).map(function (i) { return tout[i]; });
+    }
     const n = paires.length;
     const total = n * (n - 1) / 2;
     const PLAFOND = 3000;
@@ -393,7 +407,8 @@
     if (!sim || sim.retenues.length < 3) return { err: "degenere", n: n };
     let affine = null, affineMeilleure = false;
     if (sim.retenues.length >= 4) {
-      const dep = paires.map(function (p) { return sim.retenues.indexOf(p) >= 0; });
+      const gardees = new Set(sim.retenues);   // 🩸 indexOf ici était quadratique (des secondes à 10 000 paires)
+      const dep = paires.map(function (p) { return gardees.has(p); });
       affine = _boucleRejet(paires, affineMC, dep, plancher);
       if (affine && affine.retenues.length >= 4) {
         affineMeilleure = affine.stats.p90 <= 0.6 * sim.stats.p90 && (sim.stats.p90 - affine.stats.p90) >= 2;
@@ -743,9 +758,16 @@
         let txt = noms.length ? noms.join(" · ") : t("recalscan.aucunFichier");
         if (etat.illisibles.length) txt += " — ⚠️ " + t("recalscan.illisibles", { liste: etat.illisibles.join(", ") });
         $("kta-recal-files-liste").textContent = txt;
-        calculerNoms();
-        remplirChoixClic();
-        recap();
+        // Indicateur peint AVANT le calcul (des milliers de paires peuvent prendre une seconde sur téléphone).
+        $("kta-recal-recap").textContent = "⏳ " + t("recalscan.calcul");
+        $("kta-recal-go").disabled = true;
+        if ($("kta-recal-apercu")) $("kta-recal-apercu").disabled = true;
+        setTimeout(function () {
+          if (!document.getElementById(ID)) return;   // outil fermé entre-temps
+          calculerNoms();
+          remplirChoixClic();
+          recap();
+        }, 40);
       });
     });
 
