@@ -351,7 +351,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   refusée, sinon passe l'**id de l'extension** (pas celui du registre) et émet `mktm:plans-extension-changes` au succès.
   C'est l'extension qui réserve la publication à un droit (le plus haut, décision produit) et son serveur qui le
   revérifie à l'envoi : la prise ne choisit que l'interface. Sans extension : jamais autorisée, rejet, aucun effet.
-  L'assistant n'appelle jamais `publierPlan` (un plan neuf serait un doublon, pas une version). Preuve :
+  L'assistant n'appelle jamais `publierPlan` (un plan neuf serait un doublon, pas une version). Le Générateur à la
+  main fait de même quand le ZIP déposé est reconnu comme celui d'un plan ☁️ (`plans-loader.md`, chemin manuel) :
+  `publierVersion` si autorisé, sinon explication ; `publierPlan` seulement sur « Publier comme nouveau plan ». Preuve :
   `check-extensions.js` §6 bis quater bis.
 - **Lire la session d'un plan non ouvert** (10/10/2026) : `window.KtaSessionStore.lire(planId)` → JSON texte | null
   (synchrone, depuis la mémoire ; `ids()` liste les plans qui en ont une, `ecrireDurable(planId, brut)` → Promise). Les

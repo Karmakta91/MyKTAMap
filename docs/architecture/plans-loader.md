@@ -641,6 +641,15 @@ reçoivent jamais de trace (restitution).
   fichier de l'assistant > fichier d'origine > `<id>.json` ;
 - les tuiles V2 du ZIP source ne sont plus extraites en `Blob` (la génération les refait depuis l'image de base).
 
+**Chemin manuel sur le ZIP d'un plan d'extension** (fiche ℹ️ › 💾, déposé dans le Générateur en mode Modifier) :
+`_chargerZipModifier` retient l'empreinte du ZIP (`_plannerSourceZip` : SHA-256 de la vérification denylist, taille,
+nom du plan-config). En fin de génération, `_planExtensionDuZip()` cherche le plan ☁️ d'origine : même SHA-256 que
+le registre (`entree.sha256`, posé à l'ouverture) ou que l'archive gardée de même taille → reconnu ; sinon UN SEUL
+plan ☁️ du même nom → « porte le nom de » ; plusieurs homonymes ou aucun → plan neuf. Reconnu et
+`versionAutorisee` → **☁️ Publier la nouvelle version** (`publierVersion`, même plan) ; reconnu sans le droit →
+explication, téléchargement seul. Dans les deux cas, **Publier comme nouveau plan** (3e bouton de `ktaConfirm`,
+`publierPlan`) reste un choix explicite : jamais de second plan d'office. Garde-fou : `check-extensions.js` §7.
+
 **Limites** : un plan V2 est retuilé en entier à chaque mise à jour (lent sur téléphone, comme le mode Modifier) ;
 la légende du plan éditée depuis le Générateur ouvert sur un plan affiché échange brièvement la légende de session
 (§58.2) ; sur une installation reliée, les appareils encore sur l'ancienne version voient les objets retirés

@@ -96,6 +96,9 @@ let _plannerMode       = "nouveau";
 // le téléchargement et la proposition « Publier » de fin de génération (l'assistant choisit la suite). Remise à
 // null à chaque ouverture de la modale.
 let _plannerMaj = null;
+// Empreinte du ZIP chargé en mode Modifier { sha256, taille, nom } : sert à reconnaître un plan d'extension
+// (cf. _planExtensionDuZip). null en mode Nouveau ; remise à null à chaque ouverture de la modale.
+let _plannerSourceZip = null;
 
 // Légende du plan (source de `plan.customLegend`). null = pas de personnalisation, sinon l'état de
 // `LegendCustomization.getSessionState()` : { schemaVersion, labels, hidden, customEntries }.
@@ -705,6 +708,7 @@ function afficherPlanner() {
   _plannerPhotosFromZip = [];  // reset buffer photos ZIP
   _plannerMode       = "nouveau";
   _plannerMaj        = null;
+  _plannerSourceZip  = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
@@ -1568,9 +1572,11 @@ async function _chargerZipModifier(file) {
 
     // 🔒 Kill-switch anti-fuite côté générateur aussi : un ZIP révoqué ne peut pas être modifié puis
     // ré-exporté en version dérivée.
+    let shaZip = null;
     if (window.PlanDenylist && typeof window.PlanDenylist.isPlanDenied === "function") {
       try {
         const denyCheck = await window.PlanDenylist.isPlanDenied(file);
+        shaZip = (denyCheck && denyCheck.sha256) ? String(denyCheck.sha256).toLowerCase() : null;
         if (denyCheck && denyCheck.denied) {
           console.warn("[Planner] ZIP refusé (denylist) :", denyCheck.sha256, "- raison :", denyCheck.reason);
           _plannerZipStatus(window.I18n.t("gen.zipModif.revoque"), true);
@@ -1585,6 +1591,7 @@ async function _chargerZipModifier(file) {
 
     const zip = await JSZip.loadAsync(file);
     let planConfigFile = null;
+    _plannerSourceZip = null;
     _plannerOrigAssets = {};
     _plannerPhotosFromZip = [];  // reset buffer photos ZIP au reload (modifier)
 
@@ -1602,6 +1609,7 @@ async function _chargerZipModifier(file) {
 
     if (!planConfigFile) throw new Error(window.I18n.t("gen.zipModif.noPlanConfig"));
     const config = JSON.parse(await planConfigFile.text());
+    _plannerSourceZip = { sha256: shaZip, taille: file.size, nom: (config.plan && config.plan.name) || "" };
     _preRemplirFormulaire(config);
     _plannerZipStatus(window.I18n.t("gen.zipModif.charge", { name: file.name }), false);
     if (_plannerMaj) _appliquerMaj();
@@ -3812,30 +3820,58 @@ async function _genererZip() {
       URL.revokeObjectURL(url);
     }
 
-    // Prise « publierPlan » : si une extension sait publier, le Créateur envoie le plan au serveur de
-    // l'instance. Sans extension, rien ne change.
-    if (window.KtaExtensions && window.KtaExtensions.aPrise("publierPlan") && typeof window.ktaConfirm === "function") {
+    // Publication par l'extension (prises « publierPlan » / « publierVersion »). Sans extension, rien ne change.
+    const X = window.KtaExtensions;
+    const peutNouveau = !!(X && X.aPrise("publierPlan"));
+    if (X && (peutNouveau || X.aPrise("publierVersion")) && typeof window.ktaConfirm === "function") {
       // Nom échappé (ktaConfirm rend du HTML), avancement visible pendant l'envoi (un gros plan prend des
       // minutes), fin annoncée par un toast.
       const dire = function(m, ty) {
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(m, ty || "info");
       };
       let minuteur = null;
+      const envoyer = async function(fn) {
+        const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
+        const t0 = Date.now();
+        const tic = function() {
+          const sec = Math.round((Date.now() - t0) / 1000);
+          btnGen.disabled = true;
+          btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
+            { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
+        };
+        tic();
+        minuteur = setInterval(tic, 1000);
+        await fn();
+      };
       try {
-        const publier = await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
-                                                { okLabel: window.I18n.t("ext.publier.ok") });
-        if (publier) {
-          const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
-          const t0 = Date.now();
-          const tic = function() {
-            const sec = Math.round((Date.now() - t0) / 1000);
-            btnGen.disabled = true;
-            btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
-              { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
-          };
-          tic();
-          minuteur = setInterval(tic, 1000);
-          await window.KtaExtensions.publierPlan({ blob: blob, nom: name });
+        // ⚠️ Un ZIP d'un plan de l'extension rouvert ici devient une NOUVELLE VERSION de ce plan, jamais un
+        // second plan ; une copie se publie seulement par le choix explicite « Publier comme nouveau plan ».
+        const cible = await _planExtensionDuZip();
+        const autre = peutNouveau ? { label: window.I18n.t("ext.publier.commeNouveau"), valeur: "nouveau" } : null;
+        let choix = false;
+        if (cible) {
+          const nomCible = window.ktaEsc(cible.name || cible.id);
+          const intro = window.I18n.t(cible.exact ? "ext.publier.versionReconnu" : "ext.publier.versionMemeNom",
+                                      { nom: nomCible });
+          if (X.versionAutorisee(cible.id)) {
+            choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionQuestion"),
+              { okLabel: window.I18n.t("ext.publier.versionOk"), autre: autre });
+            if (choix === true) {
+              await envoyer(function() {
+                return X.publierVersion({ planId: cible.id, blob: blob, nom: name });
+              });
+              dire(window.I18n.t("ext.publier.versionFait"), "success");
+            }
+          } else {
+            choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionReservee"),
+              { okLabel: window.I18n.t("ui.confirm.ok"), sansAnnuler: true, autre: autre });
+          }
+        } else if (peutNouveau) {
+          choix = (await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
+                                           { okLabel: window.I18n.t("ext.publier.ok") })) ? "nouveau" : false;
+        }
+        if (choix === "nouveau") {
+          await envoyer(function() { return X.publierPlan({ blob: blob, nom: name }); });
           dire(window.I18n.t("ext.publier.fait"), "info");
         }
       } catch (e) {
@@ -3853,6 +3889,38 @@ async function _genererZip() {
     if (err.message !== "abort") { console.error("[Planner]", err); _plannerErreur("❌ " + (err.message || err)); }
     btnGen.disabled = false; btnGen.textContent = window.I18n.t("gen.btn.genererZip");
   }
+}
+
+// Plan d'extension (☁️) dont vient le ZIP chargé en mode Modifier → { id, name, exact } | null.
+// 1. Même empreinte SHA-256 que l'archive gardée sur l'appareil (le ZIP de sa fiche ℹ️, ou celui qu'on avait
+//    publié) : exact. Empreinte du registre d'abord (posée à l'ouverture), sinon archive gardée de même taille.
+// 2. Sinon, UN SEUL plan d'extension porte le nom écrit dans le ZIP : probable (ancienne version, ZIP retouché).
+// Plusieurs homonymes ou rien : null (publication d'un nouveau plan, comme un plan neuf).
+async function _planExtensionDuZip() {
+  const src = _plannerSourceZip;
+  const PR = window.PlanRegistry;
+  if (_plannerMode !== "modifier" || !src || !PR || typeof PR.getAll !== "function") return null;
+  const ext = (PR.getAll() || []).filter(function(e) { return e && e.type === "ext"; });
+  if (!ext.length) return null;
+  if (src.sha256) {
+    const direct = ext.find(function(e) { return e.sha256 && String(e.sha256).toLowerCase() === src.sha256; });
+    if (direct) return { id: direct.id, name: direct.name, exact: true };
+    const D = window.PlanDenylist;
+    if (D && typeof D.computeSha256 === "function" && typeof PR.getBlob === "function") {
+      for (const e of ext) {
+        if (!e.storedBlob) continue;
+        try {
+          const b = await PR.getBlob(e.id);
+          if (!b || b.size !== src.taille) continue;
+          if (String(await D.computeSha256(b)).toLowerCase() === src.sha256) return { id: e.id, name: e.name, exact: true };
+        } catch (eSha) { console.warn("[Planner] empreinte de l'archive gardée :", eSha && eSha.message); }
+      }
+    }
+  }
+  const nom = String(src.nom || "").trim().toLowerCase();
+  if (!nom) return null;
+  const memes = ext.filter(function(e) { return String(e.name || "").trim().toLowerCase() === nom; });
+  return memes.length === 1 ? { id: memes[0].id, name: memes[0].name, exact: false } : null;
 }
 
 window.afficherPlanner = afficherPlanner;

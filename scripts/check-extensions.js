@@ -1336,7 +1336,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       const fifo = SEC.slice(SEC.indexOf("function _saveScenarios("), SEC.indexOf("function _saveScenarios(") + 1500);
       t("🩸 Mode Secours : la purge FIFO (limite locale) n'émet PAS de suppression", !/secours-scenario-deleted/.test(fifo));
     }
-    t("Générateur : « Publier » seulement si une extension sait publier", /window\.KtaExtensions\.aPrise\("publierPlan"\)/.test(GEN));
+    t("Générateur : « Publier » seulement si une extension sait publier",
+      /const peutNouveau = !!\(X && X\.aPrise\("publierPlan"\)\);/.test(GEN) &&
+      /if \(X && \(peutNouveau \|\| X\.aPrise\("publierVersion"\)\) && typeof window\.ktaConfirm === "function"\)/.test(GEN));
+    // 🩸 Un ZIP d'un plan de l'extension rouvert dans le Générateur devenait un SECOND plan (publierPlan) : il doit
+    // devenir une nouvelle version, sous la permission de la prise ; une copie = choix explicite « nouveau » seulement.
+    t("🩸 Générateur : ZIP reconnu d'un plan d'extension → publierVersion sous versionAutorisee, jamais publierPlan d'office",
+      /const cible = await _planExtensionDuZip\(\);/.test(GEN) &&
+      /if \(X\.versionAutorisee\(cible\.id\)\) \{[\s\S]{0,400}X\.publierVersion\(\{ planId: cible\.id, blob: blob, nom: name \}\)/.test(GEN) &&
+      (GEN.match(/X\.publierPlan\(/g) || []).length === 1 &&
+      /if \(choix === "nouveau"\) \{\s*await envoyer\(function\(\) \{ return X\.publierPlan\(/.test(GEN));
+    t("Générateur : plan d'extension reconnu à l'empreinte de l'archive gardée, sinon à un nom unique",
+      /async function _planExtensionDuZip\(\) \{/.test(GEN) &&
+      /e\.type === "ext"/.test(GEN) && /memes\.length === 1 \?/.test(GEN));
     t("🩸 Service Worker : une requête d'extension (X-Kta-Ext) ou authentifiée (Authorization) n'est jamais interceptée ni cachée",
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&
       SW.indexOf('h.get("X-Kta-Ext")') < SW.indexOf("event.respondWith("));
