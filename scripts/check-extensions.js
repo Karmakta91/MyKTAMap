@@ -1125,7 +1125,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refus"/.test(TE) &&
       /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirm", \{ n: n \}\)/.test(TE));
     t("🔒 Tableur « Appliquer à la session » (tracés / zones / structures) : plan partagé, une suppression exige `remplacer` puis ktaConfirm",
-      /const sim = KC\.appliquerTableau\(_kind, _data, \{ simuler: true \}\);/.test(TE) &&
+      /const sim = KC\.appliquerTableau\(_kind, _data, \{ simuler: true, origine: _origineDe \}\);/.test(TE) &&
       /if \(!partage \|\| !sim\.supprimes\) return Promise\.resolve\(appliquer\(\)\);/.test(TE) &&
       /if \(!partage\.remplacer\) \{\s*\n\s*window\.ktaAlerte\(window\.I18n\.t\("tabledit\.save\.partage\.refusObjets"/.test(TE) &&
       /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirmObjets"/.test(TE));

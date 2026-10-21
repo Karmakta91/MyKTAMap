@@ -77,7 +77,7 @@ function semer(page) {
     window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();
     window.HistoryManager.reset();
     window.setRoads([
-      { uid: "rd_tab", type: "principal", points: [{ x: x - d, y: y - d }, { x: x + d, y: y - d }] },
+      { uid: "rd_tab", type: "principal", description: "ancienne", points: [{ x: x - d, y: y - d }, { x: x + d, y: y - d }] },
       { uid: "rd_tab2", type: "chemin", points: [{ x: x - d, y: y + d }, { x: x + d, y: y + d }] }
     ]);
     window.setZones([{ uid: "zn_tab", type: "eau",
@@ -284,6 +284,35 @@ async function main() {
     }
     const fin = await etat(page);
     verifier(!fin.undo, "⏪ ×4 : la pile d'annulation est vide (une entrée par application)", fin);
+
+    // Fichier ANCIEN : la session a changé depuis (note de T1, type de T2). Seule la cellule modifiée s'applique.
+    await page.evaluate(function () {
+      const R = window.getRoads().map(function (o) { return Object.assign({}, o); });
+      R.forEach(function (o) {
+        if (o.uid === "rd_tab") o.description = "récente";
+        if (o.uid === "rd_tab2") o.type = "secondaire";
+        window.KtaUid.touch(o);
+      });
+      window.setRoads(R);
+    });
+    await ouvrirTableau(page, json, "roads");
+    const i1 = idxDe(json, "roads", "rd_tab");
+    await page.click('td[data-idx="' + i1 + '"][data-col="level"]');
+    await page.selectOption('td[data-idx="' + i1 + '"][data-col="level"] select', "1");
+    await page.waitForTimeout(150);
+    await page.click("#kta-tbl-save");
+    await page.click("#save-session");
+    await page.waitForTimeout(600);
+    const recent = await page.evaluate(function () {
+      const f = function (uid) { return window.getRoads().find(function (o) { return o.uid === uid; }) || {}; };
+      return { t1: { level: f("rd_tab").level, description: f("rd_tab").description, type: f("rd_tab").type },
+               t2: { type: f("rd_tab2").type } };
+    });
+    verifier(recent.t1.level === 1, "fichier ancien : la seule cellule modifiée (niveau de T1) est appliquée", recent);
+    verifier(recent.t1.description === "récente" && recent.t1.type === "principal",
+      "🩸 fichier ancien : les autres champs de T1 gardent leur valeur plus récente de la session", recent);
+    verifier(recent.t2.type === "secondaire", "🩸 fichier ancien : la ligne non touchée (T2) ne change rien", recent);
+    await page.click("#kta-tbl-close");
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {

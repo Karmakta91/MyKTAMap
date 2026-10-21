@@ -411,6 +411,22 @@ function charger(fichier, nomGlobal, prealables) {
     t("🔒 tableau : lecture seule → refus", CV.appliquerTableau("zones", [copie(z)]) === null);
     delete w.ktaEditionRefusee;
     t("tableau : famille inconnue refusée", CV.appliquerTableau("bidon", []) === null);
+    // Fichier ANCIEN : seule la cellule modifiée depuis le chargement s'applique (opts.origine).
+    {
+      const t1 = { uid: "rd_o1", type: "principal", description: "récente", level: 0, points: pts };
+      const t2 = { uid: "rd_o2", type: "secondaire", points: pts };
+      R = [t1, t2];
+      const vieux = [{ uid: "rd_o1", type: "principal", description: "ancienne", level: 0, points: pts },
+                     { uid: "rd_o2", type: "chemin", points: pts }];
+      const origines = new Map(vieux.map(function (l) { return [l, copie(l)]; }));
+      vieux[0].level = 2;
+      const r = CV.appliquerTableau("roads", vieux, { origine: function (l) { return origines.get(l) || null; } });
+      const n1 = R.find(function (o) { return o.uid === "rd_o1"; }) || {};
+      const n2 = R.find(function (o) { return o.uid === "rd_o2"; }) || {};
+      t("🩸 tableau + origine : seule la cellule modifiée part (niveau), la note plus récente de la session reste",
+        r && r.modifies === 1 && n1.level === 2 && n1.description === "récente", r);
+      t("🩸 tableau + origine : une ligne non touchée d'un fichier ancien ne change rien", n2.type === "secondaire");
+    }
   }
 
   // ── le câblage, que l'extraction ne voit pas ──

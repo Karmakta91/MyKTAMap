@@ -34,6 +34,9 @@
   let _sourceMeta = {};           // fileName (téléchargement + titre)
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
+  // Ligne → copie telle que chargée : « Appliquer à la session » n'applique que les cellules modifiées depuis.
+  // Ligne ajoutée ou dupliquée : pas d'origine (c'est un ajout).
+  let _origines   = new WeakMap();
 
   var _ARRAYS_EDITABLES = [
     { key: "data",         emoji: "📍", points: true  },
@@ -598,6 +601,8 @@
     _kind       = entry.kind;
     _format     = (entry.kind === "editorPoints") ? "editorPoints" : entry.kind; // alias interne
     _data       = (entry.sourceObj[entry.kind] || []).map(function(p) { return Object.assign({}, p); });
+    _origines   = new WeakMap();
+    _data.forEach(function(p) { _origines.set(p, JSON.parse(JSON.stringify(p))); });
     _sourceMeta = { fileName: entry.fileName || (entry.kind + ".json") };
     _modifie    = false;
     _selection  = new Set();
@@ -1602,6 +1607,8 @@
     else window.ktaAlerte(msgOk);
   }
 
+  function _origineDe(ligne) { return _origines.get(ligne) || null; }
+
   // Ligne fautive sélectionnée et amenée à l'écran : son numéro suit l'ordre du fichier, pas le tri affiché.
   function _montrerLigne(idx) {
     if (!_modal || !_data[idx]) return;
@@ -1625,7 +1632,7 @@
       return Promise.resolve(false);
     }
     if (window.KtaUid) window.KtaUid.ensureAll(_data, _prefixeUid());
-    const sim = KC.appliquerTableau(_kind, _data, { simuler: true });
+    const sim = KC.appliquerTableau(_kind, _data, { simuler: true, origine: _origineDe });
     if (!sim) return Promise.resolve(false);
     if (sim.erreur) {
       _montrerLigne(sim.erreur.ligne - 1);
@@ -1635,7 +1642,7 @@
     }
     const objets = window.I18n.t("tabledit.kind." + _kind);
     const appliquer = function() {
-      const b = KC.appliquerTableau(_kind, _data);   // recalculé : la synchro a pu passer pendant la question
+      const b = KC.appliquerTableau(_kind, _data, { origine: _origineDe });   // recalculé : la synchro a pu passer pendant la question
       if (!b || b.erreur) return false;
       const msg = (b.modifies + b.ajoutes + b.supprimes)
         ? window.I18n.t("tabledit.save.appliqueOk", b) : window.I18n.t("tabledit.save.rienAAppliquer");

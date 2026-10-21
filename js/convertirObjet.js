@@ -295,9 +295,11 @@
 
   // ── Appliquer un tableau (Tableur) à une famille de la session ──────────
   // `lignes` : lignes du Tableur, uid posés. Le tableau DEVIENT la famille, par uid :
-  //   - uid connu : l'objet de la session est modifié — type par _versType (cibles de listerCibles, même famille),
-  //     niveau par _poserNiveau, autres colonnes en place + touch. Sa géométrie (`points`) reste celle de la session :
-  //     le Tableur ne l'édite pas. Objet sans différence : intact (pas de touch, rien à synchroniser).
+  //   - uid connu : seules les cellules MODIFIÉES s'appliquent (`opts.origine(ligne)` = la ligne telle que chargée ;
+  //     sans origine, toute colonne différente de la session) — type par _versType (cibles de listerCibles, même
+  //     famille), niveau par _poserNiveau, autres colonnes en place + touch. 🩸 Sans cette comparaison, un fichier plus
+  //     ancien que la session y remettrait ses vieilles valeurs sur chaque ligne non touchée. Géométrie (`points`) :
+  //     toujours celle de la session (le Tableur ne l'édite pas). Objet sans changement : intact (pas de touch).
   //   - uid inconnu ou en double : ajout ; objet de la session absent du tableau : suppression (la trace de
   //     suppression est posée par HistoryManager.record, comme pour toute suppression).
   //   - itinéraire calculé et aperçus (`_preview`) : jamais pris au tableau, toujours gardés.
@@ -347,8 +349,10 @@
         continue;
       }
       vus.add(l.uid);
+      const orig = (typeof opts.origine === "function") ? opts.origine(l) : null;
+      const touche = function (k) { return !orig || !meme(l[k], orig[k]); };
       const op = { obj: obj, type: null, niveau: null, champs: null };
-      if (l.type !== obj.type) {
+      if (touche("type") && l.type !== obj.type) {
         const cibles = listerCibles(famille, obj.type).filter(function (c) { return c.famille === famille; })
           .map(function (c) { return c.type; });
         if (cibles.indexOf(l.type) < 0) {
@@ -357,13 +361,13 @@
         }
         op.type = l.type;
       }
-      if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
-      if (l.level != null && l.level !== niveauDe(obj)) {
+      if (touche("level") && l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+      if (touche("level") && l.level != null && l.level !== niveauDe(obj)) {
         if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
         op.niveau = l.level;
       }
       Object.keys(l).forEach(function (k) {
-        if (PAS_COLONNE[k] || k.charAt(0) === "_" || l[k] === undefined || meme(l[k], obj[k])) return;
+        if (PAS_COLONNE[k] || k.charAt(0) === "_" || l[k] === undefined || !touche(k) || meme(l[k], obj[k])) return;
         (op.champs = op.champs || {})[k] = l[k];
       });
       plan.push(op);
