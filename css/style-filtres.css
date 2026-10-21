@@ -437,6 +437,8 @@ html.kta-theme-light .kta-fp-footer {
 }
 body.kta-theme-light .kta-fp-status,
 html.kta-theme-light .kta-fp-status {
+  color: var(--kta-texte-3) !important;
+}
 
 /* Intégrer des ajouts : sous-fenêtre au-dessus du panneau (filterPanel.js > _ouvrirAjouts). */
 .kta-fp-ajouts-intro {
