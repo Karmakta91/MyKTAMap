@@ -704,6 +704,75 @@
     });
   }
 
+  // « Effacer la session » : UN parcours pour toutes les entrées (fenêtre « session restaurée », 📊 Détails de la
+  // session). Confirmation chiffrée, choix à trois options sur un plan partagé (_choisirEffacementPartage), case des
+  // calques en modification, snapshot ATTENDU, puis toast qui dit où le retrouver. `bouton` est grisé pendant la
+  // lecture des droits d'un plan partagé ; `apres` est appelé une fois la session effacée (fermer la fenêtre).
+  function demanderEffacement(bouton, apres) {
+    const _t = _trModule;
+    const n = _compterEtatCourant();
+    // Plan dont la restitution se partage, avec des calques en modification : l'effacement local les verrait
+    // revenir depuis la synchro. L'utilisateur choisit : effacer ici seulement, ou rendre aussi les calques à
+    // tous (restitution partagée, notée AVANT le vidage : elle porte les uids des copies retirées).
+    const CS = window.CalqueSession;
+    const calques = (CS && typeof CS.restitutionPartagee === "function" && CS.restitutionPartagee())
+      ? CS.listeRapatries() : [];
+    // `cibles` (plan partagé) : objets supprimés pour toute l'organisation, une trace chacun après le vidage.
+    const go = function(rendre, cibles) {
+      const snap = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
+        ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-clear-session"); })
+            .catch(function() { return null; })
+        : Promise.resolve(null);
+      snap.then(function(entry) {
+        let rendus = 0;
+        if (rendre) {
+          calques.forEach(function(id) {
+            try { if (CS.restituer(id).partagee) rendus++; }
+            catch(e) { console.warn("[SessionPersist] restitution :", e); }
+          });
+        }
+        const avant = (cibles && window.KtaUid) ? window.KtaUid.getTombstones() : null;
+        const gardes = _viderEtatCourant();
+        const supprimes = avant ? _tracerEffacement(avant, cibles) : 0;
+        clear({ snapshotFait: true });
+        if (supprimes) save({ force: true });   // les traces sont la seule chose qui reste : écrites tout de suite
+        if (typeof apres === "function") apres();
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(_t(entry ? "session.toast.clearedSnap" : "session.toast.cleared") +
+            (gardes ? " " + _trModule("session.toast.portailsGardes", { n: gardes }) : "") +
+            (rendus ? " " + _trModule("session.toast.calquesRendus", { n: rendus }) : "") +
+            (supprimes ? " " + _trModule("session.toast.supprimesOrga", { n: supprimes }) : ""),
+            supprimes ? "success" : "info");
+        }
+      });
+    };
+    if (typeof window.ktaConfirm === "function") {
+      const msg = (window.I18n && window.I18n.t)
+        ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
+      const partage = _effacementPartage();
+      if (partage) { _choisirEffacementPartage(partage, msg, calques, go, bouton); return; }
+      if (calques.length) {
+        // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.
+        const noms = calques.map(function(id) { return window.ktaEsc(CS.libelle(id)); }).join(", ");
+        window.ktaConfirm(msg + "\n\n" + _trModule("session.confirm.calquesEquipe", { calques: noms }), {
+          titre:       _t("session.confirm.clearTitle"),
+          okLabel:     _t("session.btn.clearIci"),
+          cancelLabel: _t("ui.confirm.cancel"),
+          autre:       { label: _t("session.btn.clearEquipe"), valeur: "equipe" }
+        }).then(function(choix) { if (choix) go(choix === "equipe"); });
+      } else {
+        window.ktaConfirm(msg, {
+          titre:       _t("session.confirm.clearTitle"),
+          okLabel:     _t("session.btn.clear"),
+          cancelLabel: _t("session.btn.keep")
+        }).then(function(ok) { if (ok) go(false); });
+      }
+    } else {
+      // Sans fenêtre de confirmation, on N'efface PAS : un repli destructeur par défaut est le pire choix.
+      console.warn("[SessionPersist] ktaConfirm indisponible : effacement de la session refusé");
+    }
+  }
+
   // ── Modale « session restaurée » ──────────────
   function _afficherModaleSession(restored) {
     if (!restored) return;
@@ -755,70 +824,9 @@
     }
 
     modal.querySelector('[data-action="keep"]').addEventListener("click", fermer);
-    // 🩸 « Effacer » est à côté de « Continuer » (un doigt ganté glisse) : confirmation chiffrée, snapshot
-    // ATTENDU, puis toast qui dit où le retrouver.
+    // 🩸 « Effacer » est à côté de « Continuer » (un doigt ganté glisse) : la confirmation est dans le parcours.
     modal.querySelector('[data-action="clear"]').addEventListener("click", function() {
-      const n = _compterEtatCourant();
-      // Plan dont la restitution se partage, avec des calques en modification : l'effacement local les verrait
-      // revenir depuis la synchro. L'utilisateur choisit : effacer ici seulement, ou rendre aussi les calques à
-      // tous (restitution partagée, notée AVANT le vidage : elle porte les uids des copies retirées).
-      const CS = window.CalqueSession;
-      const calques = (CS && typeof CS.restitutionPartagee === "function" && CS.restitutionPartagee())
-        ? CS.listeRapatries() : [];
-      // `cibles` (plan partagé) : objets supprimés pour toute l'organisation, une trace chacun après le vidage.
-      const go = function(rendre, cibles) {
-        const snap = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
-          ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-clear-session"); })
-              .catch(function() { return null; })
-          : Promise.resolve(null);
-        snap.then(function(entry) {
-          let rendus = 0;
-          if (rendre) {
-            calques.forEach(function(id) {
-              try { if (CS.restituer(id).partagee) rendus++; }
-              catch(e) { console.warn("[SessionPersist] restitution :", e); }
-            });
-          }
-          const avant = (cibles && window.KtaUid) ? window.KtaUid.getTombstones() : null;
-          const gardes = _viderEtatCourant();
-          const supprimes = avant ? _tracerEffacement(avant, cibles) : 0;
-          clear({ snapshotFait: true });
-          if (supprimes) save({ force: true });   // les traces sont la seule chose qui reste : écrites tout de suite
-          fermer();
-          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-            window.OOMGuard.showToast(_t(entry ? "session.toast.clearedSnap" : "session.toast.cleared") +
-              (gardes ? " " + _trModule("session.toast.portailsGardes", { n: gardes }) : "") +
-              (rendus ? " " + _trModule("session.toast.calquesRendus", { n: rendus }) : "") +
-              (supprimes ? " " + _trModule("session.toast.supprimesOrga", { n: supprimes }) : ""),
-              supprimes ? "success" : "info");
-          }
-        });
-      };
-      if (typeof window.ktaConfirm === "function") {
-        const msg = (window.I18n && window.I18n.t)
-          ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
-        const partage = _effacementPartage();
-        if (partage) { _choisirEffacementPartage(partage, msg, calques, go, this); return; }
-        if (calques.length) {
-          // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.
-          const noms = calques.map(function(id) { return window.ktaEsc(CS.libelle(id)); }).join(", ");
-          window.ktaConfirm(msg + "\n\n" + _trModule("session.confirm.calquesEquipe", { calques: noms }), {
-            titre:       _t("session.confirm.clearTitle"),
-            okLabel:     _t("session.btn.clearIci"),
-            cancelLabel: _t("ui.confirm.cancel"),
-            autre:       { label: _t("session.btn.clearEquipe"), valeur: "equipe" }
-          }).then(function(choix) { if (choix) go(choix === "equipe"); });
-        } else {
-          window.ktaConfirm(msg, {
-            titre:       _t("session.confirm.clearTitle"),
-            okLabel:     _t("session.btn.clear"),
-            cancelLabel: _t("session.btn.keep")
-          }).then(function(ok) { if (ok) go(false); });
-        }
-      } else {
-        // Sans fenêtre de confirmation, on N'efface PAS : un repli destructeur par défaut est le pire choix.
-        console.warn("[SessionPersist] ktaConfirm indisponible : effacement de la session refusé");
-      }
+      demanderEffacement(this, fermer);
     });
     // Fond et Échap = « Continuer ».
     modal.addEventListener("click", function(e) {
@@ -1006,6 +1014,7 @@
     clear:        clear,
     getSaved:     getSaved,
     getLastSaveInfo: getLastSaveInfo,
-    normNomPlan:  _normNomPlan         // même plan sous un autre nom (📦 Backups d'une autre version)
+    normNomPlan:  _normNomPlan,        // même plan sous un autre nom (📦 Backups d'une autre version)
+    demanderEffacement: demanderEffacement   // « Effacer la session » (même parcours depuis 📊 Détails)
   };
 })();

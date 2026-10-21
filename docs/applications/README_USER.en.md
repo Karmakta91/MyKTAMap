@@ -333,6 +333,7 @@ A click on the top counters opens the map's **dashboard**:
 - **⭐ Favorites**: export this map's or all of them, import;
 - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation. Copies from **another version of this map** (re-imported or renamed) also show up, marked 📂, and are restored into the open map;
 - **💾 Session memory**: your sessions live in the space the browser grants the app on your device — a share of its free space, shared with your maps, photos and backups (no more 5 MB cap since 10/10/2026; your existing sessions were moved there automatically). The gauge shows how full it is and which maps have the heaviest sessions; at 80 % the app warns you when you open a map. To free some room: export your session (📤 Export), then clear the session or photos of an old map, or remove a map you no longer need. If the browser refuses this storage (some private browsing modes), your sessions stay in the old storage capped at ~5 MB, and the gauge shows it;
+- **🗑️ Clear the session**: the same clearing as the “Previous session restored” window (see 🧹 Erase and correct), at any time. Not shown on a read-only map;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
 
 ### 🗺️ Reading the map
@@ -747,7 +748,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 **One specific object**: its popup has a **🗑️ Delete** button; for a point, it is **🗑️ Delete this point**. No confirmation window: everything can be undone with ⏪ (`Ctrl+Z`).
 
-**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself. On a **map shared with your organisation**, the window makes you choose: **Clear this device** (everything on the server comes back at the next sync) or, depending on your rights, **Delete my additions for the whole organisation** or **Delete everything for the organisation** (number of items shown first; these two cannot be undone for the others).
+**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (also at any time in **📊 Session details**) (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself. On a **map shared with your organisation**, the window makes you choose: **Clear this device** (everything on the server comes back at the next sync) or, depending on your rights, **Delete my additions for the whole organisation** or **Delete everything for the organisation** (number of items shown first; these two cannot be undone for the others).
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
