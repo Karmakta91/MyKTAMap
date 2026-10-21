@@ -1709,7 +1709,7 @@ Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.
 | Lo que editas | **💾 Guardar** |
 |---|---|
 | **Datos del mapa** | Descarga el archivo `.json` modificado. Para aplicarlo, vuelve a importarlo en el **Generador**: el editor nunca cambia el mapa mostrado. |
-| **Tu sesión** | Descarga el archivo, o lo aplica al momento: **✏️ Reemplazar la sesión en curso** para los puntos, **✏️ Aplicar a la sesión actual** para trazados, zonas y estructuras (un cambio de tipo o de nivel funciona como desde la ficha del objeto; una fila quitada de la tabla se elimina de la sesión). Un tipo ausente de la leyenda se rechaza, con el número de la fila. **⏪** deshace toda la operación de una vez. En un mapa compartido por una instalación, quitar objetos exige el permiso de eliminarlos para todos, y una confirmación. |
+| **Tu sesión** | Descarga el archivo, o lo aplica al momento: **✏️ Reemplazar la sesión en curso** para los puntos, **✏️ Aplicar a la sesión actual** para trazados, zonas y estructuras (solo se aplican las celdas que has modificado; un cambio de tipo o de nivel funciona como desde la ficha del objeto; una fila quitada de la tabla se elimina de la sesión). Un tipo ausente de la leyenda se rechaza, con el número de la fila. **⏪** deshace toda la operación de una vez. En un mapa compartido por una instalación, quitar objetos exige el permiso de eliminarlos para todos, y una confirmación. |
 
 Si cierras con cambios sin guardar, la app te propone guardar, salir sin guardar o seguir editando.
 

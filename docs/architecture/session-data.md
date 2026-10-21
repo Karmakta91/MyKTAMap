@@ -94,7 +94,7 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 - **🧮 Tableur, « Appliquer à la session »** (tracés / zones / structures d'un fichier de session — `type:
   "devmap-session"` ou porteur de `editorPoints` ; un calque de données reste en téléchargement seul) :
   `tableEditor.js > _appliquerSession` → `KtaConvertir.appliquerTableau(famille, lignes)`. Le tableau devient la
-  famille, **par uid** : ligne connue = l'objet de la session est modifié par les chemins de la fiche (type par
+  famille, **par uid** : ligne connue = l'objet de la session reçoit ses cellules modifiées par les chemins de la fiche (type par
   `_versType`, comme 🔄 Convertir ; niveau par `_poserNiveau`, comme la liste « Niveau » ; autres colonnes en place +
   `touch`) ; sa **géométrie reste celle de la session** (le tableau ne l'édite pas) ; objet sans différence : intact.
   Ligne d'uid inconnu = ajout ; objet absent du tableau = suppression (trace posée par `HistoryManager.record`).
@@ -104,8 +104,11 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
     géométrie (règle ouvert / fermé de Convertir), `jonction` / `itinerary` posés au tableau, niveau non entier ou sur
     une jonction. Un type orphelin **inchangé** ne bloque pas. Le téléchargement garde la saisie libre (cellule en
     rouge seulement).
-  - ⚠️ Le tableau gagne sur ses colonnes : un fichier plus ancien que la session y remet ses valeurs (comme
-    « Remplacer » pour les points). Une colonne absente d'une ligne ne retire jamais un champ.
+  - ⚠️ **Seules les cellules modifiées s'appliquent** (décision produit) : chaque ligne est comparée à sa copie prise
+    au chargement (`_origines`, passée en `opts.origine`). Une ligne non touchée ne change rien, même si le fichier est
+    plus ancien que la session ; sur une ligne touchée, les autres champs gardent leur valeur de session. Une colonne
+    absente d'une ligne ne retire jamais un champ. ≠ « Remplacer la session » des points, qui reste un remplacement
+    entier (autre chemin : `KtaUid.preparerImport` / `setEditorPoints`).
   - Plan partagé : même règle que les points (suppression ⇒ `remplacer` de la prise relu au clic, sinon refus nommé ;
     puis `ktaConfirm` avec le nombre), compté par une simulation (`{ simuler: true }`).
 - **Colonne « level »** (plan affiché multi-niveau) : toujours présente pour les quatre tableaux, même sans aucun

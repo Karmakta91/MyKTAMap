@@ -1709,7 +1709,7 @@ Si la source contient plusieurs jeux de données, un sélecteur te laisse choisi
 | Ce que tu édites | **💾 Sauvegarder** |
 |---|---|
 | **Données du plan** | Télécharge le fichier `.json` modifié. Pour l'appliquer, réimporte-le dans le **Générateur** : l'éditeur ne change jamais le plan affiché. |
-| **Ta session** | Télécharge le fichier, ou applique tout de suite : **✏️ Remplacer la session en cours** pour les points, **✏️ Appliquer à la session en cours** pour les tracés, zones et structures (un changement de type ou de niveau fait comme depuis la fiche de l'objet ; une ligne retirée du tableau est supprimée de la session). Un type absent de la légende est refusé, avec le numéro de la ligne. **⏪** annule l'opération d'un coup. Sur un plan partagé par une installation, retirer des objets demande le droit de les supprimer pour tous, et une confirmation. |
+| **Ta session** | Télécharge le fichier, ou applique tout de suite : **✏️ Remplacer la session en cours** pour les points, **✏️ Appliquer à la session en cours** pour les tracés, zones et structures (seules les cellules que tu as modifiées s'appliquent ; un changement de type ou de niveau fait comme depuis la fiche de l'objet ; une ligne retirée du tableau est supprimée de la session). Un type absent de la légende est refusé, avec le numéro de la ligne. **⏪** annule l'opération d'un coup. Sur un plan partagé par une installation, retirer des objets demande le droit de les supprimer pour tous, et une confirmation. |
 
 Si tu fermes avec des modifications non sauvegardées, l'app te propose de sauvegarder, de quitter sans sauvegarder ou de continuer.
 
