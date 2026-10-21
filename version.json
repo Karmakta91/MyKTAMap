@@ -3,9 +3,10 @@
   "released": "2026-10-21",
   "notes": [
     "🔄 Mettre à jour le plan : un assistant (⬆️ Exporter) range tes ajouts et tes calques en modification dans le Générateur, déjà rempli, pour sortir une nouvelle version du plan.",
-    "📊 Éditeur de données : applique directement à ta session les changements de type, de niveau ou de note des tracés, zones, structures et points (seules les cellules modifiées, ⏪ pour annuler) ; il s'ouvre maintenant depuis ⬆️ Exporter.",
-    "🔁 Recaler des données sur un autre scan : l'outil trouve seul la correspondance grâce aux points communs, avec un aperçu sur la carte avant de télécharger.",
-    "⬇️ Importer ouvre directement le choix du fichier ; 📊 Détails de la session replie les longues listes.",
-    "🛠️ Corrigés : un objet supprimé disparaît sans recharger, la Vue OSM n'empile plus les tuiles quand on recoche le plan, plus de « GREETING » au premier lancement."
+    "📊 Éditeur de données : applique directement à ta session les changements de type, de niveau ou de note (seules les cellules modifiées, ⏪ pour annuler) ; il s'ouvre maintenant depuis ⬆️ Exporter.",
+    "🪜 Jonctions entre niveaux : un clic ouvre leur fiche pour changer la note, les niveaux reliés, ou les supprimer.",
+    "🔁 Recaler des données sur un autre scan : l'outil trouve seul la correspondance grâce aux points communs, avec un aperçu sur la carte.",
+    "⬇️ Importer ouvre directement le choix du fichier ; 📊 Détails de la session replie les longues listes et permet d'effacer la session.",
+    "🛠️ Corrigés : un objet supprimé disparaît sans recharger, la Vue OSM n'empile plus les tuiles, le plan s'ouvre aussi dans un onglet en arrière-plan, plus de « GREETING » au premier lancement."
   ]
 }
