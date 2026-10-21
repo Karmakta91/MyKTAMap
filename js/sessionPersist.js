@@ -651,16 +651,24 @@
     cibles.forEach(function(c) { U.tombstone(c.uid, Math.max(now, c.updatedAt + 1)); });
     return cibles.length;
   }
-  // Fenêtre du plan partagé : « Vider cet appareil » (tout revient du serveur), « Supprimer mes ajouts pour toute
-  // l'organisation » (`miens`), « Tout supprimer pour l'organisation » (`tout`), plus la case des calques en
-  // modification. 🔒 La prise est relue au moment de confirmer une suppression pour tous (droit retiré entre-temps :
+  // Fenêtre du plan partagé, RIEN de présélectionné (OK inactif tant qu'on n'a pas choisi) : « ↻ Annuler ce que cet
+  // appareil n'a pas encore envoyé » seulement s'il y en a (`enAttente` > 0 ; null = nombre inconnu, prise en erreur :
+  // proposée sans nombre) — en ligne tout part en quelques secondes et revient, vider l'appareil n'aurait pas de sens
+  // (décision produit) ; « Supprimer mes ajouts pour toute l'organisation » (`miens`), « Tout supprimer pour
+  // l'organisation » (`tout`), plus la case des calques en modification. Aucune option : « rien à effacer ». 🔒 La prise est relue au moment de confirmer une suppression pour tous (droit retiré entre-temps :
   // refus nommé, rien n'est effacé) ; la confirmation donne le nombre d'objets.
   function _choisirEffacementPartage(attente, msg, calques, go, bouton) {
     const _t = _trModule;
     if (bouton) bouton.disabled = true;
     attente.then(function(droits) {
       if (bouton) bouton.disabled = false;
-      const options = [{ valeur: "appareil", titre: _t("session.partage.appareil"), aide: _t("session.partage.appareilAide") }];
+      const options = [];
+      const n = droits.enAttente;
+      if (n === null || n === undefined || n > 0) {
+        options.push({ valeur: "appareil",
+          titre: Number.isInteger(n) ? _t("session.partage.annulerLocalN", { n: n }) : _t("session.partage.annulerLocal"),
+          aide: _t("session.partage.annulerLocalAide") });
+      }
       if (droits.miens) {
         options.push({ valeur: "miens", titre: _t("session.partage.miens"),
           aide: _t("session.partage.miensAide", { n: _ciblesEffacement(false, droits.auteur).length }) });
@@ -669,7 +677,8 @@
         options.push({ valeur: "tout", titre: _t("session.partage.tout"),
           aide: _t("session.partage.toutAide", { n: _ciblesEffacement(true, null).length }) });
       }
-      const choix = { options: options, valeur: "appareil" };
+      if (!options.length) { window.ktaAlerte(_t("session.partage.rien")); return null; }
+      const choix = { options: options, valeur: null, aucunParDefaut: true };
       const opts = { titre: _t("session.confirm.clearTitle"), okLabel: _t("session.btn.clear"),
         cancelLabel: _t("session.btn.keep"), choix: choix };
       let texte = msg + "\n\n" + _t("session.partage.intro");
@@ -708,8 +717,8 @@
   // session). Confirmation chiffrée, choix à trois options sur un plan partagé (_choisirEffacementPartage), case des
   // calques en modification, snapshot ATTENDU, puis toast qui dit où le retrouver. `bouton` est grisé pendant la
   // lecture des droits d'un plan partagé ; `apres` est appelé une fois la session effacée (fermer la fenêtre).
-  // 🔒 Plan en lecture seule (ktaEditionRefusee) : même bouton aux deux entrées, mais « Vider cet appareil » seul
-  // (décision produit) — ni « mes ajouts » ni « tout », pas de case des calques, aucune trace posée, rien envoyé.
+  // 🔒 Plan d'extension en lecture seule (ktaEditionRefusee) : aucune modification ne peut y attendre d'envoi, tout
+  // vient du serveur — « Rien à effacer » (décision produit), sans fenêtre de choix. Plan local : inchangé.
   function demanderEffacement(bouton, apres) {
     const _t = _trModule;
     const n = _compterEtatCourant();
@@ -754,7 +763,8 @@
       const msg = (window.I18n && window.I18n.t)
         ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
       const partageLu = _effacementPartage();
-      const partage = (ro && partageLu) ? Promise.resolve({ miens: false, tout: false, auteur: null }) : partageLu;
+      if (ro && partageLu) { window.ktaAlerte(_t("session.partage.rienServeur")); return; }
+      const partage = partageLu;
       if (partage) { _choisirEffacementPartage(partage, msg, calques, go, bouton); return; }
       if (calques.length) {
         // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.

@@ -1294,11 +1294,17 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     rep = Promise.resolve({ miens: true, tout: true, auteur: "bob" });
     const r2 = await K.effacementPartage("ext_p1");
     t("réponse en promesse acceptée", r2.miens === true && r2.tout === true && r2.auteur === "bob");
+    t("`enAttente` absent → 0 (plan partagé, rien en attente)", r1.enAttente === 0 && r2.enAttente === 0);
+    rep = { miens: false, tout: false, auteur: "bob", enAttente: 7 };
+    t("`enAttente` entier rendu tel quel", (await K.effacementPartage("ext_p1")).enAttente === 7);
+    rep = { miens: false, tout: false, auteur: "bob", enAttente: -2 };
+    t("🔒 `enAttente` invalide → null (nombre inconnu, l'option reste proposée sans nombre)",
+      (await K.effacementPartage("ext_p1")).enAttente === null);
     rep = { miens: true, tout: "oui", auteur: "" };
     const r3 = await K.effacementPartage("ext_p1");
     t("🔒 non booléen refusé ; `miens` sans auteur refusé (rien ne dirait ce qui est à moi)",
       r3.miens === false && r3.tout === false && r3.auteur === null);
-    const refus = (r) => !!r && r.miens === false && r.tout === false && r.auteur === null;
+    const refus = (r) => !!r && r.miens === false && r.tout === false && r.auteur === null && r.enAttente === null;
     rep = "panne";
     t("🔒 prise en erreur → plan partagé, vidage de l'appareil seul", refus(await K.effacementPartage("ext_p1")));
     rep = "rejet";
@@ -1319,13 +1325,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("câblage : la fenêtre lit la prise (plan affiché) et ne remplace la fenêtre de l'app que si elle répond",
       /K\.effacementPartage\(window\._currentLoadedPlanId\)/.test(SP) &&
       h.indexOf("if (partage) { _choisirEffacementPartage(partage, msg, calques, go, bouton); return; }") > 0);
-    t("🔒 câblage : lecture seule → « Vider cet appareil » seul (droits forcés), ni calques rendus ni traces",
+    t("🔒 câblage : plan d'extension en lecture seule → « Rien à effacer », sans fenêtre de choix",
       /const ro = typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\);/.test(h) &&
-      /\(ro && partageLu\) \? Promise\.resolve\(\{ miens: false, tout: false, auteur: null \}\)/.test(h) &&
-      /if \(ro\) \{ rendre = false; cibles = null; \}/.test(h) && /\(!ro && CS && typeof CS\.restitutionPartagee/.test(h));
+      /if \(ro && partageLu\) \{ window\.ktaAlerte\(_t\("session\.partage\.rienServeur"\)\); return; \}/.test(h));
     const ch = SP.slice(SP.indexOf("function _choisirEffacementPartage("), SP.indexOf("// ── Modale « session restaurée »"));
-    t("câblage : « Vider cet appareil » toujours proposé ; « mes ajouts » si `miens`, « tout » si `tout`",
-      /const options = \[\{ valeur: "appareil"/.test(ch) && /if \(droits\.miens\) \{\s*\n\s*options\.push\(\{ valeur: "miens"/.test(ch) &&
+    t("câblage : rien de présélectionné (OK inactif tant qu'on n'a pas choisi) ; aucune option → « rien à effacer »",
+      /const choix = \{ options: options, valeur: null, aucunParDefaut: true \};/.test(ch) &&
+      /if \(!options\.length\) \{ window\.ktaAlerte\(_t\("session\.partage\.rien"\)\); return null; \}/.test(ch) &&
+      /opts\.choix\.aucunParDefaut\) ov\.querySelector\("#kta-confirm-oui"\)\.disabled = true;/.test(UT));
+    t("câblage : « Annuler ce qui n'est pas envoyé » si enAttente > 0 ou inconnu ; « mes ajouts » si `miens`, « tout » si `tout`",
+      /if \(n === null \|\| n === undefined \|\| n > 0\) \{\s*options\.push\(\{ valeur: "appareil"/.test(ch) && /if \(droits\.miens\) \{\s*\n\s*options\.push\(\{ valeur: "miens"/.test(ch) &&
       /if \(droits\.tout\) \{\s*\n\s*options\.push\(\{ valeur: "tout"/.test(ch));
     t("câblage : la case « Rendre aussi les calques à l'équipe » reste, dans la même fenêtre",
       /opts\.caseACocher = \{ label: _t\("session\.btn\.clearEquipe"\)/.test(ch) && /go\(rendre, null\)/.test(ch));

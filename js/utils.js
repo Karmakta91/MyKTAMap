@@ -452,8 +452,9 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
 //   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
 //   dans l'objet passé (coche / valeur) après coup.
 //   opts.autre = {label, valeur} : 3e bouton (danger) ; la Promise rend alors `opts.autre.valeur`.
-//   opts.choix = {options: [{valeur, titre, aide?}], valeur?} : boutons radio (titre et aide en textContent), le
-//   premier coché si `valeur` n'en désigne aucun ; la Promise rend un booléen, le choix est relu dans opts.choix.valeur.
+//   opts.choix = {options: [{valeur, titre, aide?}], valeur?, aucunParDefaut?} : boutons radio (titre et aide en
+//   textContent), le premier coché si `valeur` n'en désigne aucun ; `aucunParDefaut` : rien de coché et OK inactif tant
+//   qu'on n'a pas choisi. La Promise rend un booléen, le choix est relu dans opts.choix.valeur.
 // Fermeture : OK → true · Annuler / Échap / clic sur le fond → false. Fenêtres EMPILÉES : seule celle du
 // SOMMET réagit à Échap (pile du module, écouteur unique en capture sur window, qui passe avant les
 // écouteurs « Échap » des modales posés sur document). Clic sur le fond ignoré 300 ms après l'ouverture
@@ -524,7 +525,8 @@ window.ktaConfirm = function(message, opts) {
     const choixEl = ov.querySelector("#kta-confirm-choix");
     if (choixEl) {
       const liste = Array.isArray(opts.choix.options) ? opts.choix.options.filter(Boolean) : [];
-      const coche = liste.some(function(o) { return o.valeur === opts.choix.valeur; }) ? opts.choix.valeur
+      const coche = opts.choix.aucunParDefaut ? undefined
+        : liste.some(function(o) { return o.valeur === opts.choix.valeur; }) ? opts.choix.valeur
         : (liste[0] && liste[0].valeur);
       liste.forEach(function(o) {
         const lab = document.createElement("label");
@@ -537,6 +539,7 @@ window.ktaConfirm = function(message, opts) {
         r.setAttribute("data-kta-confirm-choix", String(o.valeur));
         r.checked = o.valeur === coche;
         r.style.marginTop = "3px";
+        r.addEventListener("change", function() { ov.querySelector("#kta-confirm-oui").disabled = false; });
         const txt = document.createElement("span");
         const titre = document.createElement("strong");
         titre.textContent = o.titre || "";
@@ -552,6 +555,7 @@ window.ktaConfirm = function(message, opts) {
         choixEl.appendChild(lab);
       });
     }
+    if (choixEl && opts.choix.aucunParDefaut) ov.querySelector("#kta-confirm-oui").disabled = true;
     const texteEl = ov.querySelector("#kta-confirm-texte");
     if (texteEl) {
       texteEl.previousElementSibling.textContent = opts.texte.label || "";

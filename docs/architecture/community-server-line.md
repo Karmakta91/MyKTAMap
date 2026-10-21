@@ -380,14 +380,18 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     structures) : sur un plan partagé, un objet retiré reçoit une trace ; s'il en retire,
     il faut `remplacer === true` (sinon refus nommé, rien ne change) et une confirmation chiffrée. Côté community :
     `KtaExtensions.importPartage(registreId)` ; détail : `session-data.md` §9.1.
-  - Prise `effacerSession(idExt) → { miens, tout, auteur } | Promise<…> | null` : « Effacer la session » sur un plan
-    **partagé** propose « Vider cet appareil » (toujours ; tout ce qui est sur le serveur revient), « Supprimer mes
+  - Prise `effacerSession(idExt) → { miens, tout, auteur, enAttente? } | Promise<…> | null` : « Effacer la session »
+    sur un plan **partagé**, rien de présélectionné, propose « ↻ Annuler ce que cet appareil n'a pas encore envoyé
+    (N modifications) » seulement si `enAttente` (entier ≥ 0 : modifications de l'appareil pas encore envoyées pour ce
+    plan ; **absent = 0**) est > 0 — tout ce qui est sur le serveur revient —, « Supprimer mes
     ajouts pour toute l'organisation » si `miens === true` (objets dont `auteurObjet(uid).createur === auteur`) et
     « Tout supprimer pour l'organisation » si `tout === true` ; une trace de suppression par objet visé (jamais pour
     une copie de calque), après confirmation chiffrée. La case « Rendre aussi les calques à l'équipe » reste dans la
     même fenêtre. `null` / `false` rendus tels quels = plan non partagé (fenêtre de l'app seule) ; plan local ou du
-    site : jamais consultée. 🔒 Exception, rejet, forme inattendue, `miens` sans `auteur` ou réponse au-delà de
-    8 s = « Vider cet appareil » seul ; la prise est relue au clic d'une suppression pour tous. Côté community :
+    site : jamais consultée ; aucune option = « Rien à effacer ». Plan d'extension en lecture seule : « Rien à effacer :
+    ce plan vient du serveur », sans fenêtre. 🔒 Exception, rejet, forme inattendue, `miens` sans `auteur` ou réponse
+    au-delà de 8 s = l'annulation seule, sans nombre (`enAttente: null`) ; `enAttente` invalide = `null` ; la prise
+    est relue au clic d'une suppression pour tous. Côté community :
     `KtaExtensions.effacementPartage(registreId)` (null synchrone, ou promesse) ; détail : `session-data.md` §9.
     Test : `check-extensions.js` §6 octies.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la

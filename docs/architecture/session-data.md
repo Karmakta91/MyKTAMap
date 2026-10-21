@@ -71,10 +71,13 @@ ferme une fois la session effacée)) : confirmation chiffrée (`ktaConfirm`), sn
 suppression — décision produit ; les points portails restent) puis `clear({ snapshotFait: true })` (slot retiré,
 calques rendus, événement `mktm:session-cleared`). Pas d'⏪ : l'effacement ne passe pas par l'historique, le filet est
 le snapshot de 📦 Backups.
-- **Plan partagé par une extension** (`KtaExtensions.effacementPartage` → promesse de `{ miens, tout, auteur }`,
-  `community-server-line.md` §3) : la même confirmation porte un choix (`ktaConfirm`, `opts.choix`) :
-  - **« Vider cet appareil »** (toujours, coché par défaut) : l'effacement ci-dessus ; le texte dit que tout ce qui est
-    sur le serveur reviendra (relecture complète par l'extension), les objets de chacun compris ;
+- **Plan partagé par une extension** (`KtaExtensions.effacementPartage` → promesse de `{ miens, tout, auteur,
+  enAttente }`, `community-server-line.md` §3) : la même confirmation porte un choix (`ktaConfirm`, `opts.choix` avec
+  `aucunParDefaut` : **rien de présélectionné**, OK inactif tant qu'on n'a pas choisi) :
+  - **« ↻ Annuler ce que cet appareil n'a pas encore envoyé (N modifications) »** — seulement si `enAttente` > 0
+    (décision produit : en ligne, la synchro part en quelques secondes et tout revient, vider l'appareil n'aurait pas
+    de sens ; `null` = nombre inconnu, prise en erreur : proposé sans nombre) : l'effacement ci-dessus ; ces
+    modifications ne partent pas, tout ce qui est sur le serveur revient (relecture complète par l'extension) ;
   - **« Supprimer mes ajouts pour toute l'organisation »** (`miens`) : objets dont `KtaExtensions.auteurObjet(uid)
     .createur === auteur` ;
   - **« Tout supprimer pour l'organisation »** (`tout`) : tous les objets de la session.
@@ -85,11 +88,12 @@ le snapshot de 📦 Backups.
   plus ancienne perdrait la fusion) ; la session est écrite tout de suite. La relecture complète ramène alors ce qui
   n'est pas tracé. 🔒 Jamais de trace pour une copie de calque (uid d'un objet du calque), l'itinéraire calculé ou un
   portail. La case « ↩️ Rendre aussi les calques à l'équipe » remplace le 3e bouton quand des calques sont en
-  modification (piège 1 ci-dessous). Erreur, rejet ou réponse au-delà de 8 s : « Vider cet appareil » seul. Le
+  modification (piège 1 ci-dessous). Aucune option (rien en attente, aucun droit) : « Rien à effacer ». Erreur, rejet
+  ou réponse au-delà de 8 s : l'annulation seule, sans nombre. Le
   nombre annoncé ne compte que ce que l'appareil a reçu (d'où la promesse : l'extension peut se mettre à jour avant
-de répondre). 🔒 **Plan en lecture seule** (`ktaEditionRefusee`) : même bouton aux deux entrées, mais « Vider cet
-  appareil » seul (décision produit) — ni « mes ajouts » ni « tout », pas de case des calques, aucune trace, rien
-  envoyé. Filets :
+de répondre). 🔒 **Plan d'extension en lecture seule** (`ktaEditionRefusee`) : rien ne peut y attendre d'envoi, tout
+  vient du serveur — 📊 Détails montre un bouton inactif « Rien à effacer : ce plan vient du serveur », la fenêtre
+  « session restaurée » le dit au clic, sans fenêtre de choix (décision produit). Filets :
   `scripts/smoke/checkup-effacer-session-partage.js` (fenêtre « session restaurée »),
   `scripts/smoke/checkup-jonction-fiche.js` partie B (📊 Détails), `check-calque-session.js` (les deux entrées
   passent par `demanderEffacement`).
