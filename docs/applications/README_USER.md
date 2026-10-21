@@ -304,7 +304,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Aide / Documentation / Légende** | 📚 | Aide, documentation, légende des icônes |
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, affichage… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver un point, un tracé, une zone ou une structure *(clic direct)* |
-| **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
+| **Charger / Import** | ⬇️ | Importer une session ou un GPX (ouvre directement le choix du fichier) |
 | **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, export externe (KMZ / GPX) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
@@ -1033,7 +1033,7 @@ Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télé
 
 ### 📥 Importer un fichier (session ou GPX)
 
-**⬇️ Charger / Import → 📥 Importer un fichier** ouvre le choix du fichier ; l'app reconnaît son type.
+**⬇️ Charger / Import** ouvre directement le choix du fichier ; l'app reconnaît son type.
 
 - **Session MyKTAMap** (`.json`, ou `.zip` avec photos) : elle **remplace** ta session en cours (points, tracés, zones, mesure) ; ses photos, elles, **s'ajoutent** aux tiennes, sans en effacer aucune. Un aperçu montre ce qu'elle contient ; une sauvegarde de ta session actuelle est prise juste avant. **Importer** pour valider, **Annuler** pour ne rien changer.
 - **Fichier GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…) : ses points et tracés **s'ajoutent** à ta session. Le plan doit être géoréférencé. Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
@@ -1681,7 +1681,7 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 
 ### 📊 Éditeur de données du plan
 
-**⬇️ → 📊 Éditeur de données du plan** sur la carte, ou **📊 Éditeur de données** sur l'accueil, ouvre un tableau pour **voir, modifier et exporter** les points, tracés, zones et structures d'un plan.
+**⬆️ Exporter → 📊 Éditeur de données du plan** (section 💾 Session) sur la carte, ou **📊 Éditeur de données** sur l'accueil, ouvre un tableau pour **voir, modifier et exporter** les points, tracés, zones et structures d'un plan.
 
 #### 📂 Ouvrir
 

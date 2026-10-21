@@ -127,7 +127,7 @@ liseré `--kta-ok`), jamais en `warn` : ⚠️ sur une réussite ment sur ce qui
 **Lecture seule** (plan en droit « lire ») : tout point d'entrée qui modifie les objets du plan commence par
 `if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;` — la fonction
 (`js/ktaExtensions.js`) affiche elle-même le toast ; `ktaEditionRefusee(true)` = test silencieux. Sont gardés
-notamment : outils de dessin, fiche d'un point, import (⬇️ Charger → 📥 Importer : session JSON/ZIP et GPX),
+notamment : outils de dessin, fiche d'un point, import (⬇️ Charger / Import, solo : session JSON/ZIP et GPX),
 annuler / rétablir (Ctrl+Z / Ctrl+Y et boutons), session remplacée depuis la table.
 
 ---
@@ -197,7 +197,7 @@ Nouvelle option `position: "topleft" | "topright"` lue UNIQUEMENT si `window._re
 Groupes taggés `position: "topleft"` :
 - `aide` (📚 Doc/Aide/Légende)
 - `settings` (⚙ Paramètres)
-- `charger` (⬇ Charger / Import)
+- `charger` (⬇ Charger / Import, solo : ouvre le sélecteur de fichier ; l'Éditeur de données est une tuile de ⬆️ Exporter)
 - `save` (⬆ Enregistrer)
 
 **Effet visuel** : sidebars = barres VERTICALES continues (pas d'icônes séparées avec gap). En CSS :
@@ -1750,7 +1750,7 @@ fermeture des modales actives).
 
 ### 91. Éditeur de données du plan — refonte 3 sources + édition note tracés/zones (v1.48.0)
 
-Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Éditeur de données du plan »**). Ouvert via **sidebar carte** ⬇️ → 📊 **ET le home** (`index.html` `loaderTableEditorBtn`, à côté du Générateur) → `window.ouvrirTableEditor`. Au home, `PLAN_CONFIG` est `null` (reset `config.js > resetRuntimeAssets`) → `planDispo` faux → la carte « Plan en cours » est **masquée** (pas seulement grisée), donc 2 sources seulement (ZIP + JSON).
+Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Éditeur de données du plan »**). Ouvert via **⬆️ Exporter → 📊** sur la carte (tuile de la section 💾 Session) **ET le home** (`index.html` `loaderTableEditorBtn`, à côté du Générateur) → `window.ouvrirTableEditor`. Au home, `PLAN_CONFIG` est `null` (reset `config.js > resetRuntimeAssets`) → `planDispo` faux → la carte « Plan en cours » est **masquée** (pas seulement grisée), donc 2 sources seulement (ZIP + JSON).
 
 #### 91.1 Écran d'accueil — 3 sources (`_afficherAccueil`)
 

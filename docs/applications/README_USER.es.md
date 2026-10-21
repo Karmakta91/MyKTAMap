@@ -304,7 +304,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Ayuda / Documentación / Leyenda** | 📚 | Ayuda, documentación, leyenda de iconos |
 | **Ajustes** | ⚙️ | Ajustes del mapa: escala, Norte, georreferenciación, tracker, visualización… *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar un punto, un trazado, una zona o una estructura *(clic directo)* |
-| **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del mapa |
+| **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX (abre directamente el selector de archivos) |
 | **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF), sesión, exportación externa (KMZ / GPX) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
@@ -1033,7 +1033,7 @@ Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar*
 
 ### 📥 Importar un archivo (sesión o GPX)
 
-**⬇️ Cargar / Importar → 📥 Importar un archivo** abre el selector de archivos; la app reconoce su tipo.
+**⬇️ Cargar / Importar** abre directamente el selector de archivos; la app reconoce su tipo.
 
 - **Sesión de MyKTAMap** (`.json`, o `.zip` con fotos): **sustituye** tu sesión en curso (puntos, trazados, zonas, medición); sus fotos, en cambio, **se añaden** a las tuyas, sin borrar ninguna. Una vista previa muestra lo que contiene; justo antes se toma una copia de tu sesión actual. **Importar** para validar, **Cancelar** para no cambiar nada.
 - **Archivo GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): sus puntos y trazados **se añaden** a tu sesión. El mapa debe estar georreferenciado. Una vista previa precede a la adición, y **Ctrl+Z** la deshace.
@@ -1681,7 +1681,7 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
 
 ### 📊 Editor de datos del mapa
 
-**⬇️ → 📊 Editor de datos del mapa** en el mapa, o **📊 Editor de datos** en la pantalla de inicio, abre una tabla para **ver, modificar y exportar** los puntos, trazados, zonas y estructuras de un mapa.
+**⬆️ Exportar → 📊 Editor de datos del mapa** (sección 💾 Sesión) en el mapa, o **📊 Editor de datos** en la pantalla de inicio, abre una tabla para **ver, modificar y exportar** los puntos, trazados, zonas y estructuras de un mapa.
 
 #### 📂 Abrir
 
