@@ -747,7 +747,7 @@ Las uniones 🪜 se borran como los demás trazados.
 
 **Un objeto concreto**: su ventana tiene un botón **🗑️ Eliminar**; para un punto, es **🗑️ Eliminar este punto**. Sin ventana de confirmación: todo se deshace con ⏪ (`Ctrl+Z`).
 
-**Todo el mapa**: cuando vuelves a abrir un mapa, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro mapa** (portales) se conservan: para quitar uno, elimina el propio punto.
+**Todo el mapa**: cuando vuelves a abrir un mapa, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro mapa** (portales) se conservan: para quitar uno, elimina el propio punto. En un **mapa compartido con tu organización**, la ventana te hace elegir: **Vaciar este dispositivo** (todo lo que está en el servidor vuelve en la siguiente sincronización) o, según tus derechos, **Eliminar mis añadidos para toda la organización** o **Eliminarlo todo para la organización** (número de objetos anunciado antes; estas dos no se deshacen para los demás).
 
 > ℹ️ Solo se borran **tus** objetos. Los del mapa o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde ≡ **Filtros** y exporta después la capa corregida.
 

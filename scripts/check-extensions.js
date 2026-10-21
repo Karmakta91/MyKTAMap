@@ -1263,6 +1263,69 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /window\.ktaConfirm\(window\.I18n\.t\("tabledit\.save\.partage\.confirmObjets"/.test(TE));
   }
 
+  // ── 6 octies. EFFACER LA SESSION SUR UN PLAN PARTAGÉ (prise effacerSession) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { type: "ext", extId: "p1" } : { type: "local" }) };
+    t("sans prise : null, SYNCHRONE (fenêtre de l'app seule)", K.effacementPartage("ext_p1") === null);
+    let appels = 0, rep = { miens: true, tout: false, auteur: "  alice  " };
+    K.register({ nom: "eff", apiVersion: 1, effacerSession(id) {
+      appels++;
+      if (rep === "panne") throw new Error("x");
+      if (rep === "rejet") return Promise.reject(new Error("y"));
+      return id === "p1" ? rep : null;
+    } });
+    t("plan local : null, la prise n'est même pas consultée", K.effacementPartage("local_1") === null && appels === 0);
+    const r1 = await K.effacementPartage("ext_p1");
+    t("plan partagé → { miens, tout, auteur } (auteur borné comme auteurObjet)",
+      r1.miens === true && r1.tout === false && r1.auteur === "alice");
+    rep = Promise.resolve({ miens: true, tout: true, auteur: "bob" });
+    const r2 = await K.effacementPartage("ext_p1");
+    t("réponse en promesse acceptée", r2.miens === true && r2.tout === true && r2.auteur === "bob");
+    rep = { miens: true, tout: "oui", auteur: "" };
+    const r3 = await K.effacementPartage("ext_p1");
+    t("🔒 non booléen refusé ; `miens` sans auteur refusé (rien ne dirait ce qui est à moi)",
+      r3.miens === false && r3.tout === false && r3.auteur === null);
+    const refus = (r) => !!r && r.miens === false && r.tout === false && r.auteur === null;
+    rep = "panne";
+    t("🔒 prise en erreur → plan partagé, vidage de l'appareil seul", refus(await K.effacementPartage("ext_p1")));
+    rep = "rejet";
+    t("🔒 promesse rejetée → vidage de l'appareil seul", refus(await K.effacementPartage("ext_p1")));
+    rep = 42;
+    t("🔒 forme inattendue → vidage de l'appareil seul", refus(await K.effacementPartage("ext_p1")));
+    rep = null;
+    t("prise qui rend null → plan non partagé (null synchrone)", K.effacementPartage("ext_p1") === null);
+    const EF = lire("js/ktaExtensions.js");
+    t("🔒 réponse qui n'arrive pas : bornée (DELAI_EFFACEMENT_MS), puis vidage de l'appareil seul",
+      /const DELAI_EFFACEMENT_MS = \d+;/.test(EF) && /setTimeout\(function \(\) \{ r\(refus\); \}, DELAI_EFFACEMENT_MS\)/.test(EF));
+
+    const SP = lire("js/sessionPersist.js"), UT = lire("js/utils.js");
+    const i = SP.indexOf("data-action=\"clear\"]').addEventListener");
+    const h = i < 0 ? "" : SP.slice(i, i + 4000);
+    t("câblage : la fenêtre lit la prise (plan affiché) et ne remplace la fenêtre de l'app que si elle répond",
+      /K\.effacementPartage\(window\._currentLoadedPlanId\)/.test(SP) &&
+      h.indexOf("if (partage) { _choisirEffacementPartage(partage, msg, calques, go, this); return; }") > 0);
+    const ch = SP.slice(SP.indexOf("function _choisirEffacementPartage("), SP.indexOf("// ── Modale « session restaurée »"));
+    t("câblage : « Vider cet appareil » toujours proposé ; « mes ajouts » si `miens`, « tout » si `tout`",
+      /const options = \[\{ valeur: "appareil"/.test(ch) && /if \(droits\.miens\) \{\s*\n\s*options\.push\(\{ valeur: "miens"/.test(ch) &&
+      /if \(droits\.tout\) \{\s*\n\s*options\.push\(\{ valeur: "tout"/.test(ch));
+    t("câblage : la case « Rendre aussi les calques à l'équipe » reste, dans la même fenêtre",
+      /opts\.caseACocher = \{ label: _t\("session\.btn\.clearEquipe"\)/.test(ch) && /go\(rendre, null\)/.test(ch));
+    t("🔒 câblage : suppression pour tous → prise RELUE au clic, refus nommé, puis ktaConfirm chiffrée",
+      /Promise\.resolve\(_effacementPartage\(\)\)\.then\(function\(d2\)/.test(ch) &&
+      /if \(!d2 \|\| !\(tout \? d2\.tout : d2\.miens\)\)/.test(ch) && /"session\.partage\.confirmMiens", \{ n: cibles\.length \}/.test(ch) &&
+      /\.then\(function\(ok2\) \{ if \(ok2\) go\(rendre, cibles\); \}\)/.test(ch));
+    t("🔒 câblage : jamais de trace pour une copie de calque, l'itinéraire ou un portail ; « mes ajouts » = auteurObjet",
+      /o\._srcCalque !== undefined/.test(SP) && /KtaUid\.estTransitoire\(o\)\) \|\| \(g === "getEditorPoints" && _estPortail\(o\)\)/.test(SP) &&
+      /a\.createur !== auteur/.test(SP));
+    t("🩸 câblage : traces posées APRÈS le vidage (qui les efface), anciennes gardées, datées après l'objet",
+      h.indexOf("_viderEtatCourant()") > 0 && h.indexOf("_viderEtatCourant()") < h.indexOf("_tracerEffacement(avant, cibles)") &&
+      /U\.setTombstones\(avant\);/.test(SP) && /U\.tombstone\(c\.uid, Math\.max\(now, c\.updatedAt \+ 1\)\)/.test(SP) &&
+      /if \(supprimes\) save\(\{ force: true \}\);/.test(h));
+    t("ktaConfirm : opts.choix = boutons radio posés par le DOM (textContent), choix relu dans opts.choix.valeur",
+      /titre\.textContent = o\.titre \|\| "";/.test(UT) && /opts\.choix\.valeur = o \? o\.valeur : null;/.test(UT));
+  }
+
   // ── 7. CÂBLAGE (fichiers réels) ──────
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),
