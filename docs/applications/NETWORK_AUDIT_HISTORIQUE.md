@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.19.0 (mise à jour du plan, Éditeur de données appliqué à la session, recalage)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Le recalage sur un autre scan, l'assistant « Mettre à jour le plan » et l'Éditeur de données travaillent sur l'appareil. Les nouvelles prises (plan prêt avant toute synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan) sont sans effet sans installation reliée : rien ne part de myktamap.fr. Sur une installation reliée, les échanges passent par son serveur, comme avant.
+
 ### v2.18.0 (calques et export à plusieurs comptes)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Les nouvelles prises (export limité à ses ajouts, tuiles d'outils, événements du Carnet, recalage et restitution des calques) sont locales : sans installation reliée, rien ne part. Sur une installation reliée, la restitution d'un calque voyage avec la synchro déjà existante, vers le serveur de cette installation seulement.

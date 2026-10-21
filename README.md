@@ -16,20 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.18.0` (18/10/2026)
+## 📦 Version courante — `v2.19.0` (21/10/2026)
 
-> 🤝 **v2.18.0 — Niveau d'un objet, calques à plusieurs, nouvel écran de démarrage, charte en jetons** : ✨ écran de démarrage « la galerie qui se dessine » (tracé par un worker, fermé quand l'accueil est affiché) ; 🎨 charte en jetons `--kta-*` (contrastes AA, bouton principal bleu), toasts empilés avec un type succès, finitions d'interface (audit Impeccable du 20/10, clôturé) ; 🏗️ le niveau d'un objet de session se change depuis sa fiche (plan multi-niveau, ⏪ annule) ; sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage, « ➕ Intégrer des ajouts », « Effacer la session » qui propose de rendre les calques, export limité à ses ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste et événements du Carnet ; correctifs Repositionner, fiches enchaînées, Mes photos. Sans extension, rien ne change hors du niveau d'un objet et des correctifs.
-
-## 📑 Sommaire
-
-1. [🧭 Introduction](#-introduction)
-2. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalités-principales)
-3. [🏗️ Structure du projet](#%EF%B8%8F-structure-du-projet)
-4. [📦 Modules JS — référentiel (112 modules)](#-modules-js--référentiel-112-modules)
-5. [📚 Documentation d'architecture](#-documentation-darchitecture)
-6. [⚙️ Développement, conventions & release](#-développement-conventions--release)
-7. [📋 Journal des versions](#-journal-des-versions)
-8. [📄 Licence](#-licence)
+> 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
 
 ---
 
@@ -454,6 +443,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.19.0 (21/10/2026) — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan (branche `Karma_dev`)
+
+- **🔄 Mettre à jour le plan** (`js/majPlan.js`) : tuile dans ⬆️ Exporter (section 🗺️ Plan) et raccourci en tête des calques. Les calques en modification remplacent leur fichier ; les objets dessinés sont rangés par groupe (calque existant, nouveau calque ou laissés en session) ; le Générateur s'ouvre en mode Modifier déjà rempli ; plan local : télécharger ou remplacer dans l'app ; plan d'une extension : nouvelle version par la prise neutre `publierVersion`. Ensuite : rendre les calques et retirer de la session les objets versés. Corrige au passage une règle CSS des Filtres restée ouverte depuis l'extraction de `style-filtres.css`.
+- **📊 Éditeur de données** : « ✏️ Appliquer à la session en cours » pour les points, tracés, zones et structures (`KtaConvertir.appliquerTableau`) ; seules les cellules modifiées s'appliquent, une ligne supprimée depuis l'export n'est pas ressuscitée, une seule entrée ⏪ ; colonne Niveau toujours présente sur un plan multi-niveau (liste des niveaux du plan) ; type inconnu refusé. Sur un plan partagé : retirer des lignes demande le droit « gérer » et une confirmation. Le Tableur s'ouvre désormais depuis ⬆️ Exporter (section 💾 Session).
+- **🔁 Recaler des données sur un autre scan** (`js/recalageScan.js`, remplace « Convertir la résolution ») : correspondance par identifiants communs puis par noms, moindres carrés et rejet des aberrants, qualité annoncée ; repères cliqués avec mauvais clic signalé ; aperçu sur la carte ; le mode « résolutions » seulement en dernier recours, bloqué si les proportions diffèrent.
+- **⬇️ Charger / Import** ouvre directement le sélecteur de fichier (session ou GPX) ; **📊 Détails de la session** : sections repliables au-delà de 8 lignes.
+- **Prises neutres** (sans effet sans extension, `community-server-line.md` §3) : `planCharge` / `planPret` (aucune synchro tant que le plan n'est pas chargé), `liaisons` et `InterPlanLinks.appliquerExterne`, `importSession` (import de session sur un plan partagé : « Ajouter » ou « Remplacer pour toute l'organisation »), `publierVersion`.
+- **Corrigés** : objet retrouvé par `uid` quand sa référence est périmée (suppression, conversion, niveau) ; Vue OSM, tuiles de plusieurs niveaux superposées après 🖼️ Plan recoché ; clés `home.profile.greeting` / `home.splash.ethos` gardées pour les pages en cache (« GREETING » brut au premier lancement).
 
 #### v2.18.0 (18/10/2026) — Niveau d'un objet, calques à plusieurs, nouvel écran de démarrage, charte en jetons (branche `Karma_dev`)
 
