@@ -1167,6 +1167,17 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     await registerAsset(logicalPath, matched);
   }));
 
+  // Icônes personnalisées du plan (`icons`, chemins `icon/…` du ZIP) : enregistrées comme les autres fichiers,
+  // sinon le plan les cherche à la racine du site (404) et chaque marqueur retombe sur l'icône de l'app.
+  // 🩸 Une icône de l'app (pas dans le ZIP) n'est pas un fichier manquant : aucun avertissement.
+  const iconesPlan = (rawConfig.icons && typeof rawConfig.icons === "object") ? rawConfig.icons : {};
+  await Promise.all([...new Set(Object.values(iconesPlan).filter(function(v) {
+    return typeof v === "string" && v && !/^(data:|blob:|https?:)/.test(v);
+  }).map(normalizePath))].map(async function(chemin) {
+    const f = findMatchingFile(chemin, files);
+    if (f && !window.RUNTIME_ASSETS[chemin]) await registerAsset(chemin, f);
+  }));
+
   // Tiling V2 : tuiles `data/tiles/z<N>/*` (.jpg, .webp ou .png : le format vit dans `tiling.format`).
   // Enregistrement LAZY (1000+ tuiles possibles) : blob URL créée au rendu (tiling.js > _chargerImageTuileV2).
   if (rawConfig.plan?.tiledV2 === true || rawConfig.tiling) {

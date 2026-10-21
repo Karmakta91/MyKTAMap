@@ -302,6 +302,12 @@ function cloneAndResolvePlanConfig(rawConfig) {
     resolved.dataLayers = resolved.dataLayers.map(function(l) {
       return { ...l, file: getRuntimeAssetUrl(l.file) || l.file };
     });
+  // Icônes embarquées dans le ZIP (main.js les enregistre) → blob URL ; une icône de l'app garde son chemin.
+  if (resolved.icons && typeof resolved.icons === "object")
+    Object.keys(resolved.icons).forEach(function(tag) {
+      const v = resolved.icons[tag];
+      if (typeof v === "string" && v) resolved.icons[tag] = getRuntimeAssetUrl(v) || v;
+    });
   return resolved;
 }
 
