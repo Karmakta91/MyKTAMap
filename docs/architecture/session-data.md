@@ -1718,7 +1718,7 @@ sont restitués et les objets dessinés à la main versés dans le plan quittent
 
 Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement ; `_srcCalqueAjout` sur un ajout intégré). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
 
-**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 166 assertions, le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris.
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris. Il tient aussi le contrat de `convertirObjet.js` envers les points : jamais convertis, et appliqués par le Tableur seulement par l'accès que l'appelant fournit (`appliquerTableau`, `opts.acces`), en place (`_srcCalque` survit).
 
 ---
 

@@ -77,10 +77,6 @@
   l'utilisateur prévenu que les autres plans ont la leur ; légende en lecture seule depuis l'OSM (pas de modification).
   `qui: Claude · action: QCM rapide puis bouton Légende dans la barre des deux cartes OSM (légende du plan principal)
   · fini: légende du plan ouverte depuis les deux cartes OSM · depuis: 22/10/2026 · taille: S`
-- **Garde-fou `check-calque-session.js` contourné** — il interdit à `convertirObjet.js` de nommer les points de
-  session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
-  `qui: Claude · action: dire précisément ce qui est permis (accès fourni par l'appelant) et le vérifier
-  · fini: garde-fou qui décrit l'état actuel, sans contournement · depuis: 21/10/2026 · taille: XS`
 - **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair

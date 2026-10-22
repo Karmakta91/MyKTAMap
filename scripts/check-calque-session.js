@@ -245,8 +245,37 @@ const CALQUE = {
     const ED = fs.readFileSync("js/editor.js", "utf8");
     t("🩸 POI : la fiche MUTE le point, elle ne le reconstruit pas",
       /existingPoint\.nom\s*=/.test(ED) && /existingPoint\.tags\s*=/.test(ED));
-    t("POI : « Convertir » ne pretend PAS gerer les points",
-      fs.readFileSync("js/convertirObjet.js", "utf8").indexOf("editorPoints") < 0);
+
+    // ⚠️ Contrat de `convertirObjet.js` envers les points : « Convertir » (fiche et lot) ne gère que les trois
+    // familles de vecteurs ; le Tableur peut lui faire appliquer un tableau de POI, mais par la liste que
+    // L'APPELANT fournit (`appliquerTableau(…, { acces: { lire, ecrire, categorie } })`), jamais en allant la
+    // chercher lui-même. Et cette écriture mute le point en place : `_srcCalque` survit.
+    const CVSRC = fs.readFileSync("js/convertirObjet.js", "utf8");
+    t("POI : le module n'atteint pas lui-même la liste des points (ni getEditorPoints ni setEditorPoints)",
+      !/[gs]etEditorPoints/.test(CVSRC));
+    // Point du calque avec uid : le Tableur applique par uid (un point sans uid serait un AJOUT).
+    const m = monter(Object.assign({}, CALQUE, { data: [{ uid: "pt_cal00009", x: 10, y: 20, tags: ["pa"] }] }));
+    m.ctx.HistoryManager = { captureState: () => null, pushState() {}, record() {} };
+    m.ctx.ktaResolveStyle = () => ({});
+    vm.runInContext(CVSRC, m.ctx, { filename: "convertirObjet.js" });
+    await m.CS.rapatrier("sig");
+    const CV = m.ctx.KtaConvertir;
+    const pt = m.etat.editorPoints[0];
+    t("POI : « Convertir » refuse un point (fiche)",
+      CV.convertir("editorPoints", pt, "roads", "secondaire") === false && m.etat.editorPoints[0] === pt);
+    const lot = CV.convertirLot([{ famille: "editorPoints", obj: pt }], "roads", "secondaire");
+    t("POI : « Convertir » refuse un point (lot : compté en échec)", lot.convertis === 0 && lot.echecs === 1);
+    t("POI : sans accès fourni, un tableau de points n'est pas appliqué",
+      CV.appliquerTableau("editorPoints", [{ uid: pt.uid, nom: "x" }]) === null);
+    const acces = { lire: m.ctx.getEditorPoints, ecrire: m.ctx.setEditorPoints, categorie: "editorPoints" };
+    const ligne = Object.assign({}, pt, { nom: "Renomme au Tableur" });
+    delete ligne._srcCalque;
+    const bt = CV.appliquerTableau("editorPoints", [ligne], { acces: acces });
+    const apres = m.etat.editorPoints[0];
+    t("POI : avec l'accès de l'appelant, la cellule modifiée s'applique",
+      !!bt && bt.modifies === 1 && apres && apres.nom === "Renomme au Tableur");
+    t("🩸 POI : le point est muté EN PLACE et garde `_srcCalque` (sinon doublon à la restitution)",
+      apres === pt && apres._srcCalque === "sig");
 
     // 🩸 Le Tableau repose tous les points en session : une copie par liste de champs effacerait
     // `_srcCalque` sur TOUTE la table d'un coup.
