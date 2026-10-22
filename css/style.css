@@ -3919,6 +3919,26 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   line-height: 1.3;
 }
 
+/* Légende en lecture seule (cartes OSM) : bandeau hors du corps, qui se répartit en colonnes sur PC. */
+.kta-legende-lecture-tete {
+  padding: 8px 16px 0;
+}
+.kta-legende-lecture-tete p {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.kta-legende-avertissement {
+  padding: 6px 10px;
+  border: 1px solid var(--kta-accent-bord);
+  background: var(--kta-accent-fond);
+  border-radius: 6px;
+  color: var(--kta-texte);
+}
+.kta-legende-note {
+  color: var(--kta-texte-3);
+}
+
 
 /* ── Convertisseur JSON ── */
 

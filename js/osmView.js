@@ -1416,6 +1416,10 @@
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
             _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">🎯</button>' +
+          // légende du plan en cours, en lecture seule (interfaceLegende.js > ktaLegendeLectureSeule)
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-legende" ' +
+            'style="font-size:12px; padding:5px 10px;" title="' +
+            _escapeHtml(window.I18n.t("osm.legende.btnTitle")) + '">' + window.I18n.t("osm.legende.btn") + '</button>' +
           // « Cacher pour hors ligne » : tuiles visibles + zoom ±1 en IDB. Cache GLOBAL (myktamap_osm_tiles, z/x/y)
           // partagé avec la Vue OSM du HOME et le Mode Secours.
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-cache-btn" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.cache.btn.title")) + '">' + window.I18n.t("osm.cache.btn") + '</button>' +
@@ -1489,6 +1493,10 @@
       _applyOpacity();
     });
     overlay.querySelector("#kta-osm-center").addEventListener("click", _centerOnPlan);
+    // ⚠️ Lecture seule (décision produit) : la légende se modifie depuis le plan, jamais depuis l'OSM.
+    overlay.querySelector("#kta-osm-legende").addEventListener("click", function() {
+      if (typeof window.ktaLegendeLectureSeule === "function") window.ktaLegendeLectureSeule();
+    });
     const cacheBtn = overlay.querySelector("#kta-osm-cache-btn");
     if (cacheBtn) {
       cacheBtn.addEventListener("click", function() { _runCacheOsmTiles(cacheBtn); });

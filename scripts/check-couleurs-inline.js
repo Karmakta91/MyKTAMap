@@ -22,7 +22,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const PLAFOND = 8;
+const PLAFOND = 7;
 
 const HEX = /(?<![&\w])#[0-9a-fA-F]{3,8}(?![0-9a-zA-Z_-])/g;
 

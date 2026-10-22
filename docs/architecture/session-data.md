@@ -769,7 +769,7 @@ API publique : `getLabel / isVisible / getSource / listEntries / listCustomEntri
 
 **Persistance** : champ `customLegend` ajouté au payload `SessionPersist`. `_isEmptyState` modifié pour ne pas purger si SEULE la légende est customisée.
 
-**UI éditeur** : panel inline dans modale Export PNG (`exporter.js > _peuplerLegendCustom`) + bouton ✏️ **Modifier** dans fenêtre 🗺️ Légende (`interface.js > afficherLegende`) qui ouvre `LC.ouvrirEditeur({onChange, onClose})` — modale standalone z-index 100050. Au `onChange`, refresh in-place via `_construireContenuLegende()`.
+**UI éditeur** : panel inline dans modale Export PNG (`exporter.js > _peuplerLegendCustom`) + bouton ✏️ **Modifier** dans fenêtre 🗺️ Légende (`interfaceLegende.js > afficherLegende`) qui ouvre `LC.ouvrirEditeur({onChange, onClose})` — modale standalone z-index 100050. Au `onChange`, refresh in-place du corps (constructeur unique `_ktaLegendeCorps`). Les deux cartes OSM ouvrent la même légende **en lecture seule** (`window.ktaLegendeLectureSeule`, sans ✏️ Modifier ni « ➕ Lier ») ; pour un plan non chargé, `LC.lireAvecEtats(session, plan, fn)` substitue ses deux états le temps du rendu (cf `vue-osm.md`).
 
 **Popup titres résolus via LC** dans road.js / zones.js / structures.js / utils.js (data layer) — helper inline `_xxxPopupTitle(t)` qui distingue custom (`✨ + label`) vs built-in (emoji + LC.getLabel cascade-respectant). Fallback legacy hardcodé si LC indisponible.
 
