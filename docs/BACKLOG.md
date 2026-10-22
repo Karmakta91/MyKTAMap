@@ -59,8 +59,9 @@
 ## Ensuite
 
 - **Vue OSM : pas d'accès à la légende du plan** — ni la Vue OSM ouverte depuis un plan ni la carte OSM de l'accueil
-  n'ouvrent la ≡ Légende (types de tracés, zones, structures, icônes du plan, légende personnalisée comprise).
-  `qui: Claude · action: bouton Légende dans la barre des deux cartes OSM, même fenêtre que le mode plan (plan affiché)
+  n'ouvrent la ≡ Légende. Accueil à plusieurs plans (légendes différentes) : piste KARMA = légende du plan principal,
+  l'utilisateur prévenu que les autres plans ont la leur ; légende en lecture seule depuis l'OSM (pas de modification).
+  `qui: Claude · action: QCM rapide puis bouton Légende dans la barre des deux cartes OSM (légende du plan principal)
   · fini: légende du plan ouverte depuis les deux cartes OSM · depuis: 22/10/2026 · taille: S`
 - **Garde-fou `check-calque-session.js` contourné** — il interdit à `convertirObjet.js` de nommer les points de
   session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
