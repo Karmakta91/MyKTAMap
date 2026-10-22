@@ -191,13 +191,18 @@
                        ? (info.sha256.slice(0, 12) + "…" + info.sha256.slice(-8))
                        : t("denylist.hashUnavailable");
 
-    // Rouge danger fort dans les deux thèmes ; seuls les fonds suivent la charte.
+    // Palette propre d'alarme, hors charte et déclinée par thème (décision produit) : le rouge danger reste
+    // fort dans les deux thèmes, la charte n'a pas de rouge de fond.
     const isLight = _isLightTheme();
     const pal = isLight ? {
       backdrop: "rgba(60,30,30,0.55)",
       boxBg:    "linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%)",
       txMain:   "#3a1010",
-      txMuted:  "#7a4040",
+      titre:    "#b71c1c",
+      sousTitre: "#a04040",
+      motif:    "#b71c1c",
+      corps:    "#3a1010",
+      date:     "#6a4040",
       reasonBg: "rgba(211,47,47,0.08)",
       techCol:  "#8a5050",
       monoCol:  "#5a4f40"
@@ -205,11 +210,19 @@
       backdrop: "rgba(15,5,5,0.92)",
       boxBg:    "linear-gradient(135deg, #2b0f0f 0%, #1a0808 100%)",
       txMain:   "#fff",
-      txMuted:  "#ffd0d0",
+      titre:    "#ffb4b4",
+      sousTitre: "#e8a0a0",
+      motif:    "#ffd0d0",
+      corps:    "#fff5f5",
+      date:     "#c0b0b0",
       reasonBg: "rgba(0,0,0,0.35)",
       techCol:  "#a09595",
       monoCol:  "#9fa9bb"
     };
+    pal.bord = "#d32f2f";
+    pal.btnFond = "#d32f2f";
+    pal.btnTexte = "#fff";
+    pal.btnSurvol = "#b71c1c";
 
     const overlay = document.createElement("div");
     overlay.id = "kta-denylist-modal";
@@ -224,7 +237,7 @@
     box.style.cssText = [
       "max-width:560px", "width:100%", "padding:28px 32px",
       "background:" + pal.boxBg,
-      "border:2px solid #d32f2f", "border-radius:14px",
+      "border:2px solid " + pal.bord, "border-radius:14px",
       "box-shadow:0 0 60px rgba(211,47,47,0.55), 0 8px 32px rgba(0,0,0,0.6)",
       "color:" + pal.txMain, "font-family:system-ui,-apple-system,sans-serif",
       "animation:kta-denylist-pulse 2s ease-in-out infinite"
@@ -235,27 +248,27 @@
     head.innerHTML =
       '<div style="font-size:42px;line-height:1;flex:0 0 auto;">⛔</div>' +
       '<div>' +
-        '<div style="font-size:20px;font-weight:700;color:' + (isLight ? "#b71c1c" : "#ffb4b4") + ';letter-spacing:0.3px;">' + t("denylist.modal.titre") + '</div>' +
-        '<div style="font-size:12px;color:' + (isLight ? "#a04040" : "#e8a0a0") + ';margin-top:2px;">' + t("denylist.modal.soustitre") + '</div>' +
+        '<div style="font-size:20px;font-weight:700;color:' + pal.titre + ';letter-spacing:0.3px;">' + t("denylist.modal.titre") + '</div>' +
+        '<div style="font-size:12px;color:' + pal.sousTitre + ';margin-top:2px;">' + t("denylist.modal.soustitre") + '</div>' +
       '</div>';
     box.appendChild(head);
 
     const body = document.createElement("div");
     body.style.cssText = [
       "margin:14px 0", "padding:14px 16px",
-      "background:" + pal.reasonBg, "border-left:3px solid #d32f2f",
+      "background:" + pal.reasonBg, "border-left:3px solid " + pal.bord,
       "border-radius:6px", "font-size:14px", "line-height:1.5",
-      "color:" + (isLight ? "#3a1010" : "#fff5f5")
+      "color:" + pal.corps
     ].join(";");
     body.innerHTML =
-      '<div style="font-weight:600;color:' + (isLight ? "#b71c1c" : "#ffd0d0") + ';margin-bottom:6px;">' + t("denylist.motifLabel") + '</div>' +
+      '<div style="font-weight:600;color:' + pal.motif + ';margin-bottom:6px;">' + t("denylist.motifLabel") + '</div>' +
       '<div>' + _escapeHtml(reasonText) + '</div>';
     box.appendChild(body);
 
     const tech = document.createElement("div");
     tech.style.cssText = "font-size:11px;color:" + pal.techCol + ";margin:12px 0 18px;line-height:1.6;";
     tech.innerHTML =
-      t("denylist.addedAt") + ' <strong style="color:' + (isLight ? "#6a4040" : "#c0b0b0") + ';">' + _escapeHtml(addedAtStr) + '</strong><br>' +
+      t("denylist.addedAt") + ' <strong style="color:' + pal.date + ';">' + _escapeHtml(addedAtStr) + '</strong><br>' +
       t("denylist.fingerprint") + ' <code style="font-family:monospace;color:' + pal.monoCol + ';font-size:11px;">' + _escapeHtml(sha256Short) + '</code>';
     box.appendChild(tech);
 
@@ -264,12 +277,12 @@
     const btn = document.createElement("button");
     btn.textContent = t("denylist.btnDelete");
     btn.style.cssText = [
-      "padding:10px 22px", "background:#d32f2f", "color:#fff",
+      "padding:10px 22px", "background:" + pal.btnFond, "color:" + pal.btnTexte,
       "border:none", "border-radius:8px", "font-size:14px", "font-weight:600",
       "cursor:pointer", "transition:background 0.15s"
     ].join(";");
-    btn.addEventListener("mouseenter", function() { btn.style.background = "#b71c1c"; });
-    btn.addEventListener("mouseleave", function() { btn.style.background = "#d32f2f"; });
+    btn.addEventListener("mouseenter", function() { btn.style.background = pal.btnSurvol; });
+    btn.addEventListener("mouseleave", function() { btn.style.background = pal.btnFond; });
     btn.addEventListener("click", async function() {
       if (planId && window.PlanRegistry) {
         try {
@@ -448,6 +461,7 @@
     const existing = document.getElementById("kta-denylist-purged-modal");
     if (existing) existing.remove();
 
+    // Même logique que showDeniedModal, en ambre : palette propre hors charte (décision produit).
     const isLightP = _isLightTheme();
     const pp = isLightP ? {
       backdrop: "rgba(60,45,15,0.45)",
@@ -472,6 +486,10 @@
       itemDesc: "#e8dcc0",
       itemMono: "#a09580"
     };
+    pp.bord = "#e9a13b";
+    pp.btnFond = "#e9a13b";
+    pp.btnTexte = "#1a1505";
+    pp.btnSurvol = "#d18920";
 
     const overlay = document.createElement("div");
     overlay.id = "kta-denylist-purged-modal";
@@ -487,7 +505,7 @@
       "max-width:560px", "width:100%", "max-height:80vh", "overflow-y:auto",
       "padding:24px 28px",
       "background:" + pp.boxBg,
-      "border:2px solid #e9a13b", "border-radius:14px",
+      "border:2px solid " + pp.bord, "border-radius:14px",
       "box-shadow:0 0 50px rgba(233,161,59,0.45), 0 8px 32px rgba(0,0,0,0.6)",
       "color:" + pp.txMain, "font-family:system-ui,-apple-system,sans-serif"
     ].join(";");
@@ -514,7 +532,7 @@
     list.style.cssText = "list-style:none;padding:0;margin:0 0 16px;";
     for (const p of purgedList) {
       const li = document.createElement("li");
-      li.style.cssText = "margin:0 0 10px;padding:10px 14px;background:" + pp.itemBg + ";border-left:3px solid #e9a13b;border-radius:6px;";
+      li.style.cssText = "margin:0 0 10px;padding:10px 14px;background:" + pp.itemBg + ";border-left:3px solid " + pp.bord + ";border-radius:6px;";
       const shaShort = p.sha256 ? (p.sha256.slice(0, 12) + "…" + p.sha256.slice(-8)) : t("denylist.purged.hashNA");
       const purgedStr = p.purgedAt ? new Date(p.purgedAt).toLocaleString(locale) : "";
       li.innerHTML =
@@ -534,12 +552,12 @@
     const btn = document.createElement("button");
     btn.textContent = t("denylist.purged.btnOk");
     btn.style.cssText = [
-      "padding:10px 22px", "background:#e9a13b", "color:#1a1505",
+      "padding:10px 22px", "background:" + pp.btnFond, "color:" + pp.btnTexte,
       "border:none", "border-radius:8px", "font-size:14px", "font-weight:700",
       "cursor:pointer", "transition:background 0.15s"
     ].join(";");
-    btn.addEventListener("mouseenter", function() { btn.style.background = "#d18920"; });
-    btn.addEventListener("mouseleave", function() { btn.style.background = "#e9a13b"; });
+    btn.addEventListener("mouseenter", function() { btn.style.background = pp.btnSurvol; });
+    btn.addEventListener("mouseleave", function() { btn.style.background = pp.btnFond; });
     btn.addEventListener("click", function() {
       clearPurgedAtBoot();
       overlay.remove();
