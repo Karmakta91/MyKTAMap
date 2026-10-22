@@ -28,7 +28,7 @@
   --kta-erreur:         #ff8c8c;
   --kta-violet:         #a78bfa;
   --kta-magenta:        #ff4ecb;
-  --kta-tuilage-v2:     #b452ff;
+  --kta-tuilage-v2:     #bb5fff;   /* 4,84:1 sur la surface (texte du libellé V2) */
   --kta-info-fond:      rgba(140, 180, 255, 0.06);
   --kta-info-bord:      rgba(140, 180, 255, 0.18);
   --kta-info-bord-fort: rgba(140, 180, 255, 0.40);
@@ -12691,6 +12691,7 @@ body.kta-theme-light {
   --kta-erreur:         #a01818;
   --kta-violet:         #5b3fb0;
   --kta-magenta:        #a0147a;
+  --kta-tuilage-v2:     #7a1fd6;   /* 6,6:1 sur la surface claire */
   --kta-info-fond:      rgba(30, 95, 153, 0.08);
   --kta-info-bord:      rgba(30, 95, 153, 0.30);
   --kta-info-bord-fort: rgba(70, 110, 200, 0.50);

@@ -654,7 +654,7 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
 | `--kta-primaire` (+ `-survol`, `--kta-sur-primaire`) | fond du bouton d'action principale | `#1a5fd6` (`#2563eb`), texte blanc | idem |
 | `--kta-focus` | contour clavier | `#f4c542` | `#7a5a00` |
 | `--kta-ok` / `--kta-avert` / `--kta-erreur` | états | `#6ee287` / `#ffb380` / `#ff8c8c` | `#176530` / `#8b3a00` / `#a01818` |
-| `--kta-tuilage-v2` | violet du tuilage V2 (barres de progression, case et avertissement du Générateur) | `#b452ff` | idem |
+| `--kta-tuilage-v2` | violet du tuilage V2 (barres de progression, case et avertissement du Générateur) | `#bb5fff` | `#7a1fd6` |
 | `--kta-bordure` | séparateurs | blanc 8 % | `rgba(20,30,50,0.14)` |
 | `--kta-info-fond/-bord`, `--kta-accent-fond/-bord`, `--kta-ok-fond/-bord`, `--kta-erreur-fond/-bord` | encadrés teintés | | |
 
@@ -663,7 +663,8 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
   `docs/audits/2026-10-20_audit-ui-impeccable-v1.md`). Seul le splash reste hors contrat (lot à part).
   `--kta-sur-accent` : 10,1:1 sur `#f4c542`, 9,4:1 sur l'orange `#ffb380`. En clair, les boutons principaux
   dorés ou orange posés par le JS passent au bleu de `.kta-btn-primary` (règle claire prioritaire) : le jeton n'y
-  joue pas. Le violet du Mode Perdu (`lostMode.js`, indice dans la zone) a la même valeur mais n'est pas ce jeton.
+  joue pas (décision produit : bouton principal bleu). `--kta-tuilage-v2` : 4,84:1 en sombre, 6,6:1 en clair, sur
+  la surface (libellé de la case V2). Le violet du Mode Perdu (`lostMode.js`, indice dans la zone) a la même valeur mais n'est pas ce jeton.
 - **Bouton principal bleu dans les deux thèmes** (décision produit) : `.kta-btn-primary`, `#loadPlanBtn`, « J'accepte »
   des CGU. Le doré reste l'accent (titres, onglet actif, cases cochées).
 - **Lueurs (ombre colorée sans décalage, `0 0 Npx`) réservées à un état** : POI ou tracé en surbrillance,
