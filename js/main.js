@@ -860,9 +860,12 @@ window._etendreAvailableLevelsSiBesoin = function() {
 };
 
 // ── Libération du plan précédent ──────────────────────
-// Démontage unique avant rechargement (chargerPlanServeur, startImportedPlan) : sur iOS Safari chaque Mo retenu
-// compte.
-function _libererRessourcesPlanPrecedent() {
+// Démontage unique du plan affiché : avant un rechargement (chargerPlanServeur, startImportedPlan) et au retour à
+// l'accueil (afficherLoader). Sur iOS Safari chaque Mo retenu compte.
+// vers : "plan" (défaut, un autre plan suit) | "accueil" (rien ne suit : chaîne multi-plans et pile de retour
+// abandonnées, extension prévenue avec "accueil").
+function _libererRessourcesPlanPrecedent(vers) {
+  const versAccueil = vers === "accueil";
   // 🩸 FIGER LA PERSISTANCE EN PREMIER : save final (état intact) + arrêt du poll auto-save. Sinon un tick pendant
   // le chargement du nouveau plan sauve l'état mutilé (timeline tracker vidée plus bas, voire slot purgé) et le
   // tracker revient à la position initiale. Le poll ne redémarre qu'au onPlanLoaded du nouveau plan.
@@ -878,17 +881,12 @@ function _libererRessourcesPlanPrecedent() {
 
   // Installation reliée : panneau d'extension fermé, présences / itinéraires de l'ancien plan effacés.
   if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
-    try { window.KtaExtensions.quitterPlan("plan"); } catch(e) {}
+    try { window.KtaExtensions.quitterPlan(versAccueil ? "accueil" : "plan"); } catch(e) {}
   }
 
-  // Flottants de navigation purgés au changement direct de plan, sinon la pastille de retour survit avec une pile
-  // périmée. Les hooks distinguent goTo (pendingTarget posé : rien côté liaison, chaîne gardée côté route).
-  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
-    try { window.InterPlanLinks.onPlanExit("switch"); } catch(e) {}
-  }
-  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
-    try { window.InterPlanRoute.onPlanExit("switch"); } catch(e) {}
-  }
+  // Flottants de navigation purgés, sinon la pastille de retour survit avec une pile périmée. Au changement de
+  // plan, les hooks distinguent goTo (pendingTarget posé : rien côté liaison, chaîne gardée côté route).
+  _quitterNavigationInterPlans(versAccueil ? "home" : "switch");
 
   // Header + status bar retirés avant le démontage, sinon vieilles valeurs pendant le splash du nouveau plan.
   if (typeof window._refonteInterfacePreUnload === "function") {
@@ -918,6 +916,12 @@ function _libererRessourcesPlanPrecedent() {
   // Durée de session (Détails session) comptée depuis le chargement du plan.
   // Compromis voulu : comptée depuis le chargement, pas depuis le 1er ajout.
   window._sessionStartTs = null;
+
+  // 🩸 Suivi coupé AVANT le démontage : un pas compté à l'accueil ferait avancer le tracker d'une carte détruite
+  // (canvas de collision, marqueur) et écrirait dans la timeline vidée juste après.
+  if (typeof window.stopTracking === "function") {
+    try { window.stopTracking(); } catch(e) {}
+  }
 
   // Timeline tracker remise à zéro (RAM) ; TrackerReplay fermé pour ne pas garder la carte détruite.
   if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.fermer === "function") {
@@ -1408,27 +1412,43 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   await lancerApplication();
 }
 
+// Pile de retour et chaîne multi-plans : "home" les abandonne, "switch" les laisse à goTo.
+function _quitterNavigationInterPlans(contexte) {
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
+    try { window.InterPlanLinks.onPlanExit(contexte); } catch(e) {}
+  }
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
+    try { window.InterPlanRoute.onPlanExit(contexte); } catch(e) {}
+  }
+}
+
 // ── Retour à l'accueil (loader) ──────────────────────
+// ⚠️ Fermer un plan = le vider (décision produit) : tout retour à l'accueil passe ici et, si une carte existe, la
+// démonte comme un changement de plan (session enregistrée d'abord, puis tuiles, calques, canvas de collision,
+// carte). « Reprendre » recharge le plan et restaure sa session. Après ce retour : window.map = null,
+// PLAN_CONFIG = null, _currentLoadedPlanId garde le dernier plan (« Reprendre », carte OSM de l'accueil).
+// 🩸 La carte peut exister sans être affichée (ouverture ratée sous l'accueil) : le test porte sur L.Map, pas sur
+// ktaPlanAffiche().
 function afficherLoader() {
   // Mode « cliquer sur la carte » encore actif (floater, modale config masquée, handler) annulé.
   if (typeof window._ktaAnnulerModesClicCarte === "function") {
     try { window._ktaAnnulerModesClicCarte(); } catch(e) {}
   }
-  // 🩸 Flottants de navigation purgés, sinon ils restent par-dessus le HOME : pastille de retour, invite
-  // « Portail suivant », boussole, modale itinéraire cachée dans le DOM.
-  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
-    try { window.InterPlanLinks.onPlanExit("home"); } catch(e) {}
-  }
-  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
-    try { window.InterPlanRoute.onPlanExit("home"); } catch(e) {}
-  }
+  // 🩸 Flottants purgés, sinon ils restent par-dessus le HOME : boussole, modale itinéraire cachée dans le DOM
+  // (pastille de retour et invite « Portail suivant » : _quitterNavigationInterPlans).
   if (window.CompassWidget && typeof window.CompassWidget.hide === "function") {
     try { window.CompassWidget.hide(); } catch(e) {}
   }
   const itiFantome = document.getElementById("kta-itinerary-modal");
   if (itiFantome) { try { itiFantome.remove(); } catch(e) {} }
-  if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
-    try { window.KtaExtensions.quitterPlan("accueil"); } catch(e) {}
+  // ⚠️ `window.map` vaut le <div id="map"> (accès nommé) tant qu'aucune carte n'a été créée : tester L.Map.
+  if (window.L && window.map instanceof window.L.Map) {
+    _libererRessourcesPlanPrecedent("accueil");
+  } else {
+    _quitterNavigationInterPlans("home");
+    if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
+      try { window.KtaExtensions.quitterPlan("accueil"); } catch(e) {}
+    }
   }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
@@ -1462,17 +1482,13 @@ function afficherLoader() {
 }
 
 // ── Fermer le plan pour libérer la mémoire (avant un travail lourd) ──────────────────────
-// 🩸 Le retour à l'accueil (afficherLoader) MASQUE la carte sans la démonter : tuiles, calques, canvas de collision
-// restent en mémoire. Le tuilage V2 d'une grande image (createConf.js > _genererZip) a besoin de cette place : sous
-// pression mémoire, le navigateur rejette l'image source décodée et la redécode à chaque tuile. Ici, le démontage
-// complet d'un changement de plan, puis l'accueil. La session est enregistrée par ce démontage
-// (SessionPersist.onPlanUnload) et le plan reste en tête de « Reprendre ».
+// Le tuilage V2 d'une grande image (createConf.js > _genererZip) a besoin de la place d'un plan ouvert : sous
+// pression mémoire, le navigateur rejette l'image source décodée et la redécode à chaque tuile. C'est le retour à
+// l'accueil (afficherLoader démonte la carte) ; le plan reste en tête de « Reprendre ».
 // → { ferme, planId } ; ferme: false = aucune carte de plan en mémoire, rien n'est touché.
 function ktaFermerPlanPourMemoire() {
   const planId = window._currentLoadedPlanId || null;
-  // ⚠️ `window.map` vaut le <div id="map"> (accès nommé) tant qu'aucune carte n'a été créée : tester L.Map.
   if (!(window.L && window.map instanceof window.L.Map)) return { ferme: false, planId: planId };
-  _libererRessourcesPlanPrecedent();
   afficherLoader();
   console.log("[Main] Plan fermé pour libérer la mémoire :", planId);
   return { ferme: true, planId: planId };

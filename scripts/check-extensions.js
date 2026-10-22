@@ -676,8 +676,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     try { K.quitterPlan("accueil"); } catch (e) { sansErreur = false; }
     t("sortie de plan : présences remises à zéro, événement mktm:plan-ferme, sans erreur", sansErreur && reinit === 1 && evts === 1);
     const MA = lire("js/main.js");
-    t("…appelée au changement de plan ET au retour à l'accueil",
-      /KtaExtensions\.quitterPlan\("plan"\)/.test(MA) && /KtaExtensions\.quitterPlan\("accueil"\)/.test(MA));
+    // Retour à l'accueil avec une carte : le démontage prévient l'extension (« accueil »), afficherLoader ne le
+    // refait pas (un seul mktm:plan-ferme) ; sans carte, afficherLoader prévient lui-même.
+    t("…appelée UNE fois au changement de plan (« plan ») et au retour à l'accueil (« accueil »)",
+      /KtaExtensions\.quitterPlan\(versAccueil \? "accueil" : "plan"\)/.test(MA) &&
+      /window\.map instanceof window\.L\.Map\) \{\s+_libererRessourcesPlanPrecedent\("accueil"\);\s+\} else \{\s+_quitterNavigationInterPlans\("home"\);\s+if \(window\.KtaExtensions[^\n]*\n\s+try \{ window\.KtaExtensions\.quitterPlan\("accueil"\)/.test(MA) &&
+      (MA.match(/KtaExtensions\.quitterPlan\(/g) || []).length === 2);
   }
 
   // ── 6 bis quater. AUTEUR D'UN OBJET (filtre « Créé par » de l'export) ──────

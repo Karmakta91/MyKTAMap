@@ -121,9 +121,9 @@ function formatDistance(distM, decimalsM) {
 window.formatDistance = formatDistance;
 
 // ── Un plan est-il affiché ? (source de vérité unique) ──────────
-// 🩸 `PLAN_CONFIG.plan` ne suffit pas : afficherLoader() (retour HOME) ne remet pas PLAN_CONFIG à null, il
-// masque #map et pose body.kta-loader-active. Le marqueur fiable est cette classe (posée par afficherLoader,
-// retirée par homeLoader) ; PLAN_CONFIG reste en complément pour le boot (classe pas encore posée).
+// 🩸 `PLAN_CONFIG.plan` ne suffit pas : un plan se charge SOUS l'accueil (PLAN_CONFIG rempli, loader encore
+// visible). Le marqueur fiable est body.kta-loader-active (posée par afficherLoader, qui démonte aussi le plan
+// ouvert ; retirée par homeLoader) ; PLAN_CONFIG reste en complément pour le boot (classe pas encore posée).
 function ktaPlanAffiche() {
   try {
     if (document.body && document.body.classList.contains("kta-loader-active")) return false;
