@@ -466,15 +466,14 @@
     return true;
   }
 
-  // Modes plein écran qui veulent une vue DROITE (Secours, présentation, Perdu, replay, urgence).
+  // Modes plein écran qui veulent une vue DROITE (Secours, Perdu, replay, urgence). La présentation n'en est pas :
+  // elle garde la carte et la boussole, la vue y tourne pendant le suivi (décision produit).
   // 🩸 On LIT leur état au lieu de leur faire appeler suspend()/resume() : chacun a ses retours anticipés
   // et fermetures défensives, un couple suspend/resume s'y déséquilibre au premier chemin oublié — et une
   // suspension jamais levée est invisible (la carte cesse de tourner sans message).
   function _modePleinEcranActif() {
     try {
       if (window.LostMode && window.LostMode.isActive && window.LostMode.isActive()) return true;
-      if (window.PresentationMode && window.PresentationMode.isActive &&
-          window.PresentationMode.isActive()) return true;
       if (window.SecoursMode && window.SecoursMode.isOpen && window.SecoursMode.isOpen()) return true;
       if (window.EmergencyMode && window.EmergencyMode.isActif && window.EmergencyMode.isActif()) return true;
       // Replay : pas d'API d'état, mais sa modale porte un id stable.

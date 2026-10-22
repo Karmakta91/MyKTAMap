@@ -1014,9 +1014,9 @@ doit donc aussi être prévenu là : `initTracking` appelle `MapBearing.onTracki
 
 #### Frontières : on LIT l'état des autres modes
 
-Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte » est armé (`_modeClicCarteActif()` — dessin, mesure, recalage, pickers), ou un mode plein écran est ouvert (Mode perdu, Présentation, Secours, Urgence, Replay).
+Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte » est armé (`_modeClicCarteActif()` — dessin, mesure, recalage, pickers), ou un mode plein écran est ouvert (Mode perdu, Secours, Urgence, Replay). Le mode Présentation n'en fait pas partie : il garde la carte et la boussole, la vue y tourne pendant le suivi (décision produit).
 
-🩸 Ces modes ne sont **pas** appelés à faire `suspend()`/`resume()` : chacun a ses retours anticipés et ses fermetures défensives (Secours appelle `fermer()` au début d'`ouvrir()`, Replay abandonne si la timeline fait moins de 2 points, Présentation sort si déjà active). Un couple suspend/resume posé là-dedans se déséquilibre au premier chemin oublié — et **une suspension jamais levée est invisible** : la carte cesse simplement de tourner, sans message. `MapBearing._modePleinEcranActif()` lit donc leur état, ce qui ne peut pas dériver. `suspend(raison)`/`resume(raison)` restent exposés pour un futur appelant sans état lisible, indexés **par raison** (et non par compteur) pour la même raison.
+🩸 Ces modes ne sont **pas** appelés à faire `suspend()`/`resume()` : chacun a ses retours anticipés et ses fermetures défensives (Secours appelle `fermer()` au début d'`ouvrir()`, Replay abandonne si la timeline fait moins de 2 points). Un couple suspend/resume posé là-dedans se déséquilibre au premier chemin oublié — et **une suspension jamais levée est invisible** : la carte cesse simplement de tourner, sans message. `MapBearing._modePleinEcranActif()` lit donc leur état, ce qui ne peut pas dériver. `suspend(raison)`/`resume(raison)` restent exposés pour un futur appelant sans état lisible, indexés **par raison** (et non par compteur) pour la même raison.
 
 Le redressement est **immédiat** (pas animé) quand le mode devient inapplicable : ce qui vient de le désactiver, c'est souvent un outil qui attend un clic — redresser en 2 s laisserait l'utilisateur cliquer pendant la rotation.
 
