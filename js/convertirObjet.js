@@ -299,6 +299,8 @@
   // complets et N entrées d'historique (N Ctrl+Z). Le lot est UN geste, il s'annule en UN geste.
   // 🩸 Une cible déjà atteinte n'est pas une erreur : sur une sélection mixte (40 fronts + 5 chemins → galerie), les
   // objets déjà du bon type sont SAUTÉS et comptés à part (masquer la cible rendrait la liste incompréhensible).
+  // 🩸 Une source interdite (jonction, itinéraire) est sautée aussi : la fiche ne propose pas Convertir pour elle, le
+  // lot ne doit pas la convertir par la bande (une jonction devenue tracé perd ses niveaux et ne relie plus rien).
   function convertirLot(items, familleCible, typeCible) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return { convertis: 0, sautes: 0, echecs: (items || []).length };   // 🔒 lecture seule
     const bilan = { convertis: 0, sautes: 0, echecs: 0 };
@@ -322,6 +324,7 @@
 
     items.forEach(function (it) {
       if (!it || !it.obj || !listes[it.famille]) { bilan.echecs++; return; }
+      if (CIBLES_INTERDITES[it.obj.type]) { bilan.sautes++; return; }
       if (it.famille === familleCible && it.obj.type === typeCible) { bilan.sautes++; return; }
       const idx = _indexDe(listes[it.famille], it.obj);
       if (idx < 0) { bilan.echecs++; return; }

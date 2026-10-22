@@ -81,10 +81,6 @@
   session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
   `qui: Claude · action: dire précisément ce qui est permis (accès fourni par l'appelant) et le vérifier
   · fini: garde-fou qui décrit l'état actuel, sans contournement · depuis: 21/10/2026 · taille: XS`
-- **Convertir en lot prend une jonction** — la sélection multiple (`KtaConvertir.convertirLot`) accepte une jonction,
-  alors que la fiche ne propose plus « Convertir » pour elle.
-  `qui: Claude · action: l'exclure du lot comme de la fiche (CIBLES_INTERDITES) · fini: jonction absente du lot
-  · depuis: 21/10/2026 · taille: XS`
 - **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
