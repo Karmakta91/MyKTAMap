@@ -138,11 +138,6 @@
   `qui: Claude · action: agrandir la zone de toucher sous pointer coarse sans grossir la marque ni chevaucher
   · fini: zone de toucher 44 px au doigt, checkup des panneaux vert · depuis: 20/10/2026 · taille: S`
 
-- **Garde-fou : pas de couleur en dur dans un `style=` posé par le JS** — la charte s'écrit `var(--kta-…)` aussi dans
-  les styles inline (CLAUDE.md, CSS) ; rien ne l'empêche aujourd'hui (E5 de l'audit d'interface du 20/10).
-  `qui: Claude · action: garde-fou au pre-commit qui refuse un hex hors exceptions listées (splash, urgence, photos)
-  · fini: garde-fou vert et branché en CI · depuis: 20/10/2026 · taille: S`
-
 ## Entrant
 
 - **Objet supprimé qui reste affiché** — parfois, un POI ou un tracé supprimé ne disparaît qu'au rechargement de la

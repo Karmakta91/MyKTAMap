@@ -626,6 +626,16 @@ règle ou un `style="…"` posé par le JS écrit `color: var(--kta-texte-3)`, j
 sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a4"]`) ont disparu ; il en reste
 4, qui ne touchent pas aux couleurs (`display`, `scale`).
 
+🛡️ `scripts/check-couleurs-inline.js` (pré-commit bloquant, donc CI) compte les hex écrits dans un style posé par
+le JS (`js/*.js` : attribut `style="…"` d'un gabarit, `el.style.x =`, `cssText`, `setProperty`,
+`setAttribute("style")`). C'est un **cliquet** : 178 existants à la pose (formulaires de `createConf.js`, Mode
+Secours, fenêtres de `planDenylist.js`, accueil…), trop pour une réécriture d'un coup ; le compte ne peut que
+baisser, une baisse se reporte dans `PLAFOND` le même commit. Ne comptent pas : le repli d'un `var(--kta-x, #…)`,
+une entité `&#…;`, la valeur d'un `<input type="color">`. Exception par ligne : marque `couleur-inline-ok` et sa
+raison (ex. conteneur de rendu hors écran exporté en image). Les palettes propres de `check-style-canon.js`
+(mini-carte de l'Affichage XL, cartes OSM) concernent les styles Leaflet des types, pas l'interface : leurs
+`style=` d'interface comptent comme les autres. Diagnostic : `node scripts/check-couleurs-inline.js --liste`.
+
 | Jeton | Rôle | Sombre | Clair |
 |---|---|---|---|
 | `--kta-fond` | fond de page | `#0a0d18` | `#f0e8d8` |
