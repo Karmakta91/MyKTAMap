@@ -471,7 +471,14 @@
     // ⚠️ Silencieux : un rendu ne doit pas afficher le message de refus. Les refus au clic restent (défense en
     // profondeur : _ouvrirAjouts, CalqueSession.integrerAjouts / exporterCalque).
     const lectureSeule = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true) === true;
-    let html = '<div class="kta-fp-list">';
+    // Raccourci « Mettre à jour le plan » (js/majPlan.js), en tête : il part des calques ouverts à la modification et
+    // des objets dessinés. Absent en lecture seule (l'assistant le refuserait).
+    let html = (window.MajPlan && CS && !lectureSeule)
+      ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-maj-plan" data-maj-plan ' +
+          'title="' + _escAttr(window.I18n.t("filter.majPlanTitle")) + '">' +
+          _escHtml(window.I18n.t("filter.majPlan")) + '</button>'
+      : '';
+    html += '<div class="kta-fp-list">';
     ids.forEach(function(id) {
       const visible = window.map && window.map.hasLayer(groups[id]);
       const lc = cfg.find(function(d) { return d.id === id; });
@@ -732,6 +739,10 @@
       }
       if (t.matches('[data-calque-integrer]')) {
         _ouvrirAjouts(t.getAttribute("data-calque-integrer"));
+        return;
+      }
+      if (t.matches('[data-maj-plan]')) {
+        if (window.MajPlan && typeof window.MajPlan.ouvrir === "function") window.MajPlan.ouvrir();
         return;
       }
       if (t.matches('[data-action="show-all"]') || t.matches('[data-action="hide-all"]')) {

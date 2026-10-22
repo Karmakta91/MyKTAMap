@@ -526,7 +526,8 @@ async function lancerApplication() {
     window._majOverlayChargement(window.I18n.t("main.loading.mapInit"));
   }
 
-  await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+  // 🩸 Jamais un requestAnimationFrame nu ici : il peut ne jamais venir (cf utils.js > ktaAttendreImage).
+  await window.ktaAttendreImage();
 
   await initMapFromConfig();
   await initDataFromConfig();
@@ -654,6 +655,14 @@ async function lancerApplication() {
   }
 
   console.log("[Main] Application lancée");
+
+  // ⚠️ Plan prêt pour une extension (synchro entrante et sortante) : APRÈS la restauration de session, jamais
+  // avant — un lot reçu plus tôt serait écrasé par initEditor / onPlanLoaded (ktaExtensions.js > planPret).
+  if (window.KtaExtensions && typeof window.KtaExtensions.planCharge === "function") {
+    try { window.KtaExtensions.planCharge(window._currentLoadedPlanId || null); } catch(e) {
+      console.warn("[Main] KtaExtensions.planCharge échec :", e);
+    }
+  }
 
   // Badges de liaison inter-plan sur les points liés (js/interPlanLinks.js, différé interne).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanLoaded === "function") {
@@ -1158,6 +1167,17 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     await registerAsset(logicalPath, matched);
   }));
 
+  // Icônes personnalisées du plan (`icons`, chemins `icon/…` du ZIP) : enregistrées comme les autres fichiers,
+  // sinon le plan les cherche à la racine du site (404) et chaque marqueur retombe sur l'icône de l'app.
+  // 🩸 Une icône de l'app (pas dans le ZIP) n'est pas un fichier manquant : aucun avertissement.
+  const iconesPlan = (rawConfig.icons && typeof rawConfig.icons === "object") ? rawConfig.icons : {};
+  await Promise.all([...new Set(Object.values(iconesPlan).filter(function(v) {
+    return typeof v === "string" && v && !/^(data:|blob:|https?:)/.test(v);
+  }).map(normalizePath))].map(async function(chemin) {
+    const f = findMatchingFile(chemin, files);
+    if (f && !window.RUNTIME_ASSETS[chemin]) await registerAsset(chemin, f);
+  }));
+
   // Tiling V2 : tuiles `data/tiles/z<N>/*` (.jpg, .webp ou .png : le format vit dans `tiling.format`).
   // Enregistrement LAZY (1000+ tuiles possibles) : blob URL créée au rendu (tiling.js > _chargerImageTuileV2).
   if (rawConfig.plan?.tiledV2 === true || rawConfig.tiling) {
@@ -1438,6 +1458,23 @@ function afficherLoader() {
       console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
     }
   }
+}
+
+// ── Fermer le plan pour libérer la mémoire (avant un travail lourd) ──────────────────────
+// 🩸 Le retour à l'accueil (afficherLoader) MASQUE la carte sans la démonter : tuiles, calques, canvas de collision
+// restent en mémoire. Le tuilage V2 d'une grande image (createConf.js > _genererZip) a besoin de cette place : sous
+// pression mémoire, le navigateur rejette l'image source décodée et la redécode à chaque tuile. Ici, le démontage
+// complet d'un changement de plan, puis l'accueil. La session est enregistrée par ce démontage
+// (SessionPersist.onPlanUnload) et le plan reste en tête de « Reprendre ».
+// → { ferme, planId } ; ferme: false = aucune carte de plan en mémoire, rien n'est touché.
+function ktaFermerPlanPourMemoire() {
+  const planId = window._currentLoadedPlanId || null;
+  // ⚠️ `window.map` vaut le <div id="map"> (accès nommé) tant qu'aucune carte n'a été créée : tester L.Map.
+  if (!(window.L && window.map instanceof window.L.Map)) return { ferme: false, planId: planId };
+  _libererRessourcesPlanPrecedent();
+  afficherLoader();
+  console.log("[Main] Plan fermé pour libérer la mémoire :", planId);
+  return { ferme: true, planId: planId };
 }
 
 // ── Splash de démarrage ──────────────────────
@@ -1918,4 +1955,5 @@ window.chargerPlanServeur  = chargerPlanServeur;
 window.initDataFromConfig  = initDataFromConfig;
 window.lancerApplication   = lancerApplication;
 window.afficherLoader      = afficherLoader;
+window.ktaFermerPlanPourMemoire = ktaFermerPlanPourMemoire;
 window.decouvrirPlansServeur = decouvrirPlansServeur;

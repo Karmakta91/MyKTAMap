@@ -315,6 +315,7 @@
   //     importAutorise: function () → bool,                 // permission (synchrone)
   //     exportAutorise: function (planId) → bool | { auteur }, // permission (synchrone), { auteur } = ses ajouts
   //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
+  //     publierVersion: { autorise(idExt) → bool, publier({ id, blob, nom }) → Promise } // nouvelle version
   //   })
   // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
   //    Prises d'INFORMATION : une erreur est journalisée et ignorée.
@@ -343,7 +344,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -373,6 +374,11 @@
   // ── Chargeur de modules (règle E : licence serveur ET « on ») ──
   // Scripts de `serverConnection.modules`, même origine. Promesse résolue quand tous ont fini (chargés ou en
   // échec, 8 s max chacun). Ne fait RIEN hors de l'état « configurée ».
+  // ⚠️ Contrat : les modules s'EXÉCUTENT dans l'ordre de la liste (téléchargés en parallèle).
+  // 🩸 Un script inséré par le JS est asynchrone par défaut : exécuté dès son arrivée, donc dans le désordre. Un
+  // module qui lisait au chargement celui déclaré avant lui le trouvait parfois absent, sans erreur (vu : temps réel
+  // jamais ouvert de la visite). `async = false` garde l'ordre ; un module en 404 ne retient pas les suivants, un
+  // module qui n'arrive pas les retient jusqu'à son arrivée.
   function chargerModules() {
     if (etatDe(_connexion, _sourceLicence()) !== "configuree") {
       _modules = { demandes: 0, charges: 0, echecs: 0, termine: true };
@@ -392,6 +398,7 @@
         const t = setTimeout(function () { fin(false); }, 8000);
         s.onload = function () { clearTimeout(t); fin(true); };
         s.onerror = function () { clearTimeout(t); fin(false); };
+        s.async = false;   // 🏷️ ancre:modules-ordre (check-extensions.js)
         s.src = src;
         document.head.appendChild(s);
       });
@@ -567,6 +574,59 @@
     catch (e) { console.warn("[Extensions] « lectureSeule » a échoué → lecture seule :", e); return true; }
   }
 
+  // Import d'un fichier de session sur un plan d'extension : `importSession(idExt) → { remplacer: bool }` dit que
+  // le plan est PARTAGÉ (l'app propose « Ajouter » et, si permis, « Remplacer pour tous ») ; null / false = plan
+  // non partagé (remplacement local). Plan local ou du site, sans prise : null (comportement de l'app seule).
+  // 🔒 Erreur ou forme inattendue = plan partagé, remplacement REFUSÉ (ajout seul).
+  function importPartage(registreId) {
+    const ext = _prise("importSession");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.importSession !== "function") return null;
+    let v;
+    try { v = ext.importSession(id); }
+    catch (e) { console.warn("[Extensions] « importSession » a échoué → ajout seul :", e); return { remplacer: false }; }
+    if (v === null || v === false) return null;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return { remplacer: false };
+    return { remplacer: v.remplacer === true };
+  }
+
+  // « Effacer la session » sur un plan d'extension : `effacerSession(idExt) → { miens, tout, auteur, enAttente? }` (ou
+  // sa promesse) dit que le plan est PARTAGÉ et ce que le compte peut supprimer pour tous — `miens` : les objets dont
+  // `auteurObjet(uid).createur === auteur` ; `tout` : tous les objets de la session ; `enAttente` : modifications de
+  // cet appareil pas encore envoyées (entier ≥ 0, absent = 0). null / false rendus tels quels (pas en promesse) =
+  // plan non partagé.
+  // → null (sans prise, plan local ou du site, ou plan non partagé : fenêtre de l'app seule, SYNCHRONE) ou une
+  // promesse de { miens, tout, auteur, enAttente }.
+  // 🔒 Erreur, rejet, forme inattendue ou réponse au-delà de DELAI_EFFACEMENT_MS = plan partagé, seul le vidage de
+  // l'appareil est permis, `enAttente: null` (nombre inconnu). L'appelant relit la prise pour une suppression pour tous.
+  const DELAI_EFFACEMENT_MS = 8000;
+  function effacementPartage(registreId) {
+    const ext = _prise("effacerSession");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.effacerSession !== "function") return null;
+    const refus = { miens: false, tout: false, auteur: null, enAttente: null };
+    let v;
+    try { v = ext.effacerSession(id); }
+    catch (e) { console.warn("[Extensions] « effacerSession » a échoué → vidage de l'appareil seul :", e); return Promise.resolve(refus); }
+    if (v === null || v === false) return null;
+    const forme = function (r) {
+      if (!r || typeof r !== "object" || Array.isArray(r)) return refus;
+      const auteur = typeof r.auteur === "string" && r.auteur.trim() ? r.auteur.trim().slice(0, 40) : null;
+      const n = r.enAttente;
+      return { miens: r.miens === true && !!auteur, tout: r.tout === true, auteur: auteur,
+        enAttente: (n === undefined || n === null) ? 0 : (Number.isInteger(n) && n >= 0 ? n : null) };
+    };
+    if (!v || typeof v.then !== "function") return Promise.resolve(forme(v));
+    let delai;
+    return Promise.race([
+      Promise.resolve(v).then(function (r) { return r === null || r === false ? refus : forme(r); }, function (e) {
+        console.warn("[Extensions] « effacerSession » rejetée → vidage de l'appareil seul :", e);
+        return refus;
+      }),
+      new Promise(function (r) { delai = setTimeout(function () { r(refus); }, DELAI_EFFACEMENT_MS); })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+
   // ── Gate déléguée ──
   // null si aucune extension ne fournit de gate, sinon une promesse résolue quand l'accès est ouvert.
   // 🔒 Une gate qui échoue REJETTE : l'appelant affiche « instance indisponible », jamais la gate community.
@@ -627,11 +687,43 @@
     });
   }
 
+  // ── Nouvelle version d'un plan de l'extension (assistant « Mettre à jour le plan ») ──
+  // Prise `publierVersion: { autorise(idExt) → bool, publier({ id: idExt, blob, nom }) → Promise }`.
+  // ⚠️ `autorise` est une PERMISSION : absente, fausse ou en erreur = refus (l'assistant ne propose alors que le
+  // téléchargement). Elle ne fait que choisir les boutons : le serveur de l'extension revérifie le droit à l'envoi.
+  function versionAutorisee(registreId) {
+    const ext = _prise("publierVersion");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.publierVersion.autorise !== "function") return false;
+    try { return ext.publierVersion.autorise(id) === true; }
+    catch (e) { console.warn("[Extensions] « publierVersion.autorise » a échoué → refus :", e); return false; }
+  }
+  function publierVersion(args) {
+    const a = args || {};
+    const ext = _prise("publierVersion");
+    if (!ext || typeof ext.publierVersion.publier !== "function") {
+      return Promise.reject(new Error("aucune publication de version"));
+    }
+    if (!versionAutorisee(a.planId)) return Promise.reject(new Error("publication de version refusée"));
+    const id = _idExtension(a.planId);
+    return Promise.resolve().then(function () {
+      return ext.publierVersion.publier({ id: id, blob: a.blob, nom: a.nom });
+    }).then(function (r) {
+      try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
+      return r;
+    });
+  }
+
   // ── Journal des changements (information) ──
   // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
   // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
   // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
+  // 🔒 Plan pas encore prêt (chargement en cours) : listes vides — la mémoire peut encore tenir les objets du plan
+  // quitté, qui partiraient sinon vers le nouveau (cf. planPret).
   function changementsDepuis(ts) {
+    if (!planPret()) {
+      return { editorPoints: [], roads: [], zones: [], structures: [], tombstones: [], restitutions: [] };
+    }
     const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
     const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
     return {
@@ -1037,8 +1129,10 @@
   // objet supprimé ne ressuscite pas). L'itinéraire en cours n'est jamais touché. `lot.restitutions` =
   // [{ calque, avant }] : calques rendus à leur original ailleurs (CalqueSession.appliquerRestitutions, jamais
   // une trace de suppression). → { fusionnes, supprimes, calques: { retires, gardes } } ou null (aucun plan
-  // ouvert). Objets reçus copiés : rien de partagé avec l'appelant.
+  // ouvert, ou plan pas encore prêt : RIEN n'est appliqué). Objets reçus copiés : rien de partagé avec l'appelant.
+  // ⚠️ null = lot à redemander : l'extension ne doit pas avancer son curseur (cf. planPret).
   function appliquerChangements(lot) {
+    if (!planPret()) return null;
     if (!lot || typeof lot !== "object" || !window.KtaUid ||
         typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
     const copie = function (a) {
@@ -1494,9 +1588,25 @@
     if (ov) ov.remove();
     _panneauCorps = null;
   }
+  // ── Plan prêt (fin de chargement) ──
+  // Entre le début du chargement d'un plan et la restauration de sa session, la mémoire tient encore les objets
+  // du plan quitté (ou rien), puis main.js > lancerApplication la remplace (initEditor, SessionPersist.onPlanLoaded).
+  // 🩸 Un lot appliqué dans cette fenêtre est écrasé sans bruit ; un envoi y partirait avec les objets de l'AUTRE
+  // plan. planCharge(id) est appelé par main.js une fois la session restaurée ; quitterPlan le remet à faux.
+  // planPret() : vrai seulement pour ce plan-là, affiché. Signal : `mktm:plan-pret` { planId }.
+  let _planPret = null;
+  function planCharge(planId) {
+    _planPret = { id: planId || null };
+    try { window.dispatchEvent(new CustomEvent("mktm:plan-pret", { detail: { planId: planId || null } })); } catch (e) { /* rien */ }
+  }
+  function planPret() {
+    if (!_planPret || _planPret.id !== (window._currentLoadedPlanId || null)) return false;
+    return typeof window.ktaPlanAffiche !== "function" || window.ktaPlanAffiche();
+  }
   // Sortie du plan (main.js : changement de plan, retour à l'accueil) : panneau fermé, présences et
   // itinéraires effacés, extension prévenue (mktm:plan-ferme).
   function quitterPlan(versOu) {
+    _planPret = null;
     fermerPanneau();
     try { if (window.KtaPresences) window.KtaPresences.reinitialiser(); } catch (e) { /* rien */ }
     try { window.dispatchEvent(new CustomEvent("mktm:plan-ferme", { detail: { vers: versOu || "plan" } })); } catch (e) { /* rien */ }
@@ -1523,6 +1633,37 @@
     try { const t = ext.infoObjet(uid); return typeof t === "string" ? t.trim().slice(0, 120) : ""; }
     catch (e) { console.warn("[Extensions] infoObjet :", e); return ""; }
   }
+  // Liaisons inter-plan qu'une extension synchronise : prise `liaisons: { info(lien) → string, actions(lien) →
+  // [{ libelle, action }], modifiable(lien) → bool }` (synchrones, `lien` = copie du registre). info : texte, 80 car. ;
+  // actions : 2 au plus ; modifiable est une PERMISSION — sans prise : oui, erreur : non. Sans extension : rien.
+  function _priseLiaisons(f) {
+    const ext = _prise("liaisons");
+    return ext && ext.liaisons && typeof ext.liaisons[f] === "function" ? ext.liaisons : null;
+  }
+  const _copieLien = function (l) { try { return JSON.parse(JSON.stringify(l)); } catch (e) { return null; } };
+  function liaisonInfo(lien) {
+    const p = _priseLiaisons("info");
+    if (!p || !lien) return "";
+    try { const t = p.info(_copieLien(lien)); return typeof t === "string" ? t.trim().slice(0, 80) : ""; }
+    catch (e) { console.warn("[Extensions] liaisons.info :", e); return ""; }
+  }
+  function liaisonActions(lien) {
+    const p = _priseLiaisons("actions");
+    if (!p || !lien) return [];
+    try {
+      const l = p.actions(_copieLien(lien));
+      return (Array.isArray(l) ? l : []).filter(function (a) {
+        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
+      }).slice(0, 2).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
+    } catch (e) { console.warn("[Extensions] liaisons.actions :", e); return []; }
+  }
+  function liaisonModifiable(lien) {
+    const p = _priseLiaisons("modifiable");
+    if (!p || !lien) return true;
+    try { return p.modifiable(_copieLien(lien)) === true; }
+    catch (e) { console.warn("[Extensions] liaisons.modifiable a échoué → refus :", e); return false; }
+  }
+
   // auteurObjet(uid) → { createur, modifiePar } : filtre « auteur » de l'export ; sans extension : null
   // (filtre non proposé).
   function auteurObjet(uid) {
@@ -1608,6 +1749,8 @@
     dossiersExtension: dossiersExtension,
     chargerPlanExtension: chargerPlanExtension,
     publierPlan: publierPlan,
+    versionAutorisee: versionAutorisee,
+    publierVersion: publierVersion,
     changementsDepuis: changementsDepuis,
     effacerDonneesExtension: effacerDonneesExtension,
     secoursAppliquer: secoursAppliquer,
@@ -1636,6 +1779,8 @@
     rangerPlanExtension: rangerPlanExtension,
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
     lectureSeule: lectureSeule,
+    importPartage: importPartage,
+    effacementPartage: effacementPartage,
     avantReinitialisation: avantReinitialisation,
     CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
     recuADistance: recuADistance,
@@ -1643,6 +1788,9 @@
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
+    liaisonInfo: liaisonInfo,
+    liaisonActions: liaisonActions,
+    liaisonModifiable: liaisonModifiable,
     photosCompleterPoint: photosCompleterPoint,
     photosCompleterPlan: photosCompleterPlan,
     badgePlan: badgePlan,
@@ -1651,6 +1799,8 @@
     rafraichirPanneau: rafraichirPanneau,
     fermerPanneau: fermerPanneau,
     quitterPlan: quitterPlan,
+    planCharge: planCharge,
+    planPret: planPret,
     blocActionsCompte: blocActionsCompte,
     outilHome: outilHome,
     outilsHome: outilsHome,

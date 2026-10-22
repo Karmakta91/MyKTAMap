@@ -6411,6 +6411,11 @@ html.kta-theme-light .kta-cfg-input option {
   padding: 10px 12px;
 }
 
+/* Ligne remplie par l'assistant « Mettre à jour le plan » (createConf.js > _appliquerMaj). */
+.kta-planner-layer-maj {
+  border-color: var(--kta-accent);
+}
+
 .kta-planner-layer-header {
   display: flex;
   align-items: center;
@@ -7806,6 +7811,15 @@ html.kta-theme-light .kta-osm-qualite-ligne { color: var(--kta-light-text, #1a1f
 }
 html.kta-theme-light .kta-ipl-mgr-ecart { color: var(--kta-light-text-2, #4a5568); }
 .kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
+/* Mention d'une extension (« ☁️ Partagée… ») : elle cède la place aux noms des plans, jamais l'inverse. */
+.kta-ipl-mgr-row .kta-ipl-ext-info { flex: 0 1 auto; min-width: 0; margin: 0; }
+/* 🩸 Téléphone : une seule ligne écrasait les noms (largeur 0) et faisait déborder les boutons. Les deux plans
+   prennent toute la première ligne ; écart, mention et boutons passent dessous, boutons à droite. */
+@media (max-width: 600px) {
+  .kta-ipl-mgr-row { flex-wrap: wrap; row-gap: 6px; }
+  .kta-ipl-mgr-sides { flex: 1 1 100%; }
+  .kta-ipl-mgr-actions { margin-left: auto; }
+}
 html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
 
 /* Itinéraire inter-plan */
@@ -10315,8 +10329,9 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   pointer-events: none; /* le clic doit aller a la map en dessous */
 }
 
-/* Markers en divIcon (div + img) : le div reçoit le translate3d Leaflet, l'img le scale
-   (--kta-marker-scale, map.js > _majMarkerScale au zoom). Deux transforms indépendants : wrapper requis. */
+/* Markers en divIcon (div + img) : le div reçoit le translate3d Leaflet, l'img le scale (--kta-marker-scale :
+   map.js > _majMarkerScale sur le body en mode plan ; osmView / osmHomePreview > _majTailleIcones* sur la
+   carte OSM ou le pane du plan). Deux transforms indépendants : wrapper requis. */
 .kta-marker-divicon {
   background: transparent !important;
   border: none !important;
@@ -11929,6 +11944,25 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   align-items: center;
   gap: 8px;
 }
+
+/* Section repliable (<details>) : le titre est le bouton, flèche à droite ; repliée, plus de marge sous le titre. */
+.kta-session-repli > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kta-session-repli > summary::-webkit-details-marker { display: none; }
+.kta-session-repli > summary::marker { content: ""; }
+.kta-session-repli > summary::after {
+  content: "▾";
+  margin-left: auto;
+  color: var(--kta-texte-3);
+  transition: transform 0.15s ease;
+}
+.kta-session-repli:not([open]) > summary { margin-bottom: 0; }
+.kta-session-repli:not([open]) > summary::after { transform: rotate(-90deg); }
+.kta-session-repli > summary:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
 
 .kta-refonte-session-badge {
   display: inline-block;
@@ -19027,15 +19061,17 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   margin: 8px 0;
 }
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
-.kta-note-popup-convertir {
+.kta-note-popup-convertir,
+.kta-note-popup-jct-appliquer {
   background: rgba(140, 180, 255, 0.14);
   border: 1px solid rgba(140, 180, 255, 0.30);
   color: var(--kta-texte-2);
 }
-.kta-note-popup-convertir:hover {
+.kta-note-popup-convertir:hover,
+.kta-note-popup-jct-appliquer:hover {
   background: rgba(140, 180, 255, 0.24);
 }
-/* Liste « Niveau » sous Convertir (multi-niveau, objet de session). */
+/* Liste « Niveau » sous Convertir (multi-niveau, objet de session) ; listes Départ / Arrivée d'une jonction. */
 .kta-note-popup-niveau-ligne {
   display: flex;
   align-items: center;
@@ -19044,7 +19080,8 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   font-size: 12px;
   color: var(--kta-texte-2);
 }
-.kta-note-popup-niveau {
+.kta-note-popup-niveau,
+.kta-note-popup-jct-niveau {
   flex: 1 1 auto;
   background: #0d1117;
   border: 1px solid rgba(140, 180, 255, 0.30);
@@ -19056,11 +19093,15 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
 body.kta-theme-light .kta-note-popup-niveau-ligne,
 html.kta-theme-light .kta-note-popup-niveau-ligne { color: #24304a; }
 body.kta-theme-light .kta-note-popup-niveau,
-html.kta-theme-light .kta-note-popup-niveau {
+html.kta-theme-light .kta-note-popup-niveau,
+body.kta-theme-light .kta-note-popup-jct-niveau,
+html.kta-theme-light .kta-note-popup-jct-niveau {
   background: var(--kta-light-bg);
   border-color: var(--kta-light-border-strong);
   color: var(--kta-light-text);
 }
+.kta-note-popup-jonction .kta-note-popup-actions { margin-top: 6px; }
+.kta-note-popup-jct-statut { margin-top: 6px; font-size: 12px; line-height: 1.4; }
 body.kta-theme-light .kta-convert-source { color: #1a1f2e; }
 body.kta-theme-light .kta-convert-choix {
   background: rgba(0, 0, 0, 0.03);
@@ -20116,3 +20157,60 @@ button.kta-cfg-ligne-action {
   outline: 2px solid var(--kta-focus);
   outline-offset: 2px;
 }
+
+/* Recaler des données sur un autre scan (js/recalageScan.js). 🩸 [hidden] doit gagner sur les display des
+   classes : un panneau de méthode masqué qui reste affiché mélange deux méthodes à l'écran. */
+.kta-recal-boite { max-width: 520px; height: auto; max-height: 90vh; }
+.kta-recal-corps { font-size: 13px; }
+.kta-recal-corps [hidden] { display: none !important; }
+.kta-recal-note { color: var(--kta-texte-3); margin: 0 0 8px; line-height: 1.5; }
+.kta-recal-petit { font-size: 12px; }
+.kta-recal-titre-section { font-weight: 600; margin-top: 12px; }
+.kta-recal-sous-titre { margin-top: 8px; }
+.kta-recal-grille { margin: 4px 0 2px; }
+.kta-recal-fichier { margin: 4px 0 6px; display: inline-block; }
+.kta-recal-liste-fichiers { font-size: 12px; color: var(--kta-texte-2); margin: 2px 0 6px; overflow-wrap: anywhere; }
+.kta-recal-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.kta-recal-onglet.kta-actif {
+  border-color: var(--kta-accent);
+  color: var(--kta-accent-texte);
+  background: var(--kta-accent-fond);
+}
+.kta-recal-panneau { margin: 4px 0 6px; }
+.kta-recal-paire { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 2px; }
+.kta-recal-details { margin-top: 8px; }
+.kta-recal-details summary { cursor: pointer; color: var(--kta-texte-2); }
+.kta-recal-case { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--kta-texte-2); }
+.kta-recal-clic-choix { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kta-recal-clic-choix select { flex: 1 1 180px; min-width: 0; }
+.kta-recal-liste-reperes { margin-top: 6px; font-size: 12px; color: var(--kta-texte-2); }
+.kta-recal-repere {
+  display: flex; align-items: center; gap: 8px; padding: 3px 0;
+  border-bottom: 1px solid var(--kta-bordure);
+}
+.kta-recal-repere-nom { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--kta-texte); }
+.kta-recal-repere-ecart { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.kta-recal-suspect .kta-recal-repere-ecart { color: var(--kta-erreur); font-weight: 700; }
+.kta-recal-recap {
+  background: var(--kta-info-fond); border: 1px solid var(--kta-info-bord); border-radius: 6px;
+  padding: 10px 12px; margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--kta-texte-2); min-height: 36px;
+}
+.kta-recal-recap strong { color: var(--kta-texte); }
+.kta-recal-warn {
+  border: 1px solid var(--kta-accent-bord); background: var(--kta-accent-fond); border-radius: 6px;
+  padding: 8px 10px; margin-top: 8px; font-size: 12px; color: var(--kta-texte);
+}
+.kta-recal-warn.kta-recal-bloque { border-color: var(--kta-erreur-bord); background: var(--kta-erreur-fond); }
+/* Alerte « même position » : texte et bouton Écarter côte à côte, le bouton passe dessous en étroit. */
+.kta-recal-identiques { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.kta-recal-identiques > span { flex: 1 1 240px; min-width: 0; }
+.kta-recal-actions { margin-top: 12px; flex-wrap: wrap; }
+.kta-recal-barre {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  background: var(--kta-surface); border: 1px solid var(--kta-bordure); border-left: 3px solid var(--kta-accent);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55); padding: 10px 12px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; z-index: 100000;
+  font-size: 13px; color: var(--kta-texte); max-width: calc(100vw - 24px); box-sizing: border-box;
+}
+.kta-recal-barre-msg { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.kta-recal-barre .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }

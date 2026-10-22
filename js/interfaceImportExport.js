@@ -13,12 +13,16 @@
 // Dépend de : get/set/reset des familles (Roads, Zones, EditorPoints, Structures, Measure, Tracking), GpxIO,
 //   KmzImport, KmzExport (calage), MyKTAMapPhotos, LegendCustomization, InterPlanLinks, ModeHistoire, KtaUid.
 // ⚠️ Un import de SESSION REMPLACE la session du plan (snapshot sessionBackups avant) ; un import GPX AJOUTE.
+// ⚠️ Plan PARTAGÉ par une extension (KtaExtensions.importPartage) : choix « Ajouter au plan » (fusion par uid, rien
+//   ne disparaît) ou « Remplacer pour tous » (si permis, confirmé, une trace de suppression par objet retiré) —
+//   KtaUid.preparerImport. Sans trace, la synchro ne voit aucune suppression et les objets reviennent du serveur.
 // Doc : docs/architecture/session-data.md · docs/ETUDE_UID.md
 
 // ── Export session JSON ──────────
-// Import par REMPLACEMENT : les objets d'un ancien fichier reçoivent un uid (updatedAt de repli = date
-// d'export), un uid en double est régénéré, et les traces de suppression du fichier REMPLACENT celles du plan.
-function _preparerIdentitesImport(d) {
+// Les objets d'un ancien fichier reçoivent un uid (updatedAt de repli = date d'export), un uid en double est
+// régénéré. Import par REMPLACEMENT local : les traces de suppression du fichier REMPLACENT celles du plan ;
+// `sansTraces` (plan partagé) : les traces restent à KtaUid.preparerImport.
+function _preparerIdentitesImport(d, sansTraces) {
   if (!window.KtaUid || !d || typeof d !== "object") return;
   const repli = Date.parse(d.date_export || d.exported_at) || Date.now();
   const vus = new Set();
@@ -26,7 +30,43 @@ function _preparerIdentitesImport(d) {
   window.KtaUid.ensureAll(d.roads, "rd", repli, vus);
   window.KtaUid.ensureAll(d.zones, "zn", repli, vus);
   window.KtaUid.ensureAll(d.structures, "st", repli, vus);
-  window.KtaUid.setTombstones(d.tombstones);
+  if (!sansTraces) window.KtaUid.setTombstones(d.tombstones);
+}
+
+// Plan affiché partagé par une extension (KtaExtensions.importPartage) → { remplacer } ; sinon null (plan local :
+// remplacement historique).
+function _importPartage() {
+  if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return null;
+  const K = window.KtaExtensions;
+  return (K && typeof K.importPartage === "function") ? K.importPartage(window._currentLoadedPlanId) : null;
+}
+
+// Plan partagé : objets d'ici et du fichier au format de KtaUid.preparerImport.
+function _etatImportLocal() {
+  return {
+    data: (window.getEditorPoints && window.getEditorPoints()) || [],
+    roads: (window.getRoads && window.getRoads()) || [],
+    zones: (window.getZones && window.getZones()) || [],
+    structures: (window.getStructures && window.getStructures()) || [],
+    tombstones: window.KtaUid ? window.KtaUid.getTombstones() : []
+  };
+}
+function _etatImportFichier(d) {
+  return { data: d.editorPoints || [], roads: d.roads || [], zones: d.zones || [], structures: d.structures || [],
+    tombstones: d.tombstones || [] };
+}
+
+// « Ajouter au plan » : la légende d'ici garde ses réglages, celle du fichier complète ce qui manque.
+function _fusionnerLegende(ici, fichier) {
+  if (!fichier || typeof fichier !== "object") return ici;
+  const a = ici || {};
+  const dico = function (k) { return Object.assign({}, fichier[k] || {}, a[k] || {}); };
+  const ids = new Set((a.customEntries || []).map(function (e) { return e && e.id; }));
+  return Object.assign({}, a, { labels: dico("labels"), hidden: dico("hidden"), colors: dico("colors"),
+    borders: dico("borders"), removedPlan: (a.removedPlan || []).slice(),
+    customEntries: (a.customEntries || []).concat((fichier.customEntries || []).filter(function (e) {
+      return e && !ids.has(e.id);
+    })) });
 }
 
 function telechargerSessionJSON() {
@@ -69,6 +109,8 @@ function importerSessionJSON(file) {
         window.ktaAlerte(window.I18n.t("impexp.fileInvalid"), { type: "erreur" });
         return;
       }
+      // Plan partagé : jamais de remplacement silencieux, la fenêtre propose Ajouter / Remplacer pour tous.
+      if (_importPartage()) { ouvrirImportSession(file); return; }
 
       _preparerIdentitesImport(data);
       if (window.setEditorPoints) window.setEditorPoints(data.editorPoints || []);
@@ -271,6 +313,23 @@ function ouvrirImportSession(fichierInitial) {
   if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-modal");
   if (existing) { existing.remove(); if (!fichierInitial) return; }
+  // Plan partagé : choix Ajouter / Remplacer pour tous à la place de l'avertissement « remplace ».
+  const partage = _importPartage();
+  const _tp = function (k, v) { return window.I18n.t("impexp.session.partage." + k, v); };
+  const _choixMode = function (val, titre, aide) {
+    return '<label style="display:flex; gap:8px; align-items:flex-start; margin:8px 0 0; cursor:pointer; line-height:1.45;">' +
+      '<input type="radio" name="kta-import-mode" value="' + val + '" data-kta-import-mode="' + val + '"' +
+      (val === "ajouter" ? " checked" : "") + ' style="margin-top:3px;">' +
+      '<span><strong>' + titre + '</strong><br><span style="color:var(--kta-texte-3);">' + aide + '</span></span></label>';
+  };
+  const blocModes = !partage ? "" :
+    '<div class="kta-aide-section" id="kta-import-modes" style="display:none; font-size:13px; color:var(--kta-texte);">' +
+      '<div>' + _tp("intro") + '</div>' +
+      _choixMode("ajouter", _tp("ajouter"), _tp("ajouterAide")) +
+      (partage.remplacer
+        ? _choixMode("remplacer", _tp("remplacer"), _tp("remplacerAide"))
+        : '<div style="margin-top:8px; color:var(--kta-texte-3);">' + _tp("remplacerIndispo") + '</div>') +
+    '</div>';
 
   const modal = document.createElement("div");
   modal.id = "kta-import-modal";
@@ -305,6 +364,7 @@ function ouvrirImportSession(fichierInitial) {
             ${window.I18n.t("impexp.session.warn")}
           </div>
         </div>
+        ${blocModes}
 
         <div id="kta-import-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
@@ -338,6 +398,11 @@ function ouvrirImportSession(fichierInitial) {
   function setErr(msg) {
     erreurEl.textContent = msg || "";
     erreurEl.style.display = msg ? "block" : "none";
+  }
+  function _masquerAvertissements() {
+    warnEl.style.display = "none";
+    const modesEl = document.getElementById("kta-import-modes");
+    if (modesEl) modesEl.style.display = "none";
   }
 
   // Photos extraites du ZIP entre l'analyse et la validation : [{id, pointId, mime, size, blob, fiche}].
@@ -387,7 +452,9 @@ function ouvrirImportSession(fichierInitial) {
       </div>
     `;
     apercuWrap.style.display = "block";
-    warnEl.style.display = "block";
+    const modesEl = document.getElementById("kta-import-modes");
+    if (modesEl) modesEl.style.display = "block";
+    else warnEl.style.display = "block";
     btnValider.disabled = false;
   }
 
@@ -522,7 +589,7 @@ function ouvrirImportSession(fichierInitial) {
         _pendingPhotosToRestore = null;
         _pendingHistoirePdfToRestore = null;
         apercuWrap.style.display = "none";
-        warnEl.style.display = "none";
+        _masquerAvertissements();
         btnValider.disabled = true;
       });
       return;
@@ -539,7 +606,7 @@ function ouvrirImportSession(fichierInitial) {
         setErr(window.I18n.t("impexp.session.errPrefix", { msg: err.message }));
         dataParsee = null;
         apercuWrap.style.display = "none";
-        warnEl.style.display = "none";
+        _masquerAvertissements();
         btnValider.disabled = true;
       }
     };
@@ -568,9 +635,8 @@ function ouvrirImportSession(fichierInitial) {
   btnAnnuler.addEventListener("click", fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
 
-  btnValider.addEventListener("click", function() {
-    if (!dataParsee) return;
-
+  // `mode` : null (plan local : remplacement historique) | "ajouter" | "remplacer" (plan partagé, KtaUid.preparerImport).
+  function _importer(mode) {
     // Photos restaurées en IDB AVANT editorPoints (la grille interroge IDB). FUSION, jamais de purge : une
     // photo n'est jamais effacée sans confirmation (règle produit), y compris les photos « sans point ».
     // Les photos du fichier s'AJOUTENT ; une photo déjà en base (même id) est gardée (`siAbsente` : son
@@ -605,7 +671,7 @@ function ouvrirImportSession(fichierInitial) {
       });
     }
 
-    // Un import REMPLACE tout (points, tracés, zones, structures) : snapshot sessionBackups ATTENDU avant.
+    // Snapshot sessionBackups ATTENDU avant (un remplacement efface tout ; un ajout se défait aussi par lui).
     let _snapshotAvantImport = false;
     const _snapAvant = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
       ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-import-session"); })
@@ -616,32 +682,48 @@ function ouvrirImportSession(fichierInitial) {
       return _restorerPhotos();
     }).then(function(bilanPhotos) {
       try {
-        _preparerIdentitesImport(dataParsee);
-        if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
+        _preparerIdentitesImport(dataParsee, !!mode);
+        // Plan partagé : objets fusionnés (ajouter) ou remplacés avec une trace par objet retiré (remplacer), pour
+        // que la synchro propage les suppressions et envoie les objets du fichier (horodatés maintenant).
+        let bilanPartage = null;
+        let objets = { data: dataParsee.editorPoints || [], roads: dataParsee.roads || [], zones: dataParsee.zones || [],
+          structures: dataParsee.structures || [] };
+        if (mode) {
+          bilanPartage = window.KtaUid.preparerImport(_etatImportLocal(), _etatImportFichier(dataParsee), mode);
+          window.KtaUid.setTombstones(bilanPartage.tombstones);
+          objets = bilanPartage;
+        }
+        if (window.setEditorPoints)    window.setEditorPoints(objets.data);
         // Légende custom de la session (libellés, entrées custom) restaurée AVANT les rendus : les types custom
-        // retrouvent libellé, couleur, icône. REMPLACE l'état légende session ; absent → vide.
+        // retrouvent libellé, couleur, icône. REMPLACE l'état légende session (absent → vide) ; « Ajouter » la
+        // complète seulement.
         if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
-          window.LegendCustomization.loadSessionState(dataParsee.customLegend || null);
+          window.LegendCustomization.loadSessionState(mode === "ajouter"
+            ? _fusionnerLegende(window.LegendCustomization.getSessionState(), dataParsee.customLegend)
+            : (dataParsee.customLegend || null));
         }
         // Liaisons inter-plan réinjectées (fusion par id, pas de doublon) ; champ absent → 0.
         if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
           window.InterPlanLinks.importLinks(dataParsee.interPlanLinks || []);
         }
         if (window.renderEditorPoints) window.renderEditorPoints();
-        if (window.resetMesure)        window.resetMesure();
-        if (window.setMeasurePoints) {
-          window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
-        }
-        if (window.setMeasurePointsSurface) {
-          window.setMeasurePointsSurface(dataParsee.measureSurface && dataParsee.measureSurface.points ? dataParsee.measureSurface.points : []);
+        // Mesure et suivi (propres à l'appareil) : « Ajouter » n'y touche pas.
+        if (mode !== "ajouter") {
+          if (window.resetMesure)      window.resetMesure();
+          if (window.setMeasurePoints) {
+            window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
+          }
+          if (window.setMeasurePointsSurface) {
+            window.setMeasurePointsSurface(dataParsee.measureSurface && dataParsee.measureSurface.points ? dataParsee.measureSurface.points : []);
+          }
         }
         if (window.resetRoads)         window.resetRoads();
-        if (window.setRoads)           window.setRoads(dataParsee.roads || []);
+        if (window.setRoads)           window.setRoads(objets.roads);
         if (window.resetZones)         window.resetZones();
-        if (window.setZones)           window.setZones(dataParsee.zones || []);
+        if (window.setZones)           window.setZones(objets.zones);
         // Structures : absentes des vieux fichiers → `|| []`.
         if (window.resetStructures)    window.resetStructures();
-        if (window.setStructures)      window.setStructures(dataParsee.structures || []);
+        if (window.setStructures)      window.setStructures(objets.structures);
 
         // Calques en modification : le fichier porte les objets marqués, pas la liste des calques verrouillés —
         // déduite des marques (calqueSession.js > resynchroniser). Sinon doublon, ou calque masqué et vide.
@@ -653,7 +735,7 @@ function ouvrirImportSession(fichierInitial) {
 
         // Tracker : on ne restaure QUE timeline + startTs (comme SessionPersist) ; path et position sont des
         // artefacts runtime du plan courant. Absent → tracker non touché.
-        if (dataParsee.tracker && typeof dataParsee.tracker === "object"
+        if (mode !== "ajouter" && dataParsee.tracker && typeof dataParsee.tracker === "object"
             && Array.isArray(dataParsee.tracker.timeline)
             && typeof window.setTrackingTimeline === "function") {
           try {
@@ -668,8 +750,9 @@ function ouvrirImportSession(fichierInitial) {
 
         // Mode Histoire : noteLibre (inline) → localStorage ; documents extraits à l'analyse →
         // ModeHistoire.importSessionData() (logique IDB centralisée). Champs absents → on ne touche RIEN.
-        // `_pendingHistoirePdfToRestore` : tableau (un objet unique est encore accepté).
-        const _noteToImport = (typeof dataParsee.noteLibre === "string") ? dataParsee.noteLibre : null;
+        // `_pendingHistoirePdfToRestore` : tableau (un objet unique est encore accepté). « Ajouter » n'écrase pas la
+        // note libre d'ici (les documents, eux, s'ajoutent).
+        const _noteToImport = (mode !== "ajouter" && typeof dataParsee.noteLibre === "string") ? dataParsee.noteLibre : null;
         const _docs = Array.isArray(_pendingHistoirePdfToRestore)
           ? _pendingHistoirePdfToRestore
           : (_pendingHistoirePdfToRestore ? [_pendingHistoirePdfToRestore] : []);
@@ -694,6 +777,10 @@ function ouvrirImportSession(fichierInitial) {
         if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");
         }
+        if (bilanPartage && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(_tp(mode === "ajouter" ? "toastAjout" : "toastRemplace",
+            { n: bilanPartage.ajoutes, maj: bilanPartage.misAJour, sup: bilanPartage.supprimes }), "success", { important: true });
+        }
         // Bilan de la fusion des photos (rien d'existant n'a été effacé).
         const _bp = bilanPhotos || { ajoutees: 0, deja: 0, echecs: 0 };
         if ((_bp.ajoutees || _bp.deja || _bp.echecs)
@@ -715,12 +802,37 @@ function ouvrirImportSession(fichierInitial) {
         }
       } catch(err) {
         console.error(err);
+        btnValider.disabled = false;
         setErr(window.I18n.t("impexp.session.errImport", { msg: err.message || err }));
       }
     }).catch(function(err) {
       console.error("[Import] _restorerPhotos a échoué :", err);
+      btnValider.disabled = false;
       setErr(window.I18n.t("impexp.session.errPhotos", { msg: err.message || err }));
     });
+  }
+
+  btnValider.addEventListener("click", function() {
+    if (!dataParsee || btnValider.disabled) return;
+    btnValider.disabled = true;   // un double clic lancerait deux imports
+    if (!partage) { _importer(null); return; }
+    const choisi = modal.querySelector('input[name="kta-import-mode"]:checked');
+    const mode = choisi && choisi.value === "remplacer" ? "remplacer" : "ajouter";
+    if (mode === "ajouter") { _importer("ajouter"); return; }
+    // 🔒 Droit relu au moment de valider (il a pu être retiré depuis l'ouverture de la fenêtre).
+    const p2 = _importPartage();
+    if (!p2 || !p2.remplacer || !window.KtaUid) {
+      btnValider.disabled = false;
+      setErr(_tp("remplacerIndispo"));
+      return;
+    }
+    _preparerIdentitesImport(dataParsee, true);
+    const n = window.KtaUid.preparerImport(_etatImportLocal(), _etatImportFichier(dataParsee), "remplacer").supprimes;
+    window.ktaConfirm(_tp("confirmRemplacer", { n: n }), { titre: _tp("confirmTitre"), okLabel: _tp("confirmOk") })
+      .then(function(ok) {
+        if (ok) _importer("remplacer");
+        else btnValider.disabled = false;
+      });
   });
 
   if (fichierInitial) chargerFichier(fichierInitial);

@@ -82,19 +82,79 @@ const TAGS_BUILTIN = {
   // « portail » (liaisons inter-plan) : icône vortex. Un point lié garde le tag qu'on veut ; prendre
   // celui-ci signale visuellement le portail (choix de l'utilisateur).
   portail:  "icon/portail.png",
-  // « Point d'entrée du plan » (Vue OSM × Mode Secours) : SVG inline, sans fichier PNG à précacher.
-  entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
-      '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
-      '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
-      '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
-      '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
-    '</svg>'
-  )
+  // « Point d'entrée du plan » (Vue OSM × Mode Secours). Les plans générés avant le PNG portent l'ancien SVG en
+  // data-URI : config.js > nettoyerIconesConfig le retire, le catalogue reprend la main.
+  entree_plan: "icon/entree_plan.png"
 };
 
 // Exposée DÈS LE CHARGEMENT du script : le HOME résout les icônes built-in sans copie.
 window._ktaBuiltinIconUrls = TAGS_BUILTIN;
+// Icône d'un point sans tag (ou au tag inconnu). Hors catalogue des tags : ce n'est pas un type de POI.
+window._ktaIconeDefaut = "icon/default.png";
+
+// ── Taille des icônes au zoom (réglage 📐, APP_CONFIG.scaledMarkers) ──────────
+// ⚠️ Une seule loi, mode plan comme cartes OSM : échelle = pixels ÉCRAN par pixel de PLAN, bornée
+// [plancher ; 2]. Plancher : 0,25 en mode plan (défaut), KTA_ECHELLE_PLANCHER_OSM sur les cartes OSM.
+//   • mode plan (CRS.Simple) : 2^zoom ;
+//   • cartes OSM : mesurée à travers le calage (plan → latlng → Web Mercator) — l'icône couvre le même
+//     morceau du dessin qu'en mode plan au même grossissement, quelle que soit l'échelle du plan.
+// La variable --kta-marker-scale (style.css > .kta-marker-img) vit sur le body en mode plan, sur le conteneur
+// de la Vue OSM et sur le pane de chaque plan de la carte de l'accueil : la plus proche gagne.
+window.ktaEchelleMarqueurs = function (pxEcranParPxPlan, plancher) {
+  if (!Number.isFinite(pxEcranParPxPlan) || pxEcranParPxPlan <= 0) return 1;
+  const bas = (Number.isFinite(plancher) && plancher > 0) ? plancher : 0.25;
+  return Math.max(bas, Math.min(2, pxEcranParPxPlan));
+};
+// Plancher des cartes OSM (décision produit) : la vue d'ensemble d'un plan détaillé y est la vue courante, et
+// ×0,25 y donnait des icônes de 6 px illisibles. ×0,5 : 13 px en Vue OSM, 12 px à l'accueil au plus petit.
+window.KTA_ECHELLE_PLANCHER_OSM = 0.5;
+
+// Défaut ON : `!== false`.
+window.ktaReglageTailleIcones = function () {
+  return !window.APP_CONFIG || window.APP_CONFIG.scaledMarkers !== false;
+};
+
+// Pixels écran par pixel de plan sur une carte Web Mercator, par la projection `proj.planToLatLng` du calage.
+// Calage affine : le rapport ne dépend du point choisi que par la latitude, négligeable à l'échelle d'un plan.
+window.ktaPxEcranParPxPlanOsm = function (carte, proj) {
+  try {
+    const z = carte.getZoom();
+    const a = proj.planToLatLng(0, 0), b = proj.planToLatLng(100, 0), c = proj.planToLatLng(0, 100);
+    if (!a || !b || !c) return null;
+    const pa = carte.project(a, z);
+    return (pa.distanceTo(carte.project(b, z)) + pa.distanceTo(carte.project(c, z))) / 200;
+  } catch (e) { return null; }
+};
+
+// Icône d'un POI sur une carte OSM, choisie AU RENDU :
+//   • réglage actif : divIcon (div + img), comme creerIcones — le div porte le translate3d de Leaflet, l'img le
+//     scale (style.css > .kta-marker-img) ; `data-kta-tag` sert au repli sur le catalogue ;
+//   • réglage coupé : L.icon nu, la forme d'avant le réglage. 🩸 Pas de divIcon « à l'échelle 1 » ni de
+//     taille en calc() sur l'<img> pour basculer sans re-rendu : mesuré à 1 500 marqueurs, chacun alourdit
+//     tous les zooms (+10 à +30 ms) même quand la taille ne change pas.
+// Un changement du réglage re-rend donc les marqueurs (événement kta:tailleIconesChange).
+window.ktaIconeOsm = function (url, taille, tag) {
+  let icone;
+  if (window.ktaReglageTailleIcones()) {
+    icone = L.divIcon({
+      html:       '<img src="' + String(url).replaceAll('"', "&quot;") + '" alt=""' +
+                  (tag ? ' data-kta-tag="' + String(tag).replaceAll('"', "&quot;") + '"' : "") +
+                  ' class="kta-marker-img" draggable="false">',
+      className:  "kta-marker-divicon",
+      iconSize:   [taille, taille],
+      iconAnchor: [taille / 2, taille / 2]
+    });
+  } else {
+    icone = L.icon({ iconUrl: url, iconSize: [taille, taille], iconAnchor: [taille / 2, taille / 2] });
+  }
+  icone._kta_iconUrl = url;
+  return icone;
+};
+
+// Réglage basculé à chaud (homeConfig.js) : chaque carte OSM ouverte re-rend ses POI.
+window.ktaMajTailleIconesOsm = function () {
+  window.dispatchEvent(new CustomEvent("kta:tailleIconesChange"));
+};
 
 // ── Icônes ──────────
 function creerIcones(iconConfig) {
@@ -104,8 +164,9 @@ function creerIcones(iconConfig) {
 
   const trackUrl = iconConfig.track || "icon/iconetrack.png";
 
-  // Sans icône default : marker natif Leaflet (pin bleu), distinct des points custom.
-  const useLeafletDefault = !iconConfig.default;
+  // Sans icône default (ou l'ancien pin Leaflet écrit par le Générateur) : l'icône par défaut de l'app.
+  const iconeDefautUrl = (iconConfig.default && !/marker-icon\.png$/.test(iconConfig.default))
+    ? iconConfig.default : window._ktaIconeDefaut;
 
   // scaledMarkers (défaut true) : L.divIcon (div + img enfant) au lieu de L.icon, pour un
   // transform: scale() sur l'<img> selon le zoom sans casser le translate3d du DIV. OFF = taille écran fixe.
@@ -122,7 +183,7 @@ function creerIcones(iconConfig) {
         // L'<img> reçoit le scale CSS (cf style.css). `data-kta-tag` sert au REPLI de toute la carte
         // (cf _installerRepliIcones) : carte, filtres, favoris, recherche lisent la même cascade.
         html:       '<img src="' + url + '" alt=""' +
-                    (tag ? ' data-kta-tag="' + String(tag).replace(/"/g, "&quot;") + '"' : "") +
+                    (tag ? ' data-kta-tag="' + String(tag).replaceAll('"', "&quot;") + '"' : "") +
                     ' class="kta-marker-img" draggable="false">',
         className:  "kta-marker-divicon",
         iconSize:   [w, h],
@@ -165,11 +226,7 @@ function creerIcones(iconConfig) {
   }
 
   function makeDefaultIcon() {
-    if (useLeafletDefault) {
-      // Pin natif Leaflet : pas de scale (ancre bas-centre incompatible avec un scale autour du centre).
-      return new L.Icon.Default();
-    }
-    return _mkIcon(iconConfig.default, 50, 50, 25, 25);
+    return _mkIcon(iconeDefautUrl, 50, 50, 25, 25);
   }
 
   iconeDefault = makeDefaultIcon();
@@ -190,7 +247,7 @@ function creerIcones(iconConfig) {
   window._iconMap = {};
   Object.keys(iconConfig).forEach(function(tag) {
     const url = iconConfig[tag];
-    if (!url) {
+    if (!url || tag === "default") {
       window._iconMap[tag] = makeDefaultIcon();
       return;
     }
@@ -235,7 +292,7 @@ function creerIcones(iconConfig) {
   }
 
   console.log("[Map] Icônes créées —", Object.keys(window._iconMap).length, "tags |",
-              useLeafletDefault ? "default = pin Leaflet natif" : "default = " + iconConfig.default);
+              "default = " + iconeDefautUrl);
 }
 
 // ── Nettoyage de la carte existante ──────────
@@ -262,7 +319,8 @@ async function initMapFromConfig() {
   if (!config?.plan) throw new Error("PLAN_CONFIG non chargé");
 
   cleanupExistingMap();
-  await new Promise(function(resolve) { requestAnimationFrame(resolve); });
+  // 🩸 Jamais un requestAnimationFrame nu ici : il peut ne jamais venir (cf utils.js > ktaAttendreImage).
+  await window.ktaAttendreImage();
 
   const mapContainer = document.getElementById("map");
   if (!mapContainer) throw new Error("#map introuvable");
@@ -383,14 +441,12 @@ async function initMapFromConfig() {
   // true = phase capture (avant les handlers des layers)
 
   // Taille visuelle des icônes selon le zoom : --kta-marker-scale sur les <img> divIcon
-  // (style.css > .kta-marker-img), plancher 0.25 (~12 px au dézoom extrême). Rien si scaledMarkers OFF.
-  if (!window.APP_CONFIG || window.APP_CONFIG.scaledMarkers !== false) {
+  // (style.css > .kta-marker-img), loi window.ktaEchelleMarqueurs. Rien si scaledMarkers OFF.
+  if (window.ktaReglageTailleIcones()) {
     const _majMarkerScale = function() {
-      // 2^zoom : zoom 0 → 1, -1 → 0.5, -2 → 0.25 ; en dessous, l'icône deviendrait un point illisible.
-      const z = map.getZoom();
-      const raw = Math.pow(2, z);
-      const clamped = Math.max(0.25, Math.min(2, raw));  // clamp aussi en haut (zoom > 1 = très zoomé)
-      document.body.style.setProperty("--kta-marker-scale", clamped);
+      // 2^zoom = pixels écran par pixel de plan : zoom 0 → 1, -1 → 0.5, -2 → 0.25 (plancher : en dessous,
+      // l'icône deviendrait un point illisible).
+      document.body.style.setProperty("--kta-marker-scale", window.ktaEchelleMarqueurs(Math.pow(2, map.getZoom())));
     };
     map.on("zoomend", _majMarkerScale);
     map.on("zoom",    _majMarkerScale);  // pendant l'animation pour fluidité
@@ -546,7 +602,9 @@ function initCollisionMap(imagePath) {
       resolve(); return;
     }
     const img = new Image();
-    requestAnimationFrame(function() { img.src = imagePath; });
+    // 🩸 Jamais un requestAnimationFrame nu ici : sans image, la collision ne se chargeait pas et l'ouverture du plan
+    // ne finissait jamais (cf utils.js > ktaAttendreImage).
+    window.ktaAttendreImage().then(function() { img.src = imagePath; });
     img.onload = function() {
       try {
         let w = img.width, h = img.height;

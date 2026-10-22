@@ -18,13 +18,17 @@
 //   - Marquage visuel : CHOIX de l'utilisateur par le tag intégré « portail » (pas de badge automatique).
 //   - Calque « baked » : un point peut embarquer `interPlanLinks` (lecture seule, fusionné au popup, dédup par id).
 //   - Export de session : la clé `interPlanLinks` emporte les liaisons du plan ; l'import les fusionne.
+//   - Extension (contrat community-server-line.md §3) : `mktm:liaisons-changees` après chaque écriture,
+//     `appliquerExterne` pour ce qu'elle dépose, prises liaisonInfo / liaisonActions / liaisonModifiable. Sans
+//     extension : rien n'écoute, rien ne change.
 // API : window.InterPlanLinks = {
 //   getLinksForPoint(planId, point), createLink(a, b), removeLink(id),
 //   getLinksForPlan(planId), importLinks(links), buildPopupHtml(point, layerId),
 //   ouvrirCreation(id, x, y, nom, source), naviguerVers(linkId, side),
-//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged
+//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged,
+//   appliquerExterne({ liens, retirer })
 // };
-// 100 % local, aucune surface réseau nouvelle (fetch same-origin des plans serveur, ZIP locaux en IndexedDB).
+// Local, aucune surface réseau nouvelle (fetch same-origin des plans serveur, ZIP locaux en IndexedDB).
 // Garde-fous : check-uid.js, check-repositionner.js, check-xss.js. Doc : docs/architecture/multilevel-pathfinding.md.
 
 (function() {
@@ -61,6 +65,33 @@
   function _save(reg) {
     try { localStorage.setItem(LS_KEY, JSON.stringify(reg)); }
     catch(e) { console.warn("[InterPlanLinks] écriture registre :", e); }
+  }
+
+  // ⚠️ Contrat : `mktm:liaisons-changees` { ids, action: "creation" | "modification" | "suppression", source? },
+  // émis APRÈS l'écriture du registre. `source: "extension"` = déposé par appliquerExterne (à ne pas renvoyer) ;
+  // `"import"` = fusion d'un export (pas un geste de création). Sans écouteur : sans effet.
+  function _annoncer(ids, action, source) {
+    if (!ids || ids.length === 0) return;
+    const detail = { ids: ids.slice(), action: action };
+    if (source) detail.source = source;
+    try { window.dispatchEvent(new CustomEvent("mktm:liaisons-changees", { detail: detail })); } catch(e) { /* rien */ }
+  }
+  // Date de la dernière écriture d'une liaison (ms) : une extension qui la synchronise fusionne dessus.
+  function _toucher(l) { l.updatedAt = Date.now(); }
+
+  // Prises d'extension (js/ktaExtensions.js). Sans extension : info vide, aucune action, tout est modifiable.
+  function _ext() { return window.KtaExtensions || null; }
+  function _modifiable(l) {
+    const K = _ext();
+    return !K || typeof K.liaisonModifiable !== "function" || K.liaisonModifiable(l) !== false;
+  }
+  function _infoExt(l) {
+    const K = _ext();
+    return (K && typeof K.liaisonInfo === "function") ? (K.liaisonInfo(l) || "") : "";
+  }
+  function _actionsExt(l) {
+    const K = _ext();
+    return (K && typeof K.liaisonActions === "function") ? (K.liaisonActions(l) || []) : [];
   }
 
   // Identité d'un point pour le croisement : id si non vide, sinon coords arrondies (les points de calque n'ont
@@ -116,10 +147,12 @@
       id: "ipl_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
       a: refA,
       b: refB,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      updatedAt: Date.now()
     };
     reg.links.push(link);
     _save(reg);
+    _annoncer([link.id], "creation");
     console.log("[InterPlanLinks] Liaison créée :", link.id,
                 refA.planId + "/" + (refA.pointId || refA.x + "," + refA.y), "↔",
                 refB.planId + "/" + (refB.pointId || refB.x + "," + refB.y));
@@ -133,10 +166,43 @@
     reg.links = reg.links.filter(function(l) { return l.id !== linkId; });
     if (reg.links.length !== before) {
       _save(reg);
+      _annoncer([linkId], "suppression");
       refreshBadges();
       return true;
     }
     return false;
+  }
+
+  // Dépôt d'une extension : `liens` remplacent ou ajoutent (par id), `retirer` = ids à enlever. N'annonce qu'avec
+  // `source: "extension"` (elle ne se renvoie pas ses propres dépôts). Lien sans id ou sans ses deux côtés : ignoré.
+  // Rend { ecrites, retirees }.
+  function appliquerExterne(lot) {
+    const liens = (lot && Array.isArray(lot.liens)) ? lot.liens : [];
+    const retirer = (lot && Array.isArray(lot.retirer)) ? lot.retirer : [];
+    const reg = _load();
+    const ecrits = [], retires = [];
+    liens.forEach(function(l) {
+      if (!l || typeof l.id !== "string" || !l.id || !l.a || !l.b ||
+          typeof l.a.planId !== "string" || typeof l.b.planId !== "string") return;
+      const i = reg.links.findIndex(function(x) { return x.id === l.id; });
+      if (i >= 0) reg.links[i] = l; else reg.links.push(l);
+      ecrits.push(l.id);
+    });
+    if (retirer.length) {
+      const set = {};
+      retirer.forEach(function(id) { set[String(id)] = true; });
+      reg.links = reg.links.filter(function(l) {
+        if (!set[l.id]) return true;
+        retires.push(l.id);
+        return false;
+      });
+    }
+    if (ecrits.length || retires.length) {
+      _save(reg);
+      _annoncer(ecrits, "modification", "extension");
+      _annoncer(retires, "suppression", "extension");
+    }
+    return { ecrites: ecrits.length, retirees: retires.length };
   }
 
   // Les liaisons d'un plan passent sous un autre id (copie locale remplacée par sa version publiée). Rend le
@@ -145,10 +211,13 @@
     if (!ancienId || !nouveauId || ancienId === nouveauId) return 0;
     const reg = _load();
     let n = 0;
+    const ids = [];
     reg.links.forEach(function(l) {
-      ["a", "b"].forEach(function(k) { if (l[k] && l[k].planId === ancienId) { l[k].planId = nouveauId; n++; } });
+      let touche = false;
+      ["a", "b"].forEach(function(k) { if (l[k] && l[k].planId === ancienId) { l[k].planId = nouveauId; n++; touche = true; } });
+      if (touche) { _toucher(l); ids.push(l.id); }
     });
-    if (n) _save(reg);
+    if (n) { _save(reg); _annoncer(ids, "modification"); }
     return n;
   }
 
@@ -158,15 +227,16 @@
     const reg = _load();
     const known = {};
     reg.links.forEach(function(l) { known[l.id] = true; });
-    let added = 0;
+    const ids = [];
     links.forEach(function(l) {
       if (l && typeof l.id === "string" && l.id && l.a && l.b && !known[l.id]) {
         reg.links.push(l);
         known[l.id] = true;
-        added++;
+        ids.push(l.id);
       }
     });
-    if (added > 0) { _save(reg); refreshBadges(); }
+    const added = ids.length;
+    if (added > 0) { _save(reg); _annoncer(ids, "creation", "import"); refreshBadges(); }
     console.log("[InterPlanLinks] Import : " + added + " liaison(s) ajoutée(s)");
     return added;
   }
@@ -205,6 +275,7 @@
     entries.forEach(function(e) {
       const o = e.other || {};
       const dispo = !!(window.PlanRegistry && window.PlanRegistry.findById(o.planId));
+      const info = e.baked ? "" : _infoExt(e.link);
       rows +=
         '<div class="kta-ipl-row">' +
           '<span class="kta-ipl-ico">🌀</span>' +
@@ -216,11 +287,12 @@
                 'data-kta-lien="' + _esc(e.link.id) + '" data-kta-cote="' + (e.mySide === "b" ? "b" : "a") + '" ' +
                 'title="' + _esc(_t("ipl.popup.goTitle")) + '">➜</button>'
             : '<span class="kta-ipl-absent" title="' + _esc(_t("ipl.popup.planAbsent")) + '">⛔</span>') +
-          (e.baked ? '' :
+          ((e.baked || !_modifiable(e.link)) ? '' :
             '<button class="kta-popup-btn kta-ipl-del" type="button" data-kta-act="ipl-del" ' +
               'data-kta-lien="' + _esc(e.link.id) + '" ' +
               'title="' + _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>') +
-        '</div>';
+        '</div>' +
+        (info ? '<div class="kta-popup-ext-info kta-ipl-ext-info">' + _esc(info) + '</div>' : '');
     });
 
     // Création : tout point est liable, calques compris. level + 1er tag vont au snapshot (bascule de niveau à
@@ -246,6 +318,8 @@
 
   // Confirmation de suppression partagée (popup + gestionnaire) ; onDone après suppression effective.
   function _confirmerSuppression(linkId, onDone) {
+    const lienVise = _load().links.find(function(l) { return l.id === linkId; });
+    const infoExt = lienVise ? _infoExt(lienVise) : "";
     const modal = document.createElement("div");
     modal.className = "kta-readme-modal-overlay";
     modal.style.display = "flex";
@@ -255,6 +329,7 @@
         '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">🌀</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.remove.titre")) + '</div>' +
         '<div class="kta-modal-texte">' + _esc(_t("ipl.remove.texte")) + '</div>' +
+        (infoExt ? '<div class="kta-modal-texte kta-popup-ext-info">' + _esc(infoExt) + '</div>' : '') +
         '<div class="kta-modal-actions">' +
           '<button class="kta-btn kta-btn-ghost" id="kta-ipl-rm-no" type="button">' + _esc(_t("ui.btn.cancel")) + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-ipl-rm-yes" type="button">' + _esc(_t("ipl.remove.ok")) + '</button>' +
@@ -263,6 +338,13 @@
     document.documentElement.appendChild(modal);
     document.getElementById("kta-ipl-rm-no").addEventListener("click", function() { modal.remove(); });
     document.getElementById("kta-ipl-rm-yes").addEventListener("click", function() {
+      // 🔒 L'extension peut refuser (liaison qu'elle synchronise sans droit de la modifier) : rien n'est retiré.
+      const lien = _load().links.find(function(l) { return l.id === linkId; });
+      if (lien && !_modifiable(lien)) {
+        modal.remove();
+        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(_t("ipl.remove.refuse"), "warn");
+        return;
+      }
       removeLink(linkId);
       modal.remove();
       if (window.OOMGuard && window.OOMGuard.showToast) {
@@ -406,21 +488,30 @@
         listEl.innerHTML = '<p class="kta-ipl-empty">' + _esc(_t("ipl.mgr.empty")) + '</p>';
         return;
       }
+      const actionsExt = [];
       listEl.innerHTML = links.map(function(l, i) {
         const dispoA = !!(window.PlanRegistry && window.PlanRegistry.findById(l.a.planId));
         const dispoB = !!(window.PlanRegistry && window.PlanRegistry.findById(l.b.planId));
-        return '<div class="kta-ipl-mgr-row" data-i="' + i + '">' +
+        const info = _infoExt(l);
+        const acts = _actionsExt(l);
+        actionsExt[i] = acts;
+        return '<div class="kta-ipl-mgr-row" data-i="' + i + '" data-kta-lien="' + _esc(l.id) + '">' +
                  '<div class="kta-ipl-mgr-sides">' +
                    _sideHtml(l.a) + '<span class="kta-ipl-mgr-arrow">⇄</span>' + _sideHtml(l.b) +
                  '</div>' +
                  _ecartHtml(l) +
+                 (info ? '<div class="kta-popup-ext-info kta-ipl-ext-info">' + _esc(info) + '</div>' : '') +
                  '<div class="kta-ipl-mgr-actions">' +
                    (dispoA ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-go="a" title="' +
                      _esc(_t("ipl.mgr.goSide", { plan: l.a.planName || l.a.planId })) + '">➜ A</button>' : '') +
                    (dispoB ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-go="b" title="' +
                      _esc(_t("ipl.mgr.goSide", { plan: l.b.planName || l.b.planId })) + '">➜ B</button>' : '') +
-                   '<button class="kta-popup-btn kta-ipl-del" type="button" data-del="1" title="' +
-                     _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>' +
+                   acts.map(function(a, j) {
+                     return '<button class="kta-popup-btn kta-ipl-ext" type="button" data-ext="' + j + '">' +
+                       _esc(a.libelle) + '</button>';
+                   }).join("") +
+                   (_modifiable(l) ? '<button class="kta-popup-btn kta-ipl-del" type="button" data-del="1" title="' +
+                     _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>' : '') +
                  '</div>' +
                '</div>';
       }).join("");
@@ -441,6 +532,13 @@
         const del = row.querySelector("[data-del]");
         if (del) del.addEventListener("click", function() {
           _confirmerSuppression(l.id, _render);
+        });
+        const acts = actionsExt[Number.parseInt(row.getAttribute("data-i"), 10)] || [];
+        row.querySelectorAll("[data-ext]").forEach(function(btn) {
+          const a = acts[Number.parseInt(btn.getAttribute("data-ext"), 10)];
+          if (a) btn.addEventListener("click", function() {
+            try { a.action(); } catch(e) { console.warn("[InterPlanLinks] action d'extension :", e); }
+          });
         });
       });
     }
@@ -487,6 +585,14 @@
     }
     vList.addEventListener("click", function() { _basculer(false); });
     vGraph.addEventListener("click", function() { _basculer(true); });
+
+    // Liste redessinée quand le registre change pendant qu'elle est ouverte (dépôt d'une extension, partage) ;
+    // l'écouteur part avec la fenêtre.
+    const _surChangement = function() {
+      if (!overlay.isConnected) { window.removeEventListener("mktm:liaisons-changees", _surChangement); return; }
+      if (listEl.style.display !== "none") _render();
+    };
+    window.addEventListener("mktm:liaisons-changees", _surChangement);
 
     _render();
   }
@@ -1202,6 +1308,7 @@
     });
     const reg = _load();
     let changed = 0;
+    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(s) {
         const side = l[s];
@@ -1220,11 +1327,13 @@
           side.level = lvl;
           side.tag = tag;
           changed++;
+          if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
         }
       });
     });
     if (changed > 0) {
       _save(reg);
+      _annoncer(ids, "modification");
       console.log("[InterPlanLinks] Resync snapshots « " + planId + " » : " + changed + " côté(s) mis à jour");
     }
     return changed;
@@ -1251,17 +1360,22 @@
   }
 
   // Point SUPPRIMÉ (editor.js > supprimerPointEditor) : la liaison entière est retirée (sans l'un de ses bouts
-  // elle n'a plus de sens), des deux côtés du registre.
+  // elle n'a plus de sens), des deux côtés du registre. Une liaison que l'extension dit non modifiable reste (elle
+  // reviendrait à sa prochaine synchro).
   function onPointDeleted(planId, point) {
     if (!planId || !point) return 0;
     const reg = _load();
-    const before = reg.links.length;
+    const ids = [];
     reg.links = reg.links.filter(function(l) {
-      return !_coteDuPoint(l.a, planId, point) && !_coteDuPoint(l.b, planId, point);
+      const touche = _coteDuPoint(l.a, planId, point) || _coteDuPoint(l.b, planId, point);
+      if (!touche || !_modifiable(l)) return true;
+      ids.push(l.id);
+      return false;
     });
-    const removed = before - reg.links.length;
+    const removed = ids.length;
     if (removed > 0) {
       _save(reg);
+      _annoncer(ids, "suppression");
       refreshBadges();
       console.log("[InterPlanLinks] " + removed + " liaison(s) purgée(s) (point supprimé)");
     }
@@ -1275,6 +1389,7 @@
     if (!planId || !Array.isArray(points)) return 0;
     const reg = _load();
     let n = 0;
+    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(cote) {
         const side = l[cote];
@@ -1283,10 +1398,13 @@
         if (c.length > 1) {
           c = c.filter(function(p) { return Math.abs((p.x || 0) - (side.x || 0)) < 1 && Math.abs((p.y || 0) - (side.y || 0)) < 1; });
         }
-        if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) { side.pointUid = c[0].uid; n++; }
+        if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) {
+          side.pointUid = c[0].uid; n++;
+          if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
+        }
       });
     });
-    if (n > 0) { _save(reg); console.log("[InterPlanLinks] " + n + " côté(s) de liaison rattaché(s) à l'uid de leur point (v2.4.0)"); }
+    if (n > 0) { _save(reg); _annoncer(ids, "modification"); console.log("[InterPlanLinks] " + n + " côté(s) de liaison rattaché(s) à l'uid de leur point (v2.4.0)"); }
     return n;
   }
 
@@ -1300,6 +1418,7 @@
     if (!planId || !point) return 0;
     const reg = _load();
     let recales = 0;
+    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(cote) {
         const side = l[cote];
@@ -1307,10 +1426,12 @@
         side.x = Number(point.x) || 0;
         side.y = Number(point.y) || 0;
         recales++;
+        if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
       });
     });
     if (recales > 0) {
       _save(reg);
+      _annoncer(ids, "modification");
       refreshBadges();
       console.log("[InterPlanLinks] " + recales + " côté(s) de liaison recalé(s) (point déplacé)");
     }
@@ -1325,16 +1446,19 @@
     const lvl = Number.isInteger(point.level) ? point.level : 0;
     const reg = _load();
     let n = 0;
+    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(cote) {
         const side = l[cote];
         if (!_coteDuPoint(side, planId, point) || (side.level || 0) === lvl) return;
         side.level = lvl;
         n++;
+        if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
       });
     });
     if (n > 0) {
       _save(reg);
+      _annoncer(ids, "modification");
       console.log("[InterPlanLinks] " + n + " côté(s) de liaison mis au niveau " + lvl);
     }
     return n;
@@ -1348,6 +1472,7 @@
     createLink:           createLink,
     removeLink:           removeLink,
     importLinks:          importLinks,
+    appliquerExterne:     appliquerExterne,   // dépôt d'une extension (annoncé avec source « extension »)
     transfererPlan:       transfererPlan,
     buildPopupHtml:       function(point, layerId) { return buildPopupHtml(point, layerId); },
     ouvrirCreation:       ouvrirCreation,

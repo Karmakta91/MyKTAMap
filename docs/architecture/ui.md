@@ -86,6 +86,9 @@ Structure type :
 | **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `success` (une réussite) / `warn` / `error` ; réglage de notifications ci-dessous |
 
 **Contrat de `ktaConfirm`** (en-tête de la fonction dans `js/utils.js`) :
+- `opts.choix` (boutons radio, titre et aide en `textContent`) : `aucunParDefaut` = rien de coché, OK inactif tant
+  qu'on n'a pas choisi ; l'`okLabel` d'une option devient le texte du bouton OK (en `textContent`) quand elle est
+  cochée — le bouton dit l'action choisie, « Annuler » ferme sans rien faire.
 - ⚠️ **`message`, `opts.titre`, `opts.okLabel`, `opts.cancelLabel` sont insérés en HTML** (voulu : des appelants
   passent `<b>`, `<br>`, classes `.kta-tx-*`). **Toute donnée d'utilisateur ou de fichier** (nom de plan, de dossier,
   de fichier, libellé de point) passe par `window.ktaEsc` **avant** d'entrer dans le message — typiquement
@@ -127,7 +130,7 @@ liseré `--kta-ok`), jamais en `warn` : ⚠️ sur une réussite ment sur ce qui
 **Lecture seule** (plan en droit « lire ») : tout point d'entrée qui modifie les objets du plan commence par
 `if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;` — la fonction
 (`js/ktaExtensions.js`) affiche elle-même le toast ; `ktaEditionRefusee(true)` = test silencieux. Sont gardés
-notamment : outils de dessin, fiche d'un point, import (⬇️ Charger → 📥 Importer : session JSON/ZIP et GPX),
+notamment : outils de dessin, fiche d'un point, import (⬇️ Charger / Import, solo : session JSON/ZIP et GPX),
 annuler / rétablir (Ctrl+Z / Ctrl+Y et boutons), session remplacée depuis la table.
 
 ---
@@ -197,7 +200,7 @@ Nouvelle option `position: "topleft" | "topright"` lue UNIQUEMENT si `window._re
 Groupes taggés `position: "topleft"` :
 - `aide` (📚 Doc/Aide/Légende)
 - `settings` (⚙ Paramètres)
-- `charger` (⬇ Charger / Import)
+- `charger` (⬇ Charger / Import, solo : ouvre le sélecteur de fichier ; l'Éditeur de données est une tuile de ⬆️ Exporter)
 - `save` (⬆ Enregistrer)
 
 **Effet visuel** : sidebars = barres VERTICALES continues (pas d'icônes séparées avec gap). En CSS :
@@ -278,7 +281,17 @@ Compteurs du header (📍 N · 🛣 N · ⬛ N) cliquables → modale qui liste 
 | 📍 Points ajoutés | Liste avec nom / tag / coord / niveau si multi-niveau |
 | 🛣 Tracés | Regroupement par type (Principal/Secondaire/Chemin/Jonction) avec compteur + distance totale par type |
 | ⬛ Zones | Regroupement par type (Eau/Remblais/Effondrement/Inaccessible) avec compteur |
+| 🏛️ Structures | Regroupement par type avec compteur |
+| 📸 Photos | Total, détail par point, taille (hydratation asynchrone) |
 | 📊 Autres mesures | Mesure simple (si points ≥ 2), Itinéraire actif (distance + nb waypoints), Tracker (position si actif) |
+| 📔 Carnet · ⭐ Favoris · Mémoire · 📦 Snapshots | Sortie en cours, export / import des favoris, jauge de stockage, snapshots récents |
+| 🗑️ Effacer la session | Bouton danger : le parcours de la fenêtre « session restaurée » (`SessionPersist.demanderEffacement`, choix à trois options d'un plan partagé compris, `session-data.md` §9.0) ; plan ☁️ en lecture seule : bouton inactif « Rien à effacer : ce plan vient du serveur » ; la modale se ferme une fois la session effacée |
+
+**Sections repliables** : Points, Tracés, Zones, Structures et Photos sont des `<details class="kta-session-repli">`
+(le titre est le `<summary>`, flèche `::after`, badge du total toujours visible). Ouvertes d'office jusqu'à
+`SEUIL_REPLI_SESSION` (8) lignes affichées, repliées au-delà : une session de 1000+ points ne noie plus la modale.
+Photos s'ouvre pendant le chargement et se replie après l'hydratation si plus de 8 points ont des photos.
+Checkup : `scripts/smoke/checkup-session-repli.js` (téléphone / PC, sombre / clair).
 
 Fonction `_afficherModaleSessionDetail()` dans `refonteInterface.js`. Pattern `.kta-readme-modal-overlay` + box max-width 560px + sections card-stack. Recalcule en live à chaque ouverture. Toggle re-clic = reopen direct (cleanup d'instance précédente).
 
@@ -1054,6 +1067,8 @@ Si 0 tag → section affiche "Aucun point dans cette session."
 - ❌ Appeler `_enumerateTags()` ou `_enumerateTypes()` dans une boucle de render — coûteux (itère session + embedded à chaque appel). Cache l'résultat si utilisé plusieurs fois dans la même passe de render
 - ❌ Modifier `window._ktaRuntimeFilters` directement depuis un autre module — passer par `FilterPanel.setFilters({...})` pour bénéficier de `_scheduleApply` + `_notify`
 
+**Raccourci « 🔄 Mettre à jour le plan… »** en tête de la section Calques de données (`_renderDataLayersSection`, `data-maj-plan`, branché dans le listener `click` comme les boutons de calque) : ferme le panneau et ouvre l'assistant (`MajPlan.ouvrir`, cf. `plans-loader.md`). Absent en lecture seule (`ktaEditionRefusee(true)`), comme « ➕ Intégrer des ajouts ».
+
 #### 64.12 Pour étendre
 
 **Ajouter un nouvel axe de filtre runtime** (ex: `photoTags` pour filtrer par tag photo) :
@@ -1742,7 +1757,7 @@ fermeture des modales actives).
 
 ### 91. Éditeur de données du plan — refonte 3 sources + édition note tracés/zones (v1.48.0)
 
-Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Éditeur de données du plan »**). Ouvert via **sidebar carte** ⬇️ → 📊 **ET le home** (`index.html` `loaderTableEditorBtn`, à côté du Générateur) → `window.ouvrirTableEditor`. Au home, `PLAN_CONFIG` est `null` (reset `config.js > resetRuntimeAssets`) → `planDispo` faux → la carte « Plan en cours » est **masquée** (pas seulement grisée), donc 2 sources seulement (ZIP + JSON).
+Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Éditeur de données du plan »**). Ouvert via **⬆️ Exporter → 📊** sur la carte (tuile de la section 💾 Session) **ET le home** (`index.html` `loaderTableEditorBtn`, à côté du Générateur) → `window.ouvrirTableEditor`. Au home, `PLAN_CONFIG` est `null` (reset `config.js > resetRuntimeAssets`) → `planDispo` faux → la carte « Plan en cours » est **masquée** (pas seulement grisée), donc 2 sources seulement (ZIP + JSON).
 
 #### 91.1 Écran d'accueil — 3 sources (`_afficherAccueil`)
 
@@ -1758,15 +1773,31 @@ Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Édit
 
 `_kind` ∈ {`data`, `editorPoints`, `roads`, `zones`, `structures`}. Helpers `_estPoints()` / `_estSession()`.
 - **Points** (`data`/`editorPoints`) : édition complète (inchangé) + boutons « Ajouter ligne » / « Voir carte ».
-- **Tracés / zones / structures** : `description`(= **la note**, cf `road.js:939`/`zones.js:377`/`structures.js:592`), `type`, `level` éditables ; colonne **`points` (géométrie) en lecture seule** (rendu « N points », classe `col-readonly`, bandeau `tabledit.geom.lecture`). `level` ajouté aux colonnes numériques. Boutons add/preview masqués (géométrie non créable au tableau).
+- **Tracés / zones / structures** : `description` (= **la note**), `type`, `level` éditables ; colonne **`points` (géométrie) en lecture seule** (rendu « N points », classe `col-readonly`, bandeau `tabledit.geom.lecture`). Boutons add/preview masqués (géométrie non créable au tableau).
+- **`type`** : saisie libre avec `<datalist>` des types connus (canon `ktaStyleBuiltins` + customs de la légende) ; un type hors liste passe la cellule en `col-error` (infobulle `tabledit.type.inconnu`).
+- **`level`** sur un plan affiché multi-niveau : colonne toujours présente (même sans champ `level`, affiché 0), cellule = `<select>` (`_editerNiveau`) des `availableLevels` + niveau actuel ; lecture seule pour jonction / itinéraire. Hors multi-niveau : saisie numérique, colonne seulement si un objet a un `level`.
 
 #### 91.3 Sauvegarde — règle « no live » datalayers (`_menuSauvegarde`)
 
 - **Datalayers** (`data`/`roads`/`zones`/`structures`) → **export-only** (`📥 Télécharger`) + note `tabledit.save.datalayerNote` (« réimporte dans le Générateur »). Le live-load `Remplacer le calque actif` (ancien `_remplacerCalque`/`_calqueCorrespondant`) est **supprimé**.
-- **Session** (`editorPoints`) → `📥 Télécharger` **ou** `✏️ Remplacer la session` live (`setEditorPoints`).
+- **Fichier de session** (`type: "devmap-session"` ou porteur de `editorPoints`) → `📥 Télécharger` **ou** `✏️ Appliquer à la session` en direct, points compris (`KtaConvertir.appliquerTableau` : seules les cellules modifiées, type et niveau par les chemins de la fiche, type inconnu refusé, une entrée ⏪). Règles et plan partagé : `session-data.md` §9.1.
 - `_construireObjetSortie()` = **clone profond** de `_sourceObj` (`JSON.parse(JSON.stringify)`) avec uniquement `obj[_kind] = _data` remplacé → **aucune perte** des autres tableaux/champs (type, version, measure, `customLegend`, autres calques d'un même fichier). Nom de téléchargement = `_sourceMeta.fileName`.
 
 i18n : 23 clés `tabledit.*` ajoutées (accueil / source / selecteur / kind / err / col / geom / save.datalayerNote) fr/en/es. **Aucune nouvelle surface réseau** (lecture locale des calques, identique au boot).
+
+#### 91.4 Recaler des données sur un autre scan (`js/recalageScan.js`)
+
+Tuile 🔁 de l'accueil de l'Éditeur : ferme l'accueil et ouvre `window.ktaOuvrirRecalageScan()` (module à part ; `tableEditor.js` ne porte que l'appel). Réécrit des fichiers `.json` relevés sur un scan dans le repère du **plan ouvert** (sens : fichier → plan ouvert), téléchargés en `<nom>_conv.json` ; les originaux lus restent intacts en mémoire pour un autre essai.
+
+| Méthode | Condition | Calcul |
+|---|---|---|
+| 🔤 **Par les uid et les noms** (défaut) | plan ouvert | d'abord les paires par **`uid`** commun (deux versions du même Générateur) : un point = une paire ; un tracé / une zone / une structure = une paire par sommet **si** le nombre de sommets est le même des deux côtés (sinon objet ignoré) ; un uid porté deux fois d'un côté est ignoré pour l'uid (l'objet peut encore s'apparier par son nom). **Le scan d'abord** (`apparierPlan`) : appariement d'abord avec les **calques** du plan (`getAllEmbedded*`, données du ZIP) ; la **session** (`getRoads/Zones/Structures/EditorPoints`) n'est lue que si les calques donnent moins de 3 paires, et une paire de session dont le point est à la même position que dans le fichier (< 0,01 px avant transformation) est ignorée. 🩸 Calques et session lus ensemble, une session importée d'une ancienne version (copie **non convertie** du fichier) mettait chaque objet du calque en double (écarté) et ne laissait que les repères de la copie, identiques au fichier : transformation = identité, données posées non converties. Un objet apparié par uid n'est **pas** réapparié par nom. Puis paires = noms **uniques des deux côtés** parmi les points restants (normalisés : NFD sans accents, minuscules, hors `[a-z0-9]` retiré ; ≥ 4 caractères) entre les points nommés des fichiers (`data`, `editorPoints` ; `nom`, sinon `id`) et ceux du plan (même règle : calques, puis session). Consensus de départ (similitude de 2 paires qui met le plus de paires d'accord, toutes les combinaisons jusqu'à 3 000, tirage déterministe au-delà ; au-delà de 1 000 paires, cherché sur un échantillon déterministe de 1 000, les moindres carrés et le rejet portant ensuite sur toutes ; indicateur « Calcul du recalage… » peint avant le calcul), puis similitude aux moindres carrés et rejet itératif (seuil 3 × médiane des retenus, plancher 3 px). Affine (6 paramètres) calculée de même, **proposée** (case à cocher) seulement si son 90e centile vaut ≤ 60 % de celui de la similitude et gagne ≥ 2 px. Refus sous 3 paires. Annonce : repères retenus, leur provenance (calques / session / les deux), combien par uid et par nom, paires de session ignorées, échelle et rotation. **Alerte « même position »** si plus de la moitié des repères retenus ont un écart nul avant transformation (fichier déjà dans ce repère, ou copie non convertie dans un calque) : bouton « Écarter ces repères et recalculer » (`ecarterIdentiques` : les paires identiques des calques sont retirées aussi, et la session prend le relais s'il en reste moins de 3). |
+| 📍 **Repères cliqués** | plan ouvert | point du fichier choisi dans une liste, position cliquée via `ktaDemanderPositionCarte` (`recaler:false`). ≥ 3 repères. Dès 4, la similitude de 2 repères à la plus petite **médiane** d'écarts désigne les suspects (> max(3 × 1,4826 × médiane, 5 px)) : rouges, hors du calcul. 🩸 Aux moindres carrés seuls, un mauvais clic sur 4 se répartit sur tous et aucun ne ressort. |
+| 📐 **Résolutions** | toujours (seule méthode depuis l'accueil) | homothétie kX, kY ; repères saisis à la main en option (1 repère + rotation, ou 2 repères). **Refus bloquant** de l'homothétie seule si les proportions divergent de plus de 2 % : deux scans recadrés n'ont pas l'échelle de leurs résolutions (mesuré sur deux scans réels d'un même plan : 585 px d'écart médian par les résolutions, 0 px par les noms). |
+
+**Aperçu** (plan ouvert) : copie recalée de chaque fichier dessinée dans un `L.layerGroup` temporaire (`convertCoord`, cercles pour les points, tireté pour tracés / zones / structures, couleur = valeur calculée de `--kta-accent` : le rendu canvas ne lit pas les variables CSS), outil masqué et barre « Retour / Télécharger », vue ajustée au résultat. Le calque part à la fermeture de l'outil et à tout changement du calcul. Niveaux ignorés (tout est dessiné).
+
+Calcul **pur** exposé sur `window.KtaRecalageScan` (sans DOM), éprouvé par `scripts/check-resolution-convert.js` ; parcours à la souris : `scripts/smoke/checkup-recalage-scan.js`. i18n `recalscan.*` (fr/en/es).
 
 ---
 
@@ -1784,7 +1815,7 @@ KARMA : « refondre le menu déroulé de tracker par un modal full screen plus e
 
 **CSS** (`css/style.css`) : `.kta-tracker-modal-*` (overlay z-99999, box gradient charte, grille 2 colonnes, tuiles tactiles) + override `body.kta-theme-light` + `safe-area-inset-bottom`. **Icônes 20px / tuile min-h 62px** → les 11 options + 3 titres de section tiennent **sans scroll même sur iPhone SE** (~570px < 92vh) ; `overflow-y:auto` du corps reste en filet de sécurité.
 
-i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Scope** : seul le groupe Tracker est en modal (les autres gardent le flyout). Aucune nouvelle surface réseau.
+i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Scope** : groupes Tracker et ⬆️ Exporter en modal (habillage `_MODAL_EXPORT` : sections 🖼️ Image, 💾 Session, 🗺️ Plan — tuile 🔄 Mettre à jour le plan, `js/majPlan.js` —, 🌍 Export externe) ; les autres gardent le flyout. Aucune nouvelle surface réseau.
 
 ---
 

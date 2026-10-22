@@ -9,7 +9,8 @@
 // =========================
 // Modale du Générateur (nouveau plan, mode Modifier d'un ZIP, assistant pas à pas, icônes, calques,
 // tuilage V2) et convertisseurs KMZ / GPX / SIG / GeoTIFF / image vers un ZIP de plan.
-// Expose : window.afficherPlanner, afficherImporterKmz/Gpx/Sig/GeoTiff/Image, MyKTAMapTilingV2,
+// Expose : window.afficherPlanner, ktaGenerateurMaj (mise à jour d'un plan, prérempli par js/majPlan.js),
+// afficherImporterKmz/Gpx/Sig/GeoTiff/Image, MyKTAMapTilingV2,
 // ktaLireDimensionsEntete.
 // 🩸 Le chemin d'une icône vit dans `dataset.ktaPath`, jamais dans un libellé affiché (cf. _ajouterIconRow).
 // 🩸 Tuilage V2 : chaque tuile est découpée depuis l'image source, sans canvas pleine résolution.
@@ -17,7 +18,7 @@
 // Doc : docs/architecture/plans-loader.md, docs/TILING.md.
 
 const PLANNER_DEFAULT_ICONS = {
-  default:  "lib/leaflet/images/marker-icon.png",
+  default:  "icon/default.png",
   track:    "icon/iconetrack.png",
   salle:    "icon/house.png",
   pa:       "icon/pa.png",
@@ -40,15 +41,8 @@ const PLANNER_DEFAULT_ICONS = {
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
   portail:  "icon/portail.png",   // liaison inter-plan
-  // Point d'entrée du plan (Vue OSM × Mode Secours) : SVG intégré, pas de PNG (cf. map.js > TAGS_BUILTIN).
-  entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
-      '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
-      '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
-      '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
-      '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
-    '</svg>'
-  )
+  // Point d'entrée du plan (Vue OSM × Mode Secours), cf. map.js > TAGS_BUILTIN.
+  entree_plan: "icon/entree_plan.png"
 };
 
 const PLANNER_EDITOR_JSON   = JSON.stringify({ type: "editor", version: 1, data: [] }, null, 2);
@@ -90,6 +84,14 @@ function _renderHistPdfListe() {
 // data/photos/ par _genererZip. Remises à zéro à chaque ouverture de la modale.
 let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
+// Mise à jour d'un plan (js/majPlan.js > window.ktaGenerateurMaj) : { calques: [{ id, label, payload }], legende,
+// onZip(blob, nomFichier, infos) }. Appliquée au formulaire une fois le ZIP du plan chargé ; présente, elle remplace
+// le téléchargement et la proposition « Publier » de fin de génération (l'assistant choisit la suite). Remise à
+// null à chaque ouverture de la modale.
+let _plannerMaj = null;
+// Empreinte du ZIP chargé en mode Modifier { sha256, taille, nom } : sert à reconnaître un plan d'extension
+// (cf. _planExtensionDuZip). null en mode Nouveau ; remise à null à chaque ouverture de la modale.
+let _plannerSourceZip = null;
 
 // Légende du plan (source de `plan.customLegend`). null = pas de personnalisation, sinon l'état de
 // `LegendCustomization.getSessionState()` : { schemaVersion, labels, hidden, customEntries }.
@@ -698,6 +700,8 @@ function afficherPlanner() {
   setTimeout(_renderHistPdfListe, 0);
   _plannerPhotosFromZip = [];  // reset buffer photos ZIP
   _plannerMode       = "nouveau";
+  _plannerMaj        = null;
+  _plannerSourceZip  = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
@@ -1561,9 +1565,11 @@ async function _chargerZipModifier(file) {
 
     // 🔒 Kill-switch anti-fuite côté générateur aussi : un ZIP révoqué ne peut pas être modifié puis
     // ré-exporté en version dérivée.
+    let shaZip = null;
     if (window.PlanDenylist && typeof window.PlanDenylist.isPlanDenied === "function") {
       try {
         const denyCheck = await window.PlanDenylist.isPlanDenied(file);
+        shaZip = (denyCheck && denyCheck.sha256) ? String(denyCheck.sha256).toLowerCase() : null;
         if (denyCheck && denyCheck.denied) {
           console.warn("[Planner] ZIP refusé (denylist) :", denyCheck.sha256, "- raison :", denyCheck.reason);
           _plannerZipStatus(window.I18n.t("gen.zipModif.revoque"), true);
@@ -1578,10 +1584,14 @@ async function _chargerZipModifier(file) {
 
     const zip = await JSZip.loadAsync(file);
     let planConfigFile = null;
+    _plannerSourceZip = null;
     _plannerOrigAssets = {};
     _plannerPhotosFromZip = [];  // reset buffer photos ZIP au reload (modifier)
 
     for (const entry of Object.values(zip.files).filter(function(f) { return !f.dir; })) {
+      // Tuiles V2 jamais relues : la génération les refait depuis l'image de base. Les extraire toutes en Blob
+      // coûterait la taille du plan en mémoire pour rien.
+      if (/^data\/tiles\/z-?\d+\//.test(entry.name)) continue;
       const name = entry.name.split("/").pop();
       if (!name) continue;
       const blob = await entry.async("blob");
@@ -1592,12 +1602,77 @@ async function _chargerZipModifier(file) {
 
     if (!planConfigFile) throw new Error(window.I18n.t("gen.zipModif.noPlanConfig"));
     const config = JSON.parse(await planConfigFile.text());
+    _plannerSourceZip = { sha256: shaZip, taille: file.size, nom: (config.plan && config.plan.name) || "" };
     _preRemplirFormulaire(config);
     _plannerZipStatus(window.I18n.t("gen.zipModif.charge", { name: file.name }), false);
+    if (_plannerMaj) _appliquerMaj();
   } catch(err) {
     _plannerZipStatus("❌ " + (err.message || err), true);
   }
 }
+
+// ── Mise à jour d'un plan : formulaire prérempli par l'assistant ──────────
+// Chaque calque de `_plannerMaj.calques` remplace le fichier de SA ligne (même id) ou devient une ligne nouvelle.
+// Le fichier est posé sur la ligne (`item._ktaFichierMaj`), pas dans _plannerOrigAssets : deux calques ne se le
+// disputent pas par leur nom de fichier. Un fichier choisi ensuite à la main sur la ligne gagne.
+function _appliquerMaj() {
+  const maj = _plannerMaj;
+  if (!maj || maj.applique) return;
+  maj.applique = true;
+  const list = document.getElementById("pl_dataLayers_list");
+  const lignes = function() { return list ? list.querySelectorAll(".kta-planner-layer-item") : []; };
+  let remplaces = 0, nouveaux = 0;
+  const refuses = [];
+  (maj.calques || []).forEach(function(c) {
+    let item = null;
+    lignes().forEach(function(it) {
+      const inp = document.getElementById(it.dataset.layerId + "_id");
+      if (inp && inp.value.trim() === c.id) item = it;
+    });
+    if (item) remplaces++;
+    else {
+      const avant = lignes().length;
+      _ajouterDataLayer({ id: c.id, label: c.label || c.id, visible: true, file: "data/" + c.id + ".json" });
+      if (lignes().length === avant) { refuses.push(c.id); return; }   // 10 calques au plus
+      item = lignes()[lignes().length - 1];
+      nouveaux++;
+    }
+    item._ktaFichierMaj = _fichierJsonMaj(c.id + ".json", c.payload);
+    item.classList.add("kta-planner-layer-maj");
+    const nom = document.getElementById(item.dataset.layerId + "_file_nom");
+    if (nom) nom.textContent = window.I18n.t("gen.maj.fichierLigne", { fichier: c.id + ".json" });
+  });
+  if (maj.legende) _absorberLegendeCalque(maj.legende);
+  const cb = document.getElementById("pl_photos");
+  if (cb) cb.checked = true;
+  _majVisibiliteCheckboxPhotos();
+  _majCompteurPhotosPlanner();
+  _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }), false);
+  if (refuses.length) _plannerErreur(window.I18n.t("gen.maj.tropDeCalques", { ids: refuses.join(", ") }));
+}
+
+function _fichierJsonMaj(nom, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  try { return new File([blob], nom, { type: "application/json" }); }
+  catch (e) { blob.name = nom; return blob; }   // vieux Safari sans constructeur File
+}
+
+// Ouvre le Générateur en mode Modifier sur `opts.zip` (le ZIP actuel du plan), puis applique les calques de
+// l'assistant. Sans ZIP (plan sans archive sur l'appareil) : le Générateur attend qu'on dépose le ZIP, et
+// l'application se fait à ce dépôt. → Promise<bool> (ZIP chargé et formulaire prérempli).
+window.ktaGenerateurMaj = async function(opts) {
+  const ancien = document.getElementById("kta-planner-modal");
+  if (ancien) ancien.remove();
+  afficherPlanner();
+  _plannerMaj = Object.assign({}, opts || {}, { applique: false });
+  if (!opts || !opts.zip) {
+    _plannerZipStatus(window.I18n.t("gen.maj.deposerZip"), true);
+    return false;
+  }
+  _plannerMode = "modifier";
+  await _chargerZipModifier(opts.zip);
+  return !!(_plannerMaj && _plannerMaj.applique);
+};
 
 function _plannerZipStatus(msg, isErr) {
   const el = document.getElementById("kta-planner-zip-status");
@@ -1746,6 +1821,13 @@ function _preRemplirFormulaire(config) {
   const icList = document.getElementById("pl_icons_list");
   if (icList) { icList.innerHTML = ""; _iconRowCount = 0; }
   Object.entries(config.icons || {}).forEach(function(e) {
+    _ajouterIconRow(e[0], e[1], null, PLANNER_SYSTEME_TAGS.includes(e[0]));
+  });
+  // Tags du catalogue venus APRÈS la création du plan (ex. `portail`, `entree_plan`) : proposés avec l'icône de
+  // l'app, pour pouvoir les personnaliser. Une icône déjà déclarée par le plan n'est jamais remplacée.
+  const _dejaDeclares = config.icons || {};
+  Object.entries(PLANNER_DEFAULT_ICONS).forEach(function(e) {
+    if (Object.prototype.hasOwnProperty.call(_dejaDeclares, e[0])) return;
     _ajouterIconRow(e[0], e[1], null, PLANNER_SYSTEME_TAGS.includes(e[0]));
   });
   if (icList && !icList.querySelector(".kta-planner-icon-row"))
@@ -2241,6 +2323,8 @@ function _ajouterDataLayer(prefill) {
       </span>
     </div>
   `;
+  // Nom du fichier d'origine dans le ZIP : il n'est pas toujours `<id>.json` (cf. _genererZip).
+  if (p.file) item.dataset.ktaFichier = String(p.file).split("/").pop();
 
   list.appendChild(item);
   _bindUploadLabel(id + "_file", id + "_file_nom");
@@ -2737,7 +2821,7 @@ function _lireDimensionsEntete(buf) {
   return null;
 }
 
-// Exposé : tableEditor (Convertir la résolution) lit les dimensions par le même parseur, sans décodage.
+// Exposé : recalageScan (Recaler des données sur un autre scan) lit les dimensions par le même parseur, sans décodage.
 window.ktaLireDimensionsEntete = _lireDimensionsEntete;
 
 function _lireImageDimensions(file) {
@@ -2991,6 +3075,10 @@ function _detectContentBBox(img) {
 // cf. GpxImport.genererCanvasVierge). Toute tuile intérieure pleine y est identique à tous les zooms et le
 // JPEG est déterministe : on l'encode UNE fois (70 à 90 % des tuiles d'un relevé réel).
 // ⚠️ À NE JAMAIS activer pour un vrai scan : aucune tuile identique, le cache produirait un plan gris uni.
+// Tuiles rangées SANS recompression : JPEG, WebP et PNG sont déjà compressés, DEFLATE n'y gagne presque rien et
+// coûte du temps à la génération du ZIP.
+const TUILE_ZIP_OPTS = { compression: "STORE" };
+
 async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   // Octets de la tuile pleine, encodés au plus une fois.
   let _tuileUnieBuf = null;
@@ -3112,7 +3200,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
         const estPleine = (sliceWidthLvl === TILING_V2_TILE_SIZE &&
                            sliceHeightLvl === TILING_V2_TILE_SIZE && destY === 0);
         if (uniformSource && estPleine && _tuileUnieBuf) {
-          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf, TUILE_ZIP_OPTS);
           tilesDone++;
           if (onProgress) onProgress(tilesDone, tilesTotal, z);
           continue;
@@ -3139,7 +3227,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
           // Première tuile pleine d'une source unie : octets gardés. `slice()` détache du buffer d'origine
           // (JSZip garde la référence ; un buffer transféré casserait les N entrées).
           if (uniformSource && estPleine && !_tuileUnieBuf) _tuileUnieBuf = arrBuf.slice(0);
-          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf, TUILE_ZIP_OPTS);
         } catch(zipErr) {
           throw new Error(window.I18n.t("gen.err.tuileZip", {
             z: z, col: col, k: k,
@@ -3174,6 +3262,29 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   }
 }
 
+// ── Libérer la mémoire avant le tuilage V2 ──────────
+// 🩸 Avec un plan ouvert (carte, tuiles, session), la génération d'une grande image passait de moins d'une minute
+// à plus d'une demi-heure : sous pression mémoire, le navigateur jette l'image source décodée et la redécode à chaque
+// tuile. Plan affiché (assistant « Mettre à jour le plan ») : on le dit et on le ferme ; carte gardée cachée derrière
+// l'accueil : fermée sans question (rien ne change à l'écran). Tout ce que le Générateur utilise est déjà chargé
+// (fichiers du ZIP, calques de l'assistant, photos lues par l'id du plan).
+// → true (plan affiché, fermé) · false (rien à fermer, ou carte cachée libérée) · null (l'utilisateur refuse).
+async function _fermerPlanAvantTuilage() {
+  if (typeof window.ktaFermerPlanPourMemoire !== "function") return false;
+  if (!(window.L && window.map instanceof window.L.Map)) return false;
+  const affiche = typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche();
+  if (affiche) {
+    const ok = await window.ktaConfirm(window.I18n.t("gen.fermerPlan.texte"), {
+      titre: window.I18n.t("gen.fermerPlan.titre"),
+      okLabel: window.I18n.t("gen.fermerPlan.ok"),
+      cancelLabel: window.I18n.t("gen.fermerPlan.annuler")
+    });
+    if (!ok) return null;
+  }
+  const r = window.ktaFermerPlanPourMemoire();
+  return !!(r && r.ferme && affiche);
+}
+
 // ── Génération du ZIP ──────────
 async function _genererZip() {
   _plannerErreur("");
@@ -3196,6 +3307,13 @@ async function _genererZip() {
     return;
   }
   if (typeof JSZip === "undefined") { _plannerErreur(window.I18n.t("gen.gen.noJSZip")); return; }
+
+  // Plan dont viennent les photos (mode Modifier), relevé AVANT une éventuelle fermeture du plan.
+  const planIdPhotos = window._currentLoadedPlanId || null;
+  // Tuilage V2 : le plan en mémoire est fermé d'abord (cf. _fermerPlanAvantTuilage). null = l'utilisateur garde
+  // son plan, rien n'est généré.
+  const planFerme = tilingV2On ? await _fermerPlanAvantTuilage() : false;
+  if (planFerme === null) return;
 
   const btnGen = document.getElementById("kta-planner-generer");
   btnGen.disabled = true; btnGen.textContent = window.I18n.t("gen.btn.generation");
@@ -3332,7 +3450,12 @@ async function _genererZip() {
       const dlId    = document.getElementById(lid + "_id").value.trim();
       const dlLabel = document.getElementById(lid + "_label").value.trim() || dlId;
       const dlVis   = document.getElementById(lid + "_visible").value === "true";
-      const dlFile  = _getFile(lid + "_file", dlId + ".json");
+      // Ordre : fichier choisi sur la ligne, fichier de l'assistant de mise à jour, fichier d'origine de la ligne,
+      // puis `<id>.json`. 🩸 Sans le fichier d'origine, un calque dont le fichier ne porte pas son id ressortait
+      // VIDE du mode Modifier.
+      const dlFile  = _getFile(lid + "_file", null) || item._ktaFichierMaj ||
+                      (item.dataset.ktaFichier ? _getFile(null, item.dataset.ktaFichier) : null) ||
+                      _getFile(null, dlId + ".json");
 
       if (!dlId) { _plannerErreur(window.I18n.t("gen.gen.idManquantData")); throw new Error("abort"); }
 
@@ -3374,10 +3497,9 @@ async function _genererZip() {
                              && _plannerMode === "modifier"
                              && window.MyKTAMapPhotos);
     if (inclurePhotos) {
-      const planId = window._currentLoadedPlanId || null;
-      if (planId) {
+      if (planIdPhotos) {
         try {
-          const idbPhotos = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
+          const idbPhotos = await window.MyKTAMapPhotos.getAllPhotosForPlan(planIdPhotos);
           if (idbPhotos && idbPhotos.length > 0) {
             idbPhotos.forEach(function(p) {
               if (!seenIds.has(p.id)) {
@@ -3707,42 +3829,97 @@ async function _genererZip() {
 
     // ── Génération ──
     const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+    const nomZip = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + (tilingV2On ? "_v2" : "") + ".zip";
+
+    // Mise à jour d'un plan : l'assistant propose la suite (télécharger, remplacer, nouvelle version).
+    if (_plannerMaj && typeof _plannerMaj.onZip === "function") {
+      const maj = _plannerMaj;
+      _plannerMaj = null;
+      const mm = document.getElementById("kta-planner-modal");
+      if (mm) mm.remove();
+      try { maj.onZip(blob, nomZip, { nom: name, version: version, planFerme: planFerme }); }
+      catch (eMaj) { console.warn("[Planner] suite de la mise à jour :", eMaj); }
+      return;
+    }
+
     const url  = URL.createObjectURL(blob);
     // try/finally : blob URL toujours révoqué, même si a.click() lève (navigateur strict, sandbox).
     try {
       const a = document.createElement("a");
       a.href = url;
-      a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() +
-                   (tilingV2On ? "_v2" : "") + ".zip";
+      a.download = nomZip;
       a.click();
     } finally {
       URL.revokeObjectURL(url);
     }
 
-    // Prise « publierPlan » : si une extension sait publier, le Créateur envoie le plan au serveur de
-    // l'instance. Sans extension, rien ne change.
-    if (window.KtaExtensions && window.KtaExtensions.aPrise("publierPlan") && typeof window.ktaConfirm === "function") {
+    // Publication par l'extension (prises « publierPlan » / « publierVersion »). Sans extension, rien ne change.
+    const X = window.KtaExtensions;
+    const peutNouveau = !!(X && X.aPrise("publierPlan"));
+    if (X && (peutNouveau || X.aPrise("publierVersion")) && typeof window.ktaConfirm === "function") {
       // Nom échappé (ktaConfirm rend du HTML), avancement visible pendant l'envoi (un gros plan prend des
       // minutes), fin annoncée par un toast.
       const dire = function(m, ty) {
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(m, ty || "info");
       };
       let minuteur = null;
+      const envoyer = async function(fn) {
+        const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
+        const t0 = Date.now();
+        const tic = function() {
+          const sec = Math.round((Date.now() - t0) / 1000);
+          btnGen.disabled = true;
+          btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
+            { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
+        };
+        tic();
+        minuteur = setInterval(tic, 1000);
+        await fn();
+      };
       try {
-        const publier = await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
-                                                { okLabel: window.I18n.t("ext.publier.ok") });
-        if (publier) {
-          const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
-          const t0 = Date.now();
-          const tic = function() {
-            const sec = Math.round((Date.now() - t0) / 1000);
-            btnGen.disabled = true;
-            btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
-              { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
-          };
-          tic();
-          minuteur = setInterval(tic, 1000);
-          await window.KtaExtensions.publierPlan({ blob: blob, nom: name });
+        // ⚠️ Un ZIP d'un plan de l'extension rouvert ici devient une NOUVELLE VERSION de ce plan, jamais un
+        // second plan ; une copie se publie seulement par le choix explicite « Publier comme nouveau plan ».
+        const cible = await _planExtensionDuZip();
+        const autre = peutNouveau ? { label: window.I18n.t("ext.publier.commeNouveau"), valeur: "nouveau" } : null;
+        let choix = false;
+        if (cible) {
+          const nomCible = window.ktaEsc(cible.name || cible.id);
+          const intro = window.I18n.t(cible.exact ? "ext.publier.versionReconnu" : "ext.publier.versionMemeNom",
+                                      { nom: nomCible });
+          if (X.versionAutorisee(cible.id)) {
+            choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionQuestion"),
+              { okLabel: window.I18n.t("ext.publier.versionOk"), autre: autre });
+            if (choix === true) {
+              await envoyer(function() {
+                return X.publierVersion({ planId: cible.id, blob: blob, nom: name });
+              });
+              dire(window.I18n.t("ext.publier.versionFait"), "success");
+            }
+          } else {
+            choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionReservee"),
+              { okLabel: window.I18n.t("ui.confirm.ok"), sansAnnuler: true, autre: autre });
+          }
+        } else {
+          // ZIP non reconnu (ou plusieurs homonymes) : l'utilisateur désigne lui-même le plan à mettre à jour
+          // parmi ceux qu'il gère, avant toute proposition de plan neuf.
+          const aGerer = _plannerMode === "modifier" ? _plansExtAGerer(X) : [];
+          if (aGerer.length) {
+            const idChoisi = await _choisirPlanExtAMettreAJour(aGerer, (_plannerSourceZip && _plannerSourceZip.nom) || name);
+            if (idChoisi) {
+              await envoyer(function() {
+                return X.publierVersion({ planId: idChoisi, blob: blob, nom: name });
+              });
+              dire(window.I18n.t("ext.publier.versionFait"), "success");
+            } else if (idChoisi === "" && peutNouveau) {
+              choix = "nouveau";
+            }
+          } else if (peutNouveau) {
+            choix = (await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
+                                             { okLabel: window.I18n.t("ext.publier.ok") })) ? "nouveau" : false;
+          }
+        }
+        if (choix === "nouveau") {
+          await envoyer(function() { return X.publierPlan({ blob: blob, nom: name }); });
           dire(window.I18n.t("ext.publier.fait"), "info");
         }
       } catch (e) {
@@ -3760,6 +3937,116 @@ async function _genererZip() {
     if (err.message !== "abort") { console.error("[Planner]", err); _plannerErreur("❌ " + (err.message || err)); }
     btnGen.disabled = false; btnGen.textContent = window.I18n.t("gen.btn.genererZip");
   }
+}
+
+// Plan d'extension (☁️) dont vient le ZIP chargé en mode Modifier → { id, name, exact } | null.
+// 1. Même empreinte SHA-256 que l'archive gardée sur l'appareil (le ZIP de sa fiche ℹ️, ou celui qu'on avait
+//    publié) : exact. Empreinte du registre d'abord (posée à l'ouverture), sinon archive gardée de même taille.
+// 2. Sinon, UN SEUL plan d'extension porte le nom écrit dans le ZIP : probable (ancienne version, ZIP retouché).
+// Plusieurs homonymes ou rien : null (publication d'un nouveau plan, comme un plan neuf).
+async function _planExtensionDuZip() {
+  const src = _plannerSourceZip;
+  const PR = window.PlanRegistry;
+  if (_plannerMode !== "modifier" || !src || !PR || typeof PR.getAll !== "function") return null;
+  const ext = (PR.getAll() || []).filter(function(e) { return e && e.type === "ext"; });
+  if (!ext.length) return null;
+  if (src.sha256) {
+    const direct = ext.find(function(e) { return e.sha256 && String(e.sha256).toLowerCase() === src.sha256; });
+    if (direct) return { id: direct.id, name: direct.name, exact: true };
+    const D = window.PlanDenylist;
+    if (D && typeof D.computeSha256 === "function" && typeof PR.getBlob === "function") {
+      for (const e of ext) {
+        if (!e.storedBlob) continue;
+        try {
+          const b = await PR.getBlob(e.id);
+          if (!b || b.size !== src.taille) continue;
+          if (String(await D.computeSha256(b)).toLowerCase() === src.sha256) return { id: e.id, name: e.name, exact: true };
+        } catch (eSha) { console.warn("[Planner] empreinte de l'archive gardée :", eSha && eSha.message); }
+      }
+    }
+  }
+  const nom = String(src.nom || "").trim().toLowerCase();
+  if (!nom) return null;
+  const memes = ext.filter(function(e) { return String(e.name || "").trim().toLowerCase() === nom; });
+  return memes.length === 1 ? { id: memes[0].id, name: memes[0].name, exact: false } : null;
+}
+
+// Plans d'extension que l'utilisateur peut mettre à jour (permission `versionAutorisee`), triés par nom.
+function _plansExtAGerer(X) {
+  const PR = window.PlanRegistry;
+  if (!PR || typeof PR.getAll !== "function" || typeof X.versionAutorisee !== "function") return [];
+  return (PR.getAll() || []).filter(function(e) {
+    return e && e.type === "ext" && X.versionAutorisee(e.id);
+  }).sort(function(a, b) { return String(a.name || "").localeCompare(String(b.name || "")); });
+}
+
+// « Mettre à jour quel plan ☁️ ? » → id registre choisi, "" (« Aucun : publier comme nouveau plan ») ou null
+// (annulé). Présélection : le plan du même nom que le ZIP s'il est seul, sinon « Aucun ». 🩸 Plusieurs plans du
+// même nom : RIEN n'est présélectionné et la validation reste inactive jusqu'au choix (présélectionner l'un des
+// homonymes enverrait la version au hasard) ; chaque homonyme est distingué par ce que le registre sait déjà
+// (dossier, version, dernière ouverture, début de l'id), sans requête. ⚠️ Le choix ne fait que désigner le plan :
+// la prise revérifie la permission et le serveur de l'extension le droit à l'envoi. Liste posée par le DOM (noms
+// bruts en textContent) ; sa valeur est relue à chaque changement, la fenêtre étant retirée avant la résolution.
+async function _choisirPlanExtAMettreAJour(plans, nomZip) {
+  const cle = function(e) { return String(e.name || "").trim().toLowerCase(); };
+  const nom = String(nomZip || "").trim().toLowerCase();
+  const memeNom = plans.filter(function(e) { return cle(e) === nom; });
+  const ambigu = memeNom.length > 1;
+  let valeur = ambigu ? null : (memeNom.length ? memeNom[0].id : "");
+  const promesse = window.ktaConfirm(window.I18n.t("ext.publier.choixQuestion") +
+    '<br><select id="kta-gen-cible" style="width:100%; margin-top:10px;"></select>',
+    { titre: window.I18n.t("ext.publier.choixTitre"), okLabel: window.I18n.t("ext.publier.choixOk") });
+  const liste = document.getElementById("kta-gen-cible");
+  const ok = document.getElementById("kta-confirm-oui");
+  if (!liste || !ok) return (await promesse) ? valeur : null;
+  const compte = {};
+  plans.forEach(function(e) { compte[cle(e)] = (compte[cle(e)] || 0) + 1; });
+  const PR = window.PlanRegistry;
+  const loc = window.ktaLocale ? window.ktaLocale() : "fr-FR";
+  const detail = function(e) {
+    const d = [];
+    const dossier = (e.folderId && PR && typeof PR.findFolder === "function") ? PR.findFolder(e.folderId) : null;
+    if (dossier && dossier.name) d.push(window.I18n.t("ext.publier.choixDossier", { nom: dossier.name }));
+    if (e.version) d.push(window.I18n.t("ext.publier.choixVersion", { n: e.version }));
+    if (e.lastOpened) {
+      const dt = new Date(e.lastOpened);
+      if (!Number.isNaN(dt.getTime())) d.push(window.I18n.t("ext.publier.choixOuvert", { date: dt.toLocaleDateString(loc) }));
+    }
+    d.push("#" + String(e.extId || e.id).replace(/^ext_/, "").slice(0, 8));
+    return d.join(" · ");
+  };
+  if (ambigu) {
+    const invite = document.createElement("option");
+    invite.value = "";
+    invite.disabled = true;
+    invite.textContent = window.I18n.t("ext.publier.choixInvite");
+    invite.setAttribute("data-invite", "1");
+    liste.appendChild(invite);
+  }
+  const aucun = document.createElement("option");
+  aucun.value = "";
+  aucun.textContent = window.I18n.t("ext.publier.choixAucun");
+  liste.appendChild(aucun);
+  plans.forEach(function(e) {
+    const o = document.createElement("option");
+    o.value = e.id;
+    o.textContent = "☁️ " + (e.name || e.id) + (compte[cle(e)] > 1 ? " — " + detail(e) : "");
+    liste.appendChild(o);
+  });
+  if (ambigu) {
+    liste.selectedIndex = 0;
+    ok.disabled = true;
+  } else {
+    liste.value = valeur;
+  }
+  liste.addEventListener("change", function() {
+    const opt = liste.options[liste.selectedIndex];
+    if (!opt || opt.getAttribute("data-invite")) return;
+    valeur = liste.value;
+    ok.disabled = false;
+  });
+  const r = await promesse;
+  return (r && valeur !== null) ? valeur : null;
 }
 
 window.afficherPlanner = afficherPlanner;

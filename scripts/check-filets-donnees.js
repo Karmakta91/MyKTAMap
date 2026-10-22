@@ -36,7 +36,7 @@ function bloc(src, debut, fin) {
 {
   const s = lire("js/interfaceImportExport.js");
   const iSnap = s.indexOf('snapshot("before-import-session")');
-  const iSet  = s.indexOf("window.setEditorPoints(dataParsee.editorPoints");
+  const iSet  = s.indexOf("window.setEditorPoints(objets.data");   // objets = fichier (plan local) ou preparerImport
   verif(iSnap > 0, "🩸 import de session : snapshot « before-import-session » présent");
   verif(iSnap > 0 && iSet > iSnap, "🩸 import de session : le snapshot est déclenché AVANT l'écrasement des points");
   verif(/_snapAvant\.then\(/.test(s), "🩸 import de session : l'écrasement attend la promesse du snapshot");
@@ -46,7 +46,8 @@ function bloc(src, debut, fin) {
 // ── Q44 + B5 : sessionPersist ──────
 {
   const s = lire("js/sessionPersist.js");
-  const clearBtn = bloc(s, "modal.querySelector('[data-action=\"clear\"]')", "modal.addEventListener(\"click\"");
+  // Parcours unique d'effacement (fenêtre « session restaurée » et 📊 Détails de la session).
+  const clearBtn = bloc(s, "function demanderEffacement(bouton, apres) {", "// ── Modale « session restaurée »");
   // Confirmation = SEUL chemin vers go() (hors repli « helper absent ») : garde exacte ET appel conditionné
   // (une branche morte `if (false)` contenant le texte ne doit pas suffire). Deux formes : confirmation simple, et
   // choix « cet appareil / rendre à l'équipe » quand la restitution des calques se partage.

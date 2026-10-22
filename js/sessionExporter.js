@@ -500,6 +500,10 @@
     document.head.appendChild(s);
   }
 
+  // Légende des types qu'un contenu de calque référence ({ data, roads, zones, structures } → état de légende ou
+  // null) : même sous-ensemble que la conversion, pour l'assistant « Mettre à jour le plan » (js/majPlan.js).
+  window.ktaLegendePourCalque = function(payload) { return _legendePourPayload(payload || {}); };
+
   // ── Entrée publique ──────────────
   // ouvrirExportSessionModal(initialTab, solo, opts)
   //   initialTab  : "full" (défaut) | "advanced" | "extern" | "conversion" | "fusion"

@@ -134,6 +134,26 @@ function ktaPlanAffiche() {
 }
 window.ktaPlanAffiche = ktaPlanAffiche;
 
+// ── Attendre une image avant un travail lourd (le message affiché juste avant se peint d'abord) ──────────
+// 🩸 Onglet en arrière-plan, navigateur sans écran qui ne dessine plus : requestAnimationFrame peut ne JAMAIS venir
+// (ouverture d'un plan figée sur « Chargement en cours… »). Un minuteur prend le relais ; le premier des deux reprend,
+// l'autre ne fait rien. Toute attente d'image sur le chemin d'ouverture d'un plan passe par ici.
+function ktaAttendreImage(delaiMs) {
+  return new Promise(function(resolve) {
+    let repris = false;
+    let minuteur = null;
+    const reprendre = function() {
+      if (repris) return;
+      repris = true;
+      clearTimeout(minuteur);
+      resolve();
+    };
+    minuteur = setTimeout(reprendre, typeof delaiMs === "number" ? delaiMs : 1000);
+    requestAnimationFrame(reprendre);
+  });
+}
+window.ktaAttendreImage = ktaAttendreImage;
+
 // ── Surfaces ──────────
 // ⚠️ m² en entrée : < 10 000 m² → « X m² » (1 décimale sous 100 m²), sinon « X.XX ha ». Jamais de km²
 // (décision produit : les surfaces souterraines vont de 100 m² à quelques hectares).
@@ -432,6 +452,10 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
 //   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
 //   dans l'objet passé (coche / valeur) après coup.
 //   opts.autre = {label, valeur} : 3e bouton (danger) ; la Promise rend alors `opts.autre.valeur`.
+//   opts.choix = {options: [{valeur, titre, aide?, okLabel?}], valeur?, aucunParDefaut?} : boutons radio (titre et aide
+//   en textContent), le premier coché si `valeur` n'en désigne aucun ; `aucunParDefaut` : rien de coché et OK inactif
+//   tant qu'on n'a pas choisi ; `okLabel` d'une option : texte du bouton OK une fois elle cochée (l'action dite en
+//   clair). La Promise rend un booléen, le choix est relu dans opts.choix.valeur.
 // Fermeture : OK → true · Annuler / Échap / clic sur le fond → false. Fenêtres EMPILÉES : seule celle du
 // SOMMET réagit à Échap (pile du module, écouteur unique en capture sur window, qui passe avant les
 // écouteurs « Échap » des modales posés sur document). Clic sur le fond ignoré 300 ms après l'ouverture
@@ -462,6 +486,7 @@ window.ktaConfirm = function(message, opts) {
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
           '<p style="white-space:pre-line; line-height:1.55; margin:0 0 14px; color:var(--kta-texte-2);">' + message + '</p>' +
+          (opts.choix ? '<div id="kta-confirm-choix" style="margin:0 0 14px;"></div>' : '') +
           (opts.caseACocher
             ? '<label style="display:flex; gap:8px; align-items:flex-start; margin:0 0 14px; color:var(--kta-texte);' +
                 ' line-height:1.45; cursor:pointer;"><input type="checkbox" id="kta-confirm-case"' +
@@ -498,6 +523,45 @@ window.ktaConfirm = function(message, opts) {
     if (caseEl) caseEl.nextElementSibling.textContent = opts.caseACocher.label || "";
     const nombreEl = ov.querySelector("#kta-confirm-nombre");
     if (nombreEl) nombreEl.previousElementSibling.textContent = opts.nombre.label || "";
+    const choixEl = ov.querySelector("#kta-confirm-choix");
+    if (choixEl) {
+      const liste = Array.isArray(opts.choix.options) ? opts.choix.options.filter(Boolean) : [];
+      const coche = opts.choix.aucunParDefaut ? undefined
+        : liste.some(function(o) { return o.valeur === opts.choix.valeur; }) ? opts.choix.valeur
+        : (liste[0] && liste[0].valeur);
+      liste.forEach(function(o) {
+        const lab = document.createElement("label");
+        lab.style.cssText = "display:flex; gap:8px; align-items:flex-start; margin:8px 0 0; cursor:pointer;" +
+          " line-height:1.45; color:var(--kta-texte);";
+        const r = document.createElement("input");
+        r.type = "radio";
+        r.name = "kta-confirm-choix";
+        r.value = String(o.valeur);
+        r.setAttribute("data-kta-confirm-choix", String(o.valeur));
+        r.checked = o.valeur === coche;
+        r.style.marginTop = "3px";
+        r.addEventListener("change", function() {
+          const oui = ov.querySelector("#kta-confirm-oui");
+          oui.disabled = false;
+          oui.textContent = o.okLabel || opts.okLabel || t("ui.confirm.ok", "OK");
+        });
+        const txt = document.createElement("span");
+        const titre = document.createElement("strong");
+        titre.textContent = o.titre || "";
+        txt.appendChild(titre);
+        if (o.aide) {
+          const aide = document.createElement("span");
+          aide.style.cssText = "display:block; color:var(--kta-texte-3);";
+          aide.textContent = o.aide;
+          txt.appendChild(aide);
+        }
+        lab.appendChild(r);
+        lab.appendChild(txt);
+        choixEl.appendChild(lab);
+        if (r.checked && o.okLabel) ov.querySelector("#kta-confirm-oui").textContent = o.okLabel;
+      });
+    }
+    if (choixEl && opts.choix.aucunParDefaut) ov.querySelector("#kta-confirm-oui").disabled = true;
     const texteEl = ov.querySelector("#kta-confirm-texte");
     if (texteEl) {
       texteEl.previousElementSibling.textContent = opts.texte.label || "";
@@ -515,6 +579,11 @@ window.ktaConfirm = function(message, opts) {
         opts.nombre.valeur = Number.isFinite(n) ? n : null;
       }
       if (texteEl && val) opts.texte.valeur = texteEl.value;
+      if (choixEl && val) {
+        const r = choixEl.querySelector('input[name="kta-confirm-choix"]:checked');
+        const o = r ? opts.choix.options.find(function(x) { return x && String(x.valeur) === r.value; }) : null;
+        opts.choix.valeur = o ? o.valeur : null;
+      }
       const i = _ktaConfirmPile.indexOf(annuler);
       if (i >= 0) _ktaConfirmPile.splice(i, 1);
       ov.remove();
@@ -810,6 +879,19 @@ window.ktaSignalerNiveauObjet = function(n) {
     masque ? "warn" : "info");
 };
 
+// Toast après un changement des niveaux d'une jonction : « warn » si aucun des deux bouts n'est affiché par le filtre
+// (la jonction quitte la carte, cf ktaSignalerNiveauObjet).
+window.ktaSignalerNiveauxJonction = function(de, vers) {
+  if (!window.OOMGuard || typeof window.OOMGuard.showToast !== "function") return;
+  const c = window.APP_CONFIG || {};
+  const visibles = Array.isArray(c.visibleLevels) ? c.visibleLevels : [0];
+  const masque = visibles.indexOf(de) < 0 && visibles.indexOf(vers) < 0;
+  window.OOMGuard.showToast(
+    window.I18n.t(masque ? "jonctionFiche.toastMasque" : "jonctionFiche.toast",
+      { de: window.ktaFormatNiveau(de), vers: window.ktaFormatNiveau(vers) }),
+    masque ? "warn" : "info");
+};
+
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
   opts = opts || {};
@@ -836,6 +918,33 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
              '<span>' + _esc(window.I18n.t("niveauObjet.label")) + '</span>' +
              '<select class="kta-note-popup-niveau">' + options + '</select>' +
            '</label>';
+  }
+
+  // Fiche d'une jonction (`opts.jonction`) : deux listes « Départ » (premier point, fromLevel) et « Arrivée » (dernier
+  // point, toLevel), appliquées ensemble par un bouton (un geste, une entrée ⏪). Chaque liste garde le niveau actuel
+  // de son bout même hors availableLevels (ktaNiveauxProposes) ; "" hors multi-niveau ou pendant un dessin.
+  function _niveauxJonctionHtml() {
+    const o = opts.convertir && opts.convertir.obj;
+    if (!o || typeof window.ktaOptionsNiveauHtml !== "function") return "";
+    const de = window.ktaOptionsNiveauHtml(Number.isInteger(o.fromLevel) ? o.fromLevel : 0);
+    const vers = window.ktaOptionsNiveauHtml(Number.isInteger(o.toLevel) ? o.toLevel : 0);
+    if (!de || !vers) return "";
+    return '<div class="kta-note-popup-jonction">' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("jonctionFiche.de")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-jct-de">' + de + '</select>' +
+             '</label>' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("jonctionFiche.vers")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-jct-vers">' + vers + '</select>' +
+             '</label>' +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-jct-appliquer" type="button">' +
+                 _esc(window.I18n.t("jonctionFiche.appliquer")) +
+               '</button>' +
+             '</div>' +
+             '<div class="kta-note-popup-jct-statut kta-tx-err" hidden></div>' +
+           '</div>';
   }
 
   function _renderPopupHtml() {
@@ -867,13 +976,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                  '</button>' +
                  // Reclasser l'objet : un vecteur SIG mal rangé (un front qui est une galerie) n'entre pas dans le graphe
                  // d'itinéraire, le Pathfinder ne lit que les tracés. La popup tient une référence directe sur l'objet.
-                 (opts.convertir
+                 // Jamais pour une jonction (décision produit) : ses niveaux se changent dans sa fiche.
+                 (opts.convertir && !opts.jonction
                    ? '<button class="kta-popup-btn kta-note-popup-convertir" type="button">' +
                        '🔄 ' + window.I18n.t("convert.btn") +
                      '</button>'
                    : '') +
                '</div>' +
-               _niveauHtml() +
+               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml()) +
                // Supprimer : ligne séparée, classe danger (comme la popup d'un point, une action destructrice ne se
                // pose pas à côté de « Sauver »). `opts.convertir` = { famille, obj } sert aux DEUX boutons.
                (opts.convertir
@@ -940,6 +1050,28 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
         });
       }
       const statusEl = popupRoot.querySelector(".kta-note-popup-status");
+      // Niveaux d'une jonction : deux niveaux identiques sont refusés DANS la fiche (elle reste ouverte, rien n'est
+      // écrit) ; sinon popup fermée AVANT le setteur, pour la même raison que la liste « Niveau ».
+      const jctBtn = popupRoot.querySelector(".kta-note-popup-jct-appliquer");
+      if (jctBtn && opts.jonction && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxJonction) {
+        jctBtn.addEventListener("click", function () {
+          const de = Number.parseInt(popupRoot.querySelector(".kta-note-popup-jct-de").value, 10);
+          const vers = Number.parseInt(popupRoot.querySelector(".kta-note-popup-jct-vers").value, 10);
+          if (de === vers) {
+            const statut = popupRoot.querySelector(".kta-note-popup-jct-statut");
+            if (statut) {
+              statut.textContent = window.I18n.t("jonctionFiche.memeNiveau");
+              statut.hidden = false;
+            }
+            return;
+          }
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveauxJonction(opts.convertir.obj, de, vers)
+              && typeof window.ktaSignalerNiveauxJonction === "function") {
+            window.ktaSignalerNiveauxJonction(de, vers);
+          }
+        });
+      }
       if (!textarea || !saveBtn) return;
 
       saveBtn.addEventListener("click", function() {
@@ -2496,8 +2628,8 @@ async function telechargerPlan() {
     async function getIconForPoint(point) {
       let iconPath = getIconUrlForPoint(point);
 
-      // filet ultime : pin Leaflet classique
-      if (!iconPath) iconPath = "lib/leaflet/images/marker-icon.png";
+      // filet ultime : icône par défaut de l'app
+      if (!iconPath) iconPath = window._ktaIconeDefaut || "icon/default.png";
 
       if (!iconCache[iconPath]) {
         iconCache[iconPath] = await loadImage(iconPath);

@@ -16,20 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.18.0` (18/10/2026)
+## 📦 Version courante — `v2.19.0` (21/10/2026)
 
-> 🤝 **v2.18.0 — Niveau d'un objet, calques à plusieurs, nouvel écran de démarrage, charte en jetons** : ✨ écran de démarrage « la galerie qui se dessine » (tracé par un worker, fermé quand l'accueil est affiché) ; 🎨 charte en jetons `--kta-*` (contrastes AA, bouton principal bleu), toasts empilés avec un type succès, finitions d'interface (audit Impeccable du 20/10, clôturé) ; 🏗️ le niveau d'un objet de session se change depuis sa fiche (plan multi-niveau, ⏪ annule) ; sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage, « ➕ Intégrer des ajouts », « Effacer la session » qui propose de rendre les calques, export limité à ses ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste et événements du Carnet ; correctifs Repositionner, fiches enchaînées, Mes photos. Sans extension, rien ne change hors du niveau d'un objet et des correctifs.
-
-## 📑 Sommaire
-
-1. [🧭 Introduction](#-introduction)
-2. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalités-principales)
-3. [🏗️ Structure du projet](#%EF%B8%8F-structure-du-projet)
-4. [📦 Modules JS — référentiel (112 modules)](#-modules-js--référentiel-112-modules)
-5. [📚 Documentation d'architecture](#-documentation-darchitecture)
-6. [⚙️ Développement, conventions & release](#-développement-conventions--release)
-7. [📋 Journal des versions](#-journal-des-versions)
-8. [📄 Licence](#-licence)
+> 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; 🪜 fiche des jonctions ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
 
 ---
 
@@ -53,7 +42,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Affichage plan image haute résolution (tiling runtime V1, 5 presets) | `map.js`, `tiling.js`, `config.js` |
 | **Tuiles V2** build-time type Google Maps (4 niveaux de zoom, WebP/PNG si source transparente) | `createConf.js > _genererTuilesV2`, `tiling.js` |
-| **Multi-niveau (M-LVL)** : étages, jonctions interniveau, filtre de niveau, niveau d'un objet modifiable | `interface.js`, `config.js`, `convertirObjet.js` |
+| **Multi-niveau (M-LVL)** : étages, jonctions interniveau (fiche : note, niveaux reliés, suppression), filtre de niveau, niveau d'un objet modifiable | `interface.js`, `config.js`, `convertirObjet.js` |
 | Calques image (légende, surimpressions) + calibration 2 points | `map.js`, `imageLayerCalibration*.js` |
 | Calques de données (`devmap-data` JSON) | `utils.js > ajouterPointsDepuisJSON` |
 | Points d'intérêt : tags, notes, photos IDB (ré-encodées sans EXIF) | `editor.js`, `photos.js`, `photoViewer.js` |
@@ -104,6 +93,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
 | 🖼️ Export PNG / JPG (Rapide / Avancé + légende dessinée) · 📄 PDF imprimable A0 → A4 | `exporter.js`, `pdfExport.js` |
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
+| 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
 | 💾 Backups multi-rotations sessions (10 FIFO IDB) | `sessionBackups.js` |
 | 📔 **Le Carnet** : archive automatique des sorties (durée, distance, ajouts, tracé, note) + timeline multi-plans | `journal.js`, `journalUi.js` |
@@ -277,6 +267,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | `exporter.js` | Export PNG / JPG + légende dessinée |
 | `pdfExport.js` | Export PDF imprimable (A0 → A4) |
 | `tableEditor.js` | Éditeur JSON en tableau (calque ou session) |
+| `recalageScan.js` | Recaler des données sur un autre scan (calcul pur `KtaRecalageScan` + modale) |
 | `searchPoints.js` | Recherche unifiée Ctrl+K |
 | `sessionExporter.js` | Export session Full / Avancé / conversion / externe / anonymisé |
 | `sessionReport.js` | Rapport de sortie (3 formats) |
@@ -452,6 +443,22 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.19.0 (21/10/2026) — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan (branche `Karma_dev`)
+
+- **🔄 Mettre à jour le plan** (`js/majPlan.js`) : tuile dans ⬆️ Exporter (section 🗺️ Plan) et raccourci en tête des calques. Les calques en modification remplacent leur fichier ; les objets dessinés sont rangés par groupe (calque existant, nouveau calque ou laissés en session) ; le Générateur s'ouvre en mode Modifier déjà rempli ; plan local : télécharger ou remplacer dans l'app ; plan d'une extension : nouvelle version par la prise neutre `publierVersion`. Ensuite : rendre les calques et retirer de la session les objets versés. Corrige au passage une règle CSS des Filtres restée ouverte depuis l'extraction de `style-filtres.css`.
+- **📊 Éditeur de données** : « ✏️ Appliquer à la session en cours » pour les points, tracés, zones et structures (`KtaConvertir.appliquerTableau`) ; seules les cellules modifiées s'appliquent, une ligne supprimée depuis l'export n'est pas ressuscitée, une seule entrée ⏪ ; colonne Niveau toujours présente sur un plan multi-niveau (liste des niveaux du plan) ; type inconnu refusé. Sur un plan partagé : retirer des lignes demande le droit « gérer » et une confirmation. Le Tableur s'ouvre désormais depuis ⬆️ Exporter (section 💾 Session).
+- **🔁 Recaler des données sur un autre scan** (`js/recalageScan.js`, remplace « Convertir la résolution ») : correspondance par identifiants communs puis par noms, moindres carrés et rejet des aberrants, qualité annoncée ; repères cliqués avec mauvais clic signalé ; aperçu sur la carte ; le mode « résolutions » seulement en dernier recours, bloqué si les proportions diffèrent.
+- **⬇️ Charger / Import** ouvre directement le sélecteur de fichier (session ou GPX) ; **📊 Détails de la session** : sections repliables au-delà de 8 lignes, et « 🗑️ Effacer la session » (même parcours que la fenêtre « Session précédente restaurée » ; en lecture seule, « Vider cet appareil » seulement).
+- **🪜 Fiche d'une jonction inter-niveau** (au clic) : note, niveaux de départ et d'arrivée (deux niveaux différents, listes des niveaux du plan, une entrée ⏪, graphe d'itinéraire invalidé), suppression. `fromLevel` est le niveau du PREMIER point (doc corrigée : ce n'est pas symétrique).
+- **Recalage par les noms** : les points des calques du plan passent avant la session (une copie non convertie en session donnait une échelle de 1) ; alerte « même position » avec « Écarter ces repères » ; provenance des repères annoncée.
+- **Générateur « Modifier » sur un plan d'extension** : le plan est reconnu (empreinte du ZIP, puis nom unique) et publié en nouvelle version par `publierVersion`, sinon une liste « Mettre à jour quel plan ? » (homonymes sans présélection) ; « Publier comme nouveau plan » reste un choix explicite.
+- **Prises neutres** (sans effet sans extension, `community-server-line.md` §3) : `planCharge` / `planPret` (aucune synchro tant que le plan n'est pas chargé), `liaisons` et `InterPlanLinks.appliquerExterne`, `importSession` (import de session sur un plan partagé : « Ajouter » ou « Remplacer pour toute l'organisation »), `effacerSession` (« Effacer la session » sur un plan partagé : vider l'appareil, mes ajouts, tout), `publierVersion`. Les modules d'une extension s'exécutent dans l'ordre déclaré (`chargerModules`, `s.async = false`).
+- **Icônes du catalogue redessinées** : 22 pictogrammes opaques (une famille = une forme, fermé / comblé / bouché = barre rouge), mêmes noms de fichiers (splash, légende, exports suivent) ; `entree_plan` passe du SVG intégré à `icon/entree_plan.png` (l'ancien SVG écrit dans les plans existants est retiré au chargement, `config.js > nettoyerIconesConfig`). Générateur « Modifier » : les tags du catalogue absents du plan (`portail`, `entree_plan`…) sont proposés.
+- **Icônes personnalisées d'un ZIP** : enregistrées et résolues en blob URL au chargement (`main.js`, `cloneAndResolvePlanConfig`) — elles s'affichent sur la carte et en Vue OSM (avant : 404, repli sur l'icône de l'app ou image cassée).
+- **Carte OSM de l'accueil** : sous-calque des tuiles à z-index 0 (Leaflet lui donnait 400 : tracés et POI du haut de l'écran passaient dessous). **Taille des icônes au zoom** (`scaledMarkers`) appliquée aussi à la Vue OSM et à l'accueil (`ktaEchelleMarqueurs`, plancher ×0,5 en OSM).
+- **Effacer la session sur un plan partagé** : « mes ajouts » reconnus même si la table des auteurs locale a été perdue, auteur inconnu compté à part, « Tout supprimer » au rôle Admin, rien de présélectionné.
+- **Corrigés** : chargement d'un plan quand le navigateur ne dessine plus (onglet en arrière-plan : les trois attentes d'image passent par `ktaAttendreImage`, repli minuté) ; gestionnaire des liaisons lisible sur téléphone ; objet retrouvé par `uid` quand sa référence est périmée (suppression, conversion, niveau) ; Vue OSM, tuiles de plusieurs niveaux superposées après 🖼️ Plan recoché ; clés `home.profile.greeting` / `home.splash.ethos` gardées pour les pages en cache (« GREETING » brut au premier lancement).
 
 #### v2.18.0 (18/10/2026) — Niveau d'un objet, calques à plusieurs, nouvel écran de démarrage, charte en jetons (branche `Karma_dev`)
 

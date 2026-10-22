@@ -24,7 +24,7 @@ const path = require("path");
 const server = require("./server.js");
 
 
-const BASE = "http://127.0.0.1:8123";
+const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);   // même port que server.js
 const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
   "myktamap_terms_accepted_v1": "1",
@@ -239,6 +239,23 @@ function inf(msg) { console.log("  •  " + msg); }
     else if (Math.abs(t5.apres) < 0.5)
       ok("vue redressée à l'ouverture du Mode perdu (était à " + t5.avant.toFixed(1) + "°)");
     else pb("la vue reste tournée (" + t5.apres.toFixed(1) + "°) sous le Mode perdu");
+
+    // ── T5 bis — le mode Présentation garde la rotation (décision produit) ──
+    console.log("— T5 bis : le mode Présentation laisse la vue tourner —");
+    const t5b = await page.evaluate(async function () {
+      if (!window.PresentationMode) return { skip: true };
+      window.PresentationMode.activate();
+      const actif = window.PresentationMode.isActive();
+      await window.__mb.viser(70);
+      const b = window.MapBearing.getBearing(), mode = window.MapBearing.isActive();
+      window.PresentationMode.deactivate();
+      return { actif: actif, bearing: b, mode: mode };
+    });
+    await page.waitForTimeout(400);
+    if (t5b.skip) inf("PresentationMode indisponible — test sauté");
+    else if (t5b.actif && t5b.mode && Math.abs(t5b.bearing) > 60)
+      ok("vue tournée en mode Présentation (" + t5b.bearing.toFixed(1) + "°)");
+    else pb("le mode Présentation coupe la rotation : " + JSON.stringify(t5b));
 
     // ── T7 — culling élargi (avant l'arrêt du tracking) ────────────────
     // 🩸 Une marge scalaire unique ne peut pas être juste à tous les formats d'écran (cf T17) : on

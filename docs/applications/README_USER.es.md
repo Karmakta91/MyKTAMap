@@ -304,8 +304,8 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Ayuda / Documentación / Leyenda** | 📚 | Ayuda, documentación, leyenda de iconos |
 | **Ajustes** | ⚙️ | Ajustes del mapa: escala, Norte, georreferenciación, tracker, visualización… *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar un punto, un trazado, una zona o una estructura *(clic directo)* |
-| **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del mapa |
-| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF), sesión, exportación externa (KMZ / GPX) |
+| **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX (abre directamente el selector de archivos) |
+| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF), sesión, actualización del mapa, exportación externa (KMZ / GPX) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
 | **Medición** | 📐 | Medir una distancia o una superficie, borrar |
@@ -333,13 +333,14 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 - **⭐ Favoritos**: exportar los de este mapa o todos, importar;
 - **📦 Backups recientes** de este mapa: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación. Las copias de **otra versión de este mapa** (reimportada o renombrada) también aparecen, marcadas con 📂, y se restauran en el mapa abierto;
 - **💾 Memoria de sesiones**: tus sesiones viven en el espacio que el navegador concede a la app en tu dispositivo — una parte de su espacio libre, compartida con tus mapas, tus fotos y tus copias de seguridad (ya sin el límite de 5 MB desde el 10/10/2026; tus sesiones existentes se trasladaron ahí automáticamente). El indicador muestra su llenado y los mapas cuya sesión más pesa; al 80 %, la app te avisa al abrir un mapa. Para liberar espacio: exporta tu sesión (💾 Guardar sesión) y luego borra la sesión o las fotos de un mapa antiguo, o quita un mapa que ya no uses. Si el navegador rechaza este almacenamiento (algunas navegaciones privadas), tus sesiones se quedan en el almacenamiento antiguo limitado a ~5 MB, y el indicador lo muestra;
+- **🗑️ Borrar la sesión**: el mismo borrado que la ventana «Sesión anterior restaurada» (ver 🧹 Borrar y corregir), en cualquier momento. En un mapa ☁️ de solo lectura, el botón dice «Nada que borrar: este mapa viene del servidor»;
 - el botón **📊 Estadísticas globales** (informe copiable, CSV, PDF).
 
 ### 🗺️ Leer el mapa
 
 - **Pellizca** para hacer zoom, **arrastra** para moverte (o usa los botones **+** / **−** arriba a la izquierda).
 - **Tocar un icono** abre la ficha del punto; **tocarlo dos veces** hace zoom sobre él (como el botón «Ir» de la ficha).
-- Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa. Para conservar un tamaño fijo: ⚙️ Ajustes → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
+- Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa, en el plano y también en los mapas OSM (Vista OSM y mapa de la pantalla de inicio). Para conservar un tamaño fijo: ⚙️ Configuración de la pantalla de inicio → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
 
 #### 🌐 Coordenadas GPS en las fichas
 
@@ -370,6 +371,8 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 *Ejemplo: para ver solo dos clases de pozos, 🏷️ Tags de los puntos → 🚫 Ninguno, y vuelve a marcar los dos tags que quieras.*
 
 > 🔄 **Corregir una capa de datos** — una capa incluida con el mapa se puede ocultar pero no editar. El botón **🔄 Modificar** de su fila la copia en tu sesión, donde se aplican todas tus herramientas (por ejemplo 🔄 Convertir este objeto); la original se oculta («en modificación — mostrar de todos modos» permite comparar). Antes de actuar, la app te indica cuánto espacio ocupará la copia y cuánto ocupan ya tus sesiones. **↩️ Restaurar** descarta tus cambios; **💾 Exportar** genera el archivo corregido de **esa capa sola**, para devolverlo al mapa mediante 🏗️ Generador → «Modificar un mapa», botón «Elegir» en la fila de la capa: sustituye el contenido anterior. Lo que has dibujado tú no forma parte de él (la app te dice cuántos objetos quedan fuera del archivo), salvo si lo vinculas: **➕ Integrar añadidos**, en la fila de la capa, lista tus dibujos del mapa por familia (nada marcado de antemano, «Marcar todo», filtro «Creado por» en una instalación conectada); los objetos elegidos salen entonces en el archivo de la capa, y ⏪ lo deshace. Un objeto integrado pertenece a la capa: restaurarla también lo retira, y la ventana de restauración dice cuántos. Borrar la sesión restaura las capas abiertas para modificar; reimportar tu sesión en este mapa las vuelve a poner en modificación. En una instalación conectada, «Borrar la sesión» te deja elegir: **borrar solo en este dispositivo** (las capas abiertas para modificar por el equipo vuelven desde el servidor, todavía en modificación) o **devolver también las capas al equipo** (vuelven a su original para todos, y los retoques que los demás no hayan exportado en esas copias se pierden). En una instalación conectada, una capa abierta para modificar por otra cuenta aparece también así en tu lado, y restaurarla la restaura en todos los dispositivos (una copia modificada después se queda, marcada como duplicado).
+>
+> 🔄 **Actualizar el mapa** — para pasar tu trabajo al mapa mismo: **⬆️ Exportar → 🔄 Actualizar el mapa**, o el botón al principio de las capas en **≡ Filtros**. **1.** Las capas en modificación están marcadas: cada una reemplaza su archivo. **2.** Tus objetos dibujados a mano se agrupan por etiqueta (los puntos, según su primera etiqueta) o por tipo (trazados, zonas, estructuras); para cada grupo, elige una capa del mapa, una **capa nueva** (le das un nombre) o «Dejar en la sesión». **3.** El Generador se abre en modo Modificar, ya rellenado con el ZIP actual del mapa, esas capas y tus fotos: revisa y genera (si el ZIP del mapa no está en el dispositivo, te pide que lo sueltes). Con el **teselado V2**, la app te avisa y **cierra el mapa durante la generación** para liberar memoria (tu sesión queda guardada): **🔄 Reemplazar** o **☁️ Publicar** lo vuelven a abrir en su nueva versión; si no, lo recuperas en la pantalla de inicio (**Reanudar**). **4.** Mapa importado: **⬇️ Descargar** o **🔄 Reemplazar el mapa en la app** (mismo mapa: tu sesión, tu calibración y tus fotos siguen vinculadas). Mapa de una instalación conectada: **☁️ Publicar la nueva versión** si tu derecho lo permite; si no, descargas el ZIP para quien gestiona el mapa. Mapa del sitio: descarga, para transmitir a su administrador. Tras un reemplazo o una publicación, la app propone **devolver las capas** (a todo el equipo en una instalación conectada) y **quitar de tu sesión los objetos pasados al mapa**; si no, aparecen duplicados. Un objeto modificado después de generar se queda en tu sesión, y la app lo indica. La misma regla vale si reabres a mano en el Generador (modo Modificar) el ZIP de un mapa de una instalación conectada, por ejemplo el de su ficha ℹ️: la app lo reconoce y propone **☁️ Publicar la nueva versión** de ese mapa (o te explica quién publica); **Publicar como mapa nuevo** crea una copia aparte, solo si lo eliges. ZIP retocado o nombre compartido por varios mapas: la app pregunta **¿Qué mapa actualizar?** entre los mapas que gestionas (o «Ninguno: publicar como mapa nuevo»); si varios mapas llevan ese nombre, ninguno queda preseleccionado: elige el correcto (carpeta, versión y fecha de apertura los distinguen).
 
 ### 🗺️ Leyenda
 
@@ -745,7 +748,7 @@ Las uniones 🪜 se borran como los demás trazados.
 
 **Un objeto concreto**: su ventana tiene un botón **🗑️ Eliminar**; para un punto, es **🗑️ Eliminar este punto**. Sin ventana de confirmación: todo se deshace con ⏪ (`Ctrl+Z`).
 
-**Todo el mapa**: cuando vuelves a abrir un mapa, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro mapa** (portales) se conservan: para quitar uno, elimina el propio punto.
+**Todo el mapa**: cuando vuelves a abrir un mapa, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (también en cualquier momento en **📊 Detalles de la sesión**) (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro mapa** (portales) se conservan: para quitar uno, elimina el propio punto. En un **mapa compartido con tu organización**, la ventana te hace elegir (nada viene marcado de antemano): **↻ Anular lo que este dispositivo aún no ha enviado (N modificaciones)**, solo si hay modificaciones esperando el envío (sin red, por ejemplo: en línea, todo sale en unos segundos y vuelve del servidor), o, según tus derechos, **Eliminar mis añadidos para toda la organización** o **Eliminarlo todo para la organización** (número de objetos anunciado antes; estas dos no se deshacen para los demás). Un objeto de autor desconocido nunca se cuenta en «mis añadidos»: la ventana dice cuántos hay, solo «Eliminarlo todo» los cubre.
 
 > ℹ️ Solo se borran **tus** objetos. Los del mapa o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde ≡ **Filtros** y exporta después la capa corregida.
 
@@ -851,17 +854,19 @@ Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mi
 
 ¿Un objeto quedó en el nivel equivocado? En la ventana de un trazado, una zona o una estructura que hayas dibujado, la lista **Nivel** (bajo 🔄 Convertir) lo mueve al instante; para un punto, es la lista **Nivel** de **✏️ Editar**, guardada con el resto de la ficha. El nivel actual del objeto siempre se propone, aunque esté fuera de la lista del mapa. Si el nivel elegido está oculto por el filtro, el objeto desaparece del mapa y un mensaje lo indica: la vista se queda en tu nivel. **⏪** lo deshace.
 
-No hay lista en una unión (bórrala y vuelve a trazarla), en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
+Una unión tiene su propia ficha, con sus dos niveles (ver más abajo). No hay lista en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 
 ### 🪜 Trazar una unión entre niveles
 
 Una unión enlaza dos niveles en el lugar real del paso (escalera, pendiente, pozo, escala):
 
 1. **🛣️ Trazados → 🪜 Unión entre niveles**
-2. Elige el **Nivel de salida** (tu nivel activo, por defecto) y el **Nivel de llegada** (el orden da igual: el itinerario la recorre en los dos sentidos) y luego **OK — Trazar la unión**
+2. Elige el **Nivel de salida** (tu nivel activo, por defecto) y el **Nivel de llegada** (el itinerario la recorre en los dos sentidos, pero el primer punto que pones está en el nivel de salida) y luego **OK — Trazar la unión**
 3. Toca tantos puntos como quieras y vuelve a pulsar **🪜** para validar
 
 Aparece en magenta punteado, con un círculo en cada extremo. **Sin unión, ningún itinerario cambia de nivel.** Dos escaleras entre los mismos niveles = dos uniones: el itinerario toma la más corta. Se borra como un trazado (🧹 Borrar y corregir).
+
+**Su ficha**: toca una unión que hayas trazado (fuera de un trazado en curso) para abrir **🪜 Unión N0 ↔ N+1**: su **nota** (💾 Guardar la nota), las listas **Salida (1.er punto)** y **Llegada (último punto)** con **🪜 Cambiar los niveles** (dos niveles distintos obligatorios; el itinerario lo sigue al instante) y **🗑️ Eliminar**. **⏪** deshace cada gesto. Sin 🔄 Convertir: una unión sigue siendo una unión.
 
 ### 🛠️ Del lado del creador del mapa
 
@@ -979,7 +984,7 @@ En la ventana Perfil, **📤 Exportar mi perfil** genera un archivo que lleva to
 
 ## ⬆️ Guardar y compartir
 
-Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral: abre un lanzador de mosaicos en tres partes — **🖼️ Imagen**, **💾 Sesión**, **🌍 Exportación externa**. Antes de compartir una imagen, un PDF o un KMZ, comprueba que no revela nada sensible (accesos, lugar privado).
+Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral: abre un lanzador de mosaicos en cuatro partes — **🖼️ Imagen**, **💾 Sesión**, **🗺️ Mapa** (🔄 Actualizar el mapa, más arriba), **🌍 Exportación externa**. Antes de compartir una imagen, un PDF o un KMZ, comprueba que no revela nada sensible (accesos, lugar privado).
 
 ### 📤 Exportar tu sesión
 
@@ -1033,7 +1038,7 @@ Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar*
 
 ### 📥 Importar un archivo (sesión o GPX)
 
-**⬇️ Cargar / Importar → 📥 Importar un archivo** abre el selector de archivos; la app reconoce su tipo.
+**⬇️ Cargar / Importar** abre directamente el selector de archivos; la app reconoce su tipo.
 
 - **Sesión de MyKTAMap** (`.json`, o `.zip` con fotos): **sustituye** tu sesión en curso (puntos, trazados, zonas, medición); sus fotos, en cambio, **se añaden** a las tuyas, sin borrar ninguna. Una vista previa muestra lo que contiene; justo antes se toma una copia de tu sesión actual. **Importar** para validar, **Cancelar** para no cambiar nada.
 - **Archivo GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): sus puntos y trazados **se añaden** a tu sesión. El mapa debe estar georreferenciado. Una vista previa precede a la adición, y **Ctrl+Z** la deshace.
@@ -1098,7 +1103,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
 
 - **🌍 Aplicación** — el **idioma**: Français, English, Español. Se aplica al momento, guía y tutorial incluidos; la bandera de la ventana 📖 Documentación cambia solo el idioma de la guía. También se elige en la pantalla de desbloqueo, y se conserva en modo incógnito.
 - **🎨 Visualización**:
-  - **📐 Adaptar el tamaño de los iconos al zoom** (activado por defecto);
+  - **📐 Adaptar el tamaño de los iconos al zoom** (activado por defecto): en el plano, y también en la Vista OSM y el mapa OSM de la pantalla de inicio;
   - **❓ Botón de ayuda en las ventanas** (activado): un ❓ en el título de las ventanas que tienen página de ayuda, que abre directamente la página correcta;
   - **🔔 Notificaciones**: **Todas**, **Esenciales** (por defecto: ya no hay mensajes que confirman un gesto que acabas de hacer) o **Silencio** (solo lo importante: batería baja, sensor denegado, errores). Las alertas del servidor y las ventanas que esperan una decisión nunca se silencian;
   - **➕ Botones de zoom +/− en los mapas**: muestra los botones + y − en el plano, el widget OSM de la pantalla de inicio y la vista OSM. Desactivado por defecto: se hace zoom con los dedos (pellizcar) o con la rueda del ratón;
@@ -1537,7 +1542,7 @@ Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
 
 #### 📂 Modificar un mapa existente
 
-Carga el ZIP del mapa en **📂 Cargar un archivo**: el formulario se rellena con su configuración. Cambia lo que quieras (tags, iconos, capas, posición de inicio…) y luego **📦 Generar el ZIP**.
+Carga el ZIP del mapa en **📂 Cargar un archivo**: el formulario se rellena con su configuración. Cambia lo que quieras (tags, iconos, capas, posición de inicio…) y luego **📦 Generar el ZIP**. Desde un mapa abierto, **⬆️ Exportar → 🔄 Actualizar el mapa** abre este modo ya rellenado con tus capas corregidas y tus dibujos.
 
 Si el mapa tiene **fotos adjuntas a sus puntos** en tu dispositivo, la casilla **📸 Incluir las fotos adjuntas** (marcada por defecto) las incluye en el ZIP. Quien abra ese mapa encontrará las fotos en las ventanas de los puntos. Desmarcada, el ZIP es más ligero, sin fotos.
 
@@ -1681,7 +1686,7 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
 
 ### 📊 Editor de datos del mapa
 
-**⬇️ → 📊 Editor de datos del mapa** en el mapa, o **📊 Editor de datos** en la pantalla de inicio, abre una tabla para **ver, modificar y exportar** los puntos, trazados, zonas y estructuras de un mapa.
+**⬆️ Exportar → 📊 Editor de datos del mapa** (sección 💾 Sesión) en el mapa, o **📊 Editor de datos** en la pantalla de inicio, abre una tabla para **ver, modificar y exportar** los puntos, trazados, zonas y estructuras de un mapa.
 
 #### 📂 Abrir
 
@@ -1690,7 +1695,12 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
 - **📄 Importar un archivo JSON**: un archivo de datos o de sesión.
 - **🔄 Convertir sesión ↔ capas**: transforma tu sesión en **capa de datos** para integrarla en un mapa (ver «🏗️ Crear o modificar un mapa»). Misma elección por categoría y por icono; granularidad **Básico** (un archivo por categoría) o **Fino** (un archivo por tipo). El tracker nunca se convierte: una deriva fijada en un mapa engañaría a sus futuros usuarios. Una vez convertidos, esos datos ya no se modifican desde la app.
 - **🔗 Fusionar capas**: reúne varias capas de datos (`.json` o `.zip`, de varias sesiones) en un solo juego por categoría. Una vista previa da los totales y señala los identificadores de puntos duplicados (se conservan tal cual).
-- **🔁 Convertir la resolución**: pasa tus archivos de datos de un escaneo antiguo a un escaneo nuevo del mismo mapa. Indica las dos resoluciones (o deja que la app las lea en las imágenes); si los márgenes difieren, añade una **referencia común** (el mismo pilar en ambos mapas), o **dos**, y la escala y la rotación se deducen. Los enlaces entre mapas, la georreferenciación y la escala hay que rehacerlos en el mapa nuevo.
+- **🔁 Recalar datos sobre otro escaneo**: pasa tus archivos de datos de un escaneo a otro escaneo del mismo mapa (recortado, más grande, más pequeño). **Abre primero el mapa de destino** y elige tus archivos `.json`:
+  - **Por nombres e identificadores** (lo más seguro, elegido por defecto): si las dos versiones salen del mismo Generador, los objetos que conservan el mismo identificador interno sirven primero de referencias (puntos, y vértices de trazados, zonas y estructuras que conservan su número de vértices); luego los puntos con el mismo nombre en tus archivos y en el mapa abierto sirven de referencias (se ignoran mayúsculas, acentos y puntuación; nombres únicos de al menos 4 caracteres). La app calcula la escala, la rotación y el desplazamiento, descarta los homónimos que no encajan e indica la calidad («73 referencias, desviación mediana 0 px, 90 % por debajo de 1 px»). Las referencias salen primero de las **capas del plano** (los datos del ZIP); tu sesión solo se usa si las capas dan menos de tres, y sus objetos que siguen en la misma posición que en tu archivo (una copia sin convertir, importada antes) se ignoran. El aviso dice de dónde vienen las referencias, con la escala y la rotación encontradas. Si la mayoría de las referencias están en la misma posición que en tu archivo, la app te avisa (archivo ya en este marco, o copia sin convertir) y propone descartarlas. Si el escaneo está estirado, propone una transformación afín.
+  - **Referencias pulsadas** (cuando los nombres no bastan): elige un punto de tu archivo en la lista y pulsa su posición en el mapa; al menos tres referencias, alejadas entre sí. Se muestra la desviación de cada una: un mal clic aparece en rojo y queda fuera del cálculo.
+  - **Resoluciones** (último recurso): solo si los dos escaneos tienen exactamente el mismo encuadre. Si sus proporciones difieren en más de un 2 %, la app se niega: hacen falta nombres o referencias.
+  - **👁️ Vista previa en el mapa**: tus datos recalados se dibujan en discontinuo sobre el mapa antes de descargar; la vista previa desaparece al cerrar la herramienta. Luego obtienes archivos `_conv.json`.
+  - Desde la pantalla de inicio (ningún mapa abierto), solo están disponibles las resoluciones y las referencias escritas a mano. Los enlaces entre mapas, la georreferenciación y la escala hay que rehacerlos en el mapa nuevo.
 - **🧹 Desduplicar los datos**: elimina los vértices idénticos consecutivos de trazados, zonas, estructuras y medidas, invisibles pero que hacen más pesados los archivos. Obtienes un archivo `_dedup.json` y el recuento de lo eliminado; los puntos nunca se tocan.
 
 Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.
@@ -1700,7 +1710,8 @@ Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.
 - **Haz clic en una celda** para modificarla (salvo el identificador). **Tab**: celda siguiente · **Intro**: fila siguiente · **Esc**: cancelar.
 - Una coordenada fuera del mapa se pone en **rojo**.
 - La celda **Tags** abre un selector con vista previa de los iconos; puedes crear un tag desde ahí.
-- En trazados, zonas y estructuras se pueden modificar la **nota**, el **tipo** y el **nivel**, pero no la **geometría**: vuelve a dibujarla en el mapa.
+- En trazados, zonas y estructuras se pueden modificar la **nota**, el **tipo** y el **nivel**, pero no la **geometría**: vuelve a dibujarla en el mapa. Un tipo ausente de la leyenda se pone en **rojo**.
+- En un mapa **multinivel**, la columna **level** siempre está (0 si el objeto aún no tiene nivel) y se elige en una lista de los niveles del mapa.
 - En los puntos: búsqueda en todas las columnas, orden con clic en el encabezado, selección múltiple (casilla + Mayús+clic), **+ Añadir fila**, **📋 Duplicar**, **🗑️ Eliminar**, **📍 Ver en el mapa**.
 
 #### 💾 Guardar
@@ -1708,7 +1719,7 @@ Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.
 | Lo que editas | **💾 Guardar** |
 |---|---|
 | **Datos del mapa** | Descarga el archivo `.json` modificado. Para aplicarlo, vuelve a importarlo en el **Generador**: el editor nunca cambia el mapa mostrado. |
-| **Tu sesión** | Descarga el archivo, o **✏️ Reemplazar la sesión en curso** para aplicarlo al momento. |
+| **Tu sesión** | Descarga el archivo, o lo aplica al momento con **✏️ Aplicar a la sesión actual** (puntos, trazados, zonas y estructuras): solo se aplican las celdas que has modificado, una fila no tocada no cambia nada aunque el archivo sea antiguo; un cambio de tipo o de nivel funciona como desde la ficha del objeto; una fila quitada de la tabla se elimina de la sesión; un objeto eliminado desde la exportación no se vuelve a crear, salvo si has modificado su fila. Un tipo ausente de la leyenda se rechaza, con el número de la fila. **⏪** deshace toda la operación de una vez. En un mapa compartido por una instalación, quitar objetos exige el permiso de eliminarlos para todos, y una confirmación. |
 
 Si cierras con cambios sin guardar, la app te propone guardar, salir sin guardar o seguir editando.
 

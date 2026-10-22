@@ -55,8 +55,52 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 2. `lancerApplication()` finit, appelle `SessionPersist.onPlanLoaded(window._currentLoadedPlanId)`
 3. Si match → restore via setters (`setEditorPoints`, `resetRoads + setRoads`, `resetZones + setZones`, `setMeasurePoints`) + toast "Session restaurée"
 4. Polling auto-save démarre (1.5s)
+5. Fin de `lancerApplication()` : `KtaExtensions.planCharge(id)` → le plan est « prêt » pour une extension
+   (événement `mktm:plan-pret`). 🩸 Avant ce point, la mémoire tient encore les objets du plan quitté (ou rien) et
+   `initEditor` / la restauration les remplacent : `appliquerChangements` y refuse tout lot (`null`) et
+   `changementsDepuis` rend des listes vides — sinon un lot reçu pendant le chargement était écrasé sans bruit, et
+   un envoi pouvait partir vers le nouveau plan avec les objets de l'ancien (`community-server-line.md` §3).
 
 **Modale** : `.kta-session-modal-overlay` (centrée pleine page, pattern `kta-readme-modal`), boîte `.kta-session-modal-boite` avec icône ↻ dans cercle jaune `#f4c542`, titre + détail + 2 boutons (🗑️ Effacer / ✓ Continuer). Backdrop click + Échap = Continuer. Animations fade-in overlay + pop-in box.
+
+**🗑️ Effacer la session** (`sessionPersist.js > demanderEffacement(bouton, apres)`, parcours UNIQUE appelé par le
+bouton de cette modale et par la section 🗑️ de **📊 Détails de la session** (`refonteInterface.js >
+_afficherModaleSessionDetail` ; la fenêtre reste ouverte sous les confirmations et se
+ferme une fois la session effacée)) : confirmation chiffrée (`ktaConfirm`), snapshot
+`before-clear-session` **attendu**, `_viderEtatCourant()` (objets, mesures, suivi, légende de session, traces de
+suppression — décision produit ; les points portails restent) puis `clear({ snapshotFait: true })` (slot retiré,
+calques rendus, événement `mktm:session-cleared`). Pas d'⏪ : l'effacement ne passe pas par l'historique, le filet est
+le snapshot de 📦 Backups.
+- **Plan partagé par une extension** (`KtaExtensions.effacementPartage` → promesse de `{ miens, tout, auteur,
+  enAttente }`, `community-server-line.md` §3) : la même confirmation porte un choix (`ktaConfirm`, `opts.choix` avec
+  `aucunParDefaut` : **rien de présélectionné**, OK inactif tant qu'on n'a pas choisi ; boutons « Annuler » et une
+  action qui prend le libellé du choix coché — `okLabel` de l'option : « ↻ Annuler le non-envoyé », « 🗑️ Supprimer
+  mes ajouts », « 🗑️ Tout supprimer ») :
+  - **« ↻ Annuler ce que cet appareil n'a pas encore envoyé (N modifications) »** — seulement si `enAttente` > 0
+    (décision produit : en ligne, la synchro part en quelques secondes et tout revient, vider l'appareil n'aurait pas
+    de sens ; `null` = nombre inconnu, prise en erreur : proposé sans nombre) : l'effacement ci-dessus ; ces
+    modifications ne partent pas, tout ce qui est sur le serveur revient (relecture complète par l'extension) ;
+  - **« Supprimer mes ajouts pour toute l'organisation »** (`miens`) : objets dont `KtaExtensions.auteurObjet(uid)
+    .createur === auteur`. Un objet dont le créateur est inconnu (`auteurObjet` null ou sans `createur`) n'est
+    **jamais** compté comme « mes ajouts » (décision produit : pas de suppression d'un objet d'autrui par erreur) ; la
+    fenêtre dit combien il y en a (« N objet(s) dont l'auteur est inconnu… »), seul « Tout supprimer » les couvre ;
+  - **« Tout supprimer pour l'organisation »** (`tout`) : tous les objets de la session.
+
+  Les deux derniers relisent la prise au clic (droit retiré : refus nommé, rien n'est effacé), puis une seconde
+  `ktaConfirm` donne le nombre d'objets. L'appareil est vidé comme au premier choix, puis les traces d'avant reviennent
+  et chaque objet visé reçoit la sienne (`_tracerEffacement`), datée après sa dernière modification connue (une trace
+  plus ancienne perdrait la fusion) ; la session est écrite tout de suite. La relecture complète ramène alors ce qui
+  n'est pas tracé. 🔒 Jamais de trace pour une copie de calque (uid d'un objet du calque), l'itinéraire calculé ou un
+  portail. La case « ↩️ Rendre aussi les calques à l'équipe » remplace le 3e bouton quand des calques sont en
+  modification (piège 1 ci-dessous). Aucune option (rien en attente, aucun droit) : « Rien à effacer ». Erreur, rejet
+  ou réponse au-delà de 8 s : l'annulation seule, sans nombre. Le
+  nombre annoncé ne compte que ce que l'appareil a reçu (d'où la promesse : l'extension peut se mettre à jour avant
+de répondre). 🔒 **Plan d'extension en lecture seule** (`ktaEditionRefusee`) : rien ne peut y attendre d'envoi, tout
+  vient du serveur — 📊 Détails montre un bouton inactif « Rien à effacer : ce plan vient du serveur », la fenêtre
+  « session restaurée » le dit au clic, sans fenêtre de choix (décision produit). Filets :
+  `scripts/smoke/checkup-effacer-session-partage.js` (fenêtre « session restaurée »),
+  `scripts/smoke/checkup-jonction-fiche.js` partie B (📊 Détails), `check-calque-session.js` (les deux entrées
+  passent par `demanderEffacement`).
 
 **Format storage** :
 ```json
@@ -64,6 +108,61 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 ```
 
 **Pourquoi polling et pas hooks ?** : pas besoin de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible. Risque zéro d'oublier un point de modification.
+
+#### 9.1 Import d'un fichier de session (`interfaceImportExport.js > ouvrirImportSession`)
+
+- **Plan local** (ou sans extension) : le fichier **remplace** points, tracés, zones, structures, mesure, suivi, note du
+  Mode Histoire et légende de session ; ses traces de suppression remplacent celles du plan ; snapshot
+  `before-import-session` attendu avant. Photos et documents du Mode Histoire **s'ajoutent** (jamais de purge).
+- **Plan partagé par une extension** (`KtaExtensions.importPartage` → `{ remplacer }`, `community-server-line.md` §3) :
+  la fenêtre propose **« Ajouter au plan »** (choisi par défaut) et, si la prise le permet, **« Remplacer pour toute
+  l'organisation »**. Les deux passent par `KtaUid.preparerImport(local, fichier, mode)` (fonction pure), snapshot
+  `before-import-session` compris :
+  - *Ajouter* : par uid, le plus récent gagne ; un objet effacé ici (trace postérieure ou égale) ne revient pas ; rien
+    d'existant ne disparaît ; traces d'ici inchangées, celles du fichier ignorées. Mesure, suivi et note libre d'ici
+    ne sont pas touchés ; la légende du fichier complète celle d'ici sans l'écraser.
+  - *Remplacer* : le droit est relu au clic, puis `ktaConfirm` annonce le nombre d'objets qui seront supprimés pour
+    tous ; chaque objet d'ici absent du fichier reçoit une **trace de suppression** (sans elle, la synchro ne voit
+    aucune suppression et les objets reviennent du serveur) ; le reste suit le remplacement local.
+  - ⚠️ Un objet du fichier qui gagne est **réhorodaté maintenant** : la synchro n'envoie que ce qui a changé depuis son
+    dernier envoi (l'objet d'un vieux fichier ne partirait jamais) et le serveur garde la version la plus récente.
+  - L'itinéraire calculé et les aperçus d'ici restent ; ceux du fichier sont ignorés. Calques en modification
+    (`CalqueSession.resynchroniser`) et liaisons inter-plans (`InterPlanLinks.importLinks`, fusion par id) : même
+    traitement dans tous les modes.
+- `importerSessionJSON(file)` (import direct, sans fenêtre) : sur un plan partagé, ouvre la fenêtre à la place.
+- **🧮 Tableur, « Appliquer à la session »** (points, tracés, zones, structures d'un fichier de session — `type:
+  "devmap-session"` ou porteur de `editorPoints` ; un calque de données, ou un `session_*.json` sans ce marqueur,
+  reste en téléchargement seul) : un seul chemin, `tableEditor.js > _appliquerSession` →
+  `KtaConvertir.appliquerTableau(famille, lignes, opts)`. Points : la liste est passée par l'appelant
+  (`opts.acces` = getEditorPoints / setEditorPoints, catégorie d'historique `editorPoints`), sans validation de
+  type ; fiches des photos mises à jour comme avant (`MyKTAMapPhotos.majFichesPoints`, points d'avant puis
+  d'après). Le tableau devient la
+  famille, **par uid** : ligne connue = l'objet de la session reçoit ses cellules modifiées par les chemins de la fiche (type par
+  `_versType`, comme 🔄 Convertir ; niveau par `_poserNiveau`, comme la liste « Niveau » ; autres colonnes en place +
+  `touch`) ; sa **géométrie reste celle de la session** (le tableau ne l'édite pas) ; objet sans différence : intact.
+  Ligne d'uid inconnu = ajout ; objet absent du tableau = suppression (trace posée par `HistoryManager.record`).
+  🩸 Un réimport ne ressuscite rien : une ligne dont l'uid porte une trace de suppression est **ignorée** si elle n'a
+  pas été modifiée au tableau (bilan : « N ligne(s) supprimée(s) depuis l'export, ignorée(s) »), **réajoutée** si une
+  cellule a changé (geste explicite ; trace retirée par `HistoryManager.record`, comme toute réapparition).
+  Itinéraire calculé et aperçus : gardés, jamais pris au tableau. Un instantané, une écriture, **une entrée ⏪**.
+  - Validation de TOUTES les lignes avant toute écriture, la première fautive arrête tout (fenêtre qui nomme la ligne
+    — ordre du fichier, ligne sélectionnée à l'écran — et le type) : type **inconnu** de la légende, type d'une autre
+    géométrie (règle ouvert / fermé de Convertir), `jonction` / `itinerary` posés au tableau, niveau non entier ou sur
+    une jonction. Un type orphelin **inchangé** ne bloque pas. Le téléchargement garde la saisie libre (cellule en
+    rouge seulement).
+  - ⚠️ **Seules les cellules modifiées s'appliquent** (décision produit, points compris) : chaque ligne est comparée
+    à sa copie prise au chargement (`_origines`, passée en `opts.origine`). Une ligne non touchée ne change rien,
+    même si le fichier est plus ancien que la session ; sur une ligne touchée, les autres champs gardent leur valeur
+    de session. Une colonne absente d'une ligne ne retire jamais un champ. Les traces de suppression du fichier sont
+    ignorées (≠ l'import de session §9.1).
+  - Plan partagé : même règle que les points (suppression ⇒ `remplacer` de la prise relu au clic, sinon refus nommé ;
+    puis `ktaConfirm` avec le nombre), compté par une simulation (`{ simuler: true }`).
+- **Colonne « level »** (plan affiché multi-niveau) : toujours présente pour les quatre tableaux, même sans aucun
+  champ `level` (affiché 0) ; la cellule est une liste = `availableLevels` + le niveau actuel de la ligne s'il en sort
+  (comme la fiche) ; lecture seule pour une jonction et l'itinéraire. Hors multi-niveau : colonne seulement si un objet
+  a un `level`, saisie numérique. Checkup : `scripts/smoke/checkup-tableur-session.js`.
+- Limite : un objet créé par un autre membre et pas encore reçu au moment de l'import ne reçoit pas de trace (il
+  reste après un « Remplacer »). Garde-fou : `scripts/check-extensions.js` §6 septies.
 
 ---
 
@@ -141,7 +240,7 @@ Renommer un point ne touche plus ses photos ; un point sans uid garde l'ancien c
 **Fiche du point** (`fiche: { nom, x, y, niveau, type, maj }`, coordonnées image comme dans la session) : de quoi
 retrouver le point s'il disparaît. Posée à l'ajout (état du formulaire), au rattachement et à la restauration si
 fournie ; remise à jour par `majFichesPoints(planId, points)` quand le point est enregistré (éditeur, tableau
-« Remplacer la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
+« Appliquer à la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
 Seules les fiches qui changent sont écrites. Jamais exigée : les anciennes photos n'en ont pas.
 
 **Saisie** — `editor.js > afficherFormulaire(x, y, existingPoint?)`, section 📸 : écriture IndexedDB dès l'ajout
@@ -1460,11 +1559,15 @@ KARMA, 05/09 : « rajoute, dans le truc pour convertir, un bouton supprimer ». 
 la barre latérale et son sélecteur, alors que la bulle tient déjà **la famille et l'objet lui-même** — c'est le seul
 endroit du code où les deux sont réunis. D'où `KtaConvertir.supprimer(famille, obj)`, voisine de `convertir()`.
 
-**🩸 L'identité est prise par RÉFÉRENCE, jamais par contenu.** `roads` et `zones` **n'ont pas d'`id`**
-(cf. `data-formats.md` : snapshot brut `{type, points, label?, level?}`), et deux tracés peuvent porter exactement le même
-type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de contenu
-supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon endroit.
-`indexOf(obj)` compare les références, et la bulle porte l'objet.
+**🩸 L'identité est prise par RÉFÉRENCE puis par `uid`, jamais par contenu.** Deux tracés peuvent porter exactement le
+même type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de
+contenu supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon
+endroit. La bulle porte l'objet ; `convertirObjet.js > _indexDe` le cherche d'abord par référence, puis par `uid` : une
+réception de synchro (plan d'une installation reliée) ou une restauration remplace l'objet par une **copie de même uid**,
+et la référence gardée par une fiche ou la fenêtre Convertir n'est plus dans la liste — la suppression, la conversion
+ou le changement de niveau échouaient alors sans un mot. Ils agissent sur la version **courante** de la liste.
+Introuvable même par `uid` (supprimé ailleurs entre-temps) : toast d'avertissement `convert.introuvable`, rien n'est
+écrit. Garde-fous : `check-api-surface.js` (référence périmée), `check-uid.js` (passage obligé par `_indexDe`).
 
 **⚖️ Pas de confirmation.** C'est le parti-pris déjà tenu pour la suppression d'un POINT (`supprimerPointEditor`), qui
 s'appuie sur `Ctrl+Z`. Un second dialogue là où le premier n'en a pas serait incohérent. Deux conséquences assumées :
@@ -1523,7 +1626,12 @@ Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d
 
 ### 🩸 Les deux pièges, et pourquoi ils coûtent cher
 
-1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Ailleurs, confirmation inchangée. `clear()` garde les restitutions (`restitutions`, `aEnvoyer`) de l'état du module : celle qui vient d'être notée doit encore partir. Filet : `scripts/smoke/checkup-calque-effacer.js` (plan local, parcours réel : rechargement, fenêtre « session restaurée », effacement, panneau de filtres).
+1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Si l'extension répond aussi à `effacerSession` (plan partagé, §9 « Effacer la session »), ce choix
+devient la case « ↩️ Rendre aussi les calques à l'équipe » de la fenêtre à choix, valable pour les trois choix : les copies
+ne reçoivent jamais de trace, elles reviennent du serveur tant que la case n'est pas cochée. 🩸 Même quand le choix
+coché ne vise aucun objet (« mes ajouts » à 0), la case cochée rend les calques (sinon « Aucun objet » l'ignorait en
+silence). Le titre de la fenêtre ne compte pas ces copies : il les annonce à part (`session.confirm.clearCopies`).
+Ailleurs, confirmation inchangée. `clear()` garde les restitutions (`restitutions`, `aEnvoyer`) de l'état du module : celle qui vient d'être notée doit encore partir. Filet : `scripts/smoke/checkup-calque-effacer.js` (plan local, parcours réel : rechargement, fenêtre « session restaurée », effacement, panneau de filtres).
 2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
 
 3. **À l'import d'une session, la liste se DÉDUIT des marques.** Le fichier session emporte les objets marqués `_srcCalque`, **pas** `calquesSession` (propre à la sauvegarde locale). Sans recalage : sur un autre appareil, le calque d'origine se réaffiche par-dessus sa copie (doublon) et « Exporter » refuse (`pasRapatrie`) ; et une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (`appliquerVerrous` ne tourne qu'au rechargement). `resynchroniser()`, appelée par l'import (`interfaceImportExport.js`, après les setters), reconstruit `_rapatries` depuis les marques présentes **et connues du plan ouvert**, masque / réaffiche en conséquence, et **retire** les marques de calques inconnus (session d'un autre plan → objets « créés à la main », comptés à l'export). Déduire plutôt qu'exporter la liste : une seule source de vérité, et les sessions déjà exportées marchent sans être refaites.
@@ -1586,6 +1694,20 @@ de `resynchroniser`). Effet de bord voulu : un ajout intégré est du contenu de
 session limité à ses ajouts (`sessionExporter.js > _garder`, copies exclues). Limite : intégrer, exporter le calque, annuler
 l'intégration puis supprimer l'objet laisse une trace sur un uid présent dans le fichier exporté (suppression explicite
 de l'utilisateur).
+
+### 🔄 Verser la session dans une nouvelle version du plan
+
+L'assistant « Mettre à jour le plan » (`js/majPlan.js`, état complet : `plans-loader.md` § Mettre à jour le plan)
+enchaîne ce qui précède sans fichier intermédiaire : `contenuCalque(id)` rend le contenu d'« 💾 Exporter » sans le
+télécharger (même refus `pasRapatrie` / `exportRefuse`) ; après un remplacement ou une publication, les calques versés
+sont restitués et les objets dessinés à la main versés dans le plan quittent la session par
+`retirerIntegres(uids, T)` :
+- seuls les objets **sans marque** sont visés (les copies partent par la restitution) ;
+- 🩸 trace posée à **`T - 1`**, l'objet étant écrit dans le fichier avec `updatedAt = T` : la trace retire la copie de
+  session des autres appareils, mais ne peut pas détruire l'objet du fichier à une fusion (la règle « jamais de trace »
+  des copies vise une trace POSTÉRIEURE à l'objet du fichier) ;
+- objet modifié depuis (`updatedAt ≥ T`) : **gardé** et compté (sa retouche n'est pas dans le fichier) ;
+- aucune entrée d'historique (la nouvelle version contient déjà les objets) ; refus en lecture seule.
 
 ### État persisté
 

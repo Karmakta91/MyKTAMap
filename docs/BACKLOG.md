@@ -28,27 +28,15 @@
 
 ## Maintenant
 
-- **Train : sortir la v2.18 en prod** — 🧊 **`Karma_dev` gelé** ; la vague s'est élargie le 20/10 (décision KARMA) au nouvel écran
-  de démarrage et à l'audit Impeccable (charte en jetons) : **trempage de 48 h en sombre ET en clair**, dev + pro, à partir de cette intégration. Porte : `docs/RELEASE_GATE.md`.
-  `qui: KARMA · action: Sonar (faux positifs acceptés), PR Dependabot, trempage dev + pro (menu 9), porte, merge-main
-  · fini: main mergé, etat-sites.ps1 vert · depuis: 18/10/2026 · taille: M`
-- **Vue OSM : points sous les tuiles du plan** — 🔬 KARMA (plan multi-niveau, iPhone PWA et PC) : une partie des POI
-  paraît derrière les tuiles ; case 🖼️ Plan décochée ou opacité 0 % → nettes. ✅ Non reproduit au harnais (Chromium).
-  Journal d'enquête : `git log -S"sous les tuiles" -- docs/BACKLOG.md`.
-  `qui: KARMA · action: donner le parcours exact (navigateur PC, changement de niveau ou de plan, réouverture)
-  · fini: reproduit et corrigé, ou fermé « non reproduit » avec ce parcours · depuis: 16/10/2026 · taille: S`
-- **Retour testeur « inutilisable dans les seconds niveaux »** — retour prod ; on ne sait pas ce qui est cassé (plan,
-  itinéraire, lisibilité ?). La jauge de stockage et les alertes de saturation sont livrées depuis.
-  `qui: KARMA · action: demander au testeur le plan et le geste · fini: symptôme reproductible écrit, ou entrée fermée
-  · depuis: 10/10/2026 · taille: XS`
-- **Sonar : faux positifs à accepter** — `mdParser.js` ×2 (caractères de contrôle = balises internes), `css/style.css`
-  ×2 (`height: 44px` = repli avant `calc(env(safe-area…))`), `index.html` barre de profil (clavier géré en JS, CSP
-  sans attribut inline).
-  `qui: KARMA · action: les marquer « Accepté » dans l'interface Sonar locale
-  · fini: 0 bug ouvert sur le projet MyKTAMap · depuis: 09/10/2026 · taille: XS`
-- **PR Dependabot en attente** — branches et copies mortes supprimées le 20/10 (✅ vérifié : reprises dans
-  `Karma_dev`). Restent 8 PR : actions GitHub (`setup-node`, `docker/*`) et Playwright du smoke.
-  `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte) avant le gel
+- **Train : sortir la v2.19.0 en prod** — bumpée le 21/10 (avec la 0.12.0 du pro) : mise à jour du plan, Éditeur de
+  données appliqué à la session, recalage sur un autre scan, fiche des jonctions, effacer la session, correctif de la
+  synchro à l'ouverture d'un plan ☁️. Notes : `version.json`, `README.md` § v2.19.0.
+  `qui: KARMA · action: trempage dev + pro (menu 9) : modifier / supprimer une jonction, effacer la session ; porte
+  docs/RELEASE_GATE.md ; merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
+- **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
+  ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
+  Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.
+  `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte)
   · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 
 - **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
@@ -70,11 +58,24 @@
   · taille: S`
 ## Ensuite
 
-- **Mettre à jour le plan (assistant)** — décidé en QCM : de la session et des calques au Générateur en mode Modifier,
-  puis nouvelle version du plan. Les lots préalables (calques effacés, ajouts intégrés, export en modification) sont
-  intégrés. Décisions : `docs/ETUDE_MAJ_PLAN.md`.
-  `qui: Claude · action: lot après le guide utilisateur de l'installation (une feature phare à la fois)
-  · fini: assistant intégré, doc d'architecture à jour · depuis: 19/10/2026 · taille: L`
+- **Erreur Leaflet `_leaflet_pos` aux changements de plan rapides** — `TypeError … _getMapPanePos` vue plusieurs fois par
+  le scénario pro `ouverturePlanSync` (10 ouvertures enchaînées) : un appel sur une carte déjà démontée. Instable, sans
+  effet fonctionnel mesuré ; le scénario repasse au rejeu.
+  `qui: Claude · action: trouver l'appel (setView / invalidateSize / panTo après cleanupExistingMap) et le garder
+  · fini: ouverturePlanSync sans erreur de page sur 10 passages · depuis: 22/10/2026 · taille: S`
+- **Vue OSM : pas d'accès à la légende du plan** — ni la Vue OSM ouverte depuis un plan ni la carte OSM de l'accueil
+  n'ouvrent la ≡ Légende. Accueil à plusieurs plans (légendes différentes) : piste KARMA = légende du plan principal,
+  l'utilisateur prévenu que les autres plans ont la leur ; légende en lecture seule depuis l'OSM (pas de modification).
+  `qui: Claude · action: QCM rapide puis bouton Légende dans la barre des deux cartes OSM (légende du plan principal)
+  · fini: légende du plan ouverte depuis les deux cartes OSM · depuis: 22/10/2026 · taille: S`
+- **Garde-fou `check-calque-session.js` contourné** — il interdit à `convertirObjet.js` de nommer les points de
+  session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
+  `qui: Claude · action: dire précisément ce qui est permis (accès fourni par l'appelant) et le vérifier
+  · fini: garde-fou qui décrit l'état actuel, sans contournement · depuis: 21/10/2026 · taille: XS`
+- **Convertir en lot prend une jonction** — la sélection multiple (`KtaConvertir.convertirLot`) accepte une jonction,
+  alors que la fiche ne propose plus « Convertir » pour elle.
+  `qui: Claude · action: l'exclure du lot comme de la fiche (CIBLES_INTERDITES) · fini: jonction absente du lot
+  · depuis: 21/10/2026 · taille: XS`
 - **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
@@ -110,6 +111,11 @@
 
 ## Plus tard
 
+- **Clés i18n gardées pour les pages en cache** — `home.profile.greeting`, `home.splash.ethos`,
+  `ui.subaction.importer` / `editJson`, `tabledit.save.session` / `sessionOk` / `partage.*`, `tabledit.resol.*` :
+  plus appelées, gardées une release (règle de `docs/architecture/i18n.md`).
+  `qui: Claude · action: les retirer des 3 dictionnaires à la release qui suit la v2.19.0 · fini: clés retirées
+  · depuis: 21/10/2026 · taille: XS`
 - **Sonar : jetons à régénérer** — ils expirent vers le 06/01/2027 : au-delà, `sonar-scan.ps1` sort en code 1 et
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027

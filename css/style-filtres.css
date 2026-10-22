@@ -437,6 +437,8 @@ html.kta-theme-light .kta-fp-footer {
 }
 body.kta-theme-light .kta-fp-status,
 html.kta-theme-light .kta-fp-status {
+  color: var(--kta-texte-3) !important;
+}
 
 /* Intégrer des ajouts : sous-fenêtre au-dessus du panneau (filterPanel.js > _ouvrirAjouts). */
 .kta-fp-ajouts-intro {
@@ -502,3 +504,35 @@ html.kta-theme-light .kta-fp-ajouts-filtre select {
   color: var(--kta-light-text, #2a2620) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
 }
+
+/* Assistant « Mettre à jour le plan » (js/majPlan.js) et son raccourci en tête des calques. */
+.kta-fp-maj-plan {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+}
+.kta-maj-etape {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kta-accent-texte);
+}
+.kta-maj-groupe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--kta-bordure);
+}
+.kta-maj-groupe-titre {
+  flex: 1 1 180px;
+  font-size: 12.5px;
+  color: var(--kta-texte);
+}
+.kta-maj-groupe select,
+.kta-maj-groupe input {
+  flex: 1 1 160px;
+  max-width: 100%;
+}
+.kta-maj-groupe input[hidden] { display: none; }

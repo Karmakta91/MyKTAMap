@@ -138,7 +138,8 @@ remplacent celles du plan.
              "pointNom": "Puits nord", "x": 4843, "y": 2002, "level": 0, "source": "session" },
       "b": { "planId": "server_data_secteur", "planName": "Secteur", "pointId": "",
              "pointNom": "Accès cave", "x": 120, "y": 88, "source": "data" },
-      "createdAt": "2026-07-21T10:00:00.000Z"
+      "createdAt": "2026-07-21T10:00:00.000Z",
+      "updatedAt": 1784628000000
     }
   ]
 }
@@ -149,6 +150,9 @@ remplacent celles du plan.
 - **Export session** (Full + Avancé) : clé racine `interPlanLinks` = liaisons du plan courant → réinjectées au registre à l'import (**fusion par id**, jamais de doublon).
 - **Datalayer baked** : un point peut porter `interPlanLinks: [<link>]` dans son JSON → lu au popup (lecture seule, navigable, pas de 🗑️).
 - Suppression d'un point session → `InterPlanLinks.onPointDeleted` purge le lien **entier** (hook `editor.js > supprimerPointEditor`).
+- `updatedAt` (ms) = dernière écriture de la liaison (création, côté recalé, plan transféré) ; absent sur une liaison
+  plus ancienne. Une extension qui synchronise les liaisons fusionne dessus et en est prévenue par
+  `mktm:liaisons-changees` (contrat : `community-server-line.md` §3, liaisons inter-plan).
 
 ### Format export liste de plans
 

@@ -276,14 +276,7 @@
     chatiere: "icon/chatiere.png", passage: "icon/passage.png",
     danger:   "icon/danger.png", plaque: "icon/plaque.png",
     portail:  "icon/portail.png",
-    entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
-        '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
-        '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
-        '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
-        '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
-      '</svg>'
-    )
+    entree_plan: "icon/entree_plan.png"
   };
   // blob URLs des icônes de POI
   let _iconBlobUrls = [];
@@ -670,6 +663,10 @@
     _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
     // largeur des fronts au zoom, comme en mode plan
     _mapInstance.on("zoomend", _majLargeurFrontsHome);
+    // taille des icônes : aussi pendant l'animation (« zoom »), comme en mode plan. Variable à 1 sur le
+    // conteneur : celle du body appartient au mode plan.
+    mapDiv.style.setProperty("--kta-marker-scale", "1");
+    _mapInstance.on("zoom zoomend", _majTailleIconesHome);
     _renderGeorefMarkers(georef);
     // 🩸 Leaflet mesure le conteneur AVANT que le DOM du HOME soit stable (rendu progressif ; sur mobile PWA à
     // froid, dimensions stables après 0,5 à 1,5 s) : tuiles OSM jamais chargées. Trois filets redondants :
@@ -1002,9 +999,9 @@
       if (iconUrls[tag]) continue;
       await _resolveIcon(tag, CATALOGUE[tag]);
     }
-    // 3. repli : marker Leaflet (POI sans tag)
-    if (!iconUrls.default) {
-      iconUrls.default = "lib/leaflet/images/marker-icon.png";
+    // 3. repli : icône par défaut de l'app (POI sans tag) ; remplace l'ancien pin Leaflet écrit par le Générateur
+    if (!iconUrls.default || /marker-icon\.png$/.test(iconUrls.default)) {
+      iconUrls.default = window._ktaIconeDefaut || "icon/default.png";
     }
     console.log("[OsmHomePreview] Icons résolus : " + Object.keys(iconUrls).length + " tag(s) (" + nFromZip + " depuis ZIP custom · " + nFromApp + " depuis URLs app)");
     return iconUrls;
@@ -1101,6 +1098,27 @@
     } catch (e) {}
   }
 
+  // Réglage 📐 (map.js > ktaEchelleMarqueurs, même loi qu'en mode plan) relu à chaque zoom. Une échelle PAR
+  // PLAN, posée sur son pane : deux plans empilés n'ont pas la même résolution.
+  function _majTailleIconesHome() {
+    if (!_mapInstance) return;
+    const actif = window.ktaReglageTailleIcones();
+    Object.keys(_panesParPlan).forEach(function (id) {
+      const e = _panesParPlan[id];
+      if (!e || e.map !== _mapInstance || !e.pane) return;
+      const px = (actif && e.proj) ? window.ktaPxEcranParPxPlanOsm(_mapInstance, e.proj) : null;
+      const s = px ? window.ktaEchelleMarqueurs(px, window.KTA_ECHELLE_PLANCHER_OSM) : 1;
+      // seulement si la valeur change : une écriture recalcule le style de tous les marqueurs du pane
+      if (e.pane.style.getPropertyValue("--kta-marker-scale") !== String(s)) {
+        e.pane.style.setProperty("--kta-marker-scale", String(s));
+      }
+    });
+  }
+  // Réglage basculé à l'accueil : la forme de l'icône change (map.js > ktaIconeOsm), re-rendu des plans affichés.
+  window.addEventListener("kta:tailleIconesChange", function () {
+    if (_mapInstance) _reRenderDataTous();
+  });
+
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // Sans `cible` : groupes du MODULE (plan principal, clear inclus). Avec `cible` ({data, poi, roads, zones,
     // struct}) : groupes d'un plan AJOUTÉ de la pile ; ceux du module ne sont pas touchés.
@@ -1137,17 +1155,15 @@
     const unmatchedTags = {}; // tag → nombre, tags sans icône
     // icônes du plan (tag → blob URL)
     const iconUrls = data.iconUrls || {};
-    // cache des L.icon
+    // projection gardée sur le pane : l'échelle des icônes de CE plan en dépend (_majTailleIconesHome)
+    if (paneCtx) paneCtx.proj = proj;
+    // cache des icônes (24×24, mises à l'échelle par la variable du pane si le réglage 📐 est actif)
     const iconCache = {};
     function _getOrBuildIcon(tag) {
       if (iconCache[tag]) return iconCache[tag];
       const url = iconUrls[tag];
       if (!url) return null;
-      iconCache[tag] = L.icon({
-        iconUrl:    url,
-        iconSize:   [24, 24],
-        iconAnchor: [12, 12]
-      });
+      iconCache[tag] = window.ktaIconeOsm(url, 24, tag);
       return iconCache[tag];
     }
 
@@ -1276,6 +1292,7 @@
     if (_showRoads)      dataL.addLayer(roadsL);
     if (_showZones)      dataL.addLayer(zonesL);
     if (_showStructures) dataL.addLayer(structL);
+    _majTailleIconesHome();
     console.log("[OsmHomePreview] Data render :", nPoi, "POI ·", nRoad, "roads ·", nZone, "zones ·", nStruct, "struct");
     // diagnostic des icônes : matchées / repli, tags sans icône
     if (nPoi > 0) {
@@ -1689,6 +1706,10 @@
       // bouge. Premier enfant (sous les tracés par l'ordre du DOM) + couche de composition propre
       // (translateZ + will-change), le remède au clignotement d'un calque semi-transparent.
       parent.insertBefore(pane, parent.firstChild);
+      // 🩸 z-index 0 explicite : Leaflet donne 400 à TOUT pane créé (CSS .leaflet-pane), qui l'emporte sur l'ordre du
+      // DOM → tracés (svg sans z-index) et POI du haut de l'écran (z-index = y à l'écran < 400) passaient SOUS les
+      // tuiles, de façon variable selon le zoom.
+      pane.style.zIndex = "0";
       pane.style.transform = "translateZ(0)";
       pane.style.willChange = "opacity";
     }

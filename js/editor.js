@@ -860,12 +860,13 @@ function _ajouterMarker(point) {
 
   let icone = choisirIcone(point);
 
-  // Icône invalide → pin Leaflet natif. Avec scaledMarkers, l'icône est un L.divIcon sans options.iconUrl :
+  // Icône invalide → icône par défaut de l'app (pin Leaflet natif tant que la carte n'a pas ses icônes). Avec
+  // scaledMarkers, l'icône est un L.divIcon sans options.iconUrl :
   // on teste _kta_iconUrl (posé par creerIcones).
   const hasUrl = icone && (icone._kta_iconUrl || (icone.options && icone.options.iconUrl));
   if (!icone || !hasUrl) {
-    console.warn("[Editor] Icône invalide pour", point.nom, "— pin Leaflet par défaut");
-    icone = new L.Icon.Default();
+    console.warn("[Editor] Icône invalide pour", point.nom, "— icône par défaut");
+    icone = window.iconeDefault || new L.Icon.Default();
   }
 
   // addTo détaché du constructeur (comme les calques, utils.js > ajouterPointsDepuisJSON).

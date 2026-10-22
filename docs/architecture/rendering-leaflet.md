@@ -38,6 +38,13 @@ initApp() dans main.js
    └─ Sinon → afficherLoader() (home avec liste) → _splashEnd()
 ```
 
+L'ouverture d'un plan attend **une image** à trois endroits : `lancerApplication()` avant `initMapFromConfig()` (le
+message « mapInit » s'affiche d'abord), `initMapFromConfig()` après `cleanupExistingMap()`, et `initCollisionMap()`
+avant de charger l'image de collision. 🩸 Onglet en arrière-plan ou navigateur sans écran : `requestAnimationFrame`
+peut ne jamais venir (ouverture figée sur « Chargement en cours… ») ; ces attentes passent donc toutes par
+`utils.js > ktaAttendreImage()` : un minuteur de 1 s prend le relais, le premier des deux reprend seul (pas de double
+exécution). Jamais de `requestAnimationFrame` nu sur ce chemin.
+
 ---
 
 ### 2. Cascade de résolution des icônes (depuis 06/05/2026)
@@ -148,18 +155,14 @@ Comme le tracker (§28) : `L.divIcon` avec `<div>` wrapper (positionné via tran
 - Sinon → `L.icon` natif (comportement v172)
 - Dans les 2 cas : `ic._kta_iconUrl = url` posé en backup pour les consumers
 
-CSS variable `--kta-marker-scale` sur `<body>` mise à jour dans `initMapFromConfig` via :
-```js
-map.on("zoomend zoom", function() {
-  const z = map.getZoom();
-  const clamped = Math.max(0.25, Math.min(2, Math.pow(2, z)));
-  document.body.style.setProperty("--kta-marker-scale", clamped);
-});
-```
+CSS variable `--kta-marker-scale` sur `<body>` mise à jour dans `initMapFromConfig` sur `zoom` et `zoomend` :
+`window.ktaEchelleMarqueurs(2^zoom)` (map.js, plancher par défaut ×0,25). Loi partagée avec les cartes OSM (Vue OSM,
+carte de l'accueil), qui posent la variable sur leur conteneur ou le pane du plan et passent leur propre plancher
+(×0,5, `KTA_ECHELLE_PLANCHER_OSM`) : `vue-osm.md` §11.
 
 CSS : `.kta-marker-img { transform: scale(var(--kta-marker-scale, 1)); transform-origin: center; }`.
 
-#### 37.2 Clamp 0.25 / 2
+#### 37.2 Clamp 0.25 / 2 (mode plan)
 
 - Au zoom -2 et au-delà → scale `0.25` (= 12.5px visible, pas invisible)
 - Au zoom +2 (rare, déjà au max MyKTAMap) → scale `2` (= 100px, évite des icônes ridiculement énormes)
@@ -186,12 +189,12 @@ const url = entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || nu
 #### 37.4 Non touché (volontaire)
 
 - **Tracker** (cf §28) : garde ses classes `kta-tracker-divicon` / `kta-tracker-img` distinctes → pas concerné par le CSS variable `--kta-marker-scale`. Taille écran fixe préservée. Utile pour le repérage visuel au dézoom (l'user veut TOUJOURS voir où il est).
-- **iconeDefault Leaflet natif** (`L.Icon.Default` = pin bleu) : pas scalé. Anchor bas-centre incompatible avec scale around center → décalerait la pointe. Cas marginal (uniquement si plan sans `icons.default`).
+- **Icône par défaut** (point sans tag ou au tag inconnu) : `icon/default.png` (`window._ktaIconeDefaut`, `map.js`), centrée et scalée comme les autres. Un `icons.default` qui vise l'ancien pin Leaflet (`lib/leaflet/images/marker-icon.png`, écrit par les Générateurs d'avant) est ignoré : l'icône de l'app reprend la main. Le pin natif `L.Icon.Default` ne reste qu'en filet ultime, avant que la carte ait construit ses icônes.
 - **Exports PNG / KMZ** : continuent de produire des images taille originale. Les transform CSS n'affectent que le rendu Leaflet runtime, pas les exports canvas qui peignent les icônes à leur taille brute.
 
-#### 37.5 Reload requis pour changement du toggle
+#### 37.5 Prise en compte d'un changement du réglage
 
-`scaledMarkers` est lu UNE FOIS dans `creerIcones` au load du plan. Toggle dans ⚙️ Réglages → 🔍 Affichage (liseré orange = reload requis). Si l'user toggle sans reload, les icônes existantes restent en L.icon ou L.divIcon selon leur état au moment de la création.
+En mode plan, `scaledMarkers` est lu UNE FOIS dans `creerIcones` au load du plan. Le réglage vit dans ⚙️ Configuration de l'accueil → 🎨 Affichage (réglage global) : il prend effet au prochain chargement de plan. Les cartes OSM ouvertes, elles, re-rendent leurs POI à la bascule (`vue-osm.md` §11).
 
 ---
 

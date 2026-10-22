@@ -304,8 +304,8 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Help / Documentation / Legend** | 📚 | Help, documentation, icon legend |
 | **Settings** | ⚙️ | Map settings: scale, North, georeferencing, tracker, display… *(direct click)* |
 | **Search** | 🔍 | Find a point, a path, a zone or a structure *(direct click)* |
-| **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
-| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, external export (KMZ / GPX) |
+| **Load / Import** | ⬇️ | Import a session or a GPX (opens the file picker directly) |
+| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, map update, external export (KMZ / GPX) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
 | **Measurement** | 📐 | Measure a distance or an area, clear |
@@ -333,13 +333,14 @@ A click on the top counters opens the map's **dashboard**:
 - **⭐ Favorites**: export this map's or all of them, import;
 - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation. Copies from **another version of this map** (re-imported or renamed) also show up, marked 📂, and are restored into the open map;
 - **💾 Session memory**: your sessions live in the space the browser grants the app on your device — a share of its free space, shared with your maps, photos and backups (no more 5 MB cap since 10/10/2026; your existing sessions were moved there automatically). The gauge shows how full it is and which maps have the heaviest sessions; at 80 % the app warns you when you open a map. To free some room: export your session (📤 Export), then clear the session or photos of an old map, or remove a map you no longer need. If the browser refuses this storage (some private browsing modes), your sessions stay in the old storage capped at ~5 MB, and the gauge shows it;
+- **🗑️ Clear the session**: the same clearing as the “Previous session restored” window (see 🧹 Erase and correct), at any time. On a read-only ☁️ map, the button says “Nothing to clear: this map comes from the server”;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
 
 ### 🗺️ Reading the map
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
-- Icons shrink as you zoom out to stay at the map's scale. To keep a fixed size: ⚙️ Settings → 🎨 Display → “📐 Scale icon size with zoom”.
+- Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
 #### 🌐 GPS coordinates in popups
 
@@ -370,6 +371,8 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 *Example: to see only two kinds of shafts, 🏷️ Point tags → 🚫 None, then tick the two tags you want again.*
 
 > 🔄 **Correcting a data layer** — a layer shipped with the map can be hidden but not edited. The **🔄 Edit** button on its row copies it into your session, where all your tools apply (for instance 🔄 Convert this object); the original hides itself (“being edited — show anyway” lets you compare). Before acting, the app tells you how much space the copy will take and how much your sessions already use. **↩️ Restore** drops your changes; **💾 Export** produces the corrected file of **that layer only**, to hand back to the map via 🏗️ Generator → “Edit a plan”, “Choose” button on the layer's row: it replaces the old content. What you drew yourself is not part of it (the app tells you how many objects are left out of the file), unless you attach it: **➕ Add drawn objects**, on the layer's row, lists your drawings on the map by family (nothing ticked in advance, “Tick all”, “Created by” filter on a connected installation); the chosen objects then go into the layer's file, and ⏪ undoes it. An added object belongs to the layer: restoring the layer removes it too, and the restore window says how many. Clearing the session restores the layers opened for editing; re-importing your session on this map puts them back in edit mode. On a connected installation, “Clear the session” lets you choose: **clear on this device only** (layers opened for editing by the team come back from the server, still being edited) or **also give the layers back to the team** (they return to their original for everyone, and edits the others have not exported on these copies are lost). On a connected installation, a layer opened for editing by another account also shows as such on your side, and restoring it restores it on every device (a copy changed since then stays, flagged as a duplicate).
+>
+> 🔄 **Updating the map** — to put your work into the map itself: **⬆️ Export → 🔄 Update the map**, or the button at the top of the layers in **≡ Filters**. **1.** Layers being edited are ticked: each one replaces its file. **2.** Your hand-drawn objects are grouped by tag (points, by their first tag) or by type (routes, zones, structures); for each group, choose a map layer, a **new layer** (you name it) or “Leave in the session”. **3.** The Generator opens in Edit mode, already filled with the map's current ZIP, those layers and your photos: check it, then generate (if the map's ZIP is not on the device, it asks you to drop it). With **V2 tiling**, the app warns you, then **closes the map during generation** to free memory (your session is saved): **🔄 Replace** or **☁️ Publish** reopen it in its new version, otherwise you find it again on the home screen (**Resume**). **4.** Imported map: **⬇️ Download** or **🔄 Replace the map in the app** (same map: your session, calibration and photos stay attached). Map from a linked installation: **☁️ Publish the new version** if your right allows it, otherwise you download the ZIP for the person who manages the map. Site map: download, to pass on to its administrator. After a replacement or a publication, the app offers to **hand the layers back** (to the whole team on a linked installation) and to **remove the objects you put in from your session** — otherwise they show twice; an object changed after generation stays in your session, and the app says so. Same rule if you reopen by hand in the Generator (Edit mode) the ZIP of a map from a linked installation, for example the one from its ℹ️ card: the app recognises it and offers **☁️ Publish the new version** of that map (or explains who publishes); **Publish as a new map** makes a separate copy, only if you choose it. Edited ZIP, or a name shared by several maps: the app asks **Update which map?** among the maps you manage (or “None: publish as a new map”); if several maps have that name, none is preselected: choose the right one (folder, version and opening date tell them apart).
 
 ### 🗺️ Legend
 
@@ -745,7 +748,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 **One specific object**: its popup has a **🗑️ Delete** button; for a point, it is **🗑️ Delete this point**. No confirmation window: everything can be undone with ⏪ (`Ctrl+Z`).
 
-**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself.
+**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (also at any time in **📊 Session details**) (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself. On a **map shared with your organisation**, the window makes you choose (nothing is ticked in advance): **↻ Cancel what this device has not sent yet (N changes)**, only if changes are waiting to be sent (offline, for example: online, everything leaves within seconds and comes back from the server), or, depending on your rights, **Delete my additions for the whole organisation** or **Delete everything for the organisation** (number of items shown first; these two cannot be undone for the others). An item whose author is unknown is never counted in "my additions": the window says how many there are, only "Delete everything" covers them.
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
@@ -851,17 +854,19 @@ If the map contains elements on other levels, the list extends by itself. The sa
 
 An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
 
-No list on a junction (delete it and draw it again), on a layer object (🔄 Edit the layer first) or while a path is being drawn.
+A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
 ### 🪜 Drawing an inter-level junction
 
 A junction links two levels at the real spot of the passage (stairs, slope, shaft, ladder):
 
 1. **🛣️ Paths → 🪜 Inter-level junction**
-2. Choose the **Start level** (your active level by default) and the **End level** (the order does not matter: the route uses it both ways), then **OK — Draw the junction**
+2. Choose the **Start level** (your active level by default) and the **End level** (the route uses it both ways, but the first point you tap is on the start level), then **OK — Draw the junction**
 3. Tap as many points as you like, then press **🪜** again to confirm
 
 It appears in dotted magenta, with a dot at each end. **Without a junction, no route changes level.** Two staircases between the same levels = two junctions: the route takes the shorter one. It is erased like a path (🧹 Erase and correct).
+
+**Its card**: tap a junction you drew (not while drawing) to open **🪜 Junction L0 ↔ L+1**: its **note** (💾 Save the note), the **Start (1st point)** and **End (last point)** lists with **🪜 Change the levels** (two different levels required; the route follows at once), and **🗑️ Delete**. **⏪** undoes each step. No 🔄 Convert: a junction stays a junction.
 
 ### 🛠️ On the map creator's side
 
@@ -979,7 +984,7 @@ In the Profile window, **📤 Export my profile** produces a file that carries e
 
 ## ⬆️ Save and share
 
-Every export starts from the **⬆️ Export** group of the sidebar: it opens a tile launcher in three parts — **🖼️ Image**, **💾 Session**, **🌍 External export**. Before sharing an image, a PDF or a KMZ, check that it reveals nothing sensitive (entrances, private site).
+Every export starts from the **⬆️ Export** group of the sidebar: it opens a tile launcher in four parts — **🖼️ Image**, **💾 Session**, **🗺️ Map** (🔄 Update the map, above), **🌍 External export**. Before sharing an image, a PDF or a KMZ, check that it reveals nothing sensitive (entrances, private site).
 
 ### 📤 Exporting your session
 
@@ -1033,7 +1038,7 @@ So you can export only the shafts, or only the inaccessible zones. **Download** 
 
 ### 📥 Importing a file (session or GPX)
 
-**⬇️ Load / Import → 📥 Import a file** opens the file picker; the app recognises its type.
+**⬇️ Load / Import** opens the file picker directly; the app recognises its type.
 
 - **MyKTAMap session** (`.json`, or `.zip` with photos): it **replaces** your current session (points, tracks, zones, measurement); its photos, however, are **added** to yours, without deleting any. A preview shows what it holds; a backup of your current session is taken just before. **Import** to confirm, **Cancel** to change nothing.
 - **GPX file** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): its points and paths **are added** to your session. The map must be georeferenced. A preview comes before the addition, and **Ctrl+Z** undoes it.
@@ -1098,7 +1103,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 
 - **🌍 Application** — the **language**: Français, English, Español. It applies at once, guide and tutorial included; the flag in the 📖 Documentation window changes the language of the guide only. It can also be chosen on the unlock screen, and is kept in incognito mode.
 - **🎨 Display**:
-  - **📐 Scale icon size with zoom** (on by default);
+  - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the OSM view and the home screen OSM map;
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
   - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;
@@ -1537,7 +1542,7 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 
 #### 📂 Edit an existing map
 
-Load the map's ZIP in **📂 Load a file**: the form fills in with its configuration. Change what you want (tags, icons, layers, start position…) then **📦 Generate ZIP**.
+Load the map's ZIP in **📂 Load a file**: the form fills in with its configuration. Change what you want (tags, icons, layers, start position…) then **📦 Generate ZIP**. From an open map, **⬆️ Export → 🔄 Update the map** opens this mode already filled with your corrected layers and your drawings.
 
 If the map has **photos attached to its points** on your device, the **📸 Include attached photos** box (ticked by default) packs them into the ZIP. Whoever opens that map finds the photos in the points' popups. Unticked, the ZIP is lighter, without photos.
 
@@ -1681,7 +1686,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 
 ### 📊 Plan data editor
 
-**⬇️ → 📊 Plan data editor** on the map, or **📊 Data editor** on the home screen, opens a table to **view, edit and export** a map's points, paths, zones and structures.
+**⬆️ Export → 📊 Plan data editor** (💾 Session section) on the map, or **📊 Data editor** on the home screen, opens a table to **view, edit and export** a map's points, paths, zones and structures.
 
 #### 📂 Opening
 
@@ -1690,7 +1695,12 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 - **📄 Import a JSON file**: a data or session file.
 - **🔄 Convert session ↔ layers**: turns your session into a **data layer** to integrate into a map (see “🏗️ Create or modify a map”). Same choice by category and by icon; **Basic** granularity (one file per category) or **Fine** (one file per type). The tracker is never converted: a drift frozen into a map would mislead its future users. Once converted, this data can no longer be edited from the app.
 - **🔗 Merge layers**: combines several data layers (`.json` or `.zip`, from several sessions) into a single set per category. A preview gives the totals and flags duplicate point identifiers (kept as they are).
-- **🔁 Convert resolution**: moves your data files from an old scan to a new scan of the same map. Give both resolutions (or let the app read them from the images); if the margins differ, add a **common landmark** (the same pillar on both maps), or **two**, and the scale and rotation are worked out. Inter-map links, georeferencing and scale have to be redone on the new map.
+- **🔁 Realign data onto another scan**: moves your data files from one scan to another scan of the same map (recropped, larger, smaller). **Open the target map first**, then choose your `.json` files:
+  - **By names and identifiers** (the safest, selected by default): if both versions come from the same Generator, objects that kept the same internal identifier serve first as landmarks (points, and vertices of tracks, zones and structures that kept their vertex count); then points with the same name in your files and on the open map serve as landmarks (case, accents and punctuation ignored; unique names of at least 4 characters). The app works out the scale, rotation and offset, sets aside namesakes that do not fit and reports the quality (“73 landmarks, median gap 0 px, 90% under 1 px”). Landmarks come first from the **plan's layers** (the ZIP data); your session is used only if the layers give fewer than three, and its objects still at the same position as in your file (an unconverted copy, imported earlier) are ignored. The report says where the landmarks come from, with the scale and rotation found. If most landmarks are at the same position as in your file, the app warns you (file already in this frame, or an unconverted copy) and offers to discard them. If the scan is stretched, it offers an affine transformation.
+  - **Clicked landmarks** (when names are not enough): pick a point of your file in the list, then click its position on the map; at least three landmarks, far apart. Each one's gap is shown: a bad click stands out in red and is left out of the calculation.
+  - **Resolutions** (last resort): only if both scans have exactly the same framing. If their proportions differ by more than 2%, the app refuses: names or landmarks are needed.
+  - **👁️ Preview on the map**: your realigned data is drawn dashed over the map before downloading; the preview disappears when the tool closes. You then get `_conv.json` files.
+  - From the home screen (no map open), only resolutions and landmarks typed by hand are available. Inter-map links, georeferencing and scale have to be redone on the new map.
 - **🧹 Deduplicate data**: removes consecutive identical vertices from paths, zones, structures and measurements, invisible but making files heavier. You get a `_dedup.json` file and a count of what was removed; points are never touched.
 
 If the source contains several datasets, a selector lets you choose.
@@ -1700,7 +1710,8 @@ If the source contains several datasets, a selector lets you choose.
 - **Click a cell** to edit it (except the identifier). **Tab**: next cell · **Enter**: next row · **Esc**: cancel.
 - A coordinate outside the map turns **red**.
 - The **Tags** cell opens a picker with icon previews; you can create a tag there.
-- For paths, zones and structures, the **note**, **type** and **level** can be edited, but not the **geometry**: redraw it on the map.
+- For paths, zones and structures, the **note**, **type** and **level** can be edited, but not the **geometry**: redraw it on the map. A type missing from the legend turns **red**.
+- On a **multi-level** map, the **level** column is always there (0 when the object has no level yet) and is picked from a list of the map's levels.
 - For points: search across all columns, sort by clicking the header, multiple selection (checkbox + Shift+click), **+ Add row**, **📋 Duplicate**, **🗑️ Delete**, **📍 View on map**.
 
 #### 💾 Saving
@@ -1708,7 +1719,7 @@ If the source contains several datasets, a selector lets you choose.
 | What you edit | **💾 Save** |
 |---|---|
 | **Map data** | Downloads the edited `.json` file. To apply it, re-import it in the **Generator**: the editor never changes the displayed map. |
-| **Your session** | Downloads the file, or **✏️ Replace the current session** to apply it right away. |
+| **Your session** | Downloads the file, or applies it right away with **✏️ Apply to the current session** (points, paths, zones and structures): only the cells you changed are applied, an untouched row changes nothing even if the file is old; a type or level change works as from the object's sheet; a row removed from the table is deleted from the session; an object deleted since the export is not recreated, unless you changed its row. A type missing from the legend is refused, with the row number. **⏪** undoes the whole operation at once. On a map shared by an installation, removing objects requires the right to delete them for everyone, and a confirmation. |
 
 If you close with unsaved changes, the app offers to save, quit without saving, or keep editing.
 

@@ -117,6 +117,12 @@ Source 2 propagée automatiquement depuis source 1 au boot du plan (`_propagerGe
 
 Listener `zoomend/moveend` → `_renderLevel(targetZ)` qui swap niveau si changé OU add/remove tuiles cullées sinon.
 
+🩸 **Retirer une tuile = la retirer de `_planLayer`** (`_retirerTuile`), jamais `overlay.remove()` seul : la tuile
+restait dans le groupe (et rien n'était retiré case 🖼️ Plan décochée), et recocher Plan reposait toutes les tuiles
+déjà vues, tous niveaux superposés (217 tuiles de 4 niveaux au lieu de 12). `_planLayer` n'est ajouté à la carte
+que si la case est cochée : elle garde son état d'une ouverture à l'autre. Garde-fou :
+`scripts/smoke/checkup-osm-empilement.js` (avec, au pixel, « POI au-dessus des tuiles » à chaque cran de zoom).
+
 **Pattern viewport culling AABB** : 4e coin reconstruit par parallélogramme (`br = tr + bl - tl`), test `mapBounds.intersects(tileBbox)`. Pad 10% évite flash au pan rapide.
 
 ### 2.4 Layers data (v1.39.12 → v1.39.16)
@@ -1008,6 +1014,53 @@ comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ay
 dérivé sur les **bornes** (plafond à 12 px au lieu de 14) passait au travers. Il
 balaie désormais 8 densités, bornes comprises — et la dérive tombe.
 
+## 11. Taille des icônes au zoom : le réglage 📐 vaut aussi pour les cartes OSM
+
+Le réglage global « 📐 Adapter la taille des icônes au zoom » (`APP_CONFIG.scaledMarkers`, défaut actif) s'applique
+à la **Vue OSM** et à la **carte OSM de l'accueil** (plan principal et plans empilés), avec **la même loi** qu'en
+mode plan et un **plancher propre** :
+
+    échelle = pixels écran par pixel de PLAN, bornée [plancher ; 2]      (map.js > ktaEchelleMarqueurs)
+    plancher : ×0,25 en mode plan · ×0,5 sur les cartes OSM (window.KTA_ECHELLE_PLANCHER_OSM)
+
+| Contexte | pixels écran par pixel de plan |
+|---|---|
+| Mode plan (CRS.Simple) | `2^zoom` |
+| Cartes OSM | mesuré à travers le calage : `ktaPxEcranParPxPlanOsm(carte, proj)` projette deux pas de 100 px du plan (`proj.planToLatLng`, puis `carte.project` au zoom courant) |
+
+Pourquoi cette loi plutôt qu'un zoom relatif au zoom de calage ou les px/m des fronts : elle garde à l'icône **la
+même taille par rapport au dessin du plan** qu'en mode plan, au même grossissement, sans dépendre de l'échelle
+métrique du plan (absente ou fausse sur un plan non mesuré) ni d'un « zoom de référence » arbitraire. Latitude et
+Web Mercator sont pris en compte par `project`.
+
+**Plancher ×0,5 en OSM (décision produit).** La vue d'ensemble d'un plan détaillé est la vue courante d'une carte
+OSM ; au plancher du mode plan (×0,25) les icônes y tombaient à 6,5 px (Vue OSM) et 6 px (accueil), illisibles.
+Au plus petit : **13 px en Vue OSM, 12 px à l'accueil**. Le plancher est un paramètre de `ktaEchelleMarqueurs`,
+pas une seconde loi ; plafond ×2 commun.
+
+**Mise en œuvre.**
+- Icône choisie **au rendu** par `map.js > ktaIconeOsm(url, taille, tag)` : réglage actif → `L.divIcon` +
+  `<img class="kta-marker-img">` (même CSS que le mode plan) ; coupé → `L.icon` nu (26 px Vue OSM, 24 px accueil).
+- Variable `--kta-marker-scale` posée sur le **conteneur** de la Vue OSM (`osmView.js > _majTailleIconesOsm`) et
+  sur le **pane de chaque plan** à l'accueil (`osmHomePreview.js > _majTailleIconesHome`, projection gardée dans
+  `_panesParPlan[id].proj`) : deux plans empilés n'ont pas la même résolution. 🩸 Jamais sur le body : c'est celle
+  du mode plan, resté dessous ; le conteneur de l'accueil est remis à 1 pour ne pas en hériter.
+- Recalculée sur `zoom` et `zoomend`, écrite seulement quand la valeur change.
+- Réglage basculé dans ⚙️ Configuration de l'accueil : `window.ktaMajTailleIconesOsm` → événement
+  `kta:tailleIconesChange` → **re-rendu des POI** des cartes ouvertes (pas de rechargement).
+
+🩸 **Pourquoi pas une seule forme d'icône pour basculer sans re-rendu.** Mesuré sur la Vue OSM avec 1 521 marqueurs
+(relevé fictif + 1 500 POI synthétiques, Chromium, médianes sur 24 crans) : un divIcon laissé à l'échelle 1, ou une
+taille en `calc()` sur l'`<img>`, alourdissent **tous** les zooms (+10 à +30 ms) même quand la taille ne change pas.
+Avec le `L.icon` nu, le réglage coupé coûte ce qu'il coûtait avant.
+
+**Coût du réglage actif** (même mesure) : zoom animé ≈ 385 → 415 ms, zoom sans animation ≈ 40 → 65 ms. C'est le
+redimensionnement des 1 500 images à chaque cran, le même mécanisme qu'en mode plan.
+
+🛡️ `scripts/smoke/checkup-osm-taille-icones.js` : taille mesurée = base × loi à quatre zooms (plancher OSM compris),
+taille de base réglage coupé, bascule à chaud dans les deux sens, échelle du mode plan intacte, temps de zoom
+(`OSM_PAS` pour allonger la mesure).
+
 ## 🗂️ Pile de plans du widget HOME : une seule règle de promotion (14/09/2026)
 
 Bug KARMA : *« je charge A, retour home → A ; je charge B, retour home → B, mais A reste dans la liste et refuse le ✕ »*.
@@ -1018,3 +1071,18 @@ Bug KARMA : *« je charge A, retour home → A ; je charge B, retour home → B,
 - `_demonterPlanOsm` retire une ligne fantôme de la pile (sauf le principal courant) et rend `true`.
 - `_initMiniMap`, quand elle détruit la carte, purge `_extraLayers` et sort ces ids de la pile : les plans ajoutés par « + » appartenaient à la carte morte et ne se ré-affichaient plus (fantômes silencieux). Effet assumé : après un aller-retour dans un plan, la pile se réduit au plan quitté ; `_extraOpacity` est gardé pour un re-ajout.
 - 🛡️ `scripts/check-osm-pile.js` **exécute** la règle et le démontage extraits du fichier (leçon v1.90.15 : un grep valide un fantôme).
+
+## Diagnostic : une icône paraît sous les tuiles du plan
+
+Non reproduit au harnais (plan réel, Chrome et WebKit, échelles 1 à 3, `scripts/smoke/checkup-osm-empilement.js`).
+Sur l'écran où le défaut se voit, Vue OSM ouverte, coller dans la console (F12) — chiffres seulement, aucune donnée
+de plan :
+
+```js
+(()=>{const c=document.getElementById("kta-osm-map"),p=c.querySelector(".leaflet-ktaOsmTuiles-pane"),m=c.querySelector(".leaflet-marker-pane"),t=c.querySelectorAll("img.leaflet-image-layer"),k=[...m.querySelectorAll(".leaflet-marker-icon")].slice(0,50);let n=0;k.forEach(e=>{const r=e.getBoundingClientRect(),s=document.elementsFromPoint(r.left+r.width/2,r.top+r.height/2);if(s[0]!==e&&s.indexOf(e)>s.findIndex(x=>x.classList&&x.classList.contains("leaflet-image-layer")))n++});return {dpr:devicePixelRatio,ua:navigator.userAgent,tuiles:t.length,horsPane:[...t].filter(i=>i.parentElement!==p).length,paneTuiles:getComputedStyle(p).zIndex+"/"+getComputedStyle(p).opacity,paneMarqueurs:getComputedStyle(m).zIndex,couvertsHitTest:n+"/"+k.length}})()
+```
+
+Lecture : `couvertsHitTest` > 0 → défaut dans la page (CSS, réglage, état) ; 0 alors que le défaut se voit → défaut
+de dessin du navigateur ou du GPU (joindre `chrome://gpu` et une capture). `horsPane` > 0 → tuiles posées hors du
+pane `ktaOsmTuiles` (opacité et ordre perdus).
+

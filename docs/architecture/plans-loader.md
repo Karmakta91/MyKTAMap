@@ -333,7 +333,7 @@ function _ouvrirEditeurLegendePlan() {
 }
 ```
 
-⚠️ **Side effect transient pendant l'édition** : la session est temporairement remplacée par le state plan en cours d'édition. Acceptable car le Générateur s'ouvre depuis le loader home (pas dans map mode) → l'user n'observe pas l'écart. Si on déplaçait le Générateur en map mode plus tard, il faudrait soit refactorer `LC.ouvrirEditeur` pour accepter un `stateOverride` + `onCommit`, soit suspendre les listeners visuels pendant le swap.
+⚠️ **Side effect transient pendant l'édition** : la session est temporairement remplacée par le state plan en cours d'édition. Depuis l'accueil, rien ne se voit. Depuis un plan ouvert (seul chemin : l'assistant « Mettre à jour le plan », § ci-dessous), la carte prend les couleurs de la légende du plan le temps de l'éditeur, et une sauvegarde de session survenant pendant ce temps écrirait la légende du plan dans la session (rétablie à la fermeture et à la sauvegarde suivante ; perdue seulement si l'app est tuée l'éditeur ouvert). Limite acceptée ; la vraie correction serait un `LC.ouvrirEditeur({ stateOverride, onCommit })`.
 
 **Normalisation `_plannerLegendStateNormalize(state)`** : retourne `null` si tous les arrays/objects sont vides (zéro override). Évite de polluer `plan-config.json` avec un `customLegend: { labels:{}, hidden:{}, customEntries:[] }` inutile + cache PWA bumpé pour rien chez les utilisateurs.
 
@@ -606,6 +606,72 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 - ⚠️ **Plus aucun élément du form ne doit être révélé « au chargement de quelque chose »** : en wizard, un élément caché au moment où l'user est sur sa page est un élément JAMAIS VU (piège vécu : la checkbox V2, révélée à l'upload de l'image, se ratait — rendue toujours visible en v1.72.1). Un état non-applicable se montre grisé/inerte, pas caché.
 
 **LS** : `myktamap_planner_wizard_v1` (« 0 » = tout afficher).
+
+---
+
+## 🔄 Mettre à jour le plan — de la session à une nouvelle version
+
+`js/majPlan.js` (`window.MajPlan.ouvrir`) · Générateur prérempli : `createConf.js > window.ktaGenerateurMaj` ·
+garde-fou `scripts/check-maj-plan.js` · parcours réel `scripts/smoke/checkup-maj-plan.js` (relevé fictif rendu
+local, calque corrigé + objets dessinés → Générateur → ZIP relu → remplacement → rechargement).
+
+**Où** : tuile **🔄 Mettre à jour le plan** dans ⬆️ Exporter (section 🗺️ Plan, `interface.js > _MODAL_EXPORT`) et
+bouton en tête des calques de ≡ Filtres (`filterPanel.js > _renderDataLayersSection`, absent en lecture seule).
+🔒 L'entrée refuse la lecture seule (`ktaEditionRefusee`) et un droit d'export limité (`ktaExportPlanRefuse()` sans
+`limitePermise`) : le fichier d'un calque EST le plan.
+
+| Étape | Ce qui se passe |
+|---|---|
+| 1. Calques en modification | `CalqueSession.listeRapatries()`, cochés d'office ; chacun remplace son fichier par `contenuCalque(id)` (même contenu que « 💾 Exporter », sans téléchargement). Les tableaux de la copie remplacent ceux du fichier, **vides compris** ; les autres champs du fichier d'origine (relu par `fetch`) restent. |
+| 2. Objets à la main | `candidatsAjout()` groupés comme la Conversion : points par **première** étiquette (un objet ne part que dans un calque), tracés / zones / structures par type (customs compris). Par groupe : calque du plan, **nouveau calque** (nom saisi → id `slug`, unique, jamais `editor` ; même nom = même calque) ou laissé dans la session. 10 calques de données au plus (plafond du Générateur). |
+| 3. Générateur | `ktaGenerateurMaj({ zip, calques, legende, onZip })` : ZIP actuel du plan (copie gardée, sinon l'extension, sinon `plan.zip` de l'index ; plan du site en dossier → le Générateur demande qu'on dépose le ZIP), mode Modifier, chaque calque posé sur SA ligne (`item._ktaFichierMaj`, ligne créée pour un nouveau calque, cadre doré `.kta-planner-layer-maj`), légende des types versés absorbée dans la légende du plan (`window.ktaLegendePourCalque`, même sous-ensemble que la conversion), « Inclure les photos » coché. L'utilisateur vérifie et génère. **Tuilage V2** : le plan est d'abord **fermé** pour libérer la mémoire (ci-dessous). |
+| 4. Suite | `onZip(blob, nom, { planFerme })` remplace le téléchargement et « Publier » du Générateur ; plan fermé : la fenêtre le dit, « Fermer » ou « Télécharger » laissent l'accueil (le plan en tête de « Reprendre »). **Plan local** : ⬇️ Télécharger ou 🔄 Remplacer dans l'app (`chargerZipFichier(fichier, preset, { planId: <même id>, storeBlob: true })` : session, calage, photos, favoris restent attachés). **Plan d'extension** : ☁️ Publier la nouvelle version si `KtaExtensions.versionAutorisee(id)` (prise `publierVersion`, `community-server-line.md` §3), puis réouverture sur la nouvelle version ; sinon téléchargement seul (droit de modification : il prépare, la personne qui gère publie). **Plan du site** : téléchargement (l'administrateur remplace le ZIP). |
+| Après | Après un remplacement ou une publication : `ktaConfirm` propose de **rendre les calques** (`restituer`, partagée sur un plan d'extension) et de **retirer de la session les objets versés** (`CalqueSession.retirerIntegres(uids, T)`), sinon doublons. Plan encore ouvert : proposé AVANT le rechargement, la session rechargée est déjà propre. Plan fermé par le Générateur : proposé APRÈS la réouverture, sur la session restaurée (celle d'un plan fermé ne s'enregistre plus, `SessionPersist.onPlanUnload`). Remplacement raté : le ZIP part en téléchargement. |
+
+**🩸 Fermer le plan avant le tuilage V2** (`createConf.js > _fermerPlanAvantTuilage`, `main.js >
+ktaFermerPlanPourMemoire`). Avec un plan ouvert (carte, tuiles, session), le tuilage d'une grande image est passé
+chez un utilisateur de moins d'une minute à plus d'une demi-heure : sous pression mémoire, le navigateur jette
+l'image source décodée et la redécode à chaque tuile (`_genererTuilesV2` découpe chaque tuile par `drawImage`
+depuis l'élément image). Au clic sur 📦 Générer, tuilage V2 coché : plan **affiché** → `ktaConfirm` (« le plan va
+être fermé pendant la génération… ») ; refus = rien ne change, rien n'est généré. Accord, ou carte seulement
+**cachée** derrière l'accueil (`afficherLoader` masque sans démonter) → même démontage qu'un changement de plan
+(`_libererRessourcesPlanPrecedent` : session enregistrée, tuiles, blobs, canvas de collision, carte), puis
+l'accueil. Tout ce que le Générateur utilise est déjà chargé (fichiers du ZIP, calques de l'assistant) ; les photos
+sont lues par l'id du plan relevé avant la fermeture. Sans tuilage V2, rien n'est fermé (génération légère).
+Les tuiles entrent dans le ZIP **sans recompression** (`{ compression: "STORE" }` : JPEG, WebP et PNG sont déjà
+compressés).
+
+**🩸 Trace de suppression sous la date du fichier** : un objet versé est écrit dans le calque avec `updatedAt = T`
+(instant de l'assistant), et son retrait de la session pose sa trace à `T - 1`. Assez tard pour retirer la copie de
+session des autres appareils (modifiée au plus tard avant l'assistant), assez tôt pour que l'objet du fichier gagne
+toute fusion (`KtaUid.fusionnerCalques` : une trace l'emporte si `deletedAt ≥ updatedAt`). Un objet retouché après
+`T` reste dans la session (sa retouche n'est pas dans le fichier) et l'app le dit. Les copies de calque, elles, ne
+reçoivent jamais de trace (restitution).
+
+**Corrigés au passage dans le mode Modifier** (profitent aussi au chemin manuel) :
+- un calque dont le fichier ne porte pas son id (`roads.json` pour le calque `galeries`) ressortait **vide** : le
+  fichier d'origine de la ligne est retenu (`item.dataset.ktaFichier`), ordre : fichier choisi sur la ligne >
+  fichier de l'assistant > fichier d'origine > `<id>.json` ;
+- les tuiles V2 du ZIP source ne sont plus extraites en `Blob` (la génération les refait depuis l'image de base).
+
+**Chemin manuel sur le ZIP d'un plan d'extension** (fiche ℹ️ › 💾, déposé dans le Générateur en mode Modifier) :
+`_chargerZipModifier` retient l'empreinte du ZIP (`_plannerSourceZip` : SHA-256 de la vérification denylist, taille,
+nom du plan-config). En fin de génération, `_planExtensionDuZip()` cherche le plan ☁️ d'origine : même SHA-256 que
+le registre (`entree.sha256`, posé à l'ouverture) ou que l'archive gardée de même taille → reconnu ; sinon UN SEUL
+plan ☁️ du même nom → « porte le nom de ». Plusieurs homonymes ou aucun : si l'utilisateur gère au moins un plan
+☁️ (`versionAutorisee`), « Mettre à jour quel plan ☁️ ? » (`_choisirPlanExtAMettreAJour`, liste `#kta-gen-cible`
+dans `ktaConfirm`, présélection = le plan du même nom s'il est seul, sinon « Aucun » ; plusieurs homonymes : rien
+de présélectionné, validation inactive jusqu'au choix, chaque homonyme distingué par dossier, version, dernière
+ouverture et début d'id, lus dans le registre) → `publierVersion` sur le plan choisi,
+ou « Aucun : publier comme nouveau plan » ; sinon proposition de plan neuf comme avant. Reconnu et
+`versionAutorisee` → **☁️ Publier la nouvelle version** (`publierVersion`, même plan) ; reconnu sans le droit →
+explication, téléchargement seul. Dans les deux cas, **Publier comme nouveau plan** (3e bouton de `ktaConfirm`,
+`publierPlan`) reste un choix explicite : jamais de second plan d'office. Garde-fou : `check-extensions.js` §7.
+
+**Limites** : un plan V2 est retuilé en entier à chaque mise à jour (lent sur téléphone, comme le mode Modifier) ;
+la légende du plan éditée depuis le Générateur ouvert sur un plan affiché échange brièvement la légende de session
+(§58.2) ; sur une installation reliée, les appareils encore sur l'ancienne version voient les objets retirés
+disparaître de leur session avant d'avoir rouvert le plan.
 
 ---
 

@@ -302,6 +302,12 @@ function cloneAndResolvePlanConfig(rawConfig) {
     resolved.dataLayers = resolved.dataLayers.map(function(l) {
       return { ...l, file: getRuntimeAssetUrl(l.file) || l.file };
     });
+  // Icônes embarquées dans le ZIP (main.js les enregistre) → blob URL ; une icône de l'app garde son chemin.
+  if (resolved.icons && typeof resolved.icons === "object")
+    Object.keys(resolved.icons).forEach(function(tag) {
+      const v = resolved.icons[tag];
+      if (typeof v === "string" && v) resolved.icons[tag] = getRuntimeAssetUrl(v) || v;
+    });
   return resolved;
 }
 
@@ -525,6 +531,17 @@ window.ktaAssainirPlanConfig = ktaAssainirPlanConfig;
 
 function nettoyerIconesConfig(config, ou) {
   if (!config || !config.icons || typeof config.icons !== "object") return config;
+  // Ancienne porte du catalogue, écrite en data-URI SVG par le Générateur dans les plans d'avant le PNG : elle
+  // figerait l'ancienne icône. Reconnue à sa forme (rien de personnel), retirée → le catalogue reprend la main.
+  // ⚠️ Dans la fonction : check-* l'exécute seule dans un `vm`.
+  const porte = config.icons.entree_plan;
+  if (typeof porte === "string" && porte.indexOf("data:image/svg+xml") === 0) {
+    let txt = porte;
+    try { txt = decodeURIComponent(porte); } catch (e) { /* data-URI non encodée */ }
+    if (txt.indexOf('<rect x="17" y="13" width="16" height="26"') !== -1 && txt.indexOf('fill="#f4c542"') !== -1) {
+      delete config.icons.entree_plan;
+    }
+  }
   const morts = [];
   Object.keys(config.icons).forEach(function(k) {
     if (!ktaCheminIconePlausible(config.icons[k])) {

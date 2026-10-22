@@ -159,10 +159,22 @@ t("note d'un objet (tracé, zone, structure) : touch",
   /_roadRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_roadRef\);/.test(ROAD) &&
   /_zoneRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_zoneRef\);/.test(ZONES) &&
   /_structRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_structRef\);/.test(STRUCT));
-t("conversion : l'uid suit et la conversion appelle touch (simple et par lot)",
-  (CONV.match(/KtaUid\.touch\(neuf\)/g) || []).length === 2);
-t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation",
-  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+t("conversion : l'uid suit et la conversion appelle touch (une règle : fiche, lot, Éditeur de données)",
+  /function _versType\(obj, typeCible\) \{[\s\S]{0,200}if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  (CONV.match(/_versType\(/g) || []).length === 4);
+t("Éditeur de données « Appliquer à la session » : ligne ajoutée et colonne modifiée → touch",
+  /delete neuf\.uid;[^\n]*\n\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  /Object\.assign\(obj, op\.champs\);\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV));
+t("changement de niveau d'un tracé / zone / structure : touch juste après la mutation (fiche et Éditeur de données)",
+  /obj\.level = niveau;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(obj\);/.test(CONV) &&
+  (CONV.match(/_poserNiveau\(/g) || []).length === 3);
+// 🩸 Une réception de synchro remplace un objet par une copie de même uid : la référence d'une fiche ouverte n'est plus
+// dans la liste. Toute recherche d'objet de session dans convertirObjet passe par _indexDe (référence, puis uid).
+t("convertirObjet : objet retrouvé par référence PUIS par uid (convertir, supprimer, niveau, niveaux d'une jonction, lot), jamais indexOf seul",
+  (CONV.match(/_indexDe\(/g) || []).length === 6 && (CONV.match(/liste\.indexOf\(/g) || []).length === 1 &&
+  /liste\.findIndex\(function \(o\) \{ return o && o\.uid === obj\.uid; \}\)/.test(CONV));
+t("niveaux d'une jonction (sa fiche) : touch juste après la mutation des deux bouts",
+  /cible\.fromLevel = de;\s*cible\.toLevel = vers;\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(cible\);/.test(CONV));
 const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauChoisi;");
 t("changement de niveau d'un POI : posé AVANT le touch de la modification",
   iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&
@@ -311,7 +323,8 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("fusion de sessions : par uid (KtaUid.fusionnerCalques)", /const f = window\.KtaUid\.fusionnerCalques\(jsons\);/.test(SEB));
   t("fusion du Générateur : même règle", /window\.KtaUid\.fusionnerCalques\(parsedArr\)/.test(CCB));
   t("import par remplacement : identités préparées et traces du fichier AVANT les setters (2 chemins)",
-    (IIE.match(/_preparerIdentitesImport\((data|dataParsee)\);[^\n]*\n\s+if \(window\.setEditorPoints\)/g) || []).length === 2);
+    /_preparerIdentitesImport\(data\);[^\n]*\n\s+if \(window\.setEditorPoints\)/.test(IIE) &&
+    /_preparerIdentitesImport\(dataParsee, !!mode\);[\s\S]{0,1200}?if \(window\.setEditorPoints\)\s+window\.setEditorPoints\(objets\.data\)/.test(IIE));
 }
 
 // ── 4. Photos rattachées à l'uid ──────

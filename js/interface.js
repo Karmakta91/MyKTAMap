@@ -950,6 +950,7 @@ const _MODAL_EXPORT = {
   sections: [
     { cle: "image",   titreCle: "export.lanceur.sectionImage", defaut: true },
     { cle: "session", titreCle: "export.lanceur.sectionSession" },
+    { cle: "plan",    titreCle: "export.lanceur.sectionPlan" },
     { cle: "externe", titreCle: "export.lanceur.sectionExterne" }
   ]
 };
@@ -1935,28 +1936,24 @@ function initInterface() {
     }
   });
 
-  // Charger / Importer. « Changer de plan » n'y est pas : header et titre du plan le font déjà.
-  // Un seul « Importer » ouvre le choix session / GPX (interfaceImportExport.js).
+  // Charger / Importer (solo) : ouvre directement le sélecteur de fichier, l'extension choisit le parcours
+  // (session .json / .zip ou GPX, interfaceImportExport.js). « Changer de plan » n'y est pas : header et
+  // titre du plan le font déjà ; l'Éditeur de données du plan vit dans ⬆️ Exporter (décision produit).
   _creerGroupeAccordeon({
     id: "charger",
     iconePrincipale: "⬇️",
     titre: window.I18n.t("ui.group.charger"),
     position: "topleft",
-    sousActions: [
-      { icone: "📥", titre: window.I18n.t("ui.subaction.importer"), onClick: function() {
-          if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
-          else if (typeof window.ouvrirImportSession === "function") window.ouvrirImportSession();
-        } },
-      { icone: "📊", titre: window.I18n.t("ui.subaction.editJson"), onClick: function() {
-          if (window.ouvrirTableEditor) window.ouvrirTableEditor();
-          else window.ktaAlerte(window.I18n.t("ui.alert.tableEditorIndispo"), { type: "erreur" });
-        } }
-    ]
+    soloAction: function() {
+      if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
+      else if (typeof window.ouvrirImportSession === "function") window.ouvrirImportSession();
+    }
   });
 
-  // Pas de Générateur de plan sur la carte : il vit à l'accueil (décision produit).
+  // Pas de bouton Générateur sur la carte : il vit à l'accueil (décision produit). Seul l'assistant « Mettre à jour
+  // le plan » l'ouvre depuis un plan affiché, déjà rempli (js/majPlan.js).
 
-  // Exporter (id "save") : lanceur à tuiles (Image / Session / Export externe), chaque tuile ouvre
+  // Exporter (id "save") : lanceur à tuiles (Image / Session / Plan / Export externe), chaque tuile ouvre
   // directement son écran. ⚠️ Le 2ᵉ argument de ouvrirExportSessionModal est sans effet ; le 3ᵉ
   // `{ format }` présélectionne KMZ ou GPX.
   function _ouvrirExportSession(onglet, opts) {
@@ -1994,6 +1991,14 @@ function initInterface() {
         } },
       { icone: "🎨", titreCle: "export.lanceur.avance", section: "session", onClick: function() {
           _ouvrirExportSession("advanced");
+        } },
+      { icone: "📊", titreCle: "export.lanceur.editeur", section: "session", onClick: function() {
+          if (window.ouvrirTableEditor) window.ouvrirTableEditor();
+          else window.ktaAlerte(window.I18n.t("ui.alert.tableEditorIndispo"), { type: "erreur" });
+        } },
+      // Assistant « Mettre à jour le plan » (js/majPlan.js) : session et calques → Générateur prérempli.
+      { icone: "🔄", titreCle: "export.lanceur.majPlan", section: "plan", onClick: function() {
+          if (window.MajPlan && typeof window.MajPlan.ouvrir === "function") window.MajPlan.ouvrir();
         } },
       { icone: "🌍", titreCle: "export.lanceur.kmz", section: "externe", onClick: function() {
           _ouvrirExportSession("extern", { format: "kmz" });
