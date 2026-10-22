@@ -435,6 +435,13 @@
     if (!canvas) {
       throw new Error(window.I18n.t("pdfexport.erreur.canvasEchec"));
     }
+    // Qualité demandée réduite par la limite de canvas de l'appareil (iPhone : 16,7 Mpx) : on dit ce qui sort.
+    if (canvas._ktaPlafonne && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t("pdfexport.plafond", {
+        w: canvas.width, h: canvas.height,
+        demande: canvas._ktaPlafonne.demande, obtenu: canvas._ktaPlafonne.obtenu
+      }), "warn", { important: true });
+    }
 
     // 2. Document PDF
     const def = opts.formatDef;

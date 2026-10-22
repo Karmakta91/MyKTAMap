@@ -2127,6 +2127,13 @@ même geste pendant 700 ms. Toucher le fond compte comme toucher la carte.
 🛡️ `scripts/smoke/checkup-panneaux-geometrie.js` (porte de release) vérifie tout
 cela au pixel : 4 formats × centré/ancré × 4 panneaux, liste allongée à 22 boutons.
 
+**Rails au doigt** (`@media (pointer: coarse)`, hors paysage bas) : la marque des boutons reste à 36 px (décision
+produit : surface utile de la carte) ; un `::before` transparent de 44 px de large déborde de 8 px vers la carte
+(`::after` porte la pastille de mode actif). Le rail reçoit 8 px de marge côté carte et la barre passe en
+`overflow: visible` (coins repris par les boutons des extrémités, ombre coupée : le rail la rognait déjà), sinon
+le débord était rogné. Pas d'extension verticale : les boutons sont empilés sans interstice. Paysage bas : pilules
+de 30 px en ligne, rien d'étendu (le débord mordrait sur le voisin). 🛡️ `scripts/smoke/checkup-rails-toucher.js`.
+
 ---
 
 ### 97. Légende : la SESSION se superpose au PLAN — et `updateCustomEntry` l'ignorait (v1.82.0)

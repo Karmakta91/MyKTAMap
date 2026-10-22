@@ -970,7 +970,8 @@ function _libererRessourcesPlanPrecedent() {
         L.DomEvent.off(window.map._container, "scroll", window.map._onScroll, window.map);
       }
     } catch(e) {}
-    try { window.map.remove(); } catch(e) {}
+    // 🩸 Zoom animé en cours : sa minuterie de fin survit à remove() (cf map.js > cleanupExistingMap).
+    try { window.map._animatingZoom = false; window.map.remove(); } catch(e) {}
     window.map = null;
   }
 

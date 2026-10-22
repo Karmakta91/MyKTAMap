@@ -298,7 +298,11 @@ function creerIcones(iconConfig) {
 // ── Nettoyage de la carte existante ──────────
 function cleanupExistingMap() {
   if (window.map) {
-    try { window.map.remove(); } catch(e) {}
+    // 🩸 Leaflet ne coupe pas la minuterie de fin de zoom animé (`_animateZoom` > setTimeout 250 ms) : démontée en
+    // plein zoom, la carte la reçoit sans `_mapPane` et jette `_leaflet_pos` (ouvertures de plan enchaînées).
+    // `_animatingZoom` à faux la rend sans effet (`_onZoomTransitionEnd` sort aussitôt).
+    // Garde-fou : scripts/smoke/checkup-ouvertures-enchainees.js.
+    try { window.map._animatingZoom = false; window.map.remove(); } catch(e) {}
   }
   let mapContainer = document.getElementById("map");
   if (!mapContainer) {

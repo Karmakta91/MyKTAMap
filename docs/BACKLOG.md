@@ -67,24 +67,11 @@
   `qui: Claude · action: démonter au retour à l'accueil (ou après un délai), mesure mémoire avant / après
   · fini: mémoire rendue, reprise du plan inchangée · depuis: 22/10/2026 · taille: M`
 
-- **Erreur Leaflet `_leaflet_pos` aux changements de plan rapides** — `TypeError … _getMapPanePos` vue plusieurs fois par
-  le scénario pro `ouverturePlanSync` (10 ouvertures enchaînées) : un appel sur une carte déjà démontée. Instable, sans
-  effet fonctionnel mesuré ; le scénario repasse au rejeu.
-  `qui: Claude · action: trouver l'appel (setView / invalidateSize / panTo après cleanupExistingMap) et le garder
-  · fini: ouverturePlanSync sans erreur de page sur 10 passages · depuis: 22/10/2026 · taille: S`
 - **Vue OSM : pas d'accès à la légende du plan** — ni la Vue OSM ouverte depuis un plan ni la carte OSM de l'accueil
   n'ouvrent la ≡ Légende. Accueil à plusieurs plans (légendes différentes) : piste KARMA = légende du plan principal,
   l'utilisateur prévenu que les autres plans ont la leur ; légende en lecture seule depuis l'OSM (pas de modification).
   `qui: Claude · action: QCM rapide puis bouton Légende dans la barre des deux cartes OSM (légende du plan principal)
   · fini: légende du plan ouverte depuis les deux cartes OSM · depuis: 22/10/2026 · taille: S`
-- **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
-  sur PC) ; états orange et thème clair jamais vus en navigateur.
-  `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
-  · fini: mesure notée dans perf-memory.md, captures vues · depuis: 03/10/2026 · taille: S`
-- **PDF « HD » plafonné en silence** — ⚪ sur iPhone le PDF réduit sa résolution sous 16,7 Mpx (`exporter.js >
-  _publicGenererCanvas`) sans le dire ; l'export image propose déjà « 📱 Max iPhone ».
-  `qui: Claude · action: dire à l'utilisateur la résolution réellement produite
-  · fini: message affiché quand le plafond agit · depuis: 17/10/2026 · taille: S`
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
@@ -133,10 +120,6 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Rails latéraux de la carte au doigt** — boutons des rails à 36 × 36 px, sous les 44 px d'Impeccable ; gardés
-  pour la surface utile de la carte (décision KARMA 20/10, M4 de l'audit d'interface).
-  `qui: Claude · action: agrandir la zone de toucher sous pointer coarse sans grossir la marque ni chevaucher
-  · fini: zone de toucher 44 px au doigt, checkup des panneaux vert · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
 

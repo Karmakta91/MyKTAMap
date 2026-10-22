@@ -2988,6 +2988,7 @@
   "pdfexport.orientation.paysage": "📃 Paysage",
   "pdfexport.orientation.portrait": "📄 Portrait",
   "pdfexport.orientation.titre": "↔️ Orientation",
+  "pdfexport.plafond": "PDF : résolution réduite à {w} × {h} px (× {obtenu} au lieu de × {demande}), la limite d'image de cet appareil.",
   "pdfexport.progression.canvas": "Génération du canvas du plan…",
   "pdfexport.progression.patience": "Cela peut prendre quelques secondes sur les gros plans…",
   "pdfexport.qualite.avertissement": "⚠️ A0/A1 + ×2 peut prendre 30-60 s sur mobile (canvas très large).",

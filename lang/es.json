@@ -3002,6 +3002,7 @@
   "pdfexport.orientation.paysage": "📃 Horizontal",
   "pdfexport.orientation.portrait": "📄 Vertical",
   "pdfexport.orientation.titre": "↔️ Orientación",
+  "pdfexport.plafond": "PDF: resolución reducida a {w} × {h} px (× {obtenu} en lugar de × {demande}), el límite de imagen de este dispositivo.",
   "pdfexport.progression.canvas": "Generando el canvas del mapa…",
   "pdfexport.progression.patience": "Esto puede tardar unos segundos en los mapas grandes…",
   "pdfexport.qualite.avertissement": "⚠️ A0/A1 + ×2 puede tardar 30-60 s en móvil (canvas muy ancho).",

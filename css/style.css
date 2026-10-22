@@ -11795,6 +11795,40 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   }
 }
 
+/* Rails au doigt : marque à 36 px (décision produit : surface utile de la carte), zone de toucher portée à 44 px
+   de large par un ::before qui déborde de 8 px vers la carte. ⚠️ ::after est pris par la pastille de mode actif.
+   🩸 Deux conteneurs rognaient le débord : le rail (overflow-x: hidden, défilement) reçoit 8 px de marge
+   intérieure côté carte (pointer-events: none chez Leaflet : la marge seule ne prend aucun toucher) ; la barre
+   (overflow: hidden pour ses coins) passe en visible, ses coins repris par les boutons des extrémités.
+   Boutons empilés sans interstice : aucune extension verticale (elle prendrait le toucher du voisin). Paysage
+   bas exclu : pilules de 30 px en ligne, à overflow: hidden, où le débord mordrait sur le bouton voisin. */
+@media (pointer: coarse) and (min-height: 501px), (pointer: coarse) and (orientation: portrait) {
+  body.kta-refonte-v1 .leaflet-top.leaflet-left { padding-right: 8px !important; }
+  body.kta-refonte-v1 .leaflet-top.leaflet-right { padding-left: 8px !important; }
+  /* Ombre coupée : le rail la rognait entièrement ; sur les 8 px de marge elle se verrait en bande nette. */
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar { overflow: visible; box-shadow: none !important; }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar a:first-child,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control.leaflet-bar:first-child a:first-child {
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+  }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar a:nth-last-child(1 of :not(.kta-hidden)),
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control.leaflet-bar:last-child a:nth-last-child(1 of :not(.kta-hidden)) {
+    border-bottom-left-radius: 7px;
+    border-bottom-right-radius: 7px;
+  }
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar a { position: relative; }
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar a::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 44px;
+  }
+  body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-bar a::before { left: 0; }
+  body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-bar a::before { right: 0; }
+}
+
 /* ── Modale « Détails de la session » (clic sur les compteurs du header) ── */
 
 .kta-refonte-session-boite {
