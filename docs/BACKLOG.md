@@ -137,10 +137,6 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Rails latéraux de la carte au doigt** — boutons des rails à 36 × 36 px, sous les 44 px d'Impeccable ; gardés
-  pour la surface utile de la carte (décision KARMA 20/10, M4 de l'audit d'interface).
-  `qui: Claude · action: agrandir la zone de toucher sous pointer coarse sans grossir la marque ni chevaucher
-  · fini: zone de toucher 44 px au doigt, checkup des panneaux vert · depuis: 20/10/2026 · taille: S`
 
 - **Garde-fou : pas de couleur en dur dans un `style=` posé par le JS** — la charte s'écrit `var(--kta-…)` aussi dans
   les styles inline (CLAUDE.md, CSS) ; rien ne l'empêche aujourd'hui (E5 de l'audit d'interface du 20/10).
