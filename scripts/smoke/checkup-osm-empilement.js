@@ -117,14 +117,20 @@ async function pixelsIcones(page) {
     const m = window.__ktaOsmCarte;
     const r = document.getElementById("kta-osm-map").getBoundingClientRect();
     // capture en pixels physiques : échelle d'affichage (devicePixelRatio) appliquée aux positions CSS
-    const ech = A.width / window.innerWidth, S = Math.round(26 * ech), R = Math.ceil(ech);
-    const tmp = document.createElement("canvas"); tmp.width = S; tmp.height = S;
+    const ech = A.width / window.innerWidth, R = Math.ceil(ech);
+    const tmp = document.createElement("canvas");
     const tx = tmp.getContext("2d", { willReadFrequently: true });
     let testes = 0, couverts = 0;
-    m.getPane("markerPane").querySelectorAll(".leaflet-marker-icon").forEach(function (mk) {
+    m.getPane("markerPane").querySelectorAll(".leaflet-marker-icon").forEach(function (div) {
+      // icône = <img> du divIcon, à la taille que lui donne le réglage 📐 (variable --kta-marker-scale)
+      const mk = div.tagName === "IMG" ? div : div.querySelector("img");
+      if (!mk) return;
       const bb = mk.getBoundingClientRect();
       if (bb.left < r.left + 2 || bb.top < r.top + 2 || bb.right > r.right - 2 || bb.bottom > r.bottom - 2) return;
       if (!mk.complete || !mk.naturalWidth) return;
+      const S = Math.round(bb.width * ech);
+      if (S < 4) return;
+      tmp.width = S; tmp.height = S;
       tx.clearRect(0, 0, S, S);
       try { tx.drawImage(mk, 0, 0, S, S); } catch (e) { return; }
       const al = tx.getImageData(0, 0, S, S).data;

@@ -340,7 +340,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 
 - **Pincer** pour zoomer, **glisser** pour te déplacer (ou les boutons **+** / **−** en haut à gauche).
 - **Toucher une icône** ouvre la fiche du point ; **double-toucher** zoome dessus (comme le bouton « Y aller » de la fiche).
-- Les icônes rapetissent au dézoom pour rester à l'échelle du plan. Pour garder une taille fixe : ⚙️ Réglages → 🎨 Affichage → « 📐 Adapter la taille des icônes au zoom ».
+- Les icônes rapetissent au dézoom pour rester à l'échelle du plan, en mode plan comme sur les cartes OSM (Vue OSM et carte de l'accueil). Pour garder une taille fixe : ⚙️ Configuration de l'accueil → 🎨 Affichage → « 📐 Adapter la taille des icônes au zoom ».
 
 #### 🌐 Coordonnées GPS dans les fiches
 
@@ -1103,7 +1103,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
 
 - **🌍 Application** — la **langue** : Français, English, Español. Elle s'applique tout de suite, guide et tutoriel compris ; le drapeau de la fenêtre 📖 Documentation change la langue du seul guide. Elle se choisit aussi sur l'écran de déverrouillage, et reste gardée en mode incognito.
 - **🎨 Affichage** :
-  - **📐 Adapter la taille des icônes au zoom** (activé au départ) ;
+  - **📐 Adapter la taille des icônes au zoom** (activé au départ) : sur le plan, et aussi dans la Vue OSM et la carte OSM de l'accueil ;
   - **❓ Bouton d'aide dans les fenêtres** (activé) : un ❓ dans le titre des fenêtres qui ont une page d'aide, qui ouvre directement la bonne page ;
   - **🔔 Notifications** : **Toutes**, **Essentielles** (au départ : plus de message pour confirmer un geste que tu viens de faire) ou **Silence** (seulement l'important : batterie faible, capteur refusé, erreurs). Les alertes du serveur et les fenêtres qui attendent une décision ne sont jamais coupées ;
   - **➕ Boutons de zoom +/− sur les cartes** : affiche les boutons + et − sur le plan, le widget OSM de l'accueil et la Vue OSM. Désactivé par défaut : on zoome au doigt (pincer) ou à la molette ;

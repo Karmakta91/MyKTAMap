@@ -340,7 +340,7 @@ A click on the top counters opens the map's **dashboard**:
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
-- Icons shrink as you zoom out to stay at the map's scale. To keep a fixed size: ⚙️ Settings → 🎨 Display → “📐 Scale icon size with zoom”.
+- Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
 #### 🌐 GPS coordinates in popups
 
@@ -1103,7 +1103,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 
 - **🌍 Application** — the **language**: Français, English, Español. It applies at once, guide and tutorial included; the flag in the 📖 Documentation window changes the language of the guide only. It can also be chosen on the unlock screen, and is kept in incognito mode.
 - **🎨 Display**:
-  - **📐 Scale icon size with zoom** (on by default);
+  - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the OSM view and the home screen OSM map;
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
   - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;

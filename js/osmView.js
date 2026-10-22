@@ -354,7 +354,8 @@
     return out;
   }
 
-  // L.icon d'un POI en 26×26 (32 sur la carte principale : la vue OSM couvre plus large). null → icône Leaflet.
+  // Icône d'un POI en 26×26 (32 sur la carte principale : la vue OSM couvre plus large), agrandie ou réduite
+  // au zoom par _majTailleIconesOsm si le réglage 📐 est actif. null → icône Leaflet.
   function _buildPoiIcon(p) {
     let iconUrl = null;
     try {
@@ -363,12 +364,27 @@
       }
     } catch(e) {}
     if (!iconUrl) return null;
-    return L.icon({
-      iconUrl: iconUrl,
-      iconSize: [26, 26],
-      iconAnchor: [13, 13]
-    });
+    return window.ktaIconeOsm(iconUrl, 26, (Array.isArray(p.tags) && p.tags[0]) || "default");
   }
+
+  // Réglage 📐 (map.js > ktaEchelleMarqueurs, même loi qu'en mode plan) relu à chaque zoom. Variable posée sur
+  // le CONTENEUR : celle du body appartient au mode plan, resté dessous.
+  function _majTailleIconesOsm() {
+    if (!_osmMap || !_proj) return;
+    const s = window.ktaReglageTailleIcones()
+      ? window.ktaEchelleMarqueurs(window.ktaPxEcranParPxPlanOsm(_osmMap, _proj), window.KTA_ECHELLE_PLANCHER_OSM)
+      : 1;
+    const el = _osmMap.getContainer();
+    // 🩸 Écrire seulement si la valeur change : une écriture recalcule le style de tous les marqueurs.
+    const v = String(s);
+    if (el.style.getPropertyValue("--kta-marker-scale") !== v) el.style.setProperty("--kta-marker-scale", v);
+  }
+  // Réglage basculé pendant que la Vue est ouverte : la forme de l'icône change (map.js > ktaIconeOsm), re-rendu.
+  window.addEventListener("kta:tailleIconesChange", function () {
+    if (!_osmMap || !_proj) return;
+    if (_poiVisible) _renderPoi();
+    _majTailleIconesOsm();
+  });
 
   // Rend tous les POI (vide d'abord). Au boot de la modale et quand « 📍 POI » se rallume.
   function _renderPoi() {
@@ -1968,6 +1984,9 @@
     // 5) handler zoom / pan : changement de niveau + cull
     _moveEndHandler = _onMoveEnd;
     _osmMap.on("zoomend moveend", _moveEndHandler);
+    // taille des icônes : aussi pendant l'animation (« zoom »), comme en mode plan
+    _osmMap.on("zoom zoomend", _majTailleIconesOsm);
+    _majTailleIconesOsm();
 
     // 🩸 L'init des niveaux PRÉCÈDE tout rendu dépendant du niveau : _visibleLevels est un état du module qui
     // survit entre deux ouvertures ; initialisé après les POI et tracés, il les filtrait avec le choix de la

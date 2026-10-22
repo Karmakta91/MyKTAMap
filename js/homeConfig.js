@@ -1036,7 +1036,7 @@
       // préférence sauvegardée doit être relue au chargement d'un plan).
       (function _initReglagesGlobaux() {
         const cases = [
-          ["loaderScaledMarkers",  "scaledMarkers",  true],   // défaut ON  → test `!== false`
+          ["loaderScaledMarkers",  "scaledMarkers",  true, "ktaMajTailleIconesOsm"],  // ON → `!== false`
           ["loaderPanneauxAncres", "panneauxAncres", false],  // défaut OFF → test `=== true`
           ["loaderSnapDraw",       "snapDraw",       false],
           ["loaderZoomBoutons",    "zoomBoutons",    false, "ktaBoutonsZoomPartout"]  // appliqué à chaud

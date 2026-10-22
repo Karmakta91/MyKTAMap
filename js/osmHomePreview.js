@@ -663,6 +663,10 @@
     _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
     // largeur des fronts au zoom, comme en mode plan
     _mapInstance.on("zoomend", _majLargeurFrontsHome);
+    // taille des icônes : aussi pendant l'animation (« zoom »), comme en mode plan. Variable à 1 sur le
+    // conteneur : celle du body appartient au mode plan.
+    mapDiv.style.setProperty("--kta-marker-scale", "1");
+    _mapInstance.on("zoom zoomend", _majTailleIconesHome);
     _renderGeorefMarkers(georef);
     // 🩸 Leaflet mesure le conteneur AVANT que le DOM du HOME soit stable (rendu progressif ; sur mobile PWA à
     // froid, dimensions stables après 0,5 à 1,5 s) : tuiles OSM jamais chargées. Trois filets redondants :
@@ -1094,6 +1098,27 @@
     } catch (e) {}
   }
 
+  // Réglage 📐 (map.js > ktaEchelleMarqueurs, même loi qu'en mode plan) relu à chaque zoom. Une échelle PAR
+  // PLAN, posée sur son pane : deux plans empilés n'ont pas la même résolution.
+  function _majTailleIconesHome() {
+    if (!_mapInstance) return;
+    const actif = window.ktaReglageTailleIcones();
+    Object.keys(_panesParPlan).forEach(function (id) {
+      const e = _panesParPlan[id];
+      if (!e || e.map !== _mapInstance || !e.pane) return;
+      const px = (actif && e.proj) ? window.ktaPxEcranParPxPlanOsm(_mapInstance, e.proj) : null;
+      const s = px ? window.ktaEchelleMarqueurs(px, window.KTA_ECHELLE_PLANCHER_OSM) : 1;
+      // seulement si la valeur change : une écriture recalcule le style de tous les marqueurs du pane
+      if (e.pane.style.getPropertyValue("--kta-marker-scale") !== String(s)) {
+        e.pane.style.setProperty("--kta-marker-scale", String(s));
+      }
+    });
+  }
+  // Réglage basculé à l'accueil : la forme de l'icône change (map.js > ktaIconeOsm), re-rendu des plans affichés.
+  window.addEventListener("kta:tailleIconesChange", function () {
+    if (_mapInstance) _reRenderDataTous();
+  });
+
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // Sans `cible` : groupes du MODULE (plan principal, clear inclus). Avec `cible` ({data, poi, roads, zones,
     // struct}) : groupes d'un plan AJOUTÉ de la pile ; ceux du module ne sont pas touchés.
@@ -1130,17 +1155,15 @@
     const unmatchedTags = {}; // tag → nombre, tags sans icône
     // icônes du plan (tag → blob URL)
     const iconUrls = data.iconUrls || {};
-    // cache des L.icon
+    // projection gardée sur le pane : l'échelle des icônes de CE plan en dépend (_majTailleIconesHome)
+    if (paneCtx) paneCtx.proj = proj;
+    // cache des icônes (24×24, mises à l'échelle par la variable du pane si le réglage 📐 est actif)
     const iconCache = {};
     function _getOrBuildIcon(tag) {
       if (iconCache[tag]) return iconCache[tag];
       const url = iconUrls[tag];
       if (!url) return null;
-      iconCache[tag] = L.icon({
-        iconUrl:    url,
-        iconSize:   [24, 24],
-        iconAnchor: [12, 12]
-      });
+      iconCache[tag] = window.ktaIconeOsm(url, 24, tag);
       return iconCache[tag];
     }
 
@@ -1269,6 +1292,7 @@
     if (_showRoads)      dataL.addLayer(roadsL);
     if (_showZones)      dataL.addLayer(zonesL);
     if (_showStructures) dataL.addLayer(structL);
+    _majTailleIconesHome();
     console.log("[OsmHomePreview] Data render :", nPoi, "POI ·", nRoad, "roads ·", nZone, "zones ·", nStruct, "struct");
     // diagnostic des icônes : matchées / repli, tags sans icône
     if (nPoi > 0) {
