@@ -591,6 +591,34 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 
 **Réseau** : nul. Lecture `FileReader` → `ArrayBuffer`, décodage en mémoire, encodage canvas. Aucun octet ne sort, aucune bibliothèque chargée.
 
+## 🚪 Fermer un plan = le vider (retour à l'accueil)
+
+Décision produit : revenir à l'accueil **libère tout de suite** le plan, sans délai ni variante. Tous les chemins
+passent par `main.js > afficherLoader` : 🏠 de l'en-tête et « 📚 Mes plans » (fenêtre « Changer de plan » si la
+session n'est pas vierge, `interface.js > _retourLoaderAvecConfirm`), 🏠 des Réglages, ouverture ratée,
+`ktaFermerPlanPourMemoire` (Générateur). Il n'y a ni retour navigateur ni geste de retour dans l'app. Secours,
+urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
+
+- Carte présente (`window.map instanceof L.Map`, même cachée sous l'accueil après une ouverture ratée) →
+  `_libererRessourcesPlanPrecedent("accueil")` : le démontage d'un changement de plan, dans le même ordre
+  (session enregistrée et persistance figée, sortie du carnet suspendue, extension prévenue
+  `KtaExtensions.quitterPlan("accueil")` → `mktm:plan-ferme { vers: "accueil" }` **une seule fois**, suivi coupé
+  avant le démontage, puis tuiles, calques, carte, canvas de collision, blobs du ZIP). Pile de retour et chaîne
+  multi-plans abandonnées (`onPlanExit("home")`).
+- Pas de carte (démarrage, accueil déjà affiché) → seulement la purge de navigation et `quitterPlan("accueil")`.
+- Après : `window.map === null`, `PLAN_CONFIG === null`, `#map` vide ; `_currentLoadedPlanId` garde le dernier plan
+  (« Reprendre », carte OSM de l'accueil). « Un plan est affiché ? » reste `ktaPlanAffiche()` (un plan se charge
+  SOUS l'accueil).
+- « Reprendre » / rouvrir = chargement normal : la session restaure objets, mesures, légende, calques en
+  modification, traces de suppression, filtres et timeline du suivi ; favoris et calage vivent hors session. La vue
+  (centre, zoom, niveau) repart de la vue initiale du plan et le suivi reste arrêté, comme avant (la réouverture
+  rechargeait déjà tout).
+- Fenêtre « Changer de plan » : inchangée (posée si la session a des objets, des mesures ou un tracé de suivi) ; le
+  suivi en cours ne bloque pas la fermeture.
+
+Preuve : `scripts/smoke/checkup-retour-accueil.js` (carte démontée, session enregistrée, aucune erreur à l'accueil,
+« Reprendre », 5 allers-retours sans dérive). Mesures : `perf-memory.md` §13.
+
 ## 🧙 Générateur — assistant pas-à-pas (v1.72.1)
 
 > Topo KARMA « installeur style Windows, évite les oublis » — décisions **1:a** (couche de présentation sur le form existant, PAS de réécriture) **2:a** (toggle « Tout afficher » conservé) **3:a** (barre d'étapes cliquable).
@@ -632,11 +660,9 @@ bouton en tête des calques de ≡ Filtres (`filterPanel.js > _renderDataLayersS
 ktaFermerPlanPourMemoire`). Avec un plan ouvert (carte, tuiles, session), le tuilage d'une grande image est passé
 chez un utilisateur de moins d'une minute à plus d'une demi-heure : sous pression mémoire, le navigateur jette
 l'image source décodée et la redécode à chaque tuile (`_genererTuilesV2` découpe chaque tuile par `drawImage`
-depuis l'élément image). Au clic sur 📦 Générer, tuilage V2 coché : plan **affiché** → `ktaConfirm` (« le plan va
-être fermé pendant la génération… ») ; refus = rien ne change, rien n'est généré. Accord, ou carte seulement
-**cachée** derrière l'accueil (`afficherLoader` masque sans démonter) → même démontage qu'un changement de plan
-(`_libererRessourcesPlanPrecedent` : session enregistrée, tuiles, blobs, canvas de collision, carte), puis
-l'accueil. Tout ce que le Générateur utilise est déjà chargé (fichiers du ZIP, calques de l'assistant) ; les photos
+depuis l'élément image). Au clic sur 📦 Générer, tuilage V2 coché : plan **ouvert** → `ktaConfirm` (« le plan va
+être fermé pendant la génération… ») ; refus = rien ne change, rien n'est généré. Accord → retour à l'accueil, qui
+démonte le plan (ci-dessous, « Fermer un plan »). Depuis l'accueil, la carte est déjà démontée : rien à fermer. Tout ce que le Générateur utilise est déjà chargé (fichiers du ZIP, calques de l'assistant) ; les photos
 sont lues par l'id du plan relevé avant la fermeture. Sans tuilage V2, rien n'est fermé (génération légère).
 Les tuiles entrent dans le ZIP **sans recompression** (`{ compression: "STORE" }` : JPEG, WebP et PNG sont déjà
 compressés).

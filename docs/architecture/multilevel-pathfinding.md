@@ -517,7 +517,7 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 
 > Audit KARMA « fermetures à la sortie du plan » : 4 résidus (mini-pastille ↩️, invite 🌀, pile périmée au switch direct, boussole) — seuls les chemins goTo nettoyaient.
 
-- `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés côté boot/teardown : `afficherLoader()` → ctx `"home"` · `_libererRessourcesPlanPrecedent()` → ctx `"switch"`.
+- `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés par `main.js > _quitterNavigationInterPlans` : retour à l'accueil (`afficherLoader`, démontage `"accueil"` compris) → ctx `"home"` · changement de plan (`_libererRessourcesPlanPrecedent()`) → ctx `"switch"`.
 - ⚠️ **Subtilités à ne pas casser** : ① côté liaison, le hook "switch" est **no-op si `_pendingTarget` existe** (= goTo en cours qui gère déjà bouton + pile ; sans ce garde, tout saut de portail perdrait son bouton Retour). ② côté route, la **chaîne multi-hop (`_pendingChain`) survit au "switch"** — c'est elle qui trace les legs aux arrivées ; elle n'est abandonnée qu'au retour HOME. ③ Tout NOUVEAU flottant de navigation doit s'enregistrer dans un de ces hooks (ou avoir un timer d'expiration).
 
 ---

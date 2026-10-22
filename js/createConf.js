@@ -3265,24 +3265,21 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
 // ── Libérer la mémoire avant le tuilage V2 ──────────
 // 🩸 Avec un plan ouvert (carte, tuiles, session), la génération d'une grande image passait de moins d'une minute
 // à plus d'une demi-heure : sous pression mémoire, le navigateur jette l'image source décodée et la redécode à chaque
-// tuile. Plan affiché (assistant « Mettre à jour le plan ») : on le dit et on le ferme ; carte gardée cachée derrière
-// l'accueil : fermée sans question (rien ne change à l'écran). Tout ce que le Générateur utilise est déjà chargé
+// tuile. Plan ouvert (assistant « Mettre à jour le plan ») : on le dit et on le ferme. Depuis l'accueil, la carte est
+// déjà démontée (main.js > afficherLoader) : rien à fermer. Tout ce que le Générateur utilise est déjà chargé
 // (fichiers du ZIP, calques de l'assistant, photos lues par l'id du plan).
-// → true (plan affiché, fermé) · false (rien à fermer, ou carte cachée libérée) · null (l'utilisateur refuse).
+// → true (plan fermé) · false (rien à fermer) · null (l'utilisateur refuse).
 async function _fermerPlanAvantTuilage() {
   if (typeof window.ktaFermerPlanPourMemoire !== "function") return false;
   if (!(window.L && window.map instanceof window.L.Map)) return false;
-  const affiche = typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche();
-  if (affiche) {
-    const ok = await window.ktaConfirm(window.I18n.t("gen.fermerPlan.texte"), {
-      titre: window.I18n.t("gen.fermerPlan.titre"),
-      okLabel: window.I18n.t("gen.fermerPlan.ok"),
-      cancelLabel: window.I18n.t("gen.fermerPlan.annuler")
-    });
-    if (!ok) return null;
-  }
+  const ok = await window.ktaConfirm(window.I18n.t("gen.fermerPlan.texte"), {
+    titre: window.I18n.t("gen.fermerPlan.titre"),
+    okLabel: window.I18n.t("gen.fermerPlan.ok"),
+    cancelLabel: window.I18n.t("gen.fermerPlan.annuler")
+  });
+  if (!ok) return null;
   const r = window.ktaFermerPlanPourMemoire();
-  return !!(r && r.ferme && affiche);
+  return !!(r && r.ferme);
 }
 
 // ── Génération du ZIP ──────────

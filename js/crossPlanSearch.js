@@ -44,8 +44,8 @@
     return entry;
   }
 
-  // « Un plan est-il AFFICHÉ ? » : source unique window.ktaPlanAffiche (utils.js). 🩸 `PLAN_CONFIG.plan` reste vrai
-  // à l'accueil (afficherLoader ne le remet pas à null) : case multi-hop et boutons 🧭 s'afficheraient sur l'accueil.
+  // « Un plan est-il AFFICHÉ ? » : source unique window.ktaPlanAffiche (utils.js). 🩸 `PLAN_CONFIG.plan` est vrai
+  // pendant qu'un plan se charge sous l'accueil : case multi-hop et boutons 🧭 s'y afficheraient.
   function _planAffiche() {
     return (typeof window.ktaPlanAffiche === "function")
       ? window.ktaPlanAffiche()

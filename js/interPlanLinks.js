@@ -34,9 +34,10 @@
 (function() {
   "use strict";
 
-  // « Un plan est-il AFFICHÉ ? » : source unique window.ktaPlanAffiche (utils.js). 🩸 `PLAN_CONFIG.plan` reste
-  // VRAI à l'accueil (afficherLoader ne le remet pas à null) : confirmation « changer de plan ? » depuis l'accueil
-  // et chemin court « déjà sur ce plan » pris à tort dans goTo (le clic ne chargeait rien).
+  // « Un plan est-il AFFICHÉ ? » : source unique window.ktaPlanAffiche (utils.js). 🩸 `PLAN_CONFIG.plan` est vrai
+  // pendant qu'un plan se charge sous l'accueil, et _currentLoadedPlanId garde le dernier plan à l'accueil : pris
+  // pour « affiché », ils posaient la confirmation « changer de plan ? » depuis l'accueil et le chemin court
+  // « déjà sur ce plan » de goTo (le clic ne chargeait rien).
   function _planAffiche() {
     return (typeof window.ktaPlanAffiche === "function")
       ? window.ktaPlanAffiche()
@@ -1071,9 +1072,9 @@
   }
 
   function _empilerOrigine() {
-    // 🩸 À l'accueil, _currentLoadedPlanId et window.map PERSISTENT du dernier plan (le retour au loader ne les
-    // purge pas) : on empilerait une fausse origine. Marqueur fiable de l'accueil : PLAN_CONFIG === null
-    // (resetRuntimeAssets). Partir de l'accueil vide aussi la pile.
+    // 🩸 À l'accueil, _currentLoadedPlanId garde le dernier plan : on empilerait une fausse origine. Marqueur de
+    // l'accueil : PLAN_CONFIG === null (main.js > afficherLoader démonte le plan, resetRuntimeAssets). Partir de
+    // l'accueil vide aussi la pile.
     if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.plan) {
       _navStack.length = 0;
       return;

@@ -62,10 +62,6 @@
   fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
   `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
   · depuis: 22/10/2026 · taille: S`
-- **Retour à l'accueil : la carte reste en mémoire** — ✅ vérifié 22/10 : `afficherLoader` masque la carte sans la
-  démonter (tuiles, calques, canvas de collision) ; seul le Générateur la libère avant le tuilage.
-  `qui: Claude · action: démonter au retour à l'accueil (ou après un délai), mesure mémoire avant / après
-  · fini: mémoire rendue, reprise du plan inchangée · depuis: 22/10/2026 · taille: M`
 
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
