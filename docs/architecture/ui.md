@@ -628,13 +628,18 @@ sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a
 
 🛡️ `scripts/check-couleurs-inline.js` (pré-commit bloquant, donc CI) compte les hex écrits dans un style posé par
 le JS (`js/*.js` : attribut `style="…"` d'un gabarit, `el.style.x =`, `cssText`, `setProperty`,
-`setAttribute("style")`). C'est un **cliquet** : 178 existants à la pose (formulaires de `createConf.js`, Mode
-Secours, fenêtres de `planDenylist.js`, accueil…), trop pour une réécriture d'un coup ; le compte ne peut que
-baisser, une baisse se reporte dans `PLAFOND` le même commit. Ne comptent pas : le repli d'un `var(--kta-x, #…)`,
-une entité `&#…;`, la valeur d'un `<input type="color">`. Exception par ligne : marque `couleur-inline-ok` et sa
-raison (ex. conteneur de rendu hors écran exporté en image). Les palettes propres de `check-style-canon.js`
-(mini-carte de l'Affichage XL, cartes OSM) concernent les styles Leaflet des types, pas l'interface : leurs
-`style=` d'interface comptent comme les autres. Diagnostic : `node scripts/check-couleurs-inline.js --liste`.
+`setAttribute("style")`). C'est un **cliquet** : le compte ne peut que baisser, une baisse se reporte dans
+`PLAFOND` le même commit. Restent comptées (15) des couleurs sans jeton dans la charte : le violet du tuilage V2
+(barres de progression du Générateur, aussi en dur dans le CSS), le texte sombre sur une puce ou un bouton doré ou
+orange (pas de jeton « sur accent »), le cyan du bouton GPS de l'accueil, l'orange de la carte de chaleur, le rouge
+plein du lancement Secours depuis le Mode Perdu, l'orange plein du bouton « continuer » du kill-switch (le jeton
+`--kta-avert` fonce en clair), la console de débogage, le hachuré de la légende. Les fenêtres de `planDenylist.js`
+déclarent leur palette d'alarme par thème (`pal` / `pp`), hors charte. Ne comptent pas : le repli d'un
+`var(--kta-x, #…)`, une entité `&#…;`, la valeur d'un `<input type="color">`. Exception par ligne : marque
+`couleur-inline-ok` et sa raison (ex. conteneur de rendu hors écran exporté en image). Les palettes propres de
+`check-style-canon.js` (mini-carte de l'Affichage XL, cartes OSM) concernent les styles Leaflet des types, pas
+l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
+`node scripts/check-couleurs-inline.js --liste`.
 
 | Jeton | Rôle | Sombre | Clair |
 |---|---|---|---|
