@@ -12,7 +12,8 @@
 // 2. Objets dessinés à la main, groupés par étiquette (points) ou par type (tracés, zones, structures), comme la
 //    Conversion : par groupe, un calque du plan, un nouveau calque, ou laissés dans la session.
 // 3. Le Générateur s'ouvre en mode Modifier sur le ZIP actuel du plan, déjà rempli (createConf.js >
-//    ktaGenerateurMaj) ; l'utilisateur vérifie et génère.
+//    ktaGenerateurMaj) ; l'utilisateur vérifie et génère. Avec le tuilage V2, le Générateur ferme d'abord le plan
+//    (confirmation) pour libérer la mémoire : la suite le rouvre (remplacement, publication) ou laisse l'accueil.
 // 4. Plan local : télécharger, ou remplacer dans l'app. Plan d'une extension : nouvelle version par la prise
 //    `publierVersion` si l'extension l'autorise, sinon téléchargement seul. Plan du site : téléchargement.
 // Après un remplacement ou une publication : rendre les calques (restitution, partagée sur un plan d'extension) et
@@ -351,7 +352,10 @@ window.MajPlan = (function () {
         zip: blob ? new File([blob], (entree.name || entree.id) + ".zip", { type: "application/zip" }) : null,
         calques: res.calques.map(function (c) { return { id: c.id, label: c.label, payload: c.payload }; }),
         legende: legende,
-        onZip: function (zipBlob, nomZip) { _etape4(etat, zipBlob, nomZip); }
+        onZip: function (zipBlob, nomZip, infos) {
+          etat.planFerme = !!(infos && infos.planFerme);
+          _etape4(etat, zipBlob, nomZip);
+        }
       });
     } catch (er) {
       console.warn("[MajPlan] préparation :", er);
@@ -384,6 +388,7 @@ window.MajPlan = (function () {
     else if (peutPublier) actions.push({ cle: "publier", libelle: t("maj.fin.publier"), primaire: true });
     else if (type === "ext") note = t("maj.fin.noteModifier");
     else note = t("maj.fin.noteSite");
+    const noteFerme = etat.planFerme ? t(actions.length > 1 ? "maj.fin.planFermeRouvre" : "maj.fin.planFerme") : "";
 
     const ov = document.createElement("div");
     ov.id = "kta-maj-fin";
@@ -396,6 +401,7 @@ window.MajPlan = (function () {
         '<div class="kta-readme-modal-corps kta-fp-corps">' +
           '<p class="kta-fp-ajouts-intro">' + esc(t("maj.fin.texte", { fichier: nomZip })) + '</p>' +
           (note ? '<p class="kta-fp-ajouts-intro kta-tx-warn">' + esc(note) + '</p>' : '') +
+          (noteFerme ? '<p class="kta-fp-ajouts-intro">' + esc(noteFerme) + '</p>' : '') +
         '</div>' +
         '<div class="kta-fp-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost" data-maj-fin="fermer">' + esc(t("maj.fin.fermer")) +
@@ -446,17 +452,27 @@ window.MajPlan = (function () {
     }
   }
 
+  // Le plan de l'assistant est-il encore ouvert ? Le Générateur l'a fermé avant un tuilage V2 : le retrait des
+  // objets versés attend alors la réouverture (la session d'un plan fermé ne s'enregistre plus).
+  function _planOuvert(etat) {
+    return !etat.planFerme && window._currentLoadedPlanId === etat.planId &&
+      (typeof window.ktaPlanAffiche !== "function" || window.ktaPlanAffiche());
+  }
+
   // Plan local : la nouvelle archive prend la place de l'ancienne sous le MÊME id (session, calage, photos et
-  // favoris restent attachés). Le retrait se fait AVANT : la session rechargée avec le plan est alors déjà propre.
+  // favoris restent attachés). Plan encore ouvert : le retrait se fait AVANT, la session rechargée avec le plan est
+  // alors déjà propre. Plan fermé par le Générateur : APRÈS la réouverture, sur la session restaurée.
   async function _remplacer(etat, blob, nomZip) {
     const entree = window.PlanRegistry.findById(etat.planId);
     if (!entree || typeof window.chargerZipFichier !== "function") throw new Error("plan introuvable");
-    await _proposerNettoyage(etat, false);
+    const avant = _planOuvert(etat);
+    if (avant) await _proposerNettoyage(etat, false);
     const fichier = new File([blob], nomZip, { type: "application/zip" });
     try {
       await window.chargerZipFichier(fichier, entree.perfPreset || "auto",
         { planId: entree.id, storeBlob: true, zipFile: fichier });
       _toast(t("maj.fin.remplace"), "success");
+      if (!avant && window._currentLoadedPlanId === etat.planId) await _proposerNettoyage(etat, false);
     } catch (er) {
       console.warn("[MajPlan] remplacement :", er);
       // Le ZIP n'est pas perdu : il part en téléchargement.
@@ -478,12 +494,14 @@ window.MajPlan = (function () {
       throw er;
     }
     _toast(t("maj.fin.publie"), "success");
-    await _proposerNettoyage(etat, true);
+    const avant = _planOuvert(etat);
+    if (avant) await _proposerNettoyage(etat, true);
     // Rouvrir sur la nouvelle version (la copie gardée est périmée : l'extension la retélécharge).
     if (typeof window.chargerPlanDuRegistre === "function") {
       try { await window.chargerPlanDuRegistre(etat.planId); }
       catch (er) { console.warn("[MajPlan] réouverture :", er); }
     }
+    if (!avant && window._currentLoadedPlanId === etat.planId) await _proposerNettoyage(etat, true);
   }
 
   return { ouvrir: ouvrir, _interne: { grouper: grouper, slug: slug, construire: construire } };

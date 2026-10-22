@@ -3075,6 +3075,10 @@ function _detectContentBBox(img) {
 // cf. GpxImport.genererCanvasVierge). Toute tuile intérieure pleine y est identique à tous les zooms et le
 // JPEG est déterministe : on l'encode UNE fois (70 à 90 % des tuiles d'un relevé réel).
 // ⚠️ À NE JAMAIS activer pour un vrai scan : aucune tuile identique, le cache produirait un plan gris uni.
+// Tuiles rangées SANS recompression : JPEG, WebP et PNG sont déjà compressés, DEFLATE n'y gagne presque rien et
+// coûte du temps à la génération du ZIP.
+const TUILE_ZIP_OPTS = { compression: "STORE" };
+
 async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   // Octets de la tuile pleine, encodés au plus une fois.
   let _tuileUnieBuf = null;
@@ -3196,7 +3200,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
         const estPleine = (sliceWidthLvl === TILING_V2_TILE_SIZE &&
                            sliceHeightLvl === TILING_V2_TILE_SIZE && destY === 0);
         if (uniformSource && estPleine && _tuileUnieBuf) {
-          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf, TUILE_ZIP_OPTS);
           tilesDone++;
           if (onProgress) onProgress(tilesDone, tilesTotal, z);
           continue;
@@ -3223,7 +3227,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
           // Première tuile pleine d'une source unie : octets gardés. `slice()` détache du buffer d'origine
           // (JSZip garde la référence ; un buffer transféré casserait les N entrées).
           if (uniformSource && estPleine && !_tuileUnieBuf) _tuileUnieBuf = arrBuf.slice(0);
-          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf, TUILE_ZIP_OPTS);
         } catch(zipErr) {
           throw new Error(window.I18n.t("gen.err.tuileZip", {
             z: z, col: col, k: k,
@@ -3258,6 +3262,29 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   }
 }
 
+// ── Libérer la mémoire avant le tuilage V2 ──────────
+// 🩸 Avec un plan ouvert (carte, tuiles, session), la génération d'une grande image passait de moins d'une minute
+// à plus d'une demi-heure : sous pression mémoire, le navigateur jette l'image source décodée et la redécode à chaque
+// tuile. Plan affiché (assistant « Mettre à jour le plan ») : on le dit et on le ferme ; carte gardée cachée derrière
+// l'accueil : fermée sans question (rien ne change à l'écran). Tout ce que le Générateur utilise est déjà chargé
+// (fichiers du ZIP, calques de l'assistant, photos lues par l'id du plan).
+// → true (plan affiché, fermé) · false (rien à fermer, ou carte cachée libérée) · null (l'utilisateur refuse).
+async function _fermerPlanAvantTuilage() {
+  if (typeof window.ktaFermerPlanPourMemoire !== "function") return false;
+  if (!(window.L && window.map instanceof window.L.Map)) return false;
+  const affiche = typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche();
+  if (affiche) {
+    const ok = await window.ktaConfirm(window.I18n.t("gen.fermerPlan.texte"), {
+      titre: window.I18n.t("gen.fermerPlan.titre"),
+      okLabel: window.I18n.t("gen.fermerPlan.ok"),
+      cancelLabel: window.I18n.t("gen.fermerPlan.annuler")
+    });
+    if (!ok) return null;
+  }
+  const r = window.ktaFermerPlanPourMemoire();
+  return !!(r && r.ferme && affiche);
+}
+
 // ── Génération du ZIP ──────────
 async function _genererZip() {
   _plannerErreur("");
@@ -3280,6 +3307,13 @@ async function _genererZip() {
     return;
   }
   if (typeof JSZip === "undefined") { _plannerErreur(window.I18n.t("gen.gen.noJSZip")); return; }
+
+  // Plan dont viennent les photos (mode Modifier), relevé AVANT une éventuelle fermeture du plan.
+  const planIdPhotos = window._currentLoadedPlanId || null;
+  // Tuilage V2 : le plan en mémoire est fermé d'abord (cf. _fermerPlanAvantTuilage). null = l'utilisateur garde
+  // son plan, rien n'est généré.
+  const planFerme = tilingV2On ? await _fermerPlanAvantTuilage() : false;
+  if (planFerme === null) return;
 
   const btnGen = document.getElementById("kta-planner-generer");
   btnGen.disabled = true; btnGen.textContent = window.I18n.t("gen.btn.generation");
@@ -3463,10 +3497,9 @@ async function _genererZip() {
                              && _plannerMode === "modifier"
                              && window.MyKTAMapPhotos);
     if (inclurePhotos) {
-      const planId = window._currentLoadedPlanId || null;
-      if (planId) {
+      if (planIdPhotos) {
         try {
-          const idbPhotos = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
+          const idbPhotos = await window.MyKTAMapPhotos.getAllPhotosForPlan(planIdPhotos);
           if (idbPhotos && idbPhotos.length > 0) {
             idbPhotos.forEach(function(p) {
               if (!seenIds.has(p.id)) {
@@ -3804,7 +3837,7 @@ async function _genererZip() {
       _plannerMaj = null;
       const mm = document.getElementById("kta-planner-modal");
       if (mm) mm.remove();
-      try { maj.onZip(blob, nomZip, { nom: name, version: version }); }
+      try { maj.onZip(blob, nomZip, { nom: name, version: version, planFerme: planFerme }); }
       catch (eMaj) { console.warn("[Planner] suite de la mise à jour :", eMaj); }
       return;
     }
