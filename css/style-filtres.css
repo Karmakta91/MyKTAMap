@@ -304,7 +304,7 @@
 }
 .kta-fp-lvl-btn.kta-fp-lvl-btn-active {
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   border-color: #f4c542;
   font-weight: 600;
 }
@@ -427,7 +427,7 @@ html.kta-theme-light .kta-fp-lvl-btn:hover {
 body.kta-theme-light .kta-fp-lvl-btn.kta-fp-lvl-btn-active,
 html.kta-theme-light .kta-fp-lvl-btn.kta-fp-lvl-btn-active {
   background: var(--kta-light-accent, #f4c542) !important;
-  color: #1a1f2e !important;
+  color: var(--kta-sur-accent) !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
 body.kta-theme-light .kta-fp-footer,

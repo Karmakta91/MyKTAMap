@@ -2246,7 +2246,7 @@
           '</div>' +
           '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.06); padding:12px 18px; flex-shrink:0;">' +
             '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">' + window.I18n.t("ui.refonte.btn_cancel") + '</button>' +
-            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:var(--kta-accent); color:#0a0d18; border-color:var(--kta-accent);">' + window.I18n.t("ui.refonte.btn_validate") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:var(--kta-accent); color:var(--kta-sur-accent); border-color:var(--kta-accent);">' + window.I18n.t("ui.refonte.btn_validate") + '</button>' +
           '</div>' +
         '</div>';
 

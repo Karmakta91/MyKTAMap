@@ -3639,7 +3639,7 @@ async function _genererZip() {
           '<div class="kta-modal-texte">' +
             '<div id="kta-tiling-progress-text" style="margin-bottom:10px;">' + window.I18n.t("gen.v2prog.init") + '</div>' +
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-              '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+              '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:var(--kta-tuilage-v2); transition:width 0.2s;"></div>' +
             '</div>' +
             '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:14px 0 0; line-height:1.5;">' +
               window.I18n.t("gen.v2prog.warn") +
@@ -4511,7 +4511,7 @@ async function _kmzImpGenerer() {
           '<div class="kta-modal-texte">' +
             '<div id="kta-kmz-v2-progress-text" style="margin-bottom:10px;">' + window.I18n.t("gen.v2prog.init") + '</div>' +
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-              '<div id="kta-kmz-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+              '<div id="kta-kmz-v2-progress-bar" style="height:100%; width:0%; background:var(--kta-tuilage-v2); transition:width 0.2s;"></div>' +
             '</div>' +
             '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:14px 0 0; line-height:1.5;">' +
               window.I18n.t("gen.v2prog.warn") +
@@ -4885,7 +4885,7 @@ async function _gpxImpGenerer() {
         '<div class="kta-modal-texte">' +
           '<div id="kta-gpx-v2-progress-text" style="margin-bottom:10px;">' + window.I18n.t("gen.v2prog.init") + '</div>' +
           '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-            '<div id="kta-gpx-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+            '<div id="kta-gpx-v2-progress-bar" style="height:100%; width:0%; background:var(--kta-tuilage-v2); transition:width 0.2s;"></div>' +
           '</div>' +
         '</div>' +
       '</div>';

@@ -138,7 +138,7 @@
           '</div>' +
           '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
             '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ks-cancel">' + _t("home.maint.cancel") + '</button>' +
-            '<button class="kta-btn kta-btn-primary" type="button" id="kta-ks-ok" style="background:#ffb380; color:#1a1f2e;">' + _t("home.maint.killSw.continue") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" type="button" id="kta-ks-ok" style="background:#ffb380; color:var(--kta-sur-accent);">' + _t("home.maint.killSw.continue") + '</button>' +
           '</div>' +
         '</div>';
       document.documentElement.appendChild(overlay);

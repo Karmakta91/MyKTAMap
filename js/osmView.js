@@ -1595,7 +1595,7 @@
         " font-size:11.5px; font-weight:600; border:1px solid " +
         (checked ? "var(--kta-accent)" : "rgba(255,255,255,0.18)") + ";" +
         " background:" + (checked ? "var(--kta-accent)" : "rgba(255,255,255,0.04)") + ";" +
-        " color:" + (checked ? "#1a1f2e" : "var(--kta-texte-2)") + ";" +
+        " color:" + (checked ? "var(--kta-sur-accent)" : "var(--kta-texte-2)") + ";" +
         " transition:background 0.15s, border-color 0.15s, color 0.15s;";
       chip.addEventListener("click", function() {
         const l = parseInt(chip.dataset.level, 10);

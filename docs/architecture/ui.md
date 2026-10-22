@@ -629,11 +629,10 @@ sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a
 🛡️ `scripts/check-couleurs-inline.js` (pré-commit bloquant, donc CI) compte les hex écrits dans un style posé par
 le JS (`js/*.js` : attribut `style="…"` d'un gabarit, `el.style.x =`, `cssText`, `setProperty`,
 `setAttribute("style")`). C'est un **cliquet** : le compte ne peut que baisser, une baisse se reporte dans
-`PLAFOND` le même commit. Restent comptées (15) des couleurs sans jeton dans la charte : le violet du tuilage V2
-(barres de progression du Générateur, aussi en dur dans le CSS), le texte sombre sur une puce ou un bouton doré ou
-orange (pas de jeton « sur accent »), le cyan du bouton GPS de l'accueil, l'orange de la carte de chaleur, le rouge
-plein du lancement Secours depuis le Mode Perdu, l'orange plein du bouton « continuer » du kill-switch (le jeton
-`--kta-avert` fonce en clair), la console de débogage, le hachuré de la légende. Les fenêtres de `planDenylist.js`
+`PLAFOND` le même commit. Restent comptées (9) des couleurs sans jeton dans la charte : le cyan du bouton GPS de
+l'accueil, l'orange de la carte de chaleur, le rouge plein du lancement Secours depuis le Mode Perdu, le fond
+orange plein du bouton « continuer » du kill-switch (le jeton `--kta-avert` fonce en clair ; son texte prend
+`--kta-sur-accent`), la console de débogage, le hachuré de la légende. Les fenêtres de `planDenylist.js`
 déclarent leur palette d'alarme par thème (`pal` / `pp`), hors charte. Ne comptent pas : le repli d'un
 `var(--kta-x, #…)`, une entité `&#…;`, la valeur d'un `<input type="color">`. Exception par ligne : marque
 `couleur-inline-ok` et sa raison (ex. conteneur de rendu hors écran exporté en image). Les palettes propres de
@@ -650,16 +649,21 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
 | `--kta-texte-3` | méta, aides, compteurs | `#98a1b3` | `#5f5848` (`#4a4438` sur les barres) |
 | `--kta-accent` | doré : titres, état actif, fonds | `#f4c542` | `#f4c542` |
 | `--kta-accent-texte` | doré écrit en texte | `#f4c542` | `#7a5a00` |
+| `--kta-sur-accent` | texte sombre posé sur un fond doré ou orange (puce cochée, bouton ou onglet actif) | `#1a1f2e` | idem : le doré ne change pas en clair |
 | `--kta-interaction` | liens, commandes | `#8cb4ff` | `#1e5f99` |
 | `--kta-primaire` (+ `-survol`, `--kta-sur-primaire`) | fond du bouton d'action principale | `#1a5fd6` (`#2563eb`), texte blanc | idem |
 | `--kta-focus` | contour clavier | `#f4c542` | `#7a5a00` |
 | `--kta-ok` / `--kta-avert` / `--kta-erreur` | états | `#6ee287` / `#ffb380` / `#ff8c8c` | `#176530` / `#8b3a00` / `#a01818` |
+| `--kta-tuilage-v2` | violet du tuilage V2 (barres de progression, case et avertissement du Générateur) | `#b452ff` | idem |
 | `--kta-bordure` | séparateurs | blanc 8 % | `rgba(20,30,50,0.14)` |
 | `--kta-info-fond/-bord`, `--kta-accent-fond/-bord`, `--kta-ok-fond/-bord`, `--kta-erreur-fond/-bord` | encadrés teintés | | |
 
 - **Contrat** : chaque couple texte / fond de ce tableau tient **4,5:1** (WCAG AA). Mesuré dans le DOM sur 2 471
   textes de 30 écrans, PC 1280 et téléphone 390, dans les deux thèmes (méthode :
   `docs/audits/2026-10-20_audit-ui-impeccable-v1.md`). Seul le splash reste hors contrat (lot à part).
+  `--kta-sur-accent` : 10,1:1 sur `#f4c542`, 9,4:1 sur l'orange `#ffb380`. En clair, les boutons principaux
+  dorés ou orange posés par le JS passent au bleu de `.kta-btn-primary` (règle claire prioritaire) : le jeton n'y
+  joue pas. Le violet du Mode Perdu (`lostMode.js`, indice dans la zone) a la même valeur mais n'est pas ce jeton.
 - **Bouton principal bleu dans les deux thèmes** (décision produit) : `.kta-btn-primary`, `#loadPlanBtn`, « J'accepte »
   des CGU. Le doré reste l'accent (titres, onglet actif, cases cochées).
 - **Lueurs (ombre colorée sans décalage, `0 0 Npx`) réservées à un état** : POI ou tracé en surbrillance,
