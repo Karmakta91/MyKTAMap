@@ -1017,10 +1017,11 @@ balaie désormais 8 densités, bornes comprises — et la dérive tombe.
 ## 11. Taille des icônes au zoom : le réglage 📐 vaut aussi pour les cartes OSM
 
 Le réglage global « 📐 Adapter la taille des icônes au zoom » (`APP_CONFIG.scaledMarkers`, défaut actif) s'applique
-à la **Vue OSM** et à la **carte OSM de l'accueil** (plan principal et plans empilés), avec **la même loi et les
-mêmes bornes** qu'en mode plan :
+à la **Vue OSM** et à la **carte OSM de l'accueil** (plan principal et plans empilés), avec **la même loi** qu'en
+mode plan et un **plancher propre** :
 
-    échelle = pixels écran par pixel de PLAN, bornée [0,25 ; 2]      (map.js > ktaEchelleMarqueurs)
+    échelle = pixels écran par pixel de PLAN, bornée [plancher ; 2]      (map.js > ktaEchelleMarqueurs)
+    plancher : ×0,25 en mode plan · ×0,5 sur les cartes OSM (window.KTA_ECHELLE_PLANCHER_OSM)
 
 | Contexte | pixels écran par pixel de plan |
 |---|---|
@@ -1030,8 +1031,12 @@ mêmes bornes** qu'en mode plan :
 Pourquoi cette loi plutôt qu'un zoom relatif au zoom de calage ou les px/m des fronts : elle garde à l'icône **la
 même taille par rapport au dessin du plan** qu'en mode plan, au même grossissement, sans dépendre de l'échelle
 métrique du plan (absente ou fausse sur un plan non mesuré) ni d'un « zoom de référence » arbitraire. Latitude et
-Web Mercator sont pris en compte par `project`. Conséquence assumée : vue d'ensemble d'un plan détaillé = icônes au
-plancher (×0,25 : 6,5 px en Vue OSM, 6 px à l'accueil), comme au dézoom du mode plan.
+Web Mercator sont pris en compte par `project`.
+
+**Plancher ×0,5 en OSM (décision produit).** La vue d'ensemble d'un plan détaillé est la vue courante d'une carte
+OSM ; au plancher du mode plan (×0,25) les icônes y tombaient à 6,5 px (Vue OSM) et 6 px (accueil), illisibles.
+Au plus petit : **13 px en Vue OSM, 12 px à l'accueil**. Le plancher est un paramètre de `ktaEchelleMarqueurs`,
+pas une seconde loi ; plafond ×2 commun.
 
 **Mise en œuvre.**
 - Icône choisie **au rendu** par `map.js > ktaIconeOsm(url, taille, tag)` : réglage actif → `L.divIcon` +
@@ -1052,7 +1057,7 @@ Avec le `L.icon` nu, le réglage coupé coûte ce qu'il coûtait avant.
 **Coût du réglage actif** (même mesure) : zoom animé ≈ 385 → 415 ms, zoom sans animation ≈ 40 → 65 ms. C'est le
 redimensionnement des 1 500 images à chaque cran, le même mécanisme qu'en mode plan.
 
-🛡️ `scripts/smoke/checkup-osm-taille-icones.js` : taille mesurée = base × loi à quatre zooms (plancher compris),
+🛡️ `scripts/smoke/checkup-osm-taille-icones.js` : taille mesurée = base × loi à quatre zooms (plancher OSM compris),
 taille de base réglage coupé, bascule à chaud dans les deux sens, échelle du mode plan intacte, temps de zoom
 (`OSM_PAS` pour allonger la mesure).
 

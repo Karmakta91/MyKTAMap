@@ -5,7 +5,7 @@
 // =====================================================================
 // Le relevé fictif n'est ni tuilé ni calé : le checkup lui prête un tuilage V2 et un calage fictif en mer
 // (comme checkup-osm-empilement.js), plus 1 500 POI synthétiques pour mesurer le coût du zoom.
-//   1. Vue OSM, réglage actif : taille de l'icône = base × clamp(px écran par px de plan, 0,25, 2), mesurée à
+//   1. Vue OSM, réglage actif : taille de l'icône = base × clamp(px écran par px de plan, 0,5, 2), mesurée à
 //      deux zooms (différente) et au plancher ; réglage coupé : taille de base à tous les zooms ; bascule à
 //      chaud par window.ktaMajTailleIconesOsm (sans rouvrir).
 //   2. Temps de zoom (animé et sans animation) de la Vue OSM, réglage actif puis coupé, 1 500+ marqueurs.
@@ -33,6 +33,8 @@ const PNG_TUILE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAAC
 // Calage fictif : 2e-6 degré par pixel de plan (≈ 0,22 m à l'équateur) ; l'échelle 1 tombe vers le zoom 19,4.
 const DEG_PAR_PX = 2e-6;
 const N_POI_SYNTH = 1500;
+// Plancher des cartes OSM (map.js > KTA_ECHELLE_PLANCHER_OSM) ; le mode plan garde 0,25.
+const PLANCHER_OSM = 0.5;
 // Allers-retours de zoom mesurés (4 crans chacun) ; OSM_PAS=6 pour une mesure moins bruitée.
 const N_PAS = parseInt(process.env.OSM_PAS, 10) || 2;
 
@@ -86,7 +88,7 @@ async function zoomer(page, carte, z, pane) {
 // Vérifie une mesure contre la loi (réglage actif) ou la taille de base (réglage coupé).
 function controler(lib, s, base, actif) {
   if (!s || !s.n) { pb(lib + " : aucune icône visible"); return; }
-  const attendu = actif ? base * Math.max(0.25, Math.min(2, s.pxParPxPlan)) : base;
+  const attendu = actif ? base * Math.max(PLANCHER_OSM, Math.min(2, s.pxParPxPlan)) : base;
   const msg = lib + " (zoom " + s.zoom + ") : " + s.n + " icône(s), " + s.min + "–" + s.max + " px, attendu " +
               (Math.round(attendu * 10) / 10) + " px";
   if (Math.abs(s.min - attendu) > 1 || Math.abs(s.max - attendu) > 1) pb(msg);

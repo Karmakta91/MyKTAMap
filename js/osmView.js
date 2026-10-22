@@ -372,7 +372,8 @@
   function _majTailleIconesOsm() {
     if (!_osmMap || !_proj) return;
     const s = window.ktaReglageTailleIcones()
-      ? window.ktaEchelleMarqueurs(window.ktaPxEcranParPxPlanOsm(_osmMap, _proj)) : 1;
+      ? window.ktaEchelleMarqueurs(window.ktaPxEcranParPxPlanOsm(_osmMap, _proj), window.KTA_ECHELLE_PLANCHER_OSM)
+      : 1;
     const el = _osmMap.getContainer();
     // 🩸 Écrire seulement si la valeur change : une écriture recalcule le style de tous les marqueurs.
     const v = String(s);

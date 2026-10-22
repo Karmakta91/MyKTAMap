@@ -156,12 +156,13 @@ Comme le tracker (§28) : `L.divIcon` avec `<div>` wrapper (positionné via tran
 - Dans les 2 cas : `ic._kta_iconUrl = url` posé en backup pour les consumers
 
 CSS variable `--kta-marker-scale` sur `<body>` mise à jour dans `initMapFromConfig` sur `zoom` et `zoomend` :
-`window.ktaEchelleMarqueurs(2^zoom)` (map.js). Loi partagée avec les cartes OSM (Vue OSM, carte de l'accueil), qui
-posent la variable sur leur conteneur ou le pane du plan : `vue-osm.md` §11.
+`window.ktaEchelleMarqueurs(2^zoom)` (map.js, plancher par défaut ×0,25). Loi partagée avec les cartes OSM (Vue OSM,
+carte de l'accueil), qui posent la variable sur leur conteneur ou le pane du plan et passent leur propre plancher
+(×0,5, `KTA_ECHELLE_PLANCHER_OSM`) : `vue-osm.md` §11.
 
 CSS : `.kta-marker-img { transform: scale(var(--kta-marker-scale, 1)); transform-origin: center; }`.
 
-#### 37.2 Clamp 0.25 / 2
+#### 37.2 Clamp 0.25 / 2 (mode plan)
 
 - Au zoom -2 et au-delà → scale `0.25` (= 12.5px visible, pas invisible)
 - Au zoom +2 (rare, déjà au max MyKTAMap) → scale `2` (= 100px, évite des icônes ridiculement énormes)

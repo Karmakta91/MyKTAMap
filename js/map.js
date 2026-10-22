@@ -91,16 +91,21 @@ const TAGS_BUILTIN = {
 window._ktaBuiltinIconUrls = TAGS_BUILTIN;
 
 // ── Taille des icônes au zoom (réglage 📐, APP_CONFIG.scaledMarkers) ──────────
-// ⚠️ Une seule loi, mode plan comme cartes OSM : échelle = pixels ÉCRAN par pixel de PLAN, bornée [0,25 ; 2].
+// ⚠️ Une seule loi, mode plan comme cartes OSM : échelle = pixels ÉCRAN par pixel de PLAN, bornée
+// [plancher ; 2]. Plancher : 0,25 en mode plan (défaut), KTA_ECHELLE_PLANCHER_OSM sur les cartes OSM.
 //   • mode plan (CRS.Simple) : 2^zoom ;
 //   • cartes OSM : mesurée à travers le calage (plan → latlng → Web Mercator) — l'icône couvre le même
 //     morceau du dessin qu'en mode plan au même grossissement, quelle que soit l'échelle du plan.
 // La variable --kta-marker-scale (style.css > .kta-marker-img) vit sur le body en mode plan, sur le conteneur
 // de la Vue OSM et sur le pane de chaque plan de la carte de l'accueil : la plus proche gagne.
-window.ktaEchelleMarqueurs = function (pxEcranParPxPlan) {
+window.ktaEchelleMarqueurs = function (pxEcranParPxPlan, plancher) {
   if (!Number.isFinite(pxEcranParPxPlan) || pxEcranParPxPlan <= 0) return 1;
-  return Math.max(0.25, Math.min(2, pxEcranParPxPlan));
+  const bas = (Number.isFinite(plancher) && plancher > 0) ? plancher : 0.25;
+  return Math.max(bas, Math.min(2, pxEcranParPxPlan));
 };
+// Plancher des cartes OSM (décision produit) : la vue d'ensemble d'un plan détaillé y est la vue courante, et
+// ×0,25 y donnait des icônes de 6 px illisibles. ×0,5 : 13 px en Vue OSM, 12 px à l'accueil au plus petit.
+window.KTA_ECHELLE_PLANCHER_OSM = 0.5;
 
 // Défaut ON : `!== false`.
 window.ktaReglageTailleIcones = function () {

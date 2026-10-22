@@ -1106,8 +1106,8 @@
     Object.keys(_panesParPlan).forEach(function (id) {
       const e = _panesParPlan[id];
       if (!e || e.map !== _mapInstance || !e.pane) return;
-      const s = (actif && e.proj)
-        ? window.ktaEchelleMarqueurs(window.ktaPxEcranParPxPlanOsm(_mapInstance, e.proj)) : 1;
+      const px = (actif && e.proj) ? window.ktaPxEcranParPxPlanOsm(_mapInstance, e.proj) : null;
+      const s = px ? window.ktaEchelleMarqueurs(px, window.KTA_ECHELLE_PLANCHER_OSM) : 1;
       // seulement si la valeur change : une écriture recalcule le style de tous les marqueurs du pane
       if (e.pane.style.getPropertyValue("--kta-marker-scale") !== String(s)) {
         e.pane.style.setProperty("--kta-marker-scale", String(s));
