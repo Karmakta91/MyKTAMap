@@ -2,11 +2,11 @@
   "version": "v2.19.0",
   "released": "2026-10-21",
   "notes": [
+    "🎨 Nouvelles icônes : un pictogramme par type (puits, escaliers, cavages, salles…), lisibles d'un coup d'œil ; une icône personnalisée d'un plan s'affiche aussi sur la carte et en Vue OSM.",
     "🔄 Mettre à jour le plan : un assistant (⬆️ Exporter) range tes ajouts et tes calques en modification dans le Générateur, déjà rempli, pour sortir une nouvelle version du plan.",
-    "📊 Éditeur de données : applique directement à ta session les changements de type, de niveau ou de note (seules les cellules modifiées, ⏪ pour annuler) ; il s'ouvre maintenant depuis ⬆️ Exporter.",
-    "🪜 Jonctions entre niveaux : un clic ouvre leur fiche pour changer la note, les niveaux reliés, ou les supprimer.",
-    "🔁 Recaler des données sur un autre scan : l'outil trouve seul la correspondance grâce aux points communs, avec un aperçu sur la carte.",
-    "⬇️ Importer ouvre directement le choix du fichier ; 📊 Détails de la session replie les longues listes et permet d'effacer la session.",
-    "🛠️ Corrigés : un objet supprimé disparaît sans recharger, la Vue OSM n'empile plus les tuiles, le plan s'ouvre aussi dans un onglet en arrière-plan, plus de « GREETING » au premier lancement."
+    "📊 Éditeur de données : applique à ta session les changements de type, de niveau ou de note (seules les cellules modifiées) ; il s'ouvre depuis ⬆️ Exporter. 🔁 Recaler des données sur un autre scan trouve seul la correspondance.",
+    "🪜 Jonctions entre niveaux : un clic ouvre leur fiche (note, niveaux reliés, suppression). 📊 Détails de la session : listes repliées et « Effacer la session ».",
+    "🗺️ Carte OSM : tracés et points au-dessus du plan sur l'accueil, taille des icônes adaptée au zoom comme sur le plan.",
+    "🛠️ Corrigés : un objet supprimé disparaît sans recharger, le plan s'ouvre aussi dans un onglet en arrière-plan, plus de « GREETING » au premier lancement."
   ]
 }
