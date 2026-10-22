@@ -4645,6 +4645,7 @@
   "session.banner.exportBtn": "💾 Export",
   "session.banner.storageFull": "⚠️ Saving impossible: the phone's storage is full. Your work is no longer being saved — export your session now.",
   "session.confirm.clear": "Clear {pts} point(s), {roads} path(s), {zones} zone(s) and {structs} structure(s), plus the tracking trail and measurements?\nA snapshot is kept in 📦 Backups (📊 Session details).",
+  "session.confirm.clearCopies": "The {n} object(s) of layers open to the team are not counted: what happens to them is explained below.",
   "session.confirm.calquesEquipe": "Layers open for editing by the team: {calques}.\n• “Clear on this device only”: these layers will come back from the server, still being edited.\n• “Also give the layers back to the team”: {calques} return to their original for everyone; the copies disappear on every device, and edits the others have not exported on these copies will be lost.",
   "session.confirm.clearTitle": "🗑️ Clear the session?",
   "session.partage.intro": "This map is shared with your organisation: choose what is cleared.",

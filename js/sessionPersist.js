@@ -348,12 +348,23 @@
   }
 
   // Contenu de la session courante, pour une confirmation chiffrée.
-  function _compterEtatCourant() {
+  // `sansCopies` : les copies des calques ouverts à l'équipe (`_srcCalque`) sont comptées à part (`copies`) — leur
+  // sort dépend de la case « Rendre aussi les calques », jamais de l'effacement des objets.
+  function _compterEtatCourant(sansCopies) {
+    let copies = 0;
     const len = function(fn) {
-      try { const a = (typeof window[fn] === "function") ? window[fn]() : null; return Array.isArray(a) ? a.length : 0; }
-      catch(e) { return 0; }
+      try {
+        const a = (typeof window[fn] === "function") ? window[fn]() : null;
+        if (!Array.isArray(a)) return 0;
+        if (!sansCopies) return a.length;
+        const c = a.filter(function(o) { return o && o._srcCalque !== undefined; }).length;
+        copies += c;
+        return a.length - c;
+      } catch(e) { return 0; }
     };
-    return { pts: len("getEditorPoints"), roads: len("getRoads"), zones: len("getZones"), structs: len("getStructures") };
+    const n = { pts: len("getEditorPoints"), roads: len("getRoads"), zones: len("getZones"), structs: len("getStructures") };
+    n.copies = copies;
+    return n;
   }
 
   function clear(opts) {
@@ -705,7 +716,14 @@
             return null;
           }
           const cibles = _ciblesEffacement(tout, d2.auteur);
-          if (!cibles.length) { window.ktaAlerte(_t("session.partage.aucun")); return null; }
+          if (!cibles.length) {
+            // 🩸 Rien à supprimer pour l'organisation : la case des calques garde son effet (vidage + restitution),
+            // sinon elle serait ignorée en silence et le calque resterait en modification. `[]` : les traces
+            // d'avant (suppressions peut-être pas encore envoyées) sont gardées, comme avec des cibles.
+            if (rendre) { go(true, []); return null; }
+            window.ktaAlerte(_t("session.partage.aucun"));
+            return null;
+          }
           return window.ktaConfirm(_t(tout ? "session.partage.confirmTout" : "session.partage.confirmMiens", { n: cibles.length }), {
             titre: _t("session.partage.confirmTitre"),
             okLabel: _t(tout ? "session.partage.okTout" : "session.partage.okMiens"),
@@ -727,7 +745,6 @@
   // vient du serveur — « Rien à effacer » (décision produit), sans fenêtre de choix. Plan local : inchangé.
   function demanderEffacement(bouton, apres) {
     const _t = _trModule;
-    const n = _compterEtatCourant();
     const ro = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true);
     // Plan dont la restitution se partage, avec des calques en modification : l'effacement local les verrait
     // revenir depuis la synchro. L'utilisateur choisit : effacer ici seulement, ou rendre aussi les calques à
@@ -735,6 +752,7 @@
     const CS = window.CalqueSession;
     const calques = (!ro && CS && typeof CS.restitutionPartagee === "function" && CS.restitutionPartagee())
       ? CS.listeRapatries() : [];
+    const n = _compterEtatCourant(calques.length > 0);
     // `cibles` (plan partagé) : objets supprimés pour toute l'organisation, une trace chacun après le vidage.
     const go = function(rendre, cibles) {
       if (ro) { rendre = false; cibles = null; }
@@ -766,8 +784,9 @@
       });
     };
     if (typeof window.ktaConfirm === "function") {
+      const copies = n.copies ? "\n" + _t("session.confirm.clearCopies", { n: n.copies }) : "";
       const msg = (window.I18n && window.I18n.t)
-        ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
+        ? window.I18n.t("session.confirm.clear", n) + copies : "Effacer la session ?";
       const partageLu = _effacementPartage();
       if (ro && partageLu) { window.ktaAlerte(_t("session.partage.rienServeur")); return; }
       const partage = partageLu;

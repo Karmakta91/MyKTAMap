@@ -4645,6 +4645,7 @@
   "session.banner.exportBtn": "💾 Exporter",
   "session.banner.storageFull": "⚠️ Sauvegarde impossible : le stockage du téléphone est saturé. Ton travail n'est plus enregistré — exporte ta session maintenant.",
   "session.confirm.clear": "Effacer {pts} point(s), {roads} tracé(s), {zones} zone(s) et {structs} structure(s), plus le tracé du suivi et les mesures ?\nUn snapshot est gardé dans 📦 Backups (📊 Détails de la session).",
+  "session.confirm.clearCopies": "Les {n} objet(s) des calques ouverts à l'équipe ne sont pas comptés : leur sort est expliqué plus bas.",
   "session.confirm.calquesEquipe": "Calques ouverts à la modification par l'équipe : {calques}.\n• « Effacer sur cet appareil seulement » : ces calques reviendront depuis le serveur, toujours en modification.\n• « Rendre aussi les calques à l'équipe » : {calques} reviennent à leur original pour tous ; les copies disparaissent sur tous les appareils, et les retouches que les autres n'ont pas exportées sur ces copies seront perdues.",
   "session.confirm.clearTitle": "🗑️ Effacer la session ?",
   "session.partage.intro": "Ce plan est partagé avec ton organisation : choisis ce qui est effacé.",

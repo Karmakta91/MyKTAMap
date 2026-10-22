@@ -12,7 +12,9 @@
 //   4. « Tout supprimer » : une trace par objet, datée après l'objet ; boutons « Annuler » et l'action cochée ;
 //      créateur inconnu de l'extension : jamais dans « mes ajouts », nombre annoncé, aucune trace pour lui ;
 //   5. droit « modifier » ({ miens } seul) : pas de « tout » ; prise en erreur : l'annulation seule, sans nombre ;
-//   6. droit retiré entre l'ouverture et la confirmation : refus nommé, rien n'est effacé.
+//   6. droit retiré entre l'ouverture et la confirmation : refus nommé, rien n'est effacé ;
+//   7. calque ouvert à l'équipe, aucun objet à moi, case « Rendre aussi les calques » cochée : le calque est rendu
+//      (avant : « Aucun objet » et la case ignorée) ; le titre ne compte pas les copies du calque, il les annonce.
 // 🩸 check-extensions.js lit le câblage ; seul ce parcours voit la fenêtre, les setters réels et l'ordre
 // snapshot → vidage → traces → sauvegarde.
 // Usage : node scripts/smoke/checkup-effacer-session-partage.js · doc : docs/architecture/session-data.md
@@ -105,8 +107,9 @@ async function simulerPrise(page, rep) {
 }
 
 // Clic sur 🗑️, lecture de la fenêtre de choix (ou de la confirmation de l'app), choix coché, OK ; la 2e
-// confirmation éventuelle est lue puis acceptée. → { choix, aides, premiere, seconde, alerte, apres }
-async function effacer(page, valeur) {
+// confirmation éventuelle est lue puis acceptée ; `cocher` coche la case des calques. → { choix, aides, premiere,
+// seconde, alerte, apres }
+async function effacer(page, valeur, cocher) {
   await page.evaluate(function () { document.querySelector('#kta-session-modal [data-action="clear"]').click(); });
   await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 15000);
   await page.waitForTimeout(450);   // garde anti-double-clic de ktaConfirm
@@ -118,14 +121,18 @@ async function effacer(page, valeur) {
       coche: radios.some(function (r) { return r.checked; }), okInactif: document.getElementById("kta-confirm-oui").disabled,
       annulerTxt: (document.getElementById("kta-confirm-non") || {}).textContent || "" };
   });
-  vue.okTxt = await page.evaluate(function (v) {
+  vue.okTxt = await page.evaluate(function (a) {
+    const v = a.v;
     const r = v ? document.querySelector('[data-kta-confirm-choix="' + v + '"]') : null;
     if (r) r.click();
+    const ov = document.getElementById("kta-confirm-oui").closest(".kta-readme-modal-overlay");
+    const caseC = a.cocher && ov ? ov.querySelector('input[type="checkbox"]') : null;
+    if (caseC && !caseC.checked) caseC.click();
     const o = document.getElementById("kta-confirm-oui");
     const txt = o.textContent;
     o.click();
     return txt;
-  }, valeur || "");
+  }, { v: valeur || "", cocher: !!cocher });
   await page.waitForTimeout(900);
   const suite = await page.evaluate(function () {
     const o = document.getElementById("kta-confirm-oui");
@@ -242,6 +249,29 @@ async function effacer(page, valeur) {
     verif(!!v7.alerte && !v7.seconde, "🔒 droit relu au clic : refus nommé, pas de confirmation", v7.alerte);
     verif(JSON.stringify(v7.apres.pts) === JSON.stringify(TOUS) && JSON.stringify(v7.apres.traces) === JSON.stringify(["pt_ancien"]),
       "🔒 droit retiré : rien n'est effacé", v7.apres);
+
+    // 7. Calque ouvert à l'équipe (restitution partagée simulée), aucun objet à moi, case cochée.
+    await poserEtRouvrir(page);
+    await simulerPrise(page, { miens: true, tout: true, auteur: "personne" });
+    await page.evaluate(function () {
+      const CS = window.CalqueSession;
+      window.__rendus = [];
+      CS.restitutionPartagee = function () { return true; };
+      CS.listeRapatries = function () { return ["calque_checkup"]; };
+      CS.libelle = function () { return "Points"; };
+      // Seule la restitution PARTAGÉE compte (clear() rend aussi les calques, en local).
+      CS.restituer = function (id, o) { if (!(o && o.local)) window.__rendus.push(id); return { partagee: true }; };
+      window.setEditorPoints(window.getEditorPoints().concat([{ uid: "pt_copie1", id: "Copie", name: "Copie", x: 1100, y: 1100,
+        tag: "puits", _srcCalque: "calque_checkup" }]));
+    });
+    const v8 = await effacer(page, "miens", true);
+    v8.rendus = await page.evaluate(function () { return window.__rendus; });
+    verif(/Effacer 4 point/.test(v8.premiere) && /Les 1 objet\(s\) des calques ouverts/.test(v8.premiere),
+      "titre : 4 objets de la session, la copie du calque annoncée à part", v8.premiere.slice(0, 200));
+    verif(!v8.alerte && JSON.stringify(v8.rendus) === JSON.stringify(["calque_checkup"]),
+      "🩸 aucun objet à moi + case cochée : le calque est rendu, pas d'« Aucun objet »", { alerte: v8.alerte, rendus: v8.rendus });
+    verif(!v8.apres.pts.length && JSON.stringify(v8.apres.traces) === JSON.stringify(["pt_ancien"]),
+      "session vidée, aucune trace d'objet posée", v8.apres);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
