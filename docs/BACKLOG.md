@@ -84,10 +84,6 @@
   sur PC) ; états orange et thème clair jamais vus en navigateur.
   `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
   · fini: mesure notée dans perf-memory.md, captures vues · depuis: 03/10/2026 · taille: S`
-- **PDF « HD » plafonné en silence** — ⚪ sur iPhone le PDF réduit sa résolution sous 16,7 Mpx (`exporter.js >
-  _publicGenererCanvas`) sans le dire ; l'export image propose déjà « 📱 Max iPhone ».
-  `qui: Claude · action: dire à l'utilisateur la résolution réellement produite
-  · fini: message affiché quand le plafond agit · depuis: 17/10/2026 · taille: S`
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert

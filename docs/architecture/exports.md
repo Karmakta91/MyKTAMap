@@ -228,7 +228,9 @@ opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...
         fond depuis les tuiles V2 (`ktaDessinerRegionTuiles`) ou sous-rectangle de l'image,
         le reste translaté ; la légende se dessine après restauration — cartes PDF Secours ;
         sans région, plan tuilé V2 dont toutes les tuiles du niveau utile sont sur l'appareil
-        (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée)
+        (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée ;
+        plafond de pixels SEUIL_PX_EXPORT, iPhone 16,7 Mpx, tenu après l'arrondi des côtés : canvas
+        réduit marqué `_ktaPlafonne` → toast warn « résolution réduite à L × H px » (pdfexport.plafond))
 canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
 opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
                   → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins

@@ -2880,6 +2880,9 @@
     // 🩸 Résolution native d'un très grand plan (centaines de Mpx) : le navigateur refuse le canvas et le PDF
     // partirait avec une image 0 × 0 sans message. Même plafond que l'export image (SEUIL_PX_EXPORT ; iPhone :
     // IOS_MAX_PX_CANVAS). A0 à 300 dpi ≈ 140 Mpx suffit.
+    // ⚠️ Plafond appliqué : le canvas rendu porte `_ktaPlafonne` { demande, obtenu } (facteurs) ; c'est à
+    // l'appelant de le dire à l'utilisateur (pdfExport.js > genererPdf), un rapport ou une mini-carte s'en passe.
+    let plafonne = null;
     const pc = config && config.plan;
     const W = fullOpts.region ? fullOpts.region.w : (pc && pc.imageWidth);
     const H = fullOpts.region ? fullOpts.region.h : (pc && pc.imageHeight);
@@ -2889,13 +2892,20 @@
       const px = W * H * fullOpts.resol * fullOpts.resol;
       if (px > budget) {
         const avant = fullOpts.resol;
-        fullOpts.resol = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+        let r = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+        // 🩸 Le canvas arrondit chaque côté (_genererCanvasExport) : sans ce pas, l'arrondi repassait au-dessus
+        // du plafond (5460 × 3073 pour 16,7 Mpx) et Safari aurait rendu une image vide.
+        while (r > 0.001 && Math.round(W * r) * Math.round(H * r) > budget) r = Math.round((r - 0.001) * 1000) / 1000;
+        fullOpts.resol = r;
+        plafonne = { demande: avant, obtenu: fullOpts.resol };
         console.log("[Exporter] Canvas plafonné : résolution " + avant + " → " + fullOpts.resol +
                     " (" + Math.round(W * fullOpts.resol) + "×" + Math.round(H * fullOpts.resol) + ")");
       }
     }
 
-    return await _genererCanvasExport(fullOpts, false);
+    const canvas = await _genererCanvasExport(fullOpts, false);
+    if (canvas && plafonne) canvas._ktaPlafonne = plafonne;
+    return canvas;
   }
   window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
 

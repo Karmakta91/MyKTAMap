@@ -2990,6 +2990,7 @@
   "pdfexport.orientation.paysage": "📃 Landscape",
   "pdfexport.orientation.portrait": "📄 Portrait",
   "pdfexport.orientation.titre": "↔️ Orientation",
+  "pdfexport.plafond": "PDF: resolution reduced to {w} × {h} px (× {obtenu} instead of × {demande}), this device's image limit.",
   "pdfexport.progression.canvas": "Generating the map canvas…",
   "pdfexport.progression.patience": "This may take a few seconds on large maps…",
   "pdfexport.qualite.avertissement": "⚠️ A0/A1 + ×2 may take 30-60 s on mobile (very large canvas).",
