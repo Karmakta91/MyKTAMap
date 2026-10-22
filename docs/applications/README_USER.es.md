@@ -340,7 +340,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 
 - **Pellizca** para hacer zoom, **arrastra** para moverte (o usa los botones **+** / **−** arriba a la izquierda).
 - **Tocar un icono** abre la ficha del punto; **tocarlo dos veces** hace zoom sobre él (como el botón «Ir» de la ficha).
-- Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa. Para conservar un tamaño fijo: ⚙️ Ajustes → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
+- Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa, en el plano y también en los mapas OSM (Vista OSM y mapa de la pantalla de inicio). Para conservar un tamaño fijo: ⚙️ Configuración de la pantalla de inicio → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
 
 #### 🌐 Coordenadas GPS en las fichas
 
@@ -1103,7 +1103,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
 
 - **🌍 Aplicación** — el **idioma**: Français, English, Español. Se aplica al momento, guía y tutorial incluidos; la bandera de la ventana 📖 Documentación cambia solo el idioma de la guía. También se elige en la pantalla de desbloqueo, y se conserva en modo incógnito.
 - **🎨 Visualización**:
-  - **📐 Adaptar el tamaño de los iconos al zoom** (activado por defecto);
+  - **📐 Adaptar el tamaño de los iconos al zoom** (activado por defecto): en el plano, y también en la Vista OSM y el mapa OSM de la pantalla de inicio;
   - **❓ Botón de ayuda en las ventanas** (activado): un ❓ en el título de las ventanas que tienen página de ayuda, que abre directamente la página correcta;
   - **🔔 Notificaciones**: **Todas**, **Esenciales** (por defecto: ya no hay mensajes que confirman un gesto que acabas de hacer) o **Silencio** (solo lo importante: batería baja, sensor denegado, errores). Las alertas del servidor y las ventanas que esperan una decisión nunca se silencian;
   - **➕ Botones de zoom +/− en los mapas**: muestra los botones + y − en el plano, el widget OSM de la pantalla de inicio y la vista OSM. Desactivado por defecto: se hace zoom con los dedos (pellizcar) o con la rueda del ratón;

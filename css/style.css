@@ -10329,8 +10329,9 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   pointer-events: none; /* le clic doit aller a la map en dessous */
 }
 
-/* Markers en divIcon (div + img) : le div reçoit le translate3d Leaflet, l'img le scale
-   (--kta-marker-scale, map.js > _majMarkerScale au zoom). Deux transforms indépendants : wrapper requis. */
+/* Markers en divIcon (div + img) : le div reçoit le translate3d Leaflet, l'img le scale (--kta-marker-scale :
+   map.js > _majMarkerScale sur le body en mode plan ; osmView / osmHomePreview > _majTailleIcones* sur la
+   carte OSM ou le pane du plan). Deux transforms indépendants : wrapper requis. */
 .kta-marker-divicon {
   background: transparent !important;
   border: none !important;
