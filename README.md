@@ -150,6 +150,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | ⚙️ OOMGuard (détection kill mémoire) · 🪫 BatteryGuard (alertes 20/10/5 %) · 💡 WakeLock | `oomGuard.js`, `batteryGuard.js`, `wakeLock.js` |
 | 📋 Crash reports auto (IDB) · 🧠 Inspecteur mémoire · 🔧 Inspecteur Service Worker | `crashReports.js`, `memInspector.js`, `swInspector.js` |
 | 💾 Auto-save session per-plan (poller 1,5 s, teardown propre au plan switch) | `sessionPersist.js` |
+| 🚪 Fermer un plan le vide : retour à l'accueil = session enregistrée puis carte démontée (tuiles, calques, canvas) | `main.js` |
 | ⏳ Overlay générique « calcul en cours » | `computeLoader.js` |
 
 ---
