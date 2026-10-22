@@ -58,6 +58,11 @@
   · taille: S`
 ## Ensuite
 
+- **Erreur Leaflet `_leaflet_pos` aux changements de plan rapides** — `TypeError … _getMapPanePos` vue plusieurs fois par
+  le scénario pro `ouverturePlanSync` (10 ouvertures enchaînées) : un appel sur une carte déjà démontée. Instable, sans
+  effet fonctionnel mesuré ; le scénario repasse au rejeu.
+  `qui: Claude · action: trouver l'appel (setView / invalidateSize / panTo après cleanupExistingMap) et le garder
+  · fini: ouverturePlanSync sans erreur de page sur 10 passages · depuis: 22/10/2026 · taille: S`
 - **Vue OSM : pas d'accès à la légende du plan** — ni la Vue OSM ouverte depuis un plan ni la carte OSM de l'accueil
   n'ouvrent la ≡ Légende. Accueil à plusieurs plans (légendes différentes) : piste KARMA = légende du plan principal,
   l'utilisateur prévenu que les autres plans ont la leur ; légende en lecture seule depuis l'OSM (pas de modification).
