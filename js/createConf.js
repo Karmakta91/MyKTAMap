@@ -18,7 +18,7 @@
 // Doc : docs/architecture/plans-loader.md, docs/TILING.md.
 
 const PLANNER_DEFAULT_ICONS = {
-  default:  "lib/leaflet/images/marker-icon.png",
+  default:  "icon/default.png",
   track:    "icon/iconetrack.png",
   salle:    "icon/house.png",
   pa:       "icon/pa.png",

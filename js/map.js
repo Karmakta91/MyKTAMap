@@ -89,6 +89,8 @@ const TAGS_BUILTIN = {
 
 // Exposée DÈS LE CHARGEMENT du script : le HOME résout les icônes built-in sans copie.
 window._ktaBuiltinIconUrls = TAGS_BUILTIN;
+// Icône d'un point sans tag (ou au tag inconnu). Hors catalogue des tags : ce n'est pas un type de POI.
+window._ktaIconeDefaut = "icon/default.png";
 
 // ── Taille des icônes au zoom (réglage 📐, APP_CONFIG.scaledMarkers) ──────────
 // ⚠️ Une seule loi, mode plan comme cartes OSM : échelle = pixels ÉCRAN par pixel de PLAN, bornée
@@ -162,8 +164,9 @@ function creerIcones(iconConfig) {
 
   const trackUrl = iconConfig.track || "icon/iconetrack.png";
 
-  // Sans icône default : marker natif Leaflet (pin bleu), distinct des points custom.
-  const useLeafletDefault = !iconConfig.default;
+  // Sans icône default (ou l'ancien pin Leaflet écrit par le Générateur) : l'icône par défaut de l'app.
+  const iconeDefautUrl = (iconConfig.default && !/marker-icon\.png$/.test(iconConfig.default))
+    ? iconConfig.default : window._ktaIconeDefaut;
 
   // scaledMarkers (défaut true) : L.divIcon (div + img enfant) au lieu de L.icon, pour un
   // transform: scale() sur l'<img> selon le zoom sans casser le translate3d du DIV. OFF = taille écran fixe.
@@ -223,11 +226,7 @@ function creerIcones(iconConfig) {
   }
 
   function makeDefaultIcon() {
-    if (useLeafletDefault) {
-      // Pin natif Leaflet : pas de scale (ancre bas-centre incompatible avec un scale autour du centre).
-      return new L.Icon.Default();
-    }
-    return _mkIcon(iconConfig.default, 50, 50, 25, 25);
+    return _mkIcon(iconeDefautUrl, 50, 50, 25, 25);
   }
 
   iconeDefault = makeDefaultIcon();
@@ -248,7 +247,7 @@ function creerIcones(iconConfig) {
   window._iconMap = {};
   Object.keys(iconConfig).forEach(function(tag) {
     const url = iconConfig[tag];
-    if (!url) {
+    if (!url || tag === "default") {
       window._iconMap[tag] = makeDefaultIcon();
       return;
     }
@@ -293,7 +292,7 @@ function creerIcones(iconConfig) {
   }
 
   console.log("[Map] Icônes créées —", Object.keys(window._iconMap).length, "tags |",
-              useLeafletDefault ? "default = pin Leaflet natif" : "default = " + iconConfig.default);
+              "default = " + iconeDefautUrl);
 }
 
 // ── Nettoyage de la carte existante ──────────

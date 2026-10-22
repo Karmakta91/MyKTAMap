@@ -161,7 +161,7 @@ function afficherLegende() {
         if (typeof iconObj._getIconUrl === "function") {
           try { return iconObj._getIconUrl("icon"); } catch(e) {}
         }
-        return "lib/leaflet/images/marker-icon.png";
+        return window._ktaIconeDefaut || "icon/default.png";
       }
 
       return (icons || {})[cle];
@@ -422,7 +422,7 @@ function afficherLegende() {
           if (typeof iconObj._getIconUrl === "function") {
             try { return iconObj._getIconUrl("icon"); } catch(e) {}
           }
-          return "lib/leaflet/images/marker-icon.png";
+          return window._ktaIconeDefaut || "icon/default.png";
         }
         return (icons || {})[cle];
       }

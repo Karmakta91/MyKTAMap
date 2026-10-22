@@ -2628,8 +2628,8 @@ async function telechargerPlan() {
     async function getIconForPoint(point) {
       let iconPath = getIconUrlForPoint(point);
 
-      // filet ultime : pin Leaflet classique
-      if (!iconPath) iconPath = "lib/leaflet/images/marker-icon.png";
+      // filet ultime : icône par défaut de l'app
+      if (!iconPath) iconPath = window._ktaIconeDefaut || "icon/default.png";
 
       if (!iconCache[iconPath]) {
         iconCache[iconPath] = await loadImage(iconPath);

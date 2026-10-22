@@ -999,9 +999,9 @@
       if (iconUrls[tag]) continue;
       await _resolveIcon(tag, CATALOGUE[tag]);
     }
-    // 3. repli : marker Leaflet (POI sans tag)
-    if (!iconUrls.default) {
-      iconUrls.default = "lib/leaflet/images/marker-icon.png";
+    // 3. repli : icône par défaut de l'app (POI sans tag) ; remplace l'ancien pin Leaflet écrit par le Générateur
+    if (!iconUrls.default || /marker-icon\.png$/.test(iconUrls.default)) {
+      iconUrls.default = window._ktaIconeDefaut || "icon/default.png";
     }
     console.log("[OsmHomePreview] Icons résolus : " + Object.keys(iconUrls).length + " tag(s) (" + nFromZip + " depuis ZIP custom · " + nFromApp + " depuis URLs app)");
     return iconUrls;

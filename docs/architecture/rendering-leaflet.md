@@ -189,7 +189,7 @@ const url = entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || nu
 #### 37.4 Non touché (volontaire)
 
 - **Tracker** (cf §28) : garde ses classes `kta-tracker-divicon` / `kta-tracker-img` distinctes → pas concerné par le CSS variable `--kta-marker-scale`. Taille écran fixe préservée. Utile pour le repérage visuel au dézoom (l'user veut TOUJOURS voir où il est).
-- **iconeDefault Leaflet natif** (`L.Icon.Default` = pin bleu) : pas scalé. Anchor bas-centre incompatible avec scale around center → décalerait la pointe. Cas marginal (uniquement si plan sans `icons.default`).
+- **Icône par défaut** (point sans tag ou au tag inconnu) : `icon/default.png` (`window._ktaIconeDefaut`, `map.js`), centrée et scalée comme les autres. Un `icons.default` qui vise l'ancien pin Leaflet (`lib/leaflet/images/marker-icon.png`, écrit par les Générateurs d'avant) est ignoré : l'icône de l'app reprend la main. Le pin natif `L.Icon.Default` ne reste qu'en filet ultime, avant que la carte ait construit ses icônes.
 - **Exports PNG / KMZ** : continuent de produire des images taille originale. Les transform CSS n'affectent que le rendu Leaflet runtime, pas les exports canvas qui peignent les icônes à leur taille brute.
 
 #### 37.5 Prise en compte d'un changement du réglage
