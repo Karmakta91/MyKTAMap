@@ -515,7 +515,7 @@
         // cache hors ligne (partagé avec la modale Vue OSM et le Mode Secours, store IDB myktamap_osm_tiles)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCacheBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.cache.btnTitle")) + '" ' +
-                'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: #a6d785;">' +
+                'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: var(--kta-ok);">' +
           '💾' +
         '</button>' +
         // Multi-plans (priorités, opacités, filtres par plan) : dans une MODALE, rien sur la carte.
@@ -3056,7 +3056,7 @@
       const s = await window.OsmTilesCache.getStats();
       if (s.count > 0) {
         span.textContent = window.I18n.t("osm_home.cache.statsCount", { count: s.count, size: window.OsmTilesCache.formatBytes(s.sizeBytes) });
-        span.style.color = "#a6d785";
+        span.style.color = "var(--kta-ok)";
       } else {
         span.textContent = window.I18n.t("osm_home.cache.statsEmpty");
         span.style.opacity = "0.7";
@@ -3122,7 +3122,7 @@
       bar.className = "kta-osm-home-toast";
       bar.style.cssText =
         "position:absolute; left:50%; bottom:8px; transform:translateX(-50%);" +
-        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:8px 14px;" +
+        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:8px 14px;" + // couleur-inline-ok : toast sur la carte, fond sombre fixe dans les deux thèmes
         "border-radius:6px; font-size:12px; z-index:1000; max-width:90%;" +
         "border:1px solid rgba(140,180,255,0.25); text-align:center;";
       container.style.position = "relative";
