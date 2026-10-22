@@ -28,11 +28,11 @@
 
 ## Maintenant
 
-- **Train : sortir la v2.19.0 en prod** — bumpée le 21/10 (avec la 0.12.0 du pro) : mise à jour du plan, Éditeur de
-  données appliqué à la session, recalage sur un autre scan, fiche des jonctions, effacer la session, correctif de la
-  synchro à l'ouverture d'un plan ☁️. Notes : `version.json`, `README.md` § v2.19.0.
-  `qui: KARMA · action: trempage dev + pro (menu 9) : modifier / supprimer une jonction, effacer la session ; porte
-  docs/RELEASE_GATE.md ; merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
+- **Train : v2.19.0 en prod** — mergée le 22/10 (avec, en plus des notes : fermeture du plan avant le tuilage V2,
+  icône par défaut, rotation en Présentation, case « Rendre les calques » sans objet visé, Sonar). Reste à vérifier
+  en ligne ; la 0.12.0 du pro suit (backlog pro).
+  `qui: KARMA · action: CI main verte ; /killsw.html sur myktamap.fr ; etat-sites.ps1 ; CI doc main + deploy-doc.sh
+  public ; poster les 2 stories · fini: etat-sites.ps1 vert, doc publique à jour · depuis: 21/10/2026 · taille: S`
 - **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
   ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
   Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.
@@ -57,6 +57,15 @@
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
 ## Ensuite
+
+- **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
+  fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
+  `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
+  · depuis: 22/10/2026 · taille: S`
+- **Retour à l'accueil : la carte reste en mémoire** — ✅ vérifié 22/10 : `afficherLoader` masque la carte sans la
+  démonter (tuiles, calques, canvas de collision) ; seul le Générateur la libère avant le tuilage.
+  `qui: Claude · action: démonter au retour à l'accueil (ou après un délai), mesure mémoire avant / après
+  · fini: mémoire rendue, reprise du plan inchangée · depuis: 22/10/2026 · taille: M`
 
 - **Erreur Leaflet `_leaflet_pos` aux changements de plan rapides** — `TypeError … _getMapPanePos` vue plusieurs fois par
   le scénario pro `ouverturePlanSync` (10 ouvertures enchaînées) : un appel sur une carte déjà démontée. Instable, sans
