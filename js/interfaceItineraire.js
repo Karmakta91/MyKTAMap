@@ -2028,7 +2028,7 @@ window.ouvrirItinerairModal = function() {
           return _esc(ap.label || ap.id || window.I18n.t("iti.avoid.pointFallback"));
         }).join(", ");
         fallbackHtml =
-          '<div class="kta-iti-result-row kta-iti-avoid-warning" style="color:#ff9933; background:rgba(255,153,51,0.10); border-left:3px solid #ff9933; padding:8px 10px; margin:6px 0; border-radius:4px;">' +
+          '<div class="kta-iti-result-row kta-iti-avoid-warning" style="color:var(--kta-avert); background:rgba(255,153,51,0.10); border-left:3px solid var(--kta-avert); padding:8px 10px; margin:6px 0; border-radius:4px;">' +
             window.I18n.t("iti.avoid.cantAvoid", { names: noms }) +
             '<br><span style="font-size:11.5px;">' + window.I18n.t("iti.avoid.cantAvoidDetail", { radius: (result.avoidRadius || ITI_AVOID_DEFAULT_RADIUS) }) + '</span>' +
           '</div>';

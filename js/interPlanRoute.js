@@ -708,7 +708,7 @@
           stepsHtml +
           '<div class="kta-ipr-total">' + _esc(_t("ipr.result.total", { dist: _fmtDist(chain.totalM) })) + '</div>' +
           (anyFallback
-            ? '<div style="font-size:12px; color:#ff9933; margin-top:6px;">' + _esc(_t("ipr.result.fallback")) + '</div>' : '') +
+            ? '<div style="font-size:12px; color:var(--kta-avert); margin-top:6px;">' + _esc(_t("ipr.result.fallback")) + '</div>' : '') +
           '<div style="font-size:12px; color:var(--kta-texte-3); margin-top:8px;">' + _esc(_t("ipr.result.hint")) + '</div>' +
         '</div>' +
         '<div class="kta-modal-actions">' +
@@ -768,7 +768,7 @@
     overlay.style.zIndex = "100002";
     overlay.innerHTML =
       '<div class="kta-modal" style="max-width:420px;">' +
-        '<div class="kta-modal-icon" style="color:#ff9933;">🧭</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-avert);">🧭</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipr.err.titre")) + '</div>' +
         '<div class="kta-modal-texte" style="white-space:pre-line;">' + _esc(e.message || String(e)) + '</div>' +
         '<div class="kta-modal-actions">' +

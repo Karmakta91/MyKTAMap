@@ -1083,7 +1083,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (statusEl) {
             statusEl.style.display = "block";
             statusEl.textContent = window.I18n.t("utils.noteSaved");
-            statusEl.style.color = "#6ce28a";
+            statusEl.style.color = "var(--kta-ok)";
           }
           if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
             window.HistoryManager.record(
@@ -1102,7 +1102,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (statusEl) {
             statusEl.style.display = "block";
             statusEl.textContent = window.I18n.t("utils.popup.errorPrefix") + (e.message || e);
-            statusEl.style.color = "#ff8080";
+            statusEl.style.color = "var(--kta-erreur)";
           }
         }
       });

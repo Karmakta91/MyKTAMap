@@ -178,7 +178,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,107,107,0.4);">' +
         '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,107,107,0.25);">' +
-          '<div class="kta-readme-modal-titre" style="color:#ff6b6b;">' + _t("home.maint.killSw.offlineTitle") + '</div>' +
+          '<div class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + _t("home.maint.killSw.offlineTitle") + '</div>' +
           '<button class="kta-panneau-close" type="button" id="kta-kso-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="color:var(--kta-texte-2);">' +

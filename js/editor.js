@@ -202,7 +202,7 @@ function afficherFormulaire(x, y, existingPoint) {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("editor.section.infos")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">${window.I18n.t("editor.field.name")} <span style="color:#ff8080;">*</span></label>
+            <label class="kta-cfg-label">${window.I18n.t("editor.field.name")} <span style="color:var(--kta-erreur);">*</span></label>
             <input class="kta-cfg-input" id="kta-poi-nom" type="text" value="${_esc(nomInitial)}" placeholder="${window.I18n.t("editor.field.namePlaceholder")}" autocomplete="off">
 
             <label class="kta-cfg-label">${window.I18n.t("editor.field.type")}</label>

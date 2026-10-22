@@ -1239,7 +1239,7 @@ photos: false, histoirePdfs: false, crashes: false
     if (!corps) return;
     const T = window.I18n.t.bind(window.I18n);
     let html = '';
-    html += '<p class="kta-profile-intro" style="background: rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.20); padding:8px 10px; border-radius:6px; color:#ffae80;">';
+    html += '<p class="kta-profile-intro" style="background: rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.20); padding:8px 10px; border-radius:6px; color:var(--kta-avert);">';
     html += '🔐 ' + T("profileio.export_security");
     html += '</p>';
     if (sizes.extExclus > 0) {
@@ -1287,7 +1287,7 @@ photos: false, histoirePdfs: false, crashes: false
     html += '<div class="kta-profile-total" id="kta-profile-export-total">' +
               '<strong>' + T("profileio.estimated_size") + '</strong> <span id="kta-profile-export-totalsize">—</span>' +
             '</div>';
-    html += '<div id="kta-profile-arch-warn" style="display:none; border:1px solid rgba(255,80,80,0.55); background:rgba(255,80,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px; color:#ff9c9c;"></div>';
+    html += '<div id="kta-profile-arch-warn" style="display:none; border:1px solid rgba(255,80,80,0.55); background:rgba(255,80,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px; color:var(--kta-erreur);"></div>';
 
     corps.innerHTML = html;
 
@@ -1593,7 +1593,7 @@ photos: false, histoirePdfs: false, crashes: false
       if (a.orphelins) lbl += " · " + T("profileio.arch_bilan_orphelins", { n: a.orphelins });
       parts.push('<li><strong>📦 ' + lbl + '</strong></li>');
       if (a.echecs.length) {
-        parts.push('<li style="color:#ff9c9c;"><strong>⚠️ ' +
+        parts.push('<li style="color:var(--kta-erreur);"><strong>⚠️ ' +
           T("profileio.arch_bilan_echecs", { n: a.echecs.length }) + '</strong> : ' +
           _escHtml(a.echecs.join(", ")) + '</li>');
       }

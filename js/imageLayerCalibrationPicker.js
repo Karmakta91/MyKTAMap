@@ -109,7 +109,7 @@
     const lng = x;
     const icon = L.divIcon({
       className: "kta-ilc-marker",
-      html: '<span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:' + color + '; color:#fff; font-weight:800; border-radius:50%; box-shadow:0 0 0 3px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.5); font-size:14px;">' + label + '</span>',
+      html: '<span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:' + color + '; color:#fff; font-weight:800; border-radius:50%; box-shadow:0 0 0 3px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.5); font-size:14px;">' + label + '</span>', // couleur-inline-ok : marqueur de carte, blanc sur la couleur du repère
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });

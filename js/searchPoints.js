@@ -437,7 +437,7 @@
       _renderResultats("");
       input.focus();
     }).catch(function(err) {
-      infoEl.innerHTML = '<span style="color:#ff8888;">❌ ' + _escapeHtml(err.message) + '</span>';
+      infoEl.innerHTML = '<span style="color:var(--kta-erreur);">❌ ' + _escapeHtml(err.message) + '</span>';
     });
 
     const filtersEl = document.getElementById("kta-search-filters");

@@ -67,7 +67,7 @@
             '</div>' +
             '<label class="kta-cfg-label" for="kta-dev-gate-input">' + t("devmode.gate.label") + '</label>' +
             '<input class="kta-cfg-input" id="kta-dev-gate-input" type="password" autocomplete="off" style="width:100%; margin-top:4px;">' +
-            '<div id="kta-dev-gate-err" style="display:none; color:#ff7850; font-size:12px; margin-top:6px;"></div>' +
+            '<div id="kta-dev-gate-err" style="display:none; color:var(--kta-erreur); font-size:12px; margin-top:6px;"></div>' +
             '<div class="kta-conv-actions" style="margin-top:14px;">' +
               '<button class="kta-btn kta-btn-ghost"   id="kta-dev-gate-annuler">' + t("ui.confirm.cancel") + '</button>' +
               '<button class="kta-btn kta-btn-primary" id="kta-dev-gate-ok">' + t("devmode.gate.btn") + '</button>' +

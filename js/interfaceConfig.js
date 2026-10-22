@@ -1096,7 +1096,7 @@ function afficherConfig() {
             <span class="kta-cfg-scope kta-cfg-scope-global">${window.I18n.t("config.scope.badgeGlobal")}</span>
           </div>
           <!-- 🆕 v1.49.0 (Lot C) — avertissement réglages experts (demande KARMA) -->
-          <div style="margin:0 0 10px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:#ffd28a; line-height:1.45;">
+          <div style="margin:0 0 10px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:var(--kta-avert); line-height:1.45;">
             ${window.I18n.t("config.tracker.expertWarn")}
           </div>
           <div class="kta-cfg-grille">
@@ -1118,7 +1118,7 @@ function afficherConfig() {
             </span>
           </label>
           <!-- 🆕 v1.49.0 (Lot C) — tolérances réglables du verrou sur tracé + avertissement -->
-          <div style="margin:10px 0 8px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:#ffd28a; line-height:1.45;">
+          <div style="margin:10px 0 8px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:var(--kta-avert); line-height:1.45;">
             ${window.I18n.t("config.smartnav.warn")}
           </div>
           <div class="kta-cfg-row">
@@ -1475,7 +1475,7 @@ function afficherConfig() {
         status.style.color = "var(--kta-texte-3)";
       } else {
         status.textContent = window.I18n.t("config.north.statusCalibrated", { deg: cur.toFixed(1) });
-        status.style.color = "#f4c542";
+        status.style.color = "var(--kta-accent-texte)";
       }
     }
     _refreshStatus();

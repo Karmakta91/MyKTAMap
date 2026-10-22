@@ -829,7 +829,7 @@
       el.style.color = "var(--kta-texte-3)";
     } else {
       el.textContent = window.I18n.t("filter.status.active", { list: active.join(", ") });
-      el.style.color = "#f4c542";
+      el.style.color = "var(--kta-accent-texte)";
     }
   }
 

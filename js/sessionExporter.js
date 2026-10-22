@@ -920,7 +920,7 @@
       </div>
 
       <!-- 🆕 v1.31.7 F1 : toggle anonymisation pour partage public -->
-      <div class="kta-ses-anonymize-section" style="margin-top:14px; padding-top:10px; border-top:1px solid #2a3144;">
+      <div class="kta-ses-anonymize-section" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--kta-bordure);">
         <label class="kta-ses-cb-row">
           <input type="checkbox" id="full_anonymize">
           <span>${t("export.full.anonymizeLabel")}</span>
@@ -3361,14 +3361,14 @@
       return;
     }
     if (!window.KmzExport) {
-      target.innerHTML = '<em style="color:#cc0000;">' + t("export.calib.moduleKo") + '</em>';
+      target.innerHTML = '<em style="color:var(--kta-erreur);">' + t("export.calib.moduleKo") + '</em>';
       return;
     }
     let transform;
     try {
       transform = window.KmzExport.buildTransformCalib(c);   // pointC optionnel propagé (affine)
     } catch(e) {
-      target.innerHTML = '<span style="color:#ff9933;">⚠️ ' + String(e.message || e) + '</span>';
+      target.innerHTML = '<span style="color:var(--kta-avert);">⚠️ ' + String(e.message || e) + '</span>';
       return;
     }
     const W = window.APP_CONFIG.imageWidth  || 0;
