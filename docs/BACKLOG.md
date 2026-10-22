@@ -112,11 +112,6 @@
 
 ## Plus tard
 
-- **Clés i18n gardées pour les pages en cache** — `home.profile.greeting`, `home.splash.ethos`,
-  `ui.subaction.importer` / `editJson`, `tabledit.save.session` / `sessionOk` / `partage.*`, `tabledit.resol.*` :
-  plus appelées, gardées une release (règle de `docs/architecture/i18n.md`).
-  `qui: Claude · action: les retirer des 3 dictionnaires à la release qui suit la v2.19.0 · fini: clés retirées
-  · depuis: 21/10/2026 · taille: XS`
 - **Sonar : jetons à régénérer** — ils expirent vers le 06/01/2027 : au-delà, `sonar-scan.ps1` sort en code 1 et
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027
