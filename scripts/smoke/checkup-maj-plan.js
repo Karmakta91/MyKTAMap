@@ -6,8 +6,9 @@
 // Parcours réel sur le relevé fictif de l'index, rendu LOCAL (son ZIP est construit dans la page puis importé) :
 // un calque ouvert à la modification et corrigé (un tracé supprimé), deux objets dessinés à la main (un point,
 // un tracé) ; assistant : le calque coché, les points vers un NOUVEAU calque, les tracés vers le calque corrigé ;
-// Générateur prérempli, génération ; le ZIP téléchargé est relu (calque remplacé, objets versés, nouveau calque) ;
-// « Remplacer le plan dans l'app » avec le retrait proposé. Attendu : même entrée du registre, nouveau calque
+// Générateur prérempli, génération en tuilage V2 : refusée une fois à la confirmation (plan intact), puis acceptée
+// (plan fermé, session enregistrée) ; le ZIP téléchargé est relu (calque remplacé, objets versés, nouveau calque) ;
+// « Remplacer le plan dans l'app » rouvre le plan, puis propose le retrait. Attendu : même entrée du registre, nouveau calque
 // affiché, plus de copie ni d'objet versé dans la session, traces datées sous le fichier, et tout cela tient au
 // rechargement de la page.
 // 🩸 check-maj-plan.js exécute les fonctions dans un `vm` ; seul ce parcours voit le Générateur, le ZIP réel et le
@@ -164,8 +165,33 @@ async function cliquerOuiConfirm(page) {
     verifier(gen.cible && gen.maj.length === 2 && gen.nom, "Générateur ouvert en mode Modifier, déjà rempli (calque remplacé + nouveau calque)", gen);
     const idNouveau = gen.maj.find(function (id) { return id !== prep.cible; });
 
-    // ── 4. Génération, puis téléchargement et relecture du ZIP ──
+    // ── 4. Génération en tuilage V2 : le plan ouvert est fermé d'abord (confirmation), puis ZIP relu ──
+    const carteVivante = function () { return page.evaluate(function () { return !!(window.L && window.map instanceof window.L.Map); }); };
+    await page.evaluate(function () { const c = document.getElementById("pl_tilingV2"); if (c && !c.checked) c.click(); });
+    // 4a. « Garder le plan ouvert » : rien ne change, rien n'est généré.
     await page.evaluate(function () { document.getElementById("kta-planner-generer").click(); });
+    await attendre(page, function () { return !!document.getElementById("kta-confirm-non"); }, 10000);
+    await page.waitForTimeout(600);
+    await page.evaluate(function () { document.getElementById("kta-confirm-non").click(); });
+    await page.waitForTimeout(1500);
+    const garde = await page.evaluate(function (id) {
+      return { id: window._currentLoadedPlanId === id, affiche: window.ktaPlanAffiche(),
+               generateur: !!document.getElementById("kta-planner-modal"), fin: !!document.getElementById("kta-maj-fin"),
+               bouton: !document.getElementById("kta-planner-generer").disabled };
+    }, depart.id);
+    verifier(garde.id && garde.affiche && garde.generateur && !garde.fin && garde.bouton && await carteVivante(),
+      "génération refusée à la confirmation : plan toujours ouvert, Générateur intact, rien de généré", garde);
+    // 4b. « Fermer et générer » : la session est enregistrée, le plan démonté, l'accueil affiché.
+    await page.evaluate(function () { document.getElementById("kta-planner-generer").click(); });
+    await cliquerOuiConfirm(page);
+    await attendre(page, function () { return document.body.classList.contains("kta-loader-active"); }, 15000);
+    const ferme = await page.evaluate(function (a) {
+      const s = window.SessionPersist.getSaved(a.id) || {};
+      const uids = [].concat(s.editorPoints || [], s.roads || []).map(function (o) { return o && o.uid; });
+      return { accueil: !window.ktaPlanAffiche(), pt: uids.indexOf(a.pt) >= 0, rd: uids.indexOf(a.rd) >= 0 };
+    }, { id: depart.id, pt: prep.pt, rd: prep.rd });
+    verifier(ferme.accueil && !(await carteVivante()) && ferme.pt && ferme.rd,
+      "plan fermé avant le tuilage (carte démontée, accueil), session enregistrée avec les objets dessinés", ferme);
     try { await attendre(page, function () { return !!document.getElementById("kta-maj-fin"); }, 60000); }
     catch (e) {
       const err = await page.evaluate(function () {
@@ -180,6 +206,10 @@ async function cliquerOuiConfirm(page) {
     });
     verifier(boutons.indexOf("telecharger") >= 0 && boutons.indexOf("remplacer") >= 0 && boutons.indexOf("publier") < 0,
       "plan local : « Télécharger » et « Remplacer dans l'app », pas de publication", boutons);
+    const noteFerme = await page.evaluate(function () {
+      return document.getElementById("kta-maj-fin").textContent.indexOf(window.I18n.t("maj.fin.planFermeRouvre")) >= 0;
+    });
+    verifier(noteFerme, "fin de l'assistant : il dit que le plan a été fermé et comment le retrouver");
     const [dl] = await Promise.all([
       page.waitForEvent("download", { timeout: 15000 }),
       page.evaluate(function () { document.querySelector('#kta-maj-fin [data-maj-fin="telecharger"]').click(); })

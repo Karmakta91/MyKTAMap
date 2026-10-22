@@ -113,6 +113,7 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire}", !!I && typeof 
 {
   const MP = lire("js/majPlan.js"), GEN = lire("js/createConf.js"), IDX = lire("index.html"), SW = lire("sw.js");
   const IF = lire("js/interface.js"), FP = lire("js/filterPanel.js"), SE = lire("js/sessionExporter.js");
+  const MAIN = lire("js/main.js");
   t("chargé par index.html APRÈS createConf.js, précaché par sw.js",
     IDX.indexOf('src="js/majPlan.js"') > IDX.indexOf('src="js/createConf.js"') && SW.indexOf('"./js/majPlan.js"') >= 0);
   t("🔒 entrée refusée en lecture seule et sans export complet du plan (jamais limitePermise)",
@@ -131,7 +132,21 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire}", !!I && typeof 
   t("légende des types versés : même sous-ensemble que la conversion", /window\.ktaLegendePourCalque = function\(payload\) \{ return _legendePourPayload/.test(SE) &&
     /ktaLegendePourCalque\(tout\)/.test(MP));
   t("plan local : remplacement sous le MÊME id (session, calage, photos restent attachés), retrait proposé AVANT",
-    /await _proposerNettoyage\(etat, false\);[\s\S]{0,200}chargerZipFichier\(fichier, [\s\S]{0,80}\{ planId: entree\.id, storeBlob: true/.test(MP));
+    /if \(avant\) await _proposerNettoyage\(etat, false\);[\s\S]{0,200}chargerZipFichier\(fichier, [\s\S]{0,80}\{ planId: entree\.id, storeBlob: true/.test(MP));
+  t("🩸 plan fermé par le Générateur : retrait APRÈS la réouverture (la session d'un plan fermé ne s'enregistre plus)",
+    /function _planOuvert\(etat\) \{\s+return !etat\.planFerme/.test(MP) &&
+    (MP.match(/if \(!avant && window\._currentLoadedPlanId === etat\.planId\) await _proposerNettoyage/g) || []).length === 2 &&
+    /etat\.planFerme = !!\(infos && infos\.planFerme\)/.test(MP));
+  t("tuilage V2 : plan affiché fermé APRÈS confirmation (refus = rien de généré), photos lues par l'id relevé avant",
+    /const planIdPhotos = window\._currentLoadedPlanId \|\| null;[\s\S]{0,200}const planFerme = tilingV2On \? await _fermerPlanAvantTuilage\(\) : false;\s+if \(planFerme === null\) return;/.test(GEN) &&
+    /getAllPhotosForPlan\(planIdPhotos\)/.test(GEN) &&
+    /ktaConfirm\(window\.I18n\.t\("gen\.fermerPlan\.texte"\)[\s\S]{0,300}if \(!ok\) return null;/.test(GEN) &&
+    /maj\.onZip\(blob, nomZip, \{ nom: name, version: version, planFerme: planFerme \}\)/.test(GEN));
+  t("fermeture = démontage complet d'un changement de plan (session enregistrée), puis l'accueil",
+    /function ktaFermerPlanPourMemoire\(\) \{[\s\S]{0,400}window\.map instanceof window\.L\.Map[\s\S]{0,120}_libererRessourcesPlanPrecedent\(\);\s+afficherLoader\(\);/.test(MAIN) &&
+    /window\.ktaFermerPlanPourMemoire = ktaFermerPlanPourMemoire;/.test(MAIN));
+  t("tuiles rangées sans recompression (STORE)", /const TUILE_ZIP_OPTS = \{ compression: "STORE" \};/.test(GEN) &&
+    (GEN.match(/fmt\.ext, (?:_tuileUnieBuf|arrBuf), TUILE_ZIP_OPTS\)/g) || []).length === 2);
   t("remplacement raté : le ZIP part en téléchargement (rien de perdu)", /catch \(er\) \{[\s\S]{0,120}_telecharger\(blob, nomZip\)/.test(MP));
   t("assistant : « Publier la nouvelle version » seulement si versionAutorisee, envoi par la prise publierVersion",
     /X\.versionAutorisee\(etat\.planId\)/.test(MP) && /window\.KtaExtensions\.publierVersion\(\{ planId: etat\.planId/.test(MP));

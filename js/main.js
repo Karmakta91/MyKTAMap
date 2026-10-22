@@ -1460,6 +1460,23 @@ function afficherLoader() {
   }
 }
 
+// ── Fermer le plan pour libérer la mémoire (avant un travail lourd) ──────────────────────
+// 🩸 Le retour à l'accueil (afficherLoader) MASQUE la carte sans la démonter : tuiles, calques, canvas de collision
+// restent en mémoire. Le tuilage V2 d'une grande image (createConf.js > _genererZip) a besoin de cette place : sous
+// pression mémoire, le navigateur rejette l'image source décodée et la redécode à chaque tuile. Ici, le démontage
+// complet d'un changement de plan, puis l'accueil. La session est enregistrée par ce démontage
+// (SessionPersist.onPlanUnload) et le plan reste en tête de « Reprendre ».
+// → { ferme, planId } ; ferme: false = aucune carte de plan en mémoire, rien n'est touché.
+function ktaFermerPlanPourMemoire() {
+  const planId = window._currentLoadedPlanId || null;
+  // ⚠️ `window.map` vaut le <div id="map"> (accès nommé) tant qu'aucune carte n'a été créée : tester L.Map.
+  if (!(window.L && window.map instanceof window.L.Map)) return { ferme: false, planId: planId };
+  _libererRessourcesPlanPrecedent();
+  afficherLoader();
+  console.log("[Main] Plan fermé pour libérer la mémoire :", planId);
+  return { ferme: true, planId: planId };
+}
+
 // ── Splash de démarrage ──────────────────────
 // Animation, versions, passage au clic et plafond : js/ktaSplash.js. Ici, le boot dit QUAND l'écran suivant est prêt.
 // ⚠️ Avant une gate : _splashAvantGate() attend seulement la fin de l'animation ; le splash reste DESSOUS (toutes
@@ -1938,4 +1955,5 @@ window.chargerPlanServeur  = chargerPlanServeur;
 window.initDataFromConfig  = initDataFromConfig;
 window.lancerApplication   = lancerApplication;
 window.afficherLoader      = afficherLoader;
+window.ktaFermerPlanPourMemoire = ktaFermerPlanPourMemoire;
 window.decouvrirPlansServeur = decouvrirPlansServeur;
