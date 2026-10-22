@@ -82,15 +82,9 @@ const TAGS_BUILTIN = {
   // « portail » (liaisons inter-plan) : icône vortex. Un point lié garde le tag qu'on veut ; prendre
   // celui-ci signale visuellement le portail (choix de l'utilisateur).
   portail:  "icon/portail.png",
-  // « Point d'entrée du plan » (Vue OSM × Mode Secours) : SVG inline, sans fichier PNG à précacher.
-  entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
-      '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
-      '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
-      '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
-      '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
-    '</svg>'
-  )
+  // « Point d'entrée du plan » (Vue OSM × Mode Secours). Les plans générés avant le PNG portent l'ancien SVG en
+  // data-URI : config.js > nettoyerIconesConfig le retire, le catalogue reprend la main.
+  entree_plan: "icon/entree_plan.png"
 };
 
 // Exposée DÈS LE CHARGEMENT du script : le HOME résout les icônes built-in sans copie.
