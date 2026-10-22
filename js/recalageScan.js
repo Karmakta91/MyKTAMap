@@ -329,7 +329,7 @@
   }
 
   function _quantile(triees, q) {
-    if (!triees.length) return NaN;
+    if (!triees.length) return Number.NaN;
     const i = Math.min(triees.length - 1, Math.max(0, Math.ceil(q * triees.length) - 1));
     return triees[i];
   }
@@ -337,7 +337,7 @@
   // Médiane, 90e centile, maximum (px) et part sous 1 px.
   function statsEcarts(arr) {
     const t = (arr || []).slice().sort(function (x, y) { return x - y; });
-    if (!t.length) return { n: 0, mediane: NaN, p90: NaN, max: NaN, sous1: NaN };
+    if (!t.length) return { n: 0, mediane: Number.NaN, p90: Number.NaN, max: Number.NaN, sous1: Number.NaN };
     const mid = t.length >> 1;
     const med = t.length % 2 ? t[mid] : (t[mid - 1] + t[mid]) / 2;
     const sous1 = t.filter(function (v) { return v < 1; }).length / t.length;
@@ -510,7 +510,7 @@
 
   // Écart relatif des proportions de deux images (0 = même rapport largeur / hauteur).
   function ecartProportions(wA, hA, wB, hB) {
-    if (!(wA > 0 && hA > 0 && wB > 0 && hB > 0)) return NaN;
+    if (!(wA > 0 && hA > 0 && wB > 0 && hB > 0)) return Number.NaN;
     const kX = wB / wA, kY = hB / hA;
     return Math.abs(kX - kY) / Math.max(kX, kY);
   }
@@ -944,12 +944,12 @@
       });
     });
     function lireRes() {
-      const v = function (id) { const x = parseInt($(id).value, 10); return (Number.isFinite(x) && x > 0) ? x : null; };
+      const v = function (id) { const x = Number.parseInt($(id).value, 10); return (Number.isFinite(x) && x > 0) ? x : null; };
       return { wA: v("kta-recal-src_w"), hA: v("kta-recal-src_h"), wB: v("kta-recal-dst_w"), hB: v("kta-recal-dst_h") };
     }
     // Une paire : null = vide, {invalid:true} = partielle (refus), sinon {A,B}
     function lirePaire(id) {
-      const v = function (sfx) { const x = parseFloat($(id + "_" + sfx).value); return Number.isFinite(x) ? x : null; };
+      const v = function (sfx) { const x = Number.parseFloat($(id + "_" + sfx).value); return Number.isFinite(x) ? x : null; };
       const xa = v("xa"), ya = v("ya"), xb = v("xb"), yb = v("yb");
       const remplis = [xa, ya, xb, yb].filter(function (x) { return x !== null; }).length;
       if (remplis === 0) return null;
@@ -1023,7 +1023,7 @@
       const ecart = ecartProportions(r.wA, r.hA, r.wB, r.hB);
       const pct = (Math.round(ecart * 1000) / 10).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       if (p1) {
-        const theta = parseFloat($("kta-recal-theta").value) || 0;
+        const theta = Number.parseFloat($("kta-recal-theta").value) || 0;
         return { M: matriceRecalage(kX, kY, theta, p1.A, p1.B),
                  warn: ecart > PROPORTIONS_MAX ? t("recalscan.resol.warnAspect1p", { pct: pct }) : null,
                  html: t("recalscan.resol.mode1p") + "<br>kX = <strong>" + kX.toFixed(4) + "</strong> · kY = <strong>"

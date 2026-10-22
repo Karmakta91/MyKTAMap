@@ -88,7 +88,12 @@ window.MajPlan = (function () {
   // Identifiant de calque tiré d'un nom : minuscules sans accent, [a-z0-9_-], 40 caractères, unique dans `pris`.
   function slug(nom, pris) {
     let base = String(nom || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
+      .replace(/[^a-z0-9_-]+/g, "_");
+    // Bords « _ » retirés sans regex ancrée des deux côtés (retour arrière super-linéaire signalé par Sonar).
+    let d = 0, f = base.length;
+    while (d < f && base[d] === "_") d++;
+    while (f > d && base[f - 1] === "_") f--;
+    base = base.slice(d, f).slice(0, 40);
     if (!base || base === "editor") base = "calque";
     let id = base, n = 2;
     while (pris.has(id)) id = base + "_" + (n++);

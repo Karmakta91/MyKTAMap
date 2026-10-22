@@ -135,8 +135,8 @@ window.ktaIconeOsm = function (url, taille, tag) {
   let icone;
   if (window.ktaReglageTailleIcones()) {
     icone = L.divIcon({
-      html:       '<img src="' + String(url).replace(/"/g, "&quot;") + '" alt=""' +
-                  (tag ? ' data-kta-tag="' + String(tag).replace(/"/g, "&quot;") + '"' : "") +
+      html:       '<img src="' + String(url).replaceAll('"', "&quot;") + '" alt=""' +
+                  (tag ? ' data-kta-tag="' + String(tag).replaceAll('"', "&quot;") + '"' : "") +
                   ' class="kta-marker-img" draggable="false">',
       className:  "kta-marker-divicon",
       iconSize:   [taille, taille],
@@ -180,7 +180,7 @@ function creerIcones(iconConfig) {
         // L'<img> reçoit le scale CSS (cf style.css). `data-kta-tag` sert au REPLI de toute la carte
         // (cf _installerRepliIcones) : carte, filtres, favoris, recherche lisent la même cascade.
         html:       '<img src="' + url + '" alt=""' +
-                    (tag ? ' data-kta-tag="' + String(tag).replace(/"/g, "&quot;") + '"' : "") +
+                    (tag ? ' data-kta-tag="' + String(tag).replaceAll('"', "&quot;") + '"' : "") +
                     ' class="kta-marker-img" draggable="false">',
         className:  "kta-marker-divicon",
         iconSize:   [w, h],

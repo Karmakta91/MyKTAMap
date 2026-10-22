@@ -3977,7 +3977,7 @@ async function _choisirPlanExtAMettreAJour(plans, nomZip) {
     if (e.version) d.push(window.I18n.t("ext.publier.choixVersion", { n: e.version }));
     if (e.lastOpened) {
       const dt = new Date(e.lastOpened);
-      if (!isNaN(dt)) d.push(window.I18n.t("ext.publier.choixOuvert", { date: dt.toLocaleDateString(loc) }));
+      if (!Number.isNaN(dt.getTime())) d.push(window.I18n.t("ext.publier.choixOuvert", { date: dt.toLocaleDateString(loc) }));
     }
     d.push("#" + String(e.extId || e.id).replace(/^ext_/, "").slice(0, 8));
     return d.join(" · ");

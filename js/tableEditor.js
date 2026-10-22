@@ -925,7 +925,7 @@
         if (e.target.closest("input")) return;
         const col = td.dataset.col;
         if (col === "id" || col === "points") return; // lecture seule (id + géométrie)
-        if (col === "level" && _sansNiveau(_data[parseInt(td.dataset.idx)])) return;
+        if (col === "level" && _sansNiveau(_data[Number.parseInt(td.dataset.idx, 10)])) return;
         if (col === "tags") {
           const removeBtn = e.target.closest("[data-tag-remove]");
           if (removeBtn) {
@@ -1060,7 +1060,7 @@
     function terminer(garder) {
       if (fini) return;
       fini = true;
-      const n = parseInt(sel.value, 10);
+      const n = Number.parseInt(sel.value, 10);
       if (garder && Number.isInteger(n) && n !== actuel) {
         p.level = n;
         _toucher(p);

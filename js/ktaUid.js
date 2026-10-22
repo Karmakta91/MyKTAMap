@@ -168,7 +168,7 @@
   function setTombstones(list) {
     _traces = new Map();
     (Array.isArray(list) ? list : []).forEach(function (t) {
-      if (t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && isFinite(t.deletedAt)) {
+      if (t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && Number.isFinite(t.deletedAt)) {
         _traces.set(t.uid, t.deletedAt);
       }
     });
@@ -256,7 +256,7 @@
   //   ajoutes, misAJour, supprimes }.
   function preparerImport(local, fichier, mode, now) {
     const FAM = ["data", "roads", "zones", "structures"];
-    const t0 = (typeof now === "number" && isFinite(now)) ? now : Date.now();
+    const t0 = (typeof now === "number" && Number.isFinite(now)) ? now : Date.now();
     const horsJeu = function (o) { return estTransitoire(o) || !!(o && o._preview); };
     const copie = function (a) {
       return Array.isArray(a) ? JSON.parse(JSON.stringify(a.filter(function (o) { return o && typeof o === "object"; }))) : [];
@@ -272,7 +272,7 @@
     const traces = new Map();
     const lireTraces = function (liste) {
       (Array.isArray(liste) ? liste : []).forEach(function (t) {
-        if (t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && isFinite(t.deletedAt)) {
+        if (t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && Number.isFinite(t.deletedAt)) {
           traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
         }
       });

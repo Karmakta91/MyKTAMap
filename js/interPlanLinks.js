@@ -533,9 +533,9 @@
         if (del) del.addEventListener("click", function() {
           _confirmerSuppression(l.id, _render);
         });
-        const acts = actionsExt[parseInt(row.getAttribute("data-i"), 10)] || [];
+        const acts = actionsExt[Number.parseInt(row.getAttribute("data-i"), 10)] || [];
         row.querySelectorAll("[data-ext]").forEach(function(btn) {
-          const a = acts[parseInt(btn.getAttribute("data-ext"), 10)];
+          const a = acts[Number.parseInt(btn.getAttribute("data-ext"), 10)];
           if (a) btn.addEventListener("click", function() {
             try { a.action(); } catch(e) { console.warn("[InterPlanLinks] action d'extension :", e); }
           });
