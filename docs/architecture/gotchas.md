@@ -492,3 +492,12 @@ r._redraw();
 ⚠️ Ne pas confondre avec `_repeindreCarte()` (legendCustomization), qui rejoue
 les `render*` complets : c'est le bon outil pour un changement de style ponctuel,
 et l'inverse de ce qu'il faut sur un `zoomend` à 20 000 objets.
+
+## ⏱️ Démonter une carte en plein zoom animé : `_leaflet_pos` 250 ms plus tard
+
+`L.Map._animateZoom` pose `setTimeout(_onZoomTransitionEnd, 250)` (repli WebKit) et `map.remove()` ne l'annule
+pas. Démontée pendant un zoom animé (ouvertures de plan enchaînées, retour à l'accueil juste après l'ouverture),
+la carte reçoit la minuterie sans `_mapPane` : `TypeError … _leaflet_pos` dans `_getMapPanePos`, erreur de page
+non rattrapable par un `try` autour de `remove()`. Parade aux deux démontages
+(`main.js > _libererRessourcesPlanPrecedent`, `map.js > cleanupExistingMap`) : `map._animatingZoom = false`
+juste avant `remove()`, `_onZoomTransitionEnd` sort alors aussitôt. Garde-fou : `scripts/smoke/checkup-ouvertures-enchainees.js` (rouge 4 fois sur 4 sans la parade).
