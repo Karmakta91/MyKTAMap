@@ -629,10 +629,9 @@ sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a
 🛡️ `scripts/check-couleurs-inline.js` (pré-commit bloquant, donc CI) compte les hex écrits dans un style posé par
 le JS (`js/*.js` : attribut `style="…"` d'un gabarit, `el.style.x =`, `cssText`, `setProperty`,
 `setAttribute("style")`). C'est un **cliquet** : le compte ne peut que baisser, une baisse se reporte dans
-`PLAFOND` le même commit. Restent comptées (9) des couleurs sans jeton dans la charte : le cyan du bouton GPS de
-l'accueil, l'orange de la carte de chaleur, le rouge plein du lancement Secours depuis le Mode Perdu, le fond
-orange plein du bouton « continuer » du kill-switch (le jeton `--kta-avert` fonce en clair ; son texte prend
-`--kta-sur-accent`), la console de débogage, le hachuré de la légende. Les fenêtres de `planDenylist.js`
+`PLAFOND` le même commit. Restent comptées (8) des couleurs sans jeton dans la charte : le cyan du bouton GPS de
+l'accueil, l'orange de la carte de chaleur, le rouge plein du lancement Secours depuis le Mode Perdu, la console
+de débogage, le hachuré de la légende. Les fenêtres de `planDenylist.js`
 déclarent leur palette d'alarme par thème (`pal` / `pp`), hors charte. Ne comptent pas : le repli d'un
 `var(--kta-x, #…)`, une entité `&#…;`, la valeur d'un `<input type="color">`. Exception par ligne : marque
 `couleur-inline-ok` et sa raison (ex. conteneur de rendu hors écran exporté en image). Les palettes propres de
@@ -661,9 +660,8 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
 - **Contrat** : chaque couple texte / fond de ce tableau tient **4,5:1** (WCAG AA). Mesuré dans le DOM sur 2 471
   textes de 30 écrans, PC 1280 et téléphone 390, dans les deux thèmes (méthode :
   `docs/audits/2026-10-20_audit-ui-impeccable-v1.md`). Seul le splash reste hors contrat (lot à part).
-  `--kta-sur-accent` : 10,1:1 sur `#f4c542`, 9,4:1 sur l'orange `#ffb380`. En clair, les boutons principaux
-  dorés ou orange posés par le JS passent au bleu de `.kta-btn-primary` (règle claire prioritaire) : le jeton n'y
-  joue pas (décision produit : bouton principal bleu). `--kta-tuilage-v2` : 4,84:1 en sombre, 6,6:1 en clair, sur
+  `--kta-sur-accent` : 10,1:1 sur `#f4c542`, 9,4:1 sur l'orange `#ffb380`. Un bouton principal ne prend jamais
+  de couleur inline : `.kta-btn-primary` le fait bleu dans les deux thèmes (décision produit). `--kta-tuilage-v2` : 4,84:1 en sombre, 6,6:1 en clair, sur
   la surface (libellé de la case V2). Le violet du Mode Perdu (`lostMode.js`, indice dans la zone) a la même valeur mais n'est pas ce jeton.
 - **Bouton principal bleu dans les deux thèmes** (décision produit) : `.kta-btn-primary`, `#loadPlanBtn`, « J'accepte »
   des CGU. Le doré reste l'accent (titres, onglet actif, cases cochées).
