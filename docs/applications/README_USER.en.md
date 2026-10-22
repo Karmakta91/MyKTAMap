@@ -609,6 +609,8 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
+**🗺️ Legend**: on a map, the **🗺️ Legend** button of the OSM View; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
+
 **🗂️ Several maps at once**: the **≡** button of the banner opens a window with the display settings, the tag filter and the stack of displayed maps:
 
 - ➕ add a map — the menu groups them by **folder** of “My maps”, and “📁 Add the whole folder” shows them all at once —, ▲▼ move it above or below, an **opacity** slider per map, ✕ remove it; ◉ marks the main map;

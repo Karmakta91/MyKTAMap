@@ -609,6 +609,8 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 
+**🗺️ Légende** : sur un plan, le bouton **🗺️ Légende** de la Vue OSM ; sur l'accueil, le bouton **🗺️** du bandeau. La légende est celle du plan, avec tes noms, tes couleurs et tes types personnels, en **lecture seule** : elle se modifie depuis le plan (🗺️ Légende → ✏️ Modifier). Sur l'accueil, c'est la légende du plan que tu viens de quitter, sinon celle du plan affiché que tu as ouvert le plus récemment ; si plusieurs plans sont affichés, un message te rappelle que les autres ont la leur.
+
 **🗂️ Plusieurs plans à la fois** : le bouton **≡** du bandeau ouvre une fenêtre avec les réglages d'affichage, le filtre par tag et la pile des plans affichés :
 
 - ➕ ajouter un plan — le menu les range par **dossier** de « Mes plans », et « 📁 Ajouter tout le dossier » les affiche d'un coup —, ▲▼ le passer dessus ou dessous, un curseur d'**opacité** par plan, ✕ le retirer ; ◉ marque le plan principal ;

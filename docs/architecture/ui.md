@@ -629,7 +629,7 @@ sans surcharge. Les surcharges par sélecteur d'attribut (`[style*="color:#8892a
 🛡️ `scripts/check-couleurs-inline.js` (pré-commit bloquant, donc CI) compte les hex écrits dans un style posé par
 le JS (`js/*.js` : attribut `style="…"` d'un gabarit, `el.style.x =`, `cssText`, `setProperty`,
 `setAttribute("style")`). C'est un **cliquet** : le compte ne peut que baisser, une baisse se reporte dans
-`PLAFOND` le même commit. Restent comptées (9) des couleurs sans jeton dans la charte : le cyan du bouton GPS de
+`PLAFOND` le même commit. Restent comptées (8) des couleurs sans jeton dans la charte : le cyan du bouton GPS de
 l'accueil, l'orange de la carte de chaleur, le rouge plein du lancement Secours depuis le Mode Perdu, le fond
 orange plein du bouton « continuer » du kill-switch (le jeton `--kta-avert` fonce en clair ; son texte prend
 `--kta-sur-accent`), la console de débogage, le hachuré de la légende. Les fenêtres de `planDenylist.js`

@@ -125,6 +125,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Modale OSM : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
 | Widget aperçu OSM sur la home | `osmHomePreview.js` |
+| Légende du plan en lecture seule depuis les deux cartes OSM (avertissement si plusieurs plans) | `interfaceLegende.js` |
 | Cache de tuiles OSM (IndexedDB) | `osmTilesCache.js` |
 
 ### 🎨 UI / UX
