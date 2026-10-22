@@ -58,6 +58,10 @@
   · taille: S`
 ## Ensuite
 
+- **Vue OSM : pas d'accès à la légende du plan** — ni la Vue OSM ouverte depuis un plan ni la carte OSM de l'accueil
+  n'ouvrent la ≡ Légende (types de tracés, zones, structures, icônes du plan, légende personnalisée comprise).
+  `qui: Claude · action: bouton Légende dans la barre des deux cartes OSM, même fenêtre que le mode plan (plan affiché)
+  · fini: légende du plan ouverte depuis les deux cartes OSM · depuis: 22/10/2026 · taille: S`
 - **Garde-fou `check-calque-session.js` contourné** — il interdit à `convertirObjet.js` de nommer les points de
   session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
   `qui: Claude · action: dire précisément ce qui est permis (accès fourni par l'appelant) et le vérifier
