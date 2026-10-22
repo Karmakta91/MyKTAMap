@@ -3075,6 +3075,10 @@ function _detectContentBBox(img) {
 // cf. GpxImport.genererCanvasVierge). Toute tuile intérieure pleine y est identique à tous les zooms et le
 // JPEG est déterministe : on l'encode UNE fois (70 à 90 % des tuiles d'un relevé réel).
 // ⚠️ À NE JAMAIS activer pour un vrai scan : aucune tuile identique, le cache produirait un plan gris uni.
+// Tuiles rangées SANS recompression : JPEG, WebP et PNG sont déjà compressés, DEFLATE n'y gagne presque rien et
+// coûte du temps à la génération du ZIP.
+const TUILE_ZIP_OPTS = { compression: "STORE" };
+
 async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   // Octets de la tuile pleine, encodés au plus une fois.
   let _tuileUnieBuf = null;
@@ -3196,7 +3200,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
         const estPleine = (sliceWidthLvl === TILING_V2_TILE_SIZE &&
                            sliceHeightLvl === TILING_V2_TILE_SIZE && destY === 0);
         if (uniformSource && estPleine && _tuileUnieBuf) {
-          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf, TUILE_ZIP_OPTS);
           tilesDone++;
           if (onProgress) onProgress(tilesDone, tilesTotal, z);
           continue;
@@ -3223,7 +3227,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
           // Première tuile pleine d'une source unie : octets gardés. `slice()` détache du buffer d'origine
           // (JSZip garde la référence ; un buffer transféré casserait les N entrées).
           if (uniformSource && estPleine && !_tuileUnieBuf) _tuileUnieBuf = arrBuf.slice(0);
-          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf, TUILE_ZIP_OPTS);
         } catch(zipErr) {
           throw new Error(window.I18n.t("gen.err.tuileZip", {
             z: z, col: col, k: k,
