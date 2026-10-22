@@ -4659,6 +4659,8 @@
   "session.partage.confirmTout": "¿Eliminar los {n} objeto(s) de la sesión de este plano, para todos los miembros?\nDesaparecerán del servidor y en todos los dispositivos. Se guarda un snapshot de tu sesión en 📦 Backups, pero la eliminación no se deshace para la organización.",
   "session.partage.okMiens": "🗑️ Eliminar mis añadidos",
   "session.partage.okTout": "🗑️ Eliminarlo todo",
+  "session.partage.okAnnulerLocal": "↻ Anular lo no enviado",
+  "session.partage.inconnus": "{n} objeto(s) de autor desconocido no se cuentan (solo «Eliminarlo todo» los cubre).",
   "session.toast.supprimesOrga": "{n} objeto(s) eliminado(s) para toda la organización.",
   "sortie.aucune.detail": "Los POIs reconocidos como salida son los etiquetados <code>cao</code> (Cavidad abierta), <code>peo</code> (Pozo con peldaños abierto), <code>eso</code> (Escalera de servicio abierta), o <code>entrée</code>, o la etiqueta integrada « Punto de entrada del mapa ».<br><em>Las versiones « cerradas » (caf / pef / esf) se ignoran deliberadamente.</em>",
   "sortie.aucune.titre": "⚠️ <strong>Ninguna salida identificada en este mapa.</strong>",

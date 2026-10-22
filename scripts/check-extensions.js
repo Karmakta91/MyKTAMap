@@ -1345,6 +1345,11 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🔒 câblage : jamais de trace pour une copie de calque, l'itinéraire ou un portail ; « mes ajouts » = auteurObjet",
       /o\._srcCalque !== undefined/.test(SP) && /KtaUid\.estTransitoire\(o\)\) \|\| \(g === "getEditorPoints" && _estPortail\(o\)\)/.test(SP) &&
       /a\.createur !== auteur/.test(SP));
+    t("🔒 câblage : créateur inconnu (auteurObjet null) jamais dans « mes ajouts », nombre annoncé ; boutons « Annuler » + action cochée",
+      /if \(inconnus \? !!\(a && a\.createur\) : \(!auteur \|\| !a \|\| a\.createur !== auteur\)\) return;/.test(SP) &&
+      /_t\("session\.partage\.inconnus", \{ n: inconnus \}\)/.test(ch) && /cancelLabel: _t\("ui\.confirm\.cancel"\), choix: choix/.test(ch) &&
+      /okLabel: _t\("session\.partage\.okMiens"\)/.test(ch) && /okLabel: _t\("session\.partage\.okTout"\)/.test(ch) &&
+      /oui\.textContent = o\.okLabel \|\| opts\.okLabel/.test(UT));
     t("🩸 câblage : traces posées APRÈS le vidage (qui les efface), anciennes gardées, datées après l'objet",
       h.indexOf("_viderEtatCourant()") > 0 && h.indexOf("_viderEtatCourant()") < h.indexOf("_tracerEffacement(avant, cibles)") &&
       /U\.setTombstones\(avant\);/.test(SP) && /U\.tombstone\(c\.uid, Math\.max\(now, c\.updatedAt \+ 1\)\)/.test(SP) &&

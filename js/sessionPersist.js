@@ -623,7 +623,9 @@
   // est le créateur. 🔒 Jamais une copie de calque (elle porte l'uid d'un objet du calque : une trace le détruirait
   // par la fusion de calques, cf. historyManager.js > _laisseTrace), ni l'itinéraire calculé, ni un portail (gardé
   // par _viderEtatCourant). → [{ uid, updatedAt }]
-  function _ciblesEffacement(tout, auteur) {
+  // `inconnus` : objets dont l'extension ne connaît pas le créateur (auteurObjet null) — jamais comptés comme « mes
+  // ajouts » (décision produit : pas de suppression d'un objet d'autrui par erreur) ; seul `tout` les couvre.
+  function _ciblesEffacement(tout, auteur, inconnus) {
     const K = window.KtaExtensions;
     const out = [];
     ["getEditorPoints", "getRoads", "getZones", "getStructures"].forEach(function(g) {
@@ -631,9 +633,9 @@
       liste.forEach(function(o) {
         if (!o || typeof o.uid !== "string" || !o.uid || o._srcCalque !== undefined || o._preview) return;
         if ((window.KtaUid && window.KtaUid.estTransitoire(o)) || (g === "getEditorPoints" && _estPortail(o))) return;
-        if (!tout) {
+        if (!tout || inconnus) {
           const a = (K && typeof K.auteurObjet === "function") ? K.auteurObjet(o.uid) : null;
-          if (!auteur || !a || a.createur !== auteur) return;
+          if (inconnus ? !!(a && a.createur) : (!auteur || !a || a.createur !== auteur)) return;
         }
         out.push({ uid: o.uid, updatedAt: Number(o.updatedAt) || 0 });
       });
@@ -667,20 +669,24 @@
       if (n === null || n === undefined || n > 0) {
         options.push({ valeur: "appareil",
           titre: Number.isInteger(n) ? _t("session.partage.annulerLocalN", { n: n }) : _t("session.partage.annulerLocal"),
-          aide: _t("session.partage.annulerLocalAide") });
+          aide: _t("session.partage.annulerLocalAide"), okLabel: _t("session.partage.okAnnulerLocal") });
       }
+      const inconnus = droits.miens ? _ciblesEffacement(true, null, true).length : 0;
       if (droits.miens) {
         options.push({ valeur: "miens", titre: _t("session.partage.miens"),
-          aide: _t("session.partage.miensAide", { n: _ciblesEffacement(false, droits.auteur).length }) });
+          aide: _t("session.partage.miensAide", { n: _ciblesEffacement(false, droits.auteur).length }) +
+            (inconnus ? " " + _t("session.partage.inconnus", { n: inconnus }) : ""),
+          okLabel: _t("session.partage.okMiens") });
       }
       if (droits.tout) {
         options.push({ valeur: "tout", titre: _t("session.partage.tout"),
-          aide: _t("session.partage.toutAide", { n: _ciblesEffacement(true, null).length }) });
+          aide: _t("session.partage.toutAide", { n: _ciblesEffacement(true, null).length }), okLabel: _t("session.partage.okTout") });
       }
       if (!options.length) { window.ktaAlerte(_t("session.partage.rien")); return null; }
+      // « Annuler » ferme sans rien effacer ; le bouton d'action dit ce que fait le choix coché (okLabel).
       const choix = { options: options, valeur: null, aucunParDefaut: true };
       const opts = { titre: _t("session.confirm.clearTitle"), okLabel: _t("session.btn.clear"),
-        cancelLabel: _t("session.btn.keep"), choix: choix };
+        cancelLabel: _t("ui.confirm.cancel"), choix: choix };
       let texte = msg + "\n\n" + _t("session.partage.intro");
       if (calques.length) {
         // ⚠️ ktaConfirm insère le message en HTML : les noms de calques (fichier du plan) sont échappés.
@@ -779,7 +785,7 @@
         window.ktaConfirm(msg, {
           titre:       _t("session.confirm.clearTitle"),
           okLabel:     _t("session.btn.clear"),
-          cancelLabel: _t("session.btn.keep")
+          cancelLabel: _t("ui.confirm.cancel")
         }).then(function(ok) { if (ok) go(false); });
       }
     } else {

@@ -4659,6 +4659,8 @@
   "session.partage.confirmTout": "Supprimer les {n} objet(s) de la session de ce plan, pour tous les membres ?\nIls disparaîtront sur le serveur et sur tous les appareils. Un snapshot de ta session est gardé dans 📦 Backups, mais la suppression ne s'annule pas pour l'organisation.",
   "session.partage.okMiens": "🗑️ Supprimer mes ajouts",
   "session.partage.okTout": "🗑️ Tout supprimer",
+  "session.partage.okAnnulerLocal": "↻ Annuler le non-envoyé",
+  "session.partage.inconnus": "{n} objet(s) dont l'auteur est inconnu ne sont pas comptés (seul « Tout supprimer » les couvre).",
   "session.toast.supprimesOrga": "{n} objet(s) supprimé(s) pour toute l'organisation.",
   "sortie.aucune.detail": "Les POIs reconnus comme sortie sont ceux taggés <code>cao</code> (Cavage ouvert), <code>peo</code> (Puits à échelon ouvert), <code>eso</code> (Escalier de service ouvert), ou <code>entrée</code>, ou le tag intégré « Point d'entrée du plan ».<br><em>Les versions « fermées » (caf / pef / esf) sont volontairement ignorées.</em>",
   "sortie.aucune.titre": "⚠️ <strong>Aucune sortie identifiée sur ce plan.</strong>",

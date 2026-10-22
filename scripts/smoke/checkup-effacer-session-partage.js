@@ -9,7 +9,8 @@
 //   2. prise { miens, tout, enAttente: 5 } : trois choix, rien de présélectionné (OK inactif), nombres annoncés ;
 //      « Annuler ce que cet appareil n'a pas encore envoyé » ne pose aucune trace ; 0 en attente sans droit : rien ;
 //   3. « Supprimer mes ajouts » : confirmation chiffrée, une trace par objet créé par le compte, anciennes gardées ;
-//   4. « Tout supprimer » : une trace par objet, datée après l'objet ;
+//   4. « Tout supprimer » : une trace par objet, datée après l'objet ; boutons « Annuler » et l'action cochée ;
+//      créateur inconnu de l'extension : jamais dans « mes ajouts », nombre annoncé, aucune trace pour lui ;
 //   5. droit « modifier » ({ miens } seul) : pas de « tout » ; prise en erreur : l'annulation seule, sans nombre ;
 //   6. droit retiré entre l'ouverture et la confirmation : refus nommé, rien n'est effacé.
 // 🩸 check-extensions.js lit le câblage ; seul ce parcours voit la fenêtre, les setters réels et l'ordre
@@ -94,7 +95,11 @@ async function simulerPrise(page, rep) {
         const r = (window.__appelsPrise > 1 && rep.suite) ? rep.suite : rep;
         return Promise.resolve({ miens: r.miens, tout: r.tout, auteur: r.auteur, enAttente: r.enAttente });
       },
-      auteurObjet: function (uid) { return { createur: /^pt_moi/.test(uid) ? "moi" : "autre", modifiePar: null }; }
+      // `inconnu` : le créateur des objets des autres n'est pas connu de l'extension (auteurObjet null).
+      auteurObjet: function (uid) {
+        if (rep.inconnu && !/^pt_moi/.test(uid)) return null;
+        return { createur: /^pt_moi/.test(uid) ? "moi" : "autre", modifiePar: null };
+      }
     });
   }, rep);
 }
@@ -110,12 +115,16 @@ async function effacer(page, valeur) {
     const ov = document.getElementById("kta-confirm-oui").closest(".kta-readme-modal-overlay");
     return { choix: radios.map(function (r) { return r.value; }),
       aides: radios.map(function (r) { return r.parentNode.textContent; }), premiere: ov ? ov.textContent : "",
-      coche: radios.some(function (r) { return r.checked; }), okInactif: document.getElementById("kta-confirm-oui").disabled };
+      coche: radios.some(function (r) { return r.checked; }), okInactif: document.getElementById("kta-confirm-oui").disabled,
+      annulerTxt: (document.getElementById("kta-confirm-non") || {}).textContent || "" };
   });
-  await page.evaluate(function (v) {
+  vue.okTxt = await page.evaluate(function (v) {
     const r = v ? document.querySelector('[data-kta-confirm-choix="' + v + '"]') : null;
     if (r) r.click();
-    document.getElementById("kta-confirm-oui").click();
+    const o = document.getElementById("kta-confirm-oui");
+    const txt = o.textContent;
+    o.click();
+    return txt;
   }, valeur || "");
   await page.waitForTimeout(900);
   const suite = await page.evaluate(function () {
@@ -201,6 +210,19 @@ async function effacer(page, valeur) {
     verif(!!v4.seconde && /(^|\D)4 objet/.test(v4.seconde) && /tous les membres/.test(v4.seconde),
       "tout : confirmation « 4 objets … pour tous les membres »", v4.seconde);
     verif(JSON.stringify(v4.apres.traces) === JSON.stringify(["pt_ancien"].concat(TOUS)), "tout : une trace par objet", v4.apres.traces);
+    verif(v4.annulerTxt === "Annuler" && /Tout supprimer/.test(v4.okTxt), "boutons : « Annuler » et l'action cochée (« 🗑️ Tout supprimer »)",
+      { annuler: v4.annulerTxt, ok: v4.okTxt });
+
+    // 4 bis. Créateur inconnu de l'extension : jamais compté dans « mes ajouts », la fenêtre le dit ; « tout » le couvre.
+    await poserEtRouvrir(page);
+    await simulerPrise(page, { miens: true, tout: true, auteur: "moi", inconnu: true });
+    const v4b = await effacer(page, "miens");
+    verif(/(^|\D)3 objet/.test(v4b.aides[0] || "") && /(^|\D)1 objet\(s\) dont l'auteur est inconnu/.test(v4b.aides[0] || "") &&
+      /(^|\D)4 objet/.test(v4b.aides[1] || ""), "auteur inconnu : « mes ajouts » 3 objets + « 1 objet(s) dont l'auteur est inconnu », tout 4",
+      v4b.aides);
+    verif(/Supprimer mes ajouts/.test(v4b.okTxt), "le bouton d'action dit « Supprimer mes ajouts » une fois ce choix coché", v4b.okTxt);
+    verif(JSON.stringify(v4b.apres.traces) === JSON.stringify(["pt_ancien", "pt_moi1", "pt_moi2", "pt_moi3"]),
+      "🔒 auteur inconnu : aucune trace pour lui avec « mes ajouts »", v4b.apres.traces);
 
     // 5. Droit « modifier », puis prise en erreur.
     await poserEtRouvrir(page);

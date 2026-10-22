@@ -4659,6 +4659,8 @@
   "session.partage.confirmTout": "Delete the {n} item(s) of this map's session, for every member?\nThey will disappear from the server and on every device. A snapshot of your session is kept in 📦 Backups, but the deletion cannot be undone for the organisation.",
   "session.partage.okMiens": "🗑️ Delete my additions",
   "session.partage.okTout": "🗑️ Delete everything",
+  "session.partage.okAnnulerLocal": "↻ Cancel what is not sent",
+  "session.partage.inconnus": "{n} object(s) whose author is unknown are not counted (only “Delete everything” covers them).",
   "session.toast.supprimesOrga": "{n} item(s) deleted for the whole organisation.",
   "sortie.aucune.detail": "POIs recognised as exits are those tagged <code>cao</code> (open adit), <code>peo</code> (open ladder shaft), <code>eso</code> (open service stairs), or <code>entrée</code>, or the built-in “Plan entry point” tag.<br><em>The « closed » versions (caf / pef / esf) are intentionally ignored.</em>",
   "sortie.aucune.titre": "⚠️ <strong>No exit identified on this map.</strong>",
