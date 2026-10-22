@@ -1689,6 +1689,10 @@
       // bouge. Premier enfant (sous les tracés par l'ordre du DOM) + couche de composition propre
       // (translateZ + will-change), le remède au clignotement d'un calque semi-transparent.
       parent.insertBefore(pane, parent.firstChild);
+      // 🩸 z-index 0 explicite : Leaflet donne 400 à TOUT pane créé (CSS .leaflet-pane), qui l'emporte sur l'ordre du
+      // DOM → tracés (svg sans z-index) et POI du haut de l'écran (z-index = y à l'écran < 400) passaient SOUS les
+      // tuiles, de façon variable selon le zoom.
+      pane.style.zIndex = "0";
       pane.style.transform = "translateZ(0)";
       pane.style.willChange = "opacity";
     }
