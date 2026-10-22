@@ -80,10 +80,6 @@
   alors que la fiche ne propose plus « Convertir » pour elle.
   `qui: Claude · action: l'exclure du lot comme de la fiche (CIBLES_INTERDITES) · fini: jonction absente du lot
   · depuis: 21/10/2026 · taille: XS`
-- **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
-  sur PC) ; états orange et thème clair jamais vus en navigateur.
-  `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
-  · fini: mesure notée dans perf-memory.md, captures vues · depuis: 03/10/2026 · taille: S`
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert

@@ -1396,3 +1396,28 @@ Le défaut de la v1.10.0 ouvrait un plan sur les **trois niveaux centraux** — 
 Case dans les réglages de performance du HOME, **cochée par défaut**. 🩸 Elle est rangée là parce que c'est un arbitrage de charge, mais **volontairement HORS du méta-bouton ULTRA** : afficher plus n'est pas optimiser, et « activer toutes les optimisations » ne doit jamais alourdir l'app.
 
 ⚠️ Les niveaux **découverts** dans un calque de données (après le calcul initial) deviennent visibles eux aussi — sans quoi l'option n'aurait rien changé là où elle sert le plus.
+
+---
+
+## 📡 Pastille « hors-ligne » de l'accueil : coût de `SwInspector.etat()`
+
+`etat()` (`js/swInspector.js`) demande au SW sa liste attendue (`GET_EXPECTED_ASSETS`) puis lit `cache.keys()` et
+compare : aucune requête réseau. Elle tourne à l'accueil seulement, à l'événement `kta-sw-autoheal`, au
+`controllerchange` et après un clic (jamais en boucle). Mesure au harnais (`scripts/smoke/checkup-pastille-horsligne.js`,
+Chromium, téléphone 390 × 844, 201 fichiers précachés, 15 appels par palier, 4 passages) :
+
+| Processeur (CDP `setCPUThrottlingRate`) | Médiane | p90 | Max | Tâches longues (> 50 ms) |
+|---|---|---|---|---|
+| normal (PC) | 4–6 ms | 5–7 ms | 8 ms | 0 |
+| ×4 | 12–19 ms | 18–26 ms | 26 ms | 0 |
+| ×6 (vieux téléphone) | 19–45 ms | 27–51 ms | 59 ms | 0 |
+
+Temps **de bout en bout** (aller-retour au SW compris), pas du fil principal bloqué : aucune tâche longue observée,
+le travail est asynchrone. Le ralenti CDP vise la page ; le fil du SW est peut-être moins ralenti qu'un vrai
+téléphone. Rien à optimiser à ce coût et à cette fréquence.
+
+États vus en navigateur, sombre et clair : vert, rouge (📥 dans l'en-tête), orange hors réseau (titre qui compte les
+manquants), orange « récupération en cours ». Contraste du point sur le pied de page, couleur pleine : vert 10,1 / 3,9
+(clair), rouge 7,3 / 5,8, orange 9,4 / 5,7 — tous ≥ 3:1. ⚠️ L'orange pulse (opacité 0,35 au creux) : au creux il
+descend sous 3:1, voulu pour un indicateur « en cours ». 🩸 Un fichier retiré du cache avant l'auto-réparation
+(~5 s après l'accueil) y est remis aussitôt : le checkup attend sa fin avant de simuler des manquants.
