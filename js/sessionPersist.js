@@ -824,7 +824,10 @@
     if (total === 0) return;
 
     const existing = document.getElementById("kta-session-modal");
-    if (existing) existing.remove();
+    if (existing) {
+      if (typeof existing._ktaRetirerClavier === "function") existing._ktaRetirerClavier();
+      existing.remove();
+    }
 
     const _t = function(k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
     const parts = [];
@@ -858,10 +861,19 @@
       '</div>';
     document.body.appendChild(modal);
 
+    // 🩸 L'écouteur Échap est sur `document` : il part avec la modale, quelle que soit la façon de la fermer (bouton,
+    // fond, Échap, ou remplacée à l'ouverture d'un autre plan). Retiré seulement sur Échap, il gardait chaque
+    // modale détachée en vie, une de plus par plan ouvert avec une session.
+    let fermee = false;
+    const retirerClavier = function() { document.removeEventListener("keydown", onKey); };
     function fermer() {
+      if (fermee) return;
+      fermee = true;
+      retirerClavier();
       modal.classList.add("hiding");
       setTimeout(function() { modal.remove(); }, 220);
     }
+    modal._ktaRetirerClavier = retirerClavier;
 
     modal.querySelector('[data-action="keep"]').addEventListener("click", fermer);
     // 🩸 « Effacer » est à côté de « Continuer » (un doigt ganté glisse) : la confirmation est dans le parcours.
@@ -872,12 +884,9 @@
     modal.addEventListener("click", function(e) {
       if (e.target === modal) fermer();
     });
-    const onKey = function(e) {
-      if (e.key === "Escape") {
-        fermer();
-        document.removeEventListener("keydown", onKey);
-      }
-    };
+    function onKey(e) {
+      if (e.key === "Escape") fermer();
+    }
     document.addEventListener("keydown", onKey);
   }
 

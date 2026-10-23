@@ -58,10 +58,6 @@
   · taille: S`
 ## Ensuite
 
-- **Petite fuite à chaque ouverture de plan** — ✅ mesuré 22/10 : environ 70 nœuds détachés et 15 écouteurs de plus
-  par ouverture, après ramasse-miettes (`perf-memory.md`).
-  `qui: Claude · action: trouver les écouteurs non retirés au démontage · fini: dérive nulle sur 10 ouvertures
-  · depuis: 22/10/2026 · taille: S`
 - **« Reprendre » ne retrouve pas la vue** — centre, zoom et niveau ne sont pas dans la session : le plan rouvre sur
   sa vue par défaut (déjà le cas avant la fermeture au retour à l'accueil).
   `qui: KARMA · action: dire si la vue doit être mémorisée · fini: décision notée · depuis: 22/10/2026 · taille: S`
