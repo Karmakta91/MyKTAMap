@@ -586,16 +586,16 @@
                 'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
           '🎯' +
         '</button>' +
-        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
-                'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
-                'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: var(--kta-accent-texte);">' +
-          '≡' +
-        '</button>' +
         // légende en lecture seule (≡ est déjà « Plans & filtres » : 🗺️, l'icône de la Légende du mode plan)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeLegendeBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.legende.btnTitle")) + '" ' +
                 'aria-label="' + _escapeHtml(window.I18n.t("osm_home.legende.btnTitle")) + '">' +
           '🗺️' +
+        '</button>' +
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
+                'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: var(--kta-accent-texte);">' +
+          '≡' +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFullBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.fullscreen.enterTitle")) + '">' +
