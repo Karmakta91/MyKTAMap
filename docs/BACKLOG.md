@@ -101,7 +101,7 @@
 
 ## Plus tard
 
-- **`security.txt` à renouveler** — `.well-known/security.txt` (RFC 9116) expire le 22/10/2027 : un fichier périmé
+- **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
   · depuis: 23/10/2026 · taille: XS`
