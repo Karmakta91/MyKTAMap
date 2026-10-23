@@ -2922,7 +2922,8 @@
       secondaire: allRoads.filter(function(r) { return r.type === "secondaire"; }).length,
       chemin:     allRoads.filter(function(r) { return r.type === "chemin";     }).length,
       jonction:   allRoads.filter(function(r) { return r.type === "jonction";   }).length,
-      itinerary:  allRoads.filter(function(r) { return r.type === "itinerary";  }).length
+      itinerary:  allRoads.filter(function(r) { return r.type === "itinerary";  }).length,
+      autres:     _kmzNbAutres(allRoads, ["principal", "secondaire", "chemin", "jonction", "itinerary"])
     };
 
     const sessionZones = (window.getZones ? window.getZones() : []) || [];
@@ -2933,7 +2934,8 @@
       eau:          allZones.filter(function(z) { return z.type === "eau";          }).length,
       remblais:     allZones.filter(function(z) { return z.type === "remblais";     }).length,
       effondrement: allZones.filter(function(z) { return z.type === "effondrement"; }).length,
-      inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length
+      inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length,
+      autres:       _kmzNbAutres(allZones, ["eau", "remblais", "effondrement", "inaccessible"])
     };
 
     const sessionStructures = (window.getStructures ? window.getStructures() : []) || [];
@@ -2945,7 +2947,8 @@
       "pilier-2": allStructures.filter(function(s) { return s.type === "pilier-2"; }).length,
       "mur":      allStructures.filter(function(s) { return s.type === "mur";      }).length,
       "front-1":  allStructures.filter(function(s) { return s.type === "front-1";  }).length,
-      "front-2":  allStructures.filter(function(s) { return s.type === "front-2";  }).length
+      "front-2":  allStructures.filter(function(s) { return s.type === "front-2";  }).length,
+      autres:     _kmzNbAutres(allStructures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"])
     };
 
     return {
@@ -2955,6 +2958,14 @@
       zonesByType:     zonesByType,
       structuresByType: structuresByType
     };
+  }
+
+  // Objets d'un type hors intégrés (`cust-…` ou id brut d'un calque, « Bas ») : sans sous-case, ils partent avec
+  // leur famille (cf _exportKmzInterne > _ajouterTypesHorsIntegres) et comptent donc dans son total.
+  function _kmzNbAutres(items, integres) {
+    return (items || []).filter(function(it) {
+      return it && typeof it.type === "string" && it.type && integres.indexOf(it.type) === -1;
+    }).length;
   }
 
   // Parent ↔ enfants : le parent coche/décoche tous les enfants, un enfant coché coche le parent.
@@ -3158,10 +3169,12 @@
     const rByT = stats.roadsByType;
     const zByT = stats.zonesByType;
     const sByT = stats.structuresByType || { "pilier-1": 0, "pilier-2": 0, "mur": 0, "front-1": 0, "front-2": 0 };
-    const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin;
-    const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible;
+    // 🩸 Les types hors intégrés comptent : un plan dont les structures sont toutes personnalisées aurait un
+    // total à 0, donc une case grisée, et ses structures ne partiraient pas.
+    const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin + (rByT.autres || 0);
+    const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible + (zByT.autres || 0);
     const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"]
-                          + (sByT["front-1"] || 0) + (sByT["front-2"] || 0);
+                          + (sByT["front-1"] || 0) + (sByT["front-2"] || 0) + (sByT.autres || 0);
 
     return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.kmz.contentTitle") + '</div>' +
@@ -3945,19 +3958,18 @@
         structureTypesSet = new Set(["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
       }
 
-      // 🩸 Types custom (cust-…) ajoutés aux Sets, sinon roads/zones/structures custom disparaissent du KMZ.
-      // Parent coché → TOUS les customs partent, sans case dédiée (décision produit).
-      function _addCustsToSet(set, items) {
+      // 🩸 Types hors intégrés ajoutés aux Sets, sinon ils disparaissent du KMZ : `cust-…` ET id brut d'un calque
+      // (« Bas », relevé SIG) — filtrer sur `cust-` perdait ces derniers. Parent coché → ils partent TOUS, sans
+      // case dédiée (décision produit).
+      function _ajouterTypesHorsIntegres(set, items, integres) {
         if (!set || !Array.isArray(items)) return;
         items.forEach(function(it) {
-          if (it && typeof it.type === "string" && it.type.indexOf("cust-") === 0) {
-            set.add(it.type);
-          }
+          if (it && typeof it.type === "string" && it.type && integres.indexOf(it.type) === -1) set.add(it.type);
         });
       }
-      _addCustsToSet(roadTypesSet,      allRoads);
-      _addCustsToSet(zoneTypesSet,      allZones);
-      _addCustsToSet(structureTypesSet, allStructures);
+      _ajouterTypesHorsIntegres(roadTypesSet, allRoads, ["principal", "secondaire", "chemin", "jonction", "itinerary"]);
+      _ajouterTypesHorsIntegres(zoneTypesSet, allZones, ["eau", "remblais", "effondrement", "inaccessible"]);
+      _ajouterTypesHorsIntegres(structureTypesSet, allStructures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
 
       console.log("[KMZ] Contenu :",
         allPoints.length, "points,",
