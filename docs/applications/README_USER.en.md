@@ -154,7 +154,7 @@ When the app opens, the **startup screen** draws a gallery (about 4 s), then giv
 
 The home screen offers:
 
-- **▶️ Resume [name]** — reopens the last map you used.
+- **▶️ Resume [name]** — reopens the last map you used where you left it (same place, same zoom, same level), even after closing the app; reopening a map from the list does the same. If tracking was running, the map centres on your last known position and tracking stays stopped: restart it with ▶️.
 - **📚 My maps** — every map you have already opened (🌐 server or 💾 local), most recent first; maps available on the server show up there on their own. A tap reopens the map.
 - **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list. An **image** (`.jpg`, `.png`, `.webp`) dropped there opens the **Generator** with the image as background: you just name the map.
 - **🏗️ Generate a map** — creates a map from scratch.

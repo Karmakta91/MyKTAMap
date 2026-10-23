@@ -154,7 +154,7 @@ Dans Chrome, ouvre `myktamap.fr`, clique sur **Installer** à droite de la barre
 
 L'écran d'accueil propose :
 
-- **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé.
+- **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé, là où tu l'avais laissé (même endroit, même zoom, même niveau), aussi après avoir fermé l'app ; rouvrir un plan depuis la liste fait pareil. Si le suivi tournait, la carte se recentre sur ta dernière position connue et le suivi reste arrêté : relance-le avec ▶️.
 - **📚 Mes plans** — tous les plans déjà ouverts (🌐 serveur ou 💾 local), du plus récent au plus ancien ; les plans disponibles sur le serveur y apparaissent d'eux-mêmes. Un appui rouvre le plan.
 - **📦 Ajouter un plan** — glisse ton fichier ZIP sur la zone (ou appuie dessus pour le choisir), puis **▶️ Charger ce plan**. Le plan rejoint ta liste. Une **image** (`.jpg`, `.png`, `.webp`) déposée là ouvre le **Générateur** avec l'image comme fond : il ne reste qu'à nommer le plan.
 - **🏗️ Générer un plan** — crée un plan à partir de zéro.

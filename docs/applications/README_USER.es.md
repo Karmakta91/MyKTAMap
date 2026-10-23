@@ -154,7 +154,7 @@ Al abrir la app, la **pantalla de arranque** dibuja una galería (unos 4 s) y de
 
 La pantalla de inicio ofrece:
 
-- **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado.
+- **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado donde lo dejaste (mismo lugar, mismo zoom, mismo nivel), también después de cerrar la app; reabrir un mapa desde la lista hace lo mismo. Si el seguimiento estaba en marcha, el mapa se centra en tu última posición conocida y el seguimiento queda detenido: reinícialo con ▶️.
 - **📚 Mis mapas** — todos los mapas que ya has abierto (🌐 servidor o 💾 local), del más reciente al más antiguo; los mapas disponibles en el servidor aparecen ahí solos. Una pulsación vuelve a abrir el mapa.
 - **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El mapa se suma a tu lista. Una **imagen** (`.jpg`, `.png`, `.webp`) soltada ahí abre el **Generador** con la imagen como fondo: solo falta darle un nombre al mapa.
 - **🏗️ Generar un mapa** — crea un mapa desde cero.

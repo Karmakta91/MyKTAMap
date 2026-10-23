@@ -610,14 +610,33 @@ urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
   (« Reprendre », carte OSM de l'accueil). « Un plan est affiché ? » reste `ktaPlanAffiche()` (un plan se charge
   SOUS l'accueil).
 - « Reprendre » / rouvrir = chargement normal : la session restaure objets, mesures, légende, calques en
-  modification, traces de suppression, filtres et timeline du suivi ; favoris et calage vivent hors session. La vue
-  (centre, zoom, niveau) repart de la vue initiale du plan et le suivi reste arrêté, comme avant (la réouverture
-  rechargeait déjà tout).
+  modification, traces de suppression, filtres et timeline du suivi ; favoris et calage vivent hors session. Le suivi
+  reste arrêté (l'utilisateur le relance).
+- **Vue retrouvée** (`js/vuePlan.js`, décision produit) : centre, zoom et niveau actif du plan, par plan, sur
+  l'appareil, sans limite de durée. Mémorisée au début de `_libererRessourcesPlanPrecedent` (avant l'arrêt du suivi
+  et le démontage), au `pagehide` et au passage en arrière-plan ; appliquée par `lancerApplication` après la
+  restauration de session. Suivi actif au départ : la vue se recentre sur la dernière position du tracker, à son
+  niveau ; sinon la vue telle qu'elle était. Sans vue mémorisée : cadrage initial (position de départ, zoom 0, ou
+  dernière position du tracker si la session a un tracé).
+  - Stockage : `localStorage["myktamap_vue_v1_<planId>"]` = `{ v, x, y, zoom, niveau?, suivi, img, le }`
+    (coordonnées plan, ~150 octets). **Pas dans la session** : la session voyage (export, synchro d'une
+    installation reliée) et s'efface avec « Effacer la session », la vue est propre à l'appareil ; écriture
+    synchrone, sûre au `pagehide`. Hors export de profil (`profileExportImport.js > PER_PLAN_PREFIXES`).
+  - Garde-fous à l'application : vue ignorée si l'image a changé (`img` = largeur, hauteur, image de base, version
+    du plan-config) ; centre borné à l'image, zoom borné à la carte ; niveau inconnu du plan → niveau par défaut (un
+    niveau porté seulement par un calque de données est relu une fois après 1,5 s, sauf si le niveau a déjà changé).
+    Rien n'est mémorisé avant que la vue ait été appliquée (un passage en arrière-plan pendant le chargement
+    écrirait le cadrage par défaut). Un portail (`InterPlanLinks`) recentre encore après.
+  - 🩸 Le cadrage d'ouverture de `tracking.js > initTracking` est **non animé** : un zoom animé finit dans une image
+    suivante et remettait la carte sur sa cible par-dessus la vue retrouvée.
+  - Plan supprimé : `PlanRegistry.purgeAssociatedData` retire la vue ; copie locale remplacée par sa version publiée :
+    `transferAssociatedData` la fait suivre. Une vue orpheline apparaît dans le nettoyeur d'orphelins (🧠 Mémoire).
 - Fenêtre « Changer de plan » : inchangée (posée si la session a des objets, des mesures ou un tracé de suivi) ; le
   suivi en cours ne bloque pas la fermeture.
 
 Preuve : `scripts/smoke/checkup-retour-accueil.js` (carte démontée, session enregistrée, aucune erreur à l'accueil,
-« Reprendre », 5 allers-retours sans dérive). Mesures : `perf-memory.md` §13.
+« Reprendre », allers-retours sans dérive ; vue retrouvée après l'accueil et après rechargement, suivi actif,
+image changée, vue hors image, niveau inconnu, transfert et purge). Mesures : `perf-memory.md` §13.
 
 ## 🧙 Générateur — assistant pas-à-pas (v1.72.1)
 
