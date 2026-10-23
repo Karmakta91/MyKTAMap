@@ -58,9 +58,10 @@
   · taille: S`
 ## Ensuite
 
-- **« Reprendre » ne retrouve pas la vue** — centre, zoom et niveau ne sont pas dans la session : le plan rouvre sur
-  sa vue par défaut (déjà le cas avant la fermeture au retour à l'accueil).
-  `qui: KARMA · action: dire si la vue doit être mémorisée · fini: décision notée · depuis: 22/10/2026 · taille: S`
+- **Rouvrir un plan à la vue laissée** — QCM 23/10 : centre, zoom et niveau mémorisés par plan sur l'appareil, sans
+  limite de durée ; suivi actif au départ = recentrer sur la dernière position, suivi arrêté (le capteur n'a pas tourné).
+  `qui: Claude · action: lot (mémoriser à la fermeture, appliquer à l'ouverture, checkup) · fini: vue retrouvée
+  après fermeture et rechargement, checkup vert · depuis: 22/10/2026 · taille: S`
 - **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
   fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
   `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
