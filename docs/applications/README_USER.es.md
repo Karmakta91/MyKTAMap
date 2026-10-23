@@ -305,7 +305,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Ajustes** | ⚙️ | Ajustes del mapa: escala, Norte, georreferenciación, tracker, visualización… *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar un punto, un trazado, una zona o una estructura *(clic directo)* |
 | **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX (abre directamente el selector de archivos) |
-| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF), sesión, actualización del mapa, exportación externa (KMZ / GPX) |
+| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF, GeoTIFF), sesión, actualización del mapa, exportación externa (KMZ / GPX / GeoJSON) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
 | **Medición** | 📐 | Medir una distancia o una superficie, borrar |
@@ -1018,11 +1018,23 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 
 El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr» y se llama `<mapa>_<fecha>.pdf`.
 
-### 🌍 Exportar a otra app (KMZ, GPX)
+### 🛰️ Exportar a GeoTIFF georreferenciado (SIG)
 
-**⬆️ Exportar → 🌍 Exportación externa** (mosaico **KMZ** o **GPX**) genera:
+**⬆️ Exportar → 🖼️ Imagen → 🛰️ GeoTIFF georreferenciado (SIG)**: el mapa como imagen georreferenciada. Abierto en **QGIS** (o cualquier SIG), se coloca solo en su sitio, sin volver a escribir nada.
+
+- **Contenido**: **Solo el escaneo** (el fondo limpio, para dibujar encima en un SIG) o **Escaneo + dibujos** (como la exportación de imagen: capas visibles, puntos, trazados, zonas, estructuras).
+- **Proyección**: **Lambert 93** (la referencia SIG en Francia, por defecto) o **WGS84** (latitud / longitud).
+- **Resolución**: Original, ½ o ¼; la ventana indica el tamaño de la imagen producida. En el teléfono se limita a 64 Mpx (para la resolución completa de un mapa grande, exporta desde un ordenador); las opciones imposibles aparecen en gris y, si hace falta, aparece una opción **Máx.**.
+- **El mapa debe estar calibrado** (georreferenciación GPS, ver «⚙️ Ajustes» o la exportación KMZ): si no, el botón **Descargar** queda en gris y la ventana explica qué hacer.
+
+El archivo se llama `MyKTAMap_<mapa>_<fecha>_L93.tif` (o `_WGS84.tif`). Un mapa grande tarda: el botón muestra el progreso.
+
+### 🌍 Exportar a otra app (KMZ, GPX, GeoJSON)
+
+**⬆️ Exportar → 🌍 Exportación externa** (mosaico **KMZ**, **GPX** o **GeoJSON**) genera:
 - un **KMZ**: tu mapa y tus anotaciones situados sobre el globo, para **Google Earth**, **OsmAnd**, **Locus** o **Avenza**;
-- un **GPX**: puntos y trazados, para TopoDroid, OsmAnd, Strava… y reimportable en MyKTAMap con sus niveles.
+- un **GPX**: puntos y trazados, para TopoDroid, OsmAnd, Strava… y reimportable en MyKTAMap con sus niveles;
+- un **GeoJSON**: tus objetos para **QGIS** o cualquier SIG, con su tipo, etiqueta, nombre, nivel, nota y color.
 
 **El mapa debe estar georreferenciado**: dos puntos cuyas coordenadas GPS conoces. Los campos vienen rellenados con la georreferenciación del mapa (ver «⚙️ Ajustes») y se guardan para este mapa. Mientras escribes, una **🌐 Vista previa esquinas** da la posición de las 4 esquinas, la escala, la rotación, y un enlace **🔗 Ver el centro en Google Maps** para comprobarlo.
 
@@ -1033,6 +1045,8 @@ Contenido del KMZ:
 Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar** genera `MyKTAMap_<mapa>_<fecha>.kmz`.
 
 > 💡 La proyección es fiel en un mapa regular; un mapa estirado o ensamblado puede desviarse en los extremos. Un **punto C**, en la georreferenciación del mapa, corrige este tipo de deformación.
+
+El **GeoJSON** retoma las mismas casillas que el KMZ (puntos por icono, trazados, zonas y estructuras por tipo, uniones, itinerario, niveles), sin la imagen. Elige la **proyección**: **Lambert 93** (por defecto; el archivo termina en `_L93.geojson` y QGIS lo coloca solo) o **WGS84** (la norma GeoJSON, para un sitio web o una herramienta estricta).
 
 ---
 
@@ -1137,7 +1151,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
 - **📐 Mapa: escala y geolocalización** *(este mapa)*:
   - **Escala**, con **🎯** para calibrarla (ver más abajo);
   - **🧭 Calibración del Norte**, si la parte superior del mapa no es el Norte: un ángulo, o **📐 Calibrar (2 clics)** (Sur y luego Norte en el mapa), **↺ Restablecer** para volver a 0. La brújula siempre muestra el Norte verdadero;
-  - **🌐 Georreferenciación GPS**: se muestra su estado (no georreferenciado, puntos A y B, A, B y C, B estimado) y **🌐 Abrir la georreferenciación…** abre su ventana. Para los puntos A y B: **🔍 Buscar un punto** o **📍 Haz clic en el mapa** rellena la posición en el mapa, y luego pegas las coordenadas GPS en formato Google Maps (`48.856600, 2.352200`). Elígelos **alejados** entre sí. **Estimar B** deduce B a partir de A, la escala y el Norte: una estimación, que hay que comprobar en la Vista OSM. El **📐 Punto C (opcional)**, lejos de la línea A-B, corrige un mapa deformado (ensamblaje estirado) para la Vista OSM, las exportaciones y el Modo Rescate. **💾 Guardar la calibración** / **🗑️ Borrar**. Esta georreferenciación sirve para la Vista OSM, las exportaciones KMZ y GPX y la importación GPX.
+  - **🌐 Georreferenciación GPS**: se muestra su estado (no georreferenciado, puntos A y B, A, B y C, B estimado) y **🌐 Abrir la georreferenciación…** abre su ventana. Para los puntos A y B: **🔍 Buscar un punto** o **📍 Haz clic en el mapa** rellena la posición en el mapa, y luego pegas las coordenadas GPS en formato Google Maps (`48.856600, 2.352200`). Elígelos **alejados** entre sí. **Estimar B** deduce B a partir de A, la escala y el Norte: una estimación, que hay que comprobar en la Vista OSM. El **📐 Punto C (opcional)**, lejos de la línea A-B, corrige un mapa deformado (ensamblaje estirado) para la Vista OSM, las exportaciones y el Modo Rescate. **💾 Guardar la calibración** / **🗑️ Borrar**. Esta georreferenciación sirve para la Vista OSM, las exportaciones KMZ, GPX, GeoJSON y GeoTIFF y la importación GPX.
 - **📍 Navegación y tracker** *(📍/🌍 según la línea)*:
   - **🧭 Posición inicial del tracker** *(este mapa)*: X/Y, **🔍 Elegir mediante un punto** o **📍 Hacer clic en el mapa**. Cambiar el inicio hace que el seguimiento vuelva a empezar desde ahí (el recorrido en curso se borra);
   - **👣 Detección de pasos** *(todos los mapas)*: longitud del paso (de 0 a 1,5 m), umbral (de 10 a 30), retardo (de 300 a 3000 ms);

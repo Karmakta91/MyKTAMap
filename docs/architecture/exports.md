@@ -1,7 +1,7 @@
-# Architecture MyKTAMap — Exports PNG/PDF/KMZ/GPX + légende
+# Architecture MyKTAMap — Exports PNG/PDF/KMZ/GPX/GeoTIFF/GeoJSON + légende
 
 > Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
-> Sections : §5, §32, §44, §45, §54, §55, §59, §68
+> Sections : §5, §32, §33, §44, §45, §54, §55, §59, §68
 
 ---
 
@@ -231,6 +231,73 @@ Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, au
 4. UI : ajouter une row dans `_kmzRenderContenu` (sessionExporter.js)
 5. Lecture : `opts.include.xxx` + éventuellement Set granulaire
 6. Stats : ajouter au compteur dans `_kmzCollecterStats`
+
+---
+
+### 33. Exports SIG : GeoTIFF calé et GeoJSON (`js/geotiffExport.js`, `js/geojsonExport.js`)
+
+Deux exports pour un SIG (QGIS, ArcGIS…), sans serveur ni librairie. Les deux partent du **calage enregistré du
+plan** (`KmzExport.getCalibration` → `buildTransformCalib`, points A / B et C facultatif) et projettent en
+**Lambert 93 (EPSG:2154) par défaut** ou en **WGS84 (EPSG:4326)** : plan → WGS84 par `planToGps`, puis WGS84 →
+Lambert 93 par `window.SigImport.L93` (seule implémentation, `check-lambert93.js`). Garde-fou commun :
+`scripts/check-export-sig.js` (pré-commit, donc CI) ; preuve navigateur : `scripts/smoke/checkup-export-sig.js`.
+
+#### 33.1 GeoTIFF — tuile « 🛰️ GeoTIFF calé » de la section Image du lanceur ⬆️ Exporter
+
+- **Contenu** : *scan seul* (image de base, sans calque d'image ni dessin : le fond propre pour dessiner dans un SIG)
+  ou *scan + dessins* (comme l'export image rapide : calques visibles, points, tracés, zones, structures, niveaux
+  affichés). Rendu par `MyKTAMapExporterGenererCanvas` avec `region` : le même moteur que le PNG et le PDF.
+- **Résolution** : originale, ½, ¼ ; une option qui dépasse le plafond de l'appareil est grisée, « Max » apparaît si
+  aucune ne tient. Plafonds : **64 Mpx sur téléphone** (comme l'export image), **< 4 Go** (TIFF classique, pas de
+  BigTIFF : ~1,3 Gpx), **128 Mpx sans `CompressionStream`**. La fenêtre annonce la taille réellement produite ; le
+  toast de fin dit si elle a été plafonnée. Plan non calé : bouton Télécharger désactivé, explication affichée.
+- **Jamais l'image entière en mémoire** : rendu par blocs de 4 096 px (2 048 sur iPhone, limite canvas WebKit), plan V2
+  lu par `ktaDessinerRegionTuiles` (bords calés au pixel, `aligner`), chaque bloc découpé aussitôt en tuiles
+  compressées ; un `Blob` par bloc, que le navigateur peut sortir de la mémoire vive.
+- **Fichier** (écriture maison, `geotiffExport.js > entete`) : « II », 42, **IFD en tête** puis les tuiles ; RGB
+  8 bits, `PlanarConfiguration` 1, **tuiles 256 × 256** (celles du bord complétées), **Deflate** (code 8, flux
+  zlib via `CompressionStream("deflate")`) + **prédicteur horizontal** (317 = 2, repart à chaque ligne de tuile),
+  sinon brut. Tags triés par numéro (exigé par la norme). Les tuiles sont écrites bloc par bloc : les `TileOffsets`
+  suivent l'ordre réel d'écriture (`_offsetsDansLOrdre`), pas l'index.
+- **Calage** : affine pixel → projection **ajustée aux moindres carrés** sur une grille 9 × 9 (pixel = coin,
+  `RasterPixelIsArea`). En WGS84 elle est exacte (`planToGps` est affine en degrés) ; en Lambert 93 la courbure de
+  la projection laisse un écart, mesuré sur 17 × 17 points et rendu (`residuM` : ~0,17 m sur un plan de 2,5 km).
+  - termes croisés < 0,1 px sur toute l'image (et pas de miroir) → **`ModelPixelScale` + `ModelTiepoint`** : la
+    forme que lit tout SIG, et l'import de l'app ;
+  - sinon → **`ModelTransformation`** (34264), rotation comprise. ⚠️ En Lambert 93 c'est le cas de presque tout
+    calage réel : la convergence des méridiens tourne la grille dès qu'on s'écarte de 3°E. GDAL / QGIS lisent la
+    matrice (géotransformation tournée, vérifié avec `gdalinfo`) ; **l'import GeoTIFF de l'app la refuse en la
+    nommant** (`tiff.err.rotation`, décision antérieure : le géoréf 2 points n'aplatit pas une rotation).
+  - GeoKeys : `GTModelTypeGeoKey` (1 projeté / 2 géographique), `GTRasterTypeGeoKey` = 1,
+    `ProjectedCSTypeGeoKey` = 2154 + `ProjLinearUnitsGeoKey` = mètre, ou `GeographicTypeGeoKey` = 4326 +
+    `GeogAngularUnitsGeoKey` = degré.
+- **Aller-retour** : `js/tiffGeoref.js` lit désormais les TIFF **tuilés** ; le garde-fou relit chaque fichier
+  écrit (pixels identiques en brut et en Deflate, EPSG, coins, points A / B / C à < 1 m).
+- 🩸 **Ce que le calage ne corrige pas** : le modèle de l'app (similitude ou affine en mètres équirectangulaires) n'est
+  pas le Lambert 93 ; un plan importé d'un GeoTIFF nord en haut puis réexporté garde les points du calage exacts mais
+  peut dériver de quelques mètres aux coins opposés sur un plan de plusieurs km. L'export reproduit le calage tel
+  qu'il est, il ne l'améliore pas.
+- Nom : `MyKTAMap_<plan>_<date>_L93.tif` / `_WGS84.tif`. Réseau : aucun (tuiles déjà sur l'appareil ou celles que
+  l'export image lit déjà).
+
+#### 33.2 GeoJSON — tuile « 🧭 GeoJSON (SIG) » de la section Export externe
+
+- **Même onglet, mêmes cases que le KMZ** (`sessionExporter.js > _kmzSelection`, partagé) : familles, sous-types,
+  types personnalisés et ids bruts de calque (ajoutés quand la famille est cochée), niveaux. L'image, l'opacité et la
+  légende, propres au KMZ, sont masquées (`data-kmz-seul`). Le calage est celui de l'onglet (A / B saisis ou repris).
+- **Mêmes règles que le KML** (`window.KmzExport` : `libelleType`, `estLigneStructure`, `styleResolu`, aucune
+  copie) : structure en ligne ou polygone selon sa légende, ou sa forme réelle pour un id brut ; couleur
+  `ktaResolveStyle(cat, type, {flat:true})` avec le repli de la carte (zone → `remblais`, structure → `mur`).
+- `FeatureCollection` (`name` = nom du plan) ; propriétés : `famille` (point, trace, jonction, zone, structure,
+  itineraire), `type`, `libelle` (légende : session > plan > défaut traduit), `nom`, `niveau`, `note`, `uid`
+  (aussi `id` de la feature), `couleur`, `remplissage` (polygones) ; jonction : `niveau_depart`,
+  `niveau_arrivee`. Anneaux fermés (premier point = dernier). Précision : 1 mm (8 décimales de degré, 3 de mètre).
+- **Projection** : la RFC 7946 n'admet que le WGS84, sans membre `crs` → l'option WGS84 est conforme. En
+  **Lambert 93** le fichier porte le membre `crs` de GeoJSON 2008 (`urn:ogc:def:crs:EPSG::2154`) **et** le suffixe
+  `_L93` : sans ce membre, QGIS / GDAL lisent des degrés et posent tout hors de la Terre, sans erreur. Vérifié avec
+  `ogrinfo` (SRS Lambert-93 reconnu).
+- Points des calques de données : `_ktaDataMarkers` porte aussi la note et l'`uid` (le KMZ reçoit donc la note des
+  points de calque dans sa bulle).
 
 ---
 

@@ -399,6 +399,9 @@ const ASSETS_TO_CACHE = [
   "./js/sigImport.js",
   // 🗺️ GeoTIFF : calage embarqué + décodage LZW/Deflate/brut
   "./js/tiffGeoref.js",
+  // Exports SIG : GeoTIFF calé (écriture maison) et GeoJSON
+  "./js/geotiffExport.js",
+  "./js/geojsonExport.js",
   // 📦 Import multiple : N archives ajoutées à la liste sans ouverture
   "./js/importMasse.js",
   "./js/tableEditor.js",

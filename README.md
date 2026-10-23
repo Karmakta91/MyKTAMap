@@ -92,6 +92,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 🌍 **KMZ géolocalisé** export / import round-trip (Google Earth, OsmAnd, Avenza, Locus) | `kmzExport.js`, `kmzImport.js` |
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
 | 🖼️ Export PNG / JPG (Rapide / Avancé + légende dessinée) · 📄 PDF imprimable A0 → A4 | `exporter.js`, `pdfExport.js` |
+| 🛰️ **GeoTIFF calé** (scan seul ou scan + dessins, Lambert 93 / WGS84, tuilé + Deflate, écrit sans librairie) · 🧭 **GeoJSON** (cases du KMZ) pour QGIS / SIG | `geotiffExport.js`, `geojsonExport.js` |
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
 | 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
@@ -290,6 +291,8 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | Module | Rôle |
 |---|---|
 | `kmzExport.js` | Export KMZ géolocalisé |
+| `geotiffExport.js` | Export GeoTIFF calé (écriture TIFF tuilée maison, rendu par blocs) |
+| `geojsonExport.js` | Export GeoJSON des objets (Lambert 93 / WGS84) |
 | `osmTilesCache.js` | Cache tuiles OSM (IndexedDB) |
 | `osmView.js` | Vue OSM modale (plan projeté) |
 | `osmHomePreview.js` | Widget aperçu OSM sur la home |

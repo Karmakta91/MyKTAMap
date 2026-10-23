@@ -10,7 +10,8 @@
 // Contrôle fin des calques image et données, des annotations de session (points, tracés, zones, structures,
 // mesure, tracker), d'une légende intégrée, du fond, du format et de la résolution. Aussi le moteur de rendu
 // canvas du PDF (pdfExport.js).
-// Expose : window.ouvrirExportModal, MyKTAMapExporterGenererCanvas, MyKTAMapExporterGenererCanvasLegende.
+// Expose : window.ouvrirExportModal, MyKTAMapExporterGenererCanvas, MyKTAMapExporterGenererCanvasLegende,
+//   MyKTAMapExporterCalquesVisibles.
 // 🩸 Aucune table de couleurs locale : tout passe par window.ktaResolveStyle(cat, type, { flat: true })
 // (garde-fou check-style-canon.js). Doc : docs/architecture/exports.md.
 
@@ -1789,7 +1790,8 @@
     if (!skipBaseImage) {
       let fondFait = false;
       if (region && typeof window.ktaDessinerRegionTuiles === "function") {
-        try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
+        // `aligner` : bords des tuiles calés au pixel, sinon un filet apparaît à une échelle fractionnaire.
+        try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale, { aligner: true })).ok; }
         catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
       }
       // Plan ENTIER d'un plan tuilé V2 : si TOUTES les tuiles du niveau utile sont sur l'appareil (archive du
@@ -2920,6 +2922,11 @@
     return canvas;
   }
   window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
+  // Ids des calques visibles sur la carte, pour un export « comme à l'écran » (export GeoTIFF).
+  window.MyKTAMapExporterCalquesVisibles = function() {
+    const config = window.PLAN_CONFIG || {};
+    return { image: _getVisibleImageLayerIds(config), data: _getVisibleDataLayerIds(config) };
+  };
 
   // ── Canvas de la LÉGENDE seule ──────────
   // Une image raster collée dans le PDF : évite les limites de jsPDF (Helvetica latin1, emojis) pour icônes,

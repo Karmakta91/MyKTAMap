@@ -93,6 +93,9 @@ node scripts/check-lambert93.js || exit $?
 # GeoTIFF : repere, tiepoint, 3857, LZW et refus nommes, sur fixtures construites octet par octet.
 node scripts/check-geotiff.js || exit $?
 
+# Exports SIG : TIFF tuile relu a l'identique par notre lecteur, GeoKeys, calage a < 1 m, GeoJSON (filtres du KMZ).
+node scripts/check-export-sig.js || exit $?
+
 # Etiquettes a la generation : le fichier propose, l'utilisateur dispose ; 4 ecrivains de plan-config.
 node scripts/check-plan-tags.js || exit $?
 

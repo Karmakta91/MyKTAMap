@@ -305,7 +305,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Settings** | ⚙️ | Map settings: scale, North, georeferencing, tracker, display… *(direct click)* |
 | **Search** | 🔍 | Find a point, a path, a zone or a structure *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX (opens the file picker directly) |
-| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, map update, external export (KMZ / GPX) |
+| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF, GeoTIFF), session, map update, external export (KMZ / GPX / GeoJSON) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
 | **Measurement** | 📐 | Measure a distance or an area, clear |
@@ -1018,11 +1018,23 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 
 The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr” and is named `<map>_<date>.pdf`.
 
-### 🌍 Exporting to another app (KMZ, GPX)
+### 🛰️ Exporting as a georeferenced GeoTIFF (GIS)
 
-**⬆️ Export → 🌍 External export** (**KMZ** or **GPX** tile) produces:
+**⬆️ Export → 🖼️ Image → 🛰️ Georeferenced GeoTIFF (GIS)**: the map as a georeferenced image. Opened in **QGIS** (or any GIS), it lands in place by itself, with nothing to type again.
+
+- **Content**: **Scan only** (the clean background, to draw over in a GIS) or **Scan + drawings** (like the image export: visible layers, points, paths, zones, structures).
+- **Projection**: **Lambert 93** (the GIS reference in France, by default) or **WGS84** (latitude / longitude).
+- **Resolution**: Original, ½ or ¼; the window states the size of the image produced. On a phone it is capped at 64 Mpx (for the full resolution of a large map, export from a computer); impossible choices are greyed out and a **Max** choice appears when needed.
+- **The map must be calibrated** (GPS georeferencing, see “⚙️ Settings” or the KMZ export): otherwise the **Download** button stays greyed out and the window explains what to do.
+
+The file is named `MyKTAMap_<map>_<date>_L93.tif` (or `_WGS84.tif`). A large map takes time: the button shows the progress.
+
+### 🌍 Exporting to another app (KMZ, GPX, GeoJSON)
+
+**⬆️ Export → 🌍 External export** (**KMZ**, **GPX** or **GeoJSON** tile) produces:
 - a **KMZ**: your map and annotations placed on the globe, for **Google Earth**, **OsmAnd**, **Locus** or **Avenza**;
-- a **GPX**: points and paths, for TopoDroid, OsmAnd, Strava… and re-importable into MyKTAMap with its levels.
+- a **GPX**: points and paths, for TopoDroid, OsmAnd, Strava… and re-importable into MyKTAMap with its levels;
+- a **GeoJSON**: your objects for **QGIS** or any GIS, with their type, label, name, level, note and colour.
 
 **The map must be georeferenced**: two points whose GPS coordinates you know. The fields are pre-filled with the map's georeferencing (see “⚙️ Settings”) and are saved for this map. While you type, a **🌐 Corners preview** gives the position of the 4 corners, the scale, the rotation, and a **🔗 View center on Google Maps** link to check.
 
@@ -1033,6 +1045,8 @@ KMZ content:
 So you can export only the shafts, or only the inaccessible zones. **Download** produces `MyKTAMap_<map>_<date>.kmz`.
 
 > 💡 The projection is faithful on a regular map; a stretched or assembled map may drift at the edges. A **point C**, in the map's georeferencing, corrects this kind of distortion.
+
+The **GeoJSON** uses the same boxes as the KMZ (points by icon, paths, zones and structures by type, junctions, route, levels), without the image. Choose the **projection**: **Lambert 93** (by default; the file ends in `_L93.geojson` and QGIS places it by itself) or **WGS84** (the GeoJSON standard, for a website or a strict tool).
 
 ---
 
@@ -1137,7 +1151,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
 - **📐 Map: scale & geolocation** *(this map)*:
   - **Scale**, with **🎯** to calibrate it (see below);
   - **🧭 North calibration**, if the top of the map is not North: an angle, or **📐 Calibrate (2 clicks)** (South then North on the map), **↺ Reset** to go back to 0. The compass always shows true North;
-  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. This georeferencing is used by the OSM view, the KMZ and GPX exports and GPX import.
+  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. This georeferencing is used by the OSM view, the KMZ, GPX, GeoJSON and GeoTIFF exports and GPX import.
 - **📍 Navigation & tracker** *(📍/🌍 per line)*:
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);

@@ -988,6 +988,9 @@
   <!-- tiffGeoref.js (calage + pixels d'un .tif) : après sigImport (window.SigImport.L93 / .WEBMERC, à l'appel),
        avant createConf (le Générateur s'y branche pour le géoréf). -->
   <script src="js/tiffGeoref.js" defer></script>
+  <!-- Exports SIG : après kmzExport (calage), sigImport (Lambert 93), tiffGeoref et exporter (rendu par blocs). -->
+  <script src="js/geotiffExport.js" defer></script>
+  <script src="js/geojsonExport.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <!-- majPlan.js (assistant « Mettre à jour le plan ») : après createConf (window.ktaGenerateurMaj) ; appelle à
        l'usage calqueSession, sessionExporter (légende des calques) et ktaExtensions (prise publierVersion). -->

@@ -305,7 +305,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, affichage… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver un point, un tracé, une zone ou une structure *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX (ouvre directement le choix du fichier) |
-| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, mise à jour du plan, export externe (KMZ / GPX) |
+| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF, GeoTIFF), session, mise à jour du plan, export externe (KMZ / GPX / GeoJSON) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
 | **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
@@ -1018,11 +1018,23 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 
 Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr » et s'appelle `<plan>_<date>.pdf`.
 
-### 🌍 Exporter vers une autre app (KMZ, GPX)
+### 🛰️ Exporter en GeoTIFF calé (SIG)
 
-**⬆️ Exporter → 🌍 Export externe** (tuile **KMZ** ou **GPX**) produit :
+**⬆️ Exporter → 🖼️ Image → 🛰️ GeoTIFF calé (SIG)** : le plan en image géoréférencée. Ouvert dans **QGIS** (ou tout SIG), il se pose seul à sa place, sans rien ressaisir.
+
+- **Contenu** : **Scan seul** (le fond propre, pour dessiner par-dessus dans un SIG) ou **Scan + dessins** (comme l'export image : calques visibles, points, tracés, zones, structures).
+- **Projection** : **Lambert 93** (la référence des SIG en France, au départ) ou **WGS84** (latitude / longitude).
+- **Résolution** : Originale, ½ ou ¼ ; la fenêtre annonce la taille de l'image produite. Sur téléphone, elle est plafonnée à 64 Mpx (pour la pleine résolution d'un grand plan, exporte depuis un ordinateur) ; les choix impossibles sont grisés et un choix **Max** apparaît si besoin.
+- **Le plan doit être calé** (géoréférencement GPS, voir « ⚙️ Réglages » ou l'export KMZ) : sinon le bouton **Télécharger** reste grisé et la fenêtre explique quoi faire.
+
+Le fichier s'appelle `MyKTAMap_<plan>_<date>_L93.tif` (ou `_WGS84.tif`). Un grand plan prend du temps : le bouton affiche la progression.
+
+### 🌍 Exporter vers une autre app (KMZ, GPX, GeoJSON)
+
+**⬆️ Exporter → 🌍 Export externe** (tuile **KMZ**, **GPX** ou **GeoJSON**) produit :
 - un **KMZ** : ton plan et tes annotations posés sur le globe, pour **Google Earth**, **OsmAnd**, **Locus** ou **Avenza** ;
-- un **GPX** : points et tracés, pour TopoDroid, OsmAnd, Strava… et réimportable dans MyKTAMap avec ses niveaux.
+- un **GPX** : points et tracés, pour TopoDroid, OsmAnd, Strava… et réimportable dans MyKTAMap avec ses niveaux ;
+- un **GeoJSON** : tes objets pour **QGIS** ou tout SIG, avec leur type, libellé, nom, niveau, note et couleur.
 
 **Le plan doit être géoréférencé** : deux points dont tu connais les coordonnées GPS. Les champs sont pré-remplis avec le géoréférencement du plan (voir « ⚙️ Réglages ») et s'enregistrent pour ce plan. Pendant la saisie, un **🌐 Aperçu coins** donne la position des 4 coins, l'échelle, la rotation, et un lien **🔗 Voir le centre sur Google Maps** pour vérifier.
 
@@ -1033,6 +1045,8 @@ Contenu du KMZ :
 Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télécharger** produit `MyKTAMap_<plan>_<date>.kmz`.
 
 > 💡 La projection est fidèle sur un plan régulier ; un plan étiré ou assemblé peut dériver aux extrémités. Un **point C**, dans le géoréférencement du plan, corrige ce type de déformation.
+
+Le **GeoJSON** reprend les mêmes cases que le KMZ (points par icône, tracés, zones et structures par type, jonctions, itinéraire, niveaux), sans l'image. Choisis la **projection** : **Lambert 93** (au départ, le fichier finit par `_L93.geojson` et QGIS le place tout seul) ou **WGS84** (la norme GeoJSON, pour un site web ou un outil strict).
 
 ---
 
@@ -1137,7 +1151,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
 - **📐 Plan : échelle & géolocalisation** *(ce plan)* :
   - **Échelle**, avec **🎯** pour la calibrer (voir ci-dessous) ;
   - **🧭 Calibration du Nord**, si le haut du plan n'est pas le Nord : un angle, ou **📐 Calibrer (2 clics)** (Sud puis Nord sur la carte), **↺ Reset** pour revenir à 0. La boussole, elle, montre toujours le vrai Nord ;
-  - **🌐 Géoréférencement GPS** : son état s'affiche (non géoréférencé, points A et B, A, B et C, B estimé) et **🌐 Ouvrir le géoréférencement…** ouvre sa fenêtre. Pour les points A et B : **🔍 Chercher un point** ou **📍 Cliquer carte** remplit la position sur le plan, puis tu colles les coordonnées GPS au format Google Maps (`48.856600, 2.352200`). Choisis-les **éloignés** l'un de l'autre. **Estimer B** déduit B de A, de l'échelle et du Nord : une estimation, à vérifier en Vue OSM. Le **📐 Point C (optionnel)**, loin de la ligne A-B, corrige un plan déformé (assemblage étiré) pour la Vue OSM, les exports et le Mode Secours. **💾 Sauvegarder le calibrage** / **🗑️ Effacer**. Ce géoréférencement sert à la Vue OSM, aux exports KMZ et GPX et à l'import GPX.
+  - **🌐 Géoréférencement GPS** : son état s'affiche (non géoréférencé, points A et B, A, B et C, B estimé) et **🌐 Ouvrir le géoréférencement…** ouvre sa fenêtre. Pour les points A et B : **🔍 Chercher un point** ou **📍 Cliquer carte** remplit la position sur le plan, puis tu colles les coordonnées GPS au format Google Maps (`48.856600, 2.352200`). Choisis-les **éloignés** l'un de l'autre. **Estimer B** déduit B de A, de l'échelle et du Nord : une estimation, à vérifier en Vue OSM. Le **📐 Point C (optionnel)**, loin de la ligne A-B, corrige un plan déformé (assemblage étiré) pour la Vue OSM, les exports et le Mode Secours. **💾 Sauvegarder le calibrage** / **🗑️ Effacer**. Ce géoréférencement sert à la Vue OSM, aux exports KMZ, GPX, GeoJSON et GeoTIFF et à l'import GPX.
 - **📍 Navigation & tracker** *(📍/🌍 selon la ligne)* :
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;

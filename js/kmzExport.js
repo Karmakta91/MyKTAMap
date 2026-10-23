@@ -378,6 +378,44 @@
            '</Style>';
   }
 
+  // Nom d'un objet d'un type hors intégrés : le libellé de la légende (« Front niveau 2 »), sinon l'id brut
+  // — jamais `Cust-m2k9x-3fa`.
+  function _nomType(type) {
+    const LC = window.LegendCustomization;
+    if (LC && typeof LC.findCustomEntry === "function") {
+      try { const e = LC.findCustomEntry(type); if (e && e.label) return String(e.label); } catch (e) {}
+    }
+    const s = String(type);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  // Géométrie d'une structure : celle de sa légende. Un type SANS légende (id brut d'un calque) n'en déclare
+  // aucune : il suit sa forme réelle, ligne si ouvert, polygone si fermé (premier point = dernier, comme
+  // l'anneau d'un polygone SIG importé ; le format n'a pas de drapeau `closed`).
+  function _estLigneStructure(s) {
+    const type = s.type;
+    const connu = typeof window.ktaResolveStyle === "function" && !!window.ktaResolveStyle("structures", type);
+    if (connu || typeof window.ktaResolveStyle !== "function") {
+      return (typeof window.isStructurePolylineType === "function")
+        ? !!window.isStructurePolylineType(type)
+        : (type === "front-1" || type === "front-2");
+    }
+    const pts = s.points || [];
+    const a = pts[0], z = pts[pts.length - 1];
+    const ferme = pts.length >= 4 && !!a && !!z && a.x === z.x && a.y === z.y;
+    return !ferme;
+  }
+
+  // Style résolu d'un type ({ flat: true }) avec le repli de sa famille quand il n'a pas d'entrée de légende :
+  // la couleur du GeoJSON (js/geojsonExport.js) suit ainsi celle du KML et de la carte.
+  function _styleResolu(categorie, cle) {
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const s = window.ktaResolveStyle(categorie, cle, { flat: true });
+    if (s) return s;
+    const repli = REPLI_KML[categorie];
+    return (repli && repli !== cle) ? window.ktaResolveStyle(categorie, repli, { flat: true }) : null;
+  }
+
   // ── Génération KML complète ──────────
   // opts = {
   //   planName, planVersion, planAuthor, imageW, imageH (px), transform (buildTransform),
@@ -536,17 +574,6 @@
       // ne doit pas devenir du balisage — et « ]]> » ne survit pas à l'échappement.
       const html = window.ktaEsc(s).replaceAll("\n", "<br/>");
       return '<description><![CDATA[' + html + ']]></description>';
-    }
-
-    // Nom d'un objet d'un type hors intégrés : le libellé de la légende (« Front niveau 2 »), sinon l'id brut
-    // — jamais `Cust-m2k9x-3fa`.
-    function _nomType(type) {
-      const LC = window.LegendCustomization;
-      if (LC && typeof LC.findCustomEntry === "function") {
-        try { const e = LC.findCustomEntry(type); if (e && e.label) return String(e.label); } catch (e) {}
-      }
-      const s = String(type);
-      return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
     function _emitLineString(road, styleId, nomImpose) {
@@ -817,23 +844,6 @@
                          ? window.ktaStyleBuiltins(cat) : [];
       if (builtins.indexOf(String(type)) === -1) idsStyleCustom.add(id);
       return id;
-    }
-
-    // Géométrie d'une structure : celle de sa légende. Un type SANS légende (id brut d'un calque) n'en déclare
-    // aucune : il suit sa forme réelle, ligne si ouvert, polygone si fermé (premier point = dernier, comme
-    // l'anneau d'un polygone SIG importé ; le format n'a pas de drapeau `closed`).
-    function _estLigneStructure(s) {
-      const type = s.type;
-      const connu = typeof window.ktaResolveStyle === "function" && !!window.ktaResolveStyle("structures", type);
-      if (connu || typeof window.ktaResolveStyle !== "function") {
-        return (typeof window.isStructurePolylineType === "function")
-          ? !!window.isStructurePolylineType(type)
-          : (type === "front-1" || type === "front-2");
-      }
-      const pts = s.points || [];
-      const a = pts[0], z = pts[pts.length - 1];
-      const ferme = pts.length >= 4 && !!a && !!z && a.x === z.x && a.y === z.y;
-      return !ferme;
     }
 
     const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
@@ -1132,7 +1142,11 @@
     getCalibration:  getCalibration,
     setCalibration:  setCalibration,
     genererKml:      genererKml,
-    genererKmz:      genererKmz
+    genererKmz:      genererKmz,
+    // Règles partagées avec l'export GeoJSON : mêmes libellés, géométries et couleurs que le KML.
+    libelleType:       _nomType,
+    estLigneStructure: _estLigneStructure,
+    styleResolu:       _styleResolu
   };
 
   console.log("[KmzExport] Module chargé — API window.KmzExport prête");

@@ -1986,6 +1986,10 @@ function initInterface() {
             window.ktaAlerte(window.I18n.t("ui.alert.pdfIndispo"), { type: "erreur" });
           }
         } },
+      // GeoTIFF : le plan calé en image géoréférencée (js/geotiffExport.js), à côté du PNG et du PDF.
+      { icone: "🛰️", titreCle: "export.lanceur.geotiff", section: "image", onClick: function() {
+          if (window.GeotiffExport) window.GeotiffExport.afficherModale();
+        } },
       { icone: "💾", titreCle: "export.lanceur.complet", section: "session", onClick: function() {
           _ouvrirExportSession("full");
         } },
@@ -2005,6 +2009,9 @@ function initInterface() {
         } },
       { icone: "📍", titreCle: "export.lanceur.gpx", section: "externe", onClick: function() {
           _ouvrirExportSession("extern", { format: "gpx" });
+        } },
+      { icone: "🧭", titreCle: "export.lanceur.geojson", section: "externe", onClick: function() {
+          _ouvrirExportSession("extern", { format: "geojson" });
         } }
     ]
   });
