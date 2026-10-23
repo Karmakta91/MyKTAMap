@@ -284,14 +284,16 @@
   // Libellé tenant compte de LegendCustomization. ⚠️ `getLabel` ne connaît que les types intégrés : un type CUSTOM
   // passe par `findCustomEntry` (comme refonteInterface.js, statsGlobales.js, pathfinder.js), sinon la puce
   // affiche `cust-m2k9x-3fa` au lieu du nom choisi.
-  function _lcLabel(category, type, fallback) {
+  // `opts.sansMarque` : pas de « ✨ » devant un type personnalisé — la ligne porte déjà sa pastille (sinon
+  // « ✨ ✨ Nom » : l'émoji de repli plus la marque).
+  function _lcLabel(category, type, fallback, opts) {
     const LC = window.LegendCustomization;
     // findCustomEntry pour TOUT type non résolu par getLabel (pas seulement `cust-`) : une entrée liée à un id
     // technique (« Bas ») affiche aussi son libellé.
     if (LC && typeof LC.findCustomEntry === "function") {
       try {
         const e = LC.findCustomEntry(type);
-        if (e && e.label) return "✨ " + e.label;
+        if (e && e.label) return (opts && opts.sansMarque) ? e.label : "✨ " + e.label;
       } catch(err) {}
       if (String(type).indexOf("cust-") === 0) return fallback || type;
     }
@@ -401,11 +403,14 @@
     const lcCat = (category === "roads") ? "traces" : category;
     sortedKeys.forEach(function(t) {
       const visible = !_isHidden(setName, t);
-      const lbl = _lcLabel(lcCat, t, t);
-      const emoji = _emojiForType(category, t);
+      const lbl = _lcLabel(lcCat, t, t, { sansMarque: true });
+      // Pastille résolue (styleResolver.js > ktaTypeSwatchHtml), comme ≡ Légende : couleur choisie, type
+      // `cust-…`, trait pour une ligne. L'émoji ne reste qu'en repli d'un type introuvable.
+      const pastille = (typeof window.ktaTypeSwatchHtml === "function")
+        ? window.ktaTypeSwatchHtml(lcCat, t, _emojiForType(category, t)) : _emojiForType(category, t);
       html += '<label class="kta-fp-chip ' + (visible ? "" : "kta-fp-chip-off") + '">' +
                 '<input type="checkbox" data-set="' + setName + '" data-type="' + _escAttr(t) + '"' + (visible ? " checked" : "") + '>' +
-                '<span class="kta-fp-chip-ico-emoji">' + emoji + '</span>' +
+                '<span class="kta-fp-chip-ico-emoji">' + pastille + '</span>' +
                 '<span class="kta-fp-chip-label">' + _escHtml(lbl) + '</span>' +
                 '<span class="kta-fp-chip-count">' + counts[t] + '</span>' +
               '</label>';
@@ -975,7 +980,7 @@
       const nom = o.nom || o.name || "";
       return { nom: nom || type || "?", type: nom ? type : "" };
     }
-    const type = _lcLabel(fam.lc, o.type, o.type);
+    const type = _lcLabel(fam.lc, o.type, o.type, { sansMarque: true });
     return { nom: o.label || o.nom || type || "?", type: _emojiForType(fam.cle, o.type) + " " + type };
   }
 
