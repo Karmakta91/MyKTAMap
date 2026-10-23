@@ -56,6 +56,11 @@
   · taille: S`
 ## Ensuite
 
+- **Calage en vraie projection** — le calage A / B (C) travaille en mètres équirectangulaires (constantes fixes),
+  pas conformes : un plan nord en haut importé d'un GeoTIFF Lambert 93 garde A et B exacts mais dérive de 2 à 12 m aux
+  autres coins sur 1 à 6 km (mesuré le 23/10, lot export-sig). Touche Vue OSM, KMZ, GPX, GeoTIFF, GeoJSON, Secours.
+  `qui: Claude · action: étude puis lot après la release v2.20.0 (calage dans le CRS du plan, Lambert 93 d'abord)
+  · fini: calage en vraie projection, coins d'un GeoTIFF importé à moins de 1 m · depuis: 23/10/2026 · taille: M`
 - **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
   fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
   `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
