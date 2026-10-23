@@ -8,7 +8,10 @@
 // collision, tuiles), session enregistrée, suivi coupé, extension prévenue une fois (mktm:plan-ferme « accueil »),
 // aucune erreur pendant l'attente à l'accueil (minuteries, pas compté). « Reprendre » recharge le plan avec les
 // objets dessinés. Puis RA_N allers-retours (10) : ni le tas JS, ni les nœuds, ni les écouteurs ne grimpent ; la barre
-// d'état d'un plan rouvert suit encore sa hauteur.
+// d'état d'un plan rouvert suit encore sa hauteur. Vue retrouvée (js/vuePlan.js) : centre, zoom et niveau après
+// l'accueil et après rechargement de la page ; suivi actif à la fermeture → dernière position du tracker, suivi
+// arrêté ; empreinte d'image changée → cadrage par défaut ; vue hors de l'image bornée, niveau inconnu → défaut ;
+// vue transférée puis purgée avec les données du plan.
 // Mesures (CDP Performance.getMetrics après ramasse-miettes) imprimées : tas JS, nœuds, images de la carte.
 // RA_ZIP=<chemin d'un ZIP de plan> : mesure ce plan-là au lieu du relevé fictif (rien de lui n'est imprimé hors
 // chiffres) ; RA_MESURE_SEULE=1 : imprime les mesures sans juger (comparaison avec une version antérieure) ;
@@ -264,6 +267,120 @@ function verifier(c, msg, detail) {
     });
     verifier(!barre.absente && barre.avant !== barre.apres,
       "plan rouvert : --kta-statusbar-h suit la hauteur de la barre d'état", barre);
+    await retourAccueil();
+
+    // ── 6. Vue retrouvée (centre, zoom, niveau), par plan, sur l'appareil ──
+    // Vue lue en coordonnées plan ; tolérance : 2 px de plan ou 2 px d'écran au zoom courant.
+    const lireVue = function () {
+      return page.evaluate(function () {
+        const c = window.map.getCenter(), cfg = window.APP_CONFIG;
+        return { x: c.lng, y: cfg.imageHeight - c.lat, zoom: window.map.getZoom(), niveau: cfg.activeLevel,
+          multi: cfg.multiLevel === true, suivi: window.getTrackingActif(), w: cfg.imageWidth, h: cfg.imageHeight,
+          niveaux: (cfg.availableLevels || []).slice() };
+      });
+    };
+    const proche = function (a, b) {
+      const tol = Math.max(2, 2 * Math.pow(2, -b.zoom));
+      return Math.abs(a.x - b.x) <= tol && Math.abs(a.y - b.y) <= tol && Math.abs(a.zoom - b.zoom) < 0.01;
+    };
+    const reprendre = async function () {
+      await page.evaluate(function () { document.getElementById("resumeBtn").click(); });
+      await planPret();
+    };
+    const poserVue = async function (c) {
+      await page.evaluate(function (v) {
+        if (window.APP_CONFIG.multiLevel === true && Number.isInteger(v.niveau)) window.ktaSetActiveLevel(v.niveau);
+        window.map.setView([window.APP_CONFIG.imageHeight - v.y, v.x], v.zoom, { animate: false });
+      }, c);
+      await page.waitForTimeout(300);
+    };
+
+    await reprendre();
+    const base = await lireVue();
+    verifier(base.multi, "relevé fictif multi-niveau (le niveau est éprouvé)", base);
+    const autreNiveau = base.niveaux.find(function (l) { return l !== 0; });
+    const cible = { x: Math.round(base.w * 0.45), y: Math.round(base.h * 0.55), zoom: Math.min(base.zoom + 1, 2),
+      niveau: autreNiveau };
+    await poserVue(cible);
+    const posee = await lireVue();
+    await retourAccueil();
+    await reprendre();
+    const retrouvee = await lireVue();
+    verifier(proche(retrouvee, posee) && retrouvee.niveau === cible.niveau,
+      "« Reprendre » : centre, zoom et niveau retrouvés", { posee: posee, retrouvee: retrouvee });
+
+    // Rechargement de la page (pagehide) : même vue au plan rouvert.
+    await poserVue({ x: Math.round(base.w * 0.55), y: Math.round(base.h * 0.45), zoom: Math.min(base.zoom + 2, 2) });
+    const avantRecharge = await lireVue();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      const b = document.getElementById("resumeBtn");
+      return !!window.PlanRegistry && !!b && document.body.classList.contains("kta-loader-active");
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await reprendre();
+    const apresRecharge = await lireVue();
+    verifier(proche(apresRecharge, avantRecharge) && apresRecharge.niveau === avantRecharge.niveau,
+      "page rechargée : centre, zoom et niveau retrouvés", { avant: avantRecharge, apres: apresRecharge });
+
+    // Suivi actif à la fermeture : recentrage sur la dernière position du tracker (et son niveau), suivi arrêté.
+    const pos = { x: Math.round(base.w * 0.6), y: Math.round(base.h * 0.4), niveau: autreNiveau };
+    await page.evaluate(function (p) {
+      window.startTracking();
+      window.recalerTrackerSurPoint(p.x, p.y, p.niveau);
+    }, pos);
+    await page.waitForTimeout(600);
+    const zoomSuivi = Math.min(base.zoom + 1, 2);
+    await poserVue({ x: Math.round(base.w * 0.2), y: Math.round(base.h * 0.8), zoom: zoomSuivi, niveau: 0 });
+    await retourAccueil();
+    await reprendre();
+    const suivie = await lireVue();
+    verifier(proche(suivie, { x: pos.x, y: pos.y, zoom: zoomSuivi }) && suivie.niveau === pos.niveau,
+      "suivi actif à la fermeture : vue recentrée sur la dernière position du tracker, à son niveau",
+      { pos: pos, suivie: suivie });
+    verifier(suivie.suivi === false, "suivi actif à la fermeture : le suivi reste arrêté à la réouverture");
+
+    // Image du plan changée (empreinte mémorisée différente) : vue mémorisée ignorée, cadrage par défaut.
+    const planId = await page.evaluate(function () { return window._currentLoadedPlanId; });
+    await poserVue(cible);
+    await retourAccueil();
+    await page.evaluate(function (id) {
+      const k = window.KtaVuePlan.PREFIXE + id;
+      const v = JSON.parse(localStorage.getItem(k));
+      v.img = "1|1|autre.png|V0";
+      localStorage.setItem(k, JSON.stringify(v));
+    }, planId);
+    await reprendre();
+    const defaut = await lireVue();
+    verifier(defaut.zoom === 0 && defaut.niveau === 0 && !proche(defaut, cible),
+      "image du plan changée : vue mémorisée ignorée (zoom et niveau par défaut)", defaut);
+
+    // Centre hors de l'image → borné ; niveau absent du plan → niveau par défaut (après la seconde lecture).
+    await page.evaluate(function (id) {
+      window.KtaVuePlan.liberer();   // mémorise la vue courante puis plus rien : la fermeture ne réécrit pas la suite
+      const p = window.PLAN_CONFIG.plan;
+      localStorage.setItem(window.KtaVuePlan.PREFIXE + id, JSON.stringify({ v: 1, x: -5000, y: 99999, zoom: 1,
+        niveau: 99, suivi: false, img: [p.imageWidth, p.imageHeight, p.baseImage || "", p.version || ""].join("|"), le: 1 }));
+    }, planId);
+    await retourAccueil();
+    await reprendre();
+    await page.waitForTimeout(1000);   // seconde lecture du niveau inconnu (calques de données) : 1,5 s après
+    const bornee = await lireVue();
+    const dansImage = bornee.x >= 0 && bornee.x <= bornee.w && bornee.y >= 0 && bornee.y <= bornee.h;
+    verifier(dansImage && bornee.zoom === 1 && bornee.niveau === 0,
+      "vue hors de l'image bornée, niveau absent du plan → niveau par défaut", bornee);
+
+    // Plan supprimé : la vue part avec ses données ; copie remplacée par la version publiée : la vue suit l'id.
+    const purge = await page.evaluate(async function () {
+      const P = window.KtaVuePlan.PREFIXE;
+      localStorage.setItem(P + "checkup-a", JSON.stringify({ v: 1, x: 1, y: 1, zoom: 0, img: "x", le: 1 }));
+      await window.PlanRegistry.transferAssociatedData("checkup-a", "checkup-b");
+      const transfere = localStorage.getItem(P + "checkup-a") === null && localStorage.getItem(P + "checkup-b") !== null;
+      await window.PlanRegistry.purgeAssociatedData("checkup-b");
+      return { transfere: transfere, purge: localStorage.getItem(P + "checkup-b") === null };
+    });
+    verifier(purge.transfere && purge.purge, "vue transférée avec les données du plan, retirée à sa suppression", purge);
     await retourAccueil();
     verifier(erreurs.length === 0, "aucune erreur de page sur tout le parcours", erreurs);
 

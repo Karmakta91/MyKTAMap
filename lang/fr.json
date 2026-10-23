@@ -2693,6 +2693,7 @@
   "meminsp.orph.backups": "{n} backup(s)",
   "meminsp.orph.btnClean": "Nettoyer tout",
   "meminsp.orph.calib": "géoréférencement",
+  "meminsp.orph.vue": "vue laissée",
   "meminsp.orph.confirm": "Supprimer les données de {n} plan(s) absent(s) de ta liste ({taille}) ? Si tu comptes réimporter un de ces plans, sa session et son géoréférencement seraient perdus. Le carnet et les récits ne sont pas touchés.",
   "meminsp.orph.handle": "accès fichier",
   "meminsp.orph.intro": "Données de plans qui ne sont plus dans ta liste. Rien n'est supprimé sans ton accord.",

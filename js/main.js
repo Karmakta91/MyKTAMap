@@ -568,6 +568,13 @@ async function lancerApplication() {
   }
   // Photos rangées sous le nom du point → sous son uid.
   if (typeof window._ktaPlanifierMigrationPhotos === "function") window._ktaPlanifierMigrationPhotos();
+  // Vue laissée à la dernière visite, APRÈS la restauration (qui recentre sur la dernière position du tracker) ;
+  // sans vue mémorisée, le cadrage initial reste. Un portail (InterPlanLinks) recentre encore après.
+  if (window.KtaVuePlan) {
+    try { window.KtaVuePlan.appliquer(window._currentLoadedPlanId || null); } catch(e) {
+      console.warn("[Main] vue mémorisée :", e);
+    }
+  }
 
   // 🩸 Ouverture d'une sortie au carnet APRÈS onPlanLoaded : la baseline des compteurs doit inclure la session
   // restaurée, sinon tout l'existant compte comme « ajouté pendant cette sortie ».
@@ -866,6 +873,11 @@ window._etendreAvailableLevelsSiBesoin = function() {
 // abandonnées, extension prévenue avec "accueil").
 function _libererRessourcesPlanPrecedent(vers) {
   const versAccueil = vers === "accueil";
+  // Vue laissée (centre, zoom, niveau) mémorisée pour la réouverture : AVANT l'arrêt du suivi et le démontage de la
+  // carte (js/vuePlan.js).
+  if (window.KtaVuePlan) {
+    try { window.KtaVuePlan.liberer(); } catch(e) {}
+  }
   // 🩸 FIGER LA PERSISTANCE EN PREMIER : save final (état intact) + arrêt du poll auto-save. Sinon un tick pendant
   // le chargement du nouveau plan sauve l'état mutilé (timeline tracker vidée plus bas, voire slot purgé) et le
   // tracker revient à la position initiale. Le poll ne redémarre qu'au onPlanLoaded du nouveau plan.

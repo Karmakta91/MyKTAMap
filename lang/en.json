@@ -2693,6 +2693,7 @@
   "meminsp.orph.backups": "{n} backup(s)",
   "meminsp.orph.btnClean": "Clean all",
   "meminsp.orph.calib": "georeferencing",
+  "meminsp.orph.vue": "last view",
   "meminsp.orph.confirm": "Delete the data of {n} map(s) missing from your list ({taille})? If you plan to re-import one of these maps, its session and georeferencing would be lost. The logbook and stories are untouched.",
   "meminsp.orph.handle": "file access",
   "meminsp.orph.intro": "Data of maps no longer in your list. Nothing is deleted without your consent.",

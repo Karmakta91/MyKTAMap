@@ -2707,6 +2707,7 @@
   "meminsp.orph.backups": "{n} copia(s)",
   "meminsp.orph.btnClean": "Limpiar todo",
   "meminsp.orph.calib": "georreferenciación",
+  "meminsp.orph.vue": "última vista",
   "meminsp.orph.confirm": "¿Suprimir los datos de {n} mapa(s) ausente(s) de tu lista ({taille})? Si piensas reimportar uno de estos mapas, su sesión y su georreferenciación se perderían. El cuaderno y los relatos no se tocan.",
   "meminsp.orph.handle": "acceso a archivo",
   "meminsp.orph.intro": "Datos de mapas que ya no están en tu lista. No se borra nada sin tu acuerdo.",

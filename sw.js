@@ -405,6 +405,7 @@ const ASSETS_TO_CACHE = [
   "./js/recalageScan.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
+  "./js/vuePlan.js",
   "./js/planRegistry.js",
   "./js/planDenylist.js",
   "./js/osmTilesCache.js",
