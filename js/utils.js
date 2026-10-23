@@ -2625,24 +2625,28 @@ async function telechargerPlan() {
     // ── icônes ──
     const iconCache = {};
 
-    async function getIconForPoint(point) {
-      let iconPath = getIconUrlForPoint(point);
-
-      // filet ultime : icône par défaut de l'app
-      if (!iconPath) iconPath = window._ktaIconeDefaut || "icon/default.png";
-
-      if (!iconCache[iconPath]) {
-        iconCache[iconPath] = await loadImage(iconPath);
+    // 🩸 Icône illisible (chemin mort du plan-config) : repli comme la carte (catalogue, puis icône par défaut),
+    // jamais un rejet — il faisait échouer tout l'export pour un seul pictogramme.
+    async function _imageIcone(chemin) {
+      if (!chemin) return null;
+      if (!(chemin in iconCache)) {
+        try { iconCache[chemin] = await loadImage(chemin); }
+        catch (e) { iconCache[chemin] = null; console.warn("[Export rapide] icône illisible :", String(chemin).slice(0, 80)); }
       }
+      return iconCache[chemin];
+    }
 
-      return {
-        img: iconCache[iconPath],
-        path: iconPath
-      };
+    async function getIconForPoint(point) {
+      const tag = (point && Array.isArray(point.tags) && point.tags.length) ? point.tags[0] : null;
+      const img = (await _imageIcone(getIconUrlForPoint(point))) ||
+                  (await _imageIcone(tag && window._ktaBuiltinIconUrls ? window._ktaBuiltinIconUrls[tag] : null)) ||
+                  (await _imageIcone(window._ktaIconeDefaut || "icon/default.png"));
+      return { img: img };
     }
 
     async function drawPoint(point) {
       const { img } = await getIconForPoint(point);
+      if (!img) return;
 
       // icônes 50×50, ancrage centré
       drawMarkerImage(img, point.x, point.y, 50, 50, 25, 25);

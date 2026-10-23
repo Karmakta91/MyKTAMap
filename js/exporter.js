@@ -1847,14 +1847,26 @@
 
     // ── Icônes (cache) ──
     const iconCache = {};
+    // 🩸 Une icône illisible (chemin mort du plan-config, que la carte remplace par le catalogue) ne doit pas
+    // faire échouer tout l'export : même repli que la carte (map.js > _installerRepliIcones), catalogue puis
+    // icône par défaut ; `null` (marqueur omis) en dernier recours.
+    async function _imageIcone(url) {
+      if (!url) return null;
+      if (!(url in iconCache)) {
+        try { iconCache[url] = await loadImage(url); }
+        catch (e) { iconCache[url] = null; console.warn("[Export] icône illisible :", String(url).slice(0, 80)); }
+      }
+      return iconCache[url];
+    }
     async function getIconUrl(p) {
       // Cascade : plan-config.icons[tag] → _iconMap[tag] → default.
-      let url = (typeof window.getIconUrlForPoint === "function")
+      const url = (typeof window.getIconUrlForPoint === "function")
         ? window.getIconUrlForPoint(p)
         : (config.icons && config.icons.default) || null;
-      if (!url) return null;
-      if (!iconCache[url]) iconCache[url] = await loadImage(url);
-      return iconCache[url];
+      const tag = (p && Array.isArray(p.tags) && p.tags.length) ? p.tags[0] : null;
+      return (await _imageIcone(url)) ||
+             (await _imageIcone(tag && window._ktaBuiltinIconUrls ? window._ktaBuiltinIconUrls[tag] : null)) ||
+             (await _imageIcone(window._ktaIconeDefaut || null));
     }
 
     function drawMarker(img, x, y, size) {
