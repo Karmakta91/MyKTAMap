@@ -10,7 +10,8 @@
 //      pixels relus à l'identique en brut ET en Deflate + prédicteur, ordre d'écriture par blocs ;
 //   G. GeoKeys (2154 projeté / 4326 géographique, PixelIsArea) ;
 //   C. calage : les points A, B, C du calage retombent à < 1 m, les 4 coins relus aussi ; plan nord en
-//      haut → tiepoint + pixelscale relu par l'IMPORT de l'app ; plan tourné → matrice ;
+//      haut → tiepoint + pixelscale relu par l'IMPORT de l'app ; plan tourné → matrice, RÉIMPORTÉE (A, B,
+//      C, coins à < 1 m) ; la même matrice cisaillée est refusée ;
 //   J. GeoJSON : familles, filtres et niveaux du KMZ, couleurs résolues, anneaux fermés, Lambert 93 avec
 //      `crs`, WGS84 conforme RFC 7946 (sans `crs`, [lng, lat]) ;
 //   B. branchements : index.html, précache sw.js, tuiles du lanceur, clés i18n fr/en/es.
@@ -230,6 +231,54 @@ function distM(a, b) {
     verif("C5. aller-retour plan → GeoTIFF → import : coins sud-ouest et nord-est à < 1 m, dimensions exactes",
       !boum && dA < 1 && dB < 1 && cal.georef.pointA.y === PH && cal.georef.pointB.x === PW,
       "écarts " + dA.toFixed(3) + " / " + dB.toFixed(3) + " m. L'import doit retrouver le calage exporté.");
+  }
+
+  // C6. Un GeoTIFF TOURNÉ exporté par l'app (calage 2 points, comme une saisie A / B) se RÉIMPORTE : l'import
+  // pose A, B et C, et le calage relu redonne les 4 coins du plan à < 1 m, en Lambert 93 comme en WGS84.
+  // Les 4 coins sont jugés avec le calage de l'APP reconstruit depuis A / B / C (buildTransformCalib), pas avec
+  // la matrice du fichier : c'est ce que l'utilisateur obtient après l'import.
+  const calA_B = (function () {
+    const kL = 111320 * Math.cos(46.5 * Math.PI / 180), rot = 23 * Math.PI / 180, k = 0.3;
+    const g = (x, y) => {
+      const e = (x * Math.cos(rot) + y * Math.sin(rot)) * k, n = (x * Math.sin(rot) - y * Math.cos(rot)) * k;
+      return { x: x, y: y, lat: 46.5 + n / 110540, lng: 3.2 + e / kL };
+    };
+    return { pointA: g(200, 2800), pointB: g(3800, 300) };
+  })();
+  const geoCisaille = [];
+  for (const epsg of [2154, 4326]) {
+    const r = 0.1;
+    let e = null, cal = null, boum = null;
+    try {
+      e = await exporterEtRelire(calA_B, epsg, r);
+      if (epsg === 2154) geoCisaille.push(e);
+      cal = TG._interne.calage(e.ifd, e.w, e.h);   // chemin de l'IMPORT, sans option
+    } catch (x) { boum = x; }
+    let pire = Infinity, sansC = true;
+    if (cal) {
+      sansC = !cal.georef.pointC;
+      const trLu = KE.buildTransformCalib(cal.georef);
+      pire = Math.max.apply(null, [[0, 0], [PW, 0], [0, PH], [PW, PH], [PW / 2, PH / 2]].map(c =>
+        distM(KE.planToGps(trLu, c[0] * r, c[1] * r), KE.planToGps(e.tr, c[0], c[1]))));
+    }
+    verif("C6 (" + epsg + "). GeoTIFF tourné de l'app réimporté : A, B et C posés, coins à < 1 m (" +
+      (isFinite(pire) ? pire.toFixed(3) : "?") + " m)",
+      !boum && e.g.mode === "matrice" && !sansC && pire < 1,
+      (boum ? boum.message : "pointC " + (sansC ? "absent" : "présent") + ", pire " + pire) +
+      ". Un export de l'app doit pouvoir revenir dans l'app : une similitude tournée est acceptée.");
+  }
+  {
+    // C7. La même matrice, CISAILLÉE de 5 % : refusée par l'import, nommée.
+    let obtenu = "(aucune erreur)";
+    try {
+      const e = geoCisaille[0];
+      const m = e.g.geo.matrice.slice();
+      m[1] += 0.05 * Math.hypot(m[0], m[4]);
+      const u8 = await I.ecrireTiff(new Uint8Array(e.w * e.h * 3), e.w, e.h, 3, { compresser: false, epsg: 2154, geo: { matrice: m } });
+      TG._interne.calage(TG._interne.lireIfd0(u8.buffer), e.w, e.h);
+    } catch (x) { obtenu = x.message; }
+    verif("C7. image cisaillée de 5 % : refusée à l'import (tiff.err.rotation)", obtenu === "tiff.err.rotation",
+      "obtenu « " + obtenu + " ». Une déformation passe pour une rotation si la similitude n'est pas vérifiée.");
   }
 
   // ── J. GeoJSON ──────────────────────────────────────────────────────────

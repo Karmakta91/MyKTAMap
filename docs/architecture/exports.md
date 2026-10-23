@@ -266,13 +266,16 @@ Lambert 93 par `window.SigImport.L93` (seule implémentation, `check-lambert93.j
     forme que lit tout SIG, et l'import de l'app ;
   - sinon → **`ModelTransformation`** (34264), rotation comprise. ⚠️ En Lambert 93 c'est le cas de presque tout
     calage réel : la convergence des méridiens tourne la grille dès qu'on s'écarte de 3°E. GDAL / QGIS lisent la
-    matrice (géotransformation tournée, vérifié avec `gdalinfo`) ; **l'import GeoTIFF de l'app la refuse en la
-    nommant** (`tiff.err.rotation`, décision antérieure : le géoréf 2 points n'aplatit pas une rotation).
+    matrice (géotransformation tournée, vérifié avec `gdalinfo`), et **l'import GeoTIFF de l'app aussi** : une
+    matrice tournée qui est une similitude à 1 % près donne les points A, B **et C** (coins SO, NE, NO), voir
+    `plans-loader.md` § GeoTIFF. Un export Lambert 93 de l'app s'écarte de la similitude de ≤ 0,4 % (son calage
+    équirectangulaire n'est pas conforme) : il se réimporte, coins à < 1 m.
   - GeoKeys : `GTModelTypeGeoKey` (1 projeté / 2 géographique), `GTRasterTypeGeoKey` = 1,
     `ProjectedCSTypeGeoKey` = 2154 + `ProjLinearUnitsGeoKey` = mètre, ou `GeographicTypeGeoKey` = 4326 +
     `GeogAngularUnitsGeoKey` = degré.
-- **Aller-retour** : `js/tiffGeoref.js` lit désormais les TIFF **tuilés** ; le garde-fou relit chaque fichier
-  écrit (pixels identiques en brut et en Deflate, EPSG, coins, points A / B / C à < 1 m).
+- **Aller-retour** : `js/tiffGeoref.js` lit les TIFF **tuilés** et les matrices **tournées** (similitudes) ; le
+  garde-fou relit chaque fichier écrit (pixels identiques en brut et en Deflate, EPSG, coins, points A / B / C à
+  < 1 m) et le réimporte par le chemin de l'import (coins à < 1 m, Lambert 93 tourné compris).
 - 🩸 **Ce que le calage ne corrige pas** : le modèle de l'app (similitude ou affine en mètres équirectangulaires) n'est
   pas le Lambert 93 ; un plan importé d'un GeoTIFF nord en haut puis réexporté garde les points du calage exacts mais
   peut dériver de quelques mètres aux coins opposés sur un plan de plusieurs km. L'export reproduit le calage tel

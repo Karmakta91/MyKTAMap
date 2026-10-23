@@ -5900,7 +5900,7 @@
   "tiff.err.lzwTropLong": "flujo LZW incoherente con las dimensiones declaradas",
   "tiff.err.deflateIndispo": "descompresión Deflate no disponible en este navegador",
   "tiff.err.pasDeCalage": "sin georreferenciación en el archivo — es un TIFF normal, no un GeoTIFF",
-  "tiff.err.rotation": "la georreferenciación contiene una rotación — reexporta el mapa con el norte arriba",
+  "tiff.err.rotation": "la georreferenciación deforma la imagen (estirada o cizallada, no solo girada) — reexpórtala sin deformación, o con el norte arriba",
   "tiff.err.crsInconnu": "sistema de coordenadas no admitido — reexporta en Lambert 93, Web Mercator o WGS84",
   "tiff.err.calageNonFini": "georreferenciación ilegible (valores no numéricos)",
   "tiff.err.calageHorsTerre": "la georreferenciación sitúa el mapa fuera de la Tierra — revisa el sistema de coordenadas",

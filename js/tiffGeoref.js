@@ -7,15 +7,15 @@
 // tiffGeoref.js — lecture d'un GeoTIFF calé (QGIS) pour le Générateur : image + calage d'un coup.
 // Le navigateur ne décode pas le TIFF : pixels décodés ici puis ré-encodés en PNG (canvas.toBlob).
 // Calage : ModelPixelScale (33550) + ModelTiepoint (33922) ou ModelTransformation (34264),
-//   EPSG via GeoKeyDirectory (34735) → plan.georef pointA/pointB (similitude 2 points, exacte
-//   pour une image nord en haut sans rotation).
+//   EPSG via GeoKeyDirectory (34735) → plan.georef pointA/pointB (nord en haut), + pointC pour une
+//   matrice tournée qui est une similitude ; une image étirée ou cisaillée est refusée.
 // ⚠️ Sous-ensemble lu, pas de geotiff.js générique (décision produit) : IFD 0, bandes OU tuiles,
 //   PlanarConfig 1, 8 bits, LZW / Deflate / brut, predictor 1-2. Tout le reste est REFUSÉ EN LE NOMMANT
 //   (clé tiff.err.*), jamais deviné en silence. Les tuiles sont lues parce que l'export GeoTIFF de
 //   l'app (js/geotiffExport.js) en écrit, comme QGIS en TILED=YES.
 // 🩸 Projections : window.SigImport.L93 / .WEBMERC uniquement, aucune copie locale des maths.
 // Expose : window.TiffGeoref { estTiff, lire, EXT_ACCEPTEES, _interne } — 100 % local.
-// Garde-fou : scripts/check-geotiff.js
+// Garde-fous : scripts/check-geotiff.js, scripts/check-export-sig.js
 
 (function() {
   "use strict";
@@ -42,6 +42,9 @@
   };
 
   const COMPRESSIONS_LUES = [1, 5, 8, 32946];
+
+  // Écart relatif toléré entre une matrice de calage et une similitude (échelles, orthogonalité) : cf _matrice.
+  const TOLERANCE_SIMILITUDE = 0.01;
 
   // ── Lecture de l'IFD 0 ───────────────────────────────────────────────────
   // En-tête de 8 octets puis entrées de 12 octets (tag, type, nombre, valeur-ou-offset).
@@ -311,19 +314,41 @@
 
   // Fonction pixel → coordonnées du CRS du fichier (matrice, ou Scale + Tiepoint).
   // `rotationPermise` (contrôle de l'export GeoTIFF seulement) : la matrice entière est appliquée.
-  function _mondeDePixel(t, rotationPermise) {
+  // Matrice 4×4 en ligne : X = [0]·px + [1]·py + [3], Y = [4]·px + [5]·py + [7].
+  // Une matrice TOURNÉE est acceptée si c'est une SIMILITUDE (rotation + échelle uniforme) : les deux axes
+  // du pixel, ramenés en mètres au sol, ont la même longueur et sont perpendiculaires, à TOLERANCE_SIMILITUDE
+  // près, sans miroir. Au-delà (image étirée ou cisaillée) : refus nommé (tiff.err.rotation).
+  // ⚠️ La tolérance ne perd rien : `calage` pose 3 coins (A, B, C) que l'affine de l'app reproduit
+  // exactement. 1 % couvre les GeoTIFF Lambert 93 exportés par l'app (≤ 0,4 % mesurés : son calage
+  // équirectangulaire n'est pas conforme) et refuse une vraie déformation.
+  function _matrice(t, epsg) {
     const mt = t[T.TRANSFORM];
-    if (mt && mt.length >= 8) {
-      if (rotationPermise) {
-        return function(px, py) { return { X: mt[0] * px + mt[1] * py + mt[3], Y: mt[4] * px + mt[5] * py + mt[7] }; };
-      }
-      // Matrice 4×4 en ligne ; [1] et [4] = rotation/cisaillement. Le géoréf 2 points ne décrit
-      // qu'une image nord en haut : une rotation est refusée, pas aplatie en silence.
-      const echelle = Math.max(Math.abs(mt[0]), Math.abs(mt[5])) || 1;
-      if (Math.abs(mt[1]) > echelle * 1e-6 || Math.abs(mt[4]) > echelle * 1e-6) {
-        throw new Error("tiff.err.rotation");
-      }
-      return function(px, py) { return { X: mt[0] * px + mt[3], Y: mt[5] * py + mt[7] }; };
+    if (!mt || mt.length < 8) return null;
+    // Degrés → mètres au sol, mêmes constantes que KmzExport.buildTransform (latitude du pixel (0, 0)).
+    let kx = 1, ky = 1;
+    if (epsg === 4326 || epsg === 4171) { kx = 111320 * Math.cos(mt[7] * Math.PI / 180); ky = 110540; }
+    const ax = mt[0] * kx, ay = mt[4] * ky, bx = mt[1] * kx, by = mt[5] * ky;
+    const s1 = Math.hypot(ax, ay), s2 = Math.hypot(bx, by);
+    const ref = Math.max(Math.abs(mt[0]), Math.abs(mt[5])) || 1;
+    return {
+      mt: mt,
+      // Échelle par axe dans l'unité du CRS (mètre, ou degré en 4326).
+      sx: Math.hypot(mt[0], mt[4]), sy: Math.hypot(mt[1], mt[5]),
+      tournee: Math.abs(mt[1]) > ref * 1e-6 || Math.abs(mt[4]) > ref * 1e-6,
+      similitude: s1 > 0 && s2 > 0 && Math.abs(s1 / s2 - 1) <= TOLERANCE_SIMILITUDE &&
+                  Math.abs((ax * bx + ay * by) / (s1 * s2)) <= TOLERANCE_SIMILITUDE &&
+                  (ax * by - ay * bx) < 0   // sans miroir : le Y monde descend quand la ligne croît
+    };
+  }
+
+  // `rotationPermise` (contrôles de l'export seulement) : la matrice entière, même déformée.
+  function _mondeDePixel(t, rotationPermise, epsg) {
+    const m = _matrice(t, epsg);
+    if (m) {
+      const mt = m.mt;
+      // Nord en haut (termes croisés nuls) : accepté tel qu'avant, la similitude ne concerne que la rotation.
+      if (!rotationPermise && m.tournee && !m.similitude) throw new Error("tiff.err.rotation");
+      return function(px, py) { return { X: mt[0] * px + mt[1] * py + mt[3], Y: mt[4] * px + mt[5] * py + mt[7] }; };
     }
 
     const ps = t[T.PIXEL_SCALE], tp = t[T.TIEPOINT];
@@ -360,11 +385,13 @@
   // Calage complet : tags → `plan.georef`.
   // 🩸 Le y d'un plan se compte depuis le HAUT (`convertCoord`) : pointA = (0, hauteur) = SUD-OUEST,
   // pointB = (largeur, 0) = NORD-EST — le couple de sigImport.genererZipMyktamap et de
-  // KmzExport.buildTransform.
+  // KmzExport.buildTransform. Image TOURNÉE (similitude, cf _matrice) : + pointC = (0, 0), coin nord-ouest
+  // du fichier ; avec A et B, trois coins non alignés que l'affine de l'app reproduit exactement.
   function calage(ifd, w, h) {
     const t = ifd.tags;
     const epsg = _epsgDeGeoKeys(t[T.GEO_KEYS]);
-    const monde = _mondeDePixel(t);
+    const monde = _mondeDePixel(t, false, epsg);
+    const mat = _matrice(t, epsg);
     const versLl = _versWgs84(epsg);
 
     const sw = monde(0, h), ne = monde(w, 0);
@@ -378,9 +405,10 @@
       throw new Error("tiff.err.calageHorsTerre");
     }
 
-    const ps = t[T.PIXEL_SCALE], mt = t[T.TRANSFORM];
-    const sx = ps ? Math.abs(ps[0]) : (mt ? Math.abs(mt[0]) : null);
-    const sy = ps ? Math.abs(ps[1]) : (mt ? Math.abs(mt[5]) : null);
+    // Échelle par axe : longueur du vecteur colonne (une matrice tournée répartit l'échelle sur 2 termes).
+    const ps = t[T.PIXEL_SCALE];
+    const sx = ps ? Math.abs(ps[0]) : (mat ? mat.sx : null);
+    const sy = ps ? Math.abs(ps[1]) : (mat ? mat.sy : null);
 
     // 🩸 L'unité du CRS n'est pas toujours le mètre au sol :
     //   4326 = degrés → pas d'emprise en mètres ; 3857 = mètre Mercator gonflé de 1/cos(lat)
@@ -393,15 +421,21 @@
     }
     const mParPx = (degres || sx == null) ? null : sx * k;
 
+    const georef = {
+      pointA: { x: 0, y: h, lat: llSw.lat, lng: llSw.lng },
+      pointB: { x: w, y: 0, lat: llNe.lat, lng: llNe.lng }
+    };
+    if (mat && mat.tournee) {
+      const nw = monde(0, 0), llNw = versLl(nw.X, nw.Y);
+      georef.pointC = { x: 0, y: 0, lat: llNw.lat, lng: llNw.lng };
+    }
     return {
       epsg: epsg,
       metresParPixel: mParPx,
       largeurM: mParPx ? mParPx * w : null,
       hauteurM: (degres || sy == null) ? null : sy * k * h,
-      georef: {
-        pointA: { x: 0, y: h, lat: llSw.lat, lng: llSw.lng },
-        pointB: { x: w, y: 0, lat: llNe.lat, lng: llNe.lng }
-      }
+      tournee: !!(mat && mat.tournee),
+      georef: georef
     };
   }
 
@@ -456,7 +490,8 @@
     EXT_ACCEPTEES: EXT_ACCEPTEES,
     // Pour le harnais Node : testables sans DOM, contrairement à lire().
     _interne: { lireIfd0: _lireIfd0, decoderPixels: _decoderPixels, calage: calage,
-                lzw: _lzw, epsgDeGeoKeys: _epsgDeGeoKeys, mondeDePixel: _mondeDePixel, TAGS: T }
+                lzw: _lzw, epsgDeGeoKeys: _epsgDeGeoKeys, mondeDePixel: _mondeDePixel, matrice: _matrice,
+                TOLERANCE_SIMILITUDE: TOLERANCE_SIMILITUDE, TAGS: T }
   };
 
   console.log("[TiffGeoref] module chargé (LZW/Deflate/brut, RGB8 en bandes ou tuiles)");

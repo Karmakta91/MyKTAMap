@@ -8,7 +8,8 @@
 //   • ⬆️ Exporter : tuile GeoTIFF dans la section Image, tuile GeoJSON dans Export externe ;
 //   • GeoTIFF scan seul en Lambert 93, puis scan + dessins en WGS84 : relus par js/tiffGeoref.js
 //     (dimensions annoncées, tuiles, Deflate, EPSG), 3 coins et A / B / C à < 1 m ; le scan seul n'a pas la
-//     couleur d'une structure personnalisée, le scan + dessins l'a ;
+//     couleur d'une structure personnalisée, le scan + dessins l'a ; le GeoTIFF Lambert 93 tourné se
+//     RÉIMPORTE (TiffGeoref.lire : A, B, C posés, 4 coins à < 1 m) ;
 //   • plan non calé : bouton Télécharger désactivé, explication visible ;
 //   • GeoJSON (Export externe) : image et légende du KMZ masquées, nombre d'objets par famille = nombre de
 //     Placemarks du KMZ exporté avec les mêmes cases ; Lambert 93 avec `crs`, WGS84 sans.
@@ -268,6 +269,28 @@ async function scenarioFictif(page) {
   verifier(!proche(r1.pixelPilier, COUL_PIL), "scan seul : la structure personnalisée n'y est PAS", r1.pixelPilier);
   verifier(/_L93\.tif$/.test(f1.nom), "nom du fichier : suffixe _L93", f1.nom);
   console.log("     ↳ " + r1.w + " × " + r1.h + " px, " + (f1.taille / 1048576).toFixed(2) + " Mo, " + d1 + " ms");
+
+  // ── Réimport du GeoTIFF tourné (chemin de l'import : TiffGeoref.lire, comme le Générateur) ──
+  const ri = await page.evaluate(async function () {
+    const KE = window.KmzExport;
+    try {
+      const res = await window.TiffGeoref.lire(new File([window.__sigBlob], "reimport.tif", { type: "image/tiff" }));
+      const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight, r = res.width / W;
+      const trLu = KE.buildTransformCalib(res.georef);
+      const tr = KE.buildTransformCalib(KE.getCalibration(window._currentLoadedPlanId));
+      function dist(a, b) {
+        const lat = (a.lat + b.lat) / 2;
+        return Math.hypot((a.lat - b.lat) * 110540, (a.lng - b.lng) * 111320 * Math.cos(lat * Math.PI / 180));
+      }
+      const coins = [[0, 0], [W, 0], [0, H], [W, H]].map(function (c) {
+        return dist(KE.planToGps(trLu, c[0] * r, c[1] * r), KE.planToGps(tr, c[0], c[1]));
+      });
+      return { ok: true, c: !!res.georef.pointC, coins: coins, png: !!(res.blob && res.blob.size) };
+    } catch (e) { return { ok: false, err: e.message }; }
+  });
+  verifier(ri.ok && ri.c && ri.png && ri.coins.every(function (d) { return d < 1; }),
+    "réimport du GeoTIFF Lambert 93 tourné : accepté, A / B / C posés, 4 coins à < 1 m (" +
+    (ri.coins ? ri.coins.map(function (d) { return d.toFixed(3); }).join(" / ") : "?") + " m)", ri);
 
   // ── GeoTIFF scan + dessins, WGS84 ──
   await page.evaluate(function () {

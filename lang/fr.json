@@ -5900,7 +5900,7 @@
   "tiff.err.lzwTropLong": "flux LZW incohérent avec les dimensions annoncées",
   "tiff.err.deflateIndispo": "décompression Deflate indisponible sur ce navigateur",
   "tiff.err.pasDeCalage": "aucun géoréférencement dans le fichier — c'est un TIFF ordinaire, pas un GeoTIFF",
-  "tiff.err.rotation": "le calage contient une rotation — réexporte le plan nord en haut",
+  "tiff.err.rotation": "le calage déforme l'image (étirée ou cisaillée, pas seulement tournée) — réexporte-la sans déformation, ou nord en haut",
   "tiff.err.crsInconnu": "système de coordonnées non géré — réexporte en Lambert 93, Web Mercator ou WGS84",
   "tiff.err.calageNonFini": "calage illisible (valeurs non numériques)",
   "tiff.err.calageHorsTerre": "le calage place le plan hors de la Terre — vérifie le système de coordonnées",

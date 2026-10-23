@@ -5900,7 +5900,7 @@
   "tiff.err.lzwTropLong": "LZW stream inconsistent with the declared dimensions",
   "tiff.err.deflateIndispo": "Deflate decompression unavailable in this browser",
   "tiff.err.pasDeCalage": "no georeferencing in the file — this is a plain TIFF, not a GeoTIFF",
-  "tiff.err.rotation": "the georeferencing contains a rotation — re-export the plan north-up",
+  "tiff.err.rotation": "the georeferencing distorts the image (stretched or sheared, not just rotated) — re-export it without distortion, or north-up",
   "tiff.err.crsInconnu": "coordinate system not supported — re-export in Lambert 93, Web Mercator or WGS84",
   "tiff.err.calageNonFini": "unreadable georeferencing (non-numeric values)",
   "tiff.err.calageHorsTerre": "the georeferencing places the plan off Earth — check the coordinate system",

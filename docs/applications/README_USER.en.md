@@ -1589,7 +1589,7 @@ If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif`): 
 
 > ✅ **Accepted**: LZW, Deflate or no compression · 8 bits per channel · grey, RGB or RGBA · striped image · north up, no rotation · Lambert 93, Web Mercator or WGS84.
 >
-> ❌ **Refused**, with a message saying what to change in the export: BigTIFF, separate channels, palette / CMYK / YCbCr, rotated georeferencing, other coordinate system.
+> ❌ **Refused**, with a message saying what to change in the export: BigTIFF, separate channels, palette / CMYK / YCbCr, georeferencing that distorts the image (stretched or sheared; a merely rotated image is accepted), other coordinate system.
 
 #### 🗺️ Convert a GIS file (QGIS…)
 

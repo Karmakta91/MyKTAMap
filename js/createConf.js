@@ -827,9 +827,16 @@ function afficherPlanner() {
           // 3 décimales : au-delà, bruit de virgule flottante.
           put("pl_scale", Math.round(pxParM * 1000) / 1000);
         }
-        // Calage GeoTIFF = nord en haut, sans rotation : 2 points le décrivent exactement. Un point C hérité
-        // d'un plan précédent introduirait une déformation : on le vide.
-        ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
+        // Nord en haut : 2 points le décrivent exactement, et un point C hérité d'un plan précédent introduirait
+        // une déformation (vidé). Image tournée (similitude, tiffGeoref.js > _matrice) : le coin nord-ouest du
+        // fichier devient le point C : l'affine 3 points reproduit le fichier exactement, écart toléré à la
+        // similitude compris.
+        if (g.pointC) {
+          put("pl_geo_C_x", g.pointC.x); put("pl_geo_C_y", g.pointC.y);
+          put("pl_geo_C_coords", fmt(g.pointC.lat, g.pointC.lng));
+        } else {
+          ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
+        }
 
         // 🩸 Géoréf et échelle vivent dans des blocs `data-planner-advanced="1"`, masqués par le CSS tant que
         // le corps porte `data-planner-mode="simple"` (mode par défaut) : remplis mais invisibles. On bascule
