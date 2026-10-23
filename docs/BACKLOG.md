@@ -101,6 +101,10 @@
 
 ## Plus tard
 
+- **`security.txt` à renouveler** — `.well-known/security.txt` (RFC 9116) expire le 22/10/2027 : un fichier périmé
+  compte comme absent pour les outils de réputation.
+  `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
+  · depuis: 23/10/2026 · taille: XS`
 - **Sonar : jetons à régénérer** — ils expirent vers le 06/01/2027 : au-delà, `sonar-scan.ps1` sort en code 1 et
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027
