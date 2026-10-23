@@ -5,10 +5,12 @@
 // =====================================================================
 // Le relevé fictif devient un plan LOCAL (ZIP construit dans la page) auquel on ajoute un calque de données
 // fabriqué : les 5 structures intégrées, une structure personnalisée en LIGNE et une en polygone (`cust-…`,
-// légende du plan), une structure au type brut sans entrée de légende, et de même pour tracés et zones ; des
-// points de chaque tag du catalogue, un point sans tag, un point au tag inconnu. Puis :
+// légende du plan), deux structures au type brut sans entrée de légende (une ouverte, une fermée), et de même
+// pour tracés et zones ; des points de chaque tag du catalogue, un point sans tag, un point au tag inconnu. Puis :
 //   • KMZ (par la fenêtre d'export) : Placemarks par famille = objets du calque, ligne personnalisée en
-//     LineString avec son <Style> à la couleur de la légende ; une icône par tag, présente et non vide ;
+//     LineString avec son <Style> à la couleur de la légende ; type brut au style de repli de la carte (zone →
+//     remblais, structure → mur), structure brute ouverte en LineString, fermée en Polygon ; une icône par tag,
+//     présente et non vide ;
 //   • image (pipeline commun PNG / PDF) : un pixel de la couleur attendue sur chaque structure personnalisée,
 //     légende de l'export qui porte ces couleurs ;
 //   • ≡ Légende : la ligne « Point sans tag » montre icon/default.png ;
@@ -80,7 +82,8 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
         { type: "pilier-1", points: carre(0, 0) }, { type: "pilier-2", points: carre(1, 0) }, { type: "mur", points: carre(2, 0) },
         { type: "front-1", points: trait(3, 0) }, { type: "front-2", points: trait(4, 0) },
         { type: "cust-ckpil", points: carre(0, 1) }, { type: "cust-ckfront", points: trait(1, 1) },
-        { type: "ckbrut", points: carre(2, 1) }
+        { type: "ckbrut", points: carre(2, 1).concat([carre(2, 1)[0]]) },
+        { type: "ckbrut", points: trait(3, 1).concat([{ x: x0 + 3 * pas + Math.floor(pas * 0.8), y: y0 + pas + Math.floor(pas * 0.5) }]) }
       ].map(function (s) { s.level = 0; return s; });
       const roads = [
         { type: "principal", points: trait(0, 3) }, { type: "cust-cktrace", points: trait(1, 3) }, { type: "ckbrut", points: trait(2, 3) }
@@ -218,7 +221,9 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
         icones[id] = { href: href, octets: f ? (await f.async("uint8array")).length : 0,
           png: f ? (function (u) { return u[0] === 0x89 && u[1] === 0x50; })(await f.async("uint8array")) : false };
       }
-      return { familles: familles, icones: icones, styleFront: styleDe("structure_cust-ckfront"), stylePil: styleDe("structure_cust-ckpil") };
+      return { familles: familles, icones: icones, styleFront: styleDe("structure_cust-ckfront"), stylePil: styleDe("structure_cust-ckpil"),
+        styleZBrut: styleDe("zone_ckbrut"), styleRemblais: styleDe("zone_remblais"),
+        styleSBrut: styleDe("structure_ckbrut"), styleMur: styleDe("structure_mur") };
     });
     function compte(fam, pred) { return (k.familles[fam] || []).filter(pred).length; }
     function ck(st) { return /(^|_)(cust-ck|ckbrut)/.test(st); }
@@ -236,6 +241,14 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
     const zCk = compte("zones", function (x) { return ck(x.style) || x.style === "zone_eau"; });
     verifier(compte("roads", function (x) { return ck(x.style); }) === 2, "KMZ : tracés personnalisé + brut du calque exportés", rCk);
     verifier(compte("zones", function (x) { return ck(x.style); }) === 2, "KMZ : zones personnalisée + brute du calque exportées", zCk);
+    function memeStyle(a, b) { return !!a && !!b && a.ligne === b.ligne && a.fond === b.fond; }
+    verifier(memeStyle(k.styleZBrut, k.styleRemblais), "KMZ : zone au type brut = style de repli « remblais »",
+      { brut: k.styleZBrut, remblais: k.styleRemblais });
+    verifier(memeStyle(k.styleSBrut, k.styleMur), "KMZ : structure au type brut = style de repli « mur »",
+      { brut: k.styleSBrut, mur: k.styleMur });
+    const sBruts = (k.familles.structures || []).filter(function (x) { return x.style === "structure_ckbrut"; })
+      .map(function (x) { return x.geom; }).sort();
+    verifier(sBruts.join(",") === "ligne,polygone", "KMZ : structure brute ouverte = LineString, fermée = Polygon", sBruts);
     const tagsVus = Object.keys(k.icones);
     const manquantes = ouvert.tags.filter(function (t) { return !k.icones["point_" + t]; });
     verifier(manquantes.length === 0, "KMZ : chaque tag du catalogue a son style d'icône (" + ouvert.tags.length + ")", manquantes);

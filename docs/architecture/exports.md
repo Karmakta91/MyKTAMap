@@ -7,7 +7,7 @@
 
 ### 0. 🎨 v1.76.0 — styles résolus + la légende voyage (résumé, détails dans `rendering-leaflet.md` §0)
 
-- **Plus aucune table de couleurs dans les exports** : toutes les pipes canvas (`exporter.js`, `utils.js`) et le KML (`kmzExport.js`) demandent `ktaResolveStyle(cat, clé, {flat:true})` — l'aplat de repli remplace le motif SVG d'`inaccessible`. Les **largeurs/alphas KML restent locaux** (unité ≠ Leaflet, figés par `scripts/check-kml-styles.js`) ; un type custom reçoit désormais son `<Style>` KML (avant : `styleUrl` pendant → couleur perdue dans Google Earth).
+- **Plus aucune table de couleurs dans les exports** : toutes les pipes canvas (`exporter.js`, `utils.js`) et le KML (`kmzExport.js`) demandent `ktaResolveStyle(cat, clé, {flat:true})` — l'aplat de repli remplace le motif SVG d'`inaccessible`. Les **largeurs/alphas KML restent locaux** (unité ≠ Leaflet, figés par `scripts/check-kml-styles.js`) ; tout type hors intégrés reçoit son `<Style>` KML : un type personnalisé, celui de sa légende ; un type **sans entrée de légende** (id brut d'un calque, personnalisé supprimé), le **repli de la carte** — zone → `remblais`, structure → `mur` (`kmzExport.js > REPLI_KML`, aligné sur `zones.js` / `structures.js` par le garde-fou) ; un tracé inconnu n'a pas de style (la carte le peint en blanc, comme le trait par défaut de Google Earth).
 - **La légende voyage** : payload `devmap-data` → champ `customLegend` **restreint aux types référencés** (`sessionExporter.js > _legendePourPayload`) ; lu par `createConf.js > _absorberLegendeCalque` (conflit : **l'existant du plan gagne**, ré-import idempotent, garde-fou `check-legend-roundtrip.js`). ZIP session Avancé → `session_legend.json`. Option KMZ/GPX « Légende personnalisée » → **fusion plan + session** (`_legendeCompleteAExporter`, la session prime).
 - **Granularité fine de la conversion** : le bucket `autres` (types non built-in) est **émis** en `roads_<type>.json` etc. (`_emettreTypesRestants`) — avant, les objets custom étaient silencieusement supprimés de l'export.
 
@@ -191,6 +191,10 @@ Exemples :
 une structure personnalisée en LIGNE part en `LineString` (même émetteur que les tracés, altitude du niveau
 comprise), jamais en `Polygon` (qui jetait une ligne de 2 points). Nom du Placemark d'un type personnalisé =
 libellé de la légende (`_nomType`), jamais l'id `cust-…`.
+Une structure à type **sans légende** n'a pas de géométrie déclarée : elle suit sa **forme réelle**
+(`kmzExport.js > _estLigneStructure`) — `LineString` si son tracé est ouvert, `Polygon` s'il est fermé (premier
+point = dernier, comme l'anneau d'un polygone SIG importé ; le format n'a pas de drapeau `closed`). 🩸 La carte,
+elle, la peint toujours en polygone « mur » : un contour tracé fermé SANS répéter son premier point part en ligne.
 
 ⚠️ **Image blob requise** : si `imageBlob = null`, le GroundOverlay est skip silencieusement (log warning). Le KMZ reste valide mais affiche juste les annotations sans la cartographie de fond.
 

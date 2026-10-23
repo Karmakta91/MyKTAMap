@@ -5,13 +5,16 @@
 // =====================================================================
 // 🩸 Les Placemark émettent `<styleUrl>#road_<type></styleUrl>` : pour un type CUSTOM, un id jamais déclaré
 // laisse le styleUrl pendant, Google Earth retombe sur son trait par défaut et la couleur choisie est perdue.
-// Les couleurs passent par `js/styleResolver.js` et un <Style> est déclaré par type custom utilisé.
-// Deux invariants :
+// Les couleurs passent par `js/styleResolver.js` et un <Style> est déclaré par type hors intégrés utilisé.
+// Trois invariants :
 //   1. les 14 styles BUILT-IN restent identiques à REFERENCE : le KML a ses propres LARGEURS (unité ≠
 //      `weight` Leaflet : un front est à 5 ici, 10 sur la carte) et ALPHAS ; brancher naïvement le
 //      résolveur sur ces champs changerait le rendu dans Google Earth ;
 //   2. un type CUSTOM produit un style, et un front custom n'a JAMAIS de PolyStyle (le canon donne un
-//      `fillColor` aux fronts, mais c'est un LineString).
+//      `fillColor` aux fronts, mais c'est un LineString) ;
+//   3. un type INCONNU (id brut d'un calque, custom supprimé) reçoit le style de repli de sa famille, celui
+//      de la carte (zone → remblais, structure → mur, lu dans zones.js / structures.js) : jamais un style
+//      inventé, jamais aucun style ; un tracé inconnu n'en reçoit pas (la carte n'a pas de repli de famille).
 // =====================================================================
 
 const fs = require("fs");
@@ -40,7 +43,7 @@ win.window = win;
 const ctx = vm.createContext(win);
 vm.runInContext("var window=this;" + fs.readFileSync("js/styleResolver.js", "utf8"), ctx);
 
-// Deux fonctions extraites de kmzExport.js (le module entier dépend de JSZip, du DOM, de Leaflet)
+// Fonctions extraites de kmzExport.js (le module entier dépend de JSZip, du DOM, de Leaflet)
 const src = fs.readFileSync("js/kmzExport.js", "utf8");
 function extraire(signature) {
   const d = src.indexOf(signature);
@@ -51,10 +54,19 @@ function extraire(signature) {
   return src.slice(d, src.indexOf("\n  }", d) + 4);
 }
 win.PREFIXE_CATEGORIE = { road: "traces", zone: "zones", structure: "structures" };
+const mRepli = /const REPLI_KML = (\{[^}]*\});/.exec(src);
+if (!mRepli) {
+  console.error("❌ const REPLI_KML introuvable dans js/kmzExport.js — le script de contrôle doit être mis à jour.");
+  process.exit(1);
+}
 vm.runInContext(
+  "var REPLI_KML = " + mRepli[1] + ";\n" +
+  extraire("function _kmlColor") + "\n" +
   extraire("function _traitsKml") + "\n" +
   extraire("function _styleKmlDe") + "\n" +
-  "this._styleKmlDe = _styleKmlDe;", ctx);
+  extraire("function _blocStyleKml") + "\n" +
+  extraire("function _genererStylesKml") + "\n" +
+  "this._styleKmlDe = _styleKmlDe; this._genererStylesKml = _genererStylesKml; this.REPLI_KML = REPLI_KML;", ctx);
 
 let ko = 0, ok = 0;
 
@@ -105,8 +117,44 @@ cas("front custom à sa couleur",        !!cf && cf.line === "#abcdef");
 cas("front custom SANS PolyStyle",      !!cf && !cf.fill);
 cas("front custom garde la largeur KML 5", !!cf && cf.width === 5);
 cas("pilier custom : fond + largeur 2", !!cm && cm.fill === "#123456" && cm.width === 2);
-cas("custom supprimé de la légende → null (pas de style bidon)",
+
+// ── 3. Les types inconnus prennent le repli de la carte ──────────
+// Repli de la carte : `_resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais")`, pendant côté structures.
+function repliCarte(fichier, fn) {
+  const re = new RegExp(fn + "\\([a-z]+\\.type\\) \\|\\| " + fn + "\\(\"([^\"]+)\"\\)");
+  const m = re.exec(fs.readFileSync(fichier, "utf8"));
+  return m ? m[1] : null;
+}
+const carte = { zones: repliCarte("js/zones.js", "_resolveZoneStyle"),
+                structures: repliCarte("js/structures.js", "_resolveStructureStyle") };
+cas("repli de la carte lisible dans zones.js / structures.js", !!carte.zones && !!carte.structures);
+cas("repli KML des zones = celui de la carte (" + carte.zones + ")", win.REPLI_KML.zones === carte.zones);
+cas("repli KML des structures = celui de la carte (" + carte.structures + ")",
+    win.REPLI_KML.structures === carte.structures);
+
+function memeStyle(a, b) {
+  return !!a && !!b && CHAMPS.every(function(c) { return a[c] === b[c]; });
+}
+["zones", "structures"].forEach(function(cat) {
+  ["ckbrut", "cust-inexistant"].forEach(function(cle) {
+    cas(cat + " « " + cle + " » inconnu → style de repli « " + carte[cat] + " »",
+        memeStyle(win._styleKmlDe(cat, cle), win._styleKmlDe(cat, carte[cat])));
+  });
+});
+cas("tracé inconnu → null (pas de repli de famille, pas de style bidon)",
     win._styleKmlDe("traces", "cust-inexistant") === null);
+
+// Bout de chaîne : le document déclare bien un <Style> par type inconnu collecté, identique au repli.
+const doc = win._genererStylesKml(new Set(["zone_ckbrut", "structure_ckbrut", "road_ckbrut"]));
+function corpsStyle(id) {
+  const d = doc.indexOf('<Style id="' + id + '">');
+  return d === -1 ? null : doc.slice(doc.indexOf(">", d) + 1, doc.indexOf("</Style>", d));
+}
+cas("<Style> déclaré pour une zone inconnue, = " + carte.zones,
+    !!corpsStyle("zone_ckbrut") && corpsStyle("zone_ckbrut") === corpsStyle("zone_" + carte.zones));
+cas("<Style> déclaré pour une structure inconnue, = " + carte.structures,
+    !!corpsStyle("structure_ckbrut") && corpsStyle("structure_ckbrut") === corpsStyle("structure_" + carte.structures));
+cas("aucun <Style> pour un tracé inconnu", corpsStyle("road_ckbrut") === null);
 
 console.log("🌍 check-kml-styles : " + ok + " contrôle(s) OK, " + ko + " échec(s).");
 if (ko > 0) {

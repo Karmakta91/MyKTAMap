@@ -277,11 +277,20 @@
     return { width: 2, fillAlpha: 0.85 };
   }
 
-  // Style KML d'un type built-in OU custom ; null si inconnu (custom supprimé de la légende).
+  // ⚠️ Repli d'un type SANS entrée de légende (id brut d'un calque, custom supprimé) = celui de la carte :
+  // zones.js / structures.js > `_resolve…Style(type) || _resolve…Style("<repli>")`, contrôlé par
+  // scripts/check-kml-styles.js. Les tracés n'ont pas de repli de famille (la carte les peint en blanc,
+  // comme le trait par défaut de Google Earth) : pas de style.
+  const REPLI_KML = { zones: "remblais", structures: "mur" };
+
+  // Style KML d'un type built-in OU custom ; repli de sa famille si inconnu, null pour un tracé inconnu.
   function _styleKmlDe(categorie, cle) {
     if (typeof window.ktaResolveStyle !== "function") return null;
     const s = window.ktaResolveStyle(categorie, cle, { flat: true });
-    if (!s) return null;
+    if (!s) {
+      const repli = REPLI_KML[categorie];
+      return (repli && repli !== cle) ? _styleKmlDe(categorie, repli) : null;
+    }
     const t = _traitsKml(categorie, cle, s);
     const out = { line: s.color, width: t.width };
     if (t.alpha != null) out.alpha = t.alpha;
@@ -329,7 +338,7 @@
         const sep = id.indexOf("_");
         const cat = PREFIXE_CATEGORIE[id.slice(0, sep)];
         const s   = cat ? _styleKmlDe(cat, id.slice(sep + 1)) : null;
-        // Type custom introuvable : rien émis (styleUrl pendant, donnée préservée).
+        // Type introuvable : style de repli de sa famille ; tracé inconnu : rien émis (trait par défaut).
         if (s) out += _blocStyleKml(id, s);
       });
     }
@@ -810,10 +819,21 @@
       return id;
     }
 
-    function _estLigneStructure(type) {
-      return (typeof window.isStructurePolylineType === "function")
-        ? !!window.isStructurePolylineType(type)
-        : (type === "front-1" || type === "front-2");
+    // Géométrie d'une structure : celle de sa légende. Un type SANS légende (id brut d'un calque) n'en déclare
+    // aucune : il suit sa forme réelle, ligne si ouvert, polygone si fermé (premier point = dernier, comme
+    // l'anneau d'un polygone SIG importé ; le format n'a pas de drapeau `closed`).
+    function _estLigneStructure(s) {
+      const type = s.type;
+      const connu = typeof window.ktaResolveStyle === "function" && !!window.ktaResolveStyle("structures", type);
+      if (connu || typeof window.ktaResolveStyle !== "function") {
+        return (typeof window.isStructurePolylineType === "function")
+          ? !!window.isStructurePolylineType(type)
+          : (type === "front-1" || type === "front-2");
+      }
+      const pts = s.points || [];
+      const a = pts[0], z = pts[pts.length - 1];
+      const ferme = pts.length >= 4 && !!a && !!z && a.x === z.x && a.y === z.y;
+      return !ferme;
     }
 
     const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
@@ -898,7 +918,7 @@
             // 🩸 Géométrie lue dans la légende (structures.js > _isPolylineType) : un test littéral front-1/front-2
             // envoyait une structure PERSONNALISÉE en ligne vers _emitPolygon, qui la jetait (2 points) ou la
             // refermait en polygone.
-            if (_estLigneStructure(s.type)) {
+            if (_estLigneStructure(s)) {
               const nom = s.type === "front-1" ? "Front de taille 1ère masse"
                         : s.type === "front-2" ? "Front de taille 2e masse"
                         : _nomType(s.type);
