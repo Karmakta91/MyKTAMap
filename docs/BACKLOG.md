@@ -28,11 +28,10 @@
 
 ## Maintenant
 
-- **Train : v2.19.0 en prod** — mergée le 22/10 (avec, en plus des notes : fermeture du plan avant le tuilage V2,
-  icône par défaut, rotation en Présentation, case « Rendre les calques » sans objet visé, Sonar). Reste à vérifier
-  en ligne ; la 0.12.0 du pro suit (backlog pro).
-  `qui: KARMA · action: CI main verte ; /killsw.html sur myktamap.fr ; etat-sites.ps1 ; CI doc main + deploy-doc.sh
-  public ; poster les 2 stories · fini: etat-sites.ps1 vert, doc publique à jour · depuis: 21/10/2026 · taille: S`
+- **Train : v2.20.0** — v2.19.0 en prod le 22/10. Bumpée le 23/10 (`1e4e242d`) puis corrigés avant merge : légende OSM,
+  exports (structures de calque, types personnalisés, icônes, repli de style KML), filtres (pastille des types).
+  `qui: KARMA · action: CI verte ; export KMZ du vrai plan sur iPhone (structures, PE) ; porte docs/RELEASE_GATE.md ;
+  merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
 - **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
   Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
   `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
