@@ -74,7 +74,13 @@ Algorithme :
 KMZ = ZIP standard avec :
 - `doc.kml` : XML KML 2.2 + namespace gx 2.2 (pour `<gx:LatLonQuad>`)
 - `files/<plan>.png` : image plan référencée dans `<GroundOverlay>`
-- `files/icons/<tag>.png` : 1 icône par tag rencontré dans les Placemarks
+- `files/icons/<tag>.png` : les icônes de `_iconMap`, **toujours en PNG** et seulement si elles sont lisibles
+  (`genererKmz > _lireIcones`, lues AVANT d'écrire le KML). Cascade par tag : URL de la carte, puis catalogue
+  (`_ktaBuiltinIconUrls`, comme le repli de la carte), sinon rien. Une icône de plan en SVG / WebP / JPEG est
+  redessinée en PNG (Google Earth n'affiche pas un SVG nommé `.png`). Le `<Style id="point_<tag>">` d'un tag
+  sans fichier (tag inconnu, icône illisible) vise `default.png`, jamais un fichier absent. Tag hors
+  `[lettres chiffres _ -]` : nom et id assainis (`_nomIcone`) ; sinon le tag reste tel quel (relu par
+  `kmzImport.js` dans le `styleUrl`).
 
 Structure KML :
 ```xml
@@ -94,6 +100,7 @@ Structure KML :
     <Folder><name>🛣️ Tracés (N)</name>...</Folder>
     <Folder><name>🪜 Jonctions (N)</name>...</Folder>
     <Folder><name>⬛ Zones (N)</name>...</Folder>
+    <Folder><name>🏛️ Structures (N)</name>...</Folder>  <!-- LineString si ligne, Polygon sinon -->
   </Folder>
   <Folder><name>🗺️ Itinéraire (N)</name>...</Folder>
 </Document>
@@ -163,7 +170,11 @@ Exemples :
    - Validation 8 champs requis
    - `buildTransform` + persistance via `setCalibration`
    - Collecte session + embedded (allRoads, allZones, allPoints + dataLayerPoints)
-   - Lecture des Sets de filtrage granulaire (pointTagsSet, roadTypesSet, zoneTypesSet)
+   - Lecture des Sets de filtrage granulaire (pointTagsSet, roadTypesSet, zoneTypesSet, structureTypesSet) ;
+     tout type **hors intégrés** présent (`cust-…` ET id brut d'un calque, relevé SIG) est ajouté au Set de sa
+     famille cochée (`_ajouterTypesHorsIntegres`) : pas de sous-case, il part avec sa famille (décision
+     produit). Les totaux des cases parentes les comptent (`_kmzNbAutres`) : une famille faite seulement de
+     types personnalisés n'est jamais grisée à 0.
    - Fetch image blob (RUNTIME_ASSETS si ZIP local, fetch HTTP sinon)
    - Collecte iconsToEmbed depuis `window._iconMap`
    - `genererKmz(opts)` → Blob → téléchargement `MyKTAMap_<plan>_<date>.kmz`
@@ -175,6 +186,11 @@ Exemples :
 ⚠️ **AABBGGRR vs RRGGBBAA** : KML utilise un format particulier hérité de Google. Toujours passer par le helper `_kmlColor` plutôt que de coder le hex à la main.
 
 ⚠️ **`<gx:LatLonQuad>` plus robuste que `<LatLonBox>`** : LatLonBox suppose un rectangle axes-aligned + rotation unique. LatLonQuad permet 4 coins arbitraires — gère naturellement les plans non-rectangulaires ou tournés.
+
+⚠️ **Géométrie d'une structure = celle de la légende** (`window.isStructurePolylineType`, comme la carte) :
+une structure personnalisée en LIGNE part en `LineString` (même émetteur que les tracés, altitude du niveau
+comprise), jamais en `Polygon` (qui jetait une ligne de 2 points). Nom du Placemark d'un type personnalisé =
+libellé de la légende (`_nomType`), jamais l'id `cust-…`.
 
 ⚠️ **Image blob requise** : si `imageBlob = null`, le GroundOverlay est skip silencieusement (log warning). Le KMZ reste valide mais affiche juste les annotations sans la cartographie de fond.
 
@@ -385,6 +401,11 @@ types de zone par calque — `_lireZoneTypesCochesCalque` retourne désormais
 `connus`, l'ensemble des types **proposés**, pour ne pas supprimer un type qui
 n'a jamais eu de case.
 
+🩸 **Icône illisible = repli, jamais un échec** : `exporter.js > getIconUrl` et `utils.js > telechargerPlan >
+getIconForPoint` essaient l'URL de la carte, puis le catalogue (`_ktaBuiltinIconUrls`), puis l'icône par défaut,
+comme `map.js > _installerRepliIcones`. Avant, un seul chemin mort dans `plan-config > icons` (que la carte
+masque par son repli) faisait échouer TOUT l'export PNG / PDF avancé.
+
 #### 69.1 Largeur des traits : la loi physique, partagée avec l'écran
 
 Un front de taille sortait à `style.weight × scale` — une largeur décidée par la
@@ -462,6 +483,10 @@ API utilisée :
 #### 54.3 Flow export
 
 `window.GpxIO.exporter({incPoints, incEmbedded, incRoads, incIti, filename})` → `{ok, msg, counts, filename}`. Génère + télécharge directement via Blob URL. Pas de fichier intermédiaire.
+
+⚠️ **Ni zones ni structures en GPX** (choix de format) : GPX 1.1 ne connaît que des waypoints et des traces,
+pas de polygone ni de style. Zones, piliers, murs et fronts restent l'affaire du KMZ ; les y ajouter en `<trk>`
+les ferait passer pour des galeries dans OsmAnd ou TopoDroid.
 
 UI : onglet `gpx` dans `sessionExporter.js > _afficherModal` (avec les autres : full/advanced/conversion/kmz). `_renderGpx()` génère le HTML (info calibrage + checkboxes options). `_exportGpx()` lit les options et appelle l'API.
 
