@@ -7,7 +7,8 @@
 // par le bouton 🏠 de l'en-tête (fenêtre « Changer de plan ») → carte démontée (window.map, PLAN_CONFIG, canvas de
 // collision, tuiles), session enregistrée, suivi coupé, extension prévenue une fois (mktm:plan-ferme « accueil »),
 // aucune erreur pendant l'attente à l'accueil (minuteries, pas compté). « Reprendre » recharge le plan avec les
-// objets dessinés. Puis 5 allers-retours : la mémoire JS à l'accueil ne grimpe pas.
+// objets dessinés. Puis RA_N allers-retours (10) : ni le tas JS, ni les nœuds, ni les écouteurs ne grimpent ; la barre
+// d'état d'un plan rouvert suit encore sa hauteur.
 // Mesures (CDP Performance.getMetrics après ramasse-miettes) imprimées : tas JS, nœuds, images de la carte.
 // RA_ZIP=<chemin d'un ZIP de plan> : mesure ce plan-là au lieu du relevé fictif (rien de lui n'est imprimé hors
 // chiffres) ; RA_MESURE_SEULE=1 : imprime les mesures sans juger (comparaison avec une version antérieure) ;
@@ -29,6 +30,7 @@ const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123
 const ZIP = process.env.RA_ZIP ? path.resolve(process.env.RA_ZIP) : null;
 const MESURE_SEULE = process.env.RA_MESURE_SEULE === "1";
 const PROCESSUS = process.env.RA_PROCESSUS === "1" && process.platform === "win32";
+const ALLERS_RETOURS = Math.max(3, parseInt(process.env.RA_N, 10) || 10);
 
 // Mémoire privée (Mo) des processus Edge / Chromium lancés par Playwright ; null si illisible.
 function memoireProcessus() {
@@ -99,7 +101,11 @@ function verifier(c, msg, detail) {
         window.ktaPlanAffiche() && !!window._currentLoadedPlanId;
     }, ZIP ? 300000 : 30000);
     await page.waitForTimeout(ZIP ? 4000 : 2000);   // tuiles du premier écran, session restaurée
-    await page.evaluate(function () { const m = document.getElementById("kta-session-restore-modal"); if (m) m.remove(); });
+    // « Continuer » comme un utilisateur : retirer la modale à la main sauterait son nettoyage (écouteur Échap).
+    await page.evaluate(function () {
+      const b = document.querySelector('#kta-session-modal [data-action="keep"]');
+      if (b) b.click();
+    });
   }
 
   async function ouvrir() {
@@ -218,15 +224,47 @@ function verifier(c, msg, detail) {
     verifier(gen.a === true && gen.b === false && gen.carte, "ktaFermerPlanPourMemoire : ferme le plan ouvert, ne touche à rien à l'accueil", gen);
 
     // ── 5. Allers-retours : la mémoire JS à l'accueil ne grimpe pas ──
-    const tas = [];
-    for (let i = 0; i < 5; i++) {
+    // 🩸 Nœuds et écouteurs comptés APRÈS ramasse-miettes : un écouteur de window posé à chaque ouverture et jamais
+    // retiré garde l'ancien header détaché (~56 nœuds et ~12 écouteurs par ouverture avant correction). Le premier
+    // aller-retour amorce des choses posées une fois pour la page : la dérive se lit à partir du deuxième.
+    const tas = [], suivis = [];
+    for (let i = 0; i < ALLERS_RETOURS; i++) {
       await page.evaluate(function () { document.getElementById("resumeBtn").click(); });
       await planPret();
       await retourAccueil();
-      tas.push((await mesurer("accueil, aller-retour " + (i + 1))).tasMo);
+      const m = await mesurer("accueil, aller-retour " + (i + 1));
+      tas.push(m.tasMo);
+      suivis.push(m);
     }
     const derive = Math.round((tas[tas.length - 1] - tas[0]) * 10) / 10;
-    verifier(derive < 3, "5 allers-retours : le tas JS à l'accueil dérive de moins de 3 Mo (" + derive + " Mo)", tas);
+    verifier(derive < 3, ALLERS_RETOURS + " allers-retours : le tas JS à l'accueil dérive de moins de 3 Mo (" +
+      derive + " Mo)", tas);
+    const dN = suivis[suivis.length - 1].noeuds - suivis[1].noeuds;
+    const dE = suivis[suivis.length - 1].ecouteurs - suivis[1].ecouteurs;
+    verifier(dN <= 10 && dE <= 2, "allers-retours 2 → " + ALLERS_RETOURS + " : nœuds " + (dN >= 0 ? "+" : "") + dN +
+      ", écouteurs " + (dE >= 0 ? "+" : "") + dE + " (dérive nulle attendue, bruit toléré : 10 nœuds, 2 écouteurs)",
+      suivis.map(function (m) { return [m.noeuds, m.ecouteurs]; }));
+
+    // La barre d'état d'un plan rouvert suit encore sa hauteur réelle (l'observateur de la précédente ne la bloque
+    // plus).
+    await page.evaluate(function () { document.getElementById("resumeBtn").click(); });
+    await planPret();
+    const barre = await page.evaluate(async function () {
+      const lire = function () {
+        return getComputedStyle(document.documentElement).getPropertyValue("--kta-statusbar-h").trim();
+      };
+      const el = document.getElementById("kta-refonte-statusbar");
+      if (!el) return { absente: true };
+      const avant = lire();
+      el.style.minHeight = (el.offsetHeight + 40) + "px";
+      await new Promise(function (r) { setTimeout(r, 300); });
+      const apres = lire();
+      el.style.minHeight = "";
+      return { avant: avant, apres: apres };
+    });
+    verifier(!barre.absente && barre.avant !== barre.apres,
+      "plan rouvert : --kta-statusbar-h suit la hauteur de la barre d'état", barre);
+    await retourAccueil();
     verifier(erreurs.length === 0, "aucune erreur de page sur tout le parcours", erreurs);
 
     console.log("\n  Bilan : plan ouvert " + m1.tasMo + " Mo · accueil après fermeture " + m2.tasMo + " Mo · accueil au démarrage " +

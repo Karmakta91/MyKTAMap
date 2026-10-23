@@ -654,6 +654,10 @@
       _orientationListener = null;
     }
     _fermerBulle();
+    // La question « image volumineuse » appartient à cet écran : elle part avec lui (sinon elle reste au-dessus
+    // de l'app, et chaque réouverture en empile une autre).
+    const modaleImage = document.getElementById("kta-emergency-bigimg-modal");
+    if (modaleImage) modaleImage.remove();
     _destroyMiniMap();
     try { _overlay.remove(); } catch(e) {}
     _overlay = null;
@@ -1045,6 +1049,9 @@
         return;
       }
       _afficherModaleImageVolumineuse(safety, function(choice) {
+        // 🩸 Écran fermé pendant la question : une carte montée dans un conteneur détaché resterait dans
+        // `_miniMap`, et la réouverture (`if (_miniMap) return`) n'aurait plus jamais de mini-carte.
+        if (!_overlay || !container.isConnected) return;
         const effectiveSource = (choice === "skip")
           ? { type: "none", reason: "user skip" }
           : source;

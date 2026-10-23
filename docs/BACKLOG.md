@@ -58,14 +58,6 @@
   · taille: S`
 ## Ensuite
 
-- **`checkup-urgence-memoire.js` rouge** — ✅ vérifié 22/10 : 5 échecs déjà sur 37ef05ee (minimap sans fond, triangle
-  non orienté, couleurs repeintes / personnalisées de la minimap) ; sa partie fuite mémoire est verte.
-  `qui: Claude · action: dire si c'est le test ou le mode urgence qui a dérivé, corriger · fini: checkup vert
-  · depuis: 22/10/2026 · taille: S`
-- **Petite fuite à chaque ouverture de plan** — ✅ mesuré 22/10 : environ 70 nœuds détachés et 15 écouteurs de plus
-  par ouverture, après ramasse-miettes (`perf-memory.md`).
-  `qui: Claude · action: trouver les écouteurs non retirés au démontage · fini: dérive nulle sur 10 ouvertures
-  · depuis: 22/10/2026 · taille: S`
 - **« Reprendre » ne retrouve pas la vue** — centre, zoom et niveau ne sont pas dans la session : le plan rouvre sur
   sa vue par défaut (déjà le cas avant la fermeture au retour à l'accueil).
   `qui: KARMA · action: dire si la vue doit être mémorisée · fini: décision notée · depuis: 22/10/2026 · taille: S`
