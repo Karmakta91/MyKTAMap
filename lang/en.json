@@ -2407,7 +2407,6 @@
   "legendui.group.wells": "🕳️ Shafts",
   "legendui.icons.empty": "No icon configuration available.",
   "legendui.lectureSeule.autresPlans": "Legend of {plan}; the other maps shown have their own.",
-  "legendui.lectureSeule.note": "Read-only: the legend is edited from the map (✏️ Edit).",
   "legendui.label.caf": "Closed quarry access",
   "legendui.label.cao": "Open quarry access",
   "legendui.label.chatiere": "Crawlway",

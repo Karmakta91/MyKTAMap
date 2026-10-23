@@ -1069,8 +1069,8 @@ taille de base réglage coupé, bascule à chaud dans les deux sens, échelle du
 Bouton **`🗺️ Légende`** dans la barre de la Vue OSM, **`🗺️`** dans le bandeau de la carte de l'accueil (petite carte
 et plein écran ; `≡` y est déjà « Plans & filtres »). Les deux ouvrent la **même** légende que la ≡ Légende du mode
 plan — libellés, masquages, couleurs choisies, types `cust-…`, icônes — sans rien de modifiable (décision produit) :
-ni ✏️ Modifier, ni bandeau des types orphelins (son « ➕ Lier » écrit dans la légende). Une ligne le dit : la légende
-se modifie depuis le plan.
+ni ✏️ Modifier, ni bandeau des types orphelins (son « ➕ Lier » écrit dans la légende). Pas de ligne d'explication
+(décision produit) : l'absence de ✏️ suffit.
 
 - **Un seul rendu** : `interfaceLegende.js > _ktaLegendeCorps(source, {lectureSeule})`, appelé par la ≡ Légende
   (`afficherLegende`) et par `window.ktaLegendeLectureSeule(opts)`. Couleurs par `ktaResolveStyle`, libellés et

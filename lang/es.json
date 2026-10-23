@@ -2421,7 +2421,6 @@
   "legendui.group.wells": "🕳️ Pozos",
   "legendui.icons.empty": "Ninguna configuración de iconos disponible.",
   "legendui.lectureSeule.autresPlans": "Leyenda de {plan}; los demás mapas mostrados tienen la suya.",
-  "legendui.lectureSeule.note": "Solo lectura: la leyenda se modifica desde el mapa (✏️ Modificar).",
   "legendui.label.caf": "Acceso a cantera cerrado",
   "legendui.label.cao": "Acceso a cantera abierto",
   "legendui.label.chatiere": "Gatera",

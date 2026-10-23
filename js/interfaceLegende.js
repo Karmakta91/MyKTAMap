@@ -361,7 +361,6 @@ function _ouvrirLegende(opts) {
   const bandeauLecture = lectureSeule
     ? '<div class="kta-legende-lecture-tete">' +
         '<p class="kta-legende-avertissement" id="kta-legende-avertissement" hidden></p>' +
-        '<p class="kta-legende-note">' + window.I18n.t("legendui.lectureSeule.note") + '</p>' +
       '</div>'
     : '';
 

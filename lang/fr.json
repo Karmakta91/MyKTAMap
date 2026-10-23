@@ -2407,7 +2407,6 @@
   "legendui.group.wells": "🕳️ Puits",
   "legendui.icons.empty": "Aucune configuration d'icônes disponible.",
   "legendui.lectureSeule.autresPlans": "Légende de {plan} ; les autres plans affichés ont la leur.",
-  "legendui.lectureSeule.note": "Lecture seule : la légende se modifie depuis le plan (✏️ Modifier).",
   "legendui.label.caf": "Cavage fermé",
   "legendui.label.cao": "Cavage ouvert",
   "legendui.label.chatiere": "Chatière",

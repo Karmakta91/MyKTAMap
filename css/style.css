@@ -3935,9 +3935,6 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   border-radius: 6px;
   color: var(--kta-texte);
 }
-.kta-legende-note {
-  color: var(--kta-texte-3);
-}
 
 
 /* ── Convertisseur JSON ── */
