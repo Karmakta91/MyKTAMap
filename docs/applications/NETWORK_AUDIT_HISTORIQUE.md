@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.20.0 (vue retrouvée, légende en Vue OSM, mémoire rendue)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** La vue retrouvée à la réouverture d'un plan est enregistrée sur l'appareil, la légende de la Vue OSM et de la carte de l'accueil est lue dans le plan déjà présent, et fermer le plan au retour à l'accueil ne fait que libérer de la mémoire. Le site publie un fichier `/.well-known/security.txt` (adresse de contact pour signaler une faille) : c'est un fichier servi, l'app ne le demande jamais.
+
 ### v2.19.0 (mise à jour du plan, Éditeur de données appliqué à la session, recalage)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Le recalage sur un autre scan, l'assistant « Mettre à jour le plan » et l'Éditeur de données travaillent sur l'appareil. Les nouvelles prises (plan prêt avant toute synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan) sont sans effet sans installation reliée : rien ne part de myktamap.fr. Sur une installation reliée, les échanges passent par son serveur, comme avant.

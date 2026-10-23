@@ -1013,7 +1013,7 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 
 - **Format**: A0 to A4, portrait or landscape (A4 landscape by default).
 - **Content**: your annotations, the map image and its layers, the data layers, a header (title and map information).
-- **Quality**: Standard ×1 (A3/A4), High definition ×2 (A0/A1, heavier file), Draft ×0.5. A0/A1 at ×2 can take 30 to 60 seconds on mobile.
+- **Quality**: Standard ×1 (A3/A4), High definition ×2 (A0/A1, heavier file), Draft ×0.5. A0/A1 at ×2 can take 30 to 60 seconds on mobile. If the image is larger than the device can produce, the resolution is reduced and the app tells you which one you get.
 - **🗺️ Legend** placed in a corner (bottom-left by default), in three sizes and four styles: **Pro (white background)** for printing (default), Dark opaque, Dark semi-transparent, Subtle watermark. It only lists what actually appears on the exported map.
 
 The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr” and is named `<map>_<date>.pdf`.
@@ -1045,7 +1045,7 @@ So you can export only the shafts, or only the inaccessible zones. **Download** 
 - **MyKTAMap session** (`.json`, or `.zip` with photos): it **replaces** your current session (points, tracks, zones, measurement); its photos, however, are **added** to yours, without deleting any. A preview shows what it holds; a backup of your current session is taken just before. **Import** to confirm, **Cancel** to change nothing.
 - **GPX file** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): its points and paths **are added** to your session. The map must be georeferenced. A preview comes before the addition, and **Ctrl+Z** undoes it.
 
-To change map, tap the **compass rose 🧭** (back to the home screen) or the **map title** in the top bar; your session is saved before the switch.
+To change map, tap the **compass rose 🧭** (back to the home screen) or the **map title** in the top bar; your session is saved before the switch. Going back to the home screen **closes the map** to give its memory back to the device (tracking stops): **▶️ Resume** reopens it where you left it.
 
 ---
 

@@ -1013,7 +1013,7 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 
 - **Formato**: de A0 a A4, vertical u horizontal (A4 horizontal por defecto).
 - **Contenido**: tus anotaciones, la imagen del mapa y sus capas, las capas de datos, una cabecera (título e información del mapa).
-- **Calidad**: Estándar ×1 (A3/A4), Alta definición ×2 (A0/A1, archivo más pesado), Borrador ×0,5. A0/A1 en ×2 puede tardar de 30 a 60 segundos en móvil.
+- **Calidad**: Estándar ×1 (A3/A4), Alta definición ×2 (A0/A1, archivo más pesado), Borrador ×0,5. A0/A1 en ×2 puede tardar de 30 a 60 segundos en móvil. Si la imagen supera lo que el dispositivo puede producir, la resolución se reduce y la app te dice cuál obtienes.
 - **🗺️ Leyenda** colocada en una esquina (abajo a la izquierda por defecto), en tres tamaños y cuatro estilos: **Pro (fondo blanco)** para imprimir (por defecto), Oscuro opaco, Oscuro semitransparente, Filigrana discreta. Solo enumera lo que figura realmente en el mapa exportado.
 
 El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr» y se llama `<mapa>_<fecha>.pdf`.
@@ -1045,7 +1045,7 @@ Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar*
 - **Sesión de MyKTAMap** (`.json`, o `.zip` con fotos): **sustituye** tu sesión en curso (puntos, trazados, zonas, medición); sus fotos, en cambio, **se añaden** a las tuyas, sin borrar ninguna. Una vista previa muestra lo que contiene; justo antes se toma una copia de tu sesión actual. **Importar** para validar, **Cancelar** para no cambiar nada.
 - **Archivo GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): sus puntos y trazados **se añaden** a tu sesión. El mapa debe estar georreferenciado. Una vista previa precede a la adición, y **Ctrl+Z** la deshace.
 
-Para cambiar de mapa, toca la **rosa de los vientos 🧭** (vuelta al inicio) o el **título del mapa** en la barra superior; tu sesión se guarda antes del cambio.
+Para cambiar de mapa, toca la **rosa de los vientos 🧭** (vuelta al inicio) o el **título del mapa** en la barra superior; tu sesión se guarda antes del cambio. Volver al inicio **cierra el mapa** para devolver su memoria al dispositivo (el seguimiento se detiene): **▶️ Reanudar** lo vuelve a abrir donde lo dejaste.
 
 ---
 

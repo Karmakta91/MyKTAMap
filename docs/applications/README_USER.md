@@ -1013,7 +1013,7 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 
 - **Format** : A0 à A4, portrait ou paysage (A4 paysage au départ).
 - **Contenu** : tes annotations, l'image du plan et ses calques, les calques de données, un en-tête (titre et informations du plan).
-- **Qualité** : Standard ×1 (A3/A4), Haute définition ×2 (A0/A1, fichier plus lourd), Brouillon ×0,5. A0/A1 en ×2 peut prendre 30 à 60 secondes sur mobile.
+- **Qualité** : Standard ×1 (A3/A4), Haute définition ×2 (A0/A1, fichier plus lourd), Brouillon ×0,5. A0/A1 en ×2 peut prendre 30 à 60 secondes sur mobile. Si l'image dépasse ce que l'appareil sait produire, la résolution est réduite et l'app te dit laquelle tu obtiens.
 - **🗺️ Légende** posée dans un coin (bas-gauche au départ), en trois tailles et quatre styles : **Pro (fond blanc)** pour l'impression (au départ), Sombre opaque, Sombre semi-transparent, Filigrane discret. Elle ne liste que ce qui figure vraiment sur le plan exporté.
 
 Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr » et s'appelle `<plan>_<date>.pdf`.
@@ -1045,7 +1045,7 @@ Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télé
 - **Session MyKTAMap** (`.json`, ou `.zip` avec photos) : elle **remplace** ta session en cours (points, tracés, zones, mesure) ; ses photos, elles, **s'ajoutent** aux tiennes, sans en effacer aucune. Un aperçu montre ce qu'elle contient ; une sauvegarde de ta session actuelle est prise juste avant. **Importer** pour valider, **Annuler** pour ne rien changer.
 - **Fichier GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…) : ses points et tracés **s'ajoutent** à ta session. Le plan doit être géoréférencé. Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
 
-Pour changer de plan, touche la **rose des vents 🧭** (retour à l'accueil) ou le **titre du plan** dans la barre du haut ; ta session est enregistrée avant le changement.
+Pour changer de plan, touche la **rose des vents 🧭** (retour à l'accueil) ou le **titre du plan** dans la barre du haut ; ta session est enregistrée avant le changement. Revenir à l'accueil **ferme le plan** pour rendre sa mémoire à l'appareil (le suivi s'arrête) : **▶️ Reprendre** le rouvre là où tu l'avais laissé.
 
 ---
 

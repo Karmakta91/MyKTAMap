@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.19.0` (21/10/2026)
+## 📦 Version courante — `v2.20.0` (23/10/2026)
 
-> 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; 🪜 fiche des jonctions ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
+> 📍 **v2.20.0 — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM** : un plan se rouvre à la vue laissée (centre, zoom, niveau ; `js/vuePlan.js`) ; revenir à l'accueil démonte le plan et rend sa mémoire (session enregistrée, suivi coupé) ; 🗺️ légende du plan en lecture seule dans la Vue OSM et sur la carte OSM de l'accueil ; fuite par ouverture de plan corrigée ; couleurs posées par le JS en jetons (cliquet 178 → 7), boutons principaux bleus, violet du tuilage lisible ; rails à 44 px au doigt ; PDF plafonné annoncé ; correctifs `_leaflet_pos`, jonction convertie en lot, mini-carte de l'Affichage XL d'urgence ; `/.well-known/security.txt`. Détail : journal ci-dessous.
 
 ---
 
@@ -446,6 +446,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.20.0 (23/10/2026) — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM (branche `Karma_dev`)
+
+- **📍 Vue retrouvée** (`js/vuePlan.js`) : centre, zoom et niveau mémorisés par plan sur l'appareil (clé `localStorage` dédiée, hors de la session qui voyage et s'efface) à la fermeture, au `pagehide` et au passage en arrière-plan, appliqués après la restauration de session ; ▶️ Reprendre et la liste des plans en profitent, aussi après fermeture de l'app. Suivi actif au départ : la carte se recentre sur la dernière position du tracker, le suivi reste arrêté. Le cadrage d'ouverture du tracker n'est plus animé (la fin du zoom animé écrasait la vue retrouvée).
+- **🧠 Retour à l'accueil = plan fermé** : `afficherLoader` démonte le plan par le même chemin qu'un changement de plan (`_libererRessourcesPlanPrecedent("accueil")` : session enregistrée d'abord, extension prévenue une fois, suivi coupé avant le démontage) ; `ktaFermerPlanPourMemoire` passe par ce retour. **Fuite par ouverture** corrigée : écouteurs de `window` et minuterie du header, écouteur Échap de « Session restaurée », observateur de la barre d'état (`--kta-statusbar-h` figé après le premier plan). `checkup-retour-accueil.js` : 10 allers-retours, dérive nulle exigée.
+- **🗺️ Légende en Vue OSM** : bouton 🗺️ Légende dans la barre de la Vue OSM et 🗺️ dans le bandeau de l'accueil, même légende que le mode plan sans ✏️ Modifier ni « ➕ Lier » ; à l'accueil, plan chargé s'il est sur la carte, sinon le plan de la pile ouvert le plus récemment (`LegendCustomization.lireAvecEtats`), avertissement si plusieurs plans sont affichés. Un seul constructeur du corps de la légende ; `check-icon-catalog` confronte 8 tables (`GROUPES2` disparu). `checkup-osm-legende.js`.
+- **🎨 Charte** : garde-fou `check-couleurs-inline.js` (hex dans un style posé par le JS, cliquet 178 → 7) ; états du Générateur, du Mode Secours, de la Vue OSM, du chargeur et des petits écrans par les jetons ; jetons `--kta-sur-accent` et `--kta-tuilage-v2` (violet 4,84:1 en sombre, 6,6:1 en clair) ; « Valider » de la refonte et « Continuer » du kill-switch en bleu principal dans les deux thèmes.
+- **Ergonomie** : rails latéraux à 44 px de large au doigt (`::before` transparent, marque gardée à 36 px ; `checkup-rails-toucher.js`) ; PDF : un canvas réduit par la limite de l'appareil annonce la résolution produite (`pdfexport.plafond`, `checkup-pdf-plafond.js`).
+- **Corrigés** : `_leaflet_pos` aux ouvertures de plan enchaînées (minuterie de fin de zoom animé non annulée par `map.remove()`, `checkup-ouvertures-enchainees.js`) ; une jonction n'est jamais convertie en lot ; Affichage XL d'urgence : la question « image volumineuse » part avec l'écran (la réouverture retrouve sa mini-carte, `checkup-urgence-memoire` vert).
+- **Site** : `/.well-known/security.txt` (RFC 9116), fichier servi, jamais demandé par l'app ; à renouveler avant le 22/10/2027 (backlog).
 
 #### v2.19.0 (21/10/2026) — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan (branche `Karma_dev`)
 
@@ -9530,6 +9540,10 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; 🪜 fiche des jonctions ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
+
+> 🤝 **v2.18.0 — Niveau d'un objet, calques à plusieurs, nouvel écran de démarrage, charte en jetons** : ✨ écran de démarrage « la galerie qui se dessine » (tracé par un worker, fermé quand l'accueil est affiché) ; 🎨 charte en jetons `--kta-*` (contrastes AA, bouton principal bleu), toasts empilés avec un type succès, finitions d'interface (audit Impeccable du 20/10, clôturé) ; 🏗️ le niveau d'un objet de session se change depuis sa fiche (plan multi-niveau, ⏪ annule) ; sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage, « ➕ Intégrer des ajouts », « Effacer la session » qui propose de rendre les calques, export limité à ses ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste et événements du Carnet ; correctifs Repositionner, fiches enchaînées, Mes photos. Sans extension, rien ne change hors du niveau d'un objet et des correctifs.
 
 > ⬆️ **v2.17.0 — Exports et ergonomie téléphone, code allégé** : lanceur d'export à tuiles (Conversion et Fusion rangées dans l'Éditeur de données), « 📱 Max iPhone » pour l'export image d'un grand plan, PDF d'un très grand plan ; audit ergonomie PC/mobile soldé hors G1 (panneaux d'outils entre les barres, toucher la carte pour fermer ne trace plus, fond et croix 40 px au doigt, modales en dvh, liste de tags dans l'écran, dézoom anti-crash aussi en paysage téléphone) ; option « ➕ Boutons de zoom » (défaut OFF) ; nettoyage des commentaires du code (−58 %, ~25 000 lignes) avec garde-fou `check-commentaires.js` ; checkup `checkup-panneaux-geometrie.js` dans la porte de release.
 
