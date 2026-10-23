@@ -33,10 +33,10 @@
   en ligne ; la 0.12.0 du pro suit (backlog pro).
   `qui: KARMA · action: CI main verte ; /killsw.html sur myktamap.fr ; etat-sites.ps1 ; CI doc main + deploy-doc.sh
   public ; poster les 2 stories · fini: etat-sites.ps1 vert, doc publique à jour · depuis: 21/10/2026 · taille: S`
-- **PR Dependabot en attente** — ✅ vérifié 23/10 : rien de fusionné, 8 branches `dependabot/*` ouvertes (setup-node 6 et
-  7, docker/* ×4, Playwright 1.63 et 1.64) ; workflows en `setup-node@v5` / `docker/*@v3`, smoke en Playwright 1.62.1.
-  `qui: KARMA · action: après le merge v2.20.0 : fermer les doublons (setup-node 6, Playwright 1.63), fusionner le
-  reste un par un (CI verte) · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
+- **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
+  Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
+  `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
+  · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 
 - **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
   gardée relue », quelque chose réécrit encore les copies.
