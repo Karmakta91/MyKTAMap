@@ -5853,7 +5853,7 @@
   "tiff.err.bigTiff": "BigTIFF non lu — réexporte en TIFF classique depuis QGIS",
   "tiff.err.ifdHorsFichier": "structure TIFF invalide",
   "tiff.err.dimsAbsentes": "dimensions de l'image absentes",
-  "tiff.err.tuile": "image tuilée non lue — réexporte en bandes (décoche « tuilé » dans QGIS)",
+  "tiff.err.tuile": "image tuilée incomplète (index des tuiles absent ou tronqué) — réexporte-la depuis QGIS",
   "tiff.err.planar": "canaux stockés séparément (PlanarConfiguration 2) — non lu",
   "tiff.err.compression": "compression non lue — réexporte en LZW, Deflate ou sans compression",
   "tiff.err.bits": "profondeur non lue — il faut 8 bits par canal",

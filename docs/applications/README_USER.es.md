@@ -1575,7 +1575,7 @@ Si has georreferenciado tu mapa en **QGIS**, expórtalo en **GeoTIFF** (`.tif`):
 
 > ✅ **Aceptado**: compresión LZW, Deflate o ninguna · 8 bits por canal · gris, RGB o RGBA · imagen en bandas · norte arriba, sin rotación · Lambert 93, Web Mercator o WGS84.
 >
-> ❌ **Rechazado**, con un mensaje que dice qué cambiar en la exportación: BigTIFF, imagen en teselas, canales separados, paleta / CMYK / YCbCr, georreferenciación girada, otro sistema de coordenadas.
+> ❌ **Rechazado**, con un mensaje que dice qué cambiar en la exportación: BigTIFF, canales separados, paleta / CMYK / YCbCr, georreferenciación girada, otro sistema de coordenadas.
 
 #### 🗺️ Convertir un archivo SIG (QGIS…)
 

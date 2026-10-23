@@ -1575,7 +1575,7 @@ Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif`) : l'im
 
 > ✅ **Accepté** : compression LZW, Deflate ou aucune · 8 bits par canal · gris, RVB ou RVBA · image en bandes · nord en haut, sans rotation · Lambert 93, Web Mercator ou WGS84.
 >
-> ❌ **Refusé**, avec un message qui dit quoi changer à l'export : BigTIFF, image tuilée, canaux séparés, palette / CMJN / YCbCr, calage tourné, autre système de coordonnées.
+> ❌ **Refusé**, avec un message qui dit quoi changer à l'export : BigTIFF, canaux séparés, palette / CMJN / YCbCr, calage tourné, autre système de coordonnées.
 
 #### 🗺️ Convertir un fichier SIG (QGIS…)
 

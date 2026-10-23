@@ -5853,7 +5853,7 @@
   "tiff.err.bigTiff": "BigTIFF not read — re-export as a classic TIFF from QGIS",
   "tiff.err.ifdHorsFichier": "invalid TIFF structure",
   "tiff.err.dimsAbsentes": "image dimensions missing",
-  "tiff.err.tuile": "tiled image not read — re-export as strips (untick “tiled” in QGIS)",
+  "tiff.err.tuile": "incomplete tiled image (tile index missing or truncated) — re-export it from QGIS",
   "tiff.err.planar": "channels stored separately (PlanarConfiguration 2) — not read",
   "tiff.err.compression": "compression not read — re-export as LZW, Deflate or uncompressed",
   "tiff.err.bits": "bit depth not read — 8 bits per channel required",

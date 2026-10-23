@@ -376,7 +376,30 @@ const remplace = (o, tag, valeurs, type) => {
     "les deux ordres d'octets sont légaux ; ne lire que « II » ferait échouer " +
     "un fichier parfaitement valide sans que la cause soit devinable.");
 
+  // ── L4b. Image TUILÉE : une tuile 16 × 16 complétée, dont seul le coin 2 × 2 est l'image ──
+  // 🩸 Les lignes d'une tuile font 16 px, pas 2 : lues à la largeur de l'image, les pixels se décalent.
+  let tuileOk = false, tuileDetail = "";
+  try {
+    const tuile = new Uint8Array(16 * 16 * 3);
+    tuile.set(PIX.subarray(0, 6), 0);            // 1re rangée de pixels
+    tuile.set(PIX.subarray(6, 12), 16 * 3);      // 2e rangée : 16 px plus loin
+    const ab = fixtureBase(o => {
+      o.entrees = o.entrees.filter(e => [273, 278, 279].indexOf(e.tag) < 0);
+      remplace(o, 322, [16]); remplace(o, 323, [16]);
+      remplace(o, 324, ["@PIXELS"], 4); remplace(o, 325, [tuile.length], 4);
+      o.pixels = tuile;
+    });
+    const r = await TG._interne.decoderPixels(ab, TG._interne.lireIfd0(ab));
+    tuileOk = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14].every((p, i) => r.rgba[p] === PIX[i]);
+    if (!tuileOk) tuileDetail = " obtenu [" + Array.from(r.rgba).join(",") + "]";
+  } catch (e) { tuileDetail = " exception : " + e.message; }
+  verif("L4b. un TIFF TUILÉ se lit, lignes de tuile comprises (tuile de bord complétée)",
+    tuileOk,
+    "l'image relue diffère." + tuileDetail + " L'export GeoTIFF de l'app écrit des tuiles 256 : " +
+    "sans lecture des tuiles, l'aller-retour export → import échoue.");
+
   // ── L5. Les refus, chacun NOMMÉ ──────────────────────────────────────────
+  // tiff.err.tuile : déclarée tuilée, mais sans index des tuiles (324 / 325).
   const casRefus = [
     ["tiff.err.bigTiff",       o => { o.magic = 43; }],
     ["tiff.err.tuile",         o => { remplace(o, 322, [256]); }],

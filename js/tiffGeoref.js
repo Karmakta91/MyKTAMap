@@ -9,9 +9,10 @@
 // Calage : ModelPixelScale (33550) + ModelTiepoint (33922) ou ModelTransformation (34264),
 //   EPSG via GeoKeyDirectory (34735) → plan.georef pointA/pointB (similitude 2 points, exacte
 //   pour une image nord en haut sans rotation).
-// ⚠️ Sous-ensemble lu, pas de geotiff.js générique (décision produit) : IFD 0, bandes, PlanarConfig 1,
-//   8 bits, LZW / Deflate / brut, predictor 1-2. Tout le reste est REFUSÉ EN LE NOMMANT (clé
-//   tiff.err.*), jamais deviné en silence.
+// ⚠️ Sous-ensemble lu, pas de geotiff.js générique (décision produit) : IFD 0, bandes OU tuiles,
+//   PlanarConfig 1, 8 bits, LZW / Deflate / brut, predictor 1-2. Tout le reste est REFUSÉ EN LE NOMMANT
+//   (clé tiff.err.*), jamais deviné en silence. Les tuiles sont lues parce que l'export GeoTIFF de
+//   l'app (js/geotiffExport.js) en écrit, comme QGIS en TILED=YES.
 // 🩸 Projections : window.SigImport.L93 / .WEBMERC uniquement, aucune copie locale des maths.
 // Expose : window.TiffGeoref { estTiff, lire, EXT_ACCEPTEES, _interne } — 100 % local.
 // Garde-fou : scripts/check-geotiff.js
@@ -29,7 +30,7 @@
     LARGEUR: 256, HAUTEUR: 257, BITS: 258, COMPRESSION: 259, PHOTO: 262,
     STRIP_OFF: 273, SPP: 277, ROWS_PER_STRIP: 278, STRIP_CNT: 279,
     PLANAR: 284, PREDICTOR: 317, COLORMAP: 320, TILE_W: 322, TILE_H: 323,
-    EXTRA: 338,
+    TILE_OFF: 324, TILE_CNT: 325, EXTRA: 338,
     PIXEL_SCALE: 33550, TIEPOINT: 33922, TRANSFORM: 34264, GEO_KEYS: 34735
   };
 
@@ -178,6 +179,20 @@
     return buf;
   }
 
+  // Un bloc compressé (bande ou tuile) → octets bruts, prédicteur annulé.
+  async function _decompresser(brut, comp, attendu, octetsParLigne, spp, nbLignes, pred, ou) {
+    let dec;
+    if (comp === 1)      dec = brut;
+    else if (comp === 5) dec = _lzw(brut, attendu);
+    else                 dec = await _inflate(brut);
+    if (dec.length < attendu) {
+      const e = new Error("tiff.err.bandeCourte"); e.detail = ou + " : " + dec.length + " < " + attendu; throw e;
+    }
+    // ⚠️ En brut, `dec` est une vue sur le fichier : copie avant d'y annuler le prédicteur.
+    if (pred === 2) dec = _predictor2(comp === 1 ? dec.slice(0, attendu) : dec, octetsParLigne, spp, nbLignes);
+    return dec;
+  }
+
   // ── Décodage des pixels → RGBA ───────────────────────────────────────────
   async function _decoderPixels(buf, ifd) {
     const t = ifd.tags;
@@ -185,9 +200,6 @@
 
     const w = g(T.LARGEUR, 0), h = g(T.HAUTEUR, 0);
     if (!w || !h) throw new Error("tiff.err.dimsAbsentes");
-
-    // Refus francs et nommés :
-    if (t[T.TILE_W] || t[T.TILE_H]) throw new Error("tiff.err.tuile");
 
     const planar = g(T.PLANAR, 1);
     if (planar !== 1) throw new Error("tiff.err.planar");
@@ -218,31 +230,51 @@
     const pred = g(T.PREDICTOR, 1);
     if (pred !== 1 && pred !== 2) { const e = new Error("tiff.err.predictor"); e.detail = String(pred); throw e; }
 
-    const offs = t[T.STRIP_OFF], cnts = t[T.STRIP_CNT];
-    if (!offs || !cnts || !offs.length) throw new Error("tiff.err.bandesAbsentes");
-
-    const rps = g(T.ROWS_PER_STRIP, h);
     const octetsParLigne = w * spp;
-
     const plein = new Uint8Array(octetsParLigne * h);
-    let ecrit = 0;
-    for (let s = 0; s < offs.length; s++) {
-      const lignes = Math.min(rps, h - s * rps);
-      if (lignes <= 0) break;
-      const attendu = octetsParLigne * lignes;
-      const brut = new Uint8Array(buf, offs[s], Math.min(cnts[s], buf.byteLength - offs[s]));
+    const morceau = function(off, cnt) {
+      return new Uint8Array(buf, off, Math.max(0, Math.min(cnt, buf.byteLength - off)));
+    };
 
-      let dec;
-      if (comp === 1)                        dec = brut;
-      else if (comp === 5)                   dec = _lzw(brut, attendu);
-      else                                   dec = await _inflate(brut);
-
-      if (dec.length < attendu) { const e = new Error("tiff.err.bandeCourte"); e.detail = s + " : " + dec.length + " < " + attendu; throw e; }
-      if (pred === 2) _predictor2(dec, octetsParLigne, spp, lignes);
-      plein.set(dec.subarray(0, attendu), ecrit);
-      ecrit += attendu;
+    if (t[T.TILE_W] || t[T.TILE_H]) {
+      // Tuiles de taille pleine (celles du bord complétées), rangées ligne par ligne ; un index tronqué
+      // est refusé (tiff.err.tuile) plutôt que de laisser des trous noirs.
+      // 🩸 Le prédicteur repart à chaque ligne de TUILE (largeur tw), pas de l'image.
+      const tw = g(T.TILE_W, 0), th = g(T.TILE_H, 0);
+      const offs = t[T.TILE_OFF], cnts = t[T.TILE_CNT];
+      const nx = tw ? Math.ceil(w / tw) : 0, ny = th ? Math.ceil(h / th) : 0;
+      if (!tw || !th || !offs || !cnts || offs.length < nx * ny || cnts.length < nx * ny) {
+        throw new Error("tiff.err.tuile");
+      }
+      const ligneTuile = tw * spp, attendu = ligneTuile * th;
+      for (let ty = 0; ty < ny; ty++) {
+        for (let tx = 0; tx < nx; tx++) {
+          const n = ty * nx + tx;
+          const dec = await _decompresser(morceau(offs[n], cnts[n]), comp, attendu, ligneTuile, spp, th, pred,
+                                          "tuile " + n);
+          const lignes = Math.min(th, h - ty * th), utile = Math.min(tw, w - tx * tw) * spp;
+          for (let l = 0; l < lignes; l++) {
+            plein.set(dec.subarray(l * ligneTuile, l * ligneTuile + utile),
+                      (ty * th + l) * octetsParLigne + tx * tw * spp);
+          }
+        }
+      }
+    } else {
+      const offs = t[T.STRIP_OFF], cnts = t[T.STRIP_CNT];
+      if (!offs || !cnts || !offs.length) throw new Error("tiff.err.bandesAbsentes");
+      const rps = g(T.ROWS_PER_STRIP, h);
+      let ecrit = 0;
+      for (let s = 0; s < offs.length; s++) {
+        const lignes = Math.min(rps, h - s * rps);
+        if (lignes <= 0) break;
+        const attendu = octetsParLigne * lignes;
+        const dec = await _decompresser(morceau(offs[s], cnts[s]), comp, attendu, octetsParLigne, spp, lignes, pred,
+                                        String(s));
+        plein.set(dec.subarray(0, attendu), ecrit);
+        ecrit += attendu;
+      }
+      if (ecrit !== plein.length) { const e = new Error("tiff.err.pixelsManquants"); e.detail = ecrit + " / " + plein.length; throw e; }
     }
-    if (ecrit !== plein.length) { const e = new Error("tiff.err.pixelsManquants"); e.detail = ecrit + " / " + plein.length; throw e; }
 
     const rgba = new Uint8ClampedArray(w * h * 4);
     const inverse = (photo === 0);   // 0 = MinIsWhite : le 0 est du BLANC
@@ -278,9 +310,13 @@
   }
 
   // Fonction pixel → coordonnées du CRS du fichier (matrice, ou Scale + Tiepoint).
-  function _mondeDePixel(t) {
+  // `rotationPermise` (contrôle de l'export GeoTIFF seulement) : la matrice entière est appliquée.
+  function _mondeDePixel(t, rotationPermise) {
     const mt = t[T.TRANSFORM];
     if (mt && mt.length >= 8) {
+      if (rotationPermise) {
+        return function(px, py) { return { X: mt[0] * px + mt[1] * py + mt[3], Y: mt[4] * px + mt[5] * py + mt[7] }; };
+      }
       // Matrice 4×4 en ligne ; [1] et [4] = rotation/cisaillement. Le géoréf 2 points ne décrit
       // qu'une image nord en haut : une rotation est refusée, pas aplatie en silence.
       const echelle = Math.max(Math.abs(mt[0]), Math.abs(mt[5])) || 1;
@@ -420,8 +456,8 @@
     EXT_ACCEPTEES: EXT_ACCEPTEES,
     // Pour le harnais Node : testables sans DOM, contrairement à lire().
     _interne: { lireIfd0: _lireIfd0, decoderPixels: _decoderPixels, calage: calage,
-                lzw: _lzw, epsgDeGeoKeys: _epsgDeGeoKeys, TAGS: T }
+                lzw: _lzw, epsgDeGeoKeys: _epsgDeGeoKeys, mondeDePixel: _mondeDePixel, TAGS: T }
   };
 
-  console.log("[TiffGeoref] module chargé (LZW/Deflate/brut, RGB8 en bandes)");
+  console.log("[TiffGeoref] module chargé (LZW/Deflate/brut, RGB8 en bandes ou tuiles)");
 })();

@@ -5853,7 +5853,7 @@
   "tiff.err.bigTiff": "BigTIFF no leído — reexporta como TIFF clásico desde QGIS",
   "tiff.err.ifdHorsFichier": "estructura TIFF no válida",
   "tiff.err.dimsAbsentes": "faltan las dimensiones de la imagen",
-  "tiff.err.tuile": "imagen en teselas no leída — reexporta en bandas (desmarca «teselado» en QGIS)",
+  "tiff.err.tuile": "imagen en teselas incompleta (índice de teselas ausente o truncado) — reexpórtala desde QGIS",
   "tiff.err.planar": "canales almacenados por separado (PlanarConfiguration 2) — no leído",
   "tiff.err.compression": "compresión no leída — reexporta en LZW, Deflate o sin comprimir",
   "tiff.err.bits": "profundidad no leída — se requieren 8 bits por canal",
