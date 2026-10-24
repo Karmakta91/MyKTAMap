@@ -75,7 +75,7 @@ function bac(roads, pois, cfg) {
   };
   win.window = win;
   const ctx = vm.createContext(win);
-  ["js/pathfinder.js"].forEach(function (f) {
+  ["js/poiJonction.js", "js/pathfinder.js", "js/itiGuidage.js"].forEach(function (f) {
     vm.runInContext("var window = this;" + lire(f), ctx);
   });
   return { win: win, ctx: ctx };
@@ -148,6 +148,94 @@ async function sortiesProposees(b, de) {
     const rj = await pj.computeRoute([{ x: 20, y: 500, level: 0 }, { x: 200, y: 680, level: -1 }], {});
     t("jonction en tracé : l'itinéraire 0 → −1 passe par elle (" + Math.round(rj.totalDistance) + " px)",
       Math.abs(rj.totalDistance - (380 + 200 + 200 + 20)) < 0.5);
+  }
+
+  // ── 4. Le POI dans le graphe : raccords validés, coût vertical, corde ──
+  // Échelle 4 px/m. Galerie du 0 horizontale (y = 500), galerie du −1 verticale (x = 200), qui se croisent au
+  // puits (200, 500) SANS se toucher (correctif du §3). Départ (20, 500) au 0, arrivée (200, 680) au −1 :
+  // 180 px jusqu'au puits, 180 px après.
+  {
+    const E = 4;
+    const roads = [
+      R("principal", [[0, 500], [400, 500]], { level: 0 }),
+      R("principal", [[200, 300], [200, 700]], { level: -1 })
+    ];
+    const puits = (tag, extra) => Object.assign({ nom: "Puits", x: 200, y: 500, level: 0, tags: [tag], niveaux: [0, -1],
+      accroches: [{ level: 0, x: 200, y: 500 }, { level: -1, x: 200, y: 500 }] }, extra || {});
+    const A = { x: 20, y: 500, level: 0 }, B = { x: 200, y: 680, level: -1 };
+    async function route(pois, opts, cfg, prof) {
+      const b = bac(roads, pois, cfg);
+      if (prof) b.win.getProfondeurNiveau = n => (prof[String(n)] === undefined ? null : prof[String(n)]);
+      try { return { r: await b.win.Pathfinder.computeRoute([A, B], opts || {}), w: b.win }; }
+      catch (e) { return { err: e.code || e.message, w: b.win }; }
+    }
+    const proche = (d, att) => Math.abs(d - att) < 0.5;
+
+    let x = await route([puits("jpe")]);
+    t("jpe, profondeurs non saisies : 0 → −1 par le puits, forfait 20 m (" + (x.r && Math.round(x.r.totalDistance)) +
+      " px, attendu " + (360 + 20 * E) + ")", !!x.r && proche(x.r.totalDistance, 360 + 20 * E));
+    t("chemin : les points du puits portent le moyen (via = echelons)", !!x.r && x.r.path.some(p => p.via === "echelons"));
+    const guide = x.w.ItiGuidage.construire({ type: "itinerary", points: x.r.path, raccords: x.r.raccords, carrefours: [] });
+    const niv = guide && guide.consignes.find(c => c.type === "niveau");
+    t("guidage : « descendre vers le niveau −1 par l'échelle »",
+      !!niv && niv.vers === -1 && niv.moyen === "echelons" && /guid\.par\.echelons/.test(x.w.ItiGuidage.texteAction(niv)));
+
+    x = await route([puits("jpe")], {}, {}, { "0": -25, "-1": -37 });
+    t("jpe, profondeurs saisies : la vraie différence (12 m) remplace le forfait (" +
+      (x.r && Math.round(x.r.totalDistance)) + " px, attendu " + (360 + 12 * E) + ")",
+      !!x.r && proche(x.r.totalDistance, 360 + 12 * E));
+
+    x = await route([puits("jes")]);
+    t("jes : forfait escalier 10 m (" + (x.r && Math.round(x.r.totalDistance)) + " px)",
+      !!x.r && proche(x.r.totalDistance, 360 + 10 * E) && x.r.path.some(p => p.via === "escalier"));
+
+    x = await route([puits("jps")]);
+    t("jps sans la case corde : hors itinéraire (NO_PATH)", x.err === "NO_PATH");
+    x = await route([puits("jps")], { corde: true });
+    t("jps avec « équipe équipée (corde) » : emprunté (" + (x.r && Math.round(x.r.totalDistance)) + " px)",
+      !!x.r && proche(x.r.totalDistance, 360 + 20 * E) && x.r.path.some(p => p.via === "corde"));
+
+    x = await route([puits("jpe", { accroches: [] })]);
+    t("niveaux cochés mais aucun raccord validé : pas de passage (NO_PATH)", x.err === "NO_PATH");
+    x = await route([puits("jpe", { accroches: [{ level: 0, x: 200, y: 500 }] })]);
+    t("un seul niveau raccordé : pas de passage (NO_PATH)", x.err === "NO_PATH");
+    x = await route([puits("jpe", { niveaux: undefined })]);
+    t("point sans `niveaux` (ancien plan) : son seul niveau, pas de passage", x.err === "NO_PATH");
+    x = await route([puits("jpe")], {}, { multiLevel: false });
+    t("plan à un seul niveau : le POI n'ajoute rien (le croisement relie déjà les galeries, 360 px)",
+      !!x.r && proche(x.r.totalDistance, 360) && !x.r.path.some(p => p.via));
+    x = await route([puits("salle")]);
+    t("tag ordinaire (salle) avec `niveaux` : ignoré", x.err === "NO_PATH");
+
+    // Raccord perdu : la galerie a bougé de plus de 15 px.
+    const bPerdu = bac(roads, [puits("jpe", { accroches: [{ level: 0, x: 200, y: 500 }, { level: -1, x: 240, y: 500 }] })]);
+    const g = bPerdu.win.Pathfinder.buildNetworkGraph({});
+    t("raccord qui ne retombe plus sur sa galerie : ignoré et compté (graph.raccordsPerdus = 1)", g.raccordsPerdus === 1);
+
+    // Puits 0 / −1 / −2 sans débouché au −1 : 0 ↔ −2 direct, deux niveaux franchis.
+    const roads3 = roads.concat([R("principal", [[200, 500], [400, 700]], { level: -2 })]);
+    const p3 = { nom: "Puits3", x: 200, y: 500, level: 0, tags: ["jpe"], niveaux: [0, -1, -2],
+      accroches: [{ level: 0, x: 200, y: 500 }, { level: -2, x: 200, y: 500 }] };
+    const b3 = bac(roads3, [p3]);
+    const r3 = await b3.win.Pathfinder.computeRoute([A, { x: 380, y: 680, level: -2 }], {});
+    const att3 = 180 + 2 * 20 * E + Math.hypot(180, 180);
+    t("puits 0 / −1 / −2 sans débouché au −1 : 0 → −2 direct, deux niveaux de forfait (" +
+      Math.round(r3.totalDistance) + " px, attendu " + Math.round(att3) + ")", proche(r3.totalDistance, att3));
+
+    // Zone atteignable (Mode Perdu / Secours) : passe le puits.
+    const bz = bac(roads, [puits("jpe")]);
+    const z = bz.win.Pathfinder.computeReachable({ x: 20, y: 500, level: 0 }, 1000, {});
+    t("zone atteignable : la galerie du −1 est atteinte par le puits",
+      z.fullSegments.concat(z.partialSegments).some(s => s[0].x === 200 && s[1].x === 200 && s[0].y !== s[1].y));
+    const zsans = bac(roads, [puits("jps")]).win.Pathfinder.computeReachable({ x: 20, y: 500, level: 0 }, 1000, {});
+    t("zone atteignable : un puits sans échelon ne l'étend pas",
+      !zsans.fullSegments.concat(zsans.partialSegments).some(s => s[0].x === 200 && s[1].x === 200 && s[0].y !== s[1].y));
+
+    // Sortie d'urgence : une sortie au −1 se rejoint par le puits, qui n'est pas lui-même proposé.
+    const html = await sortiesProposees(bac(roads, [puits("jpe"),
+      { nom: "CavageBas", x: 200, y: 690, level: -1, tags: ["cao"] }]), [20, 500, 0]);
+    t("sortie d'urgence : la sortie du −1 est rejointe par le puits (chemin trouvé), le puits n'est pas une sortie",
+      html.includes("CavageBas") && !/Puits/.test(html.replace(/CavageBas/g, "")) && !/fallback/.test(html));
   }
 
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 POI entre niveaux : tout passe");

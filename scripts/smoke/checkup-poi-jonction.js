@@ -9,6 +9,8 @@
 //    50 px sans échelle), galerie lointaine non proposée, validation → `niveaux` + `accroches` sur le point ;
 //    fiche : niveaux et raccords, raccords dessinés seulement fiche ouverte ; filtre : visible sur chacun de ses
 //    niveaux, masqué ailleurs.
+// B. Itinéraire par la fenêtre de l'app : forfait, profondeurs saisies, consigne de guidage, jps sans / avec corde.
+// C. Sortie d'urgence : un peo multi-niveaux reste proposé, un jpe jamais.
 // Usage : node scripts/smoke/checkup-poi-jonction.js (SMOKE_PORT pour une autre copie ; PJ_SHOTS=<dossier> : captures)
 // Doc : docs/architecture/multilevel-pathfinding.md §26.11
 // =====================================================================
@@ -205,6 +207,109 @@ async function partieFiche(page) {
   }
 }
 
+// B. Itinéraire par la fenêtre de l'app : A sur la galerie du 0 (30 m à l'ouest du puits), B sur celle du −1
+// (30 m au sud). Sans le puits, aucun chemin (les deux galeries ne se touchent pas) : par lui, 30 + forfait 20
+// + 1 + 30 = 81 m ; profondeurs saisies (6 m d'écart) : 67 m.
+async function calculer(page) {
+  await page.evaluate(function () {
+    const e = document.getElementById("kta-iti-error"); if (e) e.style.display = "none";
+    const r = document.getElementById("kta-iti-result"); if (r) r.style.display = "none";
+  });
+  await page.click("#kta-iti-compute");
+  await attendre(page, function () {
+    const r = document.getElementById("kta-iti-result"), e = document.getElementById("kta-iti-error");
+    return (r && r.style.display === "block") || (e && e.style.display === "block");
+  }, 15000);
+  return page.evaluate(function () {
+    const r = document.getElementById("kta-iti-result"), e = document.getElementById("kta-iti-error");
+    const ok = r.style.display === "block";
+    const it = (window.getRoads() || []).find(function (x) { return x.type === "itinerary"; });
+    let consigne = null;
+    if (ok && it && window.ItiGuidage) {
+      const g = window.ItiGuidage.construire(it);
+      const c = g && g.consignes.find(function (k) { return k.type === "niveau"; });
+      consigne = c ? window.ItiGuidage.texteAction(c) : null;
+    }
+    const m = ok ? (r.textContent.match(/(\d+(?:[.,]\d+)?)\s*m\b/) || [])[1] : null;
+    return { ok: ok, err: ok ? null : e.textContent, distM: m ? Number(m.replace(",", ".")) : null,
+             via: !!(it && it.points.some(function (p) { return p.via; })), consigne: consigne };
+  });
+}
+
+async function partieItineraire(page) {
+  await page.evaluate(function () {
+    const P = window.__pj, E = P.E;
+    try { localStorage.removeItem("myktamap_route_avoid_" + (window._currentLoadedPlanId || "default")); } catch (e) {}
+    window.itineraireAjouterWaypoint(P.x - 30 * E, P.y, "A");
+    window.itineraireAjouterWaypoint(P.x + E, P.y + 30 * E, "B");
+  });
+  await attendre(page, function () { return !!document.getElementById("kta-iti-compute"); }, 5000);
+  let r = await calculer(page);
+  verifier(r.ok && Math.abs(r.distM - 81) <= 0.6,
+    "itinéraire 0 → −1 par le puits jpe : 30 + 20 (forfait échelons) + 1 + 30 = 81 m", r);
+  verifier(r.via && /échelle/.test(r.consigne || ""), "guidage : la consigne dit « par l'échelle » (" + r.consigne + ")");
+  // Profondeurs saisies : 6 m entre le 0 et le −1 remplacent le forfait.
+  await page.evaluate(function () {
+    window.__profOrig = window.getProfondeurNiveau;
+    window.getProfondeurNiveau = function (n) { return n === 0 ? -25 : (n === -1 ? -31 : null); };
+  });
+  r = await calculer(page);
+  verifier(r.ok && Math.abs(r.distM - 67) <= 0.6, "profondeurs saisies : la vraie différence (6 m) remplace le forfait → 67 m", r);
+  await page.evaluate(function () { window.getProfondeurNiveau = window.__profOrig; });
+  // Puits sans échelon : exclu sans la case corde, emprunté avec.
+  await page.evaluate(function () {
+    const p = window.getEditorPoints().find(function (q) { return q.nom === "Puits test"; });
+    p.tags = ["jps"];
+    window.renderEditorPoints();
+  });
+  r = await calculer(page);
+  verifier(!r.ok, "jps sans « équipe équipée (corde) » : hors itinéraire (aucun chemin)", r);
+  const caseCorde = await page.evaluate(function () { return !!document.getElementById("kta-iti-corde"); });
+  verifier(caseCorde, "fenêtre d'itinéraire : case « équipe équipée (corde) » présente (plan multi-niveau)");
+  if (caseCorde) {
+    // La case vit dans « Évitements » (repliée) : on l'ouvre comme un utilisateur.
+    await page.click(".kta-iti-avoid-details > summary");
+    await page.check("#kta-iti-corde");
+    r = await calculer(page);
+    verifier(r.ok && Math.abs(r.distM - 81) <= 0.6 && /corde/.test(r.consigne || ""),
+      "jps avec la case corde : emprunté (81 m), consigne « par le puits (corde) »", r);
+    await page.uncheck("#kta-iti-corde");
+  }
+  await page.evaluate(function () {
+    const p = window.getEditorPoints().find(function (q) { return q.nom === "Puits test"; });
+    p.tags = ["jpe"];
+    window.renderEditorPoints();
+    const b = document.getElementById("kta-iti-close"); if (b) b.click();
+  });
+  await page.waitForTimeout(300);
+}
+
+// C. Sortie d'urgence : un peo qui dessert aussi deux niveaux reste une sortie, le jpe jamais.
+async function partieSortie(page) {
+  await page.evaluate(function () {
+    const P = window.__pj, E = P.E;
+    window.setRoads((window.getRoads() || []).filter(function (r) { return r.type !== "itinerary"; }));
+    const pts = window.getEditorPoints().slice();
+    pts.push({ id: "PuitsSurface", nom: "PuitsSurface", x: P.x - 35 * E, y: P.y, level: 0, tags: ["peo"],
+               niveaux: [0, -1], accroches: [] });
+    window.setEditorPoints(pts);
+    window.SortieUrgence.declencherDepuis(P.x - 20 * E, P.y, 0, {});
+  });
+  await attendre(page, function () {
+    const m = document.getElementById("kta-sortie-urgence-modal");
+    return !!(m && m.querySelector(".kta-sortie-principal"));
+  }, 15000);
+  await page.waitForTimeout(500);
+  const txt = await page.evaluate(function () {
+    const m = document.getElementById("kta-sortie-urgence-modal");
+    const t = m ? m.textContent : "";
+    const b = document.getElementById("kta-sortie-close"); if (b) b.click();
+    return t;
+  });
+  verifier(txt.indexOf("PuitsSurface") >= 0, "sortie d'urgence : le peo multi-niveaux reste proposé");
+  verifier(txt.indexOf("Puits test") < 0, "🔒 sortie d'urgence : le puits entre niveaux (jpe) n'est jamais proposé");
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   const page = await nav.newPage({ viewport: { width: 1100, height: 800 } });
@@ -225,6 +330,10 @@ async function partieFiche(page) {
     console.log("A. Formulaire, raccords, fiche, filtre");
     await partieFormulaire(page);
     await partieFiche(page);
+    console.log("B. Itinéraire par le puits (forfait, profondeurs, corde)");
+    await partieItineraire(page);
+    console.log("C. Sortie d'urgence");
+    await partieSortie(page);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
@@ -240,6 +349,6 @@ async function partieFiche(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — POI entre niveaux : formulaire, raccords validés, fiche, filtre.");
+  console.log("🎉 CHECKUP VERT — POI entre niveaux : formulaire, raccords, fiche, filtre, itinéraire, corde, sortie.");
   process.exit(0);
 })();

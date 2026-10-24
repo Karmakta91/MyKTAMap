@@ -691,6 +691,7 @@
 
     for (let i = 0; i < graph.segments.length; i++) {
       const seg = graph.segments[i];
+      if (seg.poi) continue;   // puits d'un POI entre niveaux : on ne part ni n'arrive « en l'air »
       const a = graph.nodes[seg.a];
       const b = graph.nodes[seg.b];
       const proj = _projectOnSegment(p, a, b);
@@ -708,8 +709,13 @@
     }
 
     if (bestSegIdx < 0) return null;
+    return _poserNoeudSur(graph, bestSegIdx, bestProj, bestDist);
+  }
 
-    const seg = graph.segments[bestSegIdx];
+  // Nœud posé sur le segment `segIdx` au projeté `proj` (extrémité réutilisée si le projeté y tombe).
+  function _poserNoeudSur(graph, segIdx, proj, dist) {
+    const bestProj = proj, bestDist = dist;
+    const seg = graph.segments[segIdx];
     const a   = graph.nodes[seg.a];
     const b   = graph.nodes[seg.b];
 
@@ -763,6 +769,85 @@
       projection: { x: bestProj.x, y: bestProj.y },
       snapDist:   bestDist
     };
+  }
+
+  // ── POI entre niveaux (escalier, puits) : arêtes de jonction ──────────
+  // Un POI qui dessert plusieurs niveaux (poiJonction.js) devient un PUITS : un nœud par niveau desservi à sa
+  // position, chaînés du plus bas au plus haut, et chaque raccord VALIDÉ (`accroches`) relie la galerie de son
+  // niveau au nœud de ce niveau. Un niveau sans galerie raccordée est traversé (0 ↔ 2 par un puits sans
+  // débouché au 1). Coût d'un maillon : différence de profondeur des deux niveaux si elles sont saisies, sinon
+  // forfait par niveau franchi selon le moyen (escalier 10 m, échelons ou corde 20 m) : sans lui le puits, qui
+  // n'a pas de longueur dans le plan, gagnerait toujours.
+  // 🩸 Injecté APRÈS l'enrichissement, avec ses PROPRES nœuds (jamais _getOrAddNode : les nœuds des niveaux sont
+  // au même x,y) : l'enrichissement ne doit pas raccorder ces nœuds « en l'air » aux galeries qui passent.
+  // `ctx` = { echelle, profondeurs, corde } ; puits sans échelon (jps) seulement avec `corde`.
+  // Raccord qui ne retombe plus sur une galerie de son niveau à ≤ PROXIMITY_TOLERANCE (galerie déplacée) :
+  // ignoré et compté dans graph.raccordsPerdus.
+  const ECHELLE_SANS_CALAGE = 10;   // px/m supposés d'un plan sans échelle (comme le rayon de 50 px = 5 m)
+  function _poisJonctionDuPlan() {
+    const PJ = window.KtaPoiJonction;
+    return (PJ && typeof PJ.pointsJonction === "function") ? PJ.pointsJonction() : [];
+  }
+
+  function _poidsPuits(la, lb, tag, ctx) {
+    const zA = _profondeurPourPoids(la, ctx), zB = _profondeurPourPoids(lb, ctx);
+    const e = _echelleReseau(ctx && ctx.echelle, 0);
+    if (zA !== null && zB !== null && e) return Math.abs(zA - zB) * e;
+    const forfait = (window.KtaPoiJonction && window.KtaPoiJonction.forfaitM(tag)) || 0;
+    return Math.abs(la - lb) * forfait * _echelleReseau(ctx && ctx.echelle, ECHELLE_SANS_CALAGE);
+  }
+
+  // Segment le plus proche de `p` au niveau `lvl`, à ≤ maxDist → nœud posé dessus (null sinon).
+  function _insererSurNiveau(graph, p, lvl, maxDist) {
+    let best = -1, bestProj = null, bestDist = Infinity;
+    for (let i = 0; i < graph.segments.length; i++) {
+      const seg = graph.segments[i];
+      if (seg.level !== lvl) continue;
+      const proj = _projectOnSegment(p, graph.nodes[seg.a], graph.nodes[seg.b]);
+      if (proj.dist < bestDist) { best = i; bestProj = proj; bestDist = proj.dist; }
+    }
+    if (best < 0 || bestDist > maxDist) return null;
+    return _poserNoeudSur(graph, best, bestProj, bestDist);
+  }
+
+  function _injecterJonctionsPoi(graph, pois, ctx) {
+    graph.raccordsPerdus = 0;
+    if (!Array.isArray(pois) || !pois.length || !graph.segments.length) return;
+    if (!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)) return;
+    const PJ = window.KtaPoiJonction;
+    if (!PJ) return;
+    pois.forEach(function(p) {
+      const tag = (Array.isArray(p.tags) && p.tags[0]) || "";
+      const moyen = PJ.moyen(tag);
+      if (!moyen || (moyen === "corde" && !(ctx && ctx.corde))) return;
+      const niveaux = PJ.niveaux(p);
+      const acc = PJ.accroches(p);
+      if (niveaux.length < 2 || !acc.length) return;
+      const info = { tag: tag, moyen: moyen, nom: String(p.nom || p.id || "") };
+      const puits = {};
+      niveaux.forEach(function(n) {
+        const idx = _nouveauNode(graph, p.x, p.y);
+        _ajouterNiveauNode(graph, idx, "transit");
+        graph.nodes[idx].poi = info;
+        puits[n] = idx;
+      });
+      for (let i = 1; i < niveaux.length; i++) {
+        const a = puits[niveaux[i - 1]], b = puits[niveaux[i]];
+        _addEdge(graph, a, b, _poidsPuits(niveaux[i - 1], niveaux[i], tag, ctx));
+        graph.segments.push({ a: a, b: b, roadType: "jonction", level: "transit", road: null, poi: info });
+      }
+      acc.forEach(function(r) {
+        const pose = _insererSurNiveau(graph, r, r.level, PROXIMITY_TOLERANCE);
+        if (!pose) { graph.raccordsPerdus++; return; }
+        const n = graph.nodes[pose.nodeIdx];
+        _addEdge(graph, pose.nodeIdx, puits[r.level], _dist(n, p));
+        graph.segments.push({ a: pose.nodeIdx, b: puits[r.level], roadType: "jonction", level: "transit",
+                              road: null, poi: info });
+      });
+    });
+    if (graph.raccordsPerdus) {
+      console.warn("[Pathfinder] " + graph.raccordsPerdus + " raccord(s) de passage entre niveaux sans galerie");
+    }
   }
 
   // ── Dijkstra ──────────
@@ -849,7 +934,7 @@
   // quand ce n'est pas le plan ouvert (sinon APP_CONFIG.scale / getProfondeurNiveau). Ils servent aux
   // carrefours ET au poids des jonctions.
   function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
-                                echelle, profondeurs) {
+                                echelle, profondeurs, jonctions) {
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
                               { echelle: echelle, profondeurs: profondeurs });
     if (graph.nodes.length === 0) {
@@ -861,6 +946,8 @@
       throw e;
     }
     _enrichirGrapheAvecCroisements(graph);
+    _injecterJonctionsPoi(graph, jonctions && jonctions.pois,
+                          { echelle: echelle, profondeurs: profondeurs, corde: !!(jonctions && jonctions.corde) });
 
     const snapResults = [];
     for (let i = 0; i < waypoints.length; i++) {
@@ -907,7 +994,8 @@
           set.forEach(function (v) { if (Number.isInteger(v)) nums.push(v); });
           if (nums.length === 1) lvl = nums[0];
         }
-        return { x: n.x, y: n.y, level: lvl };
+        // Puits d'un POI entre niveaux : le moyen voyage avec le point (« par l'échelle » au guidage).
+        return n.poi ? { x: n.x, y: n.y, level: lvl, via: n.poi.moyen } : { x: n.x, y: n.y, level: lvl };
       });
       if (i > 0) segPoints.shift();
       for (let k = 0; k < segPoints.length; k++) fullPath.push(segPoints[k]);
@@ -1134,7 +1222,8 @@
   // ── computeRoute (2 passes) ──────────
   // opts : allowedTypes (défaut principal/secondaire/chemin) · avoidPoints [{x, y, label?}] · avoidTags
   //   (développés en points via SearchPoints) · avoidRadius px (défaut 100) · avoidZones (types) ·
-  //   respecterInaccessibles (false = SUSPEND la seule contrainte dure ; absent = respecter).
+  //   respecterInaccessibles (false = SUSPEND la seule contrainte dure ; absent = respecter) · corde (true =
+  //   équipe équipée : les puits sans échelon entre niveaux deviennent praticables).
   // Passe 1 : zones inaccessibles (dur) + évitements (souple). Échec avec évitements → passe 2 sans eux ;
   // si elle aboutit : `usedFallback: true` + `avoidedThrough` (points traversés) pour l'UI. Échec de la
   // passe 2 → vraie absence de chemin, l'erreur remonte.
@@ -1203,6 +1292,9 @@
                   " point(s) a eviter (rayon " + avoidRadius + "px) — contrainte souple, fallback possible");
     }
 
+    // Passages entre niveaux du plan ; `opts.corde` (équipe équipée) ouvre les puits sans échelon.
+    const jonctions = { pois: _poisJonctionDuPlan(), corde: opts.corde === true };
+
     let result          = null;
     let usedFallback    = false;
     let avoidedThrough  = [];
@@ -1210,7 +1302,7 @@
     try {
       result = _computeRouteInterne(
         waypoints, allRoads, allowedTypes,
-        zonesInacc, allAvoidPts, avoidRadius, avoidZones
+        zonesInacc, allAvoidPts, avoidRadius, avoidZones, undefined, undefined, jonctions
       );
     } catch(e1) {
       // Sans évitements, c'est une vraie absence de chemin → on relance.
@@ -1220,7 +1312,7 @@
       try {
         result = _computeRouteInterne(
           waypoints, allRoads, allowedTypes,
-          zonesInacc, [], 0, []
+          zonesInacc, [], 0, [], undefined, undefined, jonctions
         );
         usedFallback = true;
         // Points évités que le chemin final traverse quand même (« Impossible d'éviter : X, Y »).
@@ -1248,7 +1340,8 @@
   // opts : allowedTypes · zones [{type, points, level?}] (les "inaccessible" = contrainte DURE) ·
   //   avoidPoints · avoidZonesResolved (zones objets, souple) · avoidRadius (px, 100) ·
   //   echelle (px/m de CE réseau : carrefours 3 m / 5 m et dénivelé) ·
-  //   profondeurs ({ "<niveau>": m|null } de CE réseau ; fournie, même {}, fait foi ; absente = plan ouvert).
+  //   profondeurs ({ "<niveau>": m|null } de CE réseau ; fournie, même {}, fait foi ; absente = plan ouvert) ·
+  //   poisJonction (POI entre niveaux de CE réseau, absent = aucun) · corde.
   // Retour : même forme que computeRoute (+ usedFallback / avoidedThrough).
   function computeRouteOnRoads(waypoints, roads, opts) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
@@ -1271,15 +1364,18 @@
     const avoidRadius = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0) ? opts.avoidRadius : 100;
     const avoidZones  = Array.isArray(opts.avoidZonesResolved) ? opts.avoidZonesResolved : [];
     const hasAvoid    = avoidPts.length > 0 || avoidZones.length > 0;
+    // Passages entre niveaux de CE réseau : fournis par l'appelant (plan non chargé → aucun par défaut).
+    const jonctions   = { pois: Array.isArray(opts.poisJonction) ? opts.poisJonction : [],
+                          corde: opts.corde === true };
 
     let result = null, usedFallback = false, avoidedThrough = [];
     try {
-      result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, avoidPts, avoidRadius, avoidZones, opts.echelle, opts.profondeurs);
+      result = _computeRouteInterne(waypoints, roads, allowedTypes, zonesInacc, avoidPts, avoidRadius,
+                                    avoidZones, opts.echelle, opts.profondeurs, jonctions);
     } catch(e1) {
       if (!hasAvoid) throw e1;
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, [], 0, [], opts.echelle, opts.profondeurs);
+                                    zonesInacc, [], 0, [], opts.echelle, opts.profondeurs, jonctions);
       usedFallback = true;
       avoidedThrough = avoidPts.filter(function(ap) {
         return _pathPassesNearPoint(result.path, ap, avoidRadius);
@@ -1322,7 +1418,7 @@
   // partialSegments (tronqués par interpolation au point où le budget s'épuise).
   // Les jonctions sont traversables : le calcul s'étend aux autres niveaux.
   // Départ loin de tout tracé : exceedsBudget=true + snapPoint/snapDistance, listes vides (LostMode trace
-  // alors pointillé + cercle seul). `opts` : réservé, inutilisé.
+  // alors pointillé + cercle seul). `opts.corde` : puits sans échelon franchissables.
   function computeReachable(startPoint, budgetPx, opts) {
     if (!startPoint || typeof startPoint.x !== "number" || typeof startPoint.y !== "number") {
       throw new Error("computeReachable : startPoint = {x, y} requis");
@@ -1352,6 +1448,7 @@
     // Sans évitements (propres à l'itinéraire).
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
     _enrichirGrapheAvecCroisements(graph);
+    _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: !!(opts && opts.corde) });
 
     if (graph.nodes.length === 0) {
       return {
@@ -1508,6 +1605,7 @@
     const zonesInacc = opts.includeZones ? _collecterZonesInaccessibles() : [];
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
     _enrichirGrapheAvecCroisements(graph);
+    _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: opts.corde === true });
     return graph;
   }
 
