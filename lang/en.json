@@ -1781,6 +1781,7 @@
   "home.plans.folders.all": "Whole folder ({n})",
   "home.plans.folders.less": "Collapse",
   "home.plans.folders.menu": "Folder options",
+  "home.plans.folders.menuUnfiled": "“Unfiled” options",
   "home.plans.folders.nameTaken": "Another folder already has this name.",
   "home.plans.folders.toastDiffuse": "☁️ Filed for everyone who can see {n} plan(s)",
   "home.plans.offline.rowPerime": "⬇️ New version on the server — download it",

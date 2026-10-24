@@ -7,6 +7,7 @@
 //   1. dossier mixte : manquant récupéré, à jour sauté, version plus récente mise à jour, plan ZIP de l'index
 //      récupéré, plan local mémorisé « déjà là », plan introuvable en échec AVEC sa raison ; bilan + toast warn ;
 //   2. deuxième passe : tout est à jour, AUCUN fichier retéléchargé, toast success ;
+//   2 bis. « Non classés » : son menu ⋮ porte le même bouton, la boucle ne prend que les plans affichés du groupe ;
 //   3. « Arrêter » pendant le 1er plan d'un dossier lent : arrêt, plans restants non traités, état honnête ;
 //   4. plus de 200 Mo estimés : confirmation avec la taille ; Annuler → rien ne part ;
 //   5. données mobiles (navigator.connection.type simulé) : confirmation même pour un petit plan ;
@@ -37,10 +38,11 @@ const INDEX = {
   plans: [P("neuf", "Neuf"), P("ajour", "A jour"), P("maj", "Majeur"), P("absent", "Absent"),
     { id: "zip", path: "fictif/zipdir", zip: "fictif/plan.zip", name: "Archive", folder: "dhl" },
     P("lent1", "Lent 1", { folder: "lents" }), P("lent2", "Lent 2", { folder: "lents" }), P("lent3", "Lent 3", { folder: "lents" }),
-    P("lourd", "Lourd", { folder: "lourds" }), P("gros", "Gros", { folder: "gel" }), P("mob", "Mobile", { folder: "mobile" })]
+    P("lourd", "Lourd", { folder: "lourds" }), P("gros", "Gros", { folder: "gel" }), P("mob", "Mobile", { folder: "mobile" }),
+    { id: "libre", path: "fictif/libre", name: "Libre" }]
 };
-const COUCHES = { neuf: 2, ajour: 2, maj: 2, lent1: 4, lent2: 4, lent3: 4, lourd: 2, gros: 12, mob: 1 };
-const VERS = { neuf: 1, ajour: 1, maj: 1, lent1: 1, lent2: 1, lent3: 1, lourd: 1, gros: 1, mob: 1, zip: 1 };
+const COUCHES = { libre: 1, neuf: 2, ajour: 2, maj: 2, lent1: 4, lent2: 4, lent3: 4, lourd: 2, gros: 12, mob: 1 };
+const VERS = { libre: 1, neuf: 1, ajour: 1, maj: 1, lent1: 1, lent2: 1, lent3: 1, lourd: 1, gros: 1, mob: 1, zip: 1 };
 const banc = { get200: {}, lent: 0, gel: false };
 function cfgDe(plan) {
   const dl = [];
@@ -178,6 +180,22 @@ const capture = async (p, nom) => { if (SHOTS) await p.screenshot({ path: path.j
     t("2e passe : rien récupéré ni mis à jour, 5 déjà là, l'échec reste", !b2.blocs.recuperes && !b2.blocs.majs &&
       /: 5/.test((b2.blocs.deja || {}).texte || "") && /Absent/.test(((b2.blocs.echecs || {}).items || []).join("")));
     t("2e passe : AUCUN fichier retéléchargé (sondes conditionnelles seulement)", Object.keys(banc.get200).length === 0);
+    await fermerBilan(p);
+
+    // ── 2 bis. Non classés ──
+    const nc = await p.evaluate(() => Array.from(document.querySelectorAll('#allPlansList .kta-plans-folder-rows[data-folder=""] .plan-row'))
+      .map((r) => r.dataset.id));
+    await p.click(".kta-plans-folder-unfiled .kta-plans-folder-menu");
+    await p.waitForSelector("[data-hors-ligne]", { timeout: 5000 });
+    const ncSeul = await p.evaluate(() => document.querySelectorAll(".kta-plans-sheet-overlay button:not([data-close])").length);
+    t("« Non classés » : menu ⋮ avec le seul bouton « 📥 Tout garder hors ligne »", ncSeul === 1);
+    await p.click("[data-hors-ligne]");
+    const bnc = await bilan(p);
+    const tousNc = ((bnc.blocs.recuperes || {}).items || []).length + ((bnc.blocs.majs || {}).items || []).length +
+      Number((((bnc.blocs.deja || {}).texte || "").match(/: (\d+)/) || [0, 0])[1]) + ((bnc.blocs.echecs || {}).items || []).length;
+    t("…même boucle sur les plans affichés du groupe (" + nc.length + ") : « Libre » récupéré, aucun plan d'un dossier",
+      /Libre/.test(((bnc.blocs.recuperes || {}).items || []).join("")) && tousNc === nc.length && nc.indexOf("server_neuf") < 0 &&
+      (await statut(p, "server_libre")) === "complet", bnc);
     await fermerBilan(p);
 
     // ── 3. Arrêter ──

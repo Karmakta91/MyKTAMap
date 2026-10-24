@@ -1781,6 +1781,7 @@
   "home.plans.folders.all": "Tout le dossier ({n})",
   "home.plans.folders.less": "Réduire",
   "home.plans.folders.menu": "Options du dossier",
+  "home.plans.folders.menuUnfiled": "Options de « Non classés »",
   "home.plans.folders.nameTaken": "Ce nom est déjà pris par un autre dossier.",
   "home.plans.folders.toastDiffuse": "☁️ Rangé pour tous ceux qui voient {n} plan(s)",
   "home.plans.offline.rowPerime": "⬇️ Nouvelle version sur le serveur — la télécharger",

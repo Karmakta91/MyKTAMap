@@ -222,7 +222,8 @@ Les **validateurs** (`ETag`, `Last-Modified`) sont retenus **au téléchargement
 
 ## 8 bis. Tout un dossier : « 📥 Tout garder hors ligne »
 
-Le menu ⋮ d'un dossier de l'accueil (`js/dossierHorsLigne.js`, câblé par `homeLoader.js > _ouvrirMenuDossier`) met
+Le menu ⋮ d'un dossier de l'accueil (`js/dossierHorsLigne.js`, câblé par `homeLoader.js > _ouvrirMenuDossier` ; sur
+« Non classés », `_ouvrirMenuNonClasses` : les plans affichés du groupe) met
 chaque plan du dossier à jour sur l'appareil, **un plan à la fois** (mémoire) :
 
 | Plan | État lu | Action |

@@ -1781,6 +1781,7 @@
   "home.plans.folders.all": "Toda la carpeta ({n})",
   "home.plans.folders.less": "Reducir",
   "home.plans.folders.menu": "Opciones de la carpeta",
+  "home.plans.folders.menuUnfiled": "Opciones de «Sin clasificar»",
   "home.plans.folders.nameTaken": "Otra carpeta ya tiene este nombre.",
   "home.plans.folders.toastDiffuse": "☁️ Archivado para todos los que ven {n} mapa(s)",
   "home.plans.offline.rowPerime": "⬇️ Nueva versión en el servidor — descargarla",

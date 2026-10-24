@@ -2059,7 +2059,9 @@ function planRowHTML(plan) {
         const nom = f ? escapeHtml(f.name) : escapeHtml(t("home.plans.folders.unfiled"));
         const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || window.PlanRegistry.FOLDER_COLORS[0]) + '"></span>'
                       : '<span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>';
-        const menu = f ? '<button type="button" class="plan-row-btn kta-plans-folder-menu" title="' + escapeHtml(t("home.plans.folders.menu")) + '">⋮</button>' : "";
+        // « Non classés » : un menu ⋮ aussi, réduit à « Tout garder hors ligne » (_ouvrirMenuNonClasses).
+        const menu = (f || window.KtaDossierHorsLigne) ? '<button type="button" class="plan-row-btn kta-plans-folder-menu" title="' +
+          escapeHtml(t(f ? "home.plans.folders.menu" : "home.plans.folders.menuUnfiled")) + '">⋮</button>' : "";
         return '<div class="kta-plans-folder-head' + (replie ? " kta-replie" : "") + '" data-folder="' + (f ? escapeHtml(f.id) : "") + '" role="button" tabindex="0">' +
                  '<span class="kta-plans-folder-caret">' + (replie ? "▸" : "▾") + '</span>' + dot +
                  '<span class="kta-plans-folder-name">' + nom + '</span>' +
@@ -2164,7 +2166,7 @@ function planRowHTML(plan) {
           });
           head.addEventListener("keydown", function(e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); basculer(); } });
           const menu = head.querySelector(".kta-plans-folder-menu");
-          if (menu && fid) menu.addEventListener("click", function(e) { e.stopPropagation(); _ouvrirMenuDossier(fid); });
+          if (menu) menu.addEventListener("click", function(e) { e.stopPropagation(); if (fid) _ouvrirMenuDossier(fid); else _ouvrirMenuNonClasses(); });
           _brancherCibleDepot(head, fid);
         });
         conteneur.querySelectorAll(".kta-plans-folder-rows").forEach(function(rows) { _brancherCibleDepot(rows, rows.dataset.folder || null); });
@@ -2468,17 +2470,7 @@ function planRowHTML(plan) {
           if (hl) hl.addEventListener("click", function() {
             const ids = PR.getAll().filter(function(p) { return PR.planFolderId(p) === f.id; }).map(function(p) { return p.id; });
             fermer();
-            window.KtaDossierHorsLigne.lancer(ids, {
-              titre: f.name,
-              sonderZip: function(p) {
-                const ctl = typeof AbortController === "function" ? new AbortController() : null;
-                const delai = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
-                return _telechargerZipIndex(p, null, true, "HEAD", ctl ? ctl.signal : undefined)
-                  .finally(function () { clearTimeout(delai); });
-              },
-              garderZip: _garderZipIndex,
-              apres: function() { _rafraichirBoutonsHorsLigne(); }
-            });
+            _lancerHorsLigneDossier(ids, f.name);
           });
           const del = ov.querySelector("[data-del]");
           if (del && !verrou) del.addEventListener("click", async function() {
@@ -2490,6 +2482,35 @@ function planRowHTML(plan) {
         });
       }
 
+
+      // « Tout garder hors ligne » (js/dossierHorsLigne.js) avec les adaptateurs des plans ZIP de l'index.
+      function _lancerHorsLigneDossier(ids, titre) {
+        window.KtaDossierHorsLigne.lancer(ids, {
+          titre: titre,
+          sonderZip: function(p) {
+            const ctl = typeof AbortController === "function" ? new AbortController() : null;
+            const delai = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+            return _telechargerZipIndex(p, null, true, "HEAD", ctl ? ctl.signal : undefined)
+              .finally(function () { clearTimeout(delai); });
+          },
+          garderZip: _garderZipIndex,
+          apres: function() { _rafraichirBoutonsHorsLigne(); }
+        });
+      }
+      // ⋮ de « Non classés » : les plans AFFICHÉS dans ce groupe (filtre par nom et plans du site masqués respectés).
+      function _ouvrirMenuNonClasses() {
+        const t = window.I18n.t;
+        const corps = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>📥 ' +
+          escapeHtml(t("home.plans.dossierHL.bouton")) + '</button>';
+        _feuille(escapeHtml(t("home.plans.folders.unfiled")), corps, function(ov, fermer) {
+          ov.querySelector("[data-hors-ligne]").addEventListener("click", function() {
+            const ids = Array.from(document.querySelectorAll('#allPlansList .kta-plans-folder-rows[data-folder=""] .plan-row'))
+              .map(function(r) { return r.dataset.id; }).filter(Boolean);
+            fermer();
+            _lancerHorsLigneDossier(ids, t("home.plans.folders.unfiled"));
+          });
+        });
+      }
 
       // Plan déclaré par son archive dans data/index.json (`"zip": "data/x.zip"`), téléchargé avec progression.
       // `conditionnel` : validateurs HTTP de la copie gardée (ETag / Last-Modified) → 304 = à jour.
