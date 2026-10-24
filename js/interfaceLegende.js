@@ -24,7 +24,7 @@ const LEGENDE_LABELS = {
   pc:       "Puits Comblé",
   pb:       "Puits Bouché",
   pe:       "Puits au sol / Bassin",
-  ps:       "Puit extraction",
+  ps:       "Puits extraction",
   psf:      "Puits extraction fermé",
   peo:      "Puits à échelon ouvert",
   pef:      "Puits à échelon fermé",
