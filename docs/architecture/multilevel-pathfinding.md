@@ -145,8 +145,7 @@ APP_CONFIG.multiLevel ←
 `window.appliquerFiltreNiveau()` orchestre le re-render/filtrage de TOUS les modules level-aware :
 - `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
 - `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
-- `_applyLevelFilterToEditorPoints()` (editor.js) — opacity/pointer-events sur markers session
-- `_applyLevelFilterToDataPoints()` (utils.js) — opacity sur markers data layers
+- `_applyLevelFilterToEditorPoints()` (editor.js) et `_applyLevelFilterToDataPoints()` (utils.js) — markers de session et des data layers (niveau + filtre de tags) via `utils.js > ktaMasquerMarqueur` : opacité 0 **et** icône inerte (`pointer-events: none`, hors tabulation), réappliquée par un écouteur `add` quand Leaflet recrée l'icône (calque recoché, culling viewport, marker filtré avant son `addTo`). 🩸 L'image `.kta-marker-img` hérite son `pointer-events` (`inherit`, jamais `auto`), sinon un point invisible reste cliquable.
 - `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
 - `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
 - `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru

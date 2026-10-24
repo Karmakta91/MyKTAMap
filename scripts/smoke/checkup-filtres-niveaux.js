@@ -10,8 +10,10 @@
 //    un marquage par identité du bouton cliqué visait un nœud détaché et effaçait le marquage du re-rendu.
 // 2. « Garder le plan de base » : niveau 0 masqué → case présente, décochée → fond masqué, cochée → fond
 //    visible (rendu direct du relevé fictif, V1 sur une couche factice, V2 sur un ZIP `PLAN_V2_ZIP` ou sur un
-//    état factice) ;
-//    niveau 0 visible → case absente, fond visible ; le choix survit au rechargement (session du plan).
+//    état factice) ; niveau 0 visible → case absente, fond visible ; le choix survit au rechargement.
+// 3. Point masqué (tag décoché, niveau masqué, calque décoché puis recoché) : son icône ne prend plus le
+//    pointeur à son emplacement, aucun clic n'ouvre sa fiche ; il redevient cliquable au réaffichage. Point de
+//    session et point d'un calque de données.
 // Usage : node scripts/smoke/checkup-filtres-niveaux.js · doc : docs/architecture/multilevel-pathfinding.md
 // =====================================================================
 "use strict";
@@ -221,6 +223,142 @@ async function testerFond(page, etiquette) {
   await page.evaluate(function () { window.FilterPanel.fermer(); });
 }
 
+// Point masqué = ni cliquable ni survolable : l'élément sous le pointeur, à l'emplacement du marqueur, ne doit
+// pas être son icône (une opacité 0 seule laisse l'icône prendre le clic). `quel` = "session" ou "calque".
+function sonderMarqueur(page, quel) {
+  return page.evaluate(function (q) {
+    const m = q === "session" ? window._ktaTestMarqueurSession : window._ktaTestMarqueurCalque;
+    if (!m) return { absent: true };
+    window.map.closePopup();   // une fiche ouverte couvrirait le point sondé
+    if (!window.map.hasLayer(m) || !m._icon) return { surCarte: false, touche: false };
+    const r = m._icon.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const el = document.elementFromPoint(x, y);
+    const touche = !!(el && el.closest(".leaflet-marker-icon") === m._icon);
+    return { surCarte: true, touche: touche, opacite: m._icon.style.opacity, x: x, y: y };
+  }, quel);
+}
+
+async function cliquerSansPopup(page, s) {
+  await page.evaluate(function () { window.map.closePopup(); });
+  await page.mouse.click(s.x, s.y);
+  await page.waitForTimeout(400);
+  return page.evaluate(function () { return document.querySelectorAll(".leaflet-popup").length === 0; });
+}
+
+// Coche / décoche une case de la modale ≡ (tag de point ou calque de données) par un vrai clic.
+async function caseFiltre(page, selecteur, coche) {
+  await page.evaluate(function () { window.FilterPanel.ouvrir(); });
+  await page.waitForTimeout(300);
+  await page.evaluate(function (a) {
+    const cb = document.querySelector("#kta-fp-modal " + a.sel);
+    if (cb && cb.checked !== a.coche) cb.click();
+  }, { sel: selecteur, coche: coche });
+  await page.waitForTimeout(500);
+  await page.evaluate(function () { window.FilterPanel.fermer(); });
+  await page.waitForTimeout(300);
+}
+
+function retrouverMarqueurSession(page) {
+  return page.evaluate(function () {
+    const p = window.getEditorPoints()[0];
+    window._ktaTestMarqueurSession = null;
+    window.layerEditor.getLayers().forEach(function (l) {
+      if (!l.getLatLng) return;
+      const ll = l.getLatLng();
+      if (Math.abs(ll.lng - p.x) < 0.01 && Math.abs(ll.lat - (window.APP_CONFIG.imageHeight - p.y)) < 0.01) {
+        window._ktaTestMarqueurSession = l;
+      }
+    });
+    return !!window._ktaTestMarqueurSession;
+  });
+}
+
+async function testerPointsMasques(page) {
+  // Un point d'un calque de données au centre de la vue, et un point de session de tag « salle » à côté.
+  const prep = await page.evaluate(function () {
+    window.map.closePopup();
+    window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();
+    window.APP_CONFIG.activeLevel = 0;
+    window.FilterPanel.setFilters({ tags: null });
+    window.FilterPanel.applyFilters();
+    const mC = (window._ktaDataMarkers || []).find(function (m) {
+      return m && m._icon && window.map.hasLayer(m) && Array.isArray(m._ktaTags) && m._ktaTags[0]
+        && m._ktaTags[0] !== "salle" && m._ktaLayerId;
+    }) || null;
+    window._ktaTestMarqueurCalque = mC;
+    if (mC) window.map.setView(mC.getLatLng(), window.map.getZoom(), { animate: false });
+    const c = window.map.getCenter();
+    window.setEditorPoints([{ id: "PoiMasque", nom: "PoiMasque", uid: "pt_masquetest",
+      x: Math.round(c.lng) + 60, y: Math.round(window.APP_CONFIG.imageHeight - c.lat) + 60,
+      tags: ["salle"], level: 0, etat: "Non inspectée", description: "", source: "editor" }]);
+    window.appliquerFiltreNiveau();
+    return { calque: !!mC, tagCalque: mC ? mC._ktaTags[0] : null, idCalque: mC ? mC._ktaLayerId : null };
+  });
+  await page.waitForTimeout(600);
+  verifier(await retrouverMarqueurSession(page), "point de session posé et affiché");
+  if (!prep.calque) inf("aucun point de calque de données visible : volet « calque » sauté");
+
+  const s0 = await sonderMarqueur(page, "session");
+  verifier(s0.surCarte && s0.touche, "session, sans filtre : le point est cliquable", s0);
+  if (s0.touche) verifier(!(await cliquerSansPopup(page, s0)), "session, sans filtre : le clic ouvre sa fiche");
+
+  const tagSession = '[data-set="tags"][data-type="salle"]';
+  await caseFiltre(page, tagSession, false);
+  const s1 = await sonderMarqueur(page, "session");
+  verifier(!s1.touche, "session, tag décoché : le point n'est plus sous le pointeur", s1);
+  if (s1.surCarte) verifier(await cliquerSansPopup(page, s1), "session, tag décoché : clic à son emplacement → aucune fiche");
+  await caseFiltre(page, tagSession, true);
+  verifier((await sonderMarqueur(page, "session")).touche, "session, tag recoché : le point redevient cliquable");
+
+  await page.evaluate(function () {
+    const pts = window.getEditorPoints(); pts[0].level = -1; window.renderEditorPoints();
+    window.APP_CONFIG.visibleLevels = [0]; window.APP_CONFIG.activeLevel = 0; window.appliquerFiltreNiveau();
+  });
+  await retrouverMarqueurSession(page);
+  await page.waitForTimeout(300);
+  const s3 = await sonderMarqueur(page, "session");
+  verifier(!s3.touche, "session, niveau masqué : le point n'est plus sous le pointeur", s3);
+  if (s3.surCarte) verifier(await cliquerSansPopup(page, s3), "session, niveau masqué : clic à son emplacement → aucune fiche");
+  await page.evaluate(function () {
+    window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice(); window.appliquerFiltreNiveau();
+  });
+  await page.waitForTimeout(300);
+  verifier((await sonderMarqueur(page, "session")).touche, "session, niveau ré-affiché : le point redevient cliquable");
+
+  if (prep.calque) {
+    const c0 = await sonderMarqueur(page, "calque");
+    verifier(c0.surCarte && c0.touche, "calque, sans filtre : le point est cliquable", c0);
+    const tagCalque = '[data-set="tags"][data-type="' + prep.tagCalque + '"]';
+    const caseCalque = '[data-data-layer="' + prep.idCalque + '"]';
+    await caseFiltre(page, tagCalque, false);
+    const c1 = await sonderMarqueur(page, "calque");
+    verifier(!c1.touche, "calque, tag décoché : le point n'est plus sous le pointeur", c1);
+    if (c1.surCarte) verifier(await cliquerSansPopup(page, c1), "calque, tag décoché : clic à son emplacement → aucune fiche");
+    // 🩸 Calque décoché puis recoché, tag toujours décoché : l'icône recréée par Leaflet doit rester inerte.
+    await caseFiltre(page, caseCalque, false);
+    verifier(!(await sonderMarqueur(page, "calque")).touche, "calque décoché : le point n'est plus sous le pointeur");
+    await caseFiltre(page, caseCalque, true);
+    const c3 = await sonderMarqueur(page, "calque");
+    verifier(!c3.touche, "calque recoché, tag toujours décoché : le point reste inerte", c3);
+    await caseFiltre(page, tagCalque, true);
+    verifier((await sonderMarqueur(page, "calque")).touche, "calque, tag recoché : le point redevient cliquable");
+    await page.evaluate(function () {
+      const m = window._ktaTestMarqueurCalque;
+      m._ktaNiveauOrig = m._ktaLevel; m._ktaLevel = 1;
+      window.APP_CONFIG.visibleLevels = [0]; window.appliquerFiltreNiveau();
+    });
+    await page.waitForTimeout(300);
+    verifier(!(await sonderMarqueur(page, "calque")).touche, "calque, niveau masqué : le point n'est plus sous le pointeur");
+    await page.evaluate(function () {
+      const m = window._ktaTestMarqueurCalque;
+      m._ktaLevel = m._ktaNiveauOrig;
+      window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice(); window.appliquerFiltreNiveau();
+    });
+  }
+  await page.evaluate(function () { window.map.closePopup(); window.setEditorPoints([]); });
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   try {
@@ -239,6 +377,22 @@ async function testerFond(page, etiquette) {
     });
     if (!ml.ml) throw new Error("le plan ouvert n'est pas multi-niveau");
     ok("plan multi-niveau, niveaux " + JSON.stringify(ml.niveaux));
+    // 🩸 Points des calques filtrés AVANT leur addTo (niveaux ≠ 0 au chargement) : l'icône créée ensuite doit
+    // naître inerte.
+    const auChargement = await page.evaluate(function () {
+      const icone = L.divIcon({ className: "kta-marker-divicon", iconSize: [24, 24],
+        html: '<img class="kta-marker-img" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="">' });
+      const m = L.marker(window.map.getCenter(), { icon: icone });
+      if (typeof window.ktaMasquerMarqueur === "function") window.ktaMasquerMarqueur(m, true);
+      else m.setOpacity(0);
+      m.addTo(window.map);
+      const img = m._icon.querySelector("img");
+      const r = { div: getComputedStyle(m._icon).pointerEvents, img: getComputedStyle(img).pointerEvents };
+      m.remove();
+      return r;
+    });
+    verifier(auChargement.div === "none" && auChargement.img === "none",
+      "marqueur masqué avant son addTo : l'icône créée ensuite est inerte (icône et image)", auChargement);
 
     console.log("\n── 1. Niveau actif (dessin) : classe et couleur du bouton cliqué ──");
     await testerBoutonsActifs(page, "dark");
@@ -275,6 +429,9 @@ async function testerFond(page, etiquette) {
       return window.SessionPersist.save({ force: true });
     });
     await page.waitForTimeout(800);
+
+    console.log("\n── 3. Point masqué par ≡ Filtres : ni cliquable ni survolable ──");
+    await testerPointsMasques(page);
 
     console.log("\n── 2ter. Tuilage V1 et V2 ──");
     // Le relevé fictif est en rendu direct : V1 = une couche factice dans _baseTiles (même règle que le rendu réel).
@@ -313,6 +470,6 @@ async function testerFond(page, etiquette) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — niveau actif marqué au clic, plan de base gardé au choix.");
+  console.log("🎉 CHECKUP VERT — niveau actif marqué au clic, plan de base gardé au choix, point masqué inerte.");
   process.exit(0);
 })();

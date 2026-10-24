@@ -922,8 +922,9 @@ window._refreshEditorMarkersViewport = function() {
   });
 };
 
-// Filtre visuel d'un marqueur selon APP_CONFIG.visibleLevels : setOpacity + pointer-events plutôt que
-// remove/addLayer, pour rester dans layerEditor.
+// Filtre d'un marqueur selon APP_CONFIG.visibleLevels et le filtre de tags : utils.js > ktaMasquerMarqueur
+// (opacité + icône inerte, tenue quand Leaflet recrée l'icône) plutôt que remove/addLayer, pour rester dans
+// layerEditor.
 function _appliquerFiltreNiveauSurMarker(marker) {
   if (!marker) return;
   let visible = true;
@@ -942,8 +943,7 @@ function _appliquerFiltreNiveauSurMarker(marker) {
                 || "default";
     if (!window._ktaRuntimeFilters.tags.has(tag)) visible = false;
   }
-  try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
-  if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
+  window.ktaMasquerMarqueur(marker, !visible);
 }
 
 // Filtre tous les marqueurs editor (appelé par window.appliquerFiltreNiveau).
