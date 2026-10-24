@@ -142,7 +142,9 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
 }
 
 // ── Le plan principal est le niveau 0 (décision produit) ──────────────
-// Décocher 0 dans la modale Niveaux masque le fond, pour voir un autre niveau seul. Couvre les 3 rendus :
+// Décocher 0 dans la modale Niveaux masque le fond, pour voir un autre niveau seul, sauf si la case « Garder le
+// plan de base » de ≡ Filtres est cochée (`_ktaRuntimeFilters.garderFond`, mémorisé dans la session du plan).
+// L'export garde son propre choix de fond (exporter.js) et ne lit pas cet état. Couvre les 3 rendus :
 // direct (_ktaBaseLayers), V1 (_baseTiles), V2 (activeOverlays + garde _ktaBaseHidden dans _renderNiveau).
 // Appelé par appliquerFiltreNiveau.
 window._applyLevelFilterToBasePlan = function() {
@@ -150,7 +152,8 @@ window._applyLevelFilterToBasePlan = function() {
   const cfg = window.APP_CONFIG;
   const visible = !(cfg && cfg.multiLevel === true)
     || !Array.isArray(cfg.visibleLevels)
-    || cfg.visibleLevels.indexOf(0) >= 0;
+    || cfg.visibleLevels.indexOf(0) >= 0
+    || !!(window._ktaRuntimeFilters && window._ktaRuntimeFilters.garderFond === true);
   window._ktaBaseHidden = !visible;
   function _tog(ov) {
     if (!ov) return;

@@ -159,7 +159,8 @@
       tags:        _s(f.tags),
       roadTypes:   _s(f.roadTypes),
       zoneTypes:   _s(f.zoneTypes),
-      structTypes: _s(f.structTypes)
+      structTypes: _s(f.structTypes),
+      garderFond:  f.garderFond === true
     };
   }
 
@@ -552,6 +553,8 @@
         window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
         window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
         window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
+        // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
+        window._ktaRuntimeFilters.garderFond  = rf.garderFond === true;
         const _active = [];
         if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
         if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");

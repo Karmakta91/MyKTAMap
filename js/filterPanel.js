@@ -15,7 +15,8 @@
 //     tags:        Set<string> | null,  // null = pas de filtre (tout visible)
 //     roadTypes:   Set<string> | null,
 //     zoneTypes:   Set<string> | null,
-//     structTypes: Set<string> | null
+//     structTypes: Set<string> | null,
+//     garderFond:  boolean              // plan de base affiché même niveau 0 masqué (tiling.js)
 //   }
 // Les niveaux restent dans APP_CONFIG.visibleLevels (via appliquerFiltreNiveau).
 // API : window.FilterPanel = { ouvrir, fermer, getState, setFilters, onChange, applyFilters, isVisible, majBadge… }
@@ -217,6 +218,13 @@
       const cb = e.target.closest('[data-lvl-visible]');
       if (cb && scope.contains(cb)) {
         _updateVisibleLevelsFromUI(_modal);
+        return;
+      }
+      const garde = e.target.closest('[data-lvl-garder-fond]');
+      if (garde && scope.contains(garde)) {
+        window._ktaRuntimeFilters.garderFond = garde.checked;
+        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
+        _refreshChipsState(_modal);
       }
     });
   }
@@ -581,7 +589,19 @@
                 '<span class="kta-fp-chip-label">' + window.I18n.t("filter.levels.chip", { lvl: lblTxt }) + '</span>' +
               '</label>';
     });
-    html += '</div></div>';
+    html += '</div>';
+    // Niveau 0 masqué : le plan de base (image source) suit le niveau 0 sauf si l'utilisateur le garde en fond.
+    if (avail.indexOf(0) >= 0 && visible.indexOf(0) < 0) {
+      const garder = !!(window._ktaRuntimeFilters && window._ktaRuntimeFilters.garderFond === true);
+      html += '<div class="kta-fp-chips-grid kta-fp-lvl-garder">' +
+                '<label class="kta-fp-chip ' + (garder ? "" : "kta-fp-chip-off") + '" title="' +
+                  _escHtml(window.I18n.t("filter.levels.garderFondAide")) + '">' +
+                  '<input type="checkbox" data-lvl-garder-fond' + (garder ? " checked" : "") + '>' +
+                  '<span class="kta-fp-chip-label">' + _escHtml(window.I18n.t("filter.levels.garderFond")) + '</span>' +
+                '</label>' +
+              '</div>';
+    }
+    html += '</div>';
     return html;
   }
 

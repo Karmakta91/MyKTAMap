@@ -810,6 +810,8 @@
   "filter.layer.default": "Calque {idx}",
   "filter.levels.activeLabel": "Niveau actif (dessin)",
   "filter.levels.activeOnlyBtn": "🎯 Actif seul",
+  "filter.levels.garderFond": "🖼️ Garder le plan de base",
+  "filter.levels.garderFondAide": "Le niveau 0 est masqué : l’image du plan peut rester affichée en fond.",
   "filter.levels.allBtn": "👁️ Tous",
   "filter.levels.chip": "Niv {lvl}",
   "filter.levels.ground": "RDC",

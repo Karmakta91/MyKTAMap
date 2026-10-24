@@ -324,7 +324,7 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 > KARMA « logique de superposition : un fond noir ou un plan au-dessus fait perdre le sens ». Reco 1:a 2:a 3:a. La chaîne des calques image était déjà saine (embed VERBATIM au générateur — octets bruts, aucun ré-encodage — et rendu `L.imageOverlay` direct → alpha préservé). Les 2 trous étaient ailleurs :
 
 **A — Le plan principal est filtrable comme niveau 0** (`tiling.js > _applyLevelFilterToBasePlan`, appelé par le dispatcher `appliquerFiltreNiveau` d'interfaceConfig) :
-- Visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Masquage NET (2:a).
+- Visible ssi `multiLevel !== true` OU `visibleLevels` contient 0 OU `_ktaRuntimeFilters.garderFond === true` (case « 🖼️ Garder le plan de base » de ≡ Filtres, affichée seulement quand 0 est masqué ; persistée dans `runtimeFilters` de la session du plan, sans compter comme filtre actif). Masquage NET (2:a). Les exports ne lisent pas cet état : ils ont leur propre choix de fond (`exporter.js`).
 - Couvre les 3 modes de rendu du base : **direct** (`window._ktaBaseLayers` — nouveau registre, les 2 sites `L.imageOverlay(url, bounds).addTo(map)` ne gardaient AUCUNE référence) · **tuiles runtime V1** (`window._baseTiles`) · **tuiles V2** (`_tilingV2State.activeOverlays` + garde `window._ktaBaseHidden` dans `_renderNiveau` — les tuiles d'un swap de zoom restent hors map mais TRACÉES dans activeOverlays pour le ré-affichage).
 - ⚠️ Tout NOUVEAU chemin de rendu du plan principal doit s'enregistrer dans un de ces 3 conteneurs, sinon il échappera au filtre.
 
