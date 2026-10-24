@@ -304,7 +304,7 @@ Pour **chaque** question :
 - Le défaut `availableLevels` est `[-2, -1, 0, +1, +2]` (symétrique autour de 0), étendu automatiquement aux niveaux présents dans le plan
 
 **Types de points / icônes built-in** (liste fermée) :
-- Puits : `pa` (Puits Aération), `pc` (Puits Comblé), `pb` (Puits Bouché), `pe` (Puits au sol / Bassin), `ps` / `psf` (Puits extraction / Puits extraction fermé), `peo` / `pef` (Puits à échelon ouvert / fermé)
+- Puits : `pa` (Puits Aération), `pc` (Puits Comblé), `pb` (Puits Bouché), `pe` (Puits au sol / Bassin), `ps` / `psf` (Puits extraction / Puits d'extraction comblé), `peo` / `pef` (Puits à échelon ouvert / fermé)
 - Accès : `eso` / `esf` (Escalier service ouvert / fermé), `cao` / `caf` (Cavage ouvert / fermé)
 - Signalétique et repères : `salle` (Salle), `chatiere` (Chatière), `passage` (Passage), `danger` (Danger), `info` (Information), `elec` (Électricité), `epure` (Épure), `plaque` (Plaque indication — panneau beige sur poteau, pour repérer les plaques et panneaux de direction)
 - Divers : `vehicule` (Véhicule), `portail` (Portail — liaison inter-plan, icône vortex), `entree_plan` (🚪 Point d'entrée du plan)
@@ -380,7 +380,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 | **Recalage** | Action de remettre manuellement le tracker à une position connue sur le plan (clic sur un point repère) pour corriger la dérive. |
 | **Itinéraire** | Trajet calculé automatiquement entre 2+ waypoints en suivant le réseau de routes existant sur le plan (algorithme Dijkstra). |
 | **Waypoint** | Point de passage de l'itinéraire (début, étapes intermédiaires, fin). |
-| **Puits** | Accès vertical (échelle, échelons) entre 2 niveaux ou vers la surface. Tags built-in : Aération (`pa`), Comblé (`pc`), Bouché (`pb`), Puits au sol / Bassin (`pe`), Extraction (`ps`), Extraction fermé (`psf`), Puits à échelon ouvert / fermé (`peo` / `pef`). |
+| **Puits** | Accès vertical (échelle, échelons) entre 2 niveaux ou vers la surface. Tags built-in : Aération (`pa`), Comblé (`pc`), Bouché (`pb`), Puits au sol / Bassin (`pe`), Extraction (`ps`), Extraction comblé (`psf`), Puits à échelon ouvert / fermé (`peo` / `pef`). |
 | **Cataphile** | Personne qui explore les anciennes carrières souterraines de Paris (et par extension, tout site souterrain abandonné). |
 | **Tuilage Auto / Désactivé** | Réglage de découpage de l'image d'un plan non tuilé V2 (ℹ️ Infos du plan). 2 choix seulement : 🔄 Auto (défaut) / 💤 Désactivé. Ne pas confondre avec le **Mode Performance ULTRA** (⚙️ Réglages), qui allège tracés, animations et popups. |
 | **Tiling** | Découpage de l'image principale en tuiles plus petites pour éviter de charger une seule grosse image en mémoire (évite les crashes sur mobile). |

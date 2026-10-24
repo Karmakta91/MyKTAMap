@@ -7,7 +7,7 @@
     "🗺️ Légende du plan en Vue OSM et sur la carte OSM de l'accueil, en lecture seule, avec tes noms et tes couleurs.",
     "🎨 Couleurs harmonisées dans toute l'app : boutons principaux en bleu, violet du tuilage plus lisible ; boutons des rails plus faciles à toucher au doigt.",
     "🌍 Exports pour les SIG : le plan calé en GeoTIFF (avec ou sans tes dessins) et tes objets en GeoJSON, en Lambert 93 ou en WGS84 ; un GeoTIFF tourné se réimporte. 🖨️ Le PDF dit la résolution obtenue si le téléphone ne peut pas faire mieux.",
-    "🕳️ Nouveau type de point : « Puits extraction fermé », compté parmi les accès fermés du briefing Secours.",
+    "🕳️ Nouveau type de point : « Puits d'extraction comblé », compté parmi les accès fermés du briefing Secours.",
     "🛠️ Corrigés : le KMZ emporte les structures, les types personnalisés et toutes les icônes, une jonction n'est plus convertie en lot, plus d'erreur en ouvrant plusieurs plans à la suite, la mini-carte de l'Affichage XL d'urgence ne disparaît plus après la question « image volumineuse »."
   ]
 }
