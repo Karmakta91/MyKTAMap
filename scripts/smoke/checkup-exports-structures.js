@@ -10,10 +10,11 @@
 //   • KMZ (par la fenêtre d'export) : Placemarks par famille = objets du calque, ligne personnalisée en
 //     LineString avec son <Style> à la couleur de la légende ; type brut au style de repli de la carte (zone →
 //     remblais, structure → mur), structure brute ouverte en LineString, fermée en Polygon ; une icône par tag,
-//     présente et non vide ;
+//     présente, non vide et distincte de celle des autres tags (une variante « fermé » repliée se verrait) ;
+//   • carte : chaque point du catalogue porte l'icône du catalogue ;
 //   • image (pipeline commun PNG / PDF) : un pixel de la couleur attendue sur chaque structure personnalisée,
 //     légende de l'export qui porte ces couleurs ;
-//   • ≡ Légende : la ligne « Point sans tag » montre icon/default.png ;
+//   • ≡ Légende : « Point sans tag » montre icon/default.png ; chaque tag a sa ligne et un libellé traduit ;
 //   • ≡ Filtres : une ligne par type personnalisé, une pastille de couleur, aucun ✨ en double.
 // Usage : node scripts/smoke/checkup-exports-structures.js (SMOKE_PORT pour une autre copie) · doc : exports.md
 // =====================================================================
@@ -132,16 +133,43 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
     verifier(charge.structures === A.structures && charge.roads === A.roads && charge.zones === A.zones && charge.points === A.points,
       "calque fabriqué chargé tel quel (" + A.structures + " structures, " + A.roads + " tracés, " + A.zones + " zones, " + A.points + " points)", charge);
 
-    // ── ≡ Légende : ligne « Point sans tag » ──
-    const leg = await page.evaluate(async function () {
+    // ── Carte : chaque point du catalogue porte l'icône du catalogue ──
+    // `pa` et `pe` sont surchargés par le plan-config fabriqué (chemin mort, SVG) : hors de ce contrôle.
+    const SURCHARGES = ["pa", "pe"];
+    const surCarte = await page.evaluate(function (surch) {
+      const cat = window._ktaBuiltinIconUrls, faux = [];
+      (window._ktaDataMarkers || []).filter(function (m) { return m._ktaLayerId === "ck-calque"; }).forEach(function (m) {
+        const t = (m._ktaTags || [])[0];
+        if (!t || !cat[t] || surch.indexOf(t) !== -1) return;
+        const o = (m.options.icon && m.options.icon.options) || {};
+        const src = o.iconUrl || ((o.html || "").match(/src="([^"]+)"/) || [])[1] || "";
+        if (src.slice(-cat[t].length) !== cat[t]) faux.push(t + " → " + src);
+      });
+      return { faux: faux, n: Object.keys(cat).length - surch.length };
+    }, SURCHARGES);
+    verifier(surCarte.faux.length === 0, "carte : chaque point du catalogue porte son icône (" + surCarte.n + " tags)", surCarte.faux);
+
+    // ── ≡ Légende : ligne « Point sans tag », une ligne par tag du catalogue ──
+    const leg = await page.evaluate(async function (surch) {
       window.afficherLegende();
       await new Promise(function (r) { setTimeout(r, 500); });
       const img = document.querySelector('img.kta-legende-icone[data-kta-tag="default"]');
-      const res = { src: img ? img.getAttribute("src") : null };
+      const cat = window._ktaBuiltinIconUrls, faux = [];
+      Object.keys(cat).forEach(function (t) {
+        if (surch.indexOf(t) !== -1) return;
+        const i = document.querySelector('img.kta-legende-icone[data-kta-tag="' + t + '"]');
+        const lib = i && i.parentElement.querySelector(".kta-legende-label");
+        const texte = lib ? lib.textContent.trim() : "";
+        if (!i || (i.getAttribute("src") || "").slice(-cat[t].length) !== cat[t] || !texte || texte === t) {
+          faux.push(t + " → " + (i ? i.getAttribute("src") : "absente") + " « " + texte + " »");
+        }
+      });
+      const res = { src: img ? img.getAttribute("src") : null, faux: faux };
       const b = document.getElementById("kta-legende-close"); if (b) b.click();
       return res;
-    });
-    verifier(/(^|\/)icon\/default\.png$/.test(leg.src || ""), "≡ Légende : « Point sans tag » = icon/default.png", leg);
+    }, SURCHARGES);
+    verifier(/(^|\/)icon\/default\.png$/.test(leg.src || ""), "≡ Légende : « Point sans tag » = icon/default.png", leg.src);
+    verifier(leg.faux.length === 0, "≡ Légende : chaque tag du catalogue a sa ligne, son icône et un libellé traduit", leg.faux);
 
     // ── ≡ Filtres : types personnalisés ──
     const filt = await page.evaluate(async function () {
@@ -218,8 +246,10 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
         const st = styleDe(id);
         const href = st && st.href;
         const f = href ? zip.file(href) : null;
-        icones[id] = { href: href, octets: f ? (await f.async("uint8array")).length : 0,
-          png: f ? (function (u) { return u[0] === 0x89 && u[1] === 0x50; })(await f.async("uint8array")) : false };
+        const u = f ? await f.async("uint8array") : new Uint8Array(0);
+        let h = 2166136261;
+        for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619) >>> 0;
+        icones[id] = { href: href, octets: u.length, png: u[0] === 0x89 && u[1] === 0x50, empreinte: u.length + ":" + h };
       }
       return { familles: familles, icones: icones, styleFront: styleDe("structure_cust-ckfront"), stylePil: styleDe("structure_cust-ckpil"),
         styleZBrut: styleDe("zone_ckbrut"), styleRemblais: styleDe("zone_remblais"),
@@ -255,6 +285,13 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
     const morts = tagsVus.filter(function (id) { return !(k.icones[id].octets > 0 && k.icones[id].png); });
     verifier(morts.length === 0, "KMZ : chaque icône référencée est un PNG présent et non vide (" + tagsVus.length + " styles)",
       morts.map(function (id) { return id + "=" + JSON.stringify(k.icones[id]); }));
+    // Une variante (ex. « fermé ») qui retomberait sur l'icône de sa forme ouverte ou sur le défaut partagerait ses octets.
+    const parEmpreinte = {};
+    ouvert.tags.filter(function (t) { return SURCHARGES.indexOf(t) === -1 && k.icones["point_" + t]; }).forEach(function (t) {
+      const e = k.icones["point_" + t].empreinte; (parEmpreinte[e] = parEmpreinte[e] || []).push(t);
+    });
+    const doublons = Object.keys(parEmpreinte).filter(function (e) { return parEmpreinte[e].length > 1; }).map(function (e) { return parEmpreinte[e].join("="); });
+    verifier(doublons.length === 0, "KMZ : une icône distincte par tag du catalogue", doublons);
 
     // ── Image : pipeline commun PNG / PDF (MyKTAMapExporterGenererCanvas) ──
     const im = await page.evaluate(async function (C) {
