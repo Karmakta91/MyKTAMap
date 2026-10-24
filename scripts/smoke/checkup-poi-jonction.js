@@ -11,6 +11,7 @@
 //    niveaux, masqué ailleurs.
 // B. Itinéraire par la fenêtre de l'app : forfait, profondeurs saisies, consigne de guidage, jps sans / avec corde.
 // C. Sortie d'urgence : un peo multi-niveaux reste proposé, un jpe jamais.
+// D. KMZ : le passage dans le dossier de chacun de ses niveaux, réimporté une seule fois avec ses niveaux.
 // Usage : node scripts/smoke/checkup-poi-jonction.js (SMOKE_PORT pour une autre copie ; PJ_SHOTS=<dossier> : captures)
 // Doc : docs/architecture/multilevel-pathfinding.md §26.11
 // =====================================================================
@@ -310,6 +311,33 @@ async function partieSortie(page) {
   verifier(txt.indexOf("Puits test") < 0, "🔒 sortie d'urgence : le puits entre niveaux (jpe) n'est jamais proposé");
 }
 
+// D. KMZ niveau par niveau, relu par l'import de l'app : le passage est dans les dossiers 0 et −1, réimporté UNE fois
+// avec ses niveaux (la copie est sautée). Calage fictif posé sur l'emprise du plan.
+async function partieKmz(page) {
+  const r = await page.evaluate(function () {
+    const W = window.APP_CONFIG.imageWidth || 4000, H = window.APP_CONFIG.imageHeight || 3000;
+    const tr = window.KmzExport.buildTransformCalib({
+      pointA: { x: 0, y: H, lat: 46.5, lng: 3.0 },
+      pointB: { x: W, y: 0, lat: 46.51, lng: 3.02 },
+      pointC: { x: W, y: H, lat: 46.5, lng: 3.02 }
+    });
+    const pts = window.getEditorPoints().filter(function (p) { return p.nom === "Puits test"; });
+    const kml = window.KmzExport.genererKml({ transform: tr, planName: "Test",
+      include: { points: true }, levels: new Set([0, -1]),
+      data: { editorPoints: pts, roads: [], zones: [], structures: [] } });
+    const doc = new DOMParser().parseFromString(kml, "application/xml");
+    // L'import a sa propre transformation (coins NW / NE de l'image) ; seuls le compte et les champs comptent ici.
+    const trImp = window.KmzImport.buildTransform({ nw: { lat: 46.51, lng: 3.0 }, ne: { lat: 46.51, lng: 3.02 } }, W, H);
+    const lu = window.KmzImport.ingestPlacemarks(doc, trImp, { pointTag: "info", roadType: "chemin", zoneType: "eau" });
+    return { placemarks: (kml.match(/<name>Puits test<\/name>/g) || []).length,
+             importes: lu.points.length, niveaux: lu.points[0] && lu.points[0].niveaux,
+             tag: lu.points[0] && lu.points[0].tags[0] };
+  });
+  verifier(r.placemarks === 2, "KMZ niveau par niveau : le passage dans le dossier du 0 et dans celui du −1", r);
+  verifier(r.importes === 1 && JSON.stringify(r.niveaux) === "[-1,0]" && r.tag === "jpe",
+    "KMZ réimporté : un seul point, tag et niveaux gardés (la copie est sautée)", r);
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   const page = await nav.newPage({ viewport: { width: 1100, height: 800 } });
@@ -334,6 +362,8 @@ async function partieSortie(page) {
     await partieItineraire(page);
     console.log("C. Sortie d'urgence");
     await partieSortie(page);
+    console.log("D. KMZ niveau par niveau");
+    await partieKmz(page);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
@@ -349,6 +379,6 @@ async function partieSortie(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — POI entre niveaux : formulaire, raccords, fiche, filtre, itinéraire, corde, sortie.");
+  console.log("🎉 CHECKUP VERT — POI entre niveaux : formulaire, raccords, fiche, filtre, itinéraire, corde, sortie, KMZ.");
   process.exit(0);
 })();

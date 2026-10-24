@@ -106,11 +106,16 @@
       data.editorPoints.forEach(function(p) {
         if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
         if (tags && !tags.has(premierTag(p))) return;
-        if (!passe(p.level)) return;
+        // Passage entre niveaux : UNE entité (pas de doublon en SIG), gardée si un de ses niveaux est choisi,
+        // avec la propriété `niveaux`.
+        const PJ = window.KtaPoiJonction;
+        const nv = (PJ && PJ.estJonction(p)) ? PJ.niveaux(p) : null;
+        if (nv ? !nv.some(passe) : !passe(p.level)) return;
         const tag = premierTag(p);
         const t = (tag === "__untagged__") ? null : tag;
-        ajouter({ type: "Point", coordinates: pt(p.x, p.y) },
-                proprietes("point", t, _libelle("icones", t), p, null), p.uid);
+        const props = proprietes("point", t, _libelle("icones", t), p, null);
+        if (nv) props.niveaux = nv;
+        ajouter({ type: "Point", coordinates: pt(p.x, p.y) }, props, p.uid);
       });
     }
 

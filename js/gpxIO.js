@@ -211,7 +211,10 @@
       }
       if (Number.isInteger(p.level)) {
         // Niveau dans <cmt> (commentaire libre, conservé par TopoDroid / OsmAnd).
-        lines.push('    <cmt>MyKTAMap level=' + p.level + '</cmt>');
+        // Passage entre niveaux : « niveaux=0,-1 » à la suite (relu à l'import).
+        const nv = (window.KtaPoiJonction && window.KtaPoiJonction.estJonction(p))
+          ? " niveaux=" + window.KtaPoiJonction.niveaux(p).join(",") : "";
+        lines.push('    <cmt>MyKTAMap level=' + p.level + nv + '</cmt>');
       }
       lines.push('  </wpt>');
     });
@@ -416,7 +419,7 @@
           }
           // Tag : sym, sinon type, sinon "info".
           const tag = w.sym || w.type || "info";
-          nouveauxPoints.push({
+          const nouveau = {
             id:          "gpx_" + Date.now() + "_" + nouveauxPoints.length,
             x:           Math.round(pos.x),
             y:           Math.round(pos.y),
@@ -425,7 +428,11 @@
             description: w.desc || "",
             tags:        [tag],
             level:       Number.isInteger(level) ? level : 0
-          });
+          };
+          // Passage entre niveaux : « niveaux=0,-1 » (raccords à revalider sur le plan).
+          const mNiv = w.cmt ? String(w.cmt).match(/niveaux=(-?\d+(?:,-?\d+)*)/) : null;
+          if (mNiv) nouveau.niveaux = mNiv[1].split(",").map(Number);
+          nouveauxPoints.push(nouveau);
         });
 
         const nouveauxTraces = [];

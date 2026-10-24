@@ -3785,7 +3785,7 @@
       window._ktaDataMarkers.forEach(function(m) {
         if (!m || !m.getLatLng) return;
         const ll = m.getLatLng();
-        dataLayerPoints.push({
+        const pt = {
           x:     ll.lng,
           y:     APP_CONFIG.imageHeight - ll.lat,
           nom:   m._ktaNom || "",
@@ -3793,7 +3793,10 @@
           level: Number.isInteger(m._ktaLevel) ? m._ktaLevel : 0,
           description: m._ktaDescription || "",
           uid:   m._ktaUid || null
-        });
+        };
+        // Passage entre niveaux d'un calque : exporté dans le dossier de chacun de ses niveaux.
+        if (Array.isArray(m._ktaNiveauxSrc)) pt.niveaux = m._ktaNiveauxSrc;
+        dataLayerPoints.push(pt);
       });
     }
     const allPoints = editorPoints.concat(dataLayerPoints);

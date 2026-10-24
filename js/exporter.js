@@ -1772,6 +1772,10 @@
         const toL   = Number.isInteger(item.toLevel)   ? item.toLevel   : 0;
         return opts.ann.levels.has(fromL) || opts.ann.levels.has(toL);
       }
+      // Passage entre niveaux (POI) : dessiné si un de ses niveaux est exporté.
+      if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
+        return window.KtaPoiJonction.niveaux(item).some(function(n) { return opts.ann.levels.has(n); });
+      }
       const lvl = Number.isInteger(item && item.level) ? item.level : 0;
       return opts.ann.levels.has(lvl);
     }

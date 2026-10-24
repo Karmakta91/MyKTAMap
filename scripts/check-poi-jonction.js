@@ -238,6 +238,53 @@ async function sortiesProposees(b, de) {
       html.includes("CavageBas") && !/Puits/.test(html.replace(/CavageBas/g, "")) && !/fallback/.test(html));
   }
 
+  // ── 5. Exports : KMZ niveau par niveau, GeoJSON ──
+  {
+    const win = {
+      console: { log() {}, warn() {}, error() {} },
+      I18n: { t: (k) => k, has: () => false },
+      APP_CONFIG: { multiLevel: true, scale: 4, imageHeight: 3000 },
+      getProfondeurNiveau: () => null,
+      ktaEsc: KTA_ESC,
+      Blob, Uint8Array, ArrayBuffer, DataView, Math, JSON, Promise, Error, Date, Set, Map,
+      isFinite, Number, Array, String, Object, RegExp
+    };
+    win.window = win; win.globalThis = win;
+    vm.createContext(win);
+    ["js/poiJonction.js", "js/styleResolver.js", "js/kmzExport.js", "js/geojsonExport.js"].forEach(function (f) {
+      vm.runInContext(lire(f), win, { filename: f });
+    });
+    const KE = win.KmzExport, GJ = win.GeojsonExport;
+    const tr = KE.buildTransformCalib({
+      pointA: { x: 300, y: 2700, lat: 46.5, lng: 3.0 },
+      pointB: { x: 3600, y: 400, lat: 46.50845, lng: 3.02631 },
+      pointC: { x: 3500, y: 2800, lat: 46.49840, lng: 3.02560 }
+    });
+    const data = { editorPoints: [
+      { nom: "PuitsJ", x: 1000, y: 1000, level: 0, tags: ["jpe"], niveaux: [0, -1],
+        accroches: [{ level: 0, x: 1000, y: 1000 }] },
+      { nom: "Salle0", x: 1200, y: 1000, level: 0, tags: ["salle"] }
+    ], roads: [], zones: [], structures: [] };
+    const inc = { points: true, roads: false, zones: false, structures: false, jonctions: false, itineraire: false };
+    const kml = KE.genererKml({ transform: tr, planName: "Test", include: inc, levels: new Set([0, -1]), data: data });
+    const dossiers = kml.split("<name>🏗️ Niveau ").slice(1);
+    const dans = (n, nom) => dossiers.filter(d => d.indexOf(n + "</name>") === 0)
+      .some(d => d.split("</Folder></Folder>")[0].indexOf("<name>" + nom + "</name>") >= 0);
+    t("KMZ niveau par niveau : le passage est dans le dossier du 0 ET du −1", dans("0", "PuitsJ") && dans("-1", "PuitsJ"));
+    t("KMZ : un point ordinaire reste dans le seul dossier de son niveau", dans("0", "Salle0") && !dans("-1", "Salle0"));
+    t("KMZ : mkm:niveaux écrit, une seule copie marquée mkm:copie (pas de doublon au réimport)",
+      (kml.match(/mkm:niveaux"><value>-1,0</g) || []).length === 2 && (kml.match(/mkm:copie/g) || []).length === 1);
+    const seulMoins1 = KE.genererKml({ transform: tr, planName: "Test", include: inc, levels: new Set([-1]), data: data });
+    t("KMZ du seul −1 : le passage y est l'original (pas une copie)",
+      seulMoins1.indexOf("<name>PuitsJ</name>") >= 0 && seulMoins1.indexOf("mkm:copie") < 0);
+    t("KMZ : les raccords (pixels du plan) ne partent pas", kml.indexOf("accroche") < 0);
+    const fc = GJ.generer({ transform: tr, epsg: 4326, planName: "Test", include: inc, levels: new Set([-1]), data: data });
+    const fj = fc.features.filter(f => f.properties.nom === "PuitsJ");
+    t("GeoJSON : une seule entité, gardée au −1 seul, propriété niveaux [−1, 0]",
+      fj.length === 1 && JSON.stringify(fj[0].properties.niveaux) === "[-1,0]" &&
+      !fc.features.some(f => f.properties.nom === "Salle0"));
+  }
+
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 POI entre niveaux : tout passe");
   process.exit(ko ? 1 : 0);
 })();

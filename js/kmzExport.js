@@ -533,7 +533,16 @@
 
     const tagsRencontres = new Set(["default"]);
 
-    function _emitPlacemark(p, layerIcon) {
+    // Niveaux où un point s'exporte : tous ceux d'un passage entre niveaux, sinon son seul `level`.
+    function _niveauxPoint(p) {
+      const PJ = window.KtaPoiJonction;
+      if (PJ && PJ.estJonction(p)) return PJ.niveaux(p);
+      return [Number.isInteger(p.level) ? p.level : 0];
+    }
+
+    // `copie` : passage entre niveaux répété dans le dossier d'un autre de ses niveaux (mkm:copie, sauté à
+    // l'import pour ne pas doubler le point).
+    function _emitPlacemark(p, layerIcon, copie) {
       const tag = (Array.isArray(p.tags) && p.tags.length > 0) ? p.tags[0] : "default";
       tagsRencontres.add(tag);
       const ll = planToGps(t, p.x, p.y);
@@ -541,7 +550,9 @@
       // Description en CDATA (Google Earth la rend en HTML : les \n bruts sont invisibles) : \n → <br/>.
       // L'import KMZ fait l'inverse (roundtrip du texte d'origine).
       const desc = p.description ? _emitDescriptionCdata(p.description) : '';
-      const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null);
+      const nv = _niveauxPoint(p);
+      const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null,
+        { niveaux: nv.length >= 2 ? nv : null, copie: !!copie });
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
@@ -565,6 +576,11 @@
       if (extra && Number.isInteger(extra.toLevel)) {
         parts.push('<Data name="mkm:toLevel"><value>' + extra.toLevel + '</value></Data>');
       }
+      // Passage entre niveaux : ses niveaux (« 0,-1 »). Les raccords, en pixels du plan, ne partent pas.
+      if (extra && Array.isArray(extra.niveaux)) {
+        parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
+      }
+      if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
       if (parts.length === 0) return '';
       return '<ExtendedData>' + parts.join('') + '</ExtendedData>';
     }
@@ -860,14 +876,25 @@
     function _folderForLevel(level) {
       let body = "";
       if (opts.include.points && opts.data.editorPoints) {
+        // Passage entre niveaux : dans le dossier de CHACUN de ses niveaux exportés (décision produit) ; un
+        // seul exemplaire est l'original (son niveau s'il est exporté, sinon le premier), les autres des copies.
+        const exportes = function(p) {
+          return _niveauxPoint(p).filter(function(n) { return !opts.levels || opts.levels.has(n); });
+        };
+        const original = function(p, ex) {
+          const lvl = Number.isInteger(p.level) ? p.level : 0;
+          return ex.indexOf(lvl) >= 0 ? lvl : ex[0];
+        };
         const points = opts.data.editorPoints.filter(function(p) {
           if (pointTagsSet && !pointTagsSet.has(_firstTag(p))) return false;
-          return _passeLevel(p, Number.isInteger(p.level) ? p.level : 0) &&
-                 (!mlOn || (Number.isInteger(p.level) ? p.level : 0) === level);
+          if (!mlOn) return _passeLevel(p, Number.isInteger(p.level) ? p.level : 0);
+          return exportes(p).indexOf(level) >= 0;
         });
         if (points.length > 0) {
           body += '<Folder><name>📍 Points (' + points.length + ')</name>';
-          points.forEach(function(p) { body += _emitPlacemark(p); });
+          points.forEach(function(p) {
+            body += _emitPlacemark(p, undefined, mlOn && original(p, exportes(p)) !== level);
+          });
           body += '</Folder>';
         }
       }
