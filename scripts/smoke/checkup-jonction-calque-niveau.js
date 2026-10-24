@@ -9,7 +9,8 @@
 // au niveau 0. Plus une jonction de SESSION 0 ↔ −1 (règle de référence).
 // Filtre ≡ par vrais clics (seul −1 affiché), puis 0 seul, puis −2 seul : la jonction du calque (tracé + ronds)
 // et le POI suivent la règle de la session (visible si un de ses niveaux l'est), le tracé ordinaire reste à son
-// niveau. Itinéraire : getAllEmbeddedRoads garde fromLevel / toLevel ; niveaux occupés : −1 compté.
+// niveau. Itinéraire : getAllEmbeddedRoads garde fromLevel / toLevel ; niveaux occupés : −1 compté, y compris
+// pour un POI jpe (calque ou session) seul objet de −1 ; un point ordinaire ne compte pas son champ `niveaux`.
 // 🩸 Le registre d'affichage du calque (_ktaDataPolylines) ne lisait que `level` : une jonction n'en a pas
 // (fromLevel / toLevel), elle tombait au niveau 0.
 // Usage : node scripts/smoke/checkup-jonction-calque-niveau.js (SMOKE_PORT pour une autre copie)
@@ -234,6 +235,45 @@ function tousMasques(arr) { return arr.length > 0 && arr.every(function (o) { re
     });
     verifier(it.from === 0 && it.to === -1, "getAllEmbeddedRoads garde fromLevel 0 / toLevel −1 (itinéraire)", it);
     verifier(Array.isArray(it.occupes) && it.occupes.indexOf(-1) >= 0, "niveaux occupés (jonction du calque seule) : −1 compté", it.occupes);
+
+    console.log("\n── 5. POI jonction seul objet de −1 : niveau occupé ──");
+    // Niveaux occupés mesurés sur un seul POI jpe (niveau 0, dessert −1) : marqueur du calque, puis point de session.
+    const occPoi = await page.evaluate(function () {
+      const g = window._ktaTestGroupe;
+      const noms = ["getRoads", "getZones", "getStructures", "getEditorPoints"];
+      const tabs = ["_ktaDataMarkers", "_ktaDataPolylines", "_ktaDataPolygons", "_ktaDataStructurePolygons",
+                    "_ktaImageOverlays"];
+      const sauve = {};
+      noms.concat(tabs).forEach(function (k) { sauve[k] = window[k]; });
+      const mk = (window._ktaDataMarkers || []).filter(function (m) { return m && m._ktaLayer === g; });
+      const out = {};
+      try {
+        noms.forEach(function (k) { window[k] = function () { return []; }; });
+        tabs.forEach(function (k) { window[k] = []; });
+        window._ktaDataMarkers = mk;
+        out.calque = window.ktaNiveauxOccupes();
+        window._ktaDataMarkers = [];
+        window.getEditorPoints = function () {
+          return [{ id: "JpeSession", nom: "JpeSession", uid: "pt_jpesession", x: 10, y: 10, tags: ["jpe"],
+                    level: 0, niveaux: [-1] }];
+        };
+        out.session = window.ktaNiveauxOccupes();
+        window.getEditorPoints = function () {
+          return [{ id: "SalleSession", nom: "SalleSession", uid: "pt_sallesession", x: 10, y: 10, tags: ["salle"],
+                    level: 0, niveaux: [-1] }];
+        };
+        out.ordinaire = window.ktaNiveauxOccupes();
+      } finally {
+        noms.concat(tabs).forEach(function (k) { window[k] = sauve[k]; });
+      }
+      return out;
+    });
+    verifier(Array.isArray(occPoi.calque) && occPoi.calque.indexOf(-1) >= 0,
+      "POI jpe de calque (0, dessert −1) seul objet de −1 : −1 compté occupé", occPoi.calque);
+    verifier(Array.isArray(occPoi.session) && occPoi.session.indexOf(-1) >= 0,
+      "POI jpe de session (0, dessert −1) seul objet de −1 : −1 compté occupé", occPoi.session);
+    verifier(Array.isArray(occPoi.ordinaire) && occPoi.ordinaire.indexOf(-1) < 0,
+      "point ordinaire (salle) avec un champ niveaux parasite : −1 non compté", occPoi.ordinaire);
 
     await page.evaluate(function () {
       window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();

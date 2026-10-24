@@ -743,6 +743,13 @@ async function lancerApplication() {
 // 🩸 availableLevels vaut -2..+2 par défaut : le lire à la place créerait des équipes Secours sur des niveaux vides.
 window.ktaNiveauxOccupes = function() {
   const levelsFound = [];
+  // Niveaux desservis d'un passage (poiJonction.js : jes / jpe / jps, peo / eso) : comptés comme occupés, même
+  // seul objet d'un niveau. Lus par le tag, pas par estJonction (qui exige le multi-niveau déjà actif).
+  const PJ = window.KtaPoiJonction;
+  const _pushNiveaux = function(tags, niveaux) {
+    if (!PJ || !Array.isArray(niveaux) || !Array.isArray(tags) || !PJ.porteNiveaux(String(tags[0] || ""))) return;
+    niveaux.forEach(function(n) { if (Number.isInteger(n)) levelsFound.push(n); });
+  };
   try {
     const _push = function(arr) {
       if (!Array.isArray(arr)) return;
@@ -751,6 +758,7 @@ window.ktaNiveauxOccupes = function() {
           if (Number.isInteger(it.level))      levelsFound.push(it.level);
           if (Number.isInteger(it.fromLevel))  levelsFound.push(it.fromLevel);
           if (Number.isInteger(it.toLevel))    levelsFound.push(it.toLevel);
+          _pushNiveaux(it.tags, it.niveaux);
         }
       });
     };
@@ -763,6 +771,7 @@ window.ktaNiveauxOccupes = function() {
     if (Array.isArray(window._ktaDataMarkers)) {
       window._ktaDataMarkers.forEach(function(m) {
         if (m && Number.isInteger(m._ktaLevel)) levelsFound.push(m._ktaLevel);
+        if (m) _pushNiveaux(m._ktaTags, m._ktaNiveauxSrc);
       });
     }
     if (Array.isArray(window._ktaDataPolylines)) {

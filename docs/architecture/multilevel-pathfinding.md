@@ -302,6 +302,10 @@ jonctions en tracé (§26.5) restent les **pentes douces**.
 - **Affichage** : visible si **un** de ses niveaux est affiché (`marker._ktaNiveaux` sur les marqueurs de session et
   de calque, `passeFiltreNiveau` de l'export rapide). Calques : `_ktaNiveauxSrc` / `_ktaAccroches` sur le marqueur,
   rendus par `getAllEmbeddedPoints`.
+- **Niveaux occupés** (`main.js > ktaNiveauxOccupes`, extension de `availableLevels`, niveaux vides du Mode Secours) :
+  chaque niveau desservi compte, même si le passage est le seul objet de ce niveau, en session (`niveaux`) comme en
+  calque (`_ktaNiveauxSrc`). Lu par le tag (`porteNiveaux`, `peo` / `eso` compris), pas par `estJonction` qui exige le
+  multi-niveau déjà actif ; un point d'un autre tag ignore un champ `niveaux` parasite.
 - **Itinéraire** (`pathfinder.js > _injecterJonctionsPoi`, après l'enrichissement, dans `computeRoute`,
   `computeRouteOnRoads` (POI fournis par `opts.poisJonction`), `computeReachable` et `buildNetworkGraph`) : un nœud
   `transit` **neuf** par niveau desservi à la position du POI, chaînés du plus bas au plus haut ; chaque raccord est
