@@ -535,6 +535,7 @@ const ASSETS_TO_CACHE = [
   "./icon/info.png",
   "./icon/passage.png",
   "./icon/ps.png",
+  "./icon/psf.png",
   "./icon/elec.png",
   "./icon/epure.png",
   "./icon/chatiere.png",

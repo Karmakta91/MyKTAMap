@@ -63,13 +63,18 @@ Utilisée par : `searchPoints.js`, `utils.js > telechargerPlan`, `exporter.js`, 
 
 **Pour ajouter un nouveau tag d'icône** (ex: `fontaine`) :
 
-1. PNG 50×50 transparent → `icon/fontaine.png`
+1. PNG 128×128 transparent → `icon/fontaine.png` (même gabarit que le jeu existant : badge rond ou carré, barre
+   rouge pour une variante « fermé »)
 2. `map.js > TAGS_BUILTIN` : ajouter `fontaine: "icon/fontaine.png"`
 3. `editor.js > EDITOR_TAG_LABELS` : ajouter `fontaine: "Fontaine"`
-4. `interface.js > LEGENDE_LABELS` + groupe approprié dans le tableau `GROUPES`
-5. `exporter.js > LBL` local + groupe dans `GROUPES_ICONES`
+4. `interfaceLegende.js > LEGENDE_LABELS` + groupe approprié dans `GROUPES`
+5. `exporter.js > GROUPES_ICONES` : le groupe (libellés par `LegendCustomization`)
 6. `createConf.js > PLANNER_DEFAULT_ICONS` : ajouter le chemin
 7. `sw.js > ASSETS_TO_CACHE` : ajouter `"./icon/fontaine.png"`
+8. `legendCustomization.js > DEFAULT_LABELS.icones` + clés `editor.tag.*`, `legend.label.icones.*`,
+   `legendui.label.*` dans les 3 dicos `lang/`
+
+Checklist complète : skill `add-icon-tag` ; `scripts/check-icon-catalog.js` (pré-commit) confronte ces tables.
 
 → Le tag est utilisable sur les **plans existants** sans modifier leurs `plan-config.json`.
 

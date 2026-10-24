@@ -25,6 +25,7 @@ const LEGENDE_LABELS = {
   pb:       "Puits Bouché",
   pe:       "Puits au sol / Bassin",
   ps:       "Puit extraction",
+  psf:      "Puits extraction fermé",
   peo:      "Puits à échelon ouvert",
   pef:      "Puits à échelon fermé",
   eso:      "Escalier service ouvert",
@@ -51,7 +52,7 @@ const LEGENDE_LABELS = {
 // Groupes d'icônes de la légende (ordre d'affichage) ; titres traduits au rendu.
 function _ktaLegendeGroupes() {
   const GROUPES = [
-    { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
+    { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
     { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
     { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
     // Catégorie Secours (Vue OSM × Mode Secours).

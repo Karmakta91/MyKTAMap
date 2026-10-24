@@ -9,7 +9,7 @@ La résolution d'icône est centralisée mais l'ajout d'un tag touche **8 endroi
 
 Pour un nouveau tag `fontaine` (exemple) :
 
-1. **PNG 50×50 transparent** → `icon/fontaine.png`
+1. **PNG 128×128 transparent** → `icon/fontaine.png` (gabarit du jeu existant ; variante « fermé » = même dessin + barre rouge)
 2. `js/map.js` → `TAGS_BUILTIN` : ajouter `fontaine: "icon/fontaine.png"`
 3. `js/editor.js` → `EDITOR_TAG_LABELS` : ajouter `fontaine: "Fontaine"`
 4. `js/interfaceLegende.js` → `LEGENDE_LABELS` + le bon groupe dans le tableau `GROUPES` (⚠️ **2 occurrences** du tableau — mettre à jour les deux ; ex-`interface.js`, extrait en v1.31.0 P3 Lot 3)
@@ -22,11 +22,12 @@ Pour un nouveau tag `fontaine` (exemple) :
 Les libellés sont résolus au rendu via des clés dynamiques — ajouter dans `lang/fr.json`, `lang/en.json`, `lang/es.json` :
 - `"editor.tag.fontaine"` (label dans le sélecteur de tag de l'éditeur)
 - `"legendui.label.fontaine"` (label légende quand LegendCustomization absent)
+- `"legend.label.icones.fontaine"` (libellé traduit de la légende personnalisable)
 
 ## Vérifs
 - Le tag devient utilisable sur les **plans existants** sans toucher leurs `plan-config.json` (cascade `_iconMap`).
 - Résolution unique via `window._iconMap[tag]` / `getIconUrlForPoint` — ne PAS recréer de global `iconeXxx`.
 - Convention de nommage : 2-3 lettres + `o`/`f` pour ouvert/fermé, ou mot court.
-- Astuce icône : générable en Python/Pillow (supersampling 400×400 → LANCZOS 50×50), charte : disque `#1a1f2e`, accents `#f4c542`/`#8cb4ff` (cf. `icon/portail.png`).
+- Astuce icône : générable en Python/Pillow (supersampling 512×512 → LANCZOS 128×128), charte : disque `#1a1f2e`, accents `#f4c542`/`#8cb4ff` (cf. `icon/portail.png`).
 
 📖 Détail cascade : `docs/architecture/rendering-leaflet.md` (§2).

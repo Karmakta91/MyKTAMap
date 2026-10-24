@@ -35,6 +35,7 @@ const PLANNER_DEFAULT_ICONS = {
   elec:     "icon/elec.png",
   epure:    "icon/epure.png",
   ps:       "icon/ps.png",
+  psf:      "icon/psf.png",
   info:     "icon/info.png",
   chatiere: "icon/chatiere.png",
   passage:  "icon/passage.png",
@@ -5345,7 +5346,7 @@ async function _sigImpAnalyserFichier(file) {
 // sont proposées dans le même select, en deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où
 // ranger l'objet. Idem pour les tracés (front de taille = structure en polyligne).
 const _SIG_TYPES = {
-  points:    ["default", "pa", "pb", "pc", "pe", "ps", "salle", "chatiere", "passage", "danger", "info"],
+  points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "info"],
   lignes:    ["chemin", "secondaire", "principal"],
   polygones: ["remblais", "eau", "effondrement", "inaccessible"]
 };

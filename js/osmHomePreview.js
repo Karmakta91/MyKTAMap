@@ -322,7 +322,7 @@
   const TAGS_BUILTIN_HOME = {
     salle:    "icon/house.png",
     pa:       "icon/pa.png", pc: "icon/pc.png", pb: "icon/pb.png",
-    pe:       "icon/pe.png", ps: "icon/ps.png",
+    pe:       "icon/pe.png", ps: "icon/ps.png", psf: "icon/psf.png",
     peo:      "icon/peo.png", pef: "icon/pef.png",
     eso:      "icon/eso.png", esf: "icon/esf.png",
     cao:      "icon/cao.png", caf: "icon/caf.png",

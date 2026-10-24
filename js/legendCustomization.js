@@ -33,6 +33,7 @@ window.LegendCustomization = (function() {
     icones: {
       salle: "Salle", pa: "Puits Aération", pc: "Puits Comblé",
       pb: "Puits Bouché", pe: "Puits au sol / Bassin", ps: "Puits extraction",
+      psf: "Puits extraction fermé",
       peo: "Puits à échelon ouvert", pef: "Puits à échelon fermé",
       eso: "Escalier service ouvert", esf: "Escalier service fermé",
       cao: "Cavage ouvert", caf: "Cavage fermé",

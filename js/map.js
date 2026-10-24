@@ -65,6 +65,7 @@ const TAGS_BUILTIN = {
   pb:       "icon/pb.png",
   pe:       "icon/pe.png",
   ps:       "icon/ps.png",
+  psf:      "icon/psf.png",
   peo:      "icon/peo.png",
   pef:      "icon/pef.png",
   eso:      "icon/eso.png",
