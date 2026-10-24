@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.20.1 (tout garder hors ligne d'un dossier)
+
+**Aucun domaine nouveau.** « 📥 Tout garder hors ligne » télécharge, à la demande, les plans d'un dossier depuis le site qui les sert, comme le bouton de téléchargement hors-ligne d'un plan ; pour estimer la taille avant de demander confirmation, il envoie des requêtes `HEAD` (sans corps, même domaine) sur une partie des fichiers. L'avancement d'une publication et le message d'échec d'ouverture d'un plan ne servent qu'avec une installation reliée : rien ne part de myktamap.fr, et sur une installation reliée les échanges vont à son serveur seulement, comme avant.
+
 ### v2.20.0 (vue retrouvée, légende en Vue OSM, mémoire rendue)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** La vue retrouvée à la réouverture d'un plan est enregistrée sur l'appareil, la légende de la Vue OSM et de la carte de l'accueil est lue dans le plan déjà présent, et fermer le plan au retour à l'accueil ne fait que libérer de la mémoire. Le site publie un fichier `/.well-known/security.txt` (adresse de contact pour signaler une faille) : c'est un fichier servi, l'app ne le demande jamais.
