@@ -463,8 +463,8 @@
           '</div>' +
           '<div class="kta-aide-section">' +
             '<div class="kta-aide-section-titre">' + t("geotiff.proj.titre") + '</div>' +
-            _radio("geotiff_proj", String(EPSG_L93), t("geotiff.proj.l93"), true, false) +
-            _radio("geotiff_proj", String(EPSG_WGS84), t("geotiff.proj.wgs84"), false, false) +
+            _radio("geotiff_proj", String(EPSG_L93), t("geotiff.proj.l93"), false, false) +
+            _radio("geotiff_proj", String(EPSG_WGS84), t("geotiff.proj.wgs84"), true, false) +
           '</div>' +
           '<div class="kta-aide-section">' +
             '<div class="kta-aide-section-titre">' + t("imgexport.format.resolution") + '</div>' +
@@ -501,7 +501,7 @@
       try {
         const res = await generer({
           contenu: _val("geotiff_contenu") || "scan",
-          epsg: parseInt(_val("geotiff_proj") || String(EPSG_L93), 10),
+          epsg: parseInt(_val("geotiff_proj") || String(EPSG_WGS84), 10),
           facteur: parseFloat(_val("geotiff_resol") || "1"),
           onProgres: function(f) { go.textContent = "⏳ " + Math.round(f * 100) + " %"; }
         });

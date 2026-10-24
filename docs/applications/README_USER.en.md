@@ -1023,7 +1023,7 @@ The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktama
 **⬆️ Export → 🖼️ Image → 🛰️ Georeferenced GeoTIFF (GIS)**: the map as a georeferenced image. Opened in **QGIS** (or any GIS), it lands in place by itself, with nothing to type again.
 
 - **Content**: **Scan only** (the clean background, to draw over in a GIS) or **Scan + drawings** (like the image export: visible layers, points, paths, zones, structures).
-- **Projection**: **Lambert 93** (the GIS reference in France, by default) or **WGS84** (latitude / longitude).
+- **Projection**: **WGS84** (latitude / longitude, by default) or **Lambert 93** (the GIS reference in France).
 - **Resolution**: Original, ½ or ¼; the window states the size of the image produced. On a phone it is capped at 64 Mpx (for the full resolution of a large map, export from a computer); impossible choices are greyed out and a **Max** choice appears when needed.
 - **The map must be calibrated** (GPS georeferencing, see “⚙️ Settings” or the KMZ export): otherwise the **Download** button stays greyed out and the window explains what to do.
 
@@ -1046,7 +1046,7 @@ So you can export only the shafts, or only the inaccessible zones. **Download** 
 
 > 💡 The projection is faithful on a regular map; a stretched or assembled map may drift at the edges. A **point C**, in the map's georeferencing, corrects this kind of distortion.
 
-The **GeoJSON** uses the same boxes as the KMZ (points by icon, paths, zones and structures by type, junctions, route, levels), without the image. Choose the **projection**: **Lambert 93** (by default; the file ends in `_L93.geojson` and QGIS places it by itself) or **WGS84** (the GeoJSON standard, for a website or a strict tool).
+The **GeoJSON** uses the same boxes as the KMZ (points by icon, paths, zones and structures by type, junctions, route, levels), without the image. Choose the **projection**: **WGS84** (by default; the GeoJSON standard, for a website or a strict tool) or **Lambert 93** (the file ends in `_L93.geojson` and QGIS places it by itself).
 
 ---
 

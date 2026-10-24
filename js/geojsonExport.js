@@ -8,7 +8,7 @@
 // Mêmes objets et mêmes filtres que le KMZ (familles, types, niveaux ; calques de données et types
 // personnalisés compris) : libellés, géométrie des structures et couleurs viennent de window.KmzExport
 // (libelleType, estLigneStructure, styleResolu), aucune règle recopiée.
-// Projection : "2154" (Lambert 93, défaut) ou "4326" (WGS84). Plan → WGS84 par le calage (planToGps),
+// Projection : "4326" (WGS84, défaut) ou "2154" (Lambert 93). Plan → WGS84 par le calage (planToGps),
 // puis WGS84 → Lambert 93 par window.SigImport.L93 (seule copie des maths).
 // ⚠️ RFC 7946 impose le WGS84 sans membre `crs`. En Lambert 93 le fichier porte le membre `crs` de
 //   GeoJSON 2008 (urn EPSG 2154) et le suffixe « _L93 » : sans lui, QGIS / GDAL le liraient comme des

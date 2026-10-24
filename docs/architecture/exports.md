@@ -238,7 +238,7 @@ Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, au
 
 Deux exports pour un SIG (QGIS, ArcGIS…), sans serveur ni librairie. Les deux partent du **calage enregistré du
 plan** (`KmzExport.getCalibration` → `buildTransformCalib`, points A / B et C facultatif) et projettent en
-**Lambert 93 (EPSG:2154) par défaut** ou en **WGS84 (EPSG:4326)** : plan → WGS84 par `planToGps`, puis WGS84 →
+**WGS84 (EPSG:4326) par défaut** (exact, conforme RFC 7946) ou en **Lambert 93 (EPSG:2154)** : plan → WGS84 par `planToGps`, puis WGS84 →
 Lambert 93 par `window.SigImport.L93` (seule implémentation, `check-lambert93.js`). Garde-fou commun :
 `scripts/check-export-sig.js` (pré-commit, donc CI) ; preuve navigateur : `scripts/smoke/checkup-export-sig.js`.
 

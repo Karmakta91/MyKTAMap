@@ -1023,7 +1023,7 @@ Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap
 **⬆️ Exporter → 🖼️ Image → 🛰️ GeoTIFF calé (SIG)** : le plan en image géoréférencée. Ouvert dans **QGIS** (ou tout SIG), il se pose seul à sa place, sans rien ressaisir.
 
 - **Contenu** : **Scan seul** (le fond propre, pour dessiner par-dessus dans un SIG) ou **Scan + dessins** (comme l'export image : calques visibles, points, tracés, zones, structures).
-- **Projection** : **Lambert 93** (la référence des SIG en France, au départ) ou **WGS84** (latitude / longitude).
+- **Projection** : **WGS84** (latitude / longitude, au départ) ou **Lambert 93** (la référence des SIG en France).
 - **Résolution** : Originale, ½ ou ¼ ; la fenêtre annonce la taille de l'image produite. Sur téléphone, elle est plafonnée à 64 Mpx (pour la pleine résolution d'un grand plan, exporte depuis un ordinateur) ; les choix impossibles sont grisés et un choix **Max** apparaît si besoin.
 - **Le plan doit être calé** (géoréférencement GPS, voir « ⚙️ Réglages » ou l'export KMZ) : sinon le bouton **Télécharger** reste grisé et la fenêtre explique quoi faire.
 
@@ -1046,7 +1046,7 @@ Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télé
 
 > 💡 La projection est fidèle sur un plan régulier ; un plan étiré ou assemblé peut dériver aux extrémités. Un **point C**, dans le géoréférencement du plan, corrige ce type de déformation.
 
-Le **GeoJSON** reprend les mêmes cases que le KMZ (points par icône, tracés, zones et structures par type, jonctions, itinéraire, niveaux), sans l'image. Choisis la **projection** : **Lambert 93** (au départ, le fichier finit par `_L93.geojson` et QGIS le place tout seul) ou **WGS84** (la norme GeoJSON, pour un site web ou un outil strict).
+Le **GeoJSON** reprend les mêmes cases que le KMZ (points par icône, tracés, zones et structures par type, jonctions, itinéraire, niveaux), sans l'image. Choisis la **projection** : **WGS84** (au départ ; la norme GeoJSON, pour un site web ou un outil strict) ou **Lambert 93** (le fichier finit par `_L93.geojson` et QGIS le place tout seul).
 
 ---
 

@@ -3108,9 +3108,9 @@
   function _renderOptsGeojson() {
     return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + t("export.geojson.projTitre") + '</div>' +
-        '<label class="kta-ses-cb-row"><input type="radio" name="geojson_proj" value="2154" checked>' +
+        '<label class="kta-ses-cb-row"><input type="radio" name="geojson_proj" value="2154">' +
           '<span>' + t("export.geojson.projL93") + '</span></label>' +
-        '<label class="kta-ses-cb-row"><input type="radio" name="geojson_proj" value="4326">' +
+        '<label class="kta-ses-cb-row"><input type="radio" name="geojson_proj" value="4326" checked>' +
           '<span>' + t("export.geojson.projWgs84") + '</span></label>' +
         '<p class="kta-ses-fmt-desc" style="margin-top:6px;">' + t("export.geojson.projAide") + '</p>' +
       '</div>';
@@ -4100,7 +4100,7 @@
     }
     window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
     const choix = _modal && _modal.querySelector('input[name="geojson_proj"]:checked');
-    const epsg = (choix && choix.value === "4326") ? 4326 : 2154;
+    const epsg = (choix && choix.value === "2154") ? 2154 : 4326;
     try {
       const sel = _kmzSelection();
       const planName = (window.PLAN_CONFIG?.plan?.name) || "plan";

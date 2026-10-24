@@ -1023,7 +1023,7 @@ El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap
 **⬆️ Exportar → 🖼️ Imagen → 🛰️ GeoTIFF georreferenciado (SIG)**: el mapa como imagen georreferenciada. Abierto en **QGIS** (o cualquier SIG), se coloca solo en su sitio, sin volver a escribir nada.
 
 - **Contenido**: **Solo el escaneo** (el fondo limpio, para dibujar encima en un SIG) o **Escaneo + dibujos** (como la exportación de imagen: capas visibles, puntos, trazados, zonas, estructuras).
-- **Proyección**: **Lambert 93** (la referencia SIG en Francia, por defecto) o **WGS84** (latitud / longitud).
+- **Proyección**: **WGS84** (latitud / longitud, por defecto) o **Lambert 93** (la referencia SIG en Francia).
 - **Resolución**: Original, ½ o ¼; la ventana indica el tamaño de la imagen producida. En el teléfono se limita a 64 Mpx (para la resolución completa de un mapa grande, exporta desde un ordenador); las opciones imposibles aparecen en gris y, si hace falta, aparece una opción **Máx.**.
 - **El mapa debe estar calibrado** (georreferenciación GPS, ver «⚙️ Ajustes» o la exportación KMZ): si no, el botón **Descargar** queda en gris y la ventana explica qué hacer.
 
@@ -1046,7 +1046,7 @@ Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar*
 
 > 💡 La proyección es fiel en un mapa regular; un mapa estirado o ensamblado puede desviarse en los extremos. Un **punto C**, en la georreferenciación del mapa, corrige este tipo de deformación.
 
-El **GeoJSON** retoma las mismas casillas que el KMZ (puntos por icono, trazados, zonas y estructuras por tipo, uniones, itinerario, niveles), sin la imagen. Elige la **proyección**: **Lambert 93** (por defecto; el archivo termina en `_L93.geojson` y QGIS lo coloca solo) o **WGS84** (la norma GeoJSON, para un sitio web o una herramienta estricta).
+El **GeoJSON** retoma las mismas casillas que el KMZ (puntos por icono, trazados, zonas y estructuras por tipo, uniones, itinerario, niveles), sin la imagen. Elige la **proyección**: **WGS84** (por defecto; la norma GeoJSON, para un sitio web o una herramienta estricta) o **Lambert 93** (el archivo termina en `_L93.geojson` y QGIS lo coloca solo).
 
 ---
 

@@ -241,7 +241,13 @@ async function scenarioFictif(page) {
     "⬆️ Exporter : tuile GeoJSON dans Export externe, après le KMZ", lanceur);
   verifier(lanceur.modaleGeotiff, "la tuile GeoTIFF ouvre sa fenêtre");
 
-  // ── GeoTIFF scan seul, Lambert 93 (défauts de la fenêtre) ──
+  // ── GeoTIFF scan seul (défaut), WGS84 par défaut puis Lambert 93 choisi ──
+  const defautProj = await page.evaluate(function () {
+    const e = document.querySelector('input[name="geotiff_proj"]:checked'); const v = e && e.value;
+    const l = document.querySelector('input[name="geotiff_proj"][value="2154"]'); if (l) l.click();
+    return v;
+  });
+  verifier(defautProj === "4326", "fenêtre GeoTIFF : WGS84 par défaut", defautProj);
   const info = await page.evaluate(function () {
     const el = document.getElementById("kta-geotiff-info");
     const go = document.getElementById("kta-geotiff-go");
@@ -250,7 +256,7 @@ async function scenarioFictif(page) {
              resol: v("geotiff_resol"), nonCale: !!document.getElementById("kta-geotiff-noncale") };
   });
   verifier(info.goActif && !info.nonCale && info.contenu === "scan" && info.proj === "2154",
-    "fenêtre GeoTIFF : plan calé, défauts scan seul + Lambert 93, résolution annoncée", info);
+    "fenêtre GeoTIFF : plan calé, scan seul par défaut, Lambert 93 choisi, résolution annoncée", info);
   const t1 = Date.now();
   const f1 = await capturerBlob(page, function () {
     return page.evaluate(function () { document.getElementById("kta-geotiff-go").click(); });
