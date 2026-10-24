@@ -28,10 +28,10 @@
 
 ## Maintenant
 
-- **Train : v2.20.0** — v2.19.0 en prod le 22/10. Bumpée le 23/10 (`1e4e242d`) puis corrigés avant merge : légende OSM,
-  exports (structures de calque, types personnalisés, icônes, repli de style KML), filtres (pastille des types).
-  `qui: KARMA · action: CI verte ; export KMZ du vrai plan sur iPhone (structures, PE) ; porte docs/RELEASE_GATE.md ;
-  merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
+- **Train : v2.20.1** — v2.20.0 en prod le 24/10. Bumpée le 25/10 (`d9e82c15`) : « Tout garder hors ligne » d'un
+  dossier, avancement d'une publication, échec d'ouverture d'un plan dit à l'écran.
+  `qui: KARMA · action: CI verte ; porte docs/RELEASE_GATE.md ; merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert
+  · depuis: 21/10/2026 · taille: S`
 - **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
   Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
   `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
@@ -61,6 +61,11 @@
   autres coins sur 1 à 6 km (mesuré le 23/10, lot export-sig). Touche Vue OSM, KMZ, GPX, GeoTIFF, GeoJSON, Secours.
   `qui: Claude · action: étude puis lot après la release v2.20.0 (calage dans le CRS du plan, Lambert 93 d'abord)
   · fini: calage en vraie projection, coins d'un GeoTIFF importé à moins de 1 m · depuis: 23/10/2026 · taille: M`
+- **Jonction d'un calque masquée hors niveau 0** — une jonction rangée dans un calque de données ne s'affiche qu'au
+  niveau 0 et disparaît quand on n'affiche que le niveau −1 ; l'itinéraire, lui, la voit sur les deux. 🔬 hypothèse
+  (vue par l'agent du relevé, 24/10), non reproduite sur le relevé fictif.
+  `qui: Claude · action: reproduire sur le relevé fictif (calque + jonction 0 ↔ −1, filtre niveau −1) puis corriger
+  · fini: jonction visible sur chaque niveau qu'elle relie, checkup vert · depuis: 24/10/2026 · taille: S`
 - **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
   fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
   `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
