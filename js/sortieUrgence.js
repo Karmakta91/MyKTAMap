@@ -25,7 +25,7 @@
 
   // ── Constantes ──────────────
   // Les tags des POI sont des CODES : cao (cavage ouvert), peo (puits à échelon ouvert), eso (escalier de service
-  // ouvert). Les fermés (caf / pef / esf) sont EXCLUS, non traversables. Comparaison lowercase + trim.
+  // ouvert). Les fermés (caf / pef / esf / psf) sont EXCLUS, non traversables. Comparaison lowercase + trim.
   const TYPES_SORTIE = [
     "cao",
     "peo",

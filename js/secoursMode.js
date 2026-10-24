@@ -6121,13 +6121,13 @@
 
   // POI d'accès du plan (session + calques), classés par tag — mêmes tags que la
   // Sortie d'urgence. Partagé par « POI critiques » et « Accès surface ».
-  const CRIT_TAGS = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
-  const CRIT_FERMES = ["caf", "pef", "esf"];
+  const CRIT_TAGS = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf", "psf"];
+  const CRIT_FERMES = ["caf", "pef", "esf", "psf"];
   function _critLabels() {
     return {
       entree_plan: t("secours.surf.critEntree"), cao: t("secours.surf.critCao"), peo: t("secours.surf.critPeo"),
       eso: t("secours.surf.critEso"), caf: t("secours.surf.critCaf"), pef: t("secours.surf.critPef"),
-      esf: t("secours.surf.critEsf")
+      esf: t("secours.surf.critEsf"), psf: t("secours.surf.critPsf")
     };
   }
   function _poisAcces() {

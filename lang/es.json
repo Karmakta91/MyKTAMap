@@ -4484,6 +4484,7 @@
   "secours.surf.critEsf": "Escalera de servicio cerrada",
   "secours.surf.critPef": "Pozo de peldaños cerrado",
   "secours.surf.critPeo": "Pozo de peldaños abierto",
+  "secours.surf.critPsf": "Pozo de extracción cerrado",
   "secours.surf.equipeDefaut": "(equipo)",
   "secours.surf.equipesSurPlace": "EQUIPOS EN EL LUGAR (GPS superficie)",
   "secours.surf.genereLe": "Generado el {date}",
