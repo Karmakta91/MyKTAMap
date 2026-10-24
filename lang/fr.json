@@ -652,7 +652,7 @@
   "export.geojson.vide": "Rien à exporter : aucune case cochée ne contient d'objet.",
   "export.geojson.exporte": "🧭 GeoJSON exporté : {n} objets ({proj})",
   "export.geojson.erreur": "Échec de l'export GeoJSON : {err}",
-  "geotiff.modal.titre": "🛰️ Export GeoTIFF calé",
+  "geotiff.modal.titre": "🛰️ Export GeoTIFF calé georef",
   "geotiff.intro": "Le plan en image géoréférencée, à ouvrir dans QGIS ou tout SIG : il s'y pose seul, à sa place, grâce au calage du plan (points A, B et C).",
   "geotiff.nonCale": "⚠️ Ce plan n'est pas calé : sans calage GPS, l'image ne peut pas être placée. Cale-le d'abord (⬆️ Exporter › KMZ, ou ⚙️ Réglages › 🌐 Géoréférencement GPS), puis reviens ici.",
   "geotiff.contenu.titre": "🖼️ Contenu",
