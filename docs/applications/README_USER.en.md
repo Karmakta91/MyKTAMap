@@ -848,7 +848,7 @@ Numbering: **0** = reference level, **1, 2…** above, **−1, −2…** below.
 A **yellow pill** under the zoom buttons shows the **active level**. A tap opens the **🏗️ Levels** modal:
 
 - **🎯 Active level (for drawing)** — everything you draw takes this level. **[ − ]** and **[ + ]** add a level below or above. Changing the active level **cancels the path in progress** and only shows that level.
-- **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone; the **🖼️ Keep the base plan** box that then appears keeps it as a background (choice saved with the map's session). A junction stays visible if either of its two levels is.
+- **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. The **🖼️ Show the base plan** box follows level 0 until you touch it; once ticked or unticked by hand, your choice wins (background kept under another storey, or removed even with 0 shown) and **Show all** sets it back to automatic (choice saved with the map's session; on a single-level map, it sits in **Image layers**). A junction stays visible if either of its two levels is.
 
 If the map contains elements on other levels, the list extends by itself. The same settings exist in ≡ **Filters**. For image export, **🎨 Advanced → 🏗️ Levels to export** chooses the levels independently of what is displayed.
 

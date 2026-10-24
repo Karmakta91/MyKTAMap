@@ -848,7 +848,7 @@ Numeración: **0** = nivel de referencia, **1, 2…** por encima, **−1, −2�
 Una **pastilla amarilla** bajo los botones de zoom muestra el **nivel activo**. Un toque abre la ventana **🏗️ Niveles**:
 
 - **🎯 Nivel activo (para dibujar)** — todo lo que dibujas toma este nivel. **[ − ]** y **[ + ]** añaden un nivel por debajo o por encima. Cambiar de nivel activo **anula el trazado en curso** y solo muestra ese nivel.
-- **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola; la casilla **🖼️ Mantener el plano base**, que aparece entonces, la deja de fondo (elección guardada con la sesión del mapa). Una unión sigue visible si uno de sus dos niveles lo está.
+- **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. La casilla **🖼️ Mostrar el plano base** sigue al nivel 0 mientras no la toques; marcada o desmarcada a mano, tu elección manda (fondo bajo otra planta, o retirado aunque el 0 esté visible) y **Mostrar todo** la vuelve a automática (elección guardada con la sesión del mapa; en un mapa de un solo nivel, está en **Capas de imagen**). Una unión sigue visible si uno de sus dos niveles lo está.
 
 Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mismos ajustes están en ≡ **Filtros**. En la exportación de imagen, **🎨 Avanzado → 🏗️ Niveles a exportar** elige los niveles con independencia de lo que se muestra.
 
