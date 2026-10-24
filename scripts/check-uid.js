@@ -179,6 +179,9 @@ const iNivPt = EDITOR.indexOf("if (niveauChange) existingPoint.level = niveauCho
 t("changement de niveau d'un POI : posé AVANT le touch de la modification",
   iNivPt > 0 && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) > iNivPt &&
   EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iNivPt) - iNivPt < 200);
+const iJonPt = EDITOR.indexOf("window.KtaPoiJonction.appliquer(existingPoint, _jonction.lire())");
+t("niveaux et raccords d'un passage (formulaire du POI) : posés AVANT le touch de la modification",
+  iJonPt > 0 && iJonPt < iNivPt && EDITOR.indexOf("window.KtaUid.touch(existingPoint)", iJonPt) > iNivPt);
 
 // Tableur
 t("🩸 tableur « Dupliquer » : uid neuf (cloneNeuf), jamais une copie JSON brute", /window\.KtaUid \? window\.KtaUid\.cloneNeuf\(_data\[i\], _prefixeUid\(\)\)/.test(TBL));

@@ -1281,6 +1281,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
 
   // Ligne GPS si le plan est calibré, pour tout point (session et data layer) ; 📋 copie.
   let gpsLineHtml = "";
+  // Passage entre niveaux : niveaux desservis et raccords validés (poiJonction.js).
+  const jonctionHtml = window.KtaPoiJonction ? window.KtaPoiJonction.htmlFiche(point) : "";
   const _gpsLatLng = _planXyToGps(x, y);
   if (_gpsLatLng) {
     const gpsStr = _formatGps(_gpsLatLng);
@@ -1319,6 +1321,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
            gpsLineHtml +
+           jonctionHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +
@@ -1754,7 +1757,9 @@ function _passeFiltreRuntimeType(category, type) {
 // ── Markers des data layers ──────────
 function _filtreNiveauSurMarkerData(marker) {
   if (!marker) return;
-  let visible = _passeFiltreDataLevel(marker._ktaLevel);
+  // Passage entre niveaux : visible si un de ses niveaux est affiché.
+  let visible = Array.isArray(marker._ktaNiveaux) ? marker._ktaNiveaux.some(_passeFiltreDataLevel)
+    : _passeFiltreDataLevel(marker._ktaLevel);
   if (visible) {
     const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0]) || "default";
     if (!_passeFiltreRuntimeTag(tag)) visible = false;
@@ -1894,6 +1899,9 @@ window.getAllEmbeddedPoints = function() {
         level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0,
         layerId: m._ktaLayerId || null
       };
+      // Passage entre niveaux (poiJonction.js) : l'itinéraire et les exports lisent ces deux champs.
+      if (Array.isArray(m._ktaNiveauxSrc)) item.niveaux = m._ktaNiveauxSrc;
+      if (Array.isArray(m._ktaAccroches)) item.accroches = m._ktaAccroches;
       if (m._ktaDescription) item.description = m._ktaDescription;
       if (m._ktaUid) item.uid = m._ktaUid;
       if (typeof m._ktaUpdatedAt === "number") item.updatedAt = m._ktaUpdatedAt;
@@ -2180,6 +2188,13 @@ function ajouterPointsDepuisJSON(url, layer) {
 
           // multi-niveau : `level` absent → 0
           marker._ktaLevel = Number.isInteger(p.level) ? p.level : 0;
+          // Passage entre niveaux : champs du calque gardés tels quels (relus par getAllEmbeddedPoints) ;
+          // _ktaNiveaux = niveaux où il s'affiche, null pour un point ordinaire.
+          if (Array.isArray(p.niveaux)) marker._ktaNiveauxSrc = p.niveaux;
+          if (Array.isArray(p.accroches)) marker._ktaAccroches = p.accroches;
+          const _pj = window.KtaPoiJonction;
+          marker._ktaNiveaux = (_pj && _pj.estJonction(p)) ? _pj.niveaux(p) : null;
+          if (_pj && !_skipPopup) _pj.brancherMarqueur(marker, p);
           // nom, tags, id : les placemarks KML (sinon points anonymes dans le KMZ)
           marker._ktaNom  = p.nom || "";
           marker._ktaId   = p.id  || "";

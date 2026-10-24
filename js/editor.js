@@ -215,6 +215,7 @@ function afficherFormulaire(x, y, existingPoint) {
             <label class="kta-cfg-label" for="kta-poi-niveau">${_esc(window.I18n.t("niveauObjet.label"))}</label>
             <select class="kta-cfg-input" id="kta-poi-niveau">${optionsNiveau}</select>` : ""}
           </div>
+          ${window.KtaPoiJonction ? window.KtaPoiJonction.htmlFormulaire(tagInitial) : ""}
 
           <div id="kta-poi-newtag-wrap" style="display:none; margin-top:8px;">
             <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">${window.I18n.t("editor.field.newTag")}</label>
@@ -332,6 +333,19 @@ function afficherFormulaire(x, y, existingPoint) {
     }).finally(fermer);
   }
 
+  // Niveaux desservis d'un passage (poiJonction.js) : bloc affiché selon le tag, niveau du point toujours coché.
+  const selNiveauForm = document.getElementById("kta-poi-niveau");
+  const _jonction = window.KtaPoiJonction ? window.KtaPoiJonction.brancherFormulaire(modal, {
+    x: x, y: y, point: isEdit ? existingPoint : null,
+    tag: function() { return (selectType.value && selectType.value !== "__new__") ? selectType.value : ""; },
+    level: function() {
+      if (selNiveauForm) { const n = Number.parseInt(selNiveauForm.value, 10); if (Number.isInteger(n)) return n; }
+      if (isEdit) return niveauInitial;
+      return (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel)) ? window.APP_CONFIG.activeLevel : 0;
+    }
+  }) : null;
+  if (_jonction && selNiveauForm) selNiveauForm.addEventListener("change", _jonction.rafraichir);
+
   selectType.addEventListener("change", function() {
     if (selectType.value === "__new__") {
       newTagWrap.style.display = "block";
@@ -339,6 +353,7 @@ function afficherFormulaire(x, y, existingPoint) {
     } else {
       newTagWrap.style.display = "none";
     }
+    if (_jonction) _jonction.rafraichir();
   });
 
   btnClose.addEventListener("click", annuler);
@@ -651,6 +666,7 @@ function afficherFormulaire(x, y, existingPoint) {
         const selNiveau = document.getElementById("kta-poi-niveau");
         const niveauChoisi = selNiveau ? Number.parseInt(selNiveau.value, 10) : Number.NaN;
         const niveauChange = Number.isInteger(niveauChoisi) && niveauChoisi !== niveauInitial;
+        const jonctionChange = !!(_jonction && window.KtaPoiJonction.appliquer(existingPoint, _jonction.lire()));
         if (niveauChange) existingPoint.level = niveauChoisi;
         // touch : updatedAt (ms) + date_update (jour), en un seul geste.
         if (window.KtaUid) window.KtaUid.touch(existingPoint);
@@ -669,9 +685,15 @@ function afficherFormulaire(x, y, existingPoint) {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("editor.undo.editPoint", { nom: nom }), _historyBefore, "editorPoints");
         }
-        if (niveauChange) {
-          if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
-          if (typeof window.ktaSignalerNiveauObjet === "function") window.ktaSignalerNiveauObjet(niveauChoisi);
+        // Niveaux ou raccords d'un passage changés : le graphe de navigation se reconstruit au prochain calcul.
+        if (jonctionChange && window.RoadGraph && typeof window.RoadGraph.invalidate === "function") {
+          window.RoadGraph.invalidate();
+        }
+        if ((niveauChange || jonctionChange) && window.SessionPersist && window.SessionPersist.save) {
+          window.SessionPersist.save();
+        }
+        if (niveauChange && typeof window.ktaSignalerNiveauObjet === "function") {
+          window.ktaSignalerNiveauObjet(niveauChoisi);
         }
       } else {
         const point = {
@@ -691,6 +713,7 @@ function afficherFormulaire(x, y, existingPoint) {
         if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
           point.level = window.APP_CONFIG.activeLevel || 0;
         }
+        if (_jonction) window.KtaPoiJonction.appliquer(point, _jonction.lire());
         // Identité stable dès la création : l'uid tiré à l'ouverture, sous lequel ses photos sont déjà rangées.
         if (_uidAjout) point.uid = _uidAjout;
         if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(point, "pt"));
@@ -896,6 +919,10 @@ function _ajouterMarker(point) {
 
   // Multi-niveau : level copié sur le marqueur pour le filtre visuel (pas de recherche dans listePoints).
   marker._ktaLevel = Number.isInteger(point.level) ? point.level : 0;
+  // Passage entre niveaux : visible sur chacun de ses niveaux ; raccords dessinés pendant que sa fiche est ouverte.
+  const _pj = window.KtaPoiJonction;
+  marker._ktaNiveaux = (_pj && _pj.estJonction(point)) ? _pj.niveaux(point) : null;
+  if (_pj) _pj.brancherMarqueur(marker, point);
   // Tags copiés aussi : le 1er détermine l'icône, c'est le tag de filtrage (comme les marqueurs de calque).
   marker._ktaTags = Array.isArray(point.tags) ? point.tags.slice() : [];
 
@@ -936,8 +963,9 @@ function _appliquerFiltreNiveauSurMarker(marker) {
   if (multi) {
     const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
       ? window.APP_CONFIG.visibleLevels : [0];
-    const lvl = Number.isInteger(marker._ktaLevel) ? marker._ktaLevel : 0;
-    if (visibles.indexOf(lvl) < 0) visible = false;
+    const niv = Array.isArray(marker._ktaNiveaux) ? marker._ktaNiveaux
+      : [Number.isInteger(marker._ktaLevel) ? marker._ktaLevel : 0];
+    if (!niv.some(function(n) { return visibles.indexOf(n) >= 0; })) visible = false;
   }
   // Filtre de tags runtime (FilterPanel) sur le 1er tag du marqueur.
   if (visible && window._ktaRuntimeFilters && window._ktaRuntimeFilters.tags) {

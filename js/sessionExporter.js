@@ -1682,8 +1682,8 @@
   // ── Anonymisation pour partage public ──────────────
   // Noms POI / roads / zones / structures → codes séquentiels (tag + #N), notes vidées, tracker et profil
   // retirés : partager la structure sans exposer ses repérages.
-  // Gardé : x, y, level, tags, type. Retiré : id, nom, label, description, profondeur, date_update, tracker,
-  // user/author. Marqué : session.anonymized + anonymizedAt.
+  // Gardé : x, y, level, tags, type, niveaux / accroches d'un passage. Retiré : id, nom, label, description,
+  // profondeur, date_update, tracker, user/author. Marqué : session.anonymized + anonymizedAt.
   // 🔒 `photos` (déjà strippées EXIF) : ids renommés `photo-anon-N`, pointId remappé vers le code anonymisé.
   function _anonymiserSession(session, photos) {
     // 1. editorPoints — séquence par tag. 🔒 idMap : id d'origine → code (remappage photos)
@@ -1711,6 +1711,11 @@
           source:      "editor"
         };
         if (typeof p.level === "number") out.level = p.level;
+        // Passage entre niveaux : géométrie du relevé (niveaux reliés, raccords), rien d'identifiant.
+        if (Array.isArray(p.niveaux)) out.niveaux = p.niveaux.slice();
+        if (Array.isArray(p.accroches)) out.accroches = p.accroches.map(function(a) {
+          return { level: a.level, x: a.x, y: a.y };
+        });
         return out;
       });
     }

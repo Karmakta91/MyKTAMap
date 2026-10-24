@@ -4944,6 +4944,7 @@
   "swinsp.verdict.ok.line": "<b>{count}</b> assets esperados, todos presentes en la caché {cache}.",
   "swinsp.verdict.ok.titre": "✅ Todo está bien registrado",
   "tabledit.col.points": "{n} puntos",
+  "tabledit.col.accroches": "{n} conexión(es)",
   "tabledit.confirm.supprimer": "¿Eliminar {n} fila(s)? Esta acción es irreversible.",
   "tabledit.editor.ajouterLigne": "+ Añadir fila",
   "tabledit.dedup.aucunFichier": "Ningún archivo elegido",
@@ -5929,5 +5930,18 @@
   "home.loader.imageSeule": "Una sola imagen a la vez: solo se usa la primera.",
   "home.loader.imageUnavailable": "Generador no disponible — abre 🏗️ Generar un mapa y elige la imagen desde allí.",
   "home.loader.tiffUnavailable": "Módulo GeoTIFF no disponible — abre 🏗️ Generar un mapa y elige la imagen desde allí.",
-  "gen.tiff.echelle": " · escala {px} px/m"
+  "gen.tiff.echelle": " · escala {px} px/m",
+  "poiJonction.titre": "↕️ Niveles servidos",
+  "poiJonction.aide": "Marque los niveles que une este paso y valide la galería a la que sale en cada nivel. Solo las conexiones validadas sirven para el itinerario.",
+  "poiJonction.rayonM": "Galerías propuestas a menos de {m} m.",
+  "poiJonction.rayonPx": "Galerías propuestas a menos de {px} px (mapa sin escala).",
+  "poiJonction.prop": "Nivel {n}: galería a {dist}",
+  "poiJonction.valide": "Nivel {n}: conexión validada",
+  "poiJonction.aucune": "Nivel {n}: ninguna galería a menos de {rayon}",
+  "poiJonction.unNiveau": "Marque al menos dos niveles para unir pisos.",
+  "poiJonction.fiche.niveaux": "↕️ Niveles {liste}",
+  "poiJonction.fiche.raccords0": "⚠️ ninguna conexión validada: todavía no une los niveles",
+  "poiJonction.fiche.raccords1": "1 conexión validada",
+  "poiJonction.fiche.raccordsN": "{n} conexiones validadas",
+  "poiJonction.fiche.corde": "🧗 Fuera del itinerario, salvo «equipo equipado (cuerda)»"
 }

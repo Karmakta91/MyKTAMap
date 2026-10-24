@@ -4944,6 +4944,7 @@
   "swinsp.verdict.ok.line": "<b>{count}</b> assets attendus, tous présents dans le cache {cache}.",
   "swinsp.verdict.ok.titre": "✅ Tout est bien enregistré",
   "tabledit.col.points": "{n} points",
+  "tabledit.col.accroches": "{n} raccord(s)",
   "tabledit.confirm.supprimer": "Supprimer {n} ligne(s) ? Cette action est irréversible.",
   "tabledit.editor.ajouterLigne": "+ Ajouter ligne",
   "tabledit.dedup.aucunFichier": "Aucun fichier choisi",
@@ -5929,5 +5930,18 @@
   "home.loader.imageSeule": "Une seule image à la fois : seule la première est utilisée.",
   "home.loader.imageUnavailable": "Générateur indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là.",
   "home.loader.tiffUnavailable": "Module GeoTIFF indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là.",
-  "gen.tiff.echelle": " · échelle {px} px/m"
+  "gen.tiff.echelle": " · échelle {px} px/m",
+  "poiJonction.titre": "↕️ Niveaux desservis",
+  "poiJonction.aide": "Cochez les niveaux que ce passage relie, puis validez la galerie où il débouche à chaque niveau. Seuls les raccords validés servent à l'itinéraire.",
+  "poiJonction.rayonM": "Galeries proposées à moins de {m} m.",
+  "poiJonction.rayonPx": "Galeries proposées à moins de {px} px (plan sans échelle).",
+  "poiJonction.prop": "Niveau {n} : galerie à {dist}",
+  "poiJonction.valide": "Niveau {n} : raccord validé",
+  "poiJonction.aucune": "Niveau {n} : aucune galerie à moins de {rayon}",
+  "poiJonction.unNiveau": "Cochez au moins deux niveaux pour relier des étages.",
+  "poiJonction.fiche.niveaux": "↕️ Niveaux {liste}",
+  "poiJonction.fiche.raccords0": "⚠️ aucun raccord validé : ne relie pas encore les niveaux",
+  "poiJonction.fiche.raccords1": "1 raccord validé",
+  "poiJonction.fiche.raccordsN": "{n} raccords validés",
+  "poiJonction.fiche.corde": "🧗 Hors itinéraire, sauf « équipe équipée (corde) »"
 }

@@ -326,6 +326,7 @@ const ASSETS_TO_CACHE = [
   "./js/map.js",
   "./js/mapBearing.js",
   "./js/tracking.js",
+  "./js/poiJonction.js",
   "./js/editor.js",
   "./js/road.js",
   "./js/zones.js",
