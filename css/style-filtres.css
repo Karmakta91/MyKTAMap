@@ -270,8 +270,8 @@
 .kta-fp-lvl-visible:last-child {
   margin-bottom: 0;
 }
-.kta-fp-lvl-garder {
-  margin-top: 6px;
+.kta-fp-plan-de-base {
+  margin: 6px 0;
 }
 .kta-fp-sublabel {
   display: block;

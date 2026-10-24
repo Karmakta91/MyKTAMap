@@ -8,9 +8,12 @@
 //    change, SEUL le bouton cliqué porte la classe active ET la couleur active calculée (fond doré).
 //    🩸 Le clic re-rend la section (ktaSetActiveLevel → appliquerFiltreNiveau → FilterPanel.onLevelChange) :
 //    un marquage par identité du bouton cliqué visait un nœud détaché et effaçait le marquage du re-rendu.
-// 2. « Garder le plan de base » : niveau 0 masqué → case présente, décochée → fond masqué, cochée → fond
-//    visible (rendu direct du relevé fictif, V1 sur une couche factice, V2 sur un ZIP `PLAN_V2_ZIP` ou sur un
-//    état factice) ; niveau 0 visible → case absente, fond visible ; le choix survit au rechargement.
+// 2. « Afficher le plan de base » (case toujours présente) : en automatique elle suit le niveau 0 (cochée et fond
+//    visible avec 0 visible, décochée et fond masqué avec 0 masqué) ; décochée à la main avec 0 visible → fond
+//    masqué (pastille ≡ allumée) ; cochée à la main avec 0 masqué → fond visible ; « Tout afficher » la remet en
+//    automatique. Rendu direct du relevé fictif, V1 sur une couche factice, V2 sur un ZIP `PLAN_V2_ZIP` ou sur
+//    un état factice. Plan à un seul niveau : case dans « Calques image ». Le choix survit au rechargement, et
+//    une session ancienne `garderFond: true` revient en « affiché » forcé.
 // 3. Point masqué (tag décoché, niveau masqué, calque décoché puis recoché) : son icône ne prend plus le
 //    pointeur à son emplacement, aucun clic n'ouvre sa fiche ; il redevient cliquable au réaffichage. Point de
 //    session et point d'un calque de données.
@@ -164,11 +167,16 @@ function lireFond(page) {
   });
 }
 
-function caseGarder(page) {
+// Case du plan de base, où qu'elle soit (Niveaux en multi-niveau, Calques image sinon).
+function caseFond(page) {
   return page.evaluate(function () {
-    const cb = document.querySelector("#kta-fp-sec-lvl [data-lvl-garder-fond]");
-    return cb ? { presente: true, cochee: cb.checked, libelle: (cb.closest("label") || cb).textContent.trim() }
-              : { presente: false };
+    const cb = document.querySelector("#kta-fp-modal [data-plan-de-base]");
+    if (!cb) return { presente: false };
+    const sec = cb.closest(".kta-fp-section");
+    return { presente: true, cochee: cb.checked, section: sec ? sec.id : null,
+             libelle: (cb.closest("label") || cb).textContent.trim(),
+             mode: window.FilterPanel.getState().planDeBase,
+             pastille: !!document.querySelector(".kta-filter-ctrl a[data-filtre-actif]") };
   });
 }
 
@@ -177,50 +185,115 @@ async function cliquerVisible(page, lvl) {
   await page.waitForTimeout(400);
 }
 
+async function cliquerFond(page) {
+  await page.locator("#kta-fp-modal [data-plan-de-base]").click();
+  await page.waitForTimeout(400);
+}
+
+async function toutAfficher(page) {
+  await page.locator("#kta-fp-reset-all").click();
+  await page.waitForTimeout(500);
+}
+
 async function testerFond(page, etiquette) {
   await page.evaluate(function () {
     window.APP_CONFIG.activeLevel = 0;
     window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();
-    if (window.FilterPanel.getState()) window.FilterPanel.getState().garderFond = false;
+    if (window.FilterPanel.getState()) window.FilterPanel.getState().planDeBase = null;
     window.appliquerFiltreNiveau();
   });
   await ouvrirFiltres(page);
   const f0 = await lireFond(page);
+  const c0 = await caseFond(page);
   inf(etiquette + " : rendu du fond = " + f0.mode + " (" + f0.poses + "/" + f0.total + " couche(s) posée(s))");
-  verifier(f0.total > 0 && f0.poses > 0 && !f0.cache, etiquette + " : niveau 0 visible → fond visible", f0);
-  verifier(!(await caseGarder(page)).presente, etiquette + " : niveau 0 visible → pas de case « garder le plan »");
+  verifier(f0.total > 0 && f0.poses > 0 && !f0.cache, etiquette + " : auto, niveau 0 visible → fond visible", f0);
+  verifier(c0.presente && c0.section === "kta-fp-sec-lvl" && c0.cochee === true && c0.mode === null,
+    etiquette + " : auto, niveau 0 visible → case présente dans Niveaux, cochée", c0);
 
+  // Décochée à la main, niveau 0 visible : le fond part, la pastille ≡ le signale.
+  await cliquerFond(page);
+  const c1 = await caseFond(page);
+  const f1 = await lireFond(page);
+  verifier(c1.cochee === false && c1.mode === false && f1.poses === 0 && f1.cache,
+    etiquette + " : case décochée, niveau 0 visible → fond masqué", { case: c1, fond: f1 });
+  verifier(c1.pastille, etiquette + " : fond masqué à la main → pastille ≡ allumée", c1);
+  const v1 = await page.evaluate(function () { return window.APP_CONFIG.visibleLevels.indexOf(0); });
+  verifier(v1 >= 0, etiquette + " : décocher la case ne masque pas le niveau 0", { indexOf0: v1 });
+
+  // « Tout afficher » → automatique : fond de nouveau visible (0 visible).
+  await toutAfficher(page);
+  const c2 = await caseFond(page);
+  const f2 = await lireFond(page);
+  verifier(c2.mode === null && c2.cochee === true && f2.poses > 0 && !f2.cache && !c2.pastille,
+    etiquette + " : « Tout afficher » → automatique, case cochée, fond visible, pastille éteinte",
+    { case: c2, fond: f2 });
+
+  // Automatique, niveau 0 masqué : case décochée, fond masqué.
   // Le niveau actif doit quitter 0, sinon décocher 0 laisse le niveau de dessin masqué (permis, mais hors sujet).
   await page.locator('#kta-fp-sec-lvl [data-lvl-active="-1"]').click();
   await page.waitForTimeout(300);
   await cliquerVisible(page, 0);
-  const c1 = await caseGarder(page);
-  const f1 = await lireFond(page);
-  verifier(c1.presente && c1.cochee === false, etiquette + " : niveau 0 masqué → case présente, décochée", c1);
-  verifier(f1.poses === 0 && f1.cache, etiquette + " : case décochée → fond masqué", f1);
-
-  await page.locator("#kta-fp-sec-lvl [data-lvl-garder-fond]").click();
-  await page.waitForTimeout(500);
-  const c2 = await caseGarder(page);
-  const f2 = await lireFond(page);
-  verifier(c2.presente && c2.cochee === true, etiquette + " : la case reste cochée après le re-rendu", c2);
-  verifier(f2.poses > 0 && !f2.cache, etiquette + " : case cochée → fond visible (niveau 0 toujours masqué)", f2);
-  const vis = await page.evaluate(function () { return window.APP_CONFIG.visibleLevels.indexOf(0); });
-  verifier(vis < 0, etiquette + " : cocher la case ne réaffiche pas le niveau 0", { indexOf0: vis });
-
-  await page.locator("#kta-fp-sec-lvl [data-lvl-garder-fond]").click();
-  await page.waitForTimeout(400);
+  const c3 = await caseFond(page);
   const f3 = await lireFond(page);
-  verifier(f3.poses === 0 && f3.cache, etiquette + " : case décochée de nouveau → fond masqué", f3);
+  verifier(c3.presente && c3.cochee === false && c3.mode === null && f3.poses === 0 && f3.cache,
+    etiquette + " : auto, niveau 0 masqué → case décochée, fond masqué", { case: c3, fond: f3 });
 
-  // Niveau 0 ré-affiché, case cochée ou non : fond visible, case absente.
-  await page.locator("#kta-fp-sec-lvl [data-lvl-garder-fond]").click();
-  await page.waitForTimeout(300);
-  await cliquerVisible(page, 0);
+  // Cochée à la main, niveau 0 masqué : fond visible, le choix survit au re-rendu de la section.
+  await cliquerFond(page);
+  const c4 = await caseFond(page);
   const f4 = await lireFond(page);
-  verifier(f4.poses > 0 && !f4.cache && !(await caseGarder(page)).presente,
-    etiquette + " : niveau 0 ré-affiché → fond visible, case absente", f4);
+  verifier(c4.cochee === true && c4.mode === true && f4.poses > 0 && !f4.cache,
+    etiquette + " : case cochée, niveau 0 masqué → fond visible", { case: c4, fond: f4 });
+  const v4 = await page.evaluate(function () { return window.APP_CONFIG.visibleLevels.indexOf(0); });
+  verifier(v4 < 0, etiquette + " : cocher la case ne réaffiche pas le niveau 0", { indexOf0: v4 });
+  await cliquerVisible(page, 0);
+  await cliquerVisible(page, 0);
+  const c5 = await caseFond(page);
+  verifier(c5.cochee === true && c5.mode === true && (await lireFond(page)).poses > 0,
+    etiquette + " : niveau 0 recoché puis décoché → le choix « affiché » l'emporte toujours", c5);
+
+  // « Tout afficher » : niveaux tous visibles et automatique.
+  await toutAfficher(page);
+  const c6 = await caseFond(page);
+  const f6 = await lireFond(page);
+  verifier(c6.mode === null && c6.cochee === true && f6.poses > 0,
+    etiquette + " : « Tout afficher » → automatique, fond visible", { case: c6, fond: f6 });
   await page.evaluate(function () { window.FilterPanel.fermer(); });
+}
+
+// Plan à un seul niveau (simulé) : la case vit dans « Calques image », toujours cochée en automatique.
+async function testerFondMono(page) {
+  await page.evaluate(function () {
+    window._ktaTestML = { ml: window.APP_CONFIG.multiLevel, vis: window.APP_CONFIG.visibleLevels.slice() };
+    window.APP_CONFIG.multiLevel = false;
+    window.APP_CONFIG.visibleLevels = [];   // ignoré en mono-niveau : la règle ne doit pas le lire
+    window.FilterPanel.getState().planDeBase = null;
+    window.appliquerFiltreNiveau();
+    window.FilterPanel.ouvrir();
+  });
+  await page.waitForTimeout(400);
+  const c0 = await caseFond(page);
+  const f0 = await lireFond(page);
+  verifier(c0.presente && c0.section === "kta-fp-sec-img" && c0.cochee === true && f0.poses > 0,
+    "mono-niveau : case dans « Calques image », cochée, fond visible", { case: c0, fond: f0 });
+  const nb = await page.evaluate(function () {
+    return document.querySelectorAll("#kta-fp-modal [data-plan-de-base]").length;
+  });
+  verifier(nb === 1, "mono-niveau : une seule case dans la modale", { nb: nb });
+  await cliquerFond(page);
+  const f1 = await lireFond(page);
+  verifier(f1.poses === 0 && f1.cache, "mono-niveau : case décochée → fond masqué", f1);
+  await toutAfficher(page);
+  const c2 = await caseFond(page);
+  const f2 = await lireFond(page);
+  verifier(c2.mode === null && c2.cochee === true && f2.poses > 0,
+    "mono-niveau : « Tout afficher » → automatique, fond visible", { case: c2, fond: f2 });
+  await page.evaluate(function () {
+    window.FilterPanel.fermer();
+    window.APP_CONFIG.multiLevel = window._ktaTestML.ml;
+    window.APP_CONFIG.visibleLevels = window._ktaTestML.vis;
+    window.appliquerFiltreNiveau();
+  });
 }
 
 // Point masqué = ni cliquable ni survolable : l'élément sous le pointeur, à l'emplacement du marqueur, ne doit
@@ -399,33 +472,72 @@ async function testerPointsMasques(page) {
     await testerBoutonsActifs(page, "light");
     await page.evaluate(function () { window.ThemeManager.setTheme("dark"); });
 
-    console.log("\n── 2. Garder le plan de base (tuilage du plan servi) ──");
+    console.log("\n── 2. Afficher le plan de base (tuilage du plan servi) ──");
     await testerFond(page, "plan servi");
+    await testerFondMono(page);
 
-    console.log("\n── 2bis. Le choix survit au rechargement ──");
-    await page.evaluate(function () {
-      const c = window.map.getCenter();
-      window.setEditorPoints([{ id: "PoiFond", nom: "PoiFond", uid: "pt_fondtest", x: Math.round(c.lng),
-        y: Math.round(window.APP_CONFIG.imageHeight - c.lat), tags: ["salle"], level: 0,
-        etat: "Non inspectée", description: "", source: "editor" }]);
-      window.FilterPanel.getState().garderFond = true;
-      return window.SessionPersist.save({ force: true });
-    });
-    await page.waitForTimeout(1500);
-    await ouvrirPlan(page);
-    await page.waitForTimeout(500);
-    await ouvrirFiltres(page);
+    console.log("\n── 2bis. Le choix survit au rechargement ; ancienne session migrée ──");
+    async function sauverEtRecharger(valeur, ancienne) {
+      await page.evaluate(function (a) {
+        const c = window.map.getCenter();
+        window.setEditorPoints([{ id: "PoiFond", nom: "PoiFond", uid: "pt_fondtest", x: Math.round(c.lng),
+          y: Math.round(window.APP_CONFIG.imageHeight - c.lat), tags: ["salle"], level: 0,
+          etat: "Non inspectée", description: "", source: "editor" }]);
+        window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();
+        window.FilterPanel.getState().planDeBase = a.valeur;
+        window.appliquerFiltreNiveau();
+        return window.SessionPersist.save({ force: true });
+      }, { valeur: valeur });
+      await page.waitForTimeout(1500);
+      if (ancienne) {
+        // Session écrite avant le renommage : `garderFond: true`, pas de `planDeBase`.
+        const reecrite = await page.evaluate(function () {
+          const S = window.KtaSessionStore;
+          const id = S.ids().find(function (k) { return (S.lire(k) || "").indexOf("pt_fondtest") >= 0; });
+          if (!id) return false;
+          const p = JSON.parse(S.lire(id));
+          delete p.runtimeFilters.planDeBase;
+          p.runtimeFilters.garderFond = true;
+          return S.ecrireDurable(id, JSON.stringify(p)).then(function () { return true; });
+        });
+        verifier(reecrite, "session réécrite au format ancien (garderFond: true)");
+      }
+      await ouvrirPlan(page);
+      await page.waitForTimeout(500);
+      await ouvrirFiltres(page);
+    }
+    // Masqué à la main, niveau 0 visible : le fond reste masqué après rechargement.
+    await sauverEtRecharger(false, false);
+    const cA = await caseFond(page);
+    const fA = await lireFond(page);
+    verifier(cA.mode === false && cA.cochee === false && fA.poses === 0 && cA.pastille,
+      "rechargé : « masqué » restauré, fond masqué avec le niveau 0 visible, pastille allumée", { case: cA, fond: fA });
+    await page.evaluate(function () { window.FilterPanel.fermer(); });
+    // Affiché à la main, niveau 0 masqué ensuite.
+    await sauverEtRecharger(true, false);
     await page.locator('#kta-fp-sec-lvl [data-lvl-active="-1"]').click();
     await page.waitForTimeout(300);
     await cliquerVisible(page, 0);
-    const cR = await caseGarder(page);
-    const fR = await lireFond(page);
-    verifier(cR.presente && cR.cochee === true && fR.poses > 0,
-      "rechargé : case cochée restaurée, fond visible avec le niveau 0 masqué", { case: cR, fond: fR });
+    const cB = await caseFond(page);
+    const fB = await lireFond(page);
+    verifier(cB.mode === true && cB.cochee === true && fB.poses > 0,
+      "rechargé : « affiché » restauré, fond visible avec le niveau 0 masqué", { case: cB, fond: fB });
+    await page.evaluate(function () { window.FilterPanel.fermer(); });
+    // Automatique : rien de forcé au retour.
+    await sauverEtRecharger(null, false);
+    const cC = await caseFond(page);
+    verifier(cC.mode === null && cC.cochee === true, "rechargé : automatique restauré", cC);
+    await page.evaluate(function () { window.FilterPanel.fermer(); });
+    // Ancienne session `garderFond: true` → « affiché » forcé.
+    await sauverEtRecharger(null, true);
+    const cD = await caseFond(page);
+    verifier(cD.mode === true && cD.cochee === true, "ancienne session garderFond: true → « affiché » forcé", cD);
     await page.evaluate(function () {
       window.FilterPanel.fermer();
       window.setEditorPoints([]);
-      window.FilterPanel.getState().garderFond = false;
+      window.FilterPanel.getState().planDeBase = null;
+      window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();
+      window.appliquerFiltreNiveau();
       return window.SessionPersist.save({ force: true });
     });
     await page.waitForTimeout(800);
@@ -470,6 +582,6 @@ async function testerPointsMasques(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — niveau actif marqué au clic, plan de base gardé au choix, point masqué inerte.");
+  console.log("🎉 CHECKUP VERT — niveau actif marqué au clic, plan de base au choix (auto, affiché, masqué), point masqué inerte.");
   process.exit(0);
 })();

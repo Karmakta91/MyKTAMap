@@ -16,7 +16,7 @@
 //     roadTypes:   Set<string> | null,
 //     zoneTypes:   Set<string> | null,
 //     structTypes: Set<string> | null,
-//     garderFond:  boolean              // plan de base affiché même niveau 0 masqué (tiling.js)
+//     planDeBase:  null | boolean       // null = suit le niveau 0, sinon choix de l'utilisateur (tiling.js)
 //   }
 // Les niveaux restent dans APP_CONFIG.visibleLevels (via appliquerFiltreNiveau).
 // API : window.FilterPanel = { ouvrir, fermer, getState, setFilters, onChange, applyFilters, isVisible, majBadge… }
@@ -38,7 +38,8 @@
       tags:        null,
       roadTypes:   null,
       zoneTypes:   null,
-      structTypes: null
+      structTypes: null,
+      planDeBase:  null
     };
   }
 
@@ -86,6 +87,9 @@
     if (f.zoneTypes   !== null && f.zoneTypes   !== undefined) n++;
     if (f.structTypes !== null && f.structTypes !== undefined) n++;
     if (_niveauxFiltres()) n++;
+    // Fond masqué À LA MAIN : sans plan sous les tracés, « où est passée la carte ? » ; « Tout afficher » le
+    // remet. Le fond masqué en automatique (niveau 0 décoché) est déjà compté par les niveaux.
+    if (f.planDeBase === false) n++;
     return n;
   }
   function majBadge() {
@@ -219,12 +223,6 @@
       if (cb && scope.contains(cb)) {
         _updateVisibleLevelsFromUI(_modal);
         return;
-      }
-      const garde = e.target.closest('[data-lvl-garder-fond]');
-      if (garde && scope.contains(garde)) {
-        window._ktaRuntimeFilters.garderFond = garde.checked;
-        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
-        _refreshChipsState(_modal);
       }
     });
   }
@@ -445,12 +443,38 @@
     return "🏷️";
   }
 
+  // Case « Afficher le plan de base » : cochée = fond réellement affiché (tiling.js > ktaPlanDeBaseVisible), même
+  // en automatique. Dans Niveaux sur un plan multi-niveau, en tête des calques image sinon (une seule à la fois).
+  function _planDeBaseVisible() {
+    return typeof window.ktaPlanDeBaseVisible === "function" ? window.ktaPlanDeBaseVisible() : true;
+  }
+  function _renderCasePlanDeBase() {
+    const vis = _planDeBaseVisible();
+    return '<div class="kta-fp-chips-grid kta-fp-plan-de-base">' +
+             '<label class="kta-fp-chip ' + (vis ? "" : "kta-fp-chip-off") + '" title="' +
+               _escAttr(window.I18n.t("filter.planDeBaseAide")) + '">' +
+               '<input type="checkbox" data-plan-de-base' + (vis ? " checked" : "") + '>' +
+               '<span class="kta-fp-chip-label">' + _escHtml(window.I18n.t("filter.planDeBase")) + '</span>' +
+             '</label>' +
+           '</div>';
+  }
+  function _majCasePlanDeBase(scope) {
+    const cb = scope && scope.querySelector('[data-plan-de-base]');
+    if (!cb) return;
+    cb.checked = _planDeBaseVisible();
+    const lbl = cb.closest(".kta-fp-chip");
+    if (lbl) lbl.classList.toggle("kta-fp-chip-off", !cb.checked);
+  }
+
   function _renderImageLayersSection() {
     const pc = window.PLAN_CONFIG;
+    const isML = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const caseFond = isML ? "" : _renderCasePlanDeBase();
     if (!pc || !Array.isArray(pc.imageLayers) || pc.imageLayers.length === 0) {
-      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
+      return caseFond + '<div class="kta-fp-section-empty">' +
+               _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
     }
-    let html = '<div class="kta-fp-list">';
+    let html = caseFond + '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
       // Id du calque : `lc.id || lc.label`, comme map.js > initMapFromConfig (vieux plans sans `id`).
       const layerId = lc.id || lc.label;
@@ -590,17 +614,7 @@
               '</label>';
     });
     html += '</div>';
-    // Niveau 0 masqué : le plan de base (image source) suit le niveau 0 sauf si l'utilisateur le garde en fond.
-    if (avail.indexOf(0) >= 0 && visible.indexOf(0) < 0) {
-      const garder = !!(window._ktaRuntimeFilters && window._ktaRuntimeFilters.garderFond === true);
-      html += '<div class="kta-fp-chips-grid kta-fp-lvl-garder">' +
-                '<label class="kta-fp-chip ' + (garder ? "" : "kta-fp-chip-off") + '" title="' +
-                  _escHtml(window.I18n.t("filter.levels.garderFondAide")) + '">' +
-                  '<input type="checkbox" data-lvl-garder-fond' + (garder ? " checked" : "") + '>' +
-                  '<span class="kta-fp-chip-label">' + _escHtml(window.I18n.t("filter.levels.garderFond")) + '</span>' +
-                '</label>' +
-              '</div>';
-    }
+    html += _renderCasePlanDeBase();
     html += '</div>';
     return html;
   }
@@ -662,6 +676,15 @@
     overlay.addEventListener("change", function(e) {
       const t = e.target;
       if (!t || !t.matches) return;
+      // Plan de base : le choix de l'utilisateur l'emporte sur les niveaux (tiling.js > ktaPlanDeBaseVisible).
+      if (t.matches('[data-plan-de-base]')) {
+        window._ktaRuntimeFilters.planDeBase = t.checked;
+        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
+        _refreshChipsState(overlay);
+        majBadge();
+        _updateStatus();
+        return;
+      }
       // Calques image
       if (t.matches('[data-img-layer]')) {
         const id = t.getAttribute("data-img-layer");
@@ -744,6 +767,8 @@
       resetBtn.addEventListener("click", function() {
         const f = window._ktaRuntimeFilters;
         f.tags = null; f.roadTypes = null; f.zoneTypes = null; f.structTypes = null;
+        f.planDeBase = null;   // retour à l'automatique : le fond suit de nouveau le niveau 0
+        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
         _scheduleApply();
         _notify();
         overlay.querySelectorAll('[data-set][data-type]').forEach(function(cb) { cb.checked = true; });
@@ -765,6 +790,7 @@
           if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
           if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
         }
+        _majCasePlanDeBase(overlay);
         _refreshChipsState(overlay);
         _updateStatus();
       });
@@ -804,6 +830,7 @@
     if (f.zoneTypes   !== null) active.push(window.I18n.t("filter.status.zones"));
     if (f.structTypes !== null) active.push(window.I18n.t("filter.status.structs"));
     if (_niveauxFiltres())      active.push(window.I18n.t("filter.status.levels"));   // Q35
+    if (f.planDeBase === false) active.push(window.I18n.t("filter.status.planDeBase"));
     majBadge();
     if (active.length === 0) {
       el.textContent = window.I18n.t("filter.status.none");

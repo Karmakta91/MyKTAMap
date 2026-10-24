@@ -160,7 +160,7 @@
       roadTypes:   _s(f.roadTypes),
       zoneTypes:   _s(f.zoneTypes),
       structTypes: _s(f.structTypes),
-      garderFond:  f.garderFond === true
+      planDeBase:  (f.planDeBase === true || f.planDeBase === false) ? f.planDeBase : null
     };
   }
 
@@ -554,7 +554,9 @@
         window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
         window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
         // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
-        window._ktaRuntimeFilters.garderFond  = rf.garderFond === true;
+        // null = automatique (suit le niveau 0). Ancienne session : `garderFond: true` = fond forcé affiché.
+        window._ktaRuntimeFilters.planDeBase  = (rf.planDeBase === true || rf.planDeBase === false)
+          ? rf.planDeBase : (rf.garderFond === true ? true : null);
         const _active = [];
         if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
         if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
@@ -962,7 +964,9 @@
       try { window.LegendCustomization.loadSessionState(null); }
       catch(e) { console.warn("[SessionPersist] reset légende échec :", e); }
     }
-    // Même piège pour les traces de suppression du plan précédent.
+    // Même piège pour le plan de base masqué à la main (un plan sans session s'ouvrirait sans fond) et pour les
+    // traces de suppression du plan précédent.
+    if (window._ktaRuntimeFilters) window._ktaRuntimeFilters.planDeBase = null;
     if (window.KtaUid) window.KtaUid.setTombstones([]);
 
     const saved = getSaved();
