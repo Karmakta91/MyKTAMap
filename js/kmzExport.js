@@ -355,8 +355,9 @@
   }
   function _hashCourt(s) {
     let h = 0;
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-    return (h >>> 0).toString(36);
+    // Math.imul + >>> 0 : même empreinte 32 bits qu'avant (Math.trunc perdrait le repli modulo 2^32).
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+    return h.toString(36);
   }
 
   // Un <Style id="point_<tag>"> par tag rencontré. ⚠️ `embarquees` (Set des tags dont le fichier est DANS le
