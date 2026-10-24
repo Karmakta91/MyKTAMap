@@ -1523,6 +1523,35 @@
     try { return Promise.resolve(h.garder(id)).then(function (r) { return r === true; }, function () { return false; }); }
     catch (e) { return Promise.resolve(false); }
   }
+  // « Tout garder hors ligne » d'un dossier (js/dossierHorsLigne.js) : garder(idExt, { signal, onProgres(recus, total) })
+  // — 2e argument facultatif pour l'extension (sans lui : pas d'avancement, l'arrêt attend la fin du plan).
+  // → { ok, raison } : `raison` = message de l'erreur rejetée par l'extension (déjà traduit), borné à 160.
+  // taille(idExt) → Promise<octets | null> (facultatif) : ce que coûterait le téléchargement, 0 si à jour.
+  function garderHorsLigneExtension(registreId, opts) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id) return Promise.resolve({ ok: false, raison: "" });
+    const o = opts || {};
+    const enfant = {
+      signal: o.signal || undefined,
+      onProgres: function (recus, total) {
+        if (typeof o.onProgres !== "function") return;
+        try { o.onProgres(Number(recus) || 0, Number(total) || 0); } catch (e) { /* écran fermé */ }
+      }
+    };
+    const raison = function (e) { return String((e && e.message) || "").slice(0, 160); };
+    try {
+      return Promise.resolve(h.garder(id, enfant)).then(function (r) { return { ok: r === true, raison: "" }; },
+        function (e) { return { ok: false, raison: raison(e) }; });
+    } catch (e) { return Promise.resolve({ ok: false, raison: raison(e) }); }
+  }
+  function tailleHorsLigneExtension(registreId) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id || typeof h.taille !== "function") return Promise.resolve(null);
+    try {
+      return Promise.resolve(h.taille(id)).then(function (n) { return (typeof n === "number" && n >= 0 && Number.isFinite(n)) ? n : null; },
+        function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
 
   // ── Actions d'extension sur la fiche d'un objet ──
   // actionsObjet(uid) → [{ libelle, action }] (synchrone). Les fiches portent data-kta-uid ; un observateur,
@@ -1786,6 +1815,8 @@
     recuADistance: recuADistance,
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
+    garderHorsLigneExtension: garderHorsLigneExtension,
+    tailleHorsLigneExtension: tailleHorsLigneExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
     liaisonInfo: liaisonInfo,
