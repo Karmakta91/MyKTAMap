@@ -135,11 +135,19 @@
 
   // ── Téléchargement ──────────────────────────────────────────────────
   // onProgress({ fait, total, echecs }) à chaque fichier → { total, ok, echecs, annule, manquants }
-  async function precacher(plan, onProgress, signal) {
+  // `opts.faits` (objet, muté) : URLs déjà rangées par une tentative précédente DE CETTE MÊME passe, avec leurs
+  // validateurs → sautées (reprise après un passage en arrière-plan, js/dossierHorsLigne.js).
+  // 🩸 Hors reprise, l'ancien manifeste est retiré AVANT la boucle : une mise à jour interrompue laisse
+  //   « incomplet » (bouton « compléter »), pas « complet » sur un mélange d'ancienne et de nouvelle version.
+  //   Une reprise ne saute que `faits`, jamais un fichier trouvé en cache (il peut être de l'ancienne version).
+  async function precacher(plan, onProgress, signal, opts) {
     if (!supporte()) throw new Error("Cache API indisponible");
+    const faits = (opts && opts.faits && typeof opts.faits === "object") ? opts.faits : null;
+    const reprise = !!(faits && Object.keys(faits).length);
     const liste = await listerUrls(plan);
     const urls  = liste.urls;
     const cache = await caches.open(nomCache(plan.id));
+    if (!reprise) { try { await cache.delete(_urlManifeste(plan)); } catch (e) { /* cache neuf */ } }
     let fait = 0, ok = 0, echecs = 0, annule = false;
     // QUELS fichiers manquent, pas seulement combien.
     const manquants = [];
@@ -155,13 +163,20 @@
         if (signal && signal.aborted) { annule = true; return; }
         const u = suivant();
         if (!u) return;
+        if (faits && Object.prototype.hasOwnProperty.call(faits, u) && await cache.match(u)) {
+          if (faits[u]) validateurs[u] = faits[u];
+          ok++; fait++;
+          if (typeof onProgress === "function") onProgress({ fait: fait, total: urls.length, echecs: echecs });
+          continue;
+        }
         try {
-          const r = await fetch(u, { cache: "reload" });
+          const r = await fetch(u, { cache: "reload", signal: signal });
           // 🩸 Seulement du 200 : un 404 en cache donnerait un plan « complet » aux fichiers morts.
           if (r && r.status === 200) {
             const et = r.headers.get("ETag"), lm = r.headers.get("Last-Modified");
             if (et || lm) validateurs[u] = { etag: et || null, lm: lm || null };
             await cache.put(u, r.clone()); ok++;
+            if (faits) faits[u] = validateurs[u] || null;
           }
           else { echecs++; manquants.push(u); _warn("HTTP " + (r && r.status) + " :", u); }
         } catch (e) { echecs++; manquants.push(u); _warn("echec :", u, e && e.message); }

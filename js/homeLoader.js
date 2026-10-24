@@ -2425,6 +2425,10 @@ function planRowHTML(plan) {
           '<input type="text" class="kta-cfg-input" id="kta-plans-folder-rule" maxlength="200" placeholder="' + escapeHtml(t("home.plans.folders.rulePlaceholder")) + '" value="' +
             escapeHtml(f && f.rule && Array.isArray(f.rule.tags) ? f.rule.tags.join(", ") : "") + '"' + (verrou ? " disabled" : "") + '>' +
           '<div class="kta-plans-sheet-hint">' + escapeHtml(t("home.plans.folders.ruleHint")) + '</div>' +
+          // Tout le dossier sur l'appareil (js/dossierHorsLigne.js) : manquants récupérés, périmés mis à jour.
+          (f && window.KtaDossierHorsLigne
+            ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>📥 ' +
+                escapeHtml(t("home.plans.dossierHL.bouton")) + '</button>' : "") +
           '<div class="kta-cfg-actions-bar kta-plans-sheet-actions">' +
             (f ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="-1" title="' + escapeHtml(t("home.plans.folders.up")) + '">▲</button>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="1" title="' + escapeHtml(t("home.plans.folders.down")) + '">▼</button>' +
@@ -2460,6 +2464,22 @@ function planRowHTML(plan) {
           ov.querySelectorAll("[data-move]").forEach(function(b) {
             b.addEventListener("click", function() { PR.moveFolder(f.id, Number(b.dataset.move)); window.refreshPlansList(); });
           });
+          const hl = ov.querySelector("[data-hors-ligne]");
+          if (hl) hl.addEventListener("click", function() {
+            const ids = PR.getAll().filter(function(p) { return PR.planFolderId(p) === f.id; }).map(function(p) { return p.id; });
+            fermer();
+            window.KtaDossierHorsLigne.lancer(ids, {
+              titre: f.name,
+              sonderZip: function(p) {
+                const ctl = typeof AbortController === "function" ? new AbortController() : null;
+                const delai = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+                return _telechargerZipIndex(p, null, true, "HEAD", ctl ? ctl.signal : undefined)
+                  .finally(function () { clearTimeout(delai); });
+              },
+              garderZip: _garderZipIndex,
+              apres: function() { _rafraichirBoutonsHorsLigne(); }
+            });
+          });
           const del = ov.querySelector("[data-del]");
           if (del && !verrou) del.addEventListener("click", async function() {
             const n = PR.getAll().filter(function(p) { return PR.planFolderId(p) === f.id; }).length;
@@ -2487,8 +2507,8 @@ function planRowHTML(plan) {
         if (rep.status === 404 || rep.status === 410) return { statut: "absent" };
         if (!rep.ok) throw new Error("HTTP " + rep.status);
         const res = { statut: "frais", etag: rep.headers.get("ETag"), lastModified: rep.headers.get("Last-Modified") };
-        if (methode === "HEAD") return res;
-        const total = parseInt(rep.headers.get("Content-Length"), 10) || 0;
+        const total = Number.parseInt(rep.headers.get("Content-Length"), 10) || 0;
+        if (methode === "HEAD") { res.taille = total || null; return res; }
         if (!rep.body || typeof rep.body.getReader !== "function") { res.blob = await rep.blob(); return res; }
         const lecteur = rep.body.getReader(), morceaux = [];
         let recus = 0;
@@ -2531,9 +2551,10 @@ function planRowHTML(plan) {
       }
       const _horsLigne = function () { return typeof navigator !== "undefined" && navigator.onLine === false; };
 
-      // Range l'archive téléchargée comme copie gardée du plan (sans l'ouvrir) : bouton 💾 de la ligne.
-      async function _garderZipIndex(plan) {
-        const r = await _telechargerZipIndex(plan, null, true);
+      // Range l'archive téléchargée comme copie gardée du plan (sans l'ouvrir) : bouton 💾 de la ligne, et
+      // « Tout garder hors ligne » d'un dossier (signal = « Arrêter », progression(recus, total)).
+      async function _garderZipIndex(plan, signal, progression) {
+        const r = await _telechargerZipIndex(plan, progression || null, true, "GET", signal);
         if (r.statut === "aJour") return true;
         if (r.statut !== "frais" || !r.blob) return false;
         if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();

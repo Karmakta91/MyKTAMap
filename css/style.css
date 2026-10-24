@@ -19032,6 +19032,16 @@ html.kta-theme-light .zip-drop-sig { color: var(--kta-texte-3); }
 .kta-plan-row-folder-dot-rule { background: transparent; box-shadow: inset 0 0 0 2px var(--kta-dot, #8cb4ff); }
 .kta-plans-chip-folder { font-weight: 700; }
 .kta-plans-sheet-hint { font-size: 11.5px; color: var(--kta-texte-3); line-height: 1.4; margin: -4px 0 8px; }
+.kta-plans-sheet-offline { width: 100%; margin: 2px 0 10px; }
+/* « Tout garder hors ligne » d'un dossier (js/dossierHorsLigne.js) : avancement puis bilan, mêmes jetons que la charte. */
+.kta-dhl-boite { max-width: 440px; height: auto; max-height: 80vh; }
+.kta-dhl-corps { font-size: 13px; color: var(--kta-texte-2); }
+.kta-dhl-ligne { margin: 0 0 8px; color: var(--kta-texte); font-weight: 600; overflow-wrap: anywhere; }
+.kta-dhl-barre { width: 100%; height: 10px; margin: 0 0 6px; accent-color: var(--kta-primaire); }
+.kta-dhl-detail { font-size: 12px; min-height: 1.4em; margin: 0 0 12px; }
+.kta-dhl-bilan { margin: 0 0 12px; line-height: 1.5; }
+.kta-dhl-bilan-titre { color: var(--kta-texte); font-weight: 600; margin: 8px 0 2px; }
+.kta-dhl-bilan-liste { margin: 0 0 4px; padding-left: 18px; color: var(--kta-texte-2); overflow-wrap: anywhere; }
 .kta-impm-dossier { flex: 1 1 160px; max-width: 260px; }
 .kta-impm-dossier-nom { flex: 1 1 160px; max-width: 260px; }
 html.kta-theme-light .kta-plans-folder-head { background: rgba(140, 180, 255, 0.14); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
