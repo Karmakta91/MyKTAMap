@@ -61,11 +61,11 @@ photos restent locales et exportables).
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, publierVersion: { autorise(idExt) →
-> bool, publier({ id, blob, nom }) → Promise }, compte() → { pseudo, libelle } | null })` ·
+> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom, progression? }) → Promise, publierVersion: {
+> autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
-> `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts)` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
@@ -84,6 +84,16 @@ photos restent locales et exportables).
 > d'ouverture en community sur les données gardées par le dernier utilisateur de l'appareil.
 > ⏱️ `charger` reçoit `opts.signal` (AbortSignal) du veilleur d'inactivité de l'accueil (rien en 15 s, puis plus un
 > octet pendant 20 s → annulé) : le transmettre à sa requête ; l'accueil abandonne de toute façon (`Promise.race`).
+> ⚠️ Le veilleur ne voit QUE `progression` : un travail local long après le dernier octet (déchiffrer, ranger sur
+> l'appareil) doit continuer d'appeler `progression(total, total)`, sinon il est pris pour un réseau perdu et l'accueil
+> abandonne pendant que le travail finit en fond. Un échec de `charger` se dit par un toast d'erreur ; sa raison
+> (`Error.message`, déjà traduite par l'extension) est affichée, sauf erreur réseau (« serveur injoignable »).
+> 📤 **Avancement d'une publication** : `publierPlan` / `publierVersion` reçoivent `progression({ etape, fait, total })`
+> (etape `"preparation"` : fichier préparé sur l'appareil · `"envoi"` : octets envoyés · `"finalisation"` : envoi fini,
+> le serveur enregistre), appelée par l'extension si elle le sait ; l'afficheur ne peut pas faire échouer la
+> publication. `requete(…, { body, progressionEnvoi(envoyes, total) })` passe alors par XMLHttpRequest (fetch ne dit
+> pas l'avancement d'un envoi) : même garde, même origine, mêmes en-têtes, rend une Response. La fin d'une publication
+> (fiche ℹ️, Générateur) se dit par un toast « success » / « error », même fiche fermée.
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
 

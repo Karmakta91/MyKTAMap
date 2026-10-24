@@ -502,6 +502,65 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
   }
 
+  // ── 6 bis quater ter. AVANCEMENT D'UNE PUBLICATION (progression, progressionEnvoi) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    const recus = [];
+    let vuParExt = null;
+    K.register({ nom: "pub", apiVersion: 1, publierPlan: (a) => {
+      vuParExt = a;
+      if (a.progression) { a.progression({ etape: "envoi", fait: 5, total: 10 }); a.progression({ etape: "inconnue", fait: "x" }); }
+      return Promise.resolve({ id: "x" });
+    } });
+    w.dispatchEvent = () => true;
+    const r = await K.publierPlan({ blob: null, nom: "n", progression: (a) => { recus.push(a); throw new Error("afficheur"); } });
+    t("publierPlan : progression transmise, étape normalisée, une erreur de l'afficheur n'arrête pas la publication",
+      !!r && r.id === "x" && recus.length === 2 && recus[0].etape === "envoi" && recus[0].fait === 5 && recus[0].total === 10 &&
+      recus[1].etape === "envoi" && recus[1].fait === 0);
+    await K.publierPlan({ blob: null, nom: "n" });
+    t("…sans afficheur : rien n'est inventé (progression absente pour l'extension)", !!vuParExt && vuParExt.progression === undefined);
+
+    // requete + progressionEnvoi : XMLHttpRequest (fetch ne dit pas l'avancement d'un envoi), même garde.
+    const c = nouveauContexte("server");
+    const xhrs = [];
+    c.w.XMLHttpRequest = function () {
+      const x = this; xhrs.push(x); x.entetes = {}; x.upload = {};
+      x.open = (m, u) => { x.m = m; x.u = u; };
+      x.setRequestHeader = (k, v) => { x.entetes[String(k).toLowerCase()] = v; };
+      x.getAllResponseHeaders = () => "content-type: application/json\r\nx-plan-version: 3\r\n";
+      x.send = (corps) => { x.corps = corps; x.upload.onprogress({ loaded: 4, total: 8, lengthComputable: true });
+        x.status = 201; x.statusText = "Created"; x.response = "{\"ok\":1}"; setTimeout(() => x.onload(), 0); };
+    };
+    c.w.Response = Response; c.w.DOMException = DOMException;
+    const env = [];
+    let refuse = false;
+    try { await c.K.requete("/v1/plans", { method: "POST", body: "abcd", progressionEnvoi: (a, b) => env.push([a, b]) }); }
+    catch (e) { refuse = true; }
+    t("🔒 progressionEnvoi : refusé hors « configurée / connectée », aucun envoi", refuse && xhrs.length === 0);
+    c.K.appliquerConfig(ON, true);
+    c.K.signaler("on");
+    const avantFetch = c.appelsFetch.length;
+    const rep = await c.K.requete("/v1/plans", { method: "POST", body: "abcd", progressionEnvoi: (a, b) => env.push([a, b]) });
+    t("progressionEnvoi : envoi par XMLHttpRequest (pas fetch), même URL contrôlée, X-Kta-Ext posé, avancement reçu",
+      xhrs.length === 1 && xhrs[0].u === "https://api.exemple.org/v1/plans" && xhrs[0].m === "POST" && xhrs[0].corps === "abcd" &&
+      xhrs[0].entetes["x-kta-ext"] === "1" && env.length === 1 && env[0][0] === 4 && env[0][1] === 8 &&
+      c.appelsFetch.length === avantFetch);
+    t("…rend une Response comme fetch (statut, en-têtes, corps)", rep.status === 201 && rep.headers.get("X-Plan-Version") === "3" &&
+      (await rep.json()).ok === 1);
+    let horsOrigine = false;
+    try { await c.K.requete("https://autre.exemple.net/x", { method: "POST", body: "a", progressionEnvoi() {} }); }
+    catch (e) { horsOrigine = true; }
+    t("🔒 progressionEnvoi : une autre origine reste refusée", horsOrigine && xhrs.length === 1);
+  }
+  {
+    const HLa = lire("js/homeLoader.js");
+    t("🩸 ouverture d'un plan d'extension en échec : dite par un toast (la ligne d'état est souvent hors écran)",
+      /const _echec = function\(m\) \{[\s\S]{0,160}showToast\(m, "error"\)/.test(HLa) && /return _echec\(coupe \?/.test(HLa));
+    t("🩸 fiche ℹ️ : fin de publication dite en « success » / « error » (jamais un « info » masqué)",
+      /publishOkToast[\s\S]{0,40}"success"\)/.test(HLa) && /publishEchecToast[\s\S]{0,80}"error"\)/.test(HLa) &&
+      /basculeOkToast[\s\S]{0,40}"success"\)/.test(HLa));
+  }
+
   // ── 6 bis quater bis. NOUVELLE VERSION D'UN PLAN (prise publierVersion) ──────
   // 🔒 `autorise` est une permission : absente, fausse, mal typée ou en erreur = refus, et rien n'est envoyé.
   {
@@ -1442,13 +1501,13 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     // devenir une nouvelle version, sous la permission de la prise ; une copie = choix explicite « nouveau » seulement.
     t("🩸 Générateur : ZIP reconnu d'un plan d'extension → publierVersion sous versionAutorisee, jamais publierPlan d'office",
       /const cible = await _planExtensionDuZip\(\);/.test(GEN) &&
-      /if \(X\.versionAutorisee\(cible\.id\)\) \{[\s\S]{0,400}X\.publierVersion\(\{ planId: cible\.id, blob: blob, nom: name \}\)/.test(GEN) &&
+      /if \(X\.versionAutorisee\(cible\.id\)\) \{[\s\S]{0,400}X\.publierVersion\(\{ planId: cible\.id, blob: blob, nom: name, progression: suivre \}\)/.test(GEN) &&
       (GEN.match(/X\.publierPlan\(/g) || []).length === 1 &&
-      /if \(choix === "nouveau"\) \{\s*await envoyer\(function\(\) \{ return X\.publierPlan\(/.test(GEN));
+      /if \(choix === "nouveau"\) \{\s*await envoyer\(function\(suivre\) \{ return X\.publierPlan\(/.test(GEN));
     t("Générateur : ZIP non reconnu ou homonymes → « Mettre à jour quel plan ☁️ ? » parmi les plans à gérer, avant tout plan neuf",
       /const aGerer = _plannerMode === "modifier" \? _plansExtAGerer\(X\) : \[\];/.test(GEN) &&
       /e\.type === "ext" && X\.versionAutorisee\(e\.id\)/.test(GEN) &&
-      /X\.publierVersion\(\{ planId: idChoisi, blob: blob, nom: name \}\)/.test(GEN) &&
+      /X\.publierVersion\(\{ planId: idChoisi, blob: blob, nom: name, progression: suivre \}\)/.test(GEN) &&
       /\} else if \(idChoisi === "" && peutNouveau\) \{\s*choix = "nouveau";/.test(GEN));
     t("🩸 Générateur : plusieurs homonymes → rien de présélectionné, validation inactive jusqu'au choix",
       /let valeur = ambigu \? null :/.test(GEN) && /if \(ambigu\) \{\s*liste\.selectedIndex = 0;\s*ok\.disabled = true;/.test(GEN) &&

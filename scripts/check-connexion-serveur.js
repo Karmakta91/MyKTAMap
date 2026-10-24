@@ -230,7 +230,8 @@ t("le module est précaché (sw.js > ASSETS_TO_CACHE)", /"\.\/js\/ktaExtensions\
 t("🩸 la mémoire de l'instance ne part PAS dans l'export de profil",
   PROF.indexOf("myktamap_server_connection_v1") < 0);
 // 🔒 Le module porte le GARDE des requêtes d'extension : un seul fetch, dans
-// requete() ; ni XHR, ni beacon, ni socket ; il ne contacte jamais le serveur
+// requete() ; XMLHttpRequest seulement dans requete() aussi, APRÈS ses contrôles (envoi avec avancement,
+// option progressionEnvoi) ; ni beacon, ni socket ; il ne contacte jamais le serveur
 // de lui-même (en OFF, requete refuse avant envoi : check-extensions.js).
 {
   const sansComm = MOD.replace(/\/\/.*$/gm, "");
@@ -240,7 +241,12 @@ t("🩸 la mémoire de l'instance ne part PAS dans l'export de profil",
   if (d >= 0) { const o = sansComm.indexOf("{", d); let pr = 0;
     for (let k = o; k < sansComm.length; k++) { if (sansComm[k] === "{") pr++; else if (sansComm[k] === "}") { pr--; if (pr === 0) { corps = sansComm.slice(d, k + 1); break; } } } }
   t("🩸 un seul fetch dans le module, et il vit dans requete() (le garde)", nFetch === 1 && /\bfetch\s*\(/.test(corps));
-  t("🩸 ni XHR, ni beacon, ni socket dans le module", !/XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(sansComm));
+  const nXhr = (sansComm.match(/XMLHttpRequest/g) || []).length;
+  const xhrGarde = (corps.match(/XMLHttpRequest/g) || []).length;
+  const iControle = corps.indexOf("origine refusée"), iXhr = corps.indexOf("new XMLHttpRequest");
+  t("🩸 XMLHttpRequest seulement dans requete(), après le contrôle d'origine (envoi avec avancement)",
+    nXhr === xhrGarde && (nXhr === 0 || (iControle > 0 && iXhr > iControle)));
+  t("🩸 ni beacon, ni socket dans le module", !/sendBeacon|WebSocket|EventSource/.test(sansComm));
 }
 t("ConfAdmin refuse l'export tant que le champ est invalide",
   /\$\("caDownload"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA) &&

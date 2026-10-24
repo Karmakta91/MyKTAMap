@@ -3874,15 +3874,18 @@ async function _genererZip() {
       const envoyer = async function(fn) {
         const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
         const t0 = Date.now();
+        let avancement = null;
         const tic = function() {
           const sec = Math.round((Date.now() - t0) / 1000);
           btnGen.disabled = true;
-          btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
-            { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
+          btnGen.textContent = "☁️ " + (typeof window.ktaTexteAvancementPublication === "function"
+            ? window.ktaTexteAvancementPublication(avancement, blob.size, t0)
+            : window.I18n.t("home.plans.info.publishEnCours",
+              { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") }));
         };
         tic();
         minuteur = setInterval(tic, 1000);
-        await fn();
+        await fn(function(a) { avancement = a; });
       };
       try {
         // ⚠️ Un ZIP d'un plan de l'extension rouvert ici devient une NOUVELLE VERSION de ce plan, jamais un
@@ -3898,8 +3901,8 @@ async function _genererZip() {
             choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionQuestion"),
               { okLabel: window.I18n.t("ext.publier.versionOk"), autre: autre });
             if (choix === true) {
-              await envoyer(function() {
-                return X.publierVersion({ planId: cible.id, blob: blob, nom: name });
+              await envoyer(function(suivre) {
+                return X.publierVersion({ planId: cible.id, blob: blob, nom: name, progression: suivre });
               });
               dire(window.I18n.t("ext.publier.versionFait"), "success");
             }
@@ -3914,8 +3917,8 @@ async function _genererZip() {
           if (aGerer.length) {
             const idChoisi = await _choisirPlanExtAMettreAJour(aGerer, (_plannerSourceZip && _plannerSourceZip.nom) || name);
             if (idChoisi) {
-              await envoyer(function() {
-                return X.publierVersion({ planId: idChoisi, blob: blob, nom: name });
+              await envoyer(function(suivre) {
+                return X.publierVersion({ planId: idChoisi, blob: blob, nom: name, progression: suivre });
               });
               dire(window.I18n.t("ext.publier.versionFait"), "success");
             } else if (idChoisi === "" && peutNouveau) {
@@ -3927,8 +3930,8 @@ async function _genererZip() {
           }
         }
         if (choix === "nouveau") {
-          await envoyer(function() { return X.publierPlan({ blob: blob, nom: name }); });
-          dire(window.I18n.t("ext.publier.fait"), "info");
+          await envoyer(function(suivre) { return X.publierPlan({ blob: blob, nom: name, progression: suivre }); });
+          dire(window.I18n.t("ext.publier.fait"), "success");
         }
       } catch (e) {
         console.warn("[Planner] publication :", e);

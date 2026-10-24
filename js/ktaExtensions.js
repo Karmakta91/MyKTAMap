@@ -314,8 +314,8 @@
   //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
   //     importAutorise: function () → bool,                 // permission (synchrone)
   //     exportAutorise: function (planId) → bool | { auteur }, // permission (synchrone), { auteur } = ses ajouts
-  //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
-  //     publierVersion: { autorise(idExt) → bool, publier({ id, blob, nom }) → Promise } // nouvelle version
+  //     publierPlan:    function ({ blob, nom, progression? }) → Promise  // Générateur, fiche ℹ️
+  //     publierVersion: { autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise } // nouvelle version
   //   })
   // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
   //    Prises d'INFORMATION : une erreur est journalisée et ignorée.
@@ -430,15 +430,50 @@
     }
     const init = Object.assign({}, o);
     delete init.sonde;
+    const progressionEnvoi = typeof init.progressionEnvoi === "function" ? init.progressionEnvoi : null;
+    delete init.progressionEnvoi;
     // Marque la requête pour le Service Worker (jamais de cache) et interdit le cache HTTP : une réponse de
     // backend n'a rien à faire hors ligne.
     init.cache = "no-store";
     const entetes = new Headers(init.headers || {});
     entetes.set("X-Kta-Ext", "1");
     init.headers = entetes;
+    // `requete` avec `progressionEnvoi(envoyes, total)` : fetch ne dit pas où en est l'envoi d'un corps, XMLHttpRequest
+    // si (upload.onprogress). Même URL contrôlée, mêmes en-têtes ; rend une Response comme fetch. Échec réseau =
+    // TypeError, annulation (init.signal) = AbortError.
+    function _envoiSuivi() {
+      return new Promise(function (resolve, reject) {
+        const x = new XMLHttpRequest();
+        const sig = init.signal;
+        if (sig && sig.aborted) { reject(new DOMException("annulée", "AbortError")); return; }
+        x.open(String(init.method || "GET").toUpperCase(), url.href, true);
+        x.responseType = "blob";
+        x.withCredentials = init.credentials === "include";
+        init.headers.forEach(function (v, k) { x.setRequestHeader(k, v); });
+        x.upload.onprogress = function (e) {
+          try { progressionEnvoi(e.loaded || 0, e.lengthComputable ? e.total : 0); } catch (er) { /* affichage seulement */ }
+        };
+        x.onload = function () {
+          const h = new Headers();
+          String(x.getAllResponseHeaders() || "").trim().split(/[\r\n]+/).forEach(function (l) {
+            const i = l.indexOf(":");
+            if (i > 0) { try { h.append(l.slice(0, i).trim(), l.slice(i + 1).trim()); } catch (er) { /* en-tête illisible */ } }
+          });
+          const vide = x.status === 204 || x.status === 304;
+          try { resolve(new Response(vide ? null : x.response, { status: x.status, statusText: x.statusText, headers: h })); }
+          catch (er) { reject(new TypeError("réponse illisible (" + x.status + ")")); }
+        };
+        x.onerror = function () { reject(new TypeError("Failed to fetch")); };
+        x.ontimeout = x.onerror;
+        x.onabort = function () { reject(new DOMException("annulée", "AbortError")); };
+        if (sig) sig.addEventListener("abort", function () { x.abort(); }, { once: true });
+        x.send(init.body);
+      });
+    }
     // 🩸 Un échec réseau isolé NE fait PAS passer en « down » : la garde refuserait toute requête jusqu'à la
     // prochaine sonde du module (synchro, positions, envois en attente bloqués après un simple raté). « down »
     // vient du réseau de l'appareil (offline) ou du module ; une requête figée, du veilleur de l'accueil.
+    if (progressionEnvoi && init.body && typeof XMLHttpRequest === "function") return _envoiSuivi();
     return fetch(url.href, init);
   }
 
@@ -677,10 +712,23 @@
   }
 
   // ── Publication depuis le Générateur ──
+  // args.progression({ etape, fait, total }) facultatif : avancement annoncé par l'extension. etape = "preparation"
+  // (fichier préparé sur l'appareil, octets), "envoi" (octets envoyés), "finalisation" (envoi fini, le serveur range).
+  // Une erreur de l'afficheur n'interrompt jamais la publication.
+  function _avancementSur(args) {
+    const f = args && typeof args.progression === "function" ? args.progression : null;
+    if (!f) return undefined;
+    return function (a) {
+      const e = a && typeof a === "object" ? a : {};
+      const etape = ["preparation", "envoi", "finalisation"].indexOf(e.etape) >= 0 ? e.etape : "envoi";
+      try { f({ etape: etape, fait: Number(e.fait) || 0, total: Number(e.total) || 0 }); } catch (er) { /* affichage seulement */ }
+    };
+  }
   function publierPlan(args) {
     const ext = _prise("publierPlan");
     if (!ext) return Promise.reject(new Error("aucune publication disponible"));
-    return Promise.resolve().then(function () { return ext.publierPlan(args); }).then(function (r) {
+    const a = Object.assign({}, args || {}, { progression: _avancementSur(args) });
+    return Promise.resolve().then(function () { return ext.publierPlan(a); }).then(function (r) {
       // Le plan publié rejoint tout de suite la liste de l'accueil.
       try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
       return r;
@@ -707,7 +755,7 @@
     if (!versionAutorisee(a.planId)) return Promise.reject(new Error("publication de version refusée"));
     const id = _idExtension(a.planId);
     return Promise.resolve().then(function () {
-      return ext.publierVersion.publier({ id: id, blob: a.blob, nom: a.nom });
+      return ext.publierVersion.publier({ id: id, blob: a.blob, nom: a.nom, progression: _avancementSur(a) });
     }).then(function (r) {
       try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
       return r;
