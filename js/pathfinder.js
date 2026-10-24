@@ -276,7 +276,14 @@
     graph.nodeLevels[idx].add(lvl);
   }
 
-  function _getOrAddNode(graph, x, y) {
+  // 🩸 `lvl` (multi-niveau) : seul un nœud qui porte DÉJÀ ce niveau numérique est réutilisé. Sans ce filtre, un
+  // sommet du 0 posé sur un sommet du −1 (deux galeries qui arrivent au même puits) devenait UN nœud à deux
+  // niveaux : l'itinéraire changeait d'étage là, sans jonction, à coût nul. Un point "transit" (milieu de
+  // jonction, en l'air dans un puits) ne fusionne avec rien. `lvl` absent ou multi-niveau coupé : fusion libre.
+  function _getOrAddNode(graph, x, y, lvl) {
+    const filtre = (lvl !== undefined && lvl !== null &&
+                    !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true));
+    if (filtre && lvl === "transit") return _nouveauNode(graph, x, y);
     // Bucket courant + 8 voisins (point juste au-delà d'une frontière de bucket).
     const ks = _bucketKey(x, y).split(",").map(Number);
     for (let dx = -1; dx <= 1; dx++) {
@@ -287,12 +294,17 @@
         for (let i = 0; i < bucket.length; i++) {
           const idx = bucket[i];
           const n = graph.nodes[idx];
-          if (Math.hypot(n.x - x, n.y - y) <= SPATIAL_MERGE_THRESHOLD) {
+          if (Math.hypot(n.x - x, n.y - y) <= SPATIAL_MERGE_THRESHOLD &&
+              (!filtre || (graph.nodeLevels[idx] && graph.nodeLevels[idx].has(lvl)))) {
             return idx;
           }
         }
       }
     }
+    return _nouveauNode(graph, x, y);
+  }
+
+  function _nouveauNode(graph, x, y) {
     const idx = graph.nodes.length;
     graph.nodes.push({ x: x, y: y });
     graph.edges.push([]);
@@ -386,17 +398,17 @@
       const lastPointIdxInRoad = road.points.length - 1;
       const partsDeniv = isJonction ? _partsDenivJonction(road.points) : null;
 
-      let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y);
+      let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y, isJonction ? fromLvl : segLevel);
       _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
 
       for (let i = 1; i < road.points.length; i++) {
         const p = road.points[i];
         const prevP = road.points[i - 1];
-        const idx = _getOrAddNode(graph, p.x, p.y);
         const isLast = (i === lastPointIdxInRoad);
         const nodeLvl = isJonction
           ? (isLast ? toLvl : "transit")
           : segLevel;
+        const idx = _getOrAddNode(graph, p.x, p.y, nodeLvl);
         _ajouterNiveauNode(graph, idx, nodeLvl);
 
         // Segment exclu (nœud sans arête) si une zone inaccessible le traverse (DUR, jamais relâché)
@@ -536,7 +548,7 @@
         if (!inter) continue;
 
         // Bucket-merge si un nœud existe déjà (croisements à 3+ routes).
-        const newIdx = _getOrAddNode(graph, inter.x, inter.y);
+        const newIdx = _getOrAddNode(graph, inter.x, inter.y, segA.level);
         // Le nœud virtuel hérite du niveau commun (nécessaire aux tests nœud↔segment suivants).
         if (_mlOn && segA.level !== "transit") {
           _ajouterNiveauNode(graph, newIdx, segA.level);
@@ -587,7 +599,7 @@
 
           // t ∈ ]0,05 ; 0,95[ : évite le double comptage avec les croisements aux extrémités.
           if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95) {
-            const projIdx = _getOrAddNode(graph, proj.x, proj.y);
+            const projIdx = _getOrAddNode(graph, proj.x, proj.y, segB.level);
             if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
             _addEdge(graph, ep.nodeIdx, projIdx, proj.dist);
             _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));

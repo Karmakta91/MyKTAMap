@@ -120,6 +120,36 @@ async function sortiesProposees(b, de) {
       !html.includes("PuitsInterne") && !html.includes("EscalierInterne"));
   }
 
+  // ── 3. 🩸 Deux galeries d'étages différents qui passent par le MÊME point ne communiquent pas ──
+  // Le graphe fusionnait deux sommets à ≤ 1,5 px sans regarder leur niveau : un sommet du 0 posé sur un
+  // sommet du −1 devenait un nœud à deux niveaux, et l'itinéraire changeait d'étage là, sans jonction, à
+  // coût nul. C'est exactement la situation d'un puits (les galeries des deux niveaux y arrivent).
+  {
+    const superposes = [
+      R("principal", [[0, 500], [200, 500], [400, 500]], { level: 0 }),
+      R("principal", [[200, 300], [200, 500], [200, 700]], { level: -1 })
+    ];
+    const pf = bac(superposes, []).win.Pathfinder;
+    let err = null;
+    try {
+      await pf.computeRoute([{ x: 20, y: 500, level: 0 }, { x: 200, y: 680, level: -1 }], {});
+    } catch (e) { err = e; }
+    t("🩸 sommets superposés de deux niveaux : aucun passage d'étage sans jonction (NO_PATH)",
+      !!err && err.code === "NO_PATH");
+    // Même dessin, plan à un seul niveau : le point commun reste un carrefour.
+    const mono = bac(superposes, [], { multiLevel: false }).win.Pathfinder;
+    const r = await mono.computeRoute([{ x: 20, y: 500 }, { x: 200, y: 680 }], {});
+    t("plan à un niveau : le sommet commun relie toujours les deux galeries (" + Math.round(r.totalDistance) + " px)",
+      Math.abs(r.totalDistance - 360) < 0.5);
+    // Jonction en tracé (pente douce) : ses bouts s'accrochent toujours à LEUR niveau.
+    const avecJonction = superposes.concat([R("jonction", [[400, 500], [400, 700]], { fromLevel: 0, toLevel: -1 }),
+                                            R("principal", [[200, 700], [400, 700]], { level: -1 })]);
+    const pj = bac(avecJonction, []).win.Pathfinder;
+    const rj = await pj.computeRoute([{ x: 20, y: 500, level: 0 }, { x: 200, y: 680, level: -1 }], {});
+    t("jonction en tracé : l'itinéraire 0 → −1 passe par elle (" + Math.round(rj.totalDistance) + " px)",
+      Math.abs(rj.totalDistance - (380 + 200 + 200 + 20)) < 0.5);
+  }
+
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 POI entre niveaux : tout passe");
   process.exit(ko ? 1 : 0);
 })();
