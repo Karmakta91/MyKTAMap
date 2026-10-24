@@ -374,6 +374,36 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 extension en erreur : refus, état inconnu, aucune exception",
       (await K2.rangerPlanExtension("ext_a", "f_secteur")) === false && (await K2.etatHorsLigneExtension("ext_a")) === null &&
       (await K2.garderPlanExtension("ext_a")) === false);
+    t("🩸 « Tout garder » d'un dossier, extension en erreur : échec AVEC la raison de l'extension, taille inconnue",
+      JSON.stringify(await K2.garderHorsLigneExtension("ext_a", {})) === '{"ok":false,"raison":"y"}' &&
+      (await K2.tailleHorsLigneExtension("ext_a")) === null);
+  }
+
+  // ── 6 bis ter (suite). « TOUT GARDER HORS LIGNE » D'UN DOSSIER : avancement, arrêt, taille ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_a" ? { id, type: "ext", extId: "A" } : id === "loc" ? { id, type: "local" } : null) };
+    t("sans extension : rien à garder, taille inconnue, aucune exception",
+      JSON.stringify(await K.garderHorsLigneExtension("ext_a", {})) === '{"ok":false,"raison":""}' &&
+      (await K.tailleHorsLigneExtension("ext_a")) === null);
+    const vus = [];
+    const ctl = { aborted: false };
+    K.register({ nom: "g1", apiVersion: 1, plans: { lister: () => [], charger: () => null, horsLigne: {
+      etat: () => "absent",
+      garder: (id, o) => { vus.push([id, o && o.signal === ctl]); o.onProgres(10, 40); o.onProgres("x", undefined); return Promise.resolve(true); },
+      taille: (id) => (id === "A" ? 4096 : -1) } } });
+    const prog = [];
+    const r = await K.garderHorsLigneExtension("ext_a", { signal: ctl, onProgres: (a, b) => prog.push([a, b]) });
+    t("garder(idExt, { signal, onProgres }) : id de l'extension, signal transmis, avancement nettoyé (nombres)",
+      r.ok === true && vus[0][0] === "A" && vus[0][1] === true && JSON.stringify(prog) === "[[10,40],[0,0]]");
+    t("taille(idExt) : octets rendus, plan local jamais demandé",
+      (await K.tailleHorsLigneExtension("ext_a")) === 4096 && (await K.tailleHorsLigneExtension("loc")) === null);
+    const { K: K3, w: w3 } = nouveauContexte(null);
+    w3.PlanRegistry = w.PlanRegistry;
+    K3.register({ nom: "g3", apiVersion: 1, plans: { lister: () => [], charger: () => null, horsLigne: {
+      etat: () => "absent", garder: (id) => Promise.resolve(id === "A"), taille: () => Number.NaN } } });
+    t("extension à l'ancienne (garder sans 2e argument) : marche ; taille non numérique → inconnue ; avancement absent toléré",
+      (await K3.garderHorsLigneExtension("ext_a")).ok === true && (await K3.tailleHorsLigneExtension("ext_a")) === null);
   }
 
   // ── 6 bis quinquies. ACTIONS SUR LA FICHE D'UN OBJET ──────

@@ -180,7 +180,7 @@ Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retomb
 
 🩸 **Pourquoi « partiel » existe (v1.87.1).** Le manifeste v1 listait tout ce qu'on avait **tenté**, échecs compris. Un plan dont le `plan-config.json` déclare un fichier non déployé restait donc **« incomplet — 9 sur 10 » à vie** : le bouton invitait à retélécharger sans fin un fichier qui n'existe pas, et ne disait **jamais lequel**. Constaté dès la première utilisation. Le manifeste v2 retient la liste des **manquants** ; l'état distingue désormais « interrompu » (à compléter) de « le serveur ne les a pas » (utilisable, et on affiche les chemins).
 
-🩸 **Le manifeste n'est écrit qu'à la FIN du téléchargement.** Une interruption laisse donc un cache sans manifeste → état « incomplet ». Et seul un **HTTP 200** est mis en cache : cacher un 404 rendrait le plan « complet » avec des fichiers morts, invisibles jusqu'au terrain.
+🩸 **Le manifeste n'est écrit qu'à la FIN du téléchargement.** Une interruption laisse donc un cache sans manifeste → état « incomplet ». L'ancien manifeste est **retiré au départ** d'un nouveau téléchargement (sauf reprise, ci-dessous) : une mise à jour interrompue laisse « incomplet », jamais « complet » sur un mélange d'ancienne et de nouvelle version. Et seul un **HTTP 200** est mis en cache : cacher un 404 rendrait le plan « complet » avec des fichiers morts, invisibles jusqu'au terrain.
 
 🩸 **Un seul point de vérité pour les tuiles.** `planOffline` n'énumère rien lui-même : il appelle `window.ktaTuilesV2Urls` (tiling.js), la fonction dont dérive aussi le rendu. Deux dérivations auraient divergé au premier changement de mise en page du générateur, et le symptôme aurait été un plan « téléchargé » mais troué — le bug qu'on corrige.
 
@@ -219,6 +219,38 @@ Les **validateurs** (`ETag`, `Last-Modified`) sont retenus **au téléchargement
 **Règle posée** : le `plan-config.json` fait autorité (il est *dans* le plan) ; `index.json` n'est qu'un indice utile **avant** le premier chargement. L'origine est tracée (`versionSrc`), et on n'écrit jamais `null`.
 
 🛡️ Vérifié par `scripts/check-plan-offline.js` §7-8 (qui **exécute** `verifierMaj` sur quatre scénarios, dont les deux où elle doit **refuser de conclure**) et `scripts/check-tiling.js` §12.
+
+## 8 bis. Tout un dossier : « 📥 Tout garder hors ligne »
+
+Le menu ⋮ d'un dossier de l'accueil (`js/dossierHorsLigne.js`, câblé par `homeLoader.js > _ouvrirMenuDossier` ; sur
+« Non classés », `_ouvrirMenuNonClasses` : les plans affichés du groupe) met
+chaque plan du dossier à jour sur l'appareil, **un plan à la fois** (mémoire) :
+
+| Plan | État lu | Action |
+|---|---|---|
+| serveur à dossier | `PlanOffline.statut` absent / incomplet | récupéré (`precacher`) |
+| | complet ou partiel, `verifierMaj` = `maj` | mis à jour |
+| | `ajour` · `inconnu` | sauté (« déjà là » ; `inconnu` compté « sans vérification possible ») |
+| ZIP de l'index | pas de copie gardée · HEAD conditionnel 200 / 304 | récupéré · mis à jour · sauté |
+| d'extension (☁️) | `KtaExtensions.etatHorsLigneExtension` absent / perime / garde | récupéré · mis à jour · sauté (`garderHorsLigneExtension`) |
+| local | copie mémorisée ou non | « déjà là » · échec (« utilise 💾 sur sa ligne ») |
+
+- **Confirmation** seulement au-delà de **200 Mo estimés** ou en **données mobiles** (`navigator.connection.type ===
+  "cellular"`, Chrome Android ; Safari et Firefox n'exposent pas l'API : pas de détection, pas de question).
+  Estimation : `HEAD` sur les fichiers du plan (au-delà de 40, moyenne d'un échantillon), 4 tuiles sondées × leur
+  nombre, `Content-Length` du ZIP, `plans.horsLigne.taille` d'une extension. Taille inconnue : dite dans la question.
+- **⏹ Arrêter** : le plan en cours est interrompu (`signal` jusqu'au `fetch`), les suivants comptés « non traités ».
+- 🩸 **Arrière-plan** : un mobile gèle la page, les requêtes en vol échouent ou restent muettes. Un plan qui échoue
+  (ou rate des fichiers) après un passage en arrière-plan ou hors réseau, ou qui ne progresse plus pendant 30 s au
+  premier plan, est **repris au retour** (deux fois au plus). `precacher(plan, onProgress, signal, { faits })` saute
+  alors les fichiers rangés par CETTE passe (avec leurs validateurs) — jamais un fichier trouvé en cache, qui peut
+  être de la version précédente.
+- Bilan : récupérés, mis à jour, déjà là, en échec (raison), non traités ; toast `success`, ou `warn` s'il y a un
+  échec ou un arrêt.
+
+🛡️ Vérifié par `scripts/smoke/checkup-dossier-hors-ligne.js` (plans serveur fictifs servis par interception :
+manquant, à jour, version plus récente, ZIP, local, introuvable, 2e passe sans aucun téléchargement, arrêt,
+> 200 Mo, données mobiles, reprise après arrière-plan) et `scripts/check-extensions.js` §6 bis ter (prise).
 
 ## 9. Rendre une région depuis les tuiles *(07/10/2026)*
 

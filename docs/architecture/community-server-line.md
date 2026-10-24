@@ -350,7 +350,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).
 - **Rangement et hors ligne d'un plan ☁️** (v2.9.0) : `plans.ranger(idExt, dossierExt | null) → Promise<bool>` diffuse le
   rangement fait à l'accueil (refus = le rangement reste local) ; `plans.horsLigne: { etat(idExt) → "garde"|"perime"|"absent",
-  garder(idExt) → Promise<bool> }` alimente le bouton de la ligne (💾 garder / ⬇️ nouvelle version / ✅ gardé, sans action).
+  garder(idExt[, opts]) → Promise<bool>, taille?(idExt) → Promise<octets | null> }` alimente le bouton de la ligne (💾 garder /
+  ⬇️ nouvelle version / ✅ gardé, sans action) et **« 📥 Tout garder hors ligne » d'un dossier** (`js/dossierHorsLigne.js`,
+  docs/TILING.md §8 bis) : `etat` = « une version plus récente existe ? » (`perime`), `garder(idExt, { signal,
+  onProgres(recus, total) })` (2e argument facultatif : sans lui, pas d'avancement et l'arrêt attend la fin du plan ;
+  une erreur rejetée porte la raison affichée au bilan, déjà traduite), `taille` (facultatif, 0 si à jour) pour la
+  confirmation au-delà de 200 Mo. Côté app : `KtaExtensions.garderHorsLigneExtension(registreId, opts) → { ok, raison }`
+  et `tailleHorsLigneExtension(registreId)` ; sans extension : `{ ok: false }` et `null`.
   Un plan ☁️ ouvert est gardé selon « Mémoriser le plan dans l'app » ; une copie déjà gardée est toujours mise à jour.
 - **Publier un plan local** (v2.9.0) : la fiche ℹ️ d'un plan local appelle `publierPlan({ blob, nom })` (archive gardée,
   sinon ZIP choisi), puis propose de remplacer la copie locale : `PlanRegistry.transferAssociatedData(ancien, nouveau)`

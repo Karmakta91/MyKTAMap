@@ -428,6 +428,7 @@ const ASSETS_TO_CACHE = [
   // 🩸 Chargé par index.html, donc précaché : le module qui rend un plan serveur
   // disponible hors-ligne doit l'être lui-même. Garde : scripts/check-html-integrite.js §5.
   "./js/planOffline.js",
+  "./js/dossierHorsLigne.js",
   "./js/homeLoader.js",
   "./js/homeProfile.js",
   "./js/homeConfig.js",
