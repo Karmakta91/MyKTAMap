@@ -6,7 +6,7 @@
     "🧠 Revenir à l'accueil ferme le plan et rend sa mémoire au téléphone (ta session est enregistrée, le suivi s'arrête) : moins de ralentissements quand on enchaîne les plans.",
     "🗺️ Légende du plan en Vue OSM et sur la carte OSM de l'accueil, en lecture seule, avec tes noms et tes couleurs.",
     "🎨 Couleurs harmonisées dans toute l'app : boutons principaux en bleu, violet du tuilage plus lisible ; boutons des rails plus faciles à toucher au doigt.",
-    "🖨️ PDF : si le téléphone ne peut pas produire la résolution demandée, l'app te dit laquelle tu obtiens.",
-    "🛠️ Corrigés : une jonction n'est plus convertie en lot, plus d'erreur en ouvrant plusieurs plans à la suite, la mini-carte de l'Affichage XL d'urgence ne disparaît plus après la question « image volumineuse »."
+    "🌍 Exports pour les SIG : le plan calé en GeoTIFF (avec ou sans tes dessins) et tes objets en GeoJSON, en Lambert 93 ou en WGS84 ; un GeoTIFF tourné se réimporte. 🖨️ Le PDF dit la résolution obtenue si le téléphone ne peut pas faire mieux.",
+    "🛠️ Corrigés : le KMZ emporte les structures, les types personnalisés et toutes les icônes, une jonction n'est plus convertie en lot, plus d'erreur en ouvrant plusieurs plans à la suite, la mini-carte de l'Affichage XL d'urgence ne disparaît plus après la question « image volumineuse »."
   ]
 }
