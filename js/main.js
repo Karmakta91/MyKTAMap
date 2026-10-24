@@ -766,9 +766,7 @@ window.ktaNiveauxOccupes = function() {
       });
     }
     if (Array.isArray(window._ktaDataPolylines)) {
-      window._ktaDataPolylines.forEach(function(entry) {
-        if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
-      });
+      _push(window._ktaDataPolylines);   // jonction de calque : fromLevel / toLevel portés par l'entrée
     }
     if (Array.isArray(window._ktaDataPolygons)) {
       window._ktaDataPolygons.forEach(function(entry) {

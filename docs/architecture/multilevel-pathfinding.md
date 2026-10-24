@@ -146,7 +146,10 @@ APP_CONFIG.multiLevel ←
 - `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
 - `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
 - `_applyLevelFilterToEditorPoints()` (editor.js) et `_applyLevelFilterToDataPoints()` (utils.js) — markers de session et des data layers (niveau + filtre de tags) via `utils.js > ktaMasquerMarqueur` : opacité 0 **et** icône inerte (`pointer-events: none`, hors tabulation), réappliquée par un écouteur `add` quand Leaflet recrée l'icône (calque recoché, culling viewport, marker filtré avant son `addTo`). 🩸 L'image `.kta-marker-img` hérite son `pointer-events` (`inherit`, jamais `auto`), sinon un point invisible reste cliquable.
-- `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
+- `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers. Une **jonction** de calque
+  (et ses deux ronds d'extrémité) suit la règle de la session et de l'itinéraire : visible si `fromLevel` OU `toLevel`
+  est affiché ; l'entrée du registre porte `fromLevel` / `toLevel` (lus aussi par la carte de chaleur et
+  `ktaNiveauxOccupes`). 🩸 Sans eux elle tombait au niveau 0 (`level` absent). `checkup-jonction-calque-niveau.js`.
 - `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
 - `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru
 - `_applyLevelFilterToImageLayers()` (map.js, **depuis v162**) — `map.addLayer`/`removeLayer` sur les `L.imageOverlay` selon le niveau. Sémantique différente des points/zones : on retire l'overlay du Leaflet layer control (pas juste de l'opacity à 0). La modale Niveaux fait autorité — force coché/décoché selon visibleLevels (override le toggle manuel du checkbox Leaflet).

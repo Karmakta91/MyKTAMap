@@ -1798,9 +1798,13 @@ window._applyLevelFilterToDataPoints = function() {
 
 // ── Polylignes des data layers ──────────
 // L'opacité d'origine est mémorisée pour être restaurée au réaffichage (elle peut être < 1).
+// ⚠️ Jonction (et ses ronds d'extrémité) : pas de `level`, visible si fromLevel OU toLevel est affiché — même
+// règle que la session (road.js > passeFiltreNiveau) et que l'itinéraire, qui la lit sur ses deux niveaux.
 function _filtreNiveauSurPolylineData(entry) {
   if (!entry || !entry.polyline) return;
-  let visible = _passeFiltreDataLevel(entry.level);
+  let visible = (entry.type === "jonction")
+    ? (_passeFiltreDataLevel(entry.fromLevel) || _passeFiltreDataLevel(entry.toLevel))
+    : _passeFiltreDataLevel(entry.level);
   if (visible && entry.type) {
     if (!_passeFiltreRuntimeType("roads", entry.type)) visible = false;
   }
@@ -2328,6 +2332,9 @@ function ajouterPointsDepuisJSON(url, layer) {
             type:        road.type,
             points:      road.points,
             level:       Number.isInteger(road.level) ? road.level : 0,
+            // jonction : niveaux reliés, lus par le filtre d'affichage, la carte de chaleur et les niveaux occupés
+            fromLevel:   Number.isInteger(road.fromLevel) ? road.fromLevel : undefined,
+            toLevel:     Number.isInteger(road.toLevel) ? road.toLevel : undefined,
             description: road.description || undefined,
             uid:         (typeof road.uid === "string" && road.uid) ? road.uid : undefined,
             updatedAt:   (typeof road.updatedAt === "number") ? road.updatedAt : undefined,
@@ -2354,13 +2361,16 @@ function ajouterPointsDepuisJSON(url, layer) {
                 weight:      3,
                 interactive: false
               }).addTo(layer);
-              // même level que la polyline : le filtre niveau masque aussi les ronds
+              // mêmes niveaux que la polyline : le filtre niveau masque aussi les ronds
               window._ktaDataPolylines.push({
                 polyline:        cm,
                 groupe:          layer,
                 // 🩸 `type` obligatoire : sans lui, le filtre runtime par type saute ces ronds (`if (entry.type)`)
+                // et le filtre de niveau ne lit pas fromLevel / toLevel
                 type:            road.type,
                 level:           entry.level,
+                fromLevel:       entry.fromLevel,
+                toLevel:         entry.toLevel,
                 origOpacity:     1,
                 // 🩸 disque REMPLI : le masquage doit couper fillOpacity
                 origFillOpacity: 1
