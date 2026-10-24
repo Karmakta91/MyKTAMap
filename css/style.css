@@ -3,7 +3,8 @@
    Le thème clair REDÉFINIT ces jetons (bloc « Thème clair » plus bas) au lieu de surcharger chaque règle.
    Rôles : texte / texte-2 / texte-3 (méta) ; accent = doré (titres, état actif), accent-texte = ce doré en
    texte ; interaction = liens et commandes ; primaire = fond du bouton d'action principale, bleu dans les deux
-   thèmes (décision produit). Couples texte / fond ≥ 4,5:1 : docs/architecture/ui.md (charte).
+   thèmes (décision produit) ; sur-accent = texte sombre posé sur un fond doré ou orange ; tuilage-v2 = violet
+   du tuilage V2 (Générateur). Couples texte / fond ≥ 4,5:1 : docs/architecture/ui.md (charte).
    🩸 Restent en dur, sans jeton : splash, visionneuse photo et mode urgence (palette propre, thème local) — un
    jeton y suivrait le thème global. */
 :root {
@@ -15,6 +16,7 @@
   --kta-texte-3:        #98a1b3;
   --kta-accent:         #f4c542;
   --kta-accent-texte:   #f4c542;
+  --kta-sur-accent:     #1a1f2e;
   --kta-interaction:    #8cb4ff;
   --kta-primaire:       #1a5fd6;
   --kta-primaire-survol:#2563eb;
@@ -26,6 +28,7 @@
   --kta-erreur:         #ff8c8c;
   --kta-violet:         #a78bfa;
   --kta-magenta:        #ff4ecb;
+  --kta-tuilage-v2:     #bb5fff;   /* 4,84:1 sur la surface (texte du libellé V2) */
   --kta-info-fond:      rgba(140, 180, 255, 0.06);
   --kta-info-bord:      rgba(140, 180, 255, 0.18);
   --kta-info-bord-fort: rgba(140, 180, 255, 0.40);
@@ -3916,6 +3919,23 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   line-height: 1.3;
 }
 
+/* Légende en lecture seule (cartes OSM) : bandeau hors du corps, qui se répartit en colonnes sur PC. */
+.kta-legende-lecture-tete {
+  padding: 8px 16px 0;
+}
+.kta-legende-lecture-tete p {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.kta-legende-avertissement {
+  padding: 6px 10px;
+  border: 1px solid var(--kta-accent-bord);
+  background: var(--kta-accent-fond);
+  border-radius: 6px;
+  color: var(--kta-texte);
+}
+
 
 /* ── Convertisseur JSON ── */
 
@@ -4681,7 +4701,7 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
 }
 .kta-osm-home-bandeau .kta-osm-home-fullscreen:hover {
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
 }
 /* Mobile : le sélecteur de plan seul sur la 1re ligne, opacité et boutons groupés sur la 2e (flex-wrap). */
 @media (max-width: 600px) {
@@ -6065,7 +6085,7 @@ html.kta-theme-light .kta-cfg-input option {
 .kta-planner-tiling-v2-row input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #b452ff;
+  accent-color: var(--kta-tuilage-v2);
   margin: 2px 0 0;
   flex: 0 0 auto;
 }
@@ -6078,7 +6098,7 @@ html.kta-theme-light .kta-cfg-input option {
   line-height: 1.4;
 }
 .kta-planner-tiling-v2-row strong {
-  color: #b452ff;
+  color: var(--kta-tuilage-v2);
   font-weight: 600;
 }
 .kta-planner-tiling-v2-row em {
@@ -8398,7 +8418,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   height: 36px;
   border-radius: 50%;
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   border: none;
   font-size: 17px;
   font-weight: 700;
@@ -10342,7 +10362,9 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   height: 100%;
   transform: scale(var(--kta-marker-scale, 1));
   transform-origin: center center;
-  pointer-events: auto;
+  /* ⚠️ inherit, jamais auto : un marqueur masqué par les filtres pose `pointer-events: none` sur l'icône
+     (utils.js > ktaMasquerMarqueur) ; une image en auto reprendrait le clic d'un point invisible. */
+  pointer-events: inherit;
   -webkit-user-drag: none;
   user-select: none;
 }
@@ -10357,7 +10379,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   padding: 0 4px;         /* respiration laterale compacte pour valeurs negatives */
   border-radius: 11px;    /* 50% du height = capsule arrondie (cercle pour 1 char) */
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;        /* legerement reduit pour rester dans le bouton 30×30 */
   font-weight: 800;
@@ -10446,7 +10468,7 @@ a.kta-level-btn {
 }
 .kta-niv-seg-btn.kta-actif {
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   border-color: #f4c542;
 }
 .kta-niv-seg-add {
@@ -10734,7 +10756,7 @@ a.kta-level-btn {
 }
 .kta-v2-warn-lead {
   background: rgba(180, 82, 255, 0.10);
-  border-left: 3px solid #b452ff;
+  border-left: 3px solid var(--kta-tuilage-v2);
   color: #e6c8ff;
   padding: 10px 12px;
   border-radius: 4px;
@@ -11795,6 +11817,40 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   }
 }
 
+/* Rails au doigt : marque à 36 px (décision produit : surface utile de la carte), zone de toucher portée à 44 px
+   de large par un ::before qui déborde de 8 px vers la carte. ⚠️ ::after est pris par la pastille de mode actif.
+   🩸 Deux conteneurs rognaient le débord : le rail (overflow-x: hidden, défilement) reçoit 8 px de marge
+   intérieure côté carte (pointer-events: none chez Leaflet : la marge seule ne prend aucun toucher) ; la barre
+   (overflow: hidden pour ses coins) passe en visible, ses coins repris par les boutons des extrémités.
+   Boutons empilés sans interstice : aucune extension verticale (elle prendrait le toucher du voisin). Paysage
+   bas exclu : pilules de 30 px en ligne, à overflow: hidden, où le débord mordrait sur le bouton voisin. */
+@media (pointer: coarse) and (min-height: 501px), (pointer: coarse) and (orientation: portrait) {
+  body.kta-refonte-v1 .leaflet-top.leaflet-left { padding-right: 8px !important; }
+  body.kta-refonte-v1 .leaflet-top.leaflet-right { padding-left: 8px !important; }
+  /* Ombre coupée : le rail la rognait entièrement ; sur les 8 px de marge elle se verrait en bande nette. */
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar { overflow: visible; box-shadow: none !important; }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar a:first-child,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control.leaflet-bar:first-child a:first-child {
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+  }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar a:nth-last-child(1 of :not(.kta-hidden)),
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control.leaflet-bar:last-child a:nth-last-child(1 of :not(.kta-hidden)) {
+    border-bottom-left-radius: 7px;
+    border-bottom-right-radius: 7px;
+  }
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar a { position: relative; }
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar a::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 44px;
+  }
+  body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-bar a::before { left: 0; }
+  body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-bar a::before { right: 0; }
+}
+
 /* ── Modale « Détails de la session » (clic sur les compteurs du header) ── */
 
 .kta-refonte-session-boite {
@@ -12461,6 +12517,48 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   line-height: 1.4;
 }
 
+/* Passage entre niveaux (poiJonction.js) : niveaux desservis et raccords à valider, dans le formulaire du POI. */
+.kta-poi-jonction {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--kta-bordure);
+  border-left: 3px solid var(--kta-magenta);
+  border-radius: 6px;
+}
+.kta-poi-jonction[hidden] { display: none; }
+.kta-poi-jonction-niveaux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 4px 0;
+}
+.kta-poi-jonction-niv,
+.kta-poi-jonction-raccord {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--kta-texte);
+  min-height: 32px;
+}
+.kta-poi-jonction-aide,
+.kta-poi-jonction-rayon {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--kta-texte-3);
+  line-height: 1.4;
+}
+.kta-poi-jonction-alerte {
+  margin: 4px 0;
+  font-size: 12.5px;
+  color: var(--kta-avert);
+}
+.kta-popup-point .kta-popup-jonction {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--kta-texte-2);
+}
+
 @media (max-width: 480px) {
   .kta-poi-photos-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -12654,6 +12752,7 @@ body.kta-theme-light {
   --kta-erreur:         #a01818;
   --kta-violet:         #5b3fb0;
   --kta-magenta:        #a0147a;
+  --kta-tuilage-v2:     #7a1fd6;   /* 6,6:1 sur la surface claire */
   --kta-info-fond:      rgba(30, 95, 153, 0.08);
   --kta-info-bord:      rgba(30, 95, 153, 0.30);
   --kta-info-bord-fort: rgba(70, 110, 200, 0.50);
@@ -15592,7 +15691,7 @@ body.kta-theme-light .kta-legend-label:focus {
 }
 .kta-planner-mode-btn.kta-actif {
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   border-color: rgba(0, 0, 0, 0.15);
   box-shadow: 0 1px 4px rgba(244, 197, 66, 0.35);
 }
@@ -17718,7 +17817,7 @@ html.kta-theme-light .kta-voice-aide-list li strong {
   width: 28px;
   height: 28px;
   background: #f4c542;
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   font-weight: 800;
   border-radius: 50%;
   box-shadow: 0 0 0 3px rgba(244, 197, 66, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -18483,7 +18582,7 @@ html.kta-theme-light .kta-planner-hist-nom { color: var(--kta-texte-2); }
 .kta-wiz-step.kta-wiz-fait { color: var(--kta-interaction); border-color: rgba(140, 180, 255, 0.45); }
 .kta-wiz-step.kta-wiz-passe { color: var(--kta-texte-3); border-style: dashed; }
 .kta-wiz-step.kta-wiz-actuel {
-  color: #1a1f2e;
+  color: var(--kta-sur-accent);
   background: #f4c542;
   border-color: #f4c542;
 }
@@ -18867,7 +18966,7 @@ html.kta-theme-light .zip-drop-sig { color: var(--kta-texte-3); }
 .kta-plans-view-btn { padding: 2px 9px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid transparent;
   background: transparent; color: var(--kta-texte-3); cursor: pointer; line-height: 1.5; transition: background 0.15s, color 0.15s; }
 .kta-plans-view-btn:hover { color: var(--kta-texte); }
-.kta-plans-view-btn.kta-actif { background: #f4c542; color: #1a1f2e; }
+.kta-plans-view-btn.kta-actif { background: #f4c542; color: var(--kta-sur-accent); }
 .kta-plans-head-btn { padding: 1px 7px; font-size: 12px; line-height: 1.6; border-radius: 6px; cursor: pointer;
   background: rgba(140, 180, 255, 0.08); border: 1px solid rgba(140, 180, 255, 0.25); color: var(--kta-texte-2); }
 .kta-plans-head-btn:hover { background: rgba(140, 180, 255, 0.16); color: var(--kta-texte); }
@@ -19391,7 +19490,7 @@ html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko { color: #b3261e
 .kta-readme-search::placeholder { color: var(--kta-texte-3); }
 .kta-readme-search-count { font-size: 12px; color: var(--kta-texte-3); white-space: nowrap; min-width: 3.5em; text-align: right; }
 .kta-readme-search-next { min-height: 38px; min-width: 44px; padding: 0 10px; flex-shrink: 0; }
-mark.kta-doc-mark { background: #f4c542; color: #1a1f2e; padding: 0 1px; border-radius: 2px; }
+mark.kta-doc-mark { background: #f4c542; color: var(--kta-sur-accent); padding: 0 1px; border-radius: 2px; }
 mark.kta-doc-mark.kta-doc-mark-current { outline: 2px solid #ff9933; outline-offset: 1px; }
 .kta-readme-toc-link.kta-readme-toc-dim { opacity: 0.35; }
 body.kta-theme-light .kta-readme-search,
@@ -19851,7 +19950,7 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: var(-
 .kta-ext-compte-qui { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kta-ext-compte-pseudo { font-size: 17px; font-weight: 700; color: var(--kta-texte); }
 .kta-ext-compte-role { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
-  color: #1a1f2e; background: #f4c542; }
+  color: var(--kta-sur-accent); background: #f4c542; }
 .kta-ext-compte-details { margin-top: 4px; font-size: 13px; color: var(--kta-texte-3); }
 /* Rubriques (Mon compte, Mes données perso, Organisation) : intitulé discret, puis ses actions. */
 .kta-ext-compte-groupe { margin: 14px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;

@@ -654,6 +654,10 @@
       _orientationListener = null;
     }
     _fermerBulle();
+    // La question « image volumineuse » appartient à cet écran : elle part avec lui (sinon elle reste au-dessus
+    // de l'app, et chaque réouverture en empile une autre).
+    const modaleImage = document.getElementById("kta-emergency-bigimg-modal");
+    if (modaleImage) modaleImage.remove();
     _destroyMiniMap();
     try { _overlay.remove(); } catch(e) {}
     _overlay = null;
@@ -806,12 +810,12 @@
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:14px; line-height:1.5;">' +
           '<p>' + t("emergency.bigimg.dims", { dims: info.dimsTxt, size: sizeTxt }) + '</p>' +
-          '<p style="color:#ff8a5c;">' + t("emergency.bigimg.warn", {
+          '<p style="color:var(--kta-avert);">' + t("emergency.bigimg.warn", {
             px: (MINIMAP_MAX_PIXELS / 1e6).toFixed(0),
             mo: (MINIMAP_MAX_FILE_BYTES / 1024 / 1024).toFixed(0)
           }) + '</p>' +
           '<p>' + t("emergency.bigimg.choix") + '</p>' +
-          '<p style="font-size:12px; color:#8892a4; margin-top:8px;">' +
+          '<p style="font-size:12px; color:var(--kta-texte-3); margin-top:8px;">' +
             t("emergency.bigimg.astuce") +
           '</p>' +
           '<div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">' +
@@ -824,7 +828,7 @@
               '<span class="kta-conv-sens-desc">' + t("emergency.bigimg.btnLoadDesc") + '</span>' +
             '</button>' +
           '</div>' +
-          '<label style="display:flex; gap:6px; align-items:center; margin-top:12px; font-size:12px; color:#8892a4; cursor:pointer;">' +
+          '<label style="display:flex; gap:6px; align-items:center; margin-top:12px; font-size:12px; color:var(--kta-texte-3); cursor:pointer;">' +
             '<input type="checkbox" id="kta-em-bigimg-remember"> ' + t("emergency.bigimg.remember") +
           '</label>' +
         '</div>' +
@@ -1045,6 +1049,9 @@
         return;
       }
       _afficherModaleImageVolumineuse(safety, function(choice) {
+        // 🩸 Écran fermé pendant la question : une carte montée dans un conteneur détaché resterait dans
+        // `_miniMap`, et la réouverture (`if (_miniMap) return`) n'aurait plus jamais de mini-carte.
+        if (!_overlay || !container.isConnected) return;
         const effectiveSource = (choice === "skip")
           ? { type: "none", reason: "user skip" }
           : source;

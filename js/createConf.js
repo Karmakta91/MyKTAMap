@@ -31,10 +31,14 @@ const PLANNER_DEFAULT_ICONS = {
   esf:      "icon/esf.png",
   cao:      "icon/cao.png",
   caf:      "icon/caf.png",
+  jes:      "icon/jes.png",
+  jpe:      "icon/jpe.png",
+  jps:      "icon/jps.png",
   vehicule: "icon/vehicule.png",
   elec:     "icon/elec.png",
   epure:    "icon/epure.png",
   ps:       "icon/ps.png",
+  psf:      "icon/psf.png",
   info:     "icon/info.png",
   chatiere: "icon/chatiere.png",
   passage:  "icon/passage.png",
@@ -827,9 +831,16 @@ function afficherPlanner() {
           // 3 décimales : au-delà, bruit de virgule flottante.
           put("pl_scale", Math.round(pxParM * 1000) / 1000);
         }
-        // Calage GeoTIFF = nord en haut, sans rotation : 2 points le décrivent exactement. Un point C hérité
-        // d'un plan précédent introduirait une déformation : on le vide.
-        ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
+        // Nord en haut : 2 points le décrivent exactement, et un point C hérité d'un plan précédent introduirait
+        // une déformation (vidé). Image tournée (similitude, tiffGeoref.js > _matrice) : le coin nord-ouest du
+        // fichier devient le point C : l'affine 3 points reproduit le fichier exactement, écart toléré à la
+        // similitude compris.
+        if (g.pointC) {
+          put("pl_geo_C_x", g.pointC.x); put("pl_geo_C_y", g.pointC.y);
+          put("pl_geo_C_coords", fmt(g.pointC.lat, g.pointC.lng));
+        } else {
+          ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
+        }
 
         // 🩸 Géoréf et échelle vivent dans des blocs `data-planner-advanced="1"`, masqués par le CSS tant que
         // le corps porte `data-planner-mode="simple"` (mode par défaut) : remplis mais invisibles. On bascule
@@ -1676,7 +1687,7 @@ window.ktaGenerateurMaj = async function(opts) {
 
 function _plannerZipStatus(msg, isErr) {
   const el = document.getElementById("kta-planner-zip-status");
-  if (el) { el.textContent = msg; el.style.color = isErr ? "#ff8080" : "#8cb4ff"; }
+  if (el) { el.textContent = msg; el.style.color = isErr ? "var(--kta-erreur)" : "var(--kta-interaction)"; }
 }
 
 function _guessMime(filename) {
@@ -2128,7 +2139,7 @@ function _ajouterImageLayer(prefill) {
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
         <button type="button" class="kta-planner-add-btn" id="${id}_calib_btn" disabled>${window.I18n.t("gen.calib.calibrerBtn")}</button>
         <button type="button" class="kta-planner-add-btn" id="${id}_calib_reset_btn" style="display:none;">${window.I18n.t("gen.calib.resetBtn")}</button>
-        <span id="${id}_calib_status" style="font-size:11.5px; color:#7dd87d; flex:1 1 100%;"></span>
+        <span id="${id}_calib_status" style="font-size:11.5px; color:var(--kta-ok); flex:1 1 100%;"></span>
       </div>
     </div>
   `;
@@ -2205,7 +2216,7 @@ function _ajouterImageLayer(prefill) {
       }
       const sameDims = Math.abs(info.width - planW) <= 2 && Math.abs(info.height - planH) <= 2;
       if (sameDims) {
-        hintEl.innerHTML = '<span style="color:#7dd87d;">' + window.I18n.t("gen.calib.hintMeme", { w: info.width, h: info.height }) + '</span>';
+        hintEl.innerHTML = '<span style="color:var(--kta-ok);">' + window.I18n.t("gen.calib.hintMeme", { w: info.width, h: info.height }) + '</span>';
         calibBtn.disabled = false;  // on autorise quand même au cas où
       } else {
         hintEl.innerHTML = '<span style="color:var(--kta-accent-texte);">' + window.I18n.t("gen.calib.hintDiff", { w: info.width, h: info.height, pw: planW, ph: planH }) + '</span>';
@@ -2560,8 +2571,8 @@ function _afficherStatutImportZip(kind, msg) {
   if (!el) return;
   el.textContent = msg;
   el.style.display = "block";
-  const colors = { success: "#6ce28a", error: "#ff8c8c", info: "#8cb4ff" };
-  el.style.color = colors[kind] || "#c8d0e0";
+  const colors = { success: "var(--kta-ok)", error: "var(--kta-erreur)", info: "var(--kta-interaction)" };
+  el.style.color = colors[kind] || "var(--kta-texte-2)";
 }
 
 // ── Erreur ──────────
@@ -3265,24 +3276,21 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
 // ── Libérer la mémoire avant le tuilage V2 ──────────
 // 🩸 Avec un plan ouvert (carte, tuiles, session), la génération d'une grande image passait de moins d'une minute
 // à plus d'une demi-heure : sous pression mémoire, le navigateur jette l'image source décodée et la redécode à chaque
-// tuile. Plan affiché (assistant « Mettre à jour le plan ») : on le dit et on le ferme ; carte gardée cachée derrière
-// l'accueil : fermée sans question (rien ne change à l'écran). Tout ce que le Générateur utilise est déjà chargé
+// tuile. Plan ouvert (assistant « Mettre à jour le plan ») : on le dit et on le ferme. Depuis l'accueil, la carte est
+// déjà démontée (main.js > afficherLoader) : rien à fermer. Tout ce que le Générateur utilise est déjà chargé
 // (fichiers du ZIP, calques de l'assistant, photos lues par l'id du plan).
-// → true (plan affiché, fermé) · false (rien à fermer, ou carte cachée libérée) · null (l'utilisateur refuse).
+// → true (plan fermé) · false (rien à fermer) · null (l'utilisateur refuse).
 async function _fermerPlanAvantTuilage() {
   if (typeof window.ktaFermerPlanPourMemoire !== "function") return false;
   if (!(window.L && window.map instanceof window.L.Map)) return false;
-  const affiche = typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche();
-  if (affiche) {
-    const ok = await window.ktaConfirm(window.I18n.t("gen.fermerPlan.texte"), {
-      titre: window.I18n.t("gen.fermerPlan.titre"),
-      okLabel: window.I18n.t("gen.fermerPlan.ok"),
-      cancelLabel: window.I18n.t("gen.fermerPlan.annuler")
-    });
-    if (!ok) return null;
-  }
+  const ok = await window.ktaConfirm(window.I18n.t("gen.fermerPlan.texte"), {
+    titre: window.I18n.t("gen.fermerPlan.titre"),
+    okLabel: window.I18n.t("gen.fermerPlan.ok"),
+    cancelLabel: window.I18n.t("gen.fermerPlan.annuler")
+  });
+  if (!ok) return null;
   const r = window.ktaFermerPlanPourMemoire();
-  return !!(r && r.ferme && affiche);
+  return !!(r && r.ferme);
 }
 
 // ── Génération du ZIP ──────────
@@ -3639,7 +3647,7 @@ async function _genererZip() {
           '<div class="kta-modal-texte">' +
             '<div id="kta-tiling-progress-text" style="margin-bottom:10px;">' + window.I18n.t("gen.v2prog.init") + '</div>' +
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-              '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+              '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:var(--kta-tuilage-v2); transition:width 0.2s;"></div>' +
             '</div>' +
             '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:14px 0 0; line-height:1.5;">' +
               window.I18n.t("gen.v2prog.warn") +
@@ -4229,14 +4237,14 @@ async function _kmzImpAnalyserFichier(file) {
   const stepResume = document.getElementById("kta-kmz-imp-step-resume");
   const stepConfig = document.getElementById("kta-kmz-imp-step-config");
   status.textContent = window.I18n.t("gen.kmz.extraction");
-  status.style.color = "#8cb4ff";
+  status.style.color = "var(--kta-interaction)";
   btnGen.disabled = true;
   stepResume.style.display = "none";
   stepConfig.style.display = "none";
 
   if (!window.KmzImport) {
     status.textContent = window.I18n.t("gen.kmz.moduleNonCharge");
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     return;
   }
 
@@ -4247,7 +4255,7 @@ async function _kmzImpAnalyserFichier(file) {
     // <Document><description> (kmzExport.js > genererKml) + replis (name, styles). KMZ tiers → refus net.
     if (!window.KmzImport.estKmzMyktamap(kmlDoc)) {
       status.textContent = window.I18n.t("gen.kmz.nonCompatible");
-      status.style.color = "#ff8c8c";
+      status.style.color = "var(--kta-erreur)";
       _kmzImpAfficherModaleNonCompatible(file);   // propose la conversion SIG
       return;
     }
@@ -4257,7 +4265,7 @@ async function _kmzImpAnalyserFichier(file) {
     // KMZ MyKTAMap sans GroundOverlay (exporté sans l'image du plan) : pas de repère pixel, pas d'import.
     if (overlays.length === 0) {
       status.textContent = window.I18n.t("gen.kmz.sansImage");
-      status.style.color = "#ff8c8c";
+      status.style.color = "var(--kta-erreur)";
       _kmzImpAfficherModaleErrSansImage();
       return;
     }
@@ -4270,7 +4278,7 @@ async function _kmzImpAnalyserFichier(file) {
       transform = window.KmzImport.buildTransform(base.corners, dims.width, dims.height);
     } catch (e) {
       status.textContent = window.I18n.t("gen.kmz.calibrageInvalide", { err: (e.message || e) });
-      status.style.color = "#ff8c8c";
+      status.style.color = "var(--kta-erreur)";
       return;
     }
 
@@ -4355,12 +4363,12 @@ async function _kmzImpAnalyserFichier(file) {
     stepConfig.style.display = "";
     btnGen.disabled = false;
     status.textContent = window.I18n.t("gen.kmz.pret");
-    status.style.color = "#6ce28a";
+    status.style.color = "var(--kta-ok)";
 
   } catch (e) {
     console.error("[KmzImport] Erreur analyse :", e);
     status.textContent = window.I18n.t("gen.commun.erreur", { err: (e.message || e) });
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
   }
 }
 
@@ -4475,14 +4483,14 @@ async function _kmzImpGenerer() {
 
   if (!name) {
     status.textContent = window.I18n.t("gen.imp.nomObligatoire");
-    status.style.color = "#ffb380";
+    status.style.color = "var(--kta-avert)";
     return;
   }
 
   btnGen.disabled = true;
   btnGen.textContent = window.I18n.t("gen.btn.generation");
   status.textContent = window.I18n.t("gen.imp.conversion");
-  status.style.color = "#8cb4ff";
+  status.style.color = "var(--kta-interaction)";
 
   try {
     const ingested = window.KmzImport.ingestPlacemarks(state.kmlDoc, state.transform, {
@@ -4511,7 +4519,7 @@ async function _kmzImpGenerer() {
           '<div class="kta-modal-texte">' +
             '<div id="kta-kmz-v2-progress-text" style="margin-bottom:10px;">' + window.I18n.t("gen.v2prog.init") + '</div>' +
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-              '<div id="kta-kmz-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+              '<div id="kta-kmz-v2-progress-bar" style="height:100%; width:0%; background:var(--kta-tuilage-v2); transition:width 0.2s;"></div>' +
             '</div>' +
             '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:14px 0 0; line-height:1.5;">' +
               window.I18n.t("gen.v2prog.warn") +
@@ -4576,14 +4584,14 @@ async function _kmzImpGenerer() {
       (s.outOfBounds > 0 ? " · " + window.I18n.t("gen.kmz.statsHorsBounds", { n: s.outOfBounds }) : "") +
       (s.multiGeometry > 0 ? " · " + window.I18n.t("gen.kmz.statsMultiGeo", { n: s.multiGeometry }) : "") +
       "</span>";
-    status.style.color = "#6ce28a";
+    status.style.color = "var(--kta-ok)";
     btnGen.textContent = window.I18n.t("gen.imp.telechargeRegenerer");
     btnGen.disabled = false;
     console.log("[KmzImport] Stats :", s);
   } catch (e) {
     console.error("[KmzImport] Erreur génération :", e);
     status.textContent = window.I18n.t("gen.commun.erreur", { err: (e.message || e) });
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     btnGen.textContent = window.I18n.t("gen.imp.genererBtn");
     btnGen.disabled = false;
   }
@@ -4761,11 +4769,11 @@ function _afficherImporterGpx(prefilledFile) {
 async function _gpxImpAnalyserFichier(file) {
   const status = document.getElementById("kta-gpx-imp-status");
   status.textContent = window.I18n.t("gen.gpx.analyse");
-  status.style.color = "#8cb4ff";
+  status.style.color = "var(--kta-interaction)";
 
   if (!window.GpxImport || !window.GpxIO) {
     status.textContent = window.I18n.t("gen.gpx.moduleNonCharge");
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     return;
   }
   try {
@@ -4777,7 +4785,7 @@ async function _gpxImpAnalyserFichier(file) {
     const bounds = window.GpxImport.extraireBoundsGps(parsed);
     if (!bounds || bounds.count === 0) {
       status.textContent = window.I18n.t("gen.gpx.noCoords");
-      status.style.color = "#ff8c8c";
+      status.style.color = "var(--kta-erreur)";
       return;
     }
 
@@ -4836,10 +4844,10 @@ async function _gpxImpAnalyserFichier(file) {
     document.getElementById("kta-gpx-imp-generer").disabled = false;
 
     status.textContent = window.I18n.t("gen.gpx.analyseOk");
-    status.style.color = "#6ce28a";
+    status.style.color = "var(--kta-ok)";
   } catch(err) {
     status.textContent = "❌ " + (err.message || err);
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
   }
 }
 
@@ -4863,14 +4871,14 @@ async function _gpxImpGenerer() {
 
   if (!name) {
     status.textContent = window.I18n.t("gen.imp.nomObligatoire");
-    status.style.color = "#ffb380";
+    status.style.color = "var(--kta-avert)";
     return;
   }
 
   btnGen.disabled = true;
   btnGen.textContent = window.I18n.t("gen.btn.generation");
   status.textContent = window.I18n.t("gen.imp.conversion");
-  status.style.color = "#8cb4ff";
+  status.style.color = "var(--kta-interaction)";
 
   let v2Overlay = null;
   if (tilingV2On) {
@@ -4885,7 +4893,7 @@ async function _gpxImpGenerer() {
         '<div class="kta-modal-texte">' +
           '<div id="kta-gpx-v2-progress-text" style="margin-bottom:10px;">' + window.I18n.t("gen.v2prog.init") + '</div>' +
           '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-            '<div id="kta-gpx-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+            '<div id="kta-gpx-v2-progress-bar" style="height:100%; width:0%; background:var(--kta-tuilage-v2); transition:width 0.2s;"></div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -4930,10 +4938,10 @@ async function _gpxImpGenerer() {
       oob:  (s.outOfBounds || 0),
       skipped: (s.skipped || 0)
     });
-    status.style.color = "#6ce28a";
+    status.style.color = "var(--kta-ok)";
   } catch(err) {
     status.textContent = window.I18n.t("gen.gpx.erreurGeneration", { err: (err.message || err) });
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
   } finally {
     if (v2Overlay && v2Overlay.parentNode) v2Overlay.remove();
     btnGen.textContent = window.I18n.t("gen.imp.genererBtn");
@@ -5161,7 +5169,7 @@ async function _sigImpAnalyserFichier(file) {
   const T      = function(k, p) { return window.I18n.t(k, p); };
   const status = document.getElementById("kta-sig-imp-status");
   const btnGen = document.getElementById("kta-sig-imp-generer");
-  status.style.color = "#8cb4ff";
+  status.style.color = "var(--kta-interaction)";
   status.textContent = T("gen.sig.analyse");
   btnGen.disabled = true;
   // Nouveau fichier : réinitialisation SILENCIEUSE (tout l'écran est neuf).
@@ -5169,7 +5177,7 @@ async function _sigImpAnalyserFichier(file) {
 
   if (!window.SigImport) {
     status.textContent = T("gen.sig.moduleNonCharge");
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     return;
   }
 
@@ -5193,7 +5201,7 @@ async function _sigImpAnalyserFichier(file) {
       document.getElementById("kta-sig-imp-step-resume").style.display = "none";
       document.getElementById("kta-sig-imp-step-map").style.display    = "none";
       document.getElementById("kta-sig-imp-step-config").style.display = "none";
-      status.style.color = "#ff8c8c";
+      status.style.color = "var(--kta-erreur)";
       status.innerHTML = (crs.code === "vide")
         ? T("gen.sig.err.vide")
         : T("gen.sig.err.crsProjete", {
@@ -5329,7 +5337,7 @@ async function _sigImpAnalyserFichier(file) {
     status.textContent = "";
   } catch(err) {
     _sigImportState = null;
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     const cle = String(err && err.message || "");
     status.textContent = cle.indexOf("sig.err.") === 0
       ? T(cle) + (err.crsNom ? " (" + err.crsNom + ")" : "") + (err.n ? " (" + err.n + ")" : "")
@@ -5341,7 +5349,7 @@ async function _sigImpAnalyserFichier(file) {
 // sont proposées dans le même select, en deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où
 // ranger l'objet. Idem pour les tracés (front de taille = structure en polyligne).
 const _SIG_TYPES = {
-  points:    ["default", "pa", "pb", "pc", "pe", "ps", "salle", "chatiere", "passage", "danger", "info"],
+  points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "info"],
   lignes:    ["chemin", "secondaire", "principal"],
   polygones: ["remblais", "eau", "effondrement", "inaccessible"]
 };
@@ -5471,7 +5479,7 @@ async function _sigImpGenerer() {
 
   const name = (document.getElementById("kta-sig-imp-name").value || "").trim();
   if (!name) {
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     status.textContent = T("gen.sig.err.nomRequis");
     return;
   }
@@ -5481,7 +5489,7 @@ async function _sigImpGenerer() {
 
   btnGen.disabled = true;
   btnGen.textContent = T("gen.sig.generation");
-  status.style.color = "#8cb4ff";
+  status.style.color = "var(--kta-interaction)";
   status.textContent = T("gen.sig.generation");
 
   // Déclaré AVANT le try : le finally doit pouvoir le retirer, même en cas d'échec.
@@ -5499,7 +5507,7 @@ async function _sigImpGenerer() {
         '<div class="kta-modal-texte">' +
           '<div id="kta-sig-v2-progress-text" style="margin-bottom:10px;">' + T("gen.v2prog.init") + '</div>' +
           '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
-            '<div id="kta-sig-v2-progress-bar" style="height:100%; width:0%; background:#8cb4ff; transition:width 0.2s;"></div>' +
+            '<div id="kta-sig-v2-progress-bar" style="height:100%; width:0%; background:var(--kta-interaction); transition:width 0.2s;"></div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -5545,12 +5553,12 @@ async function _sigImpGenerer() {
     a.click();
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 
-    status.style.color = "#6ce28a";
+    status.style.color = "var(--kta-ok)";
     status.textContent = T("gen.sig.zipGenere", {
       p: result.stats.points, l: result.stats.roads, z: result.stats.zones
     });
   } catch(err) {
-    status.style.color = "#ff8c8c";
+    status.style.color = "var(--kta-erreur)";
     const cleErr = String(err && err.message || "");
     status.textContent = cleErr.indexOf("sig.err.") === 0
       ? T(cleErr)

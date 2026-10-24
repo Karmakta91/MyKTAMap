@@ -86,7 +86,9 @@ function initTracking() {
   markerPosition = L.marker(latlng, { icon: iconeTracker }).addTo(window.map);
   polyline       = L.polyline([], { weight: 3 }).addTo(window.map);
 
-  window.map.setView(latlng, 0);
+  // ⚠️ Cadrage d'ouverture NON animé : un zoom animé (fitBounds → 0) finit dans une image suivante et remettrait
+  // la carte sur cette cible par-dessus la vue retrouvée (js/vuePlan.js), posée juste après.
+  window.map.setView(latlng, 0, { animate: false });
 
   window.map.on('click', function(e) {
     if (!window.modeRecalage) return;

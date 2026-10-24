@@ -1,0 +1,4 @@
+Contact: mailto:contact@myktamap.fr
+Expires: 2027-10-22T23:00:00.000Z
+Preferred-Languages: fr, en
+Canonical: https://myktamap.fr/.well-known/security.txt

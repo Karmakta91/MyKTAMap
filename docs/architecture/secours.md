@@ -1530,11 +1530,20 @@ Sections de la page :
 1. **INFOS** — nom scenario + nom plan + date génération
 2. **LOCALISATION** — centre GPS + bbox + 2 liens cliquables (`pdf.textWithLink` vers OSM + Google Maps)
 3. **EQUIPES SUR PLACE** — pour chaque équipe : nom + membres + `surfaceGps` (si renseigné) + lien OSM individuel par équipe
-4. **POI CRITIQUES** — tag `entree_plan` + `sortieurgence` + `cao`/`caf`, groupés par tag (lecture `window.listePoints`)
+4. **POI CRITIQUES** — `_poisAcces()` (session + calques), groupés par tag dans l'ordre de `CRIT_TAGS` : accès ouverts
+   (`entree_plan` et libellés « entrée », `cao`, `peo`, `eso` — ceux de la Sortie d'urgence) puis fermés (`CRIT_FERMES` :
+   `caf`, `pef`, `esf`, `psf`), un POI une seule fois ; libellés `secours.surf.crit*`
 
 ### 79.5 Étape C (v1.41.0) — `genererBriefingPompiersPDF()` dédié
 
-> 🩸 **29/09/2026 (audit Secours)** — le bloc « POI critiques » était **toujours vide** : il lisait `window.listePoints` (un `let` racine d'`editor.js`, jamais sur `window`), `p.tag` au lieu de `tags[]`, et un tag `sortieurgence` qui n'existe pas. Il lit maintenant session + calques du plan (`getEditorPoints` + `getAllEmbeddedPoints`, comme `sortieUrgence.js`) et liste les accès **ouverts** (`entree_plan` + libellés « entrée », `cao`, `peo`, `eso` — les mêmes que la Sortie d'urgence) puis **fermés** (`caf`, `pef`, `esf`), un POI une seule fois. Clés `critPeo/Eso/Pef/Esf` ajoutées, `critSortie` retirée. Vérifié sur le PDF réel généré en navigateur.
+> 🩸 Le bloc « POI critiques » lit `getEditorPoints` + `getAllEmbeddedPoints` et le champ `tags[]` — jamais `window.listePoints` (un `let` d'`editor.js`, absent de `window`) ni `p.tag` : il restait vide. Un tag ajouté à `CRIT_TAGS` demande sa clé `secours.surf.crit*` dans les 3 dicos.
+
+> 🔒 Les passages **entre niveaux** (`jes`, `jpe`, `jps`) ne sont **jamais** des accès de surface : ni dans `CRIT_TAGS`
+> / `CRIT_FERMES`, ni dans les sorties de `sortieUrgence.js` (garde-fou `scripts/check-poi-jonction.js`). Un `peo` /
+> `eso` qui dessert aussi des étages (`niveaux`) reste un accès. Le chemin d'une évacuation ou d'une sortie peut
+> emprunter un escalier ou un puits à échelons ; un puits sans échelon (`jps`) n'entre jamais dans le graphe du
+> Secours ni de la sortie d'urgence (pas de case « corde » hors de la fenêtre d'itinéraire).
+> Détail : `multilevel-pathfinding.md` §26.11.
 
 Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async → PDF dédié 1+ pages via `_drawBriefingSurfacePage`. Bouton 🚒 dans :
 
@@ -1630,7 +1639,7 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
   résultat est `contourne: true` : classé après les chemins entiers, et la fenêtre l'écrit sous la meilleure sortie —
   `sortie.brancard.contourne` avec options brancard, `sortie.coupee.alerte` (écart chiffré) sans options. Bac :
   `scripts/check-guidage.js` §12.
-- **Accès** : `_accesSurface(s)` dédoublonne entrées/sorties (`_memeAcces`) et rattache `a.poi` = POI d'accès (`_poisAcces`, `CRIT_TAGS`) à < 15 m, même niveau ; `CRIT_FERMES` = caf/pef/esf → « à ouvrir par la surface ».
+- **Accès** : `_accesSurface(s)` dédoublonne entrées/sorties (`_memeAcces`) et rattache `a.poi` = POI d'accès (`_poisAcces`, `CRIT_TAGS`) à < 15 m, même niveau ; `CRIT_FERMES` = caf/pef/esf/psf → « à ouvrir par la surface ».
 - **Engagés** : `_bilanEngages(s)` (équipes de la phase courante) → `{ engages, sousTerre, manquants, inconnus[] }`. `_demanderRemontes` : valeur jamais préremplie. `_chef(g)` : chef libre si pas de membres.
 - **Durées** : `reglagesDuree.vitesseApprocheKmh` (défaut 3). `_dureeEquipeMin(s, distM, nbWp, { g, path, raccords })` : part du trajet hors polygone à la vitesse d'approche, le reste + raccords (étape × 2) à la vitesse de fouille. `g.heureRetour` « HH:MM » → `_heureRetourMs` (prochaine occurrence après le départ) prime dans `_etatRetour` (`imperatif: true`).
 - **Recalage** : `_recalerSurEtape` — rôle `equipe` sans `_previousRole`, statuts `STATUTS_SUR_PLACE` ; `RECALAGE_SILENCE_M = 30`. `recalerTrackerSurPoint(…, { sansReplan: true })` → `_notifierRecalage(x, y, "point", opts)` → `_onTrackerRecale` coche l'étape et n'ouvre pas la question de recalcul.

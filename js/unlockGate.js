@@ -203,7 +203,7 @@
         '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
         (libre ? '' : '<p class="kta-unlock-info">' + t("gate.info") + '</p>') +
         // Liens sortants seulement : aucun impact CSP.
-        '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
+        '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:var(--kta-texte-3); line-height:1.7;">' +
           t("gate.contact") +
         '</div>' +
         (libre
@@ -263,12 +263,12 @@
         '<div class="kta-unlock-lockout">' +
           '<div class="kta-unlock-lockout-titre">' + t("gate.lockout.titre") + '</div>' +
           '<div class="kta-unlock-lockout-msg">' + t("gate.lockout.msg") + '</div>' +
-          '<p style="margin:8px 0 2px; font-size:12px; color:#a8b3c8;">' + t("gate.lockout.attente") + '</p>' +
+          '<p style="margin:8px 0 2px; font-size:12px; color:var(--kta-texte-3);">' + t("gate.lockout.attente") + '</p>' +
           '<div class="kta-unlock-lockout-countdown" id="kta-unlock-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
           '<div class="kta-unlock-lockout-hint">' +
             t("gate.lockout.hint") +
           '</div>' +
-          '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
+          '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:var(--kta-texte-3); line-height:1.7;">' +
             t("gate.contact") +
           '</div>' +
           // Doc lisible pendant le verrou ; ne change rien au verrouillage.

@@ -21,7 +21,7 @@ const { chromium } = require("playwright");
 const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const server = require("./server.js");
 
-const URL = "http://127.0.0.1:8123/index.html";
+const URL = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123) + "/index.html";
 
 // Le HOME est derrière la gate : on pré-remplit les clés de déverrouillage.
 const LS = {

@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 // =====================================================================
 // check-icon-catalog.js — BLOQUANT (pré-commit) : confronte au catalogue `js/map.js > TAGS_BUILTIN` les
-// 9 autres tables qui connaissent les tags built-in, dans les deux sens (oubli = fonction muette, tag
+// 8 autres tables qui connaissent les tags built-in, dans les deux sens (oubli = fonction muette, tag
 // inventé = promesse que la carte ne tient pas).
 //   A/B. `osmHomePreview.js > TAGS_BUILTIN_HOME` (filet si map.js absent) : ni manquant ni inventé.
 //        Sans icône, un point en Vue OSM tombe sur un petit rond jaune.
@@ -11,7 +11,7 @@
 //   D. 🩸 `map.js` expose la globale au TOP-LEVEL : dans `creerIcones()`, elle n'existe qu'après le
 //      chargement d'un plan, trop tard pour le HOME.
 //   E1. tables tag → valeur : PLANNER_DEFAULT_ICONS, EDITOR_TAG_LABELS, LEGENDE_LABELS, DEFAULT_LABELS.icones.
-//   E2. GROUPES, GROUPES2, GROUPES_ICONES : un tag hors groupe disparaît de la légende/l'export sans erreur.
+//   E2. GROUPES (légende), GROUPES_ICONES (export) : un tag hors groupe disparaît de la légende/l'export sans erreur.
 //   E3. précache `sw.js > ASSETS_TO_CACHE` + fichier présent : un oubli ne manque que HORS-LIGNE.
 //   E4. `editor.tag.<tag>` et `legendui.label.<tag>` dans les 3 dicos.
 // Volontairement hors contrôle : `sessionExporter.js > EMOJI_PAR_TAG` (format de sortie de l'export
@@ -216,8 +216,6 @@ confronter("`DEFAULT_LABELS.icones` (" + LC + ")",
 // ── E2. Groupes (ordre et catégories de la légende / de l'export) ──────
 confronter("`GROUPES` (" + LEG + ")",  tagsDeGroupes(lsrc, "const GROUPES = [", LEG),
   "Ce tag n'apparaîtrait dans AUCUN groupe de ≡ Légende : invisible, sans erreur.");
-confronter("`GROUPES2` (" + LEG + ")", tagsDeGroupes(lsrc, "const GROUPES2 = [", LEG),
-  "Même effet dans la seconde vue de la légende.");
 confronter("`GROUPES_ICONES` (" + EXP + ")", tagsDeGroupes(xsrc, "const GROUPES_ICONES = [", EXP),
   "Le tag manquerait à la légende des exports PNG/PDF — un relevé imprimé sans sa clef de lecture.");
 
@@ -274,7 +272,7 @@ if (nonLisibles.length) {
 // ── Verdict ──────
 if (!echecs.length) {
   console.log("\n🎉 Catalogue d'icônes cohérent : " + clesMap.size + " tags, " +
-              "9 tables confrontées, précache et 3 dicos compris");
+              "8 tables confrontées, précache et 3 dicos compris");
   process.exit(0);
 }
 console.log("\n============================================================");

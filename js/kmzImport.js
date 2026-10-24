@@ -298,7 +298,7 @@
       // ExtendedData MyKTAMap (mkm:level, mkm:fromLevel, mkm:toLevel), symétrique de
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
-        const out = { level: null, fromLevel: null, toLevel: null };
+        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -306,6 +306,13 @@
           if (name.indexOf("mkm:") !== 0) continue;
           const valEl = el.querySelector("value");
           if (!valEl) continue;
+          // Passage entre niveaux : « 0,-1 » ; une copie (dossier d'un autre de ses niveaux) n'est pas un point.
+          if (name === "mkm:niveaux") {
+            const l = (valEl.textContent || "").split(",").map(function(s) { return Number(s.trim()); });
+            if (l.length && l.every(Number.isInteger)) out.niveaux = l;
+            continue;
+          }
+          if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
           const v = parseInt((valEl.textContent || "").trim(), 10);
           if (!Number.isFinite(v)) continue;
           if (name === "mkm:level")     out.level     = v;
@@ -322,6 +329,7 @@
 
       // Point en descendant DIRECT (pas dans un MultiGeometry).
       const pointCoords = pm.querySelector(":scope > Point > coordinates");
+      if (pointCoords && _mkmData.copie) { stats.skipped++; continue; }
       if (pointCoords) {
         const pts = _parseCoords(pointCoords.textContent);
         if (pts.length >= 1) {
@@ -335,6 +343,7 @@
               tags: [tag]
             };
             if (Number.isInteger(_mkmData.level)) _pt.level = _mkmData.level;
+            if (_mkmData.niveaux) _pt.niveaux = _mkmData.niveaux;
             out.points.push(_pt);
             stats.kept++;
           } else {

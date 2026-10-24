@@ -7,14 +7,15 @@
 // tiffGeoref.js — lecture d'un GeoTIFF calé (QGIS) pour le Générateur : image + calage d'un coup.
 // Le navigateur ne décode pas le TIFF : pixels décodés ici puis ré-encodés en PNG (canvas.toBlob).
 // Calage : ModelPixelScale (33550) + ModelTiepoint (33922) ou ModelTransformation (34264),
-//   EPSG via GeoKeyDirectory (34735) → plan.georef pointA/pointB (similitude 2 points, exacte
-//   pour une image nord en haut sans rotation).
-// ⚠️ Sous-ensemble lu, pas de geotiff.js générique (décision produit) : IFD 0, bandes, PlanarConfig 1,
-//   8 bits, LZW / Deflate / brut, predictor 1-2. Tout le reste est REFUSÉ EN LE NOMMANT (clé
-//   tiff.err.*), jamais deviné en silence.
+//   EPSG via GeoKeyDirectory (34735) → plan.georef pointA/pointB (nord en haut), + pointC pour une
+//   matrice tournée qui est une similitude ; une image étirée ou cisaillée est refusée.
+// ⚠️ Sous-ensemble lu, pas de geotiff.js générique (décision produit) : IFD 0, bandes OU tuiles,
+//   PlanarConfig 1, 8 bits, LZW / Deflate / brut, predictor 1-2. Tout le reste est REFUSÉ EN LE NOMMANT
+//   (clé tiff.err.*), jamais deviné en silence. Les tuiles sont lues parce que l'export GeoTIFF de
+//   l'app (js/geotiffExport.js) en écrit, comme QGIS en TILED=YES.
 // 🩸 Projections : window.SigImport.L93 / .WEBMERC uniquement, aucune copie locale des maths.
 // Expose : window.TiffGeoref { estTiff, lire, EXT_ACCEPTEES, _interne } — 100 % local.
-// Garde-fou : scripts/check-geotiff.js
+// Garde-fous : scripts/check-geotiff.js, scripts/check-export-sig.js
 
 (function() {
   "use strict";
@@ -29,7 +30,7 @@
     LARGEUR: 256, HAUTEUR: 257, BITS: 258, COMPRESSION: 259, PHOTO: 262,
     STRIP_OFF: 273, SPP: 277, ROWS_PER_STRIP: 278, STRIP_CNT: 279,
     PLANAR: 284, PREDICTOR: 317, COLORMAP: 320, TILE_W: 322, TILE_H: 323,
-    EXTRA: 338,
+    TILE_OFF: 324, TILE_CNT: 325, EXTRA: 338,
     PIXEL_SCALE: 33550, TIEPOINT: 33922, TRANSFORM: 34264, GEO_KEYS: 34735
   };
 
@@ -41,6 +42,9 @@
   };
 
   const COMPRESSIONS_LUES = [1, 5, 8, 32946];
+
+  // Écart relatif toléré entre une matrice de calage et une similitude (échelles, orthogonalité) : cf _matrice.
+  const TOLERANCE_SIMILITUDE = 0.01;
 
   // ── Lecture de l'IFD 0 ───────────────────────────────────────────────────
   // En-tête de 8 octets puis entrées de 12 octets (tag, type, nombre, valeur-ou-offset).
@@ -178,6 +182,20 @@
     return buf;
   }
 
+  // Un bloc compressé (bande ou tuile) → octets bruts, prédicteur annulé.
+  async function _decompresser(brut, comp, attendu, octetsParLigne, spp, nbLignes, pred, ou) {
+    let dec;
+    if (comp === 1)      dec = brut;
+    else if (comp === 5) dec = _lzw(brut, attendu);
+    else                 dec = await _inflate(brut);
+    if (dec.length < attendu) {
+      const e = new Error("tiff.err.bandeCourte"); e.detail = ou + " : " + dec.length + " < " + attendu; throw e;
+    }
+    // ⚠️ En brut, `dec` est une vue sur le fichier : copie avant d'y annuler le prédicteur.
+    if (pred === 2) dec = _predictor2(comp === 1 ? dec.slice(0, attendu) : dec, octetsParLigne, spp, nbLignes);
+    return dec;
+  }
+
   // ── Décodage des pixels → RGBA ───────────────────────────────────────────
   async function _decoderPixels(buf, ifd) {
     const t = ifd.tags;
@@ -185,9 +203,6 @@
 
     const w = g(T.LARGEUR, 0), h = g(T.HAUTEUR, 0);
     if (!w || !h) throw new Error("tiff.err.dimsAbsentes");
-
-    // Refus francs et nommés :
-    if (t[T.TILE_W] || t[T.TILE_H]) throw new Error("tiff.err.tuile");
 
     const planar = g(T.PLANAR, 1);
     if (planar !== 1) throw new Error("tiff.err.planar");
@@ -218,31 +233,51 @@
     const pred = g(T.PREDICTOR, 1);
     if (pred !== 1 && pred !== 2) { const e = new Error("tiff.err.predictor"); e.detail = String(pred); throw e; }
 
-    const offs = t[T.STRIP_OFF], cnts = t[T.STRIP_CNT];
-    if (!offs || !cnts || !offs.length) throw new Error("tiff.err.bandesAbsentes");
-
-    const rps = g(T.ROWS_PER_STRIP, h);
     const octetsParLigne = w * spp;
-
     const plein = new Uint8Array(octetsParLigne * h);
-    let ecrit = 0;
-    for (let s = 0; s < offs.length; s++) {
-      const lignes = Math.min(rps, h - s * rps);
-      if (lignes <= 0) break;
-      const attendu = octetsParLigne * lignes;
-      const brut = new Uint8Array(buf, offs[s], Math.min(cnts[s], buf.byteLength - offs[s]));
+    const morceau = function(off, cnt) {
+      return new Uint8Array(buf, off, Math.max(0, Math.min(cnt, buf.byteLength - off)));
+    };
 
-      let dec;
-      if (comp === 1)                        dec = brut;
-      else if (comp === 5)                   dec = _lzw(brut, attendu);
-      else                                   dec = await _inflate(brut);
-
-      if (dec.length < attendu) { const e = new Error("tiff.err.bandeCourte"); e.detail = s + " : " + dec.length + " < " + attendu; throw e; }
-      if (pred === 2) _predictor2(dec, octetsParLigne, spp, lignes);
-      plein.set(dec.subarray(0, attendu), ecrit);
-      ecrit += attendu;
+    if (t[T.TILE_W] || t[T.TILE_H]) {
+      // Tuiles de taille pleine (celles du bord complétées), rangées ligne par ligne ; un index tronqué
+      // est refusé (tiff.err.tuile) plutôt que de laisser des trous noirs.
+      // 🩸 Le prédicteur repart à chaque ligne de TUILE (largeur tw), pas de l'image.
+      const tw = g(T.TILE_W, 0), th = g(T.TILE_H, 0);
+      const offs = t[T.TILE_OFF], cnts = t[T.TILE_CNT];
+      const nx = tw ? Math.ceil(w / tw) : 0, ny = th ? Math.ceil(h / th) : 0;
+      if (!tw || !th || !offs || !cnts || offs.length < nx * ny || cnts.length < nx * ny) {
+        throw new Error("tiff.err.tuile");
+      }
+      const ligneTuile = tw * spp, attendu = ligneTuile * th;
+      for (let ty = 0; ty < ny; ty++) {
+        for (let tx = 0; tx < nx; tx++) {
+          const n = ty * nx + tx;
+          const dec = await _decompresser(morceau(offs[n], cnts[n]), comp, attendu, ligneTuile, spp, th, pred,
+                                          "tuile " + n);
+          const lignes = Math.min(th, h - ty * th), utile = Math.min(tw, w - tx * tw) * spp;
+          for (let l = 0; l < lignes; l++) {
+            plein.set(dec.subarray(l * ligneTuile, l * ligneTuile + utile),
+                      (ty * th + l) * octetsParLigne + tx * tw * spp);
+          }
+        }
+      }
+    } else {
+      const offs = t[T.STRIP_OFF], cnts = t[T.STRIP_CNT];
+      if (!offs || !cnts || !offs.length) throw new Error("tiff.err.bandesAbsentes");
+      const rps = g(T.ROWS_PER_STRIP, h);
+      let ecrit = 0;
+      for (let s = 0; s < offs.length; s++) {
+        const lignes = Math.min(rps, h - s * rps);
+        if (lignes <= 0) break;
+        const attendu = octetsParLigne * lignes;
+        const dec = await _decompresser(morceau(offs[s], cnts[s]), comp, attendu, octetsParLigne, spp, lignes, pred,
+                                        String(s));
+        plein.set(dec.subarray(0, attendu), ecrit);
+        ecrit += attendu;
+      }
+      if (ecrit !== plein.length) { const e = new Error("tiff.err.pixelsManquants"); e.detail = ecrit + " / " + plein.length; throw e; }
     }
-    if (ecrit !== plein.length) { const e = new Error("tiff.err.pixelsManquants"); e.detail = ecrit + " / " + plein.length; throw e; }
 
     const rgba = new Uint8ClampedArray(w * h * 4);
     const inverse = (photo === 0);   // 0 = MinIsWhite : le 0 est du BLANC
@@ -278,16 +313,42 @@
   }
 
   // Fonction pixel → coordonnées du CRS du fichier (matrice, ou Scale + Tiepoint).
-  function _mondeDePixel(t) {
+  // `rotationPermise` (contrôle de l'export GeoTIFF seulement) : la matrice entière est appliquée.
+  // Matrice 4×4 en ligne : X = [0]·px + [1]·py + [3], Y = [4]·px + [5]·py + [7].
+  // Une matrice TOURNÉE est acceptée si c'est une SIMILITUDE (rotation + échelle uniforme) : les deux axes
+  // du pixel, ramenés en mètres au sol, ont la même longueur et sont perpendiculaires, à TOLERANCE_SIMILITUDE
+  // près, sans miroir. Au-delà (image étirée ou cisaillée) : refus nommé (tiff.err.rotation).
+  // ⚠️ La tolérance ne perd rien : `calage` pose 3 coins (A, B, C) que l'affine de l'app reproduit
+  // exactement. 1 % couvre les GeoTIFF Lambert 93 exportés par l'app (≤ 0,4 % mesurés : son calage
+  // équirectangulaire n'est pas conforme) et refuse une vraie déformation.
+  function _matrice(t, epsg) {
     const mt = t[T.TRANSFORM];
-    if (mt && mt.length >= 8) {
-      // Matrice 4×4 en ligne ; [1] et [4] = rotation/cisaillement. Le géoréf 2 points ne décrit
-      // qu'une image nord en haut : une rotation est refusée, pas aplatie en silence.
-      const echelle = Math.max(Math.abs(mt[0]), Math.abs(mt[5])) || 1;
-      if (Math.abs(mt[1]) > echelle * 1e-6 || Math.abs(mt[4]) > echelle * 1e-6) {
-        throw new Error("tiff.err.rotation");
-      }
-      return function(px, py) { return { X: mt[0] * px + mt[3], Y: mt[5] * py + mt[7] }; };
+    if (!mt || mt.length < 8) return null;
+    // Degrés → mètres au sol, mêmes constantes que KmzExport.buildTransform (latitude du pixel (0, 0)).
+    let kx = 1, ky = 1;
+    if (epsg === 4326 || epsg === 4171) { kx = 111320 * Math.cos(mt[7] * Math.PI / 180); ky = 110540; }
+    const ax = mt[0] * kx, ay = mt[4] * ky, bx = mt[1] * kx, by = mt[5] * ky;
+    const s1 = Math.hypot(ax, ay), s2 = Math.hypot(bx, by);
+    const ref = Math.max(Math.abs(mt[0]), Math.abs(mt[5])) || 1;
+    return {
+      mt: mt,
+      // Échelle par axe dans l'unité du CRS (mètre, ou degré en 4326).
+      sx: Math.hypot(mt[0], mt[4]), sy: Math.hypot(mt[1], mt[5]),
+      tournee: Math.abs(mt[1]) > ref * 1e-6 || Math.abs(mt[4]) > ref * 1e-6,
+      similitude: s1 > 0 && s2 > 0 && Math.abs(s1 / s2 - 1) <= TOLERANCE_SIMILITUDE &&
+                  Math.abs((ax * bx + ay * by) / (s1 * s2)) <= TOLERANCE_SIMILITUDE &&
+                  (ax * by - ay * bx) < 0   // sans miroir : le Y monde descend quand la ligne croît
+    };
+  }
+
+  // `rotationPermise` (contrôles de l'export seulement) : la matrice entière, même déformée.
+  function _mondeDePixel(t, rotationPermise, epsg) {
+    const m = _matrice(t, epsg);
+    if (m) {
+      const mt = m.mt;
+      // Nord en haut (termes croisés nuls) : accepté tel qu'avant, la similitude ne concerne que la rotation.
+      if (!rotationPermise && m.tournee && !m.similitude) throw new Error("tiff.err.rotation");
+      return function(px, py) { return { X: mt[0] * px + mt[1] * py + mt[3], Y: mt[4] * px + mt[5] * py + mt[7] }; };
     }
 
     const ps = t[T.PIXEL_SCALE], tp = t[T.TIEPOINT];
@@ -324,11 +385,13 @@
   // Calage complet : tags → `plan.georef`.
   // 🩸 Le y d'un plan se compte depuis le HAUT (`convertCoord`) : pointA = (0, hauteur) = SUD-OUEST,
   // pointB = (largeur, 0) = NORD-EST — le couple de sigImport.genererZipMyktamap et de
-  // KmzExport.buildTransform.
+  // KmzExport.buildTransform. Image TOURNÉE (similitude, cf _matrice) : + pointC = (0, 0), coin nord-ouest
+  // du fichier ; avec A et B, trois coins non alignés que l'affine de l'app reproduit exactement.
   function calage(ifd, w, h) {
     const t = ifd.tags;
     const epsg = _epsgDeGeoKeys(t[T.GEO_KEYS]);
-    const monde = _mondeDePixel(t);
+    const monde = _mondeDePixel(t, false, epsg);
+    const mat = _matrice(t, epsg);
     const versLl = _versWgs84(epsg);
 
     const sw = monde(0, h), ne = monde(w, 0);
@@ -342,9 +405,10 @@
       throw new Error("tiff.err.calageHorsTerre");
     }
 
-    const ps = t[T.PIXEL_SCALE], mt = t[T.TRANSFORM];
-    const sx = ps ? Math.abs(ps[0]) : (mt ? Math.abs(mt[0]) : null);
-    const sy = ps ? Math.abs(ps[1]) : (mt ? Math.abs(mt[5]) : null);
+    // Échelle par axe : longueur du vecteur colonne (une matrice tournée répartit l'échelle sur 2 termes).
+    const ps = t[T.PIXEL_SCALE];
+    const sx = ps ? Math.abs(ps[0]) : (mat ? mat.sx : null);
+    const sy = ps ? Math.abs(ps[1]) : (mat ? mat.sy : null);
 
     // 🩸 L'unité du CRS n'est pas toujours le mètre au sol :
     //   4326 = degrés → pas d'emprise en mètres ; 3857 = mètre Mercator gonflé de 1/cos(lat)
@@ -357,15 +421,21 @@
     }
     const mParPx = (degres || sx == null) ? null : sx * k;
 
+    const georef = {
+      pointA: { x: 0, y: h, lat: llSw.lat, lng: llSw.lng },
+      pointB: { x: w, y: 0, lat: llNe.lat, lng: llNe.lng }
+    };
+    if (mat && mat.tournee) {
+      const nw = monde(0, 0), llNw = versLl(nw.X, nw.Y);
+      georef.pointC = { x: 0, y: 0, lat: llNw.lat, lng: llNw.lng };
+    }
     return {
       epsg: epsg,
       metresParPixel: mParPx,
       largeurM: mParPx ? mParPx * w : null,
       hauteurM: (degres || sy == null) ? null : sy * k * h,
-      georef: {
-        pointA: { x: 0, y: h, lat: llSw.lat, lng: llSw.lng },
-        pointB: { x: w, y: 0, lat: llNe.lat, lng: llNe.lng }
-      }
+      tournee: !!(mat && mat.tournee),
+      georef: georef
     };
   }
 
@@ -420,8 +490,9 @@
     EXT_ACCEPTEES: EXT_ACCEPTEES,
     // Pour le harnais Node : testables sans DOM, contrairement à lire().
     _interne: { lireIfd0: _lireIfd0, decoderPixels: _decoderPixels, calage: calage,
-                lzw: _lzw, epsgDeGeoKeys: _epsgDeGeoKeys, TAGS: T }
+                lzw: _lzw, epsgDeGeoKeys: _epsgDeGeoKeys, mondeDePixel: _mondeDePixel, matrice: _matrice,
+                TOLERANCE_SIMILITUDE: TOLERANCE_SIMILITUDE, TAGS: T }
   };
 
-  console.log("[TiffGeoref] module chargé (LZW/Deflate/brut, RGB8 en bandes)");
+  console.log("[TiffGeoref] module chargé (LZW/Deflate/brut, RGB8 en bandes ou tuiles)");
 })();

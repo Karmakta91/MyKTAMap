@@ -193,13 +193,13 @@
     if (diff.missing.length === 0) {
       html +=
         '<div class="kta-mem-section" style="border-color:var(--kta-ok-bord); background:var(--kta-ok-fond);">' +
-          '<div class="kta-mem-section-titre" style="color:#a6d785;">' + _t("verdict.ok.titre") + '</div>' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-ok);">' + _t("verdict.ok.titre") + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ok.line", { count: diff.present.length, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
         '</div>';
     } else {
       html +=
         '<div class="kta-mem-section" style="border-color:var(--kta-erreur-bord); background:var(--kta-erreur-fond);">' +
-          '<div class="kta-mem-section-titre" style="color:#f46b6b;">' + _t("verdict.ko.titre") + '</div>' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-erreur);">' + _t("verdict.ko.titre") + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ko.line", { count: diff.missing.length, total: total, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ko.coverage", { pct: presentPct, present: diff.present.length, total: total }) + '</div>' +
           '<div style="margin-top:10px;">' +
@@ -334,7 +334,7 @@
       if (!bodyEl.isConnected) return;
       bodyEl.innerHTML =
         '<div class="kta-mem-section" style="border-color:var(--kta-erreur-bord); background:var(--kta-erreur-fond);">' +
-          '<div class="kta-mem-section-titre" style="color:#f46b6b;">' + _t("error.titre") + '</div>' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-erreur);">' + _t("error.titre") + '</div>' +
           '<div class="kta-mem-line">' + _escapeHtml(e.message || String(e)) + '</div>' +
           '<div class="kta-mem-line kta-mem-dim" style="margin-top:6px;">' +
             _t("error.hint", { link: '<a href="/killsw.html" style="color:var(--kta-interaction);">' + _t("error.resetLink") + '</a>' }) +
@@ -358,7 +358,7 @@
       if (status && status.isConnected) {
         status.textContent = _t("refetch.okCount", { count: okCount }) +
                              (failCount > 0 ? " · " + _t("refetch.failCount", { count: failCount }) : "");
-        status.style.color = failCount > 0 ? "#f4c542" : "#a6d785";
+        status.style.color = failCount > 0 ? "var(--kta-accent-texte)" : "var(--kta-ok)";
       }
       // Minuteur suivi par _lc : annulé si la modale se ferme avant la re-vérification.
       const scheduleReload = function() {
@@ -375,7 +375,7 @@
       release({ text: _t("refetch.retry") });
       if (status && status.isConnected) {
         status.textContent = "❌ " + (e.message || String(e));
-        status.style.color = "#f46b6b";
+        status.style.color = "var(--kta-erreur)";
       }
     }
   }

@@ -12,7 +12,8 @@
 //   4. Les trois listes sont lues d'un bloc AVANT toute écriture, sinon une conversion intra-famille relit
 //      une liste amputée et perd des objets.
 //   5. Les objets déjà du bon type sont SAUTÉS, ni en échec ni cause de refus.
-//   6. `itinerary` (trajet calculé) n'est ni source ni cible : le convertir en ferait une donnée du relevé.
+//   6. `itinerary` (trajet calculé) et `jonction` (niveaux reliés) ne sont ni sources ni cibles, même dans un
+//      lot : convertis, l'un deviendrait une donnée du relevé, l'autre un tracé qui ne relie plus rien.
 // =====================================================================
 "use strict";
 
@@ -182,12 +183,23 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
     h.journal.record.length === 0);
   t("lot : zéro conversion → aucune écriture", h.journal.rendus.roads === undefined);
 
-  // Une jonction reclassée perd fromLevel/toLevel, comme en conversion simple.
+  // 🩸 Une jonction n'est jamais convertie, même glissée dans un lot : devenue tracé ordinaire, elle perdrait
+  // fromLevel / toLevel et le passage d'itinéraire entre niveaux (la fiche ne propose pas Convertir pour elle).
   const jonc = { type: "jonction", fromLevel: 0, toLevel: -1, points: ligne(0, 0, 5) };
-  h.R = [jonc];
-  CV.convertirLot([{ famille: "roads", obj: jonc }], "structures", "front-2");
-  t("lot : fromLevel/toLevel retirés au reclassement",
-    h.S.length === 2 && h.S.some((s) => s.type === "front-2" && s.fromLevel === undefined));
+  const autre = { type: "chemin", points: ligne(0, 10, 5) };
+  h.R = [jonc, autre];
+  const bj = CV.convertirLot([{ famille: "roads", obj: jonc }, { famille: "roads", obj: autre }],
+    "structures", "front-2");
+  t("🩸 lot : la jonction est SAUTÉE (comptée à part), le reste converti",
+    bj.convertis === 1 && bj.sautes === 1 && bj.echecs === 0);
+  t("🩸 lot : la jonction reste une jonction avec ses niveaux",
+    h.R.length === 1 && h.R[0].type === "jonction" && h.R[0].fromLevel === 0 && h.R[0].toLevel === -1);
+  t("lot : fromLevel/toLevel absents de l'objet reclassé",
+    h.S.some((s) => s.type === "front-2" && s.fromLevel === undefined && s.toLevel === undefined));
+  const iti = { type: "itinerary", points: ligne(0, 20, 5) };
+  h.R = h.R.concat([iti]);
+  const bi = CV.convertirLot([{ famille: "roads", obj: iti }], "structures", "front-2");
+  t("lot : `itinerary` non plus n'est jamais converti", bi.convertis === 0 && bi.sautes === 1);
 }
 
 // ── 5. Cibles d'un lot : UNION, pas intersection ──────
@@ -219,7 +231,9 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   // règle interne à _candidats(), vérifiée sur la source
   const SRC = fs.readFileSync("js/selectionMulti.js", "utf8");
   t("🩸 `itinerary` est exclu de la sélection (c'est le trajet calculé)",
-    /EXCLUS\s*=\s*\{\s*itinerary:\s*true\s*\}/.test(SRC));
+    /EXCLUS\s*=\s*\{[^}]*itinerary:\s*true/.test(SRC));
+  t("🩸 `jonction` est exclue de la sélection (ses niveaux ne survivent pas à une conversion)",
+    /EXCLUS\s*=\s*\{[^}]*jonction:\s*true/.test(SRC));
   t("sélection : les objets à moins de 2 points sont écartés",
     SRC.indexOf("obj.points.length < 2") >= 0);
 }

@@ -3149,7 +3149,7 @@
     boite.style.maxWidth = "560px";
     boite.style.height = "auto";
     boite.style.maxHeight = "90vh";
-    boite.style.borderLeft = "6px solid #8cb4ff";
+    boite.style.borderLeft = "6px solid var(--kta-interaction)";
 
     const sc = payload.scenario || {};
     const planSrc = payload.plan || {};
@@ -3321,10 +3321,10 @@
     boite.style.maxWidth = "520px";
     boite.style.height = "auto";
     boite.style.maxHeight = "90vh";
-    boite.style.borderLeft = ok ? "6px solid #6ee287" : "6px solid #ff8c8c";
+    boite.style.borderLeft = ok ? "6px solid var(--kta-ok)" : "6px solid var(--kta-erreur)";
 
     let inner = '<div class="kta-readme-modal-header">' +
-                  '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
+                  '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0;">' +
                     (ok ? t("secours.import.resOkTitre") : t("secours.import.resKoTitre")) +
                   '</h2>' +
                   '<button class="kta-readme-modal-close" data-action="close-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
@@ -3352,7 +3352,7 @@
     } else {
       const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
       inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
-               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-family:monospace; font-size:13px; word-break:break-word;">' +
+               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; font-family:monospace; font-size:13px; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:var(--kta-texte-3); font-size:13px;">' +
@@ -3895,7 +3895,7 @@
     boite.style.maxWidth = "580px";
     boite.style.height = "auto";
     boite.style.maxHeight = "92vh";
-    boite.style.borderLeft = "6px solid #6ee287"; // vert = action de fusion
+    boite.style.borderLeft = "6px solid var(--kta-ok)"; // vert = action de fusion
 
     const dateExport = payload.exportedAt
                        ? new Date(payload.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
@@ -3926,7 +3926,7 @@
         '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:var(--kta-texte);">' +
           '<strong style="color:var(--kta-accent-texte);">' + t("secours.conflit.titre", { n: conflits.length }) + '</strong> ' + t("secours.conflit.intro") +
           '<ul style="margin:8px 0 4px 18px; padding:0; font-size:13px; line-height:1.6;">' + lignes + extra + '</ul>' +
-          '<div style="font-size:12px; color:#a8b3c8; margin-top:6px;">' +
+          '<div style="font-size:12px; color:var(--kta-texte-3); margin-top:6px;">' +
             t("secours.conflit.politique") +
           '</div>' +
         '</div>';
@@ -3975,7 +3975,7 @@
         warningBlock +
         _blocEcartVersion(payload.plan) +
 
-        '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid #8cb4ff; padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:var(--kta-texte-2);">' +
+        '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid var(--kta-interaction); padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:var(--kta-texte-2);">' +
           t("secours.rapportPreview.snapshotHint") +
         '</div>' +
 
@@ -4023,10 +4023,10 @@
     boite.style.maxWidth = "520px";
     boite.style.height = "auto";
     boite.style.maxHeight = "90vh";
-    boite.style.borderLeft = ok ? "6px solid #6ee287" : "6px solid #ff8c8c";
+    boite.style.borderLeft = ok ? "6px solid var(--kta-ok)" : "6px solid var(--kta-erreur)";
 
     let inner = '<div class="kta-readme-modal-header">' +
-                  '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
+                  '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0;">' +
                     (ok ? t("secours.rapportRes.okTitre") : t("secours.import.resKoTitre")) +
                   '</h2>' +
                   '<button class="kta-readme-modal-close" data-action="close-rapport-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
@@ -4045,8 +4045,8 @@
                '</div>';
       // Alertes « aide / victime » en clair, avant tout le reste.
       if (Array.isArray(stats.alertes) && stats.alertes.length > 0) {
-        inner += '<div class="kta-tx-err" style="background:rgba(255,68,68,0.14); border:1px solid #ff4444; border-radius:6px;' +
-                 ' padding:10px 12px; margin:10px 0; color:#ffb3b3; font-size:13px; line-height:1.5;">🚨 ' +
+        inner += '<div class="kta-tx-err" style="background:rgba(255,68,68,0.14); border:1px solid var(--kta-erreur); border-radius:6px;' +
+                 ' padding:10px 12px; margin:10px 0; font-size:13px; line-height:1.5;">🚨 ' +
                  stats.alertes.map(_escHtml).join('<br>🚨 ') + '</div>';
       }
       if (Array.isArray(stats.avis) && stats.avis.length > 0) {
@@ -4067,7 +4067,7 @@
     } else {
       const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
       inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
-               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-size:13px; line-height:1.5; word-break:break-word;">' +
+               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; font-size:13px; line-height:1.5; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:var(--kta-texte-3); font-size:13px;">' +
@@ -5219,7 +5219,7 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100014";
     overlay.innerHTML =
-      '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid #8cb4ff;">' +
+      '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid var(--kta-interaction);">' +
         '<div class="kta-readme-modal-header">' +
           '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">📤 ' + _escHtml(apercuTitre) + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
@@ -5667,7 +5667,7 @@
     }
 
     const cont = document.createElement("div");
-    cont.style.cssText = "position:fixed;left:-99999px;top:0;width:1200px;height:800px;background:#fff;z-index:-1;pointer-events:none;";
+    cont.style.cssText = "position:fixed;left:-99999px;top:0;width:1200px;height:800px;background:#fff;z-index:-1;pointer-events:none;"; // couleur-inline-ok : rendu hors écran exporté en image, hors thème
     document.body.appendChild(cont);
 
     let map = null;
@@ -5724,7 +5724,7 @@
             L.marker([g.surfaceGps.lat, g.surfaceGps.lng], {
               icon: L.divIcon({
                 className: "",
-                html: '<div style="background:' + hex + ';color:#fff;' +
+                html: '<div style="background:' + hex + ';color:#fff;' + // couleur-inline-ok : étiquette de carte, blanc sur la couleur de l'équipe
                       'padding:3px 8px;border-radius:4px;font-size:11px;' +
                       'font-weight:600;white-space:nowrap;' +
                       'box-shadow:0 1px 4px rgba(0,0,0,0.5);">' +
@@ -6121,13 +6121,13 @@
 
   // POI d'accès du plan (session + calques), classés par tag — mêmes tags que la
   // Sortie d'urgence. Partagé par « POI critiques » et « Accès surface ».
-  const CRIT_TAGS = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
-  const CRIT_FERMES = ["caf", "pef", "esf"];
+  const CRIT_TAGS = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf", "psf"];
+  const CRIT_FERMES = ["caf", "pef", "esf", "psf"];
   function _critLabels() {
     return {
       entree_plan: t("secours.surf.critEntree"), cao: t("secours.surf.critCao"), peo: t("secours.surf.critPeo"),
       eso: t("secours.surf.critEso"), caf: t("secours.surf.critCaf"), pef: t("secours.surf.critPef"),
-      esf: t("secours.surf.critEsf")
+      esf: t("secours.surf.critEsf"), psf: t("secours.surf.critPsf")
     };
   }
   function _poisAcces() {
@@ -7837,7 +7837,7 @@
       });
       html += '</div>';
       if (_scenarios.length >= MAX_SCENARIOS) {
-        html += '<p class="kta-secours-hint" style="margin-top:12px; color:#ff8c00;">' +
+        html += '<p class="kta-secours-hint" style="margin-top:12px; color:var(--kta-avert);">' +
                   t("secours.list.limiteAtteinte", { max: MAX_SCENARIOS }) +
                 '</p>';
       }
@@ -8104,7 +8104,7 @@
                        '<div style="font-size:13px;color:var(--kta-texte-3);margin-bottom:6px;">' +
                          '<strong>' + t("secours.debrief.equipesActuelles", { n: equipesActuelles.length }) + '</strong>' +
                        '</div>' +
-                       '<div style="font-size:12px;color:#a8b3c8;">' +
+                       '<div style="font-size:12px;color:var(--kta-texte-3);">' +
                          (equipesActuelles.length > 0
                            ? equipesActuelles.map(function(g) { return _escHtml(g.nom); }).join(" · ")
                            : '<em>' + t("secours.debrief.aucuneEquipe") + '</em>') +
@@ -8114,7 +8114,7 @@
                 '<div class="kta-tx-info" style="font-size:13px;color:var(--kta-interaction);margin-bottom:4px;">' +
                   '➡️ <strong>' + t("secours.debrief.phaseSuivante") + '</strong> ' + _escHtml(nextPhase.nom) +
                 '</div>' +
-                '<div style="font-size:12px;color:#a8b3c8;">' +
+                '<div style="font-size:12px;color:var(--kta-texte-3);">' +
                   t("secours.debrief.equipesAssignees", { n: equipesSuivantes.length }) + ' ' +
                   (equipesSuivantes.length > 0
                     ? equipesSuivantes.map(function(g) { return _escHtml(g.nom); }).join(" · ")
@@ -8213,7 +8213,7 @@
                 t("secours.launchNext.aucuneEquipe") +
               '</div>';
     } else {
-      html += '<div style="font-size:12px;color:#a8b3c8;margin-bottom:6px;">' + t("secours.launchNext.equipesLabel") + '</div>' +
+      html += '<div style="font-size:12px;color:var(--kta-texte-3);margin-bottom:6px;">' + t("secours.launchNext.equipesLabel") + '</div>' +
               '<div style="font-size:13px;color:var(--kta-texte);">' +
                 equipes.map(function(g) {
                   const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
@@ -8684,7 +8684,7 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100012";
     overlay.innerHTML =
-      '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid #f4c542;">' +
+      '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid var(--kta-accent);">' +
         '<div class="kta-readme-modal-header">' +
           '<h2 class="kta-tx-accent" style="margin:0; color:var(--kta-accent-texte);">' + t("secours.lancer.titre") + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +

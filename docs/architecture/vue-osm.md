@@ -158,6 +158,9 @@ Ligne 1 : `🎚️ Opacité slider · 🎯 Plan · 📡 Tracker · 🖼️ Plan 
 
 Ligne 2 (M-LVL) : `🏗️ Niveaux affichés : [N0] [N1] [N2] …`
 
+Ligne 1 porte aussi `📏` (mesure), `🎯` (coordonnées de surface) et **`🗺️ Légende`** (légende du plan en cours,
+lecture seule : §12).
+
 ---
 
 ## 3. Widget HOME `osmHomePreview.js` (v1.40.0 → v1.40.16)
@@ -1060,6 +1063,36 @@ redimensionnement des 1 500 images à chaque cran, le même mécanisme qu'en mod
 🛡️ `scripts/smoke/checkup-osm-taille-icones.js` : taille mesurée = base × loi à quatre zooms (plancher OSM compris),
 taille de base réglage coupé, bascule à chaud dans les deux sens, échelle du mode plan intacte, temps de zoom
 (`OSM_PAS` pour allonger la mesure).
+
+## 12. Légende du plan en lecture seule (les deux cartes OSM)
+
+Bouton **`🗺️ Légende`** dans la barre de la Vue OSM, **`🗺️`** dans le bandeau de la carte de l'accueil (petite carte
+et plein écran ; `≡` y est déjà « Plans & filtres »). Les deux ouvrent la **même** légende que la ≡ Légende du mode
+plan — libellés, masquages, couleurs choisies, types `cust-…`, icônes — sans rien de modifiable (décision produit) :
+ni ✏️ Modifier, ni bandeau des types orphelins (son « ➕ Lier » écrit dans la légende). Pas de ligne d'explication
+(décision produit) : l'absence de ✏️ suffit.
+
+- **Un seul rendu** : `interfaceLegende.js > _ktaLegendeCorps(source, {lectureSeule})`, appelé par la ≡ Légende
+  (`afficherLegende`) et par `window.ktaLegendeLectureSeule(opts)`. Couleurs par `ktaResolveStyle`, libellés et
+  entrées par `LegendCustomization` : aucune table locale.
+- **Source** = ce qu'il faut savoir d'un plan : `icons`, URL d'un tag, liste des tags, `multiLevel`.
+  `_sourcePlanCharge()` lit l'état live (PLAN_CONFIG, `_iconMap`, APP_CONFIG) ; `_sourcePlanDonnees(d)` lit ce que
+  l'accueil a déjà extrait (`_planDataCache[id].config` / `.iconUrls`) — **jamais de rechargement du plan**.
+- **Plan non chargé** : `LegendCustomization.lireAvecEtats(session, plan, fn)` substitue ses deux états (slot de
+  session puis `customLegend` du plan-config, lus par `osmHomePreview.js > _legendeDe`) le temps du rendu
+  **synchrone**, persistance suspendue, restauration en `finally`. ⚠️ `fn` ne doit rien faire d'asynchrone.
+- **Quel plan à l'accueil** (`_planDeLaLegende`) : le plan **chargé** derrière l'accueil s'il est sur la carte (carte
+  Leaflet vivante + `_currentLoadedPlanId` dans la pile) → état live ; sinon le plan de la pile **ouvert le plus
+  récemment** (`lastOpened` du registre), à défaut le principal. Cas « aucun plan chargé » (démarrage à froid) :
+  c'est le plan dont l'utilisateur a vu la légende en dernier, et celui dont le slot de session est le plus frais.
+- **Plusieurs plans sur la carte** : avertissement en tête, « Légende de <plan> ; les autres plans affichés ont la
+  leur. » (nom posé par `textContent`).
+- **Empilement** : la modale prend `z-index 100001` (rang des sous-modales), au-dessus de la Vue OSM (99999) et du
+  plein écran de l'accueil (9999). **Échap** en capture + `stopPropagation` : il ferme la légende, pas la carte.
+- 🛡️ `scripts/smoke/checkup-osm-legende.js` : bouton présent sur les deux cartes, légende identique à celle du
+  mode plan (couleur choisie et zone `cust-…` comprises) depuis la Vue OSM, l'accueil avec le plan chargé et
+  l'accueil après redémarrage (plan non chargé), aucun contrôle de modification, avertissement à deux plans,
+  légende au premier plan, Échap.
 
 ## 🗂️ Pile de plans du widget HOME : une seule règle de promotion (14/09/2026)
 

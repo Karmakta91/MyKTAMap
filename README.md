@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.19.0` (21/10/2026)
+## 📦 Version courante — `v2.20.0` (23/10/2026)
 
-> 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; 🪜 fiche des jonctions ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
+> 📍 **v2.20.0 — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM** : un plan se rouvre à la vue laissée (centre, zoom, niveau ; `js/vuePlan.js`) ; revenir à l'accueil démonte le plan et rend sa mémoire (session enregistrée, suivi coupé) ; 🗺️ légende du plan en lecture seule dans la Vue OSM et sur la carte OSM de l'accueil ; fuite par ouverture de plan corrigée ; couleurs posées par le JS en jetons (cliquet 178 → 7), boutons principaux bleus, violet du tuilage lisible ; rails à 44 px au doigt ; PDF plafonné annoncé ; 🌍 exports GeoTIFF (image calée, Lambert 93 / WGS84) et GeoJSON (Export externe), import d'un GeoTIFF tourné ; KMZ complet (structures de calque, types personnalisés, icônes, repli de style) et pastilles des types dans ≡ Filtres ; correctifs `_leaflet_pos`, jonction convertie en lot, mini-carte de l'Affichage XL d'urgence ; `/.well-known/security.txt`. Détail : journal ci-dessous.
 
 ---
 
@@ -92,6 +92,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 🌍 **KMZ géolocalisé** export / import round-trip (Google Earth, OsmAnd, Avenza, Locus) | `kmzExport.js`, `kmzImport.js` |
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
 | 🖼️ Export PNG / JPG (Rapide / Avancé + légende dessinée) · 📄 PDF imprimable A0 → A4 | `exporter.js`, `pdfExport.js` |
+| 🛰️ **GeoTIFF calé** (scan seul ou scan + dessins, Lambert 93 / WGS84, tuilé + Deflate, écrit sans librairie) · 🧭 **GeoJSON** (cases du KMZ) pour QGIS / SIG | `geotiffExport.js`, `geojsonExport.js` |
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
 | 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
@@ -125,6 +126,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Modale OSM : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
 | Widget aperçu OSM sur la home | `osmHomePreview.js` |
+| Légende du plan en lecture seule depuis les deux cartes OSM (avertissement si plusieurs plans) | `interfaceLegende.js` |
 | Cache de tuiles OSM (IndexedDB) | `osmTilesCache.js` |
 
 ### 🎨 UI / UX
@@ -150,6 +152,8 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | ⚙️ OOMGuard (détection kill mémoire) · 🪫 BatteryGuard (alertes 20/10/5 %) · 💡 WakeLock | `oomGuard.js`, `batteryGuard.js`, `wakeLock.js` |
 | 📋 Crash reports auto (IDB) · 🧠 Inspecteur mémoire · 🔧 Inspecteur Service Worker | `crashReports.js`, `memInspector.js`, `swInspector.js` |
 | 💾 Auto-save session per-plan (poller 1,5 s, teardown propre au plan switch) | `sessionPersist.js` |
+| 🚪 Fermer un plan le vide : retour à l'accueil = session enregistrée puis carte démontée (tuiles, calques, canvas) | `main.js` |
+| 📍 Vue retrouvée : un plan rouvert reprend son centre, son zoom et son niveau (par plan, sur l'appareil) ; suivi actif au départ = dernière position | `vuePlan.js` |
 | ⏳ Overlay générique « calcul en cours » | `computeLoader.js` |
 
 ---
@@ -287,6 +291,8 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | Module | Rôle |
 |---|---|
 | `kmzExport.js` | Export KMZ géolocalisé |
+| `geotiffExport.js` | Export GeoTIFF calé (écriture TIFF tuilée maison, rendu par blocs) |
+| `geojsonExport.js` | Export GeoJSON des objets (Lambert 93 / WGS84) |
 | `osmTilesCache.js` | Cache tuiles OSM (IndexedDB) |
 | `osmView.js` | Vue OSM modale (plan projeté) |
 | `osmHomePreview.js` | Widget aperçu OSM sur la home |
@@ -443,6 +449,21 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.20.0 (23/10/2026) — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM (branche `Karma_dev`)
+
+- **📍 Vue retrouvée** (`js/vuePlan.js`) : centre, zoom et niveau mémorisés par plan sur l'appareil (clé `localStorage` dédiée, hors de la session qui voyage et s'efface) à la fermeture, au `pagehide` et au passage en arrière-plan, appliqués après la restauration de session ; ▶️ Reprendre et la liste des plans en profitent, aussi après fermeture de l'app. Suivi actif au départ : la carte se recentre sur la dernière position du tracker, le suivi reste arrêté. Le cadrage d'ouverture du tracker n'est plus animé (la fin du zoom animé écrasait la vue retrouvée).
+- **🧠 Retour à l'accueil = plan fermé** : `afficherLoader` démonte le plan par le même chemin qu'un changement de plan (`_libererRessourcesPlanPrecedent("accueil")` : session enregistrée d'abord, extension prévenue une fois, suivi coupé avant le démontage) ; `ktaFermerPlanPourMemoire` passe par ce retour. **Fuite par ouverture** corrigée : écouteurs de `window` et minuterie du header, écouteur Échap de « Session restaurée », observateur de la barre d'état (`--kta-statusbar-h` figé après le premier plan). `checkup-retour-accueil.js` : 10 allers-retours, dérive nulle exigée.
+- **🗺️ Légende en Vue OSM** : bouton 🗺️ Légende dans la barre de la Vue OSM et 🗺️ dans le bandeau de l'accueil, même légende que le mode plan sans ✏️ Modifier ni « ➕ Lier » ; à l'accueil, plan chargé s'il est sur la carte, sinon le plan de la pile ouvert le plus récemment (`LegendCustomization.lireAvecEtats`), avertissement si plusieurs plans sont affichés. Un seul constructeur du corps de la légende ; `check-icon-catalog` confronte 8 tables (`GROUPES2` disparu). `checkup-osm-legende.js`.
+- **🎨 Charte** : garde-fou `check-couleurs-inline.js` (hex dans un style posé par le JS, cliquet 178 → 7) ; états du Générateur, du Mode Secours, de la Vue OSM, du chargeur et des petits écrans par les jetons ; jetons `--kta-sur-accent` et `--kta-tuilage-v2` (violet 4,84:1 en sombre, 6,6:1 en clair) ; « Valider » de la refonte et « Continuer » du kill-switch en bleu principal dans les deux thèmes.
+- **Ergonomie** : rails latéraux à 44 px de large au doigt (`::before` transparent, marque gardée à 36 px ; `checkup-rails-toucher.js`) ; PDF : un canvas réduit par la limite de l'appareil annonce la résolution produite (`pdfexport.plafond`, `checkup-pdf-plafond.js`).
+- **Corrigés** : `_leaflet_pos` aux ouvertures de plan enchaînées (minuterie de fin de zoom animé non annulée par `map.remove()`, `checkup-ouvertures-enchainees.js`) ; une jonction n'est jamais convertie en lot ; Affichage XL d'urgence : la question « image volumineuse » part avec l'écran (la réouverture retrouve sa mini-carte, `checkup-urgence-memoire` vert).
+- **🌍 Exports SIG** (`js/geotiffExport.js`, `js/geojsonExport.js`) : GeoTIFF du plan calé dans la partie Image (scan seul ou scan + dessins, Lambert 93 par défaut ou WGS84, pleine résolution ou plafonnée ; TIFF tuilé 256, Deflate + prédicteur, rendu par blocs sans l'image entière en mémoire ; affine ajustée par moindres carrés, `ModelTransformation` si rotation, écart Lambert 93 annoncé au-delà de 0,5 m) ; GeoJSON dans Export externe (mêmes cases que le KMZ ; WGS84 conforme RFC 7946, Lambert 93 avec `crs` et suffixe `_L93`). Le lecteur `tiffGeoref.js` lit les TIFF tuilés et accepte une image tournée quand c'est une similitude (tolérance 1 %). `check-export-sig.js` (pre-commit), `checkup-export-sig.js`.
+- **Exports complets** : le KMZ emporte les structures des calques de données, les types personnalisés et les identifiants bruts (repli de style de la carte : zone → remblais, structure → mur ; géométrie selon la forme réelle), toutes les icônes (SVG converti en PNG, chemin mort → icône du catalogue) ; un chemin d'icône mort ne fait plus échouer l'export PNG / PDF avancé ; ≡ Filtres : pastille de couleur des types (comme la légende), plus de ✨ en double. `checkup-exports-structures.js`.
+- **🕳️ Tag `psf` « Puits d'extraction comblé »** (icône `ps` + barre rouge), dans les 8 tables du catalogue, le précache et les 3 dicos ; compté parmi les accès fermés du Mode Secours (`CRIT_FERMES`). « Puit extraction » corrigé en « Puits extraction ». `checkup-exports-structures` vérifie désormais chaque tag du catalogue (carte, légende, KMZ, icônes distinctes).
+- **≡ Filtres, niveaux** : case « 🖼️ Afficher le plan de base », toujours présente : elle suit le niveau 0 tant qu'on n'y touche pas, puis le choix de l'utilisateur l'emporte (fond gardé sous un autre étage, ou masqué même avec le 0 visible) ; « Tout afficher » la remet en automatique (`tiling.js > ktaPlanDeBaseVisible`, une règle pour rendu direct, V1 et V2 ; `runtimeFilters.planDeBase`) ; le bouton du niveau actif reprend sa couleur (la section était redessinée, la comparaison visait l'ancien bouton) ; un point masqué n'est plus cliquable (`utils.js > ktaMasquerMarqueur`, état réappliqué quand Leaflet recrée l'icône). `checkup-filtres-niveaux.js`.
+- **🪜 POI de jonction entre niveaux** (`js/poiJonction.js`) : tags `jes` / `jpe` / `jps` (escalier, puits à échelons, puits sans échelon entre niveaux), jamais une sortie de surface (`check-poi-jonction.js`) ; champ `niveaux` (aussi sur un `peo`/`eso` de surface) ; raccords proposés dans un rayon de 5 m (50 px sans échelle) puis validés, enregistrés dans le point, dessinés fiche ouverte ; arêtes inter-niveaux au coût forfaitaire (escalier 10 m, échelons et sans échelon 20 m par niveau) ou à la vraie profondeur si saisie ; `jps` seulement avec « 🧗 Équipe équipée (corde) » ; consignes du guidage ; KMZ par niveau (copies marquées, réimport sans doublon), GeoJSON/GPX en une entité. **Corrigé** : `pathfinder.js > _getOrAddNode` fusionnait deux sommets superposés de niveaux différents (changement d'étage gratuit sans jonction). La sortie d'urgence classe sur le coût total (montée/descente comprise). `checkup-poi-jonction.js`.
+- **Site** : `/.well-known/security.txt` (RFC 9116), fichier servi, jamais demandé par l'app ; à renouveler avant le 22/10/2027 (backlog).
 
 #### v2.19.0 (21/10/2026) — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan (branche `Karma_dev`)
 
@@ -9527,6 +9548,10 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; 🪜 fiche des jonctions ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
+
+> 🤝 **v2.18.0 — Niveau d'un objet, calques à plusieurs, nouvel écran de démarrage, charte en jetons** : ✨ écran de démarrage « la galerie qui se dessine » (tracé par un worker, fermé quand l'accueil est affiché) ; 🎨 charte en jetons `--kta-*` (contrastes AA, bouton principal bleu), toasts empilés avec un type succès, finitions d'interface (audit Impeccable du 20/10, clôturé) ; 🏗️ le niveau d'un objet de session se change depuis sa fiche (plan multi-niveau, ⏪ annule) ; sur une installation reliée, un calque ouvert à la modification ailleurs se recale à la synchro et sa restitution se propage, « ➕ Intégrer des ajouts », « Effacer la session » qui propose de rendre les calques, export limité à ses ajouts sur le plan d'un autre compte (prise `exportAutorise` → `{ auteur }`) ; prise `outilHome` en liste et événements du Carnet ; correctifs Repositionner, fiches enchaînées, Mes photos. Sans extension, rien ne change hors du niveau d'un objet et des correctifs.
 
 > ⬆️ **v2.17.0 — Exports et ergonomie téléphone, code allégé** : lanceur d'export à tuiles (Conversion et Fusion rangées dans l'Éditeur de données), « 📱 Max iPhone » pour l'export image d'un grand plan, PDF d'un très grand plan ; audit ergonomie PC/mobile soldé hors G1 (panneaux d'outils entre les barres, toucher la carte pour fermer ne trace plus, fond et croix 40 px au doigt, modales en dvh, liste de tags dans l'écran, dézoom anti-crash aussi en paysage téléphone) ; option « ➕ Boutons de zoom » (défaut OFF) ; nettoyage des commentaires du code (−58 %, ~25 000 lignes) avec garde-fou `check-commentaires.js` ; checkup `checkup-panneaux-geometrie.js` dans la porte de release.
 

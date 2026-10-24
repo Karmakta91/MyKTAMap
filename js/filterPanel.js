@@ -15,7 +15,8 @@
 //     tags:        Set<string> | null,  // null = pas de filtre (tout visible)
 //     roadTypes:   Set<string> | null,
 //     zoneTypes:   Set<string> | null,
-//     structTypes: Set<string> | null
+//     structTypes: Set<string> | null,
+//     planDeBase:  null | boolean       // null = suit le niveau 0, sinon choix de l'utilisateur (tiling.js)
 //   }
 // Les niveaux restent dans APP_CONFIG.visibleLevels (via appliquerFiltreNiveau).
 // API : window.FilterPanel = { ouvrir, fermer, getState, setFilters, onChange, applyFilters, isVisible, majBadge… }
@@ -37,7 +38,8 @@
       tags:        null,
       roadTypes:   null,
       zoneTypes:   null,
-      structTypes: null
+      structTypes: null,
+      planDeBase:  null
     };
   }
 
@@ -85,6 +87,9 @@
     if (f.zoneTypes   !== null && f.zoneTypes   !== undefined) n++;
     if (f.structTypes !== null && f.structTypes !== undefined) n++;
     if (_niveauxFiltres()) n++;
+    // Fond masqué À LA MAIN : sans plan sous les tracés, « où est passée la carte ? » ; « Tout afficher » le
+    // remet. Le fond masqué en automatique (niveau 0 décoché) est déjà compté par les niveaux.
+    if (f.planDeBase === false) n++;
     return n;
   }
   function majBadge() {
@@ -178,8 +183,10 @@
         } else {
           window.APP_CONFIG.activeLevel = lvl;   // repli si interfaceConfig absent
         }
+        // 🩸 Marquage par VALEUR, pas par identité : ktaSetActiveLevel re-rend cette section (onLevelChange),
+        // `btnActive` est alors un nœud détaché et `b === btnActive` effaçait le marquage du re-rendu.
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btnActive);
+          b.classList.toggle("kta-fp-lvl-btn-active", Number.parseInt(b.getAttribute("data-lvl-active"), 10) === lvl);
         });
         // Le niveau a pu s'AJOUTER aux visibles (union) : resynchro des cases.
         _refreshChipsState(_modal);
@@ -215,6 +222,7 @@
       const cb = e.target.closest('[data-lvl-visible]');
       if (cb && scope.contains(cb)) {
         _updateVisibleLevelsFromUI(_modal);
+        return;
       }
     });
   }
@@ -284,14 +292,16 @@
   // Libellé tenant compte de LegendCustomization. ⚠️ `getLabel` ne connaît que les types intégrés : un type CUSTOM
   // passe par `findCustomEntry` (comme refonteInterface.js, statsGlobales.js, pathfinder.js), sinon la puce
   // affiche `cust-m2k9x-3fa` au lieu du nom choisi.
-  function _lcLabel(category, type, fallback) {
+  // `opts.sansMarque` : pas de « ✨ » devant un type personnalisé — la ligne porte déjà sa pastille (sinon
+  // « ✨ ✨ Nom » : l'émoji de repli plus la marque).
+  function _lcLabel(category, type, fallback, opts) {
     const LC = window.LegendCustomization;
     // findCustomEntry pour TOUT type non résolu par getLabel (pas seulement `cust-`) : une entrée liée à un id
     // technique (« Bas ») affiche aussi son libellé.
     if (LC && typeof LC.findCustomEntry === "function") {
       try {
         const e = LC.findCustomEntry(type);
-        if (e && e.label) return "✨ " + e.label;
+        if (e && e.label) return (opts && opts.sansMarque) ? e.label : "✨ " + e.label;
       } catch(err) {}
       if (String(type).indexOf("cust-") === 0) return fallback || type;
     }
@@ -401,11 +411,14 @@
     const lcCat = (category === "roads") ? "traces" : category;
     sortedKeys.forEach(function(t) {
       const visible = !_isHidden(setName, t);
-      const lbl = _lcLabel(lcCat, t, t);
-      const emoji = _emojiForType(category, t);
+      const lbl = _lcLabel(lcCat, t, t, { sansMarque: true });
+      // Pastille résolue (styleResolver.js > ktaTypeSwatchHtml), comme ≡ Légende : couleur choisie, type
+      // `cust-…`, trait pour une ligne. L'émoji ne reste qu'en repli d'un type introuvable.
+      const pastille = (typeof window.ktaTypeSwatchHtml === "function")
+        ? window.ktaTypeSwatchHtml(lcCat, t, _emojiForType(category, t)) : _emojiForType(category, t);
       html += '<label class="kta-fp-chip ' + (visible ? "" : "kta-fp-chip-off") + '">' +
                 '<input type="checkbox" data-set="' + setName + '" data-type="' + _escAttr(t) + '"' + (visible ? " checked" : "") + '>' +
-                '<span class="kta-fp-chip-ico-emoji">' + emoji + '</span>' +
+                '<span class="kta-fp-chip-ico-emoji">' + pastille + '</span>' +
                 '<span class="kta-fp-chip-label">' + _escHtml(lbl) + '</span>' +
                 '<span class="kta-fp-chip-count">' + counts[t] + '</span>' +
               '</label>';
@@ -430,12 +443,38 @@
     return "🏷️";
   }
 
+  // Case « Afficher le plan de base » : cochée = fond réellement affiché (tiling.js > ktaPlanDeBaseVisible), même
+  // en automatique. Dans Niveaux sur un plan multi-niveau, en tête des calques image sinon (une seule à la fois).
+  function _planDeBaseVisible() {
+    return typeof window.ktaPlanDeBaseVisible === "function" ? window.ktaPlanDeBaseVisible() : true;
+  }
+  function _renderCasePlanDeBase() {
+    const vis = _planDeBaseVisible();
+    return '<div class="kta-fp-chips-grid kta-fp-plan-de-base">' +
+             '<label class="kta-fp-chip ' + (vis ? "" : "kta-fp-chip-off") + '" title="' +
+               _escAttr(window.I18n.t("filter.planDeBaseAide")) + '">' +
+               '<input type="checkbox" data-plan-de-base' + (vis ? " checked" : "") + '>' +
+               '<span class="kta-fp-chip-label">' + _escHtml(window.I18n.t("filter.planDeBase")) + '</span>' +
+             '</label>' +
+           '</div>';
+  }
+  function _majCasePlanDeBase(scope) {
+    const cb = scope && scope.querySelector('[data-plan-de-base]');
+    if (!cb) return;
+    cb.checked = _planDeBaseVisible();
+    const lbl = cb.closest(".kta-fp-chip");
+    if (lbl) lbl.classList.toggle("kta-fp-chip-off", !cb.checked);
+  }
+
   function _renderImageLayersSection() {
     const pc = window.PLAN_CONFIG;
+    const isML = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const caseFond = isML ? "" : _renderCasePlanDeBase();
     if (!pc || !Array.isArray(pc.imageLayers) || pc.imageLayers.length === 0) {
-      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
+      return caseFond + '<div class="kta-fp-section-empty">' +
+               _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
     }
-    let html = '<div class="kta-fp-list">';
+    let html = caseFond + '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
       // Id du calque : `lc.id || lc.label`, comme map.js > initMapFromConfig (vieux plans sans `id`).
       const layerId = lc.id || lc.label;
@@ -574,7 +613,9 @@
                 '<span class="kta-fp-chip-label">' + window.I18n.t("filter.levels.chip", { lvl: lblTxt }) + '</span>' +
               '</label>';
     });
-    html += '</div></div>';
+    html += '</div>';
+    html += _renderCasePlanDeBase();
+    html += '</div>';
     return html;
   }
 
@@ -635,6 +676,15 @@
     overlay.addEventListener("change", function(e) {
       const t = e.target;
       if (!t || !t.matches) return;
+      // Plan de base : le choix de l'utilisateur l'emporte sur les niveaux (tiling.js > ktaPlanDeBaseVisible).
+      if (t.matches('[data-plan-de-base]')) {
+        window._ktaRuntimeFilters.planDeBase = t.checked;
+        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
+        _refreshChipsState(overlay);
+        majBadge();
+        _updateStatus();
+        return;
+      }
       // Calques image
       if (t.matches('[data-img-layer]')) {
         const id = t.getAttribute("data-img-layer");
@@ -667,56 +717,10 @@
       }
     });
 
-    // Niveaux : actif (segmented)
-    overlay.querySelectorAll('[data-lvl-active]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
-        if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // Helper unique (cf. _bindLevelHandlers).
-        if (typeof window.ktaSetActiveLevel === "function") {
-          window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
-        } else {
-          window.APP_CONFIG.activeLevel = lvl;
-        }
-        overlay.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btn);
-        });
-      });
-    });
-
-    // Niveaux : visibles (puces multiples)
-    overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        _updateVisibleLevelsFromUI(overlay);
-      });
-    });
-
-    // Actions rapides des niveaux
-    overlay.querySelectorAll('[data-action="lvl-all"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
-                      ? window.APP_CONFIG.availableLevels : [];
-        overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) { cb.checked = true; });
-        if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = avail.slice();
-        if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-        if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
-        _refreshChipsState(overlay);
-      });
-    });
-    overlay.querySelectorAll('[data-action="lvl-active-only"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const active = window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number"
-                       ? window.APP_CONFIG.activeLevel : 0;
-        overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-          cb.checked = (parseInt(cb.getAttribute("data-lvl-visible"), 10) === active);
-        });
-        if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = [active];
-        if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-        if (typeof window._onLevelChange === "function") window._onLevelChange("visible", [active]);
-        _refreshChipsState(overlay);
-      });
-    });
-
+    // Niveaux : délégation sur la section (jamais remplacée), liée dès l'ouverture ; elle survit aux re-rendus
+    // de son corps (onLevelChange).
+    const secNiveaux = document.getElementById("kta-fp-sec-lvl");
+    if (secNiveaux) _bindLevelHandlers(secNiveaux);
 
     // Mini actions « Tout / Aucun » par section : délégation click.
     overlay.addEventListener("click", function(e) {
@@ -763,6 +767,8 @@
       resetBtn.addEventListener("click", function() {
         const f = window._ktaRuntimeFilters;
         f.tags = null; f.roadTypes = null; f.zoneTypes = null; f.structTypes = null;
+        f.planDeBase = null;   // retour à l'automatique : le fond suit de nouveau le niveau 0
+        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
         _scheduleApply();
         _notify();
         overlay.querySelectorAll('[data-set][data-type]').forEach(function(cb) { cb.checked = true; });
@@ -784,6 +790,7 @@
           if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
           if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
         }
+        _majCasePlanDeBase(overlay);
         _refreshChipsState(overlay);
         _updateStatus();
       });
@@ -823,13 +830,14 @@
     if (f.zoneTypes   !== null) active.push(window.I18n.t("filter.status.zones"));
     if (f.structTypes !== null) active.push(window.I18n.t("filter.status.structs"));
     if (_niveauxFiltres())      active.push(window.I18n.t("filter.status.levels"));   // Q35
+    if (f.planDeBase === false) active.push(window.I18n.t("filter.status.planDeBase"));
     majBadge();
     if (active.length === 0) {
       el.textContent = window.I18n.t("filter.status.none");
       el.style.color = "var(--kta-texte-3)";
     } else {
       el.textContent = window.I18n.t("filter.status.active", { list: active.join(", ") });
-      el.style.color = "#f4c542";
+      el.style.color = "var(--kta-accent-texte)";
     }
   }
 
@@ -975,7 +983,7 @@
       const nom = o.nom || o.name || "";
       return { nom: nom || type || "?", type: nom ? type : "" };
     }
-    const type = _lcLabel(fam.lc, o.type, o.type);
+    const type = _lcLabel(fam.lc, o.type, o.type, { sansMarque: true });
     return { nom: o.label || o.nom || type || "?", type: _emojiForType(fam.cle, o.type) + " " + type };
   }
 

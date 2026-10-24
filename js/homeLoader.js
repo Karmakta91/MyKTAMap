@@ -48,7 +48,7 @@
       function setStatus(message, isError) {
         if (!statusBox) return;
         statusBox.textContent = message || "";
-        statusBox.style.color = isError ? "#ffb3b3" : "#8cb4ff";
+        statusBox.style.color = isError ? "var(--kta-erreur)" : "var(--kta-interaction)";
       }
 
       // ── Overlay de chargement ──────────
@@ -1123,7 +1123,7 @@ function planRowHTML(plan) {
         const _parRegle = !!(_fold && window.PlanRegistry.planFolderByRule && window.PlanRegistry.planFolderByRule(plan));
         // 🩸 Le titre est en overflow:hidden et la pastille en est le PREMIER item : une ombre extérieure serait
         // rognée à gauche. Couleur en variable CSS, contour « par règle » dessiné À L'INTÉRIEUR (ombre inset).
-        const dotHtml = _fold ? '<span class="kta-plan-row-folder-dot' + (_parRegle ? " kta-plan-row-folder-dot-rule" : "") + '" style="--kta-dot:' + escapeHtml(_fold.color || "#8cb4ff") + '" title="' + escapeHtml(_fold.name + (_parRegle ? " · " + _homeT("home.plans.folders.byRule", "par règle d'étiquette") : "")) + '"></span>' : "";
+        const dotHtml = _fold ? '<span class="kta-plan-row-folder-dot' + (_parRegle ? " kta-plan-row-folder-dot-rule" : "") + '" style="--kta-dot:' + escapeHtml(_fold.color || window.PlanRegistry.FOLDER_COLORS[0]) + '" title="' + escapeHtml(_fold.name + (_parRegle ? " · " + _homeT("home.plans.folders.byRule", "par règle d'étiquette") : "")) + '"></span>' : "";
         const enDossiers = (_plansVue === "folders");
         const selectionnee = enDossiers && _plansSelectMode && _plansSelection.has(plan.id);
         const caseHtml = (enDossiers && _plansSelectMode)
@@ -1528,7 +1528,7 @@ function planRowHTML(plan) {
 
             let html = '<div style="font-size:12px; margin-bottom:8px;">';
             if (st.etat === "complet") {
-              html += '<span style="color:#7bd88f;">' +
+              html += '<span style="color:var(--kta-ok);">' +
                       escapeHtml(_t("home.plans.offline.complet", { n: st.total, date: _fmtQuand(st.date) })) +
                       '</span>';
             } else if (st.etat === "partiel") {
@@ -1620,10 +1620,10 @@ function planRowHTML(plan) {
               window.PlanOffline.verifierMaj(plan).then(function (v) {
                 if (!ligne.isConnected) return;   // fiche refermée entre-temps
                 if (v.etat === "maj") {
-                  ligne.style.color = "#f4c542";
+                  ligne.style.color = "var(--kta-accent-texte)";
                   ligne.textContent = _t("home.plans.offline.majDispo", { n: v.changes.length });
                 } else if (v.etat === "ajour") {
-                  ligne.style.color = "#7bd88f";
+                  ligne.style.color = "var(--kta-ok)";
                   ligne.textContent = _t("home.plans.offline.majAjour", { n: v.verifies });
                 } else {
                   ligne.textContent = _t("home.plans.offline.majInconnu");
@@ -1794,14 +1794,14 @@ function planRowHTML(plan) {
           btnDl.addEventListener("click", async function() {
             const st = document.getElementById("kta-plan-dl-status");
             btnDl.disabled = true;
-            st.style.color = "#8cb4ff";
+            st.style.color = "var(--kta-interaction)";
             st.textContent = _t("home.plans.info.dlZipEnCours");
             try {
               const blob = await window.PlanRegistry.getBlob(plan.id);
               // ⚠️ `storedBlob` n'est qu'un DRAPEAU : le navigateur a pu évincer l'archive (quota). On le dit
               // plutôt que de télécharger un fichier vide.
               if (!blob || blob.size === 0) {
-                st.style.color = "#ff8c8c";
+                st.style.color = "var(--kta-erreur)";
                 st.textContent = _t(plan.type === "ext" ? "home.plans.info.dlZipExtMissing" : "home.plans.info.dlZipMissing");
                 btnDl.disabled = false;
                 return;
@@ -1814,10 +1814,10 @@ function planRowHTML(plan) {
               a.href = url; a.download = nom;
               a.click();
               setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
-              st.style.color = "#6ce28a";
+              st.style.color = "var(--kta-ok)";
               st.textContent = _t("home.plans.info.dlZipOk", { nom: nom, taille: fmtSize(blob.size) });
             } catch(e) {
-              st.style.color = "#ff8c8c";
+              st.style.color = "var(--kta-erreur)";
               st.textContent = _t("home.plans.info.dlZipErr", { err: (e && e.message) || String(e) });
             } finally {
               btnDl.disabled = false;
@@ -2057,7 +2057,7 @@ function planRowHTML(plan) {
         const verrou = (f && f.src === "index")
           ? '<span class="kta-plans-folder-lock" title="' + escapeHtml(t("home.plans.folders.lockedIndex")) + '">🌐</span>' : "";
         const nom = f ? escapeHtml(f.name) : escapeHtml(t("home.plans.folders.unfiled"));
-        const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || "#8cb4ff") + '"></span>'
+        const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || window.PlanRegistry.FOLDER_COLORS[0]) + '"></span>'
                       : '<span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>';
         const menu = f ? '<button type="button" class="plan-row-btn kta-plans-folder-menu" title="' + escapeHtml(t("home.plans.folders.menu")) + '">⋮</button>' : "";
         return '<div class="kta-plans-folder-head' + (replie ? " kta-replie" : "") + '" data-folder="' + (f ? escapeHtml(f.id) : "") + '" role="button" tabindex="0">' +
@@ -2388,7 +2388,7 @@ function planRowHTML(plan) {
         const PR = window.PlanRegistry, t = window.I18n.t;
         const lignes = PR.getFolders().map(function(f) {
           return '<button type="button" class="kta-plans-sheet-item" data-fid="' + escapeHtml(f.id) + '">' +
-                   '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || "#8cb4ff") + '"></span>' + escapeHtml(f.name) + '</button>';
+                   '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || PR.FOLDER_COLORS[0]) + '"></span>' + escapeHtml(f.name) + '</button>';
         }).join("");
         const corps = '<button type="button" class="kta-plans-sheet-item" data-fid=""><span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>' + escapeHtml(t("home.plans.folders.unfiled")) + '</button>' +
                       lignes +
@@ -2419,7 +2419,7 @@ function planRowHTML(plan) {
           '<input type="text" class="kta-cfg-input" id="kta-plans-folder-name" maxlength="40" value="' + (f ? escapeHtml(f.name) : "") + '"' + (verrou ? " disabled" : "") + '>' +
           '<div class="kta-plans-sheet-err" id="kta-plans-folder-err" hidden></div>' +
           '<label class="kta-cfg-label">' + escapeHtml(t("home.plans.folders.color")) + '</label>' +
-          (verrou ? '<div class="kta-plans-swatches"><span class="kta-plans-swatch kta-actif" style="background:' + escapeHtml(f.color || "#8cb4ff") + '"></span></div>' : _swatchesHTML(f ? f.color : PR.FOLDER_COLORS[PR.getFolders().length % PR.FOLDER_COLORS.length])) +
+          (verrou ? '<div class="kta-plans-swatches"><span class="kta-plans-swatch kta-actif" style="background:' + escapeHtml(f.color || PR.FOLDER_COLORS[0]) + '"></span></div>' : _swatchesHTML(f ? f.color : PR.FOLDER_COLORS[PR.getFolders().length % PR.FOLDER_COLORS.length])) +
           // Règle par étiquette (virgules) ; l'index est maître de la sienne.
           '<label class="kta-cfg-label">' + escapeHtml(t("home.plans.folders.rule")) + '</label>' +
           '<input type="text" class="kta-cfg-input" id="kta-plans-folder-rule" maxlength="200" placeholder="' + escapeHtml(t("home.plans.folders.rulePlaceholder")) + '" value="' +
@@ -2803,7 +2803,7 @@ function planRowHTML(plan) {
               <div style="display:flex; flex-direction:column; gap:8px;">
                 ${canRetry ? '<button class="kta-btn kta-btn-primary" data-action="retry">' + _t("home.plans.notFound.retry") + '</button>' : ''}
                 ${canReSelect ? '<button class="kta-btn kta-btn-primary" data-action="reselect">' + _t("home.plans.notFound.reselect") + '</button>' : ''}
-                <button class="kta-btn kta-btn-primary" data-action="remove" style="background:#5e2828; border-color:rgba(255,140,140,0.3);">${_t("home.plans.notFound.remove")}</button>
+                <button class="kta-btn kta-btn-danger" data-action="remove">${_t("home.plans.notFound.remove")}</button>
                 <button class="kta-btn kta-btn-ghost" data-action="cancel">${_t("home.plans.notFound.cancel")}</button>
               </div>
             </div>

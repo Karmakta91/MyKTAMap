@@ -8,6 +8,7 @@
 //      plan, sans plafond, invisible de l'OOMGuard).
 //   2. Écran d'urgence « XL » sur un plan servi en HTTP : fond de minimap dessiné, boussole cohérente dès
 //      le premier affichage, bouton SORTIR dans l'écran, batterie dans « ÉTAT », coordonnées copiables.
+//      Fond V1 au-delà du seuil (relevé fictif) : la question « image volumineuse » est répondue d'abord.
 //   3. La mini-carte garde sa palette vive (exception de `styleResolver.js`) mais respecte les couleurs
 //      CHOISIES en légende et les types `cust-…`.
 // Usage : node scripts/smoke/checkup-urgence-memoire.js
@@ -113,6 +114,48 @@ function inf(m) { console.log("  •  " + m); }
     const applique = /DomEvent\.off\([\s\S]{0,80}"scroll"[\s\S]{0,60}_onScroll/.test(src);
     if (applique) ok("js/main.js retire l'écouteur avant map.remove()");
     else pb("js/main.js ne retire PAS l'écouteur : la fuite est toujours là en usage réel");
+
+    // ── I — fond V1 volumineux : la question passe avant la mini-carte ──
+    // ⚠️ Contrat : au-delà de 4 Mpx (ou 10 Mo), l'écran XL demande « sans image / charger quand même » et ne
+    // crée la mini-carte qu'après la réponse. Le relevé fictif (image V1 de 9 Mpx) est dans ce cas : sans
+    // réponse, tout ce qui suit mesurerait une mini-carte qui n'existe pas.
+    console.log("— I : question « image volumineuse » —");
+    const im = await page.evaluate(async function () {
+      const attendreModale = async function () {
+        for (let i = 0; i < 20; i++) {
+          if (document.getElementById("kta-emergency-bigimg-modal")) return true;
+          await new Promise(function (r) { setTimeout(r, 50); });
+        }
+        return false;
+      };
+      const res = {};
+      window.EmergencyMode.activer();
+      res.posee = await attendreModale();
+      if (!res.posee) { window.EmergencyMode.desactiver(); return res; }
+      // Fermer l'écran pendant la question : la question part avec lui.
+      window.EmergencyMode.desactiver();
+      res.resteApresSortie = !!document.getElementById("kta-emergency-bigimg-modal");
+      // Réouverture : une seule question, et la réponse donne bien une mini-carte.
+      window.EmergencyMode.activer();
+      await attendreModale();
+      res.nbModales = document.querySelectorAll("#kta-emergency-bigimg-modal").length;
+      const memo = document.getElementById("kta-em-bigimg-remember");
+      if (memo) memo.checked = true;   // les ouvertures suivantes du checkup chargent sans redemander
+      const charger = document.getElementById("kta-em-bigimg-load");
+      if (charger) charger.click();
+      await new Promise(function (r) { setTimeout(r, 1200); });
+      const mini = document.getElementById("kta-em-mini-map");
+      res.miniCreee = !!(mini && mini.classList.contains("leaflet-container"));
+      window.EmergencyMode.desactiver();
+      return res;
+    });
+    if (!im.posee) inf("fond tuilé ou image légère : pas de question « image volumineuse » sur ce plan");
+    else {
+      if (!im.resteApresSortie) ok("fermer l'écran XL retire la question « image volumineuse »");
+      else pb("la question « image volumineuse » reste à l'écran après la sortie de l'écran XL");
+      if (im.nbModales === 1 && im.miniCreee) ok("réouverture : une seule question, « Charger » crée la mini-carte");
+      else pb("réouverture : " + im.nbModales + " question(s), mini-carte créée = " + im.miniCreee);
+    }
 
     // ── U1..U4 — l'écran d'urgence XL ──────────────────────────────────
     console.log("— U : écran d'urgence « XL » —");
@@ -320,7 +363,9 @@ function inf(m) { console.log("  •  " + m); }
       const ent = LC.addCustomEntry({ category: "traces", label: "CheckupCustom",
                                       geometry: "polyline", lineColor: "#123456" });
       const idCust = ent && (ent.id || ent);
-      const pts = [{ x: 200, y: 200 }, { x: 400, y: 400 }, { x: 600, y: 300 }];
+      // 🩸 Chaque objet injecté porte son X de départ (201, 202, 203) et seules SES formes comptent : le plan
+      // a ses propres tracés, dont des « chemin » dorés — la couleur de repli des types inconnus.
+      const pts = function (x0) { return [{ x: x0, y: 200 }, { x: 400, y: 400 }, { x: 600, y: 300 }]; };
       const pousse = function (getter, obj) {
         try {
           const arr = window[getter] && window[getter]();
@@ -328,19 +373,23 @@ function inf(m) { console.log("  •  " + m); }
         } catch (e) {}
         return false;
       };
-      const injecte = pousse("getRoads", { type: "principal", points: pts })
-                    && pousse("getZones", { type: "eau", points: pts })
-                    && (!!idCust && pousse("getRoads", { type: idCust, points: pts }));
+      const injecte = pousse("getRoads", { type: "principal", points: pts(201) })
+                    && pousse("getZones", { type: "eau", points: pts(202) })
+                    && (!!idCust && pousse("getRoads", { type: idCust, points: pts(203) }));
 
       const vus = [];
       const oL = L.polyline, oP = L.polygon;
       let capture = false;
+      const x0 = function (ll) {
+        const p = Array.isArray(ll) && (Array.isArray(ll[0]) && Array.isArray(ll[0][0]) ? ll[0][0] : ll[0]);
+        return p ? (Array.isArray(p) ? p[1] : p.lng) : null;
+      };
       L.polyline = function (ll, o) {
-        if (capture && o) vus.push({ g: "line", color: o.color });
+        if (capture && o) vus.push({ g: "line", color: o.color, x: x0(ll) });
         return oL.apply(this, arguments);
       };
       L.polygon = function (ll, o) {
-        if (capture && o) vus.push({ g: "poly", fill: o.fillColor });
+        if (capture && o) vus.push({ g: "poly", fill: o.fillColor, x: x0(ll) });
         return oP.apply(this, arguments);
       };
       capture = true;
@@ -350,17 +399,21 @@ function inf(m) { console.log("  •  " + m); }
       window.EmergencyMode.desactiver();
       L.polyline = oL; L.polygon = oP;
 
-      const ligne = function (h) {
-        return vus.some(function (v) { return v.g === "line" && String(v.color).toLowerCase() === h; });
+      const ligne = function (x, h) {
+        return vus.some(function (v) {
+          return v.g === "line" && v.x === x && String(v.color).toLowerCase() === h;
+        });
       };
-      const fond = function (h) {
-        return vus.some(function (v) { return v.g === "poly" && String(v.fill).toLowerCase() === h; });
+      const fond = function (x, h) {
+        return vus.some(function (v) {
+          return v.g === "poly" && v.x === x && String(v.fill).toLowerCase() === h;
+        });
       };
       return {
         injecte: injecte, total: vus.length,
-        traceChoisi: ligne("#ff00ff"), traceBase: ligne("#27c97e"),
-        customChoisi: ligne("#123456"), customRepli: ligne("#f4c542"),
-        zoneChoisie: fond("#00ff88"), zoneBase: fond("#60a5fa")
+        traceChoisi: ligne(201, "#ff00ff"), traceBase: ligne(201, "#27c97e"),
+        customChoisi: ligne(203, "#123456"), customRepli: ligne(203, "#f4c542"),
+        zoneChoisie: fond(202, "#00ff88"), zoneBase: fond(202, "#60a5fa")
       };
     });
 

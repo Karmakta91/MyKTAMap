@@ -28,7 +28,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.19.0";
+const CACHE_NAME = "myktamap-cache-v2.20.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -326,6 +326,7 @@ const ASSETS_TO_CACHE = [
   "./js/map.js",
   "./js/mapBearing.js",
   "./js/tracking.js",
+  "./js/poiJonction.js",
   "./js/editor.js",
   "./js/road.js",
   "./js/zones.js",
@@ -399,12 +400,16 @@ const ASSETS_TO_CACHE = [
   "./js/sigImport.js",
   // 🗺️ GeoTIFF : calage embarqué + décodage LZW/Deflate/brut
   "./js/tiffGeoref.js",
+  // Exports SIG : GeoTIFF calé (écriture maison) et GeoJSON
+  "./js/geotiffExport.js",
+  "./js/geojsonExport.js",
   // 📦 Import multiple : N archives ajoutées à la liste sans ouverture
   "./js/importMasse.js",
   "./js/tableEditor.js",
   "./js/recalageScan.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
+  "./js/vuePlan.js",
   "./js/planRegistry.js",
   "./js/planDenylist.js",
   "./js/osmTilesCache.js",
@@ -531,6 +536,7 @@ const ASSETS_TO_CACHE = [
   "./icon/info.png",
   "./icon/passage.png",
   "./icon/ps.png",
+  "./icon/psf.png",
   "./icon/elec.png",
   "./icon/epure.png",
   "./icon/chatiere.png",
@@ -542,6 +548,9 @@ const ASSETS_TO_CACHE = [
   "./icon/esf.png",
   "./icon/cao.png",
   "./icon/caf.png",
+  "./icon/jes.png",
+  "./icon/jpe.png",
+  "./icon/jps.png",
   "./icon/plaque.png",
   "./icon/portail.png",
   "./icon/entree_plan.png",

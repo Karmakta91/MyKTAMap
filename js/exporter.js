@@ -10,7 +10,8 @@
 // Contrôle fin des calques image et données, des annotations de session (points, tracés, zones, structures,
 // mesure, tracker), d'une légende intégrée, du fond, du format et de la résolution. Aussi le moteur de rendu
 // canvas du PDF (pdfExport.js).
-// Expose : window.ouvrirExportModal, MyKTAMapExporterGenererCanvas, MyKTAMapExporterGenererCanvasLegende.
+// Expose : window.ouvrirExportModal, MyKTAMapExporterGenererCanvas, MyKTAMapExporterGenererCanvasLegende,
+//   MyKTAMapExporterCalquesVisibles.
 // 🩸 Aucune table de couleurs locale : tout passe par window.ktaResolveStyle(cat, type, { flat: true })
 // (garde-fou check-style-canon.js). Doc : docs/architecture/exports.md.
 
@@ -1771,6 +1772,10 @@
         const toL   = Number.isInteger(item.toLevel)   ? item.toLevel   : 0;
         return opts.ann.levels.has(fromL) || opts.ann.levels.has(toL);
       }
+      // Passage entre niveaux (POI) : dessiné si un de ses niveaux est exporté.
+      if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
+        return window.KtaPoiJonction.niveaux(item).some(function(n) { return opts.ann.levels.has(n); });
+      }
       const lvl = Number.isInteger(item && item.level) ? item.level : 0;
       return opts.ann.levels.has(lvl);
     }
@@ -1789,7 +1794,8 @@
     if (!skipBaseImage) {
       let fondFait = false;
       if (region && typeof window.ktaDessinerRegionTuiles === "function") {
-        try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
+        // `aligner` : bords des tuiles calés au pixel, sinon un filet apparaît à une échelle fractionnaire.
+        try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale, { aligner: true })).ok; }
         catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
       }
       // Plan ENTIER d'un plan tuilé V2 : si TOUTES les tuiles du niveau utile sont sur l'appareil (archive du
@@ -1847,14 +1853,26 @@
 
     // ── Icônes (cache) ──
     const iconCache = {};
+    // 🩸 Une icône illisible (chemin mort du plan-config, que la carte remplace par le catalogue) ne doit pas
+    // faire échouer tout l'export : même repli que la carte (map.js > _installerRepliIcones), catalogue puis
+    // icône par défaut ; `null` (marqueur omis) en dernier recours.
+    async function _imageIcone(url) {
+      if (!url) return null;
+      if (!(url in iconCache)) {
+        try { iconCache[url] = await loadImage(url); }
+        catch (e) { iconCache[url] = null; console.warn("[Export] icône illisible :", String(url).slice(0, 80)); }
+      }
+      return iconCache[url];
+    }
     async function getIconUrl(p) {
       // Cascade : plan-config.icons[tag] → _iconMap[tag] → default.
-      let url = (typeof window.getIconUrlForPoint === "function")
+      const url = (typeof window.getIconUrlForPoint === "function")
         ? window.getIconUrlForPoint(p)
         : (config.icons && config.icons.default) || null;
-      if (!url) return null;
-      if (!iconCache[url]) iconCache[url] = await loadImage(url);
-      return iconCache[url];
+      const tag = (p && Array.isArray(p.tags) && p.tags.length) ? p.tags[0] : null;
+      return (await _imageIcone(url)) ||
+             (await _imageIcone(tag && window._ktaBuiltinIconUrls ? window._ktaBuiltinIconUrls[tag] : null)) ||
+             (await _imageIcone(window._ktaIconeDefaut || null));
     }
 
     function drawMarker(img, x, y, size) {
@@ -2438,8 +2456,9 @@
       if (!leg.contenu.track) exclu.push("track");
 
       const GROUPES_ICONES = [
-        { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps"] },
+        { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+        { titre: window.I18n.t("imgexport.legGroupe.niveaux"),      cles: ["jes", "jpe", "jps"] },
         { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
         // Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
@@ -2880,6 +2899,9 @@
     // 🩸 Résolution native d'un très grand plan (centaines de Mpx) : le navigateur refuse le canvas et le PDF
     // partirait avec une image 0 × 0 sans message. Même plafond que l'export image (SEUIL_PX_EXPORT ; iPhone :
     // IOS_MAX_PX_CANVAS). A0 à 300 dpi ≈ 140 Mpx suffit.
+    // ⚠️ Plafond appliqué : le canvas rendu porte `_ktaPlafonne` { demande, obtenu } (facteurs) ; c'est à
+    // l'appelant de le dire à l'utilisateur (pdfExport.js > genererPdf), un rapport ou une mini-carte s'en passe.
+    let plafonne = null;
     const pc = config && config.plan;
     const W = fullOpts.region ? fullOpts.region.w : (pc && pc.imageWidth);
     const H = fullOpts.region ? fullOpts.region.h : (pc && pc.imageHeight);
@@ -2889,15 +2911,27 @@
       const px = W * H * fullOpts.resol * fullOpts.resol;
       if (px > budget) {
         const avant = fullOpts.resol;
-        fullOpts.resol = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+        let r = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+        // 🩸 Le canvas arrondit chaque côté (_genererCanvasExport) : sans ce pas, l'arrondi repassait au-dessus
+        // du plafond (5460 × 3073 pour 16,7 Mpx) et Safari aurait rendu une image vide.
+        while (r > 0.001 && Math.round(W * r) * Math.round(H * r) > budget) r = Math.round((r - 0.001) * 1000) / 1000;
+        fullOpts.resol = r;
+        plafonne = { demande: avant, obtenu: fullOpts.resol };
         console.log("[Exporter] Canvas plafonné : résolution " + avant + " → " + fullOpts.resol +
                     " (" + Math.round(W * fullOpts.resol) + "×" + Math.round(H * fullOpts.resol) + ")");
       }
     }
 
-    return await _genererCanvasExport(fullOpts, false);
+    const canvas = await _genererCanvasExport(fullOpts, false);
+    if (canvas && plafonne) canvas._ktaPlafonne = plafonne;
+    return canvas;
   }
   window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
+  // Ids des calques visibles sur la carte, pour un export « comme à l'écran » (export GeoTIFF).
+  window.MyKTAMapExporterCalquesVisibles = function() {
+    const config = window.PLAN_CONFIG || {};
+    return { image: _getVisibleImageLayerIds(config), data: _getVisibleDataLayerIds(config) };
+  };
 
   // ── Canvas de la LÉGENDE seule ──────────
   // Une image raster collée dans le PDF : évite les limites de jsPDF (Helvetica latin1, emojis) pour icônes,

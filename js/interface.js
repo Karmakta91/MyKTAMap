@@ -299,11 +299,11 @@ function _confirmEtChargerPlan(planId) {
       '<div class="kta-modal-titre">' + window.I18n.t("ui.loadOther.title") + '</div>' +
       '<div class="kta-modal-texte">' +
         window.I18n.t("ui.loadOther.activeIntro") +
-        '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:24px; color:#a8b3c8; line-height:1.6; list-style-type:disc;">' +
-          items.map(function(it) { return '<li style="color:#a8b3c8;">' + escapeHtmlSwitcher(it) + '</li>'; }).join("") +
+        '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:24px; color:var(--kta-texte-3); line-height:1.6; list-style-type:disc;">' +
+          items.map(function(it) { return '<li style="color:var(--kta-texte-3);">' + escapeHtmlSwitcher(it) + '</li>'; }).join("") +
         '</ul>' +
         window.I18n.t("ui.loadOther.saved") +
-        '<span style="color:#a8b3c8; font-size:12.5px;">' +
+        '<span style="color:var(--kta-texte-3); font-size:12.5px;">' +
           window.I18n.t("ui.loadOther.snapshots") +
         '</span><br><br>' +
         window.I18n.t("ui.loadOther.confirm", { nom: escapeHtmlSwitcher(window.PlanRegistry.displayName(plan)) }) +
@@ -1986,6 +1986,10 @@ function initInterface() {
             window.ktaAlerte(window.I18n.t("ui.alert.pdfIndispo"), { type: "erreur" });
           }
         } },
+      // GeoTIFF : le plan calé en image géoréférencée (js/geotiffExport.js), à côté du PNG et du PDF.
+      { icone: "🛰️", titreCle: "export.lanceur.geotiff", section: "image", onClick: function() {
+          if (window.GeotiffExport) window.GeotiffExport.afficherModale();
+        } },
       { icone: "💾", titreCle: "export.lanceur.complet", section: "session", onClick: function() {
           _ouvrirExportSession("full");
         } },
@@ -2005,6 +2009,9 @@ function initInterface() {
         } },
       { icone: "📍", titreCle: "export.lanceur.gpx", section: "externe", onClick: function() {
           _ouvrirExportSession("extern", { format: "gpx" });
+        } },
+      { icone: "🧭", titreCle: "export.lanceur.geojson", section: "externe", onClick: function() {
+          _ouvrirExportSession("extern", { format: "geojson" });
         } }
     ]
   });

@@ -60,6 +60,14 @@
   // ── Header bar (sticky top, 40px) ──────────────
   // Créé seulement quand window.map existe (app initialisée).
   let _headerEl = null;
+  // ⚠️ Ce que le header pose HORS de lui (écouteurs de window, minuterie) : retiré par _refonteInterfacePreUnload.
+  // Le header est reconstruit à chaque ouverture de plan ; sans ce retrait, chaque ouverture laissait trois écouteurs
+  // et une minuterie de 2 s de plus, qui retenaient l'ancien header détaché.
+  let _headerNettoyages = [];
+  function _ecouterWindow(type, fn) {
+    window.addEventListener(type, fn);
+    _headerNettoyages.push(function() { window.removeEventListener(type, fn); });
+  }
 
   function _creerHeaderBar() {
     if (_headerEl || !document.body) return;
@@ -190,8 +198,9 @@
         }
       });
       _refreshOsmVisibility();
-      window.addEventListener("kta:osmOptInChange", _refreshOsmVisibility);
-      setInterval(_refreshOsmVisibility, 2000);
+      _ecouterWindow("kta:osmOptInChange", _refreshOsmVisibility);
+      const minuterieOsm = setInterval(_refreshOsmVisibility, 2000);
+      _headerNettoyages.push(function() { clearInterval(minuterieOsm); });
     }
 
     // Bouton 🚨 Sortie d'urgence : recherche de la sortie la plus proche (pathfinder).
@@ -240,12 +249,12 @@
 
     // Débordement du titre recalculé au resize / orientationchange (sans attendre le polling 2 s).
     let _resizeDeb = null;
-    window.addEventListener("resize", function() {
+    _ecouterWindow("resize", function() {
       // Debounce 80ms — sinon dispatch ×30/s pendant un drag-resize PC
       clearTimeout(_resizeDeb);
       _resizeDeb = setTimeout(_ajusterDebordementTitre, 80);
     });
-    window.addEventListener("orientationchange", function() {
+    _ecouterWindow("orientationchange", function() {
       // 350 ms après orientationchange : laisser iOS finir sa transition de viewport
       setTimeout(_ajusterDebordementTitre, 350);
     });
@@ -415,6 +424,7 @@
   }
 
   let _statusBarRO = null;
+  let _rotationEcoutee = false;
 
   // 🩸 _syncH vit au scope du MODULE : _onOrientationChange l'appelle (locale, elle lèverait une ReferenceError
   // à la rotation). offsetHeight inclut le padding, donc env(safe-area-inset-bottom). Écrit sur :root.
@@ -442,6 +452,9 @@
 
     // Synchro immédiate (et repli sans ResizeObserver : chargement + orientationchange/resize).
     _syncH();
+    // Une seule fois pour la page : _onOrientationChange relit la barre COURANTE (_syncH > _statusBarEl).
+    if (_rotationEcoutee) return;
+    _rotationEcoutee = true;
     window.addEventListener("orientationchange", _onOrientationChange);
     // pageshow : retour depuis une autre app, où iOS peut avoir « oublié » la bonne viewport.
     window.addEventListener("pageshow", function(e) {
@@ -1906,9 +1919,9 @@
     function _setFavStatus(msg, isOk) {
       if (!_favStatus) return;
       _favStatus.textContent = msg || "";
-      _favStatus.style.color = isOk === true ? "#6ee28a"
-                              : isOk === false ? "#ff8c8c"
-                              : "#8892a4";
+      _favStatus.style.color = isOk === true ? "var(--kta-ok)"
+                              : isOk === false ? "var(--kta-erreur)"
+                              : "var(--kta-texte-3)";
     }
 
     if (_btnFavExportCur) {
@@ -2175,6 +2188,14 @@
   // Retire header et status bar (sinon vieilles valeurs pendant le splash).
   window._refonteInterfacePreUnload = function() {
     _stopPolling();
+    _headerNettoyages.forEach(function(f) { try { f(); } catch(e) {} });
+    _headerNettoyages = [];
+    // 🩸 L'observateur garde la barre qu'il observe ; resté armé, il bloquait aussi celui de la barre suivante
+    // (garde `_statusBarRO` de _setupStatusBarResizeObserver) : plus de --kta-statusbar-h juste après un plan.
+    if (_statusBarRO) {
+      try { _statusBarRO.disconnect(); } catch(e) {}
+      _statusBarRO = null;
+    }
     if (_headerEl) {
       try { _headerEl.remove(); } catch(e) {}
       _headerEl = null;
@@ -2246,7 +2267,7 @@
           '</div>' +
           '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.06); padding:12px 18px; flex-shrink:0;">' +
             '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">' + window.I18n.t("ui.refonte.btn_cancel") + '</button>' +
-            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:#f4c542; color:#0a0d18; border-color:#f4c542;">' + window.I18n.t("ui.refonte.btn_validate") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm">' + window.I18n.t("ui.refonte.btn_validate") + '</button>' +
           '</div>' +
         '</div>';
 

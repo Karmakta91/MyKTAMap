@@ -13,7 +13,8 @@
 // Expose window.LegendCustomization : getLabel, isVisible, getSource, getColor/getBorderColor, listEntries,
 //   listCustomEntries, findCustomEntry, setSession*, add/update/removeCustomEntry, countUsages,
 //   listOrphanTypes, resetSession, onCustomEntriesChange, ouvrirEditeur, ouvrirAddDialog ;
-//   hooks loadSessionState / getSessionState (SessionPersist), loadPlanState (main.js après PLAN_CONFIG).
+//   hooks loadSessionState / getSessionState (SessionPersist), loadPlanState (main.js après PLAN_CONFIG),
+//   lireAvecEtats (lecture d'une légende d'un plan non chargé).
 // Catégories : icones · traces · zones · structures.
 // ⚠️ Format (session ET plan) : { labels: {"<cat>.<key>": str}, hidden: {"<cat>.<key>": bool},
 //   colors, borders, removedPlan, customEntries: [{ id, category, label, geometry, lineColor?, fillColor?,
@@ -32,9 +33,12 @@ window.LegendCustomization = (function() {
     icones: {
       salle: "Salle", pa: "Puits Aération", pc: "Puits Comblé",
       pb: "Puits Bouché", pe: "Puits au sol / Bassin", ps: "Puits extraction",
+      psf: "Puits d'extraction comblé",
       peo: "Puits à échelon ouvert", pef: "Puits à échelon fermé",
       eso: "Escalier service ouvert", esf: "Escalier service fermé",
       cao: "Cavage ouvert", caf: "Cavage fermé",
+      jes: "Escalier entre niveaux", jpe: "Puits à échelons entre niveaux",
+      jps: "Puits sans échelon entre niveaux",
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
       danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
       plaque: "Plaque indication",
@@ -198,6 +202,20 @@ window.LegendCustomization = (function() {
       (config && config.customLegend) ||
       (config && config.plan && config.plan.customLegend)
     );
+  }
+
+  // Légende d'un AUTRE plan que celui chargé (légende en lecture seule de la carte OSM de l'accueil) : ses deux
+  // états remplacent l'état live le temps de `fn`, pour que getLabel, isVisible, getColor (donc ktaResolveStyle)
+  // et les entrées `cust-…` répondent pour CE plan. Restauration garantie (finally).
+  // ⚠️ `fn` est SYNCHRONE et ne fait que lire : l'état réel revient dès son retour ; la persistance est
+  // suspendue pendant l'appel pour qu'une écriture accidentelle ne parte pas dans la session du plan chargé.
+  function lireAvecEtats(session, plan, fn) {
+    const s0 = _sessionState, p0 = _planState, susp0 = _persistSuspendu;
+    _sessionState = _normalize(session);
+    _planState    = _normalize(plan);
+    _persistSuspendu = true;
+    try { return fn(); }
+    finally { _sessionState = s0; _planState = p0; _persistSuspendu = susp0; }
   }
 
   // ── Résolveurs (cascade) ──────────
@@ -1123,6 +1141,8 @@ window.LegendCustomization = (function() {
     getSessionState:       getSessionState,
     isSessionStateEmpty:   isSessionStateEmpty,
     loadPlanState:         loadPlanState,
+    // Lecture seule d'une légende d'un plan non chargé (carte OSM de l'accueil).
+    lireAvecEtats:         lireAvecEtats,
 
     getLabel:              getLabel,
     isVisible:             isVisible,

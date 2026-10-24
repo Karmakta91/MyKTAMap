@@ -286,6 +286,66 @@ const remplace = (o, tag, valeurs, type) => {
     " Appliqué à cheval sur les lignes, le prédicteur décale tout sauf la première ligne — " +
     "l'image « bave » vers la droite et aucune erreur n'est levée.");
 
+  // ── L2i. Matrice TOURNÉE : acceptée si c'est une similitude, avec un pointC ──
+  // Rotation de 30° à 10 m/px : X = 10cos·px + 10sin·py, Y = 10sin·px − 10cos·py (le Y descend avec la ligne).
+  // Attendu calculé ici depuis la matrice (L93.versWgs84), pas recopié du lecteur.
+  const mRot = function(deg, kx, ky, cis) {
+    const r = deg * Math.PI / 180;
+    return [10 * kx * Math.cos(r), 10 * ky * Math.sin(r) + (cis || 0), 0, 700000,
+            10 * kx * Math.sin(r), -10 * ky * Math.cos(r), 0, 6600000, 0, 0, 0, 0, 0, 0, 0, 1];
+  };
+  const avecMatrice = function(m) {
+    return fixtureBase(o => {
+      o.entrees = o.entrees.filter(e => e.tag !== 33550 && e.tag !== 33922);
+      remplace(o, 34264, m, 12);
+    });
+  };
+  let calRot = null, errRot = "";
+  const mt30 = mRot(30, 1, 1);
+  try { calRot = TG._interne.calage(TG._interne.lireIfd0(avecMatrice(mt30)), 2, 2); }
+  catch (e) { errRot = e.message; }
+  const attenduRot = function(px, py) {
+    return SI.L93.versWgs84(mt30[0] * px + mt30[1] * py + mt30[3], mt30[4] * px + mt30[5] * py + mt30[7]);
+  };
+  const ecartDeg = function(p, q) { return p && q ? Math.max(Math.abs(p.lat - q.lat), Math.abs(p.lng - q.lng)) : Infinity; };
+  verif("L2i. matrice tournée de 30° (similitude) : acceptée, A / B / C = coins SO, NE, NO du fichier",
+    calRot && calRot.georef.pointC && calRot.georef.pointC.x === 0 && calRot.georef.pointC.y === 0 &&
+    ecartDeg(calRot.georef.pointA, attenduRot(0, 2)) < 1e-9 && ecartDeg(calRot.georef.pointB, attenduRot(2, 0)) < 1e-9 &&
+    ecartDeg(calRot.georef.pointC, attenduRot(0, 0)) < 1e-9 && Math.abs(calRot.metresParPixel - 10) < 1e-9,
+    (errRot || JSON.stringify(calRot && calRot.georef)) + ". Le pointC fait reproduire le fichier EXACTEMENT par l'affine de l'app " +
+    "(écart toléré compris) ; l'échelle est la LONGUEUR de l'axe (10 m/px), pas son seul terme diagonal (8,66).");
+  // Nord en haut : rien ne change (2 points, pas de C).
+  let calNord = null;
+  try { calNord = TG._interne.calage(TG._interne.lireIfd0(avecMatrice(mRot(0, 1, 1))), 2, 2); } catch (e) { calNord = null; }
+  verif("L2j. matrice nord en haut : 2 points, sans pointC (comme avant)",
+    calNord && !calNord.georef.pointC, JSON.stringify(calNord && calNord.georef));
+  // Tolérance ancrée des deux côtés : 0,5 % d'échelle (un export Lambert 93 de l'app) passe, 2 % non ;
+  // en 4326 la comparaison se fait en MÈTRES au sol (sinon un degré de longitude ≠ un degré de latitude).
+  const essai = function(m, epsg) {
+    try {
+      const ab = fixtureBase(o => {
+        o.entrees = o.entrees.filter(e => e.tag !== 33550 && e.tag !== 33922);
+        remplace(o, 34264, m, 12);
+        if (epsg) remplace(o, 34735, [1, 1, 0, 1, 2048, 0, 1, epsg]);
+      });
+      TG._interne.calage(TG._interne.lireIfd0(ab), 2, 2);
+      return "ok";
+    } catch (e) { return e.message; }
+  };
+  const k = Math.cos(46.5 * Math.PI / 180);
+  const m4326 = (function() {
+    const r = 20 * Math.PI / 180, d = 1e-5;
+    return [d * Math.cos(r) / k * 110540 / 111320, d * Math.sin(r) / k * 110540 / 111320, 0, 3,
+            d * Math.sin(r), -d * Math.cos(r), 0, 46.5, 0, 0, 0, 0, 0, 0, 0, 1];
+  })();
+  const res = { pres: essai(mRot(25, 1.005, 1)), loin: essai(mRot(25, 1.02, 1)), cis: essai(mRot(25, 1, 1, 0.5)),
+                miroir: essai(mRot(25, 1, -1)), deg: essai(m4326, 4326) };
+  verif("L2k. tolérance de similitude : 0,5 % accepté, 2 % / cisaillement / miroir refusés (rotation), 4326 jugé en mètres",
+    res.pres === "ok" && res.loin === "tiff.err.rotation" && res.cis === "tiff.err.rotation" &&
+    res.miroir === "tiff.err.rotation" && res.deg === "ok" && TG._interne.TOLERANCE_SIMILITUDE === 0.01,
+    JSON.stringify(res) + ". Trop stricte, un GeoTIFF exporté par l'app (Lambert 93) ne se réimporte plus ; " +
+    "trop lâche, une image déformée passe pour tournée.");
+
   // ── L3. LZW : flux calculé À LA MAIN ── codes 9 bits : Clear(256), 'A'(65), 'B'(66), EOI(257)
   //   256 = 100000000   65 = 001000001   66 = 001000010   257 = 100000001
   // concaténés : 100000000 001000001 001000010 100000001 (36 bits, complétés à 40)
@@ -376,7 +436,30 @@ const remplace = (o, tag, valeurs, type) => {
     "les deux ordres d'octets sont légaux ; ne lire que « II » ferait échouer " +
     "un fichier parfaitement valide sans que la cause soit devinable.");
 
+  // ── L4b. Image TUILÉE : une tuile 16 × 16 complétée, dont seul le coin 2 × 2 est l'image ──
+  // 🩸 Les lignes d'une tuile font 16 px, pas 2 : lues à la largeur de l'image, les pixels se décalent.
+  let tuileOk = false, tuileDetail = "";
+  try {
+    const tuile = new Uint8Array(16 * 16 * 3);
+    tuile.set(PIX.subarray(0, 6), 0);            // 1re rangée de pixels
+    tuile.set(PIX.subarray(6, 12), 16 * 3);      // 2e rangée : 16 px plus loin
+    const ab = fixtureBase(o => {
+      o.entrees = o.entrees.filter(e => [273, 278, 279].indexOf(e.tag) < 0);
+      remplace(o, 322, [16]); remplace(o, 323, [16]);
+      remplace(o, 324, ["@PIXELS"], 4); remplace(o, 325, [tuile.length], 4);
+      o.pixels = tuile;
+    });
+    const r = await TG._interne.decoderPixels(ab, TG._interne.lireIfd0(ab));
+    tuileOk = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14].every((p, i) => r.rgba[p] === PIX[i]);
+    if (!tuileOk) tuileDetail = " obtenu [" + Array.from(r.rgba).join(",") + "]";
+  } catch (e) { tuileDetail = " exception : " + e.message; }
+  verif("L4b. un TIFF TUILÉ se lit, lignes de tuile comprises (tuile de bord complétée)",
+    tuileOk,
+    "l'image relue diffère." + tuileDetail + " L'export GeoTIFF de l'app écrit des tuiles 256 : " +
+    "sans lecture des tuiles, l'aller-retour export → import échoue.");
+
   // ── L5. Les refus, chacun NOMMÉ ──────────────────────────────────────────
+  // tiff.err.tuile : déclarée tuilée, mais sans index des tuiles (324 / 325).
   const casRefus = [
     ["tiff.err.bigTiff",       o => { o.magic = 43; }],
     ["tiff.err.tuile",         o => { remplace(o, 322, [256]); }],
@@ -389,8 +472,8 @@ const remplace = (o, tag, valeurs, type) => {
     ["tiff.err.crsInconnu",    o => { remplace(o, 34735, [1, 1, 0, 1, 3072, 0, 1, 32631]); }],  // UTM 31N
     ["tiff.err.rotation",      o => {
       o.entrees = o.entrees.filter(e => e.tag !== 33550 && e.tag !== 33922);
-      // matrice avec cisaillement : [1] et [4] non nuls
-      remplace(o, 34264, [10, 3, 0, 700000, 3, -10, 0, 6600000, 0, 0, 0, 0, 0, 0, 0, 1], 12);
+      // matrice CISAILLÉE : l'axe des lignes penche (3 m d'est par pixel de ligne), celui des colonnes non
+      remplace(o, 34264, [10, 3, 0, 700000, 0, -10, 0, 6600000, 0, 0, 0, 0, 0, 0, 0, 1], 12);
     }]
   ];
   for (const [cle, patch] of casRefus) {

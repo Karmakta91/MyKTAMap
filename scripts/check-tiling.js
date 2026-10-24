@@ -658,7 +658,7 @@ function _regionTuiles() {
     const EXP = fs.readFileSync("js/exporter.js", "utf8"), SM = fs.readFileSync("js/secoursMode.js", "utf8");
     t("🖨️ export : une région se dessine translatée, et la légende après restauration",
       /if \(region\) \{ ctx\.save\(\); ctx\.translate\(-region\.x \* scale, -region\.y \* scale\); \}/.test(EXP) &&
-      /if \(region\) ctx\.restore\(\);\s*\n\s*if \(opts\.legende\)/.test(EXP) && EXP.indexOf("window.ktaDessinerRegionTuiles(ctx, config, region, scale)") >= 0);
+      /if \(region\) ctx\.restore\(\);\s*\n\s*if \(opts\.legende\)/.test(EXP) && /window\.ktaDessinerRegionTuiles\(ctx, config, region, scale(, \{ aligner: true \})?\)/.test(EXP));
     t("🖨️ Mode Secours : page d'équipe, carte des accès et mini-carte rendent leur SEULE région (plus de plan entier plafonné)",
       (SM.match(/await _rendreRegionPlan\(/g) || []).length === 3 && SM.indexOf("_echelleCanvasPlan") < 0);
   }).catch(function (e) {

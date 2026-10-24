@@ -349,7 +349,7 @@
       );
       const parId = {};   // planId → { session, calib, blobBytes, handles, photos, backups, nom }
       const entree = function(id) {
-        return parId[id] || (parId[id] = { id: id, sessionBytes: 0, calib: false, blobBytes: 0, handle: false, photos: 0, photoBytes: 0, backups: 0, nom: null });
+        return parId[id] || (parId[id] = { id: id, sessionBytes: 0, calib: false, vue: false, blobBytes: 0, handle: false, photos: 0, photoBytes: 0, backups: 0, nom: null });
       };
       // Sessions (KtaSessionStore : IndexedDB, ou localStorage en repli)
       const st = window.KtaSessionStore;
@@ -366,6 +366,15 @@
         const id = k.slice("myktamap_kmz_calib_".length);
         if (!id || id === "default" || vivants.has(id)) continue;
         entree(id).calib = true;
+      }
+      // Vue laissée (js/vuePlan.js) : quelques octets, mais rien d'un plan supprimé ne doit rester.
+      const prefVue = window.KtaVuePlan ? window.KtaVuePlan.PREFIXE : "myktamap_vue_v1_";
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf(prefVue) !== 0) continue;
+        const id = k.slice(prefVue.length);
+        if (!id || vivants.has(id)) continue;
+        entree(id).vue = true;
       }
       // IDB myktamap_handles : blobs (archives ZIP) + handles FS
       try {
@@ -805,6 +814,7 @@
         const parts = [];
         if (e.sessionBytes) parts.push(_t("orph.session", { taille: _formatBytes(e.sessionBytes) }));
         if (e.calib)        parts.push(_t("orph.calib"));
+        if (e.vue)          parts.push(_t("orph.vue"));
         if (e.blobBytes)    parts.push(_t("orph.archive", { taille: _formatBytes(e.blobBytes) }));
         if (e.handle)       parts.push(_t("orph.handle"));
         if (e.photos)       parts.push(_t("orph.photos", { n: e.photos, taille: _formatBytes(e.photoBytes) }));

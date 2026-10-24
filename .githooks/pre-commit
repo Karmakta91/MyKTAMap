@@ -66,6 +66,9 @@ node scripts/check-pdf-texte.js || exit $?
 # Popups natives : cliquet a 0 (ktaAlerte / ktaConfirm / toast).
 node scripts/check-popups-natives.js || exit $?
 
+# Couleurs en dur dans un style pose par le JS : cliquet (la charte s'ecrit var(--kta-...)).
+node scripts/check-couleurs-inline.js || exit $?
+
 # Forme du backlog : horizons, plafond de Maintenant, metadonnees des entrees (avertissement, jamais bloquant).
 node scripts/check-backlog.js
 
@@ -89,6 +92,9 @@ node scripts/check-lambert93.js || exit $?
 
 # GeoTIFF : repere, tiepoint, 3857, LZW et refus nommes, sur fixtures construites octet par octet.
 node scripts/check-geotiff.js || exit $?
+
+# Exports SIG : TIFF tuile relu a l'identique par notre lecteur, GeoKeys, calage a < 1 m, GeoJSON (filtres du KMZ).
+node scripts/check-export-sig.js || exit $?
 
 # Etiquettes a la generation : le fichier propose, l'utilisateur dispose ; 4 ecrivains de plan-config.
 node scripts/check-plan-tags.js || exit $?
@@ -239,6 +245,9 @@ node scripts/check-guidage.js || exit $?
 
 # Secours : secteurs et parcours de balayage executes sur le vrai graphe (reseau fictif).
 node scripts/check-secours-balayage.js || exit $?
+
+# 🔒 POI entre niveaux (jes / jpe / jps) : jamais une sortie de surface ; jonctions dans le graphe.
+node scripts/check-poi-jonction.js || exit $?
 
 # Parite des 3 guides utilisateur (memes sections, aucune traduction sous 70 % du FR).
 node scripts/check-doc-langues.js || exit $?

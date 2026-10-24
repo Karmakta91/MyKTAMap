@@ -154,7 +154,7 @@ Al abrir la app, la **pantalla de arranque** dibuja una galería (unos 4 s) y de
 
 La pantalla de inicio ofrece:
 
-- **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado.
+- **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado donde lo dejaste (mismo lugar, mismo zoom, mismo nivel), también después de cerrar la app; reabrir un mapa desde la lista hace lo mismo. Si el seguimiento estaba en marcha, el mapa se centra en tu última posición conocida y el seguimiento queda detenido: reinícialo con ▶️.
 - **📚 Mis mapas** — todos los mapas que ya has abierto (🌐 servidor o 💾 local), del más reciente al más antiguo; los mapas disponibles en el servidor aparecen ahí solos. Una pulsación vuelve a abrir el mapa.
 - **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El mapa se suma a tu lista. Una **imagen** (`.jpg`, `.png`, `.webp`) soltada ahí abre el **Generador** con la imagen como fondo: solo falta darle un nombre al mapa.
 - **🏗️ Generar un mapa** — crea un mapa desde cero.
@@ -305,7 +305,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Ajustes** | ⚙️ | Ajustes del mapa: escala, Norte, georreferenciación, tracker, visualización… *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar un punto, un trazado, una zona o una estructura *(clic directo)* |
 | **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX (abre directamente el selector de archivos) |
-| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF), sesión, actualización del mapa, exportación externa (KMZ / GPX) |
+| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF, GeoTIFF), sesión, actualización del mapa, exportación externa (KMZ / GPX / GeoJSON) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
 | **Medición** | 📐 | Medir una distancia o una superficie, borrar |
@@ -609,6 +609,8 @@ La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetM
 
 **🎯 Coordenadas de superficie**: un clic en el mapa da la latitud y la longitud del punto situado justo encima, con un botón Copiar — es lo que se transmite a un equipo que llega por la superficie. Su exactitud depende de la calibración del mapa.
 
+**🗺️ Leyenda**: en un mapa, el botón **🗺️ Leyenda** de la Vista OSM; en la pantalla de inicio, el botón **🗺️** del encabezado. Es la leyenda del mapa, con tus nombres, tus colores y tus tipos propios, en **solo lectura**: se modifica desde el mapa (🗺️ Leyenda → ✏️ Modificar). En la pantalla de inicio, es la leyenda del mapa que acabas de dejar; si no, la del mapa mostrado que abriste más recientemente. Si se muestran varios mapas, un mensaje te recuerda que los demás tienen la suya.
+
 **🗂️ Varios mapas a la vez**: el botón **≡** del encabezado abre una ventana con los ajustes de visualización, el filtro por tag y la pila de mapas mostrados:
 
 - ➕ añadir un mapa — el menú los agrupa por **carpeta** de «Mis mapas», y «📁 Añadir toda la carpeta» los muestra de una vez —, ▲▼ ponerlo encima o debajo, un control de **opacidad** por mapa, ✕ retirarlo; ◉ marca el mapa principal;
@@ -846,7 +848,7 @@ Numeración: **0** = nivel de referencia, **1, 2…** por encima, **−1, −2�
 Una **pastilla amarilla** bajo los botones de zoom muestra el **nivel activo**. Un toque abre la ventana **🏗️ Niveles**:
 
 - **🎯 Nivel activo (para dibujar)** — todo lo que dibujas toma este nivel. **[ − ]** y **[ + ]** añaden un nivel por debajo o por encima. Cambiar de nivel activo **anula el trazado en curso** y solo muestra ese nivel.
-- **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. Una unión sigue visible si uno de sus dos niveles lo está.
+- **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. La casilla **🖼️ Mostrar el plano base** sigue al nivel 0 mientras no la toques; marcada o desmarcada a mano, tu elección manda (fondo bajo otra planta, o retirado aunque el 0 esté visible) y **Mostrar todo** la vuelve a automática (elección guardada con la sesión del mapa; en un mapa de un solo nivel, está en **Capas de imagen**). Una unión sigue visible si uno de sus dos niveles lo está.
 
 Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mismos ajustes están en ≡ **Filtros**. En la exportación de imagen, **🎨 Avanzado → 🏗️ Niveles a exportar** elige los niveles con independencia de lo que se muestra.
 
@@ -867,6 +869,28 @@ Una unión enlaza dos niveles en el lugar real del paso (escalera, pendiente, po
 Aparece en magenta punteado, con un círculo en cada extremo. **Sin unión, ningún itinerario cambia de nivel.** Dos escaleras entre los mismos niveles = dos uniones: el itinerario toma la más corta. Se borra como un trazado (🧹 Borrar y corregir).
 
 **Su ficha**: toca una unión que hayas trazado (fuera de un trazado en curso) para abrir **🪜 Unión N0 ↔ N+1**: su **nota** (💾 Guardar la nota), las listas **Salida (1.er punto)** y **Llegada (último punto)** con **🪜 Cambiar los niveles** (dos niveles distintos obligatorios; el itinerario lo sigue al instante) y **🗑️ Eliminar**. **⏪** deshace cada gesto. Sin 🔄 Convertir: una unión sigue siendo una unión.
+
+### ↕️ Escalera o pozo entre niveles (punto)
+
+Un paso vertical **en un lugar preciso** (escalera, pozo con peldaños, pozo sin peldaños) se coloca como un punto, con
+uno de los tres tipos **Escalera entre niveles**, **Pozo con peldaños entre niveles**, **Pozo sin peldaños entre
+niveles** (grupo «↕️ Pasos entre niveles» de la leyenda). La unión trazada sigue sirviendo para las pendientes suaves.
+
+1. Coloca (o modifica) el punto y elige su tipo: aparece el bloque **↕️ Niveles servidos**
+2. Marca los niveles que une el paso (el nivel del punto siempre está marcado)
+3. Para cada nivel, la app propone las galerías a menos de **5 m** (50 px en un mapa sin escala, y lo indica):
+   **marca aquella a la que sale el paso**. No se valida nada por ti; se avisa de un nivel sin galería cercana
+4. Guarda
+
+El punto se muestra en cada uno de sus niveles. Su ficha indica sus niveles y conexiones, y las dibuja en magenta
+punteado mientras está abierta. **El itinerario solo usa las conexiones validadas.** Cuenta el paso como **10 m por
+nivel para una escalera, 20 m para peldaños**; si la profundidad de los niveles está introducida, usa la diferencia
+real. El guiado dice «bajar al nivel −1 **por la escala**». Un **pozo sin peldaños** solo se usa si marcas **🧗 Equipo
+equipado (cuerda)** en las Evitaciones de la ventana de itinerario.
+
+🔒 Estos pasos **nunca** se proponen como salida de emergencia ni cuentan como accesos de superficie en el modo
+Rescate. Un pozo con peldaños o una escalera de servicio **que sale a la superficie** conserva su tipo y también puede
+marcar varios niveles: sigue siendo una salida.
 
 ### 🛠️ Del lado del creador del mapa
 
@@ -1011,16 +1035,28 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 
 - **Formato**: de A0 a A4, vertical u horizontal (A4 horizontal por defecto).
 - **Contenido**: tus anotaciones, la imagen del mapa y sus capas, las capas de datos, una cabecera (título e información del mapa).
-- **Calidad**: Estándar ×1 (A3/A4), Alta definición ×2 (A0/A1, archivo más pesado), Borrador ×0,5. A0/A1 en ×2 puede tardar de 30 a 60 segundos en móvil.
+- **Calidad**: Estándar ×1 (A3/A4), Alta definición ×2 (A0/A1, archivo más pesado), Borrador ×0,5. A0/A1 en ×2 puede tardar de 30 a 60 segundos en móvil. Si la imagen supera lo que el dispositivo puede producir, la resolución se reduce y la app te dice cuál obtienes.
 - **🗺️ Leyenda** colocada en una esquina (abajo a la izquierda por defecto), en tres tamaños y cuatro estilos: **Pro (fondo blanco)** para imprimir (por defecto), Oscuro opaco, Oscuro semitransparente, Filigrana discreta. Solo enumera lo que figura realmente en el mapa exportado.
 
 El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr» y se llama `<mapa>_<fecha>.pdf`.
 
-### 🌍 Exportar a otra app (KMZ, GPX)
+### 🛰️ Exportar a GeoTIFF georreferenciado (SIG)
 
-**⬆️ Exportar → 🌍 Exportación externa** (mosaico **KMZ** o **GPX**) genera:
+**⬆️ Exportar → 🖼️ Imagen → 🛰️ GeoTIFF georreferenciado (SIG)**: el mapa como imagen georreferenciada. Abierto en **QGIS** (o cualquier SIG), se coloca solo en su sitio, sin volver a escribir nada.
+
+- **Contenido**: **Solo el escaneo** (el fondo limpio, para dibujar encima en un SIG) o **Escaneo + dibujos** (como la exportación de imagen: capas visibles, puntos, trazados, zonas, estructuras).
+- **Proyección**: **WGS84** (latitud / longitud, por defecto) o **Lambert 93** (la referencia SIG en Francia).
+- **Resolución**: Original, ½ o ¼; la ventana indica el tamaño de la imagen producida. En el teléfono se limita a 64 Mpx (para la resolución completa de un mapa grande, exporta desde un ordenador); las opciones imposibles aparecen en gris y, si hace falta, aparece una opción **Máx.**.
+- **El mapa debe estar calibrado** (georreferenciación GPS, ver «⚙️ Ajustes» o la exportación KMZ): si no, el botón **Descargar** queda en gris y la ventana explica qué hacer.
+
+El archivo se llama `MyKTAMap_<mapa>_<fecha>_L93.tif` (o `_WGS84.tif`). Un mapa grande tarda: el botón muestra el progreso.
+
+### 🌍 Exportar a otra app (KMZ, GPX, GeoJSON)
+
+**⬆️ Exportar → 🌍 Exportación externa** (mosaico **KMZ**, **GPX** o **GeoJSON**) genera:
 - un **KMZ**: tu mapa y tus anotaciones situados sobre el globo, para **Google Earth**, **OsmAnd**, **Locus** o **Avenza**;
-- un **GPX**: puntos y trazados, para TopoDroid, OsmAnd, Strava… y reimportable en MyKTAMap con sus niveles.
+- un **GPX**: puntos y trazados, para TopoDroid, OsmAnd, Strava… y reimportable en MyKTAMap con sus niveles;
+- un **GeoJSON**: tus objetos para **QGIS** o cualquier SIG, con su tipo, etiqueta, nombre, nivel, nota y color.
 
 **El mapa debe estar georreferenciado**: dos puntos cuyas coordenadas GPS conoces. Los campos vienen rellenados con la georreferenciación del mapa (ver «⚙️ Ajustes») y se guardan para este mapa. Mientras escribes, una **🌐 Vista previa esquinas** da la posición de las 4 esquinas, la escala, la rotación, y un enlace **🔗 Ver el centro en Google Maps** para comprobarlo.
 
@@ -1031,6 +1067,8 @@ Contenido del KMZ:
 Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar** genera `MyKTAMap_<mapa>_<fecha>.kmz`.
 
 > 💡 La proyección es fiel en un mapa regular; un mapa estirado o ensamblado puede desviarse en los extremos. Un **punto C**, en la georreferenciación del mapa, corrige este tipo de deformación.
+
+El **GeoJSON** retoma las mismas casillas que el KMZ (puntos por icono, trazados, zonas y estructuras por tipo, uniones, itinerario, niveles), sin la imagen. Elige la **proyección**: **WGS84** (por defecto; la norma GeoJSON, para un sitio web o una herramienta estricta) o **Lambert 93** (el archivo termina en `_L93.geojson` y QGIS lo coloca solo).
 
 ---
 
@@ -1043,7 +1081,7 @@ Así puedes exportar solo los pozos, o solo las zonas inaccesibles. **Descargar*
 - **Sesión de MyKTAMap** (`.json`, o `.zip` con fotos): **sustituye** tu sesión en curso (puntos, trazados, zonas, medición); sus fotos, en cambio, **se añaden** a las tuyas, sin borrar ninguna. Una vista previa muestra lo que contiene; justo antes se toma una copia de tu sesión actual. **Importar** para validar, **Cancelar** para no cambiar nada.
 - **Archivo GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): sus puntos y trazados **se añaden** a tu sesión. El mapa debe estar georreferenciado. Una vista previa precede a la adición, y **Ctrl+Z** la deshace.
 
-Para cambiar de mapa, toca la **rosa de los vientos 🧭** (vuelta al inicio) o el **título del mapa** en la barra superior; tu sesión se guarda antes del cambio.
+Para cambiar de mapa, toca la **rosa de los vientos 🧭** (vuelta al inicio) o el **título del mapa** en la barra superior; tu sesión se guarda antes del cambio. Volver al inicio **cierra el mapa** para devolver su memoria al dispositivo (el seguimiento se detiene): **▶️ Reanudar** lo vuelve a abrir donde lo dejaste.
 
 ---
 
@@ -1135,7 +1173,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
 - **📐 Mapa: escala y geolocalización** *(este mapa)*:
   - **Escala**, con **🎯** para calibrarla (ver más abajo);
   - **🧭 Calibración del Norte**, si la parte superior del mapa no es el Norte: un ángulo, o **📐 Calibrar (2 clics)** (Sur y luego Norte en el mapa), **↺ Restablecer** para volver a 0. La brújula siempre muestra el Norte verdadero;
-  - **🌐 Georreferenciación GPS**: se muestra su estado (no georreferenciado, puntos A y B, A, B y C, B estimado) y **🌐 Abrir la georreferenciación…** abre su ventana. Para los puntos A y B: **🔍 Buscar un punto** o **📍 Haz clic en el mapa** rellena la posición en el mapa, y luego pegas las coordenadas GPS en formato Google Maps (`48.856600, 2.352200`). Elígelos **alejados** entre sí. **Estimar B** deduce B a partir de A, la escala y el Norte: una estimación, que hay que comprobar en la Vista OSM. El **📐 Punto C (opcional)**, lejos de la línea A-B, corrige un mapa deformado (ensamblaje estirado) para la Vista OSM, las exportaciones y el Modo Rescate. **💾 Guardar la calibración** / **🗑️ Borrar**. Esta georreferenciación sirve para la Vista OSM, las exportaciones KMZ y GPX y la importación GPX.
+  - **🌐 Georreferenciación GPS**: se muestra su estado (no georreferenciado, puntos A y B, A, B y C, B estimado) y **🌐 Abrir la georreferenciación…** abre su ventana. Para los puntos A y B: **🔍 Buscar un punto** o **📍 Haz clic en el mapa** rellena la posición en el mapa, y luego pegas las coordenadas GPS en formato Google Maps (`48.856600, 2.352200`). Elígelos **alejados** entre sí. **Estimar B** deduce B a partir de A, la escala y el Norte: una estimación, que hay que comprobar en la Vista OSM. El **📐 Punto C (opcional)**, lejos de la línea A-B, corrige un mapa deformado (ensamblaje estirado) para la Vista OSM, las exportaciones y el Modo Rescate. **💾 Guardar la calibración** / **🗑️ Borrar**. Esta georreferenciación sirve para la Vista OSM, las exportaciones KMZ, GPX, GeoJSON y GeoTIFF y la importación GPX.
 - **📍 Navegación y tracker** *(📍/🌍 según la línea)*:
   - **🧭 Posición inicial del tracker** *(este mapa)*: X/Y, **🔍 Elegir mediante un punto** o **📍 Hacer clic en el mapa**. Cambiar el inicio hace que el seguimiento vuelva a empezar desde ahí (el recorrido en curso se borra);
   - **👣 Detección de pasos** *(todos los mapas)*: longitud del paso (de 0 a 1,5 m), umbral (de 10 a 30), retardo (de 300 a 3000 ms);
@@ -1573,7 +1611,7 @@ Si has georreferenciado tu mapa en **QGIS**, expórtalo en **GeoTIFF** (`.tif`):
 
 > ✅ **Aceptado**: compresión LZW, Deflate o ninguna · 8 bits por canal · gris, RGB o RGBA · imagen en bandas · norte arriba, sin rotación · Lambert 93, Web Mercator o WGS84.
 >
-> ❌ **Rechazado**, con un mensaje que dice qué cambiar en la exportación: BigTIFF, imagen en teselas, canales separados, paleta / CMYK / YCbCr, georreferenciación girada, otro sistema de coordenadas.
+> ❌ **Rechazado**, con un mensaje que dice qué cambiar en la exportación: BigTIFF, canales separados, paleta / CMYK / YCbCr, georreferenciación que deforma la imagen (estirada o cizallada; una imagen solo girada se acepta), otro sistema de coordenadas.
 
 #### 🗺️ Convertir un archivo SIG (QGIS…)
 

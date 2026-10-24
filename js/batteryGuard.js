@@ -260,13 +260,13 @@
     modal.style.zIndex = "100003";  // au-dessus des modales standard
 
     modal.innerHTML =
-      '<div class="kta-readme-modal-boite" style="max-width:480px; border:2px solid #ef4444; box-shadow:0 0 32px rgba(239,68,68,0.45);">' +
+      '<div class="kta-readme-modal-boite" style="max-width:480px; border:2px solid var(--kta-erreur); box-shadow:0 0 32px rgba(239,68,68,0.45);">' +
         '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(239,68,68,0.35);">' +
-          '<span class="kta-readme-modal-titre" style="color:#ff8a8a;">' + t("battery.critical.titre", { n: lvl }) + '</span>' +
+          '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + t("battery.critical.titre", { n: lvl }) + '</span>' +
           '<button class="kta-panneau-close" id="kta-bat-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="padding:18px; color:var(--kta-texte-2); line-height:1.6;">' +
-          '<p style="font-size:14px; color:#ff8a8a; font-weight:600;">' + t("battery.critical.intro") + '</p>' +
+          '<p style="font-size:14px; color:var(--kta-erreur); font-weight:600;">' + t("battery.critical.intro") + '</p>' +
           '<p style="font-size:13.5px;">' + t("battery.critical.actionLabel") + '</p>' +
           '<ul style="font-size:13px; margin:8px 0 14px 4px; padding-left:18px; line-height:1.7;">' +
             '<li>' + t("battery.critical.tip.save") + '</li>' +

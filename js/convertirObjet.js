@@ -19,8 +19,8 @@
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
 // changent par changerNiveauxJonction, jamais par Convertir) et `itinerary` (trajet CALCULÉ, pas une donnée du relevé).
 // ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; on le rapatrie d'abord (js/calqueSession.js).
-// Garde-fou : check-calque-session.js (🩸 ce fichier ne doit contenir AUCUNE mention du nom de liste des points de
-// session, même en commentaire).
+// ⚠️ Points (POI) : jamais convertis ; ce module n'atteint pas lui-même leur liste. Le Tableur lui fait appliquer un
+// tableau de points par l'accès qu'il fournit (appliquerTableau, `opts.acces`). Garde-fou : check-calque-session.js.
 
 (function () {
   "use strict";
@@ -299,6 +299,8 @@
   // complets et N entrées d'historique (N Ctrl+Z). Le lot est UN geste, il s'annule en UN geste.
   // 🩸 Une cible déjà atteinte n'est pas une erreur : sur une sélection mixte (40 fronts + 5 chemins → galerie), les
   // objets déjà du bon type sont SAUTÉS et comptés à part (masquer la cible rendrait la liste incompréhensible).
+  // 🩸 Une source interdite (jonction, itinéraire) est sautée aussi : la fiche ne propose pas Convertir pour elle, le
+  // lot ne doit pas la convertir par la bande (une jonction devenue tracé perd ses niveaux et ne relie plus rien).
   function convertirLot(items, familleCible, typeCible) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return { convertis: 0, sautes: 0, echecs: (items || []).length };   // 🔒 lecture seule
     const bilan = { convertis: 0, sautes: 0, echecs: 0 };
@@ -322,6 +324,7 @@
 
     items.forEach(function (it) {
       if (!it || !it.obj || !listes[it.famille]) { bilan.echecs++; return; }
+      if (CIBLES_INTERDITES[it.obj.type]) { bilan.sautes++; return; }
       if (it.famille === familleCible && it.obj.type === typeCible) { bilan.sautes++; return; }
       const idx = _indexDe(listes[it.famille], it.obj);
       if (idx < 0) { bilan.echecs++; return; }
@@ -359,8 +362,8 @@
   // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau.
   // `opts.simuler` : rien n'est écrit (compte des suppressions avant la confirmation d'un plan partagé).
   // `opts.acces` = { lire, ecrire, categorie } : liste hors vecteurs (les POI du Tableur) — mêmes règles par uid,
-  // sans validation de type (un point n'en a pas), `categorie` = celle de l'historique. Ce module ne nomme pas cette
-  // liste (check-calque-session.js : « Convertir » ne gère pas les points) : c'est l'appelant qui la fournit.
+  // sans validation de type (un point n'en a pas), `categorie` = celle de l'historique. ⚠️ L'appelant fournit la liste,
+  // le module ne va jamais la chercher ; le point est muté en place (`_srcCalque` d'un calque rapatrié survit).
   // UN instantané, UNE écriture, UNE entrée d'historique (comme le lot). → { modifies, ajoutes, supprimes, ignores } ou null.
   function _typesConnus(cat) {
     const out = (typeof window.ktaStyleBuiltins === "function") ? (window.ktaStyleBuiltins(cat) || []).slice() : [];
@@ -371,6 +374,11 @@
       }
     } catch (e) {}
     return out;
+  }
+
+  // `niveaux` d'un passage entre niveaux (poiJonction.js) : absent, ou liste d'entiers.
+  function _niveauxLisibles(v) {
+    return v == null || (Array.isArray(v) && v.every(Number.isInteger));
   }
 
   function appliquerTableau(famille, lignes, opts) {
@@ -413,6 +421,7 @@
       if (!obj) {
         if (vecteur && connus.indexOf(l.type) < 0) return fautive("typeInconnu");
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+        if (!_niveauxLisibles(l.niveaux)) return fautive("niveau");
         plan.push({ neuf: l });
         continue;
       }
@@ -428,6 +437,7 @@
         op.type = l.type;
       }
       if (touche("level") && l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+      if (touche("niveaux") && !_niveauxLisibles(l.niveaux)) return fautive("niveau");
       if (touche("level") && l.level != null && l.level !== niveauDe(obj)) {
         if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
         op.niveau = l.level;

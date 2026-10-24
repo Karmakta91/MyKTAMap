@@ -277,11 +277,20 @@
     return { width: 2, fillAlpha: 0.85 };
   }
 
-  // Style KML d'un type built-in OU custom ; null si inconnu (custom supprimé de la légende).
+  // ⚠️ Repli d'un type SANS entrée de légende (id brut d'un calque, custom supprimé) = celui de la carte :
+  // zones.js / structures.js > `_resolve…Style(type) || _resolve…Style("<repli>")`, contrôlé par
+  // scripts/check-kml-styles.js. Les tracés n'ont pas de repli de famille (la carte les peint en blanc,
+  // comme le trait par défaut de Google Earth) : pas de style.
+  const REPLI_KML = { zones: "remblais", structures: "mur" };
+
+  // Style KML d'un type built-in OU custom ; repli de sa famille si inconnu, null pour un tracé inconnu.
   function _styleKmlDe(categorie, cle) {
     if (typeof window.ktaResolveStyle !== "function") return null;
     const s = window.ktaResolveStyle(categorie, cle, { flat: true });
-    if (!s) return null;
+    if (!s) {
+      const repli = REPLI_KML[categorie];
+      return (repli && repli !== cle) ? _styleKmlDe(categorie, repli) : null;
+    }
     const t = _traitsKml(categorie, cle, s);
     const out = { line: s.color, width: t.width };
     if (t.alpha != null) out.alpha = t.alpha;
@@ -329,19 +338,38 @@
         const sep = id.indexOf("_");
         const cat = PREFIXE_CATEGORIE[id.slice(0, sep)];
         const s   = cat ? _styleKmlDe(cat, id.slice(sep + 1)) : null;
-        // Type custom introuvable : rien émis (styleUrl pendant, donnée préservée).
+        // Type introuvable : style de repli de sa famille ; tracé inconnu : rien émis (trait par défaut).
         if (s) out += _blocStyleKml(id, s);
       });
     }
     return out;
   }
 
-  // Un <Style id="point_<tag>"> par tag rencontré (icône embarquée files/icons/<tag>.png).
-  function _genererStyleIconePoint(tag) {
-    const id = "point_" + (tag || "default");
-    return '<Style id="' + id + '">' +
+  // Nom de fichier (et d'id de style) d'une icône : un tag libre peut porter espace, guillemet ou « / », qui
+  // casseraient le XML ou le chemin dans le ZIP. Même fonction pour le fichier, le <Style> et le styleUrl.
+  // ⚠️ Un tag de lettres (accents compris), chiffres, « _ » et « - » reste tel quel : kmzImport.js relit le tag
+  // dans le styleUrl (aller-retour).
+  function _nomIcone(tag) {
+    const t = String(tag || "default");
+    return /^[\p{L}\p{N}_-]+$/u.test(t) ? t : "t_" + t.replace(/[^\p{L}\p{N}_-]/gu, "_") + "_" + _hashCourt(t);
+  }
+  function _hashCourt(s) {
+    let h = 0;
+    // Math.imul + >>> 0 : repli modulo 2^32 (Math.trunc le perdrait) ; codePointAt = charCodeAt hors caractères astraux.
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.codePointAt(i)) >>> 0;
+    return h.toString(36);
+  }
+
+  // Un <Style id="point_<tag>"> par tag rencontré. ⚠️ `embarquees` (Set des tags dont le fichier est DANS le
+  // ZIP, cf genererKmz) : un tag sans fichier (tag inconnu, icône introuvable) pointe vers l'icône par défaut,
+  // sinon Google Earth affiche une icône cassée. Sans ce Set (genererKml seul), chaque tag vise son fichier.
+  function _genererStyleIconePoint(tag, embarquees) {
+    const nom = _nomIcone(tag);
+    const fichier = (!embarquees || embarquees.has(String(tag || "default"))) ? nom
+                  : (embarquees.has("default") ? "default" : nom);
+    return '<Style id="point_' + nom + '">' +
              '<IconStyle>' +
-               '<Icon><href>files/icons/' + (tag || "default") + '.png</href></Icon>' +
+               '<Icon><href>files/icons/' + fichier + '.png</href></Icon>' +
                '<scale>0.8</scale>' +
              '</IconStyle>' +
              '<LabelStyle>' +
@@ -349,6 +377,44 @@
                '<scale>0.85</scale>' +
              '</LabelStyle>' +
            '</Style>';
+  }
+
+  // Nom d'un objet d'un type hors intégrés : le libellé de la légende (« Front niveau 2 »), sinon l'id brut
+  // — jamais `Cust-m2k9x-3fa`.
+  function _nomType(type) {
+    const LC = window.LegendCustomization;
+    if (LC && typeof LC.findCustomEntry === "function") {
+      try { const e = LC.findCustomEntry(type); if (e && e.label) return String(e.label); } catch (e) {}
+    }
+    const s = String(type);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  // Géométrie d'une structure : celle de sa légende. Un type SANS légende (id brut d'un calque) n'en déclare
+  // aucune : il suit sa forme réelle, ligne si ouvert, polygone si fermé (premier point = dernier, comme
+  // l'anneau d'un polygone SIG importé ; le format n'a pas de drapeau `closed`).
+  function _estLigneStructure(s) {
+    const type = s.type;
+    const connu = typeof window.ktaResolveStyle === "function" && !!window.ktaResolveStyle("structures", type);
+    if (connu || typeof window.ktaResolveStyle !== "function") {
+      return (typeof window.isStructurePolylineType === "function")
+        ? !!window.isStructurePolylineType(type)
+        : (type === "front-1" || type === "front-2");
+    }
+    const pts = s.points || [];
+    const a = pts[0], z = pts[pts.length - 1];
+    const ferme = pts.length >= 4 && !!a && !!z && a.x === z.x && a.y === z.y;
+    return !ferme;
+  }
+
+  // Style résolu d'un type ({ flat: true }) avec le repli de sa famille quand il n'a pas d'entrée de légende :
+  // la couleur du GeoJSON (js/geojsonExport.js) suit ainsi celle du KML et de la carte.
+  function _styleResolu(categorie, cle) {
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const s = window.ktaResolveStyle(categorie, cle, { flat: true });
+    if (s) return s;
+    const repli = REPLI_KML[categorie];
+    return (repli && repli !== cle) ? window.ktaResolveStyle(categorie, repli, { flat: true }) : null;
   }
 
   // ── Génération KML complète ──────────
@@ -467,7 +533,16 @@
 
     const tagsRencontres = new Set(["default"]);
 
-    function _emitPlacemark(p, layerIcon) {
+    // Niveaux où un point s'exporte : tous ceux d'un passage entre niveaux, sinon son seul `level`.
+    function _niveauxPoint(p) {
+      const PJ = window.KtaPoiJonction;
+      if (PJ && PJ.estJonction(p)) return PJ.niveaux(p);
+      return [Number.isInteger(p.level) ? p.level : 0];
+    }
+
+    // `copie` : passage entre niveaux répété dans le dossier d'un autre de ses niveaux (mkm:copie, sauté à
+    // l'import pour ne pas doubler le point).
+    function _emitPlacemark(p, layerIcon, copie) {
       const tag = (Array.isArray(p.tags) && p.tags.length > 0) ? p.tags[0] : "default";
       tagsRencontres.add(tag);
       const ll = planToGps(t, p.x, p.y);
@@ -475,12 +550,14 @@
       // Description en CDATA (Google Earth la rend en HTML : les \n bruts sont invisibles) : \n → <br/>.
       // L'import KMZ fait l'inverse (roundtrip du texte d'origine).
       const desc = p.description ? _emitDescriptionCdata(p.description) : '';
-      const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null);
+      const nv = _niveauxPoint(p);
+      const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null,
+        { niveaux: nv.length >= 2 ? nv : null, copie: !!copie });
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
                extData +
-               '<styleUrl>#point_' + tag + '</styleUrl>' +
+               '<styleUrl>#point_' + _nomIcone(tag) + '</styleUrl>' +
                '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
              '</Placemark>';
     }
@@ -499,6 +576,11 @@
       if (extra && Number.isInteger(extra.toLevel)) {
         parts.push('<Data name="mkm:toLevel"><value>' + extra.toLevel + '</value></Data>');
       }
+      // Passage entre niveaux : ses niveaux (« 0,-1 »). Les raccords, en pixels du plan, ne partent pas.
+      if (extra && Array.isArray(extra.niveaux)) {
+        parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
+      }
+      if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
       if (parts.length === 0) return '';
       return '<ExtendedData>' + parts.join('') + '</ExtendedData>';
     }
@@ -511,7 +593,7 @@
       return '<description><![CDATA[' + html + ']]></description>';
     }
 
-    function _emitLineString(road, styleId) {
+    function _emitLineString(road, styleId, nomImpose) {
       if (!road.points || road.points.length < 2) return "";
       // Jonction posée au plus HAUT de ses deux étages (une seule altitude pour toute la ligne).
       const _altRoad = (road.type === "jonction")
@@ -520,9 +602,10 @@
       const coords = road.points
         .map(function(p) { return _coord(planToGps(t, p.x, p.y), _altRoad); })
         .join(" ");
-      const nom = road.type === "itinerary" ? "🗺️ Itinéraire"
+      const nom = nomImpose ? nomImpose
+                : road.type === "itinerary" ? "🗺️ Itinéraire"
                 : road.type === "jonction"  ? "🪜 Jonction"
-                : road.type.charAt(0).toUpperCase() + road.type.slice(1);
+                : _nomType(road.type);
       const desc = road.description ? _emitDescriptionCdata(road.description) : '';
       const extData = (road.type === "jonction")
         ? _emitExtendedDataLevel(null, { fromLevel: road.fromLevel, toLevel: road.toLevel })
@@ -551,7 +634,7 @@
       if (zone.type === "pilier-1") nom = "Pilier 1ère masse";
       else if (zone.type === "pilier-2") nom = "Pilier 2e masse";
       else if (zone.type === "mur") nom = "Mur";
-      else nom = zone.type.charAt(0).toUpperCase() + zone.type.slice(1);
+      else nom = _nomType(zone.type);
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
       const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null);
       return '<Placemark>' +
@@ -793,14 +876,25 @@
     function _folderForLevel(level) {
       let body = "";
       if (opts.include.points && opts.data.editorPoints) {
+        // Passage entre niveaux : dans le dossier de CHACUN de ses niveaux exportés (décision produit) ; un
+        // seul exemplaire est l'original (son niveau s'il est exporté, sinon le premier), les autres des copies.
+        const exportes = function(p) {
+          return _niveauxPoint(p).filter(function(n) { return !opts.levels || opts.levels.has(n); });
+        };
+        const original = function(p, ex) {
+          const lvl = Number.isInteger(p.level) ? p.level : 0;
+          return ex.indexOf(lvl) >= 0 ? lvl : ex[0];
+        };
         const points = opts.data.editorPoints.filter(function(p) {
           if (pointTagsSet && !pointTagsSet.has(_firstTag(p))) return false;
-          return _passeLevel(p, Number.isInteger(p.level) ? p.level : 0) &&
-                 (!mlOn || (Number.isInteger(p.level) ? p.level : 0) === level);
+          if (!mlOn) return _passeLevel(p, Number.isInteger(p.level) ? p.level : 0);
+          return exportes(p).indexOf(level) >= 0;
         });
         if (points.length > 0) {
           body += '<Folder><name>📍 Points (' + points.length + ')</name>';
-          points.forEach(function(p) { body += _emitPlacemark(p); });
+          points.forEach(function(p) {
+            body += _emitPlacemark(p, undefined, mlOn && original(p, exportes(p)) !== level);
+          });
           body += '</Folder>';
         }
       }
@@ -859,25 +953,14 @@
           body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
           structures.forEach(function(s) {
             const styleId = _idStyleEtCollecte("structure", s.type);
-            // _emitLineString attend road.type pour le nom : objet adapté.
-            if (s.type === "front-1" || s.type === "front-2") {
-              if (!s.points || s.points.length < 2) return;
-              const coords = s.points
-                .map(function(p) { return _coord(planToGps(t, p.x, p.y)); })
-                .join(" ");
-              const nom = s.type === "front-1"
-                ? "Front de taille 1ère masse"
-                : "Front de taille 2e masse";
-              // Description émise aussi pour les fronts (sinon perdue à l'export et au roundtrip).
-              body += '<Placemark>' +
-                        '<name>' + _xmlEsc(nom) + '</name>' +
-                        (s.description ? _emitDescriptionCdata(s.description) : '') +
-                        _emitExtendedDataLevel(Number.isInteger(s.level) ? s.level : null) +
-                        '<styleUrl>#' + styleId + '</styleUrl>' +
-                        '<LineString><tessellate>1</tessellate>' +
-                          '<coordinates>' + coords + '</coordinates>' +
-                        '</LineString>' +
-                      '</Placemark>';
+            // 🩸 Géométrie lue dans la légende (structures.js > _isPolylineType) : un test littéral front-1/front-2
+            // envoyait une structure PERSONNALISÉE en ligne vers _emitPolygon, qui la jetait (2 points) ou la
+            // refermait en polygone.
+            if (_estLigneStructure(s)) {
+              const nom = s.type === "front-1" ? "Front de taille 1ère masse"
+                        : s.type === "front-2" ? "Front de taille 2e masse"
+                        : _nomType(s.type);
+              body += _emitLineString(s, styleId, nom);
             } else {
               body += _emitPolygon(s, styleId);
             }
@@ -922,7 +1005,7 @@
 
     let stylesIcones = "";
     tagsRencontres.forEach(function(tag) {
-      stylesIcones += _genererStyleIconePoint(tag);
+      stylesIcones += _genererStyleIconePoint(tag, opts.iconesEmbarquees || null);
     });
 
     return '<?xml version="1.0" encoding="UTF-8"?>' +
@@ -943,6 +1026,64 @@
           secoursFolder +
         '</Document>' +
       '</kml>';
+  }
+
+  // ── Icônes embarquées ──────────
+  // iconsToEmbed { tag → URL | Blob } → { tag → Blob PNG } des seules icônes LISIBLES. Cascade par tag : l'URL
+  // fournie, puis l'icône du catalogue (`_ktaBuiltinIconUrls`, comme le repli de la carte), puis rien (le
+  // <Style> visera alors l'icône par défaut).
+  // 🩸 Le fichier s'appelle `<tag>.png` : une icône de plan en SVG, WebP ou JPEG y entrait telle quelle et
+  // Google Earth ne l'affichait pas. Tout ce qui n'est pas un PNG est redessiné en PNG.
+  async function _lireIcones(iconsToEmbed) {
+    const out = {};
+    if (!iconsToEmbed) return out;
+    const catalogue = window._ktaBuiltinIconUrls || {};
+    for (const tag of Object.keys(iconsToEmbed)) {
+      const sources = [iconsToEmbed[tag]];
+      if (catalogue[tag] && catalogue[tag] !== iconsToEmbed[tag]) sources.push(catalogue[tag]);
+      for (const src of sources) {
+        const png = await _iconeEnPng(src);
+        if (png) { out[tag] = png; break; }
+        console.warn("[KmzExport] icône « " + tag + " » illisible depuis", typeof src === "string" ? src.slice(0, 80) : "un Blob");
+      }
+    }
+    return out;
+  }
+
+  async function _iconeEnPng(src) {
+    let blob = null;
+    try {
+      if (src instanceof Blob) blob = src;
+      else if (typeof src === "string" && src) {
+        const r = await fetch(src);
+        if (r.ok) blob = await r.blob();
+      }
+    } catch (e) { return null; }
+    if (!blob || !blob.size) return null;
+    const tete = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+    if (tete[0] === 0x89 && tete[1] === 0x50 && tete[2] === 0x4e && tete[3] === 0x47) return blob;
+    // 🩸 Pas d'URL.createObjectURL sur un SVG puis drawImage sans décodage attendu : `img.decode()` d'abord.
+    // Un type que le navigateur ne sait pas lire (texte d'une page 404 servie en 200) rend null.
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const cote = 128;
+      const w = img.naturalWidth || cote, h = img.naturalHeight || cote;
+      const k = cote / Math.max(w, h);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(w * k));
+      canvas.height = Math.max(1, Math.round(h * k));
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      const png = await new Promise(function(res) { canvas.toBlob(res, "image/png"); });
+      canvas.width = canvas.height = 0;
+      return png && png.size ? png : null;
+    } catch (e) {
+      return null;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   // ── Génération KMZ (zip) ──────────
@@ -967,8 +1108,12 @@
       imageBaseUrl = "files/" + imageBasename;
     }
 
+    // Icônes lues AVANT le KML : il ne doit viser que des fichiers réellement embarqués.
+    const icones = await _lireIcones(opts.iconsToEmbed);
+
     // KML d'abord : premier fichier de l'archive.
-    const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl }));
+    const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl,
+      iconesEmbarquees: opts.iconsToEmbed ? new Set(Object.keys(icones)) : null }));
     zip.file("doc.kml", kml);
 
     if (imageBaseUrl) zip.folder("files").file(imageBasename, opts.imageBlob, SANS_COMPRESSION);
@@ -979,26 +1124,12 @@
       });
     }
 
-    // Toutes les icônes fournies sont ajoutées ; le KML ne référence que celles utilisées.
-    if (opts.iconsToEmbed) {
+    // Toutes les icônes lues sont ajoutées ; le KML ne référence que celles utilisées.
+    if (Object.keys(icones).length) {
       const filesFolder = zip.folder("files").folder("icons");
-      for (const tag of Object.keys(opts.iconsToEmbed)) {
-        const ic = opts.iconsToEmbed[tag];
-        if (!ic) continue;
-        if (ic instanceof Blob) {
-          filesFolder.file(tag + ".png", ic, SANS_COMPRESSION);
-        } else if (typeof ic === "string") {
-          try {
-            const r = await fetch(ic);
-            if (r.ok) {
-              const b = await r.blob();
-              filesFolder.file(tag + ".png", b, SANS_COMPRESSION);
-            }
-          } catch(e) {
-            console.warn("[KmzExport] Echec fetch icone", tag, e);
-          }
-        }
-      }
+      Object.keys(icones).forEach(function(tag) {
+        filesFolder.file(_nomIcone(tag) + ".png", icones[tag], SANS_COMPRESSION);
+      });
     }
 
     // myktamap-extras.json : données MyKTAMap (customLegend, secoursPlan…) ignorées des apps tierces.
@@ -1039,7 +1170,11 @@
     getCalibration:  getCalibration,
     setCalibration:  setCalibration,
     genererKml:      genererKml,
-    genererKmz:      genererKmz
+    genererKmz:      genererKmz,
+    // Règles partagées avec l'export GeoJSON : mêmes libellés, géométries et couleurs que le KML.
+    libelleType:       _nomType,
+    estLigneStructure: _estLigneStructure,
+    styleResolu:       _styleResolu
   };
 
   console.log("[KmzExport] Module chargé — API window.KmzExport prête");

@@ -121,9 +121,9 @@ function formatDistance(distM, decimalsM) {
 window.formatDistance = formatDistance;
 
 // ── Un plan est-il affiché ? (source de vérité unique) ──────────
-// 🩸 `PLAN_CONFIG.plan` ne suffit pas : afficherLoader() (retour HOME) ne remet pas PLAN_CONFIG à null, il
-// masque #map et pose body.kta-loader-active. Le marqueur fiable est cette classe (posée par afficherLoader,
-// retirée par homeLoader) ; PLAN_CONFIG reste en complément pour le boot (classe pas encore posée).
+// 🩸 `PLAN_CONFIG.plan` ne suffit pas : un plan se charge SOUS l'accueil (PLAN_CONFIG rempli, loader encore
+// visible). Le marqueur fiable est body.kta-loader-active (posée par afficherLoader, qui démonte aussi le plan
+// ouvert ; retirée par homeLoader) ; PLAN_CONFIG reste en complément pour le boot (classe pas encore posée).
 function ktaPlanAffiche() {
   try {
     if (document.body && document.body.classList.contains("kta-loader-active")) return false;
@@ -1083,7 +1083,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (statusEl) {
             statusEl.style.display = "block";
             statusEl.textContent = window.I18n.t("utils.noteSaved");
-            statusEl.style.color = "#6ce28a";
+            statusEl.style.color = "var(--kta-ok)";
           }
           if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
             window.HistoryManager.record(
@@ -1102,7 +1102,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (statusEl) {
             statusEl.style.display = "block";
             statusEl.textContent = window.I18n.t("utils.popup.errorPrefix") + (e.message || e);
-            statusEl.style.color = "#ff8080";
+            statusEl.style.color = "var(--kta-erreur)";
           }
         }
       });
@@ -1281,6 +1281,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
 
   // Ligne GPS si le plan est calibré, pour tout point (session et data layer) ; 📋 copie.
   let gpsLineHtml = "";
+  // Passage entre niveaux : niveaux desservis et raccords validés (poiJonction.js).
+  const jonctionHtml = window.KtaPoiJonction ? window.KtaPoiJonction.htmlFiche(point) : "";
   const _gpsLatLng = _planXyToGps(x, y);
   if (_gpsLatLng) {
     const gpsStr = _formatGps(_gpsLatLng);
@@ -1319,6 +1321,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
            gpsLineHtml +
+           jonctionHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +
@@ -1751,16 +1754,42 @@ function _passeFiltreRuntimeType(category, type) {
   return set.has(type);
 }
 
+// Masquage d'un marqueur par les filtres (niveau, tag) : opacité 0 ET icône inerte au pointeur (ni clic, ni
+// survol, ni fiche). 🩸 Leaflet RECRÉE l'icône à chaque retour sur la carte (calque recoché, culling viewport,
+// marqueur filtré avant son addTo) : l'opacité suit (options.opacity), pas le style inline. L'état vit donc sur
+// le marqueur et un écouteur « add », posé une fois, le réapplique à la nouvelle icône.
+function _ktaPoserInerte(marker) {
+  const ic = marker._icon;
+  if (!ic) return;
+  ic.style.pointerEvents = marker._ktaMasque ? "none" : "";
+  // Hors de la tabulation aussi : un point invisible ne prend pas le focus clavier.
+  if (marker.options && marker.options.keyboard) ic.tabIndex = marker._ktaMasque ? -1 : 0;
+}
+function _ktaReappliquerInerte() { _ktaPoserInerte(this); }
+window.ktaMasquerMarqueur = function(marker, masque) {
+  if (!marker) return;
+  marker._ktaMasque = !!masque;
+  try { marker.setOpacity(masque ? 0 : 1); } catch(e) {}
+  // Écouteur posé au premier masquage seulement : un marqueur jamais filtré (le cas courant sur un gros plan)
+  // n'en porte pas, et une icône neuve naît déjà réactive.
+  if (masque && !marker._ktaMasqueEcoute && typeof marker.on === "function") {
+    marker._ktaMasqueEcoute = true;
+    marker.on("add", _ktaReappliquerInerte);
+  }
+  _ktaPoserInerte(marker);
+};
+
 // ── Markers des data layers ──────────
 function _filtreNiveauSurMarkerData(marker) {
   if (!marker) return;
-  let visible = _passeFiltreDataLevel(marker._ktaLevel);
+  // Passage entre niveaux : visible si un de ses niveaux est affiché.
+  let visible = Array.isArray(marker._ktaNiveaux) ? marker._ktaNiveaux.some(_passeFiltreDataLevel)
+    : _passeFiltreDataLevel(marker._ktaLevel);
   if (visible) {
     const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0]) || "default";
     if (!_passeFiltreRuntimeTag(tag)) visible = false;
   }
-  try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
-  if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
+  window.ktaMasquerMarqueur(marker, !visible);
 }
 window._applyLevelFilterToDataPoints = function() {
   if (!Array.isArray(window._ktaDataMarkers)) return;
@@ -1894,6 +1923,9 @@ window.getAllEmbeddedPoints = function() {
         level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0,
         layerId: m._ktaLayerId || null
       };
+      // Passage entre niveaux (poiJonction.js) : l'itinéraire et les exports lisent ces deux champs.
+      if (Array.isArray(m._ktaNiveauxSrc)) item.niveaux = m._ktaNiveauxSrc;
+      if (Array.isArray(m._ktaAccroches)) item.accroches = m._ktaAccroches;
       if (m._ktaDescription) item.description = m._ktaDescription;
       if (m._ktaUid) item.uid = m._ktaUid;
       if (typeof m._ktaUpdatedAt === "number") item.updatedAt = m._ktaUpdatedAt;
@@ -2180,6 +2212,13 @@ function ajouterPointsDepuisJSON(url, layer) {
 
           // multi-niveau : `level` absent → 0
           marker._ktaLevel = Number.isInteger(p.level) ? p.level : 0;
+          // Passage entre niveaux : champs du calque gardés tels quels (relus par getAllEmbeddedPoints) ;
+          // _ktaNiveaux = niveaux où il s'affiche, null pour un point ordinaire.
+          if (Array.isArray(p.niveaux)) marker._ktaNiveauxSrc = p.niveaux;
+          if (Array.isArray(p.accroches)) marker._ktaAccroches = p.accroches;
+          const _pj = window.KtaPoiJonction;
+          marker._ktaNiveaux = (_pj && _pj.estJonction(p)) ? _pj.niveaux(p) : null;
+          if (_pj && !_skipPopup) _pj.brancherMarqueur(marker, p);
           // nom, tags, id : les placemarks KML (sinon points anonymes dans le KMZ)
           marker._ktaNom  = p.nom || "";
           marker._ktaId   = p.id  || "";
@@ -2625,24 +2664,28 @@ async function telechargerPlan() {
     // ── icônes ──
     const iconCache = {};
 
-    async function getIconForPoint(point) {
-      let iconPath = getIconUrlForPoint(point);
-
-      // filet ultime : icône par défaut de l'app
-      if (!iconPath) iconPath = window._ktaIconeDefaut || "icon/default.png";
-
-      if (!iconCache[iconPath]) {
-        iconCache[iconPath] = await loadImage(iconPath);
+    // 🩸 Icône illisible (chemin mort du plan-config) : repli comme la carte (catalogue, puis icône par défaut),
+    // jamais un rejet — il faisait échouer tout l'export pour un seul pictogramme.
+    async function _imageIcone(chemin) {
+      if (!chemin) return null;
+      if (!(chemin in iconCache)) {
+        try { iconCache[chemin] = await loadImage(chemin); }
+        catch (e) { iconCache[chemin] = null; console.warn("[Export rapide] icône illisible :", String(chemin).slice(0, 80)); }
       }
+      return iconCache[chemin];
+    }
 
-      return {
-        img: iconCache[iconPath],
-        path: iconPath
-      };
+    async function getIconForPoint(point) {
+      const tag = (point && Array.isArray(point.tags) && point.tags.length) ? point.tags[0] : null;
+      const img = (await _imageIcone(getIconUrlForPoint(point))) ||
+                  (await _imageIcone(tag && window._ktaBuiltinIconUrls ? window._ktaBuiltinIconUrls[tag] : null)) ||
+                  (await _imageIcone(window._ktaIconeDefaut || "icon/default.png"));
+      return { img: img };
     }
 
     async function drawPoint(point) {
       const { img } = await getIconForPoint(point);
+      if (!img) return;
 
       // icônes 50×50, ancrage centré
       drawMarkerImage(img, point.x, point.y, 50, 50, 25, 25);

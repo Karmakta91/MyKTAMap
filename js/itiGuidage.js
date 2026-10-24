@@ -249,7 +249,8 @@
     });
 
     // 3) Changements de niveau (le trajet porte le niveau de chaque point).
-    let dernier = null, sTransit = null;
+    // `via` (pathfinder.js) : moyen d'un passage entre niveaux traversé (escalier, echelons, corde).
+    let dernier = null, sTransit = null, via = null;
     for (let i = 0; i < road.points.length; i++) {
       const lv = road.points[i].level;
       if (Number.isInteger(lv)) {
@@ -258,13 +259,15 @@
           const pt = _pointA(ch, sN);
           consignes.push({
             s: sN, x: pt.x, y: pt.y, type: "niveau", de: dernier, vers: lv,
-            sens: _sensNiveau(dernier, lv), repere: _repereProche(pois, pt, repPx)
+            sens: _sensNiveau(dernier, lv), repere: _repereProche(pois, pt, repPx), moyen: via
           });
         }
         dernier = lv;
         sTransit = null;
-      } else if (sTransit === null) {
-        sTransit = ch.cum[i];
+        via = null;
+      } else {
+        if (sTransit === null) sTransit = ch.cum[i];
+        if (road.points[i].via) via = road.points[i].via;
       }
     }
 
@@ -326,6 +329,7 @@
   }
 
   // ── Textes (traduits au rendu, jamais au chargement) ──
+  const PAR_MOYEN = { escalier: "guid.par.escalier", echelons: "guid.par.echelons", corde: "guid.par.corde" };
   function texteAction(c) {
     if (!c) return "";
     let txt;
@@ -339,6 +343,8 @@
       case "niveau":
         txt = _t(c.sens === "monter" ? "guid.act.monter" : "guid.act.descendre",
                  { niveau: _t("guid.niveau", { n: c.vers }) });
+        // Passage entre niveaux : « … par l'escalier / par l'échelle / à la corde ».
+        if (PAR_MOYEN[c.moyen]) txt += _t(PAR_MOYEN[c.moyen]);
         break;
       case "etape":     txt = c.nom ? _t("guid.act.etapeNom", { nom: c.nom }) : _t("guid.act.etape"); break;
       case "arrivee":   txt = c.nom ? _t("guid.act.arriveeNom", { nom: c.nom }) : _t("guid.act.arrivee"); break;

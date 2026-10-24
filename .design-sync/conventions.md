@@ -20,6 +20,8 @@ reuse these, and put any layout glue in inline styles that read the tokens.
 - Status: `--kta-ok`, `--kta-avert`, `--kta-erreur`, `--kta-violet`, `--kta-magenta`; tinted boxes with
   `--kta-info-fond`/`--kta-info-bord`, `--kta-accent-fond`/`--kta-accent-bord`, `--kta-ok-fond`/`--kta-ok-bord`,
   `--kta-erreur-fond`/`--kta-erreur-bord`.
+- `--kta-sur-accent`: dark text on a gold or orange fill (checked chip, active tab). `--kta-tuilage-v2`: violet of
+  the V2 tiling (Generator progress bars, V2 checkbox and warning) — not for anything else.
 - Text color helpers: `kta-tx-info`, `kta-tx-accent`, `kta-tx-muted`, `kta-tx-warn`, `kta-tx-err`, `kta-tx-ok`.
 
 ## Class vocabulary

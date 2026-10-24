@@ -154,7 +154,7 @@ When the app opens, the **startup screen** draws a gallery (about 4 s), then giv
 
 The home screen offers:
 
-- **▶️ Resume [name]** — reopens the last map you used.
+- **▶️ Resume [name]** — reopens the last map you used where you left it (same place, same zoom, same level), even after closing the app; reopening a map from the list does the same. If tracking was running, the map centres on your last known position and tracking stays stopped: restart it with ▶️.
 - **📚 My maps** — every map you have already opened (🌐 server or 💾 local), most recent first; maps available on the server show up there on their own. A tap reopens the map.
 - **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list. An **image** (`.jpg`, `.png`, `.webp`) dropped there opens the **Generator** with the image as background: you just name the map.
 - **🏗️ Generate a map** — creates a map from scratch.
@@ -305,7 +305,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Settings** | ⚙️ | Map settings: scale, North, georeferencing, tracker, display… *(direct click)* |
 | **Search** | 🔍 | Find a point, a path, a zone or a structure *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX (opens the file picker directly) |
-| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF), session, map update, external export (KMZ / GPX) |
+| **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF, GeoTIFF), session, map update, external export (KMZ / GPX / GeoJSON) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
 | **Measurement** | 📐 | Measure a distance or an area, clear |
@@ -609,6 +609,8 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
+**🗺️ Legend**: on a map, the **🗺️ Legend** button of the OSM View; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
+
 **🗂️ Several maps at once**: the **≡** button of the banner opens a window with the display settings, the tag filter and the stack of displayed maps:
 
 - ➕ add a map — the menu groups them by **folder** of “My maps”, and “📁 Add the whole folder” shows them all at once —, ▲▼ move it above or below, an **opacity** slider per map, ✕ remove it; ◉ marks the main map;
@@ -846,7 +848,7 @@ Numbering: **0** = reference level, **1, 2…** above, **−1, −2…** below.
 A **yellow pill** under the zoom buttons shows the **active level**. A tap opens the **🏗️ Levels** modal:
 
 - **🎯 Active level (for drawing)** — everything you draw takes this level. **[ − ]** and **[ + ]** add a level below or above. Changing the active level **cancels the path in progress** and only shows that level.
-- **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. A junction stays visible if either of its two levels is.
+- **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. The **🖼️ Show the base plan** box follows level 0 until you touch it; once ticked or unticked by hand, your choice wins (background kept under another storey, or removed even with 0 shown) and **Show all** sets it back to automatic (choice saved with the map's session; on a single-level map, it sits in **Image layers**). A junction stays visible if either of its two levels is.
 
 If the map contains elements on other levels, the list extends by itself. The same settings exist in ≡ **Filters**. For image export, **🎨 Advanced → 🏗️ Levels to export** chooses the levels independently of what is displayed.
 
@@ -867,6 +869,28 @@ A junction links two levels at the real spot of the passage (stairs, slope, shaf
 It appears in dotted magenta, with a dot at each end. **Without a junction, no route changes level.** Two staircases between the same levels = two junctions: the route takes the shorter one. It is erased like a path (🧹 Erase and correct).
 
 **Its card**: tap a junction you drew (not while drawing) to open **🪜 Junction L0 ↔ L+1**: its **note** (💾 Save the note), the **Start (1st point)** and **End (last point)** lists with **🪜 Change the levels** (two different levels required; the route follows at once), and **🗑️ Delete**. **⏪** undoes each step. No 🔄 Convert: a junction stays a junction.
+
+### ↕️ Stairs or shaft between levels (point)
+
+A vertical passage **at a precise spot** (stairs, rung shaft, shaft without rungs) is placed as a point, with one of
+the three types **Stairs between levels**, **Rung shaft between levels**, **Shaft without rungs between levels**
+(group “↕️ Passages between levels” of the legend). The drawn junction stays for gentle slopes.
+
+1. Place (or edit) the point and choose its type: the **↕️ Levels served** block appears
+2. Tick the levels the passage connects (the point's own level is always ticked)
+3. For each level, the app suggests the galleries within **5 m** (50 px on a map without scale, and it says so):
+   **tick the one the passage opens onto**. Nothing is confirmed for you; a level with no nearby gallery is reported
+4. Save
+
+The point is shown on each of its levels. Its card lists its levels and connections, and draws them in dotted magenta
+while it is open. **Routes only use confirmed connections.** The passage counts as **10 m per level for stairs, 20 m
+for rungs**; if level depths are entered, the real depth difference is used. Guidance says “go down to level −1 **by
+the ladder**”. A **shaft without rungs** is only used if you tick **🧗 Team equipped (rope)** in the Avoidances of the
+route window.
+
+🔒 These passages are **never** suggested as emergency exits nor counted as surface accesses in Rescue mode. A rung
+shaft or service staircase **that reaches the surface** keeps its type (Open rung shaft, Open service staircase) and
+can also tick several levels: it stays an exit.
 
 ### 🛠️ On the map creator's side
 
@@ -1011,16 +1035,28 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 
 - **Format**: A0 to A4, portrait or landscape (A4 landscape by default).
 - **Content**: your annotations, the map image and its layers, the data layers, a header (title and map information).
-- **Quality**: Standard ×1 (A3/A4), High definition ×2 (A0/A1, heavier file), Draft ×0.5. A0/A1 at ×2 can take 30 to 60 seconds on mobile.
+- **Quality**: Standard ×1 (A3/A4), High definition ×2 (A0/A1, heavier file), Draft ×0.5. A0/A1 at ×2 can take 30 to 60 seconds on mobile. If the image is larger than the device can produce, the resolution is reduced and the app tells you which one you get.
 - **🗺️ Legend** placed in a corner (bottom-left by default), in three sizes and four styles: **Pro (white background)** for printing (default), Dark opaque, Dark semi-transparent, Subtle watermark. It only lists what actually appears on the exported map.
 
 The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr” and is named `<map>_<date>.pdf`.
 
-### 🌍 Exporting to another app (KMZ, GPX)
+### 🛰️ Exporting as a georeferenced GeoTIFF (GIS)
 
-**⬆️ Export → 🌍 External export** (**KMZ** or **GPX** tile) produces:
+**⬆️ Export → 🖼️ Image → 🛰️ Georeferenced GeoTIFF (GIS)**: the map as a georeferenced image. Opened in **QGIS** (or any GIS), it lands in place by itself, with nothing to type again.
+
+- **Content**: **Scan only** (the clean background, to draw over in a GIS) or **Scan + drawings** (like the image export: visible layers, points, paths, zones, structures).
+- **Projection**: **WGS84** (latitude / longitude, by default) or **Lambert 93** (the GIS reference in France).
+- **Resolution**: Original, ½ or ¼; the window states the size of the image produced. On a phone it is capped at 64 Mpx (for the full resolution of a large map, export from a computer); impossible choices are greyed out and a **Max** choice appears when needed.
+- **The map must be calibrated** (GPS georeferencing, see “⚙️ Settings” or the KMZ export): otherwise the **Download** button stays greyed out and the window explains what to do.
+
+The file is named `MyKTAMap_<map>_<date>_L93.tif` (or `_WGS84.tif`). A large map takes time: the button shows the progress.
+
+### 🌍 Exporting to another app (KMZ, GPX, GeoJSON)
+
+**⬆️ Export → 🌍 External export** (**KMZ**, **GPX** or **GeoJSON** tile) produces:
 - a **KMZ**: your map and annotations placed on the globe, for **Google Earth**, **OsmAnd**, **Locus** or **Avenza**;
-- a **GPX**: points and paths, for TopoDroid, OsmAnd, Strava… and re-importable into MyKTAMap with its levels.
+- a **GPX**: points and paths, for TopoDroid, OsmAnd, Strava… and re-importable into MyKTAMap with its levels;
+- a **GeoJSON**: your objects for **QGIS** or any GIS, with their type, label, name, level, note and colour.
 
 **The map must be georeferenced**: two points whose GPS coordinates you know. The fields are pre-filled with the map's georeferencing (see “⚙️ Settings”) and are saved for this map. While you type, a **🌐 Corners preview** gives the position of the 4 corners, the scale, the rotation, and a **🔗 View center on Google Maps** link to check.
 
@@ -1031,6 +1067,8 @@ KMZ content:
 So you can export only the shafts, or only the inaccessible zones. **Download** produces `MyKTAMap_<map>_<date>.kmz`.
 
 > 💡 The projection is faithful on a regular map; a stretched or assembled map may drift at the edges. A **point C**, in the map's georeferencing, corrects this kind of distortion.
+
+The **GeoJSON** uses the same boxes as the KMZ (points by icon, paths, zones and structures by type, junctions, route, levels), without the image. Choose the **projection**: **WGS84** (by default; the GeoJSON standard, for a website or a strict tool) or **Lambert 93** (the file ends in `_L93.geojson` and QGIS places it by itself).
 
 ---
 
@@ -1043,7 +1081,7 @@ So you can export only the shafts, or only the inaccessible zones. **Download** 
 - **MyKTAMap session** (`.json`, or `.zip` with photos): it **replaces** your current session (points, tracks, zones, measurement); its photos, however, are **added** to yours, without deleting any. A preview shows what it holds; a backup of your current session is taken just before. **Import** to confirm, **Cancel** to change nothing.
 - **GPX file** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): its points and paths **are added** to your session. The map must be georeferenced. A preview comes before the addition, and **Ctrl+Z** undoes it.
 
-To change map, tap the **compass rose 🧭** (back to the home screen) or the **map title** in the top bar; your session is saved before the switch.
+To change map, tap the **compass rose 🧭** (back to the home screen) or the **map title** in the top bar; your session is saved before the switch. Going back to the home screen **closes the map** to give its memory back to the device (tracking stops): **▶️ Resume** reopens it where you left it.
 
 ---
 
@@ -1135,7 +1173,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
 - **📐 Map: scale & geolocation** *(this map)*:
   - **Scale**, with **🎯** to calibrate it (see below);
   - **🧭 North calibration**, if the top of the map is not North: an angle, or **📐 Calibrate (2 clicks)** (South then North on the map), **↺ Reset** to go back to 0. The compass always shows true North;
-  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. This georeferencing is used by the OSM view, the KMZ and GPX exports and GPX import.
+  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. This georeferencing is used by the OSM view, the KMZ, GPX, GeoJSON and GeoTIFF exports and GPX import.
 - **📍 Navigation & tracker** *(📍/🌍 per line)*:
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
@@ -1573,7 +1611,7 @@ If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif`): 
 
 > ✅ **Accepted**: LZW, Deflate or no compression · 8 bits per channel · grey, RGB or RGBA · striped image · north up, no rotation · Lambert 93, Web Mercator or WGS84.
 >
-> ❌ **Refused**, with a message saying what to change in the export: BigTIFF, tiled image, separate channels, palette / CMYK / YCbCr, rotated georeferencing, other coordinate system.
+> ❌ **Refused**, with a message saying what to change in the export: BigTIFF, separate channels, palette / CMYK / YCbCr, georeferencing that distorts the image (stretched or sheared; a merely rotated image is accepted), other coordinate system.
 
 #### 🗺️ Convert a GIS file (QGIS…)
 

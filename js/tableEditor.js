@@ -699,7 +699,7 @@
     set.delete("updatedAt");
     if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
-    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "tags", "etat", "description", "points", "profondeur", "date_update"];
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "tags", "etat", "description", "points", "profondeur", "date_update"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
     set.forEach(function(k) { ordonnees.push(k); });
@@ -854,7 +854,7 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        const ro = (col === "id" || col === "points" || (col === "level" && _sansNiveau(p)));
+        const ro = (col === "id" || col === "points" || col === "accroches" || (col === "level" && _sansNiveau(p)));
         let cls = "";
         if (ro) cls += "col-readonly";
         const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
@@ -869,6 +869,11 @@
           contenu = _renderTagsCellule(idx, v);
         } else if (col === "points") {
           contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
+        } else if (col === "accroches") {
+          // Raccords d'un passage entre niveaux : validés sur la carte (fiche du point), jamais saisis ici.
+          contenu = _escapeHtml(window.I18n.t("tabledit.col.accroches", { n: Array.isArray(v) ? v.length : 0 }));
+        } else if (col === "niveaux" && Array.isArray(v)) {
+          contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
         } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
           contenu = _escapeHtml(window.ktaFormatNiveau(Number.isInteger(v) ? v : 0));
         } else if (Array.isArray(v)) {
@@ -924,7 +929,7 @@
       td.addEventListener("click", function(e) {
         if (e.target.closest("input")) return;
         const col = td.dataset.col;
-        if (col === "id" || col === "points") return; // lecture seule (id + géométrie)
+        if (col === "id" || col === "points" || col === "accroches") return; // lecture seule (id + géométrie)
         if (col === "level" && _sansNiveau(_data[Number.parseInt(td.dataset.idx, 10)])) return;
         if (col === "tags") {
           const removeBtn = e.target.closest("[data-tag-remove]");
@@ -998,6 +1003,14 @@
       if (isNum) {
         nouvelle = nouvelle === "" ? undefined : Number(nouvelle);
         if (isNaN(nouvelle)) nouvelle = undefined;
+      } else if (col === "niveaux") {
+        // Niveaux d'un passage : entiers séparés par des virgules (« 0, -1 ») ; saisie illisible = rien ne change.
+        const morceaux = String(nouvelle).split(/[,;\s]+/).filter(Boolean);
+        const lus = morceaux.map(function(s) { return Number(s); });
+        nouvelle = lus.every(Number.isInteger)
+          ? lus.filter(function(n, i) { return lus.indexOf(n) === i; }).sort(function(a, b) { return a - b; })
+          : valOrig;
+        if (JSON.stringify(nouvelle) === JSON.stringify(valOrig)) nouvelle = valOrig;
       } else {
         nouvelle = nouvelle === "" ? "" : nouvelle;
       }
@@ -1339,7 +1352,7 @@
 
     const banner = document.createElement("div");
     banner.id = "kta-tbl-preview-banner";
-    banner.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.92); color:#fff; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.5); border:1px solid rgba(140,180,255,0.5); display:flex; gap:12px; align-items:center;";
+    banner.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.92); color:#fff; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.5); border:1px solid rgba(140,180,255,0.5); display:flex; gap:12px; align-items:center;"; // couleur-inline-ok : bandeau flottant, fond noir fixe dans les deux thèmes
     banner.innerHTML = `
       <span>${window.I18n.t("tabledit.preview.banner", { n: points.length })}</span>
       <button class="kta-btn kta-btn-primary" id="kta-tbl-preview-back" style="padding:6px 14px;">${window.I18n.t("tabledit.preview.retour")}</button>

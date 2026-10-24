@@ -135,6 +135,7 @@ APP_CONFIG.multiLevel ←
   - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner. Affichage **trié croissant** (gauche=négatif, droite=positif, comme un axe numérique).
   - 👁️ Niveaux visibles (checkboxes, multi-select) — filtre d'affichage
   - Quick actions : `Tous` / `Actif seul`
+  - Même section dans ≡ Filtres (`filterPanel.js > _renderLevelsSection`), plus la case **🖼️ Afficher le plan de base** (suit le 0 par défaut, le choix de l'utilisateur l'emporte ensuite) (règle du fond : `rendering-leaflet.md` §Plan principal = niveau 0). 🩸 Un clic sur « Niveau actif » re-rend la section (`ktaSetActiveLevel` → `onLevelChange`) : tout marquage après coup se fait par valeur de niveau, jamais par le nœud cliqué (détaché). Délégation unique sur `#kta-fp-sec-lvl`, liée à l'ouverture.
   - **2 boutons d'extension (v154+)** : `−` à gauche (ajoute `min-1`, sous-sols) + `+` à droite (ajoute `max+1`, étages supérieurs). Format pastille = "pill" extensible (cf. `.kta-niv-pastille` CSS) pour accepter `-1`/`-2` sans débordement dans le bouton Leaflet 30×30.
 - **Sous-action 🪜 Jonction interniveau** : ajoutée au groupe Tracés quand multiLevel ON. Click → modale `from/to level` → mode tracé activé.
 - **Boussole repositionnée** : si `body.kta-multilevel-active`, le widget boussole passe de `top:80px` à `top:130px` pour libérer la place au bouton niveau.
@@ -144,8 +145,7 @@ APP_CONFIG.multiLevel ←
 `window.appliquerFiltreNiveau()` orchestre le re-render/filtrage de TOUS les modules level-aware :
 - `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
 - `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
-- `_applyLevelFilterToEditorPoints()` (editor.js) — opacity/pointer-events sur markers session
-- `_applyLevelFilterToDataPoints()` (utils.js) — opacity sur markers data layers
+- `_applyLevelFilterToEditorPoints()` (editor.js) et `_applyLevelFilterToDataPoints()` (utils.js) — markers de session et des data layers (niveau + filtre de tags) via `utils.js > ktaMasquerMarqueur` : opacité 0 **et** icône inerte (`pointer-events: none`, hors tabulation), réappliquée par un écouteur `add` quand Leaflet recrée l'icône (calque recoché, culling viewport, marker filtré avant son `addTo`). 🩸 L'image `.kta-marker-img` hérite son `pointer-events` (`inherit`, jamais `auto`), sinon un point invisible reste cliquable.
 - `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
 - `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
 - `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru
@@ -183,6 +183,10 @@ Type spécial `"jonction"` :
 - Chaque **node** porte `nodeLevels[idx]: Set<level>` (niveaux des segments qu'il touche)
 - Enrichissement (intersection, T-junction, endpoint-endpoint) : **skip** les pairs avec niveaux numériques différents OU impliquant `"transit"` (sauf pour la jonction's first/last point qui porte fromLevel/toLevel en plus de transit, permettant T-junction propre)
 - `_insertVirtualNode` (waypoint snap) : le node virtuel hérite du `level` du segment snapped — Dijkstra reste contraint au bon niveau
+- 🩸 **Fusion des sommets par niveau** (`_getOrAddNode(graph, x, y, lvl)`) : deux sommets à ≤ 1,5 px ne deviennent
+  un seul nœud que s'ils portent le **même niveau** ; un milieu de jonction (`transit`) ne fusionne avec rien. Sans
+  ce filtre, deux galeries d'étages différents qui passent par le même point (le cas d'un puits) communiquaient à
+  coût nul, sans jonction. Garde-fou : `check-poi-jonction.js` §3.
 - Multi-level OFF → tous les helpers compatibilité retournent `true` → comportement strictement v147
 
 #### 26.7 Exports
@@ -193,6 +197,8 @@ Type spécial `"jonction"` :
 | `exporter.js > _genererCanvasExport` (avancé) | Section dédiée `🏗️ Niveaux à exporter` (multi-select), lecture via `opts.ann.levels: Set<number>` → helper local `_itemPasseLevels`. **Découplé** du filtre runtime : tu peux filtrer la map sur [Niv 0] et exporter [Niv 0+1+2]. |
 | `sessionExporter.js` (Full / Avancé / Conversion) | Aucun filtre — sérialise TOUS les items via `JSON.stringify` (préserve `level`/`fromLevel`/`toLevel` automatiquement) |
 | `sessionPersist.js` (auto-save) | Idem — sérialisation JSON transparente |
+| `kmzExport.js` (niveau par niveau) | Un dossier par niveau ; un **passage entre niveaux** (§26.11) est dans le dossier de **chacun** de ses niveaux exportés : un original, les autres marqués `mkm:copie` (sautés par `kmzImport.js`) ; `mkm:niveaux` relu à l'import |
+| `geojsonExport.js` / `gpxIO.js` | Passage entre niveaux : **une** entité, gardée si un de ses niveaux est choisi, propriété `niveaux` ; GPX : `<cmt>MyKTAMap level=0 niveaux=-1,0</cmt>`, relu à l'import. Les `accroches` (pixels du plan) ne partent pas |
 
 #### 26.8 Helper global `window.passeFiltreNiveau(item)`
 
@@ -269,6 +275,51 @@ Garde-fous : `check-api-surface.js` (changerNiveau et changerNiveauxJonction dan
 `check-uid.js` (touch), `check-extensions.js` (garde lecture seule) · parcours réels :
 `scripts/smoke/checkup-niveau-objet.js`, `scripts/smoke/checkup-jonction-fiche.js` (fiche d'une jonction, itinéraire
 qui l'emprunte).
+
+#### 26.11 POI « entre niveaux » (escalier, puits) — `js/poiJonction.js`
+
+Un passage vertical **ponctuel** (escalier, puits à échelons, puits sans échelon) est un POI, pas un tracé. Les
+jonctions en tracé (§26.5) restent les **pentes douces**.
+
+- **Tags** : `jes` (escalier entre niveaux), `jpe` (puits à échelons entre niveaux), `jps` (puits sans échelon entre
+  niveaux). 🔒 **Jamais une sortie de surface** : absents de `sortieUrgence.js > TYPES_SORTIE` et de
+  `secoursMode.js > CRIT_TAGS / CRIT_FERMES` (`scripts/check-poi-jonction.js` §1-2, sur la vraie sortie d'urgence).
+  `peo` / `eso` peuvent **aussi** porter `niveaux` (puits de surface qui dessert des étages) : ils restent des sorties.
+  Pas de variante ouvert / fermé (décision produit).
+- **Données du point** : `niveaux` (entiers, contient toujours `level`) et `accroches` `[{level, x, y}]` = raccords
+  **validés** par l'utilisateur, un par galerie où le passage débouche. Point sans `niveaux` = son seul `level`.
+  `KtaPoiJonction.niveaux(p)` normalise ; `estJonction(p)` = tag de passage + ≥ 2 niveaux + plan multi-niveau.
+- **Formulaire** (`editor.js > afficherFormulaire`) : bloc « Niveaux desservis » affiché selon le tag ; cases des
+  niveaux du plan (celui du point cochée et figée) ; pour chaque niveau coché, les galeries à moins de **5 m**
+  (`APP_CONFIG.scale`) — **50 px** sur un plan sans échelle, et c'est écrit — sont **proposées non cochées** ;
+  seul ce que l'utilisateur coche devient un raccord. Un niveau sans galerie dans le rayon est dit. `appliquer()`
+  mute en place avant `KtaUid.touch` (`check-uid.js`), puis `RoadGraph.invalidate()`.
+- **Fiche** : niveaux et nombre de raccords (« aucun raccord validé » en avertissement) ; les raccords sont dessinés
+  en pointillé magenta **seulement pendant que la fiche est ouverte** (`brancherMarqueur`, décision produit).
+- **Affichage** : visible si **un** de ses niveaux est affiché (`marker._ktaNiveaux` sur les marqueurs de session et
+  de calque, `passeFiltreNiveau` de l'export rapide). Calques : `_ktaNiveauxSrc` / `_ktaAccroches` sur le marqueur,
+  rendus par `getAllEmbeddedPoints`.
+- **Itinéraire** (`pathfinder.js > _injecterJonctionsPoi`, après l'enrichissement, dans `computeRoute`,
+  `computeRouteOnRoads` (POI fournis par `opts.poisJonction`), `computeReachable` et `buildNetworkGraph`) : un nœud
+  `transit` **neuf** par niveau desservi à la position du POI, chaînés du plus bas au plus haut ; chaque raccord est
+  recalé sur une galerie de **son** niveau à ≤ 15 px (sinon ignoré, compté dans `graph.raccordsPerdus`) et relié au
+  nœud de son niveau. Coût d'un maillon : **différence de profondeur** (`niveauxProfondeur`) si les deux niveaux en
+  ont une, sinon **forfait par niveau franchi** : escalier 10 m, échelons 20 m, corde 20 m (`FORFAIT_M`, décision
+  produit) ; plan sans échelle : 10 px/m supposés. Un niveau sans raccord est traversé (0 ↔ 2 sans débouché au 1).
+  `jps` hors graphe sauf `opts.corde` (case « 🧗 Équipe équipée (corde) » de la fenêtre d'itinéraire, rubrique
+  Évitements, `myktamap_route_avoid_<plan>.corde`, remise à faux par la réinitialisation ; jamais en Secours ni en
+  sortie d'urgence). Les segments du puits portent `poi` : un départ ou une arrivée ne s'y cale jamais.
+- **Guidage** : les points du chemin dans le puits portent `via` (`escalier` / `echelons` / `corde`) ; la consigne
+  de niveau devient « descendre vers le niveau −1 par l'échelle » (`guid.par.*`).
+- **Sortie d'urgence** : classée sur `totalDistance` (coût vertical compris) ; un passage entre niveaux peut être
+  emprunté pour rejoindre une sortie, jamais proposé comme sortie.
+- **Signature du graphe de navigation** (`roadGraph.js > _computeSig`) : empreinte des POI jonctions (position, tag,
+  niveaux, raccords).
+- **Limites** : étape inter-plans distante sans ses POI jonctions (`collectRoutingDataForPlan` ne les lit pas) ;
+  évacuation brancard sans règle propre aux puits.
+
+Garde-fous : `scripts/check-poi-jonction.js` (pre-commit : sorties, fusion par niveau, graphe, coûts, corde, zone
+atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jonction.js`.
 ---
 
 ### 31. Zone "Inaccessible" + Préférences d'évitement itinéraire (depuis v169 / Karma_dev)
@@ -517,7 +568,7 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 
 > Audit KARMA « fermetures à la sortie du plan » : 4 résidus (mini-pastille ↩️, invite 🌀, pile périmée au switch direct, boussole) — seuls les chemins goTo nettoyaient.
 
-- `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés côté boot/teardown : `afficherLoader()` → ctx `"home"` · `_libererRessourcesPlanPrecedent()` → ctx `"switch"`.
+- `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés par `main.js > _quitterNavigationInterPlans` : retour à l'accueil (`afficherLoader`, démontage `"accueil"` compris) → ctx `"home"` · changement de plan (`_libererRessourcesPlanPrecedent()`) → ctx `"switch"`.
 - ⚠️ **Subtilités à ne pas casser** : ① côté liaison, le hook "switch" est **no-op si `_pendingTarget` existe** (= goTo en cours qui gère déjà bouton + pile ; sans ce garde, tout saut de portail perdrait son bouton Retour). ② côté route, la **chaîne multi-hop (`_pendingChain`) survit au "switch"** — c'est elle qui trace les legs aux arrivées ; elle n'est abandonnée qu'au retour HOME. ③ Tout NOUVEAU flottant de navigation doit s'enregistrer dans un de ces hooks (ou avoir un timer d'expiration).
 
 ---

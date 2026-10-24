@@ -471,14 +471,14 @@
                'style="font-size:11px; padding:2px 8px; border-radius:10px; cursor:pointer; ' +
                'border:1px solid ' + (isAllActive ? "rgba(244,197,66,0.6)" : "rgba(140,180,255,0.3)") + '; ' +
                'background:' + (isAllActive ? "rgba(244,197,66,0.2)" : "rgba(255,255,255,0.03)") + '; ' +
-               'color:' + (isAllActive ? "#f4c542" : "#8892a4") + ';">' + _escapeHtml(window.I18n.t("osm.tags.all")) + '</button>';
+               'color:' + (isAllActive ? "var(--kta-accent-texte)" : "var(--kta-texte-3)") + ';">' + _escapeHtml(window.I18n.t("osm.tags.all")) + '</button>';
     for (const t of tags) {
       const active = isAllActive || (_osmLocalTagFilter && _osmLocalTagFilter.has(t));
       html += '<button type="button" data-tag="' + _escapeHtml(t) + '" title="' + _escapeHtml(window.I18n.t("osm.tags.poiCount", { count: counts[t] })) + '" ' +
               'style="font-size:11px; padding:2px 8px; border-radius:10px; cursor:pointer; ' +
               'border:1px solid ' + (active ? "rgba(244,197,66,0.6)" : "rgba(140,180,255,0.3)") + '; ' +
               'background:' + (active ? "rgba(244,197,66,0.2)" : "rgba(255,255,255,0.03)") + '; ' +
-              'color:' + (active ? "#f4c542" : "#8892a4") + ';">' + _escapeHtml(t) + '</button>';
+              'color:' + (active ? "var(--kta-accent-texte)" : "var(--kta-texte-3)") + ';">' + _escapeHtml(t) + '</button>';
     }
     cont.innerHTML = html;
     const buttons = cont.querySelectorAll("button[data-tag]");
@@ -692,7 +692,7 @@
   function _buildTrackerIcon(color, heading) {
     let html =
       '<div style="background:' + color + '; width:14px; height:14px; border-radius:50%;' +
-      ' border:2px solid #fff; box-shadow:0 0 6px rgba(0,0,0,0.5); position:relative;">';
+      ' border:2px solid #fff; box-shadow:0 0 6px rgba(0,0,0,0.5); position:relative;">'; // couleur-inline-ok : marqueur de carte, liseré blanc sur tout fond de carte
     if (heading != null) {
       html +=
         '<div class="kta-osm-tracker-arrow" style="position:absolute; top:-13px; left:50%;' +
@@ -1272,7 +1272,7 @@
             L.marker(ll, {
               icon: L.divIcon({
                 className: "kta-osm-secours-sortie-icon",
-                html: '<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid ' + color + ';filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff);"></div>',
+                html: '<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid ' + color + ';filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff);"></div>', // couleur-inline-ok : marqueur de carte
                 iconSize:   [16, 14],
                 iconAnchor: [8, 14]
               }),
@@ -1416,6 +1416,10 @@
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
             _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">🎯</button>' +
+          // légende du plan en cours, en lecture seule (interfaceLegende.js > ktaLegendeLectureSeule)
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-legende" ' +
+            'style="font-size:12px; padding:5px 10px;" title="' +
+            _escapeHtml(window.I18n.t("osm.legende.btnTitle")) + '">' + window.I18n.t("osm.legende.btn") + '</button>' +
           // « Cacher pour hors ligne » : tuiles visibles + zoom ±1 en IDB. Cache GLOBAL (myktamap_osm_tiles, z/x/y)
           // partagé avec la Vue OSM du HOME et le Mode Secours.
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-cache-btn" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.cache.btn.title")) + '">' + window.I18n.t("osm.cache.btn") + '</button>' +
@@ -1489,6 +1493,10 @@
       _applyOpacity();
     });
     overlay.querySelector("#kta-osm-center").addEventListener("click", _centerOnPlan);
+    // ⚠️ Lecture seule (décision produit) : la légende se modifie depuis le plan, jamais depuis l'OSM.
+    overlay.querySelector("#kta-osm-legende").addEventListener("click", function() {
+      if (typeof window.ktaLegendeLectureSeule === "function") window.ktaLegendeLectureSeule();
+    });
     const cacheBtn = overlay.querySelector("#kta-osm-cache-btn");
     if (cacheBtn) {
       cacheBtn.addEventListener("click", function() { _runCacheOsmTiles(cacheBtn); });
@@ -1593,9 +1601,9 @@
       chip.style.cssText =
         "padding:3px 10px; border-radius:12px; cursor:pointer; user-select:none;" +
         " font-size:11.5px; font-weight:600; border:1px solid " +
-        (checked ? "#f4c542" : "rgba(255,255,255,0.18)") + ";" +
-        " background:" + (checked ? "#f4c542" : "rgba(255,255,255,0.04)") + ";" +
-        " color:" + (checked ? "#1a1f2e" : "#c8d0e0") + ";" +
+        (checked ? "var(--kta-accent)" : "rgba(255,255,255,0.18)") + ";" +
+        " background:" + (checked ? "var(--kta-accent)" : "rgba(255,255,255,0.04)") + ";" +
+        " color:" + (checked ? "var(--kta-sur-accent)" : "var(--kta-texte-2)") + ";" +
         " transition:background 0.15s, border-color 0.15s, color 0.15s;";
       chip.addEventListener("click", function() {
         const l = parseInt(chip.dataset.level, 10);
@@ -1631,10 +1639,10 @@
           count: s.count,
           size: window.OsmTilesCache.formatBytes(s.sizeBytes)
         });
-        span.style.color = "#a6d785"; // vert léger = cache présent
+        span.style.color = "var(--kta-ok)"; // vert = cache présent
       } else {
         span.textContent = window.I18n.t("osm.cache.stats.empty");
-        span.style.color = "#8892a4";
+        span.style.color = "var(--kta-texte-3)";
       }
     } catch(e) {
       span.textContent = window.I18n.t("osm.cache.stats.error");
@@ -1695,7 +1703,7 @@
       bar.id = "kta-osm-toast";
       bar.style.cssText =
         "position:absolute; left:50%; bottom:24px; transform:translateX(-50%);" +
-        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:10px 16px;" +
+        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:10px 16px;" + // couleur-inline-ok : toast sur la carte, fond sombre fixe dans les deux thèmes
         "border-radius:8px; font-size:13px; box-shadow:0 4px 14px rgba(0,0,0,0.4);" +
         "border:1px solid rgba(140,180,255,0.25); z-index:99999; max-width:90%;" +
         "text-align:center; line-height:1.4;";

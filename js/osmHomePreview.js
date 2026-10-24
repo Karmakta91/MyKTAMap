@@ -151,6 +151,62 @@
     return out;
   }
 
+  // ── Légende en lecture seule (bouton 🗺️) ──────────
+  // Quel plan : celui CHARGÉ derrière l'accueil s'il est sur la carte (état live, identique à la ≡ Légende du
+  // mode plan) ; sinon celui de la pile ouvert le plus récemment (lastOpened du registre), à défaut le principal.
+  // Un plan non chargé se lit dans ce que l'accueil a déjà extrait (_planDataCache, _legendeDe) : jamais de
+  // chargement du plan. Plusieurs plans sur la carte → avertissement : chacun a sa légende.
+  function _planDeLaLegende() {
+    const pile = _stackOrder.filter(Boolean);
+    if (!pile.length && _selectedPlanId) pile.push(_selectedPlanId);
+    if (!pile.length) return { id: null, live: false, pile: pile };
+    const charge = window._currentLoadedPlanId || null;
+    // ⚠️ `window.map` vaut le <div id="map"> (accès nommé) tant qu'aucune carte n'a été créée : tester L.Map.
+    const carteVivante = !!(window.L && window.map instanceof window.L.Map);
+    if (charge && carteVivante && pile.indexOf(charge) !== -1) return { id: charge, live: true, pile: pile };
+    let id = (_selectedPlanId && pile.indexOf(_selectedPlanId) !== -1) ? _selectedPlanId : pile[0];
+    let recent = "";
+    pile.forEach(function (pid) {
+      const p = _planDuRegistre(pid);
+      const quand = (p && typeof p.lastOpened === "string") ? p.lastOpened : "";
+      if (quand && quand > recent) { recent = quand; id = pid; }
+    });
+    return { id: id, live: false, pile: pile };
+  }
+
+  function _planDuRegistre(planId) {
+    return (window.PlanRegistry && typeof window.PlanRegistry.findById === "function")
+      ? window.PlanRegistry.findById(planId) : null;
+  }
+
+  function _nomPlanLegende(planId) {
+    const p = _planDuRegistre(planId);
+    if (!p) return planId;
+    return (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : p.name) || planId;
+  }
+
+  async function _ouvrirLegendeHome() {
+    if (typeof window.ktaLegendeLectureSeule !== "function") return;
+    const choix = _planDeLaLegende();
+    if (!choix.id) return;
+    const opts = {};
+    if (choix.pile.length > 1) {
+      opts.avertissement = window.I18n.t("legendui.lectureSeule.autresPlans", { plan: _nomPlanLegende(choix.id) });
+    }
+    if (!choix.live) {
+      const data = _planDataCache[choix.id] || await _loadPlanDataForPreview(choix.id);
+      const reg = _planDuRegistre(choix.id);
+      opts.plan = {
+        config:     (data && data.config) || {},
+        iconUrls:   (data && data.iconUrls) || {},
+        // même source que le mode plan (APP_CONFIG.multiLevel ← registre, main.js)
+        multiLevel: !!(reg && reg.multiLevel === true),
+        legende:    _legendeDe(choix.id) || {}
+      };
+    }
+    window.ktaLegendeLectureSeule(opts);
+  }
+
   // Couleur d'override d'un type built-in pour UN plan ; quoi = "colors" | "borders".
   function _couleurOverrideDe(planId, categorie, type, quoi) {
     const lg = _legendeDe(planId);
@@ -266,10 +322,11 @@
   const TAGS_BUILTIN_HOME = {
     salle:    "icon/house.png",
     pa:       "icon/pa.png", pc: "icon/pc.png", pb: "icon/pb.png",
-    pe:       "icon/pe.png", ps: "icon/ps.png",
+    pe:       "icon/pe.png", ps: "icon/ps.png", psf: "icon/psf.png",
     peo:      "icon/peo.png", pef: "icon/pef.png",
     eso:      "icon/eso.png", esf: "icon/esf.png",
     cao:      "icon/cao.png", caf: "icon/caf.png",
+    jes:      "icon/jes.png", jpe: "icon/jpe.png", jps: "icon/jps.png",
     vehicule: "icon/vehicule.png",
     elec:     "icon/elec.png", epure: "icon/epure.png",
     info:     "icon/info.png",
@@ -515,7 +572,7 @@
         // cache hors ligne (partagé avec la modale Vue OSM et le Mode Secours, store IDB myktamap_osm_tiles)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCacheBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.cache.btnTitle")) + '" ' +
-                'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: #a6d785;">' +
+                'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: var(--kta-ok);">' +
           '💾' +
         '</button>' +
         // Multi-plans (priorités, opacités, filtres par plan) : dans une MODALE, rien sur la carte.
@@ -529,6 +586,12 @@
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCoordBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
           '🎯' +
+        '</button>' +
+        // légende en lecture seule (≡ est déjà « Plans & filtres » : 🗺️, l'icône de la Légende du mode plan)
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeLegendeBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_home.legende.btnTitle")) + '" ' +
+                'aria-label="' + _escapeHtml(window.I18n.t("osm_home.legende.btnTitle")) + '">' +
+          '🗺️' +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
@@ -578,6 +641,12 @@
     const filtresBtn = container.querySelector("#ktaOsmHomeFiltersBtn");
     if (filtresBtn) {
       filtresBtn.addEventListener("click", _ouvrirModalFiltresOsm);
+    }
+    const legendeBtn = container.querySelector("#ktaOsmHomeLegendeBtn");
+    if (legendeBtn) {
+      legendeBtn.addEventListener("click", function () {
+        _ouvrirLegendeHome().catch(function (e) { console.warn("[OsmHomePreview] légende :", e); });
+      });
     }
     // chaque outil se démonte seul au second clic (`activer` appelle `desactiver`)
     const coordBtn = container.querySelector("#ktaOsmHomeCoordBtn");
@@ -3056,7 +3125,7 @@
       const s = await window.OsmTilesCache.getStats();
       if (s.count > 0) {
         span.textContent = window.I18n.t("osm_home.cache.statsCount", { count: s.count, size: window.OsmTilesCache.formatBytes(s.sizeBytes) });
-        span.style.color = "#a6d785";
+        span.style.color = "var(--kta-ok)";
       } else {
         span.textContent = window.I18n.t("osm_home.cache.statsEmpty");
         span.style.opacity = "0.7";
@@ -3122,7 +3191,7 @@
       bar.className = "kta-osm-home-toast";
       bar.style.cssText =
         "position:absolute; left:50%; bottom:8px; transform:translateX(-50%);" +
-        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:8px 14px;" +
+        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:8px 14px;" + // couleur-inline-ok : toast sur la carte, fond sombre fixe dans les deux thèmes
         "border-radius:6px; font-size:12px; z-index:1000; max-width:90%;" +
         "border:1px solid rgba(140,180,255,0.25); text-align:center;";
       container.style.position = "relative";

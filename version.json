@@ -1,12 +1,15 @@
 {
-  "version": "v2.19.0",
-  "released": "2026-10-21",
+  "version": "v2.20.0",
+  "released": "2026-10-23",
   "notes": [
-    "🎨 Nouvelles icônes : un pictogramme par type (puits, escaliers, cavages, salles…), lisibles d'un coup d'œil ; une icône personnalisée d'un plan s'affiche aussi sur la carte et en Vue OSM.",
-    "🔄 Mettre à jour le plan : un assistant (⬆️ Exporter) range tes ajouts et tes calques en modification dans le Générateur, déjà rempli, pour sortir une nouvelle version du plan.",
-    "📊 Éditeur de données : applique à ta session les changements de type, de niveau ou de note (seules les cellules modifiées) ; il s'ouvre depuis ⬆️ Exporter. 🔁 Recaler des données sur un autre scan trouve seul la correspondance.",
-    "🪜 Jonctions entre niveaux : un clic ouvre leur fiche (note, niveaux reliés, suppression). 📊 Détails de la session : listes repliées et « Effacer la session ».",
-    "🗺️ Carte OSM : tracés et points au-dessus du plan sur l'accueil, taille des icônes adaptée au zoom comme sur le plan.",
-    "🛠️ Corrigés : un objet supprimé disparaît sans recharger, le plan s'ouvre aussi dans un onglet en arrière-plan, plus de « GREETING » au premier lancement."
+    "📍 Un plan se rouvre là où tu l'avais laissé (même endroit, même zoom, même niveau), par ▶️ Reprendre comme depuis la liste, même après avoir fermé l'app.",
+    "🧠 Revenir à l'accueil ferme le plan et rend sa mémoire au téléphone (ta session est enregistrée, le suivi s'arrête) : moins de ralentissements quand on enchaîne les plans.",
+    "🗺️ Légende du plan en Vue OSM et sur la carte OSM de l'accueil, en lecture seule, avec tes noms et tes couleurs.",
+    "🎨 Couleurs harmonisées dans toute l'app : boutons principaux en bleu, violet du tuilage plus lisible ; boutons des rails plus faciles à toucher au doigt.",
+    "🌍 Exports pour les SIG : le plan calé en GeoTIFF (avec ou sans tes dessins) et tes objets en GeoJSON, en Lambert 93 ou en WGS84 ; un GeoTIFF tourné se réimporte. 🖨️ Le PDF dit la résolution obtenue si le téléphone ne peut pas faire mieux.",
+    "🕳️ Nouveau type de point : « Puits d'extraction comblé », compté parmi les accès fermés du briefing Secours.",
+    "🪜 Passages entre niveaux : escalier, puits à échelons et puits sans échelon reliant plusieurs niveaux, raccordés aux galeries que tu valides ; l'itinéraire les emprunte (un puits sans échelon seulement si l'équipe a une corde) et ils ne sont jamais proposés comme sortie.",
+    "🧭 ≡ Filtres : « Afficher le plan de base », pour garder l'image du plan sous un autre niveau ou la retirer.",
+    "🛠️ Corrigés : le KMZ emporte les structures, les types personnalisés et toutes les icônes, une jonction n'est plus convertie en lot, plus d'erreur en ouvrant plusieurs plans à la suite, la mini-carte de l'Affichage XL d'urgence ne disparaît plus après la question « image volumineuse », le bouton du niveau actif s'allume, un point masqué n'est plus cliquable."
   ]
 }

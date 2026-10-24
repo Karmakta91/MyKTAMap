@@ -771,7 +771,7 @@
       const el = document.getElementById("kta-report-status");
       if (el) {
         el.textContent = msg || "";
-        el.style.color = isError ? "#ff6b6b" : "#8cb4ff";
+        el.style.color = isError ? "var(--kta-erreur)" : "var(--kta-interaction)";
       }
     }
 

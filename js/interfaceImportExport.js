@@ -170,7 +170,7 @@ window.ouvrirImportGpx = function(fichierInitial) {
       '<div class="kta-readme-modal-corps">' +
         (!calibre ?
           '<div class="kta-aide-section" style="background:rgba(220,50,50,0.10); border-color:rgba(220,50,50,0.30);">' +
-            '<p style="color:#b02020; font-weight:600;">' + window.I18n.t("impexp.gpx.notCalibratedTitle") + '</p>' +
+            '<p style="color:var(--kta-erreur); font-weight:600;">' + window.I18n.t("impexp.gpx.notCalibratedTitle") + '</p>' +
             '<p>' + window.I18n.t("impexp.gpx.notCalibratedBody") + '</p>' +
             '<p>' + window.I18n.t("impexp.gpx.howToCalibrate") + '</p>' +
           '</div>'
@@ -226,23 +226,23 @@ window.ouvrirImportGpx = function(fichierInitial) {
 
     window.GpxIO.importer(file, { confirmAdd: false }).then(function(r) {
       if (!r.ok) {
-        previewEl.innerHTML = '<div style="background:rgba(220,50,50,0.10); border:1px solid rgba(220,50,50,0.30); padding:10px 14px; border-radius:6px; color:#b02020;"><strong>' + window.I18n.t("impexp.gpx.errorPrefix") + '</strong> ' + r.msg + '</div>';
+        previewEl.innerHTML = '<div style="background:rgba(220,50,50,0.10); border:1px solid rgba(220,50,50,0.30); padding:10px 14px; border-radius:6px; color:var(--kta-erreur);"><strong>' + window.I18n.t("impexp.gpx.errorPrefix") + '</strong> ' + r.msg + '</div>';
         return;
       }
       _pendingPreview = r;
       let warnHtml = '';
       if (r.preview.outOfBoundsWpt > 0) {
-        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">' + window.I18n.t("impexp.gpx.warnWptOob", { n: r.preview.outOfBoundsWpt }) + '</div>';
+        warnHtml += '<div style="color:var(--kta-avert); font-size:12px; margin-top:6px;">' + window.I18n.t("impexp.gpx.warnWptOob", { n: r.preview.outOfBoundsWpt }) + '</div>';
       }
       if (r.preview.outOfBoundsTrk > 0) {
-        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">' + window.I18n.t("impexp.gpx.warnTrkOob", { n: r.preview.outOfBoundsTrk }) + '</div>';
+        warnHtml += '<div style="color:var(--kta-avert); font-size:12px; margin-top:6px;">' + window.I18n.t("impexp.gpx.warnTrkOob", { n: r.preview.outOfBoundsTrk }) + '</div>';
       }
       previewEl.innerHTML =
         '<div style="background:rgba(244,197,66,0.12); border:1px solid rgba(244,197,66,0.40); padding:12px 14px; border-radius:6px;">' +
           '<div style="font-weight:700; margin-bottom:8px;">' + window.I18n.t("impexp.gpx.previewTitle") + '</div>' +
           '<div>' + window.I18n.t("impexp.gpx.previewWpts", { n: r.preview.wpts }) + '</div>' +
           '<div>' + window.I18n.t("impexp.gpx.previewTrks", { n: r.preview.trks }) + '</div>' +
-          (r.preview.metadata && r.preview.metadata.name ? '<div style="margin-top:6px; font-size:12px; color:#6b6354;">' + window.I18n.t("impexp.gpx.previewSource", { name: r.preview.metadata.name }) + '</div>' : '') +
+          (r.preview.metadata && r.preview.metadata.name ? '<div style="margin-top:6px; font-size:12px; color:var(--kta-texte-3);">' + window.I18n.t("impexp.gpx.previewSource", { name: r.preview.metadata.name }) + '</div>' : '') +
           warnHtml +
         '</div>' +
         '<div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">' +
@@ -360,7 +360,7 @@ function ouvrirImportSession(fichierInitial) {
         </div>
 
         <div class="kta-aide-section" id="kta-import-warn" style="display:none; border-color:rgba(255,200,100,0.3); background:rgba(255,180,80,0.06);">
-          <div style="font-size:13px; color:#ffd28a;">
+          <div style="font-size:13px; color:var(--kta-avert);">
             ${window.I18n.t("impexp.session.warn")}
           </div>
         </div>

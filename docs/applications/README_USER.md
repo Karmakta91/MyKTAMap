@@ -154,7 +154,7 @@ Dans Chrome, ouvre `myktamap.fr`, clique sur **Installer** à droite de la barre
 
 L'écran d'accueil propose :
 
-- **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé.
+- **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé, là où tu l'avais laissé (même endroit, même zoom, même niveau), aussi après avoir fermé l'app ; rouvrir un plan depuis la liste fait pareil. Si le suivi tournait, la carte se recentre sur ta dernière position connue et le suivi reste arrêté : relance-le avec ▶️.
 - **📚 Mes plans** — tous les plans déjà ouverts (🌐 serveur ou 💾 local), du plus récent au plus ancien ; les plans disponibles sur le serveur y apparaissent d'eux-mêmes. Un appui rouvre le plan.
 - **📦 Ajouter un plan** — glisse ton fichier ZIP sur la zone (ou appuie dessus pour le choisir), puis **▶️ Charger ce plan**. Le plan rejoint ta liste. Une **image** (`.jpg`, `.png`, `.webp`) déposée là ouvre le **Générateur** avec l'image comme fond : il ne reste qu'à nommer le plan.
 - **🏗️ Générer un plan** — crée un plan à partir de zéro.
@@ -305,7 +305,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, affichage… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver un point, un tracé, une zone ou une structure *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX (ouvre directement le choix du fichier) |
-| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF), session, mise à jour du plan, export externe (KMZ / GPX) |
+| **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF, GeoTIFF), session, mise à jour du plan, export externe (KMZ / GPX / GeoJSON) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
 | **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
@@ -609,6 +609,8 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 
+**🗺️ Légende** : sur un plan, le bouton **🗺️ Légende** de la Vue OSM ; sur l'accueil, le bouton **🗺️** du bandeau. La légende est celle du plan, avec tes noms, tes couleurs et tes types personnels, en **lecture seule** : elle se modifie depuis le plan (🗺️ Légende → ✏️ Modifier). Sur l'accueil, c'est la légende du plan que tu viens de quitter, sinon celle du plan affiché que tu as ouvert le plus récemment ; si plusieurs plans sont affichés, un message te rappelle que les autres ont la leur.
+
 **🗂️ Plusieurs plans à la fois** : le bouton **≡** du bandeau ouvre une fenêtre avec les réglages d'affichage, le filtre par tag et la pile des plans affichés :
 
 - ➕ ajouter un plan — le menu les range par **dossier** de « Mes plans », et « 📁 Ajouter tout le dossier » les affiche d'un coup —, ▲▼ le passer dessus ou dessous, un curseur d'**opacité** par plan, ✕ le retirer ; ◉ marque le plan principal ;
@@ -846,7 +848,7 @@ Numérotation : **0** = niveau de référence, **1, 2…** au-dessus, **−1, �
 Une **pastille jaune** sous les boutons de zoom affiche le **niveau actif**. Un tap ouvre la modale **🏗️ Niveaux** :
 
 - **🎯 Niveau actif (pour dessiner)** — tout ce que tu dessines prend ce niveau. **[ − ]** et **[ + ]** ajoutent un niveau en dessous ou au-dessus. Changer de niveau actif **annule le tracé en cours** et n'affiche plus que ce niveau.
-- **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. Une jonction reste visible si l'un de ses deux niveaux l'est.
+- **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. La case **🖼️ Afficher le plan de base** suit le niveau 0 tant que tu n'y touches pas ; cochée ou décochée à la main, elle l'emporte (fond gardé sous un autre étage, ou retiré même avec le 0 visible) et **Tout afficher** la remet en automatique (choix gardé avec la session du plan ; sur un plan à un seul niveau, elle est dans **Calques d'image**). Une jonction reste visible si l'un de ses deux niveaux l'est.
 
 Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle-même. Les mêmes réglages existent dans ≡ **Filtres**. À l'export image, **🎨 Avancé → 🏗️ Niveaux à exporter** choisit les niveaux indépendamment de l'affichage.
 
@@ -867,6 +869,29 @@ Une jonction relie deux niveaux à l'endroit réel du passage (escalier, pente, 
 Elle apparaît en magenta pointillé, un rond à chaque bout. **Sans jonction, aucun itinéraire ne change de niveau.** Deux escaliers entre les mêmes niveaux = deux jonctions : l'itinéraire prend la plus courte. Elle s'efface comme un tracé (🧹 Effacer et corriger).
 
 **Sa fiche** : tape une jonction que tu as tracée (hors tracé en cours) pour ouvrir **🪜 Jonction N0 ↔ N+1** : sa **note** (💾 Sauver la note), les listes **Départ (1er point)** et **Arrivée (dernier point)** avec **🪜 Changer les niveaux** (deux niveaux différents obligatoires ; l'itinéraire suit aussitôt), et **🗑️ Supprimer**. **⏪** annule chaque geste. Pas de 🔄 Convertir : une jonction reste une jonction.
+
+### ↕️ Escalier ou puits entre niveaux (point)
+
+Un passage vertical **à un endroit précis** (escalier, puits à échelons, puits sans échelon) se pose comme un
+point, avec l'un des trois types **Escalier entre niveaux**, **Puits à échelons entre niveaux**, **Puits sans échelon
+entre niveaux** (groupe « ↕️ Passages entre niveaux » de la légende). La jonction tracée reste faite pour les pentes
+douces.
+
+1. Pose (ou modifie) le point et choisis son type : le bloc **↕️ Niveaux desservis** apparaît
+2. Coche les niveaux que le passage relie (le niveau du point est toujours coché)
+3. Pour chaque niveau, l'app propose les galeries à moins de **5 m** (50 px sur un plan sans échelle, c'est écrit) :
+   **coche celle où le passage débouche**. Rien n'est validé d'office ; un niveau sans galerie proche est signalé
+4. Enregistre
+
+Le point s'affiche sur chacun de ses niveaux. Sa fiche dit ses niveaux et ses raccords, et les dessine en pointillé
+magenta tant qu'elle est ouverte. **L'itinéraire ne passe que par les raccords validés.** Il compte le passage comme
+**10 m par niveau pour un escalier, 20 m pour des échelons** ; si la profondeur des niveaux est saisie, c'est la vraie
+différence de profondeur. Le guidage dit « descendre vers le niveau −1 **par l'échelle** ». Un **puits sans échelon**
+n'est emprunté que si tu coches **🧗 Équipe équipée (corde)** dans les Évitements de la fenêtre d'itinéraire.
+
+🔒 Ces passages ne sont **jamais** proposés comme sortie d'urgence ni comptés comme accès de surface en Mode Secours.
+Un puits à échelon ou un escalier de service **qui débouche à la surface** garde son type (Puits à échelon ouvert,
+Escalier service ouvert) et peut aussi cocher plusieurs niveaux : il reste une sortie.
 
 ### 🛠️ Côté créateur du plan
 
@@ -1011,16 +1036,28 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 
 - **Format** : A0 à A4, portrait ou paysage (A4 paysage au départ).
 - **Contenu** : tes annotations, l'image du plan et ses calques, les calques de données, un en-tête (titre et informations du plan).
-- **Qualité** : Standard ×1 (A3/A4), Haute définition ×2 (A0/A1, fichier plus lourd), Brouillon ×0,5. A0/A1 en ×2 peut prendre 30 à 60 secondes sur mobile.
+- **Qualité** : Standard ×1 (A3/A4), Haute définition ×2 (A0/A1, fichier plus lourd), Brouillon ×0,5. A0/A1 en ×2 peut prendre 30 à 60 secondes sur mobile. Si l'image dépasse ce que l'appareil sait produire, la résolution est réduite et l'app te dit laquelle tu obtiens.
 - **🗺️ Légende** posée dans un coin (bas-gauche au départ), en trois tailles et quatre styles : **Pro (fond blanc)** pour l'impression (au départ), Sombre opaque, Sombre semi-transparent, Filigrane discret. Elle ne liste que ce qui figure vraiment sur le plan exporté.
 
 Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr » et s'appelle `<plan>_<date>.pdf`.
 
-### 🌍 Exporter vers une autre app (KMZ, GPX)
+### 🛰️ Exporter en GeoTIFF calé (SIG)
 
-**⬆️ Exporter → 🌍 Export externe** (tuile **KMZ** ou **GPX**) produit :
+**⬆️ Exporter → 🖼️ Image → 🛰️ GeoTIFF calé (SIG)** : le plan en image géoréférencée. Ouvert dans **QGIS** (ou tout SIG), il se pose seul à sa place, sans rien ressaisir.
+
+- **Contenu** : **Scan seul** (le fond propre, pour dessiner par-dessus dans un SIG) ou **Scan + dessins** (comme l'export image : calques visibles, points, tracés, zones, structures).
+- **Projection** : **WGS84** (latitude / longitude, au départ) ou **Lambert 93** (la référence des SIG en France).
+- **Résolution** : Originale, ½ ou ¼ ; la fenêtre annonce la taille de l'image produite. Sur téléphone, elle est plafonnée à 64 Mpx (pour la pleine résolution d'un grand plan, exporte depuis un ordinateur) ; les choix impossibles sont grisés et un choix **Max** apparaît si besoin.
+- **Le plan doit être calé** (géoréférencement GPS, voir « ⚙️ Réglages » ou l'export KMZ) : sinon le bouton **Télécharger** reste grisé et la fenêtre explique quoi faire.
+
+Le fichier s'appelle `MyKTAMap_<plan>_<date>_L93.tif` (ou `_WGS84.tif`). Un grand plan prend du temps : le bouton affiche la progression.
+
+### 🌍 Exporter vers une autre app (KMZ, GPX, GeoJSON)
+
+**⬆️ Exporter → 🌍 Export externe** (tuile **KMZ**, **GPX** ou **GeoJSON**) produit :
 - un **KMZ** : ton plan et tes annotations posés sur le globe, pour **Google Earth**, **OsmAnd**, **Locus** ou **Avenza** ;
-- un **GPX** : points et tracés, pour TopoDroid, OsmAnd, Strava… et réimportable dans MyKTAMap avec ses niveaux.
+- un **GPX** : points et tracés, pour TopoDroid, OsmAnd, Strava… et réimportable dans MyKTAMap avec ses niveaux ;
+- un **GeoJSON** : tes objets pour **QGIS** ou tout SIG, avec leur type, libellé, nom, niveau, note et couleur.
 
 **Le plan doit être géoréférencé** : deux points dont tu connais les coordonnées GPS. Les champs sont pré-remplis avec le géoréférencement du plan (voir « ⚙️ Réglages ») et s'enregistrent pour ce plan. Pendant la saisie, un **🌐 Aperçu coins** donne la position des 4 coins, l'échelle, la rotation, et un lien **🔗 Voir le centre sur Google Maps** pour vérifier.
 
@@ -1031,6 +1068,8 @@ Contenu du KMZ :
 Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télécharger** produit `MyKTAMap_<plan>_<date>.kmz`.
 
 > 💡 La projection est fidèle sur un plan régulier ; un plan étiré ou assemblé peut dériver aux extrémités. Un **point C**, dans le géoréférencement du plan, corrige ce type de déformation.
+
+Le **GeoJSON** reprend les mêmes cases que le KMZ (points par icône, tracés, zones et structures par type, jonctions, itinéraire, niveaux), sans l'image. Choisis la **projection** : **WGS84** (au départ ; la norme GeoJSON, pour un site web ou un outil strict) ou **Lambert 93** (le fichier finit par `_L93.geojson` et QGIS le place tout seul).
 
 ---
 
@@ -1043,7 +1082,7 @@ Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télé
 - **Session MyKTAMap** (`.json`, ou `.zip` avec photos) : elle **remplace** ta session en cours (points, tracés, zones, mesure) ; ses photos, elles, **s'ajoutent** aux tiennes, sans en effacer aucune. Un aperçu montre ce qu'elle contient ; une sauvegarde de ta session actuelle est prise juste avant. **Importer** pour valider, **Annuler** pour ne rien changer.
 - **Fichier GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…) : ses points et tracés **s'ajoutent** à ta session. Le plan doit être géoréférencé. Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
 
-Pour changer de plan, touche la **rose des vents 🧭** (retour à l'accueil) ou le **titre du plan** dans la barre du haut ; ta session est enregistrée avant le changement.
+Pour changer de plan, touche la **rose des vents 🧭** (retour à l'accueil) ou le **titre du plan** dans la barre du haut ; ta session est enregistrée avant le changement. Revenir à l'accueil **ferme le plan** pour rendre sa mémoire à l'appareil (le suivi s'arrête) : **▶️ Reprendre** le rouvre là où tu l'avais laissé.
 
 ---
 
@@ -1135,7 +1174,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
 - **📐 Plan : échelle & géolocalisation** *(ce plan)* :
   - **Échelle**, avec **🎯** pour la calibrer (voir ci-dessous) ;
   - **🧭 Calibration du Nord**, si le haut du plan n'est pas le Nord : un angle, ou **📐 Calibrer (2 clics)** (Sud puis Nord sur la carte), **↺ Reset** pour revenir à 0. La boussole, elle, montre toujours le vrai Nord ;
-  - **🌐 Géoréférencement GPS** : son état s'affiche (non géoréférencé, points A et B, A, B et C, B estimé) et **🌐 Ouvrir le géoréférencement…** ouvre sa fenêtre. Pour les points A et B : **🔍 Chercher un point** ou **📍 Cliquer carte** remplit la position sur le plan, puis tu colles les coordonnées GPS au format Google Maps (`48.856600, 2.352200`). Choisis-les **éloignés** l'un de l'autre. **Estimer B** déduit B de A, de l'échelle et du Nord : une estimation, à vérifier en Vue OSM. Le **📐 Point C (optionnel)**, loin de la ligne A-B, corrige un plan déformé (assemblage étiré) pour la Vue OSM, les exports et le Mode Secours. **💾 Sauvegarder le calibrage** / **🗑️ Effacer**. Ce géoréférencement sert à la Vue OSM, aux exports KMZ et GPX et à l'import GPX.
+  - **🌐 Géoréférencement GPS** : son état s'affiche (non géoréférencé, points A et B, A, B et C, B estimé) et **🌐 Ouvrir le géoréférencement…** ouvre sa fenêtre. Pour les points A et B : **🔍 Chercher un point** ou **📍 Cliquer carte** remplit la position sur le plan, puis tu colles les coordonnées GPS au format Google Maps (`48.856600, 2.352200`). Choisis-les **éloignés** l'un de l'autre. **Estimer B** déduit B de A, de l'échelle et du Nord : une estimation, à vérifier en Vue OSM. Le **📐 Point C (optionnel)**, loin de la ligne A-B, corrige un plan déformé (assemblage étiré) pour la Vue OSM, les exports et le Mode Secours. **💾 Sauvegarder le calibrage** / **🗑️ Effacer**. Ce géoréférencement sert à la Vue OSM, aux exports KMZ, GPX, GeoJSON et GeoTIFF et à l'import GPX.
 - **📍 Navigation & tracker** *(📍/🌍 selon la ligne)* :
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;
@@ -1573,7 +1612,7 @@ Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif`) : l'im
 
 > ✅ **Accepté** : compression LZW, Deflate ou aucune · 8 bits par canal · gris, RVB ou RVBA · image en bandes · nord en haut, sans rotation · Lambert 93, Web Mercator ou WGS84.
 >
-> ❌ **Refusé**, avec un message qui dit quoi changer à l'export : BigTIFF, image tuilée, canaux séparés, palette / CMJN / YCbCr, calage tourné, autre système de coordonnées.
+> ❌ **Refusé**, avec un message qui dit quoi changer à l'export : BigTIFF, canaux séparés, palette / CMJN / YCbCr, calage qui déforme l’image (étirée ou cisaillée ; une image simplement tournée est acceptée), autre système de coordonnées.
 
 #### 🗺️ Convertir un fichier SIG (QGIS…)
 

@@ -7,7 +7,8 @@
 // tiling.js — rendu du fond de plan : direct, tuiles runtime V1 (découpe en canvas) ou tuiles V2 du
 // Générateur (un L.imageOverlay par tuile, swap de niveau au zoom, tuiles hors écran non posées).
 // Expose : chargerImage, chargerImageTuillee, libererTuiles, resoudrePerfPreset, PERF_PRESETS,
-//   ktaCullerTuilesV2(Throttle), _libererTuilesV2, _applyLevelFilterToBasePlan, ktaRacineTuilesServeur,
+//   ktaCullerTuilesV2(Throttle), _libererTuilesV2, _applyLevelFilterToBasePlan, ktaPlanDeBaseVisible,
+//   ktaRacineTuilesServeur,
 //   ktaCandidatsRacineTuiles, ktaResoudreRacineTuiles, ktaTuilesV2Urls, ktaDessinerRegionTuiles,
 //   ktaTuilesSurAppareil, ktaRemplissageTuile, ktaRognerTuile.
 // ⚠️ Un plan V2 tuile toujours, quelle que soit sa taille (choix).
@@ -142,15 +143,24 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
 }
 
 // ── Le plan principal est le niveau 0 (décision produit) ──────────────
-// Décocher 0 dans la modale Niveaux masque le fond, pour voir un autre niveau seul. Couvre les 3 rendus :
+// Case « Afficher le plan de base » de ≡ Filtres = `_ktaRuntimeFilters.planDeBase`, mémorisé dans la session :
+//   null  → automatique : le fond suit le niveau 0 (décocher 0 dans Niveaux masque le fond, pour voir un autre
+//           niveau seul ; plan à un seul niveau → toujours affiché) ;
+//   true / false → choix de l'utilisateur, qui l'emporte sur les niveaux. « Tout afficher » remet null.
+// L'export garde son propre choix de fond (exporter.js) et ne lit pas cet état. Couvre les 3 rendus :
 // direct (_ktaBaseLayers), V1 (_baseTiles), V2 (activeOverlays + garde _ktaBaseHidden dans _renderNiveau).
-// Appelé par appliquerFiltreNiveau.
-window._applyLevelFilterToBasePlan = function() {
-  if (!window.map) return;
+// ktaPlanDeBaseVisible = seule règle, lue aussi par la case (filterPanel.js) ; appliquée par appliquerFiltreNiveau.
+window.ktaPlanDeBaseVisible = function() {
+  const f = window._ktaRuntimeFilters;
+  if (f && (f.planDeBase === true || f.planDeBase === false)) return f.planDeBase;
   const cfg = window.APP_CONFIG;
-  const visible = !(cfg && cfg.multiLevel === true)
+  return !(cfg && cfg.multiLevel === true)
     || !Array.isArray(cfg.visibleLevels)
     || cfg.visibleLevels.indexOf(0) >= 0;
+};
+window._applyLevelFilterToBasePlan = function() {
+  if (!window.map) return;
+  const visible = window.ktaPlanDeBaseVisible();
   window._ktaBaseHidden = !visible;
   function _tog(ov) {
     if (!ov) return;

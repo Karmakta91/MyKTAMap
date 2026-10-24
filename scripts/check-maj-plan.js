@@ -142,8 +142,9 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire}", !!I && typeof 
     /getAllPhotosForPlan\(planIdPhotos\)/.test(GEN) &&
     /ktaConfirm\(window\.I18n\.t\("gen\.fermerPlan\.texte"\)[\s\S]{0,300}if \(!ok\) return null;/.test(GEN) &&
     /maj\.onZip\(blob, nomZip, \{ nom: name, version: version, planFerme: planFerme \}\)/.test(GEN));
-  t("fermeture = démontage complet d'un changement de plan (session enregistrée), puis l'accueil",
-    /function ktaFermerPlanPourMemoire\(\) \{[\s\S]{0,400}window\.map instanceof window\.L\.Map[\s\S]{0,120}_libererRessourcesPlanPrecedent\(\);\s+afficherLoader\(\);/.test(MAIN) &&
+  t("fermeture = retour à l'accueil, qui démonte la carte comme un changement de plan (session enregistrée)",
+    /function ktaFermerPlanPourMemoire\(\) \{[\s\S]{0,400}window\.map instanceof window\.L\.Map[\s\S]{0,120}afficherLoader\(\);/.test(MAIN) &&
+    /function afficherLoader\(\) \{[\s\S]{0,1200}window\.map instanceof window\.L\.Map\) \{\s+_libererRessourcesPlanPrecedent\("accueil"\);/.test(MAIN) &&
     /window\.ktaFermerPlanPourMemoire = ktaFermerPlanPourMemoire;/.test(MAIN));
   t("tuiles rangées sans recompression (STORE)", /const TUILE_ZIP_OPTS = \{ compression: "STORE" \};/.test(GEN) &&
     (GEN.match(/fmt\.ext, (?:_tuileUnieBuf|arrBuf), TUILE_ZIP_OPTS\)/g) || []).length === 2);

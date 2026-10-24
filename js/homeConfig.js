@@ -624,7 +624,7 @@
 
         if (enabled) {
           iconEl.textContent = "✅";
-          iconEl.style.color = "#6ee287";
+          iconEl.style.color = "var(--kta-ok)";
           textEl.innerHTML = _t("pin.setup.statusEnabled") + (hasBio ? _t("pin.setup.statusBioConfigured") : "");
           actionsEl.innerHTML =
             '<button class="loader-btn-secondary kta-loader-pin-btn-modif" type="button" id="loaderPinModifBtn">' +

@@ -579,17 +579,64 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 | Moitié | Tags / détail |
 |---|---|
 | Calage | `ModelPixelScale` (33550) + `ModelTiepoint` (33922), ou `ModelTransformation` (34264) ; EPSG par `GeoKeyDirectory` (34735) |
-| Pixels | LZW (prédicteur horizontal géré), Deflate, non compressé — puis ré-encodage PNG par le canvas |
+| Pixels | en bandes ou en tuiles ; LZW (prédicteur horizontal géré), Deflate, non compressé — puis ré-encodage PNG par le canvas |
 
-**Pourquoi aucune bibliothèque vendorée** (`geotiff.js` ≈ 300 Ko) : mesuré sur un corpus réel de 39 plans de carrières calés sous QGIS — LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), `PlanarConfig` 1 ×39, prédicteur 1 ×39, `Scale+Tiepoint` ×39, 2,2 Mpx au maximum. On lit ce sous-ensemble et **on refuse le reste en le nommant** : 33 raisons distinctes (`tiff.err.*`), chacune disant quoi réexporter.
+**Pourquoi aucune bibliothèque vendorée** (`geotiff.js` ≈ 300 Ko) : mesuré sur un corpus réel de 39 plans de carrières calés sous QGIS — LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), `PlanarConfig` 1 ×39, prédicteur 1 ×39, `Scale+Tiepoint` ×39, 2,2 Mpx au maximum. Les tuiles sont lues aussi : l'export GeoTIFF de l'app en écrit (`docs/architecture/exports.md`), comme QGIS en `TILED=YES`. On lit ce sous-ensemble et **on refuse le reste en le nommant** : 33 raisons distinctes (`tiff.err.*`), chacune disant quoi réexporter.
 
-**Le calage se déduit exactement** : `Scale + Tiepoint` décrit une image nord en haut **sans rotation** — deux coins opposés la décrivent entièrement, ce qui est précisément ce que consomme `plan.georef` (similitude 2 points de `KmzExport.buildTransform`). Aucun `pointC` affine nécessaire, aucune approximation introduite. Un calage porteur d'une rotation est **refusé**, pas approché.
+**Le calage se déduit exactement** : `Scale + Tiepoint` (ou une matrice sans terme croisé) décrit une image nord en haut — deux coins opposés la décrivent entièrement, ce qui est précisément ce que consomme `plan.georef` (similitude 2 points de `KmzExport.buildTransform`). Une `ModelTransformation` **tournée** est acceptée si c'est une **similitude** (rotation + échelle uniforme) : axes du pixel ramenés en mètres au sol (en 4326, mêmes constantes que `buildTransform`), longueurs égales et angle droit à **1 %** près (`TOLERANCE_SIMILITUDE`), sans miroir. Le calage reçoit alors **A, B et C** (coins sud-ouest, nord-est, nord-ouest du fichier) : l'affine 3 points de l'app reproduit le fichier exactement, écart toléré compris, et le Générateur remplit le point C. Pourquoi 1 % : les GeoTIFF Lambert 93 exportés par l'app s'écartent de ≤ 0,4 % de la similitude (calage équirectangulaire non conforme) ; une image étirée ou cisaillée au-delà est **refusée** (`tiff.err.rotation`, « le calage déforme l'image »), pas approchée. L'échelle est la longueur de l'axe, pas son terme diagonal.
 
 **Reprojection** : `window.SigImport.L93` (Lambert 93) et `window.SigImport.WEBMERC` (Web Mercator, ajouté en v1.93.0 — 7 plans du corpus sortent en EPSG:3857, QGIS l'impose dès qu'on cale sur un fond de tuiles). ⚠️ **Aucune copie locale de ces maths** : une seule implémentation par projection dans le projet, verrouillée par son garde-fou.
 
 **Intégration** : `.tif/.tiff` explicites dans les `accept` (le type `image/*` seul ne les propose pas de façon fiable selon l'OS) ; le PNG converti est **ré-injecté dans le même input** via `DataTransfer`, donc `_lireImageDimensions`, le tuilage V2 et le ZIP reprennent **sans rien savoir du TIFF**.
 
 **Réseau** : nul. Lecture `FileReader` → `ArrayBuffer`, décodage en mémoire, encodage canvas. Aucun octet ne sort, aucune bibliothèque chargée.
+
+## 🚪 Fermer un plan = le vider (retour à l'accueil)
+
+Décision produit : revenir à l'accueil **libère tout de suite** le plan, sans délai ni variante. Tous les chemins
+passent par `main.js > afficherLoader` : 🏠 de l'en-tête et « 📚 Mes plans » (fenêtre « Changer de plan » si la
+session n'est pas vierge, `interface.js > _retourLoaderAvecConfirm`), 🏠 des Réglages, ouverture ratée,
+`ktaFermerPlanPourMemoire` (Générateur). Il n'y a ni retour navigateur ni geste de retour dans l'app. Secours,
+urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
+
+- Carte présente (`window.map instanceof L.Map`, même cachée sous l'accueil après une ouverture ratée) →
+  `_libererRessourcesPlanPrecedent("accueil")` : le démontage d'un changement de plan, dans le même ordre
+  (session enregistrée et persistance figée, sortie du carnet suspendue, extension prévenue
+  `KtaExtensions.quitterPlan("accueil")` → `mktm:plan-ferme { vers: "accueil" }` **une seule fois**, suivi coupé
+  avant le démontage, puis tuiles, calques, carte, canvas de collision, blobs du ZIP). Pile de retour et chaîne
+  multi-plans abandonnées (`onPlanExit("home")`).
+- Pas de carte (démarrage, accueil déjà affiché) → seulement la purge de navigation et `quitterPlan("accueil")`.
+- Après : `window.map === null`, `PLAN_CONFIG === null`, `#map` vide ; `_currentLoadedPlanId` garde le dernier plan
+  (« Reprendre », carte OSM de l'accueil). « Un plan est affiché ? » reste `ktaPlanAffiche()` (un plan se charge
+  SOUS l'accueil).
+- « Reprendre » / rouvrir = chargement normal : la session restaure objets, mesures, légende, calques en
+  modification, traces de suppression, filtres et timeline du suivi ; favoris et calage vivent hors session. Le suivi
+  reste arrêté (l'utilisateur le relance).
+- **Vue retrouvée** (`js/vuePlan.js`, décision produit) : centre, zoom et niveau actif du plan, par plan, sur
+  l'appareil, sans limite de durée. Mémorisée au début de `_libererRessourcesPlanPrecedent` (avant l'arrêt du suivi
+  et le démontage), au `pagehide` et au passage en arrière-plan ; appliquée par `lancerApplication` après la
+  restauration de session. Suivi actif au départ : la vue se recentre sur la dernière position du tracker, à son
+  niveau ; sinon la vue telle qu'elle était. Sans vue mémorisée : cadrage initial (position de départ, zoom 0, ou
+  dernière position du tracker si la session a un tracé).
+  - Stockage : `localStorage["myktamap_vue_v1_<planId>"]` = `{ v, x, y, zoom, niveau?, suivi, img, le }`
+    (coordonnées plan, ~150 octets). **Pas dans la session** : la session voyage (export, synchro d'une
+    installation reliée) et s'efface avec « Effacer la session », la vue est propre à l'appareil ; écriture
+    synchrone, sûre au `pagehide`. Hors export de profil (`profileExportImport.js > PER_PLAN_PREFIXES`).
+  - Garde-fous à l'application : vue ignorée si l'image a changé (`img` = largeur, hauteur, image de base, version
+    du plan-config) ; centre borné à l'image, zoom borné à la carte ; niveau inconnu du plan → niveau par défaut (un
+    niveau porté seulement par un calque de données est relu une fois après 1,5 s, sauf si le niveau a déjà changé).
+    Rien n'est mémorisé avant que la vue ait été appliquée (un passage en arrière-plan pendant le chargement
+    écrirait le cadrage par défaut). Un portail (`InterPlanLinks`) recentre encore après.
+  - 🩸 Le cadrage d'ouverture de `tracking.js > initTracking` est **non animé** : un zoom animé finit dans une image
+    suivante et remettait la carte sur sa cible par-dessus la vue retrouvée.
+  - Plan supprimé : `PlanRegistry.purgeAssociatedData` retire la vue ; copie locale remplacée par sa version publiée :
+    `transferAssociatedData` la fait suivre. Une vue orpheline apparaît dans le nettoyeur d'orphelins (🧠 Mémoire).
+- Fenêtre « Changer de plan » : inchangée (posée si la session a des objets, des mesures ou un tracé de suivi) ; le
+  suivi en cours ne bloque pas la fermeture.
+
+Preuve : `scripts/smoke/checkup-retour-accueil.js` (carte démontée, session enregistrée, aucune erreur à l'accueil,
+« Reprendre », allers-retours sans dérive ; vue retrouvée après l'accueil et après rechargement, suivi actif,
+image changée, vue hors image, niveau inconnu, transfert et purge). Mesures : `perf-memory.md` §13.
 
 ## 🧙 Générateur — assistant pas-à-pas (v1.72.1)
 
@@ -632,11 +679,9 @@ bouton en tête des calques de ≡ Filtres (`filterPanel.js > _renderDataLayersS
 ktaFermerPlanPourMemoire`). Avec un plan ouvert (carte, tuiles, session), le tuilage d'une grande image est passé
 chez un utilisateur de moins d'une minute à plus d'une demi-heure : sous pression mémoire, le navigateur jette
 l'image source décodée et la redécode à chaque tuile (`_genererTuilesV2` découpe chaque tuile par `drawImage`
-depuis l'élément image). Au clic sur 📦 Générer, tuilage V2 coché : plan **affiché** → `ktaConfirm` (« le plan va
-être fermé pendant la génération… ») ; refus = rien ne change, rien n'est généré. Accord, ou carte seulement
-**cachée** derrière l'accueil (`afficherLoader` masque sans démonter) → même démontage qu'un changement de plan
-(`_libererRessourcesPlanPrecedent` : session enregistrée, tuiles, blobs, canvas de collision, carte), puis
-l'accueil. Tout ce que le Générateur utilise est déjà chargé (fichiers du ZIP, calques de l'assistant) ; les photos
+depuis l'élément image). Au clic sur 📦 Générer, tuilage V2 coché : plan **ouvert** → `ktaConfirm` (« le plan va
+être fermé pendant la génération… ») ; refus = rien ne change, rien n'est généré. Accord → retour à l'accueil, qui
+démonte le plan (ci-dessous, « Fermer un plan »). Depuis l'accueil, la carte est déjà démontée : rien à fermer. Tout ce que le Générateur utilise est déjà chargé (fichiers du ZIP, calques de l'assistant) ; les photos
 sont lues par l'id du plan relevé avant la fermeture. Sans tuilage V2, rien n'est fermé (génération légère).
 Les tuiles entrent dans le ZIP **sans recompression** (`{ compression: "STORE" }` : JPEG, WebP et PNG sont déjà
 compressés).

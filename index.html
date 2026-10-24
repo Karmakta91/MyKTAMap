@@ -898,6 +898,9 @@
   <script src="js/mapBearing.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
+  <!-- poiJonction.js : passages entre niveaux (modèle, formulaire, fiche) ; lu à l'appel par editor.js, utils.js,
+       road.js et pathfinder.js. -->
+  <script src="js/poiJonction.js" defer></script>
   <script src="js/editor.js" defer></script>
   <script src="js/road.js" defer></script>
   <script src="js/zones.js" defer></script>
@@ -988,10 +991,15 @@
   <!-- tiffGeoref.js (calage + pixels d'un .tif) : après sigImport (window.SigImport.L93 / .WEBMERC, à l'appel),
        avant createConf (le Générateur s'y branche pour le géoréf). -->
   <script src="js/tiffGeoref.js" defer></script>
+  <!-- Exports SIG : après kmzExport (calage), sigImport (Lambert 93), tiffGeoref et exporter (rendu par blocs). -->
+  <script src="js/geotiffExport.js" defer></script>
+  <script src="js/geojsonExport.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <!-- majPlan.js (assistant « Mettre à jour le plan ») : après createConf (window.ktaGenerateurMaj) ; appelle à
        l'usage calqueSession, sessionExporter (légende des calques) et ktaExtensions (prise publierVersion). -->
   <script src="js/majPlan.js" defer></script>
+  <!-- vuePlan.js : vue laissée par plan (main.js la mémorise et l'applique, planRegistry la purge). -->
+  <script src="js/vuePlan.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
   <!-- planOffline.js (hors-ligne d'un plan serveur) : après planRegistry et tiling.js (ktaTuilesV2Urls,
        un seul point de vérité pour les tuiles). -->

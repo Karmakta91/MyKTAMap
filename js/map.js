@@ -65,12 +65,16 @@ const TAGS_BUILTIN = {
   pb:       "icon/pb.png",
   pe:       "icon/pe.png",
   ps:       "icon/ps.png",
+  psf:      "icon/psf.png",
   peo:      "icon/peo.png",
   pef:      "icon/pef.png",
   eso:      "icon/eso.png",
   esf:      "icon/esf.png",
   cao:      "icon/cao.png",
   caf:      "icon/caf.png",
+  jes:      "icon/jes.png",
+  jpe:      "icon/jpe.png",
+  jps:      "icon/jps.png",
   vehicule: "icon/vehicule.png",
   elec:     "icon/elec.png",
   epure:    "icon/epure.png",
@@ -298,7 +302,11 @@ function creerIcones(iconConfig) {
 // ── Nettoyage de la carte existante ──────────
 function cleanupExistingMap() {
   if (window.map) {
-    try { window.map.remove(); } catch(e) {}
+    // 🩸 Leaflet ne coupe pas la minuterie de fin de zoom animé (`_animateZoom` > setTimeout 250 ms) : démontée en
+    // plein zoom, la carte la reçoit sans `_mapPane` et jette `_leaflet_pos` (ouvertures de plan enchaînées).
+    // `_animatingZoom` à faux la rend sans effet (`_onZoomTransitionEnd` sort aussitôt).
+    // Garde-fou : scripts/smoke/checkup-ouvertures-enchainees.js.
+    try { window.map._animatingZoom = false; window.map.remove(); } catch(e) {}
   }
   let mapContainer = document.getElementById("map");
   if (!mapContainer) {

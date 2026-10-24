@@ -159,7 +159,8 @@
       tags:        _s(f.tags),
       roadTypes:   _s(f.roadTypes),
       zoneTypes:   _s(f.zoneTypes),
-      structTypes: _s(f.structTypes)
+      structTypes: _s(f.structTypes),
+      planDeBase:  (f.planDeBase === true || f.planDeBase === false) ? f.planDeBase : null
     };
   }
 
@@ -552,6 +553,10 @@
         window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
         window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
         window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
+        // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
+        // null = automatique (suit le niveau 0). Ancienne session : `garderFond: true` = fond forcé affiché.
+        window._ktaRuntimeFilters.planDeBase  = (rf.planDeBase === true || rf.planDeBase === false)
+          ? rf.planDeBase : (rf.garderFond === true ? true : null);
         const _active = [];
         if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
         if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
@@ -824,7 +829,10 @@
     if (total === 0) return;
 
     const existing = document.getElementById("kta-session-modal");
-    if (existing) existing.remove();
+    if (existing) {
+      if (typeof existing._ktaRetirerClavier === "function") existing._ktaRetirerClavier();
+      existing.remove();
+    }
 
     const _t = function(k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
     const parts = [];
@@ -858,10 +866,19 @@
       '</div>';
     document.body.appendChild(modal);
 
+    // 🩸 L'écouteur Échap est sur `document` : il part avec la modale, quelle que soit la façon de la fermer (bouton,
+    // fond, Échap, ou remplacée à l'ouverture d'un autre plan). Retiré seulement sur Échap, il gardait chaque
+    // modale détachée en vie, une de plus par plan ouvert avec une session.
+    let fermee = false;
+    const retirerClavier = function() { document.removeEventListener("keydown", onKey); };
     function fermer() {
+      if (fermee) return;
+      fermee = true;
+      retirerClavier();
       modal.classList.add("hiding");
       setTimeout(function() { modal.remove(); }, 220);
     }
+    modal._ktaRetirerClavier = retirerClavier;
 
     modal.querySelector('[data-action="keep"]').addEventListener("click", fermer);
     // 🩸 « Effacer » est à côté de « Continuer » (un doigt ganté glisse) : la confirmation est dans le parcours.
@@ -872,12 +889,9 @@
     modal.addEventListener("click", function(e) {
       if (e.target === modal) fermer();
     });
-    const onKey = function(e) {
-      if (e.key === "Escape") {
-        fermer();
-        document.removeEventListener("keydown", onKey);
-      }
-    };
+    function onKey(e) {
+      if (e.key === "Escape") fermer();
+    }
     document.addEventListener("keydown", onKey);
   }
 
@@ -950,7 +964,9 @@
       try { window.LegendCustomization.loadSessionState(null); }
       catch(e) { console.warn("[SessionPersist] reset légende échec :", e); }
     }
-    // Même piège pour les traces de suppression du plan précédent.
+    // Même piège pour le plan de base masqué à la main (un plan sans session s'ouvrirait sans fond) et pour les
+    // traces de suppression du plan précédent.
+    if (window._ktaRuntimeFilters) window._ktaRuntimeFilters.planDeBase = null;
     if (window.KtaUid) window.KtaUid.setTombstones([]);
 
     const saved = getSaved();

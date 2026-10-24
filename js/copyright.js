@@ -39,7 +39,7 @@
     site:      "https://myktamap.fr",
     license:   "CC BY-NC-SA 4.0",
     licenseUrl:"https://creativecommons.org/licenses/by-nc-sa/4.0/",
-    build:     "v2.19.0",
+    build:     "v2.20.0",
     note:      "Usage commercial interdit sans accord ecrit prealable."
   });
 
@@ -119,7 +119,7 @@
       '<div class="kta-devtools-warn-corps">' +
         '<strong>MyKTAMap</strong> &copy; 2026 Flavien VIDAL<br>' +
         'Licence : <strong>CC BY-NC-SA 4.0</strong><br>' +
-        'Usage commercial <strong style="color:#ff6b6b;">INTERDIT</strong> sans accord ecrit prealable.<br>' +
+        'Usage commercial <strong style="color:var(--kta-erreur);">INTERDIT</strong> sans accord ecrit prealable.<br>' +
         '<a href="https://myktamap.fr" target="_blank" rel="noopener">myktamap.fr</a>' +
       '</div>' +
       '<button class="kta-devtools-warn-close" type="button" aria-label="Fermer">&times;</button>';

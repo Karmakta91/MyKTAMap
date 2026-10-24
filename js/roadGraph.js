@@ -56,7 +56,18 @@
       const e = window.getEmbeddedRoads() || [];
       embeddedCount = e.length;
     }
-    return sessionCount + ":" + sessionPts + ":" + niveaux + ":" + embeddedCount;
+    // 🩸 Passages entre niveaux (POI) : valider un raccord ou cocher un niveau ne touche aucun tracé ; sans leur
+    // empreinte, le map-matching garderait un graphe sans (ou avec) le puits.
+    let puits = "";
+    if (window.KtaPoiJonction && typeof window.KtaPoiJonction.pointsJonction === "function") {
+      window.KtaPoiJonction.pointsJonction().forEach(function(p) {
+        puits += p.x + "," + p.y + "," + (p.tags && p.tags[0]) + "," + JSON.stringify(p.niveaux) + "," +
+                 JSON.stringify(p.accroches) + ";";
+      });
+    }
+    let hPuits = 0;
+    for (let i = 0; i < puits.length; i++) hPuits = Math.imul(hPuits ^ puits.codePointAt(i), 16777619);
+    return sessionCount + ":" + sessionPts + ":" + niveaux + ":" + embeddedCount + ":" + hPuits;
   }
 
   function invalidate() {

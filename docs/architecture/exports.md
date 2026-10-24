@@ -1,13 +1,13 @@
-# Architecture MyKTAMap — Exports PNG/PDF/KMZ/GPX + légende
+# Architecture MyKTAMap — Exports PNG/PDF/KMZ/GPX/GeoTIFF/GeoJSON + légende
 
 > Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
-> Sections : §5, §32, §44, §45, §54, §55, §59, §68
+> Sections : §5, §32, §33, §44, §45, §54, §55, §59, §68
 
 ---
 
 ### 0. 🎨 v1.76.0 — styles résolus + la légende voyage (résumé, détails dans `rendering-leaflet.md` §0)
 
-- **Plus aucune table de couleurs dans les exports** : toutes les pipes canvas (`exporter.js`, `utils.js`) et le KML (`kmzExport.js`) demandent `ktaResolveStyle(cat, clé, {flat:true})` — l'aplat de repli remplace le motif SVG d'`inaccessible`. Les **largeurs/alphas KML restent locaux** (unité ≠ Leaflet, figés par `scripts/check-kml-styles.js`) ; un type custom reçoit désormais son `<Style>` KML (avant : `styleUrl` pendant → couleur perdue dans Google Earth).
+- **Plus aucune table de couleurs dans les exports** : toutes les pipes canvas (`exporter.js`, `utils.js`) et le KML (`kmzExport.js`) demandent `ktaResolveStyle(cat, clé, {flat:true})` — l'aplat de repli remplace le motif SVG d'`inaccessible`. Les **largeurs/alphas KML restent locaux** (unité ≠ Leaflet, figés par `scripts/check-kml-styles.js`) ; tout type hors intégrés reçoit son `<Style>` KML : un type personnalisé, celui de sa légende ; un type **sans entrée de légende** (id brut d'un calque, personnalisé supprimé), le **repli de la carte** — zone → `remblais`, structure → `mur` (`kmzExport.js > REPLI_KML`, aligné sur `zones.js` / `structures.js` par le garde-fou) ; un tracé inconnu n'a pas de style (la carte le peint en blanc, comme le trait par défaut de Google Earth).
 - **La légende voyage** : payload `devmap-data` → champ `customLegend` **restreint aux types référencés** (`sessionExporter.js > _legendePourPayload`) ; lu par `createConf.js > _absorberLegendeCalque` (conflit : **l'existant du plan gagne**, ré-import idempotent, garde-fou `check-legend-roundtrip.js`). ZIP session Avancé → `session_legend.json`. Option KMZ/GPX « Légende personnalisée » → **fusion plan + session** (`_legendeCompleteAExporter`, la session prime).
 - **Granularité fine de la conversion** : le bucket `autres` (types non built-in) est **émis** en `roads_<type>.json` etc. (`_emettreTypesRestants`) — avant, les objets custom étaient silencieusement supprimés de l'export.
 
@@ -74,7 +74,13 @@ Algorithme :
 KMZ = ZIP standard avec :
 - `doc.kml` : XML KML 2.2 + namespace gx 2.2 (pour `<gx:LatLonQuad>`)
 - `files/<plan>.png` : image plan référencée dans `<GroundOverlay>`
-- `files/icons/<tag>.png` : 1 icône par tag rencontré dans les Placemarks
+- `files/icons/<tag>.png` : les icônes de `_iconMap`, **toujours en PNG** et seulement si elles sont lisibles
+  (`genererKmz > _lireIcones`, lues AVANT d'écrire le KML). Cascade par tag : URL de la carte, puis catalogue
+  (`_ktaBuiltinIconUrls`, comme le repli de la carte), sinon rien. Une icône de plan en SVG / WebP / JPEG est
+  redessinée en PNG (Google Earth n'affiche pas un SVG nommé `.png`). Le `<Style id="point_<tag>">` d'un tag
+  sans fichier (tag inconnu, icône illisible) vise `default.png`, jamais un fichier absent. Tag hors
+  `[lettres chiffres _ -]` : nom et id assainis (`_nomIcone`) ; sinon le tag reste tel quel (relu par
+  `kmzImport.js` dans le `styleUrl`).
 
 Structure KML :
 ```xml
@@ -94,6 +100,7 @@ Structure KML :
     <Folder><name>🛣️ Tracés (N)</name>...</Folder>
     <Folder><name>🪜 Jonctions (N)</name>...</Folder>
     <Folder><name>⬛ Zones (N)</name>...</Folder>
+    <Folder><name>🏛️ Structures (N)</name>...</Folder>  <!-- LineString si ligne, Polygon sinon -->
   </Folder>
   <Folder><name>🗺️ Itinéraire (N)</name>...</Folder>
 </Document>
@@ -163,7 +170,11 @@ Exemples :
    - Validation 8 champs requis
    - `buildTransform` + persistance via `setCalibration`
    - Collecte session + embedded (allRoads, allZones, allPoints + dataLayerPoints)
-   - Lecture des Sets de filtrage granulaire (pointTagsSet, roadTypesSet, zoneTypesSet)
+   - Lecture des Sets de filtrage granulaire (pointTagsSet, roadTypesSet, zoneTypesSet, structureTypesSet) ;
+     tout type **hors intégrés** présent (`cust-…` ET id brut d'un calque, relevé SIG) est ajouté au Set de sa
+     famille cochée (`_ajouterTypesHorsIntegres`) : pas de sous-case, il part avec sa famille (décision
+     produit). Les totaux des cases parentes les comptent (`_kmzNbAutres`) : une famille faite seulement de
+     types personnalisés n'est jamais grisée à 0.
    - Fetch image blob (RUNTIME_ASSETS si ZIP local, fetch HTTP sinon)
    - Collecte iconsToEmbed depuis `window._iconMap`
    - `genererKmz(opts)` → Blob → téléchargement `MyKTAMap_<plan>_<date>.kmz`
@@ -175,6 +186,15 @@ Exemples :
 ⚠️ **AABBGGRR vs RRGGBBAA** : KML utilise un format particulier hérité de Google. Toujours passer par le helper `_kmlColor` plutôt que de coder le hex à la main.
 
 ⚠️ **`<gx:LatLonQuad>` plus robuste que `<LatLonBox>`** : LatLonBox suppose un rectangle axes-aligned + rotation unique. LatLonQuad permet 4 coins arbitraires — gère naturellement les plans non-rectangulaires ou tournés.
+
+⚠️ **Géométrie d'une structure = celle de la légende** (`window.isStructurePolylineType`, comme la carte) :
+une structure personnalisée en LIGNE part en `LineString` (même émetteur que les tracés, altitude du niveau
+comprise), jamais en `Polygon` (qui jetait une ligne de 2 points). Nom du Placemark d'un type personnalisé =
+libellé de la légende (`_nomType`), jamais l'id `cust-…`.
+Une structure à type **sans légende** n'a pas de géométrie déclarée : elle suit sa **forme réelle**
+(`kmzExport.js > _estLigneStructure`) — `LineString` si son tracé est ouvert, `Polygon` s'il est fermé (premier
+point = dernier, comme l'anneau d'un polygone SIG importé ; le format n'a pas de drapeau `closed`). 🩸 La carte,
+elle, la peint toujours en polygone « mur » : un contour tracé fermé SANS répéter son premier point part en ligne.
 
 ⚠️ **Image blob requise** : si `imageBlob = null`, le GroundOverlay est skip silencieusement (log warning). Le KMZ reste valide mais affiche juste les annotations sans la cartographie de fond.
 
@@ -214,6 +234,76 @@ Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, au
 
 ---
 
+### 33. Exports SIG : GeoTIFF calé et GeoJSON (`js/geotiffExport.js`, `js/geojsonExport.js`)
+
+Deux exports pour un SIG (QGIS, ArcGIS…), sans serveur ni librairie. Les deux partent du **calage enregistré du
+plan** (`KmzExport.getCalibration` → `buildTransformCalib`, points A / B et C facultatif) et projettent en
+**WGS84 (EPSG:4326) par défaut** (exact, conforme RFC 7946) ou en **Lambert 93 (EPSG:2154)** : plan → WGS84 par `planToGps`, puis WGS84 →
+Lambert 93 par `window.SigImport.L93` (seule implémentation, `check-lambert93.js`). Garde-fou commun :
+`scripts/check-export-sig.js` (pré-commit, donc CI) ; preuve navigateur : `scripts/smoke/checkup-export-sig.js`.
+
+#### 33.1 GeoTIFF — tuile « 🛰️ GeoTIFF calé » de la section Image du lanceur ⬆️ Exporter
+
+- **Contenu** : *scan seul* (image de base, sans calque d'image ni dessin : le fond propre pour dessiner dans un SIG)
+  ou *scan + dessins* (comme l'export image rapide : calques visibles, points, tracés, zones, structures, niveaux
+  affichés). Rendu par `MyKTAMapExporterGenererCanvas` avec `region` : le même moteur que le PNG et le PDF.
+- **Résolution** : originale, ½, ¼ ; une option qui dépasse le plafond de l'appareil est grisée, « Max » apparaît si
+  aucune ne tient. Plafonds : **64 Mpx sur téléphone** (comme l'export image), **< 4 Go** (TIFF classique, pas de
+  BigTIFF : ~1,3 Gpx), **128 Mpx sans `CompressionStream`**. La fenêtre annonce la taille réellement produite ; le
+  toast de fin dit si elle a été plafonnée. Plan non calé : bouton Télécharger désactivé, explication affichée.
+- **Jamais l'image entière en mémoire** : rendu par blocs de 4 096 px (2 048 sur iPhone, limite canvas WebKit), plan V2
+  lu par `ktaDessinerRegionTuiles` (bords calés au pixel, `aligner`), chaque bloc découpé aussitôt en tuiles
+  compressées ; un `Blob` par bloc, que le navigateur peut sortir de la mémoire vive.
+- **Fichier** (écriture maison, `geotiffExport.js > entete`) : « II », 42, **IFD en tête** puis les tuiles ; RGB
+  8 bits, `PlanarConfiguration` 1, **tuiles 256 × 256** (celles du bord complétées), **Deflate** (code 8, flux
+  zlib via `CompressionStream("deflate")`) + **prédicteur horizontal** (317 = 2, repart à chaque ligne de tuile),
+  sinon brut. Tags triés par numéro (exigé par la norme). Les tuiles sont écrites bloc par bloc : les `TileOffsets`
+  suivent l'ordre réel d'écriture (`_offsetsDansLOrdre`), pas l'index.
+- **Calage** : affine pixel → projection **ajustée aux moindres carrés** sur une grille 9 × 9 (pixel = coin,
+  `RasterPixelIsArea`). En WGS84 elle est exacte (`planToGps` est affine en degrés) ; en Lambert 93 la courbure de
+  la projection laisse un écart, mesuré sur 17 × 17 points et rendu (`residuM` : ~0,17 m sur un plan de 2,5 km).
+  - termes croisés < 0,1 px sur toute l'image (et pas de miroir) → **`ModelPixelScale` + `ModelTiepoint`** : la
+    forme que lit tout SIG, et l'import de l'app ;
+  - sinon → **`ModelTransformation`** (34264), rotation comprise. ⚠️ En Lambert 93 c'est le cas de presque tout
+    calage réel : la convergence des méridiens tourne la grille dès qu'on s'écarte de 3°E. GDAL / QGIS lisent la
+    matrice (géotransformation tournée, vérifié avec `gdalinfo`), et **l'import GeoTIFF de l'app aussi** : une
+    matrice tournée qui est une similitude à 1 % près donne les points A, B **et C** (coins SO, NE, NO), voir
+    `plans-loader.md` § GeoTIFF. Un export Lambert 93 de l'app s'écarte de la similitude de ≤ 0,4 % (son calage
+    équirectangulaire n'est pas conforme) : il se réimporte, coins à < 1 m.
+  - GeoKeys : `GTModelTypeGeoKey` (1 projeté / 2 géographique), `GTRasterTypeGeoKey` = 1,
+    `ProjectedCSTypeGeoKey` = 2154 + `ProjLinearUnitsGeoKey` = mètre, ou `GeographicTypeGeoKey` = 4326 +
+    `GeogAngularUnitsGeoKey` = degré.
+- **Aller-retour** : `js/tiffGeoref.js` lit les TIFF **tuilés** et les matrices **tournées** (similitudes) ; le
+  garde-fou relit chaque fichier écrit (pixels identiques en brut et en Deflate, EPSG, coins, points A / B / C à
+  < 1 m) et le réimporte par le chemin de l'import (coins à < 1 m, Lambert 93 tourné compris).
+- 🩸 **Ce que le calage ne corrige pas** : le modèle de l'app (similitude ou affine en mètres équirectangulaires) n'est
+  pas le Lambert 93 ; un plan importé d'un GeoTIFF nord en haut puis réexporté garde les points du calage exacts mais
+  peut dériver de quelques mètres aux coins opposés sur un plan de plusieurs km. L'export reproduit le calage tel
+  qu'il est, il ne l'améliore pas.
+- Nom : `MyKTAMap_<plan>_<date>_L93.tif` / `_WGS84.tif`. Réseau : aucun (tuiles déjà sur l'appareil ou celles que
+  l'export image lit déjà).
+
+#### 33.2 GeoJSON — tuile « 🧭 GeoJSON (SIG) » de la section Export externe
+
+- **Même onglet, mêmes cases que le KMZ** (`sessionExporter.js > _kmzSelection`, partagé) : familles, sous-types,
+  types personnalisés et ids bruts de calque (ajoutés quand la famille est cochée), niveaux. L'image, l'opacité et la
+  légende, propres au KMZ, sont masquées (`data-kmz-seul`). Le calage est celui de l'onglet (A / B saisis ou repris).
+- **Mêmes règles que le KML** (`window.KmzExport` : `libelleType`, `estLigneStructure`, `styleResolu`, aucune
+  copie) : structure en ligne ou polygone selon sa légende, ou sa forme réelle pour un id brut ; couleur
+  `ktaResolveStyle(cat, type, {flat:true})` avec le repli de la carte (zone → `remblais`, structure → `mur`).
+- `FeatureCollection` (`name` = nom du plan) ; propriétés : `famille` (point, trace, jonction, zone, structure,
+  itineraire), `type`, `libelle` (légende : session > plan > défaut traduit), `nom`, `niveau`, `note`, `uid`
+  (aussi `id` de la feature), `couleur`, `remplissage` (polygones) ; jonction : `niveau_depart`,
+  `niveau_arrivee`. Anneaux fermés (premier point = dernier). Précision : 1 mm (8 décimales de degré, 3 de mètre).
+- **Projection** : la RFC 7946 n'admet que le WGS84, sans membre `crs` → l'option WGS84 est conforme. En
+  **Lambert 93** le fichier porte le membre `crs` de GeoJSON 2008 (`urn:ogc:def:crs:EPSG::2154`) **et** le suffixe
+  `_L93` : sans ce membre, QGIS / GDAL lisent des degrés et posent tout hors de la Terre, sans erreur. Vérifié avec
+  `ogrinfo` (SRS Lambert-93 reconnu).
+- Points des calques de données : `_ktaDataMarkers` porte aussi la note et l'`uid` (le KMZ reçoit donc la note des
+  points de calque dans sa bulle).
+
+---
+
 ### 44. Export PDF imprimable (depuis v1.10.3)
 
 Module `js/pdfExport.js` (~700 lignes IIFE) → `window.MyKTAMapPdfExport = { afficherModale, genererPdf }`. Lib **jsPDF UMD** (`lib/jspdf.umd.min.js`) chargée AVANT le module dans index.html.
@@ -228,7 +318,9 @@ opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...
         fond depuis les tuiles V2 (`ktaDessinerRegionTuiles`) ou sous-rectangle de l'image,
         le reste translaté ; la légende se dessine après restauration — cartes PDF Secours ;
         sans région, plan tuilé V2 dont toutes les tuiles du niveau utile sont sur l'appareil
-        (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée)
+        (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée ;
+        plafond de pixels SEUIL_PX_EXPORT, iPhone 16,7 Mpx, tenu après l'arrondi des côtés : canvas
+        réduit marqué `_ktaPlafonne` → toast warn « résolution réduite à L × H px » (pdfexport.plafond))
 canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
 opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
                   → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins
@@ -383,6 +475,11 @@ types de zone par calque — `_lireZoneTypesCochesCalque` retourne désormais
 `connus`, l'ensemble des types **proposés**, pour ne pas supprimer un type qui
 n'a jamais eu de case.
 
+🩸 **Icône illisible = repli, jamais un échec** : `exporter.js > getIconUrl` et `utils.js > telechargerPlan >
+getIconForPoint` essaient l'URL de la carte, puis le catalogue (`_ktaBuiltinIconUrls`), puis l'icône par défaut,
+comme `map.js > _installerRepliIcones`. Avant, un seul chemin mort dans `plan-config > icons` (que la carte
+masque par son repli) faisait échouer TOUT l'export PNG / PDF avancé.
+
 #### 69.1 Largeur des traits : la loi physique, partagée avec l'écran
 
 Un front de taille sortait à `style.weight × scale` — une largeur décidée par la
@@ -460,6 +557,10 @@ API utilisée :
 #### 54.3 Flow export
 
 `window.GpxIO.exporter({incPoints, incEmbedded, incRoads, incIti, filename})` → `{ok, msg, counts, filename}`. Génère + télécharge directement via Blob URL. Pas de fichier intermédiaire.
+
+⚠️ **Ni zones ni structures en GPX** (choix de format) : GPX 1.1 ne connaît que des waypoints et des traces,
+pas de polygone ni de style. Zones, piliers, murs et fronts restent l'affaire du KMZ ; les y ajouter en `<trk>`
+les ferait passer pour des galeries dans OsmAnd ou TopoDroid.
 
 UI : onglet `gpx` dans `sessionExporter.js > _afficherModal` (avec les autres : full/advanced/conversion/kmz). `_renderGpx()` génère le HTML (info calibrage + checkboxes options). `_exportGpx()` lit les options et appelle l'API.
 

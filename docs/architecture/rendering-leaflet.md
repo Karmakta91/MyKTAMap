@@ -63,15 +63,25 @@ Utilisée par : `searchPoints.js`, `utils.js > telechargerPlan`, `exporter.js`, 
 
 **Pour ajouter un nouveau tag d'icône** (ex: `fontaine`) :
 
-1. PNG 50×50 transparent → `icon/fontaine.png`
+1. PNG 128×128 transparent → `icon/fontaine.png` (même gabarit que le jeu existant : badge rond ou carré, barre
+   rouge pour une variante « fermé »)
 2. `map.js > TAGS_BUILTIN` : ajouter `fontaine: "icon/fontaine.png"`
 3. `editor.js > EDITOR_TAG_LABELS` : ajouter `fontaine: "Fontaine"`
-4. `interface.js > LEGENDE_LABELS` + groupe approprié dans le tableau `GROUPES`
-5. `exporter.js > LBL` local + groupe dans `GROUPES_ICONES`
+4. `interfaceLegende.js > LEGENDE_LABELS` + groupe approprié dans `GROUPES`
+5. `exporter.js > GROUPES_ICONES` : le groupe (libellés par `LegendCustomization`)
 6. `createConf.js > PLANNER_DEFAULT_ICONS` : ajouter le chemin
 7. `sw.js > ASSETS_TO_CACHE` : ajouter `"./icon/fontaine.png"`
+8. `legendCustomization.js > DEFAULT_LABELS.icones` + clés `editor.tag.*`, `legend.label.icones.*`,
+   `legendui.label.*` dans les 3 dicos `lang/`
+
+Checklist complète : skill `add-icon-tag` ; `scripts/check-icon-catalog.js` (pré-commit) confronte ces tables.
 
 → Le tag est utilisable sur les **plans existants** sans modifier leurs `plan-config.json`.
+
+→ **Passages entre niveaux** (`jes`, `jpe`, `jps`) : groupe de légende et d'export à part (« ↕️ Passages entre
+niveaux »), icônes à badge magenta (couleur des jonctions) avec deux planchers et une double flèche, pour ne jamais
+les confondre avec les accès de surface `eso` / `peo` / `ps`. Un tel POI s'affiche sur **chacun** de ses niveaux
+(`marker._ktaNiveaux`) et dessine ses raccords seulement fiche ouverte (`multilevel-pathfinding.md` §26.11).
 
 ### ⚠️ Maintenance du Service Worker (`sw.js` racine)
 
@@ -324,7 +334,7 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 > KARMA « logique de superposition : un fond noir ou un plan au-dessus fait perdre le sens ». Reco 1:a 2:a 3:a. La chaîne des calques image était déjà saine (embed VERBATIM au générateur — octets bruts, aucun ré-encodage — et rendu `L.imageOverlay` direct → alpha préservé). Les 2 trous étaient ailleurs :
 
 **A — Le plan principal est filtrable comme niveau 0** (`tiling.js > _applyLevelFilterToBasePlan`, appelé par le dispatcher `appliquerFiltreNiveau` d'interfaceConfig) :
-- Visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Masquage NET (2:a).
+- Règle unique `tiling.js > ktaPlanDeBaseVisible` (lue aussi par la case de ≡ Filtres) : `_ktaRuntimeFilters.planDeBase` vaut `true` / `false` → choix de l'utilisateur, qui l'emporte sur les niveaux ; `null` (défaut) → automatique : visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Case « 🖼️ Afficher le plan de base », toujours présente : section Niveaux d'un plan multi-niveau, en tête de « Calques image » sinon ; cochée = fond réellement affiché, même en automatique. « Tout afficher » remet `null`. Persistée dans `runtimeFilters` de la session du plan (ancien `garderFond: true` relu comme `true`), remise à `null` avant toute restauration (`sessionPersist.js > onPlanLoaded`) pour qu'un plan sans session ne s'ouvre pas sans fond. Pastille ≡ : un fond masqué à la main compte comme un filtre actif ; masqué en automatique, il est déjà compté par les niveaux. Masquage NET (2:a). Les exports ne lisent pas cet état : ils ont leur propre choix de fond (`exporter.js`).
 - Couvre les 3 modes de rendu du base : **direct** (`window._ktaBaseLayers` — nouveau registre, les 2 sites `L.imageOverlay(url, bounds).addTo(map)` ne gardaient AUCUNE référence) · **tuiles runtime V1** (`window._baseTiles`) · **tuiles V2** (`_tilingV2State.activeOverlays` + garde `window._ktaBaseHidden` dans `_renderNiveau` — les tuiles d'un swap de zoom restent hors map mais TRACÉES dans activeOverlays pour le ré-affichage).
 - ⚠️ Tout NOUVEAU chemin de rendu du plan principal doit s'enregistrer dans un de ces 3 conteneurs, sinon il échappera au filtre.
 

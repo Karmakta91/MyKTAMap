@@ -28,15 +28,13 @@
 
 ## Maintenant
 
-- **Train : sortir la v2.19.0 en prod** — bumpée le 21/10 (avec la 0.12.0 du pro) : mise à jour du plan, Éditeur de
-  données appliqué à la session, recalage sur un autre scan, fiche des jonctions, effacer la session, correctif de la
-  synchro à l'ouverture d'un plan ☁️. Notes : `version.json`, `README.md` § v2.19.0.
-  `qui: KARMA · action: trempage dev + pro (menu 9) : modifier / supprimer une jonction, effacer la session ; porte
-  docs/RELEASE_GATE.md ; merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
-- **PR Dependabot en attente** — ce sont des PR (onglet Pull requests), pas des alertes : 0 alerte côté community.
-  ✅ vérifié 21/10 : 8 branches `dependabot/*` encore ouvertes, actions GitHub (`setup-node`, `docker/*`) et
-  Playwright du smoke ; les workflows sont toujours en `setup-node@v5` / `docker/*@v3`.
-  `qui: KARMA · action: fusionner ou fermer chaque PR (CI verte)
+- **Train : v2.20.0** — v2.19.0 en prod le 22/10. Bumpée le 23/10 (`1e4e242d`) puis corrigés avant merge : légende OSM,
+  exports (structures de calque, types personnalisés, icônes, repli de style KML), filtres (pastille des types).
+  `qui: KARMA · action: CI verte ; export KMZ du vrai plan sur iPhone (structures, PE) ; porte docs/RELEASE_GATE.md ;
+  merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: M`
+- **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
+  Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
+  `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
   · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 
 - **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
@@ -58,32 +56,16 @@
   · taille: S`
 ## Ensuite
 
-- **Erreur Leaflet `_leaflet_pos` aux changements de plan rapides** — `TypeError … _getMapPanePos` vue plusieurs fois par
-  le scénario pro `ouverturePlanSync` (10 ouvertures enchaînées) : un appel sur une carte déjà démontée. Instable, sans
-  effet fonctionnel mesuré ; le scénario repasse au rejeu.
-  `qui: Claude · action: trouver l'appel (setView / invalidateSize / panTo après cleanupExistingMap) et le garder
-  · fini: ouverturePlanSync sans erreur de page sur 10 passages · depuis: 22/10/2026 · taille: S`
-- **Vue OSM : pas d'accès à la légende du plan** — ni la Vue OSM ouverte depuis un plan ni la carte OSM de l'accueil
-  n'ouvrent la ≡ Légende. Accueil à plusieurs plans (légendes différentes) : piste KARMA = légende du plan principal,
-  l'utilisateur prévenu que les autres plans ont la leur ; légende en lecture seule depuis l'OSM (pas de modification).
-  `qui: Claude · action: QCM rapide puis bouton Légende dans la barre des deux cartes OSM (légende du plan principal)
-  · fini: légende du plan ouverte depuis les deux cartes OSM · depuis: 22/10/2026 · taille: S`
-- **Garde-fou `check-calque-session.js` contourné** — il interdit à `convertirObjet.js` de nommer les points de
-  session ; le Tableur lui passe la liste par `opts.acces` (« Appliquer à la session » des POI). Règle à réécrire.
-  `qui: Claude · action: dire précisément ce qui est permis (accès fourni par l'appelant) et le vérifier
-  · fini: garde-fou qui décrit l'état actuel, sans contournement · depuis: 21/10/2026 · taille: XS`
-- **Convertir en lot prend une jonction** — la sélection multiple (`KtaConvertir.convertirLot`) accepte une jonction,
-  alors que la fiche ne propose plus « Convertir » pour elle.
-  `qui: Claude · action: l'exclure du lot comme de la fiche (CIBLES_INTERDITES) · fini: jonction absente du lot
-  · depuis: 21/10/2026 · taille: XS`
-- **Pastille hors-ligne : coût et états non mesurés** — 🔬 coût de `SwInspector.etat()` sur un vieux téléphone (3-7 ms
-  sur PC) ; états orange et thème clair jamais vus en navigateur.
-  `qui: Claude · action: mesurer au harnais en CPU ralenti, capturer les états orange et clair
-  · fini: mesure notée dans perf-memory.md, captures vues · depuis: 03/10/2026 · taille: S`
-- **PDF « HD » plafonné en silence** — ⚪ sur iPhone le PDF réduit sa résolution sous 16,7 Mpx (`exporter.js >
-  _publicGenererCanvas`) sans le dire ; l'export image propose déjà « 📱 Max iPhone ».
-  `qui: Claude · action: dire à l'utilisateur la résolution réellement produite
-  · fini: message affiché quand le plafond agit · depuis: 17/10/2026 · taille: S`
+- **Calage en vraie projection** — le calage A / B (C) travaille en mètres équirectangulaires (constantes fixes),
+  pas conformes : un plan nord en haut importé d'un GeoTIFF Lambert 93 garde A et B exacts mais dérive de 2 à 12 m aux
+  autres coins sur 1 à 6 km (mesuré le 23/10, lot export-sig). Touche Vue OSM, KMZ, GPX, GeoTIFF, GeoJSON, Secours.
+  `qui: Claude · action: étude puis lot après la release v2.20.0 (calage dans le CRS du plan, Lambert 93 d'abord)
+  · fini: calage en vraie projection, coins d'un GeoTIFF importé à moins de 1 m · depuis: 23/10/2026 · taille: M`
+- **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
+  fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
+  `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
+  · depuis: 22/10/2026 · taille: S`
+
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
@@ -111,11 +93,10 @@
 
 ## Plus tard
 
-- **Clés i18n gardées pour les pages en cache** — `home.profile.greeting`, `home.splash.ethos`,
-  `ui.subaction.importer` / `editJson`, `tabledit.save.session` / `sessionOk` / `partage.*`, `tabledit.resol.*` :
-  plus appelées, gardées une release (règle de `docs/architecture/i18n.md`).
-  `qui: Claude · action: les retirer des 3 dictionnaires à la release qui suit la v2.19.0 · fini: clés retirées
-  · depuis: 21/10/2026 · taille: XS`
+- **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
+  compte comme absent pour les outils de réputation.
+  `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
+  · depuis: 23/10/2026 · taille: XS`
 - **Sonar : jetons à régénérer** — ils expirent vers le 06/01/2027 : au-delà, `sonar-scan.ps1` sort en code 1 et
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027
@@ -137,15 +118,6 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Rails latéraux de la carte au doigt** — boutons des rails à 36 × 36 px, sous les 44 px d'Impeccable ; gardés
-  pour la surface utile de la carte (décision KARMA 20/10, M4 de l'audit d'interface).
-  `qui: Claude · action: agrandir la zone de toucher sous pointer coarse sans grossir la marque ni chevaucher
-  · fini: zone de toucher 44 px au doigt, checkup des panneaux vert · depuis: 20/10/2026 · taille: S`
-
-- **Garde-fou : pas de couleur en dur dans un `style=` posé par le JS** — la charte s'écrit `var(--kta-…)` aussi dans
-  les styles inline (CLAUDE.md, CSS) ; rien ne l'empêche aujourd'hui (E5 de l'audit d'interface du 20/10).
-  `qui: Claude · action: garde-fou au pre-commit qui refuse un hex hors exceptions listées (splash, urgence, photos)
-  · fini: garde-fou vert et branché en CI · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
 
