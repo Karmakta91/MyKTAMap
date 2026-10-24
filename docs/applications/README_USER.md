@@ -870,6 +870,29 @@ Elle apparaît en magenta pointillé, un rond à chaque bout. **Sans jonction, a
 
 **Sa fiche** : tape une jonction que tu as tracée (hors tracé en cours) pour ouvrir **🪜 Jonction N0 ↔ N+1** : sa **note** (💾 Sauver la note), les listes **Départ (1er point)** et **Arrivée (dernier point)** avec **🪜 Changer les niveaux** (deux niveaux différents obligatoires ; l'itinéraire suit aussitôt), et **🗑️ Supprimer**. **⏪** annule chaque geste. Pas de 🔄 Convertir : une jonction reste une jonction.
 
+### ↕️ Escalier ou puits entre niveaux (point)
+
+Un passage vertical **à un endroit précis** (escalier, puits à échelons, puits sans échelon) se pose comme un
+point, avec l'un des trois types **Escalier entre niveaux**, **Puits à échelons entre niveaux**, **Puits sans échelon
+entre niveaux** (groupe « ↕️ Passages entre niveaux » de la légende). La jonction tracée reste faite pour les pentes
+douces.
+
+1. Pose (ou modifie) le point et choisis son type : le bloc **↕️ Niveaux desservis** apparaît
+2. Coche les niveaux que le passage relie (le niveau du point est toujours coché)
+3. Pour chaque niveau, l'app propose les galeries à moins de **5 m** (50 px sur un plan sans échelle, c'est écrit) :
+   **coche celle où le passage débouche**. Rien n'est validé d'office ; un niveau sans galerie proche est signalé
+4. Enregistre
+
+Le point s'affiche sur chacun de ses niveaux. Sa fiche dit ses niveaux et ses raccords, et les dessine en pointillé
+magenta tant qu'elle est ouverte. **L'itinéraire ne passe que par les raccords validés.** Il compte le passage comme
+**10 m par niveau pour un escalier, 20 m pour des échelons** ; si la profondeur des niveaux est saisie, c'est la vraie
+différence de profondeur. Le guidage dit « descendre vers le niveau −1 **par l'échelle** ». Un **puits sans échelon**
+n'est emprunté que si tu coches **🧗 Équipe équipée (corde)** dans les Évitements de la fenêtre d'itinéraire.
+
+🔒 Ces passages ne sont **jamais** proposés comme sortie d'urgence ni comptés comme accès de surface en Mode Secours.
+Un puits à échelon ou un escalier de service **qui débouche à la surface** garde son type (Puits à échelon ouvert,
+Escalier service ouvert) et peut aussi cocher plusieurs niveaux : il reste une sortie.
+
 ### 🛠️ Côté créateur du plan
 
 Le mode multi-niveau, le niveau de chaque calque image et celui des éléments des calques de données sont réglés par le créateur du plan dans le Générateur (voir 🔭 Pour aller plus loin › 🏗️ Créer ou modifier un plan). Sur un plan qui ne l'a pas activé, rien de tout cela n'apparaît ; activé plus tard, les éléments existants sont au niveau 0.

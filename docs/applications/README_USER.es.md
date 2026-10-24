@@ -870,6 +870,28 @@ Aparece en magenta punteado, con un círculo en cada extremo. **Sin unión, ning
 
 **Su ficha**: toca una unión que hayas trazado (fuera de un trazado en curso) para abrir **🪜 Unión N0 ↔ N+1**: su **nota** (💾 Guardar la nota), las listas **Salida (1.er punto)** y **Llegada (último punto)** con **🪜 Cambiar los niveles** (dos niveles distintos obligatorios; el itinerario lo sigue al instante) y **🗑️ Eliminar**. **⏪** deshace cada gesto. Sin 🔄 Convertir: una unión sigue siendo una unión.
 
+### ↕️ Escalera o pozo entre niveles (punto)
+
+Un paso vertical **en un lugar preciso** (escalera, pozo con peldaños, pozo sin peldaños) se coloca como un punto, con
+uno de los tres tipos **Escalera entre niveles**, **Pozo con peldaños entre niveles**, **Pozo sin peldaños entre
+niveles** (grupo «↕️ Pasos entre niveles» de la leyenda). La unión trazada sigue sirviendo para las pendientes suaves.
+
+1. Coloca (o modifica) el punto y elige su tipo: aparece el bloque **↕️ Niveles servidos**
+2. Marca los niveles que une el paso (el nivel del punto siempre está marcado)
+3. Para cada nivel, la app propone las galerías a menos de **5 m** (50 px en un mapa sin escala, y lo indica):
+   **marca aquella a la que sale el paso**. No se valida nada por ti; se avisa de un nivel sin galería cercana
+4. Guarda
+
+El punto se muestra en cada uno de sus niveles. Su ficha indica sus niveles y conexiones, y las dibuja en magenta
+punteado mientras está abierta. **El itinerario solo usa las conexiones validadas.** Cuenta el paso como **10 m por
+nivel para una escalera, 20 m para peldaños**; si la profundidad de los niveles está introducida, usa la diferencia
+real. El guiado dice «bajar al nivel −1 **por la escala**». Un **pozo sin peldaños** solo se usa si marcas **🧗 Equipo
+equipado (cuerda)** en las Evitaciones de la ventana de itinerario.
+
+🔒 Estos pasos **nunca** se proponen como salida de emergencia ni cuentan como accesos de superficie en el modo
+Rescate. Un pozo con peldaños o una escalera de servicio **que sale a la superficie** conserva su tipo y también puede
+marcar varios niveles: sigue siendo una salida.
+
 ### 🛠️ Del lado del creador del mapa
 
 El modo multinivel, el nivel de cada capa de imagen y el de los elementos de las capas de datos los ajusta el creador del mapa en el Generador (ver 🔭 Para ir más lejos › 🏗️ Crear o modificar un mapa). En un mapa que no lo ha activado, nada de esto aparece; si se activa más tarde, los elementos existentes quedan en el nivel 0.

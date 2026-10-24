@@ -78,6 +78,11 @@ Checklist complète : skill `add-icon-tag` ; `scripts/check-icon-catalog.js` (pr
 
 → Le tag est utilisable sur les **plans existants** sans modifier leurs `plan-config.json`.
 
+→ **Passages entre niveaux** (`jes`, `jpe`, `jps`) : groupe de légende et d'export à part (« ↕️ Passages entre
+niveaux »), icônes à badge magenta (couleur des jonctions) avec deux planchers et une double flèche, pour ne jamais
+les confondre avec les accès de surface `eso` / `peo` / `ps`. Un tel POI s'affiche sur **chacun** de ses niveaux
+(`marker._ktaNiveaux`) et dessine ses raccords seulement fiche ouverte (`multilevel-pathfinding.md` §26.11).
+
 ### ⚠️ Maintenance du Service Worker (`sw.js` racine)
 
 Le SW met en cache la liste `ASSETS_TO_CACHE`. **Quand on ajoute** :

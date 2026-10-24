@@ -870,6 +870,28 @@ It appears in dotted magenta, with a dot at each end. **Without a junction, no r
 
 **Its card**: tap a junction you drew (not while drawing) to open **🪜 Junction L0 ↔ L+1**: its **note** (💾 Save the note), the **Start (1st point)** and **End (last point)** lists with **🪜 Change the levels** (two different levels required; the route follows at once), and **🗑️ Delete**. **⏪** undoes each step. No 🔄 Convert: a junction stays a junction.
 
+### ↕️ Stairs or shaft between levels (point)
+
+A vertical passage **at a precise spot** (stairs, rung shaft, shaft without rungs) is placed as a point, with one of
+the three types **Stairs between levels**, **Rung shaft between levels**, **Shaft without rungs between levels**
+(group “↕️ Passages between levels” of the legend). The drawn junction stays for gentle slopes.
+
+1. Place (or edit) the point and choose its type: the **↕️ Levels served** block appears
+2. Tick the levels the passage connects (the point's own level is always ticked)
+3. For each level, the app suggests the galleries within **5 m** (50 px on a map without scale, and it says so):
+   **tick the one the passage opens onto**. Nothing is confirmed for you; a level with no nearby gallery is reported
+4. Save
+
+The point is shown on each of its levels. Its card lists its levels and connections, and draws them in dotted magenta
+while it is open. **Routes only use confirmed connections.** The passage counts as **10 m per level for stairs, 20 m
+for rungs**; if level depths are entered, the real depth difference is used. Guidance says “go down to level −1 **by
+the ladder**”. A **shaft without rungs** is only used if you tick **🧗 Team equipped (rope)** in the Avoidances of the
+route window.
+
+🔒 These passages are **never** suggested as emergency exits nor counted as surface accesses in Rescue mode. A rung
+shaft or service staircase **that reaches the surface** keeps its type (Open rung shaft, Open service staircase) and
+can also tick several levels: it stays an exit.
+
 ### 🛠️ On the map creator's side
 
 Multi-level mode, the level of each image layer and that of the elements in data layers are set by the map's creator in the Generator (see 🔭 Going further › 🏗️ Create or modify a map). On a map that has not enabled it, none of this appears; if enabled later, existing elements are on level 0.
