@@ -6,9 +6,6 @@
 
 ## Fonctionnalités
 
-- **Puits inter-étage** — un puits n'existe que comme **tracé** « jonction » 🪜 (`multilevel-pathfinding.md` §26.5).
-  Idée : un POI dédié, visible sur ses **deux** niveaux, qui porte la jonction pour l'itinéraire (logique d'un
-  portail ; ajout du tag par la skill `add-icon-tag`). Déclencheur : décision de KARMA de le cadrer.
 - **Adresse de contact de l'installation** — `contact@myktamap.fr` est en dur (`index.html` ×2, dicos ×3, guide ×3).
   Idée : un champ ConfAdmin → `index.json > config`, repli sur l'adresse actuelle ; trancher quelles mentions
   suivent (crédit, licence, `NETWORK_AUDIT` restent). Déclencheur : une installation tierce qui le demande.

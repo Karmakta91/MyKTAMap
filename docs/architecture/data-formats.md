@@ -80,6 +80,12 @@
 }
 ```
 
+→ **Passage entre niveaux** (tags `jes` / `jpe` / `jps`, et `peo` / `eso` qui desservent des étages) :
+`"niveaux": [0, -1]` (entiers, contient toujours `level`) et `"accroches": [{ "level": -1, "x": 4851, "y": 2004 }]`
+(raccords validés, un par galerie où le passage débouche). Absents = le seul `level`. Gardés par la session, le
+Générateur (calques), le Tableur (`niveaux` éditable, `accroches` en lecture), l'export anonymisé ; KMZ / GPX /
+GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `multilevel-pathfinding.md` §26.11.
+
 → **Identité stable (v2.1.0)** : chaque objet de carte (point, tracé, zone, structure) porte aussi
 `"uid": "pt_lq3x9a_k2f8m1"` (préfixe `pt_`/`rd_`/`zn_`/`st_` = famille **à la création**, puis date
 base 36 et 6 caractères aléatoires) et `"updatedAt": 1759572000000` (ms, mis à jour à chaque

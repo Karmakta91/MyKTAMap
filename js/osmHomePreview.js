@@ -326,6 +326,7 @@
     peo:      "icon/peo.png", pef: "icon/pef.png",
     eso:      "icon/eso.png", esf: "icon/esf.png",
     cao:      "icon/cao.png", caf: "icon/caf.png",
+    jes:      "icon/jes.png", jpe: "icon/jpe.png", jps: "icon/jps.png",
     vehicule: "icon/vehicule.png",
     elec:     "icon/elec.png", epure: "icon/epure.png",
     info:     "icon/info.png",

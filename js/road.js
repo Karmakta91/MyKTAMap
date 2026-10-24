@@ -1144,6 +1144,10 @@ window.passeFiltreNiveau = function(item) {
     const toL   = Number.isInteger(item.toLevel)   ? item.toLevel   : 0;
     return _visibles.indexOf(fromL) >= 0 || _visibles.indexOf(toL) >= 0;
   }
+  // Passage entre niveaux (POI) : visible si un de ses niveaux l'est.
+  if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
+    return window.KtaPoiJonction.passeNiveaux(window.KtaPoiJonction.niveaux(item), _visibles);
+  }
   const lvl = Number.isInteger(item && item.level) ? item.level : 0;
   return _visibles.indexOf(lvl) >= 0;
 };

@@ -376,6 +376,11 @@
     return out;
   }
 
+  // `niveaux` d'un passage entre niveaux (poiJonction.js) : absent, ou liste d'entiers.
+  function _niveauxLisibles(v) {
+    return v == null || (Array.isArray(v) && v.every(Number.isInteger));
+  }
+
   function appliquerTableau(famille, lignes, opts) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return null;   // 🔒 lecture seule
     opts = opts || {};
@@ -416,6 +421,7 @@
       if (!obj) {
         if (vecteur && connus.indexOf(l.type) < 0) return fautive("typeInconnu");
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+        if (!_niveauxLisibles(l.niveaux)) return fautive("niveau");
         plan.push({ neuf: l });
         continue;
       }
@@ -431,6 +437,7 @@
         op.type = l.type;
       }
       if (touche("level") && l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
+      if (touche("niveaux") && !_niveauxLisibles(l.niveaux)) return fautive("niveau");
       if (touche("level") && l.level != null && l.level !== niveauDe(obj)) {
         if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
         op.niveau = l.level;

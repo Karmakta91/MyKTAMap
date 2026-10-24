@@ -1538,6 +1538,13 @@ Sections de la page :
 
 > 🩸 Le bloc « POI critiques » lit `getEditorPoints` + `getAllEmbeddedPoints` et le champ `tags[]` — jamais `window.listePoints` (un `let` d'`editor.js`, absent de `window`) ni `p.tag` : il restait vide. Un tag ajouté à `CRIT_TAGS` demande sa clé `secours.surf.crit*` dans les 3 dicos.
 
+> 🔒 Les passages **entre niveaux** (`jes`, `jpe`, `jps`) ne sont **jamais** des accès de surface : ni dans `CRIT_TAGS`
+> / `CRIT_FERMES`, ni dans les sorties de `sortieUrgence.js` (garde-fou `scripts/check-poi-jonction.js`). Un `peo` /
+> `eso` qui dessert aussi des étages (`niveaux`) reste un accès. Le chemin d'une évacuation ou d'une sortie peut
+> emprunter un escalier ou un puits à échelons ; un puits sans échelon (`jps`) n'entre jamais dans le graphe du
+> Secours ni de la sortie d'urgence (pas de case « corde » hors de la fenêtre d'itinéraire).
+> Détail : `multilevel-pathfinding.md` §26.11.
+
 Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async → PDF dédié 1+ pages via `_drawBriefingSurfacePage`. Bouton 🚒 dans :
 
 - Bandeau Mode Secours (vue Edit, plan actif + plan terminé)

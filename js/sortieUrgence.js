@@ -116,6 +116,9 @@
       for (let i = 1; i < res.path.length; i++) {
         d += _distEucl(res.path[i - 1], res.path[i]);
       }
+      // Un puits ou un escalier entre niveaux n'a presque pas de longueur dans le plan : son coût vertical
+      // (profondeur ou forfait, pathfinder.js) est dans totalDistance, qui classe les sorties.
+      if (Number.isFinite(res.totalDistance) && res.totalDistance > d) d = res.totalDistance;
       // ⚠️ Une zone qui coupe la galerie d'une sortie ne la rend pas injoignable : le moteur cale sur la galerie
       // restante et le chemin s'arrête court. Les écarts de calage (départ, arrivée) comptent donc dans la
       // distance, et au-delà de 10 m le chemin est « coupé » (brancard : traverse ce qu'on évite ; classique :

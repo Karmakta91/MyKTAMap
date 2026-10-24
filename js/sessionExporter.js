@@ -1682,8 +1682,8 @@
   // ── Anonymisation pour partage public ──────────────
   // Noms POI / roads / zones / structures → codes séquentiels (tag + #N), notes vidées, tracker et profil
   // retirés : partager la structure sans exposer ses repérages.
-  // Gardé : x, y, level, tags, type. Retiré : id, nom, label, description, profondeur, date_update, tracker,
-  // user/author. Marqué : session.anonymized + anonymizedAt.
+  // Gardé : x, y, level, tags, type, niveaux / accroches d'un passage. Retiré : id, nom, label, description,
+  // profondeur, date_update, tracker, user/author. Marqué : session.anonymized + anonymizedAt.
   // 🔒 `photos` (déjà strippées EXIF) : ids renommés `photo-anon-N`, pointId remappé vers le code anonymisé.
   function _anonymiserSession(session, photos) {
     // 1. editorPoints — séquence par tag. 🔒 idMap : id d'origine → code (remappage photos)
@@ -1711,6 +1711,11 @@
           source:      "editor"
         };
         if (typeof p.level === "number") out.level = p.level;
+        // Passage entre niveaux : géométrie du relevé (niveaux reliés, raccords), rien d'identifiant.
+        if (Array.isArray(p.niveaux)) out.niveaux = p.niveaux.slice();
+        if (Array.isArray(p.accroches)) out.accroches = p.accroches.map(function(a) {
+          return { level: a.level, x: a.x, y: a.y };
+        });
         return out;
       });
     }
@@ -3780,7 +3785,7 @@
       window._ktaDataMarkers.forEach(function(m) {
         if (!m || !m.getLatLng) return;
         const ll = m.getLatLng();
-        dataLayerPoints.push({
+        const pt = {
           x:     ll.lng,
           y:     APP_CONFIG.imageHeight - ll.lat,
           nom:   m._ktaNom || "",
@@ -3788,7 +3793,10 @@
           level: Number.isInteger(m._ktaLevel) ? m._ktaLevel : 0,
           description: m._ktaDescription || "",
           uid:   m._ktaUid || null
-        });
+        };
+        // Passage entre niveaux d'un calque : exporté dans le dossier de chacun de ses niveaux.
+        if (Array.isArray(m._ktaNiveauxSrc)) pt.niveaux = m._ktaNiveauxSrc;
+        dataLayerPoints.push(pt);
       });
     }
     const allPoints = editorPoints.concat(dataLayerPoints);

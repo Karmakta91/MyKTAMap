@@ -1772,6 +1772,10 @@
         const toL   = Number.isInteger(item.toLevel)   ? item.toLevel   : 0;
         return opts.ann.levels.has(fromL) || opts.ann.levels.has(toL);
       }
+      // Passage entre niveaux (POI) : dessiné si un de ses niveaux est exporté.
+      if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
+        return window.KtaPoiJonction.niveaux(item).some(function(n) { return opts.ann.levels.has(n); });
+      }
       const lvl = Number.isInteger(item && item.level) ? item.level : 0;
       return opts.ann.levels.has(lvl);
     }
@@ -2454,6 +2458,7 @@
       const GROUPES_ICONES = [
         { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+        { titre: window.I18n.t("imgexport.legGroupe.niveaux"),      cles: ["jes", "jpe", "jps"] },
         { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
         // Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }

@@ -174,7 +174,8 @@ function _optsEvitement(avoidPrefs, evC) {
     avoidZones:  avoidPrefs.zones  || [],
     // la seule contrainte DURE du moteur suit la case de la modale.
     respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
-    avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+    avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS,
+    corde: avoidPrefs.corde === true
   };
 }
 
@@ -1021,7 +1022,8 @@ async function _replanifierDepuis(px, py) {
         avoidZones:  sec ? [] : (avoidPrefs.zones  || []),
         // la seule contrainte DURE du moteur suit la case de la modale.
         respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
-        avoidRadius: sec ? (sec.avoidRadius || 30) : (avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS)
+        avoidRadius: sec ? (sec.avoidRadius || 30) : (avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS),
+        corde: !sec && avoidPrefs.corde === true
       });
     });
     // road.waypoints garde TOUTES les étapes (validées incluses) ; seul l'ancien point 0 tracker est
@@ -1081,7 +1083,9 @@ function _getItiAvoidPrefs() {
       radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS,
       // Seule contrainte DURE du moteur, débrayable. `!== false` : une préférence sans le champ
       // garde le comportement par défaut (respecter).
-      respecterInaccessibles: obj.respecterInaccessibles !== false
+      respecterInaccessibles: obj.respecterInaccessibles !== false,
+      // Puits sans échelon entre niveaux : hors itinéraire sauf équipe équipée (case cochée exprès).
+      corde: obj.corde === true
     };
   } catch(e) {
     return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
@@ -1262,6 +1266,17 @@ function _htmlSectionAvoidItineraire(prefs) {
             '<span>' + window.I18n.t("iti.inacc.label") + '</span>' +
           '</label>' +
         '</div>' +
+
+        // Plan multi-niveau : les puits sans échelon (jps) ne servent qu'à une équipe équipée.
+        ((window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
+          ? '<div class="kta-iti-avoid-group">' +
+              '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.corde.title") + '</div>' +
+              '<label class="kta-iti-avoid-zone-row">' +
+                '<input type="checkbox" id="kta-iti-corde"' + (prefs.corde === true ? ' checked' : '') + '>' +
+                '<span>' + window.I18n.t("iti.corde.label") + '</span>' +
+              '</label>' +
+            '</div>'
+          : '') +
 
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.zonesTitle") + '</div>' +
@@ -1471,6 +1486,14 @@ function _bindAvoidSectionHandlers() {
       _setItiAvoidPrefs(p);
     });
   }
+  const cordeCb = document.getElementById("kta-iti-corde");
+  if (cordeCb) {
+    cordeCb.addEventListener("change", function () {
+      const p = _getItiAvoidPrefs();
+      p.corde = !!cordeCb.checked;
+      _setItiAvoidPrefs(p);
+    });
+  }
 
   const resetBtn = document.getElementById("kta-iti-avoid-reset");
   if (resetBtn) {
@@ -1481,6 +1504,9 @@ function _bindAvoidSectionHandlers() {
                           respecterInaccessibles: true });
       const cbI = document.getElementById("kta-iti-respect-inacc");
       if (cbI) cbI.checked = true;
+      // Sûr = sans corde : les puits sans échelon repartent hors itinéraire.
+      const cbC = document.getElementById("kta-iti-corde");
+      if (cbC) cbC.checked = false;
       _rafraichirListeAvoidPoints();
       _rafraichirChipsAvoidTags();
       _rafraichirListeAvoidZones();
@@ -2010,7 +2036,9 @@ window.ouvrirItinerairModal = function() {
           avoidZones:  avoidPrefs.zones  || [],
           // La seule contrainte DURE du moteur suit la case de la modale.
           respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
-          avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+          avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS,
+          // Équipe équipée : les puits sans échelon entre niveaux deviennent praticables.
+          corde: avoidPrefs.corde === true
         });
       });
       // 🩸 La modale a pu être fermée pendant l'await : écrire dans resEl détaché puis chercher

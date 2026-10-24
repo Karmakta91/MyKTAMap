@@ -32,6 +32,9 @@ const LEGENDE_LABELS = {
   esf:      "Escalier service fermé",
   cao:      "Cavage ouvert",
   caf:      "Cavage fermé",
+  jes:      "Escalier entre niveaux",
+  jpe:      "Puits à échelons entre niveaux",
+  jps:      "Puits sans échelon entre niveaux",
   vehicule: "Véhicule",
   elec:     "Électricité",
   epure:    "Épure",
@@ -54,6 +57,7 @@ function _ktaLegendeGroupes() {
   const GROUPES = [
     { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
     { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+    { titre: window.I18n.t("legendui.group.levels"),  cles: ["jes", "jpe", "jps"] },
     { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
     // Catégorie Secours (Vue OSM × Mode Secours).
     { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
