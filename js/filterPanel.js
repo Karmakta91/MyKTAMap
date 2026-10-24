@@ -186,7 +186,7 @@
         // 🩸 Marquage par VALEUR, pas par identité : ktaSetActiveLevel re-rend cette section (onLevelChange),
         // `btnActive` est alors un nœud détaché et `b === btnActive` effaçait le marquage du re-rendu.
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", parseInt(b.getAttribute("data-lvl-active"), 10) === lvl);
+          b.classList.toggle("kta-fp-lvl-btn-active", Number.parseInt(b.getAttribute("data-lvl-active"), 10) === lvl);
         });
         // Le niveau a pu s'AJOUTER aux visibles (union) : resynchro des cases.
         _refreshChipsState(_modal);

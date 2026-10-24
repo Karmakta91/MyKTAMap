@@ -100,7 +100,7 @@
       { tag: 262, type: 3, v: [2] },                       // RGB
       { tag: 277, type: 3, v: [3] },
       { tag: 284, type: 3, v: [1] },                       // canaux entrelacés
-      { tag: 305, type: 2, v: Array.from(logiciel, function(c) { return c.charCodeAt(0); }) },
+      { tag: 305, type: 2, v: Array.from(logiciel, function(c) { return c.codePointAt(0); }) },
       { tag: 322, type: 3, v: [TUILE] },
       { tag: 323, type: 3, v: [TUILE] },
       { tag: 324, type: 4, v: new Array(n).fill(0) },      // offsets : remplis plus bas
@@ -407,7 +407,7 @@
   function _majInfo() {
     const el = document.getElementById("kta-geotiff-info");
     if (!el) return;
-    const r = parseFloat(_val("geotiff_resol") || "1");
+    const r = Number.parseFloat(_val("geotiff_resol") || "1");
     const d = _dims(r);
     const transform = calageDisponible();
     let mpp = "";
@@ -501,8 +501,8 @@
       try {
         const res = await generer({
           contenu: _val("geotiff_contenu") || "scan",
-          epsg: parseInt(_val("geotiff_proj") || String(EPSG_WGS84), 10),
-          facteur: parseFloat(_val("geotiff_resol") || "1"),
+          epsg: Number.parseInt(_val("geotiff_proj") || String(EPSG_WGS84), 10),
+          facteur: Number.parseFloat(_val("geotiff_resol") || "1"),
           onProgres: function(f) { go.textContent = "⏳ " + Math.round(f * 100) + " %"; }
         });
         _telecharger(res);

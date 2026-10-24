@@ -66,7 +66,7 @@
       });
     }
     let hPuits = 0;
-    for (let i = 0; i < puits.length; i++) hPuits = Math.imul(hPuits ^ puits.charCodeAt(i), 16777619);
+    for (let i = 0; i < puits.length; i++) hPuits = Math.imul(hPuits ^ puits.codePointAt(i), 16777619);
     return sessionCount + ":" + sessionPts + ":" + niveaux + ":" + embeddedCount + ":" + hPuits;
   }
 

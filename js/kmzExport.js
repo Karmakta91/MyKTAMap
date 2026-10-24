@@ -355,8 +355,8 @@
   }
   function _hashCourt(s) {
     let h = 0;
-    // Math.imul + >>> 0 : même empreinte 32 bits qu'avant (Math.trunc perdrait le repli modulo 2^32).
-    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+    // Math.imul + >>> 0 : repli modulo 2^32 (Math.trunc le perdrait) ; codePointAt = charCodeAt hors caractères astraux.
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.codePointAt(i)) >>> 0;
     return h.toString(36);
   }
 
