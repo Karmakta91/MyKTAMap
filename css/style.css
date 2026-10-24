@@ -10362,7 +10362,9 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   height: 100%;
   transform: scale(var(--kta-marker-scale, 1));
   transform-origin: center center;
-  pointer-events: auto;
+  /* ⚠️ inherit, jamais auto : un marqueur masqué par les filtres pose `pointer-events: none` sur l'icône
+     (utils.js > ktaMasquerMarqueur) ; une image en auto reprendrait le clic d'un point invisible. */
+  pointer-events: inherit;
   -webkit-user-drag: none;
   user-select: none;
 }

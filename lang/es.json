@@ -811,6 +811,8 @@
   "filter.layer.default": "Capa {idx}",
   "filter.levels.activeLabel": "Nivel activo (dibujo)",
   "filter.levels.activeOnlyBtn": "🎯 Solo activo",
+  "filter.levels.garderFond": "🖼️ Mantener el plano base",
+  "filter.levels.garderFondAide": "El nivel 0 está oculto: la imagen del plano puede seguir visible de fondo.",
   "filter.levels.allBtn": "👁️ Todos",
   "filter.levels.chip": "Niv {lvl}",
   "filter.levels.ground": "PB",

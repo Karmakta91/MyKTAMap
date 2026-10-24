@@ -1751,6 +1751,31 @@ function _passeFiltreRuntimeType(category, type) {
   return set.has(type);
 }
 
+// Masquage d'un marqueur par les filtres (niveau, tag) : opacité 0 ET icône inerte au pointeur (ni clic, ni
+// survol, ni fiche). 🩸 Leaflet RECRÉE l'icône à chaque retour sur la carte (calque recoché, culling viewport,
+// marqueur filtré avant son addTo) : l'opacité suit (options.opacity), pas le style inline. L'état vit donc sur
+// le marqueur et un écouteur « add », posé une fois, le réapplique à la nouvelle icône.
+function _ktaPoserInerte(marker) {
+  const ic = marker._icon;
+  if (!ic) return;
+  ic.style.pointerEvents = marker._ktaMasque ? "none" : "";
+  // Hors de la tabulation aussi : un point invisible ne prend pas le focus clavier.
+  if (marker.options && marker.options.keyboard) ic.tabIndex = marker._ktaMasque ? -1 : 0;
+}
+function _ktaReappliquerInerte() { _ktaPoserInerte(this); }
+window.ktaMasquerMarqueur = function(marker, masque) {
+  if (!marker) return;
+  marker._ktaMasque = !!masque;
+  try { marker.setOpacity(masque ? 0 : 1); } catch(e) {}
+  // Écouteur posé au premier masquage seulement : un marqueur jamais filtré (le cas courant sur un gros plan)
+  // n'en porte pas, et une icône neuve naît déjà réactive.
+  if (masque && !marker._ktaMasqueEcoute && typeof marker.on === "function") {
+    marker._ktaMasqueEcoute = true;
+    marker.on("add", _ktaReappliquerInerte);
+  }
+  _ktaPoserInerte(marker);
+};
+
 // ── Markers des data layers ──────────
 function _filtreNiveauSurMarkerData(marker) {
   if (!marker) return;
@@ -1759,8 +1784,7 @@ function _filtreNiveauSurMarkerData(marker) {
     const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0]) || "default";
     if (!_passeFiltreRuntimeTag(tag)) visible = false;
   }
-  try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
-  if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
+  window.ktaMasquerMarqueur(marker, !visible);
 }
 window._applyLevelFilterToDataPoints = function() {
   if (!Array.isArray(window._ktaDataMarkers)) return;

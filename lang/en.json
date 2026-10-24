@@ -811,6 +811,8 @@
   "filter.layer.default": "Layer {idx}",
   "filter.levels.activeLabel": "Active level (drawing)",
   "filter.levels.activeOnlyBtn": "🎯 Active only",
+  "filter.levels.garderFond": "🖼️ Keep the base plan",
+  "filter.levels.garderFondAide": "Level 0 is hidden: the plan image can stay shown as a background.",
   "filter.levels.allBtn": "👁️ All",
   "filter.levels.chip": "Lvl {lvl}",
   "filter.levels.ground": "GF",

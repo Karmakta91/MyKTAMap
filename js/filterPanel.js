@@ -15,7 +15,8 @@
 //     tags:        Set<string> | null,  // null = pas de filtre (tout visible)
 //     roadTypes:   Set<string> | null,
 //     zoneTypes:   Set<string> | null,
-//     structTypes: Set<string> | null
+//     structTypes: Set<string> | null,
+//     garderFond:  boolean              // plan de base affiché même niveau 0 masqué (tiling.js)
 //   }
 // Les niveaux restent dans APP_CONFIG.visibleLevels (via appliquerFiltreNiveau).
 // API : window.FilterPanel = { ouvrir, fermer, getState, setFilters, onChange, applyFilters, isVisible, majBadge… }
@@ -178,8 +179,10 @@
         } else {
           window.APP_CONFIG.activeLevel = lvl;   // repli si interfaceConfig absent
         }
+        // 🩸 Marquage par VALEUR, pas par identité : ktaSetActiveLevel re-rend cette section (onLevelChange),
+        // `btnActive` est alors un nœud détaché et `b === btnActive` effaçait le marquage du re-rendu.
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btnActive);
+          b.classList.toggle("kta-fp-lvl-btn-active", parseInt(b.getAttribute("data-lvl-active"), 10) === lvl);
         });
         // Le niveau a pu s'AJOUTER aux visibles (union) : resynchro des cases.
         _refreshChipsState(_modal);
@@ -215,6 +218,13 @@
       const cb = e.target.closest('[data-lvl-visible]');
       if (cb && scope.contains(cb)) {
         _updateVisibleLevelsFromUI(_modal);
+        return;
+      }
+      const garde = e.target.closest('[data-lvl-garder-fond]');
+      if (garde && scope.contains(garde)) {
+        window._ktaRuntimeFilters.garderFond = garde.checked;
+        if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
+        _refreshChipsState(_modal);
       }
     });
   }
@@ -579,7 +589,19 @@
                 '<span class="kta-fp-chip-label">' + window.I18n.t("filter.levels.chip", { lvl: lblTxt }) + '</span>' +
               '</label>';
     });
-    html += '</div></div>';
+    html += '</div>';
+    // Niveau 0 masqué : le plan de base (image source) suit le niveau 0 sauf si l'utilisateur le garde en fond.
+    if (avail.indexOf(0) >= 0 && visible.indexOf(0) < 0) {
+      const garder = !!(window._ktaRuntimeFilters && window._ktaRuntimeFilters.garderFond === true);
+      html += '<div class="kta-fp-chips-grid kta-fp-lvl-garder">' +
+                '<label class="kta-fp-chip ' + (garder ? "" : "kta-fp-chip-off") + '" title="' +
+                  _escHtml(window.I18n.t("filter.levels.garderFondAide")) + '">' +
+                  '<input type="checkbox" data-lvl-garder-fond' + (garder ? " checked" : "") + '>' +
+                  '<span class="kta-fp-chip-label">' + _escHtml(window.I18n.t("filter.levels.garderFond")) + '</span>' +
+                '</label>' +
+              '</div>';
+    }
+    html += '</div>';
     return html;
   }
 
@@ -672,56 +694,10 @@
       }
     });
 
-    // Niveaux : actif (segmented)
-    overlay.querySelectorAll('[data-lvl-active]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
-        if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // Helper unique (cf. _bindLevelHandlers).
-        if (typeof window.ktaSetActiveLevel === "function") {
-          window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
-        } else {
-          window.APP_CONFIG.activeLevel = lvl;
-        }
-        overlay.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btn);
-        });
-      });
-    });
-
-    // Niveaux : visibles (puces multiples)
-    overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        _updateVisibleLevelsFromUI(overlay);
-      });
-    });
-
-    // Actions rapides des niveaux
-    overlay.querySelectorAll('[data-action="lvl-all"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
-                      ? window.APP_CONFIG.availableLevels : [];
-        overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) { cb.checked = true; });
-        if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = avail.slice();
-        if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-        if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
-        _refreshChipsState(overlay);
-      });
-    });
-    overlay.querySelectorAll('[data-action="lvl-active-only"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const active = window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number"
-                       ? window.APP_CONFIG.activeLevel : 0;
-        overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-          cb.checked = (parseInt(cb.getAttribute("data-lvl-visible"), 10) === active);
-        });
-        if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = [active];
-        if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-        if (typeof window._onLevelChange === "function") window._onLevelChange("visible", [active]);
-        _refreshChipsState(overlay);
-      });
-    });
-
+    // Niveaux : délégation sur la section (jamais remplacée), liée dès l'ouverture ; elle survit aux re-rendus
+    // de son corps (onLevelChange).
+    const secNiveaux = document.getElementById("kta-fp-sec-lvl");
+    if (secNiveaux) _bindLevelHandlers(secNiveaux);
 
     // Mini actions « Tout / Aucun » par section : délégation click.
     overlay.addEventListener("click", function(e) {

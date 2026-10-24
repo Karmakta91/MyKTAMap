@@ -135,6 +135,7 @@ APP_CONFIG.multiLevel ←
   - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner. Affichage **trié croissant** (gauche=négatif, droite=positif, comme un axe numérique).
   - 👁️ Niveaux visibles (checkboxes, multi-select) — filtre d'affichage
   - Quick actions : `Tous` / `Actif seul`
+  - Même section dans ≡ Filtres (`filterPanel.js > _renderLevelsSection`), plus la case **🖼️ Garder le plan de base** quand 0 est masqué (règle du fond : `rendering-leaflet.md` §Plan principal = niveau 0). 🩸 Un clic sur « Niveau actif » re-rend la section (`ktaSetActiveLevel` → `onLevelChange`) : tout marquage après coup se fait par valeur de niveau, jamais par le nœud cliqué (détaché). Délégation unique sur `#kta-fp-sec-lvl`, liée à l'ouverture.
   - **2 boutons d'extension (v154+)** : `−` à gauche (ajoute `min-1`, sous-sols) + `+` à droite (ajoute `max+1`, étages supérieurs). Format pastille = "pill" extensible (cf. `.kta-niv-pastille` CSS) pour accepter `-1`/`-2` sans débordement dans le bouton Leaflet 30×30.
 - **Sous-action 🪜 Jonction interniveau** : ajoutée au groupe Tracés quand multiLevel ON. Click → modale `from/to level` → mode tracé activé.
 - **Boussole repositionnée** : si `body.kta-multilevel-active`, le widget boussole passe de `top:80px` à `top:130px` pour libérer la place au bouton niveau.
@@ -144,8 +145,7 @@ APP_CONFIG.multiLevel ←
 `window.appliquerFiltreNiveau()` orchestre le re-render/filtrage de TOUS les modules level-aware :
 - `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
 - `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
-- `_applyLevelFilterToEditorPoints()` (editor.js) — opacity/pointer-events sur markers session
-- `_applyLevelFilterToDataPoints()` (utils.js) — opacity sur markers data layers
+- `_applyLevelFilterToEditorPoints()` (editor.js) et `_applyLevelFilterToDataPoints()` (utils.js) — markers de session et des data layers (niveau + filtre de tags) via `utils.js > ktaMasquerMarqueur` : opacité 0 **et** icône inerte (`pointer-events: none`, hors tabulation), réappliquée par un écouteur `add` quand Leaflet recrée l'icône (calque recoché, culling viewport, marker filtré avant son `addTo`). 🩸 L'image `.kta-marker-img` hérite son `pointer-events` (`inherit`, jamais `auto`), sinon un point invisible reste cliquable.
 - `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
 - `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
 - `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru

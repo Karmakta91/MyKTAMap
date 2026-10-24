@@ -848,7 +848,7 @@ Numérotation : **0** = niveau de référence, **1, 2…** au-dessus, **−1, �
 Une **pastille jaune** sous les boutons de zoom affiche le **niveau actif**. Un tap ouvre la modale **🏗️ Niveaux** :
 
 - **🎯 Niveau actif (pour dessiner)** — tout ce que tu dessines prend ce niveau. **[ − ]** et **[ + ]** ajoutent un niveau en dessous ou au-dessus. Changer de niveau actif **annule le tracé en cours** et n'affiche plus que ce niveau.
-- **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. Une jonction reste visible si l'un de ses deux niveaux l'est.
+- **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul ; la case **🖼️ Garder le plan de base**, qui apparaît alors, la laisse en fond (choix gardé avec la session du plan). Une jonction reste visible si l'un de ses deux niveaux l'est.
 
 Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle-même. Les mêmes réglages existent dans ≡ **Filtres**. À l'export image, **🎨 Avancé → 🏗️ Niveaux à exporter** choisit les niveaux indépendamment de l'affichage.
 
