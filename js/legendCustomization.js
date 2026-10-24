@@ -37,6 +37,8 @@ window.LegendCustomization = (function() {
       peo: "Puits à échelon ouvert", pef: "Puits à échelon fermé",
       eso: "Escalier service ouvert", esf: "Escalier service fermé",
       cao: "Cavage ouvert", caf: "Cavage fermé",
+      jes: "Escalier entre niveaux", jpe: "Puits à échelons entre niveaux",
+      jps: "Puits sans échelon entre niveaux",
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
       danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
       plaque: "Plaque indication",

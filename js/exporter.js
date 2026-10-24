@@ -2454,6 +2454,7 @@
       const GROUPES_ICONES = [
         { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+        { titre: window.I18n.t("imgexport.legGroupe.niveaux"),      cles: ["jes", "jpe", "jps"] },
         { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
         // Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
