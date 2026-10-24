@@ -178,8 +178,10 @@
         } else {
           window.APP_CONFIG.activeLevel = lvl;   // repli si interfaceConfig absent
         }
+        // 🩸 Marquage par VALEUR, pas par identité : ktaSetActiveLevel re-rend cette section (onLevelChange),
+        // `btnActive` est alors un nœud détaché et `b === btnActive` effaçait le marquage du re-rendu.
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btnActive);
+          b.classList.toggle("kta-fp-lvl-btn-active", parseInt(b.getAttribute("data-lvl-active"), 10) === lvl);
         });
         // Le niveau a pu s'AJOUTER aux visibles (union) : resynchro des cases.
         _refreshChipsState(_modal);
@@ -672,56 +674,10 @@
       }
     });
 
-    // Niveaux : actif (segmented)
-    overlay.querySelectorAll('[data-lvl-active]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
-        if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // Helper unique (cf. _bindLevelHandlers).
-        if (typeof window.ktaSetActiveLevel === "function") {
-          window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
-        } else {
-          window.APP_CONFIG.activeLevel = lvl;
-        }
-        overlay.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btn);
-        });
-      });
-    });
-
-    // Niveaux : visibles (puces multiples)
-    overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        _updateVisibleLevelsFromUI(overlay);
-      });
-    });
-
-    // Actions rapides des niveaux
-    overlay.querySelectorAll('[data-action="lvl-all"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
-                      ? window.APP_CONFIG.availableLevels : [];
-        overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) { cb.checked = true; });
-        if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = avail.slice();
-        if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-        if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
-        _refreshChipsState(overlay);
-      });
-    });
-    overlay.querySelectorAll('[data-action="lvl-active-only"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const active = window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number"
-                       ? window.APP_CONFIG.activeLevel : 0;
-        overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-          cb.checked = (parseInt(cb.getAttribute("data-lvl-visible"), 10) === active);
-        });
-        if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = [active];
-        if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-        if (typeof window._onLevelChange === "function") window._onLevelChange("visible", [active]);
-        _refreshChipsState(overlay);
-      });
-    });
-
+    // Niveaux : délégation sur la section (jamais remplacée), liée dès l'ouverture ; elle survit aux re-rendus
+    // de son corps (onLevelChange).
+    const secNiveaux = document.getElementById("kta-fp-sec-lvl");
+    if (secNiveaux) _bindLevelHandlers(secNiveaux);
 
     // Mini actions « Tout / Aucun » par section : délégation click.
     overlay.addEventListener("click", function(e) {
