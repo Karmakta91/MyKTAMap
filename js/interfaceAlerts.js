@@ -253,6 +253,11 @@ window.afficherModaleAlerte = function(alert, onClose) {
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
+  // Signal neutre : l'alerte est À L'ÉCRAN (détail ouvert, pas seulement listée dans le sélecteur). Une extension peut
+  // en tirer un accusé de lecture ; sans écouteur, rien.
+  try {
+    window.dispatchEvent(new CustomEvent("mktm:alerte-affichee", { detail: { id: String(id), released: String(released) } }));
+  } catch(e) { /* rien */ }
 
   function _fermer() {
     if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") {

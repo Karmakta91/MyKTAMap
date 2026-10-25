@@ -316,7 +316,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   l'alerte). L'extension annonce une liste changée par **`mktm:alertes-changees`** : les nouvelles s'ouvrent d'office
   (une fois par `released`). Source affichée (`source`, ou « Plateforme MyKTAMap » pour `alert.json` quand une
   extension fournit des alertes). Aucun appel réseau ajouté par le community : la liste et sa copie hors ligne sont
-  à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation).
+  à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation). **Alerte à l'écran** :
+  `afficherModaleAlerte` émet **`mktm:alerte-affichee`** `{ id, released }` (id tel qu'affiché, donc `ext_…` pour une
+  alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran — pas pour le sélecteur. Signal sortant
+  seulement : une extension en tire un accusé de lecture ; sans écouteur, rien.
 - **Statistiques du profil** : `profilStats() → [{ cle, icone, libelle, valeur, titre? }]` (ou Promise ; information,
   attente bornée à 3 s, erreur = aucune ; 12 lignes, texte seul, clé `[\w-]` unique). Affichées dans « Détails du
   profil » (rubrique « 🏢 Installation reliée ») et proposées au bandeau d'accueil sous la clé `ext:<cle>`. Relues à
@@ -491,6 +494,12 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule),
   et `KtaPresences.couleurDe(id)` pour afficher la couleur de chacun.
   Sans extension : ni bouton ni fenêtre.
+- **Aller à un objet** : `KtaExtensions.allerAObjet(uid) → bool` — action neutre, jamais déclenchée par l'app seule
+  (ex. liste de changements d'une extension). Cherche l'objet de la session du plan affiché (points, tracés, zones,
+  structures ; jamais l'itinéraire calculé) ; multi-niveau, si aucun de ses niveaux n'est affiché, le premier devient
+  le niveau de travail (`ktaSetActiveLevel`) ; centre la carte (point ou centroïde) et ouvre sa fiche (couche de
+  `layerEditor` qui porte une fiche à sa position), sinon une bulle à son nom. `false` sans rien bouger : plan pas
+  prêt (`planPret`), uid inconnu, objet sans position. Tests : `check-extensions.js`.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
   changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).

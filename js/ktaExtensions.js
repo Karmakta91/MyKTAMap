@@ -1753,6 +1753,85 @@
       return { createur: txt(a.createur), modifiePar: txt(a.modifiePar) };
     } catch (e) { console.warn("[Extensions] auteurObjet :", e); return null; }
   }
+  // Aller à un objet de la session du plan affiché (action neutre : seule une extension l'appelle, ex. une liste de
+  // changements) : allerAObjet(uid) → bool. Points, tracés, zones, structures, cherchés par uid. Multi-niveau : si
+  // aucun de ses niveaux (level, fromLevel / toLevel, niveaux d'une jonction) n'est affiché, le premier devient le
+  // niveau de travail (ktaSetActiveLevel, qui l'ajoute aux affichés). Carte centrée sur le point ou le centroïde,
+  // fiche ouverte (couche de « Mes annotations » qui porte une fiche à cette position), sinon une bulle au nom.
+  // false : plan pas prêt, uid inconnu ou objet sans position (rien ne bouge).
+  const _LISTES_OBJETS = ["getEditorPoints", "getRoads", "getZones", "getStructures"];
+  function _objetSession(uid) {
+    for (let i = 0; i < _LISTES_OBJETS.length; i++) {
+      const f = window[_LISTES_OBJETS[i]];
+      const l = typeof f === "function" ? f() : null;
+      if (!Array.isArray(l)) continue;
+      for (let j = 0; j < l.length; j++) {
+        const o = l[j];
+        if (o && o.uid === uid && o.type !== "itinerary") return o;
+      }
+    }
+    return null;
+  }
+  function _niveauxObjet(o) {
+    const n = [];
+    if (Array.isArray(o.niveaux)) o.niveaux.forEach(function (v) { if (Number.isInteger(v)) n.push(v); });
+    ["level", "fromLevel", "toLevel"].forEach(function (k) { if (Number.isInteger(o[k])) n.push(o[k]); });
+    return n.length ? n : [0];
+  }
+  function _ouvrirFicheA(lat, lng, nom) {
+    const proche = function (a, b) { return Math.abs(a - b) < 0.5; };
+    let trouve = null;
+    const grp = window.layerEditor;
+    if (grp && typeof grp.eachLayer === "function") {
+      grp.eachLayer(function (l) {
+        if (trouve || !l || typeof l.getPopup !== "function" || !l.getPopup()) return;
+        let ll = typeof l.getLatLng === "function" ? l.getLatLng() : null;
+        if (!ll && typeof l.getLatLngs === "function") {
+          let p = l.getLatLngs();
+          while (Array.isArray(p) && Array.isArray(p[0])) p = p[0];
+          ll = Array.isArray(p) ? p[0] : null;
+        }
+        if (ll && proche(ll.lat, lat) && proche(ll.lng, lng)) trouve = l;
+      });
+    }
+    if (trouve && typeof trouve.openPopup === "function") { trouve.openPopup(); return; }
+    if (window.L && typeof window.L.popup === "function") {
+      const div = document.createElement("div");
+      div.textContent = String(nom || "").slice(0, 80);
+      window.L.popup({ autoClose: true, closeOnClick: true }).setLatLng([lat, lng]).setContent(div).openOn(window.map);
+    }
+  }
+  function allerAObjet(uid) {
+    if (typeof uid !== "string" || !uid || !planPret() || !window.map || typeof window.convertCoord !== "function") return false;
+    const o = _objetSession(uid);
+    if (!o) return false;
+    let x = null, y = null, ancre = null;
+    if (typeof o.x === "number" && typeof o.y === "number") { x = o.x; y = o.y; ancre = [o.x, o.y]; }
+    else if (Array.isArray(o.points) && o.points.length) {
+      const pts = o.points.filter(function (p) { return p && typeof p.x === "number" && typeof p.y === "number"; });
+      if (!pts.length) return false;
+      x = 0; y = 0;
+      pts.forEach(function (p) { x += p.x; y += p.y; });
+      x /= pts.length; y /= pts.length;
+      ancre = [pts[0].x, pts[0].y];
+    } else return false;
+    const c = window.APP_CONFIG;
+    if (c && c.multiLevel === true && typeof window.ktaSetActiveLevel === "function") {
+      const niv = _niveauxObjet(o);
+      const vis = Array.isArray(c.visibleLevels) ? c.visibleLevels : [0];
+      if (!niv.some(function (n) { return vis.indexOf(n) >= 0; })) window.ktaSetActiveLevel(niv[0], { source: "extension" });
+    }
+    try {
+      window.map.setView(window.convertCoord(x, y), window.map.getZoom(), { animate: false });
+      // La fiche s'ouvre après le rendu (couches hors vue rattachées au déplacement), ancrée sur le point ou le
+      // premier sommet.
+      const a = window.convertCoord(ancre[0], ancre[1]);
+      setTimeout(function () {
+        try { _ouvrirFicheA(a[0], a[1], o.name || o.nom || o.label || ""); } catch (e) { console.warn("[Extensions] allerAObjet :", e); }
+      }, 120);
+    } catch (e) { console.warn("[Extensions] allerAObjet :", e); return false; }
+    return true;
+  }
   function _hydraterFiche(racine) {
     if (!racine || racine.getAttribute("data-kta-ext") === "1") return;
     racine.setAttribute("data-kta-ext", "1");
@@ -1851,6 +1930,7 @@
     afficherAlerteSecours: afficherAlerteSecours,
     retirerAlerteSecours: retirerAlerteSecours,
     auteurObjet: auteurObjet,
+    allerAObjet: allerAObjet,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,

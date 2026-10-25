@@ -1668,6 +1668,38 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (await racine.demander("css/style.css", "style")) === "css app" && racine.appels.length === 0);
   }
 
+  // ── ALLER À UN OBJET (action neutre allerAObjet) et ALERTE À L'ÉCRAN (mktm:alerte-affichee) ──
+  {
+    const c = nouveauContexte(null);
+    t("allerAObjet sans carte ni plan : false, rien ne bouge", c.K.allerAObjet("pt_a") === false);
+    const vues = [], niveaux = [];
+    c.w.map = { setView: (ll) => { vues.push(ll); }, getZoom: () => 3 };
+    c.w.convertCoord = (x, y) => [100 - y, x];
+    c.w.APP_CONFIG = { multiLevel: true, visibleLevels: [0] };
+    c.w.ktaSetActiveLevel = (n) => { niveaux.push(n); c.w.APP_CONFIG.visibleLevels.push(n); return true; };
+    c.w.getEditorPoints = () => [{ uid: "pt_a", x: 10, y: 20, level: -1, nom: "A" }, { uid: "pt_j", x: 1, y: 1, niveaux: [2, 3] }];
+    c.w.getRoads = () => [{ uid: "rd_b", points: [{ x: 0, y: 0 }, { x: 10, y: 10 }] },
+      { uid: "rd_i", type: "itinerary", points: [{ x: 1, y: 1 }] }];
+    c.w.getZones = () => [{ uid: "zn_v", points: [] }]; c.w.getStructures = () => [];
+    t("🩸 plan pas prêt (chargement) : false, la carte ne bouge pas", c.K.allerAObjet("pt_a") === false && vues.length === 0);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.K.planCharge("ext_1");
+    t("point d'un niveau masqué : il devient le niveau de travail, carte centrée sur lui",
+      c.K.allerAObjet("pt_a") === true && niveaux[0] === -1 && vues[0][0] === 80 && vues[0][1] === 10);
+    t("jonction : le premier niveau desservi si aucun n'est affiché",
+      c.K.allerAObjet("pt_j") === true && niveaux[1] === 2);
+    t("tracé d'un niveau affiché : centroïde, niveau inchangé",
+      c.K.allerAObjet("rd_b") === true && niveaux.length === 2 && vues[2][0] === 95 && vues[2][1] === 5);
+    t("uid inconnu, itinéraire calculé, objet sans position : false",
+      c.K.allerAObjet("pt_zz") === false && c.K.allerAObjet("rd_i") === false && c.K.allerAObjet("zn_v") === false &&
+      c.K.allerAObjet(5) === false && vues.length === 3);
+    const IA = lire("js/interfaceAlerts.js");
+    const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
+    t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",
+      /appendChild\(modal\);[\s\S]{0,400}mktm:alerte-affichee[\s\S]{0,80}id: String\(id\), released: String\(released\)/
+        .test(corpsModale));
+  }
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 points d'extension : neutres sans extension, fermés quand une permission échoue, jamais de repli sur la gate community");
