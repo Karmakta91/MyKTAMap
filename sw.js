@@ -65,7 +65,7 @@ function _modulesDeclares(texteIndex) {
     mods = Array.isArray(sc.modules) ? sc.modules : [];
   } catch (e) { return null; }
   return mods.filter(function(m) { return typeof m === "string" && m && m.indexOf("://") < 0 && m.indexOf("//") !== 0; })
-    .slice(0, 20)
+    .slice(0, 32)
     .map(function(m) { try { return new URL(m, self.registration.scope).href; } catch (e) { return null; } })
     .filter(function(u) { return u && new URL(u).origin === self.location.origin; });
 }
