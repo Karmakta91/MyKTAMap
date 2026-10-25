@@ -1580,7 +1580,7 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 - **Paramètres de tracking** : échelle et orientation du **Nord** (0 si le haut du plan est le Nord ; chacun peut la corriger dans ses Réglages).
 - **Icônes & tags** : **↺ Charger défauts** pré-remplit les icônes standard, **+ Ajouter un tag** crée un type à toi. Les tags `default` et `track` sont obligatoires.
 - **🏷️ Légende du plan** : renommages, masquages et entrées ajoutées valent pour tous ceux qui ouvrent le plan ; chacun peut ensuite la modifier pour lui.
-- **🌐 Géoréférencement GPS** (facultatif) : deux points A et B, plus un point C pour un plan déformé. Sans lui, ni Vue OSM ni export KMZ / GPX.
+- **🌐 Géoréférencement GPS** (facultatif) : deux points A et B, plus un point C pour un plan déformé. Sans lui, ni Vue OSM ni export KMZ / GPX. Sous les champs, la **précision aux coins** du calage s'affiche dès que A, B et l'image sont là : « Projection exacte » pour un nouveau calage ou un GeoTIFF importé ; « Projection approchée, ± X m » pour le calage d'origine d'un plan calé avant, gardé tant que tu ne changes pas ses points (⚙️ Réglages → Géoréférencement propose de le recaler).
 - **📖 PDF Histoire** (facultatif) : un ou plusieurs PDF, en tête de liste dans le Mode Histoire. En modification, ceux du plan sont conservés.
 
 #### 📂 Modifier un plan existant

@@ -1579,7 +1579,7 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 - **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
 - **Icons & tags**: **↺ Load defaults** pre-fills the standard icons, **+ Add a tag** creates a type of your own. The `default` and `track` tags are mandatory.
 - **🏷️ Map legend**: renames, hidden entries and added entries apply to everyone who opens the map; each person can then change it for themselves.
-- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export.
+- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export. Below the fields, the **accuracy at the corners** of the calibration appears as soon as A, B and the image are there: “Exact projection” for a new calibration or an imported GeoTIFF; “Approximate projection, ± X m” for the original calibration of a map calibrated earlier, kept as long as you do not change its points (⚙️ Settings → Georeferencing offers to recalibrate it).
 - **📖 History PDF** (optional): one or more PDFs, at the top of the list in History Mode. When editing, the map's existing ones are kept.
 
 #### 📂 Edit an existing map

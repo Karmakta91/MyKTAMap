@@ -225,6 +225,7 @@ console.log("\n🔌 C. Constantes à un seul endroit, écrivains du calage");
     ["js/interfaceConfig.js", /modeleSaisie\(_ancien, c\)/],
     ["js/interfaceConfig.js", /ecartRecalage\(/],
     ["js/interfaceConfig.js", /precisionCalage\(/],
+    ["js/createConf.js", /KE\.precisionCalage\(g, w, h\)/],
     ["js/sessionExporter.js", /modeleSaisie\(saved, calib\)/],
     ["js/sigImport.js", /(MODELE_LOCAL[\s\S]*){3}/],
     ["js/gpxImport.js", /MODELE_LOCAL[\s\S]*modele:\s+window\.KmzExport\.MODELE_LOCAL/],

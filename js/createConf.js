@@ -608,6 +608,7 @@ function afficherPlanner() {
             <div class="kta-gps-coords-error" id="pl_geo_C_err" style="display:none;"></div>
           </div>
           <div id="pl_geo_status" style="font-size:12px; color:var(--kta-texte-3); margin:6px 2px 0; min-height:18px;"></div>
+          <div id="pl_geo_precision" class="kta-planner-info" style="display:none; margin:4px 2px 0;"></div>
         </div>
 
         <!-- 📖 v1.37.0 — PDF Histoire (optionnel, avancé). Embed dans le ZIP
@@ -641,6 +642,12 @@ function afficherPlanner() {
   `;
 
   document.documentElement.appendChild(modal);
+
+  // Précision du calage saisi, recalculée à chaque frappe dans un champ du géoréf.
+  modal.addEventListener("input", function(e) {
+    const id = e.target && e.target.id;
+    if (id && id.indexOf("pl_geo_") === 0) _plannerMajPrecision();
+  });
 
   // Champs GPS combinés « lat, lng ». Helper idempotent (rappelé par _preRemplirFormulaire) ; les retours
   // sont gardés sur la modale (dataset) pour le submit (cf. _readGeo).
@@ -692,6 +699,7 @@ function afficherPlanner() {
       (typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(b.lat, b.lng) : (b.lat + ", " + b.lng);
     const badge = document.getElementById("pl_geo_B_estime_badge");
     if (badge) badge.style.display = "";
+    _plannerMajPrecision();
   });
   ["pl_geo_B_x", "pl_geo_B_y", "pl_geo_B_coords"].forEach(function(id) {
     const el = document.getElementById(id);
@@ -870,6 +878,7 @@ function afficherPlanner() {
         }
         setNom(window.I18n.t("gen.tiff.ok", {
           nom: res.nomPng, epsg: res.epsg || "?", emprise: taille + taillePlus }) + bascule);
+        _plannerMajPrecision({ w: res.width, h: res.height });
         console.log("[Planner GeoTIFF]", f.name, res.width + "×" + res.height,
                     "EPSG:" + res.epsg, res.compression, g);
       }).catch(function(err) {
@@ -1704,6 +1713,43 @@ function _guessMime(filename) {
 }
 
 // ── Préremplir le formulaire ──────────
+// « ± X aux coins » du calage saisi, au modèle qu'il aura en générant (KmzExport.modeleSaisie) ; masqué tant
+// que A, B ou les dimensions de l'image manquent. `dims` : dimensions connues avant les champs cachés (GeoTIFF).
+function _plannerMajPrecision(dims) {
+  const el = document.getElementById("pl_geo_precision");
+  if (!el) return;
+  const KE = window.KmzExport;
+  const num = function(id) {
+    const e = document.getElementById(id), v = e ? parseFloat(e.value) : NaN;
+    return Number.isFinite(v) ? v : null;
+  };
+  const gps = function(id) {
+    const e = document.getElementById(id);
+    if (!e || typeof window.parseGpsCoords !== "function") return null;
+    return window.parseGpsCoords(String(e.value || "").trim());
+  };
+  const point = function(k) {
+    const c = gps("pl_geo_" + k + "_coords"), x = num("pl_geo_" + k + "_x"), y = num("pl_geo_" + k + "_y");
+    return (c && x != null && y != null) ? { x: x, y: y, lat: c.lat, lng: c.lng } : null;
+  };
+  const w = (dims && dims.w) || num("pl_width"), h = (dims && dims.h) || num("pl_height");
+  const g = { pointA: point("A"), pointB: point("B") };
+  const c = point("C");
+  if (c) g.pointC = c;
+  let p = null;
+  if (KE && typeof KE.precisionCalage === "function" && g.pointA && g.pointB && w > 0 && h > 0) {
+    const mod = KE.modeleSaisie(_plannerGeorefCharge, g);
+    if (mod) g.modele = mod;
+    p = KE.precisionCalage(g, w, h);
+  }
+  if (!p) { el.style.display = "none"; el.textContent = ""; return; }
+  // Sous le centimètre, le modèle n'est plus ce qui limite (même règle que les Réglages).
+  const d = window.formatDistance(Math.max(p.ecartM, 0.01), 2);
+  el.textContent = window.I18n.t(p.modele === "local" ? "config.georef.precisionLocal"
+                                                     : "gen.georef.precisionHistorique", { d: d });
+  el.style.display = "";
+}
+
 function _preRemplirFormulaire(config) {
   const plan = config.plan || {}, t = config.tracking || {};
 
@@ -1793,6 +1839,7 @@ function _preRemplirFormulaire(config) {
     sv("pl_geo_C_y", gC && gC.y != null ? gC.y : "");
     sv("pl_geo_C_coords", gC ? fmt(gC.lat, gC.lng) : "");
   }
+  _plannerMajPrecision();
 
   // Validation live des champs GPS combinés (idempotent), rattachée au cas où le DOM a été reconstruit.
   if (typeof window.attacherGpsValidationCombo === "function") {

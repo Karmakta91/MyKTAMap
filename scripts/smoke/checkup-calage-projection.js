@@ -10,7 +10,10 @@
 //   • « Recaler en projection exacte » : la confirmation annonce le déplacement, le calage passe en "local",
 //     l'écran annonce « exacte » ; coins sous 5 cm de la vérité ;
 //   • main.js > _accorderModeleCalage : le modèle "local" gagne dans les deux sens (localStorage ⇄ PLAN_CONFIG) ;
-//   • Vue OSM (emprise), KMZ, GPX, GeoJSON, GeoTIFF WGS84 et Lambert 93 : points et coins au sol, avant / après.
+//   • Vue OSM (emprise), KMZ, GPX, GeoJSON, GeoTIFF WGS84 et Lambert 93 : points et coins au sol, avant / après ;
+//   • Générateur, ZIP généré relu : « Modifier » sans toucher garde le calage historique (précision « approchée »
+//     affichée) ; un GeoTIFF importé donne un calage "local" (précision « exacte » affichée) ;
+//   • modale Export externe : le même calage historique réenregistré le reste, un point modifié passe en "local".
 // Usage : node scripts/smoke/checkup-calage-projection.js (SMOKE_PORT pour une autre copie) ·
 //   doc : docs/ETUDE_CALAGE_PROJECTION.md
 // =====================================================================
@@ -177,6 +180,134 @@ function rapporterExports(etiquette, r, plafond) {
   verifier(r.osm != null && r.osm < plafond, etiquette + " Vue OSM : emprise du plan à " + m(r.osm) + " de la vérité", r.osm);
 }
 
+// Clique « Générer » et relit plan-config.json du ZIP produit (téléchargement intercepté).
+async function genererEtLire(page) {
+  return page.evaluate(async function () {
+    const orig = URL.createObjectURL, clic = HTMLAnchorElement.prototype.click;
+    let zip = null;
+    URL.createObjectURL = function (b) { if (b && /zip/.test(b.type || "")) zip = b; return orig.call(URL, b); };
+    HTMLAnchorElement.prototype.click = function () {};
+    try {
+      const v2 = document.getElementById("pl_tilingV2"); if (v2 && v2.checked) v2.click();
+      document.getElementById("kta-planner-generer").click();
+      for (let i = 0; i < 600 && !zip; i++) {
+        await new Promise(function (r) { setTimeout(r, 200); });
+        const err = document.getElementById("kta-planner-erreur");
+        if (err && err.offsetHeight > 0 && err.textContent.trim()) return { erreur: err.textContent.trim().slice(0, 160) };
+      }
+    } finally { URL.createObjectURL = orig; HTMLAnchorElement.prototype.click = clic; }
+    if (!zip) return { erreur: "aucun ZIP produit" };
+    const z = await JSZip.loadAsync(zip);
+    const cfg = JSON.parse(await z.file("plan-config.json").async("string"));
+    return { georef: cfg.plan.georef || null };
+  });
+}
+
+async function lirePrecisionGenerateur(page) {
+  return page.evaluate(function () {
+    const el = document.getElementById("pl_geo_precision");
+    return { visible: !!el && el.style.display !== "none" && !!el.textContent, texte: el ? el.textContent : "",
+             approche: window.I18n.t("gen.georef.precisionHistorique", { d: "§" }).split("§")[0],
+             exacte: window.I18n.t("config.georef.precisionLocal", { d: "§" }).split("§")[0] };
+  });
+}
+
+// Générateur, depuis l'accueil : « Modifier » un ZIP au calage historique sans rien toucher, puis un GeoTIFF.
+async function scenarioGenerateur(page) {
+  console.log("— Générateur —");
+  const pret = await page.evaluate(async function () {
+    const srv = window.PlanRegistry.getAll().find(function (p) { return p.type === "server" && /fictif/i.test(p.name || ""); });
+    if (!srv || !srv.path) return { ok: false, raison: "relevé fictif absent de l'index" };
+    const cfg = JSON.parse(await (await fetch(srv.path + "/plan-config.json")).text());
+    const zip = new JSZip();
+    const chemins = [cfg.plan.baseImage, cfg.plan.collisionImage]
+      .concat((cfg.imageLayers || []).map(function (l) { return l.file; }), (cfg.dataLayers || []).map(function (l) { return l.file; }))
+      .filter(function (p) { return typeof p === "string" && p && !/^(data:|blob:|https?:)/.test(p); });
+    for (const p of Array.from(new Set(chemins))) {
+      const r = await fetch(window.resolveServerPath(p, srv.path));
+      if (r.ok) zip.file(p, await r.blob());
+    }
+    const KE = window.KmzExport, W = cfg.plan.imageWidth, H = cfg.plan.imageHeight;
+    const pt = function (x, y, e, n) { return Object.assign({ x: x, y: y }, KE.decalerGps(46.2, 4.1, e, n)); };
+    cfg.plan.georef = { pointA: pt(W * 0.1, H * 0.9, -400, -150), pointB: pt(W * 0.9, H * 0.1, 410, 160) };
+    window.__ckHist = cfg.plan.georef;
+    zip.file("plan-config.json", JSON.stringify(cfg));
+    const blob = await zip.generateAsync({ type: "blob" });
+    if (document.getElementById("kta-planner-modal")) window.afficherPlanner();
+    window.afficherPlanner();
+    const inp = document.getElementById("kta-planner-zip-input");
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], "fictif-calage.zip", { type: "application/zip" }));
+    inp.files = dt.files;
+    inp.dispatchEvent(new Event("change", { bubbles: true }));
+    return { ok: true };
+  });
+  if (!pret.ok) throw new Error(pret.raison);
+  await attendre(page, function () {
+    const s = document.getElementById("kta-planner-zip-status");
+    return !!s && /\S/.test(s.textContent) && !!document.getElementById("pl_geo_A_x").value;
+  }, 30000);
+  await page.waitForTimeout(500);
+  const p1 = await lirePrecisionGenerateur(page);
+  verifier(p1.visible && p1.texte.indexOf(p1.approche) === 0, "Générateur, Modifier : « " + p1.texte + " »", p1);
+  const z1 = await genererEtLire(page);
+  const memes = await page.evaluate(function (g) { return window.KmzExport.memesPoints(g, window.__ckHist); }, z1.georef);
+  verifier(!z1.erreur && z1.georef && !z1.georef.modele && memes,
+    "Modifier sans toucher au calage : ZIP généré au calage historique, mêmes points", z1);
+
+  // GeoTIFF Lambert 93 fictif (0,25 m/px, nord en haut), écrit par l'export de l'app puis importé.
+  const tif = await page.evaluate(async function () {
+    if (document.getElementById("kta-planner-modal")) window.afficherPlanner();
+    const KE = window.KmzExport, GT = window.GeotiffExport._interne, W = 400, H = 300;
+    const cal = { pointA: Object.assign({ x: 0, y: H }, KE.decalerGps(46.2, 4.1, -50, -37.5)),
+                  pointB: Object.assign({ x: W, y: 0 }, KE.decalerGps(46.2, 4.1, 50, 37.5)), modele: KE.MODELE_LOCAL };
+    const g = GT.calculerGeoref(KE.buildTransformCalib(cal), 1, W, H, 2154);
+    const px = new Uint8Array(W * H * 3).fill(150);
+    const u8 = await GT.ecrireTiff(px, W, H, 3, { compresser: false, epsg: 2154, geo: g.geo });
+    window.__ckTif = cal;
+    window.afficherImporterGeoTiff(new File([u8], "fictif-calage.tif", { type: "image/tiff" }));
+    return true;
+  });
+  verifier(tif, "GeoTIFF fictif importé dans le Générateur");
+  await attendre(page, function () {
+    const el = document.getElementById("pl_geo_precision");
+    return !!el && el.style.display !== "none" && !!el.textContent;
+  }, 30000);
+  const p2 = await lirePrecisionGenerateur(page);
+  verifier(p2.texte.indexOf(p2.exacte) === 0, "Générateur, GeoTIFF : « " + p2.texte + " »", p2);
+  await page.evaluate(function () { const n = document.getElementById("pl_name"); n.value = "Calage checkup"; });
+  await page.waitForTimeout(1500);   // l'image ré-injectée doit être lue (dimensions)
+  const z2 = await genererEtLire(page);
+  const ecartA = await page.evaluate(function (g) {
+    return g ? window.KmzExport.distanceM(g.pointA, window.__ckTif.pointA) : null;
+  }, z2.georef);
+  verifier(!z2.erreur && z2.georef && z2.georef.modele === "local" && ecartA < 0.05,
+    "GeoTIFF → ZIP généré au calage \"local\", point A à " + m(ecartA) + " du fichier", z2);
+  await page.evaluate(function () { if (document.getElementById("kta-planner-modal")) window.afficherPlanner(); });
+}
+
+// Modale Export externe (GeoJSON, mêmes champs A / B que le KMZ) : ce qu'elle enregistre comme calage.
+async function exporterGeojsonModale(page, decalerB) {
+  return page.evaluate(async function (dB) {
+    window.ouvrirExportSessionModal("extern", false, { format: "geojson" });
+    await new Promise(function (r) { setTimeout(r, 600); });
+    if (dB) {
+      const el = document.getElementById("kmz_B_coords"), c = window.parseGpsCoords(el.value);
+      el.value = window.formatGpsCoords(c.lat + dB, c.lng);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    const clic = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {};
+    try {
+      document.getElementById("kta-ses-download").click();
+      await new Promise(function (r) { setTimeout(r, 1200); });
+    } finally { HTMLAnchorElement.prototype.click = clic; }
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await new Promise(function (r) { setTimeout(r, 300); });
+    return window.KmzExport.getCalibration(window._currentLoadedPlanId).modele || null;
+  }, decalerB || 0);
+}
+
 async function scenario(page) {
   const ouvert = await ouvrirFictif(page);
   if (!ouvert.ok) throw new Error(ouvert.raison);
@@ -203,6 +334,8 @@ async function scenario(page) {
     return window.KmzExport.getCalibration(window._currentLoadedPlanId).modele || null;
   });
   verifier(resave === null, "Enregistrer sans modification : le calage reste historique", resave);
+  const kmz1 = await exporterGeojsonModale(page, 0);
+  verifier(kmz1 === null, "Export externe, calage prérempli inchangé : le calage reste historique", kmz1);
   rapporterExports("avant recalage —", await mesurerExports(page), Infinity);
 
   // ── Recalage annoncé ──
@@ -247,6 +380,11 @@ async function scenario(page) {
   });
   verifier(prop.sens1 === "local", "plan recalé, ZIP historique : PLAN_CONFIG suit le modèle local (Vue OSM, Secours)", prop);
   verifier(prop.sens2 === "local", "ZIP régénéré en local, localStorage historique : le localStorage suit", prop);
+
+  // Export externe avec un point B modifié : nouveau calage, donc "local".
+  await page.evaluate(function () { window.KmzExport.setCalibration(window._currentLoadedPlanId, window.__ck.historique); });
+  const kmz2 = await exporterGeojsonModale(page, 1e-5);
+  verifier(kmz2 === "local", "Export externe, point B modifié : calage enregistré au modèle \"local\"", kmz2);
 }
 
 (async function main() {
@@ -265,6 +403,7 @@ async function scenario(page) {
     await attendre(page, function () { return !!window.PlanRegistry && typeof window.chargerZipFichier === "function"; }, 20000);
     await page.waitForTimeout(1500);
     await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await scenarioGenerateur(page);
     await scenario(page);
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 3));
   } catch (e) {
@@ -278,6 +417,7 @@ async function scenario(page) {
     console.log("❌ CHECKUP ROUGE — " + problemes.length + " problème(s)");
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — recalage annoncé puis appliqué, exports et Vue OSM au sol à < 5 cm.");
+  console.log("🎉 CHECKUP VERT — Générateur et Export externe au bon modèle, recalage annoncé puis appliqué, " +
+              "exports et Vue OSM au sol à < 5 cm.");
   process.exit(0);
 })();

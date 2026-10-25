@@ -945,6 +945,7 @@
   "gen.georef.pointA": "📍 Point A",
   "gen.georef.pointB": "📍 Point B",
   "gen.georef.pointC": "📐 Point C (optionnel)",
+  "gen.georef.precisionHistorique": "📐 Projection approchée : ± {d} aux coins. C'est le calage d'origine du plan, gardé tant que ses points ne changent pas ; ⚙️ Réglages → Géoréférencement propose de le recaler en projection exacte.",
   "gen.georef.pointCHint": "Corrige un plan déformé. Choisis-le loin de la ligne A-B.",
   "gen.georef.titre": "🌐 Géoréférencement GPS",
   "gen.gpx.analyse": "⏳ Analyse du GPX en cours…",

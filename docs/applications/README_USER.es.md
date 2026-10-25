@@ -1579,7 +1579,7 @@ Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
 - **Parámetros de tracking**: escala y orientación del **Norte** (0 si la parte superior del mapa es el Norte; cada uno puede corregirla en sus Ajustes).
 - **Iconos y tags**: **↺ Cargar predeterminados** rellena los iconos estándar, **+ Añadir un tag** crea un tipo propio. Los tags `default` y `track` son obligatorios.
 - **🏷️ Leyenda del mapa**: los renombrados, ocultamientos y entradas añadidas valen para todos los que abren el mapa; cada uno puede luego cambiarla para sí.
-- **🌐 Georreferenciación GPS** (opcional): dos puntos A y B, más un punto C para un mapa deformado. Sin ella, ni Vista OSM ni exportación KMZ / GPX.
+- **🌐 Georreferenciación GPS** (opcional): dos puntos A y B, más un punto C para un mapa deformado. Sin ella, ni Vista OSM ni exportación KMZ / GPX. Debajo de los campos, la **precisión en las esquinas** de la calibración aparece en cuanto A, B y la imagen están: «Proyección exacta» para una calibración nueva o un GeoTIFF importado; «Proyección aproximada, ± X m» para la calibración original de un mapa calibrado antes, conservada mientras no cambies sus puntos (⚙️ Ajustes → Georreferenciación propone recalibrarla).
 - **📖 PDF Historia** (opcional): uno o varios PDF, al principio de la lista en el Modo Historia. Al modificar, se conservan los del mapa.
 
 #### 📂 Modificar un mapa existente

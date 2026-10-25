@@ -122,6 +122,8 @@ source 2 seulement.
   pour un calage historique, d³ / 2R² pour le local) et, pour un calage historique, « Recaler en projection
   exacte » : la confirmation annonce `ecartRecalage` (déplacement max aux 4 coins), puis le calage passe en
   `"local"` dans le localStorage, le registre et `PLAN_CONFIG` **en mémoire** (le ZIP n'est pas réécrit).
+  Le Générateur affiche la même ligne sous ses champs (`createConf.js > _plannerMajPrecision`), au modèle que le
+  calage aura en générant ; « approchée » y renvoie aux Réglages pour recaler.
 - 🩸 **Propagation** : mêmes points des deux côtés, modèles différents → le `"local"` gagne dans les deux sens
   (`main.js > _accorderModeleCalage`). Sans ça, un plan recalé repasserait au modèle historique pour la Vue OSM
   et le Secours (qui lisent `PLAN_CONFIG` d'abord), et un plan régénéré garderait l'ancien calage local.

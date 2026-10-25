@@ -945,6 +945,7 @@
   "gen.georef.pointA": "📍 Punto A",
   "gen.georef.pointB": "📍 Punto B",
   "gen.georef.pointC": "📐 Punto C (opcional)",
+  "gen.georef.precisionHistorique": "📐 Proyección aproximada: ± {d} en las esquinas. Es la calibración original del mapa, conservada mientras sus puntos no cambien; ⚙️ Ajustes → Georreferenciación propone recalibrarla con la proyección exacta.",
   "gen.georef.pointCHint": "Corrige un mapa deformado. Elígelo lejos de la línea A-B.",
   "gen.georef.titre": "🌐 Georreferenciación GPS",
   "gen.gpx.analyse": "⏳ Analizando el GPX…",
