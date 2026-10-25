@@ -20059,6 +20059,28 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 }
 .kta-presence-ancienne .kta-presence-etiquette { color: var(--kta-texte-3); }
 .kta-presence-hors-niveau { opacity: 0.4; }
+/* Repères d'une extension (KtaExtensions.afficherReperes) : pastille à symbole, bord à la teinte de la charte,
+   touchable (30 px + marge du marqueur) ; le nombre dit plusieurs entrées sur le même objet. */
+.kta-repere-icone { background: none; border: none; }
+.kta-repere {
+  position: relative; box-sizing: border-box; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1;
+  background: var(--kta-surface); border: 3px solid var(--kta-texte-3); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.kta-repere-nombre {
+  position: absolute; top: -8px; right: -10px; min-width: 16px; padding: 0 4px; border-radius: 8px;
+  font-size: 11px; font-weight: 700; line-height: 16px; text-align: center;
+  background: var(--kta-texte); color: var(--kta-fond);
+}
+.kta-repere-accent { border-color: var(--kta-accent); }
+.kta-repere-interaction { border-color: var(--kta-interaction); }
+.kta-repere-ok { border-color: var(--kta-ok); }
+.kta-repere-avert { border-color: var(--kta-avert); }
+.kta-repere-erreur { border-color: var(--kta-erreur); }
+.kta-repere-violet { border-color: var(--kta-violet); }
+.kta-repere-magenta { border-color: var(--kta-magenta); }
+.kta-repere-neutre { border-color: var(--kta-texte-3); }
+.kta-repere-hors-niveau { opacity: 0.4; }
 /* Itinéraire publié par un autre : étiquette au point d'arrivée */
 .kta-presence-iti-icone { background: none; border: none; }
 /* Bandeau d'alerte Secours d'une installation reliée (KtaExtensions.afficherAlerteSecours) */

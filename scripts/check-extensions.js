@@ -1693,6 +1693,51 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("uid inconnu, itinéraire calculé, objet sans position : false",
       c.K.allerAObjet("pt_zz") === false && c.K.allerAObjet("rd_i") === false && c.K.allerAObjet("zn_v") === false &&
       c.K.allerAObjet(5) === false && vues.length === 3);
+    // ── Repères d'une extension (afficherReperes) : calque générique, affichage seulement ──
+    t("afficherReperes sans module de rendu : 0, sans erreur", c.K.afficherReperes("taches", [{ id: "t1", uid: "pt_a" }]) === 0);
+    const elt = (tag) => ({ tag, attrs: {}, dataset: {}, enfants: [], className: "", textContent: "", title: "",
+      setAttribute(k, v) { this.attrs[k] = String(v); }, appendChild(e) { this.enfants.push(e); return e; } });
+    const marqueurs = [];
+    c.w.document.createElement = elt;
+    c.w.map.removeLayer = () => {}; c.w.setInterval = () => 1; c.w.clearInterval = () => {};
+    c.w.L = { layerGroup: () => ({ addTo(m) { this._map = m; return this; } }), divIcon: (o) => o,
+      marker: (ll, o) => { const mk = { ll, o, ecoutes: {}, on(ev, fn) { this.ecoutes[ev] = fn; return this; },
+        addTo() { marqueurs.push(mk); return this; } }; return mk; } };
+    const cx = vm.createContext(c.w);
+    vm.runInContext("var L = window.L;", cx);
+    vm.runInContext(lire("js/ktaPresences.js"), cx, { filename: "ktaPresences.js" });
+    c.w.passeFiltreNiveau = (it) => c.w.APP_CONFIG.visibleLevels.indexOf(it.level) >= 0;
+    c.w.APP_CONFIG.visibleLevels = [0];
+    const touches = [];
+    const n1 = c.K.afficherReperes("taches", [
+      { id: "t1", uid: "pt_a", teinte: "erreur", symbole: "⚠️", titre: "<b>Danger</b>", nombre: 3 },
+      { id: "t2", uid: "rd_b", teinte: "#ff0000", symbole: "abcdef" },
+      { id: "t3", uid: "pt_zz" }, { id: "t4", uid: "rd_i" }, { id: "t5", uid: "zn_v" }, { id: "t6", x: 7, y: 8 },
+      { uid: "pt_a" }, null], { clic: (id) => { touches.push(id); if (id === "t6") throw new Error("x"); } });
+    const R = c.w.KtaPresences.reperes("taches");
+    t("repères : posés sur l'objet (point ; sommet du milieu d'un tracé), ou à x/y ; inconnus, itinéraire, sans position, sans id écartés",
+      n1 === 3 && R.map((r) => r.id).join() === "t1,t2,t6" && R[0].x === 10 && R[0].y === 20 && R[1].x === 10 && R[1].y === 10 &&
+      R[2].x === 7 && marqueurs.length === 3, R);
+    const el0 = marqueurs[0].o.icon.html;
+    t("🔒 repère : titre et symbole posés en TEXTE (jamais interprétés), symbole coupé à 2 caractères, nombre affiché",
+      el0.title === "<b>Danger</b>" && el0.enfants[0].textContent === "⚠️" && el0.enfants[1].textContent === "3" &&
+      Array.from(marqueurs[1].o.icon.html.enfants[0].textContent).length === 2 && !/innerHTML/.test(lire("js/ktaPresences.js")));
+    t("🎨 teinte = jeton de la charte (classe) ; une couleur libre est ignorée (neutre)",
+      /kta-repere-erreur/.test(el0.className) && /kta-repere-neutre/.test(marqueurs[1].o.icon.html.className) &&
+      /\.kta-repere-erreur \{ border-color: var\(--kta-erreur\); \}/.test(lire("css/style.css")));
+    t("repère d'un objet sur un niveau masqué : atténué (niveaux de l'objet)",
+      /kta-repere-hors-niveau/.test(el0.className) && !/hors-niveau/.test(marqueurs[1].o.icon.html.className));
+    marqueurs[0].ecoutes.click(); marqueurs[2].ecoutes.click();
+    t("toucher un repère : clic(id) de l'extension ; son erreur est avalée", touches.join() === "t1,t6");
+    c.K.planCharge("ext_2");
+    t("🩸 plan pas prêt : rien n'est dessiné (0)", c.K.afficherReperes("taches", [{ id: "t6", x: 1, y: 1 }]) === 0);
+    c.K.planCharge("ext_1");
+    t("nom de calque non conforme : refusé (0)", c.K.afficherReperes("Tâches !", [{ id: "a", x: 1, y: 1 }]) === 0);
+    c.K.afficherReperes("autre", [{ id: "a", x: 1, y: 1 }]);
+    t("liste vide : ce calque seul est effacé", c.K.afficherReperes("taches", []) === 0 && c.w.KtaPresences.reperes("taches").length === 0 &&
+      c.w.KtaPresences.reperes("autre").length === 1);
+    c.w.KtaPresences.reinitialiser();
+    t("🩸 sortie du plan : tous les calques de repères effacés", c.w.KtaPresences.reperes("autre").length === 0);
     const IA = lire("js/interfaceAlerts.js");
     const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
     t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",
