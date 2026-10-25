@@ -1463,6 +1463,7 @@
   "ext.publier.etape.envoi": "Envoi : {pct} % ({fait} / {total} Mo)… {duree}",
   "ext.publier.etape.finalisation": "Envoyé : le serveur enregistre le plan… {duree}",
   "ext.publier.echec": "La publication a échoué : le plan reste sur ton appareil. Réessaie plus tard.",
+  "ext.publier.annule": "Publication annulée : rien n'est parti.",
   "ext.publier.versionReconnu": "Ce ZIP est celui du plan ☁️ « {nom} » de l'installation.",
   "ext.publier.versionMemeNom": "Ce ZIP porte le nom du plan ☁️ « {nom} » de l'installation.",
   "ext.publier.versionQuestion": "Le publier comme nouvelle version de ce plan ? Les personnes qui y ont accès la recevront à leur prochaine ouverture.",

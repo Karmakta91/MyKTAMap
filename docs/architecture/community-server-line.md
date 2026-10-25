@@ -320,6 +320,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `afficherModaleAlerte` émet **`mktm:alerte-affichee`** `{ id, released }` (id tel qu'affiché, donc `ext_…` pour une
   alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran — pas pour le sélecteur. Signal sortant
   seulement : une extension en tire un accusé de lecture ; sans écouteur, rien.
+- **Action dans la fenêtre 🚨** : champ facultatif de la prise `alertes` — `action: { libelle() → string | null,
+  lancer() }`. `KtaExtensions.actionAlertes(fermer)` rend un bouton au libellé de l'extension (synchrone, 60 car.,
+  posé en texte), posé au pied des trois fenêtres 🚨 (aucune alerte, sélecteur, détail) avant la ligne des
+  notifications ; ou `null` : sans extension qui le propose, état autre que ON (l'action passe par son serveur),
+  libellé `null` / vide / en erreur (ex. compte qui n'a pas le droit). Toucher : la fenêtre se ferme (`fermer`, donné
+  par l'app) puis `lancer()` (erreur avalée) — ex. « ➕ Lancer une alerte » pour un admin d'organisation. 🔒 Le libellé
+  ne fait que choisir l'affichage : le serveur de l'extension revérifie le droit. Tests : `check-extensions.js`.
 - **Notifications de l'appareil** : prise `notifications: { proposer() → bool, apresChoix(permission) }`
   (information ; erreur = aucune ligne). `KtaExtensions.ligneNotifications()` rend la ligne « 🔔 Afficher les alertes
   et nouveautés sur l'icône de l'app — Activer » (+ rappel « jamais un canal de sécurité »), posée au pied des trois
@@ -402,8 +409,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   revérifie à l'envoi : la prise ne choisit que l'interface. Sans extension : jamais autorisée, rejet, aucun effet.
   L'assistant n'appelle jamais `publierPlan` (un plan neuf serait un doublon, pas une version). Le Générateur à la
   main fait de même quand le ZIP déposé est reconnu comme celui d'un plan ☁️ (`plans-loader.md`, chemin manuel) :
-  `publierVersion` si autorisé, sinon explication ; `publierPlan` seulement sur « Publier comme nouveau plan ». Preuve :
-  `check-extensions.js` §6 bis quater bis.
+  `publierVersion` si autorisé, sinon explication ; `publierPlan` seulement sur « Publier comme nouveau plan ».
+  **Annulée par l'utilisateur** : `publier` peut rejeter avec une erreur portant `annule: true` (l'utilisateur a dit
+  non dans une question de l'extension avant l'envoi) — l'app dit « Publication annulée » (toast), sans message
+  d'échec ; l'assistant reste ouvert (télécharger reste possible). Preuve : `check-extensions.js` §6 bis quater bis
+  et § notifications (annulation).
 - **Lire la session d'un plan non ouvert** (10/10/2026) : `window.KtaSessionStore.lire(planId)` → JSON texte | null
   (synchrone, depuis la mémoire ; `ids()` liste les plans qui en ont une, `ecrireDurable(planId, brut)` → Promise). Les
   sessions vivent en IndexedDB : `localStorage["myktamap_session_v1_<planId>"]` n'est plus qu'une ancienne copie gardée
@@ -520,18 +530,32 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule),
   et `KtaPresences.couleurDe(id)` pour afficher la couleur de chacun.
   Sans extension : ni bouton ni fenêtre.
-- **Aller à un objet** : `KtaExtensions.allerAObjet(uid) → bool` — action neutre, jamais déclenchée par l'app seule
-  (ex. liste de changements d'une extension). Cherche l'objet de la session du plan affiché (points, tracés, zones,
-  structures ; jamais l'itinéraire calculé) ; multi-niveau, si aucun de ses niveaux n'est affiché, le premier devient
-  le niveau de travail (`ktaSetActiveLevel`) ; centre la carte (point ou centroïde) et ouvre sa fiche (couche de
-  `layerEditor` qui porte une fiche à sa position), sinon une bulle à son nom. `false` sans rien bouger : plan pas
-  prêt (`planPret`), uid inconnu, objet sans position. Tests : `check-extensions.js`.
+- **Objet par uid** : `KtaExtensions.objetParUid(uid) → { uid, nom, type, typeLibelle, x, y, niveaux, famille, source } |
+  null` — information, une **copie**. Cherche dans la session du plan affiché (points, tracés, zones, structures) PUIS
+  dans ses **calques** (objets du ZIP, `getAllEmbedded*`) : `source` = `"session"` | `"calque"` (une copie de session
+  d'un objet de calque porte son uid : la session gagne) ; `famille` = `editorPoints` | `roads` | `zones` |
+  `structures` ; `x` / `y` = l'**ancre** (le point, ou le sommet du milieu d'un tracé, d'une zone, d'une structure) ;
+  `nom` = celui de l'objet ou `""` ; `typeLibelle` = libellé du type dans la légende (renommages compris) ; `niveaux`
+  = ses niveaux (`level`, `fromLevel` / `toLevel`, niveaux d'une jonction). `null` : plan pas prêt, uid inconnu,
+  itinéraire calculé, objet sans position. Index gardé 500 ms (un appel par repère ne relit pas tous les marqueurs).
+  Même recherche pour `allerAObjet` et `afficherReperes`. Tests : `check-extensions.js`.
+- **Aller à un objet** : `KtaExtensions.allerAObjet(uid, repli?) → bool` — action neutre, jamais déclenchée par l'app
+  seule (ex. liste de changements d'une extension). Objet cherché comme `objetParUid` (session, puis calques du plan ;
+  jamais l'itinéraire calculé) ; multi-niveau, si aucun de ses niveaux n'est affiché, le premier devient le niveau de
+  travail (`ktaSetActiveLevel`) ; centre la carte (point ou centroïde) et ouvre sa fiche (couche de `layerEditor` qui
+  porte une fiche à sa position, ou le marqueur du calque), sinon une bulle à son nom. `repli` `{ x, y, niveaux?,
+  nom? }` : objet **absent** du plan affiché (retiré d'une version) → même geste à cette position (dernière position
+  connue, gardée par l'extension), bulle au nom donné (texte), jamais la fiche d'un autre objet. `false` sans rien
+  bouger : plan pas prêt (`planPret`), uid inconnu sans repli aux coordonnées finies, objet sans position. Tests :
+  `check-extensions.js`.
 - **Repères d'une extension** (calque générique, ex. tâches ouvertes) :
   `KtaExtensions.afficherReperes(calque, liste, { clic }) → nombre dessiné` — affichage seulement, jamais une requête.
-  `calque` : nom `[a-z0-9_-]{1,24}` (8 calques au plus) ; `liste` : `[{ id, uid | x + y, teinte?, symbole?, titre?,
-  nombre? }]`, 500 repères au plus. Un repère rattaché à un objet (`uid`) se pose **sur** lui (le point, ou le sommet du
-  milieu d'un tracé, d'une zone, d'une structure) et suit ses niveaux (atténué hors niveau affiché) ; uid inconnu,
-  itinéraire calculé, objet sans position : écarté. `teinte` = un nom de jeton de la charte (`accent`, `interaction`,
+  `calque` : nom `[a-z0-9_-]{1,24}` (8 calques au plus) ; `liste` : `[{ id, uid | x + y, niveaux?, teinte?, symbole?,
+  titre?, nombre? }]`, 500 repères au plus. Un repère rattaché à un objet (`uid`, cherché comme `objetParUid`) se pose
+  **sur** lui (son ancre) et suit ses niveaux (atténué hors niveau affiché) ; uid **inconnu** avec `x` / `y` : posé à
+  cette position (dernière position connue d'un objet retiré, `niveaux` donnés), marqué **absent** (contour pointillé,
+  `.kta-repere-absent`) ; uid inconnu sans position, itinéraire calculé, objet sans position : écarté. `teinte` = un
+  nom de jeton de la charte (`accent`, `interaction`,
   `ok`, `avert`, `erreur`, `violet`, `magenta`, `neutre`) rendu par une classe `.kta-repere-<teinte>` — jamais une
   couleur libre (autre valeur : `neutre`) ; `symbole` (2 caractères) et `titre` (80, infobulle et nom accessible)
   posés en texte ; `nombre` (2 à 99) en pastille. Toucher un repère appelle `clic(id)` (erreur avalée). Plan pas prêt :

@@ -1463,6 +1463,7 @@
   "ext.publier.etape.envoi": "Uploading: {pct}% ({fait} / {total} MB)… {duree}",
   "ext.publier.etape.finalisation": "Uploaded: the server is saving the map… {duree}",
   "ext.publier.echec": "Publishing failed: the map stays on your device. Try again later.",
+  "ext.publier.annule": "Publishing cancelled: nothing was sent.",
   "ext.publier.versionReconnu": "This ZIP is the installation's ☁️ map “{nom}”.",
   "ext.publier.versionMemeNom": "This ZIP has the name of the installation's ☁️ map “{nom}”.",
   "ext.publier.versionQuestion": "Publish it as a new version of this map? People with access will get it the next time they open it.",

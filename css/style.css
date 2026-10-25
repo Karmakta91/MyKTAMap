@@ -6324,6 +6324,9 @@ html.kta-theme-light .kta-cfg-input option {
 .kta-alert-notif-rappel { font-size: 12px; }
 .kta-alert-notif-btn { align-self: flex-start; }
 .kta-alert-notif-etat { font-weight: 600; }
+/* Action d'une extension (KtaExtensions.actionAlertes), au pied de la fenêtre 🚨, avant la ligne des notifications. */
+.kta-alert-action-ext { margin-top: 14px; display: flex; }
+.kta-alert-action-ext-btn { min-height: 44px; }
 .kta-alert-actions {
   padding: 12px 20px 18px 20px;
   display: flex;
@@ -20096,6 +20099,7 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 .kta-repere-magenta { border-color: var(--kta-magenta); }
 .kta-repere-neutre { border-color: var(--kta-texte-3); }
 .kta-repere-hors-niveau { opacity: 0.4; }
+.kta-repere-absent { border-style: dashed; }
 /* Itinéraire publié par un autre : étiquette au point d'arrivée */
 .kta-presence-iti-icone { background: none; border: none; }
 /* Bandeau d'alerte Secours d'une installation reliée (KtaExtensions.afficherAlerteSecours) */

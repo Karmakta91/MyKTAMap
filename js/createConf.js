@@ -4000,8 +4000,13 @@ async function _genererZip() {
           dire(window.I18n.t("ext.publier.fait"), "success");
         }
       } catch (e) {
-        console.warn("[Planner] publication :", e);
-        dire(window.I18n.t("ext.publier.echec"), "warn");
+        // ⚠️ Refus porté par `annule: true` : l'utilisateur a dit non dans une question de l'extension (ex. objets
+        // retirés qui portent des tâches) — rien n'est parti, ce n'est pas un échec.
+        if (e && e.annule === true) dire(window.I18n.t("ext.publier.annule"), "info");
+        else {
+          console.warn("[Planner] publication :", e);
+          dire(window.I18n.t("ext.publier.echec"), "warn");
+        }
       } finally {
         if (minuteur) clearInterval(minuteur);
       }

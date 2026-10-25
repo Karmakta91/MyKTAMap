@@ -489,6 +489,9 @@ window.MajPlan = (function () {
       await window.KtaExtensions.publierVersion({ planId: etat.planId, blob: blob,
                                                   nom: (entree && entree.name) || nomZip });
     } catch (er) {
+      // ⚠️ `annule: true` : l'utilisateur a dit non dans une question de l'extension — rien n'est parti, la fenêtre
+      // reste ouverte (télécharger reste possible), sans message d'erreur.
+      if (er && er.annule === true) { _toast(t("ext.publier.annule"), "info"); throw er; }
       console.warn("[MajPlan] publication de la version :", er);
       await window.ktaAlerte(t("maj.err.publication", { err: (er && er.message) || String(er) }), { type: "erreur" });
       throw er;

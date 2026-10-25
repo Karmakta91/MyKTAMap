@@ -588,6 +588,35 @@
     ligne.appendChild(etat);
     return ligne;
   }
+  // ── Action d'une extension dans la fenêtre 🚨 (prise « alertes », champ facultatif `action`) ──
+  // alertes.action: { libelle() → string | null, lancer() } : `libelle` (synchrone, 60 car., rendu en texte) dit si
+  // le bouton a un sens pour ce compte (ex. « ➕ Lancer une alerte » pour qui peut en lancer) ; null, "" ou erreur =
+  // pas de bouton. Toucher le bouton ferme la fenêtre (`fermer`, donné par l'app) puis appelle `lancer()` (erreur
+  // avalée). Bouton proposé en état ON seulement (l'action passe par le serveur de l'extension) ; 🔒 le droit est
+  // revérifié par ce serveur, le libellé ne fait que choisir l'affichage. → l'élément, ou null.
+  function actionAlertes(fermer) {
+    const ext = _prise("alertes");
+    const a = ext && ext.alertes && ext.alertes.action;
+    if (!a || _etat !== "on" || typeof a.libelle !== "function" || typeof a.lancer !== "function") return null;
+    let lib = null;
+    try { lib = a.libelle(); } catch (e) { console.warn("[Extensions] alertes.action.libelle :", e); return null; }
+    lib = _texteCourt(lib, 60);
+    if (!lib) return null;
+    const ligne = document.createElement("div");
+    ligne.className = "kta-alert-action-ext";
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "kta-btn kta-btn-primary kta-alert-action-ext-btn";
+    bouton.textContent = lib;
+    bouton.addEventListener("click", function () {
+      try { if (typeof fermer === "function") fermer(); } catch (e) { /* fenêtre déjà fermée */ }
+      try {
+        Promise.resolve(a.lancer()).catch(function (e) { console.warn("[Extensions] alertes.action.lancer :", e); });
+      } catch (e) { console.warn("[Extensions] alertes.action.lancer a échoué :", e); }
+    });
+    ligne.appendChild(bouton);
+    return ligne;
+  }
   // Cible d'une notification touchée : paramètre `kta-notif` de son adresse (« genre:id:id », forme bornée, texte
   // opaque pour community ; l'extension qui l'a émise sait l'ouvrir). Toute autre forme → null.
   const _CIBLE_NOTIF_RE = /^[a-z]{3,20}(:[A-Za-z0-9_-]{1,80}){0,3}$/;
@@ -1865,24 +1894,75 @@
       return { createur: txt(a.createur), modifiePar: txt(a.modifiePar) };
     } catch (e) { console.warn("[Extensions] auteurObjet :", e); return null; }
   }
-  // Aller à un objet de la session du plan affiché (action neutre : seule une extension l'appelle, ex. une liste de
-  // changements) : allerAObjet(uid) → bool. Points, tracés, zones, structures, cherchés par uid. Multi-niveau : si
-  // aucun de ses niveaux (level, fromLevel / toLevel, niveaux d'une jonction) n'est affiché, le premier devient le
-  // niveau de travail (ktaSetActiveLevel, qui l'ajoute aux affichés). Carte centrée sur le point ou le centroïde,
-  // fiche ouverte (couche de « Mes annotations » qui porte une fiche à cette position), sinon une bulle au nom.
-  // false : plan pas prêt, uid inconnu ou objet sans position (rien ne bouge).
-  const _LISTES_OBJETS = ["getEditorPoints", "getRoads", "getZones", "getStructures"];
-  function _objetSession(uid) {
-    for (let i = 0; i < _LISTES_OBJETS.length; i++) {
-      const f = window[_LISTES_OBJETS[i]];
-      const l = typeof f === "function" ? f() : null;
-      if (!Array.isArray(l)) continue;
-      for (let j = 0; j < l.length; j++) {
-        const o = l[j];
-        if (o && o.uid === uid && o.type !== "itinerary") return o;
-      }
-    }
-    return null;
+  // Objets du plan affiché, par uid : la session (points, tracés, zones, structures) PUIS les calques du plan (ZIP,
+  // lecture seule). Une copie de session d'un objet de calque porte le même uid : la session gagne. L'itinéraire
+  // calculé n'est jamais un objet. 🩸 Index gardé 500 ms : un repère par tâche relirait sinon tous les marqueurs des
+  // calques à chaque appel (getAllEmbeddedPoints reconstruit sa liste).
+  const _SOURCES_OBJETS = [
+    ["getEditorPoints", "editorPoints", "session"], ["getRoads", "roads", "session"],
+    ["getZones", "zones", "session"], ["getStructures", "structures", "session"],
+    ["getAllEmbeddedPoints", "editorPoints", "calque"], ["getAllEmbeddedRoads", "roads", "calque"],
+    ["getAllEmbeddedZones", "zones", "calque"], ["getAllEmbeddedStructures", "structures", "calque"]
+  ];
+  const _CATEGORIE_LEGENDE = { editorPoints: "icones", roads: "traces", zones: "zones", structures: "structures" };
+  let _indexObjets = null;
+  function _objetsParUid() {
+    const plan = window._currentLoadedPlanId || null;
+    if (_indexObjets && _indexObjets.plan === plan && Date.now() - _indexObjets.t < 500) return _indexObjets.m;
+    const m = new Map();
+    _SOURCES_OBJETS.forEach(function (s) {
+      let l = null;
+      try { l = typeof window[s[0]] === "function" ? window[s[0]]() : null; } catch (e) { l = null; }
+      if (!Array.isArray(l)) return;
+      l.forEach(function (o) {
+        if (o && typeof o.uid === "string" && o.uid && o.type !== "itinerary" && !m.has(o.uid)) {
+          m.set(o.uid, { o: o, famille: s[1], source: s[2] });
+        }
+      });
+    });
+    _indexObjets = { plan: plan, t: Date.now(), m: m };
+    return m;
+  }
+  function _entreeObjet(uid) {
+    return typeof uid === "string" && uid ? _objetsParUid().get(uid) || null : null;
+  }
+  // Ancre d'un objet : le point, ou le sommet du milieu d'un tracé, d'une zone, d'une structure (toujours SUR
+  // l'objet, un centroïde peut tomber à côté). null : objet sans position.
+  function _ancreObjet(o) {
+    if (typeof o.x === "number" && typeof o.y === "number") return { x: o.x, y: o.y };
+    if (!Array.isArray(o.points)) return null;
+    const pts = o.points.filter(function (q) { return q && typeof q.x === "number" && typeof q.y === "number"; });
+    if (!pts.length) return null;
+    const m = pts[Math.floor(pts.length / 2)];
+    return { x: m.x, y: m.y };
+  }
+  const _texteCourt = function (v, max) { return typeof v === "string" ? v.trim().slice(0, max || 120) : ""; };
+  // ⚠️ objetParUid(uid) → { uid, nom, type, typeLibelle, x, y, niveaux, famille, source } | null — information, une
+  // COPIE (jamais l'objet de l'app). Cherche dans la session puis les calques du plan affiché (`source` : "session" |
+  // "calque") ; famille : editorPoints | roads | zones | structures ; x / y : l'ancre (cf. _ancreObjet) ; nom : celui
+  // de l'objet ou "" ; typeLibelle : libellé du type dans la légende (renommages compris), "" sinon. null : plan pas
+  // prêt, uid inconnu, itinéraire calculé, objet sans position.
+  function objetParUid(uid) {
+    if (!planPret()) return null;
+    const e = _entreeObjet(uid);
+    const a = e ? _ancreObjet(e.o) : null;
+    if (!a) return null;
+    const o = e.o;
+    let lib = "";
+    try {
+      const LC = window.LegendCustomization;
+      const cle = e.famille === "editorPoints" ? (Array.isArray(o.tags) && o.tags[0]) : o.type;
+      if (cle && LC && typeof LC.getLabel === "function") lib = _texteCourt(LC.getLabel(_CATEGORIE_LEGENDE[e.famille], cle));
+    } catch (er) { lib = ""; }
+    return { uid: uid, nom: _texteCourt(o.nom || o.name || o.label || o.titre), type: _texteCourt(o.type, 40),
+      typeLibelle: lib, x: a.x, y: a.y, niveaux: _niveauxObjet(o), famille: e.famille, source: e.source };
+  }
+  // Position de repli donnée par une extension (dernière position connue d'un objet retiré) → { x, y, niveaux, nom }
+  // ou null (coordonnées non finies).
+  function _repliValide(r) {
+    if (!r || typeof r !== "object" || !Number.isFinite(r.x) || !Number.isFinite(r.y)) return null;
+    const niv = Array.isArray(r.niveaux) ? r.niveaux.filter(function (n) { return Number.isInteger(n); }).slice(0, 8) : [];
+    return { x: r.x, y: r.y, niveaux: niv.length ? niv : [0], nom: _texteCourt(r.nom, 80) };
   }
   function _niveauxObjet(o) {
     const n = [];
@@ -1907,26 +1987,35 @@
       });
     }
     if (trouve && typeof trouve.openPopup === "function") { trouve.openPopup(); return; }
+    _bulleA(lat, lng, nom);
+  }
+  // Bulle au nom (texte, jamais interprété).
+  function _bulleA(lat, lng, nom) {
     if (window.L && typeof window.L.popup === "function") {
       const div = document.createElement("div");
       div.textContent = String(nom || "").slice(0, 80);
       window.L.popup({ autoClose: true, closeOnClick: true }).setLatLng([lat, lng]).setContent(div).openOn(window.map);
     }
   }
-  function allerAObjet(uid) {
+  function allerAObjet(uid, repli) {
     if (typeof uid !== "string" || !uid || !planPret() || !window.map || typeof window.convertCoord !== "function") return false;
-    const o = _objetSession(uid);
-    if (!o) return false;
-    let x = null, y = null, ancre = null;
-    if (typeof o.x === "number" && typeof o.y === "number") { x = o.x; y = o.y; ancre = [o.x, o.y]; }
-    else if (Array.isArray(o.points) && o.points.length) {
+    const e = _entreeObjet(uid);
+    let o = e ? e.o : null, x = null, y = null, ancre = null, nom = "";
+    if (o && typeof o.x === "number" && typeof o.y === "number") { x = o.x; y = o.y; ancre = [o.x, o.y]; }
+    else if (o && Array.isArray(o.points) && o.points.length) {
       const pts = o.points.filter(function (p) { return p && typeof p.x === "number" && typeof p.y === "number"; });
       if (!pts.length) return false;
       x = 0; y = 0;
       pts.forEach(function (p) { x += p.x; y += p.y; });
       x /= pts.length; y /= pts.length;
       ancre = [pts[0].x, pts[0].y];
-    } else return false;
+    } else if (o) return false;
+    if (o) nom = o.name || o.nom || o.label || "";
+    else {
+      const r = _repliValide(repli);
+      if (!r) return false;
+      o = { niveaux: r.niveaux }; x = r.x; y = r.y; ancre = [r.x, r.y]; nom = r.nom;
+    }
     const c = window.APP_CONFIG;
     if (c && c.multiLevel === true && typeof window.ktaSetActiveLevel === "function") {
       const niv = _niveauxObjet(o);
@@ -1936,19 +2025,31 @@
     try {
       window.map.setView(window.convertCoord(x, y), window.map.getZoom(), { animate: false });
       // La fiche s'ouvre après le rendu (couches hors vue rattachées au déplacement), ancrée sur le point ou le
-      // premier sommet.
+      // premier sommet. Objet absent (repli) : la bulle seulement, jamais la fiche d'un autre objet à cette place.
       const a = window.convertCoord(ancre[0], ancre[1]);
+      const marqueur = e && e.source === "calque" ? _marqueurCalque(uid) : null;
       setTimeout(function () {
-        try { _ouvrirFicheA(a[0], a[1], o.name || o.nom || o.label || ""); } catch (e) { console.warn("[Extensions] allerAObjet :", e); }
+        try {
+          if (marqueur && marqueur._map && typeof marqueur.openPopup === "function" && marqueur.getPopup &&
+              marqueur.getPopup()) { marqueur.openPopup(); return; }
+          if (e) _ouvrirFicheA(a[0], a[1], nom); else _bulleA(a[0], a[1], nom);
+        } catch (er) { console.warn("[Extensions] allerAObjet :", er); }
       }, 120);
-    } catch (e) { console.warn("[Extensions] allerAObjet :", e); return false; }
+    } catch (er) { console.warn("[Extensions] allerAObjet :", er); return false; }
     return true;
   }
+  // Marqueur d'un point de calque (fiche en lecture seule) par uid, ou null.
+  function _marqueurCalque(uid) {
+    const l = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers : [];
+    for (let i = 0; i < l.length; i++) if (l[i] && l[i]._ktaUid === uid) return l[i];
+    return null;
+  }
   // Repères d'une extension sur le plan affiché (affichage seulement, ex. tâches ouvertes) :
-  // afficherReperes(calque, [{ id, uid | x + y, teinte?, symbole?, titre?, nombre? }], { clic(id) }) → nombre dessiné.
-  // Un repère rattaché à un objet (`uid`) se pose sur lui : le point, ou le sommet du milieu d'un tracé, d'une zone,
-  // d'une structure (toujours SUR l'objet, un centroïde peut tomber à côté) ; ses niveaux suivent l'objet (atténué
-  // hors niveau affiché). uid inconnu, itinéraire calculé, objet sans position : écarté. Plan pas prêt : rien (0).
+  // afficherReperes(calque, [{ id, uid | x + y, niveaux?, absent?, teinte?, symbole?, titre?, nombre? }], { clic(id) })
+  // → nombre dessiné. Un repère rattaché à un objet (`uid`, cherché comme objetParUid : session puis calques du plan)
+  // se pose sur son ancre (point, sommet du milieu) et suit ses niveaux (atténué hors niveau affiché). uid inconnu :
+  // à x / y si l'extension les donne (dernière position connue d'un objet retiré, niveaux donnés, marqué `absent` —
+  // contour pointillé), écarté sinon ; itinéraire calculé, objet sans position : écarté. Plan pas prêt : rien (0).
   // [] efface le calque ; la sortie du plan les efface tous. Rendu et nettoyage : ktaPresences.js > afficherReperes.
   function afficherReperes(calque, liste, opts) {
     try {
@@ -1959,18 +2060,19 @@
       (Array.isArray(liste) ? liste : []).slice(0, 500).forEach(function (r) {
         if (!r || typeof r !== "object") return;
         const p = { id: r.id, teinte: r.teinte, symbole: r.symbole, titre: r.titre, nombre: r.nombre };
-        if (typeof r.uid === "string" && r.uid) {
-          const o = _objetSession(r.uid);
-          if (!o) return;
-          if (typeof o.x === "number" && typeof o.y === "number") { p.x = o.x; p.y = o.y; }
-          else if (Array.isArray(o.points)) {
-            const pts = o.points.filter(function (q) { return q && typeof q.x === "number" && typeof q.y === "number"; });
-            if (!pts.length) return;
-            const m = pts[Math.floor(pts.length / 2)];
-            p.x = m.x; p.y = m.y;
-          } else return;
-          p.niveaux = _niveauxObjet(o);
-        } else { p.x = r.x; p.y = r.y; }
+        const e = typeof r.uid === "string" && r.uid ? _entreeObjet(r.uid) : null;
+        if (e) {
+          if (e.o.type === "itinerary") return;
+          const a = _ancreObjet(e.o);
+          if (!a) return;
+          p.x = a.x; p.y = a.y;
+          p.niveaux = _niveauxObjet(e.o);
+        } else {
+          if (typeof r.uid === "string" && r.uid && !(Number.isFinite(r.x) && Number.isFinite(r.y))) return;
+          p.x = r.x; p.y = r.y;
+          if (Array.isArray(r.niveaux)) p.niveaux = r.niveaux;
+          if (typeof r.uid === "string" && r.uid) p.absent = true;
+        }
         poses.push(p);
       });
       const clic = opts && typeof opts.clic === "function" ? opts.clic : null;
@@ -2044,6 +2146,7 @@
     exportLimite: exportLimite,
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
+    actionAlertes: actionAlertes,
     ligneNotifications: ligneNotifications,
     notificationAuDemarrage: notificationAuDemarrage,
     profilStatsExtension: profilStatsExtension,
@@ -2078,6 +2181,7 @@
     retirerAlerteSecours: retirerAlerteSecours,
     auteurObjet: auteurObjet,
     allerAObjet: allerAObjet,
+    objetParUid: objetParUid,
     afficherReperes: afficherReperes,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,

@@ -933,6 +933,43 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const c5 = enLigne(nouveauContexte("server", m5.extra));
     c5.K.register({ nom: "n5", apiVersion: 1, notifications: { proposer: () => true } });
     t("navigateur sans Web Push (PushManager absent) : aucune ligne", c5.K.ligneNotifications() === null);
+    // Action d'une extension dans la fenêtre 🚨 (alertes.action) : bouton seulement si la prise le dit, état ON.
+    const ma = monde("granted", "granted");
+    const ca = nouveauContexte("server", ma.extra);
+    t("action 🚨 sans extension : aucun bouton", ca.K.actionAlertes(() => {}) === null);
+    const traces = [];
+    let libelle = "➕ Lancer une alerte";
+    ca.K.register({ nom: "a1", apiVersion: 1, alertes: { lister: () => [], action: {
+      libelle: () => { if (libelle === "x") throw new Error("x"); return libelle; },
+      lancer: () => { traces.push("lancer"); throw new Error("y"); } } } });
+    t("🩸 installation OFF : aucun bouton même avec une extension qui le propose", ca.K.actionAlertes(() => {}) === null);
+    enLigne(ca);
+    const ba = ca.K.actionAlertes(() => { traces.push("fermer"); });
+    const boutonA = ba && ba.enfants[0];
+    t("action 🚨 proposée (ON) : un bouton au libellé de l'extension, posé en texte",
+      !!boutonA && boutonA.textContent === "➕ Lancer une alerte" && !("innerHTML" in boutonA));
+    boutonA.ecoutes.click();
+    t("toucher : la fenêtre se ferme PUIS l'extension lance son action ; son erreur est avalée",
+      traces.join() === "fermer,lancer");
+    libelle = null;
+    t("libellé null (ex. compte sans le droit) : aucun bouton", ca.K.actionAlertes(() => {}) === null);
+    libelle = "x";
+    t("libellé en erreur : aucun bouton, aucune exception", ca.K.actionAlertes(() => {}) === null);
+    libelle = "y".repeat(200);
+    t("libellé borné à 60 caractères", ca.K.actionAlertes(() => {}).enfants[0].textContent.length === 60);
+    ca.K.signaler("down");
+    libelle = "z";
+    t("serveur injoignable (DOWN) : aucun bouton (l'action passe par lui)", ca.K.actionAlertes(() => {}) === null);
+    const IAa = lire("js/interfaceAlerts.js");
+    t("fenêtre 🚨 : l'action est posée dans les trois fenêtres, avec leur fermeture",
+      (IAa.match(/_ktaPoserLigneNotif\(modal\.querySelector\("[^"]+"\), function \(\) \{ _fermer\(\); \}\);/g) || []).length === 3 &&
+      /K\.actionAlertes\(fermer\)/.test(IAa));
+    // Publication refusée par l'utilisateur dans une question de l'extension (erreur `annule: true`) : pas un échec.
+    const CCa = lire("js/createConf.js"), MPa = lire("js/majPlan.js");
+    t("publication annulée par l'extension (annule: true) : « Publication annulée », ni échec ni fenêtre d'erreur",
+      /e && e\.annule === true\) dire\(window\.I18n\.t\("ext\.publier\.annule"\)/.test(CCa) &&
+      /er && er\.annule === true\) \{ _toast\(t\("ext\.publier\.annule"\), "info"\); throw er; \}/.test(MPa) &&
+      ["fr", "en", "es"].every((l) => !!JSON.parse(lire("lang/" + l + ".json"))["ext.publier.annule"]));
     m1.ecoutesSw.message({ data: { type: "mktm:notification-ouverte", url: "https://inst.test/" } });
     m1.ecoutesSw.message({ data: { type: "autre-chose" } });
     t("messages du SW relayés en événements de la page (liste fermée)",
@@ -1855,6 +1892,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.w.getRoads = () => [{ uid: "rd_b", points: [{ x: 0, y: 0 }, { x: 10, y: 10 }] },
       { uid: "rd_i", type: "itinerary", points: [{ x: 1, y: 1 }] }];
     c.w.getZones = () => [{ uid: "zn_v", points: [] }]; c.w.getStructures = () => [];
+    // Calques du plan (ZIP, lecture seule) : cherchés APRÈS la session (une copie de session garde l'uid du calque).
+    c.w.getAllEmbeddedPoints = () => [{ uid: "pt_c", x: 50, y: 60, level: 0, nom: "C", tags: ["puits"] },
+      { uid: "pt_a", x: 1, y: 1, nom: "copie" }];
+    c.w.getAllEmbeddedRoads = () => [{ uid: "rd_c", type: "principal", points: [{ x: 0, y: 0 }, { x: 4, y: 4 }, { x: 8, y: 0 }] }];
+    c.w.getAllEmbeddedZones = () => [{ uid: "zn_c", type: "eau", level: 3, points: [{ x: 20, y: 20 }, { x: 30, y: 20 }, { x: 30, y: 30 }] }];
+    c.w.getAllEmbeddedStructures = () => [];
+    c.w.LegendCustomization = { getLabel: (cat, k) => cat + ":" + k };
+    t("objetParUid avant que le plan soit prêt : null", c.K.objetParUid("pt_c") === null);
     t("🩸 plan pas prêt (chargement) : false, la carte ne bouge pas", c.K.allerAObjet("pt_a") === false && vues.length === 0);
     c.w._currentLoadedPlanId = "ext_1";
     c.K.planCharge("ext_1");
@@ -1867,6 +1912,26 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("uid inconnu, itinéraire calculé, objet sans position : false",
       c.K.allerAObjet("pt_zz") === false && c.K.allerAObjet("rd_i") === false && c.K.allerAObjet("zn_v") === false &&
       c.K.allerAObjet(5) === false && vues.length === 3);
+    const oc = c.K.objetParUid("pt_c");
+    t("objetParUid : un point d'un CALQUE du plan est trouvé (nom, ancre, niveaux, famille, source, libellé du type)",
+      !!oc && oc.nom === "C" && oc.x === 50 && oc.y === 60 && oc.niveaux.join() === "0" && oc.famille === "editorPoints" &&
+      oc.source === "calque" && oc.typeLibelle === "icones:puits", oc);
+    const oa = c.K.objetParUid("pt_a"), orc = c.K.objetParUid("rd_c"), oz = c.K.objetParUid("zn_c");
+    t("objetParUid : la session gagne sur le calque ; tracé = sommet du milieu ; zone de calque, ses niveaux",
+      oa.source === "session" && oa.nom === "A" && oa.x === 10 && orc.x === 4 && orc.y === 4 && orc.typeLibelle === "traces:principal" &&
+      oz.famille === "zones" && oz.niveaux.join() === "3" && oz.source === "calque");
+    oc.nom = "modifié";
+    t("objetParUid rend une COPIE ; uid inconnu, itinéraire, objet sans position, forme invalide : null",
+      c.K.objetParUid("pt_c").nom === "C" && c.K.objetParUid("pt_zz") === null && c.K.objetParUid("rd_i") === null &&
+      c.K.objetParUid("zn_v") === null && c.K.objetParUid(null) === null);
+    t("allerAObjet : un objet d'un CALQUE du plan (zone sur un niveau masqué) → niveau changé, carte centrée",
+      c.K.allerAObjet("zn_c") === true && niveaux[2] === 3 && Math.abs(vues[3][1] - 80 / 3) < 1e-9);
+    t("allerAObjet : objet absent du plan affiché + dernière position donnée → carte à cette position, son niveau",
+      c.K.allerAObjet("pt_parti", { x: 7, y: 9, niveaux: [5], nom: "Ancien" }) === true && niveaux[3] === 5 &&
+      vues[4][0] === 91 && vues[4][1] === 7);
+    t("allerAObjet : repli invalide (coordonnées non finies) → false, rien ne bouge",
+      c.K.allerAObjet("pt_parti", { x: "7", y: 9 }) === false && c.K.allerAObjet("pt_parti", { x: NaN, y: 1 }) === false &&
+      vues.length === 5);
     // ── Repères d'une extension (afficherReperes) : calque générique, affichage seulement ──
     t("afficherReperes sans module de rendu : 0, sans erreur", c.K.afficherReperes("taches", [{ id: "t1", uid: "pt_a" }]) === 0);
     const elt = (tag) => ({ tag, attrs: {}, dataset: {}, enfants: [], className: "", textContent: "", title: "",
@@ -1910,6 +1975,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.K.afficherReperes("autre", [{ id: "a", x: 1, y: 1 }]);
     t("liste vide : ce calque seul est effacé", c.K.afficherReperes("taches", []) === 0 && c.w.KtaPresences.reperes("taches").length === 0 &&
       c.w.KtaPresences.reperes("autre").length === 1);
+    const n2 = c.K.afficherReperes("absents", [{ id: "a1", uid: "pt_c" }, { id: "a2", uid: "pt_parti", x: 3, y: 4, niveaux: [1] },
+      { id: "a3", uid: "pt_parti2" }]);
+    const R2 = c.w.KtaPresences.reperes("absents");
+    t("repères : objet d'un calque posé sur lui ; uid absent du plan + dernière position → posé là, marqué absent, ses niveaux ; sans position → écarté",
+      n2 === 2 && R2[0].x === 50 && R2[0].absent === false && R2[1].x === 3 && R2[1].absent === true &&
+      R2[1].niveaux.join() === "1", R2);
+    t("🎨 repère absent : contour pointillé (classe)", /kta-repere-absent/.test(marqueurs[marqueurs.length - 1].o.icon.html.className) &&
+      /\.kta-repere-absent \{ border-style: dashed; \}/.test(lire("css/style.css")));
     c.w.KtaPresences.reinitialiser();
     t("🩸 sortie du plan : tous les calques de repères effacés", c.w.KtaPresences.reperes("autre").length === 0);
     const IA = lire("js/interfaceAlerts.js");

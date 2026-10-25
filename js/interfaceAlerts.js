@@ -15,21 +15,26 @@
 //     clic sur une ligne → opts.onSelect(alert), sinon afficherModaleAlerte.
 //   - afficherModaleAlerte(alert, onClose) → détail coloré (emergency rouge + pulse, warning orange, info bleu).
 //   - afficherModaleUpdateDispo(opts) → proposition de mise à jour (douce / plus tard), appelée par updateChecker.js.
-// Dépend de (window.*) : AlertChecker.dismiss (optionnel), KtaExtensions.ligneNotifications (optionnel),
+// Dépend de (window.*) : AlertChecker.dismiss (optionnel), KtaExtensions.ligneNotifications et actionAlertes
+// (optionnels),
 // mettreAJourCodeSeul, viderCacheAppli, __MKM__.build ;
 // localStorage["myktamap_last_version_data"] (updateChecker.js), ["myktamap_alert_seen_<id>"] (alertChecker.js).
 // Chargé après interface.js (index.html) ; les modales s'ouvrent au runtime, les globales sont alors posées.
 // Alertes : alert.json (`active: true`) lu par alertChecker.js ; « pas d'alerte » = alert.json renommé en .lock
 // (404) ou `"active": false`.
 
-// Ligne « 🔔 notifications » d'une extension (KtaExtensions.ligneNotifications) au pied du corps de la fenêtre 🚨 :
-// null sans extension qui la propose, sur myktamap.fr, ou une fois l'autorisation donnée ou refusée — rien n'est alors
-// ajouté. Posée dans les trois fenêtres (aucune alerte, sélecteur, détail) : en mode plan, l'alerte s'ouvre d'office.
-function _ktaPoserLigneNotif(corps) {
+// Pied du corps de la fenêtre 🚨, dans les trois fenêtres (aucune alerte, sélecteur, détail — en mode plan, l'alerte
+// s'ouvre d'office) : l'action d'une extension (KtaExtensions.actionAlertes, ex. « ➕ Lancer une alerte » ; son toucher
+// ferme la fenêtre par `fermer`), puis la ligne « 🔔 notifications » (KtaExtensions.ligneNotifications). Chacune vaut
+// null sans extension qui la propose, sur myktamap.fr, ou (ligne) une fois l'autorisation donnée ou refusée — rien
+// n'est alors ajouté.
+function _ktaPoserLigneNotif(corps, fermer) {
   const K = window.KtaExtensions;
-  if (!corps || !K || typeof K.ligneNotifications !== "function") return;
-  let l = null;
-  try { l = K.ligneNotifications(); } catch(e) { l = null; }
+  if (!corps || !K) return;
+  let a = null, l = null;
+  try { a = typeof K.actionAlertes === "function" ? K.actionAlertes(fermer) : null; } catch(e) { a = null; }
+  if (a) corps.appendChild(a);
+  try { l = typeof K.ligneNotifications === "function" ? K.ligneNotifications() : null; } catch(e) { l = null; }
   if (l) corps.appendChild(l);
 }
 
@@ -105,7 +110,7 @@ window.afficherModaleAlerteAbsente = function(status) {
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
-  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-absent-corps"));
+  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-absent-corps"), function () { _fermer(); });
 
   function _fermer() { modal.remove(); }
   document.getElementById("kta-alert-absent-ok").addEventListener("click", _fermer);
@@ -192,7 +197,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
-  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-selector-corps"));
+  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-selector-corps"), function () { _fermer(); });
 
   function _fermer() {
     if (modal.parentNode) modal.remove();
@@ -268,7 +273,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
-  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-corps"));
+  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-corps"), function () { _fermer(); });
   // Signal neutre : l'alerte est À L'ÉCRAN (détail ouvert, pas seulement listée dans le sélecteur). Une extension peut
   // en tirer un accusé de lecture ; sans écouteur, rien.
   try {

@@ -257,7 +257,8 @@
         teinte: TEINTES.indexOf(r.teinte) >= 0 ? r.teinte : "neutre",
         symbole: typeof r.symbole === "string" ? Array.from(r.symbole.trim()).slice(0, 2).join("") : "",
         titre: typeof r.titre === "string" ? r.titre.trim().slice(0, 80) : "",
-        nombre: Number.isInteger(r.nombre) && r.nombre > 1 ? Math.min(r.nombre, 99) : 0
+        nombre: Number.isInteger(r.nombre) && r.nombre > 1 ? Math.min(r.nombre, 99) : 0,
+        absent: r.absent === true
       };
     });
   }
@@ -275,7 +276,8 @@
     c.liste.forEach(function (r) {
       var horsNiveau = r.niveaux.length > 0 && !r.niveaux.some(_niveauVisible);
       var el = document.createElement("div");
-      el.className = "kta-repere kta-repere-" + r.teinte + (horsNiveau ? " kta-repere-hors-niveau" : "");
+      el.className = "kta-repere kta-repere-" + r.teinte + (horsNiveau ? " kta-repere-hors-niveau" : "") +
+        (r.absent ? " kta-repere-absent" : "");
       el.dataset.id = r.id;
       el.setAttribute("role", "button");
       el.setAttribute("aria-label", r.titre || r.symbole || r.id);
@@ -307,7 +309,8 @@
     c.groupe.addTo(map);
   }
   // nom : calque de l'extension (a-z, 0-9, _ -, 24 car.) ; liste : [{ id, x, y, niveaux?, teinte?, symbole?, titre?,
-  // nombre? }] ; [] efface ce calque. clic(id) : appelé au toucher d'un repère (erreur ignorée).
+  // nombre?, absent? }] (absent : objet retiré, posé à sa dernière position, contour pointillé) ; [] efface ce
+  // calque. clic(id) : appelé au toucher d'un repère (erreur ignorée).
   function afficherReperes(nom, liste, clic) {
     if (typeof nom !== "string" || !/^[a-z0-9_-]{1,24}$/.test(nom)) return 0;
     if (!_reperes[nom] && Object.keys(_reperes).length >= MAX_CALQUES) return 0;
