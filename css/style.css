@@ -12614,6 +12614,19 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   font-weight: 600;
 }
 
+/* « Prise le … » / « Ajoutée le … » : fond noir dans les deux thèmes, texte blanc comme le reste de l'en-tête. */
+.kta-photo-viewer-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 10px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .kta-photo-viewer-close {
   width: 36px;
   height: 36px;

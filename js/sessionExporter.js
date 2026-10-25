@@ -1494,7 +1494,9 @@
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
                 blob:    blob,
-                fiche:   info.fiche || null
+                fiche:   info.fiche || null,
+                createdAt: info.createdAt,
+                priseLe: info.priseLe
               };
             });
           });
@@ -1553,7 +1555,9 @@
           mime:    rec.mime || "image/jpeg",
           pointId: rec.pointId,
           size:    rec.size || (rec.blob && rec.blob.size) || 0,
-          fiche:   rec.fiche || null   // cf _entreeIndexPhoto
+          fiche:   rec.fiche || null,   // cf _entreeIndexPhoto
+          createdAt: rec.createdAt || null,
+          priseLe: rec.priseLe || null
         };
       });
       return { photos: photos, totalSize: totalSize };
@@ -1580,11 +1584,15 @@
 
   // Entrée de photos/_index.json — UN SEUL format pour Complet, Avancé et Conversion. La fiche du point (nom,
   // position, niveau, type) voyage : une photo dont le point a disparu reste récupérable après réimport.
-  // Champ facultatif (les ZIP sans fiche se relisent). 🔒 Jamais en export anonymisé : _stripperExifPhotos ne
-  // la recopie pas et _anonymiserSession la retire.
+  // `createdAt` (ms, ajout sur l'appareil) et `priseLe` (EXIF de la prise de vue, photos.js) voyagent aussi : la
+  // date reste À CÔTÉ du fichier, qui n'a plus d'EXIF. Champs facultatifs (les anciens ZIP se relisent).
+  // 🔒 Jamais en export anonymisé : _stripperExifPhotos ne recopie ni la fiche ni les dates (une date situe un
+  // passage), _anonymiserSession retire la fiche.
   function _entreeIndexPhoto(p, name) {
     const e = { pointId: p.pointId, mime: p.mime, size: p.size, file: name };
     if (p.fiche && typeof p.fiche === "object") e.fiche = p.fiche;
+    if (Number.isFinite(p.createdAt) && p.createdAt > 0) e.createdAt = p.createdAt;
+    if (typeof p.priseLe === "string" && p.priseLe) e.priseLe = p.priseLe;
     return e;
   }
 
@@ -2415,7 +2423,9 @@
           mime:    p.mime,
           pointId: p.pointId,
           size:    p.size,
-          fiche:   p.fiche || null
+          fiche:   p.fiche || null,
+          createdAt: p.createdAt,
+          priseLe: p.priseLe
         };
       });
       session.photosCount   = photosForPack.length;

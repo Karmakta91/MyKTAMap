@@ -2444,7 +2444,9 @@ function _importerDatalayerZip(zipFile) {
                   pointId: String(info.pointId || ""),
                   mime:    info.mime || blob.type || "image/jpeg",
                   size:    info.size || blob.size,
-                  blob:    blob
+                  blob:    blob,
+                  createdAt: info.createdAt,
+                  priseLe: info.priseLe
                 };
               });
             });
@@ -3534,7 +3536,9 @@ async function _genererZip() {
             blob:    p.blob,
             mime:    p.mime,
             pointId: p.pointId,
-            size:    p.size
+            size:    p.size,
+            createdAt: p.createdAt,
+            priseLe: p.priseLe
           });
           addedFromZip++;
         }
@@ -3556,6 +3560,9 @@ async function _genererZip() {
             size:    rec.size || (rec.blob && rec.blob.size) || 0,
             file:    name
           };
+          // Dates à côté du fichier (photos.js > priseLe), facultatives.
+          if (Number.isFinite(rec.createdAt) && rec.createdAt > 0) idx[rec.id].createdAt = rec.createdAt;
+          if (typeof rec.priseLe === "string" && rec.priseLe) idx[rec.id].priseLe = rec.priseLe;
         });
         photosFolder.file("_index.json", JSON.stringify({
           version: 1,
