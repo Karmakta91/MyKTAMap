@@ -29,7 +29,7 @@ liaisons inter-plan. La conversion, l'export d'un calque rapatrié (`CalqueSessi
 l'assistant « Mettre à jour le plan » (`js/majPlan.js`) et l'export de profil restent refusés.
 
 **« Objets validés seulement »** (installation reliée dont l'extension marque des objets : prise `etatObjet`,
-`community-server-line.md` §3) : une case `KtaExtensions.caseExportValides()` dans les fenêtres d'export de session
+`community-server-line.md` §3) : une case `KtaExtensions.caseExportValides()` (proposée seulement quand un objet de la session est marqué) dans les fenêtres d'export de session
 (Complet, Avancé, KMZ / GPX / GeoJSON), image PNG, PDF et GeoTIFF ; une seule valeur pour toutes, décochée par défaut,
 remise à zéro à chaque plan. Cochée, les objets de session marqués (proposés, refusés) ne partent pas :
 `utils.js > ktaExportEtatsFiltres` dans `_filtrer` (Complet, Avancé, KMZ, GeoJSON ; photos des seuls points retenus),

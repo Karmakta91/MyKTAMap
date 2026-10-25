@@ -2223,10 +2223,17 @@
     if (!_exportValides || !aPrise("etatObjet")) return l;
     return l.filter(function (o) { return !(o && typeof o.uid === "string" && etatObjet(o.uid)); });
   }
-  // Case à poser dans une fenêtre d'export (HTML, texte échappé) ; "" sans prise. Une seule valeur pour toutes les
-  // fenêtres (cochée dans l'une, cochée dans les autres), remise à zéro à chaque plan.
+  // Case à poser dans une fenêtre d'export (HTML, texte échappé) ; "" sans prise ou quand aucun objet de la session
+  // n'est marqué (rien à écarter : la fenêtre reste celle d'avant). Une seule valeur pour toutes les fenêtres (cochée
+  // dans l'une, cochée dans les autres), remise à zéro à chaque plan.
+  function _unObjetMarque() {
+    return ["getEditorPoints", "getRoads", "getZones", "getStructures"].some(function (g) {
+      const l = typeof window[g] === "function" ? (window[g]() || []) : [];
+      return l.some(function (o) { return o && typeof o.uid === "string" && !!etatObjet(o.uid); });
+    });
+  }
   function caseExportValides() {
-    if (!aPrise("etatObjet")) return "";
+    if (!aPrise("etatObjet") || (!_exportValides && !_unObjetMarque())) return "";
     const esc = window.ktaEsc;
     return '<label class="kta-export-valides"><input type="checkbox" data-kta-export-valides="1"' +
       (_exportValides ? " checked" : "") + '> ' + esc(_t("ext.export.validesSeuls")) + '</label>';

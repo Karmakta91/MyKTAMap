@@ -2010,7 +2010,10 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
 
   // ── ÉTAT D'UN OBJET (prise etatObjet) : dessiné et filtré sans être compris ──
   {
-    const c = nouveauContexte(null);
+    const change = [];
+    const c = nouveauContexte(null, { __change: change, document: { readyState: "complete", getElementById: () => null,
+      createElement: () => ({}), head: { appendChild() {} },
+      addEventListener: (type, fn) => { if (type === "change") change.push(fn); } } });
     const K = c.K;
     c.w.ktaEsc = (s) => String(s).replace(/</g, "&lt;");
     const marqueur = () => ({ ecoutes: {}, _icon: { classes: new Set(), classList: { toggle(n, v) { if (v) marqueur.c.add(n); else marqueur.c.delete(n); } } },
@@ -2046,8 +2049,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       K.filtrerEtats(true) === true && rendus.length === 4 && K.passeFiltreEtat({ uid: "pt_p" }) && !K.passeFiltreEtat({ uid: "pt_v" }) &&
       K.filtrerEtats(false) === false && K.passeFiltreEtat({ uid: "pt_v" }) && rendus.length === 8);
     const liste = [{ uid: "pt_p" }, { uid: "pt_v" }, { nom: "sans uid" }];
-    t("export : case décochée → même liste ; cochée → sans les objets marqués",
+    t("export : aucun objet de session marqué → pas de case (fenêtre d'avant)", K.caseExportValides() === "");
+    c.w.getEditorPoints = () => liste;
+    t("export : case décochée → même liste ; un objet marqué → la case est proposée",
       K.filtrerPourExport(liste) === liste && /data-kta-export-valides="1"/.test(K.caseExportValides()));
+    const coche = (v) => c.w.__change.forEach((f) => f({ target: { checked: v, getAttribute: (k) => (k === "data-kta-export-valides" ? "1" : null) } }));
+    coche(true);
+    const filtree = K.filtrerPourExport(liste);
+    t("export : case cochée (écouteur du document) → sans les objets marqués ; décochée → tout",
+      filtree.length === 2 && !filtree.some((o) => o.uid === "pt_p") && /checked/.test(K.caseExportValides()) &&
+      (coche(false), K.filtrerPourExport(liste).length === 3));
     K.filtrerEtats(true);
     (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
     t("🩸 sortie du plan : filtre de la carte et case d'export remis à zéro", K.filtreEtatsActif() === false);
