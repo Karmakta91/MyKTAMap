@@ -11,11 +11,16 @@
 // superoverlay des tuiles V2), Placemark (points), LineString (tracés, jonctions, itinéraire), Polygon
 // (zones), Folders par niveau si multiLevel, Folder Secours, myktamap-extras.json (légende, scénario).
 // Calage : 2 points → similitude (rotation + échelle + translation) ; 3e point facultatif → affine.
+// ⚠️ Deux modèles, choisis par `georef.modele` : "local" = plan tangent à l'ellipsoïde GRS80 (exact) ;
+//   absent = mètres équirectangulaires à constantes fixes, gardé BIT À BIT pour les plans déjà calés
+//   (jusqu'à 20 m d'écart aux coins d'un plan de 6 km, docs/ETUDE_CALAGE_PROJECTION.md).
 // ⚠️ L'axe y plan est INVERSÉ (vers le bas) : on le retourne pour l'aligner sur le Nord GPS.
 // Expose window.KmzExport : genererKmz(opts) → Promise<Blob>, genererKml, get/setCalibration(planId),
-//   buildTransform, buildTransformCalib, planToGps, gpsToPlan (import GPX).
-// Doc : docs/architecture/exports.md · Garde-fous : scripts/check-kml-styles.js,
-//   scripts/check-kmz-superoverlay.js
+//   buildTransform, buildTransformCalib, planToGps, gpsToPlan (import GPX), et la géodésie partagée :
+//   MODELE_LOCAL, EQUI_HISTORIQUE, metresParDegre, decalerGps, distanceM, memesPoints, modeleSaisie,
+//   ecartRecalage, precisionCalage.
+// Doc : docs/architecture/vue-osm.md §2.2 · Garde-fous : scripts/check-calage-projection.js,
+//   scripts/check-kml-styles.js, scripts/check-kmz-superoverlay.js
 // =========================
 
 (function() {
@@ -24,6 +29,131 @@
   const KMZ_CALIB_LS_PREFIX = "myktamap_kmz_calib_";
   const MIN_PLAN_DISTANCE   = 50;   // pixels (sinon precision math degueulasse)
   const MIN_GPS_DISTANCE_M  = 1;    // mètres (sinon AB GPS trop proche/identique)
+
+  // ── Géodésie : plan tangent local (seule source de l'app) ──────────
+  // ⚠️ Seules ces lignes convertissent degrés ⇄ mètres : les autres modules passent par les fonctions exposées
+  // (scripts/check-calage-projection.js refuse les constantes ailleurs dans js/).
+  const MODELE_LOCAL = "local";
+  // Constantes du modèle historique (degré de méridien à l'ÉQUATEUR, 0,5 à 0,6 % trop court sous nos
+  // latitudes) : servent encore aux plans calés sans `modele` et au KML importé (`kmzImport.js`).
+  const EQUI_HISTORIQUE = Object.freeze({ mParDegLng: 111320, mParDegLat: 110540 });
+  const GRS80_A = 6378137, GRS80_F = 1 / 298.257222101;
+  const _E2  = GRS80_F * (2 - GRS80_F);
+  const _B   = GRS80_A * (1 - GRS80_F);
+  const _EP2 = (GRS80_A * GRS80_A - _B * _B) / (_B * _B);
+  const _RAD = Math.PI / 180;
+
+  function _ecef(lat, lng) {
+    const p = lat * _RAD, l = lng * _RAD, sp = Math.sin(p), cp = Math.cos(p);
+    const N = GRS80_A / Math.sqrt(1 - _E2 * sp * sp);
+    return [N * cp * Math.cos(l), N * cp * Math.sin(l), N * (1 - _E2) * sp];
+  }
+
+  // Repère est / nord / haut tangent en (lat0, lng0). Objet de DONNÉES (pas de fonction) : un transform reste
+  // clonable (structuredClone, JSON).
+  function _repere(lat0, lng0) {
+    const p = lat0 * _RAD, l = lng0 * _RAD;
+    return { lat0: lat0, lng0: lng0, O: _ecef(lat0, lng0),
+             sp: Math.sin(p), cp: Math.cos(p), sl: Math.sin(l), cl: Math.cos(l) };
+  }
+
+  // WGS84 → mètres du plan tangent. Le point est pris sur la normale à l'ellipsoïde qui coupe le plan : c'est
+  // l'inverse EXACT de _versGps (une projection orthogonale perdrait d³ / 2R², 1,5 mm à 5 km).
+  function _versMetres(R, lat, lng) {
+    const q = _ecef(lat, lng), p = lat * _RAD, l = lng * _RAD;
+    const nx = Math.cos(p) * Math.cos(l), ny = Math.cos(p) * Math.sin(l), nz = Math.sin(p);
+    const ux = R.cp * R.cl, uy = R.cp * R.sl, uz = R.sp;
+    let dx = q[0] - R.O[0], dy = q[1] - R.O[1], dz = q[2] - R.O[2];
+    const h = -(ux * dx + uy * dy + uz * dz) / (ux * nx + uy * ny + uz * nz);
+    dx += h * nx; dy += h * ny; dz += h * nz;
+    return { e: -R.sl * dx + R.cl * dy, n: -R.sp * R.cl * dx - R.sp * R.sl * dy + R.cp * dz };
+  }
+
+  // Mètres du plan tangent → WGS84 : latitude de Bowring en une passe (écart < 1 µm à ces hauteurs).
+  function _versGps(R, e, n) {
+    const x = R.O[0] - e * R.sl - n * R.sp * R.cl;
+    const y = R.O[1] + e * R.cl - n * R.sp * R.sl;
+    const z = R.O[2] + n * R.cp;
+    const pp = Math.hypot(x, y), th = Math.atan2(z * GRS80_A, pp * _B);
+    const s = Math.sin(th), c = Math.cos(th);
+    return { lat: Math.atan2(z + _EP2 * _B * s * s * s, pp - _E2 * GRS80_A * c * c * c) / _RAD,
+             lng: Math.atan2(y, x) / _RAD };
+  }
+
+  // Mètres au sol par degré à cette latitude (rayons de courbure de l'ellipsoïde).
+  function metresParDegre(lat) {
+    const s = Math.sin(lat * _RAD), w = Math.sqrt(1 - _E2 * s * s);
+    return { lat: GRS80_A * (1 - _E2) / (w * w * w) * _RAD, lng: GRS80_A / w * Math.cos(lat * _RAD) * _RAD };
+  }
+
+  // Le point à `est` / `nord` mètres de (lat, lng), dans le plan tangent en ce point.
+  function decalerGps(lat, lng, est, nord) {
+    return _versGps(_repere(lat, lng), est, nord);
+  }
+
+  // Distance au sol entre deux points WGS84 proches (corde, écart < 1 mm sous 20 km).
+  function distanceM(a, b) {
+    const p = _ecef(a.lat, a.lng), q = _ecef(b.lat, b.lng);
+    return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  }
+
+  // Même calage (A, B et C, C absent des deux côtés compris), à la précision d'une resaisie près.
+  function memesPoints(g1, g2) {
+    if (!g1 || !g2) return false;
+    const pareil = function(p, q) {
+      if (!p || !q) return !p && !q;
+      return [["x", 1e-6], ["y", 1e-6], ["lat", 1e-9], ["lng", 1e-9]].every(function(k) {
+        const a = Number(p[k[0]]), b = Number(q[k[0]]);
+        return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= k[1];
+      });
+    };
+    return pareil(g1.pointA, g2.pointA) && pareil(g1.pointB, g2.pointB) && pareil(g1.pointC, g2.pointC);
+  }
+
+  // Modèle d'un calage qu'on enregistre : "local", sauf si c'est le même calage historique que celui déjà en
+  // place (null) — réenregistrer sans rien changer ne déplace rien en silence.
+  function modeleSaisie(ancien, nouveau) {
+    if (ancien && ancien.modele !== MODELE_LOCAL && memesPoints(ancien, nouveau)) return null;
+    return MODELE_LOCAL;
+  }
+
+  function _coins(W, H) { return [[0, 0], [W, 0], [0, H], [W, H]]; }
+
+  // Déplacement maximal aux 4 coins quand ce calage passe du modèle historique au modèle local (m), ou null.
+  function ecartRecalage(g, W, H) {
+    if (!g || !(W > 0) || !(H > 0)) return null;
+    try {
+      const h = Object.assign({}, g); delete h.modele;
+      const tH = buildTransformCalib(h);
+      const tL = buildTransformCalib(Object.assign({}, h, { modele: MODELE_LOCAL }));
+      let max = 0;
+      _coins(W, H).forEach(function(c) {
+        max = Math.max(max, distanceM(planToGps(tH, c[0], c[1]), planToGps(tL, c[0], c[1])));
+      });
+      return max;
+    } catch (e) { return null; }
+  }
+
+  // Précision du MODÈLE aux coins (m), hors erreur des points saisis : historique = écart au modèle exact ;
+  // local = écart du plan tangent à l'ellipsoïde, d³ / 2R² à la distance d du centre du calage.
+  // → { modele: "local" | "historique", ecartM } ou null.
+  function precisionCalage(g, W, H) {
+    if (!g || !(W > 0) || !(H > 0)) return null;
+    if (g.modele !== MODELE_LOCAL) {
+      const e = ecartRecalage(g, W, H);
+      return e == null ? null : { modele: "historique", ecartM: e };
+    }
+    try {
+      const t = buildTransformCalib(g);
+      let max = 0;
+      _coins(W, H).forEach(function(c) {
+        const ll = planToGps(t, c[0], c[1]), m = _versMetres(t.repere, ll.lat, ll.lng);
+        const d = Math.hypot(m.e, m.n);
+        max = Math.max(max, d * d * d / (2 * GRS80_A * GRS80_A));
+      });
+      return { modele: "local", ecartM: max };
+    } catch (e) { return null; }
+  }
 
   // ── Math affine 2D ──────────
 
@@ -34,10 +164,12 @@
   // similitude + `degenereC: true` (jamais de throw pour C).
   // → { refPlan, refGps, metresParPixel, rotation, latMoyenne, affine?, affineInv?, degenereC? } ;
   // metresParPixel/rotation restent dérivés de A/B même en affine (approximation d'affichage assumée).
-  function buildTransform(planA, planB, gpsA, gpsB, planC, gpsC) {
+  // `modele` : "local" → plan tangent (_buildTransformLocal) ; toute autre valeur → modèle historique.
+  function buildTransform(planA, planB, gpsA, gpsB, planC, gpsC, modele) {
     if (!planA || !planB || !gpsA || !gpsB) {
       throw new Error(window.I18n.t("kmz.err.calibIncomplete"));
     }
+    if (modele === MODELE_LOCAL) return _buildTransformLocal(planA, planB, gpsA, gpsB, planC, gpsC);
 
     // y plan inversé → repère math avec y vers le HAUT (Nord).
     const dxPlan = planB.x - planA.x;
@@ -120,7 +252,82 @@
     return t;
   }
 
-  // Depuis un objet calib/georef { pointA, pointB, pointC? } (points {x, y, lat, lng}).
+  // Cramer sur 3 correspondances : V = a·x + b·yF + c (X, Y = pixels, yF = -y).
+  function _cramer3(X, Y, V, d0) {
+    const da = V[0] * (Y[1] - Y[2]) - Y[0] * (V[1] - V[2]) + (V[1] * Y[2] - V[2] * Y[1]);
+    const db = X[0] * (V[1] - V[2]) - V[0] * (X[1] - X[2]) + (X[1] * V[2] - X[2] * V[1]);
+    const dc = X[0] * (Y[1] * V[2] - Y[2] * V[1]) - Y[0] * (X[1] * V[2] - X[2] * V[1]) +
+               V[0] * (X[1] * Y[2] - X[2] * Y[1]);
+    return [da / d0, db / d0, dc / d0];
+  }
+
+  // Modèle "local" : mêmes refus et même forme de résultat que le modèle historique (metresParPixel, rotation,
+  // refPlan, refGps, latMoyenne, affine?, degenereC?), en mètres du plan tangent au barycentre des points.
+  function _buildTransformLocal(planA, planB, gpsA, gpsB, planC, gpsC) {
+    const dxPlan = planB.x - planA.x;
+    const dyPlan = -(planB.y - planA.y);
+    const lenPlan = Math.hypot(dxPlan, dyPlan);
+    if (lenPlan < MIN_PLAN_DISTANCE) {
+      throw new Error(window.I18n.t("kmz.err.planTooClose",
+        { px: Math.round(lenPlan), min: MIN_PLAN_DISTANCE }));
+    }
+    const _fin = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    let avecC = !!(planC && gpsC && _fin(planC.x) && _fin(planC.y) && _fin(gpsC.lat) && _fin(gpsC.lng));
+    let degenereC = false;
+    const X = avecC ? [planA.x, planB.x, planC.x] : null, Y = avecC ? [-planA.y, -planB.y, -planC.y] : null;
+    let det3 = 0;
+    if (avecC) {
+      det3 = X[0] * (Y[1] - Y[2]) - Y[0] * (X[1] - X[2]) + (X[1] * Y[2] - X[2] * Y[1]);
+      if (Math.abs(det3) < MIN_PLAN_DISTANCE * MIN_PLAN_DISTANCE * 0.05) {
+        avecC = false; degenereC = true;
+        console.warn("[KmzExport] Point C quasi colinéaire avec A-B — ignoré (repli 2 points)");
+      }
+    }
+    const pts = avecC ? [gpsA, gpsB, gpsC] : [gpsA, gpsB];
+    const moy = function(k) { return pts.reduce(function(s, g) { return s + g[k]; }, 0) / pts.length; };
+    let R = _repere(moy("lat"), moy("lng"));
+    let mA = _versMetres(R, gpsA.lat, gpsA.lng), mB = _versMetres(R, gpsB.lat, gpsB.lng);
+    let mC = avecC ? _versMetres(R, gpsC.lat, gpsC.lng) : null;
+    if (avecC) {
+      const detG = (mB.e - mA.e) * (mC.n - mA.n) - (mC.e - mA.e) * (mB.n - mA.n);
+      if (Math.abs(detG) < MIN_GPS_DISTANCE_M * MIN_GPS_DISTANCE_M * 0.05) {
+        avecC = false; degenereC = true;
+        console.warn("[KmzExport] Points GPS quasi colinéaires — C ignoré (repli 2 points)");
+        R = _repere((gpsA.lat + gpsB.lat) / 2, (gpsA.lng + gpsB.lng) / 2);
+        mA = _versMetres(R, gpsA.lat, gpsA.lng); mB = _versMetres(R, gpsB.lat, gpsB.lng); mC = null;
+      }
+    }
+    const dxGps = mB.e - mA.e, dyGps = mB.n - mA.n;
+    const lenGps = Math.hypot(dxGps, dyGps);
+    if (lenGps < MIN_GPS_DISTANCE_M) {
+      throw new Error(window.I18n.t("kmz.err.gpsTooClose"));
+    }
+    const t = {
+      modele:         MODELE_LOCAL,
+      repere:         R,
+      refPlan:        { x: planA.x, y: planA.y },
+      refGps:         { lat: gpsA.lat, lng: gpsA.lng },
+      refMetres:      mA,
+      metresParPixel: lenGps / lenPlan,
+      rotation:       Math.atan2(dyGps, dxGps) - Math.atan2(dyPlan, dxPlan),
+      latMoyenne:     R.lat0
+    };
+    if (degenereC) t.degenereC = true;
+    if (avecC) {
+      const sE = _cramer3(X, Y, [mA.e, mB.e, mC.e], det3), sN = _cramer3(X, Y, [mA.n, mB.n, mC.n], det3);
+      const aff = { a: sE[0], b: sE[1], e: sE[2], c: sN[0], d: sN[1], f: sN[2] };
+      aff.det = aff.a * aff.d - aff.b * aff.c;
+      if (!Number.isFinite(aff.det) || Math.abs(aff.det) < 1e-12) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Affine non inversible — C ignoré (repli 2 points)");
+        return t;
+      }
+      t.affine = aff;
+    }
+    return t;
+  }
+
+  // Depuis un objet calib/georef { pointA, pointB, pointC?, modele? } (points {x, y, lat, lng}).
   // pointC incomplet → ignoré (warn) ; A/B invalides → même throw que buildTransform.
   function buildTransformCalib(g) {
     if (!g || !g.pointA || !g.pointB) {
@@ -136,12 +343,27 @@
       { x: g.pointA.x, y: g.pointA.y }, { x: g.pointB.x, y: g.pointB.y },
       { lat: g.pointA.lat, lng: g.pointA.lng }, { lat: g.pointB.lat, lng: g.pointB.lng },
       pC ? { x: pC.x, y: pC.y } : null,
-      pC ? { lat: pC.lat, lng: pC.lng } : null
+      pC ? { lat: pC.lat, lng: pC.lng } : null,
+      g.modele
     );
   }
 
   function planToGps(t, x, y) {
     if (!t) return null;
+    if (t.modele === MODELE_LOCAL) {
+      let E, N;
+      if (t.affine) {
+        const f = t.affine, yF = -y;
+        E = f.a * x + f.b * yF + f.e;
+        N = f.c * x + f.d * yF + f.f;
+      } else {
+        const dx = x - t.refPlan.x, dy = -(y - t.refPlan.y);
+        const cosR = Math.cos(t.rotation), sinR = Math.sin(t.rotation);
+        E = t.refMetres.e + (dx * cosR - dy * sinR) * t.metresParPixel;
+        N = t.refMetres.n + (dx * sinR + dy * cosR) * t.metresParPixel;
+      }
+      return _versGps(t.repere, E, N);
+    }
     // Affine : (x, -y) → mètres E/N relatifs à refGps → degrés (exact sur A, B, C).
     if (t.affine) {
       const f = t.affine, yF = -y;
@@ -169,6 +391,18 @@
   // Inverse exact de planToGps (import GPX : WGS84 → repère plan).
   function gpsToPlan(t, lat, lng) {
     if (!t) return null;
+    if (t.modele === MODELE_LOCAL) {
+      const m = _versMetres(t.repere, lat, lng);
+      if (t.affine) {
+        const f = t.affine;
+        const x  = (f.d * (m.e - f.e) - f.b * (m.n - f.f)) / f.det;
+        const yF = (f.a * (m.n - f.f) - f.c * (m.e - f.e)) / f.det;
+        return { x: x, y: -yF };
+      }
+      const dxR = (m.e - t.refMetres.e) / t.metresParPixel, dyR = (m.n - t.refMetres.n) / t.metresParPixel;
+      const cosR = Math.cos(-t.rotation), sinR = Math.sin(-t.rotation);
+      return { x: t.refPlan.x + (dxR * cosR - dyR * sinR), y: t.refPlan.y - (dxR * sinR + dyR * cosR) };
+    }
     // Inverse affine exacte (det non nul vérifié à la construction).
     if (t.affine) {
       const f = t.affine;
@@ -1172,6 +1406,15 @@
     buildTransformCalib: buildTransformCalib,
     planToGps:       planToGps,
     gpsToPlan:       gpsToPlan,    // inverse pour import GPX
+    MODELE_LOCAL:    MODELE_LOCAL,
+    EQUI_HISTORIQUE: EQUI_HISTORIQUE,
+    metresParDegre:  metresParDegre,
+    decalerGps:      decalerGps,
+    distanceM:       distanceM,
+    memesPoints:     memesPoints,
+    modeleSaisie:    modeleSaisie,
+    ecartRecalage:   ecartRecalage,
+    precisionCalage: precisionCalage,
     getCalibration:  getCalibration,
     setCalibration:  setCalibration,
     genererKml:      genererKml,

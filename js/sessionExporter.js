@@ -3394,11 +3394,15 @@
       }
     };
     // 🩸 Cette modale n'édite que A/B : le pointC stocké (Réglages, Générateur) est PRÉSERVÉ, sinon chaque
-    // enregistrement écraserait l'affine 3 points.
+    // enregistrement écraserait l'affine 3 points. Le modèle aussi : même calage historique → gardé tel quel,
+    // tout autre calage → "local" (KmzExport.modeleSaisie).
     try {
       const saved = (window.KmzExport && window.KmzExport.getCalibration)
                      ? window.KmzExport.getCalibration(_kmzCurrentPlanId()) : null;
       if (saved && saved.pointC) calib.pointC = saved.pointC;
+      const mod = (typeof window.KmzExport.modeleSaisie === "function")
+        ? window.KmzExport.modeleSaisie(saved, calib) : null;
+      if (mod) calib.modele = mod;
     } catch(e) {}
     return calib;
   }

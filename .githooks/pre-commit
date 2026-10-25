@@ -90,6 +90,9 @@ node scripts/check-icon-catalog.js || exit $?
 # Lambert 93 de l'import SIG, verifie par ses proprietes definitoires (aucune table recopiee).
 node scripts/check-lambert93.js || exit $?
 
+# Calage A / B (C) : modele local (plan tangent) exact, modele historique fige bit a bit, une seule source.
+node scripts/check-calage-projection.js || exit $?
+
 # GeoTIFF : repere, tiepoint, 3857, LZW et refus nommes, sur fixtures construites octet par octet.
 node scripts/check-geotiff.js || exit $?
 

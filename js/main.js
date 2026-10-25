@@ -1108,6 +1108,21 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   await lancerApplication();
 }
 
+// Même calage (mêmes points) des deux côtés, modèles différents : le modèle "local" gagne, dans les deux sens.
+// 🩸 Sans ça, un plan régénéré au modèle local garde l'ancien calage du localStorage (qui a la priorité), et un
+// plan recalé dans les Réglages repasse au modèle historique pour la Vue OSM et le Secours, qui lisent
+// PLAN_CONFIG.plan.georef en premier. PLAN_CONFIG est corrigé en MÉMOIRE seulement (le ZIP n'est pas réécrit).
+function _accorderModeleCalage(planId, dejaLa, georef) {
+  const KE = window.KmzExport;
+  if (!KE || typeof KE.memesPoints !== "function" || !KE.memesPoints(dejaLa, georef)) return;
+  const LOCAL = KE.MODELE_LOCAL;
+  if (dejaLa.modele === LOCAL && georef.modele !== LOCAL) {
+    georef.modele = LOCAL;
+  } else if (georef.modele === LOCAL && dejaLa.modele !== LOCAL) {
+    KE.setCalibration(planId, Object.assign({}, dejaLa, { modele: LOCAL }));
+  }
+}
+
 // Calibrage GPS embarqué (plan-config.json > plan.georef) → KmzExport.setCalibration : pré-remplit Export
 // externe et Réglages > Géoréférencement. Idempotent ; un calibrage local saisi par l'user a la priorité.
 function _propagerGeorefVersKmzExport(planId) {
@@ -1128,8 +1143,10 @@ function _propagerGeorefVersKmzExport(planId) {
             && pt.x >= -1 && pt.x <= W + 1 && pt.y >= -1 && pt.y <= H + 1;
       };
       // Dimensions inconnues : on ne peut rien juger, on respecte l'existant.
-      if (!Number.isFinite(W) || !Number.isFinite(H)) return;
-      if (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB)) return;
+      if (!Number.isFinite(W) || !Number.isFinite(H) || (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB))) {
+        _accorderModeleCalage(planId, dejaLa, georef);
+        return;
+      }
       console.warn("[Main] 🌐 Calibrage périmé pour planId=" + planId +
                    " (points hors du plan " + W + "×" + H + ") → remplacé par plan.georef.");
     }

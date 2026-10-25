@@ -1093,9 +1093,9 @@ window.proposerProfondeurs  = proposerProfondeurs;
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,
-// un vecteur vers la droite de l'image devient plein Nord), puis mètres → degrés en approximation locale
-// (1° lat ≈ 111 320 m, lng corrigé par cos(lat), erreur < 0,1 % sous 10 km).
-// ⚠️ Refus, pas de clamp : null si A incomplet, échelle ≤ 0 ou non finie, |lat| > 85° (cos → 0).
+// un vecteur vers la droite de l'image devient plein Nord), puis mètres → degrés par le plan tangent du moteur
+// (`KmzExport.decalerGps`, le même que le calage "local" : B tombe à la distance saisie, au mm près).
+// ⚠️ Refus, pas de clamp : null si A incomplet, échelle ≤ 0 ou non finie, |lat| > 85°, moteur absent.
 // Rend { x, y, lat, lng, estimated: true }, format EXACT d'un point de calibration (Vue OSM, KMZ/GPX, Secours le
 // consomment tel quel) ; `estimated` est affiché par les UI. Garde-fou : check-georef-estimation.js.
 function ktaEstimerPointB(pointA, pixelB, scalePxM, northOffsetDeg) {
@@ -1119,11 +1119,11 @@ function ktaEstimerPointB(pointA, pixelB, scalePxM, northOffsetDeg) {
   const estVrai  = estPlan * Math.cos(theta) - nordPlan * Math.sin(theta);
   const nordVrai = estPlan * Math.sin(theta) + nordPlan * Math.cos(theta);
 
-  const M_PAR_DEG = 111320;
-  const lat = alat + nordVrai / M_PAR_DEG;
-  const lng = alng + estVrai / (M_PAR_DEG * Math.cos(alat * Math.PI / 180));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { x: bx, y: by, lat: lat, lng: lng, estimated: true };
+  const KE = window.KmzExport;
+  if (!KE || typeof KE.decalerGps !== "function") return null;
+  const g = KE.decalerGps(alat, alng, estVrai, nordVrai);
+  if (!g || !Number.isFinite(g.lat) || !Number.isFinite(g.lng)) return null;
+  return { x: bx, y: by, lat: g.lat, lng: g.lng, estimated: true };
 }
 window.ktaEstimerPointB = ktaEstimerPointB;
 

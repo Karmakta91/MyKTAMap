@@ -13,7 +13,8 @@
 //   PlanarConfig 1, 8 bits, LZW / Deflate / brut, predictor 1-2. Tout le reste est REFUSÉ EN LE NOMMANT
 //   (clé tiff.err.*), jamais deviné en silence. Les tuiles sont lues parce que l'export GeoTIFF de
 //   l'app (js/geotiffExport.js) en écrit, comme QGIS en TILED=YES.
-// 🩸 Projections : window.SigImport.L93 / .WEBMERC uniquement, aucune copie locale des maths.
+// 🩸 Projections : window.SigImport.L93 / .WEBMERC, mètres par degré : window.KmzExport.metresParDegre ;
+//   aucune copie locale des maths. Le calage produit est au modèle "local" (plan tangent, exact).
 // Expose : window.TiffGeoref { estTiff, lire, EXT_ACCEPTEES, _interne } — 100 % local.
 // Garde-fous : scripts/check-geotiff.js, scripts/check-export-sig.js
 
@@ -319,14 +320,20 @@
   // du pixel, ramenés en mètres au sol, ont la même longueur et sont perpendiculaires, à TOLERANCE_SIMILITUDE
   // près, sans miroir. Au-delà (image étirée ou cisaillée) : refus nommé (tiff.err.rotation).
   // ⚠️ La tolérance ne perd rien : `calage` pose 3 coins (A, B, C) que l'affine de l'app reproduit
-  // exactement. 1 % couvre les GeoTIFF Lambert 93 exportés par l'app (≤ 0,4 % mesurés : son calage
-  // équirectangulaire n'est pas conforme) et refuse une vraie déformation.
+  // exactement. 1 % couvre les GeoTIFF exportés depuis un plan au modèle historique (≤ 0,4 % mesurés : ce
+  // calage équirectangulaire n'est pas conforme) et refuse une vraie déformation.
   function _matrice(t, epsg) {
     const mt = t[T.TRANSFORM];
     if (!mt || mt.length < 8) return null;
-    // Degrés → mètres au sol, mêmes constantes que KmzExport.buildTransform (latitude du pixel (0, 0)).
+    // Degrés → mètres au sol à la latitude du pixel (0, 0), rayons de l'ellipsoïde (KmzExport.metresParDegre).
     let kx = 1, ky = 1;
-    if (epsg === 4326 || epsg === 4171) { kx = 111320 * Math.cos(mt[7] * Math.PI / 180); ky = 110540; }
+    if (epsg === 4326 || epsg === 4171) {
+      if (!window.KmzExport || typeof window.KmzExport.metresParDegre !== "function") {
+        throw new Error("tiff.err.sigImportManquant");
+      }
+      const k = window.KmzExport.metresParDegre(mt[7]);
+      kx = k.lng; ky = k.lat;
+    }
     const ax = mt[0] * kx, ay = mt[4] * ky, bx = mt[1] * kx, by = mt[5] * ky;
     const s1 = Math.hypot(ax, ay), s2 = Math.hypot(bx, by);
     const ref = Math.max(Math.abs(mt[0]), Math.abs(mt[5])) || 1;
@@ -421,9 +428,12 @@
     }
     const mParPx = (degres || sx == null) ? null : sx * k;
 
+    // ⚠️ "local" = KmzExport.MODELE_LOCAL (check-calage-projection.js le confronte) : le fichier décrit le
+    // terrain, le plan tangent le reproduit à moins de 0,5 m aux coins d'un plan de 6 km.
     const georef = {
       pointA: { x: 0, y: h, lat: llSw.lat, lng: llSw.lng },
-      pointB: { x: w, y: 0, lat: llNe.lat, lng: llNe.lng }
+      pointB: { x: w, y: 0, lat: llNe.lat, lng: llNe.lng },
+      modele: "local"
     };
     if (mat && mat.tournee) {
       const nw = monde(0, 0), llNw = versLl(nw.X, nw.Y);

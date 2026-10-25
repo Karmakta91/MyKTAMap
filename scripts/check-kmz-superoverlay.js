@@ -22,10 +22,12 @@ const KE = win.KmzExport;
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
-// Plan synthétique 1024×768, calibration plein nord, 1024 px = 1024 m.
+// Plan synthétique 1024×768, calibration plein nord au modèle "local" (tout nouveau calage), 1024 px = 1024 m.
+const bEst = KE.decalerGps(48.5, 2.5, 1024, 0);
 const calib = {
-  pointA: { x: 0,    y: 0, lat: 48.86, lng: 2.33 },
-  pointB: { x: 1024, y: 0, lat: 48.86, lng: 2.33 + 1024 / (111320 * Math.cos(48.86 * Math.PI / 180)) }
+  pointA: { x: 0,    y: 0, lat: 48.5, lng: 2.5 },
+  pointB: { x: 1024, y: 0, lat: bEst.lat, lng: bEst.lng },
+  modele: KE.MODELE_LOCAL
 };
 const T = KE.buildTransformCalib(calib);
 

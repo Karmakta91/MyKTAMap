@@ -12,9 +12,9 @@
 //   · sinon ModelTransformation (34264) : l'affine exacte, rotation comprise (GDAL / QGIS la lisent ;
 //     l'import de l'app la refuse en la nommant, tiff.err.rotation).
 //   GeoKeys : Lambert 93 → ProjectedCSTypeGeoKey 2154 ; WGS84 → GeographicTypeGeoKey 4326 ; PixelIsArea.
-// ⚠️ L'affine est AJUSTÉE (moindres carrés sur une grille) : en WGS84 elle est exacte (planToGps est
-//   affine en degrés) ; en Lambert 93 la courbure laisse un écart, mesuré et rendu (`residuM`, ~0,2 m sur
-//   2,5 km, ~0,75 m sur 5 km), dit à l'utilisateur au-delà de 0,5 m.
+// ⚠️ L'affine est AJUSTÉE (moindres carrés sur une grille) : l'écart est mesuré et rendu (`residuM`), dit à
+//   l'utilisateur au-delà de 0,5 m. Calage "local" (plan tangent) : ~0,4 m sur 3 km en WGS84, < 0,1 m en
+//   Lambert 93 ; calage historique : 0 en WGS84 (affine en degrés), ~0,75 m sur 5 km en Lambert 93.
 // 🩸 Jamais l'image entière en mémoire : rendu par blocs (MyKTAMapExporterGenererCanvas + `region`, tuiles
 //   V2 lues par bloc), découpés en tuiles compressées aussitôt. Taille plafonnée : < 4 Go (pas de BigTIFF),
 //   64 Mpx sur téléphone, 128 Mpx sans Deflate ; la résolution produite est annoncée avant l'export.
@@ -217,7 +217,7 @@
       for (let jb = 0; jb < M; jb++) {
         const i = ia / (M - 1) * outW, j = jb / (M - 1) * outH, q = proj(i, j);
         let dX = a * i + b * j + c - q.X, dY = d * i + e * j + f - q.Y;
-        if (epsg === EPSG_WGS84) { dX *= 111320 * Math.cos(q.lat * Math.PI / 180); dY *= 110540; }
+        if (epsg === EPSG_WGS84) { const k = KE.metresParDegre(q.lat); dX *= k.lng; dY *= k.lat; }
         residuM = Math.max(residuM, Math.hypot(dX, dY));
       }
     }

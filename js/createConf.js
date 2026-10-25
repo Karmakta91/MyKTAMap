@@ -103,6 +103,11 @@ let _plannerSourceZip = null;
 // Modifier depuis `config.plan.customLegend`.
 let _plannerPlanLegend = null;
 
+// Calage du plan ouvert en « Modifier » (null : nouveau plan, ou calage remplacé par un import GeoTIFF).
+// ⚠️ Sert à `KmzExport.modeleSaisie` : réenregistrer un plan au calage historique SANS toucher ses points le
+// garde tel quel (aucun objet ne bouge) ; tout autre calage part au modèle "local".
+let _plannerGeorefCharge = null;
+
 // Légende propre à l'écran « Convertir depuis SIG ». Séparée de `_plannerPlanLegend` : mélanger les deux
 // ferait fuiter les entrées d'un écran dans le plan de l'autre.
 let _sigPlanLegend = null;
@@ -707,6 +712,7 @@ function afficherPlanner() {
   _plannerMaj        = null;
   _plannerSourceZip  = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
+  _plannerGeorefCharge = null;
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
   _appliquerPlannerMode(_lirePlannerMode());
@@ -815,6 +821,7 @@ function afficherPlanner() {
                     ? window.formatGpsCoords
                     : function(a, b) { return a + ", " + b; };
         const g = res.georef;
+        _plannerGeorefCharge = null;   // calage du fichier : nouveau, donc au modèle "local"
         let taillePlus = "";
         const put = function(id, v) { const el = document.getElementById(id); if (el) el.value = v; };
         put("pl_geo_A_x", g.pointA.x); put("pl_geo_A_y", g.pointA.y);
@@ -1766,6 +1773,8 @@ function _preRemplirFormulaire(config) {
 
   // Géoréf : préremplissage si `plan.georef = { pointA, pointB }`. Stockage à plat {x, y, lat, lng},
   // affichage combiné « lat, lng » dans pl_geo_A_coords.
+  _plannerGeorefCharge = (plan.georef && plan.georef.pointA && plan.georef.pointB)
+    ? JSON.parse(JSON.stringify(plan.georef)) : null;
   if (plan.georef && plan.georef.pointA && plan.georef.pointB) {
     const gA = plan.georef.pointA;
     const gB = plan.georef.pointB;
@@ -3813,6 +3822,9 @@ async function _genererZip() {
       try {
         const _g = { pointA: _geoA, pointB: _geoB };
         if (_cComplet) _g.pointC = _geoC;
+        const _mod = (window.KmzExport && typeof window.KmzExport.modeleSaisie === "function")
+          ? window.KmzExport.modeleSaisie(_plannerGeorefCharge, _g) : null;
+        if (_mod) _g.modele = _mod;
         if (window.KmzExport && typeof window.KmzExport.buildTransformCalib === "function") {
           const _t = window.KmzExport.buildTransformCalib(_g);
           if (_g.pointC && _t.degenereC) {

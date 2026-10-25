@@ -227,7 +227,9 @@
     const pB_gps  = { lat: opts.bounds.latMax, lng: opts.bounds.lngMax };
     let transform;
     try {
-      transform = window.KmzExport.buildTransform(pA_plan, pB_plan, pA_gps, pB_gps);
+      // Calage "local" (plan tangent) : les objets sont posés par CE transform, l'aller-retour reste exact.
+      transform = window.KmzExport.buildTransform(pA_plan, pB_plan, pA_gps, pB_gps, null, null,
+                                                  window.KmzExport.MODELE_LOCAL);
       // Dimensions de l'image dans le transform (lues par ingestParsed).
       transform.imageW = W;
       transform.imageH = H;
@@ -279,7 +281,8 @@
         // Calage GPS embarqué : propagé à KmzExport au chargement (main.js > _propagerGeorefVersKmzExport).
         georef: {
           pointA: { x: pA_plan.x, y: pA_plan.y, lat: pA_gps.lat, lng: pA_gps.lng },
-          pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng }
+          pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng },
+          modele:  window.KmzExport.MODELE_LOCAL
         }
       },
       // Tracking centré sur le plan (W/2 × H/2) plutôt qu'en 0/0, coin haut-gauche (comme createConf.js > _genererZip).

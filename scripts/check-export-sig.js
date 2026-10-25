@@ -54,11 +54,9 @@ if (!L93 || !TG || !KE || !GT || !GT._interne || !GJ) {
 }
 const I = GT._interne;
 
-// Distance au sol (m) entre deux points WGS84 proches.
-function distM(a, b) {
-  const lat = (a.lat + b.lat) / 2;
-  return Math.hypot((a.lat - b.lat) * 110540, (a.lng - b.lng) * 111320 * Math.cos(lat * Math.PI / 180));
-}
+// Distance au sol (m) entre deux points WGS84 proches : celle du moteur du calage (corde de l'ellipsoïde,
+// vérifiée par check-calage-projection.js), pas les constantes du modèle historique.
+function distM(a, b) { return KE.distanceM(a, b); }
 
 (async function () {
   // ── T. Le fichier TIFF ──────────────────────────────────────────────────
@@ -213,8 +211,23 @@ function distM(a, b) {
     verif("C3 (" + epsg + "). écart max de l'affine ajustée annoncé et < " + plafondResidu + " m (" +
       (e ? e.g.residuM.toFixed(3) : "?") + " m sur un plan de ~2,5 km)",
       !boum && e.g.residuM >= 0 && e.g.residuM < plafondResidu,
-      "residuM = " + (e && e.g.residuM) + " m. En WGS84 l'affine est exacte (planToGps est affine en degrés) ; " +
+      "residuM = " + (e && e.g.residuM) + " m. En WGS84 l'affine est exacte au modèle historique (en degrés) ; " +
       "en Lambert 93 c'est la courbure de la projection, à annoncer, jamais à cacher.");
+  }
+
+  // C3b. Même calage au modèle "local" (tout nouveau calage) : l'affine en Lambert 93 devient quasi exacte, celle
+  // en degrés porte la courbure, mesurée et annoncée (docs/ETUDE_CALAGE_PROJECTION.md §2.6).
+  for (const epsg of [2154, 4326]) {
+    let e = null, boum = null;
+    try { e = await exporterEtRelire(Object.assign({}, calTourne, { modele: KE.MODELE_LOCAL }), epsg, 0.1); }
+    catch (x) { boum = x; }
+    const plafond = epsg === 2154 ? 0.05 : 0.5;
+    const coins = e ? [[0, 0], [PW, 0], [0, PH], [PW, PH]].map(c =>
+      distM(e.lu(c[0] * 0.1, c[1] * 0.1), KE.planToGps(e.tr, c[0], c[1]))) : [];
+    verif("C3b (" + epsg + ", calage local). résidu de l'affine < " + plafond + " m (" +
+      (e ? e.g.residuM.toFixed(3) : "?") + " m), 4 coins relus à < 1 m",
+      !boum && e.tr.modele === KE.MODELE_LOCAL && e.g.residuM < plafond && coins.every(d => d < 1),
+      boum ? boum.message : "coins " + coins.map(d => d.toFixed(3)).join(" / ") + " m.");
   }
 
   {
