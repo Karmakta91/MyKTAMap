@@ -270,6 +270,7 @@
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">${T("imgexport.annotations.titre")}</div>
               <div id="kta-export-annotations"></div>
+              ${(window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "")}
             </div>
 
             <!-- 🏗️ Niveaux (depuis v148, conditionnel sur multiLevel ON) -->
@@ -522,7 +523,7 @@
     let zones = [];
 
     if (layerCfg.id === "editor") {
-      points = window.getEditorPoints ? window.getEditorPoints() : [];
+      points = window.ktaExportEtatsFiltres(window.getEditorPoints ? window.getEditorPoints() : []);
       // Le calque éditeur n'a pas de roads/zones embarquées (gérées par la session).
     } else {
       try {
@@ -1883,7 +1884,7 @@
 
     // ── Zones (avant les tracés) ──
     if (opts.ann.zones && window.getZones) {
-      const zones = window.getZones();
+      const zones = window.ktaExportEtatsFiltres(window.getZones());
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
       // `inaccessible` en aplat rouge foncé (hachures SVG non portables au canvas) : repli de { flat: true }.
@@ -1922,7 +1923,7 @@
     // ── Structures (piliers, murs, fronts) ── calquées sur les zones, styles de structures.js >
     // STRUCTURE_STYLES ; polygone (piliers, mur) ou polyligne (fronts).
     if (opts.ann.structures && window.getStructures) {
-      const structures = window.getStructures();
+      const structures = window.ktaExportEtatsFiltres(window.getStructures());
       // Fronts : polylignes épaisses sans contour (`weight` converti par `scale`).
       // Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau (comme
       // structures.js > renderStructures).
@@ -2044,7 +2045,7 @@
       let embeddedStructures = [];
 
       if (layerCfg.id === "editor") {
-        if (opts.ann.points && window.getEditorPoints) pts = window.getEditorPoints();
+        if (opts.ann.points && window.getEditorPoints) pts = window.ktaExportEtatsFiltres(window.getEditorPoints());
       } else {
         try {
           const r = await fetch(layerCfg.file);
@@ -2213,7 +2214,7 @@
     // ⚠️ Type "itinerary" exclu : c'est un overlay calculé par Pathfinder. Sinon son repli "white" effacerait
     // les segments du réseau sous l'itinéraire.
     if (opts.ann.roads && window.getRoads) {
-      const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
+      const roads = window.ktaExportEtatsFiltres(window.getRoads()).filter(function(r) { return r.type !== "itinerary"; });
       // Tri Z par level ascendant en multi-niveau (comme road.js > renderRoads).
       const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       if (_mlOnExp) {

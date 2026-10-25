@@ -567,6 +567,17 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   0, rien dessiné ; `[]` efface ce calque ; la sortie du plan les efface tous (`KtaPresences.reinitialiser`). Rendu :
   `js/ktaPresences.js > afficherReperes` (pastille 30 px ancrée en haut à droite de l'objet, l'icône du point reste
   visible). Sans extension : rien n'appelle la prise, aucun calque. Tests : `check-extensions.js`.
+- **État d'un objet** (ex. relecture : proposé / refusé) : prise `etatObjet(uid) → "propose" | "refuse" | null`
+  (synchrone, information ; autre valeur, erreur = null). L'app ne comprend pas l'état, elle le **dessine** sur les objets
+  de **session** (couches de « Mes annotations ») : marqueur → classe `.kta-etat-propose` / `.kta-etat-refuse` (contour
+  pointillé accent / erreur, reposée quand Leaflet recrée l'icône) ; tracé, zone, structure → pointillé (`10 6` /
+  `2 6`, renderer canvas : pas de CSS), le pointillé de son type rendu quand l'état disparaît. Les rendus marquent leurs
+  couches par `KtaExtensions.marquerCouche(couche, uid, pointilleBase)`. Actions de l'extension :
+  `rafraichirEtats()` (redessine en place, aucune fiche fermée ; → nombre marqué), `filtrerEtats(bool)` (carte : seuls
+  les objets de session marqués restent, calques du plan inchangés ; relance les rendus de session ; → état), lu par
+  `passeFiltreEtat(o)` / `filtreEtatsActif()`. Exports : case « Objets validés seulement » (`caseExportValides()`,
+  `filtrerPourExport(liste)`, `exports.md` §4). Filtre et case remis à zéro à la sortie du plan. Sans extension : aucun
+  style, filtre impossible, aucune case, exports intacts. Tests : `check-extensions.js`.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
   changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).

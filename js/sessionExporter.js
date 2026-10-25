@@ -569,7 +569,7 @@
   // Photos à embarquer : celles des points retenus quand un filtre agit (sinon celles d'objets écartés
   // partiraient), toutes sinon (null).
   function _idsPhotosRetenues(points) {
-    return _filtreActif() ? _idsPhotosDe(points) : null;
+    return (_filtreActif() || window.ktaExportEtatsFiltres(points) !== points) ? _idsPhotosDe(points) : null;
   }
   // Clés de photos de ces points : une photo est rangée sous l'uid du point, ou sous son nom (anciennes).
   function _idsPhotosDe(points) {
@@ -577,9 +577,11 @@
       return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")];
     })));
   }
+  // Puis, case « validés seulement » cochée (extension) : sans les objets marqués, quel que soit l'onglet.
   function _filtrer(liste) {
     const l = Array.isArray(liste) ? liste : [];
-    return _filtreActif() ? l.filter(_garder) : l;
+    const f = _filtreActif() ? l.filter(_garder) : l;
+    return (_activeTab === "full" || _activeTab === "advanced" || _activeTab === "extern") ? window.ktaExportEtatsFiltres(f) : f;
   }
   function _brut() {
     return [].concat(window.getEditorPoints ? (window.getEditorPoints() || []) : [],
@@ -603,7 +605,7 @@
         }).join("");
     }
     const retenus = _filtreActif() ? tous.filter(_garder).length : tous.length;
-    return '<div class="kta-ses-filtre" id="kta-ses-filtre">' +
+    return '<div class="kta-ses-filtre" id="kta-ses-filtre">' + (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
         '<div class="kta-ses-filtre-titre">🔎 ' + window.ktaEsc(t("export.filtre.titre")) + '</div>' +
         '<div class="kta-ses-filtre-ligne">' +
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
@@ -621,6 +623,8 @@
   }
   function _brancherFiltre(modal) {
     modal.addEventListener("change", function(e) {
+      // Case « validés seulement » : la valeur est notée par ktaExtensions.js (écouteur du document, après celui-ci).
+      if (e.target && e.target.getAttribute && e.target.getAttribute("data-kta-export-valides")) { setTimeout(_renderTab, 0); return; }
       const id = e.target && e.target.id;
       if (id === "ses_filtre_du") _filtre.du = e.target.value || "";
       else if (id === "ses_filtre_au") _filtre.au = e.target.value || "";
@@ -3088,6 +3092,7 @@
         : "") +
 
       _renderCalibrageCommun() +
+      (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
 
       // Sélecteur de format (absent quand la tuile du lanceur l'a déjà choisi)
       '<div class="kta-kmz-section"' + (_formatImpose ? ' style="display:none;"' : '') + '>' +

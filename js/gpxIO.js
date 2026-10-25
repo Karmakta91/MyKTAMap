@@ -118,11 +118,11 @@
     const planCustomLegend = (opts.planCustomLegend && typeof opts.planCustomLegend === "object")
                               ? opts.planCustomLegend : null;
 
-    const sessionPoints   = incPoints && window.getEditorPoints ? (window.getEditorPoints() || []) : [];
+    const sessionPoints   = incPoints && window.getEditorPoints ? window.ktaExportEtatsFiltres(window.getEditorPoints() || []) : [];
     const embeddedPoints  = incEmbedded && window.getAllEmbeddedPoints ? (window.getAllEmbeddedPoints() || []) : [];
     const allPoints       = sessionPoints.concat(embeddedPoints);
 
-    const sessionRoads = incRoads && window.getRoads ? (window.getRoads() || []) : [];
+    const sessionRoads = incRoads && window.getRoads ? window.ktaExportEtatsFiltres(window.getRoads() || []) : [];
     // Itinéraire exclu sauf demande (éphémère).
     const tracesAExporter = sessionRoads.filter(function(r) {
       if (!r || !Array.isArray(r.points) || r.points.length < 2) return false;

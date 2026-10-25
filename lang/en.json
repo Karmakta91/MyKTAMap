@@ -498,6 +498,7 @@
   "home.statut.chargementDe": "Loading {nom}…",
   "home.statut.extIndispo": "Map unavailable (server unreachable)",
   "ext.panneau.titreDefaut": "Installation",
+  "ext.export.validesSeuls": "Approved objects only",
   "export.filtre.titre": "Keep only",
   "export.filtre.du": "From",
   "export.filtre.au": "to",

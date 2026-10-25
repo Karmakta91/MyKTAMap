@@ -460,6 +460,7 @@
             '<div class="kta-aide-section-titre">' + t("geotiff.contenu.titre") + '</div>' +
             _radio("geotiff_contenu", "scan", t("geotiff.contenu.scan"), true, false) +
             _radio("geotiff_contenu", "dessins", t("geotiff.contenu.dessins"), false, false) +
+            (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
           '</div>' +
           '<div class="kta-aide-section">' +
             '<div class="kta-aide-section-titre">' + t("geotiff.proj.titre") + '</div>' +

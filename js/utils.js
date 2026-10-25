@@ -1909,6 +1909,14 @@ window.ktaAnnotationsCompletes = function (famille) {
   return lire(p[0]).concat(lire(p[1]));
 };
 
+// Exports : la liste de session sans les objets qu'une extension marque, quand la case « validés seulement » est
+// cochée (ktaExtensions.js > filtrerPourExport) ; sinon LA MÊME liste (même référence : un appelant teste par là si un
+// filtre agit).
+window.ktaExportEtatsFiltres = function (liste) {
+  const X = window.KtaExtensions;
+  return (X && typeof X.filtrerPourExport === "function") ? X.filtrerPourExport(liste) : (Array.isArray(liste) ? liste : []);
+};
+
 // ── Getters publics des data layers ──────────
 // ⚠️ getAllEmbeddedPoints → [{x, y, nom, id, tags, level, layerId, description?, uid?, updatedAt?}], même
 // format que window.getEditorPoints (concaténation directe). Lu sur _ktaDataMarkers (_ktaLevel, _ktaNom, _ktaId,

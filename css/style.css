@@ -20100,6 +20100,11 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 .kta-repere-neutre { border-color: var(--kta-texte-3); }
 .kta-repere-hors-niveau { opacity: 0.4; }
 .kta-repere-absent { border-style: dashed; }
+/* État d'un objet donné par une extension (KtaExtensions.etatObjet) : contour pointillé autour de l'icône ; les
+   tracés, zones et structures reçoivent un pointillé (canvas : pas de CSS). Accent = proposé, erreur = refusé. */
+.leaflet-marker-icon.kta-etat-propose { outline: 3px dashed var(--kta-accent); outline-offset: 3px; border-radius: 50%; }
+.leaflet-marker-icon.kta-etat-refuse { outline: 3px dashed var(--kta-erreur); outline-offset: 3px; border-radius: 50%; }
+.kta-export-valides { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0; }
 /* Itinéraire publié par un autre : étiquette au point d'arrivée */
 .kta-presence-iti-icone { background: none; border: none; }
 /* Bandeau d'alerte Secours d'une installation reliée (KtaExtensions.afficherAlerteSecours) */

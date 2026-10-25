@@ -944,6 +944,10 @@ function _ajouterMarker(point) {
   // calque (utils.js). _ktaLayer/_ktaVpHidden restent pour _refreshEditorMarkersViewport.
   marker._ktaLayer = window.layerEditor;
   marker._ktaVpHidden = false;
+  // État donné par une extension (prise etatObjet) : classe de l'icône, reposée à chaque ajout ; sans prise, rien.
+  if (window.KtaExtensions && typeof window.KtaExtensions.marquerCouche === "function") {
+    window.KtaExtensions.marquerCouche(marker, point.uid);
+  }
   marker.addTo(window.layerEditor);
 
   // Filtre de niveau appliqué tout de suite : un point ajouté sur un niveau hors visibleLevels est caché.
@@ -985,6 +989,9 @@ function _appliquerFiltreNiveauSurMarker(marker) {
                 || "default";
     if (!window._ktaRuntimeFilters.tags.has(tag)) visible = false;
   }
+  // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) : éteint sans elle.
+  const _X = window.KtaExtensions;
+  if (visible && _X && typeof _X.passeFiltreEtat === "function" && !_X.passeFiltreEtat({ uid: marker._ktaUid })) visible = false;
   window.ktaMasquerMarqueur(marker, !visible);
 }
 

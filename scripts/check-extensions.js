@@ -2008,6 +2008,63 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
         .test(corpsModale));
   }
 
+  // ── ÉTAT D'UN OBJET (prise etatObjet) : dessiné et filtré sans être compris ──
+  {
+    const c = nouveauContexte(null);
+    const K = c.K;
+    c.w.ktaEsc = (s) => String(s).replace(/</g, "&lt;");
+    const marqueur = () => ({ ecoutes: {}, _icon: { classes: new Set(), classList: { toggle(n, v) { if (v) marqueur.c.add(n); else marqueur.c.delete(n); } } },
+      setIcon() {}, on(ev, fn) { this.ecoutes[ev] = fn; } });
+    marqueur.c = new Set();
+    const chemin = () => ({ styles: [], setStyle(s) { this.styles.push(s); } });
+    const couches = [];
+    c.w.layerEditor = { eachLayer: (f) => couches.forEach(f) };
+    const sansP = chemin();
+    K.marquerCouche(sansP, "rd_a", "4 4");
+    t("sans extension : etatObjet null, aucun style posé, filtre impossible, export intact, pas de case",
+      K.etatObjet("pt_a") === null && sansP.styles.length === 0 && sansP._ktaUid === "rd_a" && K.filtrerEtats(true) === false &&
+      K.passeFiltreEtat({ uid: "pt_a" }) === true && K.caseExportValides() === "" && K.filtrerPourExport([{ uid: "pt_a" }]).length === 1);
+    const etats = { pt_p: "propose", rd_r: "refuse", pt_x: "inconnu", pt_err: "boom" };
+    K.register({ nom: "etat", apiVersion: 1, etatObjet: (uid) => { if (uid === "pt_err") throw new Error("x"); return etats[uid]; } });
+    t("etatObjet : « propose » / « refuse » seulement ; autre valeur, erreur, uid invalide → null",
+      K.etatObjet("pt_p") === "propose" && K.etatObjet("rd_r") === "refuse" && K.etatObjet("pt_x") === null &&
+      K.etatObjet("pt_err") === null && K.etatObjet(3) === null && K.etatObjet("pt_v") === null);
+    const m = marqueur(), r = chemin(), r2 = chemin();
+    K.marquerCouche(m, "pt_p"); K.marquerCouche(r, "rd_r", "4 4"); K.marquerCouche(r2, "rd_v", null);
+    couches.push(m, r, r2);
+    t("🎨 marqueur proposé : classe kta-etat-propose (reposée à chaque ajout) ; tracé refusé : pointillé ; sans état : rien",
+      marqueur.c.has("kta-etat-propose") && typeof m.ecoutes.add === "function" && r.styles.length === 1 &&
+      r.styles[0].dashArray === "2 6" && r2.styles.length === 0);
+    etats.rd_r = undefined; etats.pt_p = undefined;
+    const n = K.rafraichirEtats();
+    t("rafraichirEtats : état retiré → pointillé d'origine rendu, classe enlevée, en place (aucun rendu relancé)",
+      n === 0 && r.styles[1].dashArray === "4 4" && !marqueur.c.has("kta-etat-propose"));
+    etats.pt_p = "propose";
+    const rendus = [];
+    ["_applyLevelFilterToEditorPoints", "renderRoads", "renderZones", "renderStructures"].forEach((f) => { c.w[f] = () => rendus.push(f); });
+    t("filtre de la carte : seuls les objets marqués passent ; chaque rendu de session est relancé ; éteint = tout passe",
+      K.filtrerEtats(true) === true && rendus.length === 4 && K.passeFiltreEtat({ uid: "pt_p" }) && !K.passeFiltreEtat({ uid: "pt_v" }) &&
+      K.filtrerEtats(false) === false && K.passeFiltreEtat({ uid: "pt_v" }) && rendus.length === 8);
+    const liste = [{ uid: "pt_p" }, { uid: "pt_v" }, { nom: "sans uid" }];
+    t("export : case décochée → même liste ; cochée → sans les objets marqués",
+      K.filtrerPourExport(liste) === liste && /data-kta-export-valides="1"/.test(K.caseExportValides()));
+    K.filtrerEtats(true);
+    (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
+    t("🩸 sortie du plan : filtre de la carte et case d'export remis à zéro", K.filtreEtatsActif() === false);
+    const R = (f) => lire(f);
+    t("rendus de session : marqueur, tracé, zone, structure marqués à la création et filtrés (editor, road, zones, structures)",
+      /marquerCouche\(marker, point\.uid\)/.test(R("js/editor.js")) && /passeFiltreEtat\(\{ uid: marker\._ktaUid \}\)/.test(R("js/editor.js")) &&
+      /marquerCouche\(polyline, road\.uid, style\.dashArray\)/.test(R("js/road.js")) && /passeFiltreEtat\(road\)/.test(R("js/road.js")) &&
+      /marquerCouche\(polygon, zone\.uid/.test(R("js/zones.js")) && /passeFiltreEtat\(zone\)/.test(R("js/zones.js")) &&
+      /marquerCouche\(layer, s\.uid/.test(R("js/structures.js")) && /passeFiltreEtat\(s\)/.test(R("js/structures.js")));
+    t("exports « validés seulement » : PNG / PDF / GeoTIFF (canvas), GPX, ZIP de session, KMZ et GeoJSON (_filtrer), case dans chaque fenêtre",
+      (R("js/exporter.js").match(/ktaExportEtatsFiltres\(/g) || []).length === 5 &&
+      (R("js/gpxIO.js").match(/ktaExportEtatsFiltres\(/g) || []).length === 2 && /ktaExportEtatsFiltres\(f\)/.test(R("js/sessionExporter.js")) &&
+      ["js/exporter.js", "js/pdfExport.js", "js/geotiffExport.js"].every((f) => /caseExportValides\(\)/.test(R(f))) &&
+      (R("js/sessionExporter.js").match(/caseExportValides\(\)/g) || []).length === 2 &&
+      /\.leaflet-marker-icon\.kta-etat-propose \{ outline: 3px dashed var\(--kta-accent\)/.test(R("css/style.css")));
+  }
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 points d'extension : neutres sans extension, fermés quand une permission échoue, jamais de repli sur la gate community");

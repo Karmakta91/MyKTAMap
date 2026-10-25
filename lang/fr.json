@@ -498,6 +498,7 @@
   "home.statut.chargementDe": "Chargement de {nom}…",
   "home.statut.extIndispo": "Plan indisponible (serveur injoignable)",
   "ext.panneau.titreDefaut": "Installation",
+  "ext.export.validesSeuls": "Objets validés seulement",
   "export.filtre.titre": "Ne garder que",
   "export.filtre.du": "Du",
   "export.filtre.au": "au",

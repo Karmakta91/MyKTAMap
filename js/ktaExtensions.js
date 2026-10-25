@@ -344,8 +344,9 @@
     if (ext.outilHome) _poserOutilHome();
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
+    if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -2137,6 +2138,112 @@
     _observateurFiches.observe(document.body, { childList: true, subtree: true });
   }
 
+  // ── État d'un objet donné par une extension (prise etatObjet) ──
+  // etatObjet(uid) → "propose" | "refuse" | null (synchrone, information). L'app ne sait pas ce que veut dire l'état :
+  // elle le DESSINE (marqueur : classe .kta-etat-<état> ; tracé, zone, structure : pointillé) et sait le filtrer
+  // (carte : objets marqués seulement ; exports : objets non marqués seulement). Sans prise, erreur ou autre valeur :
+  // null, rien n'est dessiné ni filtré. Objets de session seulement (calque « Mes annotations ») : les calques du
+  // plan (ZIP) n'ont jamais d'état.
+  const ETATS_OBJET = ["propose", "refuse"];
+  const _POINTILLE_ETAT = { propose: "10 6", refuse: "2 6" };
+  let _filtreEtats = false;     // carte : objets marqués seulement
+  let _exportValides = false;   // exports : objets non marqués seulement (case de chaque fenêtre d'export)
+  function etatObjet(uid) {
+    const ext = _prise("etatObjet");
+    if (!ext || typeof ext.etatObjet !== "function" || typeof uid !== "string" || !uid) return null;
+    try { const e = ext.etatObjet(uid); return ETATS_OBJET.indexOf(e) >= 0 ? e : null; }
+    catch (e) { console.warn("[Extensions] etatObjet :", e); return null; }
+  }
+  // Une couche de session dessinée (marqueur, tracé, zone, structure) reçoit l'uid de son objet ; `pointilleBase` =
+  // le pointillé de son style sans état (rendu quand l'état disparaît). Appelé par editor.js, road.js, zones.js,
+  // structures.js à la création ; sans prise : uid noté, rien d'autre.
+  function marquerCouche(couche, uid, pointilleBase) {
+    if (!couche || typeof uid !== "string" || !uid) return;
+    couche._ktaUid = uid;
+    couche._ktaPointilleBase = pointilleBase || null;
+    couche._ktaEtat = null;   // la couche naît avec le style de son type (sans état)
+    if (aPrise("etatObjet")) _appliquerEtat(couche);
+  }
+  function _appliquerEtat(l) {
+    const e = etatObjet(l._ktaUid);
+    if (typeof l.setIcon === "function") {
+      // 🩸 Leaflet recrée l'icône quand le marqueur revient sur la carte : la classe est reposée à chaque ajout.
+      l._ktaEtat = e;
+      if (!l._ktaEtatEcoute && typeof l.on === "function") {
+        l._ktaEtatEcoute = true;
+        l.on("add", function () { _classeEtat(l); });
+      }
+      _classeEtat(l);
+    } else if (typeof l.setStyle === "function" && l._ktaEtat !== e) {
+      l._ktaEtat = e;
+      try { l.setStyle({ dashArray: e ? _POINTILLE_ETAT[e] : l._ktaPointilleBase }); } catch (er) { /* couche retirée */ }
+    }
+  }
+  function _classeEtat(l) {
+    const el = l._icon;
+    if (!el || !el.classList) return;
+    ETATS_OBJET.forEach(function (x) { el.classList.toggle("kta-etat-" + x, l._ktaEtat === x); });
+  }
+  // L'extension annonce que des états ont changé : redessinés en place (aucune fiche fermée). Filtre de carte actif :
+  // les objets sont refiltrés. → nombre d'objets marqués sur la carte.
+  function rafraichirEtats() {
+    let n = 0;
+    const grp = window.layerEditor;
+    if (grp && typeof grp.eachLayer === "function") {
+      grp.eachLayer(function (l) {
+        if (!l || typeof l._ktaUid !== "string") return;
+        _appliquerEtat(l);
+        if (l._ktaEtat) n++;
+      });
+    }
+    if (_filtreEtats) _refiltrerEtats();
+    return n;
+  }
+  // Filtre de la carte : seuls les objets de session qui ont un état restent (les calques du plan ne bougent pas).
+  // Action de l'extension (jamais déclenchée par l'app seule) ; sans prise : toujours éteint. → état du filtre.
+  function filtrerEtats(actif) {
+    const v = !!actif && aPrise("etatObjet");
+    if (v === _filtreEtats) return v;
+    _filtreEtats = v;
+    _refiltrerEtats();
+    return v;
+  }
+  function _refiltrerEtats() {
+    ["_applyLevelFilterToEditorPoints", "renderRoads", "renderZones", "renderStructures"].forEach(function (f) {
+      try { if (typeof window[f] === "function") window[f](); } catch (e) { console.warn("[Extensions] filtre des états :", e); }
+    });
+  }
+  // Lu par les rendus de session : l'objet passe-t-il le filtre de la carte ? (filtre éteint : oui).
+  function passeFiltreEtat(o) {
+    return !_filtreEtats || !!(o && etatObjet(o.uid));
+  }
+  // Exports : la liste sans les objets marqués quand la case « validés seulement » est cochée ; sans prise : intacte.
+  function filtrerPourExport(liste) {
+    const l = Array.isArray(liste) ? liste : [];
+    if (!_exportValides || !aPrise("etatObjet")) return l;
+    return l.filter(function (o) { return !(o && typeof o.uid === "string" && etatObjet(o.uid)); });
+  }
+  // Case à poser dans une fenêtre d'export (HTML, texte échappé) ; "" sans prise. Une seule valeur pour toutes les
+  // fenêtres (cochée dans l'une, cochée dans les autres), remise à zéro à chaque plan.
+  function caseExportValides() {
+    if (!aPrise("etatObjet")) return "";
+    const esc = window.ktaEsc;
+    return '<label class="kta-export-valides"><input type="checkbox" data-kta-export-valides="1"' +
+      (_exportValides ? " checked" : "") + '> ' + esc(_t("ext.export.validesSeuls")) + '</label>';
+  }
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("change", function (e) {
+      const c = e && e.target;
+      if (c && typeof c.getAttribute === "function" && c.getAttribute("data-kta-export-valides") === "1") {
+        _exportValides = !!c.checked;
+        try { window.dispatchEvent(new CustomEvent("mktm:export-valides", { detail: { actif: _exportValides } })); } catch (er) { /* rien */ }
+      }
+    });
+  }
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("mktm:plan-ferme", function () { _filtreEtats = false; _exportValides = false; });
+  }
+
   // La tuile suit le compte (connexion, déconnexion) et l'accueil (posée une fois le DOM prêt).
   if (typeof window.addEventListener === "function") {
     window.addEventListener("mktm:compte-changed", _poserOutilHome);
@@ -2201,6 +2308,14 @@
     objetParUid: objetParUid,
     objetsProches: objetsProches,
     afficherReperes: afficherReperes,
+    etatObjet: etatObjet,
+    marquerCouche: marquerCouche,
+    rafraichirEtats: rafraichirEtats,
+    filtrerEtats: filtrerEtats,
+    filtreEtatsActif: function () { return _filtreEtats; },
+    passeFiltreEtat: passeFiltreEtat,
+    filtrerPourExport: filtrerPourExport,
+    caseExportValides: caseExportValides,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,

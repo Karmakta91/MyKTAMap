@@ -802,6 +802,9 @@ function renderRoads() {
     if (!road.points || road.points.length === 0) return;
 
     if (!_passeFiltreNiveau(road)) return;
+    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
+    if (road.type !== "itinerary" && road !== currentRoad && window.KtaExtensions &&
+        typeof window.KtaExtensions.passeFiltreEtat === "function" && !window.KtaExtensions.passeFiltreEtat(road)) return;
 
     // ⚠️ Filtre par type (FilterPanel) : window._ktaRuntimeFilters.roadTypes null = tout visible, Set = types
     // visibles. Itinéraire et road en cours passent toujours.
@@ -844,6 +847,10 @@ function renderRoads() {
       polyline = L.polyline(latlngs, opts);
     } else {
       polyline = L.polyline(latlngs, style);
+      // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.
+      if (window.KtaExtensions && typeof window.KtaExtensions.marquerCouche === "function") {
+        window.KtaExtensions.marquerCouche(polyline, road.uid, style.dashArray);
+      }
     }
     // Hors viewport : polyline gardée en RAM, pas attachée ; roadLayers la garde pour le nettoyage suivant.
     if (_isInViewport) polyline.addTo(target);

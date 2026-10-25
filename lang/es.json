@@ -498,6 +498,7 @@
   "home.statut.chargementDe": "Cargando {nom}…",
   "home.statut.extIndispo": "Mapa no disponible (servidor inaccesible)",
   "ext.panneau.titreDefaut": "Instalación",
+  "ext.export.validesSeuls": "Solo objetos validados",
   "export.filtre.titre": "Conservar solo",
   "export.filtre.du": "Del",
   "export.filtre.au": "al",

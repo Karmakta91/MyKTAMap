@@ -254,6 +254,9 @@ function renderZones() {
   zonesAffichage.forEach(function(zone) {
     if (!zone.points || zone.points.length === 0) return;
     if (!_zonePasseFiltre(zone)) return;
+    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
+    if (zone !== currentZone && window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+        !window.KtaExtensions.passeFiltreEtat(zone)) return;
 
     // Filtre par type (FilterPanel), sauf pour la zone en cours.
     if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
@@ -292,6 +295,10 @@ function renderZones() {
         : style;
       const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
+      // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.
+      if (window.KtaExtensions && typeof window.KtaExtensions.marquerCouche === "function") {
+        window.KtaExtensions.marquerCouche(polygon, zone.uid, polygonOpts.dashArray);
+      }
 
       // Popup de note seulement hors mode édition : sinon le clic ouvre la popup ET ajoute un
       // sommet au tracé en cours (même règle que road.js / structures.js).
