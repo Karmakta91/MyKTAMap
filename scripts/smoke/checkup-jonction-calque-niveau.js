@@ -209,6 +209,24 @@ function tousMasques(arr) { return arr.length > 0 && arr.every(function (o) { re
     verifier(e3.poiMasque === true && !e3.session && tousMasques(e3.ordinaire),
       "POI jpe, jonction de session et tracé ordinaire masqués au niveau −2", e3);
 
+    console.log("\n── 3 bis. Taille des ronds selon le zoom ──");
+    // Zoom posé sans animation, puis lecture au cadre suivant (zoomend ne part pas si le zoom ne change pas).
+    const rayons = async function (z) {
+      await page.evaluate(function (zz) { window.map.setZoom(zz, { animate: false }); }, z);
+      await page.waitForTimeout(400);
+      return page.evaluate(function () {
+        const g = window._ktaTestGroupe;
+        return { zoom: window.map.getZoom(), r: (window._ktaDataPolylines || []).filter(function (e) {
+          return e && e.groupe === g && e.type === "jonction" && e.polyline instanceof L.CircleMarker;
+        }).map(function (e) { return e.polyline.options.radius; }) };
+      });
+    };
+    const rz0 = await rayons(0), rzm3 = await rayons(-3);
+    verifier(rz0.zoom === 0 && rz0.r.length === 2 && rz0.r.every(function (r) { return r === 7; }),
+      "ronds au zoom 0 : rayon 7 px", rz0);
+    verifier(rzm3.zoom === -3 && rzm3.r.length === 2 && rzm3.r.every(function (r) { return r > 2 && r < 3; }),
+      "ronds au zoom −3 (plan dézoomé) : rayon réduit (~2,5 px)", rzm3);
+
     console.log("\n── 4. Itinéraire, niveaux occupés ──");
     const it = await page.evaluate(function () {
       const r = (window.getAllEmbeddedRoads() || []).find(function (x) { return x && x.uid === "rd_jonccalque"; });

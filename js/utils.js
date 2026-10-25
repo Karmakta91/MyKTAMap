@@ -2356,14 +2356,13 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (road.type === "jonction" && road.points.length >= 2) {
             const endpts = [road.points[0], road.points[road.points.length - 1]];
             endpts.forEach(function(pt) {
-              const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
-                radius:      7,
+              const cm = L.circleMarker(convertCoord(pt.x, pt.y), Object.assign({
                 color:       "#ff4ecb",   // bord magenta cohérent avec polyline
                 fillColor:   "#ffffff",   // intérieur blanc = contraste
                 fillOpacity: 1,
-                weight:      3,
-                interactive: false
-              }).addTo(layer);
+                interactive: false,
+                ktaRondJonction: true
+              }, window.ktaTailleRondJonction())).addTo(layer);
               // mêmes niveaux que la polyline : le filtre niveau masque aussi les ronds
               window._ktaDataPolylines.push({
                 polyline:        cm,

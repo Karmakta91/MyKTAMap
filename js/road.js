@@ -934,14 +934,13 @@ function renderRoads() {
       const endpoints = [workPoints[0], workPoints[workPoints.length - 1]];
       const _colJonction = (_resolveRoadStyle("jonction") || {}).color;
       endpoints.forEach(function(pt) {
-        const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
-          radius:      7,
+        const cm = L.circleMarker(convertCoord(pt.x, pt.y), Object.assign({
           color:       _colJonction,
           fillColor:   "#ffffff",                    // intérieur blanc → contraste
           fillOpacity: 1,
-          weight:      3,
-          interactive: false
-        });
+          interactive: false,
+          ktaRondJonction: true
+        }, window.ktaTailleRondJonction()));
         if (_isInViewport) cm.addTo(target);
         roadLayers.push(cm);
         _trackedLayers.push(cm);

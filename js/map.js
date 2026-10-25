@@ -104,6 +104,15 @@ window._ktaIconeDefaut = "icon/default.png";
 //     morceau du dessin qu'en mode plan au même grossissement, quelle que soit l'échelle du plan.
 // La variable --kta-marker-scale (style.css > .kta-marker-img) vit sur le body en mode plan, sur le conteneur
 // de la Vue OSM et sur le pane de chaque plan de la carte de l'accueil : la plus proche gagne.
+// Ronds d'extrémité d'une jonction (road.js, utils.js : circleMarker marqué `ktaRondJonction`) : taille en pixels
+// ÉCRAN, donc énorme sur un plan dézoomé. Rayon 7 / bord 3 au zoom 0 et au-delà, réduits avec 2^zoom jusqu'à 35 %.
+// Recalés au zoom et à l'ajout d'un rond (map.js > _majRondsJonction), indépendamment du réglage 📐.
+window.ktaTailleRondJonction = function () {
+  const z = window.map && typeof window.map.getZoom === "function" ? window.map.getZoom() : 0;
+  const s = Number.isFinite(z) ? Math.max(0.35, Math.min(1, Math.pow(2, z))) : 1;
+  return { radius: 7 * s, weight: Math.max(1, 3 * s) };
+};
+
 window.ktaEchelleMarqueurs = function (pxEcranParPxPlan, plancher) {
   if (!Number.isFinite(pxEcranParPxPlan) || pxEcranParPxPlan <= 0) return 1;
   const bas = (Number.isFinite(plancher) && plancher > 0) ? plancher : 0.25;
@@ -447,6 +456,20 @@ async function initMapFromConfig() {
   map.getContainer().removeEventListener("click", _ktaPickCaptureClick, true);
   map.getContainer().addEventListener("click", _ktaPickCaptureClick, true);
   // true = phase capture (avant les handlers des layers)
+
+  // Ronds de jonction : taille recalée au zoom (window.ktaTailleRondJonction), et à l'ajout pour ceux créés hors vue.
+  const _majRondsJonction = function() {
+    const t = window.ktaTailleRondJonction();
+    map.eachLayer(function(l) { if (l.options && l.options.ktaRondJonction) { l.setRadius(t.radius); l.setStyle({ weight: t.weight }); } });
+  };
+  map.on("zoomend", _majRondsJonction);
+  map.on("layeradd", function(ev) {
+    const l = ev.layer;
+    if (l && l.options && l.options.ktaRondJonction) {
+      const t = window.ktaTailleRondJonction();
+      if (l.options.radius !== t.radius) { l.setRadius(t.radius); l.setStyle({ weight: t.weight }); }
+    }
+  });
 
   // Taille visuelle des icônes selon le zoom : --kta-marker-scale sur les <img> divIcon
   // (style.css > .kta-marker-img), loi window.ktaEchelleMarqueurs. Rien si scaledMarkers OFF.
