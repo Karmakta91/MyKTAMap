@@ -41,7 +41,8 @@
     on:         "kta-tx-ok",
     down:       "kta-tx-warn"
   };
-  const MAX_MODULES = 20;
+  // Plafond de bon sens (une liste démesurée = index corrompu ou malveillant) ; même valeur dans confadmin.js.
+  const MAX_MODULES = 32;
 
   let _connexion = { etat: "off", raison: "" };   // résultat de valider()
   let _etat = "off";

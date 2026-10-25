@@ -590,8 +590,8 @@ navigateur.
   `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
 
 **État : livré** (v2.0.0 → v2.7.0) — tout ce qui précède est en place dans community :
-- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }`, recalculée à chaque
-  `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
+- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }` (32 modules déclarés au
+  plus, même plafond dans ConfAdmin ; au-delà : INVALIDE), recalculée à chaque `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
   (`myktamap_server_connection_v1`, **exclue de l'export de profil** : donnée de l'instance, pas de l'utilisateur).
 - **Pastille** collée au badge de version du pied de page de l'accueil, icône + mot court (icône seule sous 380 px ;
   footer replié : icône seule sur le bouton) ; un clic ouvre la fenêtre « Que fait l'app sur le réseau ? » avec
