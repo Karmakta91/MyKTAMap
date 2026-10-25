@@ -2993,6 +2993,9 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   letter-spacing: 0.04em;
   flex: 1;
 }
+/* Conditions d'utilisation : titre doré (charte : titres en accent), le bleu reste celui des modales d'aide. */
+#kta-legal-gate-overlay .kta-readme-modal-titre,
+#kta-legal-full-overlay .kta-readme-modal-titre { color: var(--kta-accent-texte); }
 
 /* Bouton bascule du sommaire (à gauche du titre) */
 .kta-readme-toc-toggle-btn {
