@@ -538,7 +538,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `nom` = celui de l'objet ou `""` ; `typeLibelle` = libellé du type dans la légende (renommages compris) ; `niveaux`
   = ses niveaux (`level`, `fromLevel` / `toLevel`, niveaux d'une jonction). `null` : plan pas prêt, uid inconnu,
   itinéraire calculé, objet sans position. Index gardé 500 ms (un appel par repère ne relit pas tous les marqueurs).
-  Même recherche pour `allerAObjet` et `afficherReperes`. Tests : `check-extensions.js`.
+  Même recherche pour `allerAObjet` et `afficherReperes`. **Objets proches** : `KtaExtensions.objetsProches(x, y,
+  max?) → [même forme]` — au plus `max` (8 par défaut, 20 au plus), du plus proche au plus loin de (x, y) (ancres),
+  ex. choisir l'objet auquel rattacher une note dont l'objet a disparu ; `[]` : plan pas prêt, coordonnées non
+  finies. Tests : `check-extensions.js`.
 - **Aller à un objet** : `KtaExtensions.allerAObjet(uid, repli?) → bool` — action neutre, jamais déclenchée par l'app
   seule (ex. liste de changements d'une extension). Objet cherché comme `objetParUid` (session, puis calques du plan ;
   jamais l'itinéraire calculé) ; multi-niveau, si aucun de ses niveaux n'est affiché, le premier devient le niveau de

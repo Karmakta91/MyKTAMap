@@ -1924,6 +1924,10 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("objetParUid rend une COPIE ; uid inconnu, itinéraire, objet sans position, forme invalide : null",
       c.K.objetParUid("pt_c").nom === "C" && c.K.objetParUid("pt_zz") === null && c.K.objetParUid("rd_i") === null &&
       c.K.objetParUid("zn_v") === null && c.K.objetParUid(null) === null);
+    const pr = c.K.objetsProches(49, 59, 3);
+    t("objetsProches : du plus proche au plus loin (session et calques), borné ; coordonnées non finies : []",
+      pr.length === 3 && pr[0].uid === "pt_c" && pr[0].source === "calque" && pr[1].uid === "zn_c" &&
+      c.K.objetsProches(NaN, 1).length === 0 && c.K.objetsProches(0, 0, 500).length <= 20, pr.map((o) => o.uid));
     t("allerAObjet : un objet d'un CALQUE du plan (zone sur un niveau masqué) → niveau changé, carte centrée",
       c.K.allerAObjet("zn_c") === true && niveaux[2] === 3 && Math.abs(vues[3][1] - 80 / 3) < 1e-9);
     t("allerAObjet : objet absent du plan affiché + dernière position donnée → carte à cette position, son niveau",

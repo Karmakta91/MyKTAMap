@@ -1945,7 +1945,24 @@
   function objetParUid(uid) {
     if (!planPret()) return null;
     const e = _entreeObjet(uid);
-    const a = e ? _ancreObjet(e.o) : null;
+    return e ? _vueObjet(uid, e) : null;
+  }
+  // ⚠️ objetsProches(x, y, max?) → [même forme que objetParUid], au plus `max` (défaut 8, 20 au plus), du plus proche
+  // au plus loin de (x, y) en coordonnées du plan (ancres) — information, ex. choisir l'objet auquel rattacher une
+  // note dont l'objet a disparu. [] : plan pas prêt, coordonnées non finies.
+  function objetsProches(x, y, max) {
+    if (!planPret() || !Number.isFinite(x) || !Number.isFinite(y)) return [];
+    const n = Math.min(Number.isInteger(max) && max > 0 ? max : 8, 20);
+    const l = [];
+    _objetsParUid().forEach(function (e, uid) {
+      const a = _ancreObjet(e.o);
+      if (a) l.push({ uid: uid, e: e, d: (a.x - x) * (a.x - x) + (a.y - y) * (a.y - y) });
+    });
+    l.sort(function (p, q) { return p.d - q.d; });
+    return l.slice(0, n).map(function (p) { return _vueObjet(p.uid, p.e); });
+  }
+  function _vueObjet(uid, e) {
+    const a = _ancreObjet(e.o);
     if (!a) return null;
     const o = e.o;
     let lib = "";
@@ -2182,6 +2199,7 @@
     auteurObjet: auteurObjet,
     allerAObjet: allerAObjet,
     objetParUid: objetParUid,
+    objetsProches: objetsProches,
     afficherReperes: afficherReperes,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
