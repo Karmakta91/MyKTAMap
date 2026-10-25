@@ -937,6 +937,40 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     m1.ecoutesSw.message({ data: { type: "autre-chose" } });
     t("messages du SW relayés en événements de la page (liste fermée)",
       c1.w._emis.indexOf("mktm:notification-ouverte") >= 0 && c1.w._emis.indexOf("autre-chose") < 0);
+    // Cible d'une notification touchée : app ouverte (événement) et app fermée (paramètre lu une fois au chargement).
+    const detailOuverte = (url) => {
+      const m = monde("granted", "granted"), c = nouveauContexte("server", m.extra);
+      let d = null;
+      c.w.dispatchEvent = (e) => { if (e && e.type === "mktm:notification-ouverte") d = e.detail; return true; };
+      m.ecoutesSw.message({ data: { type: "mktm:notification-ouverte", url } });
+      return d;
+    };
+    const d1 = detailOuverte("https://inst.test/?kta-notif=alerte:0f8fad5b-d9cb-469f-a165-70867728950e");
+    t("app ouverte : la cible de l'adresse est donnée à l'événement (genre:id)",
+      !!d1 && d1.cible === "alerte:0f8fad5b-d9cb-469f-a165-70867728950e");
+    t("🔒 cible hors forme (balisage, trop d'éléments, trop longue) → null", [
+      "https://inst.test/?kta-notif=%3Cimg%20src%3Dx%3E", "https://inst.test/?kta-notif=a:b:c:d:e",
+      "https://inst.test/?kta-notif=tache:" + "x".repeat(81), "https://inst.test/"]
+      .every((u) => detailOuverte(u).cible === null));
+    const demarrer = (search) => {
+      const remplace = [];
+      const m = monde("granted", "granted");
+      Object.assign(m.extra, { URLSearchParams, location: { search, pathname: "/app/", hash: "#x", origin: "https://inst.test" },
+        history: { replaceState(a, b, u) { remplace.push(u); } } });
+      return { c: nouveauContexte(null, m.extra), remplace };
+    };
+    const f1 = demarrer("?a=1&kta-notif=tache:0f8fad5b-d9cb-469f-a165-70867728950e:9b2c");
+    const n1 = f1.c.K.notificationAuDemarrage(), n2 = f1.c.K.notificationAuDemarrage();
+    t("app fermée : la cible du paramètre est rendue UNE fois, puis plus rien (aucun rejeu)",
+      !!n1 && n1.cible === "tache:0f8fad5b-d9cb-469f-a165-70867728950e:9b2c" && n2 === null);
+    t("…paramètre retiré de la barre au chargement, autres paramètres et ancre gardés",
+      f1.remplace.length === 1 && f1.remplace[0] === "/app/?a=1#x");
+    const f2 = demarrer("?kta-notif=" + encodeURIComponent("<b>x</b>"));
+    t("🔒 paramètre hors forme : retiré quand même, rien rendu", f2.remplace[0] === "/app/#x" &&
+      f2.c.K.notificationAuDemarrage() === null);
+    const f3 = demarrer("?a=1");
+    t("sans paramètre : adresse intacte, rien rendu (sans extension aussi)", f3.remplace.length === 0 &&
+      f3.c.K.notificationAuDemarrage() === null);
     const IA = lire("js/interfaceAlerts.js");
     t("fenêtre 🚨 : la ligne est posée dans les trois fenêtres (aucune alerte, sélecteur, détail)",
       (IA.match(/_ktaPoserLigneNotif\(modal\.querySelector/g) || []).length === 3);

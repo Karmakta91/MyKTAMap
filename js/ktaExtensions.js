@@ -588,14 +588,46 @@
     ligne.appendChild(etat);
     return ligne;
   }
+  // Cible d'une notification touchée : paramètre `kta-notif` de son adresse (« genre:id:id », forme bornée, texte
+  // opaque pour community ; l'extension qui l'a émise sait l'ouvrir). Toute autre forme → null.
+  const _CIBLE_NOTIF_RE = /^[a-z]{3,20}(:[A-Za-z0-9_-]{1,80}){0,3}$/;
+  function _cibleNotif(url) {
+    try {
+      const c = new URL(String(url || "").slice(0, 400), "https://x.invalid/").searchParams.get("kta-notif");
+      return c && _CIBLE_NOTIF_RE.test(c) ? c : null;
+    } catch (e) { return null; }
+  }
+  // App FERMÉE quand la notification a été touchée (sw.js > notificationclick l'ouvre sur son adresse) : la cible est
+  // lue UNE fois au chargement, retirée de la barre (ni favori ni rechargement ne la rejouent), puis rendue une seule
+  // fois à l'extension qui la demande quand elle est prête (connexion, déverrouillage) : notificationAuDemarrage().
+  let _notifDemarrage = null;
+  (function _lireNotifDemarrage() {
+    try {
+      if (typeof location === "undefined" || !location || typeof location.search !== "string" ||
+          location.search.indexOf("kta-notif=") < 0) return;
+      _notifDemarrage = _cibleNotif(location.search);
+      const params = new URLSearchParams(location.search);
+      params.delete("kta-notif");
+      const q = params.toString();
+      if (typeof history !== "undefined" && history && typeof history.replaceState === "function") {
+        history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + (location.hash || ""));
+      }
+    } catch (e) { /* adresse illisible : rien à ouvrir */ }
+  })();
+  function notificationAuDemarrage() {
+    const c = _notifDemarrage;
+    _notifDemarrage = null;
+    return c ? { cible: c } : null;
+  }
   // Messages du service worker (prise Web Push de sw.js) relayés en événements de la page, sans effet sans écouteur :
-  // mktm:notification-recue (une notification vient d'arriver), mktm:notification-ouverte { url } (touchée, app déjà
-  // ouverte), mktm:abonnement-push-change (le navigateur a renouvelé l'abonnement : l'extension se réabonne).
+  // mktm:notification-recue (une notification vient d'arriver), mktm:notification-ouverte { url, cible } (touchée,
+  // app déjà ouverte), mktm:abonnement-push-change (le navigateur a renouvelé l'abonnement : l'extension se réabonne).
   const _MESSAGES_PUSH = ["mktm:notification-recue", "mktm:notification-ouverte", "mktm:abonnement-push-change"];
   function _relayerMessageSw(e) {
     const d = e && e.data;
     if (!d || typeof d.type !== "string" || _MESSAGES_PUSH.indexOf(d.type) < 0) return;
-    const detail = d.type === "mktm:notification-ouverte" && typeof d.url === "string" ? { url: d.url.slice(0, 300) } : {};
+    const detail = d.type === "mktm:notification-ouverte" && typeof d.url === "string"
+      ? { url: d.url.slice(0, 300), cible: _cibleNotif(d.url) } : {};
     try { window.dispatchEvent(new CustomEvent(d.type, { detail: detail })); } catch (x) { /* rien */ }
   }
   try {
@@ -2013,6 +2045,7 @@
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
     ligneNotifications: ligneNotifications,
+    notificationAuDemarrage: notificationAuDemarrage,
     profilStatsExtension: profilStatsExtension,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,

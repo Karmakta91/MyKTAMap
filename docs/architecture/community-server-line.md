@@ -337,7 +337,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   64 car. ; `urgent` = reste à l'écran et resonne. Toujours une notification affichée (un message sans notification
   est puni par le navigateur). Toucher : l'app ouverte prend le focus, sinon elle s'ouvre sur `url`. Messages aux
   pages, relayés par `ktaExtensions.js` en événements : `mktm:notification-recue`, `mktm:notification-ouverte`
-  `{ url }`, `mktm:abonnement-push-change` (`pushsubscriptionchange` : se réabonner). Ce qui passe par les services
+  `{ url, cible }`, `mktm:abonnement-push-change` (`pushsubscriptionchange` : se réabonner). **Cible** d'une
+  notification : paramètre `kta-notif` de son `url` (`genre[:id[:id[:id]]]`, genre `[a-z]{3,20}`, chaque id
+  `[A-Za-z0-9_-]{1,80}`, sinon `null`) — opaque pour community, l'extension qui l'a émise l'ouvre. App fermée :
+  `ktaExtensions.js` lit le paramètre **une fois** au chargement, le retire de la barre (`history.replaceState`, autres
+  paramètres et ancre gardés) et `KtaExtensions.notificationAuDemarrage()` rend `{ cible }` **une seule fois**
+  (puis `null`) à l'extension qui le demande quand elle est prête (connexion, déverrouillage) ; sans extension, rien
+  ne le demande. Ce qui passe par les services
   de push (Apple, Google, Mozilla, Microsoft) : `NETWORK_AUDIT.md` § Notifications poussées ; myktamap.fr n'en
   contacte aucun. Tests : `check-extensions.js` (prise et vrai `sw.js` dans un `vm`).
 - **Statistiques du profil** : `profilStats() → [{ cle, icone, libelle, valeur, titre? }]` (ou Promise ; information,
