@@ -117,6 +117,7 @@ El autor puede difundir a toda la comunidad **alertas de seguridad**: incendio, 
 - **Al iniciar**, una alerta en curso aparece con sus consignas: **rojo pulsante** = situación crítica, hay que leerla sin falta; **naranja** = información importante; **azul** = simple aviso. Si hay varias, una lista las ordena de la más grave a la menos grave.
 - **Entendido** la archiva: solo vuelve si el autor la modifica o publica una nueva.
 - **El botón 🚨 de la pantalla de inicio** (a la izquierda de 📖) toma el color de la alerta no leída más grave (gris si no hay ninguna), con su número cuando hay varias. Al pulsarlo vuelve a mostrar todas las alertas en curso, incluso las leídas — o **Ninguna alerta en curso**, o **Verificación imposible** sin conexión: así sabes si una alerta antigua sigue vigente.
+- **En una instalación conectada a un servidor** (nunca en myktamap.fr), la ventana 🚨 puede proponer **🔔 Mostrar las alertas y novedades en el icono de la app — Activar**: no pasa nada sin ese gesto, y tu dispositivo te pide entonces tu permiso. Si lo rechazas, la línea dice **Desactivado en los ajustes del dispositivo** y no vuelve. **Nunca es un canal de seguridad**: bajo tierra, sin red, no llega nada.
 
 ### 🔒 Confidencialidad y auditoría de red
 

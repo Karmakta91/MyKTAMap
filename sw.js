@@ -1139,6 +1139,95 @@ async function _cacheAddDiag(cache, asset, phase) {
   }
 }
 
+// NOTIFICATIONS POUSSÉES (Web Push) — prise NEUTRE, contrat minimal : community-server-line.md §3.
+// Un abonnement n'existe que si une extension l'a pris (pushManager, sur l'installation qui la greffe) ; myktamap.fr
+// n'en prend jamais. Sans extension déclarée par l'index en cache (_extensionDeclaree), un message reçu est ignoré.
+// Message (JSON, chiffré de bout en bout par le serveur pour CET appareil, RFC 8291) :
+//   { titre?, corps?, url?, pastille?, tag?, urgent? } — titre 80 car. (défaut « MyKTAMap »), corps 240, url = un
+//   chemin de l'app (même origine, sous le scope ; sinon l'accueil), pastille = nombre de l'icône (0 à 999 ; 0 la
+//   retire), tag [A-Za-z0-9:_-] 64 car. (remplace la notification du même tag), urgent = reste à l'écran et resonne.
+// Touchée : l'app ouverte prend le focus (message mktm:notification-ouverte { url }), sinon elle s'ouvre sur l'url.
+// 🔒 Aucun script d'extension n'est importé ici (pas d'importScripts) : le SW n'exécute que ce contrat, texte seul.
+// 🩸 Un message sans notification affichée est puni par le navigateur (avis générique, puis abonnement retiré) :
+// tout message d'une installation reliée en affiche une.
+function _pushTexte(v, max) { return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : ""; }
+function _pushUrl(u) {
+  const scope = self.registration.scope;
+  try {
+    const x = new URL(typeof u === "string" && u ? u : "./", scope);
+    if (x.origin === self.location.origin && x.href.indexOf(scope) === 0) return x.href;
+  } catch (e) { /* adresse illisible : l'accueil */ }
+  return scope;
+}
+function _pushPropre(d) {
+  const o = d && typeof d === "object" ? d : {};
+  const n = Number(o.pastille);
+  return {
+    titre: _pushTexte(o.titre, 80) || "MyKTAMap",
+    corps: _pushTexte(o.corps, 240),
+    url: _pushUrl(o.url),
+    pastille: Number.isInteger(n) && n >= 0 ? Math.min(n, 999) : null,
+    tag: typeof o.tag === "string" && /^[A-Za-z0-9:_-]{1,64}$/.test(o.tag) ? o.tag : "kta-push",
+    urgent: o.urgent === true
+  };
+}
+function _pushPastille(n) {
+  const nav = self.navigator;
+  if (n === null || !nav || typeof nav.setAppBadge !== "function") return Promise.resolve();
+  try {
+    const p = n > 0 ? nav.setAppBadge(n) : (typeof nav.clearAppBadge === "function" ? nav.clearAppBadge() : nav.setAppBadge(0));
+    return Promise.resolve(p).catch(function() {});
+  } catch (e) { return Promise.resolve(); }
+}
+function _pushAuxPages(message) {
+  return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(liste) {
+    liste.forEach(function(c) { try { c.postMessage(message); } catch (e) { /* page fermée */ } });
+    return liste;
+  }).catch(function() { return []; });
+}
+// Une extension est-elle déclarée (index en cache : connexion « on » et au moins un module) ? Relu à chaque message :
+// le SW réveillé par un push n'a aucune mémoire.
+function _extensionDeclaree() {
+  return caches.open(CACHE_NAME)
+    .then(function(c) { return c.match("./data/index.json", { ignoreSearch: true }); })
+    .then(function(r) { return r ? r.text() : ""; })
+    .then(function(texte) {
+      let sc = null;
+      try { sc = ((JSON.parse(texte) || {}).config || {}).serverConnection; } catch (e) { return false; }
+      const mods = _modulesDeclares(texte);
+      return !!(sc && sc.state === "on" && mods && mods.length);
+    })
+    .catch(function() { return false; });
+}
+function _pushRecu(event) {
+  return _extensionDeclaree().then(function(declaree) {
+    if (!declaree) return;
+    let brut = null;
+    try { brut = event.data ? event.data.json() : null; } catch (e) { brut = null; }
+    const m = _pushPropre(brut);
+    return Promise.all([
+      self.registration.showNotification(m.titre, { body: m.corps, tag: m.tag, renotify: m.urgent,
+        requireInteraction: m.urgent, icon: "icon/compass-192.png", data: { url: m.url } }),
+      _pushPastille(m.pastille),
+      _pushAuxPages({ type: "mktm:notification-recue" })
+    ]);
+  });
+}
+self.addEventListener("push", function(event) { event.waitUntil(_pushRecu(event)); });
+self.addEventListener("notificationclick", function(event) {
+  event.notification.close();
+  const url = _pushUrl(event.notification.data && event.notification.data.url);
+  event.waitUntil(_pushAuxPages({ type: "mktm:notification-ouverte", url: url }).then(function(liste) {
+    const page = liste.filter(function(c) { return c.url && c.url.indexOf(self.registration.scope) === 0; })[0];
+    if (page && typeof page.focus === "function") return page.focus();
+    return self.clients.openWindow(url);
+  }));
+});
+// Abonnement renouvelé ou retiré par le navigateur : les pages ouvertes le disent à l'extension, qui se réabonne.
+self.addEventListener("pushsubscriptionchange", function(event) {
+  event.waitUntil(_pushAuxPages({ type: "mktm:abonnement-push-change" }));
+});
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 

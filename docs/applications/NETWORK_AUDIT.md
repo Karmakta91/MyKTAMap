@@ -493,7 +493,7 @@ code).
 ## 🪪 Permissions API navigateur utilisées
 
 L'app utilise un nombre limité d'API navigateur qui peuvent demander
-une permission. **Aucune** de ces API ne fait sortir de donnée du
+une permission. Sur `myktamap.fr`, **aucune** de ces API ne fait sortir de donnée du
 navigateur. Tableau exhaustif :
 
 | API | Quand | Permission requise ? | Donnée envoyée ? |
@@ -506,6 +506,7 @@ navigateur. Tableau exhaustif :
 | **Battery Status API** | Indicateur batterie sidebar + mode urgence | Politique navigateur (header `Permissions-Policy: battery=(self)` côté Nginx) | **Aucune** (lecture pure) |
 | **Screen Orientation API** | Correction heading boussole en landscape | Aucune | **Aucune** |
 | **Storage API (`navigator.storage.estimate`, `persist`)** | Inspecteur mémoire + auto-persist mobile | Oui (`persist` prompt navigateur sur certains browsers) | **Aucune** |
+| **Notifications et Push API** | **Jamais sur `myktamap.fr`.** Installation reliée seulement : bouton « Activer » de la fenêtre 🚨 | Oui (prompt explicite, dans le geste, jamais au démarrage) | Sur `myktamap.fr` : **aucune**. Installation reliée : abonnement auprès du service de push du navigateur (voir ci-dessous) |
 
 ### À propos du Wake Lock API
 
@@ -522,6 +523,25 @@ navigateur. Tableau exhaustif :
   l'option est activée. Cohérent best practice MDN.
 - **Pas de pingback serveur** : 0 fetch réseau dans `wakeLock.js`
   (vérifiable via le journal réseau intégré → Méthode 1).
+
+### À propos des notifications poussées (Web Push)
+
+- **Sur `myktamap.fr` : aucune.** L'app n'y demande jamais l'autorisation d'afficher des notifications, ne s'abonne à
+  aucun service de push, et son service worker n'en contacte aucun. La demande d'autorisation n'existe que derrière
+  une extension greffée par une installation reliée (garde-fou `scripts/check-extensions.js`, bloquant).
+- **Sur une installation reliée** (une autre adresse que `myktamap.fr`) : la fenêtre 🚨 propose « 🔔 Afficher les
+  alertes et nouveautés sur l'icône de l'app — Activer ». Rien ne se passe sans ce geste. Si tu acceptes, c'est **ton
+  navigateur** qui s'abonne au service de push de son éditeur, sur son propre canal : Apple (`*.push.apple.com`) sur
+  iPhone, iPad et Safari, Google (`fcm.googleapis.com`) pour Chrome et la plupart des navigateurs Android, Mozilla
+  (`*.push.services.mozilla.com`) pour Firefox, Microsoft (`*.notify.windows.com`) pour Edge sous Windows.
+- **Ce qui passe par ce service** : le serveur de l'installation y dépose un message **chiffré pour ton appareil
+  seul** (norme RFC 8291) — le service de push ne peut pas le lire. Il voit : l'adresse d'abonnement (un identifiant
+  opaque de ton navigateur), l'adresse du serveur qui envoie, l'heure, la taille, la durée de vie et l'urgence du
+  message, la clé publique et le contact de l'installation (VAPID). Le titre et le texte n'apparaissent en clair que
+  sur ton appareil, écran verrouillé compris. Ce que l'installation met dans ce texte : sa propre page de
+  transparence le dit.
+- **Jamais un canal de sécurité** : sous terre, sans réseau, rien n'arrive.
+- **Couper** : les réglages de notifications de ton appareil ou de ton navigateur, à tout moment.
 
 ### À propos de la Clipboard API
 

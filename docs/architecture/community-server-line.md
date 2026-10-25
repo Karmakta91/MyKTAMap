@@ -320,6 +320,26 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `afficherModaleAlerte` émet **`mktm:alerte-affichee`** `{ id, released }` (id tel qu'affiché, donc `ext_…` pour une
   alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran — pas pour le sélecteur. Signal sortant
   seulement : une extension en tire un accusé de lecture ; sans écouteur, rien.
+- **Notifications de l'appareil** : prise `notifications: { proposer() → bool, apresChoix(permission) }`
+  (information ; erreur = aucune ligne). `KtaExtensions.ligneNotifications()` rend la ligne « 🔔 Afficher les alertes
+  et nouveautés sur l'icône de l'app — Activer » (+ rappel « jamais un canal de sécurité »), posée au pied des trois
+  fenêtres 🚨 (aucune alerte, sélecteur, détail — en mode plan, l'alerte s'ouvre d'office), ou `null` : sans
+  extension qui la propose, état autre que ON / DOWN, API absentes (`Notification`, service worker, `PushManager`),
+  autorisation déjà donnée ou refusée. 🔒 `Notification.requestPermission` n'est appelé que par le bouton « Activer »
+  (geste, exigé par Safari), jamais au démarrage ; réponse dite (« Activé sur cet appareil » / « Désactivé dans les
+  réglages de l'appareil », la ligne ne revient plus) puis passée à `apresChoix`. L'abonnement au service de push du
+  navigateur (`pushManager.subscribe`) est l'affaire de l'extension : community n'appelle aucun service de push.
+- **Notifications poussées (Web Push)** : prise **dans `sw.js`**, contrat minimal, sans script d'extension (🔒 aucun
+  `importScripts`). Un message `push` n'est traité que si l'index en cache déclare une connexion `"on"` avec au moins
+  un module ; il porte `{ titre?, corps?, url?, pastille?, tag?, urgent? }` (JSON chiffré pour l'appareil par
+  l'émetteur, RFC 8291) : titre 80 car. (défaut « MyKTAMap »), corps 240, texte seul ; `url` = adresse de l'app sous
+  le scope (sinon l'accueil) ; `pastille` 0 à 999 posée par `setAppBadge` (0 la retire) ; `tag` `[A-Za-z0-9:_-]`
+  64 car. ; `urgent` = reste à l'écran et resonne. Toujours une notification affichée (un message sans notification
+  est puni par le navigateur). Toucher : l'app ouverte prend le focus, sinon elle s'ouvre sur `url`. Messages aux
+  pages, relayés par `ktaExtensions.js` en événements : `mktm:notification-recue`, `mktm:notification-ouverte`
+  `{ url }`, `mktm:abonnement-push-change` (`pushsubscriptionchange` : se réabonner). Ce qui passe par les services
+  de push (Apple, Google, Mozilla, Microsoft) : `NETWORK_AUDIT.md` § Notifications poussées ; myktamap.fr n'en
+  contacte aucun. Tests : `check-extensions.js` (prise et vrai `sw.js` dans un `vm`).
 - **Statistiques du profil** : `profilStats() → [{ cle, icone, libelle, valeur, titre? }]` (ou Promise ; information,
   attente bornée à 3 s, erreur = aucune ; 12 lignes, texte seul, clé `[\w-]` unique). Affichées dans « Détails du
   profil » (rubrique « 🏢 Installation reliée ») et proposées au bandeau d'accueil sous la clé `ext:<cle>`. Relues à

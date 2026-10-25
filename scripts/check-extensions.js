@@ -21,7 +21,9 @@ let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
-function nouveauContexte(licence) {
+// `extra` : globales posées AVANT l'exécution du module (navigator, Notification…), pour les prises qui s'y branchent
+// au chargement.
+function nouveauContexte(licence, extra) {
   const store = {};
   const appelsFetch = [];
   const scripts = [], elements = [];
@@ -42,6 +44,7 @@ function nouveauContexte(licence) {
     URL: URL, Headers: Headers, Promise: Promise, setTimeout: setTimeout, clearTimeout: clearTimeout
   };
   w.window = w;
+  Object.assign(w, extra || {});
   const ctx = vm.createContext(w);
   vm.runInContext("var localStorage = window.localStorage, document = window.document, CustomEvent = window.CustomEvent," +
                   " console = window.console, fetch = window.fetch;", ctx);
@@ -872,6 +875,78 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));
   }
 
+  // ── 6 bis decies. NOTIFICATIONS DE L'APPAREIL (prise notifications, ligne de la fenêtre 🚨) ──────
+  // 🔒 Jamais de demande système surprise : la demande ne part que du bouton de la ligne ; sans extension, rien.
+  {
+    const noeud = (tag) => {
+      const e = { tag, enfants: [], hidden: false, disabled: false, ecoutes: {}, retire: false,
+        appendChild(x) { e.enfants.push(x); return x; }, addEventListener(ty, fn) { e.ecoutes[ty] = fn; },
+        remove() { e.retire = true; } };
+      return e;
+    };
+    const monde = (permission, reponse) => {
+      const demandes = [], ecoutesSw = {};
+      const Notification = { permission, requestPermission(cb) { demandes.push(cb); Notification.permission = reponse;
+        return Promise.resolve(reponse); } };
+      return { demandes, ecoutesSw, extra: { Notification, PushManager: function () {},
+        navigator: { serviceWorker: { addEventListener(ty, fn) { ecoutesSw[ty] = fn; } } },
+        document: { readyState: "complete", getElementById: () => null, addEventListener() {}, createElement: noeud,
+          head: { appendChild() {} } } } };
+    };
+    const enLigne = (c) => { c.K.appliquerConfig(ON, true); c.K.signaler("on"); return c; };
+    const m0 = monde("default", "granted");
+    const sans = enLigne(nouveauContexte("server", m0.extra));
+    t("sans extension : aucune ligne, aucune demande d'autorisation", sans.K.ligneNotifications() === null && m0.demandes.length === 0);
+    const choix = [];
+    const m1 = monde("default", "granted");
+    const c1 = enLigne(nouveauContexte("server", m1.extra));
+    c1.K.register({ nom: "n1", apiVersion: 1, notifications: { proposer: () => true, apresChoix: (p) => { choix.push(p); } } });
+    const l1 = c1.K.ligneNotifications();
+    t("extension qui la propose, état ON, autorisation « default » : la ligne est là, AUCUNE demande avant le geste",
+      !!l1 && m1.demandes.length === 0 && l1.enfants.length === 4);
+    const btn = l1.enfants.find((e) => e.ecoutes.click);
+    btn.ecoutes.click();
+    await new Promise((r) => setTimeout(r, 10));
+    t("« Activer » : la demande part dans le geste ; accordée → bouton retiré, état « activé », l'extension l'apprend",
+      m1.demandes.length === 1 && btn.retire && choix[0] === "granted" && l1.enfants[3].hidden === false);
+    t("autorisation donnée : la ligne ne revient plus", c1.K.ligneNotifications() === null);
+    const m2 = monde("default", "denied");
+    const c2 = enLigne(nouveauContexte("server", m2.extra));
+    const choix2 = [];
+    c2.K.register({ nom: "n2", apiVersion: 1, notifications: { proposer: () => true, apresChoix: (p) => { choix2.push(p); } } });
+    const l2 = c2.K.ligneNotifications();
+    l2.enfants.find((e) => e.ecoutes.click).ecoutes.click();
+    await new Promise((r) => setTimeout(r, 10));
+    t("refusée : « Désactivé dans les réglages de l'appareil », puis la ligne ne revient plus",
+      l2.enfants[3].textContent === "alerts.notif.refusee" && choix2[0] === "denied" && c2.K.ligneNotifications() === null);
+    const m3 = monde("default", "granted");
+    const c3 = nouveauContexte("server", m3.extra);
+    c3.K.register({ nom: "n3", apiVersion: 1, notifications: { proposer: () => true } });
+    t("🩸 installation OFF (myktamap.fr) : aucune ligne même avec une extension", c3.K.ligneNotifications() === null);
+    enLigne(c3);
+    const m4 = monde("default", "granted");
+    const c4 = enLigne(nouveauContexte("server", m4.extra));
+    c4.K.register({ nom: "n4", apiVersion: 1, notifications: { proposer: () => { throw new Error("x"); } } });
+    t("prise en erreur ou qui ne propose pas : aucune ligne, aucune exception", c4.K.ligneNotifications() === null);
+    const m5 = monde("default", "granted");
+    delete m5.extra.PushManager;
+    const c5 = enLigne(nouveauContexte("server", m5.extra));
+    c5.K.register({ nom: "n5", apiVersion: 1, notifications: { proposer: () => true } });
+    t("navigateur sans Web Push (PushManager absent) : aucune ligne", c5.K.ligneNotifications() === null);
+    m1.ecoutesSw.message({ data: { type: "mktm:notification-ouverte", url: "https://inst.test/" } });
+    m1.ecoutesSw.message({ data: { type: "autre-chose" } });
+    t("messages du SW relayés en événements de la page (liste fermée)",
+      c1.w._emis.indexOf("mktm:notification-ouverte") >= 0 && c1.w._emis.indexOf("autre-chose") < 0);
+    const IA = lire("js/interfaceAlerts.js");
+    t("fenêtre 🚨 : la ligne est posée dans les trois fenêtres (aucune alerte, sélecteur, détail)",
+      (IA.match(/_ktaPoserLigneNotif\(modal\.querySelector/g) || []).length === 3);
+    const demandeurs = fs.readdirSync("js").filter((x) => /\.js$/.test(x) && /Notification\s*\.\s*requestPermission\s*\(/
+      .test(lire("js/" + x)));
+    t("🔒 Notification.requestPermission n'est appelé que dans ktaExtensions.js, une fois (bouton de la ligne)",
+      demandeurs.length === 1 && demandeurs[0] === "ktaExtensions.js" &&
+      (lire("js/ktaExtensions.js").match(/Notification\.requestPermission\(/g) || []).length === 1);
+  }
+
   // ── 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ──────
   {
     const { K } = nouveauContexte(null);
@@ -1591,9 +1666,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
         };
       };
       const ecoutes = {};
+      // Notifications (prise Web Push) : affichées, pastilles posées, pages prévenues, fenêtres ouvertes — notées.
+      const notifs = b.notifs = [], pastilles = b.pastilles = [], messages = b.messages = [], ouvertes = b.ouvertes = [];
+      b.pages = [];
+      b.ecoutes = ecoutes;
       function Response(corps, init) { return rep(corps, init && init.status); }
       const ctx = vm.createContext({
-        self: { registration: { scope: SCOPE }, location: { origin: "https://inst.test" },
+        self: { registration: { scope: SCOPE, showNotification(titre, o) { notifs.push({ titre, o }); return Promise.resolve(); } },
+          location: { origin: "https://inst.test" },
+          navigator: { setAppBadge(n) { pastilles.push(n); return Promise.resolve(); },
+            clearAppBadge() { pastilles.push(0); return Promise.resolve(); } },
+          clients: { matchAll: () => Promise.resolve(b.pages.map((p) => ({ url: p.url,
+            postMessage(m) { messages.push(m); }, focus() { p.focus = (p.focus || 0) + 1; return Promise.resolve(); } }))),
+          openWindow(u) { ouvertes.push(u); return Promise.resolve(); } },
           addEventListener(type, f) { ecoutes[type] = f; } },
         caches: { open: (n) => Promise.resolve(magasin(n)), has: (n) => Promise.resolve(n in magasins),
           keys: () => Promise.resolve(Object.keys(magasins)) },
@@ -1666,6 +1751,61 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 module posé à la racine : l'app elle-même ne passe pas en réseau d'abord",
       (await racine.demander("page.html", "document")) === "copie" &&
       (await racine.demander("css/style.css", "style")) === "css app" && racine.appels.length === 0);
+
+    // ── 8 bis. NOTIFICATIONS POUSSÉES (prise Web Push, contrat minimal) ──
+    const pousser = async (b, donnees) => {
+      let p = null;
+      b.ecoutes.push({ data: donnees === undefined ? null : { json() { return typeof donnees === "string" ? JSON.parse(donnees) : donnees; } },
+        waitUntil(x) { p = x; } });
+      await p;
+    };
+    t("🔒 sw.js n'importe aucun script (pas d'importScripts) : la prise Web Push n'exécute que son contrat",
+      !/importScripts\s*\(/.test(SWSRC));
+    t("🩸 les modules déclarés (jusqu'à 32, comme valider) sont tous gardés dans le cache durable",
+      /\.slice\(0, 32\)/.test(SWSRC) && !/\.slice\(0, 20\)/.test(SWSRC));
+    const nu = bac([]);
+    await pousser(nu, { titre: "x", pastille: 3 });
+    t("sans extension déclarée : un message reçu ne montre rien, ne pose aucune pastille, ne prévient aucune page",
+      nu.notifs.length === 0 && nu.pastilles.length === 0 && nu.messages.length === 0);
+    const off = bac(["ext/mod.js?v=1"]);
+    off.principal.put(SCOPE + "data/index.json", rep(JSON.stringify({ config: { serverConnection: { state: "off", modules: ["ext/mod.js"] } } })));
+    await pousser(off, { titre: "x" });
+    t("connexion « off » dans l'index : rien n'est affiché", off.notifs.length === 0);
+    const pu = bac(["ext/mod.js?v=1"]);
+    pu.pages.push({ url: SCOPE + "#x" });
+    await pousser(pu, { titre: "MyKTAMap : du nouveau", corps: "  ligne\n  deux ", url: "./#plan", pastille: 4, tag: "kta-nouveau" });
+    const n0 = pu.notifs[0];
+    t("extension déclarée : titre et corps (texte nettoyé), tag, adresse de l'app gardée pour le toucher",
+      n0 && n0.titre === "MyKTAMap : du nouveau" && n0.o.body === "ligne deux" && n0.o.tag === "kta-nouveau" &&
+      n0.o.data.url === SCOPE + "#plan" && n0.o.requireInteraction === false);
+    t("la pastille de l'icône prend le nombre du message ; les pages ouvertes sont prévenues",
+      pu.pastilles[0] === 4 && pu.messages.some((m) => m.type === "mktm:notification-recue"));
+    await pousser(pu, { titre: "x".repeat(300), url: "https://ailleurs.example/vol", pastille: 0, tag: "<script>", urgent: true });
+    const n1 = pu.notifs[1];
+    t("🔒 bornes : titre 80 car., adresse d'une autre origine → l'accueil, tag douteux → tag par défaut ; urgent reste à l'écran",
+      n1.titre.length === 80 && n1.o.data.url === SCOPE && n1.o.tag === "kta-push" && n1.o.requireInteraction === true &&
+      n1.o.renotify === true && pu.pastilles[1] === 0);
+    await pousser(pu, undefined);
+    await pousser(pu, "pas du json");
+    t("🩸 message vide ou illisible : une notification quand même (sinon le navigateur punit l'abonnement)",
+      pu.notifs.length === 4 && pu.notifs[3].titre === "MyKTAMap");
+    let fermee = false, att = null;
+    pu.ecoutes.notificationclick({ notification: { data: { url: SCOPE + "#plan" }, close() { fermee = true; } },
+      waitUntil(x) { att = x; } });
+    await att;
+    t("toucher : notification fermée, l'app ouverte prend le focus et reçoit l'adresse",
+      fermee && pu.pages[0].focus === 1 && pu.ouvertes.length === 0 &&
+      pu.messages.some((m) => m.type === "mktm:notification-ouverte" && m.url === SCOPE + "#plan"));
+    pu.pages.length = 0;
+    pu.ecoutes.notificationclick({ notification: { data: { url: "javascript:alert(1)" }, close() {} }, waitUntil(x) { att = x; } });
+    await att;
+    t("🔒 app fermée : elle s'ouvre, jamais sur une adresse hors de l'app", pu.ouvertes[0] === SCOPE);
+    pu.ecoutes.pushsubscriptionchange({ waitUntil(x) { att = x; } });
+    pu.pages.push({ url: SCOPE });
+    pu.ecoutes.pushsubscriptionchange({ waitUntil(x) { att = x; } });
+    await att;
+    t("abonnement renouvelé par le navigateur : les pages ouvertes le disent à l'extension",
+      pu.messages.some((m) => m.type === "mktm:abonnement-push-change"));
   }
 
   // ── ALLER À UN OBJET (action neutre allerAObjet) et ALERTE À L'ÉCRAN (mktm:alerte-affichee) ──

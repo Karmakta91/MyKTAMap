@@ -6309,6 +6309,21 @@ html.kta-theme-light .kta-cfg-input option {
   color: var(--kta-texte-3);
   font-family: ui-monospace, monospace;
 }
+/* Ligne « 🔔 notifications » d'une extension (KtaExtensions.ligneNotifications), au pied de la fenêtre 🚨. */
+.kta-alert-notif {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--kta-bordure);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--kta-texte-2);
+  text-align: left;
+}
+.kta-alert-notif-rappel { font-size: 12px; }
+.kta-alert-notif-btn { align-self: flex-start; }
+.kta-alert-notif-etat { font-weight: 600; }
 .kta-alert-actions {
   padding: 12px 20px 18px 20px;
   display: flex;

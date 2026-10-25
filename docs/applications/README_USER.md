@@ -117,6 +117,7 @@ L'auteur peut diffuser à toute la communauté des **alertes de sécurité** : i
 - **Au lancement**, une alerte en cours s'affiche avec ses consignes : **rouge pulsant** = situation critique, à lire impérativement ; **orange** = information importante ; **bleu** = simple annonce. S'il y en a plusieurs, une liste les classe de la plus grave à la moins grave.
 - **J'ai compris** la range : elle ne revient que si l'auteur la modifie ou en publie une nouvelle.
 - **Le bouton 🚨 de l'écran d'accueil** (à gauche de 📖) prend la couleur de l'alerte non lue la plus grave (gris s'il n'y en a pas), avec leur nombre s'il y en a plusieurs. Un appui réaffiche toutes les alertes en cours, même lues — ou **Aucune alerte en cours**, ou **Vérification impossible** hors ligne : de quoi savoir si une vieille alerte tient toujours.
+- **Sur une installation reliée à un serveur** (jamais sur myktamap.fr), la fenêtre 🚨 peut proposer **🔔 Afficher les alertes et nouveautés sur l'icône de l'app — Activer** : rien ne se passe sans ce geste, et ton appareil te demande alors son accord. Refusé, la ligne dit **Désactivé dans les réglages de l'appareil** et ne revient plus. Ce n'est **jamais un canal de sécurité** : sous terre, sans réseau, rien n'arrive.
 
 ### 🔒 Confidentialité & Audit réseau
 

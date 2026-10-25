@@ -121,10 +121,6 @@
 
 ## Entrant
 
-- **Transparence : dire le Web Push** — le pro prévoit des notifications l'app fermée (étape C de l'audit pro), par
-  une prise neutre dans `sw.js`. myktamap.fr n'en enverra jamais : à dire dans `NETWORK_AUDIT.md` (aucun service de
-  push contacté sans extension ; avec, lequel et ce qui passe), même avant que la prise existe ? 🔬 à décider.
-  `qui: KARMA · action: dire si on l'écrit maintenant ou avec la prise · depuis: 25/10/2026 · taille: XS`
 - **Objet supprimé qui reste affiché** — parfois, un POI ou un tracé supprimé ne disparaît qu'au rechargement de la
   page (vu en pro, peut-être aussi en community). 🔬 hypothèse, non reproduit ; conditions à préciser (plan ☁️,
   autre compte connecté, après une annulation ?).

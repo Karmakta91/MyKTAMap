@@ -345,7 +345,7 @@
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -526,6 +526,85 @@
       }).filter(Boolean);
     }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.lister a échoué :", e); return []; });
   }
+  // ── Notifications de l'appareil (prise d'INFORMATION « notifications ») ──
+  // notifications: { proposer() → bool, apresChoix(permission) } : l'extension dit si l'autorisation a un sens
+  // (compte connecté…) et reçoit la réponse ("granted" | "denied") pour s'abonner elle-même au service de push du
+  // navigateur — community ne s'abonne à rien et n'appelle aucun service de push.
+  // 🔒 Aucune demande système surprise : `Notification.requestPermission` ne part QUE du bouton « Activer » de la
+  // ligne (geste de l'utilisateur, exigé par Safari), jamais au démarrage. Ligne proposée seulement si : une extension
+  // la propose, état ON ou DOWN, API présentes (Notification, service worker, PushManager), autorisation encore
+  // « default ». Refusée : la ligne le dit, puis ne revient plus (l'autorisation n'est plus « default »).
+  function _notifPossible() {
+    try {
+      return typeof Notification !== "undefined" && typeof navigator !== "undefined" && !!navigator.serviceWorker &&
+        typeof window.PushManager !== "undefined" && Notification.permission === "default" &&
+        typeof Notification.requestPermission === "function";
+    } catch (e) { return false; }
+  }
+  function _priseNotifications() {
+    const ext = _prise("notifications");
+    return ext && ext.notifications && typeof ext.notifications.proposer === "function" ? ext.notifications : null;
+  }
+  function _apresChoixNotif(p, permission) {
+    if (typeof p.apresChoix !== "function") return;
+    try {
+      Promise.resolve(p.apresChoix(permission)).catch(function (e) { console.warn("[Extensions] notifications :", e); });
+    } catch (e) { console.warn("[Extensions] notifications.apresChoix a échoué :", e); }
+  }
+  function ligneNotifications() {
+    const p = _priseNotifications();
+    if (!p || (_etat !== "on" && _etat !== "down") || !_notifPossible()) return null;
+    try { if (p.proposer() !== true) return null; }
+    catch (e) { console.warn("[Extensions] notifications.proposer :", e); return null; }
+    const el = function (tag, classe, texte) {
+      const e = document.createElement(tag);
+      e.className = classe;
+      if (texte) e.textContent = texte;
+      return e;
+    };
+    const ligne = el("div", "kta-alert-notif");
+    const bouton = el("button", "kta-btn kta-btn-primary kta-alert-notif-btn", _t("alerts.notif.activer"));
+    bouton.type = "button";
+    const etat = el("div", "kta-alert-notif-etat");
+    etat.hidden = true;
+    bouton.addEventListener("click", function () {
+      bouton.disabled = true;
+      let demande;
+      // ⚠️ Appel DANS le geste (Safari refuse une demande hors d'un clic) ; l'ancienne forme à rappel est acceptée.
+      try { demande = Notification.requestPermission(function () {}); } catch (e) { demande = null; }
+      Promise.resolve(demande).then(function (r) {
+        const permission = r === "granted" || r === "denied" ? r : Notification.permission;
+        if (permission !== "granted" && permission !== "denied") { bouton.disabled = false; return; }
+        bouton.remove();
+        etat.hidden = false;
+        etat.className = "kta-alert-notif-etat " + (permission === "granted" ? "kta-tx-ok" : "kta-tx-warn");
+        etat.textContent = _t(permission === "granted" ? "alerts.notif.activee" : "alerts.notif.refusee");
+        _apresChoixNotif(p, permission);
+      }, function () { bouton.disabled = false; });
+    });
+    ligne.appendChild(el("div", "kta-alert-notif-texte", _t("alerts.notif.ligne")));
+    ligne.appendChild(el("div", "kta-alert-notif-rappel kta-tx-muted", _t("alerts.notif.rappel")));
+    ligne.appendChild(bouton);
+    ligne.appendChild(etat);
+    return ligne;
+  }
+  // Messages du service worker (prise Web Push de sw.js) relayés en événements de la page, sans effet sans écouteur :
+  // mktm:notification-recue (une notification vient d'arriver), mktm:notification-ouverte { url } (touchée, app déjà
+  // ouverte), mktm:abonnement-push-change (le navigateur a renouvelé l'abonnement : l'extension se réabonne).
+  const _MESSAGES_PUSH = ["mktm:notification-recue", "mktm:notification-ouverte", "mktm:abonnement-push-change"];
+  function _relayerMessageSw(e) {
+    const d = e && e.data;
+    if (!d || typeof d.type !== "string" || _MESSAGES_PUSH.indexOf(d.type) < 0) return;
+    const detail = d.type === "mktm:notification-ouverte" && typeof d.url === "string" ? { url: d.url.slice(0, 300) } : {};
+    try { window.dispatchEvent(new CustomEvent(d.type, { detail: detail })); } catch (x) { /* rien */ }
+  }
+  try {
+    if (typeof navigator !== "undefined" && navigator.serviceWorker &&
+        typeof navigator.serviceWorker.addEventListener === "function") {
+      navigator.serviceWorker.addEventListener("message", _relayerMessageSw);
+    }
+  } catch (e) { /* pas de service worker : rien à relayer */ }
+
   // ── Statistiques du profil (prise d'INFORMATION profilStats) ──
   // profilStats() → [{ cle, icone, libelle, valeur, titre? }] (ou Promise) : lignes de texte de « Détails du
   // profil », proposées au bandeau d'accueil (clé « ext:<cle> »). Nettoyées (12 lignes max, textes bornés,
@@ -1933,6 +2012,7 @@
     exportLimite: exportLimite,
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
+    ligneNotifications: ligneNotifications,
     profilStatsExtension: profilStatsExtension,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,

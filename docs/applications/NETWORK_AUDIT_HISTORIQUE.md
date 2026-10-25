@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### Version suivante (notifications poussées d'une installation reliée)
+
+**Rien de nouveau sur myktamap.fr : aucune demande d'autorisation, aucun service de push contacté.** Une installation reliée peut désormais proposer, dans la fenêtre 🚨, d'afficher ses alertes et nouveautés sur l'icône de l'app ; seulement après un geste (« Activer »), ton navigateur s'abonne au service de push de son éditeur (Apple, Google, Mozilla ou Microsoft), qui transporte des messages chiffrés pour ton appareil seul sans pouvoir les lire. Le service worker affiche ces messages, texte seul, sans exécuter aucun script de l'installation. Détail : [la page d'audit](NETWORK_AUDIT.md), § notifications poussées.
+
 ### v2.20.1 (tout garder hors ligne d'un dossier)
 
 **Aucun domaine nouveau.** « 📥 Tout garder hors ligne » télécharge, à la demande, les plans d'un dossier depuis le site qui les sert, comme le bouton de téléchargement hors-ligne d'un plan ; pour estimer la taille avant de demander confirmation, il envoie des requêtes `HEAD` (sans corps, même domaine) sur une partie des fichiers. L'avancement d'une publication et le message d'échec d'ouverture d'un plan ne servent qu'avec une installation reliée : rien ne part de myktamap.fr, et sur une installation reliée les échanges vont à son serveur seulement, comme avant.

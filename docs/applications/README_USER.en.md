@@ -117,6 +117,7 @@ The author can broadcast **safety alerts** to the whole community: fire, access 
 - **At launch**, a current alert shows up with its instructions: **pulsing red** = critical situation, must be read; **orange** = important information; **blue** = simple announcement. If there are several, a list sorts them from most to least serious.
 - **Got it** puts it away: it only comes back if the author edits it or publishes a new one.
 - **The 🚨 button on the home screen** (left of 📖) takes the colour of the most serious unread alert (grey if there is none), with their count when there are several. Tapping it shows every current alert again, even read ones — or **No active alert**, or **Check unavailable** when offline: a way to find out whether an old alert still stands.
+- **On an installation linked to a server** (never on myktamap.fr), the 🚨 window may offer **🔔 Show alerts and news on the app icon — Turn on**: nothing happens without that tap, and your device then asks for your consent. If you refuse, the line says **Turned off in the device settings** and does not come back. It is **never a safety channel**: underground, with no network, nothing gets through.
 
 ### 🔒 Privacy & Network audit
 
