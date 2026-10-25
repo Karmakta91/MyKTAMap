@@ -500,6 +500,18 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   le niveau de travail (`ktaSetActiveLevel`) ; centre la carte (point ou centroïde) et ouvre sa fiche (couche de
   `layerEditor` qui porte une fiche à sa position), sinon une bulle à son nom. `false` sans rien bouger : plan pas
   prêt (`planPret`), uid inconnu, objet sans position. Tests : `check-extensions.js`.
+- **Repères d'une extension** (calque générique, ex. tâches ouvertes) :
+  `KtaExtensions.afficherReperes(calque, liste, { clic }) → nombre dessiné` — affichage seulement, jamais une requête.
+  `calque` : nom `[a-z0-9_-]{1,24}` (8 calques au plus) ; `liste` : `[{ id, uid | x + y, teinte?, symbole?, titre?,
+  nombre? }]`, 500 repères au plus. Un repère rattaché à un objet (`uid`) se pose **sur** lui (le point, ou le sommet du
+  milieu d'un tracé, d'une zone, d'une structure) et suit ses niveaux (atténué hors niveau affiché) ; uid inconnu,
+  itinéraire calculé, objet sans position : écarté. `teinte` = un nom de jeton de la charte (`accent`, `interaction`,
+  `ok`, `avert`, `erreur`, `violet`, `magenta`, `neutre`) rendu par une classe `.kta-repere-<teinte>` — jamais une
+  couleur libre (autre valeur : `neutre`) ; `symbole` (2 caractères) et `titre` (80, infobulle et nom accessible)
+  posés en texte ; `nombre` (2 à 99) en pastille. Toucher un repère appelle `clic(id)` (erreur avalée). Plan pas prêt :
+  0, rien dessiné ; `[]` efface ce calque ; la sortie du plan les efface tous (`KtaPresences.reinitialiser`). Rendu :
+  `js/ktaPresences.js > afficherReperes` (pastille 30 px ancrée en haut à droite de l'objet, l'icône du point reste
+  visible). Sans extension : rien n'appelle la prise, aucun calque. Tests : `check-extensions.js`.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
   changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).
@@ -578,8 +590,8 @@ navigateur.
   `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
 
 **État : livré** (v2.0.0 → v2.7.0) — tout ce qui précède est en place dans community :
-- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }`, recalculée à chaque
-  `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
+- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }` (32 modules déclarés au
+  plus, même plafond dans ConfAdmin ; au-delà : INVALIDE), recalculée à chaque `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
   (`myktamap_server_connection_v1`, **exclue de l'export de profil** : donnée de l'instance, pas de l'utilisateur).
 - **Pastille** collée au badge de version du pied de page de l'accueil, icône + mot court (icône seule sous 380 px ;
   footer replié : icône seule sur le bouton) ; un clic ouvre la fenêtre « Que fait l'app sur le réseau ? » avec

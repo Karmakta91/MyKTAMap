@@ -7,8 +7,10 @@
 // ktaPresences.js — présences et itinéraires publiés sur le plan ouvert, AFFICHAGE seulement (prise neutre).
 // Une installation reliée fournit la position des AUTRES qui ont choisi de la partager : repère avec pseudo,
 // ancienneté et trace. Itinéraires publiés (`afficherItineraires`) : calque distinct, pointillés jaunes,
-// étapes ○ / ✓, lecture seule. Rien n'est lu ni envoyé ici ; sans extension, aucun calque, aucun coût.
-// Expose window.KtaPresences (afficher, afficherItineraires, couleurDe, reinitialiser, actions de panneau).
+// étapes ○ / ✓, lecture seule. Repères d'une extension (`afficherReperes`, ex. tâches ouvertes) : calques nommés,
+// pastille à symbole et teinte de la charte posée près de l'objet. Rien n'est lu ni envoyé ici ; sans extension,
+// aucun calque, aucun coût.
+// Expose window.KtaPresences (afficher, afficherItineraires, afficherReperes, couleurDe, reinitialiser, actions).
 // Garde-fou : scripts/check-extensions.js
 (function () {
   "use strict";
@@ -24,6 +26,7 @@
   var _itis = [];
   var _itisMasques = {};             // id → true : itinéraire non dessiné
   var _personnesMasquees = {};       // id → true : ni repère ni trace (« Masquer une personne »)
+  var _reperes = {};                 // calque → { liste, groupe, clic }
 
   // Une couleur par personne, tirée de son identifiant (la même sur tous les appareils, sans serveur). Lisible
   // sur fond sombre et clair ; ⚠️ évite le jaune d'accent (itinéraires), les rouges (urgence), les gris
@@ -237,13 +240,94 @@
     return _liste.length;
   }
 
-  // 🩸 Sortie du plan : tout ce qui appartenait à l'ancien plan disparaît (présences, itinéraires, suivi,
+  // ── Repères d'une extension ──
+  // ⚠️ Teinte = un nom de jeton de la charte (classe .kta-repere-<teinte>), jamais une couleur libre : le thème clair
+  // et les contrastes restent ceux de l'app.
+  var TEINTES = ["accent", "interaction", "ok", "avert", "erreur", "violet", "magenta", "neutre"];
+  var MAX_REPERES = 500, MAX_CALQUES = 8;
+  // 🔒 Entrées non conformes écartées ; textes coupés, posés en texte plus bas (jamais interprétés).
+  function _nettoyerReperes(liste) {
+    if (!Array.isArray(liste)) return [];
+    return liste.filter(function (r) {
+      return r && typeof r.id === "string" && r.id && r.id.length <= 80 && _fini(r.x) && _fini(r.y);
+    }).slice(0, MAX_REPERES).map(function (r) {
+      return {
+        id: r.id, x: r.x, y: r.y,
+        niveaux: Array.isArray(r.niveaux) ? r.niveaux.filter(function (n) { return Number.isInteger(n); }).slice(0, 8) : [],
+        teinte: TEINTES.indexOf(r.teinte) >= 0 ? r.teinte : "neutre",
+        symbole: typeof r.symbole === "string" ? Array.from(r.symbole.trim()).slice(0, 2).join("") : "",
+        titre: typeof r.titre === "string" ? r.titre.trim().slice(0, 80) : "",
+        nombre: Number.isInteger(r.nombre) && r.nombre > 1 ? Math.min(r.nombre, 99) : 0
+      };
+    });
+  }
+  function _viderReperes(nom) {
+    var c = _reperes[nom];
+    if (c && c.groupe && c.groupe._map) { try { c.groupe._map.removeLayer(c.groupe); } catch (e) { /* carte fermée */ } }
+    if (c) c.groupe = null;
+  }
+  var TAILLE_REPERE = 30;
+  function _dessinerReperes(nom) {
+    _viderReperes(nom);
+    var c = _reperes[nom], map = window.map;
+    if (!c || !map || !c.liste.length || typeof L === "undefined") return;
+    c.groupe = L.layerGroup();
+    c.liste.forEach(function (r) {
+      var horsNiveau = r.niveaux.length > 0 && !r.niveaux.some(_niveauVisible);
+      var el = document.createElement("div");
+      el.className = "kta-repere kta-repere-" + r.teinte + (horsNiveau ? " kta-repere-hors-niveau" : "");
+      el.dataset.id = r.id;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", r.titre || r.symbole || r.id);
+      el.title = r.titre;
+      var sym = document.createElement("span");
+      sym.className = "kta-repere-symbole";
+      sym.textContent = r.symbole || "•";
+      el.appendChild(sym);
+      if (r.nombre) {
+        var n = document.createElement("span");
+        n.className = "kta-repere-nombre";
+        n.textContent = String(r.nombre);
+        el.appendChild(n);
+      }
+      // Ancré en haut à droite de l'objet : l'icône du point reste visible dessous.
+      var m = L.marker(_coord(r.x, r.y), {
+        icon: L.divIcon({ className: "kta-repere-icone", html: el, iconSize: [TAILLE_REPERE, TAILLE_REPERE],
+          iconAnchor: [-4, TAILLE_REPERE + 4] }),
+        keyboard: false, zIndexOffset: 600
+      });
+      if (typeof m.on === "function") {
+        m.on("click", function () {
+          if (typeof c.clic !== "function") return;
+          try { c.clic(r.id); } catch (e) { console.warn("[Presences] repère :", e); }
+        });
+      }
+      m.addTo(c.groupe);
+    });
+    c.groupe.addTo(map);
+  }
+  // nom : calque de l'extension (a-z, 0-9, _ -, 24 car.) ; liste : [{ id, x, y, niveaux?, teinte?, symbole?, titre?,
+  // nombre? }] ; [] efface ce calque. clic(id) : appelé au toucher d'un repère (erreur ignorée).
+  function afficherReperes(nom, liste, clic) {
+    if (typeof nom !== "string" || !/^[a-z0-9_-]{1,24}$/.test(nom)) return 0;
+    if (!_reperes[nom] && Object.keys(_reperes).length >= MAX_CALQUES) return 0;
+    var c = _reperes[nom] || (_reperes[nom] = { liste: [], groupe: null, clic: null });
+    c.liste = _nettoyerReperes(liste);
+    c.clic = typeof clic === "function" ? clic : null;
+    _dessinerReperes(nom);
+    if (!c.liste.length) delete _reperes[nom];
+    return c.liste.length;
+  }
+
+  // 🩸 Sortie du plan : tout ce qui appartenait à l'ancien plan disparaît (présences, itinéraires, repères, suivi,
   // masquages, minuteur), sinon l'équipe est redessinée sur le nouveau plan à ses anciennes coordonnées.
   function reinitialiser() {
     clearInterval(_minuteur); _minuteur = null;
     _liste = []; _itis = []; _suivi = null; _tracesMasquees = {}; _itisMasques = {};
     _personnesMasquees = {};
     _vider(); _viderItis();
+    Object.keys(_reperes).forEach(_viderReperes);
+    _reperes = {};
   }
 
   window.KtaPresences = {
@@ -252,7 +336,7 @@
     couleurDe: couleurDe,
     palette: function () { return PALETTE.slice(); },
     reinitialiser: reinitialiser,
-    redessiner: function () { _dessiner(); _dessinerItis(); },   // changement de niveau affiché
+    redessiner: function () { _dessiner(); _dessinerItis(); Object.keys(_reperes).forEach(_dessinerReperes); },   // niveau affiché
     // Actions neutres pour un panneau d'extension (« 👥 Équipe »), jamais déclenchées par l'app seule.
     centrer: function (id) { var p = _trouver(id); if (!p) return false; _allerA(p, true); return true; },
     suivre: function (id) { _suivi = (id && _trouver(id)) ? id : null; if (_suivi) _allerA(_trouver(_suivi), true); return _suivi; },
@@ -271,6 +355,9 @@
     masquerItineraire: function (id, masquer) { if (masquer) _itisMasques[id] = true; else delete _itisMasques[id]; _dessinerItis(); return !!masquer; },
     itineraireMasque: function (id) { return !!_itisMasques[id]; },
     itineraires: function () { return JSON.parse(JSON.stringify(_itis)); },
+    afficherReperes: afficherReperes,
+    // Copie des repères d'un calque (tests, diagnostic).
+    reperes: function (nom) { return _reperes[nom] ? JSON.parse(JSON.stringify(_reperes[nom].liste)) : []; },
     nombre: function () { return _liste.length; },
     // Copie de ce qui est affiché (tests, diagnostic).
     liste: function () { return JSON.parse(JSON.stringify(_liste)); }

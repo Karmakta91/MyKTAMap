@@ -41,7 +41,8 @@
     on:         "kta-tx-ok",
     down:       "kta-tx-warn"
   };
-  const MAX_MODULES = 20;
+  // Plafond de bon sens (une liste démesurée = index corrompu ou malveillant) ; même valeur dans confadmin.js.
+  const MAX_MODULES = 32;
 
   let _connexion = { etat: "off", raison: "" };   // résultat de valider()
   let _etat = "off";
@@ -1832,6 +1833,39 @@
     } catch (e) { console.warn("[Extensions] allerAObjet :", e); return false; }
     return true;
   }
+  // Repères d'une extension sur le plan affiché (affichage seulement, ex. tâches ouvertes) :
+  // afficherReperes(calque, [{ id, uid | x + y, teinte?, symbole?, titre?, nombre? }], { clic(id) }) → nombre dessiné.
+  // Un repère rattaché à un objet (`uid`) se pose sur lui : le point, ou le sommet du milieu d'un tracé, d'une zone,
+  // d'une structure (toujours SUR l'objet, un centroïde peut tomber à côté) ; ses niveaux suivent l'objet (atténué
+  // hors niveau affiché). uid inconnu, itinéraire calculé, objet sans position : écarté. Plan pas prêt : rien (0).
+  // [] efface le calque ; la sortie du plan les efface tous. Rendu et nettoyage : ktaPresences.js > afficherReperes.
+  function afficherReperes(calque, liste, opts) {
+    try {
+      if (!window.KtaPresences || typeof window.KtaPresences.afficherReperes !== "function") return 0;
+      const vide = !Array.isArray(liste) || !liste.length;
+      if (!vide && !planPret()) return 0;
+      const poses = [];
+      (Array.isArray(liste) ? liste : []).slice(0, 500).forEach(function (r) {
+        if (!r || typeof r !== "object") return;
+        const p = { id: r.id, teinte: r.teinte, symbole: r.symbole, titre: r.titre, nombre: r.nombre };
+        if (typeof r.uid === "string" && r.uid) {
+          const o = _objetSession(r.uid);
+          if (!o) return;
+          if (typeof o.x === "number" && typeof o.y === "number") { p.x = o.x; p.y = o.y; }
+          else if (Array.isArray(o.points)) {
+            const pts = o.points.filter(function (q) { return q && typeof q.x === "number" && typeof q.y === "number"; });
+            if (!pts.length) return;
+            const m = pts[Math.floor(pts.length / 2)];
+            p.x = m.x; p.y = m.y;
+          } else return;
+          p.niveaux = _niveauxObjet(o);
+        } else { p.x = r.x; p.y = r.y; }
+        poses.push(p);
+      });
+      const clic = opts && typeof opts.clic === "function" ? opts.clic : null;
+      return window.KtaPresences.afficherReperes(calque, poses, clic);
+    } catch (e) { console.warn("[Extensions] afficherReperes :", e); return 0; }
+  }
   function _hydraterFiche(racine) {
     if (!racine || racine.getAttribute("data-kta-ext") === "1") return;
     racine.setAttribute("data-kta-ext", "1");
@@ -1931,6 +1965,7 @@
     retirerAlerteSecours: retirerAlerteSecours,
     auteurObjet: auteurObjet,
     allerAObjet: allerAObjet,
+    afficherReperes: afficherReperes,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,

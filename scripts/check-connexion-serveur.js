@@ -143,7 +143,8 @@ const CAS = [
   ["transparence : remonte", { state: "on", api: OK.api, modules: [], transparence: "../t.html" }, "invalide"],
   ["transparence : pas une page .html", { state: "on", api: OK.api, modules: [], transparence: "pro/t.js" }, "invalide"],
   ["transparence : non texte", { state: "on", api: OK.api, modules: [], transparence: 42 }, "invalide"],
-  ["21 modules", { state: "on", api: OK.api, modules: Array.from({ length: 21 }, (_, i) => "pro/m" + i + ".js") }, "invalide"]
+  ["32 modules", { state: "on", api: OK.api, modules: Array.from({ length: 32 }, (_, i) => "pro/m" + i + ".js") }, "on"],
+  ["33 modules", { state: "on", api: OK.api, modules: Array.from({ length: 33 }, (_, i) => "pro/m" + i + ".js") }, "invalide"]
 ];
 if (K && validerCA) {
   CAS.forEach(([nom, entree, attendu]) => {
