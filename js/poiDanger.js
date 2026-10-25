@@ -10,6 +10,8 @@
 // Modèle : `dateConstat` = "AAAA-MM-JJ" (jour local où le danger a été vu), facultatif. Pré-rempli au jour même
 // quand un point DEVIENT danger (création, ou changement de tag), modifiable, vide = inconnue (champ retiré). Un
 // point danger existant sans date reste sans date : rien n'est inventé.
+// ⚠️ Le point du mode « perdu » (lostMode.js, `source: "lostMode"`, ou id « lost_… » d'avant ce marqueur) porte
+// le tag danger pour son icône : position incertaine, pas un danger constaté → ni bloc, ni date, ni mention.
 // ⚠️ Fiche de tout POI danger (session ou calque) : la date, puis la mention « MyKTAMap ne certifie pas l'état
 // d'un site » — un danger relevé n'est qu'un constat daté (décision produit).
 // Exports : GeoJSON (propriété `dateConstat`), KMZ (`mkm:dateConstat`), GPX (`constat=` dans <cmt>), relus par
@@ -33,7 +35,10 @@
     const p = pointOuTag;
     return (p && Array.isArray(p.tags) && p.tags.length) ? String(p.tags[0]) : "";
   }
-  function estDanger(pointOuTag) { return TAGS_DANGER.indexOf(_tag(pointOuTag)) >= 0; }
+  function _pointPerdu(p) {
+    return !!p && typeof p === "object" && (p.source === "lostMode" || /^lost_d+$/.test(String(p.id || "")));
+  }
+  function estDanger(pointOuTag) { return !_pointPerdu(pointOuTag) && TAGS_DANGER.indexOf(_tag(pointOuTag)) >= 0; }
 
   // "AAAA-MM-JJ" d'un jour qui existe (le 31/02 est refusé) → la chaîne ; sinon null.
   function dateValide(s) {
@@ -67,6 +72,7 @@
   // Masqué tant que le tag n'est pas un danger. Valeur de départ : la date du point, sinon le jour même — sauf
   // pour un point DÉJÀ danger sans date (on n'invente pas un constat).
   function htmlFormulaire(tag, point) {
+    if (_pointPerdu(point)) return "";
     const cache = estDanger(tag) ? "" : " hidden";
     const deja = point && estDanger(point);
     const valeur = dateConstat(point) || (deja ? "" : jourLocal());

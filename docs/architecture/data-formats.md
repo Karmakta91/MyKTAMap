@@ -89,7 +89,9 @@ GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `mult
 → **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
 vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger
 (création ou changement de tag), modifiable, retiré si vidé ou si le tag n'est plus danger ; un point danger
-sans date reste sans date. Fiche : « Constaté le … » + mention de non-certification. Gardé par la session et
+sans date reste sans date. Fiche : « Constaté le … » + mention de non-certification. Exclu : le point du mode
+« perdu » (`lostMode.js`, `"source": "lostMode"`, ou id `lost_…` d'avant ce marqueur), tag danger pour l'icône
+seulement — ni date, ni mention. Gardé par la session et
 l'export complet ; GeoJSON = propriété `dateConstat`, KMZ = `<Data name="mkm:dateConstat">`, GPX = `constat=…`
 dans `<cmt>` (les deux relus à l'import). **Jamais** dans l'export anonymisé (liste blanche).
 

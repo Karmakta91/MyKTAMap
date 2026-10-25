@@ -13,6 +13,8 @@
 // C. Aller-retour : ZIP de session complet (photos/_index.json : priseLe, createdAt ; dateConstat dans
 //    session.json), session et photos effacées puis réimportées ; export anonymisé sans aucune de ces dates ;
 //    GeoJSON, KMZ (réimporté) et GPX (réimporté) emportent la date de constat.
+// D. Point du mode « perdu » (tag danger, lostMode.js) posé par le vrai parcours : ni date, ni mention, ni bloc au
+//    formulaire, y compris après une modification (l'id devient le nom).
 // Usage : node scripts/smoke/checkup-photos-danger.js (SMOKE_PORT pour une autre copie ; PD_SHOTS=<dossier> :
 //   captures et fichiers produits)
 // Doc : docs/architecture/session-data.md (photos) · docs/architecture/data-formats.md (format point)
@@ -552,6 +554,53 @@ async function partieExports(page) {
   verifier(/constat=2026-10-03/.test(gpx) && g.dateConstat === CONSTAT, "GPX : « constat= » dans <cmt>, relu par l'import", g);
 }
 
+// ── D. Point du mode « perdu » ────────────────────────────
+// Posé par lostMode.js avec le tag danger, ce n'est pas un danger constaté : ni date, ni mention, ni date
+// pré-remplie à l'édition. Parcours réel : 🆘 Je suis perdu → position du tracker → calcul → Confirmer.
+async function partiePerdu(page) {
+  await page.evaluate(function () { window.LostMode.open(); });
+  await attendre(page, function () { return !!document.getElementById("kta-lost-use-tracker"); }, 5000);
+  await page.click("#kta-lost-use-tracker");
+  await page.click("#kta-lost-calc");
+  await attendre(page, function () { return !!document.getElementById("kta-lost-confirm"); }, 10000);
+  await page.click("#kta-lost-confirm");
+  await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 5000);
+  await page.waitForTimeout(400);   // garde anti-double-clic de ktaConfirm
+  await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
+  await page.waitForTimeout(500);
+  const nom = await page.evaluate(function () {
+    if (window.renderEditorPoints) window.renderEditorPoints();
+    const p = window.getEditorPoints().filter(function (q) { return /^lost_/.test(String(q.id || "")); }).pop();
+    return p ? p.nom : null;
+  });
+  verifier(!!nom, "mode perdu : le point de localisation est posé dans la session", nom);
+  if (!nom) return;
+  const f = await ficheTexte(page, nom);
+  verifier(!!f && f.mk && f.bloc === null, "mode perdu : fiche sans date de constat ni mention", f);
+  await page.evaluate(function (n) {
+    const p = window.getEditorPoints().find(function (q) { return q.nom === n; });
+    window.afficherFormulaire(p.x, p.y, p);
+  }, nom);
+  await attendre(page, function () { return !!document.getElementById("kta-poi-modal"); }, 5000);
+  const form = await page.evaluate(function () {
+    const b = document.getElementById("kta-poi-danger");
+    const c = document.getElementById("kta-poi-constat");
+    return { visible: !!b && !b.hidden, valeur: c ? c.value : null };
+  });
+  verifier(!form.visible && !form.valeur, "mode perdu : formulaire sans bloc ni date pré-remplie", form);
+  await page.fill("#kta-poi-description, #kta-poi-desc", "note");
+  await page.click("#kta-poi-valider");
+  await attendre(page, function () { return !document.getElementById("kta-poi-modal"); }, 5000);
+  const apres = await page.evaluate(function () {
+    const p = window.getEditorPoints().filter(function (q) { return (q.tags || [])[0] === "danger"; })
+      .find(function (q) { return q.description === "note"; });
+    return p ? { dateConstat: "dateConstat" in p, id: p.id } : null;
+  });
+  verifier(!!apres && !apres.dateConstat, "mode perdu : enregistré sans dateConstat", apres);
+  const f2 = await ficheTexte(page, nom);
+  verifier(!!f2 && f2.mk && f2.bloc === null, "mode perdu : toujours sans mention après modification (id = nom)", f2);
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   const ctx = await nav.newContext({ viewport: { width: 1100, height: 800 }, acceptDownloads: true });
@@ -573,6 +622,8 @@ async function partieExports(page) {
     await partieFichePhoto(page, A);
     console.log("B. POI danger : date de constat, fiche, mention");
     await partieDanger(page, c);
+    console.log("D. Point du mode « perdu » : ni date de constat ni mention");
+    await partiePerdu(page);
     console.log("C. Aller-retour : ZIP de session, anonymisé, GeoJSON, KMZ, GPX");
     await partieAllerRetour(page);
     await partieExports(page);
