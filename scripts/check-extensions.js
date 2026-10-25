@@ -2029,7 +2029,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       K.passeFiltreEtat({ uid: "pt_a" }) === true && K.caseExportValides() === "" && K.filtrerPourExport([{ uid: "pt_a" }]).length === 1);
     const etats = { pt_p: "propose", rd_r: "refuse", pt_x: "inconnu", pt_err: "boom" };
     K.register({ nom: "etat", apiVersion: 1, etatObjet: (uid) => { if (uid === "pt_err") throw new Error("x"); return etats[uid]; } });
-    t("etatObjet : « propose » / « refuse » seulement ; autre valeur, erreur, uid invalide → null",
+    t("etatObjet : « propose » / « refuse » / « retrait » seulement ; autre valeur, erreur, uid invalide → null",
       K.etatObjet("pt_p") === "propose" && K.etatObjet("rd_r") === "refuse" && K.etatObjet("pt_x") === null &&
       K.etatObjet("pt_err") === null && K.etatObjet(3) === null && K.etatObjet("pt_v") === null);
     const m = marqueur(), r = chemin(), r2 = chemin();
@@ -2059,9 +2059,28 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("export : case cochée (écouteur du document) → sans les objets marqués ; décochée → tout",
       filtree.length === 2 && !filtree.some((o) => o.uid === "pt_p") && /checked/.test(K.caseExportValides()) &&
       (coche(false), K.filtrerPourExport(liste).length === 3));
+    etats.pt_t = "retrait";
+    const avecRetrait = [{ uid: "pt_t" }, { uid: "pt_p" }];
+    coche(true);
+    t("export : un objet en « retrait » (retrait demandé, pas fait) reste du contenu ; seuls proposé / refusé sont écartés",
+      K.etatObjet("pt_t") === "retrait" && JSON.stringify(K.filtrerPourExport(avecRetrait).map((o) => o.uid)) === '["pt_t"]');
+    c.w.getEditorPoints = () => [{ uid: "pt_t" }];
+    t("export : rien de provisoire (objet en retrait seul) → pas de case", K.caseExportValides() === "");
+    c.w.getEditorPoints = () => liste;
+    (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
+    t("sans défaut de l'extension : la case naît décochée (choix oublié à la sortie du plan)", K.exportValidesActif() === false &&
+      !/checked/.test(K.caseExportValides()));
+    K.register({ nom: "defaut", apiVersion: 1, exportValidesParDefaut: () => true });
+    t("prise exportValidesParDefaut → la case naît cochée, le filtre agit", K.exportValidesActif() === true &&
+      /checked/.test(K.caseExportValides()) && K.filtrerPourExport(liste).length === 2);
+    coche(false);
+    t("…l'utilisateur la décoche : son choix l'emporte jusqu'à la sortie du plan", K.exportValidesActif() === false &&
+      K.filtrerPourExport(liste).length === 3);
+    (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
+    t("…plan suivant : retour au défaut de l'extension", K.exportValidesActif() === true);
     K.filtrerEtats(true);
     (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
-    t("🩸 sortie du plan : filtre de la carte et case d'export remis à zéro", K.filtreEtatsActif() === false);
+    t("🩸 sortie du plan : filtre de la carte remis à zéro", K.filtreEtatsActif() === false);
     const R = (f) => lire(f);
     t("rendus de session : marqueur, tracé, zone, structure marqués à la création et filtrés (editor, road, zones, structures)",
       /marquerCouche\(marker, point\.uid\)/.test(R("js/editor.js")) && /passeFiltreEtat\(\{ uid: marker\._ktaUid \}\)/.test(R("js/editor.js")) &&

@@ -346,7 +346,7 @@
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -2139,15 +2139,17 @@
   }
 
   // ── État d'un objet donné par une extension (prise etatObjet) ──
-  // etatObjet(uid) → "propose" | "refuse" | null (synchrone, information). L'app ne sait pas ce que veut dire l'état :
-  // elle le DESSINE (marqueur : classe .kta-etat-<état> ; tracé, zone, structure : pointillé) et sait le filtrer
-  // (carte : objets marqués seulement ; exports : objets non marqués seulement). Sans prise, erreur ou autre valeur :
-  // null, rien n'est dessiné ni filtré. Objets de session seulement (calque « Mes annotations ») : les calques du
-  // plan (ZIP) n'ont jamais d'état.
-  const ETATS_OBJET = ["propose", "refuse"];
-  const _POINTILLE_ETAT = { propose: "10 6", refuse: "2 6" };
+  // etatObjet(uid) → "propose" | "refuse" | "retrait" | null (synchrone, information). L'app ne sait pas ce que veut
+  // dire l'état : elle le DESSINE (marqueur : classe .kta-etat-<état> ; tracé, zone, structure : pointillé) et sait le
+  // filtrer (carte : objets marqués seulement ; exports : sans les objets PROVISOIRES — proposé, refusé —, un objet en
+  // « retrait » — retrait demandé, pas encore fait — reste du contenu). Sans prise, erreur ou autre valeur : null, rien
+  // n'est dessiné ni filtré. Objets de session seulement (calque « Mes annotations ») : les calques du plan (ZIP) n'ont
+  // jamais d'état. Prise facultative exportValidesParDefaut() → bool : la case d'export naît cochée (plan affiché).
+  const ETATS_OBJET = ["propose", "refuse", "retrait"];
+  const ETATS_PROVISOIRES = ["propose", "refuse"];
+  const _POINTILLE_ETAT = { propose: "10 6", refuse: "2 6", retrait: "1 8" };
   let _filtreEtats = false;     // carte : objets marqués seulement
-  let _exportValides = false;   // exports : objets non marqués seulement (case de chaque fenêtre d'export)
+  let _exportValides = null;    // exports : choix de l'utilisateur sur ce plan (null = pas encore : défaut de l'extension)
   function etatObjet(uid) {
     const ext = _prise("etatObjet");
     if (!ext || typeof ext.etatObjet !== "function" || typeof uid !== "string" || !uid) return null;
@@ -2217,26 +2219,34 @@
   function passeFiltreEtat(o) {
     return !_filtreEtats || !!(o && etatObjet(o.uid));
   }
-  // Exports : la liste sans les objets marqués quand la case « validés seulement » est cochée ; sans prise : intacte.
+  // Case cochée ? Le choix fait sur ce plan, sinon le défaut de l'extension (prise d'information : erreur = non).
+  function _exportValidesActif() {
+    if (_exportValides !== null) return _exportValides;
+    const ext = _prise("exportValidesParDefaut");
+    if (!ext || typeof ext.exportValidesParDefaut !== "function") return false;
+    try { return ext.exportValidesParDefaut() === true; } catch (e) { console.warn("[Extensions] exportValidesParDefaut :", e); return false; }
+  }
+  const _provisoire = function (o) { return !!o && typeof o.uid === "string" && ETATS_PROVISOIRES.indexOf(etatObjet(o.uid)) >= 0; };
+  // Exports : la liste sans les objets provisoires quand la case « validés seulement » est cochée ; sans prise : intacte.
   function filtrerPourExport(liste) {
     const l = Array.isArray(liste) ? liste : [];
-    if (!_exportValides || !aPrise("etatObjet")) return l;
-    return l.filter(function (o) { return !(o && typeof o.uid === "string" && etatObjet(o.uid)); });
+    if (!aPrise("etatObjet") || !_exportValidesActif()) return l;
+    return l.filter(function (o) { return !_provisoire(o); });
   }
   // Case à poser dans une fenêtre d'export (HTML, texte échappé) ; "" sans prise ou quand aucun objet de la session
-  // n'est marqué (rien à écarter : la fenêtre reste celle d'avant). Une seule valeur pour toutes les fenêtres (cochée
-  // dans l'une, cochée dans les autres), remise à zéro à chaque plan.
-  function _unObjetMarque() {
+  // n'est provisoire (rien à écarter : la fenêtre reste celle d'avant). Une seule valeur pour toutes les fenêtres
+  // (cochée dans l'une, cochée dans les autres) ; le choix est oublié à chaque plan (retour au défaut de l'extension).
+  function _unObjetProvisoire() {
     return ["getEditorPoints", "getRoads", "getZones", "getStructures"].some(function (g) {
       const l = typeof window[g] === "function" ? (window[g]() || []) : [];
-      return l.some(function (o) { return o && typeof o.uid === "string" && !!etatObjet(o.uid); });
+      return l.some(_provisoire);
     });
   }
   function caseExportValides() {
-    if (!aPrise("etatObjet") || (!_exportValides && !_unObjetMarque())) return "";
+    if (!aPrise("etatObjet") || !_unObjetProvisoire()) return "";
     const esc = window.ktaEsc;
     return '<label class="kta-export-valides"><input type="checkbox" data-kta-export-valides="1"' +
-      (_exportValides ? " checked" : "") + '> ' + esc(_t("ext.export.validesSeuls")) + '</label>';
+      (_exportValidesActif() ? " checked" : "") + '> ' + esc(_t("ext.export.validesSeuls")) + '</label>';
   }
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     document.addEventListener("change", function (e) {
@@ -2248,7 +2258,7 @@
     });
   }
   if (typeof window.addEventListener === "function") {
-    window.addEventListener("mktm:plan-ferme", function () { _filtreEtats = false; _exportValides = false; });
+    window.addEventListener("mktm:plan-ferme", function () { _filtreEtats = false; _exportValides = null; });
   }
 
   // La tuile suit le compte (connexion, déconnexion) et l'accueil (posée une fois le DOM prêt).
@@ -2320,6 +2330,7 @@
     rafraichirEtats: rafraichirEtats,
     filtrerEtats: filtrerEtats,
     filtreEtatsActif: function () { return _filtreEtats; },
+    exportValidesActif: _exportValidesActif,
     passeFiltreEtat: passeFiltreEtat,
     filtrerPourExport: filtrerPourExport,
     caseExportValides: caseExportValides,

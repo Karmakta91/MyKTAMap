@@ -20104,6 +20104,9 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
    tracés, zones et structures reçoivent un pointillé (canvas : pas de CSS). Accent = proposé, erreur = refusé. */
 .leaflet-marker-icon.kta-etat-propose { outline: 3px dashed var(--kta-accent); outline-offset: 3px; border-radius: 50%; }
 .leaflet-marker-icon.kta-etat-refuse { outline: 3px dashed var(--kta-erreur); outline-offset: 3px; border-radius: 50%; }
+/* Retrait demandé : contour pointillé erreur et icône grisée (l'objet est encore là, sa suppression attend ; pas
+   d'opacité : Leaflet pose la sienne en ligne sur l'icône). */
+.leaflet-marker-icon.kta-etat-retrait { outline: 3px dotted var(--kta-erreur); outline-offset: 3px; border-radius: 50%; filter: grayscale(1); }
 .kta-export-valides { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0; }
 /* Itinéraire publié par un autre : étiquette au point d'arrivée */
 .kta-presence-iti-icone { background: none; border: none; }
