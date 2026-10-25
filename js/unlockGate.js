@@ -202,10 +202,13 @@
         '<div class="kta-unlock-icon">' + (libre ? '🧭' : '🗝️') + '</div>' +
         '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
         (libre ? '' : '<p class="kta-unlock-info">' + t("gate.info") + '</p>') +
-        // Liens sortants seulement : aucun impact CSP.
-        '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:var(--kta-texte-3); line-height:1.7;">' +
-          t("gate.contact") +
-        '</div>' +
+        // ⚠️ Contacts de l'auteur seulement sur l'écran libre : une instance à mot de passe est gérée par quelqu'un
+        // d'autre (auto-hébergement), le code se demande à cette personne, jamais à l'auteur. Liens sortants : sans CSP.
+        (libre
+          ? '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:var(--kta-texte-3); line-height:1.7;">' +
+              t("gate.contact") +
+            '</div>'
+          : '') +
         (libre
           ? '<button type="button" id="kta-unlock-libre-btn" class="kta-btn kta-btn-primary kta-unlock-libre-btn">' +
               t("gate.libre.continuer") +
@@ -267,9 +270,6 @@
           '<div class="kta-unlock-lockout-countdown" id="kta-unlock-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
           '<div class="kta-unlock-lockout-hint">' +
             t("gate.lockout.hint") +
-          '</div>' +
-          '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:var(--kta-texte-3); line-height:1.7;">' +
-            t("gate.contact") +
           '</div>' +
           // Doc lisible pendant le verrou ; ne change rien au verrouillage.
           '<button type="button" id="kta-unlock-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("gate.docTitle") + '">' +
