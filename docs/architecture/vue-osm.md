@@ -89,17 +89,57 @@ open()
 
 Si pas opt-in : `confirm()` natif explicite avec mention du domaine `tile.openstreetmap.org` + setter LS après accept.
 
-### 2.2 Cascade georef (v1.39.2)
+### 2.2 Géoréférencement : format, cascade, modèle de calage
+
+**Format** (`plan-config.json > plan.georef`, et la copie `localStorage["myktamap_kmz_calib_<planId>"]`) :
+`{ pointA, pointB, pointC?, modele? }`, chaque point `{ x, y, lat, lng }` à plat (pixels image, y vers le bas ;
+WGS84), `pointB.estimated: true` pour un B déduit (`config.js > ktaEstimerPointB`).
 
 ```
-_getEffectiveGeoref()
+_getEffectiveGeoref()   (osmView.js ; secoursMode.js suit le même ordre)
   1. PLAN_CONFIG.plan.georef          (embarqué ZIP via générateur)
   2. KmzExport.getCalibration(planId) (LS myktamap_kmz_calib_<planId>)
 ```
 
-Source 2 propagée automatiquement depuis source 1 au boot du plan (`_propagerGeorefVersKmzExport` dans `main.js:816` — copie l'objet ENTIER, `pointC` compris). Cas user qui saisit georef via Réglages map mode → uniquement source 2.
+Les autres consommateurs (exports, GPX, recherche, widget HOME) lisent le localStorage d'abord. La source 2 est
+remplie depuis la source 1 au chargement du plan (`main.js > _propagerGeorefVersKmzExport`, objet ENTIER) ; un
+calage local dont les points sont dans le plan est respecté. Cas user qui saisit le géoréf dans les Réglages →
+source 2 seulement.
 
-**📐 Point C optionnel (v1.73.0, KARMA « erreurs de projection sur un assemblage »)** : `georef`/calib acceptent un `pointC {x,y,lat,lng}` → `KmzExport.buildTransform` passe en **affine 6 DOF** (échelles X/Y indépendantes + cisaillement, résolue exactement sur les 3 correspondances par Cramer dans le repère mètres équirectangulaires). Sans C : similitude 2 points **bit-à-bit identique** à avant. C quasi colinéaire avec A-B (2×aire < `MIN_PLAN_DISTANCE²·0.05`) → repli 2 points + `degenereC: true` (les UIs de saisie refusent franchement, le moteur replie silencieusement pour un C venu d'un ZIP). **Tous les consommateurs passent par `buildTransformCalib(calibOuGeoref)`** (12 sites migrés : osmHomePreview ×2, osmView, emergencyMode, gpxIO ×2, sessionExporter ×3, utils ×2, searchPoints, secoursMode, interfaceConfig, createConf — seul `gpxImport` garde le 4-args, calibrage synthétique par bounds). ⚠️ `metresParPixel`/`rotation` restent dérivés de A/B même en affine (affichage d'échelle = approximation assumée). ⚠️ La modale KMZ de sessionExporter n'édite que A/B : `_kmzLireCalib` **fusionne le pointC stocké** avant `setCalibration`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une déformation GLOBALE, pas les erreurs locales morceau par morceau d'un assemblage.
+**Modèle de calage** (`KmzExport.buildTransform`, seule source des conversions degrés ⇄ mètres de l'app) :
+
+| `modele` | Repère | Écrit par |
+|---|---|---|
+| `"local"` | **plan tangent** à l'ellipsoïde GRS80 au barycentre des points de calage (aller ECEF, retour de Bowring) : exact pour un relevé en vraies distances, < 0,35 m aux coins d'un GeoTIFF Lambert 93 de 6 km | tout nouveau calage : Générateur (saisie, import GeoTIFF), Réglages, modale KMZ, import SIG / GPX vierge |
+| absent | mètres équirectangulaires à constantes fixes (`EQUI_HISTORIQUE` : 111 320 · cos, 110 540) — jusqu'à 20 m d'écart aux coins sur 6 km | plans calés avant le modèle local, import KMZ |
+
+- ⚠️ **Sans `modele`, le calcul est figé bit à bit** (valeurs gelées dans `scripts/check-calage-projection.js`) :
+  aucun plan déjà calé ne bouge. Une autre valeur que `"local"` retombe aussi sur le modèle historique.
+- **Réenregistrer le même calage historique** (mêmes points, `KmzExport.memesPoints`) le garde historique :
+  `KmzExport.modeleSaisie(ancien, nouveau)` rend `null` dans ce seul cas, `"local"` sinon. Générateur
+  (`_plannerGeorefCharge`), Réglages et modale KMZ passent par lui.
+- **Recalage** : Réglages > Géoréférencement affiche `precisionCalage` (« ± X aux coins » : écart au modèle exact
+  pour un calage historique, d³ / 2R² pour le local) et, pour un calage historique, « Recaler en projection
+  exacte » : la confirmation annonce `ecartRecalage` (déplacement max aux 4 coins), puis le calage passe en
+  `"local"` dans le localStorage, le registre et `PLAN_CONFIG` **en mémoire** (le ZIP n'est pas réécrit).
+- 🩸 **Propagation** : mêmes points des deux côtés, modèles différents → le `"local"` gagne dans les deux sens
+  (`main.js > _accorderModeleCalage`). Sans ça, un plan recalé repasserait au modèle historique pour la Vue OSM
+  et le Secours (qui lisent `PLAN_CONFIG` d'abord), et un plan régénéré garderait l'ancien calage local.
+- (décision produit) **L'import KMZ** (`kmzImport.js`) garde le modèle historique : un `LatLonBox` KML est
+  linéaire en degrés par définition. Le `plan.georef` qu'il pose n'a pas de `modele`.
+- Le Lambert 93 exact (mémoriser l'EPSG d'un GeoTIFF et caler dans ce CRS) n'est pas fait : `docs/BACKLOG.md`.
+  Mesures et options écartées : `docs/ETUDE_CALAGE_PROJECTION.md`.
+
+**📐 Point C optionnel** : `pointC {x,y,lat,lng}` → **affine 6 DOF** (échelles X/Y indépendantes + cisaillement,
+résolue exactement sur les 3 correspondances par Cramer, dans le repère du modèle). Sans C : similitude 2 points.
+C quasi colinéaire avec A-B (2×aire < `MIN_PLAN_DISTANCE²·0.05`) → repli 2 points + `degenereC: true` (les UIs
+de saisie refusent franchement, le moteur replie silencieusement pour un C venu d'un ZIP). **Tous les
+consommateurs passent par `buildTransformCalib(calibOuGeoref)`**, qui transmet `modele` ; `gpxImport` et
+`sigImport` appellent `buildTransform` en direct (calage synthétique sur l'emprise) avec `MODELE_LOCAL`.
+⚠️ `metresParPixel`/`rotation` restent dérivés de A/B même en affine (affichage d'échelle = approximation
+assumée). ⚠️ La modale KMZ de sessionExporter n'édite que A/B : `_kmzLireCalib` **fusionne le pointC et le modèle
+stockés** avant `setCalibration`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une
+déformation GLOBALE, pas les erreurs locales morceau par morceau d'un assemblage.
 
 ### 2.3 Tuiles V2 + niveau adaptatif + viewport culling (v1.39.10-11)
 

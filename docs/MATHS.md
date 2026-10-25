@@ -69,12 +69,21 @@ Deux points dont on connaît à la fois la position **plan** (pixels) et la posi
 Étapes, dans l'ordre du code :
 
 1. **Vecteur plan A→B**, y retourné : `dxPlan = xB−xA`, `dyPlan = −(yB−yA)`.
-2. **Vecteur GPS A→B en mètres** — projection *équirectangulaire locale* :
-   ```
-   dxGps = Δlng × 111 320 × cos(latMoyenne)     (est-ouest)
-   dyGps = Δlat × 110 540                        (nord-sud)
-   ```
-   Un degré de latitude vaut ~110,5 km partout ; un degré de longitude **rétrécit** avec la latitude (les méridiens convergent aux pôles), d'où le `cos`. Valide à l'échelle d'une carrière (quelques km) — c'est une carte locale plate, pas une projection savante, et c'est suffisant.
+2. **Vecteur GPS A→B en mètres**, selon le modèle du calage (`georef.modele`) :
+   - **`"local"`** (tout nouveau calage) — le **plan tangent** à la Terre au milieu des points de calage. Chaque
+     point GPS est converti en coordonnées 3D (ECEF, ellipsoïde GRS80), puis lu en mètres *est* / *nord* dans ce
+     plan ; le retour se fait par la formule de Bowring. C'est exactement la géométrie d'un relevé en vraies
+     distances : rien à corriger à l'échelle d'une carrière (moins de 2 mm d'écart à 4 km du centre).
+   - **absent** (plans calés avant) — projection *équirectangulaire locale* à constantes fixes, gardée bit à bit
+     pour que ces plans ne bougent pas :
+     ```
+     dxGps = Δlng × 111 320 × cos(latMoyenne)     (est-ouest)
+     dyGps = Δlat × 110 540                        (nord-sud)
+     ```
+     Piège de ce modèle : 110 540 m est le degré de latitude **à l'équateur** ; vers 45° il vaut ~111 130 m. La
+     carte locale est donc étirée de 0,3 à 0,4 % dans un sens : A et B restent justes, les coins opposés d'un plan
+     de 6 km s'écartent jusqu'à 20 m (`docs/ETUDE_CALAGE_PROJECTION.md`). Réglages > Géoréférencement propose de
+     recaler en projection exacte, en annonçant le déplacement.
 3. **Échelle** : `metresParPixel = ‖AB_gps‖ / ‖AB_plan‖`.
 4. **Rotation** : différence des angles des deux vecteurs, `atan2(dy, dx)` de chaque côté :
    ```
@@ -127,7 +136,7 @@ L'inverse du §4 : au lieu de *mesurer* rotation et échelle avec deux points GP
    nord_vrai = est·sin θ + nord·cos θ
    ```
    Vérification de sens qui a servi de test : offset 90° (Nord = droite du plan) → un vecteur vers la droite de l'image doit ressortir **plein Nord**. ✓
-4. Mètres → degrés, mêmes constantes qu'au §4 (111 320, cos lat).
+4. Mètres → degrés par le plan tangent en A (`KmzExport.decalerGps`) : B tombe à la distance voulue, au mm près.
 
 Le B rendu porte `estimated: true` — **c'est une déduction, pas une mesure** : toute erreur d'échelle ou d'orientation se propage proportionnellement à la distance de A. Refus francs (pas de clamp) : A incomplet, échelle ≤ 0, |lat| > 85° (le `cos` s'effondre, la longitude divergerait).
 

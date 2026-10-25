@@ -1,7 +1,8 @@
 # Étude — Calage en vraie projection
 
-> Étude du 25/10/2026, **avant décision** : les choix de la §5 sont à trancher par KARMA (QCM). Rien n'est codé.
-> Entrée du backlog : « Calage en vraie projection » (`docs/BACKLOG.md`, Ensuite). Cas mesurés 100 % fictifs.
+> Étude du 25/10/2026, **décidée** par KARMA le même jour (QCM, §5) et livrée. Les §1 à §3 décrivent le calage
+> **avant** le lot (mesures de référence) ; l'état actuel du calage est dans `docs/architecture/vue-osm.md` §2.2.
+> Cas mesurés 100 % fictifs.
 
 ## Le problème
 
@@ -208,68 +209,37 @@ restants d'un GeoTIFF L93 de 6 km, au prix d'un second modèle : à garder en r�
 **Versionné** : `georef.modele = "local"` écrit par tout nouveau calage ; **absent = modèle actuel, bit à bit**
 (même règle que « sans C, similitude identique »). Aucun plan ne bouge sans un geste ou une règle décidée.
 
-### 4.1 Plan du lot (taille M, ≈ 2 jours agent)
+### 4.1 Ce qui est livré
 
-1. **Moteur** (`kmzExport.js`) : `_enu(lat0, lng0)` (aller ECEF, retour Bowring) ; `buildTransform` choisit le
-   repère selon `modele` ; `planToGps` / `gpsToPlan` passent par lui. `metresParPixel` et `rotation` deviennent
-   exacts. Le chemin sans `modele` reste le code actuel, inchangé. ≈ 60 lignes.
-2. **Copies** : `ktaEstimerPointB` passe par le moteur (fin du 111 320 en latitude) ; `tiffGeoref.js > _matrice`
-   et `geotiffExport.js` mesurent en mètres vrais (rayons de l'ellipsoïde, exposés par le moteur) ;
-   `TOLERANCE_SIMILITUDE` peut redescendre (l'app n'exporte plus 0,4 % d'anisotropie). `kmzImport.js` garde son
-   modèle en degrés : un `LatLonBox` KML est linéaire en degrés par définition (décision à consigner).
-3. **Écrivains** : Générateur, Réglages, modale KMZ, import GeoTIFF écrivent `modele: "local"`. Import SIG et GPX
-   vierge aussi (le canvas et les objets sont calculés avec le nouveau modèle : l'aller-retour reste exact).
-   🩸 `_kmzLireCalib` doit fusionner `modele` comme il fusionne `pointC` ; `_propagerGeorefVersKmzExport` doit
-   laisser passer un `modele` du plan sur un calage local identique en points.
-4. **Migration** (selon Q1) : bouton « Recaler en projection exacte » dans Réglages > géoréférencement, qui
-   annonce le déplacement maximal calculé sur le plan (« les objets bougent de 7 m au plus ») avant d'écrire ;
-   refus expliqué si le plan a l'air fabriqué depuis des degrés (couche SIG).
-5. **Textes** fr / en / es (bouton, annonce, refus), guides `README_USER{,.en,.es}.md` + `interfaceDocs.js`
-   (le calage annonce sa précision réelle).
-6. **Docs** : `vue-osm.md` §2.2 (modèle, champ `modele`), `exports.md` (résidu GeoTIFF, L93 conseillé),
-   `data-formats.md` (décrire enfin `plan.georef`), journal `README.md`, entrée backlog soldée.
+- **Moteur** (`kmzExport.js`) : modèle `"local"` (plan tangent GRS80 au barycentre des points, aller ECEF, retour
+  de Bowring ; l'inverse prend le point sur la normale qui coupe le plan, donc aller-retour exact). Sans `modele`,
+  le code historique tourne tel quel. Le moteur est la **seule source** des conversions degrés ⇄ mètres
+  (`metresParDegre`, `decalerGps`, `distanceM`, `EQUI_HISTORIQUE`) : `kmzImport.js`, `tiffGeoref.js`,
+  `geotiffExport.js` et `config.js > ktaEstimerPointB` passent par lui.
+- **Écrivains** : Générateur (saisie, import GeoTIFF), Réglages, modale KMZ, import SIG, GPX vierge, B estimé →
+  `"local"` ; réenregistrer le même calage historique le garde (`KmzExport.modeleSaisie`).
+- **Recalage** : Réglages > Géoréférencement affiche « ± X aux coins » (`precisionCalage`) et, pour un calage
+  historique, « Recaler en projection exacte », qui annonce le déplacement maximal aux coins avant d'écrire.
+- **Propagation** : `main.js > _accorderModeleCalage` (le `"local"` gagne dans les deux sens).
+- **Import KMZ** : modèle historique, documenté (`LatLonBox` linéaire en degrés).
+- **Garde-fou** `scripts/check-calage-projection.js` (pre-commit, donc CI) ; checkup navigateur
+  `scripts/smoke/checkup-calage-projection.js`.
 
-### 4.2 Garde-fou et checkups
+Mesuré après le lot (garde-fou, vérités fictives, 43° / 49°, 1 et 6 km, nord en haut et tourné, 2 et 3 points) :
+relevé terrain **≤ 1,3 mm** ; GeoTIFF Lambert 93 **≤ 0,335 m** à 6 km ; modèle historique inchangé au bit près
+(20,0 m sur le même cas). Checkup, relevé fictif de 1 000 × 563 m : coins à 1,90 m avant recalage, 0,000 m après ;
+KMZ / GPX / GeoJSON 1,04 m → 0,001 m ; GeoTIFF WGS84 1,90 → 0,024 m, Lambert 93 1,88 → 0,000 m ; Vue OSM 1,38 →
+0,000 m.
 
-- **`scripts/check-calage-projection.js`** (pré-commit, bloquant), repris du script de mesure de cette étude :
-  1. vérités SOL et L93 fictives (43° / 49°, 1 et 6 km, nord en haut et tourné) : modèle `local` sous 0,01 m
-     (SOL) et sous 0,5 m (L93) à tous les points de la grille ;
-  2. **sans `modele`, `planToGps` rend exactement les valeurs actuelles** (table figée de quelques points) :
-     prouve qu'aucun plan existant ne bouge ;
-  3. aller-retour `planToGps` → `gpsToPlan` sous 1 mm, dans et hors du plan (5 km) ;
-  4. ancrage ENU sans table recopiée : base orthonormée, origine → (0, 0), distance du plan tangent = corde ECEF ;
-  5. constantes 110 540 / 111 320 interdites hors de la branche historique du moteur (comme `check-geotiff` L7).
-- Adapter les garde-fous qui fabriquent des calages avec les constantes : `check-export-sig.js`,
-  `check-kmz-superoverlay.js`, `check-georef-estimation.js`, `scripts/smoke/checkup-export-sig.js`.
-- Checkups manuels : un GeoTIFF L93 fictif de 6 km importé → 4 coins sous 1 m en Vue OSM (mesure OSM) ; export
-  KMZ ouvert dans Google Earth ; export GeoTIFF 2154 relu par QGIS ; Secours : coordonnée d'un point loin de A
-  et B ; Vue OSM d'un gros plan sur téléphone (fluidité inchangée à l'œil).
+## 5. Décisions (QCM du 25/10/2026)
 
-### 4.3 Plans déjà calés : rien à refaire ?
-
-- **Avec la reco (Q1 : b)** : rien à refaire, rien ne casse ; un plan terrain gagne sa précision par **un geste**
-  (bouton) ou au prochain calage. Un plan régénéré par le Générateur l'a d'office.
-- **Bascule automatique (Q1 : a)** : rien à faire, mais les plans SIG / GPX vierges et les objets importés par
-  degrés bougent de l'erreur actuelle (jusqu'à 20 m à 6 km) sans que personne ne le voie.
-- Les données de session (pixels) ne sont **jamais** réécrites : seul le calage change de modèle.
-- Pro : rien côté serveur ; pendant un déploiement, deux membres sur deux versions du front peuvent lire une même
-  coordonnée à quelques mètres près (transitoire).
-
-## 5. Questions pour le QCM de KARMA
-
-1. **Plans déjà calés** — a) bascule automatique de tous ; b) **modèle actuel conservé, bouton « Recaler en
-   projection exacte » qui annonce le déplacement** ; c) bascule automatique sauf plans reconnus fabriqués
-   (couche SIG). *Reco : b* (aucun objet ne bouge en silence ; c repose sur une heuristique).
-2. **Modèle** — a) plan tangent local partout ; b) Lambert 93 partout (France seulement) ; c) rayons vrais
-   seulement (3 m à 6 km). *Reco : a.*
-3. **Lambert 93 exact pour un GeoTIFF L93** (garder l'EPSG dans `georef.crs`, gagner les 0,3 m restants à 6 km)
-   — a) dans ce lot ; b) **plus tard, si un cas réel le demande** ; c) jamais. *Reco : b.*
-4. **Annoncer la précision du calage** à l'utilisateur (Réglages : « exact » / « approché, jusqu'à N m ») —
-   a) **oui, calculée sur le plan** ; b) non. *Reco : a* (c'est ce que le bouton de Q1 calcule déjà).
-5. **Export GeoTIFF : projection proposée par défaut** pour un plan en France — a) **Lambert 93** (résidu
-   < 0,1 m à 6 km) ; b) WGS84 comme aujourd'hui (résidu réel 1,4 à 1,7 m à 6 km avec le nouveau modèle).
-   *Reco : a.*
-6. **Import KMZ** (`kmzImport.js`, modèle en degrés du `LatLonBox`) — a) **inchangé, documenté** ; b) passé au
-   nouveau modèle. *Reco : a* (un `LatLonBox` est linéaire en degrés par définition).
-7. **Calendrier** — a) **lot après la release v2.20.0, comme prévu au backlog** ; b) avant. *Reco : a* (il touche
-   Secours et tous les exports : pas dans le gel de 48 h).
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Plans déjà calés | Gardés bit à bit ; « Recaler » annonce le déplacement ; nouveau calage → `"local"` |
+| 2 | Modèle | Plan tangent local (GRS80) partout |
+| 3 | Lambert 93 exact (CRS mémorisé) | Plus tard, sur un cas réel (`docs/BACKLOG.md`, Plus tard) |
+| 4 | Précision affichée | Oui, « ± X aux coins », calculée sur le plan (Réglages) |
+| 5 | Export GeoTIFF | WGS84 reste le défaut ; résidu annoncé au-delà de 0,5 m |
+| 6 | Import KMZ | Inchangé, documenté |
+| 7 | `ktaEstimerPointB` | Corrigé (passe par le moteur) |
+| 8 | Constantes recopiées | Une seule source, le moteur ; le garde-fou refuse les copies |

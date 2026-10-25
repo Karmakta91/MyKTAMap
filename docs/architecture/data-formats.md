@@ -21,7 +21,14 @@
     "imageWidth": 1044,
     "imageHeight": 610,
     "baseImage": "TestMAP.png",
-    "collisionImage": "collision.png"
+    "collisionImage": "collision.png",
+    "georef": {                          // optionnel — calage GPS (Vue OSM, exports KMZ/GPX/GeoJSON/GeoTIFF, Secours)
+      "pointA": { "x": 0,    "y": 610, "lat": 46.5,     "lng": 3.0 },
+      "pointB": { "x": 1044, "y": 0,   "lat": 46.50137, "lng": 3.00336, "estimated": true },  // estimated : B déduit
+      "pointC": { "x": 0,    "y": 0,   "lat": 46.50137, "lng": 3.0 },   // optionnel : affine 3 points
+      "modele": "local"                  // "local" = plan tangent (tout nouveau calage) ; absent = modèle historique,
+                                         // figé bit à bit (plans calés avant, import KMZ) — vue-osm.md §2.2
+    }
   },
   "imageLayers": [
     { "id": "legende", "label": "Légende", "file": "legende.png", "visible": true, "order": 10 }
