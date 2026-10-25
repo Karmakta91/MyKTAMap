@@ -1317,8 +1317,9 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     catch(e) { console.warn("[Popup] section liaisons inter-plan :", e); }
   }
 
-  // uid d'un point de session : une extension peut y accrocher ses actions.
-  const _uidAttr = (isEditorSession === true && point.uid) ? ' data-kta-uid="' + _escAttr(point.uid) + '"' : "";
+  // uid du point, de session ou de calque : une extension y accroche ses actions (prise actionsObjet). ⚠️ Il ne
+  // rend rien éditable : modifier, déplacer et supprimer restent liés à isEditorSession (ci-dessus).
+  const _uidAttr = (typeof point.uid === "string" && point.uid) ? ' data-kta-uid="' + _escAttr(point.uid) + '"' : "";
   return '<div class="kta-popup-point"' + _uidAttr + '>' +
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +

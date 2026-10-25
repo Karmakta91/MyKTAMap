@@ -424,6 +424,18 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const U = lire("js/utils.js");
     t("fiches de session : l'uid de l'objet est porté par la fiche (point + tracé/zone/structure)",
       /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
+    // Fiche d'un point rendue pour de vrai (fonction extraite de utils.js, dépendances simulées).
+    const src = U.slice(U.indexOf("function buildPointPopupHtml("), U.indexOf("window.buildPointPopupHtml = buildPointPopupHtml;"));
+    const cf = vm.createContext({ window: { ktaEsc: (s) => String(s).replace(/[&<>"']/g, (c) => "&#" + c.charCodeAt(0) + ";"),
+      I18n: { t: (k) => k } }, _planXyToGps: () => null, _formatGps: () => "" });
+    vm.runInContext(src + ";window.f = buildPointPopupHtml;", cf);
+    const fiche = (pt, session) => cf.window.f(pt, session, { layerId: session ? "editor" : "c1", layerLabel: "x" });
+    const fCalque = fiche({ uid: "pt_calque1", nom: "P", x: 1, y: 2, tags: ["puits"] }, false);
+    const fSession = fiche({ uid: "pt_sess1", nom: "S", x: 1, y: 2 }, true);
+    t("point d'un CALQUE : la fiche porte son uid (actions d'extension), sans ✏️ / déplacer / 🗑️ ; point de session : tout",
+      /data-kta-uid="pt_calque1"/.test(fCalque) && !/data-kta-act="(modifier|repositionner|supprimer)"/.test(fCalque) &&
+      /data-kta-uid="pt_sess1"/.test(fSession) && /data-kta-act="supprimer"/.test(fSession) &&
+      !/data-kta-uid/.test(fiche({ nom: "ancien", x: 1, y: 1 }, false)));
     t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions ou une info à montrer",
       /if \(ext\.actionsObjet \|\| ext\.infoObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
     t("🩸 panneau d'extension : bouton posé SEULEMENT si une extension fournit la prise (myktamap.fr : rien)",

@@ -487,7 +487,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb), prioritaire
   sur `KtaPresences.couleurDe(id)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
-  portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+  portent `data-kta-uid`, l'observateur n'est posé que si la prise existe. Fiche d'un point de **calque** (ZIP) comprise :
+  elle porte son uid (s'il en a un) et reçoit les mêmes actions, mais reste en lecture seule — ✏️, déplacer et 🗑️
+  restent réservés à la session (`utils.js > buildPointPopupHtml`, paramètre `isEditorSession`).
 - **Photos des points** (10/10/2026) : prise d'information `photos: { completerPoint(planId, pointId) →
   Promise<number>, completerPlan(planId) → Promise<{ ajoutees, total }> }`. L'app appelle `completerPoint` quand
   elle **affiche** les photos d'un point (bulle, fiche d'édition ; `pointId` = uid du point, son nom s'il n'en a pas)
