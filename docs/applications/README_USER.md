@@ -651,6 +651,8 @@ Le bouton **✏️** de la barre latérale allume ou éteint le mode ajout. Allu
 
 **Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique, 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : un nom court en minuscules, chiffres, `_` ou `-` (ex. `fontaine`) ; il prend l'icône par défaut.
 
+**⚠️ Type Danger : date de constat.** Un point de type **Danger** porte une **📅 Date de constat**, le jour où le danger a été vu : pré-remplie à aujourd'hui, modifiable, à vider si tu ne la connais pas (un point Danger plus ancien reste sans date tant que tu n'en mets pas). Sa bulle affiche « Constaté le … » et rappelle que **MyKTAMap ne certifie pas l'état d'un site : un danger relevé peut avoir changé depuis sa date de constat.** La date part avec l'export de session, le KMZ, le GPX et le GeoJSON (relue par l'import KMZ et GPX), jamais avec l'export anonymisé.
+
 ### ✏️ Modifier ou repositionner un point
 
 Sur **tes** points, la bulle du point propose :
@@ -665,13 +667,14 @@ Les deux s'annulent avec ⏪ (`Ctrl+Z`). Pour retirer un point : **🗑️ Suppr
 Jusqu'à **5 photos par point**, gardées sur ton appareil uniquement. Dans la fenêtre d'ajout ou de modification, section **📸 Photos** :
 
 - **📷 Prendre photo** ouvre l'appareil photo (mobile) ; **🖼️ Depuis la galerie** permet d'en choisir plusieurs d'un coup.
-- Chaque photo est **compressée** (une photo de plusieurs Mo pèse ensuite quelques centaines de Ko) et **nettoyée** : position GPS de la prise de vue, date et modèle d'appareil sont effacés avant d'entrer dans l'app.
+- Chaque photo est **compressée** (une photo de plusieurs Mo pèse ensuite quelques centaines de Ko) et **nettoyée** : position GPS de la prise de vue et modèle d'appareil sont effacés avant d'entrer dans l'app. Seule sa **date de prise de vue** est lue avant le nettoyage et gardée **à côté** de la photo (jamais dans le fichier) : le plein écran affiche « Prise le … ». Sans cette date (capture d'écran, photo déjà nettoyée), il affiche « Ajoutée le … (date de prise de vue inconnue) ».
+- Une photo que le navigateur ne sait pas lire (fichier abîmé, format non pris en charge) est **refusée** avec un message : elle n'entre jamais telle quelle.
 - **Retirer une photo** : la croix ✕ rouge de la miniature la marque à supprimer, la flèche verte ↺ annule. Rien n'est effacé avant **💾 Enregistrer**.
 - **Fermer sans enregistrer** efface les photos que tu venais d'ajouter et annule les marquages.
 
 **Les voir** : la bulle du point montre les miniatures — un tap ouvre le plein écran (pince ou molette pour zoomer, glisser pour passer à la suivante, `← →` et `Échap` sur PC). Le compteur **📸** de la barre du haut ouvre le détail de la session.
 
-**Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; chaque photo emporte la fiche de son point (nom, position, niveau, type : de quoi ♻️ recréer un point disparu). Un fichier réimporté **ajoute** ses photos à celles de l'appareil — une photo déjà présente n'est pas doublée, et aucune n'est effacée. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point, sans sa fiche ; une photo qui ne peut pas être nettoyée est exclue.
+**Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; chaque photo emporte la fiche de son point (nom, position, niveau, type : de quoi ♻️ recréer un point disparu), sa date de prise de vue et sa date d'ajout. Un fichier réimporté **ajoute** ses photos à celles de l'appareil — une photo déjà présente n'est pas doublée, et aucune n'est effacée. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point, sans sa fiche ni ses dates ; une photo qui ne peut pas être nettoyée est exclue.
 
 **📌 Photo « à rattacher »** : avant la v2.3.0, une photo était rangée sous le **nom** de son point. Si plusieurs points portent le même nom, l'app ne devine pas à qui elle appartient : dans la bulle de chacun de ces points, la photo apparaît avec un **cadre orange pointillé** et un bouton **📌 Photo N : c'est ce point**. Touche-le dans la bulle du bon point. Rien n'est jamais supprimé. Les photos d'un nom porté par un seul point sont rattachées toutes seules, et celles que tu prends maintenant suivent leur point même si tu le renommes.
 

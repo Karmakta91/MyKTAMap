@@ -12559,6 +12559,39 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   color: var(--kta-texte-2);
 }
 
+/* POI danger (poiDanger.js) : date de constat dans le formulaire, date et mention sur la fiche. */
+.kta-poi-danger {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--kta-bordure);
+  border-left: 3px solid var(--kta-avert);
+  border-radius: 6px;
+}
+.kta-poi-danger[hidden] { display: none; }
+.kta-poi-danger .kta-cfg-input { margin-top: 4px; }
+.kta-poi-danger-aide,
+.kta-poi-danger-mention {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--kta-texte-3);
+  line-height: 1.4;
+}
+.kta-poi-danger-mention { font-style: italic; }
+.kta-popup-point .kta-popup-danger {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--kta-texte-2);
+}
+.kta-popup-danger-date { font-weight: 600; }
+.kta-popup-danger-mention {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--kta-texte-3);
+  line-height: 1.35;
+}
+
 @media (max-width: 480px) {
   .kta-poi-photos-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -12612,6 +12645,19 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   padding: 3px 10px;
   border-radius: 12px;
   font-weight: 600;
+}
+
+/* « Prise le … » / « Ajoutée le … » : fond noir dans les deux thèmes, texte blanc comme le reste de l'en-tête. */
+.kta-photo-viewer-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 10px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kta-photo-viewer-close {

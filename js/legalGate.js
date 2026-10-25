@@ -23,7 +23,8 @@
   "use strict";
 
   // ⚠️ Bumper à chaque changement de fond des CGU : force un re-consentement (on stocke la version acceptée).
-  const TERMS_VERSION = 1;
+  // 2 : absence de garantie (dont l'état des sites), pas un moyen de secours, contenus partagés.
+  const TERMS_VERSION = 2;
   const LS_KEY = "myktamap_terms_accepted_v1";
 
   const GATE_ID = "kta-legal-gate-overlay";
@@ -110,8 +111,13 @@
   }
 
   // ── Sous-modale : texte intégral (FR seulement) ──
+  // Les 3 clauses (garantie, secours, contenus) sont traduites ; les textes de loi qui suivent restent en FR.
   function _buildFullTextHtml() {
     let h = "";
+    h += '<h3 class="kta-legal-full-h">' + _esc(_t("legal.full.clauses")) + '</h3>';
+    ["garantie", "secours", "contenus"].forEach(function(k) {
+      h += '<p class="kta-legal-art">' + _esc(_t("legal.full." + k)) + '</p>';
+    });
     h += '<h3 class="kta-legal-full-h">⚖️ ' + _esc("Arrêté préfectoral du 2 novembre 1955") + '</h3>';
     ARRETE_1955.forEach(function(a) {
       h += '<p class="kta-legal-art"><strong>' + _esc(a.art) + '.</strong> ' + _esc(a.txt) + '</p>';
@@ -176,6 +182,9 @@
         '<li>' + _esc(_t("legal.gate.pointTool")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointInterdit")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointResp")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointGarantie")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointSecours")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointContenus")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointRespect")) + '</li>' +
       '</ul>' +
       '<button class="kta-legal-readfull" id="kta-legal-readfull" type="button">📜 ' +

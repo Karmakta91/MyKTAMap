@@ -56,6 +56,13 @@
 - Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
 - Splash : signature `karma.png` (pseudo artistique, déjà en place)
 - Meta tags `<head>` : `author`, `copyright`, `license`
+- CGU v2 (`TERMS_VERSION` 2 : tous les utilisateurs ré-acceptent) : trois clauses d'une ligne dans la gate
+  (`legal.gate.pointGarantie` — position, itinéraire, calage, plans et relevés sans garantie, état des sites non
+  certifié ; `pointSecours` — ne remplace pas le 112 / 18, rien ne part sous terre ; `pointContenus` — l'utilisateur
+  répond de ce qu'il importe, exporte, diffuse et des accès qu'il divulgue), détaillées en tête du texte intégral
+  (`legal.full.garantie` / `secours` / `contenus`, traduites) et dans `docs/applications/CGU.md`.
+- Non-certification rappelée sur la fiche et le formulaire d'un POI **danger** (`js/poiDanger.js`, avec sa date de
+  constat ; pas sur le point du mode « perdu ») et dans les guides.
 
 **Pour ajouter un nouveau fichier JS** : copier l'en-tête de licence en tête (sinon le pré-commit refuse).
 
@@ -1321,10 +1328,10 @@ Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone
 `window.LegalGate = { isAccepted, ouvrirGate, ouvrirConsultation, TERMS_VERSION }`.
 
 - **`ouvrirGate()`** → Promise, **bloquante** : case « J'ai lu et compris » + bouton « J'accepte » (désactivé tant que la case n'est pas cochée). Résout à l'acceptation, pose `localStorage["myktamap_terms_accepted_v1"] = TERMS_VERSION`.
-- **Flag versionné** : `isAccepted()` compare la version stockée à `TERMS_VERSION` (const, actuellement `1`). **Bumper `TERMS_VERSION`** force un re-consentement de tous les utilisateurs si le fond des CGU change.
+- **Flag versionné** : `isAccepted()` compare la version stockée à `TERMS_VERSION` (const, actuellement `2` : garantie, secours, contenus partagés). **Bumper `TERMS_VERSION`** force un re-consentement de tous les utilisateurs si le fond des CGU change. ⚠️ Les harnais navigateur pré-acceptent les CGU en posant `myktamap_terms_accepted_v1` : la valeur doit suivre `TERMS_VERSION` (`scripts/smoke/`, et les tests navigateur du dépôt pro), sinon la gate bloque tout le parcours.
 - **`ouvrirConsultation()`** : ré-affichage **non bloquant** (bouton ✕ / clic-fond), sans case à cocher. Câblé sur le lien ⚖️ « Conditions d'utilisation » du footer loader (`index.html`).
-- **Sous-modale « texte intégral »** (z-index 100001) : arrêté du 2 novembre 1955 + question écrite Sénat n° 03710 (réponse du 05/06/2025), **constantes verbatim** dans le module (`ARRETE_1955`, `SENAT_QUESTION`, `SENAT_REPONSE`). Actes officiels → **hors droit d'auteur** (CPI L.122-5 2°).
-- **i18n** : cadrage général `legal.*` traduit **fr + en** ; les **textes de loi restent en FR** (droit français, non traduits — décision KARMA). Mirror offline `docs/applications/CGU.md`.
+- **Sous-modale « texte intégral »** (z-index 100001) : arrêté du 2 novembre 1955 + question écrite Sénat n° 03710 (réponse du 05/06/2025), **constantes verbatim** dans le module (`ARRETE_1955`, `SENAT_QUESTION`, `SENAT_REPONSE`), précédées des trois clauses détaillées (traduites). Actes officiels → **hors droit d'auteur** (CPI L.122-5 2°).
+- **i18n** : cadrage général `legal.*` traduit **fr / en / es** ; les **textes de loi restent en FR** (droit français, non traduits — décision KARMA). Mirror offline `docs/applications/CGU.md`.
 - **Incognito** : le séquenceur **saute** la gate bloquante en incognito (le flag `localStorage` est shimé et ne persiste pas → sinon re-prompt à chaque session, cf. même parti pris que la proposition PIN §43). Consultation footer reste dispo.
 
 #### 87.3 À NE PAS faire

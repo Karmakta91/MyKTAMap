@@ -12,7 +12,9 @@
 //   2. rattachement depuis 📸 Mes photos sans la limite de 5 ;
 //   3. fiche du point absente des ZIP de session : une photo orpheline n'est
 //      plus récupérable (♻️ Recréer) après réimport ;
-//   4. analyse depuis l'accueil qui charge toute l'archive en RAM.
+//   4. analyse depuis l'accueil qui charge toute l'archive en RAM ;
+//   5. date de prise de vue (EXIF) : parseur qui lève ou lit hors du tampon sur un fichier tronqué ou forgé,
+//      date lue APRÈS le ré-encodage (toujours vide), ou perdue en route (index des ZIP, profil, restauration).
 // Le vrai js/photos.js tourne dans un `vm` sur une fausse IndexedDB (Map,
 // requêtes asynchrones, transaction close quand rien n'attend) ; le câblage de
 // l'import et de la galerie est vérifié dans le source.
@@ -262,10 +264,116 @@ async function archivePartielle() {
     GAL.indexOf("await window.JSZip.loadAsync(") > GAL.indexOf("async function _ouvrirArchive("));
 }
 
-photos().then(cablage).then(fiche).then(archivePartielle).catch(function (e) {
+// ── 5. Date de prise de vue (EXIF DateTimeOriginal) ──────────────────
+// JPEG fabriqués octet par octet : APP0 JFIF, APP1 Exif (IFD0 → sous-IFD Exif → 0x9003), SOS, EOI.
+function jpegExif(date, opts) {
+  opts = opts || {};
+  const le = opts.le !== false;
+  const tiff = [];
+  const u16 = (v) => le ? [v & 255, v >> 8] : [v >> 8, v & 255];
+  const u32 = (v) => le ? [v & 255, (v >> 8) & 255, (v >> 16) & 255, v >>> 24]
+                        : [v >>> 24, (v >> 16) & 255, (v >> 8) & 255, v & 255];
+  tiff.push(...(le ? [0x49, 0x49] : [0x4D, 0x4D]), ...u16(42), ...u32(8));
+  // IFD0 à 8 : une entrée 0x8769 (LONG) → sous-IFD Exif à 26.
+  tiff.push(...u16(1), ...u16(0x8769), ...u16(4), ...u32(1), ...u32(opts.ptrExif || 26), ...u32(0));
+  // Sous-IFD Exif à 26 : 0x9003 ASCII 20 → valeur à 44.
+  tiff.push(...u16(opts.nbEntrees || 1), ...u16(opts.tag || 0x9003), ...u16(2), ...u32(20), ...u32(opts.offDate || 44), ...u32(0));
+  for (let k = 0; k < 19; k++) tiff.push(date.charCodeAt(k));
+  tiff.push(0);
+  const app1 = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff];
+  const app0 = [0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0];
+  const seg = (m, corps) => [0xFF, m, (corps.length + 2) >> 8, (corps.length + 2) & 255, ...corps];
+  const octets = [0xFF, 0xD8, ...seg(0xE0, app0), ...(opts.sansExif ? [] : seg(0xE1, app1)),
+    ...seg(0xDB, new Array(65).fill(1)), 0xFF, 0xDA, 0, 8, 1, 1, 0, 0, 63, 0, 0x12, 0x34, 0xFF, 0xD9];
+  return new Uint8Array(octets);
+}
+async function datePriseVue() {
+  const lire = (u8) => P.datePriseVueDepuisOctets(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
+  const D = "2024:05:17 14:03:09", ISO = "2024-05-17T14:03:09";
+  t("📅 JPEG petit-boutiste (II) : DateTimeOriginal lue", lire(jpegExif(D)) === ISO, lire(jpegExif(D)));
+  t("📅 JPEG gros-boutiste (MM) : DateTimeOriginal lue", lire(jpegExif(D, { le: false })) === ISO);
+  t("📅 DateTimeDigitized (0x9004) en repli de DateTimeOriginal", lire(jpegExif(D, { tag: 0x9004 })) === ISO);
+  t("📅 JPEG sans EXIF → null", lire(jpegExif(D, { sansExif: true })) === null);
+  const plein = jpegExif(D);
+  const FIN_DATE = 2 + 18 + 4 + 6 + 44 + 19;   // SOI, APP0, en-tête APP1, signature Exif, offset puis texte de la date
+  let tronquesOk = true, leves = 0;
+  for (let n = 0; n < plein.length; n++) {
+    try { const r = lire(plein.subarray(0, n)); if (n < FIN_DATE && r !== null) tronquesOk = false; } catch (e) { leves++; }
+  }
+  t("📅 fichier tronqué à chaque octet : jamais d'exception, jamais de date avant qu'elle soit entière",
+    tronquesOk && leves === 0, { leves: leves });
+  t("📅 date nulle « 0000:00:00 00:00:00 » → null", lire(jpegExif("0000:00:00 00:00:00")) === null);
+  t("📅 date invalide (mois 13) → null", lire(jpegExif("2024:13:01 10:00:00")) === null);
+  t("📅 offset de date hors du tampon → null", lire(jpegExif(D, { offDate: 0x7FFFFFF0 })) === null);
+  t("📅 pointeur d'IFD Exif hors du tampon → null", lire(jpegExif(D, { ptrExif: 0xFFFFFFF0 })) === null);
+  t("📅 nombre d'entrées démesuré → null, sans boucle longue", lire(jpegExif(D, { nbEntrees: 65535 })) === null);
+  // Hasard : 2 000 tampons aléatoires, dont la moitié avec un en-tête JPEG.
+  let alea = 0, graine = 7;
+  const rnd = () => { graine = (graine * 1103515245 + 12345) >>> 0; return graine >>> 24; };
+  for (let k = 0; k < 2000; k++) {
+    const u8 = new Uint8Array(1 + (rnd() * 4));
+    for (let i = 0; i < u8.length; i++) u8[i] = rnd();
+    if (k % 2) { u8[0] = 0xFF; if (u8.length > 1) u8[1] = 0xD8; }
+    try { lire(u8); } catch (e) { alea++; }
+  }
+  t("📅 2 000 tampons aléatoires : aucune exception", alea === 0, alea);
+  t("📅 entrée qui n'est pas un ArrayBuffer → null", P.datePriseVueDepuisOctets("x") === null && P.datePriseVueDepuisOctets(null) === null);
+  // Hors JPEG (HEIC…) : « Exif\0\0 » + TIFF trouvés dans la fenêtre lue.
+  const tiff = jpegExif(D).subarray(2 + 18 + 4 + 6);
+  const heic = new Uint8Array(300 + tiff.length + 6);
+  heic.set([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], 0);
+  heic.set([0x45, 0x78, 0x69, 0x66, 0, 0], 300);
+  heic.set(tiff, 306);
+  t("📅 hors JPEG (boîte ftyp heic + bloc Exif) : date lue par recherche bornée", lire(heic) === ISO, lire(heic));
+  t("📅 priseLeValide : chaîne plausible gardée, le reste refusé",
+    P.priseLeValide(ISO) === ISO && P.priseLeValide("<b>") === null && P.priseLeValide("2024-05-17") === null &&
+    P.priseLeValide("2024-02-30T25:00:00") === null && P.priseLeValide(12) === null);
+
+  idb.lignes.clear();
+  await P.restorePhoto(rec("d1", "pt_a", { priseLe: ISO, createdAt: 1700000000000 }), { source: "import" });
+  await P.restorePhoto(rec("d2", "pt_a", { priseLe: "<img src=x>", createdAt: "hier" }), { source: "import" });
+  const d1 = idb.lignes.get("d1"), d2 = idb.lignes.get("d2");
+  t("📅 restorePhoto garde une date de prise de vue valide et la date d'ajout",
+    d1.priseLe === ISO && d1.createdAt === 1700000000000, d1);
+  t("📅 restorePhoto écarte une date de prise de vue invalide (aucune clé) et une date d'ajout non numérique",
+    !("priseLe" in d2) && typeof d2.createdAt === "number" && d2.createdAt > 0, d2);
+  const liste = await P.listerPlan("planA");
+  t("📅 listerPlan rend priseLe (sans le blob)",
+    liste.some((x) => x.id === "d1" && x.priseLe === ISO && !("blob" in x)), liste);
+
+  const PH = fs.readFileSync("js/photos.js", "utf8");
+  const add = PH.slice(PH.indexOf("function addPhoto("), PH.indexOf("// ── Lecture ──"));
+  t("🔒 addPhoto lit la date sur le blob D'ORIGINE (srcBlob), pas sur le ré-encodé",
+    add.indexOf("lireDatePriseVue(srcBlob)") >= 0 && add.indexOf("lireDatePriseVue(finalBlob)") < 0);
+  t("🔒 le fichier reste ré-encodé par le canvas (compressBlob sur toute image)",
+    add.indexOf("compressBlob(srcBlob, opts)") >= 0);
+  t("🔒 compression impossible → photo REFUSÉE (PHOTO_ILLISIBLE), jamais le blob d'origine avec son EXIF",
+    add.indexOf("\"PHOTO_ILLISIBLE\"") >= 0 && !/compressBlob\(srcBlob, opts\)\.catch\([\s\S]{0,400}return srcBlob;/.test(add));
+  const SE = fs.readFileSync("js/sessionExporter.js", "utf8");
+  const i = SE.indexOf("function _entreeIndexPhoto(");
+  let prof = 0, corps = "";
+  for (let k = SE.indexOf("{", i); k < SE.length; k++) {
+    if (SE[k] === "{") prof++;
+    else if (SE[k] === "}") { prof--; if (prof === 0) { corps = SE.slice(i, k + 1); break; } }
+  }
+  const f = vm.runInNewContext("(" + corps + ")");
+  const e = f({ pointId: "pt_a", mime: "image/jpeg", size: 3, fiche: null, createdAt: 5, priseLe: ISO }, "a.jpg");
+  t("📅 l'entrée de photos/_index.json emporte createdAt et priseLe", e.createdAt === 5 && e.priseLe === ISO, e);
+  const strip = SE.slice(SE.indexOf("function _stripperExifPhotos("), SE.indexOf("function _enrichirPointsAvecPhotos("));
+  t("🔒 export anonymisé : aucune date de photo recopiée (une date situe un passage)",
+    strip.length > 0 && !/priseLe|createdAt/.test(strip));
+  const IMP = fs.readFileSync("js/interfaceImportExport.js", "utf8");
+  t("📅 l'import de session relit priseLe de l'index et la passe à restorePhoto",
+    /priseLe:\s*info\.priseLe/.test(IMP) && /priseLe:\s*p\.priseLe[\s\S]{0,200}siAbsente: true/.test(IMP));
+  const PRO = fs.readFileSync("js/profileExportImport.js", "utf8");
+  t("📅 le profil emporte priseLe et la vraie date d'ajout (createdAt)",
+    /priseLe:\s*ph\.priseLe \|\| undefined/.test(PRO) && /addedAt:\s*ph\.createdAt/.test(PRO) && /priseLe:\s*ph\.priseLe,/.test(PRO));
+}
+
+photos().then(cablage).then(fiche).then(archivePartielle).then(datePriseVue).catch(function (e) {
   t("le bac à sable photos s'exécute sans planter — " + (e && e.message), false);
 }).then(function () {
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
-  console.log("🎉 photos : rien n'est effacé au réimport, la limite de 5 tient au rattachement, la fiche voyage");
+  console.log("🎉 photos : rien n'est effacé au réimport, la limite de 5 tient au rattachement, la fiche et la date voyagent");
 });

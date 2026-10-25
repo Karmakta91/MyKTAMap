@@ -651,6 +651,8 @@ El botón **✏️** de la barra lateral activa o desactiva el modo añadir. Act
 
 **El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización, 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: un nombre corto en minúsculas, cifras, `_` o `-` (p. ej. `fuente`); usa el icono por defecto.
 
+**⚠️ Tipo Peligro: fecha de constatación.** Un punto de tipo **Peligro** lleva una **📅 Fecha de constatación**, el día en que se vio el peligro: rellenada con hoy, modificable, para vaciar si no la conoces (un punto Peligro más antiguo sigue sin fecha mientras no le pongas una). Su ventana muestra «Constatado el …» y recuerda que **MyKTAMap no certifica el estado de un sitio: un peligro registrado puede haber cambiado desde su fecha de constatación.** La fecha sale con la exportación de sesión, el KMZ, el GPX y el GeoJSON (releída por la importación KMZ y GPX), nunca con la exportación anonimizada.
+
 ### ✏️ Modificar o reposicionar un punto
 
 En **tus** puntos, la ventana del punto ofrece:
@@ -665,13 +667,14 @@ Ambos se deshacen con ⏪ (`Ctrl+Z`). Para quitar un punto: **🗑️ Eliminar e
 Hasta **5 fotos por punto**, guardadas solo en tu dispositivo. En la ventana de añadir o de editar, sección **📸 Fotos**:
 
 - **📷 Tomar foto** abre la cámara (móvil); **🖼️ Desde la galería** permite elegir varias de una vez.
-- Cada foto se **comprime** (una foto de varios MB pasa a pesar unos cientos de KB) y se **limpia**: la posición GPS de la toma, la fecha y el modelo del aparato se borran antes de entrar en la app.
+- Cada foto se **comprime** (una foto de varios MB pasa a pesar unos cientos de KB) y se **limpia**: la posición GPS de la toma y el modelo del aparato se borran antes de entrar en la app. Solo su **fecha de la toma** se lee antes de la limpieza y se guarda **junto a** la foto (nunca en el archivo): la pantalla completa muestra «Tomada el …». Sin esa fecha (captura de pantalla, foto ya limpiada), muestra «Añadida el … (fecha de la toma desconocida)».
+- Una foto que el navegador no sabe leer (archivo dañado, formato no compatible) se **rechaza** con un mensaje: nunca entra tal cual.
 - **Quitar una foto**: la cruz ✕ roja de la miniatura la marca para borrar, la flecha verde ↺ lo anula. No se borra nada antes de **💾 Guardar**.
 - **Cerrar sin guardar** borra las fotos que acababas de añadir y anula las marcas.
 
 **Verlas**: la ventana del punto muestra las miniaturas — un toque abre la pantalla completa (pellizca o usa la rueda para hacer zoom, desliza para pasar a la siguiente, `← →` y `Esc` en PC). El contador **📸** de la barra superior abre el detalle de la sesión.
 
-**Llevártelas**: marca la casilla 📸 de las fotos en ⬆️ → **🚀 Completo**, **🎨 Avanzado** o **🔄 Conversión**; cada foto lleva la ficha de su punto (nombre, posición, nivel, tipo: lo necesario para ♻️ recrear un punto desaparecido). Un archivo reimportado **añade** sus fotos a las del dispositivo — una foto ya presente no se duplica y no se borra ninguna. Con **🛡️ Anonimizar para compartir públicamente**, cada foto se renombra y se vincula al código anónimo de su punto, sin su ficha; una foto que no puede limpiarse queda excluida.
+**Llevártelas**: marca la casilla 📸 de las fotos en ⬆️ → **🚀 Completo**, **🎨 Avanzado** o **🔄 Conversión**; cada foto lleva la ficha de su punto (nombre, posición, nivel, tipo: lo necesario para ♻️ recrear un punto desaparecido), su fecha de la toma y su fecha de adición. Un archivo reimportado **añade** sus fotos a las del dispositivo — una foto ya presente no se duplica y no se borra ninguna. Con **🛡️ Anonimizar para compartir públicamente**, cada foto se renombra y se vincula al código anónimo de su punto, sin su ficha ni sus fechas; una foto que no puede limpiarse queda excluida.
 
 **📌 Foto «por asignar»**: antes de la v2.3.0, una foto se guardaba con el **nombre** de su punto. Si varios puntos llevan el mismo nombre, la app no adivina a cuál pertenece: en la burbuja de cada uno de esos puntos, la foto aparece con un **marco naranja punteado** y un botón **📌 Foto N: es este punto**. Tócalo en la burbuja del punto correcto. Nunca se borra nada. Las fotos cuyo nombre lleva un solo punto se asignan solas, y las que tomes ahora siguen a su punto aunque lo renombres.
 

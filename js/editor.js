@@ -216,6 +216,7 @@ function afficherFormulaire(x, y, existingPoint) {
             <select class="kta-cfg-input" id="kta-poi-niveau">${optionsNiveau}</select>` : ""}
           </div>
           ${window.KtaPoiJonction ? window.KtaPoiJonction.htmlFormulaire(tagInitial) : ""}
+          ${window.KtaPoiDanger ? window.KtaPoiDanger.htmlFormulaire(tagInitial, isEdit ? existingPoint : null) : ""}
 
           <div id="kta-poi-newtag-wrap" style="display:none; margin-top:8px;">
             <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">${window.I18n.t("editor.field.newTag")}</label>
@@ -345,6 +346,10 @@ function afficherFormulaire(x, y, existingPoint) {
     }
   }) : null;
   if (_jonction && selNiveauForm) selNiveauForm.addEventListener("change", _jonction.rafraichir);
+  // Date de constat d'un POI danger (poiDanger.js) : bloc affiché selon le tag.
+  const _danger = window.KtaPoiDanger ? window.KtaPoiDanger.brancherFormulaire(modal, {
+    tag: function() { return (selectType.value && selectType.value !== "__new__") ? selectType.value : ""; }
+  }) : null;
 
   selectType.addEventListener("change", function() {
     if (selectType.value === "__new__") {
@@ -354,6 +359,7 @@ function afficherFormulaire(x, y, existingPoint) {
       newTagWrap.style.display = "none";
     }
     if (_jonction) _jonction.rafraichir();
+    if (_danger) _danger.rafraichir();
   });
 
   btnClose.addEventListener("click", annuler);
@@ -550,7 +556,9 @@ function afficherFormulaire(x, y, existingPoint) {
           ? window.I18n.t("editor.err.photoQuotaDisk")
           : (err && err.code === "QUOTA_DEVICE")
             ? window.I18n.t("editor.err.photoQuotaDevice")
-            : window.I18n.t("editor.err.photoAdd", { msg: (err && err.message ? err.message : err) });
+            : (err && err.code === "PHOTO_ILLISIBLE")
+              ? window.I18n.t("editor.err.photoIllisible")
+              : window.I18n.t("editor.err.photoAdd", { msg: (err && err.message ? err.message : err) });
       setErr(msg);
       setTimeout(function() { setErr(""); }, 5000);
     });
@@ -667,6 +675,7 @@ function afficherFormulaire(x, y, existingPoint) {
         const niveauChoisi = selNiveau ? Number.parseInt(selNiveau.value, 10) : Number.NaN;
         const niveauChange = Number.isInteger(niveauChoisi) && niveauChoisi !== niveauInitial;
         const jonctionChange = !!(_jonction && window.KtaPoiJonction.appliquer(existingPoint, _jonction.lire()));
+        if (_danger) window.KtaPoiDanger.appliquer(existingPoint, _danger.lire());
         if (niveauChange) existingPoint.level = niveauChoisi;
         // touch : updatedAt (ms) + date_update (jour), en un seul geste.
         if (window.KtaUid) window.KtaUid.touch(existingPoint);
@@ -714,6 +723,7 @@ function afficherFormulaire(x, y, existingPoint) {
           point.level = window.APP_CONFIG.activeLevel || 0;
         }
         if (_jonction) window.KtaPoiJonction.appliquer(point, _jonction.lire());
+        if (_danger) window.KtaPoiDanger.appliquer(point, _danger.lire());
         // Identité stable dès la création : l'uid tiré à l'ouverture, sous lequel ses photos sont déjà rangées.
         if (_uidAjout) point.uid = _uidAjout;
         if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(point, "pt"));

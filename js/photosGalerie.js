@@ -733,6 +733,8 @@
       dossier.file(fichier, rec.blob);
       idx[rec.id] = { pointId: rec.pointId, mime: rec.mime, size: rec.size, file: fichier };
       if (rec.fiche) idx[rec.id].fiche = rec.fiche;
+      if (rec.createdAt) idx[rec.id].createdAt = rec.createdAt;
+      if (rec.priseLe) idx[rec.id].priseLe = rec.priseLe;
       n++;
     }
     if (!n) return;

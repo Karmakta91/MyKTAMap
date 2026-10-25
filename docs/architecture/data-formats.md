@@ -86,6 +86,15 @@
 Générateur (calques), le Tableur (`niveaux` éditable, `accroches` en lecture), l'export anonymisé ; KMZ / GPX /
 GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `multilevel-pathfinding.md` §26.11.
 
+→ **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
+vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger
+(création ou changement de tag), modifiable, retiré si vidé ou si le tag n'est plus danger ; un point danger
+sans date reste sans date. Fiche : « Constaté le … » + mention de non-certification. Exclu : le point du mode
+« perdu » (`lostMode.js`, `"source": "lostMode"`, ou id `lost_…` d'avant ce marqueur), tag danger pour l'icône
+seulement — ni date, ni mention. Gardé par la session et
+l'export complet ; GeoJSON = propriété `dateConstat`, KMZ = `<Data name="mkm:dateConstat">`, GPX = `constat=…`
+dans `<cmt>` (les deux relus à l'import). **Jamais** dans l'export anonymisé (liste blanche).
+
 → **Identité stable (v2.1.0)** : chaque objet de carte (point, tracé, zone, structure) porte aussi
 `"uid": "pt_lq3x9a_k2f8m1"` (préfixe `pt_`/`rd_`/`zn_`/`st_` = famille **à la création**, puis date
 base 36 et 6 caractères aléatoires) et `"updatedAt": 1759572000000` (ms, mis à jour à chaque
@@ -103,6 +112,12 @@ de l'original). Module : `js/ktaUid.js`.
 vidées par « Effacer la session » et au changement de plan, **jamais** dans l'export anonymisé.
 Pas de trace pour l'itinéraire calculé ni pour un objet rendu à son calque (`_srcCalque`).
 **Favoris, liaisons, Secours (v2.4.0)** : un favori porte `pointUid` (son champ `uid` reste SON identifiant `fav-…`) ; chaque côté d'une liaison porte `pointUid` ; une étape de Secours porte `pointUid`. Lecture : l'uid d'abord, puis le nom (et les coordonnées) pour une donnée ancienne. Migration douce dans la même passe que les photos (`main.js > _ktaPlanifierMigrationPhotos`) : un seul point de ce nom, ou l'homonyme à la même position ; sinon rien n'est deviné.
+
+**Date de prise de vue d'une photo** : `priseLe: "AAAA-MM-JJTHH:MM:SS"` (EXIF DateTimeOriginal, heure locale de
+l'appareil photo **sans fuseau**, affichée telle quelle) dans l'enregistrement IndexedDB, à côté de `createdAt`
+(ms, ajout sur l'appareil). Le fichier, ré-encodé, n'a plus d'EXIF. Les index `photos/_index.json` (ZIP de
+session, de plan, galerie) et le profil (`priseLe`, `addedAt` = `createdAt`) les emportent, champs facultatifs ;
+l'export anonymisé n'emporte aucune des deux. Détail : `session-data.md` §42.
 
 **Photos (v2.3.0)** : `pointId` d'une photo (IndexedDB `myktamap_photos`, exports, profil) vaut l'**uid** du point pour toute photo prise depuis v2.3.0 ; les anciennes restent sous le **nom** jusqu'à leur migration (automatique si le nom n'est porté que par un point ; sinon « à rattacher » par l'utilisateur). Lecture **double** partout (`MyKTAMapPhotos.getPhotosForPointRef` : uid, puis nom). Index des ZIP de plan (`data/photos/_index.json`, v2.5.0) : `pointId` = uid du point quand son nom n'est porté que par un seul point du plan généré, sinon la clé d'origine ; les photos restaurées depuis le ZIP portent `meta.origine = "plan"` — seules celles-là peuvent être retirées à la réouverture (si elles ont disparu du ZIP), jamais une photo prise par l'utilisateur.
 Fusion de sessions et du Générateur : `KtaUid.fusionnerCalques` (même uid de deux fichiers = même

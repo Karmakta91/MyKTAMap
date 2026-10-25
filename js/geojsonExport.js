@@ -115,6 +115,9 @@
         const t = (tag === "__untagged__") ? null : tag;
         const props = proprietes("point", t, _libelle("icones", t), p, null);
         if (nv) props.niveaux = nv;
+        // POI danger : jour du constat (poiDanger.js).
+        const dc = window.KtaPoiDanger ? window.KtaPoiDanger.dateConstat(p) : null;
+        if (dc) props.dateConstat = dc;
         ajouter({ type: "Point", coordinates: pt(p.x, p.y) }, props, p.uid);
       });
     }

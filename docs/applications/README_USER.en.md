@@ -651,6 +651,8 @@ The **✏️** button in the sidebar turns add mode on or off. When it is on, ev
 
 **The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage, 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: a short name in lowercase letters, digits, `_` or `-` (e.g. `fountain`); it uses the default icon.
 
+**⚠️ Danger type: date observed.** A point of type **Danger** carries a **📅 Date observed**, the day the hazard was seen: pre-filled with today, editable, to be cleared if you don't know it (an older Danger point stays without a date until you add one). Its popup shows "Observed on …" and reminds you that **MyKTAMap does not certify the condition of a site: a recorded hazard may have changed since the date it was observed.** The date goes out with the session export, KMZ, GPX and GeoJSON (read back by the KMZ and GPX import), never with the anonymized export.
+
 ### ✏️ Edit or reposition a point
 
 On **your** points, the point's popup offers:
@@ -665,13 +667,14 @@ Both can be undone with ⏪ (`Ctrl+Z`). To remove a point: **🗑️ Delete this
 Up to **5 photos per point**, kept on your device only. In the add or edit window, **📸 Photos** section:
 
 - **📷 Take photo** opens the camera (mobile); **🖼️ From gallery** lets you pick several at once.
-- Each photo is **compressed** (a photo of several MB then weighs a few hundred KB) and **cleaned**: the GPS position where it was taken, the date and the device model are removed before it enters the app.
+- Each photo is **compressed** (a photo of several MB then weighs a few hundred KB) and **cleaned**: the GPS position where it was taken and the device model are removed before it enters the app. Only its **date taken** is read before cleaning and kept **beside** the photo (never in the file): full screen shows "Taken on …". Without that date (screenshot, already cleaned photo), it shows "Added on … (date taken unknown)".
+- A photo the browser cannot read (damaged file, unsupported format) is **refused** with a message: it never gets in as is.
 - **Remove a photo**: the red ✕ on the thumbnail marks it for deletion, the green arrow ↺ cancels. Nothing is deleted before **💾 Save**.
 - **Closing without saving** deletes the photos you had just added and cancels the deletion marks.
 
 **Viewing them**: the point's popup shows the thumbnails — a tap opens full screen (pinch or mouse wheel to zoom, swipe to go to the next one, `← →` and `Esc` on PC). The **📸** counter in the top bar opens the session details.
 
-**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; each photo carries its point's card (name, position, level, type: enough to ♻️ recreate a vanished point). A re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code, without its card; a photo that cannot be cleaned is left out.
+**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; each photo carries its point's card (name, position, level, type: enough to ♻️ recreate a vanished point), its date taken and the date it was added. A re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code, without its card or its dates; a photo that cannot be cleaned is left out.
 
 **📌 Photo "to assign"**: before v2.3.0, a photo was filed under its point's **name**. If several points share the same name, the app doesn't guess which one it belongs to: in the bubble of each of these points, the photo shows with a **dashed orange frame** and a **📌 Photo N: it's this point** button. Tap it in the right point's bubble. Nothing is ever deleted. Photos whose name belongs to a single point are assigned automatically, and the ones you take now follow their point even if you rename it.
 

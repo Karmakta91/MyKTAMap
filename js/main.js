@@ -1342,7 +1342,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   }
 
   // Photos embarquées dans le ZIP (createConf.js > _genererZip, « Inclure les photos ») :
-  //   data/photos/_index.json      ← photoId → {pointId, mime, size, file}
+  //   data/photos/_index.json      ← photoId → {pointId, mime, size, file, createdAt?, priseLe?}
   //   data/photos/<photoId>.<ext>  ← blob de chaque photo
   // Sans _index.json, section sautée.
   try {
@@ -1399,6 +1399,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 blob:    blob,
                 mime:    info.mime || "image/jpeg",
                 size:    info.size || blob.size,
+                createdAt: info.createdAt,   // dates facultatives, validées par restorePhoto
+                priseLe: info.priseLe,
                 meta:    { origine: "plan" }   // seules celles-ci peuvent être retirées
               }, { source: "import" });   // restauration de l'app (≠ dépôt d'une extension)
               restoredCount++;

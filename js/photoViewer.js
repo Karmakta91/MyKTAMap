@@ -11,7 +11,8 @@
 // Lecture seule (supprimer / télécharger passent par la modale d'édition du point : une seule source
 // d'édition). Pinch-zoom maison (1-4, centré), pan (1 doigt ou souris si zoomé), swipe précédent/suivant (1
 // doigt à zoom 1), flèches ◂ / ▸, compteur « N/M », fermeture par ✕ / Échap / fond ; zoom remis à zéro à
-// chaque photo. Sans dépendance.
+// chaque photo. Sans dépendance. En tête : « Prise le … » (EXIF lu à l'ajout, photos.js > priseLe), sinon
+// « Ajoutée le … » (enregistrement sur l'appareil) ; relue par id quand l'appelant ne la passe pas.
 // Expose window.MyKTAMapPhotoViewer : open(photos, startIndex) (photos : [{ _objectUrl, … }]), close() (no-op
 //   si fermé).
 // =========================
@@ -23,6 +24,7 @@
   let _overlay     = null;
   let _img         = null;
   let _counter     = null;
+  let _date        = null;
   let _photos      = [];
   let _currentIdx  = 0;
 
@@ -91,12 +93,47 @@
     }
   }
 
+  // "AAAA-MM-JJTHH:MM:SS" (heure de l'appareil photo, sans fuseau) → Date locale, sans conversion de fuseau.
+  function _datePriseLe(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(String(s || ""));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
+  }
+  function _texteDate(meta) {
+    const loc = window.ktaLocale ? window.ktaLocale() : "fr-FR";
+    const opts = { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" };
+    const prise = meta && _datePriseLe(meta.priseLe);
+    if (prise) return window.I18n.t("photoviewer.priseLe", { date: prise.toLocaleString(loc, opts) });
+    if (meta && Number.isFinite(meta.createdAt) && meta.createdAt > 0) {
+      return window.I18n.t("photoviewer.ajouteeLe", { date: new Date(meta.createdAt).toLocaleString(loc, opts) });
+    }
+    return "";
+  }
+  function _majDate() {
+    if (!_date) return;
+    const ph = _photos[_currentIdx];
+    const P = window.MyKTAMapPhotos;
+    const aLire = !!(ph && !ph.priseLe && !ph._dateLue && ph.id && P && typeof P.getMeta === "function");
+    // Rien tant que la relecture n'a pas répondu : « Ajoutée le » ne doit pas précéder un « Prise le ».
+    _date.textContent = aLire ? "" : _texteDate(ph);
+    if (!aLire) return;
+    const idx = _currentIdx;
+    P.getMeta(ph.id).catch(function() { return null; }).then(function(meta) {
+      ph._dateLue = true;
+      if (meta) {
+        ph.priseLe = meta.priseLe || null;
+        if (!ph.createdAt) ph.createdAt = meta.createdAt;
+      }
+      if (_date && _photos[idx] === ph && _currentIdx === idx) _date.textContent = _texteDate(ph);
+    });
+  }
+
   function _updateImage() {
     if (!_img || !_photos[_currentIdx]) return;
     const src = _photos[_currentIdx]._objectUrl || _photos[_currentIdx].url || "";
     _img.src = src;
     _resetTransform();
     _updateCounter();
+    _majDate();
   }
 
   function _next() {
@@ -246,6 +283,7 @@
     _overlay.innerHTML =
       '<div class="kta-photo-viewer-header">' +
         '<span class="kta-photo-viewer-counter">1 / 1</span>' +
+        '<span class="kta-photo-viewer-date"></span>' +
         '<button type="button" class="kta-photo-viewer-close" title="' + window.I18n.t("photoviewer.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-photo-viewer-viewport">' +
@@ -259,6 +297,7 @@
 
     _img     = _overlay.querySelector(".kta-photo-viewer-img");
     _counter = _overlay.querySelector(".kta-photo-viewer-counter");
+    _date    = _overlay.querySelector(".kta-photo-viewer-date");
 
     // Navigation cachée s'il n'y a qu'une photo.
     if (_photos.length <= 1) {
@@ -318,6 +357,7 @@
     _overlay = null;
     _img = null;
     _counter = null;
+    _date = null;
     _photos = [];
     _currentIdx = 0;
     _touchMode = null;

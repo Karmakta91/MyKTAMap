@@ -548,7 +548,9 @@ function ouvrirImportSession(fichierInitial) {
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
                 blob:    blob,
-                fiche:   info.fiche || null   // absente des anciens ZIP
+                fiche:   info.fiche || null,   // absente des anciens ZIP
+                createdAt: info.createdAt,     // dates facultatives, validées par restorePhoto
+                priseLe: info.priseLe
               };
             });
           });
@@ -660,6 +662,8 @@ function ouvrirImportSession(fichierInitial) {
           blob:    p.blob,
           mime:    p.mime,
           size:    p.size,
+          createdAt: p.createdAt,   // dates facultatives, validées par restorePhoto
+          priseLe: p.priseLe,
           fiche:   p.fiche   // fiche du point (facultative, validée par restorePhoto)
         }, { source: "import", siAbsente: true })   // restauration de l'app (≠ dépôt d'une extension)
           .then(function(id) { if (id) bilan.ajoutees++; else bilan.deja++; })
