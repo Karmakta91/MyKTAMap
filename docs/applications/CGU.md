@@ -13,6 +13,9 @@
 - 🗺️ L'application aide à cartographier et à se repérer — elle ne donne **aucun droit d'accès** à un lieu.
 - 🚫 L'accès à de nombreux sites souterrains — notamment le **réseau des anciennes carrières de Paris** — est **interdit** (arrêté préfectoral du 2 novembre 1955) et **passible d'amende** (135 € à 375 €).
 - ⚠️ Toute intrusion dans un lieu privé ou interdit engage **votre seule responsabilité**, civile comme pénale.
+- 🧭 Position estimée sans GPS, itinéraire, calage géographique, plans et relevés sont fournis **sans garantie d'exactitude ni d'actualité** ; MyKTAMap **ne certifie pas l'état d'un site** : évaluez sur place.
+- 🆘 Le Mode Secours, le mode urgence et les alertes **ne remplacent pas les services d'urgence** (112 / 18) : sous terre, sans réseau, rien ne part.
+- 📤 Vous répondez de ce que vous **importez** (droits sur les plans, auteurs, organismes), **exportez et diffusez**, et de toute **divulgation d'accès**.
 - 🤝 Respectez la loi, les propriétaires des lieux, le patrimoine souterrain et votre propre sécurité.
 
 L'auteur de MyKTAMap **décline toute responsabilité** quant à l'usage qui est fait de l'application. L'utilisateur reconnaît utiliser l'outil en connaissance de cause et sous sa seule responsabilité.
@@ -24,9 +27,24 @@ L'auteur de MyKTAMap **décline toute responsabilité** quant à l'usage qui est
 - 🗺️ The app helps you map and find your way — it grants **no right of access** to any place.
 - 🚫 Access to many underground sites — notably the **former quarry network of Paris** — is **forbidden** (Paris prefectural order of 2 November 1955) and **punishable by a fine** (€135 to €375).
 - ⚠️ Any intrusion into a private or forbidden place is **your sole responsibility**, both civil and criminal.
+- 🧭 Position estimated without GPS, route, geographic calibration, plans and surveys are provided **with no guarantee of accuracy or currency**; MyKTAMap **does not certify the condition of a site**: assess it on the spot.
+- 🆘 Rescue Mode, emergency mode and alerts **do not replace emergency services** (112): underground, with no network, nothing gets sent.
+- 📤 You are responsible for what you **import** (rights to plans, authors, organizations), **export and share**, and for any **disclosure of access**.
 - 🤝 Respect the law, site owners, the underground heritage and your own safety.
 
 The author of MyKTAMap **disclaims all liability** for the use made of the application. *(The reference legal texts below are reproduced in French only, as they are French official acts.)*
+
+---
+
+## 📋 Garanties, secours et contenus — détail
+
+**Absence de garantie.** La position affichée est une estimation sans GPS : le suivi au podomètre et à la boussole dérive avec la distance parcourue. L'itinéraire proposé suit les tracés saisis, sans connaître l'état réel des galeries. Le calage géographique d'un plan est approximatif. Les plans et relevés, dangers signalés et dates de constat compris, sont fournis tels quels, sans garantie d'exactitude, d'exhaustivité ni d'actualité : MyKTAMap ne certifie pas l'état d'un site, un danger relevé peut avoir changé depuis sa date de constat. Évaluez toujours la situation sur place.
+
+**Pas un moyen de secours.** Le Mode Secours, le mode urgence et les alertes de l'application aident à s'organiser ; ils ne remplacent pas les services d'urgence. En cas d'urgence, appelez le 112 (ou le 18). Sous terre, il n'y a en général aucun réseau : l'application n'envoie rien et personne n'est prévenu automatiquement.
+
+**Contenus partagés.** Vous répondez des plans et données que vous importez (droits d'auteur, accord de leurs auteurs ou des organismes qui les ont produits), de ce que vous exportez et diffusez (archives ZIP, exports de session, KMZ, GPX, images) et de toute divulgation d'accès à un site. Diffuser un accès peut exposer d'autres personnes à un danger ou à une infraction.
+
+*(In English: no warranty on position, route, calibration, plans and surveys — the app does not certify a site's condition; not a rescue service — call 112, nothing is sent underground; you are responsible for what you import, export, share and for disclosing access. Full wording in the app, in English and Spanish.)*
 
 ---
 

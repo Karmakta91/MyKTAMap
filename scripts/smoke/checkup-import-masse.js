@@ -23,7 +23,7 @@ const JSZip = require(path.join(ROOT, "lib", "jszip.min.js"));
 const URL = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123) + "/index.html";
 const LS = {
   myktamap_unlock_v1: "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
-  myktamap_terms_accepted_v1: "1",
+  myktamap_terms_accepted_v1: "2",
   myktamap_pin_proposal_done_v1: "1",
   myktamap_tutorial_seen_v1: "1",
   myktamap_osm_view_opt_in: "true",

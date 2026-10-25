@@ -15,6 +15,7 @@
 //    GeoJSON, KMZ (réimporté) et GPX (réimporté) emportent la date de constat.
 // D. Point du mode « perdu » (tag danger, lostMode.js) posé par le vrai parcours : ni date, ni mention, ni bloc au
 //    formulaire, y compris après une modification (l'id devient le nom).
+// E. CGU : acceptation de la version 1 → gate rouverte avec la non-certification ; acceptée → version courante.
 // Usage : node scripts/smoke/checkup-photos-danger.js (SMOKE_PORT pour une autre copie ; PD_SHOTS=<dossier> :
 //   captures et fichiers produits)
 // Doc : docs/architecture/session-data.md (photos) · docs/architecture/data-formats.md (format point)
@@ -33,7 +34,7 @@ const JSZip = require("../../lib/jszip.min.js");
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
-  "myktamap_terms_accepted_v1": "1",
+  "myktamap_terms_accepted_v1": "2",
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
   "myktamap_pin_proposal_done_v1": "1",
   "myktamap_tutorial_seen_v1": "1"
@@ -601,6 +602,53 @@ async function partiePerdu(page) {
   verifier(!!f2 && f2.mk && f2.bloc === null, "mode perdu : toujours sans mention après modification (id = nom)", f2);
 }
 
+// ── E. CGU : non-certification et ré-acceptation ──────────
+// Un utilisateur qui avait accepté la version 1 des CGU revoit la gate, avec le point de non-certification ;
+// l'accepter enregistre la version courante.
+async function partieCgu(ctx) {
+  const page = await ctx.newPage();
+  const ls = Object.assign({}, LS_PREGATES, { "myktamap_terms_accepted_v1": "1" });
+  await page.addInitScript(function (l) {
+    if (sessionStorage.getItem("__pdCgu")) return;   // seulement au premier chargement
+    sessionStorage.setItem("__pdCgu", "1");
+    for (const k in l) { try { localStorage.setItem(k, l[k]); } catch (e) {} }
+  }, ls);
+  page.on("pageerror", function (e) { erreursConsole.push("pageerror (CGU) : " + e.message); });
+  await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+  const vue = await attendre(page, function () { return !!document.getElementById("kta-legal-accept"); }, 20000)
+    .then(function () { return true; }).catch(function () { return false; });
+  verifier(vue, "CGU : acceptation de la version 1 → la gate se rouvre (ré-acceptation)");
+  if (!vue) { await page.close(); return; }
+  const r = await page.evaluate(function () {
+    const o = document.getElementById("kta-legal-gate-overlay");
+    const cles = ["pointGarantie", "pointSecours", "pointContenus"];
+    const lis = o ? Array.from(o.querySelectorAll(".kta-legal-points li")).map(function (li) { return li.textContent; }) : [];
+    return { lis: lis, attendus: cles.map(function (k) { return window.I18n.t("legal.gate." + k); }),
+             version: window.LegalGate.TERMS_VERSION };
+  });
+  verifier(r.attendus.every(function (a) { return r.lis.indexOf(a) >= 0; }) &&
+    /ne certifie pas/.test(r.attendus[0]) && /112/.test(r.attendus[1]),
+    "CGU : 3 clauses affichées (garantie dont état des sites, secours, contenus partagés)", r.lis);
+  verifier(r.lis.length === 7 && r.lis.every(function (t) { return t.length <= 230; }),
+    "CGU : une ligne courte par point (7 points, ≤ 230 caractères chacun)", r.lis.map(function (t) { return t.length; }));
+  await capture(page, "e1-cgu");
+  await page.click("#kta-legal-readfull");
+  await attendre(page, function () { return !!document.getElementById("kta-legal-full-overlay"); }, 5000);
+  const full = await page.evaluate(function () {
+    const o = document.getElementById("kta-legal-full-overlay");
+    const t = o ? o.textContent : "";
+    return ["garantie", "secours", "contenus"].every(function (k) { return t.indexOf(window.I18n.t("legal.full." + k)) >= 0; });
+  });
+  verifier(full, "CGU : texte intégral, les 3 clauses détaillées en tête");
+  await page.click("#kta-legal-full-back");
+  await page.click("#kta-legal-cb");
+  await page.click("#kta-legal-accept");
+  await page.waitForTimeout(500);
+  const v = await page.evaluate(function () { return localStorage.getItem("myktamap_terms_accepted_v1"); });
+  verifier(v === String(r.version) && r.version >= 2, "CGU : acceptée → version " + v + " enregistrée", v);
+  await page.close();
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   const ctx = await nav.newContext({ viewport: { width: 1100, height: 800 }, acceptDownloads: true });
@@ -627,6 +675,8 @@ async function partiePerdu(page) {
     console.log("C. Aller-retour : ZIP de session, anonymisé, GeoJSON, KMZ, GPX");
     await partieAllerRetour(page);
     await partieExports(page);
+    console.log("E. CGU : non-certification, ré-acceptation");
+    await partieCgu(ctx);
   } catch (e) {
     pb("exception du harnais : " + (e && e.stack || e));
   } finally {
