@@ -646,7 +646,8 @@ Si non-MyKTAMap : warn dans le résumé mais pas blocking (l'user peut quand mê
 
 - **Tag points** depuis `<sym>` ou `<type>`, fallback `opts.pointTag` ou `"default"`
 - **Type tracés** depuis `<type>` parmi `{principal, secondaire, chemin, itinerary, jonction}`, fallback `opts.roadType` ou `"chemin"`
-- **Levels M-LVL** depuis `<cmt>MyKTAMap level=N</cmt>` sur waypoints ET tracks
+- **Levels M-LVL** depuis `<cmt>MyKTAMap level=N</cmt>` sur waypoints ET tracks ; sur un waypoint, `niveaux=0,-1`
+  (passage entre niveaux) et `constat=AAAA-MM-JJ` (date de constat d'un POI danger) à la suite
 - **Descriptions** depuis `<desc>` sur waypoints ET tracks
 - **Filtre bounds** : points hors `[−50, W+50] × [−50, H+50]` rangés dans `stats.outOfBounds`
 

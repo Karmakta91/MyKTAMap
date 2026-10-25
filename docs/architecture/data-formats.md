@@ -86,6 +86,13 @@
 Générateur (calques), le Tableur (`niveaux` éditable, `accroches` en lecture), l'export anonymisé ; KMZ / GPX /
 GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `multilevel-pathfinding.md` §26.11.
 
+→ **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
+vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger
+(création ou changement de tag), modifiable, retiré si vidé ou si le tag n'est plus danger ; un point danger
+sans date reste sans date. Fiche : « Constaté le … » + mention de non-certification. Gardé par la session et
+l'export complet ; GeoJSON = propriété `dateConstat`, KMZ = `<Data name="mkm:dateConstat">`, GPX = `constat=…`
+dans `<cmt>` (les deux relus à l'import). **Jamais** dans l'export anonymisé (liste blanche).
+
 → **Identité stable (v2.1.0)** : chaque objet de carte (point, tracé, zone, structure) porte aussi
 `"uid": "pt_lq3x9a_k2f8m1"` (préfixe `pt_`/`rd_`/`zn_`/`st_` = famille **à la création**, puis date
 base 36 et 6 caractères aléatoires) et `"updatedAt": 1759572000000` (ms, mis à jour à chaque

@@ -56,6 +56,9 @@
 - Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
 - Splash : signature `karma.png` (pseudo artistique, déjà en place)
 - Meta tags `<head>` : `author`, `copyright`, `license`
+- Fiche d'un POI **danger** (`js/poiDanger.js`) : sa date de constat et « MyKTAMap ne certifie pas l'état d'un site :
+  un danger relevé peut avoir changé depuis sa date de constat. » (aussi dans le formulaire et les guides). Les CGU
+  (`js/legalGate.js`) n'en parlent pas : les modifier impose un nouveau consentement (`TERMS_VERSION`).
 
 **Pour ajouter un nouveau fichier JS** : copier l'en-tête de licence en tête (sinon le pré-commit refuse).
 

@@ -1283,6 +1283,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   let gpsLineHtml = "";
   // Passage entre niveaux : niveaux desservis et raccords validés (poiJonction.js).
   const jonctionHtml = window.KtaPoiJonction ? window.KtaPoiJonction.htmlFiche(point) : "";
+  // POI danger : date de constat et mention de non-certification (poiDanger.js).
+  const dangerHtml = window.KtaPoiDanger ? window.KtaPoiDanger.htmlFiche(point) : "";
   const _gpsLatLng = _planXyToGps(x, y);
   if (_gpsLatLng) {
     const gpsStr = _formatGps(_gpsLatLng);
@@ -1322,6 +1324,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
            gpsLineHtml +
            jonctionHtml +
+           dangerHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +

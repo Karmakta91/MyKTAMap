@@ -551,8 +551,9 @@
       // L'import KMZ fait l'inverse (roundtrip du texte d'origine).
       const desc = p.description ? _emitDescriptionCdata(p.description) : '';
       const nv = _niveauxPoint(p);
+      const dc = window.KtaPoiDanger ? window.KtaPoiDanger.dateConstat(p) : null;
       const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null,
-        { niveaux: nv.length >= 2 ? nv : null, copie: !!copie });
+        { niveaux: nv.length >= 2 ? nv : null, copie: !!copie, dateConstat: dc });
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
@@ -581,6 +582,10 @@
         parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
       }
       if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
+      // POI danger : jour du constat (« AAAA-MM-JJ », déjà validé par poiDanger.js).
+      if (extra && extra.dateConstat) {
+        parts.push('<Data name="mkm:dateConstat"><value>' + _xmlEsc(extra.dateConstat) + '</value></Data>');
+      }
       if (parts.length === 0) return '';
       return '<ExtendedData>' + parts.join('') + '</ExtendedData>';
     }
