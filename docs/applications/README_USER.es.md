@@ -1262,7 +1262,7 @@ Vuelve a tocar el botón activo (en verde) para desactivarlo.
 
 ### 🔑 La contraseña se rechaza
 
-En el primer arranque, MyKTAMap presenta la app y te deja **Entrar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
+En el primer arranque, MyKTAMap presenta la app y te deja **Entrar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
 
 ### 🔄 La app no se actualiza, o se queda bloqueada
 

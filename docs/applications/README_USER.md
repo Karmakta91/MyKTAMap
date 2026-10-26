@@ -1263,7 +1263,7 @@ Touche à nouveau le bouton actif (en vert) pour le couper.
 
 ### 🔑 Le mot de passe est refusé
 
-Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
+Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
 
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 

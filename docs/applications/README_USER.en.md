@@ -1262,7 +1262,7 @@ Tap the active button (in green) again to turn it off.
 
 ### 🔑 The password is refused
 
-On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is asked. Only an installation with its own password (association, club) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 
