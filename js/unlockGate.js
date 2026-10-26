@@ -444,6 +444,7 @@
         // La visite guidée garde son comportement : d'office au 1er lancement, ou demandée sur l'écran.
         window.KtaBienvenue.ouvrir({
           code: { essayer: _essayerCode, etat: _etatCode },
+          surDoc: _ouvrirDocReadme,
           surEntree: function(visite) { _visiteDemandee = !!visite; },
           surFin: function() {
             if (_codeAccepte) _resoudre();
@@ -453,6 +454,7 @@
         return;
       }
       window.KtaBienvenue.ouvrir({
+        surDoc: _ouvrirDocReadme,
         surEntree: function(visite) {
           _visiteDemandee = !!visite;
           _memoriserAccesLibre();
