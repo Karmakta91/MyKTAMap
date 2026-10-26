@@ -32,10 +32,11 @@
   1er lancement, date de constat) ; WebKit est déjà installé avec Playwright.
   `qui: Claude · action: jouer smoke.js et checkup-bienvenue.js aussi sous WebKit (repli s'il manque)
   · fini: les deux verts sous Chromium et WebKit · depuis: 26/10/2026 · taille: S`
-- **`_currentLoadedPlanId` posé à l'accueil** — le plan est fermé au retour à l'accueil mais l'id reste : cause du
-  brouillon Secours écrasé (`f76d9979`). Photos, favoris, extensions peuvent écrire « pour le plan ouvert » à tort.
-  `qui: Claude · action: passer en revue chaque écriture qui lit l'id, puis effacer l'id à la fermeture ou garder
-  · fini: liste des écritures vérifiée, bug ouvert ou corrigé pour chacune · depuis: 26/10/2026 · taille: S`
+- **`_currentLoadedPlanId` posé à l'accueil** — revue du 26/10 : id gardé après la fermeture du plan → stats du plan
+  faussées, migration uid jugée sans les calques, photos d'un autre plan proposées au Générateur ; côté pro, présence
+  et itinéraire du plan quitté, « Rejoindre » sans rouvrir le plan. Recommandé : l'effacer à la fermeture.
+  `qui: Claude · action: id à null dans _libererRessourcesPlanPrecedent, replis « default » et batteryGuard adaptés,
+  scénario pro de retour à l'accueil · fini: scénario vert, cas de la revue fermés · depuis: 26/10/2026 · taille: M`
 - **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
   liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
   sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
@@ -139,8 +140,9 @@
 
 ## Entrant
 
-- **Objet supprimé qui reste affiché** — parfois, un POI ou un tracé supprimé ne disparaît qu'au rechargement de la
-  page (vu en pro, peut-être aussi en community). 🔬 hypothèse, non reproduit ; conditions à préciser (plan ☁️,
-  autre compte connecté, après une annulation ?).
-  `qui: KARMA · action: dire dans quel cas c'est arrivé · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
+- **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
+  session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
+  du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
+  `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
+  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
