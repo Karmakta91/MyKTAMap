@@ -182,7 +182,7 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   (`sw.js`). Fichier absent ou trop lent (4 s) → carte de repli (§36.1).
 - **Contenu** : accroche, quatre stations (plan dans la poche · se repérer sans GPS, Mode Secours avec son badge
   « exploratoire » · rien ne sort de l'appareil · échanger avec soin), sortie « Prêt à descendre ? » ; ville vivante,
-  « réseau fictif », icônes réelles de `icon/` ; sélecteur de langue de l'app (redessine l'écran). Contacts de
+  icônes réelles de `icon/` ; sélecteur de langue de l'app (redessine l'écran). Contacts de
   l'auteur (`gate.contact`) et pastille pro : mode sans mot de passe seulement. Textes `bienvenue.*`, `gate.*`
   (fr / en / es).
 - **Mouvement** (moteur de la page de présentation, adapté à un overlay qui défile en interne) : le fil doré de

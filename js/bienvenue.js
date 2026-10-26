@@ -364,7 +364,6 @@
           _luneHaut() +
         '</div>' +
         _ville() +
-        '<p class="kta-bv-mention-fictif" aria-hidden="true">' + t("bienvenue.fictif") + '</p>' +
         '<div class="kta-bv-entree" aria-hidden="true">' +
           '<div class="kta-bv-entree-galerie"></div><div class="kta-bv-fil-entree"></div>' +
           '<span class="kta-bv-repere">' + _img("peo.png", 40) + '</span>' +

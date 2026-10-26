@@ -118,8 +118,6 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-contacts a:hover { text-decoration: underline; }
 
 .kta-bv-ville { display: block; width: 100%; height: var(--h-ville); margin-top: auto; flex: none; }
-.kta-bv-mention-fictif { position: absolute; right: 16px; bottom: 8px; margin: 0; font-size: 12px;
-  color: var(--bv-texte-3); pointer-events: none; }
 .kta-bv-lune-haut { display: none; overflow: visible; }
 .kta-bv-reseau .kta-bv-masque { visibility: hidden; }
 

@@ -5,7 +5,7 @@
 // =====================================================================
 // Écran Bienvenue avec ou sans mot de passe d'instance (js/bienvenue.js, css/bienvenue.css, js/unlockGate.js) et
 // parcours d'arrivée (js/firstRunFlow.js), au téléphone 390×844 et au PC 1366×768 :
-//   1. premier lancement : l'écran passe au-dessus du splash, polices de l'écran chargées, « réseau fictif »,
+//   1. premier lancement : l'écran passe au-dessus du splash, polices de l'écran chargées,
 //      cibles ≥ 44 px, aucun débordement horizontal ; toute première ouverture : conditions d'utilisation d'abord ;
 //   2. défilement : galerie pilotée (fil doré dessiné, tête de suivi en cours, repère atteint avec flash) ;
 //      « Découvrir » amène la 1re station ; changement de langue (EN) redessine l'écran ;
@@ -121,7 +121,7 @@ async function parcours(nav, vue) {
       const r = el.getBoundingClientRect();
       return { t: el.textContent.trim().slice(0, 24), h: Math.round(r.height), w: Math.round(r.width) };
     });
-    return { z: z, zs: zs, splash: !!sp, fictif: /réseau fictif/.test(o.textContent),
+    return { z: z, zs: zs, splash: !!sp,
       entrer: o.querySelectorAll('[data-bv="entrer"]').length, visite: !!o.querySelector('[data-bv="visite"]'),
       badge: !!o.querySelector(".kta-bv-badge"), contacts: o.querySelectorAll(".kta-bv-pied .kta-bv-contacts a").length,
       contactsHaut: o.querySelectorAll(".kta-bv-entete .kta-bv-contacts").length,
@@ -134,7 +134,6 @@ async function parcours(nav, vue) {
   });
   verifier(etat.z === 100100 && (!etat.splash || etat.z > etat.zs),
     "écran au-dessus du splash (z " + etat.z + (etat.splash ? " > splash " + etat.zs : ", splash retiré") + ")");
-  verifier(etat.fictif, "« réseau fictif » affiché");
   verifier(etat.entrer === 2 && etat.visite, "« Entrer » en haut et en bas, lien de visite guidée présent");
   verifier(etat.badge, "Mode Secours montré avec son badge");
   verifier(etat.contacts >= 3 && etat.langues === 3, "contacts (emojis) au pied et sélecteur de langue (3) présents");

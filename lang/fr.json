@@ -6027,7 +6027,6 @@
   "bienvenue.accroche": "Hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : tes plans et tes annotations restent sur ton appareil.",
   "bienvenue.entrer": "Entrer",
   "bienvenue.decouvrir": "Découvrir",
-  "bienvenue.fictif": "réseau fictif",
   "bienvenue.plans.titre": "Ton plan, <span class=\"kta-bv-feutre\">dans la poche</span>",
   "bienvenue.plans.intro": "Un plan, c'est une image haute résolution, sur un ou plusieurs niveaux, préparée dans le Générateur et chargée depuis un fichier .zip. Tu y poses tes points, tes tracés, tes zones et tes structures.",
   "bienvenue.plans.l1": "Photos attachées aux points, légende personnalisable.",
