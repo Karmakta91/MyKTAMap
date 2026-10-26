@@ -97,10 +97,11 @@
 
 ## Plus tard
 
-- **La ville en trois copies** — écran Bienvenue (`js/bienvenue.js`), vitrine pro (`MyKTAMap-pro/site/`), accueil du
-  site de doc (`MyKTAMap-doc/generateur/descente.js`) : toute retouche du dessin se reporte à la main dans les trois.
-  `qui: KARMA · action: dire si une source unique vaut un générateur partagé · fini: décision écrite, ou entrée
-  enterrée · depuis: 26/10/2026 · taille: M`
+- **La ville : de trois copies à deux** — même dessin, trois formes (`js/bienvenue.js`, `MyKTAMap-pro/site/`,
+  `MyKTAMap-doc/generateur/descente.js`). Le site de doc la lira dans le community à chaque génération (comme la
+  boussole ; polices sur main depuis v2.21.0) ; la vitrine pro reste à part, reportée à la main.
+  `qui: Claude · action: générateur du doc qui extrait la scène de js/bienvenue.js (main), copie retirée
+  · fini: plus de descente.js recopié, accueil du doc identique · depuis: 26/10/2026 · taille: S`
 - **Veille des mentions** — audit du 26/10 : rien d'indexé hors GitHub ; Reddit illisible par l'outil.
   `qui: KARMA · action: F5Bot (Reddit, Hacker News) et Google Alerts sur « myktamap » · fini: alertes actives
   · depuis: 26/10/2026 · taille: XS`
