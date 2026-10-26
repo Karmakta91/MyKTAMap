@@ -28,10 +28,18 @@
 
 ## Maintenant
 
-- **Test appareil : écran Bienvenue** — sur dev, en navigation privée, téléphone et PC : tracker dans le puits dès le
-  premier défilement, sortie d'urgence 🚨, liens de documentation, puis une installation à mot de passe (champ, verrou
-  après 5 codes faux, visite proposée).
-  `qui: KARMA · action: jouer les deux écrans sur dev.myktamap.fr · fini: vus conformes, ou bugs ouverts
+- **Tests Safari (WebKit) dans le smoke** — deux bugs iPhone passés sous Chromium le 26/10 (« Mes plans » à 0 px au
+  1er lancement, date de constat) ; WebKit est déjà installé avec Playwright.
+  `qui: Claude · action: jouer smoke.js et checkup-bienvenue.js aussi sous WebKit (repli s'il manque)
+  · fini: les deux verts sous Chromium et WebKit · depuis: 26/10/2026 · taille: S`
+- **`_currentLoadedPlanId` posé à l'accueil** — le plan est fermé au retour à l'accueil mais l'id reste : cause du
+  brouillon Secours écrasé (`f76d9979`). Photos, favoris, extensions peuvent écrire « pour le plan ouvert » à tort.
+  `qui: Claude · action: passer en revue chaque écriture qui lit l'id, puis effacer l'id à la fermeture ou garder
+  · fini: liste des écritures vérifiée, bug ouvert ou corrigé pour chacune · depuis: 26/10/2026 · taille: S`
+- **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
+  liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
+  sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
+  `qui: KARMA · action: jouer ces écrans sur dev puis en prod · fini: vus conformes, ou bugs ouverts
   · depuis: 26/10/2026 · taille: XS`
 - **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
   Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
@@ -88,6 +96,14 @@
   · depuis: 05/10/2026 · taille: S`
 
 ## Plus tard
+
+- **La ville en trois copies** — écran Bienvenue (`js/bienvenue.js`), vitrine pro (`MyKTAMap-pro/site/`), accueil du
+  site de doc (`MyKTAMap-doc/generateur/descente.js`) : toute retouche du dessin se reporte à la main dans les trois.
+  `qui: KARMA · action: dire si une source unique vaut un générateur partagé · fini: décision écrite, ou entrée
+  enterrée · depuis: 26/10/2026 · taille: M`
+- **Veille des mentions** — audit du 26/10 : rien d'indexé hors GitHub ; Reddit illisible par l'outil.
+  `qui: KARMA · action: F5Bot (Reddit, Hacker News) et Google Alerts sur « myktamap » · fini: alertes actives
+  · depuis: 26/10/2026 · taille: XS`
 
 - **Calage Lambert 93 exact d'un GeoTIFF** — mémoriser l'EPSG du fichier (`georef.crs`) et caler dans ce CRS : gagne
   les 0,35 m restants aux coins d'un GeoTIFF Lambert 93 de 6 km (le plan tangent suffit à l'objectif < 1 m).
