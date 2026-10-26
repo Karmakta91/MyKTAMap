@@ -1720,7 +1720,7 @@ function _plannerMajPrecision(dims) {
   if (!el) return;
   const KE = window.KmzExport;
   const num = function(id) {
-    const e = document.getElementById(id), v = e ? parseFloat(e.value) : NaN;
+    const e = document.getElementById(id), v = e ? Number.parseFloat(e.value) : Number.NaN;
     return Number.isFinite(v) ? v : null;
   };
   const gps = function(id) {

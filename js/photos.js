@@ -245,7 +245,7 @@
       const o = base + ent.val;
       if (o + 19 > fin) return null;
       let txt = "";
-      for (let k = 0; k < 19; k++) txt += String.fromCharCode(v.getUint8(o + k));
+      for (let k = 0; k < 19; k++) txt += String.fromCodePoint(v.getUint8(o + k));
       const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(txt);
       if (!m) return null;
       return priseLeValide(m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6]);

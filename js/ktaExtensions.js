@@ -570,10 +570,9 @@
     etat.hidden = true;
     bouton.addEventListener("click", function () {
       bouton.disabled = true;
-      let demande;
-      // ⚠️ Appel DANS le geste (Safari refuse une demande hors d'un clic) ; l'ancienne forme à rappel est acceptée.
-      try { demande = Notification.requestPermission(function () {}); } catch (e) { demande = null; }
-      Promise.resolve(demande).then(function (r) {
+      // ⚠️ Appel DANS le geste (Safari refuse une demande hors d'un clic) : l'exécuteur de la promesse tourne tout de
+      // suite, et une exception y devient un rejet. L'ancienne forme à rappel (rien de rendu) est acceptée.
+      new Promise(function (r) { r(Notification.requestPermission(function () {})); }).then(function (r) {
         const permission = r === "granted" || r === "denied" ? r : Notification.permission;
         if (permission !== "granted" && permission !== "denied") { bouton.disabled = false; return; }
         bouton.remove();

@@ -716,7 +716,7 @@
         galeries.forEach(function(g) { if (g.station) observateur.observe(g.station); });
         ecranEl.addEventListener("scroll", demander, { passive: true });
         window.addEventListener("resize", relayout);
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+        if (document.fonts && "ready" in document.fonts) document.fonts.ready.then(relayout);
         if ("ResizeObserver" in window) {
           redim = new ResizeObserver(relayout);
           redim.observe(ecranEl.firstElementChild || ecranEl);

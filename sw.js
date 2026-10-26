@@ -1182,10 +1182,10 @@ function _pushPropre(d) {
 function _pushPastille(n) {
   const nav = self.navigator;
   if (n === null || !nav || typeof nav.setAppBadge !== "function") return Promise.resolve();
-  try {
-    const p = n > 0 ? nav.setAppBadge(n) : (typeof nav.clearAppBadge === "function" ? nav.clearAppBadge() : nav.setAppBadge(0));
-    return Promise.resolve(p).catch(function() {});
-  } catch (e) { return Promise.resolve(); }
+  // Exception éventuelle de l'API : rejet de la promesse, ignoré comme un refus.
+  return new Promise(function(r) {
+    r(n > 0 ? nav.setAppBadge(n) : (typeof nav.clearAppBadge === "function" ? nav.clearAppBadge() : nav.setAppBadge(0)));
+  }).catch(function() {});
 }
 function _pushAuxPages(message) {
   return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(liste) {
