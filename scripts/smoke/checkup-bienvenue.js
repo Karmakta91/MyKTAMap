@@ -126,7 +126,7 @@ async function parcours(nav, vue) {
       badge: !!o.querySelector(".kta-bv-badge"), contacts: o.querySelectorAll(".kta-bv-pied .kta-bv-contacts a").length,
       contactsHaut: o.querySelectorAll(".kta-bv-entete .kta-bv-contacts").length,
       pastillePro: !!o.querySelector('.kta-bv-entete .kta-bv-pastille-pro[href^="https://pro.myktamap.fr/"]'),
-      github: !!o.querySelector('.kta-bv-pied a.kta-bv-github[href="https://github.com/Karmakta91/MyKTAMap"]'),
+      github: !!o.querySelector('.kta-bv-sortie-docs a.kta-bv-github[href="https://github.com/Karmakta91/MyKTAMap"]'),
       docs: !!o.querySelector('.kta-bv-sortie-docs [data-bv="doc"]') &&
         !!o.querySelector('.kta-bv-sortie-docs a[href="https://doc.myktamap.fr/"]'),
       langues: o.querySelectorAll(".kta-bv-langue").length, tailles: tailles,
@@ -139,7 +139,7 @@ async function parcours(nav, vue) {
   verifier(etat.badge, "Mode Secours montré avec son badge");
   verifier(etat.contacts >= 3 && etat.langues === 3, "contacts (emojis) au pied et sélecteur de langue (3) présents");
   verifier(!etat.contactsHaut && etat.pastillePro, "en haut : pas de contacts, pastille « Licence pro » seule");
-  verifier(etat.github, "pied : lien vers le code source sur GitHub");
+  verifier(etat.github, "sortie : lien vers le code source sur GitHub");
   verifier(etat.docs, "sortie : documentation intégrée et lien vers doc.myktamap.fr");
   const petites = etat.tailles.filter(function (x) { return x.h < 44 || x.w < 44; });
   verifier(!petites.length, "cibles ≥ 44 px (" + etat.tailles.length + " vérifiées)",

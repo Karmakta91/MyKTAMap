@@ -244,12 +244,14 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-pied-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--bv-texte-3); }
 /* Crédits et signature comme au splash (#splashLeafletCredit, #splashKarmaCorner) : la lueur rend lisible une
    signature petite sans la grossir. */
-.kta-bv-pied-liens { display: flex; flex-wrap: wrap; gap: 0 22px; width: 100%; }
-.kta-bv .kta-bv-lien-pied { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0;
-  border: 0; background: none; cursor: pointer; color: var(--bv-texte-2);
-  font: 600 14px Montserrat, system-ui, sans-serif; text-decoration: none; }
+/* Documentation et code source : pastilles discrètes sous les boutons de la sortie. */
+.kta-bv-sortie-docs { display: flex; flex-wrap: wrap; gap: 10px; }
+.kta-bv .kta-bv-lien-pied { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: 1px solid var(--bv-bord); border-radius: 999px; background: var(--bv-surface); cursor: pointer;
+  color: var(--bv-texte-2); font: 600 14px Montserrat, system-ui, sans-serif; text-decoration: none;
+  white-space: nowrap; }
 .kta-bv-github svg { width: 18px; height: 18px; fill: currentColor; }
-@media (hover: hover) { .kta-bv .kta-bv-lien-pied:hover { color: var(--bv-or); } }
+@media (hover: hover) { .kta-bv .kta-bv-lien-pied:hover { border-color: var(--bv-or); color: var(--bv-or); } }
 .kta-bv-pied-credits { width: 100%; display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; }
 .kta-bv-pied-credits p { margin: 0; font-size: 11px; line-height: 20px; color: var(--bv-texte-3); letter-spacing: 0.02em;
