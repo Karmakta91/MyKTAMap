@@ -2,7 +2,7 @@
 
 > 🔑 **Le mot de passe d'instance, quand il existe, est le SEUL** (`data/index.json > config.accessHash`).
 > Il n'y a **plus de code communautaire codé en dur** depuis le 04/10/2026 : sans mot de passe d'instance,
-> l'écran d'entrée propose « Continuer » (§36).
+> l'écran d'entrée est la présentation « Bienvenue » et son bouton « Entrer » (§36).
 >
 > 🕵️ **v1.90.14 — Incognito hérite du déverrouillage d'instance.** Le shim incognito relit du disque une
 > `READ_DISK_WHITELIST` (les écritures restent shimées) pour ne pas re-demander le mot de passe à chaque
@@ -70,7 +70,7 @@
 
 ---
 
-### 36. Unlock Gate — écran d'entrée (mot de passe d'instance ou « Continuer »)
+### 36. Unlock Gate — écran d'entrée (mot de passe d'instance ou « Bienvenue »)
 
 Module `js/unlockGate.js` : un écran entre la fin du splash et le démarrage normal, montré au premier
 lancement et après un reset complet (le choix est mémorisé en localStorage). **Plus aucun mot de passe
@@ -84,8 +84,8 @@ chargée par `ktaInstance.js`) :
 
 | Instance | Écran | Ce qui ouvre |
 |---|---|---|
-| publie `index.json > config.accessHash` (posé par ConfAdmin ; c'est le cas de myktamap.fr) | 🗝️ champ mot de passe, **sans** bloc licence | **seul** le mot de passe de l'instance |
-| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 « Bienvenue » : **Continuer** | le bouton (mémorise `libre-v1`) ou une licence valide |
+| publie `index.json > config.accessHash` (posé par ConfAdmin : installation privée) | 🗝️ champ mot de passe, **sans** bloc licence ni contacts de l'auteur | **seul** le mot de passe de l'instance |
+| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 présentation « Bienvenue » qui défile (§36.8) : **Entrer** | le bouton (mémorise `libre-v1`) ou une licence valide |
 
 ⚠️ **Niveau de sécurité inchangé** : barrière **sociale**, jamais une authentification. Le hash d'instance
 est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modifie en F12.
@@ -103,7 +103,7 @@ est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modif
 - `revaliderInstance(hash, indexRepondu)` (appelée par `main.js` avant la gate, **seulement si l'index a
   répondu**) : l'instance impose un mot de passe → tout autre accès mémorisé (libre, ancien code, ancien
   mot de passe) est **révoqué** ; l'instance retire son mot de passe → l'accès qui en venait est révoqué
-  (l'écran propose alors « Continuer »).
+  (l'écran Bienvenue revient alors).
 
 Mesuré le 04/10/2026 (Edge, index simulé) : ancien code sans mot de passe d'instance → ouvert ; ancien
 code + instance au **même** mot de passe → ouvert, mémoire posée ; ancien code ou accès libre + instance
@@ -117,7 +117,7 @@ verrou temporisé au palier suivant — 10 min → 1 h → 6 h → 24 h (`LOCK_D
 À l'expiration, la gate est **remontée** (la Promise de `ouvrirGate()` survit) et un mot de passe juste la
 résout. **Pas de bouton reset** depuis le verrou. Base de temps : horloge de l'appareil (accepté : le verrou
 ralentit un tiers qui a le téléphone en main ; le verrou **définitif** tuait l'app de son propriétaire sous
-terre — audit ergonomie 13/09/2026, B7). L'écran libre n'a ni tentatives ni verrou.
+terre — audit ergonomie 13/09/2026, B7). L'écran Bienvenue n'a ni tentatives ni verrou.
 
 #### 36.4 Position dans le boot (`main.js > initApp`)
 
@@ -130,12 +130,13 @@ Une licence pro (serveur ou locale) contourne l'écran **sauf** sur une instance
 
 `viderCacheAppli` purge `localStorage` → l'écran revient au démarrage suivant. Sur une instance qui publie
 un mot de passe, la 1ʳᵉ fenêtre prévient qu'il sera **redemandé** (`maint.reset_access_code_*`), **sans
-jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (« Continuer »).
+jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (l'écran Bienvenue revient).
 
 #### 36.6 API publique `window.UnlockGate`
 
 `isUnlocked()` · `isLockedOut()` · `ouvrirGate()` → Promise · `lock()` · `markUnlockedViaLicensePro()`
-(pose `libre-v1`) · `revaliderInstance(hash, indexRepondu)` · `instanceRequiertMotDePasse()` → Promise<bool>.
+(pose `libre-v1`) · `revaliderInstance(hash, indexRepondu)` · `instanceRequiertMotDePasse()` → Promise<bool> ·
+`visiteDemandee()` → bool (« Découvrir l'app en 1 minute » choisi sur l'écran Bienvenue, lu par `firstRunFlow.js`).
 
 #### 36.7 À NE PAS faire
 
@@ -144,8 +145,33 @@ jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (« Contin
   l'historique Git — il ne protège plus rien).
 - **Ne JAMAIS** réintroduire un bouton reset depuis le verrou.
 - **Ne PAS** écrire dans `localStorage` depuis `isUnlocked()` (appelée avant la revalidation).
+- **Ne JAMAIS** monter l'écran Bienvenue quand l'instance publie un mot de passe, ni y mettre un champ de saisie.
 - Garde-fou : `scripts/check-gate-instance.js` (matrice `isUnlocked`, décision du submit, révocations,
-  écrans libre / mot de passe, ordre du boot).
+  écrans Bienvenue / mot de passe et repli, ordre du boot) · checkup navigateur
+  `scripts/smoke/checkup-bienvenue.js`.
+
+#### 36.8 Écran « Bienvenue » (instance sans mot de passe)
+
+Une petite présentation qui défile, dans le style de la page de présentation pro, avec **entrée directe** (décision
+KARMA). Montrée **une fois par appareil**, après le splash (inchangé) et la gate légale : la clé `libre-v1` est la
+même qu'avant, un appareil déjà entré ne la revoit jamais.
+
+- **Chargement à la demande** : `unlockGate.js > _chargerBienvenue` ajoute `css/bienvenue.css` et `js/bienvenue.js`
+  (`window.KtaBienvenue.ouvrir({ surEntree, surFin })`) ; les polices Montserrat 400/600/800 et Permanent Marker
+  (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés (`sw.js`).
+  Fichier absent ou trop lent (4 s) → **carte « Entrer » de repli** (l'ancienne carte libre), jamais d'écran vide.
+- **Contenu** : accroche, quatre stations (plan dans la poche · se repérer sans GPS, Mode Secours avec son badge
+  « exploratoire » · rien ne sort de l'appareil · échanger avec soin), sortie « Prêt à descendre ? » ; ville vivante,
+  « réseau fictif », icônes réelles de `icon/` ; contacts de l'auteur (`gate.contact`, emojis) ; sélecteur de langue
+  de l'app (redessine l'écran). Textes `bienvenue.*` (fr / en / es).
+- **Mouvement** (moteur de la page de présentation, adapté à un overlay qui défile en interne) : le fil doré de
+  chaque galerie se dessine sur la longueur parcourue, la tête de suivi (`icon/iconetrack.png`) le suit et tourne aux
+  coudes, chaque repère passe « atteint » avec un flash. **Mouvement réduit** : état final statique, entrée immédiate.
+- **« Entrer »** (en haut et en bas) : l'accès est mémorisé **au clic** (`_memoriserAccesLibre`), le texte s'efface,
+  le tracker descend le puits, fondu (≈ 2,7 s ; fondu seul depuis le bas), puis la suite habituelle du boot.
+  **« Découvrir »** fait défiler jusqu'à la 1re station. **« Découvrir l'app en 1 minute »** entre de la même façon
+  et demande la visite guidée (§87.1).
+- **Thème** : toujours sombre (jetons locaux `--bv-*`) : au premier lancement, aucun thème n'est choisi.
 
 ---
 
@@ -1313,15 +1339,23 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 **⚠️ v1.56.4 — Ordre de boot complet** (« on lit et accepte les conditions AVANT de saisir un code », KARMA) :
 
 0. ⚖️ **Conditions d'utilisation** — affichée par **`main.js > initApp` AVANT l'UnlockGate** (pas par le flow). Bug corrigé : déclenchée post-splash par le flow, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
-1. 🗝️ **UnlockGate** (mot de passe d'instance, ou « Continuer ») puis 🔐 **gate PIN**.
+1. 🗝️ **UnlockGate** (mot de passe d'instance, ou écran « Bienvenue », §36.8) puis 🔐 **gate PIN** (si activé).
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
-3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Onboarding** (`Tutorial.ouvrir(onClose)`) → 🔐 **Proposition PIN** (`MyKTAMapPinLock.proposerActivation(onClose)`).
+3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Visite guidée** (`Tutorial.ouvrir(onClose)`).
+
+**Visite guidée proposée, pas imposée** (décision KARMA) : l'écran Bienvenue la marque vue en entrant
+(`Tutorial.markAsSeen`) ; elle ne s'ouvre que si elle y a été demandée (`UnlockGate.visiteDemandee()`), ou d'office au
+1er lancement d'une instance qui ne passe pas par cet écran (mot de passe d'instance, gate déléguée, licence qui
+contourne la gate). Elle reste lançable depuis 📖 Documentation.
+
+**Le PIN n'est plus proposé au lancement**, pour personne (décision KARMA) : il s'active dans ⚙️ Configuration →
+🔐 Code d'accès local (§43). La clé `myktamap_pin_proposal_done_v1` des appareils existants n'est plus lue.
 
 **Pourquoi un signal explicite** (`notifyBootGatesDone`) et pas un poll du DOM : entre 2 gates il existe des **fenêtres sans overlay** (ex. ~2 s d'attente du check licence pro entre la légale et l'UnlockGate) pendant lesquelles un poll croirait la voie libre → le tutoriel partait pendant la saisie du code (race constatée au test). En **lockout** (unlock/PIN), `main.js` reste bloqué sur `ouvrirGate()` → le signal n'arrive jamais → la file ne démarre jamais (voulu). Un poll DOM (`#kta-legal-gate-overlay, #kta-unlock-overlay, #kta-pin-gate-overlay`, 250 ms) est conservé en 2e rideau après le signal.
 
-Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone`) ; `firstRunFlow` les promisifie via le helper interne `_step(label, fn)` (résout immédiatement si module absent / étape non applicable → la file continue). `main.js` a **remplacé** les anciens déclencheurs éparpillés (proposition PIN à +800 ms, bloc tutoriel + `notifySplashEnded` dans `_splashEnd`) par un unique `FirstRunFlow.run()`.
+Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone`) ; `firstRunFlow` les promisifie via le helper interne `_step(label, fn)` (résout immédiatement si module absent / étape non applicable → la file continue). Aucun déclencheur direct dans `main.js` : tout passe par un unique `FirstRunFlow.run()`.
 
-⚠️ Le délai interne de 800 ms de `proposerActivation` a été **supprimé** (le séquenceur garantit qu'aucune autre modale n'est ouverte). `Tutorial.fermer()` déclenche le `onClose` une seule fois (défini **après** le `fermer()` initial de `ouvrir()` pour ne pas se déclencher à tort). Le cas **multi-alertes** (rare) ne bloque pas la file : `onDone` est appelé dès l'ouverture du sélecteur.
+`Tutorial.fermer()` déclenche le `onClose` une seule fois (défini **après** le `fermer()` initial de `ouvrir()` pour ne pas se déclencher à tort). Le cas **multi-alertes** (rare) ne bloque pas la file : `onDone` est appelé dès l'ouverture du sélecteur.
 
 #### 87.2 Gate légale `js/legalGate.js`
 
@@ -1332,11 +1366,12 @@ Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone
 - **`ouvrirConsultation()`** : ré-affichage **non bloquant** (bouton ✕ / clic-fond), sans case à cocher. Câblé sur le lien ⚖️ « Conditions d'utilisation » du footer loader (`index.html`).
 - **Sous-modale « texte intégral »** (z-index 100001) : arrêté du 2 novembre 1955 + question écrite Sénat n° 03710 (réponse du 05/06/2025), **constantes verbatim** dans le module (`ARRETE_1955`, `SENAT_QUESTION`, `SENAT_REPONSE`), précédées des trois clauses détaillées (traduites). Actes officiels → **hors droit d'auteur** (CPI L.122-5 2°).
 - **i18n** : cadrage général `legal.*` traduit **fr / en / es** ; les **textes de loi restent en FR** (droit français, non traduits — décision KARMA). Mirror offline `docs/applications/CGU.md`.
-- **Incognito** : le séquenceur **saute** la gate bloquante en incognito (le flag `localStorage` est shimé et ne persiste pas → sinon re-prompt à chaque session, cf. même parti pris que la proposition PIN §43). Consultation footer reste dispo.
+- **Incognito** : le séquenceur **saute** la gate bloquante en incognito (le flag `localStorage` est shimé et ne persiste pas → sinon re-prompt à chaque session). Consultation footer reste dispo.
 
 #### 87.3 À NE PAS faire
 
 - ❌ Traduire les **textes de loi** (arrêté / Sénat) — droit français, reproduits verbatim en FR uniquement.
 - ❌ Rendre la gate **non bloquante** au 1er boot (elle doit être acceptée — décision 4:a).
-- ❌ Réintroduire des `setTimeout` de déclenchement direct dans `main.js` pour l'alerte / l'onboarding / le PIN — tout passe par `FirstRunFlow`.
+- ❌ Réintroduire des `setTimeout` de déclenchement direct dans `main.js` pour l'alerte / la visite guidée — tout passe par `FirstRunFlow`.
+- ❌ Réimposer la visite guidée ou une proposition de PIN au premier lancement (décisions KARMA).
 - ❌ Oublier le **signal de fin** si on ajoute une étape au flux — sans lui, la file se bloque sur cette étape.

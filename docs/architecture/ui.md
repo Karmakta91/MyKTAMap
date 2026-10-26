@@ -699,7 +699,7 @@ portent encore beaucoup. On les retire écran par écran, quand la règle de bas
 - **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `.loader-btn-ghost`, `.loader-btn-mini`, `.loader-btn-fs`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
 - **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`, `.kta-net-paranoia-toggle` (case à cocher générique de la Configuration, nom historique)
 - **Modale Audit** : `#loaderNetDocModal`, `#loaderNetLogModal`, `#loaderNetLogTbody`, `#loaderNetDocWhitelist`
-- **Auth gates** : `#kta-unlock-overlay` (code communautaire), `.kta-pin-gate-overlay` (PIN keypad), `.kta-pin-gate-bio-btn` (biométrie), `.kta-pin-proposal-boite` (post-update), `.kta-pin-gate-overlay-lockout`
+- **Auth gates** : `#kta-unlock-overlay` (mot de passe d'instance), `.kta-pin-gate-overlay` (PIN keypad), `.kta-pin-gate-bio-btn` (biométrie), `.kta-pin-gate-overlay-lockout`. **Exception** : l'écran Bienvenue (`#kta-unlock-overlay.kta-bv`, `css/bienvenue.css`) reste **toujours sombre** — premier lancement, aucun thème choisi ; sa feuille passe devant les surcharges du thème clair (`security-legal.md` §36.8)
 - **Plan switcher** (clic titre header) : `.kta-plan-switcher-overlay`, `.kta-plan-switcher-modal-boite`, `.kta-plan-switcher-current`, `.kta-switcher-row` + enfants
 - **Mode carte** : `.kta-refonte-header`, `.kta-refonte-statusbar`, `.kta-refonte-sidebar*`, `.kta-refonte-counter`, `.kta-refonte-stat`
 - **Sidebars Leaflet** : `.leaflet-bar a` (boutons groupes, fond brun-beige), `.leaflet-bar a.kta-sub` (sous-actions, fond brun-beige), `.leaflet-bar a.kta-actif` (vert), `.leaflet-bar a.kta-group-mode-actif` (fond **blanc solide** + bordure jaune charte — KARMA fix "icône actif fond blanc pas transparent")
@@ -795,7 +795,6 @@ Pattern récurrent depuis v1.9.2 : `.kta-readme-modal-boite { height: 88vh }` su
 |---|---|---|
 | Export PNG | v1.9.2-fix14 | `.kta-export-modal-boite` |
 | Export PDF | v1.10.3 | `.kta-pdf-modal-boite` |
-| PIN proposal | v1.11.1 | `.kta-pin-proposal-boite` |
 | Image volumineuse (mode urgence) | v1.12.0 | `[max-width: 460px]` |
 | **Niveaux M-LVL** | v1.13.0 | `.kta-niv-modal-boite` |
 | **Légende** | v1.13.0 | `.kta-legende-modal-boite` |

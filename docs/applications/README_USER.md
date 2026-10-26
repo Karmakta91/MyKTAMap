@@ -135,6 +135,10 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 ## 🚀 Premiers pas
 
+### 👋 Premier lancement
+
+Après l'écran de démarrage et les conditions d'utilisation, une courte présentation **Bienvenue** défile : ce que fait l'app, comment elle te repère sans GPS, pourquoi rien ne sort de ton appareil. Touche **Entrer** (en haut ou en bas) pour arriver sur l'accueil, ou **Découvrir** pour la parcourir. En bas, **Découvrir l'app en 1 minute** ouvre la visite guidée en entrant ; sinon elle reste à ta disposition dans **📖 Documentation**. Cette présentation ne s'affiche qu'une fois par appareil (et de nouveau après « 💥 Tout réinitialiser »). Le **🔐 code d'accès local** n'est pas proposé au démarrage : active-le si tu veux depuis **⚙️ Configuration** (« 🔭 Pour aller plus loin »).
+
 ### 📱 Installer l'application sur Mobile (iPhone/Android)
 
 MyKTAMap s'installe comme une application, sans passer par l'App Store ni le Play Store :
@@ -1259,7 +1263,7 @@ Touche à nouveau le bouton actif (en vert) pour le couper.
 
 ### 🔑 Le mot de passe est refusé
 
-Au premier lancement, MyKTAMap propose simplement **Continuer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
+Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
 
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
@@ -1275,7 +1279,7 @@ Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos
 **⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
-- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app proposera simplement **Continuer**.
+- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app te présentera de nouveau l'écran **Bienvenue**.
 - Deux confirmations sont demandées. Fais-le **avec une connexion** : si tu es hors ligne, une fenêtre rouge te prévient que l'app sera inutilisable jusqu'au retour du réseau.
 
 À ne pas confondre avec **↺ Valeurs par défaut** de ⚙️ Réglages, qui ne touche qu'aux réglages du plan ouvert.

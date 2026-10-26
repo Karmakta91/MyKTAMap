@@ -135,6 +135,10 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 ## 🚀 Primeros pasos
 
+### 👋 Primer arranque
+
+Tras la pantalla de inicio y las condiciones de uso, se desplaza una breve presentación de **Bienvenida**: qué hace la app, cómo te orienta sin GPS, por qué nada sale de tu dispositivo. Toca **Entrar** (arriba o abajo) para llegar a la pantalla de inicio, o **Descubrir** para recorrerla. Abajo, **Descubrir la app en 1 minuto** abre la visita guiada al entrar; si no, sigue disponible en **📖 Documentación**. Esta presentación solo aparece una vez por dispositivo (y de nuevo tras «💥 Reiniciar todo»). El **🔐 código de acceso local** no se propone al arrancar: actívalo si quieres desde **⚙️ Configuración** («🔭 Para ir más lejos»).
+
 ### 📱 Instalar la aplicación en móvil (iPhone/Android)
 
 MyKTAMap se instala como una aplicación, sin pasar por la App Store ni la Play Store:
@@ -1258,7 +1262,7 @@ Vuelve a tocar el botón activo (en verde) para desactivarlo.
 
 ### 🔑 La contraseña se rechaza
 
-En el primer arranque, MyKTAMap simplemente propone **Continuar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
+En el primer arranque, MyKTAMap presenta la app y te deja **Entrar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
 
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
@@ -1274,7 +1278,7 @@ Estas herramientas no borran **ningún** dato (mapas memorizados, sesiones, foto
 **⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de mapas y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
-- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app propondrá simplemente **Continuar**.
+- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app volverá a mostrar la pantalla de **Bienvenida**.
 - Se piden dos confirmaciones. Hazlo **con conexión**: si estás sin conexión, una ventana roja te avisa de que la app quedará inutilizable hasta que vuelva la red.
 
 No hay que confundirlo con **↺ Valores por defecto** de ⚙️ Ajustes, que solo afecta a los ajustes del mapa abierto.

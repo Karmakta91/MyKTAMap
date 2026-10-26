@@ -167,6 +167,7 @@ manifest.json                   ← PWA (icônes, theme color, standalone)
 version.json                    ← Source de vérité version (UpdateChecker) + notes user-friendly
 alert.json                      ← (Optionnel) Diffusion d'alertes publiques
 css/style.css                   ← Tous les styles (~19k lignes : dark base + thème clair + modales)
+css/bienvenue.css               ← Écran Bienvenue du premier lancement (chargé à la demande)
 
 lang/                           ← Dictionnaires i18n (fr.json = fallback, en.json, es.json)
 
@@ -181,6 +182,8 @@ lib/                            ← Librairies locales (aucun CDN)
   jszip.min.js                  ← JSZip (ZIP)
   jspdf.umd.min.js              ← jsPDF (PDF imprimable)
   html2canvas.min.js            ← html2canvas (rendus export)
+
+fonts/                          ← Polices de l'écran Bienvenue (Montserrat, Permanent Marker + licences)
 
 js/                             ← 112 modules IIFE — voir section suivante
 docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
@@ -224,6 +227,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | Module | Rôle |
 |---|---|
 | `unlockGate.js` | Barrière d'accès communautaire |
+| `bienvenue.js` | Écran Bienvenue (instance sans mot de passe), chargé à la demande par `unlockGate.js` |
 | `pinLock.js` | PIN local 4-6 + biométrie (Face ID / Touch ID) |
 | `config.js` | Chargement `plan-config.json` + état global du plan |
 

@@ -135,6 +135,10 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 ## 🚀 Getting started
 
+### 👋 First launch
+
+After the start screen and the terms of use, a short **Welcome** presentation scrolls by: what the app does, how it finds your way without GPS, why nothing leaves your device. Tap **Enter** (at the top or at the bottom) to reach the home screen, or **Discover** to scroll through it. At the bottom, **Discover the app in 1 minute** opens the guided tour as you enter; otherwise it stays available in **📖 Documentation**. This presentation only shows once per device (and again after “💥 Reset everything”). The **🔐 local access code** is not offered at start-up: turn it on if you wish from **⚙️ Configuration** (“🔭 Going further”).
+
 ### 📱 Install the application on Mobile (iPhone/Android)
 
 MyKTAMap installs like an app, without going through the App Store or Play Store:
@@ -1258,7 +1262,7 @@ Tap the active button (in green) again to turn it off.
 
 ### 🔑 The password is refused
 
-On first launch, MyKTAMap simply offers **Continue**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 
@@ -1274,7 +1278,7 @@ These tools delete **no** data (stored maps, sessions, photos, logbook, preferen
 **⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
-- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will simply offer **Continue**.
+- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will show the **Welcome** screen again.
 - Two confirmations are required. Do it **with a connection**: if you are offline, a red window warns you that the app will be unusable until the network is back.
 
 Not to be confused with **↺ Default values** in ⚙️ Settings, which only touches the settings of the open map.
