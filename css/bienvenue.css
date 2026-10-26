@@ -132,9 +132,14 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-js-fil .kta-bv-fil-entree { transform-origin: top; transform: scaleY(var(--entree, 0)); }
 .kta-bv-entree .kta-bv-repere { left: 2px; top: calc(var(--h-ville) * 24 / 630 - 20px); }
 .kta-bv-speleos { position: absolute; left: 46px; top: -38px; width: 58px; height: 36px; overflow: visible; }
-/* Tête de suivi de la descente (« Entrer ») : cachée au repos, pointe vers le bas. */
+/* Tête de suivi de l'entrée : pointe vers le bas, cachée au repos. Au défilement, elle suit le fil doré du puits
+   (--entree, posé sur .kta-bv-entree par bienvenue.js > placerEntree) puis passe le relais à la 1re galerie ;
+   à « Entrer », l'animation kta-bv-descente la prend en main. */
 .kta-bv-tete-entree { position: absolute; left: 7px; top: calc(var(--h-ville) * 24 / 630 + 6px); width: 30px;
   height: 30px; rotate: 180deg; opacity: 0; }
+/* Centrée sur le bout du fil (entree × hauteur du puits), comme la tête des galeries : le fil la touche toujours. */
+.kta-bv-js-fil .kta-bv-tete-entree.kta-bv-en-cours { opacity: 1;
+  translate: 0 calc(var(--entree, 0) * var(--h-ville) * 270 / 630 - var(--h-ville) * 24 / 630 - 21px); }
 
 /* ── Vie de la ville : boucles longues de durées premières entre elles, transform et opacity seulement ── */
 .kta-bv-pieton { animation: kta-bv-pieton 34s linear -6s infinite; }

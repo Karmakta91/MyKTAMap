@@ -165,22 +165,25 @@ async function parcours(nav, vue) {
     };
     const stations = o.querySelectorAll(".kta-bv-station");
     const cible = stations[1].offsetTop + stations[1].offsetHeight * 0.3;
-    let teteVue = false;
+    let teteVue = false, teteEntreeVue = false;
     for (let y = 0; y <= cible; y += 60) {
       o.scrollTop = y;
       await images(2);
       if (o.querySelector(".kta-bv-tete-sec.kta-bv-en-cours")) teteVue = true;
+      const te = o.querySelector(".kta-bv-tete-entree");
+      if (y > 0 && te && te.classList.contains("kta-bv-en-cours") && getComputedStyle(te).opacity === "1") teteEntreeVue = true;
     }
     await images(4);
     const g = stations[0].querySelector(".kta-bv-galerie");
-    return { piloté: o.classList.contains("kta-bv-js-fil"), teteVue: teteVue,
+    return { piloté: o.classList.contains("kta-bv-js-fil"), teteVue: teteVue, teteEntreeVue: teteEntreeVue,
       atteint1: stations[0].querySelector(".kta-bv-repere").classList.contains("kta-bv-atteint"),
       atteintFin: stations[stations.length - 1].querySelector(".kta-bv-repere").classList.contains("kta-bv-atteint"),
       reste: parseFloat(g.style.getPropertyValue("--fil-reste")), flash: window.__bvFlash || 0,
-      entree: parseFloat(o.querySelector(".kta-bv-fil-entree").style.getPropertyValue("--entree")) };
+      entree: parseFloat(o.querySelector(".kta-bv-entree").style.getPropertyValue("--entree")) };
   });
   verifier(parcoursFil.piloté, "galeries pilotées par le défilement");
   verifier(parcoursFil.teteVue, "tête de suivi visible pendant la descente");
+  verifier(parcoursFil.teteEntreeVue, "tête de suivi visible dans le puits d'entrée dès le premier défilement");
   verifier(parcoursFil.atteint1 && !parcoursFil.atteintFin, "repère de la 1re station atteint, pas celui de la sortie");
   verifier(parcoursFil.flash > 0, "flash au passage d'un repère (" + parcoursFil.flash + ")");
   verifier(parcoursFil.reste === 0 && parcoursFil.entree === 1, "fil de l'entrée et de la 1re station complets");

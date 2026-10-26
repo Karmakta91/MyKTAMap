@@ -315,8 +315,9 @@
       'stroke-linecap="square"/>' +
       '<path d="M30 250 H140 V150 H260 V70 H390" fill="none" stroke="#c98a00" stroke-width="4" stroke-dasharray="10 8" ' +
       'stroke-linecap="round"/>' +
-      '<g transform="translate(372 70) rotate(90)"><path d="M0 0 L-8 -22 A23 23 0 0 1 8 -22 Z" fill="#1a5fd6" ' +
-      'fill-opacity=".35"/><circle r="8" fill="#1a5fd6" stroke="#ffffff" stroke-width="3"/></g>' +
+      // Position suivie : l'icône du tracker de l'app (pointe vers le haut au repos), tournée dans le sens de marche.
+      '<image href="icon/iconetrack.png" x="-18" y="-18" width="36" height="36" ' +
+      'transform="translate(372 70) rotate(90)"/>' +
       pose.map(function(p) {
         return '<image href="icon/' + p[0] + '.png" x="' + p[1] + '" y="' + p[2] + '" width="36" height="36"/>';
       }).join("") +
@@ -472,7 +473,7 @@
   function _mouvement(ecranEl) {
     let actif = false, image = 0, observateur = null, redim = null;
     const galeries = [], visibles = [];
-    let filEntree = null, pEntree = -1;
+    let filEntree = null, teteEntree = null, pEntree = -1;
 
     function defile() { return ecranEl.scrollTop; }
     function hauteurEcran() { return ecranEl.clientHeight; }
@@ -602,10 +603,15 @@
     // galerie commence (son haut au milieu de l'écran) : un seul tracé continu.
     function placerEntree() {
       if (!filEntree) filEntree = ecranEl.querySelector(".kta-bv-fil-entree");
+      if (!teteEntree) teteEntree = ecranEl.querySelector(".kta-bv-tete-entree");
       if (!filEntree || !galeries.length) return;
       const fin = galeries[0].haut - hauteurEcran() / 2;
       const p = fin > 0 ? borner(defile() / fin) : 1;
-      if (p !== pEntree) { pEntree = p; filEntree.style.setProperty("--entree", p); }
+      if (p === pEntree) return;
+      pEntree = p;
+      // Sur le parent : le fil et la tête de suivi lisent la même progression.
+      filEntree.parentNode.style.setProperty("--entree", p);
+      if (teteEntree) teteEntree.classList.toggle("kta-bv-en-cours", p > 0 && p < 1);
     }
 
     function recalerGalerie(g) {
