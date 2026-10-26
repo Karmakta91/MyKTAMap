@@ -1,4 +1,5 @@
-# Sonde d'intégrité (11/10/2026) : le code SERVI par myktamap.fr et dev.myktamap.fr est-il celui du dépôt ?
+# Sonde d'intégrité : le code SERVI par myktamap.fr est-il celui du dépôt ?
+# dev.myktamap.fr n'est pas sondé : réservé au réseau Tailscale (nginx), il répond 403 aux exécuteurs GitHub.
 # Après un piratage du serveur, le risque est une page modifiée en place (le chiffrement protège ce qui est stocké,
 # pas le code servi). Lancée d'ici, HORS du serveur, toutes les heures : un écart fait échouer le run, et GitHub
 # prévient par e-mail. Détails et limites : scripts/release/sonde-integrite.js.
@@ -19,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        site: ["https://myktamap.fr", "https://dev.myktamap.fr"]
+        site: ["https://myktamap.fr"]
     steps:
       - uses: actions/checkout@v5
         with:
