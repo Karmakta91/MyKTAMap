@@ -60,6 +60,11 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   .kta-bv-btn-contour:hover { background: rgba(244, 197, 66, 0.1); }
 }
 .kta-bv-btn:disabled { cursor: default; }
+/* Pastille vers l'édition pro : discrète à côté des deux boutons, cible 44 px tenue par la hauteur. */
+.kta-bv a.kta-bv-pastille-pro { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid rgba(244, 197, 66, 0.35); background: rgba(244, 197, 66, 0.08);
+  color: var(--bv-or); font: 600 14px Montserrat, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
+@media (hover: hover) { .kta-bv a.kta-bv-pastille-pro:hover { background: rgba(244, 197, 66, 0.16); } }
 
 /* ── En-tête : barre, accroche, la ville en surface ── */
 .kta-bv-entete { position: relative; background: var(--bv-fond-haut); min-height: 100svh; display: flex;

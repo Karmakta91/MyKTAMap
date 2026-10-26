@@ -113,13 +113,15 @@ async function parcours(nav, vue) {
     const z = parseInt(getComputedStyle(o).zIndex, 10);
     const zs = sp ? parseInt(getComputedStyle(sp).zIndex, 10) : -1;
     const tailles = Array.from(o.querySelectorAll('[data-bv="entrer"], [data-bv="decouvrir"], [data-bv="visite"], ' +
-      ".kta-bv-langue, .kta-bv-entete .kta-bv-contacts a")).map(function (el) {
+      ".kta-bv-langue, .kta-bv-pastille-pro, .kta-bv-pied .kta-bv-contacts a")).map(function (el) {
       const r = el.getBoundingClientRect();
       return { t: el.textContent.trim().slice(0, 24), h: Math.round(r.height), w: Math.round(r.width) };
     });
     return { z: z, zs: zs, splash: !!sp, fictif: /réseau fictif/.test(o.textContent),
       entrer: o.querySelectorAll('[data-bv="entrer"]').length, visite: !!o.querySelector('[data-bv="visite"]'),
-      badge: !!o.querySelector(".kta-bv-badge"), contacts: o.querySelectorAll(".kta-bv-contacts a").length,
+      badge: !!o.querySelector(".kta-bv-badge"), contacts: o.querySelectorAll(".kta-bv-pied .kta-bv-contacts a").length,
+      contactsHaut: o.querySelectorAll(".kta-bv-entete .kta-bv-contacts").length,
+      pastillePro: !!o.querySelector('.kta-bv-entete .kta-bv-pastille-pro[href^="https://pro.myktamap.fr/"]'),
       langues: o.querySelectorAll(".kta-bv-langue").length, tailles: tailles,
       tutoriel: !!document.getElementById("kta-tutorial-modal") };
   });
@@ -128,7 +130,8 @@ async function parcours(nav, vue) {
   verifier(etat.fictif, "« réseau fictif » affiché");
   verifier(etat.entrer === 2 && etat.visite, "« Entrer » en haut et en bas, lien de visite guidée présent");
   verifier(etat.badge, "Mode Secours montré avec son badge");
-  verifier(etat.contacts >= 4 && etat.langues === 3, "contacts (emojis) et sélecteur de langue (3) présents");
+  verifier(etat.contacts >= 3 && etat.langues === 3, "contacts (emojis) au pied et sélecteur de langue (3) présents");
+  verifier(!etat.contactsHaut && etat.pastillePro, "en haut : pas de contacts, pastille « Licence pro » seule");
   const petites = etat.tailles.filter(function (x) { return x.h < 44 || x.w < 44; });
   verifier(!petites.length, "cibles ≥ 44 px (" + etat.tailles.length + " vérifiées)",
     "cibles < 44 px : " + JSON.stringify(petites));

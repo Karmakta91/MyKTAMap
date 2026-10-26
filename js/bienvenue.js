@@ -274,10 +274,10 @@
           '<div class="kta-bv-actions">' + _boutonEntrer() +
             '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="decouvrir">' +
               t("bienvenue.decouvrir") + '</button>' +
+            // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
+            '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/presentation/" target="_blank" ' +
+              'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
           '</div>' +
-          // ⚠️ Contacts de l'auteur : écran sans mot de passe seulement (une instance protégée est gérée par
-          // quelqu'un d'autre). Liens sortants, sans script.
-          '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>' +
           _luneHaut() +
         '</div>' +
         _ville() +
@@ -349,6 +349,8 @@
 
       '<footer class="kta-bv-pied"><div class="kta-bv-pied-in">' +
         '<p class="kta-bv-logo">MyKTAMap</p>' +
+        // ⚠️ Contacts de l'auteur : écran sans mot de passe seulement (une instance protégée est gérée par
+        // quelqu'un d'autre). Liens sortants, sans script.
         '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>' +
         '<p class="kta-bv-pied-note">' + t("bienvenue.pied") + '</p>' +
         // Même coin que le splash : librairies (noms propres, non traduits) et signature.
