@@ -312,6 +312,7 @@ html, body {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.03);
   width: min(440px, 92vw);
   max-height: min(82vh, 720px);
+  max-height: min(82dvh, 720px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -554,6 +555,7 @@ html, body {
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-plan-switcher-modal-boite {
     max-height: 86vh;
+    max-height: 86dvh;
     width: min(520px, 90vw);
   }
   .kta-plan-switcher-current {
@@ -663,6 +665,7 @@ html, body {
   z-index: 9000;
   width: 280px;
   max-height: 85vh;
+  max-height: 85dvh;
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--kta-surface);
@@ -1242,6 +1245,7 @@ body.kta-theme-light .kta-aide-submodal-back {
   /* contre la hauteur 88vh héritée, trop grande pour cette modale courte */
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 .kta-lost-header {
   background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 107, 53, 0.05));
@@ -1822,7 +1826,7 @@ body.kta-lost-click-mode .leaflet-container {
   line-height: 1.4;
 }
 /* Panneau d'une extension (prise `panneau`) : fenêtre compacte. */
-.kta-ext-panneau-boite { max-width: 460px; height: auto; max-height: 82vh; }
+.kta-ext-panneau-boite { max-width: 460px; height: auto; max-height: 82vh; max-height: 82dvh; }
 .kta-ext-panneau-corps { font-size: 13px; }
 .kta-equipe-moi { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 12px;
   border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 8px; color: var(--kta-texte-2); }
@@ -2109,6 +2113,7 @@ html.kta-theme-light .kta-sortie-alternatives {
   max-width: 900px;
   width: 95vw;
   height: 85vh;
+  height: 85dvh;
   display: flex;
   flex-direction: column;
 }
@@ -2933,6 +2938,9 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   justify-content: center;
   padding: 16px;
   box-sizing: border-box;
+  /* Filet : une boîte plus haute que l'écran visible (barre d'adresse de Chrome mobile, texte agrandi) se fait
+     défiler avec le fond, jusqu'à ses boutons du bas. */
+  overflow-y: auto;
   animation: kta-fadein 0.18s ease;
 }
 
@@ -3465,6 +3473,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   /* modale courte : sinon étirée à 88vh */
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 
 @keyframes kta-session-pop-in {
@@ -3711,6 +3720,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   max-width: 440px !important;
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 
 @media (min-width: 1024px) {
@@ -3780,6 +3790,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   max-width: 680px !important;
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 
 @media (min-width: 1024px) {
@@ -5509,6 +5520,7 @@ html.kta-theme-light .kta-cfg-input option {
   max-width: 480px;
   height: auto;
   max-height: 92vh;
+  max-height: 92dvh;
 }
 .kta-depannage-item {
   margin-bottom: 14px;
@@ -5781,6 +5793,7 @@ html.kta-theme-light .kta-cfg-input option {
   max-width: 480px !important;
   height: auto !important;
   max-height: 80vh !important;
+  max-height: 80dvh !important;
 }
 
 .kta-plan-infos-table {
@@ -6224,6 +6237,7 @@ html.kta-theme-light .kta-cfg-input option {
      faire déborder. */
   height: auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display: flex !important;
   flex-direction: column !important;
   border: 2px solid #ff6b6b !important;
@@ -7156,6 +7170,7 @@ html.kta-theme-light .kta-cfg-input option {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-height: 30vh;
+  max-height: 30dvh;
   overflow-y: auto;
 }
 .kta-em-bulle-action {
@@ -7407,8 +7422,6 @@ html.kta-theme-light .kta-cfg-input option {
   max-height: 92vh !important;
   max-height: 92dvh !important;
 }
-/* Filet : si la boîte dépasse quand même (texte agrandi, petit écran), le fond défile jusqu'au bouton. */
-#kta-legal-gate-overlay { overflow-y: auto; }
 .kta-legal-intro {
   font-size: 14px;
   line-height: 1.55;
@@ -7475,7 +7488,7 @@ html.kta-theme-light .kta-legal-accept:disabled {
   cursor: not-allowed;
 }
 /* Sous-modale texte intégral */
-.kta-legal-full-boite { max-width: 720px !important; height: auto !important; max-height: 92vh !important; }
+.kta-legal-full-boite { max-width: 720px !important; height: auto !important; max-height: 92vh !important; max-height: 92dvh !important; }
 .kta-legal-full-corps { line-height: 1.6; }
 .kta-legal-full-note {
   font-size: 12.5px;
@@ -7557,7 +7570,7 @@ html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
 .kta-ipl-absent { flex: 0 0 auto; opacity: 0.6; cursor: help; }
 .kta-ipl-add { width: 100%; }
 /* Modale création */
-.kta-ipl-boite { max-width: 520px !important; height: auto !important; max-height: 90vh !important; }
+.kta-ipl-boite { max-width: 520px !important; height: auto !important; max-height: 90vh !important; max-height: 90dvh !important; }
 /* Gestionnaire Mes liaisons (.kta-ipl-mgr-boite) plus large que la création (520px) : chaque ligne
    porte deux « plan · point », l'écart et 3 boutons. Paliers plafonnés : trop large, les boutons se
    perdent. ⚠️ !important obligatoire, la règle de base en porte un. Mobile inchangé. */
@@ -7622,7 +7635,7 @@ html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
   box-sizing: border-box;
 }
 .kta-ipl-search:focus { outline: none; border-color: #8cb4ff; }
-.kta-ipl-results { max-height: 42vh; overflow-y: auto; }
+.kta-ipl-results { max-height: 42vh; max-height: 42dvh; overflow-y: auto; }
 .kta-ipl-back { font-size: 12.5px; padding: 4px 10px; margin-bottom: 4px; }
 /* Thème clair */
 html.kta-theme-light .kta-ipl-plan-btn,
@@ -7725,14 +7738,14 @@ html.kta-theme-light .kta-ipl-back-float {
 }
 
 /* ── Recherche cross-plan (crossPlanSearch.js) ── */
-.kta-xps-boite { max-width: 560px !important; height: auto !important; max-height: 90vh !important; }
+.kta-xps-boite { max-width: 560px !important; height: auto !important; max-height: 90vh !important; max-height: 90dvh !important; }
 .kta-xps-status {
   font-size: 11.5px;
   color: var(--kta-texte-3);
   margin: 2px 0 8px 0;
   min-height: 15px;
 }
-.kta-xps-results { max-height: 52vh; }
+.kta-xps-results { max-height: 52vh; max-height: 52dvh; }
 .kta-xps-plan-badge {
   flex: 0 0 auto;
   max-width: 40%;
@@ -8315,6 +8328,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
     /* 🩸 iOS : safe-area en plus des 16px, sinon les derniers boutons passent sous le
        home indicator. */
     max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -8330,6 +8344,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
      ne déborde pas en silence. */
   .leaflet-top.leaflet-left {
     max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -8423,6 +8438,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 @media (max-width: 800px) {
   .kta-readme-modal-boite {
     max-height: 92vh;
+    max-height: 92dvh;
   }
   .kta-readme-modal-layout {
     flex-direction: column;
@@ -8430,6 +8446,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   .kta-readme-toc-sidebar {
     width: auto;
     max-height: 35vh;
+    max-height: 35dvh;
     flex-shrink: 0;
     border-right: none;
     border-bottom: 1px solid var(--kta-bordure);
@@ -8458,6 +8475,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 @media (max-width: 480px) {
   .kta-readme-toc-sidebar {
     max-height: 32vh;
+    max-height: 32dvh;
   }
   .kta-readme-corps { font-size: 13px; }
   .kta-readme-corps h1 { font-size: 19px; }
@@ -8720,6 +8738,7 @@ html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow)
   /* modale courte : pas de hauteur 88vh étirée */
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 
 .kta-iti-corps {
@@ -9457,6 +9476,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   max-width: 480px;
   height: auto;
   max-height: 90vh;
+  max-height: 90dvh;
 }
 
 .kta-rd-help {
@@ -10208,6 +10228,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   /* bornes forcées en !important + flex column (cf .kta-alert-boite) */
   height: auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -10399,6 +10420,7 @@ a.kta-level-btn {
      height auto, la boîte (contenu court) s'étire sur tout l'écran. */
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 .kta-niv-segmented {
   display: flex;
@@ -10529,6 +10551,7 @@ a.kta-level-btn {
   /* idem .kta-niv-modal-boite : contenu court, pas de 88vh */
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 
 /* Légende : contenu court, ne doit pas occuper 88vh. */
@@ -10536,6 +10559,7 @@ a.kta-level-btn {
   max-width: 720px;
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 .kta-jct-grille {
   display: grid;
@@ -10694,6 +10718,7 @@ a.kta-level-btn {
   max-width: 620px;
   height: auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -10715,6 +10740,7 @@ a.kta-level-btn {
      déborde de la boîte au lieu de scroller. */
   height: auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -11054,7 +11080,9 @@ body.kta-multilevel-active .kta-compass-widget {
   max-width: 920px !important;
   width: 95vw;
   height: 80vh;
+  height: 80dvh;
   max-height: 90vh;
+  max-height: 90dvh;
   display: flex !important;
   flex-direction: column;
 }
@@ -11166,6 +11194,7 @@ body.kta-multilevel-active .kta-compass-widget {
 .kta-net-doc-boite {
   max-width: 680px !important;
   max-height: 90vh;
+  max-height: 90dvh;
 }
 .kta-net-doc-corps {
   color: var(--kta-texte-2);
@@ -11267,6 +11296,7 @@ html.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain code {
   .kta-net-log-boite {
     width: 98vw;
     height: 90vh;
+    height: 90dvh;
   }
   .kta-net-log-table {
     font-size: 10px;
@@ -11835,6 +11865,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   max-width: 560px !important;
   width: 100%;
   max-height: 80vh;
+  max-height: 80dvh;
   display: flex !important;
   flex-direction: column;
 }
@@ -13278,6 +13309,7 @@ body.kta-theme-light .kta-measure-angle-label {
   max-width: 460px;
   height: auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display: flex !important;
   flex-direction: column !important;
   border: 1px solid rgba(244, 197, 66, 0.32) !important;
@@ -14892,6 +14924,7 @@ html.kta-theme-light .kta-conv-sens-btn .kta-conv-sens-desc {
 #kta-session-export-modal .kta-readme-modal-boite {
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
   max-width: 720px !important;
 }
 
@@ -16332,6 +16365,7 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   max-width: 520px;
   height: auto !important;
   max-height: 92vh !important;
+  max-height: 92dvh !important;
 }
 @media (min-width: 1024px) {
   .kta-profile-details-boite {
@@ -17864,7 +17898,7 @@ html.kta-theme-light #planLoaderBox {
 /* ── Le Carnet (journal.js / journalUi.js) : modale liste + fiche de sortie (sous-modale) ── */
 
 /* ── Modale carnet ── */
-.kta-jrn-boite { max-width: 640px !important; height: auto !important; max-height: 90vh !important; }
+.kta-jrn-boite { max-width: 640px !important; height: auto !important; max-height: 90vh !important; max-height: 90dvh !important; }
 .kta-jrn-totaux {
   display: flex;
   flex-wrap: wrap;
@@ -17887,7 +17921,7 @@ html.kta-theme-light #planLoaderBox {
   border: 1px solid rgba(140, 180, 255, 0.25);
   border-radius: 6px;
 }
-.kta-jrn-liste { max-height: 56vh; overflow-y: auto; }
+.kta-jrn-liste { max-height: 56vh; max-height: 56dvh; overflow-y: auto; }
 .kta-jrn-row {
   display: flex;
   flex-direction: column;
@@ -17909,7 +17943,7 @@ html.kta-theme-light #planLoaderBox {
 .kta-jrn-row-note { font-size: 11.5px; color: var(--kta-texte-2); font-style: italic; }
 
 /* ── Fiche de sortie (sous-modale) ── */
-.kta-jrn-fiche-boite { max-width: 560px !important; height: auto !important; max-height: 90vh !important; }
+.kta-jrn-fiche-boite { max-width: 560px !important; height: auto !important; max-height: 90vh !important; max-height: 90dvh !important; }
 .kta-jrn-fiche-date { font-size: 12.5px; color: var(--kta-accent-texte); margin-bottom: 10px; }
 .kta-jrn-tag {
   font-size: 10.5px;
@@ -18048,6 +18082,7 @@ html.kta-theme-light .kta-jrn-bureau-toggle:hover { color: #1a1f2e; }
   color: var(--kta-texte-2);
   line-height: 1.55;
   max-height: 46vh;
+  max-height: 46dvh;
   overflow-y: auto;
   padding: 10px 12px;
   background: rgba(140, 180, 255, 0.05);
@@ -18059,6 +18094,7 @@ html.kta-theme-light .kta-jrn-bureau-toggle:hover { color: #1a1f2e; }
 .kta-jrn-recit-iframe {
   width: 100%;
   height: 48vh;
+  height: 48dvh;
   border: 1px solid rgba(140, 180, 255, 0.18);
   border-radius: 6px;
   background: var(--kta-fond);
@@ -18136,7 +18172,7 @@ html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); 
 @media (min-width: 1024px) {
   /* Modale carnet : la liste des sorties respirait mal en 640 px */
   .kta-jrn-boite { max-width: 900px !important; }
-  .kta-jrn-liste { max-height: 62vh; }
+  .kta-jrn-liste { max-height: 62vh; max-height: 62dvh; }
   .kta-jrn-metrics { grid-template-columns: repeat(4, 1fr); }
   /* Fiche de sortie (mini-tracé + vignettes) */
   .kta-jrn-fiche-boite { max-width: 760px !important; }
@@ -18148,7 +18184,9 @@ html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); 
     max-width: min(1500px, 95vw) !important;
     width: 95vw;
     height: 92vh !important;
+    height: 92dvh !important;
     max-height: 92vh !important;
+    max-height: 92dvh !important;
     display: flex;
     flex-direction: column;
   }
@@ -18178,7 +18216,7 @@ html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); 
 
   /* Sans PDF : simple confort de lecture supplémentaire */
   .kta-jrn-recit-boite { max-width: 820px !important; }
-  .kta-jrn-recit-rendu { max-height: 52vh; }
+  .kta-jrn-recit-rendu { max-height: 52vh; max-height: 52dvh; }
 
   /* Mode Histoire (écran plan) : la visionneuse méritait la hauteur dispo */
   .kta-histoire-doc-nom { max-width: 320px; }
@@ -18186,7 +18224,7 @@ html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); 
 
 /* Mode Histoire sur grand écran : la visionneuse PDF prend la place. */
 @media (min-width: 1024px) {
-  .kta-histoire-boite { max-width: 1400px; height: 92vh; }
+  .kta-histoire-boite { max-width: 1400px; height: 92vh; height: 92dvh; }
 }
 
 /* ── HOME : recherche dans l'en-tête (pilule centrée max 560 px ; mobile : 2e ligne pleine largeur) ── */
@@ -18350,6 +18388,7 @@ html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50
      ⚠️ Aucune règle horizontale ici : le JS est la seule source de vérité. */
   position: fixed;
   max-height: 46vh;
+  max-height: 46dvh;
   overflow-y: auto;
   background: #121726;
   border: 1px solid rgba(140, 180, 255, 0.25);
@@ -18395,7 +18434,7 @@ html.kta-theme-light .kta-osm-home-search-results { background: #f4ecd8; }
 html.kta-theme-light .kta-osm-search-row { color: var(--kta-texte-2); }
 
 /* ── Mode OSM : multi-plans — styles .kta-osm-multi-* réutilisés par la modale ≡ (aucun panneau flottant) ── */
-.kta-osm-filters-boite { max-width: 480px !important; height: auto !important; max-height: 88vh !important; }
+.kta-osm-filters-boite { max-width: 480px !important; height: auto !important; max-height: 88vh !important; max-height: 88dvh !important; }
 .kta-osm-filters-hint { font-size: 11.5px; color: var(--kta-texte-3); margin: 0 0 10px; line-height: 1.5; }
 .kta-osm-filters-add {
   width: 100%;
@@ -18635,6 +18674,7 @@ html.kta-theme-light .kta-wiz-resume-warns { color: #6a5a1e; }
 .loader-search-results {
   position: fixed;
   max-height: 46vh;
+  max-height: 46dvh;
   overflow-y: auto;
   background: #121726;
   border: 1px solid rgba(140, 180, 255, 0.25);
@@ -19041,7 +19081,7 @@ html.kta-theme-light .zip-drop-sig { color: var(--kta-texte-3); }
 .kta-plans-sheet-hint { font-size: 11.5px; color: var(--kta-texte-3); line-height: 1.4; margin: -4px 0 8px; }
 .kta-plans-sheet-offline { width: 100%; margin: 2px 0 10px; }
 /* « Tout garder hors ligne » d'un dossier (js/dossierHorsLigne.js) : avancement puis bilan, mêmes jetons que la charte. */
-.kta-dhl-boite { max-width: 440px; height: auto; max-height: 80vh; }
+.kta-dhl-boite { max-width: 440px; height: auto; max-height: 80vh; max-height: 80dvh; }
 .kta-dhl-corps { font-size: 13px; color: var(--kta-texte-2); }
 .kta-dhl-ligne { margin: 0 0 8px; color: var(--kta-texte); font-weight: 600; overflow-wrap: anywhere; }
 .kta-dhl-barre { width: 100%; height: 10px; margin: 0 0 6px; accent-color: var(--kta-primaire); }
@@ -19558,6 +19598,7 @@ input.kta-cfg-ko { border-color: #ff5b45 !important; box-shadow: 0 0 0 2px rgba(
   width: min(560px, 96vw) !important;
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 .kta-cfg-sub-corps { columns: 1 !important; }
 body.kta-theme-light .kta-cfg-scope-plan,
@@ -19643,7 +19684,7 @@ html.kta-theme-light .kta-aide-ctx-btn { color: var(--kta-texte-3); }
   margin-bottom: 10px;
   line-height: 1.45;
 }
-.kta-impm-liste { max-height: 46vh; overflow-y: auto; }
+.kta-impm-liste { max-height: 46vh; max-height: 46dvh; overflow-y: auto; }
 .kta-impm-ligne {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -20138,7 +20179,7 @@ body.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-
 .kta-phg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .kta-phg-action { flex: 0 1 auto; }
 .kta-phg-danger { color: #ff8080 !important; border-color: rgba(255, 128, 128, 0.4) !important; }
-.kta-phg-pick-liste { margin-top: 8px; max-height: 50vh; overflow-y: auto; }
+.kta-phg-pick-liste { margin-top: 8px; max-height: 50vh; max-height: 50dvh; overflow-y: auto; }
 .kta-phg-carte-btn { width: 100%; margin-bottom: 8px; }
 /* Signal à l'ouverture d'un plan (toast maison : il porte un bouton). En BAS, au-dessus de la barre
    du plan : en haut, les toasts de l'ouverture (session, sortie reprise) le recouvraient. */
@@ -20307,7 +20348,7 @@ button.kta-cfg-ligne-action {
 
 /* Recaler des données sur un autre scan (js/recalageScan.js). 🩸 [hidden] doit gagner sur les display des
    classes : un panneau de méthode masqué qui reste affiché mélange deux méthodes à l'écran. */
-.kta-recal-boite { max-width: 520px; height: auto; max-height: 90vh; }
+.kta-recal-boite { max-width: 520px; height: auto; max-height: 90vh; max-height: 90dvh; }
 .kta-recal-corps { font-size: 13px; }
 .kta-recal-corps [hidden] { display: none !important; }
 .kta-recal-note { color: var(--kta-texte-3); margin: 0 0 8px; line-height: 1.5; }
