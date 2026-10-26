@@ -216,6 +216,18 @@
     ' L4 32" stroke="#3b4562" stroke-width="2.5"/><path d="M20 14 L180 160 M18 22 L180 170" stroke="#4a5677" stroke-w' +
     'idth="1.3" opacity=".8"/>';
 
+  // Lampadaires du bloc (répétés avec lui) : halo chaud sous la lanterne, sans animation.
+  const LAMPADAIRES =
+    '<circle cx="188" cy="193" r="30" fill="url(#kta-bv-lampe)"/><path d="M175 250 V184 Q175 176 183 176 H188" fill="' +
+    'none" stroke="#3a4560" stroke-width="3"/><path d="M171 250 H179" stroke="#3a4560" stroke-width="4"/><path d="M18' +
+    '2 176 H194 L191 183 H185 Z" fill="#3a4560"/><path d="M185 183 H191 L190 186 H186 Z" fill="#ffd98a"/><circle cx="' +
+    '653" cy="193" r="30" fill="url(#kta-bv-lampe)"/><path d="M640 250 V184 Q640 176 648 176 H653" fill="none" stroke' +
+    '="#3a4560" stroke-width="3"/><path d="M636 250 H644" stroke="#3a4560" stroke-width="4"/><path d="M647 176 H659 L' +
+    '656 183 H650 Z" fill="#3a4560"/><path d="M650 183 H656 L655 186 H651 Z" fill="#ffd98a"/><circle cx="1023" cy="19' +
+    '3" r="30" fill="url(#kta-bv-lampe)"/><path d="M1010 250 V184 Q1010 176 1018 176 H1023" fill="none" stroke="#3a45' +
+    '60" stroke-width="3"/><path d="M1006 250 H1014" stroke="#3a4560" stroke-width="4"/><path d="M1017 176 H1029 L102' +
+    '6 183 H1020 Z" fill="#3a4560"/><path d="M1020 183 H1026 L1025 186 H1021 Z" fill="#ffd98a"/>';
+
   const RESEAU = [["jps", -2008, 322], ["jps", -808, 322], ["jps", 192, 322], ["jps", 1392, 322], ["jps", 2592, 322],
     ["jpe", -1758, 332], ["jpe", -1518, 332], ["jpe", -558, 332], ["jpe", -318, 332], ["jpe", 442, 332],
     ["jpe", 682, 332], ["jpe", 1642, 332], ["jpe", 1882, 332], ["jpe", 2842, 332], ["jpe", 3082, 332],
@@ -229,7 +241,9 @@
       '</radialGradient>' +
       '<pattern id="kta-bv-hach" patternUnits="userSpaceOnUse" x="0" y="252" width="40" height="44">' +
       '<path d="M0 44 L40 0" stroke="#5c5444" stroke-width="2" opacity=".55"/></pattern>' +
-      '<g id="kta-bv-bloc">' + BLOC + '</g></defs>' +
+      '<radialGradient id="kta-bv-lampe"><stop offset="0" stop-color="#ffd98a" stop-opacity=".45"/>' +
+      '<stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>' +
+      '<g id="kta-bv-bloc">' + BLOC + LAMPADAIRES + '</g></defs>' +
       '<g class="kta-bv-lune-scene" transform="translate(-260 0)">' +
       '<circle class="kta-bv-lueur" cx="1118" cy="-40" r="119.6" fill="url(#kta-bv-halo-scene)"/>' +
       '<circle cx="1118" cy="-40" r="46" fill="#efe6cf"/>' + _crateres(CRATERES_SCENE) + '</g>' +
