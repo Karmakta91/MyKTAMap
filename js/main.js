@@ -1557,7 +1557,7 @@ function _apresSplash() {
     window.UpdateChecker.notifySplashEnded();
   }
   // ⚠️ Séquenceur de premier lancement (js/firstRunFlow.js) : une étape à la fois — alerte critique →
-  // conditions d'utilisation → onboarding — pour qu'elles ne se superposent pas. Il appelle
+  // conditions d'utilisation → visite guidée — pour qu'elles ne se superposent pas. Il appelle
   // lui-même AlertChecker.notifySplashEnded. Rejoué à chaque boot, les étapes faites se sautent.
   if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
     window.FirstRunFlow.run();

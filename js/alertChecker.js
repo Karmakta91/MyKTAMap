@@ -205,7 +205,7 @@
         // Pas de onClose : fermeture simple.
       }
     });
-    // Cas multi : la file de premier lancement n'attend PAS l'acquittement (légal, onboarding peuvent suivre
+    // Cas multi : la file de premier lancement n'attend PAS l'acquittement (légal, visite guidée peuvent suivre
     // par-dessus le sélecteur).
     _od();
   }

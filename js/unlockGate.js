@@ -6,10 +6,12 @@
 
 // unlockGate.js — gate d'accès au premier lancement (re-demandée après un reset complet).
 // Expose : window.UnlockGate (isUnlocked, isLockedOut, ouvrirGate, lock, markUnlockedViaLicensePro,
-//   revaliderInstance, instanceRequiertMotDePasse).
+//   revaliderInstance, instanceRequiertMotDePasse, visiteDemandee).
 // Deux écrans : instance qui publie `index.json > config.accessHash` → champ mot de passe, seul ce
-//   mot de passe ouvre ; sinon → « Continuer », retenu sur l'appareil. Aucun mot de passe codé en dur,
-//   aucun import de licence ici (seule une licence SERVEUR active le pro).
+//   mot de passe ouvre ; sinon → présentation « Bienvenue » (js/bienvenue.js + css/bienvenue.css, chargés à
+//   la demande) et son bouton « Entrer », retenu sur l'appareil ; repli : la carte « Entrer » simple si ces
+//   fichiers manquent. Aucun mot de passe codé en dur, aucun import de licence ici (seule une licence
+//   SERVEUR active le pro).
 // ⚠️ Barrière SOCIALE, pas une authentification : le code est public, le hash se lit, le
 //   localStorage se force en F12. Elle écarte les passants et les robots, pas un attaquant motivé.
 // ⚠️ Verrou JAMAIS définitif (décision produit) : 5 échecs → temporisé, escaladé, comme pinLock.js.
@@ -61,6 +63,8 @@
   const RE_HASH = /^[0-9a-f]{64}$/;
 
   let _resolveGate = null;  // résout la Promise attendue par main.js
+  // « Découvrir l'app en 1 minute » choisi sur l'écran Bienvenue : lu par js/firstRunFlow.js (visite guidée).
+  let _visiteDemandee = false;
 
   async function _sha256(s) {
     if (!crypto || !crypto.subtle) {
@@ -189,7 +193,7 @@
     }).join("");
   }
 
-  // mode : "instance" (mot de passe publié par l'index) | "libre" (aucun).
+  // mode : "instance" (mot de passe publié par l'index) | "libre" (aucun : carte de repli de l'écran Bienvenue).
   function _creerOverlay(mode) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const libre = mode === "libre";
@@ -211,7 +215,7 @@
           : '') +
         (libre
           ? '<button type="button" id="kta-unlock-libre-btn" class="kta-btn kta-btn-primary kta-unlock-libre-btn">' +
-              t("gate.libre.continuer") +
+              t("bienvenue.entrer") +
             '</button>'
           : '<form id="kta-unlock-form" autocomplete="off">' +
               '<input type="password" id="kta-unlock-input" placeholder="' + t("gate.placeholder") + '" ' +
@@ -365,23 +369,84 @@
     _hashInstance().catch(function() { return null; }).then(function(h) { _monterGateMode(h); });
   }
 
+  // Accès libre retenu sur l'appareil (« Entrer ») : la mémoire d'un ancien mot de passe d'instance est effacée.
+  function _memoriserAccesLibre() {
+    try {
+      localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
+      localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+      localStorage.removeItem(LS_ATTEMPTS);
+    } catch(e) {}
+    // Visite guidée proposée sur cet écran (« Découvrir l'app en 1 minute ») : plus jamais imposée au lancement
+    // (js/firstRunFlow.js ne l'ouvre que demandée, ou au 1er lancement d'une instance sans cet écran).
+    if (window.Tutorial && typeof window.Tutorial.markAsSeen === "function") window.Tutorial.markAsSeen();
+  }
+
+  function _resoudre() {
+    if (_resolveGate) {
+      const r = _resolveGate;
+      _resolveGate = null;
+      r(true);
+    }
+  }
+
+  // Écran Bienvenue (instance sans mot de passe) : feuille de style et script chargés seulement ici, pour que ni
+  // eux ni les polices ne pèsent sur l'app. Précachés (sw.js) : disponibles hors ligne.
+  // 🩸 Rend false si l'un manque (cache incomplet, 404) ou tarde : la carte « Entrer » simple prend le relais,
+  // jamais d'écran vide qui bloquerait l'entrée.
+  const DELAI_BIENVENUE_MS = 4000;
+  function _chargerBienvenue() {
+    if (window.KtaBienvenue && document.getElementById("kta-bv-css")) return Promise.resolve(true);
+    const charger = function(el) {
+      return new Promise(function(resolve) {
+        el.addEventListener("load", function() { resolve(true); });
+        el.addEventListener("error", function() { resolve(false); });
+        document.head.appendChild(el);
+      });
+    };
+    const css = document.createElement("link");
+    css.id = "kta-bv-css";
+    css.rel = "stylesheet";
+    css.href = "css/bienvenue.css";
+    const js = document.createElement("script");
+    js.src = "js/bienvenue.js";
+    const tout = Promise.all([charger(css), window.KtaBienvenue ? Promise.resolve(true) : charger(js)])
+      .then(function(r) { return r[0] && r[1] && !!window.KtaBienvenue; });
+    const delai = new Promise(function(resolve) { setTimeout(function() { resolve(false); }, DELAI_BIENVENUE_MS); });
+    return Promise.race([tout, delai]);
+  }
+
+  function _monterBienvenue() {
+    _chargerBienvenue().catch(function() { return false; }).then(function(pret) {
+      if (!pret) {
+        console.warn("[UnlockGate] écran Bienvenue indisponible : carte « Entrer » de repli");
+        _monterGateMode(null, true);
+        return;
+      }
+      window.KtaBienvenue.ouvrir({
+        surEntree: function(visite) {
+          _visiteDemandee = !!visite;
+          _memoriserAccesLibre();
+        },
+        surFin: _resoudre
+      });
+    });
+  }
+
   // Sortie commune : fondu, retrait de l'écran, promesse résolue.
   function _libererGate(overlay, delai) {
     setTimeout(function() {
       overlay.classList.add("kta-unlock-fading");
       setTimeout(function() {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        if (_resolveGate) {
-          const r = _resolveGate;
-          _resolveGate = null;
-          r(true);
-        }
+        _resoudre();
       }, 250);
     }, delai);
   }
 
-  function _monterGateMode(hashInstance) {
+  // repli : vrai quand l'écran Bienvenue n'a pas pu se charger (carte « Entrer » simple).
+  function _monterGateMode(hashInstance, repli) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    if (!hashInstance && !repli) { _monterBienvenue(); return; }
     (function() {
       const libre = !hashInstance;
       const overlay = _creerOverlay(libre ? "libre" : "instance");
@@ -392,7 +457,8 @@
           if (!window.I18n || typeof window.I18n.setLang !== "function") return;
           window.I18n.setLang(code).then(function() {
             if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            _monterGate();
+            if (libre) _monterGateMode(null, true);
+            else _monterGate();
           }).catch(function(e) { console.warn("[UnlockGate] setLang :", e); });
         });
       });
@@ -402,11 +468,7 @@
         if (btnLibre) {
           setTimeout(function() { btnLibre.focus(); }, 100);
           btnLibre.addEventListener("click", function() {
-            try {
-              localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
-              localStorage.removeItem(LS_UNLOCK_KIOSQUE);
-              localStorage.removeItem(LS_ATTEMPTS);
-            } catch(e) {}
+            _memoriserAccesLibre();
             btnLibre.disabled = true;
             _libererGate(overlay, 0);
           });
@@ -466,7 +528,8 @@
     lock:        lock,
     markUnlockedViaLicensePro: markUnlockedViaLicensePro,
     revaliderInstance: revaliderInstance,
-    instanceRequiertMotDePasse: instanceRequiertMotDePasse
+    instanceRequiertMotDePasse: instanceRequiertMotDePasse,
+    visiteDemandee: function() { return _visiteDemandee; }
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

@@ -11,7 +11,8 @@
 // attend la FERMETURE de la précédente. Ordre :
 //   1. Alerte critique serveur (alert.json) : sécurité d'abord
 //   2. Conditions d'utilisation + avertissement légal (filet)
-//   3. Onboarding (1er lancement)
+//   3. Visite guidée : demandée sur l'écran Bienvenue (« Découvrir l'app en 1 minute »), ou automatique au
+//      1er lancement d'une instance qui ne passe pas par cet écran (mot de passe, gate déléguée, licence)
 // Le PIN n'est jamais proposé au lancement (décision produit) : il s'active dans ⚙️ Configuration.
 // Signaux de fin : AlertChecker.notifySplashEnded(onDone), LegalGate.ouvrirGate() → Promise, Tutorial.ouvrir(onClose).
 // Appelé UNE FOIS par main.js après le retrait du splash. 100 % local.
@@ -96,12 +97,15 @@
       catch(e) { console.warn("[FirstRunFlow] LegalGate a échoué :", e); }
     }
 
-    // 3) Onboarding (1er lancement seulement).
-    await _step("onboarding", function(done) {
-      if (window.Tutorial && typeof window.Tutorial.isFirstLaunch === "function"
-          && window.Tutorial.isFirstLaunch()
-          && typeof window.Tutorial.ouvrir === "function") {
-        window.Tutorial.ouvrir(done);
+    // 3) Visite guidée. Proposée, pas imposée (décision produit) : l'écran Bienvenue la marque vue en entrant
+    //    (UnlockGate), elle ne part donc d'elle-même qu'au 1er lancement d'une instance qui ne l'a pas proposée.
+    await _step("visite", function(done) {
+      const T = window.Tutorial;
+      const demandee = !!(window.UnlockGate && typeof window.UnlockGate.visiteDemandee === "function"
+        && window.UnlockGate.visiteDemandee());
+      if (T && typeof T.ouvrir === "function"
+          && (demandee || (typeof T.isFirstLaunch === "function" && T.isFirstLaunch()))) {
+        T.ouvrir(done);
       } else {
         done();
       }

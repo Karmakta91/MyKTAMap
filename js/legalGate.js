@@ -12,7 +12,7 @@
 // incitation à pénétrer dans des lieux interdits (accès aux anciennes carrières de Paris prohibé par l'arrêté
 // préfectoral du 2 novembre 1955 ; l'intrusion engage la seule responsabilité de l'utilisateur).
 // Séquencée par js/firstRunFlow.js (étape « légal », après une alerte critique éventuelle, avant
-// l'onboarding) ; relisible à tout moment (pied de page, Documentation) par ouvrirConsultation().
+// la visite guidée) ; relisible à tout moment (pied de page, Documentation) par ouvrirConsultation().
 // ⚠️ Cadrage général traduit (clés legal.*) ; TEXTES DE LOI en FR verbatim (constantes ci-dessous, reflétées
 // dans docs/applications/CGU.md).
 // Expose window.LegalGate : isAccepted(), ouvrirGate() → Promise (résout à l'acceptation),

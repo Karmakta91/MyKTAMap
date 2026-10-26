@@ -241,8 +241,9 @@
        ouvertes depuis Détails session. -->
   <script src="js/statsGlobales.js"></script>
 
-  <!-- tutorial.js : window.Tutorial, affiché au premier lancement (flag `myktamap_tutorial_seen_v1`, séquencé
-       par firstRunFlow.js), réaffichable depuis Documentation. -->
+  <!-- tutorial.js : window.Tutorial, visite guidée (flag `myktamap_tutorial_seen_v1`, séquencée par
+       firstRunFlow.js) : proposée par l'écran Bienvenue, ouverte d'office au 1er lancement d'une instance sans cet
+       écran, réaffichable depuis Documentation. -->
   <script src="js/tutorial.js"></script>
 
   <!-- userProfile.js : profil local (surnom + photo, IDB `myktamap_profile`), affiché dans le bandeau de l'accueil. -->
@@ -265,7 +266,8 @@
 
   <!-- ⚠️ ktaInstance.js : config d'instance lue UNE fois, avant les gates (partagée par la gate, le kiosque,
        le connecteur et la découverte des plans). unlockGate.js : barrière communautaire, chargée tôt pour
-       main.js > initApp ; l'overlay s'affiche après le splash. -->
+       main.js > initApp ; l'overlay s'affiche après le splash. Sans mot de passe d'instance, il charge à la demande
+       js/bienvenue.js + css/bienvenue.css (écran Bienvenue, une fois par appareil). -->
   <script src="js/ktaInstance.js"></script>
   <script src="js/unlockGate.js"></script>
   <!-- pinLock.js : code d'accès local (PIN + biométrie), couche au-dessus d'unlockGate ; avant main.js, qui
@@ -1023,7 +1025,7 @@
   <script src="js/updateChecker.js" defer></script>
   <script src="js/alertChecker.js" defer></script>
   <!-- legalGate.js (conditions d'utilisation, gate au 1er lancement) + firstRunFlow.js, qui séquence
-       alerte → légal → onboarding. -->
+       alerte → légal → visite guidée. -->
   <script src="js/legalGate.js" defer></script>
   <script src="js/firstRunFlow.js" defer></script>
   <!-- interPlanLinks.js : liaisons entre plans (registre localStorage, section de popup, badges). -->

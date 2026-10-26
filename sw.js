@@ -242,6 +242,14 @@ const ASSETS_TO_CACHE = [
   "./css/style-meminspector.css",
   "./css/style-stats-globales.css",
   "./css/style-filtres.css",
+  // Écran Bienvenue (instance sans mot de passe) : feuille, script et polices chargés par unlockGate.js
+  // seulement quand l'écran s'affiche ; précachés pour un premier lancement qui se poursuit hors ligne.
+  "./css/bienvenue.css",
+  "./js/bienvenue.js",
+  "./fonts/montserrat-400.woff2",
+  "./fonts/montserrat-600.woff2",
+  "./fonts/montserrat-800.woff2",
+  "./fonts/permanent-marker-400.woff2",
 
   // JS principaux
   // Splash de démarrage : premier script d'index.html (version, fermeture, plafond)

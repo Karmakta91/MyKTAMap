@@ -3,7 +3,7 @@
 // =====================================================================
 // check-gate-instance.js — garde-fou pré-commit BLOQUANT de la gate (js/unlockGate.js, main.js)
 // =====================================================================
-// Règle : sans hash d'instance, « Continuer sans licence » ouvre (aucun code en dur) ; quand une
+// Règle : sans hash d'instance, « Entrer » (écran Bienvenue) ouvre (aucun code en dur) ; quand une
 // instance publie un `accessHash` valide dans `index.json`, SON mot de passe est le SEUL accès,
 // aucune licence ne le contourne. 🔒 Le hash est PUBLIC (brute-forçable hors ligne) : barrière
 // sociale, jamais une authentification, et le code comme la doc doivent le dire (§8).
@@ -60,7 +60,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   };
 
   if (code) {
-    t("🔓 l'accès libre (« Continuer sans licence ») ouvre", jouer("libre-v1", null).ouvert === true);
+    t("🔓 l'accès libre (« Entrer ») ouvre", jouer("libre-v1", null).ouvert === true);
     const herite = jouer(VRAI, null);
     t("🔓 un appareil entré avec l'ANCIEN code reste ouvert (vaut « déjà choisi »)…", herite.ouvert === true);
     t("🩸 …SANS rien écrire : isUnlocked() tourne au chargement, avant la revalidation de l'instance", herite.u === VRAI);
@@ -196,12 +196,20 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   t("🔑 le hash accepté est stocké", /localStorage\.setItem\(LS_UNLOCK, hashed\);/.test(GATE));
   t("🩸 un succès d'instance mémorise le hash d'instance (sans quoi : hors-ligne, reverrouillé)",
     /localStorage\.setItem\(LS_UNLOCK_KIOSQUE, hashInstance\);/.test(GATE));
-  t("🔓 « Continuer sans licence » mémorise l'accès libre et efface la mémoire d'instance",
-    /btnLibre\.addEventListener\("click"[\s\S]{0,200}setItem\(LS_UNLOCK, ACCES_LIBRE\)[\s\S]{0,80}removeItem\(LS_UNLOCK_KIOSQUE\)/.test(GATE));
+  const memo = extraire("_memoriserAccesLibre") || "";
+  t("🔓 « Entrer » mémorise l'accès libre et efface la mémoire d'instance",
+    /setItem\(LS_UNLOCK, ACCES_LIBRE\)[\s\S]{0,80}removeItem\(LS_UNLOCK_KIOSQUE\)/.test(memo));
+  t("🔓 « Entrer » passe par cette mémoire, sur l'écran Bienvenue comme sur sa carte de repli",
+    /surEntree: function\(visite\) \{[\s\S]{0,120}_memoriserAccesLibre\(\)/.test(GATE) &&
+    /btnLibre\.addEventListener\("click", function\(\) \{\s*_memoriserAccesLibre\(\)/.test(GATE));
   t("🔓 le mode de l'écran est décidé AVANT de le dessiner (hash d'instance lu d'abord)",
     /_hashInstance\(\)[^\n]*\.then\(function\(h\) \{ _monterGateMode\(h\); \}\)/.test(GATE));
-  t("🔓 écran libre : bouton « Continuer sans licence », pas de champ mot de passe ; écran instance : l'inverse",
+  t("🔓 écran libre : bouton « Entrer », pas de champ mot de passe ; écran instance : l'inverse",
     /\(libre\s*\?\s*'<button type="button" id="kta-unlock-libre-btn"[\s\S]{0,200}:\s*'<form id="kta-unlock-form"/.test(GATE));
+  t("🔒 l'écran Bienvenue n'est monté QUE sans hash d'instance (jamais à la place du mot de passe)",
+    /if \(!hashInstance && !repli\) \{ _monterBienvenue\(\); return; \}/.test(GATE));
+  t("🩸 écran Bienvenue introuvable (cache incomplet) → carte « Entrer » de repli, jamais d'écran vide",
+    /if \(!pret\) \{[\s\S]{0,160}_monterGateMode\(null, true\)/.test(GATE));
   t("🩸 le verrou temporisé ne s'applique qu'à l'écran avec mot de passe", /if \(!libre && isLockedOut\(\)\)/.test(GATE));
 }
 
@@ -340,6 +348,6 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   });
 }
 
-console.log(ko === 0 ? "\n🎉 gate : le mot de passe de l'instance ou « Continuer sans licence », et aucune promesse de trop"
+console.log(ko === 0 ? "\n🎉 gate : le mot de passe de l'instance ou « Entrer », et aucune promesse de trop"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);
