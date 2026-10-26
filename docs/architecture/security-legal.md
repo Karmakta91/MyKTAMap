@@ -1368,7 +1368,7 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 
 **⚠️ v1.56.4 — Ordre de boot complet** (« on lit et accepte les conditions AVANT de saisir un code », KARMA) :
 
-0. ⚖️ **Conditions d'utilisation** — affichée par **`main.js > initApp` AVANT l'UnlockGate** (pas par le flow). Bug corrigé : déclenchée post-splash par le flow, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
+0. ⚖️ **Conditions d'utilisation** — affichées par **`main.js > initApp`** (pas par le flow), à l'un de deux moments (décision KARMA) : sur une installation **non reliée** dont l'écran Bienvenue s'affiche, **au clic sur « Entrer »** (ou après le code juste), au-dessus de l'écran (`LegalGate.ouvrirGate({ auDessus: true })`, z 100150) et avant la mémoire de l'accès et la descente (`UnlockGate.ouvrirGate({ avantEntree })` → `KtaBienvenue` `avantEntree`), filet après la gate (carte de repli, licence qui contourne) ; sinon (installation reliée, accès déjà ouvert) **avant toute gate**. 🩸 Lancée après une gate sans `auDessus`, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
 1. 🗝️ **UnlockGate** (mot de passe d'instance, ou écran « Bienvenue », §36.8) puis 🔐 **gate PIN** (si activé).
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
 3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Visite guidée** (`Tutorial.ouvrir(onClose)`).
@@ -1389,7 +1389,7 @@ Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone
 
 #### 87.2 Gate légale `js/legalGate.js`
 
-`window.LegalGate = { isAccepted, ouvrirGate, ouvrirConsultation, TERMS_VERSION }`.
+`window.LegalGate = { isAccepted, ouvrirGate({ auDessus }), ouvrirConsultation, TERMS_VERSION }` (`auDessus` : par-dessus l'écran Bienvenue, texte intégral compris).
 
 - **`ouvrirGate()`** → Promise, **bloquante** : case « J'ai lu et compris » + bouton « J'accepte » (désactivé tant que la case n'est pas cochée). Résout à l'acceptation, pose `localStorage["myktamap_terms_accepted_v1"] = TERMS_VERSION`.
 - **Flag versionné** : `isAccepted()` compare la version stockée à `TERMS_VERSION` (const, actuellement `2` : garantie, secours, contenus partagés). **Bumper `TERMS_VERSION`** force un re-consentement de tous les utilisateurs si le fond des CGU change. ⚠️ Les harnais navigateur pré-acceptent les CGU en posant `myktamap_terms_accepted_v1` : la valeur doit suivre `TERMS_VERSION` (`scripts/smoke/`, et les tests navigateur du dépôt pro), sinon la gate bloque tout le parcours.

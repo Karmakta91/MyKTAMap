@@ -8,9 +8,9 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
-### Version suivante (notifications poussées d'une installation reliée)
+### v2.21.0 (écran Bienvenue, notifications poussées d'une installation reliée)
 
-**Rien de nouveau sur myktamap.fr : aucune demande d'autorisation, aucun service de push contacté.** Une installation reliée peut désormais proposer, dans la fenêtre 🚨, d'afficher ses alertes et nouveautés sur l'icône de l'app ; seulement après un geste (« Activer »), ton navigateur s'abonne au service de push de son éditeur (Apple, Google, Mozilla ou Microsoft), qui transporte des messages chiffrés pour ton appareil seul sans pouvoir les lire. Le service worker affiche ces messages, texte seul, sans exécuter aucun script de l'installation. Détail : [la page d'audit](NETWORK_AUDIT.md), § notifications poussées.
+**Aucun domaine nouveau.** L'écran Bienvenue (présentation, polices, icônes) est fait de fichiers du site, gardés hors ligne ; ses liens (documentation en ligne, code source, présentation pro) ne s'ouvrent qu'au toucher, dans un nouvel onglet. La date de prise de vue d'une photo est lue dans le fichier sur l'appareil, rien n'est envoyé. **Rien de nouveau sur myktamap.fr côté notifications : aucune demande d'autorisation, aucun service de push contacté.** Une installation reliée peut désormais proposer, dans la fenêtre 🚨, d'afficher ses alertes et nouveautés sur l'icône de l'app ; seulement après un geste (« Activer »), ton navigateur s'abonne au service de push de son éditeur (Apple, Google, Mozilla ou Microsoft), qui transporte des messages chiffrés pour ton appareil seul sans pouvoir les lire. Le service worker affiche ces messages, texte seul, sans exécuter aucun script de l'installation. Détail : [la page d'audit](NETWORK_AUDIT.md), § notifications poussées.
 
 ### v2.20.1 (tout garder hors ligne d'un dossier)
 

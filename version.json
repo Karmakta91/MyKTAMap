@@ -1,8 +1,9 @@
 {
-  "version": "v2.20.1",
-  "released": "2026-10-24",
+  "version": "v2.21.0",
+  "released": "2026-10-26",
   "notes": [
-    "📥 « Tout garder hors ligne » dans le menu ⋮ d'un dossier (et de « Non classés ») : avant de descendre, les plans du dossier sont téléchargés ou mis à jour sur l'appareil en un geste, un à la fois, avec ⏹ Arrêter et un bilan à la fin.",
-    "☁️ Sur une installation reliée à un serveur : la publication d'un plan montre son avancement, et un plan qui ne s'ouvre pas le dit à l'écran, avec la raison."
+    "👋 Nouvel écran de bienvenue au premier lancement : une courte présentation qui défile, « Entrer » en haut et en bas. Les conditions d'utilisation ne s'affichent qu'au moment d'entrer, et la visite guidée est proposée, plus imposée.",
+    "⚖️ Conditions d'utilisation mises à jour (aucune garantie sur l'état des sites, l'app n'est pas un moyen de secours, contenus partagés) : à accepter une nouvelle fois.",
+    "📷 Les photos gardent leur date de prise de vue et un POI danger sa date de constat ; 📐 calage GPS plus précis, avec « Recaler » pour un plan déjà calé ; 📥 « Tout garder hors ligne » dans le menu d'un dossier."
   ]
 }

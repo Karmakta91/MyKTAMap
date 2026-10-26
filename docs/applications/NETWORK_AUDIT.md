@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.20.1** (24 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.21.0** (26 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -100,6 +100,11 @@ envoyé** (réponse : rien, jamais).
 
 `<origin>` = le domaine sur lequel l'app est servie. Pour la prod c'est
 `myktamap.fr`. Sur ton réseau local en développement : `localhost` ou IP locale.
+
+Les liens de l'écran Bienvenue et du pied de page (documentation en ligne
+`doc.myktamap.fr`, code source sur GitHub, présentation pro, Instagram, e-mail)
+ne sont **jamais contactés par l'app** : ils s'ouvrent dans un nouvel onglet
+seulement quand tu les touches, comme n'importe quel lien.
 
 **Sur `myktamap.fr`, aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`,
 `WebSocket`, `EventSource` ou n'importe quelle autre méthode d'envoi de

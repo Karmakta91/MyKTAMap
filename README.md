@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.20.1` (24/10/2026)
+## 📦 Version courante — `v2.21.0` (26/10/2026)
 
-> 📥 **v2.20.1 — Tout garder hors ligne d'un dossier, avancement d'une publication** : « 📥 Tout garder hors ligne » dans le menu ⋮ d'un dossier et de « Non classés » (`js/dossierHorsLigne.js` : plans du site, ZIP de l'index, plans d'extension, un à la fois, ⏹ Arrêter, reprise après arrière-plan, confirmation au-delà de 200 Mo ou en données mobiles, bilan) ; prises neutres `progression` d'une publication, `requete({ progressionEnvoi })`, `plans.horsLigne.garder(idExt, { signal, onProgres })` et `taille` ; l'échec d'ouverture d'un plan d'extension part en toast avec sa raison. Détail : journal ci-dessous.
+> 👋 **v2.21.0 — Écran Bienvenue, conditions après « Entrer », CGU v2, photos et dangers datés, calage en vraie projection** : présentation qui défile au premier lancement, avec ou sans mot de passe d'installation (`js/bienvenue.js`), conditions d'utilisation v2 (ré-acceptation de tous) montrées au clic sur « Entrer » sur une installation community, PIN plus proposé au démarrage ; date de prise de vue des photos, date de constat des POI danger ; calage GPS en plan tangent GRS80 avec « Recaler » ; prises neutres pour les notifications, l'état des objets et les calques d'une installation reliée. Reprend la v2.20.1 (jamais en prod). Détail : journal ci-dessous.
 
 ---
 
@@ -453,6 +453,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.21.0 (26/10/2026) — Écran Bienvenue, conditions après « Entrer », CGU v2, photos et dangers datés, calage en vraie projection (branche `Karma_dev`)
+
+Livre aussi la v2.20.1 ci-dessous, bumpée le 24/10 mais jamais mise en prod : les notes de version couvrent l'écart avec la v2.20.0.
+
+- **👋 Écran Bienvenue** (`js/bienvenue.js`, `css/bienvenue.css`, chargés à la demande par `unlockGate.js`, précachés) : au premier lancement, une présentation qui défile reprise de la vitrine pro — ville de nuit (montagnes enneigées, deux chevalements, lampadaires, passants, spéléos au puits), tracker qui descend le puits puis les galeries au défilement, quatre étapes, sortie « Prêt à descendre ? » avec la visite guidée, la documentation (guide intégré, doc.myktamap.fr) et le code source ; bouton 🚨 de sortie d'urgence (remontée progressive) ; polices Montserrat et Permanent Marker embarquées. **Aussi sur une installation à mot de passe** : champ « Code d'accès » dans l'en-tête (focus au PC), lisible sans code, verrou temporisé affiché dans la zone du champ, ni contacts de l'auteur ni lien pro ; l'ancienne carte centrée ne sert plus que de repli. Visite guidée proposée, plus imposée ; le 🔐 code d'accès local n'est plus proposé au premier lancement. `checkup-bienvenue.js`.
+- **⚖️ Conditions d'utilisation** : v2 (`TERMS_VERSION` 2, ré-acceptation de tous) — absence de garantie (état des sites), pas un moyen de secours, contenus partagés ; textes reformulés. Sur une installation community dont l'écran Bienvenue s'affiche, elles s'ouvrent **au clic sur « Entrer »** (ou après le code juste), au-dessus de l'écran et avant la descente (`LegalGate.ouvrirGate({ auDessus })`, `UnlockGate.ouvrirGate({ avantEntree })`) ; installation reliée ou accès déjà ouvert : en premier, inchangé. Rideau de démarrage (`main.js > _rideauSiSplashParti`) : l'app ne reste plus nue quand le splash a atteint son plafond pendant une gate.
+- **📷 Photos et dangers** : date de prise de vue lue dans l'EXIF avant ré-encodage, gardée à côté de la photo (jamais dans le fichier, GPS toujours retiré) ; POI danger avec date de constat et mention « l'outil ne certifie pas l'état d'un site ».
+- **📐 Calage en vraie projection** : nouveau calage en plan tangent local GRS80 (modèle historique gardé bit à bit pour les plans existants), précision annoncée dans le Générateur, bouton « Recaler » ; étude `docs/ETUDE_CALAGE_PROJECTION.md`.
+- **Prises neutres** (`community-server-line.md` §3, sans effet sans extension) : notifications de l'appareil et Web Push du service worker (texte seul, aucun script importé), cible d'une notification touchée, repères d'une extension sur le plan, objets des calques et objets proches, aller à un objet par uid, état d'un objet (proposé, retrait) dessiné et filtré, case d'export « validés seulement » ; jusqu'à 32 modules déclarés gardés dans le cache durable.
+- **Corrigés** : ronds d'extrémité des jonctions réduits au dézoom ; le point du mode perdu n'est plus compté comme un danger constaté.
 
 #### v2.20.1 (24/10/2026) — Tout garder hors ligne d'un dossier, avancement d'une publication (branche `Karma_dev`)
 
