@@ -1557,7 +1557,7 @@ function _apresSplash() {
     window.UpdateChecker.notifySplashEnded();
   }
   // ⚠️ Séquenceur de premier lancement (js/firstRunFlow.js) : une étape à la fois — alerte critique →
-  // conditions d'utilisation → onboarding → proposition PIN — pour qu'elles ne se superposent pas. Il appelle
+  // conditions d'utilisation → onboarding — pour qu'elles ne se superposent pas. Il appelle
   // lui-même AlertChecker.notifySplashEnded. Rejoué à chaque boot, les étapes faites se sautent.
   if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
     window.FirstRunFlow.run();
@@ -1872,7 +1872,6 @@ window.proposerRedemarrageLangue = function() {
   // 🩸 Toutes les gates franchies : on libère le séquenceur de premier lancement. Sans ce signal, FirstRunFlow
   // (lancé par _splashEnd) démarrait dans une fenêtre sans gate (attente de licence) et le tutoriel passait
   // derrière la saisie du code. En verrou, jamais atteint : la file ne démarre pas (voulu).
-  // La proposition d'activation du PIN est la dernière étape de ce séquenceur (js/firstRunFlow.js).
   if (window.FirstRunFlow && typeof window.FirstRunFlow.notifyBootGatesDone === "function") {
     window.FirstRunFlow.notifyBootGatesDone();
   }

@@ -12,9 +12,8 @@
 //   1. Alerte critique serveur (alert.json) : sécurité d'abord
 //   2. Conditions d'utilisation + avertissement légal (filet)
 //   3. Onboarding (1er lancement)
-//   4. Proposition d'activation du PIN (le moins urgent)
-// Signaux de fin : AlertChecker.notifySplashEnded(onDone), LegalGate.ouvrirGate() → Promise,
-// Tutorial.ouvrir(onClose), MyKTAMapPinLock.proposerActivation(onClose).
+// Le PIN n'est jamais proposé au lancement (décision produit) : il s'active dans ⚙️ Configuration.
+// Signaux de fin : AlertChecker.notifySplashEnded(onDone), LegalGate.ouvrirGate() → Promise, Tutorial.ouvrir(onClose).
 // Appelé UNE FOIS par main.js après le retrait du splash. 100 % local.
 
 (function() {
@@ -103,16 +102,6 @@
           && window.Tutorial.isFirstLaunch()
           && typeof window.Tutorial.ouvrir === "function") {
         window.Tutorial.ouvrir(done);
-      } else {
-        done();
-      }
-    });
-
-    // 4) Proposition du PIN, en dernier : proposerActivation gère ses propres conditions (déjà activé, déjà
-    //    proposé, incognito) et appelle onClose dans tous les cas.
-    await _step("proposition-pin", function(done) {
-      if (window.MyKTAMapPinLock && typeof window.MyKTAMapPinLock.proposerActivation === "function") {
-        window.MyKTAMapPinLock.proposerActivation(done);
       } else {
         done();
       }
