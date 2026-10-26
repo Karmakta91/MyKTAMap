@@ -6067,5 +6067,6 @@
   "bienvenue.sortie.intro": "Load your first map from the home screen, or take a quick tour of the interface first.",
   "bienvenue.sortie.visite": "Discover the app in 1 minute",
   "bienvenue.pied": "© Flavien VIDAL (KARMA) · CC BY-NC-SA 4.0 licence, non-commercial use",
-  "bienvenue.github": "Source code on GitHub"
+  "bienvenue.github": "Source code on GitHub",
+  "bienvenue.urgence": "Emergency exit: back to the top of the page"
 }

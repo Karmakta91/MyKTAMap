@@ -449,6 +449,9 @@
           '🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</p>' +
           '<img class="kta-bv-signature" src="icon/karma.png" alt="KARMA" height="20"></div>' +
       '</div></footer>' +
+      // Sortie d'urgence (bouton 🚨 de l'app) : remonte en haut, montrée une fois l'en-tête dépassé.
+      '<button type="button" class="kta-bv-sortie-urgence" data-bv="remonter" aria-label="' + t("bienvenue.urgence") +
+        '" title="' + t("bienvenue.urgence") + '"><span aria-hidden="true">🚨</span></button>' +
       '<div class="kta-bv-voile" aria-hidden="true"></div>' +
     '</div>';
   }
@@ -713,6 +716,7 @@
     let mvt = null, sortie = false, minuteur = null, rebours = null, essaiEnCours = false;
     // « Découvrir l'app en 1 minute » touché avant le code : la visite est demandée à l'entrée.
     let visiteVoulue = false;
+    let vigieEntete = null, remontee = null;
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
     const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); };
 
@@ -754,18 +758,65 @@
       }, 1000);
     }
 
+    // Sortie d'urgence : remontée progressive (durée selon la distance, bornée), le fil se rétracte en chemin ;
+    // toute action de l'utilisateur l'arrête. Mouvement réduit : saut direct.
+    const REMONTEE_MIN = 1500, REMONTEE_MAX = 4000, REMONTEE_PAR_PX = 0.4;
+    const GESTES = ["wheel", "touchstart", "keydown", "mousedown"];
+    function douce(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+    function interrompreRemontee() {
+      if (!remontee) return;
+      window.cancelAnimationFrame(remontee.image);
+      remontee = null;
+      GESTES.forEach(function(g) { ecranEl.removeEventListener(g, interrompreRemontee); });
+    }
+    function focusHaut() { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }
+    function remonter() {
+      interrompreRemontee();
+      const depart = ecranEl.scrollTop;
+      if (depart <= 0) return;
+      if (reduit() || !window.requestAnimationFrame) { ecranEl.scrollTop = 0; focusHaut(); return; }
+      const duree = Math.min(REMONTEE_MAX, Math.max(REMONTEE_MIN, depart * REMONTEE_PAR_PX));
+      let debut = 0;
+      const pas = function(maintenant) {
+        if (!remontee) return;
+        if (!debut) debut = maintenant;
+        const x = Math.min(1, (maintenant - debut) / duree);
+        ecranEl.scrollTop = Math.round(depart * (1 - douce(x)));
+        if (x < 1) { remontee.image = window.requestAnimationFrame(pas); return; }
+        interrompreRemontee();
+        focusHaut();
+      };
+      remontee = { image: window.requestAnimationFrame(pas) };
+      GESTES.forEach(function(g) { ecranEl.addEventListener(g, interrompreRemontee, { passive: true }); });
+    }
+    function surveillerEntete() {
+      if (vigieEntete) vigieEntete.disconnect();
+      vigieEntete = null;
+      const bouton = ecranEl.querySelector(".kta-bv-sortie-urgence"), entete = ecranEl.querySelector(".kta-bv-entete");
+      if (!bouton || !entete) return;
+      if (!("IntersectionObserver" in window)) { bouton.classList.add("kta-bv-montre"); return; }
+      vigieEntete = new IntersectionObserver(function(entrees) {
+        bouton.classList.toggle("kta-bv-montre", !entrees[entrees.length - 1].isIntersecting);
+      }, { root: ecranEl });
+      vigieEntete.observe(entete);
+    }
+
     function dessiner() {
+      interrompreRemontee();
       if (mvt) mvt.arreter();
       ecranEl.innerHTML = _gabarit(!!code);
       ecranEl.scrollTop = 0;
       mvt = _mouvement(ecranEl);
       rendreZoneCode();
+      surveillerEntete();
       // Focus sur l'écran lui-même (dialogue) : le clavier part de là (Tab → « Entrer », flèches → défilement),
       // sans anneau de focus imposé sur un bouton au toucher, ni clavier virtuel ouvert sur le champ du code.
       setTimeout(function() { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }, 100);
     }
 
     function fermer() {
+      interrompreRemontee();
+      if (vigieEntete) vigieEntete.disconnect();
       clearTimeout(minuteur);
       clearInterval(rebours);
       if (mvt) mvt.arreter();
@@ -779,6 +830,7 @@
     function entrer(visite) {
       if (sortie) return;
       sortie = true;
+      interrompreRemontee();
       clearInterval(rebours);
       ecranEl.querySelectorAll("button, input").forEach(function(b) { b.disabled = true; });
       try { if (typeof opts.surEntree === "function") opts.surEntree(!!visite); }
@@ -848,7 +900,8 @@
         return;
       }
       const action = cible.getAttribute("data-bv");
-      if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
+      if (action === "remonter") remonter();
+      else if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
       else if (action === "visite") { if (code) allerAuChamp(true); else entrer(true); }
       else if (action === "decouvrir") {
         const cibleSection = ecranEl.querySelector("#kta-bv-plans");

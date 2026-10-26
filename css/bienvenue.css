@@ -256,6 +256,22 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-signature { display: block; flex: none; height: 20px; width: auto;
   filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }
 
+/* Sortie d'urgence : bouton 🚨 de l'en-tête de l'app (fond rouge, bord rouge), flottant en haut à droite, montré
+   une fois l'en-tête dépassé (bienvenue.js > surveillerEntete). Fond opaque : posé sur la page qui défile. */
+.kta-bv-sortie-urgence { position: fixed; z-index: 10; right: calc(16px + env(safe-area-inset-right, 0px));
+  top: calc(16px + env(safe-area-inset-top, 0px)); width: 48px; height: 48px; display: flex; align-items: center;
+  justify-content: center; padding: 0; border-radius: 10px; font-size: 22px; line-height: 1; cursor: pointer;
+  background: linear-gradient(rgba(255, 80, 80, 0.22), rgba(255, 80, 80, 0.22)), var(--bv-fond);
+  border: 1px solid rgba(255, 80, 80, 0.55); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.2s linear, visibility 0.2s linear, background 0.15s ease; }
+@media (hover: hover) {
+  .kta-bv-sortie-urgence:hover {
+    background: linear-gradient(rgba(255, 80, 80, 0.4), rgba(255, 80, 80, 0.4)), var(--bv-fond);
+  }
+}
+.kta-bv-sortie-urgence:not(.kta-bv-montre), .kta-bv-descend .kta-bv-sortie-urgence,
+.kta-bv-descend-bas .kta-bv-sortie-urgence { opacity: 0; visibility: hidden; pointer-events: none; }
+
 /* ── Grand écran ── */
 @media (min-width: 900px) {
   /* Accroche plus courte en largeur : la ville prend la place libre sous elle. */

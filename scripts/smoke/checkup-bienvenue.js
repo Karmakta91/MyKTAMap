@@ -195,6 +195,27 @@ async function parcours(nav, vue) {
   });
   verifier(Math.abs(decouvrir) <= 4, "« Découvrir » amène la 1re station (haut à " + decouvrir + " px)");
 
+  // Sortie d'urgence : cachée sur l'en-tête, montrée plus bas, remonte en haut (≤ 4 s de remontée).
+  const urgence = function () {
+    const b = document.querySelector(".kta-bv-sortie-urgence");
+    return b ? getComputedStyle(b).visibility : "absent";
+  };
+  await page.evaluate(function () { document.getElementById("kta-unlock-overlay").scrollTop = 0; });
+  await page.waitForTimeout(400);
+  const urgenceHaut = await page.evaluate(urgence);
+  await page.evaluate(function () { const o = document.getElementById("kta-unlock-overlay"); o.scrollTop = o.scrollHeight; });
+  await page.waitForTimeout(600);
+  const urgenceBas = await page.evaluate(urgence);
+  verifier(urgenceHaut === "hidden" && urgenceBas === "visible",
+    "sortie d'urgence cachée sur l'en-tête, montrée plus bas (" + urgenceHaut + " → " + urgenceBas + ")");
+  await page.click(".kta-bv-sortie-urgence");
+  await page.waitForTimeout(1000);
+  const enCours = await page.evaluate(function () { return document.getElementById("kta-unlock-overlay").scrollTop; });
+  await page.waitForTimeout(3600);
+  const finRemontee = await page.evaluate(function () { return document.getElementById("kta-unlock-overlay").scrollTop; });
+  verifier(enCours > 0 && finRemontee === 0,
+    "sortie d'urgence : remontée progressive jusqu'en haut (" + enCours + " px à 1 s, puis " + finRemontee + ")");
+
   if (vue.nom === "telephone") {
     console.log("— langue : EN —");
     await page.click('.kta-bv-langue[data-lang="en"]');

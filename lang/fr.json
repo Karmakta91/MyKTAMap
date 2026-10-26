@@ -6067,5 +6067,6 @@
   "bienvenue.sortie.intro": "Charge ton premier plan depuis l'accueil, ou fais d'abord le tour de l'interface.",
   "bienvenue.sortie.visite": "Découvrir l'app en 1 minute",
   "bienvenue.pied": "© Flavien VIDAL (KARMA) · Licence CC BY-NC-SA 4.0, usage non commercial",
-  "bienvenue.github": "Code source sur GitHub"
+  "bienvenue.github": "Code source sur GitHub",
+  "bienvenue.urgence": "Sortie d'urgence : revenir en haut de la page"
 }
