@@ -18296,9 +18296,10 @@ html.kta-theme-light .loader-search-input::placeholder { color: var(--kta-texte-
   border-radius: 12px;
   padding: 14px;
 }
-/* Colonne plans vide (bibliothèque vide → #myPlansBox masqué) : pas de
-   coquille vide. Sans :has, la card reste — dégradation acceptable. */
-.loader-col-plans:has(#myPlansBox[style*="none"]) { display: none; }
+/* Colonne plans vide (bibliothèque vide) : pas de coquille vide. Classe posée par homeLoader.js > refreshPlansList.
+   🩸 Jamais :has(#myPlansBox[style*="none"]) : Safari ne réévalue pas ce :has quand seul l'attribut style change ;
+   au 1er lancement (liste dessinée vide, puis plans de l'index), la colonne restait à 0 px jusqu'au rechargement. */
+.loader-col-plans.kta-plans-vide { display: none; }
 
 /* Titres de section unifiés */
 .loader-section-head {
