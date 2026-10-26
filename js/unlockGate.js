@@ -65,6 +65,9 @@
   let _resolveGate = null;  // résout la Promise attendue par main.js
   // « Découvrir l'app en 1 minute » choisi sur l'écran Bienvenue : lu par js/firstRunFlow.js (visite guidée).
   let _visiteDemandee = false;
+  // Étape à jouer au clic sur « Entrer », avant la descente (main.js : conditions d'utilisation sur une installation
+  // community). La carte de repli ne l'appelle pas : main.js la rejoue après la gate.
+  let _avantEntree = null;
   // 🔒 Vrai seulement après un code juste (_essayerCode) : la sortie de l'écran Bienvenue d'une instance protégée
   // ne résout la gate qu'à cette condition, quel que soit le bouton qui l'a déclenchée.
   let _codeAccepte = false;
@@ -373,7 +376,8 @@
   // ── API ──────────────────────────────
   // Promise résolue `true` au déverrouillage ; pendant un verrou, elle attend. main.js l'attend.
   // ⚠️ _monterGate redessine (langue, fin de verrou) SANS toucher la Promise : _resolveGate survit.
-  function ouvrirGate() {
+  function ouvrirGate(opts) {
+    _avantEntree = (opts && typeof opts.avantEntree === "function") ? opts.avantEntree : null;
     return new Promise(function(resolve) {
       _resolveGate = resolve;
       _monterGate();
@@ -449,6 +453,7 @@
         window.KtaBienvenue.ouvrir({
           code: { essayer: _essayerCode, etat: _etatCode },
           surDoc: _ouvrirDocReadme,
+          avantEntree: _avantEntree,
           surEntree: function(visite) {
             _visiteDemandee = !!visite;
             _marquerVisiteProposee();
@@ -462,6 +467,7 @@
       }
       window.KtaBienvenue.ouvrir({
         surDoc: _ouvrirDocReadme,
+        avantEntree: _avantEntree,
         surEntree: function(visite) {
           _visiteDemandee = !!visite;
           _memoriserAccesLibre();

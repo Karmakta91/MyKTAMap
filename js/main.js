@@ -1741,18 +1741,6 @@ window.proposerRedemarrageLangue = function() {
 
   _splashStart();
 
-  // 🩸 Conditions d'utilisation EN PREMIER, avant toute saisie de code ou import de licence : lancée après le
-  // splash, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate (z 100100). Bloquant. Sautée en incognito
-  // (flag non persistant) ; l'étape légale de FirstRunFlow reste en filet.
-  if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
-      && !window.LegalGate.isAccepted()
-      && !(window.IncognitoMode && window.IncognitoMode.active)) {
-    await _splashAvantGate();
-    try { await window.LegalGate.ouvrirGate(); }
-    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
-    _rideauSiSplashParti();
-  }
-
   // Config d'instance lue UNE fois, avant les gates (community-server-line.md §3) : gate, kiosque, connecteur et
   // découverte la partagent (js/ktaInstance.js). Délai 2 s, puis dernière config connue.
   const _instanceBoot = (window.KtaInstance && typeof window.KtaInstance.charger === "function")
@@ -1768,6 +1756,27 @@ window.proposerRedemarrageLangue = function() {
   // l'instance déclare « on » : myktamap.fr et toute instance OFF ne perdent pas une milliseconde.
   if (_instanceBoot) _appliquerConnexionServeur(_instanceBoot.config, _instanceBoot.repondu);
   const _scBoot = _instanceBoot && _instanceBoot.config ? _instanceBoot.config.serverConnection : null;
+
+  // Conditions d'utilisation : bloquantes, sautées en incognito (flag non persistant) ; l'étape légale de
+  // FirstRunFlow reste en filet. Deux moments (décision produit) :
+  // - installation community (pas reliée à un serveur) dont l'écran d'entrée va s'afficher : APRÈS « Entrer » (ou
+  //   le code juste), avant la descente — un visiteur de passage n'est pas arrêté par une fenêtre ;
+  // - sinon (installation reliée : pro, gate déléguée ; accès déjà ouvert) : EN PREMIER, avant toute saisie.
+  // 🩸 Avant une gate, au-dessus d'elle : lancée après, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate
+  // (z 100100) ; après « Entrer », elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
+  const _legalAFaire = !!(window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
+    && !window.LegalGate.isAccepted() && !(window.IncognitoMode && window.IncognitoMode.active));
+  const _legalApresEntree = _legalAFaire && !(_scBoot && _scBoot.state === "on")
+    && !!(window.UnlockGate && !window.UnlockGate.isUnlocked());
+  const _ouvrirLegal = async function(auDessus) {
+    try { await window.LegalGate.ouvrirGate({ auDessus: auDessus }); }
+    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  };
+  if (_legalAFaire && !_legalApresEntree) {
+    await _splashAvantGate();
+    await _ouvrirLegal(false);
+    _rideauSiSplashParti();
+  }
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
     // Licence serveur déjà connue : 2 s. Sinon (1er lancement, après réinitialisation) : jusqu'à 15 s, on repart dès
     // mktm:license-checked, trouvée ou non.
@@ -1875,9 +1884,16 @@ window.proposerRedemarrageLangue = function() {
       } catch(e) { /* swallow */ }
     } else {
       console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
-      await window.UnlockGate.ouvrirGate();
+      await window.UnlockGate.ouvrirGate(_legalApresEntree ? { avantEntree: function() { return _ouvrirLegal(true); } }
+        : undefined);
       console.log("[Main] Gate auth franchie → init normale");
     }
+  }
+  // Filet des conditions différées : carte de repli (sans avantEntree) ou licence qui a contourné la gate.
+  if (_legalApresEntree && !window.LegalGate.isAccepted()) {
+    await _splashAvantGate();
+    await _ouvrirLegal(false);
+    _rideauSiSplashParti();
   }
 
   // PIN/biométrie optionnel, APRÈS l'UnlockGate (js/pinLock.js). Désactivé ou déjà déverrouillé cette session →

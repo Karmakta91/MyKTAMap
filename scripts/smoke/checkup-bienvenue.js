@@ -6,7 +6,7 @@
 // Écran Bienvenue avec ou sans mot de passe d'instance (js/bienvenue.js, css/bienvenue.css, js/unlockGate.js) et
 // parcours d'arrivée (js/firstRunFlow.js), au téléphone 390×844 et au PC 1366×768 :
 //   1. premier lancement : l'écran passe au-dessus du splash, polices de l'écran chargées,
-//      cibles ≥ 44 px, aucun débordement horizontal ; toute première ouverture : conditions d'utilisation d'abord ;
+//      cibles ≥ 44 px, aucun débordement horizontal ; toute première ouverture : conditions d'utilisation après « Entrer », avant la descente ;
 //   2. défilement : galerie pilotée (fil doré dessiné, tête de suivi en cours, repère atteint avec flash) ;
 //      « Découvrir » amène la 1re station ; changement de langue (EN) redessine l'écran ;
 //   3. « Entrer » : descente du tracker puis l'app (accueil) ; ni visite guidée ni proposition de PIN ; accès
@@ -290,17 +290,42 @@ async function parcours(nav, vue) {
 
 // ── 1 bis : toute première ouverture (conditions pas encore acceptées) ──
 async function premiereOuverture(nav) {
-  console.log("\n— toute première ouverture : conditions d'utilisation, puis Bienvenue (390×844) —");
+  console.log("\n— toute première ouverture : Bienvenue, conditions après « Entrer », puis descente (390×844) —");
   const { ctx, page, journal } = await nouvellePage(nav, VUES[0], { sansConditions: true });
   await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
-  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 20000);
-  const avant = await page.evaluate(function () { return !!document.getElementById("kta-unlock-overlay"); });
-  verifier(!avant, "écran Bienvenue pas encore monté pendant les conditions");
+  await attendre(page, ecranBienvenue, 20000);
+  await page.waitForTimeout(600);
+  const avant = await page.evaluate(function () { return !!document.getElementById("kta-legal-cb"); });
+  verifier(!avant, "pas de conditions d'utilisation avant « Entrer » (visiteur de passage)");
+  await page.click('.kta-bv-hero [data-bv="entrer"]');
+  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 5000)
+    .then(function () { ok("conditions ouvertes au clic sur « Entrer »"); })
+    .catch(function () { pb("conditions absentes après « Entrer »"); });
+  const dessus = await page.evaluate(function () {
+    const g = document.getElementById("kta-legal-gate-overlay"), o = document.getElementById("kta-unlock-overlay");
+    const r = document.getElementById("kta-legal-accept").getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { z: parseInt(getComputedStyle(g).zIndex, 10), zo: parseInt(getComputedStyle(o).zIndex, 10),
+      cliquable: !!(el && g.contains(el)), descend: o.classList.contains("kta-bv-descend"),
+      memo: localStorage.getItem("myktamap_unlock_v1") };
+  });
+  verifier(dessus.z > dessus.zo && dessus.cliquable, "conditions au-dessus de l'écran (z " + dessus.z + " > " + dessus.zo +
+    "), bouton cliquable");
+  verifier(!dessus.descend && !dessus.memo, "pas de descente ni d'accès mémorisé avant l'acceptation");
   await page.check("#kta-legal-cb");
   await page.click("#kta-legal-accept");
-  await attendre(page, ecranBienvenue, 15000)
-    .then(function () { ok("écran Bienvenue après les conditions acceptées"); })
-    .catch(function () { pb("écran Bienvenue absent après les conditions"); });
+  await page.waitForTimeout(700);
+  const apres = await page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    return { descend: !!(o && o.classList.contains("kta-bv-descend")), memo: localStorage.getItem("myktamap_unlock_v1") };
+  });
+  verifier(apres.descend && apres.memo === "libre-v1", "acceptées : descente puis accès retenu");
+  await attendre(page, function () { return !document.getElementById("kta-unlock-overlay"); }, 8000)
+    .then(function () { ok("première ouverture : l'app s'ouvre"); })
+    .catch(function () { pb("première ouverture : l'écran reste"); });
+  await page.waitForTimeout(1500);
+  const filet = await page.evaluate(function () { return !!document.getElementById("kta-legal-cb"); });
+  verifier(!filet, "conditions demandées une seule fois");
   await verifierConsole(journal, "première ouverture");
   await ctx.close();
 }
@@ -539,15 +564,23 @@ async function instanceProtegee(nav, vue) {
   await ctx.close();
 }
 
-// Code juste sans rien demander, au 1er lancement : visite proposée, pas imposée (comme sans mot de passe).
+// Toute première ouverture, code juste sans rien demander : conditions après le code, puis visite proposée, pas
+// imposée (comme sans mot de passe).
 async function protegeeSansVisite(nav) {
-  console.log("\n— instance protégée : code juste sans demander la visite (390×844) —");
-  const { ctx, page, journal } = await nouvellePage(nav, VUES[0], { route: routes(HASH) });
+  console.log("\n— instance protégée, 1re ouverture : conditions après le code, sans visite (390×844) —");
+  const { ctx, page, journal } = await nouvellePage(nav, VUES[0], { route: routes(HASH), sansConditions: true });
   await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
   await attendre(page, ecranProtege, 20000);
   await page.waitForTimeout(600);
+  verifier(!(await page.evaluate(function () { return !!document.getElementById("kta-legal-cb"); })),
+    "protégée : pas de conditions avant le code");
   await page.fill(".kta-bv-code-champ", CODE);
   await page.press(".kta-bv-code-champ", "Enter");
+  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 5000)
+    .then(function () { ok("protégée : conditions ouvertes après le code juste"); })
+    .catch(function () { pb("protégée : conditions absentes après le code juste"); });
+  await page.check("#kta-legal-cb");
+  await page.click("#kta-legal-accept");
   await apresEntree(page, false, "code juste sans visite");
   await verifierConsole(journal, "code juste sans visite");
   await ctx.close();
