@@ -118,8 +118,11 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-contacts a:hover { text-decoration: underline; }
 
 .kta-bv-ville { display: block; width: 100%; height: var(--h-ville); margin-top: auto; flex: none; }
+/* 🩸 Téléphone : le halo de la lune de la scène dépasse le haut du dessin ; coupé net, il dessinait une démarcation.
+   La scène y est calée sur la hauteur (rien d'autre ne déborde) ; au-delà de 900 px, la lune est hors scène. */
+@media (max-width: 899px) { .kta-bv-ville { overflow: visible; } }
 .kta-bv-lune-haut { display: none; overflow: visible; }
-.kta-bv-reseau .kta-bv-masque { visibility: hidden; }
+.kta-bv-reseau .kta-bv-masque, .kta-bv-lampes .kta-bv-masque { visibility: hidden; }
 
 /* Entrée de surface : la galerie part de la rue, à 270/630 de la hauteur de la ville au-dessus du bas de l'en-tête
    (scène de 6000 × 630 rognée en largeur, calée en bas). */

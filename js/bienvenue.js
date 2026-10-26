@@ -219,17 +219,26 @@
     ' L4 32" stroke="#3b4562" stroke-width="2.5"/><path d="M20 14 L180 160 M18 22 L180 170" stroke="#4a5677" stroke-w' +
     'idth="1.3" opacity=".8"/>';
 
-  // Lampadaires du bloc (répétés avec lui) : halo chaud sous la lanterne, sans animation.
-  const LAMPADAIRES =
-    '<circle cx="188" cy="193" r="30" fill="url(#kta-bv-lampe)"/><path d="M175 250 V184 Q175 176 183 176 H188" fill="' +
-    'none" stroke="#3a4560" stroke-width="3"/><path d="M171 250 H179" stroke="#3a4560" stroke-width="4"/><path d="M18' +
-    '2 176 H194 L191 183 H185 Z" fill="#3a4560"/><path d="M185 183 H191 L190 186 H186 Z" fill="#ffd98a"/><circle cx="' +
-    '653" cy="193" r="30" fill="url(#kta-bv-lampe)"/><path d="M640 250 V184 Q640 176 648 176 H653" fill="none" stroke' +
-    '="#3a4560" stroke-width="3"/><path d="M636 250 H644" stroke="#3a4560" stroke-width="4"/><path d="M647 176 H659 L' +
-    '656 183 H650 Z" fill="#3a4560"/><path d="M650 183 H656 L655 186 H651 Z" fill="#ffd98a"/><circle cx="1023" cy="19' +
-    '3" r="30" fill="url(#kta-bv-lampe)"/><path d="M1010 250 V184 Q1010 176 1018 176 H1023" fill="none" stroke="#3a45' +
-    '60" stroke-width="3"/><path d="M1006 250 H1014" stroke="#3a4560" stroke-width="4"/><path d="M1017 176 H1029 L102' +
-    '6 183 H1020 Z" fill="#3a4560"/><path d="M1020 183 H1026 L1025 186 H1021 Z" fill="#ffd98a"/>';
+  // Un lampadaire (pied en x = 0) : halo chaud sous la lanterne, sans animation.
+  const LAMPADAIRE =
+    '<circle cx="13" cy="193" r="30" fill="url(#kta-bv-lampe)"/><path d="M0 250 V184 Q0 176 8 176 H13" fill="none" st' +
+    'roke="#3a4560" stroke-width="3"/><path d="M-4 250 H4" stroke="#3a4560" stroke-width="4"/><path d="M7 176 H19 L16' +
+    ' 183 H10 Z" fill="#3a4560"/><path d="M10 183 H16 L15 186 H11 Z" fill="#ffd98a"/>';
+  // Trois par bloc, un élément chacun (retournés avec les blocs en miroir) : celui qui tombe au-dessus des spéléos
+  // du puits est masqué selon le cadrage (_mouvement > degager).
+  const LAMPES =
+    '<use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(-2225 0)"/><use href="#kta-bv-lampadair' +
+    'e" class="kta-bv-lampe" transform="translate(-1760 0)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" tran' +
+    'sform="translate(-1390 0)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(-175 0) sca' +
+    'le(-1 1)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(-640 0) scale(-1 1)"/><use h' +
+    'ref="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(-1010 0) scale(-1 1)"/><use href="#kta-bv-lam' +
+    'padaire" class="kta-bv-lampe" transform="translate(175 0)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" ' +
+    'transform="translate(640 0)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(1010 0)"/' +
+    '><use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(2225 0) scale(-1 1)"/><use href="#kta-' +
+    'bv-lampadaire" class="kta-bv-lampe" transform="translate(1760 0) scale(-1 1)"/><use href="#kta-bv-lampadaire" cl' +
+    'ass="kta-bv-lampe" transform="translate(1390 0) scale(-1 1)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe' +
+    '" transform="translate(2575 0)"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(3040 0' +
+    ')"/><use href="#kta-bv-lampadaire" class="kta-bv-lampe" transform="translate(3410 0)"/>';
 
   const RESEAU = [["jps", -2008, 322], ["jps", -808, 322], ["jps", 192, 322], ["jps", 1392, 322], ["jps", 2592, 322],
     ["jpe", -1758, 332], ["jpe", -1518, 332], ["jpe", -558, 332], ["jpe", -318, 332], ["jpe", 442, 332],
@@ -246,7 +255,7 @@
       '<path d="M0 44 L40 0" stroke="#5c5444" stroke-width="2" opacity=".55"/></pattern>' +
       '<radialGradient id="kta-bv-lampe"><stop offset="0" stop-color="#ffd98a" stop-opacity=".45"/>' +
       '<stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>' +
-      '<g id="kta-bv-bloc">' + BLOC + LAMPADAIRES + '</g></defs>' +
+      '<g id="kta-bv-bloc">' + BLOC + '</g><g id="kta-bv-lampadaire">' + LAMPADAIRE + '</g></defs>' +
       '<g class="kta-bv-lune-scene" transform="translate(-260 0)">' +
       '<circle class="kta-bv-lueur" cx="1118" cy="-40" r="119.6" fill="url(#kta-bv-halo-scene)"/>' +
       '<circle cx="1118" cy="-40" r="46" fill="#efe6cf"/>' + _crateres(CRATERES_SCENE) + '</g>' +
@@ -258,6 +267,7 @@
       '<use href="#kta-bv-bloc" transform="translate(-2400 0)"/><use href="#kta-bv-bloc" transform="scale(-1 1)"/>' +
       '<use href="#kta-bv-bloc"/><use href="#kta-bv-bloc" transform="translate(2400 0) scale(-1 1)"/>' +
       '<use href="#kta-bv-bloc" transform="translate(2400 0)"/>' +
+      '<g class="kta-bv-lampes">' + LAMPES + '</g>' +
       _pieton(520, false) + _pieton(-260, false, "kta-bv-pieton-2") + _pieton(1500, true, "kta-bv-pieton-3") +
       _pieton(140, false, "kta-bv-pieton-4") +
       _voiture(900, false) + _voiture(200, true, "kta-bv-voiture-2") + _voiture(2200, false, "kta-bv-voiture-3") +
@@ -665,6 +675,15 @@
         const r = img.getBoundingClientRect();
         img.classList.toggle("kta-bv-masque", r.left < e.right + marge && e.left - marge < r.right &&
           r.top < e.bottom + marge && e.top - marge < r.bottom);
+      });
+      // Lampadaire au-dessus des spéléos (ou du puits) : masqué, en largeur seulement (il est au-dessus d'eux).
+      const sp = ecranEl.querySelector(".kta-bv-speleos");
+      const g = Math.min(e.left, sp ? sp.getBoundingClientRect().left : e.left) - marge;
+      const d = Math.max(e.right, sp ? sp.getBoundingClientRect().right : e.right) + marge;
+      chaque(ecranEl.querySelectorAll(".kta-bv-lampe"), function(l) {
+        l.classList.remove("kta-bv-masque");
+        const r = l.getBoundingClientRect();
+        l.classList.toggle("kta-bv-masque", r.left < d && g < r.right);
       });
     }
 
