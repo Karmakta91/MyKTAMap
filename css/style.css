@@ -12578,6 +12578,8 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 }
 .kta-poi-danger[hidden] { display: none; }
 .kta-poi-danger .kta-cfg-input { margin-top: 4px; }
+/* Safari iPhone donne au champ date une largeur propre qui débordait du cadre. */
+.kta-poi-danger input[type="date"] { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
 .kta-poi-danger-aide,
 .kta-poi-danger-mention {
   margin: 6px 0 0;
