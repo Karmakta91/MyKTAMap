@@ -28,11 +28,11 @@
 
 ## Maintenant
 
-- **Train : v2.21.0 (proposé)** — v2.20.0 en prod le 24/10 ; v2.20.1 bumpée le 25/10, jamais mergée. Depuis :
+- **Train : v2.21.0** — bumpée le 26/10 (`0a57f150`) ; v2.20.0 en prod le 24/10, v2.20.1 jamais mergée. Contient :
   jonctions, photos et dangers datés, conditions v2 (**tout le monde réaccepte**), calage en projection, écran
   Bienvenue avec ou sans mot de passe, PIN plus proposé. Le community part avant le pro (front de pro.myktamap.fr).
-  `qui: KARMA · action: go du bump v2.21.0 (Claude : 3 sources + docs 4 axes), gel 48 h, porte docs/RELEASE_GATE.md,
-  merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: S`
+  `qui: KARMA · action: relire les notes de version.json, CI verte, porte docs/RELEASE_GATE.md (trempage : dérogation
+  si merge avant 48 h), merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: S`
 - **Test appareil : écran Bienvenue** — sur dev, en navigation privée, téléphone et PC : tracker dans le puits dès le
   premier défilement, sortie d'urgence 🚨, liens de documentation, puis une installation à mot de passe (champ, verrou
   après 5 codes faux, visite proposée).
