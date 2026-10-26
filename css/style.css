@@ -7402,8 +7402,13 @@ html.kta-theme-light .kta-cfg-input option {
   border: 1.5px solid rgba(244, 197, 66, 0.35) !important;
   box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15) !important;
   height: auto !important;
+  /* 🩸 vh puis dvh : Chrome mobile en navigateur (pas en PWA) compte 100vh SANS la barre d'adresse ; en 92vh la
+     boîte passait sous la barre en portrait et « J'accepte » devenait inaccessible. dvh = hauteur visible. */
   max-height: 92vh !important;
+  max-height: 92dvh !important;
 }
+/* Filet : si la boîte dépasse quand même (texte agrandi, petit écran), le fond défile jusqu'au bouton. */
+#kta-legal-gate-overlay { overflow-y: auto; }
 .kta-legal-intro {
   font-size: 14px;
   line-height: 1.55;

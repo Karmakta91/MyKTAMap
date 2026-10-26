@@ -233,8 +233,9 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
   (`docs/RELEASE_GATE.md`) lançable sans poste, depuis un téléphone ; la marche 2 (12 points sur dev, à la main)
   reste manuelle.
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
-- **`sonde-integrite.yml`** (toutes les heures, et à la main) : le code SERVI par myktamap.fr et dev.myktamap.fr est-il
-  celui du dépôt ? `scripts/release/sonde-integrite.js` lit `/deploiement.json` (commit déployé : connu du dépôt et
+- **`sonde-integrite.yml`** (toutes les heures, et à la main) : le code SERVI par myktamap.fr est-il celui du dépôt ?
+  (dev.myktamap.fr n'est plus sondé : réservé au réseau Tailscale, il répond 403 aux exécuteurs GitHub ; à la main
+  depuis le poste relié : `node scripts/release/sonde-integrite.js https://dev.myktamap.fr`.) `scripts/release/sonde-integrite.js` lit `/deploiement.json` (commit déployé : connu du dépôt et
   descendant de sa branche), puis compare l'empreinte de chaque fichier de code suivi (html, js, css, json) servi au
   contenu Git. Un écart = run en échec = e-mail. Raison : après un piratage du serveur, le chiffrement protège ce qui
   est stocké, pas une page modifiée en place — il faut le SAVOIR. Tourne hors du serveur ; limite : on ne voit que ce
