@@ -28,10 +28,16 @@
 
 ## Maintenant
 
-- **Train : v2.20.1** — v2.20.0 en prod le 24/10. Bumpée le 25/10 (`d9e82c15`) : « Tout garder hors ligne » d'un
-  dossier, avancement d'une publication, échec d'ouverture d'un plan dit à l'écran.
-  `qui: KARMA · action: CI verte ; porte docs/RELEASE_GATE.md ; merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert
-  · depuis: 21/10/2026 · taille: S`
+- **Train : v2.21.0 (proposé)** — v2.20.0 en prod le 24/10 ; v2.20.1 bumpée le 25/10, jamais mergée. Depuis :
+  jonctions, photos et dangers datés, conditions v2 (**tout le monde réaccepte**), calage en projection, écran
+  Bienvenue avec ou sans mot de passe, PIN plus proposé. Le community part avant le pro (front de pro.myktamap.fr).
+  `qui: KARMA · action: go du bump v2.21.0 (Claude : 3 sources + docs 4 axes), gel 48 h, porte docs/RELEASE_GATE.md,
+  merge-main.ps1 · fini: main mergé, etat-sites.ps1 vert · depuis: 21/10/2026 · taille: S`
+- **Test appareil : écran Bienvenue** — sur dev, en navigation privée, téléphone et PC : tracker dans le puits dès le
+  premier défilement, sortie d'urgence 🚨, liens de documentation, puis une installation à mot de passe (champ, verrou
+  après 5 codes faux, visite proposée).
+  `qui: KARMA · action: jouer les deux écrans sur dev.myktamap.fr · fini: vus conformes, ou bugs ouverts
+  · depuis: 26/10/2026 · taille: XS`
 - **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
   Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
   `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
