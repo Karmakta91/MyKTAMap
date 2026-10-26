@@ -177,6 +177,45 @@
     'M420 241 V250 M445 243 V250 M820 241 V250 M922 242 V250 M1185 242 V250"/></g>';
 
   // Icônes de l'app posées sur le réseau : puits sans échelon (jps), à échelons (jpe), puits de bouche (pb), maisons.
+  // Montagnes au loin (deux plans, neiges éternelles) : motif de 1200 unités raccordé bord à bord, répété.
+  const MONTAGNES =
+    '<path d="M0 250 L0 120 L90 70 L170 105 L260 40 L360 95 L450 60 L560 110 L650 50 L760 100 L860 70 L960 115 L1060 ' +
+    '55 L1200 120 L1200 250 Z" fill="#1c2338"/><path d="M0 250 L0 165 L120 130 L230 160 L330 120 L470 170 L600 135 L7' +
+    '20 165 L840 128 L980 168 L1100 140 L1200 165 L1200 250 Z" fill="#161c2d"/><path d="M90 70 L138 91 L124 82 L109 9' +
+    '2 L95 82 L81 92 L66 82 L52 91 Z M260 40 L320 73 L302 58 L285 75 L267 58 L250 75 L232 58 L214 73 Z M450 60 L496 8' +
+    '1 L480 72 L463 82 L446 72 L429 82 L413 72 L396 81 Z M650 50 L716 80 L698 66 L679 82 L660 66 L642 82 L624 66 L605' +
+    ' 80 Z M860 70 L900 88 L883 80 L867 89 L850 80 L833 89 L817 80 L800 88 Z M1060 55 L1133 89 L1112 74 L1090 91 L106' +
+    '8 74 L1047 91 L1025 74 L1003 89 Z" fill="#8e98b5" opacity=".85"/><path d="M330 120 L375 136 L361 129 L347 137 L3' +
+    '32 129 L318 137 L304 129 L290 136 Z M840 128 L896 144 L878 137 L860 145 L842 137 L824 145 L806 137 L788 144 Z" f' +
+    'ill="#6b7592" opacity=".8"/>';
+  // Chevalements de mine derrière les immeubles : un au bloc central (visible au téléphone, hors de la lune), un
+  // dans le trou entre les deux pignons du raccord en miroir (x = 0).
+  const CHEVALEMENT =
+    '<g fill="none" stroke="#3b4562" stroke-linecap="square"><path d="M470 250 L486 40 M530 250 L514 40 M514 40 L615 ' +
+    '250" stroke-width="5"/><path d="M473.4 205 H526.6 M476.9 160 H523.1 M480.3 115 H519.7 M483.3 75 H516.7 M486.0 40' +
+    ' H514.0 M470.0 250 L526.6 205 M530.0 250 L473.4 205 M473.4 205 L523.1 160 M526.6 205 L476.9 160 M476.9 160 L519.' +
+    '7 115 M523.1 160 L480.3 115 M480.3 115 L516.7 75 M519.7 115 L483.3 75 M483.3 75 L514.0 40 M516.7 75 L486.0 40 M5' +
+    '16.7 75 L547.7 110 M519.7 115 L571.7 160 M523.1 160 L593.4 205" stroke-width="2.5"/><path d="M476 40 H526 M476 3' +
+    '2 H526 M476 32 V40 M526 32 V40 M488 32 V40 M514 32 V40" stroke-width="3"/><path d="M478 24 H524 M478 24 V32 M501' +
+    ' 24 V32 M524 24 V32" stroke-width="1.5"/></g><circle cx="500" cy="14" r="20" fill="#121726" stroke="#4a5677" str' +
+    'oke-width="3.5"/><circle cx="500" cy="14" r="15" fill="none" stroke="#4a5677" stroke-width="1"/><path d="M505.0 ' +
+    '14.0 L517.0 14.0 M503.5 17.5 L512.0 26.0 M500.0 19.0 L500.0 31.0 M496.5 17.5 L488.0 26.0 M495.0 14.0 L483.0 14.0' +
+    ' M496.5 10.5 L488.0 2.0 M500.0 9.0 L500.0 -3.0 M503.5 10.5 L512.0 2.0" stroke="#4a5677" stroke-width="2"/><circl' +
+    'e cx="500" cy="14" r="3.5" fill="#4a5677"/><path d="M500 14 V40 M496 22 L504 32" stroke="#3b4562" stroke-width="' +
+    '2.5"/><path d="M520 14 L700 150 M518 22 L700 160" stroke="#4a5677" stroke-width="1.3" opacity=".8"/><g fill="non' +
+    'e" stroke="#3b4562" stroke-linecap="square"><path d="M-30 250 L-14 40 M30 250 L14 40 M14 40 L115 250" stroke-wid' +
+    'th="5"/><path d="M-26.6 205 H26.6 M-23.1 160 H23.1 M-19.7 115 H19.7 M-16.7 75 H16.7 M-14.0 40 H14.0 M-30.0 250 L' +
+    '26.6 205 M30.0 250 L-26.6 205 M-26.6 205 L23.1 160 M26.6 205 L-23.1 160 M-23.1 160 L19.7 115 M23.1 160 L-19.7 11' +
+    '5 M-19.7 115 L16.7 75 M19.7 115 L-16.7 75 M-16.7 75 L14.0 40 M16.7 75 L-14.0 40 M16.7 75 L47.7 110 M19.7 115 L71' +
+    '.7 160 M23.1 160 L93.4 205" stroke-width="2.5"/><path d="M-24 40 H26 M-24 32 H26 M-24 32 V40 M26 32 V40 M-12 32 ' +
+    'V40 M14 32 V40" stroke-width="3"/><path d="M-22 24 H24 M-22 24 V32 M1 24 V32 M24 24 V32" stroke-width="1.5"/></g' +
+    '><circle cx="0" cy="14" r="20" fill="#121726" stroke="#4a5677" stroke-width="3.5"/><circle cx="0" cy="14" r="15"' +
+    ' fill="none" stroke="#4a5677" stroke-width="1"/><path d="M5.0 14.0 L17.0 14.0 M3.5 17.5 L12.0 26.0 M0.0 19.0 L0.' +
+    '0 31.0 M-3.5 17.5 L-12.0 26.0 M-5.0 14.0 L-17.0 14.0 M-3.5 10.5 L-12.0 2.0 M-0.0 9.0 L-0.0 -3.0 M3.5 10.5 L12.0 ' +
+    '2.0" stroke="#4a5677" stroke-width="2"/><circle cx="0" cy="14" r="3.5" fill="#4a5677"/><path d="M0 14 V40 M-4 22' +
+    ' L4 32" stroke="#3b4562" stroke-width="2.5"/><path d="M20 14 L180 160 M18 22 L180 170" stroke="#4a5677" stroke-w' +
+    'idth="1.3" opacity=".8"/>';
+
   const RESEAU = [["jps", -2008, 322], ["jps", -808, 322], ["jps", 192, 322], ["jps", 1392, 322], ["jps", 2592, 322],
     ["jpe", -1758, 332], ["jpe", -1518, 332], ["jpe", -558, 332], ["jpe", -318, 332], ["jpe", 442, 332],
     ["jpe", 682, 332], ["jpe", 1642, 332], ["jpe", 1882, 332], ["jpe", 2842, 332], ["jpe", 3082, 332],
@@ -195,6 +234,10 @@
       '<circle class="kta-bv-lueur" cx="1118" cy="-40" r="119.6" fill="url(#kta-bv-halo-scene)"/>' +
       '<circle cx="1118" cy="-40" r="46" fill="#efe6cf"/>' + _crateres(CRATERES_SCENE) + '</g>' +
       '<g class="kta-bv-lune-scene" transform="translate(640 -38)">' + _oiseaux("kta-bv-vol") + '</g>' +
+      '<g id="kta-bv-montagnes">' + MONTAGNES + '</g>' +
+      '<use href="#kta-bv-montagnes" transform="translate(-2400 0)"/><use href="#kta-bv-montagnes" transform="translate(-1200 0)"/>' +
+      '<use href="#kta-bv-montagnes" transform="translate(1200 0)"/><use href="#kta-bv-montagnes" transform="translate(2400 0)"/>' +
+      CHEVALEMENT +
       '<use href="#kta-bv-bloc" transform="translate(-2400 0)"/><use href="#kta-bv-bloc" transform="scale(-1 1)"/>' +
       '<use href="#kta-bv-bloc"/><use href="#kta-bv-bloc" transform="translate(2400 0) scale(-1 1)"/>' +
       '<use href="#kta-bv-bloc" transform="translate(2400 0)"/>' +
