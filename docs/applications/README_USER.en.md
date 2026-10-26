@@ -137,7 +137,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 ### 👋 First launch
 
-After the start screen and the terms of use, a short **Welcome** presentation scrolls by: what the app does, how it finds your way without GPS, why nothing leaves your device. Tap **Enter** (at the top or at the bottom) to reach the home screen, or **Discover** to scroll through it. At the bottom, **Discover the app in 1 minute** opens the guided tour as you enter; otherwise it stays available in **📖 Documentation**. This presentation only shows once per device (and again after “💥 Reset everything”). The **🔐 local access code** is not offered at start-up: turn it on if you wish from **⚙️ Configuration** (“🔭 Going further”).
+After the start screen and the terms of use, a short **Welcome** presentation scrolls by: what the app does, how it finds your way without GPS, why nothing leaves your device. Tap **Enter** (at the top or at the bottom) to reach the home screen, or **Discover** to scroll through it. At the bottom, **Discover the app in 1 minute** opens the guided tour as you enter; otherwise it stays available in **📖 Documentation**. This presentation only shows once per device (and again after “💥 Reset everything”). On a private installation (club, association), the same presentation has an **Access code** field at the top: you can read everything without the code, but you only get in with it; ask the person who runs the installation. After 5 wrong codes, the field locks for a while (10 min, then longer) and shows the time left. The **🔐 local access code** is not offered at start-up: turn it on if you wish from **⚙️ Configuration** (“🔭 Going further”).
 
 ### 📱 Install the application on Mobile (iPhone/Android)
 
@@ -1262,7 +1262,7 @@ Tap the active button (in green) again to turn it off.
 
 ### 🔑 The password is refused
 
-On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is asked. Only an installation with its own password (association, club) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is asked. Only an installation with its own password (association, club) asks for one, in the **Access code** field at the top of the presentation: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 

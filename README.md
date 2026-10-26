@@ -227,7 +227,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | Module | Rôle |
 |---|---|
 | `unlockGate.js` | Barrière d'accès communautaire |
-| `bienvenue.js` | Écran Bienvenue (instance sans mot de passe), chargé à la demande par `unlockGate.js` |
+| `bienvenue.js` | Écran Bienvenue (avec champ « Code d'accès » si l'instance a un mot de passe), chargé à la demande par `unlockGate.js` |
 | `pinLock.js` | PIN local 4-6 + biométrie (Face ID / Touch ID) |
 | `config.js` | Chargement `plan-config.json` + état global du plan |
 

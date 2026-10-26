@@ -137,7 +137,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 ### 👋 Premier lancement
 
-Après l'écran de démarrage et les conditions d'utilisation, une courte présentation **Bienvenue** défile : ce que fait l'app, comment elle te repère sans GPS, pourquoi rien ne sort de ton appareil. Touche **Entrer** (en haut ou en bas) pour arriver sur l'accueil, ou **Découvrir** pour la parcourir. En bas, **Découvrir l'app en 1 minute** ouvre la visite guidée en entrant ; sinon elle reste à ta disposition dans **📖 Documentation**. Cette présentation ne s'affiche qu'une fois par appareil (et de nouveau après « 💥 Tout réinitialiser »). Le **🔐 code d'accès local** n'est pas proposé au démarrage : active-le si tu veux depuis **⚙️ Configuration** (« 🔭 Pour aller plus loin »).
+Après l'écran de démarrage et les conditions d'utilisation, une courte présentation **Bienvenue** défile : ce que fait l'app, comment elle te repère sans GPS, pourquoi rien ne sort de ton appareil. Touche **Entrer** (en haut ou en bas) pour arriver sur l'accueil, ou **Découvrir** pour la parcourir. En bas, **Découvrir l'app en 1 minute** ouvre la visite guidée en entrant ; sinon elle reste à ta disposition dans **📖 Documentation**. Cette présentation ne s'affiche qu'une fois par appareil (et de nouveau après « 💥 Tout réinitialiser »). Sur une installation privée (club, association), la même présentation porte en haut un champ **Code d'accès** : tu peux tout lire sans code, mais tu n'entres qu'avec ; demande-le à la personne qui gère l'installation. Après 5 codes faux, le champ se bloque un moment (10 min, puis plus longtemps) et affiche le temps restant. Le **🔐 code d'accès local** n'est pas proposé au démarrage : active-le si tu veux depuis **⚙️ Configuration** (« 🔭 Pour aller plus loin »).
 
 ### 📱 Installer l'application sur Mobile (iPhone/Android)
 
@@ -1263,7 +1263,7 @@ Touche à nouveau le bouton actif (en vert) pour le couper.
 
 ### 🔑 Le mot de passe est refusé
 
-Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
+Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club) en demande un, dans le champ **Code d'accès** en haut de la présentation : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
 
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 

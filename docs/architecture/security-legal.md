@@ -2,7 +2,8 @@
 
 > 🔑 **Le mot de passe d'instance, quand il existe, est le SEUL** (`data/index.json > config.accessHash`).
 > Il n'y a **plus de code communautaire codé en dur** depuis le 04/10/2026 : sans mot de passe d'instance,
-> l'écran d'entrée est la présentation « Bienvenue » et son bouton « Entrer » (§36).
+> l'écran d'entrée est la présentation « Bienvenue » et son bouton « Entrer » ; avec, la même présentation
+> porte un champ « Code d'accès » (§36).
 >
 > 🕵️ **v1.90.14 — Incognito hérite du déverrouillage d'instance.** Le shim incognito relit du disque une
 > `READ_DISK_WHITELIST` (les écritures restent shimées) pour ne pas re-demander le mot de passe à chaque
@@ -70,22 +71,26 @@
 
 ---
 
-### 36. Unlock Gate — écran d'entrée (mot de passe d'instance ou « Bienvenue »)
+### 36. Unlock Gate — écran d'entrée (présentation « Bienvenue », avec ou sans code d'accès)
 
 Module `js/unlockGate.js` : un écran entre la fin du splash et le démarrage normal, montré au premier
 lancement et après un reset complet (le choix est mémorisé en localStorage). **Plus aucun mot de passe
 codé en dur** depuis le 04/10/2026 (décision KARMA) : l'ancien code communautaire, son hash et son
 affichage en clair dans la fenêtre de reset sont supprimés.
 
-#### 36.1 Deux écrans, selon l'instance
+#### 36.1 Un écran, deux modes selon l'instance
 
 Le mode est décidé **avant** de dessiner (`_monterGate` lit `_hashInstance()`, config d'instance déjà
-chargée par `ktaInstance.js`) :
+chargée par `ktaInstance.js`). Les deux modes montrent la même présentation « Bienvenue » (§36.8) :
 
-| Instance | Écran | Ce qui ouvre |
+| Instance | En-tête de l'écran | Ce qui ouvre |
 |---|---|---|
-| publie `index.json > config.accessHash` (posé par ConfAdmin : installation privée) | 🗝️ champ mot de passe, **sans** bloc licence ni contacts de l'auteur | **seul** le mot de passe de l'instance |
-| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 présentation « Bienvenue » qui défile (§36.8) : **Entrer** | le bouton (mémorise `libre-v1`) ou une licence valide |
+| publie `index.json > config.accessHash` (posé par ConfAdmin : installation privée) | 🗝️ champ **« Code d'accès »** + **Entrer**, **Découvrir**, puis « demande le code à la personne qui gère cette installation » (`gate.info`) ; **ni** contacts de l'auteur **ni** pastille « Licence pro » (haut et pied) | **seul** le mot de passe de l'instance |
+| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 **Entrer**, **Découvrir**, pastille « Licence pro » ; contacts de l'auteur au pied | le bouton (mémorise `libre-v1`) ou une licence valide |
+
+**Repli** : si `css/bienvenue.css` ou `js/bienvenue.js` ne se chargent pas (cache incomplet, 404, plus de 4 s),
+la **carte centrée** prend le relais dans le même mode (`_monterGateMode(hash, true)`) : champ mot de passe
+(sans contacts) ou bouton « Entrer ». Jamais d'installation bloquée, jamais d'écran vide.
 
 ⚠️ **Niveau de sécurité inchangé** : barrière **sociale**, jamais une authentification. Le hash d'instance
 est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modifie en F12.
@@ -103,21 +108,34 @@ est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modif
 - `revaliderInstance(hash, indexRepondu)` (appelée par `main.js` avant la gate, **seulement si l'index a
   répondu**) : l'instance impose un mot de passe → tout autre accès mémorisé (libre, ancien code, ancien
   mot de passe) est **révoqué** ; l'instance retire son mot de passe → l'accès qui en venait est révoqué
-  (l'écran Bienvenue revient alors).
+  (l'écran revient alors sans champ).
 
 Mesuré le 04/10/2026 (Edge, index simulé) : ancien code sans mot de passe d'instance → ouvert ; ancien
 code + instance au **même** mot de passe → ouvert, mémoire posée ; ancien code ou accès libre + instance
-à un **autre** mot de passe → écran mot de passe ; mot de passe d'instance retiré → écran libre.
+à un **autre** mot de passe → écran avec champ ; mot de passe d'instance retiré → écran sans champ.
 
-#### 36.3 5 tentatives + verrou TEMPORISÉ (écran mot de passe seulement ; M2, décision KARMA 13/09/2026)
+#### 36.3 Saisie, 5 tentatives + verrou TEMPORISÉ (mode avec mot de passe ; M2, décision KARMA 13/09/2026)
+
+Une seule logique de saisie, `_essayerCode(valeur)` → `{ etat: ok | vide | crypto | faux | verrou, reste?, err? }`,
+appelée par l'écran Bienvenue (via `code.essayer`) comme par la carte de repli (`_onSubmit`) ; `_etatCode()` dit à
+l'écran s'il est verrouillé, le temps restant mis en forme et les essais restants. Un code juste mémorise le hash
+(§36.2), efface compteur et verrou, et pose `_codeAccepte`.
 
 Compteur `localStorage["myktamap_unlock_attempts"]`, verrou `localStorage["myktamap_unlock_lock_v1"]` =
-`{ until, start, level }`. Tentatives 1-4 : « ❌ Code incorrect. Tentatives restantes : N ». Tentative 5 :
-verrou temporisé au palier suivant — 10 min → 1 h → 6 h → 24 h (`LOCK_DELAYS_MS`), compteur remis à 0.
-À l'expiration, la gate est **remontée** (la Promise de `ouvrirGate()` survit) et un mot de passe juste la
-résout. **Pas de bouton reset** depuis le verrou. Base de temps : horloge de l'appareil (accepté : le verrou
+`{ until, start, level }`. Tentatives 1-4 : « ❌ Code incorrect. Tentatives restantes : N », à côté du champ.
+Tentative 5 : verrou temporisé au palier suivant — 10 min → 1 h → 6 h → 24 h (`LOCK_DELAYS_MS`), compteur remis
+à 0. Un essai pendant le verrou est refusé avant tout calcul.
+
+- **Sur l'écran Bienvenue** : le verrou s'affiche **dans la zone du champ** — champ et « Entrer » désactivés, le
+  compte à rebours à la place du texte saisi et dans le message dessous (`gate.lockout.*`), revérifié chaque
+  seconde ; la présentation reste lisible. À l'échéance, le champ revient sur le même écran ; la Promise de
+  `ouvrirGate()` attend toujours.
+- **Sur la carte de repli** : champ caché, compte à rebours, puis la gate est **remontée** (`_monterGate`, la
+  Promise survit).
+
+**Pas de bouton reset** depuis le verrou. Base de temps : horloge de l'appareil (accepté : le verrou
 ralentit un tiers qui a le téléphone en main ; le verrou **définitif** tuait l'app de son propriétaire sous
-terre — audit ergonomie 13/09/2026, B7). L'écran Bienvenue n'a ni tentatives ni verrou.
+terre — audit ergonomie 13/09/2026, B7). Le mode sans mot de passe n'a ni tentatives ni verrou.
 
 #### 36.4 Position dans le boot (`main.js > initApp`)
 
@@ -125,6 +143,7 @@ Gate légale → config d'instance (`KtaInstance.charger`) → `revaliderInstanc
 → modules greffés / gate déléguée (chantier 3 ; une gate déléguée en échec n'ouvre **jamais** celle-ci) →
 `if (!_gateDelegueeOk && UnlockGate && !UnlockGate.isUnlocked()) await ouvrirGate()` → PIN local.
 Une licence pro (serveur ou locale) contourne l'écran **sauf** sur une instance qui publie un mot de passe.
+Une installation pro à gate déléguée ne passe pas par cet écran.
 
 #### 36.5 Fenêtre « 💥 Tout réinitialiser »
 
@@ -145,33 +164,42 @@ jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (l'écran 
   l'historique Git — il ne protège plus rien).
 - **Ne JAMAIS** réintroduire un bouton reset depuis le verrou.
 - **Ne PAS** écrire dans `localStorage` depuis `isUnlocked()` (appelée avant la revalidation).
-- **Ne JAMAIS** monter l'écran Bienvenue quand l'instance publie un mot de passe, ni y mettre un champ de saisie.
+- **Ne JAMAIS** mémoriser `libre-v1` depuis l'écran d'une instance protégée, ni résoudre la gate sans code juste :
+  son `surEntree` ne fait que noter la visite, son `surFin` ne résout que si `_codeAccepte` (sinon l'écran revient).
+- **Ne PAS** dupliquer la vérification dans `bienvenue.js` : il reçoit `code.essayer` / `code.etat`, rien d'autre.
 - Garde-fou : `scripts/check-gate-instance.js` (matrice `isUnlocked`, décision du submit, révocations,
-  écrans Bienvenue / mot de passe et repli, ordre du boot) · checkup navigateur
-  `scripts/smoke/checkup-bienvenue.js`.
+  écran Bienvenue des deux modes et repli, ordre du boot) · checkup navigateur
+  `scripts/smoke/checkup-bienvenue.js` (§6 : instance protégée, verrou, repli).
 
-#### 36.8 Écran « Bienvenue » (instance sans mot de passe)
+#### 36.8 Écran « Bienvenue »
 
-Une petite présentation qui défile, dans le style de la page de présentation pro, avec **entrée directe** (décision
-KARMA). Montrée **une fois par appareil**, après le splash (inchangé) et la gate légale : la clé `libre-v1` est la
-même qu'avant, un appareil déjà entré ne la revoit jamais.
+Une petite présentation qui défile, dans le style de la page de présentation pro (décision KARMA). Montrée
+**une fois par appareil**, après le splash (inchangé) et la gate légale : un appareil déjà entré ne la revoit jamais.
 
 - **Chargement à la demande** : `unlockGate.js > _chargerBienvenue` ajoute `css/bienvenue.css` et `js/bienvenue.js`
-  (`window.KtaBienvenue.ouvrir({ surEntree, surFin })`) ; les polices Montserrat 400/600/800 et Permanent Marker
-  (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés (`sw.js`).
-  Fichier absent ou trop lent (4 s) → **carte « Entrer » de repli** (l'ancienne carte libre), jamais d'écran vide.
+  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code? })`) ; les polices Montserrat 400/600/800 et Permanent
+  Marker (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés
+  (`sw.js`). Fichier absent ou trop lent (4 s) → carte de repli (§36.1).
 - **Contenu** : accroche, quatre stations (plan dans la poche · se repérer sans GPS, Mode Secours avec son badge
   « exploratoire » · rien ne sort de l'appareil · échanger avec soin), sortie « Prêt à descendre ? » ; ville vivante,
-  « réseau fictif », icônes réelles de `icon/` ; contacts de l'auteur (`gate.contact`, emojis) ; sélecteur de langue
-  de l'app (redessine l'écran). Textes `bienvenue.*` (fr / en / es).
+  « réseau fictif », icônes réelles de `icon/` ; sélecteur de langue de l'app (redessine l'écran). Contacts de
+  l'auteur (`gate.contact`) et pastille pro : mode sans mot de passe seulement. Textes `bienvenue.*`, `gate.*`
+  (fr / en / es).
 - **Mouvement** (moteur de la page de présentation, adapté à un overlay qui défile en interne) : le fil doré de
   chaque galerie se dessine sur la longueur parcourue, la tête de suivi (`icon/iconetrack.png`) le suit et tourne aux
   coudes, chaque repère passe « atteint » avec un flash. **Mouvement réduit** : état final statique, entrée immédiate.
-- **« Entrer »** (en haut et en bas) : l'accès est mémorisé **au clic** (`_memoriserAccesLibre`), le texte s'efface,
-  le tracker descend le puits, fondu (≈ 2,7 s ; fondu seul depuis le bas), puis la suite habituelle du boot.
-  **« Découvrir »** fait défiler jusqu'à la 1re station. **« Découvrir l'app en 1 minute »** entre de la même façon
-  et demande la visite guidée (§87.1).
-- **Thème** : toujours sombre (jetons locaux `--bv-*`) : au premier lancement, aucun thème n'est choisi.
+- **Sans mot de passe — « Entrer »** (en haut et en bas) : l'accès est mémorisé **au clic** (`_memoriserAccesLibre`,
+  visite guidée marquée vue), le texte s'efface, le tracker descend le puits, fondu (≈ 2,7 s ; fondu seul depuis le
+  bas), puis la suite habituelle du boot. **« Découvrir l'app en 1 minute »** entre de la même façon et demande la
+  visite guidée (§87.1).
+- **Avec mot de passe** : tout se lit sans code. Le champ est dans l'en-tête (formulaire, touche Entrée) ; à
+  l'ouverture le focus reste sur l'écran (pas de clavier virtuel imposé). « Entrer » du bas et « Découvrir l'app en
+  1 minute » **remontent au champ** et lui donnent le focus (la visite est alors demandée pour l'entrée). Code faux :
+  message à côté du champ (`gate.err.*`), jamais de popup. Code juste : la descente part, puis le boot. Visite
+  guidée inchangée : d'office au 1er lancement (rien ne la marque vue), ou demandée sur l'écran.
+- **« Découvrir »** fait défiler jusqu'à la 1re station.
+- **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
+  aucun thème n'est choisi.
 
 ---
 
@@ -1343,10 +1371,10 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
 3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Visite guidée** (`Tutorial.ouvrir(onClose)`).
 
-**Visite guidée proposée, pas imposée** (décision KARMA) : l'écran Bienvenue la marque vue en entrant
+**Visite guidée proposée, pas imposée** (décision KARMA) : l'écran Bienvenue sans mot de passe la marque vue en entrant
 (`Tutorial.markAsSeen`) ; elle ne s'ouvre que si elle y a été demandée (`UnlockGate.visiteDemandee()`), ou d'office au
-1er lancement d'une instance qui ne passe pas par cet écran (mot de passe d'instance, gate déléguée, licence qui
-contourne la gate). Elle reste lançable depuis 📖 Documentation.
+1er lancement d'une instance où rien ne l'a marquée vue (mot de passe d'instance : l'écran ne la marque pas ; gate
+déléguée ; licence qui contourne la gate). Elle reste lançable depuis 📖 Documentation.
 
 **Le PIN n'est plus proposé au lancement**, pour personne (décision KARMA) : il s'active dans ⚙️ Configuration →
 🔐 Code d'accès local (§43). La clé `myktamap_pin_proposal_done_v1` des appareils existants n'est plus lue.
