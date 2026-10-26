@@ -6066,6 +6066,7 @@
   "bienvenue.sortie.intro": "Carga tu primer plano desde la pantalla de inicio, o recorre antes la interfaz.",
   "bienvenue.sortie.visite": "Descubrir la app en 1 minuto",
   "bienvenue.pied": "© Flavien VIDAL (KARMA) · Licencia CC BY-NC-SA 4.0, uso no comercial",
+  "bienvenue.pied.prive": "Instalación privada: el código de acceso se pide a la persona que la gestiona.",
   "bienvenue.github": "Código fuente en GitHub",
   "bienvenue.urgence": "Salida de emergencia: volver al principio de la página"
 }

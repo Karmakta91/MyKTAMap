@@ -16,7 +16,7 @@
 //   6. instance AVEC mot de passe (accessHash injecté dans l'index), téléphone et PC : présentation avec champ
 //      « Code d'accès » en haut, ni contacts ni pastille pro, lisible sans code ; « Entrer » du bas et la visite
 //      remontent au champ ; code faux → message à côté du champ ; 5 échecs (téléphone) → verrou dans la zone du
-//      champ, présentation lisible, champ rendu à l'échéance ; code juste → descente puis l'app, visite d'office ;
+//      champ, présentation lisible, champ rendu à l'échéance ; code juste → descente puis l'app, visite proposée (pas d'office) ;
 //      visite demandée avant le code → ouverte après ; repli (css/bienvenue.css bloquée) : carte centrée avec champ,
 //      et carte « Entrer » sans mot de passe ;
 //   7. console : aucune erreur (hors bruit nominal : sondes de licence, de version).
@@ -383,9 +383,11 @@ async function apresEntree(page, visiteAttendue, quoi) {
   await page.waitForTimeout(2500);
   const etat = await page.evaluate(function () {
     const lo = document.getElementById("planLoaderOverlay");
-    return { accueil: !!(lo && lo.style.display === "flex"), pin: !!document.getElementById("kta-pin-proposal-overlay") };
+    return { accueil: !!(lo && lo.style.display === "flex"), pin: !!document.getElementById("kta-pin-proposal-overlay"),
+      tutoriel: !!document.getElementById("kta-tutorial-modal") };
   });
   verifier(etat.accueil, quoi + " : l'accueil s'affiche");
+  if (!visiteAttendue) verifier(!etat.tutoriel, quoi + " : visite guidée NON imposée");
   verifier(!etat.pin, quoi + " : PIN non proposé");
 }
 
@@ -417,7 +419,8 @@ async function instanceProtegee(nav, vue) {
       tailles: tailles,
       debord: Math.max(o.scrollWidth - o.clientWidth, document.documentElement.scrollWidth - window.innerWidth),
       ancienneCarte: !!o.querySelector(".kta-unlock-box"),
-      focus: document.activeElement === o
+      focus: document.activeElement === o ? "ecran"
+        : (document.activeElement && document.activeElement.classList.contains("kta-bv-code-champ") ? "champ" : "autre")
     };
   });
   verifier(etat.champHaut && etat.submit && !etat.entrerDirect && etat.decouvrir,
@@ -427,13 +430,14 @@ async function instanceProtegee(nav, vue) {
   verifier(etat.basEntrer && etat.visite, "« Entrer » et la visite présents en bas");
   verifier(etat.contacts === 0 && etat.pastille === 0, "ni contacts de l'auteur ni pastille « Licence pro » (haut et pied)",
     "contacts " + etat.contacts + ", pastille " + etat.pastille);
-  verifier(/personne qui gère/.test(etat.noteHaut) && /personne qui gère/.test(etat.notePied),
-    "à qui demander le code : dit en haut et au pied");
+  verifier(/personne qui gère/.test(etat.noteHaut) && /personne qui la gère/.test(etat.notePied) &&
+    etat.notePied.length < etat.noteHaut.length, "à qui demander le code : en haut, et en court au pied");
   verifier(etat.credits, "pied : librairies et signature présentes");
   const petites = etat.tailles.filter(function (x) { return x.h < 44 || x.w < 44; });
   verifier(!petites.length, "cibles ≥ 44 px (" + etat.tailles.length + " vérifiées)", "cibles < 44 px : " + JSON.stringify(petites));
   verifier(etat.debord <= 0, "aucun débordement horizontal", "débordement : " + etat.debord);
-  verifier(etat.focus, "focus sur l'écran, pas sur le champ (pas de clavier imposé)");
+  if (vue.isMobile) verifier(etat.focus === "ecran", "téléphone : focus sur l'écran, pas sur le champ (pas de clavier imposé)");
+  else verifier(etat.focus === "champ", "PC : focus sur le champ du code (le code se tape directement)");
   verifier(journal.requetes.some(function (u) { return /css\/bienvenue\.css/.test(u); }), "feuille de l'écran Bienvenue chargée");
   await capture(page, vue.nom + "-7-protege-haut");
 
@@ -529,9 +533,23 @@ async function instanceProtegee(nav, vue) {
   });
   verifier(descente.descend && descente.tete > 0.5, "code juste : le tracker descend le puits");
   await capture(page, vue.nom + "-10-protege-descente");
-  // Visite : comportement inchangé (d'office au 1er lancement d'une instance protégée).
+  // Visite demandée plus haut (« Découvrir l'app en 1 minute » a remonté au champ) : elle s'ouvre.
   await apresEntree(page, true, vue.nom + " code juste");
   await verifierConsole(journal, vue.nom + " instance protégée");
+  await ctx.close();
+}
+
+// Code juste sans rien demander, au 1er lancement : visite proposée, pas imposée (comme sans mot de passe).
+async function protegeeSansVisite(nav) {
+  console.log("\n— instance protégée : code juste sans demander la visite (390×844) —");
+  const { ctx, page, journal } = await nouvellePage(nav, VUES[0], { route: routes(HASH) });
+  await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+  await attendre(page, ecranProtege, 20000);
+  await page.waitForTimeout(600);
+  await page.fill(".kta-bv-code-champ", CODE);
+  await page.press(".kta-bv-code-champ", "Enter");
+  await apresEntree(page, false, "code juste sans visite");
+  await verifierConsole(journal, "code juste sans visite");
   await ctx.close();
 }
 
@@ -600,6 +618,7 @@ async function repli(nav) {
     await premiereOuverture(nav);
     await mouvementReduit(nav);
     for (const vue of VUES) await instanceProtegee(nav, vue);
+    await protegeeSansVisite(nav);
     await protegeeVisite(nav);
     await repli(nav);
   } catch (e) {

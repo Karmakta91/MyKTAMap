@@ -449,7 +449,7 @@
         '<p class="kta-bv-logo">MyKTAMap</p>' +
         // ⚠️ Contacts de l'auteur : écran sans mot de passe seulement (une instance protégée est gérée par
         // quelqu'un d'autre, le code se demande à cette personne). Liens sortants, sans script.
-        (protege ? '<p class="kta-bv-pied-note">' + t("gate.info") + '</p>'
+        (protege ? '<p class="kta-bv-pied-note">' + t("bienvenue.pied.prive") + '</p>'
           : '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>') +
         '<p class="kta-bv-pied-note">' + t("bienvenue.pied") + '</p>' +
         // Même coin que le splash : librairies (noms propres, non traduits) et signature.
@@ -824,7 +824,13 @@
       surveillerEntete();
       // Focus sur l'écran lui-même (dialogue) : le clavier part de là (Tab → « Entrer », flèches → défilement),
       // sans anneau de focus imposé sur un bouton au toucher, ni clavier virtuel ouvert sur le champ du code.
-      setTimeout(function() { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }, 100);
+      // Instance protégée sur PC (souris, pas de clavier virtuel) : focus sur le champ, le code se tape directement.
+      setTimeout(function() {
+        const input = champ();
+        const pc = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+        const cible = (code && pc && input && !input.disabled) ? input : ecranEl;
+        try { cible.focus({ preventScroll: true }); } catch (e) { cible.focus(); }
+      }, 100);
     }
 
     function fermer() {

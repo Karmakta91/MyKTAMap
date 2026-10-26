@@ -85,7 +85,7 @@ chargée par `ktaInstance.js`). Les deux modes montrent la même présentation �
 
 | Instance | En-tête de l'écran | Ce qui ouvre |
 |---|---|---|
-| publie `index.json > config.accessHash` (posé par ConfAdmin : installation privée) | 🗝️ champ **« Code d'accès »** + **Entrer**, **Découvrir**, puis « demande le code à la personne qui gère cette installation » (`gate.info`) ; **ni** contacts de l'auteur **ni** pastille « Licence pro » (haut et pied) | **seul** le mot de passe de l'instance |
+| publie `index.json > config.accessHash` (posé par ConfAdmin : installation privée) | 🗝️ champ **« Code d'accès »** + **Entrer**, **Découvrir**, puis « demande le code à la personne qui gère cette installation » (`gate.info`, en court au pied : `bienvenue.pied.prive`) ; **ni** contacts de l'auteur **ni** pastille « Licence pro » (haut et pied) | **seul** le mot de passe de l'instance |
 | sans `accessHash` (usage local, ZIP, Docker community) | 🧭 **Entrer**, **Découvrir**, pastille « Licence pro » ; contacts de l'auteur au pied | le bouton (mémorise `libre-v1`) ou une licence valide |
 
 **Repli** : si `css/bienvenue.css` ou `js/bienvenue.js` ne se chargent pas (cache incomplet, 404, plus de 4 s),
@@ -193,10 +193,12 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   bas), puis la suite habituelle du boot. **« Découvrir l'app en 1 minute »** entre de la même façon et demande la
   visite guidée (§87.1).
 - **Avec mot de passe** : tout se lit sans code. Le champ est dans l'en-tête (formulaire, touche Entrée) ; à
-  l'ouverture le focus reste sur l'écran (pas de clavier virtuel imposé). « Entrer » du bas et « Découvrir l'app en
-  1 minute » **remontent au champ** et lui donnent le focus (la visite est alors demandée pour l'entrée). Code faux :
-  message à côté du champ (`gate.err.*`), jamais de popup. Code juste : la descente part, puis le boot. Visite
-  guidée inchangée : d'office au 1er lancement (rien ne la marque vue), ou demandée sur l'écran.
+  l'ouverture, le focus va au champ sur PC (souris, `(hover: hover) and (pointer: fine)`) et reste sur l'écran au
+  toucher (pas de clavier virtuel imposé). « Entrer » du bas et « Découvrir l'app en 1 minute » **remontent au
+  champ** et lui donnent le focus (la visite est alors demandée pour l'entrée). Code faux : message à côté du champ
+  (`gate.err.*`), jamais de popup. Code juste : la descente part, puis le boot. Visite guidée **proposée** comme
+  sans mot de passe : marquée vue à l'entrée, ouverte seulement si demandée. Au pied, une phrase courte
+  (`bienvenue.pied.prive`) ; la complète (`gate.info`) est près du champ.
 - **« Découvrir »** fait défiler jusqu'à la 1re station.
 - **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
   aucun thème n'est choisi.
@@ -1371,10 +1373,10 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
 3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Visite guidée** (`Tutorial.ouvrir(onClose)`).
 
-**Visite guidée proposée, pas imposée** (décision KARMA) : l'écran Bienvenue sans mot de passe la marque vue en entrant
-(`Tutorial.markAsSeen`) ; elle ne s'ouvre que si elle y a été demandée (`UnlockGate.visiteDemandee()`), ou d'office au
-1er lancement d'une instance où rien ne l'a marquée vue (mot de passe d'instance : l'écran ne la marque pas ; gate
-déléguée ; licence qui contourne la gate). Elle reste lançable depuis 📖 Documentation.
+**Visite guidée proposée, pas imposée** (décision KARMA) : l'écran Bienvenue, avec ou sans mot de passe, la marque vue
+en entrant (`Tutorial.markAsSeen`, après un code juste sur une instance protégée) ; elle ne s'ouvre que si elle y a
+été demandée (`UnlockGate.visiteDemandee()`), ou d'office au 1er lancement d'une instance où rien ne l'a marquée vue
+(carte de repli, gate déléguée, licence qui contourne la gate). Elle reste lançable depuis 📖 Documentation.
 
 **Le PIN n'est plus proposé au lancement**, pour personne (décision KARMA) : il s'active dans ⚙️ Configuration →
 🔐 Code d'accès local (§43). La clé `myktamap_pin_proposal_done_v1` des appareils existants n'est plus lue.

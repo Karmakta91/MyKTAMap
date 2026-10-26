@@ -392,8 +392,12 @@
       localStorage.removeItem(LS_UNLOCK_KIOSQUE);
       localStorage.removeItem(LS_ATTEMPTS);
     } catch(e) {}
-    // Visite guidée proposée sur cet écran (« Découvrir l'app en 1 minute ») : plus jamais imposée au lancement
-    // (js/firstRunFlow.js ne l'ouvre que demandée, ou au 1er lancement quand rien ne l'a marquée vue).
+    _marquerVisiteProposee();
+  }
+
+  // Visite guidée proposée sur l'écran Bienvenue (« Découvrir l'app en 1 minute »), avec ou sans mot de passe : plus
+  // jamais imposée au lancement (js/firstRunFlow.js ne l'ouvre que demandée, ou quand rien ne l'a marquée vue).
+  function _marquerVisiteProposee() {
     if (window.Tutorial && typeof window.Tutorial.markAsSeen === "function") window.Tutorial.markAsSeen();
   }
 
@@ -441,11 +445,14 @@
       }
       if (hashInstance) {
         // 🔒 Rien n'est mémorisé ici : l'accès l'a été par _essayerCode (hash d'instance), jamais en libre-v1.
-        // La visite guidée garde son comportement : d'office au 1er lancement, ou demandée sur l'écran.
+        // Visite guidée proposée comme sans mot de passe : marquée vue à l'entrée (après un code juste).
         window.KtaBienvenue.ouvrir({
           code: { essayer: _essayerCode, etat: _etatCode },
           surDoc: _ouvrirDocReadme,
-          surEntree: function(visite) { _visiteDemandee = !!visite; },
+          surEntree: function(visite) {
+            _visiteDemandee = !!visite;
+            _marquerVisiteProposee();
+          },
           surFin: function() {
             if (_codeAccepte) _resoudre();
             else _monterGate();   // sortie sans code juste (forcée) : l'écran revient, la Promise attend

@@ -97,9 +97,9 @@
       catch(e) { console.warn("[FirstRunFlow] LegalGate a échoué :", e); }
     }
 
-    // 3) Visite guidée. Proposée, pas imposée (décision produit) : l'écran Bienvenue sans mot de passe la marque vue
-    //    en entrant (UnlockGate) ; elle ne part donc d'elle-même qu'au 1er lancement d'une instance où rien ne l'a
-    //    marquée (mot de passe d'instance, gate déléguée, licence).
+    // 3) Visite guidée. Proposée, pas imposée (décision produit) : l'écran Bienvenue, avec ou sans mot de passe, la
+    //    marque vue en entrant (UnlockGate) ; elle ne part donc d'elle-même qu'au 1er lancement d'une instance où rien
+    //    ne l'a marquée (carte de repli, gate déléguée, licence).
     await _step("visite", function(done) {
       const T = window.Tutorial;
       const demandee = !!(window.UnlockGate && typeof window.UnlockGate.visiteDemandee === "function"
