@@ -170,6 +170,10 @@
 
   // Scénarios du plan courant : lus par _loadScenarios, mutés par le CRUD, persistés après chaque mutation.
   let _scenarios = [];
+  // Clé de stockage dont _scenarios est le reflet (posée par _loadScenarios, effacée par reset). 🩸 Sans elle, une
+  // écriture plan fermé (accueil) partait de la liste vidée par reset et écrasait le stockage du plan : un
+  // scénario reçu en temps réel effaçait les brouillons de l'utilisateur (_currentLoadedPlanId reste posé à l'accueil).
+  let _cleChargee = null;
 
   // Scénario édité dans la modale (null si fermée ou en liste) ; renderOverlay s'en sert.
   let _currentScenarioId = null;
@@ -539,6 +543,7 @@
   // appliquée à chacun (idempotente).
   function _loadScenarios() {
     const key = _storageKey();
+    _cleChargee = key;
     if (!key) { _scenarios = []; return; }
     try {
       const raw = localStorage.getItem(key);
@@ -567,6 +572,12 @@
   function _saveScenarios() {
     const key = _storageKey();
     if (!key) return false;
+    // ⚠️ Jamais par-dessus des scénarios qui ne sont pas en mémoire (plan fermé, ou changé sans init) : l'écriture
+    // est refusée ; un scénario reçu entre-temps revient du serveur à la réouverture du plan.
+    if (key !== _cleChargee) {
+      console.warn("[SecoursMode] écriture refusée : scénarios de ce plan non chargés (plan fermé ?)");
+      return false;
+    }
     // Limite FIFO : on retire les plus anciens.
     // 🩸 JAMAIS un scénario en exécution, ni celui ouvert, ni le plus récent (sinon créer un 11ᵉ scénario
     // pendant une intervention l'effacerait). Si tout l'excédent est protégé, on dépasse la limite.
@@ -662,11 +673,20 @@
   }
 
   function get(id) {
+    _assurerCharge();
     return _scenarios.find(function(s) { return s.id === id; }) || null;
+  }
+
+  // Liste en mémoire alignée sur le stockage du plan courant avant toute lecture ou modification : après reset
+  // (plan fermé) ou avant init, un scénario reçu ou créé s'ajoute aux scénarios ENREGISTRÉS, jamais à une liste vide.
+  function _assurerCharge() {
+    const key = _storageKey();
+    if (key && key !== _cleChargee) _loadScenarios();
   }
 
   // Nouveau scénario vide ; nom vide → « Scénario du <date> ».
   function createScenario(nom) {
+    _assurerCharge();
     const safeName = (typeof nom === "string" && nom.trim())
                      ? nom.trim()
                      : t("secours.scenario.defaultNom", { date: new Date().toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR") });
@@ -733,6 +753,7 @@
   }
 
   function deleteScenario(id) {
+    _assurerCharge();
     const idx = _scenarios.findIndex(function(s) { return s.id === id; });
     if (idx < 0) return false;
     _scenarios.splice(idx, 1);
@@ -2975,6 +2996,7 @@
   }
 
   function _appliquerPayloadImport(payload, mode, opts) {
+    _assurerCharge();
     const garderExecution = !!(opts && opts.garderExecution);
     const sc = payload.scenario;
     const idxExistant = (typeof sc.id === "string" && sc.id)
@@ -12090,6 +12112,7 @@
     fermer();
     clearOverlay();
     _scenarios = [];
+    _cleChargee = null;
     _currentScenarioId = null;
     _focusedGroupeId = null;
     _majFooterSecours();
