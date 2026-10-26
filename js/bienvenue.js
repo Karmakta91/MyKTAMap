@@ -340,7 +340,7 @@
           '<h2>' + t("bienvenue.sortie.titre") + '</h2>' +
           '<p class="kta-bv-intro">' + t("bienvenue.sortie.intro") + '</p>' +
           '<div class="kta-bv-actions">' + _boutonEntrer() +
-            '<button type="button" class="kta-bv-lien-visite" data-bv="visite">' +
+            '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="visite">' +
               '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/>' +
               '<path d="m10 8.5 5 3.5-5 3.5v-7Z"/></svg>' + t("bienvenue.sortie.visite") + '</button>' +
           '</div>' +
@@ -351,6 +351,10 @@
         '<p class="kta-bv-logo">MyKTAMap</p>' +
         '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>' +
         '<p class="kta-bv-pied-note">' + t("bienvenue.pied") + '</p>' +
+        // Même coin que le splash : librairies (noms propres, non traduits) et signature.
+        '<div class="kta-bv-pied-credits"><p>🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>' +
+          '🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</p>' +
+          '<img class="kta-bv-signature" src="icon/karma.png" alt="KARMA" height="20"></div>' +
       '</div></footer>' +
       '<div class="kta-bv-voile" aria-hidden="true"></div>' +
     '</div>';
@@ -469,8 +473,11 @@
       return Math.round((deg + 360) % 360);
     }
 
+    // 🩸 Bas de page atteint : le dernier repère peut rester sous le milieu de l'écran, faute de quoi défiler.
+    function enBas() { return defile() + hauteurEcran() >= ecranEl.scrollHeight - 2; }
+
     function placerGalerie(g, avecFlash) {
-      const p = borner((hauteurEcran() / 2 - (g.haut - defile())) / (g.H || 1));
+      const p = enBas() ? 1 : borner((hauteurEcran() / 2 - (g.haut - defile())) / (g.H || 1));
       if (p === g.p) return;
       g.p = p;
       const l = p * g.L;

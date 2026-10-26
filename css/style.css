@@ -4336,6 +4336,9 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   font-weight: 500;
 }
 
+/* Rideau du démarrage (main.js > _rideauSiSplashParti) : relaie le splash retiré par son plafond, même rang. */
+#kta-rideau-boot { position: fixed; inset: 0; z-index: 9999; background: var(--kta-fond); }
+
 /* Signature en bas à droite. 28px : hors des coins arrondis d'écran (PWA bord à bord) ; safe-area pour
    l'encoche latérale en paysage. */
 #splashKarmaCorner {

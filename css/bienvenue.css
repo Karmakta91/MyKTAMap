@@ -208,16 +208,19 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-illus svg { display: block; width: 100%; height: auto; font-family: Montserrat, sans-serif; }
 .kta-bv-legende { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--bv-texte-3); }
 .kta-bv-sortie { display: flex; flex-direction: column; gap: 18px; }
-.kta-bv-lien-visite { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px;
-  border: 0; background: transparent; cursor: pointer; color: var(--bv-bleu); text-decoration: underline;
-  font: 600 16px Montserrat, system-ui, sans-serif; text-align: left; }
-.kta-bv-lien-visite svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
-  stroke-linecap: round; stroke-linejoin: round; }
-@media (hover: hover) { .kta-bv-lien-visite:hover { color: #c8d8ff; } }
 .kta-bv-pied { border-top: 1px solid rgba(244, 197, 66, 0.25); background: var(--bv-fond-nuit); }
 .kta-bv-pied-in { max-width: 1180px; margin: 0 auto; padding: 28px 20px 36px 66px; display: flex; flex-direction: column;
   gap: 10px; }
 .kta-bv-pied-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--bv-texte-3); }
+/* Crédits et signature comme au splash (#splashLeafletCredit, #splashKarmaCorner) : la lueur rend lisible une
+   signature petite sans la grossir. */
+.kta-bv-pied-credits { width: 100%; display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; }
+.kta-bv-pied-credits p { margin: 0; font-size: 11px; line-height: 20px; color: var(--bv-texte-3); letter-spacing: 0.02em;
+  white-space: nowrap; }
+@media (max-width: 480px) { .kta-bv-pied-credits p { font-size: 10px; line-height: 18px; } }
+.kta-bv-signature { display: block; flex: none; height: 20px; width: auto;
+  filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }
 
 /* ── Grand écran ── */
 @media (min-width: 900px) {

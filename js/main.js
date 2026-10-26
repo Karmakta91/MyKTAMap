@@ -1569,9 +1569,29 @@ function _apresSplash() {
 
 async function _splashAvantGate() {
   if (window.KtaSplash) await window.KtaSplash.finAnimation();
+  _rideauSiSplashParti();
+}
+
+// 🩸 Le plafond du splash (12 s) le retire pendant une gate longue (conditions lues) : à la fermeture de cette
+// gate, l'app restait nue (~2 s : config d'instance, licence, chargement de l'écran suivant). Le rideau prend le
+// relais du splash, même rang (sous toutes les gates), jusqu'à _splashEnd.
+function _rideauSiSplashParti() {
+  if (document.getElementById("splashOverlay") || document.getElementById("kta-rideau-boot")) return;
+  const r = document.createElement("div");
+  r.id = "kta-rideau-boot";
+  r.setAttribute("aria-hidden", "true");
+  document.body.appendChild(r);
 }
 
 async function _splashEnd(pret) {
+  try { await _fermerSplash(pret); }
+  finally {
+    const r = document.getElementById("kta-rideau-boot");
+    if (r) r.remove();
+  }
+}
+
+async function _fermerSplash(pret) {
   if (window.KtaSplash) { await window.KtaSplash.fermer(pret); return; }
   // js/ktaSplash.js absent (cache incomplet) : retrait direct, l'app ne reste jamais derrière le splash.
   const splash = document.getElementById("splashOverlay");
@@ -1730,6 +1750,7 @@ window.proposerRedemarrageLangue = function() {
     await _splashAvantGate();
     try { await window.LegalGate.ouvrirGate(); }
     catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+    _rideauSiSplashParti();
   }
 
   // Config d'instance lue UNE fois, avant les gates (community-server-line.md §3) : gate, kiosque, connecteur et
