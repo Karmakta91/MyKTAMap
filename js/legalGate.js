@@ -12,10 +12,11 @@
 // incitation à pénétrer dans des lieux interdits (accès aux anciennes carrières de Paris prohibé par l'arrêté
 // préfectoral du 2 novembre 1955 ; l'intrusion engage la seule responsabilité de l'utilisateur).
 // Séquencée par js/firstRunFlow.js (étape « légal », après une alerte critique éventuelle, avant
-// l'onboarding) ; relisible à tout moment (pied de page, Documentation) par ouvrirConsultation().
+// la visite guidée) ; relisible à tout moment (pied de page, Documentation) par ouvrirConsultation().
 // ⚠️ Cadrage général traduit (clés legal.*) ; TEXTES DE LOI en FR verbatim (constantes ci-dessous, reflétées
 // dans docs/applications/CGU.md).
-// Expose window.LegalGate : isAccepted(), ouvrirGate() → Promise (résout à l'acceptation),
+// Expose window.LegalGate : isAccepted(), ouvrirGate({ auDessus }) → Promise (résout à l'acceptation ; auDessus :
+//   par-dessus l'écran Bienvenue, z 100100, quand les conditions viennent après « Entrer »),
 //   ouvrirConsultation(), TERMS_VERSION. 100 % local, aucune surface réseau.
 // =========================
 
@@ -23,11 +24,14 @@
   "use strict";
 
   // ⚠️ Bumper à chaque changement de fond des CGU : force un re-consentement (on stocke la version acceptée).
-  const TERMS_VERSION = 1;
+  // 2 : absence de garantie (dont l'état des sites), pas un moyen de secours, contenus partagés.
+  const TERMS_VERSION = 2;
   const LS_KEY = "myktamap_terms_accepted_v1";
 
   const GATE_ID = "kta-legal-gate-overlay";
   const FULL_ID = "kta-legal-full-overlay";
+  // Rang de la sous-modale du texte intégral : au-dessus de la gate, quel que soit le rang de celle-ci.
+  let _zTexteIntegral = "100001";
 
   // ── Textes de loi — FR verbatim (actes officiels, hors droit d'auteur : CPI art. L.122-5 2°) ──
   // ⚠️ NE PAS traduire, NE PAS reformuler.
@@ -110,8 +114,13 @@
   }
 
   // ── Sous-modale : texte intégral (FR seulement) ──
+  // Les 3 clauses (garantie, secours, contenus) sont traduites ; les textes de loi qui suivent restent en FR.
   function _buildFullTextHtml() {
     let h = "";
+    h += '<h3 class="kta-legal-full-h">' + _esc(_t("legal.full.clauses")) + '</h3>';
+    ["garantie", "secours", "contenus"].forEach(function(k) {
+      h += '<p class="kta-legal-art">' + _esc(_t("legal.full." + k)) + '</p>';
+    });
     h += '<h3 class="kta-legal-full-h">⚖️ ' + _esc("Arrêté préfectoral du 2 novembre 1955") + '</h3>';
     ARRETE_1955.forEach(function(a) {
       h += '<p class="kta-legal-art"><strong>' + _esc(a.art) + '.</strong> ' + _esc(a.txt) + '</p>';
@@ -149,7 +158,7 @@
     overlay.id        = FULL_ID;
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.display = "flex";
-    overlay.style.zIndex  = "100001";  // sous-modale au-dessus de la gate
+    overlay.style.zIndex  = _zTexteIntegral;  // sous-modale au-dessus de la gate
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-legal-full-boite">' +
         '<div class="kta-readme-modal-header">' +
@@ -176,6 +185,9 @@
         '<li>' + _esc(_t("legal.gate.pointTool")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointInterdit")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointResp")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointGarantie")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointSecours")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointContenus")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointRespect")) + '</li>' +
       '</ul>' +
       '<button class="kta-legal-readfull" id="kta-legal-readfull" type="button">📜 ' +
@@ -184,7 +196,7 @@
   }
 
   // Gate BLOQUANTE : résout à l'acceptation (case cochée + bouton).
-  function ouvrirGate() {
+  function ouvrirGate(opts) {
     return new Promise(function(resolve) {
       // Déjà accepté : no-op défensif (l'appelant teste déjà).
       if (isAccepted()) { resolve(true); return; }
@@ -193,6 +205,10 @@
       overlay.id        = GATE_ID;
       overlay.className = "kta-readme-modal-overlay";
       overlay.style.display = "flex";
+      // Après « Entrer » : au-dessus de l'écran Bienvenue (#kta-unlock-overlay, z 100100).
+      const auDessus = !!(opts && opts.auDessus);
+      if (auDessus) overlay.style.zIndex = "100150";
+      _zTexteIntegral = auDessus ? "100160" : "100001";
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite kta-legal-boite">' +
           '<div class="kta-readme-modal-header">' +

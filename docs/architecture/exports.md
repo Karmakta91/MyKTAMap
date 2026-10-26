@@ -28,6 +28,16 @@ autre compte) : Complet et Avancé s'ouvrent avec « Créé par » **imposé** s
 liaisons inter-plan. La conversion, l'export d'un calque rapatrié (`CalqueSession.exporterCalque` / `contenuCalque`),
 l'assistant « Mettre à jour le plan » (`js/majPlan.js`) et l'export de profil restent refusés.
 
+**« Objets validés seulement »** (installation reliée dont l'extension marque des objets : prise `etatObjet`,
+`community-server-line.md` §3) : une case `KtaExtensions.caseExportValides()` (proposée seulement quand un objet de la session est provisoire —
+proposé, refusé) dans les fenêtres d'export de session (Complet, Avancé, KMZ / GPX / GeoJSON), image PNG, PDF et
+GeoTIFF ; une seule valeur pour toutes, cochée d'office si l'extension le dit (prise `exportValidesParDefaut`, ex. plan
+en relecture), décochée sinon ; le choix est oublié à chaque plan. Cochée, les objets provisoires ne partent pas (un
+objet en « retrait » — suppression demandée — reste) :
+`utils.js > ktaExportEtatsFiltres` dans `_filtrer` (Complet, Avancé, KMZ, GeoJSON ; photos des seuls points retenus),
+`gpxIO.js`, et le canvas de `exporter.js` (PNG, donc PDF et GeoTIFF, cartes du Secours comprises). Conversion et
+fusion ne sont jamais filtrées ; les calques du plan (ZIP) n'ont pas d'état.
+
 ### 5. Légende exportée — 5 groupes équilibrés (depuis 06/05/2026)
 
 Sections (cohérent avec la légende d'aide) :
@@ -51,13 +61,15 @@ Export terrain géoréférencé au format KMZ standard (OGC) ouvrable dans **Goo
 
 #### 32.1 Math affine 2D
 
-**`buildTransform(planA, planB, gpsA, gpsB)`** retourne `{refPlan, refGps, metresParPixel, rotation, latMoyenne}`.
+**`buildTransform(planA, planB, gpsA, gpsB, planC?, gpsC?, modele?)`** retourne `{refPlan, refGps, metresParPixel,
+rotation, latMoyenne, affine?, degenereC?, modele?}`.
 
 Algorithme :
 1. Vecteur plan AB : `dxPlan = Bx - Ax`, `dyPlan = -(By - Ay)` (y **inversé** car axe image vers le bas, math standard vers le haut)
-2. Vecteur GPS AB converti en mètres via projection équirectangulaire locale :
-   - `dxGps = (lngB - lngA) * 111320 * cos(latMoy)` (E-W)
-   - `dyGps = (latB - latA) * 110540` (N-S, constante car latitude varie peu en local)
+2. Vecteur GPS AB converti en mètres selon le **modèle** du calage (`vue-osm.md` §2.2) :
+   - `modele: "local"` (tout nouveau calage) : plan tangent à l'ellipsoïde GRS80 au barycentre des points, exact ;
+   - absent (plans calés avant) : équirectangulaire à constantes fixes (111 320 · cos(latMoy), 110 540), figé bit
+     à bit ; jusqu'à 20 m d'écart aux coins d'un plan de 6 km (`docs/ETUDE_CALAGE_PROJECTION.md`).
 3. `metresParPixel = |AB_gps| / |AB_plan|` (échelle uniforme)
 4. `rotation = atan2(dyGps, dxGps) - atan2(dyPlan, dxPlan)` (delta angles)
 
@@ -67,7 +79,9 @@ Algorithme :
 
 **`planToGps(t, x, y)`** : applique la transformation inverse pour mapper un (x, y) plan vers (lat, lng).
 
-**Extension future** : la math est conçue pour facilement passer à 3+ points (least squares) si besoin de plus de précision sur les plans très étendus ou non-rigides.
+Un point C donne une affine exacte sur les 3 points (`vue-osm.md` §2.2). La géodésie (`metresParDegre`, `decalerGps`,
+`distanceM`) est exposée par `KmzExport` pour les autres modules : aucune constante de conversion ailleurs dans
+`js/` (`scripts/check-calage-projection.js`).
 
 #### 32.2 Format KMZ
 
@@ -260,26 +274,28 @@ Lambert 93 par `window.SigImport.L93` (seule implémentation, `check-lambert93.j
   sinon brut. Tags triés par numéro (exigé par la norme). Les tuiles sont écrites bloc par bloc : les `TileOffsets`
   suivent l'ordre réel d'écriture (`_offsetsDansLOrdre`), pas l'index.
 - **Calage** : affine pixel → projection **ajustée aux moindres carrés** sur une grille 9 × 9 (pixel = coin,
-  `RasterPixelIsArea`). En WGS84 elle est exacte (`planToGps` est affine en degrés) ; en Lambert 93 la courbure de
-  la projection laisse un écart, mesuré sur 17 × 17 points et rendu (`residuM` : ~0,17 m sur un plan de 2,5 km).
+  `RasterPixelIsArea`). L'écart est mesuré sur 17 × 17 points et rendu (`residuM`), dit au-delà de 0,5 m. Calage
+  au modèle `"local"` : ~0,17 m en WGS84 sur un plan de 2,5 km (une affine en degrés ne suit pas le terrain), ~0 en
+  Lambert 93 ; calage historique : 0 en WGS84 (il est affine en degrés), ~0,17 m en Lambert 93. WGS84 reste la
+  projection proposée par défaut (décision produit).
   - termes croisés < 0,1 px sur toute l'image (et pas de miroir) → **`ModelPixelScale` + `ModelTiepoint`** : la
     forme que lit tout SIG, et l'import de l'app ;
   - sinon → **`ModelTransformation`** (34264), rotation comprise. ⚠️ En Lambert 93 c'est le cas de presque tout
     calage réel : la convergence des méridiens tourne la grille dès qu'on s'écarte de 3°E. GDAL / QGIS lisent la
     matrice (géotransformation tournée, vérifié avec `gdalinfo`), et **l'import GeoTIFF de l'app aussi** : une
     matrice tournée qui est une similitude à 1 % près donne les points A, B **et C** (coins SO, NE, NO), voir
-    `plans-loader.md` § GeoTIFF. Un export Lambert 93 de l'app s'écarte de la similitude de ≤ 0,4 % (son calage
-    équirectangulaire n'est pas conforme) : il se réimporte, coins à < 1 m.
+    `plans-loader.md` § GeoTIFF. Un export Lambert 93 d'un plan au calage historique s'écarte de la similitude de
+    ≤ 0,4 % (ce calage n'est pas conforme) : il se réimporte, coins à < 1 m. L'import pose un calage `"local"`.
   - GeoKeys : `GTModelTypeGeoKey` (1 projeté / 2 géographique), `GTRasterTypeGeoKey` = 1,
     `ProjectedCSTypeGeoKey` = 2154 + `ProjLinearUnitsGeoKey` = mètre, ou `GeographicTypeGeoKey` = 4326 +
     `GeogAngularUnitsGeoKey` = degré.
 - **Aller-retour** : `js/tiffGeoref.js` lit les TIFF **tuilés** et les matrices **tournées** (similitudes) ; le
   garde-fou relit chaque fichier écrit (pixels identiques en brut et en Deflate, EPSG, coins, points A / B / C à
   < 1 m) et le réimporte par le chemin de l'import (coins à < 1 m, Lambert 93 tourné compris).
-- 🩸 **Ce que le calage ne corrige pas** : le modèle de l'app (similitude ou affine en mètres équirectangulaires) n'est
-  pas le Lambert 93 ; un plan importé d'un GeoTIFF nord en haut puis réexporté garde les points du calage exacts mais
-  peut dériver de quelques mètres aux coins opposés sur un plan de plusieurs km. L'export reproduit le calage tel
-  qu'il est, il ne l'améliore pas.
+- 🩸 **Ce que le calage ne corrige pas** : l'export reproduit le calage tel qu'il est. Un plan au calage historique
+  dérive de quelques mètres aux coins opposés sur un plan de plusieurs km (Réglages > Géoréférencement : « Recaler
+  en projection exacte ») ; au modèle `"local"`, un GeoTIFF Lambert 93 importé garde ses coins à < 0,35 m sur 6 km
+  (le plan tangent n'est pas le Lambert 93 ; le calage exact dans le CRS du fichier est au backlog).
 - Nom : `MyKTAMap_<plan>_<date>_L93.tif` / `_WGS84.tif`. Réseau : aucun (tuiles déjà sur l'appareil ou celles que
   l'export image lit déjà).
 
@@ -646,7 +662,8 @@ Si non-MyKTAMap : warn dans le résumé mais pas blocking (l'user peut quand mê
 
 - **Tag points** depuis `<sym>` ou `<type>`, fallback `opts.pointTag` ou `"default"`
 - **Type tracés** depuis `<type>` parmi `{principal, secondaire, chemin, itinerary, jonction}`, fallback `opts.roadType` ou `"chemin"`
-- **Levels M-LVL** depuis `<cmt>MyKTAMap level=N</cmt>` sur waypoints ET tracks
+- **Levels M-LVL** depuis `<cmt>MyKTAMap level=N</cmt>` sur waypoints ET tracks ; sur un waypoint, `niveaux=0,-1`
+  (passage entre niveaux) et `constat=AAAA-MM-JJ` (date de constat d'un POI danger) à la suite
 - **Descriptions** depuis `<desc>` sur waypoints ET tracks
 - **Filtre bounds** : points hors `[−50, W+50] × [−50, H+50]` rangés dans `stats.outOfBounds`
 

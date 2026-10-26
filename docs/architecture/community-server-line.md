@@ -61,11 +61,11 @@ photos restent locales et exportables).
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom }) → Promise, publierVersion: { autorise(idExt) →
-> bool, publier({ id, blob, nom }) → Promise }, compte() → { pseudo, libelle } | null })` ·
+> exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom, progression? }) → Promise, publierVersion: {
+> autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
-> `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts)` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
@@ -84,6 +84,16 @@ photos restent locales et exportables).
 > d'ouverture en community sur les données gardées par le dernier utilisateur de l'appareil.
 > ⏱️ `charger` reçoit `opts.signal` (AbortSignal) du veilleur d'inactivité de l'accueil (rien en 15 s, puis plus un
 > octet pendant 20 s → annulé) : le transmettre à sa requête ; l'accueil abandonne de toute façon (`Promise.race`).
+> ⚠️ Le veilleur ne voit QUE `progression` : un travail local long après le dernier octet (déchiffrer, ranger sur
+> l'appareil) doit continuer d'appeler `progression(total, total)`, sinon il est pris pour un réseau perdu et l'accueil
+> abandonne pendant que le travail finit en fond. Un échec de `charger` se dit par un toast d'erreur ; sa raison
+> (`Error.message`, déjà traduite par l'extension) est affichée, sauf erreur réseau (« serveur injoignable »).
+> 📤 **Avancement d'une publication** : `publierPlan` / `publierVersion` reçoivent `progression({ etape, fait, total })`
+> (etape `"preparation"` : fichier préparé sur l'appareil · `"envoi"` : octets envoyés · `"finalisation"` : envoi fini,
+> le serveur enregistre), appelée par l'extension si elle le sait ; l'afficheur ne peut pas faire échouer la
+> publication. `requete(…, { body, progressionEnvoi(envoyes, total) })` passe alors par XMLHttpRequest (fetch ne dit
+> pas l'avancement d'un envoi) : même garde, même origine, mêmes en-têtes, rend une Response. La fin d'une publication
+> (fiche ℹ️, Générateur) se dit par un toast « success » / « error », même fiche fermée.
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
 
@@ -306,7 +316,43 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   l'alerte). L'extension annonce une liste changée par **`mktm:alertes-changees`** : les nouvelles s'ouvrent d'office
   (une fois par `released`). Source affichée (`source`, ou « Plateforme MyKTAMap » pour `alert.json` quand une
   extension fournit des alertes). Aucun appel réseau ajouté par le community : la liste et sa copie hors ligne sont
-  à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation).
+  à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation). **Alerte à l'écran** :
+  `afficherModaleAlerte` émet **`mktm:alerte-affichee`** `{ id, released }` (id tel qu'affiché, donc `ext_…` pour une
+  alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran — pas pour le sélecteur. Signal sortant
+  seulement : une extension en tire un accusé de lecture ; sans écouteur, rien.
+- **Action dans la fenêtre 🚨** : champ facultatif de la prise `alertes` — `action: { libelle() → string | null,
+  lancer() }`. `KtaExtensions.actionAlertes(fermer)` rend un bouton au libellé de l'extension (synchrone, 60 car.,
+  posé en texte), posé au pied des trois fenêtres 🚨 (aucune alerte, sélecteur, détail) avant la ligne des
+  notifications ; ou `null` : sans extension qui le propose, état autre que ON (l'action passe par son serveur),
+  libellé `null` / vide / en erreur (ex. compte qui n'a pas le droit). Toucher : la fenêtre se ferme (`fermer`, donné
+  par l'app) puis `lancer()` (erreur avalée) — ex. « ➕ Lancer une alerte » pour un admin d'organisation. 🔒 Le libellé
+  ne fait que choisir l'affichage : le serveur de l'extension revérifie le droit. Tests : `check-extensions.js`.
+- **Notifications de l'appareil** : prise `notifications: { proposer() → bool, apresChoix(permission) }`
+  (information ; erreur = aucune ligne). `KtaExtensions.ligneNotifications()` rend la ligne « 🔔 Afficher les alertes
+  et nouveautés sur l'icône de l'app — Activer » (+ rappel « jamais un canal de sécurité »), posée au pied des trois
+  fenêtres 🚨 (aucune alerte, sélecteur, détail — en mode plan, l'alerte s'ouvre d'office), ou `null` : sans
+  extension qui la propose, état autre que ON / DOWN, API absentes (`Notification`, service worker, `PushManager`),
+  autorisation déjà donnée ou refusée. 🔒 `Notification.requestPermission` n'est appelé que par le bouton « Activer »
+  (geste, exigé par Safari), jamais au démarrage ; réponse dite (« Activé sur cet appareil » / « Désactivé dans les
+  réglages de l'appareil », la ligne ne revient plus) puis passée à `apresChoix`. L'abonnement au service de push du
+  navigateur (`pushManager.subscribe`) est l'affaire de l'extension : community n'appelle aucun service de push.
+- **Notifications poussées (Web Push)** : prise **dans `sw.js`**, contrat minimal, sans script d'extension (🔒 aucun
+  `importScripts`). Un message `push` n'est traité que si l'index en cache déclare une connexion `"on"` avec au moins
+  un module ; il porte `{ titre?, corps?, url?, pastille?, tag?, urgent? }` (JSON chiffré pour l'appareil par
+  l'émetteur, RFC 8291) : titre 80 car. (défaut « MyKTAMap »), corps 240, texte seul ; `url` = adresse de l'app sous
+  le scope (sinon l'accueil) ; `pastille` 0 à 999 posée par `setAppBadge` (0 la retire) ; `tag` `[A-Za-z0-9:_-]`
+  64 car. ; `urgent` = reste à l'écran et resonne. Toujours une notification affichée (un message sans notification
+  est puni par le navigateur). Toucher : l'app ouverte prend le focus, sinon elle s'ouvre sur `url`. Messages aux
+  pages, relayés par `ktaExtensions.js` en événements : `mktm:notification-recue`, `mktm:notification-ouverte`
+  `{ url, cible }`, `mktm:abonnement-push-change` (`pushsubscriptionchange` : se réabonner). **Cible** d'une
+  notification : paramètre `kta-notif` de son `url` (`genre[:id[:id[:id]]]`, genre `[a-z]{3,20}`, chaque id
+  `[A-Za-z0-9_-]{1,80}`, sinon `null`) — opaque pour community, l'extension qui l'a émise l'ouvre. App fermée :
+  `ktaExtensions.js` lit le paramètre **une fois** au chargement, le retire de la barre (`history.replaceState`, autres
+  paramètres et ancre gardés) et `KtaExtensions.notificationAuDemarrage()` rend `{ cible }` **une seule fois**
+  (puis `null`) à l'extension qui le demande quand elle est prête (connexion, déverrouillage) ; sans extension, rien
+  ne le demande. Ce qui passe par les services
+  de push (Apple, Google, Mozilla, Microsoft) : `NETWORK_AUDIT.md` § Notifications poussées ; myktamap.fr n'en
+  contacte aucun. Tests : `check-extensions.js` (prise et vrai `sw.js` dans un `vm`).
 - **Statistiques du profil** : `profilStats() → [{ cle, icone, libelle, valeur, titre? }]` (ou Promise ; information,
   attente bornée à 3 s, erreur = aucune ; 12 lignes, texte seul, clé `[\w-]` unique). Affichées dans « Détails du
   profil » (rubrique « 🏢 Installation reliée ») et proposées au bandeau d'accueil sous la clé `ext:<cle>`. Relues à
@@ -340,7 +386,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).
 - **Rangement et hors ligne d'un plan ☁️** (v2.9.0) : `plans.ranger(idExt, dossierExt | null) → Promise<bool>` diffuse le
   rangement fait à l'accueil (refus = le rangement reste local) ; `plans.horsLigne: { etat(idExt) → "garde"|"perime"|"absent",
-  garder(idExt) → Promise<bool> }` alimente le bouton de la ligne (💾 garder / ⬇️ nouvelle version / ✅ gardé, sans action).
+  garder(idExt[, opts]) → Promise<bool>, taille?(idExt) → Promise<octets | null> }` alimente le bouton de la ligne (💾 garder /
+  ⬇️ nouvelle version / ✅ gardé, sans action) et **« 📥 Tout garder hors ligne » d'un dossier** (`js/dossierHorsLigne.js`,
+  docs/TILING.md §8 bis) : `etat` = « une version plus récente existe ? » (`perime`), `garder(idExt, { signal,
+  onProgres(recus, total) })` (2e argument facultatif : sans lui, pas d'avancement et l'arrêt attend la fin du plan ;
+  une erreur rejetée porte la raison affichée au bilan, déjà traduite), `taille` (facultatif, 0 si à jour) pour la
+  confirmation au-delà de 200 Mo. Côté app : `KtaExtensions.garderHorsLigneExtension(registreId, opts) → { ok, raison }`
+  et `tailleHorsLigneExtension(registreId)` ; sans extension : `{ ok: false }` et `null`.
   Un plan ☁️ ouvert est gardé selon « Mémoriser le plan dans l'app » ; une copie déjà gardée est toujours mise à jour.
 - **Publier un plan local** (v2.9.0) : la fiche ℹ️ d'un plan local appelle `publierPlan({ blob, nom })` (archive gardée,
   sinon ZIP choisi), puis propose de remplacer la copie locale : `PlanRegistry.transferAssociatedData(ancien, nouveau)`
@@ -357,8 +409,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   revérifie à l'envoi : la prise ne choisit que l'interface. Sans extension : jamais autorisée, rejet, aucun effet.
   L'assistant n'appelle jamais `publierPlan` (un plan neuf serait un doublon, pas une version). Le Générateur à la
   main fait de même quand le ZIP déposé est reconnu comme celui d'un plan ☁️ (`plans-loader.md`, chemin manuel) :
-  `publierVersion` si autorisé, sinon explication ; `publierPlan` seulement sur « Publier comme nouveau plan ». Preuve :
-  `check-extensions.js` §6 bis quater bis.
+  `publierVersion` si autorisé, sinon explication ; `publierPlan` seulement sur « Publier comme nouveau plan ».
+  **Annulée par l'utilisateur** : `publier` peut rejeter avec une erreur portant `annule: true` (l'utilisateur a dit
+  non dans une question de l'extension avant l'envoi) — l'app dit « Publication annulée » (toast), sans message
+  d'échec ; l'assistant reste ouvert (télécharger reste possible). Preuve : `check-extensions.js` §6 bis quater bis
+  et § notifications (annulation).
 - **Lire la session d'un plan non ouvert** (10/10/2026) : `window.KtaSessionStore.lire(planId)` → JSON texte | null
   (synchrone, depuis la mémoire ; `ids()` liste les plans qui en ont une, `ecrireDurable(planId, brut)` → Promise). Les
   sessions vivent en IndexedDB : `localStorage["myktamap_session_v1_<planId>"]` n'est plus qu'une ancienne copie gardée
@@ -432,7 +487,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb), prioritaire
   sur `KtaPresences.couleurDe(id)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
-  portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+  portent `data-kta-uid`, l'observateur n'est posé que si la prise existe. Fiche d'un point de **calque** (ZIP) comprise :
+  elle porte son uid (s'il en a un) et reçoit les mêmes actions, mais reste en lecture seule — ✏️, déplacer et 🗑️
+  restent réservés à la session (`utils.js > buildPointPopupHtml`, paramètre `isEditorSession`).
 - **Photos des points** (10/10/2026) : prise d'information `photos: { completerPoint(planId, pointId) →
   Promise<number>, completerPlan(planId) → Promise<{ ajoutees, total }> }`. L'app appelle `completerPoint` quand
   elle **affiche** les photos d'un point (bulle, fiche d'édition ; `pointId` = uid du point, son nom s'il n'en a pas)
@@ -475,6 +532,57 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule),
   et `KtaPresences.couleurDe(id)` pour afficher la couleur de chacun.
   Sans extension : ni bouton ni fenêtre.
+- **Objet par uid** : `KtaExtensions.objetParUid(uid) → { uid, nom, type, typeLibelle, x, y, niveaux, famille, source } |
+  null` — information, une **copie**. Cherche dans la session du plan affiché (points, tracés, zones, structures) PUIS
+  dans ses **calques** (objets du ZIP, `getAllEmbedded*`) : `source` = `"session"` | `"calque"` (une copie de session
+  d'un objet de calque porte son uid : la session gagne) ; `famille` = `editorPoints` | `roads` | `zones` |
+  `structures` ; `x` / `y` = l'**ancre** (le point, ou le sommet du milieu d'un tracé, d'une zone, d'une structure) ;
+  `nom` = celui de l'objet ou `""` ; `typeLibelle` = libellé du type dans la légende (renommages compris) ; `niveaux`
+  = ses niveaux (`level`, `fromLevel` / `toLevel`, niveaux d'une jonction). `null` : plan pas prêt, uid inconnu,
+  itinéraire calculé, objet sans position. Index gardé 500 ms (un appel par repère ne relit pas tous les marqueurs).
+  Même recherche pour `allerAObjet` et `afficherReperes`. **Objets proches** : `KtaExtensions.objetsProches(x, y,
+  max?) → [même forme]` — au plus `max` (8 par défaut, 20 au plus), du plus proche au plus loin de (x, y) (ancres),
+  ex. choisir l'objet auquel rattacher une note dont l'objet a disparu ; `[]` : plan pas prêt, coordonnées non
+  finies. Tests : `check-extensions.js`.
+- **Aller à un objet** : `KtaExtensions.allerAObjet(uid, repli?) → bool` — action neutre, jamais déclenchée par l'app
+  seule (ex. liste de changements d'une extension). Objet cherché comme `objetParUid` (session, puis calques du plan ;
+  jamais l'itinéraire calculé) ; multi-niveau, si aucun de ses niveaux n'est affiché, le premier devient le niveau de
+  travail (`ktaSetActiveLevel`) ; centre la carte (point ou centroïde) et ouvre sa fiche (couche de `layerEditor` qui
+  porte une fiche à sa position, ou le marqueur du calque), sinon une bulle à son nom. `repli` `{ x, y, niveaux?,
+  nom? }` : objet **absent** du plan affiché (retiré d'une version) → même geste à cette position (dernière position
+  connue, gardée par l'extension), bulle au nom donné (texte), jamais la fiche d'un autre objet. `false` sans rien
+  bouger : plan pas prêt (`planPret`), uid inconnu sans repli aux coordonnées finies, objet sans position. Tests :
+  `check-extensions.js`.
+- **Repères d'une extension** (calque générique, ex. tâches ouvertes) :
+  `KtaExtensions.afficherReperes(calque, liste, { clic }) → nombre dessiné` — affichage seulement, jamais une requête.
+  `calque` : nom `[a-z0-9_-]{1,24}` (8 calques au plus) ; `liste` : `[{ id, uid | x + y, niveaux?, teinte?, symbole?,
+  titre?, nombre? }]`, 500 repères au plus. Un repère rattaché à un objet (`uid`, cherché comme `objetParUid`) se pose
+  **sur** lui (son ancre) et suit ses niveaux (atténué hors niveau affiché) ; uid **inconnu** avec `x` / `y` : posé à
+  cette position (dernière position connue d'un objet retiré, `niveaux` donnés), marqué **absent** (contour pointillé,
+  `.kta-repere-absent`) ; uid inconnu sans position, itinéraire calculé, objet sans position : écarté. `teinte` = un
+  nom de jeton de la charte (`accent`, `interaction`,
+  `ok`, `avert`, `erreur`, `violet`, `magenta`, `neutre`) rendu par une classe `.kta-repere-<teinte>` — jamais une
+  couleur libre (autre valeur : `neutre`) ; `symbole` (2 caractères) et `titre` (80, infobulle et nom accessible)
+  posés en texte ; `nombre` (2 à 99) en pastille. Toucher un repère appelle `clic(id)` (erreur avalée). Plan pas prêt :
+  0, rien dessiné ; `[]` efface ce calque ; la sortie du plan les efface tous (`KtaPresences.reinitialiser`). Rendu :
+  `js/ktaPresences.js > afficherReperes` (pastille 30 px ancrée en haut à droite de l'objet, l'icône du point reste
+  visible). Sans extension : rien n'appelle la prise, aucun calque. Tests : `check-extensions.js`.
+- **État d'un objet** (ex. relecture : proposé / refusé / suppression demandée) : prise `etatObjet(uid) → "propose" |
+  "refuse" | "retrait" | null` (synchrone, information ; autre valeur, erreur = null). `propose` et `refuse` sont
+  **provisoires** (écartés d'un export « validés seulement ») ; `retrait` = retrait demandé, pas encore fait : l'objet
+  reste du contenu. L'app ne comprend pas l'état, elle le **dessine** sur les objets
+  de **session** (couches de « Mes annotations ») : marqueur → classe `.kta-etat-propose` / `-refuse` / `-retrait`
+  (contour pointillé accent / erreur / pointillé fin et icône grisée, reposée quand Leaflet recrée l'icône) ; tracé,
+  zone, structure → pointillé (`10 6` / `2 6` / `1 8`, renderer canvas : pas de CSS), le pointillé de son type rendu
+  quand l'état disparaît. Les rendus marquent leurs
+  couches par `KtaExtensions.marquerCouche(couche, uid, pointilleBase)`. Actions de l'extension :
+  `rafraichirEtats()` (redessine en place, aucune fiche fermée ; → nombre marqué), `filtrerEtats(bool)` (carte : seuls
+  les objets de session marqués restent, calques du plan inchangés ; relance les rendus de session ; → état), lu par
+  `passeFiltreEtat(o)` / `filtreEtatsActif()`. Exports : case « Objets validés seulement » (`caseExportValides()`,
+  `filtrerPourExport(liste)`, `exportValidesActif()`, `exports.md` §4) ; prise facultative `exportValidesParDefaut() → bool`
+  (information, erreur = non) : la case naît cochée sur le plan affiché. Filtre et choix de la case oubliés à la sortie
+  du plan. Sans extension : aucun
+  style, filtre impossible, aucune case, exports intacts. Tests : `check-extensions.js`.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
   changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).
@@ -553,8 +661,8 @@ navigateur.
   `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
 
 **État : livré** (v2.0.0 → v2.7.0) — tout ce qui précède est en place dans community :
-- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }`, recalculée à chaque
-  `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
+- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }` (32 modules déclarés au
+  plus, même plafond dans ConfAdmin ; au-delà : INVALIDE), recalculée à chaque `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
   (`myktamap_server_connection_v1`, **exclue de l'export de profil** : donnée de l'instance, pas de l'utilisateur).
 - **Pastille** collée au badge de version du pied de page de l'accueil, icône + mot court (icône seule sous 380 px ;
   footer replié : icône seule sur le bouton) ; un clic ouvre la fenêtre « Que fait l'app sur le réseau ? » avec

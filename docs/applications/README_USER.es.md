@@ -117,6 +117,7 @@ El autor puede difundir a toda la comunidad **alertas de seguridad**: incendio, 
 - **Al iniciar**, una alerta en curso aparece con sus consignas: **rojo pulsante** = situación crítica, hay que leerla sin falta; **naranja** = información importante; **azul** = simple aviso. Si hay varias, una lista las ordena de la más grave a la menos grave.
 - **Entendido** la archiva: solo vuelve si el autor la modifica o publica una nueva.
 - **El botón 🚨 de la pantalla de inicio** (a la izquierda de 📖) toma el color de la alerta no leída más grave (gris si no hay ninguna), con su número cuando hay varias. Al pulsarlo vuelve a mostrar todas las alertas en curso, incluso las leídas — o **Ninguna alerta en curso**, o **Verificación imposible** sin conexión: así sabes si una alerta antigua sigue vigente.
+- **En una instalación conectada a un servidor** (nunca en myktamap.fr), la ventana 🚨 puede proponer **🔔 Mostrar las alertas y novedades en el icono de la app — Activar**: no pasa nada sin ese gesto, y tu dispositivo te pide entonces tu permiso. Si lo rechazas, la línea dice **Desactivado en los ajustes del dispositivo** y no vuelve. **Nunca es un canal de seguridad**: bajo tierra, sin red, no llega nada.
 
 ### 🔒 Confidencialidad y auditoría de red
 
@@ -133,6 +134,10 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 ---
 
 ## 🚀 Primeros pasos
+
+### 👋 Primer arranque
+
+Tras la pantalla de inicio, se desplaza una breve presentación de **Bienvenida**: qué hace la app, cómo te orienta sin GPS, por qué nada sale de tu dispositivo. Toca **Entrar** (arriba o abajo) para llegar a la pantalla de inicio, o **Descubrir** para recorrerla. La primera vez, **Entrar** muestra antes las **condiciones de uso** que hay que aceptar. Abajo, **Descubrir la app en 1 minuto** abre la visita guiada al entrar; si no, sigue disponible en **📖 Documentación**. Esta presentación solo aparece una vez por dispositivo (y de nuevo tras «💥 Reiniciar todo»). En una instalación privada (club, asociación), la misma presentación lleva arriba un campo **Código de acceso**: puedes leerlo todo sin código, pero solo entras con él; pídeselo a la persona que gestiona la instalación. Tras 5 códigos erróneos, el campo se bloquea un rato (10 min, luego más) y muestra el tiempo restante. El **🔐 código de acceso local** no se propone al arrancar: actívalo si quieres desde **⚙️ Configuración** («🔭 Para ir más lejos»).
 
 ### 📱 Instalar la aplicación en móvil (iPhone/Android)
 
@@ -651,6 +656,8 @@ El botón **✏️** de la barra lateral activa o desactiva el modo añadir. Act
 
 **El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización, 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: un nombre corto en minúsculas, cifras, `_` o `-` (p. ej. `fuente`); usa el icono por defecto.
 
+**⚠️ Tipo Peligro: fecha de constatación.** Un punto de tipo **Peligro** lleva una **📅 Fecha de constatación**, el día en que se vio el peligro: rellenada con hoy, modificable, para vaciar si no la conoces (un punto Peligro más antiguo sigue sin fecha mientras no le pongas una). Su ventana muestra «Constatado el …» y recuerda que **MyKTAMap no certifica el estado de un sitio: un peligro registrado puede haber cambiado desde su fecha de constatación.** La fecha sale con la exportación de sesión, el KMZ, el GPX y el GeoJSON (releída por la importación KMZ y GPX), nunca con la exportación anonimizada.
+
 ### ✏️ Modificar o reposicionar un punto
 
 En **tus** puntos, la ventana del punto ofrece:
@@ -665,13 +672,14 @@ Ambos se deshacen con ⏪ (`Ctrl+Z`). Para quitar un punto: **🗑️ Eliminar e
 Hasta **5 fotos por punto**, guardadas solo en tu dispositivo. En la ventana de añadir o de editar, sección **📸 Fotos**:
 
 - **📷 Tomar foto** abre la cámara (móvil); **🖼️ Desde la galería** permite elegir varias de una vez.
-- Cada foto se **comprime** (una foto de varios MB pasa a pesar unos cientos de KB) y se **limpia**: la posición GPS de la toma, la fecha y el modelo del aparato se borran antes de entrar en la app.
+- Cada foto se **comprime** (una foto de varios MB pasa a pesar unos cientos de KB) y se **limpia**: la posición GPS de la toma y el modelo del aparato se borran antes de entrar en la app. Solo su **fecha de la toma** se lee antes de la limpieza y se guarda **junto a** la foto (nunca en el archivo): la pantalla completa muestra «Tomada el …». Sin esa fecha (captura de pantalla, foto ya limpiada), muestra «Añadida el … (fecha de la toma desconocida)».
+- Una foto que el navegador no sabe leer (archivo dañado, formato no compatible) se **rechaza** con un mensaje: nunca entra tal cual.
 - **Quitar una foto**: la cruz ✕ roja de la miniatura la marca para borrar, la flecha verde ↺ lo anula. No se borra nada antes de **💾 Guardar**.
 - **Cerrar sin guardar** borra las fotos que acababas de añadir y anula las marcas.
 
 **Verlas**: la ventana del punto muestra las miniaturas — un toque abre la pantalla completa (pellizca o usa la rueda para hacer zoom, desliza para pasar a la siguiente, `← →` y `Esc` en PC). El contador **📸** de la barra superior abre el detalle de la sesión.
 
-**Llevártelas**: marca la casilla 📸 de las fotos en ⬆️ → **🚀 Completo**, **🎨 Avanzado** o **🔄 Conversión**; cada foto lleva la ficha de su punto (nombre, posición, nivel, tipo: lo necesario para ♻️ recrear un punto desaparecido). Un archivo reimportado **añade** sus fotos a las del dispositivo — una foto ya presente no se duplica y no se borra ninguna. Con **🛡️ Anonimizar para compartir públicamente**, cada foto se renombra y se vincula al código anónimo de su punto, sin su ficha; una foto que no puede limpiarse queda excluida.
+**Llevártelas**: marca la casilla 📸 de las fotos en ⬆️ → **🚀 Completo**, **🎨 Avanzado** o **🔄 Conversión**; cada foto lleva la ficha de su punto (nombre, posición, nivel, tipo: lo necesario para ♻️ recrear un punto desaparecido), su fecha de la toma y su fecha de adición. Un archivo reimportado **añade** sus fotos a las del dispositivo — una foto ya presente no se duplica y no se borra ninguna. Con **🛡️ Anonimizar para compartir públicamente**, cada foto se renombra y se vincula al código anónimo de su punto, sin su ficha ni sus fechas; una foto que no puede limpiarse queda excluida.
 
 **📌 Foto «por asignar»**: antes de la v2.3.0, una foto se guardaba con el **nombre** de su punto. Si varios puntos llevan el mismo nombre, la app no adivina a cuál pertenece: en la burbuja de cada uno de esos puntos, la foto aparece con un **marco naranja punteado** y un botón **📌 Foto N: es este punto**. Tócalo en la burbuja del punto correcto. Nunca se borra nada. Las fotos cuyo nombre lleva un solo punto se asignan solas, y las que tomes ahora siguen a su punto aunque lo renombres.
 
@@ -1119,6 +1127,7 @@ A la derecha de «📚 Mis mapas», el selector **Todo | Carpetas**. En modo **C
 
 - **Ordenar**: **☑ Seleccionar** uno o varios mapas y luego «Mover a…», o **arrastrar** la fila sobre una carpeta (con el ratón, o con el dedo tras una pulsación larga).
 - **⋮** en una carpeta: renombrar, color, orden, eliminar (sus mapas vuelven a Sin clasificar, nunca se elimina ningún mapa).
+- **📥 Guardar todo sin conexión** (en ⋮, también en «Sin clasificar» para los mapas que muestra): pone al día toda la carpeta en el dispositivo antes de bajar. Los mapas que faltan se descargan, los que tienen una versión más reciente se actualizan y los que ya están al día se saltan (un mapa importado y guardado ya está ahí). Un mapa cada vez, con «3 / 7» y el mapa en curso; **⏹ Detener** en cualquier momento. La app pide confirmación solo por encima de 200 MB estimados o con datos móviles (cuando el navegador puede saberlo). Si la app pasa a segundo plano o pierde la red, el mapa en curso se reanuda al volver, sin volver a descargar lo que ya está guardado. Al final, el resumen da los mapas descargados, actualizados, ya al día y los que fallaron, con el motivo.
 - **🏷️ Regla por etiqueta** (en ⋮): la carpeta acoge sola los mapas que llevan esas etiquetas. En modo Todo, las etiquetas marcadas proponen **📁 Crear una carpeta desde estas etiquetas**. Una colocación a mano gana sobre una regla; el punto es **lleno** para una colocación explícita, **hueco** para una regla.
 - Las carpetas viajan con tu perfil. Un servidor puede proponer algunas: no puedes renombrarlas ni eliminarlas, pero metes en ellas lo que quieras. La importación de varios mapas propone «Guardar en:».
 
@@ -1173,7 +1182,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
 - **📐 Mapa: escala y geolocalización** *(este mapa)*:
   - **Escala**, con **🎯** para calibrarla (ver más abajo);
   - **🧭 Calibración del Norte**, si la parte superior del mapa no es el Norte: un ángulo, o **📐 Calibrar (2 clics)** (Sur y luego Norte en el mapa), **↺ Restablecer** para volver a 0. La brújula siempre muestra el Norte verdadero;
-  - **🌐 Georreferenciación GPS**: se muestra su estado (no georreferenciado, puntos A y B, A, B y C, B estimado) y **🌐 Abrir la georreferenciación…** abre su ventana. Para los puntos A y B: **🔍 Buscar un punto** o **📍 Haz clic en el mapa** rellena la posición en el mapa, y luego pegas las coordenadas GPS en formato Google Maps (`48.856600, 2.352200`). Elígelos **alejados** entre sí. **Estimar B** deduce B a partir de A, la escala y el Norte: una estimación, que hay que comprobar en la Vista OSM. El **📐 Punto C (opcional)**, lejos de la línea A-B, corrige un mapa deformado (ensamblaje estirado) para la Vista OSM, las exportaciones y el Modo Rescate. **💾 Guardar la calibración** / **🗑️ Borrar**. Esta georreferenciación sirve para la Vista OSM, las exportaciones KMZ, GPX, GeoJSON y GeoTIFF y la importación GPX.
+  - **🌐 Georreferenciación GPS**: se muestra su estado (no georreferenciado, puntos A y B, A, B y C, B estimado) y **🌐 Abrir la georreferenciación…** abre su ventana. Para los puntos A y B: **🔍 Buscar un punto** o **📍 Haz clic en el mapa** rellena la posición en el mapa, y luego pegas las coordenadas GPS en formato Google Maps (`48.856600, 2.352200`). Elígelos **alejados** entre sí. **Estimar B** deduce B a partir de A, la escala y el Norte: una estimación, que hay que comprobar en la Vista OSM. El **📐 Punto C (opcional)**, lejos de la línea A-B, corrige un mapa deformado (ensamblaje estirado) para la Vista OSM, las exportaciones y el Modo Rescate. **💾 Guardar la calibración** / **🗑️ Borrar**. Debajo de los puntos, la ventana indica la **precisión en las esquinas** de la calibración guardada: «Proyección exacta» para cualquier calibración hecha hoy; «Proyección aproximada, ± X m» para un mapa calibrado antes (el cálculo antiguo se desvía de 2 a 3 m en un mapa de 1 km, hasta 20 m en 6 km). El botón **Recalibrar con proyección exacta** corrige ese mapa: primero indica cuánto se moverán el mapa y sus objetos, sin tocar los puntos de calibración. Nada cambia hasta que lo confirmes, y volver a guardar la misma calibración no la modifica. Esta georreferenciación sirve para la Vista OSM, las exportaciones KMZ, GPX, GeoJSON y GeoTIFF y la importación GPX.
 - **📍 Navegación y tracker** *(📍/🌍 según la línea)*:
   - **🧭 Posición inicial del tracker** *(este mapa)*: X/Y, **🔍 Elegir mediante un punto** o **📍 Hacer clic en el mapa**. Cambiar el inicio hace que el seguimiento vuelva a empezar desde ahí (el recorrido en curso se borra);
   - **👣 Detección de pasos** *(todos los mapas)*: longitud del paso (de 0 a 1,5 m), umbral (de 10 a 30), retardo (de 300 a 3000 ms);
@@ -1253,7 +1262,7 @@ Vuelve a tocar el botón activo (en verde) para desactivarlo.
 
 ### 🔑 La contraseña se rechaza
 
-En el primer arranque, MyKTAMap simplemente propone **Continuar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
+En el primer arranque, MyKTAMap presenta la app y te deja **Entrar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club) pide una, en el campo **Código de acceso** arriba de la presentación: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
 
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
@@ -1269,7 +1278,7 @@ Estas herramientas no borran **ningún** dato (mapas memorizados, sesiones, foto
 **⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de mapas y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
-- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app propondrá simplemente **Continuar**.
+- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app volverá a mostrar la pantalla de **Bienvenida**.
 - Se piden dos confirmaciones. Hazlo **con conexión**: si estás sin conexión, una ventana roja te avisa de que la app quedará inutilizable hasta que vuelva la red.
 
 No hay que confundirlo con **↺ Valores por defecto** de ⚙️ Ajustes, que solo afecta a los ajustes del mapa abierto.
@@ -1575,7 +1584,7 @@ Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
 - **Parámetros de tracking**: escala y orientación del **Norte** (0 si la parte superior del mapa es el Norte; cada uno puede corregirla en sus Ajustes).
 - **Iconos y tags**: **↺ Cargar predeterminados** rellena los iconos estándar, **+ Añadir un tag** crea un tipo propio. Los tags `default` y `track` son obligatorios.
 - **🏷️ Leyenda del mapa**: los renombrados, ocultamientos y entradas añadidas valen para todos los que abren el mapa; cada uno puede luego cambiarla para sí.
-- **🌐 Georreferenciación GPS** (opcional): dos puntos A y B, más un punto C para un mapa deformado. Sin ella, ni Vista OSM ni exportación KMZ / GPX.
+- **🌐 Georreferenciación GPS** (opcional): dos puntos A y B, más un punto C para un mapa deformado. Sin ella, ni Vista OSM ni exportación KMZ / GPX. Debajo de los campos, la **precisión en las esquinas** de la calibración aparece en cuanto A, B y la imagen están: «Proyección exacta» para una calibración nueva o un GeoTIFF importado; «Proyección aproximada, ± X m» para la calibración original de un mapa calibrado antes, conservada mientras no cambies sus puntos (⚙️ Ajustes → Georreferenciación propone recalibrarla).
 - **📖 PDF Historia** (opcional): uno o varios PDF, al principio de la lista en el Modo Historia. Al modificar, se conservan los del mapa.
 
 #### 📂 Modificar un mapa existente

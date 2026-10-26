@@ -102,6 +102,8 @@
     }
     return key;
   }
+  // Module entier : _selectionnerPosition et la recherche l'utilisent hors du rendu de la zone.
+  function _esc(s) { return window.ktaEsc(s); }
   function _presetLabel(key) { return _t("lost.preset." + key + ".label"); }
   function _presetHint(key)  { return _t("lost.preset." + key + ".hint"); }
 
@@ -312,7 +314,6 @@
     _zoneOverflow = (_radiusPx * 2 > planMaxDim);
     console.log("[LostMode] Plan max dim :", planMaxDim, "px → zone overflow ?", _zoneOverflow);
 
-    function _esc(s) { return window.ktaEsc(s); }
 
     const lastIcon = L.divIcon({
       className: "kta-lost-marker-last",
@@ -635,6 +636,9 @@
       y: Math.round(target.y),
       // Tag danger : marque visuellement une position incertaine issue d'une urgence.
       tags: ["danger"],
+      // ⚠️ Marqueur lu par poiDanger.js > estDanger : ce n'est pas un danger constaté (ni date de constat, ni
+      // mention). L'id « lost_… » ne suffit pas : l'éditeur le remplace par le nom à la première modification.
+      source: "lostMode",
       description: _t("lost.point.desc", {
         radius: _formatDist(_radiusPx),
         m:      _elapsedMinutes,

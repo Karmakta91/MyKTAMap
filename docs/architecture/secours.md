@@ -1235,7 +1235,7 @@ level = "ok"       si deltaPct < 3
 
 **Seuils resserrés v1.26.2-hotfix1** (KARMA : « on n'est pas géologues »). Pour de la nav cataphile, 10% = 100 m d'erreur sur 1 km = déjà énorme → critique. Le silence < 3% = tolérance normale du calibrage au pas humain (foulée variable). Repères : 3% = 30 m/km, 6% = 60 m/km, 10% = 100 m/km.
 
-`KmzExport.buildTransform` (`js/kmzExport.js:62-106`) utilise déjà la projection equirectangulaire locale (`dxGps = dlngDeg * 111320 * cos(latMoy)`, `dyGps = dlatDeg * 110540`) → math pré-existante, aucune formule haversine à ré-implémenter.
+`KmzExport.buildTransform` (`js/kmzExport.js > buildTransform`) donne déjà `metresParPixel` du calage (plan tangent pour un calage `"local"`, mètres équirectangulaires historiques sinon, `vue-osm.md` §2.2) → aucune formule de distance à ré-implémenter.
 
 #### 73.2 API publique (js/utils.js)
 

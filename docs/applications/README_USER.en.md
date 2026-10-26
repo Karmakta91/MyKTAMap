@@ -117,6 +117,7 @@ The author can broadcast **safety alerts** to the whole community: fire, access 
 - **At launch**, a current alert shows up with its instructions: **pulsing red** = critical situation, must be read; **orange** = important information; **blue** = simple announcement. If there are several, a list sorts them from most to least serious.
 - **Got it** puts it away: it only comes back if the author edits it or publishes a new one.
 - **The 🚨 button on the home screen** (left of 📖) takes the colour of the most serious unread alert (grey if there is none), with their count when there are several. Tapping it shows every current alert again, even read ones — or **No active alert**, or **Check unavailable** when offline: a way to find out whether an old alert still stands.
+- **On an installation linked to a server** (never on myktamap.fr), the 🚨 window may offer **🔔 Show alerts and news on the app icon — Turn on**: nothing happens without that tap, and your device then asks for your consent. If you refuse, the line says **Turned off in the device settings** and does not come back. It is **never a safety channel**: underground, with no network, nothing gets through.
 
 ### 🔒 Privacy & Network audit
 
@@ -133,6 +134,10 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 ---
 
 ## 🚀 Getting started
+
+### 👋 First launch
+
+After the start screen, a short **Welcome** presentation scrolls by: what the app does, how it finds your way without GPS, why nothing leaves your device. Tap **Enter** (at the top or at the bottom) to reach the home screen, or **Discover** to scroll through it. The first time, **Enter** first shows the **terms of use** to accept. At the bottom, **Discover the app in 1 minute** opens the guided tour as you enter; otherwise it stays available in **📖 Documentation**. This presentation only shows once per device (and again after “💥 Reset everything”). On a private installation (club, association), the same presentation has an **Access code** field at the top: you can read everything without the code, but you only get in with it; ask the person who runs the installation. After 5 wrong codes, the field locks for a while (10 min, then longer) and shows the time left. The **🔐 local access code** is not offered at start-up: turn it on if you wish from **⚙️ Configuration** (“🔭 Going further”).
 
 ### 📱 Install the application on Mobile (iPhone/Android)
 
@@ -651,6 +656,8 @@ The **✏️** button in the sidebar turns add mode on or off. When it is on, ev
 
 **The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage, 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: a short name in lowercase letters, digits, `_` or `-` (e.g. `fountain`); it uses the default icon.
 
+**⚠️ Danger type: date observed.** A point of type **Danger** carries a **📅 Date observed**, the day the hazard was seen: pre-filled with today, editable, to be cleared if you don't know it (an older Danger point stays without a date until you add one). Its popup shows "Observed on …" and reminds you that **MyKTAMap does not certify the condition of a site: a recorded hazard may have changed since the date it was observed.** The date goes out with the session export, KMZ, GPX and GeoJSON (read back by the KMZ and GPX import), never with the anonymized export.
+
 ### ✏️ Edit or reposition a point
 
 On **your** points, the point's popup offers:
@@ -665,13 +672,14 @@ Both can be undone with ⏪ (`Ctrl+Z`). To remove a point: **🗑️ Delete this
 Up to **5 photos per point**, kept on your device only. In the add or edit window, **📸 Photos** section:
 
 - **📷 Take photo** opens the camera (mobile); **🖼️ From gallery** lets you pick several at once.
-- Each photo is **compressed** (a photo of several MB then weighs a few hundred KB) and **cleaned**: the GPS position where it was taken, the date and the device model are removed before it enters the app.
+- Each photo is **compressed** (a photo of several MB then weighs a few hundred KB) and **cleaned**: the GPS position where it was taken and the device model are removed before it enters the app. Only its **date taken** is read before cleaning and kept **beside** the photo (never in the file): full screen shows "Taken on …". Without that date (screenshot, already cleaned photo), it shows "Added on … (date taken unknown)".
+- A photo the browser cannot read (damaged file, unsupported format) is **refused** with a message: it never gets in as is.
 - **Remove a photo**: the red ✕ on the thumbnail marks it for deletion, the green arrow ↺ cancels. Nothing is deleted before **💾 Save**.
 - **Closing without saving** deletes the photos you had just added and cancels the deletion marks.
 
 **Viewing them**: the point's popup shows the thumbnails — a tap opens full screen (pinch or mouse wheel to zoom, swipe to go to the next one, `← →` and `Esc` on PC). The **📸** counter in the top bar opens the session details.
 
-**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; each photo carries its point's card (name, position, level, type: enough to ♻️ recreate a vanished point). A re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code, without its card; a photo that cannot be cleaned is left out.
+**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; each photo carries its point's card (name, position, level, type: enough to ♻️ recreate a vanished point), its date taken and the date it was added. A re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code, without its card or its dates; a photo that cannot be cleaned is left out.
 
 **📌 Photo "to assign"**: before v2.3.0, a photo was filed under its point's **name**. If several points share the same name, the app doesn't guess which one it belongs to: in the bubble of each of these points, the photo shows with a **dashed orange frame** and a **📌 Photo N: it's this point** button. Tap it in the right point's bubble. Nothing is ever deleted. Photos whose name belongs to a single point are assigned automatically, and the ones you take now follow their point even if you rename it.
 
@@ -1119,6 +1127,7 @@ To the right of “📚 My maps”, the **All | Folders** selector. In **Folders
 
 - **Sorting**: **☑ Select** one or more maps then “Move to…”, or **drag** the row onto a folder (with the mouse, or with a finger after a long press).
 - **⋮** on a folder: rename, colour, order, delete (its maps go back to Unsorted, no map is ever deleted).
+- **📥 Keep all offline** (in ⋮, also on “Unsorted” for the maps it shows): brings the whole folder up to date on the device before going underground. Missing maps are downloaded, maps with a newer version are updated, maps already up to date are skipped (an imported, saved map is already there). One map at a time, with “3 / 7” and the current map; **⏹ Stop** at any time. The app asks for confirmation only above an estimated 200 MB or on mobile data (when the browser can tell). If the app goes to the background or loses the network, the current map resumes when it comes back, without downloading again what is already stored. At the end, the summary lists the maps downloaded, updated, already up to date, and those that failed, with the reason.
 - **🏷️ Tag rule** (in ⋮): the folder takes in by itself the maps carrying those tags. In All mode, ticked chips offer **📁 Create a folder from these tags**. Sorting by hand wins over a rule; the dot is **filled** for an explicit placement, **hollow** for a rule.
 - Folders travel with your profile. A server may offer some: you can neither rename nor delete them, but you can put whatever you like in them. Importing several maps offers “Put in:”.
 
@@ -1173,7 +1182,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
 - **📐 Map: scale & geolocation** *(this map)*:
   - **Scale**, with **🎯** to calibrate it (see below);
   - **🧭 North calibration**, if the top of the map is not North: an angle, or **📐 Calibrate (2 clicks)** (South then North on the map), **↺ Reset** to go back to 0. The compass always shows true North;
-  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. This georeferencing is used by the OSM view, the KMZ, GPX, GeoJSON and GeoTIFF exports and GPX import.
+  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. Below the points, the window shows the **accuracy at the corners** of the saved calibration: “Exact projection” for any calibration made today; “Approximate projection, ± X m” for a map calibrated earlier (the old calculation drifts by 2 to 3 m on a 1 km map, up to 20 m on 6 km). The **Recalibrate to exact projection** button fixes that map: it first tells you how far the map and its objects will move, without touching the calibration points. Nothing changes until you confirm, and saving the same calibration again does not alter it. This georeferencing is used by the OSM view, the KMZ, GPX, GeoJSON and GeoTIFF exports and GPX import.
 - **📍 Navigation & tracker** *(📍/🌍 per line)*:
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
@@ -1253,7 +1262,7 @@ Tap the active button (in green) again to turn it off.
 
 ### 🔑 The password is refused
 
-On first launch, MyKTAMap simply offers **Continue**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is asked. Only an installation with its own password (association, club) asks for one, in the **Access code** field at the top of the presentation: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 
@@ -1269,7 +1278,7 @@ These tools delete **no** data (stored maps, sessions, photos, logbook, preferen
 **⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
-- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will simply offer **Continue**.
+- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will show the **Welcome** screen again.
 - Two confirmations are required. Do it **with a connection**: if you are offline, a red window warns you that the app will be unusable until the network is back.
 
 Not to be confused with **↺ Default values** in ⚙️ Settings, which only touches the settings of the open map.
@@ -1575,7 +1584,7 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 - **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
 - **Icons & tags**: **↺ Load defaults** pre-fills the standard icons, **+ Add a tag** creates a type of your own. The `default` and `track` tags are mandatory.
 - **🏷️ Map legend**: renames, hidden entries and added entries apply to everyone who opens the map; each person can then change it for themselves.
-- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export.
+- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export. Below the fields, the **accuracy at the corners** of the calibration appears as soon as A, B and the image are there: “Exact projection” for a new calibration or an imported GeoTIFF; “Approximate projection, ± X m” for the original calibration of a map calibrated earlier, kept as long as you do not change its points (⚙️ Settings → Georeferencing offers to recalibrate it).
 - **📖 History PDF** (optional): one or more PDFs, at the top of the list in History Mode. When editing, the map's existing ones are kept.
 
 #### 📂 Edit an existing map

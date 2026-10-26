@@ -1,0 +1,333 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+/* bienvenue.css — écran « Bienvenue » (js/bienvenue.js), avec ou sans champ « Code d'accès », chargé par
+   js/unlockGate.js seulement quand cet écran s'affiche : ni ces règles ni les polices ne pèsent sur le reste de l'app.
+   « La descente » : un fil doré part d'un puits de la rue et descend de station en station le long du bord gauche.
+   Toujours sombre (décision produit) : au premier lancement aucun thème n'est encore choisi, l'écran garde le
+   style de la page de présentation. Jetons locaux --bv-* ; --kta-accent-texte est redéfini pour les liens de
+   contact (.kta-tx-accent) qui le lisent.
+   ⚠️ contrat : fil, tête de suivi et repères atteints sont pilotés par js/bienvenue.js (classe kta-bv-js-fil sur
+   l'écran). Sans elle, ou en mouvement réduit : état final statique (fil complet, ni tête ni flash, ville immobile).
+   🩸 L'écran défile en interne (overlay fixe) : la hauteur de l'en-tête suit 100svh, pas celle de la page. */
+
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("../fonts/montserrat-400.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("../fonts/montserrat-600.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 800; font-display: swap;
+  src: url("../fonts/montserrat-800.woff2") format("woff2"); }
+@font-face { font-family: "Permanent Marker"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("../fonts/permanent-marker-400.woff2") format("woff2"); }
+
+/* 🩸 `html` en tête : passe devant les règles de #kta-unlock-overlay de style.css, thème clair compris. */
+html #kta-unlock-overlay.kta-bv {
+  --bv-fond: #0a0d18; --bv-fond-haut: #0e1220; --bv-fond-nuit: #070912; --bv-surface: #1a1f2e;
+  --bv-bord: #3a4560; --bv-galerie: #2a3348; --bv-texte: #e8eaf0; --bv-texte-2: #c8d0e0; --bv-texte-3: #98a1b3;
+  --bv-or: #f4c542; --bv-sur-or: #14110a; --bv-bleu: #8cb4ff; --bv-vert: #8fd9a8; --bv-ambre: #e8b765;
+  --bv-erreur: #ff8c8c; --bv-ok: #6ee287; --bv-avert: #ffb380;
+  --kta-accent-texte: #f4c542;
+  --h-ville: clamp(200px, calc(100svh - 470px), 440px);
+  --marge-galerie: max(24px, min(66px, calc(66px - (100vw - 1180px) / 2)));
+  display: block; padding: 0; background: var(--bv-fond) !important; overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: auto;
+  font-family: Montserrat, system-ui, sans-serif; color: var(--bv-texte); text-align: left;
+  animation: kta-bv-apparait 0.3s ease;
+}
+html #kta-unlock-overlay.kta-bv:focus { outline: none; }
+/* 🩸 Opacité seule : un transform sur l'écran ferait du voile (position: fixed) un enfant positionné dans la page. */
+@keyframes kta-bv-apparait { from { opacity: 0; } to { opacity: 1; } }
+.kta-bv *, .kta-bv *::before, .kta-bv *::after { box-sizing: border-box; }
+.kta-bv-page { position: relative; min-height: 100%; overflow: hidden; }
+.kta-bv a { color: var(--bv-bleu); }
+.kta-bv a:focus-visible, .kta-bv button:focus-visible { outline: 3px solid var(--bv-or); outline-offset: 3px; }
+.kta-bv-feutre { font-family: "Permanent Marker", cursive; color: var(--bv-or); font-weight: 400; }
+
+/* ── Boutons ── */
+.kta-bv-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.kta-bv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px;
+  padding: 0 26px; border-radius: 999px; text-decoration: none; font: 800 17px Montserrat, system-ui, sans-serif;
+  cursor: pointer; }
+.kta-bv-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round; }
+.kta-bv-btn-or { background: var(--bv-or); color: var(--bv-sur-or); border: 0; }
+.kta-bv-btn-contour { border: 2px solid var(--bv-or); color: var(--bv-or); background: transparent; font-weight: 600;
+  font-size: 16px; }
+.kta-bv-btn-or:focus-visible, .kta-bv-btn-contour:focus-visible { outline-color: var(--bv-texte); }
+@media (hover: hover) {
+  .kta-bv-btn-or:hover { background: #f7d36a; }
+  .kta-bv-btn-contour:hover { background: rgba(244, 197, 66, 0.1); }
+}
+.kta-bv-btn:disabled { cursor: default; }
+/* Pastille vers l'édition pro : discrète à côté des deux boutons, cible 44 px tenue par la hauteur. */
+.kta-bv a.kta-bv-pastille-pro { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid rgba(244, 197, 66, 0.35); background: rgba(244, 197, 66, 0.08);
+  color: var(--bv-or); font: 600 14px Montserrat, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
+@media (hover: hover) { .kta-bv a.kta-bv-pastille-pro:hover { background: rgba(244, 197, 66, 0.16); } }
+
+/* ── Champ « Code d'accès » (instance protégée) : même hauteur que les boutons, retour juste dessous ── */
+.kta-bv-code { margin: 0; display: flex; flex-direction: column; gap: 8px; max-width: 560px; }
+.kta-bv-code-ligne { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.kta-bv-code-champ { flex: 1 1 180px; min-width: 0; min-height: 52px; padding: 0 20px; border-radius: 999px;
+  border: 2px solid var(--bv-bord); background: var(--bv-surface); color: var(--bv-texte);
+  font: 600 17px Montserrat, system-ui, sans-serif; }
+.kta-bv-code-champ::placeholder { color: var(--bv-texte-3); opacity: 1; }
+.kta-bv-code-champ:focus { outline: none; border-color: var(--bv-or); }
+.kta-bv-code-champ:focus-visible { outline: 3px solid var(--bv-or); outline-offset: 3px; }
+/* Verrou : champ grisé par sa bordure et son fond, jamais par l'opacité (le compte à rebours reste lisible). */
+.kta-bv-code-champ:disabled { border-style: dashed; background: var(--bv-fond); cursor: not-allowed; }
+.kta-bv-code-champ:disabled::placeholder { color: var(--bv-texte-2); }
+.kta-bv-code-entrer:disabled { background: var(--bv-surface); color: var(--bv-texte-3); }
+.kta-bv-code-retour:empty { display: none; }
+.kta-bv-code-retour:focus { outline: none; }
+.kta-bv-code-msg { margin: 0; padding: 8px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+.kta-bv-code-erreur { color: var(--bv-erreur); border: 1px solid rgba(255, 140, 140, 0.35);
+  background: rgba(255, 140, 140, 0.08); }
+.kta-bv-code-ok { color: var(--bv-ok); border: 1px solid rgba(110, 226, 135, 0.35); background: rgba(110, 226, 135, 0.08); }
+.kta-bv-code-avert { color: var(--bv-avert); border: 1px solid rgba(255, 179, 128, 0.3); background: rgba(255, 179, 128, 0.06); }
+.kta-bv-code-rebours { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--bv-texte); }
+.kta-bv-code-aide { display: block; margin-top: 6px; font-size: 13px; color: var(--bv-texte-2); }
+.kta-bv-code-note { margin: 0; font-size: 14px; line-height: 1.55; color: var(--bv-texte-3); max-width: 620px; }
+
+/* ── En-tête : barre, accroche, la ville en surface ── */
+.kta-bv-entete { position: relative; background: var(--bv-fond-haut); min-height: 100svh; display: flex;
+  flex-direction: column; overflow: hidden; }
+.kta-bv-barre { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 0; }
+.kta-bv-logo { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: 0.01em; }
+/* Sélecteur de langue de l'app (drapeau + code), cibles de 44 px. */
+.kta-bv-langues { display: flex; }
+.kta-bv-langue { min-width: 44px; min-height: 44px; padding: 0 2px; border: 0; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  font: 600 12px Montserrat, system-ui, sans-serif; color: var(--bv-texte-2); }
+.kta-bv-langue span { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px;
+  border-radius: 999px; border: 1px solid var(--bv-bord); background: var(--bv-surface); white-space: nowrap; }
+.kta-bv-langue[aria-pressed="true"] span { border-color: var(--bv-or); color: var(--bv-or); }
+@media (hover: hover) { .kta-bv-langue:hover span { border-color: var(--bv-bleu); } }
+
+.kta-bv-hero { position: relative; padding: 24px 16px 0; display: flex; flex-direction: column; gap: 14px;
+  transition: opacity 0.45s ease-out, translate 0.45s ease-out; }
+.kta-bv-surtitre { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--bv-or); }
+.kta-bv-hero h1 { margin: 0; font-size: 34px; line-height: 1.1; font-weight: 800; max-width: 900px; color: var(--bv-texte); }
+.kta-bv-accroche { margin: 0; font-size: 16px; line-height: 1.6; color: var(--bv-texte-2); max-width: 720px; }
+/* Contacts de l'auteur (gate.contact, emojis) : liens hauts de 44 px. */
+.kta-bv-contacts { margin: 0; font-size: 13px; line-height: 1.5; color: var(--bv-texte-3); }
+.kta-bv-contacts a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+.kta-bv-contacts a:hover { text-decoration: underline; }
+
+.kta-bv-ville { display: block; width: 100%; height: var(--h-ville); margin-top: auto; flex: none; }
+/* 🩸 Téléphone : le halo de la lune de la scène dépasse le haut du dessin ; coupé net, il dessinait une démarcation.
+   La scène y est calée sur la hauteur (rien d'autre ne déborde) ; au-delà de 900 px, la lune est hors scène. */
+@media (max-width: 899px) { .kta-bv-ville { overflow: visible; } }
+.kta-bv-lune-haut { display: none; overflow: visible; }
+.kta-bv-reseau .kta-bv-masque, .kta-bv-lampes .kta-bv-masque { visibility: hidden; }
+
+/* Entrée de surface : la galerie part de la rue, à 270/630 de la hauteur de la ville au-dessus du bas de l'en-tête
+   (scène de 6000 × 630 rognée en largeur, calée en bas). */
+.kta-bv-entree { position: absolute; left: 10px; bottom: 0; width: 44px; height: calc(var(--h-ville) * 270 / 630);
+  z-index: 3; pointer-events: none; }
+.kta-bv-entree-galerie { position: absolute; left: 17px; top: 0; bottom: 0; width: 10px; background: var(--bv-galerie); }
+.kta-bv-fil-entree { position: absolute; left: 20px; top: 0; bottom: 0; width: 4px; background: var(--bv-or); }
+.kta-bv-js-fil .kta-bv-fil-entree { transform-origin: top; transform: scaleY(var(--entree, 0)); }
+.kta-bv-entree .kta-bv-repere { left: 2px; top: calc(var(--h-ville) * 24 / 630 - 20px); }
+.kta-bv-speleos { position: absolute; left: 46px; top: -38px; width: 58px; height: 36px; overflow: visible; }
+/* Tête de suivi de l'entrée : pointe vers le bas, cachée au repos. Au défilement, elle suit le fil doré du puits
+   (--entree, posé sur .kta-bv-entree par bienvenue.js > placerEntree) puis passe le relais à la 1re galerie ;
+   à « Entrer », l'animation kta-bv-descente la prend en main. */
+.kta-bv-tete-entree { position: absolute; left: 7px; top: calc(var(--h-ville) * 24 / 630 + 6px); width: 30px;
+  height: 30px; rotate: 180deg; opacity: 0; }
+/* Centrée sur le bout du fil (entree × hauteur du puits), comme la tête des galeries : le fil la touche toujours. */
+.kta-bv-js-fil .kta-bv-tete-entree.kta-bv-en-cours { opacity: 1;
+  translate: 0 calc(var(--entree, 0) * var(--h-ville) * 270 / 630 - var(--h-ville) * 24 / 630 - 21px); }
+
+/* ── Vie de la ville : boucles longues de durées premières entre elles, transform et opacity seulement ── */
+.kta-bv-pieton { animation: kta-bv-pieton 34s linear -6s infinite; }
+.kta-bv-jambe, .kta-bv-bras { transform-box: fill-box; transform-origin: top center;
+  animation: kta-bv-pas 0.9s ease-in-out infinite alternate; }
+.kta-bv-jambe-2 { animation-direction: alternate-reverse; }
+.kta-bv-voiture { animation: kta-bv-voiture 23s linear 3s infinite both; }
+.kta-bv-vol { animation: kta-bv-vol 29s linear -4s infinite; }
+.kta-bv-vol-haut { animation: kta-bv-vol-haut 29s linear -4s infinite; }
+.kta-bv-aile { transform-box: fill-box; transform-origin: center; animation: kta-bv-aile 0.7s ease-in-out infinite alternate; }
+.kta-bv-aile-2 { animation-delay: -0.25s; }
+.kta-bv-aile-3 { animation-delay: -0.5s; }
+.kta-bv-lueur { transform-box: fill-box; transform-origin: center; animation: kta-bv-lueur 11s ease-in-out infinite alternate; }
+.kta-bv-pieton-2 { animation-duration: 41s; animation-delay: -20s; }
+.kta-bv-pieton-3 { animation-duration: 37s; animation-delay: -12s; }
+.kta-bv-pieton-4 { animation-duration: 47s; animation-delay: -33s; }
+.kta-bv-voiture-2 { animation-duration: 27s; animation-delay: -9s; }
+.kta-bv-voiture-3 { animation-duration: 31s; animation-delay: -17s; }
+.kta-bv-speleo { animation: kta-bv-pietine 5.3s ease-in-out infinite alternate; }
+.kta-bv-speleo-2 { animation-duration: 6.7s; animation-delay: -2.4s; }
+.kta-bv-faisceau { transform-box: view-box; transform-origin: 16px 9px;
+  animation: kta-bv-faisceau 3.2s ease-in-out infinite alternate, kta-bv-balaie 4.6s ease-in-out infinite alternate; }
+.kta-bv-faisceau-2 { transform-origin: 37px 11px; animation-duration: 4.1s, 5.9s; animation-delay: -1.3s, -3s; }
+@keyframes kta-bv-pieton { 0% { transform: translateX(-220px); opacity: 0; } 3% { opacity: 1; } 73% { opacity: 1; }
+  76% { transform: translateX(580px); opacity: 0; } 100% { transform: translateX(580px); opacity: 0; } }
+@keyframes kta-bv-pas { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+@keyframes kta-bv-voiture { 0% { transform: translateX(1800px); opacity: 1; } 26% { opacity: 1; }
+  30% { transform: translateX(-600px); opacity: 0; } 100% { transform: translateX(-600px); opacity: 0; } }
+@keyframes kta-bv-vol { 0% { transform: translateX(-120px); opacity: 0; } 4% { opacity: 1; } 46% { opacity: 1; }
+  50% { transform: translateX(560px) translateY(-14px); opacity: 0; } 100% { transform: translateX(560px); opacity: 0; } }
+@keyframes kta-bv-vol-haut { 0% { transform: translateX(-110px); opacity: 0; } 6% { opacity: 1; } 44% { opacity: 1; }
+  50% { transform: translateX(240px) translateY(-10px); opacity: 0; } 100% { transform: translateX(200px); opacity: 0; } }
+@keyframes kta-bv-aile { from { transform: scaleY(1); } to { transform: scaleY(0.45); } }
+@keyframes kta-bv-lueur { from { opacity: 0.6; transform: scale(1); } to { opacity: 1; transform: scale(1.08); } }
+@keyframes kta-bv-pietine { 0% { transform: translateX(0); } 35% { transform: translateX(3px); }
+  70% { transform: translateX(-2px); } 100% { transform: translateX(1px); } }
+@keyframes kta-bv-faisceau { from { opacity: 0.12; } to { opacity: 0.3; } }
+@keyframes kta-bv-balaie { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+
+/* ── Stations ── */
+.kta-bv-station { position: relative; background: var(--bv-fond-nuit); }
+.kta-bv-station-sortie { background: var(--bv-fond); }
+.kta-bv-galerie { position: absolute; left: 10px; top: 0; bottom: 0; width: 44px; z-index: 2; pointer-events: none; }
+.kta-bv-galerie-courte { bottom: auto; height: 64px; }
+.kta-bv-galerie svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.kta-bv-fil-sec { position: absolute; inset: 0; }
+/* Tête de suivi : placée par js/bienvenue.js (--x, --y : point du fil en px de la galerie ; --angle : 180deg = vers
+   le bas, 90deg = droite, 270deg = gauche, l'icône pointant vers le haut). Jamais -90deg : de 180 à -90, la
+   transition ferait le tour par le haut. */
+.kta-bv-tete-sec { display: none; position: absolute; left: 0; top: 0; width: 30px; height: 30px; opacity: 0;
+  translate: calc(var(--x, 22px) - 15px) calc(var(--y, 0px) - 15px); rotate: var(--angle, 180deg);
+  transition: rotate 0.18s ease-out, opacity 0.15s linear; }
+.kta-bv-js-fil .kta-bv-tete-sec { display: block; }
+.kta-bv-js-fil .kta-bv-tete-sec.kta-bv-en-cours { opacity: 1; }
+/* Fil doré dessiné sur la longueur parcourue (--fil-long, --fil-reste posés sur la galerie). Avant la mesure : vide. */
+.kta-bv-js-fil .kta-bv-fil-sec path { stroke-dasharray: var(--fil-long, 0px) var(--fil-long, 100000px);
+  stroke-dashoffset: var(--fil-reste, 0px); }
+
+/* Repère (POI) : « atteint » une fois la tête passée, flash au passage (anneau et halo). */
+.kta-bv-repere { position: absolute; left: 12px; top: 44px; width: 40px; height: 40px; z-index: 3; border-radius: 10px;
+  transition: box-shadow 0.3s ease-out; }
+.kta-bv-repere img { display: block; width: 40px; height: 40px; }
+.kta-bv-repere::before, .kta-bv-repere::after { content: ""; position: absolute; left: 50%; top: 50%; width: 40px;
+  height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; opacity: 0; pointer-events: none; }
+.kta-bv-repere::before { border: 3px solid var(--bv-or); }
+.kta-bv-repere::after { background: radial-gradient(circle, rgba(244, 197, 66, 0.55), rgba(244, 197, 66, 0) 70%); }
+.kta-bv-repere.kta-bv-atteint { box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.7), 0 0 12px rgba(244, 197, 66, 0.3); }
+/* L'entrée n'est pas un point à valider : ni contour ni flash. */
+.kta-bv-entree .kta-bv-repere.kta-bv-atteint { box-shadow: none; }
+.kta-bv-entree .kta-bv-repere.kta-bv-flash::before, .kta-bv-entree .kta-bv-repere.kta-bv-flash::after { animation: none; }
+.kta-bv-repere.kta-bv-flash::before { animation: kta-bv-flash-anneau 0.6s ease-out both; }
+.kta-bv-repere.kta-bv-flash::after { animation: kta-bv-flash-halo 0.6s ease-out both; }
+@keyframes kta-bv-flash-anneau { from { opacity: 1; transform: scale(0.9); } to { opacity: 0; transform: scale(2.4); } }
+@keyframes kta-bv-flash-halo { 0% { opacity: 0; transform: scale(1); } 30% { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.2); } }
+
+.kta-bv-contenu { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px 66px; }
+.kta-bv-contenu-ligne { display: flex; flex-wrap: wrap; gap: 36px; align-items: flex-start; }
+.kta-bv-texte { flex: 999 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.kta-bv-station h2 { margin: 0; font-size: 28px; line-height: 1.2; font-weight: 800; color: var(--bv-texte); }
+.kta-bv-intro { margin: 0; font-size: 17px; line-height: 1.65; color: var(--bv-texte-2); max-width: 760px; }
+.kta-bv-liste { margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.7; color: var(--bv-texte-2); max-width: 720px; }
+.kta-bv-atouts { margin: 0; display: flex; flex-wrap: wrap; gap: 20px 32px; }
+.kta-bv-atout { flex: 1 1 260px; min-width: 0; }
+.kta-bv-atout dt { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-weight: 800; font-size: 17px;
+  color: var(--bv-texte); }
+.kta-bv-atout dd { margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: var(--bv-texte-2); }
+.kta-bv-picto { flex: none; width: 22px; height: 22px; fill: none; stroke: var(--bv-or); stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.kta-bv-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; border: 1px solid rgba(232, 183, 101, 0.45); background: rgba(232, 183, 101, 0.1);
+  color: var(--bv-ambre); }
+.kta-bv-encart { margin: 4px 0 0; display: flex; gap: 12px; align-items: flex-start; padding: 14px 18px;
+  border-radius: 14px; font-size: 16px; line-height: 1.6; color: var(--bv-texte-2); max-width: 720px; }
+.kta-bv-encart .kta-bv-picto { margin-top: 2px; }
+.kta-bv-encart-vert { border: 1px solid rgba(143, 217, 168, 0.35); background: rgba(143, 217, 168, 0.06); }
+.kta-bv-encart-vert .kta-bv-picto { stroke: var(--bv-vert); }
+.kta-bv-encart-ambre { border: 1px solid rgba(232, 183, 101, 0.4); background: rgba(232, 183, 101, 0.06); }
+.kta-bv-encart-ambre .kta-bv-picto { stroke: var(--bv-ambre); }
+.kta-bv-illus { flex: 1 1 300px; min-width: 0; max-width: 480px; margin: 0; }
+.kta-bv-illus svg { display: block; width: 100%; height: auto; font-family: Montserrat, sans-serif; }
+.kta-bv-legende { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--bv-texte-3); }
+.kta-bv-sortie { display: flex; flex-direction: column; gap: 18px; }
+.kta-bv-pied { border-top: 1px solid rgba(244, 197, 66, 0.25); background: var(--bv-fond-nuit); }
+.kta-bv-pied-in { max-width: 1180px; margin: 0 auto; padding: 28px 20px 36px 66px; display: flex; flex-direction: column;
+  gap: 10px; }
+.kta-bv-pied-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--bv-texte-3); }
+/* Crédits et signature comme au splash (#splashLeafletCredit, #splashKarmaCorner) : la lueur rend lisible une
+   signature petite sans la grossir. */
+/* Documentation et code source : pastilles discrètes sous les boutons de la sortie. */
+.kta-bv-sortie-docs { display: flex; flex-wrap: wrap; gap: 10px; }
+.kta-bv .kta-bv-lien-pied { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: 1px solid var(--bv-bord); border-radius: 999px; background: var(--bv-surface); cursor: pointer;
+  color: var(--bv-texte-2); font: 600 14px Montserrat, system-ui, sans-serif; text-decoration: none;
+  white-space: nowrap; }
+.kta-bv-github svg { width: 18px; height: 18px; fill: currentColor; }
+@media (hover: hover) { .kta-bv .kta-bv-lien-pied:hover { border-color: var(--bv-or); color: var(--bv-or); } }
+.kta-bv-pied-credits { width: 100%; display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; }
+.kta-bv-pied-credits p { margin: 0; font-size: 11px; line-height: 20px; color: var(--bv-texte-3); letter-spacing: 0.02em;
+  white-space: nowrap; }
+@media (max-width: 480px) { .kta-bv-pied-credits p { font-size: 10px; line-height: 18px; } }
+.kta-bv-signature { display: block; flex: none; height: 20px; width: auto;
+  filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }
+
+/* Sortie d'urgence : bouton 🚨 de l'en-tête de l'app (fond rouge, bord rouge), flottant en haut à droite, montré
+   une fois l'en-tête dépassé (bienvenue.js > surveillerEntete). Fond opaque : posé sur la page qui défile. */
+.kta-bv-sortie-urgence { position: fixed; z-index: 10; right: calc(16px + env(safe-area-inset-right, 0px));
+  top: calc(16px + env(safe-area-inset-top, 0px)); width: 48px; height: 48px; display: flex; align-items: center;
+  justify-content: center; padding: 0; border-radius: 10px; font-size: 22px; line-height: 1; cursor: pointer;
+  background: linear-gradient(rgba(255, 80, 80, 0.22), rgba(255, 80, 80, 0.22)), var(--bv-fond);
+  border: 1px solid rgba(255, 80, 80, 0.55); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.2s linear, visibility 0.2s linear, background 0.15s ease; }
+@media (hover: hover) {
+  .kta-bv-sortie-urgence:hover {
+    background: linear-gradient(rgba(255, 80, 80, 0.4), rgba(255, 80, 80, 0.4)), var(--bv-fond);
+  }
+}
+.kta-bv-sortie-urgence:not(.kta-bv-montre), .kta-bv-descend .kta-bv-sortie-urgence,
+.kta-bv-descend-bas .kta-bv-sortie-urgence { opacity: 0; visibility: hidden; pointer-events: none; }
+
+/* ── Grand écran ── */
+@media (min-width: 900px) {
+  /* Accroche plus courte en largeur : la ville prend la place libre sous elle. */
+  html #kta-unlock-overlay.kta-bv { --h-ville: clamp(200px, calc(100svh - 400px), 440px); }
+  .kta-bv-barre { padding: 20px 24px; }
+  .kta-bv-logo { font-size: 22px; }
+  .kta-bv-hero { padding: 48px 24px 0; gap: 20px; }
+  .kta-bv-hero h1 { font-size: 60px; }
+  .kta-bv-accroche { font-size: 19px; }
+  .kta-bv-lune-haut { display: block; position: absolute; right: 0; bottom: -70px; width: 340px; height: 240px; }
+  .kta-bv-ville .kta-bv-lune-scene { display: none; }
+  .kta-bv-station h2 { font-size: 36px; }
+  .kta-bv-intro { font-size: 18px; }
+  .kta-bv-contenu { padding: 32px 24px 88px var(--marge-galerie); }
+  .kta-bv-contenu-ligne { gap: 40px 48px; }
+  .kta-bv-pied-in { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px 32px; padding-left: var(--marge-galerie); }
+}
+/* Grand écran peu haut (portable 768 px) : la lune ne doit pas recouvrir le texte de l'accroche. */
+@media (min-width: 900px) and (max-height: 820px) {
+  .kta-bv-hero { padding-top: 28px; }
+  .kta-bv-hero h1 { font-size: 52px; }
+}
+
+/* ── « Entrer » : le texte s'efface, la tête de suivi descend le puits, fondu vers l'app ── */
+.kta-bv-voile { position: fixed; inset: 0; background: var(--bv-fond); opacity: 0; pointer-events: none; z-index: 20; }
+.kta-bv-descend .kta-bv-hero { opacity: 0; translate: 0 -10px; }
+.kta-bv-descend .kta-bv-tete-entree { animation: kta-bv-descente 1.9s cubic-bezier(0.45, 0, 0.75, 1) 0.25s forwards; }
+.kta-bv-descend .kta-bv-fil-entree { transform: scaleY(1); transition: transform 1.75s cubic-bezier(0.45, 0, 0.75, 1) 0.25s; }
+.kta-bv-descend .kta-bv-voile { animation: kta-bv-voile 0.7s ease-in 2s forwards; }
+/* Depuis le bas de l'écran (puits hors de vue) : fondu seul. */
+.kta-bv-descend-bas .kta-bv-voile { animation: kta-bv-voile 0.6s ease-in forwards; }
+@keyframes kta-bv-descente { 0% { opacity: 0; translate: 0 0; } 8% { opacity: 1; } 85% { opacity: 1; }
+  100% { opacity: 0; translate: 0 calc(var(--h-ville) * 246 / 630 - 30px); } }
+@keyframes kta-bv-voile { to { opacity: 1; } }
+
+/* ── Mouvement réduit : état final statique ── */
+@media (prefers-reduced-motion: reduce) {
+  .kta-bv-pieton, .kta-bv-jambe, .kta-bv-bras, .kta-bv-voiture, .kta-bv-lueur, .kta-bv-faisceau, .kta-bv-speleo,
+  .kta-bv-aile { animation: none; }
+  .kta-bv-vol, .kta-bv-vol-haut { display: none; }
+  .kta-bv-tete-sec, .kta-bv-js-fil .kta-bv-tete-sec { display: none; }
+  .kta-bv-js-fil .kta-bv-fil-sec path { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .kta-bv-js-fil .kta-bv-fil-entree { transform: none; }
+  .kta-bv-repere.kta-bv-flash::before, .kta-bv-repere.kta-bv-flash::after { animation: none; }
+  .kta-bv-hero { transition: none; }
+  .kta-bv-descend .kta-bv-tete-entree { animation: none; }
+  .kta-bv-descend .kta-bv-voile, .kta-bv-descend-bas .kta-bv-voile { animation: none; opacity: 1; }
+}

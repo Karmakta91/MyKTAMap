@@ -23,9 +23,8 @@ const server = require("./server.js");
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);   // même port que server.js
 const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
-  "myktamap_terms_accepted_v1": "1",
+  "myktamap_terms_accepted_v1": "2",
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
-  "myktamap_pin_proposal_done_v1": "1",
   "myktamap_tutorial_seen_v1": "1"
 };
 

@@ -25,3 +25,13 @@
   formulaire ni JavaScript dans le PDF.
 - **JSZip** ouvre des archives fournies par l'utilisateur ou par un serveur : toute faille de lecture de ZIP la
   concerne directement.
+
+## 🔤 Polices embarquées (`fonts/`, hors `lib/`)
+
+Pas de paquet npm suivi (pas de veille Dependabot) : des fichiers de police figés, sans code exécutable.
+Utilisées par le seul écran Bienvenue (`css/bienvenue.css`), précachées par `sw.js`.
+
+| Police | Fichiers | Licence (jointe) | Source |
+|---|---|---|---|
+| **Montserrat** 400 / 600 / 800 | `montserrat-{400,600,800}.woff2` | SIL Open Font License 1.1 (`LICENSE-montserrat.txt`) | [JulietaUla/Montserrat](https://github.com/JulietaUla/Montserrat) |
+| **Permanent Marker** 400 | `permanent-marker-400.woff2` | Apache 2.0 (`LICENSE-permanent-marker.txt`) | [Google Fonts](https://fonts.google.com/specimen/Permanent+Marker) |

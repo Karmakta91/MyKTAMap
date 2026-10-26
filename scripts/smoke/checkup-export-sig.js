@@ -31,9 +31,8 @@ const server = require("./server.js");
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
-  "myktamap_terms_accepted_v1": "1",
+  "myktamap_terms_accepted_v1": "2",
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
-  "myktamap_pin_proposal_done_v1": "1",
   "myktamap_tutorial_seen_v1": "1"
 };
 const COUL_PIL = "#3344ee";   // structure personnalisée, loin de la charte : reconnue au pixel
@@ -107,10 +106,7 @@ async function relireTiff(page, decoder) {
     const w = t[256][0], h = t[257][0];
     const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight, r = w / W;
     const tr = KE.buildTransformCalib(KE.getCalibration(window._currentLoadedPlanId));
-    function dist(a, b) {
-      const lat = (a.lat + b.lat) / 2;
-      return Math.hypot((a.lat - b.lat) * 110540, (a.lng - b.lng) * 111320 * Math.cos(lat * Math.PI / 180));
-    }
+    function dist(a, b) { return KE.distanceM(a, b); }
     function lu(x, y) { const q = monde(x * r, y * r); return versLl(q.X, q.Y); }
     const coins = [[0, 0], [W, 0], [0, H]].map(function (c) { return dist(lu(c[0], c[1]), KE.planToGps(tr, c[0], c[1])); });
     const cal = KE.getCalibration(window._currentLoadedPlanId);
@@ -190,14 +186,15 @@ async function ouvrirFictif(page) {
 async function caler(page) {
   await page.evaluate(function () {
     const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight, k = 0.25;   // ≈ 0,25 m/px
-    const lat0 = 46.5, lng0 = 3.0, kLng = 111320 * Math.cos(lat0 * Math.PI / 180), kLat = 110540;
+    const lat0 = 46.5, lng0 = 3.0, KE = window.KmzExport;
     const rot = 17 * Math.PI / 180;
+    // Mètres au sol posés par le moteur (plan tangent) : le calage est au modèle "local", comme tout nouveau calage.
     function gps(x, y) {
       const e = (x * Math.cos(rot) + y * Math.sin(rot)) * k, n = (x * Math.sin(rot) - y * Math.cos(rot)) * k;
-      return { x: x, y: y, lat: lat0 + n / kLat, lng: lng0 + e / kLng };
+      return Object.assign({ x: x, y: y }, KE.decalerGps(lat0, lng0, e, n));
     }
-    window.KmzExport.setCalibration(window._currentLoadedPlanId,
-      { pointA: gps(W * 0.1, H * 0.9), pointB: gps(W * 0.9, H * 0.1), pointC: gps(W * 0.85, H * 0.8) });
+    KE.setCalibration(window._currentLoadedPlanId, { pointA: gps(W * 0.1, H * 0.9), pointB: gps(W * 0.9, H * 0.1),
+                                                     pointC: gps(W * 0.85, H * 0.8), modele: KE.MODELE_LOCAL });
   });
 }
 
@@ -284,10 +281,7 @@ async function scenarioFictif(page) {
       const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight, r = res.width / W;
       const trLu = KE.buildTransformCalib(res.georef);
       const tr = KE.buildTransformCalib(KE.getCalibration(window._currentLoadedPlanId));
-      function dist(a, b) {
-        const lat = (a.lat + b.lat) / 2;
-        return Math.hypot((a.lat - b.lat) * 110540, (a.lng - b.lng) * 111320 * Math.cos(lat * Math.PI / 180));
-      }
+      function dist(a, b) { return KE.distanceM(a, b); }
       const coins = [[0, 0], [W, 0], [0, H], [W, H]].map(function (c) {
         return dist(KE.planToGps(trLu, c[0] * r, c[1] * r), KE.planToGps(tr, c[0], c[1]));
       });

@@ -427,6 +427,9 @@ function renderStructures() {
   structuresAffichage.forEach(function(s) {
     if (!s.points || s.points.length === 0) return;
     if (!_structurePasseFiltre(s)) return;
+    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
+    if (s !== currentStructure && window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+        !window.KtaExtensions.passeFiltreEtat(s)) return;
 
     // Filtre de types du FilterPanel ; la structure en cours y échappe.
     if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.structTypes
@@ -491,6 +494,10 @@ function renderStructures() {
         layer = L.polygon(latlngs, style).addTo(target);
       }
       structureLayers.push(layer);
+      // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.
+      if (window.KtaExtensions && typeof window.KtaExtensions.marquerCouche === "function") {
+        window.KtaExtensions.marquerCouche(layer, s.uid, isPolyline ? null : style.dashArray);
+      }
 
       // Popup note. Un front reçoit une ghost transparente plus épaisse pour le clic (comme road.js) ; un
       // polygone capte le clic par son aire.

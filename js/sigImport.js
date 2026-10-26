@@ -885,10 +885,11 @@
   function calculerHauteurCanvas(bounds, W) {
     if (!bounds || !window.KmzExport || !window.KmzExport.buildTransform) return W;
     const _mesurer = function (w, h) {
+      // ⚠️ Même modèle que genererZipMyktamap (calage "local"), sinon la hauteur annoncée et la réelle divergent.
       const t = window.KmzExport.buildTransform(
         { x: 0, y: h }, { x: w, y: 0 },
         { lat: bounds.latMin, lng: bounds.lngMin },
-        { lat: bounds.latMax, lng: bounds.lngMax });
+        { lat: bounds.latMax, lng: bounds.lngMax }, null, null, window.KmzExport.MODELE_LOCAL);
       const c = [[bounds.latMin, bounds.lngMin], [bounds.latMin, bounds.lngMax],
                  [bounds.latMax, bounds.lngMin], [bounds.latMax, bounds.lngMax]]
         .map(function (g) { return window.KmzExport.gpsToPlan(t, g[0], g[1]); });
@@ -978,7 +979,9 @@
 
     let transform;
     try {
-      transform = window.KmzExport.buildTransform(pA_plan, pB_plan, pA_gps, pB_gps);
+      // Calage "local" (plan tangent) : les objets sont posés par CE transform, l'aller-retour reste exact.
+      transform = window.KmzExport.buildTransform(pA_plan, pB_plan, pA_gps, pB_gps, null, null,
+                                                  window.KmzExport.MODELE_LOCAL);
       transform.imageW = W;
       transform.imageH = H;
     } catch(e) {
@@ -1027,7 +1030,8 @@
         baseImage:   "data/baseImage.png",
         georef: {
           pointA: { x: pA_plan.x, y: pA_plan.y, lat: pA_gps.lat, lng: pA_gps.lng },
-          pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng }
+          pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng },
+          modele: window.KmzExport.MODELE_LOCAL
         }
       },
       tracking: {

@@ -1047,6 +1047,20 @@
         if (typeof window.refreshPlansList === "function") window.refreshPlansList();
       }
 
+      // Texte d'avancement d'une publication (fiche ℹ️, Générateur) : étape annoncée par l'extension
+      // (KtaExtensions.publierPlan > progression), sinon la taille et le temps écoulé seulement.
+      window.ktaTexteAvancementPublication = function(a, taille, t0) {
+        const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+        const s = Math.max(0, Math.round((Date.now() - t0) / 1000));
+        const duree = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        const mo = function(o) { return (o / 1048576).toFixed(o < 10485760 ? 1 : 0); };
+        if (!a) return t("home.plans.info.publishEnCours", { mo: mo(taille), duree: duree });
+        if (a.etape === "finalisation") return t("ext.publier.etape.finalisation", { duree: duree });
+        const pct = a.total > 0 ? Math.min(100, Math.floor(a.fait * 100 / a.total)) : 0;
+        if (a.etape === "preparation") return t("ext.publier.etape.preparation", { pct: pct, duree: duree });
+        return t("ext.publier.etape.envoi", { pct: pct, fait: mo(a.fait), total: mo(a.total || taille), duree: duree });
+      };
+
       // Après « Publier ce plan » : la copie locale cède la place à la version de l'installation. Les données
       // de l'appareil (session, photos, favoris, liaisons, calage) suivent ; la synchro de l'extension les
       // envoie à la première ouverture.
@@ -1071,7 +1085,7 @@
         PR.remove(planLocal.id);   // entrée + archive locale ; ses sauvegardes de session suivent la purge des orphelins
         if (typeof PR.purgeAssociatedData === "function") { try { await PR.purgeAssociatedData(planLocal.id); } catch (e) { /* rien */ } }
         console.log("[Loader] ☁️ copie locale remplacée par la version publiée :", planLocal.id, "→", idExt, bilan);
-        toast(t("home.plans.info.basculeOkToast", { photos: bilan.photos }), "info");
+        toast(t("home.plans.info.basculeOkToast", { photos: bilan.photos }), "success");
         return true;
       }
 
@@ -1491,6 +1505,7 @@ function planRowHTML(plan) {
                     '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-publish">☁️ ' +
                       escapeHtml(_t("home.plans.info.publishBtn")) + '</button>' +
                     '<div id="kta-plan-publish-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
+                    '<progress id="kta-plan-publish-barre" max="100" hidden style="width:100%; margin-top:6px;"></progress>' +
                     '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' +
                       escapeHtml(_t("home.plans.info.publishHint")) + '</div>' +
                   '</div>'
@@ -1680,9 +1695,15 @@ function planRowHTML(plan) {
         if (btnPublish) {
           btnPublish.addEventListener("click", async function() {
             const st = document.getElementById("kta-plan-publish-status");
+            const barre = document.getElementById("kta-plan-publish-barre");
             const dire = function(txt, cls) { if (st) { st.textContent = txt; st.className = cls || ""; } };
-            const reussi = async function(publie, cleTexte) {
+            // ⚠️ La fiche peut être fermée pendant un long envoi : la fin se dit AUSSI par un toast (réussite en
+            // « success » : un toast « info » est masqué par défaut).
+            const toast = function(m, ty) { if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(m, ty); };
+            const reussi = async function(publie, cleTexte, nom) {
               dire(_t(cleTexte || "home.plans.info.publishOk"), "kta-tx-ok");
+              if (barre) { barre.hidden = false; barre.value = 100; }
+              toast(_t("home.plans.info.publishOkToast", { nom: nom }), "success");
               if (await _basculerVersPublie(plan, publie)) {
                 modal.remove();
                 if (typeof window.refreshPlansList === "function") window.refreshPlansList();
@@ -1691,12 +1712,16 @@ function planRowHTML(plan) {
             const envoyer = async function(blob) {
               btnPublish.disabled = true;
               const nom = window.PlanRegistry.displayName(plan);
-              // Un gros plan sur connexion lente : plusieurs minutes. Le temps qui défile montre que l'app travaille.
-              const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
+              // Un gros plan sur connexion lente : plusieurs minutes. Étape, pourcentage et temps qui défile.
               const t0 = Date.now();
+              let avancement = null;
               const tic = function() {
-                const s = Math.round((Date.now() - t0) / 1000);
-                dire(_t("home.plans.info.publishEnCours", { mo: mo, duree: Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") }), "kta-tx-muted");
+                dire(window.ktaTexteAvancementPublication(avancement, blob.size, t0), "kta-tx-muted");
+                if (!barre) return;
+                barre.hidden = false;
+                if (avancement && avancement.total > 0 && avancement.etape !== "finalisation") {
+                  barre.value = Math.min(100, Math.floor(avancement.fait * 100 / avancement.total));
+                } else barre.removeAttribute("value");
               };
               tic();
               const minuteur = setInterval(tic, 1000);
@@ -1706,17 +1731,23 @@ function planRowHTML(plan) {
               try { avant = new Set((await window.KtaExtensions.listerPlansExtension()).map(function(p) { return String(p.id); })); }
               catch (e) { avant = null; }
               let publie = null, erreur = null;
-              try { publie = await window.KtaExtensions.publierPlan({ blob: blob, nom: nom }); }
+              try {
+                publie = await window.KtaExtensions.publierPlan({ blob: blob, nom: nom,
+                  progression: function(a) { const neuf = !avancement || avancement.etape !== a.etape; avancement = a; if (neuf) tic(); } });
+              }
               catch (e) { erreur = e; }
               clearInterval(minuteur);
-              if (publie) { await reussi(publie); return; }
+              if (publie) { await reussi(publie, null, nom); return; }
               console.warn("[Loader] publication :", erreur);
-              dire(_t("home.plans.info.publishEchec") + " " + String((erreur && erreur.message) || erreur).slice(0, 120), "kta-tx-err");
+              const raison = String((erreur && erreur.message) || erreur).slice(0, 120);
+              dire(_t("home.plans.info.publishEchec") + " " + raison, "kta-tx-err");
+              if (barre) barre.hidden = true;
+              toast(_t("home.plans.info.publishEchecToast", { nom: nom, raison: raison }), "error");
               btnPublish.disabled = false;
               if (!avant) return;
-              // Vérification en arrière-plan (3 min) : l'erreur reste affichée tant que
+              // Vérification en arrière-plan (3 min), fiche ouverte ou non : l'erreur reste affichée tant que
               // rien ne prouve le contraire ; un refus définitif ne fait donc rien attendre.
-              for (let i = 0; i < 36 && btnPublish.isConnected; i++) {
+              for (let i = 0; i < 36; i++) {
                 await new Promise(function(r) { setTimeout(r, 5000); });
                 let l = [];
                 try { l = await window.KtaExtensions.listerPlansExtension(); } catch (e) { l = []; }
@@ -1725,7 +1756,7 @@ function planRowHTML(plan) {
                   console.warn("[Loader] publication : réponse perdue, mais le plan est arrivé :", arrive.id);
                   btnPublish.disabled = true;
                   try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
-                  await reussi({ id: arrive.id, nom: arrive.name }, "home.plans.info.publishRattrape");
+                  await reussi({ id: arrive.id, nom: arrive.name }, "home.plans.info.publishRattrape", nom);
                   return;
                 }
               }
@@ -2059,7 +2090,9 @@ function planRowHTML(plan) {
         const nom = f ? escapeHtml(f.name) : escapeHtml(t("home.plans.folders.unfiled"));
         const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || window.PlanRegistry.FOLDER_COLORS[0]) + '"></span>'
                       : '<span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>';
-        const menu = f ? '<button type="button" class="plan-row-btn kta-plans-folder-menu" title="' + escapeHtml(t("home.plans.folders.menu")) + '">⋮</button>' : "";
+        // « Non classés » : un menu ⋮ aussi, réduit à « Tout garder hors ligne » (_ouvrirMenuNonClasses).
+        const menu = (f || window.KtaDossierHorsLigne) ? '<button type="button" class="plan-row-btn kta-plans-folder-menu" title="' +
+          escapeHtml(t(f ? "home.plans.folders.menu" : "home.plans.folders.menuUnfiled")) + '">⋮</button>' : "";
         return '<div class="kta-plans-folder-head' + (replie ? " kta-replie" : "") + '" data-folder="' + (f ? escapeHtml(f.id) : "") + '" role="button" tabindex="0">' +
                  '<span class="kta-plans-folder-caret">' + (replie ? "▸" : "▾") + '</span>' + dot +
                  '<span class="kta-plans-folder-name">' + nom + '</span>' +
@@ -2164,7 +2197,7 @@ function planRowHTML(plan) {
           });
           head.addEventListener("keydown", function(e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); basculer(); } });
           const menu = head.querySelector(".kta-plans-folder-menu");
-          if (menu && fid) menu.addEventListener("click", function(e) { e.stopPropagation(); _ouvrirMenuDossier(fid); });
+          if (menu) menu.addEventListener("click", function(e) { e.stopPropagation(); if (fid) _ouvrirMenuDossier(fid); else _ouvrirMenuNonClasses(); });
           _brancherCibleDepot(head, fid);
         });
         conteneur.querySelectorAll(".kta-plans-folder-rows").forEach(function(rows) { _brancherCibleDepot(rows, rows.dataset.folder || null); });
@@ -2425,6 +2458,10 @@ function planRowHTML(plan) {
           '<input type="text" class="kta-cfg-input" id="kta-plans-folder-rule" maxlength="200" placeholder="' + escapeHtml(t("home.plans.folders.rulePlaceholder")) + '" value="' +
             escapeHtml(f && f.rule && Array.isArray(f.rule.tags) ? f.rule.tags.join(", ") : "") + '"' + (verrou ? " disabled" : "") + '>' +
           '<div class="kta-plans-sheet-hint">' + escapeHtml(t("home.plans.folders.ruleHint")) + '</div>' +
+          // Tout le dossier sur l'appareil (js/dossierHorsLigne.js) : manquants récupérés, périmés mis à jour.
+          (f && window.KtaDossierHorsLigne
+            ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>📥 ' +
+                escapeHtml(t("home.plans.dossierHL.bouton")) + '</button>' : "") +
           '<div class="kta-cfg-actions-bar kta-plans-sheet-actions">' +
             (f ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="-1" title="' + escapeHtml(t("home.plans.folders.up")) + '">▲</button>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="1" title="' + escapeHtml(t("home.plans.folders.down")) + '">▼</button>' +
@@ -2460,6 +2497,12 @@ function planRowHTML(plan) {
           ov.querySelectorAll("[data-move]").forEach(function(b) {
             b.addEventListener("click", function() { PR.moveFolder(f.id, Number(b.dataset.move)); window.refreshPlansList(); });
           });
+          const hl = ov.querySelector("[data-hors-ligne]");
+          if (hl) hl.addEventListener("click", function() {
+            const ids = PR.getAll().filter(function(p) { return PR.planFolderId(p) === f.id; }).map(function(p) { return p.id; });
+            fermer();
+            _lancerHorsLigneDossier(ids, f.name);
+          });
           const del = ov.querySelector("[data-del]");
           if (del && !verrou) del.addEventListener("click", async function() {
             const n = PR.getAll().filter(function(p) { return PR.planFolderId(p) === f.id; }).length;
@@ -2470,6 +2513,35 @@ function planRowHTML(plan) {
         });
       }
 
+
+      // « Tout garder hors ligne » (js/dossierHorsLigne.js) avec les adaptateurs des plans ZIP de l'index.
+      function _lancerHorsLigneDossier(ids, titre) {
+        window.KtaDossierHorsLigne.lancer(ids, {
+          titre: titre,
+          sonderZip: function(p) {
+            const ctl = typeof AbortController === "function" ? new AbortController() : null;
+            const delai = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+            return _telechargerZipIndex(p, null, true, "HEAD", ctl ? ctl.signal : undefined)
+              .finally(function () { clearTimeout(delai); });
+          },
+          garderZip: _garderZipIndex,
+          apres: function() { _rafraichirBoutonsHorsLigne(); }
+        });
+      }
+      // ⋮ de « Non classés » : les plans AFFICHÉS dans ce groupe (filtre par nom et plans du site masqués respectés).
+      function _ouvrirMenuNonClasses() {
+        const t = window.I18n.t;
+        const corps = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>📥 ' +
+          escapeHtml(t("home.plans.dossierHL.bouton")) + '</button>';
+        _feuille(escapeHtml(t("home.plans.folders.unfiled")), corps, function(ov, fermer) {
+          ov.querySelector("[data-hors-ligne]").addEventListener("click", function() {
+            const ids = Array.from(document.querySelectorAll('#allPlansList .kta-plans-folder-rows[data-folder=""] .plan-row'))
+              .map(function(r) { return r.dataset.id; }).filter(Boolean);
+            fermer();
+            _lancerHorsLigneDossier(ids, t("home.plans.folders.unfiled"));
+          });
+        });
+      }
 
       // Plan déclaré par son archive dans data/index.json (`"zip": "data/x.zip"`), téléchargé avec progression.
       // `conditionnel` : validateurs HTTP de la copie gardée (ETag / Last-Modified) → 304 = à jour.
@@ -2487,8 +2559,8 @@ function planRowHTML(plan) {
         if (rep.status === 404 || rep.status === 410) return { statut: "absent" };
         if (!rep.ok) throw new Error("HTTP " + rep.status);
         const res = { statut: "frais", etag: rep.headers.get("ETag"), lastModified: rep.headers.get("Last-Modified") };
-        if (methode === "HEAD") return res;
-        const total = parseInt(rep.headers.get("Content-Length"), 10) || 0;
+        const total = Number.parseInt(rep.headers.get("Content-Length"), 10) || 0;
+        if (methode === "HEAD") { res.taille = total || null; return res; }
         if (!rep.body || typeof rep.body.getReader !== "function") { res.blob = await rep.blob(); return res; }
         const lecteur = rep.body.getReader(), morceaux = [];
         let recus = 0;
@@ -2531,9 +2603,10 @@ function planRowHTML(plan) {
       }
       const _horsLigne = function () { return typeof navigator !== "undefined" && navigator.onLine === false; };
 
-      // Range l'archive téléchargée comme copie gardée du plan (sans l'ouvrir) : bouton 💾 de la ligne.
-      async function _garderZipIndex(plan) {
-        const r = await _telechargerZipIndex(plan, null, true);
+      // Range l'archive téléchargée comme copie gardée du plan (sans l'ouvrir) : bouton 💾 de la ligne, et
+      // « Tout garder hors ligne » d'un dossier (signal = « Arrêter », progression(recus, total)).
+      async function _garderZipIndex(plan, signal, progression) {
+        const r = await _telechargerZipIndex(plan, progression || null, true, "GET", signal);
         if (r.statut === "aJour") return true;
         if (r.statut !== "frais" || !r.blob) return false;
         if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();
@@ -2655,23 +2728,39 @@ function planRowHTML(plan) {
               : _te("ext.chargement.progresSansTotal", { nom: plan.name || plan.id, recu: mo(recus) });
             if (typeof window._majOverlayChargement === "function") window._majOverlayChargement(texte);
           };
+          // ⚠️ Un échec se dit par un toast : la ligne d'état est sous la liste des plans, souvent hors de l'écran
+          // (vécu : « le clic n'a rien fait », l'utilisateur recliquait).
+          const _echec = function(m) {
+            setStatus(m, true);
+            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(m, "error");
+          };
           try {
-            let blob = null, coupe = false;
+            let blob = null, coupe = false, raison = null, horsLigne = false;
             const veille = _veilleurTelechargement();
+            const t0 = Date.now();
             try {
-              if (_horsLigne()) throw new Error("appareil hors ligne");
+              horsLigne = _horsLigne();
+              if (horsLigne) throw new Error("appareil hors ligne");
               blob = await veille.course(window.KtaExtensions.chargerPlanExtension(plan.extId || plan.id, {
                 progression: function (r, t) { veille.toucher(); _progression(r, t); }, signal: veille.signal }));
             }
             catch (eExt) {
               coupe = !!(eExt && eExt.code === "INACTIF");
+              // Refus dit par l'extension (clé absente, stockage plein…) : sa raison, pas « serveur injoignable ».
+              // Une erreur réseau de fetch est un TypeError ; une annulation, un AbortError.
+              if (!coupe && !horsLigne && eExt && eExt.message && eExt.name !== "TypeError" && eExt.name !== "AbortError") {
+                raison = String(eExt.message).slice(0, 160);
+              }
+              console.warn("[Loader] plan de l'extension non téléchargé (" + Math.round((Date.now() - t0) / 1000) + " s) :",
+                (eExt && (eExt.code || eExt.name)) || "?", eExt && eExt.message);
               if (plan.storedBlob && typeof window._majOverlayChargement === "function") window._majOverlayChargement(_te("ext.chargement.copie"));
               blob = plan.storedBlob ? await window.PlanRegistry.getBlob(plan.id) : null;
             } finally { veille.arreter(); }
             if (!blob) {
               if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-              return setStatus(coupe ? _te("ext.chargement.coupe", { nom: plan.name || plan.id })
-                : _homeT("home.statut.extIndispo", "Plan indisponible (serveur injoignable)"), true);
+              return _echec(coupe ? _te("ext.chargement.coupe", { nom: plan.name || plan.id })
+                : raison ? _te("ext.chargement.echec", { nom: plan.name || plan.id, raison: raison })
+                : _homeT("home.statut.extIndispo", "Plan indisponible (serveur injoignable)"));
             }
             const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
@@ -2681,7 +2770,8 @@ function planRowHTML(plan) {
             if (window.masquerLoader) window.masquerLoader();
           } catch (e) {
             if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-            setStatus(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)), true);
+            console.warn("[Loader] plan de l'extension non ouvert :", e && e.message);
+            _echec(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)));
           }
           return;
         }

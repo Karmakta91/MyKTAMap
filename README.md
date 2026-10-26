@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.20.0` (23/10/2026)
+## 📦 Version courante — `v2.21.0` (26/10/2026)
 
-> 📍 **v2.20.0 — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM** : un plan se rouvre à la vue laissée (centre, zoom, niveau ; `js/vuePlan.js`) ; revenir à l'accueil démonte le plan et rend sa mémoire (session enregistrée, suivi coupé) ; 🗺️ légende du plan en lecture seule dans la Vue OSM et sur la carte OSM de l'accueil ; fuite par ouverture de plan corrigée ; couleurs posées par le JS en jetons (cliquet 178 → 7), boutons principaux bleus, violet du tuilage lisible ; rails à 44 px au doigt ; PDF plafonné annoncé ; 🌍 exports GeoTIFF (image calée, Lambert 93 / WGS84) et GeoJSON (Export externe), import d'un GeoTIFF tourné ; KMZ complet (structures de calque, types personnalisés, icônes, repli de style) et pastilles des types dans ≡ Filtres ; correctifs `_leaflet_pos`, jonction convertie en lot, mini-carte de l'Affichage XL d'urgence ; `/.well-known/security.txt`. Détail : journal ci-dessous.
+> 👋 **v2.21.0 — Écran Bienvenue, conditions après « Entrer », CGU v2, photos et dangers datés, calage en vraie projection** : présentation qui défile au premier lancement, avec ou sans mot de passe d'installation (`js/bienvenue.js`), conditions d'utilisation v2 (ré-acceptation de tous) montrées au clic sur « Entrer » sur une installation community, PIN plus proposé au démarrage ; date de prise de vue des photos, date de constat des POI danger ; calage GPS en plan tangent GRS80 avec « Recaler » ; prises neutres pour les notifications, l'état des objets et les calques d'une installation reliée. Reprend la v2.20.1 (jamais en prod). Détail : journal ci-dessous.
 
 ---
 
@@ -167,6 +167,7 @@ manifest.json                   ← PWA (icônes, theme color, standalone)
 version.json                    ← Source de vérité version (UpdateChecker) + notes user-friendly
 alert.json                      ← (Optionnel) Diffusion d'alertes publiques
 css/style.css                   ← Tous les styles (~19k lignes : dark base + thème clair + modales)
+css/bienvenue.css               ← Écran Bienvenue du premier lancement (chargé à la demande)
 
 lang/                           ← Dictionnaires i18n (fr.json = fallback, en.json, es.json)
 
@@ -181,6 +182,8 @@ lib/                            ← Librairies locales (aucun CDN)
   jszip.min.js                  ← JSZip (ZIP)
   jspdf.umd.min.js              ← jsPDF (PDF imprimable)
   html2canvas.min.js            ← html2canvas (rendus export)
+
+fonts/                          ← Polices de l'écran Bienvenue (Montserrat, Permanent Marker + licences)
 
 js/                             ← 112 modules IIFE — voir section suivante
 docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
@@ -224,6 +227,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | Module | Rôle |
 |---|---|
 | `unlockGate.js` | Barrière d'accès communautaire |
+| `bienvenue.js` | Écran Bienvenue (avec champ « Code d'accès » si l'instance a un mot de passe), chargé à la demande par `unlockGate.js` |
 | `pinLock.js` | PIN local 4-6 + biométrie (Face ID / Touch ID) |
 | `config.js` | Chargement `plan-config.json` + état global du plan |
 
@@ -449,6 +453,24 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.21.0 (26/10/2026) — Écran Bienvenue, conditions après « Entrer », CGU v2, photos et dangers datés, calage en vraie projection (branche `Karma_dev`)
+
+Livre aussi la v2.20.1 ci-dessous, bumpée le 24/10 mais jamais mise en prod : les notes de version couvrent l'écart avec la v2.20.0.
+
+- **👋 Écran Bienvenue** (`js/bienvenue.js`, `css/bienvenue.css`, chargés à la demande par `unlockGate.js`, précachés) : au premier lancement, une présentation qui défile reprise de la vitrine pro — ville de nuit (montagnes enneigées, deux chevalements, lampadaires, passants, spéléos au puits), tracker qui descend le puits puis les galeries au défilement, quatre étapes, sortie « Prêt à descendre ? » avec la visite guidée, la documentation (guide intégré, doc.myktamap.fr) et le code source ; bouton 🚨 de sortie d'urgence (remontée progressive) ; polices Montserrat et Permanent Marker embarquées. **Aussi sur une installation à mot de passe** : champ « Code d'accès » dans l'en-tête (focus au PC), lisible sans code, verrou temporisé affiché dans la zone du champ, ni contacts de l'auteur ni lien pro ; l'ancienne carte centrée ne sert plus que de repli. Visite guidée proposée, plus imposée ; le 🔐 code d'accès local n'est plus proposé au premier lancement. `checkup-bienvenue.js`.
+- **⚖️ Conditions d'utilisation** : v2 (`TERMS_VERSION` 2, ré-acceptation de tous) — absence de garantie (état des sites), pas un moyen de secours, contenus partagés ; textes reformulés. Sur une installation community dont l'écran Bienvenue s'affiche, elles s'ouvrent **au clic sur « Entrer »** (ou après le code juste), au-dessus de l'écran et avant la descente (`LegalGate.ouvrirGate({ auDessus })`, `UnlockGate.ouvrirGate({ avantEntree })`) ; installation reliée ou accès déjà ouvert : en premier, inchangé. Rideau de démarrage (`main.js > _rideauSiSplashParti`) : l'app ne reste plus nue quand le splash a atteint son plafond pendant une gate.
+- **📷 Photos et dangers** : date de prise de vue lue dans l'EXIF avant ré-encodage, gardée à côté de la photo (jamais dans le fichier, GPS toujours retiré) ; POI danger avec date de constat et mention « l'outil ne certifie pas l'état d'un site ».
+- **📐 Calage en vraie projection** : nouveau calage en plan tangent local GRS80 (modèle historique gardé bit à bit pour les plans existants), précision annoncée dans le Générateur, bouton « Recaler » ; étude `docs/ETUDE_CALAGE_PROJECTION.md`.
+- **Prises neutres** (`community-server-line.md` §3, sans effet sans extension) : notifications de l'appareil et Web Push du service worker (texte seul, aucun script importé), cible d'une notification touchée, repères d'une extension sur le plan, objets des calques et objets proches, aller à un objet par uid, état d'un objet (proposé, retrait) dessiné et filtré, case d'export « validés seulement » ; jusqu'à 32 modules déclarés gardés dans le cache durable.
+- **Corrigés** : ronds d'extrémité des jonctions réduits au dézoom ; le point du mode perdu n'est plus compté comme un danger constaté.
+
+#### v2.20.1 (24/10/2026) — Tout garder hors ligne d'un dossier, avancement d'une publication (branche `Karma_dev`)
+
+- **📥 Tout garder hors ligne** (`js/dossierHorsLigne.js`, câblé par `homeLoader.js > _ouvrirMenuDossier`) : dans le menu ⋮ d'un dossier de l'accueil, et d'un menu ⋮ réduit à ce bouton sur « Non classés » (plans affichés dans le groupe seulement : filtre par nom et plans du site masqués respectés). Chaque plan est mis à jour sur l'appareil, un à la fois : manquant récupéré, version plus récente mise à jour, à jour sauté. Plan du site (`PlanOffline`), ZIP de l'index (copie gardée), plan d'extension (`KtaExtensions.garderHorsLigneExtension`), plan local compté « déjà là » s'il est mémorisé. Confirmation seulement au-delà de 200 Mo estimés (`HEAD` sur les fichiers du plan, échantillon au-delà de 40, 4 tuiles sondées) ou en données mobiles ; ⏹ Arrêter ; reprise au retour d'arrière-plan sans retélécharger ce que cette passe a rangé (`precacher(…, { faits })`) ; bilan et toast. `precacher` retire l'ancien manifeste au départ d'un nouveau téléchargement : une mise à jour interrompue reste « incomplet », jamais « complet » sur un mélange de versions. Doc : `docs/TILING.md` §8 bis ; `checkup-dossier-hors-ligne.js`.
+- **Prises neutres** (contrat `community-server-line.md` §3, tests `check-extensions.js`, `check-connexion-serveur.js`) : `progression({ etape, fait, total })` sur `publierPlan` / `publierVersion` (la fiche ℹ️ affiche l'étape, le pourcentage et une barre ; fin dite par un toast `success` / `error` même fiche fermée) ; `requete(…, { progressionEnvoi })` passe par XMLHttpRequest dans le garde ; `plans.horsLigne.garder(idExt, { signal, onProgres })` et `taille?(idExt)` facultatifs, `garderHorsLigneExtension` rend `{ ok, raison }`. Sans extension : aucun effet.
+- **Échec d'ouverture d'un plan d'extension** : dit aussi par un toast d'erreur avec la raison donnée par l'extension (au lieu de « serveur injoignable » sur la ligne d'état, souvent hors de l'écran), et écrit dans la console.
+- **Corrigés** : une jonction (tracé) rangée dans un calque de données s'affiche sur ses deux niveaux (elle tombait au niveau 0 : `utils.js > _filtreNiveauSurPolylineData` lit `fromLevel` / `toLevel`, comme la session et l'itinéraire ; carte de chaleur comprise) ; `ktaNiveauxOccupes` compte les niveaux d'une jonction de calque et les niveaux desservis d'un POI jonction. `checkup-jonction-calque-niveau.js`.
 
 #### v2.20.0 (23/10/2026) — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM (branche `Karma_dev`)
 
@@ -9548,6 +9570,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 📍 **v2.20.0 — Vue retrouvée, plan fermé au retour à l'accueil, légende en Vue OSM** : un plan se rouvre à la vue laissée (centre, zoom, niveau ; `js/vuePlan.js`) ; revenir à l'accueil démonte le plan et rend sa mémoire (session enregistrée, suivi coupé) ; 🗺️ légende du plan en lecture seule dans la Vue OSM et sur la carte OSM de l'accueil ; fuite par ouverture de plan corrigée ; couleurs posées par le JS en jetons (cliquet 178 → 7), boutons principaux bleus, violet du tuilage lisible ; rails à 44 px au doigt ; PDF plafonné annoncé ; 🌍 exports GeoTIFF (image calée, Lambert 93 / WGS84) et GeoJSON (Export externe), import d'un GeoTIFF tourné ; KMZ complet (structures de calque, types personnalisés, icônes, repli de style) et pastilles des types dans ≡ Filtres ; correctifs `_leaflet_pos`, jonction convertie en lot, mini-carte de l'Affichage XL d'urgence ; `/.well-known/security.txt`. Détail : journal ci-dessous.
 
 > 🔄 **v2.19.0 — Mettre à jour le plan, Éditeur de données appliqué à la session, recalage sur un autre scan** : assistant « 🔄 Mettre à jour le plan » (session et calques → Générateur prérempli → nouvelle version) ; 📊 Éditeur de données (désormais dans ⬆️ Exporter) qui applique à la session type, niveau et note des quatre familles, cellules modifiées seules ; 🔁 « Recaler des données sur un autre scan » par identifiants et noms communs, aperçu sur la carte ; ⬇️ Importer direct ; 🪜 fiche des jonctions ; prises neutres pour les installations reliées (plan prêt avant synchro, liaisons partagées, import de session sur un plan partagé, nouvelle version d'un plan). Détail : journal ci-dessous.
 

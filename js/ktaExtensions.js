@@ -41,7 +41,8 @@
     on:         "kta-tx-ok",
     down:       "kta-tx-warn"
   };
-  const MAX_MODULES = 20;
+  // Plafond de bon sens (une liste démesurée = index corrompu ou malveillant) ; même valeur dans confadmin.js.
+  const MAX_MODULES = 32;
 
   let _connexion = { etat: "off", raison: "" };   // résultat de valider()
   let _etat = "off";
@@ -314,8 +315,8 @@
   //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
   //     importAutorise: function () → bool,                 // permission (synchrone)
   //     exportAutorise: function (planId) → bool | { auteur }, // permission (synchrone), { auteur } = ses ajouts
-  //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
-  //     publierVersion: { autorise(idExt) → bool, publier({ id, blob, nom }) → Promise } // nouvelle version
+  //     publierPlan:    function ({ blob, nom, progression? }) → Promise  // Générateur, fiche ℹ️
+  //     publierVersion: { autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise } // nouvelle version
   //   })
   // ⚠️ Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
   //    Prises d'INFORMATION : une erreur est journalisée et ignorée.
@@ -343,8 +344,9 @@
     if (ext.outilHome) _poserOutilHome();
     if (ext.pastilleHome) _poserPastilleHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
+    if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -430,15 +432,50 @@
     }
     const init = Object.assign({}, o);
     delete init.sonde;
+    const progressionEnvoi = typeof init.progressionEnvoi === "function" ? init.progressionEnvoi : null;
+    delete init.progressionEnvoi;
     // Marque la requête pour le Service Worker (jamais de cache) et interdit le cache HTTP : une réponse de
     // backend n'a rien à faire hors ligne.
     init.cache = "no-store";
     const entetes = new Headers(init.headers || {});
     entetes.set("X-Kta-Ext", "1");
     init.headers = entetes;
+    // `requete` avec `progressionEnvoi(envoyes, total)` : fetch ne dit pas où en est l'envoi d'un corps, XMLHttpRequest
+    // si (upload.onprogress). Même URL contrôlée, mêmes en-têtes ; rend une Response comme fetch. Échec réseau =
+    // TypeError, annulation (init.signal) = AbortError.
+    function _envoiSuivi() {
+      return new Promise(function (resolve, reject) {
+        const x = new XMLHttpRequest();
+        const sig = init.signal;
+        if (sig && sig.aborted) { reject(new DOMException("annulée", "AbortError")); return; }
+        x.open(String(init.method || "GET").toUpperCase(), url.href, true);
+        x.responseType = "blob";
+        x.withCredentials = init.credentials === "include";
+        init.headers.forEach(function (v, k) { x.setRequestHeader(k, v); });
+        x.upload.onprogress = function (e) {
+          try { progressionEnvoi(e.loaded || 0, e.lengthComputable ? e.total : 0); } catch (er) { /* affichage seulement */ }
+        };
+        x.onload = function () {
+          const h = new Headers();
+          String(x.getAllResponseHeaders() || "").trim().split(/[\r\n]+/).forEach(function (l) {
+            const i = l.indexOf(":");
+            if (i > 0) { try { h.append(l.slice(0, i).trim(), l.slice(i + 1).trim()); } catch (er) { /* en-tête illisible */ } }
+          });
+          const vide = x.status === 204 || x.status === 304;
+          try { resolve(new Response(vide ? null : x.response, { status: x.status, statusText: x.statusText, headers: h })); }
+          catch (er) { reject(new TypeError("réponse illisible (" + x.status + ")")); }
+        };
+        x.onerror = function () { reject(new TypeError("Failed to fetch")); };
+        x.ontimeout = x.onerror;
+        x.onabort = function () { reject(new DOMException("annulée", "AbortError")); };
+        if (sig) sig.addEventListener("abort", function () { x.abort(); }, { once: true });
+        x.send(init.body);
+      });
+    }
     // 🩸 Un échec réseau isolé NE fait PAS passer en « down » : la garde refuserait toute requête jusqu'à la
     // prochaine sonde du module (synchro, positions, envois en attente bloqués après un simple raté). « down »
     // vient du réseau de l'appareil (offline) ou du module ; une requête figée, du veilleur de l'accueil.
+    if (progressionEnvoi && init.body && typeof XMLHttpRequest === "function") return _envoiSuivi();
     return fetch(url.href, init);
   }
 
@@ -490,6 +527,145 @@
       }).filter(Boolean);
     }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.lister a échoué :", e); return []; });
   }
+  // ── Notifications de l'appareil (prise d'INFORMATION « notifications ») ──
+  // notifications: { proposer() → bool, apresChoix(permission) } : l'extension dit si l'autorisation a un sens
+  // (compte connecté…) et reçoit la réponse ("granted" | "denied") pour s'abonner elle-même au service de push du
+  // navigateur — community ne s'abonne à rien et n'appelle aucun service de push.
+  // 🔒 Aucune demande système surprise : `Notification.requestPermission` ne part QUE du bouton « Activer » de la
+  // ligne (geste de l'utilisateur, exigé par Safari), jamais au démarrage. Ligne proposée seulement si : une extension
+  // la propose, état ON ou DOWN, API présentes (Notification, service worker, PushManager), autorisation encore
+  // « default ». Refusée : la ligne le dit, puis ne revient plus (l'autorisation n'est plus « default »).
+  function _notifPossible() {
+    try {
+      return typeof Notification !== "undefined" && typeof navigator !== "undefined" && !!navigator.serviceWorker &&
+        typeof window.PushManager !== "undefined" && Notification.permission === "default" &&
+        typeof Notification.requestPermission === "function";
+    } catch (e) { return false; }
+  }
+  function _priseNotifications() {
+    const ext = _prise("notifications");
+    return ext && ext.notifications && typeof ext.notifications.proposer === "function" ? ext.notifications : null;
+  }
+  function _apresChoixNotif(p, permission) {
+    if (typeof p.apresChoix !== "function") return;
+    try {
+      Promise.resolve(p.apresChoix(permission)).catch(function (e) { console.warn("[Extensions] notifications :", e); });
+    } catch (e) { console.warn("[Extensions] notifications.apresChoix a échoué :", e); }
+  }
+  function ligneNotifications() {
+    const p = _priseNotifications();
+    if (!p || (_etat !== "on" && _etat !== "down") || !_notifPossible()) return null;
+    try { if (p.proposer() !== true) return null; }
+    catch (e) { console.warn("[Extensions] notifications.proposer :", e); return null; }
+    const el = function (tag, classe, texte) {
+      const e = document.createElement(tag);
+      e.className = classe;
+      if (texte) e.textContent = texte;
+      return e;
+    };
+    const ligne = el("div", "kta-alert-notif");
+    const bouton = el("button", "kta-btn kta-btn-primary kta-alert-notif-btn", _t("alerts.notif.activer"));
+    bouton.type = "button";
+    const etat = el("div", "kta-alert-notif-etat");
+    etat.hidden = true;
+    bouton.addEventListener("click", function () {
+      bouton.disabled = true;
+      // ⚠️ Appel DANS le geste (Safari refuse une demande hors d'un clic) : l'exécuteur de la promesse tourne tout de
+      // suite, et une exception y devient un rejet. L'ancienne forme à rappel (rien de rendu) est acceptée.
+      new Promise(function (r) { r(Notification.requestPermission(function () {})); }).then(function (r) {
+        const permission = r === "granted" || r === "denied" ? r : Notification.permission;
+        if (permission !== "granted" && permission !== "denied") { bouton.disabled = false; return; }
+        bouton.remove();
+        etat.hidden = false;
+        etat.className = "kta-alert-notif-etat " + (permission === "granted" ? "kta-tx-ok" : "kta-tx-warn");
+        etat.textContent = _t(permission === "granted" ? "alerts.notif.activee" : "alerts.notif.refusee");
+        _apresChoixNotif(p, permission);
+      }, function () { bouton.disabled = false; });
+    });
+    ligne.appendChild(el("div", "kta-alert-notif-texte", _t("alerts.notif.ligne")));
+    ligne.appendChild(el("div", "kta-alert-notif-rappel kta-tx-muted", _t("alerts.notif.rappel")));
+    ligne.appendChild(bouton);
+    ligne.appendChild(etat);
+    return ligne;
+  }
+  // ── Action d'une extension dans la fenêtre 🚨 (prise « alertes », champ facultatif `action`) ──
+  // alertes.action: { libelle() → string | null, lancer() } : `libelle` (synchrone, 60 car., rendu en texte) dit si
+  // le bouton a un sens pour ce compte (ex. « ➕ Lancer une alerte » pour qui peut en lancer) ; null, "" ou erreur =
+  // pas de bouton. Toucher le bouton ferme la fenêtre (`fermer`, donné par l'app) puis appelle `lancer()` (erreur
+  // avalée). Bouton proposé en état ON seulement (l'action passe par le serveur de l'extension) ; 🔒 le droit est
+  // revérifié par ce serveur, le libellé ne fait que choisir l'affichage. → l'élément, ou null.
+  function actionAlertes(fermer) {
+    const ext = _prise("alertes");
+    const a = ext && ext.alertes && ext.alertes.action;
+    if (!a || _etat !== "on" || typeof a.libelle !== "function" || typeof a.lancer !== "function") return null;
+    let lib = null;
+    try { lib = a.libelle(); } catch (e) { console.warn("[Extensions] alertes.action.libelle :", e); return null; }
+    lib = _texteCourt(lib, 60);
+    if (!lib) return null;
+    const ligne = document.createElement("div");
+    ligne.className = "kta-alert-action-ext";
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "kta-btn kta-btn-primary kta-alert-action-ext-btn";
+    bouton.textContent = lib;
+    bouton.addEventListener("click", function () {
+      try { if (typeof fermer === "function") fermer(); } catch (e) { /* fenêtre déjà fermée */ }
+      try {
+        Promise.resolve(a.lancer()).catch(function (e) { console.warn("[Extensions] alertes.action.lancer :", e); });
+      } catch (e) { console.warn("[Extensions] alertes.action.lancer a échoué :", e); }
+    });
+    ligne.appendChild(bouton);
+    return ligne;
+  }
+  // Cible d'une notification touchée : paramètre `kta-notif` de son adresse (« genre:id:id », forme bornée, texte
+  // opaque pour community ; l'extension qui l'a émise sait l'ouvrir). Toute autre forme → null.
+  const _CIBLE_NOTIF_RE = /^[a-z]{3,20}(:[A-Za-z0-9_-]{1,80}){0,3}$/;
+  function _cibleNotif(url) {
+    try {
+      const c = new URL(String(url || "").slice(0, 400), "https://x.invalid/").searchParams.get("kta-notif");
+      return c && _CIBLE_NOTIF_RE.test(c) ? c : null;
+    } catch (e) { return null; }
+  }
+  // App FERMÉE quand la notification a été touchée (sw.js > notificationclick l'ouvre sur son adresse) : la cible est
+  // lue UNE fois au chargement, retirée de la barre (ni favori ni rechargement ne la rejouent), puis rendue une seule
+  // fois à l'extension qui la demande quand elle est prête (connexion, déverrouillage) : notificationAuDemarrage().
+  let _notifDemarrage = null;
+  (function _lireNotifDemarrage() {
+    try {
+      if (typeof location === "undefined" || !location || typeof location.search !== "string" ||
+          location.search.indexOf("kta-notif=") < 0) return;
+      _notifDemarrage = _cibleNotif(location.search);
+      const params = new URLSearchParams(location.search);
+      params.delete("kta-notif");
+      const q = params.toString();
+      if (typeof history !== "undefined" && history && typeof history.replaceState === "function") {
+        history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + (location.hash || ""));
+      }
+    } catch (e) { /* adresse illisible : rien à ouvrir */ }
+  })();
+  function notificationAuDemarrage() {
+    const c = _notifDemarrage;
+    _notifDemarrage = null;
+    return c ? { cible: c } : null;
+  }
+  // Messages du service worker (prise Web Push de sw.js) relayés en événements de la page, sans effet sans écouteur :
+  // mktm:notification-recue (une notification vient d'arriver), mktm:notification-ouverte { url, cible } (touchée,
+  // app déjà ouverte), mktm:abonnement-push-change (le navigateur a renouvelé l'abonnement : l'extension se réabonne).
+  const _MESSAGES_PUSH = ["mktm:notification-recue", "mktm:notification-ouverte", "mktm:abonnement-push-change"];
+  function _relayerMessageSw(e) {
+    const d = e && e.data;
+    if (!d || typeof d.type !== "string" || _MESSAGES_PUSH.indexOf(d.type) < 0) return;
+    const detail = d.type === "mktm:notification-ouverte" && typeof d.url === "string"
+      ? { url: d.url.slice(0, 300), cible: _cibleNotif(d.url) } : {};
+    try { window.dispatchEvent(new CustomEvent(d.type, { detail: detail })); } catch (x) { /* rien */ }
+  }
+  try {
+    if (typeof navigator !== "undefined" && navigator.serviceWorker &&
+        typeof navigator.serviceWorker.addEventListener === "function") {
+      navigator.serviceWorker.addEventListener("message", _relayerMessageSw);
+    }
+  } catch (e) { /* pas de service worker : rien à relayer */ }
+
   // ── Statistiques du profil (prise d'INFORMATION profilStats) ──
   // profilStats() → [{ cle, icone, libelle, valeur, titre? }] (ou Promise) : lignes de texte de « Détails du
   // profil », proposées au bandeau d'accueil (clé « ext:<cle> »). Nettoyées (12 lignes max, textes bornés,
@@ -677,10 +853,23 @@
   }
 
   // ── Publication depuis le Générateur ──
+  // args.progression({ etape, fait, total }) facultatif : avancement annoncé par l'extension. etape = "preparation"
+  // (fichier préparé sur l'appareil, octets), "envoi" (octets envoyés), "finalisation" (envoi fini, le serveur range).
+  // Une erreur de l'afficheur n'interrompt jamais la publication.
+  function _avancementSur(args) {
+    const f = args && typeof args.progression === "function" ? args.progression : null;
+    if (!f) return undefined;
+    return function (a) {
+      const e = a && typeof a === "object" ? a : {};
+      const etape = ["preparation", "envoi", "finalisation"].indexOf(e.etape) >= 0 ? e.etape : "envoi";
+      try { f({ etape: etape, fait: Number(e.fait) || 0, total: Number(e.total) || 0 }); } catch (er) { /* affichage seulement */ }
+    };
+  }
   function publierPlan(args) {
     const ext = _prise("publierPlan");
     if (!ext) return Promise.reject(new Error("aucune publication disponible"));
-    return Promise.resolve().then(function () { return ext.publierPlan(args); }).then(function (r) {
+    const a = Object.assign({}, args || {}, { progression: _avancementSur(args) });
+    return Promise.resolve().then(function () { return ext.publierPlan(a); }).then(function (r) {
       // Le plan publié rejoint tout de suite la liste de l'accueil.
       try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
       return r;
@@ -707,7 +896,7 @@
     if (!versionAutorisee(a.planId)) return Promise.reject(new Error("publication de version refusée"));
     const id = _idExtension(a.planId);
     return Promise.resolve().then(function () {
-      return ext.publierVersion.publier({ id: id, blob: a.blob, nom: a.nom });
+      return ext.publierVersion.publier({ id: id, blob: a.blob, nom: a.nom, progression: _avancementSur(a) });
     }).then(function (r) {
       try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
       return r;
@@ -1523,6 +1712,35 @@
     try { return Promise.resolve(h.garder(id)).then(function (r) { return r === true; }, function () { return false; }); }
     catch (e) { return Promise.resolve(false); }
   }
+  // « Tout garder hors ligne » d'un dossier (js/dossierHorsLigne.js) : garder(idExt, { signal, onProgres(recus, total) })
+  // — 2e argument facultatif pour l'extension (sans lui : pas d'avancement, l'arrêt attend la fin du plan).
+  // → { ok, raison } : `raison` = message de l'erreur rejetée par l'extension (déjà traduit), borné à 160.
+  // taille(idExt) → Promise<octets | null> (facultatif) : ce que coûterait le téléchargement, 0 si à jour.
+  function garderHorsLigneExtension(registreId, opts) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id) return Promise.resolve({ ok: false, raison: "" });
+    const o = opts || {};
+    const enfant = {
+      signal: o.signal || undefined,
+      onProgres: function (recus, total) {
+        if (typeof o.onProgres !== "function") return;
+        try { o.onProgres(Number(recus) || 0, Number(total) || 0); } catch (e) { /* écran fermé */ }
+      }
+    };
+    const raison = function (e) { return String((e && e.message) || "").slice(0, 160); };
+    try {
+      return Promise.resolve(h.garder(id, enfant)).then(function (r) { return { ok: r === true, raison: "" }; },
+        function (e) { return { ok: false, raison: raison(e) }; });
+    } catch (e) { return Promise.resolve({ ok: false, raison: raison(e) }); }
+  }
+  function tailleHorsLigneExtension(registreId) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id || typeof h.taille !== "function") return Promise.resolve(null);
+    try {
+      return Promise.resolve(h.taille(id)).then(function (n) { return (typeof n === "number" && n >= 0 && Number.isFinite(n)) ? n : null; },
+        function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
 
   // ── Actions d'extension sur la fiche d'un objet ──
   // actionsObjet(uid) → [{ libelle, action }] (synchrone). Les fiches portent data-kta-uid ; un observateur,
@@ -1676,6 +1894,208 @@
       return { createur: txt(a.createur), modifiePar: txt(a.modifiePar) };
     } catch (e) { console.warn("[Extensions] auteurObjet :", e); return null; }
   }
+  // Objets du plan affiché, par uid : la session (points, tracés, zones, structures) PUIS les calques du plan (ZIP,
+  // lecture seule). Une copie de session d'un objet de calque porte le même uid : la session gagne. L'itinéraire
+  // calculé n'est jamais un objet. 🩸 Index gardé 500 ms : un repère par tâche relirait sinon tous les marqueurs des
+  // calques à chaque appel (getAllEmbeddedPoints reconstruit sa liste).
+  const _SOURCES_OBJETS = [
+    ["getEditorPoints", "editorPoints", "session"], ["getRoads", "roads", "session"],
+    ["getZones", "zones", "session"], ["getStructures", "structures", "session"],
+    ["getAllEmbeddedPoints", "editorPoints", "calque"], ["getAllEmbeddedRoads", "roads", "calque"],
+    ["getAllEmbeddedZones", "zones", "calque"], ["getAllEmbeddedStructures", "structures", "calque"]
+  ];
+  const _CATEGORIE_LEGENDE = { editorPoints: "icones", roads: "traces", zones: "zones", structures: "structures" };
+  let _indexObjets = null;
+  function _objetsParUid() {
+    const plan = window._currentLoadedPlanId || null;
+    if (_indexObjets && _indexObjets.plan === plan && Date.now() - _indexObjets.t < 500) return _indexObjets.m;
+    const m = new Map();
+    _SOURCES_OBJETS.forEach(function (s) {
+      let l = null;
+      try { l = typeof window[s[0]] === "function" ? window[s[0]]() : null; } catch (e) { l = null; }
+      if (!Array.isArray(l)) return;
+      l.forEach(function (o) {
+        if (o && typeof o.uid === "string" && o.uid && o.type !== "itinerary" && !m.has(o.uid)) {
+          m.set(o.uid, { o: o, famille: s[1], source: s[2] });
+        }
+      });
+    });
+    _indexObjets = { plan: plan, t: Date.now(), m: m };
+    return m;
+  }
+  function _entreeObjet(uid) {
+    return typeof uid === "string" && uid ? _objetsParUid().get(uid) || null : null;
+  }
+  // Ancre d'un objet : le point, ou le sommet du milieu d'un tracé, d'une zone, d'une structure (toujours SUR
+  // l'objet, un centroïde peut tomber à côté). null : objet sans position.
+  function _ancreObjet(o) {
+    if (typeof o.x === "number" && typeof o.y === "number") return { x: o.x, y: o.y };
+    if (!Array.isArray(o.points)) return null;
+    const pts = o.points.filter(function (q) { return q && typeof q.x === "number" && typeof q.y === "number"; });
+    if (!pts.length) return null;
+    const m = pts[Math.floor(pts.length / 2)];
+    return { x: m.x, y: m.y };
+  }
+  const _texteCourt = function (v, max) { return typeof v === "string" ? v.trim().slice(0, max || 120) : ""; };
+  // ⚠️ objetParUid(uid) → { uid, nom, type, typeLibelle, x, y, niveaux, famille, source } | null — information, une
+  // COPIE (jamais l'objet de l'app). Cherche dans la session puis les calques du plan affiché (`source` : "session" |
+  // "calque") ; famille : editorPoints | roads | zones | structures ; x / y : l'ancre (cf. _ancreObjet) ; nom : celui
+  // de l'objet ou "" ; typeLibelle : libellé du type dans la légende (renommages compris), "" sinon. null : plan pas
+  // prêt, uid inconnu, itinéraire calculé, objet sans position.
+  function objetParUid(uid) {
+    if (!planPret()) return null;
+    const e = _entreeObjet(uid);
+    return e ? _vueObjet(uid, e) : null;
+  }
+  // ⚠️ objetsProches(x, y, max?) → [même forme que objetParUid], au plus `max` (défaut 8, 20 au plus), du plus proche
+  // au plus loin de (x, y) en coordonnées du plan (ancres) — information, ex. choisir l'objet auquel rattacher une
+  // note dont l'objet a disparu. [] : plan pas prêt, coordonnées non finies.
+  function objetsProches(x, y, max) {
+    if (!planPret() || !Number.isFinite(x) || !Number.isFinite(y)) return [];
+    const n = Math.min(Number.isInteger(max) && max > 0 ? max : 8, 20);
+    const l = [];
+    _objetsParUid().forEach(function (e, uid) {
+      const a = _ancreObjet(e.o);
+      if (a) l.push({ uid: uid, e: e, d: (a.x - x) * (a.x - x) + (a.y - y) * (a.y - y) });
+    });
+    l.sort(function (p, q) { return p.d - q.d; });
+    return l.slice(0, n).map(function (p) { return _vueObjet(p.uid, p.e); });
+  }
+  function _vueObjet(uid, e) {
+    const a = _ancreObjet(e.o);
+    if (!a) return null;
+    const o = e.o;
+    let lib = "";
+    try {
+      const LC = window.LegendCustomization;
+      const cle = e.famille === "editorPoints" ? (Array.isArray(o.tags) && o.tags[0]) : o.type;
+      if (cle && LC && typeof LC.getLabel === "function") lib = _texteCourt(LC.getLabel(_CATEGORIE_LEGENDE[e.famille], cle));
+    } catch (er) { lib = ""; }
+    return { uid: uid, nom: _texteCourt(o.nom || o.name || o.label || o.titre), type: _texteCourt(o.type, 40),
+      typeLibelle: lib, x: a.x, y: a.y, niveaux: _niveauxObjet(o), famille: e.famille, source: e.source };
+  }
+  // Position de repli donnée par une extension (dernière position connue d'un objet retiré) → { x, y, niveaux, nom }
+  // ou null (coordonnées non finies).
+  function _repliValide(r) {
+    if (!r || typeof r !== "object" || !Number.isFinite(r.x) || !Number.isFinite(r.y)) return null;
+    const niv = Array.isArray(r.niveaux) ? r.niveaux.filter(function (n) { return Number.isInteger(n); }).slice(0, 8) : [];
+    return { x: r.x, y: r.y, niveaux: niv.length ? niv : [0], nom: _texteCourt(r.nom, 80) };
+  }
+  function _niveauxObjet(o) {
+    const n = [];
+    if (Array.isArray(o.niveaux)) o.niveaux.forEach(function (v) { if (Number.isInteger(v)) n.push(v); });
+    ["level", "fromLevel", "toLevel"].forEach(function (k) { if (Number.isInteger(o[k])) n.push(o[k]); });
+    return n.length ? n : [0];
+  }
+  function _ouvrirFicheA(lat, lng, nom) {
+    const proche = function (a, b) { return Math.abs(a - b) < 0.5; };
+    let trouve = null;
+    const grp = window.layerEditor;
+    if (grp && typeof grp.eachLayer === "function") {
+      grp.eachLayer(function (l) {
+        if (trouve || !l || typeof l.getPopup !== "function" || !l.getPopup()) return;
+        let ll = typeof l.getLatLng === "function" ? l.getLatLng() : null;
+        if (!ll && typeof l.getLatLngs === "function") {
+          let p = l.getLatLngs();
+          while (Array.isArray(p) && Array.isArray(p[0])) p = p[0];
+          ll = Array.isArray(p) ? p[0] : null;
+        }
+        if (ll && proche(ll.lat, lat) && proche(ll.lng, lng)) trouve = l;
+      });
+    }
+    if (trouve && typeof trouve.openPopup === "function") { trouve.openPopup(); return; }
+    _bulleA(lat, lng, nom);
+  }
+  // Bulle au nom (texte, jamais interprété).
+  function _bulleA(lat, lng, nom) {
+    if (window.L && typeof window.L.popup === "function") {
+      const div = document.createElement("div");
+      div.textContent = String(nom || "").slice(0, 80);
+      window.L.popup({ autoClose: true, closeOnClick: true }).setLatLng([lat, lng]).setContent(div).openOn(window.map);
+    }
+  }
+  function allerAObjet(uid, repli) {
+    if (typeof uid !== "string" || !uid || !planPret() || !window.map || typeof window.convertCoord !== "function") return false;
+    const e = _entreeObjet(uid);
+    let o = e ? e.o : null, x = null, y = null, ancre = null, nom = "";
+    if (o && typeof o.x === "number" && typeof o.y === "number") { x = o.x; y = o.y; ancre = [o.x, o.y]; }
+    else if (o && Array.isArray(o.points) && o.points.length) {
+      const pts = o.points.filter(function (p) { return p && typeof p.x === "number" && typeof p.y === "number"; });
+      if (!pts.length) return false;
+      x = 0; y = 0;
+      pts.forEach(function (p) { x += p.x; y += p.y; });
+      x /= pts.length; y /= pts.length;
+      ancre = [pts[0].x, pts[0].y];
+    } else if (o) return false;
+    if (o) nom = o.name || o.nom || o.label || "";
+    else {
+      const r = _repliValide(repli);
+      if (!r) return false;
+      o = { niveaux: r.niveaux }; x = r.x; y = r.y; ancre = [r.x, r.y]; nom = r.nom;
+    }
+    const c = window.APP_CONFIG;
+    if (c && c.multiLevel === true && typeof window.ktaSetActiveLevel === "function") {
+      const niv = _niveauxObjet(o);
+      const vis = Array.isArray(c.visibleLevels) ? c.visibleLevels : [0];
+      if (!niv.some(function (n) { return vis.indexOf(n) >= 0; })) window.ktaSetActiveLevel(niv[0], { source: "extension" });
+    }
+    try {
+      window.map.setView(window.convertCoord(x, y), window.map.getZoom(), { animate: false });
+      // La fiche s'ouvre après le rendu (couches hors vue rattachées au déplacement), ancrée sur le point ou le
+      // premier sommet. Objet absent (repli) : la bulle seulement, jamais la fiche d'un autre objet à cette place.
+      const a = window.convertCoord(ancre[0], ancre[1]);
+      const marqueur = e && e.source === "calque" ? _marqueurCalque(uid) : null;
+      setTimeout(function () {
+        try {
+          if (marqueur && marqueur._map && typeof marqueur.openPopup === "function" && marqueur.getPopup &&
+              marqueur.getPopup()) { marqueur.openPopup(); return; }
+          if (e) _ouvrirFicheA(a[0], a[1], nom); else _bulleA(a[0], a[1], nom);
+        } catch (er) { console.warn("[Extensions] allerAObjet :", er); }
+      }, 120);
+    } catch (er) { console.warn("[Extensions] allerAObjet :", er); return false; }
+    return true;
+  }
+  // Marqueur d'un point de calque (fiche en lecture seule) par uid, ou null.
+  function _marqueurCalque(uid) {
+    const l = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers : [];
+    for (let i = 0; i < l.length; i++) if (l[i] && l[i]._ktaUid === uid) return l[i];
+    return null;
+  }
+  // Repères d'une extension sur le plan affiché (affichage seulement, ex. tâches ouvertes) :
+  // afficherReperes(calque, [{ id, uid | x + y, niveaux?, absent?, teinte?, symbole?, titre?, nombre? }], { clic(id) })
+  // → nombre dessiné. Un repère rattaché à un objet (`uid`, cherché comme objetParUid : session puis calques du plan)
+  // se pose sur son ancre (point, sommet du milieu) et suit ses niveaux (atténué hors niveau affiché). uid inconnu :
+  // à x / y si l'extension les donne (dernière position connue d'un objet retiré, niveaux donnés, marqué `absent` —
+  // contour pointillé), écarté sinon ; itinéraire calculé, objet sans position : écarté. Plan pas prêt : rien (0).
+  // [] efface le calque ; la sortie du plan les efface tous. Rendu et nettoyage : ktaPresences.js > afficherReperes.
+  function afficherReperes(calque, liste, opts) {
+    try {
+      if (!window.KtaPresences || typeof window.KtaPresences.afficherReperes !== "function") return 0;
+      const vide = !Array.isArray(liste) || !liste.length;
+      if (!vide && !planPret()) return 0;
+      const poses = [];
+      (Array.isArray(liste) ? liste : []).slice(0, 500).forEach(function (r) {
+        if (!r || typeof r !== "object") return;
+        const p = { id: r.id, teinte: r.teinte, symbole: r.symbole, titre: r.titre, nombre: r.nombre };
+        const e = typeof r.uid === "string" && r.uid ? _entreeObjet(r.uid) : null;
+        if (e) {
+          if (e.o.type === "itinerary") return;
+          const a = _ancreObjet(e.o);
+          if (!a) return;
+          p.x = a.x; p.y = a.y;
+          p.niveaux = _niveauxObjet(e.o);
+        } else {
+          if (typeof r.uid === "string" && r.uid && !(Number.isFinite(r.x) && Number.isFinite(r.y))) return;
+          p.x = r.x; p.y = r.y;
+          if (Array.isArray(r.niveaux)) p.niveaux = r.niveaux;
+          if (typeof r.uid === "string" && r.uid) p.absent = true;
+        }
+        poses.push(p);
+      });
+      const clic = opts && typeof opts.clic === "function" ? opts.clic : null;
+      return window.KtaPresences.afficherReperes(calque, poses, clic);
+    } catch (e) { console.warn("[Extensions] afficherReperes :", e); return 0; }
+  }
   function _hydraterFiche(racine) {
     if (!racine || racine.getAttribute("data-kta-ext") === "1") return;
     racine.setAttribute("data-kta-ext", "1");
@@ -1717,6 +2137,129 @@
     _observateurFiches.observe(document.body, { childList: true, subtree: true });
   }
 
+  // ── État d'un objet donné par une extension (prise etatObjet) ──
+  // etatObjet(uid) → "propose" | "refuse" | "retrait" | null (synchrone, information). L'app ne sait pas ce que veut
+  // dire l'état : elle le DESSINE (marqueur : classe .kta-etat-<état> ; tracé, zone, structure : pointillé) et sait le
+  // filtrer (carte : objets marqués seulement ; exports : sans les objets PROVISOIRES — proposé, refusé —, un objet en
+  // « retrait » — retrait demandé, pas encore fait — reste du contenu). Sans prise, erreur ou autre valeur : null, rien
+  // n'est dessiné ni filtré. Objets de session seulement (calque « Mes annotations ») : les calques du plan (ZIP) n'ont
+  // jamais d'état. Prise facultative exportValidesParDefaut() → bool : la case d'export naît cochée (plan affiché).
+  const ETATS_OBJET = ["propose", "refuse", "retrait"];
+  const ETATS_PROVISOIRES = ["propose", "refuse"];
+  const _POINTILLE_ETAT = { propose: "10 6", refuse: "2 6", retrait: "1 8" };
+  let _filtreEtats = false;     // carte : objets marqués seulement
+  let _exportValides = null;    // exports : choix de l'utilisateur sur ce plan (null = pas encore : défaut de l'extension)
+  function etatObjet(uid) {
+    const ext = _prise("etatObjet");
+    if (!ext || typeof ext.etatObjet !== "function" || typeof uid !== "string" || !uid) return null;
+    try { const e = ext.etatObjet(uid); return ETATS_OBJET.indexOf(e) >= 0 ? e : null; }
+    catch (e) { console.warn("[Extensions] etatObjet :", e); return null; }
+  }
+  // Une couche de session dessinée (marqueur, tracé, zone, structure) reçoit l'uid de son objet ; `pointilleBase` =
+  // le pointillé de son style sans état (rendu quand l'état disparaît). Appelé par editor.js, road.js, zones.js,
+  // structures.js à la création ; sans prise : uid noté, rien d'autre.
+  function marquerCouche(couche, uid, pointilleBase) {
+    if (!couche || typeof uid !== "string" || !uid) return;
+    couche._ktaUid = uid;
+    couche._ktaPointilleBase = pointilleBase || null;
+    couche._ktaEtat = null;   // la couche naît avec le style de son type (sans état)
+    if (aPrise("etatObjet")) _appliquerEtat(couche);
+  }
+  function _appliquerEtat(l) {
+    const e = etatObjet(l._ktaUid);
+    if (typeof l.setIcon === "function") {
+      // 🩸 Leaflet recrée l'icône quand le marqueur revient sur la carte : la classe est reposée à chaque ajout.
+      l._ktaEtat = e;
+      if (!l._ktaEtatEcoute && typeof l.on === "function") {
+        l._ktaEtatEcoute = true;
+        l.on("add", function () { _classeEtat(l); });
+      }
+      _classeEtat(l);
+    } else if (typeof l.setStyle === "function" && l._ktaEtat !== e) {
+      l._ktaEtat = e;
+      try { l.setStyle({ dashArray: e ? _POINTILLE_ETAT[e] : l._ktaPointilleBase }); } catch (er) { /* couche retirée */ }
+    }
+  }
+  function _classeEtat(l) {
+    const el = l._icon;
+    if (!el || !el.classList) return;
+    ETATS_OBJET.forEach(function (x) { el.classList.toggle("kta-etat-" + x, l._ktaEtat === x); });
+  }
+  // L'extension annonce que des états ont changé : redessinés en place (aucune fiche fermée). Filtre de carte actif :
+  // les objets sont refiltrés. → nombre d'objets marqués sur la carte.
+  function rafraichirEtats() {
+    let n = 0;
+    const grp = window.layerEditor;
+    if (grp && typeof grp.eachLayer === "function") {
+      grp.eachLayer(function (l) {
+        if (!l || typeof l._ktaUid !== "string") return;
+        _appliquerEtat(l);
+        if (l._ktaEtat) n++;
+      });
+    }
+    if (_filtreEtats) _refiltrerEtats();
+    return n;
+  }
+  // Filtre de la carte : seuls les objets de session qui ont un état restent (les calques du plan ne bougent pas).
+  // Action de l'extension (jamais déclenchée par l'app seule) ; sans prise : toujours éteint. → état du filtre.
+  function filtrerEtats(actif) {
+    const v = !!actif && aPrise("etatObjet");
+    if (v === _filtreEtats) return v;
+    _filtreEtats = v;
+    _refiltrerEtats();
+    return v;
+  }
+  function _refiltrerEtats() {
+    ["_applyLevelFilterToEditorPoints", "renderRoads", "renderZones", "renderStructures"].forEach(function (f) {
+      try { if (typeof window[f] === "function") window[f](); } catch (e) { console.warn("[Extensions] filtre des états :", e); }
+    });
+  }
+  // Lu par les rendus de session : l'objet passe-t-il le filtre de la carte ? (filtre éteint : oui).
+  function passeFiltreEtat(o) {
+    return !_filtreEtats || !!(o && etatObjet(o.uid));
+  }
+  // Case cochée ? Le choix fait sur ce plan, sinon le défaut de l'extension (prise d'information : erreur = non).
+  function _exportValidesActif() {
+    if (_exportValides !== null) return _exportValides;
+    const ext = _prise("exportValidesParDefaut");
+    if (!ext || typeof ext.exportValidesParDefaut !== "function") return false;
+    try { return ext.exportValidesParDefaut() === true; } catch (e) { console.warn("[Extensions] exportValidesParDefaut :", e); return false; }
+  }
+  const _provisoire = function (o) { return !!o && typeof o.uid === "string" && ETATS_PROVISOIRES.indexOf(etatObjet(o.uid)) >= 0; };
+  // Exports : la liste sans les objets provisoires quand la case « validés seulement » est cochée ; sans prise : intacte.
+  function filtrerPourExport(liste) {
+    const l = Array.isArray(liste) ? liste : [];
+    if (!aPrise("etatObjet") || !_exportValidesActif()) return l;
+    return l.filter(function (o) { return !_provisoire(o); });
+  }
+  // Case à poser dans une fenêtre d'export (HTML, texte échappé) ; "" sans prise ou quand aucun objet de la session
+  // n'est provisoire (rien à écarter : la fenêtre reste celle d'avant). Une seule valeur pour toutes les fenêtres
+  // (cochée dans l'une, cochée dans les autres) ; le choix est oublié à chaque plan (retour au défaut de l'extension).
+  function _unObjetProvisoire() {
+    return ["getEditorPoints", "getRoads", "getZones", "getStructures"].some(function (g) {
+      const l = typeof window[g] === "function" ? (window[g]() || []) : [];
+      return l.some(_provisoire);
+    });
+  }
+  function caseExportValides() {
+    if (!aPrise("etatObjet") || !_unObjetProvisoire()) return "";
+    const esc = window.ktaEsc;
+    return '<label class="kta-export-valides"><input type="checkbox" data-kta-export-valides="1"' +
+      (_exportValidesActif() ? " checked" : "") + '> ' + esc(_t("ext.export.validesSeuls")) + '</label>';
+  }
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("change", function (e) {
+      const c = e && e.target;
+      if (c && typeof c.getAttribute === "function" && c.getAttribute("data-kta-export-valides") === "1") {
+        _exportValides = !!c.checked;
+        try { window.dispatchEvent(new CustomEvent("mktm:export-valides", { detail: { actif: _exportValides } })); } catch (er) { /* rien */ }
+      }
+    });
+  }
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("mktm:plan-ferme", function () { _filtreEtats = false; _exportValides = null; });
+  }
+
   // La tuile suit le compte (connexion, déconnexion) et l'accueil (posée une fois le DOM prêt).
   if (typeof window.addEventListener === "function") {
     window.addEventListener("mktm:compte-changed", _poserOutilHome);
@@ -1743,6 +2286,9 @@
     exportLimite: exportLimite,
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
+    actionAlertes: actionAlertes,
+    ligneNotifications: ligneNotifications,
+    notificationAuDemarrage: notificationAuDemarrage,
     profilStatsExtension: profilStatsExtension,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,
@@ -1774,6 +2320,19 @@
     afficherAlerteSecours: afficherAlerteSecours,
     retirerAlerteSecours: retirerAlerteSecours,
     auteurObjet: auteurObjet,
+    allerAObjet: allerAObjet,
+    objetParUid: objetParUid,
+    objetsProches: objetsProches,
+    afficherReperes: afficherReperes,
+    etatObjet: etatObjet,
+    marquerCouche: marquerCouche,
+    rafraichirEtats: rafraichirEtats,
+    filtrerEtats: filtrerEtats,
+    filtreEtatsActif: function () { return _filtreEtats; },
+    exportValidesActif: _exportValidesActif,
+    passeFiltreEtat: passeFiltreEtat,
+    filtrerPourExport: filtrerPourExport,
+    caseExportValides: caseExportValides,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,
@@ -1786,6 +2345,8 @@
     recuADistance: recuADistance,
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
+    garderHorsLigneExtension: garderHorsLigneExtension,
+    tailleHorsLigneExtension: tailleHorsLigneExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
     liaisonInfo: liaisonInfo,

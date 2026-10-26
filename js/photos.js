@@ -6,10 +6,10 @@
 // photos.js — stockage des photos des POI en IndexedDB (myktamap_photos, store photos, keyPath id ;
 //   index by_plan [planId] et by_plan_point [planId, pointId]).
 // ⚠️ Enregistrement : { id (8 hex), planId, pointId (uid du point, ou son nom), blob, mime, size, createdAt,
-//   meta, fiche?: { nom, x, y, niveau, type, maj } }. La fiche permet de RETROUVER le point d'une photo s'il
-//   est supprimé : supprimer un point ne supprime PAS ses photos, elles passent « sans point » dans
-//   🧰 Outils > 📸 Mes photos (js/photosGalerie.js).
-// Compression à l'ajout (1920 px max, JPEG 0.85), 5 photos max par point.
+//   meta, fiche?: { nom, x, y, niveau, type, maj }, priseLe? }. La fiche RETROUVE le point d'une photo s'il est
+//   supprimé (ses photos passent « sans point » dans 🧰 Outils > 📸 Mes photos, js/photosGalerie.js).
+// 🔒 Compression à l'ajout (1920 px max, JPEG 0.85, 5 photos max par point) : le canvas retire l'EXIF. `priseLe`
+//   ("AAAA-MM-JJTHH:MM:SS", heure locale sans fuseau) = DateTimeOriginal lu AVANT, gardé à côté du fichier.
 // ⚠️ Événement `mktm:photos-changees` APRÈS l'écriture : detail = { planId, photoIds, action, source? },
 //   action ∈ ajout | suppression | rattachement | fiche ; source "extension" (restorePhoto sans opts.source :
 //   ne pas la renvoyer au serveur) | "import" (restauration par l'app).
@@ -18,7 +18,7 @@
 // Expose window.MyKTAMapPhotos : init, addPhoto, getPhoto, getBlob, getObjectUrl (penser à revokeObjectURL),
 //   getPhotosForPoint/Ref, getAllPhotosForPlan, count*, deletePhoto, supprimerPhotos, deletePhotos*,
 //   restorePhoto, rattacher, placesPourPoint, listerPlan/listerTout (sans blob), ficheDepuisPoint,
-//   majFichesPoints, migrerPhotosPlan, compressBlob, getStorageInfo.
+//   majFichesPoints, migrerPhotosPlan, compressBlob, getStorageInfo, getMeta, lireDatePriseVue, priseLeValide.
 // Erreurs : warn + null/false/[] plutôt qu'un throw (ne pas casser l'UI).
 // Garde-fou : scripts/check-photos.js · Doc : docs/architecture/session-data.md
 
@@ -191,8 +191,123 @@
   function _sansBlob(rec) {
     return {
       id: rec.id, planId: rec.planId, pointId: rec.pointId, mime: rec.mime,
-      size: rec.size || 0, createdAt: rec.createdAt || 0, fiche: rec.fiche || null
+      size: rec.size || 0, createdAt: rec.createdAt || 0, fiche: rec.fiche || null,
+      priseLe: rec.priseLe || null
     };
+  }
+
+  // ── Date de prise de vue (EXIF DateTimeOriginal) ──
+  // 🔒 Parseur minimal et BORNÉ : octets d'un fichier choisi par l'utilisateur, peut-être tronqué ou forgé. Deux
+  // IFD lus au plus (IFD0, puis sous-IFD Exif), aucun saut récursif, chaque lecture vérifiée contre la fin du
+  // tampon ; toute incohérence → null. JPEG : marqueurs parcourus jusqu'à l'APP1 « Exif ». Autre format (HEIC…) :
+  // recherche de « Exif\0\0 » suivi d'un en-tête TIFF dans la fenêtre lue — au mieux, la date peut manquer.
+  const EXIF_FENETRE     = 256 * 1024;   // l'APP1 d'un JPEG tient dans 64 Ko ; marge pour le HEIC
+  const EXIF_MAX_ENTREES = 512;
+
+  // "AAAA-MM-JJTHH:MM:SS" plausible → la chaîne ; sinon null.
+  function priseLeValide(s) {
+    if (typeof s !== "string") return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(s);
+    if (!m) return null;
+    const a = +m[1], mo = +m[2], j = +m[3], h = +m[4], mi = +m[5], se = +m[6];
+    if (a < 1900 || a > 2200 || mo < 1 || mo > 12 || j < 1 || j > 31 || h > 23 || mi > 59 || se > 59) return null;
+    return s;
+  }
+
+  function _dateTiff(v, base, fin) {
+    if (base < 0 || base + 8 > fin) return null;
+    const bo = v.getUint16(base);
+    let le;
+    if (bo === 0x4949) le = true;
+    else if (bo === 0x4D4D) le = false;
+    else return null;
+    if (v.getUint16(base + 2, le) !== 42) return null;
+
+    // Entrées voulues d'un IFD → { tag: { type, n, val } } ; null si l'IFD sort du tampon.
+    function lireIfd(off, voulus) {
+      const debut = base + off;
+      if (off < 8 || debut + 2 > fin) return null;
+      const nb = v.getUint16(debut, le);
+      if (nb > EXIF_MAX_ENTREES) return null;
+      const out = {};
+      for (let i = 0; i < nb; i++) {
+        const e = debut + 2 + i * 12;
+        if (e + 12 > fin) break;
+        const tag = v.getUint16(e, le);
+        if (voulus.indexOf(tag) < 0) continue;
+        out[tag] = { type: v.getUint16(e + 2, le), n: v.getUint32(e + 4, le), val: v.getUint32(e + 8, le) };
+      }
+      return out;
+    }
+    // ASCII (type 2) « AAAA:MM:JJ HH:MM:SS\0 » : 20 octets, trop long pour l'entrée → toujours un offset.
+    function lireDate(ent) {
+      if (!ent || ent.type !== 2 || ent.n < 19 || ent.n > 64) return null;
+      const o = base + ent.val;
+      if (o + 19 > fin) return null;
+      let txt = "";
+      for (let k = 0; k < 19; k++) txt += String.fromCodePoint(v.getUint8(o + k));
+      const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(txt);
+      if (!m) return null;
+      return priseLeValide(m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6]);
+    }
+
+    const ifd0 = lireIfd(v.getUint32(base + 4, le), [0x8769]);
+    const ptr = ifd0 && ifd0[0x8769];
+    if (!ptr || ptr.type !== 4) return null;
+    const exif = lireIfd(ptr.val, [0x9003, 0x9004]);
+    if (!exif) return null;
+    return lireDate(exif[0x9003]) || lireDate(exif[0x9004]);   // DateTimeOriginal, sinon DateTimeDigitized
+  }
+
+  // ArrayBuffer (début du fichier) → "AAAA-MM-JJTHH:MM:SS" ou null. Ne lève jamais.
+  function datePriseVueDepuisOctets(buf) {
+    try {
+      // Étiquette plutôt qu'instanceof : un tampon d'un autre royaume (iframe, vm du garde-fou) reste lisible.
+      if (Object.prototype.toString.call(buf) !== "[object ArrayBuffer]") return null;
+      const v = new DataView(buf);
+      const n = v.byteLength;
+      if (n >= 4 && v.getUint16(0) === 0xFFD8) {
+        let off = 2;
+        while (off + 4 <= n) {
+          if (v.getUint8(off) !== 0xFF) return null;
+          const mk = v.getUint8(off + 1);
+          if (mk === 0xFF) { off++; continue; }                          // octet de remplissage
+          if (mk === 0xD9 || mk === 0xDA) return null;                   // fin d'image, début des données
+          if ((mk >= 0xD0 && mk <= 0xD7) || mk === 0x01) { off += 2; continue; }
+          const lg = v.getUint16(off + 2);
+          if (lg < 2) return null;
+          if (mk === 0xE1 && lg >= 16 && off + 10 <= n &&
+              v.getUint32(off + 4) === 0x45786966 && v.getUint16(off + 8) === 0) {
+            return _dateTiff(v, off + 10, Math.min(n, off + 2 + lg));
+          }
+          off += 2 + lg;
+        }
+        return null;
+      }
+      for (let i = 0; i + 14 <= n; i++) {
+        if (v.getUint32(i) !== 0x45786966 || v.getUint16(i + 4) !== 0) continue;
+        const t = v.getUint32(i + 6);
+        if (t === 0x49492A00 || t === 0x4D4D002A) return _dateTiff(v, i + 6, n);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Blob → Promise<"AAAA-MM-JJTHH:MM:SS" | null> : début du fichier seulement, ne rejette jamais.
+  function lireDatePriseVue(blob) {
+    if (!blob || !(blob instanceof Blob)) return Promise.resolve(null);
+    const morceau = blob.slice(0, EXIF_FENETRE);
+    const lecture = (typeof morceau.arrayBuffer === "function")
+      ? morceau.arrayBuffer()
+      : new Promise(function(res, rej) {
+          const fr = new FileReader();
+          fr.onload = function() { res(fr.result); };
+          fr.onerror = function() { rej(fr.error); };
+          fr.readAsArrayBuffer(morceau);
+        });
+    return lecture.then(datePriseVueDepuisOctets).catch(function() { return null; });
   }
 
   // ── Compression : Blob → Image → canvas redimensionné → JPEG ──
@@ -274,14 +389,21 @@
       }
 
       const isImage = srcBlob.type && srcBlob.type.indexOf("image/") === 0;
+      // 🔒 Lue sur le blob D'ORIGINE (le ré-encodé n'a plus d'EXIF), gardée dans l'enregistrement seulement.
+      const datePromise = isImage ? lireDatePriseVue(srcBlob) : Promise.resolve(null);
       const compressPromise = (opts.skipCompress || !isImage)
         ? Promise.resolve(srcBlob)
         : compressBlob(srcBlob, opts).catch(function(e) {
-            console.warn("[Photos] compression échouée, fallback blob original :", e);
-            return srcBlob;
+            // 🔒 FAIL-CLOSED : le blob d'origine garderait son EXIF (GPS compris). Une image que ce navigateur
+            // ne sait pas décoder (fichier tronqué, HEIC hors Safari) est refusée, jamais stockée brute.
+            console.warn("[Photos] compression échouée, photo refusée :", e);
+            const err = new Error("PHOTO_ILLISIBLE: image not decodable");
+            err.code = "PHOTO_ILLISIBLE";
+            throw err;
           });
 
-      return compressPromise.then(function(finalBlob) {
+      return Promise.all([compressPromise, datePromise]).then(function(lu) {
+        const finalBlob = lu[0];
         const record = {
           id:        generateId(),
           planId:    String(planId),
@@ -292,6 +414,7 @@
           createdAt: Date.now(),
           meta:      opts.meta || {}
         };
+        if (lu[1]) record.priseLe = lu[1];
         const fiche = _fiche(opts.fiche);
         if (fiche) record.fiche = fiche;
 
@@ -332,6 +455,11 @@
       console.warn("[Photos] getPhoto erreur :", e);
       return null;
     });
+  }
+
+  // Métadonnées d'une photo, sans le blob (visionneuse).
+  function getMeta(photoId) {
+    return getPhoto(photoId).then(function(rec) { return rec ? _sansBlob(rec) : null; });
   }
 
   function getBlob(photoId) {
@@ -492,8 +620,8 @@
   // ── Restauration d'un enregistrement complet (import de session, plan ZIP, profil, extension) ──
   // Les `point.photos: [photoId]` doivent continuer à pointer juste : contrairement à addPhoto, on garde
   // l'id, sans compression ni quota (déjà acceptés à la création), en store.put (upsert).
-  // `record` : au minimum {id, planId, pointId, blob} ; mime, size, createdAt, meta par défaut ; `fiche`
-  // gardée si valide.
+  // `record` : au minimum {id, planId, pointId, blob} ; mime, size, createdAt, meta par défaut ; `fiche` et
+  // `priseLe` gardés si valides.
   // opts.source : "extension" PAR DÉFAUT (une extension dépose une photo reçue et ne doit pas la renvoyer) ;
   // l'app passe { source: "import" } ; le réimport de session ajoute { siAbsente }.
   function restorePhoto(record, opts) {
@@ -508,11 +636,13 @@
       blob:      record.blob,
       mime:      record.mime      || (record.blob.type) || "image/jpeg",
       size:      record.size      || record.blob.size || 0,
-      createdAt: record.createdAt || Date.now(),
+      createdAt: (Number.isFinite(record.createdAt) && record.createdAt > 0) ? record.createdAt : Date.now(),
       meta:      record.meta      || {}
     };
     const fiche = _fiche(record.fiche);
     if (fiche) rec.fiche = fiche;
+    const priseLe = priseLeValide(record.priseLe);
+    if (priseLe) rec.priseLe = priseLe;
     // opts.siAbsente (réimport = FUSION) : une photo déjà en base (même id, tout plan) n'est PAS réécrite —
     // elle a pu être rattachée ou recevoir une fiche plus récente. Lecture et écriture dans les rappels :
     // une seule transaction. → Promise<id> si écrite, Promise<null> sinon (aucun événement).
@@ -851,6 +981,7 @@
     compressBlob:            compressBlob,
     addPhoto:                addPhoto,
     getPhoto:                getPhoto,
+    getMeta:                 getMeta,
     getBlob:                 getBlob,
     getObjectUrl:            getObjectUrl,
     getPhotosForPoint:       getPhotosForPoint,
@@ -876,6 +1007,10 @@
     majFichesPoints:         majFichesPoints,
     clearAll:                clearAll,
     getStorageInfo:          getStorageInfo,
+    // Date de prise de vue (EXIF) : lecture du fichier d'origine, des octets (garde-fou), validation.
+    lireDatePriseVue:        lireDatePriseVue,
+    datePriseVueDepuisOctets: datePriseVueDepuisOctets,
+    priseLeValide:           priseLeValide,
     // Constantes pour l'UI (limites affichées).
     MAX_PHOTOS_PER_POINT:    MAX_PHOTOS_PER_POINT,
     COMPRESS_MAX_DIMENSION:  COMPRESS_MAX_DIMENSION,

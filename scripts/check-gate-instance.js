@@ -3,7 +3,7 @@
 // =====================================================================
 // check-gate-instance.js — garde-fou pré-commit BLOQUANT de la gate (js/unlockGate.js, main.js)
 // =====================================================================
-// Règle : sans hash d'instance, « Continuer sans licence » ouvre (aucun code en dur) ; quand une
+// Règle : sans hash d'instance, « Entrer » (écran Bienvenue) ouvre (aucun code en dur) ; quand une
 // instance publie un `accessHash` valide dans `index.json`, SON mot de passe est le SEUL accès,
 // aucune licence ne le contourne. 🔒 Le hash est PUBLIC (brute-forçable hors ligne) : barrière
 // sociale, jamais une authentification, et le code comme la doc doivent le dire (§8).
@@ -60,7 +60,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   };
 
   if (code) {
-    t("🔓 l'accès libre (« Continuer sans licence ») ouvre", jouer("libre-v1", null).ouvert === true);
+    t("🔓 l'accès libre (« Entrer ») ouvre", jouer("libre-v1", null).ouvert === true);
     const herite = jouer(VRAI, null);
     t("🔓 un appareil entré avec l'ANCIEN code reste ouvert (vaut « déjà choisi »)…", herite.ouvert === true);
     t("🩸 …SANS rien écrire : isUnlocked() tourne au chargement, avant la revalidation de l'instance", herite.u === VRAI);
@@ -196,12 +196,43 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   t("🔑 le hash accepté est stocké", /localStorage\.setItem\(LS_UNLOCK, hashed\);/.test(GATE));
   t("🩸 un succès d'instance mémorise le hash d'instance (sans quoi : hors-ligne, reverrouillé)",
     /localStorage\.setItem\(LS_UNLOCK_KIOSQUE, hashInstance\);/.test(GATE));
-  t("🔓 « Continuer sans licence » mémorise l'accès libre et efface la mémoire d'instance",
-    /btnLibre\.addEventListener\("click"[\s\S]{0,200}setItem\(LS_UNLOCK, ACCES_LIBRE\)[\s\S]{0,80}removeItem\(LS_UNLOCK_KIOSQUE\)/.test(GATE));
+  const memo = extraire("_memoriserAccesLibre") || "";
+  t("🔓 « Entrer » mémorise l'accès libre et efface la mémoire d'instance",
+    /setItem\(LS_UNLOCK, ACCES_LIBRE\)[\s\S]{0,80}removeItem\(LS_UNLOCK_KIOSQUE\)/.test(memo));
+  t("🔓 « Entrer » passe par cette mémoire, sur l'écran Bienvenue comme sur sa carte de repli",
+    /surEntree: function\(visite\) \{[\s\S]{0,120}_memoriserAccesLibre\(\)/.test(GATE) &&
+    /btnLibre\.addEventListener\("click", function\(\) \{\s*_memoriserAccesLibre\(\)/.test(GATE));
   t("🔓 le mode de l'écran est décidé AVANT de le dessiner (hash d'instance lu d'abord)",
     /_hashInstance\(\)[^\n]*\.then\(function\(h\) \{ _monterGateMode\(h\); \}\)/.test(GATE));
-  t("🔓 écran libre : bouton « Continuer sans licence », pas de champ mot de passe ; écran instance : l'inverse",
+  t("🔓 carte de repli libre : bouton « Entrer », pas de champ mot de passe ; carte d'instance : l'inverse",
     /\(libre\s*\?\s*'<button type="button" id="kta-unlock-libre-btn"[\s\S]{0,200}:\s*'<form id="kta-unlock-form"/.test(GATE));
+  t("l'écran Bienvenue est monté avec ou sans mot de passe, en lui passant le hash d'instance",
+    /if \(!repli\) \{ _monterBienvenue\(hashInstance\); return; \}/.test(GATE));
+  t("🩸 écran Bienvenue introuvable (cache incomplet) → carte de repli du MÊME mode, jamais d'écran vide",
+    /if \(!pret\) \{[\s\S]{0,160}_monterGateMode\(hashInstance, true\)/.test(GATE));
+  // 🔒 Instance protégée sur l'écran Bienvenue : la vérification est celle de la carte (_essayerCode), rien n'y
+  // mémorise l'accès libre, et la sortie ne résout la gate qu'après un code juste.
+  {
+    const mb = extraire("_monterBienvenue") || "";
+    const prot = (mb.match(/if \(hashInstance\) \{[\s\S]*?\r?\n        return;\r?\n      \}/) || [""])[0];
+    t("🔒 Bienvenue protégé : le champ passe par _essayerCode / _etatCode", /code: \{ essayer: _essayerCode, etat: _etatCode \}/.test(prot));
+    t("🔒 Bienvenue protégé : « Entrer » ne mémorise JAMAIS l'accès libre (libre-v1 ouvrirait l'instance)",
+      prot.length > 0 && !/_memoriserAccesLibre|ACCES_LIBRE/.test(prot));
+    t("🔒 Bienvenue protégé : la gate n'est résolue qu'après un code juste",
+      /surFin: function\(\) \{\s*if \(_codeAccepte\) _resoudre\(\);\s*else _monterGate\(\);/.test(prot));
+    const essai = extraire("_essayerCode") || "";
+    t("🔒 _codeAccepte n'est posé que dans la branche du code juste",
+      (GATE.match(/_codeAccepte = true/g) || []).length === 1 &&
+      /if \(okInstance\) \{[\s\S]{0,400}_codeAccepte = true;/.test(essai));
+    t("🔒 un essai pendant le verrou est refusé avant tout calcul", /^[^\n]*\{\s*if \(isLockedOut\(\)\) return \{ etat: "verrou" \};/.test(essai));
+    const BV = fs.readFileSync("js/bienvenue.js", "utf8");
+    t("🔒 bienvenue.js : avec code, « Entrer » et la visite remontent au champ au lieu d'entrer",
+      /if \(action === "entrer"\) \{ if \(code\) allerAuChamp\(false\); else entrer\(false\); \}/.test(BV) &&
+      /if \(action === "visite"\) \{ if \(code\) allerAuChamp\(true\); else entrer\(true\); \}/.test(BV));
+    t("🔒 bienvenue.js : l'entrée après saisie n'a lieu que sur un essai « ok »",
+      (BV.match(/entrer\(visiteVoulue\)/g) || []).length === 1 &&
+      /if \(r\.etat === "ok"\) \{[^}]{0,80}entrer\(visiteVoulue\);/.test(BV));
+  }
   t("🩸 le verrou temporisé ne s'applique qu'à l'écran avec mot de passe", /if \(!libre && isLockedOut\(\)\)/.test(GATE));
 }
 
@@ -340,6 +371,6 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   });
 }
 
-console.log(ko === 0 ? "\n🎉 gate : le mot de passe de l'instance ou « Continuer sans licence », et aucune promesse de trop"
+console.log(ko === 0 ? "\n🎉 gate : le mot de passe de l'instance ou « Entrer », et aucune promesse de trop"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

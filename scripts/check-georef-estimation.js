@@ -4,10 +4,18 @@
 // check-georef-estimation.js — garde-fou pré-commit BLOQUANT de « Estimer le point B » du géoréférencement
 // =====================================================================
 // ⚠️ B est déduit de A + échelle (px/m) + northOffsetDeg (0 = Nord en haut, croissant HORAIRE, comme la
-// boussole). Fonctions extraites du code réel (js/config.js > ktaEstimerPointB, ktaCoinLePlusLoin).
+// boussole). Fonctions extraites du code réel (js/config.js > ktaEstimerPointB, ktaCoinLePlusLoin) ; les mètres
+// passent par le moteur du calage (js/kmzExport.js > decalerGps), chargé en VM : distances jugées au sol.
 // =====================================================================
 
 const fs = require("fs");
+const vm = require("vm");
+const ctxKe = { console: { log() {}, warn() {} }, I18n: { t: (k) => k }, Math, JSON, Number, Error, Object };
+ctxKe.window = ctxKe;
+vm.createContext(ctxKe);
+vm.runInContext(fs.readFileSync("js/kmzExport.js", "utf8"), ctxKe);
+const KE = ctxKe.KmzExport;
+global.window = ctxKe;
 const src = fs.readFileSync("js/config.js", "utf8");
 const d = src.indexOf("function ktaEstimerPointB");
 const d2 = src.indexOf("function ktaCoinLePlusLoin");
@@ -18,27 +26,26 @@ eval(src.slice(d, src.indexOf("\n}", d) + 2) + "\n" + src.slice(d2, fin2));
 
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
-const A = { x: 1000, y: 1000, lat: 48.8580, lng: 2.2945 };
-const M = 111320;
+const A = { x: 1000, y: 1000, lat: 48.5, lng: 2.5 };
+const sol = (b) => KE.distanceM(A, b);   // mètres au sol (corde de l'ellipsoïde)
 
 // ── Nord par défaut : 500 px vers le HAUT (y diminue) à 5 px/m = 100 m plein Nord ──
 let b = ktaEstimerPointB(A, { x: 1000, y: 500 }, 5, 0);
-t("plein nord : lat augmente de 100 m", b && Math.abs((b.lat - A.lat) * M - 100) < 0.01);
-t("plein nord : lng inchangée", b && Math.abs(b.lng - A.lng) < 1e-9);
+t("plein nord : B à 100 m au sol (± 1 mm), au nord", b && Math.abs(sol(b) - 100) < 0.001 && b.lat > A.lat);
+t("plein nord : lng inchangée", b && Math.abs(b.lng - A.lng) < 1e-12);
 t("le point rendu porte estimated:true", b && b.estimated === true);
 t("les pixels du B rendu sont ceux demandés", b && b.x === 1000 && b.y === 500);
 
 b = ktaEstimerPointB(A, { x: 1500, y: 1000 }, 5, 0);
-t("plein est : lng augmente", b && b.lng > A.lng && Math.abs(b.lat - A.lat) < 1e-9);
-t("plein est : correction cos(lat) appliquée",
-  b && Math.abs((b.lng - A.lng) * M * Math.cos(A.lat * Math.PI / 180) - 100) < 0.01);
+t("plein est : lng augmente, latitude tenue au cm", b && b.lng > A.lng && Math.abs(b.lat - A.lat) < 1e-7);
+t("plein est : B à 100 m au sol (± 1 mm)", b && Math.abs(sol(b) - 100) < 0.001);
 
 // ── Nord calibré à 90° (flèche Nord vers la DROITE du plan) ──
 b = ktaEstimerPointB(A, { x: 1500, y: 1000 }, 5, 90);
 t("offset 90° : la droite de l'image = plein Nord",
-  b && Math.abs((b.lat - A.lat) * M - 100) < 0.01 && Math.abs(b.lng - A.lng) * M < 0.01);
+  b && Math.abs(sol(b) - 100) < 0.001 && Math.abs(b.lng - A.lng) < 1e-12 && b.lat > A.lat);
 b = ktaEstimerPointB(A, { x: 1000, y: 500 }, 5, 90);
-t("offset 90° : le haut de l'image = plein Ouest", b && b.lng < A.lng && Math.abs(b.lat - A.lat) < 1e-9);
+t("offset 90° : le haut de l'image = plein Ouest", b && b.lng < A.lng && Math.abs(b.lat - A.lat) < 1e-7);
 
 // ── Hémisphère sud ──
 const S = { x: 0, y: 0, lat: -33.86, lng: 151.20 };
@@ -48,8 +55,10 @@ t("hémisphère sud : le nord rapproche de l'équateur", b && b.lat > S.lat);
 // ── Distance pixel = distance GPS reconstruite ──
 b = ktaEstimerPointB(A, { x: 4000, y: 250 }, 4.9, 37);
 const dPix = Math.hypot(3000, -750) / 4.9;
-const dGps = Math.hypot((b.lat - A.lat) * M, (b.lng - A.lng) * M * Math.cos(A.lat * Math.PI / 180));
-t("la distance est conservée par la projection (0,1 % près)", Math.abs(dPix - dGps) / dPix < 0.001);
+t("la distance est conservée au sol (1 mm près sur 630 m)", Math.abs(dPix - sol(b)) < 0.001);
+// Le moteur relit B à la même échelle : avant, 111 320 m/° posé contre 110 540 lu = 0,7 % d'écart.
+const tB = KE.buildTransformCalib({ pointA: A, pointB: b, modele: KE.MODELE_LOCAL });
+t("le calage A / B estimé redonne l'échelle saisie (1e-6 près)", Math.abs(tB.metresParPixel * 4.9 - 1) < 1e-6);
 
 // ── REFUS (jamais de clamp) ──
 t("échelle 0 → null", ktaEstimerPointB(A, { x: 0, y: 0 }, 0, 0) === null);
@@ -61,6 +70,11 @@ t("latitude polaire (>85°) → null", ktaEstimerPointB({ x: 0, y: 0, lat: 88, l
 t("offset nord absent → traité comme 0",
   JSON.stringify(ktaEstimerPointB(A, { x: 1000, y: 500 }, 5, undefined)) ===
   JSON.stringify(ktaEstimerPointB(A, { x: 1000, y: 500 }, 5, 0)));
+
+const moteur = global.window.KmzExport;
+global.window.KmzExport = null;
+t("moteur du calage absent → null, rien d'inventé", ktaEstimerPointB(A, { x: 1000, y: 500 }, 5, 0) === null);
+global.window.KmzExport = moteur;
 
 // ── Coin le plus éloigné ──
 const c1 = ktaCoinLePlusLoin({ x: 100, y: 100 }, 2000, 1000);

@@ -743,6 +743,13 @@ async function lancerApplication() {
 // 🩸 availableLevels vaut -2..+2 par défaut : le lire à la place créerait des équipes Secours sur des niveaux vides.
 window.ktaNiveauxOccupes = function() {
   const levelsFound = [];
+  // Niveaux desservis d'un passage (poiJonction.js : jes / jpe / jps, peo / eso) : comptés comme occupés, même
+  // seul objet d'un niveau. Lus par le tag, pas par estJonction (qui exige le multi-niveau déjà actif).
+  const PJ = window.KtaPoiJonction;
+  const _pushNiveaux = function(tags, niveaux) {
+    if (!PJ || !Array.isArray(niveaux) || !Array.isArray(tags) || !PJ.porteNiveaux(String(tags[0] || ""))) return;
+    niveaux.forEach(function(n) { if (Number.isInteger(n)) levelsFound.push(n); });
+  };
   try {
     const _push = function(arr) {
       if (!Array.isArray(arr)) return;
@@ -751,6 +758,7 @@ window.ktaNiveauxOccupes = function() {
           if (Number.isInteger(it.level))      levelsFound.push(it.level);
           if (Number.isInteger(it.fromLevel))  levelsFound.push(it.fromLevel);
           if (Number.isInteger(it.toLevel))    levelsFound.push(it.toLevel);
+          _pushNiveaux(it.tags, it.niveaux);
         }
       });
     };
@@ -763,12 +771,11 @@ window.ktaNiveauxOccupes = function() {
     if (Array.isArray(window._ktaDataMarkers)) {
       window._ktaDataMarkers.forEach(function(m) {
         if (m && Number.isInteger(m._ktaLevel)) levelsFound.push(m._ktaLevel);
+        if (m) _pushNiveaux(m._ktaTags, m._ktaNiveauxSrc);
       });
     }
     if (Array.isArray(window._ktaDataPolylines)) {
-      window._ktaDataPolylines.forEach(function(entry) {
-        if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
-      });
+      _push(window._ktaDataPolylines);   // jonction de calque : fromLevel / toLevel portés par l'entrée
     }
     if (Array.isArray(window._ktaDataPolygons)) {
       window._ktaDataPolygons.forEach(function(entry) {
@@ -1101,6 +1108,21 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   await lancerApplication();
 }
 
+// Même calage (mêmes points) des deux côtés, modèles différents : le modèle "local" gagne, dans les deux sens.
+// 🩸 Sans ça, un plan régénéré au modèle local garde l'ancien calage du localStorage (qui a la priorité), et un
+// plan recalé dans les Réglages repasse au modèle historique pour la Vue OSM et le Secours, qui lisent
+// PLAN_CONFIG.plan.georef en premier. PLAN_CONFIG est corrigé en MÉMOIRE seulement (le ZIP n'est pas réécrit).
+function _accorderModeleCalage(planId, dejaLa, georef) {
+  const KE = window.KmzExport;
+  if (!KE || typeof KE.memesPoints !== "function" || !KE.memesPoints(dejaLa, georef)) return;
+  const LOCAL = KE.MODELE_LOCAL;
+  if (dejaLa.modele === LOCAL && georef.modele !== LOCAL) {
+    georef.modele = LOCAL;
+  } else if (georef.modele === LOCAL && dejaLa.modele !== LOCAL) {
+    KE.setCalibration(planId, Object.assign({}, dejaLa, { modele: LOCAL }));
+  }
+}
+
 // Calibrage GPS embarqué (plan-config.json > plan.georef) → KmzExport.setCalibration : pré-remplit Export
 // externe et Réglages > Géoréférencement. Idempotent ; un calibrage local saisi par l'user a la priorité.
 function _propagerGeorefVersKmzExport(planId) {
@@ -1121,8 +1143,10 @@ function _propagerGeorefVersKmzExport(planId) {
             && pt.x >= -1 && pt.x <= W + 1 && pt.y >= -1 && pt.y <= H + 1;
       };
       // Dimensions inconnues : on ne peut rien juger, on respecte l'existant.
-      if (!Number.isFinite(W) || !Number.isFinite(H)) return;
-      if (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB)) return;
+      if (!Number.isFinite(W) || !Number.isFinite(H) || (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB))) {
+        _accorderModeleCalage(planId, dejaLa, georef);
+        return;
+      }
       console.warn("[Main] 🌐 Calibrage périmé pour planId=" + planId +
                    " (points hors du plan " + W + "×" + H + ") → remplacé par plan.georef.");
     }
@@ -1335,7 +1359,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   }
 
   // Photos embarquées dans le ZIP (createConf.js > _genererZip, « Inclure les photos ») :
-  //   data/photos/_index.json      ← photoId → {pointId, mime, size, file}
+  //   data/photos/_index.json      ← photoId → {pointId, mime, size, file, createdAt?, priseLe?}
   //   data/photos/<photoId>.<ext>  ← blob de chaque photo
   // Sans _index.json, section sautée.
   try {
@@ -1392,6 +1416,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 blob:    blob,
                 mime:    info.mime || "image/jpeg",
                 size:    info.size || blob.size,
+                createdAt: info.createdAt,   // dates facultatives, validées par restorePhoto
+                priseLe: info.priseLe,
                 meta:    { origine: "plan" }   // seules celles-ci peuvent être retirées
               }, { source: "import" });   // restauration de l'app (≠ dépôt d'une extension)
               restoredCount++;
@@ -1531,7 +1557,7 @@ function _apresSplash() {
     window.UpdateChecker.notifySplashEnded();
   }
   // ⚠️ Séquenceur de premier lancement (js/firstRunFlow.js) : une étape à la fois — alerte critique →
-  // conditions d'utilisation → onboarding → proposition PIN — pour qu'elles ne se superposent pas. Il appelle
+  // conditions d'utilisation → visite guidée — pour qu'elles ne se superposent pas. Il appelle
   // lui-même AlertChecker.notifySplashEnded. Rejoué à chaque boot, les étapes faites se sautent.
   if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
     window.FirstRunFlow.run();
@@ -1543,9 +1569,29 @@ function _apresSplash() {
 
 async function _splashAvantGate() {
   if (window.KtaSplash) await window.KtaSplash.finAnimation();
+  _rideauSiSplashParti();
+}
+
+// 🩸 Le plafond du splash (12 s) le retire pendant une gate longue (conditions lues) : à la fermeture de cette
+// gate, l'app restait nue (~2 s : config d'instance, licence, chargement de l'écran suivant). Le rideau prend le
+// relais du splash, même rang (sous toutes les gates), jusqu'à _splashEnd.
+function _rideauSiSplashParti() {
+  if (document.getElementById("splashOverlay") || document.getElementById("kta-rideau-boot")) return;
+  const r = document.createElement("div");
+  r.id = "kta-rideau-boot";
+  r.setAttribute("aria-hidden", "true");
+  document.body.appendChild(r);
 }
 
 async function _splashEnd(pret) {
+  try { await _fermerSplash(pret); }
+  finally {
+    const r = document.getElementById("kta-rideau-boot");
+    if (r) r.remove();
+  }
+}
+
+async function _fermerSplash(pret) {
   if (window.KtaSplash) { await window.KtaSplash.fermer(pret); return; }
   // js/ktaSplash.js absent (cache incomplet) : retrait direct, l'app ne reste jamais derrière le splash.
   const splash = document.getElementById("splashOverlay");
@@ -1695,17 +1741,6 @@ window.proposerRedemarrageLangue = function() {
 
   _splashStart();
 
-  // 🩸 Conditions d'utilisation EN PREMIER, avant toute saisie de code ou import de licence : lancée après le
-  // splash, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate (z 100100). Bloquant. Sautée en incognito
-  // (flag non persistant) ; l'étape légale de FirstRunFlow reste en filet.
-  if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
-      && !window.LegalGate.isAccepted()
-      && !(window.IncognitoMode && window.IncognitoMode.active)) {
-    await _splashAvantGate();
-    try { await window.LegalGate.ouvrirGate(); }
-    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
-  }
-
   // Config d'instance lue UNE fois, avant les gates (community-server-line.md §3) : gate, kiosque, connecteur et
   // découverte la partagent (js/ktaInstance.js). Délai 2 s, puis dernière config connue.
   const _instanceBoot = (window.KtaInstance && typeof window.KtaInstance.charger === "function")
@@ -1721,6 +1756,27 @@ window.proposerRedemarrageLangue = function() {
   // l'instance déclare « on » : myktamap.fr et toute instance OFF ne perdent pas une milliseconde.
   if (_instanceBoot) _appliquerConnexionServeur(_instanceBoot.config, _instanceBoot.repondu);
   const _scBoot = _instanceBoot && _instanceBoot.config ? _instanceBoot.config.serverConnection : null;
+
+  // Conditions d'utilisation : bloquantes, sautées en incognito (flag non persistant) ; l'étape légale de
+  // FirstRunFlow reste en filet. Deux moments (décision produit) :
+  // - installation community (pas reliée à un serveur) dont l'écran d'entrée va s'afficher : APRÈS « Entrer » (ou
+  //   le code juste), avant la descente — un visiteur de passage n'est pas arrêté par une fenêtre ;
+  // - sinon (installation reliée : pro, gate déléguée ; accès déjà ouvert) : EN PREMIER, avant toute saisie.
+  // 🩸 Avant une gate, au-dessus d'elle : lancée après, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate
+  // (z 100100) ; après « Entrer », elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
+  const _legalAFaire = !!(window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
+    && !window.LegalGate.isAccepted() && !(window.IncognitoMode && window.IncognitoMode.active));
+  const _legalApresEntree = _legalAFaire && !(_scBoot && _scBoot.state === "on")
+    && !!(window.UnlockGate && !window.UnlockGate.isUnlocked());
+  const _ouvrirLegal = async function(auDessus) {
+    try { await window.LegalGate.ouvrirGate({ auDessus: auDessus }); }
+    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  };
+  if (_legalAFaire && !_legalApresEntree) {
+    await _splashAvantGate();
+    await _ouvrirLegal(false);
+    _rideauSiSplashParti();
+  }
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
     // Licence serveur déjà connue : 2 s. Sinon (1er lancement, après réinitialisation) : jusqu'à 15 s, on repart dès
     // mktm:license-checked, trouvée ou non.
@@ -1828,9 +1884,16 @@ window.proposerRedemarrageLangue = function() {
       } catch(e) { /* swallow */ }
     } else {
       console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
-      await window.UnlockGate.ouvrirGate();
+      await window.UnlockGate.ouvrirGate(_legalApresEntree ? { avantEntree: function() { return _ouvrirLegal(true); } }
+        : undefined);
       console.log("[Main] Gate auth franchie → init normale");
     }
+  }
+  // Filet des conditions différées : carte de repli (sans avantEntree) ou licence qui a contourné la gate.
+  if (_legalApresEntree && !window.LegalGate.isAccepted()) {
+    await _splashAvantGate();
+    await _ouvrirLegal(false);
+    _rideauSiSplashParti();
   }
 
   // PIN/biométrie optionnel, APRÈS l'UnlockGate (js/pinLock.js). Désactivé ou déjà déverrouillé cette session →
@@ -1846,7 +1909,6 @@ window.proposerRedemarrageLangue = function() {
   // 🩸 Toutes les gates franchies : on libère le séquenceur de premier lancement. Sans ce signal, FirstRunFlow
   // (lancé par _splashEnd) démarrait dans une fenêtre sans gate (attente de licence) et le tutoriel passait
   // derrière la saisie du code. En verrou, jamais atteint : la file ne démarre pas (voulu).
-  // La proposition d'activation du PIN est la dernière étape de ce séquenceur (js/firstRunFlow.js).
   if (window.FirstRunFlow && typeof window.FirstRunFlow.notifyBootGatesDone === "function") {
     window.FirstRunFlow.notifyBootGatesDone();
   }

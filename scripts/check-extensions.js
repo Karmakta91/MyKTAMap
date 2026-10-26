@@ -21,7 +21,9 @@ let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
-function nouveauContexte(licence) {
+// `extra` : globales posées AVANT l'exécution du module (navigator, Notification…), pour les prises qui s'y branchent
+// au chargement.
+function nouveauContexte(licence, extra) {
   const store = {};
   const appelsFetch = [];
   const scripts = [], elements = [];
@@ -42,6 +44,7 @@ function nouveauContexte(licence) {
     URL: URL, Headers: Headers, Promise: Promise, setTimeout: setTimeout, clearTimeout: clearTimeout
   };
   w.window = w;
+  Object.assign(w, extra || {});
   const ctx = vm.createContext(w);
   vm.runInContext("var localStorage = window.localStorage, document = window.document, CustomEvent = window.CustomEvent," +
                   " console = window.console, fetch = window.fetch;", ctx);
@@ -374,6 +377,36 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 extension en erreur : refus, état inconnu, aucune exception",
       (await K2.rangerPlanExtension("ext_a", "f_secteur")) === false && (await K2.etatHorsLigneExtension("ext_a")) === null &&
       (await K2.garderPlanExtension("ext_a")) === false);
+    t("🩸 « Tout garder » d'un dossier, extension en erreur : échec AVEC la raison de l'extension, taille inconnue",
+      JSON.stringify(await K2.garderHorsLigneExtension("ext_a", {})) === '{"ok":false,"raison":"y"}' &&
+      (await K2.tailleHorsLigneExtension("ext_a")) === null);
+  }
+
+  // ── 6 bis ter (suite). « TOUT GARDER HORS LIGNE » D'UN DOSSIER : avancement, arrêt, taille ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_a" ? { id, type: "ext", extId: "A" } : id === "loc" ? { id, type: "local" } : null) };
+    t("sans extension : rien à garder, taille inconnue, aucune exception",
+      JSON.stringify(await K.garderHorsLigneExtension("ext_a", {})) === '{"ok":false,"raison":""}' &&
+      (await K.tailleHorsLigneExtension("ext_a")) === null);
+    const vus = [];
+    const ctl = { aborted: false };
+    K.register({ nom: "g1", apiVersion: 1, plans: { lister: () => [], charger: () => null, horsLigne: {
+      etat: () => "absent",
+      garder: (id, o) => { vus.push([id, o && o.signal === ctl]); o.onProgres(10, 40); o.onProgres("x", undefined); return Promise.resolve(true); },
+      taille: (id) => (id === "A" ? 4096 : -1) } } });
+    const prog = [];
+    const r = await K.garderHorsLigneExtension("ext_a", { signal: ctl, onProgres: (a, b) => prog.push([a, b]) });
+    t("garder(idExt, { signal, onProgres }) : id de l'extension, signal transmis, avancement nettoyé (nombres)",
+      r.ok === true && vus[0][0] === "A" && vus[0][1] === true && JSON.stringify(prog) === "[[10,40],[0,0]]");
+    t("taille(idExt) : octets rendus, plan local jamais demandé",
+      (await K.tailleHorsLigneExtension("ext_a")) === 4096 && (await K.tailleHorsLigneExtension("loc")) === null);
+    const { K: K3, w: w3 } = nouveauContexte(null);
+    w3.PlanRegistry = w.PlanRegistry;
+    K3.register({ nom: "g3", apiVersion: 1, plans: { lister: () => [], charger: () => null, horsLigne: {
+      etat: () => "absent", garder: (id) => Promise.resolve(id === "A"), taille: () => Number.NaN } } });
+    t("extension à l'ancienne (garder sans 2e argument) : marche ; taille non numérique → inconnue ; avancement absent toléré",
+      (await K3.garderHorsLigneExtension("ext_a")).ok === true && (await K3.tailleHorsLigneExtension("ext_a")) === null);
   }
 
   // ── 6 bis quinquies. ACTIONS SUR LA FICHE D'UN OBJET ──────
@@ -391,6 +424,18 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const U = lire("js/utils.js");
     t("fiches de session : l'uid de l'objet est porté par la fiche (point + tracé/zone/structure)",
       /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
+    // Fiche d'un point rendue pour de vrai (fonction extraite de utils.js, dépendances simulées).
+    const src = U.slice(U.indexOf("function buildPointPopupHtml("), U.indexOf("window.buildPointPopupHtml = buildPointPopupHtml;"));
+    const cf = vm.createContext({ window: { ktaEsc: (s) => String(s).replace(/[&<>"']/g, (c) => "&#" + c.charCodeAt(0) + ";"),
+      I18n: { t: (k) => k } }, _planXyToGps: () => null, _formatGps: () => "" });
+    vm.runInContext(src + ";window.f = buildPointPopupHtml;", cf);
+    const fiche = (pt, session) => cf.window.f(pt, session, { layerId: session ? "editor" : "c1", layerLabel: "x" });
+    const fCalque = fiche({ uid: "pt_calque1", nom: "P", x: 1, y: 2, tags: ["puits"] }, false);
+    const fSession = fiche({ uid: "pt_sess1", nom: "S", x: 1, y: 2 }, true);
+    t("point d'un CALQUE : la fiche porte son uid (actions d'extension), sans ✏️ / déplacer / 🗑️ ; point de session : tout",
+      /data-kta-uid="pt_calque1"/.test(fCalque) && !/data-kta-act="(modifier|repositionner|supprimer)"/.test(fCalque) &&
+      /data-kta-uid="pt_sess1"/.test(fSession) && /data-kta-act="supprimer"/.test(fSession) &&
+      !/data-kta-uid/.test(fiche({ nom: "ancien", x: 1, y: 1 }, false)));
     t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions ou une info à montrer",
       /if \(ext\.actionsObjet \|\| ext\.infoObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
     t("🩸 panneau d'extension : bouton posé SEULEMENT si une extension fournit la prise (myktamap.fr : rien)",
@@ -500,6 +545,65 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       evts.indexOf("mktm:plans-extension-changes") >= 0);
     t("…et l'accueil relit la liste à cet événement",
       /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
+  }
+
+  // ── 6 bis quater ter. AVANCEMENT D'UNE PUBLICATION (progression, progressionEnvoi) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    const recus = [];
+    let vuParExt = null;
+    K.register({ nom: "pub", apiVersion: 1, publierPlan: (a) => {
+      vuParExt = a;
+      if (a.progression) { a.progression({ etape: "envoi", fait: 5, total: 10 }); a.progression({ etape: "inconnue", fait: "x" }); }
+      return Promise.resolve({ id: "x" });
+    } });
+    w.dispatchEvent = () => true;
+    const r = await K.publierPlan({ blob: null, nom: "n", progression: (a) => { recus.push(a); throw new Error("afficheur"); } });
+    t("publierPlan : progression transmise, étape normalisée, une erreur de l'afficheur n'arrête pas la publication",
+      !!r && r.id === "x" && recus.length === 2 && recus[0].etape === "envoi" && recus[0].fait === 5 && recus[0].total === 10 &&
+      recus[1].etape === "envoi" && recus[1].fait === 0);
+    await K.publierPlan({ blob: null, nom: "n" });
+    t("…sans afficheur : rien n'est inventé (progression absente pour l'extension)", !!vuParExt && vuParExt.progression === undefined);
+
+    // requete + progressionEnvoi : XMLHttpRequest (fetch ne dit pas l'avancement d'un envoi), même garde.
+    const c = nouveauContexte("server");
+    const xhrs = [];
+    c.w.XMLHttpRequest = function () {
+      const x = this; xhrs.push(x); x.entetes = {}; x.upload = {};
+      x.open = (m, u) => { x.m = m; x.u = u; };
+      x.setRequestHeader = (k, v) => { x.entetes[String(k).toLowerCase()] = v; };
+      x.getAllResponseHeaders = () => "content-type: application/json\r\nx-plan-version: 3\r\n";
+      x.send = (corps) => { x.corps = corps; x.upload.onprogress({ loaded: 4, total: 8, lengthComputable: true });
+        x.status = 201; x.statusText = "Created"; x.response = "{\"ok\":1}"; setTimeout(() => x.onload(), 0); };
+    };
+    c.w.Response = Response; c.w.DOMException = DOMException;
+    const env = [];
+    let refuse = false;
+    try { await c.K.requete("/v1/plans", { method: "POST", body: "abcd", progressionEnvoi: (a, b) => env.push([a, b]) }); }
+    catch (e) { refuse = true; }
+    t("🔒 progressionEnvoi : refusé hors « configurée / connectée », aucun envoi", refuse && xhrs.length === 0);
+    c.K.appliquerConfig(ON, true);
+    c.K.signaler("on");
+    const avantFetch = c.appelsFetch.length;
+    const rep = await c.K.requete("/v1/plans", { method: "POST", body: "abcd", progressionEnvoi: (a, b) => env.push([a, b]) });
+    t("progressionEnvoi : envoi par XMLHttpRequest (pas fetch), même URL contrôlée, X-Kta-Ext posé, avancement reçu",
+      xhrs.length === 1 && xhrs[0].u === "https://api.exemple.org/v1/plans" && xhrs[0].m === "POST" && xhrs[0].corps === "abcd" &&
+      xhrs[0].entetes["x-kta-ext"] === "1" && env.length === 1 && env[0][0] === 4 && env[0][1] === 8 &&
+      c.appelsFetch.length === avantFetch);
+    t("…rend une Response comme fetch (statut, en-têtes, corps)", rep.status === 201 && rep.headers.get("X-Plan-Version") === "3" &&
+      (await rep.json()).ok === 1);
+    let horsOrigine = false;
+    try { await c.K.requete("https://autre.exemple.net/x", { method: "POST", body: "a", progressionEnvoi() {} }); }
+    catch (e) { horsOrigine = true; }
+    t("🔒 progressionEnvoi : une autre origine reste refusée", horsOrigine && xhrs.length === 1);
+  }
+  {
+    const HLa = lire("js/homeLoader.js");
+    t("🩸 ouverture d'un plan d'extension en échec : dite par un toast (la ligne d'état est souvent hors écran)",
+      /const _echec = function\(m\) \{[\s\S]{0,160}showToast\(m, "error"\)/.test(HLa) && /return _echec\(coupe \?/.test(HLa));
+    t("🩸 fiche ℹ️ : fin de publication dite en « success » / « error » (jamais un « info » masqué)",
+      /publishOkToast[\s\S]{0,40}"success"\)/.test(HLa) && /publishEchecToast[\s\S]{0,80}"error"\)/.test(HLa) &&
+      /basculeOkToast[\s\S]{0,40}"success"\)/.test(HLa));
   }
 
   // ── 6 bis quater bis. NOUVELLE VERSION D'UN PLAN (prise publierVersion) ──────
@@ -781,6 +885,149 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("AlertChecker : liste de l'extension fusionnée (check, bouton 🚨), relue à mktm:alertes-changees, attente bornée",
       /KtaExtensions\.alertesExtension\(\)/.test(AC) && /addEventListener\("mktm:alertes-changees"/.test(AC) &&
       /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));
+  }
+
+  // ── 6 bis decies. NOTIFICATIONS DE L'APPAREIL (prise notifications, ligne de la fenêtre 🚨) ──────
+  // 🔒 Jamais de demande système surprise : la demande ne part que du bouton de la ligne ; sans extension, rien.
+  {
+    const noeud = (tag) => {
+      const e = { tag, enfants: [], hidden: false, disabled: false, ecoutes: {}, retire: false,
+        appendChild(x) { e.enfants.push(x); return x; }, addEventListener(ty, fn) { e.ecoutes[ty] = fn; },
+        remove() { e.retire = true; } };
+      return e;
+    };
+    const monde = (permission, reponse) => {
+      const demandes = [], ecoutesSw = {};
+      const Notification = { permission, requestPermission(cb) { demandes.push(cb); Notification.permission = reponse;
+        return Promise.resolve(reponse); } };
+      return { demandes, ecoutesSw, extra: { Notification, PushManager: function () {},
+        navigator: { serviceWorker: { addEventListener(ty, fn) { ecoutesSw[ty] = fn; } } },
+        document: { readyState: "complete", getElementById: () => null, addEventListener() {}, createElement: noeud,
+          head: { appendChild() {} } } } };
+    };
+    const enLigne = (c) => { c.K.appliquerConfig(ON, true); c.K.signaler("on"); return c; };
+    const m0 = monde("default", "granted");
+    const sans = enLigne(nouveauContexte("server", m0.extra));
+    t("sans extension : aucune ligne, aucune demande d'autorisation", sans.K.ligneNotifications() === null && m0.demandes.length === 0);
+    const choix = [];
+    const m1 = monde("default", "granted");
+    const c1 = enLigne(nouveauContexte("server", m1.extra));
+    c1.K.register({ nom: "n1", apiVersion: 1, notifications: { proposer: () => true, apresChoix: (p) => { choix.push(p); } } });
+    const l1 = c1.K.ligneNotifications();
+    t("extension qui la propose, état ON, autorisation « default » : la ligne est là, AUCUNE demande avant le geste",
+      !!l1 && m1.demandes.length === 0 && l1.enfants.length === 4);
+    const btn = l1.enfants.find((e) => e.ecoutes.click);
+    btn.ecoutes.click();
+    await new Promise((r) => setTimeout(r, 10));
+    t("« Activer » : la demande part dans le geste ; accordée → bouton retiré, état « activé », l'extension l'apprend",
+      m1.demandes.length === 1 && btn.retire && choix[0] === "granted" && l1.enfants[3].hidden === false);
+    t("autorisation donnée : la ligne ne revient plus", c1.K.ligneNotifications() === null);
+    const m2 = monde("default", "denied");
+    const c2 = enLigne(nouveauContexte("server", m2.extra));
+    const choix2 = [];
+    c2.K.register({ nom: "n2", apiVersion: 1, notifications: { proposer: () => true, apresChoix: (p) => { choix2.push(p); } } });
+    const l2 = c2.K.ligneNotifications();
+    l2.enfants.find((e) => e.ecoutes.click).ecoutes.click();
+    await new Promise((r) => setTimeout(r, 10));
+    t("refusée : « Désactivé dans les réglages de l'appareil », puis la ligne ne revient plus",
+      l2.enfants[3].textContent === "alerts.notif.refusee" && choix2[0] === "denied" && c2.K.ligneNotifications() === null);
+    const m3 = monde("default", "granted");
+    const c3 = nouveauContexte("server", m3.extra);
+    c3.K.register({ nom: "n3", apiVersion: 1, notifications: { proposer: () => true } });
+    t("🩸 installation OFF (myktamap.fr) : aucune ligne même avec une extension", c3.K.ligneNotifications() === null);
+    enLigne(c3);
+    const m4 = monde("default", "granted");
+    const c4 = enLigne(nouveauContexte("server", m4.extra));
+    c4.K.register({ nom: "n4", apiVersion: 1, notifications: { proposer: () => { throw new Error("x"); } } });
+    t("prise en erreur ou qui ne propose pas : aucune ligne, aucune exception", c4.K.ligneNotifications() === null);
+    const m5 = monde("default", "granted");
+    delete m5.extra.PushManager;
+    const c5 = enLigne(nouveauContexte("server", m5.extra));
+    c5.K.register({ nom: "n5", apiVersion: 1, notifications: { proposer: () => true } });
+    t("navigateur sans Web Push (PushManager absent) : aucune ligne", c5.K.ligneNotifications() === null);
+    // Action d'une extension dans la fenêtre 🚨 (alertes.action) : bouton seulement si la prise le dit, état ON.
+    const ma = monde("granted", "granted");
+    const ca = nouveauContexte("server", ma.extra);
+    t("action 🚨 sans extension : aucun bouton", ca.K.actionAlertes(() => {}) === null);
+    const traces = [];
+    let libelle = "➕ Lancer une alerte";
+    ca.K.register({ nom: "a1", apiVersion: 1, alertes: { lister: () => [], action: {
+      libelle: () => { if (libelle === "x") throw new Error("x"); return libelle; },
+      lancer: () => { traces.push("lancer"); throw new Error("y"); } } } });
+    t("🩸 installation OFF : aucun bouton même avec une extension qui le propose", ca.K.actionAlertes(() => {}) === null);
+    enLigne(ca);
+    const ba = ca.K.actionAlertes(() => { traces.push("fermer"); });
+    const boutonA = ba && ba.enfants[0];
+    t("action 🚨 proposée (ON) : un bouton au libellé de l'extension, posé en texte",
+      !!boutonA && boutonA.textContent === "➕ Lancer une alerte" && !("innerHTML" in boutonA));
+    boutonA.ecoutes.click();
+    t("toucher : la fenêtre se ferme PUIS l'extension lance son action ; son erreur est avalée",
+      traces.join() === "fermer,lancer");
+    libelle = null;
+    t("libellé null (ex. compte sans le droit) : aucun bouton", ca.K.actionAlertes(() => {}) === null);
+    libelle = "x";
+    t("libellé en erreur : aucun bouton, aucune exception", ca.K.actionAlertes(() => {}) === null);
+    libelle = "y".repeat(200);
+    t("libellé borné à 60 caractères", ca.K.actionAlertes(() => {}).enfants[0].textContent.length === 60);
+    ca.K.signaler("down");
+    libelle = "z";
+    t("serveur injoignable (DOWN) : aucun bouton (l'action passe par lui)", ca.K.actionAlertes(() => {}) === null);
+    const IAa = lire("js/interfaceAlerts.js");
+    t("fenêtre 🚨 : l'action est posée dans les trois fenêtres, avec leur fermeture",
+      (IAa.match(/_ktaPoserLigneNotif\(modal\.querySelector\("[^"]+"\), function \(\) \{ _fermer\(\); \}\);/g) || []).length === 3 &&
+      /K\.actionAlertes\(fermer\)/.test(IAa));
+    // Publication refusée par l'utilisateur dans une question de l'extension (erreur `annule: true`) : pas un échec.
+    const CCa = lire("js/createConf.js"), MPa = lire("js/majPlan.js");
+    t("publication annulée par l'extension (annule: true) : « Publication annulée », ni échec ni fenêtre d'erreur",
+      /e && e\.annule === true\) dire\(window\.I18n\.t\("ext\.publier\.annule"\)/.test(CCa) &&
+      /er && er\.annule === true\) \{ _toast\(t\("ext\.publier\.annule"\), "info"\); throw er; \}/.test(MPa) &&
+      ["fr", "en", "es"].every((l) => !!JSON.parse(lire("lang/" + l + ".json"))["ext.publier.annule"]));
+    m1.ecoutesSw.message({ data: { type: "mktm:notification-ouverte", url: "https://inst.test/" } });
+    m1.ecoutesSw.message({ data: { type: "autre-chose" } });
+    t("messages du SW relayés en événements de la page (liste fermée)",
+      c1.w._emis.indexOf("mktm:notification-ouverte") >= 0 && c1.w._emis.indexOf("autre-chose") < 0);
+    // Cible d'une notification touchée : app ouverte (événement) et app fermée (paramètre lu une fois au chargement).
+    const detailOuverte = (url) => {
+      const m = monde("granted", "granted"), c = nouveauContexte("server", m.extra);
+      let d = null;
+      c.w.dispatchEvent = (e) => { if (e && e.type === "mktm:notification-ouverte") d = e.detail; return true; };
+      m.ecoutesSw.message({ data: { type: "mktm:notification-ouverte", url } });
+      return d;
+    };
+    const d1 = detailOuverte("https://inst.test/?kta-notif=alerte:0f8fad5b-d9cb-469f-a165-70867728950e");
+    t("app ouverte : la cible de l'adresse est donnée à l'événement (genre:id)",
+      !!d1 && d1.cible === "alerte:0f8fad5b-d9cb-469f-a165-70867728950e");
+    t("🔒 cible hors forme (balisage, trop d'éléments, trop longue) → null", [
+      "https://inst.test/?kta-notif=%3Cimg%20src%3Dx%3E", "https://inst.test/?kta-notif=a:b:c:d:e",
+      "https://inst.test/?kta-notif=tache:" + "x".repeat(81), "https://inst.test/"]
+      .every((u) => detailOuverte(u).cible === null));
+    const demarrer = (search) => {
+      const remplace = [];
+      const m = monde("granted", "granted");
+      Object.assign(m.extra, { URLSearchParams, location: { search, pathname: "/app/", hash: "#x", origin: "https://inst.test" },
+        history: { replaceState(a, b, u) { remplace.push(u); } } });
+      return { c: nouveauContexte(null, m.extra), remplace };
+    };
+    const f1 = demarrer("?a=1&kta-notif=tache:0f8fad5b-d9cb-469f-a165-70867728950e:9b2c");
+    const n1 = f1.c.K.notificationAuDemarrage(), n2 = f1.c.K.notificationAuDemarrage();
+    t("app fermée : la cible du paramètre est rendue UNE fois, puis plus rien (aucun rejeu)",
+      !!n1 && n1.cible === "tache:0f8fad5b-d9cb-469f-a165-70867728950e:9b2c" && n2 === null);
+    t("…paramètre retiré de la barre au chargement, autres paramètres et ancre gardés",
+      f1.remplace.length === 1 && f1.remplace[0] === "/app/?a=1#x");
+    const f2 = demarrer("?kta-notif=" + encodeURIComponent("<b>x</b>"));
+    t("🔒 paramètre hors forme : retiré quand même, rien rendu", f2.remplace[0] === "/app/#x" &&
+      f2.c.K.notificationAuDemarrage() === null);
+    const f3 = demarrer("?a=1");
+    t("sans paramètre : adresse intacte, rien rendu (sans extension aussi)", f3.remplace.length === 0 &&
+      f3.c.K.notificationAuDemarrage() === null);
+    const IA = lire("js/interfaceAlerts.js");
+    t("fenêtre 🚨 : la ligne est posée dans les trois fenêtres (aucune alerte, sélecteur, détail)",
+      (IA.match(/_ktaPoserLigneNotif\(modal\.querySelector/g) || []).length === 3);
+    const demandeurs = fs.readdirSync("js").filter((x) => /\.js$/.test(x) && /Notification\s*\.\s*requestPermission\s*\(/
+      .test(lire("js/" + x)));
+    t("🔒 Notification.requestPermission n'est appelé que dans ktaExtensions.js, une fois (bouton de la ligne)",
+      demandeurs.length === 1 && demandeurs[0] === "ktaExtensions.js" &&
+      (lire("js/ktaExtensions.js").match(/Notification\.requestPermission\(/g) || []).length === 1);
   }
 
   // ── 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ──────
@@ -1442,13 +1689,13 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     // devenir une nouvelle version, sous la permission de la prise ; une copie = choix explicite « nouveau » seulement.
     t("🩸 Générateur : ZIP reconnu d'un plan d'extension → publierVersion sous versionAutorisee, jamais publierPlan d'office",
       /const cible = await _planExtensionDuZip\(\);/.test(GEN) &&
-      /if \(X\.versionAutorisee\(cible\.id\)\) \{[\s\S]{0,400}X\.publierVersion\(\{ planId: cible\.id, blob: blob, nom: name \}\)/.test(GEN) &&
+      /if \(X\.versionAutorisee\(cible\.id\)\) \{[\s\S]{0,400}X\.publierVersion\(\{ planId: cible\.id, blob: blob, nom: name, progression: suivre \}\)/.test(GEN) &&
       (GEN.match(/X\.publierPlan\(/g) || []).length === 1 &&
-      /if \(choix === "nouveau"\) \{\s*await envoyer\(function\(\) \{ return X\.publierPlan\(/.test(GEN));
+      /if \(choix === "nouveau"\) \{\s*await envoyer\(function\(suivre\) \{ return X\.publierPlan\(/.test(GEN));
     t("Générateur : ZIP non reconnu ou homonymes → « Mettre à jour quel plan ☁️ ? » parmi les plans à gérer, avant tout plan neuf",
       /const aGerer = _plannerMode === "modifier" \? _plansExtAGerer\(X\) : \[\];/.test(GEN) &&
       /e\.type === "ext" && X\.versionAutorisee\(e\.id\)/.test(GEN) &&
-      /X\.publierVersion\(\{ planId: idChoisi, blob: blob, nom: name \}\)/.test(GEN) &&
+      /X\.publierVersion\(\{ planId: idChoisi, blob: blob, nom: name, progression: suivre \}\)/.test(GEN) &&
       /\} else if \(idChoisi === "" && peutNouveau\) \{\s*choix = "nouveau";/.test(GEN));
     t("🩸 Générateur : plusieurs homonymes → rien de présélectionné, validation inactive jusqu'au choix",
       /let valeur = ambigu \? null :/.test(GEN) && /if \(ambigu\) \{\s*liste\.selectedIndex = 0;\s*ok\.disabled = true;/.test(GEN) &&
@@ -1502,9 +1749,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
         };
       };
       const ecoutes = {};
+      // Notifications (prise Web Push) : affichées, pastilles posées, pages prévenues, fenêtres ouvertes — notées.
+      const notifs = b.notifs = [], pastilles = b.pastilles = [], messages = b.messages = [], ouvertes = b.ouvertes = [];
+      b.pages = [];
+      b.ecoutes = ecoutes;
       function Response(corps, init) { return rep(corps, init && init.status); }
       const ctx = vm.createContext({
-        self: { registration: { scope: SCOPE }, location: { origin: "https://inst.test" },
+        self: { registration: { scope: SCOPE, showNotification(titre, o) { notifs.push({ titre, o }); return Promise.resolve(); } },
+          location: { origin: "https://inst.test" },
+          navigator: { setAppBadge(n) { pastilles.push(n); return Promise.resolve(); },
+            clearAppBadge() { pastilles.push(0); return Promise.resolve(); } },
+          clients: { matchAll: () => Promise.resolve(b.pages.map((p) => ({ url: p.url,
+            postMessage(m) { messages.push(m); }, focus() { p.focus = (p.focus || 0) + 1; return Promise.resolve(); } }))),
+          openWindow(u) { ouvertes.push(u); return Promise.resolve(); } },
           addEventListener(type, f) { ecoutes[type] = f; } },
         caches: { open: (n) => Promise.resolve(magasin(n)), has: (n) => Promise.resolve(n in magasins),
           keys: () => Promise.resolve(Object.keys(magasins)) },
@@ -1577,6 +1834,265 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 module posé à la racine : l'app elle-même ne passe pas en réseau d'abord",
       (await racine.demander("page.html", "document")) === "copie" &&
       (await racine.demander("css/style.css", "style")) === "css app" && racine.appels.length === 0);
+
+    // ── 8 bis. NOTIFICATIONS POUSSÉES (prise Web Push, contrat minimal) ──
+    const pousser = async (b, donnees) => {
+      let p = null;
+      b.ecoutes.push({ data: donnees === undefined ? null : { json() { return typeof donnees === "string" ? JSON.parse(donnees) : donnees; } },
+        waitUntil(x) { p = x; } });
+      await p;
+    };
+    t("🔒 sw.js n'importe aucun script (pas d'importScripts) : la prise Web Push n'exécute que son contrat",
+      !/importScripts\s*\(/.test(SWSRC));
+    t("🩸 les modules déclarés (jusqu'à 32, comme valider) sont tous gardés dans le cache durable",
+      /\.slice\(0, 32\)/.test(SWSRC) && !/\.slice\(0, 20\)/.test(SWSRC));
+    const nu = bac([]);
+    await pousser(nu, { titre: "x", pastille: 3 });
+    t("sans extension déclarée : un message reçu ne montre rien, ne pose aucune pastille, ne prévient aucune page",
+      nu.notifs.length === 0 && nu.pastilles.length === 0 && nu.messages.length === 0);
+    const off = bac(["ext/mod.js?v=1"]);
+    off.principal.put(SCOPE + "data/index.json", rep(JSON.stringify({ config: { serverConnection: { state: "off", modules: ["ext/mod.js"] } } })));
+    await pousser(off, { titre: "x" });
+    t("connexion « off » dans l'index : rien n'est affiché", off.notifs.length === 0);
+    const pu = bac(["ext/mod.js?v=1"]);
+    pu.pages.push({ url: SCOPE + "#x" });
+    await pousser(pu, { titre: "MyKTAMap : du nouveau", corps: "  ligne\n  deux ", url: "./#plan", pastille: 4, tag: "kta-nouveau" });
+    const n0 = pu.notifs[0];
+    t("extension déclarée : titre et corps (texte nettoyé), tag, adresse de l'app gardée pour le toucher",
+      n0 && n0.titre === "MyKTAMap : du nouveau" && n0.o.body === "ligne deux" && n0.o.tag === "kta-nouveau" &&
+      n0.o.data.url === SCOPE + "#plan" && n0.o.requireInteraction === false);
+    t("la pastille de l'icône prend le nombre du message ; les pages ouvertes sont prévenues",
+      pu.pastilles[0] === 4 && pu.messages.some((m) => m.type === "mktm:notification-recue"));
+    await pousser(pu, { titre: "x".repeat(300), url: "https://ailleurs.example/vol", pastille: 0, tag: "<script>", urgent: true });
+    const n1 = pu.notifs[1];
+    t("🔒 bornes : titre 80 car., adresse d'une autre origine → l'accueil, tag douteux → tag par défaut ; urgent reste à l'écran",
+      n1.titre.length === 80 && n1.o.data.url === SCOPE && n1.o.tag === "kta-push" && n1.o.requireInteraction === true &&
+      n1.o.renotify === true && pu.pastilles[1] === 0);
+    await pousser(pu, undefined);
+    await pousser(pu, "pas du json");
+    t("🩸 message vide ou illisible : une notification quand même (sinon le navigateur punit l'abonnement)",
+      pu.notifs.length === 4 && pu.notifs[3].titre === "MyKTAMap");
+    let fermee = false, att = null;
+    pu.ecoutes.notificationclick({ notification: { data: { url: SCOPE + "#plan" }, close() { fermee = true; } },
+      waitUntil(x) { att = x; } });
+    await att;
+    t("toucher : notification fermée, l'app ouverte prend le focus et reçoit l'adresse",
+      fermee && pu.pages[0].focus === 1 && pu.ouvertes.length === 0 &&
+      pu.messages.some((m) => m.type === "mktm:notification-ouverte" && m.url === SCOPE + "#plan"));
+    pu.pages.length = 0;
+    pu.ecoutes.notificationclick({ notification: { data: { url: "javascript:alert(1)" }, close() {} }, waitUntil(x) { att = x; } });
+    await att;
+    t("🔒 app fermée : elle s'ouvre, jamais sur une adresse hors de l'app", pu.ouvertes[0] === SCOPE);
+    pu.ecoutes.pushsubscriptionchange({ waitUntil(x) { att = x; } });
+    pu.pages.push({ url: SCOPE });
+    pu.ecoutes.pushsubscriptionchange({ waitUntil(x) { att = x; } });
+    await att;
+    t("abonnement renouvelé par le navigateur : les pages ouvertes le disent à l'extension",
+      pu.messages.some((m) => m.type === "mktm:abonnement-push-change"));
+  }
+
+  // ── ALLER À UN OBJET (action neutre allerAObjet) et ALERTE À L'ÉCRAN (mktm:alerte-affichee) ──
+  {
+    const c = nouveauContexte(null);
+    t("allerAObjet sans carte ni plan : false, rien ne bouge", c.K.allerAObjet("pt_a") === false);
+    const vues = [], niveaux = [];
+    c.w.map = { setView: (ll) => { vues.push(ll); }, getZoom: () => 3 };
+    c.w.convertCoord = (x, y) => [100 - y, x];
+    c.w.APP_CONFIG = { multiLevel: true, visibleLevels: [0] };
+    c.w.ktaSetActiveLevel = (n) => { niveaux.push(n); c.w.APP_CONFIG.visibleLevels.push(n); return true; };
+    c.w.getEditorPoints = () => [{ uid: "pt_a", x: 10, y: 20, level: -1, nom: "A" }, { uid: "pt_j", x: 1, y: 1, niveaux: [2, 3] }];
+    c.w.getRoads = () => [{ uid: "rd_b", points: [{ x: 0, y: 0 }, { x: 10, y: 10 }] },
+      { uid: "rd_i", type: "itinerary", points: [{ x: 1, y: 1 }] }];
+    c.w.getZones = () => [{ uid: "zn_v", points: [] }]; c.w.getStructures = () => [];
+    // Calques du plan (ZIP, lecture seule) : cherchés APRÈS la session (une copie de session garde l'uid du calque).
+    c.w.getAllEmbeddedPoints = () => [{ uid: "pt_c", x: 50, y: 60, level: 0, nom: "C", tags: ["puits"] },
+      { uid: "pt_a", x: 1, y: 1, nom: "copie" }];
+    c.w.getAllEmbeddedRoads = () => [{ uid: "rd_c", type: "principal", points: [{ x: 0, y: 0 }, { x: 4, y: 4 }, { x: 8, y: 0 }] }];
+    c.w.getAllEmbeddedZones = () => [{ uid: "zn_c", type: "eau", level: 3, points: [{ x: 20, y: 20 }, { x: 30, y: 20 }, { x: 30, y: 30 }] }];
+    c.w.getAllEmbeddedStructures = () => [];
+    c.w.LegendCustomization = { getLabel: (cat, k) => cat + ":" + k };
+    t("objetParUid avant que le plan soit prêt : null", c.K.objetParUid("pt_c") === null);
+    t("🩸 plan pas prêt (chargement) : false, la carte ne bouge pas", c.K.allerAObjet("pt_a") === false && vues.length === 0);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.K.planCharge("ext_1");
+    t("point d'un niveau masqué : il devient le niveau de travail, carte centrée sur lui",
+      c.K.allerAObjet("pt_a") === true && niveaux[0] === -1 && vues[0][0] === 80 && vues[0][1] === 10);
+    t("jonction : le premier niveau desservi si aucun n'est affiché",
+      c.K.allerAObjet("pt_j") === true && niveaux[1] === 2);
+    t("tracé d'un niveau affiché : centroïde, niveau inchangé",
+      c.K.allerAObjet("rd_b") === true && niveaux.length === 2 && vues[2][0] === 95 && vues[2][1] === 5);
+    t("uid inconnu, itinéraire calculé, objet sans position : false",
+      c.K.allerAObjet("pt_zz") === false && c.K.allerAObjet("rd_i") === false && c.K.allerAObjet("zn_v") === false &&
+      c.K.allerAObjet(5) === false && vues.length === 3);
+    const oc = c.K.objetParUid("pt_c");
+    t("objetParUid : un point d'un CALQUE du plan est trouvé (nom, ancre, niveaux, famille, source, libellé du type)",
+      !!oc && oc.nom === "C" && oc.x === 50 && oc.y === 60 && oc.niveaux.join() === "0" && oc.famille === "editorPoints" &&
+      oc.source === "calque" && oc.typeLibelle === "icones:puits", oc);
+    const oa = c.K.objetParUid("pt_a"), orc = c.K.objetParUid("rd_c"), oz = c.K.objetParUid("zn_c");
+    t("objetParUid : la session gagne sur le calque ; tracé = sommet du milieu ; zone de calque, ses niveaux",
+      oa.source === "session" && oa.nom === "A" && oa.x === 10 && orc.x === 4 && orc.y === 4 && orc.typeLibelle === "traces:principal" &&
+      oz.famille === "zones" && oz.niveaux.join() === "3" && oz.source === "calque");
+    oc.nom = "modifié";
+    t("objetParUid rend une COPIE ; uid inconnu, itinéraire, objet sans position, forme invalide : null",
+      c.K.objetParUid("pt_c").nom === "C" && c.K.objetParUid("pt_zz") === null && c.K.objetParUid("rd_i") === null &&
+      c.K.objetParUid("zn_v") === null && c.K.objetParUid(null) === null);
+    const pr = c.K.objetsProches(49, 59, 3);
+    t("objetsProches : du plus proche au plus loin (session et calques), borné ; coordonnées non finies : []",
+      pr.length === 3 && pr[0].uid === "pt_c" && pr[0].source === "calque" && pr[1].uid === "zn_c" &&
+      c.K.objetsProches(NaN, 1).length === 0 && c.K.objetsProches(0, 0, 500).length <= 20, pr.map((o) => o.uid));
+    t("allerAObjet : un objet d'un CALQUE du plan (zone sur un niveau masqué) → niveau changé, carte centrée",
+      c.K.allerAObjet("zn_c") === true && niveaux[2] === 3 && Math.abs(vues[3][1] - 80 / 3) < 1e-9);
+    t("allerAObjet : objet absent du plan affiché + dernière position donnée → carte à cette position, son niveau",
+      c.K.allerAObjet("pt_parti", { x: 7, y: 9, niveaux: [5], nom: "Ancien" }) === true && niveaux[3] === 5 &&
+      vues[4][0] === 91 && vues[4][1] === 7);
+    t("allerAObjet : repli invalide (coordonnées non finies) → false, rien ne bouge",
+      c.K.allerAObjet("pt_parti", { x: "7", y: 9 }) === false && c.K.allerAObjet("pt_parti", { x: NaN, y: 1 }) === false &&
+      vues.length === 5);
+    // ── Repères d'une extension (afficherReperes) : calque générique, affichage seulement ──
+    t("afficherReperes sans module de rendu : 0, sans erreur", c.K.afficherReperes("taches", [{ id: "t1", uid: "pt_a" }]) === 0);
+    const elt = (tag) => ({ tag, attrs: {}, dataset: {}, enfants: [], className: "", textContent: "", title: "",
+      setAttribute(k, v) { this.attrs[k] = String(v); }, appendChild(e) { this.enfants.push(e); return e; } });
+    const marqueurs = [];
+    c.w.document.createElement = elt;
+    c.w.map.removeLayer = () => {}; c.w.setInterval = () => 1; c.w.clearInterval = () => {};
+    c.w.L = { layerGroup: () => ({ addTo(m) { this._map = m; return this; } }), divIcon: (o) => o,
+      marker: (ll, o) => { const mk = { ll, o, ecoutes: {}, on(ev, fn) { this.ecoutes[ev] = fn; return this; },
+        addTo() { marqueurs.push(mk); return this; } }; return mk; } };
+    const cx = vm.createContext(c.w);
+    vm.runInContext("var L = window.L;", cx);
+    vm.runInContext(lire("js/ktaPresences.js"), cx, { filename: "ktaPresences.js" });
+    c.w.passeFiltreNiveau = (it) => c.w.APP_CONFIG.visibleLevels.indexOf(it.level) >= 0;
+    c.w.APP_CONFIG.visibleLevels = [0];
+    const touches = [];
+    const n1 = c.K.afficherReperes("taches", [
+      { id: "t1", uid: "pt_a", teinte: "erreur", symbole: "⚠️", titre: "<b>Danger</b>", nombre: 3 },
+      { id: "t2", uid: "rd_b", teinte: "#ff0000", symbole: "abcdef" },
+      { id: "t3", uid: "pt_zz" }, { id: "t4", uid: "rd_i" }, { id: "t5", uid: "zn_v" }, { id: "t6", x: 7, y: 8 },
+      { uid: "pt_a" }, null], { clic: (id) => { touches.push(id); if (id === "t6") throw new Error("x"); } });
+    const R = c.w.KtaPresences.reperes("taches");
+    t("repères : posés sur l'objet (point ; sommet du milieu d'un tracé), ou à x/y ; inconnus, itinéraire, sans position, sans id écartés",
+      n1 === 3 && R.map((r) => r.id).join() === "t1,t2,t6" && R[0].x === 10 && R[0].y === 20 && R[1].x === 10 && R[1].y === 10 &&
+      R[2].x === 7 && marqueurs.length === 3, R);
+    const el0 = marqueurs[0].o.icon.html;
+    t("🔒 repère : titre et symbole posés en TEXTE (jamais interprétés), symbole coupé à 2 caractères, nombre affiché",
+      el0.title === "<b>Danger</b>" && el0.enfants[0].textContent === "⚠️" && el0.enfants[1].textContent === "3" &&
+      Array.from(marqueurs[1].o.icon.html.enfants[0].textContent).length === 2 && !/innerHTML/.test(lire("js/ktaPresences.js")));
+    t("🎨 teinte = jeton de la charte (classe) ; une couleur libre est ignorée (neutre)",
+      /kta-repere-erreur/.test(el0.className) && /kta-repere-neutre/.test(marqueurs[1].o.icon.html.className) &&
+      /\.kta-repere-erreur \{ border-color: var\(--kta-erreur\); \}/.test(lire("css/style.css")));
+    t("repère d'un objet sur un niveau masqué : atténué (niveaux de l'objet)",
+      /kta-repere-hors-niveau/.test(el0.className) && !/hors-niveau/.test(marqueurs[1].o.icon.html.className));
+    marqueurs[0].ecoutes.click(); marqueurs[2].ecoutes.click();
+    t("toucher un repère : clic(id) de l'extension ; son erreur est avalée", touches.join() === "t1,t6");
+    c.K.planCharge("ext_2");
+    t("🩸 plan pas prêt : rien n'est dessiné (0)", c.K.afficherReperes("taches", [{ id: "t6", x: 1, y: 1 }]) === 0);
+    c.K.planCharge("ext_1");
+    t("nom de calque non conforme : refusé (0)", c.K.afficherReperes("Tâches !", [{ id: "a", x: 1, y: 1 }]) === 0);
+    c.K.afficherReperes("autre", [{ id: "a", x: 1, y: 1 }]);
+    t("liste vide : ce calque seul est effacé", c.K.afficherReperes("taches", []) === 0 && c.w.KtaPresences.reperes("taches").length === 0 &&
+      c.w.KtaPresences.reperes("autre").length === 1);
+    const n2 = c.K.afficherReperes("absents", [{ id: "a1", uid: "pt_c" }, { id: "a2", uid: "pt_parti", x: 3, y: 4, niveaux: [1] },
+      { id: "a3", uid: "pt_parti2" }]);
+    const R2 = c.w.KtaPresences.reperes("absents");
+    t("repères : objet d'un calque posé sur lui ; uid absent du plan + dernière position → posé là, marqué absent, ses niveaux ; sans position → écarté",
+      n2 === 2 && R2[0].x === 50 && R2[0].absent === false && R2[1].x === 3 && R2[1].absent === true &&
+      R2[1].niveaux.join() === "1", R2);
+    t("🎨 repère absent : contour pointillé (classe)", /kta-repere-absent/.test(marqueurs[marqueurs.length - 1].o.icon.html.className) &&
+      /\.kta-repere-absent \{ border-style: dashed; \}/.test(lire("css/style.css")));
+    c.w.KtaPresences.reinitialiser();
+    t("🩸 sortie du plan : tous les calques de repères effacés", c.w.KtaPresences.reperes("autre").length === 0);
+    const IA = lire("js/interfaceAlerts.js");
+    const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
+    t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",
+      /appendChild\(modal\);[\s\S]{0,400}mktm:alerte-affichee[\s\S]{0,80}id: String\(id\), released: String\(released\)/
+        .test(corpsModale));
+  }
+
+  // ── ÉTAT D'UN OBJET (prise etatObjet) : dessiné et filtré sans être compris ──
+  {
+    const change = [];
+    const c = nouveauContexte(null, { __change: change, document: { readyState: "complete", getElementById: () => null,
+      createElement: () => ({}), head: { appendChild() {} },
+      addEventListener: (type, fn) => { if (type === "change") change.push(fn); } } });
+    const K = c.K;
+    c.w.ktaEsc = (s) => String(s).replace(/</g, "&lt;");
+    const marqueur = () => ({ ecoutes: {}, _icon: { classes: new Set(), classList: { toggle(n, v) { if (v) marqueur.c.add(n); else marqueur.c.delete(n); } } },
+      setIcon() {}, on(ev, fn) { this.ecoutes[ev] = fn; } });
+    marqueur.c = new Set();
+    const chemin = () => ({ styles: [], setStyle(s) { this.styles.push(s); } });
+    const couches = [];
+    c.w.layerEditor = { eachLayer: (f) => couches.forEach(f) };
+    const sansP = chemin();
+    K.marquerCouche(sansP, "rd_a", "4 4");
+    t("sans extension : etatObjet null, aucun style posé, filtre impossible, export intact, pas de case",
+      K.etatObjet("pt_a") === null && sansP.styles.length === 0 && sansP._ktaUid === "rd_a" && K.filtrerEtats(true) === false &&
+      K.passeFiltreEtat({ uid: "pt_a" }) === true && K.caseExportValides() === "" && K.filtrerPourExport([{ uid: "pt_a" }]).length === 1);
+    const etats = { pt_p: "propose", rd_r: "refuse", pt_x: "inconnu", pt_err: "boom" };
+    K.register({ nom: "etat", apiVersion: 1, etatObjet: (uid) => { if (uid === "pt_err") throw new Error("x"); return etats[uid]; } });
+    t("etatObjet : « propose » / « refuse » / « retrait » seulement ; autre valeur, erreur, uid invalide → null",
+      K.etatObjet("pt_p") === "propose" && K.etatObjet("rd_r") === "refuse" && K.etatObjet("pt_x") === null &&
+      K.etatObjet("pt_err") === null && K.etatObjet(3) === null && K.etatObjet("pt_v") === null);
+    const m = marqueur(), r = chemin(), r2 = chemin();
+    K.marquerCouche(m, "pt_p"); K.marquerCouche(r, "rd_r", "4 4"); K.marquerCouche(r2, "rd_v", null);
+    couches.push(m, r, r2);
+    t("🎨 marqueur proposé : classe kta-etat-propose (reposée à chaque ajout) ; tracé refusé : pointillé ; sans état : rien",
+      marqueur.c.has("kta-etat-propose") && typeof m.ecoutes.add === "function" && r.styles.length === 1 &&
+      r.styles[0].dashArray === "2 6" && r2.styles.length === 0);
+    etats.rd_r = undefined; etats.pt_p = undefined;
+    const n = K.rafraichirEtats();
+    t("rafraichirEtats : état retiré → pointillé d'origine rendu, classe enlevée, en place (aucun rendu relancé)",
+      n === 0 && r.styles[1].dashArray === "4 4" && !marqueur.c.has("kta-etat-propose"));
+    etats.pt_p = "propose";
+    const rendus = [];
+    ["_applyLevelFilterToEditorPoints", "renderRoads", "renderZones", "renderStructures"].forEach((f) => { c.w[f] = () => rendus.push(f); });
+    t("filtre de la carte : seuls les objets marqués passent ; chaque rendu de session est relancé ; éteint = tout passe",
+      K.filtrerEtats(true) === true && rendus.length === 4 && K.passeFiltreEtat({ uid: "pt_p" }) && !K.passeFiltreEtat({ uid: "pt_v" }) &&
+      K.filtrerEtats(false) === false && K.passeFiltreEtat({ uid: "pt_v" }) && rendus.length === 8);
+    const liste = [{ uid: "pt_p" }, { uid: "pt_v" }, { nom: "sans uid" }];
+    t("export : aucun objet de session marqué → pas de case (fenêtre d'avant)", K.caseExportValides() === "");
+    c.w.getEditorPoints = () => liste;
+    t("export : case décochée → même liste ; un objet marqué → la case est proposée",
+      K.filtrerPourExport(liste) === liste && /data-kta-export-valides="1"/.test(K.caseExportValides()));
+    const coche = (v) => c.w.__change.forEach((f) => f({ target: { checked: v, getAttribute: (k) => (k === "data-kta-export-valides" ? "1" : null) } }));
+    coche(true);
+    const filtree = K.filtrerPourExport(liste);
+    t("export : case cochée (écouteur du document) → sans les objets marqués ; décochée → tout",
+      filtree.length === 2 && !filtree.some((o) => o.uid === "pt_p") && /checked/.test(K.caseExportValides()) &&
+      (coche(false), K.filtrerPourExport(liste).length === 3));
+    etats.pt_t = "retrait";
+    const avecRetrait = [{ uid: "pt_t" }, { uid: "pt_p" }];
+    coche(true);
+    t("export : un objet en « retrait » (retrait demandé, pas fait) reste du contenu ; seuls proposé / refusé sont écartés",
+      K.etatObjet("pt_t") === "retrait" && JSON.stringify(K.filtrerPourExport(avecRetrait).map((o) => o.uid)) === '["pt_t"]');
+    c.w.getEditorPoints = () => [{ uid: "pt_t" }];
+    t("export : rien de provisoire (objet en retrait seul) → pas de case", K.caseExportValides() === "");
+    c.w.getEditorPoints = () => liste;
+    (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
+    t("sans défaut de l'extension : la case naît décochée (choix oublié à la sortie du plan)", K.exportValidesActif() === false &&
+      !/checked/.test(K.caseExportValides()));
+    K.register({ nom: "defaut", apiVersion: 1, exportValidesParDefaut: () => true });
+    t("prise exportValidesParDefaut → la case naît cochée, le filtre agit", K.exportValidesActif() === true &&
+      /checked/.test(K.caseExportValides()) && K.filtrerPourExport(liste).length === 2);
+    coche(false);
+    t("…l'utilisateur la décoche : son choix l'emporte jusqu'à la sortie du plan", K.exportValidesActif() === false &&
+      K.filtrerPourExport(liste).length === 3);
+    (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
+    t("…plan suivant : retour au défaut de l'extension", K.exportValidesActif() === true);
+    K.filtrerEtats(true);
+    (c.w._ecoutes["mktm:plan-ferme"] || []).forEach((f) => f());
+    t("🩸 sortie du plan : filtre de la carte remis à zéro", K.filtreEtatsActif() === false);
+    const R = (f) => lire(f);
+    t("rendus de session : marqueur, tracé, zone, structure marqués à la création et filtrés (editor, road, zones, structures)",
+      /marquerCouche\(marker, point\.uid\)/.test(R("js/editor.js")) && /passeFiltreEtat\(\{ uid: marker\._ktaUid \}\)/.test(R("js/editor.js")) &&
+      /marquerCouche\(polyline, road\.uid, style\.dashArray\)/.test(R("js/road.js")) && /passeFiltreEtat\(road\)/.test(R("js/road.js")) &&
+      /marquerCouche\(polygon, zone\.uid/.test(R("js/zones.js")) && /passeFiltreEtat\(zone\)/.test(R("js/zones.js")) &&
+      /marquerCouche\(layer, s\.uid/.test(R("js/structures.js")) && /passeFiltreEtat\(s\)/.test(R("js/structures.js")));
+    t("exports « validés seulement » : PNG / PDF / GeoTIFF (canvas), GPX, ZIP de session, KMZ et GeoJSON (_filtrer), case dans chaque fenêtre",
+      (R("js/exporter.js").match(/ktaExportEtatsFiltres\(/g) || []).length === 5 &&
+      (R("js/gpxIO.js").match(/ktaExportEtatsFiltres\(/g) || []).length === 2 && /ktaExportEtatsFiltres\(f\)/.test(R("js/sessionExporter.js")) &&
+      ["js/exporter.js", "js/pdfExport.js", "js/geotiffExport.js"].every((f) => /caseExportValides\(\)/.test(R(f))) &&
+      (R("js/sessionExporter.js").match(/caseExportValides\(\)/g) || []).length === 2 &&
+      /\.leaflet-marker-icon\.kta-etat-propose \{ outline: 3px dashed var\(--kta-accent\)/.test(R("css/style.css")));
   }
 
   console.log("");

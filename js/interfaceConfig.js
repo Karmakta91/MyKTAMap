@@ -174,6 +174,15 @@ function _renderCfgGeorefSection() {
         '<div id="cfg_kmz_C_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
+      // Précision du modèle aux coins + recalage d'un calage historique (texte posé par _majCfgPrecision).
+      '<div class="kta-kmz-section" id="cfg_kmz_precision_bloc" style="margin:8px 0; display:none;">' +
+        '<div id="cfg_kmz_precision" style="font-size:12px; color:var(--kta-texte-2); line-height:1.45;"></div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_recaler" type="button" ' +
+            'style="display:none;">' + window.I18n.t("config.georef.recalerBtn") + '</button>' +
+        '</div>' +
+      '</div>' +
+
       '<div id="cfg_kmz_status" style="font-size:12px; margin:8px 2px 4px; min-height:18px;"></div>' +
 
       '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
@@ -337,6 +346,12 @@ function _bindCfgGeorefHandlers() {
       }
       c.pointC = { x: _pcx, y: _pcy, lat: coordsC.lat, lng: coordsC.lng };
     }
+    // Même calage historique réenregistré → gardé tel quel ; tout autre calage → modèle "local".
+    const _ancien = window.KmzExport.getCalibration
+      ? window.KmzExport.getCalibration(window._currentLoadedPlanId || "default") : null;
+    const _mod = (typeof window.KmzExport.modeleSaisie === "function")
+      ? window.KmzExport.modeleSaisie(_ancien, c) : null;
+    if (_mod) c.modele = _mod;
     // La transformation lève si points colinéaires ou distance nulle ; un C colinéaire est toléré par le moteur
     // (repli 2 points) mais signalé franchement à la saisie.
     try {
@@ -351,6 +366,7 @@ function _bindCfgGeorefHandlers() {
     }
     const planId = window._currentLoadedPlanId || "default";
     window.KmzExport.setCalibration(planId, c);
+    _majCfgPrecision();
     _setStatus(window.I18n.t("config.georef.okSaved"), "ok");
     if (window.OOMGuard && window.OOMGuard.showToast) {
       window.OOMGuard.showToast(window.I18n.t("config.georef.toastSaved"), "info");
@@ -389,7 +405,30 @@ function _bindCfgGeorefHandlers() {
       localStorage.removeItem("myktamap_kmz_calib_" + planId);
     } catch(e) {}
     _setStatus(window.I18n.t("config.georef.cleared"), null);
+    _majCfgPrecision();
   }
+
+  _majCfgPrecision();
+  const _btnRecaler = document.getElementById("cfg_kmz_recaler");
+  if (_btnRecaler) _btnRecaler.addEventListener("click", async function() {
+    const KE = window.KmzExport;
+    const planId = window._currentLoadedPlanId || "default";
+    const cal = KE && KE.getCalibration ? KE.getCalibration(planId) : null;
+    const dims = _cfgDimsPlan();
+    const ecart = (cal && dims && typeof KE.ecartRecalage === "function")
+      ? KE.ecartRecalage(cal, dims.w, dims.h) : null;
+    if (ecart == null) { _setStatus(window.I18n.t("config.georef.recalerErr"), "err"); return; }
+    if (typeof window.ktaConfirm !== "function") return;
+    // L'annonce AVANT d'écrire : les objets du plan changent de position GPS, A / B / C non.
+    if (!(await window.ktaConfirm(window.I18n.t("config.georef.recalerConfirm",
+          { d: window.formatDistance(ecart, 1) })))) return;
+    _cfgAppliquerRecalage(planId, cal);
+    _majCfgPrecision();
+    _setStatus(window.I18n.t("config.georef.recalerOk"), "ok");
+    if (window.OOMGuard && window.OOMGuard.showToast) {
+      window.OOMGuard.showToast(window.I18n.t("config.georef.recalerOk"), "success");
+    }
+  });
 
   // Boutons 🔍 Chercher / 📍 Cliquer carte, comme sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic,
   // sur les IDs `cfg_kmz_*`.
@@ -399,6 +438,50 @@ function _bindCfgGeorefHandlers() {
     if (btnSearch) btnSearch.addEventListener("click", function() { _cfgOuvrirRechercheGeoref(letter); });
     if (btnClick)  btnClick.addEventListener("click",  function() { _cfgActiverModeClicGeoref(letter); });
   });
+}
+
+// Dimensions de l'image du plan chargé, ou null.
+function _cfgDimsPlan() {
+  const c = window.APP_CONFIG || {};
+  const w = Number(c.imageWidth), h = Number(c.imageHeight);
+  return (w > 0 && h > 0) ? { w: w, h: h } : null;
+}
+
+// « ± X aux coins » du calage enregistré ; bouton de recalage seulement pour un calage historique.
+function _majCfgPrecision() {
+  const bloc = document.getElementById("cfg_kmz_precision_bloc");
+  const txt  = document.getElementById("cfg_kmz_precision");
+  const btn  = document.getElementById("cfg_kmz_recaler");
+  if (!bloc || !txt || !btn) return;
+  const KE = window.KmzExport;
+  const cal = KE && KE.getCalibration ? KE.getCalibration(window._currentLoadedPlanId || "default") : null;
+  const dims = _cfgDimsPlan();
+  const p = (cal && dims && typeof KE.precisionCalage === "function") ? KE.precisionCalage(cal, dims.w, dims.h) : null;
+  if (!p) { bloc.style.display = "none"; return; }
+  // Sous le centimètre, le modèle n'est plus ce qui limite : on annonce le centimètre, pas un zéro trompeur.
+  const d = window.formatDistance(Math.max(p.ecartM, 0.01), 2);
+  txt.textContent = window.I18n.t(p.modele === "local" ? "config.georef.precisionLocal"
+                                                       : "config.georef.precisionHistorique", { d: d });
+  btn.style.display = (p.modele === "local") ? "none" : "";
+  bloc.style.display = "";
+}
+
+// Recalage : même calage au modèle "local", dans le localStorage, le registre (HOME) et PLAN_CONFIG en mémoire
+// (la Vue OSM et le Secours lisent plan.georef en premier ; main.js > _accorderModeleCalage le refait au
+// prochain chargement, le ZIP n'est pas réécrit).
+function _cfgAppliquerRecalage(planId, cal) {
+  const KE = window.KmzExport;
+  const neuf = Object.assign({}, cal, { modele: KE.MODELE_LOCAL });
+  KE.setCalibration(planId, neuf);
+  const g = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
+  if (g && KE.memesPoints(g, cal)) g.modele = KE.MODELE_LOCAL;
+  try {
+    const R = window.PlanRegistry;
+    const ent = R && typeof R.findById === "function" ? R.findById(planId) : null;
+    if (ent && ent.georef && KE.memesPoints(ent.georef, cal) && typeof R.addOrUpdate === "function") {
+      R.addOrUpdate({ id: planId, georef: Object.assign({}, ent.georef, { modele: KE.MODELE_LOCAL }) });
+    }
+  } catch (e) { console.warn("[InterfaceConfig] recalage : registre non mis à jour", e); }
 }
 
 // ── Recherche POI (géoréf des Réglages) ──────────

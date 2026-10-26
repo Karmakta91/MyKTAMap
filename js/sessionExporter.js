@@ -569,7 +569,7 @@
   // Photos à embarquer : celles des points retenus quand un filtre agit (sinon celles d'objets écartés
   // partiraient), toutes sinon (null).
   function _idsPhotosRetenues(points) {
-    return _filtreActif() ? _idsPhotosDe(points) : null;
+    return (_filtreActif() || window.ktaExportEtatsFiltres(points) !== points) ? _idsPhotosDe(points) : null;
   }
   // Clés de photos de ces points : une photo est rangée sous l'uid du point, ou sous son nom (anciennes).
   function _idsPhotosDe(points) {
@@ -577,9 +577,11 @@
       return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")];
     })));
   }
+  // Puis, case « validés seulement » cochée (extension) : sans les objets marqués, quel que soit l'onglet.
   function _filtrer(liste) {
     const l = Array.isArray(liste) ? liste : [];
-    return _filtreActif() ? l.filter(_garder) : l;
+    const f = _filtreActif() ? l.filter(_garder) : l;
+    return (_activeTab === "full" || _activeTab === "advanced" || _activeTab === "extern") ? window.ktaExportEtatsFiltres(f) : f;
   }
   function _brut() {
     return [].concat(window.getEditorPoints ? (window.getEditorPoints() || []) : [],
@@ -603,7 +605,7 @@
         }).join("");
     }
     const retenus = _filtreActif() ? tous.filter(_garder).length : tous.length;
-    return '<div class="kta-ses-filtre" id="kta-ses-filtre">' +
+    return '<div class="kta-ses-filtre" id="kta-ses-filtre">' + (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
         '<div class="kta-ses-filtre-titre">🔎 ' + window.ktaEsc(t("export.filtre.titre")) + '</div>' +
         '<div class="kta-ses-filtre-ligne">' +
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
@@ -621,6 +623,8 @@
   }
   function _brancherFiltre(modal) {
     modal.addEventListener("change", function(e) {
+      // Case « validés seulement » : la valeur est notée par ktaExtensions.js (écouteur du document, après celui-ci).
+      if (e.target && e.target.getAttribute && e.target.getAttribute("data-kta-export-valides")) { setTimeout(_renderTab, 0); return; }
       const id = e.target && e.target.id;
       if (id === "ses_filtre_du") _filtre.du = e.target.value || "";
       else if (id === "ses_filtre_au") _filtre.au = e.target.value || "";
@@ -1494,7 +1498,9 @@
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
                 blob:    blob,
-                fiche:   info.fiche || null
+                fiche:   info.fiche || null,
+                createdAt: info.createdAt,
+                priseLe: info.priseLe
               };
             });
           });
@@ -1553,7 +1559,9 @@
           mime:    rec.mime || "image/jpeg",
           pointId: rec.pointId,
           size:    rec.size || (rec.blob && rec.blob.size) || 0,
-          fiche:   rec.fiche || null   // cf _entreeIndexPhoto
+          fiche:   rec.fiche || null,   // cf _entreeIndexPhoto
+          createdAt: rec.createdAt || null,
+          priseLe: rec.priseLe || null
         };
       });
       return { photos: photos, totalSize: totalSize };
@@ -1580,11 +1588,15 @@
 
   // Entrée de photos/_index.json — UN SEUL format pour Complet, Avancé et Conversion. La fiche du point (nom,
   // position, niveau, type) voyage : une photo dont le point a disparu reste récupérable après réimport.
-  // Champ facultatif (les ZIP sans fiche se relisent). 🔒 Jamais en export anonymisé : _stripperExifPhotos ne
-  // la recopie pas et _anonymiserSession la retire.
+  // `createdAt` (ms, ajout sur l'appareil) et `priseLe` (EXIF de la prise de vue, photos.js) voyagent aussi : la
+  // date reste À CÔTÉ du fichier, qui n'a plus d'EXIF. Champs facultatifs (les anciens ZIP se relisent).
+  // 🔒 Jamais en export anonymisé : _stripperExifPhotos ne recopie ni la fiche ni les dates (une date situe un
+  // passage), _anonymiserSession retire la fiche.
   function _entreeIndexPhoto(p, name) {
     const e = { pointId: p.pointId, mime: p.mime, size: p.size, file: name };
     if (p.fiche && typeof p.fiche === "object") e.fiche = p.fiche;
+    if (Number.isFinite(p.createdAt) && p.createdAt > 0) e.createdAt = p.createdAt;
+    if (typeof p.priseLe === "string" && p.priseLe) e.priseLe = p.priseLe;
     return e;
   }
 
@@ -2415,7 +2427,9 @@
           mime:    p.mime,
           pointId: p.pointId,
           size:    p.size,
-          fiche:   p.fiche || null
+          fiche:   p.fiche || null,
+          createdAt: p.createdAt,
+          priseLe: p.priseLe
         };
       });
       session.photosCount   = photosForPack.length;
@@ -3078,6 +3092,7 @@
         : "") +
 
       _renderCalibrageCommun() +
+      (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
 
       // Sélecteur de format (absent quand la tuile du lanceur l'a déjà choisi)
       '<div class="kta-kmz-section"' + (_formatImpose ? ' style="display:none;"' : '') + '>' +
@@ -3384,11 +3399,15 @@
       }
     };
     // 🩸 Cette modale n'édite que A/B : le pointC stocké (Réglages, Générateur) est PRÉSERVÉ, sinon chaque
-    // enregistrement écraserait l'affine 3 points.
+    // enregistrement écraserait l'affine 3 points. Le modèle aussi : même calage historique → gardé tel quel,
+    // tout autre calage → "local" (KmzExport.modeleSaisie).
     try {
       const saved = (window.KmzExport && window.KmzExport.getCalibration)
                      ? window.KmzExport.getCalibration(_kmzCurrentPlanId()) : null;
       if (saved && saved.pointC) calib.pointC = saved.pointC;
+      const mod = (typeof window.KmzExport.modeleSaisie === "function")
+        ? window.KmzExport.modeleSaisie(saved, calib) : null;
+      if (mod) calib.modele = mod;
     } catch(e) {}
     return calib;
   }

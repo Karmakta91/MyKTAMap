@@ -553,8 +553,8 @@
     if (!Array.isArray(sc.modules)) {
       return { etat: "invalide", raison: "modules doit être une liste" };
     }
-    if (sc.modules.length > 20) {
-      return { etat: "invalide", raison: "plus de 20 modules" };
+    if (sc.modules.length > 32) {
+      return { etat: "invalide", raison: "plus de 32 modules" };
     }
     for (let i = 0; i < sc.modules.length; i++) {
       const m = sc.modules[i];

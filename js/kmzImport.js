@@ -196,10 +196,17 @@
   }
 
   // ── Transformation GPS → pixel ──────────
-  // Projection équirectangulaire locale, mêmes constantes que kmzExport (~111320 m/° × cos(lat), ~110540
-  // m/°). Origine pixel = coin NW ; rotation alignant NW→NE sur l'axe X ; metresParPixel =
-  // |NW→NE| / largeur. gpsToPixel : vecteur au NW → mètres → rotation inverse → ÷ metresParPixel →
-  // y inversé (axe image vers le bas).
+  // Projection équirectangulaire locale, constantes du modèle historique (`KmzExport.EQUI_HISTORIQUE`).
+  // (décision produit) Un `LatLonBox` KML est LINÉAIRE EN DEGRÉS par définition : ce modèle à cos(lat) fixe le
+  // reproduit, le plan tangent du calage "local" non. Le `plan.georef` tiré des coins reste donc sans `modele`.
+  // Origine pixel = coin NW ; rotation alignant NW→NE sur l'axe X ; metresParPixel = |NW→NE| / largeur.
+  // gpsToPixel : vecteur au NW → mètres → rotation inverse → ÷ metresParPixel → y inversé (image vers le bas).
+  function _equi() {
+    const K = window.KmzExport && window.KmzExport.EQUI_HISTORIQUE;
+    if (!K) throw new Error(window.I18n.t("sig.err.kmzExportMissing"));
+    return K;
+  }
+
   function buildTransform(corners, imageW, imageH) {
     if (!corners || !corners.nw || !corners.ne) {
       throw new Error(window.I18n.t("kmz.err.cornersRequired"));
@@ -213,10 +220,11 @@
     const latMoyenne = (nw.lat + ne.lat) / 2;
     const cosL = Math.cos(latMoyenne * Math.PI / 180);
 
+    const K = _equi();
     const dlngTop = ne.lng - nw.lng;
     const dlatTop = ne.lat - nw.lat;
-    const dxMetres = dlngTop * 111320 * cosL;
-    const dyMetres = dlatTop * 110540;
+    const dxMetres = dlngTop * K.mParDegLng * cosL;
+    const dyMetres = dlatTop * K.mParDegLat;
 
     const lenTopMetres = Math.hypot(dxMetres, dyMetres);
     if (lenTopMetres < 0.1) {
@@ -243,8 +251,9 @@
     const dlat = lat - transform.origin.lat;
     const dlng = lng - transform.origin.lng;
     const cosL = Math.cos(transform.latMoyenne * Math.PI / 180);
-    const dxMetres = dlng * 111320 * cosL;
-    const dyMetres = dlat * 110540;
+    const K = _equi();
+    const dxMetres = dlng * K.mParDegLng * cosL;
+    const dyMetres = dlat * K.mParDegLat;
 
     const cosR = Math.cos(-transform.rotation);
     const sinR = Math.sin(-transform.rotation);
@@ -298,7 +307,7 @@
       // ExtendedData MyKTAMap (mkm:level, mkm:fromLevel, mkm:toLevel), symétrique de
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
-        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false };
+        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -313,6 +322,10 @@
             continue;
           }
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
+          if (name === "mkm:dateConstat") {
+            out.dateConstat = window.KtaPoiDanger ? window.KtaPoiDanger.dateValide(valEl.textContent || "") : null;
+            continue;
+          }
           const v = parseInt((valEl.textContent || "").trim(), 10);
           if (!Number.isFinite(v)) continue;
           if (name === "mkm:level")     out.level     = v;
@@ -344,6 +357,7 @@
             };
             if (Number.isInteger(_mkmData.level)) _pt.level = _mkmData.level;
             if (_mkmData.niveaux) _pt.niveaux = _mkmData.niveaux;
+            if (_mkmData.dateConstat) _pt.dateConstat = _mkmData.dateConstat;
             out.points.push(_pt);
             stats.kept++;
           } else {

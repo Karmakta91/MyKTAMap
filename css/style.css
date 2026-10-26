@@ -2993,6 +2993,9 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   letter-spacing: 0.04em;
   flex: 1;
 }
+/* Conditions d'utilisation : titre doré (charte : titres en accent), le bleu reste celui des modales d'aide. */
+#kta-legal-gate-overlay .kta-readme-modal-titre,
+#kta-legal-full-overlay .kta-readme-modal-titre { color: var(--kta-accent-texte); }
 
 /* Bouton bascule du sommaire (à gauche du titre) */
 .kta-readme-toc-toggle-btn {
@@ -4332,6 +4335,9 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   color: #f4c542;
   font-weight: 500;
 }
+
+/* Rideau du démarrage (main.js > _rideauSiSplashParti) : relaie le splash retiré par son plafond, même rang. */
+#kta-rideau-boot { position: fixed; inset: 0; z-index: 9999; background: var(--kta-fond); }
 
 /* Signature en bas à droite. 28px : hors des coins arrondis d'écran (PWA bord à bord) ; safe-area pour
    l'encoche latérale en paysage. */
@@ -6306,6 +6312,24 @@ html.kta-theme-light .kta-cfg-input option {
   color: var(--kta-texte-3);
   font-family: ui-monospace, monospace;
 }
+/* Ligne « 🔔 notifications » d'une extension (KtaExtensions.ligneNotifications), au pied de la fenêtre 🚨. */
+.kta-alert-notif {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--kta-bordure);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--kta-texte-2);
+  text-align: left;
+}
+.kta-alert-notif-rappel { font-size: 12px; }
+.kta-alert-notif-btn { align-self: flex-start; }
+.kta-alert-notif-etat { font-weight: 600; }
+/* Action d'une extension (KtaExtensions.actionAlertes), au pied de la fenêtre 🚨, avant la ligne des notifications. */
+.kta-alert-action-ext { margin-top: 14px; display: flex; }
+.kta-alert-action-ext-btn { min-height: 44px; }
 .kta-alert-actions {
   padding: 12px 20px 18px 20px;
   display: flex;
@@ -6524,24 +6548,6 @@ html.kta-theme-light .kta-cfg-input option {
   color: var(--kta-interaction);
 }
 
-/* Flash du bouton « Activer » après « Activer maintenant » de la modale proposition : 3 pulses en 2,2 s. */
-.kta-pin-enable-flash {
-  animation: kta-pin-enable-flash-pulse 0.7s ease-in-out 3;
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes kta-pin-enable-flash-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(244, 197, 66, 0);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(244, 197, 66, 0.35),
-                0 0 20px 4px rgba(244, 197, 66, 0.4);
-    transform: scale(1.03);
-  }
-}
 
 /* ── Gate plein écran : modale au boot quand le PIN est activé ── */
 /* ⚠️ Doc README ouverte depuis une gate (UnlockGate 100100, PinLock 100002) : doit passer
@@ -7390,17 +7396,6 @@ html.kta-theme-light .kta-cfg-input option {
   .kta-emergency-plan-nom   { font-size: 12px; }
 }
 
-/* ── Modale proposition d'activation du PIN après mise à jour (une fois ; refus mémorisé) ── */
-.kta-pin-proposal-boite {
-  max-width: 520px !important;
-  border: 1.5px solid rgba(244, 197, 66, 0.35) !important;
-  box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15) !important;
-  /* 🩸 .kta-readme-modal-boite impose 88vh sur PC : height auto + max-height, sinon la boîte
-     courte s'étire à moitié vide. */
-  height: auto !important;
-  max-height: 90vh !important;
-}
-
 /* ── Gate « Conditions d'utilisation » (legalGate.js) ── */
 .kta-legal-boite {
   max-width: 560px !important;
@@ -8119,28 +8114,6 @@ html.kta-theme-light .kta-ipr-step { color: var(--kta-light-text-2, #38414f); }
   border-style: solid;
 }
 html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
-
-.kta-pin-proposal-info {
-  margin: 12px 0;
-  padding: 10px 14px;
-  background: rgba(140, 180, 255, 0.06);
-  border: 1px solid rgba(140, 180, 255, 0.2);
-  border-radius: 6px;
-}
-
-.kta-pin-proposal-info-titre {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--kta-interaction);
-  margin-bottom: 4px;
-}
-
-.kta-pin-proposal-info p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--kta-texte-2);
-  line-height: 1.5;
-}
 
 /* ── Gate plein écran : variante lockout (5 échecs) ── */
 .kta-pin-gate-overlay-lockout {
@@ -12559,6 +12532,39 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   color: var(--kta-texte-2);
 }
 
+/* POI danger (poiDanger.js) : date de constat dans le formulaire, date et mention sur la fiche. */
+.kta-poi-danger {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--kta-bordure);
+  border-left: 3px solid var(--kta-avert);
+  border-radius: 6px;
+}
+.kta-poi-danger[hidden] { display: none; }
+.kta-poi-danger .kta-cfg-input { margin-top: 4px; }
+.kta-poi-danger-aide,
+.kta-poi-danger-mention {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--kta-texte-3);
+  line-height: 1.4;
+}
+.kta-poi-danger-mention { font-style: italic; }
+.kta-popup-point .kta-popup-danger {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--kta-texte-2);
+}
+.kta-popup-danger-date { font-weight: 600; }
+.kta-popup-danger-mention {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--kta-texte-3);
+  line-height: 1.35;
+}
+
 @media (max-width: 480px) {
   .kta-poi-photos-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -12612,6 +12618,19 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   padding: 3px 10px;
   border-radius: 12px;
   font-weight: 600;
+}
+
+/* « Prise le … » / « Ajoutée le … » : fond noir dans les deux thèmes, texte blanc comme le reste de l'en-tête. */
+.kta-photo-viewer-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 10px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kta-photo-viewer-close {
@@ -14514,7 +14533,7 @@ html.kta-theme-light .kta-plan-switcher-cta:focus-visible {
   color: #1a1612 !important;
 }
 
-/* ── Thème clair : barrière d'accès (#kta-unlock-overlay), PIN, proposition de PIN ── */
+/* ── Thème clair : barrière d'accès (#kta-unlock-overlay), PIN ── */
 
 html.kta-theme-light #kta-unlock-overlay {
   background: linear-gradient(135deg, #f0e8d8 0%, #c9b88f 100%) !important;
@@ -15012,23 +15031,6 @@ html.kta-theme-light .kta-modal-actions button.kta-btn-danger:hover {
   background: rgba(220, 50, 50, 0.22) !important;
 }
 
-/* Proposition d'activer le PIN */
-html.kta-theme-light .kta-pin-proposal-boite {
-  background: var(--kta-surface) !important;
-  color: var(--kta-texte) !important;
-  border: 1px solid rgba(0, 0, 0, 0.22) !important;
-}
-html.kta-theme-light .kta-pin-proposal-info {
-  background: rgba(140, 180, 255, 0.06) !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  color: var(--kta-texte) !important;
-}
-html.kta-theme-light .kta-pin-proposal-info-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-html.kta-theme-light .kta-pin-proposal-info p {
-  color: var(--kta-texte) !important;
-}
 /* Configuration de la HOME */
 html.kta-theme-light .kta-loader-config-boite {
   background: var(--kta-surface) !important;
@@ -19032,6 +19034,16 @@ html.kta-theme-light .zip-drop-sig { color: var(--kta-texte-3); }
 .kta-plan-row-folder-dot-rule { background: transparent; box-shadow: inset 0 0 0 2px var(--kta-dot, #8cb4ff); }
 .kta-plans-chip-folder { font-weight: 700; }
 .kta-plans-sheet-hint { font-size: 11.5px; color: var(--kta-texte-3); line-height: 1.4; margin: -4px 0 8px; }
+.kta-plans-sheet-offline { width: 100%; margin: 2px 0 10px; }
+/* « Tout garder hors ligne » d'un dossier (js/dossierHorsLigne.js) : avancement puis bilan, mêmes jetons que la charte. */
+.kta-dhl-boite { max-width: 440px; height: auto; max-height: 80vh; }
+.kta-dhl-corps { font-size: 13px; color: var(--kta-texte-2); }
+.kta-dhl-ligne { margin: 0 0 8px; color: var(--kta-texte); font-weight: 600; overflow-wrap: anywhere; }
+.kta-dhl-barre { width: 100%; height: 10px; margin: 0 0 6px; accent-color: var(--kta-primaire); }
+.kta-dhl-detail { font-size: 12px; min-height: 1.4em; margin: 0 0 12px; }
+.kta-dhl-bilan { margin: 0 0 12px; line-height: 1.5; }
+.kta-dhl-bilan-titre { color: var(--kta-texte); font-weight: 600; margin: 8px 0 2px; }
+.kta-dhl-bilan-liste { margin: 0 0 4px; padding-left: 18px; color: var(--kta-texte-2); overflow-wrap: anywhere; }
 .kta-impm-dossier { flex: 1 1 160px; max-width: 260px; }
 .kta-impm-dossier-nom { flex: 1 1 160px; max-width: 260px; }
 html.kta-theme-light .kta-plans-folder-head { background: rgba(140, 180, 255, 0.14); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
@@ -20000,6 +20012,37 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 }
 .kta-presence-ancienne .kta-presence-etiquette { color: var(--kta-texte-3); }
 .kta-presence-hors-niveau { opacity: 0.4; }
+/* Repères d'une extension (KtaExtensions.afficherReperes) : pastille à symbole, bord à la teinte de la charte,
+   touchable (30 px + marge du marqueur) ; le nombre dit plusieurs entrées sur le même objet. */
+.kta-repere-icone { background: none; border: none; }
+.kta-repere {
+  position: relative; box-sizing: border-box; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1;
+  background: var(--kta-surface); border: 3px solid var(--kta-texte-3); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.kta-repere-nombre {
+  position: absolute; top: -8px; right: -10px; min-width: 16px; padding: 0 4px; border-radius: 8px;
+  font-size: 11px; font-weight: 700; line-height: 16px; text-align: center;
+  background: var(--kta-texte); color: var(--kta-fond);
+}
+.kta-repere-accent { border-color: var(--kta-accent); }
+.kta-repere-interaction { border-color: var(--kta-interaction); }
+.kta-repere-ok { border-color: var(--kta-ok); }
+.kta-repere-avert { border-color: var(--kta-avert); }
+.kta-repere-erreur { border-color: var(--kta-erreur); }
+.kta-repere-violet { border-color: var(--kta-violet); }
+.kta-repere-magenta { border-color: var(--kta-magenta); }
+.kta-repere-neutre { border-color: var(--kta-texte-3); }
+.kta-repere-hors-niveau { opacity: 0.4; }
+.kta-repere-absent { border-style: dashed; }
+/* État d'un objet donné par une extension (KtaExtensions.etatObjet) : contour pointillé autour de l'icône ; les
+   tracés, zones et structures reçoivent un pointillé (canvas : pas de CSS). Accent = proposé, erreur = refusé. */
+.leaflet-marker-icon.kta-etat-propose { outline: 3px dashed var(--kta-accent); outline-offset: 3px; border-radius: 50%; }
+.leaflet-marker-icon.kta-etat-refuse { outline: 3px dashed var(--kta-erreur); outline-offset: 3px; border-radius: 50%; }
+/* Retrait demandé : contour pointillé erreur et icône grisée (l'objet est encore là, sa suppression attend ; pas
+   d'opacité : Leaflet pose la sienne en ligne sur l'icône). */
+.leaflet-marker-icon.kta-etat-retrait { outline: 3px dotted var(--kta-erreur); outline-offset: 3px; border-radius: 50%; filter: grayscale(1); }
+.kta-export-valides { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0; }
 /* Itinéraire publié par un autre : étiquette au point d'arrivée */
 .kta-presence-iti-icone { background: none; border: none; }
 /* Bandeau d'alerte Secours d'une installation reliée (KtaExtensions.afficherAlerteSecours) */

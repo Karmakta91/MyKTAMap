@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.20.0** (23 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.21.0** (26 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -89,8 +89,8 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
-| `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
-| `<origin>/<chemin>.zip` (déclaré par `data/index.json`, chemin relatif seulement) | `GET` (conditionnel) · `HEAD` | Ouverture d'un plan déclaré par son ZIP ; `HEAD` à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s) | Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304) | **Aucune** (same-origin ; seuls `If-None-Match` / `If-Modified-Since` partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB) |
+| `<origin>/data/<plan>/*` | `GET` · `HEAD` | Charge d'un plan serveur ; téléchargement hors-ligne d'un plan ou d'un dossier (« 📥 Tout garder hors ligne », à la demande) | Lecture des fichiers d'un plan (image + JSON + tuiles) ; `HEAD` seulement pour estimer la taille avant de demander confirmation (fichiers du plan, échantillon au-delà de 40, 4 tuiles) | **Aucune** (same-origin, pas de corps envoyé) |
+| `<origin>/<chemin>.zip` (déclaré par `data/index.json`, chemin relatif seulement) | `GET` (conditionnel) · `HEAD` | Ouverture d'un plan déclaré par son ZIP ; `HEAD` à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s) et par « 📥 Tout garder hors ligne » | Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304) | **Aucune** (same-origin ; seuls `If-None-Match` / `If-Modified-Since` partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB) |
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/applications/NETWORK_AUDIT*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (français, anglais, espagnol) | **Aucune** (fichiers statiques same-origin, **network-first** + **cache-buster `?v=<build>`** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
@@ -100,6 +100,11 @@ envoyé** (réponse : rien, jamais).
 
 `<origin>` = le domaine sur lequel l'app est servie. Pour la prod c'est
 `myktamap.fr`. Sur ton réseau local en développement : `localhost` ou IP locale.
+
+Les liens de l'écran Bienvenue et du pied de page (documentation en ligne
+`doc.myktamap.fr`, code source sur GitHub, présentation pro, Instagram, e-mail)
+ne sont **jamais contactés par l'app** : ils s'ouvrent dans un nouvel onglet
+seulement quand tu les touches, comme n'importe quel lien.
 
 **Sur `myktamap.fr`, aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`,
 `WebSocket`, `EventSource` ou n'importe quelle autre méthode d'envoi de
@@ -493,7 +498,7 @@ code).
 ## 🪪 Permissions API navigateur utilisées
 
 L'app utilise un nombre limité d'API navigateur qui peuvent demander
-une permission. **Aucune** de ces API ne fait sortir de donnée du
+une permission. Sur `myktamap.fr`, **aucune** de ces API ne fait sortir de donnée du
 navigateur. Tableau exhaustif :
 
 | API | Quand | Permission requise ? | Donnée envoyée ? |
@@ -506,6 +511,7 @@ navigateur. Tableau exhaustif :
 | **Battery Status API** | Indicateur batterie sidebar + mode urgence | Politique navigateur (header `Permissions-Policy: battery=(self)` côté Nginx) | **Aucune** (lecture pure) |
 | **Screen Orientation API** | Correction heading boussole en landscape | Aucune | **Aucune** |
 | **Storage API (`navigator.storage.estimate`, `persist`)** | Inspecteur mémoire + auto-persist mobile | Oui (`persist` prompt navigateur sur certains browsers) | **Aucune** |
+| **Notifications et Push API** | **Jamais sur `myktamap.fr`.** Installation reliée seulement : bouton « Activer » de la fenêtre 🚨 | Oui (prompt explicite, dans le geste, jamais au démarrage) | Sur `myktamap.fr` : **aucune**. Installation reliée : abonnement auprès du service de push du navigateur (voir ci-dessous) |
 
 ### À propos du Wake Lock API
 
@@ -522,6 +528,25 @@ navigateur. Tableau exhaustif :
   l'option est activée. Cohérent best practice MDN.
 - **Pas de pingback serveur** : 0 fetch réseau dans `wakeLock.js`
   (vérifiable via le journal réseau intégré → Méthode 1).
+
+### À propos des notifications poussées (Web Push)
+
+- **Sur `myktamap.fr` : aucune.** L'app n'y demande jamais l'autorisation d'afficher des notifications, ne s'abonne à
+  aucun service de push, et son service worker n'en contacte aucun. La demande d'autorisation n'existe que derrière
+  une extension greffée par une installation reliée (garde-fou `scripts/check-extensions.js`, bloquant).
+- **Sur une installation reliée** (une autre adresse que `myktamap.fr`) : la fenêtre 🚨 propose « 🔔 Afficher les
+  alertes et nouveautés sur l'icône de l'app — Activer ». Rien ne se passe sans ce geste. Si tu acceptes, c'est **ton
+  navigateur** qui s'abonne au service de push de son éditeur, sur son propre canal : Apple (`*.push.apple.com`) sur
+  iPhone, iPad et Safari, Google (`fcm.googleapis.com`) pour Chrome et la plupart des navigateurs Android, Mozilla
+  (`*.push.services.mozilla.com`) pour Firefox, Microsoft (`*.notify.windows.com`) pour Edge sous Windows.
+- **Ce qui passe par ce service** : le serveur de l'installation y dépose un message **chiffré pour ton appareil
+  seul** (norme RFC 8291) — le service de push ne peut pas le lire. Il voit : l'adresse d'abonnement (un identifiant
+  opaque de ton navigateur), l'adresse du serveur qui envoie, l'heure, la taille, la durée de vie et l'urgence du
+  message, la clé publique et le contact de l'installation (VAPID). Le titre et le texte n'apparaissent en clair que
+  sur ton appareil, écran verrouillé compris. Ce que l'installation met dans ce texte : sa propre page de
+  transparence le dit.
+- **Jamais un canal de sécurité** : sous terre, sans réseau, rien n'arrive.
+- **Couper** : les réglages de notifications de ton appareil ou de ton navigateur, à tout moment.
 
 ### À propos de la Clipboard API
 

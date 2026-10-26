@@ -37,7 +37,7 @@ const ctx = {
 };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-for (const f of ["js/sigImport.js", "js/tiffGeoref.js"]) {
+for (const f of ["js/sigImport.js", "js/kmzExport.js", "js/tiffGeoref.js"]) {
   let src;
   try { src = fs.readFileSync(f, "utf8"); }
   catch (e) { console.error("❌ [check-geotiff] " + f + " illisible : " + e.message); process.exit(1); }
@@ -332,10 +332,11 @@ const remplace = (o, tag, valeurs, type) => {
       return "ok";
     } catch (e) { return e.message; }
   };
-  const k = Math.cos(46.5 * Math.PI / 180);
+  // Un carré au sol en degrés : rapport des rayons de l'ellipsoïde (KmzExport.metresParDegre, celui de l'import).
+  const kd = ctx.window.KmzExport.metresParDegre(46.5), q = kd.lat / kd.lng;
   const m4326 = (function() {
     const r = 20 * Math.PI / 180, d = 1e-5;
-    return [d * Math.cos(r) / k * 110540 / 111320, d * Math.sin(r) / k * 110540 / 111320, 0, 3,
+    return [d * Math.cos(r) * q, d * Math.sin(r) * q, 0, 3,
             d * Math.sin(r), -d * Math.cos(r), 0, 46.5, 0, 0, 0, 0, 0, 0, 0, 1];
   })();
   const res = { pres: essai(mRot(25, 1.005, 1)), loin: essai(mRot(25, 1.02, 1)), cis: essai(mRot(25, 1, 1, 0.5)),

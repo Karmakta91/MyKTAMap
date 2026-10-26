@@ -7,7 +7,8 @@
 // pinLock.js — code d'accès local optionnel (PIN 4-6 chiffres, biométrie), par-dessus UnlockGate.
 // Expose : window.MyKTAMapPinLock (isEnabled, isUnlocked, isLockedOut, getRemainingAttempts,
 //   hasBiometric, isBiometricSupported, enable, disable, unlock, unlockWithBiometric, changePin,
-//   reset, ouvrirGate, proposerActivation).
+//   reset, ouvrirGate). Jamais proposé au lancement (décision produit) : s'active dans ⚙️ Configuration →
+//   🔐 Code d'accès local.
 // 🔒 Barrière UX, pas de la crypto : SHA-256(sel 16 octets + PIN) en localStorage["myktamap_pin_v1"] ;
 //   DevTools la contourne. Les données IDB ne sont pas chiffrées. Pas de récupération : oubli = reset.
 // 🔒 WebAuthn (plateforme seulement) sans serveur : challenge local, signature non vérifiée.
@@ -673,116 +674,6 @@
   }
 
   // 🏷️ ancre:pin-fin-lockout-ui
-  // ── Proposition d'activation ──────────────────────────────
-  // Une seule fois, si le PIN n'est pas actif : « Activer » ouvre Configuration sur la section PIN,
-  // « Plus tard » ne repropose jamais (décision produit). Lancée par le séquenceur de premier lancement.
-  const PROPOSAL_FLAG = "myktamap_pin_proposal_done_v1";
-
-  function isProposalDone() {
-    try { return localStorage.getItem(PROPOSAL_FLAG) === "1"; }
-    catch(e) { return false; }
-  }
-
-  function markProposalDone() {
-    try { localStorage.setItem(PROPOSAL_FLAG, "1"); }
-    catch(e) { console.warn("[PinLock] markProposalDone :", e); }
-  }
-
-  function proposerActivation(onClose) {
-    // ⚠️ onClose (séquenceur js/firstRunFlow.js) est appelé dans TOUS les cas, sinon la file s'arrête.
-    const _done = (typeof onClose === "function") ? onClose : function() {};
-    // 🩸 Incognito : PROPOSAL_FLAG n'y est pas conservé, la proposition reviendrait à chaque ouverture.
-    if (window.IncognitoMode && window.IncognitoMode.active) { _done(); return; }
-    if (isEnabled()) { _done(); return; }
-    if (isProposalDone()) { _done(); return; }
-
-    _afficherModaleProposition(_done);
-  }
-
-  function _afficherModaleProposition(onClose) {
-    const _done = (typeof onClose === "function") ? onClose : function() {};
-    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    const overlay = document.createElement("div");
-    overlay.id        = "kta-pin-proposal-overlay";
-    overlay.className = "kta-readme-modal-overlay";
-    overlay.style.display = "flex";
-    overlay.innerHTML =
-      '<div class="kta-readme-modal-boite kta-pin-proposal-boite">' +
-        '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("pin.proposal.titre") + '</span>' +
-        '</div>' +
-        '<div class="kta-readme-modal-corps">' +
-          '<p style="font-size:14px; line-height:1.55; color:var(--kta-texte); margin:0 0 14px 0;">' +
-            t("pin.proposal.intro") +
-          '</p>' +
-          '<div class="kta-pin-proposal-info">' +
-            '<div class="kta-pin-proposal-info-titre">' + t("pin.proposal.usageTitre") + '</div>' +
-            '<p>' + t("pin.proposal.usageDesc") + '</p>' +
-          '</div>' +
-          '<div class="kta-pin-proposal-info" style="background:var(--kta-accent-fond); border-color:var(--kta-accent-bord);">' +
-            '<div class="kta-pin-proposal-info-titre" style="color:var(--kta-accent-texte);">' + t("pin.proposal.warnTitre") + '</div>' +
-            '<ul style="margin:6px 0 0 18px; padding:0; line-height:1.5; color:var(--kta-texte-2); font-size:13px;">' +
-              '<li>' + t("pin.proposal.warnNoRecovery") + '</li>' +
-              '<li>' + t("pin.proposal.warnLockout") + '</li>' +
-              '<li>' + t("pin.proposal.warnBarrier") + '</li>' +
-            '</ul>' +
-          '</div>' +
-          '<p style="font-size:12.5px; color:var(--kta-texte-3); margin:14px 0 0 0; line-height:1.5; font-style:italic;">' +
-            t("pin.proposal.laterHint") +
-          '</p>' +
-        '</div>' +
-        '<div class="kta-conv-actions" style="padding:14px 24px 18px; gap:10px;">' +
-          '<button class="kta-btn kta-btn-ghost" id="kta-pin-proposal-non" type="button">' +
-            t("pin.proposal.btnNo") +
-          '</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-pin-proposal-oui" type="button" ' +
-            'style="background:rgba(244,197,66,0.18); border-color:rgba(244,197,66,0.5); color:var(--kta-accent-texte);">' +
-            t("pin.proposal.btnYes") +
-          '</button>' +
-        '</div>' +
-      '</div>';
-    document.documentElement.appendChild(overlay);
-
-    let _closed = false;
-    function _close() {
-      try { overlay.remove(); } catch(e) {}
-      if (!_closed) { _closed = true; try { _done(); } catch(e) {} }
-    }
-
-    document.getElementById("kta-pin-proposal-non").addEventListener("click", function() {
-      markProposalDone();
-      _close();
-      console.log("[PinLock] Proposition d'activation refusée (ne sera plus affichée)");
-    });
-
-    document.getElementById("kta-pin-proposal-oui").addEventListener("click", function() {
-      markProposalDone();
-      _close();
-      // Ouvre Configuration (affiche le loader d'abord si un plan est chargé), puis amène et
-      // fait clignoter le bouton d'activation du PIN.
-      if (typeof window._ouvrirLoaderConfig === "function") {
-        window._ouvrirLoaderConfig();
-        setTimeout(function() {
-          const enableBtn = document.getElementById("loaderPinEnableBtn");
-          const section = document.getElementById("loaderPinStatus");
-          if (section && section.scrollIntoView) {
-            try { section.scrollIntoView({ behavior: "smooth", block: "center" }); }
-            catch(e) { section.scrollIntoView(); }
-          }
-          if (enableBtn) {
-            enableBtn.classList.add("kta-pin-enable-flash");
-            setTimeout(function() {
-              enableBtn.classList.remove("kta-pin-enable-flash");
-            }, 2200);
-          }
-        }, 150);
-      } else {
-        console.warn("[PinLock] window._ouvrirLoaderConfig indisponible — l'user doit ouvrir ⚙️ Configuration manuellement");
-        window.ktaAlerte(t("pin.proposal.fallbackAlert"));
-      }
-      console.log("[PinLock] Proposition d'activation acceptée → redirection ⚙️ Configuration");
-    });
-  }
 
   window.MyKTAMapPinLock = {
     PIN_MIN:                PIN_MIN,
@@ -801,12 +692,8 @@
     changePin:              changePin,
     reset:                  reset,
     ouvrirGate:             ouvrirGate,
-    proposerActivation:     proposerActivation,
-    isProposalDone:         isProposalDone,
-    markProposalDone:       markProposalDone,
     _afficherGateUI:        _afficherGateUI,
-    _afficherLockoutUI:     _afficherLockoutUI,
-    _afficherModaleProposition: _afficherModaleProposition
+    _afficherLockoutUI:     _afficherLockoutUI
   };
 
   console.log("[PinLock] Module chargé (PIN activé : " + isEnabled() + ", biométrie : " + hasBiometric() + ")");

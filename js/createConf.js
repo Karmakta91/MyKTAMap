@@ -103,6 +103,11 @@ let _plannerSourceZip = null;
 // Modifier depuis `config.plan.customLegend`.
 let _plannerPlanLegend = null;
 
+// Calage du plan ouvert en « Modifier » (null : nouveau plan, ou calage remplacé par un import GeoTIFF).
+// ⚠️ Sert à `KmzExport.modeleSaisie` : réenregistrer un plan au calage historique SANS toucher ses points le
+// garde tel quel (aucun objet ne bouge) ; tout autre calage part au modèle "local".
+let _plannerGeorefCharge = null;
+
 // Légende propre à l'écran « Convertir depuis SIG ». Séparée de `_plannerPlanLegend` : mélanger les deux
 // ferait fuiter les entrées d'un écran dans le plan de l'autre.
 let _sigPlanLegend = null;
@@ -603,6 +608,7 @@ function afficherPlanner() {
             <div class="kta-gps-coords-error" id="pl_geo_C_err" style="display:none;"></div>
           </div>
           <div id="pl_geo_status" style="font-size:12px; color:var(--kta-texte-3); margin:6px 2px 0; min-height:18px;"></div>
+          <div id="pl_geo_precision" class="kta-planner-info" style="display:none; margin:4px 2px 0;"></div>
         </div>
 
         <!-- 📖 v1.37.0 — PDF Histoire (optionnel, avancé). Embed dans le ZIP
@@ -636,6 +642,12 @@ function afficherPlanner() {
   `;
 
   document.documentElement.appendChild(modal);
+
+  // Précision du calage saisi, recalculée à chaque frappe dans un champ du géoréf.
+  modal.addEventListener("input", function(e) {
+    const id = e.target && e.target.id;
+    if (id && id.indexOf("pl_geo_") === 0) _plannerMajPrecision();
+  });
 
   // Champs GPS combinés « lat, lng ». Helper idempotent (rappelé par _preRemplirFormulaire) ; les retours
   // sont gardés sur la modale (dataset) pour le submit (cf. _readGeo).
@@ -687,6 +699,7 @@ function afficherPlanner() {
       (typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(b.lat, b.lng) : (b.lat + ", " + b.lng);
     const badge = document.getElementById("pl_geo_B_estime_badge");
     if (badge) badge.style.display = "";
+    _plannerMajPrecision();
   });
   ["pl_geo_B_x", "pl_geo_B_y", "pl_geo_B_coords"].forEach(function(id) {
     const el = document.getElementById(id);
@@ -707,6 +720,7 @@ function afficherPlanner() {
   _plannerMaj        = null;
   _plannerSourceZip  = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
+  _plannerGeorefCharge = null;
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
   _appliquerPlannerMode(_lirePlannerMode());
@@ -815,6 +829,7 @@ function afficherPlanner() {
                     ? window.formatGpsCoords
                     : function(a, b) { return a + ", " + b; };
         const g = res.georef;
+        _plannerGeorefCharge = null;   // calage du fichier : nouveau, donc au modèle "local"
         let taillePlus = "";
         const put = function(id, v) { const el = document.getElementById(id); if (el) el.value = v; };
         put("pl_geo_A_x", g.pointA.x); put("pl_geo_A_y", g.pointA.y);
@@ -863,6 +878,7 @@ function afficherPlanner() {
         }
         setNom(window.I18n.t("gen.tiff.ok", {
           nom: res.nomPng, epsg: res.epsg || "?", emprise: taille + taillePlus }) + bascule);
+        _plannerMajPrecision({ w: res.width, h: res.height });
         console.log("[Planner GeoTIFF]", f.name, res.width + "×" + res.height,
                     "EPSG:" + res.epsg, res.compression, g);
       }).catch(function(err) {
@@ -1697,6 +1713,43 @@ function _guessMime(filename) {
 }
 
 // ── Préremplir le formulaire ──────────
+// « ± X aux coins » du calage saisi, au modèle qu'il aura en générant (KmzExport.modeleSaisie) ; masqué tant
+// que A, B ou les dimensions de l'image manquent. `dims` : dimensions connues avant les champs cachés (GeoTIFF).
+function _plannerMajPrecision(dims) {
+  const el = document.getElementById("pl_geo_precision");
+  if (!el) return;
+  const KE = window.KmzExport;
+  const num = function(id) {
+    const e = document.getElementById(id), v = e ? Number.parseFloat(e.value) : Number.NaN;
+    return Number.isFinite(v) ? v : null;
+  };
+  const gps = function(id) {
+    const e = document.getElementById(id);
+    if (!e || typeof window.parseGpsCoords !== "function") return null;
+    return window.parseGpsCoords(String(e.value || "").trim());
+  };
+  const point = function(k) {
+    const c = gps("pl_geo_" + k + "_coords"), x = num("pl_geo_" + k + "_x"), y = num("pl_geo_" + k + "_y");
+    return (c && x != null && y != null) ? { x: x, y: y, lat: c.lat, lng: c.lng } : null;
+  };
+  const w = (dims && dims.w) || num("pl_width"), h = (dims && dims.h) || num("pl_height");
+  const g = { pointA: point("A"), pointB: point("B") };
+  const c = point("C");
+  if (c) g.pointC = c;
+  let p = null;
+  if (KE && typeof KE.precisionCalage === "function" && g.pointA && g.pointB && w > 0 && h > 0) {
+    const mod = KE.modeleSaisie(_plannerGeorefCharge, g);
+    if (mod) g.modele = mod;
+    p = KE.precisionCalage(g, w, h);
+  }
+  if (!p) { el.style.display = "none"; el.textContent = ""; return; }
+  // Sous le centimètre, le modèle n'est plus ce qui limite (même règle que les Réglages).
+  const d = window.formatDistance(Math.max(p.ecartM, 0.01), 2);
+  el.textContent = window.I18n.t(p.modele === "local" ? "config.georef.precisionLocal"
+                                                     : "gen.georef.precisionHistorique", { d: d });
+  el.style.display = "";
+}
+
 function _preRemplirFormulaire(config) {
   const plan = config.plan || {}, t = config.tracking || {};
 
@@ -1766,6 +1819,8 @@ function _preRemplirFormulaire(config) {
 
   // Géoréf : préremplissage si `plan.georef = { pointA, pointB }`. Stockage à plat {x, y, lat, lng},
   // affichage combiné « lat, lng » dans pl_geo_A_coords.
+  _plannerGeorefCharge = (plan.georef && plan.georef.pointA && plan.georef.pointB)
+    ? JSON.parse(JSON.stringify(plan.georef)) : null;
   if (plan.georef && plan.georef.pointA && plan.georef.pointB) {
     const gA = plan.georef.pointA;
     const gB = plan.georef.pointB;
@@ -1784,6 +1839,7 @@ function _preRemplirFormulaire(config) {
     sv("pl_geo_C_y", gC && gC.y != null ? gC.y : "");
     sv("pl_geo_C_coords", gC ? fmt(gC.lat, gC.lng) : "");
   }
+  _plannerMajPrecision();
 
   // Validation live des champs GPS combinés (idempotent), rattachée au cas où le DOM a été reconstruit.
   if (typeof window.attacherGpsValidationCombo === "function") {
@@ -2444,7 +2500,9 @@ function _importerDatalayerZip(zipFile) {
                   pointId: String(info.pointId || ""),
                   mime:    info.mime || blob.type || "image/jpeg",
                   size:    info.size || blob.size,
-                  blob:    blob
+                  blob:    blob,
+                  createdAt: info.createdAt,
+                  priseLe: info.priseLe
                 };
               });
             });
@@ -3534,7 +3592,9 @@ async function _genererZip() {
             blob:    p.blob,
             mime:    p.mime,
             pointId: p.pointId,
-            size:    p.size
+            size:    p.size,
+            createdAt: p.createdAt,
+            priseLe: p.priseLe
           });
           addedFromZip++;
         }
@@ -3556,6 +3616,9 @@ async function _genererZip() {
             size:    rec.size || (rec.blob && rec.blob.size) || 0,
             file:    name
           };
+          // Dates à côté du fichier (photos.js > priseLe), facultatives.
+          if (Number.isFinite(rec.createdAt) && rec.createdAt > 0) idx[rec.id].createdAt = rec.createdAt;
+          if (typeof rec.priseLe === "string" && rec.priseLe) idx[rec.id].priseLe = rec.priseLe;
         });
         photosFolder.file("_index.json", JSON.stringify({
           version: 1,
@@ -3806,6 +3869,9 @@ async function _genererZip() {
       try {
         const _g = { pointA: _geoA, pointB: _geoB };
         if (_cComplet) _g.pointC = _geoC;
+        const _mod = (window.KmzExport && typeof window.KmzExport.modeleSaisie === "function")
+          ? window.KmzExport.modeleSaisie(_plannerGeorefCharge, _g) : null;
+        if (_mod) _g.modele = _mod;
         if (window.KmzExport && typeof window.KmzExport.buildTransformCalib === "function") {
           const _t = window.KmzExport.buildTransformCalib(_g);
           if (_g.pointC && _t.degenereC) {
@@ -3874,15 +3940,18 @@ async function _genererZip() {
       const envoyer = async function(fn) {
         const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
         const t0 = Date.now();
+        let avancement = null;
         const tic = function() {
           const sec = Math.round((Date.now() - t0) / 1000);
           btnGen.disabled = true;
-          btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
-            { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
+          btnGen.textContent = "☁️ " + (typeof window.ktaTexteAvancementPublication === "function"
+            ? window.ktaTexteAvancementPublication(avancement, blob.size, t0)
+            : window.I18n.t("home.plans.info.publishEnCours",
+              { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") }));
         };
         tic();
         minuteur = setInterval(tic, 1000);
-        await fn();
+        await fn(function(a) { avancement = a; });
       };
       try {
         // ⚠️ Un ZIP d'un plan de l'extension rouvert ici devient une NOUVELLE VERSION de ce plan, jamais un
@@ -3898,8 +3967,8 @@ async function _genererZip() {
             choix = await window.ktaConfirm(intro + "\n\n" + window.I18n.t("ext.publier.versionQuestion"),
               { okLabel: window.I18n.t("ext.publier.versionOk"), autre: autre });
             if (choix === true) {
-              await envoyer(function() {
-                return X.publierVersion({ planId: cible.id, blob: blob, nom: name });
+              await envoyer(function(suivre) {
+                return X.publierVersion({ planId: cible.id, blob: blob, nom: name, progression: suivre });
               });
               dire(window.I18n.t("ext.publier.versionFait"), "success");
             }
@@ -3914,8 +3983,8 @@ async function _genererZip() {
           if (aGerer.length) {
             const idChoisi = await _choisirPlanExtAMettreAJour(aGerer, (_plannerSourceZip && _plannerSourceZip.nom) || name);
             if (idChoisi) {
-              await envoyer(function() {
-                return X.publierVersion({ planId: idChoisi, blob: blob, nom: name });
+              await envoyer(function(suivre) {
+                return X.publierVersion({ planId: idChoisi, blob: blob, nom: name, progression: suivre });
               });
               dire(window.I18n.t("ext.publier.versionFait"), "success");
             } else if (idChoisi === "" && peutNouveau) {
@@ -3927,12 +3996,17 @@ async function _genererZip() {
           }
         }
         if (choix === "nouveau") {
-          await envoyer(function() { return X.publierPlan({ blob: blob, nom: name }); });
-          dire(window.I18n.t("ext.publier.fait"), "info");
+          await envoyer(function(suivre) { return X.publierPlan({ blob: blob, nom: name, progression: suivre }); });
+          dire(window.I18n.t("ext.publier.fait"), "success");
         }
       } catch (e) {
-        console.warn("[Planner] publication :", e);
-        dire(window.I18n.t("ext.publier.echec"), "warn");
+        // ⚠️ Refus porté par `annule: true` : l'utilisateur a dit non dans une question de l'extension (ex. objets
+        // retirés qui portent des tâches) — rien n'est parti, ce n'est pas un échec.
+        if (e && e.annule === true) dire(window.I18n.t("ext.publier.annule"), "info");
+        else {
+          console.warn("[Planner] publication :", e);
+          dire(window.I18n.t("ext.publier.echec"), "warn");
+        }
       } finally {
         if (minuteur) clearInterval(minuteur);
       }

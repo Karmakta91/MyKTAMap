@@ -117,6 +117,7 @@ L'auteur peut diffuser à toute la communauté des **alertes de sécurité** : i
 - **Au lancement**, une alerte en cours s'affiche avec ses consignes : **rouge pulsant** = situation critique, à lire impérativement ; **orange** = information importante ; **bleu** = simple annonce. S'il y en a plusieurs, une liste les classe de la plus grave à la moins grave.
 - **J'ai compris** la range : elle ne revient que si l'auteur la modifie ou en publie une nouvelle.
 - **Le bouton 🚨 de l'écran d'accueil** (à gauche de 📖) prend la couleur de l'alerte non lue la plus grave (gris s'il n'y en a pas), avec leur nombre s'il y en a plusieurs. Un appui réaffiche toutes les alertes en cours, même lues — ou **Aucune alerte en cours**, ou **Vérification impossible** hors ligne : de quoi savoir si une vieille alerte tient toujours.
+- **Sur une installation reliée à un serveur** (jamais sur myktamap.fr), la fenêtre 🚨 peut proposer **🔔 Afficher les alertes et nouveautés sur l'icône de l'app — Activer** : rien ne se passe sans ce geste, et ton appareil te demande alors son accord. Refusé, la ligne dit **Désactivé dans les réglages de l'appareil** et ne revient plus. Ce n'est **jamais un canal de sécurité** : sous terre, sans réseau, rien n'arrive.
 
 ### 🔒 Confidentialité & Audit réseau
 
@@ -133,6 +134,10 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 ---
 
 ## 🚀 Premiers pas
+
+### 👋 Premier lancement
+
+Après l'écran de démarrage, une courte présentation **Bienvenue** défile : ce que fait l'app, comment elle te repère sans GPS, pourquoi rien ne sort de ton appareil. Touche **Entrer** (en haut ou en bas) pour arriver sur l'accueil, ou **Découvrir** pour la parcourir. La première fois, **Entrer** affiche d'abord les **conditions d'utilisation** à accepter. En bas, **Découvrir l'app en 1 minute** ouvre la visite guidée en entrant ; sinon elle reste à ta disposition dans **📖 Documentation**. Cette présentation ne s'affiche qu'une fois par appareil (et de nouveau après « 💥 Tout réinitialiser »). Sur une installation privée (club, association), la même présentation porte en haut un champ **Code d'accès** : tu peux tout lire sans code, mais tu n'entres qu'avec ; demande-le à la personne qui gère l'installation. Après 5 codes faux, le champ se bloque un moment (10 min, puis plus longtemps) et affiche le temps restant. Le **🔐 code d'accès local** n'est pas proposé au démarrage : active-le si tu veux depuis **⚙️ Configuration** (« 🔭 Pour aller plus loin »).
 
 ### 📱 Installer l'application sur Mobile (iPhone/Android)
 
@@ -651,6 +656,8 @@ Le bouton **✏️** de la barre latérale allume ou éteint le mode ajout. Allu
 
 **Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique, 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : un nom court en minuscules, chiffres, `_` ou `-` (ex. `fontaine`) ; il prend l'icône par défaut.
 
+**⚠️ Type Danger : date de constat.** Un point de type **Danger** porte une **📅 Date de constat**, le jour où le danger a été vu : pré-remplie à aujourd'hui, modifiable, à vider si tu ne la connais pas (un point Danger plus ancien reste sans date tant que tu n'en mets pas). Sa bulle affiche « Constaté le … » et rappelle que **MyKTAMap ne certifie pas l'état d'un site : un danger relevé peut avoir changé depuis sa date de constat.** La date part avec l'export de session, le KMZ, le GPX et le GeoJSON (relue par l'import KMZ et GPX), jamais avec l'export anonymisé.
+
 ### ✏️ Modifier ou repositionner un point
 
 Sur **tes** points, la bulle du point propose :
@@ -665,13 +672,14 @@ Les deux s'annulent avec ⏪ (`Ctrl+Z`). Pour retirer un point : **🗑️ Suppr
 Jusqu'à **5 photos par point**, gardées sur ton appareil uniquement. Dans la fenêtre d'ajout ou de modification, section **📸 Photos** :
 
 - **📷 Prendre photo** ouvre l'appareil photo (mobile) ; **🖼️ Depuis la galerie** permet d'en choisir plusieurs d'un coup.
-- Chaque photo est **compressée** (une photo de plusieurs Mo pèse ensuite quelques centaines de Ko) et **nettoyée** : position GPS de la prise de vue, date et modèle d'appareil sont effacés avant d'entrer dans l'app.
+- Chaque photo est **compressée** (une photo de plusieurs Mo pèse ensuite quelques centaines de Ko) et **nettoyée** : position GPS de la prise de vue et modèle d'appareil sont effacés avant d'entrer dans l'app. Seule sa **date de prise de vue** est lue avant le nettoyage et gardée **à côté** de la photo (jamais dans le fichier) : le plein écran affiche « Prise le … ». Sans cette date (capture d'écran, photo déjà nettoyée), il affiche « Ajoutée le … (date de prise de vue inconnue) ».
+- Une photo que le navigateur ne sait pas lire (fichier abîmé, format non pris en charge) est **refusée** avec un message : elle n'entre jamais telle quelle.
 - **Retirer une photo** : la croix ✕ rouge de la miniature la marque à supprimer, la flèche verte ↺ annule. Rien n'est effacé avant **💾 Enregistrer**.
 - **Fermer sans enregistrer** efface les photos que tu venais d'ajouter et annule les marquages.
 
 **Les voir** : la bulle du point montre les miniatures — un tap ouvre le plein écran (pince ou molette pour zoomer, glisser pour passer à la suivante, `← →` et `Échap` sur PC). Le compteur **📸** de la barre du haut ouvre le détail de la session.
 
-**Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; chaque photo emporte la fiche de son point (nom, position, niveau, type : de quoi ♻️ recréer un point disparu). Un fichier réimporté **ajoute** ses photos à celles de l'appareil — une photo déjà présente n'est pas doublée, et aucune n'est effacée. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point, sans sa fiche ; une photo qui ne peut pas être nettoyée est exclue.
+**Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; chaque photo emporte la fiche de son point (nom, position, niveau, type : de quoi ♻️ recréer un point disparu), sa date de prise de vue et sa date d'ajout. Un fichier réimporté **ajoute** ses photos à celles de l'appareil — une photo déjà présente n'est pas doublée, et aucune n'est effacée. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point, sans sa fiche ni ses dates ; une photo qui ne peut pas être nettoyée est exclue.
 
 **📌 Photo « à rattacher »** : avant la v2.3.0, une photo était rangée sous le **nom** de son point. Si plusieurs points portent le même nom, l'app ne devine pas à qui elle appartient : dans la bulle de chacun de ces points, la photo apparaît avec un **cadre orange pointillé** et un bouton **📌 Photo N : c'est ce point**. Touche-le dans la bulle du bon point. Rien n'est jamais supprimé. Les photos d'un nom porté par un seul point sont rattachées toutes seules, et celles que tu prends maintenant suivent leur point même si tu le renommes.
 
@@ -1120,6 +1128,7 @@ La mémorisation se règle dans **⚙️ Configuration** (« 💾 Mémoriser le 
 
 - **Ranger** : **☑ Sélectionner** un ou plusieurs plans puis « Déplacer vers… », ou **glisser** la ligne sur un dossier (à la souris, ou au doigt après un appui long).
 - **⋮** sur un dossier : renommer, couleur, ordre, supprimer (ses plans repassent en Non classés, aucun plan n'est supprimé).
+- **📥 Tout garder hors ligne** (dans ⋮, aussi sur « Non classés » pour les plans qu'il affiche) : met tout le dossier à jour sur l'appareil avant de descendre. Les plans absents sont téléchargés, ceux dont une version plus récente existe sont mis à jour, ceux déjà à jour sont sautés (un plan importé et mémorisé est déjà là). Un plan à la fois, avec « 3 / 7 » et le plan en cours ; **⏹ Arrêter** à tout moment. L'app demande confirmation seulement au-delà de 200 Mo estimés ou en données mobiles (quand le navigateur sait le dire). Si l'app passe en arrière-plan ou perd le réseau, le plan en cours reprend au retour, sans retélécharger ce qui est déjà rangé. À la fin, le bilan donne les plans récupérés, mis à jour, déjà à jour et ceux en échec, avec la raison.
 - **🏷️ Règle par étiquette** (dans ⋮) : le dossier accueille tout seul les plans qui portent ces étiquettes. En mode Tout, des puces cochées proposent **📁 Créer un dossier depuis ces étiquettes**. Un rangement à la main l'emporte sur une règle ; la pastille est **pleine** pour un rangement explicite, **creuse** pour une règle.
 - Les dossiers voyagent avec ton profil. Un serveur peut en proposer : tu ne peux ni les renommer ni les supprimer, mais tu y ranges ce que tu veux. L'import de plusieurs plans propose « Ranger dans : ».
 
@@ -1174,7 +1183,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
 - **📐 Plan : échelle & géolocalisation** *(ce plan)* :
   - **Échelle**, avec **🎯** pour la calibrer (voir ci-dessous) ;
   - **🧭 Calibration du Nord**, si le haut du plan n'est pas le Nord : un angle, ou **📐 Calibrer (2 clics)** (Sud puis Nord sur la carte), **↺ Reset** pour revenir à 0. La boussole, elle, montre toujours le vrai Nord ;
-  - **🌐 Géoréférencement GPS** : son état s'affiche (non géoréférencé, points A et B, A, B et C, B estimé) et **🌐 Ouvrir le géoréférencement…** ouvre sa fenêtre. Pour les points A et B : **🔍 Chercher un point** ou **📍 Cliquer carte** remplit la position sur le plan, puis tu colles les coordonnées GPS au format Google Maps (`48.856600, 2.352200`). Choisis-les **éloignés** l'un de l'autre. **Estimer B** déduit B de A, de l'échelle et du Nord : une estimation, à vérifier en Vue OSM. Le **📐 Point C (optionnel)**, loin de la ligne A-B, corrige un plan déformé (assemblage étiré) pour la Vue OSM, les exports et le Mode Secours. **💾 Sauvegarder le calibrage** / **🗑️ Effacer**. Ce géoréférencement sert à la Vue OSM, aux exports KMZ, GPX, GeoJSON et GeoTIFF et à l'import GPX.
+  - **🌐 Géoréférencement GPS** : son état s'affiche (non géoréférencé, points A et B, A, B et C, B estimé) et **🌐 Ouvrir le géoréférencement…** ouvre sa fenêtre. Pour les points A et B : **🔍 Chercher un point** ou **📍 Cliquer carte** remplit la position sur le plan, puis tu colles les coordonnées GPS au format Google Maps (`48.856600, 2.352200`). Choisis-les **éloignés** l'un de l'autre. **Estimer B** déduit B de A, de l'échelle et du Nord : une estimation, à vérifier en Vue OSM. Le **📐 Point C (optionnel)**, loin de la ligne A-B, corrige un plan déformé (assemblage étiré) pour la Vue OSM, les exports et le Mode Secours. **💾 Sauvegarder le calibrage** / **🗑️ Effacer**. Sous les points, la fenêtre annonce la **précision aux coins** du calage enregistré : « Projection exacte » pour tout calage fait aujourd'hui ; « Projection approchée, ± X m » pour un plan calé avant (l'ancien calcul s'écarte de 2 à 3 m sur un plan de 1 km, jusqu'à 20 m sur 6 km). Le bouton **Recaler en projection exacte** corrige ce plan : il annonce d'abord de combien le plan et ses objets vont bouger, sans toucher aux points de calage. Rien ne change tant que tu ne l'as pas confirmé, et réenregistrer le même calage ne le modifie pas. Ce géoréférencement sert à la Vue OSM, aux exports KMZ, GPX, GeoJSON et GeoTIFF et à l'import GPX.
 - **📍 Navigation & tracker** *(📍/🌍 selon la ligne)* :
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;
@@ -1254,7 +1263,7 @@ Touche à nouveau le bouton actif (en vert) pour le couper.
 
 ### 🔑 Le mot de passe est refusé
 
-Au premier lancement, MyKTAMap propose simplement **Continuer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
+Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club) en demande un, dans le champ **Code d'accès** en haut de la présentation : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
 
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
@@ -1270,7 +1279,7 @@ Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos
 **⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
-- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app proposera simplement **Continuer**.
+- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app te présentera de nouveau l'écran **Bienvenue**.
 - Deux confirmations sont demandées. Fais-le **avec une connexion** : si tu es hors ligne, une fenêtre rouge te prévient que l'app sera inutilisable jusqu'au retour du réseau.
 
 À ne pas confondre avec **↺ Valeurs par défaut** de ⚙️ Réglages, qui ne touche qu'aux réglages du plan ouvert.
@@ -1576,7 +1585,7 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 - **Paramètres de tracking** : échelle et orientation du **Nord** (0 si le haut du plan est le Nord ; chacun peut la corriger dans ses Réglages).
 - **Icônes & tags** : **↺ Charger défauts** pré-remplit les icônes standard, **+ Ajouter un tag** crée un type à toi. Les tags `default` et `track` sont obligatoires.
 - **🏷️ Légende du plan** : renommages, masquages et entrées ajoutées valent pour tous ceux qui ouvrent le plan ; chacun peut ensuite la modifier pour lui.
-- **🌐 Géoréférencement GPS** (facultatif) : deux points A et B, plus un point C pour un plan déformé. Sans lui, ni Vue OSM ni export KMZ / GPX.
+- **🌐 Géoréférencement GPS** (facultatif) : deux points A et B, plus un point C pour un plan déformé. Sans lui, ni Vue OSM ni export KMZ / GPX. Sous les champs, la **précision aux coins** du calage s'affiche dès que A, B et l'image sont là : « Projection exacte » pour un nouveau calage ou un GeoTIFF importé ; « Projection approchée, ± X m » pour le calage d'origine d'un plan calé avant, gardé tant que tu ne changes pas ses points (⚙️ Réglages → Géoréférencement propose de le recaler).
 - **📖 PDF Histoire** (facultatif) : un ou plusieurs PDF, en tête de liste dans le Mode Histoire. En modification, ceux du plan sont conservés.
 
 #### 📂 Modifier un plan existant

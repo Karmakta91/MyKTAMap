@@ -156,6 +156,7 @@
             _cbRow("pdf_inc_roads",      T("pdfexport.annotations.roads"),      roads.length,      true) +
             _cbRow("pdf_inc_zones",      T("pdfexport.annotations.zones"),      zones.length,      true) +
             _cbRow("pdf_inc_structures", T("pdfexport.annotations.structures"), structures.length, true) +
+            (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
           '</div>' +
 
           '<div class="kta-ses-section">' +

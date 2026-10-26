@@ -225,8 +225,21 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 
 **Stockage** — `js/photos.js` → `window.MyKTAMapPhotos`. IndexedDB `myktamap_photos` v1, store `photos` (clé `id`),
 index `by_plan` et `by_plan_point` ([planId, pointId]). Enregistrement : `{ id, planId, pointId, blob, mime, size,
-createdAt, meta, fiche? }`. Compression à l'ajout (canvas → JPEG, 1920 px max côté long, q 0.85 ; 0.92 sans resize
-pour une petite photo) : toute photo est ré-encodée, l'EXIF (GPS compris) ne survit pas. **5 photos max par point**
+createdAt, meta, fiche?, priseLe? }`. Compression à l'ajout (canvas → JPEG, 1920 px max côté long, q 0.85 ; 0.92 sans
+resize pour une petite photo) : toute photo est ré-encodée, l'EXIF (GPS compris) ne survit pas. 🔒 **Fail-closed** :
+une image que le navigateur ne décode pas (fichier tronqué, HEIC hors Safari) est **refusée** (`PHOTO_ILLISIBLE`,
+message dans le formulaire), jamais stockée brute avec son EXIF.
+
+**Date de prise de vue** (`priseLe`, "AAAA-MM-JJTHH:MM:SS", heure locale de l'appareil photo sans fuseau) : lue
+par `lireDatePriseVue` dans les 256 premiers Ko du fichier **d'origine**, avant le ré-encodage, puis gardée dans
+l'enregistrement, jamais dans le fichier. Parseur maison borné (`datePriseVueDepuisOctets`) : JPEG = marqueurs
+jusqu'à l'APP1 « Exif », IFD0 → sous-IFD Exif → DateTimeOriginal (repli DateTimeDigitized) ; autre format (HEIC) =
+recherche de « Exif\0\0 » + en-tête TIFF dans la fenêtre lue, au mieux ; tronqué, forgé ou absent → rien.
+Visionneuse : « Prise le … », sinon « Ajoutée le … (date de prise de vue inconnue) » d'après `createdAt`
+(relue par `getMeta(id)` quand l'appelant ne la passe pas). Voyage avec `createdAt` dans les index
+`photos/_index.json` (ZIP de session, de plan, galerie) et le profil ; restaurée validée (`priseLeValide`) ;
+**jamais** dans l'export anonymisé (`_stripperExifPhotos` ne recopie ni fiche ni dates). Le Carnet ne garde que
+des références de photos : rien à porter. Garde-fou : `scripts/check-photos.js` §5. **5 photos max par point**
 (`MAX_PHOTOS_PER_POINT`) à l'ajout et au **rattachement** depuis la galerie (`placesPourPoint(planId, { uid, id },
 photoIds)`, lecture double uid/nom, une photo déjà sur le point ne compte pas deux fois) : au-delà, refus expliqué
 (`ktaAlerte`, nombre de photos et places libres), rien n'est rattaché. Seul l'**ajout** est refusé : un point déjà

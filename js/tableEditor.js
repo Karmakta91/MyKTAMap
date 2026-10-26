@@ -699,7 +699,7 @@
     set.delete("updatedAt");
     if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
-    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "tags", "etat", "description", "points", "profondeur", "date_update"];
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "tags", "etat", "description", "points", "profondeur", "date_update", "dateConstat"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
     set.forEach(function(k) { ordonnees.push(k); });

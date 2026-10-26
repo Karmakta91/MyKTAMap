@@ -357,7 +357,9 @@
               pointId:  ph.pointId,
               mime:     ph.mime || blob.type || "image/jpeg",
               size:     ph.size || blob.size || 0,
-              addedAt:  ph.addedAt || null,
+              // `addedAt` = createdAt de la photo (nom historique du champ du profil).
+              addedAt:  ph.createdAt || ph.addedAt || null,
+              priseLe:  ph.priseLe || undefined,  // EXIF de la prise de vue, à côté du fichier (photos.js)
               fiche:    ph.fiche || undefined,   // fiche du point (retrouver une photo sans point)
               data:     b64
             });
@@ -1111,6 +1113,7 @@ photos: false, histoirePdfs: false, crashes: false
               mime:      ph.mime,
               size:      ph.size || blob.size,
               createdAt: ph.addedAt || Date.now(),
+              priseLe:   ph.priseLe,
               fiche:     ph.fiche,
               blob:      blob
             }, { source: "import" });   // restauration de l'app (≠ dépôt d'une extension)

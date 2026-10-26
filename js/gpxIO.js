@@ -118,11 +118,11 @@
     const planCustomLegend = (opts.planCustomLegend && typeof opts.planCustomLegend === "object")
                               ? opts.planCustomLegend : null;
 
-    const sessionPoints   = incPoints && window.getEditorPoints ? (window.getEditorPoints() || []) : [];
+    const sessionPoints   = incPoints && window.getEditorPoints ? window.ktaExportEtatsFiltres(window.getEditorPoints() || []) : [];
     const embeddedPoints  = incEmbedded && window.getAllEmbeddedPoints ? (window.getAllEmbeddedPoints() || []) : [];
     const allPoints       = sessionPoints.concat(embeddedPoints);
 
-    const sessionRoads = incRoads && window.getRoads ? (window.getRoads() || []) : [];
+    const sessionRoads = incRoads && window.getRoads ? window.ktaExportEtatsFiltres(window.getRoads() || []) : [];
     // Itinéraire exclu sauf demande (éphémère).
     const tracesAExporter = sessionRoads.filter(function(r) {
       if (!r || !Array.isArray(r.points) || r.points.length < 2) return false;
@@ -209,12 +209,14 @@
         // <sym> = tag aussi (lu par les autres apps)
         lines.push('    <sym>' + _xmlEsc(p.tags[0]) + '</sym>');
       }
-      if (Number.isInteger(p.level)) {
-        // Niveau dans <cmt> (commentaire libre, conservé par TopoDroid / OsmAnd).
-        // Passage entre niveaux : « niveaux=0,-1 » à la suite (relu à l'import).
-        const nv = (window.KtaPoiJonction && window.KtaPoiJonction.estJonction(p))
+      // Niveau dans <cmt> (commentaire libre, conservé par TopoDroid / OsmAnd), relu à l'import. Passage entre
+      // niveaux : « niveaux=0,-1 » à la suite ; POI danger : « constat=AAAA-MM-JJ ».
+      const dc = window.KtaPoiDanger ? window.KtaPoiDanger.dateConstat(p) : null;
+      if (Number.isInteger(p.level) || dc) {
+        const nv = (Number.isInteger(p.level) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(p))
           ? " niveaux=" + window.KtaPoiJonction.niveaux(p).join(",") : "";
-        lines.push('    <cmt>MyKTAMap level=' + p.level + nv + '</cmt>');
+        const cmt = (Number.isInteger(p.level) ? " level=" + p.level : "") + nv + (dc ? " constat=" + dc : "");
+        lines.push('    <cmt>MyKTAMap' + cmt + '</cmt>');
       }
       lines.push('  </wpt>');
     });
@@ -432,6 +434,9 @@
           // Passage entre niveaux : « niveaux=0,-1 » (raccords à revalider sur le plan).
           const mNiv = w.cmt ? String(w.cmt).match(/niveaux=(-?\d+(?:,-?\d+)*)/) : null;
           if (mNiv) nouveau.niveaux = mNiv[1].split(",").map(Number);
+          const mDc = w.cmt ? String(w.cmt).match(/constat=(\d{4}-\d{2}-\d{2})/) : null;
+          const dc = (mDc && window.KtaPoiDanger) ? window.KtaPoiDanger.dateValide(mDc[1]) : null;
+          if (dc) nouveau.dateConstat = dc;
           nouveauxPoints.push(nouveau);
         });
 

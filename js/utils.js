@@ -1283,6 +1283,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   let gpsLineHtml = "";
   // Passage entre niveaux : niveaux desservis et raccords validés (poiJonction.js).
   const jonctionHtml = window.KtaPoiJonction ? window.KtaPoiJonction.htmlFiche(point) : "";
+  // POI danger : date de constat et mention de non-certification (poiDanger.js).
+  const dangerHtml = window.KtaPoiDanger ? window.KtaPoiDanger.htmlFiche(point) : "";
   const _gpsLatLng = _planXyToGps(x, y);
   if (_gpsLatLng) {
     const gpsStr = _formatGps(_gpsLatLng);
@@ -1315,13 +1317,15 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     catch(e) { console.warn("[Popup] section liaisons inter-plan :", e); }
   }
 
-  // uid d'un point de session : une extension peut y accrocher ses actions.
-  const _uidAttr = (isEditorSession === true && point.uid) ? ' data-kta-uid="' + _escAttr(point.uid) + '"' : "";
+  // uid du point, de session ou de calque : une extension y accroche ses actions (prise actionsObjet). ⚠️ Il ne
+  // rend rien éditable : modifier, déplacer et supprimer restent liés à isEditorSession (ci-dessus).
+  const _uidAttr = (typeof point.uid === "string" && point.uid) ? ' data-kta-uid="' + _escAttr(point.uid) + '"' : "";
   return '<div class="kta-popup-point"' + _uidAttr + '>' +
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
            gpsLineHtml +
            jonctionHtml +
+           dangerHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +
@@ -1798,9 +1802,13 @@ window._applyLevelFilterToDataPoints = function() {
 
 // ── Polylignes des data layers ──────────
 // L'opacité d'origine est mémorisée pour être restaurée au réaffichage (elle peut être < 1).
+// ⚠️ Jonction (et ses ronds d'extrémité) : pas de `level`, visible si fromLevel OU toLevel est affiché — même
+// règle que la session (road.js > passeFiltreNiveau) et que l'itinéraire, qui la lit sur ses deux niveaux.
 function _filtreNiveauSurPolylineData(entry) {
   if (!entry || !entry.polyline) return;
-  let visible = _passeFiltreDataLevel(entry.level);
+  let visible = (entry.type === "jonction")
+    ? (_passeFiltreDataLevel(entry.fromLevel) || _passeFiltreDataLevel(entry.toLevel))
+    : _passeFiltreDataLevel(entry.level);
   if (visible && entry.type) {
     if (!_passeFiltreRuntimeType("roads", entry.type)) visible = false;
   }
@@ -1899,6 +1907,14 @@ window.ktaAnnotationsCompletes = function (famille) {
     return (typeof window[nom] === "function" ? window[nom]() : []) || [];
   };
   return lire(p[0]).concat(lire(p[1]));
+};
+
+// Exports : la liste de session sans les objets qu'une extension marque, quand la case « validés seulement » est
+// cochée (ktaExtensions.js > filtrerPourExport) ; sinon LA MÊME liste (même référence : un appelant teste par là si un
+// filtre agit).
+window.ktaExportEtatsFiltres = function (liste) {
+  const X = window.KtaExtensions;
+  return (X && typeof X.filtrerPourExport === "function") ? X.filtrerPourExport(liste) : (Array.isArray(liste) ? liste : []);
 };
 
 // ── Getters publics des data layers ──────────
@@ -2328,6 +2344,9 @@ function ajouterPointsDepuisJSON(url, layer) {
             type:        road.type,
             points:      road.points,
             level:       Number.isInteger(road.level) ? road.level : 0,
+            // jonction : niveaux reliés, lus par le filtre d'affichage, la carte de chaleur et les niveaux occupés
+            fromLevel:   Number.isInteger(road.fromLevel) ? road.fromLevel : undefined,
+            toLevel:     Number.isInteger(road.toLevel) ? road.toLevel : undefined,
             description: road.description || undefined,
             uid:         (typeof road.uid === "string" && road.uid) ? road.uid : undefined,
             updatedAt:   (typeof road.updatedAt === "number") ? road.updatedAt : undefined,
@@ -2346,21 +2365,23 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (road.type === "jonction" && road.points.length >= 2) {
             const endpts = [road.points[0], road.points[road.points.length - 1]];
             endpts.forEach(function(pt) {
-              const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
-                radius:      7,
+              const cm = L.circleMarker(convertCoord(pt.x, pt.y), Object.assign({
                 color:       "#ff4ecb",   // bord magenta cohérent avec polyline
                 fillColor:   "#ffffff",   // intérieur blanc = contraste
                 fillOpacity: 1,
-                weight:      3,
-                interactive: false
-              }).addTo(layer);
-              // même level que la polyline : le filtre niveau masque aussi les ronds
+                interactive: false,
+                ktaRondJonction: true
+              }, window.ktaTailleRondJonction())).addTo(layer);
+              // mêmes niveaux que la polyline : le filtre niveau masque aussi les ronds
               window._ktaDataPolylines.push({
                 polyline:        cm,
                 groupe:          layer,
                 // 🩸 `type` obligatoire : sans lui, le filtre runtime par type saute ces ronds (`if (entry.type)`)
+                // et le filtre de niveau ne lit pas fromLevel / toLevel
                 type:            road.type,
                 level:           entry.level,
+                fromLevel:       entry.fromLevel,
+                toLevel:         entry.toLevel,
                 origOpacity:     1,
                 // 🩸 disque REMPLI : le masquage doit couper fillOpacity
                 origFillOpacity: 1
