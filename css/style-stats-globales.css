@@ -25,6 +25,7 @@
   width:      94vw;
   height:     auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display:    flex;
   flex-direction: column;
 }

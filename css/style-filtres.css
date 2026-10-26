@@ -31,6 +31,7 @@
   width: calc(100vw - 24px);
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 @media (min-width: 1024px) {
   .kta-fp-boite { max-width: 720px !important; }

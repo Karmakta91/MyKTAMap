@@ -30,6 +30,7 @@
   width:      94vw;
   height:     auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display:    flex;
   flex-direction: column;
   /* Filet de sécurité mobile : si un contenu très long arrive à passer
@@ -461,6 +462,7 @@ html.kta-theme-light .kta-mem-footer {
   width:      94vw;
   height:     auto !important;
   max-height: 88vh !important;
+  max-height: 88dvh !important;
   display:    flex;
   flex-direction: column;
 }
@@ -719,6 +721,7 @@ html.kta-theme-light .kta-profile-footer {
   width:      94vw;
   height:     auto !important;
   max-height: 86vh !important;
+  max-height: 86dvh !important;
   display:    flex;
   flex-direction: column;
 }
@@ -1000,6 +1003,7 @@ html.kta-theme-light .kta-refonte-session-cta-stats-glob {
   word-break: break-word;
   overflow-x: auto;
   max-height: calc(88vh - 100px);
+  max-height: calc(88dvh - 100px);
   overflow-y: auto;
 }
 

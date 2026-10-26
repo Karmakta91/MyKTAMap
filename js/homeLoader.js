@@ -1887,6 +1887,9 @@ function planRowHTML(plan) {
         const myPlansBox = document.getElementById("myPlansBox");
         // La barre de recherche suit la liste (rien à chercher dans une bibliothèque vide).
         const searchBar = document.getElementById("loaderSearchBar");
+        // Colonne masquée par classe (css/style.css > .kta-plans-vide), jamais par :has sur l'attribut style.
+        const colPlans = myPlansBox ? myPlansBox.closest(".loader-col-plans") : null;
+        if (colPlans) colPlans.classList.toggle("kta-plans-vide", all.length === 0);
         if (all.length === 0) {
           if (myPlansBox) myPlansBox.style.display = "none";
           if (searchBar)  searchBar.style.display  = "none";

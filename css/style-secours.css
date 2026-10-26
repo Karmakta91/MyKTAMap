@@ -277,6 +277,7 @@ html.kta-theme-light .kta-secours-pick-favoris-more {
   width: calc(100vw - 24px);
   height: auto !important;
   max-height: 80vh !important;
+  max-height: 80dvh !important;
 }
 .kta-secours-assign-info {
   background: rgba(140, 180, 255, 0.10);
@@ -365,6 +366,7 @@ html.kta-theme-light .kta-secours-assign-role:hover {
   width: calc(100vw - 24px);
   height: auto !important;
   max-height: 92vh !important;
+  max-height: 92dvh !important;
 }
 @media (min-width: 1024px) {
   .kta-secours-modal-boite { max-width: 760px !important; }
@@ -1284,6 +1286,7 @@ html.kta-theme-light .kta-secours-groupe-level-chip {
   width: calc(100vw - 24px);
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
 }
 .kta-secours-parcours-emoji {
   flex-shrink: 0;
@@ -1347,6 +1350,7 @@ html.kta-theme-light .kta-secours-groupe-level-chip {
   width: calc(100vw - 24px);
   height: auto !important;
   max-height: 80vh !important;
+  max-height: 80dvh !important;
 }
 .kta-secours-pick-search-wrap {
   display: flex;
