@@ -6066,5 +6066,6 @@
   "bienvenue.sortie.titre": "¿Listo para <span class=\"kta-bv-feutre\">bajar</span>?",
   "bienvenue.sortie.intro": "Carga tu primer plano desde la pantalla de inicio, o recorre antes la interfaz.",
   "bienvenue.sortie.visite": "Descubrir la app en 1 minuto",
-  "bienvenue.pied": "© Flavien VIDAL (KARMA) · Licencia CC BY-NC-SA 4.0, uso no comercial"
+  "bienvenue.pied": "© Flavien VIDAL (KARMA) · Licencia CC BY-NC-SA 4.0, uso no comercial",
+  "bienvenue.github": "Código fuente en GitHub"
 }

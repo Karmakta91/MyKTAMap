@@ -6066,5 +6066,6 @@
   "bienvenue.sortie.titre": "Ready to <span class=\"kta-bv-feutre\">go down</span>?",
   "bienvenue.sortie.intro": "Load your first map from the home screen, or take a quick tour of the interface first.",
   "bienvenue.sortie.visite": "Discover the app in 1 minute",
-  "bienvenue.pied": "© Flavien VIDAL (KARMA) · CC BY-NC-SA 4.0 licence, non-commercial use"
+  "bienvenue.pied": "© Flavien VIDAL (KARMA) · CC BY-NC-SA 4.0 licence, non-commercial use",
+  "bienvenue.github": "Source code on GitHub"
 }

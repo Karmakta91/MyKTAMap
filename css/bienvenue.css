@@ -244,6 +244,10 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-pied-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--bv-texte-3); }
 /* Crédits et signature comme au splash (#splashLeafletCredit, #splashKarmaCorner) : la lueur rend lisible une
    signature petite sans la grossir. */
+.kta-bv a.kta-bv-github { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; align-self: flex-start;
+  color: var(--bv-texte-2); font-size: 14px; font-weight: 600; text-decoration: none; }
+.kta-bv-github svg { width: 18px; height: 18px; fill: currentColor; }
+@media (hover: hover) { .kta-bv a.kta-bv-github:hover { color: var(--bv-or); } }
 .kta-bv-pied-credits { width: 100%; display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; }
 .kta-bv-pied-credits p { margin: 0; font-size: 11px; line-height: 20px; color: var(--bv-texte-3); letter-spacing: 0.02em;
