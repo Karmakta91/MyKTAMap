@@ -3,7 +3,7 @@
  * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
-/* bienvenue.css — écran « Bienvenue » d'une instance sans mot de passe (js/bienvenue.js), chargé par
+/* bienvenue.css — écran « Bienvenue » (js/bienvenue.js), avec ou sans champ « Code d'accès », chargé par
    js/unlockGate.js seulement quand cet écran s'affiche : ni ces règles ni les polices ne pèsent sur le reste de l'app.
    « La descente » : un fil doré part d'un puits de la rue et descend de station en station le long du bord gauche.
    Toujours sombre (décision produit) : au premier lancement aucun thème n'est encore choisi, l'écran garde le
@@ -27,6 +27,7 @@ html #kta-unlock-overlay.kta-bv {
   --bv-fond: #0a0d18; --bv-fond-haut: #0e1220; --bv-fond-nuit: #070912; --bv-surface: #1a1f2e;
   --bv-bord: #3a4560; --bv-galerie: #2a3348; --bv-texte: #e8eaf0; --bv-texte-2: #c8d0e0; --bv-texte-3: #98a1b3;
   --bv-or: #f4c542; --bv-sur-or: #14110a; --bv-bleu: #8cb4ff; --bv-vert: #8fd9a8; --bv-ambre: #e8b765;
+  --bv-erreur: #ff8c8c; --bv-ok: #6ee287; --bv-avert: #ffb380;
   --kta-accent-texte: #f4c542;
   --h-ville: clamp(200px, calc(100svh - 470px), 440px);
   --marge-galerie: max(24px, min(66px, calc(66px - (100vw - 1180px) / 2)));
@@ -65,6 +66,30 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   border-radius: 999px; border: 1px solid rgba(244, 197, 66, 0.35); background: rgba(244, 197, 66, 0.08);
   color: var(--bv-or); font: 600 14px Montserrat, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
 @media (hover: hover) { .kta-bv a.kta-bv-pastille-pro:hover { background: rgba(244, 197, 66, 0.16); } }
+
+/* ── Champ « Code d'accès » (instance protégée) : même hauteur que les boutons, retour juste dessous ── */
+.kta-bv-code { margin: 0; display: flex; flex-direction: column; gap: 8px; max-width: 560px; }
+.kta-bv-code-ligne { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.kta-bv-code-champ { flex: 1 1 180px; min-width: 0; min-height: 52px; padding: 0 20px; border-radius: 999px;
+  border: 2px solid var(--bv-bord); background: var(--bv-surface); color: var(--bv-texte);
+  font: 600 17px Montserrat, system-ui, sans-serif; }
+.kta-bv-code-champ::placeholder { color: var(--bv-texte-3); opacity: 1; }
+.kta-bv-code-champ:focus { outline: none; border-color: var(--bv-or); }
+.kta-bv-code-champ:focus-visible { outline: 3px solid var(--bv-or); outline-offset: 3px; }
+/* Verrou : champ grisé par sa bordure et son fond, jamais par l'opacité (le compte à rebours reste lisible). */
+.kta-bv-code-champ:disabled { border-style: dashed; background: var(--bv-fond); cursor: not-allowed; }
+.kta-bv-code-champ:disabled::placeholder { color: var(--bv-texte-2); }
+.kta-bv-code-entrer:disabled { background: var(--bv-surface); color: var(--bv-texte-3); }
+.kta-bv-code-retour:empty { display: none; }
+.kta-bv-code-retour:focus { outline: none; }
+.kta-bv-code-msg { margin: 0; padding: 8px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+.kta-bv-code-erreur { color: var(--bv-erreur); border: 1px solid rgba(255, 140, 140, 0.35);
+  background: rgba(255, 140, 140, 0.08); }
+.kta-bv-code-ok { color: var(--bv-ok); border: 1px solid rgba(110, 226, 135, 0.35); background: rgba(110, 226, 135, 0.08); }
+.kta-bv-code-avert { color: var(--bv-avert); border: 1px solid rgba(255, 179, 128, 0.3); background: rgba(255, 179, 128, 0.06); }
+.kta-bv-code-rebours { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--bv-texte); }
+.kta-bv-code-aide { display: block; margin-top: 6px; font-size: 13px; color: var(--bv-texte-2); }
+.kta-bv-code-note { margin: 0; font-size: 14px; line-height: 1.55; color: var(--bv-texte-3); max-width: 620px; }
 
 /* ── En-tête : barre, accroche, la ville en surface ── */
 .kta-bv-entete { position: relative; background: var(--bv-fond-haut); min-height: 100svh; display: flex;

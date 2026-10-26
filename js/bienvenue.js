@@ -4,12 +4,16 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// bienvenue.js — écran « Bienvenue » d'une instance SANS mot de passe : petite présentation qui défile, entrée directe.
+// bienvenue.js — écran « Bienvenue » : petite présentation qui défile, puis l'entrée dans l'app.
 // Chargé à la demande par js/unlockGate.js (avec css/bienvenue.css), seulement quand cet écran s'affiche.
-// Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin() }) → { fermer }.
-//   surEntree : appelé au clic sur « Entrer » ou « Découvrir l'app en 1 minute » (visite = true), AVANT l'animation :
+// Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), code? }) → { fermer }.
+//   surEntree : appelé à l'entrée (« Entrer », ou « Découvrir l'app en 1 minute » : visite = true), AVANT l'animation :
 //   l'appelant mémorise l'accès tout de suite (un rechargement pendant la descente ne remontre pas l'écran).
 //   surFin : animation finie, écran retiré.
+//   code { essayer(valeur) → Promise<{ etat, reste?, err? }>, etat() → { verrou, attente, restants } } : instance
+//   protégée. L'en-tête porte le champ « Code d'accès » ; on lit tout sans code, mais seul un essai « ok » fait entrer
+//   (les autres « Entrer » remontent au champ). Verrou : champ désactivé, compte à rebours dans sa zone, écran ouvert.
+//   🔒 Ni contacts de l'auteur ni pastille pro sur cet écran : le code se demande à qui gère l'installation.
 // Mouvement (galeries pilotées au défilement, tête de suivi, flash des repères) : moteur de la page de présentation,
 //   adapté à un écran qui défile en interne (scrollTop / clientHeight de l'overlay, pas de la fenêtre).
 // ⚠️ contrat : chemins des galeries en M / V / H absolus dans 44 × 1000 ; seules les ordonnées sont réécrites.
@@ -263,7 +267,33 @@
       '<figcaption class="kta-bv-legende">' + t("bienvenue.reperer.legende") + '</figcaption></figure>';
   }
 
-  function _gabarit() {
+  // Instance protégée : formulaire du code (zone remplie par ouvrir > rendreZoneCode), « Découvrir », puis à qui
+  // demander le code. Sinon : « Entrer », « Découvrir » et la seule porte vers l'édition pro (contacts au pied).
+  function _actionsHaut(protege) {
+    const decouvrir = '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="decouvrir">' +
+      t("bienvenue.decouvrir") + '</button>';
+    if (protege) {
+      return '<form class="kta-bv-code" data-bv-code novalidate>' +
+          '<div class="kta-bv-code-ligne">' +
+            '<input type="password" class="kta-bv-code-champ" id="kta-bv-code-champ" aria-label="' +
+              t("gate.placeholder") + '" placeholder="' + t("gate.placeholder") + '" autocomplete="off" ' +
+              'autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="kta-bv-code-retour">' +
+            '<button type="submit" class="kta-bv-btn kta-bv-btn-or kta-bv-code-entrer">' + t("bienvenue.entrer") +
+              FLECHE + '</button>' +
+          '</div>' +
+          '<div class="kta-bv-code-retour" id="kta-bv-code-retour" aria-live="polite"></div>' +
+        '</form>' +
+        '<div class="kta-bv-actions">' + decouvrir + '</div>' +
+        '<p class="kta-bv-code-note">' + t("gate.info") + '</p>';
+    }
+    return '<div class="kta-bv-actions">' + _boutonEntrer() + decouvrir +
+      // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
+      '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/presentation/" target="_blank" ' +
+        'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
+    '</div>';
+  }
+
+  function _gabarit(protege) {
     return '<div class="kta-bv-page">' +
       '<header class="kta-bv-entete">' +
         '<div class="kta-bv-barre"><p class="kta-bv-logo">MyKTAMap</p>' + _langues() + '</div>' +
@@ -271,13 +301,7 @@
           '<p class="kta-bv-surtitre">' + t("bienvenue.surtitre") + '</p>' +
           '<h1 id="kta-bv-titre">' + t("bienvenue.titre") + '</h1>' +
           '<p class="kta-bv-accroche">' + t("bienvenue.accroche") + '</p>' +
-          '<div class="kta-bv-actions">' + _boutonEntrer() +
-            '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="decouvrir">' +
-              t("bienvenue.decouvrir") + '</button>' +
-            // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
-            '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/presentation/" target="_blank" ' +
-              'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
-          '</div>' +
+          _actionsHaut(protege) +
           _luneHaut() +
         '</div>' +
         _ville() +
@@ -350,8 +374,9 @@
       '<footer class="kta-bv-pied"><div class="kta-bv-pied-in">' +
         '<p class="kta-bv-logo">MyKTAMap</p>' +
         // ⚠️ Contacts de l'auteur : écran sans mot de passe seulement (une instance protégée est gérée par
-        // quelqu'un d'autre). Liens sortants, sans script.
-        '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>' +
+        // quelqu'un d'autre, le code se demande à cette personne). Liens sortants, sans script.
+        (protege ? '<p class="kta-bv-pied-note">' + t("gate.info") + '</p>'
+          : '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>') +
         '<p class="kta-bv-pied-note">' + t("bienvenue.pied") + '</p>' +
         // Même coin que le splash : librairies (noms propres, non traduits) et signature.
         '<div class="kta-bv-pied-credits"><p>🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>' +
@@ -609,29 +634,74 @@
   // ── Écran ───────────────────────────────────────────────────────────────
   function ouvrir(opts) {
     opts = opts || {};
+    // Instance protégée : l'appelant fournit la vérification (unlockGate.js > _essayerCode), jamais réécrite ici.
+    const code = (opts.code && typeof opts.code.essayer === "function" && typeof opts.code.etat === "function")
+      ? opts.code : null;
     const ecranEl = document.createElement("div");
     ecranEl.id = "kta-unlock-overlay";
-    ecranEl.className = "kta-bv";
+    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "");
     ecranEl.setAttribute("role", "dialog");
     ecranEl.setAttribute("aria-modal", "true");
     ecranEl.setAttribute("aria-labelledby", "kta-bv-titre");
     ecranEl.tabIndex = -1;
-    let mvt = null, sortie = false, minuteur = null;
+    let mvt = null, sortie = false, minuteur = null, rebours = null, essaiEnCours = false;
+    // « Découvrir l'app en 1 minute » touché avant le code : la visite est demandée à l'entrée.
+    let visiteVoulue = false;
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
     const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); };
 
+    function champ() { return ecranEl.querySelector(".kta-bv-code-champ"); }
+    function retour(html, classe) {
+      const el = ecranEl.querySelector(".kta-bv-code-retour");
+      if (el) el.innerHTML = html ? '<p class="kta-bv-code-msg kta-bv-code-' + classe + '">' + html + '</p>' : "";
+    }
+
+    // Zone du champ selon l'état de la saisie. Verrou : champ et bouton désactivés, compte à rebours à la place du
+    // texte saisi, revérifié chaque seconde ; à l'échéance, le champ revient (même écran, la Promise attend toujours).
+    function rendreZoneCode() {
+      if (!code) return;
+      clearInterval(rebours); rebours = null;
+      const input = champ(), bouton = ecranEl.querySelector(".kta-bv-code-entrer");
+      if (!input || !bouton) return;
+      const etat = code.etat();
+      input.disabled = bouton.disabled = !!etat.verrou;
+      ecranEl.classList.toggle("kta-bv-verrou", !!etat.verrou);
+      if (!etat.verrou) {
+        input.placeholder = t("gate.placeholder");
+        retour(etat.restants ? t("gate.warn.remaining", { n: etat.restants }) : "", "avert");
+        return;
+      }
+      input.value = "";
+      const ecrire = function(attente) {
+        input.placeholder = "🔒 " + attente;
+        retour('<strong class="kta-bv-code-titre">' + t("gate.lockout.titre") + '</strong> ' + t("gate.lockout.msg") +
+          '<br>' + t("gate.lockout.attente") + ' <span class="kta-bv-code-rebours">' + attente + '</span>' +
+          '<span class="kta-bv-code-aide">' + t("gate.lockout.hint") + '</span>', "erreur");
+      };
+      ecrire(etat.attente);
+      rebours = setInterval(function() {
+        const e = code.etat();
+        if (!e.verrou) { rendreZoneCode(); return; }
+        const cd = ecranEl.querySelector(".kta-bv-code-rebours");
+        if (cd) cd.textContent = e.attente;
+        input.placeholder = "🔒 " + e.attente;
+      }, 1000);
+    }
+
     function dessiner() {
       if (mvt) mvt.arreter();
-      ecranEl.innerHTML = _gabarit();
+      ecranEl.innerHTML = _gabarit(!!code);
       ecranEl.scrollTop = 0;
       mvt = _mouvement(ecranEl);
+      rendreZoneCode();
       // Focus sur l'écran lui-même (dialogue) : le clavier part de là (Tab → « Entrer », flèches → défilement),
-      // sans anneau de focus imposé sur un bouton au toucher.
+      // sans anneau de focus imposé sur un bouton au toucher, ni clavier virtuel ouvert sur le champ du code.
       setTimeout(function() { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }, 100);
     }
 
     function fermer() {
       clearTimeout(minuteur);
+      clearInterval(rebours);
       if (mvt) mvt.arreter();
       if (mq) {
         if (mq.removeEventListener) mq.removeEventListener("change", surReduit);
@@ -643,7 +713,8 @@
     function entrer(visite) {
       if (sortie) return;
       sortie = true;
-      ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = true; });
+      clearInterval(rebours);
+      ecranEl.querySelectorAll("button, input").forEach(function(b) { b.disabled = true; });
       try { if (typeof opts.surEntree === "function") opts.surEntree(!!visite); }
       catch (e) { console.warn("[Bienvenue] surEntree :", e); }
       const finir = function() {
@@ -659,19 +730,60 @@
       minuteur = setTimeout(finir, puitsVisible ? DUREE_DESCENTE : DUREE_FONDU_BAS);
     }
 
+    // Instance protégée : « Entrer » du bas et la visite remontent au champ, qui prend le focus (ouvre le clavier au
+    // toucher, voulu : la personne a choisi d'entrer). Pendant un verrou, le focus va au compte à rebours.
+    function allerAuChamp(visite) {
+      if (visite) visiteVoulue = true;
+      try { ecranEl.scrollTo({ top: 0, behavior: reduit() ? "auto" : "smooth" }); }
+      catch (e) { ecranEl.scrollTop = 0; }
+      const input = champ();
+      const cible = (input && !input.disabled) ? input : ecranEl.querySelector(".kta-bv-code-retour");
+      if (!cible) return;
+      if (cible !== input) cible.tabIndex = -1;
+      try { cible.focus({ preventScroll: true }); } catch (e) { cible.focus(); }
+    }
+
+    function soumettre() {
+      const input = champ();
+      if (!code || !input || input.disabled || essaiEnCours || sortie) return;
+      essaiEnCours = true;
+      code.essayer(input.value).then(function(r) {
+        essaiEnCours = false;
+        if (r.etat === "ok") {
+          retour(t("gate.success"), "ok");
+          entrer(visiteVoulue);
+          return;
+        }
+        if (r.etat === "vide") { retour(t("gate.err.empty"), "erreur"); input.focus(); return; }
+        if (r.etat === "crypto") { retour(t("gate.err.crypto", { err: r.err }), "erreur"); return; }
+        input.value = "";
+        if (r.etat === "verrou") { rendreZoneCode(); return; }
+        retour(t("gate.err.incorrect", { n: r.reste }), "erreur");
+        input.focus();
+      }).catch(function(e) {
+        essaiEnCours = false;
+        console.warn("[Bienvenue] essai du code :", e);
+      });
+    }
+
     // Délégation : le contenu est redessiné au changement de langue.
+    ecranEl.addEventListener("submit", function(ev) {
+      if (!ev.target.closest || !ev.target.closest("[data-bv-code]")) return;
+      ev.preventDefault();
+      soumettre();
+    });
     ecranEl.addEventListener("click", function(ev) {
       const cible = ev.target.closest ? ev.target.closest("[data-bv], [data-lang]") : null;
       if (!cible || !ecranEl.contains(cible) || sortie) return;
       if (cible.hasAttribute("data-lang")) {
-        const code = cible.getAttribute("data-lang");
+        const lang = cible.getAttribute("data-lang");
         if (!window.I18n || typeof window.I18n.setLang !== "function") return;
-        window.I18n.setLang(code).then(dessiner).catch(function(e) { console.warn("[Bienvenue] setLang :", e); });
+        window.I18n.setLang(lang).then(dessiner).catch(function(e) { console.warn("[Bienvenue] setLang :", e); });
         return;
       }
       const action = cible.getAttribute("data-bv");
-      if (action === "entrer") entrer(false);
-      else if (action === "visite") entrer(true);
+      if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
+      else if (action === "visite") { if (code) allerAuChamp(true); else entrer(true); }
       else if (action === "decouvrir") {
         const cibleSection = ecranEl.querySelector("#kta-bv-plans");
         if (!cibleSection) return;

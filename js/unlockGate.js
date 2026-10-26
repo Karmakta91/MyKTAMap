@@ -7,11 +7,11 @@
 // unlockGate.js — gate d'accès au premier lancement (re-demandée après un reset complet).
 // Expose : window.UnlockGate (isUnlocked, isLockedOut, ouvrirGate, lock, markUnlockedViaLicensePro,
 //   revaliderInstance, instanceRequiertMotDePasse, visiteDemandee).
-// Deux écrans : instance qui publie `index.json > config.accessHash` → champ mot de passe, seul ce
-//   mot de passe ouvre ; sinon → présentation « Bienvenue » (js/bienvenue.js + css/bienvenue.css, chargés à
-//   la demande) et son bouton « Entrer », retenu sur l'appareil ; repli : la carte « Entrer » simple si ces
-//   fichiers manquent. Aucun mot de passe codé en dur, aucun import de licence ici (seule une licence
-//   SERVEUR active le pro).
+// Écran : la présentation « Bienvenue » (js/bienvenue.js + css/bienvenue.css, chargés à la demande). Instance qui
+//   publie `index.json > config.accessHash` → champ « Code d'accès » dans son en-tête, seul ce mot de passe ouvre ;
+//   sinon → bouton « Entrer », retenu sur l'appareil. Repli si ces fichiers manquent : la carte centrée (champ ou
+//   « Entrer »). Saisie, compteur d'essais et verrou communs aux deux (_essayerCode). Aucun mot de passe codé en
+//   dur, aucun import de licence ici (seule une licence SERVEUR active le pro).
 // ⚠️ Barrière SOCIALE, pas une authentification : le code est public, le hash se lit, le
 //   localStorage se force en F12. Elle écarte les passants et les robots, pas un attaquant motivé.
 // ⚠️ Verrou JAMAIS définitif (décision produit) : 5 échecs → temporisé, escaladé, comme pinLock.js.
@@ -65,6 +65,9 @@
   let _resolveGate = null;  // résout la Promise attendue par main.js
   // « Découvrir l'app en 1 minute » choisi sur l'écran Bienvenue : lu par js/firstRunFlow.js (visite guidée).
   let _visiteDemandee = false;
+  // 🔒 Vrai seulement après un code juste (_essayerCode) : la sortie de l'écran Bienvenue d'une instance protégée
+  // ne résout la gate qu'à cette condition, quel que soit le bouton qui l'a déclenchée.
+  let _codeAccepte = false;
 
   async function _sha256(s) {
     if (!crypto || !crypto.subtle) {
@@ -193,7 +196,8 @@
     }).join("");
   }
 
-  // mode : "instance" (mot de passe publié par l'index) | "libre" (aucun : carte de repli de l'écran Bienvenue).
+  // Carte centrée de REPLI (écran Bienvenue introuvable). mode : "instance" (mot de passe publié par l'index, champ)
+  // | "libre" (aucun : bouton « Entrer »).
   function _creerOverlay(mode) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const libre = mode === "libre";
@@ -246,7 +250,8 @@
     }
   }
 
-  // Verrou temporisé : champ caché, compte à rebours, puis _monterGate (la Promise survit).
+  // Verrou temporisé sur la carte de repli : champ caché, compte à rebours, puis _monterGate (la Promise survit).
+  // L'écran Bienvenue affiche le sien dans la zone du champ (js/bienvenue.js).
   // 🩸 AUCUN bouton de reset ici (décision produit) : un reset relancerait la gate et contournerait
   // le verrou. Qui n'a pas le code attend ou vide lui-même le navigateur.
   function _afficherLockout(overlay) {
@@ -286,20 +291,19 @@
   }
 
   // ── Saisie ──────────────────────────────
-  async function _onSubmit(overlay, input, fb) {
-    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    const value = (input.value || "").trim();
-    if (!value) {
-      fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.empty") + '</div>';
-      return;
-    }
+  // Un essai de code, sans interface : partagé par l'écran Bienvenue et la carte de repli.
+  // Rend { etat: "ok" | "vide" | "crypto" | "faux" | "verrou", reste?, err? } ; « verrou » = ce 5ᵉ échec vient de
+  // poser le verrou temporisé (la Promise de ouvrirGate reste en attente jusqu'au bon code).
+  async function _essayerCode(valeur) {
+    if (isLockedOut()) return { etat: "verrou" };
+    const value = (valeur || "").trim();
+    if (!value) return { etat: "vide" };
 
     let hashed;
     try {
       hashed = await _sha256(value);
     } catch (e) {
-      fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.crypto", { err: (e.message || e) }) + '</div>';
-      return;
+      return { etat: "crypto", err: (e.message || String(e)) };
     }
 
     // 🔒 Seul le mot de passe publié par l'instance ouvre : un code largement distribué ouvrirait
@@ -316,23 +320,11 @@
         localStorage.removeItem(LS_ATTEMPTS);
         localStorage.removeItem(LS_LOCK);
       } catch(e) {}
-      fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
-      setTimeout(function() {
-        overlay.classList.add("kta-unlock-fading");
-        setTimeout(function() {
-          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-          if (_resolveGate) {
-            const r = _resolveGate;
-            _resolveGate = null;
-            r(true);
-          }
-        }, 250);
-      }, 400);
+      _codeAccepte = true;
+      return { etat: "ok" };
     } else {
       const attempts = _getAttempts() + 1;
       _setAttempts(attempts);
-      input.value = "";
-      input.focus();
 
       if (attempts >= MAX_ATTEMPTS) {
         // Palier suivant, compteur remis à zéro ; la Promise reste en attente jusqu'au bon code.
@@ -343,15 +335,39 @@
         _setLock({ until: now + delai, start: now, level: lvl + 1 });
         _setAttempts(0);
         console.warn("[UnlockGate] Verrou temporisé :", _fmtDuree(delai), "(palier", (lvl + 1) + ")");
-        _afficherLockout(overlay);
+        return { etat: "verrou" };
       } else {
-        const reste = MAX_ATTEMPTS - attempts;
-        fb.innerHTML =
-          '<div class="kta-unlock-error">' +
-            t("gate.err.incorrect", { n: reste }) +
-          '</div>';
+        return { etat: "faux", reste: MAX_ATTEMPTS - attempts };
       }
     }
+  }
+
+  // État de la saisie pour l'écran qui l'affiche : verrou en cours (et temps restant, déjà mis en forme), essais
+  // restants quand une série d'échecs est entamée (sinon null).
+  function _etatCode() {
+    const ap = _getAttempts();
+    return { verrou: isLockedOut(), attente: _fmtDuree(getLockRemainingMs()),
+      restants: (ap > 0 && ap < MAX_ATTEMPTS) ? (MAX_ATTEMPTS - ap) : null };
+  }
+
+  // Carte de repli : rend le résultat d'un essai dans son propre retour.
+  async function _onSubmit(overlay, input, fb) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const r = await _essayerCode(input.value);
+    if (r.etat === "ok") {
+      fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
+      _libererGate(overlay, 400);
+      return;
+    }
+    if (r.etat === "vide") { fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.empty") + '</div>'; return; }
+    if (r.etat === "crypto") {
+      fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.crypto", { err: r.err }) + '</div>';
+      return;
+    }
+    input.value = "";
+    input.focus();
+    if (r.etat === "verrou") _afficherLockout(overlay);
+    else fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.incorrect", { n: r.reste }) + '</div>';
   }
 
   // ── API ──────────────────────────────
@@ -377,7 +393,7 @@
       localStorage.removeItem(LS_ATTEMPTS);
     } catch(e) {}
     // Visite guidée proposée sur cet écran (« Découvrir l'app en 1 minute ») : plus jamais imposée au lancement
-    // (js/firstRunFlow.js ne l'ouvre que demandée, ou au 1er lancement d'une instance sans cet écran).
+    // (js/firstRunFlow.js ne l'ouvre que demandée, ou au 1er lancement quand rien ne l'a marquée vue).
     if (window.Tutorial && typeof window.Tutorial.markAsSeen === "function") window.Tutorial.markAsSeen();
   }
 
@@ -389,10 +405,10 @@
     }
   }
 
-  // Écran Bienvenue (instance sans mot de passe) : feuille de style et script chargés seulement ici, pour que ni
-  // eux ni les polices ne pèsent sur l'app. Précachés (sw.js) : disponibles hors ligne.
-  // 🩸 Rend false si l'un manque (cache incomplet, 404) ou tarde : la carte « Entrer » simple prend le relais,
-  // jamais d'écran vide qui bloquerait l'entrée.
+  // Écran Bienvenue : feuille de style et script chargés seulement ici, pour que ni eux ni les polices ne pèsent sur
+  // l'app. Précachés (sw.js) : disponibles hors ligne.
+  // 🩸 Rend false si l'un manque (cache incomplet, 404) ou tarde : la carte de repli prend le relais, jamais
+  // d'écran vide qui bloquerait l'entrée.
   const DELAI_BIENVENUE_MS = 4000;
   function _chargerBienvenue() {
     if (window.KtaBienvenue && document.getElementById("kta-bv-css")) return Promise.resolve(true);
@@ -415,11 +431,25 @@
     return Promise.race([tout, delai]);
   }
 
-  function _monterBienvenue() {
+  // hashInstance non nul : l'écran porte le champ « Code d'accès » et n'entre qu'après un code juste.
+  function _monterBienvenue(hashInstance) {
     _chargerBienvenue().catch(function() { return false; }).then(function(pret) {
       if (!pret) {
-        console.warn("[UnlockGate] écran Bienvenue indisponible : carte « Entrer » de repli");
-        _monterGateMode(null, true);
+        console.warn("[UnlockGate] écran Bienvenue indisponible : carte de repli");
+        _monterGateMode(hashInstance, true);
+        return;
+      }
+      if (hashInstance) {
+        // 🔒 Rien n'est mémorisé ici : l'accès l'a été par _essayerCode (hash d'instance), jamais en libre-v1.
+        // La visite guidée garde son comportement : d'office au 1er lancement, ou demandée sur l'écran.
+        window.KtaBienvenue.ouvrir({
+          code: { essayer: _essayerCode, etat: _etatCode },
+          surEntree: function(visite) { _visiteDemandee = !!visite; },
+          surFin: function() {
+            if (_codeAccepte) _resoudre();
+            else _monterGate();   // sortie sans code juste (forcée) : l'écran revient, la Promise attend
+          }
+        });
         return;
       }
       window.KtaBienvenue.ouvrir({
@@ -443,66 +473,61 @@
     }, delai);
   }
 
-  // repli : vrai quand l'écran Bienvenue n'a pas pu se charger (carte « Entrer » simple).
+  // repli faux : l'écran Bienvenue (avec ou sans champ). repli vrai : il n'a pas pu se charger → carte centrée,
+  // champ si l'instance publie un mot de passe, « Entrer » sinon.
   function _monterGateMode(hashInstance, repli) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    if (!hashInstance && !repli) { _monterBienvenue(); return; }
-    (function() {
-      const libre = !hashInstance;
-      const overlay = _creerOverlay(libre ? "libre" : "instance");
+    if (!repli) { _monterBienvenue(hashInstance); return; }
+    const libre = !hashInstance;
+    const overlay = _creerOverlay(libre ? "libre" : "instance");
 
-      overlay.querySelectorAll(".kta-unlock-lang-btn").forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          const code = btn.dataset.lang;
-          if (!window.I18n || typeof window.I18n.setLang !== "function") return;
-          window.I18n.setLang(code).then(function() {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            if (libre) _monterGateMode(null, true);
-            else _monterGate();
-          }).catch(function(e) { console.warn("[UnlockGate] setLang :", e); });
+    overlay.querySelectorAll(".kta-unlock-lang-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const code = btn.dataset.lang;
+        if (!window.I18n || typeof window.I18n.setLang !== "function") return;
+        window.I18n.setLang(code).then(function() {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          _monterGateMode(hashInstance, true);
+        }).catch(function(e) { console.warn("[UnlockGate] setLang :", e); });
+      });
+    });
+
+    if (libre) {
+      const btnLibre = overlay.querySelector("#kta-unlock-libre-btn");
+      if (btnLibre) {
+        setTimeout(function() { btnLibre.focus(); }, 100);
+        btnLibre.addEventListener("click", function() {
+          _memoriserAccesLibre();
+          btnLibre.disabled = true;
+          _libererGate(overlay, 0);
         });
-      });
-
-      if (libre) {
-        const btnLibre = overlay.querySelector("#kta-unlock-libre-btn");
-        if (btnLibre) {
-          setTimeout(function() { btnLibre.focus(); }, 100);
-          btnLibre.addEventListener("click", function() {
-            _memoriserAccesLibre();
-            btnLibre.disabled = true;
-            _libererGate(overlay, 0);
-          });
-        }
       }
+    }
 
-      // Le verrou ne s'applique qu'à l'écran avec mot de passe.
-      if (!libre && isLockedOut()) {
-        _afficherLockout(overlay);
-        return;
-      }
+    const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
+    if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
-      const input = overlay.querySelector("#kta-unlock-input");
-      const form  = overlay.querySelector("#kta-unlock-form");
-      const fb    = overlay.querySelector("#kta-unlock-feedback");
+    // Le verrou ne s'applique qu'à l'écran avec mot de passe.
+    if (!libre && isLockedOut()) {
+      _afficherLockout(overlay);
+      return;
+    }
 
-      if (input) setTimeout(function() { input.focus(); }, 100);
+    const input = overlay.querySelector("#kta-unlock-input");
+    const form  = overlay.querySelector("#kta-unlock-form");
+    const fb    = overlay.querySelector("#kta-unlock-feedback");
 
-      if (form) form.addEventListener("submit", function(e) {
-        e.preventDefault();
-        _onSubmit(overlay, input, fb);
-      });
+    if (input) setTimeout(function() { input.focus(); }, 100);
 
-      const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
-      if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
+    if (form) form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      _onSubmit(overlay, input, fb);
+    });
 
-      const ap = _getAttempts();
-      if (ap > 0 && ap < MAX_ATTEMPTS) {
-        fb.innerHTML =
-          '<div class="kta-unlock-warn">' +
-            t("gate.warn.remaining", { n: (MAX_ATTEMPTS - ap) }) +
-          '</div>';
-      }
-    })();
+    const restants = _etatCode().restants;
+    if (!libre && restants) {
+      fb.innerHTML = '<div class="kta-unlock-warn">' + t("gate.warn.remaining", { n: restants }) + '</div>';
+    }
   }
 
   // Appelé par la réinitialisation du cache : la gate sera redemandée.

@@ -3,7 +3,7 @@
 // =====================================================================
 // checkup-bienvenue.js — checkup ciblé (marche 3 du RELEASE_GATE), non branché au pre-commit
 // =====================================================================
-// Écran Bienvenue d'une instance SANS mot de passe (js/bienvenue.js, css/bienvenue.css, js/unlockGate.js) et
+// Écran Bienvenue avec ou sans mot de passe d'instance (js/bienvenue.js, css/bienvenue.css, js/unlockGate.js) et
 // parcours d'arrivée (js/firstRunFlow.js), au téléphone 390×844 et au PC 1366×768 :
 //   1. premier lancement : l'écran passe au-dessus du splash, polices de l'écran chargées, « réseau fictif »,
 //      cibles ≥ 44 px, aucun débordement horizontal ; toute première ouverture : conditions d'utilisation d'abord ;
@@ -13,8 +13,12 @@
 //      retenu : au rechargement, l'écran ne revient pas ;
 //   4. « Découvrir l'app en 1 minute » : entrée puis visite guidée ouverte ;
 //   5. mouvement réduit : état final statique (pas de fil piloté), « Entrer » immédiat ;
-//   6. instance AVEC mot de passe (accessHash injecté dans l'index) : écran à mot de passe inchangé, aucun
-//      fichier de l'écran Bienvenue chargé ; après le code, visite guidée d'office (inchangé), pas de PIN proposé ;
+//   6. instance AVEC mot de passe (accessHash injecté dans l'index), téléphone et PC : présentation avec champ
+//      « Code d'accès » en haut, ni contacts ni pastille pro, lisible sans code ; « Entrer » du bas et la visite
+//      remontent au champ ; code faux → message à côté du champ ; 5 échecs (téléphone) → verrou dans la zone du
+//      champ, présentation lisible, champ rendu à l'échéance ; code juste → descente puis l'app, visite d'office ;
+//      visite demandée avant le code → ouverte après ; repli (css/bienvenue.css bloquée) : carte centrée avec champ,
+//      et carte « Entrer » sans mot de passe ;
 //   7. console : aucune erreur (hors bruit nominal : sondes de licence, de version).
 // Usage : cd scripts/smoke && node checkup-bienvenue.js (BV_SHOTS=<dossier> : captures téléphone + PC)
 "use strict";
@@ -86,7 +90,7 @@ async function nouvellePage(nav, vue, opts) {
     }
   });
   page.on("request", function (r) { journal.requetes.push(r.url()); });
-  await page.addInitScript(semer, (opts && opts.sansConditions) ? {} : LS_ARRIVEE);
+  await page.addInitScript(semer, (opts && opts.ls) || ((opts && opts.sansConditions) ? {} : LS_ARRIVEE));
   if (opts && opts.route) await opts.route(page);
   return { ctx: ctx, page: page, journal: journal };
 }
@@ -300,44 +304,263 @@ async function mouvementReduit(nav) {
 }
 
 // ── 6 : instance avec mot de passe ────────────────────────────────────
-async function instanceProtegee(nav) {
-  console.log("\n— instance AVEC mot de passe (390×844) —");
-  const code = "essai-bienvenue";
-  const hash = crypto.createHash("sha256").update(code).digest("hex");
-  const { ctx, page, journal } = await nouvellePage(nav, VUES[0], {
-    route: async function (p) {
-      await p.route(/\/data\/index\.json(\?.*)?$/, async function (route) {
-        const rep = await route.fetch();
-        const idx = await rep.json();
-        idx.config = Object.assign({}, idx.config || {}, { accessHash: hash });
-        await route.fulfill({ response: rep, json: idx });
-      });
-    }
+const CODE = "essai-bienvenue";
+const HASH = crypto.createHash("sha256").update(CODE).digest("hex");
+
+// Index servi avec (ou sans) accessHash ; bloquerCss : la feuille de l'écran Bienvenue échoue (repli).
+function routes(hash, bloquerCss) {
+  return async function (p) {
+    await p.route(/\/data\/index\.json(\?.*)?$/, async function (route) {
+      const rep = await route.fetch();
+      const idx = await rep.json();
+      if (hash) idx.config = Object.assign({}, idx.config || {}, { accessHash: hash });
+      await route.fulfill({ response: rep, json: idx });
+    });
+    if (bloquerCss) await p.route(/\/css\/bienvenue\.css(\?.*)?$/, function (route) { return route.abort(); });
+  };
+}
+
+function ecranProtege() {
+  const o = document.getElementById("kta-unlock-overlay");
+  return !!(o && o.classList.contains("kta-bv-protege") && o.querySelector(".kta-bv-code-champ"));
+}
+
+async function saisir(page, code) {
+  await page.fill(".kta-bv-code-champ", code);
+  await page.press(".kta-bv-code-champ", "Enter");
+  await page.waitForTimeout(400);
+}
+
+async function retourCode(page) {
+  return page.evaluate(function () {
+    const r = document.querySelector(".kta-bv-code-retour");
+    return r ? r.textContent : "";
   });
+}
+
+// Après l'écran : accueil, visite guidée attendue ou non, jamais de PIN proposé.
+async function apresEntree(page, visiteAttendue, quoi) {
+  await attendre(page, function () { return !document.getElementById("kta-unlock-overlay"); }, 8000);
+  const memo = await page.evaluate(function () {
+    return { u: localStorage.getItem("myktamap_unlock_v1"), k: localStorage.getItem("myktamap_unlock_instance_v1") };
+  });
+  verifier(memo.u === HASH && memo.k === HASH, quoi + " : accès mémorisé par le hash d'instance (jamais libre-v1)",
+    quoi + " : mémoire inattendue " + JSON.stringify(memo));
+  if (visiteAttendue) {
+    await attendre(page, function () { return !!document.getElementById("kta-tutorial-modal"); }, 12000)
+      .then(function () { ok(quoi + " : visite guidée ouverte"); })
+      .catch(function () { pb(quoi + " : visite guidée absente"); });
+    await page.click("#kta-tutorial-skip").catch(function () {});
+  }
+  await page.waitForTimeout(2500);
+  const etat = await page.evaluate(function () {
+    const lo = document.getElementById("planLoaderOverlay");
+    return { accueil: !!(lo && lo.style.display === "flex"), pin: !!document.getElementById("kta-pin-proposal-overlay") };
+  });
+  verifier(etat.accueil, quoi + " : l'accueil s'affiche");
+  verifier(!etat.pin, quoi + " : PIN non proposé");
+}
+
+async function instanceProtegee(nav, vue) {
+  console.log("\n— instance AVEC mot de passe, " + vue.nom + " " + vue.viewport.width + "×" + vue.viewport.height + " —");
+  const { ctx, page, journal } = await nouvellePage(nav, vue, { route: routes(HASH) });
   await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
-  await attendre(page, function () { return !!document.getElementById("kta-unlock-input"); }, 20000);
+  await attendre(page, ecranProtege, 20000);
+  await page.waitForTimeout(800);
   const etat = await page.evaluate(function () {
     const o = document.getElementById("kta-unlock-overlay");
-    return { bv: o.classList.contains("kta-bv"), box: !!o.querySelector(".kta-unlock-box"),
-      contacts: !!o.querySelector(".kta-unlock-contact"), entete: !!o.querySelector(".kta-bv-entete") };
+    const tailles = Array.from(o.querySelectorAll(".kta-bv-code-champ, .kta-bv-code-entrer, [data-bv]"))
+      .map(function (el) {
+        const r = el.getBoundingClientRect();
+        return { t: (el.textContent || el.placeholder || "").trim().slice(0, 24), h: Math.round(r.height), w: Math.round(r.width) };
+      });
+    return {
+      champHaut: !!o.querySelector(".kta-bv-entete .kta-bv-code .kta-bv-code-champ[type=password]"),
+      submit: !!o.querySelector('.kta-bv-entete .kta-bv-code button[type=submit]'),
+      entrerDirect: o.querySelectorAll('.kta-bv-entete [data-bv="entrer"]').length,
+      decouvrir: !!o.querySelector('.kta-bv-entete [data-bv="decouvrir"]'),
+      basEntrer: !!o.querySelector('.kta-bv-station-sortie [data-bv="entrer"]'),
+      visite: !!o.querySelector('[data-bv="visite"]'),
+      contacts: o.querySelectorAll(".kta-bv-contacts, a[href^='mailto:'], a[href*='instagram']").length,
+      pastille: o.querySelectorAll(".kta-bv-pastille-pro, a[href*='pro.myktamap.fr']").length,
+      noteHaut: (o.querySelector(".kta-bv-entete .kta-bv-code-note") || {}).textContent || "",
+      notePied: Array.from(o.querySelectorAll(".kta-bv-pied .kta-bv-pied-note")).map(function (p) { return p.textContent; }).join(" | "),
+      credits: !!o.querySelector(".kta-bv-pied-credits") && !!o.querySelector(".kta-bv-pied .kta-bv-signature"),
+      tailles: tailles,
+      debord: Math.max(o.scrollWidth - o.clientWidth, document.documentElement.scrollWidth - window.innerWidth),
+      ancienneCarte: !!o.querySelector(".kta-unlock-box"),
+      focus: document.activeElement === o
+    };
   });
-  verifier(!etat.bv && etat.box && !etat.entete, "écran à mot de passe inchangé (carte, champ)");
-  verifier(!etat.contacts, "pas de contacts de l'auteur sur une instance protégée");
-  verifier(!journal.requetes.some(function (u) { return /bienvenue\.(js|css)|\.woff2/.test(u); }),
-    "aucun fichier de l'écran Bienvenue chargé");
-  await capture(page, "telephone-7-mot-de-passe");
-  await page.fill("#kta-unlock-input", code);
-  await page.click("#kta-unlock-btn");
-  await attendre(page, function () { return !document.getElementById("kta-unlock-overlay"); }, 6000);
-  await attendre(page, function () { return !!document.getElementById("kta-tutorial-modal"); }, 12000)
-    .then(function () { ok("visite guidée d'office au 1er lancement (inchangé)"); })
-    .catch(function () { pb("visite guidée absente après le mot de passe"); });
-  await page.click("#kta-tutorial-skip").catch(function () {});
-  await page.waitForTimeout(2500);
-  verifier(!(await page.evaluate(function () { return !!document.getElementById("kta-pin-proposal-overlay"); })),
-    "PIN non proposé après la visite");
-  await verifierConsole(journal, "instance protégée");
+  verifier(etat.champHaut && etat.submit && !etat.entrerDirect && etat.decouvrir,
+    "en-tête : champ « Code d'accès » + « Entrer » de formulaire + « Découvrir », pas d'« Entrer » direct",
+    "en-tête inattendu : " + JSON.stringify({ c: etat.champHaut, s: etat.submit, e: etat.entrerDirect, d: etat.decouvrir }));
+  verifier(!etat.ancienneCarte, "plus l'ancienne carte centrée");
+  verifier(etat.basEntrer && etat.visite, "« Entrer » et la visite présents en bas");
+  verifier(etat.contacts === 0 && etat.pastille === 0, "ni contacts de l'auteur ni pastille « Licence pro » (haut et pied)",
+    "contacts " + etat.contacts + ", pastille " + etat.pastille);
+  verifier(/personne qui gère/.test(etat.noteHaut) && /personne qui gère/.test(etat.notePied),
+    "à qui demander le code : dit en haut et au pied");
+  verifier(etat.credits, "pied : librairies et signature présentes");
+  const petites = etat.tailles.filter(function (x) { return x.h < 44 || x.w < 44; });
+  verifier(!petites.length, "cibles ≥ 44 px (" + etat.tailles.length + " vérifiées)", "cibles < 44 px : " + JSON.stringify(petites));
+  verifier(etat.debord <= 0, "aucun débordement horizontal", "débordement : " + etat.debord);
+  verifier(etat.focus, "focus sur l'écran, pas sur le champ (pas de clavier imposé)");
+  verifier(journal.requetes.some(function (u) { return /css\/bienvenue\.css/.test(u); }), "feuille de l'écran Bienvenue chargée");
+  await capture(page, vue.nom + "-7-protege-haut");
+
+  // Toute la présentation se lit sans code.
+  const lecture = await page.evaluate(async function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    o.scrollTop = o.scrollHeight;
+    await new Promise(function (r) { setTimeout(r, 400); });
+    return { bas: o.scrollTop + o.clientHeight >= o.scrollHeight - 2, haut: o.scrollTop };
+  });
+  verifier(lecture.bas && lecture.haut > 0, "présentation lisible jusqu'en bas sans code");
+  await capture(page, vue.nom + "-8-protege-bas");
+
+  await page.click('.kta-bv-station-sortie [data-bv="entrer"]');
+  await page.waitForTimeout(1200);
+  const remonte = await page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    return { top: o.scrollTop, focus: !!(document.activeElement && document.activeElement.classList.contains("kta-bv-code-champ")),
+      ouvert: !!o };
+  });
+  verifier(remonte.ouvert && remonte.top < 5 && remonte.focus, "« Entrer » du bas : remonte au champ et lui donne le focus",
+    "« Entrer » du bas : " + JSON.stringify(remonte));
+
+  await page.evaluate(function () { const o = document.getElementById("kta-unlock-overlay"); o.scrollTop = o.scrollHeight; });
+  await page.waitForTimeout(300);
+  await page.click('[data-bv="visite"]');
+  await page.waitForTimeout(1200);
+  const remonteV = await page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    return { top: o ? o.scrollTop : -1, focus: !!(document.activeElement && document.activeElement.classList.contains("kta-bv-code-champ")) };
+  });
+  verifier(remonteV.top < 5 && remonteV.focus, "« Découvrir l'app en 1 minute » : exige le code (remonte au champ)");
+
+  console.log("— code faux —");
+  await saisir(page, "pas-le-bon");
+  const faux = await page.evaluate(function () {
+    return { ouvert: !!document.getElementById("kta-unlock-overlay"), erreur: !!document.querySelector(".kta-bv-code-retour .kta-bv-code-erreur"),
+      memo: localStorage.getItem("myktamap_unlock_v1"), vide: document.querySelector(".kta-bv-code-champ").value === "" };
+  });
+  verifier(faux.ouvert && faux.erreur && !faux.memo && faux.vide, "code faux : message à côté du champ, écran gardé, rien mémorisé",
+    "code faux : " + JSON.stringify(faux));
+  verifier(/incorrect/i.test(await retourCode(page)) && /4/.test(await retourCode(page)), "code faux : essais restants annoncés (4)");
+
+  if (vue.nom === "telephone") {
+    console.log("— verrou temporisé —");
+    for (let i = 0; i < 4; i++) await saisir(page, "toujours-faux-" + i);
+    await page.waitForTimeout(600);
+    const verrou = await page.evaluate(function () {
+      const o = document.getElementById("kta-unlock-overlay");
+      const ch = o.querySelector(".kta-bv-code-champ");
+      const rb = o.querySelector(".kta-bv-code .kta-bv-code-rebours");
+      return { classe: o.classList.contains("kta-bv-verrou"), desactive: ch.disabled,
+        bouton: o.querySelector(".kta-bv-code-entrer").disabled, rebours: rb ? rb.textContent : "",
+        placeholder: ch.placeholder, carte: !!o.querySelector(".kta-unlock-box"), bv: o.classList.contains("kta-bv") };
+    });
+    verifier(verrou.classe && verrou.desactive && verrou.bouton, "verrou : champ et « Entrer » désactivés",
+      "verrou : " + JSON.stringify(verrou));
+    verifier(/\d+ min/.test(verrou.rebours) && /\d+ min/.test(verrou.placeholder),
+      "verrou : compte à rebours dans la zone du champ (« " + verrou.rebours + " »)");
+    verifier(verrou.bv && !verrou.carte, "verrou : la présentation reste affichée (pas l'ancienne carte)");
+    await capture(page, "telephone-9-verrou");
+    const lisible = await page.evaluate(async function () {
+      const o = document.getElementById("kta-unlock-overlay");
+      o.scrollTop = o.scrollHeight;
+      await new Promise(function (r) { setTimeout(r, 300); });
+      const v = o.scrollTop > 0;
+      o.scrollTop = 0;
+      return v;
+    });
+    verifier(lisible, "verrou : présentation toujours lisible (défilement)");
+    // Fin du verrou avancée : le champ revient sur le même écran, la promesse de la gate attend toujours.
+    await page.evaluate(function () {
+      const l = JSON.parse(localStorage.getItem("myktamap_unlock_lock_v1"));
+      l.until = Date.now() + 1200;
+      localStorage.setItem("myktamap_unlock_lock_v1", JSON.stringify(l));
+    });
+    await page.waitForTimeout(3000);
+    const fin = await page.evaluate(function () {
+      const o = document.getElementById("kta-unlock-overlay");
+      return { actif: !o.querySelector(".kta-bv-code-champ").disabled, classe: o.classList.contains("kta-bv-verrou") };
+    });
+    verifier(fin.actif && !fin.classe, "fin du verrou : le champ revient sans recharger");
+  }
+
+  console.log("— code juste —");
+  await page.fill(".kta-bv-code-champ", CODE);
+  await page.press(".kta-bv-code-champ", "Enter");
+  await page.waitForTimeout(1300);
+  const descente = await page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    const tete = o && o.querySelector(".kta-bv-tete-entree");
+    return { descend: !!(o && o.classList.contains("kta-bv-descend")), tete: tete ? parseFloat(getComputedStyle(tete).opacity) : 0 };
+  });
+  verifier(descente.descend && descente.tete > 0.5, "code juste : le tracker descend le puits");
+  await capture(page, vue.nom + "-10-protege-descente");
+  // Visite : comportement inchangé (d'office au 1er lancement d'une instance protégée).
+  await apresEntree(page, true, vue.nom + " code juste");
+  await verifierConsole(journal, vue.nom + " instance protégée");
   await ctx.close();
+}
+
+// Visite demandée avant le code, sur un appareil qui l'a déjà vue : elle s'ouvre quand même après le code.
+async function protegeeVisite(nav) {
+  console.log("\n— instance protégée : « Découvrir l'app en 1 minute » puis code (390×844) —");
+  const ls = Object.assign({}, LS_ARRIVEE, { myktamap_tutorial_seen_v1: "1" });
+  const { ctx, page, journal } = await nouvellePage(nav, VUES[0], { route: routes(HASH), ls: ls });
+  await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+  await attendre(page, ecranProtege, 20000);
+  await page.evaluate(function () { const o = document.getElementById("kta-unlock-overlay"); o.scrollTop = o.scrollHeight; });
+  await page.waitForTimeout(400);
+  await page.click('[data-bv="visite"]');
+  await page.waitForTimeout(1000);
+  await page.keyboard.type(CODE);
+  await page.keyboard.press("Enter");
+  await apresEntree(page, true, "visite demandée");
+  await verifierConsole(journal, "visite demandée");
+  await ctx.close();
+}
+
+// Repli : css/bienvenue.css injoignable → carte centrée, avec et sans mot de passe.
+async function repli(nav) {
+  console.log("\n— repli : css/bienvenue.css bloquée (390×844) —");
+  const a = await nouvellePage(nav, VUES[0], { route: routes(HASH, true) });
+  await a.page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+  await attendre(a.page, function () { return !!document.getElementById("kta-unlock-input"); }, 20000)
+    .then(function () { ok("instance protégée : carte de repli avec champ"); })
+    .catch(function () { pb("instance protégée : pas de carte de repli"); });
+  const etat = await a.page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    return { bv: !!(o && o.classList.contains("kta-bv")), contacts: !!(o && o.querySelector(".kta-unlock-contact")) };
+  });
+  verifier(!etat.bv && !etat.contacts, "repli protégé : carte simple, sans contacts de l'auteur");
+  await capture(a.page, "telephone-11-repli-protege");
+  await a.page.fill("#kta-unlock-input", "faux");
+  await a.page.click("#kta-unlock-btn");
+  await a.page.waitForTimeout(500);
+  verifier(/incorrect/i.test(await a.page.evaluate(function () { return document.getElementById("kta-unlock-feedback").textContent; })),
+    "repli protégé : code faux refusé");
+  await a.page.fill("#kta-unlock-input", CODE);
+  await a.page.click("#kta-unlock-btn");
+  await apresEntree(a.page, true, "repli protégé");
+  await a.ctx.close();
+
+  const b = await nouvellePage(nav, VUES[0], { route: routes(null, true) });
+  await b.page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+  await attendre(b.page, function () { return !!document.getElementById("kta-unlock-libre-btn"); }, 20000)
+    .then(function () { ok("sans mot de passe : carte « Entrer » de repli"); })
+    .catch(function () { pb("sans mot de passe : pas de carte de repli"); });
+  await b.page.click("#kta-unlock-libre-btn");
+  await attendre(b.page, function () { return !document.getElementById("kta-unlock-overlay"); }, 6000)
+    .then(function () { ok("repli libre : « Entrer » ouvre l'app"); })
+    .catch(function () { pb("repli libre : l'écran reste"); });
+  verifier((await b.page.evaluate(function () { return localStorage.getItem("myktamap_unlock_v1"); })) === "libre-v1",
+    "repli libre : accès libre retenu");
+  await b.ctx.close();
 }
 
 (async function main() {
@@ -348,7 +571,9 @@ async function instanceProtegee(nav) {
     for (const vue of VUES) await parcours(nav, vue);
     await premiereOuverture(nav);
     await mouvementReduit(nav);
-    await instanceProtegee(nav);
+    for (const vue of VUES) await instanceProtegee(nav, vue);
+    await protegeeVisite(nav);
+    await repli(nav);
   } catch (e) {
     pb("exception : " + (e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e));
   } finally {
@@ -361,5 +586,5 @@ async function instanceProtegee(nav) {
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP BIENVENUE VERT — écran du premier lancement, descente, visite proposée, mot de passe inchangé.");
+  console.log("🎉 CHECKUP BIENVENUE VERT — écran du premier lancement, descente, visite proposée, code d'accès et repli.");
 })();
