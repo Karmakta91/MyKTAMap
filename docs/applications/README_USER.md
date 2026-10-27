@@ -656,7 +656,7 @@ Le bouton **✏️** de la barre latérale allume ou éteint le mode ajout. Allu
 
 **Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique, 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : un nom court en minuscules, chiffres, `_` ou `-` (ex. `fontaine`) ; il prend l'icône par défaut.
 
-**⚠️ Type Danger : date de constat.** Un point de type **Danger** porte une **📅 Date de constat**, le jour où le danger a été vu : pré-remplie à aujourd'hui, modifiable, à vider si tu ne la connais pas (un point Danger plus ancien reste sans date tant que tu n'en mets pas). Sa bulle affiche « Constaté le … » et rappelle que **MyKTAMap ne certifie pas l'état d'un site : un danger relevé peut avoir changé depuis sa date de constat.** La date part avec l'export de session, le KMZ, le GPX et le GeoJSON (relue par l'import KMZ et GPX), jamais avec l'export anonymisé.
+**⚠️ Type Danger : date de constat.** Un point de type **Danger** porte une **📅 Date de constat**, le jour où le danger a été vu : pré-remplie à aujourd'hui, modifiable, à vider si tu ne la connais pas (un point Danger plus ancien reste sans date tant que tu n'en mets pas). Sa bulle affiche « Constaté le … » et rappelle que **l'état d'un site n'est pas certifié : un danger relevé peut avoir changé depuis sa date de constat.** La date part avec l'export de session, le KMZ, le GPX et le GeoJSON (relue par l'import KMZ et GPX), jamais avec l'export anonymisé.
 
 ### ✏️ Modifier ou repositionner un point
 

@@ -12,8 +12,8 @@
 // point danger existant sans date reste sans date : rien n'est inventé.
 // ⚠️ Le point du mode « perdu » (lostMode.js, `source: "lostMode"`, ou id « lost_… » d'avant ce marqueur) porte
 // le tag danger pour son icône : position incertaine, pas un danger constaté → ni bloc, ni date, ni mention.
-// ⚠️ Fiche de tout POI danger (session ou calque) : la date, puis la mention « MyKTAMap ne certifie pas l'état
-// d'un site » — un danger relevé n'est qu'un constat daté (décision produit).
+// ⚠️ Fiche de tout POI danger (session ou calque) : la date, puis la mention « l'état d'un site n'est pas
+// certifié » (sans nom de l'app) — un danger relevé n'est qu'un constat daté (décision produit).
 // Exports : GeoJSON (propriété `dateConstat`), KMZ (`mkm:dateConstat`), GPX (`constat=` dans <cmt>), relus par
 // les imports KMZ / GPX. Jamais dans l'export anonymisé (liste blanche de sessionExporter.js > _anonymiserSession).
 // Expose window.KtaPoiDanger : TAGS_DANGER, estDanger, dateValide, dateConstat, jourLocal, formaterDate,
@@ -89,9 +89,18 @@
   function brancherFormulaire(modal, ctx) {
     const bloc = modal.querySelector("#kta-poi-danger");
     if (!bloc) return { rafraichir: function () {}, lire: function () { return { applicable: false }; } };
-    const champ = bloc.querySelector("#kta-poi-constat");
+    let champ = bloc.querySelector("#kta-poi-constat");
     function rafraichir() {
-      if (estDanger(ctx.tag())) bloc.removeAttribute("hidden"); else bloc.setAttribute("hidden", "");
+      const visible = estDanger(ctx.tag()), etaitCache = bloc.hasAttribute("hidden");
+      if (visible) bloc.removeAttribute("hidden"); else bloc.setAttribute("hidden", "");
+      // 🩸 iPhone : un champ date créé dans un bloc masqué (création : le tag n'est pas encore « danger ») ne se
+      // laissait plus modifier une fois le bloc affiché ; recréé à l'apparition, il est pris comme un champ visible.
+      if (visible && etaitCache && champ) {
+        const neuf = champ.cloneNode(true);
+        neuf.value = champ.value;
+        champ.replaceWith(neuf);
+        champ = neuf;
+      }
     }
     rafraichir();
     return {

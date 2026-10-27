@@ -28,10 +28,19 @@
 
 ## Maintenant
 
-- **Test appareil : écran Bienvenue** — sur dev, en navigation privée, téléphone et PC : tracker dans le puits dès le
-  premier défilement, sortie d'urgence 🚨, liens de documentation, puis une installation à mot de passe (champ, verrou
-  après 5 codes faux, visite proposée).
-  `qui: KARMA · action: jouer les deux écrans sur dev.myktamap.fr · fini: vus conformes, ou bugs ouverts
+- **Tests Safari (WebKit) dans le smoke** — deux bugs iPhone passés sous Chromium le 26/10 (« Mes plans » à 0 px au
+  1er lancement, date de constat) ; WebKit est déjà installé avec Playwright.
+  `qui: Claude · action: jouer smoke.js et checkup-bienvenue.js aussi sous WebKit (repli s'il manque)
+  · fini: les deux verts sous Chromium et WebKit · depuis: 26/10/2026 · taille: S`
+- **`_currentLoadedPlanId` posé à l'accueil** — revue du 26/10 : id gardé après la fermeture du plan → stats du plan
+  faussées, migration uid jugée sans les calques, photos d'un autre plan proposées au Générateur ; côté pro, présence
+  et itinéraire du plan quitté, « Rejoindre » sans rouvrir le plan. Recommandé : l'effacer à la fermeture.
+  `qui: Claude · action: id à null dans _libererRessourcesPlanPrecedent, replis « default » et batteryGuard adaptés,
+  scénario pro de retour à l'accueil · fini: scénario vert, cas de la revue fermés · depuis: 26/10/2026 · taille: M`
+- **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
+  liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
+  sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
+  `qui: KARMA · action: jouer ces écrans sur dev puis en prod · fini: vus conformes, ou bugs ouverts
   · depuis: 26/10/2026 · taille: XS`
 - **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
   Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
@@ -89,6 +98,15 @@
 
 ## Plus tard
 
+- **La ville : de trois copies à deux** — même dessin, trois formes (`js/bienvenue.js`, `MyKTAMap-pro/site/`,
+  `MyKTAMap-doc/generateur/descente.js`). Le site de doc la lira dans le community à chaque génération (comme la
+  boussole ; polices sur main depuis v2.21.0) ; la vitrine pro reste à part, reportée à la main.
+  `qui: Claude · action: générateur du doc qui extrait la scène de js/bienvenue.js (main), copie retirée
+  · fini: plus de descente.js recopié, accueil du doc identique · depuis: 26/10/2026 · taille: S`
+- **Veille des mentions** — audit du 26/10 : rien d'indexé hors GitHub ; Reddit illisible par l'outil.
+  `qui: KARMA · action: F5Bot (Reddit, Hacker News) et Google Alerts sur « myktamap » · fini: alertes actives
+  · depuis: 26/10/2026 · taille: XS`
+
 - **Calage Lambert 93 exact d'un GeoTIFF** — mémoriser l'EPSG du fichier (`georef.crs`) et caler dans ce CRS : gagne
   les 0,35 m restants aux coins d'un GeoTIFF Lambert 93 de 6 km (le plan tangent suffit à l'objectif < 1 m).
   Déclencheur : un cas réel où ces décimètres comptent. Étude : `docs/ETUDE_CALAGE_PROJECTION.md`.
@@ -122,8 +140,9 @@
 
 ## Entrant
 
-- **Objet supprimé qui reste affiché** — parfois, un POI ou un tracé supprimé ne disparaît qu'au rechargement de la
-  page (vu en pro, peut-être aussi en community). 🔬 hypothèse, non reproduit ; conditions à préciser (plan ☁️,
-  autre compte connecté, après une annulation ?).
-  `qui: KARMA · action: dire dans quel cas c'est arrivé · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
+- **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
+  session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
+  du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
+  `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
+  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 

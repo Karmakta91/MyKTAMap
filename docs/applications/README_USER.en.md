@@ -656,7 +656,7 @@ The **✏️** button in the sidebar turns add mode on or off. When it is on, ev
 
 **The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage, 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: a short name in lowercase letters, digits, `_` or `-` (e.g. `fountain`); it uses the default icon.
 
-**⚠️ Danger type: date observed.** A point of type **Danger** carries a **📅 Date observed**, the day the hazard was seen: pre-filled with today, editable, to be cleared if you don't know it (an older Danger point stays without a date until you add one). Its popup shows "Observed on …" and reminds you that **MyKTAMap does not certify the condition of a site: a recorded hazard may have changed since the date it was observed.** The date goes out with the session export, KMZ, GPX and GeoJSON (read back by the KMZ and GPX import), never with the anonymized export.
+**⚠️ Danger type: date observed.** A point of type **Danger** carries a **📅 Date observed**, the day the hazard was seen: pre-filled with today, editable, to be cleared if you don't know it (an older Danger point stays without a date until you add one). Its popup shows "Observed on …" and reminds you that **the condition of a site is not certified: a recorded hazard may have changed since the date it was observed.** The date goes out with the session export, KMZ, GPX and GeoJSON (read back by the KMZ and GPX import), never with the anonymized export.
 
 ### ✏️ Edit or reposition a point
 

@@ -656,7 +656,7 @@ El botón **✏️** de la barra lateral activa o desactiva el modo añadir. Act
 
 **El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización, 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: un nombre corto en minúsculas, cifras, `_` o `-` (p. ej. `fuente`); usa el icono por defecto.
 
-**⚠️ Tipo Peligro: fecha de constatación.** Un punto de tipo **Peligro** lleva una **📅 Fecha de constatación**, el día en que se vio el peligro: rellenada con hoy, modificable, para vaciar si no la conoces (un punto Peligro más antiguo sigue sin fecha mientras no le pongas una). Su ventana muestra «Constatado el …» y recuerda que **MyKTAMap no certifica el estado de un sitio: un peligro registrado puede haber cambiado desde su fecha de constatación.** La fecha sale con la exportación de sesión, el KMZ, el GPX y el GeoJSON (releída por la importación KMZ y GPX), nunca con la exportación anonimizada.
+**⚠️ Tipo Peligro: fecha de constatación.** Un punto de tipo **Peligro** lleva una **📅 Fecha de constatación**, el día en que se vio el peligro: rellenada con hoy, modificable, para vaciar si no la conoces (un punto Peligro más antiguo sigue sin fecha mientras no le pongas una). Su ventana muestra «Constatado el …» y recuerda que **el estado de un sitio no está certificado: un peligro registrado puede haber cambiado desde su fecha de constatación.** La fecha sale con la exportación de sesión, el KMZ, el GPX y el GeoJSON (releída por la importación KMZ y GPX), nunca con la exportación anonimizada.
 
 ### ✏️ Modificar o reposicionar un punto
 
