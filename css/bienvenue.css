@@ -179,6 +179,9 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   70% { transform: translateX(-2px); } 100% { transform: translateX(1px); } }
 @keyframes kta-bv-faisceau { from { opacity: 0.12; } to { opacity: 0.3; } }
 @keyframes kta-bv-balaie { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+/* Balise rouge du chevalement : battement lent (allumée la plupart du temps, brève extinction). */
+.kta-bv-balise { animation: kta-bv-balise 1.6s steps(1, end) infinite; }
+@keyframes kta-bv-balise { 0% { opacity: 1; } 70% { opacity: 0.15; } 100% { opacity: 0.15; } }
 
 /* ── Stations ── */
 .kta-bv-station { position: relative; background: var(--bv-fond-nuit); }
@@ -321,7 +324,7 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 /* ── Mouvement réduit : état final statique ── */
 @media (prefers-reduced-motion: reduce) {
   .kta-bv-pieton, .kta-bv-jambe, .kta-bv-bras, .kta-bv-voiture, .kta-bv-lueur, .kta-bv-faisceau, .kta-bv-speleo,
-  .kta-bv-aile { animation: none; }
+  .kta-bv-aile, .kta-bv-balise { animation: none; }
   .kta-bv-vol, .kta-bv-vol-haut { display: none; }
   .kta-bv-tete-sec, .kta-bv-js-fil .kta-bv-tete-sec { display: none; }
   .kta-bv-js-fil .kta-bv-fil-sec path { stroke-dasharray: none; stroke-dashoffset: 0; }

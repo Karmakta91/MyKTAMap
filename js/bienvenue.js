@@ -191,33 +191,47 @@
     '8 74 L1047 91 L1025 74 L1003 89 Z" fill="#8e98b5" opacity=".85"/><path d="M330 120 L375 136 L361 129 L347 137 L3' +
     '32 129 L318 137 L304 129 L290 136 Z M840 128 L896 144 L878 137 L860 145 L842 137 L824 145 L806 137 L788 144 Z" f' +
     'ill="#6b7592" opacity=".8"/>';
-  // Chevalements de mine derrière les immeubles : un au bloc central (visible au téléphone, hors de la lune), un
-  // dans le trou entre les deux pignons du raccord en miroir (x = 0).
+  // Un seul chevalement de mine, derrière les immeubles du bloc central (entier au téléphone, hors de la lune) :
+  // dessiné en x = 500, agrandi de 25 % autour de ce pied ; acier teinté de rouille, quelques coulures. Balise rouge
+  // sous la molette (clignote : css/bienvenue.css > .kta-bv-balise).
   const CHEVALEMENT =
-    '<g fill="none" stroke="#3b4562" stroke-linecap="square"><path d="M470 250 L486 40 M530 250 L514 40 M514 40 L615 ' +
-    '250" stroke-width="5"/><path d="M473.4 205 H526.6 M476.9 160 H523.1 M480.3 115 H519.7 M483.3 75 H516.7 M486.0 40' +
-    ' H514.0 M470.0 250 L526.6 205 M530.0 250 L473.4 205 M473.4 205 L523.1 160 M526.6 205 L476.9 160 M476.9 160 L519.' +
-    '7 115 M523.1 160 L480.3 115 M480.3 115 L516.7 75 M519.7 115 L483.3 75 M483.3 75 L514.0 40 M516.7 75 L486.0 40 M5' +
-    '16.7 75 L547.7 110 M519.7 115 L571.7 160 M523.1 160 L593.4 205" stroke-width="2.5"/><path d="M476 40 H526 M476 3' +
-    '2 H526 M476 32 V40 M526 32 V40 M488 32 V40 M514 32 V40" stroke-width="3"/><path d="M478 24 H524 M478 24 V32 M501' +
-    ' 24 V32 M524 24 V32" stroke-width="1.5"/></g><circle cx="500" cy="14" r="20" fill="#121726" stroke="#4a5677" str' +
-    'oke-width="3.5"/><circle cx="500" cy="14" r="15" fill="none" stroke="#4a5677" stroke-width="1"/><path d="M505.0 ' +
-    '14.0 L517.0 14.0 M503.5 17.5 L512.0 26.0 M500.0 19.0 L500.0 31.0 M496.5 17.5 L488.0 26.0 M495.0 14.0 L483.0 14.0' +
-    ' M496.5 10.5 L488.0 2.0 M500.0 9.0 L500.0 -3.0 M503.5 10.5 L512.0 2.0" stroke="#4a5677" stroke-width="2"/><circl' +
-    'e cx="500" cy="14" r="3.5" fill="#4a5677"/><path d="M500 14 V40 M496 22 L504 32" stroke="#3b4562" stroke-width="' +
-    '2.5"/><path d="M520 14 L700 150 M518 22 L700 160" stroke="#4a5677" stroke-width="1.3" opacity=".8"/><g fill="non' +
-    'e" stroke="#3b4562" stroke-linecap="square"><path d="M-30 250 L-14 40 M30 250 L14 40 M14 40 L115 250" stroke-wid' +
-    'th="5"/><path d="M-26.6 205 H26.6 M-23.1 160 H23.1 M-19.7 115 H19.7 M-16.7 75 H16.7 M-14.0 40 H14.0 M-30.0 250 L' +
-    '26.6 205 M30.0 250 L-26.6 205 M-26.6 205 L23.1 160 M26.6 205 L-23.1 160 M-23.1 160 L19.7 115 M23.1 160 L-19.7 11' +
-    '5 M-19.7 115 L16.7 75 M19.7 115 L-16.7 75 M-16.7 75 L14.0 40 M16.7 75 L-14.0 40 M16.7 75 L47.7 110 M19.7 115 L71' +
-    '.7 160 M23.1 160 L93.4 205" stroke-width="2.5"/><path d="M-24 40 H26 M-24 32 H26 M-24 32 V40 M26 32 V40 M-12 32 ' +
-    'V40 M14 32 V40" stroke-width="3"/><path d="M-22 24 H24 M-22 24 V32 M1 24 V32 M24 24 V32" stroke-width="1.5"/></g' +
-    '><circle cx="0" cy="14" r="20" fill="#121726" stroke="#4a5677" stroke-width="3.5"/><circle cx="0" cy="14" r="15"' +
-    ' fill="none" stroke="#4a5677" stroke-width="1"/><path d="M5.0 14.0 L17.0 14.0 M3.5 17.5 L12.0 26.0 M0.0 19.0 L0.' +
-    '0 31.0 M-3.5 17.5 L-12.0 26.0 M-5.0 14.0 L-17.0 14.0 M-3.5 10.5 L-12.0 2.0 M-0.0 9.0 L-0.0 -3.0 M3.5 10.5 L12.0 ' +
-    '2.0" stroke="#4a5677" stroke-width="2"/><circle cx="0" cy="14" r="3.5" fill="#4a5677"/><path d="M0 14 V40 M-4 22' +
-    ' L4 32" stroke="#3b4562" stroke-width="2.5"/><path d="M20 14 L180 160 M18 22 L180 170" stroke="#4a5677" stroke-w' +
-    'idth="1.3" opacity=".8"/>';
+    '<g transform="translate(-125 -62.5) scale(1.25)">' +
+    '<g fill="none" stroke="#4e4552" stroke-linecap="square"><path d="M470 250 L486 40 M530 250 L514 40 M514 40 L61' +
+    '5 250" stroke-width="5"/><path d="M473.4 205 H526.6 M476.9 160 H523.1 M480.3 115 H519.7 M483.3 75 H516.7 M486.' +
+    '0 40 H514.0 M470.0 250 L526.6 205 M530.0 250 L473.4 205 M473.4 205 L523.1 160 M526.6 205 L476.9 160 M476.9 160' +
+    ' L519.7 115 M523.1 160 L480.3 115 M480.3 115 L516.7 75 M519.7 115 L483.3 75 M483.3 75 L514.0 40 M516.7 75 L486' +
+    '.0 40 M516.7 75 L547.7 110 M519.7 115 L571.7 160 M523.1 160 L593.4 205" stroke-width="2.5"/><path d="M476 40 H' +
+    '526 M476 32 H526 M476 32 V40 M526 32 V40 M488 32 V40 M514 32 V40" stroke-width="3"/><path d="M478 24 H524 M478' +
+    ' 24 V32 M501 24 V32 M524 24 V32" stroke-width="1.5"/></g><circle cx="500" cy="14" r="20" fill="#1a1719" stroke' +
+    '="#675a5c" stroke-width="3.5"/><circle cx="500" cy="14" r="15" fill="none" stroke="#675a5c" stroke-width="1"/>' +
+    '<path d="M505.0 14.0 L517.0 14.0 M503.5 17.5 L512.0 26.0 M500.0 19.0 L500.0 31.0 M496.5 17.5 L488.0 26.0 M495.' +
+    '0 14.0 L483.0 14.0 M496.5 10.5 L488.0 2.0 M500.0 9.0 L500.0 -3.0 M503.5 10.5 L512.0 2.0" stroke="#675a5c" stro' +
+    'ke-width="2"/><circle cx="500" cy="14" r="3.5" fill="#675a5c"/><path d="M500 14 V40 M496 22 L504 32" stroke="#' +
+    '4e4552" stroke-width="2.5"/><path d="M520 14 L700 150 M518 22 L700 160" stroke="#675a5c" stroke-width="1.3" op' +
+    'acity=".8"/>' +
+    '<path d="M476 120 l-2 22 M480 70 l-1 14 M519 95 l1 18 M524 170 l1 20 M550 140 l2 14 M473 210 l-1 16" ' +
+    'stroke="#a8653a" stroke-width="2" stroke-linecap="round" opacity=".35"/>' +
+    '<path d="M486 30 h6 v4 h-6 Z M508 34 h5 v4 h-5 Z" fill="#5a3a2c" opacity=".7"/></g>' +
+    '<circle class="kta-bv-balise" cx="500" cy="-12" r="14" fill="#ff5a4a" opacity=".18"/>' +
+    '<circle class="kta-bv-balise" cx="500" cy="-12" r="4" fill="#ff5a4a"/>';
+  // Ciel : transparent en haut (se fond dans l'en-tête, aucune démarcation, même quand le dessin déborde au
+  // téléphone), étoiles qui s'effacent vers le haut ; second rang d'immeubles et brume entre montagnes et rue.
+  function _ciel() {
+    let graine = 7;
+    const alea = function() { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+    let etoiles = "";
+    for (let k = 0; k < 380; k++) {
+      const x = Math.round(-2400 + alea() * 6000), y = Math.round(-185 + alea() * 300), r = alea() < 0.15 ? 1.8 : 1;
+      const bord = Math.max(0, Math.min(1, (y + 110) / 90));
+      etoiles += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" opacity="' +
+        ((0.25 + alea() * 0.55) * bord).toFixed(2) + '"/>';
+    }
+    return '<rect x="-2400" y="-190" width="6000" height="442" fill="url(#kta-bv-ciel)"/>' +
+      '<g fill="#e8eaf0">' + etoiles + '</g>';
+  }
+  const ARRIERE = '<g opacity=".55">' + [-2700, -1500, -300, 900, 2100, 3300].map(function(x) {
+    return '<use href="#kta-bv-bloc" transform="translate(' + x + ' 40) scale(.85)"/>';
+  }).join("") + '</g><rect x="-2400" y="120" width="6000" height="132" fill="url(#kta-bv-brume)"/>';
 
   // Un lampadaire (pied en x = 0) : halo chaud sous la lanterne, sans animation.
   const LAMPADAIRE =
@@ -255,15 +269,24 @@
       '<path d="M0 44 L40 0" stroke="#5c5444" stroke-width="2" opacity=".55"/></pattern>' +
       '<radialGradient id="kta-bv-lampe"><stop offset="0" stop-color="#ffd98a" stop-opacity=".45"/>' +
       '<stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="kta-bv-ciel" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#141b30" stop-opacity="0"/><stop offset=".2" stop-color="#141b30" stop-opacity="0"/>' +
+      '<stop offset=".45" stop-color="#141b30" stop-opacity=".35"/>' +
+      '<stop offset=".7" stop-color="#18203a" stop-opacity=".8"/><stop offset="1" stop-color="#1f2740"/></linearGradient>' +
+      '<linearGradient id="kta-bv-brume" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#8e98b5" stop-opacity="0"/><stop offset=".6" stop-color="#8e98b5" stop-opacity=".16"/>' +
+      '<stop offset="1" stop-color="#8e98b5" stop-opacity=".05"/></linearGradient>' +
       '<g id="kta-bv-bloc">' + BLOC + '</g><g id="kta-bv-lampadaire">' + LAMPADAIRE + '</g></defs>' +
+      _ciel() +
       '<g class="kta-bv-lune-scene" transform="translate(-260 0)">' +
       '<circle class="kta-bv-lueur" cx="1118" cy="-40" r="119.6" fill="url(#kta-bv-halo-scene)"/>' +
       '<circle cx="1118" cy="-40" r="46" fill="#efe6cf"/>' + _crateres(CRATERES_SCENE) + '</g>' +
       '<g class="kta-bv-lune-scene" transform="translate(640 -38)">' + _oiseaux("kta-bv-vol") + '</g>' +
-      '<g id="kta-bv-montagnes">' + MONTAGNES + '</g>' +
+      // Montagnes à mi-hauteur, posées sur la même ligne : un pays minier, pas la haute montagne.
+      '<g transform="translate(0 125) scale(1 .5)"><g id="kta-bv-montagnes">' + MONTAGNES + '</g>' +
       '<use href="#kta-bv-montagnes" transform="translate(-2400 0)"/><use href="#kta-bv-montagnes" transform="translate(-1200 0)"/>' +
       '<use href="#kta-bv-montagnes" transform="translate(1200 0)"/><use href="#kta-bv-montagnes" transform="translate(2400 0)"/>' +
-      CHEVALEMENT +
+      '</g>' + ARRIERE + CHEVALEMENT +
       '<use href="#kta-bv-bloc" transform="translate(-2400 0)"/><use href="#kta-bv-bloc" transform="scale(-1 1)"/>' +
       '<use href="#kta-bv-bloc"/><use href="#kta-bv-bloc" transform="translate(2400 0) scale(-1 1)"/>' +
       '<use href="#kta-bv-bloc" transform="translate(2400 0)"/>' +
