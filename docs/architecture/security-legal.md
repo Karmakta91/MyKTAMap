@@ -180,11 +180,15 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code? })`) ; les polices Montserrat 400/600/800 et Permanent
   Marker (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés
   (`sw.js`). Fichier absent ou trop lent (4 s) → carte de repli (§36.1).
-- **Contenu** : accroche, quatre stations (plan dans la poche · se repérer sans GPS, Mode Secours avec son badge
-  « exploratoire » · rien ne sort de l'appareil · échanger avec soin), sortie « Prêt à descendre ? » ; ville vivante,
-  icônes réelles de `icon/` ; sélecteur de langue de l'app (redessine l'écran). Contacts de
-  l'auteur (`gate.contact`) et pastille pro : mode sans mot de passe seulement. Textes `bienvenue.*`, `gate.*`
-  (fr / en / es).
+- **Contenu** : accroche, sept stations (le topo, avec « ce que l'app n'est pas » · plan dans la poche · annoter le
+  terrain · se repérer sans GPS, Mode Secours avec son badge « exploratoire » · rien ne sort de l'appareil · échanger
+  avec soin · merci, librairies comprises), sortie « Prêt à descendre ? » ; ville vivante, icônes réelles de `icon/`
+  ; sélecteur de langue de l'app (redessine l'écran). **Règle de contenu** : une ligne par fonction, ce qu'elle
+  fait et jamais comment (le guide s'en charge), uniquement ce que décrit le guide utilisateur. Deux planches
+  fictives aux styles de l'app (`styleResolver.js`) : piliers tournés, fronts de taille, itinéraire que le tracker
+  parcourt (`animateMotion`), tracé principal qui se dessine ; figées en mouvement réduit. Contacts de l'auteur
+  (`gate.contact`) et pastille pro : mode sans mot de passe seulement. Pied : signature seule. Textes
+  `bienvenue.*`, `gate.*` (fr / en / es).
 - **Mouvement** (moteur de la page de présentation, adapté à un overlay qui défile en interne) : le fil doré de
   chaque galerie se dessine sur la longueur parcourue, la tête de suivi (`icon/iconetrack.png`) le suit et tourne aux
   coudes, chaque repère passe « atteint » avec un flash. **Mouvement réduit** : état final statique, entrée immédiate.
@@ -199,7 +203,7 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   (`gate.err.*`), jamais de popup. Code juste : la descente part, puis le boot. Visite guidée **proposée** comme
   sans mot de passe : marquée vue à l'entrée, ouverte seulement si demandée. Au pied, une phrase courte
   (`bienvenue.pied.prive`) ; la complète (`gate.info`) est près du champ.
-- **« Découvrir »** fait défiler jusqu'à la 1re station.
+- **« Découvrir »** fait défiler jusqu'à la 1re station (`#kta-bv-topo`).
 - **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
   aucun thème n'est choisi.
 

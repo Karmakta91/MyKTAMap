@@ -225,6 +225,7 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-texte { flex: 999 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .kta-bv-station h2 { margin: 0; font-size: 28px; line-height: 1.2; font-weight: 800; color: var(--bv-texte); }
 .kta-bv-intro { margin: 0; font-size: 17px; line-height: 1.65; color: var(--bv-texte-2); max-width: 760px; }
+.kta-bv-h3 { margin: 6px 0 0; font-size: 17px; font-weight: 800; color: var(--bv-texte); }
 .kta-bv-liste { margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.7; color: var(--bv-texte-2); max-width: 720px; }
 .kta-bv-atouts { margin: 0; display: flex; flex-wrap: wrap; gap: 20px 32px; }
 .kta-bv-atout { flex: 1 1 260px; min-width: 0; }
@@ -246,12 +247,16 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-illus { flex: 1 1 300px; min-width: 0; max-width: 480px; margin: 0; }
 .kta-bv-illus svg { display: block; width: 100%; height: auto; font-family: Montserrat, sans-serif; }
 .kta-bv-legende { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--bv-texte-3); }
+/* Planche « Annoter » : le tracé principal se dessine, reste affiché, puis recommence (pathLength = 100). */
+.kta-bv-trace-anim { stroke-dasharray: 100; animation: kta-bv-trace 8s ease-in-out infinite; }
+@keyframes kta-bv-trace { 0% { stroke-dashoffset: 100; opacity: 1; } 55% { stroke-dashoffset: 0; } 90% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; } }
 .kta-bv-sortie { display: flex; flex-direction: column; gap: 18px; }
 .kta-bv-pied { border-top: 1px solid rgba(244, 197, 66, 0.25); background: var(--bv-fond-nuit); }
 .kta-bv-pied-in { max-width: 1180px; margin: 0 auto; padding: 28px 20px 36px 66px; display: flex; flex-direction: column;
   gap: 10px; }
 .kta-bv-pied-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--bv-texte-3); }
-/* Crédits et signature comme au splash (#splashLeafletCredit, #splashKarmaCorner) : la lueur rend lisible une
+/* Signature comme au splash (#splashKarmaCorner), librairies dans la station « Merci ». La lueur rend lisible une
    signature petite sans la grossir. */
 /* Documentation et code source : pastilles discrètes sous les boutons de la sortie. */
 .kta-bv-sortie-docs { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -261,11 +266,7 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   white-space: nowrap; }
 .kta-bv-github svg { width: 18px; height: 18px; fill: currentColor; }
 @media (hover: hover) { .kta-bv .kta-bv-lien-pied:hover { border-color: var(--bv-or); color: var(--bv-or); } }
-.kta-bv-pied-credits { width: 100%; display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; }
-.kta-bv-pied-credits p { margin: 0; font-size: 11px; line-height: 20px; color: var(--bv-texte-3); letter-spacing: 0.02em;
-  white-space: nowrap; }
-@media (max-width: 480px) { .kta-bv-pied-credits p { font-size: 10px; line-height: 18px; } }
+.kta-bv-pied-credits { width: 100%; display: flex; align-items: flex-end; justify-content: flex-end; gap: 16px; }
 .kta-bv-signature { display: block; flex: none; height: 20px; width: auto;
   filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }
 
@@ -325,6 +326,7 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .kta-bv-pieton, .kta-bv-jambe, .kta-bv-bras, .kta-bv-voiture, .kta-bv-lueur, .kta-bv-faisceau, .kta-bv-speleo,
   .kta-bv-aile, .kta-bv-balise { animation: none; }
+  .kta-bv-trace-anim { animation: none; stroke-dasharray: none; }
   .kta-bv-vol, .kta-bv-vol-haut { display: none; }
   .kta-bv-tete-sec, .kta-bv-js-fil .kta-bv-tete-sec { display: none; }
   .kta-bv-js-fil .kta-bv-fil-sec path { stroke-dasharray: none; stroke-dashoffset: 0; }

@@ -36,6 +36,14 @@
   function reduit() {
     return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
+  // Mouvement réduit : les animations SVG déclaratives des planches (tracker qui parcourt l'itinéraire) s'arrêtent,
+  // le tracker posé au bout de son chemin. Les animations CSS, elles, sont coupées par css/bienvenue.css.
+  function _figerPlanches(racine) {
+    if (!reduit()) return;
+    racine.querySelectorAll(".kta-bv-illus svg").forEach(function(svg) {
+      try { svg.pauseAnimations(); svg.setCurrentTime(8.95); } catch (e) { /* SVG sans animation déclarative */ }
+    });
+  }
 
   // ── Gabarit ─────────────────────────────────────────────────────────────
   const GAL_A = "M22 0 V210 H10 V430 H34 V650 H14 V830 H22 V1000";
@@ -77,7 +85,19 @@
     globe: '<circle cx="12" cy="12" r="9"/>' +
       '<path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/>',
     groupe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/>' +
-      '<path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2"/>'
+      '<path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2"/>',
+    point: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>',
+    trace: '<path d="M4 19 9 9l5 6 6-10"/><path d="M4 5h5v5"/>',
+    regle: '<path d="m3 16 13-13 5 5L8 21l-5-5Z"/><path d="m7 12 2 2M10 9l2 2M13 6l2 2"/>',
+    retour: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+    livre: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"/>' +
+      '<path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5v-13Z"/>',
+    carnet: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    loupe: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
+    sirene: '<path d="M7 18v-6a5 5 0 0 1 10 0v6"/><path d="M5 18h14v3H5zM12 3v2M4.5 6.5 6 8M19.5 6.5 18 8"/>',
+    oeil: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>' +
+      '<circle cx="12" cy="12" r="3"/>',
+    session: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>'
   };
   function _picto(nom) {
     return '<svg class="kta-bv-picto" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + PICTOS[nom] + '</svg>';
@@ -337,28 +357,74 @@
       speleo("kta-bv-speleo-2", "M37 11 L62 5 L62 19 Z", "kta-bv-faisceau-2", 33) + '</svg>';
   }
 
+  // Fond commun des planches fictives : papier, quadrillage, galeries, et structures de carrière telles que l'app
+  // les dessine (styleResolver.js > CANON.structures) — piliers tournés jaunes à contour noir, fronts de taille en
+  // trait épais (jaune 1re masse, orange 2e masse). Les annotations posées dessus reprennent aussi ses styles.
+  function _fondPlanche(reseau, piliers, fronts) {
+    return '<rect x="4" y="4" width="412" height="322" rx="10" fill="#f2ead8" stroke="#5c5444" stroke-width="2"/>' +
+      '<path d="M4 110H416M4 220H416M110 4V326M220 4V326M330 4V326" fill="none" stroke="#ddd2b8" stroke-width="1.5"/>' +
+      '<path d="' + piliers + '" fill="#f4c542" fill-opacity=".85" stroke="#000000" stroke-width="3" ' +
+      'stroke-linejoin="round"/>' +
+      '<path d="' + reseau + '" fill="none" stroke="#2a2620" stroke-width="24" stroke-linejoin="miter" ' +
+      'stroke-linecap="square"/>' +
+      '<path d="' + reseau + '" fill="none" stroke="#f2ead8" stroke-width="14" stroke-linejoin="miter" ' +
+      'stroke-linecap="square"/>' +
+      fronts.map(function(f) {
+        return '<path d="' + f[0] + '" stroke="' + f[1] + '" stroke-width="10" stroke-linecap="butt"/>';
+      }).join("");
+  }
+
   function _planche() {
     const pose = [["peo", 12, 232], ["danger", 182, 132], ["jes", 242, 92], ["chatiere", 202, 282],
       ["passage", 282, 182], ["plaque", 372, 182], ["eso", 300, 52]];
     const reseau = "M30 250 H140 V150 H260 V70 H390 M140 250 V300 H300 V200 H390 M260 150 V200 H300";
     return '<figure class="kta-bv-illus"><svg viewBox="0 0 420 330" aria-hidden="true" focusable="false">' +
-      '<rect x="4" y="4" width="412" height="322" rx="10" fill="#f2ead8" stroke="#5c5444" stroke-width="2"/>' +
-      '<path d="M4 110H416M4 220H416M110 4V326M220 4V326M330 4V326" fill="none" stroke="#ddd2b8" stroke-width="1.5"/>' +
-      '<path d="' + reseau + '" fill="none" stroke="#2a2620" stroke-width="24" stroke-linejoin="miter" ' +
-      'stroke-linecap="square"/>' +
-      '<path d="' + reseau + '" fill="none" stroke="#f2ead8" stroke-width="14" stroke-linejoin="miter" ' +
-      'stroke-linecap="square"/>' +
-      '<path d="M30 250 H140 V150 H260 V70 H390" fill="none" stroke="#c98a00" stroke-width="4" stroke-dasharray="10 8" ' +
-      'stroke-linecap="round"/>' +
-      // Position suivie : l'icône du tracker de l'app (pointe vers le haut au repos), tournée dans le sens de marche.
-      '<image href="icon/iconetrack.png" x="-18" y="-18" width="36" height="36" ' +
-      'transform="translate(372 70) rotate(90)"/>' +
+      _fondPlanche(reseau, "M152 162 H248 V212 H288 V288 H152 Z",
+        [["M407 56 V84", "#f4c542"], ["M407 186 V214", "#ff9933"]]) +
+      // Itinéraire au style de l'app (CANON.traces.itinerary : cyan, tirets).
+      '<path d="M30 250 H140 V150 H260 V70 H390" fill="none" stroke="#00d4ff" stroke-width="6" stroke-dasharray="12 6" ' +
+      'stroke-opacity=".9"/>' +
+      // Position suivie : l'icône du tracker de l'app (pointe vers le haut au repos) parcourt l'itinéraire, tournée
+      // dans le sens de marche (animateMotion : SVG déclaratif, aucun script ; figé en mouvement réduit par
+      // _figerPlanches).
+      '<g class="kta-bv-suivi"><animateMotion dur="9s" repeatCount="indefinite" rotate="auto" ' +
+      'path="M30 250 H140 V150 H260 V70 H390"/>' +
+      '<image href="icon/iconetrack.png" x="-18" y="-18" width="36" height="36" transform="rotate(90)"/></g>' +
       pose.map(function(p) {
         return '<image href="icon/' + p[0] + '.png" x="' + p[1] + '" y="' + p[2] + '" width="36" height="36"/>';
       }).join("") +
       '<text x="18" y="30" fill="#5c5444" font-size="13" font-weight="600" letter-spacing="1">' +
       t("bienvenue.reperer.planche") + '</text></svg>' +
       '<figcaption class="kta-bv-legende">' + t("bienvenue.reperer.legende") + '</figcaption></figure>';
+  }
+
+  // Planche fictive de la station « Annoter » : carrière à piliers tournés et fronts de taille, un tracé principal
+  // qui se dessine (css/bienvenue.css > .kta-bv-trace-anim), une zone inaccessible, des points posés — aux styles
+  // de l'app (tracé principal vert, zone inaccessible hachurée comme index.html > #kta-pattern-inaccessible).
+  function _plancheAnnoter() {
+    const reseau = "M30 260 H160 V120 H300 V60 H390 V180 M160 260 V300 H400 M330 300 V180 H390 M230 120 V300";
+    // Icônes centrées sur leur point, comme les marqueurs de la carte (ancre au centre), toutes sur une galerie.
+    const pose = [["jes", 330, 42], ["danger", 342, 282], ["pa", 90, 242], ["passage", 182, 102]];
+    return '<figure class="kta-bv-illus"><svg viewBox="0 0 420 330" aria-hidden="true" focusable="false">' +
+      '<defs><pattern id="kta-bv-inaccessible" patternUnits="userSpaceOnUse" width="14" height="14" ' +
+      'patternTransform="rotate(45)"><rect width="14" height="14" fill="#5a0a0a"/>' +
+      '<rect width="14" height="14" fill="#cc0000" opacity="0.45"/>' +
+      '<path d="M0 0 V14" stroke="#1a1f2e" stroke-width="4"/></pattern></defs>' +
+      _fondPlanche(reseau, "M172 132 H218 V288 H172 Z M242 132 H312 V72 H378 V168 H318 V288 H242 Z",
+        [["M18 244 V276", "#f4c542"], ["M407 284 V316", "#ff9933"]]) +
+      '<rect x="248" y="288" width="58" height="24" fill="url(#kta-bv-inaccessible)" stroke="#5a0a0a" ' +
+      'stroke-width="3"/>' +
+      // Tracés de l'utilisateur (CANON.traces) : secondaire violet, principal vert qui se dessine.
+      '<path d="M230 120 V300 H330" fill="none" stroke="#b000ff" stroke-width="5" stroke-linecap="round" ' +
+      'stroke-linejoin="round"/>' +
+      '<path class="kta-bv-trace-anim" d="M30 260 H160 V120 H300 V60 H390 V180" fill="none" stroke="#00ff00" ' +
+      'stroke-width="5" stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>' +
+      pose.map(function(p) {
+        return '<image href="icon/' + p[0] + '.png" x="' + p[1] + '" y="' + p[2] + '" width="36" height="36"/>';
+      }).join("") +
+      '<text x="18" y="30" fill="#5c5444" font-size="13" font-weight="600" letter-spacing="1">' +
+      t("bienvenue.reperer.planche") + '</text></svg>' +
+      '<figcaption class="kta-bv-legende">' + t("bienvenue.annoter.legende") + '</figcaption></figure>';
   }
 
   // Instance protégée : formulaire du code (zone remplie par ouvrir > rendreZoneCode), « Découvrir », puis à qui
@@ -407,14 +473,39 @@
         '</div>' +
       '</header>' +
 
-      '<section id="kta-bv-plans" class="kta-bv-station" tabindex="-1">' +
-        _galerie(GAL_A, BRAS_A, true) + _repere("plaque.png") +
+      // Stations : ce que l'app FAIT, une ligne par fonction, d'après le guide (le « comment » est dans la doc).
+      // « Découvrir » amène à la première (#kta-bv-topo).
+      '<section id="kta-bv-topo" class="kta-bv-station" tabindex="-1">' +
+        _galerie(GAL_A, BRAS_A, true) + _repere("entree_plan.png") +
+        '<div class="kta-bv-contenu"><div class="kta-bv-texte">' +
+          '<h2>' + t("bienvenue.topo.titre") + '</h2>' +
+          '<p class="kta-bv-intro">' + t("bienvenue.topo.intro") + '</p>' +
+          '<p class="kta-bv-intro">' + t("bienvenue.topo.complement") + '</p>' +
+          '<h3 class="kta-bv-h3">' + t("bienvenue.topo.nest") + '</h3>' +
+          _liste("bienvenue.topo", 4) +
+        '</div></div>' +
+      '</section>' +
+
+      '<section class="kta-bv-station">' +
+        _galerie(GAL_B, BRAS_B, true) + _repere("plaque.png") +
         '<div class="kta-bv-contenu"><div class="kta-bv-texte">' +
           '<h2>' + t("bienvenue.plans.titre") + '</h2>' +
           '<p class="kta-bv-intro">' + t("bienvenue.plans.intro") + '</p>' +
-          _liste("bienvenue.plans", 3) +
+          _liste("bienvenue.plans", 4) +
           _encart("ambre", "info", "bienvenue.plans.encart") +
         '</div></div>' +
+      '</section>' +
+
+      '<section class="kta-bv-station">' +
+        _galerie(GAL_A, BRAS_A, true) + _repere("pa.png") +
+        '<div class="kta-bv-contenu kta-bv-contenu-ligne"><div class="kta-bv-texte">' +
+          '<h2>' + t("bienvenue.annoter.titre") + '</h2>' +
+          '<dl class="kta-bv-atouts">' +
+            _atout("point", "bienvenue.annoter.points") + _atout("trace", "bienvenue.annoter.traces") +
+            _atout("regle", "bienvenue.annoter.mesure") + _atout("retour", "bienvenue.annoter.corriger") +
+            _atout("livre", "bienvenue.annoter.histoire") + _atout("carnet", "bienvenue.annoter.carnet") +
+          '</dl>' +
+        '</div>' + _plancheAnnoter() + '</div>' +
       '</section>' +
 
       '<section class="kta-bv-station">' +
@@ -423,7 +514,8 @@
           '<h2>' + t("bienvenue.reperer.titre") + '</h2>' +
           '<dl class="kta-bv-atouts">' +
             _atout("boussole", "bienvenue.reperer.suivi") + _atout("chemin", "bienvenue.reperer.iti") +
-            _atout("danger", "bienvenue.reperer.urgence") +
+            _atout("danger", "bienvenue.reperer.urgence") + _atout("oeil", "bienvenue.reperer.xl") +
+            _atout("loupe", "bienvenue.reperer.perdu") + _atout("sirene", "bienvenue.reperer.alertes") +
             _atout("bouee", "bienvenue.reperer.secours", "bienvenue.reperer.secours.badge") +
           '</dl>' +
         '</div>' + _planche() + '</div>' +
@@ -444,10 +536,20 @@
         '<div class="kta-bv-contenu"><div class="kta-bv-texte">' +
           '<h2>' + t("bienvenue.echanges.titre") + '</h2>' +
           '<dl class="kta-bv-atouts">' +
+            _atout("session", "bienvenue.echanges.session") +
             _atout("exports", "bienvenue.echanges.exports") + _atout("imports", "bienvenue.echanges.imports") +
             _atout("carte", "bienvenue.echanges.osm") + _atout("globe", "bienvenue.echanges.langues") +
           '</dl>' +
           _encart("ambre", "groupe", "bienvenue.echanges.encart") +
+        '</div></div>' +
+      '</section>' +
+
+      '<section class="kta-bv-station">' +
+        _galerie(GAL_A, BRAS_A, true) + _repere("house.png") +
+        '<div class="kta-bv-contenu"><div class="kta-bv-texte">' +
+          '<h2>' + t("bienvenue.merci.titre") + '</h2>' +
+          '<p class="kta-bv-intro">' + t("bienvenue.merci.intro") + '</p>' +
+          _liste("bienvenue.merci", 5) +
         '</div></div>' +
       '</section>' +
 
@@ -487,9 +589,8 @@
         (protege ? '<p class="kta-bv-pied-note">' + t("bienvenue.pied.prive") + '</p>'
           : '<p class="kta-bv-contacts">' + t("gate.contact") + '</p>') +
         '<p class="kta-bv-pied-note">' + t("bienvenue.pied") + '</p>' +
-        // Même coin que le splash : librairies (noms propres, non traduits) et signature.
-        '<div class="kta-bv-pied-credits"><p>🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>' +
-          '🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</p>' +
+        // Signature comme au splash ; les librairies sont remerciées dans la station « Merci ».
+        '<div class="kta-bv-pied-credits">' +
           '<img class="kta-bv-signature" src="icon/karma.png" alt="KARMA" height="20"></div>' +
       '</div></footer>' +
       // Sortie d'urgence (bouton 🚨 de l'app) : remonte en haut, montrée une fois l'en-tête dépassé.
@@ -775,7 +876,7 @@
     let visiteVoulue = false;
     let vigieEntete = null, remontee = null;
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
-    const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); };
+    const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); _figerPlanches(ecranEl); };
 
     function champ() { return ecranEl.querySelector(".kta-bv-code-champ"); }
     function retour(html, classe) {
@@ -864,6 +965,7 @@
       ecranEl.innerHTML = _gabarit(!!code);
       ecranEl.scrollTop = 0;
       mvt = _mouvement(ecranEl);
+      _figerPlanches(ecranEl);
       rendreZoneCode();
       surveillerEntete();
       // Focus sur l'écran lui-même (dialogue) : le clavier part de là (Tab → « Entrer », flèches → défilement),
@@ -975,7 +1077,7 @@
       else if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
       else if (action === "visite") { if (code) allerAuChamp(true); else entrer(true); }
       else if (action === "decouvrir") {
-        const cibleSection = ecranEl.querySelector("#kta-bv-plans");
+        const cibleSection = ecranEl.querySelector("#kta-bv-topo");
         if (!cibleSection) return;
         const haut = cibleSection.getBoundingClientRect().top - ecranEl.getBoundingClientRect().top + ecranEl.scrollTop;
         try { ecranEl.scrollTo({ top: haut, behavior: reduit() ? "auto" : "smooth" }); }
