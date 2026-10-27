@@ -3432,6 +3432,7 @@
   "legal.gate.pointRespect": "🤝 Respect the law, site owners, the underground heritage and your own safety.",
   "legal.gate.checkbox": "I have read and understood. I use the app knowingly and under my sole responsibility.",
   "legal.gate.accept": "I accept",
+  "legal.gate.refuse": "Decline",
   "legal.gate.hint": "Tick the box to continue.",
   "legal.gate.readFull": "Read the full text (detailed clauses, order, Senate answer)",
   "legal.full.titre": "Reference texts",

@@ -9,7 +9,8 @@
 // Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), surDoc(), code? }) → { fermer }.
 //   surDoc : « Lire la documentation » du pied (documentation intégrée, au-dessus de l'écran).
 //   avantEntree : facultatif, () → Promise, attendu au clic sur « Entrer » (ou après un code juste) AVANT surEntree et
-//   la descente : conditions d'utilisation montrées à qui entre, jamais à qui ne fait que passer.
+//   la descente : conditions d'utilisation montrées à qui entre, jamais à qui ne fait que passer. Résolue à false
+//   (conditions refusées) : pas d'entrée, l'écran reste ouvert et se réactive.
 //   surEntree : appelé à l'entrée (« Entrer », ou « Découvrir l'app en 1 minute » : visite = true), AVANT l'animation :
 //   l'appelant mémorise l'accès tout de suite (un rechargement pendant la descente ne remontre pas l'écran).
 //   surFin : animation finie, écran retiré.
@@ -997,11 +998,20 @@
       sortie = true;
       interrompreRemontee();
       clearInterval(rebours);
-      ecranEl.querySelectorAll("button, input").forEach(function(b) { b.disabled = true; });
+      const actifs = Array.prototype.filter.call(ecranEl.querySelectorAll("button, input"),
+        function(b) { return !b.disabled; });
+      actifs.forEach(function(b) { b.disabled = true; });
       const avant = typeof opts.avantEntree === "function"
         ? Promise.resolve().then(opts.avantEntree).catch(function(e) { console.warn("[Bienvenue] avantEntree :", e); })
         : Promise.resolve();
-      avant.then(function() { descendre(visite); });
+      avant.then(function(ok) {
+        if (ok !== false) { descendre(visite); return; }
+        sortie = false;
+        actifs.forEach(function(b) { b.disabled = false; });
+        const input = champ();
+        if (input) input.value = "";
+        retour("", "");
+      });
     }
 
     function descendre(visite) {

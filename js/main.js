@@ -1764,17 +1764,19 @@ window.proposerRedemarrageLangue = function() {
   // - sinon (installation reliée : pro, gate déléguée ; accès déjà ouvert) : EN PREMIER, avant toute saisie.
   // 🩸 Avant une gate, au-dessus d'elle : lancée après, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate
   // (z 100100) ; après « Entrer », elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
+  // Refusable quand un écran d'entrée attend derrière (Bienvenue, connexion de la gate déléguée) : on y reste, et le
+  // filet plus bas la redemande, sans « Refuser », une fois l'entrée franchie.
   const _legalAFaire = !!(window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
     && !window.LegalGate.isAccepted() && !(window.IncognitoMode && window.IncognitoMode.active));
   const _legalApresEntree = _legalAFaire && !(_scBoot && _scBoot.state === "on")
     && !!(window.UnlockGate && !window.UnlockGate.isUnlocked());
-  const _ouvrirLegal = async function(auDessus) {
-    try { await window.LegalGate.ouvrirGate({ auDessus: auDessus }); }
-    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  const _ouvrirLegal = async function(auDessus, refusable) {
+    try { return await window.LegalGate.ouvrirGate({ auDessus: auDessus, refusable: refusable }); }
+    catch (e) { console.warn("[Main] LegalGate a échoué :", e); return true; }
   };
   if (_legalAFaire && !_legalApresEntree) {
     await _splashAvantGate();
-    await _ouvrirLegal(false);
+    await _ouvrirLegal(false, !!(_scBoot && _scBoot.state === "on"));
     _rideauSiSplashParti();
   }
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
@@ -1884,13 +1886,14 @@ window.proposerRedemarrageLangue = function() {
       } catch(e) { /* swallow */ }
     } else {
       console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
-      await window.UnlockGate.ouvrirGate(_legalApresEntree ? { avantEntree: function() { return _ouvrirLegal(true); } }
+      await window.UnlockGate.ouvrirGate(_legalApresEntree ? { avantEntree: function() { return _ouvrirLegal(true, true); } }
         : undefined);
       console.log("[Main] Gate auth franchie → init normale");
     }
   }
-  // Filet des conditions différées : carte de repli (sans avantEntree) ou licence qui a contourné la gate.
-  if (_legalApresEntree && !window.LegalGate.isAccepted()) {
+  // Filet des conditions différées ou refusées : carte de repli (sans avantEntree), licence qui a contourné la gate,
+  // refus devant la connexion de la gate déléguée. Plus d'écran d'entrée derrière : non refusable.
+  if (_legalAFaire && !window.LegalGate.isAccepted()) {
     await _splashAvantGate();
     await _ouvrirLegal(false);
     _rideauSiSplashParti();

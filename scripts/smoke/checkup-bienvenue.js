@@ -312,6 +312,26 @@ async function premiereOuverture(nav) {
   verifier(dessus.z > dessus.zo && dessus.cliquable, "conditions au-dessus de l'écran (z " + dessus.z + " > " + dessus.zo +
     "), bouton cliquable");
   verifier(!dessus.descend && !dessus.memo, "pas de descente ni d'accès mémorisé avant l'acceptation");
+  await page.click("#kta-legal-refuse");
+  await page.waitForTimeout(400);
+  const refus = await page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    const b = o && o.querySelector('.kta-bv-hero [data-bv="entrer"]');
+    return { gate: !!document.getElementById("kta-legal-gate-overlay"), ecran: !!o, actif: !!(b && !b.disabled),
+      descend: !!(o && o.classList.contains("kta-bv-descend")), memo: localStorage.getItem("myktamap_unlock_v1") };
+  });
+  verifier(!refus.gate && refus.ecran && refus.actif && !refus.descend && !refus.memo,
+    "refusées : fenêtre fermée, Bienvenue reste, « Entrer » réactivé, rien de mémorisé");
+  await page.click('.kta-bv-hero [data-bv="entrer"]');
+  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 5000)
+    .then(function () { ok("conditions redemandées au nouvel « Entrer »"); })
+    .catch(function () { pb("conditions pas redemandées après un refus"); });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  verifier(!(await page.evaluate(function () { return !!document.getElementById("kta-legal-gate-overlay"); })),
+    "Échap ferme les conditions comme « Refuser »");
+  await page.click('.kta-bv-hero [data-bv="entrer"]');
+  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 5000);
   await page.check("#kta-legal-cb");
   await page.click("#kta-legal-accept");
   await page.waitForTimeout(700);
