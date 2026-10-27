@@ -195,7 +195,7 @@ async function parcours(nav, vue) {
   await page.click('[data-bv="decouvrir"]');
   await page.waitForTimeout(1500);
   const decouvrir = await page.evaluate(function () {
-    const s = document.getElementById("kta-bv-plans");
+    const s = document.getElementById("kta-bv-topo");
     return Math.round(s.getBoundingClientRect().top);
   });
   verifier(Math.abs(decouvrir) <= 4, "« Découvrir » amène la 1re station (haut à " + decouvrir + " px)");
@@ -440,7 +440,10 @@ async function instanceProtegee(nav, vue) {
       pastille: o.querySelectorAll(".kta-bv-pastille-pro, a[href*='pro.myktamap.fr']").length,
       noteHaut: (o.querySelector(".kta-bv-entete .kta-bv-code-note") || {}).textContent || "",
       notePied: Array.from(o.querySelectorAll(".kta-bv-pied .kta-bv-pied-note")).map(function (p) { return p.textContent; }).join(" | "),
-      credits: !!o.querySelector(".kta-bv-pied-credits") && !!o.querySelector(".kta-bv-pied .kta-bv-signature"),
+      credits: !!o.querySelector(".kta-bv-pied .kta-bv-signature") &&
+        Array.from(o.querySelectorAll(".kta-bv-station .kta-bv-liste li")).some(function (li) {
+          return /Leaflet/.test(li.textContent) && /JSZip/.test(li.textContent);
+        }),
       tailles: tailles,
       debord: Math.max(o.scrollWidth - o.clientWidth, document.documentElement.scrollWidth - window.innerWidth),
       ancienneCarte: !!o.querySelector(".kta-unlock-box"),
@@ -457,7 +460,7 @@ async function instanceProtegee(nav, vue) {
     "contacts " + etat.contacts + ", pastille " + etat.pastille);
   verifier(/personne qui gère/.test(etat.noteHaut) && /personne qui la gère/.test(etat.notePied) &&
     etat.notePied.length < etat.noteHaut.length, "à qui demander le code : en haut, et en court au pied");
-  verifier(etat.credits, "pied : librairies et signature présentes");
+  verifier(etat.credits, "signature au pied, librairies remerciées dans la station « Merci »");
   const petites = etat.tailles.filter(function (x) { return x.h < 44 || x.w < 44; });
   verifier(!petites.length, "cibles ≥ 44 px (" + etat.tailles.length + " vérifiées)", "cibles < 44 px : " + JSON.stringify(petites));
   verifier(etat.debord <= 0, "aucun débordement horizontal", "débordement : " + etat.debord);
@@ -476,8 +479,10 @@ async function instanceProtegee(nav, vue) {
   verifier(lecture.bas && lecture.haut > 0, "présentation lisible jusqu'en bas sans code");
   await capture(page, vue.nom + "-8-protege-bas");
 
+  // Remontée en douceur depuis le bas d'une page longue : on attend qu'elle aboutisse (4 s au plus).
+  const enHaut = function () { const o = document.getElementById("kta-unlock-overlay"); return !o || o.scrollTop < 5; };
   await page.click('.kta-bv-station-sortie [data-bv="entrer"]');
-  await page.waitForTimeout(1200);
+  await page.waitForFunction(enHaut, null, { timeout: 4000 }).catch(function () {});
   const remonte = await page.evaluate(function () {
     const o = document.getElementById("kta-unlock-overlay");
     return { top: o.scrollTop, focus: !!(document.activeElement && document.activeElement.classList.contains("kta-bv-code-champ")),
@@ -489,7 +494,7 @@ async function instanceProtegee(nav, vue) {
   await page.evaluate(function () { const o = document.getElementById("kta-unlock-overlay"); o.scrollTop = o.scrollHeight; });
   await page.waitForTimeout(300);
   await page.click('[data-bv="visite"]');
-  await page.waitForTimeout(1200);
+  await page.waitForFunction(enHaut, null, { timeout: 4000 }).catch(function () {});
   const remonteV = await page.evaluate(function () {
     const o = document.getElementById("kta-unlock-overlay");
     return { top: o ? o.scrollTop : -1, focus: !!(document.activeElement && document.activeElement.classList.contains("kta-bv-code-champ")) };
