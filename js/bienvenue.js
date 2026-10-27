@@ -212,8 +212,8 @@
     '<path d="M476 120 l-2 22 M480 70 l-1 14 M519 95 l1 18 M524 170 l1 20 M550 140 l2 14 M473 210 l-1 16" ' +
     'stroke="#a8653a" stroke-width="2" stroke-linecap="round" opacity=".35"/>' +
     '<path d="M486 30 h6 v4 h-6 Z M508 34 h5 v4 h-5 Z" fill="#5a3a2c" opacity=".7"/></g>' +
-    '<circle class="kta-bv-balise" cx="500" cy="-12" r="14" fill="#ff5a4a" opacity=".18"/>' +
-    '<circle class="kta-bv-balise" cx="500" cy="-12" r="4" fill="#ff5a4a"/>';
+    '<circle class="kta-bv-balise" cx="500" cy="-12" r="6" fill="#ff5a4a" opacity=".25"/>' +
+    '<circle class="kta-bv-balise" cx="500" cy="-12" r="3" fill="#ff5a4a"/>';
   // Ciel : transparent en haut (se fond dans l'en-tête, aucune démarcation, même quand le dessin déborde au
   // téléphone), étoiles qui s'effacent vers le haut ; second rang d'immeubles et brume entre montagnes et rue.
   function _ciel() {
