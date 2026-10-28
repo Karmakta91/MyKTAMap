@@ -6195,7 +6195,9 @@
 
   // ── Découper en secteurs ────────────────────────────────────────────
   // N équipes « Secteur k » d'un coup : zone « tracés » (chaque tracé va au secteur qui en porte le plus),
-  // entrée = sortie = accès OUVERT le plus proche par les galeries, niveau = celui qui pèse le plus. Les
+  // entrée = sortie = accès OUVERT le plus proche par les galeries. Niveau : celui du secteur s'il n'en couvre qu'un,
+  // sinon aucun (tous niveaux, `zoneTousNiveaux`) — 🩸 le niveau dominant annonçait « RDC » une équipe qui
+  // descend. Les
   // équipes existantes ne sont jamais touchées. Un seul découpage sur tout le réseau, jonctions comprises
   // (décision produit). Calcul : js/secoursBalayage.js (garde-fou check-secours-balayage.js).
   async function _decouperEnSecteurs(sid) {
@@ -6240,14 +6242,18 @@
       });
       let niv = null, nl = -1;
       Object.keys(parNiv).forEach(function(l) { if (parNiv[l] > nl) { nl = parNiv[l]; niv = Number(l); } });
-      const g = addGroupe(sid, t("secours.secteurs.nom", { n: si + 1 }), _mlvlActif() ? niv : null);
+      const plusieurs = _mlvlActif() && Object.keys(parNiv).length > 1;
+      const g = addGroupe(sid, t("secours.secteurs.nom", { n: si + 1 }), (_mlvlActif() && !plusieurs) ? niv : null);
       if (!g) return;
       const a = x.acces >= 0 ? acces[x.acces] : null;
       const point = function() {
         return { x: a.p.x, y: a.p.y, level: Number.isInteger(a.p.level) ? a.p.level : niv,
                  pointId: a.p.id || null, pointUid: a.p.uid || null, label: a.p.nom || null };
       };
+      // `niv` (dominant) ne sert plus qu'à l'accès sans niveau propre.
       const partiel = { zoneType: "roads", zoneRoadIds: traces[si], parcoursMode: "complet" };
+      // 🩸 addGroupe remplace un niveau absent par le niveau AFFICHÉ (souvent le RDC) : on l'efface ici.
+      if (plusieurs) { partiel.zoneTousNiveaux = true; partiel.level = null; }
       if (a) { partiel.entree = point(); partiel.sortie = point(); }
       updateGroupe(sid, g.id, partiel);
       if (a) _appliquerBalayage(sid, g.id, { silencieux: true });
@@ -9635,6 +9641,16 @@
         && Math.abs((a.y || 0) - (b.y || 0)) < 0.5;
   }
 
+  // Un tracé passe-t-il au niveau `lvl` ? Tracé : son level (0 par défaut, comme pathfinder.js) ; jonction : ses deux
+  // extrémités.
+  function _traceAuNiveau(road, lvl) {
+    if (road && road.type === "jonction") {
+      return (Number.isInteger(road.fromLevel) ? road.fromLevel : 0) === lvl ||
+             (Number.isInteger(road.toLevel) ? road.toLevel : 0) === lvl;
+    }
+    return (road && Number.isInteger(road.level) ? road.level : 0) === lvl;
+  }
+
   // Géométrie de « POI de la zone ». Ray-casting (comme pathfinder.js > _pointInPolygon).
   function _pointInPolygon(p, poly) {
     if (!Array.isArray(poly) || poly.length < 3) return false;
@@ -11856,24 +11872,25 @@
         cntTotal++;
         const p = entry.point || entry;
         if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
-        // Filtre strict : un POI sans level vaut niveau 0 ; écarté si différent de refLevel.
-        if (mlvlActive) {
-          const pLvl = (typeof p.level === "number") ? p.level : 0;
-          if (pLvl !== refLevel) { cntSkipLevel++; return; }
-        }
-        let inside = false;
+        // Un POI sans level vaut niveau 0. Polygone : filtre strict sur refLevel (dessiné sur un niveau).
+        // Tracés : niveau par TRACÉ — 🩸 une zone de galeries sur plusieurs niveaux ne gardait que les POI du
+        // niveau de l'entrée. Jonction : ses deux niveaux.
+        const pLvl = (typeof p.level === "number") ? p.level : 0;
+        if (mlvlActive && g.zoneType !== "roads" && pLvl !== refLevel) { cntSkipLevel++; return; }
+        let inside = false, procheAutreNiveau = false;
         if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
           inside = _pointInPolygon(p, g.zonePolygon);
         } else if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
           for (let i = 0; i < tracesZone.length; i++) {
             const road = tracesZone[i];
             if (!road || !Array.isArray(road.points)) continue;
-            if (_distPointPolyline(p, road.points) <= 30) {  // buffer 30 px
-              inside = true;
-              break;
-            }
+            if (_distPointPolyline(p, road.points) > 30) continue;  // buffer 30 px
+            if (mlvlActive && !_traceAuNiveau(road, pLvl)) { procheAutreNiveau = true; continue; }
+            inside = true;
+            break;
           }
         }
+        if (!inside && procheAutreNiveau) { cntSkipLevel++; return; }
         if (!inside) { cntSkipOutside++; return; }
         if (dejaPresent({ x: p.x, y: p.y, pointId: p.id, pointUid: p.uid || null })) { cntSkipDup++; return; }
         const dx = p.x - g.entree.x, dy = p.y - g.entree.y;
