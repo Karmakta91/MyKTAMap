@@ -8,9 +8,14 @@ Le garde-fou qui **clique** — né après 3 erreurs runtime en une semaine
 
 ```bash
 cd scripts/smoke
-npm install          # 1re fois : télécharge Chromium (~130 Mo)
+npm install          # 1re fois : télécharge Chromium et WebKit
 npm run smoke
 ```
+
+**Deux moteurs** : `smoke.js` et `checkup-bienvenue.js` jouent tout sous **Chromium** (repli Edge) **puis WebKit**, le
+moteur de Safari donc de tout navigateur iPhone (`navigateur.js > moteurs / lancerMoteur`). `KTA_MOTEURS=chromium` ou
+`webkit` pour n'en jouer qu'un ; WebKit absent (`npx playwright install webkit`) = moteur sauté, annoncé. Un problème
+est préfixé du moteur qui l'a vu. Les autres checkups restent sous Chromium.
 
 Sert le repo en local (port 8123, ou `SMOKE_PORT` pour deux copies de travail en même temps), boote l'app dans Chromium headless,
 passe les gates (mdp communautaire, CGU, tutoriel, alerte, proposition PIN

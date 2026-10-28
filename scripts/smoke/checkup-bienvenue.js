@@ -26,8 +26,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { chromium } = require("playwright");
-const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
+const { moteurs, lancerMoteur } = require("./navigateur.js");   // Chromium (repli Edge) puis WebKit
 const attendre = require("./attendre.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);   // même port que server.js
@@ -41,7 +40,8 @@ const VUES = [
 ];
 
 const problemes = [];
-function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
+let MOTEUR = "";
+function pb(m) { problemes.push((MOTEUR ? "[" + MOTEUR + "] " : "") + m); console.log("  ❌ " + m); }
 function ok(m) { console.log("  ✅ " + m); }
 function info(m) { console.log("  ℹ️  " + m); }
 function verifier(cond, msgOk, msgKo) { if (cond) ok(msgOk); else pb(msgKo || msgOk); }
@@ -49,7 +49,7 @@ function verifier(cond, msgOk, msgKo) { if (cond) ok(msgOk); else pb(msgKo || ms
 async function capture(page, nom) {
   if (!SHOTS) return;
   fs.mkdirSync(SHOTS, { recursive: true });
-  const f = path.join(SHOTS, nom + ".png");
+  const f = path.join(SHOTS, (MOTEUR && MOTEUR !== "chromium" ? MOTEUR + "-" : "") + nom + ".png");
   await page.screenshot({ path: f });
   info("capture : " + f);
 }
@@ -669,27 +669,35 @@ async function repli(nav) {
 
 (async function main() {
   const server = require("./server.js");
-  let nav;
-  try {
-    nav = await lancerNavigateur(chromium);
-    for (const vue of VUES) await parcours(nav, vue);
-    await premiereOuverture(nav);
-    await mouvementReduit(nav);
-    for (const vue of VUES) await instanceProtegee(nav, vue);
-    await protegeeSansVisite(nav);
-    await protegeeVisite(nav);
-    await repli(nav);
-  } catch (e) {
-    pb("exception : " + (e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e));
-  } finally {
-    if (nav) await nav.close();
-    if (server && server.close) server.close();
+  const joues = [];
+  for (const nom of moteurs()) {
+    let nav = null;
+    try {
+      nav = await lancerMoteur(nom);
+      if (!nav) continue;
+      MOTEUR = nom;
+      console.log("\n══ moteur " + nom + " (" + nav.version() + ") ══");
+      for (const vue of VUES) await parcours(nav, vue);
+      await premiereOuverture(nav);
+      await mouvementReduit(nav);
+      for (const vue of VUES) await instanceProtegee(nav, vue);
+      await protegeeSansVisite(nav);
+      await protegeeVisite(nav);
+      await repli(nav);
+      joues.push(nom);
+    } catch (e) {
+      pb("exception : " + (e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e));
+    } finally {
+      if (nav) await nav.close();
+    }
   }
+  if (server && server.close) server.close();
+  if (!joues.length && !problemes.length) pb("aucun moteur lancé (KTA_MOTEURS=" + (process.env.KTA_MOTEURS || "") + ")");
   console.log("");
   if (problemes.length) {
     console.log("⚠️ CHECKUP ROUGE — " + problemes.length + " problème(s) :");
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP BIENVENUE VERT — écran du premier lancement, descente, visite proposée, code d'accès et repli.");
+  console.log("🎉 CHECKUP BIENVENUE VERT (" + joues.join(" + ") + ") — écran du premier lancement, descente, visite proposée, code d'accès et repli.");
 })();

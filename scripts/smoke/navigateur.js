@@ -6,6 +6,9 @@
 // Windows) : sans ce repli, un poste sans navigateur Playwright ne lance aucun checkup de la porte.
 // Seule l'absence du navigateur déclenche un repli ; toute autre erreur remonte.
 // lancerNavigateur(chromium[, opts]) → Promise<Browser>
+// Moteurs : moteurs() lit KTA_MOTEURS (« chromium,webkit » par défaut) ; lancerMoteur(nom[, opts]) → Promise<Browser|null>.
+// WebKit = le moteur de Safari, donc de tout navigateur iPhone : deux bugs iPhone sont passés sous Chromium seul.
+// WebKit absent (pas téléchargé) : null, le harnais le dit et joue le reste — jamais un faux vert silencieux.
 // =====================================================================
 "use strict";
 
@@ -24,4 +27,23 @@ async function lancerNavigateur(chromium, opts) {
   }
 }
 
+function moteurs() {
+  const v = String(process.env.KTA_MOTEURS || "chromium,webkit").toLowerCase();
+  return v.split(",").map(function (m) { return m.trim(); }).filter(function (m) { return m === "chromium" || m === "webkit"; });
+}
+
+async function lancerMoteur(nom, opts) {
+  const pw = require("playwright");
+  if (nom !== "webkit") return lancerNavigateur(pw.chromium, opts);
+  try {
+    return await pw.webkit.launch(opts || {});
+  } catch (e) {
+    if (!_absent(e)) throw e;
+    console.log("[harnais] ⚠️ WebKit absent : moteur SAUTÉ (installer : npx playwright install webkit)");
+    return null;
+  }
+}
+
 module.exports = lancerNavigateur;
+module.exports.moteurs = moteurs;
+module.exports.lancerMoteur = lancerMoteur;

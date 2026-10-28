@@ -28,10 +28,6 @@
 
 ## Maintenant
 
-- **Tests Safari (WebKit) dans le smoke** — deux bugs iPhone passés sous Chromium le 26/10 (« Mes plans » à 0 px au
-  1er lancement, date de constat) ; WebKit est déjà installé avec Playwright.
-  `qui: Claude · action: jouer smoke.js et checkup-bienvenue.js aussi sous WebKit (repli s'il manque)
-  · fini: les deux verts sous Chromium et WebKit · depuis: 26/10/2026 · taille: S`
 - **`_currentLoadedPlanId` posé à l'accueil** — revue du 26/10 : id gardé après la fermeture du plan → stats du plan
   faussées, migration uid jugée sans les calques, photos d'un autre plan proposées au Générateur ; côté pro, présence
   et itinéraire du plan quitté, « Rejoindre » sans rouvrir le plan. Recommandé : l'effacer à la fermeture.
