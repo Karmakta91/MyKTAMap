@@ -95,6 +95,13 @@ la **carte centrée** prend le relais dans le même mode (`_monterGateMode(hash,
 ⚠️ **Niveau de sécurité inchangé** : barrière **sociale**, jamais une authentification. Le hash d'instance
 est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modifie en F12.
 
+**Mot de passe oublié : pas de voie de secours** (décision KARMA, 28/10/2026). L'installation ne garde que
+l'empreinte SHA-256 : personne ne retrouve l'ancien code. Le visiteur le demande à qui gère l'installation ; le
+gestionnaire qui l'a oublié en **pose un nouveau** dans ConfAdmin et republie `index.json`. Aucune récupération dans
+l'app : ce serait une porte dérobée sur une installation privée, et le community n'a pas de serveur pour vérifier
+une identité. Cinq codes faux = verrou **temporisé** (compte à rebours, l'écran revient seul). ❌ Ne jamais conseiller
+d'effacer les données du site : ça ne donne pas l'accès (le code est redemandé) et ça efface sessions et photos.
+
 #### 36.2 Ce qui est mémorisé
 
 - `myktamap_unlock_v1` (`LS_UNLOCK`) : `libre-v1` (accès libre, licence pro) **ou** le hash du mot de

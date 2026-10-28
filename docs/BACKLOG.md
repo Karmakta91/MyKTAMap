@@ -90,10 +90,6 @@
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027
   · fini: scan Sonar vert avec le nouveau jeton · depuis: 09/10/2026 · taille: XS`
-- **Mot de passe d'installation oublié** — ⚪ seul l'effacement des données du site lève le verrou ; pas de voie de
-  secours.
-  `qui: KARMA · action: confirmer « pas de voie de secours » ou en demander une
-  · fini: décision écrite dans security-legal.md · depuis: 04/10/2026 · taille: XS`
 - **Échelle typographique** — ✅ vérifié 20/10 : ~35 tailles de texte dans `css/` ; 11 / 11,5 / 12 / 12,5 / 13 px se
   suivent à moins de 5 %. Reste de l'audit d'interface (M1) : 6 rôles proposés (11 méta, 12,5 libellé, 14 corps,
   15 lecture, 18 titre de fenêtre, 24 titre d'écran), plancher de 11 px pour tout texte cliquable.
