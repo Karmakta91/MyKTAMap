@@ -767,6 +767,7 @@
   "calque.ajouts.historique": "{n} object(s) added to a layer",
   "gen.maj.fichierLigne": "✏️ {fichier} (updated)",
   "gen.maj.statut": "🔄 Map update: {remplaces} layer(s) replaced, {nouveaux} new. Check, then generate.",
+  "gen.maj.echelleRecalibree": "📏 Scale recalibrated in the app: {recal} px/m (in the plan: {plan}). This is the one that will be written.",
   "gen.fermerPlan.titre": "Close the map during generation",
   "gen.fermerPlan.texte": "Cutting a large image into tiles needs a lot of memory. The map will be closed during generation to free it; your session is saved and you will find the map again afterwards.",
   "gen.fermerPlan.ok": "Close and generate",

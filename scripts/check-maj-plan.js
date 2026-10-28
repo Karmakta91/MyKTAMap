@@ -158,6 +158,38 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire}", !!I && typeof 
     /CS\.restituer\(id\)/.test(MP) && /CS\.retirerIntegres\(etat\.uids, etat\.T\)/.test(MP));
 }
 
+// ── 4. Échelle recalibrée dans l'app reprise par le Générateur ──────
+// 🩸 Sans elle, le nouveau ZIP repartait avec l'ancienne échelle (et une autre version perdait la recalibration).
+{
+  const GEN = lire("js/createConf.js");
+  const MP = lire("js/majPlan.js");
+  const i = GEN.indexOf("function _appliquerEchelleRecalibree(");
+  const j = i >= 0 ? GEN.indexOf("\n}\n", i) : -1;
+  t("Générateur : _appliquerEchelleRecalibree présente", i >= 0 && j > i);
+  const essai = function (champ, recal, planId) {
+    const els = { pl_scale: { value: String(champ) }, pl_scale_recal: { textContent: "", style: { display: "none" } } };
+    const ctx = {
+      document: { getElementById: function (id) { return els[id] || null; } },
+      window: { getPlanScale: function (id) { return id === "p1" ? recal : null; },
+                I18n: { t: function (k, p) { return k + ":" + p.recal + "/" + p.plan; } } }
+    };
+    ctx.window.document = ctx.document;
+    vm.createContext(ctx);
+    vm.runInContext("const window = this.window; const document = this.document;" + GEN.slice(i, j + 2) +
+      "\nthis.r = _appliquerEchelleRecalibree(" + JSON.stringify(planId) + ");", ctx);
+    return { r: ctx.r, champ: String(els.pl_scale.value), note: els.pl_scale_recal.style.display };
+  };
+  const a = essai(4.9, 5.2349, "p1");
+  t("échelle recalibrée ≠ ZIP : le champ prend la recalibrée (3 décimales) et on le dit",
+    a.champ === "5.235" && /echelleRecalibree:5\.235\/4\.9/.test(a.r) && a.note === "");
+  const b = essai(5.2, 5.2, "p1"), c = essai(4.9, null, "p1");
+  t("même échelle : rien ne change, rien n'est dit", b.r === "" && b.champ === "5.2");
+  t("pas de recalibration pour ce plan : champ du ZIP gardé", c.r === "" && c.champ === "4.9");
+  t("sans id de plan : rien (jamais l'échelle d'un autre plan)", essai(4.9, 5.2, null).r === "");
+  t("câblage : l'assistant passe l'id du plan, _appliquerMaj applique l'échelle",
+    /ktaGenerateurMaj\(\{\s*planId: entree\.id/.test(MP) && /_appliquerEchelleRecalibree\(maj\.planId\)/.test(GEN));
+}
+
 console.log("");
 if (ko) { console.log("❌ check-maj-plan : " + ko + " problème(s)"); process.exit(1); }
 console.log("🎉 mise à jour du plan : regroupement, fichiers, retrait de session et câblage tiennent");

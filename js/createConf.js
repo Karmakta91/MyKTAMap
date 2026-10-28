@@ -487,6 +487,7 @@ function afficherPlanner() {
 
             <label class="kta-cfg-label">${window.I18n.t("gen.tracking.echelle")}</label>
             <input class="kta-cfg-input" id="pl_scale" type="number" step="0.1" value="4.9">
+            <div id="pl_scale_recal" class="kta-planner-info" style="display:none; margin:4px 0 0;"></div>
 
             <!-- 👣 v1.96.0 (KARMA : « ces réglages n'ont rien à faire là ») — taille
                  de pas, seuil et cooldown ne sont PLUS des champs du plan : ils
@@ -700,6 +701,12 @@ function afficherPlanner() {
     const badge = document.getElementById("pl_geo_B_estime_badge");
     if (badge) badge.style.display = "";
     _plannerMajPrecision();
+  });
+  // Échelle retouchée à la main : la ligne « recalibrée, c'est elle qui sera écrite » ne dit plus vrai.
+  const _champEchelle = document.getElementById("pl_scale");
+  if (_champEchelle) _champEchelle.addEventListener("input", function() {
+    const note = document.getElementById("pl_scale_recal");
+    if (note) note.style.display = "none";
   });
   ["pl_geo_B_x", "pl_geo_B_y", "pl_geo_B_coords"].forEach(function(id) {
     const el = document.getElementById(id);
@@ -1674,8 +1681,27 @@ function _appliquerMaj() {
   if (cb) cb.checked = true;
   _majVisibiliteCheckboxPhotos();
   _majCompteurPhotosPlanner();
-  _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }), false);
+  const echelle = _appliquerEchelleRecalibree(maj.planId);
+  _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }) +
+    (echelle ? " " + echelle : ""), false);
   if (refuses.length) _plannerErreur(window.I18n.t("gen.maj.tropDeCalques", { ids: refuses.join(", ") }));
+}
+
+// Échelle recalibrée dans l'app (⚙️ Réglages, rangée sur l'appareil par plan : config.js > getPlanScale) : elle
+// remplace celle du ZIP dans le champ, et on le dit. 🩸 Sans ça, le nouveau ZIP repartait avec l'ancienne échelle, et
+// une autre version (autre id de plan) perdait la recalibration jusque sur cet appareil. → phrase affichée, ou "".
+function _appliquerEchelleRecalibree(planId) {
+  const champ = document.getElementById("pl_scale");
+  const note = document.getElementById("pl_scale_recal");
+  const recal = (planId && typeof window.getPlanScale === "function") ? window.getPlanScale(planId) : null;
+  const zip = champ ? Number.parseFloat(champ.value) : Number.NaN;
+  if (!champ || !(recal > 0) || (Number.isFinite(zip) && Math.abs(recal - zip) < 1e-6)) return "";
+  const r = function(v) { return Math.round(v * 1000) / 1000; };
+  champ.value = r(recal);
+  const phrase = window.I18n.t("gen.maj.echelleRecalibree", {
+    recal: r(recal), plan: Number.isFinite(zip) ? r(zip) : "?" });
+  if (note) { note.textContent = phrase; note.style.display = ""; }
+  return phrase;
 }
 
 function _fichierJsonMaj(nom, payload) {

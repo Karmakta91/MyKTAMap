@@ -767,6 +767,7 @@
   "calque.ajouts.historique": "Intégration de {n} objet(s) à un calque",
   "gen.maj.fichierLigne": "✏️ {fichier} (mis à jour)",
   "gen.maj.statut": "🔄 Mise à jour du plan : {remplaces} calque(s) remplacé(s), {nouveaux} nouveau(x). Vérifie, puis génère.",
+  "gen.maj.echelleRecalibree": "📏 Échelle recalibrée dans l'app : {recal} px/m (dans le plan : {plan}). C'est elle qui sera écrite.",
   "gen.fermerPlan.titre": "Fermer le plan pendant la génération",
   "gen.fermerPlan.texte": "Le découpage en tuiles d'une grande image demande beaucoup de mémoire. Le plan va être fermé pendant la génération pour la libérer ; ta session est enregistrée et tu le retrouveras ensuite.",
   "gen.fermerPlan.ok": "Fermer et générer",

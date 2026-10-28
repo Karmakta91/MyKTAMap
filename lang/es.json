@@ -767,6 +767,7 @@
   "calque.ajouts.historique": "Integración de {n} objeto(s) en una capa",
   "gen.maj.fichierLigne": "✏️ {fichier} (actualizado)",
   "gen.maj.statut": "🔄 Actualización del mapa: {remplaces} capa(s) reemplazada(s), {nouveaux} nueva(s). Revisa y genera.",
+  "gen.maj.echelleRecalibree": "📏 Escala recalibrada en la app: {recal} px/m (en el plano: {plan}). Es la que se escribirá.",
   "gen.fermerPlan.titre": "Cerrar el mapa durante la generación",
   "gen.fermerPlan.texte": "Cortar una imagen grande en teselas necesita mucha memoria. El mapa se cerrará durante la generación para liberarla; tu sesión queda guardada y lo recuperarás después.",
   "gen.fermerPlan.ok": "Cerrar y generar",
