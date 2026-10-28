@@ -314,6 +314,31 @@ async function jouer(navigateur) {
       await fermerModales();
     } else console.log("  ℹ️ afficherAide non exposée — étape sautée (non bloquant)");
 
+    // ── Retour à l'accueil par 🏠 puis « Reprendre » ──────
+    // 🩸 Un id de plan gardé à l'accueil faisait croire le plan ouvert (stats, photos, présence du plan quitté).
+    console.log("— Retour à l'accueil et « Reprendre » —");
+    const idOuvert = await page.evaluate(function () { return window._currentLoadedPlanId || null; });
+    await page.evaluate(function () { const b = document.getElementById("kta-refonte-home"); if (b) b.click(); });
+    await page.waitForTimeout(300);
+    await page.evaluate(function () { const b = document.getElementById("popupChargerPlan"); if (b) b.click(); });
+    await attendre(page, function () { return document.body.classList.contains("kta-loader-active"); }, 10000)
+      .catch(function () { pb("accueil", "pas de retour à l'accueil en 10 s"); });
+    await page.waitForTimeout(800);
+    const accueil = await page.evaluate(function () {
+      return { id: window._currentLoadedPlanId, dernier: window._ktaDernierPlanId,
+        reprendre: (document.getElementById("resumeBox") || { dataset: {} }).dataset.planId || null };
+    });
+    if (idOuvert && accueil.id === null && accueil.dernier === idOuvert && accueil.reprendre === idOuvert) {
+      ok("accueil : plus de plan courant, plan quitté gardé pour la carte OSM et « Reprendre »");
+    } else pb("accueil", "état après fermeture : " + JSON.stringify({ ouvert: !!idOuvert, id: accueil.id === null ? null :
+      "posé", dernier: accueil.dernier === idOuvert, reprendre: accueil.reprendre === idOuvert }));
+    await page.evaluate(function () { const b = document.getElementById("resumeBtn"); if (b) b.click(); });
+    await attendre(page, function () { return !!window.PLAN_CONFIG && window.ktaPlanAffiche(); }, 15000)
+      .catch(function () {});
+    const repris = await page.evaluate(function () { return window._currentLoadedPlanId || null; });
+    if (repris && repris === idOuvert) ok("« Reprendre » : le plan revient, id de plan courant reposé");
+    else pb("accueil", "« Reprendre » n'a pas rouvert le plan quitté");
+
     await page.waitForTimeout(800);   // laisser sortir les erreurs asynchrones
   } catch (e) {
     pb("smoke", "exception du scénario : " + String(e).slice(0, 300));

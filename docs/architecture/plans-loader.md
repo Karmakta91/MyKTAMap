@@ -606,9 +606,12 @@ urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
   avant le démontage, puis tuiles, calques, carte, canvas de collision, blobs du ZIP). Pile de retour et chaîne
   multi-plans abandonnées (`onPlanExit("home")`).
 - Pas de carte (démarrage, accueil déjà affiché) → seulement la purge de navigation et `quitterPlan("accueil")`.
-- Après : `window.map === null`, `PLAN_CONFIG === null`, `#map` vide ; `_currentLoadedPlanId` garde le dernier plan
-  (« Reprendre », carte OSM de l'accueil). « Un plan est affiché ? » reste `ktaPlanAffiche()` (un plan se charge
-  SOUS l'accueil).
+- Après : `window.map === null`, `PLAN_CONFIG === null`, `#map` vide, `_currentLoadedPlanId === null` (remis à null
+  APRÈS le démontage, qui le lit encore) ; le plan quitté passe dans `window._ktaDernierPlanId` (carte OSM de
+  l'accueil). « Reprendre » lit `PlanRegistry`. 🩸 Gardé à l'accueil, l'id faisait croire le plan ouvert : stats et
+  photos du plan quitté au Générateur, présence et itinéraire du plan quitté côté installation reliée. « Un plan est
+  affiché ? » reste `ktaPlanAffiche()` (un plan se charge SOUS l'accueil). Preuve : `smoke.js` (retour accueil puis
+  « Reprendre », deux moteurs), `check-osm-outils.js`.
 - « Reprendre » / rouvrir = chargement normal : la session restaure objets, mesures, légende, calques en
   modification, traces de suppression, filtres et timeline du suivi ; favoris et calage vivent hors session. Le suivi
   reste arrêté (l'utilisateur le relance).

@@ -28,11 +28,11 @@
 
 ## Maintenant
 
-- **`_currentLoadedPlanId` posé à l'accueil** — revue du 26/10 : id gardé après la fermeture du plan → stats du plan
-  faussées, migration uid jugée sans les calques, photos d'un autre plan proposées au Générateur ; côté pro, présence
-  et itinéraire du plan quitté, « Rejoindre » sans rouvrir le plan. Recommandé : l'effacer à la fermeture.
-  `qui: Claude · action: id à null dans _libererRessourcesPlanPrecedent, replis « default » et batteryGuard adaptés,
-  scénario pro de retour à l'accueil · fini: scénario vert, cas de la revue fermés · depuis: 26/10/2026 · taille: M`
+- **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
+  quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
+  plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
+  `qui: Claude · action: scénario pro de retour à l'accueil, après le lot tests-fiables du pro
+  · fini: scénario vert · depuis: 26/10/2026 · taille: S`
 - **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
   liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
   sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).

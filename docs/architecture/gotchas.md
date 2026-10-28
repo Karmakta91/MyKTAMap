@@ -420,7 +420,9 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
 
 **À NE PAS faire** :
 - ❌ Réutiliser `PLAN_CONFIG && PLAN_CONFIG.plan` pour savoir si l'on est sur un plan ou au HOME (c'est valide uniquement pour LIRE les métadonnées du dernier plan chargé : nom, échelle…).
-- ❌ Se fier à `window._currentLoadedPlanId` : il **persiste** au retour HOME (« Reprendre », carte OSM de l'accueil).
+- ❌ Se fier à `window._currentLoadedPlanId` seul : il est posé dès le **début** d'un chargement (plan encore sous
+  l'accueil). Au retour HOME il vaut `null` ; le plan quitté est dans `window._ktaDernierPlanId` (carte OSM de
+  l'accueil ; « Reprendre » lit `PlanRegistry`).
 - ⚠️ À l'accueil, `PLAN_CONFIG` et `window.map` valent `null` après un plan ouvert (comme au démarrage) : un code qui tourne à l'accueil les garde.
 
 ---

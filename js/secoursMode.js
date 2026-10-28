@@ -172,7 +172,7 @@
   let _scenarios = [];
   // Clé de stockage dont _scenarios est le reflet (posée par _loadScenarios, effacée par reset). 🩸 Sans elle, une
   // écriture plan fermé (accueil) partait de la liste vidée par reset et écrasait le stockage du plan : un
-  // scénario reçu en temps réel effaçait les brouillons de l'utilisateur (_currentLoadedPlanId reste posé à l'accueil).
+  // scénario reçu en temps réel effaçait les brouillons de l'utilisateur.
   let _cleChargee = null;
 
   // Scénario édité dans la modale (null si fermée ou en liste) ; renderOverlay s'en sert.

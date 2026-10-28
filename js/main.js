@@ -1463,8 +1463,10 @@ function _quitterNavigationInterPlans(contexte) {
 // ── Retour à l'accueil (loader) ──────────────────────
 // ⚠️ Fermer un plan = le vider (décision produit) : tout retour à l'accueil passe ici et, si une carte existe, la
 // démonte comme un changement de plan (session enregistrée d'abord, puis tuiles, calques, canvas de collision,
-// carte). « Reprendre » recharge le plan et restaure sa session. Après ce retour : window.map = null,
-// PLAN_CONFIG = null, _currentLoadedPlanId garde le dernier plan (« Reprendre », carte OSM de l'accueil).
+// carte). « Reprendre » recharge le plan et restaure sa session (PlanRegistry). Après ce retour : window.map = null,
+// PLAN_CONFIG = null, _currentLoadedPlanId = null ; le plan quitté reste dans window._ktaDernierPlanId (carte OSM
+// de l'accueil). 🩸 Un id gardé à l'accueil faisait croire le plan ouvert : stats et photos du plan quitté
+// proposées, côté installation reliée présence et itinéraire du plan quitté.
 // 🩸 La carte peut exister sans être affichée (ouverture ratée sous l'accueil) : le test porte sur L.Map, pas sur
 // ktaPlanAffiche().
 function afficherLoader() {
@@ -1487,6 +1489,11 @@ function afficherLoader() {
     if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
       try { window.KtaExtensions.quitterPlan("accueil"); } catch(e) {}
     }
+  }
+  // Après le démontage, qui lit encore l'id (session, carnet, extension) : plus aucun plan n'est ouvert.
+  if (window._currentLoadedPlanId) {
+    window._ktaDernierPlanId = window._currentLoadedPlanId;
+    window._currentLoadedPlanId = null;
   }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
@@ -1511,9 +1518,9 @@ function afficherLoader() {
 
   // 🩸 Widget OSM de l'accueil re-monté : il calcule sa liste de plans géoréférencés au mount(), sinon un plan
   // chargé entre-temps n'y apparaît qu'au redémarrage. Il s'ouvre sur le plan qu'on vient de quitter
-  // (_currentLoadedPlanId n'est jamais remis à null au retour) ; non géoréférencé → sélection précédente.
+  // (_ktaDernierPlanId) ; non géoréférencé → sélection précédente.
   if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
-    try { window.OsmHomePreview.refresh(window._currentLoadedPlanId || null); } catch (e) {
+    try { window.OsmHomePreview.refresh(window._ktaDernierPlanId || null); } catch (e) {
       console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
     }
   }
@@ -1525,6 +1532,7 @@ function afficherLoader() {
 // l'accueil (afficherLoader démonte la carte) ; le plan reste en tête de « Reprendre ».
 // → { ferme, planId } ; ferme: false = aucune carte de plan en mémoire, rien n'est touché.
 function ktaFermerPlanPourMemoire() {
+  // Lu AVANT afficherLoader, qui le remet à null.
   const planId = window._currentLoadedPlanId || null;
   if (!(window.L && window.map instanceof window.L.Map)) return { ferme: false, planId: planId };
   afficherLoader();
