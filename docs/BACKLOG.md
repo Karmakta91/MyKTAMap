@@ -82,11 +82,6 @@
 
 ## Plus tard
 
-- **La ville : de trois copies à deux** — même dessin, trois formes (`js/bienvenue.js`, `MyKTAMap-pro/site/`,
-  `MyKTAMap-doc/generateur/descente.js`). Le site de doc la lira dans le community à chaque génération (comme la
-  boussole ; polices sur main depuis v2.21.0) ; la vitrine pro reste à part, reportée à la main.
-  `qui: Claude · action: générateur du doc qui extrait la scène de js/bienvenue.js (main), copie retirée
-  · fini: plus de descente.js recopié, accueil du doc identique · depuis: 26/10/2026 · taille: S`
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
