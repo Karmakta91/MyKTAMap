@@ -62,22 +62,10 @@
   · taille: S`
 ## Ensuite
 
-- **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
-  fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
-  `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
-  · depuis: 22/10/2026 · taille: S`
-
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
   · depuis: 13/09/2026 · taille: XS`
-- **Test appareil : stockage saturé** — bandeau persistant + 💾 Exporter tant que la sauvegarde échoue.
-  `qui: KARMA · action: saturer un téléphone de test · fini: bandeau et export vus, ou bug ouvert · depuis: 13/09/2026
-  · taille: S`
-- **Test appareil : balayage Secours** — temps de « Découper en secteurs » sur un vieux téléphone ; « Suivre mon
-  parcours » en balayage (un écart rejoint le circuit là où l'équipe en était, pas au début).
-  `qui: KARMA · action: chronométrer le découpage, faire un écart sur le terrain
-  · fini: durée notée, reprise vue au bon endroit · depuis: 15/10/2026 · taille: S`
 - **Test appareil : chiffres du guide** — repris sans vérification : stockage par appareil (~50 Mo Safari, ~1 Go app
   installée), chemin d'installation sur Chrome Android.
   `qui: KARMA · action: relever les deux chiffres et le chemin sur appareil
