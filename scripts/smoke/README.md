@@ -15,7 +15,13 @@ npm run smoke
 **Deux moteurs** : `smoke.js` et `checkup-bienvenue.js` jouent tout sous **Chromium** (repli Edge) **puis WebKit**, le
 moteur de Safari donc de tout navigateur iPhone (`navigateur.js > moteurs / lancerMoteur`). `KTA_MOTEURS=chromium` ou
 `webkit` pour n'en jouer qu'un ; WebKit absent (`npx playwright install webkit`) = moteur sauté, annoncé. Un problème
-est préfixé du moteur qui l'a vu. Les autres checkups restent sous Chromium.
+est préfixé du moteur qui l'a vu. Les autres checkups restent sous Chromium par défaut ; `KTA_MOTEURS=webkit node
+checkup-….js` en joue un sous WebKit (balayage Safari, `navigateur.js > lancerNavigateur`).
+🩸 Le WebKit de Playwright **sous Windows** n'est pas Safari : un rouge qui n'existe que là n'est un bug iPhone
+qu'après vérification. Limites connues de ce WebKit (rouges attendus, pas des bugs de l'app) : aucun Blob en
+IndexedDB, même hors de l'app (import multiple, Carnet, photos, suppression des documents) ; pas de session CDP
+(plan orienté, pastille hors ligne) ; pas d'OffscreenCanvas (splash en SVG, repli voulu) ; harnais qui répond un
+304, demande `clipboard-write` ou construit un `DataTransfer` (dossier hors ligne, urgence, dossiers de plans).
 
 Sert le repo en local (port 8123, ou `SMOKE_PORT` pour deux copies de travail en même temps), boote l'app dans Chromium headless,
 passe les gates (mdp communautaire, CGU, tutoriel, alerte, proposition PIN

@@ -16,6 +16,13 @@ function _absent(e) { return /Executable doesn't exist/i.test(String((e && e.mes
 
 async function lancerNavigateur(chromium, opts) {
   const base = opts || {};
+  // KTA_MOTEURS=webkit : tout checkup se joue sous WebKit sans être modifié (balayage Safari). Un checkup qui
+  // ouvre une session CDP (Chromium seul) échouera là : c'est attendu, pas un bug de l'app.
+  if (moteurs().length === 1 && moteurs()[0] === "webkit") {
+    const wk = await lancerMoteur("webkit", base);
+    if (wk) return wk;
+    throw new Error("KTA_MOTEURS=webkit mais WebKit absent (npx playwright install webkit)");
+  }
   const essais = [base, Object.assign({}, base, { channel: "chromium" }), Object.assign({}, base, { channel: "msedge" })];
   for (let i = 0; i < essais.length; i++) {
     try {
