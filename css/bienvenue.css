@@ -184,8 +184,10 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 @keyframes kta-bv-balise { 0% { opacity: 1; } 70% { opacity: 0.15; } 100% { opacity: 0.15; } }
 
 /* ── Stations ── */
-.kta-bv-station { position: relative; background: var(--bv-fond-nuit); }
-.kta-bv-station-sortie { background: var(--bv-fond); }
+/* Même fond que le sous-sol de l'en-tête : les galeries continuent sous la ville, sans marche de couleur au défilement.
+   La sortie s'en détache en fondu (une coupure nette se lit comme un bug au téléphone). */
+.kta-bv-station { position: relative; background: var(--bv-fond-haut); }
+.kta-bv-station-sortie { background: linear-gradient(var(--bv-fond-haut), var(--bv-fond) 200px); }
 .kta-bv-galerie { position: absolute; left: 10px; top: 0; bottom: 0; width: 44px; z-index: 2; pointer-events: none; }
 .kta-bv-galerie-courte { bottom: auto; height: 64px; }
 .kta-bv-galerie svg { position: absolute; inset: 0; width: 100%; height: 100%; }
