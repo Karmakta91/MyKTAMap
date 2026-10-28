@@ -1220,6 +1220,13 @@
     if (!get(scenarioId)) return false;
     opts = opts || {};
     const role = ["operateur", "equipe", "secouriste"].indexOf(opts.role) >= 0 ? opts.role : "operateur";
+    // Geste explicite (« Rejoindre », « Déclencher ») et appelant synchrone (le pro lit l'exécution juste après) :
+    // pas de question, l'autre intervention est arrêtée (gardée dans l'historique) et on le dit.
+    const autre = _autreEnCours(scenarioId);
+    if (autre) {
+      arreterExecution(autre.id);
+      _toast(t("secours.lancer.autreArretee", { nom: autre.nom || "" }), "warn");
+    }
     ouvrir(scenarioId);
     lancerExecution(scenarioId, { role: role, currentEquipeId: role === "equipe" ? (opts.equipeId || null) : null });
     _switchView("live");
@@ -2085,12 +2092,27 @@
     return null;
   }
 
-  // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
+  // Le scénario dont l'intervention tourne sur ce plan. ⚠️ contrat : une seule à la fois (veille des retards,
+  // pastille et affichage carte ne suivent que celle-ci) — lancer une autre arrête d'abord celle-ci
+  // (_ouvrirLancement demande, rejoindre arrête et le dit). 🩸 Une intervention jamais arrêtée (exercice de la
+  // veille) reste active : sans ce contrat, la vraie démarrait à côté et ses retards ne sonnaient pas.
   function _scenarioEnCours() {
     for (let i = 0; i < _scenarios.length; i++) {
       if (_estExecutionActive(_scenarios[i])) return _scenarios[i];
     }
     return null;
+  }
+  // Intervention en cours sur ce plan AUTRE que `sid`, ou null.
+  function _autreEnCours(sid) {
+    for (let i = 0; i < _scenarios.length; i++) {
+      if (_scenarios[i].id !== sid && _estExecutionActive(_scenarios[i])) return _scenarios[i];
+    }
+    return null;
+  }
+  function _lanceLe(s) {
+    const d = s && s.execution && Date.parse(s.execution.startedAt);
+    return d ? new Date(d).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR",
+      { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "?";
   }
 
   // Intervention en cours : pastille dans la barre d'état du mode carte, un toucher rouvre le plan. Retirée
@@ -8672,15 +8694,30 @@
       };
       // Relancer efface l'intervention précédente ET ses photos (reçues des équipes comprises) : on le dit
       // avant. 🩸 Sans fenêtre de confirmation (ktaConfirm absent) : REFUS, jamais d'effacement sans question.
-      if (get(sid) && get(sid).execution) {
-        if (typeof window.ktaConfirm !== "function") {
-          console.warn("[SecoursMode] relance refusée : confirmation indisponible");
-          return;
+      const relancer = function() {
+        if (get(sid) && get(sid).execution) {
+          if (typeof window.ktaConfirm !== "function") {
+            console.warn("[SecoursMode] relance refusée : confirmation indisponible");
+            return;
+          }
+          window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
+        } else {
+          lancer();
         }
-        window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
-      } else {
-        lancer();
+      };
+      // Une seule intervention à la fois sur un plan (cf _scenarioEnCours) : l'autre s'arrête d'abord, sur accord.
+      const autre = _autreEnCours(sid);
+      if (!autre) { relancer(); return; }
+      if (typeof window.ktaConfirm !== "function") {
+        console.warn("[SecoursMode] lancement refusé : une autre intervention tourne, confirmation indisponible");
+        return;
       }
+      const question = t("secours.lancer.autreEnCours", { nom: _escHtml(autre.nom || ""), quand: _escHtml(_lanceLe(autre)) });
+      window.ktaConfirm(question, { okLabel: t("secours.lancer.autreArreterOk") }).then(function(ok) {
+        if (!ok) return;
+        arreterExecution(autre.id);
+        relancer();
+      });
     }, pre);
   }
 
