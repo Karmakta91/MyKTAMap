@@ -87,15 +87,6 @@
   boussole ; polices sur main depuis v2.21.0) ; la vitrine pro reste à part, reportée à la main.
   `qui: Claude · action: générateur du doc qui extrait la scène de js/bienvenue.js (main), copie retirée
   · fini: plus de descente.js recopié, accueil du doc identique · depuis: 26/10/2026 · taille: S`
-- **Veille des mentions** — audit du 26/10 : rien d'indexé hors GitHub ; Reddit illisible par l'outil.
-  `qui: KARMA · action: F5Bot (Reddit, Hacker News) et Google Alerts sur « myktamap » · fini: alertes actives
-  · depuis: 26/10/2026 · taille: XS`
-
-- **Calage Lambert 93 exact d'un GeoTIFF** — mémoriser l'EPSG du fichier (`georef.crs`) et caler dans ce CRS : gagne
-  les 0,35 m restants aux coins d'un GeoTIFF Lambert 93 de 6 km (le plan tangent suffit à l'objectif < 1 m).
-  Déclencheur : un cas réel où ces décimètres comptent. Étude : `docs/ETUDE_CALAGE_PROJECTION.md`.
-  `qui: KARMA · action: signaler un cas réel qui en a besoin · fini: cas reçu, ou entrée enterrée
-  · depuis: 25/10/2026 · taille: S`
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour

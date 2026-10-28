@@ -26,6 +26,7 @@
 |---|---|
 | **Doublon 📐 Mesure / 📐 Distance** (barre de droite) | Accepté le 14/10/2026 : c'est l'accordéon groupe + sous-action |
 | **D3 — « Mes annotations » ne masque pas les tracés** | Fermé le 14/10/2026 : mécanisme réfuté (12/12 cas au harnais). Ce qui reste visible par design : l'itinéraire et les tracés d'un autre calque de données. Ne rouvrir qu'avec un tracé récalcitrant sous la main (`window.layerEditor.hasLayer(<layer>)`) |
+| **Calage Lambert 93 exact d'un GeoTIFF** (CRS du fichier mémorisé) | Enterré (KARMA, 28/10/2026), repris au besoin sur un cas réel : le plan tangent tient l'objectif < 1 m, il ne resterait que 0,35 m aux coins d'un GeoTIFF de 6 km (`docs/ETUDE_CALAGE_PROJECTION.md`) |
 | **Sonar en CI (runner sur le poste)** | Non (KARMA, 10/10) : la marche 1ter de `merge-main.ps1` suffit |
 | **Protection de branche GitHub (payante)** | Non tant que KARMA est seul à écrire (10/10) |
 | **Podomètre / mode poche** | Infaisable depuis une page web (29/09) ; le vrai obstacle en poche est le cap |
