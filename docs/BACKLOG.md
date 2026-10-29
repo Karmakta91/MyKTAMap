@@ -28,6 +28,11 @@
 
 ## Maintenant
 
+- **Essai sur dev : Secours sur plusieurs niveaux et échelle du Générateur** — `e79e3371` : secteur sur plusieurs
+  niveaux (équipe « tous niveaux », POI de la zone à chaque niveau) ; `508fc41a` : « Mettre à jour le plan » reprend
+  l'échelle recalibrée dans l'app et le dit (garde-fou `check-maj-plan.js`). Ni l'un ni l'autre joué à la main.
+  `qui: KARMA · action: un secteur à 2 niveaux en Secours ; recalibrer puis mettre à jour un plan au Générateur
+  · fini: vus conformes, ou bugs ouverts · depuis: 29/10/2026 · taille: XS`
 - **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
   quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
