@@ -65,7 +65,7 @@ photos restent locales et exportables).
 > autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
-> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts)` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
@@ -245,8 +245,12 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   restaurée (`main.js > lancerApplication` appelle `planCharge(id)` après `SessionPersist.onPlanLoaded`, émet
   **`mktm:plan-pret`** `{ planId }`) ; `quitterPlan` le remet à faux. 🩸 Avant, la mémoire tient les objets du plan
   quitté (ou rien) puis `initEditor` / la restauration les remplacent : un lot appliqué là était écrasé sans bruit
-  (curseur avancé, objets jamais reçus), et `changementsDepuis` aurait donné au nouveau plan les objets de l'ancien
-  — il rend des listes vides tant que le plan n'est pas prêt. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
+  (curseur avancé, objets jamais reçus), et `changementsDepuis` aurait donné au nouveau plan les objets de l'ancien.
+  **Journal sortant** : `changementsDepuis(ts, planId?)` rend `null` tant qu'aucun plan n'est prêt (chargement,
+  accueil) et quand le plan prêt n'est pas `planId` (id du registre que l'extension croit ouvert) — ⚠️ jamais des
+  listes vides à la place : « rien depuis ts » ferait avancer le curseur d'envoi de l'extension sur des
+  modifications jamais lues (perdues pour l'équipe), ou enverrait les objets d'un autre plan. `null` = l'extension
+  garde son curseur et relira au tour suivant. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
   quand un objet reçu porte la marque `_srcCalque` (copie d'un calque), ou qu'une copie d'ici disparaît, l'état
   se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan

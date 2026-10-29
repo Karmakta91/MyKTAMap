@@ -298,9 +298,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.w.getRoads = () => [{ uid: "rd_a", updatedAt: 400, type: "principal" }, { uid: "rd_i", updatedAt: 500, type: "itinerary" }];
     c.w.getZones = () => []; c.w.getStructures = () => [];
     c.w.KtaUid = { getTombstones: () => [{ uid: "zn_x", deletedAt: 250 }, { uid: "zn_y", deletedAt: 50 }] };
-    const vide = c.K.changementsDepuis(0);
-    t("🔒 plan pas encore prêt (chargement) : journal vide — les objets du plan quitté ne partent pas vers le nouveau",
-      c.K.planPret() === false && vide.editorPoints.length === 0 && vide.roads.length === 0 && vide.tombstones.length === 0);
+    t("🔒 plan pas encore prêt (chargement) : journal null, pas vide — ni objets du plan quitté, ni curseur avancé à tort",
+      c.K.planPret() === false && c.K.changementsDepuis(0) === null);
     c.w._currentLoadedPlanId = "ext_1";
     c.K.planCharge("ext_1");
     t("plan prêt : planPret() vrai, événement mktm:plan-pret", c.K.planPret() === true && c.w._emis.includes("mktm:plan-pret"));
@@ -313,6 +312,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.K.quitterPlan("plan");
     t("quitterPlan : plus prêt jusqu'au prochain planCharge", c.K.planPret() === false);
     c.K.planCharge("ext_1");
+    t("🔒 plan attendu différent du plan prêt : journal null", c.K.changementsDepuis(0, "ext_2") === null);
+    t("plan attendu = plan prêt : journal rendu", c.K.changementsDepuis(200, "ext_1") !== null &&
+      c.K.changementsDepuis(200, "ext_1").editorPoints.length === 1);
     const ch = c.K.changementsDepuis(200);
     t("journal : objets modifiés après la date, et seulement eux", ch.editorPoints.length === 1 && ch.editorPoints[0].uid === "pt_b");
     t("journal : l'itinéraire calculé n'en fait pas partie", ch.roads.length === 1 && ch.roads[0].uid === "rd_a");

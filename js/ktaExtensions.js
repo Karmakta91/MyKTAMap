@@ -907,12 +907,13 @@
   // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
   // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
   // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
-  // 🔒 Plan pas encore prêt (chargement en cours) : listes vides — la mémoire peut encore tenir les objets du plan
-  // quitté, qui partiraient sinon vers le nouveau (cf. planPret).
-  function changementsDepuis(ts) {
-    if (!planPret()) {
-      return { editorPoints: [], roads: [], zones: [], structures: [], tombstones: [], restitutions: [] };
-    }
+  // `planId` (facultatif) : plan du registre que l'appelant croit ouvert.
+  // 🔒 null — et non des listes vides — si aucun plan n'est prêt (chargement en cours, accueil) ou si le plan prêt
+  // n'est pas `planId` : la mémoire peut tenir les objets d'un AUTRE plan, et « rien depuis ts » ferait avancer le
+  // curseur de l'appelant sur des modifications jamais lues. ⚠️ null = journal illisible maintenant, curseur gardé.
+  function changementsDepuis(ts, planId) {
+    if (!planPret()) return null;
+    if (planId !== undefined && planId !== null && planId !== (window._currentLoadedPlanId || null)) return null;
     const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
     const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
     return {
