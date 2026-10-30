@@ -4198,13 +4198,15 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   color: #f4c542;
   text-shadow: 0 2px 18px rgba(244, 197, 66, 0.25);
 }
-/* « -pro » du splash : orange de l'identité pro (le doré reste au titre), révélé une fois le titre apparu
-   (2,2 s + 0,6 s). Le splash est toujours sombre : pas de variante claire. */
+/* « -pro » du splash : orange de l'identité pro (le doré reste au titre), révélé pendant l'apparition du titre
+   (2,2 s → 2,8 s) et complet à 3,2 s, pour rester lisible avant la fin du splash (ktaSplash.js >
+   DUREE_LONGUE_MS, 4 s). Le splash est toujours sombre : pas de variante claire. */
 #splashTitle .kta-titre-suffix-pro {
   color: #e07b1a;
   letter-spacing: 0.02em;
   text-shadow: 0 2px 16px rgba(224, 123, 26, 0.4);
-  animation-delay: 2.9s;
+  animation-duration: 0.7s;
+  animation-delay: 2.5s;
 }
 #splashSubtitle {
   font-size: 14px;
