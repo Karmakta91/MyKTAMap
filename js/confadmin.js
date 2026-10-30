@@ -22,8 +22,6 @@
       .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "dossier";
   }
   let _liaisonsReprises = null; // liaisons d'un index.json rechargé (cf _construire)
-  // serverConnection.accueil d'un index rechargé : sans champ ici, repris tel quel (lu par l'app seule, tolérant).
-  let _accueilRepris = null;
   let _links = [];          // liaisons source (objets du registre, intacts)
     const _linkSel = {};      // linkId → bool (cochée)
   const _mapping = {};      // planId d'origine → id de pack ("" = ignorer)
@@ -315,8 +313,8 @@
         $("caCnxApi").value = (sc && typeof sc.api === "string") ? sc.api : "";
         $("caCnxModules").value = (sc && Array.isArray(sc.modules)) ? sc.modules.join("\n") : "";
         $("caCnxTransparence").value = (sc && typeof sc.transparence === "string") ? sc.transparence : "";
-        _accueilRepris = (sc && sc.accueil && typeof sc.accueil === "object") ? sc.accueil : null;
         if (sc && sc.state === "on") $("caCnx").open = true;
+        _poserAccueil(c.accueil);
         _liaisonsReprises = (d.liaisons && Array.isArray(d.liaisons.links) && d.liaisons.links.length)
           ? d.liaisons : null;
         _statut($("caPlansStatus"),
@@ -484,6 +482,8 @@
       if (ng) out.config.disableGenerator = true;
       if (_accessHash) out.config.accessHash = _accessHash;
     }
+    const accueil = ktaAccueilExport(_accueilSaisi());
+    if (accueil) { out.config = out.config || {}; out.config.accueil = accueil; }
     // Connexion serveur écrite SEULEMENT si « activée » et valide.
     const cnx = _connexionSaisie();
     if (cnx.valide && cnx.champ) { out.config = out.config || {}; out.config.serverConnection = cnx.champ; }
@@ -535,6 +535,96 @@
     else if (_liaisonsReprises) out.liaisons = _liaisonsReprises;
     return out;
   }
+
+  // ── Écran d'accueil (config.accueil) ──────────
+  // Champs de la page : { titre: { fr, en, es }, description: { fr, en, es } } (fr = les champs principaux).
+  const _CHAMPS_ACCUEIL = {
+    titre: { fr: "caAccueilTitre", en: "caAccueilTitreEn", es: "caAccueilTitreEs" },
+    description: { fr: "caAccueilDesc", en: "caAccueilDescEn", es: "caAccueilDescEs" }
+  };
+  function _accueilSaisi() {
+    const v = {};
+    Object.keys(_CHAMPS_ACCUEIL).forEach(function(champ) {
+      v[champ] = {};
+      Object.keys(_CHAMPS_ACCUEIL[champ]).forEach(function(l) { v[champ][l] = $(_CHAMPS_ACCUEIL[champ][l]).value; });
+    });
+    return v;
+  }
+  // ⚠️ Saisie → valeur de `config.accueil`, ou null si tout est vide. Par champ : textes rognés (titre 80,
+  // description 400 : bornes de js/ktaExtensions.js > normaliserAccueil, qui relit ce résultat à l'identique —
+  // scripts/check-connexion-serveur.js l'exécute) ; une seule langue remplie → chaîne (toutes langues), plusieurs →
+  // objet { fr, en, es } des langues remplies ; aucune → champ absent.
+  function ktaAccueilExport(v) {
+    const MAX = { titre: 80, description: 400 };
+    const out = {};
+    ["titre", "description"].forEach(function(champ) {
+      const src = (v && v[champ] && typeof v[champ] === "object") ? v[champ] : {};
+      const r = {};
+      ["fr", "en", "es"].forEach(function(l) {
+        const s = typeof src[l] === "string" ? src[l].trim().slice(0, MAX[champ]).trim() : "";
+        if (s) r[l] = s;
+      });
+      const langues = Object.keys(r);
+      if (langues.length === 1) out[champ] = r[langues[0]];
+      else if (langues.length > 1) out[champ] = r;
+    });
+    return Object.keys(out).length ? out : null;
+  }
+  // Index repris : chaîne → champs principaux ; objet → une langue par champ. « Autres langues » déplié s'il en a.
+  function _poserAccueil(a) {
+    const o = (a && typeof a === "object" && !Array.isArray(a)) ? a : {};
+    let autres = false;
+    Object.keys(_CHAMPS_ACCUEIL).forEach(function(champ) {
+      const val = o[champ];
+      Object.keys(_CHAMPS_ACCUEIL[champ]).forEach(function(l) {
+        let s = "";
+        if (typeof val === "string") s = l === "fr" ? val : "";
+        else if (val && typeof val === "object" && typeof val[l] === "string") s = val[l];
+        $(_CHAMPS_ACCUEIL[champ][l]).value = s;
+        if (s && l !== "fr") autres = true;
+      });
+    });
+    $("caAccueilLangues").open = autres;
+  }
+
+  // ⚠️ Contenu de data/reglages.json : `accueil` (ktaAccueilExport) et `subtitle` SEULS — les clés que
+  // js/ktaInstance.js > filtrerReglages lit (scripts/check-connexion-serveur.js l'exécute). {} si tout est vide.
+  function ktaReglagesExport(accueil, sousTitre) {
+    const out = {};
+    if (accueil) out.accueil = accueil;
+    const st = String(sousTitre == null ? "" : sousTitre).trim().slice(0, 80);
+    if (st) out.subtitle = st;
+    return out;
+  }
+  $("caReglagesDownload").addEventListener("click", function() {
+    const contenu = ktaReglagesExport(ktaAccueilExport(_accueilSaisi()), $("caSubtitle").value);
+    const blob = new Blob([JSON.stringify(contenu, null, 2) + "\n"], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "reglages.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
+  });
+  $("caReglagesLoad").addEventListener("click", function() { $("caReglagesInput").click(); });
+  // reglages.json repris : titre, description et sous-titre remplacent les champs ; toute autre clé est ignorée.
+  $("caReglagesInput").addEventListener("change", function(e) {
+    const f = (e.target.files || [])[0]; e.target.value = "";
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = function() {
+      try {
+        const d = JSON.parse(r.result);
+        if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("un objet JSON est attendu");
+        _poserAccueil(d.accueil);
+        $("caSubtitle").value = typeof d.subtitle === "string" ? d.subtitle.slice(0, 80) : "";
+        _statut($("caReglagesEtat"), "✅ réglages repris depuis « " + _esc(f.name) + " »");
+        _renderOut();
+      } catch (err) {
+        _statut($("caReglagesEtat"), "Lecture impossible : " + _esc(err.message), true);
+      }
+    };
+    r.readAsText(f);
+  });
 
   // ── Connexion serveur ──────────
   // 🩸 MÊMES RÈGLES que js/ktaExtensions.js > valider() (corps recopié à l'identique ;
@@ -589,7 +679,6 @@
     const v = ktaValiderConnexion(champ);
     const garde = { state: "on", api: v.api, modules: v.modules };
     if (v.transparence) garde.transparence = v.transparence;
-    if (_accueilRepris) garde.accueil = _accueilRepris;
     return v.etat === "on"
       ? { valide: true, champ: garde, raison: "" }
       : { valide: false, champ: null, raison: v.raison };
@@ -608,6 +697,7 @@
     $("caCopy").disabled = !cnx.valide;
   }
   $("caSubtitle").addEventListener("input", _renderOut);
+  $("caAccueil").addEventListener("input", _renderOut);
   $("caFlagServerOnly").addEventListener("change", _renderOut);
   $("caFlagNoGen").addEventListener("change", _renderOut);
   $("caCnxState").addEventListener("change", _renderOut);

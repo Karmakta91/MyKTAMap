@@ -11,6 +11,7 @@
 //   - deux `null` qui s'égalent : sur un navigateur vierge, `v === k` ouvrirait à tout le monde ;
 //   - le reverrouillage hors ligne : index injoignable → on n'efface RIEN ;
 //   - un `accessHash` fautif (clair, tronqué) ne devient jamais une valeur comparable.
+// Aussi : data/reglages.json n'apporte que accueil et subtitle (§3), écran d'arrivée selon le domaine (§11).
 // On EXÉCUTE (vm) les fonctions extraites du vrai fichier. Doc : docs/architecture/security-legal.md.
 // =====================================================================
 "use strict";
@@ -159,8 +160,41 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     t("🩸 ktaInstance : un non-2xx (404 synthétique du SW hors ligne) = injoignable, jamais « répondu »",
       /if \(!r\.ok\) return null;/.test(KI));
     t("🩸 ktaInstance : une config rejouée de mémoire est marquée repondu: false",
-      /_etat = \{ charge: true, repondu: false, index: null, config: memo/.test(KI));
+      /_etat = \{ charge: true, repondu: false, index: null, config: _fusion\(memo, reglages\)/.test(KI));
     t("ktaInstance : seule la section config est mémorisée (pas la liste des plans)", /_ecrireMemo\(config\);/.test(KI));
+    // 🔒 data/reglages.json (fichier posé à côté de l'index, hors Git) : accueil et subtitle SEULS, exécuté.
+    const morceau = (nom) => {
+      const d = KI.indexOf("function " + nom + "(");
+      if (d < 0) return "";
+      let p = 0;
+      for (let i = KI.indexOf("{", d); i < KI.length; i++) {
+        if (KI[i] === "{") p++; else if (KI[i] === "}" && --p === 0) return KI.slice(d, i + 1);
+      }
+      return "";
+    };
+    const sb = {};
+    vm.runInNewContext(morceau("filtrerReglages") + morceau("_fusion") + "; F = filtrerReglages; U = _fusion;", sb,
+      { filename: "instance.reglages.js" });
+    const F = sb.F, U = sb.U;
+    const piege = { accueil: { titre: "Club" }, subtitle: "Secteur", accessHash: KIOSK, plans: [{ id: "x" }],
+      serverConnection: { state: "on", api: "/api/", modules: ["m.js"] }, liaisons: {}, serverPlansOnly: true,
+      config: { accessHash: KIOSK } };
+    const filtre = F(piege);
+    t("🔒 reglages.json : seules accueil et subtitle sont lues (accessHash, serverConnection, plans… ignorés)",
+      !!filtre && JSON.stringify(Object.keys(filtre).sort()) === '["accueil","subtitle"]');
+    const eff = U({ accessHash: VRAI, subtitle: "Index", serverConnection: { state: "off" } }, F(piege));
+    t("🔒 config effective : le sous-titre des réglages prime, le mot de passe et la connexion restent ceux de l'index",
+      eff.subtitle === "Secteur" && eff.accessHash === VRAI && eff.serverConnection.state === "off");
+    t("reglages.json mal formé : un champ faux ignoré, le reste s'applique ; rien de valable → null",
+      JSON.stringify(F({ accueil: "texte", subtitle: "S" })) === '{"subtitle":"S"}' &&
+      JSON.stringify(F({ accueil: { titre: "T" }, subtitle: 3 })) === '{"accueil":{"titre":"T"}}' &&
+      [null, "x", [], 3, {}, { subtitle: "  " }, { accueil: [] }].every((v) => F(v) === null));
+    t("sans réglages, la config de l'index est rendue telle quelle (même objet)",
+      (() => { const c = { a: 1 }; return U(c, null) === c && U(null, null) === null; })());
+    t("reglages.json lu avec l'index, même délai, mémoire à part ; absent (404) = aucun réglage, sans erreur",
+      /Promise\.all\(\[_lireIndex\(\), _lireReglages\(\)\]\)/.test(KI) &&
+      /fetch\("data\/reglages\.json", \{ cache: "no-store"/.test(KI) &&
+      /if \(!r\.ok\) return \{ repondu: true, reglages: null \};/.test(KI) && !/console\.(warn|error)/.test(KI));
   }
 }
 
@@ -369,6 +403,35 @@ const KIOSK = "b".repeat(64);         // hash d'instance
         whitelist.indexOf('"' + m[1] + '"') >= 0);
     }
   });
+}
+
+// ── 11. Écran d'arrivée selon le domaine (presentationComplete, exécutée) ──────
+// Présentation complète sur les domaines de myktamap.fr et en local ; toute autre installation : la ville seule.
+// 🩸 Une seule liste : recopiée ailleurs, elle divergerait (un domaine ajouté d'un côté seulement).
+{
+  const code = extraire("presentationComplete");
+  const liste = GATE.match(/const HOTES_PRESENTATION = \[[^\]]*\];/);
+  t("presentationComplete et sa liste sont extractibles", !!code && !!liste);
+  if (code && liste) {
+    const sb = {};
+    vm.runInNewContext(liste[0] + code + "; f = presentationComplete;", sb, { filename: "gate.hote.js" });
+    const f = sb.f;
+    t("présentation complète : myktamap.fr, dev.myktamap.fr, localhost, 127.0.0.1 (casse et point final tolérés)",
+      ["myktamap.fr", "dev.myktamap.fr", "localhost", "127.0.0.1", "MyKTAMap.FR", "myktamap.fr."].every(f));
+    t("ville seule : tout autre hôte (auto-hébergé, sous-domaine, IP, hôte vide)",
+      !["club.exemple.org", "pro.myktamap.fr", "myktamap.fr.exemple.org", "exemple-myktamap.fr", "127.0.0.2",
+        "192.168.1.10", "[::1]", "", null, undefined].some(f));
+  }
+  const autres = fs.readdirSync("js").filter((n) => n.endsWith(".js") && n !== "unlockGate.js" &&
+    /dev\.myktamap\.fr/.test(fs.readFileSync("js/" + n, "utf8")));
+  t("🩸 la liste des domaines de présentation n'est recopiée dans aucun autre module (" + autres.join(", ") + ")",
+    autres.length === 0);
+  t("l'hôte de la page décide, et les deux écrans (avec et sans code) reçoivent la ville seule",
+    /presentationComplete\(typeof location !== "undefined" \? location\.hostname : ""\)/.test(GATE) &&
+    (GATE.match(/villeSeule: ville,/g) || []).length === 2);
+  t("textes de la ville seule : réglages puis index, par KtaExtensions.textesAccueil (une seule lecture de config.accueil)",
+    /KE\.textesAccueil\(cfg, st \? st\.reglages : null\)/.test(GATE) && !/[\w)\]]\.accueil\b/.test(GATE.replace(/\/\/.*$/gm, "")));
+  t("exposée (UnlockGate.presentationComplete) pour les tests", /presentationComplete: presentationComplete/.test(GATE));
 }
 
 console.log(ko === 0 ? "\n🎉 gate : le mot de passe de l'instance ou « Entrer », et aucune promesse de trop"

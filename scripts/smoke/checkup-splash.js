@@ -35,7 +35,7 @@ const LS = {
   myktamap_terms_accepted_v1: "2",
   myktamap_tutorial_seen_v1: "1"
 };
-const BRUIT_TOLERE = [/Licence-pro\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
+const BRUIT_TOLERE = [/Licence-pro\.json/i, /data\/reglages\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
 // Image finale : part des pixels gris de la référence retrouvés (à 1 px près) et part de gris en trop.
 const COUVERTURE_MIN = 0.95;
 const SURPLUS_MAX = 0.05;

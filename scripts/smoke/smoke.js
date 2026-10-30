@@ -56,7 +56,8 @@ function ok(msg) { console.log("  ✅ " + msg); }
 const BRUIT_TOLERE = [
   /Failed to load resource.*(version\.json|ping\.html|live-config)/i,  // update-checker offline : dégradation prévue
   /favicon/i,
-  /Licence-pro.json/i   // sonde proLicense au boot : 404 = instance community, comportement NOMINAL
+  /Licence-pro.json/i,  // sonde proLicense au boot : 404 = instance community, comportement NOMINAL
+  /data\/reglages\.json/i  // réglages facultatifs de l'installation (js/ktaInstance.js) : 404 = absents, NOMINAL
 ];
 function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test(txt); }); }
 

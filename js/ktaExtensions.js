@@ -14,7 +14,7 @@
 //
 // ⚠️ L'instance déclare dans `data/index.json > config.serverConnection` :
 //   { "state": "on" | "off", "api": "https://…" | "/api/", "modules": ["chemin/module.js?v=1.0.0"],
-//     "transparence"?: "page.html", "accueil"?: { titre, description } (écran d'accueil : ecranAccueil) }
+//     "transparence"?: "page.html" }
 // États : off (absent ou "off" — myktamap.fr : aucun backend, jamais) · invalide (mal formé, raison
 //   journalisée [Connexion]) · licence (« on » sans licence pro de source "server", ou licence refusée par
 //   le serveur) · configuree (« on » + licence serveur) · on / down (SIGNALÉS par un module greffé).
@@ -818,15 +818,16 @@
   }
   function modulesEtat() { return Object.assign({}, _modules); }
 
-  // ── Écran d'accueil d'une gate déléguée ──
+  // ── Écran d'accueil (ville seule) ──
   // ecranAccueil() → Promise<{ attendreEntree() → Promise, fermer(), ouverte() → bool } | null>. La ville de l'écran
-  // Bienvenue SEULE (js/bienvenue.js, option villeSeule) : titre et description de l'installation, un bouton « Me
-  // connecter », ni défilement, ni code d'accès, ni contacts. attendreEntree() se résout au prochain clic (l'écran
-  // devient inerte, la gate ouvre sa fenêtre par-dessus) ; la rappeler le réactive. L'écran reste jusqu'à fermer().
-  // null : aucune gate déléguée déclarée, ou écran indisponible (fichiers absents, plus de 4 s) → porte de la gate.
-  // Textes lus dans `config.serverConnection.accueil` de l'index (KtaInstance, dernière config connue hors ligne) :
-  // normaliserAccueil. Sans extension : sans effet (check-extensions.js).
-  const ACCUEIL_TITRE_MAX = 80, ACCUEIL_DESCRIPTION_MAX = 400;
+  // Bienvenue SEULE (js/bienvenue.js, options villeSeule + connexion) pour une gate déléguée : titre et description de
+  // l'installation, un bouton « Me connecter », ni défilement, ni code d'accès, ni contacts. attendreEntree() se
+  // résout au prochain clic (l'écran devient inerte, la gate ouvre sa fenêtre par-dessus) ; la rappeler le réactive.
+  // L'écran reste jusqu'à fermer(). null : aucune gate déléguée déclarée, ou écran indisponible (fichiers absents,
+  // plus de 4 s) → porte de la gate. Sans extension : sans effet (check-extensions.js).
+  // Textes : textesAccueil(config de l'index et réglages de l'installation, KtaInstance, dernière version connue hors
+  // ligne), communs à la ville seule du community (js/unlockGate.js, hôte hors présentation).
+  const ACCUEIL_TITRE_MAX = 80, ACCUEIL_DESCRIPTION_MAX = 400, SOUS_TITRE_MAX = 80;
   // { titre?, description? }, chaque texte : chaîne (toutes langues) ou objet par code de langue ({ fr, en, es }).
   // Rend { titre, description } en objets { code: texte } (chaîne → { fr }), ou null par champ absent ou vide.
   // 🔒 Texte seul (rendu en textContent), borné ; une valeur mal formée est ignorée, jamais une raison d'invalider.
@@ -846,6 +847,19 @@
     const o = a && typeof a === "object" && !Array.isArray(a) ? a : {};
     return { titre: texte(o.titre, ACCUEIL_TITRE_MAX), description: texte(o.description, ACCUEIL_DESCRIPTION_MAX) };
   }
+  // (config de l'index, réglages de l'installation) → { titre, description, sousTitre } pour KtaBienvenue.ouvrir
+  // ({ villeSeule }). Par champ : data/reglages.json (KtaInstance.etat().reglages, déjà filtré) d'abord, puis
+  // `config.accueil` de l'index ; un champ mal formé est ignoré, l'autre source le remplace. sousTitre : subtitle des
+  // réglages, sinon de l'index (même règle que main.js > _appliquerConfigKiosque : texte, 80 caractères), repli de la
+  // description avant la tagline traduite.
+  function textesAccueil(cfg, reglages) {
+    const c = cfg && typeof cfg === "object" && !Array.isArray(cfg) ? cfg : {};
+    const g = reglages && typeof reglages === "object" && !Array.isArray(reglages) ? reglages : {};
+    const ni = normaliserAccueil(c.accueil), ng = normaliserAccueil(g.accueil);
+    const st = function (v) { return typeof v === "string" ? v.trim().slice(0, SOUS_TITRE_MAX) : ""; };
+    return { titre: ng.titre || ni.titre, description: ng.description || ni.description,
+      sousTitre: st(g.subtitle) || st(c.subtitle) };
+  }
   function ecranAccueil() {
     if (!_prise("gate")) return Promise.resolve(null);
     const UG = window.UnlockGate;
@@ -853,9 +867,9 @@
     return Promise.resolve().then(UG.chargerBienvenue).then(function (pret) {
       if (!pret || !window.KtaBienvenue || typeof window.KtaBienvenue.ouvrir !== "function") return null;
       const I = window.KtaInstance && typeof window.KtaInstance.etat === "function" ? window.KtaInstance.etat() : null;
-      const sc = I && I.config && I.config.serverConnection;
       return window.KtaBienvenue.ouvrir({
-        villeSeule: normaliserAccueil(sc && typeof sc === "object" ? sc.accueil : null),
+        villeSeule: textesAccueil(I && I.config, I && I.reglages),
+        connexion: true,
         surDoc: function () {
           if (typeof window.afficherReadme === "function") window.afficherReadme({ hideOnboarding: true, overLocker: true });
         }
@@ -2343,6 +2357,7 @@
     gateDeleguee: gateDeleguee,
     ecranAccueil: ecranAccueil,
     normaliserAccueil: normaliserAccueil,
+    textesAccueil: textesAccueil,
     listerPlansExtension: listerPlansExtension,
     dossiersExtension: dossiersExtension,
     chargerPlanExtension: chargerPlanExtension,

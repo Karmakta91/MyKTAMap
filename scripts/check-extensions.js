@@ -2115,15 +2115,15 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /\.leaflet-marker-icon\.kta-etat-propose \{ outline: 3px dashed var\(--kta-accent\)/.test(R("css/style.css")));
   }
 
-  // ── 9. ÉCRAN D'ACCUEIL D'UNE GATE DÉLÉGUÉE (ecranAccueil : ville seule de l'écran Bienvenue) ──────
+  // ── 9. ÉCRAN D'ACCUEIL (ecranAccueil d'une gate déléguée, textesAccueil : ville seule de l'écran Bienvenue) ──
   {
     const monter = (pret) => {
       const c = nouveauContexte(null);
       const appels = { charge: 0, ouvert: [] };
       c.w.UnlockGate = { chargerBienvenue: () => { appels.charge++; return Promise.resolve(pret); } };
       c.w.KtaBienvenue = { ouvrir: (o) => { appels.ouvert.push(o); return { fermer() {}, attendreEntree() {}, ouverte: () => true }; } };
-      c.w.KtaInstance = { etat: () => ({ config: { serverConnection: { state: "on", api: "/api/", modules: [],
-        accueil: { titre: "  Club  ", description: { en: "Hello", fr: "Bonjour" } } } } }) };
+      c.w.KtaInstance = { etat: () => ({ config: { serverConnection: { state: "on", api: "/api/", modules: [] },
+        subtitle: " Secteur ", accueil: { titre: "  Club  ", description: { en: "Hello", fr: "Bonjour" } } } }) };
       return Object.assign(c, { appels });
     };
     const sans = monter(true);
@@ -2141,10 +2141,22 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     ok.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
     const ctl = await ok.K.ecranAccueil();
     const o = ok.appels.ouvert[0] || {};
-    t("ecranAccueil avec gate déléguée : ville seule ouverte, textes de serverConnection.accueil normalisés, 📖 fourni",
+    t("ecranAccueil avec gate déléguée : ville seule de connexion, textes de config.accueil normalisés + sous-titre, 📖",
       !!ctl && typeof ctl.attendreEntree === "function" && ok.appels.ouvert.length === 1 && !o.code &&
-      JSON.stringify(o.villeSeule) === '{"titre":{"fr":"Club"},"description":{"en":"Hello","fr":"Bonjour"}}' &&
+      o.connexion === true && JSON.stringify(o.villeSeule) ===
+        '{"titre":{"fr":"Club"},"description":{"en":"Hello","fr":"Bonjour"},"sousTitre":"Secteur"}' &&
       typeof o.surDoc === "function");
+    const TA = ok.K.textesAccueil;
+    t("textesAccueil : sous-titre borné à 80 (règle de main.js), config absente ou sans texte → tout vide",
+      TA({ subtitle: "s".repeat(90) }).sousTitre.length === 80 &&
+      [null, undefined, [], "x", {}, { subtitle: 3, accueil: "?" }].every((c) => {
+        const r = TA(c); return r.titre === null && r.description === null && r.sousTitre === ""; }));
+    t("textesAccueil : data/reglages.json prime champ par champ, un champ mal formé laisse place à l'index",
+      (() => { const r = TA({ subtitle: "Idx", accueil: { titre: "Titre index", description: "Desc index" } },
+        { subtitle: "Reg", accueil: { titre: "Titre réglages", description: 42 } });
+      return r.titre.fr === "Titre réglages" && r.description.fr === "Desc index" && r.sousTitre === "Reg"; })());
+    t("🩸 l'ancienne place (serverConnection.accueil) n'est plus lue : une seule clé, config.accueil",
+      TA({ serverConnection: { accueil: { titre: "x" } } }).titre === null);
     const N = ok.K.normaliserAccueil;
     const long = "x".repeat(500);
     const n1 = N({ titre: long, description: { fr: long, EN: "a", "e-s": "b", es: 3, it: "  " } });
@@ -2156,14 +2168,15 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const B = lire("js/bienvenue.js");
     t("🔒 ville seule : titre et description posés en textContent (jamais innerHTML), « Me connecter » n'entre pas",
       /querySelector\("#kta-bv-titre"\)\.textContent = _texteLangue\(ville\.titre\)/.test(B) &&
-      /desc\.textContent = _texteLangue\(ville\.description\)/.test(B) &&
-      /action === "entrer" && ville\) entreeVille\(\);/.test(B) && !/function entreeVille[\s\S]{0,300}descendre\(/.test(B));
+      /querySelector\("\.kta-bv-accroche"\)\.textContent = _texteLangue\(ville\.description\)/.test(B) &&
+      /action === "entrer" && connexion\) entreeVille\(\);/.test(B) && !/function entreeVille[\s\S]{0,300}descendre\(/.test(B));
+    t("🔒 ville seule de connexion : jamais avec un champ de code", /const connexion = !!\(ville && opts\.connexion === true && !code\);/.test(B));
     const appelants = fs.readdirSync("js").filter((f) => f.endsWith(".js") && f !== "ktaExtensions.js" &&
       /ecranAccueil\(/.test(lire("js/" + f)));
     t("🩸 ecranAccueil n'est appelé par aucun module community (prise pour une gate déléguée seulement)",
       appelants.length === 0);
-    t("ville seule SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
-      /#kta-unlock-overlay\.kta-bv\.kta-bv-ville-seule \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
+    t("ville seule de connexion SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
+      /#kta-unlock-overlay\.kta-bv\.kta-bv-connexion \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
   }
 
   console.log("");

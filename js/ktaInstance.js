@@ -17,19 +17,45 @@
 //   - 🩸 « l'index a répondu » et « config rejouée » ne se confondent JAMAIS : `repondu` le dit ; une config
 //     rejouée n'autorise ni ne révoque rien côté gate (revaliderInstance(…, false)) ;
 //   - seule la section `config` est mémorisée (pas la liste des plans).
-// Garde-fou : scripts/check-gate-instance.js
+// Réglages de l'installation : `data/reglages.json`, FACULTATIF, lu en même temps que l'index (même délai) et
+//   mémorisé à part. Fichier posé par qui héberge, jamais livré ni suivi par Git : l'index, lui, est livré (pro) et
+//   un réglage écrit dedans entrerait en conflit à chaque mise à jour. Absent (404) = aucun réglage, sans erreur.
+//   🔒 SEULES `accueil` et `subtitle` en sont lues (filtrerReglages) : jamais serverConnection, plans, accessHash ni
+//   aucune autre clé — un fichier ajouté à côté de l'index ne peut ni ouvrir une instance protégée, ni greffer un
+//   module, ni déclarer un plan. Priorité : reglages.json, puis index.json, puis les défauts ; un champ mal formé est
+//   ignoré, le reste s'applique. etat().config = config de l'index où `subtitle` est remplacé par celui des réglages
+//   (sous-titre partout : démarrage, accueil, PDF) ; etat().reglages = réglages filtrés (accueil :
+//   KtaExtensions.textesAccueil).
+// Garde-fous : scripts/check-gate-instance.js, scripts/check-extensions.js (réglages)
 
 (function () {
   "use strict";
 
   const LS_MEMO = "myktamap_instance_config_v1";
+  const LS_REGLAGES = "myktamap_instance_reglages_v1";
+  const CLES_REGLAGES = ["accueil", "subtitle"];
   const DELAI_MS = 2000;
   // 🩸 Premier contact (aucune config mémorisée) : rien à rejouer, on attend la VRAIE réponse. Après « Tout
   // réinitialiser », le SW se réinstalle et l'index arrive après 2 s : avec le délai court, une instance
   // protégée afficherait la gate community libre. Le délai court ne vaut que s'il y a un repli.
   const DELAI_PREMIER_MS = 15000;
   let _promesse = null;
-  let _etat = { charge: false, repondu: false, index: null, config: null, source: "aucune" };
+  let _etat = { charge: false, repondu: false, index: null, config: null, reglages: null, source: "aucune" };
+
+  // 🔒 Contenu de data/reglages.json → { accueil?, subtitle? } : les clés de CLES_REGLAGES seules, de la bonne forme
+  // (accueil : objet, détaillé par KtaExtensions.normaliserAccueil ; subtitle : texte non vide). null si rien.
+  function filtrerReglages(r) {
+    if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+    const out = {};
+    if (r.accueil && typeof r.accueil === "object" && !Array.isArray(r.accueil)) out.accueil = r.accueil;
+    if (typeof r.subtitle === "string" && r.subtitle.trim()) out.subtitle = r.subtitle;
+    return Object.keys(out).length ? out : null;
+  }
+  // Config effective : celle de l'index, sous-titre des réglages en priorité. Ni l'une ni l'autre : null.
+  function _fusion(config, reglages) {
+    if (!reglages || !reglages.subtitle) return config;
+    return Object.assign({}, config || {}, { subtitle: reglages.subtitle });
+  }
 
   function _lireMemo() {
     try {
@@ -62,17 +88,50 @@
       .catch(function () { clearTimeout(minuterie); return null; });
   }
 
+  function _lireMemoReglages() {
+    try { return filtrerReglages(JSON.parse(localStorage.getItem(LS_REGLAGES) || "null")); } catch (e) { return null; }
+  }
+  function _ecrireMemoReglages(r) {
+    try {
+      if (r) localStorage.setItem(LS_REGLAGES, JSON.stringify(r));
+      else localStorage.removeItem(LS_REGLAGES);
+    } catch (e) { /* stockage indisponible */ }
+  }
+  // → { repondu, reglages } : repondu = le serveur a répondu (fichier lu, ou absent : 404) ; faux sur coupure ou
+  // délai dépassé, où la mémoire est rejouée. Un fichier illisible (JSON faux) vaut absent : aucun réglage.
+  function _lireReglages() {
+    const ctrl = (typeof AbortController === "function") ? new AbortController() : null;
+    const minuterie = setTimeout(function () { if (ctrl) ctrl.abort(); }, _lireMemo() ? DELAI_MS : DELAI_PREMIER_MS);
+    return fetch("data/reglages.json", { cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) {
+        clearTimeout(minuterie);
+        if (!r.ok) return { repondu: true, reglages: null };
+        return r.json().then(function (j) { return { repondu: true, reglages: filtrerReglages(j) }; },
+          function () {
+            console.log("[Instance] data/reglages.json illisible (JSON) : ignoré");
+            return { repondu: true, reglages: null };
+          });
+      })
+      .catch(function () { clearTimeout(minuterie); return { repondu: false, reglages: null }; });
+  }
+
   // Lecture unique pour tout le démarrage : chaque appel rend la même promesse.
   function charger() {
     if (_promesse) return _promesse;
-    _promesse = _lireIndex().then(function (idx) {
+    _promesse = Promise.all([_lireIndex(), _lireReglages()]).then(function (lus) {
+      const idx = lus[0];
+      let reglages = lus[1].reglages;
+      if (lus[1].repondu) _ecrireMemoReglages(reglages);
+      else reglages = _lireMemoReglages();
       if (idx && typeof idx === "object") {
         const config = (idx.config && typeof idx.config === "object") ? idx.config : null;
         _ecrireMemo(config);
-        _etat = { charge: true, repondu: true, index: idx, config: config, source: "index" };
+        _etat = { charge: true, repondu: true, index: idx, config: _fusion(config, reglages), reglages: reglages,
+          source: "index" };
       } else {
         const memo = _lireMemo();
-        _etat = { charge: true, repondu: false, index: null, config: memo, source: memo ? "memoire" : "aucune" };
+        _etat = { charge: true, repondu: false, index: null, config: _fusion(memo, reglages), reglages: reglages,
+          source: memo ? "memoire" : "aucune" };
         console.log("[Instance] data/index.json injoignable (délai dépassé ou hors ligne) — " +
                     (memo ? "dernière config connue rejouée" : "aucune config connue"));
       }
@@ -84,7 +143,10 @@
   window.KtaInstance = {
     charger: charger,
     etat: function () { return _etat; },
+    filtrerReglages: filtrerReglages,
     LS_MEMO: LS_MEMO,
+    LS_REGLAGES: LS_REGLAGES,
+    CLES_REGLAGES: CLES_REGLAGES,
     DELAI_MS: DELAI_MS,
     DELAI_PREMIER_MS: DELAI_PREMIER_MS
   };

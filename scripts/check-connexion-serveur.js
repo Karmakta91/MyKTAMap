@@ -253,6 +253,73 @@ t("ConfAdmin refuse l'export tant que le champ est invalide",
   /\$\("caDownload"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA) &&
   /\$\("caCopy"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA));
 
+// ── 6b. Écran d'accueil : ConfAdmin écrit ce que l'app relit (config.accueil) ──
+// 🩸 Un texte que ConfAdmin publierait et que l'app rognerait ou ignorerait en silence : l'export est EXÉCUTÉ, puis
+// relu par le vrai normaliserAccueil, et le texte montré dans chaque langue doit être celui saisi (rogné aux bornes).
+{
+  const code = extraireFonction(CA, "ktaAccueilExport");
+  t("ConfAdmin contient ktaAccueilExport", !!code);
+  let exp = null;
+  if (code) { const c3 = vm.createContext({}); vm.runInContext(code, c3); exp = c3.ktaAccueilExport; }
+  const montre = (n, l) => (n ? (n[l] || n.fr || n[Object.keys(n)[0]] || "") : "");
+  const long = "x".repeat(500);
+  const CAS_ACCUEIL = [
+    ["tout vide", { titre: { fr: "", en: "", es: "" }, description: { fr: " ", en: "", es: "" } }],
+    ["français seul", { titre: { fr: " Club ", en: "", es: "" }, description: { fr: "Ligne 1\nLigne 2", en: "", es: "" } }],
+    ["trois langues", { titre: { fr: "Club", en: "Club EN", es: "Club ES" }, description: { fr: "Bonjour", en: "Hello", es: "" } }],
+    ["anglais seul", { titre: { fr: "", en: "Only EN", es: "" }, description: { fr: "", en: "", es: "" } }],
+    ["trop long", { titre: { fr: long, en: long, es: "" }, description: { fr: long, en: "", es: "" } }]
+  ];
+  const accord = !!(exp && K);
+  const ecarts = [];
+  if (accord) {
+    CAS_ACCUEIL.forEach(([nom, v]) => {
+      const sortie = exp(v);
+      const relu = K.normaliserAccueil(sortie);
+      ["titre", "description"].forEach((champ) => {
+        const max = champ === "titre" ? 80 : 400;
+        const saisi = {};
+        ["fr", "en", "es"].forEach((l) => { const s = v[champ][l].trim().slice(0, max).trim(); if (s) saisi[l] = s; });
+        const vide = !Object.keys(saisi).length;
+        ["fr", "en", "es"].forEach((l) => {
+          if (montre(relu[champ], l) !== (vide ? "" : montre(saisi, l))) ecarts.push(nom + " / " + champ + " / " + l);
+        });
+      });
+      if (nom === "tout vide" && sortie !== null) ecarts.push("tout vide → " + JSON.stringify(sortie));
+      if (nom === "français seul" && typeof (sortie || {}).titre !== "string") ecarts.push("une seule langue → chaîne");
+      if (nom === "trois langues" && typeof (sortie || {}).titre !== "object") ecarts.push("plusieurs langues → objet");
+      if (nom === "trop long" && !(sortie && sortie.titre.fr.length === 80 && sortie.description.length === 400)) {
+        ecarts.push("bornes de l'export");
+      }
+    });
+  }
+  t("ConfAdmin → app : chaque langue montre le texte saisi, rogné aux bornes (80 / 400) — " +
+    (ecarts.length ? "ÉCARTS " + ecarts.join(", ") : "5 cas"), accord && ecarts.length === 0);
+  t("champs bornés comme l'app (maxlength 80 / 400, six champs)",
+    (CA.match(/id="caAccueil(Titre|TitreEn|TitreEs)" class="kta-ca-champ" maxlength="80"/g) || []).length === 3 &&
+    (CA.match(/id="caAccueil(Desc|DescEn|DescEs)" class="kta-ca-champ" rows="3" maxlength="400"/g) || []).length === 3);
+  t("export dans config.accueil, index repris relu dans les champs",
+    /out\.config\.accueil = accueil;/.test(CA) && /_poserAccueil\(c\.accueil\);/.test(CA));
+  t("🩸 plus rien sous serverConnection.accueil (une seule clé pour le community et le pro)",
+    !/garde\.accueil|sc\.accueil|serverConnection\.accueil/.test(CA + MOD));
+  // reglages.json : ConfAdmin n'y écrit que ce que js/ktaInstance.js > filtrerReglages lit, et l'app le relit tel quel.
+  const codeR = extraireFonction(CA, "ktaReglagesExport");
+  const KI = fs.readFileSync("js/ktaInstance.js", "utf8");
+  const codeF = extraireFonction(KI, "filtrerReglages");
+  t("ConfAdmin contient ktaReglagesExport, ktaInstance filtrerReglages", !!codeR && !!codeF);
+  if (codeR && codeF && exp) {
+    const c4 = vm.createContext({});
+    vm.runInContext(codeR + codeF + "; R = ktaReglagesExport; F = filtrerReglages;", c4);
+    const plein = c4.R(exp(CAS_ACCUEIL[2][1]), "  Sous-titre  ");
+    const vide = c4.R(null, " ");
+    t("reglages.json exporté : accueil + subtitle seuls, relus à l'identique par l'app ; tout vide → {}",
+      JSON.stringify(Object.keys(plein)) === '["accueil","subtitle"]' && plein.subtitle === "Sous-titre" &&
+      JSON.stringify(c4.F(plein)) === JSON.stringify(plein) && JSON.stringify(vide) === "{}" && c4.F(vide) === null);
+  }
+  t("ConfAdmin : télécharger et reprendre un reglages.json",
+    /a\.download = "reglages\.json";/.test(CA) && /id="caReglagesInput"/.test(CA) && /_poserAccueil\(d\.accueil\);/.test(CA));
+}
+
 // ── 7. Textes : un libellé et une explication par état, 3 langues ────
 ["fr", "en", "es"].forEach((l) => {
   const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));

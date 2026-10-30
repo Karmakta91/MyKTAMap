@@ -16,7 +16,7 @@
        - config    : flags kiosque (serverPlansOnly / disableGenerator)
      ⚠️ Cette page ne fait PAS partie de l'app : PAS dans ASSETS_TO_CACHE
      (sw.js), pas de lien depuis l'UI. FR inline (hors périmètre i18n).
-     ✅ v1.73.0 : le moteur lit TOUT (plans, config.subtitle, les 2 flags,
+     Le moteur lit TOUT (plans, config.subtitle, config.accueil, les 2 flags,
      liaisons — merge par id). Gouvernance : community-server-line.md.
      ═══════════════════════════════════════════════════════════════ -->
 <script src="lib/jszip.min.js"></script>
@@ -99,6 +99,14 @@
   .kta-ca-check { margin-top: 2px; }
   label.kta-ca-flag { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0; cursor: pointer; }
   label.kta-ca-flag small { color: #8892a4; display: block; }
+  .kta-ca-accueil { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+  .kta-ca-accueil small { color: #8892a4; display: block; }
+  .kta-ca-accueil summary { cursor: pointer; margin: 4px 0; }
+  .kta-ca-champ-ligne { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: #c8d0e0; }
+  .kta-ca-champ {
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(140,180,255,0.25); border-radius: 6px; color: #e8eaf0;
+    padding: 6px 10px; font-size: 13px; max-width: 520px; font-family: inherit;
+  }
   pre.kta-ca-out {
     background: rgba(0,0,0,0.45); border: 1px solid rgba(140,180,255,0.2); border-radius: 10px;
     padding: 12px; font-size: 12px; line-height: 1.45; overflow-x: auto;
@@ -195,6 +203,44 @@
       <input type="text" id="caSubtitle" placeholder="ex. Secteur Nord" maxlength="80"
              style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:340px;">
     </label>
+    <!-- 🏙️ ÉCRAN D'ACCUEIL : titre et texte de l'arrivée (ville seule d'une installation hors myktamap.fr, ou installation
+         reliée). Texte seul, mêmes bornes que l'app (80 / 400 : js/ktaExtensions.js > normaliserAccueil), exporté par
+         js/confadmin.js > ktaAccueilExport en `config.accueil` (scripts/check-connexion-serveur.js). -->
+    <div class="kta-ca-accueil" id="caAccueil">
+      <span><strong>🏙️ Écran d'accueil</strong> — titre et texte montrés à l'arrivée sur ton installation<br>
+      <small>Vide : « MyKTAMap » en titre ; en texte, le sous-titre ci-dessus, sinon « Cartographie souterraine »
+      traduit. Texte simple (pas de mise en forme), retours à la ligne gardés.</small></span>
+      <label class="kta-ca-champ-ligne">Titre de l'accueil
+        <input type="text" id="caAccueilTitre" class="kta-ca-champ" maxlength="80" placeholder="ex. Club spéléo du Nord"></label>
+      <label class="kta-ca-champ-ligne">Description
+        <textarea id="caAccueilDesc" class="kta-ca-champ" rows="3" maxlength="400"
+                  placeholder="ex. Les plans du club, pour ses membres. Le code d'accès se demande au bureau."></textarea></label>
+      <details id="caAccueilLangues">
+        <summary>Autres langues (facultatif)</summary>
+        <small>Montrés aux visiteurs dont l'app est en anglais ou en espagnol ; un champ vide reprend le texte ci-dessus.</small>
+        <label class="kta-ca-champ-ligne">🇬🇧 Titre (anglais)
+          <input type="text" id="caAccueilTitreEn" class="kta-ca-champ" maxlength="80"></label>
+        <label class="kta-ca-champ-ligne">🇬🇧 Description (anglais)
+          <textarea id="caAccueilDescEn" class="kta-ca-champ" rows="3" maxlength="400"></textarea></label>
+        <label class="kta-ca-champ-ligne">🇪🇸 Titre (espagnol)
+          <input type="text" id="caAccueilTitreEs" class="kta-ca-champ" maxlength="80"></label>
+        <label class="kta-ca-champ-ligne">🇪🇸 Description (espagnol)
+          <textarea id="caAccueilDescEs" class="kta-ca-champ" rows="3" maxlength="400"></textarea></label>
+      </details>
+      <!-- 📄 reglages.json : ces textes et le sous-titre SEULS, dans un fichier à part que les mises à jour ne touchent
+           pas (js/ktaInstance.js > filtrerReglages ne lit rien d'autre). -->
+      <small><strong>Recommandé : <code>reglages.json</code></strong> — un fichier à toi, que les mises à jour de
+      l'app ne touchent jamais, et qui passe avant <code>index.json</code>. Il ne porte que ce titre, cette
+      description et le sous-titre. Où le déposer : installation community, à côté de <code>index.json</code> dans
+      <code>data/</code> ; installation pro, <code>instance/data/reglages.json</code> (Docker) ou le dossier
+      <code>data/</code> du site servi (sans Docker).</small>
+      <div class="kta-ca-actions">
+        <button class="kta-ca-btn kta-ca-btn-gold" id="caReglagesDownload" type="button">💾 Télécharger reglages.json</button>
+        <button class="kta-ca-btn" id="caReglagesLoad" type="button">📂 Reprendre un reglages.json</button>
+        <input type="file" id="caReglagesInput" accept=".json,application/json" style="display:none">
+      </div>
+      <div id="caReglagesEtat"></div>
+    </div>
     <label class="kta-ca-flag"><input type="checkbox" id="caFlagServerOnly">
       <span><strong>serverPlansOnly</strong> — plans du serveur uniquement<br>
       <small>Masque l'import de plans (dropzone, « Ajouter un plan ») : les visiteurs consultent les plans du kiosque.

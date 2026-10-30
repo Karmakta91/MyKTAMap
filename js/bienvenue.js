@@ -6,7 +6,8 @@
 
 // bienvenue.js — écran « Bienvenue » : petite présentation qui défile, puis l'entrée dans l'app.
 // Chargé à la demande par js/unlockGate.js (avec css/bienvenue.css), seulement quand cet écran s'affiche.
-// Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), surDoc(), code? }) → { fermer }.
+// Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), surDoc(), avantEntree?, code?, villeSeule?,
+//   connexion? }) → { fermer } (connexion : { fermer, attendreEntree, ouverte }).
 //   surDoc : « Lire la documentation » du pied (documentation intégrée, au-dessus de l'écran).
 //   avantEntree : facultatif, () → Promise, attendu au clic sur « Entrer » (ou après un code juste) AVANT surEntree et
 //   la descente : conditions d'utilisation montrées à qui entre, jamais à qui ne fait que passer. Résolue à false
@@ -18,10 +19,15 @@
 //   protégée. L'en-tête porte le champ « Code d'accès » ; on lit tout sans code, mais seul un essai « ok » fait entrer
 //   (les autres « Entrer » remontent au champ). Verrou : champ désactivé, compte à rebours dans sa zone, écran ouvert.
 //   🔒 Ni contacts de l'auteur ni pastille pro sur cet écran : le code se demande à qui gère l'installation.
-//   villeSeule { titre, description } (KtaExtensions.ecranAccueil, gate déléguée) : la ville seule, sans stations ni
-//   défilement ni visite, un bouton « Me connecter » qui n'entre PAS : il résout contrôleur.attendreEntree() et rend
-//   l'écran inerte ; l'appelant ouvre sa fenêtre par-dessus (écran sous ses fenêtres, z 99995) et ferme l'écran.
-//   Textes { code: texte } déjà normalisés, choisis au rendu (langue, puis fr, puis le premier), posés en textContent.
+//   villeSeule { titre, description, sousTitre } : la ville seule (en-tête sans stations, ni pied, ni visite, ni
+//   pastille pro, ni contacts, ni lien source) : rien ne défile. Titre : titre, sinon « MyKTAMap » ; description :
+//   description, sinon sousTitre, sinon home.tagline. titre / description { code: texte } déjà normalisés
+//   (KtaExtensions.normaliserAccueil), choisis au rendu (langue, puis fr, puis le premier), posés en textContent.
+//   - sans `connexion` (installation community hors présentation, unlockGate.js) : « Entrer », ou le champ du code
+//     si `code` ; même entrée que l'écran complet (avantEntree, surEntree, descente, surFin) ;
+//   - connexion: true (gate déléguée, KtaExtensions.ecranAccueil) : « Me connecter » n'entre PAS : il résout
+//     contrôleur.attendreEntree() et rend l'écran inerte ; l'appelant ouvre sa fenêtre par-dessus (écran sous ses
+//     fenêtres, z 99995) et ferme l'écran. Jamais de champ de code dans ce mode.
 // Mouvement (galeries pilotées au défilement, tête de suivi, flash des repères) : moteur de la page de présentation,
 //   adapté à un écran qui défile en interne (scrollTop / clientHeight de l'overlay, pas de la fenêtre).
 // ⚠️ contrat : chemins des galeries en M / V / H absolus dans 44 × 1000 ; seules les ordonnées sont réécrites.
@@ -437,25 +443,26 @@
   function _actionsHaut(protege) {
     const decouvrir = '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="decouvrir">' +
       t("bienvenue.decouvrir") + '</button>';
-    if (protege) {
-      return '<form class="kta-bv-code" data-bv-code novalidate>' +
-          '<div class="kta-bv-code-ligne">' +
-            '<input type="password" class="kta-bv-code-champ" id="kta-bv-code-champ" aria-label="' +
-              t("gate.placeholder") + '" placeholder="' + t("gate.placeholder") + '" autocomplete="off" ' +
-              'autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="kta-bv-code-retour">' +
-            '<button type="submit" class="kta-bv-btn kta-bv-btn-or kta-bv-code-entrer">' + t("bienvenue.entrer") +
-              FLECHE + '</button>' +
-          '</div>' +
-          '<div class="kta-bv-code-retour" id="kta-bv-code-retour" aria-live="polite"></div>' +
-        '</form>' +
-        '<div class="kta-bv-actions">' + decouvrir + '</div>' +
-        '<p class="kta-bv-code-note">' + t("gate.info") + '</p>';
-    }
+    if (protege) return _formulaireCode() + '<div class="kta-bv-actions">' + decouvrir + '</div>' +
+      '<p class="kta-bv-code-note">' + t("gate.info") + '</p>';
     return '<div class="kta-bv-actions">' + _boutonEntrer() + decouvrir +
       // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
       '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/?presentation" target="_blank" ' +
         'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
     '</div>';
+  }
+  // Champ « Code d'accès » et son « Entrer » (zone remplie par ouvrir > rendreZoneCode) : écran complet et ville seule.
+  function _formulaireCode() {
+    return '<form class="kta-bv-code" data-bv-code novalidate>' +
+        '<div class="kta-bv-code-ligne">' +
+          '<input type="password" class="kta-bv-code-champ" id="kta-bv-code-champ" aria-label="' +
+            t("gate.placeholder") + '" placeholder="' + t("gate.placeholder") + '" autocomplete="off" ' +
+            'autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="kta-bv-code-retour">' +
+          '<button type="submit" class="kta-bv-btn kta-bv-btn-or kta-bv-code-entrer">' + t("bienvenue.entrer") +
+            FLECHE + '</button>' +
+        '</div>' +
+        '<div class="kta-bv-code-retour" id="kta-bv-code-retour" aria-live="polite"></div>' +
+      '</form>';
   }
 
   function _gabarit(protege) {
@@ -606,26 +613,34 @@
   }
 
   // Ville seule : en-tête de l'écran (barre, ville, puits) sans stations ni pied. Titre et description posés ensuite
-  // en textContent (ouvrir > dessiner) : jamais de HTML venu de l'installation.
-  function _gabaritVille() {
+  // en textContent (ouvrir > dessinerVille) : jamais de HTML venu de l'installation. mode : "libre" (« Entrer »),
+  // "protege" (champ du code), "connexion" (« Me connecter », gate déléguée : pas de descente, donc ni fil ni tête).
+  function _gabaritVille(mode) {
+    const doc = '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="doc" title="' + t("gate.docTitle") +
+      '">' + t("gate.docBtn") + '</button>';
+    const actions = mode === "protege"
+      ? _formulaireCode() + '<div class="kta-bv-actions">' + doc + '</div>' +
+        '<p class="kta-bv-code-note">' + t("gate.info") + '</p>'
+      : '<div class="kta-bv-actions">' +
+          '<button type="button" class="kta-bv-btn kta-bv-btn-or" data-bv="entrer">' +
+            t(mode === "connexion" ? "bienvenue.connecter" : "bienvenue.entrer") + FLECHE + '</button>' + doc +
+        '</div>';
     return '<div class="kta-bv-page">' +
       '<header class="kta-bv-entete">' +
         '<div class="kta-bv-barre"><p class="kta-bv-logo">MyKTAMap</p>' + _langues() + '</div>' +
         '<div class="kta-bv-hero">' +
           '<h1 id="kta-bv-titre"></h1>' +
           '<p class="kta-bv-accroche"></p>' +
-          '<div class="kta-bv-actions">' +
-            '<button type="button" class="kta-bv-btn kta-bv-btn-or" data-bv="entrer">' + t("bienvenue.connecter") +
-              FLECHE + '</button>' +
-            '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="doc" title="' + t("gate.docTitle") +
-              '">' + t("gate.docBtn") + '</button>' +
-          '</div>' +
+          actions +
           _luneHaut() +
         '</div>' +
         _ville() +
         '<div class="kta-bv-entree" aria-hidden="true">' +
           '<div class="kta-bv-entree-galerie"></div>' +
+          (mode === "connexion" ? "" : '<div class="kta-bv-fil-entree"></div>') +
           '<span class="kta-bv-repere">' + _img("peo.png", 40) + '</span>' +
+          (mode === "connexion" ? "" :
+            '<img class="kta-bv-tete-entree" src="icon/iconetrack.png" alt="" width="30" height="30">') +
           _speleos() +
         '</div>' +
       '</header>' +
@@ -903,10 +918,13 @@
     // Instance protégée : l'appelant fournit la vérification (unlockGate.js > _essayerCode), jamais réécrite ici.
     const code = (opts.code && typeof opts.code.essayer === "function" && typeof opts.code.etat === "function")
       ? opts.code : null;
-    const ville = (!code && opts.villeSeule && typeof opts.villeSeule === "object") ? opts.villeSeule : null;
+    const ville = (opts.villeSeule && typeof opts.villeSeule === "object") ? opts.villeSeule : null;
+    // Gate déléguée : « Me connecter » rend la main à l'appelant (attendreEntree), jamais avec un champ de code.
+    const connexion = !!(ville && opts.connexion === true && !code);
     const ecranEl = document.createElement("div");
     ecranEl.id = "kta-unlock-overlay";
-    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "") + (ville ? " kta-bv-ville-seule" : "");
+    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "") + (ville ? " kta-bv-ville-seule" : "") +
+      (connexion ? " kta-bv-connexion" : "");
     ecranEl.setAttribute("role", "dialog");
     ecranEl.setAttribute("aria-modal", "true");
     ecranEl.setAttribute("aria-labelledby", "kta-bv-titre");
@@ -915,7 +933,8 @@
     // « Découvrir l'app en 1 minute » touché avant le code : la visite est demandée à l'entrée.
     let visiteVoulue = false;
     let vigieEntete = null, remontee = null;
-    // Ville seule : clic sur « Me connecter » en attente d'attendreEntree() (demandee) ou attente posée (attente).
+    // Ville seule de connexion : clic sur « Me connecter » en attente d'attendreEntree() (demandee) ou attente posée
+    // (attente).
     let ferme = false, demandee = false, attente = null;
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
     const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); _figerPlanches(ecranEl); };
@@ -1001,19 +1020,33 @@
       vigieEntete.observe(entete);
     }
 
-    function dessinerVille() {
-      ecranEl.innerHTML = _gabaritVille();
-      ecranEl.scrollTop = 0;
-      ecranEl.querySelector("#kta-bv-titre").textContent = _texteLangue(ville.titre) || "MyKTAMap";
-      const desc = ecranEl.querySelector(".kta-bv-accroche");
-      desc.textContent = _texteLangue(ville.description);
-      desc.hidden = !desc.textContent;
-      _figerPlanches(ecranEl);
-      if (ecranEl.inert) ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = true; });
-      setTimeout(function() { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }, 100);
+    // Focus à l'ouverture sur l'écran lui-même (dialogue) : le clavier part de là, sans anneau de focus imposé sur un
+    // bouton au toucher, ni clavier virtuel ouvert sur le champ du code. Instance protégée sur PC (souris, pas de
+    // clavier virtuel) : focus sur le champ, le code se tape directement.
+    function focusOuverture() {
+      setTimeout(function() {
+        const input = champ();
+        const pc = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+        const cible = (code && pc && input && !input.disabled) ? input : ecranEl;
+        try { cible.focus({ preventScroll: true }); } catch (e) { cible.focus(); }
+      }, 100);
     }
 
-    // Ville seule : écran inerte, boutons désactivés, le temps que l'appelant ait la main (fenêtre par-dessus).
+    function dessinerVille() {
+      ecranEl.innerHTML = _gabaritVille(connexion ? "connexion" : (code ? "protege" : "libre"));
+      ecranEl.scrollTop = 0;
+      // Fil du puits replié (--entree absent = 0) jusqu'à la descente, comme l'écran complet en haut de page.
+      if (!connexion) ecranEl.classList.add("kta-bv-js-fil");
+      ecranEl.querySelector("#kta-bv-titre").textContent = _texteLangue(ville.titre) || "MyKTAMap";
+      ecranEl.querySelector(".kta-bv-accroche").textContent = _texteLangue(ville.description) ||
+        (typeof ville.sousTitre === "string" ? ville.sousTitre : "") || t("home.tagline");
+      _figerPlanches(ecranEl);
+      rendreZoneCode();
+      if (ecranEl.inert) ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = true; });
+      focusOuverture();
+    }
+
+    // Ville seule de connexion : écran inerte, boutons désactivés, le temps que l'appelant ait la main (fenêtre par-dessus).
     function bloquerVille(oui) {
       ecranEl.inert = oui;
       ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = oui; });
@@ -1041,15 +1074,7 @@
       _figerPlanches(ecranEl);
       rendreZoneCode();
       surveillerEntete();
-      // Focus sur l'écran lui-même (dialogue) : le clavier part de là (Tab → « Entrer », flèches → défilement),
-      // sans anneau de focus imposé sur un bouton au toucher, ni clavier virtuel ouvert sur le champ du code.
-      // Instance protégée sur PC (souris, pas de clavier virtuel) : focus sur le champ, le code se tape directement.
-      setTimeout(function() {
-        const input = champ();
-        const pc = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
-        const cible = (code && pc && input && !input.disabled) ? input : ecranEl;
-        try { cible.focus({ preventScroll: true }); } catch (e) { cible.focus(); }
-      }, 100);
+      focusOuverture();
     }
 
     function fermer() {
@@ -1158,7 +1183,7 @@
       const action = cible.getAttribute("data-bv");
       if (action === "remonter") remonter();
       else if (action === "doc") { if (typeof opts.surDoc === "function") opts.surDoc(); }
-      else if (action === "entrer" && ville) entreeVille();
+      else if (action === "entrer" && connexion) entreeVille();
       else if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
       else if (action === "visite") { if (code) allerAuChamp(true); else entrer(true); }
       else if (action === "decouvrir") {
@@ -1177,7 +1202,7 @@
       if (mq.addEventListener) mq.addEventListener("change", surReduit);
       else if (mq.addListener) mq.addListener(surReduit);
     }
-    if (ville) {
+    if (connexion) {
       // Un clic avant le premier attendreEntree() est gardé (demandee) : l'appel suivant se résout aussitôt.
       return { fermer: fermer, attendreEntree: attendreEntree, ouverte: function() { return !ferme; } };
     }

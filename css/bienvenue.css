@@ -313,9 +313,17 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   .kta-bv-hero h1 { font-size: 52px; }
 }
 
-/* ── Ville seule (gate déléguée, KtaExtensions.ecranAccueil) : l'en-tête sans stations, SOUS les fenêtres de la
-   gate (z 100001 et plus) qui s'ouvrent par-dessus ; au-dessus du splash. Rien en dessous : pas de défilement. ── */
-html #kta-unlock-overlay.kta-bv.kta-bv-ville-seule { z-index: 99995; }
+/* ── Ville seule (installation community hors présentation, ou gate déléguée) : l'en-tête sans stations. Rien en
+   dessous : pas de défilement. Gate déléguée (kta-bv-connexion, KtaExtensions.ecranAccueil) : SOUS les fenêtres de
+   la gate (z 100001 et plus) qui s'ouvrent par-dessus ; au-dessus du splash. ── */
+html #kta-unlock-overlay.kta-bv.kta-bv-connexion { z-index: 99995; }
+/* Champ du code, son retour et la note « à qui le demander » : la ville cède la hauteur qu'ils prennent, pour que
+   l'écran tienne sans défiler (téléphone 360 × 640 et portable 1366 × 768 compris). Un verrou en cours, plus long,
+   peut encore faire défiler sur un petit écran : rien n'est coupé. */
+html #kta-unlock-overlay.kta-bv.kta-bv-ville-seule.kta-bv-protege { --h-ville: clamp(170px, calc(100svh - 500px), 440px); }
+@media (min-width: 900px) {
+  html #kta-unlock-overlay.kta-bv.kta-bv-ville-seule.kta-bv-protege { --h-ville: clamp(170px, calc(100svh - 490px), 440px); }
+}
 .kta-bv-ville-seule .kta-bv-hero h1 { overflow-wrap: anywhere; }
 .kta-bv-ville-seule .kta-bv-accroche { white-space: pre-line; overflow-wrap: anywhere; }
 

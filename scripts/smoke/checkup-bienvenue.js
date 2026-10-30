@@ -33,7 +33,7 @@ const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123
 const SHOTS = process.env.BV_SHOTS || "";
 // Conditions déjà acceptées : la gate légale (avant l'écran) n'est pas l'objet du checkup.
 const LS_ARRIVEE = { myktamap_terms_accepted_v1: "2" };
-const BRUIT_TOLERE = [/Licence-pro\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
+const BRUIT_TOLERE = [/Licence-pro\.json/i, /data\/reglages\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
 const VUES = [
   { nom: "telephone", viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { nom: "pc", viewport: { width: 1366, height: 768 } }

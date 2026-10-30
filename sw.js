@@ -1482,6 +1482,27 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // data/reglages.json (réglages facultatifs de l'installation, js/ktaInstance.js) : réseau d'abord comme l'index,
+  // gardé en cache pour le hors-ligne. Jamais précaché : absent par défaut (404 nominal). 🩸 Un 404 du SERVEUR
+  // (fichier retiré) vide le cache : sinon le repli rejouerait pour toujours un réglage supprimé.
+  if (/\/data\/reglages\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith((async function() {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const rep = await Promise.race([fetch(event.request, { cache: "no-store" }), new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("network timeout")); }, 3000);
+        })]);
+        if (rep.ok) { try { cache.put(event.request, rep.clone()); } catch(e) {} }
+        else if (rep.status === 404) { try { cache.delete(event.request, { ignoreSearch: true }); } catch(e) {} }
+        return rep;
+      } catch (e) {
+        const enCache = await cache.match(event.request, { ignoreSearch: true });
+        return enCache || new Response("", { status: 404, headers: { "Content-Type": "application/json" } });
+      }
+    })());
+    return;
+  }
+
   // NETWORK-FIRST POUR data/index.json (mode serveur kiosque).
   // Le fichier est précaché (boot offline) MAIS il est aussi le canal de
   // configuration d'une instance auto-hébergée (plans, flags, sous-titre,

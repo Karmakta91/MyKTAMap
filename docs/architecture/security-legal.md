@@ -81,7 +81,9 @@ affichage en clair dans la fenêtre de reset sont supprimés.
 #### 36.1 Un écran, deux modes selon l'instance
 
 Le mode est décidé **avant** de dessiner (`_monterGate` lit `_hashInstance()`, config d'instance déjà
-chargée par `ktaInstance.js`). Les deux modes montrent la même présentation « Bienvenue » (§36.8) :
+chargée par `ktaInstance.js`). Les deux modes montrent la même présentation « Bienvenue » (§36.8) sur les domaines
+de présentation (`myktamap.fr`, `dev.myktamap.fr`, `localhost`, `127.0.0.1` : `UnlockGate.presentationComplete`) ;
+ailleurs, sa **ville seule** (§36.8), avec « Entrer » ou le même champ, à la même règle d'ouverture :
 
 | Instance | En-tête de l'écran | Ce qui ouvre |
 |---|---|---|
@@ -184,7 +186,7 @@ Une petite présentation qui défile, dans le style de la page de présentation 
 **une fois par appareil**, après le splash (inchangé) et la gate légale : un appareil déjà entré ne la revoit jamais.
 
 - **Chargement à la demande** : `unlockGate.js > _chargerBienvenue` ajoute `css/bienvenue.css` et `js/bienvenue.js`
-  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code? })`) ; les polices Montserrat 400/600/800 et Permanent
+  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code?, villeSeule?, connexion? })`) ; les polices Montserrat 400/600/800 et Permanent
   Marker (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés
   (`sw.js`). Fichier absent ou trop lent (4 s) → carte de repli (§36.1).
 - **Contenu** : accroche, sept stations (le topo, avec « ce que l'app n'est pas » · plan dans la poche · annoter le
@@ -211,13 +213,19 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   sans mot de passe : marquée vue à l'entrée, ouverte seulement si demandée. Au pied, une phrase courte
   (`bienvenue.pied.prive`) ; la complète (`gate.info`) est près du champ.
 - **« Découvrir »** fait défiler jusqu'à la 1re station (`#kta-bv-topo`).
-- **Ville seule** (`ouvrir({ villeSeule })`, ouverte par `KtaExtensions.ecranAccueil()` pour une gate déléguée,
-  contrat `community-server-line.md` §3) : l'en-tête seul — barre et langues, titre et description de l'installation
-  (`serverConnection.accueil`, posés en `textContent`, « MyKTAMap » sans titre), « Me connecter »
-  (`bienvenue.connecter`), « 📖 Documentation » —, la ville et le puits, sans fil ni stations ni pied : rien ne
-  défile. Ni champ de code, ni contacts, ni pastille pro, ni 🚨 de remontée. « Me connecter » **n'entre pas** :
-  l'écran devient inerte et la gate ouvre sa fenêtre par-dessus (écran à z 99995, sous ses fenêtres) ; elle le ferme
-  elle-même. Sans extension, jamais montrée.
+- **Ville seule** (`ouvrir({ villeSeule })`, contrat `community-server-line.md` §3) : l'en-tête seul — barre et
+  langues, titre et description de l'installation (posés en `textContent` : `data/reglages.json > accueil`, puis
+  `config.accueil`, puis « MyKTAMap » et le sous-titre, sinon la tagline traduite), les actions, « 📖 Documentation »
+  —, la ville et le puits, sans stations ni pied : rien ne défile. Ni « Découvrir », ni visite, ni contacts, ni
+  pastille pro, ni lien source, ni 🚨 de remontée. Deux usages :
+  - **installation community hors domaines de présentation** (`unlockGate.js > _villeSeule`) : « Entrer », ou le
+    champ « Code d'accès » et `gate.info` si `accessHash` (même `_essayerCode`, même verrou, rien mémorisé en
+    `libre-v1`) ; même entrée que l'écran complet (conditions refusables, descente du puits, `surEntree` / `surFin`),
+    écran à z 100100. Avec le champ, la ville cède de la hauteur (`--h-ville`) pour tenir sans défiler ; un verrou en
+    cours, plus long, peut faire défiler un petit écran ;
+  - **gate déléguée** (`KtaExtensions.ecranAccueil()`, `connexion: true`) : « Me connecter » (`bienvenue.connecter`)
+    **n'entre pas** : l'écran devient inerte et la gate ouvre sa fenêtre par-dessus (écran à z 99995, sous ses
+    fenêtres) ; elle le ferme elle-même. Jamais de champ de code. Sans extension, jamais montrée.
 - **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
   aucun thème n'est choisi.
 

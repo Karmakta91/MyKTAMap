@@ -69,6 +69,38 @@
   hors-ligne (réglage « Mémoriser ») ; aux ouvertures suivantes, il n'est retéléchargé que s'il a changé.
   `zip` doit être un chemin relatif sur votre site (`data/x.zip`, `plans/x.zip`), sinon il est ignoré.
 - `subtitle` : remplace « Cartographie souterraine » (démarrage, accueil, en-tête des PDF exportés). Le nom MyKTAMap reste.
+- `accueil` : titre et texte de l'**écran d'arrivée** (voir ci-dessous) ; on le met plutôt dans `reglages.json`.
+
+## L'écran d'arrivée et `data/reglages.json`
+
+Sur votre installation (tout autre domaine que myktamap.fr), l'app ne montre pas la présentation de myktamap.fr :
+le premier écran est la **ville seule**, avec **votre** titre et **votre** texte, le bouton **Entrer** (ou le champ
+**Code d'accès** si vous avez posé un mot de passe), la documentation et le choix de langue. Les conditions
+d'utilisation s'affichent au moment d'entrer, comme ailleurs.
+
+Recommandé : ces textes dans un fichier **à vous**, `data/reglages.json`, à côté de `index.json`. Les mises à jour
+de l'app ne le touchent jamais, et il passe avant `index.json` :
+
+```json
+{
+  "accueil": {
+    "titre": "Club spéléo du Nord",
+    "description": { "fr": "Les plans du club, pour ses membres.", "en": "The club's maps, for its members." }
+  },
+  "subtitle": "Club spéléo du Nord"
+}
+```
+
+- `titre` (80 caractères au plus) et `description` (400) : une **chaîne** (toutes langues) ou un objet par langue
+  `{ "fr", "en", "es" }` (langue absente → le français). Texte simple : une balise s'affiche telle quelle ; les
+  retours à la ligne sont gardés.
+- Sans titre : « MyKTAMap ». Sans description : votre `subtitle`, sinon « Cartographie souterraine » traduit.
+- `subtitle` y remplace celui d'`index.json` partout (démarrage, accueil, PDF).
+- **Rien d'autre n'est lu dans ce fichier** : ni `accessHash`, ni `serverConnection`, ni `plans`. Un champ mal formé
+  est ignoré, le reste s'applique ; un fichier absent ou illisible ne change rien.
+- ConfAdmin (bloc 🏙️ « Écran d'accueil ») le prépare : **Télécharger reglages.json**, et **Reprendre** pour le
+  modifier. `config.accueil` dans `index.json` est aussi lu (même forme) quand `reglages.json` ne dit rien.
+- Hors ligne, l'app garde la dernière version lue. Retirer le fichier rend les textes par défaut à la visite suivante.
 - `serverPlansOnly` : masque l'import de plans (dropzone « Ajouter un plan ») et les réglages serveur devenus inutiles.
 - `disableGenerator` : masque le Générateur dans les Outils.
 - `serverConnection` : **réservé aux instances qui greffent des modules de connexion à un serveur.**

@@ -6,12 +6,13 @@
 
 // unlockGate.js — gate d'accès au premier lancement (re-demandée après un reset complet).
 // Expose : window.UnlockGate (isUnlocked, isLockedOut, ouvrirGate, lock, markUnlockedViaLicensePro,
-//   revaliderInstance, instanceRequiertMotDePasse, visiteDemandee, chargerBienvenue).
-// Écran : la présentation « Bienvenue » (js/bienvenue.js + css/bienvenue.css, chargés à la demande). Instance qui
-//   publie `index.json > config.accessHash` → champ « Code d'accès » dans son en-tête, seul ce mot de passe ouvre ;
-//   sinon → bouton « Entrer », retenu sur l'appareil. Repli si ces fichiers manquent : la carte centrée (champ ou
-//   « Entrer »). Saisie, compteur d'essais et verrou communs aux deux (_essayerCode). Aucun mot de passe codé en
-//   dur, aucun import de licence ici (seule une licence SERVEUR active le pro).
+//   revaliderInstance, instanceRequiertMotDePasse, visiteDemandee, chargerBienvenue, presentationComplete).
+// Écran : l'écran « Bienvenue » (js/bienvenue.js + css/bienvenue.css, chargés à la demande) — la présentation
+//   complète sur les domaines de myktamap.fr et en local, sa ville seule partout ailleurs (presentationComplete).
+//   Instance qui publie `index.json > config.accessHash` → champ « Code d'accès » dans son en-tête, seul ce mot de
+//   passe ouvre ; sinon → bouton « Entrer », retenu sur l'appareil. Repli si ces fichiers manquent : la carte centrée
+//   (champ ou « Entrer »). Saisie, compteur d'essais et verrou communs à tous (_essayerCode). Aucun mot de passe codé
+//   en dur, aucun import de licence ici (seule une licence SERVEUR active le pro).
 // ⚠️ Barrière SOCIALE, pas une authentification : le code est public, le hash se lit, le
 //   localStorage se force en F12. Elle écarte les passants et les robots, pas un attaquant motivé.
 // ⚠️ Verrou JAMAIS définitif (décision produit) : 5 échecs → temporisé, escaladé, comme pinLock.js.
@@ -102,20 +103,25 @@
   // Hash publié par l'instance. Lu seulement quand la gate s'ouvre : rien pour un appareil déverrouillé.
   // 🩸 La FORME (64 hexa) est validée : un mot de passe collé en clair ou un hash tronqué ne doit pas
   // devenir une valeur acceptée.
+  // Config d'instance chargée une fois avant les gates (js/ktaInstance.js). Index injoignable → dernière config
+  // connue : hors ligne, une instance protégée garde son mot de passe (et la ville seule ses textes). null si rien.
+  async function _configInstance() {
+    let cfg = null;
+    if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
+      const st = await window.KtaInstance.charger();
+      cfg = st ? st.config : null;
+    } else {
+      const r = await fetch("data/index.json", { cache: "no-store" });   // repli : module absent
+      if (!r.ok) return null;
+      const idx = await r.json();
+      cfg = idx ? idx.config : null;
+    }
+    return cfg && typeof cfg === "object" ? cfg : null;
+  }
+
   async function _hashInstance() {
     try {
-      // Config d'instance chargée une fois avant les gates (js/ktaInstance.js). Index injoignable →
-      // dernière config connue : hors ligne, une instance protégée garde son mot de passe.
-      let cfg = null;
-      if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
-        const st = await window.KtaInstance.charger();
-        cfg = st ? st.config : null;
-      } else {
-        const r = await fetch("data/index.json", { cache: "no-store" });   // repli : module absent
-        if (!r.ok) return null;
-        const idx = await r.json();
-        cfg = idx ? idx.config : null;
-      }
+      const cfg = await _configInstance();
       const h = cfg ? cfg.accessHash : null;
       if (typeof h !== "string") return null;
       const propre = h.trim().toLowerCase();
@@ -439,9 +445,29 @@
     return Promise.race([tout, delai]);
   }
 
+  // Écran d'arrivée selon le domaine (décision produit) : la présentation complète de myktamap.fr sur ses propres
+  // domaines et en local (scripts/smoke/checkup-bienvenue.js la joue sur 127.0.0.1) ; toute autre installation (auto-
+  // hébergée) n'a que la ville seule, à ses textes. ⚠️ Liste unique, ici seulement (check-gate-instance.js l'exécute).
+  const HOTES_PRESENTATION = ["myktamap.fr", "dev.myktamap.fr", "localhost", "127.0.0.1"];
+  function presentationComplete(hote) {
+    const h = String(hote == null ? "" : hote).trim().toLowerCase().replace(/\.$/, "");
+    return HOTES_PRESENTATION.indexOf(h) >= 0;
+  }
+  // Ville seule : textes de data/reglages.json puis de l'index (KtaExtensions.textesAccueil). Config ou
+  // module indisponible : {} (titre « MyKTAMap », tagline traduite). Présentation complète : null.
+  function _villeSeule() {
+    if (presentationComplete(typeof location !== "undefined" ? location.hostname : "")) return Promise.resolve(null);
+    return _configInstance().then(function(cfg) {
+      const KE = window.KtaExtensions, KI = window.KtaInstance;
+      const st = (KI && typeof KI.etat === "function") ? KI.etat() : null;
+      return (KE && typeof KE.textesAccueil === "function") ? KE.textesAccueil(cfg, st ? st.reglages : null) : {};
+    }).catch(function() { return {}; });
+  }
+
   // hashInstance non nul : l'écran porte le champ « Code d'accès » et n'entre qu'après un code juste.
   function _monterBienvenue(hashInstance) {
-    _chargerBienvenue().catch(function() { return false; }).then(function(pret) {
+    Promise.all([_chargerBienvenue().catch(function() { return false; }), _villeSeule()]).then(function(r) {
+      const pret = r[0], ville = r[1] || undefined;
       if (!pret) {
         console.warn("[UnlockGate] écran Bienvenue indisponible : carte de repli");
         _monterGateMode(hashInstance, true);
@@ -452,6 +478,7 @@
         // Visite guidée proposée comme sans mot de passe : marquée vue à l'entrée (après un code juste).
         window.KtaBienvenue.ouvrir({
           code: { essayer: _essayerCode, etat: _etatCode },
+          villeSeule: ville,
           surDoc: _ouvrirDocReadme,
           avantEntree: _avantEntree,
           surEntree: function(visite) {
@@ -466,6 +493,7 @@
         return;
       }
       window.KtaBienvenue.ouvrir({
+        villeSeule: ville,
         surDoc: _ouvrirDocReadme,
         avantEntree: _avantEntree,
         surEntree: function(visite) {
@@ -571,7 +599,8 @@
     instanceRequiertMotDePasse: instanceRequiertMotDePasse,
     visiteDemandee: function() { return _visiteDemandee; },
     // Chargeur de l'écran Bienvenue (css + js, 4 s) : aussi celui de KtaExtensions.ecranAccueil (gate déléguée).
-    chargerBienvenue: _chargerBienvenue
+    chargerBienvenue: _chargerBienvenue,
+    presentationComplete: presentationComplete
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());
