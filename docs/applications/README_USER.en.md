@@ -715,7 +715,7 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 
-Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of everything.
+Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
 
 ### ⛔ "Inaccessible" zone — blocks the route
 

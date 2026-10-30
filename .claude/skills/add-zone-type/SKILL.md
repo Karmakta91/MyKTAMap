@@ -22,7 +22,7 @@ Sites à couvrir :
 7. `js/utils.js` → `telechargerPlan` (tri zones session — export PNG rapide)
 8. `js/exporter.js` → `_compterTypes / hasZones / zoneLabels / ordre / filtreZ` + checkboxes `ann_zones_*` (~10 sites)
 9. `js/sessionExporter.js` → `_trierParType` (×3) / `syncParent` (×2) / filtres `zoneTypes` + checkboxes `adv_zones_* / conv_zones_*`
-10. `index.html` → pattern SVG si rendu spécial (cf. `kta-pattern-inaccessible`)
+10. `js/styleResolver.js` → `_motif` (CanvasPattern) si rendu hachuré (cf. `inaccessible`) ; jamais de renderer SVG : il passerait au-dessus des structures
 11. `css/style.css` → styles spécifiques si besoin
 12. `js/pathfinder.js` → helper de détection si la zone est **bloquante** pour l'itinéraire
 13. **Doc** : `docs/architecture/multilevel-pathfinding.md` + `docs/applications/AI_CONTEXT.md` (liste anti-hallucination) + `README_USER.md` + `README.md` (journal)

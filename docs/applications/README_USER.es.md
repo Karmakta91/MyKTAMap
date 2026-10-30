@@ -715,7 +715,7 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 
-Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de todo.
+Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 

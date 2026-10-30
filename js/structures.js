@@ -10,7 +10,7 @@
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
 //   isStructurePolylineType, majLargeurFronts, brancherLargeurFronts, ktaLargeur{FrontPourRatio,
-//   FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm.
+//   FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus.
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
 // 🩸 Le Pathfinder ignore les structures (ni arêtes ni obstacles, graphe sur les `roads` seulement) : un
 // relevé tout en structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé.
@@ -645,6 +645,16 @@ window.setCurrentStructureByIndex = function(idx) {
   } else {
     currentStructure = null;
   }
+};
+
+// ⚠️ Ordre d'empilement : les structures (calques puis session) se peignent AU-DESSUS des zones. Tout est sur le
+// même canvas, peint dans l'ordre d'ajout : une zone (re)dessinée après une structure la recouvrirait. Appelé
+// après chaque rendu de zones (zones.js > renderZones, utils.js > zones d'un calque) ; l'ordre entre structures,
+// et celui des zones entre elles et sous les tracés, est gardé.
+window.ktaStructuresAuDessus = function() {
+  const monter = function(l) { if (l && typeof l.bringToFront === "function") l.bringToFront(); };
+  (window._ktaDataStructurePolygons || []).forEach(function(e) { monter(e && e.polygon); });
+  structureLayers.forEach(monter);
 };
 
 // interface.js > activerModeSuppressionStructureClic y lit la géométrie à tester.

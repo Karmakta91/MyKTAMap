@@ -1754,8 +1754,8 @@ function normaliserPoints(json) {
 // ── Styles des data layers : aucune table ici, tout vient de js/styleResolver.js ──────────
 // ⚠️ Passer par le résolveur fait lire LegendCustomization : un type custom d'un calque de données a la même
 // couleur qu'en session (sinon blanc / gris / bleu de repli).
-// Deux helpers car les cibles diffèrent : carte Leaflet (motif SVG de `inaccessible` peint tel quel) ;
-// canvas d'export (pas de `url(#pattern)` → { flat: true }, aplat de repli du type).
+// Deux helpers car les cibles diffèrent : carte Leaflet (hachures de `inaccessible` en CanvasPattern) ;
+// canvas d'export ({ flat: true }, aplat de repli du type : le motif ne part pas dans un fichier).
 // `repli` = type utilisé si `type` est introuvable ; `null` pour ne rien rendre.
 
 function _ktaStyleMap(categorie, type, repli) {
@@ -1882,7 +1882,7 @@ window._applyLevelFilterToDataRoads = function() {
 // Repeint les objets des calques de données après un changement de couleur de légende (construits une
 // fois au chargement, sinon la couleur n'arrive qu'au rechargement). Ne touche qu'aux couleurs et aux
 // opacités d'ORIGINE : l'opacité affichée appartient au filtre multi-niveau, réappliqué juste après pour
-// ne pas révéler un objet masqué. `inaccessible` : renderer SVG dédié, setStyle du motif fonctionne tel quel.
+// ne pas révéler un objet masqué. `inaccessible` : setStyle pose le CanvasPattern tel quel.
 window._ktaRestyleDataLayers = function() {
   const R = window.ktaResolveStyle;
   if (typeof R !== "function") return;
@@ -2560,24 +2560,17 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       // Zones embarquées en lecture seule. Ordre : eau (arrière) → remblais → effondrement (avant).
       if (Array.isArray(json.zones) && json.zones.length > 0) {
-        // 🩸 `inaccessible` est peinte au motif SVG (hachures, index.html) : renderer SVG forcé, un renderer
-        // canvas ignore url(#…).
+        // `inaccessible` : hachures en CanvasPattern (styleResolver.js), sur le canvas commun comme les autres.
         const zonesTriees = [...json.zones].sort(function(a, b) {
           const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
         });
-        // renderer SVG unique pour toutes les zones inaccessibles des data layers
-        if (!window._inaccessibleDataRenderer) {
-          window._inaccessibleDataRenderer = L.svg({ padding: 0.5 });
-        }
         zonesTriees.forEach(function(zone) {
           if (!zone.points || zone.points.length < 3) return;
           const style = _ktaStyleMap("zones", zone.type, "remblais");
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
           const hasNoteROZone = !!(zone.description && String(zone.description).trim());
-          const polyOpts = (zone.type === "inaccessible")
-            ? Object.assign({}, style, { interactive: hasNoteROZone, renderer: window._inaccessibleDataRenderer })
-            : Object.assign({}, style, { interactive: hasNoteROZone });
+          const polyOpts = Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
             const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔" };
@@ -2628,6 +2621,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           window._ktaDataPolygons.push(entry);
           _filtreNiveauSurPolygonData(entry);
         });
+        // Zones peintes APRÈS les structures de ce calque (et celles de la session) : on remonte les structures.
+        if (typeof window.ktaStructuresAuDessus === "function") window.ktaStructuresAuDessus();
       }
 
       // étend availableLevels si le calque dépasse la plage par défaut (les markers arrivent par lots async :
@@ -2797,7 +2792,7 @@ async function telechargerPlan() {
     }
 
     // ── calques JSON visibles : data[] + roads[] + zones[] + structures[], comme ajouterPointsDepuisJSON ──
-    // `inaccessible` sort en aplat ({ flat: true }) : le canvas ne sait pas peindre le motif SVG. Jonctions en
+    // `inaccessible` sort en aplat ({ flat: true }), comme dans tous les exports. Jonctions en
     // trait plein (pas de setLineDash), extrémités marquées par des ronds magenta.
 
     // routes (embarquées + session) collectées pour les cercles d'intersection, dessinés à la fin

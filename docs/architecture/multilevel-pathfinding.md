@@ -363,7 +363,12 @@ Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effon
 
 **Type de zone** : `"inaccessible"` (4ème type, après `eau`/`remblais`/`effondrement`). Tracé via le groupe ⬛ Zones de la sidebar, bouton ⛔.
 
-**Visuel** : hachures rouge sombre / noir à 45° via un `<pattern>` SVG défini dans `index.html` (`id="kta-pattern-inaccessible"`). Renderer SVG forcé (singleton `_inaccessibleRenderer` dans `zones.js` pour session, `_inaccessibleDataRenderer` dans `utils.js` pour data layers) car canvas ignore les patterns SVG.
+**Visuel** : hachures rouge sombre / noir à 45°, peintes en `CanvasPattern` (`styleResolver.js > _motifCanvas`, couleurs
+dans `CANON.zones.inaccessible._motif`) sur le **même canvas** que les autres vecteurs, session comme calques. Elle passe
+donc par-dessus les autres zones (tri `eau < remblais < effondrement < inaccessible`) et **sous les structures**
+(`structures.js > ktaStructuresAuDessus`, rappelé après chaque rendu de zones : sur un canvas, la dernière couche
+ajoutée se peint au-dessus). Le motif suit la carte au glissé et garde sa taille à l'écran au zoom. Exports, KMZ, Vue
+OSM, pastilles : aplat de repli (`{ flat: true }`).
 
 **Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)`. Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
 
@@ -508,7 +513,7 @@ Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" 
 7. `js/utils.js > telechargerPlan > ordre` — tri zones session
 8. `js/exporter.js > _compterTypes / hasZones / zoneLabels / ordre / filtreZ + checkboxes ann_zones_*` (×~10 sites)
 9. `js/sessionExporter.js > _trierParType (×3 sites) / syncParent (×2) / zoneTypes filter / zoneTypesActifs + checkboxes adv_zones_* / conv_zones_*` (~8 sites)
-10. `index.html` — pattern SVG si nécessaire pour le rendu visuel
+10. `js/styleResolver.js > CANON.zones.<type>._motif` — hachures en CanvasPattern si nécessaire (jamais un SVG : il passerait au-dessus des structures)
 11. `css/style.css` — styles spécifiques si besoin
 12. Pathfinder si bloquant : helper de détection dans `pathfinder.js`
 13. Doc : CLAUDE.md (cette section), AI_CONTEXT.md (liste anti-hallucination), README_USER.md, README.md (journal)

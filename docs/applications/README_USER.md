@@ -715,7 +715,7 @@ Dans le groupe **⬛ Zones**, des surfaces fermées pour annoter le plan :
 | 🟦 **Eau** | bleu | aucun |
 | ⛔ **Inaccessible** | hachures rouge sombre / noir | **bloque** le passage |
 
-Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis les remblais, les effondrements, et l'inaccessible par-dessus tout.
+Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis les remblais, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
 
 ### ⛔ Zone « Inaccessible » — bloque l'itinéraire
 
