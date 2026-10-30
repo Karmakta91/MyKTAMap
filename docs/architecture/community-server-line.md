@@ -111,6 +111,17 @@ photos restent locales et exportables).
 > refusées). L'écran reste jusqu'à `fermer()`, qui résout une attente en cours. `null` : aucune extension avec `gate`,
 > ou écran indisponible (fichiers absents, plus de 4 s : `UnlockGate.chargerBienvenue`) → la gate garde sa porte.
 > Indépendant du domaine. Sans extension : sans effet (`check-extensions.js` §9).
+> 🏙️ **La ville seule, dans une page de l'extension** : `KtaExtensions.ville(conteneur, opts?)` → Promise<`<svg>` |
+> `null`>. Charge l'écran Bienvenue (`UnlockGate.chargerBienvenue`, 4 s) puis `KtaBienvenue.ville` dessine la ville
+> de l'écran dans `conteneur` (contenu remplacé) : une seule ville pour le community et l'extension. `opts` :
+> `prefixe` (ids du dessin, défaut `kta-bv-` : une ville à côté de l'écran Bienvenue dans le même document en prend
+> un autre), `fenetres` (classe posée sur chaque fenêtre éclairée, blocs écrits en clair au lieu de `<use>` : un
+> moteur de défilement les trouve dans la page), `lune`, `oiseaux` (décalage en x de la lune de la scène et du vol
+> d'oiseaux). Nom hors `[a-z0-9-]` ou nombre non fini : ignoré. ⚠️ Les classes du dessin restent `kta-bv-*`
+> (`kta-bv-ville`, `kta-bv-lune-scene`, `kta-bv-reseau`, `kta-bv-lampes` / `kta-bv-lampe`…), animées par
+> `css/bienvenue.css` chargée avec ; la hauteur suit `--h-ville` de la page. `null` : aucune extension avec `gate`,
+> ou fichiers absents / trop lents → la page s'affiche sans ville. Sans extension : sans effet (`check-extensions.js`
+> §9).
 > 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
 > Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
 > 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,

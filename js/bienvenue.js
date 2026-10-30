@@ -7,7 +7,7 @@
 // bienvenue.js — écran « Bienvenue » : petite présentation qui défile, puis l'entrée dans l'app.
 // Chargé à la demande par js/unlockGate.js (avec css/bienvenue.css), seulement quand cet écran s'affiche.
 // Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), surDoc(), avantEntree?, code?, villeSeule?,
-//   connexion? }) → { fermer } (connexion : { fermer, attendreEntree, ouverte }).
+//   connexion? }) → { fermer } (connexion : { fermer, attendreEntree, ouverte }) ; ville(conteneur, opts) (fin).
 //   surDoc : « Lire la documentation » du pied (documentation intégrée, au-dessus de l'écran).
 //   avantEntree : facultatif, () → Promise, attendu au clic sur « Entrer » (ou après un code juste) AVANT surEntree et
 //   la descente : conditions d'utilisation montrées à qui entre, jamais à qui ne fait que passer. Résolue à false
@@ -184,9 +184,12 @@
       aile(-24, 14, 14, 5, "kta-bv-aile-3") + '</g>';
   }
 
-  // Immeubles (motif répété et retourné), fenêtres, arbres : un seul bloc de 1200 unités.
-  const BLOC =
-    '<g fill="#151b2c" stroke="#2a3348" stroke-width="2"><path d="M0 250 h70 v-60 l20 -18 l20 18 v60 h10 Z"/>' +
+  // Immeubles (motif répété et retourné), fenêtres, arbres : un seul bloc de 1200 unités. classe : posée sur chaque
+  // fenêtre éclairée (ville(…, { fenetres }) : blocs écrits en clair, chaque fenêtre dans la page).
+  function _bloc(classe) {
+    const c = classe ? ' class="' + classe + '"' : "";
+    return '<g fill="#151b2c" stroke="#2a3348" stroke-width="2">' +
+    '<path d="M0 250 h70 v-60 l20 -18 l20 18 v60 h10 Z"/>' +
     '<path d="M120 250 V150 h110 V250 Z"/><path d="M120 150 l15 -22 h80 l15 22 Z"/><path d="M245 250 V185 h80 V250 Z"/>' +
     '<path d="M340 250 V95 l35 -60 l35 60 V250 Z"/><path d="M425 250 V165 h130 V250 Z"/>' +
     '<path d="M425 165 l18 -26 h94 l18 26 Z"/><path d="M570 250 V200 h60 V250 Z"/><path d="M690 250 V140 h120 V250 Z"/>' +
@@ -201,14 +204,15 @@
       [445, 180, 0.7], [480, 180, 0.35], [515, 212, 0.7], [710, 160, 0.6], [745, 196, 0.7], [780, 160, 0.35],
       [845, 196, 0.7], [880, 196, 0.5], [950, 146, 0.7], [990, 182, 0.35], [1030, 146, 0.7], [1110, 208, 0.6],
       [1150, 208, 0.7]].map(function(f) {
-      return '<rect x="' + f[0] + '" y="' + f[1] + '" width="14" height="18" opacity="' + f[2] + '"/>';
-    }).join("") + '<rect x="366" y="120" width="12" height="22" opacity=".6"/></g>' +
+      return '<rect' + c + ' x="' + f[0] + '" y="' + f[1] + '" width="14" height="18" opacity="' + f[2] + '"/>';
+    }).join("") + '<rect' + c + ' x="366" y="120" width="12" height="22" opacity=".6"/></g>' +
     '<g fill="#1b3a2e" stroke="#2f5a46" stroke-width="2">' + [[595, 226, 16], [650, 230, 13], [1075, 232, 12],
       [238, 228, 14], [420, 224, 17], [445, 232, 11], [820, 226, 15], [922, 230, 12], [1185, 228, 14]].map(function(a) {
       return '<circle cx="' + a[0] + '" cy="' + a[1] + '" r="' + a[2] + '"/>';
     }).join("") + '</g>' +
     '<g stroke="#2f5a46" stroke-width="3"><path d="M595 242 V250 M650 243 V250 M1075 244 V250 M238 242 V250 ' +
     'M420 241 V250 M445 243 V250 M820 241 V250 M922 242 V250 M1185 242 V250"/></g>';
+  }
 
   // Icônes de l'app posées sur le réseau : puits sans échelon (jps), à échelons (jpe), puits de bouche (pb), maisons.
   // Montagnes au loin (deux plans, neiges éternelles) : motif de 1200 unités raccordé bord à bord, répété.
@@ -290,8 +294,22 @@
     ["jpe", 682, 332], ["jpe", 1642, 332], ["jpe", 1882, 332], ["jpe", 2842, 332], ["jpe", 3082, 332],
     ["pb", 1042, 292], ["house", -418, 452], ["house", 342, 452], ["house", 2262, 462]];
 
-  function _ville() {
-    return '<svg class="kta-bv-ville" viewBox="-2400 -110 6000 630" preserveAspectRatio="xMidYMax slice" ' +
+  // Les cinq blocs de la rue (deux retournés). fenetres : classe des fenêtres → blocs écrits en clair au lieu de
+  // <use>, pour qu'un moteur de défilement trouve chaque fenêtre dans la page (un clone de <use> la lui cacherait).
+  const RUE = ["translate(-2400 0)", "scale(-1 1)", "", "translate(2400 0) scale(-1 1)", "translate(2400 0)"];
+  function _rue(fenetres) {
+    return RUE.map(function(tr) {
+      const attr = tr ? ' transform="' + tr + '"' : "";
+      return fenetres ? '<g' + attr + '>' + _bloc(fenetres) + '</g>' : '<use href="#kta-bv-bloc"' + attr + '/>';
+    }).join("");
+  }
+
+  // Lune de la scène et vol d'oiseaux : décalages en x de l'écran Bienvenue (ville(…, { lune, oiseaux }) les change).
+  const VILLE_DEFAUT = { prefixe: "kta-bv-", fenetres: "", lune: -260, oiseaux: 640 };
+  // o : options déjà vérifiées (ville > options). Ids écrits en kta-bv-, puis renommés (id="…" et références #…) si
+  // un autre préfixe est demandé ; les classes gardent kta-bv- (styles et animations de css/bienvenue.css).
+  function _ville(o) {
+    const s = '<svg class="kta-bv-ville" viewBox="-2400 -110 6000 630" preserveAspectRatio="xMidYMax slice" ' +
       'aria-hidden="true" focusable="false"><defs>' +
       '<radialGradient id="kta-bv-halo-scene"><stop offset="0.38" stop-color="#efe6cf" stop-opacity=".32"/>' +
       '<stop offset="0.6" stop-color="#efe6cf" stop-opacity=".1"/><stop offset="1" stop-color="#efe6cf" stop-opacity="0"/>' +
@@ -307,20 +325,18 @@
       '<linearGradient id="kta-bv-brume" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#8e98b5" stop-opacity="0"/><stop offset=".6" stop-color="#8e98b5" stop-opacity=".16"/>' +
       '<stop offset="1" stop-color="#8e98b5" stop-opacity=".05"/></linearGradient>' +
-      '<g id="kta-bv-bloc">' + BLOC + '</g><g id="kta-bv-lampadaire">' + LAMPADAIRE + '</g></defs>' +
+      '<g id="kta-bv-bloc">' + _bloc("") + '</g><g id="kta-bv-lampadaire">' + LAMPADAIRE + '</g></defs>' +
       _ciel() +
-      '<g class="kta-bv-lune-scene" transform="translate(-260 0)">' +
+      '<g class="kta-bv-lune-scene" transform="translate(' + o.lune + ' 0)">' +
       '<circle class="kta-bv-lueur" cx="1118" cy="-40" r="119.6" fill="url(#kta-bv-halo-scene)"/>' +
       '<circle cx="1118" cy="-40" r="46" fill="#efe6cf"/>' + _crateres(CRATERES_SCENE) + '</g>' +
-      '<g class="kta-bv-lune-scene" transform="translate(640 -38)">' + _oiseaux("kta-bv-vol") + '</g>' +
+      '<g class="kta-bv-lune-scene" transform="translate(' + o.oiseaux + ' -38)">' + _oiseaux("kta-bv-vol") + '</g>' +
       // Montagnes à mi-hauteur, posées sur la même ligne : un pays minier, pas la haute montagne.
       '<g transform="translate(0 125) scale(1 .5)"><g id="kta-bv-montagnes">' + MONTAGNES + '</g>' +
       '<use href="#kta-bv-montagnes" transform="translate(-2400 0)"/><use href="#kta-bv-montagnes" transform="translate(-1200 0)"/>' +
       '<use href="#kta-bv-montagnes" transform="translate(1200 0)"/><use href="#kta-bv-montagnes" transform="translate(2400 0)"/>' +
       '</g>' + ARRIERE + CHEVALEMENT +
-      '<use href="#kta-bv-bloc" transform="translate(-2400 0)"/><use href="#kta-bv-bloc" transform="scale(-1 1)"/>' +
-      '<use href="#kta-bv-bloc"/><use href="#kta-bv-bloc" transform="translate(2400 0) scale(-1 1)"/>' +
-      '<use href="#kta-bv-bloc" transform="translate(2400 0)"/>' +
+      _rue(o.fenetres) +
       '<g class="kta-bv-lampes">' + LAMPES + '</g>' +
       _pieton(520, false) + _pieton(-260, false, "kta-bv-pieton-2") + _pieton(1500, true, "kta-bv-pieton-3") +
       _pieton(140, false, "kta-bv-pieton-4") +
@@ -340,6 +356,7 @@
       '<g class="kta-bv-reseau">' + RESEAU.map(function(r) {
         return '<image href="icon/' + r[0] + '.png" x="' + r[1] + '" y="' + r[2] + '" width="36" height="36"/>';
       }).join("") + '</g></svg>';
+    return o.prefixe === VILLE_DEFAUT.prefixe ? s : s.replace(/(id="|#)kta-bv-/g, "$1" + o.prefixe);
   }
 
   function _luneHaut() {
@@ -476,7 +493,7 @@
           _actionsHaut(protege) +
           _luneHaut() +
         '</div>' +
-        _ville() +
+        _ville(VILLE_DEFAUT) +
         '<div class="kta-bv-entree" aria-hidden="true">' +
           '<div class="kta-bv-entree-galerie"></div><div class="kta-bv-fil-entree"></div>' +
           '<span class="kta-bv-repere">' + _img("peo.png", 40) + '</span>' +
@@ -634,7 +651,7 @@
           actions +
           _luneHaut() +
         '</div>' +
-        _ville() +
+        _ville(VILLE_DEFAUT) +
         '<div class="kta-bv-entree" aria-hidden="true">' +
           '<div class="kta-bv-entree-galerie"></div>' +
           (mode === "connexion" ? "" : '<div class="kta-bv-fil-entree"></div>') +
@@ -1210,5 +1227,26 @@
     return { fermer: fermer };
   }
 
-  window.KtaBienvenue = { ouvrir: ouvrir };
+  // ── La ville seule, pour une autre page ──
+  // ville(conteneur, opts?) → <svg> | null : dessine la ville de cet écran dans conteneur (son contenu est remplacé).
+  // opts { prefixe, fenetres, lune, oiseaux } : préfixe des ids du dessin (défaut kta-bv- : deux villes dans un même
+  // document, ou une ville à côté de cet écran, ont chacune le leur) ; fenetres : classe posée sur chaque fenêtre,
+  // blocs écrits en clair (sans elle : <use>, comme ici) ; lune, oiseaux : décalage en x de la lune de la scène et
+  // du vol d'oiseaux. Un nom (préfixe, classe) hors [a-z0-9-] ou un nombre non fini : ignoré, défaut de cet écran.
+  // ⚠️ contrat : classes kta-bv-* inchangées, animées par css/bienvenue.css (à charger avec ce script).
+  function ville(conteneur, opts) {
+    if (!conteneur || typeof conteneur.appendChild !== "function") return null;
+    const o = opts && typeof opts === "object" ? opts : {};
+    const nom = function(v) { return typeof v === "string" && /^[a-z][a-z0-9-]{0,40}$/i.test(v) ? v : ""; };
+    const nombre = function(v, d) { return typeof v === "number" && isFinite(v) ? v : d; };
+    const tampon = document.createElement("div");
+    tampon.innerHTML = _ville({ prefixe: nom(o.prefixe) || VILLE_DEFAUT.prefixe, fenetres: nom(o.fenetres),
+      lune: nombre(o.lune, VILLE_DEFAUT.lune), oiseaux: nombre(o.oiseaux, VILLE_DEFAUT.oiseaux) });
+    const svg = tampon.firstChild;
+    conteneur.textContent = "";
+    conteneur.appendChild(svg);
+    return svg;
+  }
+
+  window.KtaBienvenue = { ouvrir: ouvrir, ville: ville };
 })();

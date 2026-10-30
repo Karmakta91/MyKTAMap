@@ -877,6 +877,20 @@
     }).catch(function (e) { console.warn("[Extensions] écran d'accueil :", e); return null; });
   }
 
+  // ville(conteneur, opts?) → Promise<<svg> | null> : la ville de l'écran Bienvenue dessinée dans conteneur, pour la
+  // page d'une gate déléguée (js/bienvenue.js > ville : options prefixe, fenetres, lune, oiseaux ; css/bienvenue.css
+  // chargée avec, qui l'anime). null : aucune gate déléguée déclarée, ou écran indisponible (fichiers absents, plus de
+  // 4 s : UnlockGate.chargerBienvenue) → la page s'affiche sans ville. Sans extension : sans effet.
+  function ville(conteneur, opts) {
+    if (!_prise("gate") || !conteneur) return Promise.resolve(null);
+    const UG = window.UnlockGate;
+    if (!UG || typeof UG.chargerBienvenue !== "function") return Promise.resolve(null);
+    return Promise.resolve().then(UG.chargerBienvenue).then(function (pret) {
+      const B = window.KtaBienvenue;
+      return pret && B && typeof B.ville === "function" ? B.ville(conteneur, opts) || null : null;
+    }).catch(function (e) { console.warn("[Extensions] ville :", e); return null; });
+  }
+
   // ── Source de plans ──
   function listerPlansExtension() {
     const ext = _prise("plans");
@@ -2356,6 +2370,7 @@
     profilStatsExtension: profilStatsExtension,
     gateDeleguee: gateDeleguee,
     ecranAccueil: ecranAccueil,
+    ville: ville,
     normaliserAccueil: normaliserAccueil,
     textesAccueil: textesAccueil,
     listerPlansExtension: listerPlansExtension,

@@ -2175,6 +2175,37 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /ecranAccueil\(/.test(lire("js/" + f)));
     t("🩸 ecranAccueil n'est appelé par aucun module community (prise pour une gate déléguée seulement)",
       appelants.length === 0);
+    // ville(conteneur, opts) : la ville seule pour la page d'une gate déléguée.
+    const conteneur = { appendChild() {} };
+    const villeAvec = (pret, gate, B) => {
+      const c = monter(pret);
+      const appels = [];
+      c.w.KtaBienvenue = B === undefined ? { ville: (el, o) => { appels.push([el, o]); return { svg: 1 }; } } : B;
+      if (gate) c.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
+      return Object.assign(c, { villes: appels });
+    };
+    const v0 = villeAvec(true, false);
+    t("🩸 ville sans gate déléguée : null, rien chargé ni dessiné (myktamap.fr inchangé)",
+      (await v0.K.ville(conteneur)) === null && v0.appels.charge === 0 && v0.villes.length === 0);
+    const v1 = villeAvec(false, true);
+    t("ville : écran indisponible (fichiers absents, délai) → null, rien dessiné (la page s'affiche sans ville)",
+      (await v1.K.ville(conteneur)) === null && v1.villes.length === 0);
+    const v2 = villeAvec(true, true, { ouvrir() {} });
+    t("ville : bienvenue.js sans ville (version antérieure) → null", (await v2.K.ville(conteneur)) === null);
+    const v3 = villeAvec(true, true);
+    const optsV = { prefixe: "x-", fenetres: "f" };
+    const rV = await v3.K.ville(conteneur, optsV);
+    t("ville avec gate déléguée : KtaBienvenue.ville(conteneur, opts) après chargement, son <svg> rendu",
+      !!rV && rV.svg === 1 && v3.villes.length === 1 && v3.villes[0][0] === conteneur && v3.villes[0][1] === optsV);
+    const v4 = villeAvec(true, true, { ville: () => { throw new Error("x"); } });
+    t("ville : erreur du dessin → null, jamais une exception", (await v4.K.ville(conteneur)) === null);
+    t("🔒 ville : dessin par gabarit statique (aucun texte de l'appelant), noms d'options filtrés [a-z0-9-]",
+      /function ville\(conteneur, opts\)[\s\S]{0,700}\/\^\[a-z\]\[a-z0-9-\]\{0,40\}\$\/i/.test(B) &&
+      /return o\.prefixe === VILLE_DEFAUT\.prefixe \? s : s\.replace\(\/\(id="\|#\)kta-bv-\/g/.test(B));
+    const appelantsVille = fs.readdirSync("js").filter((f) => f.endsWith(".js") && f !== "ktaExtensions.js" &&
+      /KtaExtensions\.ville\(|K\.ville\(/.test(lire("js/" + f)));
+    t("🩸 ville n'est appelée par aucun module community (prise pour une gate déléguée seulement)",
+      appelantsVille.length === 0);
     t("ville seule de connexion SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
       /#kta-unlock-overlay\.kta-bv\.kta-bv-connexion \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
   }

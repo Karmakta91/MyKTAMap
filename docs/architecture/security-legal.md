@@ -186,7 +186,7 @@ Une petite présentation qui défile, dans le style de la page de présentation 
 **une fois par appareil**, après le splash (inchangé) et la gate légale : un appareil déjà entré ne la revoit jamais.
 
 - **Chargement à la demande** : `unlockGate.js > _chargerBienvenue` ajoute `css/bienvenue.css` et `js/bienvenue.js`
-  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code?, villeSeule?, connexion? })`) ; les polices Montserrat 400/600/800 et Permanent
+  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code?, villeSeule?, connexion? })`, `ville(conteneur, opts)`) ; les polices Montserrat 400/600/800 et Permanent
   Marker (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés
   (`sw.js`). Fichier absent ou trop lent (4 s) → carte de repli (§36.1).
 - **Contenu** : accroche, sept stations (le topo, avec « ce que l'app n'est pas » · plan dans la poche · annoter le
@@ -226,6 +226,12 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   - **gate déléguée** (`KtaExtensions.ecranAccueil()`, `connexion: true`) : « Me connecter » (`bienvenue.connecter`)
     **n'entre pas** : l'écran devient inerte et la gate ouvre sa fenêtre par-dessus (écran à z 99995, sous ses
     fenêtres) ; elle le ferme elle-même. Jamais de champ de code. Sans extension, jamais montrée.
+- **La ville pour une autre page** (`KtaBienvenue.ville(conteneur, opts)`, appelée par la prise
+  `KtaExtensions.ville`, contrat `community-server-line.md` §3) : le même dessin, seul, dans un conteneur de
+  l'appelant — une seule ville pour l'écran Bienvenue et la page d'une gate déléguée. Options : préfixe des ids
+  (deux villes dans un document), classe des fenêtres (blocs écrits en clair au lieu de `<use>`), décalage de la lune
+  de la scène et des oiseaux. Les classes restent `kta-bv-*`, animées par `css/bienvenue.css` ; sans option, le dessin
+  est celui de l'écran, octet pour octet (`_ville(VILLE_DEFAUT)`).
 - **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
   aucun thème n'est choisi.
 
