@@ -6046,6 +6046,7 @@
   "bienvenue.titre": "Cartografía <span class=\"kta-bv-feutre\">subterránea</span>",
   "bienvenue.accroche": "Sin conexión y sin GPS, en el teléfono o el ordenador. Gratuita y sin cuenta: tus planos y tus anotaciones se quedan en tu dispositivo.",
   "bienvenue.entrer": "Entrar",
+  "bienvenue.connecter": "Iniciar sesión",
   "bienvenue.decouvrir": "Descubrir",
   "bienvenue.plans.titre": "Tu plano, <span class=\"kta-bv-feutre\">en el bolsillo</span>",
   "bienvenue.annoter.titre": "Anotar <span class=\"kta-bv-feutre\">el terreno</span>",

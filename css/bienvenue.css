@@ -3,8 +3,9 @@
  * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
-/* bienvenue.css — écran « Bienvenue » (js/bienvenue.js), avec ou sans champ « Code d'accès », chargé par
-   js/unlockGate.js seulement quand cet écran s'affiche : ni ces règles ni les polices ne pèsent sur le reste de l'app.
+/* bienvenue.css — écran « Bienvenue » (js/bienvenue.js), avec ou sans champ « Code d'accès », ou sa ville seule,
+   chargé par js/unlockGate.js seulement quand cet écran s'affiche : ni ces règles ni les polices ne pèsent sur le
+   reste de l'app.
    « La descente » : un fil doré part d'un puits de la rue et descend de station en station le long du bord gauche.
    Toujours sombre (décision produit) : au premier lancement aucun thème n'est encore choisi, l'écran garde le
    style de la page de présentation. Jetons locaux --bv-* ; --kta-accent-texte est redéfini pour les liens de
@@ -311,6 +312,12 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   .kta-bv-hero { padding-top: 28px; }
   .kta-bv-hero h1 { font-size: 52px; }
 }
+
+/* ── Ville seule (gate déléguée, KtaExtensions.ecranAccueil) : l'en-tête sans stations, SOUS les fenêtres de la
+   gate (z 100001 et plus) qui s'ouvrent par-dessus ; au-dessus du splash. Rien en dessous : pas de défilement. ── */
+html #kta-unlock-overlay.kta-bv.kta-bv-ville-seule { z-index: 99995; }
+.kta-bv-ville-seule .kta-bv-hero h1 { overflow-wrap: anywhere; }
+.kta-bv-ville-seule .kta-bv-accroche { white-space: pre-line; overflow-wrap: anywhere; }
 
 /* ── « Entrer » : le texte s'efface, la tête de suivi descend le puits, fondu vers l'app ── */
 .kta-bv-voile { position: fixed; inset: 0; background: var(--bv-fond); opacity: 0; pointer-events: none; z-index: 20; }

@@ -6,7 +6,7 @@
 
 // unlockGate.js — gate d'accès au premier lancement (re-demandée après un reset complet).
 // Expose : window.UnlockGate (isUnlocked, isLockedOut, ouvrirGate, lock, markUnlockedViaLicensePro,
-//   revaliderInstance, instanceRequiertMotDePasse, visiteDemandee).
+//   revaliderInstance, instanceRequiertMotDePasse, visiteDemandee, chargerBienvenue).
 // Écran : la présentation « Bienvenue » (js/bienvenue.js + css/bienvenue.css, chargés à la demande). Instance qui
 //   publie `index.json > config.accessHash` → champ « Code d'accès » dans son en-tête, seul ce mot de passe ouvre ;
 //   sinon → bouton « Entrer », retenu sur l'appareil. Repli si ces fichiers manquent : la carte centrée (champ ou
@@ -569,7 +569,9 @@
     markUnlockedViaLicensePro: markUnlockedViaLicensePro,
     revaliderInstance: revaliderInstance,
     instanceRequiertMotDePasse: instanceRequiertMotDePasse,
-    visiteDemandee: function() { return _visiteDemandee; }
+    visiteDemandee: function() { return _visiteDemandee; },
+    // Chargeur de l'écran Bienvenue (css + js, 4 s) : aussi celui de KtaExtensions.ecranAccueil (gate déléguée).
+    chargerBienvenue: _chargerBienvenue
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

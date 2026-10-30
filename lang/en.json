@@ -6046,6 +6046,7 @@
   "bienvenue.titre": "Underground <span class=\"kta-bv-feutre\">mapping</span>",
   "bienvenue.accroche": "Offline and without GPS, on phone or computer. Free and with no account: your maps and annotations stay on your device.",
   "bienvenue.entrer": "Enter",
+  "bienvenue.connecter": "Sign in",
   "bienvenue.decouvrir": "Discover",
   "bienvenue.plans.titre": "Your map, <span class=\"kta-bv-feutre\">in your pocket</span>",
   "bienvenue.annoter.titre": "Annotate <span class=\"kta-bv-feutre\">the field</span>",

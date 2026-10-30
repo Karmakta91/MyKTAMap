@@ -78,6 +78,20 @@ photos restent locales et exportables).
 > l'entrée suivante. Les conditions s'affichent refusables, au-dessus de l'écran (`LegalGate.ouvrirGate({ auDessus:
 > true, refusable: true })`, z 100150). Une gate qui l'ignore, ou franchie sans écran (session reprise), est
 > rattrapée par le filet de `main.js` après elle, sans « Refuser ». Sans extension : sans effet (`check-extensions.js`).
+> 🏙️ **Écran d'accueil d'une gate déléguée** : `KtaExtensions.ecranAccueil()` → Promise<`{ attendreEntree() →
+> Promise, fermer(), ouverte() → bool }` | `null`>. La ville de l'écran Bienvenue **seule** (`bienvenue.js`, option
+> `villeSeule`, `security-legal.md` §36.8) : titre et description de l'installation, « Me connecter », 📖
+> Documentation et choix de langue ; ni défilement, ni code d'accès, ni contacts. `attendreEntree()` se résout au
+> prochain clic sur « Me connecter » (un clic antérieur est gardé) : l'écran devient inerte, la gate ouvre sa fenêtre
+> **par-dessus** (écran à z 99995, sous les fenêtres à partir de 100001) ; la rappeler le réactive (retour de la
+> fenêtre, conditions refusées). L'écran reste jusqu'à `fermer()`, qui résout une attente en cours. `null` : aucune
+> extension avec `gate`, ou écran indisponible (fichiers absents, plus de 4 s : `UnlockGate.chargerBienvenue`) → la
+> gate garde sa porte. Textes : `config.serverConnection.accueil = { titre?, description? }` de l'index (lu par
+> `KtaInstance`, dernière config connue hors ligne, aucune requête), chacun **chaîne** ou **objet par langue**
+> `{ fr, en, es }` ; choisi au rendu (langue de l'app, puis `fr`, puis la première), texte seul (`textContent`),
+> titre ≤ 80 et description ≤ 400 caractères, valeur mal formée ignorée (`normaliserAccueil`, jamais une cause
+> d'état « invalide » ; absent de `valider()` et de ConfAdmin, qui le **reprend tel quel** à l'export). Sans titre :
+> « MyKTAMap ». Sans extension : sans effet (`check-extensions.js` §9).
 > 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
 > Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
 > 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,

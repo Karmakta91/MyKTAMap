@@ -2115,6 +2115,57 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /\.leaflet-marker-icon\.kta-etat-propose \{ outline: 3px dashed var\(--kta-accent\)/.test(R("css/style.css")));
   }
 
+  // ── 9. ÉCRAN D'ACCUEIL D'UNE GATE DÉLÉGUÉE (ecranAccueil : ville seule de l'écran Bienvenue) ──────
+  {
+    const monter = (pret) => {
+      const c = nouveauContexte(null);
+      const appels = { charge: 0, ouvert: [] };
+      c.w.UnlockGate = { chargerBienvenue: () => { appels.charge++; return Promise.resolve(pret); } };
+      c.w.KtaBienvenue = { ouvrir: (o) => { appels.ouvert.push(o); return { fermer() {}, attendreEntree() {}, ouverte: () => true }; } };
+      c.w.KtaInstance = { etat: () => ({ config: { serverConnection: { state: "on", api: "/api/", modules: [],
+        accueil: { titre: "  Club  ", description: { en: "Hello", fr: "Bonjour" } } } } }) };
+      return Object.assign(c, { appels });
+    };
+    const sans = monter(true);
+    t("🩸 ecranAccueil sans extension : null, rien chargé ni ouvert (myktamap.fr inchangé)",
+      (await sans.K.ecranAccueil()) === null && sans.appels.charge === 0 && sans.appels.ouvert.length === 0);
+    const sansGate = monter(true);
+    sansGate.K.register({ nom: "sg", apiVersion: 1, compte: () => null });
+    t("ecranAccueil avec une extension SANS gate déléguée : null, rien chargé",
+      (await sansGate.K.ecranAccueil()) === null && sansGate.appels.charge === 0);
+    const indispo = monter(false);
+    indispo.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
+    t("ecranAccueil : écran indisponible (fichiers absents, délai) → null, la gate garde sa porte",
+      (await indispo.K.ecranAccueil()) === null && indispo.appels.ouvert.length === 0);
+    const ok = monter(true);
+    ok.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
+    const ctl = await ok.K.ecranAccueil();
+    const o = ok.appels.ouvert[0] || {};
+    t("ecranAccueil avec gate déléguée : ville seule ouverte, textes de serverConnection.accueil normalisés, 📖 fourni",
+      !!ctl && typeof ctl.attendreEntree === "function" && ok.appels.ouvert.length === 1 && !o.code &&
+      JSON.stringify(o.villeSeule) === '{"titre":{"fr":"Club"},"description":{"en":"Hello","fr":"Bonjour"}}' &&
+      typeof o.surDoc === "function");
+    const N = ok.K.normaliserAccueil;
+    const long = "x".repeat(500);
+    const n1 = N({ titre: long, description: { fr: long, EN: "a", "e-s": "b", es: 3, it: "  " } });
+    t("normaliserAccueil : bornes (titre 80, description 400), codes de langue à 2 lettres, chaînes non vides seules",
+      n1.titre.fr.length === 80 && n1.description.fr.length === 400 && Object.keys(n1.description).join() === "fr");
+    t("normaliserAccueil : absent, vide, liste, nombre → null par champ (jamais une erreur)",
+      ["", null, undefined, [], 3, { titre: [] }, { titre: "   " }].every((v) => {
+        const r = N(v); return r && r.titre === null && r.description === null; }));
+    const B = lire("js/bienvenue.js");
+    t("🔒 ville seule : titre et description posés en textContent (jamais innerHTML), « Me connecter » n'entre pas",
+      /querySelector\("#kta-bv-titre"\)\.textContent = _texteLangue\(ville\.titre\)/.test(B) &&
+      /desc\.textContent = _texteLangue\(ville\.description\)/.test(B) &&
+      /action === "entrer" && ville\) entreeVille\(\);/.test(B) && !/function entreeVille[\s\S]{0,300}descendre\(/.test(B));
+    const appelants = fs.readdirSync("js").filter((f) => f.endsWith(".js") && f !== "ktaExtensions.js" &&
+      /ecranAccueil\(/.test(lire("js/" + f)));
+    t("🩸 ecranAccueil n'est appelé par aucun module community (prise pour une gate déléguée seulement)",
+      appelants.length === 0);
+    t("ville seule SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
+      /#kta-unlock-overlay\.kta-bv\.kta-bv-ville-seule \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
+  }
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 points d'extension : neutres sans extension, fermés quand une permission échoue, jamais de repli sur la gate community");

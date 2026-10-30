@@ -18,6 +18,10 @@
 //   protégée. L'en-tête porte le champ « Code d'accès » ; on lit tout sans code, mais seul un essai « ok » fait entrer
 //   (les autres « Entrer » remontent au champ). Verrou : champ désactivé, compte à rebours dans sa zone, écran ouvert.
 //   🔒 Ni contacts de l'auteur ni pastille pro sur cet écran : le code se demande à qui gère l'installation.
+//   villeSeule { titre, description } (KtaExtensions.ecranAccueil, gate déléguée) : la ville seule, sans stations ni
+//   défilement ni visite, un bouton « Me connecter » qui n'entre PAS : il résout contrôleur.attendreEntree() et rend
+//   l'écran inerte ; l'appelant ouvre sa fenêtre par-dessus (écran sous ses fenêtres, z 99995) et ferme l'écran.
+//   Textes { code: texte } déjà normalisés, choisis au rendu (langue, puis fr, puis le premier), posés en textContent.
 // Mouvement (galeries pilotées au défilement, tête de suivi, flash des repères) : moteur de la page de présentation,
 //   adapté à un écran qui défile en interne (scrollTop / clientHeight de l'overlay, pas de la fenêtre).
 // ⚠️ contrat : chemins des galeries en M / V / H absolus dans 44 × 1000 ; seules les ordonnées sont réécrites.
@@ -601,6 +605,40 @@
     '</div>';
   }
 
+  // Ville seule : en-tête de l'écran (barre, ville, puits) sans stations ni pied. Titre et description posés ensuite
+  // en textContent (ouvrir > dessiner) : jamais de HTML venu de l'installation.
+  function _gabaritVille() {
+    return '<div class="kta-bv-page">' +
+      '<header class="kta-bv-entete">' +
+        '<div class="kta-bv-barre"><p class="kta-bv-logo">MyKTAMap</p>' + _langues() + '</div>' +
+        '<div class="kta-bv-hero">' +
+          '<h1 id="kta-bv-titre"></h1>' +
+          '<p class="kta-bv-accroche"></p>' +
+          '<div class="kta-bv-actions">' +
+            '<button type="button" class="kta-bv-btn kta-bv-btn-or" data-bv="entrer">' + t("bienvenue.connecter") +
+              FLECHE + '</button>' +
+            '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="doc" title="' + t("gate.docTitle") +
+              '">' + t("gate.docBtn") + '</button>' +
+          '</div>' +
+          _luneHaut() +
+        '</div>' +
+        _ville() +
+        '<div class="kta-bv-entree" aria-hidden="true">' +
+          '<div class="kta-bv-entree-galerie"></div>' +
+          '<span class="kta-bv-repere">' + _img("peo.png", 40) + '</span>' +
+          _speleos() +
+        '</div>' +
+      '</header>' +
+    '</div>';
+  }
+  // { code: texte } → texte de la langue de l'app, sinon fr, sinon le premier ; "" si rien.
+  function _texteLangue(v) {
+    if (!v || typeof v !== "object") return "";
+    const l = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+    const cles = Object.keys(v);
+    return String(v[l] || v.fr || (cles.length ? v[cles[0]] : "") || "");
+  }
+
   // ── Mouvement ───────────────────────────────────────────────────────────
   // Un seul requestAnimationFrame par image. p = (milieu de l'écran − haut de la galerie) / H, borné 0…1 : le fil
   // doré est dessiné sur p × L, la tête posée par getPointAtLength et orientée selon le segment, le repère passe
@@ -865,9 +903,10 @@
     // Instance protégée : l'appelant fournit la vérification (unlockGate.js > _essayerCode), jamais réécrite ici.
     const code = (opts.code && typeof opts.code.essayer === "function" && typeof opts.code.etat === "function")
       ? opts.code : null;
+    const ville = (!code && opts.villeSeule && typeof opts.villeSeule === "object") ? opts.villeSeule : null;
     const ecranEl = document.createElement("div");
     ecranEl.id = "kta-unlock-overlay";
-    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "");
+    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "") + (ville ? " kta-bv-ville-seule" : "");
     ecranEl.setAttribute("role", "dialog");
     ecranEl.setAttribute("aria-modal", "true");
     ecranEl.setAttribute("aria-labelledby", "kta-bv-titre");
@@ -876,6 +915,8 @@
     // « Découvrir l'app en 1 minute » touché avant le code : la visite est demandée à l'entrée.
     let visiteVoulue = false;
     let vigieEntete = null, remontee = null;
+    // Ville seule : clic sur « Me connecter » en attente d'attendreEntree() (demandee) ou attente posée (attente).
+    let ferme = false, demandee = false, attente = null;
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
     const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); _figerPlanches(ecranEl); };
 
@@ -960,9 +1001,40 @@
       vigieEntete.observe(entete);
     }
 
+    function dessinerVille() {
+      ecranEl.innerHTML = _gabaritVille();
+      ecranEl.scrollTop = 0;
+      ecranEl.querySelector("#kta-bv-titre").textContent = _texteLangue(ville.titre) || "MyKTAMap";
+      const desc = ecranEl.querySelector(".kta-bv-accroche");
+      desc.textContent = _texteLangue(ville.description);
+      desc.hidden = !desc.textContent;
+      _figerPlanches(ecranEl);
+      if (ecranEl.inert) ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = true; });
+      setTimeout(function() { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }, 100);
+    }
+
+    // Ville seule : écran inerte, boutons désactivés, le temps que l'appelant ait la main (fenêtre par-dessus).
+    function bloquerVille(oui) {
+      ecranEl.inert = oui;
+      ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = oui; });
+      if (!oui) { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }
+    }
+    function entreeVille() {
+      if (ferme || ecranEl.inert) return;
+      bloquerVille(true);
+      if (attente) { const r = attente; attente = null; r(); } else demandee = true;
+    }
+    function attendreEntree() {
+      if (ferme) return Promise.resolve();
+      if (demandee) { demandee = false; return Promise.resolve(); }
+      bloquerVille(false);
+      return new Promise(function(r) { attente = r; });
+    }
+
     function dessiner() {
       interrompreRemontee();
       if (mvt) mvt.arreter();
+      if (ville) { dessinerVille(); return; }
       ecranEl.innerHTML = _gabarit(!!code);
       ecranEl.scrollTop = 0;
       mvt = _mouvement(ecranEl);
@@ -981,6 +1053,8 @@
     }
 
     function fermer() {
+      ferme = true;
+      if (attente) { const r = attente; attente = null; r(); }
       interrompreRemontee();
       if (vigieEntete) vigieEntete.disconnect();
       clearTimeout(minuteur);
@@ -1084,6 +1158,7 @@
       const action = cible.getAttribute("data-bv");
       if (action === "remonter") remonter();
       else if (action === "doc") { if (typeof opts.surDoc === "function") opts.surDoc(); }
+      else if (action === "entrer" && ville) entreeVille();
       else if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
       else if (action === "visite") { if (code) allerAuChamp(true); else entrer(true); }
       else if (action === "decouvrir") {
@@ -1101,6 +1176,10 @@
     if (mq) {
       if (mq.addEventListener) mq.addEventListener("change", surReduit);
       else if (mq.addListener) mq.addListener(surReduit);
+    }
+    if (ville) {
+      // Un clic avant le premier attendreEntree() est gardé (demandee) : l'appel suivant se résout aussitôt.
+      return { fermer: fermer, attendreEntree: attendreEntree, ouverte: function() { return !ferme; } };
     }
     return { fermer: fermer };
   }

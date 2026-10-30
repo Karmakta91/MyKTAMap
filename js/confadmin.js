@@ -22,6 +22,8 @@
       .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "dossier";
   }
   let _liaisonsReprises = null; // liaisons d'un index.json rechargé (cf _construire)
+  // serverConnection.accueil d'un index rechargé : sans champ ici, repris tel quel (lu par l'app seule, tolérant).
+  let _accueilRepris = null;
   let _links = [];          // liaisons source (objets du registre, intacts)
     const _linkSel = {};      // linkId → bool (cochée)
   const _mapping = {};      // planId d'origine → id de pack ("" = ignorer)
@@ -313,6 +315,7 @@
         $("caCnxApi").value = (sc && typeof sc.api === "string") ? sc.api : "";
         $("caCnxModules").value = (sc && Array.isArray(sc.modules)) ? sc.modules.join("\n") : "";
         $("caCnxTransparence").value = (sc && typeof sc.transparence === "string") ? sc.transparence : "";
+        _accueilRepris = (sc && sc.accueil && typeof sc.accueil === "object") ? sc.accueil : null;
         if (sc && sc.state === "on") $("caCnx").open = true;
         _liaisonsReprises = (d.liaisons && Array.isArray(d.liaisons.links) && d.liaisons.links.length)
           ? d.liaisons : null;
@@ -586,6 +589,7 @@
     const v = ktaValiderConnexion(champ);
     const garde = { state: "on", api: v.api, modules: v.modules };
     if (v.transparence) garde.transparence = v.transparence;
+    if (_accueilRepris) garde.accueil = _accueilRepris;
     return v.etat === "on"
       ? { valide: true, champ: garde, raison: "" }
       : { valide: false, champ: null, raison: v.raison };

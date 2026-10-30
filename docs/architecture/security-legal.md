@@ -211,6 +211,13 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   sans mot de passe : marquée vue à l'entrée, ouverte seulement si demandée. Au pied, une phrase courte
   (`bienvenue.pied.prive`) ; la complète (`gate.info`) est près du champ.
 - **« Découvrir »** fait défiler jusqu'à la 1re station (`#kta-bv-topo`).
+- **Ville seule** (`ouvrir({ villeSeule })`, ouverte par `KtaExtensions.ecranAccueil()` pour une gate déléguée,
+  contrat `community-server-line.md` §3) : l'en-tête seul — barre et langues, titre et description de l'installation
+  (`serverConnection.accueil`, posés en `textContent`, « MyKTAMap » sans titre), « Me connecter »
+  (`bienvenue.connecter`), « 📖 Documentation » —, la ville et le puits, sans fil ni stations ni pied : rien ne
+  défile. Ni champ de code, ni contacts, ni pastille pro, ni 🚨 de remontée. « Me connecter » **n'entre pas** :
+  l'écran devient inerte et la gate ouvre sa fenêtre par-dessus (écran à z 99995, sous ses fenêtres) ; elle le ferme
+  elle-même. Sans extension, jamais montrée.
 - **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
   aucun thème n'est choisi.
 
