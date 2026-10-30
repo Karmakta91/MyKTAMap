@@ -306,9 +306,11 @@
 
   // Lune de la scène et vol d'oiseaux : décalages en x de l'écran Bienvenue (ville(…, { lune, oiseaux }) les change).
   const VILLE_DEFAUT = { prefixe: "kta-bv-", fenetres: "", lune: -260, oiseaux: 640 };
-  // o : options déjà vérifiées (ville > options). Ids écrits en kta-bv-, puis renommés (id="…" et références #…) si
-  // un autre préfixe est demandé ; les classes gardent kta-bv- (styles et animations de css/bienvenue.css).
+  // o : options déjà vérifiées (ville > options), absentes = celles de l'écran. Ids écrits en kta-bv-, puis renommés
+  // (id="…" et références #…) si un autre préfixe est demandé ; les classes gardent kta-bv- (css/bienvenue.css).
+  // ⚠️ contrat : _ville() sans argument rend le dessin de l'écran (le site de doc l'appelle ainsi, comme _luneHaut).
   function _ville(o) {
+    o = o || VILLE_DEFAUT;
     const s = '<svg class="kta-bv-ville" viewBox="-2400 -110 6000 630" preserveAspectRatio="xMidYMax slice" ' +
       'aria-hidden="true" focusable="false"><defs>' +
       '<radialGradient id="kta-bv-halo-scene"><stop offset="0.38" stop-color="#efe6cf" stop-opacity=".32"/>' +
@@ -493,7 +495,7 @@
           _actionsHaut(protege) +
           _luneHaut() +
         '</div>' +
-        _ville(VILLE_DEFAUT) +
+        _ville() +
         '<div class="kta-bv-entree" aria-hidden="true">' +
           '<div class="kta-bv-entree-galerie"></div><div class="kta-bv-fil-entree"></div>' +
           '<span class="kta-bv-repere">' + _img("peo.png", 40) + '</span>' +
@@ -651,7 +653,7 @@
           actions +
           _luneHaut() +
         '</div>' +
-        _ville(VILLE_DEFAUT) +
+        _ville() +
         '<div class="kta-bv-entree" aria-hidden="true">' +
           '<div class="kta-bv-entree-galerie"></div>' +
           (mode === "connexion" ? "" : '<div class="kta-bv-fil-entree"></div>') +
