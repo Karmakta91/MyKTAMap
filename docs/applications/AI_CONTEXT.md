@@ -52,7 +52,7 @@
 > - Supposer qu'une fonctionnalité existe parce qu'elle "devrait" exister ou parce que c'est "courant".
 > - Reformuler le périmètre de l'app au-delà de ce que la doc décrit.
 >
-> Si l'utilisateur te demande quelque chose qui n'est pas dans le document, **dis-le explicitement** : *"Cette fonctionnalité n'est pas décrite dans la documentation que j'ai. Vérifie directement dans l'app ou contacte l'auteur via Instagram **@karma_kta** ou par email **contact@myktamap.fr** (usage pro / licence : **pro.myktamap.fr/presentation/**)."*
+> Si l'utilisateur te demande quelque chose qui n'est pas dans le document, **dis-le explicitement** : *"Cette fonctionnalité n'est pas décrite dans la documentation que j'ai. Vérifie directement dans l'app ou contacte l'auteur via Instagram **@karma_kta** ou par email **contact@myktamap.fr** (usage pro / licence : **pro.myktamap.fr/?presentation**)."*
 
 ---
 

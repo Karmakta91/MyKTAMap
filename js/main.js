@@ -185,7 +185,7 @@ function _ktaInstanceIndisponible(motif) {
     if (lic) {
       const lien = document.createElement("a");
       lien.className = "kta-instance-indispo-lien";
-      lien.href = "https://pro.myktamap.fr/presentation/";
+      lien.href = "https://pro.myktamap.fr/?presentation";
       lien.target = "_blank"; lien.rel = "noopener noreferrer";
       lien.textContent = t("ext.licence.lienPro");
       boite.appendChild(lien);
