@@ -1101,8 +1101,9 @@
         function(b) { return !b.disabled; });
       actifs.forEach(function(b) { b.disabled = true; });
       const avant = typeof opts.avantEntree === "function"
-        ? Promise.resolve().then(opts.avantEntree).catch(function(e) { console.warn("[Bienvenue] avantEntree :", e); })
-        : Promise.resolve();
+        ? Promise.resolve().then(opts.avantEntree)
+          .catch(function(e) { console.warn("[Bienvenue] avantEntree :", e); return true; })
+        : Promise.resolve(true);
       avant.then(function(ok) {
         if (ok !== false) { descendre(visite); return; }
         sortie = false;

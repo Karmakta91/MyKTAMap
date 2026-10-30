@@ -1492,8 +1492,8 @@ self.addEventListener("fetch", (event) => {
         const rep = await Promise.race([fetch(event.request, { cache: "no-store" }), new Promise(function(_, reject) {
           setTimeout(function() { reject(new Error("network timeout")); }, 3000);
         })]);
-        if (rep.ok) { try { cache.put(event.request, rep.clone()); } catch(e) {} }
-        else if (rep.status === 404) { try { cache.delete(event.request, { ignoreSearch: true }); } catch(e) {} }
+        if (rep.ok) cache.put(event.request, rep.clone()).catch(function() { /* quota : la réponse part quand même */ });
+        else if (rep.status === 404) cache.delete(event.request, { ignoreSearch: true }).catch(function() { /* idem */ });
         return rep;
       } catch (e) {
         const enCache = await cache.match(event.request, { ignoreSearch: true });
