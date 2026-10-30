@@ -325,7 +325,11 @@
           _addLvl(r.level, "roads");
         }
       });
-      allZones.forEach(function(z)   { _addLvl(z.level, "zones");      });
+      // Zone sur plusieurs niveaux : comptée sur chacun (poiJonction.js > ktaNiveauxObjet).
+      allZones.forEach(function(z) {
+        const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(z) : [z.level];
+        nv.forEach(function(n) { _addLvl(n, "zones"); });
+      });
       allStructs.forEach(function(s) { _addLvl(s.level, "structures"); });
     }
 
@@ -1148,7 +1152,7 @@
     embeddedRoads.forEach(function(r) { _addRoad(r, "embedded"); });
     zip.file("roads.csv", _buildCsv(roadsRows, roadsCols));
 
-    const zonesCols = ["source", "type", "nb_points", "surface_m2", "level", "description"];
+    const zonesCols = ["source", "type", "nb_points", "surface_m2", "level", "niveaux", "description"];
     const zonesRows = [];
     function _addZone(z, source) {
       zonesRows.push({
@@ -1157,6 +1161,9 @@
         nb_points:   Array.isArray(z.points) ? z.points.length : 0,
         surface_m2:  _polygonAreaM2(z.points).toFixed(2),
         level:       (typeof z.level === "number") ? z.level : 0,
+        // Zone sur plusieurs niveaux : « -2/-1 » ; vide pour une zone simple.
+        niveaux:     Array.isArray(z.niveaux) && typeof window.ktaNiveauxObjet === "function"
+                       ? window.ktaNiveauxObjet(z).join("/") : "",
         description: z.description || ""
       });
     }

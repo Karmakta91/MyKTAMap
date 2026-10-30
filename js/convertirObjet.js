@@ -15,7 +15,7 @@
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
 // La frontière porte les MINIMUMS DE POINTS (2 pour un front, 3 pour une zone) : la traverser obligerait à INVENTER
 // de la géométrie relevée. Refus assumé, et dit.
-// Conservés : `points`, `level`, `description` ; seul le type (donc la famille) change.
+// Conservés : `points`, `level`, `description` (et `niveaux` d'une zone qui reste zone) ; seul le type change.
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
 // changent par changerNiveauxJonction, jamais par Convertir) et `itinerary` (trajet CALCULÉ, pas une donnée du relevé).
 // ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; on le rapatrie d'abord (js/calqueSession.js).
@@ -139,17 +139,31 @@
   // Même objet, autre type : une seule règle pour la fiche, le lot et le Tableur. On repart de l'objet d'origine
   // (rien n'est perdu, champs futurs compris) ; fromLevel / toLevel d'une jonction n'ont plus de sens ailleurs.
   // L'uid suit (Object.assign le recopie), la conversion est une modification (ETUDE_UID décision 10).
-  function _versType(obj, typeCible) {
+  function _versType(obj, typeCible, familleCible) {
     const neuf = Object.assign({}, obj, { type: typeCible });
     delete neuf.fromLevel;
     delete neuf.toLevel;
+    if (familleCible !== "zones") delete neuf.niveaux;   // plusieurs niveaux : propre aux zones (et aux POI)
     if (window.KtaUid) window.KtaUid.touch(neuf);
     return neuf;
   }
 
+  // `niveaux` d'une zone remis en forme : triés, sans doublon, `level` inclus (poiJonction.js > ktaNiveauxObjet) ;
+  // retiré s'il ne reste que `level` (une zone simple n'a pas le champ).
+  function _normaliserNiveaux(obj) {
+    if (!obj || !Array.isArray(obj.niveaux)) return;
+    const l = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(obj) : [];
+    if (l.length >= 2) obj.niveaux = l;
+    else delete obj.niveaux;
+  }
+
   // Niveau posé EN PLACE (même objet, même uid) : une seule règle pour la fiche et le Tableur.
+  // ⚠️ Zone sur plusieurs niveaux : le niveau d'origine est REMPLACÉ dans `niveaux` (les autres restent).
   function _poserNiveau(obj, niveau) {
+    const ancien = Number.isInteger(obj.level) ? obj.level : 0;
+    if (Array.isArray(obj.niveaux)) obj.niveaux = obj.niveaux.filter(function (n) { return n !== ancien; });
     obj.level = niveau;
+    _normaliserNiveaux(obj);
     if (window.KtaUid) window.KtaUid.touch(obj);
   }
 
@@ -185,7 +199,7 @@
     const actuel = listes[famille][idx];
     listes[famille].splice(idx, 1);
 
-    listes[familleCible].push(_versType(actuel, typeCible));
+    listes[familleCible].push(_versType(actuel, typeCible, familleCible));
 
     const touchees = (famille === familleCible) ? [famille] : [famille, familleCible];
     touchees.forEach(function (f) { ecrire[f](listes[f]); });
@@ -293,6 +307,44 @@
     return true;
   }
 
+  // ── Niveaux supplémentaires d'une zone (fiche de la zone, cases « Aussi aux niveaux ») ──────
+  // `autres` = niveaux cochés EN PLUS du niveau d'origine (`level`, inchangé). Un seul objet, même contour sur tous
+  // ses niveaux : rendu, itinéraire et exports lisent `niveaux` (poiJonction.js > ktaNiveauxObjet).
+  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro) puis graphe invalidé : une zone inaccessible
+  // ajoutée à un niveau y bloque l'itinéraire.
+  function changerNiveauxZone(obj, autres) {
+    // 🔒 lecture seule
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!obj || !Array.isArray(autres) || !autres.every(Number.isInteger)) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") {
+      console.warn("[Convertir] setteur manquant pour les niveaux d'une zone");
+      return false;
+    }
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx];
+    const avantNiv = JSON.stringify(window.ktaNiveauxObjet ? window.ktaNiveauxObjet(cible) : []);
+    const essai = { level: cible.level, niveaux: autres.slice() };
+    const apres = window.ktaNiveauxObjet ? window.ktaNiveauxObjet(essai) : [];
+    if (JSON.stringify(apres) === avantNiv) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    cible.niveaux = apres;
+    _normaliserNiveaux(cible);
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("niveauxZone.histoire", {
+        liste: apres.map(function (n) { return n > 0 ? "+" + n : String(n); }).join(", ")
+      }), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
   // ── Conversion d'un lot ──────────
   // `items` = [{ famille, obj }].
   // 🩸 UN SEUL INSTANTANÉ, UNE ÉCRITURE PAR FAMILLE, UN SEUL RENDU : N appels à `convertir()` donneraient N re-rendus
@@ -330,7 +382,7 @@
       if (idx < 0) { bilan.echecs++; return; }
       const neuf = Object.assign({}, listes[it.famille][idx], { type: typeCible });
       listes[it.famille].splice(idx, 1);
-      listes[familleCible].push(_versType(neuf, typeCible));
+      listes[familleCible].push(_versType(neuf, typeCible, familleCible));
       touchees[it.famille] = true;
       touchees[familleCible] = true;
       bilan.convertis++;
@@ -472,8 +524,9 @@
         Object.assign(obj, op.champs);
         if (window.KtaUid) window.KtaUid.touch(obj);
       }
-      if (op.type) obj = _versType(obj, op.type);
+      if (op.type) obj = _versType(obj, op.type, famille);
       if (op.niveau !== null) _poserNiveau(obj, op.niveau);
+      _normaliserNiveaux(obj);   // `niveaux` saisi au Tableur : `level` toujours inclus
       return obj;
     }).concat(session.filter(horsJeu));
     ecrire(liste);
@@ -617,6 +670,7 @@
     supprimer:     supprimer,   // depuis la popup de l objet
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
     changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
+    changerNiveauxZone: changerNiveauxZone,   // fiche d'une zone (niveaux en plus de `level`)
     appliquerTableau: appliquerTableau,   // « Appliquer à la session » du Tableur
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert

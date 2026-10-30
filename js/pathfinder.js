@@ -96,15 +96,25 @@
     return false;
   }
 
-  // Zones d'un autre niveau ignorées (sauf multiLevel off). Les segments "transit" (milieu de jonction)
-  // ne sont jamais bloqués : ce sont des points « en l'air » dans un puits.
+  // Niveaux d'une zone (poiJonction.js > ktaNiveauxObjet, règle commune points / zones) ; `level` seul sans elle.
+  function _niveauxZone(z) {
+    if (typeof window.ktaNiveauxObjet === "function") return window.ktaNiveauxObjet(z);
+    return [Number.isInteger(z && z.level) ? z.level : 0];
+  }
+  // Forme lue par le test de blocage : { points, level, niveaux }, niveaux calculés UNE fois par calcul.
+  function _zoneBloquante(z) {
+    return { points: z.points, level: Number.isInteger(z.level) ? z.level : 0, niveaux: _niveauxZone(z) };
+  }
+
+  // Une zone bloque sur CHACUN de ses niveaux, et seulement là (sauf multiLevel off). Les segments "transit"
+  // (milieu de jonction) ne sont jamais bloqués : ce sont des points « en l'air » dans un puits.
   function _segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc) {
     if (segLevel === "transit") return false;
     if (!zonesInacc || zonesInacc.length === 0) return false;
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     for (let i = 0; i < zonesInacc.length; i++) {
       const z = zonesInacc[i];
-      if (mlOn && z.level !== segLevel) continue;  // niveau different → pas bloquant
+      if (mlOn && z.niveaux.indexOf(segLevel) < 0) continue;  // aucun de ses niveaux → pas bloquant
       if (_segmentTraversePolygon(p1, p2, z.points)) return true;
     }
     return false;
@@ -169,7 +179,7 @@
   }
 
   // Zones inaccessibles du plan : session (getZones) + embarquées (_ktaDataPolygons).
-  // → [{ points: [{x,y}], level }].
+  // → [{ points: [{x,y}], level, niveaux }].
   function _collecterZonesInaccessibles() {
     const out = [];
     if (typeof window.getZones === "function") {
@@ -179,10 +189,7 @@
           const z = session[i];
           if (z && z.type === "inaccessible" &&
               Array.isArray(z.points) && z.points.length >= 3) {
-            out.push({
-              points: z.points,
-              level:  Number.isInteger(z.level) ? z.level : 0
-            });
+            out.push(_zoneBloquante(z));
           }
         }
       }
@@ -192,10 +199,7 @@
         const e = window._ktaDataPolygons[i];
         if (e && e.type === "inaccessible" &&
             Array.isArray(e.points) && e.points.length >= 3) {
-          out.push({
-            points: e.points,
-            level:  Number.isInteger(e.level) ? e.level : 0
-          });
+          out.push(_zoneBloquante(e));
         }
       }
     }
@@ -242,7 +246,7 @@
     var out = [];
     function _pousser(z) {
       if (!z || z.type === "inaccessible" || !set[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
-      out.push({ points: z.points, level: Number.isInteger(z.level) ? z.level : 0 });
+      out.push(_zoneBloquante(z));
     }
     if (typeof window.getZones === "function") {
       var s = window.getZones();
@@ -1357,12 +1361,11 @@
     }
     const zonesInacc = (Array.isArray(opts.zones) ? opts.zones : []).filter(function(z) {
       return z && z.type === "inaccessible" && Array.isArray(z.points) && z.points.length >= 3;
-    }).map(function(z) {
-      return { points: z.points, level: Number.isInteger(z.level) ? z.level : 0 };
-    });
+    }).map(_zoneBloquante);
     const avoidPts    = Array.isArray(opts.avoidPoints) ? opts.avoidPoints : [];
     const avoidRadius = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0) ? opts.avoidRadius : 100;
-    const avoidZones  = Array.isArray(opts.avoidZonesResolved) ? opts.avoidZonesResolved : [];
+    const avoidZones  = (Array.isArray(opts.avoidZonesResolved) ? opts.avoidZonesResolved : [])
+      .filter(function(z) { return z && Array.isArray(z.points) && z.points.length >= 3; }).map(_zoneBloquante);
     const hasAvoid    = avoidPts.length > 0 || avoidZones.length > 0;
     // Passages entre niveaux de CE réseau : fournis par l'appelant (plan non chargé → aucun par défaut).
     const jonctions   = { pois: Array.isArray(opts.poisJonction) ? opts.poisJonction : [],

@@ -119,11 +119,11 @@ APP_CONFIG.multiLevel ←
 - Roads : `road.level: number` OU `{ type: "jonction", fromLevel, toLevel }`
 - Structures : `structure.level: number` (`pilier-2` / `front-2` naissent à `activeLevel − 1`, la « 2e masse » vue
   d'ici : défaut de création seulement, la valeur stockée est le vrai niveau)
-- Zones : `zone.level: number`
+- Zones : `zone.level: number` + `zone.niveaux: number[]` facultatif (zone sur plusieurs niveaux, §26.12)
 - Editor points : `point.level: number`
 - Data layer items : `level: number` optionnel dans le JSON (`puits.json`, etc.)
 - Roads embarquées dans data layers : `road.level: number` optionnel
-- Zones embarquées dans data layers : `zone.level: number` optionnel
+- Zones embarquées dans data layers : `zone.level: number` optionnel, `zone.niveaux` gardé (§26.12)
 - **Image layers (depuis v162)** : `plan-config.json > imageLayers[i].level: number` optionnel. Filtré au runtime via `_applyLevelFilterToImageLayers()`. Modale Niveaux = authority → force `addLayer`/`removeLayer` selon `visibleLevels` (override le checkbox Leaflet). Le générateur expose un champ "Niveau" à côté de chaque image layer, visible **uniquement** si la case 🏗️ Plan multi-niveau est cochée.
 
 **Rétro-compat absolue** : si un item n'a PAS de `level`, il est traité comme `level: 0`. Tous les plans v147 et avant fonctionnent identiquement quand le toggle est OFF (jamais de champ `level` ajouté).
@@ -144,7 +144,8 @@ APP_CONFIG.multiLevel ←
 
 `window.appliquerFiltreNiveau()` orchestre le re-render/filtrage de TOUS les modules level-aware :
 - `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
-- `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
+- `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible) ; une zone
+  sur plusieurs niveaux passe si l'un d'eux est visible (§26.12)
 - `_applyLevelFilterToEditorPoints()` (editor.js) et `_applyLevelFilterToDataPoints()` (utils.js) — markers de session et des data layers (niveau + filtre de tags) via `utils.js > ktaMasquerMarqueur` : opacité 0 **et** icône inerte (`pointer-events: none`, hors tabulation), réappliquée par un écouteur `add` quand Leaflet recrée l'icône (calque recoché, culling viewport, marker filtré avant son `addTo`). 🩸 L'image `.kta-marker-img` hérite son `pointer-events` (`inherit`, jamais `auto`), sinon un point invisible reste cliquable.
 - `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers. Une **jonction** de calque
   (et ses deux ronds d'extrémité) suit la règle de la session et de l'itinéraire : visible si `fromLevel` OU `toLevel`
@@ -202,6 +203,7 @@ Type spécial `"jonction"` :
 | `sessionPersist.js` (auto-save) | Idem — sérialisation JSON transparente |
 | `kmzExport.js` (niveau par niveau) | Un dossier par niveau ; un **passage entre niveaux** (§26.11) est dans le dossier de **chacun** de ses niveaux exportés : un original, les autres marqués `mkm:copie` (sautés par `kmzImport.js`) ; `mkm:niveaux` relu à l'import |
 | `geojsonExport.js` / `gpxIO.js` | Passage entre niveaux : **une** entité, gardée si un de ses niveaux est choisi, propriété `niveaux` ; GPX : `<cmt>MyKTAMap level=0 niveaux=-1,0</cmt>`, relu à l'import. Les `accroches` (pixels du plan) ne partent pas |
+| Zone sur plusieurs niveaux (§26.12) | KMZ : même règle que les passages (dossier de chacun de ses niveaux, `mkm:copie`, `mkm:niveaux` relu) ; GeoJSON : une entité, propriété `niveaux` ; PNG / PDF (`_itemPasseLevels`), export rapide et minicarte (`passeFiltreNiveau`), carte de chaleur, Vue OSM : dessinée si l'un de ses niveaux est retenu |
 
 #### 26.8 Helper global `window.passeFiltreNiveau(item)`
 
@@ -215,6 +217,7 @@ window.passeFiltreNiveau = function(item) {
     return visibles.includes(item.fromLevel||0) ||
            visibles.includes(item.toLevel||0);
   }
+  // passage entre niveaux (POI) ou zone sur plusieurs niveaux : l'un de ses niveaux
   return visibles.includes(item.level||0);
 };
 ```
@@ -327,6 +330,29 @@ jonctions en tracé (§26.5) restent les **pentes douces**.
 
 Garde-fous : `scripts/check-poi-jonction.js` (pre-commit : sorties, fusion par niveau, graphe, coûts, corde, zone
 atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jonction.js`.
+
+#### 26.12 Zone sur plusieurs niveaux
+
+Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effondrement entre le −1 et le −2.
+- **Modèle** : `niveaux` (entiers, triés, sans doublon, ⊇ `level`) ; absent = `level` seul. `level` reste le niveau
+  d'origine. **Un seul objet**, même contour sur chacun de ses niveaux : modifier, déplacer, supprimer agit partout.
+- **Règle unique** : `poiJonction.js > ktaNiveauxObjet(o)` (= `KtaPoiJonction.niveaux`), lue par le rendu, le
+  pathfinder, les filtres et les exports ; jamais de copie locale de la règle (un repli `[level]` si le module manque).
+- **Saisie** : la zone se trace au niveau actif ; sa **fiche** (`utils.js > attacherNotePopup`, sous la liste
+  « Niveau ») propose « Aussi aux niveaux » en cases (niveaux du plan hors `level`, plus ceux déjà portés), appliquées
+  par un bouton → `convertirObjet.js > changerNiveauxZone(obj, autres)` (une entrée ⏪, uid gardé, `touch`, graphe
+  invalidé). Pas de cases hors multi-niveau, pendant un dessin ou sur une zone de calque (lecture seule).
+- **Niveau d'origine changé** (liste « Niveau ») : l'ancien est **remplacé** dans `niveaux`, les autres restent
+  (`_poserNiveau`) ; s'il ne reste que `level`, le champ disparaît. Zone convertie en structure : `niveaux` retiré.
+- **Itinéraire** : une zone bloquante (inaccessible, ou type à éviter) bloque sur **chacun** de ses niveaux
+  (`pathfinder.js > _zoneBloquante`, niveaux calculés une fois par calcul), y compris sur un réseau d'un autre plan
+  (`computeRouteOnRoads`, `opts.zones` / `avoidZonesResolved`).
+- **Comptes** : bilan par niveau (`refonteInterface.js`), statistiques (`statsGlobales.js`, colonne `niveaux` du CSV),
+  niveaux occupés (`main.js > ktaNiveauxOccupes`) et recherche comptent la zone sur chacun de ses niveaux.
+- Garde-fous : `scripts/check-zones-niveaux.js` (pre-commit : règle, rendu, itinéraire, fiche, session, KMZ, GeoJSON)
+  et `scripts/smoke/checkup-zones-niveaux.js` (plan fictif fabriqué dans la page : tracé, fiche, filtre, itinéraire,
+  ⏪, KMZ relu par l'import, rechargement).
+
 ---
 
 ### 31. Zone "Inaccessible" + Préférences d'évitement itinéraire (depuis v169 / Karma_dev)
@@ -350,7 +376,8 @@ atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jo
 - Session zones via `window.getZones()` (filtre `type === "inaccessible"`)
 - Data layer zones via `window._ktaDataPolygons` (entries portant `type` et `points` depuis v169, cf. `utils.js > ajouterPointsDepuisJSON`)
 
-**Multi-niveau** : zone bloque uniquement les segments du **même niveau**. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` (middle de jonction interniveau) jamais bloqués (points "en l'air").
+**Multi-niveau** : une zone bloque les segments de **chacun de ses niveaux** (`level`, ou `niveaux` §26.12), et ceux-là
+seulement. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` (middle de jonction interniveau) jamais bloqués (points "en l'air").
 
 **Indépendant de la visibilité** : pathfinder utilise toujours la zone même si le calque zones est toggle off (cohérence demandée — sinon l'user pourrait toggler sans s'en rendre compte). Toutes les modifs d'export (PNG, session) respectent toujours le type comme une vraie zone.
 
@@ -365,7 +392,7 @@ atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jo
    - **Clic carte** : bouton "📍 Cliquer sur la carte" → mode flottant orange (`_itiAvoidClickActive`, handler isolé du mode clic waypoints), chaque clic ajoute un point d'évitement aux prefs (label "📍 Clic carte (x, y)"). Cf. `_activerModeClicAvoid` / `_desactiverModeClicAvoid` dans interface.js.
 2. **Tags** : `avoidTags: ["pa", "danger", ...]` → expansion auto en tous les points du plan portant ces tags (via `SearchPoints.getAllPoints`, **async**)
 3. **Marge** : `avoidRadius` px (défaut 100, configurable 0-500)
-4. **Zones** (depuis v1.48.0 ; **par TYPE depuis v1.48.1**) : `avoidZones: ["eau", "cust-…", ...]` → liste de **types de zones** à contourner (1 coche par type, comme les autres filtres — plus de liste par instance). `getAvoidableZoneTypes()` (exposé `window.getAvoidableZoneTypes`) liste les **types distincts** des zones évitables (session `getZones` + embarquées `_ktaDataPolygons`) — **exclut `inaccessible`** (déjà contrainte DURE, cf. §31.1). Label **legend-aware** : type custom (`cust-…`) via `LegendCustomization.findCustomEntry(type).label` (« galerie basse »), built-in via `getLabel("zones", type)` (« Eau »…). ⚠️ `getLabel` ne consulte PAS `customEntries` → d'où le recours à `findCustomEntry` pour les customs. `_collecterZonesAEviter(types)` collecte **toutes** les zones dont le type est coché. Côté pathfinder, un segment traversant une de ces zones est coupé du graphe via `_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)` (niveau-aware : une zone ne bloque que les segments de son niveau ; passe souple uniquement).
+4. **Zones** (depuis v1.48.0 ; **par TYPE depuis v1.48.1**) : `avoidZones: ["eau", "cust-…", ...]` → liste de **types de zones** à contourner (1 coche par type, comme les autres filtres — plus de liste par instance). `getAvoidableZoneTypes()` (exposé `window.getAvoidableZoneTypes`) liste les **types distincts** des zones évitables (session `getZones` + embarquées `_ktaDataPolygons`) — **exclut `inaccessible`** (déjà contrainte DURE, cf. §31.1). Label **legend-aware** : type custom (`cust-…`) via `LegendCustomization.findCustomEntry(type).label` (« galerie basse »), built-in via `getLabel("zones", type)` (« Eau »…). ⚠️ `getLabel` ne consulte PAS `customEntries` → d'où le recours à `findCustomEntry` pour les customs. `_collecterZonesAEviter(types)` collecte **toutes** les zones dont le type est coché. Côté pathfinder, un segment traversant une de ces zones est coupé du graphe via `_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)` (niveau-aware : une zone ne bloque que les segments de ses niveaux ; passe souple uniquement).
 
 **Algo 2 passes** (clé du fallback) :
 1. **Passe 1** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, allAvoidPts, avoidRadius, avoidZones)` — graphe avec dur+souple (points **et** zones évitées), tentative Dijkstra

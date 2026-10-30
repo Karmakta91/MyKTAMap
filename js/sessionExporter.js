@@ -1780,6 +1780,8 @@
           description: ""
         };
         if (typeof z.level === "number") out.level = z.level;
+        // Zone sur plusieurs niveaux : géométrie du relevé, rien d'identifiant (même règle que les passages).
+        if (Array.isArray(z.niveaux)) out.niveaux = z.niveaux.slice();
         return out;
       });
     }

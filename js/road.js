@@ -1139,7 +1139,8 @@ window.getCurrentRoad = function() {
 };
 
 // Filtre de niveau partagé par les exports (utils.js > telechargerPlan, exporter.js) : on exporte ce qu'on voit.
-// Hors multi-niveau → true ; sinon level ∈ visibleLevels (jonction : fromLevel OU toLevel). `level` absent = 0.
+// Hors multi-niveau → true ; sinon level ∈ visibleLevels (jonction : fromLevel OU toLevel ; passage ou zone sur
+// plusieurs niveaux : l'un d'eux). `level` absent = 0.
 window.passeFiltreNiveau = function(item) {
   const _ml = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   if (!_ml) return true;
@@ -1153,6 +1154,11 @@ window.passeFiltreNiveau = function(item) {
   // Passage entre niveaux (POI) : visible si un de ses niveaux l'est.
   if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
     return window.KtaPoiJonction.passeNiveaux(window.KtaPoiJonction.niveaux(item), _visibles);
+  }
+  // Zone sur plusieurs niveaux : visible si un de ses niveaux l'est (poiJonction.js > ktaNiveauxObjet).
+  if (item && Array.isArray(item.niveaux) && Array.isArray(item.points) &&
+      typeof window.ktaNiveauxObjet === "function") {
+    return window.ktaNiveauxObjet(item).some(function(n) { return _visibles.indexOf(n) >= 0; });
   }
   const lvl = Number.isInteger(item && item.level) ? item.level : 0;
   return _visibles.indexOf(lvl) >= 0;

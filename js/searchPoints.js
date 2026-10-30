@@ -587,6 +587,12 @@
     const keys = { principal: "search.roadType.principal", secondaire: "search.roadType.secondaire", chemin: "search.roadType.chemin", jonction: "search.roadType.jonction", itinerary: "search.roadType.itinerary" };
     return _lcOuI18n("traces", type, keys[type] || null);
   }
+  // Texte de recherche des niveaux d'une zone : chacun de ses niveaux (`niveaux`, sinon `level`).
+  function _texteNiveauxZone(z) {
+    if (!Number.isInteger(z.level) && !Array.isArray(z.niveaux)) return "";
+    const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(z) : [z.level];
+    return nv.map(function(n) { return window.I18n.t("search.search.levelText", { n: n }); }).join(" ");
+  }
   function _zoneTypeLabel(type) {
     const keys = { eau: "search.zoneType.eau", remblais: "search.zoneType.remblais", effondrement: "search.zoneType.effondrement", inaccessible: "search.zoneType.inaccessible" };
     return _lcOuI18n("zones", type, keys[type] || null);
@@ -643,7 +649,7 @@
         layerId: "session",
         layerLabel: window.I18n.t("search.layer.session"),
         label: lbl,
-        searchableText: [lbl, z.type, _zoneTypeLabel(z.type) || "", z.label || "", Number.isInteger(z.level) ? window.I18n.t("search.search.levelText", { n: z.level }) : ""].join(" ")
+        searchableText: [lbl, z.type, _zoneTypeLabel(z.type) || "", z.label || "", _texteNiveauxZone(z)].join(" ")
       });
     });
     const embZones = (typeof window.getAllEmbeddedZones === "function") ? (window.getAllEmbeddedZones() || []) : [];
@@ -656,7 +662,7 @@
         layerId: z._layerId || "data",
         layerLabel: z._layerLabel || window.I18n.t("search.layer.data"),
         label: lbl,
-        searchableText: [lbl, z.type, _zoneTypeLabel(z.type) || "", z.label || "", Number.isInteger(z.level) ? window.I18n.t("search.search.levelText", { n: z.level }) : ""].join(" ")
+        searchableText: [lbl, z.type, _zoneTypeLabel(z.type) || "", z.label || "", _texteNiveauxZone(z)].join(" ")
       });
     });
     return out;

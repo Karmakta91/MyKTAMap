@@ -1312,7 +1312,9 @@
 
       // zones : même cascade (_resolveZoneColorsHome)
       for (const z of layer.zones) {
-        if (!_passeNiveau(z)) continue;
+        // Zone sur plusieurs niveaux : dessinée si l'un d'eux passe le filtre.
+        const _nvZ = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(z) : [_niveauDe(z)];
+        if (!_nvZ.some(function(n) { return _passeNiveau({ level: n }); })) continue;
         if (!Array.isArray(z.points) || z.points.length < 3) continue;
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;

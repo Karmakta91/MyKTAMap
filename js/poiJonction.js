@@ -13,8 +13,9 @@
 // peuvent aussi porter `niveaux` (puits de surface qui dessert des étages) et restent des sorties.
 // L'itinéraire n'emprunte que les raccords validés (pathfinder.js > _injecterJonctionsPoi) ; la proposition se
 // fait dans un rayon de 5 m (échelle du plan), 50 px sur un plan sans échelle.
-// Expose window.KtaPoiJonction : modèle (niveaux, moyen, estJonction, pointsJonction, passeNiveaux), formulaire
-// (htmlFormulaire, brancherFormulaire, appliquer), fiche (htmlFiche, brancherMarqueur), proposerRaccords.
+// Expose window.ktaNiveauxObjet (niveaux d'un POI ou d'une zone, règle commune) et window.KtaPoiJonction : modèle
+// (niveaux, moyen, estJonction, pointsJonction, passeNiveaux), formulaire (htmlFormulaire, brancherFormulaire,
+// appliquer), fiche (htmlFiche, brancherMarqueur), proposerRaccords.
 // Doc : docs/architecture/multilevel-pathfinding.md §26.11.
 
 (function () {
@@ -49,7 +50,8 @@
   function moyen(tag) { return MOYEN[tag] || null; }
   function forfaitM(tag) { const m = MOYEN[tag]; return m ? FORFAIT_M[m] : 0; }
 
-  // Niveaux du point, triés, sans doublon, `level` toujours inclus.
+  // ⚠️ Niveaux d'un objet (POI ou zone), triés, sans doublon, `level` toujours inclus ; sans `niveaux` = [level].
+  // Règle unique, exposée aussi en window.ktaNiveauxObjet : zones.js, pathfinder.js, exports, filtres la lisent.
   function niveaux(p) {
     if (!p) return [0];
     const lvl = Number.isInteger(p.level) ? p.level : 0;
@@ -326,6 +328,8 @@
     marker.on("popupopen", function () { afficherRaccords(point); });
     marker.on("popupclose", masquerRaccords);
   }
+
+  window.ktaNiveauxObjet = niveaux;
 
   window.KtaPoiJonction = {
     TAGS_ENTRE_NIVEAUX: TAGS_ENTRE_NIVEAUX.slice(),

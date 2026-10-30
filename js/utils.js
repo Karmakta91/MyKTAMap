@@ -925,6 +925,38 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
            '</label>';
   }
 
+  // Zone de session sur un plan multi-niveau : cases « Aussi aux niveaux » (niveaux du plan hors `level`, plus ceux
+  // que la zone porte déjà même hors availableLevels), appliquées par un bouton (un geste, une entrée ⏪).
+  // "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes), comme la liste « Niveau ».
+  function _niveauxZoneHtml() {
+    const o = opts.convertir && opts.convertir.obj;
+    if (!o || opts.convertir.famille !== "zones" || typeof window.ktaNiveauxProposes !== "function") return "";
+    const lvl = Number.isInteger(o.level) ? o.level : 0;
+    const proposes = window.ktaNiveauxProposes(lvl);
+    if (!proposes) return "";
+    const portes = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(o) : [lvl];
+    const autres = proposes.concat(portes).filter(function(n, i, a) { return n !== lvl && a.indexOf(n) === i; })
+      .sort(function(a, b) { return a - b; });
+    if (!autres.length) return "";
+    return '<div class="kta-note-popup-niveaux-zone">' +
+             '<div class="kta-note-popup-niveaux-zone-titre">' + _esc(window.I18n.t("niveauxZone.label")) + '</div>' +
+             '<div class="kta-note-popup-niveaux-zone-cases">' +
+               autres.map(function(n) {
+                 return '<label class="kta-note-popup-niveaux-zone-case">' +
+                          '<input type="checkbox" value="' + n + '"' +
+                            (portes.indexOf(n) >= 0 ? " checked" : "") + '>' +
+                          '<span>' + _esc(window.ktaFormatNiveau(n)) + '</span>' +
+                        '</label>';
+               }).join("") +
+             '</div>' +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-niveaux-zone-appliquer" type="button">' +
+                 _esc(window.I18n.t("niveauxZone.appliquer")) +
+               '</button>' +
+             '</div>' +
+           '</div>';
+  }
+
   // Fiche d'une jonction (`opts.jonction`) : deux listes « Départ » (premier point, fromLevel) et « Arrivée » (dernier
   // point, toLevel), appliquées ensemble par un bouton (un geste, une entrée ⏪). Chaque liste garde le niveau actuel
   // de son bout même hors availableLevels (ktaNiveauxProposes) ; "" hors multi-niveau ou pendant un dessin.
@@ -988,7 +1020,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                      '</button>'
                    : '') +
                '</div>' +
-               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml()) +
+               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml() + _niveauxZoneHtml()) +
                // Supprimer : ligne séparée, classe danger (comme la popup d'un point, une action destructrice ne se
                // pose pas à côté de « Sauver »). `opts.convertir` = { famille, obj } sert aux DEUX boutons.
                (opts.convertir
@@ -1051,6 +1083,22 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (window.KtaConvertir.changerNiveau(opts.convertir.famille, opts.convertir.obj, n)
               && typeof window.ktaSignalerNiveauObjet === "function") {
             window.ktaSignalerNiveauObjet(n);
+          }
+        });
+      }
+      // Niveaux d'une zone : popup fermée AVANT le setteur, pour la même raison que la liste « Niveau ».
+      const nzBtn = popupRoot.querySelector(".kta-note-popup-niveaux-zone-appliquer");
+      if (nzBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxZone) {
+        nzBtn.addEventListener("click", function () {
+          const autres = Array.prototype.slice.call(
+            popupRoot.querySelectorAll(".kta-note-popup-niveaux-zone-cases input:checked"))
+            .map(function(cb) { return Number.parseInt(cb.value, 10); });
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveauxZone(opts.convertir.obj, autres)
+              && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            const nv = window.ktaNiveauxObjet({ level: opts.convertir.obj.level, niveaux: autres });
+            window.OOMGuard.showToast(window.I18n.t("niveauxZone.toast",
+              { liste: nv.map(window.ktaFormatNiveau).join(", ") }), "success");
           }
         });
       }
@@ -1874,7 +1922,9 @@ window._ktaRestyleDataLayers = function() {
 // `kindForRuntime` (zone | structure) vient des wrappers _applyLevelFilterToData{Zones,Structures}.
 function _filtreNiveauSurPolygonData(entry, kindForRuntime) {
   if (!entry || !entry.polygon) return;
-  let visible = _passeFiltreDataLevel(entry.level);
+  // Zone sur plusieurs niveaux (`niveaux`) : visible si l'un d'eux l'est.
+  let visible = Array.isArray(entry.niveaux) ? entry.niveaux.some(_passeFiltreDataLevel)
+                                              : _passeFiltreDataLevel(entry.level);
   if (visible && entry.type && kindForRuntime) {
     if (!_passeFiltreRuntimeType(kindForRuntime, entry.type)) visible = false;
   }
@@ -1956,7 +2006,7 @@ window.getAllEmbeddedPoints = function() {
   return out;
 };
 
-// Zones embarquées → [{type, points, level, layerId, description?, uid?, updatedAt?}], même format que
+// Zones embarquées → [{type, points, level, niveaux?, layerId, description?, uid?, updatedAt?}], même format que
 // window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
 window.getAllEmbeddedZones = function() {
   if (!Array.isArray(window._ktaDataPolygons)) return [];
@@ -1966,6 +2016,7 @@ window.getAllEmbeddedZones = function() {
     })
     .map(function(e) {
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
+      if (Array.isArray(e.niveaux) && e.niveaux.length >= 2) out.niveaux = e.niveaux.slice();
       if (e.description) out.description = e.description;
       if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
@@ -2565,6 +2616,9 @@ function ajouterPointsDepuisJSON(url, layer) {
             type:            zone.type,
             points:          zone.points,
             level:           Number.isInteger(zone.level) ? zone.level : 0,
+            // Zone sur plusieurs niveaux (poiJonction.js > ktaNiveauxObjet) : liste normalisée, `level` inclus.
+            niveaux:         (Array.isArray(zone.niveaux) && typeof window.ktaNiveauxObjet === "function")
+                               ? window.ktaNiveauxObjet(zone) : undefined,
             description:     zone.description || undefined,
             uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,

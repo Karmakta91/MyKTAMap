@@ -719,7 +719,7 @@ Press a type, place at least 3 points (dotted), then close the zone: **tap the f
 
 ### ⛔ "Inaccessible" zone — blocks the route
 
-A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its own level**, and still counts even if you hide the zones layer.
+A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its levels** (a zone can touch several, see « 🏗️ Multi-level mode »), and still counts even if you hide the zones layer.
 
 The **Respect impassable areas** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
 
@@ -863,6 +863,8 @@ If the map contains elements on other levels, the list extends by itself. The sa
 ### 🔀 Changing an object's level
 
 An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
+
+A zone that touches several levels (a collapse between −1 and −2): draw it on the active level, then in its popup tick the other levels under **Also on levels** and tap **🏗️ Apply levels**. It is the same zone, with the same outline, shown on each of its levels: editing or deleting it acts everywhere, and a ⛔ zone blocks the route on each of them. Untick everything to bring it back to its single level. **⏪** undoes it.
 
 A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
