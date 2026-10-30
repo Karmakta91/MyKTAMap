@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.21.0` (26/10/2026)
+## 📦 Version courante — `v2.21.1` (30/10/2026)
 
-> 👋 **v2.21.0 — Écran Bienvenue, conditions après « Entrer », CGU v2, photos et dangers datés, calage en vraie projection** : présentation qui défile au premier lancement, avec ou sans mot de passe d'installation (`js/bienvenue.js`), conditions d'utilisation v2 (ré-acceptation de tous) montrées au clic sur « Entrer » sur une installation community, PIN plus proposé au démarrage ; date de prise de vue des photos, date de constat des POI danger ; calage GPS en plan tangent GRS80 avec « Recaler » ; prises neutres pour les notifications, l'état des objets et les calques d'une installation reliée. Reprend la v2.20.1 (jamais en prod). Détail : journal ci-dessous.
+> ✏️ **v2.21.1 — Outils de dessin qui s'enchaînent, front de taille plus fin** : après la fermeture d'une zone, d'un pilier, d'un mur ou d'un front, l'outil reste armé ; front de taille à 0,8 m (écran, exports, Vue OSM). Aussi : Mode Secours multi-niveaux, échelle reprise par le Générateur, conditions d'utilisation à l'entrée d'une installation reliée, « -pro » du splash. Détail : journal ci-dessous.
 
 ---
 
@@ -453,6 +453,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.21.1 (30/10/2026) — Outils de dessin qui s'enchaînent, front de taille plus fin (branche `Karma_dev`)
+
+- **✏️ L'outil reste armé** (`js/zones.js`, `js/structures.js`, `js/interface.js`) : fermer une zone, un pilier, un mur (re-tap du 1er point ou ✅) ou un front (✅) ne l'éteint plus, le tap suivant commence une forme du même type ; re-appuyer sur le type l'éteint. Une annulation par forme, comme avant. Guides fr / en / es ; `check-filets-donnees.js` aligné.
+- **🟨 Front de taille à 0,8 m** au lieu de 1,5 m (largeur réelle × échelle × zoom, bornée 1 à 14 px) : même loi à l'écran, dans les exports PNG/PDF et la Vue OSM (`js/osmView.js`, `docs/architecture/exports.md`).
+- **🆘 Mode Secours** : secteurs sur plusieurs niveaux (équipe « tous niveaux », POI de la zone pris à chaque niveau) ; une seule intervention à la fois sur un plan (lancer une autre arrête d'abord celle qui tourne).
+- **🏗️ Générateur** : « Mettre à jour le plan » reprend l'échelle recalibrée dans l'app, et le dit.
+- **⚖️ Conditions d'utilisation** : refusables devant un écran d'entrée (on reste sur Bienvenue ou la connexion) ; sur une installation reliée, demandées à l'entrée et plus avant l'écran d'entrée.
+- **Édition pro** (prises neutres) : « -pro » orange révélé pendant l'apparition du titre du splash ; liens « Licence pro » vers `/?presentation` ; `changementsDepuis` rend `null` quand aucun plan n'est prêt, ou pas le plan attendu.
+- **Corrigés** : plus d'id de plan courant à l'accueil (le plan quitté passe dans `_ktaDernierPlanId`) ; stations de l'écran Bienvenue sur le fond du sous-sol. Smoke et checkup Bienvenue joués aussi sous WebKit (`KTA_MOTEURS=webkit`).
 
 #### v2.21.0 (26/10/2026) — Écran Bienvenue, conditions après « Entrer », CGU v2, photos et dangers datés, calage en vraie projection (branche `Karma_dev`)
 
