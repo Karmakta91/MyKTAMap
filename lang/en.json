@@ -2521,7 +2521,6 @@
   "legendui.group.signage": "⚠️ Signage",
   "legendui.group.wells": "🕳️ Shafts",
   "legendui.group.levels": "↕️ Passages between levels",
-  "legendui.icons.empty": "No icon configuration available.",
   "legendui.lectureSeule.autresPlans": "Legend of {plan}; the other maps shown have their own.",
   "legendui.label.caf": "Closed quarry access",
   "legendui.label.cao": "Open quarry access",

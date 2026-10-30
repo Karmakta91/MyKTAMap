@@ -2521,7 +2521,6 @@
   "legendui.group.signage": "⚠️ Signalétique",
   "legendui.group.wells": "🕳️ Puits",
   "legendui.group.levels": "↕️ Passages entre niveaux",
-  "legendui.icons.empty": "Aucune configuration d'icônes disponible.",
   "legendui.lectureSeule.autresPlans": "Légende de {plan} ; les autres plans affichés ont la leur.",
   "legendui.label.caf": "Cavage fermé",
   "legendui.label.cao": "Cavage ouvert",

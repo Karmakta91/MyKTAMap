@@ -2543,7 +2543,6 @@
   "legendui.group.signage": "⚠️ Señalización",
   "legendui.group.wells": "🕳️ Pozos",
   "legendui.group.levels": "↕️ Pasos entre niveles",
-  "legendui.icons.empty": "Ninguna configuración de iconos disponible.",
   "legendui.lectureSeule.autresPlans": "Leyenda de {plan}; los demás mapas mostrados tienen la suya.",
   "legendui.label.caf": "Acceso a cantera cerrado",
   "legendui.label.cao": "Acceso a cantera abierto",
