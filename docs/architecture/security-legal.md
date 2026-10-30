@@ -82,7 +82,7 @@ affichage en clair dans la fenêtre de reset sont supprimés.
 
 Le mode est décidé **avant** de dessiner (`_monterGate` lit `_hashInstance()`, config d'instance déjà
 chargée par `ktaInstance.js`). Les deux modes montrent la même présentation « Bienvenue » (§36.8) sur les domaines
-de présentation (`myktamap.fr`, `dev.myktamap.fr`, `localhost`, `127.0.0.1` : `UnlockGate.presentationComplete`) ;
+de présentation (`myktamap.fr`, `www.myktamap.fr`, `dev.myktamap.fr`, `localhost`, `127.0.0.1` : `UnlockGate.presentationComplete`) ;
 ailleurs, sa **ville seule** (§36.8), avec « Entrer » ou le même champ, à la même règle d'ouverture :
 
 | Instance | En-tête de l'écran | Ce qui ouvre |

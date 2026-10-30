@@ -82,7 +82,7 @@ photos restent locales et exportables).
 > rattrapée par le filet de `main.js` après elle, sans « Refuser ». Sans extension : sans effet (`check-extensions.js`).
 > 🏙️ **Écran d'arrivée : présentation complète ou ville seule** — le **domaine** décide
 > (`UnlockGate.presentationComplete(hôte)`, liste unique dans `js/unlockGate.js`, exécutée par
-> `check-gate-instance.js` §11) : `myktamap.fr`, `dev.myktamap.fr`, `localhost` et `127.0.0.1` gardent l'écran Bienvenue
+> `check-gate-instance.js` §11) : `myktamap.fr`, `www.myktamap.fr`, `dev.myktamap.fr`, `localhost` et `127.0.0.1` gardent l'écran Bienvenue
 > complet ; **tout autre hôte** (installation auto-hébergée) n'a que sa **ville seule** (`bienvenue.js`, option
 > `villeSeule`, `security-legal.md` §36.8) : titre, description, « Entrer » (ou le champ « Code d'accès » si
 > `accessHash`), 📖 et langues ; ni défilement, ni pastille pro, ni lien source, ni contacts. Même entrée que l'écran

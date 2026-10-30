@@ -416,8 +416,9 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     const sb = {};
     vm.runInNewContext(liste[0] + code + "; f = presentationComplete;", sb, { filename: "gate.hote.js" });
     const f = sb.f;
-    t("présentation complète : myktamap.fr, dev.myktamap.fr, localhost, 127.0.0.1 (casse et point final tolérés)",
-      ["myktamap.fr", "dev.myktamap.fr", "localhost", "127.0.0.1", "MyKTAMap.FR", "myktamap.fr."].every(f));
+    t("présentation complète : myktamap.fr, www., dev., localhost, 127.0.0.1 (casse et point final tolérés)",
+      ["myktamap.fr", "www.myktamap.fr", "dev.myktamap.fr", "localhost", "127.0.0.1", "MyKTAMap.FR",
+        "myktamap.fr."].every(f));
     t("ville seule : tout autre hôte (auto-hébergé, sous-domaine, IP, hôte vide)",
       !["club.exemple.org", "pro.myktamap.fr", "myktamap.fr.exemple.org", "exemple-myktamap.fr", "127.0.0.2",
         "192.168.1.10", "[::1]", "", null, undefined].some(f));

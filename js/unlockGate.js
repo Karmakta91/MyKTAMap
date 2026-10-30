@@ -448,7 +448,7 @@
   // Écran d'arrivée selon le domaine (décision produit) : la présentation complète de myktamap.fr sur ses propres
   // domaines et en local (scripts/smoke/checkup-bienvenue.js la joue sur 127.0.0.1) ; toute autre installation (auto-
   // hébergée) n'a que la ville seule, à ses textes. ⚠️ Liste unique, ici seulement (check-gate-instance.js l'exécute).
-  const HOTES_PRESENTATION = ["myktamap.fr", "dev.myktamap.fr", "localhost", "127.0.0.1"];
+  const HOTES_PRESENTATION = ["myktamap.fr", "www.myktamap.fr", "dev.myktamap.fr", "localhost", "127.0.0.1"];
   function presentationComplete(hote) {
     const h = String(hote == null ? "" : hote).trim().toLowerCase().replace(/\.$/, "");
     return HOTES_PRESENTATION.indexOf(h) >= 0;
