@@ -10,7 +10,7 @@
 > partagé : elle se greffe sur cette application, qui reste **entièrement utilisable sans serveur**. Elle demande une
 > **licence pro** (`Licence-pro.json`) et un **accès au dépôt backend** (privé), fournis **sur demande** : Instagram
 > [@karma_kta](https://www.instagram.com/karma_kta/) ou [contact@myktamap.fr](mailto:contact@myktamap.fr).
-> Présentation : [pro.myktamap.fr/presentation](https://pro.myktamap.fr/presentation/).
+> Présentation : [pro.myktamap.fr/?presentation](https://pro.myktamap.fr/?presentation).
 
 **🗺️ Architecture générale** (gate → home → écran plan, modules JS, clés de stockage — légende : 🟡 hub · ⬛ 100 % offline · 🔵 accès réseau opt-in · 🔴 sécurité/secours) :
 

@@ -449,7 +449,7 @@
     }
     return '<div class="kta-bv-actions">' + _boutonEntrer() + decouvrir +
       // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
-      '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/presentation/" target="_blank" ' +
+      '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/?presentation" target="_blank" ' +
         'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
     '</div>';
   }

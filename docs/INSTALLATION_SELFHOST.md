@@ -747,4 +747,4 @@ s'applique sans perdre les plans, sessions ni photos.
 ---
 
 *Document de MyKTAMap édition communautaire. Pour la version pro (multi-tenant, SSO, hébergement
-managé), voir [pro.myktamap.fr/presentation](https://pro.myktamap.fr/presentation/).*
+managé), voir [pro.myktamap.fr/?presentation](https://pro.myktamap.fr/?presentation).*
