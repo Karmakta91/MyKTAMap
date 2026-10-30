@@ -1240,7 +1240,7 @@
     if (!conteneur || typeof conteneur.appendChild !== "function") return null;
     const o = opts && typeof opts === "object" ? opts : {};
     const nom = function(v) { return typeof v === "string" && /^[a-z][a-z0-9-]{0,40}$/i.test(v) ? v : ""; };
-    const nombre = function(v, d) { return typeof v === "number" && isFinite(v) ? v : d; };
+    const nombre = function(v, d) { return Number.isFinite(v) ? v : d; };
     const tampon = document.createElement("div");
     tampon.innerHTML = _ville({ prefixe: nom(o.prefixe) || VILLE_DEFAUT.prefixe, fenetres: nom(o.fenetres),
       lune: nombre(o.lune, VILLE_DEFAUT.lune), oiseaux: nombre(o.oiseaux, VILLE_DEFAUT.oiseaux) });
