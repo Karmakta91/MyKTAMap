@@ -669,34 +669,57 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🧪 Validation
 
-- **Syntaxe JS** : `node -c fichier.js` — seul filet (pas de tests auto, pas de linter).
-- **Pas de build** : les `<script src="js/…">` sont chargés dans l'ordre par `index.html`. Ajouter un module = l'ajouter à `index.html` **et** à `sw.js > ASSETS_TO_CACHE`.
+- **Syntaxe JS** : `node -c fichier.js` (pas de linter).
+- **Garde-fous** : `.githooks/pre-commit` (activer une fois : `git config core.hooksPath .githooks`) lance les
+  `scripts/check-*.js` listés plus haut (colonne « Branché ») ; `.githooks/commit-msg` contrôle les bumps et `data/`.
+- **CI GitHub** (`.github/workflows/ci.yml`) : à chaque push sur `Karma_dev` / `main` et PR — syntaxe, commits reçus un
+  par un (`scripts/ci-commits.sh`), puis tout le pre-commit.
+- **Navigateur** : smoke (`scripts/smoke/`, Playwright, aussi sous WebKit avec `KTA_MOTEURS=webkit`) et checkups
+  ciblés `scripts/smoke/checkup-*.js`.
+- **Pas de build** : les `<script src="js/…">` sont chargés dans l'ordre par `index.html`. Ajouter un module = l'ajouter
+  à `index.html`, à `sw.js > ASSETS_TO_CACHE` **et** à la table des modules de ce README (`check-readme-modules.js`).
 - Vérifier les **régressions cross-module** avant d'affirmer qu'un fix marche.
 
 ### 🧭 Conventions
 
-- **JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. Logs préfixés `[Module]`. 2 espaces, lignes < 120.
+- **JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. Logs préfixés `[Module]`.
+  2 espaces, lignes < 120. Aucun script inline (CSP `script-src 'self'`), aucune popup native (`ktaAlerte`,
+  `ktaConfirm`, toasts).
 - **Coordonnées** : TOUJOURS `convertCoord(x, y)` = `[imageHeight - y, x]`. Jamais `[y, x]` direct.
 - **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed() + " m"`.
 - **Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint(point)`.
-- **i18n** : textes user-facing via `window.I18n.t("module.section.element")`, appelé **au rendu** (jamais au load), FR = fallback. État de la migration : `docs/architecture/i18n.md`.
-- **CSS** : charte dark (`#1a1f2e` → `#0a0d18`, texte `#e8eaf0`/`#c8d0e0`/`#8892a4`), accent `#f4c542`, interaction `#8cb4ff`. Préfixe `kta-`. Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
+- **Styles des types** : `window.ktaResolveStyle(cat, clé)`, jamais de table de couleurs locale.
+- **i18n** : textes user-facing via `window.I18n.t("module.section.element")`, appelé **au rendu** (jamais au load),
+  FR = fallback, dictionnaires fr / en / es. État de la migration : `docs/architecture/i18n.md`.
+- **CSS** : charte en jetons `--kta-*` (tête de `css/style.css`, redéfinis par le thème clair) — `--kta-fond`,
+  `--kta-surface`, `--kta-texte` / `-2` / `-3`, `--kta-accent`, `--kta-interaction`, `--kta-primaire`. Préfixe `kta-`.
+  Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
 
-### 🛡️ Garde-fous
+### 🛡️ Règles du dépôt
 
-- `data/**` = **DATA pure** — le moteur vit dans `js/`, `css/`, `index.html`, `sw.js`.
-- **Frontière community ↔ pro** : ce repo est 100 % offline, gratuit, sans bridage. Le pro (cloud sync, backend, white-label…) vit dans le repo privé. Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (`git config core.hooksPath .githooks`).
-- Jamais de `push main` direct / `push --force` / `reset --hard` (hooks bloquants côté IA).
+- `data/**` = **DATA pure**, jamais sur Git (relevés réels) — le moteur vit dans `js/`, `css/`, `index.html`, `sw.js`.
+- **Frontière community ↔ pro** : ce dépôt est 100 % hors ligne, gratuit, sans bridage ; il n'expose que des points
+  d'extension neutres (`docs/architecture/community-server-line.md`). Anti-fuite : `scripts/check-no-pro-leak.js`.
+- Aucun nom réel lié aux relevés (réseau, commune, plan) dans le code, les docs ou les commits : le dépôt est public.
+- Pas de réécriture de l'historique ni de push direct sur `main` (hooks bloquants côté IA).
 
 ### 🚀 Release
 
 1. Bumper **ENSEMBLE** : `sw.js > CACHE_NAME` · `js/copyright.js > __MKM__.build` · `version.json > version`.
-2. `version.json > notes` : **user-friendly, uniquement le dernier bump** (1-2 phrases, zéro jargon).
-3. Sync docs 4 axes : 📱 in-app (`README_USER` fr/en, `interfaceDocs.js`, `AI_CONTEXT.md`) · 🔒 audit (`NETWORK_AUDIT.md` + `.html`) · 📖 ce README · 🤖 archi IA (`CLAUDE.md` + `docs/architecture/<sujet>.md`).
-4. **Ce README à chaque bump** : remplacer le bloc **📦 Version courante** en tête + ajouter l'entrée détaillée **en tête du [journal](#-journal-des-versions)**.
-5. Déploiement : **FTP manuel par KARMA** (prod). Détails : `docs/architecture/infra-versioning.md`.
+2. `version.json > notes` : **user-friendly**, l'écart avec la version en prod (2-3 puces, zéro jargon).
+3. Sync docs 4 axes : 📱 in-app (`README_USER` fr/en/es, `interfaceDocs.js`, `AI_CONTEXT.md`) · 🔒 audit
+   (`NETWORK_AUDIT.md` + historique, `.html` générés par `node scripts/audit-html.js`) · 📖 ce README · 🤖 archi IA
+   (`CLAUDE.md` + `docs/architecture/<sujet>.md`).
+4. **Ce README à chaque bump** : remplacer le bloc **📦 Version courante** en tête + ajouter l'entrée détaillée
+   **en tête du [journal](#-journal-des-versions)**.
+5. Mise en ligne : **automatique** quand la CI est verte (serveur, toutes les 5 min) — `Karma_dev` → dev.myktamap.fr,
+   `main` → myktamap.fr. Le merge sur `main` passe par `scripts/release/merge-main.ps1` et la porte de release
+   (`docs/RELEASE_GATE.md`). Détails : `docs/architecture/infra-versioning.md`.
 
-> 🛡️ **Les points 1, 3 et 4 sont vérifiés au commit** (`.githooks/commit-msg`, depuis le 16/08/2026) : un bump de `version.json` est refusé si les 3 sources divergent (🔒 non dérogeable) ou si README / Audit réseau / `AI_CONTEXT.md` n'ont pas suivi (📄 dérogeable par une ligne `Docs-deroge: <motif · risque · rattrapage>` dans le message). Détails : `infra-versioning.md` §84.
+> 🛡️ **Les points 1, 3 et 4 sont vérifiés au commit** (`.githooks/commit-msg`) : un bump de `version.json` est refusé si
+> les 3 sources divergent (🔒 non dérogeable) ou si README / Audit réseau / `AI_CONTEXT.md` n'ont pas suivi (📄
+> dérogeable par une ligne `Docs-deroge: <motif · risque · rattrapage>`, écrite par KARMA seul). Détails :
+> `infra-versioning.md` §84.
 
 ---
 

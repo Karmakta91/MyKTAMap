@@ -35,6 +35,8 @@
   **`lib/VERSIONS.md`** disent la même version — mettre à jour une librairie = fichier du paquet npm officiel +
   manifeste + table dans le même commit, puis tester ce qu'elle fait (marche à suivre : `lib/VERSIONS.md`). L'image Docker (`docker.yml`) n'est publiée que si la CI du commit taggé est verte.
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
+  Le référentiel des fichiers du `README.md` (modules dans l'ordre d'`index.html`, `css/`, `scripts/`,
+  `docs/architecture/`) est gardé par `scripts/check-readme-modules.js` (bloquant) : un fichier ajouté = sa ligne.
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Procédure complète, sync docs et règles des notes `version.json` (user-friendly, écart avec la **prod**, dernier bump seulement) : **skill `release`** · `infra-versioning.md` §84.
 - **⛔ Pas de bump par correctif** (décision KARMA 04/10/2026) : on commite **sans bump** (`fix(...)`, `feat(...)`) ; le **seul** bump se fait quand KARMA prépare une mise en prod (**jamais sans son « go »**), juste avant la porte de release, avec la sync docs 4 axes dans ce commit. On ne redescend jamais un numéro (comparaison semver de `updateChecker.js`) : la prochaine prod reprend la suite.
 - **Bump = sync docs sur 4 axes**, vérifiée au commit (`commit-msg` + `check-release-docs.js` : 3 sources **jamais** dérogeables, le reste par `Docs-deroge:` — écrit par KARMA seul) :
