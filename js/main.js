@@ -1767,24 +1767,28 @@ window.proposerRedemarrageLangue = function() {
 
   // Conditions d'utilisation : bloquantes, sautées en incognito (flag non persistant) ; l'étape légale de
   // FirstRunFlow reste en filet. Deux moments (décision produit) :
-  // - installation community (pas reliée à un serveur) dont l'écran d'entrée va s'afficher : APRÈS « Entrer » (ou
-  //   le code juste), avant la descente — un visiteur de passage n'est pas arrêté par une fenêtre ;
-  // - sinon (installation reliée : pro, gate déléguée ; accès déjà ouvert) : EN PREMIER, avant toute saisie.
+  // - un écran d'entrée va s'afficher (Bienvenue ou code de l'installation community ; installation reliée : la gate
+  //   déléguée) : au moment où la personne ENTRE (« Entrer », code juste, connexion ou demande d'accès validée),
+  //   refusables — un visiteur de passage n'est pas arrêté par une fenêtre. Passées à l'écran par `avantEntree`
+  //   (UnlockGate.ouvrirGate, KtaExtensions.gateDeleguee) : résolue à false = refus, on reste sur l'écran, rien
+  //   n'est mémorisé, elles reviennent à la prochaine entrée ;
+  // - sinon (accès community déjà ouvert) : EN PREMIER, avant toute gate.
   // 🩸 Avant une gate, au-dessus d'elle : lancée après, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate
-  // (z 100100) ; après « Entrer », elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
-  // Refusable quand un écran d'entrée attend derrière (Bienvenue, connexion de la gate déléguée) : on y reste, et le
-  // filet plus bas la redemande, sans « Refuser », une fois l'entrée franchie.
+  // (z 100100) ; à l'entrée, elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
   const _legalAFaire = !!(window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
     && !window.LegalGate.isAccepted() && !(window.IncognitoMode && window.IncognitoMode.active));
-  const _legalApresEntree = _legalAFaire && !(_scBoot && _scBoot.state === "on")
-    && !!(window.UnlockGate && !window.UnlockGate.isUnlocked());
+  const _scOn = !!(_scBoot && _scBoot.state === "on");
+  const _legalApresEntree = _legalAFaire
+    && (_scOn || !!(window.UnlockGate && !window.UnlockGate.isUnlocked()));
   const _ouvrirLegal = async function(auDessus, refusable) {
     try { return await window.LegalGate.ouvrirGate({ auDessus: auDessus, refusable: refusable }); }
     catch (e) { console.warn("[Main] LegalGate a échoué :", e); return true; }
   };
+  const _legalAEntree = _legalApresEntree
+    ? { avantEntree: function() { return _ouvrirLegal(true, true); } } : undefined;
   if (_legalAFaire && !_legalApresEntree) {
     await _splashAvantGate();
-    await _ouvrirLegal(false, !!(_scBoot && _scBoot.state === "on"));
+    await _ouvrirLegal(false, false);
     _rideauSiSplashParti();
   }
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
@@ -1821,7 +1825,7 @@ window.proposerRedemarrageLangue = function() {
     // 🩸 Animation finie AVANT la gate déléguée : gate.ouvrir() dessine son écran tout de suite, par-dessus une
     // animation en cours sinon. Le splash reste dessous : une session déjà ouverte ne dessine rien.
     if (_mods && _mods.demandes > 0) await _splashAvantGate();
-    const _gate = window.KtaExtensions.gateDeleguee();
+    const _gate = window.KtaExtensions.gateDeleguee(_legalAEntree);
     if (_gate) {
       try { await _gate; _gateDelegueeOk = true; console.log("[Main] Gate déléguée franchie"); }
       catch (e) {
@@ -1894,13 +1898,13 @@ window.proposerRedemarrageLangue = function() {
       } catch(e) { /* swallow */ }
     } else {
       console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
-      await window.UnlockGate.ouvrirGate(_legalApresEntree ? { avantEntree: function() { return _ouvrirLegal(true, true); } }
-        : undefined);
+      await window.UnlockGate.ouvrirGate(_legalAEntree);
       console.log("[Main] Gate auth franchie → init normale");
     }
   }
-  // Filet des conditions différées ou refusées : carte de repli (sans avantEntree), licence qui a contourné la gate,
-  // refus devant la connexion de la gate déléguée. Plus d'écran d'entrée derrière : non refusable.
+  // Filet des conditions qu'aucun écran d'entrée n'a posées : carte de repli (sans avantEntree), licence qui a
+  // contourné la gate, gate déléguée franchie sans écran (session reprise) ou qui ignore `avantEntree`. Plus d'écran
+  // d'entrée derrière : non refusable. Déjà acceptées à l'entrée : rien.
   if (_legalAFaire && !window.LegalGate.isAccepted()) {
     await _splashAvantGate();
     await _ouvrirLegal(false);

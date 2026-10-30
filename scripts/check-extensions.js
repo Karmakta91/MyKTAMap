@@ -89,6 +89,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     let rejete = false;
     try { await c3.K.gateDeleguee(); } catch (e) { rejete = true; }
     t("🩸 gate déléguée en échec → la promesse REJETTE (l'appelant n'ouvre rien)", rejete);
+    // Conditions d'utilisation à l'entrée : avantEntree transmis tel quel, rien d'autre ; sans lui, un objet vide.
+    const c4 = nouveauContexte(null);
+    let recu = null;
+    c4.K.register({ nom: "gate", apiVersion: 1, gate: { ouvrir(o) { recu = o; return Promise.resolve(); } } });
+    const avant = function () { return Promise.resolve(true); };
+    await c4.K.gateDeleguee({ avantEntree: avant, autre: 1 });
+    t("gate déléguée : opts.avantEntree transmis à ouvrir(), seul", !!recu && recu.avantEntree === avant &&
+      Object.keys(recu).length === 1);
+    await c4.K.gateDeleguee();
+    t("gate déléguée sans avantEntree : ouvrir({}) (rien à poser)", !!recu && Object.keys(recu).length === 0);
   }
 
   // ── 3 bis. EXPORT LIMITÉ À SES AJOUTS ({ auteur }) ──────
@@ -1620,6 +1630,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const iLic = MAIN.indexOf('if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense');
     t("boot : licence attendue → modules chargés → gate (ordre)", iLic > 0 && iMods > iLic && iGate > iMods);
     t("boot : une gate déléguée franchie remplace la gate community", /try \{ await _gate; _gateDelegueeOk = true;/.test(MAIN));
+    // Installation reliée : conditions à l'entrée (connexion / demande), refusables, jamais avant l'écran d'entrée.
+    t("boot : installation reliée → conditions passées à la gate déléguée (avantEntree), pas ouvertes en premier",
+      /const _legalApresEntree = _legalAFaire\s*&& \(_scOn \|\|/.test(MAIN) &&
+      /gateDeleguee\(_legalAEntree\)/.test(MAIN) && /UnlockGate\.ouvrirGate\(_legalAEntree\)/.test(MAIN) &&
+      /avantEntree: function\(\) \{ return _ouvrirLegal\(true, true\); \}/.test(MAIN));
+    t("boot : filet des conditions après les gates, seulement si toujours pas acceptées",
+      /if \(_legalAFaire && !window\.LegalGate\.isAccepted\(\)\) \{/.test(MAIN) &&
+      MAIN.indexOf("if (_legalAFaire && !window.LegalGate.isAccepted()) {") > iGate);
     t("🩸 boot : gate déléguée en échec → « Installation indisponible », JAMAIS la gate community",
       /catch \(e\) \{[\s\S]{0,400}await _ktaInstanceIndisponible\(_motifBlocage\(\)\);/.test(MAIN) &&
       /function _ktaInstanceIndisponible\(motif\) \{\s*return new Promise\(function\(\) \{/.test(MAIN));

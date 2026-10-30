@@ -59,7 +59,7 @@ photos restent locales et exportables).
 > ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.10.3)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
 > les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
 > `scripts/check-extensions.js`). Signatures (API v1) :
-> `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
+> `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir({ avantEntree? }) → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
 > exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom, progression? }) → Promise, publierVersion: {
 > autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
@@ -70,6 +70,14 @@ photos restent locales et exportables).
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
+> ⚖️ **Conditions d'utilisation et gate déléguée** : sur une installation reliée (`state: "on"`) dont les conditions
+> ne sont pas acceptées, `main.js` ne les ouvre **pas** avant la gate : il passe `avantEntree` (`() → Promise<bool>`) à
+> `gateDeleguee({ avantEntree })`, qui le transmet seul à `gate.ouvrir()` (sinon `ouvrir({})`). La gate l'attend quand la
+> personne **entre** (connexion ou demande d'accès validée), avant tout envoi : `true` = acceptées, on continue ;
+> `false` = refusées, la gate reste sur son écran (présentation, porte), rien n'est mémorisé, elle le rappelle à
+> l'entrée suivante. Les conditions s'affichent refusables, au-dessus de l'écran (`LegalGate.ouvrirGate({ auDessus:
+> true, refusable: true })`, z 100150). Une gate qui l'ignore, ou franchie sans écran (session reprise), est
+> rattrapée par le filet de `main.js` après elle, sans « Refuser ». Sans extension : sans effet (`check-extensions.js`).
 > 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
 > Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
 > 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,

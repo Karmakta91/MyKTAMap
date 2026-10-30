@@ -310,7 +310,7 @@
   // Une extension se déclare par :
   //   KtaExtensions.register({
   //     nom: "…", apiVersion: 1,
-  //     gate:     { ouvrir: function () → Promise },        // remplace la gate d'entrée
+  //     gate:     { ouvrir: function ({ avantEntree? }) → Promise }, // remplace la gate d'entrée (cf gateDeleguee)
   //     plans:    { lister: () → Promise<[{id,name,version?,tags?}]>,
   //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
   //     importAutorise: function () → bool,                 // permission (synchrone)
@@ -806,10 +806,14 @@
   // ── Gate déléguée ──
   // null si aucune extension ne fournit de gate, sinon une promesse résolue quand l'accès est ouvert.
   // 🔒 Une gate qui échoue REJETTE : l'appelant affiche « instance indisponible », jamais la gate community.
-  function gateDeleguee() {
+  // ⚠️ opts.avantEntree (facultatif, () → Promise<bool>) : à attendre quand la personne entre (connexion ou demande
+  // d'accès validée), avant tout envoi ; false = refus, la gate reste sur son écran et la rappelle à l'entrée
+  // suivante. Une gate qui l'ignore reste valable : l'appelant rattrape après elle (filet de main.js).
+  function gateDeleguee(opts) {
     const ext = _prise("gate");
     if (!ext || typeof ext.gate.ouvrir !== "function") return null;
-    try { return Promise.resolve(ext.gate.ouvrir()); }
+    const o = opts && typeof opts.avantEntree === "function" ? { avantEntree: opts.avantEntree } : {};
+    try { return Promise.resolve(ext.gate.ouvrir(o)); }
     catch (e) { return Promise.reject(e); }
   }
   function modulesEtat() { return Object.assign({}, _modules); }
