@@ -287,8 +287,8 @@ function initStructures() {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeLabel }), _historyBefore, "structures");
         }
-        // Comme les zones : fermer éteint l'outil (sinon le clic suivant part dans un mode resté armé).
-        if (typeof window._fermerModeStructure === "function") window._fermerModeStructure();
+        // Comme les zones : l'outil reste armé (décision produit), le clic suivant commence une nouvelle
+        // structure du même type ; retoucher l'icône l'éteint.
         return;
       }
     }
