@@ -268,7 +268,7 @@
 
 
   // 🩸 Même loi de largeur des fronts qu'en mode plan, en PIXELS PAR MÈTRE (structures.js) : la résolution
-  // Web Mercator dépend de la LATITUDE autant que du zoom (un front de 1,5 m : 1 px vu de haut, 7 px de près).
+  // Web Mercator dépend de la LATITUDE autant que du zoom (un front de 0,8 m : 1 px vu de haut, 4 px de près).
   // Même technique : `options.weight` muté en place (le renderer canvas le relit à chaque frame), puis UNE
   // repeinture non clippée. Pas de setStyle, intenable à ce volume.
   function _majLargeurFrontsOsm() {
