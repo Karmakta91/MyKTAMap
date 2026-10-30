@@ -158,10 +158,13 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 
 ---
 
-## 🏗️ Structure du projet
+## 🟢 L'application : les fichiers servis aux utilisateurs
 
-> Tables vérifiées au commit par `scripts/check-readme-modules.js` (modules de `js/`, feuilles de `css/`, fichiers de
-> `scripts/`, fichiers de `docs/architecture/`) : un fichier ajouté, retiré ou renommé sans sa ligne ici est refusé.
+> **Règle de lecture du README** : 🟢 = tourne dans le navigateur de l'utilisateur (servi par le site, précaché par le
+> Service Worker) ; 🔧 = ne tourne que sur le poste du développeur, dans la CI ou sur le serveur, **jamais chargé par
+> l'app**. Tables vérifiées au commit par `scripts/check-readme-modules.js` (modules de `js/`, feuilles de `css/`,
+> fichiers de `scripts/`, fichiers de `docs/architecture/`) : un fichier ajouté, retiré ou renommé sans sa ligne ici
+> est refusé.
 
 ```
 index.html              ← Page unique : splash, accueil (loader), carte Leaflet, modales ; ordre des <script> = ordre de chargement
@@ -173,10 +176,6 @@ denylist.json           ← Empreintes SHA-256 de ZIP de plans fuités, refusés
 confadmin.html          ← ConfAdmin : outil de génération de data/index.json (kiosque, connexion serveur), script js/confadmin.js
 killsw.html             ← Page de secours : désinscrit le Service Worker et vide les caches (seule exception de la CSP stricte)
 ping.html               ← Corps « OK » : sonde de connectivité de l'app (même origine)
-Dockerfile, .dockerignore ← Image self-host (nginx statique) — voir docker/
-LICENSE · SECURITY.md   ← Licence CC BY-NC-SA 4.0 · politique de signalement des failles
-CLAUDE.md               ← Contexte et règles du projet pour l'IA de code (chargé à chaque session)
-README.md               ← Ce fichier : présentation, architecture, journal des versions
 
 js/                     ← Modules de l'app (vanilla, sans bundler) — voir « Modules JS » ci-dessous
 css/                    ← Feuilles de style : style.css (socle + jetons de la charte) + feuilles chargées à la demande
@@ -187,37 +186,11 @@ lib/                    ← Librairies embarquées (aucun CDN) : Leaflet + leafl
                           html2canvas ; versions tenues par lib/package.json + lib/VERSIONS.md (check-libs.js)
 data/                   ← DATA pure, hors Git sauf data/index.json (index des plans servis + config d'instance) ;
                           un dossier par plan (plan-config.json, images, calques). Seul le relevé fictif y est livré
-docker/                 ← Self-host : entrypoint.sh, nginx-docker.conf, index-fictif.json (index de l'image)
-
-scripts/                ← Outillage de dev (jamais servi) — table ci-dessous
-  check-*.js            ← Garde-fous : un contrat du code vérifié à chaque commit (pre-commit / commit-msg, rejoués en CI)
-  release/              ← Porte de release et suivi des sites (merge-main, Sonar, état des sites, sonde d'intégrité)
-  smoke/                ← Harnais navigateur Playwright : smoke de la porte + checkups ciblés (hors hooks)
-
-docs/                   ← Documentation (seul docs/applications/ est livré, check-livrables-docs.js)
-  applications/         ← Docs lues PAR l'app : guides utilisateur fr/en/es, AI_CONTEXT, CGU, audit réseau (.md → .html
-                          générés), guides self-host et Docker, feuille et script des pages d'audit
-  architecture/         ← État actuel technique par sous-système (table « Documentation d'architecture »)
-  audits/               ← Audits ouverts + INDEX.md (un audit soldé part en tag Git d'archive)
-  BACKLOG.md            ← Ce qui reste à faire (Maintenant / Ensuite / Plus tard / Entrant, check-backlog.js)
-  IDEES.md · DECISIONS_FERMEES.md ← Pistes non engagées · sujets enterrés, acceptés, leçons
-  ETUDE_*.md            ← Études de chantier qui font foi (identifiant stable, guidage, calage en projection)
-  RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → trempage, dérogations
-  TILING.md · MATHS.md  ← Tuilage V1 / V2 et hors-ligne d'un plan serveur · les maths de l'app, renvoyées au code
-  IA_POUR_LES_NULS.md   ← Méthode de travail avec l'IA (rôles, hooks, garde-fous, porte), transposable
-  INSTALLATION_SELFHOST.md ← Installation auto-hébergée de l'édition communautaire
-  nginx-*.conf          ← Modèles nginx : site auto-hébergé, en-têtes CSP stricts
-  ia-architecture.svg   ← Schéma de ce que l'IA de code charge, d'où et quand
-
-.githooks/              ← pre-commit (anti-fuite pro + tous les garde-fous, une ligne commentée par script) et
-                          commit-msg (data/ hors Git, docs d'un bump, noms réels) ; activer : git config core.hooksPath .githooks
-.github/                ← workflows/ci.yml (syntaxe, commits reçus, pre-commit complet), docker.yml (image ghcr sur tag),
-                          release.yml (release GitHub au bump sur main), smoke.yml (smoke à la demande),
-                          sonde-integrite.yml (code servi = dépôt, toutes les heures) ; dependabot.yml (veille des dépendances)
-.claude/                ← Réglages de l'IA de code : hooks guard-git.js (git interdits) et check-syntax.js (node -c après
-                          chaque écriture), skills add-icon-tag / add-zone-type / release
-.design-sync/           ← Synchronisation de la charte avec le projet de maquettes (jetons seuls)
 .well-known/            ← security.txt (contact de sécurité)
+
+docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (check-livrables-docs.js) : guides
+                          utilisateur fr/en/es, AI_CONTEXT, CGU, audit réseau (.md → .html générés), guides
+                          self-host et Docker, feuille et script des pages d'audit
 ```
 
 ### 🎨 `css/`
@@ -231,175 +204,9 @@ docs/                   ← Documentation (seul docs/applications/ est livré, c
 | `style-secours.css` | Mode Secours, chargé à la demande |
 | `style-stats-globales.css` | Modale Statistiques du plan, chargée à la demande |
 
-### 🛠️ `scripts/`
-
-**Garde-fous** — « Branché » dit où le script tourne (vérifié contre `.githooks/` et `scripts/ci-commits.sh`) ; la CI
-rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans bloquer.
-
-| Fichier | Ce qu'il bloque | Branché |
-|---|---|---|
-| `check-aide-contextuelle.js` | Bouton ❓ d'une modale sans section d'aide, ou section sans modale (table confrontée au code, deux sens) | pre-commit |
-| `check-aide-sections.js` | Section de l'Aide intégrée inatteignable, mal rangée ou en double, dans une des langues | pre-commit |
-| `check-api-surface.js` | Méthode annoncée par un module IIFE absente au chargement (modules exécutés dans un `vm`) | pre-commit |
-| `check-audit-domaine.js` | Périmètre de garantie de l'audit réseau dérivé de `location.origin` au lieu des deux domaines écrits en dur | pre-commit |
-| `check-audit-html.js` | Page d'audit réseau `.html` qui n'est plus le rendu exact de son `.md` | pre-commit |
-| `check-backlog.js` | Rien : avertit d'un `docs/BACKLOG.md` mal formé (sections, plafond de Maintenant, métadonnées) | pre-commit (consultatif) |
-| `check-calage-projection.js` | Calage A / B (C) faux : plan tangent inexact ou modèle historique modifié, confrontés à une géodésie indépendante | pre-commit |
-| `check-calque-session.js` | Calque rapatrié en session verrouillé sans sa copie, ou copie non défensive | pre-commit |
-| `check-commentaires.js` | Commentaire d'historique (version en tête, « ligne N », garde-fou inexistant) au-delà du cliquet | pre-commit |
-| `check-connexion-serveur.js` | Validation de `serverConnection` divergente entre l'app et ConfAdmin, index injoignable pris pour OFF, requête parasite | pre-commit |
-| `check-constantes-orphelines.js` | Constante MAJUSCULE utilisée dans `js/` mais déclarée nulle part | pre-commit |
-| `check-couleurs-inline.js` | Couleur hex en dur dans un style posé par le JS au-delà du cliquet (la charte s'écrit `var(--kta-…)`) | pre-commit |
-| `check-csp-inline.js` | Script inline (`onclick=`, `javascript:`, `<script>` sans `src`) bloqué par la CSP stricte | pre-commit |
-| `check-data-hors-git.js` | Commit qui embarque un fichier de `data/` (relevés réels), sauf ligne `Data-deroge:` écrite par KARMA | commit-msg + ci-commits |
-| `check-devmode-docs.js` | Mode Développeur qui lirait la doc technique (il faudrait la déployer), hash ou rendu des outils cassés | pre-commit |
-| `check-doc-langues.js` | Guides utilisateur fr/en/es désappariés : section absente ou traduction sous 70 % du FR | pre-commit |
-| `check-doc-recherche.js` | Recherche plein texte de la Documentation et de l'Aide qui rate ou double des occurrences | pre-commit |
-| `check-doc-sidebar.js` | Tableau des groupes de la barre latérale (3 guides) différent de ce que déclare `interface.js` | pre-commit |
-| `check-doc-vocabulaire.js` | Vocabulaire de la doc démenti par le code (« flyout », nombre de styles de légende) | pre-commit |
-| `check-entete-licence.js` | Script servi (`js/*.js`, `sw.js`) sans en-tête de licence | pre-commit |
-| `check-esc.js` | Copie locale d'un échappeur HTML au lieu de `window.ktaEsc` | pre-commit |
-| `check-etat-visible.js` | État actif invisible depuis la carte (pastille de filtres, toast de restauration, étapes d'itinéraire) | pre-commit |
-| `check-export-anonyme.js` | Texte identifiant qui survit à l'export anonymisé (session piégée à marqueurs) | pre-commit |
-| `check-export-sig.js` | Export GeoTIFF / GeoJSON qui ne se relit pas à l'identique, GeoKeys fausses, calage au-delà d'1 m | pre-commit |
-| `check-extensions.js` | Point d'extension qui casse le contrat : permission en échec acceptée, gate déléguée rabattue sur la community | pre-commit |
-| `check-filets-donnees.js` | Action destructive sans son filet (snapshot, confirmation chartée, historique, verrou temporisé) | pre-commit |
-| `check-gate-instance.js` | Gate d'instance laxiste : code en dur, faille `null == null`, comparaison non stricte du hash | pre-commit |
-| `check-georef-estimation.js` | Estimation du point B du géoréférencement fausse (A + échelle + Nord, code réel de `config.js`) | pre-commit |
-| `check-geotiff.js` | Lecture GeoTIFF fausse (repère, tiepoint, EPSG:3857, LZW) ou refus non nommé | pre-commit |
-| `check-guidage.js` | Consignes de guidage fausses sur réseaux fictifs (quand annoncer, raccords à vol d'oiseau) | pre-commit |
-| `check-home-layout.js` | Accueil PC cassé : outil orphelin, bouton primaire non épinglé, largeur en px sur la colonne Actions | pre-commit |
-| `check-html-integrite.js` | `index.html` déséquilibré : balise non fermée, id en double, bloc recopié | pre-commit |
-| `check-i18n.js` | Dicos fr/en/es désappariés, clé appelée absente, HTML dans une clé rendue en texte | pre-commit |
-| `check-icon-catalog.js` | Table de tags built-in qui diverge de `map.js > TAGS_BUILTIN` (deux sens), icône précachée manquante | pre-commit |
-| `check-image-header-dims.js` | Dimensions d'image mal lues dans l'en-tête (Générateur, côté > 32 767 px) | pre-commit |
-| `check-import-masse.js` | Import multiple qui ouvre une archive, ou garde une entrée dont le stockage a raté | pre-commit |
-| `check-journal-demarrage.js` | Ouverture manuelle d'une sortie qui écrase la sortie en cours ou refuse sans le dire | pre-commit |
-| `check-journal-reprise.js` | Reprise d'une sortie interrompue ou fusion manuelle du Carnet cassée | pre-commit |
-| `check-kiosque-serveur.js` | Interdit du kiosque « plans serveur » appliqué sur un bouton au lieu du goulot | pre-commit |
-| `check-kml-styles.js` | `<Style>` KML manquant pour un type (custom compris) ou largeurs / alphas du KMZ modifiés | pre-commit |
-| `check-kmz-superoverlay.js` | Superoverlay KMZ qui ne pave plus le plan exactement (tuiles V2, niveaux, Lod / drawOrder) | pre-commit |
-| `check-lambert93.js` | Projection Lambert 93 de l'import SIG fausse (propriétés définitoires, aucune table recopiée) | pre-commit |
-| `check-legend-roundtrip.js` | Aller-retour de la légende personnalisée cassé (type custom → calque → plan régénéré → ouverture) | pre-commit |
-| `check-libs.js` | Librairie de `lib/` dont l'en-tête, `lib/package.json` et `lib/VERSIONS.md` ne disent pas la même version | pre-commit |
-| `check-licence.js` | Licence pro mal vérifiée (signature ECDSA P-256 exécutée) ou clé privée embarquée | pre-commit |
-| `check-livrables-docs.js` | Doc interne (hors `docs/applications/`) ou `README.md` racine livrés sur les sites | pre-commit |
-| `check-maj-plan.js` | « Mettre à jour le plan » qui perd un objet, écrase un calque ou laisse une trace destructrice | pre-commit |
-| `check-map-listeners.js` | Listener posé sur la map Leaflet avec une garde anti-doublon hors de la map | pre-commit |
-| `check-modal-lifecycle.js` | Rien : avertit d'un timer, écouteur ou blob URL hors `ModalLifecycle` dans un module migré | pre-commit (consultatif) |
-| `check-no-pro-leak.js` | Fichier ou motif du dépôt pro privé dans ce dépôt public | pre-commit + ci-commits |
-| `check-noms-reels.js` | Nom réel lié aux relevés dans un fichier, un chemin ou un message de commit (empreintes sha256) | pre-commit + commit-msg + ci-commits |
-| `check-notifs.js` | Toast dessiné hors du goulot `OOMGuard.showToast`, ou important / erreur masqué par « Silence » | pre-commit |
-| `check-osm-defaut.js` | Refus explicite de la Vue OSM réécrasé, ou deux lecteurs du réglage en désaccord | pre-commit |
-| `check-osm-etiquettes.js` | Ajout par étiquette dans la pile OSM de l'accueil sensible à la casse ou symétrique | pre-commit |
-| `check-osm-outils.js` | Outils mesure / coordonnées de la Vue OSM non exclusifs, différents entre les vues ou non démontés | pre-commit |
-| `check-osm-pile.js` | Pile de plans du widget OSM : principal mal promu, groupes morts gardés | pre-commit |
-| `check-outils-dessin-sync.js` | Pastille d'outil de dessin qui ment après Ctrl+Z | pre-commit |
-| `check-pdf-texte.js` | Texte de PDF hors police (accents perdus, symboles) ou texte libre non filtré par `ktaTextePdf` | pre-commit |
-| `check-photos.js` | Photo effacée sans confirmation (réimport ZIP) ou plus de 5 photos par point | pre-commit |
-| `check-plan-config-borne.js` | Valeur hors bornes d'un plan-config (échelle, dimensions, départ) qui entre dans `APP_CONFIG` | pre-commit |
-| `check-plan-folders.js` | Dossiers de « Mes plans » qui perdent un plan ou appliquent mal les étiquettes | pre-commit |
-| `check-plan-offline.js` | Hors-ligne d'un plan serveur lu d'un drapeau au lieu du cache dédié réel | pre-commit |
-| `check-plan-tags.js` | Étiquettes de plan normalisées différemment par les écrivains de plan-config | pre-commit |
-| `check-podometre-global.js` | Réglage de podomètre lu dans un plan-config au lieu du réglage global de l'appareil | pre-commit |
-| `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
-| `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
-| `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
-| `check-position-confirmee.js` | Urgence / « Y aller » qui redemande une position déjà sûre (ou part d'une position non confirmée) | pre-commit |
-| `check-prefs-survival.js` | Préférence perdue quand `APP_CONFIG` est reconstruit au chargement d'un plan | pre-commit |
-| `check-profile-histpdf.js` | PDF du Mode Histoire exportés sans opt-in, ou réimport non idempotent | pre-commit |
-| `check-reglages-immediats.js` | Réglage du mode carte qui attend un bouton Appliquer, ou bornes non appliquées | pre-commit |
-| `check-release-docs.js` | Bump de version avec les 3 sources divergentes ou les docs des 4 axes non suivies | commit-msg |
-| `check-repositionner.js` | Repositionnement d'un POI qui copie au lieu de muter, ou laisse ses liaisons à l'ancienne place | pre-commit |
-| `check-resolution-convert.js` | « Recaler sur un autre scan » qui oublie un champ de coordonnée | pre-commit |
-| `check-secours-balayage.js` | Secteurs ou parcours de balayage du Mode Secours faux sur le graphe d'un réseau fictif | pre-commit |
-| `check-secours-relais.js` | Relais Secours qui écrase l'intervention en cours par le scénario d'un autre appareil | pre-commit |
-| `check-selection-multi.js` | Sélection multiple qui mêle ligne et surface, ou conversion en lot en plusieurs gestes d'annulation | pre-commit |
-| `check-session-store.js` | Accès direct à `localStorage["myktamap_session_v1_<planId>"]` au lieu de `KtaSessionStore` | pre-commit |
-| `check-style-canon.js` | Table de style locale qui diverge de `styleResolver.js > CANON` | pre-commit |
-| `check-style-resolver.js` | `ktaResolveStyle` / `ktaSwatchColor` / `ktaTypeSwatchHtml` faux (built-in, motif, customs, couleurs choisies) | pre-commit |
-| `check-tags-index.js` | Tags proposés par l'index qui écrasent ceux de l'utilisateur au démarrage | pre-commit |
-| `check-tiling.js` | Plan V2 affiché sans ses tuiles, seuil auto du tuilage ou service HTTP du V2 cassés | pre-commit |
-| `check-timeline-restore.js` | Timeline du suivi qui perd `src` / `tp` / `estM` / `estSrc` au rechargement | pre-commit |
-| `check-tracking-defaults.js` | Réglage de podomètre recopié en dur avec une valeur différente de l'usine | pre-commit |
-| `check-uid.js` | `uid` en double ou écrasé, modification sans `touch`, identité perdue ou envoyée vers KMZ / GPX | pre-commit |
-| `check-wakelock.js` | Écran allumé non repris (verrou fantôme iOS), vibration active par défaut | pre-commit |
-| `check-xss.js` | Gestionnaire inline dans la fiche d'un point, filtre d'entrée qui laisse passer une charge d'attaque | pre-commit |
-| `check-readme-modules.js` | Tables de ce README (modules `js/`, `css/`, `scripts/`, `docs/architecture/`) désaccordées des fichiers et d'`index.html` | pre-commit |
-
-**Outils**
-
-| Fichier | Rôle |
-|---|---|
-| `audit-html.js` | Génère `docs/applications/NETWORK_AUDIT{,_HISTORIQUE}.html` depuis leurs `.md` (seule source) |
-| `ci-commits.sh` | CI : rejoue anti-fuite pro, `data/` hors Git et noms réels commit par commit sur les commits reçus |
-| `garde-fous-tableau.js` | Lance chaque garde-fou du pre-commit et écrit un tableau durée / résultat (résumé de la CI), jamais bloquant |
-| `md-mini.js` | Markdown → HTML sans dépendance, utilisé par `audit-html.js` |
-| `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
-| `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
-| `release/sonar-scan.ps1` | Analyse SonarQube locale et verdict de la porte qualité (marche 1ter de la porte de release) |
-| `release/sonde-integrite.js` | Compare le code servi par un site au dépôt (workflow `sonde-integrite.yml`) |
-
-**`smoke/` — harnais navigateur** (Playwright, `npm install` dans `scripts/smoke/` ; jamais dans les hooks) — mode
-d'emploi : `scripts/smoke/README.md`.
-
-| Fichier | Rôle |
-|---|---|
-| `smoke/smoke.js` | Smoke de la porte de release : boote l'app, ouvre les écrans, échoue sur toute erreur console ou clé i18n manquante |
-| `smoke/server.js` | Serveur statique local des harnais (Service Worker, `data/index.json`) |
-| `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
-| `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
-| `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
-| `smoke/checkup-accueil-hote.js` | Installation hors myktamap.fr : ville seule, textes de `reglages.json` / `index.json`, « Entrer », code d'accès |
-| `smoke/checkup-aide-telephone.js` | Fiche d'Aide sur téléphone : remplace le hub, un seul voile, retour |
-| `smoke/checkup-bienvenue.js` | Écran Bienvenue avec ou sans mot de passe d'instance, parcours d'arrivée (téléphone et PC) |
-| `smoke/checkup-calage-projection.js` | Calage en vraie projection sur un relevé fictif calé, par l'interface |
-| `smoke/checkup-calque-effacer.js` | « Effacer la session » rend les calques ouverts à la modification |
-| `smoke/checkup-carnet-documents.js` | Un PDF livré dans le ZIP d'un plan remonte au Carnet (onglet Récits) |
-| `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
-| `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
-| `smoke/checkup-export-sig.js` | Exports GeoTIFF et GeoJSON par l'interface, calage tourné ou affine |
-| `smoke/checkup-exports-structures.js` | Ce que les exports emportent des structures intégrées et personnalisées |
-| `smoke/checkup-filtres-niveaux.js` | Section Niveaux de la modale Filtres, thèmes sombre et clair |
-| `smoke/checkup-guidage.js` | Guidage d'itinéraire dans l'app réelle au format téléphone (rendu, tracker, écran XL) |
-| `smoke/checkup-home-scroll.js` | Accueil atteignable en petite fenêtre PC |
-| `smoke/checkup-icone-defaut.js` | Icône d'un point sans tag quand le plan-config déclare l'ancien pin par défaut |
-| `smoke/checkup-icones-zip.js` | Icônes personnalisées embarquées dans un plan ZIP |
-| `smoke/checkup-import-masse.js` | Copie réelle (lisible) d'un ZIP mémorisé par l'import multiple |
-| `smoke/checkup-import-session-partage.js` | Import d'un fichier de session sur plan local et plan partagé par une extension simulée |
-| `smoke/checkup-jonction-calque-niveau.js` | Jonction d'un calque de données affichée sur chaque niveau qu'elle relie |
-| `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
-| `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
-| `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
-| `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
-| `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
-| `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
-| `smoke/checkup-osm-taille-icones.js` | « Adapter la taille des icônes au zoom » sur les deux cartes OSM, coût du zoom |
-| `smoke/checkup-ouvertures-enchainees.js` | Ouvertures de plan enchaînées sans erreur de page |
-| `smoke/checkup-panneaux-geometrie.js` | Panneaux d'outils du mode plan utilisables au pixel, 4 formats d'écran |
-| `smoke/checkup-pastille-horsligne.js` | Pastille « hors-ligne » de l'accueil : coût et états |
-| `smoke/checkup-pdf-plafond.js` | PDF dont la qualité dépasse la limite de canvas de l'appareil (iPhone simulé) |
-| `smoke/checkup-photos-danger.js` | Date des photos (EXIF) et POI danger daté |
-| `smoke/checkup-plan-folders.js` | Mode Dossiers de « Mes plans » au pixel |
-| `smoke/checkup-plan-oriente.js` | Mode « plan orienté » : la vue tournée affiche tout au bon endroit |
-| `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
-| `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
-| `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
-| `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
-| `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
-| `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
-| `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
-| `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
-| `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
-| `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
-| `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
-| `smoke/checkup-tuiles-hors-ecran.js` | Le tuilage V2 ne pose que les tuiles proches de l'écran |
-| `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
-| `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
-
 ---
 
-## 📦 Modules JS — référentiel (140 modules)
+## 🟢 L'application : modules JS (140 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -629,6 +436,216 @@ d'emploi : `scripts/smoke/README.md`.
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
+
+---
+
+## 🔧 L'outillage : tests, garde-fous, release, hébergement (jamais chargé par l'app)
+
+> Rien de cette partie n'arrive dans le navigateur de l'utilisateur : `scripts/` n'est pas servi, `docs/` hors
+> `applications/` non plus, `docker/` et `Dockerfile` construisent l'image d'auto-hébergement, `.githooks/`,
+> `.github/` et `.claude/` tournent sur le poste ou dans la CI.
+
+```
+Dockerfile, .dockerignore ← Image self-host (nginx statique) — voir docker/
+LICENSE · SECURITY.md   ← Licence CC BY-NC-SA 4.0 · politique de signalement des failles
+CLAUDE.md               ← Contexte et règles du projet pour l'IA de code (chargé à chaque session)
+README.md               ← Ce fichier : présentation, architecture, journal des versions
+
+docker/                 ← Self-host : entrypoint.sh, nginx-docker.conf, index-fictif.json (index de l'image)
+
+scripts/                ← Outillage de dev (jamais servi) — table ci-dessous
+  check-*.js            ← Garde-fous : un contrat du code vérifié à chaque commit (pre-commit / commit-msg, rejoués en CI)
+  release/              ← Porte de release et suivi des sites (merge-main, Sonar, état des sites, sonde d'intégrité)
+  smoke/                ← Harnais navigateur Playwright : smoke de la porte + checkups ciblés (hors hooks)
+
+docs/                   ← Documentation du projet, jamais servie (sauf docs/applications/, partie 🟢)
+  architecture/         ← État actuel technique par sous-système (table « Documentation d'architecture »)
+  audits/               ← Audits ouverts + INDEX.md (un audit soldé part en tag Git d'archive)
+  BACKLOG.md            ← Ce qui reste à faire (Maintenant / Ensuite / Plus tard / Entrant, check-backlog.js)
+  IDEES.md · DECISIONS_FERMEES.md ← Pistes non engagées · sujets enterrés, acceptés, leçons
+  ETUDE_*.md            ← Études de chantier qui font foi (identifiant stable, guidage, calage en projection)
+  RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → trempage, dérogations
+  TILING.md · MATHS.md  ← Tuilage V1 / V2 et hors-ligne d'un plan serveur · les maths de l'app, renvoyées au code
+  IA_POUR_LES_NULS.md   ← Méthode de travail avec l'IA (rôles, hooks, garde-fous, porte), transposable
+  INSTALLATION_SELFHOST.md ← Installation auto-hébergée de l'édition communautaire
+  nginx-*.conf          ← Modèles nginx : site auto-hébergé, en-têtes CSP stricts
+  ia-architecture.svg   ← Schéma de ce que l'IA de code charge, d'où et quand
+
+.githooks/              ← pre-commit (anti-fuite pro + tous les garde-fous, une ligne commentée par script) et
+                          commit-msg (data/ hors Git, docs d'un bump, noms réels) ; activer : git config core.hooksPath .githooks
+.github/                ← workflows/ci.yml (syntaxe, commits reçus, pre-commit complet), docker.yml (image ghcr sur tag),
+                          release.yml (release GitHub au bump sur main), smoke.yml (smoke à la demande),
+                          sonde-integrite.yml (code servi = dépôt, toutes les heures) ; dependabot.yml (veille des dépendances)
+.claude/                ← Réglages de l'IA de code : hooks guard-git.js (git interdits) et check-syntax.js (node -c après
+                          chaque écriture), skills add-icon-tag / add-zone-type / release
+.design-sync/           ← Synchronisation de la charte avec le projet de maquettes (jetons seuls)
+```
+
+### 🛠️ `scripts/`
+
+**Garde-fous** — « Branché » dit où le script tourne (vérifié contre `.githooks/` et `scripts/ci-commits.sh`) ; la CI
+rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans bloquer.
+
+| Fichier | Ce qu'il bloque | Branché |
+|---|---|---|
+| `check-aide-contextuelle.js` | Bouton ❓ d'une modale sans section d'aide, ou section sans modale (table confrontée au code, deux sens) | pre-commit |
+| `check-aide-sections.js` | Section de l'Aide intégrée inatteignable, mal rangée ou en double, dans une des langues | pre-commit |
+| `check-api-surface.js` | Méthode annoncée par un module IIFE absente au chargement (modules exécutés dans un `vm`) | pre-commit |
+| `check-audit-domaine.js` | Périmètre de garantie de l'audit réseau dérivé de `location.origin` au lieu des deux domaines écrits en dur | pre-commit |
+| `check-audit-html.js` | Page d'audit réseau `.html` qui n'est plus le rendu exact de son `.md` | pre-commit |
+| `check-backlog.js` | Rien : avertit d'un `docs/BACKLOG.md` mal formé (sections, plafond de Maintenant, métadonnées) | pre-commit (consultatif) |
+| `check-calage-projection.js` | Calage A / B (C) faux : plan tangent inexact ou modèle historique modifié, confrontés à une géodésie indépendante | pre-commit |
+| `check-calque-session.js` | Calque rapatrié en session verrouillé sans sa copie, ou copie non défensive | pre-commit |
+| `check-commentaires.js` | Commentaire d'historique (version en tête, « ligne N », garde-fou inexistant) au-delà du cliquet | pre-commit |
+| `check-connexion-serveur.js` | Validation de `serverConnection` divergente entre l'app et ConfAdmin, index injoignable pris pour OFF, requête parasite | pre-commit |
+| `check-constantes-orphelines.js` | Constante MAJUSCULE utilisée dans `js/` mais déclarée nulle part | pre-commit |
+| `check-couleurs-inline.js` | Couleur hex en dur dans un style posé par le JS au-delà du cliquet (la charte s'écrit `var(--kta-…)`) | pre-commit |
+| `check-csp-inline.js` | Script inline (`onclick=`, `javascript:`, `<script>` sans `src`) bloqué par la CSP stricte | pre-commit |
+| `check-data-hors-git.js` | Commit qui embarque un fichier de `data/` (relevés réels), sauf ligne `Data-deroge:` écrite par KARMA | commit-msg + ci-commits |
+| `check-devmode-docs.js` | Mode Développeur qui lirait la doc technique (il faudrait la déployer), hash ou rendu des outils cassés | pre-commit |
+| `check-doc-langues.js` | Guides utilisateur fr/en/es désappariés : section absente ou traduction sous 70 % du FR | pre-commit |
+| `check-doc-recherche.js` | Recherche plein texte de la Documentation et de l'Aide qui rate ou double des occurrences | pre-commit |
+| `check-doc-sidebar.js` | Tableau des groupes de la barre latérale (3 guides) différent de ce que déclare `interface.js` | pre-commit |
+| `check-doc-vocabulaire.js` | Vocabulaire de la doc démenti par le code (« flyout », nombre de styles de légende) | pre-commit |
+| `check-entete-licence.js` | Script servi (`js/*.js`, `sw.js`) sans en-tête de licence | pre-commit |
+| `check-esc.js` | Copie locale d'un échappeur HTML au lieu de `window.ktaEsc` | pre-commit |
+| `check-etat-visible.js` | État actif invisible depuis la carte (pastille de filtres, toast de restauration, étapes d'itinéraire) | pre-commit |
+| `check-export-anonyme.js` | Texte identifiant qui survit à l'export anonymisé (session piégée à marqueurs) | pre-commit |
+| `check-export-sig.js` | Export GeoTIFF / GeoJSON qui ne se relit pas à l'identique, GeoKeys fausses, calage au-delà d'1 m | pre-commit |
+| `check-extensions.js` | Point d'extension qui casse le contrat : permission en échec acceptée, gate déléguée rabattue sur la community | pre-commit |
+| `check-filets-donnees.js` | Action destructive sans son filet (snapshot, confirmation chartée, historique, verrou temporisé) | pre-commit |
+| `check-gate-instance.js` | Gate d'instance laxiste : code en dur, faille `null == null`, comparaison non stricte du hash | pre-commit |
+| `check-georef-estimation.js` | Estimation du point B du géoréférencement fausse (A + échelle + Nord, code réel de `config.js`) | pre-commit |
+| `check-geotiff.js` | Lecture GeoTIFF fausse (repère, tiepoint, EPSG:3857, LZW) ou refus non nommé | pre-commit |
+| `check-guidage.js` | Consignes de guidage fausses sur réseaux fictifs (quand annoncer, raccords à vol d'oiseau) | pre-commit |
+| `check-home-layout.js` | Accueil PC cassé : outil orphelin, bouton primaire non épinglé, largeur en px sur la colonne Actions | pre-commit |
+| `check-html-integrite.js` | `index.html` déséquilibré : balise non fermée, id en double, bloc recopié | pre-commit |
+| `check-i18n.js` | Dicos fr/en/es désappariés, clé appelée absente, HTML dans une clé rendue en texte | pre-commit |
+| `check-icon-catalog.js` | Table de tags built-in qui diverge de `map.js > TAGS_BUILTIN` (deux sens), icône précachée manquante | pre-commit |
+| `check-image-header-dims.js` | Dimensions d'image mal lues dans l'en-tête (Générateur, côté > 32 767 px) | pre-commit |
+| `check-import-masse.js` | Import multiple qui ouvre une archive, ou garde une entrée dont le stockage a raté | pre-commit |
+| `check-journal-demarrage.js` | Ouverture manuelle d'une sortie qui écrase la sortie en cours ou refuse sans le dire | pre-commit |
+| `check-journal-reprise.js` | Reprise d'une sortie interrompue ou fusion manuelle du Carnet cassée | pre-commit |
+| `check-kiosque-serveur.js` | Interdit du kiosque « plans serveur » appliqué sur un bouton au lieu du goulot | pre-commit |
+| `check-kml-styles.js` | `<Style>` KML manquant pour un type (custom compris) ou largeurs / alphas du KMZ modifiés | pre-commit |
+| `check-kmz-superoverlay.js` | Superoverlay KMZ qui ne pave plus le plan exactement (tuiles V2, niveaux, Lod / drawOrder) | pre-commit |
+| `check-lambert93.js` | Projection Lambert 93 de l'import SIG fausse (propriétés définitoires, aucune table recopiée) | pre-commit |
+| `check-legend-roundtrip.js` | Aller-retour de la légende personnalisée cassé (type custom → calque → plan régénéré → ouverture) | pre-commit |
+| `check-libs.js` | Librairie de `lib/` dont l'en-tête, `lib/package.json` et `lib/VERSIONS.md` ne disent pas la même version | pre-commit |
+| `check-licence.js` | Licence pro mal vérifiée (signature ECDSA P-256 exécutée) ou clé privée embarquée | pre-commit |
+| `check-livrables-docs.js` | Doc interne (hors `docs/applications/`) ou `README.md` racine livrés sur les sites | pre-commit |
+| `check-maj-plan.js` | « Mettre à jour le plan » qui perd un objet, écrase un calque ou laisse une trace destructrice | pre-commit |
+| `check-map-listeners.js` | Listener posé sur la map Leaflet avec une garde anti-doublon hors de la map | pre-commit |
+| `check-modal-lifecycle.js` | Rien : avertit d'un timer, écouteur ou blob URL hors `ModalLifecycle` dans un module migré | pre-commit (consultatif) |
+| `check-no-pro-leak.js` | Fichier ou motif du dépôt pro privé dans ce dépôt public | pre-commit + ci-commits |
+| `check-noms-reels.js` | Nom réel lié aux relevés dans un fichier, un chemin ou un message de commit (empreintes sha256) | pre-commit + commit-msg + ci-commits |
+| `check-notifs.js` | Toast dessiné hors du goulot `OOMGuard.showToast`, ou important / erreur masqué par « Silence » | pre-commit |
+| `check-osm-defaut.js` | Refus explicite de la Vue OSM réécrasé, ou deux lecteurs du réglage en désaccord | pre-commit |
+| `check-osm-etiquettes.js` | Ajout par étiquette dans la pile OSM de l'accueil sensible à la casse ou symétrique | pre-commit |
+| `check-osm-outils.js` | Outils mesure / coordonnées de la Vue OSM non exclusifs, différents entre les vues ou non démontés | pre-commit |
+| `check-osm-pile.js` | Pile de plans du widget OSM : principal mal promu, groupes morts gardés | pre-commit |
+| `check-outils-dessin-sync.js` | Pastille d'outil de dessin qui ment après Ctrl+Z | pre-commit |
+| `check-pdf-texte.js` | Texte de PDF hors police (accents perdus, symboles) ou texte libre non filtré par `ktaTextePdf` | pre-commit |
+| `check-photos.js` | Photo effacée sans confirmation (réimport ZIP) ou plus de 5 photos par point | pre-commit |
+| `check-plan-config-borne.js` | Valeur hors bornes d'un plan-config (échelle, dimensions, départ) qui entre dans `APP_CONFIG` | pre-commit |
+| `check-plan-folders.js` | Dossiers de « Mes plans » qui perdent un plan ou appliquent mal les étiquettes | pre-commit |
+| `check-plan-offline.js` | Hors-ligne d'un plan serveur lu d'un drapeau au lieu du cache dédié réel | pre-commit |
+| `check-plan-tags.js` | Étiquettes de plan normalisées différemment par les écrivains de plan-config | pre-commit |
+| `check-podometre-global.js` | Réglage de podomètre lu dans un plan-config au lieu du réglage global de l'appareil | pre-commit |
+| `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
+| `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
+| `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
+| `check-position-confirmee.js` | Urgence / « Y aller » qui redemande une position déjà sûre (ou part d'une position non confirmée) | pre-commit |
+| `check-prefs-survival.js` | Préférence perdue quand `APP_CONFIG` est reconstruit au chargement d'un plan | pre-commit |
+| `check-profile-histpdf.js` | PDF du Mode Histoire exportés sans opt-in, ou réimport non idempotent | pre-commit |
+| `check-reglages-immediats.js` | Réglage du mode carte qui attend un bouton Appliquer, ou bornes non appliquées | pre-commit |
+| `check-release-docs.js` | Bump de version avec les 3 sources divergentes ou les docs des 4 axes non suivies | commit-msg |
+| `check-repositionner.js` | Repositionnement d'un POI qui copie au lieu de muter, ou laisse ses liaisons à l'ancienne place | pre-commit |
+| `check-resolution-convert.js` | « Recaler sur un autre scan » qui oublie un champ de coordonnée | pre-commit |
+| `check-secours-balayage.js` | Secteurs ou parcours de balayage du Mode Secours faux sur le graphe d'un réseau fictif | pre-commit |
+| `check-secours-relais.js` | Relais Secours qui écrase l'intervention en cours par le scénario d'un autre appareil | pre-commit |
+| `check-selection-multi.js` | Sélection multiple qui mêle ligne et surface, ou conversion en lot en plusieurs gestes d'annulation | pre-commit |
+| `check-session-store.js` | Accès direct à `localStorage["myktamap_session_v1_<planId>"]` au lieu de `KtaSessionStore` | pre-commit |
+| `check-style-canon.js` | Table de style locale qui diverge de `styleResolver.js > CANON` | pre-commit |
+| `check-style-resolver.js` | `ktaResolveStyle` / `ktaSwatchColor` / `ktaTypeSwatchHtml` faux (built-in, motif, customs, couleurs choisies) | pre-commit |
+| `check-tags-index.js` | Tags proposés par l'index qui écrasent ceux de l'utilisateur au démarrage | pre-commit |
+| `check-tiling.js` | Plan V2 affiché sans ses tuiles, seuil auto du tuilage ou service HTTP du V2 cassés | pre-commit |
+| `check-timeline-restore.js` | Timeline du suivi qui perd `src` / `tp` / `estM` / `estSrc` au rechargement | pre-commit |
+| `check-tracking-defaults.js` | Réglage de podomètre recopié en dur avec une valeur différente de l'usine | pre-commit |
+| `check-uid.js` | `uid` en double ou écrasé, modification sans `touch`, identité perdue ou envoyée vers KMZ / GPX | pre-commit |
+| `check-wakelock.js` | Écran allumé non repris (verrou fantôme iOS), vibration active par défaut | pre-commit |
+| `check-xss.js` | Gestionnaire inline dans la fiche d'un point, filtre d'entrée qui laisse passer une charge d'attaque | pre-commit |
+| `check-readme-modules.js` | Tables de ce README (modules `js/`, `css/`, `scripts/`, `docs/architecture/`) désaccordées des fichiers et d'`index.html` | pre-commit |
+
+**Outils**
+
+| Fichier | Rôle |
+|---|---|
+| `audit-html.js` | Génère `docs/applications/NETWORK_AUDIT{,_HISTORIQUE}.html` depuis leurs `.md` (seule source) |
+| `ci-commits.sh` | CI : rejoue anti-fuite pro, `data/` hors Git et noms réels commit par commit sur les commits reçus |
+| `garde-fous-tableau.js` | Lance chaque garde-fou du pre-commit et écrit un tableau durée / résultat (résumé de la CI), jamais bloquant |
+| `md-mini.js` | Markdown → HTML sans dépendance, utilisé par `audit-html.js` |
+| `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
+| `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
+| `release/sonar-scan.ps1` | Analyse SonarQube locale et verdict de la porte qualité (marche 1ter de la porte de release) |
+| `release/sonde-integrite.js` | Compare le code servi par un site au dépôt (workflow `sonde-integrite.yml`) |
+
+**`smoke/` — harnais navigateur** (Playwright, `npm install` dans `scripts/smoke/` ; jamais dans les hooks) — mode
+d'emploi : `scripts/smoke/README.md`.
+
+| Fichier | Rôle |
+|---|---|
+| `smoke/smoke.js` | Smoke de la porte de release : boote l'app, ouvre les écrans, échoue sur toute erreur console ou clé i18n manquante |
+| `smoke/server.js` | Serveur statique local des harnais (Service Worker, `data/index.json`) |
+| `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
+| `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
+| `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
+| `smoke/checkup-accueil-hote.js` | Installation hors myktamap.fr : ville seule, textes de `reglages.json` / `index.json`, « Entrer », code d'accès |
+| `smoke/checkup-aide-telephone.js` | Fiche d'Aide sur téléphone : remplace le hub, un seul voile, retour |
+| `smoke/checkup-bienvenue.js` | Écran Bienvenue avec ou sans mot de passe d'instance, parcours d'arrivée (téléphone et PC) |
+| `smoke/checkup-calage-projection.js` | Calage en vraie projection sur un relevé fictif calé, par l'interface |
+| `smoke/checkup-calque-effacer.js` | « Effacer la session » rend les calques ouverts à la modification |
+| `smoke/checkup-carnet-documents.js` | Un PDF livré dans le ZIP d'un plan remonte au Carnet (onglet Récits) |
+| `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
+| `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
+| `smoke/checkup-export-sig.js` | Exports GeoTIFF et GeoJSON par l'interface, calage tourné ou affine |
+| `smoke/checkup-exports-structures.js` | Ce que les exports emportent des structures intégrées et personnalisées |
+| `smoke/checkup-filtres-niveaux.js` | Section Niveaux de la modale Filtres, thèmes sombre et clair |
+| `smoke/checkup-guidage.js` | Guidage d'itinéraire dans l'app réelle au format téléphone (rendu, tracker, écran XL) |
+| `smoke/checkup-home-scroll.js` | Accueil atteignable en petite fenêtre PC |
+| `smoke/checkup-icone-defaut.js` | Icône d'un point sans tag quand le plan-config déclare l'ancien pin par défaut |
+| `smoke/checkup-icones-zip.js` | Icônes personnalisées embarquées dans un plan ZIP |
+| `smoke/checkup-import-masse.js` | Copie réelle (lisible) d'un ZIP mémorisé par l'import multiple |
+| `smoke/checkup-import-session-partage.js` | Import d'un fichier de session sur plan local et plan partagé par une extension simulée |
+| `smoke/checkup-jonction-calque-niveau.js` | Jonction d'un calque de données affichée sur chaque niveau qu'elle relie |
+| `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
+| `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
+| `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
+| `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
+| `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
+| `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
+| `smoke/checkup-osm-taille-icones.js` | « Adapter la taille des icônes au zoom » sur les deux cartes OSM, coût du zoom |
+| `smoke/checkup-ouvertures-enchainees.js` | Ouvertures de plan enchaînées sans erreur de page |
+| `smoke/checkup-panneaux-geometrie.js` | Panneaux d'outils du mode plan utilisables au pixel, 4 formats d'écran |
+| `smoke/checkup-pastille-horsligne.js` | Pastille « hors-ligne » de l'accueil : coût et états |
+| `smoke/checkup-pdf-plafond.js` | PDF dont la qualité dépasse la limite de canvas de l'appareil (iPhone simulé) |
+| `smoke/checkup-photos-danger.js` | Date des photos (EXIF) et POI danger daté |
+| `smoke/checkup-plan-folders.js` | Mode Dossiers de « Mes plans » au pixel |
+| `smoke/checkup-plan-oriente.js` | Mode « plan orienté » : la vue tournée affiche tout au bon endroit |
+| `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
+| `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
+| `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
+| `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
+| `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
+| `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
+| `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
+| `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
+| `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
+| `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
+| `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
+| `smoke/checkup-tuiles-hors-ecran.js` | Le tuilage V2 ne pose que les tuiles proches de l'écran |
+| `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
+| `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 
 ---
 

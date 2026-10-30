@@ -9,10 +9,10 @@
 // check-readme-modules.js — garde-fou pré-commit BLOQUANT : l'architecture du README.md suit les fichiers réels
 // =====================================================================
 // Confronte, dans les deux sens, les tables du README.md aux fichiers présents (suivis ou nouveaux, hors ignorés) :
-//   1. « 📦 Modules JS » : les modules des groupes = les <script src="js/…"> d'index.html, DANS LE MÊME ORDRE ;
+//   1. « 🟢 Modules JS » : les modules des groupes = les <script src="js/…"> d'index.html, DANS LE MÊME ORDRE ;
 //      la sous-section « Hors index.html » = les autres js/*.js, chacun cité par un fichier du dépôt (sinon code
 //      mort) ; le compte du titre = le nombre de lignes ;
-//   2. « 🏗️ Structure du projet » : table css/ = css/*.css ; tables scripts/ = scripts/**/*.{js,sh,ps1} ; colonne
+//   2. table css/ (partie 🟢) = css/*.css ; tables scripts/ (partie 🔧) = scripts/**/*.{js,sh,ps1} ; colonne
 //      « Branché » des check-*.js = les hooks qui les appellent (.githooks/pre-commit, commit-msg, ci-commits.sh) ;
 //   3. « 📚 Documentation d'architecture » : table = docs/architecture/*.
 // 🩸 Lit des FICHIERS, jamais l'index : passe identique en CI (rien n'y est indexé) et en local.
@@ -133,9 +133,9 @@ const problemes = [];
 const md = lire("README.md");
 
 // 1. Modules JS
-const secMod = section(md, "Modules JS");
+const secMod = section(md, "modules JS");
 if (!secMod) {
-  problemes.push("section « ## 📦 Modules JS » introuvable dans README.md");
+  problemes.push("section « ## 🟢 L'application : modules JS » introuvable dans README.md");
 } else {
   const index = lire("index.html");
   const charges = [];
@@ -178,14 +178,15 @@ if (!secMod) {
   }
 }
 
-// 2. Structure du projet : css/ et scripts/
-const secStruct = section(md, "Structure du projet");
-if (!secStruct) {
-  problemes.push("section « ## 🏗️ Structure du projet » introuvable dans README.md");
-} else {
-  const ss = sousSections(secStruct);
-  const ssCss = ss.find((s) => s.titre.indexOf("`css/`") >= 0);
-  const ssScripts = ss.find((s) => s.titre.indexOf("`scripts/`") >= 0);
+// 2. css/ dans la partie 🟢 (servi aux utilisateurs), scripts/ dans la partie 🔧 (jamais chargé par l'app) : une
+//    table rangée dans la mauvaise partie est introuvable, donc refusée.
+const secApp = section(md, "L'application : les fichiers servis");
+const secOutil = section(md, "L'outillage");
+if (!secApp) problemes.push("section « ## 🟢 L'application : les fichiers servis aux utilisateurs » introuvable");
+if (!secOutil) problemes.push("section « ## 🔧 L'outillage : … » introuvable dans README.md");
+if (secApp && secOutil) {
+  const ssCss = sousSections(secApp).find((s) => s.titre.indexOf("`css/`") >= 0);
+  const ssScripts = sousSections(secOutil).find((s) => s.titre.indexOf("`scripts/`") >= 0);
   if (!ssCss) problemes.push("sous-section « ### 🎨 `css/` » introuvable");
   else {
     const css = fichiers(["css/*.css"]).map((f) => f.replace(/^css\//, "")).filter((f) => f.indexOf("/") < 0);
