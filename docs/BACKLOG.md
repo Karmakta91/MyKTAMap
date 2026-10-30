@@ -108,6 +108,11 @@
 
 ## Entrant
 
+- **« -pro » du splash au tout premier lancement pro** — le suffixe dépend de `.kta-instance-pro`, posée d'emblée si la
+  licence serveur est en cache ; au premier lancement d'un appareil elle arrive peut-être après la fin du splash.
+  🔬 hypothèse, non vérifiée.
+  `qui: KARMA · action: première ouverture de pro.myktamap.fr en navigation privée, dire si « -pro » apparaît
+  · depuis: 30/10/2026 · taille: XS`
 - **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
   session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
   du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
