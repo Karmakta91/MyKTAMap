@@ -362,7 +362,7 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 | Section | Ce qu'elle filtre |
 |---|---|
 | 🖼️ **Calques d'image** | L'image du plan et ses calques additionnels |
-| 📊 **Calques de données** | Les calques livrés avec le plan, et **Mes annotations** (tout ce que tu as ajouté : le décocher masque tes ajouts sans rien supprimer) |
+| 📊 **Calques de données** | Les calques livrés avec le plan, et **Annotations du plan** (tout ce qui a été dessiné sur le plan : tes ajouts et, sur une installation partagée, ceux de ton équipe ; la décocher les masque sans rien supprimer) |
 | 🏗️ **Niveaux M-LVL** | Plans multi-niveaux : niveau actif (pour dessiner) et niveaux visibles — synchronisé avec la fenêtre Niveaux |
 | 🏷️ **Tags des points** | Les tags réellement présents sur le plan, avec leur compteur |
 | 🛣️ ⬛ 🏛️ **Types** | Types de tracés, de zones et de structures, y compris les tiens |

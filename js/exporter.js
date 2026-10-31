@@ -459,7 +459,7 @@
       return `<div class="kta-export-data-layer-block" data-layer-id="${l.id}">
         <label class="kta-export-cb-row">
           <input type="checkbox" id="export_layer_${safeId}" data-layer-id="${l.id}" data-layer-type="data" ${checked}>
-          <span>${l.label || l.id}</span>
+          <span>${window.ktaLibelleCalque(l)}</span>
         </label>
         <div class="kta-export-layer-tags" id="export_layer_tags_${safeId}"></div>
       </div>`;

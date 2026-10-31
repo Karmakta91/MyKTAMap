@@ -182,7 +182,7 @@
                     const checked = visibleData.indexOf(l.id) >= 0;
                     const isEditor = l.id === "editor";
                     const label = isEditor
-                      ? "✏️ " + (l.label || T("pdfexport.data.mesAnnotations")) + " " + T("pdfexport.data.calqueSessionSuffixe")
+                      ? "✏️ " + window.ktaLibelleCalque(l) + " " + T("pdfexport.data.calqueSessionSuffixe")
                       : "📁 " + (l.label || l.id);
                     return _cbRowSub("pdf_data_layer_" + _slug(l.id), label, null, checked, l.id);
                   }).join("") +

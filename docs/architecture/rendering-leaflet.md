@@ -116,9 +116,9 @@ pas). Le splash n'affiche jamais « -pro » : le suffixe et sa révélation vive
 
 ---
 
-### 19. Calque "Mes annotations" (depuis 09/05/2026)
+### 19. Calque « Annotations du plan » (`editor`)
 
-Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes annotations"**) regroupe les annotations utilisateur de la session :
+Le calque `editor` regroupe la **session du plan** — sur une installation partagée, les objets de toute l'équipe, pas seulement les siens (d'où le nom, jamais « Mes … ») :
 - ✏️ Points ajoutés via l'éditeur
 - ⬛ Zones de session (Eau/Remblais/Effondrement)
 - 🛣️ Roads de session (Principal/Secondaire/Chemin)
@@ -141,7 +141,7 @@ Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes
 >
 > **Pour vérifier** : en console, `window.getRoads()` puis contrôler `window.layerEditor.hasLayer(<layer>)` sur les tracés récalcitrants. Si `false` alors qu'ils sont visibles → hypothèse confirmée, et le fix est de re-parenter au lieu de chercher côté Leaflet.
 
-**Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
+**Libellé** : `map.js > window.ktaLibelleCalque(lc)`, seule source pour la légende Leaflet, le panneau de filtres, l'export image et l'export PDF. Pour `editor`, toujours la clé traduite `filter.dataLayer.editor` : le libellé que le Générateur grave dans le plan-config (langue de l'auteur, « Mes annotations » ou « Ajouts » sur les anciens plans) est ignoré, aucun écran ne permet de le changer.
 
 🆕 **Depuis v1.30.0 (P5 viewport culling)** : sur les plans denses, les markers POI session +
 data layers ne sont plus tous `.addTo(map)` en permanence — seuls ceux dans le viewport

@@ -639,7 +639,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   "refuse" | "retrait" | null` (synchrone, information ; autre valeur, erreur = null). `propose` et `refuse` sont
   **provisoires** (écartés d'un export « validés seulement ») ; `retrait` = retrait demandé, pas encore fait : l'objet
   reste du contenu. L'app ne comprend pas l'état, elle le **dessine** sur les objets
-  de **session** (couches de « Mes annotations ») : marqueur → classe `.kta-etat-propose` / `-refuse` / `-retrait`
+  de **session** (couches des « Annotations du plan ») : marqueur → classe `.kta-etat-propose` / `-refuse` / `-retrait`
   (contour pointillé accent / erreur / pointillé fin et icône grisée, reposée quand Leaflet recrée l'icône) ; tracé,
   zone, structure → pointillé (`10 6` / `2 6` / `1 8`, renderer canvas : pas de CSS), le pointillé de son type rendu
   quand l'état disparaît. Les rendus marquent leurs

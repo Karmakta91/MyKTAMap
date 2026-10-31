@@ -651,6 +651,7 @@ const CALQUE = {
         dataLayerGroups: { sig: {} },
         map: { hasLayer: () => true },
         I18n: { t: (k) => k },
+        ktaLibelleCalque: (lc) => lc.label || lc.id,   // map.js, hors du fragment extrait
         CalqueSession: { estRapatrie: () => true },
         _escAttr: String, _escHtml: String
       };

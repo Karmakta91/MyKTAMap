@@ -362,7 +362,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 | Section | What it filters |
 |---|---|
 | 🖼️ **Image layers** | The map image and its additional layers |
-| 📊 **Data layers** | The layers shipped with the map, and **My annotations** (everything you added: unticking it hides your additions without deleting anything) |
+| 📊 **Data layers** | The layers shipped with the map, and **Plan annotations** (everything drawn on the map: your additions and, on a shared installation, your team's; unticking it hides them without deleting anything) |
 | 🏗️ **M-LVL levels** | Multi-level maps: active level (for drawing) and visible levels — kept in sync with the Levels window |
 | 🏷️ **Point tags** | The tags actually present on the map, with their count |
 | 🛣️ ⬛ 🏛️ **Types** | Path, zone and structure types, including your own |

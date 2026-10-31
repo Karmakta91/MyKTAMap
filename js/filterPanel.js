@@ -521,7 +521,7 @@
     ids.forEach(function(id) {
       const visible = window.map && window.map.hasLayer(groups[id]);
       const lc = cfg.find(function(d) { return d.id === id; });
-      const label = (lc && lc.label) || (id === "editor" ? window.I18n.t("filter.dataLayer.editor") : id);
+      const label = window.ktaLibelleCalque(lc || { id: id });
         // Le calque « editor » EST la session : rien à rapatrier.
       const rapatriable = !!(CS && lc && lc.file && id !== "editor");
       const rapatrie    = !!(CS && CS.estRapatrie(id));

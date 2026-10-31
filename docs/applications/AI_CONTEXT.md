@@ -375,7 +375,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 |---|---|
 | **Plan** | Carte d'un site souterrain ou industriel, basée sur une image (PNG/JPEG) + données associées (points, routes, zones). |
 | **Calque** | Couche d'éléments superposable sur le plan : image (légende, collision) ou données (puits, points custom, etc.). Activable/désactivable via la modale ≡ Filtres. |
-| **Mes annotations** | Calque spécial qui regroupe tout ce que l'utilisateur a ajouté pendant sa session : points éditeur, tracés (routes), zones, structures. |
+| **Annotations du plan** | Calque de la session du plan : points éditeur, tracés (routes), zones, structures ajoutés sur le plan — sur une installation partagée, ceux de toute l'équipe. |
 | **Session** | Ensemble des modifications faites par l'utilisateur sur un plan donné (points ajoutés, tracés, zones, mesures). Auto-sauvegardée localement. |
 | **Tracker (PDR)** | Module expérimental qui estime la position de l'utilisateur via les capteurs inertiels du téléphone (accéléromètre + gyroscope), sans GPS. PDR = Pedestrian Dead Reckoning. |
 | **Recalage** | Action de remettre manuellement le tracker à une position connue sur le plan (clic sur un point repère) pour corriger la dérive. |

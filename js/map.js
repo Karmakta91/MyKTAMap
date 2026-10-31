@@ -96,6 +96,15 @@ window._ktaBuiltinIconUrls = TAGS_BUILTIN;
 // Icône d'un point sans tag (ou au tag inconnu). Hors catalogue des tags : ce n'est pas un type de POI.
 window._ktaIconeDefaut = "icon/default.png";
 
+// Libellé affiché d'un calque de données. ⚠️ Le calque « editor » est la session du PLAN (partagée avec l'équipe
+// sur une installation reliée) : toujours la clé traduite. Le libellé que le Générateur grave dans le plan-config
+// (langue de l'auteur, aucun écran pour le changer) est ignoré.
+window.ktaLibelleCalque = function(lc) {
+  if (!lc) return "";
+  if (lc.id === "editor") return window.I18n.t("filter.dataLayer.editor");
+  return (typeof lc.label === "string" && lc.label.trim()) || lc.id || "";
+};
+
 // ── Taille des icônes au zoom (réglage 📐, APP_CONFIG.scaledMarkers) ──────────
 // ⚠️ Une seule loi, mode plan comme cartes OSM : échelle = pixels ÉCRAN par pixel de PLAN, bornée
 // [plancher ; 2]. Plancher : 0,25 en mode plan (défaut), KTA_ECHELLE_PLANCHER_OSM sur les cartes OSM.
@@ -503,19 +512,16 @@ async function initMapFromConfig() {
     const group = L.layerGroup();
     if (layerConfig.visible) group.addTo(map);
     dataLayerGroups[layerConfig.id] = group;
-    // Calque "editor" : libellé « Mes annotations » FORCÉ (calque universel des annotations de session),
-    // quel que soit le plan-config.
-    const labelAffiche = (layerConfig.id === "editor") ? "Mes annotations" : layerConfig.label;
-    overlays[labelAffiche] = group;
+    overlays[window.ktaLibelleCalque(layerConfig)] = group;
   });
 
   // ⚠️ Calque "editor" créé s'il manque : sinon window.layerEditor undefined → editor.js et zones.js
-  // ajouteraient directement à la carte, hors du toggle « Mes annotations ».
+  // ajouteraient directement à la carte, hors du toggle du calque de session.
   if (!dataLayerGroups.editor) {
     const editorGroup = L.layerGroup();
     editorGroup.addTo(map);  // visible par defaut
     dataLayerGroups.editor = editorGroup;
-    overlays["Mes annotations"] = editorGroup;
+    overlays[window.ktaLibelleCalque({ id: "editor" })] = editorGroup;
     console.warn("[Map] Calque 'editor' absent du plan-config — fallback auto-créé");
   }
 
