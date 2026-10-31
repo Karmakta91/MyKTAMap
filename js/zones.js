@@ -127,9 +127,8 @@ function initZones() {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeLabel }), _historyBefore, "zones");
         }
-        // 🩸 Fermer éteint aussi l'outil : sinon modeZone reste armé et le clic suivant
-        // relance une zone dans un état incohérent.
-        if (typeof window._fermerModeZone === "function") window._fermerModeZone();
+        // L'outil reste armé (décision produit) : le clic suivant commence une nouvelle zone du même type,
+        // pour enchaîner sans retoucher l'icône ; retoucher l'icône l'éteint.
         return;
       }
     }

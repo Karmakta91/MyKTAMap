@@ -28,15 +28,16 @@
 
 ## Maintenant
 
-- **Tests Safari (WebKit) dans le smoke** — deux bugs iPhone passés sous Chromium le 26/10 (« Mes plans » à 0 px au
-  1er lancement, date de constat) ; WebKit est déjà installé avec Playwright.
-  `qui: Claude · action: jouer smoke.js et checkup-bienvenue.js aussi sous WebKit (repli s'il manque)
-  · fini: les deux verts sous Chromium et WebKit · depuis: 26/10/2026 · taille: S`
-- **`_currentLoadedPlanId` posé à l'accueil** — revue du 26/10 : id gardé après la fermeture du plan → stats du plan
-  faussées, migration uid jugée sans les calques, photos d'un autre plan proposées au Générateur ; côté pro, présence
-  et itinéraire du plan quitté, « Rejoindre » sans rouvrir le plan. Recommandé : l'effacer à la fermeture.
-  `qui: Claude · action: id à null dans _libererRessourcesPlanPrecedent, replis « default » et batteryGuard adaptés,
-  scénario pro de retour à l'accueil · fini: scénario vert, cas de la revue fermés · depuis: 26/10/2026 · taille: M`
+- **Essai sur dev : Secours sur plusieurs niveaux et échelle du Générateur** — `e79e3371` : secteur sur plusieurs
+  niveaux (équipe « tous niveaux », POI de la zone à chaque niveau) ; `508fc41a` : « Mettre à jour le plan » reprend
+  l'échelle recalibrée dans l'app et le dit (garde-fou `check-maj-plan.js`). Ni l'un ni l'autre joué à la main.
+  `qui: KARMA · action: un secteur à 2 niveaux en Secours ; recalibrer puis mettre à jour un plan au Générateur
+  · fini: vus conformes, ou bugs ouverts · depuis: 29/10/2026 · taille: XS`
+- **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
+  quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
+  plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
+  `qui: Claude · action: scénario pro de retour à l'accueil, après le lot tests-fiables du pro
+  · fini: scénario vert · depuis: 26/10/2026 · taille: S`
 - **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
   liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
   sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
@@ -66,22 +67,10 @@
   · taille: S`
 ## Ensuite
 
-- **Générateur lent avec un plan ouvert** — plus de 30 min chez KARMA, non reproduit ici (×2 seulement). Le plan est
-  fermé avant le tuilage V2 depuis le 22/10 ; si c'est encore lent, décoder l'image source une fois (createImageBitmap).
-  `qui: KARMA · action: chronométrer son cas réel en prod · fini: moins d'une minute, ou mesure qui oriente la suite
-  · depuis: 22/10/2026 · taille: S`
-
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
   · depuis: 13/09/2026 · taille: XS`
-- **Test appareil : stockage saturé** — bandeau persistant + 💾 Exporter tant que la sauvegarde échoue.
-  `qui: KARMA · action: saturer un téléphone de test · fini: bandeau et export vus, ou bug ouvert · depuis: 13/09/2026
-  · taille: S`
-- **Test appareil : balayage Secours** — temps de « Découper en secteurs » sur un vieux téléphone ; « Suivre mon
-  parcours » en balayage (un écart rejoint le circuit là où l'équipe en était, pas au début).
-  `qui: KARMA · action: chronométrer le découpage, faire un écart sur le terrain
-  · fini: durée notée, reprise vue au bon endroit · depuis: 15/10/2026 · taille: S`
 - **Test appareil : chiffres du guide** — repris sans vérification : stockage par appareil (~50 Mo Safari, ~1 Go app
   installée), chemin d'installation sur Chrome Android.
   `qui: KARMA · action: relever les deux chiffres et le chemin sur appareil
@@ -98,20 +87,6 @@
 
 ## Plus tard
 
-- **La ville : de trois copies à deux** — même dessin, trois formes (`js/bienvenue.js`, `MyKTAMap-pro/site/`,
-  `MyKTAMap-doc/generateur/descente.js`). Le site de doc la lira dans le community à chaque génération (comme la
-  boussole ; polices sur main depuis v2.21.0) ; la vitrine pro reste à part, reportée à la main.
-  `qui: Claude · action: générateur du doc qui extrait la scène de js/bienvenue.js (main), copie retirée
-  · fini: plus de descente.js recopié, accueil du doc identique · depuis: 26/10/2026 · taille: S`
-- **Veille des mentions** — audit du 26/10 : rien d'indexé hors GitHub ; Reddit illisible par l'outil.
-  `qui: KARMA · action: F5Bot (Reddit, Hacker News) et Google Alerts sur « myktamap » · fini: alertes actives
-  · depuis: 26/10/2026 · taille: XS`
-
-- **Calage Lambert 93 exact d'un GeoTIFF** — mémoriser l'EPSG du fichier (`georef.crs`) et caler dans ce CRS : gagne
-  les 0,35 m restants aux coins d'un GeoTIFF Lambert 93 de 6 km (le plan tangent suffit à l'objectif < 1 m).
-  Déclencheur : un cas réel où ces décimètres comptent. Étude : `docs/ETUDE_CALAGE_PROJECTION.md`.
-  `qui: KARMA · action: signaler un cas réel qui en a besoin · fini: cas reçu, ou entrée enterrée
-  · depuis: 25/10/2026 · taille: S`
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
@@ -120,13 +95,6 @@
   `merge-main.ps1` demande `DEROGE`.
   `qui: KARMA · action: régénérer un Project Analysis Token avant le 06/01/2027
   · fini: scan Sonar vert avec le nouveau jeton · depuis: 09/10/2026 · taille: XS`
-- **Mot de passe d'installation oublié** — ⚪ seul l'effacement des données du site lève le verrou ; pas de voie de
-  secours.
-  `qui: KARMA · action: confirmer « pas de voie de secours » ou en demander une
-  · fini: décision écrite dans security-legal.md · depuis: 04/10/2026 · taille: XS`
-- **Secours : deux interventions simultanées sur un même plan** — 🔬 jamais vérifié.
-  `qui: Claude · action: jouer deux interventions au harnais sur le même plan
-  · fini: comportement constaté, bug ouvert s'il y a lieu · depuis: 06/10/2026 · taille: S`
 - **Échelle typographique** — ✅ vérifié 20/10 : ~35 tailles de texte dans `css/` ; 11 / 11,5 / 12 / 12,5 / 13 px se
   suivent à moins de 5 %. Reste de l'audit d'interface (M1) : 6 rôles proposés (11 méta, 12,5 libellé, 14 corps,
   15 lecture, 18 titre de fenêtre, 24 titre d'écran), plancher de 11 px pour tout texte cliquable.
@@ -140,6 +108,11 @@
 
 ## Entrant
 
+- **« -pro » du splash au tout premier lancement pro** — le suffixe dépend de `.kta-instance-pro`, posée d'emblée si la
+  licence serveur est en cache ; au premier lancement d'un appareil elle arrive peut-être après la fin du splash.
+  🔬 hypothèse, non vérifiée.
+  `qui: KARMA · action: première ouverture de pro.myktamap.fr en navigation privée, dire si « -pro » apparaît
+  · depuis: 30/10/2026 · taille: XS`
 - **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
   session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
   du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.

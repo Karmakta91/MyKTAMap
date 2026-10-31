@@ -81,7 +81,9 @@ affichage en clair dans la fenêtre de reset sont supprimés.
 #### 36.1 Un écran, deux modes selon l'instance
 
 Le mode est décidé **avant** de dessiner (`_monterGate` lit `_hashInstance()`, config d'instance déjà
-chargée par `ktaInstance.js`). Les deux modes montrent la même présentation « Bienvenue » (§36.8) :
+chargée par `ktaInstance.js`). Les deux modes montrent la même présentation « Bienvenue » (§36.8) sur les domaines
+de présentation (`myktamap.fr`, `www.myktamap.fr`, `dev.myktamap.fr`, `localhost`, `127.0.0.1` : `UnlockGate.presentationComplete`) ;
+ailleurs, sa **ville seule** (§36.8), avec « Entrer » ou le même champ, à la même règle d'ouverture :
 
 | Instance | En-tête de l'écran | Ce qui ouvre |
 |---|---|---|
@@ -94,6 +96,13 @@ la **carte centrée** prend le relais dans le même mode (`_monterGateMode(hash,
 
 ⚠️ **Niveau de sécurité inchangé** : barrière **sociale**, jamais une authentification. Le hash d'instance
 est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modifie en F12.
+
+**Mot de passe oublié : pas de voie de secours** (décision KARMA, 28/10/2026). L'installation ne garde que
+l'empreinte SHA-256 : personne ne retrouve l'ancien code. Le visiteur le demande à qui gère l'installation ; le
+gestionnaire qui l'a oublié en **pose un nouveau** dans ConfAdmin et republie `index.json`. Aucune récupération dans
+l'app : ce serait une porte dérobée sur une installation privée, et le community n'a pas de serveur pour vérifier
+une identité. Cinq codes faux = verrou **temporisé** (compte à rebours, l'écran revient seul). ❌ Ne jamais conseiller
+d'effacer les données du site : ça ne donne pas l'accès (le code est redemandé) et ça efface sessions et photos.
 
 #### 36.2 Ce qui est mémorisé
 
@@ -177,7 +186,7 @@ Une petite présentation qui défile, dans le style de la page de présentation 
 **une fois par appareil**, après le splash (inchangé) et la gate légale : un appareil déjà entré ne la revoit jamais.
 
 - **Chargement à la demande** : `unlockGate.js > _chargerBienvenue` ajoute `css/bienvenue.css` et `js/bienvenue.js`
-  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code? })`) ; les polices Montserrat 400/600/800 et Permanent
+  (`window.KtaBienvenue.ouvrir({ surEntree, surFin, code?, villeSeule?, connexion? })`, `ville(conteneur, opts)`) ; les polices Montserrat 400/600/800 et Permanent
   Marker (`fonts/`, licences OFL et Apache jointes) ne sont demandées que par cette feuille. Tous précachés
   (`sw.js`). Fichier absent ou trop lent (4 s) → carte de repli (§36.1).
 - **Contenu** : accroche, sept stations (le topo, avec « ce que l'app n'est pas » · plan dans la poche · annoter le
@@ -204,6 +213,25 @@ Une petite présentation qui défile, dans le style de la page de présentation 
   sans mot de passe : marquée vue à l'entrée, ouverte seulement si demandée. Au pied, une phrase courte
   (`bienvenue.pied.prive`) ; la complète (`gate.info`) est près du champ.
 - **« Découvrir »** fait défiler jusqu'à la 1re station (`#kta-bv-topo`).
+- **Ville seule** (`ouvrir({ villeSeule })`, contrat `community-server-line.md` §3) : l'en-tête seul — barre et
+  langues, titre et description de l'installation (posés en `textContent` : `data/reglages.json > accueil`, puis
+  `config.accueil`, puis « MyKTAMap » et le sous-titre, sinon la tagline traduite), les actions, « 📖 Documentation »
+  —, la ville et le puits, sans stations ni pied : rien ne défile. Ni « Découvrir », ni visite, ni contacts, ni
+  pastille pro, ni lien source, ni 🚨 de remontée. Deux usages :
+  - **installation community hors domaines de présentation** (`unlockGate.js > _villeSeule`) : « Entrer », ou le
+    champ « Code d'accès » et `gate.info` si `accessHash` (même `_essayerCode`, même verrou, rien mémorisé en
+    `libre-v1`) ; même entrée que l'écran complet (conditions refusables, descente du puits, `surEntree` / `surFin`),
+    écran à z 100100. Avec le champ, la ville cède de la hauteur (`--h-ville`) pour tenir sans défiler ; un verrou en
+    cours, plus long, peut faire défiler un petit écran ;
+  - **gate déléguée** (`KtaExtensions.ecranAccueil()`, `connexion: true`) : « Me connecter » (`bienvenue.connecter`)
+    **n'entre pas** : l'écran devient inerte et la gate ouvre sa fenêtre par-dessus (écran à z 99995, sous ses
+    fenêtres) ; elle le ferme elle-même. Jamais de champ de code. Sans extension, jamais montrée.
+- **La ville pour une autre page** (`KtaBienvenue.ville(conteneur, opts)`, appelée par la prise
+  `KtaExtensions.ville`, contrat `community-server-line.md` §3) : le même dessin, seul, dans un conteneur de
+  l'appelant — une seule ville pour l'écran Bienvenue et la page d'une gate déléguée. Options : préfixe des ids
+  (deux villes dans un document), classe des fenêtres (blocs écrits en clair au lieu de `<use>`), décalage de la lune
+  de la scène et des oiseaux. Les classes restent `kta-bv-*`, animées par `css/bienvenue.css` ; sans option, le dessin
+  est celui de l'écran, octet pour octet (`_ville(VILLE_DEFAUT)`).
 - **Thème** : toujours sombre (jetons locaux `--bv-*`, copies des valeurs de la charte) : au premier lancement,
   aucun thème n'est choisi.
 
@@ -1372,7 +1400,7 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 
 **⚠️ v1.56.4 — Ordre de boot complet** (« on lit et accepte les conditions AVANT de saisir un code », KARMA) :
 
-0. ⚖️ **Conditions d'utilisation** — affichées par **`main.js > initApp`** (pas par le flow), à l'un de deux moments (décision KARMA) : sur une installation **non reliée** dont l'écran Bienvenue s'affiche, **au clic sur « Entrer »** (ou après le code juste), au-dessus de l'écran (`LegalGate.ouvrirGate({ auDessus: true })`, z 100150) et avant la mémoire de l'accès et la descente (`UnlockGate.ouvrirGate({ avantEntree })` → `KtaBienvenue` `avantEntree`), filet après la gate (carte de repli, licence qui contourne) ; sinon (installation reliée, accès déjà ouvert) **avant toute gate**. 🩸 Lancée après une gate sans `auDessus`, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
+0. ⚖️ **Conditions d'utilisation** — affichées par **`main.js > initApp`** (pas par le flow), à l'un de deux moments (décision KARMA) : quand un écran d'entrée va s'afficher, **au moment où la personne entre**, refusables, au-dessus de l'écran (`LegalGate.ouvrirGate({ auDessus: true, refusable: true })`, z 100150) — installation **non reliée** : au clic sur « Entrer » de Bienvenue (ou après le code juste), avant la mémoire de l'accès et la descente (`UnlockGate.ouvrirGate({ avantEntree })` → `KtaBienvenue` `avantEntree`) ; installation **reliée** : à la connexion ou à la demande d'accès validée dans la gate déléguée (`KtaExtensions.gateDeleguee({ avantEntree })`, contrat `community-server-line.md` §3), jamais avant sa présentation ; sinon (accès community déjà ouvert) **avant toute gate**. Filet non refusable après les gates pour ce qu'aucun écran n'a posé (carte de repli, licence qui contourne, session reprise sans écran). 🩸 Lancée après une gate sans `auDessus`, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
 1. 🗝️ **UnlockGate** (mot de passe d'instance, ou écran « Bienvenue », §36.8) puis 🔐 **gate PIN** (si activé).
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
 3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Visite guidée** (`Tutorial.ouvrir(onClose)`).
@@ -1393,9 +1421,9 @@ Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone
 
 #### 87.2 Gate légale `js/legalGate.js`
 
-`window.LegalGate = { isAccepted, ouvrirGate({ auDessus }), ouvrirConsultation, TERMS_VERSION }` (`auDessus` : par-dessus l'écran Bienvenue, texte intégral compris).
+`window.LegalGate = { isAccepted, ouvrirGate({ auDessus, refusable }), ouvrirConsultation, TERMS_VERSION }` (`auDessus` : par-dessus l'écran Bienvenue, texte intégral compris ; `refusable` : bouton « Refuser » + Échap).
 
-- **`ouvrirGate()`** → Promise, **bloquante** : case « J'ai lu et compris » + bouton « J'accepte » (désactivé tant que la case n'est pas cochée). Résout à l'acceptation, pose `localStorage["myktamap_terms_accepted_v1"] = TERMS_VERSION`.
+- **`ouvrirGate()`** → Promise, **bloquante** : case « J'ai lu et compris » + bouton « J'accepte » (désactivé tant que la case n'est pas cochée). Résout `true` à l'acceptation, pose `localStorage["myktamap_terms_accepted_v1"] = TERMS_VERSION`. **Refusable quand un écran d'entrée attend derrière** : « Refuser » (ou Échap) résout `false`, rien n'est mémorisé et la personne reste sur cet écran — Bienvenue se réactive (`avantEntree` résolue à `false`), les conditions reviennent au prochain « Entrer » ; une installation reliée reste sur sa présentation ou sa porte de connexion et les redemande à la prochaine connexion ou demande d'accès. Le filet de `main.js > initApp` (**sans** « Refuser ») ne sert qu'à ce qu'aucun écran d'entrée n'a posé.
 - **Flag versionné** : `isAccepted()` compare la version stockée à `TERMS_VERSION` (const, actuellement `2` : garantie, secours, contenus partagés). **Bumper `TERMS_VERSION`** force un re-consentement de tous les utilisateurs si le fond des CGU change. ⚠️ Les harnais navigateur pré-acceptent les CGU en posant `myktamap_terms_accepted_v1` : la valeur doit suivre `TERMS_VERSION` (`scripts/smoke/`, et les tests navigateur du dépôt pro), sinon la gate bloque tout le parcours.
 - **`ouvrirConsultation()`** : ré-affichage **non bloquant** (bouton ✕ / clic-fond), sans case à cocher. Câblé sur le lien ⚖️ « Conditions d'utilisation » du footer loader (`index.html`).
 - **Sous-modale « texte intégral »** (z-index 100001) : arrêté du 2 novembre 1955 + question écrite Sénat n° 03710 (réponse du 05/06/2025), **constantes verbatim** dans le module (`ARRETE_1955`, `SENAT_QUESTION`, `SENAT_REPONSE`), précédées des trois clauses détaillées (traduites). Actes officiels → **hors droit d'auteur** (CPI L.122-5 2°).

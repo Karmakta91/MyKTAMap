@@ -176,7 +176,7 @@ puis consignée ici avec sa décision.
 ## 🤖 Marche 1bis — smoke navigateur automatisé (EN PLACE depuis v1.76.4)
 
 `cd scripts/smoke && npm install && npm run smoke` — boote l'app dans un
-Chromium headless (serveur local inclus), passe les gates, ouvre
+Chromium headless **puis WebKit** (moteur de Safari ; serveur local inclus), passe les gates, ouvre
 Configuration / Éditeur / plan de test / Réglages / Légende, et **échoue sur
 toute erreur console, pageerror, clé i18n manquante, 404 inattendu ou modale
 invisible**. Détails : `scripts/smoke/README.md`.

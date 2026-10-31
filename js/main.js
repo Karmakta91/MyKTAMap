@@ -185,7 +185,7 @@ function _ktaInstanceIndisponible(motif) {
     if (lic) {
       const lien = document.createElement("a");
       lien.className = "kta-instance-indispo-lien";
-      lien.href = "https://pro.myktamap.fr/presentation/";
+      lien.href = "https://pro.myktamap.fr/?presentation";
       lien.target = "_blank"; lien.rel = "noopener noreferrer";
       lien.textContent = t("ext.licence.lienPro");
       boite.appendChild(lien);
@@ -1463,8 +1463,10 @@ function _quitterNavigationInterPlans(contexte) {
 // ── Retour à l'accueil (loader) ──────────────────────
 // ⚠️ Fermer un plan = le vider (décision produit) : tout retour à l'accueil passe ici et, si une carte existe, la
 // démonte comme un changement de plan (session enregistrée d'abord, puis tuiles, calques, canvas de collision,
-// carte). « Reprendre » recharge le plan et restaure sa session. Après ce retour : window.map = null,
-// PLAN_CONFIG = null, _currentLoadedPlanId garde le dernier plan (« Reprendre », carte OSM de l'accueil).
+// carte). « Reprendre » recharge le plan et restaure sa session (PlanRegistry). Après ce retour : window.map = null,
+// PLAN_CONFIG = null, _currentLoadedPlanId = null ; le plan quitté reste dans window._ktaDernierPlanId (carte OSM
+// de l'accueil). 🩸 Un id gardé à l'accueil faisait croire le plan ouvert : stats et photos du plan quitté
+// proposées, côté installation reliée présence et itinéraire du plan quitté.
 // 🩸 La carte peut exister sans être affichée (ouverture ratée sous l'accueil) : le test porte sur L.Map, pas sur
 // ktaPlanAffiche().
 function afficherLoader() {
@@ -1487,6 +1489,11 @@ function afficherLoader() {
     if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
       try { window.KtaExtensions.quitterPlan("accueil"); } catch(e) {}
     }
+  }
+  // Après le démontage, qui lit encore l'id (session, carnet, extension) : plus aucun plan n'est ouvert.
+  if (window._currentLoadedPlanId) {
+    window._ktaDernierPlanId = window._currentLoadedPlanId;
+    window._currentLoadedPlanId = null;
   }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
@@ -1511,9 +1518,9 @@ function afficherLoader() {
 
   // 🩸 Widget OSM de l'accueil re-monté : il calcule sa liste de plans géoréférencés au mount(), sinon un plan
   // chargé entre-temps n'y apparaît qu'au redémarrage. Il s'ouvre sur le plan qu'on vient de quitter
-  // (_currentLoadedPlanId n'est jamais remis à null au retour) ; non géoréférencé → sélection précédente.
+  // (_ktaDernierPlanId) ; non géoréférencé → sélection précédente.
   if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
-    try { window.OsmHomePreview.refresh(window._currentLoadedPlanId || null); } catch (e) {
+    try { window.OsmHomePreview.refresh(window._ktaDernierPlanId || null); } catch (e) {
       console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
     }
   }
@@ -1525,6 +1532,7 @@ function afficherLoader() {
 // l'accueil (afficherLoader démonte la carte) ; le plan reste en tête de « Reprendre ».
 // → { ferme, planId } ; ferme: false = aucune carte de plan en mémoire, rien n'est touché.
 function ktaFermerPlanPourMemoire() {
+  // Lu AVANT afficherLoader, qui le remet à null.
   const planId = window._currentLoadedPlanId || null;
   if (!(window.L && window.map instanceof window.L.Map)) return { ferme: false, planId: planId };
   afficherLoader();
@@ -1759,22 +1767,28 @@ window.proposerRedemarrageLangue = function() {
 
   // Conditions d'utilisation : bloquantes, sautées en incognito (flag non persistant) ; l'étape légale de
   // FirstRunFlow reste en filet. Deux moments (décision produit) :
-  // - installation community (pas reliée à un serveur) dont l'écran d'entrée va s'afficher : APRÈS « Entrer » (ou
-  //   le code juste), avant la descente — un visiteur de passage n'est pas arrêté par une fenêtre ;
-  // - sinon (installation reliée : pro, gate déléguée ; accès déjà ouvert) : EN PREMIER, avant toute saisie.
+  // - un écran d'entrée va s'afficher (Bienvenue ou code de l'installation community ; installation reliée : la gate
+  //   déléguée) : au moment où la personne ENTRE (« Entrer », code juste, connexion ou demande d'accès validée),
+  //   refusables — un visiteur de passage n'est pas arrêté par une fenêtre. Passées à l'écran par `avantEntree`
+  //   (UnlockGate.ouvrirGate, KtaExtensions.gateDeleguee) : résolue à false = refus, on reste sur l'écran, rien
+  //   n'est mémorisé, elles reviennent à la prochaine entrée ;
+  // - sinon (accès community déjà ouvert) : EN PREMIER, avant toute gate.
   // 🩸 Avant une gate, au-dessus d'elle : lancée après, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate
-  // (z 100100) ; après « Entrer », elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
+  // (z 100100) ; à l'entrée, elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
   const _legalAFaire = !!(window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
     && !window.LegalGate.isAccepted() && !(window.IncognitoMode && window.IncognitoMode.active));
-  const _legalApresEntree = _legalAFaire && !(_scBoot && _scBoot.state === "on")
-    && !!(window.UnlockGate && !window.UnlockGate.isUnlocked());
-  const _ouvrirLegal = async function(auDessus) {
-    try { await window.LegalGate.ouvrirGate({ auDessus: auDessus }); }
-    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  const _scOn = !!(_scBoot && _scBoot.state === "on");
+  const _legalApresEntree = _legalAFaire
+    && (_scOn || !!(window.UnlockGate && !window.UnlockGate.isUnlocked()));
+  const _ouvrirLegal = async function(auDessus, refusable) {
+    try { return await window.LegalGate.ouvrirGate({ auDessus: auDessus, refusable: refusable }); }
+    catch (e) { console.warn("[Main] LegalGate a échoué :", e); return true; }
   };
+  const _legalAEntree = _legalApresEntree
+    ? { avantEntree: function() { return _ouvrirLegal(true, true); } } : undefined;
   if (_legalAFaire && !_legalApresEntree) {
     await _splashAvantGate();
-    await _ouvrirLegal(false);
+    await _ouvrirLegal(false, false);
     _rideauSiSplashParti();
   }
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
@@ -1811,7 +1825,7 @@ window.proposerRedemarrageLangue = function() {
     // 🩸 Animation finie AVANT la gate déléguée : gate.ouvrir() dessine son écran tout de suite, par-dessus une
     // animation en cours sinon. Le splash reste dessous : une session déjà ouverte ne dessine rien.
     if (_mods && _mods.demandes > 0) await _splashAvantGate();
-    const _gate = window.KtaExtensions.gateDeleguee();
+    const _gate = window.KtaExtensions.gateDeleguee(_legalAEntree);
     if (_gate) {
       try { await _gate; _gateDelegueeOk = true; console.log("[Main] Gate déléguée franchie"); }
       catch (e) {
@@ -1884,13 +1898,14 @@ window.proposerRedemarrageLangue = function() {
       } catch(e) { /* swallow */ }
     } else {
       console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
-      await window.UnlockGate.ouvrirGate(_legalApresEntree ? { avantEntree: function() { return _ouvrirLegal(true); } }
-        : undefined);
+      await window.UnlockGate.ouvrirGate(_legalAEntree);
       console.log("[Main] Gate auth franchie → init normale");
     }
   }
-  // Filet des conditions différées : carte de repli (sans avantEntree) ou licence qui a contourné la gate.
-  if (_legalApresEntree && !window.LegalGate.isAccepted()) {
+  // Filet des conditions qu'aucun écran d'entrée n'a posées : carte de repli (sans avantEntree), licence qui a
+  // contourné la gate, gate déléguée franchie sans écran (session reprise) ou qui ignore `avantEntree`. Plus d'écran
+  // d'entrée derrière : non refusable. Déjà acceptées à l'entrée : rien.
+  if (_legalAFaire && !window.LegalGate.isAccepted()) {
     await _splashAvantGate();
     await _ouvrirLegal(false);
     _rideauSiSplashParti();

@@ -28,7 +28,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.21.0";
+const CACHE_NAME = "myktamap-cache-v2.21.1";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -1477,6 +1477,27 @@ self.addEventListener("fetch", (event) => {
           status: 200,
           headers: { "Content-Type": "application/json; charset=utf-8" }
         });
+      }
+    })());
+    return;
+  }
+
+  // data/reglages.json (réglages facultatifs de l'installation, js/ktaInstance.js) : réseau d'abord comme l'index,
+  // gardé en cache pour le hors-ligne. Jamais précaché : absent par défaut (404 nominal). 🩸 Un 404 du SERVEUR
+  // (fichier retiré) vide le cache : sinon le repli rejouerait pour toujours un réglage supprimé.
+  if (/\/data\/reglages\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith((async function() {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const rep = await Promise.race([fetch(event.request, { cache: "no-store" }), new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("network timeout")); }, 3000);
+        })]);
+        if (rep.ok) cache.put(event.request, rep.clone()).catch(function() { /* quota : la réponse part quand même */ });
+        else if (rep.status === 404) cache.delete(event.request, { ignoreSearch: true }).catch(function() { /* idem */ });
+        return rep;
+      } catch (e) {
+        const enCache = await cache.match(event.request, { ignoreSearch: true });
+        return enCache || new Response("", { status: 404, headers: { "Content-Type": "application/json" } });
       }
     })());
     return;

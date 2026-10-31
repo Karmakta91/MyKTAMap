@@ -98,9 +98,10 @@ function bloc(src, debut, fin) {
   verif(rs.includes("struct.undo.close") && rs.includes("struct.undo.abandon"), "résolution structure : validation ou abandon, les deux historisés");
   const itf = lire("js/interface.js");
   const okZ = bloc(itf, "const ok = window.fermerZoneEnCours();", "if (!ok) {");
-  verif(okZ.includes("HistoryManager.record(") && okZ.includes("_fermerModeZone"), "🩸 bouton ✅ zone : historique + outil éteint (même chemin que le re-clic)");
+  // L'outil reste armé après une fermeture (décision produit : enchaîner piliers et zones sans retoucher l'icône).
+  verif(okZ.includes("HistoryManager.record(") && !okZ.includes("_fermerModeZone"), "🩸 bouton ✅ zone : historique, outil laissé armé (comme le re-clic)");
   const okS = bloc(itf, "const ok = window.fermerStructureEnCours();", "if (!ok) {");
-  verif(okS.includes("HistoryManager.record(") && okS.includes("_fermerModeStructure"), "🩸 bouton ✅ structure : historique + outil éteint");
+  verif(okS.includes("HistoryManager.record(") && !okS.includes("_fermerModeStructure"), "🩸 bouton ✅ structure : historique, outil laissé armé");
 }
 
 // ── Q45 : snapshots ──────

@@ -35,7 +35,7 @@ const LS = {
   myktamap_terms_accepted_v1: "2",
   myktamap_tutorial_seen_v1: "1"
 };
-const BRUIT_TOLERE = [/Licence-pro\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
+const BRUIT_TOLERE = [/Licence-pro\.json/i, /data\/reglages\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
 // Image finale : part des pixels gris de la référence retrouvés (à 1 px près) et part de gris en trop.
 const COUVERTURE_MIN = 0.95;
 const SURPLUS_MAX = 0.05;
@@ -100,7 +100,7 @@ function etatSplash() {
     rose: op(sp.querySelector(".kta-splash-rose")),
     titre: op(document.getElementById("splashBox")),
     licence: op(document.getElementById("splashLicense")),
-    titreTexte: (document.getElementById("splashTitle") || {}).textContent,
+    titreTexte: (document.getElementById("splashTitle") || {}).innerText,
     ethos: !!sp.querySelector('[data-i18n="home.splash.ethos"]'),
     fond: getComputedStyle(sp).backgroundColor,
     dedans: dedans
@@ -326,7 +326,7 @@ async function premiereOuverture(nav, nom, w, h, dpr) {
   if (fin.pictos === 6 && fin.pictosVisibles === 6) ok("6 pictos visibles"); else pb("pictos : " + fin.pictosVisibles + "/" + fin.pictos);
   if (fin.rose > 0.99) ok("rose visible"); else pb("rose opacité " + fin.rose);
   if (fin.licence > 0.99) ok("licence visible à la fin"); else pb("licence opacité " + fin.licence + " à la fin");
-  if (fin.titre > 0.99 && fin.titreTexte === "MyKTAMap") ok("titre « MyKTAMap » visible, sans suffixe");
+  if (fin.titre > 0.99 && fin.titreTexte === "MyKTAMap") ok("titre « MyKTAMap » visible, sans suffixe en community");
   else pb("titre : opacité " + fin.titre + ", texte « " + fin.titreTexte + " »");
   if (!fin.ethos) ok("ligne « pas de revente… » absente"); else pb("la ligne ethos est encore dans le splash");
   if (fin.fond === "rgb(10, 13, 24)") ok("fond sombre #0a0d18"); else pb("fond " + fin.fond);

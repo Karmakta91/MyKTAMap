@@ -137,7 +137,7 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 ### 👋 Primer arranque
 
-Tras la pantalla de inicio, se desplaza una breve presentación de **Bienvenida**: qué hace la app, cómo te orienta sin GPS, por qué nada sale de tu dispositivo. Toca **Entrar** (arriba o abajo) para llegar a la pantalla de inicio, o **Descubrir** para recorrerla. La primera vez, **Entrar** muestra antes las **condiciones de uso** que hay que aceptar. Abajo, **Descubrir la app en 1 minuto** abre la visita guiada al entrar; si no, sigue disponible en **📖 Documentación**. Esta presentación solo aparece una vez por dispositivo (y de nuevo tras «💥 Reiniciar todo»). En una instalación privada (club, asociación), la misma presentación lleva arriba un campo **Código de acceso**: puedes leerlo todo sin código, pero solo entras con él; pídeselo a la persona que gestiona la instalación. Tras 5 códigos erróneos, el campo se bloquea un rato (10 min, luego más) y muestra el tiempo restante. El **🔐 código de acceso local** no se propone al arrancar: actívalo si quieres desde **⚙️ Configuración** («🔭 Para ir más lejos»).
+Tras la pantalla de inicio, se desplaza una breve presentación de **Bienvenida**: qué hace la app, cómo te orienta sin GPS, por qué nada sale de tu dispositivo. Toca **Entrar** (arriba o abajo) para llegar a la pantalla de inicio, o **Descubrir** para recorrerla. La primera vez, **Entrar** muestra antes las **condiciones de uso** que hay que aceptar. Abajo, **Descubrir la app en 1 minuto** abre la visita guiada al entrar; si no, sigue disponible en **📖 Documentación**. Esta presentación solo aparece una vez por dispositivo (y de nuevo tras «💥 Reiniciar todo»). En una instalación privada (club, asociación), la misma presentación lleva arriba un campo **Código de acceso**: puedes leerlo todo sin código, pero solo entras con él; pídeselo a la persona que gestiona la instalación. Tras 5 códigos erróneos, el campo se bloquea un rato (10 min, luego más) y muestra el tiempo restante. El **🔐 código de acceso local** no se propone al arrancar: actívalo si quieres desde **⚙️ Configuración** («🔭 Para ir más lejos»). En una instalación alojada fuera de myktamap.fr (club, asociación), la primera pantalla es más corta: el nombre y el texto de la instalación, **Entrar** (o el campo **Código de acceso**), la documentación y los idiomas.
 
 ### 📱 Instalar la aplicación en móvil (iPhone/Android)
 
@@ -715,7 +715,7 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 
-Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de todo.
+Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de todo.
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 
@@ -737,7 +737,7 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 | 🟨 **Frente de cantera 1ª masa** | línea | trazo amarillo |
 | 🟧 **Frente de cantera 2ª masa** | línea | trazo naranja |
 
-Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera (2 puntos mínimo) queda como línea abierta.
+Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **un nivel por debajo del nivel activo**; los demás toman el nivel activo.
 

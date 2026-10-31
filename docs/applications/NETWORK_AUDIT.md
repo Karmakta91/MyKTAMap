@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.21.0** (26 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.21.1** (30 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -89,6 +89,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
+| `<origin>/data/reglages.json` | `GET` (réseau d'abord, gardé en cache pour le hors-ligne) | Au boot, avec `data/index.json` | Lire les textes d'accueil que l'installation a choisis (titre, description, sous-titre). Fichier **facultatif**, absent par défaut (réponse 404 normale, le cache est alors vidé) ; seuls ces trois textes sont lus, toute autre clé est ignorée | **Aucune** |
 | `<origin>/data/<plan>/*` | `GET` · `HEAD` | Charge d'un plan serveur ; téléchargement hors-ligne d'un plan ou d'un dossier (« 📥 Tout garder hors ligne », à la demande) | Lecture des fichiers d'un plan (image + JSON + tuiles) ; `HEAD` seulement pour estimer la taille avant de demander confirmation (fichiers du plan, échantillon au-delà de 40, 4 tuiles) | **Aucune** (same-origin, pas de corps envoyé) |
 | `<origin>/<chemin>.zip` (déclaré par `data/index.json`, chemin relatif seulement) | `GET` (conditionnel) · `HEAD` | Ouverture d'un plan déclaré par son ZIP ; `HEAD` à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s) et par « 📥 Tout garder hors ligne » | Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304) | **Aucune** (same-origin ; seuls `If-None-Match` / `If-Modified-Since` partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB) |
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/applications/NETWORK_AUDIT*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
@@ -129,7 +130,7 @@ L'URL est résolue dynamiquement via `location.origin + "/ping.html"`.
 Le body attendu est exactement `"OK"`.
 
 > 🔎 **Contrôle du 13/09/2026 — aucune URL de service n'est codée en dur.** Tous les
-> appels de l'app (`version.json`, `alert.json`, `denylist.json`, `data/index.json`,
+> appels de l'app (`version.json`, `alert.json`, `denylist.json`, `data/index.json`, `data/reglages.json`,
 > `lang/*.json`, `ping.html`, licence pro) sont **relatifs à l'origine qui sert l'app** ;
 > la seule cible externe écrite en dur est `tile.openstreetmap.org` (Vue OSM). C'est
 > voulu : une copie de l'app servie ailleurs (self-host, kiosque, ou copie tierce) appelle

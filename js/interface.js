@@ -548,8 +548,8 @@ function _fermerModeStructure() {
   delete _modesActifs["structure"];
 }
 
-// 🩸 Exposé pour zones.js / structures.js : la fermeture au re-clic sur le 1er point (leur handler
-// Leaflet) doit aussi éteindre l'outil, sinon bouton kta-actif + window.modeX armé au clic suivant.
+// Éteignent l'outil ET son bouton (kta-actif) ensemble : un mode remis à null ailleurs passe par ici, sinon le
+// bouton resterait allumé sur un outil éteint.
 window._fermerModeZone      = _fermerModeZone;
 window._fermerModeStructure = _fermerModeStructure;
 
@@ -2785,8 +2785,8 @@ _setGroupeModeActif("tracker", isTracking, null);
             return;
           }
           if (window.fermerZoneEnCours) {
-            // 🩸 Même chemin que la fermeture au clic sur le 1er sommet : historiser, puis éteindre
-            // l'outil (sinon le tap suivant démarre une nouvelle zone).
+            // Même chemin que la fermeture au clic sur le 1er sommet : historiser ; l'outil reste armé
+            // (décision produit), le tap suivant démarre une nouvelle zone du même type.
             const _avantZ = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
             const _typeZ  = window.modeZone;
             const ok = window.fermerZoneEnCours();
@@ -2794,7 +2794,6 @@ _setGroupeModeActif("tracker", isTracking, null);
               if (window.HistoryManager && _avantZ) {
                 window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeZ }), _avantZ, "zones");
               }
-              if (typeof window._fermerModeZone === "function") window._fermerModeZone();
             }
             if (!ok) {
               _alertCharte(
@@ -2932,7 +2931,8 @@ _setGroupeModeActif("tracker", isTracking, null);
             return;
           }
           if (window.fermerStructureEnCours) {
-            // 🩸 Comme les zones : historiser, puis éteindre l'outil.
+            // Comme les zones : historiser ; l'outil reste armé (décision produit) pour enchaîner les
+            // piliers ou les fronts.
             const _avantS = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
             const _typeS  = window.modeStructure;
             const ok = window.fermerStructureEnCours();
@@ -2940,7 +2940,6 @@ _setGroupeModeActif("tracker", isTracking, null);
               if (window.HistoryManager && _avantS) {
                 window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeS }), _avantS, "structures");
               }
-              if (typeof window._fermerModeStructure === "function") window._fermerModeStructure();
             }
             if (!ok) {
               // Polyline = 2 points min, polygone = 3. 🩸 Passer par isStructurePolylineType (lit

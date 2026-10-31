@@ -11,7 +11,7 @@
 
 const path = require("path");
 const fs = require("fs");
-const { chromium } = require("playwright");
+const { moteurs, lancerMoteur } = require("./navigateur.js");   // Chromium (repli Edge) puis WebKit
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 
 const PORT = parseInt(process.env.SMOKE_PORT, 10) || 8123;   // même port que server.js
@@ -47,7 +47,8 @@ try {
 } catch (e) { /* pas d'alert.json : rien à acquitter */ }
 
 const problemes = [];
-function pb(cat, msg) { problemes.push("[" + cat + "] " + msg); console.log("  ❌ " + cat + " : " + msg); }
+let MOTEUR = "";
+function pb(cat, msg) { problemes.push((MOTEUR ? MOTEUR + " " : "") + "[" + cat + "] " + msg); console.log("  ❌ " + cat + " : " + msg); }
 function ok(msg) { console.log("  ✅ " + msg); }
 
 // Bruit console toléré (réseau absent en local, live-config…) — liste COURTE
@@ -55,7 +56,8 @@ function ok(msg) { console.log("  ✅ " + msg); }
 const BRUIT_TOLERE = [
   /Failed to load resource.*(version\.json|ping\.html|live-config)/i,  // update-checker offline : dégradation prévue
   /favicon/i,
-  /Licence-pro.json/i   // sonde proLicense au boot : 404 = instance community, comportement NOMINAL
+  /Licence-pro.json/i,  // sonde proLicense au boot : 404 = instance community, comportement NOMINAL
+  /data\/reglages\.json/i  // réglages facultatifs de l'installation (js/ktaInstance.js) : 404 = absents, NOMINAL
 ];
 function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test(txt); }); }
 
@@ -64,25 +66,7 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
 const RX_SONDE_ICONE = /\/data\/[^/]+\/icon\/[^/]+$/;
 const sondesIcones = [];
 
-(async function main() {
-  const server = require("./server.js");
-  // Playwright ≥ 1.49 lance le « headless shell », binaire distinct du Chromium complet ; si son
-  // téléchargement a échoué (proxy TLS), repli sur le Chromium complet, puis sur Edge.
-  let navigateur;
-  try {
-    navigateur = await chromium.launch();
-  } catch (e) {
-    if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
-    console.log("[smoke] headless shell absent → repli sur le Chromium complet (channel: chromium)");
-    try {
-      navigateur = await chromium.launch({ channel: "chromium" });
-    } catch (e2) {
-      if (!/Executable doesn't exist/i.test(String((e2 && e2.message) || ""))) throw e2;
-      // Aucun navigateur Playwright téléchargé : Edge, présent sur tout Windows.
-      console.log("[smoke] Chromium Playwright absent → repli sur Microsoft Edge (channel: msedge)");
-      navigateur = await chromium.launch({ channel: "msedge" });
-    }
-  }
+async function jouer(navigateur) {
   const contexte = await navigateur.newContext({ serviceWorkers: "block", viewport: { width: 1280, height: 800 } });
   const page = await contexte.newPage();
 
@@ -331,13 +315,55 @@ const sondesIcones = [];
       await fermerModales();
     } else console.log("  ℹ️ afficherAide non exposée — étape sautée (non bloquant)");
 
+    // ── Retour à l'accueil par 🏠 puis « Reprendre » ──────
+    // 🩸 Un id de plan gardé à l'accueil faisait croire le plan ouvert (stats, photos, présence du plan quitté).
+    console.log("— Retour à l'accueil et « Reprendre » —");
+    const idOuvert = await page.evaluate(function () { return window._currentLoadedPlanId || null; });
+    await page.evaluate(function () { const b = document.getElementById("kta-refonte-home"); if (b) b.click(); });
+    await page.waitForTimeout(300);
+    await page.evaluate(function () { const b = document.getElementById("popupChargerPlan"); if (b) b.click(); });
+    await attendre(page, function () { return document.body.classList.contains("kta-loader-active"); }, 10000)
+      .catch(function () { pb("accueil", "pas de retour à l'accueil en 10 s"); });
+    await page.waitForTimeout(800);
+    const accueil = await page.evaluate(function () {
+      return { id: window._currentLoadedPlanId, dernier: window._ktaDernierPlanId,
+        reprendre: (document.getElementById("resumeBox") || { dataset: {} }).dataset.planId || null };
+    });
+    if (idOuvert && accueil.id === null && accueil.dernier === idOuvert && accueil.reprendre === idOuvert) {
+      ok("accueil : plus de plan courant, plan quitté gardé pour la carte OSM et « Reprendre »");
+    } else pb("accueil", "état après fermeture : " + JSON.stringify({ ouvert: !!idOuvert, id: accueil.id === null ? null :
+      "posé", dernier: accueil.dernier === idOuvert, reprendre: accueil.reprendre === idOuvert }));
+    await page.evaluate(function () { const b = document.getElementById("resumeBtn"); if (b) b.click(); });
+    await attendre(page, function () { return !!window.PLAN_CONFIG && window.ktaPlanAffiche(); }, 15000)
+      .catch(function () {});
+    const repris = await page.evaluate(function () { return window._currentLoadedPlanId || null; });
+    if (repris && repris === idOuvert) ok("« Reprendre » : le plan revient, id de plan courant reposé");
+    else pb("accueil", "« Reprendre » n'a pas rouvert le plan quitté");
+
     await page.waitForTimeout(800);   // laisser sortir les erreurs asynchrones
   } catch (e) {
     pb("smoke", "exception du scénario : " + String(e).slice(0, 300));
   } finally {
     await navigateur.close();
+  }
+}
+
+(async function main() {
+  const server = require("./server.js");
+  const joues = [];
+  try {
+    for (const nom of moteurs()) {
+      const navigateur = await lancerMoteur(nom);
+      if (!navigateur) continue;
+      MOTEUR = nom;
+      console.log("\n══ moteur " + nom + " (" + navigateur.version() + ") ══");
+      await jouer(navigateur);
+      joues.push(nom);
+    }
+  } finally {
     server.close();
   }
+  if (!joues.length) pb("smoke", "aucun moteur lancé (KTA_MOTEURS=" + (process.env.KTA_MOTEURS || "") + ")");
 
   console.log("");
   if (sondesIcones.length) {
@@ -350,6 +376,7 @@ const sondesIcones = [];
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 SMOKE VERT — boot, modales, plan, Réglages, Légende, Session, Aide : zéro erreur runtime.");
+  console.log("🎉 SMOKE VERT (" + joues.join(" + ") + ") — boot, modales, plan, Réglages, Légende, Session, Aide : " +
+              "zéro erreur runtime.");
   process.exit(0);
 })();

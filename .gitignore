@@ -66,6 +66,8 @@ scripts/i18n-orphelines.txt
 /tmp/
 devmyktamap
 data/index.json
+# Réglages d'accueil de l'installation (titre, description, sous-titre) : à qui héberge, jamais sur Git
+/data/reglages.json
 
 # design-sync (outils et sorties régénérés, jamais commités)
 .ds-sync/

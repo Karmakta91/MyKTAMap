@@ -182,6 +182,8 @@ function verifier(c, msg, detail) {
         pt: a("editorPoints").some(function (o) { return o.uid === u.pt; }),
         rd: a("roads").some(function (o) { return o.uid === u.rd; }),
         fermes: window.__raFermes.slice(),
+        idCourant: window._currentLoadedPlanId,
+        dernier: window._ktaDernierPlanId,
         reprendre: (document.getElementById("resumeBox") || {}).dataset ? document.getElementById("resumeBox").dataset.planId : null
       };
     }, uids);
@@ -191,6 +193,9 @@ function verifier(c, msg, detail) {
     verifier(apres.suivi === false, "suivi coupé à la fermeture");
     verifier(apres.fermes.length === 1 && apres.fermes[0] === "accueil", "extension prévenue une fois : mktm:plan-ferme « accueil »", apres.fermes);
     verifier(apres.reprendre === uids.planId, "« Reprendre » propose le plan fermé");
+    verifier(apres.idCourant === null && apres.dernier === uids.planId,
+      "accueil : plus d'id de plan courant (stats, photos, présence du plan quitté), plan quitté gardé pour la carte OSM",
+      { idCourant: apres.idCourant, dernier: apres.dernier });
     const m2 = await mesurer("accueil après fermeture");
     verifier(m2.imagesCarte === 0 && m2.canvasCarte === 0 && m2.marqueurs === 0, "aucune tuile, aucun canvas ni marqueur de carte à l'accueil", m2);
 

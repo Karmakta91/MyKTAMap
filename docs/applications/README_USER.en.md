@@ -137,7 +137,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 ### 👋 First launch
 
-After the start screen, a short **Welcome** presentation scrolls by: what the app does, how it finds your way without GPS, why nothing leaves your device. Tap **Enter** (at the top or at the bottom) to reach the home screen, or **Discover** to scroll through it. The first time, **Enter** first shows the **terms of use** to accept. At the bottom, **Discover the app in 1 minute** opens the guided tour as you enter; otherwise it stays available in **📖 Documentation**. This presentation only shows once per device (and again after “💥 Reset everything”). On a private installation (club, association), the same presentation has an **Access code** field at the top: you can read everything without the code, but you only get in with it; ask the person who runs the installation. After 5 wrong codes, the field locks for a while (10 min, then longer) and shows the time left. The **🔐 local access code** is not offered at start-up: turn it on if you wish from **⚙️ Configuration** (“🔭 Going further”).
+After the start screen, a short **Welcome** presentation scrolls by: what the app does, how it finds your way without GPS, why nothing leaves your device. Tap **Enter** (at the top or at the bottom) to reach the home screen, or **Discover** to scroll through it. The first time, **Enter** first shows the **terms of use** to accept. At the bottom, **Discover the app in 1 minute** opens the guided tour as you enter; otherwise it stays available in **📖 Documentation**. This presentation only shows once per device (and again after “💥 Reset everything”). On a private installation (club, association), the same presentation has an **Access code** field at the top: you can read everything without the code, but you only get in with it; ask the person who runs the installation. After 5 wrong codes, the field locks for a while (10 min, then longer) and shows the time left. The **🔐 local access code** is not offered at start-up: turn it on if you wish from **⚙️ Configuration** (“🔭 Going further”). On an installation hosted somewhere other than myktamap.fr (club, association), the first screen is shorter: the installation's name and text, **Enter** (or the **Access code** field), the documentation and the languages.
 
 ### 📱 Install the application on Mobile (iPhone/Android)
 
@@ -715,7 +715,7 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 
-Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of everything.
+Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of everything.
 
 ### ⛔ "Inaccessible" zone — blocks the route
 
@@ -737,7 +737,7 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 | 🟨 **1st-mass quarry face** | line | yellow stroke |
 | 🟧 **2nd-mass quarry face** | line | orange stroke |
 
-Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face (2 points minimum) stays an open line.
+Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **one level below the active level**; the others take the active level.
 

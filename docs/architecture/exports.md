@@ -511,11 +511,11 @@ n'y changeait rien**.
 consommateurs, pas de table recopiée.
 
 ```
-largeur_px = 1,5 m × APP_CONFIG.scale (px/m) × ratio     borné à [1, 14] px
+largeur_px = 0,8 m × APP_CONFIG.scale (px/m) × ratio     borné à [1, 14] px
 ```
 
-Mesures sur le relevé de KARMA (2,764 px/m) : aperçu 1 px · export ½ 2,1 px ·
-natif **4,1 px** (contre 10 avant) · HD ×2 8,3 px.
+Mesures sur le relevé de KARMA (2,764 px/m) : aperçu 1 px · export ½ 1,1 px ·
+natif **2,2 px** · HD ×2 4,4 px.
 
 ⚠️ **Plan non calibré** : `weight × scale` est conservé. Sans px/m aucune largeur
 réelle n'est calculable, et les paliers de zoom du repli écran donneraient un

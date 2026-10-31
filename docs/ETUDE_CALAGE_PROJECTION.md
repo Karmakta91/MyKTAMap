@@ -237,7 +237,7 @@ KMZ / GPX / GeoJSON 1,04 m → 0,001 m ; GeoTIFF WGS84 1,90 → 0,024 m, Lambert
 |---|---|---|
 | 1 | Plans déjà calés | Gardés bit à bit ; « Recaler » annonce le déplacement ; nouveau calage → `"local"` |
 | 2 | Modèle | Plan tangent local (GRS80) partout |
-| 3 | Lambert 93 exact (CRS mémorisé) | Plus tard, sur un cas réel (`docs/BACKLOG.md`, Plus tard) |
+| 3 | Lambert 93 exact (CRS mémorisé) | Enterré le 28/10/2026, repris sur un cas réel (`docs/DECISIONS_FERMEES.md`) |
 | 4 | Précision affichée | Oui, « ± X aux coins », calculée sur le plan (Réglages) |
 | 5 | Export GeoTIFF | WGS84 reste le défaut ; résidu annoncé au-delà de 0,5 m |
 | 6 | Import KMZ | Inchangé, documenté |

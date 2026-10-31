@@ -15,8 +15,9 @@
 // la visite guidée) ; relisible à tout moment (pied de page, Documentation) par ouvrirConsultation().
 // ⚠️ Cadrage général traduit (clés legal.*) ; TEXTES DE LOI en FR verbatim (constantes ci-dessous, reflétées
 // dans docs/applications/CGU.md).
-// Expose window.LegalGate : isAccepted(), ouvrirGate({ auDessus }) → Promise (résout à l'acceptation ; auDessus :
-//   par-dessus l'écran Bienvenue, z 100100, quand les conditions viennent après « Entrer »),
+// Expose window.LegalGate : isAccepted(), ouvrirGate({ auDessus, refusable }) → Promise<bool> (true à l'acceptation ;
+//   auDessus : par-dessus l'écran Bienvenue, z 100100, quand les conditions viennent après « Entrer » ; refusable :
+//   bouton « Refuser » + Échap → false, rien n'est mémorisé, la personne reste sur l'écran d'entrée),
 //   ouvrirConsultation(), TERMS_VERSION. 100 % local, aucune surface réseau.
 // =========================
 
@@ -195,7 +196,8 @@
     );
   }
 
-  // Gate BLOQUANTE : résout à l'acceptation (case cochée + bouton).
+  // Gate BLOQUANTE : résout true à l'acceptation (case cochée + bouton). Refusable seulement quand un écran
+  // d'entrée attend derrière (l'appelant le redemande à la prochaine entrée) : sinon rien à quoi revenir.
   function ouvrirGate(opts) {
     return new Promise(function(resolve) {
       // Déjà accepté : no-op défensif (l'appelant teste déjà).
@@ -209,6 +211,7 @@
       const auDessus = !!(opts && opts.auDessus);
       if (auDessus) overlay.style.zIndex = "100150";
       _zTexteIntegral = auDessus ? "100160" : "100001";
+      const refusable = !!(opts && opts.refusable);
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite kta-legal-boite">' +
           '<div class="kta-readme-modal-header">' +
@@ -223,6 +226,8 @@
           '</div>' +
           '<div class="kta-conv-actions kta-legal-actions">' +
             '<p class="kta-legal-hint" id="kta-legal-hint">' + _esc(_t("legal.gate.hint")) + '</p>' +
+            (refusable ? '<button class="kta-btn kta-btn-ghost" id="kta-legal-refuse" type="button">' +
+              _esc(_t("legal.gate.refuse")) + '</button>' : '') +
             '<button class="kta-btn kta-btn-primary kta-legal-accept" id="kta-legal-accept" type="button" disabled' +
               ' aria-describedby="kta-legal-hint">' +
               _esc(_t("legal.gate.accept")) + '</button>' +
@@ -239,14 +244,32 @@
         hint.hidden = cb.checked;
       });
       document.getElementById("kta-legal-readfull").addEventListener("click", _ouvrirTexteIntegral);
-      accept.addEventListener("click", function() {
-        if (!cb.checked) return;  // garde-fou
-        _markAccepted();
+      function _fermer(accepte) {
+        document.removeEventListener("keydown", _surTouche, true);
         try { overlay.remove(); } catch(e) {}
         const full = document.getElementById(FULL_ID);
         if (full) try { full.remove(); } catch(e) {}
+        resolve(accepte);
+      }
+      // Échap ferme d'abord le texte intégral s'il est ouvert, puis seulement refuse.
+      function _surTouche(e) {
+        if (e.key !== "Escape" || document.getElementById(FULL_ID)) return;
+        e.preventDefault();
+        console.log("[LegalGate] CGU refusées (Échap)");
+        _fermer(false);
+      }
+      if (refusable) {
+        document.getElementById("kta-legal-refuse").addEventListener("click", function() {
+          console.log("[LegalGate] CGU refusées");
+          _fermer(false);
+        });
+        document.addEventListener("keydown", _surTouche, true);
+      }
+      accept.addEventListener("click", function() {
+        if (!cb.checked) return;  // garde-fou
+        _markAccepted();
         console.log("[LegalGate] CGU acceptées (v" + TERMS_VERSION + ")");
-        resolve(true);
+        _fermer(true);
       });
     });
   }

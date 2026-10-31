@@ -349,6 +349,7 @@ window.MajPlan = (function () {
       _log("Générateur prérempli : " + res.calques.length + " calque(s), " + res.uids.length + " objet(s) versé(s)");
       if (typeof window.ktaGenerateurMaj !== "function") return;
       await window.ktaGenerateurMaj({
+        planId: entree.id,   // échelle recalibrée de CE plan (config.js > getPlanScale), le plan peut être fermé
         zip: blob ? new File([blob], (entree.name || entree.id) + ".zip", { type: "application/zip" }) : null,
         calques: res.calques.map(function (c) { return { id: c.id, label: c.label, payload: c.payload }; }),
         legende: legende,

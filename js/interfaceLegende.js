@@ -66,7 +66,7 @@ function _ktaLegendeGroupes() {
 }
 
 // ── Sources : ce qu'il faut savoir d'UN plan pour dessiner sa légende ──────────
-// { icons (plan-config > icons, null = message « vide »), urlGroupe(tag), urlAutre(tag), tags[], multiLevel }.
+// { icons (plan-config > icons, ou null : catalogue seul), urlGroupe(tag), urlAutre(tag), tags[], multiLevel }.
 // Plan chargé : état live (PLAN_CONFIG, _iconMap, APP_CONFIG).
 function _sourcePlanCharge() {
   const icons = window.PLAN_CONFIG?.icons || null;
@@ -110,7 +110,7 @@ function _sourcePlanDonnees(d) {
     { "default": window._ktaIconeDefaut || "icon/default.png" }, (d && d.iconUrls) || {});
   const url = function(cle) { return urls[cle] || (cfg.icons || {})[cle] || null; };
   return {
-    icons: cfg.icons ? urls : null, urlGroupe: url, urlAutre: url,
+    icons: urls, urlGroupe: url, urlAutre: url,
     tags: Array.from(new Set(Object.keys(cfg.icons || {}).concat(Object.keys(urls)))),
     multiLevel: !!(d && d.multiLevel)
   };
@@ -121,7 +121,6 @@ function _sourcePlanDonnees(d) {
 function _ktaLegendeCorps(src, opts) {
   const LC = window.LegendCustomization;
   const lectureSeule = !!(opts && opts.lectureSeule);
-  const icons = src.icons;
   function _escHtml(s) { return window.ktaEsc(s); }
 
   // Cascade session > plan > LEGENDE_LABELS.
@@ -175,58 +174,56 @@ function _ktaLegendeCorps(src, opts) {
     </div>`;
   }
 
+  // Plan sans `icons` dans son plan-config : ses points utilisent le catalogue (_iconMap / built-in), la section se
+  // remplit pareil ; rien à montrer → section absente, jamais de message « vide ».
   let contenuIcones = "";
-  if (!icons) {
-    contenuIcones = `<p style="color:var(--kta-texte-3); text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
-  } else {
-    const groupes = _ktaLegendeGroupes();
-    const clesGroupees = groupes.flatMap(function(g) { return g.cles; });
+  const groupes = _ktaLegendeGroupes();
+  const clesGroupees = groupes.flatMap(function(g) { return g.cles; });
 
-    // Sections groupées, filtrées par visibilité.
-    groupes.forEach(function(groupe) {
-      const entrees = groupe.cles
-        .map(function(cle) {
-          if (!_visible("icones", cle)) return null;
-          const url = src.urlGroupe(cle);
-          if (!url) return null;
-          return ligneIcone(cle, url);
-        })
-        .filter(Boolean)
-        .join("");
-      if (entrees) {
-        contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${groupe.titre}</div>${entrees}</div>`;
-      }
-    });
-
-    // « Autres » : tags non groupés (tracker, default, tags propres au plan).
-    // 🩸 Les icônes custom (`cust-…`) sont aussi dans _iconMap (map.js > _enregistrerIconesCustom) : sans ce
-    // filtre, chacune sortait deux fois, ici sous son id brut et dans « Custom » sous son libellé.
-    const estCustom = function(cle) {
-      return !!(LC && typeof LC.findCustomEntry === "function" && LC.findCustomEntry(cle));
-    };
-    const autresEntrees = src.tags
-      .filter(function(cle) { return !clesGroupees.includes(cle) && !estCustom(cle); })
-      .filter(function(cle) { return _visible("icones", cle); })
-      .sort(function(a, b) { return String(a).localeCompare(String(b)); })
-      .map(function(cle) { return ligneIcone(cle, src.urlAutre(cle)); })
+  // Sections groupées, filtrées par visibilité.
+  groupes.forEach(function(groupe) {
+    const entrees = groupe.cles
+      .map(function(cle) {
+        if (!_visible("icones", cle)) return null;
+        const url = src.urlGroupe(cle);
+        if (!url) return null;
+        return ligneIcone(cle, url);
+      })
+      .filter(Boolean)
       .join("");
-    if (autresEntrees) {
-      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees}</div>`;
+    if (entrees) {
+      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${groupe.titre}</div>${entrees}</div>`;
     }
+  });
 
-    // Entrées custom « icones » (plan + session), si visibles et avec iconUrl.
-    if (LC) {
-      const customsIcones = LC.listCustomEntries("icones")
-        .filter(function(e) { return e.visible && e.iconUrl; });
-      if (customsIcones.length > 0) {
-        const html = customsIcones.map(function(e) {
-          return `<div class="kta-legende-ligne">
-            <img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" data-kta-echec="0.3">
-            <span class="kta-legende-label">${e.label}</span>
-          </div>`;
-        }).join("");
-        contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.custom")}</div>${html}</div>`;
-      }
+  // « Autres » : tags non groupés (tracker, default, tags propres au plan).
+  // 🩸 Les icônes custom (`cust-…`) sont aussi dans _iconMap (map.js > _enregistrerIconesCustom) : sans ce
+  // filtre, chacune sortait deux fois, ici sous son id brut et dans « Custom » sous son libellé.
+  const estCustom = function(cle) {
+    return !!(LC && typeof LC.findCustomEntry === "function" && LC.findCustomEntry(cle));
+  };
+  const autresEntrees = src.tags
+    .filter(function(cle) { return !clesGroupees.includes(cle) && !estCustom(cle); })
+    .filter(function(cle) { return _visible("icones", cle); })
+    .sort(function(a, b) { return String(a).localeCompare(String(b)); })
+    .map(function(cle) { return ligneIcone(cle, src.urlAutre(cle)); })
+    .join("");
+  if (autresEntrees) {
+    contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees}</div>`;
+  }
+
+  // Entrées custom « icones » (plan + session), si visibles et avec iconUrl.
+  if (LC) {
+    const customsIcones = LC.listCustomEntries("icones")
+      .filter(function(e) { return e.visible && e.iconUrl; });
+    if (customsIcones.length > 0) {
+      const html = customsIcones.map(function(e) {
+        return `<div class="kta-legende-ligne">
+          <img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" data-kta-echec="0.3">
+          <span class="kta-legende-label">${e.label}</span>
+        </div>`;
+      }).join("");
+      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.custom")}</div>${html}</div>`;
     }
   }
 

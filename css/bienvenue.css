@@ -3,8 +3,9 @@
  * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
-/* bienvenue.css — écran « Bienvenue » (js/bienvenue.js), avec ou sans champ « Code d'accès », chargé par
-   js/unlockGate.js seulement quand cet écran s'affiche : ni ces règles ni les polices ne pèsent sur le reste de l'app.
+/* bienvenue.css — écran « Bienvenue » (js/bienvenue.js), avec ou sans champ « Code d'accès », ou sa ville seule,
+   chargé par js/unlockGate.js seulement quand cet écran s'affiche : ni ces règles ni les polices ne pèsent sur le
+   reste de l'app.
    « La descente » : un fil doré part d'un puits de la rue et descend de station en station le long du bord gauche.
    Toujours sombre (décision produit) : au premier lancement aucun thème n'est encore choisi, l'écran garde le
    style de la page de présentation. Jetons locaux --bv-* ; --kta-accent-texte est redéfini pour les liens de
@@ -184,8 +185,10 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 @keyframes kta-bv-balise { 0% { opacity: 1; } 70% { opacity: 0.15; } 100% { opacity: 0.15; } }
 
 /* ── Stations ── */
-.kta-bv-station { position: relative; background: var(--bv-fond-nuit); }
-.kta-bv-station-sortie { background: var(--bv-fond); }
+/* Même fond que le sous-sol de l'en-tête : les galeries continuent sous la ville, sans marche de couleur au défilement.
+   La sortie s'en détache en fondu (une coupure nette se lit comme un bug au téléphone). */
+.kta-bv-station { position: relative; background: var(--bv-fond-haut); }
+.kta-bv-station-sortie { background: linear-gradient(var(--bv-fond-haut), var(--bv-fond) 200px); }
 .kta-bv-galerie { position: absolute; left: 10px; top: 0; bottom: 0; width: 44px; z-index: 2; pointer-events: none; }
 .kta-bv-galerie-courte { bottom: auto; height: 64px; }
 .kta-bv-galerie svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -309,6 +312,20 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
   .kta-bv-hero { padding-top: 28px; }
   .kta-bv-hero h1 { font-size: 52px; }
 }
+
+/* ── Ville seule (installation community hors présentation, ou gate déléguée) : l'en-tête sans stations. Rien en
+   dessous : pas de défilement. Gate déléguée (kta-bv-connexion, KtaExtensions.ecranAccueil) : SOUS les fenêtres de
+   la gate (z 100001 et plus) qui s'ouvrent par-dessus ; au-dessus du splash. ── */
+html #kta-unlock-overlay.kta-bv.kta-bv-connexion { z-index: 99995; }
+/* Champ du code, son retour et la note « à qui le demander » : la ville cède la hauteur qu'ils prennent, pour que
+   l'écran tienne sans défiler (téléphone 360 × 640 et portable 1366 × 768 compris). Un verrou en cours, plus long,
+   peut encore faire défiler sur un petit écran : rien n'est coupé. */
+html #kta-unlock-overlay.kta-bv.kta-bv-ville-seule.kta-bv-protege { --h-ville: clamp(170px, calc(100svh - 500px), 440px); }
+@media (min-width: 900px) {
+  html #kta-unlock-overlay.kta-bv.kta-bv-ville-seule.kta-bv-protege { --h-ville: clamp(170px, calc(100svh - 490px), 440px); }
+}
+.kta-bv-ville-seule .kta-bv-hero h1 { overflow-wrap: anywhere; }
+.kta-bv-ville-seule .kta-bv-accroche { white-space: pre-line; overflow-wrap: anywhere; }
 
 /* ── « Entrer » : le texte s'efface, la tête de suivi descend le puits, fondu vers l'app ── */
 .kta-bv-voile { position: fixed; inset: 0; background: var(--bv-fond); opacity: 0; pointer-events: none; z-index: 20; }

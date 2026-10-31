@@ -415,11 +415,16 @@ window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   row.style.display = "";
   row.style.opacity = "0.55";
   if (cb) { cb.checked = false; cb.disabled = true; }
-  if (hintEl && window.I18n && window.I18n.t) {
+  if (hintEl) {
     // Nommer iOS quand c'est lui : la personne sait que ni l'appli ni son téléphone ne sont en cause.
     // `cleRaison` : l'appelant nomme une autre cause (« non pris en charge par ce navigateur »).
-    hintEl.textContent = window.I18n.t(cleRaison || (window.ktaEstIos()
-      ? "config.capteurs.refuseIos" : "config.capteurs.refuse"));
+    const cle = cleRaison || (window.ktaEstIos() ? "config.capteurs.refuseIos" : "config.capteurs.refuse");
+    // 🩸 L'accueil appelle ceci avant que les dicos soient chargés (Safari : pas de getBattery) : data-i18n laisse
+    // main.js > _applyI18nDom écrire le texte au chargement et à chaque changement de langue.
+    hintEl.setAttribute("data-i18n", cle);
+    if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(cle)) {
+      hintEl.textContent = window.I18n.t(cle);
+    }
   }
 };
 

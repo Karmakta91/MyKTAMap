@@ -4198,6 +4198,16 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   color: #f4c542;
   text-shadow: 0 2px 18px rgba(244, 197, 66, 0.25);
 }
+/* « -pro » du splash : orange de l'identité pro (le doré reste au titre), révélé pendant l'apparition du titre
+   (2,2 s → 2,8 s) et complet à 3,2 s, pour rester lisible avant la fin du splash (ktaSplash.js >
+   DUREE_LONGUE_MS, 4 s). Le splash est toujours sombre : pas de variante claire. */
+#splashTitle .kta-titre-suffix-pro {
+  color: #e07b1a;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 16px rgba(224, 123, 26, 0.4);
+  animation-duration: 0.7s;
+  animation-delay: 2.5s;
+}
 #splashSubtitle {
   font-size: 14px;
   color: #8892a4;
@@ -4213,6 +4223,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 #splashOverlay:not(.kta-splash-go) .kta-splash-pictos image,
 #splashOverlay:not(.kta-splash-go) .kta-splash-rose,
 #splashOverlay:not(.kta-splash-go) #splashBox,
+#splashOverlay:not(.kta-splash-go) #splashTitle .kta-titre-suffix-pro,
 #splashOverlay:not(.kta-splash-go) #splashLicense {
   animation-play-state: paused;
 }
@@ -4238,6 +4249,8 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   #splashOverlay *::after {
     animation: none !important;
   }
+  /* 🩸 Sans animation, le clip-path de départ cacherait le suffixe pour toujours. */
+  #splashTitle .kta-titre-suffix-pro { clip-path: none; }
 }
 
 /* Crédit Claude (haut-gauche, teinte « clay » #d97757) + version (haut-droite), symétriques. */
@@ -9744,7 +9757,7 @@ body.kta-instance-pro .kta-licence-pro {
   display: inline;
 }
 
-/* Suffixe « -pro » (span après MyKTAMap dans .loader-titre-nom ; jamais dans le splash) : porte aussi
+/* Suffixe « -pro » (span après MyKTAMap dans .loader-titre-nom et #splashTitle) : porte aussi
    .kta-licence-pro, donc invisible en community. */
 .kta-titre-suffix-pro {
   color: #f4c542;

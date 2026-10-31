@@ -62,7 +62,7 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 // 🩸 Des paliers fixes par zoom ignorent l'ÉCHELLE du plan : un front mesure 1 à 2 m, donc 2 px à 1,4 px/m ;
 // à 10 px, des milliers de galeries espacées de quelques mètres font un aplat.
 //     pixels écran = largeur réelle (m) × échelle (px/m) × 2^zoom   (exact en CRS.Simple)
-const FRONT_LARGEUR_M = 1.5;    // largeur physique typique d'un front de taille
+const FRONT_LARGEUR_M = 0.8;    // largeur affichée d'un front (trait de plan), pas son épaisseur au sol
 const FRONT_MIN_PX    = 1;      // plancher : un front invisible serait pire
 const FRONT_MAX_PX    = 14;     // plafond : au-delà c'est un pâté, pas un trait
 
@@ -287,8 +287,8 @@ function initStructures() {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeLabel }), _historyBefore, "structures");
         }
-        // Comme les zones : fermer éteint l'outil (sinon le clic suivant part dans un mode resté armé).
-        if (typeof window._fermerModeStructure === "function") window._fermerModeStructure();
+        // Comme les zones : l'outil reste armé (décision produit), le clic suivant commence une nouvelle
+        // structure du même type ; retoucher l'icône l'éteint.
         return;
       }
     }

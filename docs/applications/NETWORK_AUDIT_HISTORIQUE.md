@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.21.1 (outils de dessin, front de taille, Mode Secours, écran d'arrivée)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Les outils de dessin, l'épaisseur du front de taille, les secteurs du Mode Secours et l'échelle reprise par le Générateur se passent sur l'appareil. Sur une installation reliée, les conditions d'utilisation sont demandées à l'entrée plutôt qu'avant l'écran d'entrée : les échanges avec son serveur restent ceux d'avant. **Une requête de plus au démarrage, sur le même site** : `data/reglages.json`, fichier facultatif où une installation auto-hébergée écrit le titre et la description de son écran d'arrivée (absent sur myktamap.fr : réponse 404, rien d'autre). Rien n'est envoyé, seuls ces textes sont lus.
+
 ### v2.21.0 (écran Bienvenue, notifications poussées d'une installation reliée)
 
 **Aucun domaine nouveau.** L'écran Bienvenue (présentation, polices, icônes) est fait de fichiers du site, gardés hors ligne ; ses liens (documentation en ligne, code source, présentation pro) ne s'ouvrent qu'au toucher, dans un nouvel onglet. La date de prise de vue d'une photo est lue dans le fichier sur l'appareil, rien n'est envoyé. **Rien de nouveau sur myktamap.fr côté notifications : aucune demande d'autorisation, aucun service de push contacté.** Une installation reliée peut désormais proposer, dans la fenêtre 🚨, d'afficher ses alertes et nouveautés sur l'icône de l'app ; seulement après un geste (« Activer »), ton navigateur s'abonne au service de push de son éditeur (Apple, Google, Mozilla ou Microsoft), qui transporte des messages chiffrés pour ton appareil seul sans pouvoir les lire. Le service worker affiche ces messages, texte seul, sans exécuter aucun script de l'installation. Détail : [la page d'audit](NETWORK_AUDIT.md), § notifications poussées.

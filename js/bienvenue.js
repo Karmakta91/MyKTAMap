@@ -6,10 +6,12 @@
 
 // bienvenue.js — écran « Bienvenue » : petite présentation qui défile, puis l'entrée dans l'app.
 // Chargé à la demande par js/unlockGate.js (avec css/bienvenue.css), seulement quand cet écran s'affiche.
-// Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), surDoc(), code? }) → { fermer }.
+// Expose : window.KtaBienvenue.ouvrir({ surEntree(visite), surFin(), surDoc(), avantEntree?, code?, villeSeule?,
+//   connexion? }) → { fermer } (connexion : { fermer, attendreEntree, ouverte }) ; ville(conteneur, opts) (fin).
 //   surDoc : « Lire la documentation » du pied (documentation intégrée, au-dessus de l'écran).
 //   avantEntree : facultatif, () → Promise, attendu au clic sur « Entrer » (ou après un code juste) AVANT surEntree et
-//   la descente : conditions d'utilisation montrées à qui entre, jamais à qui ne fait que passer.
+//   la descente : conditions d'utilisation montrées à qui entre, jamais à qui ne fait que passer. Résolue à false
+//   (conditions refusées) : pas d'entrée, l'écran reste ouvert et se réactive.
 //   surEntree : appelé à l'entrée (« Entrer », ou « Découvrir l'app en 1 minute » : visite = true), AVANT l'animation :
 //   l'appelant mémorise l'accès tout de suite (un rechargement pendant la descente ne remontre pas l'écran).
 //   surFin : animation finie, écran retiré.
@@ -17,6 +19,15 @@
 //   protégée. L'en-tête porte le champ « Code d'accès » ; on lit tout sans code, mais seul un essai « ok » fait entrer
 //   (les autres « Entrer » remontent au champ). Verrou : champ désactivé, compte à rebours dans sa zone, écran ouvert.
 //   🔒 Ni contacts de l'auteur ni pastille pro sur cet écran : le code se demande à qui gère l'installation.
+//   villeSeule { titre, description, sousTitre } : la ville seule (en-tête sans stations, ni pied, ni visite, ni
+//   pastille pro, ni contacts, ni lien source) : rien ne défile. Titre : titre, sinon « MyKTAMap » ; description :
+//   description, sinon sousTitre, sinon home.tagline. titre / description { code: texte } déjà normalisés
+//   (KtaExtensions.normaliserAccueil), choisis au rendu (langue, puis fr, puis le premier), posés en textContent.
+//   - sans `connexion` (installation community hors présentation, unlockGate.js) : « Entrer », ou le champ du code
+//     si `code` ; même entrée que l'écran complet (avantEntree, surEntree, descente, surFin) ;
+//   - connexion: true (gate déléguée, KtaExtensions.ecranAccueil) : « Me connecter » n'entre PAS : il résout
+//     contrôleur.attendreEntree() et rend l'écran inerte ; l'appelant ouvre sa fenêtre par-dessus (écran sous ses
+//     fenêtres, z 99995) et ferme l'écran. Jamais de champ de code dans ce mode.
 // Mouvement (galeries pilotées au défilement, tête de suivi, flash des repères) : moteur de la page de présentation,
 //   adapté à un écran qui défile en interne (scrollTop / clientHeight de l'overlay, pas de la fenêtre).
 // ⚠️ contrat : chemins des galeries en M / V / H absolus dans 44 × 1000 ; seules les ordonnées sont réécrites.
@@ -173,9 +184,12 @@
       aile(-24, 14, 14, 5, "kta-bv-aile-3") + '</g>';
   }
 
-  // Immeubles (motif répété et retourné), fenêtres, arbres : un seul bloc de 1200 unités.
-  const BLOC =
-    '<g fill="#151b2c" stroke="#2a3348" stroke-width="2"><path d="M0 250 h70 v-60 l20 -18 l20 18 v60 h10 Z"/>' +
+  // Immeubles (motif répété et retourné), fenêtres, arbres : un seul bloc de 1200 unités. classe : posée sur chaque
+  // fenêtre éclairée (ville(…, { fenetres }) : blocs écrits en clair, chaque fenêtre dans la page).
+  function _bloc(classe) {
+    const c = classe ? ' class="' + classe + '"' : "";
+    return '<g fill="#151b2c" stroke="#2a3348" stroke-width="2">' +
+    '<path d="M0 250 h70 v-60 l20 -18 l20 18 v60 h10 Z"/>' +
     '<path d="M120 250 V150 h110 V250 Z"/><path d="M120 150 l15 -22 h80 l15 22 Z"/><path d="M245 250 V185 h80 V250 Z"/>' +
     '<path d="M340 250 V95 l35 -60 l35 60 V250 Z"/><path d="M425 250 V165 h130 V250 Z"/>' +
     '<path d="M425 165 l18 -26 h94 l18 26 Z"/><path d="M570 250 V200 h60 V250 Z"/><path d="M690 250 V140 h120 V250 Z"/>' +
@@ -190,14 +204,15 @@
       [445, 180, 0.7], [480, 180, 0.35], [515, 212, 0.7], [710, 160, 0.6], [745, 196, 0.7], [780, 160, 0.35],
       [845, 196, 0.7], [880, 196, 0.5], [950, 146, 0.7], [990, 182, 0.35], [1030, 146, 0.7], [1110, 208, 0.6],
       [1150, 208, 0.7]].map(function(f) {
-      return '<rect x="' + f[0] + '" y="' + f[1] + '" width="14" height="18" opacity="' + f[2] + '"/>';
-    }).join("") + '<rect x="366" y="120" width="12" height="22" opacity=".6"/></g>' +
+      return '<rect' + c + ' x="' + f[0] + '" y="' + f[1] + '" width="14" height="18" opacity="' + f[2] + '"/>';
+    }).join("") + '<rect' + c + ' x="366" y="120" width="12" height="22" opacity=".6"/></g>' +
     '<g fill="#1b3a2e" stroke="#2f5a46" stroke-width="2">' + [[595, 226, 16], [650, 230, 13], [1075, 232, 12],
       [238, 228, 14], [420, 224, 17], [445, 232, 11], [820, 226, 15], [922, 230, 12], [1185, 228, 14]].map(function(a) {
       return '<circle cx="' + a[0] + '" cy="' + a[1] + '" r="' + a[2] + '"/>';
     }).join("") + '</g>' +
     '<g stroke="#2f5a46" stroke-width="3"><path d="M595 242 V250 M650 243 V250 M1075 244 V250 M238 242 V250 ' +
     'M420 241 V250 M445 243 V250 M820 241 V250 M922 242 V250 M1185 242 V250"/></g>';
+  }
 
   // Icônes de l'app posées sur le réseau : puits sans échelon (jps), à échelons (jpe), puits de bouche (pb), maisons.
   // Montagnes au loin (deux plans, neiges éternelles) : motif de 1200 unités raccordé bord à bord, répété.
@@ -279,8 +294,24 @@
     ["jpe", 682, 332], ["jpe", 1642, 332], ["jpe", 1882, 332], ["jpe", 2842, 332], ["jpe", 3082, 332],
     ["pb", 1042, 292], ["house", -418, 452], ["house", 342, 452], ["house", 2262, 462]];
 
-  function _ville() {
-    return '<svg class="kta-bv-ville" viewBox="-2400 -110 6000 630" preserveAspectRatio="xMidYMax slice" ' +
+  // Les cinq blocs de la rue (deux retournés). fenetres : classe des fenêtres → blocs écrits en clair au lieu de
+  // <use>, pour qu'un moteur de défilement trouve chaque fenêtre dans la page (un clone de <use> la lui cacherait).
+  const RUE = ["translate(-2400 0)", "scale(-1 1)", "", "translate(2400 0) scale(-1 1)", "translate(2400 0)"];
+  function _rue(fenetres) {
+    return RUE.map(function(tr) {
+      const attr = tr ? ' transform="' + tr + '"' : "";
+      return fenetres ? '<g' + attr + '>' + _bloc(fenetres) + '</g>' : '<use href="#kta-bv-bloc"' + attr + '/>';
+    }).join("");
+  }
+
+  // Lune de la scène et vol d'oiseaux : décalages en x de l'écran Bienvenue (ville(…, { lune, oiseaux }) les change).
+  const VILLE_DEFAUT = { prefixe: "kta-bv-", fenetres: "", lune: -260, oiseaux: 640 };
+  // o : options déjà vérifiées (ville > options), absentes = celles de l'écran. Ids écrits en kta-bv-, puis renommés
+  // (id="…" et références #…) si un autre préfixe est demandé ; les classes gardent kta-bv- (css/bienvenue.css).
+  // ⚠️ contrat : _ville() sans argument rend le dessin de l'écran (le site de doc l'appelle ainsi, comme _luneHaut).
+  function _ville(o) {
+    o = o || VILLE_DEFAUT;
+    const s = '<svg class="kta-bv-ville" viewBox="-2400 -110 6000 630" preserveAspectRatio="xMidYMax slice" ' +
       'aria-hidden="true" focusable="false"><defs>' +
       '<radialGradient id="kta-bv-halo-scene"><stop offset="0.38" stop-color="#efe6cf" stop-opacity=".32"/>' +
       '<stop offset="0.6" stop-color="#efe6cf" stop-opacity=".1"/><stop offset="1" stop-color="#efe6cf" stop-opacity="0"/>' +
@@ -296,20 +327,18 @@
       '<linearGradient id="kta-bv-brume" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#8e98b5" stop-opacity="0"/><stop offset=".6" stop-color="#8e98b5" stop-opacity=".16"/>' +
       '<stop offset="1" stop-color="#8e98b5" stop-opacity=".05"/></linearGradient>' +
-      '<g id="kta-bv-bloc">' + BLOC + '</g><g id="kta-bv-lampadaire">' + LAMPADAIRE + '</g></defs>' +
+      '<g id="kta-bv-bloc">' + _bloc("") + '</g><g id="kta-bv-lampadaire">' + LAMPADAIRE + '</g></defs>' +
       _ciel() +
-      '<g class="kta-bv-lune-scene" transform="translate(-260 0)">' +
+      '<g class="kta-bv-lune-scene" transform="translate(' + o.lune + ' 0)">' +
       '<circle class="kta-bv-lueur" cx="1118" cy="-40" r="119.6" fill="url(#kta-bv-halo-scene)"/>' +
       '<circle cx="1118" cy="-40" r="46" fill="#efe6cf"/>' + _crateres(CRATERES_SCENE) + '</g>' +
-      '<g class="kta-bv-lune-scene" transform="translate(640 -38)">' + _oiseaux("kta-bv-vol") + '</g>' +
+      '<g class="kta-bv-lune-scene" transform="translate(' + o.oiseaux + ' -38)">' + _oiseaux("kta-bv-vol") + '</g>' +
       // Montagnes à mi-hauteur, posées sur la même ligne : un pays minier, pas la haute montagne.
       '<g transform="translate(0 125) scale(1 .5)"><g id="kta-bv-montagnes">' + MONTAGNES + '</g>' +
       '<use href="#kta-bv-montagnes" transform="translate(-2400 0)"/><use href="#kta-bv-montagnes" transform="translate(-1200 0)"/>' +
       '<use href="#kta-bv-montagnes" transform="translate(1200 0)"/><use href="#kta-bv-montagnes" transform="translate(2400 0)"/>' +
       '</g>' + ARRIERE + CHEVALEMENT +
-      '<use href="#kta-bv-bloc" transform="translate(-2400 0)"/><use href="#kta-bv-bloc" transform="scale(-1 1)"/>' +
-      '<use href="#kta-bv-bloc"/><use href="#kta-bv-bloc" transform="translate(2400 0) scale(-1 1)"/>' +
-      '<use href="#kta-bv-bloc" transform="translate(2400 0)"/>' +
+      _rue(o.fenetres) +
       '<g class="kta-bv-lampes">' + LAMPES + '</g>' +
       _pieton(520, false) + _pieton(-260, false, "kta-bv-pieton-2") + _pieton(1500, true, "kta-bv-pieton-3") +
       _pieton(140, false, "kta-bv-pieton-4") +
@@ -329,6 +358,7 @@
       '<g class="kta-bv-reseau">' + RESEAU.map(function(r) {
         return '<image href="icon/' + r[0] + '.png" x="' + r[1] + '" y="' + r[2] + '" width="36" height="36"/>';
       }).join("") + '</g></svg>';
+    return o.prefixe === VILLE_DEFAUT.prefixe ? s : s.replace(/(id="|#)kta-bv-/g, "$1" + o.prefixe);
   }
 
   function _luneHaut() {
@@ -432,25 +462,26 @@
   function _actionsHaut(protege) {
     const decouvrir = '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="decouvrir">' +
       t("bienvenue.decouvrir") + '</button>';
-    if (protege) {
-      return '<form class="kta-bv-code" data-bv-code novalidate>' +
-          '<div class="kta-bv-code-ligne">' +
-            '<input type="password" class="kta-bv-code-champ" id="kta-bv-code-champ" aria-label="' +
-              t("gate.placeholder") + '" placeholder="' + t("gate.placeholder") + '" autocomplete="off" ' +
-              'autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="kta-bv-code-retour">' +
-            '<button type="submit" class="kta-bv-btn kta-bv-btn-or kta-bv-code-entrer">' + t("bienvenue.entrer") +
-              FLECHE + '</button>' +
-          '</div>' +
-          '<div class="kta-bv-code-retour" id="kta-bv-code-retour" aria-live="polite"></div>' +
-        '</form>' +
-        '<div class="kta-bv-actions">' + decouvrir + '</div>' +
-        '<p class="kta-bv-code-note">' + t("gate.info") + '</p>';
-    }
+    if (protege) return _formulaireCode() + '<div class="kta-bv-actions">' + decouvrir + '</div>' +
+      '<p class="kta-bv-code-note">' + t("gate.info") + '</p>';
     return '<div class="kta-bv-actions">' + _boutonEntrer() + decouvrir +
       // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
-      '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/presentation/" target="_blank" ' +
+      '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/?presentation" target="_blank" ' +
         'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
     '</div>';
+  }
+  // Champ « Code d'accès » et son « Entrer » (zone remplie par ouvrir > rendreZoneCode) : écran complet et ville seule.
+  function _formulaireCode() {
+    return '<form class="kta-bv-code" data-bv-code novalidate>' +
+        '<div class="kta-bv-code-ligne">' +
+          '<input type="password" class="kta-bv-code-champ" id="kta-bv-code-champ" aria-label="' +
+            t("gate.placeholder") + '" placeholder="' + t("gate.placeholder") + '" autocomplete="off" ' +
+            'autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="kta-bv-code-retour">' +
+          '<button type="submit" class="kta-bv-btn kta-bv-btn-or kta-bv-code-entrer">' + t("bienvenue.entrer") +
+            FLECHE + '</button>' +
+        '</div>' +
+        '<div class="kta-bv-code-retour" id="kta-bv-code-retour" aria-live="polite"></div>' +
+      '</form>';
   }
 
   function _gabarit(protege) {
@@ -598,6 +629,48 @@
         '" title="' + t("bienvenue.urgence") + '"><span aria-hidden="true">🚨</span></button>' +
       '<div class="kta-bv-voile" aria-hidden="true"></div>' +
     '</div>';
+  }
+
+  // Ville seule : en-tête de l'écran (barre, ville, puits) sans stations ni pied. Titre et description posés ensuite
+  // en textContent (ouvrir > dessinerVille) : jamais de HTML venu de l'installation. mode : "libre" (« Entrer »),
+  // "protege" (champ du code), "connexion" (« Me connecter », gate déléguée : pas de descente, donc ni fil ni tête).
+  function _gabaritVille(mode) {
+    const doc = '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="doc" title="' + t("gate.docTitle") +
+      '">' + t("gate.docBtn") + '</button>';
+    const actions = mode === "protege"
+      ? _formulaireCode() + '<div class="kta-bv-actions">' + doc + '</div>' +
+        '<p class="kta-bv-code-note">' + t("gate.info") + '</p>'
+      : '<div class="kta-bv-actions">' +
+          '<button type="button" class="kta-bv-btn kta-bv-btn-or" data-bv="entrer">' +
+            t(mode === "connexion" ? "bienvenue.connecter" : "bienvenue.entrer") + FLECHE + '</button>' + doc +
+        '</div>';
+    return '<div class="kta-bv-page">' +
+      '<header class="kta-bv-entete">' +
+        '<div class="kta-bv-barre"><p class="kta-bv-logo">MyKTAMap</p>' + _langues() + '</div>' +
+        '<div class="kta-bv-hero">' +
+          '<h1 id="kta-bv-titre"></h1>' +
+          '<p class="kta-bv-accroche"></p>' +
+          actions +
+          _luneHaut() +
+        '</div>' +
+        _ville() +
+        '<div class="kta-bv-entree" aria-hidden="true">' +
+          '<div class="kta-bv-entree-galerie"></div>' +
+          (mode === "connexion" ? "" : '<div class="kta-bv-fil-entree"></div>') +
+          '<span class="kta-bv-repere">' + _img("peo.png", 40) + '</span>' +
+          (mode === "connexion" ? "" :
+            '<img class="kta-bv-tete-entree" src="icon/iconetrack.png" alt="" width="30" height="30">') +
+          _speleos() +
+        '</div>' +
+      '</header>' +
+    '</div>';
+  }
+  // { code: texte } → texte de la langue de l'app, sinon fr, sinon le premier ; "" si rien.
+  function _texteLangue(v) {
+    if (!v || typeof v !== "object") return "";
+    const l = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+    const cles = Object.keys(v);
+    return String(v[l] || v.fr || (cles.length ? v[cles[0]] : "") || "");
   }
 
   // ── Mouvement ───────────────────────────────────────────────────────────
@@ -864,9 +937,13 @@
     // Instance protégée : l'appelant fournit la vérification (unlockGate.js > _essayerCode), jamais réécrite ici.
     const code = (opts.code && typeof opts.code.essayer === "function" && typeof opts.code.etat === "function")
       ? opts.code : null;
+    const ville = (opts.villeSeule && typeof opts.villeSeule === "object") ? opts.villeSeule : null;
+    // Gate déléguée : « Me connecter » rend la main à l'appelant (attendreEntree), jamais avec un champ de code.
+    const connexion = !!(ville && opts.connexion === true && !code);
     const ecranEl = document.createElement("div");
     ecranEl.id = "kta-unlock-overlay";
-    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "");
+    ecranEl.className = "kta-bv" + (code ? " kta-bv-protege" : "") + (ville ? " kta-bv-ville-seule" : "") +
+      (connexion ? " kta-bv-connexion" : "");
     ecranEl.setAttribute("role", "dialog");
     ecranEl.setAttribute("aria-modal", "true");
     ecranEl.setAttribute("aria-labelledby", "kta-bv-titre");
@@ -875,6 +952,9 @@
     // « Découvrir l'app en 1 minute » touché avant le code : la visite est demandée à l'entrée.
     let visiteVoulue = false;
     let vigieEntete = null, remontee = null;
+    // Ville seule de connexion : clic sur « Me connecter » en attente d'attendreEntree() (demandee) ou attente posée
+    // (attente).
+    let ferme = false, demandee = false, attente = null;
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
     const surReduit = function() { if (mq.matches && mvt) mvt.etatFinal(); _figerPlanches(ecranEl); };
 
@@ -959,18 +1039,10 @@
       vigieEntete.observe(entete);
     }
 
-    function dessiner() {
-      interrompreRemontee();
-      if (mvt) mvt.arreter();
-      ecranEl.innerHTML = _gabarit(!!code);
-      ecranEl.scrollTop = 0;
-      mvt = _mouvement(ecranEl);
-      _figerPlanches(ecranEl);
-      rendreZoneCode();
-      surveillerEntete();
-      // Focus sur l'écran lui-même (dialogue) : le clavier part de là (Tab → « Entrer », flèches → défilement),
-      // sans anneau de focus imposé sur un bouton au toucher, ni clavier virtuel ouvert sur le champ du code.
-      // Instance protégée sur PC (souris, pas de clavier virtuel) : focus sur le champ, le code se tape directement.
+    // Focus à l'ouverture sur l'écran lui-même (dialogue) : le clavier part de là, sans anneau de focus imposé sur un
+    // bouton au toucher, ni clavier virtuel ouvert sur le champ du code. Instance protégée sur PC (souris, pas de
+    // clavier virtuel) : focus sur le champ, le code se tape directement.
+    function focusOuverture() {
       setTimeout(function() {
         const input = champ();
         const pc = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
@@ -979,7 +1051,54 @@
       }, 100);
     }
 
+    function dessinerVille() {
+      ecranEl.innerHTML = _gabaritVille(connexion ? "connexion" : (code ? "protege" : "libre"));
+      ecranEl.scrollTop = 0;
+      // Fil du puits replié (--entree absent = 0) jusqu'à la descente, comme l'écran complet en haut de page.
+      if (!connexion) ecranEl.classList.add("kta-bv-js-fil");
+      ecranEl.querySelector("#kta-bv-titre").textContent = _texteLangue(ville.titre) || "MyKTAMap";
+      ecranEl.querySelector(".kta-bv-accroche").textContent = _texteLangue(ville.description) ||
+        (typeof ville.sousTitre === "string" ? ville.sousTitre : "") || t("home.tagline");
+      _figerPlanches(ecranEl);
+      rendreZoneCode();
+      if (ecranEl.inert) ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = true; });
+      focusOuverture();
+    }
+
+    // Ville seule de connexion : écran inerte, boutons désactivés, le temps que l'appelant ait la main (fenêtre par-dessus).
+    function bloquerVille(oui) {
+      ecranEl.inert = oui;
+      ecranEl.querySelectorAll("button").forEach(function(b) { b.disabled = oui; });
+      if (!oui) { try { ecranEl.focus({ preventScroll: true }); } catch (e) { ecranEl.focus(); } }
+    }
+    function entreeVille() {
+      if (ferme || ecranEl.inert) return;
+      bloquerVille(true);
+      if (attente) { const r = attente; attente = null; r(); } else demandee = true;
+    }
+    function attendreEntree() {
+      if (ferme) return Promise.resolve();
+      if (demandee) { demandee = false; return Promise.resolve(); }
+      bloquerVille(false);
+      return new Promise(function(r) { attente = r; });
+    }
+
+    function dessiner() {
+      interrompreRemontee();
+      if (mvt) mvt.arreter();
+      if (ville) { dessinerVille(); return; }
+      ecranEl.innerHTML = _gabarit(!!code);
+      ecranEl.scrollTop = 0;
+      mvt = _mouvement(ecranEl);
+      _figerPlanches(ecranEl);
+      rendreZoneCode();
+      surveillerEntete();
+      focusOuverture();
+    }
+
     function fermer() {
+      ferme = true;
+      if (attente) { const r = attente; attente = null; r(); }
       interrompreRemontee();
       if (vigieEntete) vigieEntete.disconnect();
       clearTimeout(minuteur);
@@ -997,11 +1116,21 @@
       sortie = true;
       interrompreRemontee();
       clearInterval(rebours);
-      ecranEl.querySelectorAll("button, input").forEach(function(b) { b.disabled = true; });
+      const actifs = Array.prototype.filter.call(ecranEl.querySelectorAll("button, input"),
+        function(b) { return !b.disabled; });
+      actifs.forEach(function(b) { b.disabled = true; });
       const avant = typeof opts.avantEntree === "function"
-        ? Promise.resolve().then(opts.avantEntree).catch(function(e) { console.warn("[Bienvenue] avantEntree :", e); })
-        : Promise.resolve();
-      avant.then(function() { descendre(visite); });
+        ? Promise.resolve().then(opts.avantEntree)
+          .catch(function(e) { console.warn("[Bienvenue] avantEntree :", e); return true; })
+        : Promise.resolve(true);
+      avant.then(function(ok) {
+        if (ok !== false) { descendre(visite); return; }
+        sortie = false;
+        actifs.forEach(function(b) { b.disabled = false; });
+        const input = champ();
+        if (input) input.value = "";
+        retour("", "");
+      });
     }
 
     function descendre(visite) {
@@ -1074,6 +1203,7 @@
       const action = cible.getAttribute("data-bv");
       if (action === "remonter") remonter();
       else if (action === "doc") { if (typeof opts.surDoc === "function") opts.surDoc(); }
+      else if (action === "entrer" && connexion) entreeVille();
       else if (action === "entrer") { if (code) allerAuChamp(false); else entrer(false); }
       else if (action === "visite") { if (code) allerAuChamp(true); else entrer(true); }
       else if (action === "decouvrir") {
@@ -1092,8 +1222,33 @@
       if (mq.addEventListener) mq.addEventListener("change", surReduit);
       else if (mq.addListener) mq.addListener(surReduit);
     }
+    if (connexion) {
+      // Un clic avant le premier attendreEntree() est gardé (demandee) : l'appel suivant se résout aussitôt.
+      return { fermer: fermer, attendreEntree: attendreEntree, ouverte: function() { return !ferme; } };
+    }
     return { fermer: fermer };
   }
 
-  window.KtaBienvenue = { ouvrir: ouvrir };
+  // ── La ville seule, pour une autre page ──
+  // ville(conteneur, opts?) → <svg> | null : dessine la ville de cet écran dans conteneur (son contenu est remplacé).
+  // opts { prefixe, fenetres, lune, oiseaux } : préfixe des ids du dessin (défaut kta-bv- : deux villes dans un même
+  // document, ou une ville à côté de cet écran, ont chacune le leur) ; fenetres : classe posée sur chaque fenêtre,
+  // blocs écrits en clair (sans elle : <use>, comme ici) ; lune, oiseaux : décalage en x de la lune de la scène et
+  // du vol d'oiseaux. Un nom (préfixe, classe) hors [a-z0-9-] ou un nombre non fini : ignoré, défaut de cet écran.
+  // ⚠️ contrat : classes kta-bv-* inchangées, animées par css/bienvenue.css (à charger avec ce script).
+  function ville(conteneur, opts) {
+    if (!conteneur || typeof conteneur.appendChild !== "function") return null;
+    const o = opts && typeof opts === "object" ? opts : {};
+    const nom = function(v) { return typeof v === "string" && /^[a-z][a-z0-9-]{0,40}$/i.test(v) ? v : ""; };
+    const nombre = function(v, d) { return Number.isFinite(v) ? v : d; };
+    const tampon = document.createElement("div");
+    tampon.innerHTML = _ville({ prefixe: nom(o.prefixe) || VILLE_DEFAUT.prefixe, fenetres: nom(o.fenetres),
+      lune: nombre(o.lune, VILLE_DEFAUT.lune), oiseaux: nombre(o.oiseaux, VILLE_DEFAUT.oiseaux) });
+    const svg = tampon.firstChild;
+    conteneur.textContent = "";
+    conteneur.appendChild(svg);
+    return svg;
+  }
+
+  window.KtaBienvenue = { ouvrir: ouvrir, ville: ville };
 })();

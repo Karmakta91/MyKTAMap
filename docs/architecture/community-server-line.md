@@ -38,6 +38,8 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Masquer le Générateur | `index.json > config.disableGenerator` | v1.73.0 |
 | Étiquettes proposées par plan | `index.json > plans[].tags` (12 × 24 car.) | v1.90.1 |
 | Mot de passe d'accès de l'instance | `index.json > config.accessHash` (SHA-256) | v1.90.6 |
+| Écran d'arrivée (ville seule) : titre et description | `data/reglages.json > accueil` (recommandé), sinon `index.json > config.accueil` | — |
+| Réglages de l'installation hors du fichier livré | `data/reglages.json` : `accueil` et `subtitle` **seulement** | — |
 | Dossiers de « Mes plans » proposés | `index.json > folders[{ id, name, color, order, rule? }]` + `plans[].folder` — verrouillés tant que déclarés, libérés (jamais supprimés) sinon ; l'utilisateur déplace toujours ses plans | v1.95.0 |
 | Ouvrir la liste en mode Dossiers | `index.json > config.plansViewDefault: "folders"` — seulement tant que l'utilisateur n'a pas choisi lui-même | v1.95.0 |
 | Ne pas charger les plans du site au démarrage | `index.json > config.sitePlansHiddenDefault: true` — défaut de « Ne pas charger les plans du site » (⚙️ Configuration) tant que l'utilisateur n'a pas choisi ; sans effet avec `serverPlansOnly` (installation où les plans vivent en base, demande KARMA 05/10/2026) | v2.9.0 |
@@ -59,17 +61,67 @@ photos restent locales et exportables).
 > ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.10.3)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
 > les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
 > `scripts/check-extensions.js`). Signatures (API v1) :
-> `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
+> `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir({ avantEntree? }) → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
 > exportAutorise(planId) → bool | { auteur }, publierPlan({ blob, nom, progression? }) → Promise, publierVersion: {
 > autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
-> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts)` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
+> ⚖️ **Conditions d'utilisation et gate déléguée** : sur une installation reliée (`state: "on"`) dont les conditions
+> ne sont pas acceptées, `main.js` ne les ouvre **pas** avant la gate : il passe `avantEntree` (`() → Promise<bool>`) à
+> `gateDeleguee({ avantEntree })`, qui le transmet seul à `gate.ouvrir()` (sinon `ouvrir({})`). La gate l'attend quand la
+> personne **entre** (connexion ou demande d'accès validée), avant tout envoi : `true` = acceptées, on continue ;
+> `false` = refusées, la gate reste sur son écran (présentation, porte), rien n'est mémorisé, elle le rappelle à
+> l'entrée suivante. Les conditions s'affichent refusables, au-dessus de l'écran (`LegalGate.ouvrirGate({ auDessus:
+> true, refusable: true })`, z 100150). Une gate qui l'ignore, ou franchie sans écran (session reprise), est
+> rattrapée par le filet de `main.js` après elle, sans « Refuser ». Sans extension : sans effet (`check-extensions.js`).
+> 🏙️ **Écran d'arrivée : présentation complète ou ville seule** — le **domaine** décide
+> (`UnlockGate.presentationComplete(hôte)`, liste unique dans `js/unlockGate.js`, exécutée par
+> `check-gate-instance.js` §11) : `myktamap.fr`, `www.myktamap.fr`, `dev.myktamap.fr`, `localhost` et `127.0.0.1` gardent l'écran Bienvenue
+> complet ; **tout autre hôte** (installation auto-hébergée) n'a que sa **ville seule** (`bienvenue.js`, option
+> `villeSeule`, `security-legal.md` §36.8) : titre, description, « Entrer » (ou le champ « Code d'accès » si
+> `accessHash`), 📖 et langues ; ni défilement, ni pastille pro, ni lien source, ni contacts. Même entrée que l'écran
+> complet (conditions refusables, descente, accès mémorisé) ; repli : la carte centrée.
+> **Textes** (`KtaExtensions.textesAccueil(config, réglages)`, communs au community et à une gate déléguée), par champ :
+> `data/reglages.json > accueil`, puis `index.json > config.accueil`, puis les défauts — titre « MyKTAMap » ;
+> description : le sous-titre (`subtitle` des réglages, puis de l'index), puis la tagline traduite (`home.tagline`).
+> `accueil = { titre?, description? }`, chacun **chaîne** ou **objet par langue** `{ fr, en, es }`, choisi au rendu
+> (langue de l'app, puis `fr`, puis la première), texte seul (`textContent`), titre ≤ 80 et description ≤ 400
+> caractères, valeur mal formée ignorée (`normaliserAccueil`, jamais une cause d'état « invalide »). Une seule clé,
+> `accueil`, hors de `serverConnection`. ConfAdmin écrit ces champs (titre, description, « Autres langues ») dans
+> `config.accueil` et dans un `reglages.json` téléchargeable (`check-connexion-serveur.js` §6b).
+> 📄 **`data/reglages.json`** : fichier **facultatif** posé par qui héberge, **jamais livré ni suivi par Git** (l'index
+> l'est côté pro : un réglage écrit dedans entrerait en conflit à chaque mise à jour). Lu par `js/ktaInstance.js` avec
+> l'index (même délai, mémoire `myktamap_instance_reglages_v1` rejouée hors ligne ; `sw.js` : réseau d'abord, gardé en
+> cache, un 404 du serveur vide le cache). Absent : 404 nominal, aucune erreur. 🔒 **Seules `accueil` et `subtitle`
+> en sont lues** (`KtaInstance.filtrerReglages`) : jamais `serverConnection`, `plans`, `accessHash` ni aucune autre
+> clé — un fichier ajouté à côté de l'index ne peut ni ouvrir une instance protégée, ni greffer un module, ni déclarer
+> un plan (`check-gate-instance.js`, `checkup-accueil-hote.js`). Son `subtitle` remplace celui de l'index partout
+> (`KtaInstance.etat().config`).
+> 🏙️ **Écran d'accueil d'une gate déléguée** : `KtaExtensions.ecranAccueil()` → Promise<`{ attendreEntree() →
+> Promise, fermer(), ouverte() → bool }` | `null`>. La même ville seule, en mode **connexion** (`connexion: true`) :
+> « Me connecter » au lieu d'« Entrer », jamais de champ de code. `attendreEntree()` se résout au prochain clic sur
+> « Me connecter » (un clic antérieur est gardé) : l'écran devient inerte, la gate ouvre sa fenêtre **par-dessus**
+> (écran à z 99995, sous les fenêtres à partir de 100001) ; la rappeler le réactive (retour de la fenêtre, conditions
+> refusées). L'écran reste jusqu'à `fermer()`, qui résout une attente en cours. `null` : aucune extension avec `gate`,
+> ou écran indisponible (fichiers absents, plus de 4 s : `UnlockGate.chargerBienvenue`) → la gate garde sa porte.
+> Indépendant du domaine. Sans extension : sans effet (`check-extensions.js` §9).
+> 🏙️ **La ville seule, dans une page de l'extension** : `KtaExtensions.ville(conteneur, opts?)` → Promise<`<svg>` |
+> `null`>. Charge l'écran Bienvenue (`UnlockGate.chargerBienvenue`, 4 s) puis `KtaBienvenue.ville` dessine la ville
+> de l'écran dans `conteneur` (contenu remplacé) : une seule ville pour le community et l'extension. `opts` :
+> `prefixe` (ids du dessin, défaut `kta-bv-` : une ville à côté de l'écran Bienvenue dans le même document en prend
+> un autre), `fenetres` (classe posée sur chaque fenêtre éclairée, blocs écrits en clair au lieu de `<use>` : un
+> moteur de défilement les trouve dans la page), `lune`, `oiseaux` (décalage en x de la lune de la scène et du vol
+> d'oiseaux). Nom hors `[a-z0-9-]` ou nombre non fini : ignoré. ⚠️ Les classes du dessin restent `kta-bv-*`
+> (`kta-bv-ville`, `kta-bv-lune-scene`, `kta-bv-reseau`, `kta-bv-lampes` / `kta-bv-lampe`…), animées par
+> `css/bienvenue.css` chargée avec ; la hauteur suit `--h-ville` de la page. `null` : aucune extension avec `gate`,
+> ou fichiers absents / trop lents → la page s'affiche sans ville. Sans extension : sans effet (`check-extensions.js`
+> §9).
 > 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
 > Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
 > 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,
@@ -245,8 +297,12 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   restaurée (`main.js > lancerApplication` appelle `planCharge(id)` après `SessionPersist.onPlanLoaded`, émet
   **`mktm:plan-pret`** `{ planId }`) ; `quitterPlan` le remet à faux. 🩸 Avant, la mémoire tient les objets du plan
   quitté (ou rien) puis `initEditor` / la restauration les remplacent : un lot appliqué là était écrasé sans bruit
-  (curseur avancé, objets jamais reçus), et `changementsDepuis` aurait donné au nouveau plan les objets de l'ancien
-  — il rend des listes vides tant que le plan n'est pas prêt. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
+  (curseur avancé, objets jamais reçus), et `changementsDepuis` aurait donné au nouveau plan les objets de l'ancien.
+  **Journal sortant** : `changementsDepuis(ts, planId?)` rend `null` tant qu'aucun plan n'est prêt (chargement,
+  accueil) et quand le plan prêt n'est pas `planId` (id du registre que l'extension croit ouvert) — ⚠️ jamais des
+  listes vides à la place : « rien depuis ts » ferait avancer le curseur d'envoi de l'extension sur des
+  modifications jamais lues (perdues pour l'équipe), ou enverrait les objets d'un autre plan. `null` = l'extension
+  garde son curseur et relira au tour suivant. **Calque ouvert à la modification** : l'état « rapatrié » est local à l'appareil ;
   quand un objet reçu porte la marque `_srcCalque` (copie d'un calque), ou qu'une copie d'ici disparaît, l'état
   se recale sur les marques (`CalqueSession.resynchroniser()`, comme à l'import d'une session) : calque d'origine
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
@@ -670,7 +726,8 @@ navigateur.
   CONFIGURÉE `.kta-tx-info`.
 - **ConfAdmin** n'écrit le champ que si `state: "on"` (l'absence vaut OFF), avec la même validation que l'app.
 - **Lecture unique de l'index** avant les gates (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` =
-  section `config` seule) ; une config **mémorisée** ne révoque jamais rien (`revaliderInstance(…, false)`).
+  section `config` seule) ; une config **mémorisée** ne révoque jamais rien (`revaliderInstance(…, false)`). Lu en
+  même temps : `data/reglages.json` (`accueil`, `subtitle` seuls ; mémoire `myktamap_instance_reglages_v1`).
 - **Identifiants stables** (`js/ktaUid.js`) et **points d'extension** : `window.KtaExtensions.register()`, gate
   déléguée, chargeur de modules (règle E), garde des requêtes, permissions import/export, plans d'extension
   (`type: "ext"`, ☁️), publication depuis le Générateur, journal des changements, effacement à la déconnexion
@@ -687,8 +744,8 @@ navigateur.
   `MyKTAMap-pro`. Verrou : `scripts/check-no-pro-leak.js` (pré-commit, bloquant).
 - **Télémétrie**, sous aucune forme, y compris via une extension activée sur myktamap.fr.
 - **Branding complet (white-label)** : logo, nom d'app, thème de marque, domaine.
-  La limite community est UN champ texte : `config.subtitle` (le nom « MyKTAMap »
-  et la charte restent). Au-delà → hors de ce repo.
+  La limite community : des TEXTES — `subtitle` et l'écran d'arrivée (`accueil` : titre, description) — le nom
+  « MyKTAMap », le logo et la charte restent. Au-delà → hors de ce repo.
 - Gestion de droits, plans payants, quotas.
 - Commentaire-pointeur vers un fichier pro précis (`// TODO pro:`, chemin du repo privé) :
   un point d'extension se documente par ce qu'il offre, pas par qui le consomme.

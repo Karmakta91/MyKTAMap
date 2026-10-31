@@ -89,6 +89,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     let rejete = false;
     try { await c3.K.gateDeleguee(); } catch (e) { rejete = true; }
     t("🩸 gate déléguée en échec → la promesse REJETTE (l'appelant n'ouvre rien)", rejete);
+    // Conditions d'utilisation à l'entrée : avantEntree transmis tel quel, rien d'autre ; sans lui, un objet vide.
+    const c4 = nouveauContexte(null);
+    let recu = null;
+    c4.K.register({ nom: "gate", apiVersion: 1, gate: { ouvrir(o) { recu = o; return Promise.resolve(); } } });
+    const avant = function () { return Promise.resolve(true); };
+    await c4.K.gateDeleguee({ avantEntree: avant, autre: 1 });
+    t("gate déléguée : opts.avantEntree transmis à ouvrir(), seul", !!recu && recu.avantEntree === avant &&
+      Object.keys(recu).length === 1);
+    await c4.K.gateDeleguee();
+    t("gate déléguée sans avantEntree : ouvrir({}) (rien à poser)", !!recu && Object.keys(recu).length === 0);
   }
 
   // ── 3 bis. EXPORT LIMITÉ À SES AJOUTS ({ auteur }) ──────
@@ -298,9 +308,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.w.getRoads = () => [{ uid: "rd_a", updatedAt: 400, type: "principal" }, { uid: "rd_i", updatedAt: 500, type: "itinerary" }];
     c.w.getZones = () => []; c.w.getStructures = () => [];
     c.w.KtaUid = { getTombstones: () => [{ uid: "zn_x", deletedAt: 250 }, { uid: "zn_y", deletedAt: 50 }] };
-    const vide = c.K.changementsDepuis(0);
-    t("🔒 plan pas encore prêt (chargement) : journal vide — les objets du plan quitté ne partent pas vers le nouveau",
-      c.K.planPret() === false && vide.editorPoints.length === 0 && vide.roads.length === 0 && vide.tombstones.length === 0);
+    t("🔒 plan pas encore prêt (chargement) : journal null, pas vide — ni objets du plan quitté, ni curseur avancé à tort",
+      c.K.planPret() === false && c.K.changementsDepuis(0) === null);
     c.w._currentLoadedPlanId = "ext_1";
     c.K.planCharge("ext_1");
     t("plan prêt : planPret() vrai, événement mktm:plan-pret", c.K.planPret() === true && c.w._emis.includes("mktm:plan-pret"));
@@ -313,6 +322,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     c.K.quitterPlan("plan");
     t("quitterPlan : plus prêt jusqu'au prochain planCharge", c.K.planPret() === false);
     c.K.planCharge("ext_1");
+    t("🔒 plan attendu différent du plan prêt : journal null", c.K.changementsDepuis(0, "ext_2") === null);
+    t("plan attendu = plan prêt : journal rendu", c.K.changementsDepuis(200, "ext_1") !== null &&
+      c.K.changementsDepuis(200, "ext_1").editorPoints.length === 1);
     const ch = c.K.changementsDepuis(200);
     t("journal : objets modifiés après la date, et seulement eux", ch.editorPoints.length === 1 && ch.editorPoints[0].uid === "pt_b");
     t("journal : l'itinéraire calculé n'en fait pas partie", ch.roads.length === 1 && ch.roads[0].uid === "rd_a");
@@ -1618,6 +1630,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const iLic = MAIN.indexOf('if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense');
     t("boot : licence attendue → modules chargés → gate (ordre)", iLic > 0 && iMods > iLic && iGate > iMods);
     t("boot : une gate déléguée franchie remplace la gate community", /try \{ await _gate; _gateDelegueeOk = true;/.test(MAIN));
+    // Installation reliée : conditions à l'entrée (connexion / demande), refusables, jamais avant l'écran d'entrée.
+    t("boot : installation reliée → conditions passées à la gate déléguée (avantEntree), pas ouvertes en premier",
+      /const _legalApresEntree = _legalAFaire\s*&& \(_scOn \|\|/.test(MAIN) &&
+      /gateDeleguee\(_legalAEntree\)/.test(MAIN) && /UnlockGate\.ouvrirGate\(_legalAEntree\)/.test(MAIN) &&
+      /avantEntree: function\(\) \{ return _ouvrirLegal\(true, true\); \}/.test(MAIN));
+    t("boot : filet des conditions après les gates, seulement si toujours pas acceptées",
+      /if \(_legalAFaire && !window\.LegalGate\.isAccepted\(\)\) \{/.test(MAIN) &&
+      MAIN.indexOf("if (_legalAFaire && !window.LegalGate.isAccepted()) {") > iGate);
     t("🩸 boot : gate déléguée en échec → « Installation indisponible », JAMAIS la gate community",
       /catch \(e\) \{[\s\S]{0,400}await _ktaInstanceIndisponible\(_motifBlocage\(\)\);/.test(MAIN) &&
       /function _ktaInstanceIndisponible\(motif\) \{\s*return new Promise\(function\(\) \{/.test(MAIN));
@@ -2093,6 +2113,101 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       ["js/exporter.js", "js/pdfExport.js", "js/geotiffExport.js"].every((f) => /caseExportValides\(\)/.test(R(f))) &&
       (R("js/sessionExporter.js").match(/caseExportValides\(\)/g) || []).length === 2 &&
       /\.leaflet-marker-icon\.kta-etat-propose \{ outline: 3px dashed var\(--kta-accent\)/.test(R("css/style.css")));
+  }
+
+  // ── 9. ÉCRAN D'ACCUEIL (ecranAccueil d'une gate déléguée, textesAccueil : ville seule de l'écran Bienvenue) ──
+  {
+    const monter = (pret) => {
+      const c = nouveauContexte(null);
+      const appels = { charge: 0, ouvert: [] };
+      c.w.UnlockGate = { chargerBienvenue: () => { appels.charge++; return Promise.resolve(pret); } };
+      c.w.KtaBienvenue = { ouvrir: (o) => { appels.ouvert.push(o); return { fermer() {}, attendreEntree() {}, ouverte: () => true }; } };
+      c.w.KtaInstance = { etat: () => ({ config: { serverConnection: { state: "on", api: "/api/", modules: [] },
+        subtitle: " Secteur ", accueil: { titre: "  Club  ", description: { en: "Hello", fr: "Bonjour" } } } }) };
+      return Object.assign(c, { appels });
+    };
+    const sans = monter(true);
+    t("🩸 ecranAccueil sans extension : null, rien chargé ni ouvert (myktamap.fr inchangé)",
+      (await sans.K.ecranAccueil()) === null && sans.appels.charge === 0 && sans.appels.ouvert.length === 0);
+    const sansGate = monter(true);
+    sansGate.K.register({ nom: "sg", apiVersion: 1, compte: () => null });
+    t("ecranAccueil avec une extension SANS gate déléguée : null, rien chargé",
+      (await sansGate.K.ecranAccueil()) === null && sansGate.appels.charge === 0);
+    const indispo = monter(false);
+    indispo.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
+    t("ecranAccueil : écran indisponible (fichiers absents, délai) → null, la gate garde sa porte",
+      (await indispo.K.ecranAccueil()) === null && indispo.appels.ouvert.length === 0);
+    const ok = monter(true);
+    ok.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
+    const ctl = await ok.K.ecranAccueil();
+    const o = ok.appels.ouvert[0] || {};
+    t("ecranAccueil avec gate déléguée : ville seule de connexion, textes de config.accueil normalisés + sous-titre, 📖",
+      !!ctl && typeof ctl.attendreEntree === "function" && ok.appels.ouvert.length === 1 && !o.code &&
+      o.connexion === true && JSON.stringify(o.villeSeule) ===
+        '{"titre":{"fr":"Club"},"description":{"en":"Hello","fr":"Bonjour"},"sousTitre":"Secteur"}' &&
+      typeof o.surDoc === "function");
+    const TA = ok.K.textesAccueil;
+    t("textesAccueil : sous-titre borné à 80 (règle de main.js), config absente ou sans texte → tout vide",
+      TA({ subtitle: "s".repeat(90) }).sousTitre.length === 80 &&
+      [null, undefined, [], "x", {}, { subtitle: 3, accueil: "?" }].every((c) => {
+        const r = TA(c); return r.titre === null && r.description === null && r.sousTitre === ""; }));
+    t("textesAccueil : data/reglages.json prime champ par champ, un champ mal formé laisse place à l'index",
+      (() => { const r = TA({ subtitle: "Idx", accueil: { titre: "Titre index", description: "Desc index" } },
+        { subtitle: "Reg", accueil: { titre: "Titre réglages", description: 42 } });
+      return r.titre.fr === "Titre réglages" && r.description.fr === "Desc index" && r.sousTitre === "Reg"; })());
+    t("🩸 l'ancienne place (serverConnection.accueil) n'est plus lue : une seule clé, config.accueil",
+      TA({ serverConnection: { accueil: { titre: "x" } } }).titre === null);
+    const N = ok.K.normaliserAccueil;
+    const long = "x".repeat(500);
+    const n1 = N({ titre: long, description: { fr: long, EN: "a", "e-s": "b", es: 3, it: "  " } });
+    t("normaliserAccueil : bornes (titre 80, description 400), codes de langue à 2 lettres, chaînes non vides seules",
+      n1.titre.fr.length === 80 && n1.description.fr.length === 400 && Object.keys(n1.description).join() === "fr");
+    t("normaliserAccueil : absent, vide, liste, nombre → null par champ (jamais une erreur)",
+      ["", null, undefined, [], 3, { titre: [] }, { titre: "   " }].every((v) => {
+        const r = N(v); return r && r.titre === null && r.description === null; }));
+    const B = lire("js/bienvenue.js");
+    t("🔒 ville seule : titre et description posés en textContent (jamais innerHTML), « Me connecter » n'entre pas",
+      /querySelector\("#kta-bv-titre"\)\.textContent = _texteLangue\(ville\.titre\)/.test(B) &&
+      /querySelector\("\.kta-bv-accroche"\)\.textContent = _texteLangue\(ville\.description\)/.test(B) &&
+      /action === "entrer" && connexion\) entreeVille\(\);/.test(B) && !/function entreeVille[\s\S]{0,300}descendre\(/.test(B));
+    t("🔒 ville seule de connexion : jamais avec un champ de code", /const connexion = !!\(ville && opts\.connexion === true && !code\);/.test(B));
+    const appelants = fs.readdirSync("js").filter((f) => f.endsWith(".js") && f !== "ktaExtensions.js" &&
+      /ecranAccueil\(/.test(lire("js/" + f)));
+    t("🩸 ecranAccueil n'est appelé par aucun module community (prise pour une gate déléguée seulement)",
+      appelants.length === 0);
+    // ville(conteneur, opts) : la ville seule pour la page d'une gate déléguée.
+    const conteneur = { appendChild() {} };
+    const villeAvec = (pret, gate, B) => {
+      const c = monter(pret);
+      const appels = [];
+      c.w.KtaBienvenue = B === undefined ? { ville: (el, o) => { appels.push([el, o]); return { svg: 1 }; } } : B;
+      if (gate) c.K.register({ nom: "g", apiVersion: 1, gate: { ouvrir: () => Promise.resolve() } });
+      return Object.assign(c, { villes: appels });
+    };
+    const v0 = villeAvec(true, false);
+    t("🩸 ville sans gate déléguée : null, rien chargé ni dessiné (myktamap.fr inchangé)",
+      (await v0.K.ville(conteneur)) === null && v0.appels.charge === 0 && v0.villes.length === 0);
+    const v1 = villeAvec(false, true);
+    t("ville : écran indisponible (fichiers absents, délai) → null, rien dessiné (la page s'affiche sans ville)",
+      (await v1.K.ville(conteneur)) === null && v1.villes.length === 0);
+    const v2 = villeAvec(true, true, { ouvrir() {} });
+    t("ville : bienvenue.js sans ville (version antérieure) → null", (await v2.K.ville(conteneur)) === null);
+    const v3 = villeAvec(true, true);
+    const optsV = { prefixe: "x-", fenetres: "f" };
+    const rV = await v3.K.ville(conteneur, optsV);
+    t("ville avec gate déléguée : KtaBienvenue.ville(conteneur, opts) après chargement, son <svg> rendu",
+      !!rV && rV.svg === 1 && v3.villes.length === 1 && v3.villes[0][0] === conteneur && v3.villes[0][1] === optsV);
+    const v4 = villeAvec(true, true, { ville: () => { throw new Error("x"); } });
+    t("ville : erreur du dessin → null, jamais une exception", (await v4.K.ville(conteneur)) === null);
+    t("🔒 ville : dessin par gabarit statique (aucun texte de l'appelant), noms d'options filtrés [a-z0-9-]",
+      /function ville\(conteneur, opts\)[\s\S]{0,700}\/\^\[a-z\]\[a-z0-9-\]\{0,40\}\$\/i/.test(B) &&
+      /return o\.prefixe === VILLE_DEFAUT\.prefixe \? s : s\.replace\(\/\(id="\|#\)kta-bv-\/g/.test(B));
+    const appelantsVille = fs.readdirSync("js").filter((f) => f.endsWith(".js") && f !== "ktaExtensions.js" &&
+      /KtaExtensions\.ville\(|K\.ville\(/.test(lire("js/" + f)));
+    t("🩸 ville n'est appelée par aucun module community (prise pour une gate déléguée seulement)",
+      appelantsVille.length === 0);
+    t("ville seule de connexion SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
+      /#kta-unlock-overlay\.kta-bv\.kta-bv-connexion \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
   }
 
   console.log("");

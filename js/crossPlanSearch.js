@@ -180,7 +180,7 @@
             return;
           }
           // Mini-confirmation seulement si un plan est AFFICHÉ (à l'accueil, chargement direct ;
-          // _currentLoadedPlanId persiste après le retour accueil et ne vaut pas preuve).
+          // un plan peut se charger sous l'accueil : _currentLoadedPlanId seul ne vaut pas preuve).
           // Même arrivée que les portails.
           window.InterPlanLinks.goTo(e.plan.id, {
             x: e.pt.x, y: e.pt.y,

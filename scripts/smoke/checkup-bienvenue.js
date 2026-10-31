@@ -26,22 +26,22 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { chromium } = require("playwright");
-const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
+const { moteurs, lancerMoteur } = require("./navigateur.js");   // Chromium (repli Edge) puis WebKit
 const attendre = require("./attendre.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);   // même port que server.js
 const SHOTS = process.env.BV_SHOTS || "";
 // Conditions déjà acceptées : la gate légale (avant l'écran) n'est pas l'objet du checkup.
 const LS_ARRIVEE = { myktamap_terms_accepted_v1: "2" };
-const BRUIT_TOLERE = [/Licence-pro\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
+const BRUIT_TOLERE = [/Licence-pro\.json/i, /data\/reglages\.json/i, /version\.json/i, /ping\.html/i, /live-config/i, /favicon/i];
 const VUES = [
   { nom: "telephone", viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { nom: "pc", viewport: { width: 1366, height: 768 } }
 ];
 
 const problemes = [];
-function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
+let MOTEUR = "";
+function pb(m) { problemes.push((MOTEUR ? "[" + MOTEUR + "] " : "") + m); console.log("  ❌ " + m); }
 function ok(m) { console.log("  ✅ " + m); }
 function info(m) { console.log("  ℹ️  " + m); }
 function verifier(cond, msgOk, msgKo) { if (cond) ok(msgOk); else pb(msgKo || msgOk); }
@@ -49,7 +49,7 @@ function verifier(cond, msgOk, msgKo) { if (cond) ok(msgOk); else pb(msgKo || ms
 async function capture(page, nom) {
   if (!SHOTS) return;
   fs.mkdirSync(SHOTS, { recursive: true });
-  const f = path.join(SHOTS, nom + ".png");
+  const f = path.join(SHOTS, (MOTEUR && MOTEUR !== "chromium" ? MOTEUR + "-" : "") + nom + ".png");
   await page.screenshot({ path: f });
   info("capture : " + f);
 }
@@ -312,6 +312,26 @@ async function premiereOuverture(nav) {
   verifier(dessus.z > dessus.zo && dessus.cliquable, "conditions au-dessus de l'écran (z " + dessus.z + " > " + dessus.zo +
     "), bouton cliquable");
   verifier(!dessus.descend && !dessus.memo, "pas de descente ni d'accès mémorisé avant l'acceptation");
+  await page.click("#kta-legal-refuse");
+  await page.waitForTimeout(400);
+  const refus = await page.evaluate(function () {
+    const o = document.getElementById("kta-unlock-overlay");
+    const b = o && o.querySelector('.kta-bv-hero [data-bv="entrer"]');
+    return { gate: !!document.getElementById("kta-legal-gate-overlay"), ecran: !!o, actif: !!(b && !b.disabled),
+      descend: !!(o && o.classList.contains("kta-bv-descend")), memo: localStorage.getItem("myktamap_unlock_v1") };
+  });
+  verifier(!refus.gate && refus.ecran && refus.actif && !refus.descend && !refus.memo,
+    "refusées : fenêtre fermée, Bienvenue reste, « Entrer » réactivé, rien de mémorisé");
+  await page.click('.kta-bv-hero [data-bv="entrer"]');
+  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 5000)
+    .then(function () { ok("conditions redemandées au nouvel « Entrer »"); })
+    .catch(function () { pb("conditions pas redemandées après un refus"); });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  verifier(!(await page.evaluate(function () { return !!document.getElementById("kta-legal-gate-overlay"); })),
+    "Échap ferme les conditions comme « Refuser »");
+  await page.click('.kta-bv-hero [data-bv="entrer"]');
+  await attendre(page, function () { return !!document.getElementById("kta-legal-cb"); }, 5000);
   await page.check("#kta-legal-cb");
   await page.click("#kta-legal-accept");
   await page.waitForTimeout(700);
@@ -649,27 +669,35 @@ async function repli(nav) {
 
 (async function main() {
   const server = require("./server.js");
-  let nav;
-  try {
-    nav = await lancerNavigateur(chromium);
-    for (const vue of VUES) await parcours(nav, vue);
-    await premiereOuverture(nav);
-    await mouvementReduit(nav);
-    for (const vue of VUES) await instanceProtegee(nav, vue);
-    await protegeeSansVisite(nav);
-    await protegeeVisite(nav);
-    await repli(nav);
-  } catch (e) {
-    pb("exception : " + (e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e));
-  } finally {
-    if (nav) await nav.close();
-    if (server && server.close) server.close();
+  const joues = [];
+  for (const nom of moteurs()) {
+    let nav = null;
+    try {
+      nav = await lancerMoteur(nom);
+      if (!nav) continue;
+      MOTEUR = nom;
+      console.log("\n══ moteur " + nom + " (" + nav.version() + ") ══");
+      for (const vue of VUES) await parcours(nav, vue);
+      await premiereOuverture(nav);
+      await mouvementReduit(nav);
+      for (const vue of VUES) await instanceProtegee(nav, vue);
+      await protegeeSansVisite(nav);
+      await protegeeVisite(nav);
+      await repli(nav);
+      joues.push(nom);
+    } catch (e) {
+      pb("exception : " + (e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e));
+    } finally {
+      if (nav) await nav.close();
+    }
   }
+  if (server && server.close) server.close();
+  if (!joues.length && !problemes.length) pb("aucun moteur lancé (KTA_MOTEURS=" + (process.env.KTA_MOTEURS || "") + ")");
   console.log("");
   if (problemes.length) {
     console.log("⚠️ CHECKUP ROUGE — " + problemes.length + " problème(s) :");
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP BIENVENUE VERT — écran du premier lancement, descente, visite proposée, code d'accès et repli.");
+  console.log("🎉 CHECKUP BIENVENUE VERT (" + joues.join(" + ") + ") — écran du premier lancement, descente, visite proposée, code d'accès et repli.");
 })();

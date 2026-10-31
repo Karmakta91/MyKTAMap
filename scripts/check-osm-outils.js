@@ -137,8 +137,11 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     const corps = iAff >= 0 && iEnd > iAff ? MAIN.slice(iAff, iEnd) : "";
     t("🗺️ retour home : afficherLoader() rafraîchit le widget OSM",
       /OsmHomePreview\.refresh\(/.test(corps));
-    t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_currentLoadedPlanId)",
-      /OsmHomePreview\.refresh\(window\._currentLoadedPlanId/.test(corps));
+    t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_ktaDernierPlanId)",
+      /OsmHomePreview\.refresh\(window\._ktaDernierPlanId/.test(corps));
+    t("🗺️ retour home : l'id de plan courant est remis à null, le plan quitté passe dans _ktaDernierPlanId",
+      /window\._ktaDernierPlanId = window\._currentLoadedPlanId;\s*window\._currentLoadedPlanId = null;/.test(corps) &&
+      corps.indexOf("_currentLoadedPlanId = null") < corps.indexOf("OsmHomePreview.refresh("));
 
     // 🩸 On EXÉCUTE le bloc de sélection : un appel à une fonction inexistante passe `node -c` et un
     // grep, puis crashe `mount()` à chaque retour home, exception avalée par le try/catch

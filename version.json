@@ -1,9 +1,9 @@
 {
-  "version": "v2.21.0",
-  "released": "2026-10-26",
+  "version": "v2.21.1",
+  "released": "2026-10-30",
   "notes": [
-    "👋 Nouvel écran de bienvenue au premier lancement : une courte présentation qui défile, « Entrer » en haut et en bas. Les conditions d'utilisation ne s'affichent qu'au moment d'entrer, et la visite guidée est proposée, plus imposée.",
-    "⚖️ Conditions d'utilisation mises à jour (aucune garantie sur l'état des sites, l'app n'est pas un moyen de secours, contenus partagés) : à accepter une nouvelle fois.",
-    "📷 Les photos gardent leur date de prise de vue et un POI danger sa date de constat ; 📐 calage GPS plus précis, avec « Recaler » pour un plan déjà calé ; 📥 « Tout garder hors ligne » dans le menu d'un dossier."
+    "✏️ Zones, piliers, murs et fronts de taille s'enchaînent : après avoir fermé une forme, l'outil reste allumé pour dessiner la suivante. Re-appuie sur le type pour l'éteindre.",
+    "🟨 Front de taille dessiné plus fin (0,8 m au lieu de 1,5 m), à l'écran comme dans les exports et la Vue OSM.",
+    "🆘 Aussi corrigés : le Mode Secours sur un plan à plusieurs niveaux, l'échelle recalibrée reprise par « Mettre à jour le plan » du Générateur, les conditions d'utilisation refusables avant d'entrer."
   ]
 }
