@@ -984,6 +984,61 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     ca.K.signaler("down");
     libelle = "z";
     t("serveur injoignable (DOWN) : aucun bouton (l'action passe par lui)", ca.K.actionAlertes(() => {}) === null);
+    // « Quoi de neuf » (alertes.nouveautes) : pastille et bloc seulement avec une extension qui compte du neuf.
+    const mn = monde("granted", "granted");
+    const cn = nouveauContexte("server", mn.extra);
+    t("quoi de neuf sans extension : compteur 0, aucun bloc", cn.K.compteurNouveautes() === 0 && cn.K.blocNouveautes(() => {}) === null);
+    let compte = 3, liste = [];
+    const tn = [];
+    cn.K.register({ nom: "nv", apiVersion: 1, alertes: { lister: () => [], nouveautes: {
+      compter: () => { if (compte === "x") throw new Error("x"); return compte; },
+      lister: () => (liste === "x" ? Promise.reject(new Error("x")) : liste) } } });
+    t("🩸 installation OFF : compteur 0, aucun bloc même avec une extension qui compte",
+      cn.K.compteurNouveautes() === 0 && cn.K.blocNouveautes(() => {}) === null);
+    enLigne(cn);
+    t("état ON : le compteur de l'extension", cn.K.compteurNouveautes() === 3);
+    compte = 0;
+    t("rien de neuf (0) : aucun bloc", cn.K.blocNouveautes(() => {}) === null);
+    compte = "x";
+    t("compter() en erreur : 0, aucune exception", cn.K.compteurNouveautes() === 0);
+    compte = "12";
+    t("compter() d'une forme inattendue : 0", cn.K.compteurNouveautes() === 0);
+    compte = 5000;
+    t("compteur borné à 999", cn.K.compteurNouveautes() === 999);
+    compte = 2;
+    liste = [{ texte: "Plan « Secteur A » — 2 nouveautés", bouton: "Ouvrir",
+      ouvrir: () => { tn.push("ouvrir"); throw new Error("y"); } },
+      { texte: "", bouton: "Lire", ouvrir: () => {} }, { texte: "t", bouton: "b" }, null,
+      { texte: "z".repeat(300), bouton: "w".repeat(80), ouvrir: () => {} }];
+    const bn = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    t("bloc : un titre puis une ligne par sujet valide (sans texte, sans ouvrir() ou nul : écartés)",
+      !!bn && bn.enfants.length === 3 && bn.enfants[0].textContent === "🆕 alerts.neuf.titre" && !bn.retire);
+    const l1n = bn.enfants[1];
+    t("ligne : texte et bouton posés en texte", l1n.enfants[0].textContent === "Plan « Secteur A » — 2 nouveautés" &&
+      l1n.enfants[1].textContent === "Ouvrir" && !("innerHTML" in l1n.enfants[1]));
+    t("ligne : texte borné à 120, bouton à 30", bn.enfants[2].enfants[0].textContent.length === 120 &&
+      bn.enfants[2].enfants[1].textContent.length === 30);
+    l1n.enfants[1].ecoutes.click();
+    t("toucher : la fenêtre se ferme PUIS l'extension ouvre ; son erreur est avalée", tn.join() === "fermer,ouvrir");
+    liste = [];
+    const bv = cn.K.blocNouveautes(() => {});
+    await new Promise((r) => setTimeout(r, 10));
+    t("liste vide malgré le compteur : le bloc se retire", !!bv && bv.retire);
+    liste = "x";
+    const be = cn.K.blocNouveautes(() => {});
+    await new Promise((r) => setTimeout(r, 10));
+    t("lister() en erreur : le bloc se retire, aucune exception", !!be && be.retire);
+    cn.K.signaler("down");
+    t("serveur injoignable (DOWN) : le compteur gardé reste (pastille hors ligne)", cn.K.compteurNouveautes() === 2);
+    const IAn = lire("js/interfaceAlerts.js"), HCn = lire("js/homeConfig.js");
+    t("fenêtre 🚨 : le bloc est posé EN TÊTE du corps (après le message sous une urgence), jamais ouvreur de fenêtre",
+      /K\.blocNouveautes\(fermer\)/.test(IAn) && /corps\.insertBefore\(n, corps\.firstChild\)/.test(IAn) &&
+      /closest\("\.kta-alert-level-emergency"\)/.test(IAn) && !/blocNouveautes|compteurNouveautes/.test(lire("js/alertChecker.js")));
+    t("accueil : pastille du bouton 🚨 = compteurNouveautes, redessinée à mktm:nouveautes-changees, retirée à 0",
+      /K\.compteurNouveautes\(\)/.test(HCn) && /"mktm:nouveautes-changees"/.test(HCn) && /if \(p\) p\.remove\(\);/.test(HCn) &&
+      ["fr", "en", "es"].every((l) => { const d = JSON.parse(lire("lang/" + l + ".json"));
+        return !!d["alerts.neuf.titre"] && !!d["home.header.alertNeuf"] && !/[<>]/.test(d["alerts.neuf.titre"] + d["home.header.alertNeuf"]); }));
     const IAa = lire("js/interfaceAlerts.js");
     t("fenêtre 🚨 : l'action est posée dans les trois fenêtres, avec leur fermeture",
       (IAa.match(/_ktaPoserLigneNotif\(modal\.querySelector\("[^"]+"\), function \(\) \{ _fermer\(\); \}\);/g) || []).length === 3 &&

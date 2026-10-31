@@ -617,6 +617,67 @@
     ligne.appendChild(bouton);
     return ligne;
   }
+  // ── « Quoi de neuf » dans la fenêtre 🚨 (prise « alertes », champ facultatif `nouveautes`) ──
+  // alertes.nouveautes: { compter() → number, lister() → Promise<[{ texte, bouton, ouvrir() }]> }.
+  // compteurNouveautes() : compter() (synchrone, entier borné 0..999 ; erreur ou forme inattendue → 0) en état ON ou
+  // DOWN (l'extension garde son dernier compte hors ligne), 0 sinon — même nombre que la pastille de l'icône de l'app.
+  // blocNouveautes(fermer) : null si le compteur vaut 0 ; sinon un bloc « 🆕 Quoi de neuf » rendu tout de suite, dont
+  // les lignes (12 au plus ; texte 120 car., bouton 30 car., posés en texte) arrivent de lister() (attente bornée,
+  // erreur avalée) — liste vide, erreur ou délai : le bloc se retire. Toucher un bouton ferme la fenêtre (`fermer`,
+  // donné par l'app) puis appelle `ouvrir()` (erreur avalée). ⚠️ Information seulement : ce bloc n'ouvre jamais la
+  // fenêtre 🚨 de lui-même. Changement du compte annoncé par l'extension : `mktm:nouveautes-changees`.
+  function _priseNouveautes() {
+    const ext = _prise("alertes");
+    const n = ext && ext.alertes && ext.alertes.nouveautes;
+    return n && typeof n.compter === "function" && typeof n.lister === "function" ? n : null;
+  }
+  function compteurNouveautes() {
+    const p = _priseNouveautes();
+    if (!p || (_etat !== "on" && _etat !== "down")) return 0;
+    let n = 0;
+    try { n = p.compter(); } catch (e) { console.warn("[Extensions] alertes.nouveautes.compter :", e); return 0; }
+    return typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.min(999, Math.floor(n)) : 0;
+  }
+  function blocNouveautes(fermer) {
+    const p = _priseNouveautes();
+    if (!p || compteurNouveautes() <= 0) return null;
+    const el = function (tag, classe, texte) {
+      const e = document.createElement(tag);
+      e.className = classe;
+      if (texte) e.textContent = texte;
+      return e;
+    };
+    const bloc = el("div", "kta-alert-neuf");
+    bloc.appendChild(el("div", "kta-alert-neuf-titre", "🆕 " + _t("alerts.neuf.titre")));
+    const retirer = function () { try { bloc.remove(); } catch (e) { /* déjà retiré */ } };
+    let delai;
+    Promise.race([
+      Promise.resolve().then(function () { return p.lister(); }),
+      new Promise(function (ok) { delai = setTimeout(function () { ok(null); }, ALERTES_DELAI_MS); })
+    ]).then(function (l) {
+      clearTimeout(delai);
+      const lignes = (Array.isArray(l) ? l : []).slice(0, 12).filter(function (x) {
+        return x && typeof x === "object" && _texteCourt(x.texte, 120) && _texteCourt(x.bouton, 30) &&
+          typeof x.ouvrir === "function";
+      });
+      if (!lignes.length) { retirer(); return; }
+      lignes.forEach(function (x) {
+        const ligne = el("div", "kta-alert-neuf-ligne");
+        const bouton = el("button", "kta-btn kta-btn-ghost kta-alert-neuf-btn", _texteCourt(x.bouton, 30));
+        bouton.type = "button";
+        bouton.addEventListener("click", function () {
+          try { if (typeof fermer === "function") fermer(); } catch (e) { /* fenêtre déjà fermée */ }
+          try {
+            Promise.resolve(x.ouvrir()).catch(function (e) { console.warn("[Extensions] alertes.nouveautes :", e); });
+          } catch (e) { console.warn("[Extensions] alertes.nouveautes.ouvrir a échoué :", e); }
+        });
+        ligne.appendChild(el("span", "kta-alert-neuf-texte", _texteCourt(x.texte, 120)));
+        ligne.appendChild(bouton);
+        bloc.appendChild(ligne);
+      });
+    }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.nouveautes.lister :", e); retirer(); });
+    return bloc;
+  }
   // Cible d'une notification touchée : paramètre `kta-notif` de son adresse (« genre:id:id », forme bornée, texte
   // opaque pour community ; l'extension qui l'a émise sait l'ouvrir). Toute autre forme → null.
   const _CIBLE_NOTIF_RE = /^[a-z]{3,20}(:[A-Za-z0-9_-]{1,80}){0,3}$/;
@@ -2365,6 +2426,8 @@
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
     actionAlertes: actionAlertes,
+    compteurNouveautes: compteurNouveautes,
+    blocNouveautes: blocNouveautes,
     ligneNotifications: ligneNotifications,
     notificationAuDemarrage: notificationAuDemarrage,
     profilStatsExtension: profilStatsExtension,

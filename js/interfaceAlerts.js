@@ -15,7 +15,8 @@
 //     clic sur une ligne → opts.onSelect(alert), sinon afficherModaleAlerte.
 //   - afficherModaleAlerte(alert, onClose) → détail coloré (emergency rouge + pulse, warning orange, info bleu).
 //   - afficherModaleUpdateDispo(opts) → proposition de mise à jour (douce / plus tard), appelée par updateChecker.js.
-// Dépend de (window.*) : AlertChecker.dismiss (optionnel), KtaExtensions.ligneNotifications et actionAlertes
+// Dépend de (window.*) : AlertChecker.dismiss (optionnel), KtaExtensions.ligneNotifications, actionAlertes et
+// blocNouveautes
 // (optionnels),
 // mettreAJourCodeSeul, viderCacheAppli, __MKM__.build ;
 // localStorage["myktamap_last_version_data"] (updateChecker.js), ["myktamap_alert_seen_<id>"] (alertChecker.js).
@@ -28,10 +29,18 @@
 // ferme la fenêtre par `fermer`), puis la ligne « 🔔 notifications » (KtaExtensions.ligneNotifications). Chacune vaut
 // null sans extension qui la propose, sur myktamap.fr, ou (ligne) une fois l'autorisation donnée ou refusée — rien
 // n'est alors ajouté.
+// En tête du corps : le bloc « 🆕 Quoi de neuf » d'une extension (KtaExtensions.blocNouveautes, null quand rien de
+// neuf), au-dessus des alertes — sauf sous une alerte d'urgence, où il passe après le message (décision produit :
+// rien ne s'intercale avant une consigne de sécurité). Il ne fait qu'habiter la fenêtre : il ne l'ouvre jamais.
 function _ktaPoserLigneNotif(corps, fermer) {
   const K = window.KtaExtensions;
   if (!corps || !K) return;
-  let a = null, l = null;
+  let n = null, a = null, l = null;
+  try { n = typeof K.blocNouveautes === "function" ? K.blocNouveautes(fermer) : null; } catch(e) { n = null; }
+  if (n) {
+    const urgence = typeof corps.closest === "function" && corps.closest(".kta-alert-level-emergency");
+    if (urgence || !corps.firstChild) corps.appendChild(n); else corps.insertBefore(n, corps.firstChild);
+  }
   try { a = typeof K.actionAlertes === "function" ? K.actionAlertes(fermer) : null; } catch(e) { a = null; }
   if (a) corps.appendChild(a);
   try { l = typeof K.ligneNotifications === "function" ? K.ligneNotifications() : null; } catch(e) { l = null; }

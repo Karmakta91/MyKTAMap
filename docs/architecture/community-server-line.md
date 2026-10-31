@@ -383,6 +383,18 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   libellé `null` / vide / en erreur (ex. compte qui n'a pas le droit). Toucher : la fenêtre se ferme (`fermer`, donné
   par l'app) puis `lancer()` (erreur avalée) — ex. « ➕ Lancer une alerte » pour un admin d'organisation. 🔒 Le libellé
   ne fait que choisir l'affichage : le serveur de l'extension revérifie le droit. Tests : `check-extensions.js`.
+- **« Quoi de neuf » dans la fenêtre 🚨** : champ facultatif de la prise `alertes` — `nouveautes: { compter() → number,
+  lister() → Promise<[{ texte, bouton, ouvrir() }]> }`. `KtaExtensions.compteurNouveautes()` rend `compter()`
+  (synchrone, entier 0 à 999 ; erreur ou forme inattendue → 0) en état ON ou DOWN (l'extension garde son dernier compte
+  hors ligne), 0 sinon : c'est la **pastille de l'accueil** sur le bouton 🚨 (en haut à gauche, à part du compteur
+  d'alertes ; « 99+ » au-delà), le même nombre que la pastille de l'icône de l'app. `KtaExtensions.blocNouveautes(fermer)`
+  rend `null` quand ce compte vaut 0, sinon le bloc « 🆕 Quoi de neuf », posé **en tête** du corps des trois fenêtres
+  🚨 (après le message sous une alerte d'urgence) ; ses lignes viennent de `lister()` (attente bornée à 3 s, 12 au plus,
+  texte 120 car. et bouton 30 car. posés en texte) — liste vide, erreur ou délai : le bloc se retire. Toucher un bouton
+  ferme la fenêtre (`fermer`) puis appelle `ouvrir()` (erreur avalée). ⚠️ Information seulement : le bloc n'ouvre
+  **jamais** la fenêtre 🚨 de lui-même (une alerte non vue le fait déjà). L'extension annonce un compte changé par
+  **`mktm:nouveautes-changees`** (pastille redessinée, aussi à `mktm:connexion-changed` et `mktm:extensions-changees`).
+  Sans extension : ni bloc ni pastille. Tests : `check-extensions.js`.
 - **Notifications de l'appareil** : prise `notifications: { proposer() → bool, apresChoix(permission) }`
   (information ; erreur = aucune ligne). `KtaExtensions.ligneNotifications()` rend la ligne « 🔔 Afficher les alertes
   et nouveautés sur l'icône de l'app — Activer » (+ rappel « jamais un canal de sécurité »), posée au pied des trois

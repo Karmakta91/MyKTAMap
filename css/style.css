@@ -5321,6 +5321,25 @@ html.kta-theme-light .kta-cfg-input option {
   box-shadow: 0 1px 3px rgba(0,0,0,0.4);
   pointer-events: none;
 }
+/* Pastille « du neuf » d'une extension (homeConfig.js > _majPastilleNeuf), en haut à GAUCHE : le compteur d'alertes
+   garde la droite, les deux peuvent coexister. */
+.loader-btn-alert-neuf {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--kta-accent);
+  color: var(--kta-sur-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1.5px solid var(--kta-surface);
+  pointer-events: none;
+}
 @keyframes loader-btn-alert-pulse {
   0%, 100% {
     box-shadow: 0 0 8px rgba(255, 107, 107, 0.35);
@@ -6357,6 +6376,24 @@ html.kta-theme-light .kta-cfg-input option {
 /* Action d'une extension (KtaExtensions.actionAlertes), au pied de la fenêtre 🚨, avant la ligne des notifications. */
 .kta-alert-action-ext { margin-top: 14px; display: flex; }
 .kta-alert-action-ext-btn { min-height: 44px; }
+/* Bloc « 🆕 Quoi de neuf » d'une extension (KtaExtensions.blocNouveautes), en tête du corps de la fenêtre 🚨 (après
+   le message sous une alerte d'urgence). Une ligne par sujet : texte puis bouton, qui passe dessous sur un téléphone. */
+.kta-alert-neuf {
+  margin: 0 0 14px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--kta-accent);
+  border-radius: 8px;
+  background: var(--kta-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.kta-alert-level-emergency .kta-alert-neuf { margin: 14px 0 0 0; }
+.kta-alert-neuf-titre { font-weight: 700; color: var(--kta-accent-texte); font-size: 14px; }
+.kta-alert-neuf-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.kta-alert-neuf-texte { flex: 1 1 160px; min-width: 0; color: var(--kta-texte-2); font-size: 13px; overflow-wrap: anywhere; }
+.kta-alert-neuf-btn { min-height: 44px; flex: 0 0 auto; }
 .kta-alert-actions {
   padding: 12px 20px 18px 20px;
   display: flex;
