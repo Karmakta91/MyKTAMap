@@ -812,7 +812,6 @@
   "maj.fin.fermer": "Close",
   "maj.fin.telecharge": "⬇️ ZIP downloaded.",
   "maj.fin.remplace": "✅ Map replaced by its new version.",
-  "maj.fin.publication": "☁️ Sending the new version…",
   "maj.fin.publie": "☁️ New version published.",
   "maj.nettoyage.titre": "Avoid duplicates",
   "maj.nettoyage.texte": "The new version already contains these objects. Hand back {calques} layer(s) and remove {objets} object(s) from your session? Otherwise they will show twice.",

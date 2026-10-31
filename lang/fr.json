@@ -812,7 +812,6 @@
   "maj.fin.fermer": "Fermer",
   "maj.fin.telecharge": "⬇️ ZIP téléchargé.",
   "maj.fin.remplace": "✅ Plan remplacé par sa nouvelle version.",
-  "maj.fin.publication": "☁️ Envoi de la nouvelle version…",
   "maj.fin.publie": "☁️ Nouvelle version publiée.",
   "maj.nettoyage.titre": "Éviter les doublons",
   "maj.nettoyage.texte": "La nouvelle version contient déjà ces objets. Rendre {calques} calque(s) et retirer de ta session {objets} objet(s) versé(s) ? Sinon ils s'afficheront en double.",

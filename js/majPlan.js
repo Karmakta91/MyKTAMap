@@ -403,6 +403,8 @@ window.MajPlan = (function () {
           '<p class="kta-fp-ajouts-intro">' + esc(t("maj.fin.texte", { fichier: nomZip })) + '</p>' +
           (note ? '<p class="kta-fp-ajouts-intro kta-tx-warn">' + esc(note) + '</p>' : '') +
           (noteFerme ? '<p class="kta-fp-ajouts-intro">' + esc(noteFerme) + '</p>' : '') +
+          '<p class="kta-fp-ajouts-intro kta-tx-muted" data-maj-fin-etat hidden></p>' +
+          '<progress data-maj-fin-barre max="100" hidden style="width:100%;"></progress>' +
         '</div>' +
         '<div class="kta-fp-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost" data-maj-fin="fermer">' + esc(t("maj.fin.fermer")) +
@@ -423,7 +425,7 @@ window.MajPlan = (function () {
       if (cle === "telecharger") { _telecharger(blob, nomZip); _toast(t("maj.fin.telecharge"), "success"); return; }
       occupe = true;
       ov.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
-      const suite = (cle === "remplacer") ? _remplacer(etat, blob, nomZip) : _publier(etat, blob, nomZip);
+      const suite = (cle === "remplacer") ? _remplacer(etat, blob, nomZip) : _publier(etat, blob, nomZip, ov);
       suite.then(function () { ov.remove(); }, function () {
         occupe = false;
         ov.querySelectorAll("button").forEach(function (x) { x.disabled = false; });
@@ -483,13 +485,39 @@ window.MajPlan = (function () {
   }
 
   // Plan d'une extension : nouvelle version. 🔒 Le droit est revérifié par l'extension (et son serveur) à l'envoi.
-  async function _publier(etat, blob, nomZip) {
+  // L'avancement s'affiche dans la fenêtre (un gros plan prend des minutes) : étape annoncée par l'extension
+  // (KtaExtensions.publierVersion > progression), texte commun avec le Générateur et la fiche ℹ️.
+  async function _publier(etat, blob, nomZip, ov) {
     const entree = window.PlanRegistry.findById(etat.planId);
-    _toast(t("maj.fin.publication"), "info");
+    const ligne = ov && ov.querySelector("[data-maj-fin-etat]");
+    const barre = ov && ov.querySelector("[data-maj-fin-barre]");
+    const t0 = Date.now();
+    let avancement = null;
+    const tic = function () {
+      if (ligne && typeof window.ktaTexteAvancementPublication === "function") {
+        ligne.hidden = false;
+        ligne.textContent = "☁️ " + window.ktaTexteAvancementPublication(avancement, blob.size, t0);
+      }
+      if (!barre) return;
+      barre.hidden = false;
+      if (avancement && avancement.total > 0 && avancement.etape !== "finalisation") {
+        barre.value = Math.min(100, Math.floor(avancement.fait * 100 / avancement.total));
+      } else barre.removeAttribute("value");
+    };
+    const effacer = function () { if (ligne) ligne.hidden = true; if (barre) barre.hidden = true; };
+    tic();
+    const minuteur = setInterval(tic, 1000);
     try {
       await window.KtaExtensions.publierVersion({ planId: etat.planId, blob: blob,
-                                                  nom: (entree && entree.name) || nomZip });
+        nom: (entree && entree.name) || nomZip,
+        progression: function (a) {
+          const neuf = !avancement || avancement.etape !== a.etape;
+          avancement = a;
+          if (neuf) tic();
+        } });
     } catch (er) {
+      clearInterval(minuteur);
+      effacer();
       // ⚠️ `annule: true` : l'utilisateur a dit non dans une question de l'extension — rien n'est parti, la fenêtre
       // reste ouverte (télécharger reste possible), sans message d'erreur.
       if (er && er.annule === true) { _toast(t("ext.publier.annule"), "info"); throw er; }
@@ -497,6 +525,9 @@ window.MajPlan = (function () {
       await window.ktaAlerte(t("maj.err.publication", { err: (er && er.message) || String(er) }), { type: "erreur" });
       throw er;
     }
+    clearInterval(minuteur);
+    if (ligne) { ligne.textContent = t("maj.fin.publie"); ligne.className = "kta-fp-ajouts-intro kta-tx-ok"; }
+    if (barre) barre.value = 100;
     _toast(t("maj.fin.publie"), "success");
     const avant = _planOuvert(etat);
     if (avant) await _proposerNettoyage(etat, true);

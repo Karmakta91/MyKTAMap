@@ -812,7 +812,6 @@
   "maj.fin.fermer": "Cerrar",
   "maj.fin.telecharge": "⬇️ ZIP descargado.",
   "maj.fin.remplace": "✅ Mapa reemplazado por su nueva versión.",
-  "maj.fin.publication": "☁️ Enviando la nueva versión…",
   "maj.fin.publie": "☁️ Nueva versión publicada.",
   "maj.nettoyage.titre": "Evitar duplicados",
   "maj.nettoyage.texte": "La nueva versión ya contiene estos objetos. ¿Devolver {calques} capa(s) y quitar de tu sesión {objets} objeto(s)? Si no, aparecerán duplicados.",
