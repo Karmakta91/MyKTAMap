@@ -216,6 +216,8 @@ Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, 
 
 **D'où part le calcul** : de ta position actuelle, dès que le suivi est actif ou que tu t'es situé une fois depuis l'ouverture du plan (« 📍 Je suis ici », recalage, portail, session restaurée) ; la fenêtre précise laquelle. Si tu ne t'es **jamais** situé, l'app demande **Où es-tu ?** : tape ta position sur la carte. Ce tap recale aussi le suivi, pour que l'itinéraire et l'Affichage XL partent du même endroit.
 
+**Où il arrive** : sur un plan multi-niveau, **🧭 Y aller** depuis la fiche d'un point fait finir la route au **niveau du point**, même si tu regardes un autre niveau (point entre niveaux : le niveau affiché s'il le dessert), comme **📍 Je suis ici**.
+
 Une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune, même si **📳 Vibration haptique** est désactivée. Tout se calcule sur ton appareil, sans réseau.
 
 ### 🔆 Affichage XL

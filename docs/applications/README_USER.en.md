@@ -216,6 +216,8 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 **Where the computation starts**: from your current position, as soon as tracking is on or you have located yourself once since opening the map ("📍 I am here", realignment, portal, restored session); the window tells you which. If you have **never** located yourself, the app asks **Where are you?**: tap your position on the map. That tap also realigns tracking, so the route and the XL display start from the same spot.
 
+**Where it ends**: on a multi-level plan, **🧭 Go there** from a point's popup ends the route on the **point's level**, even if you are looking at another level (point between levels: the level shown if it serves it), like **📍 I am here**.
+
 A vibration confirms the exit found or alerts you if there is none, even when **📳 Haptic vibration** is off. Everything is computed on your device, without network.
 
 ### 🔆 XL display

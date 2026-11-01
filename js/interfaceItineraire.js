@@ -194,7 +194,8 @@ window.itineraireYAller = function(x, y, nom, opts) {
       window.ktaDemanderPositionCarte(function(p) {
         const o = { x: p.x, y: p.y };
         if (Number.isInteger(p.niveau)) o.level = p.niveau;
-        window.itineraireYAller(x, y, nom, { origine: o });
+        // Les autres options (niveauCible…) suivent : seule l'origine vient du picker.
+        window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: o }));
       }, { icone: "🧭", texte: window.I18n.t("iti.pick.ouEsTu") });
       return;
     }

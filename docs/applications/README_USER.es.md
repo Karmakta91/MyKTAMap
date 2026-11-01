@@ -216,6 +216,8 @@ Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨
 
 **Desde dónde parte el cálculo**: desde tu posición actual, en cuanto el seguimiento está activo o te has situado una vez desde que abriste el mapa («📍 Estoy aquí», recolocación, portal, sesión restaurada); la ventana indica cuál. Si **nunca** te has situado, la app pregunta **¿Dónde estás?**: toca tu posición en el mapa. Ese toque también recoloca el seguimiento, para que la ruta y la visualización XL partan del mismo lugar.
 
+**Dónde termina**: en un plano multinivel, **🧭 Ir allí** desde la ficha de un punto hace terminar la ruta en el **nivel del punto**, aunque estés mirando otro nivel (punto entre niveles: el nivel mostrado si lo comunica), como **📍 Estoy aquí**.
+
 Una vibración confirma la salida encontrada o te avisa si no hay ninguna, aunque **📳 Vibración háptica** esté desactivada. Todo se calcula en tu dispositivo, sin red.
 
 ### 🔆 Vista XL

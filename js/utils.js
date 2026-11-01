@@ -1283,9 +1283,9 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const _act = function(action) {
     return 'data-kta-act="' + action + '" data-kta-id="' + _escAttr(id) + '" data-kta-x="' + x + '" data-kta-y="' + y + '" ';
   };
-  // Niveau où « 📍 Je suis ici » place le tracker (plan multi-niveau) : celui du POI, pas le niveau affiché
-  // (un POI du −1 visible pendant qu'on regarde le 0). Jonction : le niveau affiché s'il en fait partie, sinon
-  // son niveau propre (`level`). Mono-niveau : rien, recalerTrackerSurPoint garde sa règle.
+  // Niveau du POI (plan multi-niveau) : où « 📍 Je suis ici » place le tracker et où « Y aller » fait finir la route,
+  // pas le niveau affiché (un POI du −1 visible pendant qu'on regarde le 0). Jonction : le niveau affiché s'il en
+  // fait partie, sinon son niveau propre (`level`). Mono-niveau : rien, chaque action garde sa règle.
   let _niveauIci = "";
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
     const _pjI = window.KtaPoiJonction;
@@ -1386,7 +1386,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
                window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
-             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") +
+             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") + _niveauIci +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.goThere") + '">' +
                window.I18n.t("poi.goThereBtn") +
@@ -1436,7 +1436,11 @@ function _ktaPopupAction(e) {
       const n = parseInt(d.ktaNiveau, 10);
       return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined);
     }
-    case "aller":         return appel("itineraireYAller", x, y, d.ktaNom || "");
+    case "aller": {
+      // data-kta-niveau absent (mono-niveau) : pas de niveau de cible, le calcul garde sa règle.
+      const n = parseInt(d.ktaNiveau, 10);
+      return appel("itineraireYAller", x, y, d.ktaNom || "", Number.isInteger(n) ? { niveauCible: n } : undefined);
+    }
     case "etape":         return appel("itineraireAjouterWaypoint", x, y, d.ktaNom || "");
     case "favori":        return appel("toggleFavoriPoint", id, x, y, d.ktaNom || "", d.ktaTag || "default",
                                        d.ktaCalque || "data", d.ktaCalqueLabel || "", d.favPointuid || "");

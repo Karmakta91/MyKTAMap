@@ -755,6 +755,11 @@ Le niveau d'un départ voyage sur le **waypoint d'origine** (`level`), comme cel
 - replanification au recalage (`_onTrackerRecale` → `_replanifierDepuis(x, y, getTrackerLevel())`), dont le « Je suis ici » de l'alerte du guidage ;
 - Mode Secours : `declencherDepuis(x, y, level)` (victime).
 
-L'**arrivée** suit la même règle quand la cible a un niveau connu : `itineraireYAller(x, y, nom, { niveauCible })` le pose sur `waypoints[1]`. « Tracer » de la Sortie d'urgence (et de l'évacuation du Mode Secours) passe le niveau de la sortie visée, celui avec lequel le classement l'a mesurée : une sortie du −1 sous une galerie du 0 finit sur le −1.
+L'**arrivée** suit la même règle quand la cible a un niveau connu : `itineraireYAller(x, y, nom, { niveauCible })` le pose sur `waypoints[1]`. Qui le passe :
 
-Plan mono-niveau : aucun `level` posé, calage inchangé. Checkup : `scripts/smoke/checkup-recaler-niveau.js` (tracés superposés 0 et −1 reliés par une jonction — § 10-11 : choix −1 dans « Où es-tu ? » → la route part du −1 ; § 13-14 : tracker au −1, niveau affiché 0 → « Y aller », « Recalculer d'ici » et la sortie d'urgence partent du −1 ; § 15 : sortie du −1 → la route finit sur le −1).
+- « Tracer » de la Sortie d'urgence (et de l'évacuation du Mode Secours) : le niveau de la sortie visée, celui avec lequel le classement l'a mesurée — une sortie du −1 sous une galerie du 0 finit sur le −1 ;
+- « 🧭 Y aller » de la fiche d'un POI : le `data-kta-niveau` du bouton (`utils.js > buildPointPopupHtml`, lu par `_ktaPopupAction`), même règle que « 📍 Je suis ici » — niveau du POI, pas le niveau affiché ; POI jonction : le niveau affiché s'il le dessert, sinon son `level`. Plan mono-niveau : pas d'attribut, pas de niveau de cible.
+
+Position jamais confirmée : le picker « Où es-tu ? » relance `itineraireYAller` avec son origine **et les autres options** (`niveauCible` compris).
+
+Plan mono-niveau : aucun `level` posé, calage inchangé. Checkup : `scripts/smoke/checkup-recaler-niveau.js` (tracés superposés 0 et −1 reliés par une jonction — § 10-11 : choix −1 dans « Où es-tu ? » → la route part du −1 ; § 13-14 : tracker au −1, niveau affiché 0 → « Y aller », « Recalculer d'ici » et la sortie d'urgence partent du −1 ; § 15 : sortie du −1 → la route finit sur le −1 ; § 15 bis : « Y aller » de la fiche d'un POI du −1, 0 affiché → la route finit sur le −1).

@@ -15,7 +15,8 @@
 // choix −1 → la route part du −1 (tracés superposés 0 / −1, jonction) ; « Je suis ici » d'un POI du −1 pendant
 // que le 0 est affiché → tracker au −1 (POI jonction : niveau affiché s'il le dessert) ; tracker au −1 : « Y aller »,
 // « Recalculer d'ici » et sortie d'urgence partent du −1 ; « Tracer » vers une sortie du −1 finit sur le −1 ;
-// mono-niveau → jamais de fenêtre.
+// « Y aller » de la fiche d'un POI du −1, depuis le 0, finit sur le −1 (POI jonction : même niveau que « Je suis
+// ici ») ; mono-niveau → jamais de fenêtre.
 // Usage : node scripts/smoke/checkup-recaler-niveau.js (SMOKE_PORT pour une autre copie)
 // Doc : docs/architecture/tracking.md
 // =====================================================================
@@ -475,12 +476,14 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
         window.APP_CONFIG.activeLevel = n;
         const h = window.buildPointPopupHtml(pt, false);
         const m = /kta-popup-btn-here[^>]*data-kta-niveau="(-?\d+)"/.exec(h);
-        return m ? Number(m[1]) : null;
+        const a = /kta-popup-btn-aller[^>]*data-kta-niveau="(-?\d+)"/.exec(h);
+        return [m ? Number(m[1]) : null, a ? Number(a[1]) : null];
       });
     });
     await page.evaluate(function () { window.ktaSetActiveLevel(0, { source: "checkup" }); });
-    verifier(JSON.stringify(niveauxJpe) === "[-2,0,0]",
-      "jonction : affiché −2 → −2, affiché 0 → 0, affiché −1 (non desservi) → son niveau 0", niveauxJpe);
+    verifier(JSON.stringify(niveauxJpe) === "[[-2,-2],[0,0],[0,0]]",
+      "jonction (« Je suis ici » et « Y aller ») : affiché −2 → −2, affiché 0 → 0, affiché −1 (non desservi) → " +
+      "son niveau 0", niveauxJpe);
 
     console.log("\n── 13. Tracker au −1, « Y aller » vers une cible du 0 (niveau affiché 0) ──");
     await poserCas(page, P, RESEAU);
@@ -546,6 +549,36 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
       "la route finit sur le tracé du −1 (niveau de la sortie)", it && { dernier: it.dernier, niveaux: it.niveaux });
     await effacerItineraire();
     await page.evaluate(function () { if (window.SortieUrgence.isActive()) window.SortieUrgence._fermer(); });
+
+    console.log("\n── 15 bis. « Y aller » de la fiche d'un POI du −1, depuis le 0 ──");
+    // POI posé sur les tracés superposés : sans son niveau, l'arrivée se cale sur le tracé du 0.
+    await poserCas(page, P, Object.assign({}, RESEAU, { points: [
+      { id: "SalleBas", nom: "SalleBas", uid: "pt_sallebas", tags: ["salle"], level: -1, d: [10, 5] }
+    ] }));
+    await page.evaluate(function (P) {
+      window.recalerTrackerSurPoint(P.x - 2 * P.sc, P.y, 0);
+      window.ktaSetActiveLevel(-1, { source: "checkup" });   // union : −1 et 0 affichés, 0 actif ensuite
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+    }, P);
+    await page.waitForTimeout(400);
+    const xyBas = await cliquerCarte(page, P, 10, 5);
+    const aller = page.locator(".kta-popup-point .kta-popup-btn-aller").first();
+    if (await aller.count()) {
+      const nivBtn = await aller.getAttribute("data-kta-niveau");
+      await aller.click();
+      await attendre(page, function () {
+        return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
+      }, 15000).catch(function () {});
+      it = await itineraire();
+      verifier(nivBtn === "-1", "bouton « Y aller » au niveau du POI (−1), 0 affiché", nivBtn);
+      verifier(it && it.p0 && it.p0.level === 0, "départ au niveau du tracker (0)", it && it.p0);
+      verifier(it && it.dernier && it.dernier.level === -1 && proche(it.dernier, xyBas),
+        "la route finit sur le tracé du −1 (niveau du POI)", it && { dernier: it.dernier, niveaux: it.niveaux });
+    } else {
+      pb("fiche du POI du −1 non ouverte par le clic : cas 15 bis non testé");
+    }
+    await effacerItineraire();
+    await page.evaluate(function () { try { window.map.closePopup(); } catch (err) {} });
 
     console.log("\n── 8 bis. Objets des calques de données (lus, pas cliqués) ──");
     const cal = await page.evaluate(function () {
