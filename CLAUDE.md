@@ -81,6 +81,7 @@
 | **Tuilage** : V1 vs V2, 2 modes, déploiement + **hors-ligne** d'un plan serveur | **`docs/TILING.md`** |
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | **Mode « plan orienté »** (la carte tourne pendant le suivi) | `docs/architecture/tracking.md` §plan orienté · `js/mapBearing.js` |
+| **Vue 3D (bêta)** autour de sa position (tuile 🧊 du menu Tracker, three.js à la demande) | `docs/ETUDE_VUE_3D.md` (décisions) · `docs/architecture/tracking.md` §Vue 3D · `js/vue3d.js` |
 | **Guidage de l'itinéraire** (« dans X m, tourner à gauche », feuille de route, urgence) | `docs/ETUDE_GUIDAGE.md` (décisions) · `docs/architecture/tracking.md` §Guidage · `js/itiGuidage.js` |
 | **Identifiant stable des objets** (`uid` + `updatedAt`, traces de suppression, fusion, photos/favoris/liaisons/Secours par uid) — chantier 1, livré v2.1.0 → v2.5.0 | `docs/ETUDE_UID.md` (décisions) · `js/ktaUid.js` · `scripts/check-uid.js` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |

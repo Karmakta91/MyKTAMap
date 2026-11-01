@@ -447,7 +447,7 @@ El botón **🧭 Tracker** (o el indicador 🧭 de la barra de abajo) abre una *
 | Sección | Fichas |
 |---|---|
 | **Seguimiento** | ▶️ / ⏹️ Iniciar / detener · 📍 Modo recolocación · 🎯 Mi posición (vuelve a centrar el mapa en ti) · 🔓 Suspender el bloqueo en trazado |
-| **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado |
+| **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado · 🧊 Vista 3D (beta) |
 | **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🔆 Vista XL · 🚑 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
 
 Navegación inteligente (bloqueo en trazado), mapa orientado, itinerario a través de varios mapas, replay y mapa de calor son opciones desactivadas por defecto → 🔭 Para ir más lejos.
@@ -484,6 +484,19 @@ La ficha **🧭** muestra una rosa de los vientos arriba a la izquierda del mapa
 | el Oeste | a la derecha |
 
 Si no coincide, el campo magnético está perturbado (chatarra, armaduras): recolócate en cuanto puedas y desconfía del trazado.
+
+### 🧊 Vista 3D (beta)
+
+La ficha **🧊 Vista 3D (beta)** muestra el plano **en relieve alrededor de tu posición**, como si estuvieras allí, iluminado por una linterna frontal. Se carga al primer toque y sigue disponible sin conexión.
+
+- **Lo que muestra**: pilares, muros y frentes de explotación levantados a la altura de galería del plano (⛏️ Volumen explotado, si no 2 m), rellenos, agua, zonas ⛔ inaccesibles y derrumbes, trazados e itinerario en el suelo, puntos en carteles. Solo el nivel activo, capas ocultas incluidas, a 30 m alrededor de ti.
+- **Desplazarse**: mantén el pad ▲ ▼ ↶ ↷ ◀ ▶, flechas o WASD, o arrastra sobre la escena para girar y levantar la vista. **Más rápido**: mantén Mayús, o deja ▲ pulsado más de medio segundo. Chocas contra pilares, muros y frentes (personalizados incluidos), con la anchura de un cuerpo. **📍** vuelve a tu posición seguida.
+- **🛰️ Vista aérea** (o V): te ves desde arriba. Su inclinación va de casi vertical a rasante: desliza hacia arriba o abajo con dos dedos, rueda del ratón o RePág / AvPág, o los botoncitos ▲ ▼ de la derecha; se conserva mientras la vista sigue abierta.
+- **Brújula** (abajo a la izquierda): su **N** indica el norte real, según la calibración del norte del plano, y gira con tu vista. Plano sin norte calibrado: muestra la parte superior del plano y lo indica.
+- **El tracker no se mueve** mientras te desplazas en 3D. Al cerrar (✕ o Esc), si el seguimiento está activo y te has desplazado, **📍 ¿Estoy aquí?** propone recolocarlo donde te detuviste; **No** no cambia nada.
+- **Ficha en gris**: ningún plano abierto, o plano sin escala (⚙️ Ajustes → 📐 Mapa: escala y geolocalización). Un navegador que no puede mostrar 3D lo indica al abrirla.
+
+> ⚠️ **Beta**: la 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento, tu posición del tracker, que deriva. No te fíes más que del mapa.
 
 ### ⚙️ Ajustes del tracker
 

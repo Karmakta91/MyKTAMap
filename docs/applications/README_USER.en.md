@@ -447,7 +447,7 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 | Section | Tiles |
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
-| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
+| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map · 🧊 3D view (beta) |
 | **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚑 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
@@ -484,6 +484,19 @@ The **🧭** tile shows a compass rose at the top left of the map, even with the
 | West | on the right |
 
 If it doesn't match, the magnetic field is disturbed (scrap metal, reinforcements): realign as soon as possible and don't trust the trail too much.
+
+### 🧊 3D view (beta)
+
+The **🧊 3D view (beta)** tile shows the map **in relief around your position**, as if you were there, lit by a headlamp. It loads on first tap and stays available offline.
+
+- **What it shows**: pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m), backfill, water, ⛔ inaccessible and collapse zones, traces and route on the floor, points as signs. Active level only, hidden layers included, 30 m around you.
+- **Moving**: hold the ▲ ▼ ↶ ↷ ◀ ▶ pad, arrow keys or WASD, or drag on the scene to turn and look up. **Faster**: hold Shift, or keep ▲ pressed for more than half a second. You bump into pillars, walls and faces (custom ones included), with the width of a body. **📍** goes back to your tracked position.
+- **🛰️ Bird's-eye view** (or V): you see yourself from above. Its tilt goes from almost vertical to low: drag up or down with two fingers, mouse wheel or PageUp / PageDown, or the small ▲ ▼ buttons on the right; it is kept while the view stays open.
+- **Compass** (bottom left): its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
+- **The tracker does not move** while you move in 3D. When you close it (✕ or Esc), if tracking is on and you moved, **📍 Am I here?** offers to realign it where you stopped; **No** changes nothing.
+- **Greyed tile**: no map open, or a map without a scale (⚙️ Settings → 📐 Map: scale & geolocation). A browser that cannot display 3D says so when you open it.
+
+> ⚠️ **Beta**: the 3D shows the **map**, not the real tunnel. Shapes and heights come from the survey, your position from the tracker, which drifts. Do not trust it more than the map.
 
 ### ⚙️ Tracker settings
 
