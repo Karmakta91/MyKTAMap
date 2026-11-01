@@ -9,7 +9,7 @@
 
 .kta-vue3d {
   position: fixed; inset: 0; z-index: 99999;
-  background: #000; color: var(--kta-texte);
+  background: var(--kta-fond); color: var(--kta-texte);
   user-select: none; -webkit-user-select: none;
 }
 .kta-v3d-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -39,3 +39,25 @@
   background: var(--kta-fond); color: var(--kta-texte-2);
   font: 12px/1.4 monospace;
 }
+
+/* Inclinaison de la vue plongeante : deux petits boutons à droite, montrés seulement dans cette vue. */
+.kta-v3d-incl {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.kta-v3d-incl[hidden] { display: none; }
+.kta-v3d-btn.kta-v3d-btn-petit { width: 40px; height: 40px; font-size: 16px; }
+
+/* Rose des vents (icon/compass.svg, tournée par vue3d.js > _majBoussole) en bas à gauche, hors du pavé. */
+.kta-v3d-boussole {
+  position: absolute; left: 10px; bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 4px;
+  pointer-events: none;
+}
+.kta-v3d-rose { width: 56px; height: 56px; }
+.kta-v3d-rose-mention {
+  max-width: 96px; padding: 2px 6px; border-radius: 6px;
+  background: var(--kta-fond); color: var(--kta-texte-3);
+  font-size: 11px; line-height: 1.25; text-align: center;
+}
+.kta-v3d-rose-mention[hidden] { display: none; }

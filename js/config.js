@@ -848,6 +848,16 @@ function getPlanNorthOffset(planId) {
   return 0;
 }
 
+// Le Nord de ce plan a-t-il été calibré (pref du plan ou plan-config) ? Sinon getPlanNorthOffset rend 0 par
+// défaut : « Nord en haut » n'est qu'une supposition (rose de la vue 3D : « haut du plan »).
+function getPlanNorthCalibre(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (typeof prefs.northOffsetDeg === "number" && Number.isFinite(prefs.northOffsetDeg)) return true;
+  const brut = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? window.PLAN_CONFIG.plan.northOffsetDeg : undefined;
+  return brut !== undefined && brut !== null && brut !== "" && Number.isFinite(Number(brut));
+}
+
 // Écrit pour le plan (string ou number, normalisé) et émet `kta:northOffsetChange` : tracker, boussole et rose des
 // vents se re-rendent sans reload.
 function setPlanNorthOffset(planId, value) {
@@ -1205,6 +1215,7 @@ window.setPlanShowsIntersections   = setPlanShowsIntersections;
 window.getPlanSmartNav             = getPlanSmartNav;    // par plan
 window.setPlanSmartNav             = setPlanSmartNav;
 window.getPlanNorthOffset          = getPlanNorthOffset;
+window.getPlanNorthCalibre         = getPlanNorthCalibre;
 window.setPlanNorthOffset          = setPlanNorthOffset;
 window.resetPlanNorthOffset        = resetPlanNorthOffset;
 window.normalizePath               = normalizePath;

@@ -4,21 +4,25 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// vue3d.js — vue 3D à la première personne autour de la position du tracker (prototype, aucune entrée de menu).
-// Chargé à la demande (avec css/vue3d.css) ; three.js (lib/three/) n'est importé qu'à la première ouverture.
-// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer(), etat(), mesurer(opts), basculerVue(),
-//   avancer(m), tourner(deg), suivre(), placer(x, y, cap) }.
-//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats }.
+// vue3d.js — vue 3D à la première personne autour de la position du tracker (bêta, tuile 🧊 du menu Tracker).
+// Chargé à la demande par interface.js > _tuileVue3D (avec css/vue3d.css) ; three.js (lib/three/) n'est importé
+// qu'à la première ouverture. Les quatre fichiers sont précachés par sw.js (la 3D sert sous terre, hors réseau).
+// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(),
+//   mesurer(opts), basculerVue(), incliner(deg), avancer(m), tourner(deg), suivre(), placer(x, y, cap) }.
+//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms) }.
 // Scène (mètres : x = x image / scale, z = y image / scale, y = hauteur) : structures extrudées du sol à la
 // hauteur du plan (Volume exploité), zones, tracés et itinéraire au sol, POI en panneaux ; niveau actif seul.
-// Tuiles carrées construites autour de la position, jetées au loin ; une lampe frontale et un brouillard noir
-// bornent ce qui est dessiné. Rendu seulement quand quelque chose bouge (batterie).
-// ⚠️ contrat : déplacement à l'écran et au clavier = règle du pas du tracker (tracking.js > ktaEstAccessible,
-// ktaPasBloqueParStructure), jamais une copie ; le tracker n'est pas déplacé par la vue 3D.
+// Tuiles carrées construites autour de la position, jetées au loin ; lampe frontale et brouillard noir bornent
+// ce qui est dessiné. Rendu seulement quand quelque chose bouge (batterie).
+// ⚠️ contrat : déplacement = règle du pas du tracker, jamais une copie (tracking.js > ktaEstAccessible,
+// ktaSegmentsBloquesParStructure), sur la largeur d'un corps. Le tracker n'est pas déplacé en route (décision
+// produit) : à la fermeture, si le suivi est actif et qu'on s'est déplacé, « Je suis ici ? » propose de le recaler
+// là (tracking.js > recalerTrackerSurPoint).
 // 🩸 three.js est un module ES : import() dynamique depuis ce script classique, URL absolue (pas d'import map,
 // la CSP refuse tout script en ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en
-// garde peu (iOS ~ 8, Chrome 16) et le plus ancien est perdu sans prévenir.
-// Doc : docs/ETUDE_VUE_3D.md · Garde-fou : scripts/smoke/checkup-vue-3d.js
+// garde peu (iOS ~ 8, Chrome 16). Contexte perdu en route : on attend sa reprise (three.js recharge tout), la
+// vue se ferme avec un message si elle ne revient pas.
+// Doc : docs/ETUDE_VUE_3D.md, docs/architecture/tracking.md § Vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
 
 (function () {
   "use strict";
@@ -29,21 +33,51 @@
   const TUILES_PAR_IMAGE = 3;       // tuiles construites au plus par image après l'ouverture (pas d'à-coup)
   const HAUTEUR_DEFAUT = 2;         // m, comme ⛏️ Volume exploité
   const OEIL = 1.6;                 // m
-  const RAYON_CORPS = 0.3;          // m : distance gardée devant soi contre une structure
-  const VITESSE = 1.4;              // m/s, x 2.5 avec Maj
+  const RAYON_CORPS = 0.4;          // m : demi-largeur du corps, gardée devant et sur les côtés (un mur en ligne
+                                    // de 0,4 m est dessiné à 0,2 m de son axe : on reste à 0,2 m de sa face)
+  const RAILS = [0, -1, 1];         // couloirs balayés, en part de RAYON_CORPS de part et d'autre de l'axe
+  const RAYONS = 12;                // rayons de RAYON_CORPS autour du point d'arrivée (un tous les 30°)
+  const VITESSE = 2.8;              // m/s au pavé et au clavier (explorer, pas marcher : le tracker n'en dépend pas)
+  const FACTEUR_RAPIDE = 2.5;       // pas rapide : Maj maintenue, ou ▲ maintenu plus de APPUI_LONG
+  const APPUI_LONG = 600;           // ms
+  const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
+  const RECUL_PLONGEE = 18.4;       // m entre la caméra plongeante et le point visé, 2 m devant soi
   const ROTATION = 90;              // °/s
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
   const LARGEUR_TRACE = 0.25;       // m
   const LARGEUR_ITI = 0.5;          // m
   const HAUTEUR_REMBLAIS = 0.6;     // part de la hauteur du plan
-  const COULEUR_SOL = 0x6a6a72;
-  const COULEUR_PLAFOND = 0x56565e;
+  const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
+  // Sol et ciel de carrière (plafond, à la hauteur du plan) : même teinte sable calcaire, grain procédural répété
+  // (bruit dessiné dans un canvas, aucune image téléchargée). Couleur de la scène, pas de la charte de l'UI.
+  const COULEUR_CALCAIRE = "#c9b48c";
+  const GRAIN_TAILLE = 128;         // px du motif
+  const GRAIN_METRES = 2;           // m couverts par un motif
+  const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
+  const SEUIL_RECALAGE = 0.5;       // m d'écart avec le tracker sous lequel « Je suis ici ? » ne se pose pas
 
   let THREE = null;
   let _import = null;
   let _e = null;                    // état de la vue ouverte (null = fermée)
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
+  let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
+
+  // Textes lus au rendu (langue courante) ; sans I18n, la clé.
+  function _t(cle) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(cle) : cle; }
+
+  function _toast(cle) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t(cle), "warn");
+  }
+
+  function _alerte(cle) {
+    if (typeof window.ktaAlerte === "function") window.ktaAlerte(_t(cle), { type: "erreur" });
+  }
+
+  function _echelle() {
+    const sc = Number(window.APP_CONFIG && window.APP_CONFIG.scale);
+    return Number.isFinite(sc) && sc > 0 ? sc : 0;
+  }
 
   function _chargerThree() {
     if (THREE) return Promise.resolve(THREE);
@@ -285,16 +319,23 @@
       [ax - ex - nx, y, az - ez - nz], [0, 1, 0], col);
   }
 
+  // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) est toujours SOUS un pilier ou un front de son
+  // niveau. Là où ils se chevauchent, le pilier ou le front l'emporte : le mur monte à HAUTEUR_MUR de la hauteur et
+  // son matériau est reculé en profondeur (polygonOffset), d'où aucun scintillement sur les faces confondues et
+  // un dessus de pilier toujours visible.
+  function _estMur(type) { return type === "mur" || type === "mur-ligne"; }
+
   function _construireTuile(t) {
     const sc = _e.sc, h = _e.hauteur;
-    const opaque = new Lot(), transp = new Lot(), lumineux = new Lot();
+    const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot();
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], col = _couleur("structures", s.type);
+      const lot = _estMur(s.type) ? murs : opaque, hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
       if (_estLigne(s.type)) {
         const ep = s.type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT;
-        _murLigne(opaque, s.points, sc, ep, h, col);
+        _murLigne(lot, s.points, sc, ep, hs, col);
       } else {
-        _prisme(opaque, _anneau(s.points, sc), 0, h, col, true);
+        _prisme(lot, _anneau(s.points, sc), 0, hs, col, true);
       }
     }
     for (let i = 0; i < t.z.length; i++) {
@@ -317,15 +358,17 @@
       else _ruban(opaque, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
     }
     const groupe = new THREE.Group();
-    const ajouter = function (lot, mat, ordre) {
+    const ajouter = function (lot, mat, ordre, famille) {
       const g = lot.geometrie();
       if (!g) return;
       const m = new THREE.Mesh(g, mat);
       m.renderOrder = ordre;
       m.matrixAutoUpdate = false;
+      m.userData.famille = famille;
       groupe.add(m);
     };
-    ajouter(opaque, _e.mats.opaque, 0);
+    ajouter(opaque, _e.mats.opaque, 0, "opaque");
+    ajouter(murs, _e.mats.murs, 0, "murs");
     ajouter(lumineux, _e.mats.lumineux, 1);
     ajouter(transp, _e.mats.transp, 2);
     for (let i = 0; i < t.p.length; i++) {
@@ -395,14 +438,51 @@
 
   // ── Scène ──────────────────────────────────────────────────────────────────────────────────────────
 
+  // Motif calcaire répétable : teinte COULEUR_CALCAIRE, taches douces (bruit de valeur 8 × 8 interpolé, bouclé sur
+  // les bords pour que la répétition ne se voie pas) et grain fin par pixel. ~1 ms, 64 Ko de texture.
+  function _grainCalcaire() {
+    const n = GRAIN_TAILLE, g = 8, cv = document.createElement("canvas");
+    cv.width = n; cv.height = n;
+    const ctx = cv.getContext("2d"), img = ctx.createImageData(n, n), base = new THREE.Color(COULEUR_CALCAIRE);
+    let graine = 7;
+    const alea = function () { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+    const grille = [];
+    for (let i = 0; i < g * g; i++) grille.push(alea());
+    const v = function (x, y) { return grille[((y + g) % g) * g + ((x + g) % g)]; };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const fx = x / n * g, fy = y / n * g, x0 = Math.floor(fx), y0 = Math.floor(fy);
+        const tx = fx - x0, ty = fy - y0, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+        const haut = v(x0, y0) + (v(x0 + 1, y0) - v(x0, y0)) * sx;
+        const bas = v(x0, y0 + 1) + (v(x0 + 1, y0 + 1) - v(x0, y0 + 1)) * sx;
+        const k = 0.86 + (haut + (bas - haut) * sy) * 0.2 + (alea() - 0.5) * 0.1;
+        const o = (y * n + x) * 4;
+        img.data[o] = Math.min(255, base.r * 255 * k);
+        img.data[o + 1] = Math.min(255, base.g * 255 * k);
+        img.data[o + 2] = Math.min(255, base.b * 255 * k);
+        img.data[o + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(_e.distance * 2.4 / GRAIN_METRES, _e.distance * 2.4 / GRAIN_METRES);
+    tex.anisotropy = 4;
+    return tex;
+  }
+
   function _materiaux() {
+    const grain = _e.grain = _grainCalcaire();
     return {
       opaque: new THREE.MeshLambertMaterial({ vertexColors: true }),
+      murs: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1 }),
       lumineux: new THREE.MeshBasicMaterial({ vertexColors: true }),
       transp: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
         depthWrite: false, side: THREE.DoubleSide }),
-      sol: new THREE.MeshLambertMaterial({ color: COULEUR_SOL }),
-      plafond: new THREE.MeshLambertMaterial({ color: COULEUR_PLAFOND, side: THREE.BackSide }),
+      sol: new THREE.MeshLambertMaterial({ map: grain }),
+      plafond: new THREE.MeshLambertMaterial({ map: grain, side: THREE.BackSide }),
       avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 })
     };
   }
@@ -411,7 +491,7 @@
     const e = _e;
     e.scene = new THREE.Scene();
     e.scene.background = new THREE.Color(0x000000);
-    e.scene.fog = new THREE.Fog(0x000000, e.distance * 0.35, e.distance);
+    e.scene.fog = new THREE.Fog(0x000000, e.distance * 0.45, e.distance);
     e.camera = new THREE.PerspectiveCamera(70, 1, 0.05, e.distance + 5);
     e.camera.rotation.order = "YXZ";
     e.scene.add(e.camera);
@@ -427,11 +507,12 @@
     e.tete = new THREE.Object3D();
     e.tete.rotation.order = "YXZ";
     e.scene.add(e.tete);
-    e.lampe = new THREE.SpotLight(0xfff1d6, 14, e.distance, 0.62, 0.55, 1.6);
+    // Lampe frontale : portée = distance de vue (au-delà, le brouillard est noir de toute façon), décroissance douce.
+    e.lampe = new THREE.SpotLight(0xfff1d6, 24, e.distance, 0.62, 0.55, 1.2);
     e.lampe.position.set(0, 0.05, 0);
     e.lampe.target.position.set(0, -0.3, -1);
     e.tete.add(e.lampe, e.lampe.target);
-    e.halo = new THREE.PointLight(0xfff1d6, 1.2, 3.5, 2);
+    e.halo = new THREE.PointLight(0xfff1d6, 1.6, 4.5, 2);
     e.tete.add(e.halo);
     e.ambiance = new THREE.AmbientLight(0xffffff, 0.04);
     e.scene.add(e.ambiance);
@@ -482,17 +563,50 @@
     e.tete.position.set(x, e.oeil, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(x, 0, z);
+    // Le carré de sol suit la position : le motif est décalé d'autant pour rester fixe sous les pieds.
+    e.grain.offset.set(x / GRAIN_METRES, -z / GRAIN_METRES);
     e.plafond.position.set(x, e.hauteur, z);
     e.avatar.position.set(x, 0.45, z);
     e.avatar.rotation.set(0, -cap, 0);
     if (e.vue === "plongee") {
-      const fx = Math.sin(cap), fz = -Math.cos(cap);
-      e.camera.position.set(x - fx * 7, 16, z - fz * 7);
-      e.camera.lookAt(x + fx * 2, 0, z + fz * 2);
+      const fx = Math.sin(cap), fz = -Math.cos(cap), i = e.inclinaison * Math.PI / 180;
+      const vx = x + fx * 2, vz = z + fz * 2, h = RECUL_PLONGEE * Math.cos(i);
+      e.camera.position.set(vx - fx * h, RECUL_PLONGEE * Math.sin(i), vz - fz * h);
+      e.camera.lookAt(vx, 0, vz);
     } else {
       e.camera.position.set(x, e.oeil, z);
       e.camera.rotation.set(e.tangage, -cap, 0);
     }
+    _majBoussole();
+  }
+
+  // Rose des vents : même convention que la boussole 2D (compass.js, rotate(-cap)), sur le cap RÉEL de la vue :
+  // cap plan − calibration Nord du plan (tracking.js > _getPlanRelHeading fait l'inverse). Sans calibration, la
+  // rose montre le haut du plan, et le dit.
+  function _majBoussole() {
+    const e = _e;
+    if (!e.rose) return;
+    const reel = ((e.cap - e.nord) % 360 + 360) % 360;
+    if (Math.abs(reel - e.roseAngle) < 0.5) return;
+    e.roseAngle = reel;
+    e.rose.style.transform = "rotate(" + (-reel).toFixed(1) + "deg)";
+  }
+
+  function _lireNord() {
+    const e = _e;
+    e.nordCalibre = typeof window.getPlanNorthCalibre === "function" && window.getPlanNorthCalibre() === true;
+    const lire = typeof window.getPlanNorthOffset === "function" ? window.getPlanNorthOffset : null;
+    e.nord = e.nordCalibre && lire ? Number(lire()) || 0 : 0;
+    e.roseAngle = NaN;
+    if (e.roseMention) e.roseMention.hidden = e.nordCalibre;
+    e.sale = true;
+  }
+
+  // Inclinaison de la vue plongeante, bornée, retenue tant que la vue est ouverte.
+  function incliner(deg) {
+    if (!_e) return;
+    _e.inclinaison = Math.max(INCLINAISON.min, Math.min(INCLINAISON.max, _e.inclinaison + deg));
+    _e.sale = true;
   }
 
   function _appliquerVue() {
@@ -500,29 +614,40 @@
     e.plafond.visible = !haut;
     e.avatar.visible = haut;
     e.ambiance.intensity = haut ? 0.9 : 0.04;
-    e.scene.fog.near = haut ? e.distance : e.distance * 0.35;
+    e.scene.fog.near = haut ? e.distance : e.distance * 0.45;
     e.scene.fog.far = haut ? e.distance * 1.4 + 20 : e.distance;
     e.camera.far = haut ? e.distance * 1.4 + 30 : e.distance + 5;
     e.camera.updateProjectionMatrix();
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
+    if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
     e.sale = true;
   }
 
   // ── Déplacement ────────────────────────────────────────────────────────────────────────────────────
 
-  // Pas de `m` mètres dans la direction `angle` (° plan, 0 = haut de l'image) : refusé contre une structure
-  // (règle du tracker, avec une marge de RAYON_CORPS devant), glisse le long d'un mur si un seul axe passe.
+  // Pas de `m` mètres dans la direction `angle` (° plan, 0 = haut de l'image), glisse le long d'un mur si un seul
+  // axe passe. ⚠️ Le corps a une largeur : le pas est BALAYÉ par trois segments parallèles (axe et ± RAYON_CORPS),
+  // prolongés de RAYON_CORPS devant, puis l'arrivée doit laisser libres RAYONS segments de RAYON_CORPS en étoile
+  // (un disque autour de soi) ; tous jugés par la règle du tracker, en un lot (ktaSegmentsBloquesParStructure,
+  // types perso compris). Déjà à moins de RAYON_CORPS d'une face (ouvert sur la position du tracker) : l'arrivée
+  // peut garder des rayons bloqués, pas plus qu'au départ, sinon on resterait figé contre le mur.
+  // 🩸 Avec le seul axe, on frôlait une face à quelques centimètres en biais ou en glissant : la caméra passait
+  // alors dans le pilier (plan proche à 5 cm) et l'on voyait au travers ; et les types perso, dessinés en volume,
+  // n'arrêtaient rien.
   function _pas(m, angle) {
     const e = _e, a = angle * Math.PI / 180;
     const dx = Math.sin(a) * m * e.sc, dy = -Math.cos(a) * m * e.sc;
     const essais = [[dx, dy], [dx, 0], [0, dy]];
+    let auDepart = -1;   // rayons bloqués au départ, lus seulement si une arrivée en a
+    const depart = function () { if (auDepart < 0) auDepart = _rayonsBloques(e.pos.x, e.pos.y); return auDepart; };
     for (let i = 0; i < essais.length; i++) {
       const sx = essais[i][0], sy = essais[i][1], l = Math.hypot(sx, sy);
       if (l < 1e-9) continue;
-      const marge = RAYON_CORPS * e.sc / l;
       const x1 = e.pos.x + sx, y1 = e.pos.y + sy;
-      if (!_libre(e.pos.x, e.pos.y, x1 + sx * marge, y1 + sy * marge)) continue;
+      const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
+      if (n < 0 || (n > 0 && n > depart())) continue;
       e.pos.x = x1; e.pos.y = y1;
+      e.aBouge = true;
       e.sale = true;
       return true;
     }
@@ -530,13 +655,41 @@
     return false;
   }
 
-  function _libre(x0, y0, x1, y1) {
+  // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
+  // bloqués autour de l'arrivée. Un seul lot de segments par essai (ktaSegmentsBloquesParStructure).
+  function _balayage(x0, y0, x1, y1, ux, uy) {
+    const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
-    if (pc && (x1 < 0 || y1 < 0 || x1 > pc.imageWidth || y1 > pc.imageHeight)) return false;
-    if (typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(x1, y1)) return false;
-    if (typeof window.ktaPasBloqueParStructure !== "function") return true;
-    const niv = _e.niveau === null ? undefined : _e.niveau;
-    return !window.ktaPasBloqueParStructure(x0, y0, x1, y1, niv);
+    if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
+    if (typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
+    if (typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
+    const segs = [];
+    for (let i = 0; i < RAILS.length; i++) {
+      const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
+      segs.push([x0 + ox, y0 + oy, fx + ox, fy + oy]);
+    }
+    _rayons(segs, x1, y1, r);
+    const res = window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true);
+    for (let i = 0; i < RAILS.length; i++) { if (res[i]) return -1; }
+    let n = 0;
+    for (let i = RAILS.length; i < res.length; i++) { if (res[i]) n++; }
+    return n;
+  }
+
+  function _rayons(segs, x, y, r) {
+    for (let i = 0; i < RAYONS; i++) {
+      const a = i * 2 * Math.PI / RAYONS;
+      segs.push([x, y, x + Math.cos(a) * r, y + Math.sin(a) * r]);
+    }
+    return segs;
+  }
+
+  function _niveauPas() { return _e.niveau === null ? undefined : _e.niveau; }
+
+  function _rayonsBloques(x, y) {
+    if (typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
+    const res = window.ktaSegmentsBloquesParStructure(_rayons([], x, y, RAYON_CORPS * _e.sc), _niveauPas(), true);
+    return res.filter(Boolean).length;
   }
 
   function _passerEnLibre() { if (_e.mode !== "libre") { _e.mode = "libre"; _majBoutonSuivre(); } }
@@ -576,9 +729,11 @@
     const dt = e.tsPrec ? Math.min(0.1, (ts - e.tsPrec) / 1000) : 0;
     e.tsPrec = ts;
     const k = e.touches;
-    const vit = VITESSE * (k.Shift ? 2.5 : 1);
+    const rapide = k.Shift || (k.av && e.avDepuis > 0 && ts - e.avDepuis > APPUI_LONG);
+    const vit = VITESSE * (rapide ? FACTEUR_RAPIDE : 1);
     const av = (k.av ? 1 : 0) - (k.ar ? 1 : 0), lat = (k.dr ? 1 : 0) - (k.ga ? 1 : 0);
     const rot = (k.td ? 1 : 0) - (k.tg ? 1 : 0);
+    e.rapide = !!rapide && !!(av || lat);
     if (av || lat || rot) _passerEnLibre();
     if (rot) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
     if (av) _pas(vit * dt * av, e.cap);
@@ -587,6 +742,7 @@
     const niv = _niveauCourant();
     if (niv !== e.niveau) _reindexer();
     _gererTuiles(false);
+    if (e.perdu) return;
     _redimensionner();
     if (!e.sale) return;
     e.sale = false;
@@ -638,25 +794,50 @@
     ov.id = "kta-vue3d";
     ov.className = "kta-vue3d";
     ov.setAttribute("role", "dialog");
-    ov.setAttribute("aria-label", "Vue 3D");
+    ov.setAttribute("aria-label", _t("vue3d.titre"));
     const cv = document.createElement("canvas");
     cv.className = "kta-v3d-canvas";
     ov.appendChild(cv);
     const haut = document.createElement("div");
     haut.className = "kta-v3d-haut";
-    e.boutonSuivre = _bouton(haut, "", "📍", "Suivre ma position", "suivre");
-    e.boutonVue = _bouton(haut, "", "🛰️", "Vue plongeante", "vue");
-    _bouton(haut, "kta-v3d-fermer", "✕", "Fermer la vue 3D", "fermer");
+    e.boutonSuivre = _bouton(haut, "", "📍", _t("vue3d.suivre"), "suivre");
+    e.boutonVue = _bouton(haut, "", "🛰️", _t("vue3d.plongee"), "vue");
+    _bouton(haut, "kta-v3d-fermer", "✕", _t("vue3d.fermer"), "fermer");
     ov.appendChild(haut);
     const pad = document.createElement("div");
     pad.className = "kta-v3d-pad";
-    _bouton(pad, "kta-v3d-tg", "↶", "Tourner à gauche", "tg");
-    _bouton(pad, "kta-v3d-av", "▲", "Avancer", "av");
-    _bouton(pad, "kta-v3d-td", "↷", "Tourner à droite", "td");
-    _bouton(pad, "kta-v3d-ga", "◀", "Pas à gauche", "ga");
-    _bouton(pad, "kta-v3d-ar", "▼", "Reculer", "ar");
-    _bouton(pad, "kta-v3d-dr", "▶", "Pas à droite", "dr");
+    _bouton(pad, "kta-v3d-tg", "↶", _t("vue3d.tournerGauche"), "tg");
+    _bouton(pad, "kta-v3d-av", "▲", _t("vue3d.avancer"), "av");
+    _bouton(pad, "kta-v3d-td", "↷", _t("vue3d.tournerDroite"), "td");
+    _bouton(pad, "kta-v3d-ga", "◀", _t("vue3d.pasGauche"), "ga");
+    _bouton(pad, "kta-v3d-ar", "▼", _t("vue3d.reculer"), "ar");
+    _bouton(pad, "kta-v3d-dr", "▶", _t("vue3d.pasDroite"), "dr");
     ov.appendChild(pad);
+    // Inclinaison (vue plongeante seulement) : deux petits boutons à droite.
+    const incl = document.createElement("div");
+    incl.className = "kta-v3d-incl";
+    incl.hidden = true;
+    _bouton(incl, "kta-v3d-btn-petit", "▲", _t("vue3d.inclinaisonPlus"), "inclPlus");
+    _bouton(incl, "kta-v3d-btn-petit", "▼", _t("vue3d.inclinaisonMoins"), "inclMoins");
+    ov.appendChild(incl);
+    e.boutonsIncl = incl;
+    // Rose des vents (image de la boussole 2D, précachée).
+    const bous = document.createElement("div");
+    bous.className = "kta-v3d-boussole";
+    bous.setAttribute("role", "img");
+    bous.setAttribute("aria-label", _t("vue3d.boussole"));
+    const rose = document.createElement("img");
+    rose.className = "kta-v3d-rose";
+    rose.src = "icon/compass.svg";
+    rose.alt = "";
+    rose.draggable = false;
+    const mention = document.createElement("span");
+    mention.className = "kta-v3d-rose-mention";
+    mention.textContent = _t("vue3d.nordNonCalibre");
+    bous.appendChild(rose);
+    bous.appendChild(mention);
+    ov.appendChild(bous);
+    e.rose = rose; e.roseMention = mention;
     if (stats) {
       e.compteur = document.createElement("div");
       e.compteur.className = "kta-v3d-stats";
@@ -673,6 +854,7 @@
     // Boutons maintenus (déplacement) : pointerdown → actif jusqu'au relâchement ou à la sortie du bouton.
     const relacher = function () {
       ["av", "ar", "tg", "td", "ga", "dr"].forEach(function (k) { e.touches[k] = false; });
+      e.avDepuis = 0;
     };
     on(e.ov, "pointerdown", function (ev) {
       const b = ev.target.closest && ev.target.closest("[data-v3d]");
@@ -681,19 +863,35 @@
       if (a === "fermer") { fermer(); return; }
       if (a === "vue") { basculerVue(); return; }
       if (a === "suivre") { suivre(); return; }
+      if (a === "inclPlus" || a === "inclMoins") {
+        ev.preventDefault();
+        incliner(a === "inclPlus" ? INCLINAISON.pas * 2 : -INCLINAISON.pas * 2);
+        return;
+      }
       ev.preventDefault();
       e.touches[a] = true;
+      // Appui long sur ▲ = pas rapide (pendant de Maj au clavier). Même base de temps que requestAnimationFrame.
+      if (a === "av") e.avDepuis = performance.now();
     });
     on(window, "pointerup", relacher);
     on(window, "pointercancel", relacher);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
-    // Glisser sur la scène : tourner (horizontal) et lever / baisser les yeux (vertical).
+    // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical) ; deux doigts,
+    // glissés à la verticale, inclinent la vue plongeante (vers le haut = plus rasante).
     let glisse = null;
+    const doigts = new Map();
     on(e.cv, "pointerdown", function (ev) {
-      glisse = { x: ev.clientX, y: ev.clientY };
-      e.cv.setPointerCapture(ev.pointerId);
+      doigts.set(ev.pointerId, ev.clientY);
+      glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY } : null;
+      try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
     });
     on(e.cv, "pointermove", function (ev) {
+      if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
+        const dy = ev.clientY - doigts.get(ev.pointerId);
+        doigts.set(ev.pointerId, ev.clientY);
+        if (e.vue === "plongee" && dy) incliner(dy * 0.15 / doigts.size);
+        return;
+      }
       if (!glisse) return;
       const dx = ev.clientX - glisse.x, dy = ev.clientY - glisse.y;
       glisse = { x: ev.clientX, y: ev.clientY };
@@ -701,12 +899,26 @@
       e.tangage = Math.max(-1, Math.min(1, e.tangage - dy * 0.004));
       e.sale = true;
     });
-    on(e.cv, "pointerup", function () { glisse = null; });
+    const lever = function (ev) { doigts.delete(ev.pointerId); glisse = null; };
+    on(e.cv, "pointerup", lever);
+    on(e.cv, "pointercancel", lever);
+    // Molette (PC) : incline la vue plongeante (vers soi = plus verticale).
+    on(e.cv, "wheel", function (ev) {
+      if (e.vue !== "plongee") return;
+      ev.preventDefault();
+      incliner(ev.deltaY < 0 ? INCLINAISON.pas : -INCLINAISON.pas);
+    }, { passive: false });
+    on(window, "kta:northOffsetChange", function () { _lireNord(); });
     on(e.cv, "contextmenu", function (ev) { ev.preventDefault(); });
     // Clavier : capturé pendant que la vue est ouverte (les raccourcis de la carte ne partent pas dessous).
     on(document, "keydown", function (ev) {
       if (ev.key === "Escape") { ev.stopPropagation(); ev.preventDefault(); fermer(); return; }
       if (ev.code === "KeyV") { ev.stopPropagation(); basculerVue(); return; }
+      if (ev.key === "PageUp" || ev.key === "PageDown") {
+        ev.stopPropagation(); ev.preventDefault();
+        incliner(ev.key === "PageUp" ? INCLINAISON.pas : -INCLINAISON.pas);
+        return;
+      }
       if (ev.key === "Shift") e.touches.Shift = true;
       const a = TOUCHES[ev.code];
       if (!a) return;
@@ -719,28 +931,68 @@
       if (a) { e.touches[a] = false; ev.stopPropagation(); }
     }, true);
     on(window, "blur", relacher);
-    // 🩸 Contexte perdu (mémoire graphique iOS, onglet en fond trop longtemps) : on ferme proprement et on le dit,
-    // plutôt qu'un écran noir figé.
+    // 🩸 Contexte perdu (mémoire graphique iOS, onglet longtemps en fond) : preventDefault demande au navigateur de
+    // le rendre. On attend ATTENTE_REPRISE d'écran visible (un onglet caché n'est pas rendu avant d'être revu),
+    // puis on ferme avec un message plutôt qu'un écran noir figé.
     on(e.cv, "webglcontextlost", function (ev) {
       ev.preventDefault();
-      console.warn("[Vue3D] contexte WebGL perdu : vue fermée");
-      e.contextePerdu = true;
-      fermer();
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast("Vue 3D fermée : mémoire graphique insuffisante", "warn");
-      }
+      console.warn("[Vue3D] contexte WebGL perdu : attente de la reprise");
+      e.perdu = true;
+      e.msPerdu = 0;
+      relacher();
+      let t0 = performance.now();
+      clearInterval(e.minuterie);
+      e.minuterie = setInterval(function () {
+        const t = performance.now();
+        if (document.visibilityState !== "hidden") e.msPerdu += t - t0;
+        t0 = t;
+        if (e.perdu && e.msPerdu >= e.attenteReprise) _fermerSansContexte();
+      }, Math.min(500, e.attenteReprise));
     });
+    // Reprise : three.js a déjà refait son état (son écouteur passe avant celui-ci). La scène est remontée à neuf.
+    // 🩸 Jamais dispose() sur les objets d'avant la perte : leurs écouteurs appartiennent à l'ancien état de
+    // three.js et effaceraient sur le nouveau contexte des objets qui n'en sont pas (« object does not belong to
+    // this context »). Leur mémoire GPU est morte avec l'ancien contexte ; le ramasse-miettes prend le reste.
+    on(e.cv, "webglcontextrestored", function () {
+      clearInterval(e.minuterie);
+      e.perdu = false;
+      e.reprises++;
+      e.tuiles.forEach(function (t) { t.obj = null; });
+      _monterScene();
+      _reindexer();
+      _appliquerVue();
+      e.w = 0;          // taille et projection reposées à la prochaine image
+      e.sale = true;
+      console.log("[Vue3D] contexte WebGL repris, scène remontée");
+    });
+  }
+
+  function _fermerSansContexte() {
+    console.warn("[Vue3D] contexte WebGL non repris : vue fermée");
+    _demonter("contexte");
+    _toast("vue3d.contextePerdu");
   }
 
   // ── API ────────────────────────────────────────────────────────────────────────────────────────────
 
+  // Refus avec un message (la tuile du menu fait le même test avant de charger quoi que ce soit) : sans échelle,
+  // 1 px vaudrait 1 m et la scène serait fausse sans le dire.
   function ouvrir(opts) {
     const o = opts || {};
     if (_e) return Promise.resolve(true);
-    if (!window.map || !window.PLAN_CONFIG || !window.APP_CONFIG) return Promise.resolve(false);
-    return Promise.all([_chargerThree(), _chargerCss()]).then(function () {
+    if (!window.map || !window.PLAN_CONFIG || !window.APP_CONFIG) {
+      _alerte("vue3d.sansPlan");
+      return Promise.resolve(false);
+    }
+    if (!_echelle()) { _alerte("vue3d.sansEchelle"); return Promise.resolve(false); }
+    return Promise.all([_chargerThree(), _chargerCss()]).catch(function (err) {
+      console.warn("[Vue3D] three.js introuvable :", err && err.message);
+      _alerte("vue3d.chargementImpossible");
+      return null;
+    }).then(function (charges) {
+      if (!charges) return false;
       if (_e) return true;
-      const sc = Number(window.APP_CONFIG.scale);
+      const sc = _echelle();
       const hauteur = (typeof window.getPlanHauteurGalerie === "function" && window.getPlanHauteurGalerie()) ||
         HAUTEUR_DEFAUT;
       const pos = o.depart ||
@@ -749,11 +1001,14 @@
       const cap = o.depart && Number.isFinite(o.depart.cap) ? o.depart.cap
         : (typeof window.getPlanRelHeading === "function" ? Number(window.getPlanRelHeading()) || 0 : 0);
       _e = {
-        sc: sc > 0 ? sc : 1, hauteur: hauteur, oeil: Math.min(OEIL, Math.max(0.4, hauteur * 0.8)),
+        sc: sc, hauteur: hauteur, oeil: Math.min(OEIL, Math.max(0.4, hauteur * 0.8)),
         distance: o.distanceVue > 0 ? o.distanceVue : DISTANCE_VUE, tuilesActives: o.tuiles !== false,
         pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux", mode: o.depart ? "libre" : "suivi",
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
-        msIndex: 0, msTuiles: 0, compteurN: 0, compteurT0: 0, w: 0, h: 0
+        msIndex: 0, msTuiles: 0, compteurN: 0, compteurT0: 0, w: 0, h: 0, aBouge: false, perdu: false,
+        msPerdu: 0, reprises: 0, minuterie: null, inclinaison: INCLINAISON.defaut, nord: 0, nordCalibre: false,
+        roseAngle: NaN,
+        attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
       const t0 = performance.now();
       _monterDom(!!o.stats);
@@ -762,7 +1017,8 @@
           powerPreference: "high-performance" });
       } catch (err) {
         console.warn("[Vue3D] WebGL indisponible :", err && err.message);
-        _demonter();
+        _demonter("indisponible");
+        _alerte("vue3d.indisponible");
         return false;
       }
       // Densité plafonnée : au-delà de 2, le coût de remplissage (x 2,25 de 2 à 3) ne se voit pas à l'œil.
@@ -770,6 +1026,7 @@
       // Tons compressés : une face claire (pilier doré) éclairée de près ne sature pas en aplat.
       _e.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       _monterScene();
+      _lireNord();
       _brancher();
       _redimensionner();
       _reindexer();
@@ -782,30 +1039,51 @@
     });
   }
 
-  function _demonter() {
+  function _demonter(raison) {
     const e = _e;
     if (!e) return;
+    _derniereFermeture = raison || "utilisateur";
     if (e.raf) cancelAnimationFrame(e.raf);
+    clearInterval(e.minuterie);
     e.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (e.renderer) {
       e.tuiles.forEach(_libererTuile);
       if (e.sol) e.sol.geometry.dispose();
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
+      if (e.grain) e.grain.dispose();
       if (e.lampe) e.lampe.dispose();
       e.renderer.dispose();
       const gl = e.renderer.getContext();
-      if (!e.contextePerdu && !gl.isContextLost()) e.renderer.forceContextLoss();
+      if (!gl.isContextLost()) e.renderer.forceContextLoss();
       _dernierGl = gl;
     }
     if (e.ov && e.ov.parentNode) e.ov.parentNode.removeChild(e.ov);
     _e = null;
   }
 
+  // Fermeture par l'utilisateur (✕, Échap, API). Suivi actif et position 3D écartée du tracker par un
+  // déplacement : « Je suis ici ? » (Oui = recalage du tracker, Non = rien ne change). Rend true si recalé.
   function fermer() {
-    if (!_e) return;
-    _demonter();
+    const e = _e;
+    if (!e) return Promise.resolve(false);
+    const pos = { x: e.pos.x, y: e.pos.y }, niveau = e.niveau, sc = e.sc, bouge = e.aBouge;
+    _demonter("utilisateur");
     console.log("[Vue3D] fermée");
+    const actif = typeof window.getTrackingActif === "function" && window.getTrackingActif() === true;
+    const tr = typeof window.getTrackingPosition === "function" ? window.getTrackingPosition() : null;
+    if (!bouge || !actif || !tr || typeof window.recalerTrackerSurPoint !== "function" ||
+        typeof window.ktaConfirm !== "function") return Promise.resolve(false);
+    if (Math.hypot(pos.x - tr.x, pos.y - tr.y) / sc < SEUIL_RECALAGE) return Promise.resolve(false);
+    return window.ktaConfirm(window.ktaEsc(_t("vue3d.jeSuisIci.texte")), {
+      titre: window.ktaEsc(_t("vue3d.jeSuisIci.titre")),
+      okLabel: window.ktaEsc(_t("vue3d.jeSuisIci.oui")),
+      cancelLabel: window.ktaEsc(_t("vue3d.jeSuisIci.non"))
+    }).then(function (oui) {
+      if (!oui) return false;
+      window.recalerTrackerSurPoint(pos.x, pos.y, niveau === null ? undefined : niveau);
+      return true;
+    });
   }
 
   function basculerVue() {
@@ -827,6 +1105,7 @@
     if (!_e || !Number.isFinite(x) || !Number.isFinite(y)) return;
     _passerEnLibre();
     _e.pos.x = x; _e.pos.y = y;
+    _e.aBouge = true;
     if (Number.isFinite(cap)) _e.cap = (cap % 360 + 360) % 360;
     _e.sale = true;
   }
@@ -836,15 +1115,34 @@
   function tourner(deg) { if (!_e) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
 
   function etat() {
-    if (!_e) return { ouvert: false, contexteLibere: _dernierGl ? _dernierGl.isContextLost() : null };
+    if (!_e) {
+      return { ouvert: false, contexteLibere: _dernierGl ? _dernierGl.isContextLost() : null,
+        fermeture: _derniereFermeture };
+    }
     const e = _e, info = e.renderer.info;
     let construites = 0, visibles = 0;
-    e.tuiles.forEach(function (t) { if (t.obj) { construites++; if (t.obj.visible) visibles++; } });
+    const yMax = { opaque: 0, murs: 0 };
+    e.tuiles.forEach(function (t) {
+      if (!t.obj) return;
+      construites++;
+      if (t.obj.visible) visibles++;
+      t.obj.children.forEach(function (m) {
+        const f = m.userData && m.userData.famille;
+        if (f !== "opaque" && f !== "murs") return;
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        yMax[f] = Math.max(yMax[f], m.geometry.boundingBox.max.y);
+      });
+    });
     return {
-      ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), vue: e.vue, mode: e.mode,
+      ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), perdu: e.perdu, reprises: e.reprises,
+      aBouge: e.aBouge, rapide: !!e.rapide, vue: e.vue, mode: e.mode, inclinaison: e.inclinaison,
+      boussole: { angle: e.roseAngle, nord: e.nord, calibre: e.nordCalibre,
+        mention: !!e.roseMention && !e.roseMention.hidden,
+        inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, hauteur: e.hauteur, distance: e.distance,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
-      tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte,
+      tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte, yMax: yMax,
+      murDecale: e.mats.murs.polygonOffset === true,
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
       msOuverture: Math.round(e.msOuverture || 0), msIndex: Math.round(e.msIndex), msTuiles: Math.round(e.msTuiles)
@@ -892,7 +1190,7 @@
   }
 
   window.KtaVue3D = {
-    ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue,
+    ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer
   };
 })();

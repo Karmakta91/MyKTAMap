@@ -1059,6 +1059,12 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   line-height: 1.2;
   color: inherit;
 }
+/* Ligne d'aide sous le libellé (🧊 Vue 3D) : méta en texte-3 ; une tuile grisée l'est déjà en entier. */
+.kta-tracker-modal-tile-aide {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--kta-texte-3);
+}
 /* Tuile active (suivi, plan orienté, guidage, verrou…) : vert de .kta-tx-ok. En pause = orange,
    coupée dans la configuration = grisée. */
 .kta-tracker-modal-tile.kta-actif {
