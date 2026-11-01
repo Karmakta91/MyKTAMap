@@ -1923,6 +1923,12 @@
       }
     }
 
+    // Structures, zones des calques et routes passent par une FILE peinte avant les cercles d'intersection : la
+    // règle « mur sous pilier et front » (structures.js > ktaMursSousPiliers) la réordonne, un mur de calque passe
+    // sous un pilier de session. Les zones de session, peintes avant toute structure, n'en ont pas besoin.
+    const _fileVect = [];
+    function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
+
     // ── Structures (piliers, murs, fronts) ── calquées sur les zones, styles de structures.js >
     // STRUCTURE_STYLES ; polygone (piliers, mur) ou polyligne (fronts).
     if (opts.ann.structures && window.getStructures) {
@@ -1957,33 +1963,35 @@
         const isPolyline = !!s.isPolyline;
         const minPts = isPolyline ? 2 : 3;
         if (!st.points || st.points.length < minPts) continue;
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(sc(st.points[0].x), sc(st.points[0].y));
-        for (let i = 1; i < st.points.length; i++) {
-          ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
-        }
-        if (isPolyline) {
-          // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour.
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = _largeurFrontExp(s);
-          ctx.globalAlpha = s.opacity;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.stroke();
-        } else {
-          // Pilier / mur : polygone fermé, fond + contour noir.
-          ctx.closePath();
-          ctx.fillStyle = s.fillColor;
-          ctx.globalAlpha = s.fillOpacity;
-          ctx.fill();
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = s.weight * scale;
-          ctx.globalAlpha = s.opacity;
-          ctx.lineJoin = "round";
-          ctx.stroke();
-        }
-        ctx.restore();
+        _poser(function () {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(sc(st.points[0].x), sc(st.points[0].y));
+          for (let i = 1; i < st.points.length; i++) {
+            ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
+          }
+          if (isPolyline) {
+            // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour.
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = _largeurFrontExp(s);
+            ctx.globalAlpha = s.opacity;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+          } else {
+            // Pilier / mur : polygone fermé, fond + contour noir.
+            ctx.closePath();
+            ctx.fillStyle = s.fillColor;
+            ctx.globalAlpha = s.fillOpacity;
+            ctx.fill();
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = s.weight * scale;
+            ctx.globalAlpha = s.opacity;
+            ctx.lineJoin = "round";
+            ctx.stroke();
+          }
+          ctx.restore();
+        }, st);
       }
     }
 
@@ -2136,7 +2144,7 @@
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
-        _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais"));
+        _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais")); });
         _diagAdv.embZones++;
       });
 
@@ -2166,11 +2174,10 @@
           const isPolyline = !!s.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!st.points || st.points.length < minPts) continue;
-          if (isPolyline) {
-            _drawPolyline(st.points, s, _largeurFrontExp(s));
-          } else {
-            _drawPolygon(st.points, s);
-          }
+          _poser(function () {
+            if (isPolyline) _drawPolyline(st.points, s, _largeurFrontExp(s));
+            else _drawPolygon(st.points, s);
+          }, st);
           if (typeof _diagAdv.embStructs !== "number") _diagAdv.embStructs = 0;
           _diagAdv.embStructs++;
         }
@@ -2192,7 +2199,7 @@
       drawnRoadsSorted.forEach(function(r) {
         if (!_itemPasseLevels(r)) return;
         const _sr = _styleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 };
-        _drawPolyline(r.points || [], _sr, _largeurTraceExp(_sr));
+        _poser(function () { _drawPolyline(r.points || [], _sr, _largeurTraceExp(_sr)); });
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
         _diagAdv.embRoads++;
       });
@@ -2250,38 +2257,44 @@
         if (r.type !== "jonction" && filtreR[r.type] === false) continue;
         if (!_itemPasseLevels(r)) continue;
         const s = _styleRoadExp(r.type);
-        ctx.save();
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = s.weight * scale;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
-        for (let i = 1; i < r.points.length; i++) {
-          ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
-        }
-        ctx.stroke();
-        ctx.restore();
-        // Ronds aux extrémités des jonctions.
-        if (r.type === "jonction" && r.points.length >= 2) {
-          const endpts = [r.points[0], r.points[r.points.length - 1]];
-          endpts.forEach(function(pt) {
-            ctx.save();
-            ctx.fillStyle   = "#ffffff";
-            ctx.strokeStyle = RS.jonction.color;
-            ctx.lineWidth   = 3 * scale;
-            ctx.beginPath();
-            ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-          });
-          // Jonctions exclues des intersections (ponts entre niveaux).
-          continue;
-        }
+        _poser(function () {
+          ctx.save();
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.weight * scale;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
+          for (let i = 1; i < r.points.length; i++) {
+            ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
+          }
+          ctx.stroke();
+          ctx.restore();
+          // Ronds aux extrémités des jonctions.
+          if (r.type === "jonction" && r.points.length >= 2) {
+            const endpts = [r.points[0], r.points[r.points.length - 1]];
+            endpts.forEach(function(pt) {
+              ctx.save();
+              ctx.fillStyle   = "#ffffff";
+              ctx.strokeStyle = RS.jonction.color;
+              ctx.lineWidth   = 3 * scale;
+              ctx.beginPath();
+              ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            });
+          }
+        });
+        // Jonctions exclues des intersections (ponts entre niveaux).
+        if (r.type === "jonction" && r.points.length >= 2) continue;
         if (r.points.length >= 2) allRoadsForIntersect.push(r);
       }
     }
+
+    (typeof window.ktaMursSousPiliers === "function"
+      ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
+      .forEach(function (e) { e.fn(); });
 
     // ── Cercles d'intersection (après les routes, avant les icônes) ──
     if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {

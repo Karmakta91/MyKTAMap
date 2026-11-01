@@ -1088,7 +1088,12 @@
     if (!_proj || !_osmMap) return;
     if (!_structLayer) _structLayer = L.layerGroup().addTo(_osmMap);
     _structLayer.clearLayers();
-    const structs = _collectVisibleStructures();
+    // Session puis calques, sans tri : la règle « mur sous pilier et front » (structures.js) pose chaque mur sous
+    // les piliers et fronts de son niveau, d'où qu'ils viennent.
+    let structs = _collectVisibleStructures();
+    if (typeof window.ktaMursSousPiliers === "function") {
+      structs = window.ktaMursSousPiliers(structs, function (s) { return s; });
+    }
     const isPolylineType = (typeof window.isStructurePolylineType === "function")
                             ? window.isStructurePolylineType
                             : function(t) { return /^(front|mur-ligne)/.test(String(t || "")); }; // repli regex

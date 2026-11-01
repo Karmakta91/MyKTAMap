@@ -2445,11 +2445,16 @@ function ajouterPointsDepuisJSON(url, layer) {
               lineJoin: "round",
               // 🩸 MÊME CLASSE que les structures de session : sans elle, la largeur reste figée à 10 px sur les plans
               // importés, ceux qui portent des milliers de fronts.
-              interactive: false
+              interactive: false,
+              // règle « mur sous pilier et front » (structures.js > ktaOrdonnerMursCarte), lue à l'ajout
+              ktaStructType:   structure.type,
+              ktaStructNiveau: structure.level
             }).addTo(layer);
           } else {
             // pilier / mur : polygone rempli, l'aire capte les clics
-            leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
+            leafletLayer = L.polygon(latlngs, Object.assign({}, style, {
+              interactive: hasNoteROStruct, ktaStructType: structure.type, ktaStructNiveau: structure.level
+            })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
             const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
@@ -2754,6 +2759,10 @@ async function telechargerPlan() {
     const allRoadsForIntersect = [];
     // markers DIFFÉRÉS : ordre ZONE → TRAIT → CERCLE → ICÔNE
     const deferredMarkers = []; // [{point, layerId}]
+    // Zones, structures et routes passent par une FILE peinte avant les cercles : la règle « mur sous pilier et
+    // front » (structures.js > ktaMursSousPiliers) la réordonne, un mur de session passe sous un pilier de calque.
+    const _fileVect = [];
+    function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
 
     // compteurs de diagnostic (APP_CONFIG.debugMode)
     const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
@@ -2792,7 +2801,7 @@ async function telechargerPlan() {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
-              drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais"));
+              _poser(function () { drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais")); });
               _diag.embZones++;
             });
           }
@@ -2816,11 +2825,10 @@ async function telechargerPlan() {
               const isPolyline = !!style.isPolyline;
               const minPts = isPolyline ? 2 : 3;
               if (!s.points || s.points.length < minPts) return;
-              if (isPolyline) {
-                drawPolyline(s.points, style);
-              } else {
-                drawPolygon(s.points, style);
-              }
+              _poser(function () {
+                if (isPolyline) drawPolyline(s.points, style);
+                else drawPolygon(s.points, style);
+              }, s);
               if (typeof _diag.embStructs !== "number") _diag.embStructs = 0;
               _diag.embStructs++;
             });
@@ -2843,7 +2851,8 @@ async function telechargerPlan() {
             roadsR.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(r)) return;
-              drawPolyline(r.points, _ktaStyleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 });
+              const styleR = _ktaStyleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 };
+              _poser(function () { drawPolyline(r.points, styleR); });
               allRoadsForIntersect.push(r);
               _diag.embRoads++;
             });
@@ -2869,7 +2878,7 @@ async function telechargerPlan() {
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
-      drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais"));
+      _poser(function () { drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais")); });
     }
 
     // ── structures de session, entre zones (dessous) et routes (dessus), comme la carte et l'export avancé ──
@@ -2893,11 +2902,10 @@ async function telechargerPlan() {
           const isPolyline = !!style.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!s.points || s.points.length < minPts) return;
-          if (isPolyline) {
-            drawPolyline(s.points, style);
-          } else {
-            drawPolygon(s.points, style);
-          }
+          _poser(function () {
+            if (isPolyline) drawPolyline(s.points, style);
+            else drawPolygon(s.points, style);
+          }, s);
         });
       }
     }
@@ -2930,26 +2938,33 @@ async function telechargerPlan() {
     const _colJonctionCanvas = (_ktaStyleCanvas("traces", "jonction") || {}).color;
 
     for (const road of roads) {
-      drawPolyline(road.points || [], _ktaStyleCanvas("traces", road.type) || { color: "white", weight: 5, opacity: 1 });
-      // ronds aux extrémités des jonctions ; export rapide : x direct + toCanvasY pour y
-      if (road.type === "jonction" && road.points && road.points.length >= 2) {
-        const endpts = [road.points[0], road.points[road.points.length - 1]];
-        endpts.forEach(function(pt) {
-          ctx.save();
-          ctx.fillStyle   = "#ffffff";
-          ctx.strokeStyle = _colJonctionCanvas;
-          ctx.lineWidth   = 3;
-          ctx.beginPath();
-          ctx.arc(pt.x, toCanvasY(pt.y), 7, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        });
-      }
+      _poser(function () {
+        const styleR = _ktaStyleCanvas("traces", road.type) || { color: "white", weight: 5, opacity: 1 };
+        drawPolyline(road.points || [], styleR);
+        // ronds aux extrémités des jonctions ; export rapide : x direct + toCanvasY pour y
+        if (road.type === "jonction" && road.points && road.points.length >= 2) {
+          const endpts = [road.points[0], road.points[road.points.length - 1]];
+          endpts.forEach(function(pt) {
+            ctx.save();
+            ctx.fillStyle   = "#ffffff";
+            ctx.strokeStyle = _colJonctionCanvas;
+            ctx.lineWidth   = 3;
+            ctx.beginPath();
+            ctx.arc(pt.x, toCanvasY(pt.y), 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          });
+        }
+      });
       // jonctions exclues des intersections (pas de cercle pour un passage interniveau, comme road.js)
       if (road.type === "jonction") continue;
       if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
     }
+
+    (typeof window.ktaMursSousPiliers === "function"
+      ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
+      .forEach(function (e) { e.fn(); });
 
     // ── cercles d'intersection : après les routes, avant les icônes ──
     if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {

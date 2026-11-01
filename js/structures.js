@@ -10,7 +10,8 @@
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
 //   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, majLargeurFronts, brancherLargeurFronts,
-//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm.
+//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm,
+//   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
 // 🩸 Le Pathfinder ne fait aucune arête d'une structure (graphe sur les `roads` seulement) : un relevé tout en
 // structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé. Seul `mur-ligne` y
@@ -200,8 +201,102 @@ window.brancherLargeurFronts = function () {
     window.map.on("zoomend", majLargeurFronts);
     window.map._ktaFrontZoomBound = true;
   }
+  // Mêmes points d'entrée (session et calques) : la règle des murs se branche ici, avant toute couche.
+  _brancherOrdreMurs();
   majLargeurFronts();
 };
+
+// ── Règle « mur sous pilier et front » (décision produit) ──────────────
+// Un mur (polygone `mur`, trait `mur-ligne`) se dessine SOUS les piliers et fronts de SON niveau, quelle que soit
+// son origine (session, calque) et l'ordre de chargement des calques. Rien d'autre ne bouge : un mur arrivé trop
+// tard descend juste sous le premier pilier ou front de son niveau, pas sous les zones ni les tracés.
+// ⚠️ Un type personnalisé n'a pas de rôle : sa légende ne dit pas qu'il est un mur, il garde sa place.
+// Écran : l'ordre du renderer canvas (unique, `map._renderer`) ; exports : la même fonction sur leur liste.
+const ROLE_STRUCTURE = {
+  "mur": "mur", "mur-ligne": "mur",
+  "pilier-1": "dessus", "pilier-2": "dessus", "front-1": "dessus", "front-2": "dessus"
+};
+
+// Liste de dessin (de l'arrière à l'avant) → liste où chaque mur venu APRÈS le premier pilier ou front de son
+// niveau passe juste avant lui, dans son ordre relatif. `structDe(item)` rend { type, level } ou null (objet qui
+// n'est pas une structure). `parNiveau` : défaut = plan multi-niveau ; hors multi-niveau, un seul groupe.
+// ⚠️ Rend la MÊME liste si rien ne bouge : les appelants testent l'identité pour éviter un redessin.
+function ktaMursSousPiliers(liste, structDe, parNiveau) {
+  if (!Array.isArray(liste) || liste.length < 2) return liste;
+  if (parNiveau === undefined) parNiveau = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const roles = new Array(liste.length);
+  const niveaux = new Array(liste.length);
+  const premier = new Map();   // niveau → index du premier pilier ou front
+  for (let i = 0; i < liste.length; i++) {
+    const s = structDe(liste[i]);
+    const role = s ? ROLE_STRUCTURE[s.type] : undefined;
+    if (!role) continue;
+    const niv = (parNiveau && Number.isInteger(s.level)) ? s.level : 0;
+    roles[i] = role; niveaux[i] = niv;
+    if (role === "dessus" && !premier.has(niv)) premier.set(niv, i);
+  }
+  const avant = new Map();     // index d'un premier pilier/front → murs à poser juste avant lui
+  for (let i = 0; i < liste.length; i++) {
+    if (roles[i] !== "mur" || !premier.has(niveaux[i])) continue;
+    const p = premier.get(niveaux[i]);
+    if (p > i) continue;
+    if (!avant.has(p)) avant.set(p, []);
+    avant.get(p).push(i);
+  }
+  if (avant.size === 0) return liste;
+  const deplaces = new Set();
+  avant.forEach(function (idx) { idx.forEach(function (i) { deplaces.add(i); }); });
+  const out = [];
+  for (let i = 0; i < liste.length; i++) {
+    if (avant.has(i)) avant.get(i).forEach(function (j) { out.push(liste[j]); });
+    if (!deplaces.has(i)) out.push(liste[i]);
+  }
+  return out;
+}
+window.ktaMursSousPiliers = ktaMursSousPiliers;
+
+// Applique la règle à l'ordre du renderer canvas de la carte. Chaque couche de structure porte
+// `options.ktaStructType` / `options.ktaStructNiveau` (posés à la création, AVANT l'ajout : `layeradd` les lit).
+// 🩸 L'ordre du canvas Leaflet est une liste chaînée (`_drawFirst` … `_drawLast`) ; réafficher un calque remet
+// ses couches au BOUT : l'écoute de `layeradd` rattrape aussi les bascules de calque, pas seulement le 1er rendu.
+function _ordonnerMursCarte() {
+  _ordreMursPrevu = false;
+  const r = window.map && window.map._renderer;
+  if (!r || !r._map || !r._drawFirst) return;
+  const ordres = [];
+  for (let o = r._drawFirst; o; o = o.next) ordres.push(o);
+  const tries = ktaMursSousPiliers(ordres, function (o) {
+    const op = o.layer && o.layer.options;
+    return (op && op.ktaStructType) ? { type: op.ktaStructType, level: op.ktaStructNiveau } : null;
+  });
+  if (tries === ordres) return;
+  for (let i = 0; i < tries.length; i++) {
+    tries[i].prev = i > 0 ? tries[i - 1] : null;
+    tries[i].next = i < tries.length - 1 ? tries[i + 1] : null;
+  }
+  r._drawFirst = tries[0];
+  r._drawLast = tries[tries.length - 1];
+  // Repeinture complète tout de suite : un redessin en attente ne couvrirait que les bornes des couches ajoutées.
+  if (r._redrawRequest) { L.Util.cancelAnimFrame(r._redrawRequest); r._redrawRequest = null; }
+  r._redrawBounds = null;
+  try { r._redraw(); } catch (e) { console.warn("[Structures] ordre des murs :", e); }
+}
+window.ktaOrdonnerMursCarte = _ordonnerMursCarte;
+
+// Une passe par lot d'ajouts : la micro-tâche passe après les ajouts synchrones et AVANT le prochain dessin.
+let _ordreMursPrevu = false;
+function _prevoirOrdreMurs(e) {
+  const op = e && e.layer && e.layer.options;
+  if (!op || !ROLE_STRUCTURE[op.ktaStructType] || _ordreMursPrevu) return;
+  _ordreMursPrevu = true;
+  Promise.resolve().then(_ordonnerMursCarte);
+}
+// Drapeau sur la MAP (recréée à chaque plan), comme `_ktaFrontZoomBound`.
+function _brancherOrdreMurs() {
+  if (!window.map || window.map._ktaOrdreMursBound) return;
+  window.map.on("layeradd", _prevoirOrdreMurs);
+  window.map._ktaOrdreMursBound = true;
+}
 
 const STRUCTURE_STYLE_PREVIEW = {
   weight:    3,
@@ -505,9 +600,12 @@ function renderStructures() {
           opacity:   style.opacity,
           lineCap:   "round",
           lineJoin:  "round",
+          ktaStructType:   s.type,
+          ktaStructNiveau: s.level
         }).addTo(target);
       } else {
-        layer = L.polygon(latlngs, style).addTo(target);
+        layer = L.polygon(latlngs, Object.assign(style, { ktaStructType: s.type, ktaStructNiveau: s.level }))
+          .addTo(target);
       }
       structureLayers.push(layer);
       // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.

@@ -455,6 +455,14 @@ Audit qui a révélé un trou : les structures (piliers + mur + fronts) embarqu�
 - `exporter.js > _genererCanvasExport` : ajout `embeddedStructures = Array.isArray(j.structures) ? j.structures : []` dans la boucle data layers + bloc de rendu identique (filtre `opts.ann.structures` + `opts.ann.structuresTypes`, niveau via `_itemPasseLevels`, helpers `_drawPolygon`/`_drawPolyline`).
 - Compteurs `_diag.embStructs` et `_diagAdv.embStructs` ajoutés pour le debug.
 
+**Ordre de dessin des structures (règle « mur sous pilier et front », `rendering-leaflet.md` §0.1)** : chaque lot est
+trié `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1` (niveau croissant d'abord en multi-niveau), mais les
+lots se suivent (export rapide : calques puis session ; export avancé / PDF : session puis calques) et un mur d'un lot
+tardif passait sur le pilier d'un autre. Les deux pipelines canvas posent donc zones, structures et routes dans une
+**file** (`_poser(fn, structure)`), réordonnée par `ktaMursSousPiliers` puis peinte juste avant les cercles
+d'intersection ; les icônes restent dessinées après. Le **KMZ** passe sa liste de structures (session + calques) par la
+même fonction : l'ordre du document est celui que la plupart des lecteurs KML suivent, sans garantie du format.
+
 **Pour les futurs trous éventuels** : si un nouveau type d'annotation est ajouté (genre `notes` ou `photos_geo` à terme), bien penser à le câbler dans LES 4 PIPELINES :
 1. `utils.js > telechargerPlan` (PNG rapide ⚡) — session + embedded
 2. `exporter.js > _genererCanvasExport` (PNG avancé 🎨 + PDF 📤) — session + embedded
