@@ -21,7 +21,7 @@
 // 🔒 Entrée refusée en lecture seule et sans le droit d'exporter tout le plan (le fichier d'un calque EST le plan).
 // 🩸 Un objet versé est écrit daté de l'assistant (`updatedAt` = T) : la trace de suppression posée à T - 1 au
 //    retrait ne peut pas le détruire dans le fichier (cf. CalqueSession.retirerIntegres).
-// API : window.MajPlan = { ouvrir, _interne: { grouper, slug, construire } }. Garde-fou : check-maj-plan.js.
+// API : window.MajPlan = { ouvrir, _interne: { grouper, slug, construire, libelleGroupe } }. Garde-fou : check-maj-plan.js.
 // Doc : docs/architecture/plans-loader.md (§ Mettre à jour le plan).
 
 window.MajPlan = (function () {
@@ -44,9 +44,12 @@ window.MajPlan = (function () {
     if (O && typeof O.showToast === "function") O.showToast(msg, type || "info");
   }
 
+  // 🩸 getLabel ne connaît que les types intégrés : un type perso (« cust-… ») se nomme par son entrée de légende.
   function _libelle(cat, cle) {
     try {
       const LC = window.LegendCustomization;
+      const perso = LC && typeof LC.findCustomEntry === "function" ? LC.findCustomEntry(cle) : null;
+      if (perso && perso.label) return perso.label;
       if (LC && typeof LC.getLabel === "function") return LC.getLabel(cat, cle) || cle;
     } catch (e) { /* libellé brut */ }
     return cle;
@@ -539,7 +542,7 @@ window.MajPlan = (function () {
     if (!avant && window._currentLoadedPlanId === etat.planId) await _proposerNettoyage(etat, true);
   }
 
-  return { ouvrir: ouvrir, _interne: { grouper: grouper, slug: slug, construire: construire } };
+  return { ouvrir: ouvrir, _interne: { grouper: grouper, slug: slug, construire: construire, libelleGroupe: _libelleGroupe } };
 })();
 
 console.log("[MajPlan] Module charge — API window.MajPlan prete");
