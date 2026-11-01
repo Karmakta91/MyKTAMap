@@ -19440,6 +19440,8 @@ body.kta-theme-light #kta-osm-mes-floater {
 /* Bandeau de sélection multiple : hérite de .kta-iti-floater, seul l'écart de ses 4 boutons change. */
 .kta-selm-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
 .kta-selm-floater .kta-btn { white-space: nowrap; }
+/* « Tous les « type » » porte un nom de type de longueur libre : il passe à la ligne au lieu de déborder. */
+.kta-selm-floater #kta-selm-tous { white-space: normal; overflow-wrap: anywhere; max-width: 100%; text-align: left; }
 .kta-selm-floater #kta-selm-ok[disabled] { opacity: .45; cursor: not-allowed; }
 
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */

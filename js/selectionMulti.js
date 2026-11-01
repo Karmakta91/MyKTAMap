@@ -156,9 +156,13 @@
 
   function _libelleType(famille, type) {
     const cat = { roads: "traces", zones: "zones", structures: "structures" }[famille] || famille;
-    if (window.LegendCustomization && window.LegendCustomization.getLabel) {
-      try { return window.LegendCustomization.getLabel(cat, type) || type; } catch (e) {}
-    }
+    const LC = window.LegendCustomization;
+    try {
+      // 🩸 getLabel ne connaît que les types intégrés : pour un type perso (import SIG) il rend l'id brut.
+      const perso = LC && LC.findCustomEntry ? LC.findCustomEntry(type) : null;
+      if (perso && perso.label) return perso.label;
+      if (LC && LC.getLabel) return LC.getLabel(cat, type) || type;
+    } catch (e) {}
     return type;
   }
 
