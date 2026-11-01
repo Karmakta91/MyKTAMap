@@ -650,6 +650,160 @@ function charger(fichier, nomGlobal, prealables) {
   }
 })();
 
+// ───────── convertirObjet.js : recoller des lignes qui forment ensemble une boucle ─────────
+// À l'import SIG, un pilier arrive en 2 à 4 lignes dont les bouts se touchent presque : aucune n'est fermée seule.
+// Côtés subdivisés tous les 5 px (comme un relevé SIG) : une moitié de carré n'est alors PAS un contour fermé seule.
+(function () {
+  const CV = charger("js/convertirObjet.js", "KtaConvertir",
+    ["js/styleResolver.js", "js/legendCustomization.js", "js/ktaUid.js"]);
+  if (!CV) return;
+  const w = CV.__win;
+  w.isStructurePolylineType = function (t) { return t === "front-1" || t === "front-2"; };
+  t("recoller : API trouverBoucles et recollerLot exposées",
+    typeof CV.trouverBoucles === "function" && typeof CV.recollerLot === "function");
+  if (typeof CV.trouverBoucles !== "function") return;
+  // Segment subdivisé de a à b (b inclus, a exclu si `sansDebut`).
+  const seg = function (a, b, sansDebut) {
+    const n = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 5)), out = [];
+    for (let i = sansDebut ? 1 : 0; i <= n; i++) out.push({ x: a.x + (b.x - a.x) * i / n, y: a.y + (b.y - a.y) * i / n });
+    return out;
+  };
+  const chemin = function (pts) {
+    let out = seg(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i++) out = out.concat(seg(pts[i - 1], pts[i], true));
+    return out;
+  };
+  const ligne = function (uid, pts, extra) {
+    return Object.assign({ uid: uid, type: "front-1", level: 0, points: chemin(pts) }, extra || {});
+  };
+  const it = function (o, f) { return { famille: f || "structures", obj: o }; };
+  // Carré 30 × 30 à l'abscisse ox livré en 2 lignes : moitié haut-droite, moitié bas-gauche aux bouts décalés de e px.
+  const carre2 = function (p, ox, e, extraA, extraB) {
+    const A = ligne(p + "a", [{ x: ox, y: 0 }, { x: ox + 30, y: 0 }, { x: ox + 30, y: 30 }], extraA);
+    const B = ligne(p + "b", [{ x: ox + 30 - e, y: 30 }, { x: ox, y: 30 }, { x: ox, y: e }], extraB);
+    return [A, B];
+  };
+
+  const [a3, b3] = carre2("st_r3", 0, 3, { description: "note A" }, { description: "note B" });
+  t("recoller : une moitié de carré seule n'est pas un contour fermé", CV.estContourFerme("structures", a3) === false);
+  let r = CV.trouverBoucles([it(a3), it(b3)]);
+  t("recoller : 2 lignes formant un carré à 3 px d'écart → 1 boucle de 2 lignes",
+    r.boucles.length === 1 && r.lignes === 2 && r.ignorees === 0);
+  const pts = r.boucles[0] ? r.boucles[0].points : [];
+  t("recoller : jonctions fusionnées, aucun point inventé (A + B − 2 points)",
+    pts.length === a3.points.length + b3.points.length - 2);
+  t("recoller : le point de la PREMIÈRE ligne est gardé aux jonctions (départ et coin)",
+    pts.length > 0 && pts[0].x === 0 && pts[0].y === 0 && pts.some(function (q) { return q.x === 30 && q.y === 30; }) &&
+    !pts.some(function (q) { return q.x === 27 && q.y === 30; }) && !pts.some(function (q) { return q.x === 0 && q.y === 3; }));
+  const bInv = Object.assign({}, b3, { points: b3.points.slice().reverse() });
+  r = CV.trouverBoucles([it(a3), it(bInv)]);
+  t("recoller : une ligne dans l'autre sens est retournée", r.boucles.length === 1 &&
+    r.boucles[0].points.length === pts.length && r.boucles[0].points[pts.length - 1].y === pts[pts.length - 1].y);
+
+  const [a8, b8] = carre2("st_r8", 100, 8);
+  r = CV.trouverBoucles([it(a8), it(b8)]);
+  t("🩸 recoller : bouts à 8 px → pas recollés", r.boucles.length === 0);
+
+  // Rectangle 60 × 30 en 3 lignes.
+  const r1 = ligne("st_q1", [{ x: 200, y: 0 }, { x: 260, y: 0 }]);
+  const r2 = ligne("st_q2", [{ x: 262, y: 1 }, { x: 260, y: 30 }, { x: 230, y: 30 }]);
+  const r3 = ligne("st_q3", [{ x: 228, y: 31 }, { x: 200, y: 30 }, { x: 201, y: 2 }]);
+  r = CV.trouverBoucles([it(r1), it(r2), it(r3)]);
+  t("recoller : 3 lignes formant un rectangle → 1 boucle", r.boucles.length === 1 && r.lignes === 3);
+
+  // T à 3 branches qui se rejoignent en un nœud.
+  const t1 = ligne("st_t1", [{ x: 300, y: 0 }, { x: 330, y: 0 }]);
+  const t2 = ligne("st_t2", [{ x: 360, y: 0 }, { x: 331, y: 1 }]);
+  const t3 = ligne("st_t3", [{ x: 330, y: 40 }, { x: 330, y: 2 }]);
+  r = CV.trouverBoucles([it(t1), it(t2), it(t3)]);
+  t("🩸 recoller : T à 3 branches → non, compté", r.boucles.length === 0 && r.ignorees === 3);
+  // Carré en 2 lignes + une branche accrochée à un coin : degré 3, pas une boucle simple.
+  const [ab, bb] = carre2("st_rb", 400, 3);
+  const br = ligne("st_rbr", [{ x: 400, y: -2 }, { x: 400, y: -40 }]);
+  r = CV.trouverBoucles([it(ab), it(bb), it(br)]);
+  t("🩸 recoller : boucle avec une branche → non, 3 lignes comptées", r.boucles.length === 0 && r.ignorees === 3);
+
+  // Boucle peu compacte (100 × 2) : remplirait une galerie.
+  const f1 = ligne("st_f1", [{ x: 0, y: 100 }, { x: 100, y: 100 }, { x: 100, y: 102 }]);
+  const f2 = ligne("st_f2", [{ x: 98, y: 102 }, { x: 0, y: 102 }, { x: 0, y: 101 }]);
+  r = CV.trouverBoucles([it(f1), it(f2)]);
+  t("🩸 recoller : boucle peu compacte → non", r.boucles.length === 0 && r.ignorees === 2);
+
+  const [an, bn] = carre2("st_rn", 500, 3, null, { level: -1 });
+  r = CV.trouverBoucles([it(an), it(bn)]);
+  t("🩸 recoller : niveaux différents → non", r.boucles.length === 0);
+
+  const jc = { uid: "rd_j", type: "jonction", fromLevel: 0, toLevel: -1, points: b3.points };
+  r = CV.trouverBoucles([it(a3), it(jc, "roads")]);
+  t("recoller : une jonction n'entre jamais dans une boucle", r.boucles.length === 0);
+
+  // L'opération : un instantané, une entrée, lignes supprimées, uid neuf, notes concaténées, ⏪ = état d'avant.
+  let R = [], Z = [], S = [];
+  w.getRoads = function () { return R; };  w.setRoads = function (v) { R = v; };
+  w.getZones = function () { return Z; };  w.setZones = function (v) { Z = v; };
+  w.getStructures = function () { return S; }; w.setStructures = function (v) { S = v; };
+  const journal = { snap: 0, record: [] };
+  w.HistoryManager = {
+    captureState: function () { journal.snap++; return { S: S.slice(), Z: Z.slice() }; },
+    record: function (label, avant) { journal.record.push({ label: label, avant: avant }); }
+  };
+  const seul = { uid: "st_seul", type: "front-1", level: 0,   // contour fermé seul : 4 points / 3 côtés
+                 points: [{ x: 600, y: 0 }, { x: 630, y: 0 }, { x: 630, y: 30 }, { x: 600, y: 30 }] };
+  const autre = ligne("st_autre", [{ x: 700, y: 0 }, { x: 800, y: 0 }]);
+  S = [a3, b3, r1, r2, r3, a8, b8, seul, autre];
+  const bl = CV.recollerLot(S.map(function (o) { return it(o); }), "structures", "pilier-1");
+  t("recoller : bilan = 2 objets recollés (5 lignes), 1 contour seul converti",
+    bl.recolles === 2 && bl.lignes === 5 && bl.convertis === 1);
+  t("recoller : UN instantané, UNE entrée d'historique", journal.snap === 1 && journal.record.length === 1);
+  const piliers = S.filter(function (o) { return o.type === "pilier-1"; });
+  t("recoller : 3 piliers, les lignes recollées ont quitté la session", piliers.length === 3 &&
+    ["st_r3a", "st_r3b", "st_q1", "st_q2", "st_q3"].every(function (u) { return !S.some(function (o) { return o.uid === u; }); }));
+  t("recoller : paire à 8 px et ligne seule intactes", S.indexOf(a8) >= 0 && S.indexOf(b8) >= 0 && S.indexOf(autre) >= 0);
+  const pc = piliers.find(function (o) { return o.description && o.description.indexOf("note A") >= 0; });
+  t("recoller : notes distinctes concaténées", !!pc && pc.description === "note A\nnote B");
+  t("recoller : uid NEUF (préfixe de la famille cible), niveau gardé", !!pc && /^st_/.test(pc.uid) &&
+    pc.uid !== "st_r3a" && pc.uid !== "st_r3b" && pc.level === 0 && typeof pc.updatedAt === "number");
+  t("recoller : l'objet d'origine n'est pas muté (historique)", a3.type === "front-1" && a3.points.length === 13);
+  const avant = journal.record[0] && journal.record[0].avant;
+  t("recoller : l'instantané d'avant tient les lignes d'origine (⏪ les rend)",
+    !!avant && avant.S.indexOf(a3) >= 0 && avant.S.indexOf(r3) >= 0 && avant.S.length === 9);
+
+  // Cible ouverte : rien n'est recollé.
+  S = [a3, b3]; journal.snap = 0; journal.record = [];
+  const blO = CV.recollerLot([it(a3), it(b3)], "structures", "front-2");
+  t("🩸 recoller : cible ouverte → rien recollé, rien écrit",
+    blO.recolles === 0 && S.length === 2 && journal.record.length === 0);
+
+  // Marque de calque : gardée si toutes les lignes ont la même, retirée sinon.
+  const [ca, cb] = carre2("st_rc", 0, 3, { _srcCalque: "L1", _srcCalqueDepuis: 5 }, { _srcCalque: "L1", _srcCalqueDepuis: 5 });
+  const [ma, mb] = carre2("st_rm", 100, 3, { _srcCalque: "L1" }, null);
+  S = [ca, cb, ma, mb];
+  CV.recollerLot(S.map(function (o) { return it(o); }), "zones", "eau");
+  const zc = Z.find(function (o) { return o.points[0].x === 0; });
+  const zm = Z.find(function (o) { return o.points[0].x === 100; });
+  t("recoller : même calque → marque gardée",
+    !!zc && zc._srcCalque === "L1" && zc._srcCalqueDepuis === 5 && /^zn_/.test(zc.uid));
+  t("recoller : provenances mêlées → objet ordinaire (marque retirée)",
+    !!zm && zm._srcCalque === undefined && zm._srcCalqueDepuis === undefined);
+  t("recoller : vers une autre famille, les lignes quittent la leur", S.length === 0 && Z.length === 2);
+
+  // Une moitié « en L » assez fermée pour passer seule : le recollage l'emporte (sinon deux triangles).
+  const La = { uid: "st_La", type: "front-1", level: 0, points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }] };
+  const Lb = { uid: "st_Lb", type: "front-1", level: 0, points: [{ x: 27, y: 30 }, { x: 0, y: 30 }, { x: 0, y: 3 }] };
+  r = CV.trouverBoucles([it(La), it(Lb)]);
+  t("recoller : deux « L » fermés seuls forment UNE boucle (pas deux triangles)",
+    CV.estContourFerme("structures", La) && r.boucles.length === 1 && r.contours.length === 0 &&
+    r.boucles[0].points.length === 4);
+
+  ["convert.recollerFiltre", "convert.lotSourceRecoller", "convert.regleRecoller", "convert.recollerTitre",
+   "convert.recollerConfirm", "convert.recollerBilan", "convert.histoireRecoller"].forEach(function (k) {
+    ["fr", "en", "es"].forEach(function (l) {
+      const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+      t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+    });
+  });
+})();
+
 // ───────── userProfile.js ─────────
 const UP = charger("js/userProfile.js", "UserProfile");
 if (UP) {

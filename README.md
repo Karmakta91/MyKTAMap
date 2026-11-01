@@ -607,6 +607,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-calque-effacer.js` | « Effacer la session » rend les calques ouverts à la modification |
 | `smoke/checkup-carnet-documents.js` | Un PDF livré dans le ZIP d'un plan remonte au Carnet (onglet Récits) |
 | `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
+| `smoke/checkup-recoller-piliers.js` | Lignes qui forment ensemble une boucle (carré en 2 lignes, rectangle en 3) recollées en un pilier depuis la sélection multiple : case et compte, ktaConfirm, jonctions fusionnées, uid neufs, paire à 8 px et T intacts, ⏪ unique |
 | `smoke/checkup-contour-ferme.js` | Ligne fermée (carré à 3 côtés, premier point répété) convertie en zone ou pilier : fiche, lot filtré avec compte, ⏪ unique, calque passé en « Modifier » puis converti en lot |
 | `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
 | `smoke/checkup-export-sig.js` | Exports GeoTIFF et GeoJSON par l'interface, calage tourné ou affine |

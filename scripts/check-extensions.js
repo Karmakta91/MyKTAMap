@@ -778,7 +778,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
     const CV = lire("js/convertirObjet.js");
     t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
-      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
+      ["function convertir(", "function supprimer(", "function convertirLot(", "function recollerLot(", "function ouvrir(",
        "function changerNiveau(", "function appliquerTableau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);

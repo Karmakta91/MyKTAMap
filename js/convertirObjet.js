@@ -15,8 +15,8 @@
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
 // Ouvert → fermé seulement pour un CONTOUR FERMÉ (estContourFerme : ≥ 3 points, bouts écartés de moins de 1,5 × le
 // plus grand côté, forme compacte) : un pilier SIG arrive en 4 points / 3 côtés. Aucun point inventé, le polygone se
-// referme seul ; seul un doublon du premier point est retiré. Fermé → ouvert : jamais (il faudrait couper la géométrie).
-// 🩸 Une galerie en U serrée passe pour fermée : le lot montre le compte avant et s'annule en un ⏪.
+// referme seul. Fermé → ouvert : jamais. Lot : RECOLLAGE des lignes qui forment ensemble une boucle (trouverBoucles,
+// recollerLot). 🩸 Une galerie en U serrée passe pour fermée : le lot montre le compte avant et s'annule en un ⏪.
 // Conservés : `points`, `level`, `description`, `uid` ; seul le type (donc la famille) change.
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
 // changent par changerNiveauxJonction, jamais par Convertir) et `itinerary` (trajet CALCULÉ, pas une donnée du relevé).
@@ -103,6 +103,161 @@
   }
   function _ferme(famille, obj, familleCible, typeCible) {
     return _estOuvert(famille, obj.type) && !_estOuvert(familleCible, typeCible);
+  }
+
+  // ── Recoller des lignes qui forment ensemble une boucle ──────────
+  // À l'import SIG, un pilier arrive souvent en 2 à 4 LIGNES dont les bouts se touchent presque (jamais exactement) :
+  // aucune n'est un contour fermé seule. Graphe : les bouts d'un même niveau à ≤ TOLERANCE_RECOLLAGE se regroupent en
+  // nœuds, chaque ligne est une arête entre ses deux nœuds-bouts. Une composante d'au moins 2 arêtes dont TOUS les
+  // nœuds sont de degré 2 (nœuds = arêtes) est une boucle simple ; elle est retenue si le polygone obtenu est compact
+  // (même seuil qu'estContourFerme). Une branche, un T : jamais recollés.
+  // ⚠️ Une ligne déjà fermée seule entre aussi dans le graphe : si elle forme une boucle avec d'autres (un pilier livré
+  // en deux « L », chacun assez fermé pour passer seul), le recollage l'emporte (sinon deux triangles) ; hors boucle,
+  // elle est convertie seule, comme sans recollage. Une ligne n'entre que dans une boucle.
+  // ⚠️ Tolérance FIXE en px de l'image du plan (décision produit, mesurée sur un relevé SIG réel : 5 px trouve la
+  // quasi-totalité des boucles, 10 px n'en ajoute presque plus). Pas de réglage dans l'interface.
+  const TOLERANCE_RECOLLAGE = 5;
+  const PREFIXE_UID = { roads: "rd", zones: "zn", structures: "st" };
+
+  function _niveauDe(o) { return Number.isInteger(o.level) ? o.level : 0; }
+
+  // Ligne candidate : ouverte par son type, ni jonction ni itinéraire, ≥ 2 points finis.
+  function _candidateRecollage(it) {
+    if (!it || !it.obj || CIBLES_INTERDITES[it.obj.type] || !_estOuvert(it.famille, it.obj.type)) return false;
+    const p = it.obj.points;
+    return Array.isArray(p) && p.length >= 2 &&
+      p.every(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+  }
+
+  // Points d'une boucle simple dans l'ordre de parcours. Départ : première ligne de la composante, dans son sens ;
+  // chaque suivante est inversée au besoin. 🩸 À chaque jonction les deux bouts presque confondus deviennent UN point,
+  // celui de la ligne déjà parcourue ; la jonction de fermeture garde le premier point de la première ligne.
+  function _parcourirBoucle(aretes, idxs, incidentes) {
+    const out = [];
+    let courante = idxs[0], sens = true;
+    for (let k = 0; k < idxs.length; k++) {
+      const ar = aretes[courante];
+      const pts = sens ? ar.pts : ar.pts.slice().reverse();
+      for (let i = (k === 0 ? 0 : 1); i < pts.length; i++) out.push({ x: pts[i].x, y: pts[i].y });
+      if (k === idxs.length - 1) break;
+      const noeud = sens ? ar.b : ar.a;
+      const precedente = courante;
+      courante = incidentes[noeud].find(function (j) { return j !== precedente; });
+      sens = aretes[courante].a === noeud;
+    }
+    out.pop();   // dernier point = jonction de fermeture, fusionné avec le premier
+    return out;
+  }
+
+  // `items` = [{ famille, obj }]. → { boucles: [{ items, points, level }], lignes, ignorees, contours } : `lignes` =
+  // lignes recollées, `ignorees` = lignes qui touchent une autre ligne sans former une boucle simple et compacte (hors
+  // contours fermés seuls), `contours` = contours fermés seuls hors boucle (convertis seuls). Ne modifie rien.
+  function trouverBoucles(items) {
+    const aretes = [];
+    (items || []).forEach(function (it) {
+      if (_candidateRecollage(it)) aretes.push({ it: it, pts: it.obj.points, niv: _niveauDe(it.obj), a: -1, b: -1 });
+    });
+    // Bouts regroupés en nœuds : union-find sur une grille de pas T (un bout ne compare que les 9 cases voisines).
+    const T = TOLERANCE_RECOLLAGE;
+    const bouts = [];
+    aretes.forEach(function (ar) {
+      bouts.push({ p: ar.pts[0], niv: ar.niv });
+      bouts.push({ p: ar.pts[ar.pts.length - 1], niv: ar.niv });
+    });
+    const parent = bouts.map(function (_, i) { return i; });
+    const racine = function (i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const grille = new Map();
+    bouts.forEach(function (bt, i) {
+      const cx = Math.floor(bt.p.x / T), cy = Math.floor(bt.p.y / T);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          (grille.get(bt.niv + ":" + (cx + dx) + ":" + (cy + dy)) || []).forEach(function (j) {
+            const o = bouts[j].p;
+            if (Math.hypot(o.x - bt.p.x, o.y - bt.p.y) <= T) parent[racine(i)] = racine(j);
+          });
+        }
+      }
+      const k = bt.niv + ":" + cx + ":" + cy;
+      if (!grille.has(k)) grille.set(k, []);
+      grille.get(k).push(i);
+    });
+    const numero = new Map();
+    bouts.forEach(function (_, i) { const r = racine(i); if (!numero.has(r)) numero.set(r, numero.size); });
+    const incidentes = [];
+    for (let n = 0; n < numero.size; n++) incidentes.push([]);
+    aretes.forEach(function (ar, i) {
+      ar.a = numero.get(racine(2 * i));
+      ar.b = numero.get(racine(2 * i + 1));
+      incidentes[ar.a].push(i);
+      incidentes[ar.b].push(i);   // ligne refermée sur un seul nœud : il la compte deux fois (degré 2)
+    });
+    // Composantes connexes, en passant par les nœuds.
+    const vue = new Array(aretes.length).fill(false);
+    const res = { boucles: [], lignes: 0, ignorees: 0 };
+    aretes.forEach(function (_, depart) {
+      if (vue[depart]) return;
+      const idxs = [], noeuds = new Set(), pile = [depart];
+      vue[depart] = true;
+      while (pile.length) {
+        const i = pile.pop();
+        idxs.push(i);
+        [aretes[i].a, aretes[i].b].forEach(function (n) {
+          noeuds.add(n);
+          incidentes[n].forEach(function (j) { if (!vue[j]) { vue[j] = true; pile.push(j); } });
+        });
+      }
+      if (idxs.length < 2) return;   // ligne seule : rien à recoller
+      idxs.sort(function (x, y) { return x - y; });   // ordre de la sélection : sa première ligne donne le départ
+      const simple = noeuds.size === idxs.length &&
+        Array.from(noeuds).every(function (n) { return incidentes[n].length === 2; });
+      const points = simple ? _parcourirBoucle(aretes, idxs, incidentes) : null;
+      if (!points || points.length < 3 || _analyseContour(points) === null) {
+        res.ignorees += idxs.filter(function (i) { return !estContourFerme(aretes[i].it.famille, aretes[i].it.obj); }).length;
+        return;
+      }
+      res.boucles.push({ items: idxs.map(function (i) { return aretes[i].it; }), points: points,
+                         level: aretes[idxs[0]].niv });
+      res.lignes += idxs.length;
+    });
+    const dansBoucle = new Set();
+    res.boucles.forEach(function (bc) { bc.items.forEach(function (it) { dansBoucle.add(it); }); });
+    res.contours = (items || []).filter(function (it) {
+      return it && it.obj && !dansBoucle.has(it) && estContourFerme(it.famille, it.obj);
+    });
+    return res;
+  }
+
+  // L'objet recollé : champs de la PREMIÈRE ligne, type cible, points de la boucle, notes distinctes non vides
+  // concaténées, uid NEUF. Les lignes d'origine sont supprimées : HistoryManager.record pose leurs traces de
+  // suppression, comme pour toute suppression.
+  // ⚠️ Marque de calque (`_srcCalque` et ses compagnes) : gardée seulement si TOUTES les lignes viennent du même
+  // calque (la restitution retire alors l'objet recollé et rend les lignes du calque). Provenances mêlées : l'objet
+  // recollé est un objet ordinaire de la session, une restitution ne le retire pas.
+  function _recolle(boucle, familleCible, typeCible) {
+    const objs = boucle.items.map(function (it) { return it.obj; });
+    const neuf = Object.assign({}, objs[0], { type: typeCible, level: boucle.level, points: boucle.points });
+    delete neuf.fromLevel;
+    delete neuf.toLevel;
+    delete neuf.uid;
+    const notes = [];
+    objs.forEach(function (o) {
+      const d = (typeof o.description === "string") ? o.description.trim() : "";
+      if (d && notes.indexOf(d) < 0) notes.push(d);
+    });
+    if (notes.length) neuf.description = notes.join("\n");
+    else delete neuf.description;
+    if (!objs.every(function (o) { return o._srcCalque === objs[0]._srcCalque; })) {
+      delete neuf._srcCalque;
+      delete neuf._srcCalqueDepuis;
+      delete neuf._srcCalqueAjout;
+    } else if (!objs.every(function (o) { return o._srcCalqueAjout === objs[0]._srcCalqueAjout; })) {
+      delete neuf._srcCalqueAjout;   // copies et ajouts mêlés : traité en copie
+    }
+    if (window.KtaUid) {
+      neuf.uid = window.KtaUid.genUid(PREFIXE_UID[familleCible]);
+      window.KtaUid.touch(neuf);
+    }
+    return neuf;
   }
 
   function _libelle(cat, cle) {
@@ -378,9 +533,28 @@
   // lot ne doit pas la convertir par la bande (une jonction devenue tracé perd ses niveaux et ne relie plus rien).
   // Forme incompatible (ligne non fermée vers une surface, surface vers une ligne) : comptée en échec, jamais forcée.
   function convertirLot(items, familleCible, typeCible) {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return { convertis: 0, sautes: 0, echecs: (items || []).length };   // 🔒 lecture seule
-    const bilan = { convertis: 0, sautes: 0, echecs: 0 };
-    if (!Array.isArray(items) || !items.length || !familleCible || !typeCible) return bilan;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return _lot(items, null, null, null);   // 🔒 lecture seule
+    return _lot(items, familleCible, typeCible, null);
+  }
+
+  // Lot « recoller » : les contours fermés seuls sont convertis comme dans convertirLot, les lignes qui forment
+  // ensemble une boucle (trouverBoucles) deviennent UN objet de la cible chacune ; le reste de la sélection n'est
+  // pas touché. Même geste : un instantané, une entrée ⏪. Cible ouverte : rien n'est recollé (compté en échec).
+  // → bilan de convertirLot + { recolles (objets créés), lignes (lignes consommées), ignorees }.
+  function recollerLot(items, familleCible, typeCible) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return _lot(items, null, null, null);   // 🔒 lecture seule
+    const rec = trouverBoucles(items);
+    const bilan = _lot(rec.contours, familleCible, typeCible, rec.boucles);
+    bilan.ignorees = rec.ignorees;
+    return bilan;
+  }
+
+  function _lot(items, familleCible, typeCible, boucles) {
+    const nBoucles = (boucles || []).length;
+    const refus = { convertis: 0, sautes: 0, echecs: (items || []).length + nBoucles, recolles: 0, lignes: 0 };
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return refus;   // 🔒 lecture seule
+    const bilan = { convertis: 0, sautes: 0, echecs: 0, recolles: 0, lignes: 0 };
+    if (!Array.isArray(items) || (!items.length && !nBoucles) || !familleCible || !typeCible) return bilan;
     if (typeof _ecrivain(familleCible) !== "function") {
       console.warn("[Convertir] setteur manquant :", familleCible);
       bilan.echecs = items.length;
@@ -413,10 +587,36 @@
       bilan.convertis++;
     });
 
-    if (bilan.convertis === 0) return bilan;   // rien écrit, donc rien à annuler
+    // Boucles : toutes leurs lignes doivent être encore là (version courante), sinon la boucle entière est refusée.
+    const fermeCible = !_estOuvert(familleCible, typeCible);
+    (boucles || []).forEach(function (bc) {
+      if (!fermeCible) { bilan.echecs++; return; }
+      const pos = bc.items.map(function (it) {
+        const liste = listes[it.famille];
+        return liste ? { famille: it.famille, obj: liste[_indexDe(liste, it.obj)] } : { obj: undefined };
+      });
+      if (pos.some(function (p) { return !p.obj; })) { bilan.echecs++; return; }
+      const neuf = _recolle({ items: pos, points: bc.points, level: bc.level }, familleCible, typeCible);
+      pos.forEach(function (p) {
+        // p.obj est l'élément même de la liste (trouvé par _indexDe) : la référence suffit, les index ont bougé.
+        listes[p.famille].splice(listes[p.famille].indexOf(p.obj), 1);
+        touchees[p.famille] = true;
+      });
+      listes[familleCible].push(neuf);
+      touchees[familleCible] = true;
+      bilan.recolles++;
+      bilan.lignes += pos.length;
+    });
+
+    if (bilan.convertis === 0 && bilan.recolles === 0) return bilan;   // rien écrit, donc rien à annuler
     Object.keys(touchees).forEach(function (f) { _ecrivain(f)(listes[f]); });
+    if (touchees.roads && window.RoadGraph && typeof window.RoadGraph.invalidate === "function") {
+      window.RoadGraph.invalidate();
+    }
     if (window.HistoryManager && avant && window.HistoryManager.record) {
-      window.HistoryManager.record(_t("convert.histoireLot", { n: bilan.convertis }), avant);
+      window.HistoryManager.record(bilan.recolles
+        ? _t("convert.histoireRecoller", { n: bilan.recolles + bilan.convertis })
+        : _t("convert.histoireLot", { n: bilan.convertis }), avant);
     }
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return bilan;
@@ -590,6 +790,13 @@
     }
   }
 
+  function _toastRecoller(bilan) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(_t("convert.recollerBilan", bilan),
+        (bilan.recolles + bilan.convertis) > 0 ? "success" : "warn");
+    }
+  }
+
   // Fenêtre commune (fiche, lot, calque). `o` = { source, regle, avant (HTML déjà échappé), cibles, choisir(c),
   // apresMontage(modal, fermer) }. Les choix sont regroupés par catégorie : changer de famille change tout (un tracé
   // entre dans le calcul d'itinéraire, pas une structure), ça doit se voir.
@@ -658,7 +865,8 @@
   }
 
   // `opts.lot` = [{ famille, obj }] (sélection multiple) ; `opts.fermes` : le lot est réduit à ses contours fermés
-  // (case « seulement les contours fermés »), le compte est confirmé avant, et le tout s'annule en un ⏪.
+  // (case « seulement les contours fermés ») ; `opts.recoller` : les lignes qui forment ensemble une boucle sont
+  // recollées en plus (case « recoller », cibles fermées seulement). Le compte est confirmé avant, un ⏪ annule tout.
   function ouvrir(famille, obj, opts) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
     if (!obj) return;
@@ -669,40 +877,72 @@
 
     if (lot) {
       const contours = lot.filter(function (it) { return it && it.obj && estContourFerme(it.famille, it.obj); });
-      const fermes = !!opts.fermes && contours.length > 0;
-      const effectif = fermes ? contours : lot;
-      // Case visible dès qu'une ligne est dans le lot ; grisée sans contour fermé (elle dit pourquoi rien ne s'ouvre).
+      // Cases visibles dès qu'une ligne est dans le lot ; grisées sans objet à traiter (elles disent pourquoi).
       const lignes = lot.some(function (it) { return it && it.obj && _estOuvert(it.famille, it.obj.type); });
-      const caseHtml = lignes
-        ? '<label class="kta-convert-fermes">' +
-            '<input type="checkbox" id="kta-convert-fermes"' + (fermes ? " checked" : "") +
-              (contours.length ? "" : " disabled") + '> ' +
-            '<span>' + _esc(_t("convert.fermesFiltre", { n: contours.length, m: lot.length })) + '</span>' +
-          '</label>'
+      const rec = lignes ? trouverBoucles(lot) : { boucles: [], lignes: 0, ignorees: 0, contours: contours };
+      const seuls = rec.contours.length;   // contours fermés convertis seuls quand on recolle
+      const recoller = !!opts.recoller && rec.boucles.length > 0;
+      const fermes = recoller || (!!opts.fermes && contours.length > 0);
+      const caseHtml = function (id, coche, actif, texte) {
+        return '<label class="kta-convert-fermes">' +
+                 '<input type="checkbox" id="' + id + '"' + (coche ? " checked" : "") + (actif ? "" : " disabled") + '> ' +
+                 '<span>' + _esc(texte) + '</span>' +
+               '</label>';
+      };
+      const cases = lignes
+        ? caseHtml("kta-convert-fermes", fermes, contours.length > 0 && !recoller,
+                   _t("convert.fermesFiltre", { n: contours.length, m: lot.length })) +
+          caseHtml("kta-convert-recoller", recoller, rec.boucles.length > 0,
+                   _t("convert.recollerFiltre", { n: rec.boucles.length, l: rec.lignes }))
         : '';
+      let source = _t("convert.lotSource", { n: lot.length }), regle = regleBase;
+      let cibles = listerCiblesLot(lot, false);
+      if (recoller) {
+        source = _t("convert.lotSourceRecoller", { n: rec.boucles.length, l: rec.lignes, c: seuls, m: lot.length });
+        regle = _t("convert.regleRecoller", { tol: TOLERANCE_RECOLLAGE });
+        // Cibles FERMÉES seulement : une boucle recollée n'a de sens qu'en zone ou en pilier.
+        const vues = {};
+        cibles = [];
+        const sources = rec.contours.slice();
+        rec.boucles.forEach(function (bc) { sources.push.apply(sources, bc.items); });
+        sources.forEach(function (it) {
+          _cibles(it.famille, it.obj.type, false).forEach(function (c) {
+            const k = c.famille + ":" + c.type;
+            if (!vues[k]) { vues[k] = true; cibles.push(c); }
+          });
+        });
+      } else if (fermes) {
+        source = _t("convert.lotSourceFermes", { n: contours.length, m: lot.length });
+        regle = _t("convert.regleContour");
+        cibles = listerCiblesLot(contours, true);
+      }
       _modale({
-        source: fermes ? _t("convert.lotSourceFermes", { n: contours.length, m: lot.length })
-                       : _t("convert.lotSource", { n: lot.length }),
-        regle: fermes ? _t("convert.regleContour") : regleBase,
-        avant: caseHtml,
-        cibles: listerCiblesLot(effectif, fermes),
+        source: source,
+        regle: regle,
+        avant: cases,
+        cibles: cibles,
         choisir: function (c) {
           if (!fermes) { _toastBilan(convertirLot(lot, c.famille, c.type)); return; }
-          window.ktaConfirm(_esc(_t("convert.fermesConfirm", {
-            n: contours.length, type: c.label, autres: lot.length - contours.length
-          })), {
-            titre: _esc(_t("convert.fermesTitre")),
-            okLabel: _esc(_t("convert.fermesOk", { n: contours.length }))
+          const texte = recoller
+            ? _t("convert.recollerConfirm", { n: rec.boucles.length, l: rec.lignes, type: c.label, c: seuls,
+                 ignorees: rec.ignorees, autres: lot.length - rec.lignes - seuls - rec.ignorees })
+            : _t("convert.fermesConfirm", { n: contours.length, type: c.label, autres: lot.length - contours.length });
+          window.ktaConfirm(_esc(texte), {
+            titre: _esc(_t(recoller ? "convert.recollerTitre" : "convert.fermesTitre")),
+            okLabel: _esc(_t("convert.fermesOk", { n: recoller ? rec.boucles.length + seuls : contours.length }))
           }).then(function (oui) {
-            if (oui) _toastBilan(convertirLot(contours, c.famille, c.type));
+            if (!oui) return;
+            if (recoller) _toastRecoller(recollerLot(lot, c.famille, c.type));
+            else _toastBilan(convertirLot(contours, c.famille, c.type));
           });
         },
         apresMontage: function (modal, fermer) {
           const cb = modal.querySelector("#kta-convert-fermes");
-          if (cb) cb.addEventListener("change", function () {
-            fermer();
-            ouvrir(famille, obj, { lot: lot, fermes: cb.checked });
-          });
+          const cr = modal.querySelector("#kta-convert-recoller");
+          // Chaque case garde l'état de l'autre : décocher « recoller » rend la case des contours telle qu'elle était.
+          const rouvrir = function (f, r) { fermer(); ouvrir(famille, obj, { lot: lot, fermes: f, recoller: r }); };
+          if (cb) cb.addEventListener("change", function () { rouvrir(cb.checked, !!opts.recoller); });
+          if (cr) cr.addEventListener("change", function () { rouvrir(!!opts.fermes, cr.checked); });
         }
       });
       return;
@@ -739,6 +979,8 @@
     ouvrir:        ouvrir,
     convertir:     convertir,
     convertirLot:  convertirLot,   // N objets d un coup
+    recollerLot:   recollerLot,   // lot + lignes qui forment ensemble une boucle → un objet fermé chacune
+    trouverBoucles: trouverBoucles,   // compte des boucles avant de valider (rien n'est modifié)
     listerCiblesLot: listerCiblesLot,
     supprimer:     supprimer,   // depuis la popup de l objet
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
