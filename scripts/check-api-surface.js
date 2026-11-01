@@ -825,6 +825,25 @@ function charger(fichier, nomGlobal, prealables) {
   S = [Ca, Cb];
   t("🩸 morceau : convertir() direct refusé aussi", CV.convertir("structures", Ca, "zones", "eau") === false);
 
+  // Un seul bout qui touche : un pilier entier accolé à un voisin par un coin, converti seul. Les deux bouts qui
+  // touchent chacun une ligne différente : morceau.
+  const Cun = { uid: "st_Cun", type: "front-1", level: 0,
+                points: [{ x: 200, y: 0 }, { x: 230, y: 0 }, { x: 230, y: 30 }, { x: 200, y: 30 }] };
+  const N1 = { uid: "st_N1", type: "front-1", level: 0, points: [{ x: 200, y: -2 }, { x: 200, y: -40 }] };
+  const Cdx = { uid: "st_Cdx", type: "front-1", level: 0,
+                points: [{ x: 300, y: 0 }, { x: 330, y: 0 }, { x: 330, y: 30 }, { x: 300, y: 30 }] };
+  const N2 = { uid: "st_N2", type: "front-1", level: 0, points: [{ x: 298, y: 0 }, { x: 260, y: 0 }] };
+  const N3 = { uid: "st_N3", type: "front-1", level: 0, points: [{ x: 298, y: 30 }, { x: 260, y: 30 }] };
+  S = [Cun, N1, Cdx, N2, N3]; Z = [];
+  t("contour : C dont UN seul bout touche une voisine → fiche avec zone et pilier",
+    CV.listerCibles("structures", "front-1", Cun).some(function (c) { return c.type === "pilier-1"; }));
+  r = CV.trouverBoucles([it(Cun), it(Cdx)]);
+  t("🩸 morceau : C dont les DEUX bouts touchent (deux voisines différentes) → morceau ; l'autre → contour seul",
+    r.morceaux === 1 && r.contours.length === 1 && r.contours[0].obj === Cun);
+  const blU = CV.convertirLot([it(Cun), it(Cdx)], "structures", "pilier-1");
+  t("contour : en lot, le C à un seul bout qui touche est converti seul, celui à deux bouts refusé",
+    blU.convertis === 1 && blU.echecs === 1 && S.indexOf(Cun) < 0 && S.indexOf(Cdx) >= 0);
+
   ["convert.recollerFiltre", "convert.lotSourceRecoller", "convert.regleRecoller", "convert.recollerTitre",
    "convert.recollerConfirm", "convert.recollerBilan", "convert.histoireRecoller",
    "convert.morceauxReste", "convert.regleMorceau"].forEach(function (k) {

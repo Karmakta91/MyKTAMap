@@ -1509,10 +1509,14 @@ jusqu'à ~10:1 passe.
 - 🩸 **Au moins 3 segments** (4 points), sauf si le dernier point répète le premier
   (3 côtés après son retrait) : une ligne de 2 segments (un V, un L) passe les deux
   seuils mais deviendrait un triangle ; sur un relevé réel, c'est un morceau de pilier.
-- 🩸 **Morceau de pilier** (`_contourSeul`) : une ligne qui se referme mais dont un
-  bout touche (≤ 5 px, même niveau) le bout d'une AUTRE ligne ouverte de la **session**
-  n'est jamais convertie seule (un « C » dont l'autre moitié est une ligne voisine) :
-  ni par sa fiche (qui l'explique), ni en lot, ni par un appel direct. Elle ne part
+- 🩸 **Morceau de pilier** (`_contourSeul`) : une ligne qui se referme mais dont les
+  **deux** bouts touchent chacun (≤ 5 px, même niveau) le bout d'une AUTRE ligne
+  ouverte de la **session** (pas forcément la même) n'est jamais convertie seule (un
+  « C » refermé par sa voisine). Un seul bout qui touche ne suffit pas : un pilier
+  complet touche souvent un voisin par un coin (décision produit, mesurée sur deux
+  relevés réels : peu de contours ont un seul bout qui touche, c'est en général un
+  pilier entier). Le morceau n'est converti seul
+  ni par sa fiche (qui l'explique), ni en lot, ni par un appel direct. Il ne part
   que par le recollage, sinon elle reste et la confirmation la compte (`morceaux`).
   La session entière fait foi, pas la sélection : sinon sélectionner une moitié de
   pilier la refermerait. Index des bouts par grille (`_indexBouts`), construit une
@@ -1549,9 +1553,9 @@ pas plus que 5.
   jonction de fermeture garde le premier point. Aucun point inventé.
 - **Pas touchés, mais comptés** (`ignorees`) : une branche, un T, une boucle peu
   compacte. Une ligne n'entre que dans une boucle.
-- **Une ligne qui se referme entre aussi dans le graphe** : si elle touche une autre
-  ligne c'est un morceau, recollé quand il forme une boucle, laissé sinon (`morceaux`) ;
-  sans voisine, c'est un contour fermé seul, converti seul (`contours`).
+- **Une ligne qui se referme entre aussi dans le graphe** : si ses deux bouts touchent
+  d'autres lignes c'est un morceau, recollé quand il forme une boucle, laissé sinon
+  (`morceaux`) ; sinon c'est un contour fermé seul, converti seul (`contours`).
 - **L'objet recollé** : champs de la première ligne, type cible, niveau commun, notes
   distinctes non vides concaténées, **uid neuf** (préfixe de la famille cible). Les
   lignes d'origine quittent la session : `HistoryManager.record` pose leurs traces de

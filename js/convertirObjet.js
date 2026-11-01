@@ -14,7 +14,7 @@
 //     OUVERT   ⇄   tracés (galeries)  ⇄  structures polylignes (fronts)
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
 // Ouvert → fermé seulement pour un CONTOUR FERMÉ SEUL (≥ 3 segments, bouts écartés de moins de 1,5 × le plus grand
-// côté, forme compacte, aucun bout qui touche une autre ligne : sinon c'est un MORCEAU de pilier). Aucun point
+// côté, forme compacte, pas les deux bouts posés sur d'autres lignes : sinon c'est un MORCEAU de pilier). Aucun point
 // inventé. Fermé → ouvert : jamais. Lot : RECOLLAGE des lignes qui forment ensemble une boucle (trouverBoucles,
 // recollerLot). 🩸 Une galerie en U serrée passe pour fermée : le lot montre le compte avant et s'annule en un ⏪.
 // Conservés : `points`, `level`, `description`, `uid` ; seul le type (donc la famille) change.
@@ -116,10 +116,12 @@
   // nœuds, chaque ligne est une arête entre ses deux nœuds-bouts. Une composante d'au moins 2 arêtes dont TOUS les
   // nœuds sont de degré 2 (nœuds = arêtes) est une boucle simple ; elle est retenue si le polygone obtenu est compact
   // (même seuil qu'estContourFerme). Une branche, un T : jamais recollés. Une ligne n'entre que dans une boucle.
-  // ⚠️ MORCEAU : une ligne dont un bout touche (≤ TOLERANCE_RECOLLAGE, même niveau) le bout d'une AUTRE ligne ouverte
-  // de la session n'est jamais convertie seule, même si elle se referme (un « C » dont l'autre moitié est une ligne
-  // voisine) : elle ne part que par le recollage, sinon elle reste et le message la compte. La session entière fait
-  // foi, pas la sélection : sinon sélectionner une moitié de pilier la refermerait.
+  // ⚠️ MORCEAU : une ligne dont les DEUX bouts touchent chacun (≤ TOLERANCE_RECOLLAGE, même niveau) le bout d'une
+  // AUTRE ligne ouverte de la session (pas forcément la même) n'est jamais convertie seule, même si elle se referme
+  // (un « C » refermé par sa voisine) : elle ne part que par le recollage, sinon elle reste et le message la compte.
+  // 🩸 UN seul bout qui touche : pas un morceau (décision produit, mesurée sur deux relevés réels) — un pilier
+  // complet touche souvent un voisin par un coin. La session entière fait foi, pas la sélection : sinon sélectionner
+  // une moitié de pilier la refermerait.
   // ⚠️ Tolérance FIXE en px de l'image du plan (décision produit, mesurée sur un relevé SIG réel : 5 px trouve la
   // quasi-totalité des boucles, 10 px n'en ajoute presque plus). Pas de réglage dans l'interface.
   const TOLERANCE_RECOLLAGE = 5;
@@ -152,12 +154,13 @@
     return grille;
   }
 
-  // Un bout de `obj` touche-t-il le bout d'une AUTRE ligne ? (ses deux bouts proches l'un de l'autre : pas un morceau)
+  // Les DEUX bouts de `obj` touchent-ils chacun le bout d'une AUTRE ligne ? Son propre autre bout ne compte jamais
+  // (même clé) : une ligne dont les deux bouts se rejoignent n'est pas un morceau pour autant.
   function _estMorceau(obj, grille) {
     const p = obj && obj.points;
     if (!Array.isArray(p) || p.length < 2) return false;
     const T = TOLERANCE_RECOLLAGE, cle = _cleLigne(obj), niv = _niveauDe(obj);
-    return [p[0], p[p.length - 1]].some(function (b) {
+    return [p[0], p[p.length - 1]].every(function (b) {
       if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.y)) return false;
       const cx = Math.floor(b.x / T), cy = Math.floor(b.y / T);
       for (let dx = -1; dx <= 1; dx++) {
