@@ -1021,6 +1021,40 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       bn.enfants[2].enfants[1].textContent.length === 30);
     l1n.enfants[1].ecoutes.click();
     t("toucher : la fenêtre se ferme PUIS l'extension ouvre ; son erreur est avalée", tn.join() === "fermer,ouvrir");
+    // Ligne garderOuverte : la fenêtre reste, bouton inactif pendant ouvrir(), puis le bloc relit lister().
+    let finir = null;
+    tn.length = 0;
+    liste = [{ texte: "Plan « Secteur A » — 2 nouveautés", bouton: "Ouvrir", ouvrir: () => { tn.push("ouvrir"); } },
+      { texte: "Tout effacer", bouton: "Vider", garderOuverte: true,
+        ouvrir: () => { tn.push("vider"); return new Promise((ok) => { finir = ok; }); } }];
+    const bg = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    const btnG = bg.enfants[2].enfants[1];
+    btnG.ecoutes.click();
+    t("garderOuverte : la fenêtre ne se ferme pas, ouvrir() appelé, bouton inactif pendant l'action",
+      tn.join() === "vider" && btnG.disabled === true);
+    btnG.ecoutes.click();
+    t("…un 2e toucher pendant l'action n'appelle rien", tn.join() === "vider");
+    liste = [{ texte: "1 compte rendu à lire", bouton: "Lire", ouvrir: () => {} }];
+    finir();
+    await new Promise((r) => setTimeout(r, 10));
+    t("…action finie : le bloc relit lister() et se redessine (anciennes lignes retirées, la nouvelle posée)",
+      !bg.retire && bg.enfants[1].retire && bg.enfants[2].retire && bg.enfants.length === 4 &&
+      bg.enfants[3].enfants[0].textContent === "1 compte rendu à lire");
+    liste = [{ texte: "x", bouton: "Vider", garderOuverte: true, ouvrir: () => { throw new Error("z"); } }];
+    const bz = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    tn.length = 0;
+    liste = [];
+    bz.enfants[1].enfants[1].ecoutes.click();
+    await new Promise((r) => setTimeout(r, 10));
+    t("garderOuverte : ouvrir() en erreur avalée, fenêtre gardée ; plus rien à lister → le bloc se retire",
+      tn.length === 0 && bz.retire);
+    liste = [{ texte: "y", bouton: "Lire", garderOuverte: "oui", ouvrir: () => {} }];
+    const bo = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    bo.enfants[1].enfants[1].ecoutes.click();
+    t("garderOuverte autre que true : comportement ordinaire (la fenêtre se ferme)", tn.join() === "fermer");
     liste = [];
     const bv = cn.K.blocNouveautes(() => {});
     await new Promise((r) => setTimeout(r, 10));

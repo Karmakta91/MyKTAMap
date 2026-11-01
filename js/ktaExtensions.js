@@ -618,13 +618,15 @@
     return ligne;
   }
   // ── « Quoi de neuf » dans la fenêtre 🚨 (prise « alertes », champ facultatif `nouveautes`) ──
-  // alertes.nouveautes: { compter() → number, lister() → Promise<[{ texte, bouton, ouvrir() }]> }.
+  // alertes.nouveautes: { compter() → number, lister() → Promise<[{ texte, bouton, ouvrir(), garderOuverte? }]> }.
   // compteurNouveautes() : compter() (synchrone, entier borné 0..999 ; erreur ou forme inattendue → 0) en état ON ou
   // DOWN (l'extension garde son dernier compte hors ligne), 0 sinon — même nombre que la pastille de l'icône de l'app.
   // blocNouveautes(fermer) : null si le compteur vaut 0 ; sinon un bloc « 🆕 Quoi de neuf » rendu tout de suite, dont
   // les lignes (12 au plus ; texte 120 car., bouton 30 car., posés en texte) arrivent de lister() (attente bornée,
   // erreur avalée) — liste vide, erreur ou délai : le bloc se retire. Toucher un bouton ferme la fenêtre (`fermer`,
-  // donné par l'app) puis appelle `ouvrir()` (erreur avalée). ⚠️ Information seulement : ce bloc n'ouvre jamais la
+  // donné par l'app) puis appelle `ouvrir()` (erreur avalée) ; une ligne `garderOuverte: true` ne ferme PAS la
+  // fenêtre : bouton inactif jusqu'à ce que `ouvrir()` (promesse ou valeur) se termine, puis le bloc relit lister() et
+  // se redessine (retiré si plus rien, ou compteur à 0). ⚠️ Information seulement : ce bloc n'ouvre jamais la
   // fenêtre 🚨 de lui-même. Changement du compte annoncé par l'extension : `mktm:nouveautes-changees`.
   function _priseNouveautes() {
     const ext = _prise("alertes");
@@ -650,32 +652,44 @@
     const bloc = el("div", "kta-alert-neuf");
     bloc.appendChild(el("div", "kta-alert-neuf-titre", "🆕 " + _t("alerts.neuf.titre")));
     const retirer = function () { try { bloc.remove(); } catch (e) { /* déjà retiré */ } };
-    let delai;
-    Promise.race([
-      Promise.resolve().then(function () { return p.lister(); }),
-      new Promise(function (ok) { delai = setTimeout(function () { ok(null); }, ALERTES_DELAI_MS); })
-    ]).then(function (l) {
-      clearTimeout(delai);
-      const lignes = (Array.isArray(l) ? l : []).slice(0, 12).filter(function (x) {
-        return x && typeof x === "object" && _texteCourt(x.texte, 120) && _texteCourt(x.bouton, 30) &&
-          typeof x.ouvrir === "function";
-      });
-      if (!lignes.length) { retirer(); return; }
-      lignes.forEach(function (x) {
-        const ligne = el("div", "kta-alert-neuf-ligne");
-        const bouton = el("button", "kta-btn kta-btn-ghost kta-alert-neuf-btn", _texteCourt(x.bouton, 30));
-        bouton.type = "button";
-        bouton.addEventListener("click", function () {
-          try { if (typeof fermer === "function") fermer(); } catch (e) { /* fenêtre déjà fermée */ }
-          try {
-            Promise.resolve(x.ouvrir()).catch(function (e) { console.warn("[Extensions] alertes.nouveautes :", e); });
-          } catch (e) { console.warn("[Extensions] alertes.nouveautes.ouvrir a échoué :", e); }
+    let posees = [];   // lignes affichées, retirées à chaque relecture
+    // Lit lister() (attente bornée) et (re)dessine les lignes ; rien de valide → le bloc se retire.
+    const remplir = function () {
+      let delai;
+      return Promise.race([
+        Promise.resolve().then(function () { return p.lister(); }),
+        new Promise(function (ok) { delai = setTimeout(function () { ok(null); }, ALERTES_DELAI_MS); })
+      ]).then(function (l) {
+        clearTimeout(delai);
+        posees.forEach(function (x) { try { x.remove(); } catch (e) { /* déjà retirée */ } });
+        posees = [];
+        const lignes = (Array.isArray(l) ? l : []).slice(0, 12).filter(function (x) {
+          return x && typeof x === "object" && _texteCourt(x.texte, 120) && _texteCourt(x.bouton, 30) &&
+            typeof x.ouvrir === "function";
         });
-        ligne.appendChild(el("span", "kta-alert-neuf-texte", _texteCourt(x.texte, 120)));
-        ligne.appendChild(bouton);
-        bloc.appendChild(ligne);
+        if (!lignes.length || compteurNouveautes() <= 0) { retirer(); return; }
+        lignes.forEach(function (x) { posees.push(bloc.appendChild(ligne(x))); });
+      }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.nouveautes.lister :", e); retirer(); });
+    };
+    const ligne = function (x) {
+      const l = el("div", "kta-alert-neuf-ligne");
+      const bouton = el("button", "kta-btn kta-btn-ghost kta-alert-neuf-btn", _texteCourt(x.bouton, 30));
+      bouton.type = "button";
+      const garder = x.garderOuverte === true;
+      bouton.addEventListener("click", function () {
+        if (bouton.disabled) return;
+        if (!garder) { try { if (typeof fermer === "function") fermer(); } catch (e) { /* fenêtre déjà fermée */ } }
+        let r;
+        try { r = x.ouvrir(); } catch (e) { console.warn("[Extensions] alertes.nouveautes.ouvrir a échoué :", e); r = null; }
+        const fin = Promise.resolve(r).catch(function (e) { console.warn("[Extensions] alertes.nouveautes :", e); });
+        // Fenêtre gardée : bouton inactif le temps de l'action, puis le bloc relit lister() et se redessine.
+        if (garder) { bouton.disabled = true; fin.then(function () { bouton.disabled = false; return remplir(); }); }
       });
-    }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.nouveautes.lister :", e); retirer(); });
+      l.appendChild(el("span", "kta-alert-neuf-texte", _texteCourt(x.texte, 120)));
+      l.appendChild(bouton);
+      return l;
+    };
+    remplir();
     return bloc;
   }
   // Cible d'une notification touchée : paramètre `kta-notif` de son adresse (« genre:id:id », forme bornée, texte
