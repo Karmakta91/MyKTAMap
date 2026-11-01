@@ -313,7 +313,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF, GeoTIFF), sesión, actualización del mapa, exportación externa (KMZ / GPX / GeoJSON) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
-| **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados**, borrar |
+| **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados** y el **⛏️ volumen explotado** de un sector, borrar |
 | **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
 | **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones |
 | **Zonas** | ⬛ | Trazar zonas de escombros, derrumbe, agua o inaccesibles |
@@ -853,6 +853,18 @@ Las dos mediciones conviven: pasar de una a otra no las borra, y tu siguiente to
 ### 📏 Distancia total de los trazados
 
 En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de todos los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita. Este total se queda en pantalla: no entra en la exportación de imagen.
+
+### ⛏️ Volumen explotado (extracción)
+
+En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se extrajo de un sector. Traza primero el sector con **♦️ Superficie** siguiendo los frentes de explotación y pulsa ⛏️ (sin superficie, un mensaje te lo recuerda). La ventana da:
+
+- la **superficie del sector**;
+- los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
+- la **superficie explotada** (sector menos pilares) y la **tasa de extracción** (explotada ÷ sector);
+- el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (2 m por defecto, guardada para este plano, recalculada al instante);
+- los **escombros** (zonas «Escombros» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos escombros).
+
+En un plano de varios niveles solo cuenta el **nivel activo**, y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
 
 ---
 

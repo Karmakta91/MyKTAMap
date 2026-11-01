@@ -313,7 +313,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF, GeoTIFF), session, mise à jour du plan, export externe (KMZ / GPX / GeoJSON) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
-| **Mesure** | 📐 | Mesurer une distance ou une surface, **calculer la distance totale des tracés**, effacer |
+| **Mesure** | 📐 | Mesurer une distance ou une surface, **calculer la distance totale des tracés** et le **⛏️ volume exploité** d'un secteur, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points *(clic direct — interrupteur ON/OFF)* |
 | **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions |
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement, eau ou inaccessibles |
@@ -853,6 +853,18 @@ Les deux mesures coexistent : passer de l'une à l'autre ne les efface pas, et l
 ### 📏 Distance totale des tracés
 
 Dans le groupe **📐 Mesure**, **📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire. Ce total reste à l'écran : il n'entre pas dans l'export image.
+
+### ⛏️ Volume exploité (défruitement)
+
+Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a été extrait d'un secteur. Trace d'abord le secteur avec **♦️ Surface** en suivant les fronts de taille, puis appuie sur ⛏️ (sans surface, un message te le rappelle). La fenêtre donne :
+
+- la **surface du secteur** ;
+- les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
+- la **surface exploitée** (secteur moins piliers) et le **taux de défruitement** (exploité ÷ secteur) ;
+- le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (2 m par défaut, retenue pour ce plan, recalcul immédiat) ;
+- les **remblais** (zones « Remblais » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins remblais).
+
+Sur un plan à étages, seul le **niveau actif** compte, et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
 
 ---
 

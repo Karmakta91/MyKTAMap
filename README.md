@@ -652,6 +652,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-tuiles-hors-ecran.js` | Le tuilage V2 ne pose que les tuiles proches de l'écran |
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
+| `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue par plan |
 
 ---
 

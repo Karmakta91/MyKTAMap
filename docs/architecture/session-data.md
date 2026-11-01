@@ -579,7 +579,7 @@ Quand on ajoute un nouveau type d'annotation dessinable (ex: 📝 notes textuell
 
 ---
 
-### 49. V2.2 — Stats session enrichies + ⬛ Mesure de surface (depuis v1.12.0)
+### 49. Stats de session et mesures (distance, surface, volume exploité)
 
 #### 49.1 Stats agrégées
 
@@ -608,17 +608,38 @@ function polygonAreaM2(points) {
 }
 ```
 
-#### 49.3 Mode mesure de surface
+#### 49.3 Mesure de distance et de surface (`js/measure.js`)
 
-Refonte `js/measure.js` complète :
-- 2 layers Leaflet séparés : `polylineMesure` (mode distance) + `polygonMesure` (mode surface)
-- `_refreshMesureLayer()` : switch les layers selon `_mode`
-- `_afficherMesureValeur()` : label adaptatif `📐 Distance: X m` ou `⬛ Surface: X m²`
-- API publique :
-  - `window.setMeasureMode("distance"|"surface")` → switch mode + clear points + redraw
-  - `window.getMeasureMode()` → mode courant
-  - `window.getMeasureValue()` → valeur formatée
-  - `window.setMeasurePoints(pts)` → restore (utilisé par SessionPersist)
+- Deux mesures **indépendantes et simultanées** : `_pointsDistance` + `polylineMesure`, `_pointsSurface` +
+  `polygonMesure` ; `_activeMode` (« distance » | « surface ») décide où va le prochain clic.
+- `_afficherMesureValeur()` : libellé bas-gauche sur une ou deux lignes (`📐 Distance`, `♦️ Surface`), la ligne du
+  mode actif soulignée.
+- API : `setMeasureMode` / `getMeasureMode` (sans effacer de points), `get/setMeasurePoints` (DISTANCE, format
+  historique de SessionPersist), `get/setMeasurePointsSurface`, `resetMesure`, `resetMesureMode`,
+  `removeLastMeasurePoint`.
+
+#### 49.3 bis ⛏️ Volume exploité (`js/volumeExploite.js`)
+
+Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#kta-volume-modal`, rien d'exporté.
+- **Secteur** = la surface ♦️ en cours (`getMeasurePointsSurface()`, ≥ 3 points), sinon `ktaAlerte` qui dit de la
+  tracer. **Échelle** absente (`APP_CONFIG.scale` non > 0) : `ktaAlerte`, aucun chiffre.
+- **Retranchés** : toutes les structures dont le type n'est PAS une ligne (`isStructurePolylineType` : piliers, mur
+  polygone, types perso polygone ; jamais fronts ni mur en ligne), session (`getStructures`) + calques embarqués
+  (`_ktaDataStructurePolygons`, visibles ou non). **Remblais** : zones `remblais`, session + `_ktaDataPolygons`.
+- **Niveau** : plan à étages → `APP_CONFIG.activeLevel` seul (sans `level` = 0), écrit dans la fenêtre ; plan à un
+  niveau → tout compte.
+- **Chiffres** : secteur, piliers (union, coupée au secteur) et leur nombre (part non nulle dans le secteur),
+  exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
+  (secteur − piliers) couverte par un remblai, vide actuel = exploité − remblais. Surfaces par `formatSurface`.
+- **Hauteur moyenne** : 2 m par défaut, par plan dans `myktamap_plan_prefs_<planId>.hauteurGalerieM`
+  (`config.js > get/setPlanHauteurGalerie`) ; recalcul des volumes à chaque frappe, seule une valeur > 0 est retenue.
+- **Géométrie** (`calculerAires`, pure) : découpe en **bandes verticales** aux x de tous les sommets et de tous les
+  croisements d'arêtes. Dans une bande, la longueur de la coupe verticale de n'importe quelle combinaison booléenne
+  (secteur ∩ ∪piliers, (secteur ∩ ∪remblais) − ∪piliers) est linéaire en x, donc aire = largeur × longueur au
+  milieu, **exacte** aux arrondis du double près. Secteur concave, piliers qui se chevauchent (union, jamais comptés
+  deux fois), bords partagés : sans cas particulier. Remplissage pair-impair pour un contour qui se recoupe. Coût :
+  ~16 ms pour 900 piliers dans un secteur à 400 sommets. Garde-fou : `scripts/check-api-surface.js` (valeurs calculées
+  à la main) ; parcours navigateur : `scripts/smoke/checkup-volume-exploite.js`.
 
 #### 49.4 Persistance SessionPersist
 

@@ -313,7 +313,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF, GeoTIFF), session, map update, external export (KMZ / GPX / GeoJSON) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
-| **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths**, clear |
+| **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths** and the **⛏️ mined volume** of a sector, clear |
 | **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
 | **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions |
 | **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
@@ -853,6 +853,18 @@ The two measurements coexist: switching from one to the other does not erase the
 ### 📏 Total length of paths
 
 In the **📐 Measurement** group, **📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it. This total stays on screen: it is not part of the image export.
+
+### ⛏️ Mined volume (extraction)
+
+In the **📐 Measurement** group, **⛏️ Mined volume** works out what was extracted from a sector. First draw the sector with **♦️ Area** along the working faces, then press ⛏️ (without an area, a message reminds you). The window gives:
+
+- the **sector area**;
+- the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
+- the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
+- the **mined volume**: mined area × **average gallery height**, typed in the window (2 m by default, remembered for this plan, recalculated at once);
+- the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
+
+On a multi-level plan, only the **active level** counts, and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 
 ---
 

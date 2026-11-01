@@ -108,11 +108,6 @@
 
 ## Entrant
 
-- **Mesure : volume exploité (défruitement)** — dans 📐 Mesure, à partir d'une surface (limite d'exploitation, fronts de
-  taille) moins les piliers et murs qu'elle contient : surface vide, taux de défruitement, et × hauteur moyenne de
-  galerie = m³ exploités. Calibrage du plan requis ; par niveau sur un plan à étages.
-  `qui: KARMA · action: trancher le topo (limite, objets retranchés, remblais, hauteur) · depuis: 01/11/2026 · taille: M`
-
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
