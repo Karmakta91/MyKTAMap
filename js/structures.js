@@ -561,6 +561,9 @@ function renderStructures() {
       }
     }
   });
+  // 🩸 Largeurs au zoom APRÈS la création des couches : brancherLargeurFronts (en tête) passe avant elles, et
+  // une structure de session gardait 10 px (front, mur en ligne) ou 3 px de contour jusqu'au zoom suivant.
+  majLargeurFronts();
 }
 
 // ── Remise à zéro, suppressions ──────────────

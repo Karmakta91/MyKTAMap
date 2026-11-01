@@ -31,11 +31,16 @@ function ok(msg) { console.log("  ✅ " + msg); }
 function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : "")); }
 
 // Zoom posé, largeurs recalculées, puis épaisseurs lues sur les couches rendues.
+// extreme "rendu" : pas de zoom ni de recalcul, un renderStructures seul (ce que fait chaque modification).
 function lireAuZoom(page, extreme) {
   return page.evaluate(function (ext) {
     const m = window.map;
-    m.setZoom(ext === "min" ? m.getMinZoom() : m.getMaxZoom(), { animate: false });
-    window.majLargeurFronts();
+    if (ext === "rendu") {
+      window.renderStructures();
+    } else {
+      m.setZoom(ext === "min" ? m.getMinZoom() : m.getMaxZoom(), { animate: false });
+      window.majLargeurFronts();
+    }
     // Structures de session : pas de registre exposé ; reconnues par leur style (pilier-1 = remplissage doré
     // à 0,85, front-1 = trait doré sans remplissage) et par leur point de départ semé.
     const session = { pilier: null, front: null, fillOpacity: null };
@@ -115,6 +120,11 @@ function lireAuZoom(page, extreme) {
     verifier(bas.session.front === bas.front, "zoom minimal : le front garde sa loi", { front: bas.session.front, loi: bas.front });
     verifier(bas.calque.length > 0 && bas.calque.every(function (w) { return w >= 0.5 && w <= 1; }),
       "zoom minimal : contour des surfaces de calque entre 0,5 et 1 px (" + bas.calque.length + " vue(s))", bas.calque.slice(0, 6));
+
+    const rendu = await lireAuZoom(page, "rendu");
+    verifier(rendu.session.pilier === bas.session.pilier && rendu.session.front === bas.front,
+      "zoom minimal, session redessinée (modification) : contour et front gardent la loi du zoom " + JSON.stringify(rendu.session),
+      { avant: bas.session, apres: rendu.session });
 
     const haut = await lireAuZoom(page, "max");
     verifier(haut.session.pilier === Math.min(3, Math.max(0.5, haut.front / 4)),
