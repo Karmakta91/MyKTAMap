@@ -696,6 +696,8 @@ window.attacherBoutonCopierEchelleGps = attacherBoutonCopierEchelleGps;
 
 // ── Popups de note (zones / tracés / structures) : window.attacherNotePopup, plus bas ──────────
 // ⚠️ attacherNotePopup(layer, getDescr, setDescr, titreType, opts) ; opts.mode = "edit" (défaut) | "readonly".
+// titreType : texte, ou fonction relue à CHAQUE ouverture (un type renommé dans la légende ne redessine pas la carte) ;
+// opts.pastille = { cat, cle } : pastille de la couleur résolue devant le titre (ktaTypeSwatchHtml).
 // edit (session) : textarea + 💾, s'ouvre même note vide ; le save déclenche HistoryManager + SessionPersist.
 // readonly (data layer) : texte seul, setDescr peut être null. À ne binder QUE si une note existe (c'est à
 // l'appelant de tester `description`), sinon un clic sur un data layer muet ouvrirait une popup vide.
@@ -910,6 +912,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   _majMode();
 
   function _esc(s) { return window.ktaEsc(s); }
+  function _titreTexte() { return typeof titreType === "function" ? titreType() : titreType; }
+  function _titreHtml() {
+    const p = opts.pastille;
+    const pastille = (p && typeof window.ktaTypeSwatchHtml === "function") ? (window.ktaTypeSwatchHtml(p.cat, p.cle) || "") : "";
+    return pastille + _esc(_titreTexte());
+  }
 
   // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
   // toLevel, hors de cette liste) ni itinéraire ; "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes).
@@ -962,14 +970,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       const _uidLu = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;   // « créé par », historique
       return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode"' +
                (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
-               '<b>' + _esc(titreType) + '</b>' +
+               '<b>' + _titreHtml() + '</b>' +
                '<div class="kta-note-popup-readonly-label">📖 Note (lecture seule)</div>' +
                corps +
              '</div>';
     }
     const _uid = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;
     return '<div class="kta-popup-point kta-note-popup"' + (_uid ? ' data-kta-uid="' + _esc(_uid).replace(/"/g, "&quot;") + '"' : "") + '>' +
-             '<b>' + _esc(titreType) + '</b>' +
+             '<b>' + _titreHtml() + '</b>' +
              '<div class="kta-note-popup-wrap">' +
                '<textarea class="kta-note-popup-textarea" rows="4" ' +
                  'placeholder="' + _esc(window.I18n ? window.I18n.t("utils.note.placeholder") : "Note libre (multilignes possibles)…") + '">' +
@@ -1092,7 +1100,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           }
           if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
             window.HistoryManager.record(
-              window.I18n.t("history.action.note", { type: titreType }),
+              window.I18n.t("history.action.note", { type: _titreTexte() }),
               _historyBefore
             );
           }
@@ -2305,11 +2313,9 @@ function ajouterPointsDepuisJSON(url, layer) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
-                  if (e) return "✨ " + e.label;
+                  if (e) return e.label;
                 }
-                if (_roadEmojisRO[t]) {
-                  return _roadEmojisRO[t] + " " + window.LegendCustomization.getLabel("traces", t);
-                }
+                if (_roadEmojisRO[t]) return window.LegendCustomization.getLabel("traces", t);
               }
               const LBL = {
                 principal:  window.I18n.t("utils.tracePopup.principal"),
@@ -2335,8 +2341,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               ghostRO,
               function() { return road.description; },
               null,
-              _roadROTitle(road.type),
-              { mode: "readonly" }
+              function() { return _roadROTitle(road.type); },
+              { mode: "readonly", pastille: { cat: "traces", cle: road.type } }
             );
           }
           // registre du filtre multi-niveau (level absent → 0) ; type, points et description pour
@@ -2451,11 +2457,9 @@ function ajouterPointsDepuisJSON(url, layer) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
-                  if (e) return "✨ " + e.label;
+                  if (e) return e.label;
                 }
-                if (_structEmojisRO[t]) {
-                  return _structEmojisRO[t] + " " + window.LegendCustomization.getLabel("structures", t);
-                }
+                if (_structEmojisRO[t]) return window.LegendCustomization.getLabel("structures", t);
               }
               const LBL = {
                 "pilier-1": window.I18n.t("struct.popup.pilier-1"),
@@ -2484,8 +2488,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               cibleStructRO,
               function() { return structure.description; },
               null,
-              _structROTitle(structure.type),
-              { mode: "readonly" }
+              function() { return _structROTitle(structure.type); },
+              { mode: "readonly", pastille: { cat: "structures", cle: structure.type } }
             );
           }
           // clé `polygon` gardée pour _filtreNiveauSurPolygonData (une polyline supporte aussi setStyle)
@@ -2534,11 +2538,9 @@ function ajouterPointsDepuisJSON(url, layer) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
-                  if (e) return "✨ " + e.label;
+                  if (e) return e.label;
                 }
-                if (_zoneEmojisRO[t]) {
-                  return _zoneEmojisRO[t] + " " + window.LegendCustomization.getLabel("zones", t);
-                }
+                if (_zoneEmojisRO[t]) return window.LegendCustomization.getLabel("zones", t);
               }
               const LBL = {
                 eau:          "💧 Zone Eau",
@@ -2552,8 +2554,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               polygon,
               function() { return zone.description; },
               null,
-              _zoneROTitle(zone.type),
-              { mode: "readonly" }
+              function() { return _zoneROTitle(zone.type); },
+              { mode: "readonly", pastille: { cat: "zones", cle: zone.type } }
             );
           }
           // registre du filtre multi-niveau ; `type` + `points` (coords plan) : le Pathfinder y lit les zones

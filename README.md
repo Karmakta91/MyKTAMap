@@ -610,6 +610,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
 | `smoke/checkup-export-sig.js` | Exports GeoTIFF et GeoJSON par l'interface, calage tourné ou affine |
 | `smoke/checkup-exports-structures.js` | Ce que les exports emportent des structures intégrées et personnalisées |
+| `smoke/checkup-fiche-titre.js` | Titre et pastille de la fiche d'un tracé, d'une zone, d'un pilier : suivent le nom et la couleur de la légende |
 | `smoke/checkup-filtres-niveaux.js` | Section Niveaux de la modale Filtres, thèmes sombre et clair |
 | `smoke/checkup-guidage.js` | Guidage d'itinéraire dans l'app réelle au format téléphone (rendu, tracker, écran XL) |
 | `smoke/checkup-home-scroll.js` | Accueil atteignable en petite fenêtre PC |

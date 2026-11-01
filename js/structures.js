@@ -516,11 +516,9 @@ function renderStructures() {
           if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
             if (String(t).startsWith("cust-")) {
               const e = window.LegendCustomization.findCustomEntry(t);
-              if (e) return "✨ " + e.label;
+              if (e) return e.label;
             }
-            if (_structEmojis[t]) {
-              return _structEmojis[t] + " " + window.LegendCustomization.getLabel("structures", t);
-            }
+            if (_structEmojis[t]) return window.LegendCustomization.getLabel("structures", t);
           }
           if (_structEmojis[t]) return window.I18n.t("struct.popup." + t);
           return window.I18n.t("struct.popup.fallback", { type: t });
@@ -540,9 +538,9 @@ function renderStructures() {
           cibleClic,
           function() { return _structRef.description; },
           function(v) { _structRef.description = v; if (window.KtaUid) window.KtaUid.touch(_structRef); },
-          _structPopupTitle(s.type),
+          function() { return _structPopupTitle(_structRef.type); },
           // Reclassement depuis la popup (convertirObjet.js).
-          { convertir: { famille: "structures", obj: _structRef } }
+          { convertir: { famille: "structures", obj: _structRef }, pastille: { cat: "structures", cle: s.type } }
         );
       }
     }

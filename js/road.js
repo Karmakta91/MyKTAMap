@@ -889,7 +889,7 @@ function renderRoads() {
         road !== currentRoad &&
         window._aucunModeEditionActif()) {
       const _roadRef = road;
-      // Titre via LegendCustomization : customs ET built-in renommés.
+      // Titre via LegendCustomization : customs ET built-in renommés ; la couleur vient de la pastille (opts.pastille).
       const _roadEmojis = { principal: "🟩", secondaire: "🟪", chemin: "🟨" };
       function _roadPopupTitle(t) {
         if (t === "jonction") {
@@ -899,11 +899,9 @@ function renderRoads() {
         if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
           if (String(t).startsWith("cust-")) {
             const e = window.LegendCustomization.findCustomEntry(t);
-            if (e) return "✨ " + e.label;
+            if (e) return e.label;
           }
-          if (_roadEmojis[t]) {
-            return _roadEmojis[t] + " " + window.LegendCustomization.getLabel("traces", t);
-          }
+          if (_roadEmojis[t]) return window.LegendCustomization.getLabel("traces", t);
         }
         // Repli sans LegendCustomization : clés road.popup.* au rendu, FR si I18n absent.
         const _i = window.I18n;
@@ -929,9 +927,10 @@ function renderRoads() {
         ghost,
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; if (window.KtaUid) window.KtaUid.touch(_roadRef); },
-        _roadPopupTitle(road.type),
+        function() { return _roadPopupTitle(_roadRef.type); },
         // Reclassement depuis la popup (convertirObjet.js) ; une jonction n'a que ses niveaux à changer.
-        { convertir: { famille: "roads", obj: _roadRef }, jonction: road.type === "jonction" }
+        { convertir: { famille: "roads", obj: _roadRef }, jonction: road.type === "jonction",
+          pastille: road.type === "jonction" ? null : { cat: "traces", cle: road.type } }
       );
     }
 
