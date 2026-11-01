@@ -815,7 +815,7 @@ Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et expliqu
 
 **Seulement les contours fermés** : cette case, dans la fenêtre du lot, garde seulement les lignes fermées de la sélection (« 4 sur 6 ») et propose alors les zones et les piliers. Au choix du type, l'app annonce combien d'objets vont changer et combien restent tels quels ; un seul `Ctrl+Z` annule tout.
 
-**Les contours fermés d'un calque de données** : dans ≡ Filtres, la ligne du calque porte **⬛ Contours fermés**. L'app compte les lignes fermées du calque, te laisse choisir le type (zone ou pilier), annonce le nombre et la place que prendra la copie, puis copie le calque dans ta session (comme **🔄 Modifier**) et convertit. `Ctrl+Z` annule la conversion ; **↩️ Restaurer**, sur la ligne du calque, rend le calque d'origine.
+**Les contours fermés d'un calque de données** : passe d'abord le calque en **🔄 Modifier** (≡ Filtres, ligne du calque) ; ses objets ont alors une bulle et se convertissent comme les tiens, seuls ou en lot avec **Seulement les contours fermés**.
 
 ---
 

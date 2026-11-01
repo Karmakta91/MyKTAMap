@@ -20,7 +20,7 @@
 // Conservés : `points`, `level`, `description`, `uid` ; seul le type (donc la famille) change.
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
 // changent par changerNiveauxJonction, jamais par Convertir) et `itinerary` (trajet CALCULÉ, pas une donnée du relevé).
-// ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; ouvrirCalque le rapatrie (js/calqueSession.js).
+// ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; « 🔄 Modifier » le copie d'abord (js/calqueSession.js).
 // ⚠️ Points (POI) : jamais convertis ; ce module n'atteint pas lui-même leur liste. Le Tableur lui fait appliquer un
 // tableau de points par l'accès qu'il fournit (appliquerTableau, `opts.acces`). Garde-fou : check-calque-session.js.
 
@@ -554,7 +554,7 @@
 
   // Cibles d'un LOT = UNION de celles de chaque objet (la source de l'un peut être la cible d'un autre :
   // l'intersection ferait disparaître des cibles légitimes sans explication). `avecFermes` : un contour fermé ouvre
-  // aussi les cibles fermées (lot filtré « seulement les contours fermés », calque).
+  // aussi les cibles fermées (lot filtré « seulement les contours fermés »).
   function listerCiblesLot(items, avecFermes) {
     const vues = {}, out = [];
     (items || []).forEach(function (it) {
@@ -722,92 +722,8 @@
     });
   }
 
-  // ── Contours fermés d'un calque de données (ligne du calque, panneau des filtres) ──────────
-  // Un calque est en lecture seule : « copier dans la session et convertir » en UNE validation, compte affiché avant.
-  // On compte sur le FICHIER (CalqueSession.lireCalque), on copie par CalqueSession.rapatrier (verrou, marques,
-  // restitution : rien n'est refait ici), puis on convertit les COPIES marquées par convertirLot (un ⏪).
-  // 🩸 ⏪ annule la conversion, pas la copie : elle se rend par « Restaurer » sur la ligne du calque (dit au message).
-  // Calque déjà en modification : ses copies de session sont converties directement.
-  function _lignesDe(familles, filtre) {
-    const out = [];
-    ["roads", "structures"].forEach(function (f) {
-      (familles[f] || []).forEach(function (o) {
-        if (o && !CIBLES_INTERDITES[o.type] && _estOuvert(f, o.type) && (!filtre || filtre(o, f))) {
-          out.push({ famille: f, obj: o });
-        }
-      });
-    });
-    return out;
-  }
-
-  function _octetsLisibles(o) {
-    if (!Number.isFinite(o)) return "?";
-    return (o >= 1048576) ? (o / 1048576).toFixed(2) + " Mo" : Math.max(1, Math.round(o / 1024)) + " ko";
-  }
-
-  function ouvrirCalque(id, opts) {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(null);
-    const CS = window.CalqueSession;
-    if (!CS || !id) return Promise.resolve(null);
-    opts = opts || {};
-    const label = CS.libelle(id);
-    const dejaCopie = CS.estRapatrie(id);
-    const marque = function (o) { return o && o[CS.CLE_SOURCE] === id; };
-    const lecture = dejaCopie
-      ? Promise.resolve({ familles: { roads: _lire("roads").filter(marque),
-                                      structures: _lire("structures").filter(marque) } })
-      : CS.lireCalque(id);
-
-    return lecture.then(function (contenu) {
-      if (!contenu) {
-        window.ktaAlerte(_t("convert.calqueErr", { code: "lectureEchouee" }), { type: "erreur" });
-        return null;
-      }
-      const lignes = _lignesDe(contenu.familles);
-      const contours = lignes.filter(function (it) { return estContourFerme(it.famille, it.obj); });
-      if (!contours.length) {
-        window.ktaAlerte(_t("convert.calqueAucun", { label: label, m: lignes.length }));
-        return null;
-      }
-      return _modale({
-        titre: _t("convert.calqueTitre"),
-        source: _t("convert.calqueSource", { label: label, n: contours.length, m: lignes.length }),
-        regle: _t("convert.regleContour"),
-        // Calque = fermer ses contours : les cibles ouvertes n'ont rien à faire ici (le lot de session les offre).
-        cibles: listerCiblesLot(contours, true).filter(function (c) { return !_estOuvert(c.famille, c.type); }),
-        choisir: function (c) {
-          const message = dejaCopie
-            ? _t("convert.calqueConfirmCopie", { label: label, n: contours.length, type: c.label })
-            : _t("convert.calqueConfirm", { label: label, n: contours.length, type: c.label,
-                                            k: contenu.objets, poids: _octetsLisibles(contenu.octets) });
-          window.ktaConfirm(_esc(message), {
-            titre: _esc(_t("convert.fermesTitre")),
-            okLabel: _esc(_t("convert.fermesOk", { n: contours.length }))
-          }).then(function (oui) {
-            if (!oui) return null;
-            return (dejaCopie ? Promise.resolve({ ok: true }) : CS.rapatrier(id)).then(function (r) {
-              if (!r || !r.ok) {
-                window.ktaAlerte(_t("convert.calqueErr", { code: (r && r.code) || "?" }), { type: "erreur" });
-                return;
-              }
-              const copies = _lignesDe({ roads: _lire("roads"), structures: _lire("structures") }, function (o, f) {
-                return marque(o) && estContourFerme(f, o);
-              });
-              const bilan = convertirLot(copies, c.famille, c.type);
-              // Les cercles d'intersection des tracés du calque masqué : renderRoads (cf. filterPanel.js).
-              if (typeof window.renderRoads === "function") { try { window.renderRoads(); } catch (e) {} }
-              _toastBilan(bilan);
-              if (typeof opts.apres === "function") opts.apres(bilan);
-            });
-          });
-        }
-      });
-    });
-  }
-
   window.KtaConvertir = {
     ouvrir:        ouvrir,
-    ouvrirCalque:  ouvrirCalque,   // contours fermés d'un calque : copie en session puis conversion, un ⏪
     convertir:     convertir,
     convertirLot:  convertirLot,   // N objets d un coup
     listerCiblesLot: listerCiblesLot,

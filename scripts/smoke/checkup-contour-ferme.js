@@ -6,12 +6,13 @@
 // Objets FICTIFS posés au centre de la vue (relevé fictif, sinon le premier plan de l'index) : un carré à 3 côtés
 // (4 points), un contour qui répète son premier point, un U large (reste ouvert), une ligne de 2 points.
 // Vérifie : cibles proposées (fiche), conversion unitaire, lot filtré « seulement les contours fermés » avec le
-// compte confirmé avant, annulation unique, doublon retiré, uid et niveau conservés, et un calque de données
-// fabriqué ici dont les contours fermés sont copiés en session puis convertis en une validation.
+// compte confirmé avant, annulation unique, doublon retiré, uid et niveau conservés. Puis le chemin d'un calque de
+// données fabriqué ici : « 🔄 Modifier » (panneau des filtres), fiche d'une copie, sélection multiple « tous du
+// type », case « seulement les contours fermés », un ⏪.
 // 🩸 check-api-surface.js teste la règle dans un `vm` ; seul ce parcours voit la fiche, la case, ktaConfirm, le
-// panneau des filtres et le rapatriement réel.
+// panneau des filtres, la sélection multiple et le rapatriement réel.
 // Usage : node scripts/smoke/checkup-contour-ferme.js (SMOKE_PORT pour une autre copie) · code :
-// convertirObjet.js > estContourFerme / ouvrir / ouvrirCalque · doc : docs/architecture/session-data.md
+// convertirObjet.js > estContourFerme / ouvrir · doc : docs/architecture/session-data.md
 // =====================================================================
 "use strict";
 
@@ -259,7 +260,7 @@ async function confirmer(page) {
     verifier(fronts.length === 6 && e.st_ckc_boucle.n === 5,
       "lot filtré : un seul ⏪ rend les 6 fronts d'origine (boucle à 5 points)", e);
 
-    // ── 4. Calque de données : copier dans la session et convertir ──
+    // ── 4. Calque de données : « 🔄 Modifier », puis le chemin ordinaire (fiche, sélection, lot fermés, ⏪) ──
     await page.evaluate(function (id) {
       const c = window.__ckc;
       window.setStructures([]);
@@ -267,6 +268,9 @@ async function confirmer(page) {
         structures: [
           { uid: "st_ckc_cal_carre", type: "front-1", level: 0, points: [{ x: c.x, y: c.y + 200 },
             { x: c.x + 50, y: c.y + 200 }, { x: c.x + 50, y: c.y + 250 }, { x: c.x, y: c.y + 250 }] },
+          { uid: "st_ckc_cal_c2", type: "front-1", level: 0, points: [{ x: c.x + 300, y: c.y + 200 },
+            { x: c.x + 340, y: c.y + 200 }, { x: c.x + 340, y: c.y + 240 }, { x: c.x + 300, y: c.y + 240 },
+            { x: c.x + 300, y: c.y + 200 }] },
           { uid: "st_ckc_cal_u", type: "front-1", level: 0, points: [{ x: c.x + 100, y: c.y + 200 },
             { x: c.x + 100, y: c.y + 210 }, { x: c.x + 260, y: c.y + 210 }, { x: c.x + 260, y: c.y + 200 }] }
         ],
@@ -280,48 +284,63 @@ async function confirmer(page) {
       window.ajouterPointsDepuisJSON(url, groupe);
     }, CALQUE);
     await page.waitForTimeout(1500);
-    const bouton = await page.evaluate(function (id) {
+    const lu = await page.evaluate(function (id) {
       window.FilterPanel.ouvrir();
-      const b = document.querySelector('[data-calque-fermes="' + id + '"]');
+      const b = document.querySelector('[data-calque-rapatrier="' + id + '"]');
       if (b) b.click();
       return !!b;
     }, CALQUE);
-    verifier(bouton, "calque : bouton « Contours fermés » sur sa ligne du panneau des filtres");
-    await attendre(page, function () { return !!document.getElementById("kta-convert-modal"); }, 10000);
-    const modCal = await page.evaluate(function () {
-      const m = document.getElementById("kta-convert-modal");
-      return { source: (m.querySelector(".kta-convert-source") || {}).textContent,
-               choix: Array.from(m.querySelectorAll(".kta-convert-choix")).map(function (x) {
-                 return x.getAttribute("data-famille") + ":" + x.getAttribute("data-type"); }),
-               panneau: !!document.getElementById("kta-fp-modal") };
-    });
-    verifier(/1\D+3/.test(modCal.source) && modCal.choix.indexOf("structures:pilier-1") >= 0 &&
-      modCal.choix.every(function (c) { return c.indexOf("roads:") !== 0; }) && !modCal.panneau,
-      "calque : 1 contour fermé sur 3 lignes, cibles fermées seules, panneau refermé", modCal);
-    const avantCal = await page.evaluate(function (id) {
-      return { copie: window.CalqueSession.estRapatrie(id), hist: window.HistoryManager._peek().undo.length };
-    }, CALQUE);
-    verifier(!avantCal.copie, "calque : rien n'est copié avant la validation");
-    await choisir(page, "structures:pilier-1");
-    const msgCal = await confirmer(page);
-    verifier(/1/.test(msgCal) && /3/.test(msgCal), "calque : la confirmation annonce le compte et la copie", msgCal.slice(0, 220));
-    await page.waitForTimeout(1200);
+    verifier(lu, "calque : bouton « 🔄 Modifier » sur sa ligne du panneau des filtres");
+    await confirmer(page);   // annonce du poids de la copie
+    await attendre(page, function () { return window.CalqueSession.estRapatrie("ckc_calque_test"); }, 10000);
+    await page.evaluate(function () { window.FilterPanel.fermer(); });
+    await page.waitForTimeout(1000);
     e = await etatSession(page);
-    const apresCal = await page.evaluate(function (id) {
-      return { copie: window.CalqueSession.estRapatrie(id), affiche: window.map.hasLayer(window.dataLayerGroups[id]),
-               hist: window.HistoryManager._peek().undo.length };
-    }, CALQUE);
-    verifier(apresCal.copie && !apresCal.affiche, "calque : copié en session, original masqué", apresCal);
-    verifier(e.st_ckc_cal_carre && e.st_ckc_cal_carre.type === "pilier-1" && e.st_ckc_cal_carre.n === 4 &&
-      e.st_ckc_cal_carre.src === CALQUE && e.st_ckc_cal_u && e.st_ckc_cal_u.type === "front-1" &&
-      e.rd_ckc_cal && e.rd_ckc_cal.type === "chemin",
-      "calque : la copie du carré devient pilier (uid gardé, marque du calque), U et tracé intacts", e);
-    verifier(apresCal.hist - avantCal.hist === 1, "calque : une entrée d'historique", apresCal.hist - avantCal.hist);
+    verifier(e.st_ckc_cal_carre && e.st_ckc_cal_carre.src === CALQUE && e.st_ckc_cal_c2 && e.st_ckc_cal_u,
+      "Modifier : les objets du calque sont en session (marqués)", e);
+
+    // La copie a une fiche, qui propose zone et pilier.
+    const fCal = await ficheConvertir(page, "st_ckc_cal_carre");
+    verifier(!!fCal.choix && fCal.choix.indexOf("structures:pilier-1") >= 0 && fCal.choix.indexOf("zones:eau") >= 0,
+      "Modifier : la fiche d'une copie fermée propose zone et pilier", fCal);
+    const hAvant = await page.evaluate(function () { return window.HistoryManager._peek().undo.length; });
+    // Sélection multiple depuis cette fiche : « ➕ Tous les « type » », puis ✅.
+    const sel = await page.evaluate(function () {
+      const b = document.getElementById("kta-convert-multi");
+      if (!b) return { erreur: "pas de bouton sélection multiple" };
+      b.click();
+      const tous = document.getElementById("kta-selm-tous");
+      if (!tous) return { erreur: "pas de bandeau" };
+      tous.click();
+      const n = window.SelectionMulti.liste().length;
+      document.getElementById("kta-selm-ok").click();
+      return { n: n, modale: !!document.getElementById("kta-convert-modal") };
+    });
+    verifier(sel.n === 3 && sel.modale, "Modifier : sélection « tous du type » = les 3 fronts copiés, fenêtre du lot", sel);
+    const caseCal = await page.evaluate(function () {
+      const cb = document.getElementById("kta-convert-fermes");
+      if (!cb) return null;
+      const t = cb.parentNode.textContent;
+      cb.checked = true;
+      cb.dispatchEvent(new Event("change"));
+      return t;
+    });
+    verifier(!!caseCal && /2\D+3/.test(caseCal), "Modifier : case « seulement les contours fermés (2 sur 3) »", caseCal);
+    await page.waitForTimeout(300);
+    verifier(await choisir(page, "structures:pilier-1"), "Modifier : clic sur « pilier »");
+    const msgCal = await confirmer(page);
+    verifier(/2/.test(msgCal) && /1/.test(msgCal), "Modifier : ktaConfirm annonce 2 contours et 1 autre", msgCal.slice(0, 200));
+    e = await etatSession(page);
+    verifier(e.st_ckc_cal_carre.type === "pilier-1" && e.st_ckc_cal_c2.type === "pilier-1" && e.st_ckc_cal_c2.n === 4 &&
+      e.st_ckc_cal_carre.src === CALQUE && e.st_ckc_cal_u.type === "front-1" && e.rd_ckc_cal.type === "chemin",
+      "Modifier : 2 piliers (doublon retiré, marque du calque gardée), U et tracé intacts", e);
+    const hApres = await page.evaluate(function () { return window.HistoryManager._peek().undo.length; });
+    verifier(hApres - hAvant === 1, "Modifier : une entrée d'historique", hApres - hAvant);
     await page.evaluate(function () { window.HistoryManager.undo(); });
     await page.waitForTimeout(600);
     e = await etatSession(page);
-    verifier(e.st_ckc_cal_carre && e.st_ckc_cal_carre.type === "front-1",
-      "calque : ⏪ défait la conversion (la copie reste, rendue par « Restaurer »)", e.st_ckc_cal_carre);
+    verifier(e.st_ckc_cal_carre.type === "front-1" && e.st_ckc_cal_c2.type === "front-1" && e.st_ckc_cal_c2.n === 5,
+      "Modifier : un ⏪ rend les 2 fronts d'origine (5 points pour la boucle)", e);
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 4));
   } catch (err) {
     pb("exception du harnais : " + (err && err.message));
@@ -334,6 +353,6 @@ async function confirmer(page) {
     console.log("❌ CHECKUP ROUGE — " + problemes.length + " problème(s)");
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — une ligne fermée se convertit en zone ou en pilier, seule, en lot et depuis un calque.");
+  console.log("🎉 CHECKUP VERT — une ligne fermée se convertit en zone ou en pilier, seule, en lot, et sur un calque passé en « Modifier ».");
   process.exit(0);
 })();

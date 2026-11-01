@@ -562,15 +562,6 @@
                       _escHtml(window.I18n.t(rapatrie ? "filter.calque.restituer" : "filter.calque.rapatrier")) +
                     '</button>'
                   : '') +
-                // Contours fermés livrés en lignes (import SIG) → zones ou piliers : copie en session et conversion en
-                // une validation (convertirObjet.js > ouvrirCalque, qui compte avant).
-                (rapatriable && !lectureSeule && window.KtaConvertir && window.KtaConvertir.ouvrirCalque
-                  ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
-                      'data-calque-fermes="' + _escAttr(id) + '" ' +
-                      'title="' + _escAttr(window.I18n.t("filter.calque.fermesTitle")) + '">' +
-                      _escHtml(window.I18n.t("filter.calque.fermes")) +
-                    '</button>'
-                  : '') +
               '</div>';
     });
     html += '</div>';
@@ -748,13 +739,6 @@
       }
       if (t.matches('[data-calque-exporter]')) {
         _exporterCalque(t.getAttribute("data-calque-exporter"));
-        return;
-      }
-      if (t.matches('[data-calque-fermes]')) {
-        // Le panneau se ferme : la conversion change la carte et l'état du calque (en modification) qu'il affiche.
-        const id = t.getAttribute("data-calque-fermes");
-        fermer();
-        window.KtaConvertir.ouvrirCalque(id);
         return;
       }
       if (t.matches('[data-calque-integrer]')) {

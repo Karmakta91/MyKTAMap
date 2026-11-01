@@ -1531,20 +1531,13 @@ Undo par `HistoryManager` (snapshot des trois familles avant l'opération).
 
 ⚠️ **Session uniquement.** Un objet de calque de données n'est pas éditable en
 place : il passe d'abord en session (`js/calqueSession.js`, « 🔄 Modifier » sur la
-ligne du calque). Pour les contours fermés d'un calque, le bouton **⬛ Contours
-fermés** de sa ligne (panneau des filtres) fait les deux en une validation :
-`KtaConvertir.ouvrirCalque(id)` compte sur le fichier (`CalqueSession.lireCalque`),
-affiche « N contours fermés sur M lignes » et les cibles fermées, confirme
-(`ktaConfirm` : compte, poids de la copie) puis `CalqueSession.rapatrier` (verrou,
-marques, restitution : rien n'est refait) et `convertirLot` sur les copies marquées.
-🩸 ⏪ défait la conversion, pas la copie : elle se rend par « ↩️ Restaurer », comme
-tout calque en modification (le message le dit). Calque déjà en modification : ses
-copies sont converties directement.
+ligne du calque) : ses copies ont une fiche, et ses contours fermés se convertissent
+comme les autres, seuls ou en lot avec « seulement les contours fermés ».
 
 **Prouvé** : `check-api-surface.js` (module réellement chargé en VM : règle par
 type, contour fermé, doublon retiré, refus fermé → ouvert, lot mixte) et
-`scripts/smoke/checkup-contour-ferme.js` (fiche, lot filtré, ⏪ unique, calque copié
-puis converti, dans l'app réelle).
+`scripts/smoke/checkup-contour-ferme.js` (fiche, lot filtré, ⏪ unique, calque passé en « Modifier »
+puis converti en lot, dans l'app réelle).
 
 ---
 

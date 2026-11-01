@@ -815,7 +815,7 @@ The batch does not mix lines and closed surfaces (the banner refuses and explain
 
 **Closed outlines only**: this box, in the batch window, keeps only the closed lines of the selection ("4 of 6") and then offers zones and pillars. When you choose the type, the app tells how many objects will change and how many stay as they are; a single `Ctrl+Z` undoes everything.
 
-**Closed outlines of a data layer**: in ≡ Filters, the layer's row has **⬛ Closed outlines**. The app counts the layer's closed lines, lets you choose the type (zone or pillar), tells the number and the room the copy will take, then copies the layer into your session (like **🔄 Edit**) and converts. `Ctrl+Z` undoes the conversion; **↩️ Restore**, on the layer's row, gives back the original layer.
+**Closed outlines of a data layer**: first switch the layer to **🔄 Edit** (≡ Filters, layer's row); its objects then have a bubble and convert like yours, one by one or as a batch with **Closed outlines only**.
 
 ---
 

@@ -815,7 +815,7 @@ El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica 
 
 **Solo los contornos cerrados**: esta casilla, en la ventana del lote, conserva solo las líneas cerradas de la selección («4 de 6») y propone entonces zonas y pilares. Al elegir el tipo, la app anuncia cuántos objetos van a cambiar y cuántos quedan igual; un solo `Ctrl+Z` lo deshace todo.
 
-**Los contornos cerrados de una capa de datos**: en ≡ Filtros, la fila de la capa tiene **⬛ Contornos cerrados**. La app cuenta las líneas cerradas de la capa, te deja elegir el tipo (zona o pilar), anuncia el número y el espacio que ocupará la copia, luego copia la capa en tu sesión (como **🔄 Modificar**) y convierte. `Ctrl+Z` deshace la conversión; **↩️ Restaurar**, en la fila de la capa, devuelve la capa original.
+**Los contornos cerrados de una capa de datos**: pasa primero la capa a **🔄 Modificar** (≡ Filtros, fila de la capa); sus objetos tienen entonces una burbuja y se convierten como los tuyos, uno a uno o en lote con **Solo los contornos cerrados**.
 
 ---
 
