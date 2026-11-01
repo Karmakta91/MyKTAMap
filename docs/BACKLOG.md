@@ -108,12 +108,6 @@
 
 ## Entrant
 
-- **Convertir un objet ouvert FERMÉ en zone ou pilier (en lot)** — import SIG : contours livrés en lignes (tracé ou front),
-  souvent sans répéter le 1er point (pilier carré = 4 points, 3 côtés). `convertirObjet.js` tranche par le type : jamais.
-  Fermé = écart des bouts < ~1,5 × côté moyen, ≥ 3 points ; seul ajout : le côté manquant. Cas mesuré : 2 557 fronts, ~400 piliers.
-  `qui: Claude · action: topo (seuil, conversion en lot par type avec compte et annulation, rapatriement des calques)
-  · depuis: 01/11/2026 · taille: M`
-
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.

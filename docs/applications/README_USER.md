@@ -801,6 +801,8 @@ Cas typique : sur un relevé importé, un **front de taille** est en fait une **
 
 Seules les cibles de **même forme** sont proposées : une **ligne** (tracé, front de taille) devient une autre ligne, une **surface fermée** (zone, pilier, mur) une autre surface. L'objet garde sa géométrie, son niveau et sa note.
 
+**Ligne fermée** : à l'import d'un fichier SIG, un pilier ou une zone arrive souvent en ligne, parfois sans revenir à son premier point (un pilier carré = 4 points, 3 côtés). Quand les deux bouts d'une ligne se rejoignent presque (écart inférieur à 1,5 fois la longueur moyenne d'un côté), la fenêtre propose aussi les zones et les piliers / murs. La forme se referme toute seule : aucun point n'est ajouté, seul un dernier point qui répète le premier est retiré. Une galerie en U très serrée peut être prise pour une ligne fermée : vérifie avant de valider, ⏪ annule.
+
 ### 🎯 Convertir plusieurs objets d'un coup
 
 Dans la fenêtre de conversion, **🎯 Sélectionner plusieurs objets à convertir** affiche un bandeau :
@@ -810,6 +812,10 @@ Dans la fenêtre de conversion, **🎯 Sélectionner plusieurs objets à convert
 - **✅ Convertir (N)** ouvre le choix du type pour tout le lot ; **Annuler** abandonne.
 
 Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et explique pourquoi), mais il peut mélanger les familles : fronts de taille et chemins, tous des lignes, deviennent ensemble des galeries. Les objets déjà du bon type restent tels quels, et le message final les compte. Un seul `Ctrl+Z` annule tout le lot.
+
+**Seulement les contours fermés** : cette case, dans la fenêtre du lot, garde seulement les lignes fermées de la sélection (« 4 sur 6 ») et propose alors les zones et les piliers. Au choix du type, l'app annonce combien d'objets vont changer et combien restent tels quels ; un seul `Ctrl+Z` annule tout.
+
+**Les contours fermés d'un calque de données** : dans ≡ Filtres, la ligne du calque porte **⬛ Contours fermés**. L'app compte les lignes fermées du calque, te laisse choisir le type (zone ou pilier), annonce le nombre et la place que prendra la copie, puis copie le calque dans ta session (comme **🔄 Modifier**) et convertit. `Ctrl+Z` annule la conversion ; **↩️ Restaurer**, sur la ligne du calque, rend le calque d'origine.
 
 ---
 

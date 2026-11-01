@@ -801,6 +801,8 @@ Typical case: on an imported survey, a **quarry face** is actually a **gallery**
 
 Only targets of the **same shape** are offered: a **line** (path, quarry face) becomes another line, a **closed surface** (zone, pillar, wall) another surface. The object keeps its geometry, its level and its note.
 
+**Closed line**: when a GIS file is imported, a pillar or a zone often arrives as a line, sometimes without returning to its first point (a square pillar = 4 points, 3 sides). When the two ends of a line almost meet (gap smaller than 1.5 times the average side length), the window also offers zones and pillars / walls. The shape closes by itself: no point is added, only a last point that repeats the first one is removed. A very tight U-shaped gallery can be taken for a closed line: check before confirming, ⏪ undoes.
+
 ### 🎯 Convert several objects at once
 
 In the conversion window, **🎯 Select several objects to convert** shows a banner:
@@ -810,6 +812,10 @@ In the conversion window, **🎯 Select several objects to convert** shows a ban
 - **✅ Convert (N)** opens the type choice for the whole batch; **Cancel** gives up.
 
 The batch does not mix lines and closed surfaces (the banner refuses and explains why), but it can mix families: quarry faces and paths, all lines, become galleries together. Objects already of the right type are left as they are, and the final message counts them. A single `Ctrl+Z` undoes the whole batch.
+
+**Closed outlines only**: this box, in the batch window, keeps only the closed lines of the selection ("4 of 6") and then offers zones and pillars. When you choose the type, the app tells how many objects will change and how many stay as they are; a single `Ctrl+Z` undoes everything.
+
+**Closed outlines of a data layer**: in ≡ Filters, the layer's row has **⬛ Closed outlines**. The app counts the layer's closed lines, lets you choose the type (zone or pillar), tells the number and the room the copy will take, then copies the layer into your session (like **🔄 Edit**) and converts. `Ctrl+Z` undoes the conversion; **↩️ Restore**, on the layer's row, gives back the original layer.
 
 ---
 

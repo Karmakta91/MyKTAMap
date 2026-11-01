@@ -801,6 +801,8 @@ Caso típico: en un levantamiento importado, un **frente de cantera** es en real
 
 Solo se proponen destinos de la **misma forma**: una **línea** (trazado, frente de cantera) se convierte en otra línea, una **superficie cerrada** (zona, pilar, muro) en otra superficie. El objeto conserva su geometría, su nivel y su nota.
 
+**Línea cerrada**: al importar un archivo SIG, un pilar o una zona llega a menudo como línea, a veces sin volver a su primer punto (un pilar cuadrado = 4 puntos, 3 lados). Cuando los dos extremos de una línea casi se juntan (distancia menor que 1,5 veces la longitud media de un lado), la ventana propone también zonas y pilares / muros. La forma se cierra sola: no se añade ningún punto, solo se quita un último punto que repite el primero. Una galería en U muy cerrada puede tomarse por una línea cerrada: compruébalo antes de validar, ⏪ deshace.
+
 ### 🎯 Convertir varios objetos de golpe
 
 En la ventana de conversión, **🎯 Seleccionar varios objetos para convertir** muestra un aviso:
@@ -810,6 +812,10 @@ En la ventana de conversión, **🎯 Seleccionar varios objetos para convertir**
 - **✅ Convertir (N)** abre la elección del tipo para todo el lote; **Cancelar** lo abandona.
 
 El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica por qué), pero puede mezclar familias: frentes de cantera y caminos, todos líneas, se convierten juntos en galerías. Los objetos que ya son del tipo correcto se quedan como están, y el mensaje final los cuenta. Un solo `Ctrl+Z` deshace todo el lote.
+
+**Solo los contornos cerrados**: esta casilla, en la ventana del lote, conserva solo las líneas cerradas de la selección («4 de 6») y propone entonces zonas y pilares. Al elegir el tipo, la app anuncia cuántos objetos van a cambiar y cuántos quedan igual; un solo `Ctrl+Z` lo deshace todo.
+
+**Los contornos cerrados de una capa de datos**: en ≡ Filtros, la fila de la capa tiene **⬛ Contornos cerrados**. La app cuenta las líneas cerradas de la capa, te deja elegir el tipo (zona o pilar), anuncia el número y el espacio que ocupará la copia, luego copia la capa en tu sesión (como **🔄 Modificar**) y convierte. `Ctrl+Z` deshace la conversión; **↩️ Restaurar**, en la fila de la capa, devuelve la capa original.
 
 ---
 

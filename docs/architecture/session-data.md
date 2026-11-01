@@ -1481,25 +1481,42 @@ l'objet *est*. Mais le Pathfinder ne construit son graphe que sur les `roads`
 n'a **aucun** itinéraire possible. Reclasser un vecteur est ce qui le fait
 exister.
 
-**La règle, énoncée par KARMA** : « un vecteur fermé = zone ou pilier, un vecteur
-non fermé = tracé ou front de taille ».
+**La règle** : « un vecteur fermé = zone ou pilier, un vecteur non fermé = tracé
+ou front de taille ».
 
 ```
 OUVERT  ⇄  tracés (galeries)  ⇄  structures polylignes (fronts)
 FERMÉ   ⇄  zones              ⇄  structures polygones (piliers, murs)
 ```
 
-La traversée ouvert↔fermé est **refusée**. Ce n'est pas une convention : la
-frontière porte les **minimums de points** — un front peut n'avoir que 2 points,
-une zone en exige 3. L'autoriser obligerait à fermer ou ouvrir la géométrie,
-c'est-à-dire à **inventer de la donnée relevée sur le terrain**.
+L'« ouverture » se lit d'abord sur le **type** : les mêmes `points` se peignent en
+trait ou en surface selon lui. `isStructurePolylineType` lit la géométrie déclarée
+dans la légende, types personnalisés compris — ce sont d'ailleurs les seuls d'un
+plan importé, sans eux la modale serait vide.
 
-L'« ouverture » se lit sur le **type**, pas sur la géométrie : les mêmes `points`
-se peignent en trait ou en surface selon lui. `isStructurePolylineType` sait déjà
-lire la géométrie déclarée dans la légende, types personnalisés compris — ce sont
-d'ailleurs les seuls d'un plan importé, sans eux la modale serait vide.
+**Fermé par la géométrie** (`estContourFerme(famille, obj)`). À l'import SIG, les
+contours arrivent souvent en lignes, sans répéter le premier point : un pilier carré
+= 4 points, 3 côtés. Une ligne (tracé ou front ; jamais une jonction ni un
+itinéraire) d'au moins 3 points dont l'écart premier → dernier point est
+**< 1,5 × la longueur moyenne de ses côtés existants** est un *contour fermé* : sa
+fiche propose aussi les zones et les structures polygones. Seuil **relatif**
+(décision produit) : un carré à 3 côtés (écart = 1 côté) passe, un U large reste
+ouvert.
 
-**Conservés** : `points`, `level`, `description`. **Retirés** : `fromLevel` /
+- **Aucun point inventé** : le polygone se referme seul au rendu (dernier → premier).
+  Seul retrait : un dernier point qui répète le premier (écart ≤ 1 % du côté moyen),
+  à condition qu'il reste ≥ 3 points. L'objet d'origine n'est pas muté (historique).
+- **Fermé → ouvert : jamais** (il faudrait couper la géométrie). Ligne non fermée →
+  surface : jamais (il faudrait en inventer le côté).
+- La règle est **revérifiée** par `convertir` et `convertirLot` (`_compatible`) : la
+  modale ne propose que le permis, un appel direct ou un lot mixte ne le force pas
+  (compté en échec).
+- 🩸 **Faux positif connu** : une galerie en U très serrée passe pour fermée. Pas
+  d'autre heuristique : le lot affiche le compte avant de convertir et s'annule en
+  un ⏪.
+
+**Conservés** : `points` (moins l'éventuel doublon de fermeture), `level`,
+`description`, `uid`. **Retirés** : `fromLevel` /
 `toLevel` (ils n'ont de sens que pour une jonction et feraient mentir les filtres
 de niveau). **Exclus des cibles** : `jonction` (deux niveaux qu'une conversion ne
 peut pas deviner) et `itinerary` (le trajet calculé, pas une donnée).
@@ -1513,12 +1530,21 @@ rendu complet, ce qui coûte cher sur un relevé à 20 000 objets.
 Undo par `HistoryManager` (snapshot des trois familles avant l'opération).
 
 ⚠️ **Session uniquement.** Un objet de calque de données n'est pas éditable en
-place. Le chemin est « Session → Conversion » pour rapatrier le calque, puis
-ici — c'est la manœuvre que KARMA avait déjà trouvée.
+place : il passe d'abord en session (`js/calqueSession.js`, « 🔄 Modifier » sur la
+ligne du calque). Pour les contours fermés d'un calque, le bouton **⬛ Contours
+fermés** de sa ligne (panneau des filtres) fait les deux en une validation :
+`KtaConvertir.ouvrirCalque(id)` compte sur le fichier (`CalqueSession.lireCalque`),
+affiche « N contours fermés sur M lignes » et les cibles fermées, confirme
+(`ktaConfirm` : compte, poids de la copie) puis `CalqueSession.rapatrier` (verrou,
+marques, restitution : rien n'est refait) et `convertirLot` sur les copies marquées.
+🩸 ⏪ défait la conversion, pas la copie : elle se rend par « ↩️ Restaurer », comme
+tout calque en modification (le message le dit). Calque déjà en modification : ses
+copies sont converties directement.
 
-**Prouvé** : 30 cas dans `check-api-surface.js`, module réellement chargé en VM.
-Falsifiés — retirer la règle ouvert/fermé fait tomber 2 cas, écrire avant de
-relire en fait tomber 1 (celui de la même famille).
+**Prouvé** : `check-api-surface.js` (module réellement chargé en VM : règle par
+type, contour fermé, doublon retiré, refus fermé → ouvert, lot mixte) et
+`scripts/smoke/checkup-contour-ferme.js` (fiche, lot filtré, ⏪ unique, calque copié
+puis converti, dans l'app réelle).
 
 ---
 
@@ -1529,7 +1555,7 @@ sur la carte ; `KtaConvertir.convertirLot(items, familleCible, typeCible)` appli
 
 **🩸 La règle porte sur l'OUVERTURE, pas sur la famille.** Un tracé et un front de taille sont tous deux des **lignes** :
 les mélanger est légitime, et c'est LE cas utile — 40 fronts mal typés qui deviennent des galeries. Ce qu'on refuse, c'est
-de mêler une ligne et une surface fermée : aucune cible commune, on ne referme pas un trait. Resserrer la règle sur la
+de mêler une ligne et une surface fermée : aucune cible commune (une ligne fermée passe par la case « seulement les contours fermés », jamais par la sélection). Resserrer la règle sur la
 famille tuerait la raison d'être de la feature **sans casser un seul test naïf** — d'où l'assertion dédiée.
 
 **Le refus est EXPLIQUÉ.** `_choisir()` rend `{ cible, refus }` : `refus` porte l'objet incompatible visé, pour pouvoir
@@ -1540,6 +1566,12 @@ v1.28.0.
 `convertir()` N fois donnerait N re-rendus complets (`setRoads` reconstruit tout — coûteux à 20 000 objets) et N `Ctrl+Z`
 pour annuler. Les trois listes sont lues **avant** toute écriture, même piège que `convertir()` en v1.82.0. Zéro
 conversion ⇒ aucune écriture et aucune entrée d'historique : il n'y a rien à annuler.
+
+**« Seulement les contours fermés »** : case de la fenêtre d'un lot, visible dès qu'il
+contient une ligne, grisée sans contour fermé, avec le compte (« 4 sur 6 »). Cochée,
+le lot est réduit à ses contours fermés et les cibles fermées apparaissent
+(`listerCiblesLot(items, true)`) ; le choix d'une cible passe par `ktaConfirm`
+(N convertis, les autres intacts) avant `convertirLot` — un instantané, un ⏪.
 
 **Cibles du lot = UNION**, jamais intersection. Un type qui est la *source* de l'un peut être la *cible* d'un autre
 (« chemin » reste valable pour des fronts même si un chemin est dans la sélection). Les objets déjà du type choisi sont
