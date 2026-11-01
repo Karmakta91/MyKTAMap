@@ -1239,11 +1239,11 @@
                    : function() { return true; };
     const isPolyline = (typeof window.isStructurePolylineType === "function")
                        ? window.isStructurePolylineType
-                       : function(t) { return t === "front-1" || t === "front-2"; };
+                       : function(t) { return t === "mur-ligne" || t === "front-1" || t === "front-2"; };
 
-    // Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1. Sur Leaflet, ordre d'ajout = ordre Z : tri
-    // AVANT itération.
-    const ordreType = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+    // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1. Sur Leaflet, ordre d'ajout = ordre
+    // Z : tri AVANT itération.
+    const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
     const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const sorted = all.slice().sort(function(a, b) {
       if (_multiLevelOnSort) {
@@ -1260,6 +1260,7 @@
       "mur":      { color: "#000000", weight: 1, fillColor: "#1e3a8a", fillOpacity: 0.85, opacity: 0.9 }
     };
     const POLYLINE_STYLES = {
+      "mur-ligne": { color: "#1e3a8a", weight: 3.5, opacity: 1 },  // bleu du mur
       "front-1": { color: "#f4c542", weight: 3.5, opacity: 1 },  // jaune (cohérent pilier-1)
       "front-2": { color: "#ff9933", weight: 3.5, opacity: 1 }   // orange (cohérent pilier-2)
     };

@@ -50,7 +50,10 @@
       // Fronts de taille = polylines épaisses. `fillColor` reste égal à `color` (des consommateurs
       // lisent l'un ou l'autre) ; `isPolyline` est lu par les adaptateurs de rendu.
       "front-1":  { color: "#f4c542", fillColor: "#f4c542", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true },
-      "front-2":  { color: "#ff9933", fillColor: "#ff9933", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true }
+      "front-2":  { color: "#ff9933", fillColor: "#ff9933", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true },
+      // Mur en ligne : le bleu du mur, en trait. Seule structure qui coupe l'itinéraire (pathfinder.js >
+      // _collecterMursLigne) — rôle lié à la CLÉ, pas au libellé ni à la couleur choisis en légende.
+      "mur-ligne": { color: "#1e3a8a", fillColor: "#1e3a8a", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true }
     }
   };
 

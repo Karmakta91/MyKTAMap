@@ -634,7 +634,7 @@
     const typeDefaut = opts.roadType  || "secondaire";
     const zoneDefaut = opts.zoneType  || "remblais";
     const cleType    = opts.cleType   || null;
-    const TYPES_POLYLIGNE = ["front-1", "front-2"];
+    const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2"];
 
     const valeurType = function (props) {
       if (!cleType || !props) return null;
@@ -751,10 +751,13 @@
     // 🩸 Pour un type CUSTOM, structures.js > _isPolylineType lit `entry.geometry === "polyline"` dans la légende :
     // sans ce champ, un front repeint par niveau redevient un POLYGONE PLEIN. On garde le type de base pour le
     // déduire.
-    const TYPES_POLYLIGNE = ["front-1", "front-2"];   // cf. STRUCTURE_TYPES_POLYLINE
+    const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2"];   // cf. STRUCTURE_TYPES_POLYLINE
 
     function _typeNiveau(typeBase, categorie, lvl, libelleBase) {
       if (!couleurParNiveau || lvl === null || typeof lvl !== "number") return typeBase;
+      // 🩸 Un mur en ligne garde SA clé : l'itinéraire le lit comme obstacle par `mur-ligne` (pathfinder.js), un
+      // type de niveau le confondrait avec les fronts du même étage.
+      if (categorie === "structures" && typeBase === "mur-ligne") return typeBase;
       const estLigne = (categorie === "traces") || TYPES_POLYLIGNE.indexOf(typeBase) >= 0;
       // Un id par (catégorie, FORME, niveau) : un front (ligne) et un pilier (polygone) ne partagent pas d'entrée.
       const id = _idNiveau(categorie + (estLigne ? "-l" : ""), lvl);

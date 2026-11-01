@@ -5,21 +5,26 @@
  */
 
 // structures.js — structures de session : piliers (1re / 2e masse) et murs en polygones remplis, fronts de
-// taille en polylignes épaisses ; types custom de la légende. Clone adapté de zones.js, stocké à part
-// (`structure.json`). Multi-niveau : champ `level` posé au tracé.
+// taille et murs en ligne en polylignes épaisses ; types custom de la légende. Clone adapté de zones.js,
+// stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
-//   isStructurePolylineType, majLargeurFronts, brancherLargeurFronts, ktaLargeur{FrontPourRatio,
-//   FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm.
+//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, majLargeurFronts, brancherLargeurFronts,
+//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm.
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
-// 🩸 Le Pathfinder ignore les structures (ni arêtes ni obstacles, graphe sur les `roads` seulement) : un
-// relevé tout en structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé.
+// 🩸 Le Pathfinder ne fait aucune arête d'une structure (graphe sur les `roads` seulement) : un relevé tout en
+// structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé. Seul `mur-ligne` y
+// joue un rôle, d'obstacle (pathfinder.js > _collecterMursLigne) ; piliers, mur polygone et fronts, aucun.
 // Garde-fou : scripts/check-style-canon.js, scripts/check-api-surface.js, scripts/check-filets-donnees.js
 
-window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "front-1" | "front-2"
+window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "mur-ligne" | "front-1" | "front-2"
 
-// Fronts de taille = POLYLINES ouvertes (limites d'exploitation d'une couche) ; les autres = polygones fermés.
-const STRUCTURE_TYPES_POLYLINE = ["front-1", "front-2"];
+// Fronts de taille (limites d'exploitation d'une couche) et mur en ligne (mur levé en trait, cas d'un import
+// SIG) = POLYLINES ouvertes ; les autres = polygones fermés.
+const STRUCTURE_TYPES_POLYLINE = ["mur-ligne", "front-1", "front-2"];
+// Types intégrés, dans l'ordre des listes (légende, exports, filtres).
+const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"];
+window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
 function _isPolylineType(type) {
   if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;
   // Type custom : géométrie déclarée dans LegendCustomization.
@@ -56,7 +61,7 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 //   • Piliers / mur : contour NOIR systématique (ce qui distingue une structure d'une zone), remplissage plus
 //     saturé (du solide). Mur bleu foncé, pour ne pas le confondre avec l'icône eau.
 //   • Fronts : polylignes épaisses sans contour. front-1 jaune comme pilier-1, front-2 orange comme
-//     pilier-2 : sur le terrain, la cohérence couleur / masse prime.
+//     pilier-2 : sur le terrain, la cohérence couleur / masse prime. Mur en ligne : le bleu du mur.
 
 // ── Largeur des fronts : une largeur RÉELLE, pas un nombre de pixels ──────────────
 // 🩸 Des paliers fixes par zoom ignorent l'ÉCHELLE du plan : un front mesure 1 à 2 m, donc 2 px à 1,4 px/m ;
@@ -234,8 +239,7 @@ function initStructures() {
     const _typeKey = window.modeStructure;
     // Type custom : libellé saisi dans LegendCustomization.
     function _resolveTypeLabel(k) {
-      const _builtin = ["pilier-1", "pilier-2", "mur", "front-1", "front-2"];
-      if (_builtin.indexOf(k) >= 0) return window.I18n.t("struct.label." + k);
+      if (STRUCTURE_TYPES_BUILTIN.indexOf(k) >= 0) return window.I18n.t("struct.label." + k);
       if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
         const e = window.LegendCustomization.findCustomEntry(k);
         if (e) return e.label || k;
@@ -309,7 +313,7 @@ function initStructures() {
 // 🩸 Retaper la pastille ou changer de type ne DÉTRUIT jamais en silence la structure en cours : assez de
 // points (front ≥ 2, polygone ≥ 3) → validée et historisée ; sinon abandonnée avec toast + historique (⏪).
 function _labelTypeStruct(k) {
-  if (["pilier-1", "pilier-2", "mur", "front-1", "front-2"].indexOf(k) >= 0) {
+  if (STRUCTURE_TYPES_BUILTIN.indexOf(k) >= 0) {
     return window.I18n.t("struct.label." + k);
   }
   if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -394,10 +398,10 @@ function renderStructures() {
     structurePreviewLayer = null;
   }
 
-  // Ordre Z (décision produit), de l'arrière à l'avant : mur < pilier-2 < pilier-1 < front-2 < front-1.
-  // Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
+  // Ordre Z (décision produit), de l'arrière à l'avant : mur < mur-ligne < pilier-2 < pilier-1 < front-2 <
+  // front-1. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
   // d'exploitation est masqué. En multi-niveau, tri primaire par `level` croissant (comme les tracés).
-  const ordreType = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+  const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
   const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const structuresAffichage = [...structuresData].sort(function(a, b) {
     if (_multiLevelOnSort) {
@@ -509,7 +513,7 @@ function renderStructures() {
         // Titre = libellé de l'utilisateur (custom : findCustomEntry ; built-in : getLabel, renommage compris),
         // jamais l'id brut `cust-…`.
         const _structEmojis = {
-          "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵",
+          "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
           "front-1":  "🟨", "front-2":  "🟧"
         };
         function _structPopupTitle(t) {

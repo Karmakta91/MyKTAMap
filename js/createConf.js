@@ -5455,14 +5455,14 @@ const _SIG_TYPES = {
 };
 // Structures proposées EN PLUS, par famille. Chaque géométrie peut viser toutes les familles : un polygone
 // peut être une zone, un pilier, un mur ou un front de taille dessiné fermé ; une polyligne peut porter le
-// contour d'une zone. Préfixe (`struct:`, `zone:`, `trace:`) = famille de rangement ; sans préfixe, famille
-// naturelle de la géométrie.
+// contour d'une zone. Un mur levé en ligne est un `mur-ligne` (le `mur` est un polygone). Préfixe (`struct:`,
+// `zone:`, `trace:`) = famille de rangement ; sans préfixe, famille naturelle de la géométrie.
 const _SIG_TYPES_SUP = {
   points:    [],
-  lignes:    ["struct:front-1", "struct:front-2", "struct:mur",
+  lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:mur",
               "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible"],
   polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
-              "struct:front-1", "struct:front-2",
+              "struct:front-1", "struct:front-2", "struct:mur-ligne",
               "trace:chemin", "trace:secondaire", "trace:principal"]
 };
 const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
@@ -5517,7 +5517,11 @@ function _sigImpRendreTables() {
     // Le préremplissage regarde AUSSI les structures (« pilier » → pilier-1).
     if ((_SIG_TYPES_SUP[fam] || []).length) {
       const ps = window.SigImport.proposerMapping(vals, "structures");
-      Object.keys(ps).forEach(function(v) { if (!propose[v] && ps[v]) propose[v] = ps[v]; });
+      // « mur » sur une LIGNE = mur en ligne : le mur polygone refermerait la ligne en aplat.
+      Object.keys(ps).forEach(function(v) {
+        if (fam === "lignes" && ps[v] === "struct:mur") ps[v] = "struct:mur-ligne";
+        if (!propose[v] && ps[v]) propose[v] = ps[v];
+      });
     }
     html += '<div style="margin-top:10px;"><div class="kta-cfg-label">' + T(_SIG_CAT_I18N[fam]) + '</div>';
     vals.forEach(function(v) {

@@ -1164,11 +1164,13 @@
     embeddedZones.forEach(function(z) { _addZone(z, "embedded"); });
     zip.file("zones.csv", _buildCsv(zonesRows, zonesCols));
 
-    // Fronts (front-1/2) = polylines → longueur. Piliers/mur = polygones → surface.
+    // Fronts et mur en ligne = polylines → longueur. Piliers/mur = polygones → surface.
     const structsCols = ["source", "type", "nb_points", "surface_m2", "longueur_m", "level", "description"];
     const structsRows = [];
     function _addStruct(s, source) {
-      const isPolyline = (s.type === "front-1" || s.type === "front-2");
+      const isPolyline = (typeof window.isStructurePolylineType === "function")
+        ? window.isStructurePolylineType(s.type)
+        : (s.type === "mur-ligne" || s.type === "front-1" || s.type === "front-2");
       structsRows.push({
         source:      source,
         type:        s.type || "",

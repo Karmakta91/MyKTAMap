@@ -592,7 +592,7 @@
     return _lcOuI18n("zones", type, keys[type] || null);
   }
   function _structTypeLabel(type) {
-    const keys = { "pilier-1": "search.structType.pilier1", "pilier-2": "search.structType.pilier2", "mur": "search.structType.mur", "front-1": "search.structType.front1", "front-2": "search.structType.front2" };
+    const keys = { "pilier-1": "search.structType.pilier1", "pilier-2": "search.structType.pilier2", "mur": "search.structType.mur", "mur-ligne": "search.structType.murLigne", "front-1": "search.structType.front1", "front-2": "search.structType.front2" };
     return _lcOuI18n("structures", type, keys[type] || null);
   }
 
@@ -1296,7 +1296,9 @@
 
     const latlngs = ann.points.map(function(pt) { return convertCoord(pt.x, pt.y); });
 
-    const isPolyline = (item.kind === "road" || (item.kind === "structure" && (ann.type === "front-1" || ann.type === "front-2")));
+    const isPolyline = (item.kind === "road" || (item.kind === "structure" &&
+      ((typeof window.isStructurePolylineType === "function") ? window.isStructurePolylineType(ann.type)
+        : (ann.type === "mur-ligne" || ann.type === "front-1" || ann.type === "front-2"))));
     if (isPolyline) {
       _flashLayer = L.polyline(latlngs, {
         color: "#ffaa00",
