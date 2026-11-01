@@ -756,6 +756,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
+#### Prochaine version — non publiée (branche `Karma_dev`)
+
+- **✏️ Sélectionner par zone, 🗑️ supprimer en lot** (`js/selectionZone.js`, `js/selectionMulti.js`) : dans la sélection multiple 🎯, une zone tracée avec l'outil ♦️ Surface (la mesure en cours revient ensuite) ajoute les objets **entièrement** dedans, au niveau affiché, points compris ; **🗑️ Supprimer (N)** confirme avec une case par famille et son nombre, annonce photos (gardées « sans point »), portails gardés et objets de calque ignorés ; un seul ⏪ rend tout, une trace de suppression par objet. **✅ Convertir (N)** compte les seuls objets de même forme que le premier. `check-selection-multi.js` §8, `checkup-suppr-zone.js`.
+
 #### v2.21.1 (30/10/2026) — Outils de dessin qui s'enchaînent, front de taille plus fin (branche `Karma_dev`)
 
 - **✏️ L'outil reste armé** (`js/zones.js`, `js/structures.js`, `js/interface.js`) : fermer une zone, un pilier, un mur (re-tap du 1er point ou ✅) ou un front (✅) ne l'éteint plus, le tap suivant commence une forme du même type ; re-appuyer sur le type l'éteint. Une annulation par forme, comme avant. Guides fr / en / es ; `check-filets-donnees.js` aligné.

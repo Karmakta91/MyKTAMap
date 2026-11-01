@@ -818,6 +818,20 @@ El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica 
 
 **Los contornos cerrados de una capa de datos**: pasa primero la capa a **🔄 Modificar** (≡ Filtros, fila de la capa); sus objetos tienen entonces una burbuja y se convierten como los tuyos, uno a uno o en lote con **Solo los contornos cerrados**.
 
+### ✏️ Seleccionar por zona, 🗑️ eliminar en lote
+
+El mismo aviso sirve también para **eliminar** de golpe, por ejemplo todo lo que una importación colocó mal en un sector:
+
+- **✏️ Seleccionar por zona**: toca los vértices de la zona en el mapa (como una medida ♦️ Superficie; **↩️ Último vértice** corrige un toque fallido) y luego **✅ Usar la zona**. Tu medida ♦️ en curso no se pierde: vuelve tal cual.
+- Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los del **nivel mostrado**. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.
+- Los **puntos** también entran en la selección (círculo azul punteado). Vuelve a tocar un objeto para quitarlo; puedes trazar varias zonas.
+- **🗑️ Eliminar (N)** abre una confirmación con una casilla por familia (📍 Puntos, 〰️ Trazados, 🟦 Zonas, 🧱 Estructuras) y su número: desmarca una familia para conservarla.
+- La ventana anuncia también: las **fotos** de los puntos (no se borran, pasan a «sin punto» en 🧰 Herramientas > 📸 Mis fotos), los **objetos de una capa de datos** vistos en la zona (nunca eliminados: pasa antes la capa a **🔄 Modificar**) y los **puntos portal** (enlace a otro plano), siempre conservados.
+- Nunca se toman: la ruta calculada, las uniones entre niveles ni las medidas.
+- **Un solo ⏪** devuelve todo lo eliminado. En una instalación conectada, la eliminación llega al equipo como una eliminación una a una.
+
+**✅ Convertir (N)** solo cuenta los objetos de la misma forma que el primero (líneas o superficies): una zona que también tomó puntos o superficies los deja fuera de la conversión.
+
 ---
 
 ## ⏪ Deshacer / Rehacer

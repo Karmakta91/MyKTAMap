@@ -1616,10 +1616,12 @@ de calque) et `scripts/smoke/checkup-recoller-piliers.js` (sélection multiple, 
 
 ---
 
-### 🎯 Convertir EN LOT — sélection multiple (v1.85.0)
+### 🎯 Sélection multiple — convertir ou supprimer EN LOT
 
-KARMA, 05/09 : « sélectionner N vecteurs et les convertir d'un coup ». `js/selectionMulti.js` arme un mode de désignation
-sur la carte ; `KtaConvertir.convertirLot(items, familleCible, typeCible)` applique le lot.
+`js/selectionMulti.js` arme un mode de désignation sur la carte (clic, « ➕ Tous les \<type\> », zone dessinée) ;
+`KtaConvertir.convertirLot(items, familleCible, typeCible)` convertit le lot, `KtaSelectionZone.supprimerLot` le supprime
+(`js/selectionZone.js`, ci-dessous). On y entre par la fenêtre 🔄 Convertir d'un objet (la « graine », premier
+sélectionné, qui fixe l'ouverture de référence).
 
 **🩸 La règle porte sur l'OUVERTURE, pas sur la famille.** Un tracé et un front de taille sont tous deux des **lignes** :
 les mélanger est légitime, et c'est LE cas utile — 40 fronts mal typés qui deviennent des galeries. Ce qu'on refuse, c'est
@@ -1666,8 +1668,37 @@ qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
 `window.ktaDistPointSegment`) sans rouvrir les quatre : elles servent trois chemins de suppression qui fonctionnent, et on
 ne les touche pas dans une version non déployée. Migration : `docs/IDEES.md`.
 
+**✏️ Sélection par zone** (`js/selectionZone.js`). La zone se trace avec l'outil **♦️ Surface** de `measure.js`, pas un
+outil de dessin à part : `commencer()` met de côté la mesure Surface en cours (points + sous-mode), arme `modeMesure` en
+surface à vide ; le clic carte pose un sommet (le handler de la sélection l'ignore pendant le tracé) ; `terminer()` rend
+le contour et **remet la mesure d'avant** (aussi à l'abandon et à la fermeture du bandeau). `dansZone(poly)` :
+- ⚠️ **entièrement dedans** = tous les sommets (ou le point) dans le polygone (ray-casting `ktaPointInPolygon`, boîte
+  englobante d'abord) ; un objet à cheval n'est ni pris ni coupé (décision produit) ;
+- **niveau actif** seulement (`APP_CONFIG.activeLevel` ; plan à un niveau : tout) ;
+- familles : points de session, tracés, zones, structures ; exclus : `itinerary`, `jonction`, POI jonction
+  (`KtaPoiJonction.estJonction`), `_preview` (la mesure n'est pas un objet) ;
+- objets de **calque** (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons`, `_ktaDataStructurePolygons`) : rendus à
+  part pour être **comptés**, jamais pris ; un calque en « 🔄 Modifier » (`CalqueSession.estRapatrie`) n'est pas compté,
+  ses copies sont en session.
+
+La zone prend tout ce qu'elle contient, lignes et surfaces mêlées, points compris (cercle de surbrillance) : **✅ Convertir
+(N)** ne passe que `_convertibles()` (vecteurs de l'ouverture de la graine), **🗑️ Supprimer (N)** tout le lot. La règle
+d'ouverture reste celle du **clic** ; un point se vise au clic (ajout ou retrait), jamais refusé pour son ouverture.
+
+**🗑️ Suppression en lot** : `confirmerEtSupprimer(items, nCalque)` ouvre `ktaConfirm` avec une case par famille et son
+nombre (les cases vivent dans le message, branchées sur la fenêtre montée ; le bouton se recompte), et annonce : niveau,
+photos des points (comptées par `MyKTAMapPhotos.listerPlan`), points **portails** gardés (une liaison inter-plan se purge
+sans retour possible par ⏪), objets de calque ignorés. `supprimerLot({ famille: [obj] })` : 🔒 refusé en lecture seule
+(`ktaEditionRefusee`) ; **un** instantané `captureState()` (quatre familles), listes lues d'un bloc, identité par référence
+puis uid, une écriture par famille touchée, `RoadGraph.invalidate` si tracés, **une** entrée `HistoryManager.record` — qui
+pose les **traces de suppression** par diff des uid (`_tracerDepuis`), exactement comme une suppression unitaire (pas de
+trace pour une copie de calque). Photos : **gardées**, fiche figée (`majFichesPoints`) comme `supprimerPointEditor` ; le ⏪
+rend le point et son uid, donc ses photos. La synchro d'une extension suit par `changementsDepuis(ts).tombstones` ; le
+community ne consulte aucune prise avant (contrairement à « Effacer la session » sur plan partagé).
+
 **Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
-Leaflet**. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
+Leaflet** ; §8 : `dansZone` (dedans, à cheval, autre niveau, jonction, calque compté ou en Modifier) et `supprimerLot`
+(un instantané, une entrée, une écriture par famille, lecture seule). Parcours réel : `scripts/smoke/checkup-suppr-zone.js`. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
 les assertions déréférençaient `.cible.obj` sans garde (une régression rendant `null` faisait *planter* le script au lieu
 d'échouer lisiblement), et le contrôle `interactive: false` était satisfait par le **commentaire** qui explique la règle.
 
