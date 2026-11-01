@@ -468,9 +468,9 @@ As soon as you recognize a landmark:
 1. Tap **📍** (the button lights up);
 2. tap the spot on the map where you are.
 
-The icon moves there, the trail restarts from there and the mode closes by itself. Another way: the **📍 I am here** button in a point's popup.
+The icon moves there, the trail restarts from there and the mode closes by itself. Another way: the **📍 I am here** button in a point's popup. On a multi-level plan, it puts you on the **point's level**, even if you are looking at another level (for a ladder or a shaft between levels: the level shown if it serves it).
 
-**Multi-level plan**: if a gallery, zone or structure from **another level** runs within **10 m** of the spot you tapped (or a passage between levels such as a ladder or a shaft), the app asks **Which level are you on?**: one choice per level found, with its depth when it is filled in, the level shown ticked by default. Tracking moves to the chosen level and the map shows it. **Cancel** realigns nothing: tap the map again. Nothing from another level nearby → no question, the level shown is kept. The same question comes when the app asks **Where are you?** (emergency exit, "Go there", guidance).
+**Multi-level plan**: if a gallery, zone or structure from **another level** runs within **10 m** of the spot you tapped (or a passage between levels such as a ladder or a shaft), the app asks **Which level are you on?**: one choice per level found, with its depth when it is filled in, the level shown ticked by default. Tracking moves to the chosen level and the map shows it. **Cancel** realigns nothing: tap the map again. Nothing from another level nearby → no question, the level shown is kept. The same question comes when the app asks **Where are you?** (emergency exit, "Go there", guidance). Once your position is known, "Go there", the emergency exit and "Recompute from here" start from the **tracking level**, not the one you are looking at; "🧭 Plot the route" towards an exit on another level does take you there.
 
 ### 🧭 Compass
 

@@ -759,7 +759,12 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
   recalé, le mode recalage (ou le picker) reste armé ; un 2e clic pendant la question est ignoré.
 - 🩸 Toute fenêtre `kta-readme-modal-overlay` coupe les modes de la barre (`interface.js > _initCoupeModesSurModale`) :
   la question porte l'id `kta-recal-niveau`, exclu de cette coupure, sinon Annuler laissait le mode éteint.
-- Non concernés : « 📍 Je suis ici » d'un point (le niveau du point fait foi), arrivée de portail, Mode Secours.
+- Non concernés (le niveau de la cible fait foi, sans question) : arrivée de portail, Mode Secours, et
+  **« 📍 Je suis ici » d'un point** : la fiche porte `data-kta-niveau` (`utils.js > buildPointPopupHtml`), lu par
+  `_ktaPopupAction` et passé à `recalerTrackerSurPoint`. C'est le niveau du POI (sans `level` = 0), pas le niveau
+  affiché : un POI du −1 touché pendant que le 0 est affiché place le tracker au −1. POI jonction : le niveau
+  affiché s'il le dessert, sinon son `level`. Mono-niveau : pas d'attribut, règle habituelle (niveau actif).
+  L'étape posée au clic (mini-fiche de l'itinéraire) n'en porte pas non plus.
 - ⚠️ **Niveau de l'ancre** : `_pushTimelinePoint` lit `trackerLevel`. Tout appelant (clic de recalage,
   `recalerTrackerSurPoint`, ancre `start` de `startTracking`) pose le niveau **avant** de pousser l'ancre : elle
   porte le niveau d'arrivée (replay, export CSV).
@@ -768,6 +773,8 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
   (waypoint `level`, cf `multilevel-pathfinding.md` § Départ d'un itinéraire et niveau) : « Y aller »
   (`opts.origine.level`), sortie d'urgence (`_lancer({ x, y, level })`, gardé par « Tracer »). Le « Je suis ici » de
   l'alerte du guidage ne lit pas `onPick` : la replanification part de `getTrackerLevel()` (`_onTrackerRecale`).
+  Sans picker (position déjà confirmée ou suivi actif), les départs « depuis ma position » prennent aussi le niveau
+  du tracker (`multilevel-pathfinding.md` § Départ d'un itinéraire et niveau).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)

@@ -468,9 +468,9 @@ Dès que tu reconnais un repère :
 1. Touche **📍** (le bouton s'allume) ;
 2. touche l'endroit du plan où tu te trouves.
 
-L'icône s'y place, le tracé repart de là et le mode se referme tout seul. Autre façon : le bouton **📍 Je suis ici** dans la fiche d'un point.
+L'icône s'y place, le tracé repart de là et le mode se referme tout seul. Autre façon : le bouton **📍 Je suis ici** dans la fiche d'un point. Sur un plan multi-niveau, il te place au **niveau du point**, même si tu regardes un autre niveau (pour une échelle ou un puits entre niveaux : le niveau affiché s'il le dessert).
 
-**Plan multi-niveau** : si une galerie, une zone ou une structure d'un **autre niveau** passe à moins de **10 m** de l'endroit touché (ou un passage entre niveaux comme une échelle ou un puits), l'app demande **Dans quel niveau es-tu ?** : un choix par niveau trouvé, avec sa profondeur si elle est renseignée, le niveau affiché coché d'office. Le suivi passe au niveau choisi et la carte l'affiche. **Annuler** ne recale rien : touche à nouveau la carte. Rien d'un autre niveau à proximité → pas de question, le niveau affiché est gardé. La même question vient quand l'app te demande **Où es-tu ?** (sortie d'urgence, « Y aller », guidage).
+**Plan multi-niveau** : si une galerie, une zone ou une structure d'un **autre niveau** passe à moins de **10 m** de l'endroit touché (ou un passage entre niveaux comme une échelle ou un puits), l'app demande **Dans quel niveau es-tu ?** : un choix par niveau trouvé, avec sa profondeur si elle est renseignée, le niveau affiché coché d'office. Le suivi passe au niveau choisi et la carte l'affiche. **Annuler** ne recale rien : touche à nouveau la carte. Rien d'un autre niveau à proximité → pas de question, le niveau affiché est gardé. La même question vient quand l'app te demande **Où es-tu ?** (sortie d'urgence, « Y aller », guidage). Une fois ta position connue, « Y aller », la sortie d'urgence et « Recalculer d'ici » partent du **niveau du suivi**, pas de celui que tu regardes ; « 🧭 Tracer l'itinéraire » vers une sortie d'un autre niveau t'y amène bien.
 
 ### 🧭 Boussole
 
