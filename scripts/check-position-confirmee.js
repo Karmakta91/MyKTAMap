@@ -49,7 +49,8 @@ verif(/window\.getTrackingPositionEtat\s*=\s*function/.test(tracking) &&
       /confirmee:\s*_positionConfirmee/.test(tracking) && /suiviActif:\s*tracking\s*===\s*true/.test(tracking),
       "tracking.js : `getTrackingPositionEtat()` expose {confirmee, ts, suiviActif}");
 
-const clicRecalage = bloc(tracking, "if (!window.modeRecalage) return;", "_notifierRecalage(x, y, \"click\")");
+// Le clic de recalage passe par _recalerSurClic une fois le niveau connu (question de niveau en multi-niveau).
+const clicRecalage = bloc(tracking, "function _recalerSurClic(x, y, niveau) {", "_notifierRecalage(x, y, \"click\")");
 verif(clicRecalage.includes("_marquerPositionConfirmee()"), "🩸 clic carte en mode recalage → pose le drapeau");
 
 const surPoint = bloc(tracking, "window.recalerTrackerSurPoint = function", "_notifierRecalage(x, y, \"point\")");
@@ -89,7 +90,7 @@ verif(picker.length > 0, "utils.js : `ktaDemanderPositionCarte` existe");
 // 🩸 L'affectation de className exacte : `kta-iti-floater-icon` matcherait
 // un floater sans la classe commune.
 verif(/fl\.className\s*=\s*"kta-iti-floater(?:\s|")/.test(picker), "🩸 le floater porte `.kta-iti-floater` (tap capturé même sur un marqueur)");
-verif(/recalerTrackerSurPoint\(x, y\)/.test(picker), "🩸 le tap RECALE le tracker (= confirme la position)");
+verif(/recalerTrackerSurPoint\(x, y[,)]/.test(picker), "🩸 le tap RECALE le tracker (= confirme la position)");
 verif(/_desactiverTousLesModes/.test(picker) && /window\._desactiverTousLesModes\s*=\s*_desactiverTousLesModes/.test(interf),
       "les autres modes clic-carte tombent avant d'armer (registre exposé par interface.js)");
 verif(/APP_CONFIG\.imageHeight - e\.latlng\.lat/.test(picker), "conversion inverse de convertCoord : y = imageHeight − lat");

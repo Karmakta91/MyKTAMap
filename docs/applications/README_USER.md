@@ -470,6 +470,8 @@ Dès que tu reconnais un repère :
 
 L'icône s'y place, le tracé repart de là et le mode se referme tout seul. Autre façon : le bouton **📍 Je suis ici** dans la fiche d'un point.
 
+**Plan multi-niveau** : si une galerie, une zone ou une structure d'un **autre niveau** passe à moins de **10 m** de l'endroit touché (ou un passage entre niveaux comme une échelle ou un puits), l'app demande **Dans quel niveau es-tu ?** : un choix par niveau trouvé, avec sa profondeur si elle est renseignée, le niveau affiché coché d'office. Le suivi passe au niveau choisi et la carte l'affiche. **Annuler** ne recale rien : touche à nouveau la carte. Rien d'un autre niveau à proximité → pas de question, le niveau affiché est gardé. La même question vient quand l'app te demande **Où es-tu ?** (sortie d'urgence, « Y aller », guidage).
+
 ### 🧭 Boussole
 
 La tuile **🧭** affiche une rose des vents en haut à gauche de la carte, même tracker arrêté. Son **N** pointe toujours vers le Nord, dans toutes les orientations du téléphone. Touche-la pour l'agrandir (cap en gros et angle exact) ; ✕ la ferme.

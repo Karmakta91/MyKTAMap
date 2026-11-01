@@ -453,6 +453,8 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
 //   opts.titre / okLabel / cancelLabel : HTML (défauts i18n ui.confirm.*).
 //   opts.sansAnnuler : un seul bouton (ktaAlerte) ; le clic sur le fond ne ferme PAS (message à lire).
 //   opts.zIndex : appelant ouvert au-dessus de 100002 (éditeur de légende, 100050).
+//   opts.id : id de l'overlay. 🩸 Une fenêtre ouverte coupe les modes de la barre (interface.js >
+//   _initCoupeModesSurModale) ; seul un id de sa liste d'exclusion les laisse armés (question posée PAR le mode).
 //   opts.caseACocher = {label, coche} · opts.nombre = {label, valeur, min, max} ·
 //   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
 //   dans l'objet passé (coche / valeur) après coup.
@@ -482,6 +484,7 @@ window.ktaConfirm = function(message, opts) {
     };
     const ov = document.createElement("div");
     ov.className = "kta-readme-modal-overlay";
+    if (opts.id) ov.id = String(opts.id);
     // opts.zIndex : sinon un appelant au-dessus de 100002 couvrirait la fenêtre, invisible et inatteignable.
     ov.style.zIndex = String(opts.zIndex || 100002);
     ov.innerHTML = '' +
@@ -732,11 +735,13 @@ window._modeClicCarteActif = function() {
 // ── « Où es-tu ? » : picker de position partagé (Sortie d'urgence, « Y aller ») ──────────
 // Appelé seulement quand la position du tracker n'a jamais été confirmée (tracking.js >
 // getTrackingPositionEtat). Un tap RECALE le tracker comme « 📍 Je suis ici » (hooks itinéraire / portail
-// notifiés), puis rend la position à l'appelant.
+// notifiés), puis rend la position à l'appelant. Plan multi-niveau : niveau demandé comme pour « 📍 Recaler ma
+// position » (tracking.js > ktaNiveauxRecalage), sauf `opts.recaler === false` (rien n'est recalé).
 // 🩸 Le floater porte `.kta-iti-floater` : _modeClicCarteActif() le reconnaît, aucune popup ne mange le tap,
 // et map.js le ré-émet en capture — même sur un marqueur, le cas nominal (on vise un repère connu).
 // 🩸 Les autres modes clic-carte tombent AVANT d'armer, sinon le même tap pose un sommet ou ouvre une fiche.
 let _posPickHandler = null;
+let _posPickChoixOuvert = false;   // fenêtre de niveau ouverte : un 2e clic n'en ouvre pas une autre
 function _posPickOnKey(e) { if (e && e.key === "Escape") _posPickAnnuler(); }
 function _posPickAnnuler() {
   if (window.map && _posPickHandler) { try { window.map.off("click", _posPickHandler); } catch(e) {} }
@@ -767,13 +772,33 @@ window.ktaDemanderPositionCarte = function(onPick, opts) {
     const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
                 ? (window.APP_CONFIG.imageHeight - e.latlng.lat)
                 : e.latlng.lat;
-    _posPickAnnuler();
-    if (opts.recaler !== false && typeof window.recalerTrackerSurPoint === "function") {
-      try { window.recalerTrackerSurPoint(x, y); }
-      catch(err) { console.warn("[Utils] picker position : recalage échoué :", err); }
-    }
-    try { onPick({ x: x, y: y }); }
-    catch(err) { console.warn("[Utils] picker position : onPick échoué :", err); }
+    const finir = function(niveau) {
+      _posPickAnnuler();
+      if (opts.recaler !== false && typeof window.recalerTrackerSurPoint === "function") {
+        // Niveau choisi : l'affichage bascule dessus, puis recalage à ce niveau (sinon le niveau actif).
+        if (Number.isInteger(niveau) && typeof window.ktaSetActiveLevel === "function") {
+          window.ktaSetActiveLevel(niveau, { source: "recalage" });
+        }
+        try { window.recalerTrackerSurPoint(x, y, Number.isInteger(niveau) ? niveau : undefined); }
+        catch(err) { console.warn("[Utils] picker position : recalage échoué :", err); }
+      }
+      try { onPick({ x: x, y: y }); }
+      catch(err) { console.warn("[Utils] picker position : onPick échoué :", err); }
+    };
+    // Même règle que « 📍 Recaler ma position » (tracking.js > ktaNiveauxRecalage) : un autre niveau à moins de
+    // 10 m → « Dans quel niveau es-tu ? ». Annuler = rien de recalé, le picker reste armé.
+    const choix = (opts.recaler !== false && typeof window.ktaNiveauxRecalage === "function")
+      ? window.ktaNiveauxRecalage(x, y) : null;
+    if (!choix || typeof window.ktaDemanderNiveauRecalage !== "function") { finir(null); return; }
+    if (_posPickChoixOuvert) return;
+    _posPickChoixOuvert = true;
+    const handler = _posPickHandler;
+    window.ktaDemanderNiveauRecalage(choix).then(function(niveau) {
+      _posPickChoixOuvert = false;
+      // Picker annulé ou remplacé pendant la question : ce clic n'est plus attendu.
+      if (niveau === null || _posPickHandler !== handler) return;
+      finir(niveau);
+    });
   };
   window.map.on("click", _posPickHandler);
 

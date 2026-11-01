@@ -735,6 +735,35 @@ Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessi
 
 ---
 
+## 🏗️ Niveau d'un recalage sur la carte (plan multi-niveau)
+
+Un clic sur la carte ne dit pas à quel étage on est. Deux chemins le demandent, avec la même règle :
+le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click")`) et le picker **« Où es-tu ? »**
+(`utils.js > ktaDemanderPositionCarte` : sortie d'urgence, « Y aller », bouton « Je suis ici » de l'alerte du guidage).
+
+- **`window.ktaNiveauxRecalage(x, y)`** → `null` (pas de question) ou `{ niveaux, actif }`. Rayon
+  `RECAL_NIVEAU_RAYON_M` = **10 m** × `APP_CONFIG.scale`. Comptent : un tracé dont un segment passe dans le rayon (une
+  jonction apporte `fromLevel` et `toLevel`), une zone ou une structure dont le contour y passe ou qui contient le
+  point (structure en ligne : sa ligne seulement), un POI jonction (`KtaPoiJonction.pointsJonction`) dans le rayon,
+  avec ses niveaux desservis. Session **et** calques (`getAllEmbedded*`), objets masqués compris. Ne comptent pas :
+  POI ordinaires, itinéraire calculé (`type: "itinerary"`), mesures. Objet sans `level` = 0.
+  `null` si plan mono-niveau, ou si seuls le niveau actif ou rien ne sont trouvés : le niveau actif est gardé, comme
+  avant. Sinon `niveaux` = trouvés + niveau actif, du plus haut au plus bas.
+- **`window.ktaDemanderNiveauRecalage({ niveaux, actif })`** → Promise niveau | `null`. Fenêtre `ktaConfirm` à choix
+  (« Dans quel niveau es-tu ? », `tracker.recalNiveau.*`), un bouton radio par niveau (`ktaFormatNiveau`, profondeur
+  de `getProfondeurNiveau` si renseignée), le niveau actif coché et marqué « niveau affiché » ; le bouton OK dit
+  l'action (« 📍 Me placer au niveau −1 »). Annuler / Échap / fond = `null`.
+- **Après le choix** : `ktaSetActiveLevel(niveau)` (le niveau affiché bascule), puis le recalage habituel au niveau
+  choisi — clic : `trackerLevel`, position confirmée, ancre `recalage` `src: "click"`, `_notifierRecalage("click")` ;
+  picker : `recalerTrackerSurPoint(x, y, niveau)` puis `onPick`. **Annuler** : rien n'est recalé, le mode recalage
+  (ou le picker) reste armé ; un 2e clic pendant la question est ignoré.
+- 🩸 Toute fenêtre `kta-readme-modal-overlay` coupe les modes de la barre (`interface.js > _initCoupeModesSurModale`) :
+  la question porte l'id `kta-recal-niveau`, exclu de cette coupure, sinon Annuler laissait le mode éteint.
+- Non concernés : « 📍 Je suis ici » d'un point (le niveau du point fait foi), arrivée de portail, Mode Secours.
+- 🩸 `recalerTrackerSurPoint` pousse son ancre `recalage` **avant** de changer `trackerLevel` : l'ancre porte le
+  niveau d'avant (picker comme « Je suis ici »). Le clic de recalage, lui, change le niveau d'abord.
+- Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
+
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
 
 **`_notifierRecalage(x, y, source)`** (`tracking.js`) : émis à CHAQUE recalage de position — clic carte mode recalage (`"click"`, handler `map.on("click")` d'`initTracking`) et `recalerTrackerSurPoint` (`"point"` — bouton « 📍 Je suis ici », arrivée de portail). Consommateur : `window._onTrackerRecale` (assigné par `interfaceItineraire.js` — replanification d'itinéraire + validation d'étapes, cf. `multilevel-pathfinding.md` §Itinéraire vivant). Émission best-effort (try/catch, no-op si non défini).
@@ -942,7 +971,7 @@ Lecture : `window.getTrackingPositionEtat()` → `{ confirmee, ts, suiviActif }`
 ### La règle, côté consommateurs
 
 - **Suivi actif OU confirmée → position du tracker à l'instant T, zéro question.** Pas de seuil de fraîcheur (décision KARMA « b : pas de seuil ») : l'écart s'affiche, l'utilisateur juge.
-- **Jamais confirmée → picker partagé** `utils.js > ktaDemanderPositionCarte(onPick, {icone, texte, recaler, onCancel})`. Floater `.kta-iti-floater` (donc reconnu par `_modeClicCarteActif()` : pas de popup parasite, clic ré-émis en capture par `map.js`, **le tap porte même sur un marqueur**), les autres modes clic-carte sont éteints avant d'armer (`window._desactiverTousLesModes`, exposé par `interface.js` à cette occasion). **Le tap recale le tracker** (`recalerTrackerSurPoint`) — donc confirme la position — puis rend la main.
+- **Jamais confirmée → picker partagé** `utils.js > ktaDemanderPositionCarte(onPick, {icone, texte, recaler, onCancel})`. Floater `.kta-iti-floater` (donc reconnu par `_modeClicCarteActif()` : pas de popup parasite, clic ré-émis en capture par `map.js`, **le tap porte même sur un marqueur**), les autres modes clic-carte sont éteints avant d'armer (`window._desactiverTousLesModes`, exposé par `interface.js` à cette occasion). **Le tap recale le tracker** (`recalerTrackerSurPoint`) — donc confirme la position — puis rend la main. Plan multi-niveau : même question de niveau que le clic de recalage (§ Niveau d'un recalage sur la carte) ; Annuler laisse le picker armé ; `recaler: false` ne demande rien.
 - `sortieUrgence.js` : `_lancer(origine, meta)` garde `meta.mode` (`suivi` / `confirmee` / `clic`) + `ts` pour la ligne d'état de la modale ; `_tracerIndex` passe `{ origine }` à `itineraireYAller`.
 - `itineraireYAller(x, y, nom, opts)` : `opts.origine` impose l'origine ; sans elle, même règle (picker si jamais confirmée).
 - `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée » dans la bulle 📋 des coordonnées ; sa bulle de point propose « 📍 Je suis ici » (`recalerTrackerSurPoint`), qui confirme la position.
