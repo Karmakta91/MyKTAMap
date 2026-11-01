@@ -202,11 +202,12 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `style-filtres.css` | Modale ≡ Filtres, chargée à la demande (`cssLazy.js`) |
 | `style-meminspector.css` | Inspecteur mémoire et rapports de crash, chargé à la demande |
 | `style-secours.css` | Mode Secours, chargé à la demande |
+| `vue3d.css` | Vue 3D plein écran (prototype), chargée par `js/vue3d.js` à son ouverture |
 | `style-stats-globales.css` | Modale Statistiques du plan, chargée à la demande |
 
 ---
 
-## 🟢 L'application : modules JS (142 modules)
+## 🟢 L'application : modules JS (143 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -438,6 +439,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
+| `vue3d.js` | Vue 3D autour de la position du tracker (prototype, aucune entrée de menu ; three.js importé à la demande) — chargé par `scripts/smoke/checkup-vue-3d.js` |
 
 ---
 
@@ -656,6 +658,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue par plan |
+| `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, scène, avancer, butée contre un pilier, vue plongeante, contexte WebGL libéré ; mesures sur un plan dense synthétique |
 
 ---
 

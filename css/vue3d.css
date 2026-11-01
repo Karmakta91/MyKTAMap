@@ -1,0 +1,41 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+/* vue3d.css — vue 3D plein écran (js/vue3d.js), chargée avec elle à la demande : rien ici au démarrage.
+   Boutons de 52 px (pouce, gants) ; le pavé de déplacement se maintient appuyé (pointerdown / pointerup).
+   ⚠️ contrat : `touch-action: none` sur la scène, sinon le glisser pour tourner fait défiler ou zoomer la page. */
+
+.kta-vue3d {
+  position: fixed; inset: 0; z-index: 99999;
+  background: #000; color: var(--kta-texte);
+  user-select: none; -webkit-user-select: none;
+}
+.kta-v3d-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.kta-v3d-haut {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px;
+  display: flex; gap: 8px;
+}
+.kta-v3d-pad {
+  position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid; grid-template-columns: repeat(3, 52px); gap: 8px;
+}
+.kta-v3d-btn {
+  width: 52px; height: 52px; border-radius: 12px;
+  border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte);
+  font-size: 22px; line-height: 1; cursor: pointer; touch-action: none;
+}
+.kta-v3d-btn:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-v3d-btn[aria-pressed="true"] { border-color: var(--kta-accent); color: var(--kta-accent-texte); }
+.kta-v3d-btn:active { background: var(--kta-fond); }
+.kta-v3d-fermer { font-size: 20px; }
+
+.kta-v3d-stats {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px;
+  padding: 4px 8px; border-radius: 6px;
+  background: var(--kta-fond); color: var(--kta-texte-2);
+  font: 12px/1.4 monospace;
+}

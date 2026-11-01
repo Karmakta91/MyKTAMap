@@ -6,6 +6,7 @@
     "html2canvas": "1.4.1",
     "jspdf": "4.2.1",
     "jszip": "3.10.2",
-    "leaflet": "1.9.4"
+    "leaflet": "1.9.4",
+    "three": "0.186.1"
   }
 }

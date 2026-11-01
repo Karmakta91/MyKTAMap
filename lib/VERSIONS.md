@@ -15,6 +15,7 @@
 | **JSZip** | `jszip.min.js` | **3.10.2** | ouvre et produit les ZIP de plans — ⚠️ lit des **fichiers non fiables** (ZIP importés) | [stuk/jszip](https://github.com/Stuk/jszip) · [avis](https://github.com/advisories?query=jszip) |
 | **jsPDF** | `jspdf.umd.min.js` | **4.2.1** | exports PDF (plans, fiches Secours, historique) | [parallax/jsPDF](https://github.com/parallax/jsPDF) · [avis](https://github.com/advisories?query=jspdf) |
 | **html2canvas** | `html2canvas.min.js` | **1.4.1** | captures pour les exports image | [niklasvh/html2canvas](https://github.com/niklasvh/html2canvas) · [avis](https://github.com/advisories?query=html2canvas) |
+| **three.js** | `three/three.core.js`, `three/three.module.js`, `three/LICENSE` | **0.186.1** | vue 3D (prototype, rien de branché) : modules ES chargés **à la demande** par `js/vue3d.js` (`import()` dynamique), jamais au démarrage ; paquet livré sans fichier minifié (~2,1 Mo, ~420 Ko compressés) | [threejs.org](https://threejs.org) (MIT) · [avis](https://github.com/mrdoob/three.js/security/advisories) |
 | **Leaflet.ImageOverlay.Rotated** | `leaflet-imageoverlay-rotated.js` | adaptation **maison** (intégrée en v1.38.0 de l'app), d'après l'original | images et tuiles posées par 3 coins (calques calibrés, Vue OSM) | [IvanSanchez/Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated) (BSD 2) — code réécrit, à relire nous-mêmes |
 
 ## ⚠️ À savoir
@@ -23,6 +24,12 @@
   formulaires PDF et `addJS`, déni de service sur images PNG/GIF/BMP, injection HTML dans les méthodes de sortie…).
   L'app n'utilise que l'API de base (texte, formes, images JPEG/PNG issues de ses propres canvas, `save`), sans
   formulaire ni JavaScript dans le PDF.
+- **three.js** : seules les révisions (« 186 ») figurent dans le fichier ; `check-libs.js` compare la révision au
+  manifeste, le correctif (0.186.**1**) se vérifie en comparant les fichiers au paquet npm. Depuis la 0.18x le paquet
+  n'a plus de `build/*.min.js` ni de build UMD : on embarque `three.module.js` + `three.core.js` tels quels, chargés
+  par `import()` depuis un script classique (aucune *import map*, interdite par la CSP sans script en ligne). Les
+  extensions `examples/jsm/*` importent `"three"` par son nom nu : inutilisables sans import map, d'où une fusion
+  de géométries faite à la main dans `js/vue3d.js`.
 - **JSZip** ouvre des archives fournies par l'utilisateur ou par un serveur : toute faille de lecture de ZIP la
   concerne directement.
 

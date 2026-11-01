@@ -374,7 +374,9 @@ function _dansPolygone(pts, x, y) {
   return dedans;
 }
 
-function _pasBloqueParStructure(x0, y0, x1, y1) {
+// `niveau` (facultatif) : niveau testé à la place de celui du tracker (vue 3D, qui se déplace sans lui).
+function _pasBloqueParStructure(x0, y0, x1, y1, niveau) {
+  const lvl = Number.isInteger(niveau) ? niveau : trackerLevel;
   const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const enCours = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
   const sx0 = Math.min(x0, x1), sx1 = Math.max(x0, x1), sy0 = Math.min(y0, y1), sy1 = Math.max(y0, y1);
@@ -395,7 +397,7 @@ function _pasBloqueParStructure(x0, y0, x1, y1) {
           if (vus.has(s) || s === enCours) continue;
           vus.add(s);
           const poly = _OBST_TYPES[s.type];
-          if (multi && (Number.isInteger(s.level) ? s.level : 0) !== trackerLevel) continue;
+          if (multi && (Number.isInteger(s.level) ? s.level : 0) !== lvl) continue;
           const pts = s.points;
           if (pts.length < (poly ? 3 : 2)) continue;
           if (poly) {
@@ -944,6 +946,12 @@ window.getTrackingPositionEtat = function() {
 window.getTrackingActif = function() {
   return tracking === true;
 };
+
+// ⚠️ Règle du pas contre piliers, murs et fronts (la même que le suivi) : true si le segment est refusé.
+// Consommateur : js/vue3d.js (déplacement à l'écran et au clavier), qui ne recopie pas la géométrie.
+window.ktaPasBloqueParStructure = _pasBloqueParStructure;
+// Premier test du même pas : image de collision du plan (true = accessible ; sans image, tout passe).
+window.ktaEstAccessible = estAccessible;
 
 window.getTrackerLevel = function() {
   return trackerLevel;

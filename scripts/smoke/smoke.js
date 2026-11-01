@@ -83,6 +83,11 @@ async function jouer(navigateur) {
     if (m.type() === "warning" && /Clé manquante/.test(txt)) pb("i18n", txt.slice(0, 160));
   });
   page.on("pageerror", function (e) { pb("pageerror", String(e).slice(0, 220)); });
+  // Vue 3D (three.js, ~2 Mo) : chargée seulement à son ouverture, jamais par le démarrage ni par un écran du smoke.
+  page.on("request", function (r) {
+    if (!/\/lib\/three\/|\/js\/vue3d\.js|\/css\/vue3d\.css/.test(r.url())) return;
+    pb("chargement", "vue 3D demandée sans être ouverte : " + r.url().replace(BASE, ""));
+  });
 
   await page.addInitScript(function (pregates) {
     for (const k in pregates) localStorage.setItem(k, pregates[k]);
