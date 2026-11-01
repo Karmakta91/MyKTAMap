@@ -1183,11 +1183,15 @@
       }
       // Structures : LineString pour les fronts, Polygon pour piliers/mur ; même filtre de niveau.
       if (opts.include.structures && opts.data.structures) {
-        const structures = opts.data.structures.filter(function(s) {
+        let structures = opts.data.structures.filter(function(s) {
           if (structureTypesSet && !structureTypesSet.has(s.type)) return false;
           return _passeLevel(s, Number.isInteger(s.level) ? s.level : 0) &&
                  (!mlOn || (Number.isInteger(s.level) ? s.level : 0) === level);
         });
+        // Ordre du document = ordre de dessin le plus courant des lecteurs KML : murs sous piliers et fronts.
+        if (typeof window.ktaMursSousPiliers === "function") {
+          structures = window.ktaMursSousPiliers(structures, function (s) { return s; });
+        }
         if (structures.length > 0) {
           body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
           structures.forEach(function(s) {

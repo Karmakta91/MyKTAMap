@@ -632,6 +632,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
+| `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
@@ -767,6 +768,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **⛏️ Volume exploité** (`js/volumeExploite.js`) dans 📐 Mesure : secteur ♦️ moins les structures fermées (coupées au bord du secteur), remblais comptés à part, hauteur saisie et retenue par plan (2 m par défaut), niveau actif. `checkup-volume-exploite.js`.
 - **📏 Distance totale des tracés** passe du groupe 🛣️ Tracés au groupe 📐 Mesure.
 - **🧭 Tracker** : un pas hors des tracés ne traverse plus piliers, murs ni fronts de taille.
+- **🧱 Un mur toujours sous les piliers et fronts de son niveau** (`js/structures.js > ktaMursSousPiliers`) : sur la carte, dans les exports PNG / PDF (rapide et avancé), le KMZ, la Vue OSM et l'aperçu OSM de l'accueil, qu'il vienne de la session ou d'un calque et quel que soit l'ordre de chargement (un mur de session passait sur un pilier de calque, un calque rebasculé repassait ses murs dessus). Un type perso garde sa place. `checkup-mur-dessous.js`.
 - **Prises neutres** (`community-server-line.md` §3) : « quoi de neuf » dans la fenêtre 🚨 et pastille du bouton 🚨, ligne `garderOuverte` (« Tout marquer comme vu ») ; `suppressionLot` ci-dessous.
 - **Corrigés** : la bordure affichée d'un pilier perso dans la légende est celle que la carte dessine ; titre et pastille d'une fiche suivent le nom et la couleur de la légende ; « Tous les … » de la sélection multiple donne le nom d'un type perso et passe à la ligne ; « Publier la nouvelle version » montre son avancement dans la fenêtre ; « Annotations du plan » au lieu de « Mes annotations ». « Mettre à jour le plan » nomme un groupe de type perso par son nom de légende, plus par « cust-… » (`majPlan.js > _libelle`). Au dézoom, le contour des piliers et des murs s'affine (0,5 px au plus loin) au lieu de recouvrir tout le pilier (`structures.js > majLargeurFronts`, `checkup-bord-piliers.js`). Sur un plan multi-niveau, « 🖼️ Afficher le plan de base » est aussi en tête de ≡ Filtres → Calques d'image (jumelle de celle de Niveaux).
 
