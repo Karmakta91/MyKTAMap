@@ -2,6 +2,7 @@
   "version": "v2.22.0",
   "released": "2026-11-01",
   "notes": [
+    "🧊 Nouveau (bêta) : la vue 3D, dans le menu 🧭 Tracker. Tu marches dans le plan en relief depuis ta position, à la lampe frontale : piliers et murs, ou les galeries en couloirs de moellons, avec changement de niveau par les jonctions. Elle montre le plan, pas la galerie réelle.",
     "🗑️ Supprimer tout ce qui est dans une zone : 🧹 Effacer → 🎯 Sélectionner → ✏️ Par zone, tu traces la zone et tu choisis les familles d'objets. Un seul ⏪ rend tout.",
     "⛏️ Volume exploité dans 📐 Mesure (secteur moins piliers, hauteur au choix), 🟦 nouveau mur en ligne qui bloque l'itinéraire, et les contours fermés d'un import (même livrés en plusieurs lignes) se convertissent en zones ou en piliers.",
     "📏 Distance totale des tracés rangée dans 📐 Mesure ; le tracker ne traverse plus piliers, murs ni fronts de taille."
