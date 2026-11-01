@@ -567,7 +567,7 @@ La section repliable **🚫 Préférences d'évitement (optionnel)** de la fenê
 
 S'il n'existe aucun autre chemin, l'itinéraire passe quand même et l'affiche : **⚠️ Impossible d'éviter : …**. Tes préférences sont mémorisées par plan ; **🗑️ Reset tous les évitements** les efface.
 
-Les **zones inaccessibles ⛔**, elles, ne sont **jamais traversées**, sauf si tu décoches **Respecter les zones inaccessibles** (utile sur un relevé incomplet). Je suis perdu et le Mode Secours les respectent toujours.
+Les **zones inaccessibles ⛔**, elles, ne sont **jamais traversées**, sauf si tu décoches **Respecter les zones inaccessibles et les murs (ligne)** (utile sur un relevé incomplet). Les **murs (ligne)** 🟦 suivent la même règle. Je suis perdu et le Mode Secours les respectent toujours.
 
 ---
 
@@ -721,25 +721,28 @@ Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone :
 
 Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **son niveau**, et reste prise en compte même si tu masques le calque des zones.
 
-La case **Respecter les zones inaccessibles** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
+La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
 
 ---
 
 ## 🏛️ Structures (piliers, murs, fronts de taille)
 
-Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Elles n'ont aucun effet sur l'itinéraire.
+Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Une seule compte pour l'itinéraire : le **mur (ligne)**, qui le coupe comme une zone ⛔ inaccessible ; les autres n'ont aucun effet.
 
 | Type | Forme | Couleur |
 |---|---|---|
 | 🟡 **Pilier 1ère masse** | surface fermée | jaune |
 | 🟠 **Pilier 2e masse** | surface fermée | orange |
 | 🔵 **Mur** (pierre sèche, maçonnerie) | surface fermée | bleu |
+| 🟦 **Mur (ligne)** — un mur levé en trait, souvent à l'import SIG | ligne | trait bleu |
 | 🟨 **Front de taille 1ère masse** | ligne | trait jaune |
 | 🟧 **Front de taille 2e masse** | ligne | trait orange |
 
-Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille ou un mur (ligne) (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
 
 Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **un niveau sous le niveau actif** ; les autres prennent le niveau actif.
+
+Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itinéraire passe ailleurs, ou échoue en le disant. La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire le relâche avec les zones ⛔ ; le Mode Secours et « Je suis perdu » le respectent toujours. Renommé ou recoloré dans ≡ Légende, il garde ce rôle. Un mur arrivé en **front de taille** ou en ligne d'un import se convertit en mur (ligne) depuis sa fiche (🧹 Effacer et corriger).
 
 ---
 

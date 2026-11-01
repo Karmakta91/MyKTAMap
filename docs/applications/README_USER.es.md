@@ -567,7 +567,7 @@ La sección plegable **🚫 Preferencias de evitación (opcional)** de la ventan
 
 Si no existe ningún otro camino, el itinerario pasa igualmente y lo indica: **⚠️ Imposible evitar: …**. Tus preferencias se recuerdan por mapa; **🗑️ Restablecer todas las evitaciones** las borra.
 
-Las **zonas inaccesibles ⛔**, en cambio, **nunca se atraviesan**, salvo si desmarcas **Respetar las zonas inaccesibles** (útil en un levantamiento incompleto). Estoy perdido y el Modo Rescate las respetan siempre.
+Las **zonas inaccesibles ⛔**, en cambio, **nunca se atraviesan**, salvo si desmarcas **Respetar las zonas inaccesibles y los muros (línea)** (útil en un levantamiento incompleto). Los **muros (línea)** 🟦 siguen la misma regla. Estoy perdido y el Modo Rescate las respetan siempre.
 
 ---
 
@@ -721,25 +721,28 @@ Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve
 
 Una zona ⛔ prohíbe al itinerario atravesarla (derrumbe reciente, agua profunda…): el cálculo busca otro camino, o falla y lo dice. Solo bloquea **su nivel**, y sigue contando aunque ocultes la capa de zonas.
 
-La casilla **Respetar las zonas inaccesibles** de la ventana Itinerario (marcada de origen) permite relajarla. El **Modo Rescate** y «Estoy perdido» la respetan siempre. Para «evitar si es posible», usa mejor las **🚫 Preferencias de evitación** del itinerario.
+La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario (marcada de origen) permite relajarla. El **Modo Rescate** y «Estoy perdido» la respetan siempre. Para «evitar si es posible», usa mejor las **🚫 Preferencias de evitación** del itinerario.
 
 ---
 
 ## 🏛️ Estructuras (pilares, muros, frentes de cantera)
 
-Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. No tienen ningún efecto en el itinerario.
+Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. Solo una cuenta para el itinerario: el **muro (línea)**, que lo corta como una zona ⛔ inaccesible; las demás no tienen ningún efecto.
 
 | Tipo | Forma | Color |
 |---|---|---|
 | 🟡 **Pilar 1ª masa** | superficie cerrada | amarillo |
 | 🟠 **Pilar 2ª masa** | superficie cerrada | naranja |
 | 🔵 **Muro** (piedra seca, mampostería) | superficie cerrada | azul |
+| 🟦 **Muro (línea)** — un muro levantado como trazo, a menudo en una importación SIG | línea | trazo azul |
 | 🟨 **Frente de cantera 1ª masa** | línea | trazo amarillo |
 | 🟧 **Frente de cantera 2ª masa** | línea | trazo naranja |
 
-Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera o un muro (línea) (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **un nivel por debajo del nivel activo**; los demás toman el nivel activo.
+
+Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerario pasa por otro lado, o falla y lo dice. La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario lo relaja junto con las zonas ⛔; el Modo Rescate y «Estoy perdido» lo respetan siempre. Renombrado o recoloreado en ≡ Leyenda, conserva ese papel. Un muro llegado como **frente de cantera** o como línea de una importación se convierte en muro (línea) desde su ficha (🧹 Borrar y corregir).
 
 ---
 
