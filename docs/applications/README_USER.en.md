@@ -820,7 +820,7 @@ The batch does not mix lines and closed surfaces (the banner refuses and explain
 
 ### ✏️ Select by area, 🗑️ delete as a batch
 
-The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector:
+The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector. You can also get there without going through an object: in 🛣️ Paths, ⬛ Zones or 🏛️ Structures, **🧹 Erase → 🎯 Select** then **✏️ By area** in the bottom banner: drawing the area starts right away, and the confirmation only has the group's family ticked in advance (the others are still offered, unticked).
 
 - **✏️ Select by area**: tap the corners of the area on the map (like a ♦️ Surface measure; **↩️ Last corner** fixes a missed tap), then **✅ Use this area**. Your current ♦️ measure is not lost: it comes back as it was.
 - Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **displayed level**. An object straddling the edge is not taken, and nothing is ever cut.
@@ -828,7 +828,7 @@ The same banner can also **delete** in one go, for example everything an import 
 - **🗑️ Delete (N)** opens a confirmation with one checkbox per family (📍 Points, 〰️ Paths, 🟦 Areas, 🧱 Structures) and their count: untick a family to keep it.
 - The window also tells you about: the points' **photos** (they are not erased, they become “without a point” in 🧰 Tools > 📸 My photos), the **data layer objects** seen in the area (never deleted: switch the layer to **🔄 Edit** first), and **portal points** (link to another map), always kept.
 - Never taken: the computed route, links between levels and measurements.
-- **A single ⏪** brings back everything that was deleted. On a connected installation, the deletion goes to the team like a one-by-one deletion.
+- **A single ⏪** brings back everything that was deleted. On a connected installation, the deletion goes to the team like a one-by-one deletion; the installation may also **refuse** it before the confirmation (for example too many objects of other members without the right to manage the map): a message says so and nothing is deleted.
 
 **✅ Convert (N)** only counts objects of the same shape as the first one (lines or surfaces): an area that also took points or surfaces leaves them out of the conversion.
 

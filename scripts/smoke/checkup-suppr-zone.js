@@ -9,7 +9,8 @@
 // Vérifie : objet dedans pris, à cheval et autre niveau non pris, objets de calque ignorés et comptés, point avec
 // photo (photo gardée « sans point », annoncée), re-clic qui retire, mesure ♦️ d'avant rendue, traces de
 // suppression posées puis retirées par le ⏪, une case de famille décochée qui garde sa famille, ✅ Convertir
-// compté sur les seuls convertibles.
+// compté sur les seuls convertibles ; entrée directe « ✏️ Par zone » des 3 modes « supprimer au clic » (sans
+// graine, famille du mode seule cochée) ; prise d'extension factice qui refuse (rien supprimé, alerte) puis permet.
 // 🩸 check-selection-multi.js teste la règle dans un `vm` ; seul ce parcours voit le bandeau, l'outil de mesure,
 // ktaConfirm, l'historique, les traces et le stockage des photos réels.
 // Usage : node scripts/smoke/checkup-suppr-zone.js (SMOKE_PORT pour une autre copie) · code : js/selectionZone.js,
@@ -137,6 +138,30 @@ async function confirmer(page, decocher) {
     b.click();
     return res;
   }, decocher || []);
+}
+
+// Zone tracée directement (sélection sans graine : le tracé est déjà armé).
+async function zoneDirecte(page) {
+  await cliquer(page, 0, 0);
+  await cliquer(page, 200, 0);
+  await cliquer(page, 200, 200);
+  await cliquer(page, 0, 200);
+  await page.waitForTimeout(200);
+  await page.evaluate(function () { document.getElementById("kta-selm-zone-ok").click(); });
+  await page.waitForTimeout(200);
+}
+
+// Fenêtre ouverte par 🗑️ Supprimer : cases et texte, sans cliquer.
+async function lireFenetre(page) {
+  await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 10000);
+  await page.waitForTimeout(500);   // garde anti-double-clic de ktaConfirm
+  return page.evaluate(function () {
+    const boite = document.getElementById("kta-confirm-oui").closest(".kta-readme-modal-boite");
+    return { texte: boite.textContent, ok: document.getElementById("kta-confirm-oui").textContent,
+      cases: Array.from(boite.querySelectorAll("[data-kta-selm-fam]")).map(function (c) {
+        return c.getAttribute("data-kta-selm-fam") + ":" + c.checked + ":" + c.disabled;
+      }) };
+  });
 }
 
 (async function main() {
@@ -296,6 +321,96 @@ async function confirmer(page, decocher) {
     await page.evaluate(function () { document.getElementById("kta-selm-annuler") && window.SelectionMulti.fermer(); });
     const m = await page.evaluate(function () { return { n: window.getMeasurePointsSurface().length, on: window.modeMesure }; });
     verifier(m.n === 3 && m.on === false, "fermer pendant le tracé : la mesure ♦️ d'avant est rendue", m);
+
+    // ── 7. Entrée directe « ✏️ Par zone » depuis les 3 modes « supprimer au clic » ──
+    const MODES = [["roads", "activerModeSuppressionTraceClic", "kta-supp-trace-floater"],
+      ["zones", "activerModeSuppressionZoneClic", "kta-supp-zone-floater"],
+      ["structures", "activerModeSuppressionStructureClic", "kta-supp-structure-floater"]];
+    for (const m of MODES) {
+      const fam = m[0];
+      const r = await page.evaluate(function (m) {
+        window[m[1]]();
+        const fl = document.getElementById(m[2]);
+        const b = fl && fl.querySelector('[data-kta-supp-zone="' + m[0] + '"]');
+        if (!b) return { bouton: false };
+        const texte = b.textContent;
+        b.click();
+        const conv = document.getElementById("kta-selm-ok");
+        return { bouton: true, texte: texte, floater: !!document.getElementById(m[2]),
+          actif: window.SelectionMulti.estActif(), vide: window.SelectionMulti.liste().length === 0,
+          trace: window.KtaSelectionZone.enCours(), mode: window.getMeasureMode(),
+          convertir: conv ? getComputedStyle(conv).display : "absent" };
+      }, m);
+      verifier(r.bouton && /Par zone/.test(r.texte), fam + " : le mode « supprimer au clic » porte « ✏️ Par zone »", r);
+      verifier(r.floater === false, fam + " : « Par zone » quitte le mode « supprimer au clic »", r);
+      verifier(r.actif && r.vide && r.trace && r.mode === "surface",
+        fam + " : sélection SANS graine ouverte, tracé de la zone lancé d'emblée", r);
+      verifier(r.convertir === "none", fam + " : ✅ Convertir masqué sans graine", r.convertir);
+      await zoneDirecte(page);
+      const n = await page.evaluate(function () { return window.SelectionMulti.liste().length; });
+      verifier(n === 5, fam + " : la zone prend les 5 objets dedans (toutes familles)", n);
+      await page.evaluate(function () { document.getElementById("kta-selm-suppr").click(); });
+      const f = await lireFenetre(page);
+      const attendu = ["editorPoints", "roads", "zones", "structures"].map(function (x) {
+        return x + ":" + (x === fam) + ":false";
+      });
+      verifier(JSON.stringify(f.cases) === JSON.stringify(attendu),
+        fam + " : seule la famille du mode est cochée, les autres proposées décochées", f.cases);
+      if (fam === "roads") {
+        verifier(/\(1\)/.test(f.ok), "roads : bouton « Supprimer (1) »", f.ok);
+        await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
+        await page.waitForTimeout(800);
+        const e = await etat(page);
+        verifier(!e.objets.rd_csz_in && !!e.objets.zn_csz_in && !!e.objets.st_csz_in && !!e.objets.pt_csz_photo,
+          "roads : seul le tracé part, le reste de la zone reste", e.objets);
+        await page.evaluate(function () { window.HistoryManager.undo(); });
+        await page.waitForTimeout(500);
+      } else {
+        await page.evaluate(function () {
+          document.getElementById("kta-confirm-non").click();
+          window.SelectionMulti.fermer();
+        });
+        await page.waitForTimeout(300);
+      }
+    }
+
+    // ── 8. Prise d'extension factice (plan traité comme un plan d'extension) : refuse, puis permet ──
+    await page.evaluate(function () {
+      const id = window._currentLoadedPlanId, R = window.PlanRegistry, orig = R.findById;
+      window.__cszFind = orig;
+      R.findById = function (x) { return x === id ? { type: "ext", extId: "csz" } : orig.apply(R, arguments); };
+      window.__cszRep = { permis: false, message: "Refus fictif de la prise" };
+      window.KtaExtensions.register({ nom: "csz-test", apiVersion: 1, suppressionLot: function (idExt, objets) {
+        window.__cszVu = { idExt: idExt, n: objets.length, uids: objets.map(function (o) { return o.uid; }).sort() };
+        return window.__cszRep;
+      } });
+      window.SelectionMulti.ouvrirZone();
+    });
+    await zoneDirecte(page);
+    const avantRefus = await etat(page);
+    await page.evaluate(function () { document.getElementById("kta-selm-suppr").click(); });
+    const fr = await lireFenetre(page);
+    verifier(fr.cases.length === 0 && /Refus fictif de la prise/.test(fr.texte),
+      "prise qui refuse : alerte avec son message, AUCUNE fenêtre de confirmation", fr);
+    await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
+    await page.waitForTimeout(500);
+    const vu = await page.evaluate(function () { return window.__cszVu; });
+    verifier(vu && vu.idExt === "csz" && vu.n === 5 && vu.uids.indexOf("rd_csz_in") >= 0,
+      "prise consultée avec l'id de l'extension et les 5 objets (uid)", vu);
+    const apresRefus = await etat(page);
+    verifier(JSON.stringify(apresRefus) === JSON.stringify(avantRefus),
+      "prise qui refuse : rien supprimé, aucune trace, aucune entrée d'historique", apresRefus);
+    await page.evaluate(function () { window.__cszRep = Promise.resolve({ permis: true }); });
+    await page.evaluate(function () { document.getElementById("kta-selm-suppr").click(); });
+    const fp = await lireFenetre(page);
+    verifier(fp.cases.length === 4, "prise qui permet : la fenêtre de confirmation s'ouvre", fp.cases);
+    await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
+    await page.waitForTimeout(800);
+    const e4 = await etat(page);
+    verifier(["pt_csz_photo", "pt_csz_in2", "rd_csz_in", "st_csz_in", "zn_csz_in"].every(function (u) { return !e4.objets[u]; }),
+      "prise qui permet : les 5 objets sont supprimés", e4.objets);
+    await page.evaluate(function () { window.HistoryManager.undo(); window.PlanRegistry.findById = window.__cszFind; });
+    await page.waitForTimeout(500);
 
     verifier(erreurs.length === 0, "aucune erreur de page ni clé i18n manquante", erreurs);
   } catch (e) {

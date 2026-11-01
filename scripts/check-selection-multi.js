@@ -362,7 +362,17 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   t("câblage : selectionZone.js chargé après selectionMulti.js (géométrie partagée)",
     IDX.indexOf("js/selectionMulti.js") >= 0 && IDX.indexOf("js/selectionMulti.js") < IDX.indexOf("js/selectionZone.js"));
   t("câblage : selectionZone.js précaché", fs.readFileSync("sw.js", "utf8").indexOf('"./js/selectionZone.js"') >= 0);
-  ["selm.supprimer", "selm.zone.bouton", "selm.zone.trace", "selm.zone.prendre", "selm.suppr.fam.editorPoints",
+  t("sans graine : ouvrirZone exposé, ✅ Convertir masqué sans modale qui attend le lot, tracé lancé d'emblée",
+    typeof SM.ouvrirZone === "function" && /if \(ok && !_onValide\) ok\.style\.display = "none";/.test(SRC) &&
+    /if \(!ouvrir\(null, null\)\) return false;[\s\S]{0,300}_commencerZone\(\);/.test(SRC));
+  const ITF = fs.readFileSync("js/interface.js", "utf8");
+  t("câblage : « ✏️ Par zone » dans les 3 modes « supprimer au clic », mode quitté, famille du mode cochée",
+    /_boutonSuppParZone\(_suppTraceFloater, "roads", _desactiverModeSuppressionTrace\)/.test(ITF) &&
+    /_boutonSuppParZone\(_suppZoneFloater, "zones", _desactiverModeSuppressionZone\)/.test(ITF) &&
+    /_boutonSuppParZone\(_suppStructureFloater, "structures", _desactiverModeSuppressionStructure\)/.test(ITF) &&
+    /quitterMode\(\);\s*\n?\s*if \(window\.SelectionMulti[^\n]*\n\s*window\.SelectionMulti\.ouvrirZone\(\{ familles: \[famille\] \}\)/.test(
+      ITF.replace(/\r\n/g, "\n")));
+  ["selm.supprimer", "ui.suppClic.parZone", "selm.suppr.refuseExtension", "selm.zone.bouton", "selm.zone.trace", "selm.zone.prendre", "selm.suppr.fam.editorPoints",
    "selm.suppr.fam.roads", "selm.suppr.fam.zones", "selm.suppr.fam.structures", "selm.suppr.photos",
    "selm.suppr.calques", "selm.suppr.ok", "selm.suppr.histoire", "selm.suppr.bilan"].forEach(function (k) {
     ["fr", "en", "es"].forEach(function (l) {

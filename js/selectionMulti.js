@@ -9,6 +9,8 @@
 // =====================================================================
 // La modale de conversion ouvre ce mode ; l'utilisateur désigne des objets (clic, « tous du type », ou
 // ✏️ zone dessinée : js/selectionZone.js), puis ✅ Convertir (la modale revient avec le lot) ou 🗑️ Supprimer.
+// Sans graine (ouvrirZone : bouton « ✏️ Par zone » des modes « supprimer au clic ») : aucune ouverture imposée,
+//   ✅ Convertir masqué (pas de modale qui attend le lot), le tracé de la zone démarre tout de suite.
 // 🩸 La compatibilité est l'OUVERTURE, pas la famille : tracés et fronts (lignes) se mêlent ;
 //   ligne + surface fermée est refusé au CLIC (aucune cible commune), et le refus est EXPLIQUÉ. Une zone prend
 //   tout ce qu'elle contient (points compris) : ✅ Convertir ne passe que les objets de l'ouverture de la graine,
@@ -17,9 +19,8 @@
 // 🩸 Surbrillance = calque à part, `interactive: false`, jamais un setStyle sur les layers (pas
 //   de registre objet → layer fiable ; un re-rendu écraserait les styles).
 // Couleur = accent d'interaction de la charte (état d'interface, pas un style de type).
-// Expose : window.SelectionMulti { ouvrir(graine, onValide), fermer, liste, estActif } et les
-//   helpers géométriques window.ktaPointInPolygon / ktaDistPointSegment (foyer canonique ; des
-//   copies locales anciennes subsistent dans d'autres modules).
+// Expose : window.SelectionMulti { ouvrir(graine, onValide), ouvrirZone({ familles? }), fermer, liste, estActif }
+//   et window.ktaPointInPolygon / ktaDistPointSegment (foyer canonique ; d'anciennes copies locales subsistent).
 // Garde-fou : scripts/check-selection-multi.js
 (function () {
   "use strict";
@@ -150,6 +151,7 @@
   let _floater = null;
   let _onValide = null;
   let _calque = [];              // objets de calque vus dans les zones (ignorés, comptés à la confirmation)
+  let _familles = null;          // familles cochées d'emblée dans la confirmation (null = toutes)
 
   function _dansSel(obj) {
     for (let i = 0; i < _sel.length; i++) if (_sel[i].obj === obj) return i;
@@ -215,6 +217,7 @@
     }
     if (msg) msg.textContent = message || _t("selm.compte", { n: _sel.length });
     const ok = _floater.querySelector("#kta-selm-ok");
+    if (ok && !_onValide) ok.style.display = "none";
     if (ok) {
       const nc = _convertibles().length;
       ok.textContent = _t("selm.valider", { n: nc });
@@ -286,7 +289,8 @@
 
   function _supprimer() {
     if (!window.KtaSelectionZone || !_sel.length) return;
-    window.KtaSelectionZone.confirmerEtSupprimer(_sel.slice(), _calque.length).then(function (bilan) {
+    window.KtaSelectionZone.confirmerEtSupprimer(_sel.slice(), _calque.length,
+      _familles ? { familles: _familles } : undefined).then(function (bilan) {
       if (bilan && bilan.supprimes) fermer();
     });
   }
@@ -310,20 +314,25 @@
     _dernier = null;
     _ouvertRef = null;
     _onValide = null;
+    _familles = null;
   }
 
   // `graine` = { famille, obj } de départ : donne l'ouverture de référence ET compte comme premier
-  // sélectionné.
+  // sélectionné. `graine` null : sélection vide, sans ouverture imposée (le clic mêle lignes et surfaces).
   function ouvrir(graine, onValide) {
-    if (!window.map || !graine || !graine.obj) return false;
-    const ouvert = _ouvertureDe(graine.famille, graine.obj.type);
-    if (ouvert === null) return false;
+    if (!window.map) return false;
+    let ouvert = null;
+    if (graine) {
+      if (!graine.obj) return false;
+      ouvert = _ouvertureDe(graine.famille, graine.obj.type);
+      if (ouvert === null) return false;
+    }
     fermer();
 
     _actif = true;
     _ouvertRef = ouvert;
-    _sel = [{ famille: graine.famille, obj: graine.obj }];
-    _dernier = _sel[0];
+    _sel = graine ? [{ famille: graine.famille, obj: graine.obj }] : [];
+    _dernier = _sel[0] || null;
     _onValide = (typeof onValide === "function") ? onValide : null;
 
     if (window.L && window.L.layerGroup) {
@@ -409,8 +418,22 @@
     return true;
   }
 
+  // Sélection sans graine, tracé de la zone lancé d'emblée. `opts.familles` : familles cochées d'emblée dans la
+  // confirmation de 🗑️ Supprimer (les autres restent proposées, décochées). 🔒 Plan en lecture seule : rien.
+  function ouvrirZone(opts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!ouvrir(null, null)) return false;
+    const f = opts && Array.isArray(opts.familles) ? opts.familles.filter(function (x) {
+      return ["editorPoints", "roads", "zones", "structures"].indexOf(x) >= 0;
+    }) : [];
+    _familles = f.length ? f : null;
+    _commencerZone();
+    return true;
+  }
+
   window.SelectionMulti = {
     ouvrir:   ouvrir,
+    ouvrirZone: ouvrirZone,
     fermer:   fermer,
     liste:    function () { return _sel.slice(); },
     estActif: function () { return _actif; },

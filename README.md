@@ -759,6 +759,8 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 #### Prochaine version — non publiée (branche `Karma_dev`)
 
 - **✏️ Sélectionner par zone, 🗑️ supprimer en lot** (`js/selectionZone.js`, `js/selectionMulti.js`) : dans la sélection multiple 🎯, une zone tracée avec l'outil ♦️ Surface (la mesure en cours revient ensuite) ajoute les objets **entièrement** dedans, au niveau affiché, points compris ; **🗑️ Supprimer (N)** confirme avec une case par famille et son nombre, annonce photos (gardées « sans point »), portails gardés et objets de calque ignorés ; un seul ⏪ rend tout, une trace de suppression par objet. **✅ Convertir (N)** compte les seuls objets de même forme que le premier. `check-selection-multi.js` §8, `checkup-suppr-zone.js`.
+- **✏️ Par zone depuis la suppression au clic** (`js/interface.js`, `js/selectionMulti.js`) : le bandeau de **🧹 Effacer → 🎯 Sélectionner** des groupes 🛣️ Tracés, ⬛ Zones et 🏛️ Structures porte **✏️ Par zone** : il quitte le mode, ouvre la sélection multiple sans objet de départ (✅ Convertir masqué) et lance le tracé de la zone ; la confirmation n'a d'avance que la famille du groupe cochée.
+- **Prise neutre `suppressionLot`** (`js/ktaExtensions.js`, `js/selectionZone.js`) : sur un plan d'extension, la suppression en lot la consulte avant sa confirmation (objets cochés, uid et famille), puis au clic si les cases ont changé ; un refus ne supprime rien et s'affiche. Sans extension : rien ne change. `check-extensions.js` §6 nonies.
 
 #### v2.21.1 (30/10/2026) — Outils de dessin qui s'enchaînent, front de taille plus fin (branche `Karma_dev`)
 

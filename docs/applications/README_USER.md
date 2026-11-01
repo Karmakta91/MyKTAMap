@@ -820,7 +820,7 @@ Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et expliqu
 
 ### ✏️ Sélectionner par zone, 🗑️ supprimer en lot
 
-Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur :
+Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur. On y arrive aussi sans passer par un objet : dans 🛣️ Tracés, ⬛ Zones ou 🏛️ Structures, **🧹 Effacer → 🎯 Sélectionner** puis **✏️ Par zone** dans le bandeau du bas : le tracé de la zone démarre tout de suite, et la confirmation n'a d'avance que la famille du groupe cochée (les autres restent proposées, décochées).
 
 - **✏️ Sélectionner par zone** : tape les sommets de la zone sur la carte (comme une mesure ♦️ Surface ; **↩️ Dernier sommet** corrige un tap raté), puis **✅ Prendre la zone**. Ta mesure ♦️ en cours n'est pas perdue : elle revient telle quelle.
 - Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux du **niveau affiché**. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.
@@ -828,7 +828,7 @@ Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un impo
 - **🗑️ Supprimer (N)** ouvre une confirmation avec une case par famille (📍 Points, 〰️ Tracés, 🟦 Zones, 🧱 Structures) et leur nombre : décoche une famille pour la garder.
 - La fenêtre annonce aussi : les **photos** des points (elles ne sont pas effacées, elles passent « sans point » dans 🧰 Outils > 📸 Mes photos), les **objets d'un calque de données** vus dans la zone (jamais supprimés : passe le calque en **🔄 Modifier** d'abord), et les **points portails** (liaison vers un autre plan), toujours gardés.
 - Jamais pris : l'itinéraire calculé, les jonctions entre niveaux et les mesures.
-- **Un seul ⏪** rend tout ce qui a été supprimé. Sur une installation reliée, la suppression part vers l'équipe comme une suppression à l'unité.
+- **Un seul ⏪** rend tout ce qui a été supprimé. Sur une installation reliée, la suppression part vers l'équipe comme une suppression à l'unité ; l'installation peut aussi la **refuser** avant la confirmation (par exemple trop d'objets d'autres membres sans le droit de gérer le plan) : un message le dit et rien n'est supprimé.
 
 **✅ Convertir (N)** ne compte que les objets de même forme que le premier (lignes ou surfaces) : une zone qui a aussi pris des points ou des surfaces les laisse de côté pour la conversion.
 

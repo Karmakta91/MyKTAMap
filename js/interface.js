@@ -3220,6 +3220,23 @@ function _onSuppPopupOpen(e) {
     console.warn("[Suppr] rejeu clic via popupopen échoué :", err);
   }
 }
+// « ✏️ Par zone » des trois modes « supprimer au clic » : quitte le mode (garde des popups comprise), puis la sélection
+// multiple sans graine trace une zone ; la confirmation n'a d'emblée que la famille du mode cochée.
+function _boutonSuppParZone(floater, famille, quitterMode) {
+  const annuler = floater.querySelector("button");
+  const b = document.createElement("button");
+  b.className = "kta-btn kta-btn-ghost";
+  b.type = "button";
+  b.setAttribute("data-kta-supp-zone", famille);
+  b.textContent = window.I18n.t("ui.suppClic.parZone");
+  b.addEventListener("click", function() {
+    quitterMode();
+    if (window.SelectionMulti && typeof window.SelectionMulti.ouvrirZone === "function") {
+      window.SelectionMulti.ouvrirZone({ familles: [famille] });
+    }
+  });
+  floater.insertBefore(b, annuler);
+}
 function _installerSuppPopupGuard() {
   if (_suppPopupGuardActif || !window.map) return;
   _suppPopupGuardActif = true;
@@ -3288,6 +3305,7 @@ window.activerModeSuppressionTraceClic = function() {
 
   document.getElementById("kta-supp-trace-annuler")
     .addEventListener("click", _desactiverModeSuppressionTrace);
+  _boutonSuppParZone(_suppTraceFloater, "roads", _desactiverModeSuppressionTrace);
 
   _installerSuppPopupGuard();
 
@@ -3402,6 +3420,7 @@ window.activerModeSuppressionZoneClic = function() {
 
   document.getElementById("kta-supp-zone-annuler")
     .addEventListener("click", _desactiverModeSuppressionZone);
+  _boutonSuppParZone(_suppZoneFloater, "zones", _desactiverModeSuppressionZone);
 
   _installerSuppPopupGuard();
 
@@ -3520,6 +3539,7 @@ window.activerModeSuppressionStructureClic = function() {
 
   document.getElementById("kta-supp-structure-annuler")
     .addEventListener("click", _desactiverModeSuppressionStructure);
+  _boutonSuppParZone(_suppStructureFloater, "structures", _desactiverModeSuppressionStructure);
 
   _installerSuppPopupGuard();
 

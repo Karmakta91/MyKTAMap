@@ -1621,7 +1621,12 @@ de calque) et `scripts/smoke/checkup-recoller-piliers.js` (sélection multiple, 
 `js/selectionMulti.js` arme un mode de désignation sur la carte (clic, « ➕ Tous les \<type\> », zone dessinée) ;
 `KtaConvertir.convertirLot(items, familleCible, typeCible)` convertit le lot, `KtaSelectionZone.supprimerLot` le supprime
 (`js/selectionZone.js`, ci-dessous). On y entre par la fenêtre 🔄 Convertir d'un objet (la « graine », premier
-sélectionné, qui fixe l'ouverture de référence).
+sélectionné, qui fixe l'ouverture de référence), ou **sans graine** par le bouton **✏️ Par zone** des trois modes
+« supprimer au clic » (`interface.js > _boutonSuppParZone`, bandeaux tracé / zone / structure) : le mode est quitté
+(garde des popups comprise), `SelectionMulti.ouvrirZone({ familles: [famille du groupe] })` ouvre une sélection vide,
+sans ouverture imposée (le clic mêle lignes et surfaces), et lance le tracé de la zone. Sans graine, **✅ Convertir est
+masqué** (aucune fenêtre n'attend le lot) ; la confirmation de 🗑️ n'a d'avance que la famille du groupe cochée, les
+autres restent proposées, décochées.
 
 **🩸 La règle porte sur l'OUVERTURE, pas sur la famille.** Un tracé et un front de taille sont tous deux des **lignes** :
 les mélanger est légitime, et c'est LE cas utile — 40 fronts mal typés qui deviennent des galeries. Ce qu'on refuse, c'est
@@ -1685,7 +1690,7 @@ La zone prend tout ce qu'elle contient, lignes et surfaces mêlées, points comp
 (N)** ne passe que `_convertibles()` (vecteurs de l'ouverture de la graine), **🗑️ Supprimer (N)** tout le lot. La règle
 d'ouverture reste celle du **clic** ; un point se vise au clic (ajout ou retrait), jamais refusé pour son ouverture.
 
-**🗑️ Suppression en lot** : `confirmerEtSupprimer(items, nCalque)` ouvre `ktaConfirm` avec une case par famille et son
+**🗑️ Suppression en lot** : `confirmerEtSupprimer(items, nCalque, { familles? })` ouvre `ktaConfirm` avec une case par famille et son
 nombre (les cases vivent dans le message, branchées sur la fenêtre montée ; le bouton se recompte), et annonce : niveau,
 photos des points (comptées par `MyKTAMapPhotos.listerPlan`), points **portails** gardés (une liaison inter-plan se purge
 sans retour possible par ⏪), objets de calque ignorés. `supprimerLot({ famille: [obj] })` : 🔒 refusé en lecture seule
@@ -1693,8 +1698,11 @@ sans retour possible par ⏪), objets de calque ignorés. `supprimerLot({ famill
 puis uid, une écriture par famille touchée, `RoadGraph.invalidate` si tracés, **une** entrée `HistoryManager.record` — qui
 pose les **traces de suppression** par diff des uid (`_tracerDepuis`), exactement comme une suppression unitaire (pas de
 trace pour une copie de calque). Photos : **gardées**, fiche figée (`majFichesPoints`) comme `supprimerPointEditor` ; le ⏪
-rend le point et son uid, donc ses photos. La synchro d'une extension suit par `changementsDepuis(ts).tombstones` ; le
-community ne consulte aucune prise avant (contrairement à « Effacer la session » sur plan partagé).
+rend le point et son uid, donc ses photos. La synchro d'une extension suit par `changementsDepuis(ts).tombstones`.
+🔒 Sur un plan d'extension, la prise neutre **`KtaExtensions.suppressionLot(registreId, [{ famille, uid }])`**
+(`community-server-line.md` §3) est consultée **avant** la fenêtre, avec les objets cochés d'emblée, puis relue au clic si
+les cases ont changé : refus = `ktaAlerte` (message de l'extension, sinon `selm.suppr.refuseExtension`) et rien n'est
+supprimé ; erreur, rejet ou plus de 8 s = refus. Sans extension ou plan local : rien ne change.
 
 **Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
 Leaflet** ; §8 : `dansZone` (dedans, à cheval, autre niveau, jonction, calque compté ou en Modifier) et `supprimerLot`
