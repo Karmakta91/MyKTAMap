@@ -1,9 +1,9 @@
 {
-  "version": "v2.21.1",
-  "released": "2026-10-30",
+  "version": "v2.22.0",
+  "released": "2026-11-01",
   "notes": [
-    "✏️ Zones, piliers, murs et fronts de taille s'enchaînent : après avoir fermé une forme, l'outil reste allumé pour dessiner la suivante. Re-appuie sur le type pour l'éteindre.",
-    "🟨 Front de taille dessiné plus fin (0,8 m au lieu de 1,5 m), à l'écran comme dans les exports et la Vue OSM.",
-    "🆘 Aussi corrigés : le Mode Secours sur un plan à plusieurs niveaux, l'échelle recalibrée reprise par « Mettre à jour le plan » du Générateur, les conditions d'utilisation refusables avant d'entrer."
+    "🗑️ Supprimer tout ce qui est dans une zone : 🧹 Effacer → 🎯 Sélectionner → ✏️ Par zone, tu traces la zone et tu choisis les familles d'objets. Un seul ⏪ rend tout.",
+    "⛏️ Volume exploité dans 📐 Mesure (secteur moins piliers, hauteur au choix), 🟦 nouveau mur en ligne qui bloque l'itinéraire, et les contours fermés d'un import (même livrés en plusieurs lignes) se convertissent en zones ou en piliers.",
+    "📏 Distance totale des tracés rangée dans 📐 Mesure ; le tracker ne traverse plus piliers, murs ni fronts de taille."
   ]
 }

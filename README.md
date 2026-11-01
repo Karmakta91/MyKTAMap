@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.21.1` (30/10/2026)
+## 📦 Version courante — `v2.22.0` (01/11/2026)
 
-> ✏️ **v2.21.1 — Outils de dessin qui s'enchaînent, front de taille plus fin** : après la fermeture d'une zone, d'un pilier, d'un mur ou d'un front, l'outil reste armé ; front de taille à 0,8 m (écran, exports, Vue OSM). Installation auto-hébergée : écran d'arrivée = la ville, avec son titre et sa description (`data/reglages.json`, ConfAdmin). Aussi : Mode Secours multi-niveaux, échelle reprise par le Générateur, conditions d'utilisation à l'entrée d'une installation reliée, « -pro » du splash. Détail : journal ci-dessous.
+> 🗑️ **v2.22.0 — Suppression par zone, volume exploité, mur en ligne, contours fermés convertis** : une zone tracée sélectionne puis supprime en lot les objets qu'elle contient (un seul ⏪) ; ⛏️ Volume exploité dans 📐 Mesure ; type de structure 🟦 Mur (ligne) qui coupe l'itinéraire ; lignes fermées d'un import, même livrées en plusieurs morceaux, converties en zones ou piliers. Aussi : 📏 Distance totale dans 📐 Mesure, pas du tracker qui ne traverse plus les structures. Détail : journal ci-dessous.
 
 ---
 
@@ -756,7 +756,15 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Prochaine version — non publiée (branche `Karma_dev`)
+#### v2.22.0 (01/11/2026) — Suppression par zone, volume exploité, mur en ligne, contours fermés convertis (branche `Karma_dev`)
+
+- **🔄 Contours fermés → zone ou pilier** (`js/convertirObjet.js`) : une ligne fermée (bouts à moins de 1,5 × son plus grand côté, compacité 4πA/P² ≥ 0,2, 3 segments au moins) se convertit en zone ou en pilier depuis sa fiche, en lot (case « Seulement les contours fermés ») ou depuis un calque passé en 🔄 Modifier. Case **« Recoller les lignes qui se touchent »** : un pilier livré en 2 à 4 lignes dont les bouts se touchent (5 px au plus) devient un seul objet ; une ligne dont les deux bouts touchent d'autres lignes (morceau) n'est jamais convertie seule. Un seul ⏪. `checkup-contour-ferme.js`, `checkup-recoller-piliers.js`.
+- **🟦 Mur (ligne)** (`mur-ligne`, `js/structures.js`, `js/styleResolver.js`, `js/pathfinder.js`) : type de structure intégré en ligne, de l'épaisseur d'un front, renommable ; coupe l'itinéraire sur son niveau comme une zone inaccessible (case « Respecter les zones inaccessibles et les murs (ligne) »). `check-mur-ligne.js`, `checkup-mur-ligne.js`.
+- **⛏️ Volume exploité** (`js/volumeExploite.js`) dans 📐 Mesure : secteur ♦️ moins les structures fermées (coupées au bord du secteur), remblais comptés à part, hauteur saisie et retenue par plan (2 m par défaut), niveau actif. `checkup-volume-exploite.js`.
+- **📏 Distance totale des tracés** passe du groupe 🛣️ Tracés au groupe 📐 Mesure.
+- **🧭 Tracker** : un pas hors des tracés ne traverse plus piliers, murs ni fronts de taille.
+- **Prises neutres** (`community-server-line.md` §3) : « quoi de neuf » dans la fenêtre 🚨 et pastille du bouton 🚨, ligne `garderOuverte` (« Tout marquer comme vu ») ; `suppressionLot` ci-dessous.
+- **Corrigés** : la bordure affichée d'un pilier perso dans la légende est celle que la carte dessine ; titre et pastille d'une fiche suivent le nom et la couleur de la légende ; « Tous les … » de la sélection multiple donne le nom d'un type perso et passe à la ligne ; « Publier la nouvelle version » montre son avancement dans la fenêtre ; « Annotations du plan » au lieu de « Mes annotations ».
 
 - **✏️ Sélectionner par zone, 🗑️ supprimer en lot** (`js/selectionZone.js`, `js/selectionMulti.js`) : dans la sélection multiple 🎯, une zone tracée avec l'outil ♦️ Surface (la mesure en cours revient ensuite) ajoute les objets **entièrement** dedans, au niveau affiché, points compris ; **🗑️ Supprimer (N)** confirme avec une case par famille et son nombre, annonce photos (gardées « sans point »), portails gardés et objets de calque ignorés ; un seul ⏪ rend tout, une trace de suppression par objet. **✅ Convertir (N)** compte les seuls objets de même forme que le premier. `check-selection-multi.js` §8, `checkup-suppr-zone.js`.
 - **✏️ Par zone depuis la suppression au clic** (`js/interface.js`, `js/selectionMulti.js`) : le bandeau de **🧹 Effacer → 🎯 Sélectionner** des groupes 🛣️ Tracés, ⬛ Zones et 🏛️ Structures porte **✏️ Par zone** : il quitte le mode, ouvre la sélection multiple sans objet de départ (✅ Convertir masqué) et lance le tracé de la zone ; la confirmation n'a d'avance que la famille du groupe cochée.

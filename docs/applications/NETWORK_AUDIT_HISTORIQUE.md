@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.22.0 (suppression par zone, volume exploité, mur en ligne, contours fermés)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** La sélection et la suppression par zone, le volume exploité, le mur en ligne, la conversion des contours fermés et le pas du tracker se calculent sur l'appareil. Sur une installation reliée, une suppression en lot demande d'abord à l'installation si elle est permise, et la fenêtre 🚨 affiche ses nouveautés : ces échanges vont à son serveur seulement, rien ne part de myktamap.fr.
+
 ### v2.21.1 (outils de dessin, front de taille, Mode Secours, écran d'arrivée)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Les outils de dessin, l'épaisseur du front de taille, les secteurs du Mode Secours et l'échelle reprise par le Générateur se passent sur l'appareil. Sur une installation reliée, les conditions d'utilisation sont demandées à l'entrée plutôt qu'avant l'écran d'entrée : les échanges avec son serveur restent ceux d'avant. **Une requête de plus au démarrage, sur le même site** : `data/reglages.json`, fichier facultatif où une installation auto-hébergée écrit le titre et la description de son écran d'arrivée (absent sur myktamap.fr : réponse 404, rien d'autre). Rien n'est envoyé, seuls ces textes sont lus.
