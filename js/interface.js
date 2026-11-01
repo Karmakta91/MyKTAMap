@@ -2475,6 +2475,12 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
+      // Volume exploité : lit la surface ♦️ comme secteur (lecture, pas un geste de dessin).
+      { icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"),
+        onClick: function() {
+          if (window.KtaVolumeExploite) window.KtaVolumeExploite.ouvrir();
+        }
+      },
       {
         icone: "❌",
         titre: window.I18n.t("ui.subaction.mesureEffacer"),

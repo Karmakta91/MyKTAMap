@@ -1090,6 +1090,25 @@ window.setPlanProfondeurs   = setPlanProfondeurs;
 window.getProfondeurNiveau  = getProfondeurNiveau;
 window.proposerProfondeurs  = proposerProfondeurs;
 
+// ── Hauteur moyenne de galerie (⛏️ Volume exploité) ──────────────────────
+// Par plan, pref `hauteurGalerieM` ; absente → null (l'appelant prend sa valeur par défaut). Refus si ≤ 0.
+function getPlanHauteurGalerie(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).hauteurGalerieM;
+  return (typeof v === "number" && Number.isFinite(v) && v > 0) ? v : null;
+}
+function setPlanHauteurGalerie(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = Number(value);
+  if (!Number.isFinite(v) || v <= 0) return false;
+  const prefs = _readPlanPrefs(pid);
+  prefs.hauteurGalerieM = v;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanHauteurGalerie = getPlanHauteurGalerie;
+window.setPlanHauteurGalerie = setPlanHauteurGalerie;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,

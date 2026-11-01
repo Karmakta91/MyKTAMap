@@ -206,7 +206,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (140 modules)
+## 🟢 L'application : modules JS (141 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -390,6 +390,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `interface.js` | Barres d'outils du plan : sélecteur de plan, groupes de la barre latérale, modes clic-carte exclusifs |
 | `interfaceAlerts.js` | Modales des alertes publiques et de mise à jour |
 | `interfaceDistanceTotale.js` | Somme des longueurs des tracés par type, surlignage magenta |
+| `volumeExploite.js` | ⛏️ Volume exploité : secteur ♦️ moins piliers, remblais à part, coupés au secteur (bandes verticales exactes) |
 | `interfaceLegende.js` | Modale ≡ Légende, et sa version en lecture seule (Vue OSM, accueil) |
 | `interfaceDocs.js` | Modales Documentation, Aide (hub et contextuelle), Aide IA, recherche plein texte |
 | `interfaceImportExport.js` | Import / export de session JSON, ZIP, GPX (sélecteur unique, aperçu, validation) |

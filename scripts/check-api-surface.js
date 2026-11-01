@@ -1,6 +1,6 @@
 // check-api-surface.js — garde-fou BLOQUANT : CHARGE réellement les modules IIFE dans un vm et
 // vérifie que chaque méthode annoncée existe et se comporte (userProfile, styleResolver,
-// legendCustomization, osmMesure, profondeurNiveaux, convertirObjet, loi de largeur des fronts).
+// legendCustomization, osmMesure, volumeExploite, profondeurNiveaux, convertirObjet, loi de largeur des fronts).
 // 🩸 `node -c` ne valide QUE la syntaxe : une constante supprimée mais encore citée dans le bloc
 // d'exports passe `node -c` et meurt en ReferenceError au chargement navigateur (module entier
 // perdu, méthodes disparues des exports sans signal).
@@ -120,6 +120,92 @@ function charger(fichier, nomGlobal, prealables) {
   const s2 = OM._surface([LL(44.81, -0.25), LL(44.81, -0.24), LL(44.80, -0.24), LL(44.80, -0.25)]);
   t("mesure OSM : le sens de parcours ne change pas la surface", Math.abs(s - s2) < 1);
   t("mesure OSM : moins de 3 points → surface nulle", OM._surface([LL(44, 0), LL(45, 0)]) === 0);
+})();
+
+// ───────── volumeExploite.js (défruitement d'un secteur) ─────────
+// ⚠️ Valeurs attendues calculées À LA MAIN (rectangles, losanges, L) : échelle 2 px/m, donc 1 m² = 4 px².
+(function () {
+  const VE = charger("js/volumeExploite.js", "KtaVolumeExploite");
+  if (!VE) return;
+  const R = function (x0, y0, x1, y1) { return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]; };
+  const pil = function (pts, extra) { return Object.assign({ type: "pilier-1", points: pts }, extra || {}); };
+  const LIGNES = ["mur-ligne", "front-1", "front-2"];
+  const estLigne = function (ty) { return LIGNES.indexOf(ty) >= 0; };
+  const proche = function (a, b) { return Math.abs(a - b) < 1e-6; };
+  const calc = function (o) {
+    return VE.calculer(Object.assign({ scale: 2, hauteur: 2, niveau: null, estLigne: estLigne, structures: [], zones: [] }, o));
+  };
+  const carre = R(0, 0, 100, 100);   // 10 000 px² = 2 500 m²
+
+  let r = calc({ secteur: carre, structures: [pil(R(40, 40, 60, 60))] });
+  t("volume : secteur carré 100×100 px à 2 px/m = 2 500 m²", r.ok && proche(r.secteurM2, 2500));
+  t("volume : pilier 20×20 px dedans = 100 m², 1 pilier", proche(r.piliersM2, 100) && r.nbPiliers === 1);
+  t("volume : exploité 2 400 m², taux 96 %, 4 800 m³ à 2 m",
+    proche(r.exploiteM2, 2400) && proche(r.tauxPct, 96) && proche(r.volumeM3, 4800));
+
+  r = calc({ secteur: carre, structures: [pil(R(90, 40, 110, 60))] });
+  t("volume : pilier à cheval sur le bord → seule la moitié intérieure (50 m²)",
+    proche(r.piliersM2, 50) && r.nbPiliers === 1);
+  r = calc({ secteur: carre, structures: [pil([{ x: 100, y: 40 }, { x: 110, y: 50 }, { x: 100, y: 60 }, { x: 90, y: 50 }])] });
+  t("volume : losange coupé par le bord → la moitié (100 px² = 25 m²)", proche(r.piliersM2, 25));
+  r = calc({ secteur: carre, structures: [pil(R(100, 40, 120, 60))] });
+  t("volume : pilier qui touche le bord seulement → 0 m², non compté", proche(r.piliersM2, 0) && r.nbPiliers === 0);
+
+  const enL = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 50, y: 50 }, { x: 50, y: 100 }, { x: 0, y: 100 }];
+  r = calc({ secteur: enL, structures: [pil(R(60, 60, 90, 90))] });
+  t("volume : secteur en L = 7 500 px² = 1 875 m²", proche(r.secteurM2, 1875));
+  t("volume : pilier dans le creux du L → 0 retranché", proche(r.piliersM2, 0) && r.nbPiliers === 0);
+  r = calc({ secteur: enL, structures: [pil(R(40, 40, 60, 60))] });
+  t("volume : pilier sur l'angle rentrant → 400 − 100 px² = 75 m²", proche(r.piliersM2, 75) && r.nbPiliers === 1);
+
+  r = calc({ secteur: carre, structures: [pil(R(20, 40, 60, 60)), pil(R(40, 40, 80, 60))] });
+  t("volume : piliers qui se chevauchent comptés une fois (union 60×20 px = 300 m²)",
+    proche(r.piliersM2, 300) && r.nbPiliers === 2);
+
+  r = calc({ secteur: carre, hauteur: 2.5, structures: [pil(R(40, 10, 60, 30))],
+             zones: [{ type: "remblais", points: R(0, 0, 100, 20) }, { type: "eau", points: R(0, 50, 100, 100) }] });
+  t("volume : remblais dans le vide, hors pilier (2 000 − 200 px² = 450 m²), eau ignorée",
+    proche(r.remblaisM2, 450) && proche(r.remblaisM3, 1125));
+  t("volume : vide actuel = 2 400 − 450 = 1 950 m², 4 875 m³ à 2,5 m",
+    proche(r.videM2, 1950) && proche(r.videM3, 4875));
+  r = calc({ secteur: carre, zones: [{ type: "remblais", points: R(-50, 90, 50, 150) }] });
+  t("volume : remblais coupé au secteur (50×10 px = 125 m²)", proche(r.remblaisM2, 125));
+
+  const multi = [pil(R(40, 40, 60, 60), { level: -1 }), pil(R(10, 10, 20, 20))];
+  r = calc({ secteur: carre, structures: multi, niveau: 0 });
+  t("volume : niveau 0 → le pilier de −1 est ignoré, le pilier sans level compte (25 m²)",
+    proche(r.piliersM2, 25) && r.nbPiliers === 1);
+  r = calc({ secteur: carre, structures: multi, niveau: -1 });
+  t("volume : niveau −1 → seul son pilier (100 m²)", proche(r.piliersM2, 100) && r.niveau === -1);
+
+  r = calc({ secteur: carre, structures: [
+    { type: "front-1", points: R(10, 10, 90, 90) }, { type: "mur-ligne", points: R(10, 10, 90, 90) },
+    { type: "mur", points: R(0, 0, 10, 100) }] });
+  t("volume : front et mur en ligne ignorés, mur polygone retranché (250 m²)",
+    proche(r.piliersM2, 250) && r.nbPiliers === 1);
+
+  r = calc({ secteur: carre.slice().reverse(), structures: [pil(R(40, 40, 60, 60))] });
+  t("volume : le sens de tracé du secteur ne change rien", proche(r.exploiteM2, 2400));
+  r = calc({ secteur: carre, hauteur: 0 });
+  t("volume : hauteur ≤ 0 → volumes non donnés", r.ok && r.volumeM3 === null && r.videM3 === null);
+  t("volume : sans échelle → refus", calc({ secteur: carre, scale: null }).raison === "echelle" &&
+    calc({ secteur: carre, scale: 0 }).ok === false);
+  t("volume : secteur de moins de 3 points → refus",
+    calc({ secteur: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }).raison === "secteur");
+
+  // Charge : secteur à 400 sommets (bords subdivisés), 900 piliers 4×4 px dedans = 14 400 px² = 3 600 m².
+  const grand = [];
+  for (let i = 0; i < 100; i++) grand.push({ x: i * 10, y: 0 });
+  for (let i = 0; i < 100; i++) grand.push({ x: 1000, y: i * 10 });
+  for (let i = 0; i < 100; i++) grand.push({ x: 1000 - i * 10, y: 1000 });
+  for (let i = 0; i < 100; i++) grand.push({ x: 0, y: 1000 - i * 10 });
+  const beaucoup = [];
+  for (let a = 0; a < 30; a++) for (let b = 0; b < 30; b++) beaucoup.push(pil(R(20 + a * 32, 20 + b * 32, 24 + a * 32, 24 + b * 32)));
+  const t0 = Date.now();
+  r = calc({ secteur: grand, structures: beaucoup });
+  const ms = Date.now() - t0;
+  t("volume : 900 piliers, secteur à 400 sommets → 3 600 m² exacts en " + ms + " ms (< 3 s)",
+    proche(r.piliersM2, 3600) && r.nbPiliers === 900 && ms < 3000);
 })();
 
 // ───────── profondeurNiveaux.js (profil en long) ─────────

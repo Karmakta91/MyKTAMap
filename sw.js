@@ -459,6 +459,8 @@ const ASSETS_TO_CACHE = [
   // Module issu d'interface.js — panneau
   // Distance totale des tracés (filtres + surlignage magenta)
   "./js/interfaceDistanceTotale.js",
+  // Volume exploité (défruitement du secteur ♦️, piliers et remblais coupés au secteur)
+  "./js/volumeExploite.js",
   // Module issu d'interface.js — modale
   // Légende plein écran (4 sections + cascade LegendCustomization)
   "./js/interfaceLegende.js",

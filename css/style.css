@@ -19269,6 +19269,50 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   font-style: italic;
   margin: 8px 0;
 }
+
+/* ── Modale « ⛏️ Volume exploité » (groupe 📐 Mesure, boîte .kta-readme-modal-*) ── */
+.kta-volume-boite { max-width: 440px; }
+.kta-volume-niveau {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kta-accent-texte);
+  margin: 0 0 10px;
+}
+.kta-volume-hauteur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--kta-texte-2);
+  margin-bottom: 12px;
+}
+.kta-volume-hauteur input {
+  width: 90px;
+  padding: 6px 8px;
+  background: var(--kta-surface-2);
+  border: 1px solid var(--kta-bordure);
+  border-radius: 6px;
+  color: var(--kta-texte);
+  font-size: 14px;
+  text-align: right;
+}
+.kta-volume-hauteur input.kta-volume-invalide { border-color: var(--kta-erreur-bord); }
+.kta-volume-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kta-volume-table th,
+.kta-volume-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--kta-bordure);
+}
+.kta-volume-table th { text-align: left; font-weight: 400; color: var(--kta-texte-2); }
+.kta-volume-table td { text-align: right; color: var(--kta-texte); font-variant-numeric: tabular-nums; }
+.kta-volume-table td.kta-volume-fort { font-weight: 700; color: var(--kta-accent-texte); }
+.kta-volume-note {
+  font-size: 12px;
+  color: var(--kta-texte-3);
+  line-height: 1.45;
+  margin: 12px 0 0;
+}
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
 .kta-note-popup-convertir,
 .kta-note-popup-jct-appliquer {
