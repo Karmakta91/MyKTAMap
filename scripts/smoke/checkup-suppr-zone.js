@@ -199,6 +199,13 @@ async function lireFenetre(page) {
       if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
     });
 
+    // Calques embarqués du plan retirés des registres : un de leurs objets peut tomber dans la zone de test selon
+    // la vue d'ouverture et fausser le compte des objets de calque ignorés. Seul le calque fictif ci-dessous compte.
+    await page.evaluate(function () {
+      ["_ktaDataPolylines", "_ktaDataPolygons", "_ktaDataStructurePolygons", "_ktaDataMarkers"].forEach(function (k) {
+        if (Array.isArray(window[k])) window[k].splice(0);
+      });
+    });
     await semer(page);
     // Calque de données fictif : un tracé et un point dans la zone (lecture seule : ignorés, comptés).
     await page.evaluate(function (id) {
