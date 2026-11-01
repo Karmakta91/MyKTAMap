@@ -162,6 +162,7 @@
     if (!body) return;
     body.innerHTML = _renderLevelsSection();
     _bindLevelHandlers(sec);
+    _majCasePlanDeBase(document.getElementById("kta-fp-modal"));   // la case jumelle des calques image
   }
 
   // Délégation d'événements : UN listener click/change sur `sec` (conteneur de la section niveaux, jamais
@@ -444,7 +445,8 @@
   }
 
   // Case « Afficher le plan de base » : cochée = fond réellement affiché (tiling.js > ktaPlanDeBaseVisible), même
-  // en automatique. Dans Niveaux sur un plan multi-niveau, en tête des calques image sinon (une seule à la fois).
+  // en automatique. En tête des calques image ; sur un plan multi-niveau, aussi dans Niveaux (le fond y suit le
+  // niveau 0). ⚠️ Deux cases pour un même réglage : _majCasePlanDeBase les recale toutes après chaque changement.
   function _planDeBaseVisible() {
     return typeof window.ktaPlanDeBaseVisible === "function" ? window.ktaPlanDeBaseVisible() : true;
   }
@@ -459,17 +461,18 @@
            '</div>';
   }
   function _majCasePlanDeBase(scope) {
-    const cb = scope && scope.querySelector('[data-plan-de-base]');
-    if (!cb) return;
-    cb.checked = _planDeBaseVisible();
-    const lbl = cb.closest(".kta-fp-chip");
-    if (lbl) lbl.classList.toggle("kta-fp-chip-off", !cb.checked);
+    if (!scope) return;
+    const vis = _planDeBaseVisible();
+    scope.querySelectorAll('[data-plan-de-base]').forEach(function(cb) {
+      cb.checked = vis;
+      const lbl = cb.closest(".kta-fp-chip");
+      if (lbl) lbl.classList.toggle("kta-fp-chip-off", !vis);
+    });
   }
 
   function _renderImageLayersSection() {
     const pc = window.PLAN_CONFIG;
-    const isML = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-    const caseFond = isML ? "" : _renderCasePlanDeBase();
+    const caseFond = _renderCasePlanDeBase();
     if (!pc || !Array.isArray(pc.imageLayers) || pc.imageLayers.length === 0) {
       return caseFond + '<div class="kta-fp-section-empty">' +
                _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
@@ -680,6 +683,7 @@
       if (t.matches('[data-plan-de-base]')) {
         window._ktaRuntimeFilters.planDeBase = t.checked;
         if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
+        _majCasePlanDeBase(overlay);
         _refreshChipsState(overlay);
         majBadge();
         _updateStatus();
