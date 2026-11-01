@@ -258,8 +258,8 @@
     const m = d.galerie;
     if (!m) objets(d.structures, "s");
     objets(d.zones, "z");
-    // Galerie : pièces de l'emprise et axes (liseré) à la tuile de leur centre ; parmi les tracés, seuls l'itinéraire
-    // et les jonctions restent des rubans.
+    // Galerie : pièces de l'emprise et axes (liseré) à la tuile de leur centre ; parmi les tracés, seul l'itinéraire
+    // reste un ruban.
     if (m) {
       for (let i = 0; i < m.pieces.length; i++) {
         const P = m.pieces[i], k = cle((P.x0 + P.x1) / 2 / sc, (P.y0 + P.y1) / 2 / sc), t = range(k[0], k[1]);
@@ -274,7 +274,9 @@
     // Tracés : par segment (un tracé traverse tout le plan).
     for (let i = 0; i < d.roads.length; i++) {
       const r = d.roads[i], pts = r.points;
-      if (m && r.type !== "itinerary" && r.type !== "jonction") continue;
+      // Jonctions jamais dessinées (décision produit) : le passage de niveau passe par 🪜 (_passages).
+      if (r.type === "jonction") continue;
+      if (m && r.type !== "itinerary") continue;
       for (let j = 0; j + 1 < pts.length; j++) {
         const a = pts[j], b = pts[j + 1];
         if (!a || !b) continue;

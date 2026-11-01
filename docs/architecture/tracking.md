@@ -1266,7 +1266,7 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
 - **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
   couture) ; parois = strates calcaires (`_strates`, bandes horizontales de 3 à 30 px sur toute la hauteur, teintes
   crème à ocre, joints sombres, ondulation, canvas 64 × 256, aucune image) ; liseré au sol de 15 cm, couleur de la
-  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux, tracé jonction en ruban. Structures (intégrées et perso)
+  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est jamais dessiné en 3D (le passage se fait par 🪜). Structures (intégrées et perso)
   ni dessinées ni bloquantes. Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
   à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
   il donne sur la galerie, inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
