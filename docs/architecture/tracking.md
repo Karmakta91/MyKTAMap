@@ -1228,7 +1228,47 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   rester libres (pas plus de rayons bloqués qu'au départ, pour ne pas rester collé si l'on s'ouvre contre un mur).
   Glissement le long d'un mur. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
-  dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s.
+  dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
+  règle est celle des parois (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
+- **Rendus structures / galerie** (décision produit : interrupteur exclusif) : bouton 🧱 Structures / 🚇 Galerie, mode
+  écrit en clair, retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ; sans
+  choix, structures si le niveau affiché en a, galerie sinon (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`).
+  Basculer refait la scène.
+- **Emprise des galeries** (`js/galerieEmprise.js`, `window.KtaGalerie`, chargé au démarrage pour servir aussi le pas) :
+  graphe plan des tracés du niveau (sommets confondus à 15 cm, croisements coupés en nœuds, bout libre arrêté à moins
+  de 0,5 m de la paroi d'un autre tracé raccordé à lui), largeur par type (`KtaGalerie.largeur` : principal 2,5 m,
+  secondaire 2 m, chemin 1,7 m, perso 2 m ; ni `itinerary` ni `jonction`). Une **pièce** convexe par tronçon
+  (rectangle d'un nœud à l'autre) et, par nœud de degré ≥ 2, les triangles d'un **joint** : coude en onglet borné à
+  deux demi-largeurs (biseau au-delà), dalle de carrefour (degré ≥ 3) dont les coupes reculent jusqu'au point où les
+  parois voisines se croisent (4 m au plus) et dont les parois relient les coins. ⚠️ contrat : l'emprise est
+  l'**union** des pièces ; une paroi est un morceau de bord de pièce dont le point juste à l'extérieur n'est dans
+  aucune autre pièce (`vue3d.js > _paroisPiece`). D'où des tubes coupés au bord des dalles et **aucune paroi qui en
+  traverse une autre**, même pour deux tracés presque parallèles qui se chevauchent (ils se fondent). 🩸 Le graphe de
+  `roadGraph.js` n'est pas réutilisé : c'est un graphe d'itinéraire (croisements en arêtes virtuelles, tronçons non
+  coupés, tronçon retiré s'il croise un mur en ligne, types perso exclus).
+- **Règle du pas en galerie** : `KtaGalerie.segmentsBloques(segs, niveau)`, même forme que
+  `ktaSegmentsBloquesParStructure` (lot de segments → booléens) : bloqué si un point (tous les 5 cm) sort de l'emprise
+  (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais du niveau. Niveau sans galerie :
+  rien n'arrête. Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
+- **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
+  couture) ; parois = strates calcaires (`_strates`, bandes horizontales de 3 à 30 px sur toute la hauteur, teintes
+  crème à ocre, joints sombres, ondulation, canvas 64 × 256, aucune image) ; liseré au sol de 15 cm, couleur de la
+  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux, tracé jonction en ruban. Structures (intégrées et perso)
+  ni dessinées ni bloquantes. Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
+  à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
+  il donne sur la galerie, inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
+  contour coupe l'axe (`_hachurer`), effondrement et perso au sol. **POI** à moins de 3 m de l'axe d'un tracé, ramenés
+  contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
+  profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
+- **Passages de niveau 🪜** (mode libre seulement ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI
+  jonction (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à son raccord) ou d'un
+  bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : ▲ / ▼ vers le niveau lié voisin au-dessus
+  ou au-dessous (profondeurs saisies, sinon numéro), une liste s'il y en a plus d'un de chaque côté. Toucher le
+  panneau du POI (`_toucher`, lancer de rayon sur les panneaux) fait de même, d'où que l'on soit. Arrivée : raccord
+  validé du niveau, sinon bout opposé du tracé jonction, sinon même position (au POI touché s'il est à plus de 2 m) ;
+  cap gardé, scène refaite. ⚠️ contrat (décision produit) : la 3D change seulement **son** niveau (`niveauLibre`,
+  oublié si le niveau actif de la carte change ou en repassant en suivi) ; ni le tracker ni la carte 2D ne bougent
+  pendant la 3D.
 - **Suivi / libre** (`basculerSuivi`, bouton 📍) : en suivi, position du tracker et cap de l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
   la vue (pas celui de `mapBearing.js`, qui ne tourne que mode activé). Ouvert en suivi si le tracker tourne,
@@ -1243,10 +1283,16 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   plan, dit seulement au libellé accessible (`vue3d.nordNonCalibre`, aucun texte à l'écran). Rose posée sur la
   carte de la petite boussole du mode plan (surface 88 %, liseré doré). Relu à `kta:northOffsetChange`.
 - **Le tracker n'est pas déplacé** par la vue (décision produit). `fermer()` (✕, Échap) : si le suivi est actif
-  (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker,
-  `ktaConfirm` « 📍 Je suis ici ? » ; Oui = `recalerTrackerSurPoint(x, y, niveau)` (ancre de recalage normale,
-  replanification et validation d'étape comprises), Non = rien. Une fermeture forcée (contexte perdu) ne pose pas
-  la question.
+  (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker, ou l'a menée à
+  un autre niveau que le sien (🪜, texte `vue3d.jeSuisIci.texteNiveau`), `ktaConfirm` « 📍 Je suis ici ? » ; Oui =
+  `recalerTrackerSurPoint(x, y, niveau)` (ancre de recalage normale, replanification et validation d'étape
+  comprises), Non = rien. Une fermeture forcée (contexte perdu) ne pose pas la question.
+- **Sortie : la carte se place là où l'on était en 3D** (décision produit, `vue3d.js > _placerCarte`, avant la
+  question, quelle que soit la réponse) : niveau de la 3D s'il diffère (`ktaSetActiveLevel`, source `vue3d`), puis
+  `map.setView(convertCoord(x, y))` sans animation, zoom gardé (au moins 0). En suivi sans déplacement libre, la place
+  est celle du tracker (la vue n'en garde qu'une version lissée). Plan orienté actif : `setView` ne touche pas à la
+  rotation, portée par le pane intercalaire de `mapBearing.js` et réappliquée au déplacement ; si le suivi de la carte
+  est armé, le pas suivant du tracker la recentre sur lui (comportement normal du mode).
 - **Contexte WebGL** : libéré à chaque fermeture (`forceContextLoss`). Perdu en route (`webglcontextlost`) : la
   vue reste ouverte, ne dessine plus et attend `webglcontextrestored` pendant 8 s d'écran visible (onglet caché non
   compté) ; repris → scène remontée à neuf ; sinon fermeture avec le toast `vue3d.contextePerdu`.
@@ -1271,6 +1317,12 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   depuis la tuile, scène, mur plus bas que le pilier qu'il traverse, butée, pas rapide, collisions (6 obstacles,
   12 angles, pas rapides et grand pas, départ collé à une face), inclinaison, boussole, clavier, vues, niveau, perte simulée
   (`WEBGL_lose_context`) puis reprise, perte sans reprise, « Je suis ici ? » Non puis Oui, WebGL absent,
-  20 ouvertures de suite. `smoke.js` : rien de la 3D au démarrage.
+  20 ouvertures de suite. Galerie, sur des tracés fictifs (T, X, coude droit, coude aigu, cul-de-sac, presque
+  parallèles) : aucune paroi qui en traverse une autre, axes libres, bouts fermés, butée contre une paroi, carrefour et
+  coude passés, remblais qui arrête, zones coupées au tube, rideau en travers, POI à 2 m montré et à 5 m masqué,
+  interrupteur exclusif retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
+  du panneau, suivi sans 🪜, tracker et carte inchangés) ; sortie : carte au niveau et à la place de la 3D (libre,
+  après Non, en suivi), Oui recale aussi le niveau. `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
+  `smoke.js` : rien de la 3D au démarrage.
 - **Non couvert** : aucun vrai iPhone (images/s, mémoire, batterie, perte de contexte réelle), aucun plan dense
-  réel ; aucun changement de niveau en marchant dans la 3D (le niveau suit le tracker ou le sélecteur).
+  réel ; mode galerie jamais vu sur un relevé réel (tracés dessinés à la main : raccords imprécis, sommets serrés).

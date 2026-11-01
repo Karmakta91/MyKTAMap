@@ -1,8 +1,9 @@
 # Étude — Vue 3D autour de sa position
 
-> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01/11/2026. Lots 1 et 2 livrés : la vue est en
-> **bêta** dans le menu Tracker (tuile 🧊), précachée, textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone
-> (lot 3) et la question 9. Contrats à jour : `docs/architecture/tracking.md` § Vue 3D.
+> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01/11/2026. Lots 1, 2 et 4 bis livrés, lot 4 en
+> partie (passage de niveau par POI jonction) : la vue est en **bêta** dans le menu Tracker (tuile 🧊), avec deux
+> rendus exclusifs (structures, galerie), précachée, textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone
+> (lot 3), le reste du lot 4 et la question 9. Contrats à jour : `docs/architecture/tracking.md` § Vue 3D.
 
 ## Le besoin
 
@@ -60,8 +61,17 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
   un **point** avec une marge seulement dans le sens de la marche : en biais ou en glissant, on frôlait une face
   à 4 cm ; la caméra (plan proche à 5 cm) entrait alors dans le pilier et l'on voyait au travers. Aucun pas ne
   traversait un pilier intégré : le segment était bien testé en entier.
-- **Niveau** : celui du tracker en suivi actif, sinon le niveau actif du sélecteur ; lu à chaque image, la scène
-  est refaite dès qu'il change (aucun événement de changement de niveau n'existe aujourd'hui).
+- **Rendus 🧱 Structures / 🚇 Galerie** (question A) : interrupteur exclusif, bouton en haut avec le mode écrit en
+  clair, retenu par plan ; sans choix, structures si le niveau affiché en a, galerie sinon. En galerie, les tracés
+  deviennent des tubes et les structures disparaissent (ni dessinées ni bloquantes).
+- **Niveau** : celui du tracker en suivi actif, sinon celui pris par un passage 🪜, sinon le niveau actif du
+  sélecteur ; lu à chaque image, la scène est refaite dès qu'il change.
+- **Passage de niveau 🪜** (question B, mode libre) : à moins de 2 m d'un POI jonction ou d'un bout de tracé
+  `jonction`, ▲ / ▼ vers le niveau lié voisin (une liste au-delà d'un de chaque côté) ; toucher le panneau du POI fait
+  de même. Arrivée au raccord validé du niveau, sinon au bout opposé du tracé jonction, sinon à la même position ; cap
+  gardé. Le tracker et le niveau de la carte ne bougent pas pendant la 3D.
+- **Sortie** (demande de KARMA du 01/11/2026) : la carte 2D se place là où l'on était en 3D (niveau de la 3D, centre
+  sur la position, sans animation), quelle que soit la réponse à « Je suis ici ? », qui recale aussi le niveau.
 - **Outils de mesure** : `etat()` (tuiles, triangles, appels, contexte vivant…), `mesurer({ images })`,
   `placer(x, y, cap)`.
 
@@ -115,6 +125,27 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
   procédural de 128 × 128 px dessiné dans un canvas à l'ouverture (taches douces d'un bruit 8 × 8 interpolé et
   bouclé sur les bords, plus un grain fin), répété tous les 2 m et décalé avec la position pour rester fixe sous
   les pieds ; aucune image téléchargée, 64 Ko de texture.
+- **Rendu galerie** (`js/galerieEmprise.js` + `vue3d.js > _construireTuileGalerie`) :
+  - **Graphe** : tracés du niveau, sommets confondus à 15 cm, croisements coupés, bout libre raccordé au tracé voisin
+    s'il s'arrête à moins de 0,5 m de sa paroi. Le graphe de `roadGraph.js` n'est pas réutilisé (graphe d'itinéraire :
+    croisements en arêtes virtuelles, tronçons non coupés, tronçon retiré s'il croise un mur en ligne, types perso
+    exclus) ; ce graphe-ci vit dans un module chargé au démarrage pour que la règle du pas puisse le reprendre.
+  - **Largeurs** : principal 2,5 m, secondaire 2 m, chemin 1,7 m, type perso 2 m ; hauteur du plan.
+  - **Pièces** : un rectangle par tronçon, d'un nœud à l'autre ; à chaque nœud de degré ≥ 2, un joint en triangles :
+    coude en onglet (pointe bornée à deux demi-largeurs, biseau au-delà), dalle de carrefour (degré ≥ 3) dont les
+    coupes reculent jusqu'au croisement des parois voisines (4 m au plus) et dont les parois relient les coins. Un bout
+    libre est fermé par le bord du rectangle.
+  - **Parois** = bords de l'**union** des pièces (un morceau de bord dont le point juste à l'extérieur n'est dans
+    aucune autre pièce) : tubes coupés au bord des dalles, aucune paroi qui en traverse une autre, tracés presque
+    parallèles fondus en une galerie. Sol et plafond = les pièces, superposées sans couture (texture en coordonnées
+    monde).
+  - **Matériaux** : parois en strates de calcaire (bandes horizontales de 3 à 30 px sur la hauteur, crème à ocre, joints
+    sombres, canvas 64 × 256), sol et plafond au grain calcaire, liseré au sol de 15 cm à la couleur de la légende.
+  - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais à 60 %, faces seulement côté galerie,
+    bloquant ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le contour coupe l'axe ;
+    effondrement et perso au sol. **POI** à moins de 3 m de l'axe, ramenés contre la paroi, sinon masqués.
+  - **Collision** : `KtaGalerie.segmentsBloques` (même forme que la règle des structures) : rester dans l'emprise et
+    hors d'un remblais ; même corps de 0,8 m balayé.
 - **Lumière** : projecteur (cône de 35°, pénombre 0,55, intensité 24, décroissance 1,2, portée = distance de vue)
   porté par la tête, petite lumière de proximité (4,5 m), ambiance presque nulle en vue à hauteur d'yeux ;
   brouillard noir de 13,5 à 30 m (rien n'est construit ni dessiné au-delà) ; tons compressés (ACES) pour qu'une
@@ -178,6 +209,22 @@ annoncé), rendu de 0 à 3 ms par image à la mesure, mais 8 à 9 images/s affic
 en fenêtre de PC, quelle que soit la densité : la présentation à l'écran de ce portage est en cause, une page
 vide y tourne à 63 images/s. Chiffre non représentatif d'un iPhone.
 
+### Mode galerie
+
+Réseau **synthétique** (`KTA_V3D_PERF=galerie`) : 26 tracés est-ouest et 26 nord-sud tous les 12 m sur 300 m, un
+sommet tous les 5 m un peu décalé, quatre types dont un perso : **3 120 tronçons**, 4 673 arêtes après coupe aux
+croisements, 791 dalles, 3 084 coudes, 20 979 pièces ; 120 zones, 300 POI. Deux passages par configuration.
+
+| | Modèle (graphe + pièces) | Ouverture | Triangles · appels (30 m) | ms / image 30 m (médiane · p95) | 50 m | Marche 120 m | Pas balayé |
+|---|---|---|---|---|---|---|---|
+| **PC** (Edge, RTX 5070) | 53 à 77 ms | 105 à 106 ms | 2 772 · 50 | 0,8 · 1,2 à 1,3 | 1,1 à 1,2 · 1,6 à 1,7 | aucune image > 33 ms (max 12 à 30 ms) | < 0,1 ms |
+| **Émulation iPhone** (393 × 852, ×3, processeur ÷4) | 216 à 277 ms | 474 à 500 ms | 2 191 · 36 | 2,3 à 2,6 · 4,5 à 5,7 | 2,8 à 2,9 · 4,6 à 8,2 | 2 images sur 597 > 33 ms (36 à 42 ms) | 0,2 · 0,6 à 0,7 ms |
+
+Rotation continue : 165 images/s au PC, 82 à 93 sous émulation. Le modèle de tout le niveau est construit à
+l'ouverture (et à chaque changement de niveau ou de rendu) : c'est l'essentiel de l'ouverture sous émulation ; les
+parois, elles, sont calculées par tuile. Les deux images lentes de la marche sous émulation tombent sur des
+constructions de tuiles (3 par image au plus).
+
 ### Ce qui n'a **pas** été mesuré
 
 - **Aucun vrai iPhone** : ni images/s réelles, ni mémoire, ni chauffe, ni batterie. L'émulation ralentit le
@@ -235,8 +282,8 @@ vide y tourne à 63 images/s. Chiffre non représentatif d'un iPhone.
 | 1 | Tuile du menu Tracker, chargement à la demande, textes fr/en/es, refus sans échelle, précache, reprise après perte de contexte, « Je suis ici ? », checkup rejoué depuis la tuile | **S**, livré |
 | 2 | Docs : guides 3 langues, Aide, AI_CONTEXT, tracking.md, journal | **S**, livré |
 | 3 | Mesure sur un vrai iPhone et un plan dense réel ; réglages (distance, densité) d'après les chiffres | **M** |
-| 4 | Multi-niveau par POI jonction et tracé `jonction` (question B), POI touchables (fiche), itinéraire vivant suivi en 3D | **M** |
-| 4 bis | Mode « galerie » : tracés en tubes, carrefours exacts, bascule exclusive structures / galerie, collisions contre les parois (question A) | **M** probable |
+| 4 | Multi-niveau par POI jonction et tracé `jonction` (question B) : **livré** ; reste POI touchables (fiche), itinéraire vivant suivi en 3D | **M** |
+| 4 bis | Mode « galerie » : tracés en tubes, carrefours exacts, bascule exclusive structures / galerie, collisions contre les parois (question A) | **M**, livré |
 | 5 | Rendu plus « vrai » (texture de roche, ombres de la lampe, niveaux voisins en transparence) | **L**, à n'engager qu'après le retour terrain |
 
 ## Questions tranchées (QCM du 01/11/2026, toutes les recos prises)
@@ -252,113 +299,13 @@ vide y tourne à 63 images/s. Chiffre non représentatif d'un iPhone.
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
 | 8 | Distance de vue | **a** : 30 m fixes |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
+| A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🧱 / 🚇 écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **strates de calcaire**, sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
+| B | Passer par un POI jonction (QCM du 01/11/2026) | Bouton 🪜 à moins de 2 m, **▲ / ▼** vers le niveau lié suivant, liste au-delà ; toucher le panneau = même chose ; arrivée au raccord validé ou à la même position, cap gardé ; tracé `jonction` **dans les deux sens** ; **le tracker ne bouge pas**, « Je suis ici ? » recale aussi le niveau ; en suivi, pas de 🪜 ; niveau de la carte 2D inchangé pendant la 3D |
+| — | Sortie de la 3D (demande du 01/11/2026) | La carte 2D se place là où l'on était en 3D : niveau de la 3D, centre sur la position, quelle que soit la réponse à « Je suis ici ? » |
 
-## Questions ouvertes
+## Question ouverte
 
-### A. Mode « galerie » : les tracés en tubes
-
-**Décision de KARMA** : un **interrupteur exclusif**. Soit le mode **structures** (aujourd'hui : piliers, murs,
-fronts dressés, tracés en rubans au sol), soit le mode **galerie** (les tracés deviennent des tubes, **sans** les
-structures), jamais les deux à la fois.
-
-**Besoin** : un plan sans structures (seulement des tracés) n'offre aujourd'hui en 3D qu'un sol, un plafond et des
-rubans ; le mode galerie y dessine des couloirs. Il peut aussi être choisi sur un plan qui a des structures.
-
-**Modèle proposé** :
-- **Section** : rectangle, largeur par type de tracé, hauteur = hauteur du plan (⛏️ Volume exploité, 2 m sinon).
-  Largeurs fixes proposées : principal 2,5 m, secondaire 1,8 m, chemin 1,2 m, type perso = celle de son modèle
-  de légende (principal / secondaire / chemin) ; `itinerary` reste un ruban au sol (ce n'est pas une galerie) ;
-  `jonction` = puits ou escalier, voir B.
-- **Parois** : faces intérieures seulement (on est dedans), sol et plafond par tronçon ; texture calcaire du sol
-  actuel. Pas de pignon aux bouts d'un cul-de-sac ouvert ? Si : un bout libre est fermé par une paroi (fin de
-  galerie).
-- **Carrefours** : le graphe des tracés existe (`roadGraph.js`, croisements et extrémités communes). À chaque
-  nœud de degré ≥ 3, une **dalle** polygonale (enveloppe des bords des tubes qui y arrivent) et chaque tube est
-  **coupé** au bord de la dalle : pas de tubes qui se traversent, un carrefour ouvert. Degré 2 = **coude** :
-  onglet (les deux parois se rejoignent sur la bissectrice), borné pour un angle aigu (sinon pointe de plusieurs
-  mètres). En T et en X : même dalle, les parois entre deux branches voisines relient leurs coins.
-- **Collisions** : en mode galerie, on ne bute plus contre les structures (absentes) mais contre les parois :
-  règle propre « rester à moins de demi-largeur d'un tracé », à faire **dans** le module du pas (une fonction
-  exposée par `tracking.js` ou `roadGraph.js`), pas une copie dans la 3D.
-- **Coût** : par tronçon 4 faces (8 triangles) + coupes ; un plan de 3 000 tronçons ≈ 30 000 triangles en tout,
-  en tuiles comme aujourd'hui : bien en dessous des structures d'un plan dense. Le travail est la géométrie des
-  carrefours (dalle, coupes, onglets) : quelques centaines de lignes et un checkup de formes (T, X, coude aigu,
-  tracés presque parallèles qui se chevauchent).
-
-**Options** :
-- a) **Carrefours exacts** (dalle + coupes + onglets, ci-dessus) — rendu propre, coût M.
-- b) **Tubes simples + piliers de carrefour** : chaque tronçon est une boîte, un cube un peu plus large posé
-  sur chaque nœud masque les interpénétrations — rapide (S), mais les parois se croisent à l'intérieur dès qu'on
-  regarde de près.
-- c) **Sol seul « en couloir »** : sol et plafond en bandes à la largeur, sans parois (le noir fait le reste) —
-  très simple, mais on ne voit pas où la galerie s'arrête.
-- **Reco a** : la 3D sert à reconnaître une galerie de près ; b) se voit au premier carrefour.
-
-- **Zones** (décision de KARMA : elles restent en mode galerie). Chaque zone est **découpée par l'emprise des
-  tubes** (union des rectangles des tronçons et des dalles de carrefour, `THREE.ShapeUtils` ne coupe pas : une
-  découpe polygonale simple, ou le pochoir du GPU, voir options) : une zone plus large que la galerie s'arrête à
-  la paroi.
-  - **Eau** : surface translucide à 4 cm du sol du tube, comme aujourd'hui, coupée à la paroi.
-  - **Remblais** : volume à 60 % de la hauteur du tube, coupé à la paroi ; il bouche la partie de la galerie qu'il
-    couvre (on bute contre, comme un pilier : règle du pas sur la zone `remblais` découpée, à exposer).
-  - **Inaccessible** : aplat au sol + **rideau translucide en travers du tube** là où le contour coupe l'axe
-    (une barrière visible, comme un ruban de chantier), au lieu du rideau sur tout le contour.
-  - **Effondrement** : aplat au sol + éboulis (un prisme bas irrégulier, 30 % de la hauteur) si l'on veut le
-    distinguer ; reco : aplat seul au premier lot.
-  - Options de découpe : a) **découpe CPU** (intersection polygone × rectangles, par tuile) — exacte, quelques
-    centaines de lignes · b) **pochoir GPU** (on dessine l'emprise des tubes dans le stencil, les zones seulement
-    dedans) — simple pour les aplats, impossible pour le volume des remblais. **Reco a**.
-- **POI** (règle de KARMA) : un POI à moins de **3 m** de l'axe d'un tracé (seuil en option : 2 m · **3 m** ·
-  5 m ; reco 3 m, la demi-largeur d'une galerie principale plus une marge de relevé) est visible et **ramené dans
-  le tube**, contre la paroi la plus proche (même règle que le POI dans un pilier en mode structures). Plus loin :
-  a) masqué · b) signalé par une petite flèche sur la paroi qui pointe vers lui · **reco a** au premier lot (b si
-  le terrain réclame les POI hors galerie). Toujours sans test de profondeur.
-
-**Types de la légende, par mode** (intégrés et personnalisés) :
-
-| Type | Mode structures (aujourd'hui) | Mode galerie (proposé) |
-|---|---|---|
-| Tracé intégré (principal, secondaire, chemin) | Ruban de 0,25 m au sol, couleur de la légende | Tube, largeur du type (2,5 / 1,8 / 1,2 m), hauteur du plan ; liseré au sol de la couleur de la légende |
-| Tracé `itinerary` | Ruban lumineux de 0,5 m | Ruban lumineux au sol du tube (pas un tube) |
-| Tracé `jonction` | Ruban au sol (niveaux liés) | Pas de tube : passage vers un autre niveau (question B) |
-| **Tracé perso** | Ruban au sol, couleur de la légende (`ktaResolveStyle("traces", …)`) | Tube comme un intégré. Largeur : a) 1,8 m par défaut · b) largeur du modèle de légende dont il descend · c) réglable par type. **Reco a** au premier lot, c plus tard |
-| Zone intégrée | Eau, remblais, effondrement, inaccessible : voir modèle de scène | Mêmes rendus, coupés à la paroi (ci-dessus) |
-| **Zone perso** | Aplat au sol, couleur de remplissage de la légende | Aplat au sol du tube, coupé à la paroi. Reco : pas de volume ni de collision par défaut |
-| Structure intégrée (piliers, mur, mur en ligne, fronts) | Prisme ou mur d'épaisseur ; on bute contre | **Masquée** (interrupteur exclusif), aucune collision |
-| **Structure perso** | Prisme si polygone, mur de 0,3 m si polyligne (géométrie de la légende), couleur de la légende ; on bute contre (`avecPerso`) | **Masquée**, comme les intégrées |
-| POI | Panneau jamais caché, contre la face du pilier qui le contient | Panneau dans le tube s'il est à moins du seuil, sinon masqué |
-
-En mode structures, les types perso sont déjà rendus ainsi dans ce lot : géométrie lue par
-`isStructurePolylineType`, couleurs par `ktaResolveStyle` / `ktaSwatchColor` (couleur choisie dans la légende
-comprise) ; la collision les compte depuis ce lot (`avecPerso`).
-
-**Bascule** : un bouton dans la vue (🧱 structures / 🚇 galerie), retenu par plan ; défaut = structures si le
-plan en a au niveau affiché, galerie sinon. Questions : largeurs par type ou une seule largeur réglable ?
-Liseré de couleur au sol, ou parois teintées de la couleur du tracé (reco : liseré, les parois restent
-calcaire) ?
-
-### B. Multi-niveau : passer par un POI jonction
-
-**Besoin** : changer de niveau en 3D par le **POI jonction** (`KtaPoiJonction` : `niveaux` liés, `accroches`
-validées par galerie) ou un tracé `jonction` (`fromLevel` / `toLevel`).
-
-**Comportement proposé** : à moins de 2 m d'un POI jonction (ou d'un bout de tracé `jonction`), un bouton
-« 🪜 Changer de niveau » apparaît (et toucher le panneau du POI fait de même). Il **téléporte** au niveau lié,
-à la même position (ou à l'accroche validée de ce niveau si elle existe : c'est là que débouche le passage), la
-scène est refaite pour ce niveau (`_reindexer`), cap conservé.
-
-**Questions ouvertes** :
-1. **Plusieurs niveaux liés** (puits qui dessert −1, −2, −3) : a) choix dans une petite liste · b) niveau
-   suivant dans le sens choisi (▲ / ▼) · **reco b**, avec la liste au-delà de deux.
-2. **Sens** : un tracé `jonction` est-il orienté (`fromLevel` → `toLevel`) ou se prend-il dans les deux sens ?
-   Reco : les deux sens, comme l'itinéraire.
-3. **Tracker actif** : a) la 3D change seulement son niveau affiché (le tracker ne bouge pas, comme pour les
-   déplacements) · b) le niveau du tracker suit (recalage sur le POI) · **reco a**, et « Je suis ici ? » à la
-   fermeture recale aussi le niveau.
-4. **Mode suivi** : en suivi, le niveau suit déjà celui du tracker ; le bouton n'apparaît qu'en mode libre.
-5. **Niveau actif de la carte 2D** : le laisser tel quel ou le suivre ? Reco : le laisser (la 3D explore).
-
-### C. Relevé fictif
+### Relevé fictif
 
 9. **Relevé fictif** : il n'a aucune structure sur les niveaux 0 et 1 joués par le checkup (qui pose son propre
    pilier et son mur). a) y ajouter quelques piliers, murs et fronts fictifs (sur consigne de KARMA, `data/` n'est
