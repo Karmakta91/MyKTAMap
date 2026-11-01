@@ -1011,7 +1011,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   -webkit-overflow-scrolling: touch;
 }
 .kta-tracker-modal-section-title {
-  margin: 10px 2px 6px;
+  margin: 8px 2px 4px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1021,23 +1021,25 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
 .kta-tracker-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
+/* Icône À GAUCHE du libellé (grille 2 colonnes, icône sur 2 lignes : libellé + aide éventuelle) : le menu complet,
+   tuiles optionnelles comprises (replay, heatmap), tient sans défiler sur un iPhone. */
 .kta-tracker-modal-tile {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 62px;
-  padding: 9px 6px;
+  column-gap: 8px;
+  row-gap: 1px;
+  min-height: 46px;
+  padding: 6px 10px;
   font-family: inherit;
   color: var(--kta-texte);
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
 }
 .kta-tracker-modal-tile:hover {
@@ -1051,7 +1053,8 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   grid-column: 1 / -1;
 }
 .kta-tracker-modal-tile-icon {
-  font-size: 20px;
+  grid-row: span 2;
+  font-size: 18px;
   line-height: 1;
 }
 .kta-tracker-modal-tile-label {
@@ -1062,7 +1065,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
 /* Ligne d'aide sous le libellé (🧊 Vue 3D) : méta en texte-3 ; une tuile grisée l'est déjà en entier. */
 .kta-tracker-modal-tile-aide {
   font-size: 11px;
-  line-height: 1.25;
+  line-height: 1.2;
   color: var(--kta-texte-3);
 }
 /* Tuile active (suivi, plan orienté, guidage, verrou…) : vert de .kta-tx-ok. En pause = orange,
