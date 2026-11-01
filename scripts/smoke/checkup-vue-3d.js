@@ -577,7 +577,7 @@ async function mesures(page, depart) {
               const rose = document.querySelector("#kta-vue3d .kta-v3d-rose");
               a.transform = rose.style.transform;
               a.planConfig = brut;
-              a.texte = document.querySelector("#kta-vue3d .kta-v3d-rose-mention").textContent;
+              a.texte = document.querySelector("#kta-vue3d .kta-v3d-rose-mention") ? "visible" : "";
               a.attendu = window.I18n.t("vue3d.nordNonCalibre");
               window.setPlanNorthOffset(null, 30);
               requestAnimationFrame(function () {
@@ -601,9 +601,10 @@ async function mesures(page, depart) {
       });
       const deg = function (t) { const m = /rotate\((-?[\d.]+)deg\)/.exec(t || ""); return m ? Number(m[1]) : NaN; };
       const sansCalib = bous.sans.planConfig === undefined || bous.sans.planConfig === null;
-      verifier(!sansCalib || (bous.sans.calibre === false && bous.sans.mention && bous.sans.texte === bous.sans.attendu &&
-        deg(bous.sans.transform) === -90), "boussole sans nord calibré : haut du plan, mention affichée", bous.sans);
-      verifier(bous.avec.calibre === true && !bous.avec.mention && deg(bous.avec.transform) === -60 &&
+      verifier(!sansCalib || (bous.sans.calibre === false && bous.sans.texte === "" &&
+        bous.sans.libelle.indexOf(bous.sans.attendu) >= 0 && deg(bous.sans.transform) === -90),
+        "boussole sans nord calibré : haut du plan, aucun texte à l'écran, dit au libellé accessible", bous.sans);
+      verifier(bous.avec.calibre === true && bous.avec.libelle.indexOf(bous.sans.attendu) < 0 && deg(bous.avec.transform) === -60 &&
         deg(bous.tourne.transform) === -105, "boussole calibrée (30°) : N au nord réel, tourne avec la vue",
         { avec: bous.avec, tourne: bous.tourne });
 

@@ -1210,7 +1210,8 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   tant que la vue est ouverte.
 - **Boussole** : `icon/compass.svg` tournée de −(cap plan − `getPlanNorthOffset()`), la convention de `compass.js`.
   Plan sans Nord calibré (`config.js > getPlanNorthCalibre` : ni pref du plan ni `plan.northOffsetDeg`) : haut du
-  plan et mention `vue3d.nordNonCalibre`. Relu à `kta:northOffsetChange`.
+  plan, dit seulement au libellé accessible (`vue3d.nordNonCalibre`, aucun texte à l'écran). Rose posée sur la
+  carte de la petite boussole du mode plan (surface 88 %, liseré doré). Relu à `kta:northOffsetChange`.
 - **Le tracker n'est pas déplacé** par la vue (décision produit). `fermer()` (✕, Échap) : si le suivi est actif
   (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker,
   `ktaConfirm` « 📍 Je suis ici ? » ; Oui = `recalerTrackerSurPoint(x, y, niveau)` (ancre de recalage normale,

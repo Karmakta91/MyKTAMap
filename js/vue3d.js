@@ -664,7 +664,7 @@
 
   // Rose des vents : même convention que la boussole 2D (compass.js, rotate(-cap)), sur le cap RÉEL de la vue :
   // cap plan − calibration Nord du plan (tracking.js > _getPlanRelHeading fait l'inverse). Sans calibration, la
-  // rose montre le haut du plan, et le dit.
+  // rose montre le haut du plan ; seul son libellé accessible le dit (aucun texte à l'écran, décision produit).
   function _majBoussole() {
     const e = _e;
     if (!e.rose) return;
@@ -680,7 +680,10 @@
     const lire = typeof window.getPlanNorthOffset === "function" ? window.getPlanNorthOffset : null;
     e.nord = e.nordCalibre && lire ? Number(lire()) || 0 : 0;
     e.roseAngle = NaN;
-    if (e.roseMention) e.roseMention.hidden = e.nordCalibre;
+    if (e.boussole) {
+      const non = e.nordCalibre ? "" : " · " + _t("vue3d.nordNonCalibre");
+      e.boussole.setAttribute("aria-label", _t("vue3d.boussole") + non);
+    }
     e.sale = true;
   }
 
@@ -948,13 +951,9 @@
     rose.src = "icon/compass.svg";
     rose.alt = "";
     rose.draggable = false;
-    const mention = document.createElement("span");
-    mention.className = "kta-v3d-rose-mention";
-    mention.textContent = _t("vue3d.nordNonCalibre");
     bous.appendChild(rose);
-    bous.appendChild(mention);
     ov.appendChild(bous);
-    e.rose = rose; e.roseMention = mention;
+    e.rose = rose; e.boussole = bous;
     if (stats) {
       e.compteur = document.createElement("div");
       e.compteur.className = "kta-v3d-stats";
@@ -1256,7 +1255,7 @@
       aBouge: e.aBouge, rapide: !!e.rapide, suiviDispo: !!e.suiviDispo, vue: e.vue, mode: e.mode,
       inclinaison: e.inclinaison,
       boussole: { angle: e.roseAngle, nord: e.nord, calibre: e.nordCalibre,
-        mention: !!e.roseMention && !e.roseMention.hidden,
+        libelle: e.boussole ? e.boussole.getAttribute("aria-label") : "",
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, hauteur: e.hauteur, distance: e.distance,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
