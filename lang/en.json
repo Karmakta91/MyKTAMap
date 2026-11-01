@@ -5506,7 +5506,7 @@
   "ui.subaction.undo": "Undo the last action (Ctrl+Z)",
   "ui.subaction.verrouSuspend": "Suspend trace lock",
   "ui.suppClic.structMsg": "Click a structure to <strong>delete</strong> it",
-  "ui.choix.eraseZone": "✏️ Erase by area",
+  "ui.choix.eraseZone": "Erase by area",
   "ui.choix.eraseZoneDesc": "Draw an area: whatever lies entirely inside, on the displayed level",
   "ui.suppClic.parZone": "✏️ By area",
   "ui.suppClic.traceMsg": "Click a path to <strong>delete</strong> it",

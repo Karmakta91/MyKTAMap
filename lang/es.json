@@ -5506,7 +5506,7 @@
   "ui.subaction.undo": "Anular la última acción (Ctrl+Z)",
   "ui.subaction.verrouSuspend": "Suspender el bloqueo en trazado",
   "ui.suppClic.structMsg": "Haz clic en una estructura para <strong>eliminarla</strong>",
-  "ui.choix.eraseZone": "✏️ Borrar por zona",
+  "ui.choix.eraseZone": "Borrar por zona",
   "ui.choix.eraseZoneDesc": "Traza una zona: lo que queda totalmente dentro, en el nivel mostrado",
   "ui.suppClic.parZone": "✏️ Por zona",
   "ui.suppClic.traceMsg": "Haz clic en un trazado para <strong>eliminarlo</strong>",

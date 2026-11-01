@@ -5506,7 +5506,7 @@
   "ui.subaction.undo": "Annuler la dernière action (Ctrl+Z)",
   "ui.subaction.verrouSuspend": "Suspendre le verrou sur tracé",
   "ui.suppClic.structMsg": "Clique sur une structure pour la <strong>supprimer</strong>",
-  "ui.choix.eraseZone": "✏️ Effacer par zone",
+  "ui.choix.eraseZone": "Effacer par zone",
   "ui.choix.eraseZoneDesc": "Trace une zone : ce qui est entièrement dedans, au niveau affiché",
   "ui.suppClic.parZone": "✏️ Par zone",
   "ui.suppClic.traceMsg": "Clique sur un tracé pour le <strong>supprimer</strong>",
