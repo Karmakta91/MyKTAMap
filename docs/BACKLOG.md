@@ -108,6 +108,12 @@
 
 ## Entrant
 
+- **Convertir un tracé FERMÉ en zone ou pilier** — un import SIG livre souvent un contour en ligne fermée (premier
+  point = dernier). Aujourd'hui `convertirObjet.js` tranche par le TYPE (ouvert ⇄ ouvert, fermé ⇄ fermé) : un tracé
+  ne devient jamais zone. Autoriser la traversée quand la géométrie est fermée (≥ 3 points distincts), sans rien inventer.
+  `qui: Claude · action: topo (tolérance « fermé », point final retiré, garde-fou check-convertir) · depuis: 01/11/2026
+  · taille: S`
+
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
