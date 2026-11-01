@@ -339,7 +339,7 @@ atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jo
 
 **Visuel** : hachures rouge sombre / noir à 45° via un `<pattern>` SVG défini dans `index.html` (`id="kta-pattern-inaccessible"`). Renderer SVG forcé (singleton `_inaccessibleRenderer` dans `zones.js` pour session, `_inaccessibleDataRenderer` dans `utils.js` pour data layers) car canvas ignore les patterns SVG.
 
-**Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)`. Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
+**Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, obstacles.polys)` (et `_segmentCoupeParMur`, cf. §31.1 bis). Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
 
 **Algorithme de détection** (`pathfinder.js`) :
 - `_pointInPolygon(p, poly)` — ray-casting standard O(n)
@@ -353,6 +353,20 @@ atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jo
 **Multi-niveau** : zone bloque uniquement les segments du **même niveau**. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` (middle de jonction interniveau) jamais bloqués (points "en l'air").
 
 **Indépendant de la visibilité** : pathfinder utilise toujours la zone même si le calque zones est toggle off (cohérence demandée — sinon l'user pourrait toggler sans s'en rendre compte). Toutes les modifs d'export (PNG, session) respectent toujours le type comme une vraie zone.
+
+#### 31.1 bis Mur en ligne (contrainte DURE)
+
+**Type de structure** : `"mur-ligne"` (« Mur (ligne) », 🟦), polyligne de la famille des structures comme les fronts (`structures.js > STRUCTURE_TYPES_POLYLINE`). Sert aux murs levés en trait, cas courant d'un import SIG (le `mur` intégré est un polygone, une ligne ouverte ne s'y convertit pas). Jamais un tracé : un tracé est une galerie praticable.
+
+**Effet pathfinder** : un segment de road qui **croise** un mur en ligne de son niveau n'entre pas au graphe, exactement comme une zone inaccessible (mêmes conséquences pour l'enrichissement et Dijkstra). Piliers, mur polygone et fronts ne sont **pas** des obstacles. Le rôle tient à la **clé** `mur-ligne` : renommé ou recoloré dans ≡ Légende, il reste un obstacle ; un type personnalisé en ligne n'en est pas un.
+
+**Collecte** : `_collecterMursLigne()` lit `window.getStructures()` et `window._ktaDataStructurePolygons` (le registre range aussi les lignes), `type === "mur-ligne"`, ≥ 2 points, sans `level` = niveau 0. `_collecterObstaclesDurs()` = zones inaccessibles + murs, passé partout où passaient les zones (`computeRoute`, `computeReachable`, `buildNetworkGraph({ includeZones: true })`). Inter-plans : `InterPlanLinks.collectRoutingDataForPlan` rend `murs` (session + calques du plan distant), `computeRouteOnRoads(…, { murs })` les applique.
+
+**Algorithme** : `_preparerObstacles` sépare polygones et murs ; les segments de murs vont dans une grille (`GRILLE_MUR_PX` = 64 px, clé `niveau|cx,cy`, un seul étage `*` hors multi-niveau). `_segmentCoupeParMur` ne teste que les cellules de la boîte du segment de road, puis boîte contre boîte, puis `_segmentIntersection` (bornes incluses). 🩸 Le test naïf serait tracés × segments de murs (~6·10⁷ intersections pour 10 000 segments et 3 000 murs) ; avec la grille, le graphe coûte le même ordre de temps que sans murs (mesure dans `scripts/check-mur-ligne.js`).
+
+🩸 **Contact compté** : un tracé qui finit pile sur un mur perd ce dernier segment (bornes incluses), sinon deux segments qui se touchent sur le mur le franchiraient. Un tracé qui longe un mur (colinéaire) n'est pas coupé.
+
+**Import SIG** : une valeur « mur » sur une **ligne** est proposée en `struct:mur-ligne` (`createConf.js > _sigImpRendreTables`) ; sous « une couleur par niveau », un mur en ligne garde sa clé (`sigImport.js > _typeNiveau`), sinon il serait fondu dans le type de niveau des fronts et perdrait son rôle.
 
 #### 31.2 Préférences d'évitement (contrainte SOUPLE)
 
@@ -587,41 +601,42 @@ code disait le contraire de ses propres commentaires.
 
 | Contrainte | Source | Nature | Réglable |
 |---|---|---|---|
-| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ **depuis v1.82.0** |
+| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ case « Respecter… » |
+| Structures `mur-ligne` (Mur (ligne)) | session + `_ktaDataStructurePolygons` | **dure**, même niveau | ✅ même case |
 | Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
 | Points / tags à éviter | `SearchPoints` | souple | ✅ |
-| **Structures** (piliers, murs, fronts) | — | **aucune** | sans objet |
+| **Autres structures** (piliers, mur polygone, fronts) | — | **aucune** | sans objet |
 
-🩸 **Les structures ne bloquent rien.** Aucune référence dans `pathfinder.js` :
-elles ne sont ni arêtes ni obstacles. Le commentaire de `utils.js` au-dessus de
-`getAllEmbeddedStructures` affirmait le contraire (« utilisé pour la collision
-pathfinder, les structures bloquent comme les zones inaccessibles ») — c'était
-faux depuis le début, et ça a coûté un aller-retour de diagnostic à KARMA.
+🩸 **Une seule structure bloque : le mur en ligne** (§31.1 bis). Les autres ne sont ni
+arêtes ni obstacles ; ne pas les y ajouter « par cohérence » (décision produit : un
+pilier ou un front levé n'est pas une paroi continue).
 
 🩸 **Le graphe se construit UNIQUEMENT sur les `roads`** (`getRoads` +
 `getAllEmbeddedRoads`). Conséquence sur un plan importé dont tout le relevé est
 parti en structures : **aucun itinéraire n'est possible**, pas même dégradé.
 C'est ce qui motive le reclassement d'objet (cf. `session-data.md`).
 
-### La case « Respecter les zones inaccessibles »
+### La case « Respecter les zones inaccessibles et les murs (ligne) »
 
-Les zones `inaccessible` étaient la **seule** contrainte que le moteur ne relâche
-jamais — même la passe 2 les garde. Sur un relevé encore incomplet, un polygone
-typé par erreur ferme donc un passage réel, sans recours.
+Les zones `inaccessible` et les murs en ligne sont les **seules** contraintes que le
+moteur ne relâche jamais — même la passe 2 les garde. Sur un relevé encore incomplet,
+un objet typé par erreur ferme donc un passage réel, sans recours.
 
-`computeRoute(waypoints, { respecterInaccessibles: false })` la suspend. Case
+`computeRoute(waypoints, { respecterInaccessibles: false })` les suspend **ensemble**
+(le nom de l'option est historique). Case
 dans la section « 🚫 Préférences d'évitement », **cochée par défaut**, persistée
 avec les autres préférences (`respecterInaccessibles !== false` : une préférence
 enregistrée avant cette version n'a pas le champ et garde le comportement
 historique).
 
 ⚠️ **Volontairement limité à `computeRoute`.** `computeReachable` (Mode Secours /
-Perdu) garde les zones inaccessibles en toutes circonstances : une préférence de
+Perdu) garde les zones inaccessibles et les murs en toutes circonstances : une préférence de
 confort n'a pas à élargir un périmètre de secours. `interPlanRoute` et la Sortie
 d'urgence lancée par 🚨 ne passent pas l'option — ils héritent du comportement sûr.
 **Seule exception : « 🚑 Évacuer » du Mode Secours** (options brancard) — l'opérateur
 choisit les types de zones à éviter (eau et remblais cochés d'office) et peut lever les
-inaccessibles par une case **décochée par défaut** (dernier recours, nommé comme tel).
+inaccessibles et les murs par une case **décochée par défaut** (dernier recours, nommé comme
+tel ; son compte = `Pathfinder.nbObstaclesDurs()`).
 Les contraintes vont `SortieUrgence.declencherDepuis(…, { contraintes })` → classement des
 sorties → `itineraireYAller(…, { evacuation })` → `road.evacuation`, relu par les recalculs
 (`_replanifierDepuis`, `SortieUrgence.relancerDepuis`). Une sortie atteinte seulement en

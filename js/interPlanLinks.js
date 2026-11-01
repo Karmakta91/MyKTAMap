@@ -707,27 +707,31 @@
   }
 
   // ── Lecture du routage d'un plan non chargé ──────────
-  // Comme _collecterPointsDuPlan, pour ROADS + ZONES (Dijkstra du leg distant : graphe, zones inaccessibles et
-  // évitables) depuis la session et les calques. stats.dataError = calques inaccessibles : le leg serait
+  // Comme _collecterPointsDuPlan, pour ROADS + ZONES + MURS EN LIGNE (Dijkstra du leg distant : graphe, obstacles
+  // durs et zones évitables) depuis la session et les calques. stats.dataError = calques inaccessibles : le leg serait
   // calculé sur un réseau PARTIEL, l'appelant doit refuser, pas deviner.
   async function _collecterRoutingDuPlan(plan, stats) {
-    const roads = [], zones = [];
+    const roads = [], zones = [], murs = [];
     let scale = null;   // px/mètre du plan distant (cfg.tracking.scale) — nécessaire
                         // pour sommer les legs en MÈTRES (⚠️ les px de deux plans n'ont pas la même échelle)
     let profondeursCfg = null;   // cfg.plan.niveauxProfondeur du plan distant
-    function _absorber(objRoads, objZones) {
+    function _absorber(objRoads, objZones, objStructures) {
       (objRoads || []).forEach(function(r) {
         if (r && Array.isArray(r.points) && r.points.length >= 2 && r.type !== "itinerary") roads.push(r);
       });
       (objZones || []).forEach(function(z) {
         if (z && Array.isArray(z.points) && z.points.length >= 3) zones.push(z);
       });
+      // Seul `mur-ligne` compte pour l'itinéraire (pathfinder.js > _collecterMursLigne).
+      (objStructures || []).forEach(function(s) {
+        if (s && s.type === "mur-ligne" && Array.isArray(s.points) && s.points.length >= 2) murs.push(s);
+      });
     }
     try {
       const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
         const sess = JSON.parse(raw);
-        _absorber(sess.roads, sess.zones);
+        _absorber(sess.roads, sess.zones, sess.structures);
       }
     } catch(e) { console.warn("[InterPlanLinks] session routing " + plan.id + " illisible :", e); }
     try {
@@ -739,7 +743,7 @@
         for (let i = 0; i < layers.length; i++) {
           try {
             const dj = await _fetchLayerJson(plan.path, layers[i].file);   // double essai
-            _absorber(dj.roads, dj.zones);
+            _absorber(dj.roads, dj.zones, dj.structures);
           } catch(e) { /* layer illisible → skip */ }
         }
       } else if (_planLuParZip(plan) && window.PlanRegistry && window.JSZip) {
@@ -763,7 +767,7 @@
               if (!f) continue;
               try {
                 const dj = JSON.parse(await f.async("string"));
-                _absorber(dj.roads, dj.zones);
+                _absorber(dj.roads, dj.zones, dj.structures);
               } catch(e) { /* skip */ }
             }
           }
@@ -789,7 +793,7 @@
     } else if (profondeursCfg && typeof profondeursCfg === "object") {
       profondeurs = profondeursCfg;
     }
-    return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };
+    return { roads: roads, zones: zones, murs: murs, scale: scale, profondeurs: profondeurs };
   }
 
   // ── Modale de création : plan cible → recherche du point → créer ──────────

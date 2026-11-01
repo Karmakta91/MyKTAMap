@@ -437,7 +437,7 @@
                 inaccessible: "⛔" })[type] || "✨";
     }
     if (category === "structures") {
-      return ({ "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵",
+      return ({ "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
                 "front-1": "🟨", "front-2": "🟧" })[type] || "✨";
     }
     return "🏷️";
@@ -652,7 +652,7 @@
            _section(window.I18n.t("filter.section.tags"),         "tags",    _renderTagsSection()) +
            _section(window.I18n.t("filter.section.roadTypes"),    "roads",   _renderTypesSection("roads",      "roadTypes",   ["principal", "secondaire", "chemin", "jonction"])) +
            _section(window.I18n.t("filter.section.zoneTypes"),    "zones",   _renderTypesSection("zones",      "zoneTypes",   ["eau", "remblais", "effondrement", "inaccessible"])) +
-           _section(window.I18n.t("filter.section.structTypes"),  "structs", _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]));
+           _section(window.I18n.t("filter.section.structTypes"),  "structs", _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]));
   }
 
   function _section(title, id, contentHtml) {

@@ -105,6 +105,7 @@
     "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.70, weight: 1, isPolyline: false },
     "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.70, weight: 1, isPolyline: false },
     "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.70, weight: 1, isPolyline: false },
+    "mur-ligne": { color: "#1e3a8a", weight: 4, opacity: 0.95, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 4, opacity: 0.95, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 4, opacity: 0.95, isPolyline: true }
   };

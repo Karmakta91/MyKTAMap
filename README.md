@@ -48,7 +48,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | Points d'intérêt : tags, notes, photos IDB (ré-encodées sans EXIF) | `editor.js`, `photos.js`, `photoViewer.js` |
 | Tracés (Principal / Secondaire / Chemin / Jonction / Itinéraire) | `road.js` |
 | Zones polygonales (eau / remblais / effondrement / inaccessible) | `zones.js` |
-| Structures (pilier 1ère / 2e masse, mur, fronts) | `structures.js` |
+| Structures (pilier 1ère / 2e masse, mur, mur en ligne qui coupe l'itinéraire, fronts) | `structures.js` |
 | Mesure distance + surface (polygone shoelace) | `measure.js` |
 | **Undo / Redo global** (Ctrl+Z / Ctrl+Y, 50 entrées FIFO) | `historyManager.js` |
 | Heatmap densité d'activité | `heatmap.js` |
@@ -537,6 +537,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-maj-plan.js` | « Mettre à jour le plan » qui perd un objet, écrase un calque ou laisse une trace destructrice | pre-commit |
 | `check-map-listeners.js` | Listener posé sur la map Leaflet avec une garde anti-doublon hors de la map | pre-commit |
 | `check-modal-lifecycle.js` | Rien : avertit d'un timer, écouteur ou blob URL hors `ModalLifecycle` dans un module migré | pre-commit (consultatif) |
+| `check-mur-ligne.js` | Mur en ligne qui ne coupe plus l'itinéraire, qui coupe un autre niveau, ou piliers / fronts devenus obstacles | pre-commit |
 | `check-no-pro-leak.js` | Fichier ou motif du dépôt pro privé dans ce dépôt public | pre-commit + ci-commits |
 | `check-noms-reels.js` | Nom réel lié aux relevés dans un fichier, un chemin ou un message de commit (empreintes sha256) | pre-commit + commit-msg + ci-commits |
 | `check-notifs.js` | Toast dessiné hors du goulot `OOMGuard.showToast`, ou important / erreur masqué par « Silence » | pre-commit |
@@ -624,6 +625,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
+| `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |

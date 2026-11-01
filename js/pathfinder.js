@@ -11,7 +11,9 @@
 // getAllEmbeddedRoads()), waypoints calés orthogonalement sur le segment le plus proche.
 // Expose window.Pathfinder : computeRoute (async, 2 passes), computeRouteOnRoads (sync, réseau fourni),
 //   computeReachable (isochrone du Mode Perdu), buildNetworkGraph / snapPointToGraph (roadGraph.js),
-//   resolvePointById, aDesTraces, carrefoursSurChemin. Et window.getAvoidableZoneTypes (modale itinéraire).
+//   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs. Et window.getAvoidableZoneTypes.
+// ⚠️ Contraintes DURES : zones `inaccessible` et murs en ligne (`mur-ligne`), levées ensemble par
+//   `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte.
 // ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours }.
 //   `level` = entier du niveau s'il est UNIVOQUE, sinon null (nœud fusionné multi-niveaux, milieu de jonction).
 // Coordonnées en système image (x, y plan) ; la conversion Leaflet se fait au rendu (road.js > renderRoads).
@@ -110,6 +112,62 @@
     return false;
   }
 
+  // ── Murs en ligne (contrainte DURE) ──────────
+  // Un segment de tracé qui CROISE un `mur-ligne` de son niveau n'entre pas au graphe, comme pour une zone
+  // inaccessible. Le rôle tient à la CLÉ du type : renommé ou recoloré en légende, il reste un obstacle.
+  // 🩸 Un relevé importé porte des milliers de murs : leurs segments sont rangés dans une grille par niveau et
+  // chaque segment de tracé ne teste que les cellules de sa boîte (le test naïf serait tracés × murs).
+  // 🩸 Contact compté (bornes incluses, comme _segmentIntersection) : un tracé qui finit PILE sur un mur perd ce
+  // dernier segment, sinon deux segments qui se touchent sur le mur le franchiraient.
+  const TYPE_MUR_LIGNE = "mur-ligne";
+  const GRILLE_MUR_PX = 64;
+
+  // Obstacles durs → { polys: zones à tester une à une, grille: Map "niveau|cx,cy" → segments de murs | null }.
+  // Plan sans multi-niveau : un seul étage (« * »), comme pour les zones.
+  function _preparerObstacles(obstacles) {
+    const polys = [], murs = [];
+    (obstacles || []).forEach(function(o) { if (o) (o.ligne ? murs : polys).push(o); });
+    if (murs.length === 0) return { polys: polys, grille: null };
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const grille = new Map();
+    murs.forEach(function(m) {
+      const etage = mlOn ? m.level : "*";
+      for (let i = 1; i < m.points.length; i++) {
+        const a = m.points[i - 1], b = m.points[i];
+        const seg = { a: a, b: b, x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y),
+                      x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
+        _cellulesDe(seg.x0, seg.y0, seg.x1, seg.y1, GRILLE_MUR_PX, function(k) {
+          const cle = etage + "|" + k;
+          let l = grille.get(cle);
+          if (!l) grille.set(cle, l = []);
+          l.push(seg);
+        });
+      }
+    });
+    return { polys: polys, grille: grille };
+  }
+
+  // Segments "transit" (milieu de jonction) jamais coupés : ce sont des points « en l'air » dans un puits.
+  function _segmentCoupeParMur(p1, p2, segLevel, grille) {
+    if (!grille || segLevel === "transit") return false;
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const etage = mlOn ? segLevel : "*";
+    const x0 = Math.min(p1.x, p2.x), y0 = Math.min(p1.y, p2.y);
+    const x1 = Math.max(p1.x, p2.x), y1 = Math.max(p1.y, p2.y);
+    let coupe = false;
+    _cellulesDe(x0, y0, x1, y1, GRILLE_MUR_PX, function(k) {
+      if (coupe) return;
+      const l = grille.get(etage + "|" + k);
+      if (!l) return;
+      for (let i = 0; i < l.length; i++) {
+        const s = l[i];
+        if (s.x1 < x0 || s.x0 > x1 || s.y1 < y0 || s.y0 > y1) continue;
+        if (_segmentIntersection(p1, p2, s.a, s.b)) { coupe = true; return; }
+      }
+    });
+    return coupe;
+  }
+
   // ── Évitement de points (contrainte SOUPLE) ──────────
   // Le graphe exclut les segments à moins de `avoidRadius` d'un point à éviter. Sans chemin, computeRoute
   // repasse sans évitements et rend les points contournés (« Impossible d'éviter : X, Y »).
@@ -200,6 +258,28 @@
       }
     }
     return out;
+  }
+
+  // Murs en ligne du plan : structures de session (getStructures) + embarquées (_ktaDataStructurePolygons, qui
+  // range aussi les lignes). → [{ points, level, ligne: true }] ; sans `level` = niveau 0.
+  function _collecterMursLigne() {
+    const out = [];
+    function _pousser(s) {
+      if (s && s.type === TYPE_MUR_LIGNE && Array.isArray(s.points) && s.points.length >= 2) {
+        out.push({ points: s.points, level: Number.isInteger(s.level) ? s.level : 0, ligne: true });
+      }
+    }
+    if (typeof window.getStructures === "function") {
+      const session = window.getStructures();
+      if (Array.isArray(session)) session.forEach(_pousser);
+    }
+    if (Array.isArray(window._ktaDataStructurePolygons)) window._ktaDataStructurePolygons.forEach(_pousser);
+    return out;
+  }
+
+  // Toutes les contraintes dures du plan ouvert : zones inaccessibles puis murs en ligne.
+  function _collecterObstaclesDurs() {
+    return _collecterZonesInaccessibles().concat(_collecterMursLigne());
   }
 
   // ── Évitement de zones par TYPE (contrainte SOUPLE) ──────────
@@ -372,6 +452,7 @@
     avoidPoints = avoidPoints || [];
     avoidRadius = avoidRadius || 0;
     avoidZones  = avoidZones  || [];   // zones à éviter (souple), même test géométrique que les inaccessibles
+    const obstacles = _preparerObstacles(zonesInacc);   // zones inaccessibles + murs en ligne (DUR)
     const graph = _newGraph();
 
     for (let r = 0; r < roads.length; r++) {
@@ -411,9 +492,10 @@
         const idx = _getOrAddNode(graph, p.x, p.y, nodeLvl);
         _ajouterNiveauNode(graph, idx, nodeLvl);
 
-        // Segment exclu (nœud sans arête) si une zone inaccessible le traverse (DUR, jamais relâché)
-        // ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, relâché en passe 2).
-        if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc) &&
+        // Segment exclu (nœud sans arête) si une zone inaccessible le traverse ou s'il croise un mur en ligne
+        // (DUR, jamais relâché), ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, passe 2).
+        if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, obstacles.polys) &&
+            !_segmentCoupeParMur(prevP, p, segLevel, obstacles.grille) &&
             !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius) &&
             !_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)) { // zones à éviter (souple)
           // 🩸 UNE JONCTION EST UN PUITS, PAS UN TRAIT : sa longueur dans le plan (3 px pour 12 m de
@@ -1261,18 +1343,18 @@
       throw e;
     }
 
-    // Zones inaccessibles : SEULE contrainte dure, jamais relâchée même en passe 2 — un polygone typé
-    // « inaccessible » par erreur ferme un passage sans recours, d'où la case de la modale (cochée par
-    // défaut : la suspendre est un geste explicite).
+    // Zones inaccessibles et murs en ligne : SEULES contraintes dures, jamais relâchées même en passe 2 — un
+    // objet mal typé ferme un passage sans recours, d'où la case de la modale (cochée par défaut : la suspendre
+    // est un geste explicite) ; elle lève les deux ensemble.
     // ⚠️ Limité à computeRoute : computeReachable (Secours / Perdu) les garde toujours — une préférence
     // de confort n'élargit pas un périmètre de secours.
     const zonesInacc = (opts.respecterInaccessibles === false)
-      ? [] : _collecterZonesInaccessibles();
+      ? [] : _collecterObstaclesDurs();
     if (opts.respecterInaccessibles === false) {
-      console.log("[Pathfinder] zones inaccessibles IGNORÉES (choix utilisateur)");
+      console.log("[Pathfinder] zones inaccessibles et murs IGNORÉS (choix utilisateur)");
     }
     if (zonesInacc.length > 0) {
-      console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) — contrainte dure");
+      console.log("[Pathfinder] " + zonesInacc.length + " obstacle(s) dur(s) (zones inaccessibles, murs)");
     }
 
     // Évitements souples : points explicites + avoidTags développés.
@@ -1338,6 +1420,7 @@
   // SYNCHRONE : pas d'avoidTags — l'appelant résout ses évitements, les données distantes ne sont pas
   // dans les globales.
   // opts : allowedTypes · zones [{type, points, level?}] (les "inaccessible" = contrainte DURE) ·
+  //   murs [{points, level?}] (murs en ligne de CE réseau, DURS) · respecterInaccessibles (false = lève les deux) ·
   //   avoidPoints · avoidZonesResolved (zones objets, souple) · avoidRadius (px, 100) ·
   //   echelle (px/m de CE réseau : carrefours 3 m / 5 m et dénivelé) ·
   //   profondeurs ({ "<niveau>": m|null } de CE réseau ; fournie, même {}, fait foi ; absente = plan ouvert) ·
@@ -1355,11 +1438,17 @@
       e.i18nKey = "iti.err.aucuneRoute";
       throw e;
     }
-    const zonesInacc = (Array.isArray(opts.zones) ? opts.zones : []).filter(function(z) {
+    const zonesDures = (Array.isArray(opts.zones) ? opts.zones : []).filter(function(z) {
       return z && z.type === "inaccessible" && Array.isArray(z.points) && z.points.length >= 3;
     }).map(function(z) {
       return { points: z.points, level: Number.isInteger(z.level) ? z.level : 0 };
     });
+    const mursDurs = (Array.isArray(opts.murs) ? opts.murs : []).filter(function(m) {
+      return m && Array.isArray(m.points) && m.points.length >= 2;
+    }).map(function(m) {
+      return { points: m.points, level: Number.isInteger(m.level) ? m.level : 0, ligne: true };
+    });
+    const zonesInacc = (opts.respecterInaccessibles === false) ? [] : zonesDures.concat(mursDurs);
     const avoidPts    = Array.isArray(opts.avoidPoints) ? opts.avoidPoints : [];
     const avoidRadius = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0) ? opts.avoidRadius : 100;
     const avoidZones  = Array.isArray(opts.avoidZonesResolved) ? opts.avoidZonesResolved : [];
@@ -1443,7 +1532,7 @@
     }
 
     const allowedTypes = ["principal", "secondaire", "chemin"];
-    const zonesInacc = _collecterZonesInaccessibles();
+    const zonesInacc = _collecterObstaclesDurs();
 
     // Sans évitements (propres à l'itinéraire).
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
@@ -1595,14 +1684,15 @@
     return sessionRoads.concat(embeddedRoads || []);
   }
 
-  // Graphe complet SANS évitements. Zones inaccessibles exclues par défaut : la nav dit où l'utilisateur
-  // EST, une zone ne change pas la géométrie (opts.includeZones = true pour les respecter).
+  // Graphe complet SANS évitements. Obstacles durs (zones inaccessibles, murs en ligne) exclus par défaut : la
+  // nav dit où l'utilisateur EST, un obstacle ne change pas la géométrie (opts.includeZones = true pour les
+  // respecter).
   function buildNetworkGraph(opts) {
     opts = opts || {};
     const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
     const allRoads = _collecterToutesLesRoads();
     if (allRoads.length === 0) return _newGraph();
-    const zonesInacc = opts.includeZones ? _collecterZonesInaccessibles() : [];
+    const zonesInacc = opts.includeZones ? _collecterObstaclesDurs() : [];
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
     _enrichirGrapheAvecCroisements(graph);
     _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: opts.corde === true });
@@ -1641,6 +1731,8 @@
   // ── Export ──────────
   window.Pathfinder = {
     aDesTraces:        aDesTraces,
+    // Obstacles durs du plan ouvert (zones inaccessibles + murs en ligne) : compte des cases qui les lèvent.
+    nbObstaclesDurs:   function() { return _collecterObstaclesDurs().length; },
     computeRoute:      computeRoute,
     computeRouteOnRoads: computeRouteOnRoads,   // roads fournies (plan non chargé)
     computeReachable:  computeReachable,

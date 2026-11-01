@@ -567,7 +567,7 @@ The foldable **🚫 Avoidance preferences (optional)** section of the Route wind
 
 If no other path exists, the route goes through anyway and says so: **⚠️ Cannot avoid: …**. Your preferences are remembered per map; **🗑️ Reset all avoidances** clears them.
 
-**Inaccessible zones ⛔**, on the other hand, are **never crossed**, unless you untick **Respect impassable areas** (useful on an incomplete survey). I'm lost and Rescue mode always respect them.
+**Inaccessible zones ⛔**, on the other hand, are **never crossed**, unless you untick **Respect impassable areas and walls (line)** (useful on an incomplete survey). **Walls (line)** 🟦 follow the same rule. I'm lost and Rescue mode always respect them.
 
 ---
 
@@ -721,25 +721,28 @@ Press a type, place at least 3 points (dotted), then close the zone: **tap the f
 
 A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its own level**, and still counts even if you hide the zones layer.
 
-The **Respect impassable areas** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
+The **Respect impassable areas and walls (line)** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
 
 ---
 
 ## 🏛️ Structures (pillars, walls, quarry faces)
 
-For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. They have no effect on the route.
+For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. Only one matters for the route: the **wall (line)**, which cuts it like a ⛔ inaccessible zone; the others have no effect.
 
 | Type | Shape | Colour |
 |---|---|---|
 | 🟡 **1st-mass pillar** | closed surface | yellow |
 | 🟠 **2nd-mass pillar** | closed surface | orange |
 | 🔵 **Wall** (dry stone, masonry) | closed surface | blue |
+| 🟦 **Wall (line)** — a wall surveyed as a stroke, often from a GIS import | line | blue stroke |
 | 🟨 **1st-mass quarry face** | line | yellow stroke |
 | 🟧 **2nd-mass quarry face** | line | orange stroke |
 
-Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face or a wall (line) (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **one level below the active level**; the others take the active level.
+
+A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 
 ---
 

@@ -438,7 +438,7 @@ Audit qui a révélé un trou : les structures (piliers + mur + fronts) embarqu�
 **Cause** : oubli post-update v1.9.3 lors de l'ajout des structures. Les helpers existaient (`getAllEmbeddedStructures` exposé par `utils.js`), mais pas appelés depuis les pipelines canvas.
 
 **Fix v1.10.3** :
-- `utils.js > telechargerPlan` : ajout de 2 blocs (structures session entre zones session et roads ; structures embedded dans la boucle data layers entre zones embed et roads embed). Tri Z `mur < pilier-2 < pilier-1 < front-2 < front-1`, filtre `passeFiltreNiveau`, couleurs alignées sur `STRUCTURE_STYLES` + hotfix v1.10.1-2.
+- `utils.js > telechargerPlan` : ajout de 2 blocs (structures session entre zones session et roads ; structures embedded dans la boucle data layers entre zones embed et roads embed). Tri Z `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1`, filtre `passeFiltreNiveau`, couleurs alignées sur `STRUCTURE_STYLES` + hotfix v1.10.1-2.
 - `exporter.js > _genererCanvasExport` : ajout `embeddedStructures = Array.isArray(j.structures) ? j.structures : []` dans la boucle data layers + bloc de rendu identique (filtre `opts.ann.structures` + `opts.ann.structuresTypes`, niveau via `_itemPasseLevels`, helpers `_drawPolygon`/`_drawPolyline`).
 - Compteurs `_diag.embStructs` et `_diagAdv.embStructs` ajoutés pour le debug.
 

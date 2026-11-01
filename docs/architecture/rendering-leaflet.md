@@ -7,7 +7,7 @@
 
 ### 0. 🎨 Styles des types — source de vérité UNIQUE (v1.76.0)
 
-**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 13 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
+**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 14 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/mur-ligne/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
 
 **API** (globales `window.*`) :
 - `ktaResolveStyle(cat, clé[, {flat:true}])` → objet **NEUF** | `null` (l'appelant garde son repli). Résout aussi les customs `cust-*` via `LegendCustomization` (gabarit par catégorie/géométrie) et applique l'**override de couleur** utilisateur (`LegendCustomization.getColor`, cascade session > plan). `{flat:true}` = contexte qui ne sait pas peindre un `url(#pattern)` SVG (canvas d'export, KMZ, fond OSM) → `inaccessible` retombe sur son aplat `_flatFill`.

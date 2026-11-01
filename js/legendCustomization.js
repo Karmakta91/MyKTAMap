@@ -66,6 +66,7 @@ window.LegendCustomization = (function() {
       "pilier-1":  "Pilier 1ère masse",
       "pilier-2":  "Pilier 2e masse",
       "mur":       "Mur",
+      "mur-ligne": "Mur (ligne)",
       "front-1":   "Front de taille 1ère",
       "front-2":   "Front de taille 2e"
     }

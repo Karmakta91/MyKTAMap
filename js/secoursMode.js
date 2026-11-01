@@ -2568,9 +2568,9 @@
 
   function _demanderOptionsBrancard(onChoix) {
     const types = typeof window.getAvoidableZoneTypes === "function" ? (window.getAvoidableZoneTypes() || []) : [];
-    const nbInacc = [].concat(typeof window.getZones === "function" ? (window.getZones() || []) : [],
-                              Array.isArray(window._ktaDataPolygons) ? window._ktaDataPolygons : [])
-      .filter(function(z) { return z && z.type === "inaccessible"; }).length;
+    // Zones inaccessibles ET murs en ligne : la case les lève ensemble (pathfinder.js > computeRoute).
+    const nbInacc = (window.Pathfinder && typeof window.Pathfinder.nbObstaclesDurs === "function")
+      ? window.Pathfinder.nbObstaclesDurs() : 0;
     const old = document.getElementById("kta-secours-brancard-modal");
     if (old && old.parentNode) old.parentNode.removeChild(old);
     const overlay = document.createElement("div");

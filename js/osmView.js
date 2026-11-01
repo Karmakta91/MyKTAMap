@@ -107,6 +107,7 @@
     "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 2, isPolyline: false },
     "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 2, isPolyline: false },
     "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 2, isPolyline: false },
+    "mur-ligne": { color: "#1e3a8a", weight: 6, opacity: 1, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 6, opacity: 1, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 6, opacity: 1, isPolyline: true }
   };
@@ -1090,7 +1091,7 @@
     const structs = _collectVisibleStructures();
     const isPolylineType = (typeof window.isStructurePolylineType === "function")
                             ? window.isStructurePolylineType
-                            : function(t) { return /^front/.test(String(t || "")); }; // repli regex
+                            : function(t) { return /^(front|mur-ligne)/.test(String(t || "")); }; // repli regex
     let added = 0, skipped = 0;
     for (const s of structs) {
       const latlngs = _projectPoints(s.points);

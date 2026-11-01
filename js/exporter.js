@@ -835,7 +835,7 @@
 
     // 🩸 Les sous-types ne sont PAS listés en dur : un plan importé (types tous personnalisés) aurait son total
     // juste et tous ses sous-types à zéro.
-    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
+    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
     const structuresByType   = _sS.par;
     const structTypesCustom  = _sS.custom;
     const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
@@ -896,6 +896,8 @@
       rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
       rowSub("structures_pilier-2", _lp("structures", "pilier-2", Ti("imgexport.structType.pilier2")), structuresByType["pilier-2"], true) +
       rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
+      rowSub("structures_mur-ligne", _lp("structures", "mur-ligne", Ti("imgexport.structType.murLigne")),
+             structuresByType["mur-ligne"], true) +
       rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
       rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
       structTypesCustom.map(function (c) {
@@ -918,7 +920,7 @@
       // Synchro parent ↔ enfants des structures. Les sous-types custom sont ajoutés à la volée : liste non écrite
       // en dur, sinon décocher « Structures » ne les décoche pas.
       _syncAnnotParent("ann_structures",
-        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur",
+        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur", "ann_structures_mur-ligne",
          "ann_structures_front-1", "ann_structures_front-2"]
         .concat(structTypesCustom.map(function (c) { return "ann_structures_" + c.type; })));
 
@@ -1282,7 +1284,7 @@
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
-    ["pilier-1","pilier-2","mur","front-1","front-2"].forEach(function(t) {
+    ["pilier-1","pilier-2","mur","mur-ligne","front-1","front-2"].forEach(function(t) {
       const cb = document.getElementById("ann_structures_" + t);
       etat.ann["structures_" + t] = cb ? cb.checked : true;
     });
@@ -1585,6 +1587,7 @@
       "pilier-1": document.getElementById("ann_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("ann_structures_pilier-2")?.checked ?? true,
       "mur":      document.getElementById("ann_structures_mur")?.checked      ?? true,
+      "mur-ligne": document.getElementById("ann_structures_mur-ligne")?.checked ?? true,
       "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
       "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true
     };
@@ -1925,11 +1928,11 @@
     if (opts.ann.structures && window.getStructures) {
       const structures = window.ktaExportEtatsFiltres(window.getStructures());
       // Fronts : polylignes épaisses sans contour (`weight` converti par `scale`).
-      // Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau (comme
-      // structures.js > renderStructures).
-      const ordreS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+      // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau
+      // (comme structures.js > renderStructures).
+      const ordreS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
       const filtreS = opts.ann.structuresTypes || {
-        "pilier-1": true, "pilier-2": true, "mur": true,
+        "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
         "front-1":  true, "front-2": true
       };
       // Custom : la géométrie déclarée tranche (polyligne → trait épais, polygone → contour noir), via le gabarit
@@ -2137,12 +2140,13 @@
         _diagAdv.embZones++;
       });
 
-      // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < pilier-2 < pilier-1 <
-      // front-2 < front-1). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a qu'un groupe.
+      // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < mur-ligne < pilier-2 <
+      // pilier-1 < front-2 < front-1). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a
+      // qu'un groupe.
       if (opts.ann.structures && embeddedStructures.length > 0) {
-        const ordreS_E = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        const ordreS_E = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
         const filtreS_E = opts.ann.structuresTypes || {
-          "pilier-1": true, "pilier-2": true, "mur": true,
+          "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
           "front-1":  true, "front-2": true
         };
         const _mlOnEmbS = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -2593,6 +2597,7 @@
             { label: window.I18n.t("imgexport.legLabel.pilier1"), fillColor: "#f4c542", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.pilier2"), fillColor: "#ff9933", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.mur"),     fillColor: "#1e3a8a", borderColor: "#000000" },
+            { label: window.I18n.t("imgexport.legLabel.murLigne"), lineColor: "#1e3a8a" },
             { label: window.I18n.t("imgexport.legLabel.front1"),  lineColor:  "#f4c542" },
             { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" }
           ];

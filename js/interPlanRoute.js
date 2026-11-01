@@ -173,7 +173,7 @@
     return {
       planId: planId, isCurrent: false,
       planName: plan.name || planId,
-      roads: routing.roads, zones: routing.zones || [],
+      roads: routing.roads, zones: routing.zones || [], murs: routing.murs || [],
       scale: (routing.scale && routing.scale > 0) ? routing.scale : 1,
       profondeurs: routing.profondeurs || {},   // jonctions pesées avec les profondeurs de CE plan
       avoidPts: avoidPts, avoidZones: avoidZones, radius: prefs.radius
@@ -204,7 +204,7 @@
       });
     } else {
       r = window.Pathfinder.computeRouteOnRoads(wps, ctx.roads, {
-        zones: ctx.zones, avoidPoints: ctx.avoidPts,
+        zones: ctx.zones, murs: ctx.murs, avoidPoints: ctx.avoidPts,
         avoidZonesResolved: ctx.avoidZones, avoidRadius: ctx.radius,
         echelle: ctx.scale,   // carrefours et jonctions mesurés à l'échelle de CE plan
         profondeurs: ctx.profondeurs
@@ -512,7 +512,7 @@
           [{ x: c.entreeB.x, y: c.entreeB.y, source: "portal", label: "🌀" },
            { x: dest.x, y: dest.y, source: "search", label: dest.label || "" }],
           routingB.roads,
-          { zones: routingB.zones, avoidPoints: avoidPtsB,
+          { zones: routingB.zones, murs: routingB.murs || [], avoidPoints: avoidPtsB,
             avoidZonesResolved: avoidZonesB, avoidRadius: prefsB.radius,
             echelle: scaleB,   // carrefours et jonctions mesurés à l'échelle du plan B
             profondeurs: routingB.profondeurs || {} });

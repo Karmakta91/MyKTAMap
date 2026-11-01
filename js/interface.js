@@ -2914,6 +2914,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Mur : rond bleu, à ne pas confondre avec le carré 🟦 de la zone eau.
       { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), dynamicTitre: function() { return _titreType("structures", "mur", window.I18n.t("ui.struct.mur")); }, isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
+      // Mur en ligne : carré bleu (une ligne, comme les fronts) ; coupe l'itinéraire (pathfinder.js).
+      { icone: "🟦", dynamicIcon: function() { return _iconeType("structures", "mur-ligne", "🟦"); }, titre: window.I18n.t("ui.struct.murLigne"), dynamicTitre: function() { return _titreType("structures", "mur-ligne", window.I18n.t("ui.struct.murLigne")); }, isTypeAction: true, typeKey: "mur-ligne",
+        onClick: function(btn) { _activerStructure("mur-ligne", btn, _iconeType("structures", "mur-ligne", "🟦")); } },
       // Fronts de taille : polylines épaisses, mais rangés dans Structures (décision produit).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué activeLevel - 1.
       { icone: "🟨", dynamicIcon: function() { return _iconeType("structures", "front-1", "🟨"); }, titre: window.I18n.t("ui.struct.front1"), dynamicTitre: function() { return _titreType("structures", "front-1", window.I18n.t("ui.struct.front1")); }, isTypeAction: true, typeKey: "front-1",

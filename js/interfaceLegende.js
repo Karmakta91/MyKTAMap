@@ -295,6 +295,7 @@ function _ktaLegendeCorps(src, opts) {
   contenuStructures += _ligneStructPoly("pilier-1");
   contenuStructures += _ligneStructPoly("pilier-2");
   contenuStructures += _ligneStructPoly("mur");
+  contenuStructures += _ligneStructLine("mur-ligne");
   contenuStructures += _ligneStructLine("front-1");
   contenuStructures += _ligneStructLine("front-2");
   // Customs structures : la GÉOMÉTRIE décide de la pastille (pas « lineColor d'abord »), sinon un polygone avec

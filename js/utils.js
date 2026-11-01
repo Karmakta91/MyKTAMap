@@ -1982,20 +1982,20 @@ window.getAllEmbeddedZones = function() {
 };
 
 // Structures embarquées (export KMZ/GPX, Vue OSM, exports image, Mode Secours).
-// ⚠️ Le pathfinder n'utilise PAS les structures (ni arêtes ni obstacles) : seule contrainte dure, les zones
-// `inaccessible`.
+// ⚠️ Le pathfinder ne fait aucune arête d'une structure ; il lit `mur-ligne` comme obstacle dur, directement
+// dans le registre (pathfinder.js > _collecterMursLigne), comme les zones `inaccessible`.
 window.getAllEmbeddedStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
   return window._ktaDataStructurePolygons
     .filter(function(e) {
-      // minimum de points selon la géométrie : polyligne (fronts) 2, polygone (piliers, mur) 3
+      // minimum de points selon la géométrie : polyligne (fronts, mur en ligne) 2, polygone (piliers, mur) 3
       if (!e || !e.type || !Array.isArray(e.points)) return false;
       // 🩸 Géométrie lue dans la légende (structures.js > _isPolylineType) : un test littéral front-1/front-2
       // ferait tomber un type CUSTOM polyligne à 2 points, visible à l'écran mais absent de la Vue OSM et des
       // exports. Repli sur le test littéral si structures.js n'est pas chargé.
       const isPolyline = (typeof window.isStructurePolylineType === "function")
         ? window.isStructurePolylineType(e.type)
-        : (e.type === "front-1" || e.type === "front-2");
+        : (e.type === "mur-ligne" || e.type === "front-1" || e.type === "front-2");
       const minPts = isPolyline ? 2 : 3;
       return e.points.length >= minPts;
     })
@@ -2410,9 +2410,9 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       // Structures embarquées en lecture seule (structure.json est un data layer comme un autre).
       if (Array.isArray(json.structures) && json.structures.length > 0) {
-        // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < pilier-2 < pilier-1 < front-2 <
-        // front-1 (fronts devant) ; multi-niveau : level croissant d'abord, comme structures.js > renderStructures.
-        const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 <
+        // front-2 < front-1 (fronts devant) ; multi-niveau : level croissant d'abord (structures.js > renderStructures).
+        const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
         const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         const structuresTriees = [...json.structures].sort(function(a, b) {
           if (_multiLevelOnSort) {
@@ -2452,7 +2452,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
-            const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "front-1": "🟨", "front-2": "🟧" };
+            const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
+                                      "front-1": "🟨", "front-2": "🟧" };
             function _structROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
@@ -2465,6 +2466,7 @@ function ajouterPointsDepuisJSON(url, layer) {
                 "pilier-1": window.I18n.t("struct.popup.pilier-1"),
                 "pilier-2": window.I18n.t("struct.popup.pilier-2"),
                 "mur":      window.I18n.t("struct.popup.mur"),
+                "mur-ligne": window.I18n.t("struct.popup.mur-ligne"),
                 "front-1":  window.I18n.t("struct.popup.front-1"),
                 "front-2":  window.I18n.t("struct.popup.front-2")
               };
@@ -2798,8 +2800,8 @@ async function telechargerPlan() {
           // structures embarquées (piliers, mur, fronts) : ordre Z et couleurs comme ajouterPointsDepuisJSON et
           // exporter.js > _genererCanvasExport
           if (Array.isArray(json.structures) && json.structures.length > 0) {
-            // ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
-            const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+            // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1
+            const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
             const _mlOnStructEmb = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
             [...json.structures].sort(function(a, b) {
               if (_mlOnStructEmb) {
@@ -2876,8 +2878,8 @@ async function telechargerPlan() {
         return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(s);
       });
       if (structures.length > 0) {
-        // ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
-        const ordreStructS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1
+        const ordreStructS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
         const _mlOnStructSess = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         [...structures].sort(function(a, b) {
           if (_mlOnStructSess) {

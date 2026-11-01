@@ -444,7 +444,9 @@
       window._ktaDataStructurePolygons.forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
         if (!_passeFiltreLevel(entry, levelSet)) return;
-        const isPolyline = (entry.type === "front-1" || entry.type === "front-2");
+        const isPolyline = (typeof window.isStructurePolylineType === "function")
+          ? window.isStructurePolylineType(entry.type)
+          : (entry.type === "mur-ligne" || entry.type === "front-1" || entry.type === "front-2");
         _pushPolylineSegs(segs, entry.points, !isPolyline);
       });
     }
