@@ -815,6 +815,8 @@ El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica 
 
 **Solo los contornos cerrados**: esta casilla, en la ventana del lote, conserva solo las líneas cerradas de la selección («4 de 6») y propone entonces zonas y pilares. Al elegir el tipo, la app anuncia cuántos objetos van a cambiar y cuántos quedan igual; un solo `Ctrl+Z` lo deshace todo.
 
+**Unir las líneas que se tocan**: un pilar importado llega a veces en 2 a 4 líneas cuyos extremos casi se tocan. Esta casilla, en la misma ventana, las convierte en UN solo objeto (zona o pilar) cuando juntas forman un bucle en el mismo nivel; no se añade ningún punto y una rama o una T nunca se une. La app anuncia cuántos objetos va a crear y cuántas líneas usa; un solo `Ctrl+Z` devuelve las líneas originales.
+
 **Los contornos cerrados de una capa de datos**: pasa primero la capa a **🔄 Modificar** (≡ Filtros, fila de la capa); sus objetos tienen entonces una burbuja y se convierten como los tuyos, uno a uno o en lote con **Solo los contornos cerrados**.
 
 ---

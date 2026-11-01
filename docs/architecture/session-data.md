@@ -1518,6 +1518,40 @@ jusqu'à ~10:1 passe.
   d'autre heuristique : le lot affiche le compte avant de convertir et s'annule en
   un ⏪.
 
+**Recoller des lignes qui forment une boucle** (`trouverBoucles(items)`,
+`recollerLot(items, familleCible, typeCible)`). À l'import SIG, beaucoup de piliers
+arrivent en 2 à 4 LIGNES dont les bouts se touchent presque, jamais exactement :
+aucune n'est fermée seule. Graphe sur les lignes d'un lot (tracés et fronts, jamais
+jonction ni itinéraire) : les bouts d'un même niveau à **≤ 5 px** (coordonnées image
+du plan, `TOLERANCE_RECOLLAGE`, fixe, décision produit) se regroupent en nœuds
+(union-find sur une grille), chaque ligne est une arête entre ses deux nœuds-bouts.
+Une composante d'au moins 2 arêtes dont tous les nœuds sont de degré 2 (nœuds =
+arêtes) est une **boucle simple** ; elle est retenue si le polygone obtenu est compact
+(même seuil 0,2 qu'`estContourFerme`). Mesuré sur un relevé SIG réel : ~85 % des
+boucles sont faites de 2 lignes, le reste de 3 ou 4 ; 10 px n'en trouvent presque
+pas plus que 5.
+
+- **Géométrie** : parcours depuis la première ligne de la composante (ordre de la
+  sélection), chaque suivante inversée au besoin. Aux jonctions, les deux bouts
+  presque confondus deviennent **un** point, celui de la ligne déjà parcourue ; la
+  jonction de fermeture garde le premier point. Aucun point inventé.
+- **Pas touchés, mais comptés** (`ignorees`) : une branche, un T, une boucle peu
+  compacte. Une ligne n'entre que dans une boucle.
+- ⚠️ **Une ligne déjà fermée seule entre aussi dans le graphe** : si elle forme une
+  boucle avec d'autres (pilier livré en deux « L », chacun assez fermé pour passer
+  seul), le recollage l'emporte, sinon deux triangles ; hors boucle, elle est
+  convertie seule (`contours`), comme sans recollage.
+- **L'objet recollé** : champs de la première ligne, type cible, niveau commun, notes
+  distinctes non vides concaténées, **uid neuf** (préfixe de la famille cible). Les
+  lignes d'origine quittent la session : `HistoryManager.record` pose leurs traces de
+  suppression (aucune pour une copie de calque, comme pour toute suppression).
+- **Marque de calque** : gardée si toutes les lignes portent la même `_srcCalque`
+  (« Restaurer » retire alors l'objet recollé et rend les lignes du calque) ;
+  provenances mêlées : l'objet recollé devient un objet ordinaire de la session, une
+  restitution ne le retire pas.
+- **Un geste** : contours fermés seuls et boucles dans le même instantané, une
+  entrée ⏪ qui rend toutes les lignes d'origine. Cible ouverte : rien n'est recollé.
+
 **Conservés** : `points` (moins l'éventuel doublon de fermeture), `level`,
 `description`, `uid`. **Retirés** : `fromLevel` /
 `toLevel` (ils n'ont de sens que pour une jonction et feraient mentir les filtres
@@ -1540,7 +1574,9 @@ comme les autres, seuls ou en lot avec « seulement les contours fermés ».
 **Prouvé** : `check-api-surface.js` (module réellement chargé en VM : règle par
 type, contour fermé, doublon retiré, refus fermé → ouvert, lot mixte) et
 `scripts/smoke/checkup-contour-ferme.js` (fiche, lot filtré, ⏪ unique, calque passé en « Modifier »
-puis converti en lot, dans l'app réelle).
+puis converti en lot, dans l'app réelle) ; recollage : `check-api-surface.js` (carré en 2 lignes à 3 px,
+pas à 8 px, rectangle en 3 lignes, T, boucle peu compacte, niveaux différents, jonctions fusionnées, marque
+de calque) et `scripts/smoke/checkup-recoller-piliers.js` (sélection multiple, case, compte, ⏪).
 
 ---
 
@@ -1568,6 +1604,13 @@ contient une ligne, grisée sans contour fermé, avec le compte (« 4 sur 6 »).
 le lot est réduit à ses contours fermés et les cibles fermées apparaissent
 (`listerCiblesLot(items, true)`) ; le choix d'une cible passe par `ktaConfirm`
 (N convertis, les autres intacts) avant `convertirLot` — un instantané, un ⏪.
+
+**« Recoller les lignes qui se touchent (N objets à partir de L lignes) »** : seconde
+case, grisée sans boucle. Cochée, elle inclut les contours fermés seuls (leur case
+est alors cochée et grisée), ne propose que des cibles **fermées**, et `ktaConfirm`
+annonce avant de valider les objets recollés, les lignes utilisées, les contours
+convertis seuls, les lignes qui se touchent sans former de boucle et le reste ;
+puis `recollerLot`. Un objet de calque passe d'abord en « 🔄 Modifier ».
 
 **Cibles du lot = UNION**, jamais intersection. Un type qui est la *source* de l'un peut être la *cible* d'un autre
 (« chemin » reste valable pour des fronts même si un chemin est dans la sélection). Les objets déjà du type choisi sont
