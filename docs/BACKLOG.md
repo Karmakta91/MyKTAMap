@@ -108,13 +108,6 @@
 
 ## Entrant
 
-- **Remercier three.js (vue 3D)** — la librairie embarquée dans `lib/three/` (vue 3D bêta) manque aux remerciements :
-  section 🙏 Remerciements des guides fr/en/es, pied de l'Aide intégrée (`js/interfaceDocs.js`, liste des outils),
-  écran Bienvenue (`bienvenue.merci.l3`, 3 dicos) et pages de présentation qui citent les outils libres.
-  `qui: Claude · action: ajouter three.js partout où Leaflet, JSZip, jsPDF sont cités · fini: grep three.js à côté
-  de chaque liste d'outils · depuis: 01/11/2026 · taille: XS`
-
-
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.

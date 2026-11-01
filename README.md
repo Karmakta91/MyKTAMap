@@ -184,7 +184,7 @@ lang/                   ← Dictionnaires i18n : fr.json (référence et repli u
 icon/                   ← Icônes des tags built-in (PNG transparents), icônes PWA, rose de la boussole ; précachées
 fonts/                  ← Polices de l'écran Bienvenue (Montserrat, Permanent Marker, .woff2) + leurs licences
 lib/                    ← Librairies embarquées (aucun CDN) : Leaflet + leaflet-imageoverlay-rotated, JSZip, jsPDF,
-                          html2canvas ; versions tenues par lib/package.json + lib/VERSIONS.md (check-libs.js)
+                          html2canvas, three.js (vue 3D, chargé à la demande) ; versions tenues par lib/package.json + lib/VERSIONS.md (check-libs.js)
 data/                   ← DATA pure, hors Git sauf data/index.json (index des plans servis + config d'instance) ;
                           un dossier par plan (plan-config.json, images, calques). Seul le relevé fictif y est livré
 .well-known/            ← security.txt (contact de sécurité)
@@ -786,6 +786,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 - **✏️ Sélectionner par zone, 🗑️ supprimer en lot** (`js/selectionZone.js`, `js/selectionMulti.js`) : dans la sélection multiple 🎯, une zone tracée avec l'outil ♦️ Surface (la mesure en cours revient ensuite) ajoute les objets **entièrement** dedans, au niveau affiché, points compris ; **🗑️ Supprimer (N)** confirme avec une case par famille et son nombre, annonce photos (gardées « sans point »), portails gardés et objets de calque ignorés ; un seul ⏪ rend tout, une trace de suppression par objet. **✅ Convertir (N)** compte les seuls objets de même forme que le premier. `check-selection-multi.js` §8, `checkup-suppr-zone.js`.
 - **✏️ Par zone depuis 🧹 Effacer** (`js/interface.js`, `js/selectionMulti.js`) : la fenêtre **🧹 Effacer** des trois groupes a une ligne **✏️ Effacer par zone** ; le bandeau de **🧹 Effacer → 🎯 Sélectionner** des groupes 🛣️ Tracés, ⬛ Zones et 🏛️ Structures porte **✏️ Par zone** : il quitte le mode, ouvre la sélection multiple sans objet de départ (✅ Convertir masqué) et lance le tracé de la zone ; la confirmation n'a d'avance que la famille du groupe cochée.
+- **🙏 three.js remercié** partout où les outils libres sont cités : splash (1re ligne, 4 noms), pied de l'accueil, pied de 📖 Documentation (`js/interfaceDocs.js`), station « Merci » de l'écran Bienvenue (`bienvenue.merci.l3`), section 🙏 Remerciements et crédits des guides fr/en/es. **🧊 Vue 3D (bêta)** présentée dans la station « Se repérer » de l'écran Bienvenue (`bienvenue.reperer.vue3d.*`). Docs de la 3D relues contre le code : les tracés jonction ne sont dessinés dans aucun mode, glisser en suivi ne règle que le regard (`AI_CONTEXT.md` corrigé), Aide intégrée avec « 🕹️ Libre », la mention « Bêta » et la tuile grisée sans plan ouvert.
 - **Prise neutre `suppressionLot`** (`js/ktaExtensions.js`, `js/selectionZone.js`) : sur un plan d'extension, la suppression en lot la consulte avant sa confirmation (objets cochés, uid et famille), puis au clic si les cases ont changé ; un refus ne supprime rien et s'affiche. Sans extension : rien ne change. `check-extensions.js` §6 nonies.
 
 #### v2.21.1 (30/10/2026) — Outils de dessin qui s'enchaînent, front de taille plus fin (branche `Karma_dev`)
