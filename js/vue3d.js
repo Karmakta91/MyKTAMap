@@ -728,24 +728,71 @@
   // ce volume la plus proche de la caméra, pour ne pas sembler flotter dans la roche. En mode galerie, `ou` [x, z]
   // (m) fixe la place du panneau, dans le tube (_construireTuileGalerie).
 
+  // Panneau d'un POI aux couleurs de la charte (jetons --kta-* lus au rendu, thème clair compris) : carte surface,
+  // liseré doré, icône dans un carré arrondi, nom ENTIER sur 3 lignes au plus (coupé aux espaces, « … » au-delà).
+  // La hauteur du canvas suit le nombre de lignes ; `userData.ratio` garde la proportion pour l'échelle du sprite.
   function _panneau(p, ou) {
-    const cv = document.createElement("canvas");
-    cv.width = 256; cv.height = 80;
-    const ctx = cv.getContext("2d");
+    const W = 512, PAD = 18, ICONE = 76, LIGNE = 38, POLICE = "600 30px system-ui, -apple-system, sans-serif";
+    const css = getComputedStyle(document.body);
+    const jeton = function (n, d) { return (css.getPropertyValue(n) || "").trim() || d; };
+    const coul = { surface: jeton("--kta-surface", "#1a1f2e"), fond: jeton("--kta-fond", "#0a0d18"),
+      texte: jeton("--kta-texte", "#e8eaf0"), accent: jeton("--kta-accent", "#f4c542") };
     // Même titre que la fiche 2D (utils.js > buildPointPopupHtml : `nom`) ; l'id n'est qu'un repli technique.
-    const nom = String(p.nom || p.name || p.id || (Array.isArray(p.tags) && p.tags[0]) || "").slice(0, 28);
+    const nom = String(p.nom || p.name || p.id || (Array.isArray(p.tags) && p.tags[0]) || "").slice(0, 120);
+    let url = null;
+    try {
+      url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint(p) : null;
+    } catch (err) { url = null; }
+    const cv = document.createElement("canvas");
+    const ctx = cv.getContext("2d");
+    ctx.font = POLICE;
+    const xTexte = url ? PAD + ICONE + 16 : PAD + 4, largeur = W - xTexte - PAD;
+    const lignes = [];
+    let cur = "";
+    nom.split(/\s+/).filter(Boolean).forEach(function (mot) {
+      // Un mot plus long que la ligne est coupé à la lettre.
+      while (ctx.measureText(mot).width > largeur) {
+        let n = mot.length - 1;
+        while (n > 1 && ctx.measureText(mot.slice(0, n)).width > largeur) n--;
+        if (cur) { lignes.push(cur); cur = ""; }
+        lignes.push(mot.slice(0, n));
+        mot = mot.slice(n);
+      }
+      const essai = cur ? cur + " " + mot : mot;
+      if (ctx.measureText(essai).width <= largeur) cur = essai;
+      else { lignes.push(cur); cur = mot; }
+    });
+    if (cur) lignes.push(cur);
+    if (lignes.length > 3) {
+      lignes.length = 3;
+      let d = lignes[2];
+      while (d && ctx.measureText(d + "…").width > largeur) d = d.slice(0, -1);
+      lignes[2] = d + "…";
+    }
+    const H = Math.max(ICONE + 2 * PAD, lignes.length * LIGNE + 2 * PAD);
+    cv.width = W; cv.height = H;
+    const arrondi = function (x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    };
     const dessiner = function (img) {
-      ctx.clearRect(0, 0, 256, 80);
-      ctx.fillStyle = "rgba(10,13,24,0.82)";
-      ctx.fillRect(0, 0, 256, 80);
-      ctx.strokeStyle = "#f4c542";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(1.5, 1.5, 253, 77);
-      if (img) { try { ctx.drawImage(img, 8, 8, 64, 64); } catch (err) { /* image illisible : texte seul */ } }
-      ctx.fillStyle = "#e8eaf0";
-      ctx.font = "600 24px sans-serif";
+      ctx.clearRect(0, 0, W, H);
+      arrondi(2, 2, W - 4, H - 4, 18);
+      ctx.globalAlpha = 0.92; ctx.fillStyle = coul.surface; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.lineWidth = 3; ctx.strokeStyle = coul.accent; ctx.stroke();
+      if (url) {
+        arrondi(PAD, (H - ICONE) / 2, ICONE, ICONE, 14);
+        ctx.fillStyle = coul.fond; ctx.fill();
+        if (img) {
+          try { ctx.drawImage(img, PAD + 8, (H - ICONE) / 2 + 8, ICONE - 16, ICONE - 16); } catch (err) { /* illisible */ }
+        }
+      }
+      ctx.fillStyle = coul.texte;
+      ctx.font = POLICE;
       ctx.textBaseline = "middle";
-      ctx.fillText(nom, img ? 82 : 12, 40, img ? 166 : 232);
+      const y0 = H / 2 - (lignes.length - 1) * LIGNE / 2;
+      lignes.forEach(function (l, i) { ctx.fillText(l, xTexte, y0 + i * LIGNE); });
     };
     dessiner(null);
     const tex = new THREE.CanvasTexture(cv);
@@ -753,17 +800,14 @@
     const mat = new THREE.SpriteMaterial({ map: tex, fog: true, depthWrite: false, depthTest: false,
       transparent: true });
     const sp = new THREE.Sprite(mat);
-    sp.scale.set(PANNEAU.l, PANNEAU.h, 1);
+    sp.userData.ratio = H / W;
+    sp.scale.set(PANNEAU.l, PANNEAU.l * sp.userData.ratio, 1);
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
     sp.position.set(x, Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
     const J = window.KtaPoiJonction, jonction = p._v3dJonction || (J && J.estJonction(p) ? p : null);
     sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction };
     _e.panneaux.add(sp);
-    let url = null;
-    try {
-      url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint(p) : null;
-    } catch (err) { url = null; }
     if (url) {
       const img = new Image();
       img.addEventListener("load", function () {
@@ -841,7 +885,8 @@
       sp.visible = k <= 1;
       if (!sp.visible) return;
       sp.position.x = x; sp.position.z = z;
-      sp.scale.set(PANNEAU.l * (1 - 0.5 * k), PANNEAU.h * (1 - 0.5 * k), 1);
+      const ech = 1 - 0.5 * k, ratio = sp.userData.ratio || PANNEAU.h / PANNEAU.l;
+      sp.scale.set(PANNEAU.l * ech, PANNEAU.l * ratio * ech, 1);
       sp.material.opacity = 1 - 0.6 * k;
     });
   }
