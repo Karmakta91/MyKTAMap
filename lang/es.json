@@ -2400,6 +2400,8 @@
   "tracker.menu.vue3d": "Vista 3D (beta)",
   "tracker.menu.vue3dAide": "Muestra el plano, no la galería real",
   "vue3d.titre": "Vista 3D (beta)",
+  "vue3d.etatSuivi": "Seguimiento",
+  "vue3d.etatLibre": "Libre",
   "vue3d.suivre": "Modo seguimiento: la vista sigue al tracker y a la brújula del teléfono",
   "vue3d.plongee": "Vista aérea",
   "vue3d.fermer": "Cerrar la vista 3D",

@@ -794,6 +794,8 @@
     const t = !dispo ? _t("vue3d.suiviIndispo") : _t(e.mode === "suivi" ? "vue3d.passerLibre" : "vue3d.suivre");
     b.title = t;
     b.setAttribute("aria-label", t);
+    // Mode écrit en clair : sans lui, rien ne disait qu'on était passé en libre ni comment revenir au suivi.
+    b.textContent = e.mode === "suivi" ? "📍 " + _t("vue3d.etatSuivi") : "🕹️ " + _t("vue3d.etatLibre");
   }
 
   // Mode « suivi » : position du tracker et cap de l'appareil, la même source que le mode « plan orienté »
@@ -920,7 +922,7 @@
     ov.appendChild(cv);
     const haut = document.createElement("div");
     haut.className = "kta-v3d-haut";
-    e.boutonSuivre = _bouton(haut, "", "📍", _t("vue3d.suivre"), "suivre");
+    e.boutonSuivre = _bouton(haut, "kta-v3d-btn-mode", "📍", _t("vue3d.suivre"), "suivre");
     e.boutonVue = _bouton(haut, "", "🛰️", _t("vue3d.plongee"), "vue");
     _bouton(haut, "kta-v3d-fermer", "✕", _t("vue3d.fermer"), "fermer");
     ov.appendChild(haut);

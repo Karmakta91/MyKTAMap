@@ -2419,6 +2419,8 @@
   "vue3d.jeSuisIci.non": "Non",
   "vue3d.suiviIndispo": "Mode suivi indisponible : démarre le tracker (▶️ du menu Tracker) pour que la vue suive ta position et ton téléphone.",
   "vue3d.passerLibre": "Mode libre : se déplacer aux boutons et au clavier",
+  "vue3d.etatSuivi": "Suivi",
+  "vue3d.etatLibre": "Libre",
   "vue3d.suivre": "Mode suivi : la vue suit le tracker et la boussole du téléphone",
   "vue3d.inclinaisonPlus": "Vue plus verticale",
   "vue3d.inclinaisonMoins": "Vue plus rasante",

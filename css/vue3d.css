@@ -49,6 +49,8 @@
 }
 .kta-v3d-incl[hidden] { display: none; }
 .kta-v3d-btn.kta-v3d-btn-petit { width: 40px; height: 40px; font-size: 16px; }
+/* Bouton suivi / libre : le mode est écrit (📍 Suivi, 🕹️ Libre), largeur à son texte. */
+.kta-v3d-btn.kta-v3d-btn-mode { width: auto; padding: 0 12px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 
 /* Rose des vents (icon/compass.svg, tournée par vue3d.js > _majBoussole) en bas à gauche, hors du pavé, sur la
    même carte que la petite boussole du mode plan (style.css > .kta-compass-widget) : surface à 88 %, liseré doré. */

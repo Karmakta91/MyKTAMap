@@ -397,10 +397,19 @@ async function mesures(page, depart) {
       await page.waitForTimeout(500);
       const s2 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
       verifier(s2.mode === "libre" && Math.abs(s2.cap - 120) < 2, "📍 → libre : le cap de l'appareil n'agit plus", s2);
+      const etiq = await page.evaluate(function () {
+        return { texte: document.querySelector('#kta-vue3d [data-v3d="suivre"]').textContent,
+          libre: window.I18n.t("vue3d.etatLibre"), suivi: window.I18n.t("vue3d.etatSuivi") };
+      });
+      verifier(etiq.texte.indexOf(etiq.libre) >= 0 && etiq.texte.indexOf(etiq.suivi) < 0,
+        "le bouton de mode dit « Libre » en mode libre", etiq);
       await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
       await page.waitForTimeout(800);
       const s3 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
       verifier(s3.mode === "suivi" && Math.abs(s3.cap - 200) < 2, "📍 → suivi : la vue tourne avec l'appareil (200°)", s3);
+      verifier(await page.evaluate(function () {
+        return document.querySelector('#kta-vue3d [data-v3d="suivre"]').textContent.indexOf(window.I18n.t("vue3d.etatSuivi")) >= 0;
+      }), "le bouton de mode dit « Suivi » en suivi");
       // Toucher et glisser l'écran en suivi : le suivi reste (le cap est celui de l'appareil).
       const cv = await page.locator("#kta-vue3d canvas").boundingBox();
       await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2);

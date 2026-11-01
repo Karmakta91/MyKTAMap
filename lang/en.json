@@ -2400,6 +2400,8 @@
   "tracker.menu.vue3d": "3D view (beta)",
   "tracker.menu.vue3dAide": "Shows the map, not the real tunnel",
   "vue3d.titre": "3D view (beta)",
+  "vue3d.etatSuivi": "Follow",
+  "vue3d.etatLibre": "Free",
   "vue3d.suivre": "Follow mode: the view follows the tracker and the phone's compass",
   "vue3d.plongee": "Bird's-eye view",
   "vue3d.fermer": "Close the 3D view",
