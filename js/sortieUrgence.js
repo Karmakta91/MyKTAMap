@@ -455,7 +455,10 @@
     // RECALE le tracker (position confirmée pour « Tracer », Urgence XL, « Y aller »).
     if (typeof window.ktaDemanderPositionCarte === "function") {
       window.ktaDemanderPositionCarte(function(p) {
-        _lancer({ x: p.x, y: p.y }, { mode: "clic" });
+        // Niveau choisi (ou actif) : l'évacuation part d'une galerie de CE niveau, « Tracer » le garde (origine).
+        const o = { x: p.x, y: p.y };
+        if (Number.isInteger(p.niveau)) o.level = p.niveau;
+        _lancer(o, { mode: "clic" });
       }, { icone: "🚨", texte: window.I18n.t("sortie.pick.floater") });
       return;
     }

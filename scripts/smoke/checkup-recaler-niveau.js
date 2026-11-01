@@ -10,7 +10,9 @@
 // choix −1 → tracker et niveau affiché à −1, timeline `recalage` src "click" ; pilier du niveau 1 à 15 m → pas de
 // fenêtre ; Annuler → position inchangée, mode recalage toujours armé ; jonction 0 ↔ −1 → 0 et −1 proposés ; POI
 // jonction (jpe 0 + −2) → 0 et −2 ; picker « Où es-tu ? » (utils.js > ktaDemanderPositionCarte) : même fenêtre,
-// Annuler laisse le picker armé, choix −1 → recalé à −1 ; plan forcé mono-niveau → jamais de fenêtre.
+// Annuler laisse le picker armé, choix −1 → recalé à −1 et `niveau: -1` rendu ; ancres de timeline (picker,
+// « Je suis ici » d'un POI du −1) au niveau d'arrivée ; « Y aller » et sortie d'urgence depuis le picker avec le
+// choix −1 → la route part du −1 (tracés superposés 0 / −1, jonction) ; mono-niveau → jamais de fenêtre.
 // Usage : node scripts/smoke/checkup-recaler-niveau.js (SMOKE_PORT pour une autre copie)
 // Doc : docs/architecture/tracking.md
 // =====================================================================
@@ -301,6 +303,7 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
     e = await etat(page);
     const recu2 = await page.evaluate(function () { return window._ktaPickRecu; });
     verifier(!e.picker && recu2 && proche(recu2, xy), "position rendue à l'appelant", recu2);
+    verifier(recu2 && recu2.niveau === -1, "niveau choisi rendu à l'appelant (niveau: −1)", recu2);
     verifier(e.tracker === -1 && e.actif === -1 && proche(e.pos, xy), "tracker et niveau affiché à −1", e);
     verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, xy) &&
       e.dernier.level === -1, "timeline : ancre recalage src point au niveau d'arrivée −1", e.dernier);
@@ -337,6 +340,93 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
     e = await etat(page);
     const recu3 = await page.evaluate(function () { return window._ktaPickRecu; });
     verifier(!e.fenetre && recu3, "pas de fenêtre, position rendue", e);
+    verifier(recu3 && recu3.niveau === e.actif, "niveau rendu = niveau actif (" + e.actif + ")", recu3);
+
+    // Réseau du cas : deux tracés superposés (0 et −1), une jonction à l'ouest, une antenne du 0 vers la cible.
+    // Sans niveau, le départ se cale sur le tracé du 0 (premier à égalité de distance) : l'itinéraire n'a
+    // pas besoin de la jonction.
+    const RESEAU = { roads: [
+      { type: "principal", level: 0, pts: [[-20, 5], [20, 5]] },
+      { type: "principal", level: -1, pts: [[-20, 5], [20, 5]] },
+      { type: "jonction", fromLevel: 0, toLevel: -1, pts: [[-20, 5], [-24, 5], [-20, 5]] },
+      { type: "principal", level: 0, pts: [[15, 5], [15, 20]] }
+    ] };
+    const itineraire = function () {
+      return page.evaluate(function () {
+        const r = (window.getRoads() || []).find(function (x) { return x && x.type === "itinerary"; });
+        if (!r) return null;
+        return { wp0: r.waypoints && r.waypoints[0], p0: r.points[0],
+          niveaux: r.points.map(function (q) { return q.level; }), dernier: r.points[r.points.length - 1] };
+      });
+    };
+    const effacerItineraire = function () {
+      return page.evaluate(function () {
+        window.setRoads((window.getRoads() || []).filter(function (x) { return x.type !== "itinerary"; }));
+      });
+    };
+
+    console.log("\n── 10. « Y aller » depuis « Où es-tu ? » avec le choix −1 ──");
+    await page.evaluate(function () {
+      window.resetTrackingPosition();
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+    });
+    await poserCas(page, P, RESEAU);
+    const temoin = await page.evaluate(async function (P) {
+      const s = P.sc;
+      const r = await window.Pathfinder.computeRoute([{ x: P.x - 2 * s, y: P.y }, { x: P.x + 15 * s, y: P.y + 20 * s }],
+        { avoidPoints: [], avoidTags: [], avoidZones: [], avoidRadius: 0 });
+      return r.path[0].level;
+    }, P);
+    inf("témoin sans niveau : départ calé au niveau " + temoin);
+    const cible = await page.evaluate(function (P) {
+      const c = { x: P.x + 15 * P.sc, y: P.y + 20 * P.sc };
+      window.itineraireYAller(c.x, c.y, "CibleTest");
+      return c;
+    }, P);
+    e = await etat(page);
+    verifier(e.picker, "position non confirmée : « Où es-tu ? » armé", e);
+    xy = await cliquerCarte(page, P, -2, 0);
+    e = await etat(page);
+    verifier(e.fenetre && JSON.stringify(e.proposes) === "[0,-1]", "fenêtre avec 0 et −1", e.proposes);
+    await choisir(page, -1);
+    await attendre(page, function () {
+      return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
+    }, 15000).catch(function () {});
+    let it = await itineraire();
+    verifier(it && it.wp0 && it.wp0.level === -1, "waypoint de départ au niveau −1", it && it.wp0);
+    verifier(it && it.p0 && it.p0.level === -1, "la route commence sur un tracé du −1", it && it.p0);
+    verifier(it && it.niveaux.indexOf(0) >= 0 && proche(it.dernier, cible),
+      "elle passe par la jonction et rejoint la cible au niveau 0", it && it.niveaux);
+    await effacerItineraire();
+
+    console.log("\n── 11. Sortie d'urgence depuis « Où es-tu ? » avec le choix −1, puis « Tracer » ──");
+    await page.evaluate(function () {
+      window.resetTrackingPosition();
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+    });
+    await poserCas(page, P, Object.assign({}, RESEAU, { points: [
+      { id: "SortieTest", nom: "SortieTest", uid: "pt_sortietest", tags: ["cao"], level: 0, d: [15, 20] }
+    ] }));
+    await page.evaluate(function () { window.SortieUrgence.declencher(); });
+    await page.waitForTimeout(400);
+    e = await etat(page);
+    verifier(e.picker, "position non confirmée : « Où es-tu ? » armé", e);
+    await cliquerCarte(page, P, -2, 0);
+    await choisir(page, -1);
+    await attendre(page, function () {
+      return !!document.querySelector(".kta-sortie-urgence-corps") &&
+        !document.querySelector(".kta-sortie-urgence-corps .kta-sortie-loader");
+    }, 20000).catch(function () {});
+    await page.evaluate(function () { window.SortieUrgence._tracerMeilleure(); });
+    await attendre(page, function () {
+      return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
+    }, 15000).catch(function () {});
+    it = await itineraire();
+    verifier(it && it.wp0 && it.wp0.level === -1, "« Tracer » : waypoint de départ au niveau −1", it && it.wp0);
+    verifier(it && it.p0 && it.p0.level === -1 && it.niveaux.indexOf(0) >= 0,
+      "la route d'évacuation part du −1 et passe par la jonction", it && it.niveaux);
+    await effacerItineraire();
+    await page.evaluate(function () { if (window.SortieUrgence.isActive()) window.SortieUrgence._fermer(); });
 
     console.log("\n── 8 bis. Objets des calques de données (lus, pas cliqués) ──");
     const cal = await page.evaluate(function () {
@@ -373,10 +463,15 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
     xy = await cliquerCarte(page, P, 0, 0);
     e = await etat(page);
     verifier(!e.fenetre && proche(e.pos, xy) && !e.mode, "clic de recalage : pas de fenêtre, recalé", e);
-    await page.evaluate(function () { window.ktaDemanderPositionCarte(function () {}, { texte: "test" }); });
+    await page.evaluate(function () {
+      window._ktaPickRecu = null;
+      window.ktaDemanderPositionCarte(function (p) { window._ktaPickRecu = p; }, { texte: "test" });
+    });
     xy = await cliquerCarte(page, P, 1, 0);
     e = await etat(page);
     verifier(!e.fenetre && proche(e.pos, xy) && !e.picker, "picker : pas de fenêtre, recalé", e);
+    const recu4 = await page.evaluate(function () { return window._ktaPickRecu; });
+    verifier(recu4 && recu4.niveau === undefined, "picker : pas de niveau rendu", recu4);
 
     await page.evaluate(function () {
       window.setRoads([]); window.setStructures([]); window.setEditorPoints([]);

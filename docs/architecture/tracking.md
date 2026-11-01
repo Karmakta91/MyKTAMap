@@ -755,14 +755,19 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
   l'action (« 📍 Me placer au niveau −1 »). Annuler / Échap / fond = `null`.
 - **Après le choix** : `ktaSetActiveLevel(niveau)` (le niveau affiché bascule), puis le recalage habituel au niveau
   choisi — clic : `trackerLevel`, position confirmée, ancre `recalage` `src: "click"`, `_notifierRecalage("click")` ;
-  picker : `recalerTrackerSurPoint(x, y, niveau)` puis `onPick`. **Annuler** : rien n'est recalé, le mode recalage
-  (ou le picker) reste armé ; un 2e clic pendant la question est ignoré.
+  picker : `recalerTrackerSurPoint(x, y, niveau)` puis `onPick({ x, y, niveau })`. **Annuler** : rien n'est
+  recalé, le mode recalage (ou le picker) reste armé ; un 2e clic pendant la question est ignoré.
 - 🩸 Toute fenêtre `kta-readme-modal-overlay` coupe les modes de la barre (`interface.js > _initCoupeModesSurModale`) :
   la question porte l'id `kta-recal-niveau`, exclu de cette coupure, sinon Annuler laissait le mode éteint.
 - Non concernés : « 📍 Je suis ici » d'un point (le niveau du point fait foi), arrivée de portail, Mode Secours.
 - ⚠️ **Niveau de l'ancre** : `_pushTimelinePoint` lit `trackerLevel`. Tout appelant (clic de recalage,
   `recalerTrackerSurPoint`, ancre `start` de `startTracking`) pose le niveau **avant** de pousser l'ancre : elle
   porte le niveau d'arrivée (replay, export CSV).
+- ⚠️ **Niveau rendu par le picker** : `onPick({ x, y, niveau })`, `niveau` = choisi dans la fenêtre, sinon le niveau
+  actif d'un plan multi-niveau, sinon absent (mono-niveau). Les appelants en font le départ de l'itinéraire
+  (waypoint `level`, cf `multilevel-pathfinding.md` § Départ d'un itinéraire et niveau) : « Y aller »
+  (`opts.origine.level`), sortie d'urgence (`_lancer({ x, y, level })`, gardé par « Tracer »). Le « Je suis ici » de
+  l'alerte du guidage ne lit pas `onPick` : la replanification part de `getTrackerLevel()` (`_onTrackerRecale`).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
