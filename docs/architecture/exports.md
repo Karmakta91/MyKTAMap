@@ -526,6 +526,12 @@ n'a pas de résolution native à laquelle se référer.
 seulement — à l'écran `majLargeurFronts` n'ajuste que `_ktaDataPolylines`, et un
 export doit montrer ce que montre la carte.
 
+**Contour des surfaces (piliers, murs, structures perso fermées), à l'écran** :
+`majLargeurFronts` le pose au quart de la largeur d'un front, plafonné à
+l'épaisseur d'origine (3 px), plancher 0,5 px — session et calques. Le
+remplissage ne change pas. Un contour fixe de 3 px recouvrait tout le pilier au
+dézoom. Les exports gardent leur propre contour. `checkup-bord-piliers.js`.
+
 ---
 
 ### 54. GpxIO — Import + Export GPX (depuis v1.14.0)

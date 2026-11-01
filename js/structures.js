@@ -134,6 +134,12 @@ function majLargeurFronts() {
 
   const wFront = _largeurFrontPourZoom(z);
   const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+  // Contour d'une surface (pilier, mur) : le quart d'un front, jamais plus que son épaisseur d'origine, plancher
+  // 0,5 px. Un contour fixe de 3 px recouvre tout le pilier au dézoom ; trop fin, il disparaîtrait.
+  const bord = function (wOrig) {
+    const w0 = Number.isFinite(wOrig) ? wOrig : 3;
+    return Math.max(0.5, Math.min(w0, wFront / 4));
+  };
 
   // ⚠️ Les registres rangent aussi les polylignes sous la clé `polygon` (lue par _filtreNiveauSurPolygonData).
   const appliquer = function (arr, largeur) {
@@ -143,10 +149,13 @@ function majLargeurFronts() {
       const e = arr[i]; if (!e) continue;
       const lay = e.polygon || e.polyline || e.layer;
       if (!lay || !lay.options) continue;
-      // Les surfaces gardent leur contour : un pilier se lit par son remplissage.
-      if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) continue;
       if (e._wOrig === undefined) e._wOrig = lay.options.weight;
-      lay.options.weight = largeur;
+      // Une surface (pilier, mur) garde son remplissage ; seul son contour s'affine au dézoom.
+      if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) {
+        lay.options.weight = bord(e._wOrig);
+      } else {
+        lay.options.weight = largeur;
+      }
       n++;
     }
     return n;
@@ -159,7 +168,10 @@ function majLargeurFronts() {
   try {
     if (Array.isArray(structureLayers)) {
       structureLayers.forEach(function (l) {
-        if (l && l.options && l.options.fill !== true) l.options.weight = wFront;
+        if (!l || !l.options) return;
+        if (l.options.fill !== true) { l.options.weight = wFront; return; }
+        if (l._ktaWOrig === undefined) l._ktaWOrig = l.options.weight;
+        l.options.weight = bord(l._ktaWOrig);
       });
     }
   } catch (e) {}
