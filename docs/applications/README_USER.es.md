@@ -1081,7 +1081,7 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 - **Formato**: de A0 a A4, vertical u horizontal (A4 horizontal por defecto).
 - **Contenido**: tus anotaciones, la imagen del mapa y sus capas, las capas de datos, una cabecera (título e información del mapa).
 - **Calidad**: Estándar ×1 (A3/A4), Alta definición ×2 (A0/A1, archivo más pesado), Borrador ×0,5. A0/A1 en ×2 puede tardar de 30 a 60 segundos en móvil. Si la imagen supera lo que el dispositivo puede producir, la resolución se reduce y la app te dice cuál obtienes.
-- **🗺️ Leyenda** colocada en una esquina (abajo a la izquierda por defecto), en tres tamaños y cuatro estilos: **Pro (fondo blanco)** para imprimir (por defecto), Oscuro opaco, Oscuro semitransparente, Filigrana discreta. Solo enumera lo que figura realmente en el mapa exportado.
+- **🗺️ Leyenda** colocada en una esquina (abajo a la izquierda por defecto), en tres tamaños y cuatro estilos: **Pro (fondo blanco)** para imprimir (por defecto), Oscuro opaco, Oscuro semitransparente, Filigrana discreta. Su tamaño sigue al papel, no al mapa: texto de unos 6 pt en A4 (Compacto), algo mayor de A3 a A0, y la leyenda se ordena en 1 a 4 columnas para caber en su esquina (como máximo el 30 % del ancho y el 40 % del alto del mapa en Compacto); en un mapa muy cargado impreso pequeño en la página, mantiene un texto de al menos 5 pt y puede entonces superar esos límites. Sus iconos son los del mapa exportado; trazados, zonas y estructuras muestran todos sus tipos.
 
 El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr» y se llama `<mapa>_<fecha>.pdf`.
 

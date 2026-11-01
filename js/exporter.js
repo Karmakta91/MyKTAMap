@@ -2622,22 +2622,43 @@
 
     if (entrees.length === 0 && metaLignes.length === 0) return;
 
-    // ── Répartition en 2 colonnes : chaque groupe va dans la colonne la moins haute ──
+    // ── Répartition en colonnes ──
+    // Sans `leg.colonnes` (export PNG) : 2 colonnes, chaque groupe entier dans la colonne la moins haute.
+    // Avec `leg.colonnes` (1 à 4, légende du PDF) : en flux, comme un journal — hauteur visée = total / n, un
+    // groupe trop long continue en haut de la colonne suivante sous son titre répété ; un titre ne reste jamais
+    // seul en bas de colonne. Une colonne restée vide disparaît.
     function _hauteurEstimee(section) {
       return 1 + (section.lignes ? section.lignes.length : 0);
     }
-    const colGauche = [];
-    const colDroite = [];
-    let hG = 0, hD = 0;
-    entrees.forEach(function(sec) {
-      const h = _hauteurEstimee(sec);
-      if (hG <= hD) { colGauche.push(sec); hG += h; }
-      else          { colDroite.push(sec); hD += h; }
-    });
-
-    if (colDroite.length === 0 && colGauche.length > 1) {
-      colDroite.push(colGauche.pop());
+    const colonnes = [];
+    if (leg.colonnes) {
+      const nbCol = Math.max(1, Math.min(4, parseInt(leg.colonnes, 10) || 1));
+      const total = entrees.reduce(function(s, sec) { return s + _hauteurEstimee(sec); }, 0);
+      const vise = Math.ceil(total / nbCol);
+      let col = [], h = 0;
+      entrees.forEach(function(sec) {
+        let morceau = null;
+        sec.lignes.forEach(function(l) {
+          const place = morceau ? 1 : 2;   // un titre arrive avec au moins sa première ligne
+          if (h > 0 && h + place > vise && colonnes.length < nbCol - 1) {
+            colonnes.push(col); col = []; h = 0; morceau = null;
+          }
+          if (!morceau) { morceau = { section: sec.section, lignes: [] }; col.push(morceau); h += 1; }
+          morceau.lignes.push(l);
+          h += 1;
+        });
+      });
+      colonnes.push(col);
+    } else {
+      colonnes.push([], []);
+      const hautCol = [0, 0];
+      entrees.forEach(function(sec) {
+        const k = hautCol[1] < hautCol[0] ? 1 : 0;
+        colonnes[k].push(sec);
+        hautCol[k] += _hauteurEstimee(sec);
+      });
     }
+    const colsPleines = colonnes.filter(function(c) { return c.length > 0; });
 
     function _largeurColonne(sections) {
       let maxW = 0;
@@ -2666,10 +2687,8 @@
       return h;
     }
 
-    const colInnerW_g = _largeurColonne(colGauche);
-    const colInnerW_d = _largeurColonne(colDroite);
-    const colW_g = colInnerW_g + ic + pad;   // icône + label
-    const colW_d = colInnerW_d + ic + pad;
+    // Largeur de chaque colonne : icône + libellé le plus long.
+    const colW = colsPleines.map(function(c) { return _largeurColonne(c) + ic + pad; });
 
     ctx.save();
     let titreMetaW = 0;
@@ -2685,9 +2704,7 @@
 
     const colGap = pad * 1.5;
 
-    const colsW = colDroite.length > 0
-      ? colW_g + colGap + colW_d
-      : colW_g;
+    const colsW = colW.reduce(function(s, w) { return s + w; }, 0) + colGap * Math.max(0, colW.length - 1);
     const contentW = Math.max(titreMetaW, colsW);
     const boiteW = contentW + pad * 2;
 
@@ -2698,9 +2715,7 @@
       totalH += metaLignes.length * lh * 0.8;
       totalH += pad * 0.6;
     }
-    const hCol_g = _hauteurColonne(colGauche);
-    const hCol_d = _hauteurColonne(colDroite);
-    totalH += Math.max(hCol_g, hCol_d);
+    totalH += colsPleines.reduce(function(m, c) { return Math.max(m, _hauteurColonne(c)); }, 0);
     totalH += pad;
     const boiteH = totalH;
 
@@ -2770,10 +2785,8 @@
       cy += pad * 0.4;
     }
 
-    // ── Rendu des 2 colonnes ──
+    // ── Rendu des colonnes ──
     const cyColStart = cy;
-    const xColGauche = bx + pad;
-    const xColDroite = bx + pad + colW_g + colGap;
 
     async function _dessinerSections(sections, xCol, yStart) {
       let cyLocal = yStart;
@@ -2841,13 +2854,14 @@
       }
     }
 
-    await _dessinerSections(colGauche, xColGauche, cyColStart);
-    if (colDroite.length > 0) {
-      await _dessinerSections(colDroite, xColDroite, cyColStart);
+    let xCol = bx + pad;
+    for (let i = 0; i < colsPleines.length; i++) {
+      await _dessinerSections(colsPleines[i], xCol, cyColStart);
+      xCol += colW[i] + colGap;
     }
 
     // Dimensions dessinées : pdfExport.js en extrait la boîte légende.
-    return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by };
+    return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by, policePx: fs };
   }
 
   // ── API publique pour pdfExport.js ──────────
@@ -2942,13 +2956,14 @@
   // ── Canvas de la LÉGENDE seule ──────────
   // Une image raster collée dans le PDF : évite les limites de jsPDF (Helvetica latin1, emojis) pour icônes,
   // traits, polygones et emojis de sections.
-  //   1. canvas temporaire 3000×3000 ;
+  //   1. canvas temporaire 3000×3000, agrandi (≤ 4096, plafond iOS) et redessiné si la boîte déborde ;
   //   2. _dessinerLegende en haut-gauche, petite marge (ombre, bordure) ;
-  //   3. elle rend {boiteW, boiteH, bx, by} ;
-  //   4. canvas final aux dimensions exactes (crop).
+  //   3. elle rend {boiteW, boiteH, bx, by, policePx} ;
+  //   4. canvas final aux dimensions exactes (crop), `_ktaPolicePx` = taille du texte en px du canvas.
   // legContenu : { icones, traces, zones, structures, track, meta }
-  // bg : "transparent" (défaut) ou "opaque" (fond plein, si le footer PDF est pâle).
-  // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère).
+  // colonnes : nombre (2 par défaut) ou liste de nombres (1 à 4) → un canvas par nombre, tags collectés une fois.
+  // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère) ; avec une liste,
+  // Promise<Array<{ colonnes, canvas }>> (vide si aucun contenu).
   async function _publicGenererCanvasLegende(userOpts) {
     userOpts = userOpts || {};
     const legContenu = userOpts.contenu || {
@@ -2981,48 +2996,67 @@
       }
     }
 
-    const TMP_W = 3000, TMP_H = 3000;
-    const tmpCanvas = document.createElement("canvas");
-    tmpCanvas.width  = TMP_W;
-    tmpCanvas.height = TMP_H;
-    const tmpCtx = tmpCanvas.getContext("2d", { alpha: true });
-
-    // Position forcée haut-gauche pour simplifier le crop (marges gérées par l'appelant).
-    const leg = {
-      position: "haut-gauche",
-      customX:  0,
-      customY:  0,
-      style:    legStyle,
-      size:     legSize,
-      contenu:  legContenu
-    };
-
     const iconCache = {};
-    let dims;
-    try {
-      dims = await _dessinerLegende(tmpCtx, leg, TMP_W, TMP_H, scale, iconCache, tagsUtilises);
-    } catch(e) {
-      console.warn("[Export legende] échec dessin :", e);
-      return null;
-    }
-    if (!dims || dims.boiteW <= 0 || dims.boiteH <= 0) {
-      // _dessinerLegende sort tôt sans entrée : l'appelant gère le null.
-      return null;
+    async function _uneLegende(nbColonnes) {
+      // Position forcée haut-gauche pour simplifier le crop (marges gérées par l'appelant).
+      const leg = {
+        position: "haut-gauche",
+        customX:  0,
+        customY:  0,
+        style:    legStyle,
+        size:     legSize,
+        contenu:  legContenu,
+        colonnes: nbColonnes
+      };
+      // 🩸 Une boîte plus grande que le canvas temporaire serait coupée sans erreur (1 colonne, taille Large) :
+      // on redessine une fois sur un canvas à sa mesure.
+      let tmpW = 3000, tmpH = 3000;
+      let tmpCanvas, dims;
+      for (let essai = 0; essai < 2; essai++) {
+        tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width  = tmpW;
+        tmpCanvas.height = tmpH;
+        const tmpCtx = tmpCanvas.getContext("2d", { alpha: true });
+        try {
+          dims = await _dessinerLegende(tmpCtx, leg, tmpW, tmpH, scale, iconCache, tagsUtilises);
+        } catch(e) {
+          console.warn("[Export legende] échec dessin :", e);
+          return null;
+        }
+        // _dessinerLegende sort tôt sans entrée : l'appelant gère le null.
+        if (!dims || dims.boiteW <= 0 || dims.boiteH <= 0) return null;
+        const besoinW = Math.ceil(dims.bx + dims.boiteW + 4), besoinH = Math.ceil(dims.by + dims.boiteH + 4);
+        if (besoinW <= tmpW && besoinH <= tmpH) break;
+        tmpW = Math.min(4096, Math.max(tmpW, besoinW));
+        tmpH = Math.min(4096, Math.max(tmpH, besoinH));
+      }
+
+      const PAD = 2;
+      const W = Math.ceil(dims.boiteW + 2 * PAD);
+      const H = Math.ceil(dims.boiteH + 2 * PAD);
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width  = W;
+      finalCanvas.height = H;
+      const fctx = finalCanvas.getContext("2d", { alpha: true });
+      fctx.drawImage(
+        tmpCanvas,
+        dims.bx - PAD, dims.by - PAD, W, H,
+        0, 0, W, H
+      );
+      finalCanvas._ktaPolicePx = dims.policePx;
+      return finalCanvas;
     }
 
-    const PAD = 2;
-    const W = Math.ceil(dims.boiteW + 2 * PAD);
-    const H = Math.ceil(dims.boiteH + 2 * PAD);
-    const finalCanvas = document.createElement("canvas");
-    finalCanvas.width  = W;
-    finalCanvas.height = H;
-    const fctx = finalCanvas.getContext("2d", { alpha: true });
-    fctx.drawImage(
-      tmpCanvas,
-      dims.bx - PAD, dims.by - PAD, W, H,
-      0, 0, W, H
-    );
-    return finalCanvas;
+    if (Array.isArray(userOpts.colonnes)) {
+      const res = [];
+      for (const n of userOpts.colonnes) {
+        const cv = await _uneLegende(n);
+        if (!cv) return [];
+        res.push({ colonnes: n, canvas: cv });
+      }
+      return res;
+    }
+    return _uneLegende(userOpts.colonnes || 2);
   }
   window.MyKTAMapExporterGenererCanvasLegende = _publicGenererCanvasLegende;
 

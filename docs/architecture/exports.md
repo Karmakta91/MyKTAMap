@@ -370,20 +370,33 @@ Modale auto-liste `PLAN_CONFIG.imageLayers[]` et `PLAN_CONFIG.dataLayers[]` :
 Décision design : **PAS de footer dédié**, légende posée en overlay sur le plan au coin choisi. Plus de gain de surface pour le plan, et cohérent avec l'export PNG avancé.
 
 Fonction `_dessinerLegendeOverlay(pdf, opts, planX, planY, planW, planH)` :
-1. Génère le canvas légende via `window.MyKTAMapExporterGenererCanvasLegende({contenu, size, style, scale: 2})`
-2. Calcule largeur cible en mm selon `legSize` : Compact=22%, Standard=28%, Large=35% de la largeur du plan
-3. Cap auto à 70% de la hauteur du plan si trop haut (cas plans étroits)
-4. Padding 3mm depuis le bord choisi
-5. Pose via `pdf.addImage(dataUrl, "PNG", legX, legY, legWmm, legHmm)`
+1. Génère **quatre** canvas de légende (1 à 4 colonnes) en un appel :
+   `MyKTAMapExporterGenererCanvasLegende({contenu, size, style, scale: 2, colonnes: [1, 2, 3, 4]})`.
+2. `_choisirLegende` (pur) en garde un et fixe sa taille en mm. ⚠️ **Taille physique, pas une part du plan** :
+   le texte vise `LEGENDE_POLICE_PT` en A4 (Compact 6 pt, Standard 7,5, Large 9), × √(petit côté / 210 mm) sur
+   un papier plus grand (A0 ≈ × 2) ; la boîte est ensuite réduite pour tenir dans `LEGENDE_BORNES` du plan
+   (Compact 30 % × 40 %, Standard 35 % × 50 %, Large 45 % × 60 %, largeur × hauteur). Retenu : le candidat dont
+   le texte est le moins réduit, à égalité le moins serré. Plancher `LEGENDE_POLICE_MIN_PT` = 5 pt : en dessous,
+   la lisibilité passe avant les bornes (plan petit dans sa page) ; jamais plus grande que le plan.
+   🩸 Ne pas revenir à une part fixe du plan (22 / 28 / 35 % de sa largeur, plafond 70 % de sa hauteur) : un
+   plan dense (≈ 45 lignes, 2 colonnes) y prend 60 à 70 % de la hauteur dans les trois tailles, et le texte
+   enfle avec le papier (≈ 23 pt en A0). 🛡️ `scripts/smoke/checkup-pdf-legende.js`.
+3. Padding 3 mm depuis le bord choisi ; pose via `pdf.addImage(dataUrl, "PNG", legX, legY, legWmm, legHmm)`.
 
 Helper public dans exporter.js : `window.MyKTAMapExporterGenererCanvasLegende(userOpts)` :
-- Crée un canvas temporaire 3000×3000
-- Force position `haut-gauche` à (0,0)
-- Appelle `_dessinerLegende` avec un setup canvas isolé
-- `_dessinerLegende` retourne désormais `{boiteW, boiteH, bx, by}` à la fin
-- Crop le canvas final aux dims exactes via `drawImage`
-- Auto-collecte `tagsUtilises` via `getEditorPoints()` + `fetch` des data layers si pas fourni explicitement
-- Retourne `Promise<HTMLCanvasElement | null>` (null si aucun contenu cochable)
+- Auto-collecte `tagsUtilises` (une fois, même pour plusieurs canvas) via `getEditorPoints()` + `fetch` des data
+  layers si pas fourni explicitement
+- Canvas temporaire 3000×3000, position forcée `haut-gauche` ; si la boîte déborde, redessin sur un canvas à sa
+  mesure (≤ 4096 px, plafond iOS)
+- `_dessinerLegende` rend `{boiteW, boiteH, bx, by, policePx}` ; crop aux dims exactes, `canvas._ktaPolicePx`
+  = taille du texte en px du canvas (sert au calcul en mm)
+- `colonnes` : absent → 2 colonnes, groupes entiers (export PNG) ; nombre 1 à 4 → **en flux** (hauteur visée =
+  total / n, un groupe trop long continue en haut de la colonne suivante sous son titre répété, jamais un titre
+  seul en bas de colonne) ; liste → `Array<{colonnes, canvas}>`
+- Retourne `Promise<HTMLCanvasElement | null>` (null si aucun contenu cochable), ou la liste (vide si aucun contenu)
+
+Ce que la légende liste ne dépend pas du nombre d'objets : icônes filtrées par usage réel (`tagsUtilises`), mais
+tracés, zones et structures listent tous leurs types visibles (intégrés + personnalisés), présents ou non.
 
 #### 44.5 Nouveau style `print`
 

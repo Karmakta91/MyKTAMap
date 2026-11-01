@@ -589,14 +589,59 @@
   }
 
   // ── Légende en overlay, à l'un des 4 coins de la zone du plan ──
+  // ⚠️ Taille PHYSIQUE, pas une part du plan : le texte vise LEGENDE_POLICE_PT (A4), × √(petit côté / 210 mm)
+  // sur un papier plus grand (A0 ≈ × 2), puis la boîte est réduite pour tenir dans LEGENDE_BORNES du plan.
+  // 🩸 Ne pas revenir à une part fixe du plan : la légende d'un plan dense (≈ 45 lignes) y prend 60 à 70 % de
+  // sa hauteur quelle que soit la taille choisie, et son texte enfle avec le papier (≈ 23 pt en A0).
+  // Les colonnes (1 à 4) sont choisies pour que la boîte tienne dans le coin avec le texte le plus grand.
+  // ⚠️ Plancher LEGENDE_POLICE_MIN_PT : en dessous, la légende ne se lit plus imprimée ; la lisibilité passe alors
+  // avant les bornes (plan petit sur la page, ex. plan en largeur sur A4 portrait).
+  const LEGENDE_POLICE_PT = { compact: 6, standard: 7.5, large: 9 };
+  const LEGENDE_BORNES = {
+    compact:  { w: 0.30, h: 0.40 },
+    standard: { w: 0.35, h: 0.50 },
+    large:    { w: 0.45, h: 0.60 }
+  };
+  const LEGENDE_POLICE_MIN_PT = 5;
+  const MM_PAR_PT = 25.4 / 72;
+
+  // Choix pur (testé par scripts/smoke/checkup-pdf-legende.js) : candidats [{ colonnes, canvas }] → la légende
+  // retenue et sa taille en mm. Meilleur = texte le moins réduit ; à égalité, la boîte la moins serrée.
+  function _choisirLegende(candidats, sizeKey, planW, planH, pageCourtMm) {
+    const policePt = (LEGENDE_POLICE_PT[sizeKey] || LEGENDE_POLICE_PT.standard) *
+      Math.sqrt(Math.max(1, pageCourtMm / 210));
+    const policeMm = policePt * MM_PAR_PT;
+    const ajusteMin = Math.min(1, LEGENDE_POLICE_MIN_PT / policePt);
+    const b = LEGENDE_BORNES[sizeKey] || LEGENDE_BORNES.standard;
+    const maxW = planW * b.w, maxH = planH * b.h;
+    let meilleur = null;
+    candidats.forEach(function (c) {
+      const cv = c.canvas;
+      const mmParPx = policeMm / (cv._ktaPolicePx || 28);
+      const w = cv.width * mmParPx, h = cv.height * mmParPx;
+      const ajuste = Math.max(ajusteMin, Math.min(1, maxW / w, maxH / h));
+      const serre = Math.max(w / maxW, h / maxH);
+      if (!meilleur || ajuste > meilleur.ajuste + 1e-3 ||
+          (Math.abs(ajuste - meilleur.ajuste) <= 1e-3 && serre < meilleur.serre)) {
+        meilleur = { colonnes: c.colonnes, canvas: cv, ajuste: ajuste, serre: serre,
+          legWmm: w * ajuste, legHmm: h * ajuste };
+      }
+    });
+    // Jamais plus grande que le plan lui-même (marges de pose de 3 mm comprises), plancher ou pas.
+    const plafond = Math.min(1, (planW - 6) / meilleur.legWmm, (planH - 6) / meilleur.legHmm);
+    meilleur.legWmm *= plafond;
+    meilleur.legHmm *= plafond;
+    return meilleur;
+  }
+
   async function _dessinerLegendeOverlay(pdf, opts, planX, planY, planW, planH) {
     if (typeof window.MyKTAMapExporterGenererCanvasLegende !== "function") {
       console.warn("[PdfExport] Helper légende indispo — overlay skip.");
       return;
     }
-    let legCanvas;
+    let candidats;
     try {
-      legCanvas = await window.MyKTAMapExporterGenererCanvasLegende({
+      candidats = await window.MyKTAMapExporterGenererCanvasLegende({
         contenu: {
           icones:     opts.incPoints || _aDataLayerCoche(opts, "points"),
           traces:     opts.incRoads,
@@ -605,29 +650,22 @@
           track:      false,
           meta:       false   // déjà dans le header PDF
         },
-        size:  opts.legSize  || "standard",
-        style: opts.legStyle || "print",
-        scale: 2
+        size:     opts.legSize  || "standard",
+        style:    opts.legStyle || "print",
+        scale:    2,
+        colonnes: [1, 2, 3, 4]
       });
     } catch(e) {
       console.warn("[PdfExport] Helper légende KO :", e);
       return;
     }
-    if (!legCanvas) return; // aucun contenu cochable → silent
+    if (!candidats || !candidats.length) return; // aucun contenu cochable → silent
 
-    // Largeur cible selon legSize (compact 22 %, standard 28 %, large 35 % du plan) : lisible sans trop masquer.
-    const WIDTH_RATIO = { compact: 0.22, standard: 0.28, large: 0.35 };
-    const sizeKey = opts.legSize || "standard";
-    const wRatio  = WIDTH_RATIO[sizeKey] || 0.28;
-    let legWmm = planW * wRatio;
-    let legHmm = legWmm * (legCanvas.height / legCanvas.width);
-
-    // Plafond à 70 % de la hauteur du plan (plan très étroit, contenu long) : largeur recalculée en proportion.
-    const maxHmm = planH * 0.70;
-    if (legHmm > maxHmm) {
-      legHmm = maxHmm;
-      legWmm = legHmm * (legCanvas.width / legCanvas.height);
-    }
+    const pageCourt = Math.min(pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
+    const choix = _choisirLegende(candidats, opts.legSize || "standard", planW, planH, pageCourt);
+    const legCanvas = choix.canvas;
+    const legWmm = choix.legWmm;
+    const legHmm = choix.legHmm;
 
     const PAD = 3; // mm
 

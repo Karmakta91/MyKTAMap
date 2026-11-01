@@ -1082,7 +1082,7 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 - **Format** : A0 à A4, portrait ou paysage (A4 paysage au départ).
 - **Contenu** : tes annotations, l'image du plan et ses calques, les calques de données, un en-tête (titre et informations du plan).
 - **Qualité** : Standard ×1 (A3/A4), Haute définition ×2 (A0/A1, fichier plus lourd), Brouillon ×0,5. A0/A1 en ×2 peut prendre 30 à 60 secondes sur mobile. Si l'image dépasse ce que l'appareil sait produire, la résolution est réduite et l'app te dit laquelle tu obtiens.
-- **🗺️ Légende** posée dans un coin (bas-gauche au départ), en trois tailles et quatre styles : **Pro (fond blanc)** pour l'impression (au départ), Sombre opaque, Sombre semi-transparent, Filigrane discret. Elle ne liste que ce qui figure vraiment sur le plan exporté.
+- **🗺️ Légende** posée dans un coin (bas-gauche au départ), en trois tailles et quatre styles : **Pro (fond blanc)** pour l'impression (au départ), Sombre opaque, Sombre semi-transparent, Filigrane discret. Sa taille suit le papier, pas le plan : texte d'environ 6 pt en A4 (Compact), un peu plus grand sur A3 à A0, et la légende se range en 1 à 4 colonnes pour tenir dans son coin (au plus 30 % de la largeur et 40 % de la hauteur du plan en Compact) ; sur un plan très chargé posé petit dans la page, elle garde un texte de 5 pt au moins et peut alors déborder ces limites. Ses icônes sont celles du plan exporté ; tracés, zones et structures montrent tous leurs types.
 
 Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr » et s'appelle `<plan>_<date>.pdf`.
 

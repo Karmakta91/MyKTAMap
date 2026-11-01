@@ -1081,7 +1081,7 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 - **Format**: A0 to A4, portrait or landscape (A4 landscape by default).
 - **Content**: your annotations, the map image and its layers, the data layers, a header (title and map information).
 - **Quality**: Standard ×1 (A3/A4), High definition ×2 (A0/A1, heavier file), Draft ×0.5. A0/A1 at ×2 can take 30 to 60 seconds on mobile. If the image is larger than the device can produce, the resolution is reduced and the app tells you which one you get.
-- **🗺️ Legend** placed in a corner (bottom-left by default), in three sizes and four styles: **Pro (white background)** for printing (default), Dark opaque, Dark semi-transparent, Subtle watermark. It only lists what actually appears on the exported map.
+- **🗺️ Legend** placed in a corner (bottom-left by default), in three sizes and four styles: **Pro (white background)** for printing (default), Dark opaque, Dark semi-transparent, Subtle watermark. Its size follows the paper, not the map: text of about 6 pt on A4 (Compact), a little larger on A3 to A0, and the legend arranges itself in 1 to 4 columns to fit its corner (at most 30% of the map's width and 40% of its height in Compact); on a very busy map printed small on the page, it keeps text of at least 5 pt and may then exceed these limits. Its icons are those of the exported map; paths, zones and structures show all their types.
 
 The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr” and is named `<map>_<date>.pdf`.
 
