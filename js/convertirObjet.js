@@ -13,9 +13,9 @@
 // Règle : fermé = zone ou pilier, ouvert = tracé ou front de taille ; fermé se lit par le TYPE, ou par la GÉOMÉTRIE.
 //     OUVERT   ⇄   tracés (galeries)  ⇄  structures polylignes (fronts)
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
-// Ouvert → fermé seulement pour un CONTOUR FERMÉ (estContourFerme : ≥ 3 points, bouts écartés de moins de 1,5 × le
-// plus grand côté, forme compacte) : un pilier SIG arrive en 4 points / 3 côtés. Aucun point inventé, le polygone se
-// referme seul. Fermé → ouvert : jamais. Lot : RECOLLAGE des lignes qui forment ensemble une boucle (trouverBoucles,
+// Ouvert → fermé seulement pour un CONTOUR FERMÉ SEUL (≥ 3 segments, bouts écartés de moins de 1,5 × le plus grand
+// côté, forme compacte, aucun bout qui touche une autre ligne : sinon c'est un MORCEAU de pilier). Aucun point
+// inventé. Fermé → ouvert : jamais. Lot : RECOLLAGE des lignes qui forment ensemble une boucle (trouverBoucles,
 // recollerLot). 🩸 Une galerie en U serrée passe pour fermée : le lot montre le compte avant et s'annule en un ⏪.
 // Conservés : `points`, `level`, `description`, `uid` ; seul le type (donc la famille) change.
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
@@ -89,17 +89,22 @@
   }
 
   // Objet OUVERT par son type (tracé, front), jamais une jonction ni un itinéraire, dont la géométrie se referme.
+  // 🩸 Au moins 3 SEGMENTS (4 points), sauf si le dernier point répète le premier (3 côtés après son retrait) : une
+  // ligne de 2 segments (un V, un L) passe les deux seuils et deviendrait un triangle ; sur le terrain, c'est un
+  // morceau de pilier. Géométrie seule : le voisinage (morceau) se juge par _contourSeul.
   function estContourFerme(famille, obj) {
     if (!obj || CIBLES_INTERDITES[obj.type] || !_estOuvert(famille, obj.type)) return false;
-    return _analyseContour(obj.points) !== null;
+    const a = _analyseContour(obj.points);
+    return !!a && (a.doublon || obj.points.length >= 4);
   }
 
   // Conversion permise pour CET objet ? Même forme : oui ; ouvert → fermé : seulement un contour fermé ; fermé →
   // ouvert : jamais. Défense en profondeur : la modale ne propose que ça, le lot et l'appel direct le revérifient.
-  function _compatible(famille, obj, familleCible, typeCible) {
+  // `grille` (facultatif) : index des bouts (_indexBouts), construit une fois par lot.
+  function _compatible(famille, obj, familleCible, typeCible, grille) {
     const src = _estOuvert(famille, obj.type), dst = _estOuvert(familleCible, typeCible);
     if (src === dst) return true;
-    return src && !dst && estContourFerme(famille, obj);
+    return src && !dst && _contourSeul(famille, obj, grille);
   }
   function _ferme(famille, obj, familleCible, typeCible) {
     return _estOuvert(famille, obj.type) && !_estOuvert(familleCible, typeCible);
@@ -110,16 +115,68 @@
   // aucune n'est un contour fermé seule. Graphe : les bouts d'un même niveau à ≤ TOLERANCE_RECOLLAGE se regroupent en
   // nœuds, chaque ligne est une arête entre ses deux nœuds-bouts. Une composante d'au moins 2 arêtes dont TOUS les
   // nœuds sont de degré 2 (nœuds = arêtes) est une boucle simple ; elle est retenue si le polygone obtenu est compact
-  // (même seuil qu'estContourFerme). Une branche, un T : jamais recollés.
-  // ⚠️ Une ligne déjà fermée seule entre aussi dans le graphe : si elle forme une boucle avec d'autres (un pilier livré
-  // en deux « L », chacun assez fermé pour passer seul), le recollage l'emporte (sinon deux triangles) ; hors boucle,
-  // elle est convertie seule, comme sans recollage. Une ligne n'entre que dans une boucle.
+  // (même seuil qu'estContourFerme). Une branche, un T : jamais recollés. Une ligne n'entre que dans une boucle.
+  // ⚠️ MORCEAU : une ligne dont un bout touche (≤ TOLERANCE_RECOLLAGE, même niveau) le bout d'une AUTRE ligne ouverte
+  // de la session n'est jamais convertie seule, même si elle se referme (un « C » dont l'autre moitié est une ligne
+  // voisine) : elle ne part que par le recollage, sinon elle reste et le message la compte. La session entière fait
+  // foi, pas la sélection : sinon sélectionner une moitié de pilier la refermerait.
   // ⚠️ Tolérance FIXE en px de l'image du plan (décision produit, mesurée sur un relevé SIG réel : 5 px trouve la
   // quasi-totalité des boucles, 10 px n'en ajoute presque plus). Pas de réglage dans l'interface.
   const TOLERANCE_RECOLLAGE = 5;
   const PREFIXE_UID = { roads: "rd", zones: "zn", structures: "st" };
 
   function _niveauDe(o) { return Number.isInteger(o.level) ? o.level : 0; }
+
+  // Identité d'une ligne dans l'index : uid (une référence périmée et sa copie de session sont la même ligne).
+  function _cleLigne(o) { return (typeof o.uid === "string" && o.uid) ? "u:" + o.uid : o; }
+
+  // Bouts de toutes les lignes ouvertes de la session (tracés, fronts ; ni jonction, ni itinéraire, ni aperçu), plus
+  // celles de `items` absentes de la session. Grille de pas TOLERANCE par niveau : une recherche = 9 cases. Une
+  // passe sur les deux familles, construite une fois par fenêtre ou par lot.
+  function _indexBouts(items) {
+    const T = TOLERANCE_RECOLLAGE, grille = new Map(), vus = new Set();
+    const ajouter = function (famille, o) {
+      if (!o || o._preview || !_candidateRecollage({ famille: famille, obj: o })) return;
+      const cle = _cleLigne(o);
+      if (vus.has(cle)) return;
+      vus.add(cle);
+      const niv = _niveauDe(o);
+      [o.points[0], o.points[o.points.length - 1]].forEach(function (p) {
+        const c = niv + ":" + Math.floor(p.x / T) + ":" + Math.floor(p.y / T);
+        if (!grille.has(c)) grille.set(c, []);
+        grille.get(c).push({ cle: cle, p: p });
+      });
+    };
+    ["roads", "structures"].forEach(function (f) { _lire(f).forEach(function (o) { ajouter(f, o); }); });
+    (items || []).forEach(function (it) { if (it) ajouter(it.famille, it.obj); });
+    return grille;
+  }
+
+  // Un bout de `obj` touche-t-il le bout d'une AUTRE ligne ? (ses deux bouts proches l'un de l'autre : pas un morceau)
+  function _estMorceau(obj, grille) {
+    const p = obj && obj.points;
+    if (!Array.isArray(p) || p.length < 2) return false;
+    const T = TOLERANCE_RECOLLAGE, cle = _cleLigne(obj), niv = _niveauDe(obj);
+    return [p[0], p[p.length - 1]].some(function (b) {
+      if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.y)) return false;
+      const cx = Math.floor(b.x / T), cy = Math.floor(b.y / T);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const proches = grille.get(niv + ":" + (cx + dx) + ":" + (cy + dy)) || [];
+          if (proches.some(function (e) { return e.cle !== cle && Math.hypot(e.p.x - b.x, e.p.y - b.y) <= T; })) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+  }
+
+  // Contour fermé convertible SEUL : fermé par sa géométrie et pas un morceau.
+  function _contourSeul(famille, obj, grille) {
+    if (!estContourFerme(famille, obj)) return false;
+    return !_estMorceau(obj, grille || _indexBouts([{ famille: famille, obj: obj }]));
+  }
 
   // Ligne candidate : ouverte par son type, ni jonction ni itinéraire, ≥ 2 points finis.
   function _candidateRecollage(it) {
@@ -149,10 +206,11 @@
     return out;
   }
 
-  // `items` = [{ famille, obj }]. → { boucles: [{ items, points, level }], lignes, ignorees, contours } : `lignes` =
-  // lignes recollées, `ignorees` = lignes qui touchent une autre ligne sans former une boucle simple et compacte (hors
-  // contours fermés seuls), `contours` = contours fermés seuls hors boucle (convertis seuls). Ne modifie rien.
-  function trouverBoucles(items) {
+  // `items` = [{ famille, obj }]. → { boucles: [{ items, points, level }], lignes, ignorees, contours, morceaux } :
+  // `lignes` = lignes recollées ; `contours` = contours fermés seuls (_contourSeul, convertis seuls) ; `morceaux` =
+  // lignes qui se referment mais touchent une autre ligne, hors boucle (restent) ; `ignorees` = autres lignes de la
+  // sélection qui en touchent une autre sans former de boucle simple et compacte. `index` : _indexBouts. Lecture seule.
+  function trouverBoucles(items, index) {
     const aretes = [];
     (items || []).forEach(function (it) {
       if (_candidateRecollage(it)) aretes.push({ it: it, pts: it.obj.points, niv: _niveauDe(it.obj), a: -1, b: -1 });
@@ -212,6 +270,7 @@
         Array.from(noeuds).every(function (n) { return incidentes[n].length === 2; });
       const points = simple ? _parcourirBoucle(aretes, idxs, incidentes) : null;
       if (!points || points.length < 3 || _analyseContour(points) === null) {
+        // Les morceaux (lignes qui se referment) sont comptés à part, ci-dessous.
         res.ignorees += idxs.filter(function (i) { return !estContourFerme(aretes[i].it.famille, aretes[i].it.obj); }).length;
         return;
       }
@@ -221,8 +280,13 @@
     });
     const dansBoucle = new Set();
     res.boucles.forEach(function (bc) { bc.items.forEach(function (it) { dansBoucle.add(it); }); });
-    res.contours = (items || []).filter(function (it) {
-      return it && it.obj && !dansBoucle.has(it) && estContourFerme(it.famille, it.obj);
+    const g = index || _indexBouts(items);
+    res.contours = [];
+    res.morceaux = 0;
+    (items || []).forEach(function (it) {
+      if (!it || !it.obj || dansBoucle.has(it) || !estContourFerme(it.famille, it.obj)) return;
+      if (_estMorceau(it.obj, g)) res.morceaux++;
+      else res.contours.push(it);
     });
     return res;
   }
@@ -282,10 +346,10 @@
 
   // Cibles compatibles avec l'objet source, intégrées ET custom : [{ cat, famille, type, label, swatch }],
   // source exclue. `obj` (facultatif) : un contour fermé (estContourFerme) reçoit AUSSI les cibles fermées.
-  function listerCibles(famille, type, obj) {
+  function listerCibles(famille, type, obj, index) {
     const ouvert = _estOuvert(famille, type);
     const out = ouvert ? _cibles(famille, type, true) : [];
-    const ferme = !ouvert || (!!obj && obj.type === type && estContourFerme(famille, obj));
+    const ferme = !ouvert || (!!obj && obj.type === type && _contourSeul(famille, obj, index));
     return ferme ? out.concat(_cibles(famille, type, false)) : out;
   }
 
@@ -546,6 +610,7 @@
     const rec = trouverBoucles(items);
     const bilan = _lot(rec.contours, familleCible, typeCible, rec.boucles);
     bilan.ignorees = rec.ignorees;
+    bilan.morceaux = rec.morceaux;
     return bilan;
   }
 
@@ -571,6 +636,8 @@
       structures: _lire("structures").slice()
     };
     const touchees = {};
+    // Index des bouts lu AVANT toute écriture, une fois : seulement si la cible est fermée (règle du morceau).
+    const index = _estOuvert(familleCible, typeCible) ? null : _indexBouts(items);
 
     items.forEach(function (it) {
       if (!it || !it.obj || !listes[it.famille]) { bilan.echecs++; return; }
@@ -579,7 +646,7 @@
       const idx = _indexDe(listes[it.famille], it.obj);
       if (idx < 0) { bilan.echecs++; return; }
       const actuel = listes[it.famille][idx];
-      if (!_compatible(it.famille, actuel, familleCible, typeCible)) { bilan.echecs++; return; }
+      if (!_compatible(it.famille, actuel, familleCible, typeCible, index)) { bilan.echecs++; return; }
       listes[it.famille].splice(idx, 1);
       listes[familleCible].push(_versType(actuel, typeCible, _ferme(it.famille, actuel, familleCible, typeCible)));
       touchees[it.famille] = true;
@@ -768,11 +835,12 @@
   // Cibles d'un LOT = UNION de celles de chaque objet (la source de l'un peut être la cible d'un autre :
   // l'intersection ferait disparaître des cibles légitimes sans explication). `avecFermes` : un contour fermé ouvre
   // aussi les cibles fermées (lot filtré « seulement les contours fermés »).
-  function listerCiblesLot(items, avecFermes) {
+  function listerCiblesLot(items, avecFermes, index) {
     const vues = {}, out = [];
+    const idx = avecFermes ? (index || _indexBouts(items)) : null;   // une fois pour tout le lot
     (items || []).forEach(function (it) {
       if (!it || !it.obj) return;
-      listerCibles(it.famille, it.obj.type, avecFermes ? it.obj : null).forEach(function (c) {
+      listerCibles(it.famille, it.obj.type, avecFermes ? it.obj : null, idx).forEach(function (c) {
         const k = c.famille + ":" + c.type;
         if (vues[k]) return;
         vues[k] = true;
@@ -876,10 +944,14 @@
     const regleBase = _t(ouvert ? "convert.regleOuvert" : "convert.regleFerme");
 
     if (lot) {
-      const contours = lot.filter(function (it) { return it && it.obj && estContourFerme(it.famille, it.obj); });
+      const index = _indexBouts(lot);   // une construction pour toute la fenêtre
+      const contours = lot.filter(function (it) { return it && it.obj && _contourSeul(it.famille, it.obj, index); });
       // Cases visibles dès qu'une ligne est dans le lot ; grisées sans objet à traiter (elles disent pourquoi).
       const lignes = lot.some(function (it) { return it && it.obj && _estOuvert(it.famille, it.obj.type); });
-      const rec = lignes ? trouverBoucles(lot) : { boucles: [], lignes: 0, ignorees: 0, contours: contours };
+      const rec = lignes ? trouverBoucles(lot, index)
+        : { boucles: [], lignes: 0, ignorees: 0, contours: contours, morceaux: 0 };
+      // Morceaux de pilier (se referment mais touchent une autre ligne) : jamais convertis seuls, dit à la confirmation.
+      const noteMorceaux = rec.morceaux ? "\n" + _t("convert.morceauxReste", { k: rec.morceaux }) : "";
       const seuls = rec.contours.length;   // contours fermés convertis seuls quand on recolle
       const recoller = !!opts.recoller && rec.boucles.length > 0;
       const fermes = recoller || (!!opts.fermes && contours.length > 0);
@@ -914,7 +986,7 @@
       } else if (fermes) {
         source = _t("convert.lotSourceFermes", { n: contours.length, m: lot.length });
         regle = _t("convert.regleContour");
-        cibles = listerCiblesLot(contours, true);
+        cibles = listerCiblesLot(contours, true, index);
       }
       _modale({
         source: source,
@@ -925,9 +997,10 @@
           if (!fermes) { _toastBilan(convertirLot(lot, c.famille, c.type)); return; }
           const texte = recoller
             ? _t("convert.recollerConfirm", { n: rec.boucles.length, l: rec.lignes, type: c.label, c: seuls,
-                 ignorees: rec.ignorees, autres: lot.length - rec.lignes - seuls - rec.ignorees })
+                 ignorees: rec.ignorees, autres: lot.length - rec.lignes - seuls - rec.ignorees - rec.morceaux })
             : _t("convert.fermesConfirm", { n: contours.length, type: c.label, autres: lot.length - contours.length });
-          window.ktaConfirm(_esc(texte), {
+          const texteComplet = texte + noteMorceaux;
+          window.ktaConfirm(_esc(texteComplet), {
             titre: _esc(_t(recoller ? "convert.recollerTitre" : "convert.fermesTitre")),
             okLabel: _esc(_t("convert.fermesOk", { n: recoller ? rec.boucles.length + seuls : contours.length }))
           }).then(function (oui) {
@@ -949,16 +1022,19 @@
     }
 
     const niveau = Number.isInteger(obj.level) ? obj.level : 0;
-    const contour = estContourFerme(famille, obj);
+    const index = _indexBouts([{ famille: famille, obj: obj }]);
+    const contour = _contourSeul(famille, obj, index);
+    // Se referme mais touche une autre ligne : morceau de pilier, la fiche dit pourquoi zone et pilier manquent.
+    const morceau = !contour && estContourFerme(famille, obj);
     _modale({
       source: _t("convert.source", { type: _libelle(CAT_DE_FAMILLE[famille] || famille, obj.type),
                                      niveau: (niveau < 0 ? niveau : "+" + niveau) }),
-      regle: contour ? _t("convert.regleContourObjet") : regleBase,
+      regle: contour ? _t("convert.regleContourObjet") : (morceau ? _t("convert.regleMorceau") : regleBase),
       // Entrée du mode lot.
       avant: '<button class="kta-btn kta-btn-ghost kta-convert-multi" type="button" id="kta-convert-multi">' +
                _esc(_t("convert.selMulti")) +
              '</button>',
-      cibles: listerCibles(famille, obj.type, obj),
+      cibles: listerCibles(famille, obj.type, obj, index),
       choisir: function (c) { convertir(famille, obj, c.famille, c.type); },
       apresMontage: function (modal, fermer) {
         const btnMulti = modal.querySelector("#kta-convert-multi");

@@ -8,7 +8,7 @@
 // 3 px), un rectangle en 3 lignes, un carré en 2 lignes aux bouts à 8 px (non recollé), un T à 3 branches.
 // Vérifie : sélection multiple « tous du type » → fenêtre du lot → case « recoller » (compte), cibles fermées
 // seulement, ktaConfirm annonce le compte AVANT, 2 piliers (uid neufs, jonctions fusionnées, aucun point inventé),
-// le reste intact, traces de suppression des lignes, UNE entrée d'historique, un ⏪ rend les 10 lignes d'origine.
+// le reste intact, traces de suppression, UNE entrée d'historique, un ⏪ rend les 10 lignes ; fiche d'un morceau.
 // 🩸 check-api-surface.js teste le graphe dans un `vm` ; seul ce parcours voit la fenêtre, la case, ktaConfirm et
 // la sélection multiple réelle.
 // Usage : node scripts/smoke/checkup-recoller-piliers.js (SMOKE_PORT pour une autre copie) · code :
@@ -227,6 +227,29 @@ async function confirmer(page) {
       return (window.KtaUid.getTombstones() || []).map(function (t) { return t.uid; });
     });
     verifier(traces2.indexOf("st_ckr_ca") < 0, "après ⏪ : la trace de suppression des lignes rendues est retirée", traces2);
+    // Morceau : un « C » de 3 côtés dont l'autre moitié est une ligne voisine de la session. Sa fenêtre Convertir
+    // (fiche) ne propose ni zone ni pilier et dit pourquoi ; un C isolé les propose.
+    const morceau = await page.evaluate(function () {
+      const c = window.__ckr;
+      const C = { uid: "st_ckr_C", type: "front-1", level: 0, points: [{ x: c.x, y: c.y + 200 }, { x: c.x + 40, y: c.y + 200 },
+        { x: c.x + 40, y: c.y + 240 }, { x: c.x, y: c.y + 240 }] };
+      const voisine = { uid: "st_ckr_Cv", type: "front-1", level: 0,
+        points: [{ x: c.x, y: c.y + 238 }, { x: c.x, y: c.y + 202 }] };
+      const Ci = { uid: "st_ckr_Ci", type: "front-1", level: 0, points: [{ x: c.x + 100, y: c.y + 200 },
+        { x: c.x + 140, y: c.y + 200 }, { x: c.x + 140, y: c.y + 240 }, { x: c.x + 100, y: c.y + 240 }] };
+      window.setStructures([C, voisine, Ci]);
+      const lire = function (o) {
+        window.KtaConvertir.ouvrir("structures", o);
+        const m = document.getElementById("kta-convert-modal");
+        const r = { pilier: !!m.querySelector('[data-type="pilier-1"]'),
+                    regle: (m.querySelector(".kta-convert-regle") || {}).textContent || "" };
+        m.remove();
+        return r;
+      };
+      return { C: lire(C), Ci: lire(Ci), cleMorceau: window.I18n.t("convert.regleMorceau") };
+    });
+    verifier(!morceau.C.pilier && morceau.C.regle === morceau.cleMorceau && morceau.Ci.pilier,
+      "morceau : la fiche du C qui touche une voisine ne propose pas de pilier et l'explique ; le C isolé, si", morceau);
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 4));
   } catch (err) {
     pb("exception du harnais : " + (err && err.message));

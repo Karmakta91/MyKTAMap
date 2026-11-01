@@ -815,7 +815,7 @@ The batch does not mix lines and closed surfaces (the banner refuses and explain
 
 **Closed outlines only**: this box, in the batch window, keeps only the closed lines of the selection ("4 of 6") and then offers zones and pillars. When you choose the type, the app tells how many objects will change and how many stay as they are; a single `Ctrl+Z` undoes everything.
 
-**Join lines that touch**: an imported pillar sometimes arrives as 2 to 4 lines whose ends almost touch. This box, in the same window, makes them ONE object (zone or pillar) when together they form a loop on the same level; no point is added and a branch or a T is never joined. The app tells how many objects it will create and how many lines it uses; a single `Ctrl+Z` brings back the original lines.
+**Join lines that touch**: an imported pillar sometimes arrives as 2 to 4 lines whose ends almost touch. This box, in the same window, makes them ONE object (zone or pillar) when together they form a loop on the same level; no point is added and a branch or a T is never joined. The app tells how many objects it will create and how many lines it uses; a single `Ctrl+Z` brings back the original lines. A line of 2 segments (a V, an L) or a line with an end touching another line (a piece of a pillar) is never closed on its own: it only goes with this joining.
 
 **Closed outlines of a data layer**: first switch the layer to **🔄 Edit** (≡ Filters, layer's row); its objects then have a bubble and convert like yours, one by one or as a batch with **Closed outlines only**.
 

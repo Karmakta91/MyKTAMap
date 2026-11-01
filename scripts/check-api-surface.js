@@ -265,7 +265,8 @@ function charger(fichier, nomGlobal, prealables) {
   const carre = { uid: "st_carre", type: "front-1", level: -1, description: "n",
                   points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}] };
   const boucle = { type: "front-1", points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10},{x:0,y:0}] };
-  const uLarge = { type: "front-1", points: [{x:0,y:0},{x:10,y:5},{x:20,y:0},{x:30,y:5}] };   // zigzag ouvert
+  // Zigzag ouvert, posé à l'écart : ses bouts ne doivent toucher aucun autre objet du test (sinon morceau).
+  const uLarge = { type: "front-1", points: [{x:100,y:0},{x:110,y:5},{x:120,y:0},{x:130,y:5}] };
   const allonge = { type: "front-1", points: [{x:0,y:0},{x:0,y:20},{x:44,y:20},{x:44,y:3}] };   // grand côté manquant
   const crochet = { type: "front-1", points: [{x:0,y:0},{x:100,y:0},{x:100,y:10}] };   // écart < 1,5 × grand côté
   const ramifie = { type: "front-1", points: [{x:0,y:0},{x:100,y:0},{x:100,y:4},{x:52,y:4},{x:52,y:60},{x:48,y:60},
@@ -787,16 +788,46 @@ function charger(fichier, nomGlobal, prealables) {
     !!zm && zm._srcCalque === undefined && zm._srcCalqueDepuis === undefined);
   t("recoller : vers une autre famille, les lignes quittent la leur", S.length === 0 && Z.length === 2);
 
-  // Une moitié « en L » assez fermée pour passer seule : le recollage l'emporte (sinon deux triangles).
+  // Règle 1 : une ligne de 2 segments n'est jamais un contour fermé seule (sinon un triangle).
+  const V = { uid: "st_V", type: "front-1", level: 0, points: [{ x: 0, y: 0 }, { x: 10, y: 20 }, { x: 20, y: 0 }] };
   const La = { uid: "st_La", type: "front-1", level: 0, points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }] };
-  const Lb = { uid: "st_Lb", type: "front-1", level: 0, points: [{ x: 27, y: 30 }, { x: 0, y: 30 }, { x: 0, y: 3 }] };
-  r = CV.trouverBoucles([it(La), it(Lb)]);
-  t("recoller : deux « L » fermés seuls forment UNE boucle (pas deux triangles)",
-    CV.estContourFerme("structures", La) && r.boucles.length === 1 && r.contours.length === 0 &&
-    r.boucles[0].points.length === 4);
+  t("🩸 contour : un V de 2 segments n'est pas fermé seul", CV.estContourFerme("structures", V) === false);
+  t("🩸 contour : un L de 2 segments n'est pas fermé seul", CV.estContourFerme("structures", La) === false);
+  t("contour : 2 segments + premier point répété = triangle fermé (3 côtés)", CV.estContourFerme("structures",
+    { type: "front-1", points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }, { x: 0, y: 0 }] }) === true);
+
+  // Règle 2 : un « C » de 3 segments dont un bout touche une autre ligne de la SESSION est un morceau.
+  const Ca = { uid: "st_Ca", type: "front-1", level: 0,
+               points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }, { x: 0, y: 30 }] };
+  const Cb = { uid: "st_Cb", type: "front-1", level: 0, points: [{ x: 0, y: 28 }, { x: 0, y: 2 }] };
+  const Ci = { uid: "st_Ci", type: "front-1", level: 0,
+               points: [{ x: 500, y: 0 }, { x: 530, y: 0 }, { x: 530, y: 30 }, { x: 500, y: 30 }] };
+  S = [Ca, Cb, Ci]; Z = []; R = [];
+  t("contour : le C à 3 segments se referme (géométrie seule)", CV.estContourFerme("structures", Ca) === true);
+  t("🩸 morceau : la fiche du C qui touche une ligne voisine ne propose ni zone ni pilier",
+    CV.listerCibles("structures", "front-1", Ca).every(function (c) { return c.famille !== "zones" && c.type !== "pilier-1"; }));
+  t("contour : la fiche du C isolé propose zone et pilier",
+    CV.listerCibles("structures", "front-1", Ci).some(function (c) { return c.famille === "zones"; }));
+  r = CV.trouverBoucles([it(Ca)]);
+  t("🩸 morceau : la voisine HORS sélection suffit (C seul sélectionné → 0 contour, 1 morceau)",
+    r.contours.length === 0 && r.morceaux === 1 && r.boucles.length === 0);
+  r = CV.trouverBoucles([it(Ca), it(Cb), it(Ci)]);
+  t("morceau : recollé avec sa voisine (1 boucle de 4 points), le C isolé reste un contour seul",
+    r.boucles.length === 1 && r.boucles[0].points.length === 4 && r.contours.length === 1 &&
+    r.contours[0].obj === Ci && r.morceaux === 0);
+  journal.snap = 0; journal.record = [];
+  const blM = CV.convertirLot([it(Ca), it(Ci)], "structures", "pilier-1");
+  t("🩸 morceau : refusé seul en lot (1 converti = le C isolé, 1 échec)", blM.convertis === 1 && blM.echecs === 1 &&
+    S.indexOf(Ca) >= 0 && S.indexOf(Ci) < 0);
+  const blR = CV.recollerLot([it(Ca), it(Cb)], "structures", "pilier-1");
+  t("morceau : recollé avec sa voisine en un pilier", blR.recolles === 1 && blR.lignes === 2 &&
+    S.indexOf(Ca) < 0 && S.indexOf(Cb) < 0);
+  S = [Ca, Cb];
+  t("🩸 morceau : convertir() direct refusé aussi", CV.convertir("structures", Ca, "zones", "eau") === false);
 
   ["convert.recollerFiltre", "convert.lotSourceRecoller", "convert.regleRecoller", "convert.recollerTitre",
-   "convert.recollerConfirm", "convert.recollerBilan", "convert.histoireRecoller"].forEach(function (k) {
+   "convert.recollerConfirm", "convert.recollerBilan", "convert.histoireRecoller",
+   "convert.morceauxReste", "convert.regleMorceau"].forEach(function (k) {
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
       t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);

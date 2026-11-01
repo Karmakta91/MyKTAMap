@@ -1506,6 +1506,18 @@ passe. La compacité écarte le contour ramifié d'un réseau de galeries et les
 crochets, qui se refermeraient aussi mais rempliraient les galeries ; un pilier
 jusqu'à ~10:1 passe.
 
+- 🩸 **Au moins 3 segments** (4 points), sauf si le dernier point répète le premier
+  (3 côtés après son retrait) : une ligne de 2 segments (un V, un L) passe les deux
+  seuils mais deviendrait un triangle ; sur un relevé réel, c'est un morceau de pilier.
+- 🩸 **Morceau de pilier** (`_contourSeul`) : une ligne qui se referme mais dont un
+  bout touche (≤ 5 px, même niveau) le bout d'une AUTRE ligne ouverte de la **session**
+  n'est jamais convertie seule (un « C » dont l'autre moitié est une ligne voisine) :
+  ni par sa fiche (qui l'explique), ni en lot, ni par un appel direct. Elle ne part
+  que par le recollage, sinon elle reste et la confirmation la compte (`morceaux`).
+  La session entière fait foi, pas la sélection : sinon sélectionner une moitié de
+  pilier la refermerait. Index des bouts par grille (`_indexBouts`), construit une
+  fois par fenêtre ou par lot. `estContourFerme` reste la géométrie seule.
+
 - **Aucun point inventé** : le polygone se referme seul au rendu (dernier → premier).
   Seul retrait : un dernier point qui répète le premier (écart ≤ 1 % du côté moyen),
   à condition qu'il reste ≥ 3 points. L'objet d'origine n'est pas muté (historique).
@@ -1537,10 +1549,9 @@ pas plus que 5.
   jonction de fermeture garde le premier point. Aucun point inventé.
 - **Pas touchés, mais comptés** (`ignorees`) : une branche, un T, une boucle peu
   compacte. Une ligne n'entre que dans une boucle.
-- ⚠️ **Une ligne déjà fermée seule entre aussi dans le graphe** : si elle forme une
-  boucle avec d'autres (pilier livré en deux « L », chacun assez fermé pour passer
-  seul), le recollage l'emporte, sinon deux triangles ; hors boucle, elle est
-  convertie seule (`contours`), comme sans recollage.
+- **Une ligne qui se referme entre aussi dans le graphe** : si elle touche une autre
+  ligne c'est un morceau, recollé quand il forme une boucle, laissé sinon (`morceaux`) ;
+  sans voisine, c'est un contour fermé seul, converti seul (`contours`).
 - **L'objet recollé** : champs de la première ligne, type cible, niveau commun, notes
   distinctes non vides concaténées, **uid neuf** (préfixe de la famille cible). Les
   lignes d'origine quittent la session : `HistoryManager.record` pose leurs traces de
