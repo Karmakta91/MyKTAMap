@@ -1011,7 +1011,9 @@
       if (!glisse) return;
       const dx = ev.clientX - glisse.x, dy = ev.clientY - glisse.y;
       glisse = { x: ev.clientX, y: ev.clientY };
-      if (dx) { _passerEnLibre(); e.cap = (e.cap + dx * 0.25 + 360) % 360; }
+      // 🩸 En suivi, le cap est celui de l'appareil : glisser ne règle que le regard haut/bas. Tourner au doigt
+      // quittait le suivi au moindre toucher (un tap bouge toujours d'un pixel ou deux).
+      if (dx && e.mode !== "suivi") e.cap = (e.cap + dx * 0.25 + 360) % 360;
       e.tangage = Math.max(-1, Math.min(1, e.tangage - dy * 0.004));
       e.sale = true;
     });

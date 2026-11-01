@@ -401,6 +401,15 @@ async function mesures(page, depart) {
       await page.waitForTimeout(800);
       const s3 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
       verifier(s3.mode === "suivi" && Math.abs(s3.cap - 200) < 2, "📍 → suivi : la vue tourne avec l'appareil (200°)", s3);
+      // Toucher et glisser l'écran en suivi : le suivi reste (le cap est celui de l'appareil).
+      const cv = await page.locator("#kta-vue3d canvas").boundingBox();
+      await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(cv.x + cv.width / 2 + 40, cv.y + cv.height / 2 + 10, { steps: 4 });
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+      const sTouche = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
+      verifier(sTouche.mode === "suivi" && Math.abs(sTouche.cap - 200) < 2, "suivi : toucher et glisser l'écran ne quitte pas le suivi", sTouche);
       await page.evaluate(function () { window.stopTracking(); });
       await page.waitForTimeout(300);
       await page.locator('#kta-vue3d [data-v3d="suivre"]').click();

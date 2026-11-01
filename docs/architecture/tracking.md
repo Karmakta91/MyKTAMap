@@ -1204,7 +1204,8 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
   la vue (pas celui de `mapBearing.js`, qui ne tourne que mode activé). Ouvert en suivi si le tracker tourne,
   sinon en libre ; tracker arrêté en route → libre, 📍 grisé (`vue3d.suiviIndispo`, toast au toucher). Tout
-  déplacement ou glisser passe en libre.
+  bouton de déplacement passe en libre ; en suivi, glisser sur la scène ne règle que le regard haut / bas (le
+  cap reste celui de l'appareil).
 - **Vue plongeante** : caméra à 18,4 m du point visé (2 m devant soi), inclinaison 15° à 85° (60° par défaut) ;
   deux doigts à la verticale, molette, PageUp / PageDown, boutons ▲ ▼ (montrés dans cette vue seulement) ; retenue
   tant que la vue est ouverte.
