@@ -938,8 +938,25 @@ async function mesuresGalerie(page) {
         window.KtaVue3D.avancer(1);
         return window.KtaVue3D.etat().pos;
       });
+      // ✕ : rien au simple appui (pointerdown) ; le clic ferme, et rien ne part vers ce qui est dessous.
+      const appui = await page.evaluate(function () {
+        const x = document.querySelector('#kta-vue3d [data-v3d="fermer"]');
+        x.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
+        return window.KtaVue3D.etat().ouvert;
+      });
+      verifier(appui === true, "✕ : le simple appui ne ferme pas (seul le clic ferme)");
+      await page.evaluate(function () {
+        window.__v3dSortie = 0;
+        const S = window.SortieUrgence;
+        if (S) { window.__v3dDecl = S.declencher; S.declencher = function () { window.__v3dSortie++; }; }
+      });
       await page.locator('#kta-vue3d [data-v3d="fermer"]').click();
       await page.waitForTimeout(200);
+      const sortie = await page.evaluate(function () {
+        if (window.__v3dDecl) window.SortieUrgence.declencher = window.__v3dDecl;
+        return window.__v3dSortie;
+      });
+      verifier(sortie === 0, "✕ : la Sortie d'urgence n'est pas déclenchée", sortie);
       const q2 = await page.evaluate(function () { return !!document.getElementById("kta-confirm-oui"); });
       verifier(q2, "✕ après un déplacement : « Je suis ici ? » posée");
       await page.locator("#kta-confirm-oui").click();

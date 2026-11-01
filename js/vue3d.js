@@ -1555,11 +1555,17 @@
       ["av", "ar", "tg", "td", "ga", "dr"].forEach(function (k) { e.touches[k] = false; });
       e.avDepuis = 0;
     };
+    on(e.ov, "click", function (ev) {
+      const b = ev.target.closest && ev.target.closest('[data-v3d="fermer"]');
+      if (b) fermer();
+    });
     on(e.ov, "pointerdown", function (ev) {
       const b = ev.target.closest && ev.target.closest("[data-v3d]");
       if (!b) return;
       const a = b.dataset.v3d;
-      if (a === "fermer") { fermer(); return; }
+      // 🩸 ✕ ferme au `click`, jamais au pointerdown : la vue retirée sous le doigt, le clic du même toucher
+      // tombait sur le bouton placé dessous (🚨 Sortie d'urgence de l'en-tête).
+      if (a === "fermer") return;
       if (a === "vue") { basculerVue(); return; }
       if (a === "rendu") { basculerRendu(); return; }
       if (a === "niveauHaut" || a === "niveauBas") { changerNiveau(a === "niveauHaut" ? "haut" : "bas"); return; }
