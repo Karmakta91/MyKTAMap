@@ -1498,10 +1498,13 @@ plan importé, sans eux la modale serait vide.
 contours arrivent souvent en lignes, sans répéter le premier point : un pilier carré
 = 4 points, 3 côtés. Une ligne (tracé ou front ; jamais une jonction ni un
 itinéraire) d'au moins 3 points dont l'écart premier → dernier point est
-**< 1,5 × la longueur moyenne de ses côtés existants** est un *contour fermé* : sa
-fiche propose aussi les zones et les structures polygones. Seuil **relatif**
-(décision produit) : un carré à 3 côtés (écart = 1 côté) passe, un U large reste
-ouvert.
+**< 1,5 × son plus grand côté existant**, et dont le polygone refermé est **compact**
+(4πA/P² ≥ 0,2), est un *contour fermé* : sa fiche propose aussi les zones et les
+structures polygones (décision produit, seuils mesurés sur un relevé SIG réel). Le
+plus grand côté et pas le côté moyen : un pilier allongé livré sans son grand côté
+passe. La compacité écarte le contour ramifié d'un réseau de galeries et les
+crochets, qui se refermeraient aussi mais rempliraient les galeries ; un pilier
+jusqu'à ~10:1 passe.
 
 - **Aucun point inventé** : le polygone se referme seul au rendu (dernier → premier).
   Seul retrait : un dernier point qui répète le premier (écart ≤ 1 % du côté moyen),

@@ -260,18 +260,25 @@ function charger(fichier, nomGlobal, prealables) {
     CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
 
   // ── Contour FERMÉ par la géométrie (import SIG : pilier carré livré en 4 points / 3 côtés) ──
-  // Seuil relatif : écart des bouts < 1,5 × côté moyen. Aucun point inventé ; seul un dernier point qui répète le
-  // premier est retiré.
+  // Écart des bouts < 1,5 × le plus grand côté ET forme compacte (4πA/P² ≥ 0,2). Aucun point inventé ; seul un
+  // dernier point qui répète le premier est retiré.
   const carre = { uid: "st_carre", type: "front-1", level: -1, description: "n",
                   points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}] };
   const boucle = { type: "front-1", points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10},{x:0,y:0}] };
-  const uLarge = { type: "front-1", points: [{x:0,y:0},{x:0,y:3},{x:20,y:3},{x:20,y:0}] };
+  const uLarge = { type: "front-1", points: [{x:0,y:0},{x:10,y:5},{x:20,y:0},{x:30,y:5}] };   // zigzag ouvert
+  const allonge = { type: "front-1", points: [{x:0,y:0},{x:0,y:20},{x:44,y:20},{x:44,y:3}] };   // grand côté manquant
+  const crochet = { type: "front-1", points: [{x:0,y:0},{x:100,y:0},{x:100,y:10}] };   // écart < 1,5 × grand côté
+  const ramifie = { type: "front-1", points: [{x:0,y:0},{x:100,y:0},{x:100,y:4},{x:52,y:4},{x:52,y:60},{x:48,y:60},
+                    {x:48,y:4},{x:0,y:4}] };   // contour de galeries en T : se referme mais remplirait la galerie
   const deux   = { type: "front-1", points: [{x:0,y:0},{x:0.1,y:0}] };
   const joncF  = { type: "jonction", fromLevel: 0, toLevel: -1, points: carre.points };
   t("fermé : API estContourFerme exposée", typeof CV.estContourFerme === "function");
   t("fermé : carré à 3 côtés (écart = 1 côté) reconnu", CV.estContourFerme("structures", carre) === true);
   t("fermé : premier point répété reconnu",               CV.estContourFerme("structures", boucle) === true);
-  t("fermé : U large (écart > 1,5 × côté moyen) reste ouvert", CV.estContourFerme("structures", uLarge) === false);
+  t("fermé : zigzag (écart > 1,5 × grand côté) reste ouvert", CV.estContourFerme("structures", uLarge) === false);
+  t("fermé : pilier allongé sans son grand côté reconnu", CV.estContourFerme("structures", allonge) === true);
+  t("🩸 fermé : crochet peu compact reste ouvert", CV.estContourFerme("structures", crochet) === false);
+  t("🩸 fermé : contour ramifié (galerie en T) reste ouvert", CV.estContourFerme("structures", ramifie) === false);
   t("fermé : 2 points jamais fermés",                     CV.estContourFerme("structures", deux) === false);
   t("fermé : une jonction jamais (ses niveaux)",          CV.estContourFerme("roads", joncF) === false);
   t("fermé : une zone n'est pas un « contour » (déjà fermée par son type)",
@@ -282,7 +289,7 @@ function charger(fichier, nomGlobal, prealables) {
   t("fermé : et garde ses cibles ouvertes", ciblesCarre.indexOf("roads:principal") >= 0);
   t("fermé : sans l'objet, la règle par type reste (pas de zone)",
     CV.listerCibles("structures", "front-1").every(function (c) { return c.famille !== "zones"; }));
-  t("fermé : le U large n'a pas de cible fermée",
+  t("fermé : le zigzag n'a pas de cible fermée",
     CV.listerCibles("structures", "front-1", uLarge).every(function (c) { return c.famille !== "zones"; }));
 
   S = [carre, boucle, uLarge]; Z = []; R = [];
@@ -293,7 +300,7 @@ function charger(fichier, nomGlobal, prealables) {
   t("fermé : boucle → zone réussit", CV.convertir("structures", boucle, "zones", "eau") === true);
   t("fermé : le doublon du premier point est retiré (5 → 4)", Z.length === 1 && Z[0].points.length === 4);
   t("fermé : l'objet d'origine garde ses 5 points (historique)", boucle.points.length === 5);
-  t("🩸 fermé : U large → zone REFUSÉ (rien ne bouge)",
+  t("🩸 fermé : zigzag → zone REFUSÉ (rien ne bouge)",
     CV.convertir("structures", uLarge, "zones", "eau") === false && S.indexOf(uLarge) >= 0 && Z.length === 1);
   const zoneSeule = Z[0];
   t("🩸 fermé → ouvert : refusé même en appel direct",

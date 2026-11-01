@@ -5853,7 +5853,7 @@
   "convert.histoireLot": "Convertir {n} objets",
   "convert.histoireTableau": "Éditeur de données : {n} objet(s) appliqué(s)",
   "convert.regleContourObjet": "Ligne FERMÉE : ses deux bouts se rejoignent presque. Convertible en tracé ou en front de taille, et aussi en zone ou en pilier / mur : la forme se referme toute seule, aucun point n'est ajouté. Le niveau et la note sont conservés.",
-  "convert.regleContour": "Contours fermés : lignes dont les deux bouts se rejoignent presque (écart inférieur à 1,5 fois la longueur moyenne d'un côté). En zone ou en pilier, chacune se referme toute seule, aucun point n'est ajouté. Une galerie en U très serrée peut en faire partie : vérifie le compte.",
+  "convert.regleContour": "Contours fermés : lignes dont les deux bouts se rejoignent presque (écart inférieur à 1,5 fois le plus grand côté) et dont la forme est compacte (le contour ramifié d'un réseau de galeries n'en fait pas partie). En zone ou en pilier, chacune se referme toute seule, aucun point n'est ajouté. Une galerie en U très serrée peut en faire partie : vérifie le compte.",
   "convert.fermesFiltre": "Seulement les contours fermés ({n} sur {m})",
   "convert.lotSourceFermes": "{n} contour(s) fermé(s) retenu(s) sur {m} objets sélectionnés",
   "convert.fermesTitre": "🔄 Convertir des contours fermés",

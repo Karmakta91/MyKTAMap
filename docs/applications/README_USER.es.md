@@ -801,7 +801,7 @@ Caso típico: en un levantamiento importado, un **frente de cantera** es en real
 
 Solo se proponen destinos de la **misma forma**: una **línea** (trazado, frente de cantera) se convierte en otra línea, una **superficie cerrada** (zona, pilar, muro) en otra superficie. El objeto conserva su geometría, su nivel y su nota.
 
-**Línea cerrada**: al importar un archivo SIG, un pilar o una zona llega a menudo como línea, a veces sin volver a su primer punto (un pilar cuadrado = 4 puntos, 3 lados). Cuando los dos extremos de una línea casi se juntan (distancia menor que 1,5 veces la longitud media de un lado), la ventana propone también zonas y pilares / muros. La forma se cierra sola: no se añade ningún punto, solo se quita un último punto que repite el primero. Una galería en U muy cerrada puede tomarse por una línea cerrada: compruébalo antes de validar, ⏪ deshace.
+**Línea cerrada**: al importar un archivo SIG, un pilar o una zona llega a menudo como línea, a veces sin volver a su primer punto (un pilar cuadrado = 4 puntos, 3 lados). Cuando los dos extremos de una línea casi se juntan (distancia menor que 1,5 veces el lado más largo) y la forma es compacta (no el contorno ramificado de una red de galerías, que rellenaría las galerías), la ventana propone también zonas y pilares / muros. La forma se cierra sola: no se añade ningún punto, solo se quita un último punto que repite el primero. Una galería en U muy cerrada puede tomarse por una línea cerrada: compruébalo antes de validar, ⏪ deshace.
 
 ### 🎯 Convertir varios objetos de golpe
 

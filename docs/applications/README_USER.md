@@ -801,7 +801,7 @@ Cas typique : sur un relevé importé, un **front de taille** est en fait une **
 
 Seules les cibles de **même forme** sont proposées : une **ligne** (tracé, front de taille) devient une autre ligne, une **surface fermée** (zone, pilier, mur) une autre surface. L'objet garde sa géométrie, son niveau et sa note.
 
-**Ligne fermée** : à l'import d'un fichier SIG, un pilier ou une zone arrive souvent en ligne, parfois sans revenir à son premier point (un pilier carré = 4 points, 3 côtés). Quand les deux bouts d'une ligne se rejoignent presque (écart inférieur à 1,5 fois la longueur moyenne d'un côté), la fenêtre propose aussi les zones et les piliers / murs. La forme se referme toute seule : aucun point n'est ajouté, seul un dernier point qui répète le premier est retiré. Une galerie en U très serrée peut être prise pour une ligne fermée : vérifie avant de valider, ⏪ annule.
+**Ligne fermée** : à l'import d'un fichier SIG, un pilier ou une zone arrive souvent en ligne, parfois sans revenir à son premier point (un pilier carré = 4 points, 3 côtés). Quand les deux bouts d'une ligne se rejoignent presque (écart inférieur à 1,5 fois le plus grand côté) et que la forme est compacte (pas le contour ramifié d'un réseau de galeries, qui remplirait les galeries), la fenêtre propose aussi les zones et les piliers / murs. La forme se referme toute seule : aucun point n'est ajouté, seul un dernier point qui répète le premier est retiré. Une galerie en U très serrée peut être prise pour une ligne fermée : vérifie avant de valider, ⏪ annule.
 
 ### 🎯 Convertir plusieurs objets d'un coup
 

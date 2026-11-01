@@ -801,7 +801,7 @@ Typical case: on an imported survey, a **quarry face** is actually a **gallery**
 
 Only targets of the **same shape** are offered: a **line** (path, quarry face) becomes another line, a **closed surface** (zone, pillar, wall) another surface. The object keeps its geometry, its level and its note.
 
-**Closed line**: when a GIS file is imported, a pillar or a zone often arrives as a line, sometimes without returning to its first point (a square pillar = 4 points, 3 sides). When the two ends of a line almost meet (gap smaller than 1.5 times the average side length), the window also offers zones and pillars / walls. The shape closes by itself: no point is added, only a last point that repeats the first one is removed. A very tight U-shaped gallery can be taken for a closed line: check before confirming, ⏪ undoes.
+**Closed line**: when a GIS file is imported, a pillar or a zone often arrives as a line, sometimes without returning to its first point (a square pillar = 4 points, 3 sides). When the two ends of a line almost meet (gap smaller than 1.5 times the longest side) and the shape is compact (not the branching outline of a gallery network, which would fill the galleries), the window also offers zones and pillars / walls. The shape closes by itself: no point is added, only a last point that repeats the first one is removed. A very tight U-shaped gallery can be taken for a closed line: check before confirming, ⏪ undoes.
 
 ### 🎯 Convert several objects at once
 

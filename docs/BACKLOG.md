@@ -108,6 +108,12 @@
 
 ## Entrant
 
+- **Recoller un pilier SIG livré en plusieurs lignes** — à l'import, un pilier arrive parfois en 2 lignes ou plus dont
+  les bouts se touchent : aucune n'est un contour fermé seule, la conversion en pilier ne les atteint pas. 🔬 vu sur un
+  relevé réel (01/11), nombre non mesuré.
+  `qui: Claude · action: mesurer la part de ces piliers, puis topo (recollage par bouts communs, seuil, en lot)
+  · depuis: 01/11/2026 · taille: M`
+
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.

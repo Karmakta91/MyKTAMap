@@ -5853,7 +5853,7 @@
   "convert.histoireLot": "Convertir {n} objetos",
   "convert.histoireTableau": "Editor de datos: {n} objeto(s) aplicado(s)",
   "convert.regleContourObjet": "Línea CERRADA: sus dos extremos casi se juntan. Se puede convertir en trazado o en frente de corte, y también en zona o en pilar / muro: la forma se cierra sola, no se añade ningún punto. Se conservan el nivel y la nota.",
-  "convert.regleContour": "Contornos cerrados: líneas cuyos dos extremos casi se juntan (distancia menor que 1,5 veces la longitud media de un lado). Como zona o pilar, cada una se cierra sola, no se añade ningún punto. Una galería en U muy cerrada puede estar incluida: revisa el recuento.",
+  "convert.regleContour": "Contornos cerrados: líneas cuyos dos extremos casi se juntan (distancia menor que 1,5 veces el lado más largo) y cuya forma es compacta (el contorno ramificado de una red de galerías queda fuera). Como zona o pilar, cada una se cierra sola, no se añade ningún punto. Una galería en U muy cerrada puede estar incluida: revisa el recuento.",
   "convert.fermesFiltre": "Solo los contornos cerrados ({n} de {m})",
   "convert.lotSourceFermes": "{n} contorno(s) cerrado(s) retenido(s) de {m} objetos seleccionados",
   "convert.fermesTitre": "🔄 Convertir contornos cerrados",

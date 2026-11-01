@@ -5853,7 +5853,7 @@
   "convert.histoireLot": "Convert {n} objects",
   "convert.histoireTableau": "Data editor: {n} object(s) applied",
   "convert.regleContourObjet": "CLOSED line: its two ends almost meet. It can become a trace or a working face, and also a zone or a pillar / wall: the shape closes by itself, no point is added. Level and note are kept.",
-  "convert.regleContour": "Closed outlines: lines whose two ends almost meet (gap smaller than 1.5 times the average side length). As a zone or a pillar, each one closes by itself, no point is added. A very tight U-shaped gallery may be included: check the count.",
+  "convert.regleContour": "Closed outlines: lines whose two ends almost meet (gap smaller than 1.5 times the longest side) and whose shape is compact (the branching outline of a gallery network is left out). As a zone or a pillar, each one closes by itself, no point is added. A very tight U-shaped gallery may be included: check the count.",
   "convert.fermesFiltre": "Closed outlines only ({n} of {m})",
   "convert.lotSourceFermes": "{n} closed outline(s) kept out of {m} selected objects",
   "convert.fermesTitre": "🔄 Convert closed outlines",

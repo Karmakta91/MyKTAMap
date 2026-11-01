@@ -14,8 +14,8 @@
 //     OUVERT   ⇄   tracés (galeries)  ⇄  structures polylignes (fronts)
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
 // Ouvert → fermé seulement pour un CONTOUR FERMÉ (estContourFerme : ≥ 3 points, bouts écartés de moins de 1,5 × le
-// côté moyen) : un pilier SIG arrive en 4 points / 3 côtés. Aucun point inventé, le polygone se referme seul ; seul
-// un dernier point qui répète le premier est retiré. Fermé → ouvert : jamais (il faudrait couper la géométrie).
+// plus grand côté, forme compacte) : un pilier SIG arrive en 4 points / 3 côtés. Aucun point inventé, le polygone se
+// referme seul ; seul un doublon du premier point est retiré. Fermé → ouvert : jamais (il faudrait couper la géométrie).
 // 🩸 Une galerie en U serrée passe pour fermée : le lot montre le compte avant et s'annule en un ⏪.
 // Conservés : `points`, `level`, `description`, `uid` ; seul le type (donc la famille) change.
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
@@ -49,10 +49,14 @@
   }
 
   // ── Contour fermé par la géométrie ──────────
-  // ⚠️ Seuil RELATIF (décision produit) : écart premier → dernier point < 1,5 × la longueur moyenne des côtés
-  // EXISTANTS (n − 1 segments). Un carré à 3 côtés (écart = 1 côté) passe ; un U large (écart > 1,5 côté moyen)
-  // reste ouvert. Aucune autre heuristique : le compte affiché avant le lot et l'annulation unique sont le filet.
+  // ⚠️ Deux seuils (décision produit, mesurés sur un relevé SIG réel) :
+  //  - écart premier → dernier point < 1,5 × le PLUS GRAND côté existant : un pilier allongé livré sans son grand
+  //    côté passe (au côté moyen, ses petits côtés le faisaient refuser) ;
+  //  - compacité 4πA/P² ≥ 0,2 du polygone refermé : le contour d'un réseau de galeries ramifié (ou un crochet) se
+  //    refermerait aussi, mais converti en pilier il remplirait les galeries. Un pilier jusqu'à ~10:1 passe.
+  // Le compte affiché avant le lot et l'annulation unique restent le filet.
   const SEUIL_FERME = 1.5;
+  const SEUIL_COMPACITE = 0.2;
   // Écart « quasi nul » (≤ 1 % du côté moyen) : le dernier point répète le premier, il sera retiré à la conversion.
   const SEUIL_DOUBLON = 0.01;
 
@@ -60,11 +64,17 @@
   // (un polygone de 2 points n'en est pas un).
   function _analyseContour(points) {
     if (!Array.isArray(points) || points.length < 3) return null;
-    let somme = 0;
+    let somme = 0, grand = 0, aire2 = 0;
     for (let i = 0; i < points.length; i++) {
       const p = points[i];
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
-      if (i > 0) somme += Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y);
+      if (i > 0) {
+        const c = Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y);
+        somme += c;
+        if (c > grand) grand = c;
+      }
+      const q = points[(i + 1) % points.length];   // le dernier se raccorde au premier : aire du polygone refermé
+      aire2 += p.x * q.y - q.x * p.y;
     }
     const moyen = somme / (points.length - 1);
     if (!(moyen > 0)) return null;
@@ -72,7 +82,10 @@
     const ecart = Math.hypot(b.x - a.x, b.y - a.y);
     const doublon = ecart <= moyen * SEUIL_DOUBLON;
     if (doublon && points.length - 1 < 3) return null;
-    return (ecart < moyen * SEUIL_FERME) ? { doublon: doublon } : null;
+    if (!(ecart < grand * SEUIL_FERME)) return null;
+    const perimetre = somme + ecart;
+    const compacite = 4 * Math.PI * (Math.abs(aire2) / 2) / (perimetre * perimetre);
+    return (compacite >= SEUIL_COMPACITE) ? { doublon: doublon } : null;
   }
 
   // Objet OUVERT par son type (tracé, front), jamais une jonction ni un itinéraire, dont la géométrie se referme.
