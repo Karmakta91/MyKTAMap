@@ -1200,6 +1200,11 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   Glissement le long d'un mur. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s.
+- **Suivi / libre** (`basculerSuivi`, bouton 📍) : en suivi, position du tracker et cap de l'appareil lissés,
+  lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
+  la vue (pas celui de `mapBearing.js`, qui ne tourne que mode activé). Ouvert en suivi si le tracker tourne,
+  sinon en libre ; tracker arrêté en route → libre, 📍 grisé (`vue3d.suiviIndispo`, toast au toucher). Tout
+  déplacement ou glisser passe en libre.
 - **Vue plongeante** : caméra à 18,4 m du point visé (2 m devant soi), inclinaison 15° à 85° (60° par défaut) ;
   deux doigts à la verticale, molette, PageUp / PageDown, boutons ▲ ▼ (montrés dans cette vue seulement) ; retenue
   tant que la vue est ouverte.
@@ -1219,6 +1224,10 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
+- **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
+  distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). Un POI
+  dans un volume fermé du niveau (pilier, mur, type perso ; grille `_grilleVolumes` refaite à chaque
+  `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant.
 - **Couleurs** : celles de la légende, par `ktaResolveStyle(…, { flat: true })` / `ktaSwatchColor` ; aucune table
   locale. Sol et plafond : `COULEUR_CALCAIRE` (sable calcaire, couleur de la scène, hors charte de l'UI), motif
   procédural de 128 px répété tous les 2 m, fixe sous les pieds. Lampe : intensité 24, décroissance 1,2, portée =
