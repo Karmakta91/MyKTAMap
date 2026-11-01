@@ -573,7 +573,7 @@ Release **mineure**. Grosse évolution user : la nav intelligente compense l'imp
 #### 76.1 Principe
 
 Sous terre, pas de GPS satellite → le tracker fait du **dead-reckoning piéton (PDR)** : pas (accéléromètre)
-+ cap (boussole), borné par un **raster de collision**. La dérive s'accumule. Quand le plan a un **réseau de
++ cap (boussole), borné par l'image de collision et les structures (§🧱 Collision du pas). La dérive s'accumule. Quand le plan a un **réseau de
 tracés**, la nav intelligente **cale la position sur la galerie la plus proche** (map-matching) → la dérive
 latérale est annulée et on tourne correctement aux croisements. **Réversible** (toggle `smartNav`, défaut OFF).
 
@@ -699,6 +699,32 @@ Helpers module-scope (avant `initInterface`) + 2 sous-actions dans le flyout �
 Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_user_prefs`). Aucun nouveau fichier JS.
 
 ---
+
+## 🧱 Collision du pas : image de collision + structures
+
+Un pas PDR **hors réseau** (`_avancerRaster`, aussi repli de `_avancerSurGraphe` quand la position n'est calée sur
+aucun tracé) n'est appliqué que s'il passe deux tests ; refusé, la position ne bouge pas et rien n'entre dans la
+timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests ne s'applique.
+
+1. **`estAccessible(x, y)`** — image de collision du plan (`plan.collisionImage`, chargée par `map.js >
+   initCollisionMap`, réduite à 4096 px) : bloqué si plus de 30 % du carré 5 × 5 autour du point est rouge pur.
+   Sans image de collision, tout passe.
+2. **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
+   (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
+   s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
+   (ligne). Les autres types (zones, types `cust-…`) ne comptent pas.
+   - **Niveau** : en multi-niveau, seulement les structures du niveau du tracker (`trackerLevel` ; sans `level` =
+     0). Une 2e masse étant rangée au niveau actif − 1 (`structures.js`), elle bloque sur ce niveau-là. Hors
+     multi-niveau, toutes bloquent.
+   - **Visibilité** : masquées ou non, comme les obstacles du Pathfinder.
+   - 🩸 Un polygone qui contient **déjà** la position de départ du pas est ignoré (recalage posé sur un pilier,
+     tracé imprécis) : sinon chaque pas sortant le couperait et le tracker resterait figé.
+   - **Coût** : grille d'index de 128 px par liste, refaite seulement quand la liste change (même tableau, même
+     longueur, même somme des `updatedAt` et des nombres de points). ~0,3 ms par pas pour 13 000 piliers (Node, PC).
+   - La structure **en cours de tracé** ne compte pas.
+
+Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
+`pathfinder.js > _collecterObstaclesDurs`) : le tracker et l'itinéraire ne partagent pas la même liste d'obstacles.
 
 ---
 

@@ -723,7 +723,7 @@ La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre
 
 ## 🏛️ Structures (piliers, murs, fronts de taille)
 
-Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Une seule compte pour l'itinéraire : le **mur (ligne)**, qui le coupe comme une zone ⛔ inaccessible ; les autres n'ont aucun effet.
+Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Une seule compte pour l'itinéraire : le **mur (ligne)**, qui le coupe comme une zone ⛔ inaccessible ; les autres n'ont aucun effet sur l'itinéraire. Le 🧭 tracker, lui, ne traverse ni pilier, ni mur, ni front de taille quand il avance hors des tracés : un pas qui en croiserait un est ignoré. Ça vaut pour les structures de son niveau, même masquées.
 
 | Type | Forme | Couleur |
 |---|---|---|

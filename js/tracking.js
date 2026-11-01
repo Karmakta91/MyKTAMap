@@ -6,7 +6,8 @@
 
 // =========================
 // tracking.js — tracker podométrique (podomètre + boussole, sans GPS) : position en coordonnées plan, cap,
-// recalage, collision raster, map-matching sur les tracés, timeline du parcours (replay, distance).
+// recalage, collision (raster + piliers, murs et fronts de taille), map-matching sur les tracés, timeline du
+// parcours (replay, distance).
 // Expose : initTracking, startTracking/stopTracking, getTrackingPositionEtat, resetTrackingTimeline,
 //          window._applyLevelFilterToTracker…
 // Dépend de : APP_CONFIG (config.js), map.js (convertCoord, iconeTrack), RoadGraph, MapBearing.
@@ -303,6 +304,117 @@ function estAccessible(x, y) {
   return (ok / total) > 0.7;
 }
 
+// ── Obstacles vectoriels : piliers, murs, fronts de taille ──────────────────────
+// Un pas est refusé s'il ENTRE dans un pilier (1re/2e masse) ou un mur fermé, ou s'il CROISE un front de taille ou
+// un mur (ligne), sur le niveau du tracker (hors multi-niveau : tous). Structures de session ET du plan, visibles ou
+// masquées, comme les obstacles du Pathfinder : masquer un calque ne change pas la galerie.
+// 🩸 Un polygone qui contient DÉJÀ la position (recalage posé sur un pilier) est ignoré : sinon chaque pas sortant
+// le croiserait et le tracker resterait figé dedans.
+// Grille d'index (cases de 128 px) par liste, refaite seulement si la liste change : même tableau, même longueur
+// et même signature (somme des `updatedAt` et des nombres de points ; toute modification passe par KtaUid.touch).
+// Un pas ne teste que les objets des cases qu'il touche (~0,1 ms pour 13 000 piliers, contre ~5 ms en balayage).
+// Type → forme de l'obstacle (true = polygone fermé, false = ligne).
+const _OBST_TYPES = {
+  "pilier-1": true, "pilier-2": true, "mur": true,
+  "front-1": false, "front-2": false, "mur-ligne": false
+};
+const _OBST_CASE  = 128;
+const _indexObstacles = [null, null];   // [session, plan]
+
+function _signatureListe(liste) {
+  let sig = 0;
+  for (let i = 0; i < liste.length; i++) {
+    const s = liste[i];
+    if (s && Array.isArray(s.points)) sig += (Number(s.updatedAt) || 0) % 1e6 + s.points.length;
+  }
+  return sig;
+}
+
+function _indexDe(k, liste) {
+  const sig = _signatureListe(liste);
+  const c = _indexObstacles[k];
+  if (c && c.liste === liste && c.n === liste.length && c.sig === sig) return c;
+  const cases = new Map();
+  for (let i = 0; i < liste.length; i++) {
+    const s = liste[i];
+    if (!s || !Array.isArray(s.points) || _OBST_TYPES[s.type] === undefined) continue;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let j = 0; j < s.points.length; j++) {
+      const p = s.points[j];
+      if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+    }
+    for (let cy = Math.floor(y0 / _OBST_CASE); cy <= Math.floor(y1 / _OBST_CASE); cy++) {
+      for (let cx = Math.floor(x0 / _OBST_CASE); cx <= Math.floor(x1 / _OBST_CASE); cx++) {
+        const cle = cx + "," + cy;
+        if (!cases.has(cle)) cases.set(cle, []);
+        cases.get(cle).push(s);
+      }
+    }
+  }
+  const idx = { liste: liste, n: liste.length, sig: sig, cases: cases };
+  _indexObstacles[k] = idx;
+  return idx;
+}
+
+// Segments [a,b] et [c,d] qui se coupent (contact compris).
+function _segmentsSeCoupent(ax, ay, bx, by, cx, cy, dx, dy) {
+  const o = function(px, py, qx, qy, rx, ry) { return (qx - px) * (ry - py) - (qy - py) * (rx - px); };
+  const d1 = o(cx, cy, dx, dy, ax, ay), d2 = o(cx, cy, dx, dy, bx, by);
+  const d3 = o(ax, ay, bx, by, cx, cy), d4 = o(ax, ay, bx, by, dx, dy);
+  return ((d1 > 0) !== (d2 > 0) || d1 === 0 || d2 === 0) && ((d3 > 0) !== (d4 > 0) || d3 === 0 || d4 === 0);
+}
+
+function _dansPolygone(pts, x, y) {
+  let dedans = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) dedans = !dedans;
+  }
+  return dedans;
+}
+
+function _pasBloqueParStructure(x0, y0, x1, y1) {
+  const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const enCours = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
+  const sx0 = Math.min(x0, x1), sx1 = Math.max(x0, x1), sy0 = Math.min(y0, y1), sy1 = Math.max(y0, y1);
+  const sources = [
+    (typeof window.getStructures === "function") ? window.getStructures() : null,
+    window._ktaDataStructurePolygons
+  ];
+  const vus = new Set();
+  for (let k = 0; k < sources.length; k++) {
+    if (!Array.isArray(sources[k])) continue;
+    const idx = _indexDe(k, sources[k]);
+    for (let cy = Math.floor(sy0 / _OBST_CASE); cy <= Math.floor(sy1 / _OBST_CASE); cy++) {
+      for (let cx = Math.floor(sx0 / _OBST_CASE); cx <= Math.floor(sx1 / _OBST_CASE); cx++) {
+        const liste = idx.cases.get(cx + "," + cy);
+        if (!liste) continue;
+        for (let i = 0; i < liste.length; i++) {
+          const s = liste[i];
+          if (vus.has(s) || s === enCours) continue;
+          vus.add(s);
+          const poly = _OBST_TYPES[s.type];
+          if (multi && (Number.isInteger(s.level) ? s.level : 0) !== trackerLevel) continue;
+          const pts = s.points;
+          if (pts.length < (poly ? 3 : 2)) continue;
+          if (poly) {
+            if (_dansPolygone(pts, x0, y0)) continue;
+            if (_dansPolygone(pts, x1, y1)) return true;
+          }
+          // Arêtes (polygone refermé) : un pas qui coupe un coin de pilier ou saute un front est refusé aussi.
+          const nAretes = poly ? pts.length : pts.length - 1;
+          for (let a = 0; a < nAretes; a++) {
+            const p = pts[a], q = pts[(a + 1) % pts.length];
+            if (_segmentsSeCoupent(x0, y0, x1, y1, p.x, p.y, q.x, q.y)) return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 // ── Orientation ──────────────────────
 // (alpha, beta, gamma) du DeviceOrientationEvent → cap compas dans [0, 360[ (0 = Nord, 90 = Est, horaire).
 // ⚠️ Convention W3C : rotation intrinsèque Z-X'-Y'', R = Rz(α)·Rx(β)·Ry(γ).
@@ -528,13 +640,15 @@ function _avancerRaster() {
   let newY = position.y - distance * Math.cos(rad);
 
   // Point de timeline seulement si le pas est appliqué (sinon doublon).
-  const _stepApplied = estAccessible(newX, newY);
+  const _horsCarte = !estAccessible(newX, newY);
+  const _contreStructure = !_horsCarte && _pasBloqueParStructure(position.x, position.y, newX, newY);
+  const _stepApplied = !_horsCarte && !_contreStructure;
   if (_stepApplied) {
     position.x = newX;
     position.y = newY;
     if (_positionConfirmee) _positionConfirmeeTs = Date.now();   // dernier mouvement connu
   } else {
-    console.log("[Tracking] Collision !");
+    console.log(_contreStructure ? "[Tracking] Collision (structure) !" : "[Tracking] Collision !");
   }
 
   updateMap();

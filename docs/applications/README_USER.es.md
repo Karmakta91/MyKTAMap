@@ -723,7 +723,7 @@ La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventan
 
 ## 🏛️ Estructuras (pilares, muros, frentes de cantera)
 
-Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. Solo una cuenta para el itinerario: el **muro (línea)**, que lo corta como una zona ⛔ inaccesible; las demás no tienen ningún efecto.
+Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. Solo una cuenta para el itinerario: el **muro (línea)**, que lo corta como una zona ⛔ inaccesible; las demás no tienen ningún efecto en el itinerario. El 🧭 rastreador, en cambio, no atraviesa ningún pilar, muro ni frente de cantera cuando avanza fuera de los trazados: un paso que cruzaría uno se ignora. Vale para las estructuras de su nivel, incluso ocultas.
 
 | Tipo | Forma | Color |
 |---|---|---|

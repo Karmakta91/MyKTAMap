@@ -723,7 +723,7 @@ The **Respect impassable areas and walls (line)** box in the Route window (ticke
 
 ## 🏛️ Structures (pillars, walls, quarry faces)
 
-For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. Only one matters for the route: the **wall (line)**, which cuts it like a ⛔ inaccessible zone; the others have no effect.
+For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. Only one matters for the route: the **wall (line)**, which cuts it like a ⛔ inaccessible zone; the others have no effect on the route. The 🧭 tracker, however, does not pass through any pillar, wall or quarry face when it moves off the tracks: a step that would cross one is ignored. This applies to the structures on its level, even hidden ones.
 
 | Type | Shape | Colour |
 |---|---|---|
