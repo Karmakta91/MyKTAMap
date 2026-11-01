@@ -10,15 +10,17 @@
 // Pourquoi ce n'est pas cosmétique : à l'import SIG, tout part souvent en « front de taille » (la géométrie ne dit
 // pas ce que l'objet EST). Or le Pathfinder ne construit son graphe QUE sur les `roads` (getRoads +
 // getAllEmbeddedRoads) : un relevé tout en structures n'a AUCUN itinéraire. Reclasser un vecteur le fait exister.
-// Règle stricte : fermé = zone ou pilier, ouvert = tracé ou front de taille.
+// Règle : fermé = zone ou pilier, ouvert = tracé ou front de taille ; fermé se lit par le TYPE, ou par la GÉOMÉTRIE.
 //     OUVERT   ⇄   tracés (galeries)  ⇄  structures polylignes (fronts)
 //     FERMÉ    ⇄   zones              ⇄  structures polygones (piliers, murs)
-// La frontière porte les MINIMUMS DE POINTS (2 pour un front, 3 pour une zone) : la traverser obligerait à INVENTER
-// de la géométrie relevée. Refus assumé, et dit.
-// Conservés : `points`, `level`, `description` ; seul le type (donc la famille) change.
+// Ouvert → fermé seulement pour un CONTOUR FERMÉ (estContourFerme : ≥ 3 points, bouts écartés de moins de 1,5 × le
+// côté moyen) : un pilier SIG arrive en 4 points / 3 côtés. Aucun point inventé, le polygone se referme seul ; seul
+// un dernier point qui répète le premier est retiré. Fermé → ouvert : jamais (il faudrait couper la géométrie).
+// 🩸 Une galerie en U serrée passe pour fermée : le lot montre le compte avant et s'annule en un ⏪.
+// Conservés : `points`, `level`, `description`, `uid` ; seul le type (donc la famille) change.
 // Exclus des cibles : `jonction` (fromLevel / toLevel, impossibles à deviner : outil multi-niveau ; ses niveaux se
 // changent par changerNiveauxJonction, jamais par Convertir) et `itinerary` (trajet CALCULÉ, pas une donnée du relevé).
-// ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; on le rapatrie d'abord (js/calqueSession.js).
+// ⚠️ SESSION UNIQUEMENT : un objet de calque est en lecture seule ; ouvrirCalque le rapatrie (js/calqueSession.js).
 // ⚠️ Points (POI) : jamais convertis ; ce module n'atteint pas lui-même leur liste. Le Tableur lui fait appliquer un
 // tableau de points par l'accès qu'il fournit (appliquerTableau, `opts.acces`). Garde-fou : check-calque-session.js.
 
@@ -46,6 +48,50 @@
       ? !!window.isStructurePolylineType(type) : false;
   }
 
+  // ── Contour fermé par la géométrie ──────────
+  // ⚠️ Seuil RELATIF (décision produit) : écart premier → dernier point < 1,5 × la longueur moyenne des côtés
+  // EXISTANTS (n − 1 segments). Un carré à 3 côtés (écart = 1 côté) passe ; un U large (écart > 1,5 côté moyen)
+  // reste ouvert. Aucune autre heuristique : le compte affiché avant le lot et l'annulation unique sont le filet.
+  const SEUIL_FERME = 1.5;
+  // Écart « quasi nul » (≤ 1 % du côté moyen) : le dernier point répète le premier, il sera retiré à la conversion.
+  const SEUIL_DOUBLON = 0.01;
+
+  // → { doublon } si les points forment un contour fermé, sinon null. Après retrait du doublon, ≥ 3 points restent
+  // (un polygone de 2 points n'en est pas un).
+  function _analyseContour(points) {
+    if (!Array.isArray(points) || points.length < 3) return null;
+    let somme = 0;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+      if (i > 0) somme += Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y);
+    }
+    const moyen = somme / (points.length - 1);
+    if (!(moyen > 0)) return null;
+    const a = points[0], b = points[points.length - 1];
+    const ecart = Math.hypot(b.x - a.x, b.y - a.y);
+    const doublon = ecart <= moyen * SEUIL_DOUBLON;
+    if (doublon && points.length - 1 < 3) return null;
+    return (ecart < moyen * SEUIL_FERME) ? { doublon: doublon } : null;
+  }
+
+  // Objet OUVERT par son type (tracé, front), jamais une jonction ni un itinéraire, dont la géométrie se referme.
+  function estContourFerme(famille, obj) {
+    if (!obj || CIBLES_INTERDITES[obj.type] || !_estOuvert(famille, obj.type)) return false;
+    return _analyseContour(obj.points) !== null;
+  }
+
+  // Conversion permise pour CET objet ? Même forme : oui ; ouvert → fermé : seulement un contour fermé ; fermé →
+  // ouvert : jamais. Défense en profondeur : la modale ne propose que ça, le lot et l'appel direct le revérifient.
+  function _compatible(famille, obj, familleCible, typeCible) {
+    const src = _estOuvert(famille, obj.type), dst = _estOuvert(familleCible, typeCible);
+    if (src === dst) return true;
+    return src && !dst && estContourFerme(famille, obj);
+  }
+  function _ferme(famille, obj, familleCible, typeCible) {
+    return _estOuvert(famille, obj.type) && !_estOuvert(familleCible, typeCible);
+  }
+
   function _libelle(cat, cle) {
     try {
       const LC = window.LegendCustomization;
@@ -67,9 +113,15 @@
   }
 
   // Cibles compatibles avec l'objet source, intégrées ET custom : [{ cat, famille, type, label, swatch }],
-  // source exclue.
-  function listerCibles(famille, type) {
+  // source exclue. `obj` (facultatif) : un contour fermé (estContourFerme) reçoit AUSSI les cibles fermées.
+  function listerCibles(famille, type, obj) {
     const ouvert = _estOuvert(famille, type);
+    const out = ouvert ? _cibles(famille, type, true) : [];
+    const ferme = !ouvert || (!!obj && obj.type === type && estContourFerme(famille, obj));
+    return ferme ? out.concat(_cibles(famille, type, false)) : out;
+  }
+
+  function _cibles(famille, type, ouvert) {
     const out = [];
     const cats = ouvert ? ["traces", "structures"] : ["zones", "structures"];
 
@@ -139,10 +191,16 @@
   // Même objet, autre type : une seule règle pour la fiche, le lot et le Tableur. On repart de l'objet d'origine
   // (rien n'est perdu, champs futurs compris) ; fromLevel / toLevel d'une jonction n'ont plus de sens ailleurs.
   // L'uid suit (Object.assign le recopie), la conversion est une modification (ETUDE_UID décision 10).
-  function _versType(obj, typeCible) {
+  // `fermer` (ouvert → fermé) : un dernier point qui répète le premier est retiré, rien d'autre (le polygone se
+  // referme seul au rendu) ; nouveau tableau, l'objet d'origine reste intact pour l'historique.
+  function _versType(obj, typeCible, fermer) {
     const neuf = Object.assign({}, obj, { type: typeCible });
     delete neuf.fromLevel;
     delete neuf.toLevel;
+    if (fermer) {
+      const a = _analyseContour(obj.points);
+      if (a && a.doublon) neuf.points = obj.points.slice(0, -1);
+    }
     if (window.KtaUid) window.KtaUid.touch(neuf);
     return neuf;
   }
@@ -183,9 +241,13 @@
     if (idx < 0) return _introuvable(famille);
     // L'objet de la liste fait foi (version courante, la référence reçue peut être périmée).
     const actuel = listes[famille][idx];
+    if (!_compatible(famille, actuel, familleCible, typeCible)) {
+      console.warn("[Convertir] forme incompatible :", actuel.type, "→", typeCible);
+      return false;
+    }
     listes[famille].splice(idx, 1);
 
-    listes[familleCible].push(_versType(actuel, typeCible));
+    listes[familleCible].push(_versType(actuel, typeCible, _ferme(famille, actuel, familleCible, typeCible)));
 
     const touchees = (famille === familleCible) ? [famille] : [famille, familleCible];
     touchees.forEach(function (f) { ecrire[f](listes[f]); });
@@ -301,6 +363,7 @@
   // objets déjà du bon type sont SAUTÉS et comptés à part (masquer la cible rendrait la liste incompréhensible).
   // 🩸 Une source interdite (jonction, itinéraire) est sautée aussi : la fiche ne propose pas Convertir pour elle, le
   // lot ne doit pas la convertir par la bande (une jonction devenue tracé perd ses niveaux et ne relie plus rien).
+  // Forme incompatible (ligne non fermée vers une surface, surface vers une ligne) : comptée en échec, jamais forcée.
   function convertirLot(items, familleCible, typeCible) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return { convertis: 0, sautes: 0, echecs: (items || []).length };   // 🔒 lecture seule
     const bilan = { convertis: 0, sautes: 0, echecs: 0 };
@@ -328,9 +391,10 @@
       if (it.famille === familleCible && it.obj.type === typeCible) { bilan.sautes++; return; }
       const idx = _indexDe(listes[it.famille], it.obj);
       if (idx < 0) { bilan.echecs++; return; }
-      const neuf = Object.assign({}, listes[it.famille][idx], { type: typeCible });
+      const actuel = listes[it.famille][idx];
+      if (!_compatible(it.famille, actuel, familleCible, typeCible)) { bilan.echecs++; return; }
       listes[it.famille].splice(idx, 1);
-      listes[familleCible].push(_versType(neuf, typeCible));
+      listes[familleCible].push(_versType(actuel, typeCible, _ferme(it.famille, actuel, familleCible, typeCible)));
       touchees[it.famille] = true;
       touchees[familleCible] = true;
       bilan.convertis++;
@@ -489,12 +553,13 @@
   }
 
   // Cibles d'un LOT = UNION de celles de chaque objet (la source de l'un peut être la cible d'un autre :
-  // l'intersection ferait disparaître des cibles légitimes sans explication).
-  function listerCiblesLot(items) {
+  // l'intersection ferait disparaître des cibles légitimes sans explication). `avecFermes` : un contour fermé ouvre
+  // aussi les cibles fermées (lot filtré « seulement les contours fermés », calque).
+  function listerCiblesLot(items, avecFermes) {
     const vues = {}, out = [];
     (items || []).forEach(function (it) {
       if (!it || !it.obj) return;
-      listerCibles(it.famille, it.obj.type).forEach(function (c) {
+      listerCibles(it.famille, it.obj.type, avecFermes ? it.obj : null).forEach(function (c) {
         const k = c.famille + ":" + c.type;
         if (vues[k]) return;
         vues[k] = true;
@@ -504,25 +569,22 @@
     return out;
   }
 
-  function ouvrir(famille, obj, opts) {
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
-    if (!obj) return;
-    opts = opts || {};
-    const lot = Array.isArray(opts.lot) && opts.lot.length ? opts.lot : null;
+  function _esc(s) { return window.ktaEsc(s); }
+
+  function _toastBilan(bilan) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(_t("convert.lotBilan", bilan), bilan.convertis > 0 ? "success" : "warn");
+    }
+  }
+
+  // Fenêtre commune (fiche, lot, calque). `o` = { source, regle, avant (HTML déjà échappé), cibles, choisir(c),
+  // apresMontage(modal, fermer) }. Les choix sont regroupés par catégorie : changer de famille change tout (un tracé
+  // entre dans le calcul d'itinéraire, pas une structure), ça doit se voir.
+  function _modale(o) {
     const existante = document.getElementById("kta-convert-modal");
     if (existante) existante.remove();
-
-    const cibles = lot ? listerCiblesLot(lot) : listerCibles(famille, obj.type);
-    const ouvert = _estOuvert(famille, obj.type);
-    const catSrc = CAT_DE_FAMILLE[famille] || famille;
-    const nomSrc = _libelle(catSrc, obj.type);
-
-    function _esc(s) { return window.ktaEsc(s); }
-
-    // Regroupées par catégorie : changer de famille change tout (un tracé entre dans le calcul d'itinéraire, pas une
-    // structure), ça doit se voir.
     const parCat = {};
-    cibles.forEach(function (c) { (parCat[c.cat] = parCat[c.cat] || []).push(c); });
+    o.cibles.forEach(function (c) { (parCat[c.cat] = parCat[c.cat] || []).push(c); });
 
     let corps = "";
     ["traces", "zones", "structures"].forEach(function (cat) {
@@ -544,7 +606,6 @@
       corps = '<p class="kta-convert-vide">' + _esc(_t("convert.aucuneCible")) + '</p>';
     }
 
-    const niveau = Number.isInteger(obj.level) ? obj.level : 0;
     const modal = document.createElement("div");
     modal.id = "kta-convert-modal";
     modal.className = "kta-readme-modal-overlay";
@@ -552,23 +613,13 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-convert-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _esc(_t("convert.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + _esc(o.titre || _t("convert.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-convert-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p class="kta-convert-source">' +
-            _esc(lot
-              ? _t("convert.lotSource", { n: lot.length })
-              : _t("convert.source", { type: nomSrc, niveau: (niveau < 0 ? niveau : "+" + niveau) })) +
-          '</p>' +
-          '<p class="kta-convert-regle">' +
-            _esc(_t(ouvert ? "convert.regleOuvert" : "convert.regleFerme")) +
-          '</p>' +
-          // Entrée du mode lot, absente quand on EST déjà en lot.
-          (lot ? '' :
-            '<button class="kta-btn kta-btn-ghost kta-convert-multi" type="button" id="kta-convert-multi">' +
-              _esc(_t("convert.selMulti")) +
-            '</button>') +
+          '<p class="kta-convert-source">' + _esc(o.source) + '</p>' +
+          '<p class="kta-convert-regle">' + _esc(o.regle) + '</p>' +
+          (o.avant || "") +
           corps +
         '</div>' +
       '</div>';
@@ -577,40 +628,186 @@
     const fermer = function () { modal.remove(); };
     document.getElementById("kta-convert-close").addEventListener("click", fermer);
     modal.addEventListener("click", function (e) { if (e.target === modal) fermer(); });
-
     modal.querySelectorAll(".kta-convert-choix").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const fam = btn.getAttribute("data-famille");
         const typ = btn.getAttribute("data-type");
+        const c = o.cibles.find(function (x) { return x.famille === fam && x.type === typ; }) ||
+          { famille: fam, type: typ, label: typ };
         // Les setters re-rendent la carte : la popup ouverte pointerait un layer détruit, on la ferme avant.
         try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
         fermer();
-        if (lot) {
-          const bilan = convertirLot(lot, fam, typ);
-          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-            window.OOMGuard.showToast(_t("convert.lotBilan", bilan), "info");
-          }
-        } else {
-          convertir(famille, obj, fam, typ);
+        o.choisir(c);
+      });
+    });
+    if (typeof o.apresMontage === "function") o.apresMontage(modal, fermer);
+    return modal;
+  }
+
+  // `opts.lot` = [{ famille, obj }] (sélection multiple) ; `opts.fermes` : le lot est réduit à ses contours fermés
+  // (case « seulement les contours fermés »), le compte est confirmé avant, et le tout s'annule en un ⏪.
+  function ouvrir(famille, obj, opts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
+    if (!obj) return;
+    opts = opts || {};
+    const lot = Array.isArray(opts.lot) && opts.lot.length ? opts.lot : null;
+    const ouvert = _estOuvert(famille, obj.type);
+    const regleBase = _t(ouvert ? "convert.regleOuvert" : "convert.regleFerme");
+
+    if (lot) {
+      const contours = lot.filter(function (it) { return it && it.obj && estContourFerme(it.famille, it.obj); });
+      const fermes = !!opts.fermes && contours.length > 0;
+      const effectif = fermes ? contours : lot;
+      // Case visible dès qu'une ligne est dans le lot ; grisée sans contour fermé (elle dit pourquoi rien ne s'ouvre).
+      const lignes = lot.some(function (it) { return it && it.obj && _estOuvert(it.famille, it.obj.type); });
+      const caseHtml = lignes
+        ? '<label class="kta-convert-fermes">' +
+            '<input type="checkbox" id="kta-convert-fermes"' + (fermes ? " checked" : "") +
+              (contours.length ? "" : " disabled") + '> ' +
+            '<span>' + _esc(_t("convert.fermesFiltre", { n: contours.length, m: lot.length })) + '</span>' +
+          '</label>'
+        : '';
+      _modale({
+        source: fermes ? _t("convert.lotSourceFermes", { n: contours.length, m: lot.length })
+                       : _t("convert.lotSource", { n: lot.length }),
+        regle: fermes ? _t("convert.regleContour") : regleBase,
+        avant: caseHtml,
+        cibles: listerCiblesLot(effectif, fermes),
+        choisir: function (c) {
+          if (!fermes) { _toastBilan(convertirLot(lot, c.famille, c.type)); return; }
+          window.ktaConfirm(_esc(_t("convert.fermesConfirm", {
+            n: contours.length, type: c.label, autres: lot.length - contours.length
+          })), {
+            titre: _esc(_t("convert.fermesTitre")),
+            okLabel: _esc(_t("convert.fermesOk", { n: contours.length }))
+          }).then(function (oui) {
+            if (oui) _toastBilan(convertirLot(contours, c.famille, c.type));
+          });
+        },
+        apresMontage: function (modal, fermer) {
+          const cb = modal.querySelector("#kta-convert-fermes");
+          if (cb) cb.addEventListener("change", function () {
+            fermer();
+            ouvrir(famille, obj, { lot: lot, fermes: cb.checked });
+          });
+        }
+      });
+      return;
+    }
+
+    const niveau = Number.isInteger(obj.level) ? obj.level : 0;
+    const contour = estContourFerme(famille, obj);
+    _modale({
+      source: _t("convert.source", { type: _libelle(CAT_DE_FAMILLE[famille] || famille, obj.type),
+                                     niveau: (niveau < 0 ? niveau : "+" + niveau) }),
+      regle: contour ? _t("convert.regleContourObjet") : regleBase,
+      // Entrée du mode lot.
+      avant: '<button class="kta-btn kta-btn-ghost kta-convert-multi" type="button" id="kta-convert-multi">' +
+               _esc(_t("convert.selMulti")) +
+             '</button>',
+      cibles: listerCibles(famille, obj.type, obj),
+      choisir: function (c) { convertir(famille, obj, c.famille, c.type); },
+      apresMontage: function (modal, fermer) {
+        const btnMulti = modal.querySelector("#kta-convert-multi");
+        if (!btnMulti || !window.SelectionMulti) return;
+        btnMulti.addEventListener("click", function () {
+          // La modale disparaît le temps de la désignation (elle couvre la carte à cliquer) et revient à la validation.
+          try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
+          fermer();
+          window.SelectionMulti.ouvrir({ famille: famille, obj: obj }, function (sel) {
+            ouvrir(famille, obj, { lot: sel });
+          });
+        });
+      }
+    });
+  }
+
+  // ── Contours fermés d'un calque de données (ligne du calque, panneau des filtres) ──────────
+  // Un calque est en lecture seule : « copier dans la session et convertir » en UNE validation, compte affiché avant.
+  // On compte sur le FICHIER (CalqueSession.lireCalque), on copie par CalqueSession.rapatrier (verrou, marques,
+  // restitution : rien n'est refait ici), puis on convertit les COPIES marquées par convertirLot (un ⏪).
+  // 🩸 ⏪ annule la conversion, pas la copie : elle se rend par « Restaurer » sur la ligne du calque (dit au message).
+  // Calque déjà en modification : ses copies de session sont converties directement.
+  function _lignesDe(familles, filtre) {
+    const out = [];
+    ["roads", "structures"].forEach(function (f) {
+      (familles[f] || []).forEach(function (o) {
+        if (o && !CIBLES_INTERDITES[o.type] && _estOuvert(f, o.type) && (!filtre || filtre(o, f))) {
+          out.push({ famille: f, obj: o });
         }
       });
     });
+    return out;
+  }
 
-    const btnMulti = document.getElementById("kta-convert-multi");
-    if (btnMulti && window.SelectionMulti) {
-      btnMulti.addEventListener("click", function () {
-        // La modale disparaît le temps de la désignation (elle couvre la carte à cliquer) et revient à la validation.
-        try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
-        fermer();
-        window.SelectionMulti.ouvrir({ famille: famille, obj: obj }, function (sel) {
-          ouvrir(famille, obj, { lot: sel });
-        });
+  function _octetsLisibles(o) {
+    if (!Number.isFinite(o)) return "?";
+    return (o >= 1048576) ? (o / 1048576).toFixed(2) + " Mo" : Math.max(1, Math.round(o / 1024)) + " ko";
+  }
+
+  function ouvrirCalque(id, opts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(null);
+    const CS = window.CalqueSession;
+    if (!CS || !id) return Promise.resolve(null);
+    opts = opts || {};
+    const label = CS.libelle(id);
+    const dejaCopie = CS.estRapatrie(id);
+    const marque = function (o) { return o && o[CS.CLE_SOURCE] === id; };
+    const lecture = dejaCopie
+      ? Promise.resolve({ familles: { roads: _lire("roads").filter(marque),
+                                      structures: _lire("structures").filter(marque) } })
+      : CS.lireCalque(id);
+
+    return lecture.then(function (contenu) {
+      if (!contenu) {
+        window.ktaAlerte(_t("convert.calqueErr", { code: "lectureEchouee" }), { type: "erreur" });
+        return null;
+      }
+      const lignes = _lignesDe(contenu.familles);
+      const contours = lignes.filter(function (it) { return estContourFerme(it.famille, it.obj); });
+      if (!contours.length) {
+        window.ktaAlerte(_t("convert.calqueAucun", { label: label, m: lignes.length }));
+        return null;
+      }
+      return _modale({
+        titre: _t("convert.calqueTitre"),
+        source: _t("convert.calqueSource", { label: label, n: contours.length, m: lignes.length }),
+        regle: _t("convert.regleContour"),
+        // Calque = fermer ses contours : les cibles ouvertes n'ont rien à faire ici (le lot de session les offre).
+        cibles: listerCiblesLot(contours, true).filter(function (c) { return !_estOuvert(c.famille, c.type); }),
+        choisir: function (c) {
+          const message = dejaCopie
+            ? _t("convert.calqueConfirmCopie", { label: label, n: contours.length, type: c.label })
+            : _t("convert.calqueConfirm", { label: label, n: contours.length, type: c.label,
+                                            k: contenu.objets, poids: _octetsLisibles(contenu.octets) });
+          window.ktaConfirm(_esc(message), {
+            titre: _esc(_t("convert.fermesTitre")),
+            okLabel: _esc(_t("convert.fermesOk", { n: contours.length }))
+          }).then(function (oui) {
+            if (!oui) return null;
+            return (dejaCopie ? Promise.resolve({ ok: true }) : CS.rapatrier(id)).then(function (r) {
+              if (!r || !r.ok) {
+                window.ktaAlerte(_t("convert.calqueErr", { code: (r && r.code) || "?" }), { type: "erreur" });
+                return;
+              }
+              const copies = _lignesDe({ roads: _lire("roads"), structures: _lire("structures") }, function (o, f) {
+                return marque(o) && estContourFerme(f, o);
+              });
+              const bilan = convertirLot(copies, c.famille, c.type);
+              // Les cercles d'intersection des tracés du calque masqué : renderRoads (cf. filterPanel.js).
+              if (typeof window.renderRoads === "function") { try { window.renderRoads(); } catch (e) {} }
+              _toastBilan(bilan);
+              if (typeof opts.apres === "function") opts.apres(bilan);
+            });
+          });
+        }
       });
-    }
+    });
   }
 
   window.KtaConvertir = {
     ouvrir:        ouvrir,
+    ouvrirCalque:  ouvrirCalque,   // contours fermés d'un calque : copie en session puis conversion, un ⏪
     convertir:     convertir,
     convertirLot:  convertirLot,   // N objets d un coup
     listerCiblesLot: listerCiblesLot,
@@ -619,6 +816,7 @@
     changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
     appliquerTableau: appliquerTableau,   // « Appliquer à la session » du Tableur
     listerCibles:  listerCibles,
-    estOuvert:     _estOuvert
+    estOuvert:     _estOuvert,
+    estContourFerme: estContourFerme   // ligne dont les bouts se rejoignent (seuil relatif)
   };
 })();

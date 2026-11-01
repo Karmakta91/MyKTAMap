@@ -160,7 +160,7 @@ t("note d'un objet (tracé, zone, structure) : touch",
   /_zoneRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_zoneRef\);/.test(ZONES) &&
   /_structRef\.description = v; if \(window\.KtaUid\) window\.KtaUid\.touch\(_structRef\);/.test(STRUCT));
 t("conversion : l'uid suit et la conversion appelle touch (une règle : fiche, lot, Éditeur de données)",
-  /function _versType\(obj, typeCible\) \{[\s\S]{0,200}if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
+  /function _versType\(obj, typeCible(, fermer)?\) \{[\s\S]{0,400}if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&
   (CONV.match(/_versType\(/g) || []).length === 4);
 t("Éditeur de données « Appliquer à la session » : ligne ajoutée et colonne modifiée → touch",
   /delete neuf\.uid;[^\n]*\n\s*if \(window\.KtaUid\) window\.KtaUid\.touch\(neuf\);/.test(CONV) &&

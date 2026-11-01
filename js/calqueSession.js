@@ -31,8 +31,8 @@
 //   comporte alors en copie (exporté avec le calque, retiré à sa restitution).
 // Nouvelle version du plan (js/majPlan.js) : contenuCalque (le fichier sans téléchargement), retirerIntegres (les
 //   objets à la main versés dans le plan quittent la session, trace datée sous le fichier).
-// API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
-//   exporterCalque, contenuCalque, retirerIntegres, compterCopie, appliquerVerrous, resynchroniser (import de
+// API : window.CalqueSession = { estRapatrie, listeRapatries, peser, lireCalque, occupationLocalStorage, rapatrier,
+//   restituer, exporterCalque, contenuCalque, retirerIntegres, compterCopie, appliquerVerrous, resynchroniser (import de
 //   session, synchro), getSessionState, loadSessionState, restitutionPartagee, libelle, restitutionsDepuis,
 //   appliquerRestitutions, candidatsAjout, integrerAjouts, compterAjouts, CLE_SOURCE, CLE_DEPUIS, CLE_AJOUT }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
@@ -133,26 +133,36 @@ window.CalqueSession = (function () {
     catch (e) { return JSON.stringify(x).length; }
   }
 
-  // Poids du calque une fois en session, mesuré sur le VRAI JSON (la moyenne de 225 o/objet ne vaut que pour de
-  // gros relevés).
-  function peser(id) {
+  // Contenu du calque lu dans son fichier, par famille de session, avec son poids une fois en session (mesuré sur
+  // le VRAI JSON : la moyenne de 225 o/objet ne vaut que pour de gros relevés). ⚠️ Les objets rendus sont ceux du
+  // fichier : lecture seule, jamais mutés (une conversion passe par rapatrier, puis par les copies).
+  // → { familles: { editorPoints, roads, zones, structures }, objets, octets, label } ou null.
+  function lireCalque(id) {
     const lc = _cfgCalque(id);
     if (!lc || !lc.file) return Promise.resolve(null);
     return fetch(lc.file)
       .then(function (r) { return r.json(); })
       .then(function (json) {
         let objets = 0, octets = 0;
+        const familles = {};
         FAMILLES.forEach(function (fam) {
           const arr = _depuisCalque(json, fam);
+          familles[fam.cle] = arr;
           objets += arr.length;
           if (arr.length) octets += _octets(arr);
         });
-        return { objets: objets, octets: octets, label: lc.label || id };
+        return { familles: familles, objets: objets, octets: octets, label: lc.label || id };
       })
       .catch(function (e) {
-        console.warn("[CalqueSession] pesee impossible pour « " + id + " » :", e);
+        console.warn("[CalqueSession] lecture impossible pour « " + id + " » :", e);
         return null;
       });
+  }
+
+  function peser(id) {
+    return lireCalque(id).then(function (r) {
+      return r ? { objets: r.objets, octets: r.octets, label: r.label } : null;
+    });
   }
 
   // ── Rapatriement ──────────
@@ -658,6 +668,7 @@ window.CalqueSession = (function () {
     listeRapatries:         listeRapatries,
     compterCopie:           compterCopie,
     peser:                  peser,
+    lireCalque:             lireCalque,   // contenu du fichier par famille (conversion des contours fermés)
     occupationLocalStorage: occupationLocalStorage,
     rapatrier:              rapatrier,
     restituer:              restituer,

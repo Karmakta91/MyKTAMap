@@ -259,6 +259,57 @@ function charger(fichier, nomGlobal, prealables) {
   t("convert : un objet absent de sa famille est refusé",
     CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
 
+  // ── Contour FERMÉ par la géométrie (import SIG : pilier carré livré en 4 points / 3 côtés) ──
+  // Seuil relatif : écart des bouts < 1,5 × côté moyen. Aucun point inventé ; seul un dernier point qui répète le
+  // premier est retiré.
+  const carre = { uid: "st_carre", type: "front-1", level: -1, description: "n",
+                  points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}] };
+  const boucle = { type: "front-1", points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10},{x:0,y:0}] };
+  const uLarge = { type: "front-1", points: [{x:0,y:0},{x:0,y:3},{x:20,y:3},{x:20,y:0}] };
+  const deux   = { type: "front-1", points: [{x:0,y:0},{x:0.1,y:0}] };
+  const joncF  = { type: "jonction", fromLevel: 0, toLevel: -1, points: carre.points };
+  t("fermé : API estContourFerme exposée", typeof CV.estContourFerme === "function");
+  t("fermé : carré à 3 côtés (écart = 1 côté) reconnu", CV.estContourFerme("structures", carre) === true);
+  t("fermé : premier point répété reconnu",               CV.estContourFerme("structures", boucle) === true);
+  t("fermé : U large (écart > 1,5 × côté moyen) reste ouvert", CV.estContourFerme("structures", uLarge) === false);
+  t("fermé : 2 points jamais fermés",                     CV.estContourFerme("structures", deux) === false);
+  t("fermé : une jonction jamais (ses niveaux)",          CV.estContourFerme("roads", joncF) === false);
+  t("fermé : une zone n'est pas un « contour » (déjà fermée par son type)",
+    CV.estContourFerme("zones", { type: "eau", points: carre.points }) === false);
+  const ciblesCarre = CV.listerCibles("structures", "front-1", carre).map(function (c) { return c.famille + ":" + c.type; });
+  t("fermé : le carré se voit proposer zone ET pilier", ciblesCarre.indexOf("zones:eau") >= 0 &&
+    ciblesCarre.indexOf("structures:pilier-1") >= 0);
+  t("fermé : et garde ses cibles ouvertes", ciblesCarre.indexOf("roads:principal") >= 0);
+  t("fermé : sans l'objet, la règle par type reste (pas de zone)",
+    CV.listerCibles("structures", "front-1").every(function (c) { return c.famille !== "zones"; }));
+  t("fermé : le U large n'a pas de cible fermée",
+    CV.listerCibles("structures", "front-1", uLarge).every(function (c) { return c.famille !== "zones"; }));
+
+  S = [carre, boucle, uLarge]; Z = []; R = [];
+  t("fermé : carré → pilier réussit", CV.convertir("structures", carre, "structures", "pilier-1") === true);
+  const pil = S.find(function (o) { return o.uid === "st_carre"; });
+  t("fermé : aucun point inventé (4 points restent 4)", !!pil && pil.type === "pilier-1" && pil.points.length === 4);
+  t("fermé : uid, niveau et note conservés", !!pil && pil.level === -1 && pil.description === "n");
+  t("fermé : boucle → zone réussit", CV.convertir("structures", boucle, "zones", "eau") === true);
+  t("fermé : le doublon du premier point est retiré (5 → 4)", Z.length === 1 && Z[0].points.length === 4);
+  t("fermé : l'objet d'origine garde ses 5 points (historique)", boucle.points.length === 5);
+  t("🩸 fermé : U large → zone REFUSÉ (rien ne bouge)",
+    CV.convertir("structures", uLarge, "zones", "eau") === false && S.indexOf(uLarge) >= 0 && Z.length === 1);
+  const zoneSeule = Z[0];
+  t("🩸 fermé → ouvert : refusé même en appel direct",
+    CV.convertir("zones", zoneSeule, "roads", "chemin") === false && Z.length === 1);
+
+  // Lot : contour fermé converti, ligne ouverte comptée en échec, un seul instantané.
+  const c2 = { type: "front-1", points: [{x:0,y:0},{x:4,y:0},{x:4,y:4},{x:0,y:4}] };
+  S = [c2, uLarge]; Z = [];
+  const bl = CV.convertirLot([{ famille: "structures", obj: c2 }, { famille: "structures", obj: uLarge }], "zones", "eau");
+  t("fermé : lot mixte → 1 converti, 1 échec (jamais forcé)", bl.convertis === 1 && bl.echecs === 1 &&
+    Z.length === 1 && S.length === 1 && S[0] === uLarge);
+  const cl = CV.listerCiblesLot([{ famille: "structures", obj: c2 }], true).map(function (c) { return c.famille; });
+  t("fermé : cibles d'un lot filtré = fermées comprises", cl.indexOf("zones") >= 0);
+  t("fermé : cibles d'un lot non filtré = règle par type", CV.listerCiblesLot([{ famille: "structures", obj: c2 }])
+    .every(function (c) { return c.famille !== "zones"; }));
+
   // ── La suppression (même popup, même référence directe sur l'objet) ──
   t("suppr : l'API est exposée", typeof CV.supprimer === "function");
 

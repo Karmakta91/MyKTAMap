@@ -19444,6 +19444,13 @@ body.kta-theme-light #kta-osm-mes-floater {
 
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
 .kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
+/* Case « seulement les contours fermés » d'un lot : grisée (disabled) quand le lot n'en a aucun. */
+.kta-convert-fermes {
+  display: flex; gap: 8px; align-items: flex-start;
+  margin: 0 0 14px; font-size: 13px; line-height: 1.45; color: var(--kta-texte); cursor: pointer;
+}
+.kta-convert-fermes input { margin-top: 2px; }
+.kta-convert-fermes input:disabled + span { color: var(--kta-texte-3); }
 
 /* Fusion de sorties (carnet) : barre SOUS la liste, sinon elle repousse les sorties hors écran. */
 .kta-jrn-fusion-barre {

@@ -215,6 +215,9 @@ const CALQUE = {
     const m = monter(CALQUE);
     m.ctx.HistoryManager = { captureState: () => null, pushState() {} };
     m.ctx.ktaResolveStyle = () => ({});
+    // Géométrie déclarée des types (structures.js) : un front est une LIGNE, sinon la conversion vers un tracé
+    // traverserait la frontière fermé → ouvert et serait refusée.
+    m.ctx.isStructurePolylineType = (t) => /^front/.test(String(t));
     vm.runInContext(fs.readFileSync("js/convertirObjet.js", "utf8"), m.ctx, { filename: "convertirObjet.js" });
     await m.CS.rapatrier("sig");
 
