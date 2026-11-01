@@ -5947,6 +5947,7 @@
   "selm.suppr.histoire": "Delete {n} object(s) (selection)",
   "selm.suppr.bilan": "🗑️ {supprimes} object(s) deleted · {echecs} not found. ⏪ to undo",
   "selm.suppr.rien": "Nothing to delete in the selection.",
+  "selm.suppr.refuseExtension": "Deletion refused: the right to delete these objects could not be checked. Nothing was deleted.",
   "selm.suppr.quePortails": "Nothing to delete: the {n} point(s) in the selection are portals (link to another map).",
   "config.zoomBoutons.label": "➕ Zoom +/− buttons on maps",
   "config.panneaux.label": "🪟 Anchor tool panels to their button",

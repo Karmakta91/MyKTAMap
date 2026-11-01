@@ -5947,6 +5947,7 @@
   "selm.suppr.histoire": "Supprimer {n} objet(s) (sélection)",
   "selm.suppr.bilan": "🗑️ {supprimes} objet(s) supprimé(s) · {echecs} introuvable(s). ⏪ pour annuler",
   "selm.suppr.rien": "Rien à supprimer dans la sélection.",
+  "selm.suppr.refuseExtension": "Suppression refusée : le droit de supprimer ces objets n'a pas pu être vérifié. Rien n'a été supprimé.",
   "selm.suppr.quePortails": "Rien à supprimer : les {n} point(s) de la sélection sont des portails (liaison vers un autre plan).",
   "config.zoomBoutons.label": "➕ Boutons de zoom +/− sur les cartes",
   "config.panneaux.label": "🪟 Ancrer les panneaux d'outils au bouton",

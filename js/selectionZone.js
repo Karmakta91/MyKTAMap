@@ -249,11 +249,43 @@
     }).catch(function () { return 0; });
   }
 
+  // Objets cochés, pour la prise suppressionLot : [{ famille, uid }].
+  function _objetsCoches(pf, coches) {
+    const out = [];
+    FAMILLES.forEach(function (f) {
+      if (!coches[f]) return;
+      pf[f].forEach(function (o) { out.push({ famille: f, uid: typeof o.uid === "string" && o.uid ? o.uid : null }); });
+    });
+    return out;
+  }
+  function _cle(objets) {
+    return objets.map(function (o) { return o.famille + ":" + (o.uid || "?"); }).sort().join("|");
+  }
+
+  // Une extension peut refuser la suppression du lot sur son plan (KtaExtensions.suppressionLot). → Promise<bool>
+  // (true = permis). Refus : rien n'est supprimé, ktaAlerte dit pourquoi (message de l'extension, sinon générique).
+  // Sans extension ou plan local : permis, sans attente.
+  function _permis(objets) {
+    const K = window.KtaExtensions;
+    const v = (K && typeof K.suppressionLot === "function") ? K.suppressionLot(_planId(), objets) : null;
+    if (!v) return Promise.resolve(true);
+    return Promise.resolve(v).then(function (r) {
+      if (r && r.permis === true) return true;
+      if (typeof window.ktaAlerte === "function") {
+        window.ktaAlerte((r && r.message) || _t("selm.suppr.refuseExtension"));
+      }
+      return false;
+    });
+  }
+
   // Confirmation : une case par famille avec son nombre, photos, portails gardés et objets de calque ignorés
-  // annoncés ; le bouton dit combien partent. → Promise<bilan | null> (null = annulé ou rien à supprimer).
+  // annoncés ; le bouton dit combien partent. → Promise<bilan | null> (null = annulé, refusé ou rien à supprimer).
   // 🩸 Les cases vivent dans le message de ktaConfirm (HTML voulu) : lues par leur écouteur avant la fermeture.
-  // `nCalque` = objets de calque vus dans la ou les zones (ignorés).
-  function confirmerEtSupprimer(items, nCalque) {
+  // `nCalque` = objets de calque vus dans la ou les zones (ignorés). `opts.familles` : familles cochées d'emblée
+  // (les autres restent proposées, décochées) ; absent = toutes celles du lot.
+  // 🔒 KtaExtensions.suppressionLot est consultée AVANT la fenêtre (objets cochés d'emblée), puis relue au clic si
+  // les cases ont changé : un refus ne supprime rien.
+  function confirmerEtSupprimer(items, nCalque, opts) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(null);
     const prep = preparer(items);
     const pf = prep.parFamille;
@@ -266,45 +298,62 @@
       }
       return Promise.resolve(null);
     }
-    return _compterPhotos(pf.editorPoints).then(function (photos) {
-      const coches = {};
-      let cases = "";
-      FAMILLES.forEach(function (f) {
-        const n = pf[f].length;
-        coches[f] = n > 0;
-        cases += '<label class="kta-selm-case"><input type="checkbox" data-kta-selm-fam="' + f + '"' +
-          (n ? " checked" : " disabled") + '> ' + _esc(_t("selm.suppr.fam." + f, { n: n })) + '</label>';
+    const familles = (opts && Array.isArray(opts.familles)) ? opts.familles : null;
+    const coches = {};
+    FAMILLES.forEach(function (f) { coches[f] = pf[f].length > 0 && (!familles || familles.indexOf(f) >= 0); });
+    const objetsAvant = _objetsCoches(pf, coches);
+    const verif = objetsAvant.length ? _permis(objetsAvant) : Promise.resolve(true);
+    return verif.then(function (ok) {
+      if (!ok) return null;
+      return _compterPhotos(pf.editorPoints).then(function (photos) {
+        return _fenetre(pf, prep, coches, total, photos, nCalque, _cle(objetsAvant));
       });
-      const niveau = _niveauActif();
-      const notes = [];
-      if (niveau !== null) notes.push(_t("selm.suppr.niveau", { n: niveau > 0 ? "+" + niveau : String(niveau) }));
-      if (photos) notes.push(_t("selm.suppr.photos", { n: photos }));
-      if (prep.portails) notes.push(_t("selm.suppr.portails", { n: prep.portails }));
-      if (nCalque) notes.push(_t("selm.suppr.calques", { n: nCalque }));
-      notes.push(_t("selm.suppr.annuler"));
-      const message = _esc(_t("selm.suppr.question")) +
-        '<span class="kta-selm-cases">' + cases + '</span>' +
-        notes.map(function (n) { return _esc(n); }).join("\n");
-      const p = window.ktaConfirm(message, {
-        titre: _esc(_t("selm.suppr.titre")),
-        okLabel: _esc(_t("selm.suppr.ok", { n: total(coches) }))
-      });
-      // ktaConfirm a monté sa fenêtre de façon synchrone : on branche les cases de CETTE fenêtre.
-      const ov = Array.prototype.slice.call(document.querySelectorAll(".kta-readme-modal-overlay")).filter(function (o) {
-        return !!o.querySelector("[data-kta-selm-fam]");
-      }).pop();
-      if (ov) {
-        const oui = ov.querySelector("#kta-confirm-oui");
-        ov.querySelectorAll("[data-kta-selm-fam]").forEach(function (cb) {
-          cb.addEventListener("change", function () {
-            coches[cb.getAttribute("data-kta-selm-fam")] = cb.checked;
-            const n = total(coches);
-            if (oui) { oui.textContent = _t("selm.suppr.ok", { n: n }); oui.disabled = n === 0; }
-          });
+    });
+  }
+
+  function _fenetre(pf, prep, coches, total, photos, nCalque, cleAvant) {
+    let cases = "";
+    FAMILLES.forEach(function (f) {
+      const n = pf[f].length;
+      cases += '<label class="kta-selm-case"><input type="checkbox" data-kta-selm-fam="' + f + '"' +
+        (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' +
+        _esc(_t("selm.suppr.fam." + f, { n: n })) + '</label>';
+    });
+    const niveau = _niveauActif();
+    const notes = [];
+    if (niveau !== null) notes.push(_t("selm.suppr.niveau", { n: niveau > 0 ? "+" + niveau : String(niveau) }));
+    if (photos) notes.push(_t("selm.suppr.photos", { n: photos }));
+    if (prep.portails) notes.push(_t("selm.suppr.portails", { n: prep.portails }));
+    if (nCalque) notes.push(_t("selm.suppr.calques", { n: nCalque }));
+    notes.push(_t("selm.suppr.annuler"));
+    const message = _esc(_t("selm.suppr.question")) +
+      '<span class="kta-selm-cases">' + cases + '</span>' +
+      notes.map(function (n) { return _esc(n); }).join("\n");
+    const p = window.ktaConfirm(message, {
+      titre: _esc(_t("selm.suppr.titre")),
+      okLabel: _esc(_t("selm.suppr.ok", { n: total(coches) }))
+    });
+    // ktaConfirm a monté sa fenêtre de façon synchrone : on branche les cases de CETTE fenêtre.
+    const ov = Array.prototype.slice.call(document.querySelectorAll(".kta-readme-modal-overlay")).filter(function (o) {
+      return !!o.querySelector("[data-kta-selm-fam]");
+    }).pop();
+    if (ov) {
+      const oui = ov.querySelector("#kta-confirm-oui");
+      if (oui && !total(coches)) oui.disabled = true;
+      ov.querySelectorAll("[data-kta-selm-fam]").forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          coches[cb.getAttribute("data-kta-selm-fam")] = cb.checked;
+          const n = total(coches);
+          if (oui) { oui.textContent = _t("selm.suppr.ok", { n: n }); oui.disabled = n === 0; }
         });
-      }
-      return p.then(function (oui) {
-        if (!oui || !total(coches)) return null;
+      });
+    }
+    return p.then(function (oui) {
+      if (!oui || !total(coches)) return null;
+      const objets = _objetsCoches(pf, coches);
+      const verif = _cle(objets) === cleAvant ? Promise.resolve(true) : _permis(objets);
+      return verif.then(function (ok) {
+        if (!ok) return null;
         const choisis = {};
         FAMILLES.forEach(function (f) { choisis[f] = coches[f] ? pf[f] : []; });
         const bilan = supprimerLot(choisis);

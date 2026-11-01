@@ -5947,6 +5947,7 @@
   "selm.suppr.histoire": "Eliminar {n} objeto(s) (selección)",
   "selm.suppr.bilan": "🗑️ {supprimes} objeto(s) eliminado(s) · {echecs} no encontrado(s). ⏪ para deshacer",
   "selm.suppr.rien": "Nada que eliminar en la selección.",
+  "selm.suppr.refuseExtension": "Eliminación rechazada: no se pudo comprobar el derecho a eliminar estos objetos. No se ha eliminado nada.",
   "selm.suppr.quePortails": "Nada que eliminar: los {n} punto(s) de la selección son portales (enlace a otro plano).",
   "config.zoomBoutons.label": "➕ Botones de zoom +/− en los mapas",
   "config.panneaux.label": "🪟 Anclar los paneles de herramientas a su botón",

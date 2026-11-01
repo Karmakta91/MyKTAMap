@@ -1710,6 +1710,61 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /titre\.textContent = o\.titre \|\| "";/.test(UT) && /opts\.choix\.valeur = o \? o\.valeur : null;/.test(UT));
   }
 
+  // ── 6 nonies. SUPPRESSION EN LOT SUR UN PLAN D'EXTENSION (prise suppressionLot) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { type: "ext", extId: "p1" } : { type: "local" }) };
+    const lot = [{ famille: "roads", uid: "rd_1" }, { famille: "editorPoints", uid: "" }, { famille: 3 }];
+    t("sans prise : null, SYNCHRONE (suppression de l'app seule)", K.suppressionLot("ext_p1", lot) === null);
+    let appels = 0, vu = null, rep = null;
+    K.register({ nom: "sup", apiVersion: 1, suppressionLot(id, objets) {
+      appels++; vu = { id, objets };
+      if (rep === "panne") throw new Error("x");
+      if (rep === "rejet") return Promise.reject(new Error("y"));
+      return rep;
+    } });
+    t("plan local : null, la prise n'est même pas consultée", K.suppressionLot("local_1", lot) === null && appels === 0);
+    t("prise qui rend null (synchrone) → permis, null synchrone", K.suppressionLot("ext_p1", lot) === null);
+    t("la prise reçoit l'id de l'extension et [{ famille, uid }] normalisés (uid vide → null)",
+      vu.id === "p1" && vu.objets.length === 3 && vu.objets[0].uid === "rd_1" && vu.objets[1].uid === null &&
+      vu.objets[2].famille === null);
+    rep = true;
+    t("true synchrone → permis (null)", K.suppressionLot("ext_p1", lot) === null);
+    rep = { permis: true };
+    t("{ permis: true } synchrone → permis (null)", K.suppressionLot("ext_p1", lot) === null);
+    rep = { permis: false, message: "  Refus fictif  " };
+    const r1 = await K.suppressionLot("ext_p1", lot);
+    t("{ permis: false, message } → refus avec le message (borné)", r1.permis === false && r1.message === "Refus fictif");
+    rep = Promise.resolve({ permis: true });
+    const r2 = await K.suppressionLot("ext_p1", lot);
+    t("réponse en promesse : permis", r2.permis === true);
+    rep = Promise.resolve({ permis: false });
+    const r3 = await K.suppressionLot("ext_p1", lot);
+    t("refus sans message → message null (texte générique de l'appelant)", r3.permis === false && r3.message === null);
+    const refus = (r) => !!r && r.permis === false && r.message === null;
+    rep = "panne";
+    t("🔒 prise en erreur → refusé", refus(await K.suppressionLot("ext_p1", lot)));
+    rep = "rejet";
+    t("🔒 promesse rejetée → refusé", refus(await K.suppressionLot("ext_p1", lot)));
+    rep = { permis: "oui" };
+    t("🔒 forme inattendue → refusé", refus(await K.suppressionLot("ext_p1", lot)));
+    const EF = lire("js/ktaExtensions.js");
+    t("🔒 réponse qui n'arrive pas : bornée (DELAI_SUPPRESSION_LOT_MS), puis refusée",
+      /const DELAI_SUPPRESSION_LOT_MS = \d+;/.test(EF) &&
+      /setTimeout\(function \(\) \{ r\(refus\); \}, DELAI_SUPPRESSION_LOT_MS\)/.test(EF));
+    const SZ = lire("js/selectionZone.js");
+    const cf = SZ.slice(SZ.indexOf("function confirmerEtSupprimer("), SZ.lastIndexOf("window.KtaSelectionZone = {"));
+    t("câblage : la suppression en lot consulte la prise (plan affiché) AVANT la fenêtre de confirmation",
+      /K\.suppressionLot\(_planId\(\), objets\)/.test(SZ) &&
+      cf.indexOf("_permis(objetsAvant)") > 0 && cf.indexOf("_permis(objetsAvant)") < cf.indexOf("window.ktaConfirm("));
+    t("🔒 câblage : refus = ktaAlerte (message de la prise, sinon générique), rien supprimé",
+      /window\.ktaAlerte\(\(r && r\.message\) \|\| _t\("selm\.suppr\.refuseExtension"\)\)/.test(SZ) &&
+      /if \(!ok\) return null;/.test(cf));
+    t("🔒 câblage : cases changées → prise relue au clic, avant supprimerLot",
+      /_cle\(objets\) === cleAvant \? Promise\.resolve\(true\) : _permis\(objets\)/.test(cf) &&
+      cf.lastIndexOf("_permis(objets)") < cf.indexOf("supprimerLot(choisis)"));
+  }
+
   // ── 7. CÂBLAGE (fichiers réels) ──────
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),

@@ -346,7 +346,7 @@
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut", "suppressionLot"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -875,6 +875,48 @@
         return refus;
       }),
       new Promise(function (r) { delai = setTimeout(function () { r(refus); }, DELAI_EFFACEMENT_MS); })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+
+  // Suppression en lot (sélection multiple 🎯) sur un plan d'extension : `suppressionLot(idExt, objets)` est consultée
+  // AVANT toute suppression, `objets` = [{ famille, uid }] (uid null si l'objet n'en a pas ; l'auteur se retrouve par
+  // `auteurObjet(uid)`). Réponse (ou sa promesse) : null / true / { permis: true } = permis ; { permis: false,
+  // message? } = refusé, `message` (texte seul) affiché tel quel.
+  // → null (sans prise, plan local ou du site, ou permis rendu de façon synchrone : rien ne change) ou une promesse
+  // de { permis, message } (message : chaîne ≤ 300 ou null → l'appelant affiche son texte générique).
+  // 🔒 Erreur, rejet, forme inattendue ou réponse au-delà de DELAI_SUPPRESSION_LOT_MS = refusé sans message : rien
+  // n'est supprimé (le serveur refuserait peut-être, l'appareil divergerait sans le dire).
+  const DELAI_SUPPRESSION_LOT_MS = 8000;
+  function suppressionLot(registreId, objets) {
+    const ext = _prise("suppressionLot");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.suppressionLot !== "function") return null;
+    const liste = (Array.isArray(objets) ? objets : []).map(function (o) {
+      return { famille: o && typeof o.famille === "string" ? o.famille : null,
+        uid: o && typeof o.uid === "string" && o.uid ? o.uid : null };
+    });
+    const refus = { permis: false, message: null };
+    const forme = function (r) {
+      if (r === null || r === true) return { permis: true, message: null };
+      if (!r || typeof r !== "object" || Array.isArray(r) || typeof r.permis !== "boolean") return refus;
+      if (r.permis) return { permis: true, message: null };
+      const m = typeof r.message === "string" && r.message.trim() ? r.message.trim().slice(0, 300) : null;
+      return { permis: false, message: m };
+    };
+    let v;
+    try { v = ext.suppressionLot(id, liste); }
+    catch (e) { console.warn("[Extensions] « suppressionLot » a échoué → refusé :", e); return Promise.resolve(refus); }
+    if (!v || typeof v.then !== "function") {
+      const r = forme(v);
+      return r.permis ? null : Promise.resolve(r);
+    }
+    let delai;
+    return Promise.race([
+      Promise.resolve(v).then(forme, function (e) {
+        console.warn("[Extensions] « suppressionLot » rejetée → refusé :", e);
+        return refus;
+      }),
+      new Promise(function (r) { delai = setTimeout(function () { r(refus); }, DELAI_SUPPRESSION_LOT_MS); })
     ]).finally(function () { clearTimeout(delai); });
   }
 
@@ -2499,6 +2541,7 @@
     lectureSeule: lectureSeule,
     importPartage: importPartage,
     effacementPartage: effacementPartage,
+    suppressionLot: suppressionLot,
     avantReinitialisation: avantReinitialisation,
     CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
     recuADistance: recuADistance,

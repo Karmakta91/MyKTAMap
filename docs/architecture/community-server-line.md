@@ -70,7 +70,8 @@ photos restent locales et exportables).
 > `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
-> `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
+> `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` ·
+> `suppressionLot(idExt, [{ famille, uid }]) → null | true | { permis, message? }` (prise, suppression en lot) · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > ⚖️ **Conditions d'utilisation et gate déléguée** : sur une installation reliée (`state: "on"`) dont les conditions
 > ne sont pas acceptées, `main.js` ne les ouvre **pas** avant la gate : il passe `avantEntree` (`() → Promise<bool>`) à
@@ -523,6 +524,17 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     est relue au clic d'une suppression pour tous. Côté community :
     `KtaExtensions.effacementPartage(registreId)` (null synchrone, ou promesse) ; détail : `session-data.md` §9.
     Test : `check-extensions.js` §6 octies.
+  - Prise `suppressionLot(idExt, objets) → null | true | { permis, message? } | Promise<…>` : la suppression en lot
+    de la sélection multiple 🎯 (`js/selectionZone.js > confirmerEtSupprimer`) la consulte **avant** sa fenêtre de
+    confirmation, avec les objets cochés d'emblée `[{ famille, uid }]` (`uid` null s'il manque ; l'auteur se retrouve
+    par `auteurObjet(uid)`), puis la relit au clic si les cases ont changé. `null`, `true` ou `{ permis: true }` =
+    permis ; `{ permis: false, message? }` = refusé : **rien n'est supprimé** et `ktaAlerte` affiche `message` (texte
+    seul, ≤ 300 caractères) ou, sans message, un texte générique (« le droit n'a pas pu être vérifié »). La règle
+    elle-même (qui peut supprimer quoi) est celle de l'extension ; elle reste vérifiée par son serveur. Plan local ou
+    du site, sans prise : jamais consultée, comportement de l'app seule. 🔒 Exception, rejet, forme inattendue ou
+    réponse au-delà de 8 s = refusé sans message. Côté community : `KtaExtensions.suppressionLot(registreId, objets)`
+    (null synchrone quand c'est permis sans attente, sinon promesse de `{ permis, message }`). Test :
+    `check-extensions.js` §6 nonies.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
     **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
     KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
