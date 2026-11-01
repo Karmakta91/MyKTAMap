@@ -108,6 +108,11 @@
 
 ## Entrant
 
+- **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
+  principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
+  (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
+  `qui: Claude · action: topo (ce que masque hidden aujourd'hui, ce qui manque) · depuis: 01/11/2026 · taille: S`
+
 - **« -pro » du splash au tout premier lancement pro** — le suffixe dépend de `.kta-instance-pro`, posée d'emblée si la
   licence serveur est en cache ; au premier lancement d'un appareil elle arrive peut-être après la fin du splash.
   🔬 hypothèse, non vérifiée.
