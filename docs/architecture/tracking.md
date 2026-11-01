@@ -712,7 +712,8 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
 2. **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
    (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
    s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
-   (ligne). Les autres types (zones, types `cust-…`) ne comptent pas.
+   (ligne). Les autres types (zones, types `cust-…`) ne comptent pas pour le tracker ; le 6e paramètre
+   `avecPerso` (vue 3D seulement) compte aussi les types `cust-…`, en polygone ou en ligne selon la légende.
    - **Niveau** : en multi-niveau, seulement les structures du niveau du tracker (`trackerLevel` ; sans `level` =
      0). Une 2e masse étant rangée au niveau actif − 1 (`structures.js`), elle bloque sur ce niveau-là. Hors
      multi-niveau, toutes bloquent.
@@ -722,8 +723,11 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
    - **Coût** : grille d'index de 128 px par liste, refaite seulement quand la liste change (même tableau, même
      longueur, même somme des `updatedAt` et des nombres de points). ~0,3 ms par pas pour 13 000 piliers (Node, PC).
    - La structure **en cours de tracé** ne compte pas.
-   - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau])` (true = refusé), `niveau` remplaçant
-     celui du tracker ; le premier test l'est aussi (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`, prototype), qui s'en sert pour ses déplacements à
+   - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau[, avecPerso]])` (true = refusé),
+     `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
+     juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
+     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms) ; le premier test l'est aussi
+     (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`, bêta), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
@@ -1166,3 +1170,76 @@ demi-tours en 350 m sous 4 m de bruit).
   sélecteur y traçait l'étape, écrasait son itinéraire et l'enregistrait dans sa session.
 - **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) — ils créent leurs roads sans `raccords` /
   `carrefours`.
+
+## 🧊 Vue 3D (bêta) — `js/vue3d.js`
+
+Le plan en relief autour de la position du tracker. Décisions, mesures et risques : `docs/ETUDE_VUE_3D.md`.
+
+### Entrée et chargement
+
+- Tuile **🧊 Vue 3D (bêta)** du menu Tracker, section Outils (`interface.js > sousActions` du groupe `tracker`).
+  Sa ligne d'aide (`dynamicAide`, rendue par `_creerTuileTracker`) rappelle que la 3D montre le plan, pas la
+  galerie réelle.
+- **Grisée** (`etat` → `"off"`, cliquable) sans plan chargé ou sans échelle (`APP_CONFIG.scale` absente ou ≤ 0) :
+  `interface.js > _vue3dRaison` fait le test **avant** de charger quoi que ce soit, la ligne d'aide et le toucher
+  disent pourquoi. `KtaVue3D.ouvrir` refait le même refus (appel direct).
+- Toucher la tuile : `_chargerVue3D` pose `<script src="js/vue3d.js">` une fois, puis `KtaVue3D.ouvrir()`.
+  `vue3d.js` charge `css/vue3d.css` et importe `lib/three/three.module.js` (module ES, `import()` dynamique, URL
+  absolue : pas d'import map, la CSP refuse tout script en ligne). Échec du chargement → `vue3d.chargementImpossible` ;
+  WebGL absent → `vue3d.indisponible`. Rien de cela n'est demandé au démarrage (`smoke.js` refuse toute requête vers
+  ces fichiers).
+- **Hors ligne** : les quatre fichiers sont dans `sw.js > ASSETS_TO_CACHE` (installés par le service worker, pas
+  par la page).
+
+### Contrats
+
+- **Déplacement** = règle du pas du tracker (`ktaEstAccessible`, `ktaSegmentsBloquesParStructure(…, niveau, true)`,
+  plus haut), jamais une copie, appliquée à un **corps de 0,8 m** : chaque pas est balayé par trois segments
+  parallèles (axe et ± 0,4 m) prolongés de 0,4 m devant, puis douze rayons de 0,4 m autour de l'arrivée doivent
+  rester libres (pas plus de rayons bloqués qu'au départ, pour ne pas rester collé si l'on s'ouvre contre un mur).
+  Glissement le long d'un mur. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
+  en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
+  dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s.
+- **Suivi / libre** (`basculerSuivi`, bouton 📍) : en suivi, position du tracker et cap de l'appareil lissés,
+  lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
+  la vue (pas celui de `mapBearing.js`, qui ne tourne que mode activé). Ouvert en suivi si le tracker tourne,
+  sinon en libre ; tracker arrêté en route → libre, 📍 grisé (`vue3d.suiviIndispo`, toast au toucher). Tout
+  déplacement ou glisser passe en libre.
+- **Vue plongeante** : caméra à 18,4 m du point visé (2 m devant soi), inclinaison 15° à 85° (60° par défaut) ;
+  deux doigts à la verticale, molette, PageUp / PageDown, boutons ▲ ▼ (montrés dans cette vue seulement) ; retenue
+  tant que la vue est ouverte.
+- **Boussole** : `icon/compass.svg` tournée de −(cap plan − `getPlanNorthOffset()`), la convention de `compass.js`.
+  Plan sans Nord calibré (`config.js > getPlanNorthCalibre` : ni pref du plan ni `plan.northOffsetDeg`) : haut du
+  plan et mention `vue3d.nordNonCalibre`. Relu à `kta:northOffsetChange`.
+- **Le tracker n'est pas déplacé** par la vue (décision produit). `fermer()` (✕, Échap) : si le suivi est actif
+  (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker,
+  `ktaConfirm` « 📍 Je suis ici ? » ; Oui = `recalerTrackerSurPoint(x, y, niveau)` (ancre de recalage normale,
+  replanification et validation d'étape comprises), Non = rien. Une fermeture forcée (contexte perdu) ne pose pas
+  la question.
+- **Contexte WebGL** : libéré à chaque fermeture (`forceContextLoss`). Perdu en route (`webglcontextlost`) : la
+  vue reste ouverte, ne dessine plus et attend `webglcontextrestored` pendant 8 s d'écran visible (onglet caché non
+  compté) ; repris → scène remontée à neuf ; sinon fermeture avec le toast `vue3d.contextePerdu`.
+  🩸 Jamais `dispose()` sur les objets d'avant la perte : leurs écouteurs appartiennent à l'ancien état de three.js
+  et effaceraient sur le nouveau contexte des objets qui n'en sont pas (« object does not belong to this context »).
+- **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
+  matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
+  c'est le pilier ou le front qui se voit, sans scintillement.
+- **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
+  distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). Un POI
+  dans un volume fermé du niveau (pilier, mur, type perso ; grille `_grilleVolumes` refaite à chaque
+  `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant.
+- **Couleurs** : celles de la légende, par `ktaResolveStyle(…, { flat: true })` / `ktaSwatchColor` ; aucune table
+  locale. Sol et plafond : `COULEUR_CALCAIRE` (sable calcaire, couleur de la scène, hors charte de l'UI), motif
+  procédural de 128 px répété tous les 2 m, fixe sous les pieds. Lampe : intensité 24, décroissance 1,2, portée =
+  distance de vue ; brouillard noir de 45 % à 100 % des 30 m. Les panneaux de POI gardent un fond sombre fixe (la scène est toujours noire, quel que soit le thème).
+- **Textes** : clés `vue3d.*` et `tracker.menu.vue3d*`, lues au rendu.
+
+### Garde-fous et limites
+
+- `scripts/smoke/checkup-vue-3d.js` (Chromium et WebKit) : tuile grisée sans échelle (rien chargé), ouverture
+  depuis la tuile, scène, mur plus bas que le pilier qu'il traverse, butée, pas rapide, collisions (6 obstacles,
+  12 angles, pas rapides et grand pas, départ collé à une face), inclinaison, boussole, clavier, vues, niveau, perte simulée
+  (`WEBGL_lose_context`) puis reprise, perte sans reprise, « Je suis ici ? » Non puis Oui, WebGL absent,
+  20 ouvertures de suite. `smoke.js` : rien de la 3D au démarrage.
+- **Non couvert** : aucun vrai iPhone (images/s, mémoire, batterie, perte de contexte réelle), aucun plan dense
+  réel ; aucun changement de niveau en marchant dans la 3D (le niveau suit le tracker ou le sélecteur).

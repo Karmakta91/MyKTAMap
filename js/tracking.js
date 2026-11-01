@@ -318,6 +318,13 @@ const _OBST_TYPES = {
   "pilier-1": true, "pilier-2": true, "mur": true,
   "front-1": false, "front-2": false, "mur-ligne": false
 };
+// Types personnalisés (`cust-…`) : ignorés par le tracker (décision produit), comptés seulement à la demande
+// (`avecPerso`, vue 3D, qui les dessine en volume) ; forme lue dans la légende (structures.js).
+function _formeObstacle(type, avecPerso) {
+  const f = _OBST_TYPES[type];
+  if (f !== undefined || !avecPerso || typeof type !== "string" || type.indexOf("cust-") !== 0) return f;
+  return !(typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(type));
+}
 const _OBST_CASE  = 128;
 const _indexObstacles = [null, null];   // [session, plan]
 
@@ -337,7 +344,7 @@ function _indexDe(k, liste) {
   const cases = new Map();
   for (let i = 0; i < liste.length; i++) {
     const s = liste[i];
-    if (!s || !Array.isArray(s.points) || _OBST_TYPES[s.type] === undefined) continue;
+    if (!s || !Array.isArray(s.points) || _formeObstacle(s.type, true) === undefined) continue;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let j = 0; j < s.points.length; j++) {
       const p = s.points[j];
@@ -375,19 +382,34 @@ function _dansPolygone(pts, x, y) {
 }
 
 // `niveau` (facultatif) : niveau testé à la place de celui du tracker (vue 3D, qui se déplace sans lui).
-function _pasBloqueParStructure(x0, y0, x1, y1, niveau) {
+// `avecPerso` (facultatif) : compter aussi les types personnalisés (vue 3D) ; le tracker ne le passe jamais.
+function _pasBloqueParStructure(x0, y0, x1, y1, niveau, avecPerso) {
+  return _segmentsBloquesParStructure([[x0, y0, x1, y1]], niveau, avecPerso)[0];
+}
+
+// Même règle pour un lot de segments [[x0, y0, x1, y1], …] → tableau de booléens (true = refusé). L'index n'est
+// relu qu'une fois par lot. 🩸 Relire l'index coûte un passage sur toutes les structures (signature) : la vue 3D,
+// qui juge une quinzaine de segments par pas (largeur du corps), passe par un lot, pas par quinze appels.
+function _segmentsBloquesParStructure(segments, niveau, avecPerso) {
   const lvl = Number.isInteger(niveau) ? niveau : trackerLevel;
   const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const enCours = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
-  const sx0 = Math.min(x0, x1), sx1 = Math.max(x0, x1), sy0 = Math.min(y0, y1), sy1 = Math.max(y0, y1);
   const sources = [
     (typeof window.getStructures === "function") ? window.getStructures() : null,
     window._ktaDataStructurePolygons
   ];
+  const index = sources.map(function(liste, k) { return Array.isArray(liste) ? _indexDe(k, liste) : null; });
+  return segments.map(function(sg) {
+    return _segmentBloque(index, sg[0], sg[1], sg[2], sg[3], lvl, multi, enCours, avecPerso === true);
+  });
+}
+
+function _segmentBloque(index, x0, y0, x1, y1, lvl, multi, enCours, avecPerso) {
+  const sx0 = Math.min(x0, x1), sx1 = Math.max(x0, x1), sy0 = Math.min(y0, y1), sy1 = Math.max(y0, y1);
   const vus = new Set();
-  for (let k = 0; k < sources.length; k++) {
-    if (!Array.isArray(sources[k])) continue;
-    const idx = _indexDe(k, sources[k]);
+  for (let k = 0; k < index.length; k++) {
+    const idx = index[k];
+    if (!idx) continue;
     for (let cy = Math.floor(sy0 / _OBST_CASE); cy <= Math.floor(sy1 / _OBST_CASE); cy++) {
       for (let cx = Math.floor(sx0 / _OBST_CASE); cx <= Math.floor(sx1 / _OBST_CASE); cx++) {
         const liste = idx.cases.get(cx + "," + cy);
@@ -396,7 +418,8 @@ function _pasBloqueParStructure(x0, y0, x1, y1, niveau) {
           const s = liste[i];
           if (vus.has(s) || s === enCours) continue;
           vus.add(s);
-          const poly = _OBST_TYPES[s.type];
+          const poly = _formeObstacle(s.type, avecPerso);
+          if (poly === undefined) continue;
           if (multi && (Number.isInteger(s.level) ? s.level : 0) !== lvl) continue;
           const pts = s.points;
           if (pts.length < (poly ? 3 : 2)) continue;
@@ -950,6 +973,8 @@ window.getTrackingActif = function() {
 // ⚠️ Règle du pas contre piliers, murs et fronts (la même que le suivi) : true si le segment est refusé.
 // Consommateur : js/vue3d.js (déplacement à l'écran et au clavier), qui ne recopie pas la géométrie.
 window.ktaPasBloqueParStructure = _pasBloqueParStructure;
+// Lot de segments, index relu une fois (vue 3D : corps balayé) → tableau de booléens.
+window.ktaSegmentsBloquesParStructure = _segmentsBloquesParStructure;
 // Premier test du même pas : image de collision du plan (true = accessible ; sans image, tout passe).
 window.ktaEstAccessible = estAccessible;
 

@@ -1043,6 +1043,16 @@ function _creerTuileTracker(sub) {
                     : titreFixe;
   tile.appendChild(ic);
   tile.appendChild(lbl);
+  // Ligne d'aide facultative sous le libellé (texte brut, relu à chaque ouverture du menu).
+  if (typeof sub.dynamicAide === "function") {
+    const aide = sub.dynamicAide();
+    if (aide) {
+      const a = document.createElement("span");
+      a.className = "kta-tracker-modal-tile-aide";
+      a.textContent = aide;
+      tile.appendChild(a);
+    }
+  }
   tile.addEventListener("click", function(ev) {
     ev.stopPropagation();
     // Fermer AVANT l'action : la plupart ont besoin de la carte visible (recalage = clic carte)
@@ -1053,6 +1063,43 @@ function _creerTuileTracker(sub) {
     }
   });
   return tile;
+}
+
+// ── Vue 3D (bêta) : tuile du menu Tracker ──────────────────────────────────────────────────────────
+// js/vue3d.js et three.js (~2 Mo) ne sont chargés qu'au premier toucher de la tuile, jamais au démarrage
+// (scripts/smoke/smoke.js le vérifie) ; sw.js les précache pour le hors-ligne. Doc : docs/ETUDE_VUE_3D.md.
+// ⚠️ Même refus que KtaVue3D.ouvrir (plan, échelle), testé ici AVANT de charger quoi que ce soit.
+function _vue3dRaison() {
+  if (!window.map || !window.PLAN_CONFIG || !window.APP_CONFIG) return "vue3d.sansPlan";
+  const sc = Number(window.APP_CONFIG.scale);
+  return (Number.isFinite(sc) && sc > 0) ? null : "vue3d.sansEchelle";
+}
+
+let _vue3dChargement = null;
+function _chargerVue3D() {
+  if (window.KtaVue3D) return Promise.resolve(true);
+  if (!_vue3dChargement) {
+    _vue3dChargement = new Promise(function(resolve) {
+      const s = document.createElement("script");
+      s.src = "js/vue3d.js";
+      s.addEventListener("load", function() { resolve(!!window.KtaVue3D); });
+      s.addEventListener("error", function() { s.remove(); resolve(false); });
+      document.head.appendChild(s);
+    }).then(function(ok) { if (!ok) _vue3dChargement = null; return ok; });
+  }
+  return _vue3dChargement;
+}
+
+function _ouvrirVue3D() {
+  const raison = _vue3dRaison();
+  if (raison) { window.ktaAlerte(window.I18n.t(raison)); return Promise.resolve(false); }
+  return _chargerVue3D().then(function(ok) {
+    if (!ok) {
+      window.ktaAlerte(window.I18n.t("vue3d.chargementImpossible"), { type: "erreur" });
+      return false;
+    }
+    return window.KtaVue3D.ouvrir();
+  });
 }
 
 function _ajouterSectionTracker(corps, titre, actions) {
@@ -2247,6 +2294,16 @@ function initInterface() {
                                             : window.I18n.t("guid.toast.off"), "info");
           }
         }
+      },
+      {
+        // Vue 3D (bêta) : grisée sans plan ou sans échelle, sa ligne d'aide dit pourquoi ; sinon elle rappelle
+        // que la 3D montre le plan, pas la galerie réelle (décision produit : risque de fausse précision).
+        icone: "🧊",
+        titreCle: "tracker.menu.vue3d",
+        section: "outils",
+        etat: function() { return _vue3dRaison() ? "off" : null; },
+        dynamicAide: function() { return window.I18n.t(_vue3dRaison() || "tracker.menu.vue3dAide"); },
+        onClick: function() { _ouvrirVue3D(); }
       },
       {
         icone: "📍",

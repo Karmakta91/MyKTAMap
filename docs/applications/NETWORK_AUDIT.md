@@ -650,8 +650,8 @@ Sinon, la mise en production est bloquée.
 ### 5. Les librairies embarquées
 
 L'app ne télécharge aucune librairie pendant que tu l'utilises. Les
-quelques librairies qu'elle embarque (Leaflet, JSZip, jsPDF, html2canvas)
-sont copiées dans le dépôt, avec leur version et un lien vers leurs avis de
+quelques librairies qu'elle embarque (Leaflet, JSZip, jsPDF, html2canvas,
+three.js pour la vue 3D) sont copiées dans le dépôt, avec leur version et un lien vers leurs avis de
 sécurité. Ces librairies, comme les outils de test et d'intégration
 continue, sont surveillées automatiquement (Dependabot) : une faille connue
 ou une nouvelle version est signalée, et chaque proposition de mise à jour

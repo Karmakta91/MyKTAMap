@@ -18,7 +18,7 @@
 
 ## 📦 Version courante — `v2.22.0` (01/11/2026)
 
-> 🗑️ **v2.22.0 — Suppression par zone, volume exploité, mur en ligne, contours fermés convertis** : une zone tracée sélectionne puis supprime en lot les objets qu'elle contient (un seul ⏪) ; ⛏️ Volume exploité dans 📐 Mesure ; type de structure 🟦 Mur (ligne) qui coupe l'itinéraire ; lignes fermées d'un import, même livrées en plusieurs morceaux, converties en zones ou piliers. Aussi : 📏 Distance totale dans 📐 Mesure, pas du tracker qui ne traverse plus les structures. Détail : journal ci-dessous.
+> 🗑️ **v2.22.0 — Suppression par zone, volume exploité, mur en ligne, contours fermés convertis** : une zone tracée sélectionne puis supprime en lot les objets qu'elle contient (un seul ⏪) ; ⛏️ Volume exploité dans 📐 Mesure ; type de structure 🟦 Mur (ligne) qui coupe l'itinéraire ; lignes fermées d'un import, même livrées en plusieurs morceaux, converties en zones ou piliers. Aussi : 📏 Distance totale dans 📐 Mesure, pas du tracker qui ne traverse plus les structures, 🧊 Vue 3D autour de sa position en bêta (menu Tracker). Détail : journal ci-dessous.
 
 ---
 
@@ -69,6 +69,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | Boussole / heading + définition du nord du plan | `compass.js`, `northPicker.js` |
 | ⛑️ **« Je suis perdu »** (isochrone Dijkstra) · 🚨 **Panique** · sortie d'urgence la plus proche | `lostMode.js`, `emergencyMode.js`, `sortieUrgence.js` |
 | 🎤 Commandes vocales (BETA, push-to-talk, ~18 commandes FR) + synthèse vocale | `voiceCommand.js`, `voiceTts.js` |
+| 🧊 **Vue 3D (bêta)** autour de sa position : plan en relief, déplacement à la règle du pas, « Je suis ici ? » à la fermeture | `vue3d.js` (three.js dans `lib/three/`, chargé à la demande) |
 
 ### 🌀 Multi-plans et inter-plan
 
@@ -202,7 +203,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `style-filtres.css` | Modale ≡ Filtres, chargée à la demande (`cssLazy.js`) |
 | `style-meminspector.css` | Inspecteur mémoire et rapports de crash, chargé à la demande |
 | `style-secours.css` | Mode Secours, chargé à la demande |
-| `vue3d.css` | Vue 3D plein écran (prototype), chargée par `js/vue3d.js` à son ouverture |
+| `vue3d.css` | Vue 3D plein écran (bêta), chargée par `js/vue3d.js` à son ouverture |
 | `style-stats-globales.css` | Modale Statistiques du plan, chargée à la demande |
 
 ---
@@ -439,7 +440,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
-| `vue3d.js` | Vue 3D autour de la position du tracker (prototype, aucune entrée de menu ; three.js importé à la demande) — chargé par `scripts/smoke/checkup-vue-3d.js` |
+| `vue3d.js` | Vue 3D autour de la position du tracker (bêta) — chargé par `js/interface.js` au toucher de la tuile 🧊 du menu Tracker ; three.js importé à la première ouverture ; précaché par `sw.js` |
 
 ---
 
@@ -660,7 +661,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue par plan |
-| `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, scène, avancer, butée contre un pilier, vue plongeante, contexte WebGL libéré ; mesures sur un plan dense synthétique |
+| `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole ; mesures sur un plan dense synthétique |
 
 ---
 
@@ -770,6 +771,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **📏 Distance totale des tracés** passe du groupe 🛣️ Tracés au groupe 📐 Mesure.
 - **🧭 Tracker** : un pas hors des tracés ne traverse plus piliers, murs ni fronts de taille.
 - **🧱 Un mur toujours sous les piliers et fronts de son niveau** (`js/structures.js > ktaMursSousPiliers`) : sur la carte, dans les exports PNG / PDF (rapide et avancé), le KMZ, la Vue OSM et l'aperçu OSM de l'accueil, qu'il vienne de la session ou d'un calque et quel que soit l'ordre de chargement (un mur de session passait sur un pilier de calque, un calque rebasculé repassait ses murs dessus). Un type perso garde sa place. `checkup-mur-dessous.js`.
+- **🧊 Vue 3D (bêta)** (`js/vue3d.js`, `css/vue3d.css`, three.js 0.186.1 dans `lib/three/`) : tuile du menu 🧭 Tracker (section Outils), avec la mention « bêta » et une ligne d'aide « Montre le plan, pas la galerie réelle » ; grisée sans plan ou sans échelle, le toucher dit pourquoi. Script et three.js chargés au premier toucher, jamais au démarrage, et précachés par `sw.js` pour le hors-ligne (+2,1 Mo bruts). Le tracker ne bouge pas pendant la 3D ; à la fermeture, suivi actif et déplacement fait → « 📍 Je suis ici ? » (`ktaConfirm`, Oui = `recalerTrackerSurPoint`). Contexte WebGL perdu : reprise automatique, sinon fermeture avec message après 8 s d'écran visible. Un mur monte à 98 % de la hauteur, reculé en profondeur : le pilier ou le front qu'il touche l'emporte. Déplacement à 2,8 m/s (× 2,5 avec Maj ou ▲ maintenu), corps de 0,8 m de large balayé à chaque pas (on passait au travers des piliers personnalisés, et l'on frôlait les faces au point de voir dans le pilier : `ktaPasBloqueParStructure` prend `avecPerso`, le tracker ne change pas). 📍 bascule « suivi » (position du tracker et cap de l'appareil, la source du plan orienté) / « libre », grisé tracker arrêté. Vue plongeante inclinable (15° à 85°), rose des vents sur le nord calibré du plan (`getPlanNorthCalibre`, sinon « haut du plan »), lampe plus forte, sol et plafond sable calcaire en motif généré. Panneaux de POI jamais cachés par la roche (un POI dans un pilier est dessiné contre la face vue), plus petits et plus pâles au loin. Textes fr / en / es, Aide ❓ (section « Vue 3D »), guides, `tracking.md` § Vue 3D. `checkup-vue-3d.js` rejoué depuis la tuile (Chromium et WebKit). Étude : `docs/ETUDE_VUE_3D.md`. Non mesurée sur un vrai iPhone.
 - **Prises neutres** (`community-server-line.md` §3) : « quoi de neuf » dans la fenêtre 🚨 et pastille du bouton 🚨, ligne `garderOuverte` (« Tout marquer comme vu ») ; `suppressionLot` ci-dessous.
 - **📄 Légende du PDF à taille d'impression** (`js/pdfExport.js > _choisirLegende`, `js/exporter.js`) : son texte vise une taille fixe sur le papier (Compact 6 pt en A4, un peu plus jusqu'à A0) au lieu d'une part du plan, et la légende se range en 1 à 4 colonnes (un groupe long continue dans la colonne suivante) pour tenir dans son coin (Compact : 30 % × 40 % du plan, plancher 5 pt). Sur un plan dense, elle prenait 60 à 70 % de la hauteur du plan dans les trois tailles, et son texte montait à 23 pt en A0. `checkup-pdf-legende.js`.
 - **Corrigés** : la bordure affichée d'un pilier perso dans la légende est celle que la carte dessine ; titre et pastille d'une fiche suivent le nom et la couleur de la légende ; « Tous les … » de la sélection multiple donne le nom d'un type perso et passe à la ligne ; « Publier la nouvelle version » montre son avancement dans la fenêtre ; « Annotations du plan » au lieu de « Mes annotations ». « Mettre à jour le plan » nomme un groupe de type perso par son nom de légende, plus par « cust-… » (`majPlan.js > _libelle`). Au dézoom, le contour des piliers et des murs s'affine (0,5 px au plus loin) au lieu de recouvrir tout le pilier (`structures.js > majLargeurFronts`, `checkup-bord-piliers.js`). Sur un plan multi-niveau, « 🖼️ Afficher le plan de base » est aussi en tête de ≡ Filtres → Calques d'image (jumelle de celle de Niveaux).

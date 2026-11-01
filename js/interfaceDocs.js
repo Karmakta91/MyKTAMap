@@ -828,7 +828,7 @@ const AIDE_SECTIONS = [
   "astuces", "depannage", "liaisons-inter-plan", "carnet",
   "vue-osm",
   "heatmap", "vibration",
-  "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau"
+  "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau", "vue-3d"
 ];
 
 // Catégories dans l'ordre des chapitres du guide. « Pour aller plus loin » reçoit ce qui est désactivé
@@ -837,7 +837,7 @@ const AIDE_CATEGORIES = [
   { cle: "prise-en-main", slugs: ["aide-doc-legende", "astuces"] },
   { cle: "urgence",       slugs: ["sortie-urgence", "urgence-xl", "je-suis-perdu"] },
   { cle: "carte",         slugs: ["legende", "recherche", "vue-osm", "histoire", "liaisons-inter-plan"] },
-  { cle: "reperer",       slugs: ["menu-tracker", "tracker", "itineraire", "mesure", "multi-niveau"] },
+  { cle: "reperer",       slugs: ["menu-tracker", "tracker", "itineraire", "vue-3d", "mesure", "multi-niveau"] },
   { cle: "annoter",       slugs: ["edition-points", "traces", "zones", "structures", "corriger",
                                   "historique-undo"] },
   { cle: "donnees",       slugs: ["carnet", "stats-session", "favoris", "profil", "enregistrer",
