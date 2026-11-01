@@ -32,6 +32,8 @@
 .kta-v3d-btn[aria-pressed="true"] { border-color: var(--kta-accent); color: var(--kta-accent-texte); }
 .kta-v3d-btn:active { background: var(--kta-fond); }
 .kta-v3d-fermer { font-size: 20px; }
+/* 📍 tracker éteint : grisé sans opacité (texte-3, désaturé), toujours touchable pour dire pourquoi. */
+.kta-v3d-btn.kta-v3d-inactif { color: var(--kta-texte-3); filter: grayscale(1); }
 
 .kta-v3d-stats {
   position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px;

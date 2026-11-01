@@ -8,7 +8,8 @@
 // Chargé à la demande par interface.js > _tuileVue3D (avec css/vue3d.css) ; three.js (lib/three/) n'est importé
 // qu'à la première ouverture. Les quatre fichiers sont précachés par sw.js (la 3D sert sous terre, hors réseau).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(),
-//   mesurer(opts), basculerVue(), incliner(deg), avancer(m), tourner(deg), suivre(), placer(x, y, cap) }.
+//   mesurer(opts), basculerVue(), basculerSuivi(), incliner(deg), avancer(m), tourner(deg), suivre(),
+//   placer(x, y, cap) }.
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms) }.
 // Scène (mètres : x = x image / scale, z = y image / scale, y = hauteur) : structures extrudées du sol à la
 // hauteur du plan (Volume exploité), zones, tracés et itinéraire au sol, POI en panneaux ; niveau actif seul.
@@ -48,6 +49,7 @@
   const LARGEUR_TRACE = 0.25;       // m
   const LARGEUR_ITI = 0.5;          // m
   const HAUTEUR_REMBLAIS = 0.6;     // part de la hauteur du plan
+  const PANNEAU = { l: 1.6, h: 0.5 };   // m : taille d'un panneau de POI de près
   const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
   // Sol et ciel de carrière (plafond, à la hauteur du plan) : même teinte sable calcaire, grain procédural répété
   // (bruit dessiné dans un canvas, aucune image téléchargée). Couleur de la scène, pas de la charte de l'UI.
@@ -386,12 +388,17 @@
       // 🩸 Un Sprite partage la géométrie de three.js : ne jamais la libérer, seulement sa texture.
       if (o.geometry && !o.isSprite) o.geometry.dispose();
       if (o.isSprite && o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+      if (o.isSprite) _e.panneaux.delete(o);
     });
     _e.scene.remove(t.obj);
     t.obj = null;
   }
 
   // ── POI : panneau (icône + nom) toujours face à la caméra, à hauteur de tête ─────────────────────────
+  // ⚠️ contrat (décision produit) : un panneau n'est JAMAIS caché par la géométrie (depthTest coupé, dessiné après
+  // tout) : un POI relevé dans un pilier ou derrière reste lisible. Borné à la distance de vue, plus petit et plus
+  // pâle au loin (_majPanneaux). Un POI dans un volume fermé (pilier, mur, type perso) est collé contre la face de
+  // ce volume la plus proche de la caméra, pour ne pas sembler flotter dans la roche.
 
   function _panneau(p) {
     const cv = document.createElement("canvas");
@@ -414,11 +421,14 @@
     dessiner(null);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.SpriteMaterial({ map: tex, fog: true, depthWrite: false });
+    const mat = new THREE.SpriteMaterial({ map: tex, fog: true, depthWrite: false, depthTest: false,
+      transparent: true });
     const sp = new THREE.Sprite(mat);
-    sp.scale.set(1.6, 0.5, 1);
+    sp.scale.set(PANNEAU.l, PANNEAU.h, 1);
     sp.position.set(p.x / _e.sc, Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), p.y / _e.sc);
-    sp.renderOrder = 3;
+    sp.renderOrder = 10;
+    sp.userData.poi = { x: p.x / _e.sc, z: p.y / _e.sc, anneau: _volumeContenant(p.x / _e.sc, p.y / _e.sc) };
+    _e.panneaux.add(sp);
     let url = null;
     try {
       url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint(p) : null;
@@ -434,6 +444,75 @@
       img.src = url;
     }
     return sp;
+  }
+
+  // Grille des volumes fermés du niveau (anneaux en mètres), faite à chaque _reindexer : un POI y trouve son pilier.
+  function _grilleVolumes(structures) {
+    const g = new Map(), c = 8;
+    for (let i = 0; i < structures.length; i++) {
+      const s = structures[i];
+      if (_estLigne(s.type)) continue;
+      const a = _anneau(s.points, _e.sc);
+      if (a.length < 3) continue;
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      a.forEach(function (q) {
+        x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]);
+      });
+      for (let gx = Math.floor(x0 / c); gx <= Math.floor(x1 / c); gx++) {
+        for (let gz = Math.floor(z0 / c); gz <= Math.floor(z1 / c); gz++) {
+          const k = gx + "," + gz;
+          if (!g.has(k)) g.set(k, []);
+          g.get(k).push(a);
+        }
+      }
+    }
+    _e.volumes = { cases: g, c: c };
+  }
+
+  function _volumeContenant(x, z) {
+    const v = _e.volumes;
+    if (!v) return null;
+    const l = v.cases.get(Math.floor(x / v.c) + "," + Math.floor(z / v.c));
+    if (!l) return null;
+    for (let i = 0; i < l.length; i++) {
+      const a = l[i];
+      let dedans = false;
+      for (let j = 0, k = a.length - 1; j < a.length; k = j++) {
+        const p = a[j], q = a[k];
+        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) dedans = !dedans;
+      }
+      if (dedans) return a;
+    }
+    return null;
+  }
+
+  // Point du contour le plus proche de (cx, cz), avancé de 8 cm vers lui (devant la face, pas dedans).
+  function _bordProche(a, cx, cz) {
+    let best = null, d = Infinity;
+    for (let i = 0; i < a.length; i++) {
+      const p = a[i], q = a[(i + 1) % a.length], vx = q[0] - p[0], vz = q[1] - p[1], l2 = vx * vx + vz * vz;
+      const t = l2 ? Math.max(0, Math.min(1, ((cx - p[0]) * vx + (cz - p[1]) * vz) / l2)) : 0;
+      const x = p[0] + t * vx, z = p[1] + t * vz, dd = Math.hypot(cx - x, cz - z);
+      if (dd < d) { d = dd; best = [x, z]; }
+    }
+    if (d > 1e-6) { best[0] += (cx - best[0]) / d * 0.08; best[1] += (cz - best[1]) / d * 0.08; }
+    return best;
+  }
+
+  // Panneaux : dans la distance de vue (comptée depuis soi), échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite.
+  function _majPanneaux() {
+    const e = _e, cam = e.camera.position, px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
+    e.panneaux.forEach(function (sp) {
+      const u = sp.userData.poi;
+      let x = u.x, z = u.z;
+      if (u.anneau) { const b = _bordProche(u.anneau, cam.x, cam.z); x = b[0]; z = b[1]; }
+      const k = Math.hypot(x - px, z - pz) / e.distance;
+      sp.visible = k <= 1;
+      if (!sp.visible) return;
+      sp.position.x = x; sp.position.z = z;
+      sp.scale.set(PANNEAU.l * (1 - 0.5 * k), PANNEAU.h * (1 - 0.5 * k), 1);
+      sp.material.opacity = 1 - 0.6 * k;
+    });
   }
 
   // ── Scène ──────────────────────────────────────────────────────────────────────────────────────────
@@ -489,6 +568,7 @@
 
   function _monterScene() {
     const e = _e;
+    e.panneaux = new Set();
     e.scene = new THREE.Scene();
     e.scene.background = new THREE.Color(0x000000);
     e.scene.fog = new THREE.Fog(0x000000, e.distance * 0.45, e.distance);
@@ -531,6 +611,7 @@
     const d = _collecter(e.niveau);
     e.compte = { structures: d.structures.length, zones: d.zones.length, roads: d.roads.length,
       points: d.points.length };
+    _grilleVolumes(d.structures);
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
     e.msIndex = performance.now() - t0;
     _gererTuiles(true);
@@ -577,6 +658,7 @@
       e.camera.position.set(x, e.oeil, z);
       e.camera.rotation.set(e.tangage, -cap, 0);
     }
+    _majPanneaux();
     _majBoussole();
   }
 
@@ -694,8 +776,39 @@
 
   function _passerEnLibre() { if (_e.mode !== "libre") { _e.mode = "libre"; _majBoutonSuivre(); } }
 
+  function _trackerActif() {
+    return typeof window.getTrackingActif === "function" && window.getTrackingActif() === true;
+  }
+
+  // Bouton 📍 = interrupteur « suivi » / « libre ». Grisé (mais touchable : il explique) tracker éteint.
   function _majBoutonSuivre() {
-    if (_e.boutonSuivre) _e.boutonSuivre.setAttribute("aria-pressed", _e.mode === "suivi" ? "true" : "false");
+    const e = _e, b = e.boutonSuivre;
+    if (!b) return;
+    const dispo = _trackerActif();
+    e.suiviDispo = dispo;
+    b.setAttribute("aria-pressed", e.mode === "suivi" ? "true" : "false");
+    b.classList.toggle("kta-v3d-inactif", !dispo);
+    const t = !dispo ? _t("vue3d.suiviIndispo") : _t(e.mode === "suivi" ? "vue3d.passerLibre" : "vue3d.suivre");
+    b.title = t;
+    b.setAttribute("aria-label", t);
+  }
+
+  // Mode « suivi » : position du tracker et cap de l'appareil, la même source que le mode « plan orienté »
+  // (tracking.js > getPlanRelHeading, offset Nord du plan compris ; mapBearing.js la lit aussi). Tracker
+  // arrêté en route : retour au mode libre, là où l'on est.
+  function basculerSuivi() {
+    const e = _e;
+    if (!e) return false;
+    if (e.mode === "suivi") { _passerEnLibre(); return true; }
+    if (!_trackerActif()) {
+      _majBoutonSuivre();
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(_t("vue3d.suiviIndispo"), "warn");
+      }
+      return false;
+    }
+    suivre();
+    return true;
   }
 
   function _lireTracker() {
@@ -738,6 +851,10 @@
     if (rot) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
     if (av) _pas(vit * dt * av, e.cap);
     if (lat) _pas(vit * dt, e.cap + 90 * lat);
+    if (_trackerActif() !== e.suiviDispo) {
+      if (e.mode === "suivi" && !_trackerActif()) e.mode = "libre";
+      _majBoutonSuivre();
+    }
     if (e.mode === "suivi") _lireTracker();
     const niv = _niveauCourant();
     if (niv !== e.niveau) _reindexer();
@@ -862,7 +979,7 @@
       const a = b.dataset.v3d;
       if (a === "fermer") { fermer(); return; }
       if (a === "vue") { basculerVue(); return; }
-      if (a === "suivre") { suivre(); return; }
+      if (a === "suivre") { basculerSuivi(); return; }
       if (a === "inclPlus" || a === "inclMoins") {
         ev.preventDefault();
         incliner(a === "inclPlus" ? INCLINAISON.pas * 2 : -INCLINAISON.pas * 2);
@@ -1003,7 +1120,8 @@
       _e = {
         sc: sc, hauteur: hauteur, oeil: Math.min(OEIL, Math.max(0.4, hauteur * 0.8)),
         distance: o.distanceVue > 0 ? o.distanceVue : DISTANCE_VUE, tuilesActives: o.tuiles !== false,
-        pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux", mode: o.depart ? "libre" : "suivi",
+        pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux",
+        mode: o.depart || !_trackerActif() ? "libre" : "suivi",
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
         msIndex: 0, msTuiles: 0, compteurN: 0, compteurT0: 0, w: 0, h: 0, aBouge: false, perdu: false,
         msPerdu: 0, reprises: 0, minuterie: null, inclinaison: INCLINAISON.defaut, nord: 0, nordCalibre: false,
@@ -1093,7 +1211,7 @@
   }
 
   function suivre() {
-    if (!_e) return;
+    if (!_e || !_trackerActif()) return;
     _e.mode = "suivi";
     _e.tangage = 0;
     _majBoutonSuivre();
@@ -1135,13 +1253,19 @@
     });
     return {
       ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), perdu: e.perdu, reprises: e.reprises,
-      aBouge: e.aBouge, rapide: !!e.rapide, vue: e.vue, mode: e.mode, inclinaison: e.inclinaison,
+      aBouge: e.aBouge, rapide: !!e.rapide, suiviDispo: !!e.suiviDispo, vue: e.vue, mode: e.mode,
+      inclinaison: e.inclinaison,
       boussole: { angle: e.roseAngle, nord: e.nord, calibre: e.nordCalibre,
         mention: !!e.roseMention && !e.roseMention.hidden,
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, hauteur: e.hauteur, distance: e.distance,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
       tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte, yMax: yMax,
+      panneaux: Array.from(e.panneaux).map(function (sp) {
+        return { visible: sp.visible && !!sp.parent && sp.parent.visible, x: sp.position.x, z: sp.position.z,
+          dansVolume: !!sp.userData.poi.anneau, depthTest: sp.material.depthTest, ordre: sp.renderOrder,
+          opacite: +sp.material.opacity.toFixed(2), echelle: +sp.scale.x.toFixed(2) };
+      }),
       murDecale: e.mats.murs.polygonOffset === true,
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
@@ -1191,6 +1315,7 @@
 
   window.KtaVue3D = {
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
+    basculerSuivi: basculerSuivi,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer
   };
 })();

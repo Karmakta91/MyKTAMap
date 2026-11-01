@@ -11,7 +11,9 @@
 // message ; 20 ouvertures de suite sans « Too many active WebGL contexts » ; aucune erreur de page ni de console.
 // Aussi : pas rapide (appui long ▲, Maj) ; collisions sur 6 obstacles fictifs (pilier, pilier fin, mur, mur en
 // ligne, front, pilier perso) sous 12 angles, pas rapides et grand pas, départ collé à une face, jugées par une
-// géométrie propre au checkup ; inclinaison de la vue plongeante ; rose des vents (nord calibré ou non).
+// géométrie propre au checkup ; inclinaison de la vue plongeante ; rose des vents (nord calibré ou non) ; bascule
+// suivi / libre avec un cap d'appareil simulé, 📍 grisé tracker arrêté ; POI au centre d'un pilier visible depuis
+// la galerie, collé à la face vue.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 m et sans tuiles ;
@@ -345,6 +347,9 @@ async function mesures(page, depart) {
           { uid: "st_v3d_mur", type: "mur", level: 0,
             points: [{ x: x - 4 * sc, y: ym - m }, { x: x + 4 * sc, y: ym - m }, { x: x + 4 * sc, y: ym + m }, { x: x - 4 * sc, y: ym + m }] }
         ]);
+        // Un POI fictif au centre du pilier : son panneau doit rester visible depuis la galerie.
+        window.__v3dPoints = (window.getEditorPoints() || []).slice();
+        window.setEditorPoints(window.__v3dPoints.concat([{ id: "POI v3d", x: x, y: ym, level: 0, tags: ["danger"] }]));
         // Tracker en suivi, posé au départ : la tuile ouvre la vue là.
         window.recalerTrackerSurPoint(x, y, 0);
         if (!window.getTrackingActif()) window.startTracking();
@@ -373,6 +378,49 @@ async function mesures(page, depart) {
       verifier(depuisTuile.mode === "suivi" && Math.abs(depuisTuile.pos.x - prep.x) < 1 &&
         Math.abs(depuisTuile.pos.y - prep.y) < 1, "ouverte depuis la tuile, à la position du tracker, en suivi",
         { mode: depuisTuile.mode, pos: depuisTuile.pos });
+      // ── Mode « suivi » / « libre » : cap simulé à la source du mode plan orienté (getPlanRelHeading) ────────
+      const capVrai = await page.evaluate(function () {
+        window.__v3dCapVrai = window.getPlanRelHeading;
+        window.getPlanRelHeading = function () { return 120; };
+        return true;
+      });
+      await page.waitForTimeout(700);
+      const s1 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), b = document.querySelector('#kta-vue3d [data-v3d="suivre"]');
+        return { mode: e.mode, cap: e.cap, dispo: e.suiviDispo, presse: b.getAttribute("aria-pressed"), titre: b.title,
+          attendu: window.I18n.t("vue3d.passerLibre") };
+      });
+      verifier(capVrai && s1.mode === "suivi" && Math.abs(s1.cap - 120) < 2 && s1.dispo && s1.presse === "true" &&
+        s1.titre === s1.attendu, "suivi : la vue prend le cap de l'appareil (120° simulés)", s1);
+      await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
+      await page.evaluate(function () { window.getPlanRelHeading = function () { return 200; }; });
+      await page.waitForTimeout(500);
+      const s2 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
+      verifier(s2.mode === "libre" && Math.abs(s2.cap - 120) < 2, "📍 → libre : le cap de l'appareil n'agit plus", s2);
+      await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
+      await page.waitForTimeout(800);
+      const s3 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
+      verifier(s3.mode === "suivi" && Math.abs(s3.cap - 200) < 2, "📍 → suivi : la vue tourne avec l'appareil (200°)", s3);
+      await page.evaluate(function () { window.stopTracking(); });
+      await page.waitForTimeout(300);
+      await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
+      await page.waitForTimeout(200);
+      const s4 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), b = document.querySelector('#kta-vue3d [data-v3d="suivre"]');
+        const pile = document.getElementById("kta-toasts");
+        return { mode: e.mode, dispo: e.suiviDispo, grise: b.classList.contains("kta-v3d-inactif"), titre: b.title,
+          toast: pile ? pile.textContent : "", attendu: window.I18n.t("vue3d.suiviIndispo") };
+      });
+      verifier(s4.mode === "libre" && !s4.dispo && s4.grise && s4.titre === s4.attendu && s4.toast.indexOf(s4.attendu) >= 0,
+        "tracker arrêté : retour en libre, 📍 grisé, son toucher explique", s4);
+      await page.evaluate(function () {
+        window.getPlanRelHeading = window.__v3dCapVrai;
+        window.startTracking();
+      });
+      await page.waitForTimeout(200);
+      verifier(await page.evaluate(function () { return window.KtaVue3D.etat().suiviDispo; }) === true,
+        "tracker relancé : 📍 de nouveau disponible");
+
       await page.evaluate(function (p) { window.KtaVue3D.placer(p.x, p.y, 0); }, prep);
       await page.waitForTimeout(600);
       const e0 = await page.evaluate(function () {
@@ -390,6 +438,11 @@ async function mesures(page, depart) {
       verifier(e0.etat.yMax.murs > 0 && e0.etat.yMax.murs < e0.etat.yMax.opaque && e0.etat.murDecale,
         "mur qui traverse le pilier : plus bas (" + e0.etat.yMax.murs.toFixed(2) + " m < " +
         e0.etat.yMax.opaque.toFixed(2) + " m) et reculé en profondeur", e0.etat.yMax);
+      const pan = e0.etat.panneaux.filter(function (q) { return q.dansVolume; });
+      const zFace = prep.y / prep.sc - 3;
+      verifier(pan.length === 1 && pan[0].visible && pan[0].depthTest === false && pan[0].ordre >= 10 &&
+        pan[0].z > zFace && pan[0].z < zFace + 0.2 && Math.abs(pan[0].x - prep.x / prep.sc) < 0.05,
+        "POI au centre du pilier : panneau visible, sans test de profondeur, collé à la face vue de la galerie", pan);
       await capture(page, "fictif-yeux");
 
       // Avancer vers le sud (dégagé), puis buter contre le pilier au nord.
@@ -808,7 +861,10 @@ async function mesures(page, depart) {
         });
       }, prep);
       verifier(apres === true, "21e ouverture : la vue a un contexte vivant");
-      await page.evaluate(function () { window.setStructures([]); });
+      await page.evaluate(function () {
+        window.setStructures([]);
+        window.setEditorPoints(window.__v3dPoints || []);
+      });
     }
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
