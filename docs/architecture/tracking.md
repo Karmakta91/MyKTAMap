@@ -1247,6 +1247,19 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   écrit en clair, retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ; sans
   choix, structures si le niveau affiché en a, galerie sinon (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`).
   Basculer refait la scène.
+- **Hauteur** (décision produit) : `HAUTEUR` de la scène = `config.js > getPlanHauteurGalerie()` (2 m sans pref),
+  **le même chiffre que ⛏️ Volume exploité**. Bouton **↕** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
+  4 m par 0,1 m (`reglerHauteur(m)` : borné, arrondi, `setPlanHauteurGalerie`) ; une valeur saisie hors bornes dans
+  ⛏️ est montrée telle quelle jusqu'au premier − / +. Les tuiles sont refaites sur place (`_refaireTuiles` : même
+  index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais à 60 %, rideaux, tubes, plafond, œil
+  (`_oeil`) et panneaux suivent.
+- **Affichage ≡** (décision produit) : cases POI (tous, puis par premier tag, comme `editor.js` en 2D), tracés par
+  type (session et calques, sans `jonction` ni `itinerary`, libellés et pastilles de la légende) et itinéraire.
+  ⚠️ contrat : l'état (`_e.aff`) part de `_ktaRuntimeFilters` (`tags`, `roadTypes`) à l'ouverture, l'itinéraire
+  affiché (toujours visible en 2D) ; il reste propre à la 3D tant qu'elle est ouverte et **n'écrit jamais** les
+  filtres 2D. Masquer ne retire que le dessin, au moment de construire les tuiles (`_poiMontre`, `_traceMontre`) :
+  panneaux, rubans (structures), liseré (galerie) ; collisions, parois des tubes et passages 🪜 restent.
+  `afficher(famille, cle, visible)` (checkup).
 - **Emprise des galeries** (`js/galerieEmprise.js`, `window.KtaGalerie`, chargé au démarrage pour servir aussi le pas) :
   graphe plan des tracés du niveau (sommets confondus à 15 cm, croisements coupés en nœuds, bout libre arrêté à moins
   de 0,5 m de la paroi d'un autre tracé raccordé à lui), largeur par type (`KtaGalerie.largeur` : principal 2,5 m,
@@ -1264,8 +1277,11 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais du niveau. Niveau sans galerie :
   rien n'arrête. Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
 - **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
-  couture) ; parois = strates calcaires (`_strates`, bandes horizontales de 3 à 30 px sur toute la hauteur, teintes
-  crème à ocre, joints sombres, ondulation, canvas 64 × 256, aucune image) ; liseré au sol de 15 cm, couleur de la
+  couture) ; parois = moellons de calcaire taillés (`_moellons`, constantes `MOELLON` / `MOELLONS_MOTIF` : blocs
+  de 40 × 25 cm ± 25 % en longueur, assises horizontales à joints décalés, teinte par bloc autour de
+  `MOELLON.couleur`, plus claire et plus grise que le sol, mortier plus sombre ou plus clair, grain ; motif de
+  1,6 × 1 m à 160 px/m, canvas, aucune image), texture **en mètres dans les deux sens** (`_paroi` : jamais étirée à la
+  hauteur, une assise part du sol) ; liseré au sol de 15 cm, couleur de la
   légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est jamais dessiné en 3D (le passage se fait par 🪜). Structures (intégrées et perso)
   ni dessinées ni bloquantes. Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
   à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
@@ -1335,7 +1351,11 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   coude passés, remblais qui arrête, zones coupées au tube, rideau en travers, POI à 2 m montré et à 5 m masqué,
   interrupteur exclusif retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
   du panneau, suivi sans 🪜, tracker et carte inchangés) ; sortie : carte au niveau et à la place de la 3D (libre,
-  après Non, en suivi), Oui recale aussi le niveau. `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
+  après Non, en suivi), Oui recale aussi le niveau. Hauteur ↕ (structures et galerie) : réglée à 3 m → piliers,
+  murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getPlanHauteurGalerie()` = 3, relue à la
+  réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 4 m. Affichage ≡ : POI masqués → plus de
+  panneau, type de tracé masqué → plus de liseré (galerie) ni de ruban (structures), itinéraire, état parti des
+  filtres 2D sans les modifier, collisions inchangées. `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
   `smoke.js` : rien de la 3D au démarrage.
 - **Non couvert** : aucun vrai iPhone (images/s, mémoire, batterie, perte de contexte réelle), aucun plan dense
   réel ; mode galerie jamais vu sur un relevé réel (tracés dessinés à la main : raccords imprécis, sommets serrés).

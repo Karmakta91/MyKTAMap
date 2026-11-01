@@ -52,6 +52,18 @@
 /* Bouton suivi / libre : le mode est écrit (📍 Suivi, 🕹️ Libre), largeur à son texte. */
 .kta-v3d-btn.kta-v3d-btn-mode { width: auto; padding: 0 12px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 
+/* Réglage de la hauteur (↕) : − valeur +, sur sa propre ligne sous la rangée du haut, calé à droite. */
+.kta-v3d-hauteur {
+  flex-basis: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+}
+.kta-v3d-hauteur[hidden] { display: none; }
+.kta-v3d-hauteur-valeur {
+  min-width: 72px; padding: 8px 10px; border-radius: 10px; text-align: center;
+  background: var(--kta-surface); color: var(--kta-texte); font-size: 16px; font-weight: 600;
+}
+/* Borne atteinte : grisé sans opacité. */
+.kta-v3d-btn:disabled { color: var(--kta-texte-3); cursor: default; }
+
 /* Rose des vents (icon/compass.svg, tournée par vue3d.js > _majBoussole) en bas à gauche, hors du pavé, sur la
    même carte que la petite boussole du mode plan (style.css > .kta-compass-widget) : surface à 88 %, liseré doré. */
 .kta-v3d-boussole {
@@ -76,3 +88,19 @@
 .kta-v3d-niveaux-marque {
   font-size: 26px; line-height: 1; padding: 4px 6px; border-radius: 10px; background: var(--kta-surface);
 }
+
+/* Affichage (≡) : cases POI / tracés / itinéraire sous la rangée du haut, calées à droite, défilantes. */
+.kta-v3d-affichage { flex-basis: 100%; display: flex; justify-content: flex-end; }
+.kta-v3d-aff-liste {
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+  width: 280px; max-width: 100%; max-height: 55vh; overflow-y: auto; touch-action: pan-y;
+  padding: 8px 10px; border-radius: 12px; border: 1px solid var(--kta-texte-3);
+  background: var(--kta-surface); color: var(--kta-texte); font-size: 15px;
+}
+.kta-v3d-affichage[hidden] { display: none; }
+.kta-v3d-aff-titre { margin: 6px 0 2px; color: var(--kta-accent-texte); font-weight: 600; font-size: 14px; }
+.kta-v3d-aff-ligne { display: flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+.kta-v3d-aff-ligne input { width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--kta-primaire); }
+.kta-v3d-aff-ico { width: 22px; height: 22px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+/* Tags grisés quand « Tous les POI » est décoché : texte-3, sans opacité. */
+.kta-v3d-aff-ligne.kta-v3d-aff-inactif { color: var(--kta-texte-3); cursor: default; }

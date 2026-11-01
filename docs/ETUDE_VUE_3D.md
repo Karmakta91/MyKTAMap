@@ -139,8 +139,10 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
     aucune autre pièce) : tubes coupés au bord des dalles, aucune paroi qui en traverse une autre, tracés presque
     parallèles fondus en une galerie. Sol et plafond = les pièces, superposées sans couture (texture en coordonnées
     monde).
-  - **Matériaux** : parois en strates de calcaire (bandes horizontales de 3 à 30 px sur la hauteur, crème à ocre, joints
-    sombres, canvas 64 × 256), sol et plafond au grain calcaire, liseré au sol de 15 cm à la couleur de la légende.
+  - **Matériaux** : parois en moellons de calcaire taillés, à la manière des galeries consolidées des carrières (blocs
+    de 40 × 25 cm, assises horizontales à joints décalés, teinte par bloc, mortier plus sombre ou plus clair, grain ;
+    motif de 1,6 × 1 m répété en mètres, canvas), sol et plafond au grain calcaire (la paroi, plus claire et plus
+    grise, s'en détache), liseré au sol de 15 cm à la couleur de la légende.
   - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais à 60 %, faces seulement côté galerie,
     bloquant ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le contour coupe l'axe ;
     effondrement et perso au sol. **POI** à moins de 3 m de l'axe, ramenés contre la paroi, sinon masqués.
@@ -299,7 +301,7 @@ constructions de tuiles (3 par image au plus).
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
 | 8 | Distance de vue | **a** : 30 m fixes |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
-| A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🧱 / 🚇 écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **strates de calcaire**, sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
+| A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🧱 / 🚇 écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
 | B | Passer par un POI jonction (QCM du 01/11/2026) | Bouton 🪜 à moins de 2 m, **▲ / ▼** vers le niveau lié suivant, liste au-delà ; toucher le panneau = même chose ; arrivée au raccord validé ou à la même position, cap gardé ; tracé `jonction` **dans les deux sens** ; **le tracker ne bouge pas**, « Je suis ici ? » recale aussi le niveau ; en suivi, pas de 🪜 ; niveau de la carte 2D inchangé pendant la 3D |
 | — | Sortie de la 3D (demande du 01/11/2026) | La carte 2D se place là où l'on était en 3D : niveau de la 3D, centre sur la position, quelle que soit la réponse à « Je suis ici ? » |
 
