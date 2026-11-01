@@ -820,7 +820,7 @@ El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica 
 
 ### ✏️ Seleccionar por zona, 🗑️ eliminar en lote
 
-El mismo aviso sirve también para **eliminar** de golpe, por ejemplo todo lo que una importación colocó mal en un sector. También se llega sin pasar por un objeto: en 🛣️ Trazados, ⬛ Zonas o 🏛️ Estructuras, **🧹 Borrar → 🎯 Seleccionar** y luego **✏️ Por zona** en el aviso de abajo: el trazado de la zona empieza enseguida, y la confirmación solo lleva marcada de antemano la familia del grupo (las demás siguen propuestas, sin marcar).
+El mismo aviso sirve también para **eliminar** de golpe, por ejemplo todo lo que una importación colocó mal en un sector. También se llega sin pasar por un objeto: en 🛣️ Trazados, ⬛ Zonas o 🏛️ Estructuras, **🧹 Borrar → ✏️ Borrar por zona** (o **🎯 Seleccionar** y luego **✏️ Por zona** en el aviso de abajo): el trazado de la zona empieza enseguida, y la confirmación solo lleva marcada de antemano la familia del grupo (las demás siguen propuestas, sin marcar).
 
 - **✏️ Seleccionar por zona**: toca los vértices de la zona en el mapa (como una medida ♦️ Superficie; **↩️ Último vértice** corrige un toque fallido) y luego **✅ Usar la zona**. Tu medida ♦️ en curso no se pierde: vuelve tal cual.
 - Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los del **nivel mostrado**. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.

@@ -820,7 +820,7 @@ Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et expliqu
 
 ### ✏️ Sélectionner par zone, 🗑️ supprimer en lot
 
-Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur. On y arrive aussi sans passer par un objet : dans 🛣️ Tracés, ⬛ Zones ou 🏛️ Structures, **🧹 Effacer → 🎯 Sélectionner** puis **✏️ Par zone** dans le bandeau du bas : le tracé de la zone démarre tout de suite, et la confirmation n'a d'avance que la famille du groupe cochée (les autres restent proposées, décochées).
+Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur. On y arrive aussi sans passer par un objet : dans 🛣️ Tracés, ⬛ Zones ou 🏛️ Structures, **🧹 Effacer → ✏️ Effacer par zone** (ou **🎯 Sélectionner** puis **✏️ Par zone** dans le bandeau du bas) : le tracé de la zone démarre tout de suite, et la confirmation n'a d'avance que la famille du groupe cochée (les autres restent proposées, décochées).
 
 - **✏️ Sélectionner par zone** : tape les sommets de la zone sur la carte (comme une mesure ♦️ Surface ; **↩️ Dernier sommet** corrige un tap raté), puis **✅ Prendre la zone**. Ta mesure ♦️ en cours n'est pas perdue : elle revient telle quelle.
 - Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux du **niveau affiché**. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.

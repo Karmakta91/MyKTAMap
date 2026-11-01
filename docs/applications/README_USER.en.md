@@ -820,7 +820,7 @@ The batch does not mix lines and closed surfaces (the banner refuses and explain
 
 ### ✏️ Select by area, 🗑️ delete as a batch
 
-The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector. You can also get there without going through an object: in 🛣️ Paths, ⬛ Zones or 🏛️ Structures, **🧹 Erase → 🎯 Select** then **✏️ By area** in the bottom banner: drawing the area starts right away, and the confirmation only has the group's family ticked in advance (the others are still offered, unticked).
+The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector. You can also get there without going through an object: in 🛣️ Paths, ⬛ Zones or 🏛️ Structures, **🧹 Erase → ✏️ Erase by area** (or **🎯 Select** then **✏️ By area** in the bottom banner): drawing the area starts right away, and the confirmation only has the group's family ticked in advance (the others are still offered, unticked).
 
 - **✏️ Select by area**: tap the corners of the area on the map (like a ♦️ Surface measure; **↩️ Last corner** fixes a missed tap), then **✅ Use this area**. Your current ♦️ measure is not lost: it comes back as it was.
 - Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **displayed level**. An object straddling the edge is not taken, and nothing is ever cut.

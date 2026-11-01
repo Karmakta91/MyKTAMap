@@ -2711,6 +2711,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                     window.activerModeSuppressionTraceClic();
                   }
                 } },
+              _choixEffacerParZone("roads"),
               { label: window.I18n.t("ui.trace.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
@@ -2852,6 +2853,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                     window.activerModeSuppressionZoneClic();
                   }
                 } },
+              _choixEffacerParZone("zones"),
               { label: window.I18n.t("ui.zone.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
@@ -3011,6 +3013,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                     window.activerModeSuppressionStructureClic();
                   }
                 } },
+              _choixEffacerParZone("structures"),
               { label: window.I18n.t("ui.struct.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.struct.eraseAllDesc", { n: nbSelectables }),
                 onClick: function() {
@@ -3219,6 +3222,17 @@ function _onSuppPopupOpen(e) {
   } catch(err) {
     console.warn("[Suppr] rejeu clic via popupopen échoué :", err);
   }
+}
+// Ligne « ✏️ Effacer par zone » de la fenêtre 🧹 Effacer des trois groupes : même chemin que le bouton du bandeau
+// (sélection multiple sans graine, tracé de zone lancé, seule la famille du groupe cochée).
+function _choixEffacerParZone(famille) {
+  return { label: window.I18n.t("ui.choix.eraseZone"), icon: "✏️",
+    desc: window.I18n.t("ui.choix.eraseZoneDesc"),
+    onClick: function() {
+      if (window.SelectionMulti && typeof window.SelectionMulti.ouvrirZone === "function") {
+        window.SelectionMulti.ouvrirZone({ familles: [famille] });
+      }
+    } };
 }
 // « ✏️ Par zone » des trois modes « supprimer au clic » : quitte le mode (garde des popups comprise), puis la sélection
 // multiple sans graine trace une zone ; la confirmation n'a d'emblée que la famille du mode cochée.

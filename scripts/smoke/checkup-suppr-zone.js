@@ -374,6 +374,45 @@ async function lireFenetre(page) {
       }
     }
 
+    // ── 7 bis. Ligne « ✏️ Effacer par zone » de la fenêtre 🧹 Effacer des 3 groupes (même ordre que la barre) ──
+    const FAMS = ["roads", "zones", "structures"];
+    for (let i = 0; i < FAMS.length; i++) {
+      const fam = FAMS[i];
+      const r = await page.evaluate(function (i) {
+        // Groupes en menu (flyout) : bouton principal du groupe, puis 🧹 Effacer dans le menu.
+        const grp = window._groupes[["traces", "zones", "structures"][i]];
+        if (!grp || !grp.btnPrincipal) return { groupe: false };
+        grp.btnPrincipal.click();
+        const titre = window.I18n.t("ui.btn.effacer");
+        const eff = Array.from(document.querySelectorAll(".kta-group-flyout .kta-group-flyout-btn"))
+          .find(function (x) { return x.textContent.indexOf(titre) >= 0 || x.title === titre; });
+        if (!eff) return { effacer: false };
+        eff.click();
+        const lignes = Array.from(document.querySelectorAll('.kta-modal-overlay button[id^="_choix-"]'));
+        const b = lignes.find(function (x) { return /Effacer par zone/.test(x.textContent); });
+        if (!b) return { effacer: subs.length, ligne: false, lignes: lignes.map(function (x) { return x.textContent.trim().slice(0, 30); }) };
+        b.click();
+        return { ligne: true, actif: window.SelectionMulti.estActif(), vide: window.SelectionMulti.liste().length === 0,
+          trace: window.KtaSelectionZone.enCours() };
+      }, i);
+      verifier(r.ligne && r.actif && r.vide && r.trace,
+        fam + " : 🧹 Effacer → « ✏️ Effacer par zone » ouvre la sélection sans graine, tracé lancé", r);
+      if (!r.ligne) continue;
+      await zoneDirecte(page);
+      await page.evaluate(function () { document.getElementById("kta-selm-suppr").click(); });
+      const f = await lireFenetre(page);
+      const attendu = ["editorPoints", "roads", "zones", "structures"].map(function (x) {
+        return x + ":" + (x === fam) + ":false";
+      });
+      verifier(JSON.stringify(f.cases) === JSON.stringify(attendu),
+        fam + " : depuis 🧹 Effacer, seule la famille du groupe est cochée", f.cases);
+      await page.evaluate(function () {
+        document.getElementById("kta-confirm-non").click();
+        window.SelectionMulti.fermer();
+      });
+      await page.waitForTimeout(300);
+    }
+
     // ── 8. Prise d'extension factice (plan traité comme un plan d'extension) : refuse, puis permet ──
     await page.evaluate(function () {
       const id = window._currentLoadedPlanId, R = window.PlanRegistry, orig = R.findById;
