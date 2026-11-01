@@ -870,13 +870,12 @@ function startTracking() {
   // ⚠️ La timeline n'est PAS vidée au Play : elle est CUMULATIVE (survit au reload et aux cycles Play/Stop,
   // heatmap multi-sessions). La reprise est marquée par une ancre "start" (rupture de segment au rendu). Tracé
   // vierge = reset de position / « effacer l'historique ».
-  if (_trackingStartTs == null) _trackingStartTs = Date.now();
-  _pushTimelinePoint("start");
-
-  // Le tracker démarre sur le niveau actif.
+  // Le tracker démarre sur le niveau actif, posé AVANT l'ancre "start" (elle lit trackerLevel).
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
     trackerLevel = window.APP_CONFIG.activeLevel || 0;
   }
+  if (_trackingStartTs == null) _trackingStartTs = Date.now();
+  _pushTimelinePoint("start");
   _appliquerFiltreNiveauSurTracker();
   // Rotation tout de suite si le cap est déjà connu (sinon au prochain deviceorientation).
   _applyRotationToTrackerMarker();
@@ -1335,13 +1334,8 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (polyline) polyline.setLatLngs([]);
   stepCount = 0;
 
-  const _ancre = _pushTimelinePoint(
-    "recalage",
-    (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
-  );
-  // Distance depuis l'ancre précédente si le podomètre n'a rien vu entre les deux.
-  if (_ancre) { try { _estimerSegmentDepuisAncre(_ancre); } catch(e) {} }
   // Niveau du point s'il en porte un, sinon le niveau actif (le point cliqué est visible).
+  // ⚠️ Posé AVANT l'ancre : _pushTimelinePoint lit trackerLevel, l'ancre porte le niveau d'ARRIVÉE (replay, CSV).
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
     if (Number.isInteger(level)) {
       trackerLevel = level;
@@ -1350,6 +1344,12 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
     }
     console.log("[Tracking] Recalé sur point au niveau :", trackerLevel);
   }
+  const _ancre = _pushTimelinePoint(
+    "recalage",
+    (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
+  );
+  // Distance depuis l'ancre précédente si le podomètre n'a rien vu entre les deux.
+  if (_ancre) { try { _estimerSegmentDepuisAncre(_ancre); } catch(e) {} }
   updateMap();
   _appliquerFiltreNiveauSurTracker();
   if (window.modeRecalage) window.modeRecalage = false;

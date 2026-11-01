@@ -302,10 +302,31 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
     const recu2 = await page.evaluate(function () { return window._ktaPickRecu; });
     verifier(!e.picker && recu2 && proche(recu2, xy), "position rendue à l'appelant", recu2);
     verifier(e.tracker === -1 && e.actif === -1 && proche(e.pos, xy), "tracker et niveau affiché à −1", e);
-    // 🩸 Le `level` de cette ancre est celui d'AVANT (recalerTrackerSurPoint pousse l'ancre puis change de
-    // niveau, comme pour « Je suis ici ») : non vérifié ici.
-    verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, xy),
-      "timeline : recalage src point (recalerTrackerSurPoint, inchangé)", e.dernier);
+    verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, xy) &&
+      e.dernier.level === -1, "timeline : ancre recalage src point au niveau d'arrivée −1", e.dernier);
+
+    console.log("\n── 7 bis. « 📍 Je suis ici » sur un POI du −1 (tracker au niveau 0 avant) ──");
+    await poserCas(page, P, { points: [
+      { id: "SalleIci", nom: "SalleIci", uid: "pt_salleici", tags: ["salle"], level: -1, d: [6, 0] }
+    ] });
+    await page.evaluate(function (P) { window.recalerTrackerSurPoint(P.x, P.y, 0); }, P);
+    e = await etat(page);
+    verifier(e.tracker === 0 && e.dernier && e.dernier.level === 0, "tracker remis au niveau 0", e.dernier);
+    await page.evaluate(function () { window.ktaSetActiveLevel(-1, { source: "checkup" }); });
+    await page.waitForTimeout(400);
+    const xyPoi = await cliquerCarte(page, P, 6, 0);
+    const ici = page.locator(".kta-popup-point .kta-popup-btn-here").first();
+    if (await ici.count()) {
+      await ici.click();
+      await page.waitForTimeout(500);
+      e = await etat(page);
+      verifier(e.tracker === -1 && proche(e.pos, xyPoi), "tracker recalé sur le POI, au niveau −1", e);
+      verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && e.dernier.level === -1,
+        "timeline : ancre « Je suis ici » au niveau d'arrivée −1", e.dernier);
+    } else {
+      pb("fiche du POI non ouverte par le clic : « Je suis ici » non testé");
+    }
+    await page.evaluate(function () { try { window.map.closePopup(); } catch (err) {} });
 
     console.log("\n── 8. Picker sans recalage (recaler: false) : jamais de fenêtre ──");
     await page.evaluate(function () {

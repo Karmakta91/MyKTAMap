@@ -760,8 +760,9 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
 - 🩸 Toute fenêtre `kta-readme-modal-overlay` coupe les modes de la barre (`interface.js > _initCoupeModesSurModale`) :
   la question porte l'id `kta-recal-niveau`, exclu de cette coupure, sinon Annuler laissait le mode éteint.
 - Non concernés : « 📍 Je suis ici » d'un point (le niveau du point fait foi), arrivée de portail, Mode Secours.
-- 🩸 `recalerTrackerSurPoint` pousse son ancre `recalage` **avant** de changer `trackerLevel` : l'ancre porte le
-  niveau d'avant (picker comme « Je suis ici »). Le clic de recalage, lui, change le niveau d'abord.
+- ⚠️ **Niveau de l'ancre** : `_pushTimelinePoint` lit `trackerLevel`. Tout appelant (clic de recalage,
+  `recalerTrackerSurPoint`, ancre `start` de `startTracking`) pose le niveau **avant** de pousser l'ancre : elle
+  porte le niveau d'arrivée (replay, export CSV).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
