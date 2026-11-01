@@ -108,6 +108,11 @@
 
 ## Entrant
 
+- **« Mettre à jour le plan » : groupes nommés par l'id du type perso** — un groupe d'objets d'un type perso s'affiche
+  « cust-… · 〰️ Tracés » au lieu du nom de la légende (vu avec 16 types perso : impossible de savoir lequel est lequel).
+  `qui: Claude · action: nommer le groupe par findCustomEntry(type).label dans js/majPlan.js · depuis: 01/11/2026
+  · taille: XS`
+
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
