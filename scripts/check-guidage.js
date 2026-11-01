@@ -592,7 +592,7 @@ async function evacuationBrancard() {
     const ilJ = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
     t("câblage inter-plans : l'étape distante passe les profondeurs de son plan",
       ip.includes("profondeurs: ctx.profondeurs") && ip.includes("profondeurs: routingB.profondeurs || {}") &&
-      ilJ.includes("return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };"));
+      ilJ.includes("return { roads: roads, zones: zones, murs: murs, scale: scale, profondeurs: profondeurs };"));
 
     // Feuille de route : arrêt au portail, puis UNE ligne par plan suivant (`road.suite`).
     const w2 = bac([R("principal", [[0, 500], [800, 500]])]);

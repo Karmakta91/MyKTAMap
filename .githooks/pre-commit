@@ -252,6 +252,9 @@ node scripts/check-secours-balayage.js || exit $?
 # 🔒 POI entre niveaux (jes / jpe / jps) : jamais une sortie de surface ; jonctions dans le graphe.
 node scripts/check-poi-jonction.js || exit $?
 
+# Mur en ligne : structure en ligne qui coupe l'itineraire (meme niveau), levee avec les zones inaccessibles.
+node scripts/check-mur-ligne.js || exit $?
+
 # Parite des 3 guides utilisateur (memes sections, aucune traduction sous 70 % du FR).
 node scripts/check-doc-langues.js || exit $?
 
