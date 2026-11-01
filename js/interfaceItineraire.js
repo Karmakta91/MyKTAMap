@@ -158,7 +158,8 @@ function _confirmRemplacerItineraire(onConfirm, actif) {
 
 // « Y aller » : du tracker vers ce point ; confirme si un itinéraire est actif.
 // `opts.origine` {x, y, level?} : origine imposée (la Sortie d'urgence passe celle de SON calcul, le picker
-// « Où es-tu ? » le niveau choisi). ⚠️ `level` part sur le waypoint de départ : calage sur une galerie de CE niveau.
+// « Où es-tu ? » le niveau choisi). ⚠️ `level` part sur le waypoint de départ : calage sur une galerie de CE niveau ;
+// sans origine imposée, le départ prend le niveau du tracker. `opts.niveauCible` : niveau de la cible (sortie visée).
 // Règle « instant T » (décision produit) : suivi actif OU position confirmée → départ du tracker sans
 // question ; jamais confirmée → picker « Où es-tu ? » qui recale le tracker, puis retour ici.
 // Options d'évitement : préférences de l'itinéraire, ou contraintes d'une évacuation (Mode Secours,
@@ -228,7 +229,10 @@ window.itineraireYAller = function(x, y, nom, opts) {
       },
       { x: x, y: y, source: "search", label: labelPoint }
     ];
-    if (origineForcee && Number.isInteger(origineForcee.level)) waypoints[0].level = origineForcee.level;
+    // Départ au niveau de l'origine imposée, sinon à celui du tracker (plan multi-niveau).
+    const lvlDepart = origineForcee ? origineForcee.level : _niveauTracker();
+    if (Number.isInteger(lvlDepart)) waypoints[0].level = lvlDepart;
+    if (Number.isInteger(opts.niveauCible)) waypoints[1].level = opts.niveauCible;
 
     try {
       // Préférences d'évitement de la modale réutilisées pour cohérence.
@@ -857,9 +861,10 @@ function _couperDerriere(road, x, y) {
   return true;
 }
 
-// Niveau du tracker qui vient d'être recalé (plan multi-niveau), sinon undefined : départ de la replanification,
-// comme le picker « Où es-tu ? » (« Je suis ici » de l'alerte du guidage) le rend à « Y aller ».
-function _niveauTrackerRecale() {
+// Niveau du tracker (plan multi-niveau), sinon undefined : départ de tout itinéraire qui part de sa position
+// (« Y aller », replanification, « Recalculer d'ici », « Ma position » en étape), comme le picker « Où es-tu ? »
+// rend le niveau choisi.
+function _niveauTracker() {
   if (!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)) return undefined;
   const n = (typeof window.getTrackerLevel === "function") ? window.getTrackerLevel() : null;
   return Number.isInteger(n) ? n : undefined;
@@ -927,11 +932,11 @@ window._onTrackerRecale = function(x, y, source, opts) {
           return;
         }
         if (!ok) { _toastIti(window.I18n.t("iti.replan.skipped"), "info"); return; }
-        _replanifierDepuis(x, y, _niveauTrackerRecale());
+        _replanifierDepuis(x, y, _niveauTracker());
       });
       return;
     }
-    _replanifierDepuis(x, y, _niveauTrackerRecale());
+    _replanifierDepuis(x, y, _niveauTracker());
   }, 500);
 };
 
@@ -958,9 +963,11 @@ window.itineraireActiverRoad = function(newRoad, opts) {
   else activer();
 };
 
-window.itineraireReplanifierDepuis = function(px, py) {
+// ⚠️ (px, py) = position du tracker (guidage, Mode Secours) : le départ prend son niveau, sauf `niveau` donné.
+window.itineraireReplanifierDepuis = function(px, py, niveau) {
   if (typeof px !== "number" || typeof py !== "number") return;
-  return _replanifierDepuis(px, py);   // la promesse : un appelant peut attendre le nouveau tracé
+  // la promesse : un appelant peut attendre le nouveau tracé
+  return _replanifierDepuis(px, py, Number.isInteger(niveau) ? niveau : _niveauTracker());
 };
 
 // `niveau` (facultatif) : niveau du départ, posé sur le waypoint d'origine (calage sur une galerie de ce niveau).
@@ -1963,12 +1970,15 @@ window.ouvrirItinerairModal = function() {
         window.ktaAlerte(window.I18n.t("iti.err.trackerPos"));
         return;
       }
-      _itineraryWaypoints.push({
+      const wpTracker = {
         x:      pos.x,
         y:      pos.y,
         source: "tracker",
         label:  window.I18n.t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) })
-      });
+      };
+      const lvlTracker = _niveauTracker();
+      if (Number.isInteger(lvlTracker)) wpTracker.level = lvlTracker;
+      _itineraryWaypoints.push(wpTracker);
       _ajouterWaypointVisuel({ x: pos.x, y: pos.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
       _majPanneauFloaterCount();

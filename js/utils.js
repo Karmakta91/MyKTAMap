@@ -1283,6 +1283,17 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const _act = function(action) {
     return 'data-kta-act="' + action + '" data-kta-id="' + _escAttr(id) + '" data-kta-x="' + x + '" data-kta-y="' + y + '" ';
   };
+  // Niveau où « 📍 Je suis ici » place le tracker (plan multi-niveau) : celui du POI, pas le niveau affiché
+  // (un POI du −1 visible pendant qu'on regarde le 0). Jonction : le niveau affiché s'il en fait partie, sinon
+  // son niveau propre (`level`). Mono-niveau : rien, recalerTrackerSurPoint garde sa règle.
+  let _niveauIci = "";
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+    const _pjI = window.KtaPoiJonction;
+    const _actif = window.APP_CONFIG.activeLevel;
+    const _n = (_pjI && _pjI.estJonction(point) && _pjI.niveaux(point).indexOf(_actif) >= 0) ? _actif
+      : (Number.isInteger(point.level) ? point.level : 0);
+    _niveauIci = 'data-kta-niveau="' + _n + '" ';
+  }
   // Favori : layerInfo vient de l'appelant (editor.js → "editor", ajouterPointsDepuisJSON → id du data layer) ;
   // à défaut, déduit de isEditorSession.
   const _layerId    = (layerInfo && layerInfo.layerId)    || (isEditorSession ? "editor" : "data");
@@ -1371,7 +1382,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            dangerHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
-             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +
+             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") + _niveauIci +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
                window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
@@ -1420,7 +1431,11 @@ function _ktaPopupAction(e) {
     case "supprimer":     return appel("supprimerPointEditor", id, x, y);
     case "gps":           return appel("kta_copierGps", d.ktaGps || "");
     case "tts":           return appel("kta_lireNotePopup", b);
-    case "ici":           return appel("recalerTrackerSurPoint", x, y);
+    case "ici": {
+      // data-kta-niveau absent (mono-niveau, étape posée au clic) : recalerTrackerSurPoint prend le niveau actif.
+      const n = parseInt(d.ktaNiveau, 10);
+      return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined);
+    }
     case "aller":         return appel("itineraireYAller", x, y, d.ktaNom || "");
     case "etape":         return appel("itineraireAjouterWaypoint", x, y, d.ktaNom || "");
     case "favori":        return appel("toggleFavoriPoint", id, x, y, d.ktaNom || "", d.ktaTag || "default",

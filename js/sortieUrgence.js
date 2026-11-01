@@ -374,9 +374,11 @@
       const m = _lastResultats.meta || {};
       // Évacuation : tracé et recalculs gardent contraintes et accès du scénario (sinon le tracé diffère du classé).
       const evac = (m.contraintes || m.supp) ? { contraintes: m.contraintes || null, supp: m.supp || null } : null;
+      // niveauCible : la route finit sur une galerie du niveau de la sortie, comme le classement l'a mesurée.
       window.itineraireYAller(r.point.x, r.point.y,
         r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
-        { origine: _lastResultats.origine, urgence: true, evacuation: evac });
+        { origine: _lastResultats.origine, urgence: true, evacuation: evac,
+          niveauCible: Number.isInteger(r.point.level) ? r.point.level : undefined });
     } else {
       window.ktaAlerte(window.I18n.t("sortie.erreur.itineraireIndispo"), { type: "erreur" });
     }
@@ -395,6 +397,16 @@
   // part de la position du tracker, SANS question ; jamais confirmée → SEUL cas où l'on demande « Où es-tu ? »
   // (picker partagé, qui recale aussi le tracker). 🩸 getTrackingPosition() rend TOUJOURS une position (le départ
   // du plan) : se fier à elle seule donnerait la sortie la plus proche de l'ENTRÉE.
+  // Origine = position du tracker, avec son niveau sur un plan multi-niveau (calage sur une galerie de CE niveau,
+  // gardé par « Tracer »).
+  function _origineTracker(pos) {
+    const o = { x: pos.x, y: pos.y };
+    const n = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true &&
+               typeof window.getTrackerLevel === "function") ? window.getTrackerLevel() : null;
+    if (Number.isInteger(n)) o.level = n;
+    return o;
+  }
+
   function declencher() {
     const pos = (typeof window.getTrackingPosition === "function")
       ? window.getTrackingPosition()
@@ -404,7 +416,7 @@
       : null;
     const posOk = !!(pos && typeof pos.x === "number" && typeof pos.y === "number");
     if (posOk && (!etat || etat.suiviActif || etat.confirmee)) {
-      _lancer(pos, {
+      _lancer(_origineTracker(pos), {
         mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
         ts:   etat ? etat.ts : null
       });
@@ -492,7 +504,7 @@
     const road = (typeof window.getRoads === "function" ? window.getRoads() : [])
       .find(function(r) { return r && r.type === "itinerary" && r.evacuation; });
     const evac = road ? road.evacuation : null;
-    _lancer({ x: pos.x, y: pos.y }, {
+    _lancer(_origineTracker(pos), {
       mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
       ts:   etat ? etat.ts : null,
       supp: evac ? evac.supp : null,

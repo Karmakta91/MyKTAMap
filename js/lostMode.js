@@ -979,7 +979,11 @@
         pos = window.getTrackingPosition();
       }
       if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-        _selectionnerPosition({ x: pos.x, y: pos.y, level: _niveauAffiche(), label: _t("lost.pos.trackerLabel") });
+        // Position du tracker = son niveau (plan multi-niveau), pas le niveau regardé.
+        const lvlTr = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true &&
+                       typeof window.getTrackerLevel === "function") ? window.getTrackerLevel() : null;
+        _selectionnerPosition({ x: pos.x, y: pos.y, level: Number.isInteger(lvlTr) ? lvlTr : _niveauAffiche(),
+                                label: _t("lost.pos.trackerLabel") });
       } else if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(_t("lost.err.noTracker"), "warn");
       } else {

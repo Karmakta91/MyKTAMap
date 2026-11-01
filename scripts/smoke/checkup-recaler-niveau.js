@@ -12,7 +12,10 @@
 // jonction (jpe 0 + −2) → 0 et −2 ; picker « Où es-tu ? » (utils.js > ktaDemanderPositionCarte) : même fenêtre,
 // Annuler laisse le picker armé, choix −1 → recalé à −1 et `niveau: -1` rendu ; ancres de timeline (picker,
 // « Je suis ici » d'un POI du −1) au niveau d'arrivée ; « Y aller » et sortie d'urgence depuis le picker avec le
-// choix −1 → la route part du −1 (tracés superposés 0 / −1, jonction) ; mono-niveau → jamais de fenêtre.
+// choix −1 → la route part du −1 (tracés superposés 0 / −1, jonction) ; « Je suis ici » d'un POI du −1 pendant
+// que le 0 est affiché → tracker au −1 (POI jonction : niveau affiché s'il le dessert) ; tracker au −1 : « Y aller »,
+// « Recalculer d'ici » et sortie d'urgence partent du −1 ; « Tracer » vers une sortie du −1 finit sur le −1 ;
+// mono-niveau → jamais de fenêtre.
 // Usage : node scripts/smoke/checkup-recaler-niveau.js (SMOKE_PORT pour une autre copie)
 // Doc : docs/architecture/tracking.md
 // =====================================================================
@@ -167,6 +170,18 @@ async function choisir(page, niveau) {
 async function annuler(page) {
   await page.locator("#kta-confirm-non").click();
   await page.waitForTimeout(400);
+}
+
+// Sortie d'urgence lancée : attend le classement, « Tracer » la meilleure, attend l'itinéraire.
+async function attendreSortie(page) {
+  await attendre(page, function () {
+    return !!document.querySelector(".kta-sortie-urgence-corps") &&
+      !document.querySelector(".kta-sortie-urgence-corps .kta-sortie-loader");
+  }, 20000).catch(function () {});
+  await page.evaluate(function () { window.SortieUrgence._tracerMeilleure(); });
+  await attendre(page, function () {
+    return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
+  }, 15000).catch(function () {});
 }
 
 const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && Math.abs(a.y - b.y) < 0.6; };
@@ -425,6 +440,110 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
     verifier(it && it.wp0 && it.wp0.level === -1, "« Tracer » : waypoint de départ au niveau −1", it && it.wp0);
     verifier(it && it.p0 && it.p0.level === -1 && it.niveaux.indexOf(0) >= 0,
       "la route d'évacuation part du −1 et passe par la jonction", it && it.niveaux);
+    await effacerItineraire();
+    await page.evaluate(function () { if (window.SortieUrgence.isActive()) window.SortieUrgence._fermer(); });
+
+    console.log("\n── 12. « 📍 Je suis ici » sur un POI du −1 pendant que le 0 est affiché ──");
+    await poserCas(page, P, { points: [
+      { id: "SalleIci2", nom: "SalleIci2", uid: "pt_salleici2", tags: ["salle"], level: -1, d: [6, 0] }
+    ] });
+    await page.evaluate(function (P) {
+      window.recalerTrackerSurPoint(P.x, P.y, 0);
+      window.ktaSetActiveLevel(-1, { source: "checkup" });   // union : −1 et 0 affichés, 0 actif ensuite
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+    }, P);
+    await page.waitForTimeout(400);
+    e = await etat(page);
+    verifier(e.actif === 0 && e.visibles.indexOf(-1) >= 0 && e.tracker === 0,
+      "niveau affiché 0, −1 visible, tracker au 0", e);
+    const xyPoi2 = await cliquerCarte(page, P, 6, 0);
+    const ici2 = page.locator(".kta-popup-point .kta-popup-btn-here").first();
+    if (await ici2.count()) {
+      await ici2.click();
+      await page.waitForTimeout(500);
+      e = await etat(page);
+      verifier(e.tracker === -1 && proche(e.pos, xyPoi2), "tracker recalé sur le POI au niveau du POI (−1)", e);
+      verifier(e.dernier && e.dernier.src === "point" && e.dernier.level === -1, "ancre au niveau −1", e.dernier);
+    } else {
+      pb("fiche du POI du −1 non ouverte par le clic : cas 12 non testé");
+    }
+    await page.evaluate(function () { try { window.map.closePopup(); } catch (err) {} });
+    // POI jonction (jpe 0, dessert −2) : niveau affiché s'il en fait partie, sinon son niveau propre.
+    const niveauxJpe = await page.evaluate(function () {
+      const pt = { id: "J", nom: "J", tags: ["jpe"], level: 0, niveaux: [-2], x: 10, y: 10 };
+      return [-2, 0, -1].map(function (n) {
+        window.APP_CONFIG.activeLevel = n;
+        const h = window.buildPointPopupHtml(pt, false);
+        const m = /kta-popup-btn-here[^>]*data-kta-niveau="(-?\d+)"/.exec(h);
+        return m ? Number(m[1]) : null;
+      });
+    });
+    await page.evaluate(function () { window.ktaSetActiveLevel(0, { source: "checkup" }); });
+    verifier(JSON.stringify(niveauxJpe) === "[-2,0,0]",
+      "jonction : affiché −2 → −2, affiché 0 → 0, affiché −1 (non desservi) → son niveau 0", niveauxJpe);
+
+    console.log("\n── 13. Tracker au −1, « Y aller » vers une cible du 0 (niveau affiché 0) ──");
+    await poserCas(page, P, RESEAU);
+    await page.evaluate(function (P) {
+      window.recalerTrackerSurPoint(P.x - 2 * P.sc, P.y, -1);
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+    }, P);
+    e = await etat(page);
+    verifier(e.tracker === -1 && e.actif === 0, "tracker au −1, niveau affiché 0", e);
+    const cible13 = await page.evaluate(function (P) {
+      const c = { x: P.x + 15 * P.sc, y: P.y + 20 * P.sc };
+      window.itineraireYAller(c.x, c.y, "CibleTest");
+      return c;
+    }, P);
+    await attendre(page, function () {
+      return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
+    }, 15000).catch(function () {});
+    it = await itineraire();
+    verifier(it && it.wp0 && it.wp0.level === -1, "waypoint de départ au niveau du tracker (−1)", it && it.wp0);
+    verifier(it && it.p0 && it.p0.level === -1 && it.niveaux.indexOf(0) >= 0 && proche(it.dernier, cible13),
+      "la route commence sur le tracé du −1 et rejoint la cible au 0", it && it.niveaux);
+    // « Recalculer d'ici » (guidage) : itineraireReplanifierDepuis depuis la position du tracker.
+    await page.evaluate(function () {
+      window._ktaReplanFait = false;
+      const p = window.getTrackingPosition();
+      Promise.resolve(window.itineraireReplanifierDepuis(p.x, p.y)).then(function () { window._ktaReplanFait = true; });
+    });
+    await attendre(page, function () { return window._ktaReplanFait === true; }, 15000).catch(function () {});
+    it = await itineraire();
+    verifier(it && it.wp0 && it.wp0.level === -1 && it.p0 && it.p0.level === -1,
+      "« Recalculer d'ici » : départ au niveau du tracker (−1)", it && { wp0: it.wp0, p0: it.p0 });
+    await effacerItineraire();
+
+    console.log("\n── 14. Sortie d'urgence depuis le tracker au −1 (position confirmée), puis « Tracer » ──");
+    await poserCas(page, P, Object.assign({}, RESEAU, { points: [
+      { id: "SortieTest", nom: "SortieTest", uid: "pt_sortietest", tags: ["cao"], level: 0, d: [15, 20] }
+    ] }));
+    await page.evaluate(function (P) {
+      window.recalerTrackerSurPoint(P.x - 2 * P.sc, P.y, -1);
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+      window.SortieUrgence.declencher();
+    }, P);
+    await attendreSortie(page);
+    it = await itineraire();
+    verifier(it && it.wp0 && it.wp0.level === -1 && it.p0 && it.p0.level === -1,
+      "sortie d'urgence sans picker : départ au niveau du tracker (−1)", it && { wp0: it.wp0, p0: it.p0 });
+    await effacerItineraire();
+    await page.evaluate(function () { if (window.SortieUrgence.isActive()) window.SortieUrgence._fermer(); });
+
+    console.log("\n── 15. « Tracer » vers une sortie du −1, depuis le 0 ──");
+    // Sortie posée sur les tracés superposés : sans son niveau, l'arrivée se cale sur le tracé du 0.
+    await poserCas(page, P, Object.assign({}, RESEAU, { points: [
+      { id: "SortieBas", nom: "SortieBas", uid: "pt_sortiebas", tags: ["cao"], level: -1, d: [10, 5] }
+    ] }));
+    await page.evaluate(function (P) {
+      window.recalerTrackerSurPoint(P.x - 2 * P.sc, P.y, 0);
+      window.SortieUrgence.declencher();
+    }, P);
+    await attendreSortie(page);
+    it = await itineraire();
+    verifier(it && it.p0 && it.p0.level === 0, "départ au niveau du tracker (0)", it && it.p0);
+    verifier(it && it.dernier && it.dernier.level === -1,
+      "la route finit sur le tracé du −1 (niveau de la sortie)", it && { dernier: it.dernier, niveaux: it.niveaux });
     await effacerItineraire();
     await page.evaluate(function () { if (window.SortieUrgence.isActive()) window.SortieUrgence._fermer(); });
 
