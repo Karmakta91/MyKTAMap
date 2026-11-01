@@ -54,6 +54,7 @@
   // Sol et ciel de carrière (plafond, à la hauteur du plan) : même teinte sable calcaire, grain procédural répété
   // (bruit dessiné dans un canvas, aucune image téléchargée). Couleur de la scène, pas de la charte de l'UI.
   const COULEUR_CALCAIRE = "#c9b48c";
+  const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
   const GRAIN_TAILLE = 128;         // px du motif
   const GRAIN_METRES = 2;           // m couverts par un motif
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
@@ -330,6 +331,7 @@
   function _construireTuile(t) {
     const sc = _e.sc, h = _e.hauteur;
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot();
+    const hachSol = new Lot(), hachRideau = new Lot();
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], col = _couleur("structures", s.type);
       const lot = _estMur(s.type) ? murs : opaque, hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
@@ -348,8 +350,9 @@
       } else if (z.type === "eau") {
         _dessus(transp, ring, 0.04, _couleur("zones", z.type, "fillColor"));
       } else if (z.type === "inaccessible") {
-        _dessus(opaque, ring, 0.02, _couleur("zones", z.type, "fillColor"));
-        _prisme(transp, ring, 0, h, _couleur("zones", z.type, "color"), false);   // rideau visible des deux côtés
+        // Rouge hachuré comme sur la carte : sol et rideau (visible des deux côtés) en matériaux à hachures.
+        _dessus(hachSol, ring, 0.02, _couleur("zones", z.type, "fillColor"));
+        _prisme(hachRideau, ring, 0, h, _couleur("zones", z.type, "fillColor"), false);
       } else {
         _dessus(opaque, ring, 0.02, _couleur("zones", z.type, "fillColor"));   // effondrement, types perso
       }
@@ -373,6 +376,8 @@
     ajouter(murs, _e.mats.murs, 0, "murs");
     ajouter(lumineux, _e.mats.lumineux, 1);
     ajouter(transp, _e.mats.transp, 2);
+    ajouter(hachSol, _e.mats.hachSol, 0, "opaque");
+    ajouter(hachRideau, _e.mats.hachRideau, 2);
     for (let i = 0; i < t.p.length; i++) {
       const sp = _panneau(t.p[i]);
       if (sp) groupe.add(sp);
@@ -551,6 +556,22 @@
     return tex;
   }
 
+  // Hachures à 45° en coordonnées monde (une bande sombre tous les HACHURE_PAS m) sur un matériau Lambert :
+  // la couleur de la zone reste celle du canon, l'éclairage et le brouillard de la lampe restent ceux de three.js.
+  function _hachurer(mat) {
+    const vary = "#include <common>\nvarying vec3 vKtaMonde;";
+    const bande = "if (fract((vKtaMonde.x + vKtaMonde.y + vKtaMonde.z) / " + HACHURE_PAS.toFixed(2) +
+      ") < 0.4) diffuseColor.rgb *= 0.3;";
+    mat.onBeforeCompile = function (sh) {
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", vary)
+        .replace("#include <begin_vertex>",
+          "#include <begin_vertex>\nvKtaMonde = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", vary)
+        .replace("#include <color_fragment>", "#include <color_fragment>\n" + bande);
+    };
+    return mat;
+  }
+
   function _materiaux() {
     const grain = _e.grain = _grainCalcaire();
     return {
@@ -560,6 +581,9 @@
       lumineux: new THREE.MeshBasicMaterial({ vertexColors: true }),
       transp: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
         depthWrite: false, side: THREE.DoubleSide }),
+      hachSol: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true })),
+      hachRideau: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.55,
+        depthWrite: false, side: THREE.DoubleSide })),
       sol: new THREE.MeshLambertMaterial({ map: grain }),
       plafond: new THREE.MeshLambertMaterial({ map: grain, side: THREE.BackSide }),
       avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 })

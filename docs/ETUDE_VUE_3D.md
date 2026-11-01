@@ -97,7 +97,8 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
   voit : pas de scintillement sur les faces confondues, dessus du pilier visible. Vérifié par le checkup (un mur
   qui traverse le pilier posé devant le départ est plus bas que lui).
 - **Zones** : remblais = volume à 60 % de la hauteur ; eau = surface translucide à 4 cm ; inaccessible = aplat
-  au sol + rideau translucide sur son contour ; effondrement et types perso = aplat au sol.
+  au sol + rideau translucide sur son contour, rouges à hachures à 45° comme sur la carte (`_hachurer`, une bande
+  sombre tous les 0,6 m, en coordonnées monde) ; effondrement et types perso = aplat au sol.
 - **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : ruban de 0,5 m non éclairé (il reste lisible
   hors du faisceau, le brouillard l'éteint au loin).
 - **POI** : panneau toujours face à soi (icône du catalogue `getIconUrlForPoint` + nom), au-dessus des yeux,
