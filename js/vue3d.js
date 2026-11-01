@@ -712,7 +712,8 @@
     const cv = document.createElement("canvas");
     cv.width = 256; cv.height = 80;
     const ctx = cv.getContext("2d");
-    const nom = String(p.id || p.name || p.nom || (Array.isArray(p.tags) && p.tags[0]) || "").slice(0, 28);
+    // Même titre que la fiche 2D (utils.js > buildPointPopupHtml : `nom`) ; l'id n'est qu'un repli technique.
+    const nom = String(p.nom || p.name || p.id || (Array.isArray(p.tags) && p.tags[0]) || "").slice(0, 28);
     const dessiner = function (img) {
       ctx.clearRect(0, 0, 256, 80);
       ctx.fillStyle = "rgba(10,13,24,0.82)";
