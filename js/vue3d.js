@@ -13,7 +13,7 @@
 // hauteur du plan (Volume exploité), zones, tracés et itinéraire au sol, POI en panneaux ; niveau actif seul.
 // Tuiles carrées construites autour de la position, jetées au loin ; une lampe frontale et un brouillard noir
 // bornent ce qui est dessiné. Rendu seulement quand quelque chose bouge (batterie).
-// ⚠️ contrat : déplacement à l'écran et au clavier = règle du pas du tracker (tracking.js >
+// ⚠️ contrat : déplacement à l'écran et au clavier = règle du pas du tracker (tracking.js > ktaEstAccessible,
 // ktaPasBloqueParStructure), jamais une copie ; le tracker n'est pas déplacé par la vue 3D.
 // 🩸 three.js est un module ES : import() dynamique depuis ce script classique, URL absolue (pas d'import map,
 // la CSP refuse tout script en ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en
@@ -533,6 +533,7 @@
   function _libre(x0, y0, x1, y1) {
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (x1 < 0 || y1 < 0 || x1 > pc.imageWidth || y1 > pc.imageHeight)) return false;
+    if (typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(x1, y1)) return false;
     if (typeof window.ktaPasBloqueParStructure !== "function") return true;
     const niv = _e.niveau === null ? undefined : _e.niveau;
     return !window.ktaPasBloqueParStructure(x0, y0, x1, y1, niv);

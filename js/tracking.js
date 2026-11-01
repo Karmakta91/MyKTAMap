@@ -950,6 +950,8 @@ window.getTrackingActif = function() {
 // ⚠️ Règle du pas contre piliers, murs et fronts (la même que le suivi) : true si le segment est refusé.
 // Consommateur : js/vue3d.js (déplacement à l'écran et au clavier), qui ne recopie pas la géométrie.
 window.ktaPasBloqueParStructure = _pasBloqueParStructure;
+// Premier test du même pas : image de collision du plan (true = accessible ; sans image, tout passe).
+window.ktaEstAccessible = estAccessible;
 
 window.getTrackerLevel = function() {
   return trackerLevel;

@@ -255,8 +255,24 @@ async function mesures(page, depart) {
       const prep = await page.evaluate(function () {
         const sc = window.APP_CONFIG.scale;
         if (window.APP_CONFIG.multiLevel === true) window.APP_CONFIG.activeLevel = 0;
+        // Départ : le point le plus proche du centre dont la bande nord-sud de -4 m à +2 m est accessible selon
+        // l'image de collision du plan (le pilier est posé dedans).
         const c = window.map.getCenter();
-        const x = Math.round(c.lng), y = Math.round(window.PLAN_CONFIG.plan.imageHeight - c.lat);
+        const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+        const cx = Math.round(c.lng), cy = Math.round(H - c.lat);
+        const acc = window.ktaEstAccessible;
+        const libre = function (px, py) {
+          for (let k = -40; k <= 20; k++) { if (!acc(px, py + k * sc / 10)) return false; }
+          return px > 5 * sc && px < W - 5 * sc && py > 6 * sc && py < H - 4 * sc;
+        };
+        let x = cx, y = cy;
+        chercher: for (let r = 0; r < 400; r++) {
+          for (let a = 0; a < 16; a++) {
+            const px = Math.round(cx + Math.cos(a * Math.PI / 8) * r * sc);
+            const py = Math.round(cy + Math.sin(a * Math.PI / 8) * r * sc);
+            if (libre(px, py)) { x = px; y = py; break chercher; }
+          }
+        }
         const d = 3 * sc, l = 1.5 * sc;
         window.setStructures([{ uid: "st_v3d_pilier", type: "pilier-1", level: 0,
           points: [{ x: x - l, y: y - d - 2 * l }, { x: x + l, y: y - d - 2 * l }, { x: x + l, y: y - d }, { x: x - l, y: y - d }] }]);

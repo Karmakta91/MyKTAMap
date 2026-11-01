@@ -723,7 +723,7 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
      longueur, même somme des `updatedAt` et des nombres de points). ~0,3 ms par pas pour 13 000 piliers (Node, PC).
    - La structure **en cours de tracé** ne compte pas.
    - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau])` (true = refusé), `niveau` remplaçant
-     celui du tracker. Consommateur : la vue 3D (`js/vue3d.js`, prototype), qui s'en sert pour ses déplacements à
+     celui du tracker ; le premier test l'est aussi (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`, prototype), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
