@@ -720,8 +720,10 @@ window.LegendCustomization = (function() {
         swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(col) + ';flex:0 0 16px;border-radius:1px;"></span>';
       } else if (e.geometry === "polygon" || e.fillColor) {
         const fill   = e.fillColor || e.lineColor || "#888";
-        const border = e.borderColor || e.lineColor || fill;
-        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(fill) + ';border:1px solid ' + _esc(border) + ';flex:0 0 14px;border-radius:2px;"></span>';
+        const stSw = (isCustomEntry && typeof window.ktaResolveStyle === "function")
+          ? window.ktaResolveStyle(e.category, e.id) : null;   // bordure réellement dessinée (canon)
+        const border = e.borderColor || (stSw && stSw.color) || e.lineColor || fill;
+        swatch ='<span style="display:inline-block;width:14px;height:14px;background:' + _esc(fill) + ';border:1px solid ' + _esc(border) + ';flex:0 0 14px;border-radius:2px;"></span>';
       } else {
         swatch = '<span style="display:inline-block;width:14px;height:14px;flex:0 0 14px;"></span>';
       }
@@ -747,11 +749,16 @@ window.LegendCustomization = (function() {
         // custom : géométrie DÉCLARÉE (plus fiable que la présence d'un champ couleur).
         const estPolygone = isCustomEntry ? (e.geometry === "polygon") : !!e.fillColor;
         const curFond = estPolygone ? (e.fillColor || "#888888") : (e.lineColor || "#888888");
+        // 🩸 Bordure d'un custom sans borderColor : celle que la carte DESSINE (le canon : noir pour un pilier, le
+        // fond pour une zone), pas le fond par défaut — sinon le carré promet une couleur absente de la carte.
+        const stCustom = (isCustomEntry && typeof window.ktaResolveStyle === "function")
+          ? window.ktaResolveStyle(e.category, e.id) : null;
+        const curBord = e.borderColor || (isCustomEntry ? ((stCustom && stCustom.color) || curFond) : "#000000");
         champCouleur =
           '<input type="color" class="kta-legend-color" value="' + _esc(curFond) + '" ' +
             'title="' + window.I18n.t("legend.editor.colorTitle") + '" ' + dataAttrs + '>' +
           (estPolygone
-            ? '<input type="color" class="kta-legend-border" value="' + _esc(e.borderColor || (isCustomEntry ? curFond : "#000000")) + '" ' +
+            ? '<input type="color" class="kta-legend-border" value="' + _esc(curBord) + '" ' +
                 'title="' + window.I18n.t("legend.editor.borderTitle") + '" ' + dataAttrs + '>'
             : '') +
           // ↺ pour un built-in seulement : un custom n'a pas de couleur « d'origine ».
