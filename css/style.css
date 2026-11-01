@@ -4397,8 +4397,8 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   font-size: 11px;
   color: #8892a4;
   letter-spacing: 0.02em;
-  /* 2 lignes de 3 librairies (<br> dans le HTML), 20px chacune ; la signature (20px, bottom 28px) s'aligne
-     sur la 2e ligne. Aligné à gauche : centrées, des lignes inégales flottent. */
+  /* 2 lignes (<br> dans le HTML), 20px chacune ; la signature (20px, bottom 28px) s'aligne sur la 2e, la plus
+     courte : la 1re passe au-dessus d'elle. Aligné à gauche : centrées, des lignes inégales flottent. */
   line-height: 20px;
   text-align: left;
   white-space: nowrap;

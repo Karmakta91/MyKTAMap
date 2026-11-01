@@ -573,19 +573,9 @@ function _ouvrirReadmeModal(html, opts) {
       </div>
       <div class="kta-readme-modal-footer">
         <span class="kta-readme-modal-by">Développé par <img src="icon/karma.png" alt="KARMA"></span>
-        <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer de la doc nos
-             nouvelles citations") : élargi pour citer toutes les
-             dépendances/algos majeurs, en cohérence avec le splash et
-             le footer du home.
-             🆕 v1.40.29 — Rétabli 📤 jsPDF (oublié historiquement) + ajout
-             🌍 OSM. Cohérence stricte avec splash + loader HOME.
-             🆕 v1.43.17 — Ajout 📸 html2canvas (utilisé depuis v1.42.5 pour
-             la capture du rendu Leaflet OSM dans le PDF Briefing pompiers
-             du Mode Secours). Cohérence stricte avec splash + loader HOME.
-             🆕 v1.43.18 — &amp;nbsp; entre emoji et nom pour empêcher le wrap
-             de couper une paire emoji-texte (cas du Home loader où
-             le 📸 et html2canvas se retrouvaient sur des lignes différentes). -->
-        <span>— 🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
+        <!-- Mêmes crédits que le splash et le pied de l'accueil. &amp;nbsp; entre emoji et nom : la paire ne
+             se coupe jamais. -->
+        <span>— 🍃&nbsp;Leaflet · 🧊&nbsp;three.js · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
       </div>
     </div>
   `;

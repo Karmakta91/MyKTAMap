@@ -108,7 +108,8 @@
     sirene: '<path d="M7 18v-6a5 5 0 0 1 10 0v6"/><path d="M5 18h14v3H5zM12 3v2M4.5 6.5 6 8M19.5 6.5 18 8"/>',
     oeil: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>' +
       '<circle cx="12" cy="12" r="3"/>',
-    session: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>'
+    session: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>',
+    cube: '<path d="M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>'
   };
   function _picto(nom) {
     return '<svg class="kta-bv-picto" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + PICTOS[nom] + '</svg>';
@@ -548,6 +549,7 @@
             _atout("danger", "bienvenue.reperer.urgence") + _atout("oeil", "bienvenue.reperer.xl") +
             _atout("loupe", "bienvenue.reperer.perdu") + _atout("sirene", "bienvenue.reperer.alertes") +
             _atout("bouee", "bienvenue.reperer.secours", "bienvenue.reperer.secours.badge") +
+            _atout("cube", "bienvenue.reperer.vue3d", "bienvenue.reperer.vue3d.badge") +
           '</dl>' +
         '</div>' + _planche() + '</div>' +
       '</section>' +
