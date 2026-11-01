@@ -21,6 +21,36 @@
 - Toute **mutation qui change un rendu** (setColor, resetSession, remove/updateCustomEntry) doit repeindre : `renderRoads/Zones/Structures` + `_ktaRestyleDataLayers` (calques de données — couleurs seules, les opacités restent au filtre multi-niveau). Vérifié par `check-api-surface.js`.
 - Chargé tôt dans `index.html` (avant `utils.js`) ; aucune dépendance au chargement (LegendCustomization interrogé à l'appel).
 
+### 0.1 🧱 Ordre de dessin des structures — un mur sous les piliers et fronts de son niveau (décision produit)
+
+**Règle** : un mur (`mur` polygone, `mur-ligne` trait) est toujours dessiné **sous** les piliers (`pilier-1/2`) et fronts
+(`front-1/2`) de **son** niveau, qu'il vienne de la session ou d'un calque, quel que soit l'ordre de chargement des
+calques. Hors multi-niveau, tout est un seul niveau. Un **type personnalisé** n'a pas de rôle (sa légende ne dit pas
+qu'il est un mur) : il garde sa place. Un mur d'un **autre** niveau n'est pas concerné (l'ordre reste celui d'arrivée).
+
+**Mécanisme** (`js/structures.js`) :
+- `ktaMursSousPiliers(liste, structDe[, parNiveau])` : fonction pure sur une liste de dessin (arrière → avant). Un mur
+  placé APRÈS le premier pilier/front de son niveau passe **juste avant** lui ; rien d'autre ne bouge. Rend la même
+  liste si rien ne change. Partagée par la carte et tous les exports.
+- **Carte** : la carte est en canvas, un **seul** renderer (`map._renderer`, `map.js`) ; l'ordre de dessin est sa liste
+  chaînée (`_drawFirst` … `_drawLast`), où chaque ajout va au bout. Les couches de structure (session :
+  `renderStructures` ; calques : `utils.js > ajouterPointsDepuisJSON`) portent `options.ktaStructType` /
+  `ktaStructNiveau`, posés **à la création** ; `layeradd` (branché par `brancherLargeurFronts`, drapeau sur la map)
+  prévoit une passe `ktaOrdonnerMursCarte` en micro-tâche (après les ajouts synchrones, avant le prochain dessin), qui
+  relie la liste dans le nouvel ordre et repeint tout le canvas. Couvre le 1er rendu, chaque re-rendu de session et la
+  bascule d'un calque (ses couches repartent au bout).
+- **Aucun pane créé** : tout reste dans l'`overlayPane`, donc sous le pane de rotation du mode « plan orienté ».
+- **Place par rapport aux autres familles** : le minimum. Un mur qui doit descendre se pose juste sous le premier
+  pilier/front de son niveau ; s'il y avait entre les deux des zones ou des tracés (ceux d'un calque chargé entre-temps),
+  le mur passe aussi sous eux. Les murs déjà en place (cas courant : session seule, ou un seul calque, déjà triés
+  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1`) ne bougent pas. Zones, tracés, piliers et fronts ne
+  bougent jamais ; l'itinéraire (renderer à part) et les marqueurs (DOM) ne sont pas touchés.
+- Largeurs au zoom (`majLargeurFronts`, mutation de `options.weight`) et filtre de niveau (opacité des couches de
+  calque, re-rendu de session) ne changent pas l'ordre : ils marchent comme avant.
+- **Vue OSM** (`osmView.js > _renderStructures`) et **aperçu OSM de l'accueil** (`osmHomePreview.js`, structures de
+  tous les calques d'un plan rassemblées, toujours par niveau) appliquent la même fonction. Exports : `exports.md` §45.
+- Preuve : `scripts/smoke/checkup-mur-dessous.js` (index de dessin + pixel au croisement, carte et exports).
+
 ---
 
 ### 1. Cycle de vie d'un plan
