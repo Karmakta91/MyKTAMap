@@ -2467,6 +2467,14 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
+      // Distance totale des tracés : une mesure (lecture), pas un geste de dessin.
+      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
+        onClick: function() {
+          if (typeof window.ouvrirRoadsDistanceFloater === "function") {
+            window.ouvrirRoadsDistanceFloater();
+          }
+        }
+      },
       {
         icone: "❌",
         titre: window.I18n.t("ui.subaction.mesureEffacer"),
@@ -2659,13 +2667,6 @@ _setGroupeModeActif("tracker", isTracking, null);
         _fermerModeRoad();
       }
     },
-    { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
-        onClick: function() {
-          if (typeof window.ouvrirRoadsDistanceFloater === "function") {
-            window.ouvrirRoadsDistanceFloater();
-          }
-        }
-      },
       { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
         onClick: function() {
           const roads = window.getRoads ? window.getRoads() : [];

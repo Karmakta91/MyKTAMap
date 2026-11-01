@@ -313,9 +313,9 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF, GeoTIFF), session, map update, external export (KMZ / GPX / GeoJSON) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
-| **Measurement** | 📐 | Measure a distance or an area, clear |
+| **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths**, clear |
 | **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
-| **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions, **compute the total distance** |
+| **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions |
 | **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
 | **Structures** | 🏛️ | Pillars, walls and working faces |
 
@@ -698,10 +698,6 @@ In the **🛣️ Paths** group:
 
 Press a type, tap the map point by point, then press the type again (or **✅ Confirm the current path**) to finish.
 
-### 📏 Total length of paths
-
-**📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it. This total stays on screen: it is not part of the image export.
-
 ---
 
 ## ⬛ Draw zones
@@ -853,6 +849,10 @@ In the **📐 Measurement** group:
 The two measurements coexist: switching from one to the other does not erase them, and your next tap goes to the one that is lit. Their accuracy depends on the map's scale (calibrated in ⚙️ Settings). They are kept with your session.
 
 **❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ♦️** or **Erase everything (📐 + ♦️)**.
+
+### 📏 Total length of paths
+
+In the **📐 Measurement** group, **📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it. This total stays on screen: it is not part of the image export.
 
 ---
 

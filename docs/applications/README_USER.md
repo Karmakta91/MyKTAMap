@@ -313,9 +313,9 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF, GeoTIFF), session, mise à jour du plan, export externe (KMZ / GPX / GeoJSON) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
-| **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
+| **Mesure** | 📐 | Mesurer une distance ou une surface, **calculer la distance totale des tracés**, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points *(clic direct — interrupteur ON/OFF)* |
-| **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions, **calculer la distance totale** |
+| **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions |
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement, eau ou inaccessibles |
 | **Structures** | 🏛️ | Piliers, murs et fronts de taille |
 
@@ -698,10 +698,6 @@ Dans le groupe **🛣️ Tracés** :
 
 Appuie sur un type, tape le plan point par point, puis re-appuie sur le type (ou sur **✅ Valider le tracé en cours**) pour terminer.
 
-### 📏 Distance totale des tracés
-
-**📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire. Ce total reste à l'écran : il n'entre pas dans l'export image.
-
 ---
 
 ## ⬛ Tracer des zones
@@ -853,6 +849,10 @@ Dans le groupe **📐 Mesure** :
 Les deux mesures coexistent : passer de l'une à l'autre ne les efface pas, et le prochain tap va à celle qui est allumée. Leur précision dépend de l'échelle du plan (calibrée dans ⚙️ Réglages). Elles sont gardées avec ta session.
 
 **❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ♦️** ou **Tout effacer (📐 + ♦️)**.
+
+### 📏 Distance totale des tracés
+
+Dans le groupe **📐 Mesure**, **📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire. Ce total reste à l'écran : il n'entre pas dans l'export image.
 
 ---
 

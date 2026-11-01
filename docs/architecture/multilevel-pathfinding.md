@@ -53,7 +53,7 @@ Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / 
 
 **⚠️ Depuis v146 (2026-05-14)** : `_rdRoadsExploitables()` utilise `getAllEmbeddedRoads()` (et plus `getEmbeddedRoads()` qui filtrait par visibilité). Cohérence avec Pathfinder + Search : l'utilisateur peut masquer le calque routes (dessinées en dur sur le PNG) pour gagner en perf rendu, tout en gardant un total fiable. Le surlignage magenta est aussi appliqué sur les roads masquées (layer séparé qui se voit indépendamment du calque sous-jacent).
 
-**Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **🛣️ Tracés / Routes** (`interface.js > _creerGroupeAccordeon({id:"traces"})`). Toggle ON/OFF — re-cliquer ferme la modale.
+**Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **📐 Mesure** (`interface.js > _creerGroupeAccordeon({id:"mesure"})`, entre ♦️ Surface et ❌ Effacer). Toggle ON/OFF — re-cliquer ferme la modale.
 
 **Modale plein écran** (`#kta-rd-modal`, shell `.kta-readme-modal-overlay` + `.kta-rd-modal-boite`) — pattern identique aux autres modales du projet (itinéraire, légende, config) :
 - Boîte centrée 480px max, `max-height: 90vh`.

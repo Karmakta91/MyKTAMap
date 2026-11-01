@@ -313,9 +313,9 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF, GeoTIFF), sesión, actualización del mapa, exportación externa (KMZ / GPX / GeoJSON) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
-| **Medición** | 📐 | Medir una distancia o una superficie, borrar |
+| **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados**, borrar |
 | **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
-| **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones, **calcular la distancia total** |
+| **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones |
 | **Zonas** | ⬛ | Trazar zonas de escombros, derrumbe, agua o inaccesibles |
 | **Estructuras** | 🏛️ | Pilares, muros y frentes de explotación |
 
@@ -698,10 +698,6 @@ En el grupo **🛣️ Trazados**:
 
 Pulsa un tipo, toca el mapa punto a punto y vuelve a pulsar el tipo (o **✅ Validar el trazado en curso**) para terminar.
 
-### 📏 Distancia total de los trazados
-
-**📏 Distancia total** suma la longitud de todos los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita. Este total se queda en pantalla: no entra en la exportación de imagen.
-
 ---
 
 ## ⬛ Trazar zonas
@@ -853,6 +849,10 @@ En el grupo **📐 Medición**:
 Las dos mediciones conviven: pasar de una a otra no las borra, y tu siguiente toque va a la que está encendida. Su precisión depende de la escala del mapa (calibrada en ⚙️ Ajustes). Se conservan con tu sesión.
 
 **❌ Borrar** ofrece **↩️ Último punto** (en la medición encendida), **🗑️ Toda la distancia 📐**, **🗑️ Toda la superficie ♦️** o **Borrar todo (📐 + ♦️)**.
+
+### 📏 Distancia total de los trazados
+
+En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de todos los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita. Este total se queda en pantalla: no entra en la exportación de imagen.
 
 ---
 
