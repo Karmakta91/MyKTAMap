@@ -1119,6 +1119,24 @@ function setPlanHauteurGalerie(planId, value) {
 window.getPlanHauteurGalerie = getPlanHauteurGalerie;
 window.setPlanHauteurGalerie = setPlanHauteurGalerie;
 
+// ── Rendu de la vue 3D (js/vue3d.js) : "structures" ou "galerie", retenu par plan ──────────────────
+// Par plan, pref `vue3dRendu` ; absente → null (la vue choisit d'après le niveau affiché). Autre valeur refusée.
+function getPlanRenduVue3D(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).vue3dRendu;
+  return v === "structures" || v === "galerie" ? v : null;
+}
+function setPlanRenduVue3D(planId, value) {
+  if (value !== "structures" && value !== "galerie") return false;
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  prefs.vue3dRendu = value;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanRenduVue3D = getPlanRenduVue3D;
+window.setPlanRenduVue3D = setPlanRenduVue3D;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,
