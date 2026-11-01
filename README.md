@@ -206,7 +206,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (141 modules)
+## 🟢 L'application : modules JS (142 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -277,7 +277,8 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `zones.js` | Zones polygonales (eau, remblais, effondrement, inaccessible, types custom) |
 | `structures.js` | Structures : piliers et murs en polygones, fronts de taille en polylignes, types custom |
 | `convertirObjet.js` | Changer un objet de type ou de famille (ouvert ⇄ fermé), en lot, de niveau ; suppression |
-| `selectionMulti.js` | Sélection de N objets vectoriels pour une conversion en lot |
+| `selectionMulti.js` | Sélection de N objets (clic, type, zone) pour une conversion ou une suppression en lot |
+| `selectionZone.js` | Sélection par zone dessinée (outil ♦️ Surface) et suppression en lot de la sélection |
 | `calqueSession.js` | Rapatrier un calque de données entier dans la session pour le corriger |
 | `profondeurNiveaux.js` | Profondeur des niveaux (saisie) et profil en long d'un itinéraire |
 | `osmMesure.js` | Mesure de distance et de surface dans la Vue OSM (lat/lng, sans calibrage du plan) |
@@ -611,6 +612,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
 | `smoke/checkup-recoller-piliers.js` | Lignes qui forment ensemble une boucle (carré en 2 lignes, rectangle en 3) recollées en un pilier depuis la sélection multiple : case et compte, ktaConfirm, jonctions fusionnées, uid neufs, paire à 8 px et T intacts, ⏪ unique |
 | `smoke/checkup-contour-ferme.js` | Ligne fermée (carré à 3 côtés, premier point répété) convertie en zone ou pilier : fiche, lot filtré avec compte, ⏪ unique, calque passé en « Modifier » puis converti en lot |
+| `smoke/checkup-suppr-zone.js` | Sélection par zone dessinée et suppression en lot (sélection multiple) : dedans, à cheval, autre niveau, calque ignoré et compté, photo gardée, re-clic, cases de famille, traces de suppression, ⏪ unique |
 | `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
 | `smoke/checkup-export-sig.js` | Exports GeoTIFF et GeoJSON par l'interface, calage tourné ou affine |
 | `smoke/checkup-exports-structures.js` | Ce que les exports emportent des structures intégrées et personnalisées |

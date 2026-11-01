@@ -5,12 +5,15 @@
  */
 
 // =====================================================================
-// selectionMulti.js — sélectionner N objets vectoriels d'un coup pour KtaConvertir
+// selectionMulti.js — sélectionner N objets d'un coup : conversion (KtaConvertir) ou suppression en lot
 // =====================================================================
-// La modale de conversion ouvre ce mode ; l'utilisateur désigne des objets, la modale revient avec
-// le lot.
+// La modale de conversion ouvre ce mode ; l'utilisateur désigne des objets (clic, « tous du type », ou
+// ✏️ zone dessinée : js/selectionZone.js), puis ✅ Convertir (la modale revient avec le lot) ou 🗑️ Supprimer.
 // 🩸 La compatibilité est l'OUVERTURE, pas la famille : tracés et fronts (lignes) se mêlent ;
-//   ligne + surface fermée est refusé (aucune cible commune), et le refus est EXPLIQUÉ.
+//   ligne + surface fermée est refusé au CLIC (aucune cible commune), et le refus est EXPLIQUÉ. Une zone prend
+//   tout ce qu'elle contient (points compris) : ✅ Convertir ne passe que les objets de l'ouverture de la graine,
+//   son compteur le montre ; 🗑️ Supprimer prend tout le lot. Re-cliquer un objet sélectionné (point compris)
+//   le retire.
 // 🩸 Surbrillance = calque à part, `interactive: false`, jamais un setStyle sur les layers (pas
 //   de registre objet → layer fiable ; un re-rendu écraserait les styles).
 // Couleur = accent d'interaction de la charte (état d'interface, pas un style de type).
@@ -93,14 +96,20 @@
     return vis.indexOf(lvl) >= 0;
   }
 
+  // Points de session aussi : un point se retire au re-clic, et s'ajoute (il ne compte que pour 🗑️).
   function _candidats() {
     const out = [];
     ["roads", "zones", "structures"].forEach(function (famille) {
       _lire(famille).forEach(function (obj) {
-        if (!obj || EXCLUS[obj.type]) return;
+        if (!obj || EXCLUS[obj.type] || !_niveauVisible(obj)) return;
         if (!Array.isArray(obj.points) || obj.points.length < 2) return;
         out.push({ famille: famille, obj: obj });
       });
+    });
+    const pts = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []) : [];
+    pts.forEach(function (obj) {
+      if (!obj || !Number.isFinite(obj.x) || !Number.isFinite(obj.y) || !_niveauVisible(obj)) return;
+      out.push({ famille: "editorPoints", obj: obj });
     });
     return out;
   }
@@ -111,15 +120,21 @@
     const p = { x: cx, y: cy };
     let meilleur = null, meilleurD = Infinity;
     candidats.forEach(function (c) {
-      const ouvert = _ouvertureDe(c.famille, c.obj.type);
-      if (ouvert === null) return;
-      let d = _distAuContour(p, c.obj.points, !ouvert);
-      if (!ouvert && _pointInPolygon(p, c.obj.points)) d = 0;   // clic PLEIN dans une surface
+      let ouvert, d;
+      if (c.famille === "editorPoints") {
+        ouvert = null;   // un point n'a pas d'ouverture : jamais refusé
+        d = Math.hypot(p.x - c.obj.x, p.y - c.obj.y);
+      } else {
+        ouvert = _ouvertureDe(c.famille, c.obj.type);
+        if (ouvert === null) return;
+        d = _distAuContour(p, c.obj.points, !ouvert);
+        if (!ouvert && _pointInPolygon(p, c.obj.points)) d = 0;   // clic PLEIN dans une surface
+      }
       if (d > TOLERANCE_PX) return;
       if (d < meilleurD) { meilleurD = d; meilleur = { famille: c.famille, obj: c.obj, ouvert: ouvert }; }
     });
     if (!meilleur) return { cible: null, refus: null };
-    if (ouvertRef !== null && meilleur.ouvert !== ouvertRef) {
+    if (ouvertRef !== null && meilleur.ouvert !== null && meilleur.ouvert !== ouvertRef) {
       return { cible: null, refus: meilleur };
     }
     return { cible: meilleur, refus: null };
@@ -134,6 +149,7 @@
   let _groupe = null;
   let _floater = null;
   let _onValide = null;
+  let _calque = [];              // objets de calque vus dans les zones (ignorés, comptés à la confirmation)
 
   function _dansSel(obj) {
     for (let i = 0; i < _sel.length; i++) if (_sel[i].obj === obj) return i;
@@ -146,6 +162,11 @@
     _groupe.clearLayers();
     if (typeof window.convertCoord !== "function" || !window.L) return;
     _sel.forEach(function (s) {
+      if (s.famille === "editorPoints") {
+        _groupe.addLayer(window.L.circleMarker(window.convertCoord(s.obj.x, s.obj.y),
+          Object.assign({}, SURBRILLANCE, { radius: 14, fill: false, interactive: false })));
+        return;
+      }
       const pts = s.obj.points.map(function (p) { return window.convertCoord(p.x, p.y); });
       const style = Object.assign({}, SURBRILLANCE, { fill: false, interactive: false });
       const ouvert = _ouvertureDe(s.famille, s.obj.type);
@@ -166,19 +187,47 @@
     return type;
   }
 
+  // Ce que ✅ Convertir emporte : objets vectoriels de l'ouverture de la graine (ni point, ni l'autre ouverture).
+  function _convertibles() {
+    return _sel.filter(function (s) {
+      return s.famille !== "editorPoints" && _ouvertureDe(s.famille, s.obj.type) === _ouvertRef;
+    });
+  }
+
+  function _zoneEnCours() {
+    return !!(window.KtaSelectionZone && window.KtaSelectionZone.enCours());
+  }
+
   function _majFloater(message) {
     if (!_floater) return;
+    const dessin = _zoneEnCours();
+    // Deux jeux de boutons : la sélection, ou le tracé de la zone.
+    _floater.querySelectorAll("[data-selm-mode]").forEach(function (b) {
+      b.style.display = (b.getAttribute("data-selm-mode") === (dessin ? "zone" : "sel")) ? "" : "none";
+    });
     const msg = _floater.querySelector(".kta-selm-msg");
+    if (dessin) {
+      const n = window.KtaSelectionZone.nbSommets();
+      if (msg) msg.textContent = message || _t("selm.zone.trace", { n: n });
+      const zok = _floater.querySelector("#kta-selm-zone-ok");
+      if (zok) zok.disabled = n < 3;
+      return;
+    }
     if (msg) msg.textContent = message || _t("selm.compte", { n: _sel.length });
     const ok = _floater.querySelector("#kta-selm-ok");
     if (ok) {
-      ok.textContent = _t("selm.valider", { n: _sel.length });
-      ok.disabled = _sel.length === 0;
+      const nc = _convertibles().length;
+      ok.textContent = _t("selm.valider", { n: nc });
+      ok.disabled = nc === 0;
+    }
+    const sup = _floater.querySelector("#kta-selm-suppr");
+    if (sup) {
+      sup.textContent = _t("selm.supprimer", { n: _sel.length });
+      sup.disabled = _sel.length === 0;
     }
     const tous = _floater.querySelector("#kta-selm-tous");
     if (tous) {
       if (_dernier) {
-        tous.style.display = "";
         tous.textContent = _t("selm.tousDuType", { type: _libelleType(_dernier.famille, _dernier.obj.type) });
       } else {
         tous.style.display = "none";
@@ -203,10 +252,51 @@
     _majFloater(n > 0 ? _t("selm.ajoutes", { n: n }) : _t("selm.aucunAjout"));
   }
 
+  // ── Zone dessinée ────────────────────────────────────
+  function _commencerZone() {
+    if (!window.KtaSelectionZone || !window.KtaSelectionZone.commencer()) return;
+    _majFloater();
+  }
+  function _prendreZone() {
+    const Z = window.KtaSelectionZone;
+    if (!Z || !Z.enCours()) return;
+    const poly = Z.terminer();
+    if (!poly) { _majFloater(_t("selm.zone.tropCourte")); return; }
+    const r = Z.dansZone(poly);
+    let n = 0;
+    r.items.forEach(function (it) {
+      if (_dansSel(it.obj) >= 0) return;
+      _sel.push(it);
+      n++;
+    });
+    let nc = 0;
+    r.calque.forEach(function (c) {
+      if (_calque.some(function (x) { return x.ref === c.ref; })) return;
+      _calque.push(c);
+      nc++;
+    });
+    _repeindre();
+    _majFloater(_t(n ? "selm.zone.ajoutes" : "selm.zone.aucun", { n: n }) +
+      (nc ? " " + _t("selm.zone.calques", { n: nc }) : ""));
+  }
+  function _abandonnerZone() {
+    if (window.KtaSelectionZone) window.KtaSelectionZone.abandonner();
+    _majFloater();
+  }
+
+  function _supprimer() {
+    if (!window.KtaSelectionZone || !_sel.length) return;
+    window.KtaSelectionZone.confirmerEtSupprimer(_sel.slice(), _calque.length).then(function (bilan) {
+      if (bilan && bilan.supprimes) fermer();
+    });
+  }
+
   // ── Ouverture / fermeture ────────────────────────────
   function fermer() {
     if (!_actif) return;
     _actif = false;
+    // Zone en cours de tracé : la mesure ♦️ d'avant est rendue.
+    if (_zoneEnCours()) window.KtaSelectionZone.abandonner();
     if (window.map && _handler) { try { window.map.off("click", _handler); } catch (e) {} }
     _handler = null;
     if (_groupe) {
@@ -216,6 +306,7 @@
     if (_floater && _floater.parentNode) _floater.remove();
     _floater = null;
     _sel = [];
+    _calque = [];
     _dernier = null;
     _ouvertRef = null;
     _onValide = null;
@@ -241,6 +332,8 @@
 
     _handler = function (e) {
       if (!e || !e.latlng) return;
+      // Pendant le tracé de la zone, le clic est un sommet (measure.js le pose) : le compteur suit après lui.
+      if (_zoneEnCours()) { setTimeout(function () { _majFloater(); }, 0); return; }
       const cx = e.latlng.lng;
       const cy = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
                    ? (window.APP_CONFIG.imageHeight - e.latlng.lat)
@@ -256,13 +349,17 @@
       if (i >= 0) {
         // Re-cliquer retire l'objet (corrige une erreur de visée).
         _sel.splice(i, 1);
-        if (_dernier && _dernier.obj === r.cible.obj) _dernier = _sel[_sel.length - 1] || null;
+        if (_dernier && _dernier.obj === r.cible.obj) {
+          const vecteurs = _sel.filter(function (s) { return s.famille !== "editorPoints"; });
+          _dernier = vecteurs[vecteurs.length - 1] || null;
+        }
         _repeindre();
         _majFloater(_t("selm.retire"));
         return;
       }
       _sel.push({ famille: r.cible.famille, obj: r.cible.obj });
-      _dernier = _sel[_sel.length - 1];
+      // « Tous du type » vise le dernier objet VECTORIEL (un point n'a pas de type de légende).
+      if (r.cible.famille !== "editorPoints") _dernier = _sel[_sel.length - 1];
       _repeindre();
       _majFloater();
     };
@@ -276,15 +373,32 @@
     _floater.innerHTML =
       '<span class="kta-iti-floater-icon">🎯</span>' +
       '<span class="kta-iti-floater-msg kta-selm-msg"></span>' +
-      '<button class="kta-btn kta-btn-ghost" id="kta-selm-tous" type="button"></button>' +
-      '<button class="kta-btn kta-btn-primary" id="kta-selm-ok" type="button"></button>' +
-      '<button class="kta-btn kta-btn-ghost" id="kta-selm-annuler" type="button"></button>';
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-tous" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-zone" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-primary" id="kta-selm-ok" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-danger" id="kta-selm-suppr" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-annuler" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-primary" id="kta-selm-zone-ok" type="button" data-selm-mode="zone"></button>' +
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-zone-retour" type="button" data-selm-mode="zone"></button>' +
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-zone-annuler" type="button" data-selm-mode="zone"></button>';
     document.body.appendChild(_floater);
-    _floater.querySelector("#kta-selm-annuler").textContent = _t("selm.annuler");
+    [["#kta-selm-annuler", "selm.annuler"], ["#kta-selm-zone", "selm.zone.bouton"],
+     ["#kta-selm-zone-ok", "selm.zone.prendre"], ["#kta-selm-zone-retour", "selm.zone.retour"],
+     ["#kta-selm-zone-annuler", "selm.zone.annuler"]].forEach(function (b) {
+      _floater.querySelector(b[0]).textContent = _t(b[1]);
+    });
     _floater.querySelector("#kta-selm-tous").addEventListener("click", _ajouterTousDuType);
     _floater.querySelector("#kta-selm-annuler").addEventListener("click", fermer);
+    _floater.querySelector("#kta-selm-zone").addEventListener("click", _commencerZone);
+    _floater.querySelector("#kta-selm-zone-ok").addEventListener("click", _prendreZone);
+    _floater.querySelector("#kta-selm-zone-retour").addEventListener("click", function () {
+      if (window.KtaSelectionZone) window.KtaSelectionZone.retirerSommet();
+      _majFloater();
+    });
+    _floater.querySelector("#kta-selm-zone-annuler").addEventListener("click", _abandonnerZone);
+    _floater.querySelector("#kta-selm-suppr").addEventListener("click", _supprimer);
     _floater.querySelector("#kta-selm-ok").addEventListener("click", function () {
-      const lot = _sel.slice();
+      const lot = _convertibles();
       const cb = _onValide;
       fermer();
       if (cb) cb(lot);

@@ -346,6 +346,7 @@ const ASSETS_TO_CACHE = [
   // Sans lui en cache, le bouton « Convertir » serait mort hors ligne.
   "./js/convertirObjet.js",
   "./js/selectionMulti.js",
+  "./js/selectionZone.js",
   "./js/calqueSession.js",
   "./js/majPlan.js",
   // profondeur des niveaux + profil en long.
