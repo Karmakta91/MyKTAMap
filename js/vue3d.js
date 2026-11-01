@@ -7,18 +7,16 @@
 // vue3d.js — vue 3D à la première personne autour de la position du tracker (bêta, tuile 🧊 du menu Tracker).
 // Chargé à la demande par interface.js > _tuileVue3D (avec css/vue3d.css) ; three.js (lib/three/) n'est importé
 // qu'à la première ouverture. Les quatre fichiers sont précachés par sw.js (la 3D sert sous terre, hors réseau).
-// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(),
-//   mesurer(opts), basculerVue(), basculerSuivi(), incliner(deg), avancer(m), tourner(deg), suivre(),
-//   placer(x, y, cap) }.
-//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms) }.
-// Scène (mètres : x = x image / scale, z = y image / scale, y = hauteur) : structures extrudées du sol à la
-// hauteur du plan (Volume exploité), zones, tracés et itinéraire au sol, POI en panneaux ; niveau actif seul.
-// Tuiles carrées construites autour de la position, jetées au loin ; lampe frontale et brouillard noir bornent
-// ce qui est dessiné. Rendu seulement quand quelque chose bouge (batterie).
-// ⚠️ contrat : déplacement = règle du pas du tracker, jamais une copie (tracking.js > ktaEstAccessible,
-// ktaSegmentsBloquesParStructure), sur la largeur d'un corps. Le tracker n'est pas déplacé en route (décision
-// produit) : à la fermeture, si le suivi est actif et qu'on s'est déplacé, « Je suis ici ? » propose de le recaler
-// là (tracking.js > recalerTrackerSurPoint).
+// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
+//   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg),
+//   avancer(m), tourner(deg), suivre(), placer(x, y, cap) } ; opts : { distanceVue (m), tuiles (bool),
+//   depart {x, y, cap}, densiteMax, stats, attenteReprise (ms) }.
+// Scène (m : x = x image / scale, z = y image / scale, y = hauteur), deux rendus exclusifs retenus par plan :
+// STRUCTURES (extrudées à la hauteur du plan, tracés au sol) ou GALERIE (tracés en tubes, js/galerieEmprise.js) ;
+// zones, itinéraire, POI en panneaux ; un niveau. Tuiles autour de soi, lampe frontale, rendu au mouvement seul.
+// ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
+// ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques), sur la largeur d'un corps. Le tracker
+// n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler (position, niveau).
 // 🩸 three.js est un module ES : import() dynamique depuis ce script classique, URL absolue (pas d'import map,
 // la CSP refuse tout script en ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en
 // garde peu (iOS ~ 8, Chrome 16). Contexte perdu en route : on attend sa reprise (three.js recharge tout), la
@@ -57,6 +55,14 @@
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
   const GRAIN_TAILLE = 128;         // px du motif
   const GRAIN_METRES = 2;           // m couverts par un motif
+  // Mode galerie : parois en strates calcaires (bandes horizontales de teintes et d'épaisseurs variées, dessinées
+  // dans un canvas comme le grain du sol), liseré au sol de la couleur du tracé, POI proches seulement.
+  const STRATES = { l: 64, h: 256 };   // px du motif des parois (h = toute la hauteur de la galerie)
+  const STRATE_METRES = 3;          // m de paroi couverts par le motif en largeur
+  const LISERE = 0.15;              // m
+  const POI_GALERIE = 3;            // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie
+  const RECUL_PAROI = 0.08;         // m : POI hors du tube ramené contre la paroi, devant elle
+  const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
   const SEUIL_RECALAGE = 0.5;       // m d'écart avec le tracker sous lequel « Je suis ici ? » ne se pose pas
 
@@ -67,7 +73,11 @@
   let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
 
   // Textes lus au rendu (langue courante) ; sans I18n, la clé.
-  function _t(cle) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(cle) : cle; }
+  function _t(cle, p) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(cle, p) : cle; }
+
+  function _fmtNiveau(n) {
+    return typeof window.ktaFormatNiveau === "function" ? window.ktaFormatNiveau(n) : String(n);
+  }
 
   function _toast(cle) {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t(cle), "warn");
@@ -115,7 +125,13 @@
     const suivi = typeof window.getTrackingActif === "function" && window.getTrackingActif();
     const lvlTracker = typeof window.getTrackerLevel === "function";
     if (_e && _e.mode === "suivi" && suivi && lvlTracker) return window.getTrackerLevel();
-    return Number.isInteger(c.activeLevel) ? c.activeLevel : 0;
+    const actif = Number.isInteger(c.activeLevel) ? c.activeLevel : 0;
+    // Niveau pris par un passage (🪜) : gardé tant que le niveau actif de la carte ne change pas.
+    if (_e && Number.isInteger(_e.niveauLibre)) {
+      if (_e.actifVu === actif) return _e.niveauLibre;
+      _e.niveauLibre = null;
+    }
+    return actif;
   }
 
   function _surNiveau(o, niveau) {
@@ -126,14 +142,54 @@
     const ok = function (o) { return o && Array.isArray(o.points) && _surNiveau(o, niveau); };
     const roads = _tab(window.getRoads).filter(function (r) { return !r._preview; })
       .concat(_tab(window.getAllEmbeddedRoads));
+    // Un POI jonction se montre sur chacun de ses niveaux, à son raccord validé de ce niveau s'il en a un.
+    const J = window.KtaPoiJonction, points = [];
+    _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)).forEach(function (p) {
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+      if (_surNiveau(p, niveau)) { points.push(p); return; }
+      if (niveau === null || !J || !J.estJonction(p) || J.niveaux(p).indexOf(niveau) < 0) return;
+      const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
+      points.push(Object.assign({}, p, { x: a ? a.x : p.x, y: a ? a.y : p.y, level: niveau, _v3dJonction: p }));
+    });
     return {
       structures: _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures)).filter(ok),
       zones: _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)).filter(ok),
       roads: roads.filter(ok),
-      points: _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)).filter(function (p) {
-        return p && Number.isFinite(p.x) && Number.isFinite(p.y) && _surNiveau(p, niveau);
-      })
+      jonctions: roads.filter(function (r) { return r && r.type === "jonction" && Array.isArray(r.points); }),
+      points: points
     };
+  }
+
+  // Passages du niveau vers un autre : POI jonction (niveaux liés, raccords validés) et bouts de tracé `jonction`
+  // (pris dans les deux sens). → [{ x, y (px), poi?, cibles: [{ niveau, x, y (NaN = même position) }] }].
+  function _passages(niveau, jonctions) {
+    const out = [], J = window.KtaPoiJonction;
+    if (niveau === null) return out;
+    if (J && typeof J.pointsJonction === "function") {
+      J.pointsJonction().forEach(function (p) {
+        const nv = J.niveaux(p), acc = J.accroches(p);
+        if (nv.indexOf(niveau) < 0) return;
+        const raccord = function (n) { return acc.filter(function (a) { return a.level === n; })[0] || null; };
+        const ici = (Number.isInteger(p.level) ? p.level : 0) === niveau ? p : (raccord(niveau) || p);
+        const cibles = nv.filter(function (n) { return n !== niveau; }).map(function (n) {
+          const a = raccord(n);
+          return { niveau: n, x: a ? a.x : NaN, y: a ? a.y : NaN };
+        });
+        out.push({ x: ici.x, y: ici.y, poi: p, cibles: cibles });
+      });
+    }
+    jonctions.forEach(function (r) {
+      const pts = r.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
+      if (pts.length < 2 || !Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel)) return;
+      const A = pts[0], B = pts[pts.length - 1];
+      if (r.fromLevel === niveau && r.toLevel !== niveau) {
+        out.push({ x: A.x, y: A.y, cibles: [{ niveau: r.toLevel, x: B.x, y: B.y }] });
+      }
+      if (r.toLevel === niveau && r.fromLevel !== niveau) {
+        out.push({ x: B.x, y: B.y, cibles: [{ niveau: r.fromLevel, x: A.x, y: A.y }] });
+      }
+    });
+    return out;
   }
 
   function _estLigne(type) {
@@ -166,7 +222,8 @@
       const k = ix + "," + iz;
       let t = tuiles.get(k);
       if (!t) {
-        t = { cle: k, s: [], z: [], r: [], p: [], x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, obj: null };
+        t = { cle: k, s: [], z: [], r: [], p: [], g: [], a: [], x0: Infinity, z0: Infinity, x1: -Infinity,
+          z1: -Infinity, obj: null, parois: null };
         tuiles.set(k, t);
       }
       return t;
@@ -198,11 +255,26 @@
         emprise(t, o.points);
       }
     };
-    objets(d.structures, "s");
+    const m = d.galerie;
+    if (!m) objets(d.structures, "s");
     objets(d.zones, "z");
+    // Galerie : pièces de l'emprise et axes (liseré) à la tuile de leur centre ; parmi les tracés, seuls l'itinéraire
+    // et les jonctions restent des rubans.
+    if (m) {
+      for (let i = 0; i < m.pieces.length; i++) {
+        const P = m.pieces[i], k = cle((P.x0 + P.x1) / 2 / sc, (P.y0 + P.y1) / 2 / sc), t = range(k[0], k[1]);
+        t.g.push(i);
+        emprise(t, [{ x: P.x0, y: P.y0 }, { x: P.x1, y: P.y1 }]);
+      }
+      for (let i = 0; i < m.aretes.length; i++) {
+        const r = m.aretes[i], k = cle((r.ax + r.bx) / 2 / sc, (r.ay + r.by) / 2 / sc);
+        range(k[0], k[1]).a.push(i);
+      }
+    }
     // Tracés : par segment (un tracé traverse tout le plan).
     for (let i = 0; i < d.roads.length; i++) {
       const r = d.roads[i], pts = r.points;
+      if (m && r.type !== "itinerary" && r.type !== "jonction") continue;
       for (let j = 0; j + 1 < pts.length; j++) {
         const a = pts[j], b = pts[j + 1];
         if (!a || !b) continue;
@@ -223,21 +295,32 @@
 
   // ── Géométrie : triangles non indexés, normales int8, couleurs uint8 (18 octets par sommet) ───────────
 
-  function Lot() { this.p = []; this.n = []; this.c = []; }
+  function Lot() { this.p = []; this.n = []; this.c = []; this.uv = []; }
+
+  const BLANC = { r: 1, g: 1, b: 1 };
 
   // Triangle orienté vers `n` (l'ordre des sommets est corrigé au besoin : face avant = côté de la normale).
-  Lot.prototype.tri = function (a, b, c, n, col) {
+  // `uv` facultatif : [ua, va, ub, vb, uc, vc] (lots texturés : sol, plafond, parois du mode galerie).
+  Lot.prototype.tri = function (a, b, c, n, col, uv) {
     const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
     const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
     const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
-    if (cx * n[0] + cy * n[1] + cz * n[2] < 0) { const t = b; b = c; c = t; }
+    const inverse = cx * n[0] + cy * n[1] + cz * n[2] < 0;
+    if (inverse) { const t = b; b = c; c = t; }
     this.p.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+    if (uv) {
+      if (inverse) this.uv.push(uv[0], uv[1], uv[4], uv[5], uv[2], uv[3]);
+      else this.uv.push(uv[0], uv[1], uv[2], uv[3], uv[4], uv[5]);
+    }
     const nx = Math.round(n[0] * 127), ny = Math.round(n[1] * 127), nz = Math.round(n[2] * 127);
     const r = Math.round(col.r * 255), g = Math.round(col.g * 255), bl = Math.round(col.b * 255);
     for (let i = 0; i < 3; i++) { this.n.push(nx, ny, nz); this.c.push(r, g, bl); }
   };
 
-  Lot.prototype.quad = function (a, b, c, d, n, col) { this.tri(a, b, c, n, col); this.tri(a, c, d, n, col); };
+  Lot.prototype.quad = function (a, b, c, d, n, col, uv) {
+    this.tri(a, b, c, n, col, uv && [uv[0], uv[1], uv[2], uv[3], uv[4], uv[5]]);
+    this.tri(a, c, d, n, col, uv && [uv[0], uv[1], uv[4], uv[5], uv[6], uv[7]]);
+  };
 
   Lot.prototype.geometrie = function () {
     if (!this.p.length) return null;
@@ -245,6 +328,7 @@
     g.setAttribute("position", new THREE.Float32BufferAttribute(this.p, 3));
     g.setAttribute("normal", new THREE.BufferAttribute(new Int8Array(this.n), 3, true));
     g.setAttribute("color", new THREE.BufferAttribute(new Uint8Array(this.c), 3, true));
+    if (this.uv.length) g.setAttribute("uv", new THREE.Float32BufferAttribute(this.uv, 2));
     g.computeBoundingSphere();
     return g;
   };
@@ -329,6 +413,7 @@
   function _estMur(type) { return type === "mur" || type === "mur-ligne"; }
 
   function _construireTuile(t) {
+    if (_e.galerie) { _construireTuileGalerie(t); return; }
     const sc = _e.sc, h = _e.hauteur;
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot();
     const hachSol = new Lot(), hachRideau = new Lot();
@@ -397,15 +482,233 @@
     });
     _e.scene.remove(t.obj);
     t.obj = null;
+    t.parois = null;
+  }
+
+  // ── Mode galerie : les tracés en tubes (window.KtaGalerie, js/galerieEmprise.js), sans les structures ─────
+  // ⚠️ contrat : une paroi est un morceau de bord de pièce de l'emprise qui n'est dans aucune autre pièce (union) :
+  // tubes coupés au bord des dalles, aucune paroi qui en traverse une autre. Sol et plafond = les pièces elles-mêmes,
+  // superposées sans défaut visible (même texture, posée en coordonnées monde). Zones découpées à l'emprise.
+
+  // Bords visibles de la pièce i (px) → [[x0, y0, x1, y1]]. Chaque bord est coupé là où il croise une pièce voisine
+  // (ou longe un de ses bords) ; un morceau est une paroi si le point juste à l'extérieur, en son milieu, n'est dans
+  // aucune autre pièce.
+  function _paroisPiece(m, i) {
+    const P = m.pieces[i], pts = P.pts, eps = 0.004 * m.sc, out = [];
+    const vois = m.piecesPres(P.x0 - eps, P.y0 - eps, P.x1 + eps, P.y1 + eps).filter(function (j) { return j !== i; });
+    const dans = window.KtaGalerie.dansPiece;
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k], q = pts[(k + 1) % pts.length], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy);
+      if (l < 1e-9) continue;
+      const ts = [0, 1];
+      for (let v = 0; v < vois.length; v++) {
+        const Q = m.pieces[vois[v]].pts;
+        for (let a = 0; a < Q.length; a++) {
+          const r = Q[a], s = Q[(a + 1) % Q.length], ex = s[0] - r[0], ey = s[1] - r[1];
+          const rx = r[0] - p[0], ry = r[1] - p[1], d = dx * ey - dy * ex;
+          if (Math.abs(d) > 1e-9 * l * Math.hypot(ex, ey)) {
+            const t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
+            if (t > 0 && t < 1 && u >= -1e-9 && u <= 1 + 1e-9) ts.push(t);
+          } else if (Math.abs(rx * dy - ry * dx) / l < eps) {
+            // Bords alignés : les bouts de l'autre bord coupent celui-ci.
+            [r, s].forEach(function (z) {
+              const t = ((z[0] - p[0]) * dx + (z[1] - p[1]) * dy) / (l * l);
+              if (t > 0 && t < 1) ts.push(t);
+            });
+          }
+        }
+      }
+      ts.sort(function (a, b) { return a - b; });
+      const ox = dy / l * eps, oy = -dx / l * eps;   // vers l'extérieur (pièce de sens positif : intérieur à gauche)
+      let deb = null, fin = null;
+      const morceau = function (a, b) { return [p[0] + dx * a, p[1] + dy * a, p[0] + dx * b, p[1] + dy * b]; };
+      for (let n = 0; n + 1 < ts.length; n++) {
+        const t0 = ts[n], t1 = ts[n + 1];
+        if ((t1 - t0) * l < 1e-6) continue;
+        const tm = (t0 + t1) / 2, x = p[0] + dx * tm + ox, y = p[1] + dy * tm + oy;
+        let couvert = false;
+        for (let v = 0; v < vois.length && !couvert; v++) couvert = dans(m.pieces[vois[v]], x, y, 0);
+        if (!couvert) { if (deb === null) deb = t0; fin = t1; continue; }
+        if (deb !== null) { out.push(morceau(deb, fin)); deb = null; }
+      }
+      if (deb !== null) out.push(morceau(deb, fin));
+    }
+    return out;
+  }
+
+  // Découpe (Sutherland-Hodgman) d'un contour de sens positif par une pièce convexe de sens positif → contour | null.
+  function _decouper(sujet, clip) {
+    let out = sujet;
+    for (let i = 0; i < clip.length && out.length; i++) {
+      const a = clip[i], b = clip[(i + 1) % clip.length], ex = b[0] - a[0], ey = b[1] - a[1];
+      const cote = function (p) { return ex * (p[1] - a[1]) - ey * (p[0] - a[0]); };
+      const entree = out;
+      out = [];
+      for (let k = 0; k < entree.length; k++) {
+        const P = entree[k], Q = entree[(k + 1) % entree.length], sp = cote(P), sq = cote(Q);
+        if (sp >= 0) out.push(P);
+        if ((sp >= 0) !== (sq >= 0)) {
+          const t = sp / (sp - sq);
+          out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]);
+        }
+      }
+    }
+    return out.length >= 3 ? out : null;
+  }
+
+  function _metres(pts, sc) { return pts.map(function (q) { return [q[0] / sc, q[1] / sc]; }); }
+
+  // Pièce convexe (m) en éventail, à la hauteur y, normale vers le haut (sol) ou le bas (plafond), texture monde.
+  function _dalleTexturee(lot, ring, y, haut) {
+    const n = haut ? [0, 1, 0] : [0, -1, 0], g = GRAIN_METRES;
+    for (let i = 1; i + 1 < ring.length; i++) {
+      const a = ring[0], b = ring[i], c = ring[i + 1];
+      lot.tri([a[0], y, a[1]], [b[0], y, b[1]], [c[0], y, c[1]], n, BLANC,
+        [a[0] / g, a[1] / g, b[0] / g, b[1] / g, c[0] / g, c[1] / g]);
+    }
+  }
+
+  // Paroi verticale (m) du sol au plafond, face vers l'intérieur de la galerie (à gauche du bord), strates calcaires.
+  function _paroi(lot, x0, z0, x1, z1, h) {
+    const dx = x1 - x0, dz = z1 - z0, l = Math.hypot(dx, dz);
+    if (l < 1e-6) return;
+    const u0 = (x0 * dx + z0 * dz) / l / STRATE_METRES, u1 = u0 + l / STRATE_METRES;
+    lot.quad([x0, 0, z0], [x1, 0, z1], [x1, h, z1], [x0, h, z0], [-dz / l, 0, dx / l], BLANC,
+      [u0, 0, u1, 0, u1, 1, u0, 1]);
+  }
+
+  function _construireTuileGalerie(t) {
+    const e = _e, m = e.galerie, sc = e.sc, h = e.hauteur;
+    const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
+    const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot();
+    t.parois = [];
+    for (let i = 0; i < t.g.length; i++) {
+      const ring = _metres(m.pieces[t.g[i]].pts, sc);
+      _dalleTexturee(sol, ring, 0, true);
+      _dalleTexturee(plafond, ring, h, false);
+      const ps = _paroisPiece(m, t.g[i]);
+      for (let k = 0; k < ps.length; k++) {
+        const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
+        _paroi(parois, x0, z0, x1, z1, h);
+        t.parois.push([x0, z0, x1, z1]);
+      }
+    }
+    // Liseré au sol : la couleur du type de tracé dans la légende.
+    for (let i = 0; i < t.a.length; i++) {
+      const r = m.aretes[t.a[i]], col = _couleur("traces", r.type, "color");
+      _ruban(opaque, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
+    }
+    const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais };
+    for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
+    for (let i = 0; i < t.r.length; i++) {
+      const r = t.r[i], col = _couleur("traces", r.type, "color");
+      if (r.type === "itinerary") _ruban(lumineux, r.a, r.b, sc, LARGEUR_ITI, 0.05, col);
+      else _ruban(opaque, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
+    }
+    const groupe = new THREE.Group();
+    const ajouter = function (lot, mat, ordre, famille) {
+      const g = lot.geometrie();
+      if (!g) return;
+      const me = new THREE.Mesh(g, mat);
+      me.renderOrder = ordre;
+      me.matrixAutoUpdate = false;
+      me.userData.famille = famille;
+      if (famille === "plafond") me.visible = e.vue !== "plongee";
+      groupe.add(me);
+    };
+    ajouter(sol, e.mats.solGalerie, 0, "sol");
+    ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
+    ajouter(parois, e.mats.paroi, 0, "parois");
+    ajouter(opaque, e.mats.opaque, 0, "opaque");
+    ajouter(remblais, e.mats.opaque, 0, "remblais");
+    ajouter(lumineux, e.mats.lumineux, 1);
+    ajouter(eau, e.mats.eauGalerie, 2, "eau");
+    ajouter(hachSol, e.mats.hachSol, 0, "inaccessible");
+    ajouter(hachRideau, e.mats.hachRideau, 2, "rideau");
+    for (let i = 0; i < t.p.length; i++) {
+      const p = t.p[i], pp = m.plusProche(p.x, p.y, POI_GALERIE * sc);
+      if (!pp) { e.poiMasques++; continue; }
+      // Dans le tube : là où il est ; au-delà de la paroi : ramené contre elle, RECUL_PAROI devant.
+      const w = pp.w / sc - RECUL_PAROI, d = pp.d / sc;
+      let x = p.x / sc, z = p.y / sc;
+      if (d > w && d > 1e-9) { x = pp.x / sc + (x - pp.x / sc) * w / d; z = pp.y / sc + (z - pp.y / sc) * w / d; }
+      const sp = _panneau(p, [x, z]);
+      if (sp) groupe.add(sp);
+    }
+    e.scene.add(groupe);
+    t.obj = groupe;
+    e.sale = true;
+  }
+
+  // Zone en mode galerie : découpée à chaque pièce de l'emprise qu'elle touche. Eau à 4 cm ; remblais en volume
+  // (faces seulement là où il donne sur la galerie) ; inaccessible au sol + rideau en travers du tube là où son
+  // contour coupe l'axe ; effondrement et types perso au sol.
+  function _zoneGalerie(z, m, lots) {
+    const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
+    if (ring.length < 3) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    ring.forEach(function (q) {
+      x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
+    });
+    const col = _couleur("zones", z.type, "fillColor");
+    const pieces = m.piecesPres(x0 * sc, y0 * sc, x1 * sc, y1 * sc);
+    for (let i = 0; i < pieces.length; i++) {
+      const c = _decouper(ring, _metres(m.pieces[pieces[i]].pts, sc));
+      if (!c) continue;
+      e.zonesDecoupees[z.type] = (e.zonesDecoupees[z.type] || 0) + 1;
+      if (z.type === "eau") _dessus(lots.eau, c, 0.04, col);
+      else if (z.type === "inaccessible") _dessus(lots.hachSol, c, 0.02, col);
+      else if (z.type === "remblais") _remblaisGalerie(lots.remblais, c, ring, m, h * HAUTEUR_REMBLAIS, col);
+      else _dessus(lots.opaque, c, 0.02, col);
+    }
+    if (z.type !== "inaccessible") return;
+    m.aretesPres(x0 * sc, y0 * sc, x1 * sc, y1 * sc).forEach(function (k) {
+      const r = m.aretes[k], ax = r.ax / sc, az = r.ay / sc, bx = r.bx / sc, bz = r.by / sc, w = r.w / sc;
+      const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz);
+      if (l < 1e-6) return;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const p = ring[j], q = ring[i], ex = q[0] - p[0], ez = q[1] - p[1], d = dx * ez - dz * ex;
+        if (Math.abs(d) < 1e-12) continue;
+        const rx = p[0] - ax, rz = p[1] - az, t = (rx * ez - rz * ex) / d, u = (rx * dz - rz * dx) / d;
+        if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+        const cx = ax + dx * t, cz = az + dz * t, nx = -dz / l * w, nz = dx / l * w;
+        lots.hachRideau.quad([cx - nx, 0, cz - nz], [cx + nx, 0, cz + nz], [cx + nx, h, cz + nz], [cx - nx, h, cz - nz],
+          [dx / l, 0, dz / l], col);
+        e.rideaux.push([cx, cz]);
+      }
+    });
+  }
+
+  // Remblais découpé : dessus, et une face sur chaque bord qui donne sur la galerie (pas contre une paroi ni à
+  // l'intérieur du remblais, où elle ne se verrait pas ou scintillerait contre la paroi).
+  function _remblaisGalerie(lot, c, ring, m, hr, col) {
+    const sc = m.sc, dedansZone = function (x, z) {
+      let r = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const p = ring[i], q = ring[j];
+        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
+      }
+      return r;
+    };
+    for (let i = 0; i < c.length; i++) {
+      const p = c[i], q = c[(i + 1) % c.length], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const x = (p[0] + q[0]) / 2 + dz / l * 0.01, z = (p[1] + q[1]) / 2 - dx / l * 0.01;
+      if (!m.dedans(x * sc, z * sc) || dedansZone(x, z)) continue;
+      lot.quad([p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], hr, q[1]], [p[0], hr, p[1]], [dz / l, 0, -dx / l], col);
+      _e.facesRemblais++;
+    }
+    _dessus(lot, c, hr, col);
   }
 
   // ── POI : panneau (icône + nom) toujours face à la caméra, à hauteur de tête ─────────────────────────
   // ⚠️ contrat (décision produit) : un panneau n'est JAMAIS caché par la géométrie (depthTest coupé, dessiné après
   // tout) : un POI relevé dans un pilier ou derrière reste lisible. Borné à la distance de vue, plus petit et plus
   // pâle au loin (_majPanneaux). Un POI dans un volume fermé (pilier, mur, type perso) est collé contre la face de
-  // ce volume la plus proche de la caméra, pour ne pas sembler flotter dans la roche.
+  // ce volume la plus proche de la caméra, pour ne pas sembler flotter dans la roche. En mode galerie, `ou` [x, z]
+  // (m) fixe la place du panneau, dans le tube (_construireTuileGalerie).
 
-  function _panneau(p) {
+  function _panneau(p, ou) {
     const cv = document.createElement("canvas");
     cv.width = 256; cv.height = 80;
     const ctx = cv.getContext("2d");
@@ -430,9 +733,11 @@
       transparent: true });
     const sp = new THREE.Sprite(mat);
     sp.scale.set(PANNEAU.l, PANNEAU.h, 1);
-    sp.position.set(p.x / _e.sc, Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), p.y / _e.sc);
+    const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
+    sp.position.set(x, Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
-    sp.userData.poi = { x: p.x / _e.sc, z: p.y / _e.sc, anneau: _volumeContenant(p.x / _e.sc, p.y / _e.sc) };
+    const J = window.KtaPoiJonction, jonction = p._v3dJonction || (J && J.estJonction(p) ? p : null);
+    sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction };
     _e.panneaux.add(sp);
     let url = null;
     try {
@@ -556,6 +861,46 @@
     return tex;
   }
 
+  // Strates calcaires des parois du mode galerie : bandes horizontales de 3 à 30 px (sur STRATES.h = toute la hauteur
+  // de la galerie), chacune d'une teinte calcaire plus ou moins claire (crème à ocre autour de COULEUR_CALCAIRE),
+  // un joint sombre entre certaines, une ondulation lente le long de la paroi et un grain fin. Répété en largeur
+  // seulement. ~2 ms, 64 Ko de texture ; aucune image téléchargée.
+  function _strates() {
+    const L = STRATES.l, H = STRATES.h, cv = document.createElement("canvas");
+    cv.width = L; cv.height = H;
+    const ctx = cv.getContext("2d"), img = ctx.createImageData(L, H), base = new THREE.Color(COULEUR_CALCAIRE);
+    let graine = 13;
+    const alea = function () { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+    const clair = new Float32Array(H), ocre = new Float32Array(H), joint = new Uint8Array(H);
+    for (let y = 0; y < H;) {
+      const ep = 3 + Math.floor(alea() * 28), k = 0.7 + alea() * 0.42, o = alea();
+      for (let i = 0; i < ep && y < H; i++, y++) { clair[y] = k; ocre[y] = o; }
+      if (alea() < 0.4 && y < H) joint[y - 1] = 1;
+    }
+    const phase = alea() * 6.283;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < L; x++) {
+        // L'ondulation décale la lecture des bandes de ±2 px le long de la paroi (bouclée sur la largeur).
+        const yy = Math.max(0, Math.min(H - 1, y + Math.round(2 * Math.sin(x / L * 6.283 * 2 + phase))));
+        const k = clair[yy] * (joint[yy] ? 0.6 : 1) * (1 + (alea() - 0.5) * 0.09);
+        // Bande claire : vers le crème ; bande sombre : vers l'ocre.
+        const r = base.r * k, g = base.g * k * (0.97 + 0.05 * ocre[yy]), b = base.b * k * (0.9 + 0.14 * ocre[yy]);
+        const i = (y * L + x) * 4;
+        img.data[i] = Math.min(255, r * 255);
+        img.data[i + 1] = Math.min(255, g * 255);
+        img.data[i + 2] = Math.min(255, b * 255);
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  }
+
   // Hachures à 45° en coordonnées monde (une bande sombre tous les HACHURE_PAS m) sur un matériau Lambert :
   // la couleur de la zone reste celle du canon, l'éclairage et le brouillard de la lampe restent ceux de three.js.
   function _hachurer(mat) {
@@ -574,6 +919,12 @@
 
   function _materiaux() {
     const grain = _e.grain = _grainCalcaire();
+    // Sol et plafond des galeries : même motif, posé en coordonnées monde (pièces superposées sans couture).
+    const monde = _e.grainMonde = grain.clone();
+    monde.repeat.set(1, 1);
+    monde.offset.set(0, 0);
+    monde.needsUpdate = true;
+    _e.strates = _strates();
     return {
       opaque: new THREE.MeshLambertMaterial({ vertexColors: true }),
       murs: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1,
@@ -586,7 +937,14 @@
         depthWrite: false, side: THREE.DoubleSide })),
       sol: new THREE.MeshLambertMaterial({ map: grain }),
       plafond: new THREE.MeshLambertMaterial({ map: grain, side: THREE.BackSide }),
-      avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 })
+      avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 }),
+      solGalerie: new THREE.MeshLambertMaterial({ map: monde }),
+      plafondGalerie: new THREE.MeshLambertMaterial({ map: monde }),
+      paroi: new THREE.MeshLambertMaterial({ map: _e.strates, side: THREE.DoubleSide }),
+      // 🩸 Eau découpée en plusieurs pièces qui se recouvrent : sans écriture de profondeur stricte, chaque
+      // recouvrement serait mélangé deux fois (taches plus sombres).
+      eauGalerie: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
+        depthWrite: true, depthFunc: THREE.LessDepth, side: THREE.DoubleSide })
     };
   }
 
@@ -633,12 +991,53 @@
     const t0 = performance.now();
     e.niveau = _niveauCourant();
     const d = _collecter(e.niveau);
+    e.rendu = _renduVoulu(d.structures.length);
+    e.galerie = null;
+    if (e.rendu === "galerie") e.galerie = d.galerie = window.KtaGalerie.modele(e.niveau);
+    const m = e.galerie;
     e.compte = { structures: d.structures.length, zones: d.zones.length, roads: d.roads.length,
-      points: d.points.length };
-    _grilleVolumes(d.structures);
+      points: d.points.length, pieces: m ? m.pieces.length : 0, aretes: m ? m.aretes.length : 0,
+      dalles: m ? m.dalles : 0, coudes: m ? m.coudes : 0, bouts: m ? m.bouts : 0,
+      msGalerie: m ? Math.round(m.msConstruction) : 0 };
+    e.poiMasques = 0; e.zonesDecoupees = {}; e.rideaux = []; e.facesRemblais = 0;
+    if (m) e.volumes = null; else _grilleVolumes(d.structures);
+    e.passages = _passages(e.niveau, d.jonctions);
+    e.passageSig = null;
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
     e.msIndex = performance.now() - t0;
+    _appliquerRendu();
     _gererTuiles(true);
+  }
+
+  // ── Rendu structures / galerie (interrupteur exclusif, retenu par plan) ─────────────────────────────────
+  // Choix retenu du plan (config.js > getPlanRenduVue3D), sinon structures si le niveau affiché en a, galerie sinon.
+  function _renduVoulu(nStructures) {
+    if (!window.KtaGalerie) return "structures";
+    const pref = typeof window.getPlanRenduVue3D === "function" ? window.getPlanRenduVue3D() : null;
+    if (pref === "structures" || pref === "galerie") return pref;
+    return nStructures > 0 ? "structures" : "galerie";
+  }
+
+  function _appliquerRendu() {
+    const e = _e, gal = !!e.galerie, b = e.boutonRendu;
+    e.sol.visible = !gal;
+    e.plafond.visible = !gal && e.vue !== "plongee";
+    if (b) {
+      b.textContent = gal ? "🚇 " + _t("vue3d.modeGalerie") : "🧱 " + _t("vue3d.modeStructures");
+      b.title = _t(gal ? "vue3d.passerStructures" : "vue3d.passerGalerie");
+      b.setAttribute("aria-label", b.title);
+    }
+    e.sale = true;
+  }
+
+  // Bascule structures ↔ galerie, retenue pour ce plan ; la scène est refaite. Rend le nouveau rendu.
+  function basculerRendu() {
+    const e = _e;
+    if (!e || !window.KtaGalerie) return null;
+    const vers = e.rendu === "galerie" ? "structures" : "galerie";
+    if (typeof window.setPlanRenduVue3D === "function") window.setPlanRenduVue3D(null, vers);
+    _reindexer();
+    return e.rendu;
   }
 
   // Tuiles proches construites (toutes à l'ouverture, puis quelques-unes par image), lointaines jetées.
@@ -720,7 +1119,10 @@
 
   function _appliquerVue() {
     const e = _e, haut = e.vue === "plongee";
-    e.plafond.visible = !haut;
+    e.plafond.visible = !haut && !e.galerie;
+    e.tuiles.forEach(function (t) {
+      if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
+    });
     e.avatar.visible = haut;
     e.ambiance.intensity = haut ? 0.9 : 0.04;
     e.scene.fog.near = haut ? e.distance : e.distance * 0.45;
@@ -757,6 +1159,7 @@
       if (n < 0 || (n > 0 && n > depart())) continue;
       e.pos.x = x1; e.pos.y = y1;
       e.aBouge = true;
+      e.passageForce = null;
       e.sale = true;
       return true;
     }
@@ -765,20 +1168,23 @@
   }
 
   // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
-  // bloqués autour de l'arrivée. Un seul lot de segments par essai (ktaSegmentsBloquesParStructure).
+  // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
+  // Mode galerie : on bute contre les parois et les remblais (KtaGalerie.segmentsBloques), l'image de collision du
+  // plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
   function _balayage(x0, y0, x1, y1, ux, uy) {
-    const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r;
+    const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
-    if (typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
-    if (typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
+    if (gal && !window.KtaGalerie.dedans(x0, y0, _niveauPas())) return 0;
+    if (!gal && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
+    if (!gal && typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
     const segs = [];
     for (let i = 0; i < RAILS.length; i++) {
       const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
       segs.push([x0 + ox, y0 + oy, fx + ox, fy + oy]);
     }
     _rayons(segs, x1, y1, r);
-    const res = window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true);
+    const res = _juger(segs);
     for (let i = 0; i < RAILS.length; i++) { if (res[i]) return -1; }
     let n = 0;
     for (let i = RAILS.length; i < res.length; i++) { if (res[i]) n++; }
@@ -795,13 +1201,153 @@
 
   function _niveauPas() { return _e.niveau === null ? undefined : _e.niveau; }
 
+  // Règle du rendu affiché : structures (tracking.js, types perso compris) ou parois des galeries.
+  function _juger(segs) {
+    if (_e.galerie) return window.KtaGalerie.segmentsBloques(segs, _niveauPas());
+    if (typeof window.ktaSegmentsBloquesParStructure !== "function") return segs.map(function () { return false; });
+    return window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true);
+  }
+
   function _rayonsBloques(x, y) {
-    if (typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
-    const res = window.ktaSegmentsBloquesParStructure(_rayons([], x, y, RAYON_CORPS * _e.sc), _niveauPas(), true);
-    return res.filter(Boolean).length;
+    return _juger(_rayons([], x, y, RAYON_CORPS * _e.sc)).filter(Boolean).length;
   }
 
   function _passerEnLibre() { if (_e.mode !== "libre") { _e.mode = "libre"; _majBoutonSuivre(); } }
+
+  // ── Changer de niveau par un passage (🪜, mode libre) ─────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : la 3D change seulement SON niveau ; ni le tracker ni le niveau actif de la
+  // carte ne bougent (« Je suis ici ? » recale aussi le niveau à la fermeture). En suivi, le niveau est celui du
+  // tracker : 🪜 n'apparaît qu'en libre. Arrivée au raccord validé du niveau choisi, sinon au bout opposé d'un
+  // tracé jonction, sinon à la même position (au passage touché s'il est à plus de PASSAGE m). Cap conservé.
+
+  // Niveau a au-dessus de b : d'après les profondeurs saisies si les deux en ont, sinon le plus grand numéro.
+  function _auDessus(a, b) {
+    const z = typeof window.getProfondeurNiveau === "function" ? window.getProfondeurNiveau : null;
+    const za = z ? z(a) : null, zb = z ? z(b) : null;
+    return Number.isFinite(za) && Number.isFinite(zb) && za !== zb ? za > zb : a > b;
+  }
+
+  // Niveaux proposés : ceux des passages à moins de PASSAGE m (le plus proche d'abord), ou du passage touché.
+  function _ciblesProches() {
+    const e = _e;
+    if (e.mode !== "libre" || !e.passages || !e.passages.length) return [];
+    const loin = function (p) { return Math.hypot(p.x - e.pos.x, p.y - e.pos.y) / e.sc; };
+    const liste = e.passageForce ? [{ p: e.passageForce, d: loin(e.passageForce) }]
+      : e.passages.map(function (p) { return { p: p, d: loin(p) }; })
+        .filter(function (q) { return q.d <= PASSAGE; }).sort(function (a, b) { return a.d - b.d; });
+    const vus = {}, out = [];
+    liste.forEach(function (q) {
+      q.p.cibles.forEach(function (c) {
+        if (vus[c.niveau] || c.niveau === e.niveau) return;
+        vus[c.niveau] = true;
+        out.push({ niveau: c.niveau, x: c.x, y: c.y, depuis: q.p, proche: q.d <= PASSAGE });
+      });
+    });
+    return out;
+  }
+
+  // Le plus proche au-dessus (haut) ou au-dessous du niveau affiché, parmi `cibles`.
+  function _voisin(cibles, haut) {
+    let best = null;
+    cibles.forEach(function (c) {
+      if (_auDessus(c.niveau, _e.niveau) !== haut) return;
+      if (!best || (haut ? _auDessus(best.niveau, c.niveau) : _auDessus(c.niveau, best.niveau))) best = c;
+    });
+    return best;
+  }
+
+  // Boîte 🪜 : ▲ / ▼ (un niveau au plus de chaque côté), sinon la liste des niveaux liés. Refaite au changement.
+  function _majPassage() {
+    const e = _e, boite = e.boiteNiveaux;
+    if (!boite) return;
+    const cibles = _ciblesProches();
+    const nHaut = cibles.filter(function (c) { return _auDessus(c.niveau, e.niveau); }).length;
+    const liste = nHaut > 1 || cibles.length - nHaut > 1;
+    const sig = cibles.map(function (c) { return c.niveau; }).join(",") + (liste ? "|liste" : "") + "|" + e.niveau;
+    if (sig === e.passageSig) return;
+    e.passageSig = sig;
+    e.passageCibles = { haut: null, bas: null, liste: [] };
+    boite.textContent = "";
+    boite.hidden = !cibles.length;
+    if (!cibles.length) return;
+    const marque = document.createElement("span");
+    marque.className = "kta-v3d-niveaux-marque";
+    marque.textContent = "🪜";
+    marque.setAttribute("aria-hidden", "true");
+    boite.appendChild(marque);
+    if (liste) {
+      cibles.slice().sort(function (a, b) { return _auDessus(a.niveau, b.niveau) ? -1 : 1; }).forEach(function (c) {
+        const n = _fmtNiveau(c.niveau), fl = _auDessus(c.niveau, e.niveau) ? "▲ " : "▼ ";
+        e.passageCibles.liste.push(c);
+        _bouton(boite, "kta-v3d-btn-mode", fl + n, _t("vue3d.niveauAller", { n: n }), "niveau")
+          .dataset.indice = String(e.passageCibles.liste.length - 1);
+      });
+      return;
+    }
+    const h = e.passageCibles.haut = _voisin(cibles, true), b = e.passageCibles.bas = _voisin(cibles, false);
+    if (h) {
+      _bouton(boite, "kta-v3d-btn-mode", "▲ " + _fmtNiveau(h.niveau),
+        _t("vue3d.niveauMonter", { n: _fmtNiveau(h.niveau) }), "niveauHaut");
+    }
+    if (b) {
+      _bouton(boite, "kta-v3d-btn-mode", "▼ " + _fmtNiveau(b.niveau),
+        _t("vue3d.niveauDescendre", { n: _fmtNiveau(b.niveau) }), "niveauBas");
+    }
+  }
+
+  function _allerNiveau(c) {
+    const e = _e;
+    if (!e || !c || !Number.isInteger(c.niveau)) return false;
+    _passerEnLibre();
+    const cfg = window.APP_CONFIG || {};
+    e.niveauLibre = c.niveau;
+    e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+    if (Number.isFinite(c.x) && Number.isFinite(c.y)) { e.pos.x = c.x; e.pos.y = c.y; }
+    else if (c.depuis && !c.proche) { e.pos.x = c.depuis.x; e.pos.y = c.depuis.y; }
+    e.aBouge = true;
+    e.passageForce = null;
+    e.changementsNiveau++;
+    console.log("[Vue3D] passage vers le niveau " + c.niveau);
+    _reindexer();
+    _majPassage();
+    e.sale = true;
+    return true;
+  }
+
+  // sens : "haut", "bas" ou un numéro de niveau, parmi les passages proches. → true si la scène a changé de niveau.
+  function changerNiveau(sens) {
+    if (!_e) return false;
+    const cibles = _ciblesProches();
+    const c = sens === "haut" ? _voisin(cibles, true) : sens === "bas" ? _voisin(cibles, false)
+      : cibles.filter(function (q) { return q.niveau === sens; })[0];
+    return _allerNiveau(c || null);
+  }
+
+  // Toucher un panneau de POI jonction : son passage, d'où que l'on soit (un seul niveau lié : on y va).
+  function _toucher(cx, cy) {
+    const e = _e, r = e.cv.getBoundingClientRect(), sprites = [];
+    if (!r.width || !r.height) return false;
+    e.panneaux.forEach(function (sp) {
+      if (sp.visible && sp.parent && sp.parent.visible && sp.userData.poi.jonction) sprites.push(sp);
+    });
+    if (!sprites.length) return false;
+    e.rayon = e.rayon || new THREE.Raycaster();
+    e.rayon.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1),
+      e.camera);
+    const hit = e.rayon.intersectObjects(sprites, false)[0];
+    if (!hit) return false;
+    const poi = hit.object.userData.poi.jonction;
+    const pas = e.passages.filter(function (p) { return p.poi === poi; })[0];
+    if (!pas) return false;
+    const proche = Math.hypot(pas.x - e.pos.x, pas.y - e.pos.y) / e.sc <= PASSAGE;
+    const autres = pas.cibles.filter(function (c) { return c.niveau !== e.niveau; });
+    if (autres.length === 1) return _allerNiveau(Object.assign({ depuis: pas, proche: proche }, autres[0]));
+    _passerEnLibre();
+    e.passageForce = pas;
+    e.passageSig = null;
+    _majPassage();
+    return true;
+  }
 
   function _trackerActif() {
     return typeof window.getTrackingActif === "function" && window.getTrackingActif() === true;
@@ -885,6 +1431,7 @@
       _majBoutonSuivre();
     }
     if (e.mode === "suivi") _lireTracker();
+    _majPassage();
     const niv = _niveauCourant();
     if (niv !== e.niveau) _reindexer();
     _gererTuiles(false);
@@ -947,6 +1494,7 @@
     const haut = document.createElement("div");
     haut.className = "kta-v3d-haut";
     e.boutonSuivre = _bouton(haut, "kta-v3d-btn-mode", "📍", _t("vue3d.suivre"), "suivre");
+    e.boutonRendu = _bouton(haut, "kta-v3d-btn-mode", "", "", "rendu");
     e.boutonVue = _bouton(haut, "", "🛰️", _t("vue3d.plongee"), "vue");
     _bouton(haut, "kta-v3d-fermer", "✕", _t("vue3d.fermer"), "fermer");
     ov.appendChild(haut);
@@ -985,6 +1533,14 @@
       e.compteur.className = "kta-v3d-stats";
       ov.appendChild(e.compteur);
     }
+    // Passage vers un autre niveau (🪜), à gauche, montré près d'un passage en mode libre (_majPassage).
+    const niv = document.createElement("div");
+    niv.className = "kta-v3d-niveaux";
+    niv.setAttribute("role", "group");
+    niv.setAttribute("aria-label", _t("vue3d.passage"));
+    niv.hidden = true;
+    ov.appendChild(niv);
+    e.boiteNiveaux = niv;
     document.body.appendChild(ov);
     e.ov = ov; e.cv = cv;
     _majBoutonSuivre();
@@ -1004,6 +1560,12 @@
       const a = b.dataset.v3d;
       if (a === "fermer") { fermer(); return; }
       if (a === "vue") { basculerVue(); return; }
+      if (a === "rendu") { basculerRendu(); return; }
+      if (a === "niveauHaut" || a === "niveauBas") { changerNiveau(a === "niveauHaut" ? "haut" : "bas"); return; }
+      if (a === "niveau") {
+        _allerNiveau(e.passageCibles && e.passageCibles.liste[Number(b.dataset.indice)]);
+        return;
+      }
       if (a === "suivre") { basculerSuivi(); return; }
       if (a === "inclPlus" || a === "inclMoins") {
         ev.preventDefault();
@@ -1022,7 +1584,10 @@
     // glissés à la verticale, inclinent la vue plongeante (vers le haut = plus rasante).
     let glisse = null;
     const doigts = new Map();
+    // Toucher bref et immobile (< 8 px, < 0,5 s) : un panneau de POI jonction ? (_toucher).
+    let tape = null;
     on(e.cv, "pointerdown", function (ev) {
+      tape = doigts.size === 0 ? { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: performance.now() } : null;
       doigts.set(ev.pointerId, ev.clientY);
       glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY } : null;
       try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
@@ -1043,7 +1608,15 @@
       e.tangage = Math.max(-1, Math.min(1, e.tangage - dy * 0.004));
       e.sale = true;
     });
-    const lever = function (ev) { doigts.delete(ev.pointerId); glisse = null; };
+    const lever = function (ev) {
+      doigts.delete(ev.pointerId);
+      glisse = null;
+      if (ev.type === "pointerup" && tape && tape.id === ev.pointerId && doigts.size === 0 &&
+          Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) < 8 && performance.now() - tape.t < 500) {
+        _toucher(ev.clientX, ev.clientY);
+      }
+      tape = null;
+    };
     on(e.cv, "pointerup", lever);
     on(e.cv, "pointercancel", lever);
     // Molette (PC) : incline la vue plongeante (vers soi = plus verticale).
@@ -1152,7 +1725,9 @@
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
         msIndex: 0, msTuiles: 0, compteurN: 0, compteurT0: 0, w: 0, h: 0, aBouge: false, perdu: false,
         msPerdu: 0, reprises: 0, minuterie: null, inclinaison: INCLINAISON.defaut, nord: 0, nordCalibre: false,
-        roseAngle: NaN,
+        roseAngle: NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
+        passageForce: null, niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
+        zonesDecoupees: {}, rideaux: [], facesRemblais: 0,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
       const t0 = performance.now();
@@ -1197,6 +1772,8 @@
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
       if (e.grain) e.grain.dispose();
+      if (e.grainMonde) e.grainMonde.dispose();
+      if (e.strates) e.strates.dispose();
       if (e.lampe) e.lampe.dispose();
       e.renderer.dispose();
       const gl = e.renderer.getContext();
@@ -1213,14 +1790,23 @@
     const e = _e;
     if (!e) return Promise.resolve(false);
     const pos = { x: e.pos.x, y: e.pos.y }, niveau = e.niveau, sc = e.sc, bouge = e.aBouge;
+    const suivi = e.mode === "suivi";
     _demonter("utilisateur");
     console.log("[Vue3D] fermée");
     const actif = typeof window.getTrackingActif === "function" && window.getTrackingActif() === true;
     const tr = typeof window.getTrackingPosition === "function" ? window.getTrackingPosition() : null;
+    // En suivi sans déplacement libre, la place est celle du tracker (la vue n'en garde qu'une version lissée).
+    const ici = suivi && !bouge && tr && Number.isFinite(tr.x) && Number.isFinite(tr.y) ? { x: tr.x, y: tr.y } : pos;
+    _placerCarte(ici, niveau);
     if (!bouge || !actif || !tr || typeof window.recalerTrackerSurPoint !== "function" ||
         typeof window.ktaConfirm !== "function") return Promise.resolve(false);
-    if (Math.hypot(pos.x - tr.x, pos.y - tr.y) / sc < SEUIL_RECALAGE) return Promise.resolve(false);
-    return window.ktaConfirm(window.ktaEsc(_t("vue3d.jeSuisIci.texte")), {
+    // Passé à un autre niveau que celui du tracker (🪜) : la question se pose aussi, et recale le niveau.
+    const nivTr = typeof window.getTrackerLevel === "function" ? window.getTrackerLevel() : null;
+    const autreNiveau = niveau !== null && Number.isInteger(nivTr) && niveau !== nivTr;
+    if (Math.hypot(pos.x - tr.x, pos.y - tr.y) / sc < SEUIL_RECALAGE && !autreNiveau) return Promise.resolve(false);
+    const texte = autreNiveau ? _t("vue3d.jeSuisIci.texteNiveau", { n: _fmtNiveau(niveau) })
+      : _t("vue3d.jeSuisIci.texte");
+    return window.ktaConfirm(window.ktaEsc(texte), {
       titre: window.ktaEsc(_t("vue3d.jeSuisIci.titre")),
       okLabel: window.ktaEsc(_t("vue3d.jeSuisIci.oui")),
       cancelLabel: window.ktaEsc(_t("vue3d.jeSuisIci.non"))
@@ -1229,6 +1815,22 @@
       window.recalerTrackerSurPoint(pos.x, pos.y, niveau === null ? undefined : niveau);
       return true;
     });
+  }
+
+  // ⚠️ contrat (décision produit) : à la sortie, la carte 2D se place là où l'on était en 3D, quelle que soit la
+  // réponse à « Je suis ici ? » : niveau de la 3D (s'il diffère, après un passage 🪜), centre sur la position, sans
+  // animation, zoom gardé (au moins 0). Pendant la 3D, la carte ne bouge pas. Plan orienté actif : setView ne
+  // touche pas à la rotation (portée par le pane intercalaire de mapBearing.js, réappliquée au déplacement).
+  function _placerCarte(p, niveau) {
+    const map = window.map, cfg = window.APP_CONFIG || {};
+    if (!map || typeof window.convertCoord !== "function" || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+    if (cfg.multiLevel === true && Number.isInteger(niveau) && cfg.activeLevel !== niveau &&
+        typeof window.ktaSetActiveLevel === "function") {
+      try { window.ktaSetActiveLevel(niveau, { source: "vue3d" }); } catch (err) { /* niveau absent */ }
+    }
+    try {
+      map.setView(window.convertCoord(p.x, p.y), Math.max(map.getZoom(), 0), { animate: false });
+    } catch (err) { console.warn("[Vue3D] carte non recentrée :", err && err.message); }
   }
 
   function basculerVue() {
@@ -1240,6 +1842,8 @@
   function suivre() {
     if (!_e || !_trackerActif()) return;
     _e.mode = "suivi";
+    _e.niveauLibre = null;
+    _e.passageForce = null;
     _e.tangage = 0;
     _majBoutonSuivre();
     _e.sale = true;
@@ -1266,13 +1870,21 @@
     }
     const e = _e, info = e.renderer.info;
     let construites = 0, visibles = 0;
-    const yMax = { opaque: 0, murs: 0 };
+    const yMax = { opaque: 0, murs: 0 }, boites = {};
     e.tuiles.forEach(function (t) {
       if (!t.obj) return;
       construites++;
       if (t.obj.visible) visibles++;
       t.obj.children.forEach(function (m) {
         const f = m.userData && m.userData.famille;
+        if (f && m.geometry) {
+          // Emprise de chaque famille (m), toutes tuiles construites : zones découpées au tube (checkup).
+          if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+          const bb = m.geometry.boundingBox, b = boites[f] || (boites[f] = { x0: Infinity, x1: -Infinity,
+            y1: -Infinity, z0: Infinity, z1: -Infinity });
+          b.x0 = Math.min(b.x0, bb.min.x); b.x1 = Math.max(b.x1, bb.max.x); b.y1 = Math.max(b.y1, bb.max.y);
+          b.z0 = Math.min(b.z0, bb.min.z); b.z1 = Math.max(b.z1, bb.max.z);
+        }
         if (f !== "opaque" && f !== "murs") return;
         if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
         yMax[f] = Math.max(yMax[f], m.geometry.boundingBox.max.y);
@@ -1285,11 +1897,21 @@
       boussole: { angle: e.roseAngle, nord: e.nord, calibre: e.nordCalibre,
         libelle: e.boussole ? e.boussole.getAttribute("aria-label") : "",
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
-      niveau: e.niveau, hauteur: e.hauteur, distance: e.distance,
+      niveau: e.niveau, niveauLibre: Number.isInteger(e.niveauLibre) ? e.niveauLibre : null,
+      changementsNiveau: e.changementsNiveau, hauteur: e.hauteur, distance: e.distance,
+      rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
+      facesRemblais: e.facesRemblais,
+      passage: { visible: !!e.boiteNiveaux && !e.boiteNiveaux.hidden,
+        haut: e.passageCibles && e.passageCibles.haut ? e.passageCibles.haut.niveau : null,
+        bas: e.passageCibles && e.passageCibles.bas ? e.passageCibles.bas.niveau : null,
+        liste: e.passageCibles ? e.passageCibles.liste.map(function (c) { return c.niveau; }) : [] },
+      boutonRendu: e.boutonRendu ? e.boutonRendu.textContent : "",
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
       tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte, yMax: yMax,
+      boites: boites,
       panneaux: Array.from(e.panneaux).map(function (sp) {
         return { visible: sp.visible && !!sp.parent && sp.parent.visible, x: sp.position.x, z: sp.position.z,
+          nom: sp.userData.poi.nom, jonction: !!sp.userData.poi.jonction, ecran: _ecran(sp.position),
           dansVolume: !!sp.userData.poi.anneau, depthTest: sp.material.depthTest, ordre: sp.renderOrder,
           opacite: +sp.material.opacity.toFixed(2), echelle: +sp.scale.x.toFixed(2) };
       }),
@@ -1298,6 +1920,20 @@
       geometries: info.memory.geometries, textures: info.memory.textures,
       msOuverture: Math.round(e.msOuverture || 0), msIndex: Math.round(e.msIndex), msTuiles: Math.round(e.msTuiles)
     };
+  }
+
+  // Point de la scène → position à l'écran (px de la page), pour viser un panneau (checkup).
+  function _ecran(v) {
+    const r = _e.cv.getBoundingClientRect(), q = new THREE.Vector3(v.x, v.y, v.z).project(_e.camera);
+    return { x: r.left + (q.x + 1) / 2 * r.width, y: r.top + (1 - q.y) / 2 * r.height, devant: q.z < 1 };
+  }
+
+  // Parois des tuiles construites du mode galerie, en mètres [[x0, z0, x1, z1]] (checkup : aucune ne se croise).
+  function parois() {
+    if (!_e) return [];
+    const out = [];
+    _e.tuiles.forEach(function (t) { if (t.obj && t.parois) Array.prototype.push.apply(out, t.parois); });
+    return out;
   }
 
   // Mesure : `images` rendus en tournant sur place (un tour complet), chacun suivi d'une lecture d'un pixel qui
@@ -1342,7 +1978,7 @@
 
   window.KtaVue3D = {
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
-    basculerSuivi: basculerSuivi,
+    basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer
   };
 })();

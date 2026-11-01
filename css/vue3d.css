@@ -16,7 +16,7 @@
 
 .kta-v3d-haut {
   position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px;
-  display: flex; gap: 8px;
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 20px);
 }
 .kta-v3d-pad {
   position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
@@ -65,3 +65,14 @@
   pointer-events: none;
 }
 .kta-v3d-rose { width: 56px; height: 56px; }
+
+/* Passage vers un autre niveau (🪜 près d'un POI jonction ou d'un bout de tracé jonction, mode libre) : à gauche, au
+   milieu ; ▲ / ▼ ou la liste des niveaux liés, écrits en clair. */
+.kta-v3d-niveaux {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+}
+.kta-v3d-niveaux[hidden] { display: none; }
+.kta-v3d-niveaux-marque {
+  font-size: 26px; line-height: 1; padding: 4px 6px; border-radius: 10px; background: var(--kta-surface);
+}
