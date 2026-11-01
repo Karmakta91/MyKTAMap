@@ -470,6 +470,8 @@ En cuanto reconozcas una referencia:
 
 El icono se coloca allí, el trazado vuelve a empezar desde ese punto y el modo se cierra solo. Otra forma: el botón **📍 Estoy aquí** en la ficha de un punto.
 
+**Plano multinivel**: si una galería, una zona o una estructura de **otro nivel** pasa a menos de **10 m** del lugar tocado (o un paso entre niveles como una escalera o un pozo), la app pregunta **¿En qué nivel estás?**: una opción por nivel encontrado, con su profundidad si está indicada, el nivel mostrado marcado por defecto. El seguimiento pasa al nivel elegido y el mapa lo muestra. **Cancelar** no recoloca nada: vuelve a tocar el mapa. Nada de otro nivel cerca → sin pregunta, se mantiene el nivel mostrado. La misma pregunta aparece cuando la app pregunta **¿Dónde estás?** (salida de emergencia, «Ir allí», guiado).
+
 ### 🧭 Brújula
 
 La ficha **🧭** muestra una rosa de los vientos arriba a la izquierda del mapa, incluso con el tracker parado. Su **N** apunta siempre al Norte, sea cual sea la orientación del teléfono. Tócala para agrandarla (rumbo en grande y ángulo exacto); ✕ la cierra.

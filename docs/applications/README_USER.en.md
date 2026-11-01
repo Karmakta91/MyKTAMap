@@ -470,6 +470,8 @@ As soon as you recognize a landmark:
 
 The icon moves there, the trail restarts from there and the mode closes by itself. Another way: the **📍 I am here** button in a point's popup.
 
+**Multi-level plan**: if a gallery, zone or structure from **another level** runs within **10 m** of the spot you tapped (or a passage between levels such as a ladder or a shaft), the app asks **Which level are you on?**: one choice per level found, with its depth when it is filled in, the level shown ticked by default. Tracking moves to the chosen level and the map shows it. **Cancel** realigns nothing: tap the map again. Nothing from another level nearby → no question, the level shown is kept. The same question comes when the app asks **Where are you?** (emergency exit, "Go there", guidance).
+
 ### 🧭 Compass
 
 The **🧭** tile shows a compass rose at the top left of the map, even with the tracker stopped. Its **N** always points North, whatever the phone's orientation. Tap it to enlarge it (direction in big letters and exact angle); ✕ closes it.
