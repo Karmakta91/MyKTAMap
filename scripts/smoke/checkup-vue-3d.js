@@ -631,9 +631,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return { etat: window.KtaVue3D.etat(), tri: m.trianglesMax, canvas: !!document.querySelector("#kta-vue3d canvas"),
           css: !!document.getElementById("kta-vue3d-css"),
           titres: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d]"), function (b) { return b.title; }),
-          attendus: ["vue3d.fermer", "ui.refonte.counter_sortie_title",
-            window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun", "vue3d.plongee",
+          attendus: ["vue3d.fermer", window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun",
+            "ui.refonte.counter_sortie_title", "vue3d.plongee",
             "vue3d.hauteur", "vue3d.passerStructures", "vue3d.suivre", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
+
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins"].map(function (k) {
             return window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
@@ -702,9 +703,30 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return { ouvert: e.ouvert, reglage: e.reglageHauteur.visible };
       });
       verifier(echap.ouvert && !echap.reglage, "Échap ferme d'abord le réglage ouvert, la vue reste", echap);
+      // ≡ juste à gauche de ✕, côte à côte en haut à droite (rangée en row-reverse, `order`), au PC puis au téléphone.
+      const filtresAColle = function () {
+        const x = document.querySelector('#kta-vue3d [data-v3d="fermer"]').getBoundingClientRect();
+        const f = document.querySelector('#kta-vue3d [data-v3d="filtres"]').getBoundingClientRect();
+        const autres = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *"))
+          .filter(function (b) { return b.offsetParent !== null && !b.hidden && b.getAttribute("data-v3d") !== "fermer" &&
+            b.getAttribute("data-v3d") !== "filtres"; })
+          .map(function (b) { return b.getBoundingClientRect(); });
+        // Rien entre ≡ et ✕ sur la même ligne.
+        const entre = autres.filter(function (r) {
+          return Math.abs(r.top - x.top) < 2 && r.left >= f.right - 1 && r.right <= x.left + 1;
+        }).length;
+        return { memeLigne: Math.abs(f.top - x.top) < 1, ecart: Math.round(x.left - f.right), entre: entre,
+          largeur: window.innerWidth };
+      };
+      const filtresPc = await page.evaluate(filtresAColle);
+      verifier(filtresPc.memeLigne && filtresPc.ecart >= 0 && filtresPc.ecart <= 12 && filtresPc.entre === 0,
+        "PC : ≡ immédiatement à gauche de ✕", filtresPc);
       // Téléphone : ✕ au coin haut droit, sur la première ligne de boutons.
       await page.setViewportSize({ width: 393, height: 852 });
       await page.waitForTimeout(400);
+      const filtresTel = await page.evaluate(filtresAColle);
+      verifier(filtresTel.memeLigne && filtresTel.ecart >= 0 && filtresTel.ecart <= 12 && filtresTel.entre === 0 &&
+        filtresTel.largeur === 393, "téléphone (393 px) : ≡ immédiatement à gauche de ✕", filtresTel);
       const tel = await page.evaluate(function () {
         const bs = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"));
         const rs = bs.map(function (b) { return b.getBoundingClientRect(); });
@@ -1817,6 +1839,187 @@ async function mesuresGalerie(page, nom, semisDonne) {
       }, pt(0, -8, 0, 90));
       verifier(carte2.avance > 2.9 && carte2.dLat < 1 && carte2.dLng < 1,
         "libre, 3 m puis fermer : la carte 2D est centrée sur la position 3D", carte2);
+
+      // ── 10. Guidage en 3D, fiche d'un POI, « Y aller » depuis la 3D (QCM du 02/11/2026) ─────────────────
+      // Sur le T fictif (principal est-ouest, secondaire vers le sud depuis son milieu). Itinéraire tracé PENDANT la
+      // vue, comme depuis 🚨 : la scène le montre ; bandeau (aperçu en libre, consigne réelle en suivi) ; chevrons.
+      const POIS_V3D = [
+        Object.assign({ id: "Salle v3d", nom: "Salle v3d", uid: "pt_v3d_salle", level: 0, tags: ["salle"] }, pt(0, 7, 0.6)),
+        Object.assign({ id: "Salle haut v3d", nom: "Salle haut v3d", uid: "pt_v3d_haut", level: 1, tags: ["salle"] },
+          pt(0, 4, -5.4))
+      ];
+      await page.evaluate(function (pois) {
+        window.__v3dPointsAvant = window.getEditorPoints().slice();
+        window.setEditorPoints(window.__v3dPointsAvant.concat(pois));
+        window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+        if (window.getTrackingActif()) window.stopTracking();
+        window.ktaSetActiveLevel(0);
+        try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* réglage « Auto » par défaut */ }
+      }, POIS_V3D);
+      // Attend un itinéraire différent de `avant` (référence des points), puis une image de la vue.
+      const attendreIti = async function () {
+        await attendre(page, function () {
+          const r = (window.getRoads() || []).find(function (x) { return x && x.type === "itinerary"; });
+          return !!r && r.points !== window.__v3dItiAvant;
+        }, 15000).catch(function () {});
+        await page.waitForTimeout(500);
+      };
+      const noterIti = function () {
+        return page.evaluate(function () {
+          const r = (window.getRoads() || []).find(function (x) { return x && x.type === "itinerary"; });
+          window.__v3dItiAvant = r ? r.points : null;
+        });
+      };
+      const ga0 = await page.evaluate(function (a) {
+        return window.KtaVue3D.ouvrir({ depart: a }).then(function () {
+          const e = window.KtaVue3D.etat();
+          return { rubans: e.rubans.itinerary || 0, bandeau: e.bandeau.affiche, chevrons: e.chevrons, mode: e.mode };
+        });
+      }, pt(0, -10, 0, 90));
+      verifier(ga0.mode === "libre" && !ga0.rubans && !ga0.bandeau && !ga0.chevrons,
+        "sans itinéraire : ni ruban, ni bandeau, ni chevrons", ga0);
+      await noterIti();
+      await page.evaluate(function (a) {
+        window.itineraireYAller(a.c.x, a.c.y, "Cible v3d", { origine: { x: a.o.x, y: a.o.y, level: 0 } });
+      }, { c: pt(0, 0, 10), o: pt(0, -10, 0) });
+      await attendreIti();
+      const ga1 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), b = document.querySelector("#kta-vue3d .kta-v3d-bandeau");
+        const ap = window.ItiGuidage.apercu(e.pos, { cap: e.cap });
+        return { rubans: e.rubans.itinerary || 0, bandeau: e.bandeau, chevrons: e.chevrons, visibles: e.chevronsVisibles,
+          marque: !!(b && b.querySelector(".kta-v3d-guid-apercu")), attendu: ap.principal,
+          texte: b ? b.textContent : "", marqueTexte: window.I18n.t("vue3d.apercu"),
+          haut: document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect().bottom,
+          bTop: b ? b.getBoundingClientRect().top : 0 };
+      });
+      verifier(ga1.rubans > 0, "itinéraire tracé pendant la vue : la scène le montre (kta:itineraireChange)", ga1.rubans);
+      verifier(ga1.bandeau.affiche && ga1.bandeau.apercu && ga1.marque && ga1.bandeau.principal === ga1.attendu &&
+        ga1.attendu && ga1.texte.indexOf(ga1.marqueTexte) >= 0 && ga1.bTop >= ga1.haut,
+        "libre : bandeau sous la rangée du haut, consigne d'aperçu marquée « " + ga1.marqueTexte + " »", ga1);
+      verifier(ga1.chevrons > 0 && ga1.visibles, "chevrons au sol sur le ruban (" + ga1.chevrons + ")", ga1);
+      await capture(page, "guidage-apercu");
+      // Le bandeau ne descend pas à chaque relecture (il se cale sous la rangée seule).
+      const stableB = await page.evaluate(function () {
+        const b = document.querySelector("#kta-vue3d .kta-v3d-bandeau"), t0 = b.getBoundingClientRect().top;
+        window.dispatchEvent(new Event("resize")); window.dispatchEvent(new Event("resize"));
+        return Math.abs(b.getBoundingClientRect().top - t0);
+      });
+      verifier(stableB < 1, "bandeau à la même place après deux redimensionnements", stableB);
+      // Suivi : la consigne réelle du tracker (celle du bandeau 2D, ItiGuidage.etat()), sans la marque.
+      const ga2 = await page.evaluate(function (a) {
+        window.startTracking();
+        window.recalerTrackerSurPoint(a.x, a.y, 0);
+        window.__v3dCapG = window.getPlanRelHeading;
+        window.getPlanRelHeading = function () { return 90; };
+        window.KtaVue3D.suivre();
+        window.ItiGuidage.rafraichir();
+        return new Promise(function (r) {
+          setTimeout(function () {
+            const e = window.KtaVue3D.etat(), st = window.ItiGuidage.etat();
+            r({ mode: e.mode, bandeau: e.bandeau, reel: st.visible ? st.principal : null, chevrons: e.chevrons });
+          }, 1300);
+        });
+      }, pt(0, -10, 0));
+      verifier(ga2.mode === "suivi" && ga2.bandeau.affiche && !ga2.bandeau.apercu && ga2.reel &&
+        ga2.bandeau.principal === ga2.reel && ga2.chevrons > 0, "suivi : la consigne réelle du guidage, sans « Aperçu »", ga2);
+      // Toucher un panneau de POI → sa fiche de la carte (sans ✏️ / 🗑️ : la carte est dessous). Le POI jonction
+      // reste derrière (le toucher d'un POI jonction garde son passage 🪜).
+      await page.evaluate(function (a) {
+        window.KtaVue3D.basculerSuivi();
+        window.KtaVue3D.placer(a.x, a.y, 90);
+      }, pt(0, 1, 0, 90));
+      await page.waitForTimeout(400);
+      const visePoi = async function (nom) {
+        return page.evaluate(function (n) {
+          const q = window.KtaVue3D.etat().panneaux.filter(function (p) { return p.nom === n && p.visible; })[0];
+          return q ? q.ecran : null;
+        }, nom);
+      };
+      let viseP = await visePoi("Salle v3d");
+      if (viseP) await page.mouse.click(viseP.x, viseP.y);
+      await page.waitForTimeout(300);
+      const fi1 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), f = document.querySelector("#kta-vue3d .kta-v3d-fiche");
+        return { fiche: e.fiche, aller: !!(f && f.querySelector(".kta-popup-point .kta-popup-btn-aller")),
+          ici: !!(f && f.querySelector(".kta-popup-btn-here")), etape: !!(f && f.querySelector(".kta-popup-btn-add")),
+          favori: !!(f && f.querySelector(".kta-popup-btn-fav")), edition: !!(f && f.querySelector(".kta-popup-btn-edit, .kta-popup-btn-delete")),
+          niveau: e.niveau };
+      });
+      verifier(!!viseP && fi1.fiche && fi1.fiche.nom === "Salle v3d" && fi1.aller && fi1.ici && fi1.etape && fi1.favori &&
+        !fi1.edition, "toucher le panneau d'un POI : sa fiche de la carte (Y aller, Je suis ici, étape, favori)", fi1);
+      await capture(page, "fiche-poi");
+      await page.keyboard.press("Escape");
+      const fi2 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { ouvert: e.ouvert, fiche: e.fiche }; });
+      verifier(fi2.ouvert && !fi2.fiche, "Échap ferme d'abord la fiche, la vue reste", fi2);
+      // « Y aller » de la fiche, mode libre, tracker actif : départ de la position 3D (niveau compris), tracker non
+      // recalé. Sur un plan multi-niveau, on passe au niveau 1 par le POI jonction avant.
+      const hautN = G.multi;
+      const BB = hautN ? pt(0, -2, -6, 90) : pt(0, 1, 0, 90);
+      await page.evaluate(function (a) {
+        const K = window.KtaVue3D;
+        if (a.hautN) { K.placer(a.pres.x, a.pres.y, 90); K.changerNiveau("haut"); }
+        K.placer(a.BB.x, a.BB.y, 90);
+      }, { hautN: hautN, pres: pt(0, -7, 0, 90), BB: BB });
+      await page.waitForTimeout(400);
+      viseP = await visePoi(hautN ? "Salle haut v3d" : "Salle v3d");
+      if (viseP) await page.mouse.click(viseP.x, viseP.y);
+      await page.waitForTimeout(300);
+      await noterIti();
+      const trAvant = await page.evaluate(function () { return { p: window.getTrackingPosition(), n: window.getTrackerLevel() }; });
+      await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-aller").click();
+      await page.waitForTimeout(300);
+      if (await page.locator("#kta-iti-confirm-ok").count()) await page.locator("#kta-iti-confirm-ok").click();
+      await attendreIti();
+      const ya1 = await page.evaluate(function () {
+        const r = window.getRoads().find(function (x) { return x && x.type === "itinerary"; });
+        const e = window.KtaVue3D.etat();
+        return { wp0: r && r.waypoints[0], p0: r && r.points[0], pos: e.pos, niveau: e.niveau, fiche: e.fiche,
+          tr: window.getTrackingPosition(), trN: window.getTrackerLevel(), rubans: e.rubans.itinerary || 0 };
+      });
+      verifier(ya1.wp0 && Math.hypot(ya1.wp0.x - BB.x, ya1.wp0.y - BB.y) < 0.5 && (hautN ? ya1.wp0.level === 1 : true) &&
+        (hautN ? ya1.p0 && ya1.p0.level === 1 : true) && !ya1.fiche,
+        "« Y aller » en libre : départ de la position 3D" + (hautN ? ", niveau 1 compris" : "") + ", fiche refermée", ya1);
+      verifier(Math.hypot(ya1.tr.x - trAvant.p.x, ya1.tr.y - trAvant.p.y) < 0.01 && ya1.trN === trAvant.n,
+        "le tracker n'est pas recalé", { avant: trAvant, apres: { p: ya1.tr, n: ya1.trN } });
+      verifier(ya1.rubans > 0, "le nouvel itinéraire est dans la scène", ya1.rubans);
+      // Tracker arrêté : « D'où pars-tu ? » avec « Ici » en premier ; « Ici » recale le tracker à la position 3D
+      // (niveau compris) et l'itinéraire en part.
+      await page.evaluate(function () { window.stopTracking(); window.getPlanRelHeading = window.__v3dCapG; });
+      await page.waitForTimeout(200);
+      viseP = await visePoi(hautN ? "Salle haut v3d" : "Salle v3d");
+      if (viseP) await page.mouse.click(viseP.x, viseP.y);
+      await page.waitForTimeout(300);
+      await noterIti();
+      await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-aller").click();
+      await page.waitForTimeout(300);
+      const qa3 = await page.evaluate(function () {
+        const ov = document.getElementById("kta-iti-depart");
+        return ov ? Array.from(ov.querySelectorAll("[data-kta-confirm-choix]")).map(function (r) { return r.value; }) : null;
+      });
+      verifier(qa3 && qa3[0] === "ici" && qa3.indexOf("derniere") > 0 && qa3.indexOf("repositionner") > 0,
+        "tracker arrêté : « D'où pars-tu ? », « Ici » en premier", qa3);
+      if (qa3) {
+        await page.locator('#kta-iti-depart [data-kta-confirm-choix="ici"]').check();
+        await page.locator("#kta-iti-depart #kta-confirm-oui").click();
+        await page.waitForTimeout(300);
+        if (await page.locator("#kta-iti-confirm-ok").count()) await page.locator("#kta-iti-confirm-ok").click();
+        await attendreIti();
+      }
+      const ya2 = await page.evaluate(function () {
+        const r = window.getRoads().find(function (x) { return x && x.type === "itinerary"; });
+        return { wp0: r && r.waypoints[0], tr: window.getTrackingPosition(), trN: window.getTrackerLevel(),
+          confirmee: window.getTrackingPositionEtat().confirmee };
+      });
+      verifier(ya2.wp0 && Math.hypot(ya2.wp0.x - BB.x, ya2.wp0.y - BB.y) < 0.5 && Math.hypot(ya2.tr.x - BB.x, ya2.tr.y - BB.y) < 0.01 &&
+        (hautN ? ya2.trN === 1 && ya2.wp0.level === 1 : true) && ya2.confirmee,
+        "« Ici » : tracker recalé à la position 3D" + (hautN ? " et au niveau 1" : "") + ", l'itinéraire en part", ya2);
+      await page.evaluate(function () {
+        return window.KtaVue3D.fermer().then(function () {
+          window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+          window.setEditorPoints(window.__v3dPointsAvant);
+          window.ktaSetActiveLevel(0);
+        });
+      });
       // Itinéraire multi-niveau (niveau porté par chaque point) : au −1, seul son morceau du −1 est dessiné.
       const iti = await page.evaluate(function (a) {
         const C = window.APP_CONFIG, av = { m: C.multiLevel, l: C.activeLevel }, sc = C.scale;
@@ -1836,7 +2039,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       }, pt(0, -8, 0, 90));
       verifier(iti.niveau === -1 && iti.roads === 1,
         "itinéraire multi-niveau : au −1, son morceau du −1 est dessiné (plus d'itinéraire disparu)", iti);
-      // ── 10. Mode mixte : une galerie qui débouche sur une chambre (fronts de taille et piliers), fictive ─────────
+      // ── 11. Mode mixte : une galerie qui débouche sur une chambre (fronts de taille et piliers), fictive ─────────
       // Galerie principale d'ouest en est (x de -30 à 22 m), branche secondaire en T à x = -15 ; chambre de x = 0 à
       // 24 m, z de -10 à 10, bordée de fronts (ouverture de 3 m à l'ouest pour la galerie), six piliers de 2 × 2 m à
       // z = ±3,5. Rendu par défaut (plan de test sans choix) : mixte.
@@ -2001,7 +2204,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         tri.suite[1][2] > tri.suite[2][2] && tri.rouvert === "structures" && tri.autre === "galerie",
         "trois états : mixte → structures → galerie → mixte, retenus pour ce plan (l'autre plan garde le sien)", tri);
 
-      // ── 11. Membres, repères et itinéraires d'une extension (prise neutre, extension FACTICE) ─────────────────
+      // ── 12. Membres, repères et itinéraires d'une extension (prise neutre, extension FACTICE) ─────────────────
       const eq0 = await page.evaluate(function (d) {
         return window.KtaVue3D.ouvrir({ depart: d }).then(function () {
           const e = window.KtaVue3D.etat();
@@ -2066,7 +2269,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.setStructures([]);
       });
 
-      // ── 12. Jamais coincé : accroche d'un POI jonction posée à 3 m d'un tube (dans la roche) ─────────────────
+      // ── 13. Jamais coincé : accroche d'un POI jonction posée à 3 m d'un tube (dans la roche) ─────────────────
       // Après le passage, la place est ramenée dans le tube et l'on avance, en galerie et en mixte ; partie d'un
       // pilier (aucun pas possible), un pas qui rapproche de la galerie passe.
       if (G.multi) {

@@ -17,7 +17,10 @@
 // « Recalculer d'ici » et sortie d'urgence partent du −1 ; « Tracer » vers une sortie du −1 finit sur le −1 ;
 // « Y aller » de la fiche d'un POI du −1, depuis le 0, finit sur le −1 (POI jonction : même niveau que « Je suis
 // ici ») ; « Je suis ici » d'un POI à côté de la galerie (§ 16) : à 2 m → tracker sur le tracé de son niveau,
-// à 30 m → sur le POI, image de collision sans tracé → point accessible ; mono-niveau → jamais de fenêtre.
+// à 30 m → sur le POI, image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
+// tracé quand d'autres niveaux en ont (§ 16 bis) ; « Y aller » tracker arrêté (§ 17) : « D'où pars-tu ? » à chaque
+// fois (« Ma dernière position (il y a …) » part de là, « Me repositionner » arme le picker, Annuler ne fait rien),
+// picker direct si la position n'a jamais été confirmée ; mono-niveau → jamais de fenêtre.
 // Usage : node scripts/smoke/checkup-recaler-niveau.js (SMOKE_PORT pour une autre copie)
 // Doc : docs/architecture/tracking.md
 // =====================================================================
@@ -187,6 +190,32 @@ async function attendreSortie(page) {
 }
 
 const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && Math.abs(a.y - b.y) < 0.6; };
+
+// Fenêtre « D'où pars-tu ? » de « Y aller » (interfaceItineraire.js > _demanderDepart) : choix proposés et textes.
+function questionDepart(page) {
+  return page.evaluate(function () {
+    const ov = document.getElementById("kta-iti-depart");
+    if (!ov) return null;
+    const choix = Array.from(ov.querySelectorAll("[data-kta-confirm-choix]"));
+    return { choix: choix.map(function (r) { return r.value; }),
+      coche: (choix.find(function (r) { return r.checked; }) || {}).value,
+      textes: choix.map(function (r) { return r.parentNode.textContent; }),
+      attenduDate: window.ktaDateRelative(window.getTrackingPositionEtat().ts) };
+  });
+}
+
+// Répond à « D'où pars-tu ? » : `valeur` cochée puis OK, ou null = Annuler.
+async function repondreDepart(page, valeur) {
+  await attendre(page, function () { return !!document.getElementById("kta-iti-depart"); }, 3000).catch(function () {});
+  // Pas de fenêtre : l'échec est déjà dit par la vérification qui précède (ou par la suite du cas).
+  if (!(await page.locator("#kta-iti-depart").count())) { pb("« D'où pars-tu ? » absente"); return; }
+  if (valeur === null) await page.locator("#kta-iti-depart #kta-confirm-non").click();
+  else {
+    await page.locator('#kta-iti-depart [data-kta-confirm-choix="' + valeur + '"]').check();
+    await page.locator("#kta-iti-depart #kta-confirm-oui").click();
+  }
+  await page.waitForTimeout(300);
+}
 
 (async function main() {
   const nav = await lancerNavigateur(chromium);
@@ -499,6 +528,13 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
       window.itineraireYAller(c.x, c.y, "CibleTest");
       return c;
     }, P);
+    // Tracker arrêté, position confirmée : la question se pose ; « Ma dernière position » part du tracker.
+    await page.waitForTimeout(200);
+    const q13 = await questionDepart(page);
+    verifier(q13 && JSON.stringify(q13.choix) === '["derniere","repositionner"]' && q13.coche === "derniere" &&
+      q13.textes[0].indexOf(q13.attenduDate) >= 0,
+      "tracker arrêté : « D'où pars-tu ? » (dernière position datée, me repositionner)", q13);
+    await repondreDepart(page, "derniere");
     await attendre(page, function () {
       return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
     }, 15000).catch(function () {});
@@ -567,6 +603,7 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
     if (await aller.count()) {
       const nivBtn = await aller.getAttribute("data-kta-niveau");
       await aller.click();
+      await repondreDepart(page, "derniere");
       await attendre(page, function () {
         return (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; });
       }, 15000).catch(function () {});
@@ -664,7 +701,7 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
       return { ok: Math.abs(pos.x - x) < 0.01 && Math.abs(pos.y - y) < 0.01, pos: pos };
     }, P);
     verifier(exact.ok, "recalage sans « dansGalerie » (portail, picker) : coordonnées exactes", exact.pos);
-    // Plan sans tracé (simulé : Pathfinder.aDesTraces rend false, session vide) : point accessible le plus proche
+    // Plan sans tracé (simulé : Pathfinder.aDesTraces rend false, session et calques vides) : point accessible le plus proche
     // de l'image de collision. Cherche un point refusé qui a un point accessible à moins de 3 m.
     const coll = await page.evaluate(function () {
       const c = window.APP_CONFIG, sc = c.scale, acc = window.ktaEstAccessible;
@@ -679,14 +716,16 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
         }
       }
       if (!cas) return null;
-      const pf = window.Pathfinder, orig = pf.aDesTraces;
+      const pf = window.Pathfinder, orig = pf.aDesTraces, emb = window.getAllEmbeddedRoads;
       const roads = window.getRoads().slice();
       try {
         pf.aDesTraces = function () { return false; };
+        window.getAllEmbeddedRoads = function () { return []; };
         window.setRoads([]);
         window.recalerTrackerSurPoint(cas.x, cas.y, 0, { dansGalerie: true });
       } finally {
         pf.aDesTraces = orig;
+        window.getAllEmbeddedRoads = emb;
         window.setRoads(roads);
       }
       const pos = window.getTrackingPosition();
@@ -696,6 +735,87 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
       verifier(coll.accessible && coll.dM <= 3.1, "plan sans tracé : tracker sur le point accessible le plus proche",
         coll);
     } else inf("pas d'image de collision exploitable : repli sur l'image non testé");
+
+    // § 16 bis. POI d'un niveau sans aucun tracé, alors que d'autres niveaux en ont : même repli sur l'image de
+    // collision (avant : on restait sur l'icône dès que le plan avait un tracé quelque part).
+    console.log("\n── 16 bis. « 📍 Je suis ici » d'un POI d'un niveau sans tracé (d'autres niveaux en ont) ──");
+    const coll2 = await page.evaluate(function () {
+      const c = window.APP_CONFIG, sc = c.scale, acc = window.ktaEstAccessible;
+      let cas = null;
+      for (let y = 80; y < c.imageHeight - 80 && !cas; y += 37) {
+        for (let x = 80; x < c.imageWidth - 80 && !cas; x += 37) {
+          if (acc(x, y)) continue;
+          for (let a = 0; a < 16 && !cas; a++) {
+            const qx = x + 2 * sc * Math.cos(a * Math.PI / 8), qy = y + 2 * sc * Math.sin(a * Math.PI / 8);
+            if (acc(qx, qy)) cas = { x: x, y: y };
+          }
+        }
+      }
+      if (!cas) return null;
+      const roads = window.getRoads().slice(), emb = window.getAllEmbeddedRoads;
+      const out = {};
+      try {
+        // Tracés au niveau 0 seulement (loin du POI) ; aucun calque ; le POI est au −2.
+        window.getAllEmbeddedRoads = function () { return []; };
+        window.setRoads([{ type: "principal", level: 0, points: [{ x: cas.x + 40 * sc, y: cas.y },
+          { x: cas.x + 80 * sc, y: cas.y }] }]);
+        out.aDesTraces = window.Pathfinder.aDesTraces();
+        window.recalerTrackerSurPoint(cas.x, cas.y, -2, { dansGalerie: true });
+        const p = window.getTrackingPosition();
+        out.bas = { accessible: acc(p.x, p.y), dM: Math.hypot(p.x - cas.x, p.y - cas.y) / sc, niveau: window.getTrackerLevel() };
+        // Contre-cas : au niveau 0 (qui a un tracé, à plus de 6 m), on reste sur le POI.
+        window.recalerTrackerSurPoint(cas.x, cas.y, 0, { dansGalerie: true });
+        const q = window.getTrackingPosition();
+        out.zero = { dM: Math.hypot(q.x - cas.x, q.y - cas.y) / sc };
+      } finally {
+        window.getAllEmbeddedRoads = emb;
+        window.setRoads(roads);
+      }
+      return out;
+    });
+    if (coll2) {
+      verifier(coll2.aDesTraces && coll2.bas.accessible && coll2.bas.dM > 0 && coll2.bas.dM <= 3.1 &&
+        coll2.bas.niveau === -2, "POI du −2 sans tracé à ce niveau (le 0 en a) : point accessible le plus proche",
+        coll2.bas);
+      verifier(coll2.zero.dM < 0.01, "POI du 0, tracé du 0 à plus de 6 m : tracker sur le POI", coll2.zero);
+    } else inf("pas d'image de collision exploitable : § 16 bis non testé");
+
+    // § 17. « Y aller », tracker arrêté : la question se pose chaque fois ; Annuler ne fait rien ; « Me
+    // repositionner » arme le picker ; jamais confirmée → picker direct, sans question.
+    console.log("\n── 17. « Y aller », tracker arrêté : « D'où pars-tu ? » ──");
+    await poserCas(page, P, RESEAU);
+    await effacerItineraire();
+    await page.evaluate(function (P) {
+      if (window.getTrackingActif()) window.stopTracking();
+      window.recalerTrackerSurPoint(P.x - 2 * P.sc, P.y, 0);
+      window.ktaSetActiveLevel(0, { source: "checkup" });
+      window.itineraireYAller(P.x + 15 * P.sc, P.y + 20 * P.sc, "CibleTest");
+    }, P);
+    await page.waitForTimeout(200);
+    const q17 = await questionDepart(page);
+    verifier(!!q17 && q17.choix.indexOf("ici") < 0, "question posée (pas de « Ici » hors vue 3D)", q17);
+    await repondreDepart(page, null);
+    const ann = await page.evaluate(function () {
+      return { iti: (window.getRoads() || []).some(function (x) { return x && x.type === "itinerary"; }),
+        picker: window.ktaDemanderPositionCarte.estActif(), fenetre: !!document.getElementById("kta-iti-depart") };
+    });
+    verifier(!ann.iti && !ann.picker && !ann.fenetre, "Annuler : ni itinéraire, ni picker", ann);
+    await page.evaluate(function (P) { window.itineraireYAller(P.x + 15 * P.sc, P.y + 20 * P.sc, "CibleTest"); }, P);
+    await repondreDepart(page, "repositionner");
+    e = await etat(page);
+    verifier(e.picker, "« Me repositionner » : le picker « Où es-tu ? » est armé", e.picker);
+    await page.evaluate(function () { window.ktaDemanderPositionCarte.annuler(); });
+    await page.evaluate(function (P) {
+      window.resetTrackingPosition();
+      window.itineraireYAller(P.x + 15 * P.sc, P.y + 20 * P.sc, "CibleTest");
+    }, P);
+    await page.waitForTimeout(200);
+    const direct = await page.evaluate(function () {
+      return { fenetre: !!document.getElementById("kta-iti-depart"), picker: window.ktaDemanderPositionCarte.estActif() };
+    });
+    verifier(!direct.fenetre && direct.picker, "jamais confirmée : picker direct, sans question", direct);
+    await page.evaluate(function () { window.ktaDemanderPositionCarte.annuler(); });
+    await effacerItineraire();
 
     console.log("\n── 9. Plan mono-niveau ──");
     await page.evaluate(function () { window.APP_CONFIG.multiLevel = false; });

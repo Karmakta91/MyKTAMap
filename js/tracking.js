@@ -1327,7 +1327,8 @@ function _rebuildTrailFromTimeline() {
 // (APP_CONFIG.smartNavRadiusM, 6 m par défaut : le premier pas calé l'y aurait mis de toute façon) :
 //   1) projection sur le tracé le plus proche du niveau du recalage (jonctions exclues : un puits n'est pas une
 //      galerie) ;
-//   2) plan sans aucun tracé : point accessible le plus proche de l'image de collision, si le POI ne l'est pas.
+//   2) niveau du recalage sans aucun tracé (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont) :
+//      point accessible le plus proche de l'image de collision, si le POI ne l'est pas.
 // Au-delà du rayon, on reste sur le POI. Rend { x, y } ajusté, ou null.
 // ⚠️ Le POI ne bouge pas, et son niveau reste la réponse (en multi-niveau, on ne cherche que sur ce niveau).
 function _rayonGalerieM() {
@@ -1340,18 +1341,25 @@ function _rayonGalerieM() {
 // O(N²)) gèlerait le tap sur un grand plan quand la navigation intelligente est éteinte.
 const ICI_TYPES_GALERIE = ["principal", "secondaire", "chemin"];
 
-function _projeterSurTraceDuNiveau(x, y, niveau, rayonPx) {
+// Tracés du niveau (tous niveaux hors multi-niveau), session et calques ; ni itinéraire ni jonction (un puits
+// relie deux niveaux, il n'est la galerie d'aucun).
+function _tracesDuNiveau(niveau) {
   const session = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
   const calques = (typeof window.getAllEmbeddedRoads === "function" ? window.getAllEmbeddedRoads()
     : (typeof window.getEmbeddedRoads === "function" ? window.getEmbeddedRoads() : [])) || [];
-  const roads = session.concat(calques);
   const mlOn = APP_CONFIG.multiLevel === true;
+  return session.concat(calques).filter(function(road) {
+    if (!road || road.type === "itinerary" || road.type === "jonction") return false;
+    if (!Array.isArray(road.points) || road.points.length < 2) return false;
+    return !mlOn || (Number.isInteger(road.level) ? road.level : 0) === niveau;
+  });
+}
+
+function _projeterSurTraceDuNiveau(roads, x, y, rayonPx) {
   let best = null;
   for (let r = 0; r < roads.length; r++) {
-    const road = roads[r];
-    if (!road || ICI_TYPES_GALERIE.indexOf(road.type) < 0 || !Array.isArray(road.points)) continue;
-    if (mlOn && (Number.isInteger(road.level) ? road.level : 0) !== niveau) continue;
-    const pts = road.points;
+    if (ICI_TYPES_GALERIE.indexOf(roads[r].type) < 0) continue;
+    const pts = roads[r].points;
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1], b = pts[i];
       if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") continue;
@@ -1385,11 +1393,11 @@ function _positionDansGalerie(x, y, niveau) {
   const echelle = Number(APP_CONFIG.scale);
   if (!(echelle > 0)) return null;
   const rayonPx = _rayonGalerieM() * echelle;
-  const surTrace = _projeterSurTraceDuNiveau(x, y, niveau, rayonPx);
+  const traces = _tracesDuNiveau(niveau);
+  const surTrace = _projeterSurTraceDuNiveau(traces, x, y, rayonPx);
   if (surTrace) return surTrace;
-  const aDesTraces = !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
-                        window.Pathfinder.aDesTraces());
-  return aDesTraces ? null : _pointAccessibleProche(x, y, rayonPx);
+  // Le niveau a des tracés, mais à plus du rayon : on reste sur le POI (le tracé fait foi, pas l'image).
+  return traces.length ? null : _pointAccessibleProche(x, y, rayonPx);
 }
 
 // Recale le tracker sur un point (« Je suis ici » de la popup, utils.js > buildPointPopupHtml ; arrivée de portail ;

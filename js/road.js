@@ -1059,6 +1059,7 @@ function resetRoads() {
   // Cercles et débounce purgés (sinon cercles orphelins, et un débounce en vol rendrait un état effacé).
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
   _purgeIntersectionLayers();
+  _signalerItineraire();
 
   // 🩸 Hooks de fin de rendu appelés directement (sans renderRoads à blanc) : sinon le label de distance de
   // l'itinéraire reste affiché après « Effacer la session ».
@@ -1108,12 +1109,35 @@ window.getRoads = function() {
   return roadsData;
 };
 
+// Itinéraire calculé de la session (ou null) : celui que suit le guidage (itiGuidage.js > _roadActive).
+function _itineraireDe(liste) {
+  for (let i = 0; i < liste.length; i++) {
+    const r = liste[i];
+    if (r && r.type === "itinerary" && !r._preview) return r;
+  }
+  return null;
+}
+
+// ⚠️ contrat : `kta:itineraireChange` (window, detail { road | null }) part quand l'itinéraire de la session est
+// tracé, remplacé ou effacé (autre tracé ou autre tableau de points). Une étape validée (`done` muté en place) ne
+// le déclenche pas : le chemin n'a pas changé. Les écritures d'itinéraire passent par setRoads (ou resetRoads).
+// Consommateur : la vue 3D (vue3d.js), qui redessine sa scène. Doc : tracking.md § Guidage.
+let _itiSignale = null, _itiPointsSignales = null;   // dernier itinéraire annoncé (tracé et tableau de points)
+function _signalerItineraire() {
+  const apres = _itineraireDe(roadsData), points = apres ? apres.points : null;
+  if (apres === _itiSignale && points === _itiPointsSignales) return;
+  _itiSignale = apres; _itiPointsSignales = points;
+  try { window.dispatchEvent(new CustomEvent("kta:itineraireChange", { detail: { road: apres } })); }
+  catch (e) { console.warn("[Road] kta:itineraireChange :", e); }
+}
+
 window.setRoads = function(roads) {
   roadsData = roads || [];
   // Tout tracé qui entre ressort avec un uid (ktaUid.js).
   if (window.KtaUid) window.KtaUid.ensureAll(roadsData, "rd");
   currentRoad = null;
   renderRoads();
+  _signalerItineraire();
 };
 
 // 🩸 currentRoad à travers undo/redo : setRoads() le remet à null, et le point suivant créerait un tracé

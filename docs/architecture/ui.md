@@ -2199,10 +2199,11 @@ icônes.
   sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
   sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
-- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, 🚨, ❓, ≡, 🦅 vue
+- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, 🦅 vue
   plongeante, ⛏️ hauteur, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, le mode en cours écrit en clair, un
-  toucher passe au suivant), 🧭 / 🕹️ mode, marque « bêta ». ✕ reste au coin haut droit quand la rangée
-  passe sur deux lignes (téléphone). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
+  toucher passe au suivant), 🧭 / 🕹️ mode, marque « bêta ». ✕ reste au coin haut droit quand la rangée passe sur
+  deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
+  (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
 - **Filtres partagés** (décision produit) : ≡ ouvre **le** ≡ Filtres de la carte (`FilterPanel.ouvrir`), un seul
   état ; `FilterPanel.onChange` est appelé à tout changement (types, tags, calque coché, niveaux, plan de base) et la
@@ -2220,7 +2221,14 @@ icônes.
   éclairés, sans compression de tons : le rouge reste celui du jeton), montré aussi de près quand le panneau
   s'efface ; **favori** (`Favoris.isFav(id, uid)`) : ⭐ doré au coin haut droit. Membres et repères d'une extension :
   même carte, sans icône, coupée à la largeur du texte, liseré à la couleur de la personne (`KtaPresences.couleurDe`)
-  ou à la teinte de la charte du repère.
-- **Points d'accroche** : `_e.bandeau` (sous la rangée du haut, caché tant qu'il est vide ; les toasts passent
-  dessous) pour un message durable de la vue ; `vue3d.js > _toucher` (lancer de rayon sur les panneaux de POI)
-  pour ce que fait un toucher de panneau.
+  ou à la teinte de la charte du repère ; les toucher n'ouvre rien (pas de fiche : ce ne sont pas des POI).
+- **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
+  compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
+  urgence, marque « Aperçu » (pointillés dorés, `--kta-accent-texte`) en mode libre. Son `top` est posé par
+  `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
+  appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
+- **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
+  (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
+  Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous.
+- **« D'où pars-tu ? »** (« Y aller », tracker arrêté) : `ktaConfirm` en mode choix (z-index 100002, au-dessus de
+  la vue) ; pas de nouvelle fenêtre.

@@ -3,10 +3,12 @@
 // =====================================================================
 // La règle « instant T » (docs/architecture/tracking.md § Position confirmée) :
 // `tracking.js > position` vaut le départ du plan tant que l'utilisateur ne
-// s'est pas situé (drapeau `_positionConfirmee`). Sortie d'urgence et « Y aller »
-// partent du tracker sans question si suivi actif OU position confirmée, sinon
-// ouvrent le picker partagé « Où es-tu ? ». `requestPermission()` rend une
-// Promise<boolean> que le démarrage du tracker ATTEND.
+// s'est pas situé (drapeau `_positionConfirmee`). La Sortie d'urgence part du
+// tracker sans question si suivi actif OU position confirmée, sinon ouvre le
+// picker partagé « Où es-tu ? ». « Y aller » part du tracker en suivi actif ;
+// tracker arrêté, il demande « D'où pars-tu ? » (dernière position confirmée,
+// me repositionner) ou, sans position confirmée, ouvre directement le picker.
+// `requestPermission()` rend une Promise<boolean> que le démarrage du tracker ATTEND.
 // 🩸 Régressions silencieuses refusées :
 //   1. écriture de `position` sur décision utilisateur sans poser le drapeau
 //      (le picker s'ouvre alors qu'on vient de se situer), ou remise à zéro
@@ -82,8 +84,14 @@ verif(/itineraireYAller\([\s\S]*origine:\s*_lastResultats\.origine/.test(tracer)
 
 verif(/window\.itineraireYAller\s*=\s*function\s*\(x,\s*y,\s*nom,\s*opts\)/.test(iti), "itineraireYAller accepte `opts`");
 const yAller = bloc(iti, "window.itineraireYAller = function", "const labelPoint");
-verif(/opts\.origine/.test(yAller) && /getTrackingPositionEtat/.test(yAller) && /ktaDemanderPositionCarte\(/.test(yAller),
-      "🩸 « Y aller » : origine imposée, sinon même règle (picker si jamais confirmée)");
+const repos = bloc(iti, "function _repositionnerPuisAller(", "\n}\n");
+const depart = bloc(iti, "function _demanderDepart(", "\n}\n");
+verif(/opts\.origine/.test(yAller) && /getTrackingPositionEtat/.test(yAller) && /suiviActif/.test(yAller) &&
+      /!etat\.confirmee/.test(yAller) && /_repositionnerPuisAller\(/.test(yAller) && /_demanderDepart\(/.test(yAller) &&
+      /ktaDemanderPositionCarte\(/.test(repos),
+      "🩸 « Y aller » : origine imposée ; tracker arrêté → question, picker direct si jamais confirmée");
+verif(/etat\.confirmee/.test(depart) && /ktaDateRelative/.test(depart) && /_repositionnerPuisAller\(/.test(depart),
+      "« D'où pars-tu ? » : « Ma dernière position » seulement si confirmée, avec sa date ; « Me repositionner »");
 verif(/origineForcee \|\|/.test(yAller), "« Y aller » : l'origine imposée prime sur la position du tracker");
 
 verif(emergency.includes("emergency.status.positionDefaut") && emergency.includes("getTrackingPositionEtat"),
@@ -115,7 +123,8 @@ for (const lang of ["fr", "en", "es"]) {
   const manquantes = ["sortie.origine.suivi", "sortie.origine.confirmee", "sortie.origine.confirmeeRecent",
     "sortie.origine.clic", "sortie.pick.floater", "pospick.floater", "pospick.annuler", "iti.pick.ouEsTu",
     "ui.trackerWarn.refusTitre", "ui.trackerWarn.refusTexte", "emergency.status.positionDefaut",
-    "sortie.fallback.label", "sortie.fallback.bandeau", "sortie.fallback.sep", "sortie.fallback.court"]
+    "sortie.fallback.label", "sortie.fallback.bandeau", "sortie.fallback.sep", "sortie.fallback.court",
+    "iti.depart.titre", "iti.depart.texte", "iti.depart.derniere", "iti.depart.repositionner"]
     .filter(k => typeof dico[k] !== "string");
   verif(manquantes.length === 0, "🌍 " + lang + " : les clés de la règle existent" + (manquantes.length ? " — manquantes : " + manquantes.join(", ") : ""));
 }

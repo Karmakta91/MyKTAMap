@@ -9,8 +9,8 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
 //   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg), avancer(m),
-//   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), charge() } ; opts : { distanceVue (m),
-//   tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus (élément) }.
+//   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), charge() } ;
+//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire,
@@ -20,7 +20,8 @@
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
-// ne suit aucun filtre. Points d'accroche (lot suivant) : _e.bandeau (sous la rangée du haut), _toucher (panneaux).
+// ne suit aucun filtre et se redessine à `kta:itineraireChange` (road.js). Guidage : bandeau et chevrons
+// (_lireGuidage) ; toucher un POI ouvre sa fiche de la carte (_ouvrirFiche, « Y aller » : origineItineraire).
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
@@ -83,6 +84,10 @@
   const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
   const SEUIL_RECALAGE = 0.5;       // m d'écart avec le tracker sous lequel « Je suis ici ? » ne se pose pas
+  // Chevrons au sol sur l'itinéraire, de sa position vers la prochaine consigne : un tous les `pas` m (posés à des
+  // abscisses fixes du trajet : ils ne glissent pas quand on avance), sur `long` m au plus ; taille en m.
+  const CHEVRON = { pas: 2, long: 30, l: 0.4, ep: 0.09, y: 0.07 };
+  const GUIDAGE_MS = 250;           // ms entre deux lectures du guidage (bandeau, chevrons)
 
   let THREE = null;
   let _import = null;
@@ -365,6 +370,15 @@
       emprise(t, [p]);
     }
     return tuiles;
+  }
+
+  // Segment d'itinéraire du niveau de la scène (chevrons) : chaque point du chemin porte son niveau (pathfinder.js >
+  // computeRoute), sinon celui du tracé (0 par défaut), la règle du ruban (_collecter).
+  function _segmentDuNiveau(road, a, b, niveau) {
+    if (niveau === null) return true;
+    const defaut = Number.isInteger(road.level) ? road.level : 0;
+    return (Number.isInteger(a.level) ? a.level : defaut) === niveau &&
+      (Number.isInteger(b.level) ? b.level : defaut) === niveau;
   }
 
   // ── Géométrie : triangles non indexés, normales int8, couleurs uint8 (18 octets par sommet) ───────────
@@ -937,8 +951,9 @@
     sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
     const J = window.KtaPoiJonction, jonction = p._v3dJonction || (J && J.estJonction(p) ? p : null);
+    // `point` : le POI d'origine (celui de la carte), dont la fiche s'ouvre au toucher (_toucher).
     sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction,
-      danger: danger, favori: favori, bord: bord, genre: o.genre || "poi" };
+      danger: danger, favori: favori, bord: bord, genre: o.genre || "poi", point: p._v3dJonction || p };
     _e.panneaux.add(sp);
     if (url) {
       const img = new Image();
@@ -1839,12 +1854,13 @@
     return _allerNiveau(c || null);
   }
 
-  // Toucher un panneau de POI jonction : son passage, d'où que l'on soit (un seul niveau lié : on y va).
+  // Toucher un panneau de POI : sa fiche, la même que sur la carte (_ouvrirFiche). POI jonction : son passage, d'où
+  // que l'on soit (un seul niveau lié : on y va), comme avant la fiche.
   function _toucher(cx, cy) {
     const e = _e, r = e.cv.getBoundingClientRect(), sprites = [];
     if (!r.width || !r.height) return false;
     e.panneaux.forEach(function (sp) {
-      if (sp.visible && sp.parent && sp.parent.visible && sp.userData.poi.jonction) sprites.push(sp);
+      if (sp.visible && sp.parent && sp.parent.visible) sprites.push(sp);
     });
     if (!sprites.length) return false;
     e.rayon = e.rayon || new THREE.Raycaster();
@@ -1853,6 +1869,7 @@
     const hit = e.rayon.intersectObjects(sprites, false)[0];
     if (!hit) return false;
     const poi = hit.object.userData.poi.jonction;
+    if (!poi) return _ouvrirFiche(hit.object.userData.poi.point);
     const pas = e.passages.filter(function (p) { return p.poi === poi; })[0];
     if (!pas) return false;
     const proche = Math.hypot(pas.x - e.pos.x, pas.y - e.pos.y) / e.sc <= PASSAGE;
@@ -1863,6 +1880,211 @@
     e.passageSig = null;
     _majPassage();
     return true;
+  }
+
+  // ── Guidage de l'itinéraire : bandeau et chevrons (js/itiGuidage.js, aucun calcul de chemin ici) ──────────
+
+  function _itineraire() {
+    const r = _tab(window.getRoads).filter(function (x) { return x && x.type === "itinerary" && !x._preview; })[0];
+    return r && Array.isArray(r.points) && r.points.length >= 2 ? r : null;
+  }
+
+  // ⚠️ contrat (décision produit) : en suivi, la consigne RÉELLE du guidage (ItiGuidage.etat(), comme l'écran XL),
+  // rien si le bandeau 2D ne parle pas ; en libre, un APERÇU depuis la position 3D (ItiGuidage.apercu, qui ne
+  // touche pas l'état du guidage), marqué comme tel. → { bandeau, chevrons } : consigne à montrer (null = rien) et
+  // abscisses { s, sCible } (px le long du trajet) des chevrons, montrés même réglé sur « Jamais ».
+  function _lireGuidage() {
+    const e = _e, G = window.ItiGuidage;
+    if (!G || !_itineraire()) { e.apS = undefined; return { bandeau: null, chevrons: null }; }
+    let reel = null;
+    if (e.mode === "suivi" && typeof G.etat === "function") {
+      reel = G.etat();
+      if (!reel || !reel.visible) reel = null;
+    }
+    let ap = null;
+    if (!reel && typeof G.apercu === "function") {
+      ap = G.apercu(e.pos, { cap: e.cap, sPrec: e.apS });
+      if (!ap || !ap.visible) ap = null;
+    }
+    e.apS = ap ? ap.s : undefined;
+    const bandeau = reel || (e.mode !== "suivi" && ap && !ap.masque ? ap : null);
+    const src = reel || ap;
+    return { bandeau: bandeau, chevrons: src && Number.isFinite(src.s) && Number.isFinite(src.sCible) ? src : null };
+  }
+
+  function _majGuidage(ts) {
+    const e = _e;
+    if (!e.guidageForce && ts - (e.guidageT || 0) < GUIDAGE_MS) return;
+    e.guidageT = ts;
+    e.guidageForce = false;
+    const g = _lireGuidage();
+    _majBandeau(g.bandeau);
+    _majChevrons(g.chevrons);
+  }
+
+  // Bandeau compact dans _e.bandeau : icône (ou schéma du carrefour), consigne, ligne « puis… », marque « Aperçu ».
+  // Mêmes textes que le bandeau 2D. Le DOM n'est touché que si la consigne change.
+  function _majBandeau(g) {
+    const e = _e, b = e.bandeau;
+    if (!b) return;
+    const cle = g ? [g.apercu ? "a" : "r", g.mode, g.icone, g.picto, g.principal, g.sous, g.fleche, g.urgence].join("|")
+      : "";
+    if (cle === e.bandeauCle) return;
+    e.bandeauCle = cle;
+    e.bandeauEtat = g ? { visible: true, apercu: !!g.apercu, mode: g.mode, principal: g.principal || "",
+      sous: g.sous || "" } : { visible: false };
+    if (!g) { b.hidden = true; b.textContent = ""; _majSousHaut(); return; }
+    b.textContent = "";
+    b.classList.toggle("kta-v3d-guid-alerte", g.mode === "ecart" || g.mode === "demi");
+    b.classList.toggle("kta-v3d-guid-urgence", !!g.urgence);
+    const ic = document.createElement("span");
+    ic.className = "kta-v3d-guid-icone";
+    ic.setAttribute("aria-hidden", "true");
+    if (g.picto) ic.innerHTML = g.picto;   // schéma du carrefour : SVG de nombres seuls (itiGuidage.js > _pictoSvg)
+    else ic.textContent = g.icone || "";
+    if (typeof g.fleche === "number") ic.style.transform = "rotate(" + g.fleche + "deg)";
+    const txt = document.createElement("span");
+    txt.className = "kta-v3d-guid-textes";
+    const pr = document.createElement("span");
+    pr.className = "kta-v3d-guid-principal";
+    pr.textContent = g.principal || "";
+    txt.appendChild(pr);
+    if (g.sous) {
+      const so = document.createElement("span");
+      so.className = "kta-v3d-guid-sous";
+      so.textContent = g.sous;
+      txt.appendChild(so);
+    }
+    b.appendChild(ic);
+    b.appendChild(txt);
+    if (g.apercu) {
+      const m = document.createElement("span");
+      m.className = "kta-v3d-guid-apercu";
+      m.textContent = _t("vue3d.apercu");
+      m.title = _t("vue3d.apercuTitre");
+      b.appendChild(m);
+    }
+    b.hidden = false;
+    _majSousHaut();
+  }
+
+  function _libererChevrons() {
+    const e = _e;
+    if (!e.chevrons) return;
+    if (e.chevrons.parent) e.chevrons.parent.remove(e.chevrons);
+    e.chevrons.geometry.dispose();
+    e.chevrons = null;
+    e.sale = true;
+  }
+
+  // Chevrons « ^ » au sol sur le ruban de l'itinéraire, de la position vers la prochaine consigne, sur le niveau de
+  // la scène seulement. Refaits quand l'itinéraire, le niveau ou la plage de chevrons change.
+  function _majChevrons(g) {
+    const e = _e, road = _itineraire(), sc = e.sc, pas = CHEVRON.pas * sc;
+    const k0 = g ? Math.ceil(g.s / pas) : 0;
+    const k1 = g ? Math.floor(Math.min(g.sCible, g.s + CHEVRON.long * sc) / pas) : -1;
+    const sig = g && road && k1 >= k0 ? [k0, k1, e.niveau].join("|") : "";
+    if (sig === e.chevSig && road === e.chevRoad && (!road || road.points === e.chevPts)) return;
+    e.chevSig = sig; e.chevRoad = road; e.chevPts = road ? road.points : null;
+    _libererChevrons();
+    e.nChevrons = 0;
+    if (!sig) return;
+    const pts = road.points, lot = new Lot(), col = new THREE.Color(_jetonsSombres().accent);
+    const l = CHEVRON.l, ep = CHEVRON.ep, y = CHEVRON.y, haut = [0, 1, 0];
+    let i = 1, cum = 0;
+    for (let k = k0; k <= k1; k++) {
+      const s = k * pas;
+      // Segment qui porte l'abscisse s (le trajet est parcouru une seule fois, dans l'ordre).
+      while (i < pts.length) {
+        const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+        if (cum + d >= s) break;
+        cum += d; i++;
+      }
+      if (i >= pts.length) break;
+      const a = pts[i - 1], b = pts[i], d = Math.hypot(b.x - a.x, b.y - a.y);
+      if (d < 1e-6 || !_segmentDuNiveau(road, a, b, e.niveau)) continue;
+      const t = (s - cum) / d, ux = (b.x - a.x) / d, uz = (b.y - a.y) / d, nx = -uz, nz = ux;
+      const cx = (a.x + t * (b.x - a.x)) / sc, cz = (a.y + t * (b.y - a.y)) / sc;
+      // Pointe devant, deux branches vers l'arrière de part et d'autre.
+      const px = cx + ux * l / 2, pz = cz + uz * l / 2;
+      [-1, 1].forEach(function (cote) {
+        const qx = cx - ux * l / 2 + cote * nx * l / 2, qz = cz - uz * l / 2 + cote * nz * l / 2;
+        const bx = qx - px, bz = qz - pz, bl = Math.hypot(bx, bz), ox = -bz / bl * ep / 2, oz = bx / bl * ep / 2;
+        lot.quad([px + ox, y, pz + oz], [qx + ox, y, qz + oz], [qx - ox, y, qz - oz], [px - ox, y, pz - oz], haut,
+          col);
+      });
+      e.nChevrons++;
+    }
+    const geo = lot.geometrie();
+    if (!geo) return;
+    e.chevrons = new THREE.Mesh(geo, e.mats.lumineux);
+    e.chevrons.renderOrder = 1;
+    e.chevrons.matrixAutoUpdate = false;
+    e.scene.add(e.chevrons);
+    e.sale = true;
+  }
+
+  // ── Fiche d'un POI (la fiche de la carte, utils.js > buildPointPopupHtml) ───────────────────────────────
+  // Ouverte par-dessus la scène, dans la vue : ses boutons agissent par l'écouteur unique de la carte
+  // (utils.js > _ktaPopupAction, en capture sur document). ⚠️ Sans ✏️ / Repositionner / 🗑️ : ils se jouent sur la
+  // carte 2D, cachée dessous (décision produit). Photos : utils.js > attachPopupPhotos, branché sur un marqueur
+  // de substitution qui n'offre que on / isPopupOpen (les deux seules méthodes qu'il appelle).
+
+  // Calque d'un POI de calque de données : id et libellé (favoris), comme utils.js > ajouterPointsDepuisJSON.
+  function _infoCalque(id) {
+    if (!id) return { layerId: "data", layerLabel: "" };
+    const cfg = window.PLAN_CONFIG && window.PLAN_CONFIG.dataLayers;
+    const lc = Array.isArray(cfg) ? cfg.filter(function (d) { return d && d.id === id; })[0] : null;
+    return { layerId: id, layerLabel: lc && lc.label ? lc.label : id };
+  }
+
+  function _ouvrirFiche(p) {
+    const e = _e;
+    if (!p || typeof window.buildPointPopupHtml !== "function") return false;
+    _fermerFiche();
+    const session = _tab(window.getEditorPoints).indexOf(p) >= 0;
+    const info = session ? { layerId: "editor", layerLabel: _t("editor.popup.myAdds") } : _infoCalque(p.layerId);
+    const boite = document.createElement("div");
+    boite.className = "kta-v3d-fiche";
+    boite.setAttribute("role", "group");
+    boite.setAttribute("aria-label", String(p.nom || p.id || ""));
+    _bouton(boite, "kta-v3d-btn-petit kta-v3d-fiche-fermer", "✕", _t("vue3d.ficheFermer"), "ficheFermer");
+    const corps = document.createElement("div");
+    corps.className = "kta-v3d-fiche-corps";
+    corps.innerHTML = window.buildPointPopupHtml(p, false, info);   // HTML échappé par la fiche elle-même
+    boite.appendChild(corps);
+    e.ov.appendChild(boite);
+    const marqueur = {
+      h: {}, ouvert: true,
+      on: function (type, f) { (this.h[type] = this.h[type] || []).push(f); return this; },
+      isPopupOpen: function () { return this.ouvert; },
+      emettre: function (type, ev) { (this.h[type] || []).forEach(function (f) { f(ev); }); }
+    };
+    e.fiche = { boite: boite, point: p, marqueur: marqueur };
+    if (typeof window.attachPopupPhotos === "function") {
+      try {
+        window.attachPopupPhotos(marqueur, String(p.id || ""), p.uid);
+        marqueur.emettre("popupopen", { popup: { getElement: function () { return corps; } } });
+      } catch (err) { console.warn("[Vue3D] photos de la fiche :", err && err.message); }
+    }
+    return true;
+  }
+
+  function _fermerFiche() {
+    const e = _e, f = e && e.fiche;
+    if (!f) return false;
+    e.fiche = null;
+    f.marqueur.ouvert = false;
+    try { f.marqueur.emettre("popupclose", {}); } catch (err) { /* photos déjà libérées */ }
+    if (f.boite.parentNode) f.boite.parentNode.removeChild(f.boite);
+    return true;
+  }
+
+  // Origine de « Y aller » pendant la vue (interfaceItineraire.js > itineraireYAller) : mode, position et niveau de
+  // la 3D, ou null vue fermée. En libre, l'itinéraire part d'ici sans recaler le tracker (décision produit).
+  function origineItineraire() {
+    if (!_e) return null;
+    return { mode: _e.mode, x: _e.pos.x, y: _e.pos.y, niveau: _e.niveau };
   }
 
   function _trackerActif() {
@@ -1955,9 +2177,13 @@
     if (e.mode === "suivi") _lireTracker();
     _majPassage();
     const niv = _niveauCourant();
-    if (niv !== e.niveau || e.filtresChanges) { e.filtresChanges = false; _reindexer(); }
+    if (niv !== e.niveau || e.filtresChanges || e.itiChange) {
+      e.filtresChanges = false; e.itiChange = false;
+      _reindexer();
+    }
     _gererTuiles(false);
     _majEquipe();
+    _majGuidage(ts);
     if (e.perdu) return;
     _redimensionner();
     if (!e.sale) return;
@@ -2005,9 +2231,10 @@
   }
 
   // Rangée du haut, à droite (row-reverse : l'ordre CSS de chaque élément dit sa place, de droite à gauche) : ✕
-  // toujours au coin haut droit, même quand la rangée passe sur deux lignes au téléphone, puis 🚨, ❓ (posé par
-  // interfaceDocs.js > _aidePoserBouton dans l'en-tête marqué kta-aide-ctx-entete), ≡, vue, hauteur, rendu, mode et
-  // la marque « bêta ». Réglage de hauteur sur sa propre ligne dessous. Ordre de tabulation = ordre du DOM.
+  // toujours au coin haut droit, même quand la rangée passe sur deux lignes au téléphone, ≡ collé à sa gauche
+  // (décision produit), puis 🚨, ❓ (posé par interfaceDocs.js > _aidePoserBouton dans l'en-tête marqué
+  // kta-aide-ctx-entete), vue, hauteur, rendu, mode et la marque « bêta ». Réglage de hauteur sur sa propre ligne
+  // dessous. Ordre de tabulation = ordre du DOM.
   function _monterDom(stats) {
     const e = _e;
     const ov = document.createElement("div");
@@ -2024,13 +2251,13 @@
     haut.className = "kta-v3d-haut kta-aide-ctx-entete";
     const fermer = _bouton(haut, "kta-v3d-fermer", "✕", _t("vue3d.fermer"), "fermer");
     fermer.setAttribute("data-aide-croix", "");
-    const urgence = _bouton(haut, "kta-v3d-urgence", "🚨", _t("ui.refonte.counter_sortie_title"), "urgence");
-    urgence.setAttribute("aria-label", _t("ui.refonte.counter_sortie_title"));
     // ≡ = le panneau ≡ Filtres de la carte ; titre et pastille posés par FilterPanel.majBadge
     // (data-kta-pastille-filtres).
     e.boutonFiltres = _bouton(haut, "kta-v3d-filtres", "≡", _t("ui.filter.title"), "filtres");
     e.boutonFiltres.setAttribute("aria-label", _t("ui.filter.aria"));
     e.boutonFiltres.setAttribute("data-kta-pastille-filtres", "");
+    const urgence = _bouton(haut, "kta-v3d-urgence", "🚨", _t("ui.refonte.counter_sortie_title"), "urgence");
+    urgence.setAttribute("aria-label", _t("ui.refonte.counter_sortie_title"));
     e.boutonVue = _bouton(haut, "kta-v3d-vue", "🦅", _t("vue3d.plongee"), "vue");
     e.boutonHauteur = _bouton(haut, "kta-v3d-btn-mode kta-v3d-btn-hauteur", "", _t("vue3d.hauteur"), "hauteur");
     e.boutonHauteur.setAttribute("aria-expanded", "false");
@@ -2056,8 +2283,8 @@
     e.reglageHauteur = regl;
     ov.appendChild(haut);
     e.haut = haut;
-    // Bandeau sous la rangée du haut (vide pour l'instant) : un message durable de la vue s'y pose ; les toasts de
-    // l'app passent dessous (_majSousHaut).
+    // Bandeau sous la rangée du haut : guidage de l'itinéraire (_majBandeau) ; les toasts de l'app et la fiche d'un
+    // POI passent dessous (_majSousHaut).
     const bandeau = document.createElement("div");
     bandeau.className = "kta-v3d-bandeau";
     bandeau.setAttribute("aria-live", "polite");
@@ -2123,6 +2350,9 @@
     const e = _e;
     if (!e || !e.haut) return;
     let bas = e.haut.getBoundingClientRect().bottom;
+    // 🩸 Le bandeau se place sous la rangée seule : posé sous --kta-v3d-sous-haut, qui le compte, il descendrait
+    // d'autant à chaque appel.
+    if (e.bandeau) e.bandeau.style.top = Math.round(bas - e.ov.getBoundingClientRect().top + 8) + "px";
     if (e.bandeau && !e.bandeau.hidden) bas = Math.max(bas, e.bandeau.getBoundingClientRect().bottom);
     const v = Math.round(bas + 8) + "px";
     if (v === e.sousHaut) return;
@@ -2235,12 +2465,17 @@
       if (a === "fermer") fermer();
       else if (a === "filtres") _ouvrirFiltres();
       else if (a === "urgence") _urgence();
+      else if (a === "ficheFermer") _fermerFiche();
+      // Action de la fiche qui mène ailleurs (déjà jouée par utils.js > _ktaPopupAction, en capture) : la fiche se
+      // ferme, comme la bulle de la carte.
+      const act = !a && ev.target.closest && ev.target.closest(".kta-v3d-fiche [data-kta-act]");
+      if (act && ["ici", "aller", "etape"].indexOf(act.dataset.ktaAct) >= 0) _fermerFiche();
     });
     on(e.ov, "pointerdown", function (ev) {
       const b = ev.target.closest && ev.target.closest("[data-v3d]");
       if (!b) return;
       const a = b.dataset.v3d;
-      if (a === "fermer" || a === "filtres" || a === "urgence") return;
+      if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer") return;
       if (a === "vue") { basculerVue(); return; }
       if (a === "rendu") { basculerRendu(); return; }
       if (a === "hauteur") { _basculerReglageHauteur(); return; }
@@ -2314,6 +2549,9 @@
       incliner(ev.deltaY < 0 ? INCLINAISON.pas : -INCLINAISON.pas);
     }, { passive: false });
     on(window, "kta:northOffsetChange", function () { _lireNord(); });
+    // Itinéraire tracé, remplacé ou effacé pendant la vue (🚨, fiche, guidage) : scène refaite à l'image suivante,
+    // bandeau et chevrons relus aussitôt.
+    on(window, "kta:itineraireChange", function () { e.itiChange = true; e.guidageForce = true; e.apS = undefined; });
     on(e.cv, "contextmenu", function (ev) { ev.preventDefault(); });
     // Clavier : capturé pendant que la vue est ouverte (les raccourcis de la carte ne partent pas dessous).
     // Une fenêtre de l'app par-dessus la vue (≡ Filtres, Aide, Sortie d'urgence, confirmation) garde ses touches :
@@ -2322,8 +2560,9 @@
       if (_recouverte()) return;
       if (ev.key === "Escape") {
         ev.stopPropagation(); ev.preventDefault();
-        // Échap ferme d'abord un réglage ouvert, puis la vue.
+        // Échap ferme d'abord un réglage ou une fiche ouverts, puis la vue.
         if (e.reglageHauteur && !e.reglageHauteur.hidden) { _basculerReglageHauteur(); return; }
+        if (_fermerFiche()) return;
         fermer();
         return;
       }
@@ -2379,6 +2618,7 @@
       e.perdu = false;
       e.reprises++;
       e.tuiles.forEach(function (t) { t.obj = null; });
+      e.chevrons = null; e.chevSig = null; e.guidageForce = true;   // même règle : jamais dispose() d'avant la perte
       _monterScene();
       _reindexer();
       _appliquerVue();
@@ -2433,6 +2673,9 @@
         passageForce: null, niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, rubans: {}, liseres: {}, filtresChanges: false,
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
+        itiChange: false, guidageT: 0, guidageForce: true,
+        apS: undefined, bandeauCle: null, bandeauEtat: { visible: false }, chevrons: null, chevSig: null,
+        chevRoad: null, chevPts: null, nChevrons: 0, fiche: null,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
@@ -2476,10 +2719,12 @@
     clearInterval(e.minuterie);
     e.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (e.desabonner) e.desabonner();
+    _fermerFiche();
     document.documentElement.classList.remove("kta-vue3d-ouverte");
     document.documentElement.style.removeProperty("--kta-v3d-sous-haut");
     if (e.renderer) {
       e.tuiles.forEach(_libererTuile);
+      _libererChevrons();
       if (e.sol) e.sol.geometry.dispose();
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
@@ -2637,6 +2882,9 @@
         bas: e.passageCibles && e.passageCibles.bas ? e.passageCibles.bas.niveau : null,
         liste: e.passageCibles ? e.passageCibles.liste.map(function (c) { return c.niveau; }) : [] },
       boutonRendu: e.boutonRendu ? e.boutonRendu.textContent : "",
+      bandeau: Object.assign({ affiche: !!e.bandeau && !e.bandeau.hidden }, e.bandeauEtat),
+      chevrons: e.nChevrons, chevronsVisibles: !!e.chevrons && !!e.chevrons.parent,
+      fiche: e.fiche ? { nom: String(e.fiche.point.nom || ""), x: e.fiche.point.x, y: e.fiche.point.y } : null,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
       tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte, yMax: yMax,
       boites: boites,
@@ -2723,6 +2971,6 @@
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
-    charge: function () { return !!THREE; }
+    origineItineraire: origineItineraire, charge: function () { return !!THREE; }
   };
 })();
