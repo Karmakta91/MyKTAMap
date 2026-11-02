@@ -2210,7 +2210,7 @@ icônes.
   et 🏁 gardés, urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🧱
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
-  effondrements en éboulis ; coupé : parois en moellons, structures et zones aux couleurs de la légende ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
+  effondrements en éboulis (deux volumes qui bouchent la galerie en 3D) ; coupé : parois en moellons, structures et zones aux couleurs de la légende ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
   Boussole et Guidage sur la suivante : une ligne de plus recouvrait ▼ de l'inclinaison en vue plongeante, tuile
   ouverte ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`, sans toucher scène ni
   greffe). Fermée par ⚙️, Échap (avant tout le reste) ou un

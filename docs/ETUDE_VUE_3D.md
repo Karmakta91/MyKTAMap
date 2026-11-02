@@ -242,9 +242,10 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   profondeur (`polygonOffset` 1 / 1). Là où il chevauche un pilier ou un front, c'est le pilier ou le front qui se
   voit : pas de scintillement sur les faces confondues, dessus du pilier visible. Vérifié par le checkup (un mur
   qui traverse le pilier posé devant le départ est plus bas que lui).
-- **Zones** : remblais = volume à 60 % de la hauteur ; eau = surface translucide à 4 cm ; inaccessible = aplat
-  au sol + rideau translucide sur son contour, rouges à hachures à 45° comme sur la carte (`_hachurer`, une bande
-  sombre tous les 0,6 m, en coordonnées monde) ; effondrement et types perso = aplat au sol.
+- **Zones** : remblais et effondrement = volumes à 60 % de la hauteur (l'effondrement était un aplat au sol ;
+  révisé, retour de KARMA : c'est un obstacle aussi, en 3D seulement) ; eau = surface translucide à 4 cm ;
+  inaccessible = aplat au sol + rideau translucide sur son contour, rouges à hachures à 45° comme sur la carte
+  (`_hachurer`, une bande sombre tous les 0,6 m, en coordonnées monde) ; types perso = aplat au sol.
 - **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : tirets de 1,2 m tous les 1,8 m, ruban de 0,35 m à
   `--kta-interaction` sur un liseré `--kta-fond` de 4 cm de chaque côté, à 5 cm du sol, non éclairés et sans
   compression de tons (lisibles hors du faisceau, le brouillard les éteint au loin) ; disque et mât de 0,6 m à chaque
@@ -284,11 +285,11 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
     grise, s'en détache), liseré au sol de 15 cm à la couleur de la légende. Révisé depuis (retour de KARMA) : 🧱
     Textures activé, les parois passent en pierre de taille (assises appareillées, joints irréguliers, relief) ;
     les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie).
-  - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais à 60 %, faces seulement côté galerie,
-    bloquant ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le contour coupe l'axe ;
-    effondrement et perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.
+  - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais et effondrement à 60 %, faces
+    seulement côté galerie, bloquants ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le
+    contour coupe l'axe ; perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.
   - **Collision** : `KtaGalerie.segmentsBloques` (même forme que la règle des structures) : rester dans l'emprise et
-    hors d'un remblais ; même corps de 0,8 m balayé.
+    hors d'un remblais ou d'un effondrement ; même corps de 0,8 m balayé.
 - **Rendu mixte** (défaut ; `KtaGalerie.modele(niveau, true)` + `vue3d.js > _construireTuile`) : structures comme en
   rendu structures (sol et plafond d'un seul tenant, tracés en rubans au sol), plus les **tubes des galeries de
   liaison**. **Chaque côté est jugé à part** (QCM du 02/11/2026, `galerieEmprise.js > _cotesOuverts`) : à chaque
