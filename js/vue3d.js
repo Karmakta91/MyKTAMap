@@ -7,7 +7,7 @@
 // vue3d.js — vue 3D à la première personne autour de la position du tracker, ouverte par le bouton cube de
 // la barre de droite (interface.js > _ouvrirVue3D, qui la charge à la demande avec css/vue3d.css) ; three.js
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
-// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
+// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
@@ -4826,7 +4826,8 @@
 
   function tourner(deg) { if (!_e) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
 
-  function etat() {
+  // `o.profilIti` : ajoute le profil de l'itinéraire (_profilIti), coûteux : jamais lu image par image.
+  function etat(o) {
     if (!_e) {
       return { ouvert: false, contexteLibere: _dernierGl ? _dernierGl.isContextLost() : null,
         fermeture: _derniereFermeture };
@@ -4925,7 +4926,7 @@
         indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden,
         guidage: _guidageMontre() },
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
-        couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti()),
+        couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti(!!(o && o.profilIti))),
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
@@ -4946,7 +4947,7 @@
 
   // Ruban de l'itinéraire tel que construit (checkup) : largeur médiane des tirets (bande claire) et du liseré
   // (bande sombre), longueur médiane d'un tiret, en m, lues dans la géométrie des tuiles construites.
-  function _mesureIti() {
+  function _mesureIti(profil) {
     const ruban = [], lisere = [], longueurs = [];
     _e.tuiles.forEach(function (t) {
       if (!t.obj) return;
@@ -4966,7 +4967,8 @@
       t.sort(function (a, b) { return a - b; });
       return +t[t.length >> 1].toFixed(3);
     };
-    return Object.assign({ ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) }, _profilIti());
+    return Object.assign({ ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) },
+      profil ? _profilIti() : null);
   }
 
   // Profil de l'itinéraire construit (checkup : par-dessus les volumes) : un quadrilatère par entrée

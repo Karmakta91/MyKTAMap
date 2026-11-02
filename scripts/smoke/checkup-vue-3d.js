@@ -4686,7 +4686,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
           window.KtaGalerie.invalider();
           await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-21, 0.6)), tuiles: false });
           await pause(400);
-          const e = K.etat(), it = e.itineraire;
+          const e = K.etat({ profilIti: true }), it = e.itineraire;
           r[rendu] = { rendu: e.rendu, hauteur: e.hauteur, profil: (it.profil || []).map(rel),
             chevrons: (it.chevronsY || []).map(function (c) { return [+(c[0] - a.ox).toFixed(2), c[2]]; }),
             etapes: (it.etapesY || []).map(function (c) { return [+(c[0] - a.ox).toFixed(2), c[2]]; }),
