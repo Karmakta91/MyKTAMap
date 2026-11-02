@@ -66,6 +66,35 @@
     return { tous: tous, bouts: libres };
   }
 
+  // ⚠️ contrat (décision produit) : rien n'apparaît dans un remblais, un effondrement (ils bouchent la galerie,
+  // galerieEmprise.js > ZONES_BOUCHENT) ni une zone inaccessible du niveau ; ctx.libre ne les voit pas hors des
+  // tubes. Zones lues (lecture seule), relues au plus toutes les 2 s.
+  const BOUCHENT = { remblais: true, effondrement: true, inaccessible: true };
+  let _bouche = { t: 0, niv: undefined, zones: [] };
+  function _zonesBouchent(niv) {
+    const t = performance.now();
+    if (_bouche.niv === niv && t - _bouche.t < 2000) return _bouche.zones;
+    const zones = _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)).filter(function (z) {
+      return z && BOUCHENT[z.type] && Array.isArray(z.points) && z.points.length >= 3 && _surNiveau(z, niv);
+    });
+    _bouche = { t: t, niv: niv, zones: zones };
+    return zones;
+  }
+
+  function _dansPolygone(pts, x, y) {
+    let dedans = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) dedans = !dedans;
+    }
+    return dedans;
+  }
+
+  // Place où poser quelque chose (cible, menace, objet) : un corps y tient, hors remblais, effondrement, inaccessible.
+  function placeOk(ctx, x, y) {
+    return ctx.libre(x, y) && !_zonesBouchent(ctx.niveau).some(function (z) { return _dansPolygone(z.points, x, y); });
+  }
+
   function _choisir(ctx, liste, dmin, dmax, pris) {
     const pos = ctx.pos, sc = ctx.sc;
     const ok = liste.filter(function (q) {
@@ -75,13 +104,13 @@
     for (let k = 0; k < REGLES.apparition.essais && ok.length; k++) {
       const i = Math.floor(Math.random() * ok.length), q = ok[i];
       ok.splice(i, 1);
-      if (ctx.libre(q.x, q.y)) return { x: q.x, y: q.y };
+      if (placeOk(ctx, q.x, q.y)) return { x: q.x, y: q.y };
     }
     // Repli (plan sans tracés) : un point libre au hasard dans la couronne.
     for (let k = 0; k < REGLES.apparition.essais; k++) {
       const a = Math.random() * Math.PI * 2, r = (dmin + Math.random() * (dmax - dmin)) * sc;
       const q = { x: pos.x + Math.cos(a) * r, y: pos.y + Math.sin(a) * r };
-      if (ctx.libre(q.x, q.y)) return q;
+      if (placeOk(ctx, q.x, q.y)) return q;
     }
     return null;
   }
@@ -323,7 +352,7 @@
       if (p.ennemis.filter(_estEgare).length >= E.total + REGLES.embuscade.enPlus) break;
       const a = Math.random() * Math.PI * 2, rr = Math.random() * r;
       const q = { x: centre.x + Math.cos(a) * rr, y: centre.y + Math.sin(a) * rr };
-      if (_d(q, ctx.pos, sc) < 4 || !ctx.libre(q.x, q.y)) continue;
+      if (_d(q, ctx.pos, sc) < 4 || !placeOk(ctx, q.x, q.y)) continue;
       const e = { type: "egare", x: q.x, y: q.y, pv: E.pv, vitesse: vitesse, coupT: 0, grogneT: Math.random() * 2 };
       p.ennemis.push(e);
       _maillage(p, ctx, e);
@@ -420,5 +449,5 @@
 
   window.KtaAddons = window.KtaAddons || {};
   window.KtaAddons.mkmgMonde = { REGLES: REGLES, peupler: peupler, animer: animer, tirer: tirer, dessiner: dessiner,
-    vider: vider, liberer: liberer, dansFaisceau: dansFaisceau, surgir: surgir };
+    vider: vider, liberer: liberer, dansFaisceau: dansFaisceau, surgir: surgir, placeOk: placeOk };
 })();

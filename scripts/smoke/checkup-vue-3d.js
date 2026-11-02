@@ -3835,6 +3835,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         // Pilier fictif sur le tracé, au droit du POI : la validation ne doit tomber ni hors galerie, ni dedans.
         window.setStructures([{ uid: "st_mk", type: "pilier-2", level: 0,
           points: [P(14.2, -0.8), P(15.8, -0.8), P(15.8, 0.8), P(14.2, 0.8)] }]);
+        // Effondrement fictif autour du pilier : la validation ne doit pas y tomber non plus.
+        window.setZones([{ uid: "zn_mk", type: "effondrement", level: 0,
+          points: [P(12.5, -2.5), P(17.5, -2.5), P(17.5, 2.5), P(12.5, 2.5)] }]);
         window.setRoads([
           { uid: "rd_mk", type: "principal", level: 0, points: [P(-80, 0), P(80, 0)] },
           { uid: "rd_mk_iti", type: "itinerary", level: 0, points: [P(-20, 0), P(-10, 0)] }
@@ -3895,10 +3898,13 @@ async function mesuresGalerie(page, nom, semisDonne) {
             !q(".mkmg-fleche").hidden, reste: q(".mkmg-reste") && q(".mkmg-reste").textContent,
           ennemis: m1.ennemis.length, objets: m1.objets.length, tirer: !!q(".mkmg-tirer"),
           cartouches: m1.canon + "/" + m1.reserve,
-          surTrace: !!m1.cible && Math.hypot(m1.cible.x - P(15, 0).x, m1.cible.y - P(15, 0).y) < 3 * a.sc &&
-            Math.abs(m1.cible.y - P(15, 4).y) > 3 * a.sc,
+          cibleM: m1.cible ? [+(m1.cible.x / a.sc - a.ox).toFixed(2), +(m1.cible.y / a.sc - a.oz).toFixed(2)] : null,
+          surTrace: !!m1.cible && Math.hypot(m1.cible.x - P(15, 0).x, m1.cible.y - P(15, 0).y) < 5 * a.sc &&
+            Math.hypot(m1.cible.x - P(15, 4).x, m1.cible.y - P(15, 4).y) > 1 * a.sc,
           horsPilier: !!m1.cible && (Math.abs(m1.cible.x - P(15, 0).x) > 0.8 * a.sc ||
-            Math.abs(m1.cible.y - P(15, 0).y) > 0.8 * a.sc) };
+            Math.abs(m1.cible.y - P(15, 0).y) > 0.8 * a.sc),
+          horsEffondrement: !!m1.cible && (Math.abs(m1.cible.x - P(15, 0).x) > 2.5 * a.sc ||
+            Math.abs(m1.cible.y - P(15, 0).y) > 2.5 * a.sc) };
         // Situation contrôlée : monde vidé, puis un égaré à 5 m devant (cap 90 = vers l'est).
         const X = M().essai, tape = function () {
           document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
@@ -4020,7 +4026,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.ferme = M().etat().enCours;
         window.ktaEstAccessible = acc;
         window.setEditorPoints(poisAvant || []);
-        window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
+        window.setStructures([]); window.setZones([]); window.setRoads([]); window.KtaGalerie.invalider();
         if (tracker) window.startTracking();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -4034,7 +4040,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 3 && MK.partie.panneau &&
         MK.partie.fleche && /\d/.test(MK.partie.reste || "") && MK.partie.surTrace && MK.partie.horsPilier,
         "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif à 4 m du tracé, validée près du tracé, hors " +
-        "du pilier qui le couvre), trajet, balise, panneau, flèche, reste",
+        "du pilier et de l'effondrement qui le couvrent), trajet, balise, panneau, flèche, reste",
         MK.partie);
       verifier(MK.partie.ennemis >= 1 && MK.partie.objets >= 2 && MK.partie.tirer && MK.partie.cartouches === "2/6",
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);

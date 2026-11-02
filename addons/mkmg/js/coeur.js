@@ -387,14 +387,16 @@
     return meilleur ? { x: meilleur.x, y: meilleur.y, nom: _t("hud.sansNom") } : null;
   }
 
-  // Place libre (règle du pas de la vue) la plus proche de q, en couronnes de 0,25 m jusqu'à 6 m ; q sinon.
+  // Place libre (règle du pas de la vue, hors remblais, effondrement, inaccessible : monde.js > placeOk) la plus
+  // proche de q, en couronnes de 0,25 m jusqu'à 8 m ; q sinon.
   function _placeLibre(ctx, q) {
-    if (ctx.libre(q.x, q.y)) return { x: q.x, y: q.y };
-    for (let r = 0.25; r <= 6; r += 0.25) {
+    const ok = _monde().placeOk;
+    if (ok(ctx, q.x, q.y)) return { x: q.x, y: q.y };
+    for (let r = 0.25; r <= 8; r += 0.25) {
       const n = Math.max(8, Math.round(2 * Math.PI * r / 0.25));
       for (let k = 0; k < n; k++) {
         const a = k * 2 * Math.PI / n, x = q.x + Math.cos(a) * r * ctx.sc, y = q.y + Math.sin(a) * r * ctx.sc;
-        if (ctx.libre(x, y)) return { x: x, y: y };
+        if (ok(ctx, x, y)) return { x: x, y: y };
       }
     }
     return { x: q.x, y: q.y };
@@ -438,7 +440,7 @@
     if (!cible) cible = cands[0] || null;
     // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (dans la roche, une salle sans tracé) est
     // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
-    // la place libre la plus proche de ce point (règle du pas de la vue, ctx.libre).
+    // la place libre la plus proche de ce point (règle du pas de la vue, hors remblais, effondrement, inaccessible).
     if (cible) cible = Object.assign({}, cible, _placeLibre(ctx, route ? route[route.length - 1] : cible));
     p.cible = cible;
     p.cherche = false;
@@ -485,10 +487,13 @@
     const T = REGLES.tropTard, pos = ctx.pos, n = T.horde + T.parVague * (p.vague - 1);
     p.chronoDepasse = true;
     p.sante = Math.max(0, p.sante - T.degats);
-    const a0 = Math.random() * Math.PI * 2;
-    for (let g = 0; g < T.groupes; g++) {
-      const a = a0 + g * 2 * Math.PI / T.groupes, r = T.rayonM * ctx.sc;
-      _monde().surgir(p, ctx, { x: pos.x + Math.cos(a) * r, y: pos.y + Math.sin(a) * r }, Math.ceil(n / T.groupes), 4);
+    // Groupes répartis autour de soi ; un groupe tombé hors du plan (ou dans la roche) est reposé ailleurs.
+    const a0 = Math.random() * Math.PI * 2, r = T.rayonM * ctx.sc;
+    let poses = 0;
+    for (let g = 0; g < T.groupes * 3 && poses < n; g++) {
+      const a = a0 + g * 2 * Math.PI / T.groupes + (g >= T.groupes ? Math.random() : 0);
+      poses += _monde().surgir(p, ctx, { x: pos.x + Math.cos(a) * r, y: pos.y + Math.sin(a) * r },
+        Math.min(Math.ceil(n / T.groupes), n - poses), 4);
     }
     _jouer("blesse"); _jouer("grogne", 1); _coup();
     _message(_t("hud.tropTard"));
