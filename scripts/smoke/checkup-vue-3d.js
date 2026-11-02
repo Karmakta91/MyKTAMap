@@ -1817,6 +1817,25 @@ async function mesuresGalerie(page, nom, semisDonne) {
       }, pt(0, -8, 0, 90));
       verifier(carte2.avance > 2.9 && carte2.dLat < 1 && carte2.dLng < 1,
         "libre, 3 m puis fermer : la carte 2D est centrée sur la position 3D", carte2);
+      // Itinéraire multi-niveau (niveau porté par chaque point) : au −1, seul son morceau du −1 est dessiné.
+      const iti = await page.evaluate(function (a) {
+        const C = window.APP_CONFIG, av = { m: C.multiLevel, l: C.activeLevel }, sc = C.scale;
+        C.multiLevel = true; C.activeLevel = -1;
+        window.setRoads([{ type: "itinerary", points: [
+          { x: a.x, y: a.y, level: 0 }, { x: a.x + 2 * sc, y: a.y, level: 0 },
+          { x: a.x + 2 * sc, y: a.y + 1, level: -1 }, { x: a.x + 6 * sc, y: a.y, level: -1 },
+          { x: a.x + 9 * sc, y: a.y, level: -1 }] }]);
+        return window.KtaVue3D.ouvrir({ depart: a }).then(function () {
+          const e = window.KtaVue3D.etat();
+          const r = { niveau: e.niveau, roads: e.compte.roads };
+          return window.KtaVue3D.fermer().then(function () {
+            C.multiLevel = av.m; C.activeLevel = av.l; window.setRoads([]);
+            return r;
+          });
+        });
+      }, pt(0, -8, 0, 90));
+      verifier(iti.niveau === -1 && iti.roads === 1,
+        "itinéraire multi-niveau : au −1, son morceau du −1 est dessiné (plus d'itinéraire disparu)", iti);
       // ── 10. Mode mixte : une galerie qui débouche sur une chambre (fronts de taille et piliers), fictive ─────────
       // Galerie principale d'ouest en est (x de -30 à 22 m), branche secondaire en T à x = -15 ; chambre de x = 0 à
       // 24 m, z de -10 à 10, bordée de fronts (ouverture de 3 m à l'ouest pour la galerie), six piliers de 2 × 2 m à
