@@ -1856,6 +1856,9 @@
 
   // Toucher un panneau de POI : sa fiche, la même que sur la carte (_ouvrirFiche). POI jonction : son passage, d'où
   // que l'on soit (un seul niveau lié : on y va), comme avant la fiche.
+  // 🩸 Les panneaux de membres et de repères d'une extension sont aussi dans _e.panneaux (même fondu) : ils ne sont
+  // pas des POI, `point` n'y est qu'un { nom } — rien ne s'ouvre. Ils arrêtent quand même le toucher : sinon la
+  // fiche d'un POI caché derrière s'ouvrirait à la place.
   function _toucher(cx, cy) {
     const e = _e, r = e.cv.getBoundingClientRect(), sprites = [];
     if (!r.width || !r.height) return false;
@@ -1867,7 +1870,7 @@
     e.rayon.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1),
       e.camera);
     const hit = e.rayon.intersectObjects(sprites, false)[0];
-    if (!hit) return false;
+    if (!hit || hit.object.userData.poi.genre !== "poi") return false;
     const poi = hit.object.userData.poi.jonction;
     if (!poi) return _ouvrirFiche(hit.object.userData.poi.point);
     const pas = e.passages.filter(function (p) { return p.poi === poi; })[0];

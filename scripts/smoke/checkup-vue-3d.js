@@ -2249,6 +2249,21 @@ async function mesuresGalerie(page, nom, semisDonne) {
         eq1);
       verifier(eq1.nr === 1 && eq1.equipe.reperes === 1 && eq1.noms.indexOf("repere:✓ Repère test") >= 0 &&
         eq1.equipe.itineraires === 1, "extension factice : repère et itinéraire partagé dessinés en 3D", eq1);
+      // Toucher le panneau d'un membre ou d'un repère : rien (ce ne sont pas des POI, pas de fiche de la carte).
+      const eqT = [];
+      for (const nom of ["Membre A", "✓ Repère test"]) {
+        const vise = await page.evaluate(function (n) {
+          const q = window.KtaVue3D.etat().panneaux.filter(function (p) { return p.nom === n && p.visible; })[0];
+          return q ? q.ecran : null;
+        }, nom);
+        if (vise) await page.mouse.click(vise.x, vise.y);
+        await page.waitForTimeout(250);
+        eqT.push({ nom: nom, vise: !!vise, fiche: await page.evaluate(function () {
+          return !!window.KtaVue3D.etat().fiche || !!document.querySelector("#kta-vue3d .kta-v3d-fiche");
+        }) });
+      }
+      verifier(eqT.every(function (q) { return q.vise && !q.fiche; }),
+        "toucher le panneau d'un membre ou d'un repère n'ouvre aucune fiche", eqT);
       const eq2 = await page.evaluate(function (a) {
         const X = window.KtaExtensions;
         X.afficherPresences([]);
