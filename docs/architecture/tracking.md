@@ -1619,7 +1619,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Puis la vue lance l'add-on lié au code (`vue3d.js > ADDONS_CODE` : `bas6` → `addons/mkmg/js/coeur.js`), chargé à
   la première fois en script classique, précaché par `sw.js` ; il s'inscrit dans `window.KtaAddons.<nom> = { lancer
   }` et décide seul s'il démarre.
-- **Add-on `mkmg`** (`addons/mkmg/`, `js/coeur.js` + `css/coeur.css`) : jeu en vagues sur le plan ouvert.
+- **Add-on `mkmg`** (`addons/mkmg/` : `js/coeur.js` partie et interface, `js/monde.js` menaces, objets et tir,
+  `js/son.js` sons WebAudio sans fichier, `css/coeur.css`, `img/fusil.svg` ; `coeur.js` charge les deux autres) :
+  jeu en vagues sur le plan ouvert.
   - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`), pendant le
     suivi du tracker, une sortie d'urgence (itinéraire `urgence`, `EmergencyMode`) ou le mode Secours ouvert ; sinon
     confirmation « Descendre plus bas ? » avec la difficulté (`ktaConfirm`, `choix`).
@@ -1629,8 +1631,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   - Difficulté : facile = tracés + trajet du jeu au sol + balise de B + flèche de guidage + reste à parcourir ;
     moyen = sans la flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage.
     L'itinéraire et le guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
-  - Santé (sans dégâts pour l'instant) et endurance : le pas rapide la vide (22 / s), elle revient au repos
-    (14 / s) ; vide = à bout de souffle, pas rapide interdit (`regler({ course: false })`) jusqu'à 30.
+  - Santé et endurance : le pas rapide la vide (22 / s), elle revient au repos (14 / s) ; vide = à bout de souffle,
+    pas rapide interdit (`regler({ course: false })`) jusqu'à 30.
+  - Menaces (`monde.js`, placées sur les tracés du niveau à 15-35 m, places libres de la règle du pas) : **égarés**
+    (1 + 1 par vague, 8 au plus et 10 en tout ; 1,1 m/s + 0,08 par vague, 2 m/s au plus ; 18 de santé par seconde au
+    contact ; ils foncent à vue directe sous 12 m, suivent sinon un trajet `Pathfinder` redemandé toutes les 2 s, une
+    demande à la fois) ; **silhouette** dès la vague 2 (une seule, invulnérable, 3,2 m/s mais figée dans le faisceau :
+    à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ; au contact 35 de santé puis elle repart loin ;
+    battement de cœur à moins de 25 m). Tout pas passe `ctx.bloque`.
+  - Fusil à deux coups (bouton en bas à droite, Espace, clic bref de la souris sur la scène) : la menace la plus
+    proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre (`ctx.ligneBloquee`) ; un égaré
+    a 2 points, un coup à 8 m ou moins en ôte 2 ; la silhouette touchée recule (repart loin). Recharge automatique de
+    1,5 s, canon vide. Départ : 2 + 6 cartouches.
+  - À ramasser en passant à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au
+    moins), champignons (+30 santé ; 3, un de moins toutes les trois vagues, de préférence au bout des culs-de-sac ;
+    un égaré tué en lâche un sur quatre).
+  - Santé à 0 : fin de partie, meilleure vague par difficulté sous `localStorage["myktamap_mkmg_v1"]` (jamais la
+    session), « Rejouer » ou « Quitter ». Passage de niveau 🪜 : le monde de la vague est refait au nouveau niveau.
   - Panneau en haut à droite (la moitié gauche est au joystick), « Quitter » retire la greffe ; fermer la vue
     termine la partie. Textes fr / en / es dans le fichier (pas dans `lang/*.json`), couleurs en jetons `--kta-*`.
     Volontairement absent des guides et de l'Aide.
@@ -1690,6 +1707,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   le suivi ; confirmation à 3 difficultés ; facile → cible (POI), trajet, balise, flèche, reste, itinéraire et guidage
   de l'app masqués ; endurance vidée par le pas rapide, course interdite à bout de souffle puis rendue ; cible
   atteinte → vague 2 ; Quitter ; difficile → ni tracés, ni trajet, ni balise ; fermer la vue termine la partie.
+  Monde vidé puis situations posées (`essai`) : vague peuplée, un coup tue l'égaré à 5 m, recharge de 1,5 s,
+  munitions et champignon ramassés, santé qui baisse au contact, silhouette figée dans le faisceau et qui avance de
+  dos, santé à 0 → fin et meilleure vague retenue, « Rejouer ».
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.

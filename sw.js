@@ -254,7 +254,10 @@ const ASSETS_TO_CACHE = [
   "./lib/three/three.core.js",
   // Add-on lié au code de la vue 3D (vue3d.js > ADDONS_CODE), chargé par elle seule ; précaché comme tout le JS.
   "./addons/mkmg/js/coeur.js",
+  "./addons/mkmg/js/son.js",
+  "./addons/mkmg/js/monde.js",
   "./addons/mkmg/css/coeur.css",
+  "./addons/mkmg/img/fusil.svg",
   "./fonts/montserrat-400.woff2",
   "./fonts/montserrat-600.woff2",
   "./fonts/montserrat-800.woff2",
