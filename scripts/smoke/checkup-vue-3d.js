@@ -22,6 +22,8 @@
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
+//   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
+//   chambres à l'est), en mode mixte ;
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 m et sans tuiles ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
@@ -37,9 +39,11 @@ const attendre = require("./attendre.js");   // pas de waitForFunction : refusé
 const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
-// KTA_V3D_PERF=1 : toutes les mesures ; =galerie : celles du mode galerie seulement.
-const PERF = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "galerie";
+// KTA_V3D_PERF=1 : toutes les mesures ; =galerie ou =mixte : celles de ce rendu seulement.
+const PERF = ["1", "galerie", "mixte"].indexOf(process.env.KTA_V3D_PERF) >= 0;
 const PERF_STRUCTURES = process.env.KTA_V3D_PERF === "1";
+const PERF_GALERIE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "galerie";
+const PERF_MIXTE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "mixte";
 const TEL = process.env.KTA_V3D_TEL === "1";
 const CAPTURES = process.env.KTA_V3D_CAPTURES || "";
 const LS_PREGATES = {
@@ -184,9 +188,26 @@ function semerGalerie() {
     depart: { x: (x0 + 150) * sc, y: (z0 + 12 * 12) * sc, cap: 90 } };
 }
 
-async function mesuresGalerie(page) {
-  const semis = await page.evaluate(semerGalerie);
-  console.log("  ℹ️ réseau galerie synthétique : " + JSON.stringify(semis));
+// Mixte : réseau de semerGalerie posé, puis le plan dense (semerPlanDense) gardé sur la moitié est : la marche de
+// 120 m passe des tubes aux chambres. Appelé après les deux semis.
+function semerMixte() {
+  const sc = window.APP_CONFIG.scale, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+  const garde = (window.__v3dAvant || []).length;
+  window._ktaDataStructurePolygons = window._ktaDataStructurePolygons.filter(function (s, i) {
+    return i < garde || s.points[0].x > W / 2;
+  });
+  window.setPlanRenduVue3D(null, "mixte");
+  window.KtaGalerie.invalider();
+  const t0 = performance.now(), m = window.KtaGalerie.modele(0, true), ms = performance.now() - t0;
+  return { structures: window._ktaDataStructurePolygons.length - garde, aretes: m.aretes.length,
+    pieces: m.pieces.length, chambres: m.chambres, ouverts: m.ouverts, msModele: Math.round(ms),
+    depart: { x: W / 2, y: H / 2 - 6 * sc, cap: 90 } };
+}
+
+// nom : "galerie" (réseau seul, rendu galerie) ou "mixte" (semis déjà posé par semerMixte).
+async function mesuresGalerie(page, nom, semisDonne) {
+  const semis = semisDonne || await page.evaluate(semerGalerie);
+  console.log("  ℹ️ réseau " + nom + " synthétique : " + JSON.stringify(semis));
   for (const d of [30, 50]) {
     const r = await page.evaluate(function (c) {
       return window.KtaVue3D.ouvrir({ depart: c.depart, distanceVue: c.d }).then(function () {
@@ -199,7 +220,7 @@ async function mesuresGalerie(page) {
           msMax: m.msMax, triangles: m.trianglesMax, appels: m.appelsMax, tasMo: tas };
       });
     }, { depart: semis.depart, d: d });
-    console.log("  📏 galerie " + d + " m : " + JSON.stringify(r));
+    console.log("  📏 " + nom + " " + d + " m : " + JSON.stringify(r));
   }
   const marche = await page.evaluate(function (d) {
     return window.KtaVue3D.ouvrir({ depart: d, distanceVue: 30 }).then(function () {
@@ -224,7 +245,7 @@ async function mesuresGalerie(page) {
       });
     });
   }, semis.depart);
-  console.log("  📏 galerie, marche 120 m (intervalle entre images) : " + JSON.stringify(marche));
+  console.log("  📏 " + nom + ", marche 120 m (intervalle entre images) : " + JSON.stringify(marche));
   const coutPas = await page.evaluate(function (d) {
     return window.KtaVue3D.ouvrir({ depart: d, distanceVue: 30 }).then(function () {
       const libres = [], refuses = [];
@@ -242,11 +263,11 @@ async function mesuresGalerie(page) {
       return { libres: st(libres), refuses: st(refuses) };
     });
   }, semis.depart);
-  console.log("  📏 galerie, pas balayé (avancer 8 cm) : " + JSON.stringify(coutPas));
+  console.log("  📏 " + nom + ", pas balayé (avancer 8 cm) : " + JSON.stringify(coutPas));
   await page.evaluate(function (d) { return window.KtaVue3D.ouvrir({ depart: d, distanceVue: 30, stats: true }); },
     semis.depart);
   await page.waitForTimeout(800);
-  await capture(page, "galerie-dense");
+  await capture(page, nom + "-dense");
   await page.evaluate(function () { window.__v3dImg0 = window.KtaVue3D.etat().images; });
   await page.keyboard.down("ArrowLeft");
   await page.waitForTimeout(3000);
@@ -256,7 +277,7 @@ async function mesuresGalerie(page) {
     window.KtaVue3D.fermer();
     return k;
   });
-  console.log("  📏 galerie, rotation continue 3 s : " + Math.round(n / 3) + " images/s");
+  console.log("  📏 " + nom + ", rotation continue 3 s : " + Math.round(n / 3) + " images/s");
 }
 
 (async function main() {
@@ -329,6 +350,7 @@ async function mesuresGalerie(page) {
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
       }
       if (PERF_STRUCTURES) {
+      await page.evaluate(function () { window.setPlanRenduVue3D(null, "structures"); });
       const semis = await page.evaluate(semerPlanDense);
       console.log("  ℹ️ plan dense synthétique : " + JSON.stringify(semis));
       await mesures(page, semis.depart);
@@ -416,7 +438,12 @@ async function mesuresGalerie(page) {
       });
       console.log("  📏 rotation continue 3 s, densité 1 : " + Math.round(n1 / 3) + " images/s");
       }
-      await mesuresGalerie(page);
+      if (PERF_GALERIE) await mesuresGalerie(page, "galerie");
+      if (PERF_MIXTE) {
+        await page.evaluate(semerGalerie);
+        await page.evaluate(semerPlanDense);
+        await mesuresGalerie(page, "mixte", await page.evaluate(semerMixte));
+      }
     } else {
       // ── 1. Bouton cube grisé sans échelle : rien n'est chargé, le toucher explique ; plus de tuile au Tracker ──
       const grise = await page.evaluate(function () {
@@ -606,7 +633,7 @@ async function mesuresGalerie(page) {
           titres: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d]"), function (b) { return b.title; }),
           attendus: ["vue3d.fermer", "ui.refonte.counter_sortie_title",
             window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun", "vue3d.plongee",
-            "vue3d.hauteur", "vue3d.passerGalerie", "vue3d.suivre", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
+            "vue3d.hauteur", "vue3d.passerStructures", "vue3d.suivre", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins"].map(function (k) {
             return window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
@@ -1222,9 +1249,9 @@ async function mesuresGalerie(page) {
       verifier(h3.haut === 4 && h3.bas === 1.5 && h3.v === 3 && h3.hauteur === 3 && h3.pref === 3 && !h3.plus,
         "réglage borné de 1,5 à 4 m ; à 3 m, getPlanHauteurGalerie() vaut 3", h3);
       verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3 * 0.98) < 1e-6 && h3.oeil === 1.6 &&
-        h3.construites > 0 && h3.rendu === "structures" &&
+        h3.construites > 0 && h3.rendu === "mixte" &&
         h3.pos.x === h0.pos.x && h3.pos.y === h0.pos.y && h3.cap === h0.cap,
-        "structures : scène refaite à 3 m (piliers 3 m, murs 98 %), position et cap gardés", h3);
+        "mixte (défaut) : scène refaite à 3 m (piliers 3 m, murs 98 %), position et cap gardés", h3);
       const h4 = await page.evaluate(function (p) {
         const K = window.KtaVue3D, r = {};
         return K.fermer().then(function () {
@@ -1313,7 +1340,7 @@ async function mesuresGalerie(page) {
         ]);
         window.KtaGalerie.invalider();
         const m = window.KtaGalerie.modele(0);
-        return { sc: sc, ox: ox, oz: oz, H: H, multi: window.APP_CONFIG.multiLevel === true,
+        return { sc: sc, ox: ox, oz: oz, H: H, multi: window.APP_CONFIG.multiLevel === true, planReel: window.__v3dEmb.id,
           modele: { pieces: m.pieces.length, aretes: m.aretes.length, dalles: m.dalles, coudes: m.coudes, bouts: m.bouts,
             ms: +m.msConstruction.toFixed(1) } };
       });
@@ -1324,7 +1351,9 @@ async function mesuresGalerie(page) {
       verifier(G.modele.dalles >= 2 && G.modele.coudes >= 2 && G.modele.bouts >= 6,
         "galerie : graphe des formes (dalles aux carrefours T et X, coudes, bouts libres)", G.modele);
 
-      // Interrupteur : défaut d'après les structures du niveau, puis bouton, retenu par plan, exclusif.
+      // Interrupteur à trois états : mixte par défaut (avec ou sans structure), bouton mixte → structures → galerie,
+      // retenu par plan. Un pilier posé sur le T : dessiné et bloquant en mixte et en structures, absent en galerie.
+      // La suite de la partie 8 se joue en galerie (choix retenu pour le plan de test).
       const inter = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, r = {}, acc = window.ktaEstAccessible;
         window.ktaEstAccessible = function () { return true; };   // image du plan : seule la structure juge
@@ -1333,44 +1362,53 @@ async function mesuresGalerie(page) {
           for (let i = 0; i < 30; i++) K.avancer(0.2);
           return (K.etat().pos.x - a.avant.x) / a.sc;
         };
+        const clic = function () {
+          document.querySelector('#kta-vue3d [data-v3d="rendu"]').dispatchEvent(new PointerEvent("pointerdown",
+            { bubbles: true }));
+          const e = K.etat();
+          return { rendu: e.rendu, bouton: e.boutonRendu, pref: window.getPlanRenduVue3D(), parois: K.parois().length,
+            yMax: e.yMax.opaque };
+        };
         await K.ouvrir({ depart: a.dep });
-        r.sans = K.etat().rendu;
+        r.sans = K.etat().rendu; r.paroisSans = K.parois().length;
         await K.fermer();
         window.setStructures([{ uid: "st_v3d_g", type: "pilier-1", level: 0, points: a.pilier }]);
         await K.ouvrir({ depart: a.dep });
-        let e = K.etat();
-        r.avec = e.rendu; r.bouton = e.boutonRendu; r.parois = K.parois().length; r.prefAvant = window.getPlanRenduVue3D();
-        document.querySelector('#kta-vue3d [data-v3d="rendu"]').dispatchEvent(new PointerEvent("pointerdown",
-          { bubbles: true }));
-        e = K.etat();
-        r.apres = e.rendu; r.boutonApres = e.boutonRendu; r.pref = window.getPlanRenduVue3D();
-        r.yMaxOpaque = e.yMax.opaque; r.paroisGalerie = K.parois().length;
-        r.traverse = traverser();   // exclusif : le pilier posé sur le tube n'arrête rien en galerie
+        const e = K.etat();
+        r.avec = e.rendu; r.bouton = e.boutonRendu; r.prefAvant = window.getPlanRenduVue3D();
+        r.paroisMixte = K.parois().length; r.yMaxMixte = e.yMax.opaque;
+        r.traverseMixte = traverser();
+        r.c1 = clic();
+        r.traverseStructures = traverser();
+        r.c2 = clic();
+        r.traverseGalerie = traverser();   // le pilier posé sur le tube n'arrête rien en galerie
         await K.fermer();
         await K.ouvrir({ depart: a.dep });
         r.rouvert = K.etat().rendu;
         r.autrePlan = window.getPlanRenduVue3D("v3d-autre-plan");
-        K.basculerRendu();
-        r.bloqueStructures = traverser();
-        r.retour = K.basculerRendu();
-        r.prefFin = window.getPlanRenduVue3D();
+        r.c3 = clic(); r.c4 = clic(); r.c5 = clic();
         await K.fermer();
         window.setStructures([]);
         window.ktaEstAccessible = acc;
-        r.libelles = { s: window.I18n.t("vue3d.modeStructures"), g: window.I18n.t("vue3d.modeGalerie") };
+        r.libelles = { m: window.I18n.t("vue3d.modeMixte"), s: window.I18n.t("vue3d.modeStructures"),
+          g: window.I18n.t("vue3d.modeGalerie") };
         return r;
       }, { dep: pt(0, -8, 0, 90), avant: pt(0, -8, 0), sc: G.sc,
         pilier: [pt(0, -4.5, -0.5), pt(0, -3.5, -0.5), pt(0, -3.5, 0.5), pt(0, -4.5, 0.5)] });
-      verifier(inter.sans === "galerie" && inter.avec === "structures" && inter.prefAvant === null,
-        "défaut : galerie sans structure au niveau, structures avec", inter);
-      verifier(inter.bouton.indexOf(inter.libelles.s) >= 0 && inter.apres === "galerie" &&
-        inter.boutonApres.indexOf(inter.libelles.g) >= 0 && inter.pref === "galerie",
-        "bouton 🏛️ / 🛣️ : bascule, mode écrit en clair, retenu pour ce plan", inter);
-      verifier(inter.parois === 0 && inter.paroisGalerie > 0 && inter.yMaxOpaque < 0.1 && inter.traverse > 5,
-        "exclusif : pas de paroi en structures ; en galerie, ni pilier dessiné ni butée contre lui", inter);
-      verifier(inter.rouvert === "galerie" && inter.autrePlan === null && inter.bloqueStructures < 3.5 &&
-        inter.retour === "galerie" && inter.prefFin === "galerie",
-        "rouvert : rendu retenu (galerie), autre plan sans choix ; en structures le pilier arrête", inter);
+      verifier(inter.sans === "mixte" && inter.avec === "mixte" && inter.prefAvant === null && inter.paroisSans > 0 &&
+        inter.bouton.indexOf("🏛️🛣️ " + inter.libelles.m) === 0,
+        "défaut : mixte, avec ou sans structure au niveau (sans structure : tout en tubes), bouton 🏛️🛣️ Mixte", inter);
+      verifier(inter.paroisMixte > 0 && Math.abs(inter.yMaxMixte - 2) < 1e-6 && inter.traverseMixte < 3.5,
+        "mixte : pilier posé sur le tube dessiné et bloquant, parois des tubes ailleurs", inter);
+      verifier(inter.c1.rendu === "structures" && inter.c1.bouton.indexOf("🏛️ " + inter.libelles.s) === 0 &&
+        inter.c1.pref === "structures" && inter.c1.parois === 0 && inter.traverseStructures < 3.5,
+        "bouton : mixte → 🏛️ Structures (retenu pour le plan) : aucune paroi, le pilier arrête", inter.c1);
+      verifier(inter.c2.rendu === "galerie" && inter.c2.bouton.indexOf("🛣️ " + inter.libelles.g) === 0 &&
+        inter.c2.pref === "galerie" && inter.c2.parois > 0 && inter.c2.yMax < 0.1 && inter.traverseGalerie > 5,
+        "→ 🛣️ Galerie (retenu) : tubes, ni pilier dessiné ni butée contre lui", { c2: inter.c2, t: inter.traverseGalerie });
+      verifier(inter.rouvert === "galerie" && inter.autrePlan === null && inter.c3.rendu === "mixte" &&
+        inter.c3.pref === "mixte" && inter.c4.rendu === "structures" && inter.c5.rendu === "galerie",
+        "rouvert : rendu retenu (galerie), autre plan sans choix ; → mixte → structures → galerie, en boucle", inter);
 
       // Formes : toutes les parois construites (une seule tuile), aucune ne traverse une autre ; axes libres.
       const formes = await page.evaluate(function (a) {
@@ -1521,9 +1559,7 @@ async function mesuresGalerie(page) {
         };
         window.setStructures([{ uid: "st_v3d_f", type: "pilier-1", level: 0, points: a.pilier }]);
         window.KtaGalerie.invalider();
-        return window.KtaVue3D.ouvrir({ depart: a.dep }).then(function () {
-          if (window.KtaVue3D.etat().rendu !== "galerie") window.KtaVue3D.basculerRendu();
-        });
+        return window.KtaVue3D.ouvrir({ depart: a.dep }).then(function () { window.KtaVue3D.basculerRendu("galerie"); });
       }, { dep: pt(200, 5, 0, 90), it0: pt(200, 1, 0), it1: pt(200, 12, 0),
         calque: [pt(200, 12, -3), pt(200, 13, -3), pt(200, 13, 3), pt(200, 12, 3)],
         pilier: [pt(200, 6, -5), pt(200, 7, -5), pt(200, 7, -4), pt(200, 6, -4)] });
@@ -1601,7 +1637,7 @@ async function mesuresGalerie(page) {
       const f5 = await page.evaluate(function (a) {
         const K = window.KtaVue3D, r = {}, acc = window.ktaEstAccessible;
         window.ktaEstAccessible = function () { return true; };   // image de collision du plan hors jeu ici
-        K.basculerRendu();
+        K.basculerRendu("structures");
         r.rendu = K.etat().rendu;
         r.avant = K.etat().compte.structures;
         window.FilterPanel.setFilters({ structTypes: new Set(["mur"]) });
@@ -1614,7 +1650,7 @@ async function mesuresGalerie(page) {
           return new Promise(function (res) { setTimeout(res, 300); });
         }).then(function () {
           r.retour = K.etat().compte.structures;
-          K.basculerRendu();
+          K.basculerRendu("galerie");
           window.ktaEstAccessible = acc;
           return r;
         });
@@ -1781,6 +1817,236 @@ async function mesuresGalerie(page) {
       }, pt(0, -8, 0, 90));
       verifier(carte2.avance > 2.9 && carte2.dLat < 1 && carte2.dLng < 1,
         "libre, 3 m puis fermer : la carte 2D est centrée sur la position 3D", carte2);
+      // ── 10. Mode mixte : une galerie qui débouche sur une chambre (fronts de taille et piliers), fictive ─────────
+      // Galerie principale d'ouest en est (x de -30 à 22 m), branche secondaire en T à x = -15 ; chambre de x = 0 à
+      // 24 m, z de -10 à 10, bordée de fronts (ouverture de 3 m à l'ouest pour la galerie), six piliers de 2 × 2 m à
+      // z = ±3,5. Rendu par défaut (plan de test sans choix) : mixte.
+      const MX = await page.evaluate(function () {
+        const sc = window.APP_CONFIG.scale, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+        window._currentLoadedPlanId = "v3d-checkup-mixte";
+        const ox = W / 2 / sc, oz = H / 2 / sc, P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        window.setRoads([
+          { uid: "rd_mx_p", type: "principal", level: 0, points: [P(-30, 0), P(22, 0)] },
+          { uid: "rd_mx_s", type: "secondaire", level: 0, points: [P(-15, 0), P(-15, -20)] }
+        ]);
+        const carre = function (cx, cz, r) { return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)]; };
+        const st = [{ uid: "st_mx_f", type: "front-1", level: 0,
+          points: [P(0, -1.5), P(0, -10), P(24, -10), P(24, 10), P(0, 10), P(0, 1.5)] }];
+        [6, 12, 18].forEach(function (x) {
+          [-3.5, 3.5].forEach(function (z) {
+            st.push({ uid: "st_mx_" + x + "_" + z, type: "pilier-1", level: 0, points: carre(x, z, 1) });
+          });
+        });
+        window.setStructures(st);
+        window.setZones([
+          { uid: "zn_mx_t", type: "eau", level: 0, points: [P(-25, -3), P(-23, -3), P(-23, 3), P(-25, 3)] },
+          { uid: "zn_mx_c", type: "eau", level: 0, points: [P(14, -1), P(16, -1), P(16, 1), P(14, 1)] }
+        ]);
+        window.setEditorPoints([
+          Object.assign({ id: "POI danger chambre v3d", level: 0, tags: ["danger"] }, P(3, 1.5)),
+          Object.assign({ id: "POI danger tube v3d", level: 0, tags: ["danger"] }, P(-20, 5)),
+          Object.assign({ id: "POI favori v3d", level: 0, tags: ["info"] }, P(-6, -0.5))
+        ]);
+        window.Favoris.add({ pointId: "POI favori v3d", nom: "POI favori v3d", x: P(-6, -0.5).x, y: P(-6, -0.5).y });
+        window.KtaGalerie.invalider();
+        const m = window.KtaGalerie.modele(0, true);
+        return { sc: sc, ox: ox, oz: oz, pref: window.getPlanRenduVue3D(), seuil: window.KtaGalerie.SEUIL_CHAMBRE_M,
+          modele: { pieces: m.pieces.length, chambres: m.chambres, ouverts: m.ouverts, dalles: m.dalles,
+            ms: +m.msConstruction.toFixed(1) },
+          structures: st.map(function (s) {
+            return { ligne: s.type === "front-1", pts: s.points.map(function (q) { return [q.x / sc - ox, q.y / sc - oz]; }) };
+          }) };
+      });
+      const mq = function (x, z, cap) {
+        return { x: (MX.ox + x) * MX.sc, y: (MX.oz + z) * MX.sc, cap: cap === undefined ? 0 : cap };
+      };
+      verifier(MX.pref === null && MX.seuil === 3 && MX.modele.ouverts >= 1 && MX.modele.chambres >= 1 &&
+        MX.modele.dalles === 1, "mixte : modèle (dalle du T en tube, nœuds en chambre, bout ouvert) en " + MX.modele.ms +
+        " ms", MX.modele);
+      const sc1 = await page.evaluate(function (a) {
+        return window.KtaVue3D.ouvrir({ depart: a.dep, tuiles: false }).then(function () {
+          const e = window.KtaVue3D.etat(), ps = window.KtaVue3D.parois();
+          const rel = ps.map(function (s) { return [s[0] - a.ox, s[1] - a.oz, s[2] - a.ox, s[3] - a.oz]; });
+          return { rendu: e.rendu, bouton: e.boutonRendu, parois: rel, yMax: e.yMax, zonesTube: e.zonesTube,
+            eau: e.zonesDecoupees.eau || 0, poiTube: e.poiTube, halos: e.halos,
+            panneaux: e.panneaux.map(function (q) {
+              return { nom: q.nom, x: +(q.x - a.ox).toFixed(2), z: +(q.z - a.oz).toFixed(2), danger: q.danger,
+                favori: q.favori, bord: q.bord, halo: q.halo,
+                haloXZ: q.haloXZ ? [+(q.haloXZ[0] - a.ox).toFixed(2), +(q.haloXZ[1] - a.oz).toFixed(2)] : null };
+            }) };
+        });
+      }, { dep: mq(-12, 0, 90), ox: MX.ox, oz: MX.oz });
+      // Géométrie des parois (m, relatives) : où elles sont, et jamais à travers une structure.
+      const coupe = function (s, t) {
+        const dx = s[2] - s[0], dz = s[3] - s[1], ex = t[2] - t[0], ez = t[3] - t[1], d = dx * ez - dz * ex;
+        if (Math.abs(d) < 1e-12) return false;
+        const rx = t[0] - s[0], rz = t[1] - s[1], u = (rx * ez - rz * ex) / d, v = (rx * dz - rz * dx) / d;
+        return u >= 0 && u <= 1 && v >= 0 && v <= 1;
+      };
+      const bords = [];
+      MX.structures.forEach(function (s) {
+        const n = s.pts.length, fin = s.ligne ? n - 1 : n;
+        for (let i = 0; i < fin; i++) {
+          const p = s.pts[i], q = s.pts[(i + 1) % n];
+          bords.push([p[0], p[1], q[0], q[1]]);
+        }
+      });
+      const distSeg = function (x, z, s) {
+        const dx = s[2] - s[0], dz = s[3] - s[1], l2 = dx * dx + dz * dz;
+        const t = l2 ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (z - s[1]) * dz) / l2)) : 0;
+        return Math.hypot(x - s[0] - t * dx, z - s[1] - t * dz);
+      };
+      const xMax = Math.max.apply(null, sc1.parois.map(function (s) { return Math.max(s[0], s[2]); }));
+      const traversent = sc1.parois.filter(function (s) { return bords.some(function (b) { return coupe(s, b); }); });
+      const procheStruct = Math.min.apply(null, sc1.parois.map(function (s) {
+        return Math.min.apply(null, bords.map(function (b) {
+          return Math.min(distSeg(s[0], s[1], b), distSeg(s[2], s[3], b), distSeg(b[0], b[1], s), distSeg(b[2], b[3], s));
+        }));
+      }));
+      const enTravers = sc1.parois.filter(function (s) { return coupe(s, [-3.5, 0, 23, 0]); });
+      verifier(sc1.rendu === "mixte" && sc1.parois.length >= 4 && xMax < -2.4 && xMax > -3.6,
+        "mixte : tube avant la chambre, aucune paroi dans la chambre (paroi la plus à l'est à x = " + xMax.toFixed(2) +
+        " m, entrée à 0)", { parois: sc1.parois.length, xMax: xMax });
+      verifier(traversent.length === 0 && procheStruct > 1.5,
+        "mixte : aucune paroi à travers un pilier ou un front (la plus proche à " + procheStruct.toFixed(2) + " m)",
+        traversent.slice(0, 3));
+      verifier(enTravers.length === 0 && MX.modele.ouverts >= 1,
+        "mixte : le tube débouche OUVERT dans la chambre (aucune paroi en travers de l'axe, bout sans fond)", enTravers);
+      verifier(Math.abs(sc1.yMax.opaque - 2) < 1e-6 && sc1.zonesTube === 1 && sc1.eau >= 1,
+        "mixte : piliers et fronts dressés ; eau du tube découpée (règle galerie), eau de la chambre entière", sc1);
+      const panMx = function (n) { return sc1.panneaux.filter(function (q) { return q.nom === n; })[0] || null; };
+      const dCh = panMx("POI danger chambre v3d"), dTu = panMx("POI danger tube v3d"), fav = panMx("POI favori v3d");
+      verifier(!!dCh && dCh.x === 3 && dCh.z === 1.5 && !!dTu && dTu.x === -20 && Math.abs(dTu.z - 1.17) < 0.02 &&
+        sc1.poiTube >= 1, "mixte : POI de la chambre à sa place (règle structures), POI à 5 m du tube ramené contre la " +
+        "paroi (règle galerie)", { dCh: dCh, dTu: dTu });
+      const rouge = await page.evaluate(function () {
+        return getComputedStyle(document.documentElement).getPropertyValue("--kta-erreur").trim();
+      });
+      verifier(!!dCh && dCh.danger && dCh.halo && dCh.haloXZ[0] === 3 && dCh.haloXZ[1] === 1.5 && dTu.halo &&
+        dTu.haloXZ[1] === dTu.z && sc1.halos === 2 && /^#ff8c8c$/i.test(dCh.bord) && !fav.danger && !fav.halo,
+        "danger : liseré et halo au sol rouges de la charte (--kta-erreur sombre), sous le panneau ; pas sur un autre POI",
+        { dCh: dCh, dTu: dTu, rouge: rouge });
+      verifier(!!fav && fav.favori && !dCh.favori, "favori : ⭐ sur son panneau, pas sur les autres", fav);
+      if (CAPTURES) {
+        await page.evaluate(function (d) { return window.KtaVue3D.fermer().then(function () {
+          return window.KtaVue3D.ouvrir({ depart: d });
+        }); }, mq(-11, 0, 90));
+        await page.waitForTimeout(800);
+        await capture(page, "mixte-galerie-chambre");
+        await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+        await page.waitForTimeout(500);
+        await capture(page, "mixte-galerie-chambre-plongee");
+      }
+      // Collisions : paroi du tube, entrée dans la chambre, pilier ; dans la chambre, aucune paroi n'arrête.
+      const mc = await page.evaluate(function (a) {
+        const K = window.KtaVue3D, acc = window.ktaEstAccessible, r = {};
+        window.ktaEstAccessible = function () { return true; };   // image de collision du plan hors jeu ici
+        const rel = function () { const p = K.etat().pos; return [+(p.x / a.sc - a.ox).toFixed(2), +(p.y / a.sc - a.oz).toFixed(2)]; };
+        const marcher = function (n) { for (let i = 0; i < n; i++) K.avancer(0.2); };
+        return K.fermer().then(function () { return K.ouvrir({ depart: a.t }); }).then(function () {
+          K.placer(a.t.x, a.t.y, 0); marcher(20); r.paroi = rel();
+          K.placer(a.t.x, a.t.y, 90); marcher(70); r.entree = rel();
+          K.placer(a.c.x, a.c.y, 0); marcher(25); r.pilier = rel();
+          K.placer(a.l.x, a.l.y, 0); marcher(30); r.libre = rel();
+          r.butees = K.etat().butees;
+          window.ktaEstAccessible = acc;
+          return K.fermer();
+        }).then(function () { return r; });
+      }, { t: mq(-10, 0), c: mq(6, 0), l: mq(2, 0), sc: MX.sc, ox: MX.ox, oz: MX.oz });
+      verifier(mc.paroi[1] > -0.9 && mc.paroi[1] < -0.75, "mixte : on bute contre la paroi du tube (" + mc.paroi[1] +
+        " m de l'axe, paroi à 1,25 m)", mc);
+      verifier(mc.entree[0] > 3.5, "mixte : on entre dans la chambre par le bout ouvert (x = " + mc.entree[0] + " m)", mc);
+      verifier(mc.pilier[1] > -2.2 && mc.pilier[1] < -1.9, "mixte : dans la chambre, on bute contre un pilier (" +
+        mc.pilier[1] + " m, face à 2,5 m)", mc);
+      verifier(mc.libre[1] < -5.5, "mixte : dans la chambre, aucune paroi n'arrête (6 m vers le nord entre front et " +
+        "piliers)", mc);
+      // Trois états retenus PAR PLAN : un choix sur ce plan ne touche pas un autre.
+      const tri = await page.evaluate(function (d) {
+        const K = window.KtaVue3D, r = [];
+        return K.ouvrir({ depart: d }).then(function () {
+          for (let i = 0; i < 3; i++) {
+            document.querySelector('#kta-vue3d [data-v3d="rendu"]').dispatchEvent(new PointerEvent("pointerdown",
+              { bubbles: true }));
+            r.push([K.etat().rendu, window.getPlanRenduVue3D(), K.parois().length]);
+          }
+          K.basculerRendu("structures");
+          return K.fermer();
+        }).then(function () { return K.ouvrir({ depart: d }); }).then(function () {
+          const out = { suite: r, rouvert: K.etat().rendu, autre: window.getPlanRenduVue3D("v3d-checkup-galerie") };
+          K.basculerRendu("mixte");
+          return K.fermer().then(function () { return out; });
+        });
+      }, mq(-12, 0, 90));
+      verifier(JSON.stringify(tri.suite.map(function (q) { return q[0] + "/" + q[1]; })) ===
+        JSON.stringify(["structures/structures", "galerie/galerie", "mixte/mixte"]) && tri.suite[0][2] === 0 &&
+        tri.suite[1][2] > tri.suite[2][2] && tri.rouvert === "structures" && tri.autre === "galerie",
+        "trois états : mixte → structures → galerie → mixte, retenus pour ce plan (l'autre plan garde le sien)", tri);
+
+      // ── 11. Membres, repères et itinéraires d'une extension (prise neutre, extension FACTICE) ─────────────────
+      const eq0 = await page.evaluate(function (d) {
+        return window.KtaVue3D.ouvrir({ depart: d }).then(function () {
+          const e = window.KtaVue3D.etat();
+          return { equipe: e.equipe, membres: e.membres.length, version: typeof window.KtaPresences.version };
+        });
+      }, mq(-12, 0, 90));
+      verifier(eq0.version === "function" && eq0.equipe.membres === 0 && eq0.equipe.reperes === 0 &&
+        eq0.equipe.itineraires === 0 && eq0.membres === 0, "sans extension : ni membre, ni repère, ni itinéraire en 3D",
+        eq0);
+      const eq1 = await page.evaluate(function (a) {
+        const X = window.KtaExtensions, P = function (x, z) { return [(a.ox + x) * a.sc, (a.oz + z) * a.sc]; };
+        X.register({ nom: "v3d-factice", apiVersion: 1, presence: { actif: function () { return true; },
+          basculer: function () {} } });
+        const m0 = P(-8, 0.5), m1 = P(-6, 0);
+        X.afficherPresences([
+          { id: "membre-a", pseudo: "Membre A", x: m0[0], y: m0[1], niveau: 0 },
+          { id: "membre-b", pseudo: "Membre B", x: m1[0], y: m1[1], niveau: 1 }
+        ]);
+        // afficherReperes exige le plan prêt : le plan du relevé fictif, le temps de l'appel.
+        const id = window._currentLoadedPlanId;
+        window._currentLoadedPlanId = a.planReel;
+        const r = P(-9, -0.5);
+        const nr = X.afficherReperes("v3dtest", [{ id: "rep-1", x: r[0], y: r[1], niveaux: [0], teinte: "ok",
+          symbole: "✓", titre: "Repère test" }]);
+        window._currentLoadedPlanId = id;
+        const i0 = P(-14, 0.4), i1 = P(-4, 0.4);
+        X.afficherItineraires([{ id: "iti-1", pseudo: "Membre A", points: [[i0[0], i0[1], 0], [i1[0], i1[1], 0]] }]);
+        return new Promise(function (res) { setTimeout(res, 200); }).then(function () {
+          const e = window.KtaVue3D.etat();
+          return { nr: nr, equipe: e.equipe, membres: e.membres.map(function (q) {
+            return [+(q.x - a.ox).toFixed(2), +(q.z - a.oz).toFixed(2)];
+          }), multi: window.APP_CONFIG.multiLevel === true, noms: e.panneaux.filter(function (q) {
+            return q.genre !== "poi";
+          }).map(function (q) { return q.genre + ":" + q.nom; }) };
+        });
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, planReel: G.planReel });
+      await capture(page, "mixte-equipe");
+      verifier(eq1.equipe.membres === (eq1.multi ? 1 : 2) && eq1.membres.length === eq1.equipe.membres &&
+        eq1.membres[0][0] === -8 && eq1.membres[0][1] === 0.5 && eq1.noms.indexOf("membre:Membre A") >= 0 &&
+        (!eq1.multi || eq1.noms.indexOf("membre:Membre B") < 0),
+        "extension factice : membre au niveau affiché en silhouette nommée à sa place ; celui d'un autre niveau absent",
+        eq1);
+      verifier(eq1.nr === 1 && eq1.equipe.reperes === 1 && eq1.noms.indexOf("repere:✓ Repère test") >= 0 &&
+        eq1.equipe.itineraires === 1, "extension factice : repère et itinéraire partagé dessinés en 3D", eq1);
+      const eq2 = await page.evaluate(function (a) {
+        const X = window.KtaExtensions;
+        X.afficherPresences([]);
+        const id = window._currentLoadedPlanId;
+        window._currentLoadedPlanId = a.planReel;
+        X.afficherReperes("v3dtest", []);
+        window._currentLoadedPlanId = id;
+        X.afficherItineraires([]);
+        return new Promise(function (res) { setTimeout(res, 200); }).then(function () {
+          const e = window.KtaVue3D.etat();
+          return window.KtaVue3D.fermer().then(function () { return e.equipe; });
+        });
+      }, { planReel: G.planReel });
+      verifier(eq2.membres === 0 && eq2.reperes === 0 && eq2.itineraires === 0,
+        "listes vidées par l'extension : la 3D les retire", eq2);
+      await page.evaluate(function () {
+        window.Favoris.remove("POI favori v3d");
+        window.setStructures([]);
+      });
+
       await page.evaluate(function () {
         const s = window.__v3dEmb;
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;

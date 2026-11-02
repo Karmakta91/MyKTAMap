@@ -6,9 +6,15 @@
 
 // galerieEmprise.js — emprise des galeries d'un niveau : les tracés vus comme des couloirs d'une largeur par type
 // (principal 2,5 m, secondaire 2 m, chemin 1,7 m, type perso 2 m ; ni l'itinéraire ni une jonction).
-// Expose window.KtaGalerie : largeur(type) → m, modele(niveau) → modèle en coordonnées plan (px) | null,
+// Expose window.KtaGalerie : largeur(type) → m, modele(niveau[, mixte]) → modèle en coordonnées plan (px) | null,
 //   dedans(x, y, niveau), segmentsBloques(segs, niveau) → [bool] (même forme que
-//   tracking.js > ktaSegmentsBloquesParStructure), invalider().
+//   tracking.js > ktaSegmentsBloquesParStructure), paroisBloquent(segs, niveau) (mode mixte), invalider(),
+//   SEUIL_CHAMBRE_M.
+// Modèle MIXTE (vue 3D par défaut) : le tube n'existe que là où aucune structure du niveau (intégrée ou perso)
+// n'est à moins de SEUIL_CHAMBRE_M de l'axe ; ailleurs le tracé traverse une CHAMBRE, sans parois. Un tube qui
+// débouche dans une chambre s'y arrête sur un bout OUVERT (aucune paroi de fond) ; un tube plus court que
+// TUBE_MIN_M entre deux chambres est ouvert aussi (pas de paroi orpheline). Règle du pas : on bute contre les
+// parois dessinées (paroisBloquent), contre les structures (règle du tracker) et contre un remblais dans un tube.
 // Modèle : graphe plan des tracés (sommets confondus à 15 cm, croisements coupés, bout libre raccordé au tracé
 // voisin s'il s'arrête à moins de 0,5 m de sa paroi) ; une PIÈCE convexe par tronçon (rectangle de sa largeur,
 // d'un nœud à l'autre) et, à chaque nœud de degré ≥ 2, les triangles d'un joint : coude en onglet (borné à deux
@@ -34,8 +40,18 @@
   const CASE_M = 4;                 // m : maille des grilles de recherche
   const PAS_M = 0.05;               // m : pas d'échantillonnage d'un segment jugé par segmentsBloques
   const MEMO_MS = 250;              // signature des données relue au plus tous les MEMO_MS
+  // Mode mixte. 3 m : un tube principal a sa paroi à 1,25 m de l'axe ; une structure plus proche que 3 m de l'axe
+  // laisserait entre elle et la paroi moins de 1,75 m (la largeur d'un chemin) : une lame de roche doublée qui ne
+  // ressemble à rien. Elle borde donc la galerie elle-même (front de taille, mur de consolidation, pilier de
+  // chambre) : on dessine la structure, pas le tube. Plus bas (2 m), les piliers d'une chambre traversée en son
+  // milieu (rangées tous les 5 à 7 m) laissaient des tronçons de tube entre eux ; plus haut (4 à 5 m), une galerie
+  // de liaison qui longe un pilier isolé perdait ses parois sur une longueur sans rien à dessiner à la place.
+  const SEUIL_CHAMBRE_M = 3;
+  const PAS_CHAMBRE_M = 0.5;        // m : pas d'échantillonnage de l'axe pour ce test (coupe affinée par dichotomie)
+  const TUBE_MIN_M = 3;             // m : tube plus court entre deux chambres (ou chambre et bout libre) → ouvert
+  const RECUL_CHAMBRE_M = 0.5;      // m au-delà de la plus grande demi-largeur : tubes arrêtés avant un nœud en chambre
 
-  const _cache = new Map();         // niveau → { sig, modele }
+  const _cache = new Map();         // "niveau|m" → { sig, modele }
   let _sig = null, _sigT = 0;
 
   function largeur(type) { return SANS_TUBE[type] ? 0 : (LARGEURS[type] || LARGEUR_PERSO); }
@@ -54,7 +70,15 @@
 
   function _zones() { return _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)); }
 
-  // Signature bon marché (comme roadGraph.js) : nombre, sommets et niveaux des tracés et zones, échelle.
+  // Toutes les structures, filtres de la carte ignorés (masquer ne retire que le dessin, comme la règle du pas).
+  function _structures() { return _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures)); }
+
+  function _estLigne(type) {
+    if (typeof window.isStructurePolylineType === "function") return window.isStructurePolylineType(type);
+    return type === "mur-ligne" || type === "front-1" || type === "front-2";
+  }
+
+  // Signature bon marché (comme roadGraph.js) : nombre, sommets et niveaux des tracés, zones et structures, échelle.
   function _signature() {
     const t = performance.now();
     if (_sig !== null && t - _sigT < MEMO_MS) return _sig;
@@ -72,6 +96,7 @@
     };
     lire(_routes());
     lire(_zones());
+    lire(_structures());
     _sig = h + ":" + _echelle();
     _sigT = t;
     return _sig;
@@ -85,12 +110,16 @@
 
   // ── Grille de recherche (px) ──────────────────────────────────────────────────────────────────────
 
+  // Clé numérique de case (une chaîne par case coûtait une allocation à chaque lecture : des centaines de milliers à
+  // la construction du mode mixte). Les cases font CASE_M : 2^20 cases de côté suffisent à tout plan.
+  function _cle(gx, gy) { return gx * 1048576 + gy; }
+
   function Grille(c) { this.c = c; this.m = new Map(); }
   Grille.prototype.poser = function (i, x0, y0, x1, y1) {
     const c = this.c;
     for (let gx = Math.floor(x0 / c); gx <= Math.floor(x1 / c); gx++) {
       for (let gy = Math.floor(y0 / c); gy <= Math.floor(y1 / c); gy++) {
-        const k = gx + "," + gy;
+        const k = _cle(gx, gy);
         let l = this.m.get(k);
         if (!l) this.m.set(k, l = []);
         l.push(i);
@@ -101,14 +130,14 @@
     const c = this.c, vus = new Set();
     for (let gx = Math.floor(x0 / c); gx <= Math.floor(x1 / c); gx++) {
       for (let gy = Math.floor(y0 / c); gy <= Math.floor(y1 / c); gy++) {
-        const l = this.m.get(gx + "," + gy);
+        const l = this.m.get(_cle(gx, gy));
         if (l) for (let n = 0; n < l.length; n++) vus.add(l[n]);
       }
     }
     return Array.from(vus);
   };
   Grille.prototype.case = function (x, y) {
-    return this.m.get(Math.floor(x / this.c) + "," + Math.floor(y / this.c)) || [];
+    return this.m.get(_cle(Math.floor(x / this.c), Math.floor(y / this.c))) || [];
   };
 
   // ── Géométrie ────────────────────────────────────────────────────────────────────────────────────
@@ -152,9 +181,145 @@
     return r;
   }
 
+  // ── Mode mixte : structures proches de l'axe ──────────────────────────────────────────────────────
+
+  // Structures du niveau (bords des contours, segments des lignes) en grille → proche(x, y) : une structure est à
+  // moins de SEUIL_CHAMBRE_M, ou le point est dans un contour fermé.
+  function _indexStructures(niveau, sc) {
+    const segs = [], polys = [], g = new Grille(CASE_M * sc), gp = new Grille(CASE_M * sc);
+    _structures().forEach(function (s) {
+      if (!s || !Array.isArray(s.points) || !_surNiveau(s, niveau)) return;
+      const pts = s.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
+      if (!pts.length) return;
+      const ligne = _estLigne(s.type), n = pts.length;
+      const fin = ligne || n < 3 ? Math.max(1, n - 1) : n;
+      for (let i = 0; i < fin; i++) {
+        const p = pts[i], q = pts[Math.min((i + 1) % n, n - 1)];
+        segs.push([p.x, p.y, q.x, q.y]);
+        g.poser(segs.length - 1, Math.min(p.x, q.x), Math.min(p.y, q.y), Math.max(p.x, q.x), Math.max(p.y, q.y));
+      }
+      if (ligne || n < 3) return;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      pts.forEach(function (p) {
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      });
+      polys.push(pts);
+      gp.poser(polys.length - 1, x0, y0, x1, y1);
+    });
+    const r = SEUIL_CHAMBRE_M * sc, r2 = r * r;
+    return {
+      n: segs.length,
+      // Aucune structure dans les cases autour du rectangle (px), marge du seuil comprise : rien à échantillonner.
+      aucuneAutour: function (x0, y0, x1, y1) {
+        const c = g.c;
+        for (let gx = Math.floor((x0 - r) / c); gx <= Math.floor((x1 + r) / c); gx++) {
+          for (let gy = Math.floor((y0 - r) / c); gy <= Math.floor((y1 + r) / c); gy++) {
+            if (g.m.has(_cle(gx, gy)) || gp.m.has(_cle(gx, gy))) return false;
+          }
+        }
+        return true;
+      },
+      proche: function (x, y) {
+        if (!segs.length) return false;
+        // Cases lues une à une (sans Grille.pres, qui dédoublonne dans un Set) : appelé des dizaines de milliers de
+        // fois à la construction, et un segment vu deux fois ne change pas la réponse.
+        const c = g.c;
+        for (let gx = Math.floor((x - r) / c); gx <= Math.floor((x + r) / c); gx++) {
+          for (let gy = Math.floor((y - r) / c); gy <= Math.floor((y + r) / c); gy++) {
+            const l = g.m.get(_cle(gx, gy));
+            if (!l) continue;
+            for (let i = 0; i < l.length; i++) {
+              const s = segs[l[i]], dx = s[2] - s[0], dy = s[3] - s[1], q = dx * dx + dy * dy;
+              const t = q ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (y - s[1]) * dy) / q)) : 0;
+              const ex = s[0] + t * dx - x, ey = s[1] + t * dy - y;
+              if (ex * ex + ey * ey <= r2) return true;
+            }
+          }
+        }
+        const lp = gp.case(x, y);
+        for (let i = 0; i < lp.length; i++) { if (_dansAnneau(polys[lp[i]], x, y)) return true; }
+        return false;
+      }
+    };
+  }
+
+  // Classe chaque arête en morceaux de tube et de chambre → r.tubes = [[t0, t1, ouvertDebut, ouvertFin]] (t le long
+  // de l'arête, de a vers b) ; rend les nœuds en chambre (aucun joint n'y est construit). Échantillons tous les
+  // PAS_CHAMBRE_M : un nœud est en chambre s'il est proche d'une structure ou si l'échantillon voisin l'est ; autour
+  // d'un nœud en chambre, les tubes s'arrêtent à la plus grande demi-largeur + RECUL_CHAMBRE_M (sinon la paroi d'une
+  // branche fermerait l'entrée d'une autre) ; un tube trop court sans joint devient chambre.
+  function _chambres(noeuds, aretes, incid, S, sc) {
+    const nc = noeuds.map(function (n) { return S.proche(n.x, n.y); });
+    const ech = aretes.map(function (r) {
+      const n = Math.max(1, Math.ceil(r.l / (PAS_CHAMBRE_M * sc))), brut = [];
+      const loin = S.aucuneAutour(Math.min(r.ax, r.bx), Math.min(r.ay, r.by), Math.max(r.ax, r.bx), Math.max(r.ay, r.by));
+      for (let i = 0; i <= n; i++) {
+        brut.push(!loin && S.proche(r.ax + (r.bx - r.ax) * i / n, r.ay + (r.by - r.ay) * i / n));
+      }
+      return { n: n, brut: brut };
+    });
+    aretes.forEach(function (r, k) {
+      const e = ech[k];
+      if (e.n < 2) return;
+      if (e.brut[1]) nc[r.a] = true;
+      if (e.brut[e.n - 1]) nc[r.b] = true;
+    });
+    const demi = noeuds.map(function (n, v) {
+      return incid[v].reduce(function (m, i) { return Math.max(m, aretes[i].w); }, 0) + RECUL_CHAMBRE_M * sc;
+    });
+    aretes.forEach(function (r, k) {
+      const e = ech[k], s = e.brut.slice();
+      s[0] = nc[r.a]; s[e.n] = nc[r.b];
+      for (let i = 0; i <= e.n; i++) {
+        const d = r.l * i / e.n;
+        if ((nc[r.a] && d <= demi[r.a]) || (nc[r.b] && r.l - d <= demi[r.b])) s[i] = true;
+      }
+      // Tubes trop courts sans joint (entre deux chambres, ou chambre et bout libre) : ouverts.
+      for (let i = 0; i <= e.n;) {
+        if (s[i]) { i++; continue; }
+        let j = i;
+        while (j + 1 <= e.n && !s[j + 1]) j++;
+        const joint = (i === 0 && incid[r.a].length >= 2) || (j === e.n && incid[r.b].length >= 2);
+        const chambreAutour = i > 0 || j < e.n;
+        if (chambreAutour && !joint && (j - i) / e.n * r.l < TUBE_MIN_M * sc) {
+          for (let q = i; q <= j; q++) s[q] = true;
+          if (i === 0) nc[r.a] = true;
+          if (j === e.n) nc[r.b] = true;
+        }
+        i = j + 1;
+      }
+      e.s = s;
+    });
+    // Coupe entre un échantillon de chambre et un de tube : au seuil exact si la proximité brute change entre eux
+    // (dichotomie), sinon sur l'échantillon de tube (recul, tube court : le tube est raccourci, jamais allongé).
+    const coupe = function (r, e, iCh, iTu) {
+      const tCh = iCh / e.n, tTu = iTu / e.n;
+      if (!e.brut[iCh] || e.brut[iTu]) return tTu;
+      let a = tCh, b = tTu;
+      for (let k = 0; k < 6; k++) {
+        const m = (a + b) / 2;
+        if (S.proche(r.ax + (r.bx - r.ax) * m, r.ay + (r.by - r.ay) * m)) a = m; else b = m;
+      }
+      return b;
+    };
+    aretes.forEach(function (r, k) {
+      const e = ech[k], s = e.s, tubes = [];
+      for (let i = 0; i <= e.n;) {
+        if (s[i]) { i++; continue; }
+        let j = i;
+        while (j + 1 <= e.n && !s[j + 1]) j++;
+        const t0 = i === 0 ? 0 : coupe(r, e, i - 1, i), t1 = j === e.n ? 1 : coupe(r, e, j + 1, j);
+        if ((t1 - t0) * r.l > 1e-6 * sc) tubes.push([t0, t1, i > 0, j < e.n]);
+        i = j + 1;
+      }
+      r.tubes = tubes;
+    });
+    return nc;
+  }
+
   // ── Construction du modèle ───────────────────────────────────────────────────────────────────────
 
-  function _construire(niveau, sc) {
+  function _construire(niveau, sc, mixte) {
     const fusion = FUSION_M * sc, noeuds = [], gN = new Grille(CASE_M * sc);
     const noeud = function (x, y) {
       const l = gN.pres(x - fusion, y - fusion, x + fusion, y + fusion);
@@ -262,22 +427,47 @@
       r.ax = A.x; r.ay = A.y; r.bx = B.x; r.by = B.y; r.l = Math.hypot(B.x - A.x, B.y - A.y);
       incid[r.a].push(i); incid[r.b].push(i);
     });
-    // 5. Pièces : rectangle par arête, joint (triangles en éventail autour du nœud) par nœud de degré ≥ 2.
+    // 5. Pièces : rectangle par arête (par morceau de tube en mixte), joint (triangles en éventail autour du nœud)
+    // par nœud de degré ≥ 2 (hors chambre). Bout ouvert d'un tube : son bord est noté dans `ouverts` (pas de paroi).
+    const S = mixte ? _indexStructures(niveau, sc) : null;
+    const nc = S ? _chambres(noeuds, aretes, incid, S, sc) : null;
     const pieces = [];
     aretes.forEach(function (r, i) {
       if (r.l < 1e-9) return;
       const nx = -(r.by - r.ay) / r.l * r.w, ny = (r.bx - r.ax) / r.l * r.w;
-      const p = _piece([[r.ax - nx, r.ay - ny], [r.bx - nx, r.by - ny], [r.bx + nx, r.by + ny], [r.ax + nx, r.ay + ny]],
-        r.type, "tube");
-      p.arete = i;
-      pieces.push(p);
+      (r.tubes || [[0, 1, false, false]]).forEach(function (u) {
+        const ax = r.ax + (r.bx - r.ax) * u[0], ay = r.ay + (r.by - r.ay) * u[0];
+        const bx = r.ax + (r.bx - r.ax) * u[1], by = r.ay + (r.by - r.ay) * u[1];
+        const p = _piece([[ax - nx, ay - ny], [bx - nx, by - ny], [bx + nx, by + ny], [ax + nx, ay + ny]], r.type,
+          "tube");
+        p.arete = i;
+        const bouts = [];
+        if (u[2]) bouts.push([ax, ay]);
+        if (u[3]) bouts.push([bx, by]);
+        if (bouts.length) {
+          p.ouverts = [];
+          for (let k = 0; k < p.pts.length; k++) {
+            const a = p.pts[k], b = p.pts[(k + 1) % p.pts.length], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+            if (bouts.some(function (c) { return Math.hypot(c[0] - mx, c[1] - my) < 1e-3; })) p.ouverts.push(k);
+          }
+        }
+        pieces.push(p);
+      });
     });
+    // Longueur de tube contre le nœud v (mixte : le morceau qui le touche) : borne la dalle du joint.
+    const longueurAu = function (r, v) {
+      if (!r.tubes) return r.l;
+      const u = r.a === v ? r.tubes[0] : r.tubes[r.tubes.length - 1];
+      return u ? (u[1] - u[0]) * r.l : 0;
+    };
     let dalles = 0, coudes = 0, bouts = 0;
     for (let v = 0; v < noeuds.length; v++) {
       const k = incid[v].length;
-      if (k === 1) bouts++;
-      if (k < 2) continue;
-      const tri = _joint(noeuds[v], incid[v].map(function (i) { return aretes[i]; }), v, sc);
+      if (k === 1 && !(nc && nc[v])) bouts++;
+      if (k < 2 || (nc && nc[v])) continue;
+      const tri = _joint(noeuds[v], incid[v].map(function (i) {
+        return nc ? Object.assign({}, aretes[i], { lTube: longueurAu(aretes[i], v) }) : aretes[i];
+      }), v, sc);
       if (!tri.length) continue;
       if (k >= 3) dalles++; else coudes++;
       const larges = incid[v].map(function (i) { return aretes[i]; }).sort(function (p, q) { return q.w - p.w; });
@@ -306,10 +496,26 @@
       remblais.push(a);
       gR.poser(remblais.length - 1, x0, y0, x1, y1);
     });
-    return {
-      niveau: niveau, sc: sc, noeuds: noeuds, aretes: aretes, pieces: pieces,
+    const m = {
+      niveau: niveau, sc: sc, mixte: !!mixte, noeuds: noeuds, aretes: aretes, pieces: pieces,
       degres: incid.map(function (l) { return l.length; }),
       dalles: dalles, coudes: coudes, bouts: bouts,
+      chambres: nc ? nc.filter(Boolean).length : 0,
+      ouverts: pieces.reduce(function (n, p) { return n + (p.ouverts ? p.ouverts.length : 0); }, 0),
+      // Mixte : une structure du niveau est à moins de SEUIL_CHAMBRE_M (chambre) ? Toujours faux sinon.
+      enChambre: function (x, y) { return !!S && S.proche(x, y); },
+      // Mixte : le point t (0 → 1, de a vers b) de l'arête i est-il dans un morceau de tube ? Toujours vrai sinon.
+      tubeAu: function (i, t) {
+        const r = aretes[i];
+        return !r || !r.tubes || r.tubes.some(function (u) { return t >= u[0] - 1e-9 && t <= u[1] + 1e-9; });
+      },
+      // Parois de la pièce i → [[x0, y0, x1, y1]] (px), calculées une fois (_parois).
+      paroisDe: function (i) {
+        const c = m._parois || (m._parois = new Map());
+        let l = c.get(i);
+        if (!l) { l = _parois(m, i); c.set(i, l); }
+        return l;
+      },
       piecesPres: function (x0, y0, x1, y1) { return gP.pres(x0, y0, x1, y1); },
       aretesPres: function (x0, y0, x1, y1) { return gA.pres(x0, y0, x1, y1); },
       dedans: function (x, y) {
@@ -322,18 +528,68 @@
         for (let i = 0; i < l.length; i++) { if (_dansAnneau(remblais[l[i]], x, y)) return true; }
         return false;
       },
-      // Axe le plus proche à moins de `rayon` px → { d, x, y (projection), w, arete } | null.
+      remblaisPres: function (x0, y0, x1, y1) { return gR.pres(x0, y0, x1, y1).length > 0; },
+      // Axe le plus proche à moins de `rayon` px → { d, x, y (projection), w, arete, t } | null.
       plusProche: function (x, y, rayon) {
         let best = null;
         gA.pres(x - rayon, y - rayon, x + rayon, y + rayon).forEach(function (i) {
           const r = aretes[i], dx = r.bx - r.ax, dy = r.by - r.ay, l2 = dx * dx + dy * dy;
           const t = l2 ? Math.max(0, Math.min(1, ((x - r.ax) * dx + (y - r.ay) * dy) / l2)) : 0;
           const px = r.ax + t * dx, py = r.ay + t * dy, d = Math.hypot(x - px, y - py);
-          if (d <= rayon && (!best || d < best.d)) best = { d: d, x: px, y: py, w: r.w, arete: i };
+          if (d <= rayon && (!best || d < best.d)) best = { d: d, x: px, y: py, w: r.w, arete: i, t: t };
         });
         return best;
       }
     };
+    return m;
+  }
+
+  // Bords visibles de la pièce i (px) → [[x0, y0, x1, y1]]. Chaque bord est coupé là où il croise une pièce voisine
+  // (ou longe un de ses bords) ; un morceau est une paroi si le point juste à l'extérieur, en son milieu, n'est dans
+  // aucune autre pièce. Un bord ouvert (bout de tube qui débouche dans une chambre) n'en donne aucune.
+  // ⚠️ contrat : l'emprise est l'union des pièces, d'où aucune paroi qui en traverse une autre ; la 3D dessine ces
+  // parois (vue3d.js > _construireTuileGalerie) et le mode mixte bute contre elles (paroisBloquent) : une seule source.
+  function _parois(m, i) {
+    const P = m.pieces[i], pts = P.pts, eps = 0.004 * m.sc, out = [];
+    const vois = m.piecesPres(P.x0 - eps, P.y0 - eps, P.x1 + eps, P.y1 + eps).filter(function (j) { return j !== i; });
+    for (let k = 0; k < pts.length; k++) {
+      if (P.ouverts && P.ouverts.indexOf(k) >= 0) continue;
+      const p = pts[k], q = pts[(k + 1) % pts.length], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy);
+      if (l < 1e-9) continue;
+      const ts = [0, 1];
+      for (let v = 0; v < vois.length; v++) {
+        const Q = m.pieces[vois[v]].pts;
+        for (let a = 0; a < Q.length; a++) {
+          const r = Q[a], s = Q[(a + 1) % Q.length], ex = s[0] - r[0], ey = s[1] - r[1];
+          const rx = r[0] - p[0], ry = r[1] - p[1], d = dx * ey - dy * ex;
+          if (Math.abs(d) > 1e-9 * l * Math.hypot(ex, ey)) {
+            const t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
+            if (t > 0 && t < 1 && u >= -1e-9 && u <= 1 + 1e-9) ts.push(t);
+          } else if (Math.abs(rx * dy - ry * dx) / l < eps) {
+            // Bords alignés : les bouts de l'autre bord coupent celui-ci.
+            [r, s].forEach(function (z) {
+              const t = ((z[0] - p[0]) * dx + (z[1] - p[1]) * dy) / (l * l);
+              if (t > 0 && t < 1) ts.push(t);
+            });
+          }
+        }
+      }
+      ts.sort(function (a, b) { return a - b; });
+      const ox = dy / l * eps, oy = -dx / l * eps;   // vers l'extérieur (pièce de sens positif : intérieur à gauche)
+      let deb = null, fin = null;
+      const morceau = function (a, b) { return [p[0] + dx * a, p[1] + dy * a, p[0] + dx * b, p[1] + dy * b]; };
+      for (let n = 0; n + 1 < ts.length; n++) {
+        const t0 = ts[n], t1 = ts[n + 1];
+        if ((t1 - t0) * l < 1e-6) continue;
+        const tm = (t0 + t1) / 2, x = p[0] + dx * tm + ox, y = p[1] + dy * tm + oy;
+        let couvert = false;
+        for (let v = 0; v < vois.length && !couvert; v++) couvert = dansPiece(m.pieces[vois[v]], x, y, 0);
+        if (!couvert) { if (deb === null) deb = t0; fin = t1; continue; }
+        if (deb !== null) { out.push(morceau(deb, fin)); deb = null; }
+      }
+      if (deb !== null) out.push(morceau(deb, fin));
+    }
+    return out;
   }
 
   // Joint d'un nœud (px) → triangles convexes de sens positif autour de lui. Arêtes triées par angle ; entre deux
@@ -344,7 +600,9 @@
     const br = aretes.map(function (r) {
       const sens = r.a === v ? 1 : -1;
       const dx = (r.bx - r.ax) * sens, dy = (r.by - r.ay) * sens, l = r.l || 1;
-      return { ux: dx / l, uy: dy / l, w: r.w, l: l, ang: Math.atan2(dy, dx), recul: 0 };
+      // lTube (mixte) : longueur du morceau de tube contre le nœud, qui borne la dalle ; la direction reste l'arête.
+      const lb = r.lTube !== undefined ? r.lTube : l;
+      return { ux: dx / l, uy: dy / l, w: r.w, l: lb, ang: Math.atan2(dy, dx), recul: 0 };
     }).sort(function (p, q) { return p.ang - q.ang; });
     const k = br.length, ouv = [];
     for (let i = 0; i < k; i++) {
@@ -391,16 +649,17 @@
 
   // ── API ──────────────────────────────────────────────────────────────────────────────────────────
 
-  function modele(niveau) {
+  // mixte : modèle du mode mixte (tubes seulement loin des structures), gardé à part de celui du mode galerie.
+  function modele(niveau, mixte) {
     const sc = _echelle();
     if (!sc) return null;
-    const n = Number.isInteger(niveau) ? niveau : null;
-    const sig = _signature(), c = _cache.get(n);
+    const n = Number.isInteger(niveau) ? niveau : null, cle = n + (mixte ? "|m" : "");
+    const sig = _signature(), c = _cache.get(cle);
     if (c && c.sig === sig) return c.modele;
     const t0 = performance.now();
-    const m = _construire(n, sc);
+    const m = _construire(n, sc, !!mixte);
     m.msConstruction = performance.now() - t0;
-    _cache.set(n, { sig: sig, modele: m });
+    _cache.set(cle, { sig: sig, modele: m });
     return m;
   }
 
@@ -425,7 +684,37 @@
     });
   }
 
+  // Mode mixte : segments [x0, y0, x1, y1] (px) → true s'il coupe ou touche une paroi dessinée (bouts ouverts
+  // exclus : on entre dans une chambre par là) ou s'il entre dans un remblais à l'intérieur d'un tube. Dans une
+  // chambre, rien ici n'arrête : les structures y bloquent par la règle du tracker (vue3d.js > _juger).
+  function paroisBloquent(segs, niveau) {
+    const m = modele(niveau, true);
+    if (!m || !m.pieces.length) return segs.map(function () { return false; });
+    const pas = PAS_M * m.sc, e = 1e-9;
+    return segs.map(function (s) {
+      const x0 = Math.min(s[0], s[2]), x1 = Math.max(s[0], s[2]), y0 = Math.min(s[1], s[3]), y1 = Math.max(s[1], s[3]);
+      const dx = s[2] - s[0], dy = s[3] - s[1], ps = m.piecesPres(x0 - 1, y0 - 1, x1 + 1, y1 + 1);
+      for (let k = 0; k < ps.length; k++) {
+        const w = m.paroisDe(ps[k]);
+        for (let j = 0; j < w.length; j++) {
+          const p = w[j], ex = p[2] - p[0], ey = p[3] - p[1], d = dx * ey - dy * ex;
+          if (Math.abs(d) < 1e-12) continue;
+          const rx = p[0] - s[0], ry = p[1] - s[1], t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
+          if (t >= -e && t <= 1 + e && u >= -e && u <= 1 + e) return true;
+        }
+      }
+      if (!m.remblaisPres(x0, y0, x1, y1)) return false;
+      const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / pas));
+      for (let i = 0; i <= n; i++) {
+        const x = s[0] + dx * i / n, y = s[1] + dy * i / n;
+        if (m.dedans(x, y) && m.enRemblais(x, y)) return true;
+      }
+      return false;
+    });
+  }
+
   window.KtaGalerie = {
+    SEUIL_CHAMBRE_M: SEUIL_CHAMBRE_M, paroisBloquent: paroisBloquent,
     LARGEURS: Object.assign({}, LARGEURS), LARGEUR_PERSO: LARGEUR_PERSO,
     largeur: largeur, modele: modele, dedans: dedans, segmentsBloques: segmentsBloques, invalider: invalider,
     dansPiece: dansPiece

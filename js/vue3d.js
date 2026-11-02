@@ -11,16 +11,20 @@
 //   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg), avancer(m),
 //   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), charge() } ; opts : { distanceVue (m),
 //   tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus (élément) }.
-// Scène (m : x = x image / scale, z = y image / scale, y = hauteur), deux rendus exclusifs retenus par plan :
-// STRUCTURES (extrudées à la hauteur du plan, tracés au sol) ou GALERIE (tracés en tubes, js/galerieEmprise.js) ;
-// zones, itinéraire, POI en panneaux ; un niveau. Tuiles autour de soi, lampe frontale, rendu au mouvement seul.
+// Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
+// structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
+// STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire,
+// POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
+// (KtaPresences, lecture seule ; rien sans extension) ; un niveau. Tuiles autour de soi, lampe frontale, rendu au
+// mouvement seul.
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
 // ne suit aucun filtre. Points d'accroche (lot suivant) : _e.bandeau (sous la rangée du haut), _toucher (panneaux).
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
-// ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques), sur la largeur d'un corps. Le tracker
+// ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
+// KtaGalerie.paroisBloquent), sur la largeur d'un corps. Le tracker
 // n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler (position, niveau).
 // 🩸 three.js est un module ES : import() dynamique, URL absolue (pas d'import map, la CSP refuse tout script en
 // ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en garde peu (iOS ~ 8, Chrome 16).
@@ -72,6 +76,10 @@
   const LISERE = 0.15;              // m
   const POI_GALERIE = 10;           // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises)
   const RECUL_PAROI = 0.08;         // m : POI hors du tube ramené contre la paroi, devant elle
+  // POI danger : anneau au sol sous le panneau, rouge de la charte (--kta-erreur du thème sombre), non éclairé :
+  // lisible hors du faisceau, éteint au loin par le brouillard comme le reste.
+  const HALO = { r0: 0.45, r1: 0.7, y: 0.03, opacite: 0.85, fond: 0.18 };
+  const MEMBRE = { rayon: 0.22, haut: 1.7, tete: 0.14 };   // m : silhouette d'un membre (extension)
   const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
   const SEUIL_RECALAGE = 0.5;       // m d'écart avec le tracker sous lequel « Je suis ici ? » ne se pose pas
@@ -169,7 +177,7 @@
   }
 
   // Objets DESSINÉS du niveau (filtres de la carte appliqués ; l'itinéraire n'en suit aucun, comme en 2D) ; les
-  // structures de tout filtre comptées à part (choix du rendu par défaut), les tracés jonction tous (passages 🪜).
+  // tracés jonction tous (passages 🪜).
   function _collecter(niveau) {
     const ok = function (o) { return o && Array.isArray(o.points) && _surNiveau(o, niveau); };
     const type = function (o) { return o.type; };
@@ -178,7 +186,6 @@
     const roads = sessionRoads.filter(function (r) { return r.type === "itinerary"; })
       .concat(_filtrer(sessionRoads.filter(function (r) { return r.type !== "itinerary"; }), embRoads,
         "roadTypes", type));
-    const toutes = _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures));
     // Un POI jonction se montre sur chacun de ses niveaux, à son raccord validé de ce niveau s'il en a un.
     const J = window.KtaPoiJonction, points = [];
     const montres = _filtrer(_tab(window.getEditorPoints), _tab(window.getAllEmbeddedPoints), "tags", _premierTag);
@@ -192,7 +199,6 @@
     return {
       structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type)
         .filter(ok),
-      nStructures: toutes.filter(ok).length,
       zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(ok),
       roads: roads.filter(ok),
       jonctions: sessionRoads.concat(embRoads).filter(function (r) {
@@ -303,17 +309,20 @@
         emprise(t, o.points);
       }
     };
-    const m = d.galerie;
-    if (!m) objets(d.structures, "s");
+    // Galerie : d.galerie ; mixte : d.mixte (structures ET pièces des tubes, tracés en rubans au sol).
+    const g = d.galerie, m = g || d.mixte;
+    if (!g) objets(d.structures, "s");
     objets(d.zones, "z");
-    // Galerie : pièces de l'emprise et axes (liseré) à la tuile de leur centre ; parmi les tracés, seul l'itinéraire
-    // reste un ruban.
+    // Pièces de l'emprise à la tuile de leur centre ; galerie : axes (liseré) aussi, et parmi les tracés seul
+    // l'itinéraire reste un ruban.
     if (m) {
       for (let i = 0; i < m.pieces.length; i++) {
         const P = m.pieces[i], k = cle((P.x0 + P.x1) / 2 / sc, (P.y0 + P.y1) / 2 / sc), t = range(k[0], k[1]);
         t.g.push(i);
         emprise(t, [{ x: P.x0, y: P.y0 }, { x: P.x1, y: P.y1 }]);
       }
+    }
+    if (g) {
       for (let i = 0; i < m.aretes.length; i++) {
         const r = m.aretes[i], k = cle((r.ax + r.bx) / 2 / sc, (r.ay + r.by) / 2 / sc);
         range(k[0], k[1]).a.push(i);
@@ -324,7 +333,7 @@
       const r = d.roads[i], pts = r.points;
       // Jonctions jamais dessinées (décision produit) : le passage de niveau passe par 🪜 (_passages).
       if (r.type === "jonction") continue;
-      if (m && r.type !== "itinerary") continue;
+      if (g && r.type !== "itinerary") continue;
       for (let j = 0; j + 1 < pts.length; j++) {
         const a = pts[j], b = pts[j + 1];
         if (!a || !b) continue;
@@ -464,9 +473,23 @@
 
   function _construireTuile(t) {
     if (_e.galerie) { _construireTuileGalerie(t); return; }
-    const sc = _e.sc, h = _e.hauteur;
+    const sc = _e.sc, h = _e.hauteur, mx = _e.mixte;
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot();
     const hachSol = new Lot(), hachRideau = new Lot();
+    // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
+    const parois = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
+    if (mx) {
+      t.parois = [];
+      for (let i = 0; i < t.g.length; i++) {
+        const ps = mx.paroisDe(t.g[i]);
+        for (let k = 0; k < ps.length; k++) {
+          const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
+          _paroi(parois, x0, z0, x1, z1, h);
+          t.parois.push([x0, z0, x1, z1]);
+        }
+      }
+    }
+    const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau, remblais: remblaisTube };
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], col = _couleur("structures", s.type);
       const lot = _estMur(s.type) ? murs : opaque, hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
@@ -480,6 +503,7 @@
     for (let i = 0; i < t.z.length; i++) {
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
+      if (mx && _zoneDeTube(z, ring, mx)) { _e.zonesTube++; _zoneGalerie(z, mx, lotsTube); continue; }
       if (z.type === "remblais") {
         _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
       } else if (z.type === "eau") {
@@ -514,9 +538,16 @@
     ajouter(transp, _e.mats.transp, 2);
     ajouter(hachSol, _e.mats.hachSol, 0, "opaque");
     ajouter(hachRideau, _e.mats.hachRideau, 2);
+    ajouter(parois, _e.mats.paroi, 0, "parois");
+    ajouter(remblaisTube, _e.mats.opaque, 0, "remblais");
+    ajouter(eauTube, _e.mats.eauGalerie, 2, "eau");
     for (let i = 0; i < t.p.length; i++) {
-      const sp = _panneau(t.p[i]);
-      if (sp) groupe.add(sp);
+      const p = t.p[i];
+      // Mixte : POI dont l'axe le plus proche (10 m au plus) passe en tube → règle de la galerie (contre la paroi) ;
+      // en chambre, près d'une structure ou loin de tout tracé → règle des structures (contre la face d'un pilier).
+      const pp = mx && !mx.enChambre(p.x, p.y) ? mx.plusProche(p.x, p.y, POI_GALERIE * sc) : null;
+      if (pp && mx.tubeAu(pp.arete, pp.t)) { _e.poiTube++; _ajouterPanneau(groupe, p, _contreParoi(p, pp)); }
+      else _ajouterPanneau(groupe, p);
     }
     _e.scene.add(groupe);
     t.obj = groupe;
@@ -526,8 +557,9 @@
   function _libererTuile(t) {
     if (!t.obj) return;
     t.obj.traverse(function (o) {
-      // 🩸 Un Sprite partage la géométrie de three.js : ne jamais la libérer, seulement sa texture.
-      if (o.geometry && !o.isSprite) o.geometry.dispose();
+      // 🩸 Un Sprite partage la géométrie de three.js : ne jamais la libérer, seulement sa texture. Un halo de danger
+      // partage celle de la vue (userData.partage), libérée à la fermeture.
+      if (o.geometry && !o.isSprite && !o.userData.partage) o.geometry.dispose();
       if (o.isSprite && o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
       if (o.isSprite) _e.panneaux.delete(o);
     });
@@ -537,55 +569,9 @@
   }
 
   // ── Mode galerie : les tracés en tubes (window.KtaGalerie, js/galerieEmprise.js), sans les structures ─────
-  // ⚠️ contrat : une paroi est un morceau de bord de pièce de l'emprise qui n'est dans aucune autre pièce (union) :
+  // ⚠️ contrat : parois = KtaGalerie (modèle > paroisDe, union des pièces, bouts ouverts exclus) :
   // tubes coupés au bord des dalles, aucune paroi qui en traverse une autre. Sol et plafond = les pièces elles-mêmes,
   // superposées sans défaut visible (même texture, posée en coordonnées monde). Zones découpées à l'emprise.
-
-  // Bords visibles de la pièce i (px) → [[x0, y0, x1, y1]]. Chaque bord est coupé là où il croise une pièce voisine
-  // (ou longe un de ses bords) ; un morceau est une paroi si le point juste à l'extérieur, en son milieu, n'est dans
-  // aucune autre pièce.
-  function _paroisPiece(m, i) {
-    const P = m.pieces[i], pts = P.pts, eps = 0.004 * m.sc, out = [];
-    const vois = m.piecesPres(P.x0 - eps, P.y0 - eps, P.x1 + eps, P.y1 + eps).filter(function (j) { return j !== i; });
-    const dans = window.KtaGalerie.dansPiece;
-    for (let k = 0; k < pts.length; k++) {
-      const p = pts[k], q = pts[(k + 1) % pts.length], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy);
-      if (l < 1e-9) continue;
-      const ts = [0, 1];
-      for (let v = 0; v < vois.length; v++) {
-        const Q = m.pieces[vois[v]].pts;
-        for (let a = 0; a < Q.length; a++) {
-          const r = Q[a], s = Q[(a + 1) % Q.length], ex = s[0] - r[0], ey = s[1] - r[1];
-          const rx = r[0] - p[0], ry = r[1] - p[1], d = dx * ey - dy * ex;
-          if (Math.abs(d) > 1e-9 * l * Math.hypot(ex, ey)) {
-            const t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
-            if (t > 0 && t < 1 && u >= -1e-9 && u <= 1 + 1e-9) ts.push(t);
-          } else if (Math.abs(rx * dy - ry * dx) / l < eps) {
-            // Bords alignés : les bouts de l'autre bord coupent celui-ci.
-            [r, s].forEach(function (z) {
-              const t = ((z[0] - p[0]) * dx + (z[1] - p[1]) * dy) / (l * l);
-              if (t > 0 && t < 1) ts.push(t);
-            });
-          }
-        }
-      }
-      ts.sort(function (a, b) { return a - b; });
-      const ox = dy / l * eps, oy = -dx / l * eps;   // vers l'extérieur (pièce de sens positif : intérieur à gauche)
-      let deb = null, fin = null;
-      const morceau = function (a, b) { return [p[0] + dx * a, p[1] + dy * a, p[0] + dx * b, p[1] + dy * b]; };
-      for (let n = 0; n + 1 < ts.length; n++) {
-        const t0 = ts[n], t1 = ts[n + 1];
-        if ((t1 - t0) * l < 1e-6) continue;
-        const tm = (t0 + t1) / 2, x = p[0] + dx * tm + ox, y = p[1] + dy * tm + oy;
-        let couvert = false;
-        for (let v = 0; v < vois.length && !couvert; v++) couvert = dans(m.pieces[vois[v]], x, y, 0);
-        if (!couvert) { if (deb === null) deb = t0; fin = t1; continue; }
-        if (deb !== null) { out.push(morceau(deb, fin)); deb = null; }
-      }
-      if (deb !== null) out.push(morceau(deb, fin));
-    }
-    return out;
-  }
 
   // Découpe (Sutherland-Hodgman) d'un contour de sens positif par une pièce convexe de sens positif → contour | null.
   function _decouper(sujet, clip) {
@@ -639,7 +625,7 @@
       const ring = _metres(m.pieces[t.g[i]].pts, sc);
       _dalleTexturee(sol, ring, 0, true);
       _dalleTexturee(plafond, ring, h, false);
-      const ps = _paroisPiece(m, t.g[i]);
+      const ps = m.paroisDe(t.g[i]);
       for (let k = 0; k < ps.length; k++) {
         const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
         _paroi(parois, x0, z0, x1, z1, h);
@@ -686,16 +672,44 @@
       const p = t.p[i];
       const pp = m.plusProche(p.x, p.y, POI_GALERIE * sc);
       if (!pp) { e.poiMasques++; continue; }
-      // Dans le tube : là où il est ; au-delà de la paroi : ramené contre elle, RECUL_PAROI devant.
-      const w = pp.w / sc - RECUL_PAROI, d = pp.d / sc;
-      let x = p.x / sc, z = p.y / sc;
-      if (d > w && d > 1e-9) { x = pp.x / sc + (x - pp.x / sc) * w / d; z = pp.y / sc + (z - pp.y / sc) * w / d; }
-      const sp = _panneau(p, [x, z]);
-      if (sp) groupe.add(sp);
+      _ajouterPanneau(groupe, p, _contreParoi(p, pp));
     }
     e.scene.add(groupe);
     t.obj = groupe;
     e.sale = true;
+  }
+
+  // Place [x, z] (m) d'un POI selon l'axe le plus proche `pp` (plusProche) : dans le tube, là où il est ; au-delà
+  // de la paroi, ramené contre elle, RECUL_PAROI devant.
+  function _contreParoi(p, pp) {
+    const sc = _e.sc, w = pp.w / sc - RECUL_PAROI, d = pp.d / sc;
+    let x = p.x / sc, z = p.y / sc;
+    if (d > w && d > 1e-9) { x = pp.x / sc + (x - pp.x / sc) * w / d; z = pp.y / sc + (z - pp.y / sc) * w / d; }
+    return [x, z];
+  }
+
+  // Mixte : une zone suit la règle de la galerie (découpée aux tubes) si elle touche un tube et qu'aucune structure
+  // du niveau n'est à moins de SEUIL_CHAMBRE_M de son contour (échantillonné tous les mètres) ni de son centre ;
+  // sinon elle est dans une chambre (ou hors de tout tube) et suit la règle des structures, dessinée entière.
+  function _zoneDeTube(z, ring, m) {
+    const sc = _e.sc;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, cx = 0, cz = 0;
+    ring.forEach(function (q) {
+      x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
+      cx += q[0] / ring.length; cz += q[1] / ring.length;
+    });
+    const touche = m.piecesPres(x0 * sc, y0 * sc, x1 * sc, y1 * sc).some(function (i) {
+      return _decouper(ring, _metres(m.pieces[i].pts, sc)) !== null;
+    });
+    if (!touche || m.enChambre(cx * sc, cz * sc)) return false;
+    for (let i = 0; i < ring.length; i++) {
+      const p = ring[i], q = ring[(i + 1) % ring.length];
+      const n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1])));
+      for (let k = 0; k < n; k++) {
+        if (m.enChambre((p[0] + (q[0] - p[0]) * k / n) * sc, (p[1] + (q[1] - p[1]) * k / n) * sc)) return false;
+      }
+    }
+    return true;
   }
 
   // Zone en mode galerie : découpée à chaque pièce de l'emprise qu'elle touche. Eau à 4 cm ; remblais en volume
@@ -763,16 +777,24 @@
   // ⚠️ contrat (décision produit) : un panneau n'est JAMAIS caché par la géométrie (depthTest coupé, dessiné après
   // tout) : un POI relevé dans un pilier ou derrière reste lisible. Borné à la distance de vue, plus petit et plus
   // pâle au loin (_majPanneaux). Un POI dans un volume fermé (pilier, mur, type perso) est collé contre la face de
-  // ce volume la plus proche de la caméra, pour ne pas sembler flotter dans la roche. En mode galerie, `ou` [x, z]
-  // (m) fixe la place du panneau, dans le tube (_construireTuileGalerie).
+  // ce volume la plus proche de la caméra, pour ne pas sembler flotter dans la roche. En mode galerie (et dans les
+  // tubes du mode mixte), `ou` [x, z] (m) fixe la place du panneau, dans le tube (_contreParoi).
+  // POI danger (poiDanger.js > estDanger) : liseré rouge et halo rouge au sol (_ajouterPanneau), visible de près
+  // aussi ; POI favori (Favoris.isFav) : ⭐ dans le coin haut droit du panneau.
 
   // Jetons de la charte du thème SOMBRE, quel que soit le thème affiché : lus dans la règle `:root` des feuilles
   // (style.css), que le thème clair surcharge sur html.kta-theme-light — getComputedStyle rendrait le clair.
   // Repli : les valeurs sombres de la charte. Lus une fois par ouverture (_e.jetonsSombres).
+  const JETONS = {
+    surface: ["--kta-surface", "#1a1f2e"], fond: ["--kta-fond", "#0a0d18"], texte: ["--kta-texte", "#e8eaf0"],
+    accent: ["--kta-accent", "#f4c542"], erreur: ["--kta-erreur", "#ff8c8c"],
+    interaction: ["--kta-interaction", "#8cb4ff"], ok: ["--kta-ok", "#6ee287"], avert: ["--kta-avert", "#ffb380"],
+    violet: ["--kta-violet", "#a78bfa"], magenta: ["--kta-magenta", "#ff4ecb"], neutre: ["--kta-texte-3", "#98a1b3"]
+  };
   function _jetonsSombres() {
     if (_e.jetonsSombres) return _e.jetonsSombres;
-    const j = { surface: "#1a1f2e", fond: "#0a0d18", texte: "#e8eaf0", accent: "#f4c542" };
-    const noms = { surface: "--kta-surface", fond: "--kta-fond", texte: "--kta-texte", accent: "--kta-accent" };
+    const j = {};
+    Object.keys(JETONS).forEach(function (c) { j[c] = JETONS[c][1]; });
     const feuilles = document.styleSheets;
     for (let i = 0; i < feuilles.length; i++) {
       let regles = null;
@@ -780,30 +802,56 @@
       for (let k = 0; regles && k < regles.length; k++) {
         const r = regles[k];
         if (r.selectorText !== ":root" || !r.style.getPropertyValue("--kta-surface")) continue;
-        Object.keys(noms).forEach(function (c) { j[c] = r.style.getPropertyValue(noms[c]).trim() || j[c]; });
+        Object.keys(JETONS).forEach(function (c) { j[c] = r.style.getPropertyValue(JETONS[c][0]).trim() || j[c]; });
         return (_e.jetonsSombres = j);
       }
     }
     return (_e.jetonsSombres = j);
   }
 
-  // Panneau d'un POI aux couleurs de la charte, TOUJOURS celles du thème sombre (décision produit : la scène est
-  // noire dans les deux thèmes, _jetonsSombres). Carte surface, liseré doré, icône dans un carré arrondi, nom ENTIER
-  // sur 3 lignes au plus (coupé aux espaces, « … » au-delà).
+  function _estDanger(p) {
+    const D = window.KtaPoiDanger;
+    return D && typeof D.estDanger === "function" ? D.estDanger(p) : _premierTag(p) === "danger";
+  }
+
+  function _estFavori(p) {
+    const F = window.Favoris;
+    try { return !!F && typeof F.isFav === "function" && F.isFav(p.id, p.uid); } catch (err) { return false; }
+  }
+
+  // Étoile pleine à 5 branches (canvas), centre (cx, cy), rayon r.
+  function _etoile(ctx, cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+      if (i) ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      else ctx.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+  }
+
+  // Panneau aux couleurs de la charte, TOUJOURS celles du thème sombre (décision produit : la scène est noire dans
+  // les deux thèmes, _jetonsSombres). Carte surface, liseré doré (rouge pour un danger, `opts.bord` pour un membre ou
+  // un repère), icône dans un carré arrondi (sauf `opts.sansIcone`), nom ENTIER sur 3 lignes au plus (coupé aux
+  // espaces, « … » au-delà), ⭐ en haut à droite d'un favori. `opts.y` : hauteur (m) à la place de la tête.
   // La hauteur du canvas suit le nombre de lignes ; `userData.ratio` garde la proportion pour l'échelle du sprite.
-  function _panneau(p, ou) {
-    const W = 512, PAD = 18, ICONE = 76, LIGNE = 38, POLICE = "600 30px system-ui, -apple-system, sans-serif";
+  function _panneau(p, ou, opts) {
+    const o = opts || {};
+    const W = 512, PAD = 18, ICONE = 76, LIGNE = 38, ETOILE = 40;
+    const POLICE = "600 30px system-ui, -apple-system, sans-serif";
     const coul = _jetonsSombres();
+    const danger = !o.bord && _estDanger(p), favori = !o.bord && _estFavori(p);
+    const bord = o.bord || (danger ? coul.erreur : coul.accent);
     // Même titre que la fiche 2D (utils.js > buildPointPopupHtml : `nom`) ; l'id n'est qu'un repli technique.
     const nom = String(p.nom || p.name || p.id || (Array.isArray(p.tags) && p.tags[0]) || "").slice(0, 120);
     let url = null;
     try {
-      url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint(p) : null;
+      url = !o.sansIcone && typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint(p) : null;
     } catch (err) { url = null; }
     const cv = document.createElement("canvas");
     const ctx = cv.getContext("2d");
     ctx.font = POLICE;
-    const xTexte = url ? PAD + ICONE + 16 : PAD + 4, largeur = W - xTexte - PAD;
+    const xTexte = url ? PAD + ICONE + 16 : PAD + 4, largeur = W - xTexte - PAD - (favori ? ETOILE : 0);
     const lignes = [];
     let cur = "";
     nom.split(/\s+/).filter(Boolean).forEach(function (mot) {
@@ -826,24 +874,33 @@
       while (d && ctx.measureText(d + "…").width > largeur) d = d.slice(0, -1);
       lignes[2] = d + "…";
     }
-    const H = Math.max(ICONE + 2 * PAD, lignes.length * LIGNE + 2 * PAD);
-    cv.width = W; cv.height = H;
+    const H = Math.max((url ? ICONE : LIGNE) + 2 * PAD, lignes.length * LIGNE + 2 * PAD);
+    // Sans icône (membre, repère) : carte coupée à la largeur du texte, même taille de lettres (userData.part).
+    const L = o.sansIcone ? Math.min(W, Math.ceil(Math.max.apply(null, lignes.map(function (l) {
+      return ctx.measureText(l).width;
+    }).concat([0])) + xTexte + PAD + 4)) : W;
+    cv.width = L; cv.height = H;
     const arrondi = function (x, y, w, h, r) {
       ctx.beginPath();
       ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
       ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
     };
     const dessiner = function (img) {
-      ctx.clearRect(0, 0, W, H);
-      arrondi(2, 2, W - 4, H - 4, 18);
+      ctx.clearRect(0, 0, L, H);
+      arrondi(2, 2, L - 4, H - 4, 18);
       ctx.globalAlpha = 0.92; ctx.fillStyle = coul.surface; ctx.fill(); ctx.globalAlpha = 1;
-      ctx.lineWidth = 3; ctx.strokeStyle = coul.accent; ctx.stroke();
+      ctx.lineWidth = danger ? 5 : 3; ctx.strokeStyle = bord; ctx.stroke();
       if (url) {
         arrondi(PAD, (H - ICONE) / 2, ICONE, ICONE, 14);
         ctx.fillStyle = coul.fond; ctx.fill();
         if (img) {
           try { ctx.drawImage(img, PAD + 8, (H - ICONE) / 2 + 8, ICONE - 16, ICONE - 16); } catch (err) { /* illisible */ }
         }
+      }
+      if (favori) {
+        _etoile(ctx, L - PAD - ETOILE / 2 + 4, PAD + ETOILE / 2 - 2, ETOILE / 2 - 2);
+        ctx.fillStyle = coul.accent; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = coul.fond; ctx.stroke();
       }
       ctx.fillStyle = coul.texte;
       ctx.font = POLICE;
@@ -857,14 +914,16 @@
     const mat = new THREE.SpriteMaterial({ map: tex, fog: true, depthWrite: false, depthTest: false,
       transparent: true });
     const sp = new THREE.Sprite(mat);
-    sp.userData.ratio = H / W;
+    sp.userData.ratio = H / L;
+    sp.userData.part = L / W;
     sp.userData.fond = coul.surface;
-    sp.scale.set(PANNEAU.l, PANNEAU.l * sp.userData.ratio, 1);
+    sp.scale.set(PANNEAU.l * sp.userData.part, PANNEAU.l * sp.userData.part * sp.userData.ratio, 1);
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
-    sp.position.set(x, Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
+    sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
     const J = window.KtaPoiJonction, jonction = p._v3dJonction || (J && J.estJonction(p) ? p : null);
-    sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction };
+    sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction,
+      danger: danger, favori: favori, bord: bord, genre: o.genre || "poi" };
     _e.panneaux.add(sp);
     if (url) {
       const img = new Image();
@@ -876,6 +935,44 @@
       });
       img.src = url;
     }
+    return sp;
+  }
+
+  // Panneau d'un POI ajouté au groupe d'une tuile, avec le halo au sol d'un danger (anneau et disque pâle, rouge de
+  // la charte, non éclairés). Le halo suit la place du panneau (_majPanneaux : face du pilier vue) et reste montré
+  // de près, quand le panneau s'efface : on se tient dessus.
+  function _ajouterPanneau(groupe, p, ou) {
+    const sp = _panneau(p, ou);
+    if (!sp) return null;
+    groupe.add(sp);
+    if (!sp.userData.poi.danger) return sp;
+    const e = _e;
+    if (!e.mats.halo) {
+      const c = new THREE.Color();
+      try { c.setStyle(_jetonsSombres().erreur); } catch (err) { c.set(0xff8c8c); }
+      // toneMapped coupé : le rouge reste celui du jeton (ACES le délavait en saumon).
+      e.mats.halo = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: HALO.opacite,
+        toneMapped: false, depthWrite: false, side: THREE.DoubleSide });
+      e.mats.haloFond = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: HALO.fond,
+        toneMapped: false, depthWrite: false, side: THREE.DoubleSide });
+    }
+    if (!e.geoHalo) {
+      e.geoHalo = { anneau: new THREE.RingGeometry(HALO.r0, HALO.r1, 40), fond: new THREE.CircleGeometry(HALO.r0, 40) };
+      e.geoHalo.anneau.rotateX(-Math.PI / 2);
+      e.geoHalo.fond.rotateX(-Math.PI / 2);
+    }
+    const halo = new THREE.Group();
+    [[e.geoHalo.anneau, e.mats.halo], [e.geoHalo.fond, e.mats.haloFond]].forEach(function (g) {
+      const me = new THREE.Mesh(g[0], g[1]);
+      me.userData.partage = true;   // géométrie et matériau de la vue : jamais libérés avec la tuile
+      me.renderOrder = 3;
+      halo.add(me);
+    });
+    halo.position.set(sp.userData.poi.x, HALO.y, sp.userData.poi.z);
+    halo.userData.famille = "halo";
+    groupe.add(halo);
+    sp.userData.halo = halo;
+    e.halos++;
     return sp;
   }
 
@@ -946,6 +1043,8 @@
       if (u.anneau) { const b = _bordProche(u.anneau, cam.x, cam.z); x = b[0]; z = b[1]; }
       const k = Math.hypot(x - px, z - pz) / e.distance;
       const dc = Math.hypot(x - cam.x, sp.position.y - cam.y, z - cam.z);
+      const halo = sp.userData.halo;
+      if (halo) { halo.visible = k <= 1; halo.position.x = x; halo.position.z = z; }
       sp.visible = k <= 1 && dc >= PRES.min;
       if (!sp.visible) return;
       sp.position.x = x; sp.position.z = z;
@@ -953,7 +1052,8 @@
       const prof = -v.copy(sp.position).applyMatrix4(e.camera.matrixWorldInverse).z;
       const ratio = sp.userData.ratio || PANNEAU.h / PANNEAU.l;
       const l = Math.min(PANNEAU.l * (1 - 0.5 * k), PRES.ecran * 2 * (prof > 0 ? prof : dc) * demiChamp);
-      sp.scale.set(l, l * ratio, 1);
+      const f = sp.userData.part || 1;
+      sp.scale.set(l * f, l * f * ratio, 1);
       const pres = Math.min(1, (dc - PRES.min) / (PRES.net - PRES.min));
       sp.material.opacity = (1 - 0.6 * k) * pres;
     });
@@ -1125,6 +1225,12 @@
     e.tete.add(e.halo);
     e.ambiance = new THREE.AmbientLight(0xffffff, 0.04);
     e.scene.add(e.ambiance);
+    // Membres, repères et itinéraires d'une extension (_majEquipe) ; géométries partagées refaites avec la scène.
+    e.equipe = new THREE.Group();
+    e.scene.add(e.equipe);
+    e.equipeSig = null;
+    e.matsEquipe = new Map();
+    e.geoMembre = e.geoHalo = null;
     const cone = new THREE.ConeGeometry(0.35, 0.9, 12);
     cone.rotateX(-Math.PI / 2);
     e.avatar = new THREE.Mesh(cone, e.mats.avatar);
@@ -1132,10 +1238,132 @@
     e.scene.add(e.avatar);
   }
 
+  // ── Membres, repères et itinéraires d'une extension (KtaPresences, lecture seule) ─────────────────────
+  // ⚠️ contrat (frontière) : la vue LIT ce que la prise neutre a posé sur la carte (afficherPresences,
+  // afficherReperes, afficherItineraires → js/ktaPresences.js) ; elle ne demande rien et n'envoie rien. Sans
+  // extension, ces listes sont vides : rien n'est dessiné. Masquages de la carte respectés (personne, itinéraire).
+  // Au niveau affiché seulement (un niveau inconnu se montre partout). Refait quand KtaPresences.version(), le
+  // niveau ou la hauteur changent ; sprites dans _e.panneaux (même fondu et même échelle que les POI).
+  function _hauteurSilhouette() { return Math.min(MEMBRE.haut, _e.hauteur * 0.85); }
+
+  function _matCouleur(hex) {
+    const e = _e, k = String(hex);
+    let m = e.matsEquipe.get(k);
+    if (m) return m;
+    const c = new THREE.Color();
+    try { c.setStyle(k); } catch (err) { c.set(0x8cb4ff); }
+    m = new THREE.MeshBasicMaterial({ color: c });
+    e.matsEquipe.set(k, m);
+    return m;
+  }
+
+  // Silhouette d'un membre : corps (cylindre) et tête (sphère) à sa couleur, non éclairés (visibles hors faisceau).
+  function _silhouette(x, z, couleur) {
+    const e = _e, h = _hauteurSilhouette();
+    if (!e.geoMembre) {
+      e.geoMembre = { corps: new THREE.CylinderGeometry(MEMBRE.rayon * 0.8, MEMBRE.rayon, 1, 12),
+        tete: new THREE.SphereGeometry(MEMBRE.tete, 12, 8) };
+    }
+    const g = new THREE.Group(), mat = _matCouleur(couleur);
+    const corps = new THREE.Mesh(e.geoMembre.corps, mat), tete = new THREE.Mesh(e.geoMembre.tete, mat);
+    const hc = h - 2 * MEMBRE.tete - 0.04;
+    corps.scale.y = hc;
+    corps.position.y = hc / 2;
+    tete.position.y = h - MEMBRE.tete;
+    corps.userData.partage = tete.userData.partage = true;
+    g.add(corps, tete);
+    g.position.set(x, 0, z);
+    g.userData.famille = "membre";
+    return g;
+  }
+
+  function _viderEquipe() {
+    const e = _e;
+    if (!e.equipe) return;
+    e.equipe.children.slice().forEach(function (o) {
+      o.traverse(function (q) {
+        if (q.geometry && !q.isSprite && !q.userData.partage) q.geometry.dispose();
+        if (q.isSprite && q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); }
+        if (q.isSprite) e.panneaux.delete(q);
+      });
+      e.equipe.remove(o);
+    });
+  }
+
+  function _majEquipe() {
+    const e = _e, P = window.KtaPresences;
+    if (!e.equipe || !P || typeof P.version !== "function") return;
+    const sig = P.version() + "|" + e.niveau + "|" + e.hauteur;
+    if (sig === e.equipeSig) return;
+    e.equipeSig = sig;
+    _viderEquipe();
+    const g = e.equipe, sc = e.sc, j = _jetonsSombres(), nb = { membres: 0, reperes: 0, itineraires: 0 };
+    const auNiveau = function (n) { return e.niveau === null || !Number.isInteger(n) || n === e.niveau; };
+    const liste = function (f) { try { return typeof f === "function" ? f() || [] : []; } catch (err) { return []; } };
+    liste(P.liste).forEach(function (p) {
+      if (typeof P.personneMasquee === "function" && P.personneMasquee(p.id)) return;
+      if (!auNiveau(p.niveau) || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+      const couleur = p.couleur || (typeof P.couleurDe === "function" ? P.couleurDe(p.id) : j.interaction);
+      const x = p.x / sc, z = p.y / sc;
+      g.add(_silhouette(x, z, couleur));
+      g.add(_panneau({ nom: p.pseudo }, [x, z], { bord: couleur, sansIcone: true, genre: "membre",
+        y: Math.min(_hauteurSilhouette() + 0.35, e.hauteur - 0.15) }));
+      nb.membres++;
+    });
+    // Repères : pastille du calque (symbole et titre), liseré à la teinte de la charte qu'il porte.
+    liste(P.calques).forEach(function (nom) {
+      liste(function () { return P.reperes(nom); }).forEach(function (r) {
+        if (!Number.isFinite(r.x) || !Number.isFinite(r.y)) return;
+        if (e.niveau !== null && r.niveaux && r.niveaux.length && r.niveaux.indexOf(e.niveau) < 0) return;
+        const texte = ((r.symbole || "•") + " " + (r.titre || "")).trim() + (r.nombre ? " ×" + r.nombre : "");
+        g.add(_panneau({ nom: texte }, [r.x / sc, r.y / sc], { bord: j[r.teinte] || j.neutre, sansIcone: true,
+          genre: "repere" }));
+        nb.reperes++;
+      });
+    });
+    // Itinéraires publiés : tirets jaunes (accent) au sol, comme les pointillés de la carte, sur le niveau affiché.
+    const lot = new Lot(), jaune = new THREE.Color();
+    try { jaune.setStyle(j.accent); } catch (err) { jaune.set(0xf4c542); }
+    liste(P.itineraires).forEach(function (it) {
+      if (typeof P.itineraireMasque === "function" && P.itineraireMasque(it.id)) return;
+      let n = 0;
+      for (let i = 0; i + 1 < it.points.length; i++) {
+        const a = it.points[i], b = it.points[i + 1];
+        if (!auNiveau(a[2]) || !auNiveau(b[2])) continue;
+        n += _tirets(lot, a[0], a[1], b[0], b[1], jaune);
+      }
+      if (n) nb.itineraires++;
+    });
+    const geo = lot.geometrie();
+    if (geo) {
+      const me = new THREE.Mesh(geo, e.mats.lumineux);
+      me.renderOrder = 1;
+      me.userData.famille = "itineraireEquipe";
+      g.add(me);
+    }
+    e.nbEquipe = nb;
+    e.sale = true;
+  }
+
+  // Tirets de 1 m tous les 1,6 m d'un segment (px), 0,35 m de large, à 6 cm du sol → nombre de tirets.
+  function _tirets(lot, ax, ay, bx, by, col) {
+    const sc = _e.sc, l = Math.hypot(bx - ax, by - ay) / sc;
+    let n = 0;
+    for (let d = 0; d < l; d += 1.6) {
+      const f = Math.min(l, d + 1), t0 = d / l, t1 = f / l;
+      if (f - d < 0.05) break;
+      const a = { x: ax + (bx - ax) * t0, y: ay + (by - ay) * t0 }, b = { x: ax + (bx - ax) * t1, y: ay + (by - ay) * t1 };
+      _ruban(lot, a, b, sc, 0.35, 0.06, col);
+      n++;
+    }
+    return n;
+  }
+
   // Compteurs tenus par la construction des tuiles (checkup), remis à zéro avec elles.
   function _razCompteurs() {
     const e = _e;
     e.poiMasques = 0; e.zonesDecoupees = {}; e.rideaux = []; e.facesRemblais = 0; e.rubans = {}; e.liseres = {};
+    e.zonesTube = 0; e.poiTube = 0; e.halos = 0;
   }
 
   // Tuiles refaites sur place (hauteur, affichage) : même index, position, cap, niveau et rendu gardés.
@@ -1153,16 +1381,18 @@
     const t0 = performance.now();
     e.niveau = _niveauCourant();
     const d = _collecter(e.niveau);
-    e.rendu = _renduVoulu(d.nStructures);
-    e.galerie = null;
+    e.rendu = _renduVoulu();
+    e.galerie = e.mixte = null;
     if (e.rendu === "galerie") e.galerie = d.galerie = window.KtaGalerie.modele(e.niveau);
-    const m = e.galerie;
+    if (e.rendu === "mixte") e.mixte = d.mixte = window.KtaGalerie.modele(e.niveau, true);
+    const m = e.galerie || e.mixte;
     e.compte = { structures: d.structures.length, zones: d.zones.length, roads: d.roads.length,
       points: d.points.length, pieces: m ? m.pieces.length : 0, aretes: m ? m.aretes.length : 0,
       dalles: m ? m.dalles : 0, coudes: m ? m.coudes : 0, bouts: m ? m.bouts : 0,
+      chambres: m ? m.chambres : 0, ouverts: m ? m.ouverts : 0,
       msGalerie: m ? Math.round(m.msConstruction) : 0 };
     _razCompteurs();
-    if (m) e.volumes = null; else _grilleVolumes(d.structures);
+    if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
     e.passages = _passages(e.niveau, d.jonctions);
     e.passageSig = null;
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
@@ -1171,34 +1401,48 @@
     _gererTuiles(true);
   }
 
-  // ── Rendu structures / galerie (interrupteur exclusif, retenu par plan) ─────────────────────────────────
-  // Choix retenu du plan (config.js > getPlanRenduVue3D), sinon structures si le niveau affiché en a, galerie sinon.
-  function _renduVoulu(nStructures) {
+  // ── Rendu mixte / structures / galerie (interrupteur à trois états, retenu par plan) ─────────────────────
+  // ⚠️ contrat (décision produit) : MIXTE par défaut, sans regarder ce que le niveau contient (un niveau sans
+  // structure y est tout en tubes, un niveau sans tracé tout en structures) ; choix retenu du plan
+  // (config.js > getPlanRenduVue3D). Sans KtaGalerie : structures seules.
+  const RENDUS = ["mixte", "structures", "galerie"];
+  // Icônes de la carte : 🏛️ = les structures, 🛣️ = les tracés (outil de la barre) ; le mixte montre les deux.
+  const RENDU_UI = {
+    mixte: { icone: "🏛️🛣️", nom: "vue3d.modeMixte", passer: "vue3d.passerMixte" },
+    structures: { icone: "🏛️", nom: "vue3d.modeStructures", passer: "vue3d.passerStructures" },
+    galerie: { icone: "🛣️", nom: "vue3d.modeGalerie", passer: "vue3d.passerGalerie" }
+  };
+
+  function _renduVoulu() {
     if (!window.KtaGalerie) return "structures";
     const pref = typeof window.getPlanRenduVue3D === "function" ? window.getPlanRenduVue3D() : null;
-    if (pref === "structures" || pref === "galerie") return pref;
-    return nStructures > 0 ? "structures" : "galerie";
+    return RENDUS.indexOf(pref) >= 0 ? pref : "mixte";
   }
 
+  function _renduSuivant(r) { return RENDUS[(RENDUS.indexOf(r) + 1) % RENDUS.length]; }
+
+  // Sol et plafond d'un seul tenant en mixte et en structures ; en galerie, ceux des pièces (_construireTuileGalerie).
   function _appliquerRendu() {
     const e = _e, gal = !!e.galerie, b = e.boutonRendu;
     e.sol.visible = !gal;
     e.plafond.visible = !gal && e.vue !== "plongee";
     if (b) {
-      // Icônes de la carte : 🛣️ = les tracés (outil de la barre), 🏛️ = les structures.
-      b.textContent = gal ? "🛣️ " + _t("vue3d.modeGalerie") : "🏛️ " + _t("vue3d.modeStructures");
-      b.title = _t(gal ? "vue3d.passerStructures" : "vue3d.passerGalerie");
-      b.setAttribute("aria-label", b.title);
+      const ici = RENDU_UI[e.rendu] || RENDU_UI.structures, apres = RENDU_UI[_renduSuivant(e.rendu)];
+      b.textContent = ici.icone + " " + _t(ici.nom);
+      b.title = _t(apres.passer);
+      b.setAttribute("aria-label", _t("vue3d.renduActuel", { mode: _t(ici.nom) }) + " · " + b.title);
+      b.dataset.rendu = e.rendu;
     }
     e.sale = true;
   }
 
-  // Bascule structures ↔ galerie, retenue pour ce plan ; la scène est refaite. Rend le nouveau rendu.
-  function basculerRendu() {
+  // Rendu suivant (mixte → structures → galerie → mixte), ou `vers` s'il est donné ; retenu pour ce plan, scène
+  // refaite. Rend le nouveau rendu.
+  function basculerRendu(vers) {
     const e = _e;
     if (!e || !window.KtaGalerie) return null;
-    const vers = e.rendu === "galerie" ? "structures" : "galerie";
-    if (typeof window.setPlanRenduVue3D === "function") window.setPlanRenduVue3D(null, vers);
+    const cible = RENDUS.indexOf(vers) >= 0 ? vers : _renduSuivant(e.rendu);
+    if (typeof window.setPlanRenduVue3D === "function") window.setPlanRenduVue3D(null, cible);
     _reindexer();
     return e.rendu;
   }
@@ -1334,13 +1578,14 @@
   // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
   // Mode galerie : on bute contre les parois et les remblais (KtaGalerie.segmentsBloques), l'image de collision du
   // plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
+  // Mode mixte : règle des structures (image de collision comprise) et parois dessinées des tubes (_juger).
   function _balayage(x0, y0, x1, y1, ux, uy) {
     const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
     if (gal && !window.KtaGalerie.dedans(x0, y0, _niveauPas())) return 0;
     if (!gal && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
-    if (!gal && typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
+    if (!gal && !_e.mixte && typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
     const segs = [];
     for (let i = 0; i < RAILS.length; i++) {
       const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
@@ -1364,11 +1609,15 @@
 
   function _niveauPas() { return _e.niveau === null ? undefined : _e.niveau; }
 
-  // Règle du rendu affiché : structures (tracking.js, types perso compris) ou parois des galeries.
+  // Règle du rendu affiché : structures (tracking.js, types perso compris), emprise des galeries, ou en mixte les
+  // deux à la fois : structures partout, parois des tubes là où elles sont dessinées (dans une chambre, aucune).
   function _juger(segs) {
     if (_e.galerie) return window.KtaGalerie.segmentsBloques(segs, _niveauPas());
-    if (typeof window.ktaSegmentsBloquesParStructure !== "function") return segs.map(function () { return false; });
-    return window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true);
+    const s = typeof window.ktaSegmentsBloquesParStructure === "function"
+      ? window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true) : segs.map(function () { return false; });
+    if (!_e.mixte) return s;
+    const p = window.KtaGalerie.paroisBloquent(segs, _niveauPas());
+    return s.map(function (b, i) { return b || p[i]; });
   }
 
   function _rayonsBloques(x, y) {
@@ -1604,6 +1853,7 @@
     const niv = _niveauCourant();
     if (niv !== e.niveau || e.filtresChanges) { e.filtresChanges = false; _reindexer(); }
     _gererTuiles(false);
+    _majEquipe();
     if (e.perdu) return;
     _redimensionner();
     if (!e.sale) return;
@@ -2131,6 +2381,11 @@
       if (e.grain) e.grain.dispose();
       if (e.grainMonde) e.grainMonde.dispose();
       if (e.moellons) e.moellons.dispose();
+      if (e.equipe) _viderEquipe();
+      if (e.matsEquipe) e.matsEquipe.forEach(function (m) { m.dispose(); });
+      [e.geoMembre, e.geoHalo].forEach(function (g) {
+        if (g) Object.keys(g).forEach(function (k) { g[k].dispose(); });
+      });
       if (e.lampe) e.lampe.dispose();
       e.renderer.dispose();
       const gl = e.renderer.getContext();
@@ -2264,6 +2519,10 @@
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
       facesRemblais: e.facesRemblais, rubans: Object.assign({}, e.rubans), liseres: Object.assign({}, e.liseres),
+      zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
+      equipe: Object.assign({ membres: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
+      membres: e.equipe ? e.equipe.children.filter(function (o) { return o.userData.famille === "membre"; })
+        .map(function (o) { return { x: o.position.x, z: o.position.z }; }) : [],
       filtres: { panneauOuvert: !!(window.FilterPanel && window.FilterPanel.isVisible()),
         pastille: !!e.boutonFiltres && e.boutonFiltres.classList.contains("kta-filter-ctrl-actif") },
       recouverte: _recouverte(),
@@ -2279,6 +2538,9 @@
         return { visible: sp.visible && !!sp.parent && sp.parent.visible, x: sp.position.x, z: sp.position.z,
           nom: sp.userData.poi.nom, jonction: !!sp.userData.poi.jonction, ecran: _ecran(sp.position),
           dansVolume: !!sp.userData.poi.anneau, depthTest: sp.material.depthTest, ordre: sp.renderOrder,
+          genre: sp.userData.poi.genre, danger: !!sp.userData.poi.danger, favori: !!sp.userData.poi.favori,
+          bord: sp.userData.poi.bord, halo: !!sp.userData.halo && sp.userData.halo.visible,
+          haloXZ: sp.userData.halo ? [sp.userData.halo.position.x, sp.userData.halo.position.z] : null,
           opacite: +sp.material.opacity.toFixed(2), echelle: +sp.scale.x.toFixed(2), fond: sp.userData.fond,
           largeurEcran: +_largeurEcran(sp).toFixed(3) };
       }),

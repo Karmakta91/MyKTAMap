@@ -2170,6 +2170,10 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     KP.reinitialiser();
     t("🩸 sortie du plan : tous les calques de repères effacés", KP.reperes("autre").length === 0 &&
       KP.calques().length === 0 && KP.version() > v1);
+    const V3 = lire("js/vue3d.js");
+    t("🔒 vue 3D : membres, repères et itinéraires LUS dans KtaPresences (aucune requête, aucune prise appelée)",
+      /P\.liste\b/.test(V3) && /P\.calques\b/.test(V3) && /P\.itineraires\b/.test(V3) &&
+      !/fetch\(|XMLHttpRequest|WebSocket|KtaExtensions\./.test(V3));
     const IA = lire("js/interfaceAlerts.js");
     const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
     t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",

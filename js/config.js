@@ -1119,15 +1119,15 @@ function setPlanHauteurGalerie(planId, value) {
 window.getPlanHauteurGalerie = getPlanHauteurGalerie;
 window.setPlanHauteurGalerie = setPlanHauteurGalerie;
 
-// ── Rendu de la vue 3D (js/vue3d.js) : "structures" ou "galerie", retenu par plan ──────────────────
-// Par plan, pref `vue3dRendu` ; absente → null (la vue choisit d'après le niveau affiché). Autre valeur refusée.
+// ── Rendu de la vue 3D (js/vue3d.js) : "mixte", "structures" ou "galerie", retenu par plan ──────────────────
+// Par plan, pref `vue3dRendu` ; absente → null (la vue prend le mixte). Autre valeur refusée.
 function getPlanRenduVue3D(planId) {
   const pid = planId || window._currentLoadedPlanId || "default";
   const v = _readPlanPrefs(pid).vue3dRendu;
-  return v === "structures" || v === "galerie" ? v : null;
+  return v === "mixte" || v === "structures" || v === "galerie" ? v : null;
 }
 function setPlanRenduVue3D(planId, value) {
-  if (value !== "structures" && value !== "galerie") return false;
+  if (value !== "mixte" && value !== "structures" && value !== "galerie") return false;
   const pid = planId || window._currentLoadedPlanId || "default";
   const prefs = _readPlanPrefs(pid);
   prefs.vue3dRendu = value;
