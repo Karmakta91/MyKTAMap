@@ -18,10 +18,12 @@
 // parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 / 25 m,
 // interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Passages (14) :
 // volume par moyen, rampe, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le tube, cap, guidage, suivi.
+// Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
+// Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
@@ -730,7 +732,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.boussoleMontrer"].map(function (k) {
+            "vue3d.passerStructures", "vue3d.boussoleMontrer", "vue3d.guidageMontrer"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
               t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
@@ -2006,14 +2008,14 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const ap = window.ItiGuidage.apercu(e.pos, { cap: e.cap });
         return { rubans: e.rubans.itinerary || 0, bandeau: e.bandeau, chevrons: e.chevrons, visibles: e.chevronsVisibles,
           marque: !!(b && b.querySelector(".kta-v3d-guid-apercu")), attendu: ap.principal,
-          texte: b ? b.textContent : "", marqueTexte: window.I18n.t("vue3d.apercu"),
+          texte: b ? b.textContent : "",
           haut: document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect().bottom,
           bTop: b ? b.getBoundingClientRect().top : 0 };
       });
       verifier(ga1.rubans > 0, "itinéraire tracé pendant la vue : la scène le montre (kta:itineraireChange)", ga1.rubans);
-      verifier(ga1.bandeau.affiche && ga1.bandeau.apercu && ga1.marque && ga1.bandeau.principal === ga1.attendu &&
-        ga1.attendu && ga1.texte.indexOf(ga1.marqueTexte) >= 0 && ga1.bTop >= ga1.haut,
-        "libre : bandeau sous la rangée du haut, consigne d'aperçu marquée « " + ga1.marqueTexte + " »", ga1);
+      verifier(ga1.bandeau.affiche && ga1.bandeau.apercu && !ga1.marque && ga1.bandeau.principal === ga1.attendu &&
+        ga1.attendu && ga1.texte.indexOf(ga1.attendu) >= 0 && ga1.bTop >= ga1.haut,
+        "libre : bandeau sous la rangée du haut, consigne d'aperçu, sans marque « Aperçu »", ga1);
       verifier(ga1.chevrons > 0 && ga1.visibles, "chevrons au sol sur le ruban (" + ga1.chevrons + ")", ga1);
       await capture(page, "guidage-apercu");
       // Le bandeau ne descend pas à chaque relecture (il se cale sous la rangée seule).
@@ -3006,6 +3008,106 @@ async function mesuresGalerie(page, nom, semisDonne) {
         console.log("  ℹ️ plan à un niveau : passages entre niveaux non joués");
       }
 
+      // ── 14 bis. Aucune paroi de tube dans un passage (fictif) ─────────────────────────────────────────────
+      // Une galerie est-ouest aux niveaux 0 et −1 ; sur le 0 : escalier coupé en diagonale par un chemin, escalier
+      // qui déborde du tube (paroi à 1,25 m, bouche de 0,75 à 2,25 m), escalier au bout d'un cul-de-sac, puits à
+      // échelons qui déborde, puits à corde, puits ouvert et aération coupés en diagonale, tracé jonction qui
+      // traverse la paroi. Test géométrique : aucun morceau de paroi dessinée (KtaVue3D.parois) dans la bouche de
+      // chaque volume ni dans la tranchée d'une rampe (2 cm de marge), dans les 3 rendus et aux deux niveaux.
+      if (G.multi) {
+        const CE = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+          const acc = window.ktaEstAccessible;
+          window.ktaEstAccessible = function () { return true; };
+          window.setStructures([]); window.setZones([]);
+          window.setRoads([-1, 0].map(function (n) {
+            return { uid: "rd_ce_" + (n + 1), type: "principal", level: n, points: [P(-60, 0), P(60, 0)] };
+          }).concat([
+            { uid: "rd_ce_d1", type: "chemin", level: 0, points: [P(-44, -4), P(-36, 4)] },
+            { uid: "rd_ce_cs", type: "secondaire", level: 0, points: [P(0, 0), P(0, 12)] },
+            { uid: "rd_ce_d2", type: "chemin", level: 0, points: [P(26, -4), P(34, 4)] },
+            { uid: "rd_ce_d3", type: "chemin", level: 0, points: [P(36, -4), P(44, 4)] },
+            { uid: "rd_ce_d4", type: "chemin", level: 0, points: [P(46, -4), P(54, 4)] },
+            { uid: "rd_ce_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(-30, 0), P(-30, 6)] }
+          ]));
+          const poi = function (id, x, z, tag, niveaux) {
+            const q = P(x, z), o = { id: id, nom: id, uid: "pt_ce_" + id, level: 0, tags: [tag], x: q.x, y: q.y };
+            if (niveaux) {
+              o.niveaux = niveaux;
+              o.accroches = niveaux.filter(function (n) { return n !== 0; }).map(function (n) { return { level: n, x: q.x, y: q.y }; });
+            }
+            return o;
+          };
+          window.setEditorPoints([poi("ce jes diagonale", -40, 0, "jes", [0, -1]), poi("ce jes deborde", -20, 1.5, "jes", [0, -1]),
+            poi("ce jes bout", 0, 12, "jes", [0, -1]), poi("ce jpe deborde", 20, 1.5, "jpe", [0, -1]),
+            poi("ce jps diagonale", 30, 0, "jps", [0, -1]), poi("ce peo diagonale", 40, 0, "peo"),
+            poi("ce pa diagonale", 50, 0, "pa", [0, -1])]);
+          window.KtaGalerie.invalider();
+          // Bord convexe : point strictement dedans, à plus de 2 cm de chaque bord.
+          const dedans = function (poly, x, z) {
+            let s = 0;
+            for (let i = 0; i < poly.length; i++) {
+              const p = poly[i], q = poly[(i + 1) % poly.length];
+              const c = ((q[0] - p[0]) * (z - p[1]) - (q[1] - p[1]) * (x - p[0])) / Math.hypot(q[0] - p[0], q[1] - p[1]);
+              if (Math.abs(c) < 0.02) return false;
+              if (s === 0) s = Math.sign(c); else if (Math.sign(c) !== s) return false;
+            }
+            return true;
+          };
+          const tranchee = function (A, B) {   // rectangle (m) de la tranchée d'une rampe, demi-largeur 0,6 m
+            const l = Math.hypot(B[0] - A[0], B[1] - A[1]), nx = -(B[1] - A[1]) / l * 0.6, nz = (B[0] - A[0]) / l * 0.6;
+            return [[A[0] - nx, A[1] - nz], [B[0] - nx, B[1] - nz], [B[0] + nx, B[1] + nz], [A[0] + nx, A[1] + nz]];
+          };
+          const r = { cas: [] };
+          for (const rendu of ["mixte", "galerie", "structures"]) {
+            for (const niv of [0, -1]) {
+              await K.fermer();
+              window.setPlanRenduVue3D(null, rendu);
+              window.ktaSetActiveLevel(niv);
+              const d = P(-20, 1.5);   // départ au centre d'une bouche qui déborde : jamais coincé
+              await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 150 });
+              const e = K.etat(), ps = K.parois(), polys = [];
+              e.volumes.forEach(function (v) {
+                if (v.bouche) polys.push({ nom: v.tag + "@" + Math.round(v.x / a.sc - a.ox), poly: v.bouche });
+              });
+              if (niv === 0) polys.push({ nom: "rampe", poly: tranchee([a.ox - 30, a.oz], [a.ox - 30, a.oz + 6]) });
+              const dans = polys.map(function (b) {
+                let lg = 0;
+                ps.forEach(function (w) {
+                  const l = Math.hypot(w[2] - w[0], w[3] - w[1]), k = Math.max(2, Math.ceil(l / 0.01));
+                  let n = 0;
+                  for (let i = 0; i <= k; i++) {
+                    if (dedans(b.poly, w[0] + (w[2] - w[0]) * i / k, w[1] + (w[3] - w[1]) * i / k)) n++;
+                  }
+                  lg += n / (k + 1) * l;
+                });
+                return { nom: b.nom, m: +lg.toFixed(2) };
+              }).filter(function (q) { return q.m > 0; });
+              const pos0 = e.pos, ok = K.avancer(0.5);
+              r.cas.push({ rendu: rendu, niveau: e.niveau, parois: ps.length, bouches: polys.length, dans: dans,
+                degage: e.degagements, avance: !!ok && Math.hypot(K.etat().pos.x - pos0.x, K.etat().pos.y - pos0.y) > 0,
+                rubans: !!e.boites.rubans,
+                passages: rendu === "structures" ? null : window.KtaGalerie.modele(niv, rendu === "mixte").passages });
+            }
+          }
+          await K.fermer();
+          window.setPlanRenduVue3D(null, "mixte");
+          window.ktaEstAccessible = acc;
+          window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
+          window.ktaSetActiveLevel(0);
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        CE.cas.forEach(function (c) {
+          verifier(c.dans.length === 0 && c.bouches >= (c.niveau === 0 ? 8 : 5) && (c.rendu === "structures" || c.parois > 0),
+            c.rendu + ", niveau " + c.niveau + " : aucune paroi de tube dans les " + c.bouches +
+            " emprises de passage (" + c.parois + " parois, " + (c.passages === null ? "—" : c.passages) + " niches)", c);
+          verifier(c.degage === 0 && c.avance, c.rendu + ", niveau " + c.niveau +
+            " : départ au centre d'une bouche qui déborde du tube, pas ramené, un pas passe", c);
+        });
+        verifier(CE.cas.filter(function (c) { return c.niveau === 0; }).every(function (c) { return c.rubans; }),
+          "rubans des tracés dans leur famille (gabarit du sol : coupés à la bouche)", CE.cas);
+      }
+
 
       // ── 15. Raccord galerie / structures par côté (mixte), fictif ───────────────────────────────────────────
       // Un tube principal d'ouest en est (z = 0, paroi à 1,25 m) ; « droite » en marchant vers l'est = +z. Cas :
@@ -3411,7 +3513,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.rangee = Array.prototype.map.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *"), function (b) {
           return b.getAttribute("data-v3d") || (b.classList.contains("kta-aide-ctx-btn") ? "aide" : b.className);
         }).sort();
-        r.dansTuile = ["suivre", "vue", "hauteur", "rendu", "boussole"].map(function (k) {
+        r.dansTuile = ["suivre", "vue", "hauteur", "rendu", "boussole", "guidage"].map(function (k) {
           const b = q('[data-v3d="' + k + '"]');
           return !!b && !!b.closest("#kta-v3d-reglages") && b.textContent.trim().length > 1;
         });
@@ -3457,8 +3559,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "fermer", "filtres", "reglages", "urgence"]) &&
-        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️ ; suivi, vue, hauteur, rendu et boussole dans la " +
-        "tuile, écrits en clair", TU);
+        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️ ; suivi, vue, hauteur, rendu, boussole et guidage " +
+        "dans la tuile, écrits en clair", TU);
       verifier(TU.ferme0 === false && TU.ouverte.ouvert && TU.ouverte.sous && TU.ouverte.droite && !TU.ouverte.pleinEcran &&
         TU.ouverte.expanded === "true", "⚙️ ouvre un petit panneau ancré sous lui, à droite (pas une fenêtre plein écran)",
         TU.ouverte);
@@ -3785,6 +3887,67 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.difficile.objets === 0 && MK.difficile.guide === true && MK.ferme === false,
         "jeu : difficile → ni tracés, ni trajet, ni balise, ni guidage ; fermer la vue termine la partie",
         { difficile: MK.difficile, ferme: MK.ferme });
+
+      // ── 22. Interrupteur 🪧 Guidage de la tuile ⚙️ : bandeau et chevrons masqués, ruban gardé, urgence toujours ──
+      const GU = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return Object.assign({ level: 0 }, { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }); };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.setVue3DGuidage(true);
+        let pref2D = null;
+        try { pref2D = localStorage.getItem("myktamap_guidage_v1"); } catch (err) { /* lecture seule */ }
+        const iti = function (urgence) {
+          const r = { uid: "rd_gu_iti", type: "itinerary", level: 0, points: [P(-30, 0), P(0, 0), P(0, 20)] };
+          if (urgence) r.urgence = true;
+          return r;
+        };
+        window.setStructures([]);
+        window.setRoads([{ uid: "rd_gu_p", type: "principal", level: 0, points: [P(-40, 0), P(0, 0), P(0, 30)] }, iti(false)]);
+        window.KtaGalerie.invalider();
+        const d = P(-26, 0), r = {};
+        const lire = function () {
+          const e = K.etat();
+          return { bandeau: e.bandeau.affiche, urgence: !!e.bandeau.affiche && q(".kta-v3d-bandeau").classList.contains("kta-v3d-guid-urgence"),
+            chevrons: e.chevronsVisibles ? e.chevrons : 0, ruban: e.rubans.itinerary || 0, montre: e.reglages.guidage,
+            presse: q('[data-v3d="guidage"]').getAttribute("aria-pressed"), repere: e.reglages.repere,
+            dansTuile: !!q('[data-v3d="guidage"]').closest("#kta-v3d-reglages") };
+        };
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        await pause(500);
+        r.montre = lire();
+        q('[data-v3d="reglages"]').click();
+        q('[data-v3d="guidage"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 5 }));
+        await pause(500);
+        r.coupe = lire();
+        r.coupe.pref = window.getVue3DGuidage();
+        try { r.coupe.pref2D = localStorage.getItem("myktamap_guidage_v1") === pref2D; } catch (err) { r.coupe.pref2D = true; }
+        // Guidage d'urgence : affiché même coupé.
+        window.setRoads([{ uid: "rd_gu_p", type: "principal", level: 0, points: [P(-40, 0), P(0, 0), P(0, 30)] }, iti(true)]);
+        await pause(600);
+        r.urgence = lire();
+        window.setRoads([{ uid: "rd_gu_p", type: "principal", level: 0, points: [P(-40, 0), P(0, 0), P(0, 30)] }, iti(false)]);
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        await pause(500);
+        r.rouverte = lire();
+        window.setVue3DGuidage(true);
+        await K.fermer();
+        window.ktaEstAccessible = acc;
+        window.setRoads([]); window.KtaGalerie.invalider();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(GU.montre.bandeau && GU.montre.chevrons > 0 && GU.montre.ruban > 0 && GU.montre.montre &&
+        GU.montre.presse === "true" && GU.montre.dansTuile,
+        "guidage montré par défaut : bandeau, chevrons et ruban ; interrupteur 🪧 dans la tuile ⚙️", GU.montre);
+      verifier(!GU.coupe.bandeau && GU.coupe.chevrons === 0 && GU.coupe.ruban > 0 && !GU.coupe.montre &&
+        GU.coupe.presse === "false" && GU.coupe.repere && GU.coupe.pref === false && GU.coupe.pref2D,
+        "guidage coupé : ni bandeau ni chevrons, le ruban reste ; repère sur ⚙️ ; préférence 2D inchangée", GU.coupe);
+      verifier(GU.urgence.bandeau && GU.urgence.urgence && GU.urgence.chevrons > 0 && !GU.urgence.montre,
+        "guidage coupé : un guidage d'urgence s'affiche quand même (bandeau et chevrons)", GU.urgence);
+      verifier(!GU.rouverte.bandeau && GU.rouverte.chevrons === 0 && GU.rouverte.ruban > 0 && !GU.rouverte.montre &&
+        GU.rouverte.presse === "false", "réglage retenu sur l'appareil : rouverte, guidage toujours coupé", GU.rouverte);
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

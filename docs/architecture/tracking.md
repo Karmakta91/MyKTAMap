@@ -1438,6 +1438,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`NotEqualStencilFunc`) : on voit dans le puits ; le contexte est créé avec `stencil: true`. Construits à portée
   (`_gererVolumes`, règle des tuiles), libérés au loin ; 🩸 après une perte du contexte, jamais `dispose()` sur un
   volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker.
+- **Aucune paroi de tube dans un passage** (mixte et galerie) : `galerieEmprise.js > _emprisesPassages` rend l'emprise
+  de chaque volume du niveau (bouche + cadre doré, mêmes règles et même axe que `_volumesDuNiveau`, dimensions
+  `KtaGalerie.PASSAGE`, que `vue3d.js > VOLUME` lit) et celle de la tranchée d'un tracé jonction (un rectangle par
+  segment). Une emprise qui chevauche un tube devient une **pièce** du modèle : l'emprise étant l'union des pièces,
+  bout de cul-de-sac, paroi qui longe la bouche ou la coupe tombent dedans ; ses bords hors des tubes sont des parois :
+  le tube s'ouvre sur une **niche** autour de la bouche, et l'on peut y marcher (`dedans`, `paroisBloquent` : une seule
+  source). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
+  cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en plongée. Filtres ignorés (masquer
+  ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
+  le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
+  `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
@@ -1539,7 +1550,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
   comme l'écran XL), rien quand le bandeau 2D ne parle pas (réglage « Jamais », position inconnue) ; **en libre**, un
   **aperçu** depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les
-  alertes du guidage), marqué « Aperçu » (`vue3d.apercu`), masqué en « Jamais » hors urgence. Pas de voix (elle
+  alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Interrupteur 🪧 Guidage de la tuile ⚙️
+  (`config.js > getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence (comme le
+  `masque: !urgence && …` de la 2D) ; il ne touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
   n'existe pas en 2D non plus).
 - **Chevrons au sol** (`_majChevrons`) : « ^ » dorés (accent sombre) sur le ruban, de la position vers la prochaine
   consigne (`s` → `sCible`, abscisses rendues par `etat()` ou `apercu()`), un tous les 2 m à des abscisses fixes du
@@ -1644,7 +1657,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   coin haut droit à 393 px et ≡ collé à sa gauche (393 px et PC), ❓ → aide de la 3D, Échap (aide, ≡, réglage, puis
   vue), panneau de POI sombre en thème clair et borné de près, rendu en pause (immobile et boussole qui tremble).
   Interrupteur : mixte par défaut (avec ou sans structure), mixte → structures → galerie en boucle, retenu par plan.
-  Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu marqué en libre et consigne réelle en
+  Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu en libre et consigne réelle en
   suivi, chevrons, bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap ferme la
   fiche, « Y aller » en libre depuis la position 3D au niveau 1 sans recaler le tracker, tracker arrêté → « Ici »
   recale et part de la position 3D, la 3D ne bouge pas. La 3D suit un tracker fixé depuis elle (§ 10b) : recalage

@@ -43,7 +43,7 @@ Après l'audit de cohérence (la 3D se posait par-dessus l'app comme une autre a
 
 | # | Sujet | Décision |
 |---|---|---|
-| 1 | Guidage en 3D | Bandeau compact sous la rangée du haut, mêmes textes que le guidage 2D (lus comme l'écran XL) ; chevrons au sol sur le ruban vers la prochaine manœuvre ; en libre un **aperçu** depuis la position 3D, sans toucher l'état du guidage, marqué « Aperçu » ; en suivi la consigne réelle. La scène se redessine quand l'itinéraire change (`kta:itineraireChange`). Pas de voix |
+| 1 | Guidage en 3D | Bandeau compact sous la rangée du haut, mêmes textes que le guidage 2D (lus comme l'écran XL) ; chevrons au sol sur le ruban vers la prochaine manœuvre ; en libre un **aperçu** depuis la position 3D, sans toucher l'état du guidage ; en suivi la consigne réelle. La scène se redessine quand l'itinéraire change (`kta:itineraireChange`). Pas de voix |
 | 2 | Toucher un POI | Sa fiche de la carte, la même, au-dessus de la 3D ; pas de nouvelle fiche |
 | 3 | « Y aller » depuis la fiche | Suivi → du tracker ; libre → de la position 3D, niveau compris, tracker non recalé ; jamais de la position d'avant l'ouverture de la 3D |
 | 4 | Tracker arrêté + « Y aller » (2D et 3D) | « D'où pars-tu ? » à chaque fois : « Ici » (3D : recale le tracker à la position 3D, puis l'itinéraire en part), « Ma dernière position (il y a N min) », « Me repositionner » (picker et son niveau) ; Annuler = pas d'itinéraire |
@@ -98,7 +98,8 @@ contre une paroi, montants qui dépassent du sol d'un mètre ; ciel = dégradé 
 1 m de large, tranchée ouverte vers le bas plutôt qu'une rampe qui traverserait le sol ; aucune collision avec les
 volumes (on ne tombe pas dans un puits, on traverse une marche) ; bandeau « Niveau n » aussi après un passage 🪜, pas
 seulement en suivi ; appareil réglé en « mouvement réduit » : fondu seul ; tracé jonction masqué par les filtres =
-pas de rampe (le 🪜 reste) ; un tracé du sol (ruban) peut passer sur une bouche.
+pas de rampe (le 🪜 reste). Un tracé du sol (ruban) qui passe sur une bouche y est coupé (gabarit du sol) plutôt
+que dessiné en passerelle : le plus simple, et rien ne flotte au-dessus du vide.
 
 ## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
 
@@ -317,7 +318,10 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   tous les 0,3 m, deux montants ; aération : barreaux croisés tous les 15 cm, 25 cm au-dessus du plafond ; ciel :
   sprite clair non éclairé, sans brouillard, au sommet ; cadre doré de 8 cm à 12 cm de la bouche. Rampe : ruban de
   1 m, incliné du sol au plafond (vers le haut) ou du sol à −hauteur dans une tranchée ouverte (vers le bas).
-  Construits à portée (`_gererVolumes`, règle des tuiles), libérés au loin ; aucune collision.
+  Construits à portée (`_gererVolumes`, règle des tuiles), libérés au loin ; aucune collision. **Aucune paroi de tube
+  dans un volume** : l'emprise d'un passage (bouche et cadre, tranchée d'une rampe) qui chevauche un tube est une pièce
+  du modèle de galerie (`galerieEmprise.js > _emprisesPassages`) ; parois coupées à son bord, le tube s'ouvre sur une
+  niche autour de la bouche, comme il s'ouvre sur une chambre. Rubans des tracés coupés à la bouche (gabarit du sol).
 - **Halo des dangers** : anneau de 0,45 à 0,7 m et disque pâle au sol, rouge `--kta-erreur` du thème sombre, non
   éclairé et sans compression de tons (ACES le délavait en saumon) ; liseré du panneau rouge, plus épais.
 - **Équipe** (`_majEquipe`) : silhouette de 1,7 m au plus (85 % de la hauteur), corps et tête, couleur de la

@@ -2205,10 +2205,12 @@ icônes.
   (posé en dernier dans le DOM) ; dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
   (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
-  montrée par défaut ; masquée, joystick et 🪜 restent à leur place). Fermée par ⚙️, Échap (avant tout le reste) ou un
+  montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
+  `myktamap_v3d_guidage_v1`, cet appareil, montré par défaut ; coupé : ni bandeau ni chevrons en 3D, ruban, étapes
+  et 🏁 gardés, urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`). Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
   inchangés (V, PageUp / PageDown…). **Repère** : point doré sur ⚙️ (`kta-v3d-modifie`, `_majRepere`) en mode libre,
-  en vue plongeante, rendu autre que mixte ou boussole masquée. **Mode toujours visible** : pastille ronde de 40 px
+  en vue plongeante, rendu autre que mixte, boussole masquée ou guidage coupé. **Mode toujours visible** : pastille ronde de 40 px
   en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
@@ -2234,7 +2236,7 @@ icônes.
   toast `success` avec leur nom (le 🏁 de l'arrivée aussi).
 - **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
   compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
-  urgence, marque « Aperçu » (pointillés dorés, `--kta-accent-texte`) en mode libre. Son `top` est posé par
+  urgence (aucune marque d'aperçu en mode libre : mêmes textes). Son `top` est posé par
   `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
 - **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
