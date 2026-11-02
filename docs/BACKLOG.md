@@ -65,6 +65,11 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
+- **Test appareil : add-on mkmg sur iPhone et plan dense** — perf (carte des distances, 30 images/s) jamais mesurée
+  sur un vrai téléphone ; difficulté (égarés, chrono, tenailles), bras et fusil, panneau réductible à juger en jouant
+  (`tracking.md` § Greffe de la vue 3D).
+  `qui: KARMA · action: jouer plusieurs vagues sur iPhone, plan dense, avec et sans 🧱 Textures · fini: perf et
+  réglages validés, ou chiffres à ajuster transmis · depuis: 02/11/2026 · taille: S`
 ## Ensuite
 
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
@@ -84,6 +89,15 @@
   de plan réels restent dans `README.md`, des commentaires `js/` et `docs/architecture/`. Liste remise hors dépôt.
   `qui: KARMA · action: trancher nom par nom sur la liste hors dépôt · fini: chaque nom remplacé ou gardé par décision
   · depuis: 05/10/2026 · taille: S`
+- **Add-on mkmg : phrase des guides au bump** — décision KARMA : une phrase discrète en dernière ligne de la section
+  Vue 3D des 3 guides (fr/en/es), pas dans l'Aide ; écrite au bump de la prod qui livre le jeu, une fois le jeu
+  validé (texte retenu dans la mémoire du poste).
+  `qui: Claude · action: l'écrire dans les 3 guides au commit de bump · fini: phrase présente dans README_USER{,.en,.es}
+  · depuis: 02/11/2026 · taille: XS`
+- **Add-on mkmg : clic de souris sur un panneau de POI** — au PC, un clic bref sur la scène tire ; s'il tombe sur le
+  panneau d'un POI, la vue 3D ouvre aussi sa fiche.
+  `qui: Claude · action: pendant une partie, ne pas ouvrir la fiche au clic qui tire (réglage de la prise) · fini: tir
+  sans fiche, checkup § 23 · depuis: 02/11/2026 · taille: XS`
 
 ## Plus tard
 
@@ -106,10 +120,15 @@
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
 - **Système d'add-ons community (`addons/<nom>/`)** — un vrai cadre pour qu'un add-on (ou un dev tiers) s'ajoute
-  sans toucher l'app : chargement à la demande, contrat des prises, interrupteur par installation, garde-fous et
-  précache qui couvrent `addons/`, guide pour écrire un add-on. Le premier add-on prévu y sera branché à la main.
-  `qui: Claude · action: étude et QCM du contrat d'add-on, d'après le premier add-on livré
-  · fini: contrat documenté, garde-fous sur addons/, un add-on ajouté sans toucher js/ · depuis: 02/11/2026 · taille: L`
+  sans toucher l'app. Déjà là : garde-fous sur `addons/`, prise `KtaVue3D.greffer`, `ADDONS_CODE`, `reglages.json >
+  addons`, premier add-on (mkmg) branché à la main. Reste : registre au lieu de la table en dur, précache, guide.
+  `qui: Claude · action: étude et QCM du contrat d'add-on, d'après mkmg · fini: contrat documenté, un add-on ajouté
+  sans toucher js/ ni sw.js · depuis: 02/11/2026 · taille: L`
+- **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
+  `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
+  l'allume. Prise neutre côté community, réglage et case d'admin côté pro.
+  `qui: KARMA · action: dire si un client le demande · fini: case d'admin, prise testée avec et sans pro
+  · depuis: 02/11/2026 · taille: M`
 
 ## Entrant
 
