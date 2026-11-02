@@ -9,7 +9,8 @@
 // Expose window.KtaGalerie : largeur(type) → m, modele(niveau[, mixte]) → modèle en coordonnées plan (px) | null,
 //   dedans(x, y, niveau), segmentsBloques(segs, niveau) → [bool] (même forme que
 //   tracking.js > ktaSegmentsBloquesParStructure), paroisBloquent(segs, niveau) (mode mixte), invalider(),
-//   SEUIL_CHAMBRE_M, PASSAGE (dimensions des volumes de passage ; leur emprise est une pièce : _emprisesPassages).
+//   SEUIL_CHAMBRE_M, PASSAGE (dimensions des volumes de passage ; leur emprise est une pièce : _emprisesPassages),
+//   PROCHE_M, versGalerie(x, y, niveau) (où poser un tracker recalé : tracking.js > _positionDansGalerie).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
@@ -66,6 +67,10 @@
   // chaque côté. Le volume s'aligne sur l'axe le plus proche à moins de DIR_PASSAGE_M (plusProche, même règle).
   const PASSAGE = { escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, rampe: 1, tranchee: 0.1, marge: 0.12, cadre: 0.08 };
   const DIR_PASSAGE_M = 10;
+  // ⚠️ contrat : un point est « dans la galerie » s'il a un axe à moins de PROCHE_M ; c'est le rayon unique de la vue
+  // 3D (vue3d.js > POI_GALERIE : POI montré contre la paroi) et du recalage du tracker (versGalerie). Une seule
+  // valeur : deux rayons divergents remettaient le tracker dans la roche à côté d'un POI que la 3D montrait.
+  const PROCHE_M = 10;
 
   const _cache = new Map();         // "niveau|m" → { sig, modele }
   let _sig = null, _sigT = 0;
@@ -98,9 +103,10 @@
 
   // Signature bon marché (comme roadGraph.js) : nombre, sommets et niveaux des tracés, zones et structures ; place,
   // tag, niveaux et raccords des POI (passages) ; échelle.
-  function _signature() {
+  // `frais` : relue quoi qu'il arrive (geste ponctuel, pas une image : des données changées à l'instant comptent).
+  function _signature(frais) {
     const t = performance.now();
-    if (_sig !== null && t - _sigT < MEMO_MS) return _sig;
+    if (!frais && _sig !== null && t - _sigT < MEMO_MS) return _sig;
     let h = 0;
     const mel = function (v) { h = Math.imul(h ^ (v | 0), 16777619); };
     const lire = function (liste) {
@@ -914,11 +920,12 @@
   // ── API ──────────────────────────────────────────────────────────────────────────────────────────
 
   // mixte : modèle du mode mixte (tubes seulement loin des structures), gardé à part de celui du mode galerie.
-  function modele(niveau, mixte) {
+  // frais : signature relue sans attendre MEMO_MS (versGalerie).
+  function modele(niveau, mixte, frais) {
     const sc = _echelle();
     if (!sc) return null;
     const n = Number.isInteger(niveau) ? niveau : null, cle = n + (mixte ? "|m" : "");
-    const sig = _signature(), c = _cache.get(cle);
+    const sig = _signature(!!frais), c = _cache.get(cle);
     if (c && c.sig === sig) return c.modele;
     const t0 = performance.now();
     const m = _construire(n, sc, !!mixte);
@@ -977,10 +984,58 @@
     });
   }
 
+  // Distance (px) d'un point extérieur à une pièce convexe, et le point du bord atteint → { d, x, y }.
+  function _bordLePlusProche(P, x, y) {
+    const pts = P.pts;
+    let best = null;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const ax = pts[j][0], ay = pts[j][1], dx = pts[i][0] - ax, dy = pts[i][1] - ay, l2 = dx * dx + dy * dy;
+      const t = l2 > 1e-12 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2)) : 0;
+      const qx = ax + t * dx, qy = ay + t * dy, d = Math.hypot(x - qx, y - qy);
+      if (!best || d < best.d) best = { d: d, x: qx, y: qy };
+    }
+    return best;
+  }
+
+  // Où poser le tracker recalé sur (x, y) au niveau donné (null = tous) : la galerie de la vue 3D (modèle du mode
+  // galerie : tous les types de tracé, perso compris, ni itinéraire ni jonction). → { etat, x, y } :
+  //   "dedans" : déjà dans l'emprise → (x, y) inchangé ;
+  //   "ramene" : hors emprise, un axe à moins de PROCHE_M (règle de la 3D pour montrer un POI) → point sur l'axe
+  //              de la galerie dont l'EMPRISE est la plus proche ;
+  //   "loin"   : aucun axe à portée → (x, y) inchangé ; "sans" : niveau sans galerie → (x, y) inchangé.
+  // ⚠️ contrat : jamais à travers la roche vers une autre galerie. Dedans, on ne bouge pas (le plus proche axe peut
+  // être celui d'à côté, derrière la paroi). Dehors, le segment du point au bord de l'emprise la plus proche ne
+  // traverse aucune autre emprise (elle serait plus proche) : la seule roche franchie est celle qui sépare le point
+  // de SA galerie. L'axe le plus proche ne le garantit pas : avec des largeurs différentes, l'axe d'un chemin peut
+  // être plus près que celui d'un principal dont la paroi est plus près. Du bord, on va à l'axe de la même pièce
+  // (tube) ou à l'axe le plus proche du bord (joint, passage) : le trajet reste dans l'emprise.
+  function versGalerie(x, y, niveau) {
+    const m = modele(niveau, false, true);
+    if (!m || !m.pieces.length) return { etat: "sans", x: x, y: y };
+    if (m.dedans(x, y)) return { etat: "dedans", x: x, y: y };
+    const R = PROCHE_M * m.sc;
+    if (!m.plusProche(x, y, R)) return { etat: "loin", x: x, y: y };
+    let best = null;
+    m.piecesPres(x - R, y - R, x + R, y + R).forEach(function (i) {
+      const q = _bordLePlusProche(m.pieces[i], x, y);
+      if (q && q.d <= R && (!best || q.d < best.d)) best = { d: q.d, x: q.x, y: q.y, i: i };
+    });
+    if (!best) return { etat: "loin", x: x, y: y };
+    const P = m.pieces[best.i];
+    if (P.genre === "tube" && m.aretes[P.arete]) {
+      const r = m.aretes[P.arete], dx = r.bx - r.ax, dy = r.by - r.ay, l2 = dx * dx + dy * dy;
+      let t = l2 ? ((best.x - r.ax) * dx + (best.y - r.ay) * dy) / l2 : 0;
+      t = Math.max(P.t0 || 0, Math.min(P.t1 === undefined ? 1 : P.t1, t));
+      return { etat: "ramene", x: r.ax + t * dx, y: r.ay + t * dy };
+    }
+    const pp = m.plusProche(best.x, best.y, R);
+    return pp ? { etat: "ramene", x: pp.x, y: pp.y } : { etat: "ramene", x: best.x, y: best.y };
+  }
+
   window.KtaGalerie = {
     SEUIL_CHAMBRE_M: SEUIL_CHAMBRE_M, paroisBloquent: paroisBloquent, PASSAGE: PASSAGE,
     LARGEURS: Object.assign({}, LARGEURS), LARGEUR_PERSO: LARGEUR_PERSO,
     largeur: largeur, modele: modele, dedans: dedans, segmentsBloques: segmentsBloques, invalider: invalider,
-    dansPiece: dansPiece
+    dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie
   };
 })();

@@ -128,6 +128,11 @@ function _recalerSurClic(x, y, niveau) {
     }
     console.log("[Tracking] Recalé sur niveau :", trackerLevel);
   }
+  // Tap à côté de la galerie : tracker dans la galerie (même règle que « Je suis ici », _positionDansGalerie).
+  // Le hook reçoit le point tapé, comme avant.
+  let ajuste = null;
+  try { ajuste = _positionDansGalerie(x, y, trackerLevel); } catch(e) { ajuste = null; }
+  if (ajuste) { position.x = ajuste.x; position.y = ajuste.y; }
 
   updateMap();
   _appliquerFiltreNiveauSurTracker();
@@ -757,9 +762,10 @@ function _basculerNiveauSiTraversee(m) {
 
 // Hook émis à CHAQUE recalage (clic carte, « Je suis ici », arrivée de portail via recalerTrackerSurPoint).
 // source : "click" | "point". Consommateurs : interfaceItineraire.js (window._onTrackerRecale : replanifie et valide
-// les étapes), InterPlanRoute (re-propose la traversée sur le portail de sortie) et la vue 3D ouverte en mode libre
-// (KtaVue3D.trackerRecale : sa place ne bouge pas, décision produit ; en suivi elle suit le tracker, fermée elle ne
-// fait rien). Les trois lisent l'état du tracker déjà posé.
+// les étapes), InterPlanRoute (re-propose la traversée sur le portail de sortie) et la vue 3D ouverte
+// (KtaVue3D.trackerRecale(opts) : sa place ne bouge pas, décision produit ; en suivi, un « Je suis ici »
+// (`opts.dansGalerie`) la passe en libre, un autre recalage se laisse suivre ; fermée, rien). Les trois lisent l'état
+// du tracker déjà posé.
 function _notifierRecalage(x, y, source, opts) {
   if (typeof window._onTrackerRecale === "function") {
     try { window._onTrackerRecale(x, y, source, opts); }
@@ -770,7 +776,7 @@ function _notifierRecalage(x, y, source, opts) {
     catch(e) { console.warn("[Tracking] hook recalage portail échoué :", e); }
   }
   if (window.KtaVue3D && typeof window.KtaVue3D.trackerRecale === "function") {
-    try { window.KtaVue3D.trackerRecale(); }
+    try { window.KtaVue3D.trackerRecale(opts); }
     catch(e) { console.warn("[Tracking] hook recalage vue 3D échoué :", e); }
   }
 }
@@ -1327,58 +1333,20 @@ function _rebuildTrailFromTimeline() {
   }
 }
 
-// ── « Je suis ici » d'un POI posé à côté de la galerie ──────────────────────
-// Une icône se pose souvent à 1 à 3 m du tracé : recalé sur l'icône, le tracker serait dans la roche. Le recalage
-// par « Je suis ici » le pose au point le plus proche DANS la galerie, à moins du rayon du verrou sur tracé
-// (APP_CONFIG.smartNavRadiusM, 6 m par défaut : le premier pas calé l'y aurait mis de toute façon) :
-//   1) projection sur le tracé le plus proche du niveau du recalage (jonctions exclues : un puits n'est pas une
-//      galerie) ;
-//   2) niveau du recalage sans aucun tracé (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont) :
-//      point accessible le plus proche de l'image de collision, si le POI ne l'est pas.
-// Au-delà du rayon, on reste sur le POI. Rend { x, y } ajusté, ou null.
-// ⚠️ Le POI ne bouge pas, et son niveau reste la réponse (en multi-niveau, on ne cherche que sur ce niveau).
-function _rayonGalerieM() {
-  const r = Number(APP_CONFIG.smartNavRadiusM);
-  return r > 0 ? r : 6;
-}
-
-// Tracés lus directement (session + calques, comme Pathfinder > _collecterToutesLesRoads), types du graphe de
-// navigation (principal, secondaire, chemin). 🩸 Pas de RoadGraph.getGraph() ici : son premier calcul (croisements en
-// O(N²)) gèlerait le tap sur un grand plan quand la navigation intelligente est éteinte.
-const ICI_TYPES_GALERIE = ["principal", "secondaire", "chemin"];
-
-// Tracés du niveau (tous niveaux hors multi-niveau), session et calques ; ni itinéraire ni jonction (un puits
-// relie deux niveaux, il n'est la galerie d'aucun).
-function _tracesDuNiveau(niveau) {
-  const session = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
-  const calques = (typeof window.getAllEmbeddedRoads === "function" ? window.getAllEmbeddedRoads()
-    : (typeof window.getEmbeddedRoads === "function" ? window.getEmbeddedRoads() : [])) || [];
-  const mlOn = APP_CONFIG.multiLevel === true;
-  return session.concat(calques).filter(function(road) {
-    if (!road || road.type === "itinerary" || road.type === "jonction") return false;
-    if (!Array.isArray(road.points) || road.points.length < 2) return false;
-    return !mlOn || (Number.isInteger(road.level) ? road.level : 0) === niveau;
-  });
-}
-
-function _projeterSurTraceDuNiveau(roads, x, y, rayonPx) {
-  let best = null;
-  for (let r = 0; r < roads.length; r++) {
-    if (ICI_TYPES_GALERIE.indexOf(roads[r].type) < 0) continue;
-    const pts = roads[r].points;
-    for (let i = 1; i < pts.length; i++) {
-      const a = pts[i - 1], b = pts[i];
-      if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") continue;
-      const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
-      let t = l2 > 1e-9 ? ((x - a.x) * dx + (y - a.y) * dy) / l2 : 0;
-      t = Math.max(0, Math.min(1, t));
-      const px = a.x + t * dx, py = a.y + t * dy;
-      const d = Math.hypot(x - px, y - py);
-      if (d <= rayonPx && (!best || d < best.d)) best = { x: px, y: py, d: d };
-    }
-  }
-  return best ? { x: best.x, y: best.y } : null;
-}
+// ── Recalage dans la galerie (« Je suis ici », « Où es-tu ? », clic de « 📍 Recaler ma position ») ──────────
+// Une icône se pose souvent à côté du tracé, un tap tombe à côté de la galerie : recalé là, le tracker serait dans
+// la roche. ⚠️ contrat : la galerie est celle de la vue 3D (galerieEmprise.js > KtaGalerie.versGalerie) — tous les
+// types de tracé, perso compris, même rayon (KtaGalerie.PROCHE_M, 10 m de l'axe), sur le niveau du recalage :
+//   1) point déjà dans l'emprise d'une galerie → il ne bouge pas ;
+//   2) hors emprise, un axe à moins de PROCHE_M → sur l'axe de la galerie dont l'emprise est la plus proche
+//      (jamais à travers la roche vers celle d'à côté) ;
+//   3) niveau sans aucun tracé (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont) : point
+//      accessible le plus proche de l'image de collision, à moins de PROCHE_M, si le point ne l'est pas.
+// Au-delà du rayon, on reste sur le point. Rend { x, y } ajusté, ou null (rien à changer).
+// ⚠️ Le POI ne bouge pas, et son niveau reste la réponse. 🩸 Le rayon du verrou sur tracé (smartNavRadiusM) ne
+// sert plus ici : il reste celui de la navigation intelligente (roadGraph.js) et de l'arrivée d'un passage 3D.
+// 🩸 Le modèle de KtaGalerie est mis en cache (signature des données) : premier recalage sur un grand plan = une
+// construction, partagée avec la vue 3D ensuite.
 
 // Anneaux croissants au pas d'un pixel du canvas de collision : le premier point accessible est le plus proche.
 function _pointAccessibleProche(x, y, rayonPx) {
@@ -1397,21 +1365,21 @@ function _pointAccessibleProche(x, y, rayonPx) {
 
 function _positionDansGalerie(x, y, niveau) {
   const echelle = Number(APP_CONFIG.scale);
-  if (!(echelle > 0)) return null;
-  const rayonPx = _rayonGalerieM() * echelle;
-  const traces = _tracesDuNiveau(niveau);
-  const surTrace = _projeterSurTraceDuNiveau(traces, x, y, rayonPx);
-  if (surTrace) return surTrace;
-  // Le niveau a des tracés, mais à plus du rayon : on reste sur le POI (le tracé fait foi, pas l'image).
-  return traces.length ? null : _pointAccessibleProche(x, y, rayonPx);
+  const G = window.KtaGalerie;
+  if (!(echelle > 0) || !G || typeof G.versGalerie !== "function") return null;
+  const r = G.versGalerie(x, y, APP_CONFIG.multiLevel === true ? niveau : null);
+  if (r.etat === "ramene") return { x: r.x, y: r.y };
+  // Le niveau a des tracés (dedans, ou à plus du rayon) : le tracé fait foi, pas l'image.
+  return r.etat === "sans" ? _pointAccessibleProche(x, y, G.PROCHE_M * echelle) : null;
 }
 
 // Recale le tracker sur un point (« Je suis ici » de la popup, utils.js > buildPointPopupHtml ; arrivée de portail ;
 // picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
 // ⚠️ `opts.teleport` : déplacement NON parcouru (portail) → ancre `tp`, jamais estimée. La source reste "point" pour
 // les consommateurs du hook (validation d'étape comprise). `opts.sansReplan` : voir Mode Secours.
-// `opts.dansGalerie` (« Je suis ici » d'un POI) : position ajustée dans la galerie (_positionDansGalerie) ; l'ancre
-// de timeline et la vue portent la position ajustée. Sans lui (portail, picker, Secours, 3D) : coordonnées exactes.
+// `opts.dansGalerie` (« Je suis ici » d'un POI, picker « Où es-tu ? ») : position ajustée dans la galerie
+// (_positionDansGalerie) ; l'ancre de timeline et la vue portent la position ajustée. Sans lui (portail, Secours,
+// 3D) : coordonnées exactes. La vue 3D ouverte en suivi passe en libre sur un recalage `dansGalerie`.
 // 🩸 Le hook _notifierRecalage reçoit TOUJOURS les coordonnées du point : la validation d'étape et la reprise du
 // portail de sortie comparent des coordonnées arrondies à celles du point.
 window.recalerTrackerSurPoint = function(x, y, level, opts) {

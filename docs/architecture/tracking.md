@@ -777,36 +777,47 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
   du tracker (`multilevel-pathfinding.md` § Départ d'un itinéraire et niveau).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
 
-## 📍 « Je suis ici » d'un POI posé à côté de la galerie
+## 📍 Recalage dans la galerie (« Je suis ici », « Où es-tu ? », Mode recalage)
 
-Une icône se pose souvent à 1 à 3 m du tracé. Recalé sur ses coordonnées exactes, le tracker serait dans la roche :
-rien ne le ramenait dans la galerie au moment du recalage, et le verrou sur tracé (`_avancerSurGraphe`) n'agit qu'au
-pas suivant, seulement si la navigation intelligente est active (`smartNav`, désactivée par défaut). Le PDR seul
-(`_avancerRaster`) partait de la roche.
+Une icône se pose souvent à 1 à 3 m du tracé, un tap tombe souvent à côté. Recalé sur ces coordonnées exactes, le
+tracker serait dans la roche : le verrou sur tracé (`_avancerSurGraphe`) n'agit qu'au pas suivant, seulement si la
+navigation intelligente est active, et le PDR seul (`_avancerRaster`) partirait de la roche.
 
-- **`recalerTrackerSurPoint(x, y, niveau, { dansGalerie: true })`** : passé par le « 📍 Je suis ici » d'une fiche de
-  point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire) et par la bulle de point du mode
-  urgence (`emergencyMode.js > _jeSuisIciPoint`). Le tracker va au point le plus proche **dans la galerie**
-  (`tracking.js > _positionDansGalerie`) :
-  1. projection sur le tracé le plus proche **du niveau du recalage** (le niveau du POI, règle inchangée) : tracés de
-     session et des calques lus directement, types du graphe de navigation (principal, secondaire, chemin) ; les
-     jonctions sont exclues, un puits n'est pas une galerie. Mono-niveau : tous les tracés. 🩸 Pas de
-     `RoadGraph.getGraph()` : son premier calcul (croisements en O(N²)) gèlerait le tap sur un grand plan ;
-  2. **niveau du recalage sans aucun tracé** (`_tracesDuNiveau` : session et calques, ni itinéraire ni jonction ;
-     mono-niveau : tout le plan), image de collision chargée et POI refusé par `estAccessible` : point accessible le
-     plus proche (anneaux au pas d'un pixel du canvas de collision). Vaut aussi pour un plan multi-niveau dont seuls
-     d'autres niveaux ont des tracés (décision produit) ; un niveau qui a des tracés, tous à plus du seuil : on reste
-     sur le POI (le tracé fait foi, pas l'image).
-- **Seuil** = rayon du verrou sur tracé, `APP_CONFIG.smartNavRadiusM` (**6 m** par défaut, réglable par plan) :
-  le premier pas calé aurait mis le tracker là de toute façon. Au-delà : on reste sur le POI.
+- **Qui** : `recalerTrackerSurPoint(x, y, niveau, { dansGalerie: true })` depuis le « 📍 Je suis ici » d'une fiche de
+  point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D), la bulle de point
+  du mode urgence (`emergencyMode.js > _jeSuisIciPoint`) et le picker « Où es-tu ? »
+  (`utils.js > ktaDemanderPositionCarte`, qui rend à l'appelant la position **ajustée**, celle du tracker) ; et le
+  clic du 📍 Mode recalage (`tracking.js > _recalerSurClic`, après le choix du niveau par `ktaNiveauxRecalage`).
+- **Règle** (`tracking.js > _positionDansGalerie` → `galerieEmprise.js > KtaGalerie.versGalerie`) : la galerie est
+  **celle de la vue 3D** (modèle du mode galerie : tous les types de tracé, perso compris, ni itinéraire ni jonction ;
+  session et calques), sur **le niveau du recalage** (mono-niveau : tout le plan) :
+  1. point **déjà dans l'emprise** d'une galerie (`dedans`) → il ne bouge pas ;
+  2. hors emprise, un axe à moins de **`KtaGalerie.PROCHE_M` (10 m)** → sur l'axe de la galerie dont **l'emprise est
+     la plus proche** (pièce la plus proche ; tube : projection sur son axe ; joint ou passage : axe le plus proche du
+     bord atteint) ;
+  3. **niveau sans aucun tracé** (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont ; décision
+     produit), image de collision chargée et point refusé par `estAccessible` : point accessible le plus proche à
+     moins de `PROCHE_M` (anneaux au pas d'un pixel du canvas de collision) ;
+  4. un niveau qui a des tracés, tous à plus de `PROCHE_M` : on reste sur le point (le tracé fait foi, pas l'image).
+- ⚠️ contrat **jamais à travers la roche** : dedans, on ne bouge pas (l'axe le plus proche peut être celui de la
+  galerie d'à côté, derrière la paroi) ; dehors, le segment du point au bord de l'emprise la plus proche ne traverse
+  aucune autre emprise, sinon elle serait plus proche : la seule roche franchie est celle qui sépare le point de sa
+  galerie. L'axe le plus proche ne le garantit pas (un chemin de 1,7 m dont l'axe est plus près qu'un principal de
+  2,5 m dont la paroi est plus près).
+- ⚠️ contrat **un seul rayon** : `PROCHE_M` est aussi `vue3d.js > POI_GALERIE` (POI montré contre la paroi en 3D).
+  Deux valeurs divergentes laissaient le tracker dans la roche à côté d'un POI que la 3D montrait dans la galerie.
+  `smartNavRadiusM` (6 m) ne sert plus au recalage : il reste le rayon du verrou sur tracé (`roadGraph.js`) et de la
+  place « jamais coincée » de la vue 3D.
+- 🩸 Le modèle de `KtaGalerie` est en cache (signature des données, relue fraîche par `versGalerie`) : le premier
+  recalage sur un grand plan le construit, la vue 3D le réutilise ensuite. Pas de `RoadGraph.getGraph()` (croisements
+  en O(N²)).
 - Le POI ne bouge pas. L'ancre de timeline `recalage` et le recentrage de la vue portent la position ajustée.
-- 🩸 `_notifierRecalage` reçoit **toujours les coordonnées du point** : la validation d'étape
+- 🩸 `_notifierRecalage` reçoit **toujours les coordonnées du point** (ou du tap) : la validation d'étape
   (`interfaceItineraire.js > _onTrackerRecale`), la coupe derrière et la reprise du portail de sortie
   (`interPlanRoute.js > onTrackerRecale`) comparent des coordonnées arrondies à celles du point.
-- Non concernés (coordonnées exactes, sans `dansGalerie`) : arrivée de portail, Mode Secours, picker « Où es-tu ? »,
-  position de fin du Carnet, « Je suis ici ? » de la vue 3D (`vue3d.js`, position déjà contrainte par le pas), et le
-  clic du 📍 Mode recalage (`_recalerSurClic`, chemin distinct) : un tap sur la carte est une position voulue.
-- Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 16 et 16 bis.
+- Non concernés (coordonnées exactes, sans `dansGalerie`) : arrivée de portail, Mode Secours, position de fin du
+  Carnet, « Ici » de « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas).
+- Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 1, 2, 7, 9, 16 et 16 bis ; `checkup-vue-3d.js` § 10b.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
 
@@ -1379,8 +1390,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Jamais coincé** (`vue3d.js > _degager`, `_sortie`) : à l'ouverture en mode libre et à l'arrivée d'un passage 🪜, une
   place hors de l'emprise (galerie) ou d'où aucun pas de 0,3 m n'est possible (structures, mixte : dans un pilier, dans
   la roche de l'image de collision) est ramenée au point libre le plus proche : l'axe du tracé le plus proche
-  (`KtaGalerie` du rendu, `plusProche`) à moins de `smartNavRadiusM` (6 m, le rayon de
-  `tracking.js > _positionDansGalerie`), sinon un point libre cherché en couronnes de 0,25 m. 🩸 Une accroche de POI
+  (`KtaGalerie` du rendu, `plusProche`) à moins de `smartNavRadiusM` (6 m, le rayon du verrou sur tracé ; pas
+  celui du recalage, `KtaGalerie.PROCHE_M`), sinon un point libre cherché en couronnes de 0,25 m. 🩸 Une accroche de POI
   jonction posée à côté de la galerie figeait la vue après le passage. ⚠️ contrat (`_coince`) : en **mixte** comme en
   galerie, une place hors des tubes, hors d'une chambre et à moins de `smartNavRadiusM` d'un axe en tube est coincée
   (🩸 elle restait dans la roche, d'où un pas était possible mais jamais à travers la paroi pour entrer). Rien trouvé : `_pas` laisse passer tout pas qui
@@ -1493,11 +1504,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
 - **Textures des structures** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif par défaut) :
-  piliers et fronts en pierre de taille de carrière, murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type
-  perso `cust-…` résolu par le canon prend la pierre (son entrée de légende n'a pas de type de base, seulement une
-  géométrie : ligne = front, polygone = pilier), un type inconnu garde sa couleur. Appareil et normal map dessinés
-  dans un canvas (`_appareil`, `PIERRE` / `PARPAING` : 256 px, motif de 2 m et 1 m), faits à la première structure
-  texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée. Deux matériaux de plus,
+  piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
+  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux, traces
+  d'outil ; aucun joint), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
+  le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,
+  polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
+  (`_rocheBrute`, `ROCHE` : 256 px, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
+  plus ; `_appareil`, `PARPAING` : 256 px, motif de 1 m ; normal map commune `_carteNormale`), faits à la première
+  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée. Deux matériaux de plus,
   structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
   mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
   depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
@@ -1590,14 +1604,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   hook) ; la place vient à la position **réelle** du tracker et à son niveau (`niveauLibre`, comme après un passage
   🪜), cap gardé, `aBouge` et `libreBouge` remis à faux (plus de pseudo « 3D » pour l'équipe, pas de « Je suis ici ? »
   à la fermeture tant qu'on n'avance pas).
-- **Un tracker recalé pendant la 3D ne la déplace pas** (`KtaVue3D.trackerRecale()`, appelé par `tracking.js >
+- **Un tracker recalé pendant la 3D ne la déplace pas** (`KtaVue3D.trackerRecale(opts)`, appelé par `tracking.js >
   _notifierRecalage` ; décision produit, retour terrain) : « 📍 Je suis ici » d'une fiche ouverte en 3D recale le
-  tracker comme sur la carte (position ajustée par `_positionDansGalerie`), mais en libre la place 3D reste ; seul
-  `aBouge` est remis à faux (pas de « Je suis ici ? » à la fermeture). 🩸 La position ajustée n'est pas la galerie
-  dessinée : projection sur les seuls types principal / secondaire / chemin à moins de `smartNavRadiusM` (6 m),
-  alors que la 3D fait des tubes des types perso et montre contre la paroi un POI jusqu'à 10 m de l'axe
-  (`POI_GALERIE`) ; au-delà de 6 m le tracker reste sur le POI, dans la roche. En suivi, la vue suit le tracker et
-  saute donc au point recalé (comportement inchangé). « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
+  tracker comme sur la carte (dans la galerie de la 3D, § Recalage dans la galerie), mais la place 3D reste ; `aBouge`
+  est remis à faux (pas de « Je suis ici ? » à la fermeture). **En suivi**, ce « Je suis ici » (`opts.dansGalerie`)
+  passe la vue en **libre** à cet instant, avant toute image (elle ne lit donc jamais le tracker recalé), niveau
+  affiché tenu (`niveauLibre`), toast success `vue3d.libreApresRecalage` ; le bouton du suivi l'y ramène. Un autre
+  recalage en suivi (Mode Secours, sans `dansGalerie`) se laisse suivre. « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
