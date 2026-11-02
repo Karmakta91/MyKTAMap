@@ -4,10 +4,11 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// addons/mkmg/js/monde.js — ce qui vit dans la carrière pendant une partie de l'add-on « mkmg » : égarés (lents,
-// nombreux, tués au fusil), silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe ; un tir
-// la fait reculer), munitions et champignons à ramasser en passant dessus, tir. Expose window.KtaAddons.mkmgMonde =
-// { peupler, animer, tirer, dessiner, vider, liberer, REGLES }. Positions en px plan (comme ctx.pos), maillages en m.
+// addons/mkmg/js/monde.js — ce qui vit dans la carrière pendant une partie de l'add-on « mkmg » : égarés (presque
+// aussi rapides que la marche, nombreux, ils chargent à vue ; tués au fusil), silhouette (une seule, invulnérable, ne
+// bouge que hors du faisceau de la lampe ; un tir la fait reculer), munitions et champignons à ramasser en passant
+// dessus, tir, embuscades (surgir). Expose window.KtaAddons.mkmgMonde = { peupler, animer, tirer, dessiner, vider,
+// liberer, surgir, REGLES }. Positions en px plan (comme ctx.pos), maillages en m.
 // ⚠️ contrat : à moins de 25 m (et droit sur le joueur) tout pas passe la règle du pas de la vue (ctx.bloque) ; plus
 // loin, hors de vue, une menace glisse de nœud en nœud des tracés (_carte : distances au joueur sur le graphe en cache
 // de RoadGraph, une seule pour toutes). Pensées à 15 Hz, pas à chaque image. Rien n'est écrit ailleurs que dans l'état
@@ -20,8 +21,12 @@
 
   // Réglages (m, s, points) : premiers essais, à revoir au jeu.
   const REGLES = {
-    egares: { base: 1, parVague: 1, max: 8, total: 10, vitesse: 1.1, vitesseParVague: 0.08, vitesseMax: 2,
-      pv: 2, contact: 0.75, degatsParS: 18, vueDirecte: 12, vueS: 0.25, regleM: 25, carteS: 1, carteM: 2 },
+    // Proches de la marche (2,8 m/s) : il faut courir pour décrocher, l'endurance devient l'enjeu (décision produit).
+    egares: { base: 2, parVague: 2, max: 14, total: 18, vitesse: 1.6, vitesseParVague: 0.12, vitesseMax: 2.6,
+      pv: 2, contact: 0.75, degatsParS: 25, vueDirecte: 12, vueS: 0.25, regleM: 25, carteS: 1, carteM: 2,
+      charge: { m: 8, x: 1.6, s: 2, repos: 4 } },
+    // Embuscade (sandwich, horde) : égarés posés autour d'un point, au-delà du plafond `total` de `enPlus` au plus.
+    embuscade: { rayon: 3, enPlus: 8 },
     silhouette: { desVague: 2, vitesse: 3.2, contact: 0.8, degats: 35, faisceau: 32, vue: 30 },
     apparition: { min: 15, max: 35, essais: 40 },
     munitions: { base: 4, parDeuxVagues: 1, min: 1, gain: 4 },
@@ -297,8 +302,34 @@
       (c.g.edges[k] || []).forEach(function (e) { if (c.dist[e.to] < bd) { bd = c.dist[e.to]; best = e.to; } });
       o.noeud = k = (k === c.a || k === c.b) ? -1 : best;
     }
+    // Charge : à vue sous `charge.m`, l'égaré fonce `charge.s` s à ×`charge.x`, puis souffle `charge.repos` s.
+    const C = E.charge;
+    if (o.type === "egare" && o.direct && d <= C.m && t >= (o.chargeProchaine || 0)) {
+      o.chargeFin = t + C.s * 1000;
+      o.chargeProchaine = o.chargeFin + C.repos * 1000;
+    }
+    const vit = o.chargeFin && t < o.chargeFin ? v * C.x : v;
     const cible = k >= 0 ? c.g.nodes[k] : pos;
-    _avancer(o, ctx, cible.x, cible.y, v, dt, proche || k < 0);
+    _avancer(o, ctx, cible.x, cible.y, vit, dt, proche || k < 0);
+  }
+
+  // Égarés surgis autour de `centre` (px) : jusqu'à `n`, sur des places libres, plafond total + embuscade.enPlus.
+  // → nombre posés. Sert au sandwich (devant et derrière sur le trajet) et à la horde (chrono dépassé).
+  function surgir(p, ctx, centre, n, rayonM) {
+    const E = REGLES.egares, sc = ctx.sc, r = (rayonM || REGLES.embuscade.rayon) * sc;
+    const vitesse = Math.min(E.vitesseMax, E.vitesse + E.vitesseParVague * p.vague);
+    let poses = 0;
+    for (let k = 0; k < n * 6 && poses < n; k++) {
+      if (p.ennemis.filter(_estEgare).length >= E.total + REGLES.embuscade.enPlus) break;
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * r;
+      const q = { x: centre.x + Math.cos(a) * rr, y: centre.y + Math.sin(a) * rr };
+      if (_d(q, ctx.pos, sc) < 4 || !ctx.libre(q.x, q.y)) continue;
+      const e = { type: "egare", x: q.x, y: q.y, pv: E.pv, vitesse: vitesse, coupT: 0, grogneT: Math.random() * 2 };
+      p.ennemis.push(e);
+      _maillage(p, ctx, e);
+      poses++;
+    }
+    return poses;
   }
 
   // La silhouette est-elle dans le faisceau ? (distance de vue, cône de la lampe, rien entre elle et soi)
@@ -389,5 +420,5 @@
 
   window.KtaAddons = window.KtaAddons || {};
   window.KtaAddons.mkmgMonde = { REGLES: REGLES, peupler: peupler, animer: animer, tirer: tirer, dessiner: dessiner,
-    vider: vider, liberer: liberer, dansFaisceau: dansFaisceau };
+    vider: vider, liberer: liberer, dansFaisceau: dansFaisceau, surgir: surgir };
 })();

@@ -3948,6 +3948,30 @@ async function mesuresGalerie(page, nom, semisDonne) {
           approche: (Math.abs(loin0.x - P(-30, 0).x) - Math.abs(loin1.x - P(-30, 0).x)) / a.sc };
         X.vider();
         K.tourner(180);
+        // Chrono à 0 : −25 de santé et horde autour de soi ; la vague continue.
+        K.placer(d.x, d.y, 90);
+        r.chronoAffiche = !q(".mkmg-chrono").hidden && /⏱ \d+:\d\d/.test(q(".mkmg-chrono").textContent) &&
+          M().etat().chronoReste > 30;
+        X.sante(100);
+        X.chrono(150);
+        await pause(400);
+        r.tropTard = { depasse: M().etat().chronoDepasse, sante: M().etat().sante, ennemis: M().etat().ennemis.length,
+          vague: M().etat().vague, alerte: q(".mkmg-chrono").classList.contains("mkmg-chrono-alerte") };
+        X.vider();
+        // Tenaille au départ du trajet (cap vers l'est) : un groupe devant sur le trajet, un autre dans le dos.
+        X.tenaille();
+        await pause(50);
+        const en = M().etat().ennemis;
+        r.tenaille = { devant: en.filter(function (o) { return o.x > d.x + 10 * a.sc; }).length,
+          derriere: en.filter(function (o) { return o.x < d.x - 10 * a.sc; }).length };
+        X.vider();
+        // Mi-parcours du trajet vers B : la tenaille se déclenche d'elle-même, une fois.
+        const cMi = M().etat().cible;
+        K.placer((d.x + cMi.x) / 2 + 2 * a.sc, d.y, 90);
+        await pause(300);
+        r.mi = { fait: M().etat().tenailleMi, ennemis: M().etat().ennemis.length };
+        X.vider();
+        K.placer(d.x, d.y, 90);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
         K.placer(d.x, d.y, 270);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
@@ -4029,6 +4053,14 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(MK.charge.ennemis === 9 && MK.charge.msMonde < 2 && MK.charge.approche > 0.5,
         "jeu : 8 égarés + silhouette pensés à 15 Hz sous 2 ms par image, l'égaré loin s'approche (carte des distances)",
         MK.charge);
+      verifier(MK.chronoAffiche && MK.tropTard.depasse && MK.tropTard.sante === 75 && MK.tropTard.ennemis >= 6 &&
+        MK.tropTard.vague === 1 && MK.tropTard.alerte,
+        "jeu : chrono affiché (longueur du trajet) ; à 0 → −25 de santé, horde autour de soi, la vague continue",
+        { affiche: MK.chronoAffiche, tropTard: MK.tropTard });
+      verifier(MK.tenaille.devant >= 2 && MK.tenaille.derriere >= 2,
+        "jeu : tenaille = un groupe devant sur le trajet ET un groupe dans le dos", MK.tenaille);
+      verifier(MK.mi.fait === true && MK.mi.ennemis >= 4, "jeu : à mi-parcours du trajet, la tenaille se déclenche seule",
+        MK.mi);
       verifier(MK.partie.reglage.itineraire === false && MK.partie.reglage.guidage === false &&
         MK.partie.reglage.traces !== false && MK.partie.roads === 1,
         "jeu : itinéraire et guidage de l'app masqués pendant la partie, tracés gardés (facile)", MK.partie);

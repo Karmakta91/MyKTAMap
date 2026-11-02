@@ -31,6 +31,9 @@
   border-radius: 50%; background: var(--kta-fond); color: var(--kta-accent-texte); font-size: 20px; font-weight: 700;
 }
 .mkmg-cartouches { color: var(--kta-texte-2); }
+.mkmg-chrono { font-weight: 700; font-size: 16px; color: var(--kta-texte); }
+.mkmg-chrono[hidden] { display: none; }
+.mkmg-chrono-alerte { color: var(--kta-erreur); }
 .mkmg-bouton {
   align-self: flex-end; min-height: 36px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--kta-texte-3); background: var(--kta-fond); color: var(--kta-texte); font: inherit;

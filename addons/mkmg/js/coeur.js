@@ -40,7 +40,8 @@
       "hud.recharge": "Recharge…", "hud.vide": "Plus de cartouches", "hud.plusCartouches": "+{n} cartouches",
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
       "fin.titre": "Tu es resté sous terre", "fin.texte": "Vague {n} · {r} réussie(s)",
-      "fin.meilleure": "Meilleure vague ({diff}) : {m}", "fin.rejouer": "Rejouer"
+      "fin.meilleure": "Meilleure vague ({diff}) : {m}", "fin.rejouer": "Rejouer",
+      "hud.tropTard": "Trop tard ! Ils arrivent de partout…", "hud.tenaille": "Pris en tenaille : fuis !"
     },
     en: {
       "confirmer.titre": "⛏️ Six feet under",
@@ -61,7 +62,8 @@
       "hud.recharge": "Reloading…", "hud.vide": "Out of shells", "hud.plusCartouches": "+{n} shells",
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
       "fin.titre": "You stayed underground", "fin.texte": "Wave {n} · {r} cleared",
-      "fin.meilleure": "Best wave ({diff}): {m}", "fin.rejouer": "Play again"
+      "fin.meilleure": "Best wave ({diff}): {m}", "fin.rejouer": "Play again",
+      "hud.tropTard": "Too late! They come from everywhere…", "hud.tenaille": "Caught in a pincer: run!"
     },
     es: {
       "confirmer.titre": "⛏️ Dos metros bajo tierra",
@@ -82,7 +84,8 @@
       "hud.recharge": "Recargando…", "hud.vide": "Sin cartuchos", "hud.plusCartouches": "+{n} cartuchos",
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
       "fin.titre": "Te quedaste bajo tierra", "fin.texte": "Oleada {n} · {r} superada(s)",
-      "fin.meilleure": "Mejor oleada ({diff}): {m}", "fin.rejouer": "Jugar otra vez"
+      "fin.meilleure": "Mejor oleada ({diff}): {m}", "fin.rejouer": "Jugar otra vez",
+      "hud.tropTard": "¡Demasiado tarde! Llegan por todas partes…", "hud.tenaille": "Atrapado en tenaza: ¡huye!"
     }
   };
 
@@ -91,7 +94,16 @@
     departM: 40, pasM: 30, minM: 10, candidats: 8, arriveeM: 2, sante: 100, endurance: 100,
     videParS: 22, repriseParS: 14, souffleReprise: 30, coeurSous: 5, regardM: 5, majHudMs: 150, messageMs: 2200,
     cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, imageMs: 33, blesseMs: 600, coupMs: 250, tapeMs: 250,
-    tapePx: 6
+    tapePx: 6,
+    // Chrono d'une vague (décision produit) : longueur du trajet vers B à `vitesse` m/s (+ `parVague`, `max` au plus)
+    // plus une marge qui fond ; sans trajet, la distance à vol d'oiseau × `sansTrajet`. À 0 : horde et santé.
+    chrono: { vitesse: 1.4, parVague: 0.08, max: 2.4, marge: 30, margeParVague: 2, margeMin: 10, sansTrajet: 1.4,
+      alerteS: 10 },
+    tropTard: { degats: 25, horde: 6, parVague: 1, rayonM: 12, groupes: 3 },
+    // Sandwich (décision produit) : un groupe devant soi SUR le trajet, un autre derrière, à mi-parcours de chaque
+    // vague, et au hasard dès la vague `hasardDes`, de plus en plus souvent.
+    tenaille: { mi: 0.5, devantM: 18, derriereM: 15, n: 2, parDeuxVagues: 1, hasardDes: 3, hasardS: [40, 70],
+      hasardParVague: 0.1 }
   };
   const DIFFICULTES = {
     facile: { traces: true, route: true, guidage: true },
@@ -266,6 +278,8 @@
       const pos = ctx.pos, d = Math.hypot(p.cible.x - pos.x, p.cible.y - pos.y) / ctx.sc;
       if (d <= REGLES.arriveeM) { _vagueReussie(); return; }
     }
+    if (p.chronoFin && !p.chronoDepasse && t >= p.chronoFin) _tropTard(p, ctx);
+    _guetter(p, ctx, t);
     if (t - p.majHud > REGLES.majHudMs) { p.majHud = t; _majHud(); }
     // Les menaces bougent sans nous : une image redemandée, 30 par seconde au plus (iPhone, plan dense).
     if (t - p.saleT >= REGLES.imageMs) { p.saleT = t; ctx.sale(); }
@@ -400,6 +414,7 @@
     const p = _p;
     if (!p || !p.ctx) return;
     p.vague++;
+    p.chronoFin = 0; p.chronoDepasse = false; p.tenailleMi = false; p.prochaineTenaille = 0;
     const jeton = ++p.calcul, ctx = p.ctx, pos = ctx.pos, niv = ctx.niveau, sc = ctx.sc;
     const voulu = REGLES.departM + REGLES.pasM * (p.vague - 1);
     p.cible = null; p.route = null; p.longueurs = null; p.cherche = true;
@@ -429,6 +444,7 @@
     p.cherche = false;
     p.route = route;
     p.longueurs = route ? _cumuls(route) : null;
+    _lancerChrono(p, ctx, cible, route);
     _dessiner();
     _majHud();
     if (cible) _message(_t("hud.objectif", { nom: cible.nom }));
@@ -442,6 +458,71 @@
     _jouer("vague");
     _message(_t("hud.reussie", { n: p.vague }));
     _nouvelleVague();
+  }
+
+  // ── Chrono et embuscades ─────────────────────────────────────────────────────────────────────────────
+
+  function _lancerChrono(p, ctx, cible, route) {
+    if (!cible) return;
+    const C = REGLES.chrono, n = p.vague - 1, sc = ctx.sc;
+    const long = route ? _cumuls(route)[route.length - 1] / sc
+      : Math.hypot(cible.x - ctx.pos.x, cible.y - ctx.pos.y) / sc * C.sansTrajet;
+    const vitesse = Math.min(C.max, C.vitesse + C.parVague * n);
+    const marge = Math.max(C.margeMin, C.marge - C.margeParVague * n);
+    p.chronoFin = performance.now() + (long / vitesse + marge) * 1000;
+    p.chronoDepasse = false;
+    const H = REGLES.tenaille;
+    p.prochaineTenaille = p.vague >= H.hasardDes ? performance.now() + _delaiTenaille(p) : 0;
+  }
+
+  function _delaiTenaille(p) {
+    const H = REGLES.tenaille, s = H.hasardS[0] + Math.random() * (H.hasardS[1] - H.hasardS[0]);
+    return s * 1000 / (1 + H.hasardParVague * (p.vague - H.hasardDes));
+  }
+
+  // Chrono à 0 : santé perdue et horde en plusieurs groupes autour de soi ; la vague continue, B reste à atteindre.
+  function _tropTard(p, ctx) {
+    const T = REGLES.tropTard, pos = ctx.pos, n = T.horde + T.parVague * (p.vague - 1);
+    p.chronoDepasse = true;
+    p.sante = Math.max(0, p.sante - T.degats);
+    const a0 = Math.random() * Math.PI * 2;
+    for (let g = 0; g < T.groupes; g++) {
+      const a = a0 + g * 2 * Math.PI / T.groupes, r = T.rayonM * ctx.sc;
+      _monde().surgir(p, ctx, { x: pos.x + Math.cos(a) * r, y: pos.y + Math.sin(a) * r }, Math.ceil(n / T.groupes), 4);
+    }
+    _jouer("blesse"); _jouer("grogne", 1); _coup();
+    _message(_t("hud.tropTard"));
+  }
+
+  // Sandwich : un groupe devant SUR le trajet du jeu (vers B), un autre derrière (sur le trajet déjà fait, sinon dans
+  // le dos). Sans trajet : devant et derrière selon le cap.
+  function _tenaille(p, ctx) {
+    const H = REGLES.tenaille, sc = ctx.sc, pos = ctx.pos, n = H.n + H.parDeuxVagues * Math.floor(p.vague / 2);
+    let devant, derriere;
+    if (p.route && p.longueurs) {
+      const s = _abscisse(p.route, p.longueurs, pos), tot = p.longueurs[p.longueurs.length - 1];
+      devant = _pointA(p.route, p.longueurs, Math.min(tot, s + H.devantM * sc));
+      if (s >= H.derriereM * sc) derriere = _pointA(p.route, p.longueurs, s - H.derriereM * sc);
+    }
+    const a = ctx.cap * Math.PI / 180;
+    if (!devant) devant = { x: pos.x + Math.sin(a) * H.devantM * sc, y: pos.y - Math.cos(a) * H.devantM * sc };
+    if (!derriere) derriere = { x: pos.x - Math.sin(a) * H.derriereM * sc, y: pos.y + Math.cos(a) * H.derriereM * sc };
+    const poses = _monde().surgir(p, ctx, devant, n) + _monde().surgir(p, ctx, derriere, n);
+    if (poses) { _jouer("grogne", 1); _message(_t("hud.tenaille")); }
+    return poses;
+  }
+
+  // Mi-parcours du trajet vers B (une fois par vague) et tenailles au hasard dès la vague hasardDes.
+  function _guetter(p, ctx, t) {
+    const H = REGLES.tenaille;
+    if (!p.tenailleMi && p.route && p.longueurs) {
+      const tot = p.longueurs[p.longueurs.length - 1];
+      if (tot > 0 && _abscisse(p.route, p.longueurs, ctx.pos) / tot >= H.mi) { p.tenailleMi = true; _tenaille(p, ctx); }
+    }
+    if (p.prochaineTenaille && t >= p.prochaineTenaille) {
+      p.prochaineTenaille = t + _delaiTenaille(p);
+      _tenaille(p, ctx);
+    }
   }
 
   // ── Fin de partie et scores (clé locale à part, jamais dans la session) ──────────────────────────────
@@ -599,6 +680,7 @@
     h.coup = _el(ctx.hud, "div", "mkmg-coup");
     h.panneau = _el(ctx.hud, "div", "mkmg-panneau");
     h.vague = _el(h.panneau, "div", "mkmg-vague");
+    h.chrono = _el(h.panneau, "div", "mkmg-chrono");
     h.sante = _barre(h.panneau, _t("hud.sante"));
     h.endurance = _barre(h.panneau, _t("hud.endurance"));
     h.endurance.parentNode.parentNode.classList.add("mkmg-jauge-endurance");
@@ -656,6 +738,12 @@
     if (!p || !p.hud || !p.ctx) return;
     const h = p.hud, ctx = p.ctx;
     h.vague.textContent = _t("hud.vague", { n: p.vague }) + " · " + _t("diff." + p.diff);
+    const chrono = p.chronoFin ? Math.max(0, (p.chronoFin - performance.now()) / 1000) : null;
+    h.chrono.hidden = chrono === null;
+    if (chrono !== null) {
+      h.chrono.textContent = "⏱ " + Math.floor(chrono / 60) + ":" + String(Math.floor(chrono % 60)).padStart(2, "0");
+      h.chrono.classList.toggle("mkmg-chrono-alerte", chrono <= REGLES.chrono.alerteS);
+    }
     h.sante.style.width = Math.round(p.sante / REGLES.sante * 100) + "%";
     h.endurance.style.width = Math.round(p.endurance / REGLES.endurance * 100) + "%";
     h.endurance.parentNode.parentNode.classList.toggle("mkmg-souffle", p.souffle);
@@ -696,7 +784,8 @@
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
       traits: p.traits.length, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, scores: _lireScores(), coeur: +(p.coeur || 0).toFixed(2),
-      msMonde: +(p.msMonde || 0).toFixed(3),
+      msMonde: +(p.msMonde || 0).toFixed(3), tenailleMi: p.tenailleMi, chronoDepasse: p.chronoDepasse,
+      chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }) };
   }
@@ -711,7 +800,9 @@
       (type === "egare" || type === "silhouette" ? _p.ennemis : _p.objets).push(o);
       _monde().dessiner(_p, _p.ctx, false);
     },
-    sante: function (v) { if (_p) _p.sante = v; }
+    sante: function (v) { if (_p) _p.sante = v; },
+    chrono: function (ms) { if (_p) { _p.chronoFin = performance.now() + ms; _p.chronoDepasse = false; } },
+    tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); }
   };
 
   window.KtaAddons = window.KtaAddons || {};

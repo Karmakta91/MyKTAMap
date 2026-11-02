@@ -1695,10 +1695,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
     pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit) seulement sous
     5 % d'endurance ou à bout de souffle : fort et rapide à sec, de plus en plus lent pendant la reprise, éteint à 30.
   - Menaces (`monde.js`, placées sur les tracés du niveau à 15-35 m, places libres de la règle du pas) : **égarés**
-    (1 + 1 par vague, 8 au plus et 10 en tout ; 1,1 m/s + 0,08 par vague, 2 m/s au plus ; 18 de santé par seconde au
-    contact ; ils foncent à vue directe sous 12 m, relue toutes les 0,25 s) ; **silhouette** dès la vague 2 (une seule,
-    invulnérable, 3,2 m/s mais figée dans le faisceau : à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ;
-    au contact 35 de santé puis elle repart loin).
+    (2 + 2 par vague, 14 au plus et 18 en tout ; 1,6 m/s + 0,12 par vague, 2,6 m/s au plus, proche de la marche à
+    2,8 m/s : il faut courir pour décrocher (décision produit) ; 25 de santé par seconde au contact ; ils foncent à vue
+    directe sous 12 m, relue toutes les 0,25 s, et sous 8 m **chargent** 2 s à ×1,6 puis soufflent 4 s) ;
+    **silhouette** dès la vague 2 (une seule, invulnérable, 3,2 m/s mais figée dans le faisceau : à moins de 30 m, à
+    moins de 32° du cap, rien entre elle et soi ; au contact 35 de santé puis elle repart loin).
+  - **Chrono** de chaque vague (décision produit), tiré du trajet du jeu : longueur vers B à 1,4 m/s (+ 0,08 par
+    vague, 2,4 au plus) plus une marge de 30 s (− 2 par vague, 10 au moins) ; sans trajet, vol d'oiseau × 1,4. Rouge
+    sous 10 s. À 0 : − 25 de santé et **horde** (6 + 1 par vague, en 3 groupes à 12 m autour de soi) ; la vague
+    continue.
+  - **Tenaille** (décision produit) : un groupe d'égarés posé devant SUR le trajet du jeu (18 m plus loin), un autre
+    derrière (15 m en arrière sur le trajet, sinon dans le dos) — 2 + 1 toutes les deux vagues chacun, au-delà du
+    plafond de 8 au plus (`surgir`). Une fois par vague à mi-parcours du trajet vers B, et au hasard dès la vague 3
+    (toutes les 40 à 70 s, de plus en plus souvent).
   - Performance (plan dense, iPhone) : menaces pensées à 15 Hz, pas à chaque image ; hors de vue directe, elles
     descendent une **carte des distances** au joueur sur le graphe des tracés (`RoadGraph.getGraph`, en cache ; Dijkstra
     depuis sa place, refait au plus chaque seconde et s'il a bougé de 2 m), une seule pour toutes — plus de
