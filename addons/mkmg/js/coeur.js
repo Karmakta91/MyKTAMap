@@ -90,7 +90,8 @@
   const REGLES = {
     departM: 40, pasM: 30, minM: 10, candidats: 8, arriveeM: 2, sante: 100, endurance: 100,
     videParS: 22, repriseParS: 14, souffleReprise: 30, coeurSous: 5, regardM: 5, majHudMs: 150, messageMs: 2200,
-    cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, blesseMs: 600, coupMs: 250, tapeMs: 250, tapePx: 6
+    cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, imageMs: 33, blesseMs: 600, coupMs: 250, tapeMs: 250,
+    tapePx: 6
   };
   const DIFFICULTES = {
     facile: { traces: true, route: true, guidage: true },
@@ -99,7 +100,6 @@
   };
   const ROUTE = { largeur: 0.3, y: 0.08 };
   const BALISE = { rayon: 0.25, anneau: [0.6, 0.85], opacite: 0.55 };
-  const ECLAIR = { couleur: 0xffd27a, intensite: 8, portee: 12 };   // couleur de la scène, pas de l'UI
   const CLE_SCORES = "myktamap_mkmg_v1";
   const SCRIPTS = ["addons/mkmg/js/son.js", "addons/mkmg/js/monde.js"];
 
@@ -125,7 +125,8 @@
 
   function _refus() {
     const X = window.KtaExtensions;
-    // Installation reliée : refusé, sauf si son hébergeur l'autorise (data/reglages.json > addons.mkmg, ktaInstance.js).
+    // Installation reliée : refusé, sauf si son hébergeur l'autorise (data/reglages.json > addons.mkmg,
+    // ktaInstance.js).
     const I = window.KtaInstance && window.KtaInstance.etat(), permis = !!(I && I.reglages && I.reglages.addons &&
       I.reglages.addons.mkmg === true);
     if (X && typeof X.etat === "function" && X.etat().etat !== "off" && !permis) return "refus.installation";
@@ -190,7 +191,7 @@
       souffle: false, cible: null, route: null, longueurs: null, calcul: 0, ctx: null, hud: null, traits: [],
       majHud: 0, reussies: 0, restantM: null, ennemis: [], objets: [], gabarits: null, niveauMonde: null,
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
-      blesseT: 0, eclair: null, ecouteurs: [], routeEnCours: false };
+      blesseT: 0, ecouteurs: [], saleT: 0, carte: null };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
     if (!retirer) { _p = null; return; }
     if (_p) _p.retirer = retirer;
@@ -207,24 +208,16 @@
       ctx.regler({ traces: p.regle.traces, itineraire: false, guidage: false });
       _monterHud(ctx);
       _brancher();
-      _monterEclair(ctx);
       _nouvelleVague();
     }
     // 🩸 Reprise du contexte : groupe neuf, les objets d'avant sont morts avec l'ancien (jamais dispose()).
-    if (raison === "reprise") { p.traits = []; _monterEclair(ctx); _monde().dessiner(p, ctx, true); }
+    if (raison === "reprise") { p.traits = []; _monde().dessiner(p, ctx, true); }
     // Autre niveau (passage 🪜) : le monde de la vague est refait là où l'on est.
     if (raison === "refaite" && p.niveauMonde !== null && ctx.niveau !== p.niveauMonde && !p.fin) {
       _monde().vider(p);
       _monde().peupler(p, ctx);
     }
     _dessiner();
-  }
-
-  function _monterEclair(ctx) {
-    const T = ctx.THREE;
-    // Lumière posée une fois, éteinte entre deux tirs : en ajouter une à chaque coup recompilerait les shaders.
-    _p.eclair = new T.PointLight(ECLAIR.couleur, 0, ECLAIR.portee, 2);
-    ctx.groupe.add(_p.eclair);
   }
 
   function _surImage(ctx, dt) {
@@ -244,7 +237,6 @@
       const n = Math.min(REGLES.cartouches.canon - p.canon, p.reserve);
       p.canon += n; p.reserve -= n; p.rechargeFin = 0;
     }
-    if (p.eclair && p.eclair.intensity > 0 && t - p.eclairT > REGLES.eclairMs) p.eclair.intensity = 0;
     const r = _monde().animer(p, ctx, dt);
     r.sons.forEach(function (s) { _jouer(s[0], s[1]); });
     // Battement de cœur (décision produit) : seulement à bout de souffle ou sous coeurSous % d'endurance, fort et
@@ -275,7 +267,8 @@
       if (d <= REGLES.arriveeM) { _vagueReussie(); return; }
     }
     if (t - p.majHud > REGLES.majHudMs) { p.majHud = t; _majHud(); }
-    ctx.sale();   // les menaces bougent sans nous : une image à chaque fois
+    // Les menaces bougent sans nous : une image redemandée, 30 par seconde au plus (iPhone, plan dense).
+    if (t - p.saleT >= REGLES.imageMs) { p.saleT = t; ctx.sale(); }
   }
 
   function _demonter(ctx, raison) {
@@ -330,11 +323,7 @@
     }
     p.canon--;
     _jouer("tir");
-    if (p.eclair) {
-      p.eclair.position.set(ctx.pos.x / ctx.sc, ctx.hauteur * 0.7, ctx.pos.y / ctx.sc);
-      p.eclair.intensity = ECLAIR.intensite;
-      p.eclairT = performance.now();
-    }
+    _eclair();
     if (p.hud) {
       // Recul du bouton rejoué à chaque coup : la classe retirée puis remise après un reflow.
       p.hud.tirer.classList.remove("mkmg-recul");
@@ -636,6 +625,15 @@
     _majHud();
   }
 
+  // Éclair du tir : liseré doré bref sur le calque (une lumière de plus que la lampe coûterait sur chaque pixel).
+  function _eclair() {
+    const h = _p && _p.hud;
+    if (!h) return;
+    h.coup.classList.add("mkmg-eclair-actif");
+    clearTimeout(_p.eclairMinuterie);
+    _p.eclairMinuterie = setTimeout(function () { h.coup.classList.remove("mkmg-eclair-actif"); }, REGLES.eclairMs);
+  }
+
   function _coup() {
     const h = _p && _p.hud;
     if (!h) return;
@@ -698,6 +696,7 @@
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
       traits: p.traits.length, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, scores: _lireScores(), coeur: +(p.coeur || 0).toFixed(2),
+      msMonde: +(p.msMonde || 0).toFixed(3),
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }) };
   }
@@ -707,8 +706,8 @@
     vider: function () { if (_p) _monde().vider(_p); },
     poser: function (type, x, y) {
       if (!_p || !_p.ctx) return;
-      const o = type === "egare" ? { type: type, x: x, y: y, pv: _monde().REGLES.egares.pv, vitesse: 1.2, grogneT: 9,
-        cheminT: 0 } : { type: type, x: x, y: y, cheminT: 0 };
+      const o = type === "egare" ? { type: type, x: x, y: y, pv: _monde().REGLES.egares.pv, vitesse: 1.2, grogneT: 9 }
+        : { type: type, x: x, y: y };
       (type === "egare" || type === "silhouette" ? _p.ennemis : _p.objets).push(o);
       _monde().dessiner(_p, _p.ctx, false);
     },

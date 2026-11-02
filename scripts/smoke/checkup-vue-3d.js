@@ -3908,6 +3908,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const s1 = M().etat().ennemis[0];
         r.silDos = { vu: s1.vu, avance: s0.x - s1.x, coeur: M().etat().coeur };
         X.vider();
+        // Charge : 8 égarés à 15-40 m (sur le tracé et à côté) et la silhouette ; temps du monde par image (moyenne
+        // glissante) et approche par la carte des distances (un égaré loin avance vers soi).
+        for (let k = 0; k < 8; k++) X.poser("egare", P(-30 + (k % 2 ? 15 : -15) - k * 3, k % 3 - 1).x, P(0, k % 3 - 1).y);
+        X.poser("silhouette", P(5, 0).x, P(5, 0).y);
+        const loin0 = M().etat().ennemis[7];
+        await pause(1500);
+        const loin1 = M().etat().ennemis[7];
+        r.charge = { msMonde: M().etat().msMonde, ennemis: M().etat().ennemis.length,
+          approche: (Math.abs(loin0.x - P(-30, 0).x) - Math.abs(loin1.x - P(-30, 0).x)) / a.sc };
+        X.vider();
         K.tourner(180);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
         K.placer(d.x, d.y, 270);
@@ -3985,6 +3995,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(MK.silFace.vu === true && MK.silDos.vu === false && MK.silDos.avance > 0,
         "jeu : la silhouette reste figée dans le faisceau, avance dès qu'on lui tourne le dos",
         { face: MK.silFace, dos: MK.silDos });
+      console.log("  ℹ️ jeu, charge (8 égarés + silhouette) : " + MK.charge.msMonde + " ms de monde par image, égaré loin " +
+        "rapproché de " + MK.charge.approche.toFixed(1) + " m en 1,5 s");
+      verifier(MK.charge.ennemis === 9 && MK.charge.msMonde < 2 && MK.charge.approche > 0.5,
+        "jeu : 8 égarés + silhouette pensés à 15 Hz sous 2 ms par image, l'égaré loin s'approche (carte des distances)",
+        MK.charge);
       verifier(MK.partie.reglage.itineraire === false && MK.partie.reglage.guidage === false &&
         MK.partie.reglage.traces !== false && MK.partie.roads === 1,
         "jeu : itinéraire et guidage de l'app masqués pendant la partie, tracés gardés (facile)", MK.partie);

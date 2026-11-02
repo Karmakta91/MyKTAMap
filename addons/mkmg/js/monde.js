@@ -8,9 +8,10 @@
 // nombreux, tués au fusil), silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe ; un tir
 // la fait reculer), munitions et champignons à ramasser en passant dessus, tir. Expose window.KtaAddons.mkmgMonde =
 // { peupler, animer, tirer, dessiner, vider, liberer, REGLES }. Positions en px plan (comme ctx.pos), maillages en m.
-// ⚠️ contrat : aucun déplacement sans la règle du pas de la vue (ctx.bloque) ; les égarés suivent les galeries par
-// Pathfinder.computeRoute (lecture, une demande à la fois), à vue directe ils foncent. Rien n'est écrit ailleurs que
-// dans l'état de la partie et le groupe de la greffe.
+// ⚠️ contrat : à moins de 25 m (et droit sur le joueur) tout pas passe la règle du pas de la vue (ctx.bloque) ; plus
+// loin, hors de vue, une menace glisse de nœud en nœud des tracés (_carte : distances au joueur sur le graphe en cache
+// de RoadGraph, une seule pour toutes). Pensées à 15 Hz, pas à chaque image. Rien n'est écrit ailleurs que dans l'état
+// de la partie et le groupe de la greffe.
 // 🩸 Reprise du contexte WebGL : les maillages d'avant sont morts (jamais dispose()) ; dessiner() les refait tous.
 // Doc : docs/architecture/tracking.md § Greffe de la vue 3D
 
@@ -20,12 +21,12 @@
   // Réglages (m, s, points) : premiers essais, à revoir au jeu.
   const REGLES = {
     egares: { base: 1, parVague: 1, max: 8, total: 10, vitesse: 1.1, vitesseParVague: 0.08, vitesseMax: 2,
-      pv: 2, contact: 0.75, degatsParS: 18, vueDirecte: 12, routeS: 2 },
+      pv: 2, contact: 0.75, degatsParS: 18, vueDirecte: 12, vueS: 0.25, regleM: 25, carteS: 1, carteM: 2 },
     silhouette: { desVague: 2, vitesse: 3.2, contact: 0.8, degats: 35, faisceau: 32, vue: 30 },
     apparition: { min: 15, max: 35, essais: 40 },
     munitions: { base: 4, parDeuxVagues: 1, min: 1, gain: 4 },
     champignons: { base: 3, parTroisVagues: 1, min: 1, soin: 30, lacher: 0.25 },
-    ramasser: 1,
+    ramasser: 1, iaHz: 15,
     tir: { portee: 18, ecart: 6, pres: 8, recharge: 1.5, canon: 2 }
   };
   const COULEURS = { egare: 0x5a6650, tete: 0x6e7a62, silhouette: 0x0d0d0f, yeux: 0xd8d8d0, caisse: 0x8a6a3a,
@@ -91,13 +92,13 @@
     for (let i = 0; i < voulus && p.ennemis.filter(_estEgare).length < E.total; i++) {
       const q = _choisir(ctx, pts.tous, A.min, A.max, pris);
       if (!q) break;
-      const e = { type: "egare", x: q.x, y: q.y, pv: E.pv, vitesse: vitesse, chemin: null, cheminT: 0, coupT: 0,
+      const e = { type: "egare", x: q.x, y: q.y, pv: E.pv, vitesse: vitesse, coupT: 0,
         grogneT: Math.random() * 6 };
       p.ennemis.push(e); pris.push(e); neufs++;
     }
     if (n >= REGLES.silhouette.desVague && !p.ennemis.some(_estSilhouette)) {
       const q = _choisir(ctx, pts.tous, A.min + 10, A.max + 10, pris);
-      if (q) { const s = { type: "silhouette", x: q.x, y: q.y, chemin: null, cheminT: 0 }; p.ennemis.push(s); }
+      if (q) { const s = { type: "silhouette", x: q.x, y: q.y }; p.ennemis.push(s); }
     }
     const M = REGLES.munitions, C = REGLES.champignons;
     const nm = Math.max(M.min, M.base - Math.floor(n / 2) * M.parDeuxVagues);
@@ -195,11 +196,13 @@
 
   // ── Mouvement ─────────────────────────────────────────────────────────────────────────────────────────
 
-  // Pas vers (tx, ty) à `v` m/s, la règle du pas de la vue ; glisse sur un axe si le pas entier est refusé.
-  function _avancer(o, ctx, tx, ty, v, dt) {
+  // Pas vers (tx, ty) à `v` m/s. regle : la règle du pas de la vue (glisse sur un axe si le pas entier est refusé) ;
+  // sans elle (menace loin, hors de vue, sur les nœuds des tracés), le pas est libre.
+  function _avancer(o, ctx, tx, ty, v, dt, regle) {
     const sc = ctx.sc, dx = tx - o.x, dy = ty - o.y, l = Math.hypot(dx, dy);
     if (l < 1e-6) return false;
     const pas = Math.min(l, v * dt * sc), ux = dx / l * pas, uy = dy / l * pas;
+    if (!regle) { o.x += ux; o.y += uy; return true; }
     const essais = [[ux, uy], [ux, 0], [0, uy]];
     for (let i = 0; i < essais.length; i++) {
       const nx = o.x + essais[i][0], ny = o.y + essais[i][1];
@@ -208,25 +211,94 @@
     return false;
   }
 
-  // Une demande de trajet à la fois (Pathfinder), la plus ancienne d'abord.
-  function _demanderChemin(p, ctx, o) {
-    if (p.routeEnCours || !window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") return;
-    p.routeEnCours = true;
-    const niv = ctx.niveau, lvl = niv === null ? undefined : niv, cible = ctx.pos, partie = p;
-    window.Pathfinder.computeRoute([{ x: o.x, y: o.y, level: lvl }, { x: cible.x, y: cible.y, level: lvl }])
-      .then(function (r) { o.chemin = r && Array.isArray(r.path) && r.path.length >= 2 ? r.path.slice(1) : null; })
-      .catch(function () { o.chemin = null; })
-      .then(function () { partie.routeEnCours = false; });
+  // Tas binaire minimal de [distance, nœud] (Dijkstra de la carte).
+  function _tas() {
+    const a = [];
+    return {
+      vide: function () { return !a.length; },
+      pousser: function (d, n) {
+        a.push([d, n]);
+        for (let i = a.length - 1; i > 0;) {
+          const j = (i - 1) >> 1;
+          if (a[j][0] <= a[i][0]) break;
+          const x = a[i]; a[i] = a[j]; a[j] = x; i = j;
+        }
+      },
+      tirer: function () {
+        const h = a[0], q = a.pop();
+        if (a.length) {
+          a[0] = q;
+          for (let i = 0; ;) {
+            const l = 2 * i + 1, r = l + 1;
+            let m = i;
+            if (l < a.length && a[l][0] < a[m][0]) m = l;
+            if (r < a.length && a[r][0] < a[m][0]) m = r;
+            if (m === i) break;
+            const x = a[i]; a[i] = a[m]; a[m] = x; i = m;
+          }
+        }
+        return h;
+      }
+    };
+  }
+
+  // 🩸 Carte des distances au joueur sur le réseau des tracés (graphe en cache de RoadGraph, Dijkstra depuis sa
+  // place), refaite au plus toutes les `carteS` s et seulement s'il a bougé de `carteM` : une seule pour toutes les
+  // menaces. Une demande Pathfinder par égaré reconstruisait tout le réseau, d'où des images perdues sur un plan dense.
+  function _carte(p, ctx, t) {
+    const E = REGLES.egares, R = window.RoadGraph, P = window.Pathfinder, pos = ctx.pos, c = p.carte;
+    if (c && (t - c.t < E.carteS * 1000 || Math.hypot(pos.x - c.x, pos.y - c.y) < E.carteM * ctx.sc)) return c;
+    if (!R || typeof R.getGraph !== "function" || !P || typeof P.snapPointToGraph !== "function") return null;
+    const g = R.getGraph(), s = g && g.nodes.length ? P.snapPointToGraph(g, pos) : null;
+    if (!s || !s.seg) return null;
+    const n = g.nodes.length, dist = new Float64Array(n).fill(Infinity), tas = _tas();
+    [s.seg.a, s.seg.b].forEach(function (k) {
+      const d = Math.hypot(g.nodes[k].x - s.projection.x, g.nodes[k].y - s.projection.y);
+      if (d < dist[k]) { dist[k] = d; tas.pousser(d, k); }
+    });
+    while (!tas.vide()) {
+      const h = tas.tirer(), u = h[1];
+      if (h[0] > dist[u]) continue;
+      (g.edges[u] || []).forEach(function (e) {
+        const nd = h[0] + e.weight;
+        if (nd < dist[e.to]) { dist[e.to] = nd; tas.pousser(nd, e.to); }
+      });
+    }
+    p.carte = { t: t, x: pos.x, y: pos.y, g: g, dist: dist, a: s.seg.a, b: s.seg.b, id: (c ? c.id : 0) + 1 };
+    return p.carte;
+  }
+
+  // Nœud suivant d'une menace : celui de son tronçon le plus près du joueur, puis, nœud atteint, le voisin qui
+  // descend la carte ; sur le tronçon du joueur (ou sans descente), droit sur lui (-1).
+  function _noeudSuivant(c, o) {
+    const g = c.g;
+    if (o.carteId !== c.id || o.noeud === undefined) {
+      o.carteId = c.id;
+      const s = window.Pathfinder.snapPointToGraph(g, o);
+      if (!s || !s.seg) return -1;
+      const cout = function (k) { return c.dist[k] + Math.hypot(g.nodes[k].x - o.x, g.nodes[k].y - o.y); };
+      o.noeud = cout(s.seg.a) <= cout(s.seg.b) ? s.seg.a : s.seg.b;
+    }
+    return o.noeud;
   }
 
   function _versJoueur(p, ctx, o, v, dt, t) {
-    const pos = ctx.pos, sc = ctx.sc, d = _d(o, pos, sc);
-    const direct = d <= REGLES.egares.vueDirecte && !ctx.ligneBloquee(o.x, o.y, pos.x, pos.y);
-    if (direct || !window.Pathfinder) { _avancer(o, ctx, pos.x, pos.y, v, dt); return; }
-    if (t - o.cheminT > REGLES.egares.routeS * 1000 && !p.routeEnCours) { o.cheminT = t; _demanderChemin(p, ctx, o); }
-    while (o.chemin && o.chemin.length && _d(o, o.chemin[0], sc) < 0.5) o.chemin.shift();
-    const w = o.chemin && o.chemin.length ? o.chemin[0] : pos;
-    _avancer(o, ctx, w.x, w.y, v, dt);
+    const E = REGLES.egares, pos = ctx.pos, sc = ctx.sc, d = _d(o, pos, sc), proche = d <= E.regleM;
+    // Vue directe relue toutes les `vueS` s seulement (un segment testé contre tout le plan).
+    if (t - (o.vueT || 0) > E.vueS * 1000) {
+      o.vueT = t;
+      o.direct = d <= E.vueDirecte && !ctx.ligneBloquee(o.x, o.y, pos.x, pos.y);
+    }
+    const c = o.direct ? null : _carte(p, ctx, t);
+    let k = c ? _noeudSuivant(c, o) : -1;
+    if (k >= 0 && _d(o, c.g.nodes[k], sc) < 0.5) {
+      // Nœud atteint : le voisin le plus près du joueur, s'il descend ; sinon droit sur lui.
+      let best = -1, bd = c.dist[k];
+      (c.g.edges[k] || []).forEach(function (e) { if (c.dist[e.to] < bd) { bd = c.dist[e.to]; best = e.to; } });
+      o.noeud = k = (k === c.a || k === c.b) ? -1 : best;
+    }
+    const cible = k >= 0 ? c.g.nodes[k] : pos;
+    _avancer(o, ctx, cible.x, cible.y, v, dt, proche || k < 0);
   }
 
   // La silhouette est-elle dans le faisceau ? (distance de vue, cône de la lampe, rien entre elle et soi)
@@ -241,24 +313,29 @@
 
   // → { degats, sons: [[nom, force]], ramasse: [type] }
   function animer(p, ctx, dt) {
-    const t = performance.now(), pos = ctx.pos, sc = ctx.sc, E = REGLES.egares, S = REGLES.silhouette;
+    const t0 = performance.now(), t = t0, pos = ctx.pos, sc = ctx.sc, E = REGLES.egares, S = REGLES.silhouette;
     const r = { degats: 0, sons: [], ramasse: [] };
+    // Menaces pensées à `iaHz` par seconde (pas à chaque image) : le coût ne monte plus avec la cadence d'affichage.
+    p.iaAcc = (p.iaAcc || 0) + dt;
+    const pense = p.iaAcc >= 1 / REGLES.iaHz, dtIa = p.iaAcc;
+    if (pense) p.iaAcc = 0;
     p.ennemis.forEach(function (o) {
+      const d = _d(o, pos, sc);
       if (o.type === "egare") {
-        const d = _d(o, pos, sc);
-        if (d > E.contact) _versJoueur(p, ctx, o, o.vitesse, dt, t);
-        else r.degats += E.degatsParS * dt;
+        if (d <= E.contact) r.degats += E.degatsParS * dt;
+        else if (pense) _versJoueur(p, ctx, o, o.vitesse, dtIa, t);
         o.grogneT -= dt;
         if (o.grogneT <= 0 && d < 20) { r.sons.push(["grogne", 1 - d / 20]); o.grogneT = 4 + Math.random() * 5; }
       } else {
-        const vu = dansFaisceau(ctx, o);
-        o.vu = vu;
-        if (!vu) _versJoueur(p, ctx, o, S.vitesse, dt, t);
-        const d = _d(o, pos, sc);
-        if (d <= S.contact) { r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o); }
+        if (pense) {
+          o.vu = dansFaisceau(ctx, o);
+          if (!o.vu) _versJoueur(p, ctx, o, S.vitesse, dtIa, t);
+        }
+        if (_d(o, pos, sc) <= S.contact) { r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o); }
       }
-      _placer(o, ctx);
+      if (pense) _placer(o, ctx);
     });
+    p.msMonde = (p.msMonde || 0) * 0.95 + (performance.now() - t0) * 0.05;
     p.objets = p.objets.filter(function (o) {
       if (o.mesh) o.mesh.rotation.y += dt * 1.2;
       if (_d(o, pos, sc) > REGLES.ramasser) return true;
@@ -273,7 +350,7 @@
   function _eloigner(p, ctx, o) {
     const A = REGLES.apparition, q = _choisir(ctx, _pointsDesTraces(ctx.niveau).tous, A.min + 10, A.max + 15, []);
     if (q) { o.x = q.x; o.y = q.y; }
-    o.chemin = null;
+    o.noeud = undefined;
     _placer(o, ctx);
   }
 

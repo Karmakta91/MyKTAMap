@@ -1657,9 +1657,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
     5 % d'endurance ou à bout de souffle : fort et rapide à sec, de plus en plus lent pendant la reprise, éteint à 30.
   - Menaces (`monde.js`, placées sur les tracés du niveau à 15-35 m, places libres de la règle du pas) : **égarés**
     (1 + 1 par vague, 8 au plus et 10 en tout ; 1,1 m/s + 0,08 par vague, 2 m/s au plus ; 18 de santé par seconde au
-    contact ; ils foncent à vue directe sous 12 m, suivent sinon un trajet `Pathfinder` redemandé toutes les 2 s, une
-    demande à la fois) ; **silhouette** dès la vague 2 (une seule, invulnérable, 3,2 m/s mais figée dans le faisceau :
-    à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ; au contact 35 de santé puis elle repart loin). Tout pas passe `ctx.bloque`.
+    contact ; ils foncent à vue directe sous 12 m, relue toutes les 0,25 s) ; **silhouette** dès la vague 2 (une seule,
+    invulnérable, 3,2 m/s mais figée dans le faisceau : à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ;
+    au contact 35 de santé puis elle repart loin).
+  - Performance (plan dense, iPhone) : menaces pensées à 15 Hz, pas à chaque image ; hors de vue directe, elles
+    descendent une **carte des distances** au joueur sur le graphe des tracés (`RoadGraph.getGraph`, en cache ; Dijkstra
+    depuis sa place, refait au plus chaque seconde et s'il a bougé de 2 m), une seule pour toutes — plus de
+    `Pathfinder.computeRoute` par égaré, qui reconstruisait tout le réseau. Règle du pas (`ctx.bloque`) à moins de
+    25 m ou droit sur le joueur ; plus loin, de nœud en nœud des tracés, sans test. 30 images/s au plus pendant la
+    partie (`ctx.sale` espacé de 33 ms). Éclair du tir sur le calque, pas en lumière (une lumière de plus coûte sur
+    chaque pixel). `etat().msMonde` : temps moyen du monde par image.
   - Fusil à deux coups (bouton en bas à droite, Espace, clic bref de la souris sur la scène) : la menace la plus
     proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre (`ctx.ligneBloquee`) ; un égaré
     a 2 points, un coup à 8 m ou moins en ôte 2 ; la silhouette touchée recule (repart loin). Recharge automatique de
