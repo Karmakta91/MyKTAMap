@@ -31,7 +31,7 @@
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
-// (23) : refus, confirmation, partie en vagues, masquage, endurance, sortie.
+// (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3779,12 +3779,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.ktaEstAccessible = function () { return true; };
         const tracker = window.getTrackingActif();
         if (tracker) window.stopTracking();
-        window.setStructures([]);
+        // Pilier fictif sur le tracé, au droit du POI : la validation ne doit tomber ni hors galerie, ni dedans.
+        window.setStructures([{ uid: "st_mk", type: "pilier-2", level: 0,
+          points: [P(14.2, -0.8), P(15.8, -0.8), P(15.8, 0.8), P(14.2, 0.8)] }]);
         window.setRoads([
           { uid: "rd_mk", type: "principal", level: 0, points: [P(-80, 0), P(80, 0)] },
           { uid: "rd_mk_iti", type: "itinerary", level: 0, points: [P(-20, 0), P(-10, 0)] }
         ]);
-        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 0).x, y: P(15, 0).y, level: 0, tags: [] }]);
+        // POI relevé à 4 m du tracé (hors galerie) : sa validation doit tomber sur le tracé.
+        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 4).x, y: P(15, 4).y, level: 0, tags: [] }]);
         window.KtaGalerie.invalider();
         const d = P(-30, 0), r = {};
         const appui = function (b) {
@@ -3822,9 +3825,54 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await pause(200);
         const e1 = K.etat(), m1 = M().etat();
         r.partie = { greffe: e1.greffe && e1.greffe.nom, reglage: e1.greffe && e1.greffe.reglage, roads: e1.compte.roads,
-          diff: m1.diff, vague: m1.vague, cible: m1.cible && m1.cible.nom, route: m1.route, objets: m1.objets,
+          diff: m1.diff, vague: m1.vague, cible: m1.cible && m1.cible.nom, route: m1.route, traits: m1.traits,
           panneau: !!q("#kta-vue3d .kta-v3d-greffe .mkmg-panneau"), fleche: !!q(".mkmg-fleche") &&
-            !q(".mkmg-fleche").hidden, reste: q(".mkmg-reste") && q(".mkmg-reste").textContent };
+            !q(".mkmg-fleche").hidden, reste: q(".mkmg-reste") && q(".mkmg-reste").textContent,
+          ennemis: m1.ennemis.length, objets: m1.objets.length, tirer: !!q(".mkmg-tirer"),
+          cartouches: m1.canon + "/" + m1.reserve,
+          surTrace: !!m1.cible && Math.hypot(m1.cible.x - P(15, 0).x, m1.cible.y - P(15, 0).y) < 3 * a.sc &&
+            Math.abs(m1.cible.y - P(15, 4).y) > 3 * a.sc,
+          horsPilier: !!m1.cible && (Math.abs(m1.cible.x - P(15, 0).x) > 0.8 * a.sc ||
+            Math.abs(m1.cible.y - P(15, 0).y) > 0.8 * a.sc) };
+        // Situation contrôlée : monde vidé, puis un égaré à 5 m devant (cap 90 = vers l'est).
+        const X = M().essai, tape = function () {
+          document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
+        };
+        X.vider();
+        K.placer(d.x, d.y, 90);
+        X.poser("egare", P(-25, 0).x, P(-25, 0).y);
+        await pause(50);
+        tape();
+        await pause(50);
+        r.tir = { canon: M().etat().canon, tues: M().etat().tues, ennemis: M().etat().ennemis.length };
+        tape();
+        await pause(50);
+        r.recharge = { canon: M().etat().canon, recharge: M().etat().recharge };
+        await pause(1700);
+        r.recharge.apres = M().etat().canon + "/" + M().etat().reserve;
+        // Ramasser en passant dessus : munitions, champignon (soin).
+        X.vider();   // l'égaré tué peut avoir lâché un champignon (au hasard)
+        X.sante(50);
+        X.poser("munitions", P(-29.6, 0).x, P(-29.6, 0).y);
+        X.poser("champignon", P(-30, 0.5).x, P(-30, 0.5).y);
+        await pause(150);
+        r.ramasse = { reserve: M().etat().reserve, sante: M().etat().sante, objets: M().etat().objets.length };
+        // Contact d'un égaré : la santé baisse.
+        X.poser("egare", P(-29.4, 0).x, P(-29.4, 0).y);
+        await pause(600);
+        r.contact = M().etat().sante;
+        X.vider();
+        // Silhouette : figée dans le faisceau, elle avance dès qu'on lui tourne le dos.
+        X.poser("silhouette", P(-18, 0).x, P(-18, 0).y);
+        await pause(500);
+        const s0 = M().etat().ennemis[0];
+        r.silFace = { vu: s0.vu, x: s0.x };
+        K.tourner(180);
+        await pause(400);
+        const s1 = M().etat().ennemis[0];
+        r.silDos = { vu: s1.vu, avance: s0.x - s1.x };
+        X.vider();
+        K.tourner(180);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
         K.placer(d.x, d.y, 270);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
@@ -3844,8 +3892,18 @@ async function mesuresGalerie(page, nom, semisDonne) {
         K.placer(c.x, c.y, 90);
         for (let k = 0; k < 60 && M().etat().vague < 2; k++) await pause(50);
         r.vague2 = { vague: M().etat().vague, reussies: M().etat().reussies };
+        X.vider();
+        // Santé à 0 : fin de partie, meilleure vague retenue, « Rejouer » relance la vague 1.
+        X.sante(0);
+        await pause(150);
+        r.fin = { fin: M().etat().fin, carte: !!q(".mkmg-fin"), score: M().etat().scores.facile,
+          tirer: q(".mkmg-tirer").disabled };
+        q(".mkmg-fin .mkmg-bouton-primaire").click();
+        for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
+        r.rejoue = { enCours: M().etat().enCours, fin: M().etat().fin, vague: M().etat().vague, carte: !!q(".mkmg-fin") };
+        M().essai.vider();
         // Quitter : la greffe part, l'itinéraire de l'app revient.
-        q(".mkmg-quitter").click();
+        q(".mkmg-panneau .mkmg-bouton").click();
         await pause(300);
         r.quitte = { enCours: M().etat().enCours, greffe: K.etat().greffe, roads: K.etat().compte.roads,
           panneau: !!q(".mkmg-panneau") };
@@ -3856,13 +3914,13 @@ async function mesuresGalerie(page, nom, semisDonne) {
         for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
         await pause(200);
         r.difficile = { diff: M().etat().diff, reglage: K.etat().greffe.reglage, roads: K.etat().compte.roads,
-          objets: M().etat().objets, guide: q(".mkmg-guide").hidden };
+          traits: M().etat().traits, guide: q(".mkmg-guide").hidden };
         // Fermer la vue termine la partie.
         await K.fermer();
         r.ferme = M().etat().enCours;
         window.ktaEstAccessible = acc;
         window.setEditorPoints(poisAvant || []);
-        window.setRoads([]); window.KtaGalerie.invalider();
+        window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
         if (tracker) window.startTracking();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -3871,10 +3929,23 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(MK.refusInstallation && MK.refusSuivi, "jeu : refusé sur une installation reliée et pendant le suivi",
         { installation: MK.refusInstallation, suivi: MK.refusSuivi });
       verifier(MK.radios === 3 && MK.partie.greffe === "mkmg" && MK.partie.diff === "facile" && MK.partie.vague === 1 &&
-        MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.objets === 3 && MK.partie.panneau &&
-        MK.partie.fleche && /\d/.test(MK.partie.reste || ""),
-        "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif), trajet, balise, panneau, flèche, reste",
+        MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 3 && MK.partie.panneau &&
+        MK.partie.fleche && /\d/.test(MK.partie.reste || "") && MK.partie.surTrace && MK.partie.horsPilier,
+        "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif à 4 m du tracé, validée près du tracé, hors " +
+        "du pilier qui le couvre), trajet, balise, panneau, flèche, reste",
         MK.partie);
+      verifier(MK.partie.ennemis >= 1 && MK.partie.objets >= 2 && MK.partie.tirer && MK.partie.cartouches === "2/6",
+        "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);
+      verifier(MK.tir.canon === 1 && MK.tir.tues === 1 && MK.tir.ennemis === 0,
+        "jeu : un coup à 5 m tue l'égaré devant soi (Espace)", MK.tir);
+      verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
+        "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
+      verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
+        "jeu : en passant dessus, munitions (+4) et champignon (+30 santé) ramassés", MK.ramasse);
+      verifier(MK.contact < 80, "jeu : au contact d'un égaré, la santé baisse (" + MK.contact + ")", MK.contact);
+      verifier(MK.silFace.vu === true && MK.silDos.vu === false && MK.silDos.avance > 0,
+        "jeu : la silhouette reste figée dans le faisceau, avance dès qu'on lui tourne le dos",
+        { face: MK.silFace, dos: MK.silDos });
       verifier(MK.partie.reglage.itineraire === false && MK.partie.reglage.guidage === false &&
         MK.partie.reglage.traces !== false && MK.partie.roads === 1,
         "jeu : itinéraire et guidage de l'app masqués pendant la partie, tracés gardés (facile)", MK.partie);
@@ -3883,10 +3954,14 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "jeu : le pas rapide vide l'endurance ; à bout de souffle plus de course, elle revient au repos",
         { court: MK.court, souffle: MK.souffle, repos: MK.repos });
       verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1, "jeu : cible atteinte → vague 2", MK.vague2);
+      verifier(MK.fin.fin && MK.fin.carte && MK.fin.score === 1 && MK.fin.tirer === true && MK.rejoue.enCours &&
+        !MK.rejoue.fin && MK.rejoue.vague === 1 && !MK.rejoue.carte,
+        "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé ; « Rejouer » relance la vague 1",
+        { fin: MK.fin, rejoue: MK.rejoue });
       verifier(MK.quitte.enCours === false && MK.quitte.greffe === null && MK.quitte.roads === 2 && !MK.quitte.panneau,
         "jeu : Quitter retire la greffe, l'itinéraire de l'app revient", MK.quitte);
       verifier(MK.difficile.diff === "difficile" && MK.difficile.reglage.traces === false && MK.difficile.roads === 0 &&
-        MK.difficile.objets === 0 && MK.difficile.guide === true && MK.ferme === false,
+        MK.difficile.traits === 0 && MK.difficile.guide === true && MK.ferme === false,
         "jeu : difficile → ni tracés, ni trajet, ni balise, ni guidage ; fermer la vue termine la partie",
         { difficile: MK.difficile, ferme: MK.ferme });
 

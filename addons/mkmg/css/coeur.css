@@ -30,9 +30,41 @@
   display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
   border-radius: 50%; background: var(--kta-fond); color: var(--kta-accent-texte); font-size: 20px; font-weight: 700;
 }
-.mkmg-quitter {
+.mkmg-cartouches { color: var(--kta-texte-2); }
+.mkmg-bouton {
   align-self: flex-end; min-height: 36px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--kta-texte-3); background: var(--kta-fond); color: var(--kta-texte); font: inherit;
+}
+.mkmg-bouton-primaire { background: var(--kta-primaire); border-color: var(--kta-primaire); color: var(--kta-texte); }
+/* Tir : en bas à droite (joystick à gauche, pavé au centre), grand pour le pouce. */
+.mkmg-tirer {
+  position: absolute; right: 14px; bottom: max(14px, env(safe-area-inset-bottom));
+  width: 76px; height: 76px; border-radius: 50%; padding: 12px; box-sizing: border-box; cursor: pointer;
+  border: 2px solid var(--kta-accent); background: var(--kta-surface); pointer-events: auto; touch-action: none;
+}
+.mkmg-tirer:disabled { border-color: var(--kta-texte-3); cursor: default; }
+.mkmg-tirer-image { width: 100%; height: 100%; display: block; }
+.mkmg-recul { animation: mkmg-recul 160ms ease-out; }
+@keyframes mkmg-recul { 30% { transform: translate(6px, 6px) rotate(-8deg); } }
+/* Coup reçu : bord rouge de l'écran, bref. */
+.mkmg-coup {
+  position: absolute; inset: calc(-1 * var(--kta-v3d-sous-haut, 80px)) 0 0 0; pointer-events: none;
+  box-shadow: inset 0 0 0 0 var(--kta-erreur); transition: box-shadow 120ms ease-out;
+}
+.mkmg-coup.mkmg-coup-actif { box-shadow: inset 0 0 70px 18px var(--kta-erreur); }
+/* Fin de partie : carte au centre, touchable. */
+.mkmg-fin {
+  position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: min(320px, 86vw);
+  box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px;
+  border: 2px solid var(--kta-erreur); background: var(--kta-surface); color: var(--kta-texte);
+  pointer-events: auto; text-align: center;
+}
+.mkmg-fin-titre { font-size: 20px; font-weight: 700; color: var(--kta-accent-texte); }
+.mkmg-fin-texte { color: var(--kta-texte-2); }
+.mkmg-fin-boutons { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  .mkmg-recul { animation: none; }
+  .mkmg-coup { transition: none; }
 }
 .mkmg-message {
   position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); max-width: 80vw;
