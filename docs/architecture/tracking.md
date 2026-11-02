@@ -777,6 +777,34 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
   du tracker (`multilevel-pathfinding.md` § Départ d'un itinéraire et niveau).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
 
+## 📍 « Je suis ici » d'un POI posé à côté de la galerie
+
+Une icône se pose souvent à 1 à 3 m du tracé. Recalé sur ses coordonnées exactes, le tracker serait dans la roche :
+rien ne le ramenait dans la galerie au moment du recalage, et le verrou sur tracé (`_avancerSurGraphe`) n'agit qu'au
+pas suivant, seulement si la navigation intelligente est active (`smartNav`, désactivée par défaut). Le PDR seul
+(`_avancerRaster`) partait de la roche.
+
+- **`recalerTrackerSurPoint(x, y, niveau, { dansGalerie: true })`** : passé par le « 📍 Je suis ici » d'une fiche de
+  point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire) et par la bulle de point du mode
+  urgence (`emergencyMode.js > _jeSuisIciPoint`). Le tracker va au point le plus proche **dans la galerie**
+  (`tracking.js > _positionDansGalerie`) :
+  1. projection sur le tracé le plus proche **du niveau du recalage** (le niveau du POI, règle inchangée) : tracés de
+     session et des calques lus directement, types du graphe de navigation (principal, secondaire, chemin) ; les
+     jonctions sont exclues, un puits n'est pas une galerie. Mono-niveau : tous les tracés. 🩸 Pas de
+     `RoadGraph.getGraph()` : son premier calcul (croisements en O(N²)) gèlerait le tap sur un grand plan ;
+  2. plan **sans aucun tracé** (`Pathfinder.aDesTraces()`), image de collision chargée et POI refusé par
+     `estAccessible` : point accessible le plus proche (anneaux au pas d'un pixel du canvas de collision).
+- **Seuil** = rayon du verrou sur tracé, `APP_CONFIG.smartNavRadiusM` (**6 m** par défaut, réglable par plan) :
+  le premier pas calé aurait mis le tracker là de toute façon. Au-delà : on reste sur le POI.
+- Le POI ne bouge pas. L'ancre de timeline `recalage` et le recentrage de la vue portent la position ajustée.
+- 🩸 `_notifierRecalage` reçoit **toujours les coordonnées du point** : la validation d'étape
+  (`interfaceItineraire.js > _onTrackerRecale`), la coupe derrière et la reprise du portail de sortie
+  (`interPlanRoute.js > onTrackerRecale`) comparent des coordonnées arrondies à celles du point.
+- Non concernés (coordonnées exactes, sans `dansGalerie`) : arrivée de portail, Mode Secours, picker « Où es-tu ? »,
+  position de fin du Carnet, « Je suis ici ? » de la vue 3D (`vue3d.js`, position déjà contrainte par le pas), et le
+  clic du 📍 Mode recalage (`_recalerSurClic`, chemin distinct) : un tap sur la carte est une position voulue.
+- Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 16.
+
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
 
 **`_notifierRecalage(x, y, source)`** (`tracking.js`) : émis à CHAQUE recalage de position — clic carte mode recalage (`"click"`, handler `map.on("click")` d'`initTracking`) et `recalerTrackerSurPoint` (`"point"` — bouton « 📍 Je suis ici », arrivée de portail). Consommateur : `window._onTrackerRecale` (assigné par `interfaceItineraire.js` — replanification d'itinéraire + validation d'étapes, cf. `multilevel-pathfinding.md` §Itinéraire vivant). Émission best-effort (try/catch, no-op si non défini).

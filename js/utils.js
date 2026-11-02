@@ -1433,8 +1433,9 @@ function _ktaPopupAction(e) {
     case "tts":           return appel("kta_lireNotePopup", b);
     case "ici": {
       // data-kta-niveau absent (mono-niveau, étape posée au clic) : recalerTrackerSurPoint prend le niveau actif.
+      // `dansGalerie` : une icône posée à côté du tracé met le tracker dans la galerie, pas dans la roche.
       const n = parseInt(d.ktaNiveau, 10);
-      return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined);
+      return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined, { dansGalerie: true });
     }
     case "aller": {
       // data-kta-niveau absent (mono-niveau) : pas de niveau de cible, le calcul garde sa règle.

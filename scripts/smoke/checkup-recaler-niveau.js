@@ -16,7 +16,8 @@
 // que le 0 est affiché → tracker au −1 (POI jonction : niveau affiché s'il le dessert) ; tracker au −1 : « Y aller »,
 // « Recalculer d'ici » et sortie d'urgence partent du −1 ; « Tracer » vers une sortie du −1 finit sur le −1 ;
 // « Y aller » de la fiche d'un POI du −1, depuis le 0, finit sur le −1 (POI jonction : même niveau que « Je suis
-// ici ») ; mono-niveau → jamais de fenêtre.
+// ici ») ; « Je suis ici » d'un POI à côté de la galerie (§ 16) : à 2 m → tracker sur le tracé de son niveau,
+// à 30 m → sur le POI, image de collision sans tracé → point accessible ; mono-niveau → jamais de fenêtre.
 // Usage : node scripts/smoke/checkup-recaler-niveau.js (SMOKE_PORT pour une autre copie)
 // Doc : docs/architecture/tracking.md
 // =====================================================================
@@ -606,6 +607,95 @@ const proche = function (a, b) { return a && b && Math.abs(a.x - b.x) < 0.6 && M
       verifier(cal.zone.niveaux && cal.zone.niveaux.indexOf(cal.zone.lvl) >= 0,
         "zone d'un calque : son niveau proposé", cal.zone);
     } else inf("aucune zone de calque sur ce plan");
+
+    // « Je suis ici » d'un POI posé à côté du tracé (tracking.js > _positionDansGalerie) : le tracker va sur le
+    // tracé le plus proche DU NIVEAU du POI, à moins du rayon du verrou (6 m) ; le POI ne bouge pas.
+    // Tracé du 0 sur y = 0, tracé du −1 sur y = 5 (en m depuis P).
+    console.log("\n── 16. « 📍 Je suis ici » d'un POI à côté de la galerie ──");
+    const GALERIES = [
+      { type: "principal", level: 0, pts: [[-20, 0], [20, 0]] },
+      { type: "principal", level: -1, pts: [[-20, 5], [20, 5]] }
+    ];
+    const iciSurPoi = async function (poi, affiche) {
+      await poserCas(page, P, { roads: GALERIES, points: [poi] });
+      await page.evaluate(function (a) {
+        window.recalerTrackerSurPoint(a.P.x, a.P.y - 40 * a.P.sc, 0);
+        window.ktaSetActiveLevel(-1, { source: "checkup" });   // union : −1 et 0 affichés
+        window.ktaSetActiveLevel(a.affiche, { source: "checkup" });
+      }, { P: P, affiche: affiche });
+      await page.waitForTimeout(400);
+      const xy = await cliquerCarte(page, P, poi.d[0], poi.d[1]);
+      const bouton = page.locator(".kta-popup-point .kta-popup-btn-here").first();
+      if (!(await bouton.count())) { pb("fiche de " + poi.nom + " non ouverte par le clic"); return null; }
+      await bouton.click();
+      await page.waitForTimeout(500);
+      const e = await etat(page);
+      const poiApres = await page.evaluate(function (id) {
+        const q = (window.getEditorPoints() || []).find(function (x) { return x && x.id === id; });
+        return q ? { x: q.x, y: q.y } : null;
+      }, poi.id);
+      await page.evaluate(function () { try { window.map.closePopup(); } catch (err) {} });
+      const m = function (q) { return q ? { dx: (q.x - P.x) / P.sc, dy: (q.y - P.y) / P.sc } : null; };
+      return { e: e, poi: xy, poiApres: poiApres, pos: m(e.pos), ancre: m(e.dernier) };
+    };
+
+    let r16 = await iciSurPoi({ id: "Bord", nom: "Bord", uid: "pt_bord", tags: ["salle"], level: 0, d: [3, 2] }, 0);
+    if (r16) {
+      verifier(r16.pos && Math.abs(r16.pos.dy) < 0.1 && Math.abs(r16.pos.dx - 3) < 0.1 && r16.e.tracker === 0,
+        "POI du 0 à 2 m du tracé : tracker sur le tracé (écart < 0,1 m), niveau 0", r16.pos);
+      verifier(r16.ancre && Math.abs(r16.ancre.dy) < 0.1 && r16.e.dernier.src === "point" &&
+        r16.e.dernier.level === 0, "ancre de timeline à la position ajustée", r16.e.dernier);
+      verifier(proche(r16.poiApres, r16.poi), "le POI n'a pas bougé", r16.poiApres);
+    }
+    r16 = await iciSurPoi({ id: "Loin", nom: "Loin", uid: "pt_loin", tags: ["salle"], level: 0, d: [3, -30] }, 0);
+    if (r16) {
+      verifier(proche(r16.e.pos, r16.poi) && r16.e.tracker === 0, "POI à 30 m du tracé : tracker sur le POI", r16.pos);
+    }
+    r16 = await iciSurPoi({ id: "Bas", nom: "Bas", uid: "pt_bas", tags: ["salle"], level: -1, d: [-3, 2] }, 0);
+    if (r16) {
+      verifier(r16.pos && Math.abs(r16.pos.dy - 5) < 0.1 && Math.abs(r16.pos.dx + 3) < 0.1 && r16.e.tracker === -1,
+        "POI du −1 (tracé du 0 à 2 m, du −1 à 3 m) : tracker sur le tracé du −1, niveau −1", r16.pos);
+    }
+    // Les autres recalages (portail, « Où es-tu ? », Secours, vue 3D) passent sans `dansGalerie` : point exact.
+    const exact = await page.evaluate(function (P) {
+      const x = P.x + 3 * P.sc, y = P.y + 2 * P.sc;
+      window.recalerTrackerSurPoint(x, y, 0);
+      const pos = window.getTrackingPosition();
+      return { ok: Math.abs(pos.x - x) < 0.01 && Math.abs(pos.y - y) < 0.01, pos: pos };
+    }, P);
+    verifier(exact.ok, "recalage sans « dansGalerie » (portail, picker) : coordonnées exactes", exact.pos);
+    // Plan sans tracé (simulé : Pathfinder.aDesTraces rend false, session vide) : point accessible le plus proche
+    // de l'image de collision. Cherche un point refusé qui a un point accessible à moins de 3 m.
+    const coll = await page.evaluate(function () {
+      const c = window.APP_CONFIG, sc = c.scale, acc = window.ktaEstAccessible;
+      let cas = null;
+      for (let y = 80; y < c.imageHeight - 80 && !cas; y += 37) {
+        for (let x = 80; x < c.imageWidth - 80 && !cas; x += 37) {
+          if (acc(x, y)) continue;
+          for (let a = 0; a < 16 && !cas; a++) {
+            const qx = x + 2 * sc * Math.cos(a * Math.PI / 8), qy = y + 2 * sc * Math.sin(a * Math.PI / 8);
+            if (acc(qx, qy)) cas = { x: x, y: y };
+          }
+        }
+      }
+      if (!cas) return null;
+      const pf = window.Pathfinder, orig = pf.aDesTraces;
+      const roads = window.getRoads().slice();
+      try {
+        pf.aDesTraces = function () { return false; };
+        window.setRoads([]);
+        window.recalerTrackerSurPoint(cas.x, cas.y, 0, { dansGalerie: true });
+      } finally {
+        pf.aDesTraces = orig;
+        window.setRoads(roads);
+      }
+      const pos = window.getTrackingPosition();
+      return { accessible: acc(pos.x, pos.y), dM: Math.hypot(pos.x - cas.x, pos.y - cas.y) / sc };
+    });
+    if (coll) {
+      verifier(coll.accessible && coll.dM <= 3.1, "plan sans tracé : tracker sur le point accessible le plus proche",
+        coll);
+    } else inf("pas d'image de collision exploitable : repli sur l'image non testé");
 
     console.log("\n── 9. Plan mono-niveau ──");
     await page.evaluate(function () { window.APP_CONFIG.multiLevel = false; });

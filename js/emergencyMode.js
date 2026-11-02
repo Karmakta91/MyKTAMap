@@ -429,7 +429,7 @@
     _fermerBulle();
     if (!p || typeof window.recalerTrackerSurPoint !== "function") return;
     try {
-      window.recalerTrackerSurPoint(p.x, p.y, Number.isInteger(p.level) ? p.level : undefined);
+      window.recalerTrackerSurPoint(p.x, p.y, Number.isInteger(p.level) ? p.level : undefined, { dansGalerie: true });
     } catch(e) {
       console.warn("[Emergency] « Je suis ici » échoué :", e);
     }

@@ -1321,18 +1321,87 @@ function _rebuildTrailFromTimeline() {
   }
 }
 
-// Recale le tracker sur les coordonnées exactes d'un point (« Je suis ici » de la popup, utils.js >
-// buildPointPopupHtml ; arrivée de portail ; picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
+// ── « Je suis ici » d'un POI posé à côté de la galerie ──────────────────────
+// Une icône se pose souvent à 1 à 3 m du tracé : recalé sur l'icône, le tracker serait dans la roche. Le recalage
+// par « Je suis ici » le pose au point le plus proche DANS la galerie, à moins du rayon du verrou sur tracé
+// (APP_CONFIG.smartNavRadiusM, 6 m par défaut : le premier pas calé l'y aurait mis de toute façon) :
+//   1) projection sur le tracé le plus proche du niveau du recalage (jonctions exclues : un puits n'est pas une
+//      galerie) ;
+//   2) plan sans aucun tracé : point accessible le plus proche de l'image de collision, si le POI ne l'est pas.
+// Au-delà du rayon, on reste sur le POI. Rend { x, y } ajusté, ou null.
+// ⚠️ Le POI ne bouge pas, et son niveau reste la réponse (en multi-niveau, on ne cherche que sur ce niveau).
+function _rayonGalerieM() {
+  const r = Number(APP_CONFIG.smartNavRadiusM);
+  return r > 0 ? r : 6;
+}
+
+// Tracés lus directement (session + calques, comme Pathfinder > _collecterToutesLesRoads), types du graphe de
+// navigation (principal, secondaire, chemin). 🩸 Pas de RoadGraph.getGraph() ici : son premier calcul (croisements en
+// O(N²)) gèlerait le tap sur un grand plan quand la navigation intelligente est éteinte.
+const ICI_TYPES_GALERIE = ["principal", "secondaire", "chemin"];
+
+function _projeterSurTraceDuNiveau(x, y, niveau, rayonPx) {
+  const session = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
+  const calques = (typeof window.getAllEmbeddedRoads === "function" ? window.getAllEmbeddedRoads()
+    : (typeof window.getEmbeddedRoads === "function" ? window.getEmbeddedRoads() : [])) || [];
+  const roads = session.concat(calques);
+  const mlOn = APP_CONFIG.multiLevel === true;
+  let best = null;
+  for (let r = 0; r < roads.length; r++) {
+    const road = roads[r];
+    if (!road || ICI_TYPES_GALERIE.indexOf(road.type) < 0 || !Array.isArray(road.points)) continue;
+    if (mlOn && (Number.isInteger(road.level) ? road.level : 0) !== niveau) continue;
+    const pts = road.points;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") continue;
+      const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+      let t = l2 > 1e-9 ? ((x - a.x) * dx + (y - a.y) * dy) / l2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const px = a.x + t * dx, py = a.y + t * dy;
+      const d = Math.hypot(x - px, y - py);
+      if (d <= rayonPx && (!best || d < best.d)) best = { x: px, y: py, d: d };
+    }
+  }
+  return best ? { x: best.x, y: best.y } : null;
+}
+
+// Anneaux croissants au pas d'un pixel du canvas de collision : le premier point accessible est le plus proche.
+function _pointAccessibleProche(x, y, rayonPx) {
+  if (!_collisionData || estAccessible(x, y)) return null;
+  const pas = 1 / Math.max(_collisionScaleX, _collisionScaleY, 1e-6);
+  for (let r = pas; r <= rayonPx; r += pas) {
+    const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
+    for (let k = 0; k < n; k++) {
+      const a = 2 * Math.PI * k / n;
+      const qx = x + r * Math.cos(a), qy = y + r * Math.sin(a);
+      if (estAccessible(qx, qy)) return { x: qx, y: qy };
+    }
+  }
+  return null;
+}
+
+function _positionDansGalerie(x, y, niveau) {
+  const echelle = Number(APP_CONFIG.scale);
+  if (!(echelle > 0)) return null;
+  const rayonPx = _rayonGalerieM() * echelle;
+  const surTrace = _projeterSurTraceDuNiveau(x, y, niveau, rayonPx);
+  if (surTrace) return surTrace;
+  const aDesTraces = !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
+                        window.Pathfinder.aDesTraces());
+  return aDesTraces ? null : _pointAccessibleProche(x, y, rayonPx);
+}
+
+// Recale le tracker sur un point (« Je suis ici » de la popup, utils.js > buildPointPopupHtml ; arrivée de portail ;
+// picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
 // ⚠️ `opts.teleport` : déplacement NON parcouru (portail) → ancre `tp`, jamais estimée. La source reste "point" pour
 // les consommateurs du hook (validation d'étape comprise). `opts.sansReplan` : voir Mode Secours.
+// `opts.dansGalerie` (« Je suis ici » d'un POI) : position ajustée dans la galerie (_positionDansGalerie) ; l'ancre
+// de timeline et la vue portent la position ajustée. Sans lui (portail, picker, Secours, 3D) : coordonnées exactes.
+// 🩸 Le hook _notifierRecalage reçoit TOUJOURS les coordonnées du point : la validation d'étape et la reprise du
+// portail de sortie comparent des coordonnées arrondies à celles du point.
 window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
-  position.x = x;
-  position.y = y;
-  _marquerPositionConfirmee();
-  _navSegIdx = -1;
-  if (polyline) polyline.setLatLngs([]);
-  stepCount = 0;
 
   // Niveau du point s'il en porte un, sinon le niveau actif (le point cliqué est visible).
   // ⚠️ Posé AVANT l'ancre : _pushTimelinePoint lit trackerLevel, l'ancre porte le niveau d'ARRIVÉE (replay, CSV).
@@ -1344,6 +1413,17 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
     }
     console.log("[Tracking] Recalé sur point au niveau :", trackerLevel);
   }
+
+  let ajuste = null;
+  if (opts && opts.dansGalerie) {
+    try { ajuste = _positionDansGalerie(x, y, trackerLevel); } catch(e) { ajuste = null; }
+  }
+  position.x = ajuste ? ajuste.x : x;
+  position.y = ajuste ? ajuste.y : y;
+  _marquerPositionConfirmee();
+  _navSegIdx = -1;
+  if (polyline) polyline.setLatLngs([]);
+  stepCount = 0;
   const _ancre = _pushTimelinePoint(
     "recalage",
     (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
@@ -1355,11 +1435,11 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (window.modeRecalage) window.modeRecalage = false;
   if (window.map) {
     try {
-      const latlng = convertCoord(x, y);
+      const latlng = convertCoord(position.x, position.y);
       window.map.setView(latlng, window.map.getZoom(), { animate: true });
     } catch(e) {}
   }
-  console.log("[Tracking] Recalé sur point :", x, y);
+  console.log("[Tracking] Recalé sur point :", x, y, ajuste ? "→ galerie : " + ajuste.x + ", " + ajuste.y : "");
   // Vibration discrète de confirmation (sans effet si pref OFF ou iOS).
   if (window.kta_vibrate) window.kta_vibrate.light();
   // Replanification + validation d'étape (coordonnées exactes d'un point).
