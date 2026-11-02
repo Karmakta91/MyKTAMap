@@ -10,8 +10,8 @@
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
-//   placerSurTracker(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on, _ctxGreffe) } ; code « six
-//   vers le bas » : kta:vue3dCode ;
+//   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
+//   _ctxGreffe) } ; code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus,
 //   commandes ("joystick" | "pave" : sinon joystick au téléphone, pavé au PC ou option ⚙️, _commandesVoulues) }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
@@ -26,7 +26,8 @@
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
 // ne suit aucun filtre et se redessine à `kta:itineraireChange` (road.js). Guidage : bandeau et chevrons
 // (_lireGuidage) ; toucher un POI ouvre sa fiche de la carte (_ouvrirFiche, « Y aller » : origineItineraire). En
-// libre, un tracker recalé ou choisi comme départ depuis la vue y amène la place (placerSurTracker).
+// libre, un tracker choisi comme départ depuis la vue y amène la place (placerSurTracker) ; un tracker recalé (« 📍 Je
+// suis ici ») ne la bouge pas (trackerRecale).
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
@@ -3057,10 +3058,21 @@
     return { mode: _e.mode, x: _e.pos.x, y: _e.pos.y, niveau: _e.niveau, cap: _e.cap };
   }
 
-  // Le tracker vient d'être recalé ou choisi comme départ DEPUIS la vue (« 📍 Je suis ici » d'une fiche, « D'où
-  // pars-tu ? » → « Ici » ou « Ma dernière position ») : en mode libre, la place vient à la position RÉELLE du tracker
-  // (ajustée dans la galerie s'il l'a été) et à son niveau, cap gardé. Appelants : tracking.js > _notifierRecalage
-  // (chaque recalage) et interfaceItineraire.js > _demanderDepart. Vue fermée ou en suivi (elle suit déjà) : rien.
+  // Le tracker vient d'être recalé pendant la vue (tracking.js > _notifierRecalage : « 📍 Je suis ici » d'une fiche,
+  // « Ici » de « D'où pars-tu ? »). ⚠️ contrat (décision produit) : en libre, la place NE bouge PAS — la position
+  // ajustée du tracker (tracking.js > _positionDansGalerie) n'est pas la galerie dessinée et tombait souvent hors
+  // d'elle ; seule la question « Je suis ici ? » de la fermeture est retirée tant qu'on n'avance pas (on vient de
+  // dire où l'on est). En suivi, la vue suit le tracker comme toujours ; fermée, rien. → true en libre.
+  function trackerRecale() {
+    const e = _e;
+    if (!e || e.mode !== "libre") return false;
+    e.aBouge = false;
+    return true;
+  }
+
+  // Le tracker est choisi comme départ DEPUIS la vue (« D'où pars-tu ? » → « Ma dernière position ») : en mode libre,
+  // la place vient à la position RÉELLE du tracker et à son niveau, cap gardé. Appelant :
+  // interfaceItineraire.js > _demanderDepart. Vue fermée ou en suivi (elle suit déjà) : rien.
   // ⚠️ contrat : rien n'est recalé ici (lecture seule du tracker) ; la place est celle du tracker au centimètre et la
   // vue n'a plus « bougé » : la fermeture ne pose pas « Je suis ici ? » tant qu'on n'avance pas. → true si posée.
   function placerSurTracker() {
@@ -4577,7 +4589,8 @@
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
-    origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, charge: function () { return !!THREE; },
+    origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
+    charge: function () { return !!THREE; },
     greffer: greffer,
     // Passages avec ou sans geste (fondu, descente) : false = bascule immédiate (mesures, checkup).
     gesteAnime: function (oui) { if (oui !== undefined) _gesteAnime = oui !== false; return _gesteAnime; }

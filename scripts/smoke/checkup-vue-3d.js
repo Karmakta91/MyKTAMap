@@ -2139,10 +2139,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(Math.hypot(ya2.pos.x - BB.x, ya2.pos.y - BB.y) < 0.01 && (hautN ? ya2.niveau === 1 : true) && ya2.mode === "libre",
         "« Ici » : la 3D ne bouge pas (elle y est déjà)", ya2);
 
-      // ── 10b. Depuis la 3D en libre, choisir ou fixer la position du tracker amène la 3D dessus ─────────────
-      // (retour terrain : « Y aller » → « Ma dernière position » laissait la 3D où elle était.) Fermer ensuite ne
-      // demande pas « Je suis ici ? » : on est au tracker. Même règle pour « Je suis ici » d'une fiche et « Me
-      // repositionner » (picker sur la carte, la 3D se rouvrant au point et au niveau choisis).
+      // ── 10b. Depuis la 3D en libre, choisir la position du tracker amène la 3D dessus ; la recaler, non ────────
+      // (retour terrain : « Y aller » → « Ma dernière position » laissait la 3D où elle était ; « Je suis ici » d'une
+      // fiche téléportait la 3D à la position ajustée du tracker, souvent hors de la galerie.) Fermer ensuite ne
+      // demande pas « Je suis ici ? ». « Me repositionner » : picker sur la carte, la 3D se rouvre au point choisi.
       const dist = function (a, b) { return (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity; };
       // Ferme la vue en guettant « Je suis ici ? » : une question laissée ouverte bloquerait le harnais (Non).
       const fermerSansQuestion = function () {
@@ -2163,9 +2163,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
           });
         });
       };
-      // a. « Ma dernière position » : tracker (arrêté) recalé au T du niveau 0 — depuis la 3D en libre, la place y
-      // vient aussitôt (règle du recalage) — puis 3D emmenée à 10 m, au niveau 1 par le POI jonction si le plan en a.
+      // a. « Ma dernière position » : tracker (arrêté) recalé au T du niveau 0 — depuis la 3D en libre, la place ne
+      // bouge pas (règle du recalage) — puis 3D emmenée à 10 m, au niveau 1 par le POI jonction si le plan en a.
       const TR = pt(0, -10, 0);
+      const pos0 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { x: e.pos.x, y: e.pos.y }; });
       await page.evaluate(function (a) {
         window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
         // Les itinéraires de cette partie changent de niveau : le POI jonction reçoit aussi son raccord du niveau 0
@@ -2181,8 +2182,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const e = window.KtaVue3D.etat();
         return { pos: e.pos, niveau: e.niveau, mode: e.mode, bouge: e.aBouge, tr: window.getTrackingPosition() };
       });
-      verifier(dist(rc1.pos, TR) < 0.01 && dist(rc1.tr, TR) < 0.01 && (hautN ? rc1.niveau === 0 : true) &&
-        rc1.mode === "libre" && !rc1.bouge, "recalage du tracker pendant la 3D libre : la place vient dessus, à son niveau", rc1);
+      verifier(dist(rc1.pos, pos0) < 0.01 && dist(rc1.tr, TR) < 0.01 && rc1.mode === "libre" && !rc1.bouge,
+        "recalage du tracker pendant la 3D libre : tracker recalé, la place 3D ne bouge pas", { rc1: rc1, pos0: pos0 });
       const LOIN = hautN ? pt(0, -2, -6, 90) : pt(0, 0, 0, 90);
       await page.evaluate(function (a) {
         const K = window.KtaVue3D;
@@ -2220,7 +2221,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(md.wp0 && dist(md.wp0, TR) < 0.5 && (hautN ? md.wp0.level === 0 : true) && dist(md.tr, TR) < 0.01 &&
         (hautN ? md.trN === 0 : true), "l'itinéraire part du tracker, tracker non recalé", md);
       // b. « 📍 Je suis ici » d'une fiche ouverte en 3D, tracker ACTIF, libre à 10 m du POI : le tracker est mis dans
-      // la galerie (0,6 m sous le POI), la 3D vient à cette position ajustée ; fermer ne pose pas « Je suis ici ? ».
+      // la galerie (0,6 m sous le POI), la 3D ne bouge pas ; fermer ne pose pas « Je suis ici ? ». Puis, vue fermée,
+      // le même recalage pose le tracker au même point (comportement de la carte inchangé).
       const SALLE = pt(0, 7, 0.6);
       await page.evaluate(function (a) {
         window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
@@ -2241,11 +2243,33 @@ async function mesuresGalerie(page, nom, semisDonne) {
       });
       verifier(ici0 === 1 && ji.actif && ji.mode === "libre" && dist(ji.tr, SALLE) > 0.3 * G.sc && dist(ji.tr, SALLE) < 1 * G.sc,
         "« Je suis ici » sur le POI : tracker mis dans la galerie (position ajustée)", ji);
-      verifier(dist(ji.pos, ji.tr) < 0.01 && (hautN ? ji.niveau === 0 : true) && !ji.fiche && !ji.bouge,
-        "la 3D est à la position ajustée du tracker, au niveau du POI, fiche refermée", ji);
+      verifier(dist(ji.pos, pt(0, -3, 0)) < 0.01 && dist(ji.pos, ji.tr) > 1 && !ji.fiche && !ji.bouge,
+        "la 3D ne bouge pas (pas de téléportation à la position ajustée), fiche refermée", ji);
       const fq1 = await fermerSansQuestion();
       verifier(!fq1.question && fq1.recale === false && fq1.ouvert === false,
-        "fermer juste après : pas de « Je suis ici ? » (on est au tracker)", fq1);
+        "fermer juste après : pas de « Je suis ici ? » (on vient de dire où l'on est)", fq1);
+      const ferme = await page.evaluate(function (a) {
+        window.recalerTrackerSurPoint(a.x, a.y, 0, { dansGalerie: true });
+        return window.getTrackingPosition();
+      }, SALLE);
+      verifier(dist(ferme, ji.tr) < 0.01, "vue fermée : « Je suis ici » pose le tracker au même point ajusté", ferme);
+      // Suivi (constat, pas de règle) : la vue suit le tracker, donc saute au point recalé.
+      const suivi = await page.evaluate(function (a) {
+        const K = window.KtaVue3D;
+        return K.ouvrir({}).then(function () {
+          K.suivre();
+          const avant = { x: K.etat().pos.x, y: K.etat().pos.y, mode: K.etat().mode };
+          window.recalerTrackerSurPoint(a.ici.x, a.ici.y, 0, { dansGalerie: true });
+          return new Promise(function (ok) { setTimeout(ok, 300); }).then(function () {
+            const e = K.etat(), r = { avant: avant, apres: { x: e.pos.x, y: e.pos.y, mode: e.mode },
+              tr: window.getTrackingPosition() };
+            return K.fermer().then(function () { return r; });
+          });
+        });
+      }, { ici: pt(0, -10, 0.6) });
+      console.log("  ℹ️ suivi : « Je suis ici » pendant la 3D → place " +
+        (dist(suivi.apres, suivi.tr) < 0.01 ? "posée sur le tracker recalé (la vue le suit)" : "inchangée") +
+        " " + JSON.stringify(suivi));
       // c. « Me repositionner » : la 3D se ferme pour le picker « Où es-tu ? » ; une fois le point choisi (niveau
       // demandé si un autre niveau passe à moins de 10 m : on prend le 1), le tracker est recalé là et la 3D se
       // ROUVRE en libre, au point et au niveau choisis, cap gardé ; l'itinéraire en part ; fermer : pas de question.

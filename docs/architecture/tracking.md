@@ -1585,13 +1585,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `itineraireYAller`) : suivi → du tracker ; libre, tracker actif → de la position 3D, niveau compris, tracker non
   recalé ; tracker arrêté → « D'où pars-tu ? » avec « Ici » en premier (§ Position confirmée). Jamais de la position
   d'avant l'ouverture de la vue.
-- **La 3D en libre suit un tracker fixé ou choisi depuis elle** (`KtaVue3D.placerSurTracker()`, décision produit) : la
-  place vient à la position **réelle** du tracker (ajustée dans la galerie s'il l'a été) et à son niveau
-  (`niveauLibre`, comme après un passage 🪜), cap gardé, `aBouge` et `libreBouge` remis à faux (plus de pseudo « 3D »
-  pour l'équipe, pas de « Je suis ici ? » à la fermeture tant qu'on n'avance pas). Appelants : `tracking.js >
-  _notifierRecalage` (chaque recalage : « 📍 Je suis ici » d'une fiche ouverte en 3D, « Ici » de « D'où pars-tu ? » —
-  sans effet visible, on y est déjà) et `interfaceItineraire.js > _demanderDepart` pour « Ma dernière position »
-  (aucun recalage, donc pas de hook). « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
+- **La 3D en libre suit un tracker choisi comme départ depuis elle** (`KtaVue3D.placerSurTracker()`, décision
+  produit) : « Ma dernière position » de `interfaceItineraire.js > _demanderDepart` (aucun recalage, donc pas de
+  hook) ; la place vient à la position **réelle** du tracker et à son niveau (`niveauLibre`, comme après un passage
+  🪜), cap gardé, `aBouge` et `libreBouge` remis à faux (plus de pseudo « 3D » pour l'équipe, pas de « Je suis ici ? »
+  à la fermeture tant qu'on n'avance pas).
+- **Un tracker recalé pendant la 3D ne la déplace pas** (`KtaVue3D.trackerRecale()`, appelé par `tracking.js >
+  _notifierRecalage` ; décision produit, retour terrain) : « 📍 Je suis ici » d'une fiche ouverte en 3D recale le
+  tracker comme sur la carte (position ajustée par `_positionDansGalerie`), mais en libre la place 3D reste ; seul
+  `aBouge` est remis à faux (pas de « Je suis ici ? » à la fermeture). 🩸 La position ajustée n'est pas la galerie
+  dessinée : projection sur les seuls types principal / secondaire / chemin à moins de `smartNavRadiusM` (6 m),
+  alors que la 3D fait des tubes des types perso et montre contre la paroi un POI jusqu'à 10 m de l'axe
+  (`POI_GALERIE`) ; au-delà de 6 m le tracker reste sur le POI, dans la roche. En suivi, la vue suit le tracker et
+  saute donc au point recalé (comportement inchangé). « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
