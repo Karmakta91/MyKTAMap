@@ -1324,7 +1324,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   ni dessinées ni bloquantes. Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
   à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
   il donne sur la galerie, inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
-  contour coupe l'axe (`_hachurer`), effondrement et perso au sol. **POI** à moins de 3 m de l'axe d'un tracé, ramenés
+  contour coupe l'axe (`_hachurer`), effondrement et perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
   profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
 - **Passages de niveau 🪜** (mode libre seulement ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI

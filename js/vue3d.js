@@ -70,7 +70,7 @@
   const MOELLONS_MOTIF = { l: 4, h: 4 };   // blocs par motif (1,6 × 1 m), répété en mètres sur la paroi
   const MOELLON_PX_M = 160;                // px du motif par mètre de paroi
   const LISERE = 0.15;              // m
-  const POI_GALERIE = 3;            // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie
+  const POI_GALERIE = 10;           // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises)
   const RECUL_PAROI = 0.08;         // m : POI hors du tube ramené contre la paroi, devant elle
   const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise

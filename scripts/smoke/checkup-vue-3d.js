@@ -15,7 +15,7 @@
 // géométrie propre au checkup ; inclinaison de la vue plongeante ; rose des vents (nord calibré ou non) ; bascule
 // suivi / libre avec un cap d'appareil simulé, 🧭 grisé tracker arrêté ; POI au centre d'un pilier visible depuis
 // la galerie, collé à la face vue. Mode galerie sur des tracés fictifs (T, X, coudes droit et aigu, cul-de-sac, presque
-// parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 m,
+// parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 / 25 m,
 // interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -1307,6 +1307,7 @@ async function mesuresGalerie(page) {
         window.setEditorPoints([
           Object.assign({ id: "POI 2 m v3d", level: 0, tags: ["danger"] }, P(200, 5, 2)),
           Object.assign({ id: "POI 5 m v3d", level: 0, tags: ["danger"] }, P(200, 5, 5)),
+          Object.assign({ id: "POI 25 m v3d", level: 0, tags: ["danger"] }, P(200, 5, 25)),
           { id: "POI jonction v3d", x: pj.x, y: pj.y, level: 0, tags: ["jes"], niveaux: [0, 1],
             accroches: [{ level: 1, x: acc.x, y: acc.y }] }
         ]);
@@ -1442,7 +1443,7 @@ async function mesuresGalerie(page) {
       verifier(coll3.remblais > 5.3 && coll3.remblais < 5.65,
         "galerie : l'eau ne bouche pas, le remblais découpé arrête (" + coll3.remblais + " m, remblais à 6 m)", coll3);
 
-      // Zones coupées au tube, rideau en travers ; POI à 2 m ramené dans le tube, à 5 m masqué.
+      // Zones coupées au tube, rideau en travers ; POI à 2 m et 5 m ramenés dans le tube, à 25 m masqué.
       const zp = await page.evaluate(function (a) {
         return window.KtaVue3D.ouvrir({ depart: a.dep }).then(function () {
           const e = window.KtaVue3D.etat();
@@ -1468,9 +1469,11 @@ async function mesuresGalerie(page) {
       verifier(zp.rideaux.length === 2 && zp.rideaux.indexOf(10) >= 0 && zp.rideaux.indexOf(11) >= 0 &&
         dans(zp.rideau, 10, 11), "inaccessible : un rideau en travers du tube à chaque bord qui coupe l'axe", zp.rideaux);
       const p2 = zp.poi.filter(function (q) { return q.nom === "POI 2 m v3d"; })[0];
+      const p5 = zp.poi.filter(function (q) { return q.nom === "POI 5 m v3d"; })[0];
       verifier(!!p2 && p2.visible && Math.abs(p2.z - 1.17) < 0.02 && p2.depthTest === false &&
-        !zp.poi.some(function (q) { return q.nom === "POI 5 m v3d"; }) && zp.masques >= 1,
-        "POI à 2 m de l'axe : visible, ramené contre la paroi ; POI à 5 m : masqué", zp.poi);
+        !!p5 && p5.visible && Math.abs(p5.z - 1.17) < 0.02 &&
+        !zp.poi.some(function (q) { return q.nom === "POI 25 m v3d"; }) && zp.masques >= 1,
+        "POI à 2 et 5 m de l'axe : visibles, ramenés contre la paroi ; POI à 25 m : masqué", zp.poi);
       await capture(page, "galerie-zones");
 
       // Hauteur ⛏️ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.

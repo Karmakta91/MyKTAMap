@@ -168,7 +168,7 @@ dont c'est le même chiffre).
     grise, s'en détache), liseré au sol de 15 cm à la couleur de la légende.
   - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais à 60 %, faces seulement côté galerie,
     bloquant ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le contour coupe l'axe ;
-    effondrement et perso au sol. **POI** à moins de 3 m de l'axe, ramenés contre la paroi, sinon masqués.
+    effondrement et perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.
   - **Collision** : `KtaGalerie.segmentsBloques` (même forme que la règle des structures) : rester dans l'emprise et
     hors d'un remblais ; même corps de 0,8 m balayé.
 - **Lumière** : projecteur (cône de 35°, pénombre 0,55, intensité 24, décroissance 1,2, portée = distance de vue)
