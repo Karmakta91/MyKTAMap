@@ -1492,6 +1492,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
+- **Textures des structures** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif par défaut) :
+  piliers et fronts en pierre de taille de carrière, murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type
+  perso `cust-…` résolu par le canon prend la pierre (son entrée de légende n'a pas de type de base, seulement une
+  géométrie : ligne = front, polygone = pilier), un type inconnu garde sa couleur. Appareil et normal map dessinés
+  dans un canvas (`_appareil`, `PIERRE` / `PARPAING` : 256 px, motif de 2 m et 1 m), faits à la première structure
+  texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée. Deux matériaux de plus,
+  structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
+  mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
+  depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
+  scintillement au loin). Coupé : lots et matériaux d'origine, couleurs de la légende exactes. Basculer refait les
+  tuiles sur place (`_refaireTuiles`), sans toucher la scène ni la greffe. Paroi des tubes du mixte : moellons.
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
   distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un

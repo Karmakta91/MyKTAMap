@@ -1177,6 +1177,20 @@ function setVue3DGuidage(oui) {
 window.getVue3DGuidage = getVue3DGuidage;
 window.setVue3DGuidage = setVue3DGuidage;
 
+// ── Textures des structures dans la vue 3D (pierre de taille, parpaing) : actives ou non, réglage de CET appareil ──
+// localStorage["myktamap_v3d_textures_v1"] = "0" (couleurs de la légende) | "1" ; absente → textures. Réglé dans la
+// tuile ⚙️ de la vue (vue3d.js > _basculerTextures). ⚠️ contrat : coupé, la vue rend exactement les couleurs de la
+// légende (couleurs choisies et types perso compris).
+const V3D_TEXTURES_CLE = "myktamap_v3d_textures_v1";
+function getVue3DTextures() {
+  try { return localStorage.getItem(V3D_TEXTURES_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DTextures(oui) {
+  try { localStorage.setItem(V3D_TEXTURES_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DTextures = getVue3DTextures;
+window.setVue3DTextures = setVue3DTextures;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,

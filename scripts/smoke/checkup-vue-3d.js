@@ -24,6 +24,8 @@
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
 // Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
+// Interrupteur 🧱 Textures (§ 24) : pierre et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
+// couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
@@ -732,7 +734,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.boussoleMontrer", "vue3d.guidageMontrer"].map(function (k) {
+            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
               t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
@@ -3948,6 +3950,152 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "guidage coupé : un guidage d'urgence s'affiche quand même (bandeau et chevrons)", GU.urgence);
       verifier(!GU.rouverte.bandeau && GU.rouverte.chevrons === 0 && GU.rouverte.ruban > 0 && !GU.rouverte.montre &&
         GU.rouverte.presse === "false", "réglage retenu sur l'appareil : rouverte, guidage toujours coupé", GU.rouverte);
+
+      // ── 24. Interrupteur 🧱 Textures : pierre et parpaing à l'échelle réelle, couleurs de la légende une fois coupé ──
+      const TX = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const acc = window.ktaEstAccessible, LC = window.LegendCustomization, trouver = LC.findCustomEntry;
+        window.ktaEstAccessible = function () { return true; };
+        // Type perso fictif (polygone, couleur choisie) : sa base est la géométrie de son entrée de légende.
+        LC.findCustomEntry = function (id) {
+          return id === "cust-v3d-tex" ? { id: id, category: "structures", geometry: "polygon", fillColor: "#3c9be0" }
+            : trouver.apply(LC, arguments);
+        };
+        try { localStorage.removeItem("myktamap_v3d_textures_v1"); } catch (err) { /* lecture seule */ }
+        const carre = function (cx, cz, r) { return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)]; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        window.setRoads([{ uid: "rd_tx", type: "principal", level: 0, points: [P(-40, 0), P(-8, 0)] }]);
+        window.setStructures([
+          { uid: "st_tx_p", type: "pilier-1", level: 0, points: carre(4, -3, 1) },
+          { uid: "st_tx_f", type: "front-2", level: 0, points: [P(10, -12), P(10, 12)] },
+          { uid: "st_tx_m2", type: "mur", level: 0, points: rect(0, 6, 2, 6.4) },
+          { uid: "st_tx_m40", type: "mur", level: 0, points: rect(-20, 14, 20, 14.4) },
+          { uid: "st_tx_ml", type: "mur-ligne", level: 0, points: [P(-6, -8), P(6, -10)] },
+          { uid: "st_tx_c", type: "cust-v3d-tex", level: 0, points: carre(4, 3, 1) },
+          { uid: "st_tx_x", type: "type-inconnu-v3d", level: 0, points: carre(6, 9, 0.5) }
+        ]);
+        window.KtaGalerie.invalider();
+        const d = P(-6, 0), r = {};
+        const lire = function () {
+          const t = K.textures(), e = K.etat();
+          return { t: t, repere: e.reglages.repere, murDecale: e.murDecale, yMax: e.yMax,
+            parois: !!e.boites.parois, rendu: e.rendu, greffe: e.greffe };
+        };
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+        await pause(100);
+        r.defaut = lire();
+        r.defaut.pref = window.getVue3DTextures();
+        // Une greffe posée ne doit rien sentir de la bascule (scène et groupe gardés).
+        const j = [];
+        K.greffer({ nom: "tex", scene: function (ctx, raison) {
+          j.push("scene:" + raison);
+          ctx.groupe.add(new ctx.THREE.Object3D());
+        }, demonter: function (ctx, raison) { j.push("demonter:" + raison); } });
+        await pause(50);
+        q('[data-v3d="reglages"]').click();
+        q('[data-v3d="textures"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 6 }));
+        await pause(100);
+        r.coupe = lire();
+        r.coupe.pref = window.getVue3DTextures();
+        r.coupe.tuile = K.etat().reglages.ouvert;
+        r.coupe.dansTuile = !!q('[data-v3d="textures"]').closest("#kta-v3d-reglages");
+        r.coupe.journal = j.slice();
+        K.basculerTextures();
+        await pause(50);
+        r.remis = lire();
+        r.remis.journal = j.slice();
+        K.basculerTextures();
+        await K.fermer();
+        // Référence : vue ouverte d'emblée avec les textures coupées = le rendu d'origine.
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+        await pause(100);
+        r.rouverte = lire();
+        await K.fermer();
+        // Structures seules, puis galerie (aucune structure : aucun matériau de texture).
+        window.setVue3DTextures(true);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+        const renduAvant = K.etat().rendu;
+        K.basculerRendu("structures");
+        await pause(50);
+        r.structures = lire();
+        K.basculerRendu("galerie");
+        await pause(50);
+        r.galerie = lire();
+        K.basculerRendu(renduAvant);
+        await K.fermer();
+        r.libere = K.textures() === null;
+        LC.findCustomEntry = trouver;
+        window.ktaEstAccessible = acc;
+        window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      // Couleur d'un sommet (octets linéaires de three.js) → hex sRGB, pour la comparer à la légende.
+      const versSrgb = function (hex) {
+        return [1, 3, 5].map(function (i) {
+          const c = parseInt(hex.substr(i, 2), 16) / 255;
+          return Math.round((c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255);
+        });
+      };
+      const contient = function (liste, hex) {
+        const v = [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); });
+        return (liste || []).some(function (h) {
+          const w = versSrgb(h);
+          return Math.abs(w[0] - v[0]) <= 4 && Math.abs(w[1] - v[1]) <= 4 && Math.abs(w[2] - v[2]) <= 4;
+        });
+      };
+      const D0 = TX.defaut.t, C0 = TX.coupe.t, R0 = TX.rouverte.t;
+      verifier(D0.actives && D0.bouton === "true" && TX.defaut.pref === true &&
+        D0.maillages.pierre >= 1 && D0.maillages.parpaing >= 1 && !D0.maillages.murs,
+        "textures actives par défaut : pierre (piliers, fronts, type perso) et parpaing (murs)",
+        { actives: D0.actives, bouton: D0.bouton, maillages: D0.maillages });
+      const mp = D0.materiaux.pierre || {}, mg = D0.materiaux.parpaing || {};
+      verifier(mp.carte === "256x256" && mp.normale && mp.relief === 256 && mp.mipmaps && mp.anisotropie >= 1 &&
+        mp.anisotropie <= 4 && mp.couleursSommets === false && mp.recule === false && mg.carte === "256x256" &&
+        mg.normale && mg.mipmaps && mg.recule === true && TX.defaut.murDecale,
+        "matériaux : couleur et normal map de 256 px (puissance de 2), mipmaps, anisotropie ≤ 4, jamais teintés ; " +
+        "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
+      verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
+        TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
+        "type perso en pierre (sa couleur n'est plus dessinée), type inconnu du canon gardé en couleur unie ; " +
+        "mur toujours plus bas que pilier et front", { couleurs: D0.couleurs, yMax: TX.defaut.yMax });
+      // Échelle : chaque arête horizontale ou verticale d'une face texturée, mur de 2 m comme mur de 40 m.
+      const echelle = function (filtre) {
+        const v = D0.aretes.filter(filtre).map(function (x) { return x.uvParM; });
+        return v.length ? { n: v.length, min: Math.min.apply(null, v), max: Math.max.apply(null, v) } : { n: 0 };
+      };
+      const zM = function (z) { return function (x) { return x.mat === "parpaing" && Math.abs(x.z - (MX.oz + z)) < 0.5; }; };
+      const ech = { mur2: echelle(zM(6.2)), mur40: echelle(zM(14.2)),
+        verticalesMur: echelle(function (x) { return x.sens === "v" && x.mat === "parpaing"; }),
+        pierre: echelle(function (x) { return x.mat === "pierre"; }), attendu: D0.uvParMetre };
+      const juste = function (s, v) { return s.n > 0 && Math.abs(s.min - v) < 2e-3 && Math.abs(s.max - v) < 2e-3; };
+      const ap = ech.attendu.parpaing, ar = ech.attendu.pierre;
+      verifier(juste(ech.mur2, ap) && juste(ech.mur40, ap) && juste(ech.verticalesMur, ap) && juste(ech.pierre, ar),
+        "taille réelle : parpaing " + ap + " et pierre " + ar + " de texture par mètre, sur le mur de 2 m comme sur " +
+        "celui de 40 m, en hauteur et sur le dessus (aucun étirement)", ech);
+      verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && TX.coupe.repere && TX.coupe.tuile &&
+        TX.coupe.dansTuile && !C0.maillages.pierre && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
+        C0.maillages.murs >= 1 && C0.aretes.length === 0,
+        "🧱 coupé dans la tuile ⚙️ : matériaux d'origine, plus aucune texture ; repère sur ⚙️ ; tuile ouverte",
+        { actives: C0.actives, maillages: C0.maillages, repere: TX.coupe.repere });
+      verifier(contient(C0.couleurs.opaque, "#3c9be0") && contient(C0.couleurs.opaque, "#f4c542") &&
+        contient(C0.couleurs.opaque, "#ff9933") && contient(C0.couleurs.murs, "#1e3a8a") &&
+        JSON.stringify(C0.couleurs) === JSON.stringify(TX.rouverte.t.couleurs) &&
+        JSON.stringify(C0.maillages) === JSON.stringify(R0.maillages),
+        "coupé : couleurs de la légende (type perso compris), identiques à une vue ouverte sans textures",
+        { coupe: C0.couleurs, rouverte: R0.couleurs });
+      verifier(TX.coupe.greffe && TX.coupe.greffe.dansScene && TX.coupe.greffe.objets === 1 &&
+        TX.coupe.journal.length === 1 && TX.coupe.journal[0] === "scene:greffe" && TX.remis.greffe &&
+        TX.remis.greffe.dansScene && TX.remis.journal.length === 1,
+        "bascule avec une greffe posée : groupe gardé dans la scène, ni demonter ni scene refaite", TX.coupe.journal);
+      verifier(TX.remis.t.actives && TX.remis.t.maillages.pierre >= 1 && !R0.actives && R0.bouton === "false" &&
+        TX.rouverte.repere, "réglage retenu sur l'appareil : rouverte, textures toujours coupées",
+        { remis: TX.remis.t.actives, rouverte: R0.actives });
+      verifier(TX.defaut.rendu === "mixte" && TX.defaut.parois && TX.structures.t.maillages.pierre >= 1 &&
+        TX.structures.t.maillages.parpaing >= 1 && !TX.galerie.t.maillages.pierre && TX.galerie.parois && TX.libere,
+        "mixte (parois des tubes en moellons gardées), structures seules texturées ; galerie sans structures ; rien " +
+        "après la fermeture", { mixte: TX.defaut.parois, structures: TX.structures.t.maillages, galerie: TX.galerie.t.maillages });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;
