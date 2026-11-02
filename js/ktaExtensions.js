@@ -346,7 +346,7 @@
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut", "suppressionLot"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -617,6 +617,81 @@
     ligne.appendChild(bouton);
     return ligne;
   }
+  // ── « Quoi de neuf » dans la fenêtre 🚨 (prise « alertes », champ facultatif `nouveautes`) ──
+  // alertes.nouveautes: { compter() → number, lister() → Promise<[{ texte, bouton, ouvrir(), garderOuverte? }]> }.
+  // compteurNouveautes() : compter() (synchrone, entier borné 0..999 ; erreur ou forme inattendue → 0) en état ON ou
+  // DOWN (l'extension garde son dernier compte hors ligne), 0 sinon — même nombre que la pastille de l'icône de l'app.
+  // blocNouveautes(fermer) : null si le compteur vaut 0 ; sinon un bloc « 🆕 Quoi de neuf » rendu tout de suite, dont
+  // les lignes (12 au plus ; texte 120 car., bouton 30 car., posés en texte) arrivent de lister() (attente bornée,
+  // erreur avalée) — liste vide, erreur ou délai : le bloc se retire. Toucher un bouton ferme la fenêtre (`fermer`,
+  // donné par l'app) puis appelle `ouvrir()` (erreur avalée) ; une ligne `garderOuverte: true` ne ferme PAS la
+  // fenêtre : bouton inactif jusqu'à ce que `ouvrir()` (promesse ou valeur) se termine, puis le bloc relit lister() et
+  // se redessine (retiré si plus rien, ou compteur à 0). ⚠️ Information seulement : ce bloc n'ouvre jamais la
+  // fenêtre 🚨 de lui-même. Changement du compte annoncé par l'extension : `mktm:nouveautes-changees`.
+  function _priseNouveautes() {
+    const ext = _prise("alertes");
+    const n = ext && ext.alertes && ext.alertes.nouveautes;
+    return n && typeof n.compter === "function" && typeof n.lister === "function" ? n : null;
+  }
+  function compteurNouveautes() {
+    const p = _priseNouveautes();
+    if (!p || (_etat !== "on" && _etat !== "down")) return 0;
+    let n = 0;
+    try { n = p.compter(); } catch (e) { console.warn("[Extensions] alertes.nouveautes.compter :", e); return 0; }
+    return typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.min(999, Math.floor(n)) : 0;
+  }
+  function blocNouveautes(fermer) {
+    const p = _priseNouveautes();
+    if (!p || compteurNouveautes() <= 0) return null;
+    const el = function (tag, classe, texte) {
+      const e = document.createElement(tag);
+      e.className = classe;
+      if (texte) e.textContent = texte;
+      return e;
+    };
+    const bloc = el("div", "kta-alert-neuf");
+    bloc.appendChild(el("div", "kta-alert-neuf-titre", "🆕 " + _t("alerts.neuf.titre")));
+    const retirer = function () { try { bloc.remove(); } catch (e) { /* déjà retiré */ } };
+    let posees = [];   // lignes affichées, retirées à chaque relecture
+    // Lit lister() (attente bornée) et (re)dessine les lignes ; rien de valide → le bloc se retire.
+    const remplir = function () {
+      let delai;
+      return Promise.race([
+        Promise.resolve().then(function () { return p.lister(); }),
+        new Promise(function (ok) { delai = setTimeout(function () { ok(null); }, ALERTES_DELAI_MS); })
+      ]).then(function (l) {
+        clearTimeout(delai);
+        posees.forEach(function (x) { try { x.remove(); } catch (e) { /* déjà retirée */ } });
+        posees = [];
+        const lignes = (Array.isArray(l) ? l : []).slice(0, 12).filter(function (x) {
+          return x && typeof x === "object" && _texteCourt(x.texte, 120) && _texteCourt(x.bouton, 30) &&
+            typeof x.ouvrir === "function";
+        });
+        if (!lignes.length || compteurNouveautes() <= 0) { retirer(); return; }
+        lignes.forEach(function (x) { posees.push(bloc.appendChild(ligne(x))); });
+      }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.nouveautes.lister :", e); retirer(); });
+    };
+    const ligne = function (x) {
+      const l = el("div", "kta-alert-neuf-ligne");
+      const bouton = el("button", "kta-btn kta-btn-ghost kta-alert-neuf-btn", _texteCourt(x.bouton, 30));
+      bouton.type = "button";
+      const garder = x.garderOuverte === true;
+      bouton.addEventListener("click", function () {
+        if (bouton.disabled) return;
+        if (!garder) { try { if (typeof fermer === "function") fermer(); } catch (e) { /* fenêtre déjà fermée */ } }
+        let r;
+        try { r = x.ouvrir(); } catch (e) { console.warn("[Extensions] alertes.nouveautes.ouvrir a échoué :", e); r = null; }
+        const fin = Promise.resolve(r).catch(function (e) { console.warn("[Extensions] alertes.nouveautes :", e); });
+        // Fenêtre gardée : bouton inactif le temps de l'action, puis le bloc relit lister() et se redessine.
+        if (garder) { bouton.disabled = true; fin.then(function () { bouton.disabled = false; return remplir(); }); }
+      });
+      l.appendChild(el("span", "kta-alert-neuf-texte", _texteCourt(x.texte, 120)));
+      l.appendChild(bouton);
+      return l;
+    };
+    remplir();
+    return bloc;
+  }
   // Cible d'une notification touchée : paramètre `kta-notif` de son adresse (« genre:id:id », forme bornée, texte
   // opaque pour community ; l'extension qui l'a émise sait l'ouvrir). Toute autre forme → null.
   const _CIBLE_NOTIF_RE = /^[a-z]{3,20}(:[A-Za-z0-9_-]{1,80}){0,3}$/;
@@ -800,6 +875,48 @@
         return refus;
       }),
       new Promise(function (r) { delai = setTimeout(function () { r(refus); }, DELAI_EFFACEMENT_MS); })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+
+  // Suppression en lot (sélection multiple 🎯) sur un plan d'extension : `suppressionLot(idExt, objets)` est consultée
+  // AVANT toute suppression, `objets` = [{ famille, uid }] (uid null si l'objet n'en a pas ; l'auteur se retrouve par
+  // `auteurObjet(uid)`). Réponse (ou sa promesse) : null / true / { permis: true } = permis ; { permis: false,
+  // message? } = refusé, `message` (texte seul) affiché tel quel.
+  // → null (sans prise, plan local ou du site, ou permis rendu de façon synchrone : rien ne change) ou une promesse
+  // de { permis, message } (message : chaîne ≤ 300 ou null → l'appelant affiche son texte générique).
+  // 🔒 Erreur, rejet, forme inattendue ou réponse au-delà de DELAI_SUPPRESSION_LOT_MS = refusé sans message : rien
+  // n'est supprimé (le serveur refuserait peut-être, l'appareil divergerait sans le dire).
+  const DELAI_SUPPRESSION_LOT_MS = 8000;
+  function suppressionLot(registreId, objets) {
+    const ext = _prise("suppressionLot");
+    const id = _idExtension(registreId);
+    if (!ext || !id || typeof ext.suppressionLot !== "function") return null;
+    const liste = (Array.isArray(objets) ? objets : []).map(function (o) {
+      return { famille: o && typeof o.famille === "string" ? o.famille : null,
+        uid: o && typeof o.uid === "string" && o.uid ? o.uid : null };
+    });
+    const refus = { permis: false, message: null };
+    const forme = function (r) {
+      if (r === null || r === true) return { permis: true, message: null };
+      if (!r || typeof r !== "object" || Array.isArray(r) || typeof r.permis !== "boolean") return refus;
+      if (r.permis) return { permis: true, message: null };
+      const m = typeof r.message === "string" && r.message.trim() ? r.message.trim().slice(0, 300) : null;
+      return { permis: false, message: m };
+    };
+    let v;
+    try { v = ext.suppressionLot(id, liste); }
+    catch (e) { console.warn("[Extensions] « suppressionLot » a échoué → refusé :", e); return Promise.resolve(refus); }
+    if (!v || typeof v.then !== "function") {
+      const r = forme(v);
+      return r.permis ? null : Promise.resolve(r);
+    }
+    let delai;
+    return Promise.race([
+      Promise.resolve(v).then(forme, function (e) {
+        console.warn("[Extensions] « suppressionLot » rejetée → refusé :", e);
+        return refus;
+      }),
+      new Promise(function (r) { delai = setTimeout(function () { r(refus); }, DELAI_SUPPRESSION_LOT_MS); })
     ]).finally(function () { clearTimeout(delai); });
   }
 
@@ -1585,10 +1702,29 @@
       const e = typeof window.getTrackingPositionEtat === "function" ? window.getTrackingPositionEtat() : {};
       if (!e.suiviActif && !e.confirmee) return null;
       const p = window.getTrackingPosition();
-      if (!p || !isFinite(p.x) || !isFinite(p.y)) return null;
+      if (!p || !Number.isFinite(Number(p.x)) || !Number.isFinite(Number(p.y))) return null;
       const n = typeof window.getTrackerLevel === "function" ? window.getTrackerLevel() : null;
       return { x: p.x, y: p.y, niveau: Number.isInteger(n) ? n : null, suiviActif: !!e.suiviActif, ts: Date.now() };
     } catch (e) { return null; }
+  }
+  // Place de la vue 3D en mode libre (vue3d.js > _publierPosition) : `presence.vue3d(p)`, facultatif, reçoit
+  // { x, y, niveau, cap, source: "vue3d", ts } (coordonnées plan, cap en degrés depuis le haut du plan), ou null en
+  // repassant en suivi et à la fermeture. ⚠️ contrat : ce n'est PAS la position du tracker (jamais recalé) ; une
+  // extension qui la partage garde `source: "vue3d"` pour qu'on ne la prenne pas pour une position suivie.
+  // 🔒 Une place n'est remise que si presenceActive() (l'utilisateur partage déjà sa position) ; null toujours.
+  // → true si l'extension l'a reçue. Sans extension : rien.
+  function positionVue3D(p) {
+    const ext = _prise("presence");
+    const f = ext && ext.presence && typeof ext.presence.vue3d === "function" ? ext.presence.vue3d : null;
+    if (!f) return false;
+    let v = null;
+    if (p) {
+      if (!presenceActive() || !Number.isFinite(Number(p.x)) || !Number.isFinite(Number(p.y))) return false;
+      v = { x: Number(p.x), y: Number(p.y), niveau: Number.isInteger(p.niveau) ? p.niveau : null,
+        cap: Number.isFinite(Number(p.cap)) ? ((Number(p.cap) % 360) + 360) % 360 : null,
+        source: "vue3d", ts: Date.now() };
+    }
+    try { f(v); return true; } catch (e) { console.warn("[Extensions] presence.vue3d :", e); return false; }
   }
   function afficherPresences(liste) {
     try { return window.KtaPresences ? window.KtaPresences.afficher(liste) : 0; }
@@ -2365,6 +2501,8 @@
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
     actionAlertes: actionAlertes,
+    compteurNouveautes: compteurNouveautes,
+    blocNouveautes: blocNouveautes,
     ligneNotifications: ligneNotifications,
     notificationAuDemarrage: notificationAuDemarrage,
     profilStatsExtension: profilStatsExtension,
@@ -2389,6 +2527,7 @@
     presenceActive: presenceActive,
     basculerPresence: basculerPresence,
     positionTracker: positionTracker,
+    positionVue3D: positionVue3D,
     afficherPresences: afficherPresences,
     itinerairePublie: itinerairePublie,
     basculerItineraire: basculerItineraire,
@@ -2422,6 +2561,7 @@
     lectureSeule: lectureSeule,
     importPartage: importPartage,
     effacementPartage: effacementPartage,
+    suppressionLot: suppressionLot,
     avantReinitialisation: avantReinitialisation,
     CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
     recuADistance: recuADistance,

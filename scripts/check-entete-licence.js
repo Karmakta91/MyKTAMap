@@ -47,8 +47,9 @@ if (autoTest) {
 
 let fichiers;
 try {
-  fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "sw.js"],
-    { encoding: "utf8" }).split("\n").filter(Boolean);
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
+  fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "sw.js",
+    "addons/*.js"], { encoding: "utf8" }).split("\n").filter(Boolean);
 } catch (e) {
   console.error("❌ [check-entete-licence] git ls-files impossible : " + e.message);
   process.exit(1);

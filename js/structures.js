@@ -5,21 +5,27 @@
  */
 
 // structures.js — structures de session : piliers (1re / 2e masse) et murs en polygones remplis, fronts de
-// taille en polylignes épaisses ; types custom de la légende. Clone adapté de zones.js, stocké à part
-// (`structure.json`). Multi-niveau : champ `level` posé au tracé.
+// taille et murs en ligne en polylignes épaisses ; types custom de la légende. Clone adapté de zones.js,
+// stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
-//   isStructurePolylineType, majLargeurFronts, brancherLargeurFronts, ktaLargeur{FrontPourRatio,
-//   FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm.
+//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, majLargeurFronts, brancherLargeurFronts,
+//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm,
+//   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
-// 🩸 Le Pathfinder ignore les structures (ni arêtes ni obstacles, graphe sur les `roads` seulement) : un
-// relevé tout en structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé.
+// 🩸 Le Pathfinder ne fait aucune arête d'une structure (graphe sur les `roads` seulement) : un relevé tout en
+// structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé. Seul `mur-ligne` y
+// joue un rôle, d'obstacle (pathfinder.js > _collecterMursLigne) ; piliers, mur polygone et fronts, aucun.
 // Garde-fou : scripts/check-style-canon.js, scripts/check-api-surface.js, scripts/check-filets-donnees.js
 
-window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "front-1" | "front-2"
+window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "mur-ligne" | "front-1" | "front-2"
 
-// Fronts de taille = POLYLINES ouvertes (limites d'exploitation d'une couche) ; les autres = polygones fermés.
-const STRUCTURE_TYPES_POLYLINE = ["front-1", "front-2"];
+// Fronts de taille (limites d'exploitation d'une couche) et mur en ligne (mur levé en trait, cas d'un import
+// SIG) = POLYLINES ouvertes ; les autres = polygones fermés.
+const STRUCTURE_TYPES_POLYLINE = ["mur-ligne", "front-1", "front-2"];
+// Types intégrés, dans l'ordre des listes (légende, exports, filtres).
+const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"];
+window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
 function _isPolylineType(type) {
   if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;
   // Type custom : géométrie déclarée dans LegendCustomization.
@@ -56,7 +62,7 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 //   • Piliers / mur : contour NOIR systématique (ce qui distingue une structure d'une zone), remplissage plus
 //     saturé (du solide). Mur bleu foncé, pour ne pas le confondre avec l'icône eau.
 //   • Fronts : polylignes épaisses sans contour. front-1 jaune comme pilier-1, front-2 orange comme
-//     pilier-2 : sur le terrain, la cohérence couleur / masse prime.
+//     pilier-2 : sur le terrain, la cohérence couleur / masse prime. Mur en ligne : le bleu du mur.
 
 // ── Largeur des fronts : une largeur RÉELLE, pas un nombre de pixels ──────────────
 // 🩸 Des paliers fixes par zoom ignorent l'ÉCHELLE du plan : un front mesure 1 à 2 m, donc 2 px à 1,4 px/m ;
@@ -129,6 +135,12 @@ function majLargeurFronts() {
 
   const wFront = _largeurFrontPourZoom(z);
   const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+  // Contour d'une surface (pilier, mur) : le quart d'un front, jamais plus que son épaisseur d'origine, plancher
+  // 0,5 px. Un contour fixe de 3 px recouvre tout le pilier au dézoom ; trop fin, il disparaîtrait.
+  const bord = function (wOrig) {
+    const w0 = Number.isFinite(wOrig) ? wOrig : 3;
+    return Math.max(0.5, Math.min(w0, wFront / 4));
+  };
 
   // ⚠️ Les registres rangent aussi les polylignes sous la clé `polygon` (lue par _filtreNiveauSurPolygonData).
   const appliquer = function (arr, largeur) {
@@ -138,10 +150,13 @@ function majLargeurFronts() {
       const e = arr[i]; if (!e) continue;
       const lay = e.polygon || e.polyline || e.layer;
       if (!lay || !lay.options) continue;
-      // Les surfaces gardent leur contour : un pilier se lit par son remplissage.
-      if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) continue;
       if (e._wOrig === undefined) e._wOrig = lay.options.weight;
-      lay.options.weight = largeur;
+      // Une surface (pilier, mur) garde son remplissage ; seul son contour s'affine au dézoom.
+      if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) {
+        lay.options.weight = bord(e._wOrig);
+      } else {
+        lay.options.weight = largeur;
+      }
       n++;
     }
     return n;
@@ -154,7 +169,10 @@ function majLargeurFronts() {
   try {
     if (Array.isArray(structureLayers)) {
       structureLayers.forEach(function (l) {
-        if (l && l.options && l.options.fill !== true) l.options.weight = wFront;
+        if (!l || !l.options) return;
+        if (l.options.fill !== true) { l.options.weight = wFront; return; }
+        if (l._ktaWOrig === undefined) l._ktaWOrig = l.options.weight;
+        l.options.weight = bord(l._ktaWOrig);
       });
     }
   } catch (e) {}
@@ -183,8 +201,102 @@ window.brancherLargeurFronts = function () {
     window.map.on("zoomend", majLargeurFronts);
     window.map._ktaFrontZoomBound = true;
   }
+  // Mêmes points d'entrée (session et calques) : la règle des murs se branche ici, avant toute couche.
+  _brancherOrdreMurs();
   majLargeurFronts();
 };
+
+// ── Règle « mur sous pilier et front » (décision produit) ──────────────
+// Un mur (polygone `mur`, trait `mur-ligne`) se dessine SOUS les piliers et fronts de SON niveau, quelle que soit
+// son origine (session, calque) et l'ordre de chargement des calques. Rien d'autre ne bouge : un mur arrivé trop
+// tard descend juste sous le premier pilier ou front de son niveau, pas sous les zones ni les tracés.
+// ⚠️ Un type personnalisé n'a pas de rôle : sa légende ne dit pas qu'il est un mur, il garde sa place.
+// Écran : l'ordre du renderer canvas (unique, `map._renderer`) ; exports : la même fonction sur leur liste.
+const ROLE_STRUCTURE = {
+  "mur": "mur", "mur-ligne": "mur",
+  "pilier-1": "dessus", "pilier-2": "dessus", "front-1": "dessus", "front-2": "dessus"
+};
+
+// Liste de dessin (de l'arrière à l'avant) → liste où chaque mur venu APRÈS le premier pilier ou front de son
+// niveau passe juste avant lui, dans son ordre relatif. `structDe(item)` rend { type, level } ou null (objet qui
+// n'est pas une structure). `parNiveau` : défaut = plan multi-niveau ; hors multi-niveau, un seul groupe.
+// ⚠️ Rend la MÊME liste si rien ne bouge : les appelants testent l'identité pour éviter un redessin.
+function ktaMursSousPiliers(liste, structDe, parNiveau) {
+  if (!Array.isArray(liste) || liste.length < 2) return liste;
+  if (parNiveau === undefined) parNiveau = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const roles = new Array(liste.length);
+  const niveaux = new Array(liste.length);
+  const premier = new Map();   // niveau → index du premier pilier ou front
+  for (let i = 0; i < liste.length; i++) {
+    const s = structDe(liste[i]);
+    const role = s ? ROLE_STRUCTURE[s.type] : undefined;
+    if (!role) continue;
+    const niv = (parNiveau && Number.isInteger(s.level)) ? s.level : 0;
+    roles[i] = role; niveaux[i] = niv;
+    if (role === "dessus" && !premier.has(niv)) premier.set(niv, i);
+  }
+  const avant = new Map();     // index d'un premier pilier/front → murs à poser juste avant lui
+  for (let i = 0; i < liste.length; i++) {
+    if (roles[i] !== "mur" || !premier.has(niveaux[i])) continue;
+    const p = premier.get(niveaux[i]);
+    if (p > i) continue;
+    if (!avant.has(p)) avant.set(p, []);
+    avant.get(p).push(i);
+  }
+  if (avant.size === 0) return liste;
+  const deplaces = new Set();
+  avant.forEach(function (idx) { idx.forEach(function (i) { deplaces.add(i); }); });
+  const out = [];
+  for (let i = 0; i < liste.length; i++) {
+    if (avant.has(i)) avant.get(i).forEach(function (j) { out.push(liste[j]); });
+    if (!deplaces.has(i)) out.push(liste[i]);
+  }
+  return out;
+}
+window.ktaMursSousPiliers = ktaMursSousPiliers;
+
+// Applique la règle à l'ordre du renderer canvas de la carte. Chaque couche de structure porte
+// `options.ktaStructType` / `options.ktaStructNiveau` (posés à la création, AVANT l'ajout : `layeradd` les lit).
+// 🩸 L'ordre du canvas Leaflet est une liste chaînée (`_drawFirst` … `_drawLast`) ; réafficher un calque remet
+// ses couches au BOUT : l'écoute de `layeradd` rattrape aussi les bascules de calque, pas seulement le 1er rendu.
+function _ordonnerMursCarte() {
+  _ordreMursPrevu = false;
+  const r = window.map && window.map._renderer;
+  if (!r || !r._map || !r._drawFirst) return;
+  const ordres = [];
+  for (let o = r._drawFirst; o; o = o.next) ordres.push(o);
+  const tries = ktaMursSousPiliers(ordres, function (o) {
+    const op = o.layer && o.layer.options;
+    return (op && op.ktaStructType) ? { type: op.ktaStructType, level: op.ktaStructNiveau } : null;
+  });
+  if (tries === ordres) return;
+  for (let i = 0; i < tries.length; i++) {
+    tries[i].prev = i > 0 ? tries[i - 1] : null;
+    tries[i].next = i < tries.length - 1 ? tries[i + 1] : null;
+  }
+  r._drawFirst = tries[0];
+  r._drawLast = tries[tries.length - 1];
+  // Repeinture complète tout de suite : un redessin en attente ne couvrirait que les bornes des couches ajoutées.
+  if (r._redrawRequest) { L.Util.cancelAnimFrame(r._redrawRequest); r._redrawRequest = null; }
+  r._redrawBounds = null;
+  try { r._redraw(); } catch (e) { console.warn("[Structures] ordre des murs :", e); }
+}
+window.ktaOrdonnerMursCarte = _ordonnerMursCarte;
+
+// Une passe par lot d'ajouts : la micro-tâche passe après les ajouts synchrones et AVANT le prochain dessin.
+let _ordreMursPrevu = false;
+function _prevoirOrdreMurs(e) {
+  const op = e && e.layer && e.layer.options;
+  if (!op || !ROLE_STRUCTURE[op.ktaStructType] || _ordreMursPrevu) return;
+  _ordreMursPrevu = true;
+  Promise.resolve().then(_ordonnerMursCarte);
+}
+// Drapeau sur la MAP (recréée à chaque plan), comme `_ktaFrontZoomBound`.
+function _brancherOrdreMurs() {
+  if (!window.map || window.map._ktaOrdreMursBound) return;
+  window.map.on("layeradd", _prevoirOrdreMurs);
+  window.map._ktaOrdreMursBound = true;
+}
 
 const STRUCTURE_STYLE_PREVIEW = {
   weight:    3,
@@ -234,8 +346,7 @@ function initStructures() {
     const _typeKey = window.modeStructure;
     // Type custom : libellé saisi dans LegendCustomization.
     function _resolveTypeLabel(k) {
-      const _builtin = ["pilier-1", "pilier-2", "mur", "front-1", "front-2"];
-      if (_builtin.indexOf(k) >= 0) return window.I18n.t("struct.label." + k);
+      if (STRUCTURE_TYPES_BUILTIN.indexOf(k) >= 0) return window.I18n.t("struct.label." + k);
       if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
         const e = window.LegendCustomization.findCustomEntry(k);
         if (e) return e.label || k;
@@ -309,7 +420,7 @@ function initStructures() {
 // 🩸 Retaper la pastille ou changer de type ne DÉTRUIT jamais en silence la structure en cours : assez de
 // points (front ≥ 2, polygone ≥ 3) → validée et historisée ; sinon abandonnée avec toast + historique (⏪).
 function _labelTypeStruct(k) {
-  if (["pilier-1", "pilier-2", "mur", "front-1", "front-2"].indexOf(k) >= 0) {
+  if (STRUCTURE_TYPES_BUILTIN.indexOf(k) >= 0) {
     return window.I18n.t("struct.label." + k);
   }
   if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -394,10 +505,10 @@ function renderStructures() {
     structurePreviewLayer = null;
   }
 
-  // Ordre Z (décision produit), de l'arrière à l'avant : mur < pilier-2 < pilier-1 < front-2 < front-1.
-  // Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
+  // Ordre Z (décision produit), de l'arrière à l'avant : mur < mur-ligne < pilier-2 < pilier-1 < front-2 <
+  // front-1. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
   // d'exploitation est masqué. En multi-niveau, tri primaire par `level` croissant (comme les tracés).
-  const ordreType = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+  const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
   const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const structuresAffichage = [...structuresData].sort(function(a, b) {
     if (_multiLevelOnSort) {
@@ -489,9 +600,12 @@ function renderStructures() {
           opacity:   style.opacity,
           lineCap:   "round",
           lineJoin:  "round",
+          ktaStructType:   s.type,
+          ktaStructNiveau: s.level
         }).addTo(target);
       } else {
-        layer = L.polygon(latlngs, style).addTo(target);
+        layer = L.polygon(latlngs, Object.assign(style, { ktaStructType: s.type, ktaStructNiveau: s.level }))
+          .addTo(target);
       }
       structureLayers.push(layer);
       // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.
@@ -509,18 +623,16 @@ function renderStructures() {
         // Titre = libellé de l'utilisateur (custom : findCustomEntry ; built-in : getLabel, renommage compris),
         // jamais l'id brut `cust-…`.
         const _structEmojis = {
-          "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵",
+          "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
           "front-1":  "🟨", "front-2":  "🟧"
         };
         function _structPopupTitle(t) {
           if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
             if (String(t).startsWith("cust-")) {
               const e = window.LegendCustomization.findCustomEntry(t);
-              if (e) return "✨ " + e.label;
+              if (e) return e.label;
             }
-            if (_structEmojis[t]) {
-              return _structEmojis[t] + " " + window.LegendCustomization.getLabel("structures", t);
-            }
+            if (_structEmojis[t]) return window.LegendCustomization.getLabel("structures", t);
           }
           if (_structEmojis[t]) return window.I18n.t("struct.popup." + t);
           return window.I18n.t("struct.popup.fallback", { type: t });
@@ -540,13 +652,16 @@ function renderStructures() {
           cibleClic,
           function() { return _structRef.description; },
           function(v) { _structRef.description = v; if (window.KtaUid) window.KtaUid.touch(_structRef); },
-          _structPopupTitle(s.type),
+          function() { return _structPopupTitle(_structRef.type); },
           // Reclassement depuis la popup (convertirObjet.js).
-          { convertir: { famille: "structures", obj: _structRef } }
+          { convertir: { famille: "structures", obj: _structRef }, pastille: { cat: "structures", cle: s.type } }
         );
       }
     }
   });
+  // 🩸 Largeurs au zoom APRÈS la création des couches : brancherLargeurFronts (en tête) passe avant elles, et
+  // une structure de session gardait 10 px (front, mur en ligne) ou 3 px de contour jusqu'au zoom suivant.
+  majLargeurFronts();
 }
 
 // ── Remise à zéro, suppressions ──────────────

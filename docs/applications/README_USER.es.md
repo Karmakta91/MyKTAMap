@@ -52,12 +52,13 @@ MyKTAMap se apoya enteramente en **piezas de código abierto**. Sin estos proyec
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL a elegir)* — lectura y escritura de los archivos `.zip` en el navegador (mapas, sesiones, exportaciones, extracción parcial para el minimapa de la pantalla de inicio). Gracias a **Stuart Knightley** y a sus colaboradores.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generación de PDF imprimibles (A0 → A4, vertical/horizontal, página en miniatura del Modo Rescate, incrustación del Modo Historia).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, incluido en el repositorio)* — captura del resultado del DOM como imagen (lienzo → PNG). Se usa para integrar el **mapa OSM de Leaflet** en los PDF **«Briefing para bomberos»** del Modo Rescate: la pila gráfica webgl + teselas + superposiciones + mapa proyectado, todo ello congelado en una imagen incrustada en el PDF entregado a los servicios de rescate externos. Gracias a **Niklas von Hertzen** y a sus colaboradores.
+- 🧊 **[three.js](https://threejs.org/)** *(MIT, incluido en el repositorio)* — motor 3D del navegador (WebGL). Dibuja la **🧊 Vista 3D**: el plano en relieve alrededor de tu posición. Se carga solo la primera vez que se abre la vista y después sigue disponible sin conexión. Gracias a **Ricardo Cabello (mrdoob)** y a los colaboradores.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) y sus colaboradores** — bajo licencia **[ODbL](https://opendatacommons.org/licenses/odbl/)** para los datos y **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** para la cartografía. Datos cartográficos mundiales mostrados en la **Vista OSM** (ventana del mapa + widget de la pantalla de inicio) **en cuanto uno de tus mapas está calibrado GPS** (activa por defecto, desactivable en ⚙️ Configuración). La app muestra la atribución `© OpenStreetMap contributors` en la esquina de cada mapa OSM, **como exige la licencia ODbL**. Alojamiento de las teselas: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fundación sin ánimo de lucro, política de registros pública, sin rastreo publicitario). Sin ese bien común monumental — construido desde 2004 por **miles de voluntarios** que cartografían el mundo calle a calle — la Vista OSM no existiría.
 - 🧭 **Algoritmo de Dijkstra** (1959) — cálculo del camino más corto para los itinerarios asistidos. Edsger W. Dijkstra (1930-2002): gracias por esta idea de hace más de 60 años que sigue sosteniendo Google Maps, el enrutamiento de OpenStreetMap y todos los GPS del mundo.
 - 🌐 **[Estándar GPX 1.1](https://www.topografix.com/gpx.asp)** — formato de intercambio con TopoDroid, OsmAnd, Strava, Garmin y el ecosistema de actividades al aire libre.
 - 🛡️ **[Estándares web](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Mantenidos por miles de personas con las que nunca nos cruzaremos y a las que debemos muchísimo.
 
-> 📜 **Cumplimiento de licencias**: los archivos incluidos en el repositorio (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) conservan su cabecera de licencia original. Para el detalle de red (cuándo se contacta cada recurso), consulta la **[Auditoría de red](./NETWORK_AUDIT.md)** (accesible también desde la ventana de Auditoría dentro de la app).
+> 📜 **Cumplimiento de licencias**: los archivos incluidos en el repositorio (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) conservan su cabecera de licencia original. Para el detalle de red (cuándo se contacta cada recurso), consulta la **[Auditoría de red](./NETWORK_AUDIT.md)** (accesible también desde la ventana de Auditoría dentro de la app).
 
 ### Al ecosistema PWA
 
@@ -75,7 +76,7 @@ Por haberte tomado 10 minutos para leer en lugar de pulsar a ciegas. Es exactame
 
 ---
 
-**Créditos de bibliotecas y algoritmos** — 🍃 Leaflet (cartografía interactiva) · 🔄 Leaflet.ImageOverlay.Rotated (ajuste con 2 anclas + proyección de la Vista OSM) · 📦 JSZip (lectura/escritura de los archivos ZIP) · 📤 jsPDF (exportación a PDF imprimible) · 📸 html2canvas (captura del DOM para el PDF de Briefing para bomberos) · 🌍 OpenStreetMap y colaboradores (datos ODbL, Vista OSM desactivable) · 🧭 Dijkstra (cálculo del camino más corto para los itinerarios) · 🌐 GPX 1.1 (intercambio para actividades al aire libre).
+**Créditos de bibliotecas y algoritmos** — 🍃 Leaflet (cartografía interactiva) · 🔄 Leaflet.ImageOverlay.Rotated (ajuste con 2 anclas + proyección de la Vista OSM) · 📦 JSZip (lectura/escritura de los archivos ZIP) · 📤 jsPDF (exportación a PDF imprimible) · 📸 html2canvas (captura del DOM para el PDF de Briefing para bomberos) · 🧊 three.js (Vista 3D) · 🌍 OpenStreetMap y colaboradores (datos ODbL, Vista OSM desactivable) · 🧭 Dijkstra (cálculo del camino más corto para los itinerarios) · 🌐 GPX 1.1 (intercambio para actividades al aire libre).
 
 ---
 
@@ -216,6 +217,8 @@ Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨
 
 **Desde dónde parte el cálculo**: desde tu posición actual, en cuanto el seguimiento está activo o te has situado una vez desde que abriste el mapa («📍 Estoy aquí», recolocación, portal, sesión restaurada); la ventana indica cuál. Si **nunca** te has situado, la app pregunta **¿Dónde estás?**: toca tu posición en el mapa. Ese toque también recoloca el seguimiento, para que la ruta y la visualización XL partan del mismo lugar.
 
+**Dónde termina**: en un plano multinivel, **🧭 Ir allí** desde la ficha de un punto hace terminar la ruta en el **nivel del punto**, aunque estés mirando otro nivel (punto entre niveles: el nivel mostrado si lo comunica), como **📍 Estoy aquí**.
+
 Una vibración confirma la salida encontrada o te avisa si no hay ninguna, aunque **📳 Vibración háptica** esté desactivada. Todo se calcula en tu dispositivo, sin red.
 
 ### 🔆 Vista XL
@@ -301,7 +304,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 
 **Abajo**, una barra de estado reúne lo que está en curso: 📐 medición, 📏 distancia total de los trazados, 🗺️ itinerario (distancia, tiempo, ritmo — tócalo para abrir el itinerario) y el indicador **🧭 tracker** (ON · pasos · distancia durante el seguimiento; tócalo para abrir el menú del Tracker). Pasa a una segunda línea si no cabe todo; el botón ▾▴ la reduce.
 
-**A los lados**, las dos barras laterales contienen las herramientas. La interfaz está organizada en **13 grupos** repartidos en las **dos barras laterales** — izquierda: ⭐ Favoritos, 📚 Ayuda, ⚙️ Ajustes, ⬇️ Cargar, ⬆️ Guardar, ⏪ Historial; derecha: 🔍 Búsqueda, 🧭 Rastreador, 📐 Medición, ✏️ Edición, 🛣️ Trazados, ⬛ Zonas, 🏛️ Estructuras:
+**A los lados**, las dos barras laterales contienen las herramientas. La interfaz está organizada en **13 grupos** repartidos en las **dos barras laterales** — izquierda: ⭐ Favoritos, 📚 Ayuda, ⚙️ Ajustes, ⬇️ Cargar, ⬆️ Guardar, ⏪ Historial; derecha: 🔍 Búsqueda, 🧭 Rastreador, 📐 Medición, ✏️ Edición, 🛣️ Trazados, ⬛ Zonas, 🏛️ Estructuras. Arriba de la barra derecha, **≡ Filtros** y después el **botón del cubo** de la 🧊 Vista 3D:
 
 | Grupo | Icono | Para qué sirve |
 |---|---|---|
@@ -313,9 +316,9 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF, GeoTIFF), sesión, actualización del mapa, exportación externa (KMZ / GPX / GeoJSON) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
-| **Medición** | 📐 | Medir una distancia o una superficie, borrar |
+| **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados** y el **⛏️ volumen explotado** de un sector, borrar |
 | **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
-| **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones, **calcular la distancia total** |
+| **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones |
 | **Zonas** | ⬛ | Trazar zonas de escombros, derrumbe, agua o inaccesibles |
 | **Estructuras** | 🏛️ | Pilares, muros y frentes de explotación |
 
@@ -362,13 +365,14 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 | Sección | Qué filtra |
 |---|---|
 | 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales |
-| 📊 **Capas de datos** | Las capas incluidas con el mapa, y **Mis anotaciones** (todo lo que has añadido: desmarcarla oculta tus añadidos sin borrar nada) |
+| 📊 **Capas de datos** | Las capas incluidas con el mapa, y **Anotaciones del plano** (todo lo dibujado en el plano: tus añadidos y, en una instalación compartida, los de tu equipo; desmarcarla los oculta sin borrar nada) |
 | 🏗️ **Niveles M-LVL** | Mapas multinivel: nivel activo (para dibujar) y niveles visibles — sincronizado con la ventana Niveles |
 | 🏷️ **Tags de los puntos** | Los tags realmente presentes en el mapa, con su recuento |
 | 🛣️ ⬛ 🏛️ **Tipos** | Tipos de trazados, de zonas y de estructuras, incluidos los tuyos |
 
 - Cada sección se pliega y tiene sus botones **👁️ Todo** / **🚫 Ninguno**.
-- **🔄 Mostrar todo** devuelve tags y tipos a «todo visible», sin tocar los niveles ni las capas.
+- **🔄 Mostrar todo** vuelve a mostrarlo todo: tags, tipos, capas y niveles.
+- Los mismos filtros valen en la **🧊 Vista 3D**: su botón ≡ abre este panel.
 - Abajo, **Filtros activos: …** recuerda lo que está filtrado; el botón ≡ también indica cuándo hay elementos ocultos.
 - Los filtros se **recuerdan por mapa**: los recuperas al volver a ese mapa, y un mensaje te lo indica.
 - Lo que estás dibujando sigue visible, aunque desmarques su tipo.
@@ -468,7 +472,9 @@ En cuanto reconozcas una referencia:
 1. Toca **📍** (el botón se ilumina);
 2. toca el lugar del mapa donde te encuentras.
 
-El icono se coloca allí, el trazado vuelve a empezar desde ese punto y el modo se cierra solo. Otra forma: el botón **📍 Estoy aquí** en la ficha de un punto.
+El icono se coloca allí, el trazado vuelve a empezar desde ese punto y el modo se cierra solo. Otra forma: el botón **📍 Estoy aquí** en la ficha de un punto. En un plano multinivel, te coloca en el **nivel del punto**, aunque estés mirando otro nivel (para una escalera o un pozo entre niveles: el nivel mostrado si lo comunica). Si el punto está al lado de la galería, el icono del seguimiento se coloca en la galería de su nivel, la misma que en la vista 3D (todos los tipos de trazado, a menos de 10 m), no en la roca: en aquella cuya pared está más cerca, nunca al otro lado de la roca; si ya está dentro de una galería, se queda donde lo pusiste. El punto no se mueve. Si su nivel no tiene ningún trazado, se coloca en el lugar transitable del plano más cercano (a menos de 10 m). Un lugar que tocas en el mapa (modo recolocación, « ¿Dónde estás? ») se toma tal cual: el icono va exactamente allí, eres tú quien sabe dónde está.
+
+**Plano multinivel**: si una galería, una zona o una estructura de **otro nivel** pasa a menos de **10 m** del lugar tocado (o un paso entre niveles como una escalera o un pozo), la app pregunta **¿En qué nivel estás?**: una opción por nivel encontrado, con su profundidad si está indicada, el nivel mostrado marcado por defecto. El seguimiento pasa al nivel elegido y el mapa lo muestra. **Cancelar** no recoloca nada: vuelve a tocar el mapa. Nada de otro nivel cerca → sin pregunta, se mantiene el nivel mostrado. La misma pregunta aparece cuando la app pregunta **¿Dónde estás?** (salida de emergencia, «Ir allí», guiado). Una vez conocida tu posición, «Ir allí», la salida de emergencia y «Recalcular desde aquí» parten del **nivel del seguimiento**, no del que estás mirando; «🧭 Trazar la ruta» hacia una salida de otro nivel te lleva hasta allí.
 
 ### 🧭 Brújula
 
@@ -484,6 +490,37 @@ La ficha **🧭** muestra una rosa de los vientos arriba a la izquierda del mapa
 | el Oeste | a la derecha |
 
 Si no coincide, el campo magnético está perturbado (chatarra, armaduras): recolócate en cuanto puedas y desconfía del trazado.
+
+### 🧊 Vista 3D
+
+El **botón del cubo** de la barra derecha, justo debajo de **≡ Filtros**, muestra el plano **en relieve alrededor de tu posición**, como si estuvieras allí, iluminado por una linterna frontal. Un indicador espera mientras se abre (más tiempo la primera vez); después sigue disponible sin conexión.
+
+- **🏛️🛣️ Mixto / 🏛️ Estructuras / 🛣️ Galería**: el botón de la ficha ⚙️, que muestra el modo actual, pasa a la representación siguiente; la elección se guarda para este plano (por defecto: Mixto).
+  - **🏛️🛣️ Mixto** (por defecto): pilares, muros y frentes levantados allí donde los hay, y los trazados como galerías **solo donde no hay ninguna estructura alrededor** (las galerías de enlace). Una estructura cercana a **un solo lado** (un pilar, un frente que bordea la galería) solo abre ese lado: la pared de enfrente se queda, y un tramo corto de pared se une a la estructura en cada extremo, sin rendija. Entre estructuras a **ambos lados** (una cámara), el trazado pierde sus paredes: la galería **se abre** al entrar en la cámara, sin pared de fondo ni trozo de pared entre dos pilares; una estructura atravesada en el trazado también la abre. Chocas contra las estructuras, y contra las paredes de las galerías donde están dibujadas; en una cámara, ya no hay paredes. Zonas y puntos siguen la regla de la galería en las galerías, la de las estructuras en las cámaras.
+  - **🏛️ Estructuras**: pilares, muros y frentes de explotación levantados a la altura de galería del plano (⛏️ Volumen explotado, si no 2 m), rellenos y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles, trazados e itinerario en el suelo, puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
+  - **🛣️ Galería**: los trazados se convierten en galerías (principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m), sin las estructuras: cruces abiertos, codos, fondos de saco cerrados, paredes de sillería (con 🧱 Texturas; desactivado: bloques de caliza tallados), una franja en el suelo del color del trazado. Las zonas se detienen en las paredes: el relleno y el derrumbe tapan la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado. Solo se muestran los puntos a menos de 10 m de un trazado (salas incluidas), contra la pared.
+  - En todos los modos: un nivel a la vez, a 30 m alrededor de ti.
+- **🪜 Escaleras y pozos en volumen**: un paso entre niveles se ve donde está. Una **escalera** es una caja de escalera con peldaños, un **pozo con escalones** un pozo cuadrado de piedra con su escala, un **pozo sin escalones** un pozo desnudo; se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba (sube y se pierde en la oscuridad), ambos para un paso entre tres niveles, con un marco dorado en el suelo. Un **pozo abierto** o una **escalera de superficie** se abren en el techo, con la luz del día arriba del todo; un **pozo de ventilación** es un pequeño tubo con rejilla, solo en el techo (no se toma). Un **trazado de unión** se convierte en una **rampa** de su color: del suelo al techo hacia el nivel de arriba, en zanja hacia el nivel de abajo. El cartel de un paso entre niveles tiene un borde del color de las uniones y la marca **↕**, y sigue legible hasta 1 m.
+- **⚠️ Peligros y ⭐ favoritos**: un punto de peligro tiene un borde rojo y un **halo rojo en el suelo**, visible incluso muy cerca, cuando su panel se desvanece; un punto de tus favoritos lleva una **⭐** en la esquina de su panel.
+- **👥 Equipo** (solo instalación conectada): los miembros que comparten su posición aparecen como una silueta de su color, con su nombre, si están en el nivel mostrado; los marcadores y los itinerarios compartidos también (itinerario en trazos amarillos en el suelo). Son los que el mapa ya muestra. Si **ya compartes tu posición** (📡), el lugar por donde te mueves en modo **libre** se muestra a quienes la ven, marcado **«en vista 3D»** (y «3D» en tu silueta para ellos); en seguimiento o al cerrar la 3D, vuelven a ver la posición de tu seguimiento, que no se recoloca. Sin compartir, no sale nada. Tocar un miembro o un marcador muestra su nombre. Sin instalación, nada de esto.
+- **≡ Filtros**: el mismo panel que en el mapa, abierto sobre la vista, con los mismos ajustes. Lo que ocultas en 3D se oculta en el mapa, y al revés: tags de los puntos, tipos de trazados, de zonas y de estructuras, capas de datos, niveles visibles. Un punto en el ≡ indica un filtro activo. Ocultar solo quita el dibujo: sigues chocando con los pilares y las paredes, y 🪜 se sigue ofreciendo. El itinerario sigue visible, como en el mapa. Las capas de imagen no tienen efecto en 3D.
+- **⛏️ Altura**: el botón **⛏️** de la ficha ⚙️ (muestra la altura actual) abre **−** / **+**, de 1,5 a 20 m (de 0,1 en 0,1 m hasta 5 m, luego 0,5 m). Es la misma altura que ⛏️ Volumen explotado, guardada para este plano: cambiar una cambia la otra. La escena se rehace en el sitio, sin moverte.
+- **Desplazarse**: en el teléfono, un **🕹️ joystick**: pon el pulgar en la mitad izquierda de la pantalla y aparece debajo; desliza hacia arriba para avanzar, hacia abajo para retroceder, de lado para un paso lateral, más lejos para ir más rápido; mantenido en el borde más de medio segundo, **corres**. Arrastrar en la mitad derecha gira y levanta la vista. En el ordenador: mantén el pad ▲ ▼ ↶ ↷ ◀ ▶, flechas o WASD, o arrastra sobre la escena; **más rápido**: mantén Mayús, o deja ▲ pulsado más de medio segundo. ¿Prefieres el pad en el teléfono? ⚙️ Configuración › 🎨 Visualización › **🕹️ Pad clásico en la vista 3D** (para este dispositivo). Chocas contra pilares, muros y frentes (personalizados incluidos) en modo Estructuras, contra las paredes en modo Galería, contra ambos en modo Mixto (en una cámara, solo las estructuras), con la anchura de un cuerpo. En los tres modos, un **relleno**, un **derrumbe** o una zona **⛔ inaccesible** también te para, en una galería como en una cámara; si sales desde dentro de una de ellas, vuelves al borde y puedes seguir. Es solo en 3D: el mapa, la ruta, el guiado y el tracker no los tienen en cuenta (la ruta ya evita las zonas ⛔).
+- **Guiado de la ruta**: la ruta se dibuja en el suelo en **trazos azules bordeados de oscuro**, como en el mapa, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel; donde cruza un **relleno** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa; la vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida). Una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »), y **chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra. En **seguimiento**, es la indicación de tu tracker; en **libre**, una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker). Sin anuncios de voz.
+- **⚪ Círculos en las intersecciones**: si la opción está marcada para este plano (⚙️ Configuración › 🎨 Visualización), los círculos del mapa también se colocan en el suelo en 3D, de su color, en el nivel mostrado.
+- **Tocar el cartel de un punto** abre **su ficha**, la misma que en el mapa (📍 Estoy aquí, 🧭 Ir allí, ➕ Ruta, favorito, fotos), sobre la vista; ✕ o Esc la cierra. Modificar, mover o borrar el punto se hace en el mapa. La ficha de un paso entre niveles propone también **▼ Bajar** / **▲ Subir** hacia cada uno de sus niveles, estés donde estés.
+- **🧭 Ir allí desde la vista 3D**: en seguimiento, la ruta sale del tracker; en libre, sale de **donde estás en 3D**, nivel incluido, sin mover el tracker. Tracker detenido: **¿Desde dónde sales?** propone primero **Aquí** (el tracker se recoloca donde estás en 3D y la ruta sale de ahí). **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel). **📍 Estoy aquí** en la ficha de un punto recoloca el tracker en el mapa, pero la 3D se queda donde estás; en seguimiento, pasa entonces a **libre** (un mensaje lo indica): el botón del seguimiento la devuelve al tracker.
+- **🪜 Cambiar de nivel**: a menos de 2 m de un paso entre niveles (escalera, pozo) o del extremo de un trazado de unión, botones con nombre (« ▼ -1 · Pozo del cruce (escala) ») te llevan al nivel vecino (una pequeña lista si da servicio a más de dos); la ficha del punto hace lo mismo. Bajas (o subes) por el paso, la pantalla se pone negra un instante y llegas por el techo (o el suelo) del otro nivel, y **« Nivel -1 »** se muestra 2 segundos. Llegas al enlace validado de ese nivel si lo hay; si cae al lado de la galería o dentro de un obstáculo, vuelves a la galería (6 m como máximo), mirando hacia la continuación de tu ruta si pasa por allí, si no a lo largo de la galería, hacia su lado más largo. Nunca te quedas bloqueado: si ningún paso es posible, un paso que te acerque a la galería siempre pasa. En seguimiento, el nivel es el del tracker: cuando cambia, la vista también se pone negra un instante y muestra el nuevo nivel.
+- **🧭 Seguimiento / 🕹️ Libre**: en **seguimiento** (elegido al abrir si el tracker está activo), la vista sigue tu posición y **gira con tu teléfono**, como 🗺️ Mapa orientado; mover el joystick o tocar un botón de desplazamiento pasa a **libre** (arrastrar sobre la escena solo inclina la mirada arriba / abajo), y el botón de la ficha ⚙️, que muestra el modo actual, alterna entre ambos; una pastilla 🧭 / 🕹️ arriba a la izquierda lo muestra siempre. Tracker detenido: 🧭 aparece en gris y explica por qué. Quieto, la vista no se vuelve a dibujar (batería), aunque la brújula tiemble un poco.
+- **🦅 Vista aérea** (ficha ⚙️, o V): te ves desde arriba. Su inclinación va de casi vertical a rasante: desliza hacia arriba o abajo con dos dedos, rueda del ratón o RePág / AvPág, o los botoncitos ▲ ▼ de la derecha; se conserva mientras la vista sigue abierta.
+- **Brújula** (abajo a la izquierda; la ficha ⚙️ la oculta o la muestra, para este dispositivo): su **N** indica el norte real, según la calibración del norte del plano, y gira con tu vista. Plano sin norte calibrado: muestra la parte superior del plano y lo indica.
+- **🚨 Salida de emergencia**: el mismo botón que arriba del mapa; su ventana se abre sobre la vista. Si no se conoce tu posición, la vista se cierra para que la indiques en el mapa. Los mensajes de la app aparecen debajo de la fila de botones.
+- **Arriba**, una sola fila: **✕**, **≡** junto a él, **🚨**, **❓** (la ayuda de la vista 3D) y **⚙️**. **⚙️** abre una pequeña ficha **Ajustes** debajo: 🧭 Seguimiento / 🕹️ Libre, 🦅 Vista aérea, ⛏️ Altura, la representación, 🧱 Texturas, la Brújula y 🪧 Guiado, cada uno escrito con todas las letras; se cierra con ⚙️, Esc o un toque en otro sitio. **🧱 Texturas** (activado por defecto) viste las paredes de las galerías de sillería (hiladas de bloques, juntas irregulares, relieve con la lámpara), los pilares y los frentes de cantera de roca bruta (la masa caliza dejada en su sitio: relieve, matices, finos estratos, grietas y marcas de herramienta, sin juntas) y los muros de bloque de hormigón, a su tamaño real (un bloque mide 50 cm, sea cual sea el muro; la sillería de las paredes conserva su tamaño sea cual sea la altura de la galería); una estructura personalizada lleva la roca. Los **escombros** pasan a ser tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados; un **derrumbe** (hundimiento), un amontonamiento de grandes bloques rotos y agrietados, con poca tierra; ambos a su tamaño real y sin cambiar de forma (una zona personalizada conserva su color). Desactivado, cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido, y las paredes vuelven a ser bloques de caliza; el ajuste se guarda en este dispositivo. Con **🪧 Guiado** desactivado, la vista 3D oculta la banda de indicaciones y los chevrones del suelo (la ruta, sus etapas y 🏁 siguen dibujadas); una salida de emergencia se muestra siempre; el guiado del mapa no cambia; el ajuste se guarda en este dispositivo. Un punto dorado en ⚙️ indica que un ajuste no es el predeterminado (modo libre, vista aérea, representación distinta de Mixto, texturas desactivadas, brújula oculta, guiado desactivado).
+- **El tracker no se mueve** mientras te desplazas en 3D, ni el nivel mostrado en el mapa. Al cerrar (✕, arriba a la derecha, o Esc — que cierra primero un ajuste, una ficha o una ventana abiertos), si el seguimiento está activo y te has desplazado o has cambiado de nivel, **📍 ¿Estoy aquí?** propone recolocarlo donde te detuviste, nivel incluido; **No** no cambia el tracker.
+- **Al salir**, el mapa se coloca donde estabas en 3D: centrado en tu posición, en el nivel de la 3D, sea cual sea tu respuesta.
+- **Botón en gris**: ningún plano abierto, o plano sin escala (⚙️ Ajustes → 📐 Mapa: escala y geolocalización); tocarlo explica por qué. Un navegador que no puede mostrar 3D lo indica al abrirla.
+
+> ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.
 
 ### ⚙️ Ajustes del tracker
 
@@ -567,7 +604,7 @@ La sección plegable **🚫 Preferencias de evitación (opcional)** de la ventan
 
 Si no existe ningún otro camino, el itinerario pasa igualmente y lo indica: **⚠️ Imposible evitar: …**. Tus preferencias se recuerdan por mapa; **🗑️ Restablecer todas las evitaciones** las borra.
 
-Las **zonas inaccesibles ⛔**, en cambio, **nunca se atraviesan**, salvo si desmarcas **Respetar las zonas inaccesibles** (útil en un levantamiento incompleto). Estoy perdido y el Modo Rescate las respetan siempre.
+Las **zonas inaccesibles ⛔**, en cambio, **nunca se atraviesan**, salvo si desmarcas **Respetar las zonas inaccesibles y los muros (línea)** (útil en un levantamiento incompleto). Los **muros (línea)** 🟦 siguen la misma regla. Estoy perdido y el Modo Rescate las respetan siempre.
 
 ---
 
@@ -698,10 +735,6 @@ En el grupo **🛣️ Trazados**:
 
 Pulsa un tipo, toca el mapa punto a punto y vuelve a pulsar el tipo (o **✅ Validar el trazado en curso**) para terminar.
 
-### 📏 Distancia total de los trazados
-
-**📏 Distancia total** suma la longitud de todos los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita. Este total se queda en pantalla: no entra en la exportación de imagen.
-
 ---
 
 ## ⬛ Trazar zonas
@@ -721,25 +754,28 @@ Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve
 
 Una zona ⛔ prohíbe al itinerario atravesarla (derrumbe reciente, agua profunda…): el cálculo busca otro camino, o falla y lo dice. Solo bloquea **su nivel**, y sigue contando aunque ocultes la capa de zonas.
 
-La casilla **Respetar las zonas inaccesibles** de la ventana Itinerario (marcada de origen) permite relajarla. El **Modo Rescate** y «Estoy perdido» la respetan siempre. Para «evitar si es posible», usa mejor las **🚫 Preferencias de evitación** del itinerario.
+La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario (marcada de origen) permite relajarla. El **Modo Rescate** y «Estoy perdido» la respetan siempre. Para «evitar si es posible», usa mejor las **🚫 Preferencias de evitación** del itinerario.
 
 ---
 
 ## 🏛️ Estructuras (pilares, muros, frentes de cantera)
 
-Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. No tienen ningún efecto en el itinerario.
+Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. Solo una cuenta para el itinerario: el **muro (línea)**, que lo corta como una zona ⛔ inaccesible; las demás no tienen ningún efecto en el itinerario. El 🧭 rastreador, en cambio, no atraviesa ningún pilar, muro ni frente de cantera cuando avanza fuera de los trazados: un paso que cruzaría uno se ignora. Vale para las estructuras de su nivel, incluso ocultas.
 
 | Tipo | Forma | Color |
 |---|---|---|
 | 🟡 **Pilar 1ª masa** | superficie cerrada | amarillo |
 | 🟠 **Pilar 2ª masa** | superficie cerrada | naranja |
 | 🔵 **Muro** (piedra seca, mampostería) | superficie cerrada | azul |
+| 🟦 **Muro (línea)** — un muro levantado como trazo, a menudo en una importación SIG | línea | trazo azul |
 | 🟨 **Frente de cantera 1ª masa** | línea | trazo amarillo |
 | 🟧 **Frente de cantera 2ª masa** | línea | trazo naranja |
 
-Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera o un muro (línea) (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **un nivel por debajo del nivel activo**; los demás toman el nivel activo.
+
+Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerario pasa por otro lado, o falla y lo dice. La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario lo relaja junto con las zonas ⛔; el Modo Rescate y «Estoy perdido» lo respetan siempre. Renombrado o recoloreado en ≡ Leyenda, conserva ese papel. Un muro llegado como **frente de cantera** o como línea de una importación se convierte en muro (línea) desde su ficha (🧹 Borrar y corregir).
 
 ---
 
@@ -785,7 +821,7 @@ Un toque en un **marcador** muestra su nombre, su tipo, su nota y estos botones:
 | Botón | Para qué sirve |
 |---|---|
 | **📍 Estoy aquí** | Recalibra el seguimiento en este punto y **confirma tu posición**: 🚨 Salida de emergencia y 🧭 Ir allí parten luego de aquí |
-| **🧭 Ir allí** | Calcula una ruta desde tu posición hasta este punto |
+| **🧭 Ir allí** | Calcula una ruta desde tu posición hasta este punto. Seguimiento detenido: **¿Desde dónde sales?** — **Mi última posición** (hace N min), **Recolocarme** en el mapa, o Cancelar |
 | **➕ Ruta** | Añade el punto como etapa de una ruta |
 | **☆ Favorito** | Añade o quita el punto de ⭐ Favoritos |
 | **🔊** | Lee la nota en voz alta |
@@ -801,6 +837,8 @@ Caso típico: en un levantamiento importado, un **frente de cantera** es en real
 
 Solo se proponen destinos de la **misma forma**: una **línea** (trazado, frente de cantera) se convierte en otra línea, una **superficie cerrada** (zona, pilar, muro) en otra superficie. El objeto conserva su geometría, su nivel y su nota.
 
+**Línea cerrada**: al importar un archivo SIG, un pilar o una zona llega a menudo como línea, a veces sin volver a su primer punto (un pilar cuadrado = 4 puntos, 3 lados). Cuando los dos extremos de una línea casi se juntan (distancia menor que 1,5 veces el lado más largo) y la forma es compacta (no el contorno ramificado de una red de galerías, que rellenaría las galerías), la ventana propone también zonas y pilares / muros. La forma se cierra sola: no se añade ningún punto, solo se quita un último punto que repite el primero. Una galería en U muy cerrada puede tomarse por una línea cerrada: compruébalo antes de validar, ⏪ deshace.
+
 ### 🎯 Convertir varios objetos de golpe
 
 En la ventana de conversión, **🎯 Seleccionar varios objetos para convertir** muestra un aviso:
@@ -810,6 +848,26 @@ En la ventana de conversión, **🎯 Seleccionar varios objetos para convertir**
 - **✅ Convertir (N)** abre la elección del tipo para todo el lote; **Cancelar** lo abandona.
 
 El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica por qué), pero puede mezclar familias: frentes de cantera y caminos, todos líneas, se convierten juntos en galerías. Los objetos que ya son del tipo correcto se quedan como están, y el mensaje final los cuenta. Un solo `Ctrl+Z` deshace todo el lote.
+
+**Solo los contornos cerrados**: esta casilla, en la ventana del lote, conserva solo las líneas cerradas de la selección («4 de 6») y propone entonces zonas y pilares. Al elegir el tipo, la app anuncia cuántos objetos van a cambiar y cuántos quedan igual; un solo `Ctrl+Z` lo deshace todo.
+
+**Unir las líneas que se tocan**: un pilar importado llega a veces en 2 a 4 líneas cuyos extremos casi se tocan. Esta casilla, en la misma ventana, las convierte en UN solo objeto (zona o pilar) cuando juntas forman un bucle en el mismo nivel; no se añade ningún punto y una rama o una T nunca se une. La app anuncia cuántos objetos va a crear y cuántas líneas usa; un solo `Ctrl+Z` devuelve las líneas originales. Una línea de 2 segmentos (una V, una L) o una línea cuyos dos extremos tocan otras líneas (un trozo de pilar) nunca se cierra sola: solo sale con esta unión.
+
+**Los contornos cerrados de una capa de datos**: pasa primero la capa a **🔄 Modificar** (≡ Filtros, fila de la capa); sus objetos tienen entonces una burbuja y se convierten como los tuyos, uno a uno o en lote con **Solo los contornos cerrados**.
+
+### ✏️ Seleccionar por zona, 🗑️ eliminar en lote
+
+El mismo aviso sirve también para **eliminar** de golpe, por ejemplo todo lo que una importación colocó mal en un sector. También se llega sin pasar por un objeto: en 🛣️ Trazados, ⬛ Zonas o 🏛️ Estructuras, **🧹 Borrar → ✏️ Borrar por zona** (o **🎯 Seleccionar** y luego **✏️ Por zona** en el aviso de abajo): el trazado de la zona empieza enseguida, y la confirmación solo lleva marcada de antemano la familia del grupo (las demás siguen propuestas, sin marcar).
+
+- **✏️ Seleccionar por zona**: toca los vértices de la zona en el mapa (como una medida ♦️ Superficie; **↩️ Último vértice** corrige un toque fallido) y luego **✅ Usar la zona**. Tu medida ♦️ en curso no se pierde: vuelve tal cual.
+- Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los del **nivel mostrado**. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.
+- Los **puntos** también entran en la selección (círculo azul punteado). Vuelve a tocar un objeto para quitarlo; puedes trazar varias zonas.
+- **🗑️ Eliminar (N)** abre una confirmación con una casilla por familia (📍 Puntos, 〰️ Trazados, 🟦 Zonas, 🧱 Estructuras) y su número: desmarca una familia para conservarla.
+- La ventana anuncia también: las **fotos** de los puntos (no se borran, pasan a «sin punto» en 🧰 Herramientas > 📸 Mis fotos), los **objetos de una capa de datos** vistos en la zona (nunca eliminados: pasa antes la capa a **🔄 Modificar**) y los **puntos portal** (enlace a otro plano), siempre conservados.
+- Nunca se toman: la ruta calculada, las uniones entre niveles ni las medidas.
+- **Un solo ⏪** devuelve todo lo eliminado. En una instalación conectada, la eliminación llega al equipo como una eliminación una a una; la instalación también puede **rechazarla** antes de la confirmación (por ejemplo demasiados objetos de otros miembros sin el derecho de gestionar el mapa): un mensaje lo indica y no se elimina nada.
+
+**✅ Convertir (N)** solo cuenta los objetos de la misma forma que el primero (líneas o superficies): una zona que también tomó puntos o superficies los deja fuera de la conversión.
 
 ---
 
@@ -843,6 +901,22 @@ Las dos mediciones conviven: pasar de una a otra no las borra, y tu siguiente to
 
 **❌ Borrar** ofrece **↩️ Último punto** (en la medición encendida), **🗑️ Toda la distancia 📐**, **🗑️ Toda la superficie ♦️** o **Borrar todo (📐 + ♦️)**.
 
+### 📏 Distancia total de los trazados
+
+En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de todos los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita. Este total se queda en pantalla: no entra en la exportación de imagen.
+
+### ⛏️ Volumen explotado (extracción)
+
+En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se extrajo de un sector. Traza primero el sector con **♦️ Superficie** siguiendo los frentes de explotación y pulsa ⛏️ (sin superficie, un mensaje te lo recuerda). La ventana da:
+
+- la **superficie del sector**;
+- los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
+- la **superficie explotada** (sector menos pilares) y la **tasa de extracción** (explotada ÷ sector);
+- el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (2 m por defecto, guardada para este plano, recalculada al instante);
+- los **escombros** (zonas «Escombros» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos escombros).
+
+En un plano de varios niveles solo cuenta el **nivel activo**, y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
+
 ---
 
 ## 🏗️ Modo multinivel (canteras de varias plantas)
@@ -856,7 +930,7 @@ Numeración: **0** = nivel de referencia, **1, 2…** por encima, **−1, −2�
 Una **pastilla amarilla** bajo los botones de zoom muestra el **nivel activo**. Un toque abre la ventana **🏗️ Niveles**:
 
 - **🎯 Nivel activo (para dibujar)** — todo lo que dibujas toma este nivel. **[ − ]** y **[ + ]** añaden un nivel por debajo o por encima. Cambiar de nivel activo **anula el trazado en curso** y solo muestra ese nivel.
-- **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. La casilla **🖼️ Mostrar el plano base** sigue al nivel 0 mientras no la toques; marcada o desmarcada a mano, tu elección manda (fondo bajo otra planta, o retirado aunque el 0 esté visible) y **Mostrar todo** la vuelve a automática (elección guardada con la sesión del mapa; en un mapa de un solo nivel, está en **Capas de imagen**). Una unión sigue visible si uno de sus dos niveles lo está.
+- **👁️ Niveles visibles (filtro)** — marca los niveles que quieres mostrar (**Todos** / **Solo activo**). Desmarcar el **0** oculta también la imagen principal del mapa, para mirar una planta sola. La casilla **🖼️ Mostrar el plano base** sigue al nivel 0 mientras no la toques; marcada o desmarcada a mano, tu elección manda (fondo bajo otra planta, o retirado aunque el 0 esté visible) y **Mostrar todo** la vuelve a automática (elección guardada con la sesión del mapa; la misma casilla está también al principio de **Capas de imagen**, su único sitio en un mapa de un solo nivel). Una unión sigue visible si uno de sus dos niveles lo está.
 
 Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mismos ajustes están en ≡ **Filtros**. En la exportación de imagen, **🎨 Avanzado → 🏗️ Niveles a exportar** elige los niveles con independencia de lo que se muestra.
 
@@ -1044,7 +1118,7 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 - **Formato**: de A0 a A4, vertical u horizontal (A4 horizontal por defecto).
 - **Contenido**: tus anotaciones, la imagen del mapa y sus capas, las capas de datos, una cabecera (título e información del mapa).
 - **Calidad**: Estándar ×1 (A3/A4), Alta definición ×2 (A0/A1, archivo más pesado), Borrador ×0,5. A0/A1 en ×2 puede tardar de 30 a 60 segundos en móvil. Si la imagen supera lo que el dispositivo puede producir, la resolución se reduce y la app te dice cuál obtienes.
-- **🗺️ Leyenda** colocada en una esquina (abajo a la izquierda por defecto), en tres tamaños y cuatro estilos: **Pro (fondo blanco)** para imprimir (por defecto), Oscuro opaco, Oscuro semitransparente, Filigrana discreta. Solo enumera lo que figura realmente en el mapa exportado.
+- **🗺️ Leyenda** colocada en una esquina (abajo a la izquierda por defecto), en tres tamaños y cuatro estilos: **Pro (fondo blanco)** para imprimir (por defecto), Oscuro opaco, Oscuro semitransparente, Filigrana discreta. Su tamaño sigue al papel, no al mapa: texto de unos 6 pt en A4 (Compacto), algo mayor de A3 a A0, y la leyenda se ordena en 1 a 4 columnas para caber en su esquina (como máximo el 30 % del ancho y el 40 % del alto del mapa en Compacto); en un mapa muy cargado impreso pequeño en la página, mantiene un texto de al menos 5 pt y puede entonces superar esos límites. Sus iconos son los del mapa exportado; trazados, zonas y estructuras muestran todos sus tipos.
 
 El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr» y se llama `<mapa>_<fecha>.pdf`.
 
@@ -1187,7 +1261,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
   - **🧭 Posición inicial del tracker** *(este mapa)*: X/Y, **🔍 Elegir mediante un punto** o **📍 Hacer clic en el mapa**. Cambiar el inicio hace que el seguimiento vuelva a empezar desde ahí (el recorrido en curso se borra);
   - **👣 Detección de pasos** *(todos los mapas)*: longitud del paso (de 0 a 1,5 m), umbral (de 10 a 30), retardo (de 300 a 3000 ms);
   - **🧭 Navegación inteligente** *(este mapa)*: ver «🔭 Para ir más lejos».
-- **🎨 Visualización** — **🎨 Fondo bajo el mapa** *(este mapa)*: negro, blanco o gris neutro bajo las partes transparentes del mapa (por defecto: el que recomienda el mapa, si no según el tema); la exportación de imagen lo usa; **⚪ Mostrar círculos en las intersecciones** *(este mapa)*; **🎤 Comandos de voz (BETA)** *(todos los mapas)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos; disponible solo en francés: el botón solo aparece si la app está en francés. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
+- **🎨 Visualización** — **🎨 Fondo bajo el mapa** *(este mapa)*: negro, blanco o gris neutro bajo las partes transparentes del mapa (por defecto: el que recomienda el mapa, si no según el tema); la exportación de imagen lo usa; **⚪ Mostrar círculos en las intersecciones** *(este mapa)*; **🕹️ Pad clásico en la vista 3D** *(solo este dispositivo)*: en el teléfono, los botones ▲ ▼ ◀ ▶ ↶ ↷ en lugar del joystick; **🎤 Comandos de voz (BETA)** *(todos los mapas)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos; disponible solo en francés: el botón solo aparece si la app está en francés. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
 - **🚀 Rendimiento** *(este mapa)* — el **🚀 Modo ULTRA** para los mapas grandes que hacen fallar el teléfono (ver «🔭 Para ir más lejos»); en un mapa multinivel, **🏗️ Mostrar todos los niveles al iniciar**.
 - **🧩 Funciones opcionales** — las mismas casillas que en ⚙️ Configuración (opciones, modo incógnito). La privacidad se ajusta en ⚙️ Configuración de la pantalla de inicio.
 - **🛠️ Sistema y mantenimiento** — el **modo rendimiento** del mapa, en modo lectura.

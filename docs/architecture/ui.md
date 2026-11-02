@@ -2179,3 +2179,90 @@ rend l'originale du plan.
 **Prouvé par falsification** : 12 cas ajoutés à `check-api-surface.js`, dont
 **7 tombent** quand on remet le `return false` (les 5 autres sont des témoins —
 listage, absence de doublon, `resetSession`, id inconnu).
+
+---
+
+## 🧊 Vue 3D — sa place dans l'interface
+
+La 3D (`js/vue3d.js`, `css/vue3d.css` ; contrats de la scène : `docs/architecture/tracking.md` § Vue 3D) est une
+**vue de l'app**, pas une autre appli : même entrée que les outils de la carte, mêmes filtres, mêmes fenêtres, mêmes
+icônes.
+
+- **Entrée** : bouton cube de la barre de droite, juste sous ≡ Filtres (`interface.js > L.control.ktaVue3DControl`,
+  ajouté après `ktaFilterControl` : l'ordre d'ajout fait l'ordre de la barre). Picto au trait partagé avec l'écran
+  Bienvenue (`js/ktaPictos.js > ktaPicto("cube")`, jamais recopié), en `currentColor` : couleur et fond viennent de
+  `.leaflet-bar a`, dans les deux thèmes. Sans plan ou sans échelle : `kta-inactif` (`--kta-texte-3`, `grayscale`,
+  **sans opacité**), toujours touchable pour dire pourquoi. Plus de tuile dans le menu Tracker. Entre le toucher et
+  la scène : `ComputeLoader` (message plus long au premier chargement de three.js).
+- **z-index** : la vue est une fenêtre plein écran au rang des modales (**99999**, dialog `aria-modal`, dans
+  `<body>`). Les fenêtres ouvertes depuis elle (≡ Filtres, Aide et sa sous-modale, Sortie d'urgence, confirmations)
+  sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
+  sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
+  `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
+- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, sur
+  **une seule ligne** au téléphone (décision produit). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
+  `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
+  (posé en dernier dans le DOM) ; dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
+  (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
+  suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
+  montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
+  `myktamap_v3d_guidage_v1`, cet appareil, montré par défaut ; coupé : ni bandeau ni chevrons en 3D, ruban, étapes
+  et 🏁 gardés (posés par-dessus un remblais ou un effondrement, `tracking.md` § Vue 3D › Itinéraire), urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🧱
+  Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
+  des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
+  effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus) ; coupé : parois en moellons, structures et zones aux couleurs de la légende ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
+  Boussole et Guidage sur la suivante : une ligne de plus recouvrait ▼ de l'inclinaison en vue plongeante, tuile
+  ouverte ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`, sans toucher scène ni
+  greffe). Fermée par ⚙️, Échap (avant tout le reste) ou un
+  toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
+  inchangés (V, PageUp / PageDown…). **Repère** : point doré sur ⚙️ (`kta-v3d-modifie`, `_majRepere`) en mode libre,
+  en vue plongeante, rendu autre que mixte, textures coupées, boussole masquée ou guidage coupé. **Mode toujours visible** : pastille ronde de 40 px
+  en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
+  deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
+  (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
+  `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
+- **Filtres partagés** (décision produit) : ≡ ouvre **le** ≡ Filtres de la carte (`FilterPanel.ouvrir`), un seul
+  état ; `FilterPanel.onChange` est appelé à tout changement (types, tags, calque coché, niveaux, plan de base) et la
+  vue se redessine ; pastille sur tout bouton `data-kta-pastille-filtres` (`FilterPanel.majBadge`). Les calques
+  image et le plan de base restent dans le panneau, sans effet en 3D.
+- **Icônes = leur sens sur la carte** : 🏛️ structures, 🛣️ tracés (rendu Galerie), 🏛️🛣️ les deux accolés (rendu
+  Mixte : aucune icône de la carte ne dit « les deux », on n'en invente pas une), ⛏️ hauteur (le chiffre de ⛏️
+  Volume exploité), 🧭 suivi (le tracker), 🚨 Sortie d'urgence, ≡ Filtres, ❓ aide, 🪜 passage entre niveaux, 📍 « Je
+  suis ici ? » (recalage). Écartés parce qu'ils disent autre chose en 2D : 📍 pour le suivi (recalage), 🛰️ pour la
+  vue plongeante (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
+- **Panneaux de POI** : toujours aux jetons du thème **sombre** (la scène est noire dans les deux thèmes), lus dans
+  la règle `:root` des feuilles (`vue3d.js > _jetonsSombres`) : sur `<html>`, `getComputedStyle` rendrait ceux du
+  thème clair. Les boutons de la vue, eux, suivent le thème. Liseré doré ; **danger** (`poiDanger.js > estDanger`) :
+  liseré rouge `--kta-erreur` (sombre) plus épais et **halo au sol** (anneau et disque pâle du même rouge, non
+  éclairés, sans compression de tons : le rouge reste celui du jeton), montré aussi de près quand le panneau
+  s'efface ; **favori** (`Favoris.isFav(id, uid)`) : ⭐ doré au coin haut droit ; **passage** (POI jonction) : liseré à
+  la couleur du tracé `jonction` du canon et ↕ dans une pastille au coin de l'icône, lisible jusqu'à 1 m. Membres et repères d'une extension :
+  même carte, sans icône, coupée à la largeur du texte, liseré à la couleur de la personne (`KtaPresences.couleurDe`)
+  ou à la teinte de la charte du repère ; les toucher n'ouvre pas de fiche (ce ne sont pas des POI), seulement un
+  toast `success` avec leur nom (le 🏁 de l'arrivée aussi).
+- **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
+  compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
+  urgence (aucune marque d'aperçu en mode libre : mêmes textes). Son `top` est posé par
+  `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
+  appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
+- **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
+  produit : toujours vus, `info` est tu par défaut) ; perte du contexte WebGL en `warn`.
+- **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :
+  zone de la moitié gauche, de sous la rangée du haut et le bandeau (`--kta-v3d-sous-haut`) jusqu'au-dessus de la
+  boussole, posée juste après la scène (🪜, fiche et boutons passent au-dessus) ; anneau de 96 px (contour
+  `--kta-texte-3` au repos en bas de la zone, `--kta-accent` actif, fond `--kta-surface` à 70 %), bouton de 44 px
+  (`--kta-accent` actif), aucune image ; `touch-action: none`. Au PC (`pointer: fine`) ou avec ⚙️ › 🎨 Affichage ›
+  « 🕹️ Pavé classique dans la vue 3D » (cet appareil), le pavé ▲ ▼ ◀ ▶ ↶ ↷ en bas au centre. Contrat du geste :
+  `tracking.md` § Vue 3D › Joystick.
+- **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
+  (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
+  Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
+  un bouton par niveau lié (`.kta-v3d-fiche-passages`, « ▲ Monter au niveau +1 (escalier) », liseré doré, le plus haut
+  d'abord).
+- **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la
+  largeur (`.kta-v3d-btn-passage`, 72 % de l'écran au plus) ; le nom entier au libellé accessible. Changement de
+  niveau derrière un **voile** (`.kta-v3d-fondu` : fond des jetons sombres posé par la vue en
+  `--kta-v3d-fondu-fond`, au-dessus de la scène, sous les boutons, sans pointeur) puis le bandeau
+  **« Niveau n »** (`.kta-v3d-bandeau-niveau`, pastille surface à liseré doré, au centre, 2 s, `role="status"`).
+- **« D'où pars-tu ? »** (« Y aller », tracker arrêté) : `ktaConfirm` en mode choix (z-index 100002, au-dessus de
+  la vue) ; pas de nouvelle fenêtre.

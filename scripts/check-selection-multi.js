@@ -14,6 +14,8 @@
 //   5. Les objets déjà du bon type sont SAUTÉS, ni en échec ni cause de refus.
 //   6. `itinerary` (trajet calculé) et `jonction` (niveaux reliés) ne sont ni sources ni cibles, même dans un
 //      lot : convertis, l'un deviendrait une donnée du relevé, l'autre un tracé qui ne relie plus rien.
+//   7. Sélection par zone (`js/selectionZone.js`) : ENTIÈREMENT dedans seulement, niveau actif, objets de calque
+//      comptés jamais pris ; suppression en lot = un instantané, une entrée ⏪, une écriture par famille.
 // =====================================================================
 "use strict";
 
@@ -25,7 +27,7 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 // ── Harnais : convertirObjet + selectionMulti, sans Leaflet ──────
 function contexte() {
   const journal = { snap: 0, record: [], saves: 0, rendus: {} };
-  let R = [], Z = [], S = [];
+  let R = [], Z = [], S = [], P = [];
   const ctx = {
     console: { log() {}, warn() {}, error() {} },
     setTimeout, JSON, Math, Array, Object, String, Number, Boolean, RegExp, Error,
@@ -52,14 +54,17 @@ function contexte() {
   ctx.getRoads      = () => R;  ctx.setRoads      = (v) => { R = v; journal.rendus.roads = (journal.rendus.roads || 0) + 1; };
   ctx.getZones      = () => Z;  ctx.setZones      = (v) => { Z = v; journal.rendus.zones = (journal.rendus.zones || 0) + 1; };
   ctx.getStructures = () => S;  ctx.setStructures = (v) => { S = v; journal.rendus.structures = (journal.rendus.structures || 0) + 1; };
+  ctx.getEditorPoints = () => P; ctx.setEditorPoints = (v) => { P = v; journal.rendus.editorPoints = (journal.rendus.editorPoints || 0) + 1; };
   vm.createContext(ctx);
-  ["js/styleResolver.js", "js/legendCustomization.js", "js/convertirObjet.js", "js/selectionMulti.js"]
+  ["js/styleResolver.js", "js/legendCustomization.js", "js/convertirObjet.js", "js/selectionMulti.js",
+   "js/selectionZone.js"]
     .forEach((f) => vm.runInContext(fs.readFileSync(f, "utf8"), ctx, { filename: f }));
   return {
     ctx, journal,
     get R() { return R; }, set R(v) { R = v; },
     get Z() { return Z; }, set Z(v) { Z = v; },
-    get S() { return S; }, set S(v) { S = v; }
+    get S() { return S; }, set S(v) { S = v; },
+    get P() { return P; }, set P(v) { P = v; }
   };
 }
 
@@ -278,6 +283,103 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   });
   t("le refus est EXPLIQUÉ, pas silencieux (les deux sens ont leur message)",
     /LIGNE/.test(FR["selm.refusOuvert"]) && /SURFACE/.test(FR["selm.refusFerme"]));
+}
+
+// ── 8. Sélection par zone et suppression en lot ──────
+{
+  const h = contexte();
+  const SZ = h.ctx.KtaSelectionZone;
+  t("API : KtaSelectionZone.dansZone / supprimerLot / confirmerEtSupprimer / commencer / terminer / abandonner",
+    !!SZ && ["dansZone", "supprimerLot", "confirmerEtSupprimer", "commencer", "terminer", "abandonner"]
+      .every((m) => typeof SZ[m] === "function"));
+  h.ctx.APP_CONFIG.multiLevel = true;
+  h.ctx.APP_CONFIG.activeLevel = 0;
+  h.ctx.APP_CONFIG.imageHeight = 1000;
+  const zone = carre(0, 0, 100);
+  const dedans = { uid: "rd_in", type: "chemin", level: 0, points: ligne(10, 10, 50) };
+  const cheval = { uid: "rd_cheval", type: "chemin", level: 0, points: ligne(80, 20, 50) };
+  const autreNiv = { uid: "rd_niv", type: "chemin", level: -1, points: ligne(10, 30, 50) };
+  const jonc = { uid: "rd_j", type: "jonction", fromLevel: 0, toLevel: -1, points: ligne(10, 40, 20) };
+  const iti = { type: "itinerary", points: ligne(10, 50, 20) };
+  const pil = { uid: "st_in", type: "pilier-1", level: 0, points: carre(20, 60, 10) };
+  const eau = { uid: "zn_in", type: "eau", points: carre(60, 60, 10) };
+  const pt = { uid: "pt_in", id: "P1", x: 50, y: 50, level: 0 };
+  const ptDehors = { uid: "pt_out", id: "P2", x: 150, y: 50, level: 0 };
+  h.R = [dedans, cheval, autreNiv, jonc, iti];
+  h.S = [pil]; h.Z = [eau]; h.P = [pt, ptDehors];
+  // Calques : un tracé dedans (compté), un à cheval (non), un d'un calque en « Modifier » (déjà en session), un rond
+  // de jonction sans points ; un point dedans (compté).
+  h.ctx._ktaDataPolylines = [
+    { layerId: "c1", type: "chemin", level: 0, points: ligne(10, 90, 20) },
+    { layerId: "c1", type: "chemin", level: 0, points: ligne(90, 90, 40) },
+    { layerId: "c2", type: "chemin", level: 0, points: ligne(10, 80, 20) },
+    { layerId: "c1", type: "jonction", level: 0 }
+  ];
+  h.ctx._ktaDataMarkers = [{ _ktaLayerId: "c1", _ktaLevel: 0, getLatLng: () => ({ lat: 1000 - 20, lng: 20 }) }];
+  h.ctx.CalqueSession = { estRapatrie: (id) => id === "c2" };
+  const r = SZ.dansZone(zone);
+  const uids = r.items.map((i) => i.obj.uid).sort();
+  t("zone : objets ENTIÈREMENT dedans pris (tracé, pilier, zone, point)",
+    JSON.stringify(uids) === JSON.stringify(["pt_in", "rd_in", "st_in", "zn_in"]));
+  t("🩸 zone : un objet À CHEVAL n'est pas pris", uids.indexOf("rd_cheval") < 0);
+  t("🩸 zone : un objet d'un AUTRE niveau n'est pas pris", uids.indexOf("rd_niv") < 0);
+  t("zone : ni jonction ni itinéraire", uids.indexOf("rd_j") < 0 && !r.items.some((i) => i.obj === iti));
+  t("zone : objets de calque COMPTÉS (tracé + point dedans) ; à cheval et calque en Modifier exclus",
+    r.calque.length === 2);
+  t("zone : moins de 3 sommets = rien", SZ.dansZone(carre(0, 0, 10).slice(0, 2)).items.length === 0);
+
+  const avant = h.journal.snap;
+  const b = SZ.supprimerLot({ editorPoints: [pt], roads: [dedans], zones: [], structures: [pil] });
+  t("suppression : 3 objets supprimés", b.supprimes === 3 && b.echecs === 0);
+  t("🩸 suppression : UN instantané, UNE entrée ⏪",
+    h.journal.snap === avant + 1 && h.journal.record.length === 1);
+  t("🩸 suppression : une écriture par famille touchée, aucune pour les autres",
+    h.journal.rendus.roads === 1 && h.journal.rendus.structures === 1 && h.journal.rendus.editorPoints === 1 &&
+    h.journal.rendus.zones === undefined);
+  t("suppression : les autres objets restent",
+    h.R.length === 4 && h.P.length === 1 && h.P[0] === ptDehors && h.Z.length === 1 && h.S.length === 0);
+  const b2 = SZ.supprimerLot({ roads: [dedans] });
+  t("suppression : objet déjà parti = introuvable, rien écrit, rien à annuler",
+    b2.supprimes === 0 && b2.echecs === 1 && h.journal.record.length === 1);
+  h.ctx.ktaEditionRefusee = () => true;
+  const b3 = SZ.supprimerLot({ roads: [cheval] });
+  t("🔒 suppression : plan en lecture seule = rien", b3.supprimes === 0 && h.R.indexOf(cheval) >= 0);
+  delete h.ctx.ktaEditionRefusee;
+  const prep = SZ.preparer([{ famille: "roads", obj: jonc }, { famille: "roads", obj: iti },
+    { famille: "roads", obj: cheval }]);
+  t("suppression : jonction et itinéraire écartés même glissés dans le lot",
+    prep.parFamille.roads.length === 1 && prep.parFamille.roads[0] === cheval);
+
+  // Re-clic : un point sélectionné se vise (pour le retirer), jamais refusé pour son ouverture.
+  const SM = h.ctx.SelectionMulti;
+  const c = SM._choisir([{ famille: "editorPoints", obj: ptDehors }], 152, 50, true);
+  t("visée : un POINT se vise, sans refus d'ouverture", vise(c).obj === ptDehors && !c.refus);
+  const SRC = fs.readFileSync("js/selectionMulti.js", "utf8");
+  t("câblage : ✅ Convertir ne passe que les convertibles", /const lot = _convertibles\(\);/.test(SRC));
+  t("câblage : la fermeture rend la mesure ♦️ d'avant si une zone est en cours",
+    /_zoneEnCours\(\)\) window\.KtaSelectionZone\.abandonner\(\)/.test(SRC));
+  const IDX = fs.readFileSync("index.html", "utf8");
+  t("câblage : selectionZone.js chargé après selectionMulti.js (géométrie partagée)",
+    IDX.indexOf("js/selectionMulti.js") >= 0 && IDX.indexOf("js/selectionMulti.js") < IDX.indexOf("js/selectionZone.js"));
+  t("câblage : selectionZone.js précaché", fs.readFileSync("sw.js", "utf8").indexOf('"./js/selectionZone.js"') >= 0);
+  t("sans graine : ouvrirZone exposé, ✅ Convertir masqué sans modale qui attend le lot, tracé lancé d'emblée",
+    typeof SM.ouvrirZone === "function" && /if \(ok && !_onValide\) ok\.style\.display = "none";/.test(SRC) &&
+    /if \(!ouvrir\(null, null\)\) return false;[\s\S]{0,300}_commencerZone\(\);/.test(SRC));
+  const ITF = fs.readFileSync("js/interface.js", "utf8");
+  t("câblage : « ✏️ Par zone » dans les 3 modes « supprimer au clic », mode quitté, famille du mode cochée",
+    /_boutonSuppParZone\(_suppTraceFloater, "roads", _desactiverModeSuppressionTrace\)/.test(ITF) &&
+    /_boutonSuppParZone\(_suppZoneFloater, "zones", _desactiverModeSuppressionZone\)/.test(ITF) &&
+    /_boutonSuppParZone\(_suppStructureFloater, "structures", _desactiverModeSuppressionStructure\)/.test(ITF) &&
+    /quitterMode\(\);\s*\n?\s*if \(window\.SelectionMulti[^\n]*\n\s*window\.SelectionMulti\.ouvrirZone\(\{ familles: \[famille\] \}\)/.test(
+      ITF.replace(/\r\n/g, "\n")));
+  ["selm.supprimer", "ui.suppClic.parZone", "selm.suppr.refuseExtension", "selm.zone.bouton", "selm.zone.trace", "selm.zone.prendre", "selm.suppr.fam.editorPoints",
+   "selm.suppr.fam.roads", "selm.suppr.fam.zones", "selm.suppr.fam.structures", "selm.suppr.photos",
+   "selm.suppr.calques", "selm.suppr.ok", "selm.suppr.histoire", "selm.suppr.bilan"].forEach(function (k) {
+    ["fr", "en", "es"].forEach(function (l) {
+      const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+      t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+    });
+  });
 }
 
 console.log(ko === 0 ? "\n🎉 sélection multiple + conversion en lot : tout passe" : "\n⚠️ " + ko + " echec(s)");

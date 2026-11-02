@@ -6,11 +6,12 @@
 
 // ktaPresences.js — présences et itinéraires publiés sur le plan ouvert, AFFICHAGE seulement (prise neutre).
 // Une installation reliée fournit la position des AUTRES qui ont choisi de la partager : repère avec pseudo,
-// ancienneté et trace. Itinéraires publiés (`afficherItineraires`) : calque distinct, pointillés jaunes,
-// étapes ○ / ✓, lecture seule. Repères d'une extension (`afficherReperes`, ex. tâches ouvertes) : calques nommés,
+// ancienneté et trace ; une place de vue 3D (`source: "vue3d"`) porte la marque « 3D » et « en vue 3D ».
+// Itinéraires publiés (`afficherItineraires`) : calque distinct, pointillés jaunes, étapes ○ / ✓, lecture seule. Repères d'une extension (`afficherReperes`, ex. tâches ouvertes) : calques nommés,
 // pastille à symbole et teinte de la charte posée près de l'objet. Rien n'est lu ni envoyé ici ; sans extension,
 // aucun calque, aucun coût.
-// Expose window.KtaPresences (afficher, afficherItineraires, afficherReperes, couleurDe, reinitialiser, actions).
+// Expose window.KtaPresences (afficher, afficherItineraires, afficherReperes, couleurDe, reinitialiser, actions ;
+// lecture : liste, itineraires, calques, reperes, version — la vue 3D les redessine en relief, vue3d.js > _majEquipe).
 // Garde-fou : scripts/check-extensions.js
 (function () {
   "use strict";
@@ -27,6 +28,9 @@
   var _itisMasques = {};             // id → true : itinéraire non dessiné
   var _personnesMasquees = {};       // id → true : ni repère ni trace (« Masquer une personne »)
   var _reperes = {};                 // calque → { liste, groupe, clic }
+  // Monte à chaque dessin (présences, itinéraires, repères, masquages, sortie du plan) : la vue 3D (vue3d.js >
+  // _majEquipe) relit les listes seulement quand il change.
+  var _version = 0;
 
   // Une couleur par personne, tirée de son identifiant (la même sur tous les appareils, sans serveur). Lisible
   // sur fond sombre et clair ; ⚠️ évite le jaune d'accent (itinéraires), les rouges (urgence), les gris
@@ -63,7 +67,11 @@
         niveau: Number.isInteger(p.niveau) ? p.niveau : null,
         ts: _fini(p.ts) ? p.ts : Date.now(), trace: trace,
         // Couleur facultative (ex. équipe Secours) : #rrggbb seulement.
-        couleur: (typeof p.couleur === "string" && /^#[0-9a-f]{6}$/i.test(p.couleur)) ? p.couleur : null
+        couleur: (typeof p.couleur === "string" && /^#[0-9a-f]{6}$/i.test(p.couleur)) ? p.couleur : null,
+        // ⚠️ contrat : source "vue3d" = place d'où la personne regarde dans SA vue 3D (mode libre), pas sa position
+        // suivie ; marquée « 3D » partout (repère, étiquette, silhouette). Toute autre valeur : position ordinaire.
+        source: p.source === "vue3d" ? "vue3d" : null,
+        cap: p.source === "vue3d" && _fini(p.cap) ? ((p.cap % 360) + 360) % 360 : null
       };
     });
   }
@@ -74,8 +82,8 @@
     return _t("presence.age.min", { n: Math.round(s / 60) });
   }
 
-  // Repère = forme de l'icône de mon tracker (triangle + rond blanc) en SVG, à la couleur de la personne. Pas
-  // de cap transmis : pointe en haut.
+  // Repère = forme de l'icône de mon tracker (triangle + rond blanc) en SVG, à la couleur de la personne. Pointe en
+  // haut, sauf une place de vue 3D, tournée vers son regard (cap transmis).
   var TAILLE = 40;
   var SVG_NS = "http://www.w3.org/2000/svg";
   function _repere(couleur) {
@@ -107,6 +115,7 @@
   }
 
   function _dessiner() {
+    _version++;
     _vider();
     var map = window.map;
     if (!map || !_liste.length || typeof L === "undefined") return;
@@ -125,12 +134,23 @@
         }).addTo(_calque);
       }
       var el = document.createElement("div");
-      el.className = "kta-presence" + (ancienne ? " kta-presence-ancienne" : "") + (horsNiveau ? " kta-presence-hors-niveau" : "");
+      var en3d = p.source === "vue3d";
+      el.className = "kta-presence" + (ancienne ? " kta-presence-ancienne" : "") +
+        (horsNiveau ? " kta-presence-hors-niveau" : "") + (en3d ? " kta-presence-vue3d" : "");
       el.dataset.couleur = couleur;
-      el.appendChild(_repere(couleur));
+      var rep = _repere(couleur);
+      if (en3d && p.cap !== null) rep.style.transform = "rotate(" + Math.round(p.cap) + "deg)";
+      el.appendChild(rep);
+      if (en3d) {
+        var marque = document.createElement("span");
+        marque.className = "kta-presence-marque-3d";
+        marque.textContent = _t("presence.vue3d.marque");
+        el.appendChild(marque);
+      }
       var etiquette = document.createElement("span");
       etiquette.className = "kta-presence-etiquette";
-      etiquette.textContent = p.pseudo + " · " + _age(p.ts) + (p.niveau !== null ? " · N" + p.niveau : "");
+      etiquette.textContent = p.pseudo + (en3d ? " · " + _t("presence.vue3d.libelle") : "") + " · " + _age(p.ts) +
+        (p.niveau !== null ? " · N" + p.niveau : "");
       el.appendChild(etiquette);
       L.marker(_coord(p.x, p.y), {
         icon: L.divIcon({ className: "kta-presence-icone", html: el, iconSize: [TAILLE, TAILLE],
@@ -178,6 +198,7 @@
     _calqueIti = null;
   }
   function _dessinerItis() {
+    _version++;
     _viderItis();
     var map = window.map;
     if (!map || !_itis.length || typeof L === "undefined") return;
@@ -229,8 +250,8 @@
     return true;
   }
 
-  // liste : [{ id, pseudo, x, y, niveau?, ts?, trace?: [[x, y], …], couleur?: "#rrggbb" }] ; [] efface.
-  // Sans `couleur` : couleurDe(id).
+  // liste : [{ id, pseudo, x, y, niveau?, ts?, trace?: [[x, y], …], couleur?: "#rrggbb", source?: "vue3d",
+  // cap? }] ; [] efface. Sans `couleur` : couleurDe(id).
   function afficher(liste) {
     _liste = _nettoyer(liste);
     _dessiner();
@@ -269,6 +290,7 @@
   }
   var TAILLE_REPERE = 30;
   function _dessinerReperes(nom) {
+    _version++;
     _viderReperes(nom);
     var c = _reperes[nom], map = window.map;
     if (!c || !map || !c.liste.length || typeof L === "undefined") return;
@@ -325,6 +347,7 @@
   // 🩸 Sortie du plan : tout ce qui appartenait à l'ancien plan disparaît (présences, itinéraires, repères, suivi,
   // masquages, minuteur), sinon l'équipe est redessinée sur le nouveau plan à ses anciennes coordonnées.
   function reinitialiser() {
+    _version++;
     clearInterval(_minuteur); _minuteur = null;
     _liste = []; _itis = []; _suivi = null; _tracesMasquees = {}; _itisMasques = {};
     _personnesMasquees = {};
@@ -361,6 +384,9 @@
     afficherReperes: afficherReperes,
     // Copie des repères d'un calque (tests, diagnostic).
     reperes: function (nom) { return _reperes[nom] ? JSON.parse(JSON.stringify(_reperes[nom].liste)) : []; },
+    // Calques de repères affichés, et compteur de dessins : lecture seule (vue 3D, tests).
+    calques: function () { return Object.keys(_reperes); },
+    version: function () { return _version; },
     nombre: function () { return _liste.length; },
     // Copie de ce qui est affiché (tests, diagnostic).
     liste: function () { return JSON.parse(JSON.stringify(_liste)); }

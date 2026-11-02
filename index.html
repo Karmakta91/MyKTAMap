@@ -176,9 +176,9 @@
       <img src="icon/karma.png" alt="KARMA" id="splashKarmaImg">
     </div>
 
-    <!-- Crédits librairies + algorithme (Dijkstra = pathfinder), en bas à gauche, 2 lignes de 3 : le <br> force
-         la coupure, la signature s'aligne sur la 2e ligne. -->
-    <div id="splashLeafletCredit" class="kta-splash-coin">🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</div>
+    <!-- Crédits librairies + algorithme (Dijkstra = pathfinder), en bas à gauche, 2 lignes : le <br> force la
+         coupure ; la 2e (3 noms) s'aligne sur la signature, la 1re (4 noms) passe au-dessus d'elle. -->
+    <div id="splashLeafletCredit" class="kta-splash-coin">🍃&nbsp;Leaflet · 🧊&nbsp;three.js · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</div>
   </div>
   <!-- ⚠️ ktaSplash.js : SYNCHRONE et juste après le splash (mouvement réduit lu avant la première peinture,
        plafond de sécurité armé dès le début). -->
@@ -263,6 +263,9 @@
 
   <!-- ⚠️ perfUltra.js : toggles lus à l'init par map.js / road.js / utils.js — à charger AVANT eux. -->
   <script src="js/perfUltra.js"></script>
+
+  <!-- ktaPictos.js : pictos au trait partagés (écran Bienvenue, bouton cube de la vue 3D) ; avant unlockGate.js. -->
+  <script src="js/ktaPictos.js"></script>
 
   <!-- ⚠️ ktaInstance.js : config d'instance lue UNE fois, avant les gates (partagée par la gate, le kiosque,
        le connecteur et la découverte des plans). unlockGate.js : barrière communautaire, chargée tôt pour
@@ -495,7 +498,7 @@
         <div class="kta-loader-credits">
           <!-- Crédits identiques en community et pro. &nbsp; entre emoji et nom : la paire ne se coupe jamais,
                la coupure se fait sur « · ». -->
-          🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas
+          🍃&nbsp;Leaflet · 🧊&nbsp;three.js · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas
         </div>
       </div>
     </div>
@@ -915,6 +918,7 @@
        teste window.KtaConvertir au clic). -->
   <script src="js/convertirObjet.js" defer></script>
   <script src="js/selectionMulti.js" defer></script>
+  <script src="js/selectionZone.js" defer></script>
   <!-- ⚠️ calqueSession.js rapatrie un calque dans la session pour l'éditer (un calque est rendu une fois,
        sans re-rendu). AVANT sessionPersist.js (hooks getSessionState / loadSessionState / appliquerVerrous)
        et filterPanel.js (son interface). -->
@@ -1022,6 +1026,7 @@
   <script src="js/computeLoader.js" defer></script>
   <script src="js/pathfinder.js" defer></script>
   <script src="js/roadGraph.js" defer></script>
+  <script src="js/galerieEmprise.js" defer></script>
   <script src="js/updateChecker.js" defer></script>
   <script src="js/alertChecker.js" defer></script>
   <!-- legalGate.js (conditions d'utilisation, gate au 1er lancement) + firstRunFlow.js, qui séquence
@@ -1055,6 +1060,9 @@
 
   <!-- interfaceDistanceTotale.js : panneau Distance totale (surlignage, filtres par type). -->
   <script src="js/interfaceDistanceTotale.js" defer></script>
+
+  <!-- volumeExploite.js : ⛏️ Volume exploité (défruitement du secteur ♦️), groupe 📐 Mesure. -->
+  <script src="js/volumeExploite.js" defer></script>
 
   <!-- interfaceLegende.js : légende plein écran, libellés via LegendCustomization. -->
   <script src="js/interfaceLegende.js" defer></script>

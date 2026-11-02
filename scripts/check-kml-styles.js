@@ -35,7 +35,8 @@ const REFERENCE = {
   "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
   "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },
   "structure_front-1":  { line: "#f4c542", width: 5, alpha: 1 },
-  "structure_front-2":  { line: "#ff9933", width: 5, alpha: 1 }
+  "structure_front-2":  { line: "#ff9933", width: 5, alpha: 1 },
+  "structure_mur-ligne": { line: "#1e3a8a", width: 5, alpha: 1 }
 };
 
 const win = { console: { log() {}, warn() {} } };

@@ -43,6 +43,8 @@ dessiné : il faut une logique de croisements.
 | K | Raccord dans l'itinéraire | Dessiné **et compté** dans **tous** les itinéraires (il ne l'était pas : `snappedPoints` était renvoyé mais lu nulle part). |
 | — | Limite du raccord | **50 m** : au-delà, on **avertit sans bloquer**. |
 | — | Aucun tracé sur le plan | On **avertit** au lancement (modale, « Y aller », sortie d'urgence) : le guidage n'aurait rien à dire. |
+| — | Vue 3D (QCM du 02/11/2026) | Bandeau compact dans la vue, mêmes textes : en suivi la consigne réelle (comme l'écran XL), en libre un **aperçu** depuis la position 3D, marqué, qui ne touche pas l'état du guidage (`ItiGuidage.apercu`) ; chevrons au sol vers la prochaine consigne ; pas de voix. |
+| — | « Y aller » tracker arrêté (QCM du 02/11/2026) | « D'où pars-tu ? » **à chaque fois** : « Ici » (vue 3D), « Ma dernière position (il y a N min) », « Me repositionner » ; Annuler = pas d'itinéraire. Avant : seulement si la position n'avait jamais été confirmée. |
 
 ## Logique « quand annoncer »
 
@@ -71,7 +73,9 @@ dessiné : il faut une logique de croisements.
 6. **Vocabulaire** : < 25° tout droit · 25–60° légèrement · 60–135° tourner · > 135° demi-tour. Deux sorties à
    moins de 35° l'une de l'autre → « prendre la branche de gauche / droite ».
 7. **Repère** : un point nommé à quelques mètres du carrefour enrichit la consigne (« au niveau de … »).
-8. **Changement de niveau** : « monter / descendre vers … » au passage d'une jonction.
+8. **Changement de niveau** : « monter / descendre vers le niveau +1 / -1 » (libellé signé du sélecteur) au passage
+   d'une jonction. Décision KARMA (QCM du 02/11/2026) : elle **absorbe** les consignes de carrefour à ≤ 5 m et passe
+   devant à abscisse égale (par un tracé `jonction`, elle tombait sur le virage du nœud et n'était jamais dite).
 9. **Seuils de marche** : pré-annonce, puis « maintenant » à l'approche.
 
 ## Découpage

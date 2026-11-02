@@ -1,6 +1,6 @@
 // check-api-surface.js — garde-fou BLOQUANT : CHARGE réellement les modules IIFE dans un vm et
 // vérifie que chaque méthode annoncée existe et se comporte (userProfile, styleResolver,
-// legendCustomization, osmMesure, profondeurNiveaux, convertirObjet, loi de largeur des fronts).
+// legendCustomization, osmMesure, volumeExploite, profondeurNiveaux, convertirObjet, loi de largeur des fronts).
 // 🩸 `node -c` ne valide QUE la syntaxe : une constante supprimée mais encore citée dans le bloc
 // d'exports passe `node -c` et meurt en ReferenceError au chargement navigateur (module entier
 // perdu, méthodes disparues des exports sans signal).
@@ -120,6 +120,92 @@ function charger(fichier, nomGlobal, prealables) {
   const s2 = OM._surface([LL(44.81, -0.25), LL(44.81, -0.24), LL(44.80, -0.24), LL(44.80, -0.25)]);
   t("mesure OSM : le sens de parcours ne change pas la surface", Math.abs(s - s2) < 1);
   t("mesure OSM : moins de 3 points → surface nulle", OM._surface([LL(44, 0), LL(45, 0)]) === 0);
+})();
+
+// ───────── volumeExploite.js (défruitement d'un secteur) ─────────
+// ⚠️ Valeurs attendues calculées À LA MAIN (rectangles, losanges, L) : échelle 2 px/m, donc 1 m² = 4 px².
+(function () {
+  const VE = charger("js/volumeExploite.js", "KtaVolumeExploite");
+  if (!VE) return;
+  const R = function (x0, y0, x1, y1) { return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]; };
+  const pil = function (pts, extra) { return Object.assign({ type: "pilier-1", points: pts }, extra || {}); };
+  const LIGNES = ["mur-ligne", "front-1", "front-2"];
+  const estLigne = function (ty) { return LIGNES.indexOf(ty) >= 0; };
+  const proche = function (a, b) { return Math.abs(a - b) < 1e-6; };
+  const calc = function (o) {
+    return VE.calculer(Object.assign({ scale: 2, hauteur: 2, niveau: null, estLigne: estLigne, structures: [], zones: [] }, o));
+  };
+  const carre = R(0, 0, 100, 100);   // 10 000 px² = 2 500 m²
+
+  let r = calc({ secteur: carre, structures: [pil(R(40, 40, 60, 60))] });
+  t("volume : secteur carré 100×100 px à 2 px/m = 2 500 m²", r.ok && proche(r.secteurM2, 2500));
+  t("volume : pilier 20×20 px dedans = 100 m², 1 pilier", proche(r.piliersM2, 100) && r.nbPiliers === 1);
+  t("volume : exploité 2 400 m², taux 96 %, 4 800 m³ à 2 m",
+    proche(r.exploiteM2, 2400) && proche(r.tauxPct, 96) && proche(r.volumeM3, 4800));
+
+  r = calc({ secteur: carre, structures: [pil(R(90, 40, 110, 60))] });
+  t("volume : pilier à cheval sur le bord → seule la moitié intérieure (50 m²)",
+    proche(r.piliersM2, 50) && r.nbPiliers === 1);
+  r = calc({ secteur: carre, structures: [pil([{ x: 100, y: 40 }, { x: 110, y: 50 }, { x: 100, y: 60 }, { x: 90, y: 50 }])] });
+  t("volume : losange coupé par le bord → la moitié (100 px² = 25 m²)", proche(r.piliersM2, 25));
+  r = calc({ secteur: carre, structures: [pil(R(100, 40, 120, 60))] });
+  t("volume : pilier qui touche le bord seulement → 0 m², non compté", proche(r.piliersM2, 0) && r.nbPiliers === 0);
+
+  const enL = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 50, y: 50 }, { x: 50, y: 100 }, { x: 0, y: 100 }];
+  r = calc({ secteur: enL, structures: [pil(R(60, 60, 90, 90))] });
+  t("volume : secteur en L = 7 500 px² = 1 875 m²", proche(r.secteurM2, 1875));
+  t("volume : pilier dans le creux du L → 0 retranché", proche(r.piliersM2, 0) && r.nbPiliers === 0);
+  r = calc({ secteur: enL, structures: [pil(R(40, 40, 60, 60))] });
+  t("volume : pilier sur l'angle rentrant → 400 − 100 px² = 75 m²", proche(r.piliersM2, 75) && r.nbPiliers === 1);
+
+  r = calc({ secteur: carre, structures: [pil(R(20, 40, 60, 60)), pil(R(40, 40, 80, 60))] });
+  t("volume : piliers qui se chevauchent comptés une fois (union 60×20 px = 300 m²)",
+    proche(r.piliersM2, 300) && r.nbPiliers === 2);
+
+  r = calc({ secteur: carre, hauteur: 2.5, structures: [pil(R(40, 10, 60, 30))],
+             zones: [{ type: "remblais", points: R(0, 0, 100, 20) }, { type: "eau", points: R(0, 50, 100, 100) }] });
+  t("volume : remblais dans le vide, hors pilier (2 000 − 200 px² = 450 m²), eau ignorée",
+    proche(r.remblaisM2, 450) && proche(r.remblaisM3, 1125));
+  t("volume : vide actuel = 2 400 − 450 = 1 950 m², 4 875 m³ à 2,5 m",
+    proche(r.videM2, 1950) && proche(r.videM3, 4875));
+  r = calc({ secteur: carre, zones: [{ type: "remblais", points: R(-50, 90, 50, 150) }] });
+  t("volume : remblais coupé au secteur (50×10 px = 125 m²)", proche(r.remblaisM2, 125));
+
+  const multi = [pil(R(40, 40, 60, 60), { level: -1 }), pil(R(10, 10, 20, 20))];
+  r = calc({ secteur: carre, structures: multi, niveau: 0 });
+  t("volume : niveau 0 → le pilier de −1 est ignoré, le pilier sans level compte (25 m²)",
+    proche(r.piliersM2, 25) && r.nbPiliers === 1);
+  r = calc({ secteur: carre, structures: multi, niveau: -1 });
+  t("volume : niveau −1 → seul son pilier (100 m²)", proche(r.piliersM2, 100) && r.niveau === -1);
+
+  r = calc({ secteur: carre, structures: [
+    { type: "front-1", points: R(10, 10, 90, 90) }, { type: "mur-ligne", points: R(10, 10, 90, 90) },
+    { type: "mur", points: R(0, 0, 10, 100) }] });
+  t("volume : front et mur en ligne ignorés, mur polygone retranché (250 m²)",
+    proche(r.piliersM2, 250) && r.nbPiliers === 1);
+
+  r = calc({ secteur: carre.slice().reverse(), structures: [pil(R(40, 40, 60, 60))] });
+  t("volume : le sens de tracé du secteur ne change rien", proche(r.exploiteM2, 2400));
+  r = calc({ secteur: carre, hauteur: 0 });
+  t("volume : hauteur ≤ 0 → volumes non donnés", r.ok && r.volumeM3 === null && r.videM3 === null);
+  t("volume : sans échelle → refus", calc({ secteur: carre, scale: null }).raison === "echelle" &&
+    calc({ secteur: carre, scale: 0 }).ok === false);
+  t("volume : secteur de moins de 3 points → refus",
+    calc({ secteur: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }).raison === "secteur");
+
+  // Charge : secteur à 400 sommets (bords subdivisés), 900 piliers 4×4 px dedans = 14 400 px² = 3 600 m².
+  const grand = [];
+  for (let i = 0; i < 100; i++) grand.push({ x: i * 10, y: 0 });
+  for (let i = 0; i < 100; i++) grand.push({ x: 1000, y: i * 10 });
+  for (let i = 0; i < 100; i++) grand.push({ x: 1000 - i * 10, y: 1000 });
+  for (let i = 0; i < 100; i++) grand.push({ x: 0, y: 1000 - i * 10 });
+  const beaucoup = [];
+  for (let a = 0; a < 30; a++) for (let b = 0; b < 30; b++) beaucoup.push(pil(R(20 + a * 32, 20 + b * 32, 24 + a * 32, 24 + b * 32)));
+  const t0 = Date.now();
+  r = calc({ secteur: grand, structures: beaucoup });
+  const ms = Date.now() - t0;
+  t("volume : 900 piliers, secteur à 400 sommets → 3 600 m² exacts en " + ms + " ms (< 3 s)",
+    proche(r.piliersM2, 3600) && r.nbPiliers === 900 && ms < 3000);
 })();
 
 // ───────── profondeurNiveaux.js (profil en long) ─────────
@@ -258,6 +344,65 @@ function charger(fichier, nomGlobal, prealables) {
 
   t("convert : un objet absent de sa famille est refusé",
     CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
+
+  // ── Contour FERMÉ par la géométrie (import SIG : pilier carré livré en 4 points / 3 côtés) ──
+  // Écart des bouts < 1,5 × le plus grand côté ET forme compacte (4πA/P² ≥ 0,2). Aucun point inventé ; seul un
+  // dernier point qui répète le premier est retiré.
+  const carre = { uid: "st_carre", type: "front-1", level: -1, description: "n",
+                  points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}] };
+  const boucle = { type: "front-1", points: [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10},{x:0,y:0}] };
+  // Zigzag ouvert, posé à l'écart : ses bouts ne doivent toucher aucun autre objet du test (sinon morceau).
+  const uLarge = { type: "front-1", points: [{x:100,y:0},{x:110,y:5},{x:120,y:0},{x:130,y:5}] };
+  const allonge = { type: "front-1", points: [{x:0,y:0},{x:0,y:20},{x:44,y:20},{x:44,y:3}] };   // grand côté manquant
+  const crochet = { type: "front-1", points: [{x:0,y:0},{x:100,y:0},{x:100,y:10}] };   // écart < 1,5 × grand côté
+  const ramifie = { type: "front-1", points: [{x:0,y:0},{x:100,y:0},{x:100,y:4},{x:52,y:4},{x:52,y:60},{x:48,y:60},
+                    {x:48,y:4},{x:0,y:4}] };   // contour de galeries en T : se referme mais remplirait la galerie
+  const deux   = { type: "front-1", points: [{x:0,y:0},{x:0.1,y:0}] };
+  const joncF  = { type: "jonction", fromLevel: 0, toLevel: -1, points: carre.points };
+  t("fermé : API estContourFerme exposée", typeof CV.estContourFerme === "function");
+  t("fermé : carré à 3 côtés (écart = 1 côté) reconnu", CV.estContourFerme("structures", carre) === true);
+  t("fermé : premier point répété reconnu",               CV.estContourFerme("structures", boucle) === true);
+  t("fermé : zigzag (écart > 1,5 × grand côté) reste ouvert", CV.estContourFerme("structures", uLarge) === false);
+  t("fermé : pilier allongé sans son grand côté reconnu", CV.estContourFerme("structures", allonge) === true);
+  t("🩸 fermé : crochet peu compact reste ouvert", CV.estContourFerme("structures", crochet) === false);
+  t("🩸 fermé : contour ramifié (galerie en T) reste ouvert", CV.estContourFerme("structures", ramifie) === false);
+  t("fermé : 2 points jamais fermés",                     CV.estContourFerme("structures", deux) === false);
+  t("fermé : une jonction jamais (ses niveaux)",          CV.estContourFerme("roads", joncF) === false);
+  t("fermé : une zone n'est pas un « contour » (déjà fermée par son type)",
+    CV.estContourFerme("zones", { type: "eau", points: carre.points }) === false);
+  const ciblesCarre = CV.listerCibles("structures", "front-1", carre).map(function (c) { return c.famille + ":" + c.type; });
+  t("fermé : le carré se voit proposer zone ET pilier", ciblesCarre.indexOf("zones:eau") >= 0 &&
+    ciblesCarre.indexOf("structures:pilier-1") >= 0);
+  t("fermé : et garde ses cibles ouvertes", ciblesCarre.indexOf("roads:principal") >= 0);
+  t("fermé : sans l'objet, la règle par type reste (pas de zone)",
+    CV.listerCibles("structures", "front-1").every(function (c) { return c.famille !== "zones"; }));
+  t("fermé : le zigzag n'a pas de cible fermée",
+    CV.listerCibles("structures", "front-1", uLarge).every(function (c) { return c.famille !== "zones"; }));
+
+  S = [carre, boucle, uLarge]; Z = []; R = [];
+  t("fermé : carré → pilier réussit", CV.convertir("structures", carre, "structures", "pilier-1") === true);
+  const pil = S.find(function (o) { return o.uid === "st_carre"; });
+  t("fermé : aucun point inventé (4 points restent 4)", !!pil && pil.type === "pilier-1" && pil.points.length === 4);
+  t("fermé : uid, niveau et note conservés", !!pil && pil.level === -1 && pil.description === "n");
+  t("fermé : boucle → zone réussit", CV.convertir("structures", boucle, "zones", "eau") === true);
+  t("fermé : le doublon du premier point est retiré (5 → 4)", Z.length === 1 && Z[0].points.length === 4);
+  t("fermé : l'objet d'origine garde ses 5 points (historique)", boucle.points.length === 5);
+  t("🩸 fermé : zigzag → zone REFUSÉ (rien ne bouge)",
+    CV.convertir("structures", uLarge, "zones", "eau") === false && S.indexOf(uLarge) >= 0 && Z.length === 1);
+  const zoneSeule = Z[0];
+  t("🩸 fermé → ouvert : refusé même en appel direct",
+    CV.convertir("zones", zoneSeule, "roads", "chemin") === false && Z.length === 1);
+
+  // Lot : contour fermé converti, ligne ouverte comptée en échec, un seul instantané.
+  const c2 = { type: "front-1", points: [{x:0,y:0},{x:4,y:0},{x:4,y:4},{x:0,y:4}] };
+  S = [c2, uLarge]; Z = [];
+  const bl = CV.convertirLot([{ famille: "structures", obj: c2 }, { famille: "structures", obj: uLarge }], "zones", "eau");
+  t("fermé : lot mixte → 1 converti, 1 échec (jamais forcé)", bl.convertis === 1 && bl.echecs === 1 &&
+    Z.length === 1 && S.length === 1 && S[0] === uLarge);
+  const cl = CV.listerCiblesLot([{ famille: "structures", obj: c2 }], true).map(function (c) { return c.famille; });
+  t("fermé : cibles d'un lot filtré = fermées comprises", cl.indexOf("zones") >= 0);
+  t("fermé : cibles d'un lot non filtré = règle par type", CV.listerCiblesLot([{ famille: "structures", obj: c2 }])
+    .every(function (c) { return c.famille !== "zones"; }));
 
   // ── La suppression (même popup, même référence directe sur l'objet) ──
   t("suppr : l'API est exposée", typeof CV.supprimer === "function");
@@ -590,6 +735,209 @@ function charger(fichier, nomGlobal, prealables) {
       });
     });
   }
+})();
+
+// ───────── convertirObjet.js : recoller des lignes qui forment ensemble une boucle ─────────
+// À l'import SIG, un pilier arrive en 2 à 4 lignes dont les bouts se touchent presque : aucune n'est fermée seule.
+// Côtés subdivisés tous les 5 px (comme un relevé SIG) : une moitié de carré n'est alors PAS un contour fermé seule.
+(function () {
+  const CV = charger("js/convertirObjet.js", "KtaConvertir",
+    ["js/styleResolver.js", "js/legendCustomization.js", "js/ktaUid.js"]);
+  if (!CV) return;
+  const w = CV.__win;
+  w.isStructurePolylineType = function (t) { return t === "front-1" || t === "front-2"; };
+  t("recoller : API trouverBoucles et recollerLot exposées",
+    typeof CV.trouverBoucles === "function" && typeof CV.recollerLot === "function");
+  if (typeof CV.trouverBoucles !== "function") return;
+  // Segment subdivisé de a à b (b inclus, a exclu si `sansDebut`).
+  const seg = function (a, b, sansDebut) {
+    const n = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 5)), out = [];
+    for (let i = sansDebut ? 1 : 0; i <= n; i++) out.push({ x: a.x + (b.x - a.x) * i / n, y: a.y + (b.y - a.y) * i / n });
+    return out;
+  };
+  const chemin = function (pts) {
+    let out = seg(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i++) out = out.concat(seg(pts[i - 1], pts[i], true));
+    return out;
+  };
+  const ligne = function (uid, pts, extra) {
+    return Object.assign({ uid: uid, type: "front-1", level: 0, points: chemin(pts) }, extra || {});
+  };
+  const it = function (o, f) { return { famille: f || "structures", obj: o }; };
+  // Carré 30 × 30 à l'abscisse ox livré en 2 lignes : moitié haut-droite, moitié bas-gauche aux bouts décalés de e px.
+  const carre2 = function (p, ox, e, extraA, extraB) {
+    const A = ligne(p + "a", [{ x: ox, y: 0 }, { x: ox + 30, y: 0 }, { x: ox + 30, y: 30 }], extraA);
+    const B = ligne(p + "b", [{ x: ox + 30 - e, y: 30 }, { x: ox, y: 30 }, { x: ox, y: e }], extraB);
+    return [A, B];
+  };
+
+  const [a3, b3] = carre2("st_r3", 0, 3, { description: "note A" }, { description: "note B" });
+  t("recoller : une moitié de carré seule n'est pas un contour fermé", CV.estContourFerme("structures", a3) === false);
+  let r = CV.trouverBoucles([it(a3), it(b3)]);
+  t("recoller : 2 lignes formant un carré à 3 px d'écart → 1 boucle de 2 lignes",
+    r.boucles.length === 1 && r.lignes === 2 && r.ignorees === 0);
+  const pts = r.boucles[0] ? r.boucles[0].points : [];
+  t("recoller : jonctions fusionnées, aucun point inventé (A + B − 2 points)",
+    pts.length === a3.points.length + b3.points.length - 2);
+  t("recoller : le point de la PREMIÈRE ligne est gardé aux jonctions (départ et coin)",
+    pts.length > 0 && pts[0].x === 0 && pts[0].y === 0 && pts.some(function (q) { return q.x === 30 && q.y === 30; }) &&
+    !pts.some(function (q) { return q.x === 27 && q.y === 30; }) && !pts.some(function (q) { return q.x === 0 && q.y === 3; }));
+  const bInv = Object.assign({}, b3, { points: b3.points.slice().reverse() });
+  r = CV.trouverBoucles([it(a3), it(bInv)]);
+  t("recoller : une ligne dans l'autre sens est retournée", r.boucles.length === 1 &&
+    r.boucles[0].points.length === pts.length && r.boucles[0].points[pts.length - 1].y === pts[pts.length - 1].y);
+
+  const [a8, b8] = carre2("st_r8", 100, 8);
+  r = CV.trouverBoucles([it(a8), it(b8)]);
+  t("🩸 recoller : bouts à 8 px → pas recollés", r.boucles.length === 0);
+
+  // Rectangle 60 × 30 en 3 lignes.
+  const r1 = ligne("st_q1", [{ x: 200, y: 0 }, { x: 260, y: 0 }]);
+  const r2 = ligne("st_q2", [{ x: 262, y: 1 }, { x: 260, y: 30 }, { x: 230, y: 30 }]);
+  const r3 = ligne("st_q3", [{ x: 228, y: 31 }, { x: 200, y: 30 }, { x: 201, y: 2 }]);
+  r = CV.trouverBoucles([it(r1), it(r2), it(r3)]);
+  t("recoller : 3 lignes formant un rectangle → 1 boucle", r.boucles.length === 1 && r.lignes === 3);
+
+  // T à 3 branches qui se rejoignent en un nœud.
+  const t1 = ligne("st_t1", [{ x: 300, y: 0 }, { x: 330, y: 0 }]);
+  const t2 = ligne("st_t2", [{ x: 360, y: 0 }, { x: 331, y: 1 }]);
+  const t3 = ligne("st_t3", [{ x: 330, y: 40 }, { x: 330, y: 2 }]);
+  r = CV.trouverBoucles([it(t1), it(t2), it(t3)]);
+  t("🩸 recoller : T à 3 branches → non, compté", r.boucles.length === 0 && r.ignorees === 3);
+  // Carré en 2 lignes + une branche accrochée à un coin : degré 3, pas une boucle simple.
+  const [ab, bb] = carre2("st_rb", 400, 3);
+  const br = ligne("st_rbr", [{ x: 400, y: -2 }, { x: 400, y: -40 }]);
+  r = CV.trouverBoucles([it(ab), it(bb), it(br)]);
+  t("🩸 recoller : boucle avec une branche → non, 3 lignes comptées", r.boucles.length === 0 && r.ignorees === 3);
+
+  // Boucle peu compacte (100 × 2) : remplirait une galerie.
+  const f1 = ligne("st_f1", [{ x: 0, y: 100 }, { x: 100, y: 100 }, { x: 100, y: 102 }]);
+  const f2 = ligne("st_f2", [{ x: 98, y: 102 }, { x: 0, y: 102 }, { x: 0, y: 101 }]);
+  r = CV.trouverBoucles([it(f1), it(f2)]);
+  t("🩸 recoller : boucle peu compacte → non", r.boucles.length === 0 && r.ignorees === 2);
+
+  const [an, bn] = carre2("st_rn", 500, 3, null, { level: -1 });
+  r = CV.trouverBoucles([it(an), it(bn)]);
+  t("🩸 recoller : niveaux différents → non", r.boucles.length === 0);
+
+  const jc = { uid: "rd_j", type: "jonction", fromLevel: 0, toLevel: -1, points: b3.points };
+  r = CV.trouverBoucles([it(a3), it(jc, "roads")]);
+  t("recoller : une jonction n'entre jamais dans une boucle", r.boucles.length === 0);
+
+  // L'opération : un instantané, une entrée, lignes supprimées, uid neuf, notes concaténées, ⏪ = état d'avant.
+  let R = [], Z = [], S = [];
+  w.getRoads = function () { return R; };  w.setRoads = function (v) { R = v; };
+  w.getZones = function () { return Z; };  w.setZones = function (v) { Z = v; };
+  w.getStructures = function () { return S; }; w.setStructures = function (v) { S = v; };
+  const journal = { snap: 0, record: [] };
+  w.HistoryManager = {
+    captureState: function () { journal.snap++; return { S: S.slice(), Z: Z.slice() }; },
+    record: function (label, avant) { journal.record.push({ label: label, avant: avant }); }
+  };
+  const seul = { uid: "st_seul", type: "front-1", level: 0,   // contour fermé seul : 4 points / 3 côtés
+                 points: [{ x: 600, y: 0 }, { x: 630, y: 0 }, { x: 630, y: 30 }, { x: 600, y: 30 }] };
+  const autre = ligne("st_autre", [{ x: 700, y: 0 }, { x: 800, y: 0 }]);
+  S = [a3, b3, r1, r2, r3, a8, b8, seul, autre];
+  const bl = CV.recollerLot(S.map(function (o) { return it(o); }), "structures", "pilier-1");
+  t("recoller : bilan = 2 objets recollés (5 lignes), 1 contour seul converti",
+    bl.recolles === 2 && bl.lignes === 5 && bl.convertis === 1);
+  t("recoller : UN instantané, UNE entrée d'historique", journal.snap === 1 && journal.record.length === 1);
+  const piliers = S.filter(function (o) { return o.type === "pilier-1"; });
+  t("recoller : 3 piliers, les lignes recollées ont quitté la session", piliers.length === 3 &&
+    ["st_r3a", "st_r3b", "st_q1", "st_q2", "st_q3"].every(function (u) { return !S.some(function (o) { return o.uid === u; }); }));
+  t("recoller : paire à 8 px et ligne seule intactes", S.indexOf(a8) >= 0 && S.indexOf(b8) >= 0 && S.indexOf(autre) >= 0);
+  const pc = piliers.find(function (o) { return o.description && o.description.indexOf("note A") >= 0; });
+  t("recoller : notes distinctes concaténées", !!pc && pc.description === "note A\nnote B");
+  t("recoller : uid NEUF (préfixe de la famille cible), niveau gardé", !!pc && /^st_/.test(pc.uid) &&
+    pc.uid !== "st_r3a" && pc.uid !== "st_r3b" && pc.level === 0 && typeof pc.updatedAt === "number");
+  t("recoller : l'objet d'origine n'est pas muté (historique)", a3.type === "front-1" && a3.points.length === 13);
+  const avant = journal.record[0] && journal.record[0].avant;
+  t("recoller : l'instantané d'avant tient les lignes d'origine (⏪ les rend)",
+    !!avant && avant.S.indexOf(a3) >= 0 && avant.S.indexOf(r3) >= 0 && avant.S.length === 9);
+
+  // Cible ouverte : rien n'est recollé.
+  S = [a3, b3]; journal.snap = 0; journal.record = [];
+  const blO = CV.recollerLot([it(a3), it(b3)], "structures", "front-2");
+  t("🩸 recoller : cible ouverte → rien recollé, rien écrit",
+    blO.recolles === 0 && S.length === 2 && journal.record.length === 0);
+
+  // Marque de calque : gardée si toutes les lignes ont la même, retirée sinon.
+  const [ca, cb] = carre2("st_rc", 0, 3, { _srcCalque: "L1", _srcCalqueDepuis: 5 }, { _srcCalque: "L1", _srcCalqueDepuis: 5 });
+  const [ma, mb] = carre2("st_rm", 100, 3, { _srcCalque: "L1" }, null);
+  S = [ca, cb, ma, mb];
+  CV.recollerLot(S.map(function (o) { return it(o); }), "zones", "eau");
+  const zc = Z.find(function (o) { return o.points[0].x === 0; });
+  const zm = Z.find(function (o) { return o.points[0].x === 100; });
+  t("recoller : même calque → marque gardée",
+    !!zc && zc._srcCalque === "L1" && zc._srcCalqueDepuis === 5 && /^zn_/.test(zc.uid));
+  t("recoller : provenances mêlées → objet ordinaire (marque retirée)",
+    !!zm && zm._srcCalque === undefined && zm._srcCalqueDepuis === undefined);
+  t("recoller : vers une autre famille, les lignes quittent la leur", S.length === 0 && Z.length === 2);
+
+  // Règle 1 : une ligne de 2 segments n'est jamais un contour fermé seule (sinon un triangle).
+  const V = { uid: "st_V", type: "front-1", level: 0, points: [{ x: 0, y: 0 }, { x: 10, y: 20 }, { x: 20, y: 0 }] };
+  const La = { uid: "st_La", type: "front-1", level: 0, points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }] };
+  t("🩸 contour : un V de 2 segments n'est pas fermé seul", CV.estContourFerme("structures", V) === false);
+  t("🩸 contour : un L de 2 segments n'est pas fermé seul", CV.estContourFerme("structures", La) === false);
+  t("contour : 2 segments + premier point répété = triangle fermé (3 côtés)", CV.estContourFerme("structures",
+    { type: "front-1", points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }, { x: 0, y: 0 }] }) === true);
+
+  // Règle 2 : un « C » de 3 segments dont un bout touche une autre ligne de la SESSION est un morceau.
+  const Ca = { uid: "st_Ca", type: "front-1", level: 0,
+               points: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }, { x: 0, y: 30 }] };
+  const Cb = { uid: "st_Cb", type: "front-1", level: 0, points: [{ x: 0, y: 28 }, { x: 0, y: 2 }] };
+  const Ci = { uid: "st_Ci", type: "front-1", level: 0,
+               points: [{ x: 500, y: 0 }, { x: 530, y: 0 }, { x: 530, y: 30 }, { x: 500, y: 30 }] };
+  S = [Ca, Cb, Ci]; Z = []; R = [];
+  t("contour : le C à 3 segments se referme (géométrie seule)", CV.estContourFerme("structures", Ca) === true);
+  t("🩸 morceau : la fiche du C qui touche une ligne voisine ne propose ni zone ni pilier",
+    CV.listerCibles("structures", "front-1", Ca).every(function (c) { return c.famille !== "zones" && c.type !== "pilier-1"; }));
+  t("contour : la fiche du C isolé propose zone et pilier",
+    CV.listerCibles("structures", "front-1", Ci).some(function (c) { return c.famille === "zones"; }));
+  r = CV.trouverBoucles([it(Ca)]);
+  t("🩸 morceau : la voisine HORS sélection suffit (C seul sélectionné → 0 contour, 1 morceau)",
+    r.contours.length === 0 && r.morceaux === 1 && r.boucles.length === 0);
+  r = CV.trouverBoucles([it(Ca), it(Cb), it(Ci)]);
+  t("morceau : recollé avec sa voisine (1 boucle de 4 points), le C isolé reste un contour seul",
+    r.boucles.length === 1 && r.boucles[0].points.length === 4 && r.contours.length === 1 &&
+    r.contours[0].obj === Ci && r.morceaux === 0);
+  journal.snap = 0; journal.record = [];
+  const blM = CV.convertirLot([it(Ca), it(Ci)], "structures", "pilier-1");
+  t("🩸 morceau : refusé seul en lot (1 converti = le C isolé, 1 échec)", blM.convertis === 1 && blM.echecs === 1 &&
+    S.indexOf(Ca) >= 0 && S.indexOf(Ci) < 0);
+  const blR = CV.recollerLot([it(Ca), it(Cb)], "structures", "pilier-1");
+  t("morceau : recollé avec sa voisine en un pilier", blR.recolles === 1 && blR.lignes === 2 &&
+    S.indexOf(Ca) < 0 && S.indexOf(Cb) < 0);
+  S = [Ca, Cb];
+  t("🩸 morceau : convertir() direct refusé aussi", CV.convertir("structures", Ca, "zones", "eau") === false);
+
+  // Un seul bout qui touche : un pilier entier accolé à un voisin par un coin, converti seul. Les deux bouts qui
+  // touchent chacun une ligne différente : morceau.
+  const Cun = { uid: "st_Cun", type: "front-1", level: 0,
+                points: [{ x: 200, y: 0 }, { x: 230, y: 0 }, { x: 230, y: 30 }, { x: 200, y: 30 }] };
+  const N1 = { uid: "st_N1", type: "front-1", level: 0, points: [{ x: 200, y: -2 }, { x: 200, y: -40 }] };
+  const Cdx = { uid: "st_Cdx", type: "front-1", level: 0,
+                points: [{ x: 300, y: 0 }, { x: 330, y: 0 }, { x: 330, y: 30 }, { x: 300, y: 30 }] };
+  const N2 = { uid: "st_N2", type: "front-1", level: 0, points: [{ x: 298, y: 0 }, { x: 260, y: 0 }] };
+  const N3 = { uid: "st_N3", type: "front-1", level: 0, points: [{ x: 298, y: 30 }, { x: 260, y: 30 }] };
+  S = [Cun, N1, Cdx, N2, N3]; Z = [];
+  t("contour : C dont UN seul bout touche une voisine → fiche avec zone et pilier",
+    CV.listerCibles("structures", "front-1", Cun).some(function (c) { return c.type === "pilier-1"; }));
+  r = CV.trouverBoucles([it(Cun), it(Cdx)]);
+  t("🩸 morceau : C dont les DEUX bouts touchent (deux voisines différentes) → morceau ; l'autre → contour seul",
+    r.morceaux === 1 && r.contours.length === 1 && r.contours[0].obj === Cun);
+  const blU = CV.convertirLot([it(Cun), it(Cdx)], "structures", "pilier-1");
+  t("contour : en lot, le C à un seul bout qui touche est converti seul, celui à deux bouts refusé",
+    blU.convertis === 1 && blU.echecs === 1 && S.indexOf(Cun) < 0 && S.indexOf(Cdx) >= 0);
+
+  ["convert.recollerFiltre", "convert.lotSourceRecoller", "convert.regleRecoller", "convert.recollerTitre",
+   "convert.recollerConfirm", "convert.recollerBilan", "convert.histoireRecoller",
+   "convert.morceauxReste", "convert.regleMorceau"].forEach(function (k) {
+    ["fr", "en", "es"].forEach(function (l) {
+      const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+      t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+    });
+  });
 })();
 
 // ───────── userProfile.js ─────────

@@ -196,8 +196,11 @@ function corps(src, nom) {
     fautifs(piege, "test").length === 6, fautifs(piege, "test").join(" | "));
   t("fenêtres de message : le contrôle accepte un message échappé (auto-test)",
     fautifs(sain, "test").length === 0, fautifs(sain, "test").join(" | "));
-  const tous = fs.readdirSync("js").filter((f) => f.endsWith(".js"))
-    .reduce((acc, f) => acc.concat(fautifs(lire("js/" + f), "js/" + f)), []);
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
+  const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
+  const tous = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => "js/" + f).concat(jsAddons())
+    .reduce((acc, f) => acc.concat(fautifs(lire(f), f)), []);
   t("🩸 ktaConfirm / ktaAlerte : aucune donnée brute dans un message rendu en HTML — ktaEsc()",
     tous.length === 0, tous.join(" | "));
 }

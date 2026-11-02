@@ -107,6 +107,7 @@
     "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 2, isPolyline: false },
     "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 2, isPolyline: false },
     "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 2, isPolyline: false },
+    "mur-ligne": { color: "#1e3a8a", weight: 6, opacity: 1, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 6, opacity: 1, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 6, opacity: 1, isPolyline: true }
   };
@@ -1087,10 +1088,15 @@
     if (!_proj || !_osmMap) return;
     if (!_structLayer) _structLayer = L.layerGroup().addTo(_osmMap);
     _structLayer.clearLayers();
-    const structs = _collectVisibleStructures();
+    // Session puis calques, sans tri : la règle « mur sous pilier et front » (structures.js) pose chaque mur sous
+    // les piliers et fronts de son niveau, d'où qu'ils viennent.
+    let structs = _collectVisibleStructures();
+    if (typeof window.ktaMursSousPiliers === "function") {
+      structs = window.ktaMursSousPiliers(structs, function (s) { return s; });
+    }
     const isPolylineType = (typeof window.isStructurePolylineType === "function")
                             ? window.isStructurePolylineType
-                            : function(t) { return /^front/.test(String(t || "")); }; // repli regex
+                            : function(t) { return /^(front|mur-ligne)/.test(String(t || "")); }; // repli regex
     let added = 0, skipped = 0;
     for (const s of structs) {
       const latlngs = _projectPoints(s.points);

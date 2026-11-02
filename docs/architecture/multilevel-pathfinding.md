@@ -53,7 +53,7 @@ Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / 
 
 **⚠️ Depuis v146 (2026-05-14)** : `_rdRoadsExploitables()` utilise `getAllEmbeddedRoads()` (et plus `getEmbeddedRoads()` qui filtrait par visibilité). Cohérence avec Pathfinder + Search : l'utilisateur peut masquer le calque routes (dessinées en dur sur le PNG) pour gagner en perf rendu, tout en gardant un total fiable. Le surlignage magenta est aussi appliqué sur les roads masquées (layer séparé qui se voit indépendamment du calque sous-jacent).
 
-**Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **🛣️ Tracés / Routes** (`interface.js > _creerGroupeAccordeon({id:"traces"})`). Toggle ON/OFF — re-cliquer ferme la modale.
+**Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **📐 Mesure** (`interface.js > _creerGroupeAccordeon({id:"mesure"})`, entre ♦️ Surface et ❌ Effacer). Toggle ON/OFF — re-cliquer ferme la modale.
 
 **Modale plein écran** (`#kta-rd-modal`, shell `.kta-readme-modal-overlay` + `.kta-rd-modal-boite`) — pattern identique aux autres modales du projet (itinéraire, légende, config) :
 - Boîte centrée 480px max, `max-height: 90vh`.
@@ -135,7 +135,7 @@ APP_CONFIG.multiLevel ←
   - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner. Affichage **trié croissant** (gauche=négatif, droite=positif, comme un axe numérique).
   - 👁️ Niveaux visibles (checkboxes, multi-select) — filtre d'affichage
   - Quick actions : `Tous` / `Actif seul`
-  - Même section dans ≡ Filtres (`filterPanel.js > _renderLevelsSection`), plus la case **🖼️ Afficher le plan de base** (suit le 0 par défaut, le choix de l'utilisateur l'emporte ensuite) (règle du fond : `rendering-leaflet.md` §Plan principal = niveau 0). 🩸 Un clic sur « Niveau actif » re-rend la section (`ktaSetActiveLevel` → `onLevelChange`) : tout marquage après coup se fait par valeur de niveau, jamais par le nœud cliqué (détaché). Délégation unique sur `#kta-fp-sec-lvl`, liée à l'ouverture.
+  - Même section dans ≡ Filtres (`filterPanel.js > _renderLevelsSection`), plus la case **🖼️ Afficher le plan de base**, jumelle de celle de « Calques image » (suit le 0 par défaut, le choix de l'utilisateur l'emporte ensuite) (règle du fond : `rendering-leaflet.md` §Plan principal = niveau 0). 🩸 Un clic sur « Niveau actif » re-rend la section (`ktaSetActiveLevel` → `onLevelChange`) : tout marquage après coup se fait par valeur de niveau, jamais par le nœud cliqué (détaché). Délégation unique sur `#kta-fp-sec-lvl`, liée à l'ouverture.
   - **2 boutons d'extension (v154+)** : `−` à gauche (ajoute `min-1`, sous-sols) + `+` à droite (ajoute `max+1`, étages supérieurs). Format pastille = "pill" extensible (cf. `.kta-niv-pastille` CSS) pour accepter `-1`/`-2` sans débordement dans le bouton Leaflet 30×30.
 - **Sous-action 🪜 Jonction interniveau** : ajoutée au groupe Tracés quand multiLevel ON. Click → modale `from/to level` → mode tracé activé.
 - **Boussole repositionnée** : si `body.kta-multilevel-active`, le widget boussole passe de `top:80px` à `top:130px` pour libérer la place au bouton niveau.
@@ -287,7 +287,10 @@ jonctions en tracé (§26.5) restent les **pentes douces**.
 - **Tags** : `jes` (escalier entre niveaux), `jpe` (puits à échelons entre niveaux), `jps` (puits sans échelon entre
   niveaux). 🔒 **Jamais une sortie de surface** : absents de `sortieUrgence.js > TYPES_SORTIE` et de
   `secoursMode.js > CRIT_TAGS / CRIT_FERMES` (`scripts/check-poi-jonction.js` §1-2, sur la vraie sortie d'urgence).
-  `peo` / `eso` peuvent **aussi** porter `niveaux` (puits de surface qui dessert des étages) : ils restent des sorties.
+  `peo` / `eso` / `pa` peuvent **aussi** porter `niveaux` (puits de surface qui dessert des étages) : `peo` / `eso`
+  restent des sorties ; `pa` (puits d'aération) n'a pas de moyen (`moyen` null) : jamais emprunté par l'itinéraire
+  (`_injecterJonctionsPoi` l'écarte) ni par le 🪜 de la vue 3D, qui le dessine à chacun de ses niveaux ; sa fiche dit
+  ses niveaux sans raccord.
   Pas de variante ouvert / fermé (décision produit).
 - **Données du point** : `niveaux` (entiers, contient toujours `level`) et `accroches` `[{level, x, y}]` = raccords
   **validés** par l'utilisateur, un par galerie où le passage débouche. Point sans `niveaux` = son seul `level`.
@@ -339,7 +342,7 @@ atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jo
 
 **Visuel** : hachures rouge sombre / noir à 45° via un `<pattern>` SVG défini dans `index.html` (`id="kta-pattern-inaccessible"`). Renderer SVG forcé (singleton `_inaccessibleRenderer` dans `zones.js` pour session, `_inaccessibleDataRenderer` dans `utils.js` pour data layers) car canvas ignore les patterns SVG.
 
-**Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)`. Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
+**Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, obstacles.polys)` (et `_segmentCoupeParMur`, cf. §31.1 bis). Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
 
 **Algorithme de détection** (`pathfinder.js`) :
 - `_pointInPolygon(p, poly)` — ray-casting standard O(n)
@@ -353,6 +356,20 @@ atteignable, sortie d'urgence) · parcours réel : `scripts/smoke/checkup-poi-jo
 **Multi-niveau** : zone bloque uniquement les segments du **même niveau**. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` (middle de jonction interniveau) jamais bloqués (points "en l'air").
 
 **Indépendant de la visibilité** : pathfinder utilise toujours la zone même si le calque zones est toggle off (cohérence demandée — sinon l'user pourrait toggler sans s'en rendre compte). Toutes les modifs d'export (PNG, session) respectent toujours le type comme une vraie zone.
+
+#### 31.1 bis Mur en ligne (contrainte DURE)
+
+**Type de structure** : `"mur-ligne"` (« Mur (ligne) », 🟦), polyligne de la famille des structures comme les fronts (`structures.js > STRUCTURE_TYPES_POLYLINE`). Sert aux murs levés en trait, cas courant d'un import SIG (le `mur` intégré est un polygone, une ligne ouverte ne s'y convertit pas). Jamais un tracé : un tracé est une galerie praticable.
+
+**Effet pathfinder** : un segment de road qui **croise** un mur en ligne de son niveau n'entre pas au graphe, exactement comme une zone inaccessible (mêmes conséquences pour l'enrichissement et Dijkstra). Piliers, mur polygone et fronts ne sont **pas** des obstacles. Le rôle tient à la **clé** `mur-ligne` : renommé ou recoloré dans ≡ Légende, il reste un obstacle ; un type personnalisé en ligne n'en est pas un.
+
+**Collecte** : `_collecterMursLigne()` lit `window.getStructures()` et `window._ktaDataStructurePolygons` (le registre range aussi les lignes), `type === "mur-ligne"`, ≥ 2 points, sans `level` = niveau 0. `_collecterObstaclesDurs()` = zones inaccessibles + murs, passé partout où passaient les zones (`computeRoute`, `computeReachable`, `buildNetworkGraph({ includeZones: true })`). Inter-plans : `InterPlanLinks.collectRoutingDataForPlan` rend `murs` (session + calques du plan distant), `computeRouteOnRoads(…, { murs })` les applique.
+
+**Algorithme** : `_preparerObstacles` sépare polygones et murs ; les segments de murs vont dans une grille (`GRILLE_MUR_PX` = 64 px, clé `niveau|cx,cy`, un seul étage `*` hors multi-niveau). `_segmentCoupeParMur` ne teste que les cellules de la boîte du segment de road, puis boîte contre boîte, puis `_segmentIntersection` (bornes incluses). 🩸 Le test naïf serait tracés × segments de murs (~6·10⁷ intersections pour 10 000 segments et 3 000 murs) ; avec la grille, le graphe coûte le même ordre de temps que sans murs (mesure dans `scripts/check-mur-ligne.js`).
+
+🩸 **Contact compté** : un tracé qui finit pile sur un mur perd ce dernier segment (bornes incluses), sinon deux segments qui se touchent sur le mur le franchiraient. Un tracé qui longe un mur (colinéaire) n'est pas coupé.
+
+**Import SIG** : une valeur « mur » sur une **ligne** est proposée en `struct:mur-ligne` (`createConf.js > _sigImpRendreTables`) ; sous « une couleur par niveau », un mur en ligne garde sa clé (`sigImport.js > _typeNiveau`), sinon il serait fondu dans le type de niveau des fronts et perdrait son rôle.
 
 #### 31.2 Préférences d'évitement (contrainte SOUPLE)
 
@@ -521,7 +538,7 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 **`_onTrackerRecale(x, y, source)`** (`interfaceItineraire.js`) :
 - No-op sans road `type:"itinerary"` active (hors `_preview`).
 - `source === "point"` + coords **arrondies** égales à une étape non-done (hors `source:"tracker"`) → **validation** : `w.done = true` (mutation directe de la road → persistance session gratuite), toast `iti.replan.stepDone` + vibration medium.
-- Débounce **500 ms** → `_replanifierDepuis(x, y)` : étapes restantes = `waypoints.filter(!done && source!=="tracker")` dans l'ordre ; `computeRoute([origin, ...restantes], avoidPrefs)` sous `_withItiComputeLoader` ; nouvelle road = `waypoints: [origin, ...TOUTES les étapes copiées]` (done incluses → progression visible + persistée). **Échec de calcul → ancien tracé conservé** + toast `iti.replan.err`.
+- Débounce **500 ms** → `_replanifierDepuis(x, y, niveau)` (`niveau` = `getTrackerLevel()` sur un plan multi-niveau : le tracker vient d'être recalé, il porte le niveau d'arrivée ; posé en `level` sur l'origine) : étapes restantes = `waypoints.filter(!done && source!=="tracker")` dans l'ordre ; `computeRoute([origin, ...restantes], avoidPrefs)` sous `_withItiComputeLoader` ; nouvelle road = `waypoints: [origin, ...TOUTES les étapes copiées]` (done incluses → progression visible + persistée). **Échec de calcul → ancien tracé conservé** + toast `iti.replan.err`.
 - 0 étape restante → road itinéraire retirée + toast `iti.replan.finished` (le tracé tracker n'est pas touché).
 
 **Rendu done** : `_ajouterWaypointVisuel` → classe `.kta-iti-wp-done` + ✓ au lieu du numéro (CSS vert `#4caf50`) ; liste modale → ligne `.kta-iti-wp-row-done` rayée.
@@ -587,41 +604,42 @@ code disait le contraire de ses propres commentaires.
 
 | Contrainte | Source | Nature | Réglable |
 |---|---|---|---|
-| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ **depuis v1.82.0** |
+| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ case « Respecter… » |
+| Structures `mur-ligne` (Mur (ligne)) | session + `_ktaDataStructurePolygons` | **dure**, même niveau | ✅ même case |
 | Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
 | Points / tags à éviter | `SearchPoints` | souple | ✅ |
-| **Structures** (piliers, murs, fronts) | — | **aucune** | sans objet |
+| **Autres structures** (piliers, mur polygone, fronts) | — | **aucune** | sans objet |
 
-🩸 **Les structures ne bloquent rien.** Aucune référence dans `pathfinder.js` :
-elles ne sont ni arêtes ni obstacles. Le commentaire de `utils.js` au-dessus de
-`getAllEmbeddedStructures` affirmait le contraire (« utilisé pour la collision
-pathfinder, les structures bloquent comme les zones inaccessibles ») — c'était
-faux depuis le début, et ça a coûté un aller-retour de diagnostic à KARMA.
+🩸 **Une seule structure bloque : le mur en ligne** (§31.1 bis). Les autres ne sont ni
+arêtes ni obstacles ; ne pas les y ajouter « par cohérence » (décision produit : un
+pilier ou un front levé n'est pas une paroi continue).
 
 🩸 **Le graphe se construit UNIQUEMENT sur les `roads`** (`getRoads` +
 `getAllEmbeddedRoads`). Conséquence sur un plan importé dont tout le relevé est
 parti en structures : **aucun itinéraire n'est possible**, pas même dégradé.
 C'est ce qui motive le reclassement d'objet (cf. `session-data.md`).
 
-### La case « Respecter les zones inaccessibles »
+### La case « Respecter les zones inaccessibles et les murs (ligne) »
 
-Les zones `inaccessible` étaient la **seule** contrainte que le moteur ne relâche
-jamais — même la passe 2 les garde. Sur un relevé encore incomplet, un polygone
-typé par erreur ferme donc un passage réel, sans recours.
+Les zones `inaccessible` et les murs en ligne sont les **seules** contraintes que le
+moteur ne relâche jamais — même la passe 2 les garde. Sur un relevé encore incomplet,
+un objet typé par erreur ferme donc un passage réel, sans recours.
 
-`computeRoute(waypoints, { respecterInaccessibles: false })` la suspend. Case
+`computeRoute(waypoints, { respecterInaccessibles: false })` les suspend **ensemble**
+(le nom de l'option est historique). Case
 dans la section « 🚫 Préférences d'évitement », **cochée par défaut**, persistée
 avec les autres préférences (`respecterInaccessibles !== false` : une préférence
 enregistrée avant cette version n'a pas le champ et garde le comportement
 historique).
 
 ⚠️ **Volontairement limité à `computeRoute`.** `computeReachable` (Mode Secours /
-Perdu) garde les zones inaccessibles en toutes circonstances : une préférence de
+Perdu) garde les zones inaccessibles et les murs en toutes circonstances : une préférence de
 confort n'a pas à élargir un périmètre de secours. `interPlanRoute` et la Sortie
 d'urgence lancée par 🚨 ne passent pas l'option — ils héritent du comportement sûr.
 **Seule exception : « 🚑 Évacuer » du Mode Secours** (options brancard) — l'opérateur
 choisit les types de zones à éviter (eau et remblais cochés d'office) et peut lever les
-inaccessibles par une case **décochée par défaut** (dernier recours, nommé comme tel).
+inaccessibles et les murs par une case **décochée par défaut** (dernier recours, nommé comme
+tel ; son compte = `Pathfinder.nbObstaclesDurs()`).
 Les contraintes vont `SortieUrgence.declencherDepuis(…, { contraintes })` → classement des
 sorties → `itineraireYAller(…, { evacuation })` → `road.evacuation`, relu par les recalculs
 (`_replanifierDepuis`, `SortieUrgence.relancerDepuis`). Une sortie atteinte seulement en
@@ -729,4 +747,23 @@ fait tomber le cas du puits, autoriser l'extrapolation fait tomber celui du +1.
 
 ## 🩸 Calage d'un point selon son niveau (29/09/2026, audit Secours 4.2)
 
-`_insertVirtualNode` prenait le segment le plus proche en 2D, quel que soit son étage : un point **du −1** cliqué près d'une galerie superposée du 0 s'accrochait au 0 (mesuré sur le plan de test : 39 clics ambigus sur 40). Désormais, si le point porte un niveau (`p.level` entier, plan multi-niveau), le segment le plus proche **de ce niveau** est préféré s'il n'est pas à plus de `NIVEAU_TOLERANCE_PX` (40 px) au-delà du plus proche tous niveaux — au-delà, le niveau du point est probablement faux et l'ancien choix reste. **Point sans niveau : comportement inchangé au bit près** (vérifié sur 40 trajets réels). Appelants concernés : Mode Secours (étapes avec niveau — ⚠️ **effectif seulement depuis la v1.98.12** : jusque-là le Secours n'envoyait pas le niveau de ses étapes, relecture R4-1), itinéraire classique vers un POI qui a un niveau, Mode Perdu (`computeReachable`, niveau du dernier point depuis 2.5 ; POI sans niveau → `null`, calage inchangé). Pas concernés (aucun niveau transmis) : Sortie d'urgence, « Itinéraire jusqu'ici ».
+`_insertVirtualNode` prenait le segment le plus proche en 2D, quel que soit son étage : un point **du −1** cliqué près d'une galerie superposée du 0 s'accrochait au 0 (mesuré sur le plan de test : 39 clics ambigus sur 40). Désormais, si le point porte un niveau (`p.level` entier, plan multi-niveau), le segment le plus proche **de ce niveau** est préféré s'il n'est pas à plus de `NIVEAU_TOLERANCE_PX` (40 px) au-delà du plus proche tous niveaux — au-delà, le niveau du point est probablement faux et l'ancien choix reste. **Point sans niveau : comportement inchangé au bit près** (vérifié sur 40 trajets réels). Appelants concernés : Mode Secours (étapes avec niveau — ⚠️ **effectif seulement depuis la v1.98.12** : jusque-là le Secours n'envoyait pas le niveau de ses étapes, relecture R4-1), itinéraire classique vers un POI qui a un niveau, Mode Perdu (`computeReachable`, niveau du dernier point depuis 2.5 ; POI sans niveau → `null`, calage inchangé), départ d'un itinéraire (ci-dessous) et arrivée sur une sortie (« Tracer » de la Sortie d'urgence).
+
+### Départ d'un itinéraire et niveau
+
+Le niveau d'un départ voyage sur le **waypoint d'origine** (`level`), comme celui d'une étape : `_insertVirtualNode` le lit, rien d'autre. Qui le pose :
+
+- picker « Où es-tu ? » (`utils.js > ktaDemanderPositionCarte`) : rend `{ x, y, niveau }` — niveau choisi dans « Dans quel niveau es-tu ? », sinon le niveau actif d'un plan multi-niveau, sinon absent. « Y aller » le passe en `opts.origine.level` (`interfaceItineraire.js > itineraireYAller` le pose sur `waypoints[0]`) ; la Sortie d'urgence en `origine.level` (`sortieUrgence.js > _calculerDistPathfinder`), et « Tracer » transmet cette origine à `itineraireYAller` ;
+- départ depuis la position déjà connue du tracker (confirmée ou suivi actif, pas de picker) : **niveau du tracker** (`getTrackerLevel()`), jamais le niveau affiché — « Y aller » sans origine imposée en suivi actif, ou par « Ma dernière position » de « D'où pars-tu ? » tracker arrêté (`interfaceItineraire.js > _niveauTracker`, commande vocale comprise), « Recalculer d'ici » et la reprise d'un parcours du Mode Secours (`itineraireReplanifierDepuis(px, py[, niveau])` : sans `niveau`, celui du tracker), « Ma position » ajoutée en étape dans la modale, Sortie d'urgence et sa relance d'écart (`sortieUrgence.js > _origineTracker`), itinéraire inter-plans (départ du plan courant, simple et multi-portails), « Utiliser la position du tracker » du Mode Perdu ;
+- vue 3D ouverte en mode libre : « Y aller » part de la position **et du niveau de la 3D** (`KtaVue3D.origineItineraire()`, niveau pris par un passage 🪜 compris) ; tracker arrêté, « Ici » recale le tracker là, à ce niveau ;
+- replanification au recalage (`_onTrackerRecale` → `_replanifierDepuis(x, y, getTrackerLevel())`), dont le « Je suis ici » de l'alerte du guidage ;
+- Mode Secours : `declencherDepuis(x, y, level)` (victime).
+
+L'**arrivée** suit la même règle quand la cible a un niveau connu : `itineraireYAller(x, y, nom, { niveauCible })` le pose sur `waypoints[1]`. Qui le passe :
+
+- « Tracer » de la Sortie d'urgence (et de l'évacuation du Mode Secours) : le niveau de la sortie visée, celui avec lequel le classement l'a mesurée — une sortie du −1 sous une galerie du 0 finit sur le −1 ;
+- « 🧭 Y aller » de la fiche d'un POI : le `data-kta-niveau` du bouton (`utils.js > buildPointPopupHtml`, lu par `_ktaPopupAction`), même règle que « 📍 Je suis ici » — niveau du POI, pas le niveau affiché ; POI jonction : le niveau affiché s'il le dessert, sinon son `level`. Plan mono-niveau : pas d'attribut, pas de niveau de cible.
+
+Position jamais confirmée : le picker « Où es-tu ? » relance `itineraireYAller` avec son origine **et les autres options** (`niveauCible` compris).
+
+Plan mono-niveau : aucun `level` posé, calage inchangé. Checkup : `scripts/smoke/checkup-recaler-niveau.js` (tracés superposés 0 et −1 reliés par une jonction — § 10-11 : choix −1 dans « Où es-tu ? » → la route part du −1 ; § 13-14 : tracker au −1, niveau affiché 0 → « Y aller », « Recalculer d'ici » et la sortie d'urgence partent du −1 ; § 15 : sortie du −1 → la route finit sur le −1 ; § 15 bis : « Y aller » de la fiche d'un POI du −1, 0 affiché → la route finit sur le −1).

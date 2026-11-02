@@ -173,7 +173,7 @@
     return {
       planId: planId, isCurrent: false,
       planName: plan.name || planId,
-      roads: routing.roads, zones: routing.zones || [],
+      roads: routing.roads, zones: routing.zones || [], murs: routing.murs || [],
       scale: (routing.scale && routing.scale > 0) ? routing.scale : 1,
       profondeurs: routing.profondeurs || {},   // jonctions pesées avec les profondeurs de CE plan
       avoidPts: avoidPts, avoidZones: avoidZones, radius: prefs.radius
@@ -204,7 +204,7 @@
       });
     } else {
       r = window.Pathfinder.computeRouteOnRoads(wps, ctx.roads, {
-        zones: ctx.zones, avoidPoints: ctx.avoidPts,
+        zones: ctx.zones, murs: ctx.murs, avoidPoints: ctx.avoidPts,
         avoidZonesResolved: ctx.avoidZones, avoidRadius: ctx.radius,
         echelle: ctx.scale,   // carrefours et jonctions mesurés à l'échelle de CE plan
         profondeurs: ctx.profondeurs
@@ -263,7 +263,7 @@
         });
       });
     });
-    nodes["@start"] = { planId: planA, x: pos.x, y: pos.y, side: null, twinId: null };
+    nodes["@start"] = { planId: planA, x: pos.x, y: pos.y, level: pos.level, side: null, twinId: null };
     nodes["@dest"]  = { planId: dest.planId, x: dest.x, y: dest.y, side: null, twinId: null };
 
     const dist = { "@start": 0 };
@@ -308,7 +308,8 @@
           legsComputed++;
           try {
             leg = await _legEntre(ctx,
-              { x: nu.x, y: nu.y, source: depuisStart ? "tracker" : "portal", label: "" },
+              { x: nu.x, y: nu.y, level: depuisStart ? nu.level : undefined,
+                source: depuisStart ? "tracker" : "portal", label: "" },
               { x: nv.x, y: nv.y, source: "portal", label: "" },
               depuisStart ? via : null);
           } catch(e) { leg = null; }
@@ -351,6 +352,7 @@
             path: [], distM: 0, usedFallback: false, raccords: [], carrefours: [],
             fromWp: { x: nFrom.x, y: nFrom.y, source: (ids[i - 1] === "@start") ? "tracker" : "portal", label: fromLabel }
           };
+          if (ids[i - 1] === "@start" && Number.isInteger(nFrom.level)) curLeg.fromWp.level = nFrom.level;
         }
         // Deux morceaux bout à bout sur le même plan : seuls le départ du premier et l'arrivée du dernier restent
         // (pas d'« arrivée » au milieu). Le raccord intermédiaire reste compté dans distM (cas rare).
@@ -411,10 +413,15 @@
       throw _err("NO_PLAN", _t("iti.err.pathfinder"));
     }
 
-    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
-    if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
+    const posT = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    if (!posT || typeof posT.x !== "number" || typeof posT.y !== "number") {
       throw _err("NO_POS", _t("iti.err.trackerPos"));
     }
+    // Départ au niveau du tracker (plan multi-niveau) : calage sur une galerie de CE niveau.
+    const pos = { x: posT.x, y: posT.y };
+    const lvlTr = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true &&
+                   typeof window.getTrackerLevel === "function") ? window.getTrackerLevel() : null;
+    if (Number.isInteger(lvlTr)) pos.level = lvlTr;
 
     // Multi-hop coché → le graphe de portails remplace ENTIÈREMENT le single-hop (optimal global, cas direct compris).
     if (_multiHopEnabled()) {
@@ -498,7 +505,8 @@
       try {
         // Étapes `via` du plan A intercalées (ordre planifié).
         legA = await window.Pathfinder.computeRoute(
-          [{ x: pos.x, y: pos.y, source: "tracker", label: _t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) }) }]
+          [{ x: pos.x, y: pos.y, level: pos.level, source: "tracker",
+             label: _t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) }) }]
             .concat(_viaWps(via))
             .concat([{ x: c.sortieA.x, y: c.sortieA.y, source: "portal", label: "🌀 " + nomPortail }]),
           { avoidPoints: prefsA.points, avoidTags: prefsA.tags,
@@ -512,7 +520,7 @@
           [{ x: c.entreeB.x, y: c.entreeB.y, source: "portal", label: "🌀" },
            { x: dest.x, y: dest.y, source: "search", label: dest.label || "" }],
           routingB.roads,
-          { zones: routingB.zones, avoidPoints: avoidPtsB,
+          { zones: routingB.zones, murs: routingB.murs || [], avoidPoints: avoidPtsB,
             avoidZonesResolved: avoidZonesB, avoidRadius: prefsB.radius,
             echelle: scaleB,   // carrefours et jonctions mesurés à l'échelle du plan B
             profondeurs: routingB.profondeurs || {} });

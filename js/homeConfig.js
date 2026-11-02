@@ -212,6 +212,34 @@
         }
         // Premier rendu (le check a pu déjà avoir lieu).
         _majBadgeAlert();
+
+        // Pastille « du neuf » (en haut à gauche, à part du compteur d'alertes) : le compte d'une extension
+        // (KtaExtensions.compteurNouveautes, 0 sans extension), le même que la pastille de l'icône de l'app. Elle
+        // n'ouvre rien : toucher 🚨 montre le bloc « Quoi de neuf » en tête de la fenêtre.
+        function _majPastilleNeuf() {
+          const K = window.KtaExtensions;
+          let n = 0;
+          try { n = K && typeof K.compteurNouveautes === "function" ? K.compteurNouveautes() : 0; } catch(e) { n = 0; }
+          let p = alertBtn.querySelector(".loader-btn-alert-neuf");
+          if (n > 0) {
+            if (!p) {
+              p = document.createElement("span");
+              p.className = "loader-btn-alert-neuf";
+              alertBtn.appendChild(p);
+            }
+            p.textContent = n > 99 ? "99+" : String(n);
+            const I = window.I18n;
+            alertBtn.setAttribute("aria-label", "🚨 " + (I && typeof I.t === "function"
+              ? I.t("home.header.alertNeuf", { n: n }) : String(n)));
+          } else {
+            if (p) p.remove();
+            alertBtn.removeAttribute("aria-label");
+          }
+        }
+        ["mktm:nouveautes-changees", "mktm:connexion-changed", "mktm:extensions-changees"].forEach(function(ev) {
+          window.addEventListener(ev, _majPastilleNeuf);
+        });
+        _majPastilleNeuf();
       }
 
       // Pas de toggles Perf ULTRA ici : ces réglages sont PAR PLAN (⚙️ Réglages, plan ouvert).

@@ -105,6 +105,9 @@ function _fmtDateRel(iso) {
     return d.toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { day: "2-digit", month: "2-digit" });
   } catch(e) { return ""; }
 }
+// Date relative (ISO ou ms) : « à l'instant », « il y a 5 min », « hier »… Aussi pour « Ma dernière position » de
+// « Y aller » (interfaceItineraire.js > _demanderDepart).
+window.ktaDateRelative = _fmtDateRel;
 
 function _ouvrirPlanSwitcher() {
   _fermerPlanSwitcher();
@@ -563,8 +566,9 @@ window._fermerModeStructure = _fermerModeStructure;
   const RX_OVERLAY = /(?:^|\s)(?:kta-readme-modal-overlay|kta-secours-overlay)(?:\s|$)/;
   // ⚠️ #kta-poi-modal (formulaire ouvert par le clic carte du mode édition) ne coupe pas :
   // le mode doit survivre pour poser plusieurs points d'affilée. Les boîtes `kta-modal-overlay`
-  // (confirmations) sont hors du filet par leur classe.
-  const IDS_EXCLUS = { "kta-poi-modal": true };
+  // (confirmations) sont hors du filet par leur classe. #kta-recal-niveau (« Dans quel niveau es-tu ? »,
+  // tracking.js > ktaDemanderNiveauRecalage) est posée PAR le mode recalage : Annuler doit le laisser armé.
+  const IDS_EXCLUS = { "kta-poi-modal": true, "kta-recal-niveau": true };
   function _couper() {
     if (Object.keys(_modesActifs).length === 0) return;
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return;
@@ -1043,6 +1047,16 @@ function _creerTuileTracker(sub) {
                     : titreFixe;
   tile.appendChild(ic);
   tile.appendChild(lbl);
+  // Ligne d'aide facultative sous le libellé (texte brut, relu à chaque ouverture du menu).
+  if (typeof sub.dynamicAide === "function") {
+    const aide = sub.dynamicAide();
+    if (aide) {
+      const a = document.createElement("span");
+      a.className = "kta-tracker-modal-tile-aide";
+      a.textContent = aide;
+      tile.appendChild(a);
+    }
+  }
   tile.addEventListener("click", function(ev) {
     ev.stopPropagation();
     // Fermer AVANT l'action : la plupart ont besoin de la carte visible (recalage = clic carte)
@@ -1054,6 +1068,86 @@ function _creerTuileTracker(sub) {
   });
   return tile;
 }
+
+// ── Vue 3D : bouton cube de la barre de droite, juste sous ≡ Filtres ─────────────────────────────
+// js/vue3d.js et three.js (~2 Mo) ne sont chargés qu'au premier toucher, jamais au démarrage (scripts/smoke/smoke.js
+// le vérifie) ; sw.js les précache pour le hors-ligne. Doc : docs/ETUDE_VUE_3D.md, docs/architecture/ui.md § Vue 3D.
+// ⚠️ Même refus que KtaVue3D.ouvrir (plan, échelle), testé ici AVANT de charger quoi que ce soit.
+function _vue3dRaison() {
+  if (!window.map || !window.PLAN_CONFIG || !window.APP_CONFIG) return "vue3d.sansPlan";
+  const sc = Number(window.APP_CONFIG.scale);
+  return (Number.isFinite(sc) && sc > 0) ? null : "vue3d.sansEchelle";
+}
+
+let _vue3dChargement = null;
+function _chargerVue3D() {
+  if (window.KtaVue3D) return Promise.resolve(true);
+  if (!_vue3dChargement) {
+    _vue3dChargement = new Promise(function(resolve) {
+      const s = document.createElement("script");
+      s.src = "js/vue3d.js";
+      s.addEventListener("load", function() { resolve(!!window.KtaVue3D); });
+      s.addEventListener("error", function() { s.remove(); resolve(false); });
+      document.head.appendChild(s);
+    }).then(function(ok) { if (!ok) _vue3dChargement = null; return ok; });
+  }
+  return _vue3dChargement;
+}
+
+// Indicateur entre le toucher et la scène (ComputeLoader : une image peinte avant le travail synchrone de
+// l'ouverture) ; au premier chargement de three.js, le message le dit. `retour` : élément qui reprend le focus à
+// la fermeture de la vue.
+function _ouvrirVue3D(retour) {
+  const raison = _vue3dRaison();
+  if (raison) { window.ktaAlerte(window.I18n.t(raison)); return Promise.resolve(false); }
+  const premier = !(window.KtaVue3D && window.KtaVue3D.charge && window.KtaVue3D.charge());
+  const ouvrir = function() {
+    return _chargerVue3D().then(function(ok) {
+      if (!ok) {
+        window.ktaAlerte(window.I18n.t("vue3d.chargementImpossible"), { type: "erreur" });
+        return false;
+      }
+      return window.KtaVue3D.ouvrir({ retourFocus: retour || null });
+    });
+  };
+  const L_ = window.ComputeLoader;
+  if (!L_ || typeof L_.wrap !== "function") return ouvrir();
+  return L_.wrap(ouvrir, window.I18n.t(premier ? "vue3d.chargementPremier" : "vue3d.chargement"));
+}
+
+// Grisé (kta-inactif : texte-3, désaturé, sans opacité) sans plan ou sans échelle ; son titre dit pourquoi et il
+// reste touchable (le toucher le dit aussi). Recalculé à l'ajout, à chaque plan prêt et au rafraîchissement
+// périodique de la barre d'état (refonteInterface.js > refreshStatusBar, avec la pastille ≡).
+function _majBoutonVue3D() {
+  const a = document.querySelector(".kta-vue3d-ctrl a");
+  if (!a) return;
+  const raison = _vue3dRaison();
+  a.classList.toggle("kta-inactif", !!raison);
+  const t = window.I18n.t(raison || "ui.vue3d.title");
+  if (a.title !== t) { a.title = t; a.setAttribute("aria-label", t); }
+}
+window.ktaMajBoutonVue3D = _majBoutonVue3D;
+
+L.control.ktaVue3DControl = function() {
+  const ctrl = L.control({ position: "topright" });
+  ctrl.onAdd = function() {
+    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-vue3d-ctrl");
+    const a = L.DomUtil.create("a", "", div);
+    a.href = "#";   // pas « javascript: » (CSP stricte)
+    a.setAttribute("role", "button");
+    // Picto cube de l'écran Bienvenue (js/ktaPictos.js), en currentColor : couleur du thème par .leaflet-bar a.
+    a.innerHTML = typeof window.ktaPicto === "function" ? window.ktaPicto("cube", "kta-vue3d-ctrl-picto") : "3D";
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.on(a, "click", function(e) {
+      L.DomEvent.preventDefault(e);
+      _ouvrirVue3D(a);
+    });
+    setTimeout(_majBoutonVue3D, 0);
+    return div;
+  };
+  return ctrl;
+};
+window.addEventListener("mktm:plan-pret", function() { _majBoutonVue3D(); });
 
 function _ajouterSectionTracker(corps, titre, actions) {
   if (!actions || actions.length === 0) return;
@@ -1820,6 +1914,8 @@ function initInterface() {
   L.control.titleControl().addTo(window.map);
 
   L.control.ktaFilterControl().addTo(window.map);
+  // Vue 3D juste sous ≡ Filtres : l'ordre d'ajout fixe l'ordre dans la barre.
+  L.control.ktaVue3DControl().addTo(window.map);
 
   // Interface refondue : boutons ≡ de réduction des sidebars (mis en haut par CSS order:-1),
   // puis Niveau et Favoris en sidebar gauche. Sinon Niveau est créé en fin d'initInterface.
@@ -2467,6 +2563,20 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
+      // Distance totale des tracés : une mesure (lecture), pas un geste de dessin.
+      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
+        onClick: function() {
+          if (typeof window.ouvrirRoadsDistanceFloater === "function") {
+            window.ouvrirRoadsDistanceFloater();
+          }
+        }
+      },
+      // Volume exploité : lit la surface ♦️ comme secteur (lecture, pas un geste de dessin).
+      { id: "mesureVolume", icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"),
+        onClick: function() {
+          if (window.KtaVolumeExploite) window.KtaVolumeExploite.ouvrir();
+        }
+      },
       {
         icone: "❌",
         titre: window.I18n.t("ui.subaction.mesureEffacer"),
@@ -2659,13 +2769,6 @@ _setGroupeModeActif("tracker", isTracking, null);
         _fermerModeRoad();
       }
     },
-    { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
-        onClick: function() {
-          if (typeof window.ouvrirRoadsDistanceFloater === "function") {
-            window.ouvrirRoadsDistanceFloater();
-          }
-        }
-      },
       { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
         onClick: function() {
           const roads = window.getRoads ? window.getRoads() : [];
@@ -2704,6 +2807,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                     window.activerModeSuppressionTraceClic();
                   }
                 } },
+              _choixEffacerParZone("roads"),
               { label: window.I18n.t("ui.trace.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
@@ -2845,6 +2949,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                     window.activerModeSuppressionZoneClic();
                   }
                 } },
+              _choixEffacerParZone("zones"),
               { label: window.I18n.t("ui.zone.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
@@ -2914,6 +3019,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Mur : rond bleu, à ne pas confondre avec le carré 🟦 de la zone eau.
       { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), dynamicTitre: function() { return _titreType("structures", "mur", window.I18n.t("ui.struct.mur")); }, isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
+      // Mur en ligne : carré bleu (une ligne, comme les fronts) ; coupe l'itinéraire (pathfinder.js).
+      { icone: "🟦", dynamicIcon: function() { return _iconeType("structures", "mur-ligne", "🟦"); }, titre: window.I18n.t("ui.struct.murLigne"), dynamicTitre: function() { return _titreType("structures", "mur-ligne", window.I18n.t("ui.struct.murLigne")); }, isTypeAction: true, typeKey: "mur-ligne",
+        onClick: function(btn) { _activerStructure("mur-ligne", btn, _iconeType("structures", "mur-ligne", "🟦")); } },
       // Fronts de taille : polylines épaisses, mais rangés dans Structures (décision produit).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué activeLevel - 1.
       { icone: "🟨", dynamicIcon: function() { return _iconeType("structures", "front-1", "🟨"); }, titre: window.I18n.t("ui.struct.front1"), dynamicTitre: function() { return _titreType("structures", "front-1", window.I18n.t("ui.struct.front1")); }, isTypeAction: true, typeKey: "front-1",
@@ -3001,6 +3109,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                     window.activerModeSuppressionStructureClic();
                   }
                 } },
+              _choixEffacerParZone("structures"),
               { label: window.I18n.t("ui.struct.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.struct.eraseAllDesc", { n: nbSelectables }),
                 onClick: function() {
@@ -3210,6 +3319,34 @@ function _onSuppPopupOpen(e) {
     console.warn("[Suppr] rejeu clic via popupopen échoué :", err);
   }
 }
+// Ligne « ✏️ Effacer par zone » de la fenêtre 🧹 Effacer des trois groupes : même chemin que le bouton du bandeau
+// (sélection multiple sans graine, tracé de zone lancé, seule la famille du groupe cochée).
+function _choixEffacerParZone(famille) {
+  return { label: window.I18n.t("ui.choix.eraseZone"), icon: "✏️",
+    desc: window.I18n.t("ui.choix.eraseZoneDesc"),
+    onClick: function() {
+      if (window.SelectionMulti && typeof window.SelectionMulti.ouvrirZone === "function") {
+        window.SelectionMulti.ouvrirZone({ familles: [famille] });
+      }
+    } };
+}
+// « ✏️ Par zone » des trois modes « supprimer au clic » : quitte le mode (garde des popups comprise), puis la sélection
+// multiple sans graine trace une zone ; la confirmation n'a d'emblée que la famille du mode cochée.
+function _boutonSuppParZone(floater, famille, quitterMode) {
+  const annuler = floater.querySelector("button");
+  const b = document.createElement("button");
+  b.className = "kta-btn kta-btn-ghost";
+  b.type = "button";
+  b.setAttribute("data-kta-supp-zone", famille);
+  b.textContent = window.I18n.t("ui.suppClic.parZone");
+  b.addEventListener("click", function() {
+    quitterMode();
+    if (window.SelectionMulti && typeof window.SelectionMulti.ouvrirZone === "function") {
+      window.SelectionMulti.ouvrirZone({ familles: [famille] });
+    }
+  });
+  floater.insertBefore(b, annuler);
+}
 function _installerSuppPopupGuard() {
   if (_suppPopupGuardActif || !window.map) return;
   _suppPopupGuardActif = true;
@@ -3278,6 +3415,7 @@ window.activerModeSuppressionTraceClic = function() {
 
   document.getElementById("kta-supp-trace-annuler")
     .addEventListener("click", _desactiverModeSuppressionTrace);
+  _boutonSuppParZone(_suppTraceFloater, "roads", _desactiverModeSuppressionTrace);
 
   _installerSuppPopupGuard();
 
@@ -3392,6 +3530,7 @@ window.activerModeSuppressionZoneClic = function() {
 
   document.getElementById("kta-supp-zone-annuler")
     .addEventListener("click", _desactiverModeSuppressionZone);
+  _boutonSuppParZone(_suppZoneFloater, "zones", _desactiverModeSuppressionZone);
 
   _installerSuppPopupGuard();
 
@@ -3510,6 +3649,7 @@ window.activerModeSuppressionStructureClic = function() {
 
   document.getElementById("kta-supp-structure-annuler")
     .addEventListener("click", _desactiverModeSuppressionStructure);
+  _boutonSuppParZone(_suppStructureFloater, "structures", _desactiverModeSuppressionStructure);
 
   _installerSuppPopupGuard();
 

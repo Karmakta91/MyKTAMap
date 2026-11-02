@@ -52,12 +52,13 @@ MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, 
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
+- 🧊 **[three.js](https://threejs.org/)** *(MIT, vendored)* — moteur 3D du navigateur (WebGL). Dessine la **🧊 Vue 3D** : le plan en relief autour de ta position. Chargé seulement à la première ouverture de la vue, puis disponible hors ligne. Merci à **Ricardo Cabello (mrdoob)** et aux contributeurs.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **dès qu'un de tes plans est calibré GPS** (active par défaut, désactivable dans ⚙️ Configuration). L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
 - 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
 
-> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
+> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
 
 ### À l'écosystème PWA
 
@@ -75,7 +76,7 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM désactivable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🧊 three.js (Vue 3D) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM désactivable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 ---
 
@@ -216,6 +217,8 @@ Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, 
 
 **D'où part le calcul** : de ta position actuelle, dès que le suivi est actif ou que tu t'es situé une fois depuis l'ouverture du plan (« 📍 Je suis ici », recalage, portail, session restaurée) ; la fenêtre précise laquelle. Si tu ne t'es **jamais** situé, l'app demande **Où es-tu ?** : tape ta position sur la carte. Ce tap recale aussi le suivi, pour que l'itinéraire et l'Affichage XL partent du même endroit.
 
+**Où il arrive** : sur un plan multi-niveau, **🧭 Y aller** depuis la fiche d'un point fait finir la route au **niveau du point**, même si tu regardes un autre niveau (point entre niveaux : le niveau affiché s'il le dessert), comme **📍 Je suis ici**.
+
 Une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune, même si **📳 Vibration haptique** est désactivée. Tout se calcule sur ton appareil, sans réseau.
 
 ### 🔆 Affichage XL
@@ -301,7 +304,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 
 **En bas**, une barre d'état regroupe ce qui est en cours : 📐 mesure, 📏 distance totale des tracés, 🗺️ itinéraire (distance, temps, allure — touche-le pour ouvrir l'itinéraire) et le voyant **🧭 tracker** (ON · pas · distance pendant le suivi ; touche-le pour ouvrir le menu Tracker). Elle passe à la ligne si tout ne tient pas ; le bouton ▾▴ la réduit.
 
-**Sur les côtés**, les deux barres latérales portent les outils. L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Réglages, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures :
+**Sur les côtés**, les deux barres latérales portent les outils. L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Réglages, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures. En haut de la barre de droite, **≡ Filtres** puis le **bouton cube** de la 🧊 Vue 3D :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
@@ -313,9 +316,9 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Exporter** | ⬆️ | Un lanceur : image (PNG / JPEG, PDF, GeoTIFF), session, mise à jour du plan, export externe (KMZ / GPX / GeoJSON) |
 | **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Menu plein écran** de tuiles : suivi, recalage, Ma position, boussole, itinéraire, guidage, urgences |
-| **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
+| **Mesure** | 📐 | Mesurer une distance ou une surface, **calculer la distance totale des tracés** et le **⛏️ volume exploité** d'un secteur, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points *(clic direct — interrupteur ON/OFF)* |
-| **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions, **calculer la distance totale** |
+| **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions |
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement, eau ou inaccessibles |
 | **Structures** | 🏛️ | Piliers, murs et fronts de taille |
 
@@ -362,13 +365,14 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 | Section | Ce qu'elle filtre |
 |---|---|
 | 🖼️ **Calques d'image** | L'image du plan et ses calques additionnels |
-| 📊 **Calques de données** | Les calques livrés avec le plan, et **Mes annotations** (tout ce que tu as ajouté : le décocher masque tes ajouts sans rien supprimer) |
+| 📊 **Calques de données** | Les calques livrés avec le plan, et **Annotations du plan** (tout ce qui a été dessiné sur le plan : tes ajouts et, sur une installation partagée, ceux de ton équipe ; la décocher les masque sans rien supprimer) |
 | 🏗️ **Niveaux M-LVL** | Plans multi-niveaux : niveau actif (pour dessiner) et niveaux visibles — synchronisé avec la fenêtre Niveaux |
 | 🏷️ **Tags des points** | Les tags réellement présents sur le plan, avec leur compteur |
 | 🛣️ ⬛ 🏛️ **Types** | Types de tracés, de zones et de structures, y compris les tiens |
 
 - Chaque section se replie, et a ses boutons **👁️ Tout** / **🚫 Aucun**.
-- **🔄 Tout afficher** remet les tags et les types à « tout visible », sans toucher aux niveaux ni aux calques.
+- **🔄 Tout afficher** remet tout à « visible » : tags, types, calques et niveaux.
+- Les mêmes filtres valent dans la **🧊 Vue 3D** : son bouton ≡ ouvre ce panneau.
 - En bas, **Filtres actifs : …** rappelle ce qui est filtré ; le bouton ≡ signale aussi quand des éléments sont masqués.
 - Les filtres sont **mémorisés par plan** : tu les retrouves en revenant sur ce plan, et un message te le signale.
 - Ce que tu es en train de dessiner reste visible, même si tu décoches son type.
@@ -468,7 +472,9 @@ Dès que tu reconnais un repère :
 1. Touche **📍** (le bouton s'allume) ;
 2. touche l'endroit du plan où tu te trouves.
 
-L'icône s'y place, le tracé repart de là et le mode se referme tout seul. Autre façon : le bouton **📍 Je suis ici** dans la fiche d'un point.
+L'icône s'y place, le tracé repart de là et le mode se referme tout seul. Autre façon : le bouton **📍 Je suis ici** dans la fiche d'un point. Sur un plan multi-niveau, il te place au **niveau du point**, même si tu regardes un autre niveau (pour une échelle ou un puits entre niveaux : le niveau affiché s'il le dessert). Si le point est à côté de la galerie, l'icône du suivi se place dans la galerie de son niveau, la même que celle de la vue 3D (tous les types de tracé, à moins de 10 m), pas dans la roche : dans celle dont la paroi est la plus proche, jamais de l'autre côté de la roche ; déjà dans une galerie, elle reste où tu l'as mise. Le point, lui, ne bouge pas. Si son niveau n'a aucun tracé, elle se place à l'endroit praticable du plan le plus proche (à moins de 10 m). Un endroit que tu touches sur la carte (mode recalage, « Où es-tu ? ») est pris tel quel : l'icône va exactement là, c'est toi qui sais où tu es.
+
+**Plan multi-niveau** : si une galerie, une zone ou une structure d'un **autre niveau** passe à moins de **10 m** de l'endroit touché (ou un passage entre niveaux comme une échelle ou un puits), l'app demande **Dans quel niveau es-tu ?** : un choix par niveau trouvé, avec sa profondeur si elle est renseignée, le niveau affiché coché d'office. Le suivi passe au niveau choisi et la carte l'affiche. **Annuler** ne recale rien : touche à nouveau la carte. Rien d'un autre niveau à proximité → pas de question, le niveau affiché est gardé. La même question vient quand l'app te demande **Où es-tu ?** (sortie d'urgence, « Y aller », guidage). Une fois ta position connue, « Y aller », la sortie d'urgence et « Recalculer d'ici » partent du **niveau du suivi**, pas de celui que tu regardes ; « 🧭 Tracer l'itinéraire » vers une sortie d'un autre niveau t'y amène bien.
 
 ### 🧭 Boussole
 
@@ -484,6 +490,37 @@ La tuile **🧭** affiche une rose des vents en haut à gauche de la carte, mêm
 | l'Ouest | à droite |
 
 Si ça ne colle pas, le champ magnétique est perturbé (ferraille, armatures) : recale-toi dès que possible et méfie-toi du tracé.
+
+### 🧊 Vue 3D
+
+Le **bouton cube** de la barre de droite, juste sous **≡ Filtres**, montre le plan **en relief autour de ta position**, comme si tu y étais, éclairé par une lampe frontale. Un indicateur patiente le temps de l'ouvrir (plus longtemps la première fois) ; elle reste ensuite disponible hors ligne.
+
+- **🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie** : le bouton de la tuile ⚙️, qui affiche le mode en cours, passe au rendu suivant ; le choix est retenu pour ce plan (par défaut : Mixte).
+  - **🏛️🛣️ Mixte** (par défaut) : piliers, murs et fronts de taille dressés partout où il y en a, et les tracés en galeries **seulement là où il n'y a aucune structure autour** (les galeries de liaison). Une structure proche d'**un seul côté** (un pilier, un front qui longe la galerie) n'ouvre que ce côté : la paroi d'en face reste, et un court pan de paroi rejoint la structure à chaque bout, sans fente. Entre des structures des **deux côtés** (une chambre), le tracé perd ses parois : la galerie **s'ouvre** en entrant dans la chambre, sans paroi au fond ni bout de paroi entre deux piliers ; une structure en travers du tracé l'ouvre aussi. On bute contre les structures, et contre les parois des galeries là où elles sont dessinées ; dans une chambre, il n'y a plus de parois. Zones et points suivent la règle de la galerie dans les galeries, celle des structures dans les chambres.
+  - **🏛️ Structures** : piliers, murs et fronts de taille dressés à la hauteur de galerie du plan (⛏️ Volume exploité, 2 m sinon), remblais et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles, tracés et itinéraire au sol, points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
+  - **🛣️ Galerie** : les tracés deviennent des galeries (principal 2,5 m de large, secondaire 2 m, chemin 1,7 m, tracé personnalisé 2 m), sans les structures : carrefours ouverts, coudes, cul-de-sac fermé, parois en pierre de taille (avec 🧱 Textures ; coupé : moellons de calcaire taillés), un liseré au sol de la couleur du tracé. Les zones s'arrêtent aux parois : le remblais et l'effondrement bouchent la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers. Seuls les points à moins de 10 m d'un tracé (salles comprises) s'affichent, contre la paroi.
+  - Dans tous les cas : un niveau à la fois, sur 30 m autour de toi.
+- **🪜 Escaliers et puits en volume** : un passage entre niveaux se voit là où il est. Un **escalier** est une cage à marches, un **puits à échelons** un puits carré en pierre avec son échelle, un **puits sans échelon** un puits nu ; il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus (il monte et se perd dans le noir), les deux pour un passage entre trois niveaux, avec un cadre doré au sol. Un **puits ouvert** ou un **escalier de surface** s'ouvre dans le plafond, avec le jour tout en haut ; un **puits d'aération** est un petit tube à grille, dans le plafond seulement (on ne le prend pas). Un **tracé jonction** devient une **rampe** à sa couleur : du sol au plafond vers le niveau du dessus, en tranchée vers le niveau du dessous. Le panneau d'un passage a un liseré à la couleur des jonctions et la marque **↕**, et reste lisible jusqu'à 1 m.
+- **⚠️ Dangers et ⭐ favoris** : un point danger a un liseré rouge et un **halo rouge au sol**, visible même tout près, quand son panneau s'efface ; un point de tes favoris porte une **⭐** au coin de son panneau.
+- **👥 Équipe** (installation reliée seulement) : les membres qui partagent leur position apparaissent en silhouette à leur couleur, avec leur nom, s'ils sont au niveau affiché ; les repères et les itinéraires partagés aussi (itinéraire en tirets jaunes au sol). Ce sont ceux que la carte affiche déjà. Si tu **partages déjà ta position** (📡), l'endroit où tu te déplaces en **libre** est montré à ceux qui la voient, marqué **« en vue 3D »** (et « 3D » sur ta silhouette chez eux) ; en suivi ou en fermant la 3D, ils revoient la position de ton tracker, qui n'est pas recalé. Sans partage, rien ne part. Toucher un membre ou un repère affiche son nom. Sans installation, rien de tout cela.
+- **≡ Filtres** : le même panneau que sur la carte, ouvert par-dessus la vue, avec les mêmes réglages. Ce que tu masques en 3D est masqué sur la carte, et inversement : tags des points, types de tracés, de zones et de structures, calques de données, niveaux visibles. Un point sur le ≡ signale un filtre actif. Masquer n'enlève que le dessin : on bute toujours contre les piliers et les parois, et 🪜 reste proposé. L'itinéraire reste affiché, comme sur la carte. Les calques d'image n'ont pas d'effet en 3D.
+- **⛏️ Hauteur** : le bouton **⛏️** de la tuile ⚙️ (il affiche la hauteur en cours) ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m). C'est la même hauteur que ⛏️ Volume exploité, retenue pour ce plan : changer l'une change l'autre. La scène se refait sur place, sans te déplacer.
+- **Se déplacer** : au téléphone, un **🕹️ joystick** : pose le pouce dans la moitié gauche de l'écran, il apparaît dessous ; glisse vers le haut pour avancer, vers le bas pour reculer, sur le côté pour un pas de côté, plus loin pour aller plus vite ; tenu au bord plus d'une demi-seconde, tu **cours**. Glisser sur la moitié droite tourne et lève les yeux. Au PC : pavé ▲ ▼ ↶ ↷ ◀ ▶ maintenu, flèches ou ZQSD au clavier, ou glisser sur la scène ; **plus vite** : Maj maintenue, ou ▲ gardé appuyé plus d'une demi-seconde. Tu préfères le pavé au téléphone : ⚙️ Configuration › 🎨 Affichage › **🕹️ Pavé classique dans la vue 3D** (pour cet appareil). On bute contre les piliers, murs et fronts (personnalisés compris) en mode Structures, contre les parois en mode Galerie, contre les deux en mode Mixte (dans une chambre, seulement les structures), avec la largeur du corps. Dans les trois modes, un **remblais**, un **effondrement** ou une zone **⛔ inaccessible** arrête aussi, dans une galerie comme dans une chambre ; si tu pars de l'intérieur de l'une d'elles, tu es ramené au bord et tu repars. C'est la 3D seulement : la carte, l'itinéraire, le guidage et le tracker n'en tiennent pas compte (l'itinéraire, lui, évite déjà les zones ⛔).
+- **Guidage de l'itinéraire** : l'itinéraire est dessiné au sol en **tirets bleus bordés de sombre**, comme sur la carte, avec un **mât** à chaque étape et un panneau **🏁** à l'arrivée, niveau par niveau ; là où il traverse un **remblais** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change ; la vue le redessine dès qu'il change (tracé depuis 🚨 pendant la 3D compris). Un **bandeau** sous la rangée de boutons donne la même consigne que sur la carte (« Dans ~20 m, tourner à droite »), et des **chevrons dorés** au sol montrent le chemin jusqu'à la prochaine manœuvre. En **suivi**, c'est la consigne de ton tracker ; en **libre**, un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker). Pas d'annonce vocale.
+- **⚪ Ronds aux intersections** : si l'option est cochée pour ce plan (⚙️ Configuration › 🎨 Affichage), les ronds de la carte sont posés au sol en 3D aussi, à leur couleur, au niveau affiché.
+- **Toucher le panneau d'un point** ouvre **sa fiche**, la même que sur la carte (📍 Je suis ici, 🧭 Y aller, ➕ Itinéraire, favori, photos), au-dessus de la vue ; ✕ ou Échap la referme. Modifier, déplacer ou supprimer le point se fait sur la carte. La fiche d'un passage entre niveaux propose aussi **▼ Descendre** / **▲ Monter** vers chacun de ses niveaux, d'où que tu sois.
+- **🧭 Y aller depuis la 3D** : en suivi, l'itinéraire part du tracker ; en libre, il part de **l'endroit où tu es en 3D**, niveau compris, sans déplacer le tracker. Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part). **Ma dernière position** ou **Me repositionner** : la 3D te place là où le tracker est mis (position et niveau). **📍 Je suis ici** dans la fiche d'un point recale le tracker sur la carte, mais la 3D reste où tu es ; en suivi, elle passe alors en **libre** (un message le dit) : le bouton du suivi la ramène au tracker.
+- **🪜 Changer de niveau** : à moins de 2 m d'un point de passage entre niveaux (escalier, puits) ou du bout d'un tracé jonction, des boutons nommés (« ▼ -1 · Puits du carrefour (échelle) ») t'emmènent au niveau voisin (une petite liste s'il en dessert plus de deux) ; la fiche du point fait de même. Tu descends (ou montes) dans le passage, l'écran passe au noir un instant, puis tu arrives par le plafond (ou le sol) de l'autre niveau, et **« Niveau -1 »** s'affiche 2 secondes. Tu arrives au raccord validé de ce niveau s'il y en a un ; s'il tombe à côté de la galerie ou dans un obstacle, tu es ramené dans la galerie (6 m au plus), face à la suite de ton itinéraire s'il passe là, sinon face à la galerie, du côté où elle est la plus longue. Tu n'es jamais bloqué : si aucun pas n'est possible, un pas qui te rapproche de la galerie passe toujours. En suivi, le niveau est celui du tracker : quand il change, la vue passe aussi au noir un instant et affiche le nouveau niveau.
+- **🧭 Suivi / 🕹️ Libre** : en **suivi** (choisi à l'ouverture quand le tracker tourne), la vue suit ta position et **tourne avec ton téléphone**, comme 🗺️ Plan orienté ; bouger le joystick ou toucher un bouton de déplacement passe en **libre** (glisser sur la scène règle seulement le regard haut / bas), et le bouton de la tuile ⚙️, qui affiche le mode en cours, bascule de l'un à l'autre ; une pastille 🧭 / 🕹️ en haut à gauche le montre toujours. Tracker arrêté : 🧭 est grisé et dit pourquoi. Immobile, la vue ne se redessine pas (batterie), même si la boussole tremble un peu.
+- **🦅 Vue plongeante** (tuile ⚙️, ou V) : tu te vois d'au-dessus. Son inclinaison va de presque verticale à rasante : glisser vers le haut ou le bas à deux doigts, molette ou PageUp / PageDown, ou les petits boutons ▲ ▼ à droite ; elle est retenue tant que la vue reste ouverte.
+- **Boussole** (en bas à gauche ; la tuile ⚙️ la masque ou la montre, pour cet appareil) : son **N** montre le nord réel, d'après la calibration du Nord du plan, et tourne avec ta vue. Plan sans Nord calibré : elle montre le haut du plan et l'écrit.
+- **🚨 Sortie d'urgence** : le même bouton qu'en haut de la carte ; sa fenêtre s'ouvre par-dessus la vue. Si ta position n'est pas connue, la vue se ferme pour que tu la montres sur la carte. Les messages de l'app s'affichent sous la rangée de boutons.
+- **En haut**, une seule ligne : **✕**, **≡** collé à lui, **🚨**, **❓** (l'aide de la vue 3D) et **⚙️**. **⚙️** ouvre une petite tuile **Réglages** sous lui : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante, ⛏️ Hauteur, le rendu, 🧱 Textures, la Boussole et 🪧 Guidage, chacun écrit en clair ; elle se ferme par ⚙️, Échap ou un toucher ailleurs. **🧱 Textures** (activé par défaut) habille les parois des galeries en pierre de taille (assises de blocs, joints irréguliers, relief à la lampe), les piliers et les fronts de taille en roche brute (la masse calcaire laissée en place : bosses, nuances, fines strates, fissures et traces d'outil, sans joints), les murs en parpaing, à leur taille réelle (un parpaing fait 50 cm, quel que soit le mur ; la pierre des parois garde sa taille quelle que soit la hauteur de galerie) ; une structure personnalisée prend la roche. Le **remblais** devient de la terre et du sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis ; un **effondrement** (fontis), un éboulis de gros blocs cassés et fissurés, avec peu de terre ; tous deux à leur taille réelle et sans changer de forme (une zone personnalisée garde sa couleur). Coupé, chaque structure et chaque zone reprend la couleur de la légende, la tienne comprise, et les parois redeviennent des moellons ; réglage retenu sur cet appareil. **🪧 Guidage** coupé masque en 3D le bandeau de consigne et les chevrons au sol (l'itinéraire, ses étapes et 🏁 restent dessinés) ; une sortie d'urgence s'affiche toujours ; le guidage de la carte n'est pas touché ; réglage retenu sur cet appareil. Un point doré sur ⚙️ signale qu'un réglage n'est pas celui par défaut (mode libre, vue plongeante, autre rendu que Mixte, textures coupées, boussole masquée, guidage coupé).
+- **Le tracker ne bouge pas** pendant que tu te déplaces en 3D, ni le niveau affiché sur la carte. À la fermeture (✕, en haut à droite, ou Échap — qui ferme d'abord un réglage, une fiche ou une fenêtre ouverts), si le suivi tourne et que tu t'es déplacé ou as changé de niveau, **📍 Je suis ici ?** propose de le recaler là où tu t'es arrêté, niveau compris ; **Non** ne change rien au tracker.
+- **En sortant**, la carte se place là où tu étais en 3D : centrée sur ta position, au niveau de la 3D, quelle que soit ta réponse.
+- **Bouton grisé** : aucun plan ouvert, ou plan sans échelle (⚙️ Réglages → 📐 Plan : échelle & géolocalisation) ; le toucher dit pourquoi. Un navigateur qui ne sait pas afficher la 3D le dit à l'ouverture.
+
+> ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.
 
 ### ⚙️ Réglages du tracker
 
@@ -567,7 +604,7 @@ La section repliable **🚫 Préférences d'évitement (optionnel)** de la fenê
 
 S'il n'existe aucun autre chemin, l'itinéraire passe quand même et l'affiche : **⚠️ Impossible d'éviter : …**. Tes préférences sont mémorisées par plan ; **🗑️ Reset tous les évitements** les efface.
 
-Les **zones inaccessibles ⛔**, elles, ne sont **jamais traversées**, sauf si tu décoches **Respecter les zones inaccessibles** (utile sur un relevé incomplet). Je suis perdu et le Mode Secours les respectent toujours.
+Les **zones inaccessibles ⛔**, elles, ne sont **jamais traversées**, sauf si tu décoches **Respecter les zones inaccessibles et les murs (ligne)** (utile sur un relevé incomplet). Les **murs (ligne)** 🟦 suivent la même règle. Je suis perdu et le Mode Secours les respectent toujours.
 
 ---
 
@@ -698,10 +735,6 @@ Dans le groupe **🛣️ Tracés** :
 
 Appuie sur un type, tape le plan point par point, puis re-appuie sur le type (ou sur **✅ Valider le tracé en cours**) pour terminer.
 
-### 📏 Distance totale des tracés
-
-**📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire. Ce total reste à l'écran : il n'entre pas dans l'export image.
-
 ---
 
 ## ⬛ Tracer des zones
@@ -721,25 +754,28 @@ Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone :
 
 Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **son niveau**, et reste prise en compte même si tu masques le calque des zones.
 
-La case **Respecter les zones inaccessibles** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
+La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
 
 ---
 
 ## 🏛️ Structures (piliers, murs, fronts de taille)
 
-Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Elles n'ont aucun effet sur l'itinéraire.
+Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Une seule compte pour l'itinéraire : le **mur (ligne)**, qui le coupe comme une zone ⛔ inaccessible ; les autres n'ont aucun effet sur l'itinéraire. Le 🧭 tracker, lui, ne traverse ni pilier, ni mur, ni front de taille quand il avance hors des tracés : un pas qui en croiserait un est ignoré. Ça vaut pour les structures de son niveau, même masquées.
 
 | Type | Forme | Couleur |
 |---|---|---|
 | 🟡 **Pilier 1ère masse** | surface fermée | jaune |
 | 🟠 **Pilier 2e masse** | surface fermée | orange |
 | 🔵 **Mur** (pierre sèche, maçonnerie) | surface fermée | bleu |
+| 🟦 **Mur (ligne)** — un mur levé en trait, souvent à l'import SIG | ligne | trait bleu |
 | 🟨 **Front de taille 1ère masse** | ligne | trait jaune |
 | 🟧 **Front de taille 2e masse** | ligne | trait orange |
 
-Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille ou un mur (ligne) (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
 
 Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **un niveau sous le niveau actif** ; les autres prennent le niveau actif.
+
+Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itinéraire passe ailleurs, ou échoue en le disant. La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire le relâche avec les zones ⛔ ; le Mode Secours et « Je suis perdu » le respectent toujours. Renommé ou recoloré dans ≡ Légende, il garde ce rôle. Un mur arrivé en **front de taille** ou en ligne d'un import se convertit en mur (ligne) depuis sa fiche (🧹 Effacer et corriger).
 
 ---
 
@@ -785,7 +821,7 @@ Un tap sur un **marqueur** affiche son nom, son type, sa note et ces boutons :
 | Bouton | À quoi ça sert |
 |---|---|
 | **📍 Je suis ici** | Recale le suivi sur ce point et **confirme ta position** : 🚨 Sortie d'urgence et 🧭 Y aller partent ensuite de là |
-| **🧭 Y aller** | Calcule un itinéraire depuis ta position jusqu'à ce point |
+| **🧭 Y aller** | Calcule un itinéraire depuis ta position jusqu'à ce point. Suivi arrêté : **D'où pars-tu ?** — **Ma dernière position** (il y a N min), **Me repositionner** sur la carte, ou Annuler |
 | **➕ Itinéraire** | Ajoute le point comme étape d'un itinéraire |
 | **☆ Favori** | Ajoute ou retire le point de ⭐ Favoris |
 | **🔊** | Lit la note à voix haute |
@@ -801,6 +837,8 @@ Cas typique : sur un relevé importé, un **front de taille** est en fait une **
 
 Seules les cibles de **même forme** sont proposées : une **ligne** (tracé, front de taille) devient une autre ligne, une **surface fermée** (zone, pilier, mur) une autre surface. L'objet garde sa géométrie, son niveau et sa note.
 
+**Ligne fermée** : à l'import d'un fichier SIG, un pilier ou une zone arrive souvent en ligne, parfois sans revenir à son premier point (un pilier carré = 4 points, 3 côtés). Quand les deux bouts d'une ligne se rejoignent presque (écart inférieur à 1,5 fois le plus grand côté) et que la forme est compacte (pas le contour ramifié d'un réseau de galeries, qui remplirait les galeries), la fenêtre propose aussi les zones et les piliers / murs. La forme se referme toute seule : aucun point n'est ajouté, seul un dernier point qui répète le premier est retiré. Une galerie en U très serrée peut être prise pour une ligne fermée : vérifie avant de valider, ⏪ annule.
+
 ### 🎯 Convertir plusieurs objets d'un coup
 
 Dans la fenêtre de conversion, **🎯 Sélectionner plusieurs objets à convertir** affiche un bandeau :
@@ -810,6 +848,26 @@ Dans la fenêtre de conversion, **🎯 Sélectionner plusieurs objets à convert
 - **✅ Convertir (N)** ouvre le choix du type pour tout le lot ; **Annuler** abandonne.
 
 Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et explique pourquoi), mais il peut mélanger les familles : fronts de taille et chemins, tous des lignes, deviennent ensemble des galeries. Les objets déjà du bon type restent tels quels, et le message final les compte. Un seul `Ctrl+Z` annule tout le lot.
+
+**Seulement les contours fermés** : cette case, dans la fenêtre du lot, garde seulement les lignes fermées de la sélection (« 4 sur 6 ») et propose alors les zones et les piliers. Au choix du type, l'app annonce combien d'objets vont changer et combien restent tels quels ; un seul `Ctrl+Z` annule tout.
+
+**Recoller les lignes qui se touchent** : un pilier importé arrive parfois en 2 à 4 lignes dont les bouts se touchent presque. Cette case, dans la même fenêtre, en fait UN seul objet (zone ou pilier) quand elles forment ensemble une boucle sur le même niveau ; aucun point n'est ajouté et une branche ou un T n'est jamais recollé. L'app annonce combien d'objets elle va créer et combien de lignes elle utilise ; un seul `Ctrl+Z` rend les lignes d'origine. Une ligne de 2 segments (un V, un L) ou une ligne dont les deux bouts touchent d'autres lignes (un morceau de pilier) n'est jamais refermée seule : elle ne part qu'avec ce recollage.
+
+**Les contours fermés d'un calque de données** : passe d'abord le calque en **🔄 Modifier** (≡ Filtres, ligne du calque) ; ses objets ont alors une bulle et se convertissent comme les tiens, seuls ou en lot avec **Seulement les contours fermés**.
+
+### ✏️ Sélectionner par zone, 🗑️ supprimer en lot
+
+Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur. On y arrive aussi sans passer par un objet : dans 🛣️ Tracés, ⬛ Zones ou 🏛️ Structures, **🧹 Effacer → ✏️ Effacer par zone** (ou **🎯 Sélectionner** puis **✏️ Par zone** dans le bandeau du bas) : le tracé de la zone démarre tout de suite, et la confirmation n'a d'avance que la famille du groupe cochée (les autres restent proposées, décochées).
+
+- **✏️ Sélectionner par zone** : tape les sommets de la zone sur la carte (comme une mesure ♦️ Surface ; **↩️ Dernier sommet** corrige un tap raté), puis **✅ Prendre la zone**. Ta mesure ♦️ en cours n'est pas perdue : elle revient telle quelle.
+- Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux du **niveau affiché**. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.
+- Les **points** entrent aussi dans la sélection (cercle bleu pointillé). Re-tape un objet pour le retirer ; tu peux tracer plusieurs zones.
+- **🗑️ Supprimer (N)** ouvre une confirmation avec une case par famille (📍 Points, 〰️ Tracés, 🟦 Zones, 🧱 Structures) et leur nombre : décoche une famille pour la garder.
+- La fenêtre annonce aussi : les **photos** des points (elles ne sont pas effacées, elles passent « sans point » dans 🧰 Outils > 📸 Mes photos), les **objets d'un calque de données** vus dans la zone (jamais supprimés : passe le calque en **🔄 Modifier** d'abord), et les **points portails** (liaison vers un autre plan), toujours gardés.
+- Jamais pris : l'itinéraire calculé, les jonctions entre niveaux et les mesures.
+- **Un seul ⏪** rend tout ce qui a été supprimé. Sur une installation reliée, la suppression part vers l'équipe comme une suppression à l'unité ; l'installation peut aussi la **refuser** avant la confirmation (par exemple trop d'objets d'autres membres sans le droit de gérer le plan) : un message le dit et rien n'est supprimé.
+
+**✅ Convertir (N)** ne compte que les objets de même forme que le premier (lignes ou surfaces) : une zone qui a aussi pris des points ou des surfaces les laisse de côté pour la conversion.
 
 ---
 
@@ -843,6 +901,22 @@ Les deux mesures coexistent : passer de l'une à l'autre ne les efface pas, et l
 
 **❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ♦️** ou **Tout effacer (📐 + ♦️)**.
 
+### 📏 Distance totale des tracés
+
+Dans le groupe **📐 Mesure**, **📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire. Ce total reste à l'écran : il n'entre pas dans l'export image.
+
+### ⛏️ Volume exploité (défruitement)
+
+Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a été extrait d'un secteur. Trace d'abord le secteur avec **♦️ Surface** en suivant les fronts de taille, puis appuie sur ⛏️ (sans surface, un message te le rappelle). La fenêtre donne :
+
+- la **surface du secteur** ;
+- les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
+- la **surface exploitée** (secteur moins piliers) et le **taux de défruitement** (exploité ÷ secteur) ;
+- le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (2 m par défaut, retenue pour ce plan, recalcul immédiat) ;
+- les **remblais** (zones « Remblais » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins remblais).
+
+Sur un plan à étages, seul le **niveau actif** compte, et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
+
 ---
 
 ## 🏗️ Mode multi-niveau (carrières à étages)
@@ -856,7 +930,7 @@ Numérotation : **0** = niveau de référence, **1, 2…** au-dessus, **−1, �
 Une **pastille jaune** sous les boutons de zoom affiche le **niveau actif**. Un tap ouvre la modale **🏗️ Niveaux** :
 
 - **🎯 Niveau actif (pour dessiner)** — tout ce que tu dessines prend ce niveau. **[ − ]** et **[ + ]** ajoutent un niveau en dessous ou au-dessus. Changer de niveau actif **annule le tracé en cours** et n'affiche plus que ce niveau.
-- **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. La case **🖼️ Afficher le plan de base** suit le niveau 0 tant que tu n'y touches pas ; cochée ou décochée à la main, elle l'emporte (fond gardé sous un autre étage, ou retiré même avec le 0 visible) et **Tout afficher** la remet en automatique (choix gardé avec la session du plan ; sur un plan à un seul niveau, elle est dans **Calques d'image**). Une jonction reste visible si l'un de ses deux niveaux l'est.
+- **👁️ Niveaux visibles (filtre)** — coche les niveaux à afficher (**Tous** / **Actif seul**). Décocher le **0** masque aussi l'image principale du plan, pour regarder un étage seul. La case **🖼️ Afficher le plan de base** suit le niveau 0 tant que tu n'y touches pas ; cochée ou décochée à la main, elle l'emporte (fond gardé sous un autre étage, ou retiré même avec le 0 visible) et **Tout afficher** la remet en automatique (choix gardé avec la session du plan ; la même case est aussi en tête de **Calques d'image**, seul endroit sur un plan à un seul niveau). Une jonction reste visible si l'un de ses deux niveaux l'est.
 
 Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle-même. Les mêmes réglages existent dans ≡ **Filtres**. À l'export image, **🎨 Avancé → 🏗️ Niveaux à exporter** choisit les niveaux indépendamment de l'affichage.
 
@@ -1045,7 +1119,7 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 - **Format** : A0 à A4, portrait ou paysage (A4 paysage au départ).
 - **Contenu** : tes annotations, l'image du plan et ses calques, les calques de données, un en-tête (titre et informations du plan).
 - **Qualité** : Standard ×1 (A3/A4), Haute définition ×2 (A0/A1, fichier plus lourd), Brouillon ×0,5. A0/A1 en ×2 peut prendre 30 à 60 secondes sur mobile. Si l'image dépasse ce que l'appareil sait produire, la résolution est réduite et l'app te dit laquelle tu obtiens.
-- **🗺️ Légende** posée dans un coin (bas-gauche au départ), en trois tailles et quatre styles : **Pro (fond blanc)** pour l'impression (au départ), Sombre opaque, Sombre semi-transparent, Filigrane discret. Elle ne liste que ce qui figure vraiment sur le plan exporté.
+- **🗺️ Légende** posée dans un coin (bas-gauche au départ), en trois tailles et quatre styles : **Pro (fond blanc)** pour l'impression (au départ), Sombre opaque, Sombre semi-transparent, Filigrane discret. Sa taille suit le papier, pas le plan : texte d'environ 6 pt en A4 (Compact), un peu plus grand sur A3 à A0, et la légende se range en 1 à 4 colonnes pour tenir dans son coin (au plus 30 % de la largeur et 40 % de la hauteur du plan en Compact) ; sur un plan très chargé posé petit dans la page, elle garde un texte de 5 pt au moins et peut alors déborder ces limites. Ses icônes sont celles du plan exporté ; tracés, zones et structures montrent tous leurs types.
 
 Le PDF porte la mention « Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr » et s'appelle `<plan>_<date>.pdf`.
 
@@ -1188,7 +1262,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;
   - **🧭 Navigation intelligente** *(ce plan)* : voir « 🔭 Pour aller plus loin ».
-- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes ; disponible en français uniquement : le bouton n'apparaît que si l'app est en français. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
+- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🕹️ Pavé classique dans la vue 3D** *(cet appareil seulement)* : au téléphone, les boutons ▲ ▼ ◀ ▶ ↶ ↷ à la place du joystick ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes ; disponible en français uniquement : le bouton n'apparaît que si l'app est en français. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
 - **🚀 Performance** *(ce plan)* — le **🚀 Mode ULTRA** pour les gros plans qui font planter le téléphone (voir « 🔭 Pour aller plus loin ») ; sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement**.
 - **🧩 Fonctionnalités optionnelles** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito). La confidentialité se règle dans ⚙️ Configuration de l'accueil.
 - **🛠️ Système & maintenance** — le **mode performance** du plan, en lecture seule.

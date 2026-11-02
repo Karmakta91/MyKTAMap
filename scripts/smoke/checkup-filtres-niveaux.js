@@ -166,13 +166,17 @@ function lireFond(page) {
   });
 }
 
-// Case du plan de base, où qu'elle soit (Niveaux en multi-niveau, Calques image sinon).
+// Case du plan de base : celle de Niveaux en multi-niveau (la jumelle des Calques image doit dire pareil),
+// celle des Calques image sinon. `sections` = où sont toutes les cases, `accord` = toutes dans le même état.
 function caseFond(page) {
   return page.evaluate(function () {
-    const cb = document.querySelector("#kta-fp-modal [data-plan-de-base]");
+    const toutes = Array.prototype.slice.call(document.querySelectorAll("#kta-fp-modal [data-plan-de-base]"));
+    const cb = document.querySelector("#kta-fp-sec-lvl [data-plan-de-base]") || toutes[0];
     if (!cb) return { presente: false };
     const sec = cb.closest(".kta-fp-section");
     return { presente: true, cochee: cb.checked, section: sec ? sec.id : null,
+             sections: toutes.map(function (x) { const s = x.closest(".kta-fp-section"); return s ? s.id : null; }),
+             accord: toutes.every(function (x) { return x.checked === cb.checked; }),
              libelle: (cb.closest("label") || cb).textContent.trim(),
              mode: window.FilterPanel.getState().planDeBase,
              pastille: !!document.querySelector(".kta-filter-ctrl a[data-filtre-actif]") };
@@ -184,8 +188,9 @@ async function cliquerVisible(page, lvl) {
   await page.waitForTimeout(400);
 }
 
-async function cliquerFond(page) {
-  await page.locator("#kta-fp-modal [data-plan-de-base]").click();
+// sec : "kta-fp-sec-lvl" ou "kta-fp-sec-img" ; par défaut la première case de la modale.
+async function cliquerFond(page, sec) {
+  await page.locator((sec ? "#" + sec : "#kta-fp-modal") + " [data-plan-de-base]").first().click();
   await page.waitForTimeout(400);
 }
 
@@ -208,10 +213,14 @@ async function testerFond(page, etiquette) {
   verifier(f0.total > 0 && f0.poses > 0 && !f0.cache, etiquette + " : auto, niveau 0 visible → fond visible", f0);
   verifier(c0.presente && c0.section === "kta-fp-sec-lvl" && c0.cochee === true && c0.mode === null,
     etiquette + " : auto, niveau 0 visible → case présente dans Niveaux, cochée", c0);
+  verifier(c0.sections.length === 2 && c0.sections.indexOf("kta-fp-sec-img") >= 0 && c0.accord,
+    etiquette + " : la même case aussi dans « Calques image », même état", c0);
 
-  // Décochée à la main, niveau 0 visible : le fond part, la pastille ≡ le signale.
-  await cliquerFond(page);
+  // Décochée à la main depuis « Calques image », niveau 0 visible : le fond part, la case de Niveaux suit,
+  // la pastille ≡ le signale.
+  await cliquerFond(page, "kta-fp-sec-img");
   const c1 = await caseFond(page);
+  verifier(c1.accord, etiquette + " : case décochée dans « Calques image » → celle de Niveaux suit", c1);
   const f1 = await lireFond(page);
   verifier(c1.cochee === false && c1.mode === false && f1.poses === 0 && f1.cache,
     etiquette + " : case décochée, niveau 0 visible → fond masqué", { case: c1, fond: f1 });
@@ -234,6 +243,7 @@ async function testerFond(page, etiquette) {
   await cliquerVisible(page, 0);
   const c3 = await caseFond(page);
   const f3 = await lireFond(page);
+  verifier(c3.accord, etiquette + " : niveau 0 masqué → la case des « Calques image » suit le re-rendu", c3);
   verifier(c3.presente && c3.cochee === false && c3.mode === null && f3.poses === 0 && f3.cache,
     etiquette + " : auto, niveau 0 masqué → case décochée, fond masqué", { case: c3, fond: f3 });
 

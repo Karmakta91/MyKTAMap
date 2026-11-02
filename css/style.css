@@ -1011,7 +1011,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   -webkit-overflow-scrolling: touch;
 }
 .kta-tracker-modal-section-title {
-  margin: 10px 2px 6px;
+  margin: 8px 2px 4px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1021,23 +1021,25 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
 .kta-tracker-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
+/* Icône À GAUCHE du libellé (grille 2 colonnes, icône sur 2 lignes : libellé + aide éventuelle) : le menu complet,
+   tuiles optionnelles comprises (replay, heatmap), tient sans défiler sur un iPhone. */
 .kta-tracker-modal-tile {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 62px;
-  padding: 9px 6px;
+  column-gap: 8px;
+  row-gap: 1px;
+  min-height: 46px;
+  padding: 6px 10px;
   font-family: inherit;
   color: var(--kta-texte);
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
 }
 .kta-tracker-modal-tile:hover {
@@ -1051,13 +1053,20 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   grid-column: 1 / -1;
 }
 .kta-tracker-modal-tile-icon {
-  font-size: 20px;
+  grid-row: span 2;
+  font-size: 18px;
   line-height: 1;
 }
 .kta-tracker-modal-tile-label {
   font-size: 12px;
   line-height: 1.2;
   color: inherit;
+}
+/* Ligne d'aide sous le libellé (🧊 Vue 3D) : méta en texte-3 ; une tuile grisée l'est déjà en entier. */
+.kta-tracker-modal-tile-aide {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--kta-texte-3);
 }
 /* Tuile active (suivi, plan orienté, guidage, verrou…) : vert de .kta-tx-ok. En pause = orange,
    coupée dans la configuration = grisée. */
@@ -4388,8 +4397,8 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   font-size: 11px;
   color: #8892a4;
   letter-spacing: 0.02em;
-  /* 2 lignes de 3 librairies (<br> dans le HTML), 20px chacune ; la signature (20px, bottom 28px) s'aligne
-     sur la 2e ligne. Aligné à gauche : centrées, des lignes inégales flottent. */
+  /* 2 lignes (<br> dans le HTML), 20px chacune ; la signature (20px, bottom 28px) s'aligne sur la 2e, la plus
+     courte : la 1re passe au-dessus d'elle. Aligné à gauche : centrées, des lignes inégales flottent. */
   line-height: 20px;
   text-align: left;
   white-space: nowrap;
@@ -5319,6 +5328,25 @@ html.kta-theme-light .kta-cfg-input option {
   text-align: center;
   border: 1.5px solid #1a1f2e;
   box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+/* Pastille « du neuf » d'une extension (homeConfig.js > _majPastilleNeuf), en haut à GAUCHE : le compteur d'alertes
+   garde la droite, les deux peuvent coexister. */
+.loader-btn-alert-neuf {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--kta-accent);
+  color: var(--kta-sur-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1.5px solid var(--kta-surface);
   pointer-events: none;
 }
 @keyframes loader-btn-alert-pulse {
@@ -6357,6 +6385,24 @@ html.kta-theme-light .kta-cfg-input option {
 /* Action d'une extension (KtaExtensions.actionAlertes), au pied de la fenêtre 🚨, avant la ligne des notifications. */
 .kta-alert-action-ext { margin-top: 14px; display: flex; }
 .kta-alert-action-ext-btn { min-height: 44px; }
+/* Bloc « 🆕 Quoi de neuf » d'une extension (KtaExtensions.blocNouveautes), en tête du corps de la fenêtre 🚨 (après
+   le message sous une alerte d'urgence). Une ligne par sujet : texte puis bouton, qui passe dessous sur un téléphone. */
+.kta-alert-neuf {
+  margin: 0 0 14px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--kta-accent);
+  border-radius: 8px;
+  background: var(--kta-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.kta-alert-level-emergency .kta-alert-neuf { margin: 14px 0 0 0; }
+.kta-alert-neuf-titre { font-weight: 700; color: var(--kta-accent-texte); font-size: 14px; }
+.kta-alert-neuf-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.kta-alert-neuf-texte { flex: 1 1 160px; min-width: 0; color: var(--kta-texte-2); font-size: 13px; overflow-wrap: anywhere; }
+.kta-alert-neuf-btn { min-height: 44px; flex: 0 0 auto; }
 .kta-alert-actions {
   padding: 12px 20px 18px 20px;
   display: flex;
@@ -19232,6 +19278,50 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   font-style: italic;
   margin: 8px 0;
 }
+
+/* ── Modale « ⛏️ Volume exploité » (groupe 📐 Mesure, boîte .kta-readme-modal-*) ── */
+.kta-volume-boite { max-width: 440px; }
+.kta-volume-niveau {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kta-accent-texte);
+  margin: 0 0 10px;
+}
+.kta-volume-hauteur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--kta-texte-2);
+  margin-bottom: 12px;
+}
+.kta-volume-hauteur input {
+  width: 90px;
+  padding: 6px 8px;
+  background: var(--kta-surface-2);
+  border: 1px solid var(--kta-bordure);
+  border-radius: 6px;
+  color: var(--kta-texte);
+  font-size: 14px;
+  text-align: right;
+}
+.kta-volume-hauteur input.kta-volume-invalide { border-color: var(--kta-erreur-bord); }
+.kta-volume-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kta-volume-table th,
+.kta-volume-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--kta-bordure);
+}
+.kta-volume-table th { text-align: left; font-weight: 400; color: var(--kta-texte-2); }
+.kta-volume-table td { text-align: right; color: var(--kta-texte); font-variant-numeric: tabular-nums; }
+.kta-volume-table td.kta-volume-fort { font-weight: 700; color: var(--kta-accent-texte); }
+.kta-volume-note {
+  font-size: 12px;
+  color: var(--kta-texte-3);
+  line-height: 1.45;
+  margin: 12px 0 0;
+}
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
 .kta-note-popup-convertir,
 .kta-note-popup-jct-appliquer {
@@ -19403,10 +19493,24 @@ body.kta-theme-light #kta-osm-mes-floater {
 /* Bandeau de sélection multiple : hérite de .kta-iti-floater, seul l'écart de ses 4 boutons change. */
 .kta-selm-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
 .kta-selm-floater .kta-btn { white-space: nowrap; }
-.kta-selm-floater #kta-selm-ok[disabled] { opacity: .45; cursor: not-allowed; }
+/* « Tous les « type » » porte un nom de type de longueur libre : il passe à la ligne au lieu de déborder. */
+.kta-selm-floater #kta-selm-tous { white-space: normal; overflow-wrap: anywhere; max-width: 100%; text-align: left; }
+.kta-selm-floater #kta-selm-ok[disabled],
+.kta-selm-floater #kta-selm-suppr[disabled],
+.kta-selm-floater #kta-selm-zone-ok[disabled] { opacity: .45; cursor: not-allowed; }
+/* Confirmation de la suppression en lot : une case par famille, chacune sur sa ligne (message en pre-line). */
+.kta-selm-cases { display: block; margin: 10px 0; white-space: normal; }
+.kta-selm-case { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: var(--kta-texte); cursor: pointer; }
 
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
 .kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
+/* Case « seulement les contours fermés » d'un lot : grisée (disabled) quand le lot n'en a aucun. */
+.kta-convert-fermes {
+  display: flex; gap: 8px; align-items: flex-start;
+  margin: 0 0 14px; font-size: 13px; line-height: 1.45; color: var(--kta-texte); cursor: pointer;
+}
+.kta-convert-fermes input { margin-top: 2px; }
+.kta-convert-fermes input:disabled + span { color: var(--kta-texte-3); }
 
 /* Fusion de sorties (carnet) : barre SOUS la liste, sinon elle repousse les sorties hors écran. */
 .kta-jrn-fusion-barre {
@@ -19505,6 +19609,14 @@ html.kta-theme-light .kta-storage-banner {
   pointer-events: none;
 }
 html.kta-theme-light .kta-filter-ctrl a.kta-filter-ctrl-actif::after { box-shadow: 0 0 0 2px #f0e8d8; }
+
+/* Bouton Vue 3D, sous ≡ dans la barre de droite : picto cube au trait (js/ktaPictos.js) en currentColor, la
+   couleur et le fond du thème venant de .leaflet-bar a, comme ≡. */
+.kta-vue3d-ctrl a { display: flex !important; align-items: center; justify-content: center; }
+.kta-vue3d-ctrl-picto { width: 20px; height: 20px; pointer-events: none; }
+/* Sans plan ou sans échelle : grisé sans opacité, toujours touchable (le toucher dit pourquoi). */
+body .leaflet-bar.kta-vue3d-ctrl a.kta-inactif,
+html.kta-theme-light .leaflet-bar.kta-vue3d-ctrl a.kta-inactif { color: var(--kta-texte-3) !important; filter: grayscale(1); }
 
 /* Case « garder l'écran allumé » (modale de démarrage du tracker). */
 .kta-tracker-warn-wake {
@@ -20074,6 +20186,14 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 }
 .kta-presence-ancienne .kta-presence-etiquette { color: var(--kta-texte-3); }
 .kta-presence-hors-niveau { opacity: 0.4; }
+/* Place d'un membre dans SA vue 3D (source "vue3d") : contour pointillé et pastille « 3D » — jamais confondue
+   avec une position suivie. */
+.kta-presence-vue3d .kta-presence-repere path { stroke-dasharray: 4 3; }
+.kta-presence-marque-3d {
+  position: absolute; left: -6px; top: -6px; font-size: 10px; font-weight: 700; line-height: 1; padding: 2px 4px;
+  border-radius: 6px; background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-interaction);
+  pointer-events: none;
+}
 /* Repères d'une extension (KtaExtensions.afficherReperes) : pastille à symbole, bord à la teinte de la charte,
    touchable (30 px + marge du marqueur) ; le nombre dit plusieurs entrées sur le même objet. */
 .kta-repere-icone { background: none; border: none; }

@@ -28,7 +28,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.21.1";
+const CACHE_NAME = "myktamap-cache-v2.22.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -246,6 +246,19 @@ const ASSETS_TO_CACHE = [
   // seulement quand l'écran s'affiche ; précachés pour un premier lancement qui se poursuit hors ligne.
   "./css/bienvenue.css",
   "./js/bienvenue.js",
+  // Vue 3D (tuile 🧊 du menu Tracker) : chargée par interface.js > _chargerVue3D au premier toucher, jamais par la
+  // page au démarrage ; précachée ici parce qu'elle sert sous terre, hors réseau (~2,1 Mo, three.js compris).
+  "./css/vue3d.css",
+  "./js/vue3d.js",
+  "./lib/three/three.module.js",
+  "./lib/three/three.core.js",
+  // Add-on lié au code de la vue 3D (vue3d.js > ADDONS_CODE), chargé par elle seule ; précaché comme tout le JS.
+  "./addons/mkmg/js/coeur.js",
+  "./addons/mkmg/js/son.js",
+  "./addons/mkmg/js/monde.js",
+  "./addons/mkmg/js/joueur.js",
+  "./addons/mkmg/css/coeur.css",
+  "./addons/mkmg/img/fusil.svg",
   "./fonts/montserrat-400.woff2",
   "./fonts/montserrat-600.woff2",
   "./fonts/montserrat-800.woff2",
@@ -312,6 +325,8 @@ const ASSETS_TO_CACHE = [
   "./js/debug.js",
   "./js/devMode.js",
   "./js/perfUltra.js",
+  // pictos au trait partagés (écran Bienvenue, bouton de la vue 3D).
+  "./js/ktaPictos.js",
   // 🎨 Interface refondue. Module no-op si le flag
   // localStorage["myktamap_refonte_v1"] est absent. Précaché pour que le toggle
   // marche aussi hors ligne.
@@ -346,6 +361,7 @@ const ASSETS_TO_CACHE = [
   // Sans lui en cache, le bouton « Convertir » serait mort hors ligne.
   "./js/convertirObjet.js",
   "./js/selectionMulti.js",
+  "./js/selectionZone.js",
   "./js/calqueSession.js",
   "./js/majPlan.js",
   // profondeur des niveaux + profil en long.
@@ -445,6 +461,7 @@ const ASSETS_TO_CACHE = [
   "./js/swRegister.js",
   "./js/pathfinder.js",
   "./js/roadGraph.js",
+  "./js/galerieEmprise.js",
   "./js/updateChecker.js",
   "./js/alertChecker.js",
   "./js/lostMode.js",
@@ -459,6 +476,8 @@ const ASSETS_TO_CACHE = [
   // Module issu d'interface.js — panneau
   // Distance totale des tracés (filtres + surlignage magenta)
   "./js/interfaceDistanceTotale.js",
+  // Volume exploité (défruitement du secteur ♦️, piliers et remblais coupés au secteur)
+  "./js/volumeExploite.js",
   // Module issu d'interface.js — modale
   // Légende plein écran (4 sections + cascade LegendCustomization)
   "./js/interfaceLegende.js",

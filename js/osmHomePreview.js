@@ -105,6 +105,7 @@
     "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.70, weight: 1, isPolyline: false },
     "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.70, weight: 1, isPolyline: false },
     "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.70, weight: 1, isPolyline: false },
+    "mur-ligne": { color: "#1e3a8a", weight: 4, opacity: 0.95, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 4, opacity: 0.95, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 4, opacity: 0.95, isPolyline: true }
   };
@@ -1236,6 +1237,7 @@
       return iconCache[tag];
     }
 
+    const structsPlan = [];
     for (const layer of _tousCalques(data, planIdPourPane || _selectedPlanId)) {
       // 🩸 Les calques `visible: false` du plan-config ne sont PAS sautés : c'est un défaut d'affichage du mode
       // plan (⊞ Calques), et la Vue OSM n'a pas de bascule par calque — les sauter les rendrait inaccessibles.
@@ -1325,36 +1327,45 @@
         nZone++;
       }
 
-      // structures : polyline (fronts) ou polygone
-      for (const s of layer.structures) {
-        if (!_passeNiveau(s)) continue;
-        if (!Array.isArray(s.points)) continue;
-        const style = _styleStructHome(s, planIdFx);
-        // couleurs d'override DU PLAN par-dessus la variante HOME (weight / fillOpacity allégés) : fronts = trait,
-        // piliers / murs = remplissage + bordure
-        const fillOvS   = _couleurOverrideDe(planIdFx, "structures", s.type, "colors");
-        const borderOvS = _couleurOverrideDe(planIdFx, "structures", s.type, "borders");
-        if (style.isPolyline) {
-          if (fillOvS) style.color = fillOvS;
-        } else {
-          if (fillOvS)   style.fillColor = fillOvS;
-          if (borderOvS) style.color     = borderOvS;
-        }
-        const polyline = style.isPolyline;
-        const minPts = polyline ? 2 : 3;
-        if (s.points.length < minPts) continue;
-        const lls = _projectPoints(s.points, proj);
-        if (lls.length < minPts) continue;
-        if (polyline) {
-          L.polyline(lls, Object.assign({ color: style.color, weight: style.weight, opacity: style.opacity, interactive: false }, optsRendu)).addTo(structL);
-        } else {
-          L.polygon(lls, Object.assign({
-            color: style.color, fillColor: style.fillColor,
-            fillOpacity: style.fillOpacity, weight: style.weight, opacity: 1, interactive: false
-          }, optsRendu)).addTo(structL);
-        }
-        nStruct++;
+      // structures : rassemblées sur tous les calques, dessinées après la boucle (règle des murs ci-dessous)
+      for (const s of layer.structures) structsPlan.push(s);
+    }
+    // Règle « mur sous pilier et front » (structures.js > ktaMursSousPiliers) sur toutes les structures du plan :
+    // un mur d'un calque ne passe pas sur le pilier d'un autre. Toujours par niveau : APP_CONFIG n'est pas celui
+    // de ce plan, et un plan sans niveaux n'a que le niveau 0.
+    const structsTriees = (typeof window.ktaMursSousPiliers === "function")
+      ? window.ktaMursSousPiliers(structsPlan, function (s) { return s; }, true) : structsPlan;
+    // structures : polyline (fronts) ou polygone
+    for (const s of structsTriees) {
+      if (!_passeNiveau(s)) continue;
+      if (!Array.isArray(s.points)) continue;
+      const style = _styleStructHome(s, planIdFx);
+      // couleurs d'override DU PLAN par-dessus la variante HOME (weight / fillOpacity allégés) : fronts = trait,
+      // piliers / murs = remplissage + bordure
+      const fillOvS   = _couleurOverrideDe(planIdFx, "structures", s.type, "colors");
+      const borderOvS = _couleurOverrideDe(planIdFx, "structures", s.type, "borders");
+      if (style.isPolyline) {
+        if (fillOvS) style.color = fillOvS;
+      } else {
+        if (fillOvS)   style.fillColor = fillOvS;
+        if (borderOvS) style.color     = borderOvS;
       }
+      const polyline = style.isPolyline;
+      const minPts = polyline ? 2 : 3;
+      if (s.points.length < minPts) continue;
+      const lls = _projectPoints(s.points, proj);
+      if (lls.length < minPts) continue;
+      if (polyline) {
+        L.polyline(lls, Object.assign({
+          color: style.color, weight: style.weight, opacity: style.opacity, interactive: false
+        }, optsRendu)).addTo(structL);
+      } else {
+        L.polygon(lls, Object.assign({
+          color: style.color, fillColor: style.fillColor,
+          fillOpacity: style.fillOpacity, weight: style.weight, opacity: 1, interactive: false
+        }, optsRendu)).addTo(structL);
+      }
+      nStruct++;
     }
     // sous-couches selon les bascules
     if (_showPoi)        dataL.addLayer(poiL);

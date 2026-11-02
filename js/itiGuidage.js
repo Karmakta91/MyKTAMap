@@ -15,8 +15,8 @@
 // proches fusionnent ; TOUJOURS en mètres, jamais « la 3e à gauche ».
 // Expose window.ItiGuidage : construire(road, {scale, pois}) · projeter(guide, p, sMin, sMax) → {s, dist, x, y}
 //   · texteAction · longueurRaccordsPx · alerteRaccord → {distM, role, label}|null · ouvrirFeuilleDeRoute ·
-//   onPosition(pos) (tracking.js, chaque pas) · rafraichir · etat() · getPref/setPref("auto"|"jamais") ·
-//   agir("recalculer"|"ici"|"ignorer").
+//   onPosition(pos) (tracking.js, chaque pas) · rafraichir · etat() · apercu(pos, {cap, sPrec}) (sans toucher
+//   l'état : vue 3D en mode libre) · getPref/setPref("auto"|"jamais") · agir("recalculer"|"ici"|"ignorer").
 // ⚠️ Cap : degrés, 0 = haut du plan, sens horaire (= tracking.js) ; écart sortie − entrée > 0 = DROITE.
 // Garde-fou : scripts/check-guidage.js · Doc : docs/architecture/tracking.md §Guidage
 // =========================
@@ -81,13 +81,16 @@
     return { x: pts[lo].x + t * (pts[hi].x - pts[lo].x), y: pts[lo].y + t * (pts[hi].y - pts[lo].y) };
   }
 
-  function _projeter(ch, p, sMin, sMax) {
+  // `niveau` (entier, facultatif) : seuls les segments dont les deux bouts sont à ce niveau comptent (ch.niv).
+  function _projeter(ch, p, sMin, sMax, niveau) {
     const pts = ch.pts, cum = ch.cum;
     const lo = (typeof sMin === "number") ? sMin : -Infinity;
     const hi = (typeof sMax === "number") ? sMax : Infinity;
+    const filtre = Number.isInteger(niveau) && Array.isArray(ch.niv);
     let best = null;
     for (let i = 1; i < pts.length; i++) {
       if (cum[i] < lo || cum[i - 1] > hi) continue;
+      if (filtre && (ch.niv[i - 1] !== niveau || ch.niv[i] !== niveau)) continue;
       const a = pts[i - 1], b = pts[i];
       const dx = b.x - a.x, dy = b.y - a.y;
       const l2 = dx * dx + dy * dy;
@@ -145,6 +148,13 @@
     if (!road || !Array.isArray(road.points) || road.points.length < 2) return null;
     const e = _echelle(opts);
     const ch = _preparer(road.points);
+    // Niveau de chaque point (pathfinder.js le pose sur chacun ; sinon celui du tracé ; transit = null) : aperçu
+    // filtré par niveau (vue 3D).
+    const nivDefaut = Number.isInteger(road.level) ? road.level : 0;
+    ch.niv = road.points.map(function(q) {
+      if (q && Number.isInteger(q.level)) return q.level;
+      return (q && q.level === undefined && !q.via) ? nivDefaut : null;
+    });
     const L = ch.total;
     const W = Math.max(3, FENETRE_M * e);
     const ecartPx = ZONE_ECART_M * e;
@@ -285,14 +295,23 @@
                      nom: rArr ? rArr.label : null, raccordPx: rArr ? (rArr.distPx || 0) : 0,
                      de: rArr ? rArr.de : null });
 
-    consignes.sort(function(a, b) { return a.s - b.s; });
+    // ⚠️ contrat : une consigne de niveau ABSORBE les consignes de carrefour à ≤ ZONE_ECART_M de son abscisse et passe
+    // devant à abscisse égale. 🩸 Par un tracé `jonction`, le changement de niveau tombait au même `s` que le virage
+    // du nœud et se triait après lui : « Maintenant : tourner » restait affiché jusqu'au passage, la descente n'était
+    // jamais dite.
+    const niveaux = consignes.filter(function(c) { return c.type === "niveau"; });
+    const gardees = consignes.filter(function(c) {
+      return !c.carrefour || !niveaux.some(function(n) { return Math.abs(n.s - c.s) <= ecartPx; });
+    });
+    const rang = function(c) { return c.type === "niveau" ? 0 : 1; };
+    gardees.sort(function(a, b) { return (a.s - b.s) || (rang(a) - rang(b)); });
 
     const rDep = raccords.find(function(r) { return r.role === "depart"; }) || null;
     return {
       ch: ch,
       echelle: e,
       longueurPx: L,
-      consignes: consignes,
+      consignes: gardees,
       depart: (rDep && (rDep.distPx || 0) / e >= RACCORD_MIN_M) ? rDep : null,
       alerteRaccord: alerteRaccord(road, e)
     };
@@ -342,7 +361,7 @@
       case "demiTour":  txt = _t("guid.act.demiTour"); break;
       case "niveau":
         txt = _t(c.sens === "monter" ? "guid.act.monter" : "guid.act.descendre",
-                 { niveau: _t("guid.niveau", { n: c.vers }) });
+                 { niveau: _t("guid.niveau", { n: _fmtNiv(c.vers) }) });
         // Passage entre niveaux : « … par l'escalier / par l'échelle / à la corde ».
         if (PAR_MOYEN[c.moyen]) txt += _t(PAR_MOYEN[c.moyen]);
         break;
@@ -357,6 +376,11 @@
 
   // Actions en minuscule (insérées dans « Dans 40 m, … ») ; seules, elles prennent la majuscule.
   function _majuscule(s) { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // Libellé signé d'un niveau (« -1 », « 0 », « +1 »), celui du sélecteur (utils.js > ktaFormatNiveau).
+  function _fmtNiv(n) {
+    return (typeof window.ktaFormatNiveau === "function") ? window.ktaFormatNiveau(n) : String(n);
+  }
 
   function _fmtM(m) {
     return (typeof window.formatDistance === "function") ? window.formatDistance(m, 0) : Math.round(m) + " m";
@@ -659,7 +683,8 @@
 
     // Jamais encore sur le trajet : on le rejoint.
     if (!_dejaSurTrajet && !surTrajet) {
-      return { mode: "rejoindre", distM: distM, cible: { x: pr.x, y: pr.y }, pos: pos };
+      return { mode: "rejoindre", distM: distM, cible: { x: pr.x, y: pr.y }, pos: pos, s: pr.s,
+               sCible: _consigneApres(_guide, pr.s).s };
     }
     if (surTrajet) {
       if (!_dejaSurTrajet) _dejaSurTrajet = true;
@@ -676,33 +701,37 @@
     if (!_alerte && !_ignoreEcart && _horsCompte >= S.pas) _alerte = "ecart";
     if (!_alerte && _demiCompte >= S.demiPas) _alerte = "demi";
 
-    const cs = _guide.consignes;
-    // 🩸 Consigne affichée jusqu'à être FRANCHIE (0,5 m après le point), sinon « Maintenant » disparaît avant
-    // le croisement.
-    let k = cs.findIndex(function(c) { return c.s > _sPrev - 0.5 * e; });
-    if (k < 0) k = cs.length - 1;
+    const c = _consigneApres(_guide, _sPrev);
     return {
       mode: _alerte || "guide",
       distM: distM,
-      consigne: cs[k],
-      suivante: cs[k + 1] || null,
-      resteM: (cs[k].s - _sPrev) / e,
-      reculM: (_sMax - _sPrev) / e
+      consigne: c.consigne,
+      suivante: c.suivante,
+      resteM: (c.s - _sPrev) / e,
+      reculM: (_sMax - _sPrev) / e,
+      s: _sPrev,
+      sCible: c.s
     };
   }
 
-  function _rendu(r) {
-    const el = _creerBandeau();
-    let icone = "", principal = "", sous = "", fleche = null, actions = [], picto = "";
-    const urgence = !!(_road && _road.urgence);
+  // Prochaine consigne à l'abscisse s du trajet. 🩸 Affichée jusqu'à être FRANCHIE (0,5 m après le point), sinon
+  // « Maintenant » disparaît avant le croisement.
+  function _consigneApres(guide, s) {
+    const cs = guide.consignes, e = guide.echelle;
+    let k = cs.findIndex(function(c) { return c.s > s - 0.5 * e; });
+    if (k < 0) k = cs.length - 1;
+    return { consigne: cs[k], suivante: cs[k + 1] || null, s: cs[k].s };
+  }
 
+  // Textes d'un résultat de _calculer ou d'_apercu : mêmes mots pour le bandeau, l'écran XL et la vue 3D.
+  // `cap` : cap de marche (degrés plan) pour la flèche « rejoindre » ; null = pas de flèche (elle mentirait).
+  function _textes(r, guide, urgence, cap) {
+    let icone = "", principal = "", sous = "", fleche = null, actions = [], picto = "";
     if (r.mode === "rejoindre") {
       icone = "⬆";
       principal = _t("guid.bandeau.rejoindre", { dist: _fmtDirect(r.distM) });
       sous = _t("guid.bandeau.rejoindreSous");
-      // Flèche relative au téléphone : cap vers le tracé moins cap de marche. Sans boussole, pas de flèche (elle
-      // mentirait).
-      const cap = (typeof window.getPlanRelHeading === "function") ? window.getPlanRelHeading() : null;
+      // Flèche relative au téléphone : cap vers le tracé moins cap de marche.
       if (typeof cap === "number" && isFinite(cap)) fleche = Math.round(_norm180(_cap(r.pos, r.cible) - cap));
       else icone = "🪢";
     } else if (r.mode === "ecart" || r.mode === "demi") {
@@ -724,8 +753,8 @@
       const action = texteAction(c);
       if (c.type === "arrivee" && r.resteM <= MAINTENANT_M) {
         principal = _majuscule(action);
-        if ((c.raccordPx || 0) / _guide.echelle >= RACCORD_MIN_M) {
-          sous = _t("guid.bandeau.puisRaccord", { dist: _fmtM(c.raccordPx / _guide.echelle) });
+        if ((c.raccordPx || 0) / guide.echelle >= RACCORD_MIN_M) {
+          sous = _t("guid.bandeau.puisRaccord", { dist: _fmtM(c.raccordPx / guide.echelle) });
         }
       } else if (r.resteM <= MAINTENANT_M) {
         principal = _t("guid.bandeau.maintenant", { action: action });
@@ -737,10 +766,21 @@
       }
       if (!sous && r.suivante) sous = _t("guid.bandeau.puis", { action: texteAction(r.suivante) });
     }
+    return { icone: icone, principal: principal, sous: sous, fleche: fleche, actions: actions, picto: picto };
+  }
 
+  function _rendu(r) {
+    const el = _creerBandeau();
+    const urgence = !!(_road && _road.urgence);
+    const cap = (typeof window.getPlanRelHeading === "function") ? window.getPlanRelHeading() : null;
+    const tx = _textes(r, _guide, urgence, cap);
+    const icone = tx.icone, principal = tx.principal, sous = tx.sous, fleche = tx.fleche, actions = tx.actions;
+    const picto = tx.picto;
+
+    // `s` / `sCible` (px le long du trajet) : position et prochaine consigne, pour les chevrons de la vue 3D.
     _etat = {
       visible: true, mode: r.mode, icone: icone, principal: principal, sous: sous,
-      fleche: fleche, urgence: urgence, picto: picto
+      fleche: fleche, urgence: urgence, picto: picto, s: r.s, sCible: r.sCible
     };
 
     const cle = [r.mode, icone, principal, sous, fleche, urgence, picto,
@@ -796,6 +836,52 @@
     }
   }
 
+  // Aperçu depuis une position quelconque (vue 3D en mode libre) : la consigne qu'on lirait là, SANS toucher l'état
+  // du guidage (progression, alertes, bandeau). Pas d'écart ni de demi-tour (pas d'historique) : loin du trajet,
+  // « rejoindre ». `opts.cap` : cap de marche pour la flèche ; `opts.sPrec` : abscisse de l'aperçu précédent,
+  // préférée sur un aller-retour (même fenêtre que le guidage) ; `opts.niveau` : niveau de la scène, la position
+  // n'est projetée que sur les points du trajet à ce niveau (aucun : visible false, pas de « Rejoindre le tracé »
+  // vers un tronçon d'un autre étage). → { visible, masque, apercu, mode, icone, principal, sous, fleche, picto,
+  // urgence, s, sCible, distM, capTrajet } ; `capTrajet` : cap du trajet devant `s` (degrés plan, null au bout).
+  // visible false sans itinéraire. `masque` : réglé sur « Jamais » hors urgence (le bandeau 2D ne parlerait pas).
+  let _apRoad = null, _apGuide = null;
+  function apercu(pos, opts) {
+    opts = opts || {};
+    const road = _roadActive();
+    if (!road || !pos || typeof pos.x !== "number" || typeof pos.y !== "number") return { visible: false };
+    if (road !== _apRoad || !_apGuide) { _apRoad = road; _apGuide = construire(road); }
+    const g = _apGuide;
+    if (!g) return { visible: false };
+    const e = g.echelle, S = _seuils();
+    const niv = Number.isInteger(opts.niveau) ? opts.niveau : null;
+    let pr = null;
+    if (typeof opts.sPrec === "number") {
+      pr = _projeter(g.ch, pos, opts.sPrec - 5 * e, opts.sPrec + 60 * e, niv);
+      if (pr && pr.dist > S.horsM * e) pr = null;
+    }
+    const prG = _projeter(g.ch, pos, undefined, undefined, niv);
+    if (!pr || (prG && prG.dist < pr.dist - S.surM * e)) pr = prG;
+    if (!pr) return { visible: false };
+    const distM = pr.dist / e;
+    let c = _consigneApres(g, pr.s);
+    // Déjà au niveau d'arrivée d'une consigne de niveau (on vient de passer) : elle est faite, la suivante parle.
+    // Une consigne de plus par tour : borné par leur nombre.
+    const auNiveau = function (cc) { return niv !== null && cc.consigne.type === "niveau" && cc.consigne.vers === niv; };
+    for (let k = 0; k < g.consignes.length && c.suivante && auNiveau(c); k++) {
+      c = _consigneApres(g, c.s + 0.5 * e + 1e-6);
+    }
+    const r = distM > S.surM
+      ? { mode: "rejoindre", distM: distM, cible: { x: pr.x, y: pr.y }, pos: pos }
+      : { mode: "guide", distM: distM, consigne: c.consigne, suivante: c.suivante, resteM: (c.s - pr.s) / e };
+    const urgence = !!road.urgence;
+    const tx = _textes(r, g, urgence, typeof opts.cap === "number" ? opts.cap : null);
+    return {
+      visible: true, masque: !urgence && getPref() !== "auto", apercu: true, mode: r.mode, icone: tx.icone,
+      principal: tx.principal, sous: tx.sous, fleche: tx.fleche, picto: tx.picto, urgence: urgence,
+      s: pr.s, sCible: c.s, distM: distM, capTrajet: _capEntre(g.ch, pr.s, pr.s + Math.max(3, FENETRE_M * e))
+    };
+  }
+
   function onPosition(pos) {
     try { _maj(pos); } catch(e) { console.warn("[ItiGuidage] mise à jour échouée :", e); }
   }
@@ -825,7 +911,8 @@
   G.RACCORD_ALERTE_M     = RACCORD_ALERTE_M;
   G.onPosition           = onPosition;          // tracking.js > updateMap
   G.rafraichir           = function() { _maj(); };
-  G.etat                 = function() { return Object.assign({}, _etat); };   // lu par l'écran XL
+  G.etat                 = function() { return Object.assign({}, _etat); };   // lu par l'écran XL et la vue 3D
+  G.apercu               = apercu;                       // vue 3D, mode libre : consigne sans toucher l'état
   G.getPref              = getPref;
   G.agir                 = _action;                      // "recalculer" | "ici" | "ignorer" (boutons d'écart)
   G.setPref              = setPref;

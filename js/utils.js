@@ -453,6 +453,8 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
 //   opts.titre / okLabel / cancelLabel : HTML (défauts i18n ui.confirm.*).
 //   opts.sansAnnuler : un seul bouton (ktaAlerte) ; le clic sur le fond ne ferme PAS (message à lire).
 //   opts.zIndex : appelant ouvert au-dessus de 100002 (éditeur de légende, 100050).
+//   opts.id : id de l'overlay. 🩸 Une fenêtre ouverte coupe les modes de la barre (interface.js >
+//   _initCoupeModesSurModale) ; seul un id de sa liste d'exclusion les laisse armés (question posée PAR le mode).
 //   opts.caseACocher = {label, coche} · opts.nombre = {label, valeur, min, max} ·
 //   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
 //   dans l'objet passé (coche / valeur) après coup.
@@ -482,6 +484,7 @@ window.ktaConfirm = function(message, opts) {
     };
     const ov = document.createElement("div");
     ov.className = "kta-readme-modal-overlay";
+    if (opts.id) ov.id = String(opts.id);
     // opts.zIndex : sinon un appelant au-dessus de 100002 couvrirait la fenêtre, invisible et inatteignable.
     ov.style.zIndex = String(opts.zIndex || 100002);
     ov.innerHTML = '' +
@@ -696,6 +699,8 @@ window.attacherBoutonCopierEchelleGps = attacherBoutonCopierEchelleGps;
 
 // ── Popups de note (zones / tracés / structures) : window.attacherNotePopup, plus bas ──────────
 // ⚠️ attacherNotePopup(layer, getDescr, setDescr, titreType, opts) ; opts.mode = "edit" (défaut) | "readonly".
+// titreType : texte, ou fonction relue à CHAQUE ouverture (un type renommé dans la légende ne redessine pas la carte) ;
+// opts.pastille = { cat, cle } : pastille de la couleur résolue devant le titre (ktaTypeSwatchHtml).
 // edit (session) : textarea + 💾, s'ouvre même note vide ; le save déclenche HistoryManager + SessionPersist.
 // readonly (data layer) : texte seul, setDescr peut être null. À ne binder QUE si une note existe (c'est à
 // l'appelant de tester `description`), sinon un clic sur un data layer muet ouvrirait une popup vide.
@@ -730,11 +735,14 @@ window._modeClicCarteActif = function() {
 // ── « Où es-tu ? » : picker de position partagé (Sortie d'urgence, « Y aller ») ──────────
 // Appelé seulement quand la position du tracker n'a jamais été confirmée (tracking.js >
 // getTrackingPositionEtat). Un tap RECALE le tracker comme « 📍 Je suis ici » (hooks itinéraire / portail
-// notifiés), puis rend la position à l'appelant.
+// notifiés), puis rend `{ x, y, niveau }` à l'appelant (x, y : le point tapé, exact : un tap est une position
+// voulue, jamais ramenée dans la galerie). Plan multi-niveau : niveau demandé comme pour « 📍 Recaler ma
+// position » (tracking.js > ktaNiveauxRecalage), sauf `opts.recaler === false` (rien n'est recalé).
 // 🩸 Le floater porte `.kta-iti-floater` : _modeClicCarteActif() le reconnaît, aucune popup ne mange le tap,
 // et map.js le ré-émet en capture — même sur un marqueur, le cas nominal (on vise un repère connu).
 // 🩸 Les autres modes clic-carte tombent AVANT d'armer, sinon le même tap pose un sommet ou ouvre une fiche.
 let _posPickHandler = null;
+let _posPickChoixOuvert = false;   // fenêtre de niveau ouverte : un 2e clic n'en ouvre pas une autre
 function _posPickOnKey(e) { if (e && e.key === "Escape") _posPickAnnuler(); }
 function _posPickAnnuler() {
   if (window.map && _posPickHandler) { try { window.map.off("click", _posPickHandler); } catch(e) {} }
@@ -765,13 +773,38 @@ window.ktaDemanderPositionCarte = function(onPick, opts) {
     const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
                 ? (window.APP_CONFIG.imageHeight - e.latlng.lat)
                 : e.latlng.lat;
-    _posPickAnnuler();
-    if (opts.recaler !== false && typeof window.recalerTrackerSurPoint === "function") {
-      try { window.recalerTrackerSurPoint(x, y); }
-      catch(err) { console.warn("[Utils] picker position : recalage échoué :", err); }
-    }
-    try { onPick({ x: x, y: y }); }
-    catch(err) { console.warn("[Utils] picker position : onPick échoué :", err); }
+    const finir = function(niveau) {
+      _posPickAnnuler();
+      if (opts.recaler !== false && typeof window.recalerTrackerSurPoint === "function") {
+        // Niveau choisi : l'affichage bascule dessus, puis recalage à ce niveau (sinon le niveau actif).
+        if (Number.isInteger(niveau) && typeof window.ktaSetActiveLevel === "function") {
+          window.ktaSetActiveLevel(niveau, { source: "recalage" });
+        }
+        try { window.recalerTrackerSurPoint(x, y, Number.isInteger(niveau) ? niveau : undefined); }
+        catch(err) { console.warn("[Utils] picker position : recalage échoué :", err); }
+      }
+      // ⚠️ `niveau` rendu = départ de l'itinéraire de l'appelant (waypoint `level`, pathfinder.js >
+      // _insertVirtualNode) : choisi dans la fenêtre, sinon le niveau actif d'un plan multi-niveau, sinon absent.
+      const c = window.APP_CONFIG;
+      const nivRendu = Number.isInteger(niveau) ? niveau
+        : ((c && c.multiLevel === true) ? (Number.isInteger(c.activeLevel) ? c.activeLevel : 0) : undefined);
+      try { onPick({ x: x, y: y, niveau: nivRendu }); }
+      catch(err) { console.warn("[Utils] picker position : onPick échoué :", err); }
+    };
+    // Même règle que « 📍 Recaler ma position » (tracking.js > ktaNiveauxRecalage) : un autre niveau à moins de
+    // 10 m → « Dans quel niveau es-tu ? ». Annuler = rien de recalé, le picker reste armé.
+    const choix = (opts.recaler !== false && typeof window.ktaNiveauxRecalage === "function")
+      ? window.ktaNiveauxRecalage(x, y) : null;
+    if (!choix || typeof window.ktaDemanderNiveauRecalage !== "function") { finir(null); return; }
+    if (_posPickChoixOuvert) return;
+    _posPickChoixOuvert = true;
+    const handler = _posPickHandler;
+    window.ktaDemanderNiveauRecalage(choix).then(function(niveau) {
+      _posPickChoixOuvert = false;
+      // Picker annulé ou remplacé pendant la question : ce clic n'est plus attendu.
+      if (niveau === null || _posPickHandler !== handler) return;
+      finir(niveau);
+    });
   };
   window.map.on("click", _posPickHandler);
 
@@ -910,6 +943,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   _majMode();
 
   function _esc(s) { return window.ktaEsc(s); }
+  function _titreTexte() { return typeof titreType === "function" ? titreType() : titreType; }
+  function _titreHtml() {
+    const p = opts.pastille;
+    const pastille = (p && typeof window.ktaTypeSwatchHtml === "function") ? (window.ktaTypeSwatchHtml(p.cat, p.cle) || "") : "";
+    return pastille + _esc(_titreTexte());
+  }
 
   // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
   // toLevel, hors de cette liste) ni itinéraire ; "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes).
@@ -962,14 +1001,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       const _uidLu = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;   // « créé par », historique
       return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode"' +
                (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
-               '<b>' + _esc(titreType) + '</b>' +
+               '<b>' + _titreHtml() + '</b>' +
                '<div class="kta-note-popup-readonly-label">📖 Note (lecture seule)</div>' +
                corps +
              '</div>';
     }
     const _uid = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;
     return '<div class="kta-popup-point kta-note-popup"' + (_uid ? ' data-kta-uid="' + _esc(_uid).replace(/"/g, "&quot;") + '"' : "") + '>' +
-             '<b>' + _esc(titreType) + '</b>' +
+             '<b>' + _titreHtml() + '</b>' +
              '<div class="kta-note-popup-wrap">' +
                '<textarea class="kta-note-popup-textarea" rows="4" ' +
                  'placeholder="' + _esc(window.I18n ? window.I18n.t("utils.note.placeholder") : "Note libre (multilignes possibles)…") + '">' +
@@ -1092,7 +1131,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           }
           if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
             window.HistoryManager.record(
-              window.I18n.t("history.action.note", { type: titreType }),
+              window.I18n.t("history.action.note", { type: _titreTexte() }),
               _historyBefore
             );
           }
@@ -1245,6 +1284,17 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const _act = function(action) {
     return 'data-kta-act="' + action + '" data-kta-id="' + _escAttr(id) + '" data-kta-x="' + x + '" data-kta-y="' + y + '" ';
   };
+  // Niveau du POI (plan multi-niveau) : où « 📍 Je suis ici » place le tracker et où « Y aller » fait finir la route,
+  // pas le niveau affiché (un POI du −1 visible pendant qu'on regarde le 0). Jonction : le niveau affiché s'il en
+  // fait partie, sinon son niveau propre (`level`). Mono-niveau : rien, chaque action garde sa règle.
+  let _niveauIci = "";
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+    const _pjI = window.KtaPoiJonction;
+    const _actif = window.APP_CONFIG.activeLevel;
+    const _n = (_pjI && _pjI.estJonction(point) && _pjI.niveaux(point).indexOf(_actif) >= 0) ? _actif
+      : (Number.isInteger(point.level) ? point.level : 0);
+    _niveauIci = 'data-kta-niveau="' + _n + '" ';
+  }
   // Favori : layerInfo vient de l'appelant (editor.js → "editor", ajouterPointsDepuisJSON → id du data layer) ;
   // à défaut, déduit de isEditorSession.
   const _layerId    = (layerInfo && layerInfo.layerId)    || (isEditorSession ? "editor" : "data");
@@ -1333,11 +1383,11 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            dangerHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
-             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +
+             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") + _niveauIci +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
                window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
-             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") +
+             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") + _niveauIci +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.goThere") + '">' +
                window.I18n.t("poi.goThereBtn") +
@@ -1382,8 +1432,17 @@ function _ktaPopupAction(e) {
     case "supprimer":     return appel("supprimerPointEditor", id, x, y);
     case "gps":           return appel("kta_copierGps", d.ktaGps || "");
     case "tts":           return appel("kta_lireNotePopup", b);
-    case "ici":           return appel("recalerTrackerSurPoint", x, y);
-    case "aller":         return appel("itineraireYAller", x, y, d.ktaNom || "");
+    case "ici": {
+      // data-kta-niveau absent (mono-niveau, étape posée au clic) : recalerTrackerSurPoint prend le niveau actif.
+      // `dansGalerie` : une icône posée à côté du tracé met le tracker dans la galerie, pas dans la roche.
+      const n = Number.parseInt(d.ktaNiveau, 10);
+      return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined, { dansGalerie: true });
+    }
+    case "aller": {
+      // data-kta-niveau absent (mono-niveau) : pas de niveau de cible, le calcul garde sa règle.
+      const n = Number.parseInt(d.ktaNiveau, 10);
+      return appel("itineraireYAller", x, y, d.ktaNom || "", Number.isInteger(n) ? { niveauCible: n } : undefined);
+    }
     case "etape":         return appel("itineraireAjouterWaypoint", x, y, d.ktaNom || "");
     case "favori":        return appel("toggleFavoriPoint", id, x, y, d.ktaNom || "", d.ktaTag || "default",
                                        d.ktaCalque || "data", d.ktaCalqueLabel || "", d.favPointuid || "");
@@ -1974,20 +2033,20 @@ window.getAllEmbeddedZones = function() {
 };
 
 // Structures embarquées (export KMZ/GPX, Vue OSM, exports image, Mode Secours).
-// ⚠️ Le pathfinder n'utilise PAS les structures (ni arêtes ni obstacles) : seule contrainte dure, les zones
-// `inaccessible`.
+// ⚠️ Le pathfinder ne fait aucune arête d'une structure ; il lit `mur-ligne` comme obstacle dur, directement
+// dans le registre (pathfinder.js > _collecterMursLigne), comme les zones `inaccessible`.
 window.getAllEmbeddedStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
   return window._ktaDataStructurePolygons
     .filter(function(e) {
-      // minimum de points selon la géométrie : polyligne (fronts) 2, polygone (piliers, mur) 3
+      // minimum de points selon la géométrie : polyligne (fronts, mur en ligne) 2, polygone (piliers, mur) 3
       if (!e || !e.type || !Array.isArray(e.points)) return false;
       // 🩸 Géométrie lue dans la légende (structures.js > _isPolylineType) : un test littéral front-1/front-2
       // ferait tomber un type CUSTOM polyligne à 2 points, visible à l'écran mais absent de la Vue OSM et des
       // exports. Repli sur le test littéral si structures.js n'est pas chargé.
       const isPolyline = (typeof window.isStructurePolylineType === "function")
         ? window.isStructurePolylineType(e.type)
-        : (e.type === "front-1" || e.type === "front-2");
+        : (e.type === "mur-ligne" || e.type === "front-1" || e.type === "front-2");
       const minPts = isPolyline ? 2 : 3;
       return e.points.length >= minPts;
     })
@@ -2305,11 +2364,9 @@ function ajouterPointsDepuisJSON(url, layer) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
-                  if (e) return "✨ " + e.label;
+                  if (e) return e.label;
                 }
-                if (_roadEmojisRO[t]) {
-                  return _roadEmojisRO[t] + " " + window.LegendCustomization.getLabel("traces", t);
-                }
+                if (_roadEmojisRO[t]) return window.LegendCustomization.getLabel("traces", t);
               }
               const LBL = {
                 principal:  window.I18n.t("utils.tracePopup.principal"),
@@ -2335,8 +2392,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               ghostRO,
               function() { return road.description; },
               null,
-              _roadROTitle(road.type),
-              { mode: "readonly" }
+              function() { return _roadROTitle(road.type); },
+              { mode: "readonly", pastille: { cat: "traces", cle: road.type } }
             );
           }
           // registre du filtre multi-niveau (level absent → 0) ; type, points et description pour
@@ -2404,9 +2461,9 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       // Structures embarquées en lecture seule (structure.json est un data layer comme un autre).
       if (Array.isArray(json.structures) && json.structures.length > 0) {
-        // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < pilier-2 < pilier-1 < front-2 <
-        // front-1 (fronts devant) ; multi-niveau : level croissant d'abord, comme structures.js > renderStructures.
-        const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 <
+        // front-2 < front-1 (fronts devant) ; multi-niveau : level croissant d'abord (structures.js > renderStructures).
+        const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
         const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         const structuresTriees = [...json.structures].sort(function(a, b) {
           if (_multiLevelOnSort) {
@@ -2439,28 +2496,33 @@ function ajouterPointsDepuisJSON(url, layer) {
               lineJoin: "round",
               // 🩸 MÊME CLASSE que les structures de session : sans elle, la largeur reste figée à 10 px sur les plans
               // importés, ceux qui portent des milliers de fronts.
-              interactive: false
+              interactive: false,
+              // règle « mur sous pilier et front » (structures.js > ktaOrdonnerMursCarte), lue à l'ajout
+              ktaStructType:   structure.type,
+              ktaStructNiveau: structure.level
             }).addTo(layer);
           } else {
             // pilier / mur : polygone rempli, l'aire capte les clics
-            leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
+            leafletLayer = L.polygon(latlngs, Object.assign({}, style, {
+              interactive: hasNoteROStruct, ktaStructType: structure.type, ktaStructNiveau: structure.level
+            })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
-            const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "front-1": "🟨", "front-2": "🟧" };
+            const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
+                                      "front-1": "🟨", "front-2": "🟧" };
             function _structROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
-                  if (e) return "✨ " + e.label;
+                  if (e) return e.label;
                 }
-                if (_structEmojisRO[t]) {
-                  return _structEmojisRO[t] + " " + window.LegendCustomization.getLabel("structures", t);
-                }
+                if (_structEmojisRO[t]) return window.LegendCustomization.getLabel("structures", t);
               }
               const LBL = {
                 "pilier-1": window.I18n.t("struct.popup.pilier-1"),
                 "pilier-2": window.I18n.t("struct.popup.pilier-2"),
                 "mur":      window.I18n.t("struct.popup.mur"),
+                "mur-ligne": window.I18n.t("struct.popup.mur-ligne"),
                 "front-1":  window.I18n.t("struct.popup.front-1"),
                 "front-2":  window.I18n.t("struct.popup.front-2")
               };
@@ -2484,8 +2546,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               cibleStructRO,
               function() { return structure.description; },
               null,
-              _structROTitle(structure.type),
-              { mode: "readonly" }
+              function() { return _structROTitle(structure.type); },
+              { mode: "readonly", pastille: { cat: "structures", cle: structure.type } }
             );
           }
           // clé `polygon` gardée pour _filtreNiveauSurPolygonData (une polyline supporte aussi setStyle)
@@ -2534,11 +2596,9 @@ function ajouterPointsDepuisJSON(url, layer) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
-                  if (e) return "✨ " + e.label;
+                  if (e) return e.label;
                 }
-                if (_zoneEmojisRO[t]) {
-                  return _zoneEmojisRO[t] + " " + window.LegendCustomization.getLabel("zones", t);
-                }
+                if (_zoneEmojisRO[t]) return window.LegendCustomization.getLabel("zones", t);
               }
               const LBL = {
                 eau:          "💧 Zone Eau",
@@ -2552,8 +2612,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               polygon,
               function() { return zone.description; },
               null,
-              _zoneROTitle(zone.type),
-              { mode: "readonly" }
+              function() { return _zoneROTitle(zone.type); },
+              { mode: "readonly", pastille: { cat: "zones", cle: zone.type } }
             );
           }
           // registre du filtre multi-niveau ; `type` + `points` (coords plan) : le Pathfinder y lit les zones
@@ -2750,6 +2810,10 @@ async function telechargerPlan() {
     const allRoadsForIntersect = [];
     // markers DIFFÉRÉS : ordre ZONE → TRAIT → CERCLE → ICÔNE
     const deferredMarkers = []; // [{point, layerId}]
+    // Zones, structures et routes passent par une FILE peinte avant les cercles : la règle « mur sous pilier et
+    // front » (structures.js > ktaMursSousPiliers) la réordonne, un mur de session passe sous un pilier de calque.
+    const _fileVect = [];
+    function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
 
     // compteurs de diagnostic (APP_CONFIG.debugMode)
     const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
@@ -2788,7 +2852,7 @@ async function telechargerPlan() {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
-              drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais"));
+              _poser(function () { drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais")); });
               _diag.embZones++;
             });
           }
@@ -2796,8 +2860,8 @@ async function telechargerPlan() {
           // structures embarquées (piliers, mur, fronts) : ordre Z et couleurs comme ajouterPointsDepuisJSON et
           // exporter.js > _genererCanvasExport
           if (Array.isArray(json.structures) && json.structures.length > 0) {
-            // ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
-            const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+            // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1
+            const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
             const _mlOnStructEmb = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
             [...json.structures].sort(function(a, b) {
               if (_mlOnStructEmb) {
@@ -2812,11 +2876,10 @@ async function telechargerPlan() {
               const isPolyline = !!style.isPolyline;
               const minPts = isPolyline ? 2 : 3;
               if (!s.points || s.points.length < minPts) return;
-              if (isPolyline) {
-                drawPolyline(s.points, style);
-              } else {
-                drawPolygon(s.points, style);
-              }
+              _poser(function () {
+                if (isPolyline) drawPolyline(s.points, style);
+                else drawPolygon(s.points, style);
+              }, s);
               if (typeof _diag.embStructs !== "number") _diag.embStructs = 0;
               _diag.embStructs++;
             });
@@ -2839,7 +2902,8 @@ async function telechargerPlan() {
             roadsR.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(r)) return;
-              drawPolyline(r.points, _ktaStyleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 });
+              const styleR = _ktaStyleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 };
+              _poser(function () { drawPolyline(r.points, styleR); });
               allRoadsForIntersect.push(r);
               _diag.embRoads++;
             });
@@ -2865,7 +2929,7 @@ async function telechargerPlan() {
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
-      drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais"));
+      _poser(function () { drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais")); });
     }
 
     // ── structures de session, entre zones (dessous) et routes (dessus), comme la carte et l'export avancé ──
@@ -2874,8 +2938,8 @@ async function telechargerPlan() {
         return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(s);
       });
       if (structures.length > 0) {
-        // ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
-        const ordreStructS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1
+        const ordreStructS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
         const _mlOnStructSess = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         [...structures].sort(function(a, b) {
           if (_mlOnStructSess) {
@@ -2889,11 +2953,10 @@ async function telechargerPlan() {
           const isPolyline = !!style.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!s.points || s.points.length < minPts) return;
-          if (isPolyline) {
-            drawPolyline(s.points, style);
-          } else {
-            drawPolygon(s.points, style);
-          }
+          _poser(function () {
+            if (isPolyline) drawPolyline(s.points, style);
+            else drawPolygon(s.points, style);
+          }, s);
         });
       }
     }
@@ -2926,26 +2989,33 @@ async function telechargerPlan() {
     const _colJonctionCanvas = (_ktaStyleCanvas("traces", "jonction") || {}).color;
 
     for (const road of roads) {
-      drawPolyline(road.points || [], _ktaStyleCanvas("traces", road.type) || { color: "white", weight: 5, opacity: 1 });
-      // ronds aux extrémités des jonctions ; export rapide : x direct + toCanvasY pour y
-      if (road.type === "jonction" && road.points && road.points.length >= 2) {
-        const endpts = [road.points[0], road.points[road.points.length - 1]];
-        endpts.forEach(function(pt) {
-          ctx.save();
-          ctx.fillStyle   = "#ffffff";
-          ctx.strokeStyle = _colJonctionCanvas;
-          ctx.lineWidth   = 3;
-          ctx.beginPath();
-          ctx.arc(pt.x, toCanvasY(pt.y), 7, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        });
-      }
+      _poser(function () {
+        const styleR = _ktaStyleCanvas("traces", road.type) || { color: "white", weight: 5, opacity: 1 };
+        drawPolyline(road.points || [], styleR);
+        // ronds aux extrémités des jonctions ; export rapide : x direct + toCanvasY pour y
+        if (road.type === "jonction" && road.points && road.points.length >= 2) {
+          const endpts = [road.points[0], road.points[road.points.length - 1]];
+          endpts.forEach(function(pt) {
+            ctx.save();
+            ctx.fillStyle   = "#ffffff";
+            ctx.strokeStyle = _colJonctionCanvas;
+            ctx.lineWidth   = 3;
+            ctx.beginPath();
+            ctx.arc(pt.x, toCanvasY(pt.y), 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          });
+        }
+      });
       // jonctions exclues des intersections (pas de cercle pour un passage interniveau, comme road.js)
       if (road.type === "jonction") continue;
       if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
     }
+
+    (typeof window.ktaMursSousPiliers === "function"
+      ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
+      .forEach(function (e) { e.fn(); });
 
     // ── cercles d'intersection : après les routes, avant les icônes ──
     if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {

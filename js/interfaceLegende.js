@@ -295,6 +295,7 @@ function _ktaLegendeCorps(src, opts) {
   contenuStructures += _ligneStructPoly("pilier-1");
   contenuStructures += _ligneStructPoly("pilier-2");
   contenuStructures += _ligneStructPoly("mur");
+  contenuStructures += _ligneStructLine("mur-ligne");
   contenuStructures += _ligneStructLine("front-1");
   contenuStructures += _ligneStructLine("front-2");
   // Customs structures : la GÉOMÉTRIE décide de la pastille (pas « lineColor d'abord »), sinon un polygone avec
@@ -309,7 +310,9 @@ function _ktaLegendeCorps(src, opts) {
           contenuStructures += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${col};"></span><span class="kta-legende-label">${e.label}</span></div>`;
         } else {
           const fill   = e.fillColor || e.lineColor;
-          const border = e.borderColor || e.lineColor || fill;
+          // Bordure réellement dessinée (canon : contour noir d'un pilier perso sans bordure choisie).
+          const st = typeof window.ktaResolveStyle === "function" ? window.ktaResolveStyle("structures", e.id) : null;
+          const border = e.borderColor || (st && st.color) || e.lineColor || fill;
           contenuStructures += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${fill}; opacity:0.85; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${e.label}</span></div>`;
         }
       });

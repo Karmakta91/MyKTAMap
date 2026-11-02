@@ -50,7 +50,7 @@ let table = {};
 
     // 🩸 L'id ne suffit pas : sans en-tête reconnu, la modale ne reçoit jamais
     // son ❓. Le fichier qui la crée doit porter une des deux familles d'en-tête.
-    const ENTETES = ["kta-readme-modal-header", "kta-tracker-modal-header"];
+    const ENTETES = ["kta-readme-modal-header", "kta-tracker-modal-header", "kta-aide-ctx-entete"];
     const fichiers = fs.readdirSync(path.join(ROOT, "js"))
       .filter(function (f) { return f.endsWith(".js") && f !== "interfaceDocs.js"; })
       .map(function (f) { return { nom: f, txt: lire("js/" + f) }; });

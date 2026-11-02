@@ -633,7 +633,7 @@
     if (connu || typeof window.ktaResolveStyle !== "function") {
       return (typeof window.isStructurePolylineType === "function")
         ? !!window.isStructurePolylineType(type)
-        : (type === "front-1" || type === "front-2");
+        : (type === "mur-ligne" || type === "front-1" || type === "front-2");
     }
     const pts = s.points || [];
     const a = pts[0], z = pts[pts.length - 1];
@@ -1183,11 +1183,15 @@
       }
       // Structures : LineString pour les fronts, Polygon pour piliers/mur ; même filtre de niveau.
       if (opts.include.structures && opts.data.structures) {
-        const structures = opts.data.structures.filter(function(s) {
+        let structures = opts.data.structures.filter(function(s) {
           if (structureTypesSet && !structureTypesSet.has(s.type)) return false;
           return _passeLevel(s, Number.isInteger(s.level) ? s.level : 0) &&
                  (!mlOn || (Number.isInteger(s.level) ? s.level : 0) === level);
         });
+        // Ordre du document = ordre de dessin le plus courant des lecteurs KML : murs sous piliers et fronts.
+        if (typeof window.ktaMursSousPiliers === "function") {
+          structures = window.ktaMursSousPiliers(structures, function (s) { return s; });
+        }
         if (structures.length > 0) {
           body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
           structures.forEach(function(s) {
@@ -1198,6 +1202,7 @@
             if (_estLigneStructure(s)) {
               const nom = s.type === "front-1" ? "Front de taille 1ère masse"
                         : s.type === "front-2" ? "Front de taille 2e masse"
+                        : s.type === "mur-ligne" ? "Mur (ligne)"
                         : _nomType(s.type);
               body += _emitLineString(s, styleId, nom);
             } else {

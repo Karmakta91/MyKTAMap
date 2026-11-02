@@ -39,7 +39,7 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Étiquettes proposées par plan | `index.json > plans[].tags` (12 × 24 car.) | v1.90.1 |
 | Mot de passe d'accès de l'instance | `index.json > config.accessHash` (SHA-256) | v1.90.6 |
 | Écran d'arrivée (ville seule) : titre et description | `data/reglages.json > accueil` (recommandé), sinon `index.json > config.accueil` | — |
-| Réglages de l'installation hors du fichier livré | `data/reglages.json` : `accueil` et `subtitle` **seulement** | — |
+| Réglages de l'installation hors du fichier livré | `data/reglages.json` : `accueil`, `subtitle` et `addons` **seulement** | — |
 | Dossiers de « Mes plans » proposés | `index.json > folders[{ id, name, color, order, rule? }]` + `plans[].folder` — verrouillés tant que déclarés, libérés (jamais supprimés) sinon ; l'utilisateur déplace toujours ses plans | v1.95.0 |
 | Ouvrir la liste en mode Dossiers | `index.json > config.plansViewDefault: "folders"` — seulement tant que l'utilisateur n'a pas choisi lui-même | v1.95.0 |
 | Ne pas charger les plans du site au démarrage | `index.json > config.sitePlansHiddenDefault: true` — défaut de « Ne pas charger les plans du site » (⚙️ Configuration) tant que l'utilisateur n'a pas choisi ; sans effet avec `serverPlansOnly` (installation où les plans vivent en base, demande KARMA 05/10/2026) | v2.9.0 |
@@ -70,7 +70,8 @@ photos restent locales et exportables).
 > `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
-> `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
+> `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` ·
+> `suppressionLot(idExt, [{ famille, uid }]) → null | true | { permis, message? }` (prise, suppression en lot) · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > ⚖️ **Conditions d'utilisation et gate déléguée** : sur une installation reliée (`state: "on"`) dont les conditions
 > ne sont pas acceptées, `main.js` ne les ouvre **pas** avant la gate : il passe `avantEntree` (`() → Promise<bool>`) à
@@ -98,11 +99,13 @@ photos restent locales et exportables).
 > 📄 **`data/reglages.json`** : fichier **facultatif** posé par qui héberge, **jamais livré ni suivi par Git** (l'index
 > l'est côté pro : un réglage écrit dedans entrerait en conflit à chaque mise à jour). Lu par `js/ktaInstance.js` avec
 > l'index (même délai, mémoire `myktamap_instance_reglages_v1` rejouée hors ligne ; `sw.js` : réseau d'abord, gardé en
-> cache, un 404 du serveur vide le cache). Absent : 404 nominal, aucune erreur. 🔒 **Seules `accueil` et `subtitle`
-> en sont lues** (`KtaInstance.filtrerReglages`) : jamais `serverConnection`, `plans`, `accessHash` ni aucune autre
+> cache, un 404 du serveur vide le cache). Absent : 404 nominal, aucune erreur. 🔒 **Seules `accueil`, `subtitle` et
+> `addons` en sont lues** (`KtaInstance.filtrerReglages`) : jamais `serverConnection`, `plans`, `accessHash` ni aucune autre
 > clé — un fichier ajouté à côté de l'index ne peut ni ouvrir une instance protégée, ni greffer un module, ni déclarer
 > un plan (`check-gate-instance.js`, `checkup-accueil-hote.js`). Son `subtitle` remplace celui de l'index partout
-> (`KtaInstance.etat().config`).
+> (`KtaInstance.etat().config`). `addons` = `{ "<nom>": true }` (nom `[a-z0-9-]`, booléen `true` seul) : autorise sur
+> cette installation un add-on déjà livré avec l'app (`addons/<nom>/`), qu'une installation reliée refuse sinon ; il
+> n'en charge aucun (`docs/architecture/addons.md`).
 > 🏙️ **Écran d'accueil d'une gate déléguée** : `KtaExtensions.ecranAccueil()` → Promise<`{ attendreEntree() →
 > Promise, fermer(), ouverte() → bool }` | `null`>. La même ville seule, en mode **connexion** (`connexion: true`) :
 > « Me connecter » au lieu d'« Entrer », jamais de champ de code. `attendreEntree()` se résout au prochain clic sur
@@ -327,7 +330,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
   suiviActif, ts }`, ou `null` tant qu'il n'y a ni suivi en cours ni position confirmée (jamais le point de
   départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère = forme de l'icône du tracker
-  en SVG (40 px, sans rotation : aucun cap transmis) à la couleur de la personne, pseudo + ancienneté toujours
+  en SVG (40 px, sans rotation pour une position suivie : aucun cap transmis) à la couleur de la personne, pseudo + ancienneté toujours
   affichés à côté (texte), éteint et désaturé après 2 min, atténué hors niveau, trace pointillée de la même
   couleur ; entrées non conformes écartées, 200 personnes et 2000 points max ; aucune requête réseau).
   **Qui est qui** : `KtaPresences.couleurDe(id)` tire la couleur de l'identifiant (FNV-1a → palette de 9 teintes,
@@ -337,6 +340,23 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `couleur` fournie par l'extension (#rrggbb, ex. équipe d'une intervention Secours) > `couleurDe(id)`. Un
   panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `masquerPersonne(id, bool)` / `personneMasquee(id)` (14/10/2026) : ni repère ni trace, plus suivie, oublié en sortie de plan (`reinitialiser`). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+  **Place de la vue 3D** (facultatif) : `presence.vue3d(p)` reçoit, par `KtaExtensions.positionVue3D(p)` (seule
+  prise appelée par `js/vue3d.js > _publierPosition`), la place d'où l'utilisateur regarde quand il se déplace à la
+  main en mode **libre** : `{ x, y, niveau, cap, source: "vue3d", ts }` (coordonnées plan arrondies à 0,1 px, cap en
+  degrés depuis le haut du plan, normalisé 0–360, `null` si illisible ; niveau entier ou `null`), remise seulement
+  quand elle a bougé de 0,5 m, tourné de 10° ou changé de niveau ; `null` en repassant en suivi et à la fermeture.
+  🔒 Une place n'est remise que si `presenceActive()` (consentement déjà donné) ; `null` toujours ; coordonnées non
+  finies refusées ; une erreur de l'extension = `false`. ⚠️ contrat : ce n'est **pas** la position du tracker (jamais
+  recalé) ; l'extension garde la marque `source: "vue3d"` jusqu'à l'affichage. **Lecture** : une présence avec
+  `source: "vue3d"` (et `cap` facultatif) est marquée partout — repère au contour pointillé, tourné vers son cap,
+  pastille « 3D » et « en vue 3D » dans l'étiquette (`presence.vue3d.*`), pseudo suivi de « 3D » sur la silhouette
+  de la vue 3D ; toute autre valeur de `source` = position ordinaire. Sans extension : rien n'est remis.
+- **Vue 3D** (`js/vue3d.js > _majEquipe`) : redessine en relief, en **lecture seule**, ce que `KtaPresences` affiche
+  déjà sur la carte : présences (silhouette et pseudo au niveau affiché, masquages respectés, « 3D » pour une place
+  `source: "vue3d"`), repères (`calques()` + `reperes(nom)`), itinéraires publiés (tirets jaunes au sol). Elle relit
+  seulement quand `KtaPresences.version()` change (monte à chaque dessin et à `reinitialiser`). Aucune requête ; une
+  seule prise appelée, `positionVue3D` (ci-dessus) (`check-extensions.js`) ; sans extension, les listes sont vides
+  et rien n'est dessiné.
 - **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
   fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
   navigation). L'app ne fournit que `itineraireActuel()` — `{ points: [[x, y, niveau]], etapes: [[x, y, faite]] }`
@@ -383,6 +403,21 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   libellé `null` / vide / en erreur (ex. compte qui n'a pas le droit). Toucher : la fenêtre se ferme (`fermer`, donné
   par l'app) puis `lancer()` (erreur avalée) — ex. « ➕ Lancer une alerte » pour un admin d'organisation. 🔒 Le libellé
   ne fait que choisir l'affichage : le serveur de l'extension revérifie le droit. Tests : `check-extensions.js`.
+- **« Quoi de neuf » dans la fenêtre 🚨** : champ facultatif de la prise `alertes` — `nouveautes: { compter() → number,
+  lister() → Promise<[{ texte, bouton, ouvrir(), garderOuverte? }]> }`. `KtaExtensions.compteurNouveautes()` rend `compter()`
+  (synchrone, entier 0 à 999 ; erreur ou forme inattendue → 0) en état ON ou DOWN (l'extension garde son dernier compte
+  hors ligne), 0 sinon : c'est la **pastille de l'accueil** sur le bouton 🚨 (en haut à gauche, à part du compteur
+  d'alertes ; « 99+ » au-delà), le même nombre que la pastille de l'icône de l'app. `KtaExtensions.blocNouveautes(fermer)`
+  rend `null` quand ce compte vaut 0, sinon le bloc « 🆕 Quoi de neuf », posé **en tête** du corps des trois fenêtres
+  🚨 (après le message sous une alerte d'urgence) ; ses lignes viennent de `lister()` (attente bornée à 3 s, 12 au plus,
+  texte 120 car. et bouton 30 car. posés en texte) — liste vide, erreur ou délai : le bloc se retire. Toucher un bouton
+  ferme la fenêtre (`fermer`) puis appelle `ouvrir()` (erreur avalée) ; une ligne **`garderOuverte: true`**
+  (additif, API v1 inchangée) ne la ferme pas : son bouton reste inactif jusqu'à la fin de `ouvrir()` (promesse ou
+  valeur, erreur avalée), puis le bloc relit `lister()` et se redessine sous les yeux (retiré si plus rien ou compteur
+  à 0) ; une confirmation ouverte par `ouvrir()` (`ktaConfirm`, 100002) passe au-dessus de la fenêtre (99999). ⚠️ Information seulement : le bloc n'ouvre
+  **jamais** la fenêtre 🚨 de lui-même (une alerte non vue le fait déjà). L'extension annonce un compte changé par
+  **`mktm:nouveautes-changees`** (pastille redessinée, aussi à `mktm:connexion-changed` et `mktm:extensions-changees`).
+  Sans extension : ni bloc ni pastille. Tests : `check-extensions.js`.
 - **Notifications de l'appareil** : prise `notifications: { proposer() → bool, apresChoix(permission) }`
   (information ; erreur = aucune ligne). `KtaExtensions.ligneNotifications()` rend la ligne « 🔔 Afficher les alertes
   et nouveautés sur l'icône de l'app — Activer » (+ rappel « jamais un canal de sécurité »), posée au pied des trois
@@ -508,6 +543,17 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     est relue au clic d'une suppression pour tous. Côté community :
     `KtaExtensions.effacementPartage(registreId)` (null synchrone, ou promesse) ; détail : `session-data.md` §9.
     Test : `check-extensions.js` §6 octies.
+  - Prise `suppressionLot(idExt, objets) → null | true | { permis, message? } | Promise<…>` : la suppression en lot
+    de la sélection multiple 🎯 (`js/selectionZone.js > confirmerEtSupprimer`) la consulte **avant** sa fenêtre de
+    confirmation, avec les objets cochés d'emblée `[{ famille, uid }]` (`uid` null s'il manque ; l'auteur se retrouve
+    par `auteurObjet(uid)`), puis la relit au clic si les cases ont changé. `null`, `true` ou `{ permis: true }` =
+    permis ; `{ permis: false, message? }` = refusé : **rien n'est supprimé** et `ktaAlerte` affiche `message` (texte
+    seul, ≤ 300 caractères) ou, sans message, un texte générique (« le droit n'a pas pu être vérifié »). La règle
+    elle-même (qui peut supprimer quoi) est celle de l'extension ; elle reste vérifiée par son serveur. Plan local ou
+    du site, sans prise : jamais consultée, comportement de l'app seule. 🔒 Exception, rejet, forme inattendue ou
+    réponse au-delà de 8 s = refusé sans message. Côté community : `KtaExtensions.suppressionLot(registreId, objets)`
+    (null synchrone quand c'est permis sans attente, sinon promesse de `{ permis, message }`). Test :
+    `check-extensions.js` §6 nonies.
   - Goulot `window.ktaExportPlanRefuse(opts?)` (plan affiché seulement) : `exportAutorise` garde l'export de la
     **session** (onglets Complet, Avancé, Conversion ; export d'un calque rapatrié) en plus de l'export de profil.
     KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche n'y passent pas (décision produit).
@@ -627,7 +673,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   "refuse" | "retrait" | null` (synchrone, information ; autre valeur, erreur = null). `propose` et `refuse` sont
   **provisoires** (écartés d'un export « validés seulement ») ; `retrait` = retrait demandé, pas encore fait : l'objet
   reste du contenu. L'app ne comprend pas l'état, elle le **dessine** sur les objets
-  de **session** (couches de « Mes annotations ») : marqueur → classe `.kta-etat-propose` / `-refuse` / `-retrait`
+  de **session** (couches des « Annotations du plan ») : marqueur → classe `.kta-etat-propose` / `-refuse` / `-retrait`
   (contour pointillé accent / erreur / pointillé fin et icône grisée, reposée quand Leaflet recrée l'icône) ; tracé,
   zone, structure → pointillé (`10 6` / `2 6` / `1 8`, renderer canvas : pas de CSS), le pointillé de son type rendu
   quand l'état disparaît. Les rendus marquent leurs

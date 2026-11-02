@@ -26,13 +26,16 @@ const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 // Seuls à nommer la clé : le module (migration, repli), SessionPersist (repli sans module), utils.js (mesure)
 const PERMIS = new Set(["sessionStore.js", "sessionPersist.js", "utils.js"]);
 const fautifs = [];
-fs.readdirSync("js").filter((f) => f.endsWith(".js")).forEach((f) => {
-  if (PERMIS.has(f)) return;
-  lire(path.join("js", f)).split("\n").forEach((l, i) => {
-    const code = l.replace(/^\s*\/\/.*$/, "").replace(/^\s*\*.*$/, "");
-    if (/myktamap_session_v1_/.test(code)) fautifs.push("js/" + f + ":" + (i + 1));
+// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
+const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
+fs.readdirSync("js").filter((f) => f.endsWith(".js") && !PERMIS.has(f)).map((f) => "js/" + f).concat(jsAddons())
+  .forEach((f) => {
+    lire(f).split("\n").forEach((l, i) => {
+      const code = l.replace(/^\s*\/\/.*$/, "").replace(/^\s*\*.*$/, "");
+      if (/myktamap_session_v1_/.test(code)) fautifs.push(f + ":" + (i + 1));
+    });
   });
-});
 t("aucun module ne lit ni n'écrit myktamap_session_v1_<planId> en direct (window.KtaSessionStore)",
   fautifs.length === 0, fautifs.join(", "));
 

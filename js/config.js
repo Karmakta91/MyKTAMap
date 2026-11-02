@@ -848,6 +848,16 @@ function getPlanNorthOffset(planId) {
   return 0;
 }
 
+// Le Nord de ce plan a-t-il été calibré (pref du plan ou plan-config) ? Sinon getPlanNorthOffset rend 0 par
+// défaut : « Nord en haut » n'est qu'une supposition (rose de la vue 3D : « haut du plan »).
+function getPlanNorthCalibre(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (typeof prefs.northOffsetDeg === "number" && Number.isFinite(prefs.northOffsetDeg)) return true;
+  const brut = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? window.PLAN_CONFIG.plan.northOffsetDeg : undefined;
+  return brut !== undefined && brut !== null && brut !== "" && Number.isFinite(Number(brut));
+}
+
 // Écrit pour le plan (string ou number, normalisé) et émet `kta:northOffsetChange` : tracker, boussole et rose des
 // vents se re-rendent sans reload.
 function setPlanNorthOffset(planId, value) {
@@ -1090,6 +1100,97 @@ window.setPlanProfondeurs   = setPlanProfondeurs;
 window.getProfondeurNiveau  = getProfondeurNiveau;
 window.proposerProfondeurs  = proposerProfondeurs;
 
+// ── Hauteur moyenne de galerie (⛏️ Volume exploité) ──────────────────────
+// Par plan, pref `hauteurGalerieM` ; absente → null (l'appelant prend sa valeur par défaut). Refus si ≤ 0.
+function getPlanHauteurGalerie(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).hauteurGalerieM;
+  return (typeof v === "number" && Number.isFinite(v) && v > 0) ? v : null;
+}
+function setPlanHauteurGalerie(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = Number(value);
+  if (!Number.isFinite(v) || v <= 0) return false;
+  const prefs = _readPlanPrefs(pid);
+  prefs.hauteurGalerieM = v;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanHauteurGalerie = getPlanHauteurGalerie;
+window.setPlanHauteurGalerie = setPlanHauteurGalerie;
+
+// ── Rendu de la vue 3D (js/vue3d.js) : "mixte", "structures" ou "galerie", retenu par plan ──────────────────
+// Par plan, pref `vue3dRendu` ; absente → null (la vue prend le mixte). Autre valeur refusée.
+function getPlanRenduVue3D(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).vue3dRendu;
+  return v === "mixte" || v === "structures" || v === "galerie" ? v : null;
+}
+function setPlanRenduVue3D(planId, value) {
+  if (value !== "mixte" && value !== "structures" && value !== "galerie") return false;
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  prefs.vue3dRendu = value;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanRenduVue3D = getPlanRenduVue3D;
+window.setPlanRenduVue3D = setPlanRenduVue3D;
+
+// ── Commandes de la vue 3D : « Pavé classique » au lieu du joystick au téléphone, réglage de CET appareil ──────
+// localStorage["myktamap_v3d_pave_v1"] = "1" | "0" (défaut : joystick). Lu à l'ouverture de la vue
+// (vue3d.js > _commandesVoulues) ; au PC (pointeur fin) le pavé est là de toute façon.
+const V3D_PAVE_CLE = "myktamap_v3d_pave_v1";
+function getVue3DPave() {
+  try { return localStorage.getItem(V3D_PAVE_CLE) === "1"; } catch (e) { return false; }
+}
+function setVue3DPave(oui) {
+  try { localStorage.setItem(V3D_PAVE_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DPave = getVue3DPave;
+window.setVue3DPave = setVue3DPave;
+
+// ── Boussole de la vue 3D (rose en bas à gauche) : montrée ou non, réglage de CET appareil ─────────────────────
+// localStorage["myktamap_v3d_boussole_v1"] = "0" (masquée) | "1" ; absente → montrée. Réglée dans la tuile ⚙️ de la
+// vue (vue3d.js > _basculerBoussole).
+const V3D_BOUSSOLE_CLE = "myktamap_v3d_boussole_v1";
+function getVue3DBoussole() {
+  try { return localStorage.getItem(V3D_BOUSSOLE_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DBoussole(oui) {
+  try { localStorage.setItem(V3D_BOUSSOLE_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DBoussole = getVue3DBoussole;
+window.setVue3DBoussole = setVue3DBoussole;
+
+// ── Guidage dans la vue 3D (bandeau de consigne, chevrons au sol) : montré ou non, réglage de CET appareil ────────
+// localStorage["myktamap_v3d_guidage_v1"] = "0" (coupé) | "1" ; absente → montré. Réglé dans la tuile ⚙️ de la vue
+// (vue3d.js > _basculerGuidage). ⚠️ contrat : ne masque qu'en 3D ; la préférence du guidage 2D (ItiGuidage) et son
+// état ne changent pas, et un guidage d'urgence s'affiche toujours.
+const V3D_GUIDAGE_CLE = "myktamap_v3d_guidage_v1";
+function getVue3DGuidage() {
+  try { return localStorage.getItem(V3D_GUIDAGE_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DGuidage(oui) {
+  try { localStorage.setItem(V3D_GUIDAGE_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DGuidage = getVue3DGuidage;
+window.setVue3DGuidage = setVue3DGuidage;
+
+// ── Textures des structures dans la vue 3D (roche brute, parpaing) : actives ou non, réglage de CET appareil ──
+// localStorage["myktamap_v3d_textures_v1"] = "0" (couleurs de la légende) | "1" ; absente → textures. Réglé dans la
+// tuile ⚙️ de la vue (vue3d.js > _basculerTextures). ⚠️ contrat : coupé, la vue rend exactement les couleurs de la
+// légende (couleurs choisies et types perso compris).
+const V3D_TEXTURES_CLE = "myktamap_v3d_textures_v1";
+function getVue3DTextures() {
+  try { return localStorage.getItem(V3D_TEXTURES_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DTextures(oui) {
+  try { localStorage.setItem(V3D_TEXTURES_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DTextures = getVue3DTextures;
+window.setVue3DTextures = setVue3DTextures;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,
@@ -1186,6 +1287,7 @@ window.setPlanShowsIntersections   = setPlanShowsIntersections;
 window.getPlanSmartNav             = getPlanSmartNav;    // par plan
 window.setPlanSmartNav             = setPlanSmartNav;
 window.getPlanNorthOffset          = getPlanNorthOffset;
+window.getPlanNorthCalibre         = getPlanNorthCalibre;
 window.setPlanNorthOffset          = setPlanNorthOffset;
 window.resetPlanNorthOffset        = resetPlanNorthOffset;
 window.normalizePath               = normalizePath;

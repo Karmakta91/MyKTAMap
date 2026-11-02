@@ -124,12 +124,16 @@ if (ratesVoir.length || ratesPas.length) {
   process.exit(1);
 }
 
+// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
+const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
 const iListe = process.argv.indexOf("--liste");
 const liste = iListe >= 0 ? (process.argv[iListe + 1] || "*") : null;
 let total = 0;
 const parFichier = [];
-for (const nom of fs.readdirSync("js").filter((f) => f.endsWith(".js")).sort()) {
-  const f = path.join("js", nom);
+for (const f of fs.readdirSync("js").filter((n) => n.endsWith(".js")).sort().map((n) => path.join("js", n))
+  .concat(jsAddons())) {
+  const nom = path.basename(f);
   const brutes = fs.readFileSync(f, "utf8").split(/\r?\n/);
   let n = 0;
   occurrences(sansCommentaires(brutes.join("\n"))).forEach((o) => {

@@ -459,7 +459,7 @@
       return `<div class="kta-export-data-layer-block" data-layer-id="${l.id}">
         <label class="kta-export-cb-row">
           <input type="checkbox" id="export_layer_${safeId}" data-layer-id="${l.id}" data-layer-type="data" ${checked}>
-          <span>${l.label || l.id}</span>
+          <span>${window.ktaLibelleCalque(l)}</span>
         </label>
         <div class="kta-export-layer-tags" id="export_layer_tags_${safeId}"></div>
       </div>`;
@@ -835,7 +835,7 @@
 
     // 🩸 Les sous-types ne sont PAS listés en dur : un plan importé (types tous personnalisés) aurait son total
     // juste et tous ses sous-types à zéro.
-    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
+    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
     const structuresByType   = _sS.par;
     const structTypesCustom  = _sS.custom;
     const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
@@ -896,6 +896,8 @@
       rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
       rowSub("structures_pilier-2", _lp("structures", "pilier-2", Ti("imgexport.structType.pilier2")), structuresByType["pilier-2"], true) +
       rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
+      rowSub("structures_mur-ligne", _lp("structures", "mur-ligne", Ti("imgexport.structType.murLigne")),
+             structuresByType["mur-ligne"], true) +
       rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
       rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
       structTypesCustom.map(function (c) {
@@ -918,7 +920,7 @@
       // Synchro parent ↔ enfants des structures. Les sous-types custom sont ajoutés à la volée : liste non écrite
       // en dur, sinon décocher « Structures » ne les décoche pas.
       _syncAnnotParent("ann_structures",
-        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur",
+        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur", "ann_structures_mur-ligne",
          "ann_structures_front-1", "ann_structures_front-2"]
         .concat(structTypesCustom.map(function (c) { return "ann_structures_" + c.type; })));
 
@@ -1282,7 +1284,7 @@
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
-    ["pilier-1","pilier-2","mur","front-1","front-2"].forEach(function(t) {
+    ["pilier-1","pilier-2","mur","mur-ligne","front-1","front-2"].forEach(function(t) {
       const cb = document.getElementById("ann_structures_" + t);
       etat.ann["structures_" + t] = cb ? cb.checked : true;
     });
@@ -1585,6 +1587,7 @@
       "pilier-1": document.getElementById("ann_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("ann_structures_pilier-2")?.checked ?? true,
       "mur":      document.getElementById("ann_structures_mur")?.checked      ?? true,
+      "mur-ligne": document.getElementById("ann_structures_mur-ligne")?.checked ?? true,
       "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
       "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true
     };
@@ -1920,16 +1923,22 @@
       }
     }
 
+    // Structures, zones des calques et routes passent par une FILE peinte avant les cercles d'intersection : la
+    // règle « mur sous pilier et front » (structures.js > ktaMursSousPiliers) la réordonne, un mur de calque passe
+    // sous un pilier de session. Les zones de session, peintes avant toute structure, n'en ont pas besoin.
+    const _fileVect = [];
+    function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
+
     // ── Structures (piliers, murs, fronts) ── calquées sur les zones, styles de structures.js >
     // STRUCTURE_STYLES ; polygone (piliers, mur) ou polyligne (fronts).
     if (opts.ann.structures && window.getStructures) {
       const structures = window.ktaExportEtatsFiltres(window.getStructures());
       // Fronts : polylignes épaisses sans contour (`weight` converti par `scale`).
-      // Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau (comme
-      // structures.js > renderStructures).
-      const ordreS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+      // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau
+      // (comme structures.js > renderStructures).
+      const ordreS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
       const filtreS = opts.ann.structuresTypes || {
-        "pilier-1": true, "pilier-2": true, "mur": true,
+        "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
         "front-1":  true, "front-2": true
       };
       // Custom : la géométrie déclarée tranche (polyligne → trait épais, polygone → contour noir), via le gabarit
@@ -1954,33 +1963,35 @@
         const isPolyline = !!s.isPolyline;
         const minPts = isPolyline ? 2 : 3;
         if (!st.points || st.points.length < minPts) continue;
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(sc(st.points[0].x), sc(st.points[0].y));
-        for (let i = 1; i < st.points.length; i++) {
-          ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
-        }
-        if (isPolyline) {
-          // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour.
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = _largeurFrontExp(s);
-          ctx.globalAlpha = s.opacity;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.stroke();
-        } else {
-          // Pilier / mur : polygone fermé, fond + contour noir.
-          ctx.closePath();
-          ctx.fillStyle = s.fillColor;
-          ctx.globalAlpha = s.fillOpacity;
-          ctx.fill();
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = s.weight * scale;
-          ctx.globalAlpha = s.opacity;
-          ctx.lineJoin = "round";
-          ctx.stroke();
-        }
-        ctx.restore();
+        _poser(function () {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(sc(st.points[0].x), sc(st.points[0].y));
+          for (let i = 1; i < st.points.length; i++) {
+            ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
+          }
+          if (isPolyline) {
+            // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour.
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = _largeurFrontExp(s);
+            ctx.globalAlpha = s.opacity;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+          } else {
+            // Pilier / mur : polygone fermé, fond + contour noir.
+            ctx.closePath();
+            ctx.fillStyle = s.fillColor;
+            ctx.globalAlpha = s.fillOpacity;
+            ctx.fill();
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = s.weight * scale;
+            ctx.globalAlpha = s.opacity;
+            ctx.lineJoin = "round";
+            ctx.stroke();
+          }
+          ctx.restore();
+        }, st);
       }
     }
 
@@ -2133,16 +2144,17 @@
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
-        _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais"));
+        _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais")); });
         _diagAdv.embZones++;
       });
 
-      // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < pilier-2 < pilier-1 <
-      // front-2 < front-1). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a qu'un groupe.
+      // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < mur-ligne < pilier-2 <
+      // pilier-1 < front-2 < front-1). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a
+      // qu'un groupe.
       if (opts.ann.structures && embeddedStructures.length > 0) {
-        const ordreS_E = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        const ordreS_E = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
         const filtreS_E = opts.ann.structuresTypes || {
-          "pilier-1": true, "pilier-2": true, "mur": true,
+          "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
           "front-1":  true, "front-2": true
         };
         const _mlOnEmbS = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -2162,11 +2174,10 @@
           const isPolyline = !!s.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!st.points || st.points.length < minPts) continue;
-          if (isPolyline) {
-            _drawPolyline(st.points, s, _largeurFrontExp(s));
-          } else {
-            _drawPolygon(st.points, s);
-          }
+          _poser(function () {
+            if (isPolyline) _drawPolyline(st.points, s, _largeurFrontExp(s));
+            else _drawPolygon(st.points, s);
+          }, st);
           if (typeof _diagAdv.embStructs !== "number") _diagAdv.embStructs = 0;
           _diagAdv.embStructs++;
         }
@@ -2188,7 +2199,7 @@
       drawnRoadsSorted.forEach(function(r) {
         if (!_itemPasseLevels(r)) return;
         const _sr = _styleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 };
-        _drawPolyline(r.points || [], _sr, _largeurTraceExp(_sr));
+        _poser(function () { _drawPolyline(r.points || [], _sr, _largeurTraceExp(_sr)); });
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
         _diagAdv.embRoads++;
       });
@@ -2246,38 +2257,44 @@
         if (r.type !== "jonction" && filtreR[r.type] === false) continue;
         if (!_itemPasseLevels(r)) continue;
         const s = _styleRoadExp(r.type);
-        ctx.save();
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = s.weight * scale;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
-        for (let i = 1; i < r.points.length; i++) {
-          ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
-        }
-        ctx.stroke();
-        ctx.restore();
-        // Ronds aux extrémités des jonctions.
-        if (r.type === "jonction" && r.points.length >= 2) {
-          const endpts = [r.points[0], r.points[r.points.length - 1]];
-          endpts.forEach(function(pt) {
-            ctx.save();
-            ctx.fillStyle   = "#ffffff";
-            ctx.strokeStyle = RS.jonction.color;
-            ctx.lineWidth   = 3 * scale;
-            ctx.beginPath();
-            ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-          });
-          // Jonctions exclues des intersections (ponts entre niveaux).
-          continue;
-        }
+        _poser(function () {
+          ctx.save();
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.weight * scale;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
+          for (let i = 1; i < r.points.length; i++) {
+            ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
+          }
+          ctx.stroke();
+          ctx.restore();
+          // Ronds aux extrémités des jonctions.
+          if (r.type === "jonction" && r.points.length >= 2) {
+            const endpts = [r.points[0], r.points[r.points.length - 1]];
+            endpts.forEach(function(pt) {
+              ctx.save();
+              ctx.fillStyle   = "#ffffff";
+              ctx.strokeStyle = RS.jonction.color;
+              ctx.lineWidth   = 3 * scale;
+              ctx.beginPath();
+              ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            });
+          }
+        });
+        // Jonctions exclues des intersections (ponts entre niveaux).
+        if (r.type === "jonction" && r.points.length >= 2) continue;
         if (r.points.length >= 2) allRoadsForIntersect.push(r);
       }
     }
+
+    (typeof window.ktaMursSousPiliers === "function"
+      ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
+      .forEach(function (e) { e.fn(); });
 
     // ── Cercles d'intersection (après les routes, avant les icônes) ──
     if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {
@@ -2593,6 +2610,7 @@
             { label: window.I18n.t("imgexport.legLabel.pilier1"), fillColor: "#f4c542", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.pilier2"), fillColor: "#ff9933", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.mur"),     fillColor: "#1e3a8a", borderColor: "#000000" },
+            { label: window.I18n.t("imgexport.legLabel.murLigne"), lineColor: "#1e3a8a" },
             { label: window.I18n.t("imgexport.legLabel.front1"),  lineColor:  "#f4c542" },
             { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" }
           ];
@@ -2617,22 +2635,43 @@
 
     if (entrees.length === 0 && metaLignes.length === 0) return;
 
-    // ── Répartition en 2 colonnes : chaque groupe va dans la colonne la moins haute ──
+    // ── Répartition en colonnes ──
+    // Sans `leg.colonnes` (export PNG) : 2 colonnes, chaque groupe entier dans la colonne la moins haute.
+    // Avec `leg.colonnes` (1 à 4, légende du PDF) : en flux, comme un journal — hauteur visée = total / n, un
+    // groupe trop long continue en haut de la colonne suivante sous son titre répété ; un titre ne reste jamais
+    // seul en bas de colonne. Une colonne restée vide disparaît.
     function _hauteurEstimee(section) {
       return 1 + (section.lignes ? section.lignes.length : 0);
     }
-    const colGauche = [];
-    const colDroite = [];
-    let hG = 0, hD = 0;
-    entrees.forEach(function(sec) {
-      const h = _hauteurEstimee(sec);
-      if (hG <= hD) { colGauche.push(sec); hG += h; }
-      else          { colDroite.push(sec); hD += h; }
-    });
-
-    if (colDroite.length === 0 && colGauche.length > 1) {
-      colDroite.push(colGauche.pop());
+    const colonnes = [];
+    if (leg.colonnes) {
+      const nbCol = Math.max(1, Math.min(4, Number.parseInt(leg.colonnes, 10) || 1));
+      const total = entrees.reduce(function(s, sec) { return s + _hauteurEstimee(sec); }, 0);
+      const vise = Math.ceil(total / nbCol);
+      let col = [], h = 0;
+      entrees.forEach(function(sec) {
+        let morceau = null;
+        sec.lignes.forEach(function(l) {
+          const place = morceau ? 1 : 2;   // un titre arrive avec au moins sa première ligne
+          if (h > 0 && h + place > vise && colonnes.length < nbCol - 1) {
+            colonnes.push(col); col = []; h = 0; morceau = null;
+          }
+          if (!morceau) { morceau = { section: sec.section, lignes: [] }; col.push(morceau); h += 1; }
+          morceau.lignes.push(l);
+          h += 1;
+        });
+      });
+      colonnes.push(col);
+    } else {
+      colonnes.push([], []);
+      const hautCol = [0, 0];
+      entrees.forEach(function(sec) {
+        const k = hautCol[1] < hautCol[0] ? 1 : 0;
+        colonnes[k].push(sec);
+        hautCol[k] += _hauteurEstimee(sec);
+      });
     }
+    const colsPleines = colonnes.filter(function(c) { return c.length > 0; });
 
     function _largeurColonne(sections) {
       let maxW = 0;
@@ -2661,10 +2700,8 @@
       return h;
     }
 
-    const colInnerW_g = _largeurColonne(colGauche);
-    const colInnerW_d = _largeurColonne(colDroite);
-    const colW_g = colInnerW_g + ic + pad;   // icône + label
-    const colW_d = colInnerW_d + ic + pad;
+    // Largeur de chaque colonne : icône + libellé le plus long.
+    const colW = colsPleines.map(function(c) { return _largeurColonne(c) + ic + pad; });
 
     ctx.save();
     let titreMetaW = 0;
@@ -2680,9 +2717,7 @@
 
     const colGap = pad * 1.5;
 
-    const colsW = colDroite.length > 0
-      ? colW_g + colGap + colW_d
-      : colW_g;
+    const colsW = colW.reduce(function(s, w) { return s + w; }, 0) + colGap * Math.max(0, colW.length - 1);
     const contentW = Math.max(titreMetaW, colsW);
     const boiteW = contentW + pad * 2;
 
@@ -2693,9 +2728,7 @@
       totalH += metaLignes.length * lh * 0.8;
       totalH += pad * 0.6;
     }
-    const hCol_g = _hauteurColonne(colGauche);
-    const hCol_d = _hauteurColonne(colDroite);
-    totalH += Math.max(hCol_g, hCol_d);
+    totalH += colsPleines.reduce(function(m, c) { return Math.max(m, _hauteurColonne(c)); }, 0);
     totalH += pad;
     const boiteH = totalH;
 
@@ -2765,10 +2798,8 @@
       cy += pad * 0.4;
     }
 
-    // ── Rendu des 2 colonnes ──
+    // ── Rendu des colonnes ──
     const cyColStart = cy;
-    const xColGauche = bx + pad;
-    const xColDroite = bx + pad + colW_g + colGap;
 
     async function _dessinerSections(sections, xCol, yStart) {
       let cyLocal = yStart;
@@ -2836,13 +2867,14 @@
       }
     }
 
-    await _dessinerSections(colGauche, xColGauche, cyColStart);
-    if (colDroite.length > 0) {
-      await _dessinerSections(colDroite, xColDroite, cyColStart);
+    let xCol = bx + pad;
+    for (let i = 0; i < colsPleines.length; i++) {
+      await _dessinerSections(colsPleines[i], xCol, cyColStart);
+      xCol += colW[i] + colGap;
     }
 
     // Dimensions dessinées : pdfExport.js en extrait la boîte légende.
-    return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by };
+    return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by, policePx: fs };
   }
 
   // ── API publique pour pdfExport.js ──────────
@@ -2937,13 +2969,14 @@
   // ── Canvas de la LÉGENDE seule ──────────
   // Une image raster collée dans le PDF : évite les limites de jsPDF (Helvetica latin1, emojis) pour icônes,
   // traits, polygones et emojis de sections.
-  //   1. canvas temporaire 3000×3000 ;
+  //   1. canvas temporaire 3000×3000, agrandi (≤ 4096, plafond iOS) et redessiné si la boîte déborde ;
   //   2. _dessinerLegende en haut-gauche, petite marge (ombre, bordure) ;
-  //   3. elle rend {boiteW, boiteH, bx, by} ;
-  //   4. canvas final aux dimensions exactes (crop).
+  //   3. elle rend {boiteW, boiteH, bx, by, policePx} ;
+  //   4. canvas final aux dimensions exactes (crop), `_ktaPolicePx` = taille du texte en px du canvas.
   // legContenu : { icones, traces, zones, structures, track, meta }
-  // bg : "transparent" (défaut) ou "opaque" (fond plein, si le footer PDF est pâle).
-  // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère).
+  // colonnes : nombre (2 par défaut) ou liste de nombres (1 à 4) → un canvas par nombre, tags collectés une fois.
+  // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère) ; avec une liste,
+  // Promise<Array<{ colonnes, canvas }>> (vide si aucun contenu).
   async function _publicGenererCanvasLegende(userOpts) {
     userOpts = userOpts || {};
     const legContenu = userOpts.contenu || {
@@ -2976,48 +3009,67 @@
       }
     }
 
-    const TMP_W = 3000, TMP_H = 3000;
-    const tmpCanvas = document.createElement("canvas");
-    tmpCanvas.width  = TMP_W;
-    tmpCanvas.height = TMP_H;
-    const tmpCtx = tmpCanvas.getContext("2d", { alpha: true });
-
-    // Position forcée haut-gauche pour simplifier le crop (marges gérées par l'appelant).
-    const leg = {
-      position: "haut-gauche",
-      customX:  0,
-      customY:  0,
-      style:    legStyle,
-      size:     legSize,
-      contenu:  legContenu
-    };
-
     const iconCache = {};
-    let dims;
-    try {
-      dims = await _dessinerLegende(tmpCtx, leg, TMP_W, TMP_H, scale, iconCache, tagsUtilises);
-    } catch(e) {
-      console.warn("[Export legende] échec dessin :", e);
-      return null;
-    }
-    if (!dims || dims.boiteW <= 0 || dims.boiteH <= 0) {
-      // _dessinerLegende sort tôt sans entrée : l'appelant gère le null.
-      return null;
+    async function _uneLegende(nbColonnes) {
+      // Position forcée haut-gauche pour simplifier le crop (marges gérées par l'appelant).
+      const leg = {
+        position: "haut-gauche",
+        customX:  0,
+        customY:  0,
+        style:    legStyle,
+        size:     legSize,
+        contenu:  legContenu,
+        colonnes: nbColonnes
+      };
+      // 🩸 Une boîte plus grande que le canvas temporaire serait coupée sans erreur (1 colonne, taille Large) :
+      // on redessine une fois sur un canvas à sa mesure.
+      let tmpW = 3000, tmpH = 3000;
+      let tmpCanvas, dims;
+      for (let essai = 0; essai < 2; essai++) {
+        tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width  = tmpW;
+        tmpCanvas.height = tmpH;
+        const tmpCtx = tmpCanvas.getContext("2d", { alpha: true });
+        try {
+          dims = await _dessinerLegende(tmpCtx, leg, tmpW, tmpH, scale, iconCache, tagsUtilises);
+        } catch(e) {
+          console.warn("[Export legende] échec dessin :", e);
+          return null;
+        }
+        // _dessinerLegende sort tôt sans entrée : l'appelant gère le null.
+        if (!dims || dims.boiteW <= 0 || dims.boiteH <= 0) return null;
+        const besoinW = Math.ceil(dims.bx + dims.boiteW + 4), besoinH = Math.ceil(dims.by + dims.boiteH + 4);
+        if (besoinW <= tmpW && besoinH <= tmpH) break;
+        tmpW = Math.min(4096, Math.max(tmpW, besoinW));
+        tmpH = Math.min(4096, Math.max(tmpH, besoinH));
+      }
+
+      const PAD = 2;
+      const W = Math.ceil(dims.boiteW + 2 * PAD);
+      const H = Math.ceil(dims.boiteH + 2 * PAD);
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width  = W;
+      finalCanvas.height = H;
+      const fctx = finalCanvas.getContext("2d", { alpha: true });
+      fctx.drawImage(
+        tmpCanvas,
+        dims.bx - PAD, dims.by - PAD, W, H,
+        0, 0, W, H
+      );
+      finalCanvas._ktaPolicePx = dims.policePx;
+      return finalCanvas;
     }
 
-    const PAD = 2;
-    const W = Math.ceil(dims.boiteW + 2 * PAD);
-    const H = Math.ceil(dims.boiteH + 2 * PAD);
-    const finalCanvas = document.createElement("canvas");
-    finalCanvas.width  = W;
-    finalCanvas.height = H;
-    const fctx = finalCanvas.getContext("2d", { alpha: true });
-    fctx.drawImage(
-      tmpCanvas,
-      dims.bx - PAD, dims.by - PAD, W, H,
-      0, 0, W, H
-    );
-    return finalCanvas;
+    if (Array.isArray(userOpts.colonnes)) {
+      const res = [];
+      for (const n of userOpts.colonnes) {
+        const cv = await _uneLegende(n);
+        if (!cv) return [];
+        res.push({ colonnes: n, canvas: cv });
+      }
+      return res;
+    }
+    return _uneLegende(userOpts.colonnes || 2);
   }
   window.MyKTAMapExporterGenererCanvasLegende = _publicGenererCanvasLegende;
 

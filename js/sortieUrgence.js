@@ -11,7 +11,8 @@
 // Cas dégradés : position jamais confirmée → picker « Où es-tu ? » ; aucun candidat → toast ; Pathfinder en échec
 //   pour une sortie → distance à vol d'oiseau, affichée comme NON vérifiée, en fin de liste.
 // Vibration : trouvée → medium ; aucune → error.
-// Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos)
+// Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos),
+//   demandeLaCarte() (declencher() demandera la position sur la carte : la vue 3D se ferme d'abord)
 // Garde-fous : scripts/check-guidage.js, scripts/check-position-confirmee.js · Doc : docs/architecture/tracking.md
 
 (function() {
@@ -374,9 +375,11 @@
       const m = _lastResultats.meta || {};
       // Évacuation : tracé et recalculs gardent contraintes et accès du scénario (sinon le tracé diffère du classé).
       const evac = (m.contraintes || m.supp) ? { contraintes: m.contraintes || null, supp: m.supp || null } : null;
+      // niveauCible : la route finit sur une galerie du niveau de la sortie, comme le classement l'a mesurée.
       window.itineraireYAller(r.point.x, r.point.y,
         r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
-        { origine: _lastResultats.origine, urgence: true, evacuation: evac });
+        { origine: _lastResultats.origine, urgence: true, evacuation: evac,
+          niveauCible: Number.isInteger(r.point.level) ? r.point.level : undefined });
     } else {
       window.ktaAlerte(window.I18n.t("sortie.erreur.itineraireIndispo"), { type: "erreur" });
     }
@@ -395,7 +398,18 @@
   // part de la position du tracker, SANS question ; jamais confirmée → SEUL cas où l'on demande « Où es-tu ? »
   // (picker partagé, qui recale aussi le tracker). 🩸 getTrackingPosition() rend TOUJOURS une position (le départ
   // du plan) : se fier à elle seule donnerait la sortie la plus proche de l'ENTRÉE.
-  function declencher() {
+  // Origine = position du tracker, avec son niveau sur un plan multi-niveau (calage sur une galerie de CE niveau,
+  // gardé par « Tracer »).
+  function _origineTracker(pos) {
+    const o = { x: pos.x, y: pos.y };
+    const n = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true &&
+               typeof window.getTrackerLevel === "function") ? window.getTrackerLevel() : null;
+    if (Number.isInteger(n)) o.level = n;
+    return o;
+  }
+
+  // Position du tracker utilisable (suivi actif ou position confirmée) → { pos, etat }, sinon null.
+  function _origineConnue() {
     const pos = (typeof window.getTrackingPosition === "function")
       ? window.getTrackingPosition()
       : null;
@@ -403,8 +417,16 @@
       ? window.getTrackingPositionEtat()
       : null;
     const posOk = !!(pos && typeof pos.x === "number" && typeof pos.y === "number");
-    if (posOk && (!etat || etat.suiviActif || etat.confirmee)) {
-      _lancer(pos, {
+    return (posOk && (!etat || etat.suiviActif || etat.confirmee)) ? { pos: pos, etat: etat } : null;
+  }
+
+  function demandeLaCarte() { return !_origineConnue(); }
+
+  function declencher() {
+    const o = _origineConnue();
+    const pos = o && o.pos, etat = o && o.etat;
+    if (o) {
+      _lancer(_origineTracker(pos), {
         mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
         ts:   etat ? etat.ts : null
       });
@@ -455,7 +477,10 @@
     // RECALE le tracker (position confirmée pour « Tracer », Urgence XL, « Y aller »).
     if (typeof window.ktaDemanderPositionCarte === "function") {
       window.ktaDemanderPositionCarte(function(p) {
-        _lancer({ x: p.x, y: p.y }, { mode: "clic" });
+        // Niveau choisi (ou actif) : l'évacuation part d'une galerie de CE niveau, « Tracer » le garde (origine).
+        const o = { x: p.x, y: p.y };
+        if (Number.isInteger(p.niveau)) o.level = p.niveau;
+        _lancer(o, { mode: "clic" });
       }, { icone: "🚨", texte: window.I18n.t("sortie.pick.floater") });
       return;
     }
@@ -489,7 +514,7 @@
     const road = (typeof window.getRoads === "function" ? window.getRoads() : [])
       .find(function(r) { return r && r.type === "itinerary" && r.evacuation; });
     const evac = road ? road.evacuation : null;
-    _lancer({ x: pos.x, y: pos.y }, {
+    _lancer(_origineTracker(pos), {
       mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
       ts:   etat ? etat.ts : null,
       supp: evac ? evac.supp : null,
@@ -500,6 +525,7 @@
   // ── Export ──────────────
   SU.declencher       = declencher;
   SU.declencherDepuis = declencherDepuis;
+  SU.demandeLaCarte   = demandeLaCarte;
   SU.isActive         = function() { return !!_modal; };
 
   window.SortieUrgence = SU;

@@ -156,10 +156,6 @@ function _confirmRemplacerItineraire(onConfirm, actif) {
   modal.addEventListener("click", function(e) { if (e.target === modal) _ferme(); });
 }
 
-// « Y aller » : du tracker vers ce point ; confirme si un itinéraire est actif.
-// `opts.origine` {x, y} : origine imposée (la Sortie d'urgence passe celle de SON calcul).
-// Règle « instant T » (décision produit) : suivi actif OU position confirmée → départ du tracker sans
-// question ; jamais confirmée → picker « Où es-tu ? » qui recale le tracker, puis retour ici.
 // Options d'évitement : préférences de l'itinéraire, ou contraintes d'une évacuation (Mode Secours,
 // options brancard) qui les remplacent entièrement.
 function _optsEvitement(avoidPrefs, evC) {
@@ -179,6 +175,87 @@ function _optsEvitement(avoidPrefs, evC) {
   };
 }
 
+// Origine d'un itinéraire : {x, y} et le niveau s'il est connu (waypoint de départ `level`).
+function _origineIti(x, y, niveau) {
+  const o = { x: x, y: y };
+  if (Number.isInteger(niveau)) o.level = niveau;
+  return o;
+}
+
+// « Me repositionner » : picker « Où es-tu ? » (niveau demandé s'il le faut) qui recale le tracker, puis « Y aller »
+// depuis là. Le picker se joue sur la carte 2D : une vue 3D ouverte se ferme d'abord, sinon il resterait dessous ;
+// une fois la position choisie, la vue 3D se rouvre en libre au point et au niveau choisis (niveau actif posé par
+// le picker), cap gardé : on est repositionné DANS la 3D, pas rejeté sur la carte. Picker annulé : on reste sur la
+// carte (décision produit).
+function _repositionnerPuisAller(x, y, nom, opts) {
+  if (typeof window.ktaDemanderPositionCarte !== "function") return;
+  const V = window.KtaVue3D;
+  const v3 = (V && typeof V.origineItineraire === "function") ? V.origineItineraire() : null;
+  const lancer = function() {
+    window.ktaDemanderPositionCarte(function(p) {
+      // Les autres options (niveauCible…) suivent : seule l'origine vient du picker.
+      window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(p.x, p.y, p.niveau) }));
+      if (v3 && typeof V.ouvrir === "function") V.ouvrir({ depart: { x: p.x, y: p.y, cap: v3.cap } });
+    }, { icone: "🧭", texte: window.I18n.t("iti.pick.ouEsTu") });
+  };
+  if (v3 && typeof V.fermer === "function") { V.fermer().then(lancer); return; }
+  lancer();
+}
+
+// Tracker arrêté : « D'où pars-tu ? » (ktaConfirm en mode choix). « Ici » (vue 3D en mode libre seulement) : le
+// tracker est recalé à la position 3D, niveau compris, comme « Je suis ici », puis l'itinéraire en part ; « Ma
+// dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage — vue 3D en
+// libre : sa place vient au tracker, niveau compris, cap gardé (KtaVue3D.placerSurTracker) ; « Me repositionner » :
+// picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
+function _demanderDepart(x, y, nom, opts, etat, v3) {
+  const T = function(k, p) { return window.I18n.t(k, p); }, esc = window.ktaEsc;
+  const options = [];
+  if (v3 && v3.mode === "libre") {
+    options.push({ valeur: "ici", titre: T("iti.depart.ici"), aide: T("iti.depart.iciAide"),
+                   okLabel: T("iti.depart.iciOk") });
+  }
+  if (etat.confirmee) {
+    const quand = (typeof window.ktaDateRelative === "function" && typeof etat.ts === "number")
+      ? window.ktaDateRelative(etat.ts) : "";
+    options.push({ valeur: "derniere", titre: quand ? T("iti.depart.derniere", { quand: quand })
+                   : T("iti.depart.derniereSansDate"), aide: T("iti.depart.derniereAide"),
+                   okLabel: T("iti.depart.derniereOk") });
+  }
+  options.push({ valeur: "repositionner", titre: T("iti.depart.repositionner"),
+                 aide: T("iti.depart.repositionnerAide"), okLabel: T("iti.depart.repositionnerOk") });
+  const o = { id: "kta-iti-depart", titre: esc(T("iti.depart.titre")),
+              choix: { options: options, valeur: options[0].valeur } };
+  return window.ktaConfirm(esc(T("iti.depart.texte")), o).then(function(ok) {
+    if (!ok) return null;
+    const c = o.choix.valeur;
+    if (c === "ici") {
+      // sansReplan : l'itinéraire en place n'est pas recalculé depuis ce recalage, il va être remplacé.
+      if (typeof window.recalerTrackerSurPoint === "function") {
+        window.recalerTrackerSurPoint(v3.x, v3.y, Number.isInteger(v3.niveau) ? v3.niveau : undefined,
+                                      { sansReplan: true });
+      }
+      window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(v3.x, v3.y, v3.niveau) }));
+    } else if (c === "derniere") {
+      const p = window.getTrackingPosition();
+      // Rien n'est recalé (donc pas de hook) : c'est ici que la 3D en libre est amenée au tracker.
+      const V = window.KtaVue3D;
+      if (v3 && v3.mode === "libre" && V && typeof V.placerSurTracker === "function") V.placerSurTracker();
+      window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(p.x, p.y, _niveauTracker()) }));
+    } else if (c === "repositionner") {
+      _repositionnerPuisAller(x, y, nom, opts);
+    }
+    return c;
+  });
+}
+
+// « Y aller » : vers ce point ; confirme si un itinéraire est actif. D'où part-on (décision produit) :
+//   - `opts.origine` {x, y, level?} imposée (la Sortie d'urgence passe celle de SON calcul, le picker « Où es-tu ? »
+//     le niveau choisi). ⚠️ `level` part sur le waypoint de départ : calage sur une galerie de CE niveau ;
+//   - suivi actif : du tracker, à son niveau ; sauf vue 3D ouverte en mode libre : de la position 3D, niveau
+//     compris, sans recaler le tracker (jamais de la position d'avant l'ouverture de la 3D) ;
+//   - tracker arrêté : la question « D'où pars-tu ? » (_demanderDepart), chaque fois ; s'il n'y a qu'une réponse
+//     (position jamais confirmée, hors 3D), directement le picker « Où es-tu ? ».
+// `opts.niveauCible` : niveau de la cible (sortie visée).
 window.itineraireYAller = function(x, y, nom, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
   opts = opts || {};
@@ -187,11 +264,15 @@ window.itineraireYAller = function(x, y, nom, opts) {
   if (!origineForcee) {
     const etat = (typeof window.getTrackingPositionEtat === "function")
       ? window.getTrackingPositionEtat() : null;
-    if (etat && !etat.suiviActif && !etat.confirmee &&
-        typeof window.ktaDemanderPositionCarte === "function") {
-      window.ktaDemanderPositionCarte(function(p) {
-        window.itineraireYAller(x, y, nom, { origine: p });
-      }, { icone: "🧭", texte: window.I18n.t("iti.pick.ouEsTu") });
+    const V = window.KtaVue3D;
+    const v3 = (V && typeof V.origineItineraire === "function") ? V.origineItineraire() : null;
+    if (etat && etat.suiviActif && v3 && v3.mode === "libre") {
+      window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(v3.x, v3.y, v3.niveau) }));
+      return;
+    }
+    if (etat && !etat.suiviActif) {
+      if (!etat.confirmee && !(v3 && v3.mode === "libre")) _repositionnerPuisAller(x, y, nom, opts);
+      else _demanderDepart(x, y, nom, opts, etat, v3);
       return;
     }
   }
@@ -225,6 +306,10 @@ window.itineraireYAller = function(x, y, nom, opts) {
       },
       { x: x, y: y, source: "search", label: labelPoint }
     ];
+    // Départ au niveau de l'origine imposée, sinon à celui du tracker (plan multi-niveau).
+    const lvlDepart = origineForcee ? origineForcee.level : _niveauTracker();
+    if (Number.isInteger(lvlDepart)) waypoints[0].level = lvlDepart;
+    if (Number.isInteger(opts.niveauCible)) waypoints[1].level = opts.niveauCible;
 
     try {
       // Préférences d'évitement de la modale réutilisées pour cohérence.
@@ -853,6 +938,15 @@ function _couperDerriere(road, x, y) {
   return true;
 }
 
+// Niveau du tracker (plan multi-niveau), sinon undefined : départ de tout itinéraire qui part de sa position
+// (« Y aller », replanification, « Recalculer d'ici », « Ma position » en étape), comme le picker « Où es-tu ? »
+// rend le niveau choisi.
+function _niveauTracker() {
+  if (!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)) return undefined;
+  const n = (typeof window.getTrackerLevel === "function") ? window.getTrackerLevel() : null;
+  return Number.isInteger(n) ? n : undefined;
+}
+
 window._onTrackerRecale = function(x, y, source, opts) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
@@ -915,11 +1009,11 @@ window._onTrackerRecale = function(x, y, source, opts) {
           return;
         }
         if (!ok) { _toastIti(window.I18n.t("iti.replan.skipped"), "info"); return; }
-        _replanifierDepuis(x, y);
+        _replanifierDepuis(x, y, _niveauTracker());
       });
       return;
     }
-    _replanifierDepuis(x, y);
+    _replanifierDepuis(x, y, _niveauTracker());
   }, 500);
 };
 
@@ -946,12 +1040,15 @@ window.itineraireActiverRoad = function(newRoad, opts) {
   else activer();
 };
 
-window.itineraireReplanifierDepuis = function(px, py) {
+// ⚠️ (px, py) = position du tracker (guidage, Mode Secours) : le départ prend son niveau, sauf `niveau` donné.
+window.itineraireReplanifierDepuis = function(px, py, niveau) {
   if (typeof px !== "number" || typeof py !== "number") return;
-  return _replanifierDepuis(px, py);   // la promesse : un appelant peut attendre le nouveau tracé
+  // la promesse : un appelant peut attendre le nouveau tracé
+  return _replanifierDepuis(px, py, Number.isInteger(niveau) ? niveau : _niveauTracker());
 };
 
-async function _replanifierDepuis(px, py) {
+// `niveau` (facultatif) : niveau du départ, posé sur le waypoint d'origine (calage sur une galerie de ce niveau).
+async function _replanifierDepuis(px, py, niveau) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints)) return;
   const etapes    = road.waypoints.filter(function(w) { return w.source !== "tracker"; });
@@ -975,6 +1072,7 @@ async function _replanifierDepuis(px, py) {
     x: px, y: py, source: "tracker",
     label: window.I18n.t("iti.wp.currentPos", { x: Math.round(px), y: Math.round(py) })
   };
+  if (Number.isInteger(niveau)) origin.level = niveau;
   try {
     const avoidPrefs = _getItiAvoidPrefs();
     // Parcours d'une équipe : on garde SES évitements (zones des autres équipes), pas les préférences.
@@ -1949,12 +2047,15 @@ window.ouvrirItinerairModal = function() {
         window.ktaAlerte(window.I18n.t("iti.err.trackerPos"));
         return;
       }
-      _itineraryWaypoints.push({
+      const wpTracker = {
         x:      pos.x,
         y:      pos.y,
         source: "tracker",
         label:  window.I18n.t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) })
-      });
+      };
+      const lvlTracker = _niveauTracker();
+      if (Number.isInteger(lvlTracker)) wpTracker.level = lvlTracker;
+      _itineraryWaypoints.push(wpTracker);
       _ajouterWaypointVisuel({ x: pos.x, y: pos.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
       _majPanneauFloaterCount();

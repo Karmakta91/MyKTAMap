@@ -52,12 +52,13 @@ MyKTAMap relies entirely on **open-source bricks**. Without these projects, the 
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
+- 🧊 **[three.js](https://threejs.org/)** *(MIT, vendored)* — 3D engine for the browser (WebGL). Draws the **🧊 3D view**: the map in relief around your position. Loaded only the first time the view opens, then available offline. Thanks to **Ricardo Cabello (mrdoob)** and the contributors.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **as soon as one of your maps is GPS-calibrated** (on by default, can be turned off in ⚙️ Configuration). The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
 - 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
 
-> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
+> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
 
 ### To the PWA ecosystem
 
@@ -75,7 +76,7 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 
 ---
 
-**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🧊 three.js (3D view) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
 
 ---
 
@@ -216,6 +217,8 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 **Where the computation starts**: from your current position, as soon as tracking is on or you have located yourself once since opening the map ("📍 I am here", realignment, portal, restored session); the window tells you which. If you have **never** located yourself, the app asks **Where are you?**: tap your position on the map. That tap also realigns tracking, so the route and the XL display start from the same spot.
 
+**Where it ends**: on a multi-level plan, **🧭 Go there** from a point's popup ends the route on the **point's level**, even if you are looking at another level (point between levels: the level shown if it serves it), like **📍 I am here**.
+
 A vibration confirms the exit found or alerts you if there is none, even when **📳 Haptic vibration** is off. Everything is computed on your device, without network.
 
 ### 🔆 XL display
@@ -301,7 +304,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 
 **At the bottom**, a status bar groups what is in progress: 📐 measurement, 📏 total path distance, 🗺️ route (distance, time, pace — tap it to open the route) and the **🧭 tracker** light (ON · steps · distance while tracking; tap it to open the Tracker menu). It wraps onto a second line if everything doesn't fit; the ▾▴ button collapses it.
 
-**On the sides**, the two side bars hold the tools. The interface is organized into **13 groups** spread over the **two side bars** — left: ⭐ Favorites, 📚 Help, ⚙️ Settings, ⬇️ Load, ⬆️ Save, ⏪ History; right: 🔍 Search, 🧭 Tracker, 📐 Measurement, ✏️ Edit, 🛣️ Paths, ⬛ Zones, 🏛️ Structures:
+**On the sides**, the two side bars hold the tools. The interface is organized into **13 groups** spread over the **two side bars** — left: ⭐ Favorites, 📚 Help, ⚙️ Settings, ⬇️ Load, ⬆️ Save, ⏪ History; right: 🔍 Search, 🧭 Tracker, 📐 Measurement, ✏️ Edit, 🛣️ Paths, ⬛ Zones, 🏛️ Structures. At the top of the right-hand bar, **≡ Filters** then the **cube button** of the 🧊 3D view:
 
 | Group | Icon | What it's for |
 |---|---|---|
@@ -313,9 +316,9 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Export** | ⬆️ | A launcher: image (PNG / JPEG, PDF, GeoTIFF), session, map update, external export (KMZ / GPX / GeoJSON) |
 | **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
 | **Tracker** | 🧭 | **Full-screen menu** of tiles: tracking, realignment, My position, compass, route, guidance, emergencies |
-| **Measurement** | 📐 | Measure a distance or an area, clear |
+| **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths** and the **⛏️ mined volume** of a sector, clear |
 | **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
-| **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions, **compute the total distance** |
+| **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions |
 | **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
 | **Structures** | 🏛️ | Pillars, walls and working faces |
 
@@ -362,13 +365,14 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 | Section | What it filters |
 |---|---|
 | 🖼️ **Image layers** | The map image and its additional layers |
-| 📊 **Data layers** | The layers shipped with the map, and **My annotations** (everything you added: unticking it hides your additions without deleting anything) |
+| 📊 **Data layers** | The layers shipped with the map, and **Plan annotations** (everything drawn on the map: your additions and, on a shared installation, your team's; unticking it hides them without deleting anything) |
 | 🏗️ **M-LVL levels** | Multi-level maps: active level (for drawing) and visible levels — kept in sync with the Levels window |
 | 🏷️ **Point tags** | The tags actually present on the map, with their count |
 | 🛣️ ⬛ 🏛️ **Types** | Path, zone and structure types, including your own |
 
 - Each section folds away, and has its **👁️ All** / **🚫 None** buttons.
-- **🔄 Show all** sets tags and types back to “everything visible”, without touching levels or layers.
+- **🔄 Show all** sets everything back to visible: tags, types, layers and levels.
+- The same filters apply in the **🧊 3D view**: its ≡ button opens this panel.
 - At the bottom, **Active filters: …** reminds you what is filtered; the ≡ button also signals when items are hidden.
 - Filters are **remembered per map**: you find them again when you come back to this map, and a message tells you so.
 - What you are drawing stays visible, even if you untick its type.
@@ -468,7 +472,9 @@ As soon as you recognize a landmark:
 1. Tap **📍** (the button lights up);
 2. tap the spot on the map where you are.
 
-The icon moves there, the trail restarts from there and the mode closes by itself. Another way: the **📍 I am here** button in a point's popup.
+The icon moves there, the trail restarts from there and the mode closes by itself. Another way: the **📍 I am here** button in a point's popup. On a multi-level plan, it puts you on the **point's level**, even if you are looking at another level (for a ladder or a shaft between levels: the level shown if it serves it). If the point is beside the gallery, the tracking icon goes into the gallery of its level, the same one as in the 3D view (all trace types, within 10 m), not into the rock: into the one whose wall is nearest, never across the rock; already inside a gallery, it stays where you put it. The point itself does not move. If its level has no trace at all, it goes to the nearest passable spot of the plan (within 10 m). A spot you tap on the map (reset mode, “Where are you?”) is taken as is: the icon goes exactly there, you are the one who knows where you are.
+
+**Multi-level plan**: if a gallery, zone or structure from **another level** runs within **10 m** of the spot you tapped (or a passage between levels such as a ladder or a shaft), the app asks **Which level are you on?**: one choice per level found, with its depth when it is filled in, the level shown ticked by default. Tracking moves to the chosen level and the map shows it. **Cancel** realigns nothing: tap the map again. Nothing from another level nearby → no question, the level shown is kept. The same question comes when the app asks **Where are you?** (emergency exit, "Go there", guidance). Once your position is known, "Go there", the emergency exit and "Recompute from here" start from the **tracking level**, not the one you are looking at; "🧭 Plot the route" towards an exit on another level does take you there.
 
 ### 🧭 Compass
 
@@ -484,6 +490,37 @@ The **🧭** tile shows a compass rose at the top left of the map, even with the
 | West | on the right |
 
 If it doesn't match, the magnetic field is disturbed (scrap metal, reinforcements): realign as soon as possible and don't trust the trail too much.
+
+### 🧊 3D view
+
+The **cube button** in the right-hand bar, just below **≡ Filters**, shows the map **in relief around your position**, as if you were there, lit by a headlamp. An indicator waits while it opens (longer the first time); it then stays available offline.
+
+- **🏛️🛣️ Mixed / 🏛️ Structures / 🛣️ Tunnels**: the button in the ⚙️ tile, which shows the current mode, moves to the next rendering; the choice is kept for this map (default: Mixed).
+  - **🏛️🛣️ Mixed** (default): pillars, walls and quarry faces raised wherever there are some, and traces as tunnels **only where there is no structure around** (connecting tunnels). A structure close to **one side only** (a pillar, a face running along the tunnel) opens that side only: the opposite wall stays, and a short wall section meets the structure at each end, with no gap. Between structures on **both sides** (a chamber), the trace loses its walls: the tunnel **opens up** when it enters the chamber, with no end wall and no bit of wall between two pillars; a structure across the trace opens it too. You bump into structures, and into tunnel walls where they are drawn; in a chamber, there are no walls left. Zones and points follow the tunnel rule in tunnels, the structure rule in chambers.
+  - **🏛️ Structures**: pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m), backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones, traces and route on the floor, points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
+  - **🛣️ Tunnels**: traces become tunnels (main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m), without the structures: open crossroads, bends, closed dead ends, walls of dressed stone (with 🧱 Textures; off: dressed limestone blocks), a floor stripe in the trace's colour. Zones stop at the walls: backfill and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it. Only points within 10 m of a trace (rooms included) are shown, against the wall.
+  - In every mode: one level at a time, 30 m around you.
+- **🪜 Stairs and shafts in volume**: a way between levels is shown where it is. **Stairs** are a stairwell with steps, a **shaft with rungs** a square stone shaft with its ladder, a **shaft without rungs** a bare shaft; it opens **in the floor** towards a level below, **in the ceiling** towards a level above (it rises and fades into the dark), both for a way between three levels, with a golden frame on the floor. An **open shaft** or **surface stairs** open in the ceiling, with daylight at the very top; an **air shaft** is a small grated tube, in the ceiling only (you cannot take it). A **junction trace** becomes a **ramp** in its colour: from floor to ceiling towards the level above, in a trench towards the level below. The sign of a way between levels has a border in the junction colour and the **↕** mark, and stays readable down to 1 m.
+- **⚠️ Dangers and ⭐ favourites**: a danger point has a red outline and a **red halo on the floor**, visible even up close, when its sign fades out; a point in your favourites has a **⭐** in the corner of its sign.
+- **👥 Team** (connected installation only): members who share their position appear as a figure in their colour, with their name, if they are on the displayed level; markers and shared routes too (route as yellow dashes on the floor). They are the ones the map already shows. If you **already share your position** (📡), the place where you move in **free** mode is shown to those who see it, marked **“in 3D view”** (and “3D” on your figure on their side); in follow mode or when you close the 3D, they see your tracker's position again, which is not moved. Without sharing, nothing is sent. Touching a member or a marker shows its name. Without an installation, none of this.
+- **≡ Filters**: the same panel as on the map, opened over the view, with the same settings. What you hide in 3D is hidden on the map, and the other way round: point tags, path, zone and structure types, data layers, visible levels. A dot on ≡ signals an active filter. Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered. The route stays shown, as on the map. Image layers have no effect in 3D.
+- **⛏️ Height**: the **⛏️** button in the ⚙️ tile (it shows the current height) opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m) steps. It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
+- **Moving**: on a phone, a **🕹️ joystick**: put your thumb on the left half of the screen and it appears under it; slide up to move forward, down to move back, sideways to sidestep, further to go faster; held at the edge for more than half a second, you **run**. Dragging on the right half turns and looks up. On a computer: hold the ▲ ▼ ↶ ↷ ◀ ▶ pad, arrow keys or WASD, or drag on the scene; **faster**: hold Shift, or keep ▲ pressed for more than half a second. Prefer the pad on a phone: ⚙️ Settings › 🎨 Display › **🕹️ Classic pad in the 3D view** (for this device). You bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures), with the width of a body. In all three modes, **backfill**, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber; if you start inside one of them, you are brought back to its edge and can move on. This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
+- **Route guidance**: the route is drawn on the ground in **blue dashes edged in dark**, as on the map, with a **post** at each stop and a **🏁** sign at the end, level by level; where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same; the view redraws it as soon as it changes (drawn from 🚨 during the 3D view included). A **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"), and **golden chevrons** on the ground show the way to the next manoeuvre. In **follow** mode it is your tracker's instruction; in **free** mode, a **preview** worked out from where you are in 3D (real guidance still follows the tracker). No voice announcements.
+- **⚪ Circles at intersections**: if the option is ticked for this map (⚙️ Settings › 🎨 Display), the map's circles are laid on the ground in 3D too, in their colour, on the level shown.
+- **Touching a point's sign** opens **its card**, the same as on the map (📍 I am here, 🧭 Go there, ➕ Route, favourite, photos), over the view; ✕ or Esc closes it. Editing, moving or deleting the point is done on the map. The card of a way between levels also offers **▼ Go down** / **▲ Go up** to each of its levels, from wherever you are.
+- **🧭 Go there from the 3D view**: in follow mode the route starts from the tracker; in free mode it starts from **where you are in 3D**, level included, without moving the tracker. Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there). **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level). **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are; in follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
+- **🪜 Change level**: within 2 m of a way between levels (stairs, shaft) or of the end of a junction trace, named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level (a small list if it serves more than two); the point's card does the same. You go down (or up) the way, the screen goes black for a moment, then you arrive through the ceiling (or floor) of the other level, and **"Level -1"** shows for 2 seconds. You arrive at the validated link of that level if there is one; if it falls beside the tunnel or inside an obstacle, you are brought back into the tunnel (6 m at most), facing the rest of your route if it goes there, otherwise facing along the tunnel, towards its longer side. You are never stuck: if no step is possible, a step that brings you closer to the tunnel always goes through. In follow mode, the level is the tracker's: when it changes, the view also goes black for a moment and shows the new level.
+- **🧭 Follow / 🕹️ Free**: in **follow** mode (chosen on opening when the tracker runs), the view follows your position and **turns with your phone**, like 🗺️ Oriented map; moving the joystick or touching a move button switches to **free** (dragging on the scene only tilts your gaze up / down), and the button in the ⚙️ tile, which shows the current mode, switches between the two (a 🧭 / 🕹️ badge at the top left always shows it). Tracker stopped: 🧭 is greyed and says why. When you stand still, the view does not redraw (battery), even if the compass shakes a little.
+- **🦅 Bird's-eye view** (⚙️ tile, or V): you see yourself from above. Its tilt goes from almost vertical to low: drag up or down with two fingers, mouse wheel or PageUp / PageDown, or the small ▲ ▼ buttons on the right; it is kept while the view stays open.
+- **Compass** (bottom left; the ⚙️ tile hides or shows it, for this device): its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
+- **🚨 Emergency exit**: the same button as at the top of the map; its window opens over the view. If your position is not known, the view closes so you can point to it on the map. App messages appear below the row of buttons.
+- **At the top**, a single row: **✕**, **≡** right next to it, **🚨**, **❓** (help for the 3D view) and **⚙️**. **⚙️** opens a small **Settings** tile below it: 🧭 Follow / 🕹️ Free, 🦅 Bird's-eye view, ⛏️ Height, the rendering, 🧱 Textures, the Compass and 🪧 Guidance, each written out; it closes with ⚙️, Esc or a touch elsewhere. **🧱 Textures** (on by default) dresses tunnel walls in dressed stone (courses of blocks, irregular joints, relief under the lamp), pillars and working faces in raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints) and walls in concrete block, at their real size (a block is 50 cm long, whatever the wall; the wall stone keeps its size whatever the tunnel height); a custom structure gets the rock. **Backfill** becomes packed earth and limestone sand, mixed with angular limestone stones and blocks half buried; a **collapse** (sinkhole) becomes rubble of large broken, cracked blocks with little earth; both at their real size and without changing shape (a custom zone keeps its colour). Off, every structure and every zone takes back its legend colour, yours included, and tunnel walls go back to limestone blocks; the setting is kept on this device. With **🪧 Guidance** off, the 3D view hides the instruction banner and the chevrons on the ground (the route, its stops and 🏁 stay drawn); an emergency exit is always shown; the map's guidance is not affected; the setting is kept on this device. A golden dot on ⚙️ means a setting is not the default one (free mode, bird's-eye view, rendering other than Mixed, textures off, compass hidden, guidance off).
+- **The tracker does not move** while you move in 3D, nor does the level shown on the map. When you close it (✕, top right, or Esc — which first closes an open setting, card or window), if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included; **No** leaves the tracker as it was.
+- **On leaving**, the map goes where you were in 3D: centred on your position, on the 3D level, whatever your answer.
+- **Greyed button**: no map open, or a map without a scale (⚙️ Settings → 📐 Map: scale & geolocation); touching it says why. A browser that cannot display 3D says so when you open it.
+
+> ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.
 
 ### ⚙️ Tracker settings
 
@@ -567,7 +604,7 @@ The foldable **🚫 Avoidance preferences (optional)** section of the Route wind
 
 If no other path exists, the route goes through anyway and says so: **⚠️ Cannot avoid: …**. Your preferences are remembered per map; **🗑️ Reset all avoidances** clears them.
 
-**Inaccessible zones ⛔**, on the other hand, are **never crossed**, unless you untick **Respect impassable areas** (useful on an incomplete survey). I'm lost and Rescue mode always respect them.
+**Inaccessible zones ⛔**, on the other hand, are **never crossed**, unless you untick **Respect impassable areas and walls (line)** (useful on an incomplete survey). **Walls (line)** 🟦 follow the same rule. I'm lost and Rescue mode always respect them.
 
 ---
 
@@ -698,10 +735,6 @@ In the **🛣️ Paths** group:
 
 Press a type, tap the map point by point, then press the type again (or **✅ Confirm the current path**) to finish.
 
-### 📏 Total length of paths
-
-**📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it. This total stays on screen: it is not part of the image export.
-
 ---
 
 ## ⬛ Draw zones
@@ -721,25 +754,28 @@ Press a type, place at least 3 points (dotted), then close the zone: **tap the f
 
 A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its own level**, and still counts even if you hide the zones layer.
 
-The **Respect impassable areas** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
+The **Respect impassable areas and walls (line)** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
 
 ---
 
 ## 🏛️ Structures (pillars, walls, quarry faces)
 
-For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. They have no effect on the route.
+For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. Only one matters for the route: the **wall (line)**, which cuts it like a ⛔ inaccessible zone; the others have no effect on the route. The 🧭 tracker, however, does not pass through any pillar, wall or quarry face when it moves off the tracks: a step that would cross one is ignored. This applies to the structures on its level, even hidden ones.
 
 | Type | Shape | Colour |
 |---|---|---|
 | 🟡 **1st-mass pillar** | closed surface | yellow |
 | 🟠 **2nd-mass pillar** | closed surface | orange |
 | 🔵 **Wall** (dry stone, masonry) | closed surface | blue |
+| 🟦 **Wall (line)** — a wall surveyed as a stroke, often from a GIS import | line | blue stroke |
 | 🟨 **1st-mass quarry face** | line | yellow stroke |
 | 🟧 **2nd-mass quarry face** | line | orange stroke |
 
-Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face or a wall (line) (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **one level below the active level**; the others take the active level.
+
+A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 
 ---
 
@@ -785,7 +821,7 @@ A tap on a **marker** shows its name, type, note and these buttons:
 | Button | What it's for |
 |---|---|
 | **📍 I am here** | Recalibrates tracking on this point and **confirms your position**: 🚨 Emergency exit and 🧭 Go there then start from here |
-| **🧭 Go there** | Calculates a route from your position to this point |
+| **🧭 Go there** | Calculates a route from your position to this point. Tracking stopped: **Where are you starting from?** — **My last position** (N min ago), **Set my position** on the map, or Cancel |
 | **➕ Route** | Adds the point as a stop on a route |
 | **☆ Favorite** | Adds or removes the point from ⭐ Favorites |
 | **🔊** | Reads the note aloud |
@@ -801,6 +837,8 @@ Typical case: on an imported survey, a **quarry face** is actually a **gallery**
 
 Only targets of the **same shape** are offered: a **line** (path, quarry face) becomes another line, a **closed surface** (zone, pillar, wall) another surface. The object keeps its geometry, its level and its note.
 
+**Closed line**: when a GIS file is imported, a pillar or a zone often arrives as a line, sometimes without returning to its first point (a square pillar = 4 points, 3 sides). When the two ends of a line almost meet (gap smaller than 1.5 times the longest side) and the shape is compact (not the branching outline of a gallery network, which would fill the galleries), the window also offers zones and pillars / walls. The shape closes by itself: no point is added, only a last point that repeats the first one is removed. A very tight U-shaped gallery can be taken for a closed line: check before confirming, ⏪ undoes.
+
 ### 🎯 Convert several objects at once
 
 In the conversion window, **🎯 Select several objects to convert** shows a banner:
@@ -810,6 +848,26 @@ In the conversion window, **🎯 Select several objects to convert** shows a ban
 - **✅ Convert (N)** opens the type choice for the whole batch; **Cancel** gives up.
 
 The batch does not mix lines and closed surfaces (the banner refuses and explains why), but it can mix families: quarry faces and paths, all lines, become galleries together. Objects already of the right type are left as they are, and the final message counts them. A single `Ctrl+Z` undoes the whole batch.
+
+**Closed outlines only**: this box, in the batch window, keeps only the closed lines of the selection ("4 of 6") and then offers zones and pillars. When you choose the type, the app tells how many objects will change and how many stay as they are; a single `Ctrl+Z` undoes everything.
+
+**Join lines that touch**: an imported pillar sometimes arrives as 2 to 4 lines whose ends almost touch. This box, in the same window, makes them ONE object (zone or pillar) when together they form a loop on the same level; no point is added and a branch or a T is never joined. The app tells how many objects it will create and how many lines it uses; a single `Ctrl+Z` brings back the original lines. A line of 2 segments (a V, an L) or a line whose two ends both touch other lines (a piece of a pillar) is never closed on its own: it only goes with this joining.
+
+**Closed outlines of a data layer**: first switch the layer to **🔄 Edit** (≡ Filters, layer's row); its objects then have a bubble and convert like yours, one by one or as a batch with **Closed outlines only**.
+
+### ✏️ Select by area, 🗑️ delete as a batch
+
+The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector. You can also get there without going through an object: in 🛣️ Paths, ⬛ Zones or 🏛️ Structures, **🧹 Erase → ✏️ Erase by area** (or **🎯 Select** then **✏️ By area** in the bottom banner): drawing the area starts right away, and the confirmation only has the group's family ticked in advance (the others are still offered, unticked).
+
+- **✏️ Select by area**: tap the corners of the area on the map (like a ♦️ Surface measure; **↩️ Last corner** fixes a missed tap), then **✅ Use this area**. Your current ♦️ measure is not lost: it comes back as it was.
+- Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **displayed level**. An object straddling the edge is not taken, and nothing is ever cut.
+- **Points** join the selection too (blue dotted circle). Tap an object again to remove it; you can draw several areas.
+- **🗑️ Delete (N)** opens a confirmation with one checkbox per family (📍 Points, 〰️ Paths, 🟦 Areas, 🧱 Structures) and their count: untick a family to keep it.
+- The window also tells you about: the points' **photos** (they are not erased, they become “without a point” in 🧰 Tools > 📸 My photos), the **data layer objects** seen in the area (never deleted: switch the layer to **🔄 Edit** first), and **portal points** (link to another map), always kept.
+- Never taken: the computed route, links between levels and measurements.
+- **A single ⏪** brings back everything that was deleted. On a connected installation, the deletion goes to the team like a one-by-one deletion; the installation may also **refuse** it before the confirmation (for example too many objects of other members without the right to manage the map): a message says so and nothing is deleted.
+
+**✅ Convert (N)** only counts objects of the same shape as the first one (lines or surfaces): an area that also took points or surfaces leaves them out of the conversion.
 
 ---
 
@@ -843,6 +901,22 @@ The two measurements coexist: switching from one to the other does not erase the
 
 **❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ♦️** or **Erase everything (📐 + ♦️)**.
 
+### 📏 Total length of paths
+
+In the **📐 Measurement** group, **📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it. This total stays on screen: it is not part of the image export.
+
+### ⛏️ Mined volume (extraction)
+
+In the **📐 Measurement** group, **⛏️ Mined volume** works out what was extracted from a sector. First draw the sector with **♦️ Area** along the working faces, then press ⛏️ (without an area, a message reminds you). The window gives:
+
+- the **sector area**;
+- the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
+- the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
+- the **mined volume**: mined area × **average gallery height**, typed in the window (2 m by default, remembered for this plan, recalculated at once);
+- the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
+
+On a multi-level plan, only the **active level** counts, and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
+
 ---
 
 ## 🏗️ Multi-level mode (multi-storey quarries)
@@ -856,7 +930,7 @@ Numbering: **0** = reference level, **1, 2…** above, **−1, −2…** below.
 A **yellow pill** under the zoom buttons shows the **active level**. A tap opens the **🏗️ Levels** modal:
 
 - **🎯 Active level (for drawing)** — everything you draw takes this level. **[ − ]** and **[ + ]** add a level below or above. Changing the active level **cancels the path in progress** and only shows that level.
-- **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. The **🖼️ Show the base plan** box follows level 0 until you touch it; once ticked or unticked by hand, your choice wins (background kept under another storey, or removed even with 0 shown) and **Show all** sets it back to automatic (choice saved with the map's session; on a single-level map, it sits in **Image layers**). A junction stays visible if either of its two levels is.
+- **👁️ Visible levels (filter)** — tick the levels to show (**All** / **Active only**). Unticking **0** also hides the map's main image, to look at one storey alone. The **🖼️ Show the base plan** box follows level 0 until you touch it; once ticked or unticked by hand, your choice wins (background kept under another storey, or removed even with 0 shown) and **Show all** sets it back to automatic (choice saved with the map's session; the same box also sits at the top of **Image layers**, its only place on a single-level map). A junction stays visible if either of its two levels is.
 
 If the map contains elements on other levels, the list extends by itself. The same settings exist in ≡ **Filters**. For image export, **🎨 Advanced → 🏗️ Levels to export** chooses the levels independently of what is displayed.
 
@@ -1044,7 +1118,7 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 - **Format**: A0 to A4, portrait or landscape (A4 landscape by default).
 - **Content**: your annotations, the map image and its layers, the data layers, a header (title and map information).
 - **Quality**: Standard ×1 (A3/A4), High definition ×2 (A0/A1, heavier file), Draft ×0.5. A0/A1 at ×2 can take 30 to 60 seconds on mobile. If the image is larger than the device can produce, the resolution is reduced and the app tells you which one you get.
-- **🗺️ Legend** placed in a corner (bottom-left by default), in three sizes and four styles: **Pro (white background)** for printing (default), Dark opaque, Dark semi-transparent, Subtle watermark. It only lists what actually appears on the exported map.
+- **🗺️ Legend** placed in a corner (bottom-left by default), in three sizes and four styles: **Pro (white background)** for printing (default), Dark opaque, Dark semi-transparent, Subtle watermark. Its size follows the paper, not the map: text of about 6 pt on A4 (Compact), a little larger on A3 to A0, and the legend arranges itself in 1 to 4 columns to fit its corner (at most 30% of the map's width and 40% of its height in Compact); on a very busy map printed small on the page, it keeps text of at least 5 pt and may then exceed these limits. Its icons are those of the exported map; paths, zones and structures show all their types.
 
 The PDF carries the line “Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr” and is named `<map>_<date>.pdf`.
 
@@ -1187,7 +1261,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
   - **🧭 Smart navigation** *(this map)*: see “🔭 Going further”.
-- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands; available in French only: the button only appears when the app is in French. An option your browser does not support stays visible, greyed out, with the reason.
+- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🕹️ Classic pad in the 3D view** *(this device only)*: on a phone, the ▲ ▼ ◀ ▶ ↶ ↷ buttons instead of the joystick; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands; available in French only: the button only appears when the app is in French. An option your browser does not support stays visible, greyed out, with the reason.
 - **🚀 Performance** *(this map)* — **🚀 ULTRA mode** for large maps that crash the phone (see “🔭 Going further”); on a multi-level map, **🏗️ Show every level at launch**.
 - **🧩 Optional features** — the same boxes as in ⚙️ Configuration (options, incognito mode). Privacy is set in ⚙️ Configuration on the home screen.
 - **🛠️ System & maintenance** — the map's **performance mode**, read-only.

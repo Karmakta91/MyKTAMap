@@ -573,19 +573,9 @@ function _ouvrirReadmeModal(html, opts) {
       </div>
       <div class="kta-readme-modal-footer">
         <span class="kta-readme-modal-by">Développé par <img src="icon/karma.png" alt="KARMA"></span>
-        <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer de la doc nos
-             nouvelles citations") : élargi pour citer toutes les
-             dépendances/algos majeurs, en cohérence avec le splash et
-             le footer du home.
-             🆕 v1.40.29 — Rétabli 📤 jsPDF (oublié historiquement) + ajout
-             🌍 OSM. Cohérence stricte avec splash + loader HOME.
-             🆕 v1.43.17 — Ajout 📸 html2canvas (utilisé depuis v1.42.5 pour
-             la capture du rendu Leaflet OSM dans le PDF Briefing pompiers
-             du Mode Secours). Cohérence stricte avec splash + loader HOME.
-             🆕 v1.43.18 — &amp;nbsp; entre emoji et nom pour empêcher le wrap
-             de couper une paire emoji-texte (cas du Home loader où
-             le 📸 et html2canvas se retrouvaient sur des lignes différentes). -->
-        <span>— 🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
+        <!-- Mêmes crédits que le splash et le pied de l'accueil. &amp;nbsp; entre emoji et nom : la paire ne
+             se coupe jamais. -->
+        <span>— 🍃&nbsp;Leaflet · 🧊&nbsp;three.js · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
       </div>
     </div>
   `;
@@ -697,7 +687,8 @@ const AIDE_PAR_MODALE = {
   "kta-convert-modal":        "corriger",
   "kta-niv-modal":            "multi-niveau",
   "kta-jct-modal":            "multi-niveau",
-  "kta-depannage-modal":      "depannage"
+  "kta-depannage-modal":      "depannage",
+  "kta-vue3d":                "vue-3d"
 };
 
 function ktaAideContextuelleActive() {
@@ -727,8 +718,9 @@ function _aidePoserBouton(modal) {
   if (!modal || !modal.id) return;
   const slug = AIDE_PAR_MODALE[modal.id];
   if (!slug || !ktaAideContextuelleActive()) return;
-  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix.
-  const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header");
+  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix. Une fenêtre
+  // sans en-tête de modale (vue 3D) marque sa rangée de boutons kta-aide-ctx-entete et sa croix data-aide-croix.
+  const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header, .kta-aide-ctx-entete");
   if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
   const b = document.createElement("button");
   b.type = "button";
@@ -740,7 +732,8 @@ function _aidePoserBouton(modal) {
     e.stopPropagation();
     ktaOuvrirAideSection(slug);
   });
-  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
+  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close, " +
+    "[data-aide-croix]");
   // 🩸 `querySelector` cherche en PROFONDEUR : la croix est parfois imbriquée dans un conteneur d'actions,
   // et insérer dans `head` lève un NotFoundError — depuis un MutationObserver, donc hors de tout try, et la
   // modale reste sans ❓. On insère dans le parent RÉEL de la croix.
@@ -828,7 +821,7 @@ const AIDE_SECTIONS = [
   "astuces", "depannage", "liaisons-inter-plan", "carnet",
   "vue-osm",
   "heatmap", "vibration",
-  "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau"
+  "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau", "vue-3d"
 ];
 
 // Catégories dans l'ordre des chapitres du guide. « Pour aller plus loin » reçoit ce qui est désactivé
@@ -837,7 +830,7 @@ const AIDE_CATEGORIES = [
   { cle: "prise-en-main", slugs: ["aide-doc-legende", "astuces"] },
   { cle: "urgence",       slugs: ["sortie-urgence", "urgence-xl", "je-suis-perdu"] },
   { cle: "carte",         slugs: ["legende", "recherche", "vue-osm", "histoire", "liaisons-inter-plan"] },
-  { cle: "reperer",       slugs: ["menu-tracker", "tracker", "itineraire", "mesure", "multi-niveau"] },
+  { cle: "reperer",       slugs: ["menu-tracker", "tracker", "itineraire", "vue-3d", "mesure", "multi-niveau"] },
   { cle: "annoter",       slugs: ["edition-points", "traces", "zones", "structures", "corriger",
                                   "historique-undo"] },
   { cle: "donnees",       slugs: ["carnet", "stats-session", "favoris", "profil", "enregistrer",

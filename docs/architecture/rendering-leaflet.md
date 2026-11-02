@@ -7,7 +7,7 @@
 
 ### 0. 🎨 Styles des types — source de vérité UNIQUE (v1.76.0)
 
-**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 13 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
+**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 14 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/mur-ligne/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
 
 **API** (globales `window.*`) :
 - `ktaResolveStyle(cat, clé[, {flat:true}])` → objet **NEUF** | `null` (l'appelant garde son repli). Résout aussi les customs `cust-*` via `LegendCustomization` (gabarit par catégorie/géométrie) et applique l'**override de couleur** utilisateur (`LegendCustomization.getColor`, cascade session > plan). `{flat:true}` = contexte qui ne sait pas peindre un `url(#pattern)` SVG (canvas d'export, KMZ, fond OSM) → `inaccessible` retombe sur son aplat `_flatFill`.
@@ -20,6 +20,36 @@
 - ⚠️ Le **KML garde SES largeurs/alphas** (`width` KML ≠ `weight` Leaflet, ajustés à l'échelle GPS) — seules les couleurs viennent du canon. Figé par `scripts/check-kml-styles.js`.
 - Toute **mutation qui change un rendu** (setColor, resetSession, remove/updateCustomEntry) doit repeindre : `renderRoads/Zones/Structures` + `_ktaRestyleDataLayers` (calques de données — couleurs seules, les opacités restent au filtre multi-niveau). Vérifié par `check-api-surface.js`.
 - Chargé tôt dans `index.html` (avant `utils.js`) ; aucune dépendance au chargement (LegendCustomization interrogé à l'appel).
+
+### 0.1 🧱 Ordre de dessin des structures — un mur sous les piliers et fronts de son niveau (décision produit)
+
+**Règle** : un mur (`mur` polygone, `mur-ligne` trait) est toujours dessiné **sous** les piliers (`pilier-1/2`) et fronts
+(`front-1/2`) de **son** niveau, qu'il vienne de la session ou d'un calque, quel que soit l'ordre de chargement des
+calques. Hors multi-niveau, tout est un seul niveau. Un **type personnalisé** n'a pas de rôle (sa légende ne dit pas
+qu'il est un mur) : il garde sa place. Un mur d'un **autre** niveau n'est pas concerné (l'ordre reste celui d'arrivée).
+
+**Mécanisme** (`js/structures.js`) :
+- `ktaMursSousPiliers(liste, structDe[, parNiveau])` : fonction pure sur une liste de dessin (arrière → avant). Un mur
+  placé APRÈS le premier pilier/front de son niveau passe **juste avant** lui ; rien d'autre ne bouge. Rend la même
+  liste si rien ne change. Partagée par la carte et tous les exports.
+- **Carte** : la carte est en canvas, un **seul** renderer (`map._renderer`, `map.js`) ; l'ordre de dessin est sa liste
+  chaînée (`_drawFirst` … `_drawLast`), où chaque ajout va au bout. Les couches de structure (session :
+  `renderStructures` ; calques : `utils.js > ajouterPointsDepuisJSON`) portent `options.ktaStructType` /
+  `ktaStructNiveau`, posés **à la création** ; `layeradd` (branché par `brancherLargeurFronts`, drapeau sur la map)
+  prévoit une passe `ktaOrdonnerMursCarte` en micro-tâche (après les ajouts synchrones, avant le prochain dessin), qui
+  relie la liste dans le nouvel ordre et repeint tout le canvas. Couvre le 1er rendu, chaque re-rendu de session et la
+  bascule d'un calque (ses couches repartent au bout).
+- **Aucun pane créé** : tout reste dans l'`overlayPane`, donc sous le pane de rotation du mode « plan orienté ».
+- **Place par rapport aux autres familles** : le minimum. Un mur qui doit descendre se pose juste sous le premier
+  pilier/front de son niveau ; s'il y avait entre les deux des zones ou des tracés (ceux d'un calque chargé entre-temps),
+  le mur passe aussi sous eux. Les murs déjà en place (cas courant : session seule, ou un seul calque, déjà triés
+  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1`) ne bougent pas. Zones, tracés, piliers et fronts ne
+  bougent jamais ; l'itinéraire (renderer à part) et les marqueurs (DOM) ne sont pas touchés.
+- Largeurs au zoom (`majLargeurFronts`, mutation de `options.weight`) et filtre de niveau (opacité des couches de
+  calque, re-rendu de session) ne changent pas l'ordre : ils marchent comme avant.
+- **Vue OSM** (`osmView.js > _renderStructures`) et **aperçu OSM de l'accueil** (`osmHomePreview.js`, structures de
+  tous les calques d'un plan rassemblées, toujours par niveau) appliquent la même fonction. Exports : `exports.md` §45.
+- Preuve : `scripts/smoke/checkup-mur-dessous.js` (index de dessin + pixel au croisement, carte et exports).
 
 ---
 
@@ -116,13 +146,15 @@ pas). Le splash n'affiche jamais « -pro » : le suffixe et sa révélation vive
 
 ---
 
-### 19. Calque "Mes annotations" (depuis 09/05/2026)
+### 19. Calque « Annotations du plan » (`editor`)
 
-Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes annotations"**) regroupe les annotations utilisateur de la session :
+Le calque `editor` regroupe la **session du plan** — sur une installation partagée, les objets de toute l'équipe, pas seulement les siens (d'où le nom, jamais « Mes … ») :
 - ✏️ Points ajoutés via l'éditeur
 - ⬛ Zones de session (Eau/Remblais/Effondrement)
 - 🛣️ Roads de session (Principal/Secondaire/Chemin)
-- ⭕ Cercles d'intersection des roads
+- ⭕ Cercles d'intersection des roads (⚠️ contrat : `road.js > _renderIntersections` mémorise la liste dessinée,
+  `[{ point, color, level }]`, vide quand l'option du plan est coupée ; `window.getRoadIntersections()` en rend une
+  copie et `kta:intersectionsChange` part quand elle change. Lue par la vue 3D, qui ne recalcule rien)
 
 **Exclus du calque** (rendus directement sur `window.map` pour cycle de vie propre) :
 - 🗺️ Itinéraire (type `"itinerary"`) — modale Itinéraire
@@ -141,7 +173,7 @@ Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes
 >
 > **Pour vérifier** : en console, `window.getRoads()` puis contrôler `window.layerEditor.hasLayer(<layer>)` sur les tracés récalcitrants. Si `false` alors qu'ils sont visibles → hypothèse confirmée, et le fix est de re-parenter au lieu de chercher côté Leaflet.
 
-**Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
+**Libellé** : `map.js > window.ktaLibelleCalque(lc)`, seule source pour la légende Leaflet, le panneau de filtres, l'export image et l'export PDF. Pour `editor`, toujours la clé traduite `filter.dataLayer.editor` : le libellé que le Générateur grave dans le plan-config (langue de l'auteur, « Mes annotations » ou « Ajouts » sur les anciens plans) est ignoré, aucun écran ne permet de le changer.
 
 🆕 **Depuis v1.30.0 (P5 viewport culling)** : sur les plans denses, les markers POI session +
 data layers ne sont plus tous `.addTo(map)` en permanence — seuls ceux dans le viewport
@@ -334,7 +366,7 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 > KARMA « logique de superposition : un fond noir ou un plan au-dessus fait perdre le sens ». Reco 1:a 2:a 3:a. La chaîne des calques image était déjà saine (embed VERBATIM au générateur — octets bruts, aucun ré-encodage — et rendu `L.imageOverlay` direct → alpha préservé). Les 2 trous étaient ailleurs :
 
 **A — Le plan principal est filtrable comme niveau 0** (`tiling.js > _applyLevelFilterToBasePlan`, appelé par le dispatcher `appliquerFiltreNiveau` d'interfaceConfig) :
-- Règle unique `tiling.js > ktaPlanDeBaseVisible` (lue aussi par la case de ≡ Filtres) : `_ktaRuntimeFilters.planDeBase` vaut `true` / `false` → choix de l'utilisateur, qui l'emporte sur les niveaux ; `null` (défaut) → automatique : visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Case « 🖼️ Afficher le plan de base », toujours présente : section Niveaux d'un plan multi-niveau, en tête de « Calques image » sinon ; cochée = fond réellement affiché, même en automatique. « Tout afficher » remet `null`. Persistée dans `runtimeFilters` de la session du plan (ancien `garderFond: true` relu comme `true`), remise à `null` avant toute restauration (`sessionPersist.js > onPlanLoaded`) pour qu'un plan sans session ne s'ouvre pas sans fond. Pastille ≡ : un fond masqué à la main compte comme un filtre actif ; masqué en automatique, il est déjà compté par les niveaux. Masquage NET (2:a). Les exports ne lisent pas cet état : ils ont leur propre choix de fond (`exporter.js`).
+- Règle unique `tiling.js > ktaPlanDeBaseVisible` (lue aussi par la case de ≡ Filtres) : `_ktaRuntimeFilters.planDeBase` vaut `true` / `false` → choix de l'utilisateur, qui l'emporte sur les niveaux ; `null` (défaut) → automatique : visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Case « 🖼️ Afficher le plan de base », toujours présente en tête de « Calques image », et en double dans la section Niveaux d'un plan multi-niveau (`filterPanel.js > _majCasePlanDeBase` recale les deux après chaque changement) ; cochée = fond réellement affiché, même en automatique. « Tout afficher » remet `null`. Persistée dans `runtimeFilters` de la session du plan (ancien `garderFond: true` relu comme `true`), remise à `null` avant toute restauration (`sessionPersist.js > onPlanLoaded`) pour qu'un plan sans session ne s'ouvre pas sans fond. Pastille ≡ : un fond masqué à la main compte comme un filtre actif ; masqué en automatique, il est déjà compté par les niveaux. Masquage NET (2:a). Les exports ne lisent pas cet état : ils ont leur propre choix de fond (`exporter.js`).
 - Couvre les 3 modes de rendu du base : **direct** (`window._ktaBaseLayers` — nouveau registre, les 2 sites `L.imageOverlay(url, bounds).addTo(map)` ne gardaient AUCUNE référence) · **tuiles runtime V1** (`window._baseTiles`) · **tuiles V2** (`_tilingV2State.activeOverlays` + garde `window._ktaBaseHidden` dans `_renderNiveau` — les tuiles d'un swap de zoom restent hors map mais TRACÉES dans activeOverlays pour le ré-affichage).
 - ⚠️ Tout NOUVEAU chemin de rendu du plan principal doit s'enregistrer dans un de ces 3 conteneurs, sinon il échappera au filtre.
 

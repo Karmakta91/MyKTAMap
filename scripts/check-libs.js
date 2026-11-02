@@ -18,14 +18,20 @@ const t = (n, c, info) => {
   if (!c) ko++;
 };
 
-// paquet npm → fichiers embarqués + motif de version dans leur en-tête (1er groupe = version)
+// paquet npm → fichiers embarqués + motif de version dans leur en-tête (1er groupe = version).
+// `accord(trouve, declaree)` : comparaison propre au paquet quand l'en-tête ne porte pas la version complète.
+// 🩸 three.js n'écrit que sa révision (« 186 » pour 0.186.x) : le correctif se vérifie octet par octet au paquet.
 const LIBS = {
   leaflet:     { fichiers: ["lib/leaflet/leaflet.js", "lib/leaflet/leaflet-src.js"], motif: /Leaflet (\d+\.\d+\.\d+)/ },
   jszip:       { fichiers: ["lib/jszip.min.js"],          motif: /JSZip v(\d+\.\d+\.\d+)/ },
   jspdf:       { fichiers: ["lib/jspdf.umd.min.js"],      motif: /jsPDF[\s\S]{0,200}?Version (\d+\.\d+\.\d+)/ },
-  html2canvas: { fichiers: ["lib/html2canvas.min.js"],    motif: /html2canvas (\d+\.\d+\.\d+)/ }
+  html2canvas: { fichiers: ["lib/html2canvas.min.js"],    motif: /html2canvas (\d+\.\d+\.\d+)/ },
+  three:       { fichiers: ["lib/three/three.core.js"],   motif: /const REVISION = '(\d+)'/,
+                 accord: (trouve, declaree) => /^0\.\d+\.\d+$/.test(declaree || "") && declaree.split(".")[1] === trouve }
 };
-const LIGNE = { leaflet: "**Leaflet**", jszip: "**JSZip**", jspdf: "**jsPDF**", html2canvas: "**html2canvas**" };
+const LIGNE = {
+  leaflet: "**Leaflet**", jszip: "**JSZip**", jspdf: "**jsPDF**", html2canvas: "**html2canvas**", three: "**three.js**"
+};
 
 let manifeste = {};
 try { manifeste = JSON.parse(fs.readFileSync("lib/package.json", "utf8")).dependencies || {}; }
@@ -42,7 +48,8 @@ for (const [nom, def] of Object.entries(LIBS)) {
     let tete = "";
     try { tete = fs.readFileSync(f, "utf8").slice(0, 2000); } catch { /* absent */ }
     const m = def.motif.exec(tete);
-    t(nom + " : " + f + " embarque " + declaree, !!m && m[1] === declaree, m ? "en-tête " + m[1] : "en-tête illisible");
+    const accord = def.accord ? def.accord : (trouve, decl) => trouve === decl;
+    t(nom + " : " + f + " embarque " + declaree, !!m && accord(m[1], declaree), m ? "en-tête " + m[1] : "en-tête illisible");
   }
   const ligne = table.find((l) => l.startsWith("| " + LIGNE[nom] + " "));
   t(nom + " : lib/VERSIONS.md dit " + declaree, !!ligne && ligne.includes("**" + declaree + "**"),

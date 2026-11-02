@@ -579,7 +579,7 @@ Quand on ajoute un nouveau type d'annotation dessinable (ex: 📝 notes textuell
 
 ---
 
-### 49. V2.2 — Stats session enrichies + ⬛ Mesure de surface (depuis v1.12.0)
+### 49. Stats de session et mesures (distance, surface, volume exploité)
 
 #### 49.1 Stats agrégées
 
@@ -608,17 +608,38 @@ function polygonAreaM2(points) {
 }
 ```
 
-#### 49.3 Mode mesure de surface
+#### 49.3 Mesure de distance et de surface (`js/measure.js`)
 
-Refonte `js/measure.js` complète :
-- 2 layers Leaflet séparés : `polylineMesure` (mode distance) + `polygonMesure` (mode surface)
-- `_refreshMesureLayer()` : switch les layers selon `_mode`
-- `_afficherMesureValeur()` : label adaptatif `📐 Distance: X m` ou `⬛ Surface: X m²`
-- API publique :
-  - `window.setMeasureMode("distance"|"surface")` → switch mode + clear points + redraw
-  - `window.getMeasureMode()` → mode courant
-  - `window.getMeasureValue()` → valeur formatée
-  - `window.setMeasurePoints(pts)` → restore (utilisé par SessionPersist)
+- Deux mesures **indépendantes et simultanées** : `_pointsDistance` + `polylineMesure`, `_pointsSurface` +
+  `polygonMesure` ; `_activeMode` (« distance » | « surface ») décide où va le prochain clic.
+- `_afficherMesureValeur()` : libellé bas-gauche sur une ou deux lignes (`📐 Distance`, `♦️ Surface`), la ligne du
+  mode actif soulignée.
+- API : `setMeasureMode` / `getMeasureMode` (sans effacer de points), `get/setMeasurePoints` (DISTANCE, format
+  historique de SessionPersist), `get/setMeasurePointsSurface`, `resetMesure`, `resetMesureMode`,
+  `removeLastMeasurePoint`.
+
+#### 49.3 bis ⛏️ Volume exploité (`js/volumeExploite.js`)
+
+Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#kta-volume-modal`, rien d'exporté.
+- **Secteur** = la surface ♦️ en cours (`getMeasurePointsSurface()`, ≥ 3 points), sinon `ktaAlerte` qui dit de la
+  tracer. **Échelle** absente (`APP_CONFIG.scale` non > 0) : `ktaAlerte`, aucun chiffre.
+- **Retranchés** : toutes les structures dont le type n'est PAS une ligne (`isStructurePolylineType` : piliers, mur
+  polygone, types perso polygone ; jamais fronts ni mur en ligne), session (`getStructures`) + calques embarqués
+  (`_ktaDataStructurePolygons`, visibles ou non). **Remblais** : zones `remblais`, session + `_ktaDataPolygons`.
+- **Niveau** : plan à étages → `APP_CONFIG.activeLevel` seul (sans `level` = 0), écrit dans la fenêtre ; plan à un
+  niveau → tout compte.
+- **Chiffres** : secteur, piliers (union, coupée au secteur) et leur nombre (part non nulle dans le secteur),
+  exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
+  (secteur − piliers) couverte par un remblai, vide actuel = exploité − remblais. Surfaces par `formatSurface`.
+- **Hauteur moyenne** : 2 m par défaut, par plan dans `myktamap_plan_prefs_<planId>.hauteurGalerieM`
+  (`config.js > get/setPlanHauteurGalerie`) ; recalcul des volumes à chaque frappe, seule une valeur > 0 est retenue.
+- **Géométrie** (`calculerAires`, pure) : découpe en **bandes verticales** aux x de tous les sommets et de tous les
+  croisements d'arêtes. Dans une bande, la longueur de la coupe verticale de n'importe quelle combinaison booléenne
+  (secteur ∩ ∪piliers, (secteur ∩ ∪remblais) − ∪piliers) est linéaire en x, donc aire = largeur × longueur au
+  milieu, **exacte** aux arrondis du double près. Secteur concave, piliers qui se chevauchent (union, jamais comptés
+  deux fois), bords partagés : sans cas particulier. Remplissage pair-impair pour un contour qui se recoupe. Coût :
+  ~16 ms pour 900 piliers dans un secteur à 400 sommets. Garde-fou : `scripts/check-api-surface.js` (valeurs calculées
+  à la main) ; parcours navigateur : `scripts/smoke/checkup-volume-exploite.js`.
 
 #### 49.4 Persistance SessionPersist
 
@@ -1481,25 +1502,94 @@ l'objet *est*. Mais le Pathfinder ne construit son graphe que sur les `roads`
 n'a **aucun** itinéraire possible. Reclasser un vecteur est ce qui le fait
 exister.
 
-**La règle, énoncée par KARMA** : « un vecteur fermé = zone ou pilier, un vecteur
-non fermé = tracé ou front de taille ».
+**La règle** : « un vecteur fermé = zone ou pilier, un vecteur non fermé = tracé
+ou front de taille ».
 
 ```
 OUVERT  ⇄  tracés (galeries)  ⇄  structures polylignes (fronts)
 FERMÉ   ⇄  zones              ⇄  structures polygones (piliers, murs)
 ```
 
-La traversée ouvert↔fermé est **refusée**. Ce n'est pas une convention : la
-frontière porte les **minimums de points** — un front peut n'avoir que 2 points,
-une zone en exige 3. L'autoriser obligerait à fermer ou ouvrir la géométrie,
-c'est-à-dire à **inventer de la donnée relevée sur le terrain**.
+L'« ouverture » se lit d'abord sur le **type** : les mêmes `points` se peignent en
+trait ou en surface selon lui. `isStructurePolylineType` lit la géométrie déclarée
+dans la légende, types personnalisés compris — ce sont d'ailleurs les seuls d'un
+plan importé, sans eux la modale serait vide.
 
-L'« ouverture » se lit sur le **type**, pas sur la géométrie : les mêmes `points`
-se peignent en trait ou en surface selon lui. `isStructurePolylineType` sait déjà
-lire la géométrie déclarée dans la légende, types personnalisés compris — ce sont
-d'ailleurs les seuls d'un plan importé, sans eux la modale serait vide.
+**Fermé par la géométrie** (`estContourFerme(famille, obj)`). À l'import SIG, les
+contours arrivent souvent en lignes, sans répéter le premier point : un pilier carré
+= 4 points, 3 côtés. Une ligne (tracé ou front ; jamais une jonction ni un
+itinéraire) d'au moins 3 points dont l'écart premier → dernier point est
+**< 1,5 × son plus grand côté existant**, et dont le polygone refermé est **compact**
+(4πA/P² ≥ 0,2), est un *contour fermé* : sa fiche propose aussi les zones et les
+structures polygones (décision produit, seuils mesurés sur un relevé SIG réel). Le
+plus grand côté et pas le côté moyen : un pilier allongé livré sans son grand côté
+passe. La compacité écarte le contour ramifié d'un réseau de galeries et les
+crochets, qui se refermeraient aussi mais rempliraient les galeries ; un pilier
+jusqu'à ~10:1 passe.
 
-**Conservés** : `points`, `level`, `description`. **Retirés** : `fromLevel` /
+- 🩸 **Au moins 3 segments** (4 points), sauf si le dernier point répète le premier
+  (3 côtés après son retrait) : une ligne de 2 segments (un V, un L) passe les deux
+  seuils mais deviendrait un triangle ; sur un relevé réel, c'est un morceau de pilier.
+- 🩸 **Morceau de pilier** (`_contourSeul`) : une ligne qui se referme mais dont les
+  **deux** bouts touchent chacun (≤ 5 px, même niveau) le bout d'une AUTRE ligne
+  ouverte de la **session** (pas forcément la même) n'est jamais convertie seule (un
+  « C » refermé par sa voisine). Un seul bout qui touche ne suffit pas : un pilier
+  complet touche souvent un voisin par un coin (décision produit, mesurée sur deux
+  relevés réels : peu de contours ont un seul bout qui touche, c'est en général un
+  pilier entier). Le morceau n'est converti seul
+  ni par sa fiche (qui l'explique), ni en lot, ni par un appel direct. Il ne part
+  que par le recollage, sinon elle reste et la confirmation la compte (`morceaux`).
+  La session entière fait foi, pas la sélection : sinon sélectionner une moitié de
+  pilier la refermerait. Index des bouts par grille (`_indexBouts`), construit une
+  fois par fenêtre ou par lot. `estContourFerme` reste la géométrie seule.
+
+- **Aucun point inventé** : le polygone se referme seul au rendu (dernier → premier).
+  Seul retrait : un dernier point qui répète le premier (écart ≤ 1 % du côté moyen),
+  à condition qu'il reste ≥ 3 points. L'objet d'origine n'est pas muté (historique).
+- **Fermé → ouvert : jamais** (il faudrait couper la géométrie). Ligne non fermée →
+  surface : jamais (il faudrait en inventer le côté).
+- La règle est **revérifiée** par `convertir` et `convertirLot` (`_compatible`) : la
+  modale ne propose que le permis, un appel direct ou un lot mixte ne le force pas
+  (compté en échec).
+- 🩸 **Faux positif connu** : une galerie en U très serrée passe pour fermée. Pas
+  d'autre heuristique : le lot affiche le compte avant de convertir et s'annule en
+  un ⏪.
+
+**Recoller des lignes qui forment une boucle** (`trouverBoucles(items)`,
+`recollerLot(items, familleCible, typeCible)`). À l'import SIG, beaucoup de piliers
+arrivent en 2 à 4 LIGNES dont les bouts se touchent presque, jamais exactement :
+aucune n'est fermée seule. Graphe sur les lignes d'un lot (tracés et fronts, jamais
+jonction ni itinéraire) : les bouts d'un même niveau à **≤ 5 px** (coordonnées image
+du plan, `TOLERANCE_RECOLLAGE`, fixe, décision produit) se regroupent en nœuds
+(union-find sur une grille), chaque ligne est une arête entre ses deux nœuds-bouts.
+Une composante d'au moins 2 arêtes dont tous les nœuds sont de degré 2 (nœuds =
+arêtes) est une **boucle simple** ; elle est retenue si le polygone obtenu est compact
+(même seuil 0,2 qu'`estContourFerme`). Mesuré sur un relevé SIG réel : ~85 % des
+boucles sont faites de 2 lignes, le reste de 3 ou 4 ; 10 px n'en trouvent presque
+pas plus que 5.
+
+- **Géométrie** : parcours depuis la première ligne de la composante (ordre de la
+  sélection), chaque suivante inversée au besoin. Aux jonctions, les deux bouts
+  presque confondus deviennent **un** point, celui de la ligne déjà parcourue ; la
+  jonction de fermeture garde le premier point. Aucun point inventé.
+- **Pas touchés, mais comptés** (`ignorees`) : une branche, un T, une boucle peu
+  compacte. Une ligne n'entre que dans une boucle.
+- **Une ligne qui se referme entre aussi dans le graphe** : si ses deux bouts touchent
+  d'autres lignes c'est un morceau, recollé quand il forme une boucle, laissé sinon
+  (`morceaux`) ; sinon c'est un contour fermé seul, converti seul (`contours`).
+- **L'objet recollé** : champs de la première ligne, type cible, niveau commun, notes
+  distinctes non vides concaténées, **uid neuf** (préfixe de la famille cible). Les
+  lignes d'origine quittent la session : `HistoryManager.record` pose leurs traces de
+  suppression (aucune pour une copie de calque, comme pour toute suppression).
+- **Marque de calque** : gardée si toutes les lignes portent la même `_srcCalque`
+  (« Restaurer » retire alors l'objet recollé et rend les lignes du calque) ;
+  provenances mêlées : l'objet recollé devient un objet ordinaire de la session, une
+  restitution ne le retire pas.
+- **Un geste** : contours fermés seuls et boucles dans le même instantané, une
+  entrée ⏪ qui rend toutes les lignes d'origine. Cible ouverte : rien n'est recollé.
+
+**Conservés** : `points` (moins l'éventuel doublon de fermeture), `level`,
+`description`, `uid`. **Retirés** : `fromLevel` /
 `toLevel` (ils n'ont de sens que pour une jonction et feraient mentir les filtres
 de niveau). **Exclus des cibles** : `jonction` (deux niveaux qu'une conversion ne
 peut pas deviner) et `itinerary` (le trajet calculé, pas une donnée).
@@ -1513,23 +1603,34 @@ rendu complet, ce qui coûte cher sur un relevé à 20 000 objets.
 Undo par `HistoryManager` (snapshot des trois familles avant l'opération).
 
 ⚠️ **Session uniquement.** Un objet de calque de données n'est pas éditable en
-place. Le chemin est « Session → Conversion » pour rapatrier le calque, puis
-ici — c'est la manœuvre que KARMA avait déjà trouvée.
+place : il passe d'abord en session (`js/calqueSession.js`, « 🔄 Modifier » sur la
+ligne du calque) : ses copies ont une fiche, et ses contours fermés se convertissent
+comme les autres, seuls ou en lot avec « seulement les contours fermés ».
 
-**Prouvé** : 30 cas dans `check-api-surface.js`, module réellement chargé en VM.
-Falsifiés — retirer la règle ouvert/fermé fait tomber 2 cas, écrire avant de
-relire en fait tomber 1 (celui de la même famille).
+**Prouvé** : `check-api-surface.js` (module réellement chargé en VM : règle par
+type, contour fermé, doublon retiré, refus fermé → ouvert, lot mixte) et
+`scripts/smoke/checkup-contour-ferme.js` (fiche, lot filtré, ⏪ unique, calque passé en « Modifier »
+puis converti en lot, dans l'app réelle) ; recollage : `check-api-surface.js` (carré en 2 lignes à 3 px,
+pas à 8 px, rectangle en 3 lignes, T, boucle peu compacte, niveaux différents, jonctions fusionnées, marque
+de calque) et `scripts/smoke/checkup-recoller-piliers.js` (sélection multiple, case, compte, ⏪).
 
 ---
 
-### 🎯 Convertir EN LOT — sélection multiple (v1.85.0)
+### 🎯 Sélection multiple — convertir ou supprimer EN LOT
 
-KARMA, 05/09 : « sélectionner N vecteurs et les convertir d'un coup ». `js/selectionMulti.js` arme un mode de désignation
-sur la carte ; `KtaConvertir.convertirLot(items, familleCible, typeCible)` applique le lot.
+`js/selectionMulti.js` arme un mode de désignation sur la carte (clic, « ➕ Tous les \<type\> », zone dessinée) ;
+`KtaConvertir.convertirLot(items, familleCible, typeCible)` convertit le lot, `KtaSelectionZone.supprimerLot` le supprime
+(`js/selectionZone.js`, ci-dessous). On y entre par la fenêtre 🔄 Convertir d'un objet (la « graine », premier
+sélectionné, qui fixe l'ouverture de référence), ou **sans graine** par le bouton **✏️ Par zone** des trois modes
+« supprimer au clic » (`interface.js > _boutonSuppParZone`, bandeaux tracé / zone / structure) : le mode est quitté
+(garde des popups comprise), `SelectionMulti.ouvrirZone({ familles: [famille du groupe] })` ouvre une sélection vide,
+sans ouverture imposée (le clic mêle lignes et surfaces), et lance le tracé de la zone. Sans graine, **✅ Convertir est
+masqué** (aucune fenêtre n'attend le lot) ; la confirmation de 🗑️ n'a d'avance que la famille du groupe cochée, les
+autres restent proposées, décochées.
 
 **🩸 La règle porte sur l'OUVERTURE, pas sur la famille.** Un tracé et un front de taille sont tous deux des **lignes** :
 les mélanger est légitime, et c'est LE cas utile — 40 fronts mal typés qui deviennent des galeries. Ce qu'on refuse, c'est
-de mêler une ligne et une surface fermée : aucune cible commune, on ne referme pas un trait. Resserrer la règle sur la
+de mêler une ligne et une surface fermée : aucune cible commune (une ligne fermée passe par la case « seulement les contours fermés », jamais par la sélection). Resserrer la règle sur la
 famille tuerait la raison d'être de la feature **sans casser un seul test naïf** — d'où l'assertion dédiée.
 
 **Le refus est EXPLIQUÉ.** `_choisir()` rend `{ cible, refus }` : `refus` porte l'objet incompatible visé, pour pouvoir
@@ -1540,6 +1641,19 @@ v1.28.0.
 `convertir()` N fois donnerait N re-rendus complets (`setRoads` reconstruit tout — coûteux à 20 000 objets) et N `Ctrl+Z`
 pour annuler. Les trois listes sont lues **avant** toute écriture, même piège que `convertir()` en v1.82.0. Zéro
 conversion ⇒ aucune écriture et aucune entrée d'historique : il n'y a rien à annuler.
+
+**« Seulement les contours fermés »** : case de la fenêtre d'un lot, visible dès qu'il
+contient une ligne, grisée sans contour fermé, avec le compte (« 4 sur 6 »). Cochée,
+le lot est réduit à ses contours fermés et les cibles fermées apparaissent
+(`listerCiblesLot(items, true)`) ; le choix d'une cible passe par `ktaConfirm`
+(N convertis, les autres intacts) avant `convertirLot` — un instantané, un ⏪.
+
+**« Recoller les lignes qui se touchent (N objets à partir de L lignes) »** : seconde
+case, grisée sans boucle. Cochée, elle inclut les contours fermés seuls (leur case
+est alors cochée et grisée), ne propose que des cibles **fermées**, et `ktaConfirm`
+annonce avant de valider les objets recollés, les lignes utilisées, les contours
+convertis seuls, les lignes qui se touchent sans former de boucle et le reste ;
+puis `recollerLot`. Un objet de calque passe d'abord en « 🔄 Modifier ».
 
 **Cibles du lot = UNION**, jamais intersection. Un type qui est la *source* de l'un peut être la *cible* d'un autre
 (« chemin » reste valable pour des fronts même si un chemin est dans la sélection). Les objets déjà du type choisi sont
@@ -1559,8 +1673,40 @@ qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
 `window.ktaDistPointSegment`) sans rouvrir les quatre : elles servent trois chemins de suppression qui fonctionnent, et on
 ne les touche pas dans une version non déployée. Migration : `docs/IDEES.md`.
 
+**✏️ Sélection par zone** (`js/selectionZone.js`). La zone se trace avec l'outil **♦️ Surface** de `measure.js`, pas un
+outil de dessin à part : `commencer()` met de côté la mesure Surface en cours (points + sous-mode), arme `modeMesure` en
+surface à vide ; le clic carte pose un sommet (le handler de la sélection l'ignore pendant le tracé) ; `terminer()` rend
+le contour et **remet la mesure d'avant** (aussi à l'abandon et à la fermeture du bandeau). `dansZone(poly)` :
+- ⚠️ **entièrement dedans** = tous les sommets (ou le point) dans le polygone (ray-casting `ktaPointInPolygon`, boîte
+  englobante d'abord) ; un objet à cheval n'est ni pris ni coupé (décision produit) ;
+- **niveau actif** seulement (`APP_CONFIG.activeLevel` ; plan à un niveau : tout) ;
+- familles : points de session, tracés, zones, structures ; exclus : `itinerary`, `jonction`, POI jonction
+  (`KtaPoiJonction.estJonction`), `_preview` (la mesure n'est pas un objet) ;
+- objets de **calque** (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons`, `_ktaDataStructurePolygons`) : rendus à
+  part pour être **comptés**, jamais pris ; un calque en « 🔄 Modifier » (`CalqueSession.estRapatrie`) n'est pas compté,
+  ses copies sont en session.
+
+La zone prend tout ce qu'elle contient, lignes et surfaces mêlées, points compris (cercle de surbrillance) : **✅ Convertir
+(N)** ne passe que `_convertibles()` (vecteurs de l'ouverture de la graine), **🗑️ Supprimer (N)** tout le lot. La règle
+d'ouverture reste celle du **clic** ; un point se vise au clic (ajout ou retrait), jamais refusé pour son ouverture.
+
+**🗑️ Suppression en lot** : `confirmerEtSupprimer(items, nCalque, { familles? })` ouvre `ktaConfirm` avec une case par famille et son
+nombre (les cases vivent dans le message, branchées sur la fenêtre montée ; le bouton se recompte), et annonce : niveau,
+photos des points (comptées par `MyKTAMapPhotos.listerPlan`), points **portails** gardés (une liaison inter-plan se purge
+sans retour possible par ⏪), objets de calque ignorés. `supprimerLot({ famille: [obj] })` : 🔒 refusé en lecture seule
+(`ktaEditionRefusee`) ; **un** instantané `captureState()` (quatre familles), listes lues d'un bloc, identité par référence
+puis uid, une écriture par famille touchée, `RoadGraph.invalidate` si tracés, **une** entrée `HistoryManager.record` — qui
+pose les **traces de suppression** par diff des uid (`_tracerDepuis`), exactement comme une suppression unitaire (pas de
+trace pour une copie de calque). Photos : **gardées**, fiche figée (`majFichesPoints`) comme `supprimerPointEditor` ; le ⏪
+rend le point et son uid, donc ses photos. La synchro d'une extension suit par `changementsDepuis(ts).tombstones`.
+🔒 Sur un plan d'extension, la prise neutre **`KtaExtensions.suppressionLot(registreId, [{ famille, uid }])`**
+(`community-server-line.md` §3) est consultée **avant** la fenêtre, avec les objets cochés d'emblée, puis relue au clic si
+les cases ont changé : refus = `ktaAlerte` (message de l'extension, sinon `selm.suppr.refuseExtension`) et rien n'est
+supprimé ; erreur, rejet ou plus de 8 s = refus. Sans extension ou plan local : rien ne change.
+
 **Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
-Leaflet**. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
+Leaflet** ; §8 : `dansZone` (dedans, à cheval, autre niveau, jonction, calque compté ou en Modifier) et `supprimerLot`
+(un instantané, une entrée, une écriture par famille, lecture seule). Parcours réel : `scripts/smoke/checkup-suppr-zone.js`. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
 les assertions déréférençaient `.cible.obj` sans garde (une régression rendant `null` faisait *planter* le script au lieu
 d'échouer lisiblement), et le contrôle `interactive: false` était satisfait par le **commentaire** qui explique la règle.
 

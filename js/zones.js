@@ -314,11 +314,9 @@ function renderZones() {
           if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
             if (String(t).startsWith("cust-")) {
               const e = window.LegendCustomization.findCustomEntry(t);
-              if (e) return "✨ " + e.label;
+              if (e) return e.label;
             }
-            if (_zoneEmojis[t]) {
-              return _zoneEmojis[t] + " " + window.LegendCustomization.getLabel("zones", t);
-            }
+            if (_zoneEmojis[t]) return window.LegendCustomization.getLabel("zones", t);
           }
           const LBL = {
             eau:          "💧 Zone Eau",
@@ -332,9 +330,9 @@ function renderZones() {
           polygon,
           function() { return _zoneRef.description; },
           function(v) { _zoneRef.description = v; if (window.KtaUid) window.KtaUid.touch(_zoneRef); },
-          _zonePopupTitle(zone.type),
+          function() { return _zonePopupTitle(_zoneRef.type); },
           // Reclassement depuis la popup (convertirObjet.js).
-          { convertir: { famille: "zones", obj: _zoneRef } }
+          { convertir: { famille: "zones", obj: _zoneRef }, pastille: { cat: "zones", cle: zone.type } }
         );
       }
     }

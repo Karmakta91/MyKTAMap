@@ -25,8 +25,8 @@ ctxMP.window = ctxMP;
 vm.createContext(ctxMP);
 vm.runInContext(lire("js/majPlan.js"), ctxMP, { filename: "majPlan.js" });
 const I = ctxMP.MajPlan && ctxMP.MajPlan._interne;
-t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire}", !!I && typeof ctxMP.MajPlan.ouvrir === "function" &&
-  ["grouper", "slug", "construire"].every((k) => typeof I[k] === "function"));
+t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire, libelleGroupe}", !!I && typeof ctxMP.MajPlan.ouvrir === "function" &&
+  ["grouper", "slug", "construire", "libelleGroupe"].every((k) => typeof I[k] === "function"));
 
 {
   const cand = {
@@ -40,6 +40,18 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire}", !!I && typeof 
     JSON.stringify(cle) === JSON.stringify(["editorPoints|", "editorPoints|pa", "roads|cust-x", "roads|principal", "zones|eau"]));
   const total = g.reduce((s, x) => s + x.objets.length, 0);
   t("🩸 un objet n'est que dans UN groupe (point à deux étiquettes compris)", total === 7);
+}
+{
+  // Un type perso se nomme par son entrée de légende (getLabel rend l'identifiant brut), un type intégré par getLabel.
+  ctxMP.LegendCustomization = {
+    findCustomEntry: (id) => (id === "cust-x" ? { id: "cust-x", label: "Métro fictif" } : null),
+    getLabel: (cat, cle) => (cle === "principal" ? "Galerie principale" : cle)
+  };
+  t("groupe d'un type perso : nom de la légende, pas « cust-… »",
+    I.libelleGroupe({ famille: "roads", type: "cust-x", objets: [] }) === "Métro fictif");
+  t("groupe d'un type intégré : libellé de getLabel",
+    I.libelleGroupe({ famille: "roads", type: "principal", objets: [] }) === "Galerie principale");
+  delete ctxMP.LegendCustomization;
 }
 {
   const pris = new Set(["editor", "galeries"]);

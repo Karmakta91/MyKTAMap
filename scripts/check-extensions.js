@@ -678,6 +678,30 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: K2 } = nouveauContexte(null);
     K2.register({ nom: "p2", apiVersion: 1, presence: { actif: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
     t("🩸 extension en erreur → présence inactive, aucune exception", K2.presenceActive() === false && (await K2.basculerPresence()) === false);
+    // Place libre de la vue 3D (prise presence.vue3d) : remise seulement avec le partage actif ; null toujours.
+    t("vue 3D : sans prise presence.vue3d → rien reçu (false)", K.positionVue3D({ x: 1, y: 2, niveau: 0, cap: 0 }) === false);
+    {
+      const { K: K3 } = nouveauContexte(null);
+      t("vue 3D : sans extension → false, sans erreur", K3.positionVue3D({ x: 1, y: 2 }) === false && K3.positionVue3D(null) === false);
+      let partage = false;
+      const recus = [];
+      K3.register({ nom: "p3", apiVersion: 1, presence: { actif: () => partage, basculer: () => { partage = !partage; },
+        vue3d: (p) => { recus.push(p); } } });
+      t("🔒 vue 3D : partage éteint → aucune place remise (consentement)",
+        K3.positionVue3D({ x: 1, y: 2, niveau: 0, cap: 10 }) === false && recus.length === 0);
+      t("vue 3D : null remis même partage éteint (retour au tracker)", K3.positionVue3D(null) === true && recus[0] === null);
+      partage = true;
+      const ok = K3.positionVue3D({ x: 12.5, y: 40, niveau: -1, cap: -30 });
+      const r = recus[1];
+      t("vue 3D : partage actif → { x, y, niveau, cap normalisé, source « vue3d », ts }", ok === true && r && r.x === 12.5 &&
+        r.y === 40 && r.niveau === -1 && r.cap === 330 && r.source === "vue3d" && typeof r.ts === "number", r);
+      t("🔒 vue 3D : coordonnées non finies → refusées", K3.positionVue3D({ x: NaN, y: 1 }) === false && recus.length === 2);
+      K3.positionVue3D({ x: 1, y: 2, niveau: 1.5, cap: "x" });
+      t("vue 3D : niveau non entier et cap illisible → null", recus[2] && recus[2].niveau === null && recus[2].cap === null);
+      const { K: K4 } = nouveauContexte(null);
+      K4.register({ nom: "p4", apiVersion: 1, presence: { actif: () => true, basculer() {}, vue3d: () => { throw new Error("z"); } } });
+      t("🩸 vue 3D : extension en erreur → false, aucune exception", K4.positionVue3D({ x: 1, y: 2 }) === false);
+    }
     const IF = lire("js/interface.js");
     t("tuile 📡 du tracker : seulement si une extension a la prise « presence »",
       /X\.aPrise\("presence"\)/.test(IF) && /_groupes\.tracker\.dynamicSousActions = function/.test(IF));
@@ -760,6 +784,23 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("👁️ réafficher : son repère revient", !P.personneMasquee("a1") && couches.filter((c) => c.type === "repere").length === 3);
     P.masquerPersonne("b2", true); P.reinitialiser();
     t("👁️ sortie de plan : les masquages sont oubliés", !P.personneMasquee("b2"));
+    // Place de vue 3D : marquée « 3D », libellée « en vue 3D », tournée vers son cap ; jamais pour une autre source.
+    couches.length = 0;
+    P.afficher([{ id: "v1", pseudo: "Val", x: 1, y: 2, source: "vue3d", cap: 450 },
+      { id: "v2", pseudo: "Tom", x: 3, y: 4, source: "gps", cap: 90 }]);
+    const r3 = couches.filter((c) => c.type === "repere");
+    const h3 = r3[0].icone.html, h4 = r3[1].icone.html;
+    t("🧊 place de vue 3D : classe, marque « 3D », libellé « en vue 3D », repère tourné vers son cap",
+      /kta-presence-vue3d/.test(h3.className) && h3.enfants[1].className === "kta-presence-marque-3d" &&
+      h3.enfants[1].textContent === "presence.vue3d.marque" &&
+      h3.enfants[2].textContent.indexOf("Val · presence.vue3d.libelle · ") === 0 &&
+      h3.enfants[0].style.transform === "rotate(90deg)" && P.liste()[0].source === "vue3d" && P.liste()[0].cap === 90, h3);
+    t("🩸 autre source (ou aucune) : position ordinaire, ni marque ni cap", !/kta-presence-vue3d/.test(h4.className) &&
+      h4.enfants.length === 2 && !h4.enfants[0].style.transform && P.liste()[1].source === null && P.liste()[1].cap === null);
+    const CSS = lire("css/style.css");
+    t("🎨 marque « 3D » : pastille et contour pointillé (CSS)", /\.kta-presence-marque-3d \{/.test(CSS) &&
+      /\.kta-presence-vue3d \.kta-presence-repere path \{ stroke-dasharray/.test(CSS));
+    P.reinitialiser();
   }
 
   // ── 6 bis ter. LECTURE SEULE et SORTIE DE PLAN ──────
@@ -778,7 +819,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
     const CV = lire("js/convertirObjet.js");
     t("🩸 conversion / suppression / niveau d'objet : gardées à l'entrée",
-      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir(",
+      ["function convertir(", "function supprimer(", "function convertirLot(", "function recollerLot(", "function ouvrir(",
        "function changerNiveau(", "function appliquerTableau("].every((f) =>
         new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
     const { K, w } = nouveauContexte(null);
@@ -984,6 +1025,95 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     ca.K.signaler("down");
     libelle = "z";
     t("serveur injoignable (DOWN) : aucun bouton (l'action passe par lui)", ca.K.actionAlertes(() => {}) === null);
+    // « Quoi de neuf » (alertes.nouveautes) : pastille et bloc seulement avec une extension qui compte du neuf.
+    const mn = monde("granted", "granted");
+    const cn = nouveauContexte("server", mn.extra);
+    t("quoi de neuf sans extension : compteur 0, aucun bloc", cn.K.compteurNouveautes() === 0 && cn.K.blocNouveautes(() => {}) === null);
+    let compte = 3, liste = [];
+    const tn = [];
+    cn.K.register({ nom: "nv", apiVersion: 1, alertes: { lister: () => [], nouveautes: {
+      compter: () => { if (compte === "x") throw new Error("x"); return compte; },
+      lister: () => (liste === "x" ? Promise.reject(new Error("x")) : liste) } } });
+    t("🩸 installation OFF : compteur 0, aucun bloc même avec une extension qui compte",
+      cn.K.compteurNouveautes() === 0 && cn.K.blocNouveautes(() => {}) === null);
+    enLigne(cn);
+    t("état ON : le compteur de l'extension", cn.K.compteurNouveautes() === 3);
+    compte = 0;
+    t("rien de neuf (0) : aucun bloc", cn.K.blocNouveautes(() => {}) === null);
+    compte = "x";
+    t("compter() en erreur : 0, aucune exception", cn.K.compteurNouveautes() === 0);
+    compte = "12";
+    t("compter() d'une forme inattendue : 0", cn.K.compteurNouveautes() === 0);
+    compte = 5000;
+    t("compteur borné à 999", cn.K.compteurNouveautes() === 999);
+    compte = 2;
+    liste = [{ texte: "Plan « Secteur A » — 2 nouveautés", bouton: "Ouvrir",
+      ouvrir: () => { tn.push("ouvrir"); throw new Error("y"); } },
+      { texte: "", bouton: "Lire", ouvrir: () => {} }, { texte: "t", bouton: "b" }, null,
+      { texte: "z".repeat(300), bouton: "w".repeat(80), ouvrir: () => {} }];
+    const bn = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    t("bloc : un titre puis une ligne par sujet valide (sans texte, sans ouvrir() ou nul : écartés)",
+      !!bn && bn.enfants.length === 3 && bn.enfants[0].textContent === "🆕 alerts.neuf.titre" && !bn.retire);
+    const l1n = bn.enfants[1];
+    t("ligne : texte et bouton posés en texte", l1n.enfants[0].textContent === "Plan « Secteur A » — 2 nouveautés" &&
+      l1n.enfants[1].textContent === "Ouvrir" && !("innerHTML" in l1n.enfants[1]));
+    t("ligne : texte borné à 120, bouton à 30", bn.enfants[2].enfants[0].textContent.length === 120 &&
+      bn.enfants[2].enfants[1].textContent.length === 30);
+    l1n.enfants[1].ecoutes.click();
+    t("toucher : la fenêtre se ferme PUIS l'extension ouvre ; son erreur est avalée", tn.join() === "fermer,ouvrir");
+    // Ligne garderOuverte : la fenêtre reste, bouton inactif pendant ouvrir(), puis le bloc relit lister().
+    let finir = null;
+    tn.length = 0;
+    liste = [{ texte: "Plan « Secteur A » — 2 nouveautés", bouton: "Ouvrir", ouvrir: () => { tn.push("ouvrir"); } },
+      { texte: "Tout effacer", bouton: "Vider", garderOuverte: true,
+        ouvrir: () => { tn.push("vider"); return new Promise((ok) => { finir = ok; }); } }];
+    const bg = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    const btnG = bg.enfants[2].enfants[1];
+    btnG.ecoutes.click();
+    t("garderOuverte : la fenêtre ne se ferme pas, ouvrir() appelé, bouton inactif pendant l'action",
+      tn.join() === "vider" && btnG.disabled === true);
+    btnG.ecoutes.click();
+    t("…un 2e toucher pendant l'action n'appelle rien", tn.join() === "vider");
+    liste = [{ texte: "1 compte rendu à lire", bouton: "Lire", ouvrir: () => {} }];
+    finir();
+    await new Promise((r) => setTimeout(r, 10));
+    t("…action finie : le bloc relit lister() et se redessine (anciennes lignes retirées, la nouvelle posée)",
+      !bg.retire && bg.enfants[1].retire && bg.enfants[2].retire && bg.enfants.length === 4 &&
+      bg.enfants[3].enfants[0].textContent === "1 compte rendu à lire");
+    liste = [{ texte: "x", bouton: "Vider", garderOuverte: true, ouvrir: () => { throw new Error("z"); } }];
+    const bz = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    tn.length = 0;
+    liste = [];
+    bz.enfants[1].enfants[1].ecoutes.click();
+    await new Promise((r) => setTimeout(r, 10));
+    t("garderOuverte : ouvrir() en erreur avalée, fenêtre gardée ; plus rien à lister → le bloc se retire",
+      tn.length === 0 && bz.retire);
+    liste = [{ texte: "y", bouton: "Lire", garderOuverte: "oui", ouvrir: () => {} }];
+    const bo = cn.K.blocNouveautes(() => { tn.push("fermer"); });
+    await new Promise((r) => setTimeout(r, 10));
+    bo.enfants[1].enfants[1].ecoutes.click();
+    t("garderOuverte autre que true : comportement ordinaire (la fenêtre se ferme)", tn.join() === "fermer");
+    liste = [];
+    const bv = cn.K.blocNouveautes(() => {});
+    await new Promise((r) => setTimeout(r, 10));
+    t("liste vide malgré le compteur : le bloc se retire", !!bv && bv.retire);
+    liste = "x";
+    const be = cn.K.blocNouveautes(() => {});
+    await new Promise((r) => setTimeout(r, 10));
+    t("lister() en erreur : le bloc se retire, aucune exception", !!be && be.retire);
+    cn.K.signaler("down");
+    t("serveur injoignable (DOWN) : le compteur gardé reste (pastille hors ligne)", cn.K.compteurNouveautes() === 2);
+    const IAn = lire("js/interfaceAlerts.js"), HCn = lire("js/homeConfig.js");
+    t("fenêtre 🚨 : le bloc est posé EN TÊTE du corps (après le message sous une urgence), jamais ouvreur de fenêtre",
+      /K\.blocNouveautes\(fermer\)/.test(IAn) && /corps\.insertBefore\(n, corps\.firstChild\)/.test(IAn) &&
+      /closest\("\.kta-alert-level-emergency"\)/.test(IAn) && !/blocNouveautes|compteurNouveautes/.test(lire("js/alertChecker.js")));
+    t("accueil : pastille du bouton 🚨 = compteurNouveautes, redessinée à mktm:nouveautes-changees, retirée à 0",
+      /K\.compteurNouveautes\(\)/.test(HCn) && /"mktm:nouveautes-changees"/.test(HCn) && /if \(p\) p\.remove\(\);/.test(HCn) &&
+      ["fr", "en", "es"].every((l) => { const d = JSON.parse(lire("lang/" + l + ".json"));
+        return !!d["alerts.neuf.titre"] && !!d["home.header.alertNeuf"] && !/[<>]/.test(d["alerts.neuf.titre"] + d["home.header.alertNeuf"]); }));
     const IAa = lire("js/interfaceAlerts.js");
     t("fenêtre 🚨 : l'action est posée dans les trois fenêtres, avec leur fermeture",
       (IAa.match(/_ktaPoserLigneNotif\(modal\.querySelector\("[^"]+"\), function \(\) \{ _fermer\(\); \}\);/g) || []).length === 3 &&
@@ -1621,6 +1751,61 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /titre\.textContent = o\.titre \|\| "";/.test(UT) && /opts\.choix\.valeur = o \? o\.valeur : null;/.test(UT));
   }
 
+  // ── 6 nonies. SUPPRESSION EN LOT SUR UN PLAN D'EXTENSION (prise suppressionLot) ──────
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { type: "ext", extId: "p1" } : { type: "local" }) };
+    const lot = [{ famille: "roads", uid: "rd_1" }, { famille: "editorPoints", uid: "" }, { famille: 3 }];
+    t("sans prise : null, SYNCHRONE (suppression de l'app seule)", K.suppressionLot("ext_p1", lot) === null);
+    let appels = 0, vu = null, rep = null;
+    K.register({ nom: "sup", apiVersion: 1, suppressionLot(id, objets) {
+      appels++; vu = { id, objets };
+      if (rep === "panne") throw new Error("x");
+      if (rep === "rejet") return Promise.reject(new Error("y"));
+      return rep;
+    } });
+    t("plan local : null, la prise n'est même pas consultée", K.suppressionLot("local_1", lot) === null && appels === 0);
+    t("prise qui rend null (synchrone) → permis, null synchrone", K.suppressionLot("ext_p1", lot) === null);
+    t("la prise reçoit l'id de l'extension et [{ famille, uid }] normalisés (uid vide → null)",
+      vu.id === "p1" && vu.objets.length === 3 && vu.objets[0].uid === "rd_1" && vu.objets[1].uid === null &&
+      vu.objets[2].famille === null);
+    rep = true;
+    t("true synchrone → permis (null)", K.suppressionLot("ext_p1", lot) === null);
+    rep = { permis: true };
+    t("{ permis: true } synchrone → permis (null)", K.suppressionLot("ext_p1", lot) === null);
+    rep = { permis: false, message: "  Refus fictif  " };
+    const r1 = await K.suppressionLot("ext_p1", lot);
+    t("{ permis: false, message } → refus avec le message (borné)", r1.permis === false && r1.message === "Refus fictif");
+    rep = Promise.resolve({ permis: true });
+    const r2 = await K.suppressionLot("ext_p1", lot);
+    t("réponse en promesse : permis", r2.permis === true);
+    rep = Promise.resolve({ permis: false });
+    const r3 = await K.suppressionLot("ext_p1", lot);
+    t("refus sans message → message null (texte générique de l'appelant)", r3.permis === false && r3.message === null);
+    const refus = (r) => !!r && r.permis === false && r.message === null;
+    rep = "panne";
+    t("🔒 prise en erreur → refusé", refus(await K.suppressionLot("ext_p1", lot)));
+    rep = "rejet";
+    t("🔒 promesse rejetée → refusé", refus(await K.suppressionLot("ext_p1", lot)));
+    rep = { permis: "oui" };
+    t("🔒 forme inattendue → refusé", refus(await K.suppressionLot("ext_p1", lot)));
+    const EF = lire("js/ktaExtensions.js");
+    t("🔒 réponse qui n'arrive pas : bornée (DELAI_SUPPRESSION_LOT_MS), puis refusée",
+      /const DELAI_SUPPRESSION_LOT_MS = \d+;/.test(EF) &&
+      /setTimeout\(function \(\) \{ r\(refus\); \}, DELAI_SUPPRESSION_LOT_MS\)/.test(EF));
+    const SZ = lire("js/selectionZone.js");
+    const cf = SZ.slice(SZ.indexOf("function confirmerEtSupprimer("), SZ.lastIndexOf("window.KtaSelectionZone = {"));
+    t("câblage : la suppression en lot consulte la prise (plan affiché) AVANT la fenêtre de confirmation",
+      /K\.suppressionLot\(_planId\(\), objets\)/.test(SZ) &&
+      cf.indexOf("_permis(objetsAvant)") > 0 && cf.indexOf("_permis(objetsAvant)") < cf.indexOf("window.ktaConfirm("));
+    t("🔒 câblage : refus = ktaAlerte (message de la prise, sinon générique), rien supprimé",
+      /window\.ktaAlerte\(\(r && r\.message\) \|\| _t\("selm\.suppr\.refuseExtension"\)\)/.test(SZ) &&
+      /if \(!ok\) return null;/.test(cf));
+    t("🔒 câblage : cases changées → prise relue au clic, avant supprimerLot",
+      /_cle\(objets\) === cleAvant \? Promise\.resolve\(true\) : _permis\(objets\)/.test(cf) &&
+      cf.lastIndexOf("_permis(objets)") < cf.indexOf("supprimerLot(choisis)"));
+  }
+
   // ── 7. CÂBLAGE (fichiers réels) ──────
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),
@@ -2019,8 +2204,24 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       R2[1].niveaux.join() === "1", R2);
     t("🎨 repère absent : contour pointillé (classe)", /kta-repere-absent/.test(marqueurs[marqueurs.length - 1].o.icon.html.className) &&
       /\.kta-repere-absent \{ border-style: dashed; \}/.test(lire("css/style.css")));
-    c.w.KtaPresences.reinitialiser();
-    t("🩸 sortie du plan : tous les calques de repères effacés", c.w.KtaPresences.reperes("autre").length === 0);
+    const KP = c.w.KtaPresences, v0 = KP.version();
+    t("vue 3D : calques() liste les calques de repères affichés, version() monte à chaque dessin",
+      KP.calques().join() === "autre,absents" && (c.K.afficherReperes("autre", [{ id: "b", x: 2, y: 2 }]), KP.version() > v0));
+    const v1 = KP.version();
+    KP.reinitialiser();
+    t("🩸 sortie du plan : tous les calques de repères effacés", KP.reperes("autre").length === 0 &&
+      KP.calques().length === 0 && KP.version() > v1);
+    const V3 = lire("js/vue3d.js");
+    t("🔒 vue 3D : membres, repères et itinéraires LUS dans KtaPresences (aucune requête)",
+      /P\.liste\b/.test(V3) && /P\.calques\b/.test(V3) && /P\.itineraires\b/.test(V3) &&
+      !/fetch\(|XMLHttpRequest|WebSocket/.test(V3));
+    // Seule prise : la place libre (positionVue3D), retirée (null) à la fermeture et en repassant en suivi.
+    const prisesV3 = V3.match(/\bX\.\w+\(|KtaExtensions\.\w+\(/g) || [];
+    t("🔒 vue 3D : une seule prise appelée, positionVue3D ; null à la fermeture et au retour en suivi",
+      prisesV3.length > 0 && prisesV3.every((x) => /positionVue3D/.test(x)) &&
+      /function _demonter[\s\S]{0,700}if \(e\.publiee\) \{ e\.publiee = null; _prisePresence\(null\); \}/.test(V3) &&
+      /if \(e\.mode !== "libre" \|\| !e\.libreBouge\) \{\s*if \(e\.publiee\) \{ e\.publiee = null; _prisePresence\(null\); \}/.test(V3),
+      prisesV3);
     const IA = lire("js/interfaceAlerts.js");
     const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
     t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",

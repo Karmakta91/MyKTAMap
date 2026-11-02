@@ -6,7 +6,8 @@
 
 // =========================
 // tracking.js — tracker podométrique (podomètre + boussole, sans GPS) : position en coordonnées plan, cap,
-// recalage, collision raster, map-matching sur les tracés, timeline du parcours (replay, distance).
+// recalage, collision (raster + piliers, murs et fronts de taille), map-matching sur les tracés, timeline du
+// parcours (replay, distance).
 // Expose : initTracking, startTracking/stopTracking, getTrackingPositionEtat, resetTrackingTimeline,
 //          window._applyLevelFilterToTracker…
 // Dépend de : APP_CONFIG (config.js), map.js (convertCoord, iconeTrack), RoadGraph, MapBearing.
@@ -38,9 +39,12 @@ let polyline;
 let lastStepTime = 0;
 let stepCount = 0;
 
-// Niveau du tracker (multi-niveau) : pris sur activeLevel au démarrage et au recalage clic carte, sur le niveau
+// Niveau du tracker (multi-niveau) : pris sur activeLevel au démarrage, au recalage clic carte sur le niveau choisi
+// (ktaNiveauxRecalage) sinon activeLevel, sur le niveau
 // du point avec « Je suis ici ». Reste 0 hors multi-niveau.
 let trackerLevel = 0;
+// Fenêtre « Dans quel niveau es-tu ? » ouverte pour un clic de recalage : un 2e clic ne recale pas en dessous.
+let _choixNiveauRecalageOuvert = false;
 
 // 🩸 Position CONFIRMÉE : `position` vaut le DÉPART DU PLAN tant que l'utilisateur ne s'est pas situé. Sans ce
 // drapeau, Sortie d'urgence et « Y aller » calculaient depuis l'entrée du plan en la présentant comme SA position.
@@ -91,52 +95,68 @@ function initTracking() {
   window.map.setView(latlng, 0, { animate: false });
 
   window.map.on('click', function(e) {
-    if (!window.modeRecalage) return;
+    if (!window.modeRecalage || _choixNiveauRecalageOuvert) return;
 
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
+    const x = e.latlng.lng;
+    const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
-    const x = lng;
-    const y = APP_CONFIG.imageHeight - lat;
-
-    position.x = x;
-    position.y = y;
-    _marquerPositionConfirmee();   // l'utilisateur vient de se situer
-    _navSegIdx = -1;  // recalage manuel → nouveau calage sur les tracés
-
-    // Recalage clic carte → le tracker passe au niveau actif.
-    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
-      trackerLevel = window.APP_CONFIG.activeLevel || 0;
-      console.log("[Tracking] Recalé sur niveau :", trackerLevel);
-    }
-
-    updateMap();
-    _appliquerFiltreNiveauSurTracker();
-    console.log("[Tracking] Recalé en :", x, y);
-
-    if (polyline) polyline.setLatLngs([]);
-    stepCount = 0;
-
-    // Le tracé visible est vidé, la timeline (replay) garde tout depuis le démarrage.
-    // ⚠️ `src: "click"` : un clic carte libre corrige une position fausse, il ne raconte pas un trajet → jamais
-    // compté dans la distance estimée (décision produit : seul « Je suis ici » sur un point compte).
-    _pushTimelinePoint("recalage", { src: "click" });
-
-    // Le mode recalage se désactive après le clic (retour au tracker normal) : UI via interface.js, et rotation
-    // réappliquée tout de suite (sinon icône figée jusqu'au prochain deviceorientation).
-    if (window.modeRecalage) {
-      window.modeRecalage = false;
-      // interface.js > _modesActifs["recalage"].desactiverFn
-      if (window._fermerModeRecalage && typeof window._fermerModeRecalage === "function") {
-        try { window._fermerModeRecalage(); } catch(e) {}
-      }
-    }
-    if (tracking) {
-      _applyRotationToTrackerMarker();
-    }
-    // Replanification d'itinéraire.
-    _notifierRecalage(x, y, "click");
+    // Plan multi-niveau : autre niveau à moins de 10 m → on demande lequel ; Annuler = rien, le mode reste armé.
+    const choix = window.ktaNiveauxRecalage(x, y);
+    if (!choix) { _recalerSurClic(x, y, null); return; }
+    _choixNiveauRecalageOuvert = true;
+    window.ktaDemanderNiveauRecalage(choix).then(function(niveau) {
+      _choixNiveauRecalageOuvert = false;
+      if (niveau === null || !window.modeRecalage) return;
+      _recalerSurClic(x, y, niveau);
+    });
   });
+}
+
+// Recalage clic carte, une fois le niveau connu. `niveau` : entier choisi dans la fenêtre (le niveau affiché
+// bascule dessus), ou null = niveau actif (pas de fenêtre).
+function _recalerSurClic(x, y, niveau) {
+  position.x = x;
+  position.y = y;
+  _marquerPositionConfirmee();   // l'utilisateur vient de se situer
+  _navSegIdx = -1;  // recalage manuel → nouveau calage sur les tracés
+
+  // Recalage clic carte → le tracker passe au niveau choisi, sinon au niveau actif.
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+    trackerLevel = Number.isInteger(niveau) ? niveau : (window.APP_CONFIG.activeLevel || 0);
+    if (Number.isInteger(niveau) && typeof window.ktaSetActiveLevel === "function") {
+      window.ktaSetActiveLevel(niveau, { source: "recalage" });
+    }
+    console.log("[Tracking] Recalé sur niveau :", trackerLevel);
+  }
+  // (décision produit) Un tap sur la carte est une position voulue : le tracker va au point tapé, jamais ramené
+  // dans la galerie (_positionDansGalerie ne vaut que pour « Je suis ici » sur un POI).
+
+  updateMap();
+  _appliquerFiltreNiveauSurTracker();
+  console.log("[Tracking] Recalé en :", x, y);
+
+  if (polyline) polyline.setLatLngs([]);
+  stepCount = 0;
+
+  // Le tracé visible est vidé, la timeline (replay) garde tout depuis le démarrage.
+  // ⚠️ `src: "click"` : un clic carte libre corrige une position fausse, il ne raconte pas un trajet → jamais
+  // compté dans la distance estimée (décision produit : seul « Je suis ici » sur un point compte).
+  _pushTimelinePoint("recalage", { src: "click" });
+
+  // Le mode recalage se désactive après le clic (retour au tracker normal) : UI via interface.js, et rotation
+  // réappliquée tout de suite (sinon icône figée jusqu'au prochain deviceorientation).
+  if (window.modeRecalage) {
+    window.modeRecalage = false;
+    // interface.js > _modesActifs["recalage"].desactiverFn
+    if (window._fermerModeRecalage && typeof window._fermerModeRecalage === "function") {
+      try { window._fermerModeRecalage(); } catch(e) {}
+    }
+  }
+  if (tracking) {
+    _applyRotationToTrackerMarker();
+  }
+  // Replanification d'itinéraire.
+  _notifierRecalage(x, y, "click");
 }
 
 // ── Rotation de l'icône du tracker ──────────────────────
@@ -301,6 +321,152 @@ function estAccessible(x, y) {
   }
 
   return (ok / total) > 0.7;
+}
+
+// ── Obstacles vectoriels : piliers, murs, fronts de taille ──────────────────────
+// Un pas est refusé s'il ENTRE dans un pilier (1re/2e masse) ou un mur fermé, ou s'il CROISE un front de taille ou
+// un mur (ligne), sur le niveau du tracker (hors multi-niveau : tous). Structures de session ET du plan, visibles ou
+// masquées, comme les obstacles du Pathfinder : masquer un calque ne change pas la galerie.
+// 🩸 Un polygone qui contient DÉJÀ la position (recalage posé sur un pilier) est ignoré : sinon chaque pas sortant
+// le croiserait et le tracker resterait figé dedans.
+// Grille d'index (cases de 128 px) par liste, refaite seulement si la liste change : même tableau, même longueur
+// et même signature (somme des `updatedAt` et des nombres de points ; toute modification passe par KtaUid.touch).
+// Un pas ne teste que les objets des cases qu'il touche (~0,1 ms pour 13 000 piliers, contre ~5 ms en balayage).
+// Type → forme de l'obstacle (true = polygone fermé, false = ligne).
+const _OBST_TYPES = {
+  "pilier-1": true, "pilier-2": true, "mur": true,
+  "front-1": false, "front-2": false, "mur-ligne": false
+};
+// Types personnalisés (`cust-…`) : ignorés par le tracker (décision produit), comptés seulement à la demande
+// (`avecPerso`, vue 3D, qui les dessine en volume) ; forme lue dans la légende (structures.js).
+function _formeObstacle(type, avecPerso) {
+  const f = _OBST_TYPES[type];
+  if (f !== undefined || !avecPerso || typeof type !== "string" || type.indexOf("cust-") !== 0) return f;
+  return !(typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(type));
+}
+const _OBST_CASE  = 128;
+const _indexObstacles = [null, null];   // [session, plan]
+
+function _signatureListe(liste) {
+  let sig = 0;
+  for (let i = 0; i < liste.length; i++) {
+    const s = liste[i];
+    if (s && Array.isArray(s.points)) sig += (Number(s.updatedAt) || 0) % 1e6 + s.points.length;
+  }
+  return sig;
+}
+
+function _indexDe(k, liste) {
+  const sig = _signatureListe(liste);
+  const c = _indexObstacles[k];
+  if (c && c.liste === liste && c.n === liste.length && c.sig === sig) return c;
+  const cases = new Map();
+  for (let i = 0; i < liste.length; i++) {
+    const s = liste[i];
+    if (!s || !Array.isArray(s.points) || _formeObstacle(s.type, true) === undefined) continue;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let j = 0; j < s.points.length; j++) {
+      const p = s.points[j];
+      if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+    }
+    for (let cy = Math.floor(y0 / _OBST_CASE); cy <= Math.floor(y1 / _OBST_CASE); cy++) {
+      for (let cx = Math.floor(x0 / _OBST_CASE); cx <= Math.floor(x1 / _OBST_CASE); cx++) {
+        const cle = cx + "," + cy;
+        if (!cases.has(cle)) cases.set(cle, []);
+        cases.get(cle).push(s);
+      }
+    }
+  }
+  const idx = { liste: liste, n: liste.length, sig: sig, cases: cases };
+  _indexObstacles[k] = idx;
+  return idx;
+}
+
+// Segments [a,b] et [c,d] qui se coupent (contact compris : extrémité sur l'autre segment, bout commun).
+// 🩸 Colinéaires, il faut un recouvrement réel (un point commun au moins) : sinon un pas qui longe une arête dans son
+// prolongement comptait comme un contact et figeait le tracker (et la vue 3D) le long d'une face alignée.
+function _segmentsSeCoupent(ax, ay, bx, by, cx, cy, dx, dy) {
+  const o = function(px, py, qx, qy, rx, ry) { return (qx - px) * (ry - py) - (qy - py) * (rx - px); };
+  const d1 = o(cx, cy, dx, dy, ax, ay), d2 = o(cx, cy, dx, dy, bx, by);
+  const d3 = o(ax, ay, bx, by, cx, cy), d4 = o(ax, ay, bx, by, dx, dy);
+  if (d1 === 0 && d2 === 0 && d3 === 0 && d4 === 0) {
+    // Sur une même droite : intervalles comparés sur l'axe où les quatre points s'étalent le plus.
+    const etendue = function(u, v, w, z) { return Math.max(u, v, w, z) - Math.min(u, v, w, z); };
+    const enX = etendue(ax, bx, cx, dx) >= etendue(ay, by, cy, dy);
+    const a0 = enX ? Math.min(ax, bx) : Math.min(ay, by), a1 = enX ? Math.max(ax, bx) : Math.max(ay, by);
+    const c0 = enX ? Math.min(cx, dx) : Math.min(cy, dy), c1 = enX ? Math.max(cx, dx) : Math.max(cy, dy);
+    return a0 <= c1 && c0 <= a1;
+  }
+  return ((d1 > 0) !== (d2 > 0) || d1 === 0 || d2 === 0) && ((d3 > 0) !== (d4 > 0) || d3 === 0 || d4 === 0);
+}
+
+function _dansPolygone(pts, x, y) {
+  let dedans = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) dedans = !dedans;
+  }
+  return dedans;
+}
+
+// `niveau` (facultatif) : niveau testé à la place de celui du tracker (vue 3D, qui se déplace sans lui).
+// `avecPerso` (facultatif) : compter aussi les types personnalisés (vue 3D) ; le tracker ne le passe jamais.
+function _pasBloqueParStructure(x0, y0, x1, y1, niveau, avecPerso) {
+  return _segmentsBloquesParStructure([[x0, y0, x1, y1]], niveau, avecPerso)[0];
+}
+
+// Même règle pour un lot de segments [[x0, y0, x1, y1], …] → tableau de booléens (true = refusé). L'index n'est
+// relu qu'une fois par lot. 🩸 Relire l'index coûte un passage sur toutes les structures (signature) : la vue 3D,
+// qui juge une quinzaine de segments par pas (largeur du corps), passe par un lot, pas par quinze appels.
+function _segmentsBloquesParStructure(segments, niveau, avecPerso) {
+  const lvl = Number.isInteger(niveau) ? niveau : trackerLevel;
+  const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const enCours = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
+  const sources = [
+    (typeof window.getStructures === "function") ? window.getStructures() : null,
+    window._ktaDataStructurePolygons
+  ];
+  const index = sources.map(function(liste, k) { return Array.isArray(liste) ? _indexDe(k, liste) : null; });
+  return segments.map(function(sg) {
+    return _segmentBloque(index, sg[0], sg[1], sg[2], sg[3], lvl, multi, enCours, avecPerso === true);
+  });
+}
+
+function _segmentBloque(index, x0, y0, x1, y1, lvl, multi, enCours, avecPerso) {
+  const sx0 = Math.min(x0, x1), sx1 = Math.max(x0, x1), sy0 = Math.min(y0, y1), sy1 = Math.max(y0, y1);
+  const vus = new Set();
+  for (let k = 0; k < index.length; k++) {
+    const idx = index[k];
+    if (!idx) continue;
+    for (let cy = Math.floor(sy0 / _OBST_CASE); cy <= Math.floor(sy1 / _OBST_CASE); cy++) {
+      for (let cx = Math.floor(sx0 / _OBST_CASE); cx <= Math.floor(sx1 / _OBST_CASE); cx++) {
+        const liste = idx.cases.get(cx + "," + cy);
+        if (!liste) continue;
+        for (let i = 0; i < liste.length; i++) {
+          const s = liste[i];
+          if (vus.has(s) || s === enCours) continue;
+          vus.add(s);
+          const poly = _formeObstacle(s.type, avecPerso);
+          if (poly === undefined) continue;
+          if (multi && (Number.isInteger(s.level) ? s.level : 0) !== lvl) continue;
+          const pts = s.points;
+          if (pts.length < (poly ? 3 : 2)) continue;
+          if (poly) {
+            if (_dansPolygone(pts, x0, y0)) continue;
+            if (_dansPolygone(pts, x1, y1)) return true;
+          }
+          // Arêtes (polygone refermé) : un pas qui coupe un coin de pilier ou saute un front est refusé aussi.
+          const nAretes = poly ? pts.length : pts.length - 1;
+          for (let a = 0; a < nAretes; a++) {
+            const p = pts[a], q = pts[(a + 1) % pts.length];
+            if (_segmentsSeCoupent(x0, y0, x1, y1, p.x, p.y, q.x, q.y)) return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
 }
 
 // ── Orientation ──────────────────────
@@ -528,13 +694,15 @@ function _avancerRaster() {
   let newY = position.y - distance * Math.cos(rad);
 
   // Point de timeline seulement si le pas est appliqué (sinon doublon).
-  const _stepApplied = estAccessible(newX, newY);
+  const _horsCarte = !estAccessible(newX, newY);
+  const _contreStructure = !_horsCarte && _pasBloqueParStructure(position.x, position.y, newX, newY);
+  const _stepApplied = !_horsCarte && !_contreStructure;
   if (_stepApplied) {
     position.x = newX;
     position.y = newY;
     if (_positionConfirmee) _positionConfirmeeTs = Date.now();   // dernier mouvement connu
   } else {
-    console.log("[Tracking] Collision !");
+    console.log(_contreStructure ? "[Tracking] Collision (structure) !" : "[Tracking] Collision !");
   }
 
   updateMap();
@@ -601,7 +769,10 @@ function _basculerNiveauSiTraversee(m) {
 
 // Hook émis à CHAQUE recalage (clic carte, « Je suis ici », arrivée de portail via recalerTrackerSurPoint).
 // source : "click" | "point". Consommateurs : interfaceItineraire.js (window._onTrackerRecale : replanifie et valide
-// les étapes) et InterPlanRoute (re-propose la traversée sur le portail de sortie).
+// les étapes), InterPlanRoute (re-propose la traversée sur le portail de sortie) et la vue 3D ouverte
+// (KtaVue3D.trackerRecale(opts) : sa place ne bouge pas, décision produit ; en suivi, un « Je suis ici »
+// (`opts.dansGalerie`) la passe en libre, un autre recalage se laisse suivre ; fermée, rien). Les trois lisent l'état
+// du tracker déjà posé.
 function _notifierRecalage(x, y, source, opts) {
   if (typeof window._onTrackerRecale === "function") {
     try { window._onTrackerRecale(x, y, source, opts); }
@@ -610,6 +781,10 @@ function _notifierRecalage(x, y, source, opts) {
   if (window.InterPlanRoute && typeof window.InterPlanRoute.onTrackerRecale === "function") {
     try { window.InterPlanRoute.onTrackerRecale(x, y, source); }
     catch(e) { console.warn("[Tracking] hook recalage portail échoué :", e); }
+  }
+  if (window.KtaVue3D && typeof window.KtaVue3D.trackerRecale === "function") {
+    try { window.KtaVue3D.trackerRecale(opts); }
+    catch(e) { console.warn("[Tracking] hook recalage vue 3D échoué :", e); }
   }
 }
 
@@ -714,13 +889,12 @@ function startTracking() {
   // ⚠️ La timeline n'est PAS vidée au Play : elle est CUMULATIVE (survit au reload et aux cycles Play/Stop,
   // heatmap multi-sessions). La reprise est marquée par une ancre "start" (rupture de segment au rendu). Tracé
   // vierge = reset de position / « effacer l'historique ».
-  if (_trackingStartTs == null) _trackingStartTs = Date.now();
-  _pushTimelinePoint("start");
-
-  // Le tracker démarre sur le niveau actif.
+  // Le tracker démarre sur le niveau actif, posé AVANT l'ancre "start" (elle lit trackerLevel).
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
     trackerLevel = window.APP_CONFIG.activeLevel || 0;
   }
+  if (_trackingStartTs == null) _trackingStartTs = Date.now();
+  _pushTimelinePoint("start");
   _appliquerFiltreNiveauSurTracker();
   // Rotation tout de suite si le cap est déjà connu (sinon au prochain deviceorientation).
   _applyRotationToTrackerMarker();
@@ -830,6 +1004,14 @@ window.getTrackingPositionEtat = function() {
 window.getTrackingActif = function() {
   return tracking === true;
 };
+
+// ⚠️ Règle du pas contre piliers, murs et fronts (la même que le suivi) : true si le segment est refusé.
+// Consommateur : js/vue3d.js (déplacement à l'écran et au clavier), qui ne recopie pas la géométrie.
+window.ktaPasBloqueParStructure = _pasBloqueParStructure;
+// Lot de segments, index relu une fois (vue 3D : corps balayé) → tableau de booléens.
+window.ktaSegmentsBloquesParStructure = _segmentsBloquesParStructure;
+// Premier test du même pas : image de collision du plan (true = accessible ; sans image, tout passe).
+window.ktaEstAccessible = estAccessible;
 
 window.getTrackerLevel = function() {
   return trackerLevel;
@@ -1158,26 +1340,60 @@ function _rebuildTrailFromTimeline() {
   }
 }
 
-// Recale le tracker sur les coordonnées exactes d'un point (« Je suis ici » de la popup, utils.js >
-// buildPointPopupHtml ; arrivée de portail ; picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
+// ── Recalage dans la galerie (« Je suis ici » d'un POI) ──────────────────────────────────────────────────
+// Une icône se pose souvent à côté du tracé : recalé sur elle, le tracker serait dans la roche. Un tap sur la carte
+// (Mode recalage, picker « Où es-tu ? ») n'y passe pas : c'est une position voulue (décision produit). ⚠️ contrat : la galerie est celle de la vue 3D (galerieEmprise.js > KtaGalerie.versGalerie) — tous les
+// types de tracé, perso compris, même rayon (KtaGalerie.PROCHE_M, 10 m de l'axe), sur le niveau du recalage :
+//   1) point déjà dans l'emprise d'une galerie → il ne bouge pas ;
+//   2) hors emprise, un axe à moins de PROCHE_M → sur l'axe de la galerie dont l'emprise est la plus proche
+//      (jamais à travers la roche vers celle d'à côté) ;
+//   3) niveau sans aucun tracé (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont) : point
+//      accessible le plus proche de l'image de collision, à moins de PROCHE_M, si le point ne l'est pas.
+// Au-delà du rayon, on reste sur le point. Rend { x, y } ajusté, ou null (rien à changer).
+// ⚠️ Le POI ne bouge pas, et son niveau reste la réponse. 🩸 Le rayon du verrou sur tracé (smartNavRadiusM) ne
+// sert plus ici : il reste celui de la navigation intelligente (roadGraph.js) et de l'arrivée d'un passage 3D.
+// 🩸 Le modèle de KtaGalerie est mis en cache (signature des données) : premier recalage sur un grand plan = une
+// construction, partagée avec la vue 3D ensuite.
+
+// Anneaux croissants au pas d'un pixel du canvas de collision : le premier point accessible est le plus proche.
+function _pointAccessibleProche(x, y, rayonPx) {
+  if (!_collisionData || estAccessible(x, y)) return null;
+  const pas = 1 / Math.max(_collisionScaleX, _collisionScaleY, 1e-6);
+  for (let r = pas; r <= rayonPx; r += pas) {
+    const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
+    for (let k = 0; k < n; k++) {
+      const a = 2 * Math.PI * k / n;
+      const qx = x + r * Math.cos(a), qy = y + r * Math.sin(a);
+      if (estAccessible(qx, qy)) return { x: qx, y: qy };
+    }
+  }
+  return null;
+}
+
+function _positionDansGalerie(x, y, niveau) {
+  const echelle = Number(APP_CONFIG.scale);
+  const G = window.KtaGalerie;
+  if (!(echelle > 0) || !G || typeof G.versGalerie !== "function") return null;
+  const r = G.versGalerie(x, y, APP_CONFIG.multiLevel === true ? niveau : null);
+  if (r.etat === "ramene") return { x: r.x, y: r.y };
+  // Le niveau a des tracés (dedans, ou à plus du rayon) : le tracé fait foi, pas l'image.
+  return r.etat === "sans" ? _pointAccessibleProche(x, y, G.PROCHE_M * echelle) : null;
+}
+
+// Recale le tracker sur un point (« Je suis ici » de la popup, utils.js > buildPointPopupHtml ; arrivée de portail ;
+// picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
 // ⚠️ `opts.teleport` : déplacement NON parcouru (portail) → ancre `tp`, jamais estimée. La source reste "point" pour
 // les consommateurs du hook (validation d'étape comprise). `opts.sansReplan` : voir Mode Secours.
+// `opts.dansGalerie` (« Je suis ici » d'un POI) : position ajustée dans la galerie (_positionDansGalerie) ; l'ancre
+// de timeline et la vue portent la position ajustée. Sans lui (portail, picker « Où es-tu ? », Secours, 3D) :
+// coordonnées exactes. La vue 3D ouverte en suivi passe en libre sur un recalage `dansGalerie`.
+// 🩸 Le hook _notifierRecalage reçoit TOUJOURS les coordonnées du point : la validation d'étape et la reprise du
+// portail de sortie comparent des coordonnées arrondies à celles du point.
 window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
-  position.x = x;
-  position.y = y;
-  _marquerPositionConfirmee();
-  _navSegIdx = -1;
-  if (polyline) polyline.setLatLngs([]);
-  stepCount = 0;
 
-  const _ancre = _pushTimelinePoint(
-    "recalage",
-    (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
-  );
-  // Distance depuis l'ancre précédente si le podomètre n'a rien vu entre les deux.
-  if (_ancre) { try { _estimerSegmentDepuisAncre(_ancre); } catch(e) {} }
   // Niveau du point s'il en porte un, sinon le niveau actif (le point cliqué est visible).
+  // ⚠️ Posé AVANT l'ancre : _pushTimelinePoint lit trackerLevel, l'ancre porte le niveau d'ARRIVÉE (replay, CSV).
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
     if (Number.isInteger(level)) {
       trackerLevel = level;
@@ -1186,20 +1402,157 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
     }
     console.log("[Tracking] Recalé sur point au niveau :", trackerLevel);
   }
+
+  let ajuste = null;
+  if (opts && opts.dansGalerie) {
+    try { ajuste = _positionDansGalerie(x, y, trackerLevel); } catch(e) { ajuste = null; }
+  }
+  position.x = ajuste ? ajuste.x : x;
+  position.y = ajuste ? ajuste.y : y;
+  _marquerPositionConfirmee();
+  _navSegIdx = -1;
+  if (polyline) polyline.setLatLngs([]);
+  stepCount = 0;
+  const _ancre = _pushTimelinePoint(
+    "recalage",
+    (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
+  );
+  // Distance depuis l'ancre précédente si le podomètre n'a rien vu entre les deux.
+  if (_ancre) { try { _estimerSegmentDepuisAncre(_ancre); } catch(e) {} }
   updateMap();
   _appliquerFiltreNiveauSurTracker();
   if (window.modeRecalage) window.modeRecalage = false;
   if (window.map) {
     try {
-      const latlng = convertCoord(x, y);
+      const latlng = convertCoord(position.x, position.y);
       window.map.setView(latlng, window.map.getZoom(), { animate: true });
     } catch(e) {}
   }
-  console.log("[Tracking] Recalé sur point :", x, y);
+  console.log("[Tracking] Recalé sur point :", x, y, ajuste ? "→ galerie : " + ajuste.x + ", " + ajuste.y : "");
   // Vibration discrète de confirmation (sans effet si pref OFF ou iOS).
   if (window.kta_vibrate) window.kta_vibrate.light();
   // Replanification + validation d'étape (coordonnées exactes d'un point).
   _notifierRecalage(x, y, "point", opts);   // opts.sansReplan : cf Mode Secours (étape validée)
+};
+
+// ── Niveau d'un recalage sur la carte (plan multi-niveau) ──────────────────────
+// Un clic sur la carte ne dit pas à quel étage on est. Si un tracé, une zone, une structure ou un POI jonction
+// d'un AUTRE niveau que le niveau actif passe à moins de RECAL_NIVEAU_RAYON_M, on le demande ; sinon le niveau
+// actif reste la réponse, sans fenêtre. Appelants : le clic de « 📍 Recaler ma position » (initTracking) et le
+// picker « Où es-tu ? » (utils.js > ktaDemanderPositionCarte).
+// ⚠️ Objets masqués compris (on parle de ce qui existe sous terre) ; session ET calques. Ne comptent pas : POI
+// ordinaires, itinéraire calculé, mesures. Une jonction apporte ses deux niveaux, un POI jonction ses niveaux
+// desservis. Objet sans `level` = niveau 0 (règle du multi-niveau).
+const RECAL_NIVEAU_RAYON_M = 10;
+
+function _recalDistSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  let t = l2 > 1e-9 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+// Vrai si la ligne (ou le contour fermé) passe à moins de r du point, ou si le point est dans le polygone.
+// Boîte englobante d'abord : un calque peut porter des milliers de piliers.
+function _recalProche(p, pts, ferme, r) {
+  if (!Array.isArray(pts) || pts.length < 2) return false;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const q = pts[i];
+    if (!q || typeof q.x !== "number" || typeof q.y !== "number") return false;
+    if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x;
+    if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y;
+  }
+  if (p.x < x0 - r || p.x > x1 + r || p.y < y0 - r || p.y > y1 + r) return false;
+  for (let i = 1; i < pts.length; i++) {
+    if (_recalDistSegment(p, pts[i - 1], pts[i]) <= r) return true;
+  }
+  if (!ferme || pts.length < 3) return false;
+  if (_recalDistSegment(p, pts[pts.length - 1], pts[0]) <= r) return true;
+  let dedans = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if (((a.y > p.y) !== (b.y > p.y)) && (p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)) dedans = !dedans;
+  }
+  return dedans;
+}
+
+// → null (pas de fenêtre : plan mono-niveau, rien d'un autre niveau à proximité) ou { niveaux, actif } :
+// niveaux à proposer (ceux trouvés + le niveau actif), du plus haut au plus bas.
+window.ktaNiveauxRecalage = function(x, y) {
+  const c = window.APP_CONFIG;
+  if (!c || c.multiLevel !== true || typeof x !== "number" || typeof y !== "number") return null;
+  const echelle = Number(c.scale);
+  if (!(echelle > 0)) return null;
+  const r = RECAL_NIVEAU_RAYON_M * echelle;
+  const p = { x: x, y: y };
+  const actif = Number.isInteger(c.activeLevel) ? c.activeLevel : 0;
+  const trouves = new Set();
+  const lvl = function(o) { return Number.isInteger(o.level) ? o.level : 0; };
+  const lire = function(f) {
+    try { return (typeof window[f] === "function" && window[f]()) || []; } catch(e) { return []; }
+  };
+  try {
+    lire("getRoads").concat(lire("getAllEmbeddedRoads")).forEach(function(rd) {
+      if (!rd || rd.type === "itinerary" || rd._preview) return;
+      if (!_recalProche(p, rd.points, false, r)) return;
+      if (rd.type === "jonction") {
+        if (Number.isInteger(rd.fromLevel)) trouves.add(rd.fromLevel);
+        if (Number.isInteger(rd.toLevel)) trouves.add(rd.toLevel);
+      } else {
+        trouves.add(lvl(rd));
+      }
+    });
+    lire("getZones").concat(lire("getAllEmbeddedZones")).forEach(function(z) {
+      if (z && _recalProche(p, z.points, true, r)) trouves.add(lvl(z));
+    });
+    const ligne = function(t) {
+      return (typeof window.isStructurePolylineType === "function") ? window.isStructurePolylineType(t)
+        : (t === "mur-ligne" || t === "front-1" || t === "front-2");
+    };
+    lire("getStructures").concat(lire("getAllEmbeddedStructures")).forEach(function(st) {
+      if (st && _recalProche(p, st.points, !ligne(st.type), r)) trouves.add(lvl(st));
+    });
+    const PJ = window.KtaPoiJonction;
+    if (PJ && typeof PJ.pointsJonction === "function") {
+      PJ.pointsJonction().forEach(function(pt) {
+        if (pt && Math.hypot(pt.x - x, pt.y - y) <= r) PJ.niveaux(pt).forEach(function(n) { trouves.add(n); });
+      });
+    }
+  } catch(e) {
+    console.warn("[Tracking] niveaux proches du recalage :", e);
+    return null;
+  }
+  trouves.delete(actif);
+  if (!trouves.size) return null;
+  trouves.add(actif);
+  return { niveaux: Array.from(trouves).sort(function(a, b) { return b - a; }), actif: actif };
+};
+
+// Fenêtre « Dans quel niveau es-tu ? » (ktaConfirm, un choix par niveau, le niveau actif coché) → Promise :
+// niveau choisi, ou null si annulée.
+window.ktaDemanderNiveauRecalage = function(choix) {
+  const t = function(k, v) { return window.I18n.t(k, v); };
+  const options = choix.niveaux.map(function(n) {
+    const lib = (typeof window.ktaFormatNiveau === "function") ? window.ktaFormatNiveau(n) : String(n);
+    const z = (typeof window.getProfondeurNiveau === "function") ? window.getProfondeurNiveau(n) : null;
+    const aide = [];
+    if (Number.isFinite(z)) aide.push(t("tracker.recalNiveau.profondeur", { z: Math.round(z) }));
+    if (n === choix.actif) aide.push(t("tracker.recalNiveau.affiche"));
+    return {
+      valeur: n,
+      titre: t("tracker.recalNiveau.option", { n: lib }),
+      aide: aide.join(" · ") || undefined,
+      okLabel: t("tracker.recalNiveau.ok", { n: lib })
+    };
+  });
+  const opts = {
+    id: "kta-recal-niveau",   // exclue de la coupure des modes à l'ouverture d'une fenêtre (interface.js)
+    titre: window.ktaEsc(t("tracker.recalNiveau.titre")),
+    choix: { options: options, valeur: choix.actif }
+  };
+  return window.ktaConfirm(window.ktaEsc(t("tracker.recalNiveau.texte", { m: RECAL_NIVEAU_RAYON_M })), opts)
+    .then(function(ok) { return (ok && Number.isInteger(opts.choix.valeur)) ? opts.choix.valeur : null; });
 };
 
 // Proximité des waypoints de l'itinéraire actif, à chaque updateMap(). Hystérésis : vibre UNE fois en entrant à
