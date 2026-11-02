@@ -29,7 +29,7 @@
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
-// (22) : refus, confirmation, partie en vagues, masquage, endurance, sortie.
+// (23) : refus, confirmation, partie en vagues, masquage, endurance, sortie.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3660,7 +3660,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await K.fermer();
         r.fermeture = { journal: j.slice(), apres: K.greffer(g) };
         // Code « six vers le bas » : pavé, clavier, joystick. L'add-on lié est remplacé par un faux qui compte ses
-        // lancements (le vrai ouvrirait sa confirmation par-dessus la vue) ; § 22 joue le vrai.
+        // lancements (le vrai ouvrirait sa confirmation par-dessus la vue) ; § 23 joue le vrai.
         const addonsAvant = window.KtaAddons;
         let lances = 0;
         window.KtaAddons = { mkmg: { lancer: function () { lances++; } } };
@@ -3768,7 +3768,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(GR.lances === GR.pave6.codes.length + GR.clavier + GR.stick6,
         "code : chaque « bas6 » lance l'add-on lié (" + GR.lances + " lancements)", GR.lances);
 
-      // ── 22. Add-on « mkmg » (jeu en vagues) : refus, confirmation, partie, masquage, endurance, cible, sortie ──
+      // ── 23. Add-on « mkmg » (jeu en vagues) : refus, confirmation, partie, masquage, endurance, cible, sortie ──
       const MK = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };

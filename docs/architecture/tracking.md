@@ -1686,7 +1686,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   seule greffe ; rendu à la demande, ctx.sale() redessine ; retrait, scène refaite, reprise avec un groupe neuf,
   exception (greffe retirée, vue ouverte), fermeture ; règle du pas contre un pilier fictif ; code « six vers le bas »
   au pavé, au clavier (répétition ignorée) et au joystick, coupé par une autre commande, un coup tenu ou plus de 2 s ;
-  chaque code lance l'add-on lié. Add-on `mkmg` (§ 22, objets fictifs) : refus sur une installation reliée et pendant
+  chaque code lance l'add-on lié. Add-on `mkmg` (§ 23, objets fictifs) : refus sur une installation reliée et pendant
   le suivi ; confirmation à 3 difficultés ; facile → cible (POI), trajet, balise, flèche, reste, itinéraire et guidage
   de l'app masqués ; endurance vidée par le pas rapide, course interdite à bout de souffle puis rendue ; cible
   atteinte → vague 2 ; Quitter ; difficile → ni tracés, ni trajet, ni balise ; fermer la vue termine la partie.
