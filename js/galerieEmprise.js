@@ -16,7 +16,8 @@
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
 // chambre s'y arrête sur un bout OUVERT (aucune paroi de fond) ; un tube plus court que TUBE_MIN_M entre deux
 // chambres est ouvert aussi (pas de paroi orpheline). Règle du pas : on bute contre les parois dessinées et les
-// pans de retour (paroisBloquent), contre les structures (règle du tracker) et contre un remblais dans un tube.
+// pans de retour (paroisBloquent), contre les structures (règle du tracker) et contre un remblais ou un effondrement
+// dans un tube.
 // Modèle : graphe plan des tracés (sommets confondus à 15 cm, croisements coupés, bout libre raccordé au tracé
 // voisin s'il s'arrête à moins de 0,5 m de sa paroi) ; une PIÈCE convexe par tronçon (rectangle de sa largeur,
 // d'un nœud à l'autre) et, à chaque nœud de degré ≥ 2, les triangles d'un joint : coude en onglet (borné à deux
@@ -24,7 +25,9 @@
 // ⚠️ contrat : l'emprise est l'UNION des pièces ; une paroi est un bord de pièce qui n'est dans aucune autre, d'où
 // des tubes coupés au bord de la dalle et aucune paroi qui en traverse une autre, même pour des tracés presque
 // parallèles qui se chevauchent. Règle du pas en mode galerie (vue 3D) : rester dans l'emprise (à moins d'une
-// demi-largeur d'un tracé ou dans un joint) et hors d'un remblais du niveau.
+// demi-largeur d'un tracé ou dans un joint) et hors d'un remblais ou d'un effondrement du niveau (ZONES_BOUCHENT).
+// ⚠️ contrat : ces zones ne bouchent que la vue 3D (dedans, segmentsBloques, paroisBloquent) ; versGalerie (recalage
+// du tracker) ne lit que l'emprise, l'itinéraire et le tracker ne passent pas par ici.
 // 🩸 Le graphe de roadGraph.js ne sert pas ici : c'est un graphe d'itinéraire (croisements en arêtes virtuelles,
 // tronçons non coupés, tronçon retiré s'il croise un mur en ligne, types perso exclus), pas une géométrie.
 // Doc : docs/architecture/tracking.md § Vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
@@ -42,6 +45,8 @@
   const CASE_M = 4;                 // m : maille des grilles de recherche
   const PAS_M = 0.05;               // m : pas d'échantillonnage d'un segment jugé par segmentsBloques
   const MEMO_MS = 250;              // signature des données relue au plus tous les MEMO_MS
+  // Zones dessinées en volume par la 3D, qui bouchent la galerie (règle du pas de la vue 3D seulement).
+  const ZONES_BOUCHENT = { remblais: true, effondrement: true };
   // Mode mixte. 3 m : un tube principal a sa paroi à 1,25 m de l'axe ; une structure plus proche que 3 m de l'axe
   // laisserait entre elle et la paroi moins de 1,75 m (la largeur d'un chemin) : une lame de roche doublée qui ne
   // ressemble à rien. Elle borde donc la galerie elle-même (front de taille, mur de consolidation, pilier de
@@ -751,10 +756,10 @@
     retours.forEach(function (w, i) {
       gW.poser(i, Math.min(w[0], w[2]), Math.min(w[1], w[3]), Math.max(w[0], w[2]), Math.max(w[1], w[3]));
     });
-    // Remblais du niveau : ils bouchent la galerie (règle du pas).
+    // Remblais et effondrements du niveau (ZONES_BOUCHENT) : ils bouchent la galerie (règle du pas de la 3D).
     const remblais = [], gR = new Grille(CASE_M * sc);
     _zones().forEach(function (z) {
-      if (!z || z.type !== "remblais" || !Array.isArray(z.points) || z.points.length < 3) return;
+      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
       if (!_surNiveau(z, niveau)) return;
       const a = z.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -939,8 +944,8 @@
     return !!m && m.dedans(x, y) && !m.enRemblais(x, y);
   }
 
-  // Segments [x0, y0, x1, y1] (px) → true si une partie sort de l'emprise ou entre dans un remblais. Niveau sans
-  // galerie : rien n'arrête (true partout figerait la vue dans le vide).
+  // Segments [x0, y0, x1, y1] (px) → true si une partie sort de l'emprise ou entre dans un remblais ou un
+  // effondrement (ZONES_BOUCHENT). Niveau sans galerie : rien n'arrête (true partout figerait la vue dans le vide).
   function segmentsBloques(segs, niveau) {
     const m = modele(niveau);
     if (!m || !m.pieces.length) return segs.map(function () { return false; });
@@ -956,8 +961,8 @@
   }
 
   // Mode mixte : segments [x0, y0, x1, y1] (px) → true s'il coupe ou touche une paroi dessinée (bouts ouverts
-  // exclus : on entre dans une chambre par là) ou s'il entre dans un remblais à l'intérieur d'un tube. Dans une
-  // chambre, rien ici n'arrête : les structures y bloquent par la règle du tracker (vue3d.js > _juger).
+  // exclus : on entre dans une chambre par là) ou s'il entre dans un remblais ou un effondrement à l'intérieur d'un
+  // tube. Dans une chambre, rien ici n'arrête : les structures y bloquent par la règle du tracker (vue3d.js > _juger).
   function paroisBloquent(segs, niveau) {
     const m = modele(niveau, true);
     if (!m || !m.pieces.length) return segs.map(function () { return false; });
