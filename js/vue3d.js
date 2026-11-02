@@ -19,7 +19,8 @@
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire
 // (tirets, étapes, 🏁), ronds d'intersection de la carte, POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
 // (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau, passages en
-// volume (_construireVolume), changement de niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe
+// volume (_construireVolume) comme les accès de surface sans passage (puits fermés, comblés, bouché, d'extraction,
+// bassin, cavage : _volumeAcces), changement de niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe
 // frontale, rendu au mouvement seul.
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
@@ -31,8 +32,9 @@
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
-// KtaGalerie.paroisBloquent ; partout, KtaGalerie.zonesBloquent), sur la largeur d'un corps. Le tracker
-// n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler (position, niveau).
+// KtaGalerie.paroisBloquent ; partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un
+// corps. Le tracker n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler
+// (position, niveau).
 // 🩸 three.js est un module ES : import() dynamique, URL absolue (pas d'import map, la CSP refuse tout script en
 // ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en garde peu (iOS ~ 8, Chrome 16).
 // Doc : docs/ETUDE_VUE_3D.md, tracking.md § Vue 3D, ui.md § Vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
@@ -148,6 +150,24 @@
   // tranchée, cadre doré) : KtaGalerie.PASSAGE, d'où le tube s'ouvre sur la même emprise (galerieEmprise.js).
   const VOLUME = Object.assign({ long: 6, echelon: 0.3, marches: 10 }, window.KtaGalerie.PASSAGE);
   const COULEUR_FER = "#5e5a52";    // échelons, montants, grille : couleur de la scène, pas de la charte de l'UI
+  // Accès de surface sans passage (_volumeAcces) : formes et dimensions dans KtaGalerie (ACCES, ACCES_DIM), d'où
+  // leurs obstacles (cône, bassin, porte fermée) sont la règle du pas. Ici, ce que seule la 3D dessine (m) :
+  // dalle sombre d'un accès fermé (esf, pef) à `fermeY` au-dessus du plafond, de `fermeEp` ; puits comblé (pc, psf) :
+  // remblais à `comble` au-dessus du plafond ; puits bouché (pb) : dalle maçonnée de `boucheEp`, débordant de
+  // `boucheDeborde` autour de la bouche, au ras du plafond.
+  const DIM_ACCES = Object.assign({ fermeY: 2.5, fermeEp: 0.15, comble: 0.5, boucheEp: 0.06, boucheDeborde: 0.1 },
+    window.KtaGalerie.ACCES_DIM);
+  const COULEUR_DALLE = "#3b3731";  // dalle d'un accès fermé : couleur de la scène, sombre
+  const COULEUR_FOND = "#2a2622";   // fond d'un bassin, sous l'eau
+  // Porte d'un cavage (cao, caf) : battants de `ep` dans un cadre de fer de `cadre` (montants et linteau), hauteur
+  // `haut` bornée par celle du plan ; au-dessus du linteau, la paroi jusqu'au plafond. Ouvert (cao) : battants
+  // rabattus à 90° contre les parois. Bois dessiné (_bois) avec 🧱, couleur unie COULEUR_BOIS sinon.
+  const PORTE = { haut: 2.1, cadre: 0.12, ep: 0.08, jeu: 0.02 };
+  const COULEUR_BOIS = "#4b3626";
+  // Bois des battants (🧱) : un battant par motif (u en travers, v vers le haut), `planches` planches verticales,
+  // `pentures` bandes de fer horizontales (centres en part de la hauteur) cloutées tous les `clou` px.
+  const BOIS = { px: 256, couleur: "#5c412b", fer: "#3f3c38", planches: 5, pentures: [0.14, 0.5, 0.86], bande: 0.07,
+    clou: 22, relief: 3, graine: 71 };
   // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
   // « Niveau n » `bandeau` ms.
@@ -675,7 +695,7 @@
         const p = a[j], q = a[k];
         if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
       }
-      if (r) return _e.hauteur * HAUTEUR_REMBLAIS;
+      if (r) return v.h !== undefined ? v.h : _e.hauteur * HAUTEUR_REMBLAIS;
     }
     return 0;
   }
@@ -2275,6 +2295,7 @@
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
     e.volPassages = _volumesDuNiveau(d);
+    e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
     e.msIndex = performance.now() - t0;
     _appliquerRendu();
@@ -2304,7 +2325,7 @@
     if (!J) return out;
     d.points.forEach(function (p) {
       const src = p._v3dJonction || p, tag = _premierTag(src);
-      if (!J.porteNiveaux(tag)) return;
+      if (!J.porteNiveaux(tag) && !window.KtaGalerie.ACCES[tag]) return;
       const moyen = J.moyen(tag);
       const autres = N === null || !J.estJonction(src) ? []
         : J.niveaux(src).filter(function (n) { return n !== N; });
@@ -2315,7 +2336,8 @@
         forme: !moyen ? "aeration" : moyen === "escalier" ? "escalier" : "puits",
         sol: !!moyen && dessous, plafond: !moyen || dessus || surface, ciel: !!moyen && surface, grille: !moyen,
         echelons: moyen === "echelons", passage: !!moyen && autres.length > 0 };
-      if (!v.sol && !v.plafond) return;   // passage sans autre niveau (plan à un niveau) : rien à ouvrir
+      if (window.KtaGalerie.ACCES[tag]) Object.assign(v, _volumeAcces(tag));
+      if (!v.sol && !v.plafond && !v.acces) return;   // passage sans autre niveau (plan à un niveau) : rien à ouvrir
       const dim = v.forme === "escalier" ? VOLUME.escalier
         : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
       // Place et axe : KtaGalerie.placePassage, le calcul de l'emprise qui ouvre le tube (une seule règle).
@@ -2327,6 +2349,7 @@
       v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
       // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
       if (Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
+      if (v.acces) _dimAcces(v);
       out.push(v);
     });
     if (N === null || !_typeTraceMontre("jonction")) return out;
@@ -2443,7 +2466,7 @@
       plafond: new Lot() };
     const g = new THREE.Group();
     g.userData.famille = "passage";
-    if (v.genre === "rampe") _rampe(v, lots); else _puits(v, lots, g);
+    if (v.genre === "rampe") _rampe(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
     const ajouter = function (lot, mat, ordre, famille) {
       const geo = lot.geometrie();
       if (!geo) return;
@@ -2459,6 +2482,7 @@
     ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
     ajouter(lots.opaque, e.mats.opaque, 0, "passage");
     ajouter(lots.lumineux, e.mats.lumineux, 1, "cadre");
+    if (v.acces) _ajouterAcces(lots, ajouter);
     let y0 = Infinity, y1 = -Infinity;
     [lots.parois, lots.opaque].forEach(function (l) {
       for (let i = 1; i < l.p.length; i += 3) { y0 = Math.min(y0, l.p[i]); y1 = Math.max(y1, l.p[i]); }
@@ -2468,6 +2492,7 @@
       bouchesPlafond: n(lots.plafond), cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
       yMax: Number.isFinite(y1) ? +y1.toFixed(2) : null,
       cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }) };
+    if (v.acces) Object.assign(v.stats, _statsAcces(v, lots, g));
     e.scene.add(g);
     v.obj = g;
     e.sale = true;
@@ -2563,6 +2588,308 @@
       }
     }
     if (der) _paroiY(lots.parois, der[0], der[1], -h - 0.1, 0);   // fond de la tranchée
+  }
+
+  // ── Accès de surface sans passage (esf, pef, pb, pc, psf, ps, pe, cao, caf) ──────────────────────────────
+  // ⚠️ contrat (décision produit) : un volume à la place d'un passage (KtaGalerie.placePassage : le POI ramené dans
+  // le tube, sur l'axe pour une porte ; _volumesDuNiveau), panneau au-dessus ; jamais de 🪜, de cadre doré ni
+  // d'itinéraire (aucun moyen : KtaPoiJonction.moyen).
+  //   esf / pef : cage à marches ou puits à échelons d'eso / peo, fermés par une dalle sombre (DIM_ACCES.fermeY) ;
+  //   pb : dalle maçonnée au ras du plafond, sans bouche ;
+  //   pc / psf : bouche au plafond (carrée / ronde) remplie de remblais, cône d'éboulis au sol ;
+  //   ps : puits rond maçonné de DIM_ACCES.rond, sans échelons, ciel au sommet ;
+  //   pe : bassin creusé dans le sol, margelle basse, eau à −DIM_ACCES.eau (couleur de la zone eau) ;
+  //   cao / caf : porte à deux battants en travers de la galerie (sa largeur à cet endroit), ouverte (battants
+  //   rabattus contre les parois) ou fermée.
+  // Cône, bassin et porte fermée arrêtent le pas en 3D seulement (KtaGalerie.zonesBloquent : contour de
+  // galerieEmprise.js > _obstacleAcces, même cercle de COTES_CERCLE côtés que _cercle) ; l'itinéraire passe
+  // par-dessus le cône et la margelle (_volumesItiAcces). Remblais et bois texturés avec 🧱, couleurs unies sinon :
+  // la bascule refait les volumes (_refaireTuiles).
+
+  // Champs d'un accès, posés sur ceux d'un passage (_volumesDuNiveau) ; dimensions : _dimAcces.
+  function _volumeAcces(tag) {
+    const f = window.KtaGalerie.ACCES[tag];
+    return { acces: true, moyen: null, forme: f, sol: f === "bassin",
+      plafond: tag !== "pb" && f !== "bassin" && f !== "porte", ciel: tag === "ps", grille: false,
+      echelons: tag === "pef", passage: false, ferme: tag === "esf" || tag === "pef", bouche: tag === "pb",
+      comble: tag === "pc" || tag === "psf", bassin: f === "bassin", porte: f === "porte", ouvert: tag === "cao" };
+  }
+
+  // Dimensions d'un accès placé (v.cx, v.cz, v.dir) : rond et bassin d'après DIM_ACCES ; porte de la largeur de la
+  // galerie à sa place ; portée (v.r) qui couvre le cône.
+  function _dimAcces(v) {
+    const D = DIM_ACCES;
+    if (v.forme === "rond") v.a = v.b = D.rond / 2;
+    else if (v.bassin) v.a = v.b = D.bassin / 2 + D.margelle;
+    else if (v.porte) { v.b = _demiLargeurGalerie(v.cx, v.cz); v.a = v.ouvert ? v.b : PORTE.cadre; }
+    v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
+    if (v.comble) v.r = Math.max(v.r, D.cone);
+  }
+
+  // Demi-largeur (m) de la galerie dont l'axe est le plus proche de (x, z) (m) à 10 m, modèle du rendu affiché :
+  // DIM_ACCES.porteDefaut / 2 sans galerie (la règle de galerieEmprise.js > _indexObstacles : même porte).
+  function _demiLargeurGalerie(x, z) {
+    const e = _e, niv = e.niveau === null ? undefined : e.niveau;
+    const m = e.galerie || e.mixte || (window.KtaGalerie ? window.KtaGalerie.modele(niv) : null);
+    const pp = m ? m.plusProche(x * e.sc, z * e.sc, 10 * e.sc) : null;
+    return pp ? pp.w / e.sc : DIM_ACCES.porteDefaut / 2;
+  }
+
+  function _lot(lots, nom) { return lots[nom] || (lots[nom] = new Lot()); }
+
+  // Cercle de rayon R (m) autour du volume, COTES_CERCLE côtés à partir de l'axe x (même contour que l'obstacle).
+  function _cercle(v, R) {
+    const n = window.KtaGalerie.COTES_CERCLE, out = [];
+    for (let k = 0; k < n; k++) {
+      const a = 2 * Math.PI * k / n;
+      out.push([v.cx + R * Math.cos(a), v.cz + R * Math.sin(a)]);
+    }
+    return _sensPositif(out);
+  }
+
+  function _carre(v) {
+    const Q = _repere(v);
+    return _sensPositif([Q(-v.a, -v.b), Q(v.a, -v.b), Q(v.a, v.b), Q(-v.a, v.b)]);
+  }
+
+  // Disque plat (contour de sens positif) à y, face vers le haut (sens 1) ou le bas (−1) ; `m` : uv = x, z / m.
+  function _disque(lot, ring, y, sens, col, m) {
+    const v2 = ring.map(function (q) { return new THREE.Vector2(q[0], q[1]); });
+    let tris;
+    try { tris = THREE.ShapeUtils.triangulateShape(v2, []); } catch (err) { return; }
+    for (let i = 0; i < tris.length; i++) {
+      const a = ring[tris[i][0]], b = ring[tris[i][1]], c = ring[tris[i][2]];
+      lot.tri([a[0], y, a[1]], [b[0], y, b[1]], [c[0], y, c[1]], [0, sens, 0], col,
+        m ? [a[0] / m, a[1] / m, b[0] / m, b[1] / m, c[0] / m, c[1] / m] : undefined);
+    }
+  }
+
+  function _acces(v, lots, g) {
+    if (v.ferme) { _puits(v, lots, g); _dalleFermee(v, lots); return; }
+    if (v.porte) { _porte(v, lots); return; }
+    if (v.bassin) { _bassin(v, lots); return; }
+    const ring = v.forme === "rond" ? _cercle(v, v.a) : _carre(v);
+    if (v.bouche) _dalleBouchee(v, lots);
+    else if (v.comble) { _puitsComble(v, lots, ring); _cone(v, lots); }
+    else _puitsOuvert(v, lots, g, ring);
+  }
+
+  // esf / pef : la dalle qui ferme la cage (vue d'en bas, à portée de la lampe), dessus et dessous.
+  function _dalleFermee(v, lots) {
+    const y = _e.hauteur + DIM_ACCES.fermeY;
+    _pave(lots.opaque, _repere(v), -v.a, v.a, -v.b, v.b, y, y + DIM_ACCES.fermeEp, _couleurFixe(COULEUR_DALLE));
+    v.trace = { dalleY: y };
+  }
+
+  // pb : dalle maçonnée (matériau des parois, pierre avec 🧱) au ras du plafond, débordant autour de la bouche ;
+  // le plafond n'est pas troué.
+  function _dalleBouchee(v, lots) {
+    const h = _e.hauteur, d = DIM_ACCES.boucheDeborde, Q = _repere(v), a = v.a + d, b = v.b + d;
+    const ring = _sensPositif([Q(-a, -b), Q(a, -b), Q(a, b), Q(-a, b)]), y0 = h - DIM_ACCES.boucheEp;
+    for (let k = 0; k < 4; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % 4], y0, h);
+    _disque(lots.parois, ring, y0, -1, BLANC, 1);
+    v.trace = { dalleY: +y0.toFixed(3) };
+  }
+
+  // pc / psf : bouche au plafond, paroi sur DIM_ACCES.comble, remblais qui la remplit (vu d'en bas).
+  function _puitsComble(v, lots, ring) {
+    const h = _e.hauteur, yc = h + DIM_ACCES.comble, tx = _e.textures === true;
+    for (let k = 0; k < ring.length; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % ring.length], h, yc + 0.02);
+    _dessus(lots.plafond, ring, h, BLANC);
+    _disque(tx ? _lot(lots, "remblais") : lots.opaque, ring, yc, -1,
+      tx ? BLANC : _couleur("zones", "remblais", "fillColor"), tx ? REMBLAIS.m : undefined);
+    v.trace = { combleY: yc };
+  }
+
+  // Cône d'éboulis au pied d'un puits comblé : pied au rayon de l'obstacle, mi-pente bosselée (tirage fixe par
+  // place : le même cône à chaque construction), sommet.
+  function _cone(v, lots) {
+    const R = DIM_ACCES.cone, H = DIM_ACCES.coneH, n = window.KtaGalerie.COTES_CERCLE, tx = _e.textures === true;
+    const lot = tx ? _lot(lots, "remblais") : lots.opaque, m = tx ? REMBLAIS.m : 0;
+    const col = tx ? BLANC : _couleur("zones", "remblais", "fillColor");
+    let gr = (Math.abs(Math.round(v.cx * 97 + v.cz * 13)) % 2147483646) + 1;
+    const alea = function () { gr = (gr * 16807) % 2147483647; return gr / 2147483647; };
+    const pied = _cercle(v, R), mi = [], sommet = [v.cx, H, v.cz];
+    const bas = pied.map(function (q) { return [q[0], 0, q[1]]; });
+    pied.forEach(function (q) {
+      const f = 0.5 + (alea() - 0.5) * 0.12, y = H * 0.55 * (0.9 + alea() * 0.2);
+      mi.push([v.cx + (q[0] - v.cx) * f, y, v.cz + (q[1] - v.cz) * f]);
+    });
+    const face = function (a, b, c) {
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], wx = c[0] - a[0], wy = c[1] - a[1], wz = c[2] - a[2];
+      let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+      const l = Math.hypot(nx, ny, nz) || 1;
+      if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      lot.tri(a, b, c, [nx / l, ny / l, nz / l], col,
+        m ? [a[0] / m, a[2] / m, b[0] / m, b[2] / m, c[0] / m, c[2] / m] : undefined);
+    };
+    for (let k = 0; k < n; k++) {
+      const k1 = (k + 1) % n;
+      face(bas[k], bas[k1], mi[k1]);
+      face(bas[k], mi[k1], mi[k]);
+      face(mi[k], mi[k1], sommet);
+    }
+    v.trace = Object.assign(v.trace || {}, { cone: { R: R, H: H } });
+  }
+
+  // ps : puits rond maçonné, ouvert dans le plafond, ciel au sommet (comme un puits de surface).
+  function _puitsOuvert(v, lots, g, ring) {
+    const e = _e, h = e.hauteur, L = VOLUME.long;
+    for (let k = 0; k < ring.length; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % ring.length], h, h + L);
+    _dessus(lots.plafond, ring, h, BLANC);
+    if (!e.texCiel) e.texCiel = _texCiel();
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: e.texCiel, fog: false, depthWrite: false,
+      toneMapped: false, transparent: true }));
+    const r = 2 * v.a * 0.95;
+    sp.position.set(v.cx, h + L - 0.05, v.cz);
+    sp.scale.set(r, r, 1);
+    sp.renderOrder = 2;
+    sp.userData.famille = "ciel";
+    g.add(sp);
+  }
+
+  // pe : bassin rond creusé dans le sol (bouche au sol), parois jusqu'au fond, margelle basse, eau à −DIM_ACCES.eau.
+  function _bassin(v, lots) {
+    const D = DIM_ACCES, R = D.bassin / 2, mh = D.margelleH, ri = _cercle(v, R), re = _cercle(v, R + D.margelle);
+    for (let k = 0; k < ri.length; k++) {
+      const k1 = (k + 1) % ri.length, a = ri[k], b = ri[k1], c = re[k1], d = re[k];
+      _paroiY(lots.parois, a, b, -D.fond, mh);
+      _paroiY(lots.parois, d, c, 0, mh);
+      lots.parois.quad([a[0], mh, a[1]], [b[0], mh, b[1]], [c[0], mh, c[1]], [d[0], mh, d[1]], [0, 1, 0], BLANC,
+        [a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1]]);
+    }
+    _dessus(lots.sol, ri, 0, BLANC);
+    _disque(lots.opaque, ri, -D.fond, 1, _couleurFixe(COULEUR_FOND));
+    _disque(_lot(lots, "eau"), ri, -D.eau, 1, _couleur("zones", "eau", "fillColor"));
+    v.trace = { eauY: -D.eau, margelleH: mh, rayon: R + D.margelle };
+  }
+
+  // cao / caf : cadre de fer (deux montants, linteau) en travers de la galerie, paroi au-dessus jusqu'au plafond,
+  // deux battants de bois : fermés dans le plan du cadre, ou ouverts à 90°, rabattus contre les parois.
+  function _porte(v, lots) {
+    const e = _e, h = e.hauteur, Q = _repere(v), w = v.b, c = PORTE.cadre, H = Math.min(PORTE.haut, h - c);
+    const fer = _couleurFixe(COULEUR_FER);
+    _pave(lots.opaque, Q, -c / 2, c / 2, -w, -w + c, 0, H, fer);
+    _pave(lots.opaque, Q, -c / 2, c / 2, w - c, w, 0, H, fer);
+    _pave(lots.opaque, Q, -c / 2, c / 2, -w, w, H, H + c, fer);
+    if (h > H + c + 0.01) {
+      _paroiY(lots.parois, Q(-c / 2, -w), Q(-c / 2, w), H + c, h);
+      _paroiY(lots.parois, Q(c / 2, w), Q(c / 2, -w), H + c, h);
+    }
+    const tx = e.textures === true, lot = tx ? _lot(lots, "bois") : lots.opaque;
+    const col = tx ? BLANC : _couleurFixe(COULEUR_BOIS), lw = w - c, ep = PORTE.ep, j = PORTE.jeu;
+    const battants = v.ouvert ? [[c / 2, c / 2 + lw, -lw, -lw + ep], [c / 2, c / 2 + lw, lw - ep, lw]]
+      : [[-ep / 2, ep / 2, -lw, -j / 2], [-ep / 2, ep / 2, j / 2, lw]];
+    battants.forEach(function (b) { _battant(lot, Q, b, j, H - j, col, tx); });
+    v.trace = { largeur: +(2 * w).toFixed(3), haut: +H.toFixed(3), ouvert: !!v.ouvert,
+      battants: battants.map(function (b) { return b.map(function (x) { return +x.toFixed(3); }); }) };
+  }
+
+  // Battant : pavé b = [s0, s1, t0, t1] (repère du volume) de y0 à y1 ; ses deux grandes faces portent le motif
+  // entier (u en travers, v vers le haut), les chants et les tranches un coin du motif.
+  function _battant(lot, Q, b, y0, y1, col, tx) {
+    const ring = _sensPositif([Q(b[0], b[2]), Q(b[1], b[2]), Q(b[1], b[3]), Q(b[0], b[3])]);
+    const grand = Math.max(b[1] - b[0], b[3] - b[2]) * 0.5, zero = [0, 0, 0, 0, 0, 0, 0, 0];
+    for (let k = 0; k < 4; k++) {
+      const p = ring[k], q = ring[(k + 1) % 4], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], [dz / l, 0, -dx / l], col,
+        tx ? (l > grand ? [0, 0, 1, 0, 1, 1, 0, 1] : zero) : undefined);
+    }
+    [[y1, 1], [y0, -1]].forEach(function (f) {
+      lot.quad([ring[0][0], f[0], ring[0][1]], [ring[1][0], f[0], ring[1][1]], [ring[2][0], f[0], ring[2][1]],
+        [ring[3][0], f[0], ring[3][1]], [0, f[1], 0], col, tx ? zero : undefined);
+    });
+  }
+
+  // Bois des battants (🧱), dessiné une fois par page : planches verticales (fil, nuance par planche, rainures),
+  // pentures de fer horizontales cloutées, en relief. → { couleur, normale } (canvas BOIS.px, puissance de 2 :
+  // mipmaps). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _bois(alea) {
+    const B = BOIS, n = B.px, haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4);
+    const fil = _champBoucle(alea, 24, 3, n), fin = _champBoucle(alea, 64, 8, n), nuance = _champBoucle(alea, 4, 4, n);
+    const bois = new THREE.Color(B.couleur), fer = new THREE.Color(B.fer), larg = n / B.planches, teintes = [];
+    for (let i = 0; i < B.planches; i++) teintes.push(0.82 + alea() * 0.3);
+    const demi = B.bande * n / 2;
+    const surBande = function (y) {
+      return B.pentures.some(function (c) { return Math.abs(y - c * n) < demi; });
+    };
+    for (let y = 0; y < n; y++) {
+      const bande = surBande(y);
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, k = Math.min(B.planches - 1, Math.floor(x / larg));
+        const dx = x - k * larg, joint = Math.min(dx, larg - dx), rainure = joint < 2 ? 1 - joint / 2 : 0;
+        let c, f;
+        if (bande) {
+          haut[p] = 0.9 + 0.05 * fin[p];
+          c = fer; f = 0.8 + 0.3 * nuance[p];
+        } else {
+          haut[p] = 0.45 + 0.12 * fil[p] + 0.05 * fin[p] - 0.4 * rainure;
+          c = bois; f = teintes[k] * (0.72 + 0.4 * fil[p]) * (0.92 + 0.16 * fin[p]) * (1 - 0.6 * rainure);
+        }
+        img[o4] = c.r * 255 * f; img[o4 + 1] = c.g * 255 * f; img[o4 + 2] = c.b * 255 * f; img[o4 + 3] = 255;
+      }
+    }
+    // Clous des pentures : têtes rondes en relief, un peu plus claires.
+    B.pentures.forEach(function (cy) {
+      for (let cx = B.clou / 2; cx < n; cx += B.clou) {
+        for (let y = Math.floor(cy * n - 3); y <= cy * n + 3; y++) {
+          for (let x = Math.floor(cx - 3); x <= cx + 3; x++) {
+            const d = Math.hypot(x - cx, y - cy * n);
+            if (d > 3 || y < 0 || y >= n || x < 0 || x >= n) continue;
+            const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, s = 1 - d / 3;
+            haut[p] += 0.2 * s;
+            for (let q = 0; q < 3; q++) img[o4 + q] = Math.min(255, img[o4 + q] * (1 + 0.35 * s));
+          }
+        }
+      }
+    });
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, B.relief) };
+  }
+
+  // Matériau des battants (🧱), fait au premier cavage construit (aucun coût sans cavage ni 🧱 coupé) ; libéré avec
+  // la vue (_demonter).
+  function _matPorte() {
+    const e = _e;
+    if (e.mats.porte) return e.mats.porte;
+    const t0 = performance.now(), t = _texturesPeintes("porte", _bois, BOIS.graine);
+    e.mats.porte = new THREE.MeshLambertMaterial({ map: t.couleur, normalMap: t.normale });
+    e.msPorte = performance.now() - t0;
+    return e.mats.porte;
+  }
+
+  function _ajouterAcces(lots, ajouter) {
+    if (lots.bois && lots.bois.p.length) ajouter(lots.bois, _matPorte(), 0, "porte");
+    if (lots.remblais && lots.remblais.p.length) ajouter(lots.remblais, _matZone("remblais"), 0, "remblais");
+    if (lots.eau) ajouter(lots.eau, _e.mats.eauGalerie, 2, "eau");
+  }
+
+  // Ce que le checkup lit d'un accès construit (KtaVue3D.etat().volumes) : genre, triangles par lot, matériaux.
+  function _statsAcces(v, lots, g) {
+    const n = function (l) { return l ? l.p.length / 9 : 0; };
+    const maille = function (f) { return g.children.filter(function (o) { return o.userData.famille === f; })[0]; };
+    const porte = maille("porte"), remblais = maille("remblais");
+    return Object.assign({ acces: true, ferme: !!v.ferme, bouchee: !!v.bouche, comble: !!v.comble,
+      bassin: !!v.bassin, porte: !!v.porte, ouvert: !!v.ouvert, bois: n(lots.bois), remblais: n(lots.remblais),
+      eau: n(lots.eau), porteTexturee: !!(porte && porte.material.map), remblaisTexture: !!(remblais &&
+      remblais.material.map), familles: g.children.map(function (o) { return o.userData.famille; }) }, v.trace || {});
+  }
+
+  // Cône et bassin que l'itinéraire enjambe (comme un remblais, _volumesIti), à leur hauteur propre (h).
+  function _volumesItiAcces(vols) {
+    const out = [];
+    (vols || []).forEach(function (v) {
+      if (!v.acces || (!v.comble && !v.bassin)) return;
+      const D = DIM_ACCES, ring = _cercle(v, v.comble ? D.cone : D.bassin / 2 + D.margelle);
+      const o = { ring: ring, h: v.comble ? D.coneH : D.margelleH, x0: Infinity, z0: Infinity, x1: -Infinity,
+        z1: -Infinity };
+      ring.forEach(function (q) {
+        o.x0 = Math.min(o.x0, q[0]); o.x1 = Math.max(o.x1, q[0]);
+        o.z0 = Math.min(o.z0, q[1]); o.z1 = Math.max(o.z1, q[1]);
+      });
+      out.push(o);
+    });
+    return out;
   }
 
   // ── Geste d'un passage : fondu noir, descente / montée, bandeau du niveau ────────────────────────────────
@@ -2863,7 +3190,8 @@
   // un corps du bord.
   function _coince(x, y) {
     const e = _e, G = window.KtaGalerie, n = _niveauPas();
-    if (G.dansZone(x, y, n) || G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n).some(Boolean)) return true;
+    if (G.dansZone(x, y, n, e.rendu) ||
+        G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n, undefined, e.rendu).some(Boolean)) return true;
     if (e.galerie) return !G.dedans(x, y, n);
     const m = e.mixte;
     if (m && m.pieces.length && !m.dedans(x, y) && !m.enChambre(x, y)) {
@@ -2966,7 +3294,7 @@
   // ⚠️ contrat : la 3D seulement ; ktaSegmentsBloquesParStructure (pas du tracker en 2D) ne lit aucune zone.
   // `depart` ({ x, y } px, facultatif) : place d'où part le pas ; une zone qui la contient ne l'arrête pas.
   function _juger(segs, depart) {
-    const n = _niveauPas(), z = window.KtaGalerie.zonesBloquent(segs, n, depart);
+    const n = _niveauPas(), z = window.KtaGalerie.zonesBloquent(segs, n, depart, _e.rendu);
     let r;
     if (_e.galerie) r = window.KtaGalerie.segmentsBloques(segs, n);
     else {
@@ -5049,7 +5377,7 @@
   function textures() {
     if (!_e) return null;
     const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
-      paroi: e.mats.paroi, remblais: e.mats.remblais, eboulis: e.mats.eboulis };
+      paroi: e.mats.paroi, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,
@@ -5074,7 +5402,7 @@
       for (let i = 0; i < d.length; i += 4) t += Math.hypot(d[i] / 127.5 - 1, d[i + 1] / 127.5 - 1);
       return +(t / (w * h)).toFixed(3);
     };
-    ["roche", "parpaing", "paroi", "remblais", "eboulis"].forEach(function (k) {
+    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte"].forEach(function (k) {
       const m = mats[k];
       if (!m) return;
       r.materiaux[k] = { pente: m.normalMap ? pente(m.normalMap.image) : 0, carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,

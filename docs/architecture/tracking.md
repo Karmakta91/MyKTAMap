@@ -1343,6 +1343,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
   seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
   et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
+  Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, bassin `pe`, cavage fermé `caf`, ci-dessous) suivent
+  la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
+  rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
   (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;
@@ -1497,6 +1500,27 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
   `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux) ; POI décalés de 1 à 5 m, carrefour, raccords,
   panneau et 🪜 au volume : § 14 ter.
+- **Accès de surface sans passage** (`vue3d.js > _volumeAcces`, `_acces` ; formes et dimensions :
+  `galerieEmprise.js > ACCES`, `ACCES_DIM` ; décision produit) : un volume à la place d'un passage (`placePassage`,
+  demi-emprise propre à l'accès, `_demiAcces`), panneau au-dessus, construit à portée, **sans moyen** (ni 🪜, ni cadre
+  doré, ni itinéraire, ni coût vertical : `KtaPoiJonction.moyen` nul) et **sans emprise** (aucune pièce de niche :
+  `versGalerie` et le recalage ne changent pas). `esf` / `pef` : la cage à marches d'`eso`, le puits à échelons de
+  `peo`, fermés par une dalle sombre à 2,5 m au-dessus du plafond (pas de ciel). `pb` : dalle maçonnée (matériau des
+  parois) au ras du plafond, plafond non troué. `pc` / `psf` : bouche au plafond (carrée de 1,2 m / ronde de 1,8 m)
+  remplie de remblais sur 0,5 m, et **cône d'éboulis** au sol (rayon 0,9 m, 0,6 m de haut, 16 côtés) qui arrête le
+  pas ; l'itinéraire passe par-dessus (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de
+  1,8 m, sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
+  0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; arrête le pas
+  (margelle comprise), l'itinéraire passe sur la margelle. `cao` / `caf` : **porte à deux battants** en travers de la
+  galerie, posée sur l'axe (demi-emprise infinie : elle barre toute la largeur), largeur = celle de la galerie à cet
+  endroit (demi-largeur de l'axe le plus proche, 2 m sans galerie), cadre de fer, paroi au-dessus du linteau (2,1 m,
+  borné par la hauteur) jusqu'au plafond ; `caf` fermé arrête le pas sur toute la largeur (obstacle de 0,2 m qui
+  déborde de 0,4 m dans la paroi), `cao` a ses battants rabattus à 90° contre les parois. Un itinéraire 2D finit au
+  cavage (bout du chemin sur l'axe) : l'arrivée est atteinte devant la porte, à un corps d'elle. Bois des battants
+  (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
+  refaits). 🩸 Un volume large (puits rond, bassin) dans un tube plus étroit que lui reste sur l'axe et dépasse dans
+  la paroi (pas de niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, arrivée devant un
+  cavage fermé, 🧱 coupé, 2D intacte).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
