@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.22.0` (01/11/2026)
+## 📦 Version courante — `v2.22.1` (02/11/2026)
 
-> 🗑️ **v2.22.0 — Suppression par zone, volume exploité, mur en ligne, contours fermés convertis** : une zone tracée sélectionne puis supprime en lot les objets qu'elle contient (un seul ⏪) ; ⛏️ Volume exploité dans 📐 Mesure ; type de structure 🟦 Mur (ligne) qui coupe l'itinéraire ; lignes fermées d'un import, même livrées en plusieurs morceaux, converties en zones ou piliers. Aussi : 📏 Distance totale dans 📐 Mesure, pas du tracker qui ne traverse plus les structures, 🧊 Vue 3D autour de sa position (bouton cube de la barre de droite, mêmes filtres que la carte). Détail : journal ci-dessous.
+> 🧊 **v2.22.1 — Correctif de la vue 3D, accès de surface dessinés** : un passage entre niveaux (escalier, puits) se dessine dans la galerie de chaque niveau, même quand son point est posé à côté pour la lisibilité de la carte (il n'en restait parfois que le panneau) ; escaliers et puits fermés, puits bouchés ou comblés, puits d'extraction, bassins et cavages (porte à deux battants) ont leur volume en 3D, et une porte fermée, un bassin ou le cône d'un puits comblé arrêtent la marche. Détail : journal ci-dessous.
 
 ---
 
@@ -766,6 +766,12 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.22.1 (02/11/2026) — Correctif de la vue 3D, accès de surface dessinés (branche `Karma_dev`)
+
+- **🧊 Passages posés dans la galerie** (`js/galerieEmprise.js > _placeVolume`, exposée par `KtaGalerie.placePassage`) : le volume d'un passage entre niveaux, son emprise, son 🪜, son cadre doré et son panneau se posent dans le tube de la galerie la plus proche (à moins de `PROCHE_M`, 10 m), du côté du point, sur chaque niveau sans raccord validé ; un raccord validé du niveau (celui du niveau du point compris) donne l'endroit exact ; rendu Structures, chambre ou aucun axe à 10 m : le point tel quel. Avant, un point posé à côté de l'axe (le cas courant, pour la lisibilité en 2D) laissait le volume dans la roche, invisible. Le point enregistré, la 2D, l'itinéraire et le recalage ne changent pas. `checkup-vue-3d.js` § 14 ter.
+- **🚪 Accès de surface sans passage en volume** (`js/vue3d.js`, `js/galerieEmprise.js`) : escalier fermé et puits à échelon fermé (volume de l'ouvert, dalle sombre en haut) ; puits bouché (dalle maçonnée au ras du plafond) ; puits comblé et puits d'extraction comblé (bouche pleine de remblais, cône d'éboulis au sol qui bloque) ; puits d'extraction (rond, maçonné, 1,8 m, jour en haut) ; puits au sol / bassin (margelle, eau à −0,8 m, bloque) ; cavage (porte à deux battants en bois et fer en travers de la galerie : ouverte, battants rabattus contre les parois ; fermée, elle bloque). Aucun n'a de moyen de passage (ni 🪜, ni itinéraire). Le ruban de l'itinéraire passe par-dessus le cône et la margelle ; l'arrivée d'un itinéraire sur un cavage fermé reste atteignable devant la porte. Ces obstacles comptent pour `ctx.libre` des add-ons (`docs/architecture/addons.md`). `checkup-vue-3d.js` § 14 quater.
+- **Tests** : le contrôle du son après « Rejouer » (add-on du jeu) est sauté, avec une ligne ℹ️, sur un navigateur de test sans WebAudio.
 
 #### v2.22.0 (01/11/2026) — Suppression par zone, volume exploité, mur en ligne, contours fermés convertis (branche `Karma_dev`)
 
