@@ -8,7 +8,7 @@
 // road.js — tracés (roads) de session : dessin, rendu Leaflet, cercles d'intersection, routes embarquées des
 // calques de données, magnétisme au dessin, décimation et culling PerfUltra.
 // Expose : initRoad, toggleRoadMode, renderRoads, getRoads/setRoads, registerEmbeddedRoad, clearEmbeddedRoads,
-//          getAllEmbeddedRoads, ktaDecimerPointsTrace, ktaPurgerFlashSnap…
+//          getAllEmbeddedRoads, getRoadIntersections (ronds dessinés, lus par la vue 3D), ktaDecimerPointsTrace…
 // Dépend de : styleResolver.js (window.ktaResolveStyle), LegendCustomization, HistoryManager, KtaUid, PerfUltra.
 // Pièges : 🩸 Styles des types : TOUJOURS window.ktaResolveStyle, jamais de table locale (check-style-canon.js).
 //          🩸 Intersections en O(N²×P²) : plafond de routes, AABB, débounce pendant le dessin.
@@ -431,6 +431,7 @@ function _calculerIntersectionsRoads(roads) {
 
       const winner = _typeGagnant(A.type, B.type);
       const color  = _couleurDeType(winner);
+      const level  = Number.isInteger(A.level) ? A.level : 0;   // les deux tracés sont du même niveau
 
       // 1) Croisement franc segment × segment
       for (let a = 0; a < A.points.length - 1; a++) {
@@ -439,7 +440,7 @@ function _calculerIntersectionsRoads(roads) {
             A.points[a], A.points[a + 1],
             B.points[b], B.points[b + 1]
           );
-          if (inter) raw.push({ point: inter, color: color });
+          if (inter) raw.push({ point: inter, color: color, level: level });
         }
       }
 
@@ -449,7 +450,7 @@ function _calculerIntersectionsRoads(roads) {
         for (let b = 0; b < B.points.length - 1; b++) {
           const r = _pointSegmentProject(pa, B.points[b], B.points[b + 1]);
           if (r.dist <= ROAD_PROXIMITY_TOLERANCE) {
-            raw.push({ point: pa, color: color });
+            raw.push({ point: pa, color: color, level: level });
             break;
           }
         }
@@ -460,7 +461,7 @@ function _calculerIntersectionsRoads(roads) {
         for (let a = 0; a < A.points.length - 1; a++) {
           const r = _pointSegmentProject(pb, A.points[a], A.points[a + 1]);
           if (r.dist <= ROAD_PROXIMITY_TOLERANCE) {
-            raw.push({ point: pb, color: color });
+            raw.push({ point: pb, color: color, level: level });
             break;
           }
         }
@@ -621,6 +622,23 @@ function _purgeIntersectionLayers() {
   intersectionLayers = [];
 }
 
+// Dernière liste dessinée [{ point: {x, y}, color, level }] (vide si les ronds sont coupés), lue par la vue 3D
+// (window.getRoadIntersections) ; `kta:intersectionsChange` part quand elle change.
+let _dernieresIntersections = [];
+let _signatureIntersections = "";
+
+function _memoriserIntersections(liste) {
+  _dernieresIntersections = liste;
+  let sig = String(liste.length);
+  for (let i = 0; i < liste.length; i++) {
+    sig += "|" + Math.round(liste[i].point.x) + "," + Math.round(liste[i].point.y) + "," + liste[i].color + "," +
+      liste[i].level;
+  }
+  if (sig === _signatureIntersections) return;
+  _signatureIntersections = sig;
+  try { window.dispatchEvent(new CustomEvent("kta:intersectionsChange")); } catch (e) {}
+}
+
 function _renderIntersections() {
   // Rendu à jour : un débounce en attente est annulé.
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
@@ -632,7 +650,7 @@ function _renderIntersections() {
   const _shows = (typeof window.getPlanShowsIntersections === "function")
     ? window.getPlanShowsIntersections()
     : (window.APP_CONFIG && window.APP_CONFIG.showRoadIntersections !== false);
-  if (!_shows) return;
+  if (!_shows) { _memoriserIntersections([]); return; }
 
   const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const _vis  = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
@@ -666,6 +684,7 @@ function _renderIntersections() {
       return true;
     });
   const intersections = _calculerIntersectionsRoads(allRoads);
+  _memoriserIntersections(intersections);
   intersections.forEach(({ point, color }) => {
     const latlng = convertCoord(point.x, point.y);
     // Canvas par défaut (preferCanvas).
@@ -1224,11 +1243,18 @@ window.getAllEmbeddedRoads = function() {
 
 // ── Exports ──────────────────────
 // ⚠️ Intersections pour les exports image (utils.js > telechargerPlan, exporter.js) : roads
-// [{type, points: [{x, y}]}] → [{point: {x, y}, color}] en coordonnées image ; rayon = window.ROAD_INTERSECTION_RADIUS.
+// [{type, points: [{x, y}]}] → [{point: {x, y}, color, level}] en coordonnées image ; rayon = window.ROAD_INTERSECTION_RADIUS.
 window.computeRoadIntersections = function(roads) {
   return _calculerIntersectionsRoads(roads || []);
 };
 window.ROAD_INTERSECTION_RADIUS = ROAD_INTERSECTION_RADIUS;
+// ⚠️ contrat : ronds DESSINÉS sur la carte (mêmes filtres : niveaux visibles, types, calques ; vide si l'option
+// du plan est coupée), copie [{ point: {x, y}, color, level }] ; `kta:intersectionsChange` (window) quand elle change.
+window.getRoadIntersections = function() {
+  return _dernieresIntersections.map(function(i) {
+    return { point: { x: i.point.x, y: i.point.y }, color: i.color, level: i.level };
+  });
+};
 
 window.initRoad             = initRoad;
 window.toggleRoadMode       = toggleRoadMode;

@@ -152,7 +152,9 @@ Le calque `editor` regroupe la **session du plan** — sur une installation part
 - ✏️ Points ajoutés via l'éditeur
 - ⬛ Zones de session (Eau/Remblais/Effondrement)
 - 🛣️ Roads de session (Principal/Secondaire/Chemin)
-- ⭕ Cercles d'intersection des roads
+- ⭕ Cercles d'intersection des roads (⚠️ contrat : `road.js > _renderIntersections` mémorise la liste dessinée,
+  `[{ point, color, level }]`, vide quand l'option du plan est coupée ; `window.getRoadIntersections()` en rend une
+  copie et `kta:intersectionsChange` part quand elle change. Lue par la vue 3D, qui ne recalcule rien)
 
 **Exclus du calque** (rendus directement sur `window.map` pour cycle de vie propre) :
 - 🗺️ Itinéraire (type `"itinerary"`) — modale Itinéraire
