@@ -112,6 +112,20 @@
   // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
     biseau: 0.006, relief: 2.4, graine: 41 };
+  // Remblais (zones `remblais`, 🧱 activé) : terre et sable calcaire tassés, cailloux et blocs de calcaire anguleux à
+  // moitié enfouis, sans joints ni appareil (_pierraille). Motif de 2 m (128 px/m), coordonnées de texture en mètres
+  // comme la roche : un caillou garde sa taille sur une zone de 1 m comme de 50 m. `tailles` : [rayon min, rayon
+  // max (m), nombre par motif, saillie (part de la hauteur d'un bloc)], du gravier aux blocs ; `couvre` : part des
+  // cailloux de la classe qui gardent leur nombre (le reste est tiré, la densité varie d'un motif à l'autre).
+  const REMBLAIS = { m: 2, px: 256, terre: "#b09e7e", pierre: "#d6cdb7", tailles: [[0.008, 0.02, 520, 0.35],
+    [0.025, 0.06, 90, 0.5], [0.07, 0.13, 14, 0.6], [0.16, 0.24, 3, 0.7]], facettes: [5, 8], allonge: 0.5,
+    sable: 900, fissures: 0, relief: 3.2, graine: 61 };
+  // Effondrement (fontis : éboulis du ciel tombé, 🧱 activé), posé sur le dessin d'aujourd'hui (au sol, sans volume) :
+  // gros blocs cassés empilés en désordre, arêtes vives, fissures, débris, peu de terre. Motif de 4 m (64 px/m) :
+  // les gros blocs se répéteraient à l'œil sur un motif plus petit ; relief plus fort, la lampe accroche les arêtes.
+  const EBOULIS = { m: 4, px: 256, terre: "#857864", pierre: "#cbc2ab", tailles: [[0.02, 0.05, 460, 0.4],
+    [0.07, 0.16, 125, 0.7], [0.2, 0.36, 39, 0.9], [0.42, 0.62, 12, 1]], facettes: [4, 7], allonge: 0.7,
+    sable: 250, fissures: 3, relief: 5, graine: 67 };
   const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "front-1": "roche", "front-2": "roche",
     "mur": "parpaing", "mur-ligne": "parpaing" };
   const LISERE = 0.15;              // m
@@ -532,7 +546,7 @@
   // ne montrent pas le même dessin), v = hauteur depuis le sol (une assise part toujours du sol).
   function _prisme(lot, ring, y0, y1, col, dessus, m, u0) {
     if (ring.length < 3) return;
-    let s = !m ? 0 : u0 !== undefined ? u0 : ((ring[0][0] * 0.37 + ring[0][1] * 0.61) % m + m) % m;
+    let s = !m ? 0 : u0 !== undefined ? u0 : _origineMotif(ring, m);
     for (let i = 0; i < ring.length; i++) {
       const p = ring[i], q = ring[(i + 1) % ring.length];
       const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
@@ -544,6 +558,10 @@
     }
     if (dessus) _dessus(lot, ring, y1, col, m);
   }
+
+  // Origine du motif sur un contour (m) : tirée de la position de son premier sommet, deux volumes voisins ne montrent
+  // pas le même dessin. ⚠️ contrat : la même pour un remblais en chambre (_prisme) et découpé au tube (_remblaisGalerie).
+  function _origineMotif(ring, m) { return ((ring[0][0] * 0.37 + ring[0][1] * 0.61) % m + m) % m; }
 
   // Mur d'épaisseur réelle le long d'une polyligne : un pavé par segment, prolongé d'une demi-épaisseur aux deux
   // bouts pour fermer les angles. `m` : texture comme _prisme, l'appareil suit la longueur parcourue.
@@ -641,10 +659,13 @@
         }
       }
     }
-    const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau, remblais: remblaisTube };
     // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
-    // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine.
-    const roche = new Lot(), parpaing = new Lot();
+    // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement texturés :
+    // un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
+    const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
+    const remblaisTex = new Lot(), eboulis = new Lot();
+    const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
+      remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
       const col = tex ? BLANC : _couleur("structures", s.type), m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
@@ -661,8 +682,12 @@
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
       if (mx && _zoneDeTube(z, ring, mx)) { _e.zonesTube++; _zoneGalerie(z, mx, lotsTube); continue; }
-      if (z.type === "remblais") {
+      if (z.type === "remblais" && tx) {
+        _prisme(remblaisTex, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, REMBLAIS.m);
+      } else if (z.type === "remblais") {
         _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
+      } else if (z.type === "effondrement" && tx) {
+        _dessus(eboulis, ring, 0.02, BLANC, EBOULIS.m);
       } else if (z.type === "eau") {
         _dessus(transp, ring, 0.04, _couleur("zones", z.type, "fillColor"));
       } else if (z.type === "inaccessible") {
@@ -702,6 +727,10 @@
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, _e.mats.paroi, 0, "parois");
     ajouter(remblaisTube, _e.mats.opaque, 0, "remblais");
+    if (remblaisTex.p.length) _matZone("remblais");
+    ajouter(remblaisTex, _e.mats.remblais, 0, "remblais");
+    if (eboulis.p.length) _matZone("eboulis");
+    ajouter(eboulis, _e.mats.eboulis, 0, "effondrement");
     ajouter(eauTube, _e.mats.eauGalerie, 2, "eau");
     for (let i = 0; i < t.p.length; i++) {
       const p = t.p[i];
@@ -776,7 +805,7 @@
     const e = _e, m = e.galerie, sc = e.sc, h = e.hauteur;
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
     const rubans = new Lot();
-    const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot();
+    const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot(), eboulis = new Lot();
     t.parois = [];
     for (let i = 0; i < t.g.length; i++) {
       const ring = _metres(m.pieces[t.g[i]].pts, sc);
@@ -797,7 +826,10 @@
       _compter(e.liseres, r.type);
       _ruban(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
     }
-    const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais };
+    // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
+    const tx = e.textures === true;
+    const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais,
+      eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
@@ -822,7 +854,10 @@
     ajouter(parois, e.mats.paroi, 0, "parois");
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(rubans, e.mats.rubans, 0, "rubans");
-    ajouter(remblais, e.mats.opaque, 0, "remblais");
+    if (tx && remblais.p.length) _matZone("remblais");
+    ajouter(remblais, tx ? e.mats.remblais : e.mats.opaque, 0, "remblais");
+    if (eboulis.p.length) _matZone("eboulis");
+    ajouter(eboulis, e.mats.eboulis, 0, "effondrement");
     ajouter(lumineux, e.mats.iti, 1, "itineraire");
     ajouter(eau, e.mats.eauGalerie, 2, "eau");
     ajouter(hachSol, e.mats.hachSol, 0, "inaccessible");
@@ -873,7 +908,8 @@
 
   // Zone en mode galerie : découpée à chaque pièce de l'emprise qu'elle touche. Eau à 4 cm ; remblais en volume
   // (faces seulement là où il donne sur la galerie) ; inaccessible au sol + rideau en travers du tube là où son
-  // contour coupe l'axe ; effondrement et types perso au sol.
+  // contour coupe l'axe ; effondrement et types perso au sol. `lots.texRemblais` / `lots.eboulis` (🧱) : remblais et
+  // effondrement en blanc avec des coordonnées de texture en mètres, comme en chambre (_construireTuile).
   function _zoneGalerie(z, m, lots) {
     const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
     if (ring.length < 3) return;
@@ -889,7 +925,10 @@
       e.zonesDecoupees[z.type] = (e.zonesDecoupees[z.type] || 0) + 1;
       if (z.type === "eau") _dessus(lots.eau, c, 0.04, col);
       else if (z.type === "inaccessible") _dessus(lots.hachSol, c, 0.02, col);
-      else if (z.type === "remblais") _remblaisGalerie(lots.remblais, c, ring, m, h * HAUTEUR_REMBLAIS, col);
+      else if (z.type === "remblais") {
+        _remblaisGalerie(lots.remblais, c, ring, m, h * HAUTEUR_REMBLAIS, lots.texRemblais ? BLANC : col,
+          lots.texRemblais ? REMBLAIS.m : undefined);
+      } else if (z.type === "effondrement" && lots.eboulis) _dessus(lots.eboulis, c, 0.02, BLANC, EBOULIS.m);
       else _dessus(lots.opaque, c, 0.02, col);
     }
     if (z.type !== "inaccessible") return;
@@ -911,8 +950,10 @@
   }
 
   // Remblais découpé : dessus, et une face sur chaque bord qui donne sur la galerie (pas contre une paroi ni à
-  // l'intérieur du remblais, où elle ne se verrait pas ou scintillerait contre la paroi).
-  function _remblaisGalerie(lot, c, ring, m, hr, col) {
+  // l'intérieur du remblais, où elle ne se verrait pas ou scintillerait contre la paroi). `tm` (m par motif, 🧱) :
+  // coordonnées de texture de _prisme sur le contour entier de la zone (u = abscisse du bord sur `ring`, même
+  // origine ; v = hauteur), dessus projeté au sol : un remblais coupé par le tube garde le dessin d'une chambre.
+  function _remblaisGalerie(lot, c, ring, m, hr, col, tm) {
     const sc = m.sc, dedansZone = function (x, z) {
       let r = false;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -926,10 +967,30 @@
       if (l < 1e-6) continue;
       const x = (p[0] + q[0]) / 2 + dz / l * 0.01, z = (p[1] + q[1]) / 2 - dx / l * 0.01;
       if (!m.dedans(x * sc, z * sc) || dedansZone(x, z)) continue;
-      lot.quad([p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], hr, q[1]], [p[0], hr, p[1]], [dz / l, 0, -dx / l], col);
+      let uv;
+      if (tm) {
+        const s = (_origineMotif(ring, tm) + _abscisse(ring, p[0], p[1])) / tm;
+        uv = [s, 0, s + l / tm, 0, s + l / tm, hr / tm, s, hr / tm];
+      }
+      lot.quad([p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], hr, q[1]], [p[0], hr, p[1]], [dz / l, 0, -dx / l], col, uv);
       _e.facesRemblais++;
     }
-    _dessus(lot, c, hr, col);
+    _dessus(lot, c, hr, col, tm);
+  }
+
+  // Abscisse (m) du point (x, z) sur le contour `ring`, depuis son premier sommet : celle du point le plus proche sur
+  // le bord le plus proche (à égalité, le premier : un point posé sur ring[0] vaut 0, jamais le périmètre).
+  function _abscisse(ring, x, z) {
+    let best = Infinity, s = 0, cumul = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const p = ring[i], q = ring[(i + 1) % ring.length], dx = q[0] - p[0], dz = q[1] - p[1];
+      const l2 = dx * dx + dz * dz, l = Math.sqrt(l2);
+      const t = l2 > 1e-12 ? Math.max(0, Math.min(1, ((x - p[0]) * dx + (z - p[1]) * dz) / l2)) : 0;
+      const d = Math.hypot(p[0] + dx * t - x, p[1] + dz * t - z);
+      if (d < best - 1e-9) { best = d; s = cumul + t * l; }
+      cumul += l;
+    }
+    return s;
   }
 
   // ── POI : panneau (icône + nom) toujours face à la caméra, à hauteur de tête ─────────────────────────
@@ -1570,6 +1631,121 @@
     return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief) };
   }
 
+  // Pierraille (REMBLAIS, EBOULIS) : sol de terre et de sable (bruit à trois échelles, grains clairs), cailloux et
+  // blocs anguleux. Un bloc = intersection de demi-plans (o.facettes) autour d'un centre, allongé selon un axe tiré :
+  // toujours convexe, arêtes droites. Hauteur en facettes (pente propre à chaque face, plateau au sommet) : les
+  // arêtes accrochent la lampe par la normal map. Saillie selon la taille de la classe : un bloc dépasse plus qu'un
+  // gravier, le pied de chacun reste sous la terre (à moitié enfoui) ; liseré de terre plus sombre autour. On garde
+  // la plus haute surface par pixel : les blocs se recouvrent comme un tas. `o.fissures` : fissures par gros bloc.
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  // ⚠️ Coût proportionnel à la surface des blocs × facettes : borné par `tailles` (~10 ms au PC par texture).
+  function _pierraille(o, alea) {
+    const n = o.px, k = n / o.m, img = new Uint8ClampedArray(n * n * 4);
+    const S = { n: n, haut: new Float32Array(n * n), bloc: new Int32Array(n * n).fill(-1),
+      ombre: new Float32Array(n * n), eclat: new Float32Array(n * n) };
+    const haut = S.haut, bloc = S.bloc, ombre = S.ombre, eclat = S.eclat;
+    const t1 = _champBoucle(alea, 6, 6, n), t2 = _champBoucle(alea, 22, 22, n), t3 = _champBoucle(alea, 64, 64, n);
+    const terre = new THREE.Color(o.terre), pierre = new THREE.Color(o.pierre);
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) | 0; return (graine >>> 0) / 4294967296; };
+    for (let p = 0; p < n * n; p++) haut[p] = 0.1 * t1[p] + 0.06 * t2[p] + 0.05 * t3[p];
+    const teintes = [], hmax = o.tailles[o.tailles.length - 1][1], nfMax = o.facettes[1];
+    // Un bloc : facettes en tableaux typés réutilisés (le tracé, _poserBloc, est appelé des centaines de fois).
+    const B = { nf: 0, nx: new Float64Array(nfMax), ny: new Float64Array(nfMax), d: new Float64Array(nfMax),
+      pente: new Float64Array(nfMax), ton: new Float64Array(nfMax), fis: new Float64Array(5 * o.fissures), nfis: 0,
+      cx: 0, cy: 0, r: 0, sail: 0, gx: 0, gy: 0, id: 0 };
+    // Des plus gros aux plus petits : un gravier tiré sur un bloc ne le recouvre que s'il le dépasse.
+    for (let c = o.tailles.length - 1; c >= 0; c--) {
+      const T = o.tailles[c], nb = Math.round(T[2] * (0.75 + alea() * 0.5));
+      for (let b = 0; b < nb; b++, B.id++) {
+        const r = (T[0] + alea() * (T[1] - T[0])) * k;
+        B.r = r; B.cx = alea() * n; B.cy = alea() * n;
+        B.nf = o.facettes[0] + Math.floor(alea() * (nfMax - o.facettes[0] + 1));
+        const axe = alea() * Math.PI, al = 1 + alea() * o.allonge, a0 = alea() * 2 * Math.PI;
+        for (let f = 0; f < B.nf; f++) {
+          const a = a0 + (f + (alea() - 0.5) * 0.7) * 2 * Math.PI / B.nf;
+          B.nx[f] = Math.cos(a); B.ny[f] = Math.sin(a);
+          B.d[f] = r * (0.75 + alea() * 0.35) * (1 + (al - 1) * Math.abs(Math.cos(a - axe)));
+          B.pente[f] = (0.6 + alea() * 1.1) / Math.max(1.5, r * 0.45);
+          B.ton[f] = 0.8 + alea() * 0.3;
+        }
+        // Saillie : part de la classe, plus la taille dans la classe ; plateau un peu incliné.
+        B.sail = T[3] * (0.25 + 0.75 * r / (hmax * k)) * (0.8 + alea() * 0.4);
+        B.gx = (alea() - 0.5) * 0.3 / r; B.gy = (alea() - 0.5) * 0.3 / r;
+        const t = 0.86 + alea() * 0.18, chaud = alea(), gris = alea() < 0.3;
+        teintes.push(gris ? [t * 0.96, t * 0.97, t] : [t * (1 + 0.04 * chaud), t, t * (0.95 - 0.06 * chaud)]);
+        // Fissures des plus gros : droites, à un écart tiré du centre, sur une longueur tirée (cassure partielle).
+        B.nfis = c === o.tailles.length - 1 ? o.fissures : 0;
+        for (let f = 0; f < B.nfis; f++) {
+          const a = alea() * Math.PI;
+          B.fis[5 * f] = Math.cos(a); B.fis[5 * f + 1] = Math.sin(a);
+          B.fis[5 * f + 2] = (alea() - 0.5) * r * 0.9; B.fis[5 * f + 3] = 0.6 + alea() * 0.6;
+          B.fis[5 * f + 4] = r * (0.3 + alea() * 0.7);
+        }
+        _poserBloc(B, S);
+      }
+    }
+    // Grains de sable clairs dans la terre.
+    const sable = new Uint8Array(n * n);
+    for (let s = 0; s < o.sable; s++) sable[Math.floor(grain() * n * n)] = 1;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, b = bloc[p];
+        let r0, g0, b0;
+        if (b >= 0) {
+          const te = teintes[b], f = eclat[p] * (1 + (grain() - 0.5) * 0.08) * (0.94 + 0.12 * t3[p]);
+          r0 = pierre.r * te[0] * f; g0 = pierre.g * te[1] * f; b0 = pierre.b * te[2] * f;
+        } else {
+          let f = (0.8 + 0.3 * t1[p]) * (0.9 + 0.2 * t2[p]) * (1 + (grain() - 0.5) * 0.16) * (1 - 0.3 * ombre[p]);
+          if (sable[p]) f *= 1.35;
+          r0 = terre.r * f; g0 = terre.g * f; b0 = terre.b * f;
+          haut[p] += 0.04 * ombre[p] + (sable[p] ? 0.03 : 0);
+        }
+        img[o4] = r0 * 255; img[o4 + 1] = g0 * 255; img[o4 + 2] = b0 * 255; img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, o.relief) };
+  }
+
+  // Trace un bloc B (_pierraille) dans S : hauteur en facettes, plus haute surface gardée par pixel (bloc, éclat de
+  // la facette), liseré de terre sombre (ombre) jusqu'à `lis` px autour. Motif bouclé (indices modulo n).
+  function _poserBloc(B, S) {
+    const n = S.n, haut = S.haut, nf = B.nf, nx = B.nx, ny = B.ny, d = B.d, pente = B.pente, fis = B.fis;
+    let dmax = 0;
+    for (let f = 0; f < nf; f++) dmax = Math.max(dmax, d[f]);
+    const lis = Math.max(1, B.r * 0.18), R = Math.ceil(dmax + lis) + 1, cx = B.cx, cy = B.cy;
+    for (let yy = Math.floor(cy - R); yy <= cy + R; yy++) {
+      const qy = yy - cy, ligne = (((yy % n) + n) % n) * n;
+      for (let xx = Math.floor(cx - R); xx <= cx + R; xx++) {
+        const qx = xx - cx;
+        let dm = Infinity, fm = 0, h = Infinity;
+        for (let f = 0; f < nf && dm > -lis; f++) {
+          const e = d[f] - (qx * nx[f] + qy * ny[f]);
+          if (e < dm) dm = e;
+          const hf = e * pente[f];
+          if (hf < h) { h = hf; fm = f; }
+        }
+        if (dm <= -lis) continue;
+        const p = ligne + (((xx % n) + n) % n);
+        if (dm < 0) {
+          const o = 1 + dm / lis;
+          if (o > S.ombre[p]) S.ombre[p] = o;
+          continue;
+        }
+        const hc = h < 1 ? h : 1;
+        let v = 0.2 + B.sail * (hc + qx * B.gx + qy * B.gy), fond = B.ton[fm] * (0.9 + 0.1 * hc);
+        for (let f = 0; f < B.nfis; f++) {
+          const w = fis[5 * f + 3], df = Math.abs(qx * fis[5 * f] + qy * fis[5 * f + 1] - fis[5 * f + 2]);
+          if (df < w && Math.abs(qy * fis[5 * f] - qx * fis[5 * f + 1]) < fis[5 * f + 4]) { v -= 0.2 * (1 - df / w); fond *= 0.55 + 0.45 * df / w; }
+        }
+        if (v <= haut[p]) continue;
+        haut[p] = v;
+        S.bloc[p] = B.id;
+        S.eclat[p] = fond;
+      }
+    }
+  }
+
   // Assises d'une pierre de taille de carrière (PIERRE) : hauteurs tirées dont la somme fait le motif, blocs de
   // longueur tirée partant d'un décalage tiré (joints jamais alignés d'une assise à l'autre), joints irréguliers.
   function _assisesPierre(alea) {
@@ -1628,6 +1804,19 @@
     e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
       PARPAING.graine, true);
     e.msTextures = performance.now() - t0;
+  }
+
+  // Matériau d'une zone texturée (🧱) : `remblais` (REMBLAIS) ou `eboulis` (effondrement, EBOULIS), un seul par type
+  // pour toutes les tuiles et les trois rendus, fait à la première zone de ce type (aucun coût sans elle ni 🧱
+  // coupé). Couleur + normal map comme la roche, jamais teinté par la légende ; libéré avec la vue (_demonter).
+  function _matZone(cle) {
+    const e = _e;
+    if (e.mats[cle]) return e.mats[cle];
+    const t0 = performance.now(), P = cle === "remblais" ? REMBLAIS : EBOULIS;
+    const t = _texturesPeintes(cle, function (alea) { return _pierraille(P, alea); }, P.graine);
+    e.mats[cle] = new THREE.MeshLambertMaterial({ map: t.couleur, normalMap: t.normale });
+    e.msZones = (e.msZones || 0) + performance.now() - t0;
+    return e.mats[cle];
   }
 
   // Couleur + normal map (CanvasTexture répétées, anisotropie ≤ 4, libérées avec la vue) d'une texture dessinée par
@@ -4664,16 +4853,19 @@
   // écart relatif de la rangée la plus éloignée de la médiane, haut pour un appareil à lits de mortier, faible pour la
   // roche brute ; paroi : `pierre` ou moellons) et échelle mesurée sur les arêtes horizontales et verticales des
   // faces texturées : { x, z (milieu, m), sens "h" | "v", uvParM } (paroi : uv de la géométrie × `repeat` de sa
-  // carte, l'échelle vue). ms : dessin des matériaux des structures et de la pierre des parois à cette ouverture ;
+  // carte, l'échelle vue). Remblais et effondrement : matériaux `remblais` et `eboulis` (aretes au plus 4 000 par
+  // matériau). ms : dessin des matériaux des structures, de la pierre des parois et des zones à cette ouverture ;
   // dessins : durée du premier dessin de chaque texture dans la page.
   function textures() {
     if (!_e) return null;
     const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
-      paroi: e.mats.paroi };
+      paroi: e.mats.paroi, remblais: e.mats.remblais, eboulis: e.mats.eboulis };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
-      uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m,
+      uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
+        eboulis: 1 / EBOULIS.m,
         moellons: { h: 1 / (MOELLON.l * MOELLONS_MOTIF.l), v: 1 / (MOELLON.h * MOELLONS_MOTIF.h) } },
       maillages: {}, couleurs: {}, aretes: [], ms: Math.round(e.msTextures || 0), msParoi: Math.round(e.msParoi || 0),
+      msZones: Math.round(e.msZones || 0),
       dessins: Object.assign({}, _appareilsMs), materiaux: {} };
     const lits = function (cv) {
       const w = cv.width, h = cv.height, d = cv.getContext("2d").getImageData(0, 0, w, h).data, l = [];
@@ -4685,10 +4877,17 @@
       const med = l.slice().sort(function (a, b) { return a - b; })[h >> 1];
       return +(l.reduce(function (m, v) { return Math.max(m, Math.abs(v - med)); }, 0) / med).toFixed(3);
     };
-    ["roche", "parpaing", "paroi"].forEach(function (k) {
+    // Pente moyenne de la normal map (0 = plat) : force du relief que la lampe fait ressortir.
+    const pente = function (cv) {
+      const w = cv.width, h = cv.height, d = cv.getContext("2d").getImageData(0, 0, w, h).data;
+      let t = 0;
+      for (let i = 0; i < d.length; i += 4) t += Math.hypot(d[i] / 127.5 - 1, d[i + 1] / 127.5 - 1);
+      return +(t / (w * h)).toFixed(3);
+    };
+    ["roche", "parpaing", "paroi", "remblais", "eboulis"].forEach(function (k) {
       const m = mats[k];
       if (!m) return;
-      r.materiaux[k] = { carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,
+      r.materiaux[k] = { pente: m.normalMap ? pente(m.normalMap.image) : 0, carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,
         relief: m.normalMap ? m.normalMap.image.width : 0,
         mipmaps: m.map.generateMipmaps && (!m.normalMap || m.normalMap.generateMipmaps),
         anisotropie: m.map.anisotropy, couleursSommets: m.vertexColors, recule: m.polygonOffset,
@@ -4699,6 +4898,7 @@
     if (e.mats.paroi.normalMap) {
       r.materiaux.paroi.repetitionRelief = [e.mats.paroi.normalMap.repeat.x, e.mats.paroi.normalMap.repeat.y];
     }
+    const parMat = {};
     e.tuiles.forEach(function (t) {
       if (!t.obj) return;
       t.obj.children.forEach(function (me) {
@@ -4714,7 +4914,7 @@
           }
           return;
         }
-        for (let tr = 0; tr < p.length / 9 && r.aretes.length < 4000; tr++) {
+        for (let tr = 0; tr < p.length / 9 && (parMat[nom] || 0) < 4000; tr++) {
           for (let k = 0; k < 3; k++) {
             const a = tr * 3 + k, b = tr * 3 + (k + 1) % 3;
             const dx = p[b * 3] - p[a * 3], dy = p[b * 3 + 1] - p[a * 3 + 1], dz = p[b * 3 + 2] - p[a * 3 + 2];
@@ -4723,6 +4923,7 @@
             if (!sens || l < 0.05) continue;
             const rep = nom === "paroi" ? me.material.map.repeat : null;
             const du = (uv[b * 2] - uv[a * 2]) * (rep ? rep.x : 1), dv = (uv[b * 2 + 1] - uv[a * 2 + 1]) * (rep ? rep.y : 1);
+            parMat[nom] = (parMat[nom] || 0) + 1;
             r.aretes.push({ x: (p[a * 3] + p[b * 3]) / 2, z: (p[a * 3 + 2] + p[b * 3 + 2]) / 2, y: p[a * 3 + 1],
               y1: p[b * 3 + 1], v0: uv[a * 2 + 1], sens: sens, mat: nom, uvParM: Math.hypot(du, dv) / l });
           }

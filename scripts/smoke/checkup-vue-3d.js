@@ -27,7 +27,9 @@
 // Interrupteur 🧱 Textures (§ 24) : roche brute (sans lits de mortier) et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
 // couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie ; parois des
 // tubes et des galeries en pierre de taille (lits de joint mesurés, 0,5 de texture par mètre à 2,5 m comme à 6 m de
-// hauteur, une assise part du sol), moellons d'origine une fois coupé, temps de dessin des trois textures.
+// hauteur, une assise part du sol), moellons d'origine une fois coupé, temps de dessin des textures ; remblais et
+// effondrement texturés (zone de 1 m et de 10 m à la même échelle, chambre, tube, galerie, structures ; eau et zone
+// perso jamais texturées ; couleur de la légende une fois coupé).
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
@@ -4119,6 +4121,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.ktaEstAccessible = function () { return true; };
         // Type perso fictif (polygone, couleur choisie) : sa base est la géométrie de son entrée de légende.
         LC.findCustomEntry = function (id) {
+          if (id === "cust-v3d-zone") return { id: id, category: "zones", geometry: "polygon", fillColor: "#7d3cff" };
           return id === "cust-v3d-tex" ? { id: id, category: "structures", geometry: "polygon", fillColor: "#3c9be0" }
             : trouver.apply(LC, arguments);
         };
@@ -4135,6 +4138,21 @@ async function mesuresGalerie(page, nom, semisDonne) {
           { uid: "st_tx_c", type: "cust-v3d-tex", level: 0, points: carre(4, 3, 1) },
           { uid: "st_tx_x", type: "type-inconnu-v3d", level: 0, points: carre(6, 9, 0.5) }
         ]);
+        // Remblais et effondrement : un petit (1 m) et un grand (10 m) en chambre, un de chaque dans le tube ; eau
+        // et type de zone perso pour les contre-épreuves (jamais texturés).
+        window.setZones([
+          { uid: "zn_tx_r1", type: "remblais", level: 0, points: carre(6, -6, 0.5) },
+          { uid: "zn_tx_r2", type: "remblais", level: 0, points: rect(12, -6, 22, 4) },
+          { uid: "zn_tx_rt", type: "remblais", level: 0, points: rect(-30, -3, -27, 3) },
+          { uid: "zn_tx_e1", type: "effondrement", level: 0, points: rect(12, 6, 18, 10) },
+          { uid: "zn_tx_et", type: "effondrement", level: 0, points: rect(-22, -3, -19, 3) },
+          { uid: "zn_tx_eau", type: "eau", level: 0, points: rect(-15, -3, -13, 3) },
+          { uid: "zn_tx_cz", type: "cust-v3d-zone", level: 0, points: rect(-11, -3, -9, 3) }
+        ]);
+        const legendeZ = ["remblais", "effondrement", "eau"].reduce(function (o, k) {
+          o[k] = window.ktaResolveStyle("zones", k, { flat: true }).fillColor;
+          return o;
+        }, {});
         window.KtaGalerie.invalider();
         const d = P(-6, 0), r = {};
         const lire = function () {
@@ -4146,6 +4164,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await pause(100);
         r.defaut = lire();
         r.defaut.pref = window.getVue3DTextures();
+        r.legende = legendeZ;
         // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue.
         const h0 = K.etat().hauteur;
         K.reglerHauteur(2.5);
@@ -4192,12 +4211,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         K.basculerRendu("galerie");
         await pause(50);
         r.galerie = lire();
+        K.basculerTextures();
+        await pause(50);
+        r.galerieCoupe = lire();
+        K.basculerTextures();
         K.basculerRendu(renduAvant);
         await K.fermer();
         r.libere = K.textures() === null;
         LC.findCustomEntry = trouver;
         window.ktaEstAccessible = acc;
-        window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
+        window.setStructures([]); window.setRoads([]); window.setZones([]); window.KtaGalerie.invalider();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       // Couleur d'un sommet (octets linéaires de three.js) → hex sRGB, pour la comparer à la légende.
@@ -4309,6 +4332,65 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "mixte (parois des tubes en pierre de taille), structures seules texturées sans paroi ; galerie : parois en " +
         "pierre de taille, aucune structure ; rien après la fermeture",
         { mixte: TX.defaut.parois, structures: TX.structures.t.maillages, galerie: TX.galerie.t.maillages });
+
+      // Remblais (terre et cailloux) et effondrement (éboulis) : texturés sous 🧱 dans les trois rendus, à la taille
+      // réelle (petite et grande zone, chambre et tube), couleurs de la légende une fois coupé.
+      const dansRect = function (x0, z0, x1, z1) {
+        return function (a) { return a.x >= MX.ox + x0 - 0.05 && a.x <= MX.ox + x1 + 0.05 && a.z >= MX.oz + z0 - 0.05 &&
+          a.z <= MX.oz + z1 + 0.05; };
+      };
+      const zEch = function (t, mat, filtre) {
+        const v = t.aretes.filter(function (a) { return a.mat === mat && filtre(a); });
+        const u = v.map(function (a) { return a.uvParM; });
+        return u.length ? { n: u.length, h: v.filter(function (a) { return a.sens === "h"; }).length,
+          v: v.filter(function (a) { return a.sens === "v"; }).length, min: +Math.min.apply(null, u).toFixed(4),
+          max: +Math.max.apply(null, u).toFixed(4) } : { n: 0 };
+      };
+      const zJuste = function (e, val, flancs) {
+        return e.n > 0 && Math.abs(e.min - val) < 2e-3 && Math.abs(e.max - val) < 2e-3 && (!flancs || e.v > 0);
+      };
+      const ur = UP.remblais, ue = UP.eboulis, Lz = TX.legende;
+      const zEchs = {
+        petit: zEch(D0, "remblais", dansRect(5.5, -6.5, 6.5, -5.5)), grand: zEch(D0, "remblais", dansRect(12, -6, 22, 4)),
+        tube: zEch(D0, "remblais", dansRect(-30, -3, -27, 3)), ebChambre: zEch(D0, "eboulis", dansRect(12, 6, 18, 10)),
+        ebTube: zEch(D0, "eboulis", dansRect(-22, -3, -19, 3)),
+        galerie: zEch(TX.galerie.t, "remblais", dansRect(-30, -3, -27, 3)),
+        ebGalerie: zEch(TX.galerie.t, "eboulis", dansRect(-22, -3, -19, 3)),
+        structures: zEch(TX.structures.t, "remblais", dansRect(-30, -3, -27, 3)), attendu: { remblais: ur, eboulis: ue } };
+      verifier(zJuste(zEchs.petit, ur, true) && zJuste(zEchs.grand, ur, true) && zJuste(zEchs.tube, ur, true) &&
+        zJuste(zEchs.galerie, ur, true) && zJuste(zEchs.structures, ur, true) &&
+        zJuste(zEchs.ebChambre, ue) && zJuste(zEchs.ebTube, ue) && zJuste(zEchs.ebGalerie, ue),
+        "remblais et effondrement à la taille réelle : " + ur + " et " + ue + " de texture par mètre, zone de 1 m comme " +
+        "de 10 m, flancs (long et hauteur) et dessus, en chambre, dans le tube, en galerie et en structures seules", zEchs);
+      const zSol = D0.aretes.filter(function (a) { return a.mat === "remblais" && a.sens === "v" && Math.abs(a.y) < 1e-6; });
+      verifier(zSol.length > 0 && zSol.every(function (a) { return Math.abs(a.v0) < 1e-6; }),
+        "remblais : la texture part du sol sur les flancs (v = 0 à y = 0, " + zSol.length + " arêtes)", zSol.slice(0, 2));
+      const mRe = D0.materiaux.remblais || {}, mEb = D0.materiaux.eboulis || {};
+      verifier(mRe.carte === "256x256" && mRe.normale && mRe.relief === 256 && mRe.mipmaps && mRe.anisotropie >= 1 &&
+        mRe.anisotropie <= 4 && mRe.couleursSommets === false && mEb.carte === "256x256" && mEb.normale && mEb.mipmaps &&
+        mEb.couleursSommets === false && mRe.pente > 0.05 && mEb.pente > mRe.pente * 1.3 &&
+        D0.maillages.remblais >= 1 && D0.maillages.eboulis >= 1 && TX.galerie.t.maillages.remblais >= 1 &&
+        TX.galerie.t.maillages.eboulis >= 1 && TX.structures.t.maillages.remblais >= 1 &&
+        TX.structures.t.maillages.eboulis >= 1,
+        "🧱 activé : remblais et effondrement texturés (couleur et relief de 256 px, mipmaps, jamais teintés ; pente " +
+        "du relief " + mRe.pente + ", éboulis plus marqué " + mEb.pente + ") en mixte, galerie et structures seules",
+        { remblais: mRe, eboulis: mEb, maillages: [D0.maillages, TX.galerie.t.maillages, TX.structures.t.maillages] });
+      const dZ = D0.dessins || {};
+      verifier(dZ.remblais >= 0 && dZ.eboulis >= 0 && D0.msZones >= 0,
+        "premier dessin : remblais " + dZ.remblais + " ms, éboulis " + dZ.eboulis + " ms (à cette ouverture : zones " +
+        D0.msZones + " ms)", dZ);
+      const eauTex = D0.aretes.filter(function (a) { return a.mat !== "paroi" && dansRect(-15, -3, -13, 3)(a); });
+      verifier(!contient(D0.couleurs.opaque, Lz.remblais) && !contient(D0.couleurs.opaque, Lz.effondrement) &&
+        contient(D0.couleurs.opaque, "#7d3cff") && eauTex.length === 0 &&
+        !contient(TX.galerie.t.couleurs.opaque, Lz.remblais) && contient(TX.galerie.t.couleurs.opaque, "#7d3cff"),
+        "contre-épreuves sous 🧱 : couleur de la légende du remblais et de l'effondrement plus dessinée ; type de zone " +
+        "perso et eau gardés comme avant (aucune texture)", { couleurs: D0.couleurs.opaque, eau: eauTex.length });
+      verifier(!C0.maillages.remblais && !C0.maillages.eboulis && contient(C0.couleurs.opaque, Lz.remblais) &&
+        contient(C0.couleurs.opaque, Lz.effondrement) && !TX.galerieCoupe.t.maillages.remblais &&
+        !TX.galerieCoupe.t.maillages.eboulis && contient(TX.galerieCoupe.t.couleurs.opaque, Lz.remblais) &&
+        contient(TX.galerieCoupe.t.couleurs.opaque, Lz.effondrement) && !R0.maillages.remblais,
+        "🧱 coupé : remblais et effondrement à la couleur de la légende (mixte et galerie), comme une vue ouverte " +
+        "sans textures", { mixte: C0.couleurs.opaque, galerie: TX.galerieCoupe.t.couleurs.opaque, legende: Lz });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

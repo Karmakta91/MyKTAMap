@@ -1526,8 +1526,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
   scintillement au loin). Coupé : lots et matériaux d'origine, couleurs de la légende exactes. Basculer refait les
   tuiles sur place (`_refaireTuiles`), sans toucher la scène ni la greffe. Coût : chaque texture (roche, parpaing,
-  pierre) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`, ~15 à 30 ms au PC),
-  la pierre seulement à la première paroi texturée ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+  pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
+  ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
+  et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Remblais et effondrements texturés** (même interrupteur 🧱) : `remblais` en terre et sable calcaire tassés avec
+  cailloux et blocs anguleux à moitié enfouis (`REMBLAIS` : motif de 2 m, du gravier de 1 cm aux blocs de 25 cm),
+  `effondrement` en éboulis de fontis (`EBOULIS` : motif de 4 m, gros blocs cassés jusqu'à 60 cm, empilés, fissurés,
+  peu de terre, relief plus fort). Un seul dessin pour les deux (`_pierraille` : blocs convexes en demi-plans,
+  hauteur en facettes, la plus haute surface gardée ; `_poserBloc`), normal map `_carteNormale`. Forme inchangée :
+  le remblais reste un volume à 60 % de la hauteur, l'effondrement un sol à 2 cm. Un matériau par type (`_matZone` :
+  `remblais`, `eboulis`), fait à la première zone du type, un lot par tuile (chambres et tubes ensemble). ⚠️ contrat :
+  coordonnées de texture en mètres, comme `_prisme` : dessus projeté au sol, flancs u = abscisse sur le contour de
+  la zone depuis la même origine (`_origineMotif`), v = hauteur ; découpé au tube (`_remblaisGalerie`), un flanc
+  prend l'abscisse de son bord sur le contour entier (`_abscisse`) : un remblais coupé par le tube garde le dessin
+  qu'il aurait en chambre. Un type de zone perso `cust-…` garde sa couleur (décision : son entrée de légende n'a ni
+  type de base ni forme propre — toutes les zones sont des polygones — et il est dessiné au sol, pas en volume ; rien
+  ne permet de le rattacher au remblais). Eau et hachures de l'inaccessible inchangées. Coupé : lots et matériau
+  `opaque` d'origine, couleur de la légende exacte.
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
   distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
