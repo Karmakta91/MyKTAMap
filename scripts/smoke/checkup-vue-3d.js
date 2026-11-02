@@ -3906,7 +3906,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         K.tourner(180);
         await pause(400);
         const s1 = M().etat().ennemis[0];
-        r.silDos = { vu: s1.vu, avance: s0.x - s1.x };
+        r.silDos = { vu: s1.vu, avance: s0.x - s1.x, coeur: M().etat().coeur };
         X.vider();
         K.tourner(180);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
@@ -3914,15 +3914,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
         await pause(700);
-        r.court = { endurance: M().etat().endurance, rapide: K.etat().rapide };
+        r.court = { endurance: M().etat().endurance, rapide: K.etat().rapide, coeur: M().etat().coeur };
         for (let k = 0; k < 120 && !M().etat().souffle; k++) await pause(50);
         await pause(100);
-        r.souffle = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course, rapide: K.etat().rapide };
+        r.souffle = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course, rapide: K.etat().rapide,
+          coeur: M().etat().coeur };
         document.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
         document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", code: "ShiftLeft", bubbles: true }));
         await pause(2500);
         r.repos = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course,
-          endurance: M().etat().endurance };
+          endurance: M().etat().endurance, coeur: M().etat().coeur };
         // Cible atteinte : vague suivante.
         const c = M().etat().cible;
         K.placer(c.x, c.y, 90);
@@ -3991,6 +3992,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.repos.souffle === false && MK.repos.course === true,
         "jeu : le pas rapide vide l'endurance ; à bout de souffle plus de course, elle revient au repos",
         { court: MK.court, souffle: MK.souffle, repos: MK.repos });
+      verifier(MK.silDos.coeur === 0 && MK.court.coeur === 0 && MK.souffle.coeur > 0.5 && MK.repos.coeur === 0,
+        "jeu : battement de cœur seulement à bout de souffle (ni près de la silhouette, ni en courant), éteint au repos",
+        { silhouette: MK.silDos.coeur, court: MK.court.coeur, souffle: MK.souffle.coeur, repos: MK.repos.coeur });
       verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1, "jeu : cible atteinte → vague 2", MK.vague2);
       verifier(MK.fin.fin && MK.fin.carte && MK.fin.score === 1 && MK.fin.tirer === true && MK.rejoue.enCours &&
         !MK.rejoue.fin && MK.rejoue.vague === 1 && !MK.rejoue.carte,

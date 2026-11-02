@@ -5,8 +5,8 @@
  */
 
 // addons/mkmg/js/son.js — sons de l'add-on « mkmg », fabriqués par WebAudio (aucun fichier, aucun réseau). Expose
-// window.KtaAddons.mkmgSon = { demarrer(), arreter(), jouer(nom, force), coeur(proximite) }. Noms : tir, recharge,
-// vide, ramasse, soin, blesse, grogne, mort, souffle, vague, fin.
+// window.KtaAddons.mkmgSon = { demarrer(), arreter(), jouer(nom, force), coeur(intensite), proximite(intensite) }.
+// Noms : tir, recharge, vide, ramasse, soin, blesse, grogne, mort, souffle, vague, fin.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
 // partie (bouton de la confirmation), sinon le contexte reste suspendu.
 // Doc : docs/architecture/tracking.md § Greffe de la vue 3D
@@ -107,7 +107,7 @@
     }
   }
 
-  // Battement de cœur quand la silhouette approche : proximite 0 (rien) à 1 (sur soi), rythme et volume montent.
+  // Battement de cœur : intensité 0 (rien) à 1 (à bout de souffle), rythme et volume montent avec elle.
   function coeur(proximite) {
     clearTimeout(_coeur && _coeur.minuterie);
     if (!_ac || !(proximite > 0)) { _coeur = null; return; }
@@ -122,7 +122,7 @@
     battre();
   }
 
-  // Réglage de la proximité sans relancer le rythme (appelé à chaque image).
+  // Réglage de l'intensité sans relancer le rythme (appelé à chaque image).
   function proximite(p) {
     if (!(p > 0)) { if (_coeur) coeur(0); return; }
     if (!_coeur) coeur(p); else _coeur.p = p;

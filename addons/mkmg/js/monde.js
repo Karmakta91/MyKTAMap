@@ -21,7 +21,7 @@
   const REGLES = {
     egares: { base: 1, parVague: 1, max: 8, total: 10, vitesse: 1.1, vitesseParVague: 0.08, vitesseMax: 2,
       pv: 2, contact: 0.75, degatsParS: 18, vueDirecte: 12, routeS: 2 },
-    silhouette: { desVague: 2, vitesse: 3.2, contact: 0.8, degats: 35, faisceau: 32, vue: 30, coeur: 25 },
+    silhouette: { desVague: 2, vitesse: 3.2, contact: 0.8, degats: 35, faisceau: 32, vue: 30 },
     apparition: { min: 15, max: 35, essais: 40 },
     munitions: { base: 4, parDeuxVagues: 1, min: 1, gain: 4 },
     champignons: { base: 3, parTroisVagues: 1, min: 1, soin: 30, lacher: 0.25 },
@@ -239,10 +239,10 @@
     return !ctx.ligneBloquee(pos.x, pos.y, o.x, o.y);
   }
 
-  // → { degats, sons: [[nom, force]], ramasse: [type], proximiteSilhouette }
+  // → { degats, sons: [[nom, force]], ramasse: [type] }
   function animer(p, ctx, dt) {
     const t = performance.now(), pos = ctx.pos, sc = ctx.sc, E = REGLES.egares, S = REGLES.silhouette;
-    const r = { degats: 0, sons: [], ramasse: [], proximiteSilhouette: 0 };
+    const r = { degats: 0, sons: [], ramasse: [] };
     p.ennemis.forEach(function (o) {
       if (o.type === "egare") {
         const d = _d(o, pos, sc);
@@ -255,7 +255,6 @@
         o.vu = vu;
         if (!vu) _versJoueur(p, ctx, o, S.vitesse, dt, t);
         const d = _d(o, pos, sc);
-        r.proximiteSilhouette = Math.max(0, 1 - d / S.coeur);
         if (d <= S.contact) { r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o); }
       }
       _placer(o, ctx);
