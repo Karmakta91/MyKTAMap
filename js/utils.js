@@ -735,7 +735,8 @@ window._modeClicCarteActif = function() {
 // ── « Où es-tu ? » : picker de position partagé (Sortie d'urgence, « Y aller ») ──────────
 // Appelé seulement quand la position du tracker n'a jamais été confirmée (tracking.js >
 // getTrackingPositionEtat). Un tap RECALE le tracker comme « 📍 Je suis ici » (hooks itinéraire / portail
-// notifiés), puis rend `{ x, y, niveau }` à l'appelant (x, y : la position du tracker, ajustée dans la galerie). Plan multi-niveau : niveau demandé comme pour « 📍 Recaler ma
+// notifiés), puis rend `{ x, y, niveau }` à l'appelant (x, y : le point tapé, exact : un tap est une position
+// voulue, jamais ramenée dans la galerie). Plan multi-niveau : niveau demandé comme pour « 📍 Recaler ma
 // position » (tracking.js > ktaNiveauxRecalage), sauf `opts.recaler === false` (rien n'est recalé).
 // 🩸 Le floater porte `.kta-iti-floater` : _modeClicCarteActif() le reconnaît, aucune popup ne mange le tap,
 // et map.js le ré-émet en capture — même sur un marqueur, le cas nominal (on vise un repère connu).
@@ -774,19 +775,12 @@ window.ktaDemanderPositionCarte = function(onPick, opts) {
                 : e.latlng.lat;
     const finir = function(niveau) {
       _posPickAnnuler();
-      let px = x, py = y;
       if (opts.recaler !== false && typeof window.recalerTrackerSurPoint === "function") {
         // Niveau choisi : l'affichage bascule dessus, puis recalage à ce niveau (sinon le niveau actif).
         if (Number.isInteger(niveau) && typeof window.ktaSetActiveLevel === "function") {
           window.ktaSetActiveLevel(niveau, { source: "recalage" });
         }
-        // `dansGalerie` : un tap à côté de la galerie met le tracker dedans (tracking.js > _positionDansGalerie) ;
-        // l'appelant reçoit cette position ajustée, celle du tracker (départ d'itinéraire, vue 3D rouverte).
-        try {
-          window.recalerTrackerSurPoint(x, y, Number.isInteger(niveau) ? niveau : undefined, { dansGalerie: true });
-          const t = typeof window.getTrackingPosition === "function" ? window.getTrackingPosition() : null;
-          if (t && Number.isFinite(t.x) && Number.isFinite(t.y)) { px = t.x; py = t.y; }
-        }
+        try { window.recalerTrackerSurPoint(x, y, Number.isInteger(niveau) ? niveau : undefined); }
         catch(err) { console.warn("[Utils] picker position : recalage échoué :", err); }
       }
       // ⚠️ `niveau` rendu = départ de l'itinéraire de l'appelant (waypoint `level`, pathfinder.js >
@@ -794,7 +788,7 @@ window.ktaDemanderPositionCarte = function(onPick, opts) {
       const c = window.APP_CONFIG;
       const nivRendu = Number.isInteger(niveau) ? niveau
         : ((c && c.multiLevel === true) ? (Number.isInteger(c.activeLevel) ? c.activeLevel : 0) : undefined);
-      try { onPick({ x: px, y: py, niveau: nivRendu }); }
+      try { onPick({ x: x, y: y, niveau: nivRendu }); }
       catch(err) { console.warn("[Utils] picker position : onPick échoué :", err); }
     };
     // Même règle que « 📍 Recaler ma position » (tracking.js > ktaNiveauxRecalage) : un autre niveau à moins de

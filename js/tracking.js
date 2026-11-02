@@ -128,11 +128,8 @@ function _recalerSurClic(x, y, niveau) {
     }
     console.log("[Tracking] Recalé sur niveau :", trackerLevel);
   }
-  // Tap à côté de la galerie : tracker dans la galerie (même règle que « Je suis ici », _positionDansGalerie).
-  // Le hook reçoit le point tapé, comme avant.
-  let ajuste = null;
-  try { ajuste = _positionDansGalerie(x, y, trackerLevel); } catch(e) { ajuste = null; }
-  if (ajuste) { position.x = ajuste.x; position.y = ajuste.y; }
+  // (décision produit) Un tap sur la carte est une position voulue : le tracker va au point tapé, jamais ramené
+  // dans la galerie (_positionDansGalerie ne vaut que pour « Je suis ici » sur un POI).
 
   updateMap();
   _appliquerFiltreNiveauSurTracker();
@@ -1333,9 +1330,9 @@ function _rebuildTrailFromTimeline() {
   }
 }
 
-// ── Recalage dans la galerie (« Je suis ici », « Où es-tu ? », clic de « 📍 Recaler ma position ») ──────────
-// Une icône se pose souvent à côté du tracé, un tap tombe à côté de la galerie : recalé là, le tracker serait dans
-// la roche. ⚠️ contrat : la galerie est celle de la vue 3D (galerieEmprise.js > KtaGalerie.versGalerie) — tous les
+// ── Recalage dans la galerie (« Je suis ici » d'un POI) ──────────────────────────────────────────────────
+// Une icône se pose souvent à côté du tracé : recalé sur elle, le tracker serait dans la roche. Un tap sur la carte
+// (Mode recalage, picker « Où es-tu ? ») n'y passe pas : c'est une position voulue (décision produit). ⚠️ contrat : la galerie est celle de la vue 3D (galerieEmprise.js > KtaGalerie.versGalerie) — tous les
 // types de tracé, perso compris, même rayon (KtaGalerie.PROCHE_M, 10 m de l'axe), sur le niveau du recalage :
 //   1) point déjà dans l'emprise d'une galerie → il ne bouge pas ;
 //   2) hors emprise, un axe à moins de PROCHE_M → sur l'axe de la galerie dont l'emprise est la plus proche
@@ -1377,9 +1374,9 @@ function _positionDansGalerie(x, y, niveau) {
 // picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
 // ⚠️ `opts.teleport` : déplacement NON parcouru (portail) → ancre `tp`, jamais estimée. La source reste "point" pour
 // les consommateurs du hook (validation d'étape comprise). `opts.sansReplan` : voir Mode Secours.
-// `opts.dansGalerie` (« Je suis ici » d'un POI, picker « Où es-tu ? ») : position ajustée dans la galerie
-// (_positionDansGalerie) ; l'ancre de timeline et la vue portent la position ajustée. Sans lui (portail, Secours,
-// 3D) : coordonnées exactes. La vue 3D ouverte en suivi passe en libre sur un recalage `dansGalerie`.
+// `opts.dansGalerie` (« Je suis ici » d'un POI) : position ajustée dans la galerie (_positionDansGalerie) ; l'ancre
+// de timeline et la vue portent la position ajustée. Sans lui (portail, picker « Où es-tu ? », Secours, 3D) :
+// coordonnées exactes. La vue 3D ouverte en suivi passe en libre sur un recalage `dansGalerie`.
 // 🩸 Le hook _notifierRecalage reçoit TOUJOURS les coordonnées du point : la validation d'étape et la reprise du
 // portail de sortie comparent des coordonnées arrondies à celles du point.
 window.recalerTrackerSurPoint = function(x, y, level, opts) {

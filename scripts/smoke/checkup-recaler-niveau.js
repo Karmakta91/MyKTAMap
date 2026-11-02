@@ -19,7 +19,7 @@
 // ici ») ; « Je suis ici » d'un POI à côté de la galerie (§ 16, galerie de la vue 3D) : à 2 m → tracker sur le
 // tracé de son niveau, à 8 m d'un tracé perso → dans sa galerie, déjà dans l'emprise → ne bouge pas, entre deux
 // galeries → celle dont la paroi est la plus proche, à 30 m → sur le POI ; clic de recalage et picker à côté d'un
-// tracé → dans la galerie, image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
+// tracé → au point tapé exact (un tap est une position voulue, jamais ramené sur l'axe), image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
 // tracé quand d'autres niveaux en ont (§ 16 bis) ; « Y aller » tracker arrêté (§ 17) : « D'où pars-tu ? » à chaque
 // fois (« Ma dernière position (il y a …) » part de là, « Me repositionner » arme le picker, Annuler ne fait rien),
 // picker direct si la position n'a jamais été confirmée ; mono-niveau → jamais de fenêtre.
@@ -243,8 +243,10 @@ async function repondreDepart(page, valeur) {
     const P = await trouverPointLibre(page);
     if (!P) throw new Error("aucun point du plan sans objet à 30 m");
     ok("point de test libre trouvé (échelle " + P.sc + " px/m)");
-    // Un tap hors de l'emprise d'un tracé est-ouest (axe à dyAxe m de P) est recalé sur l'axe, au droit du tap.
+    // Un tap est une position voulue (décision produit) : hors de l'emprise d'un tracé est-ouest (axe à dyAxe m de
+    // P), le tracker reste au point tapé. Contre-épreuve : il n'est PAS sur l'axe, au droit du tap.
     const surAxe = function (xy, dyAxe) { return { x: xy.x, y: P.y + dyAxe * P.sc }; };
+    const tapExact = function (pos, xy, dyAxe) { return proche(pos, xy) && !proche(pos, surAxe(xy, dyAxe)); };
 
     console.log("\n── 1. Rien d'un autre niveau à proximité ──");
     await poserCas(page, P, { roads: [{ type: "principal", level: 0, pts: [[-20, 3], [20, 3]] }] });
@@ -252,9 +254,9 @@ async function repondreDepart(page, valeur) {
     let xy = await cliquerCarte(page, P, 0, 0);
     let e = await etat(page);
     verifier(!e.fenetre, "pas de fenêtre (seul le niveau actif est là)", e);
-    // Le tap tombe à 3 m du tracé, hors de son emprise : le tracker va sur l'axe (même règle que « Je suis ici »).
-    verifier(e.tracker === 0 && proche(e.pos, surAxe(xy, 3)) && !e.mode,
-      "recalé au niveau actif 0, dans la galerie (tap à 3 m de l'axe), mode refermé", e);
+    // Le tap tombe à 3 m du tracé, hors de son emprise : le tracker reste au point tapé, pas sur l'axe.
+    verifier(e.tracker === 0 && tapExact(e.pos, xy, 3) && !e.mode,
+      "recalé au niveau actif 0, au point tapé exact (tracé à 3 m, pas ramené sur l'axe), mode refermé", e);
     verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "click", "timeline : recalage src click", e.dernier);
 
     console.log("\n── 2. Tracé du −1 à 5 m ──");
@@ -269,7 +271,7 @@ async function repondreDepart(page, valeur) {
     e = await etat(page);
     verifier(!e.fenetre && e.tracker === -1 && e.actif === -1 && e.visibles.indexOf(-1) >= 0,
       "choix −1 : tracker à −1, niveau affiché −1", e);
-    verifier(proche(e.pos, surAxe(xy, 5)) && !e.mode, "position dans la galerie du −1 (tracé à 5 m), mode refermé", e);
+    verifier(tapExact(e.pos, xy, 5) && !e.mode, "position au point tapé exact (tracé du −1 à 5 m), mode refermé", e);
     verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "click" && e.dernier.level === -1,
       "timeline : recalage src click au niveau −1", e.dernier);
 
@@ -354,12 +356,12 @@ async function repondreDepart(page, valeur) {
     await choisir(page, -1);
     e = await etat(page);
     const recu2 = await page.evaluate(function () { return window._ktaPickRecu; });
-    // Tap à 5 m du tracé du −1 : tracker dans la galerie ; l'appelant reçoit la position du tracker.
-    const ga7 = surAxe(xy, 5);
-    verifier(!e.picker && recu2 && proche(recu2, ga7), "position rendue à l'appelant = celle du tracker (galerie)", recu2);
+    // Tap à 5 m du tracé du −1 : tracker au point tapé, rendu tel quel à l'appelant.
+
+    verifier(!e.picker && recu2 && tapExact(recu2, xy, 5), "position rendue à l'appelant = le point tapé exact", recu2);
     verifier(recu2 && recu2.niveau === -1, "niveau choisi rendu à l'appelant (niveau: −1)", recu2);
-    verifier(e.tracker === -1 && e.actif === -1 && proche(e.pos, ga7), "tracker dans la galerie et niveau affiché à −1", e);
-    verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, ga7) &&
+    verifier(e.tracker === -1 && e.actif === -1 && tapExact(e.pos, xy, 5), "tracker au point tapé et niveau affiché à −1", e);
+    verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, xy) &&
       e.dernier.level === -1, "timeline : ancre recalage src point au niveau d'arrivée −1", e.dernier);
 
     console.log("\n── 7 bis. « 📍 Je suis ici » sur un POI du −1 (tracker au niveau 0 avant) ──");
@@ -729,7 +731,7 @@ async function repondreDepart(page, valeur) {
         "POI entre deux galeries : tracker dans celle dont la paroi est la plus proche (principal), pas l'axe le plus " +
         "proche (chemin)", r16.pos);
     }
-    // Les autres recalages (portail, Secours, vue 3D) passent sans `dansGalerie` : point exact.
+    // Les autres recalages (portail, picker, Secours, vue 3D) passent sans `dansGalerie` : point exact.
     const exact = await page.evaluate(function (P) {
       const x = P.x + 3 * P.sc, y = P.y + 2 * P.sc;
       window.recalerTrackerSurPoint(x, y, 0);
@@ -860,16 +862,17 @@ async function repondreDepart(page, valeur) {
     await armerRecalage(page);
     xy = await cliquerCarte(page, P, 0, 0);
     e = await etat(page);
-    verifier(!e.fenetre && proche(e.pos, surAxe(xy, 5)) && !e.mode,
-      "clic de recalage : pas de fenêtre, recalé dans la galerie (tous niveaux : plan mono-niveau)", e);
+    verifier(!e.fenetre && tapExact(e.pos, xy, 5) && !e.mode,
+      "clic de recalage : pas de fenêtre, recalé au point tapé exact (tracé à 5 m, plan mono-niveau)", e);
     await page.evaluate(function () {
       window._ktaPickRecu = null;
       window.ktaDemanderPositionCarte(function (p) { window._ktaPickRecu = p; }, { texte: "test" });
     });
     xy = await cliquerCarte(page, P, 1, 0);
     e = await etat(page);
-    verifier(!e.fenetre && proche(e.pos, surAxe(xy, 5)) && !e.picker, "picker : pas de fenêtre, recalé dans la galerie", e);
+    verifier(!e.fenetre && tapExact(e.pos, xy, 5) && !e.picker, "picker : pas de fenêtre, recalé au point tapé exact", e);
     const recu4 = await page.evaluate(function () { return window._ktaPickRecu; });
+    verifier(recu4 && tapExact(recu4, xy, 5), "picker : point tapé exact rendu à l'appelant", recu4);
     verifier(recu4 && recu4.niveau === undefined, "picker : pas de niveau rendu", recu4);
 
     await page.evaluate(function () {

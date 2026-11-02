@@ -777,17 +777,19 @@ le clic de **📍 Mode recalage** (`tracking.js > initTracking`, `map.on("click"
   du tracker (`multilevel-pathfinding.md` § Départ d'un itinéraire et niveau).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js`.
 
-## 📍 Recalage dans la galerie (« Je suis ici », « Où es-tu ? », Mode recalage)
+## 📍 Recalage dans la galerie (« Je suis ici » d'un POI)
 
-Une icône se pose souvent à 1 à 3 m du tracé, un tap tombe souvent à côté. Recalé sur ces coordonnées exactes, le
-tracker serait dans la roche : le verrou sur tracé (`_avancerSurGraphe`) n'agit qu'au pas suivant, seulement si la
-navigation intelligente est active, et le PDR seul (`_avancerRaster`) partirait de la roche.
+Une icône se pose souvent à 1 à 3 m du tracé. Recalé sur ses coordonnées exactes, le tracker serait dans la roche :
+le verrou sur tracé (`_avancerSurGraphe`) n'agit qu'au pas suivant, seulement si la navigation intelligente est
+active, et le PDR seul (`_avancerRaster`) partirait de la roche.
 
 - **Qui** : `recalerTrackerSurPoint(x, y, niveau, { dansGalerie: true })` depuis le « 📍 Je suis ici » d'une fiche de
-  point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D), la bulle de point
-  du mode urgence (`emergencyMode.js > _jeSuisIciPoint`) et le picker « Où es-tu ? »
-  (`utils.js > ktaDemanderPositionCarte`, qui rend à l'appelant la position **ajustée**, celle du tracker) ; et le
-  clic du 📍 Mode recalage (`tracking.js > _recalerSurClic`, après le choix du niveau par `ktaNiveauxRecalage`).
+  point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D) et la bulle de point
+  du mode urgence (`emergencyMode.js > _jeSuisIciPoint`).
+- **Un tap sur la carte est une position voulue** (décision produit) : le clic du 📍 Mode recalage
+  (`tracking.js > _recalerSurClic`) et le picker « Où es-tu ? » (`utils.js > ktaDemanderPositionCarte`, qui rend à
+  l'appelant le point tapé) posent le tracker au point **exact** du tap, jamais ramené dans la galerie : c'est
+  l'utilisateur qui sait où il est. Le choix du niveau (`ktaNiveauxRecalage`) reste demandé.
 - **Règle** (`tracking.js > _positionDansGalerie` → `galerieEmprise.js > KtaGalerie.versGalerie`) : la galerie est
   **celle de la vue 3D** (modèle du mode galerie : tous les types de tracé, perso compris, ni itinéraire ni jonction ;
   session et calques), sur **le niveau du recalage** (mono-niveau : tout le plan) :
@@ -815,8 +817,9 @@ navigation intelligente est active, et le PDR seul (`_avancerRaster`) partirait 
 - 🩸 `_notifierRecalage` reçoit **toujours les coordonnées du point** (ou du tap) : la validation d'étape
   (`interfaceItineraire.js > _onTrackerRecale`), la coupe derrière et la reprise du portail de sortie
   (`interPlanRoute.js > onTrackerRecale`) comparent des coordonnées arrondies à celles du point.
-- Non concernés (coordonnées exactes, sans `dansGalerie`) : arrivée de portail, Mode Secours, position de fin du
-  Carnet, « Ici » de « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas).
+- Non concernés (coordonnées exactes, sans `dansGalerie`) : clic du Mode recalage et picker « Où es-tu ? » (un tap
+  sur la carte est une position voulue), arrivée de portail, Mode Secours, position de fin du Carnet, « Ici » de
+  « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 1, 2, 7, 9, 16 et 16 bis ; `checkup-vue-3d.js` § 10b.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
