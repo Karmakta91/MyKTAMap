@@ -1550,7 +1550,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
   comme l'écran XL), rien quand le bandeau 2D ne parle pas (réglage « Jamais », position inconnue) ; **en libre**, un
   **aperçu** depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les
-  alertes du guidage), marqué « Aperçu » (`vue3d.apercu`), masqué en « Jamais » hors urgence. Pas de voix (elle
+  alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Pas de voix (elle
   n'existe pas en 2D non plus).
 - **Chevrons au sol** (`_majChevrons`) : « ^ » dorés (accent sombre) sur le ruban, de la position vers la prochaine
   consigne (`s` → `sCible`, abscisses rendues par `etat()` ou `apercu()`), un tous les 2 m à des abscisses fixes du
@@ -1635,7 +1635,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   coin haut droit à 393 px et ≡ collé à sa gauche (393 px et PC), ❓ → aide de la 3D, Échap (aide, ≡, réglage, puis
   vue), panneau de POI sombre en thème clair et borné de près, rendu en pause (immobile et boussole qui tremble).
   Interrupteur : mixte par défaut (avec ou sans structure), mixte → structures → galerie en boucle, retenu par plan.
-  Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu marqué en libre et consigne réelle en
+  Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu en libre et consigne réelle en
   suivi, chevrons, bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap ferme la
   fiche, « Y aller » en libre depuis la position 3D au niveau 1 sans recaler le tracker, tracker arrêté → « Ici »
   recale et part de la position 3D, la 3D ne bouge pas. La 3D suit un tracker fixé depuis elle (§ 10b) : recalage

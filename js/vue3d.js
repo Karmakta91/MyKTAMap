@@ -2490,7 +2490,7 @@
     _majChevrons(g.chevrons);
   }
 
-  // Bandeau compact dans _e.bandeau : icône (ou schéma du carrefour), consigne, ligne « puis… », marque « Aperçu ».
+  // Bandeau compact dans _e.bandeau : icône (ou schéma du carrefour), consigne, ligne « puis… ».
   // Mêmes textes que le bandeau 2D. Le DOM n'est touché que si la consigne change.
   function _majBandeau(g) {
     const e = _e, b = e.bandeau;
@@ -2525,13 +2525,6 @@
     }
     b.appendChild(ic);
     b.appendChild(txt);
-    if (g.apercu) {
-      const m = document.createElement("span");
-      m.className = "kta-v3d-guid-apercu";
-      m.textContent = _t("vue3d.apercu");
-      m.title = _t("vue3d.apercuTitre");
-      b.appendChild(m);
-    }
     b.hidden = false;
     _majSousHaut();
   }

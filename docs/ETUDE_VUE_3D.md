@@ -43,7 +43,7 @@ Après l'audit de cohérence (la 3D se posait par-dessus l'app comme une autre a
 
 | # | Sujet | Décision |
 |---|---|---|
-| 1 | Guidage en 3D | Bandeau compact sous la rangée du haut, mêmes textes que le guidage 2D (lus comme l'écran XL) ; chevrons au sol sur le ruban vers la prochaine manœuvre ; en libre un **aperçu** depuis la position 3D, sans toucher l'état du guidage, marqué « Aperçu » ; en suivi la consigne réelle. La scène se redessine quand l'itinéraire change (`kta:itineraireChange`). Pas de voix |
+| 1 | Guidage en 3D | Bandeau compact sous la rangée du haut, mêmes textes que le guidage 2D (lus comme l'écran XL) ; chevrons au sol sur le ruban vers la prochaine manœuvre ; en libre un **aperçu** depuis la position 3D, sans toucher l'état du guidage ; en suivi la consigne réelle. La scène se redessine quand l'itinéraire change (`kta:itineraireChange`). Pas de voix |
 | 2 | Toucher un POI | Sa fiche de la carte, la même, au-dessus de la 3D ; pas de nouvelle fiche |
 | 3 | « Y aller » depuis la fiche | Suivi → du tracker ; libre → de la position 3D, niveau compris, tracker non recalé ; jamais de la position d'avant l'ouverture de la 3D |
 | 4 | Tracker arrêté + « Y aller » (2D et 3D) | « D'où pars-tu ? » à chaque fois : « Ici » (3D : recale le tracker à la position 3D, puis l'itinéraire en part), « Ma dernière position (il y a N min) », « Me repositionner » (picker et son niveau) ; Annuler = pas d'itinéraire |

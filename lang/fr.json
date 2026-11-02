@@ -2447,8 +2447,6 @@
   "vue3d.etatSuivi": "Suivi",
   "vue3d.etatLibre": "Libre",
   "vue3d.suivre": "Mode suivi : la vue suit le tracker et la boussole du téléphone",
-  "vue3d.apercu": "Aperçu",
-  "vue3d.apercuTitre": "Consigne lue depuis ta position dans la vue 3D ; le guidage réel suit le tracker",
   "vue3d.ficheFermer": "Fermer la fiche",
   "vue3d.inclinaisonPlus": "Vue plus verticale",
   "vue3d.inclinaisonMoins": "Vue plus rasante",

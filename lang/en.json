@@ -2423,8 +2423,6 @@
   "vue3d.etatSuivi": "Follow",
   "vue3d.etatLibre": "Free",
   "vue3d.suivre": "Follow mode: the view follows the tracker and the phone's compass",
-  "vue3d.apercu": "Preview",
-  "vue3d.apercuTitre": "Instruction read from your position in the 3D view; real guidance follows the tracker",
   "vue3d.ficheFermer": "Close the card",
   "vue3d.plongee": "Bird's-eye view",
   "vue3d.fermer": "Close the 3D view",

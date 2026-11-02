@@ -2234,7 +2234,7 @@ icônes.
   toast `success` avec leur nom (le 🏁 de l'arrivée aussi).
 - **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
   compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
-  urgence, marque « Aperçu » (pointillés dorés, `--kta-accent-texte`) en mode libre. Son `top` est posé par
+  urgence (aucune marque d'aperçu en mode libre : mêmes textes). Son `top` est posé par
   `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
 - **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision

@@ -2006,14 +2006,14 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const ap = window.ItiGuidage.apercu(e.pos, { cap: e.cap });
         return { rubans: e.rubans.itinerary || 0, bandeau: e.bandeau, chevrons: e.chevrons, visibles: e.chevronsVisibles,
           marque: !!(b && b.querySelector(".kta-v3d-guid-apercu")), attendu: ap.principal,
-          texte: b ? b.textContent : "", marqueTexte: window.I18n.t("vue3d.apercu"),
+          texte: b ? b.textContent : "",
           haut: document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect().bottom,
           bTop: b ? b.getBoundingClientRect().top : 0 };
       });
       verifier(ga1.rubans > 0, "itinéraire tracé pendant la vue : la scène le montre (kta:itineraireChange)", ga1.rubans);
-      verifier(ga1.bandeau.affiche && ga1.bandeau.apercu && ga1.marque && ga1.bandeau.principal === ga1.attendu &&
-        ga1.attendu && ga1.texte.indexOf(ga1.marqueTexte) >= 0 && ga1.bTop >= ga1.haut,
-        "libre : bandeau sous la rangée du haut, consigne d'aperçu marquée « " + ga1.marqueTexte + " »", ga1);
+      verifier(ga1.bandeau.affiche && ga1.bandeau.apercu && !ga1.marque && ga1.bandeau.principal === ga1.attendu &&
+        ga1.attendu && ga1.texte.indexOf(ga1.attendu) >= 0 && ga1.bTop >= ga1.haut,
+        "libre : bandeau sous la rangée du haut, consigne d'aperçu, sans marque « Aperçu »", ga1);
       verifier(ga1.chevrons > 0 && ga1.visibles, "chevrons au sol sur le ruban (" + ga1.chevrons + ")", ga1);
       await capture(page, "guidage-apercu");
       // Le bandeau ne descend pas à chaque relecture (il se cale sous la rangée seule).
