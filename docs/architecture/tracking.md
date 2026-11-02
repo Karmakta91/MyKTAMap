@@ -1438,6 +1438,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`NotEqualStencilFunc`) : on voit dans le puits ; le contexte est créé avec `stencil: true`. Construits à portée
   (`_gererVolumes`, règle des tuiles), libérés au loin ; 🩸 après une perte du contexte, jamais `dispose()` sur un
   volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker.
+- **Aucune paroi de tube dans un passage** (mixte et galerie) : `galerieEmprise.js > _emprisesPassages` rend l'emprise
+  de chaque volume du niveau (bouche + cadre doré, mêmes règles et même axe que `_volumesDuNiveau`, dimensions
+  `KtaGalerie.PASSAGE`, que `vue3d.js > VOLUME` lit) et celle de la tranchée d'un tracé jonction (un rectangle par
+  segment). Une emprise qui chevauche un tube devient une **pièce** du modèle : l'emprise étant l'union des pièces,
+  bout de cul-de-sac, paroi qui longe la bouche ou la coupe tombent dedans ; ses bords hors des tubes sont des parois :
+  le tube s'ouvre sur une **niche** autour de la bouche, et l'on peut y marcher (`dedans`, `paroisBloquent` : une seule
+  source). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
+  cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en plongée. Filtres ignorés (masquer
+  ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
+  le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
+  `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de

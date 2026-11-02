@@ -18,6 +18,7 @@
 // parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 / 25 m,
 // interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Passages (14) :
 // volume par moyen, rampe, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le tube, cap, guidage, suivi.
+// Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -3002,6 +3003,106 @@ async function mesuresGalerie(page, nom, semisDonne) {
         });
       } else {
         console.log("  ℹ️ plan à un niveau : passages entre niveaux non joués");
+      }
+
+      // ── 14 bis. Aucune paroi de tube dans un passage (fictif) ─────────────────────────────────────────────
+      // Une galerie est-ouest aux niveaux 0 et −1 ; sur le 0 : escalier coupé en diagonale par un chemin, escalier
+      // qui déborde du tube (paroi à 1,25 m, bouche de 0,75 à 2,25 m), escalier au bout d'un cul-de-sac, puits à
+      // échelons qui déborde, puits à corde, puits ouvert et aération coupés en diagonale, tracé jonction qui
+      // traverse la paroi. Test géométrique : aucun morceau de paroi dessinée (KtaVue3D.parois) dans la bouche de
+      // chaque volume ni dans la tranchée d'une rampe (2 cm de marge), dans les 3 rendus et aux deux niveaux.
+      if (G.multi) {
+        const CE = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+          const acc = window.ktaEstAccessible;
+          window.ktaEstAccessible = function () { return true; };
+          window.setStructures([]); window.setZones([]);
+          window.setRoads([-1, 0].map(function (n) {
+            return { uid: "rd_ce_" + (n + 1), type: "principal", level: n, points: [P(-60, 0), P(60, 0)] };
+          }).concat([
+            { uid: "rd_ce_d1", type: "chemin", level: 0, points: [P(-44, -4), P(-36, 4)] },
+            { uid: "rd_ce_cs", type: "secondaire", level: 0, points: [P(0, 0), P(0, 12)] },
+            { uid: "rd_ce_d2", type: "chemin", level: 0, points: [P(26, -4), P(34, 4)] },
+            { uid: "rd_ce_d3", type: "chemin", level: 0, points: [P(36, -4), P(44, 4)] },
+            { uid: "rd_ce_d4", type: "chemin", level: 0, points: [P(46, -4), P(54, 4)] },
+            { uid: "rd_ce_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(-30, 0), P(-30, 6)] }
+          ]));
+          const poi = function (id, x, z, tag, niveaux) {
+            const q = P(x, z), o = { id: id, nom: id, uid: "pt_ce_" + id, level: 0, tags: [tag], x: q.x, y: q.y };
+            if (niveaux) {
+              o.niveaux = niveaux;
+              o.accroches = niveaux.filter(function (n) { return n !== 0; }).map(function (n) { return { level: n, x: q.x, y: q.y }; });
+            }
+            return o;
+          };
+          window.setEditorPoints([poi("ce jes diagonale", -40, 0, "jes", [0, -1]), poi("ce jes deborde", -20, 1.5, "jes", [0, -1]),
+            poi("ce jes bout", 0, 12, "jes", [0, -1]), poi("ce jpe deborde", 20, 1.5, "jpe", [0, -1]),
+            poi("ce jps diagonale", 30, 0, "jps", [0, -1]), poi("ce peo diagonale", 40, 0, "peo"),
+            poi("ce pa diagonale", 50, 0, "pa", [0, -1])]);
+          window.KtaGalerie.invalider();
+          // Bord convexe : point strictement dedans, à plus de 2 cm de chaque bord.
+          const dedans = function (poly, x, z) {
+            let s = 0;
+            for (let i = 0; i < poly.length; i++) {
+              const p = poly[i], q = poly[(i + 1) % poly.length];
+              const c = ((q[0] - p[0]) * (z - p[1]) - (q[1] - p[1]) * (x - p[0])) / Math.hypot(q[0] - p[0], q[1] - p[1]);
+              if (Math.abs(c) < 0.02) return false;
+              if (s === 0) s = Math.sign(c); else if (Math.sign(c) !== s) return false;
+            }
+            return true;
+          };
+          const tranchee = function (A, B) {   // rectangle (m) de la tranchée d'une rampe, demi-largeur 0,6 m
+            const l = Math.hypot(B[0] - A[0], B[1] - A[1]), nx = -(B[1] - A[1]) / l * 0.6, nz = (B[0] - A[0]) / l * 0.6;
+            return [[A[0] - nx, A[1] - nz], [B[0] - nx, B[1] - nz], [B[0] + nx, B[1] + nz], [A[0] + nx, A[1] + nz]];
+          };
+          const r = { cas: [] };
+          for (const rendu of ["mixte", "galerie", "structures"]) {
+            for (const niv of [0, -1]) {
+              await K.fermer();
+              window.setPlanRenduVue3D(null, rendu);
+              window.ktaSetActiveLevel(niv);
+              const d = P(-20, 1.5);   // départ au centre d'une bouche qui déborde : jamais coincé
+              await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 150 });
+              const e = K.etat(), ps = K.parois(), polys = [];
+              e.volumes.forEach(function (v) {
+                if (v.bouche) polys.push({ nom: v.tag + "@" + Math.round(v.x / a.sc - a.ox), poly: v.bouche });
+              });
+              if (niv === 0) polys.push({ nom: "rampe", poly: tranchee([a.ox - 30, a.oz], [a.ox - 30, a.oz + 6]) });
+              const dans = polys.map(function (b) {
+                let lg = 0;
+                ps.forEach(function (w) {
+                  const l = Math.hypot(w[2] - w[0], w[3] - w[1]), k = Math.max(2, Math.ceil(l / 0.01));
+                  let n = 0;
+                  for (let i = 0; i <= k; i++) {
+                    if (dedans(b.poly, w[0] + (w[2] - w[0]) * i / k, w[1] + (w[3] - w[1]) * i / k)) n++;
+                  }
+                  lg += n / (k + 1) * l;
+                });
+                return { nom: b.nom, m: +lg.toFixed(2) };
+              }).filter(function (q) { return q.m > 0; });
+              const pos0 = e.pos, ok = K.avancer(0.5);
+              r.cas.push({ rendu: rendu, niveau: e.niveau, parois: ps.length, bouches: polys.length, dans: dans,
+                degage: e.degagements, avance: !!ok && Math.hypot(K.etat().pos.x - pos0.x, K.etat().pos.y - pos0.y) > 0,
+                rubans: !!e.boites.rubans,
+                passages: rendu === "structures" ? null : window.KtaGalerie.modele(niv, rendu === "mixte").passages });
+            }
+          }
+          await K.fermer();
+          window.setPlanRenduVue3D(null, "mixte");
+          window.ktaEstAccessible = acc;
+          window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
+          window.ktaSetActiveLevel(0);
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        CE.cas.forEach(function (c) {
+          verifier(c.dans.length === 0 && c.bouches >= (c.niveau === 0 ? 8 : 5) && (c.rendu === "structures" || c.parois > 0),
+            c.rendu + ", niveau " + c.niveau + " : aucune paroi de tube dans les " + c.bouches +
+            " emprises de passage (" + c.parois + " parois, " + (c.passages === null ? "—" : c.passages) + " niches)", c);
+          verifier(c.degage === 0 && c.avance, c.rendu + ", niveau " + c.niveau +
+            " : départ au centre d'une bouche qui déborde du tube, pas ramené, un pas passe", c);
+        });
+        verifier(CE.cas.filter(function (c) { return c.niveau === 0; }).every(function (c) { return c.rubans; }),
+          "rubans des tracés dans leur famille (gabarit du sol : coupés à la bouche)", CE.cas);
       }
 
 

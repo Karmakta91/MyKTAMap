@@ -100,11 +100,10 @@
   const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
   // Panneau d'un passage (POI jonction) : lisible jusqu'à 1 m (là où 🪜 apparaît), effacé seulement sous 0,8 m.
   const PRES_PASSAGE = { min: 0.8, net: 1 };
-  // Volumes des passages (_construireVolume) : escalier 2,5 × 1,5 m à `marches` marches, puits carré de 1,2 m, tube
-  // d'aération de 0,8 m ; `long` m sous le sol ou au-dessus du plafond (le reste se perd dans le noir) ; échelons tous
-  // les 0,3 m ; rampe d'un tracé jonction de 1 m ; cadre doré au sol de 8 cm, à 12 cm de la bouche.
-  const VOLUME = { long: 6, escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, echelon: 0.3, marches: 10, rampe: 1,
-    cadre: 0.08, marge: 0.12 };
+  // Volumes des passages (_construireVolume) : `long` m sous le sol ou au-dessus du plafond (le reste se perd dans le
+  // noir), escalier à `marches` marches, échelons tous les 0,3 m. Dimensions (escalier, puits, aération, rampe et sa
+  // tranchée, cadre doré) : KtaGalerie.PASSAGE, d'où le tube s'ouvre sur la même emprise (galerieEmprise.js).
+  const VOLUME = Object.assign({ long: 6, echelon: 0.3, marches: 10 }, window.KtaGalerie.PASSAGE);
   const COULEUR_FER = "#5e5a52";    // échelons, montants, grille : couleur de la scène, pas de la charte de l'UI
   // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
@@ -583,7 +582,7 @@
   function _construireTuile(t) {
     if (_e.galerie) { _construireTuileGalerie(t); return; }
     const sc = _e.sc, h = _e.hauteur, mx = _e.mixte;
-    const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot();
+    const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot(), rubans = new Lot();
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
     const parois = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
@@ -629,7 +628,7 @@
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
-      else _ruban(opaque, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
+      else _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
     }
     const groupe = new THREE.Group();
     const ajouter = function (lot, mat, ordre, famille) {
@@ -642,6 +641,7 @@
       groupe.add(m);
     };
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
+    ajouter(rubans, _e.mats.rubans, 0, "rubans");
     ajouter(murs, _e.mats.murs, 0, "murs");
     ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
@@ -728,6 +728,7 @@
   function _construireTuileGalerie(t) {
     const e = _e, m = e.galerie, sc = e.sc, h = e.hauteur;
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
+    const rubans = new Lot();
     const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot();
     t.parois = [];
     for (let i = 0; i < t.g.length; i++) {
@@ -747,7 +748,7 @@
       if (!_typeTraceMontre(r.type)) continue;
       const col = _couleur("traces", r.type, "color");
       _compter(e.liseres, r.type);
-      _ruban(opaque, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
+      _ruban(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
     }
     const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
@@ -755,7 +756,7 @@
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
-      else _ruban(opaque, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
+      else _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
     }
     const groupe = new THREE.Group();
     const ajouter = function (lot, mat, ordre, famille) {
@@ -772,6 +773,7 @@
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     ajouter(parois, e.mats.paroi, 0, "parois");
     ajouter(opaque, e.mats.opaque, 0, "opaque");
+    ajouter(rubans, e.mats.rubans, 0, "rubans");
     ajouter(remblais, e.mats.opaque, 0, "remblais");
     ajouter(lumineux, e.mats.iti, 1, "itineraire");
     ajouter(eau, e.mats.eauGalerie, 2, "eau");
@@ -1312,6 +1314,9 @@
       murs: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1,
         polygonOffsetUnits: 1 }),
       lumineux: new THREE.MeshBasicMaterial({ vertexColors: true }),
+      // Rubans des tracés et liserés au sol : troués par la bouche d'un passage comme le sol (gabarit ci-dessous),
+      // jamais suspendus au-dessus du vide. L'itinéraire n'y est pas : il mène au passage, ses marqueurs ont un mât.
+      rubans: new THREE.MeshLambertMaterial({ vertexColors: true }),
       // Itinéraire et ronds d'intersection : couleurs exactes du jeton et de la légende (sans compression de tons).
       iti: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
       transp: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
@@ -1340,7 +1345,7 @@
     };
     m.boucheSol = bouche(1);
     m.bouchePlafond = bouche(2);
-    [[m.sol, 1], [m.solGalerie, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
+    [[m.sol, 1], [m.solGalerie, 1], [m.rubans, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
       x[0].stencilWrite = true;   // test du gabarit (opérations « garder » : rien n'y est écrit)
       x[0].stencilRef = x[1];
       x[0].stencilFunc = THREE.NotEqualStencilFunc;
@@ -1827,7 +1832,7 @@
     for (let i = 1; i < pts.length; i++) {
       cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     }
-    const tot = cum[cum.length - 1] || 1, H = v.monte ? h - 0.05 : -h, wt = w + 0.1;
+    const tot = cum[cum.length - 1] || 1, H = v.monte ? h - 0.05 : -h, wt = w + VOLUME.tranchee;
     let der = null;
     for (let i = 0; i + 1 < pts.length; i++) {
       const A = pts[i], B = pts[i + 1], dx = B[0] - A[0], dz = B[1] - A[1], l = Math.hypot(dx, dz);
@@ -3875,7 +3880,10 @@
       volumes: (e.volPassages || []).map(function (v) {
         return Object.assign({ genre: v.genre, tag: v.tag || null, forme: v.forme || null, moyen: v.moyen || null,
           sol: !!v.sol, plafond: !!v.plafond, ciel: !!v.ciel, grille: !!v.grille, echelons: !!v.echelons,
-          passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y },
+          passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y,
+          bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
+            return _repere(v)(q[0], q[1]);
+          }) : null },
           v.stats || {});
       }),
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
