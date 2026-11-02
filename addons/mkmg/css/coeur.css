@@ -30,7 +30,30 @@
   display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
   border-radius: 50%; background: var(--kta-fond); color: var(--kta-accent-texte); font-size: 20px; font-weight: 700;
 }
-.mkmg-cartouches { color: var(--kta-texte-2); }
+/* Jauges en haut à gauche, hors du panneau (toujours visibles) ; le joystick, posé au-dessus, reste touchable. */
+.mkmg-jauges {
+  position: absolute; top: 8px; left: 10px; width: min(220px, 44vw); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px;
+  border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte); font-size: 13px;
+}
+.mkmg-tete { display: flex; align-items: center; gap: 8px; }
+.mkmg-tete .mkmg-vague { flex: 1 1 auto; }
+.mkmg-plier {
+  flex: 0 0 auto; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 16px;
+  border: 1px solid var(--kta-texte-3); background: var(--kta-fond); color: var(--kta-texte);
+}
+.mkmg-corps { display: flex; flex-direction: column; gap: 6px; }
+.mkmg-reduit .mkmg-corps { display: none; }
+.mkmg-stats { color: var(--kta-texte-2); font-size: 12px; }
+/* Cartouches sur le bouton de tir : canon · réserve. */
+.mkmg-cartouches {
+  position: absolute; left: 50%; bottom: -12px; transform: translateX(-50%); white-space: nowrap;
+  padding: 1px 8px; border-radius: 999px; border: 1px solid var(--kta-accent); background: var(--kta-fond);
+  color: var(--kta-texte); font-size: 13px; font-weight: 700;
+}
+.mkmg-chrono { font-weight: 700; font-size: 16px; color: var(--kta-texte); }
+.mkmg-chrono[hidden] { display: none; }
+.mkmg-chrono-alerte { color: var(--kta-erreur); }
 .mkmg-bouton {
   align-self: flex-end; min-height: 36px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--kta-texte-3); background: var(--kta-fond); color: var(--kta-texte); font: inherit;

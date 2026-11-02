@@ -256,6 +256,7 @@ const ASSETS_TO_CACHE = [
   "./addons/mkmg/js/coeur.js",
   "./addons/mkmg/js/son.js",
   "./addons/mkmg/js/monde.js",
+  "./addons/mkmg/js/joueur.js",
   "./addons/mkmg/css/coeur.css",
   "./addons/mkmg/img/fusil.svg",
   "./fonts/montserrat-400.woff2",

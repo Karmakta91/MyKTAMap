@@ -1681,10 +1681,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `mode`, `vue`, `commandes`, `sale()`. Règle du pas **de la vue**, jamais une copie (px plan) : `bloque(x0, y0, x1,
   y1)` (un corps de 0,8 m ne passe pas, `_balayage`), `ligneBloquee(x0, y0, x1, y1)` (ligne de vue coupée, `_juger`),
   `libre(x, y)` (place où un corps tient : ni coincée, ni dans une structure **dessinée**, corps dégagé — un calque
-  masqué n'y compte pas). `court` = pas rapide en cours. `regler({ traces, itineraire, guidage, course })` : `false`
-  masque, **pour la greffe seulement**, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app
-  (ruban, étapes, 🏁), son guidage (bandeau, chevrons), ou interdit le pas rapide ; levé au retrait ; scène refaite
-  seulement si les tracés ou l'itinéraire changent. Les filtres de la carte n'en savent rien.
+  masqué n'y compte pas). `court` = pas rapide en cours. `regler({ traces, itineraire, guidage, course, avatar,
+  commandes })` : `false` masque, **pour la greffe seulement**, les tracés au sol (les tubes des galeries restent),
+  l'itinéraire de l'app (ruban, étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue
+  plongeante, le joystick et le pavé (une carte à toucher là où est le pouce ; `display` en style, le pavé étant en
+  grille), ou interdit le pas rapide ; levé au retrait ; scène refaite seulement si les tracés ou l'itinéraire
+  changent. Les filtres de la carte n'en savent rien.
 - 🔒 Une exception dans un appel retire la greffe ; la vue continue. La greffe ne touche ni tracker, ni session, ni
   filtres : elle n'a que ce `ctx`.
 - **Code « six vers le bas »** (décision produit, `CODE_BAS`) : 6 appuis vers le bas en moins de 2 s — ▼ du pavé, ↓ ou
@@ -1695,8 +1697,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   la première fois en script classique, précaché par `sw.js` ; il s'inscrit dans `window.KtaAddons.<nom> = { lancer
   }` et décide seul s'il démarre.
 - **Add-on `mkmg`** (`addons/mkmg/` : `js/coeur.js` partie et interface, `js/monde.js` menaces, objets et tir,
-  `js/son.js` sons WebAudio sans fichier, `css/coeur.css`, `img/fusil.svg` ; `coeur.js` charge les deux autres) :
-  jeu en vagues sur le plan ouvert.
+  `js/son.js` sons WebAudio sans fichier, `js/joueur.js` bras et fusil, `css/coeur.css`, `img/fusil.svg` ; `coeur.js`
+  charge les trois autres) : jeu en vagues sur le plan ouvert.
   - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`) sauf si son
     hébergeur l'autorise (`data/reglages.json` > `"addons": { "mkmg": true }`, `KtaInstance.etat().reglages`), pendant le
     suivi du tracker, une sortie d'urgence (itinéraire `urgence`, `EmergencyMode`) ou le mode Secours ouvert ; sinon
@@ -1704,9 +1706,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   - Vague = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau est
     la plus proche de 40 m + 30 m par vague (10 m au moins), sinon un sommet des tracés ; le premier joignable par
     `Pathfinder.computeRoute` (lecture), sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante.
-    Point de validation (décision produit) : jamais hors de la galerie ni dans une structure — le bout du trajet sur
-    les tracés (le POI relevé dans la roche est rejoint au plus près), puis la place libre la plus proche
-    (`ctx.libre`, couronnes de 0,25 m jusqu'à 6 m). La balise est posée là.
+    Point de validation (décision produit) : jamais hors de la galerie, ni dans une structure, un remblais, un
+    effondrement ou une zone inaccessible — le bout du trajet sur les tracés (le POI relevé dans la roche est rejoint au
+    plus près), puis la place libre la plus proche (`monde.js > placeOk` : `ctx.libre` et hors de ces trois zones du
+    niveau, lues en lecture seule ; couronnes de 0,25 m jusqu'à 8 m). La balise est posée là. Même règle pour les
+    menaces, les objets et les embuscades.
   - Difficulté : facile = tracés + trajet du jeu au sol + balise de B + flèche de guidage + reste à parcourir ;
     moyen = sans la flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage.
     L'itinéraire et le guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
@@ -1714,10 +1718,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
     pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit) seulement sous
     5 % d'endurance ou à bout de souffle : fort et rapide à sec, de plus en plus lent pendant la reprise, éteint à 30.
   - Menaces (`monde.js`, placées sur les tracés du niveau à 15-35 m, places libres de la règle du pas) : **égarés**
-    (1 + 1 par vague, 8 au plus et 10 en tout ; 1,1 m/s + 0,08 par vague, 2 m/s au plus ; 18 de santé par seconde au
-    contact ; ils foncent à vue directe sous 12 m, relue toutes les 0,25 s) ; **silhouette** dès la vague 2 (une seule,
-    invulnérable, 3,2 m/s mais figée dans le faisceau : à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ;
-    au contact 35 de santé puis elle repart loin).
+    (2 + 2 par vague, 14 au plus et 18 en tout ; 1,6 m/s + 0,12 par vague, 2,6 m/s au plus, proche de la marche à
+    2,8 m/s : il faut courir pour décrocher (décision produit) ; 25 de santé par seconde au contact ; ils foncent à vue
+    directe sous 12 m, relue toutes les 0,25 s, et sous 8 m **chargent** 2 s à ×1,6 puis soufflent 4 s) ;
+    **silhouette** dès la vague 2 (une seule, invulnérable, 3,2 m/s mais figée dans le faisceau : à moins de 30 m, à
+    moins de 32° du cap, rien entre elle et soi ; au contact 35 de santé puis elle repart loin).
+  - **Chrono** de chaque vague (décision produit), tiré du trajet du jeu : longueur vers B à 1,4 m/s (+ 0,08 par
+    vague, 2,4 au plus) plus une marge de 30 s (− 2 par vague, 10 au moins) ; sans trajet, vol d'oiseau × 1,4. Rouge
+    sous 10 s. À 0 : − 25 de santé et **horde** (6 + 1 par vague, en 3 groupes à 12 m autour de soi) ; la vague
+    continue.
+  - **Tenaille** (décision produit) : un groupe d'égarés posé devant SUR le trajet du jeu (18 m plus loin), un autre
+    derrière (15 m en arrière sur le trajet, sinon dans le dos) — 2 + 1 toutes les deux vagues chacun, au-delà du
+    plafond de 8 au plus (`surgir`). Une fois par vague à mi-parcours du trajet vers B, et au hasard dès la vague 3
+    (toutes les 40 à 70 s, de plus en plus souvent).
   - Performance (plan dense, iPhone) : menaces pensées à 15 Hz, pas à chaque image ; hors de vue directe, elles
     descendent une **carte des distances** au joueur sur le graphe des tracés (`RoadGraph.getGraph`, en cache ; Dijkstra
     depuis sa place, refait au plus chaque seconde et s'il a bougé de 2 m), une seule pour toutes — plus de
@@ -1734,8 +1747,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
     un égaré tué en lâche un sur quatre).
   - Santé à 0 : fin de partie, meilleure vague par difficulté sous `localStorage["myktamap_mkmg_v1"]` (jamais la
     session), « Rejouer » ou « Quitter ». Passage de niveau 🪜 : le monde de la vague est refait au nouveau niveau.
-  - Panneau en haut à droite (la moitié gauche est au joystick), « Quitter » retire la greffe ; fermer la vue
-    termine la partie. Textes fr / en / es dans le fichier (pas dans `lang/*.json`), couleurs en jetons `--kta-*`.
+  - Joueur (`joueur.js`) : à hauteur d'yeux, deux bras et un fusil à deux coups en formes simples, accrochés à
+    `ctx.camera`, en couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus
+    la scène (sans test de profondeur, ordre de rendu fixé) ; balancement à la marche, recul et éclair de bouche au
+    tir. En vue plongeante : silhouette verte armée à sa place, celle de la vue masquée (`regler({ avatar: false })`).
+  - Interface : santé et endurance en haut à gauche (toujours visibles) ; panneau en haut à droite, réductible (▾ / ▸,
+    retenu sur l'appareil, `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif,
+    statistiques (égarés tués, balles tirées, balles au but) et « Quitter » repliés. Cartouches sur le bouton de tir.
+    Fin de partie : joystick et pavé retirés le temps de toucher la carte (`regler({ commandes: false })`), rendus à
+    « Rejouer » ou « Quitter ». « Quitter » retire la greffe ; fermer la vue termine la partie. Textes fr / en / es dans le fichier (pas dans `lang/*.json`), couleurs en jetons `--kta-*`.
     Volontairement absent des guides et de l'Aide.
 
 ### Garde-fous et limites
