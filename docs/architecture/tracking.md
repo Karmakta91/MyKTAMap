@@ -1510,7 +1510,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   cadence réseau reste celle de l'extension). 🔒 La prise ne la remet que si la présence est déjà partagée ; un refus
   n'est pas noté comme remis (partage allumé ensuite : la place part à l'image suivante). `null` en repassant en
   **suivi** et à la **fermeture** (`_demonter`, perte de contexte comprise) ; repasser en libre sans bouger ne remet
-  rien. Le tracker n'est jamais recalé par là. Première remise d'une ouverture : toast `info` `vue3d.presencePartagee`
+  rien. Le tracker n'est jamais recalé par là. Première remise d'une ouverture : toast `success` `vue3d.presencePartagee`
   (vie privée). État : `etat().presence = { publiee, publications }`. Repère : carte « symbole
   titre ×nombre », liseré à la teinte de la charte qu'il porte, sur ses niveaux. Itinéraire partagé : tirets jaunes
   (accent) au sol, tronçons du niveau affiché.
@@ -1616,7 +1616,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pavé au PC et avec l'option, joystick sinon ; zone sous la rangée et au-dessus de la boussole, anneau sous le doigt,
   toucher bref sans quitter le suivi, libre en sortant de la zone morte, 1,4 puis 2,8 m/s, course à 7 m/s, pas de
   côté, zone morte, inclinaison à deux doigts le joystick posé. Finitions (§ 19) : plus de « bêta », toast de
-  présence en info, nom d'un membre touché, focus rendu au bouton cube après « Je suis ici ? ». Jamais coincé (§ 13) : accroche de POI
+  présence en success, nom d'un membre touché, focus rendu au bouton cube après « Je suis ici ? ». Tuile ⚙️ (§ 20) :
+  rangée ✕ ≡ 🚨 ❓ ⚙️ sur une ligne à 393 px, réglages dans la tuile écrits en clair, tuile ancrée sous ⚙️ (pas plein
+  écran), fermée par ⚙️, un toucher ailleurs ou Échap, repère et pastille 🕹️ en libre, boussole masquée retenue. Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.
   `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense

@@ -122,8 +122,17 @@ environ trois fois la largeur d'un tracé, comme sur la carte) ; un côté ouver
 perpendiculaire de 1,5 m touche la structure (avancé par pas de 10 cm), sinon il reste fermé ; aux nœuds, le bord du
 joint s'ouvre si l'une des deux branches qui le bordent a ce côté ouvert ; le 🏁 de l'arrivée, touché, donne son nom
 comme un membre ; ruban et ronds en couleurs exactes (sans compression de tons, comme le halo des dangers).
-⚠️ Un toast `info` est **tu par défaut** (notifications « essentielles ») : le toast de présence et le nom d'un membre
-touché ne se voient qu'avec les notifications sur « Toutes ».
+Revu ensuite par KARMA : le toast de présence et le nom d'un membre ou repère touché passent en **`success`**, pour
+être toujours vus (`info` est tu par défaut, `oomGuard.js > _decisionToast`) ; le mixte par côté reste tel quel
+(modèle plus lent sous émulation, accepté).
+
+**Tuile ⚙️ Réglages** (demande de KARMA du 02/11/2026) : pour gagner de la place, suivi / libre, vue, hauteur et rendu
+quittent la rangée du haut (✕, ≡, 🚨, ❓, ⚙️ : une ligne au téléphone) pour une petite tuile ancrée sous ⚙️, chacun
+écrit en clair avec son état, plus un interrupteur de la **boussole** (retenu sur l'appareil, montrée par défaut).
+Fermée par ⚙️, Échap ou un toucher ailleurs ; raccourcis clavier inchangés. Forme retenue, à valider : un point doré
+sur ⚙️ quand un réglage n'est pas celui par défaut (libre, plongeante, rendu autre que mixte, boussole masquée) ; le
+mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 🕹️ en haut à gauche, non touchable
+(liseré doré en libre).
 
 ## Ce que fait la vue
 
@@ -188,7 +197,8 @@ touché ne se voient qu'avec les notifications sur « Toutes ».
   sur la position, sans animation), quelle que soit la réponse à « Je suis ici ? », qui recale aussi le niveau.
 - **Filtres** (QCM du 02/11/2026) : ceux de la carte ; ≡ ouvre le même panneau par-dessus la vue ; masquer ne retire
   que le dessin (collisions, parois, 🪜 restent), l'itinéraire n'en suit aucun.
-- **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, 🦅, ⛏️ hauteur, rendu, mode ; Échap
+- **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, ⚙️ (tuile : suivi / libre, 🦅, ⛏️ hauteur,
+  rendu, boussole) ; pastille 🧭 / 🕹️ du mode en haut à gauche ; Échap
   ferme d'abord un réglage, une fiche ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
 - **Guidage** (QCM du 02/11/2026) : l'itinéraire en tirets bordés de sombre (étapes : mât ; arrivée : 🏁), au niveau de
   chacun de ses points, redessiné dès qu'il

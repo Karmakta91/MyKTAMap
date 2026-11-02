@@ -2199,9 +2199,17 @@ icônes.
   sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
   sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
-- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, 🦅 vue
-  plongeante, ⛏️ hauteur, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, le mode en cours écrit en clair, un
-  toucher passe au suivant), 🧭 / 🕹️ mode. ✕ reste au coin haut droit quand la rangée passe sur
+- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, sur
+  **une seule ligne** au téléphone (décision produit). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
+  `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
+  (posé en dernier dans le DOM) ; dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
+  (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
+  suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
+  montrée par défaut ; masquée, joystick et 🪜 restent à leur place). Fermée par ⚙️, Échap (avant tout le reste) ou un
+  toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
+  inchangés (V, PageUp / PageDown…). **Repère** : point doré sur ⚙️ (`kta-v3d-modifie`, `_majRepere`) en mode libre,
+  en vue plongeante, rendu autre que mixte ou boussole masquée. **Mode toujours visible** : pastille ronde de 40 px
+  en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
@@ -2223,13 +2231,14 @@ icônes.
   la couleur du tracé `jonction` du canon et ↕ dans une pastille au coin de l'icône, lisible jusqu'à 1 m. Membres et repères d'une extension :
   même carte, sans icône, coupée à la largeur du texte, liseré à la couleur de la personne (`KtaPresences.couleurDe`)
   ou à la teinte de la charte du repère ; les toucher n'ouvre pas de fiche (ce ne sont pas des POI), seulement un
-  toast `info` avec leur nom (le 🏁 de l'arrivée aussi). ⚠️ Un toast `info` est tu au réglage de notifications par
-  défaut (« essentielles »).
+  toast `success` avec leur nom (le 🏁 de l'arrivée aussi).
 - **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
   compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
   urgence, marque « Aperçu » (pointillés dorés, `--kta-accent-texte`) en mode libre. Son `top` est posé par
   `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
+- **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
+  produit : toujours vus, `info` est tu par défaut) ; perte du contexte WebGL en `warn`.
 - **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :
   zone de la moitié gauche, de sous la rangée du haut et le bandeau (`--kta-v3d-sous-haut`) jusqu'au-dessus de la
   boussole, posée juste après la scène (🪜, fiche et boutons passent au-dessus) ; anneau de 96 px (contour
