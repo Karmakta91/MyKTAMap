@@ -1582,6 +1582,37 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
+### Greffe de la vue 3D (prise neutre d'un add-on) et code « six vers le bas »
+
+- **Add-ons** : un add-on vit tout entier dans `addons/<nom>/` (code, images), hors de `js/`, chargé à la demande.
+  Les garde-fous qui lisent `js/` lisent aussi `addons/**` (en-tête de licence, script en ligne, couleurs en dur,
+  popups natives, XSS des fenêtres de message, copie de l'échappement, commentaires, accès direct à la session,
+  toast hors du goulot). Un vrai cadre d'add-ons est au backlog ; la greffe ci-dessous est sa seule prise aujourd'hui.
+- **`KtaVue3D.greffer(g)`** → fonction qui retire la greffe, ou `null` (vue fermée, greffe déjà posée). Une greffe à
+  la fois, qui vit avec la vue ouverte ; **sans greffon, rien** (ni calque, ni objet, ni appel). Le greffon
+  `g = { nom, scene(ctx, raison), surImage(ctx, dt), demonter(ctx, raison) }` (tous facultatifs) est appelé :
+  - `scene` à la greffe (`"greffe"`), après chaque scène refaite (`"refaite"` : niveau, rendu, hauteur, filtres,
+    itinéraire) et après une perte du contexte WebGL (`"reprise"` : `ctx.groupe` est **neuf** ; les objets d'avant
+    sont morts avec l'ancien contexte, jamais `dispose()`) ;
+  - `surImage` à chaque image tant que la vue rend (pas pendant une perte de contexte) ; la vue ne dessine que si
+    quelque chose bouge : un greffon animé appelle `ctx.sale()` ;
+  - `demonter` au retrait (`"degreffe"`), à la fermeture de la vue (`"fermeture"`), contexte non repris
+    (`"contexte"`), exception du greffon (`"erreur"`) ; la vue retire ensuite `ctx.groupe` et `ctx.hud`.
+- **`ctx`**, lu à l'appel : `THREE`, `groupe` (THREE.Group dans la scène, en mètres), `hud` (calque `.kta-v3d-greffe`
+  sous la rangée du haut et le bandeau, au-dessus de la scène, sous les commandes ; il laisse passer le doigt, le
+  greffon rend touchables ses éléments), `camera`, `niveau`, `hauteur`, `sc`, `pos` (px plan), `cap`, `rendu`,
+  `mode`, `vue`, `commandes`, `sale()`. Règle du pas **de la vue**, jamais une copie (px plan) : `bloque(x0, y0, x1,
+  y1)` (un corps de 0,8 m ne passe pas, `_balayage`), `ligneBloquee(x0, y0, x1, y1)` (ligne de vue coupée, `_juger`),
+  `libre(x, y)` (place où un corps tient : ni coincée, ni dans une structure **dessinée**, corps dégagé — un calque
+  masqué n'y compte pas).
+- 🔒 Une exception dans un appel retire la greffe ; la vue continue. La greffe ne touche ni tracker, ni session, ni
+  filtres : elle n'a que ce `ctx`.
+- **Code « six vers le bas »** (décision produit, `CODE_BAS`) : 6 appuis vers le bas en moins de 2 s — ▼ du pavé, ↓ ou
+  S (répétition du clavier ignorée), ou coup bref du joystick vers le bas (relâché moins de 0,5 s après la sortie de
+  la zone morte, toujours à plus de 135° de l'avant) — sans autre commande de déplacement entre deux (elle remet le
+  compte à 0) → `window` reçoit `kta:vue3dCode` (`detail.code = "bas6"`). Le déplacement, lui, se fait normalement.
+  Rien n'écoute cet évènement aujourd'hui.
+
 ### Garde-fous et limites
 
 - `scripts/smoke/checkup-vue-3d.js` (Chromium et WebKit) : bouton cube sous ≡ grisé sans échelle (rien chargé),
@@ -1629,7 +1660,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   côté, zone morte, inclinaison à deux doigts le joystick posé. Finitions (§ 19) : plus de « bêta », toast de
   présence en success, nom d'un membre touché, focus rendu au bouton cube après « Je suis ici ? ». Tuile ⚙️ (§ 20) :
   rangée ✕ ≡ 🚨 ❓ ⚙️ sur une ligne à 393 px, réglages dans la tuile écrits en clair, tuile ancrée sous ⚙️ (pas plein
-  écran), fermée par ⚙️, un toucher ailleurs ou Échap, repère et pastille 🕹️ en libre, boussole masquée retenue. Jamais coincé (§ 13) : accroche de POI
+  écran), fermée par ⚙️, un toucher ailleurs ou Échap, repère et pastille 🕹️ en libre, boussole masquée retenue. Greffe (§ 21) : rien sans greffon ; scene("greffe"), calque après le canvas, une
+  seule greffe ; rendu à la demande, ctx.sale() redessine ; retrait, scène refaite, reprise avec un groupe neuf,
+  exception (greffe retirée, vue ouverte), fermeture ; règle du pas contre un pilier fictif ; code « six vers le bas »
+  au pavé, au clavier (répétition ignorée) et au joystick, coupé par une autre commande, un coup tenu ou plus de 2 s.
+  Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.
   `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense

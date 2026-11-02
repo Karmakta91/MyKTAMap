@@ -59,8 +59,16 @@ const OOM = lire("js/oomGuard.js");
     /function _grouper\([\s\S]{0,1400}if \(vus\[m\]\) return false;[\s\S]{0,120}uniques\.join\(" · "\)/.test(OOM));
   const OSM = lire("js/osmView.js");
   t("🩸 le toast maison de la Vue OSM demande la permission au goulot", /toastAutorise\("info"\)\) return;/.test(OSM));
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+  const jsAddons = function (d) {
+    const a = path.join(ROOT, d);
+    return !fs.existsSync(a) ? [] : fs.readdirSync(a, { withFileTypes: true }).flatMap(function (e) {
+      return e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [];
+    });
+  };
   const autres = fs.readdirSync(path.join(ROOT, "js")).filter(function (f) { return f.endsWith(".js") && f !== "oomGuard.js"; })
-    .filter(function (f) { return /createElement\("div"\)[\s\S]{0,120}kta-toast\b/.test(lire("js/" + f)); });
+    .map(function (f) { return "js/" + f; }).concat(jsAddons("addons"))
+    .filter(function (f) { return /createElement\("div"\)[\s\S]{0,120}kta-toast\b/.test(lire(f)); });
   t("🩸 les toasts s'empilent : aucun rendu ne retire le toast précédent, plafond de 3 visibles",
     /const TOASTS_MAX = 3;/.test(OOM) && /function _renderToast\([\s\S]{0,2000}while \(visibles\.length >= TOASTS_MAX\)/.test(OOM)
     && !/getElementById\("kta-toast"\);\s*if \(existing\) existing\.remove\(\)/.test(OOM) && /pile\.appendChild\(toast\)/.test(OOM));

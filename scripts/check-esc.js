@@ -34,13 +34,16 @@ const EXCEPTIONS = {
   "ktaExtensions.js": 1, // assainisseur HTML des extensions : une balise inconnue est rendue en texte
 };
 const LITTERAL = /["'`]&(?:amp|lt);["'`]/;
-const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
+// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
+const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => "js/" + f).concat(jsAddons());
 
 // ── 1. Une définition, qui échappe ──────────
 {
-  const defs = fichiers.filter((f) => /window\.ktaEsc\s*=(?!=)/.test(lire("js/" + f)));
-  t("window.ktaEsc défini une seule fois, dans js/langManager.js", defs.length === 1 && defs[0] === "langManager.js",
-    defs.join(", "));
+  const defs = fichiers.filter((f) => /window\.ktaEsc\s*=(?!=)/.test(lire(f)));
+  t("window.ktaEsc défini une seule fois, dans js/langManager.js",
+    defs.length === 1 && defs[0] === "js/langManager.js", defs.join(", "));
   const ctx = {};
   ctx.window = ctx;
   let ok = true;
@@ -73,11 +76,11 @@ const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
 {
   const fautes = [];
   for (const f of fichiers) {
-    const lignes = lire("js/" + f).split("\n");
+    const lignes = lire(f).split("\n");
     const hits = [];
     lignes.forEach((l, i) => { if (!/^\s*\/\//.test(l) && LITTERAL.test(l)) hits.push(i + 1); });
-    const tol = EXCEPTIONS[f] || 0;
-    if (hits.length > tol) fautes.push("js/" + f + ":" + hits.join(",") + (tol ? " (toléré : " + tol + ")" : ""));
+    const tol = (f.startsWith("js/") && EXCEPTIONS[f.slice(3)]) || 0;
+    if (hits.length > tol) fautes.push(f + ":" + hits.join(",") + (tol ? " (toléré : " + tol + ")" : ""));
   }
   // Auto-test : le motif voit les formes recensées (table, chaîne de replace) et pas une entité de gabarit.
   const vus = ['return { "&":"&amp;", "<":"&lt;" }[c];', '.replace(/&/g, "&amp;").replace(/</g, "&lt;")',
@@ -91,7 +94,7 @@ const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
 // ── 4. Aucun repli « ktaEsc || … » ──────────
 {
   const REPLI = /ktaEsc\s*\|\||typeof\s+window\.ktaEsc\s*===?\s*["']function["']\s*\)?\s*\?/;
-  const fautes = fichiers.filter((f) => REPLI.test(lire("js/" + f)));
+  const fautes = fichiers.filter((f) => REPLI.test(lire(f)));
   t("🩸 aucun repli autour de ktaEsc (un repli ne sert qu'à mal échapper)", fautes.length === 0, fautes.join(", "));
 }
 

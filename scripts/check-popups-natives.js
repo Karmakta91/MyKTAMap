@@ -77,8 +77,11 @@ if (ratesVoir.length || ratesPas.length) {
   process.exit(1);
 }
 
+// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
 const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => path.join("js", f))
-  .concat(["index.html"]);
+  .concat(["index.html"], jsAddons());
 
 const liste = process.argv.indexOf("--liste") >= 0 ? (process.argv[process.argv.indexOf("--liste") + 1] || "*") : null;
 let total = 0;
