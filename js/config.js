@@ -1137,6 +1137,19 @@ function setPlanRenduVue3D(planId, value) {
 window.getPlanRenduVue3D = getPlanRenduVue3D;
 window.setPlanRenduVue3D = setPlanRenduVue3D;
 
+// ── Commandes de la vue 3D : « Pavé classique » au lieu du joystick au téléphone, réglage de CET appareil ──────
+// localStorage["myktamap_v3d_pave_v1"] = "1" | "0" (défaut : joystick). Lu à l'ouverture de la vue
+// (vue3d.js > _commandesVoulues) ; au PC (pointeur fin) le pavé est là de toute façon.
+const V3D_PAVE_CLE = "myktamap_v3d_pave_v1";
+function getVue3DPave() {
+  try { return localStorage.getItem(V3D_PAVE_CLE) === "1"; } catch (e) { return false; }
+}
+function setVue3DPave(oui) {
+  try { localStorage.setItem(V3D_PAVE_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DPave = getVue3DPave;
+window.setVue3DPave = setVue3DPave;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,

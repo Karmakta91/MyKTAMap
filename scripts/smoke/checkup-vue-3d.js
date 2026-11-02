@@ -20,6 +20,10 @@
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
+// Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
+// cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
+// la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
+// « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ».
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -2305,7 +2309,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         }));
       }));
       const enTravers = sc1.parois.filter(function (s) { return coupe(s, [-3.5, 0, 23, 0]); });
-      verifier(sc1.rendu === "mixte" && sc1.parois.length >= 4 && xMax < -2.4 && xMax > -3.6,
+      // Côtés jugés à part : le front en travers de l'entrée ouvre les deux côtés à 1,75 m de lui (échantillon de côté
+      // à w + 0,5 m de l'axe, seuil 3 m − w) ; le tube s'arrête là.
+      verifier(sc1.rendu === "mixte" && sc1.parois.length >= 4 && xMax < -1.5 && xMax > -2.1,
         "mixte : tube avant la chambre, aucune paroi dans la chambre (paroi la plus à l'est à x = " + xMax.toFixed(2) +
         " m, entrée à 0)", { parois: sc1.parois.length, xMax: xMax });
       verifier(traversent.length === 0 && procheStruct > 1.5,
@@ -2602,6 +2608,399 @@ async function mesuresGalerie(page, nom, semisDonne) {
       } else {
         console.log("  ℹ️ plan à un niveau : passage vers une accroche hors du tube non joué");
       }
+
+      // ── 14. Raccord galerie / structures par côté (mixte), fictif ───────────────────────────────────────────
+      // Un tube principal d'ouest en est (z = 0, paroi à 1,25 m) ; « droite » en marchant vers l'est = +z. Cas :
+      // A pilier 2 × 2 m dont la face est à 2 m à droite ; B front de 10 m à 2 m à droite ; C piliers des deux
+      // côtés (chambre) ; D pilier dans l'axe (bout ouvert). Parois lues dans le modèle (m relatifs), « fente »
+      // cherchée par rayons tirés de l'axe vers +z (chaque rayon doit toucher une paroi ou la structure).
+      const RC = await page.evaluate(function (a) {
+        const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const carre = function (cx, cz, r) {
+          return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)];
+        };
+        window.ktaSetActiveLevel(0);
+        window.setPlanRenduVue3D(null, "mixte");
+        const cas = {
+          A: [{ uid: "st_rc_a", type: "pilier-1", level: 0, points: carre(0, 3, 1) }],
+          B: [{ uid: "st_rc_b", type: "front-1", level: 0, points: [P(-5, 2), P(5, 2)] }],
+          C: [{ uid: "st_rc_c1", type: "pilier-1", level: 0, points: carre(0, 3, 1) },
+            { uid: "st_rc_c2", type: "pilier-1", level: 0, points: carre(0, -3, 1) }],
+          D: [{ uid: "st_rc_d", type: "pilier-1", level: 0, points: carre(0, 0, 1) }]
+        };
+        window.setRoads([{ uid: "rd_rc", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] }]);
+        const rel = function (s) { return [s[0] / a.sc - a.ox, s[1] / a.sc - a.oz, s[2] / a.sc - a.ox, s[3] / a.sc - a.oz]; };
+        const out = {};
+        Object.keys(cas).forEach(function (k) {
+          window.setStructures(cas[k]);
+          window.KtaGalerie.invalider();
+          const m = window.KtaGalerie.modele(0, true), parois = [];
+          for (let i = 0; i < m.pieces.length; i++) m.paroisDe(i).forEach(function (s) { parois.push(rel(s)); });
+          const bords = [];
+          cas[k].forEach(function (s) {
+            const pts = s.points.map(function (q) { return [q.x / a.sc - a.ox, q.y / a.sc - a.oz]; });
+            const n = pts.length, fin = s.type === "front-1" ? n - 1 : n;
+            for (let i = 0; i < fin; i++) bords.push([pts[i][0], pts[i][1], pts[(i + 1) % n][0], pts[(i + 1) % n][1]]);
+          });
+          out[k] = { parois: parois, bords: bords, chambres: m.chambres, cotes: m.cotesOuverts,
+            retours: m.retours.map(rel), ms: +m.msConstruction.toFixed(1) };
+        });
+        return out;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      // Couverture d'une ligne z = cote par les parois qui la longent, sur [x0, x1] : longueur couverte (m).
+      const couvre = function (parois, cote, x0, x1) {
+        let l = 0;
+        parois.forEach(function (s) {
+          if (Math.abs(s[1] - cote) > 0.02 || Math.abs(s[3] - cote) > 0.02) return;
+          const a0 = Math.max(x0, Math.min(s[0], s[2])), a1 = Math.min(x1, Math.max(s[0], s[2]));
+          if (a1 > a0) l += a1 - a0;
+        });
+        return +l.toFixed(2);
+      };
+      // Rayons de l'axe (x, 0) vers +z sur 4 m : chacun doit toucher une paroi ou un bord de structure.
+      const fentes = function (r, x0, x1) {
+        const vides = [];
+        for (let x = x0; x <= x1 + 1e-9; x += 0.1) {
+          const ray = [x, 0, x, 4];
+          if (!r.parois.concat(r.bords).some(function (s) { return coupe(ray, s); })) vides.push(+x.toFixed(1));
+        }
+        return vides;
+      };
+      const retourOk = function (r, xs) {
+        return xs.every(function (x) {
+          return r.retours.some(function (s) {
+            return Math.abs(s[0] - s[2]) < 0.02 && Math.abs(s[0] - x) < 0.15 && Math.abs(s[1] - 1.25) < 0.02 &&
+              Math.abs(s[3] - 2) < 0.05;
+          });
+        });
+      };
+      const rA = RC.A, rB = RC.B, rC = RC.C, rD = RC.D;
+      verifier(couvre(rA.parois, -1.25, -20, 20) > 39.9 && couvre(rA.parois, 1.25, -0.9, 0.9) === 0 &&
+        couvre(rA.parois, 1.25, -20, -3) > 16.9 && couvre(rA.parois, 1.25, 3, 20) > 16.9,
+        "par côté (A, pilier à 2 m à droite) : paroi gauche gardée d'un bout à l'autre, droite ouverte devant le pilier",
+        { gauche: couvre(rA.parois, -1.25, -20, 20), droiteDevant: couvre(rA.parois, 1.25, -0.9, 0.9), ms: rA.ms });
+      verifier(rA.retours.length === 2 && retourOk(rA, [-1, 1]) && fentes(rA, -8, 8).length === 0,
+        "par côté (A) : un pan de retour perpendiculaire à chaque bout, du bord du tube (1,25 m) à la face du pilier " +
+        "(2 m), aucune fente (rayons tous les 10 cm)", { retours: rA.retours, fentes: fentes(rA, -8, 8).slice(0, 5) });
+      verifier(couvre(rB.parois, -1.25, -20, 20) > 39.9 && couvre(rB.parois, 1.25, -4.9, 4.9) === 0 &&
+        retourOk(rB, [-5, 5]) && fentes(rB, -10, 10).length === 0,
+        "par côté (B, front de 10 m à droite) : gauche gardée, droite ouverte le long du front, pans de retour, aucune " +
+        "fente", { droite: couvre(rB.parois, 1.25, -4.9, 4.9), retours: rB.retours, fentes: fentes(rB, -10, 10).slice(0, 5) });
+      verifier(couvre(rC.parois, 1.25, -0.9, 0.9) === 0 && couvre(rC.parois, -1.25, -0.9, 0.9) === 0 &&
+        rC.retours.length === 0 && rC.parois.every(function (s) { return !coupe(s, [-0.9, 0, 0.9, 0]); }),
+        "deux côtés (C) : chambre, aucune paroi de part et d'autre entre les piliers", { parois: rC.parois.length,
+          retours: rC.retours.length });
+      const enTraversD = rD.parois.filter(function (s) { return coupe(s, [-3.5, 0, 3.5, 0]); });
+      verifier(enTraversD.length === 0 && rD.parois.every(function (s) {
+        return rD.bords.every(function (b) { return !coupe(s, b); });
+      }), "structure dans l'axe (D) : le tube s'arrête sur un bout ouvert, aucune paroi en travers ni à travers le pilier",
+      enTraversD.slice(0, 3));
+      // Collisions du cas A : on bute à gauche sur la paroi, à droite sur le pilier (corps de 0,8 m).
+      const colA = await page.evaluate(function (a) {
+        const K = window.KtaVue3D, acc = window.ktaEstAccessible, P = function (x, z) {
+          return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc };
+        };
+        window.ktaEstAccessible = function () { return true; };
+        window.setStructures([{ uid: "st_rc_a", type: "pilier-1", level: 0,
+          points: [P(-1, 2), P(1, 2), P(1, 4), P(-1, 4)] }]);
+        window.KtaGalerie.invalider();
+        const d = P(0, 0), r = {};
+        const z = function () { return +(K.etat().pos.y / a.sc - a.oz).toFixed(2); };
+        return K.ouvrir({ depart: { x: d.x, y: d.y, cap: 0 } }).then(function () {
+          for (let i = 0; i < 20; i++) K.avancer(0.2);
+          r.gauche = z();
+          K.placer(d.x, d.y, 180);
+          for (let i = 0; i < 20; i++) K.avancer(0.2);
+          r.droite = z();
+          K.placer(P(-6, 0).x, d.y, 180);
+          for (let i = 0; i < 20; i++) K.avancer(0.2);
+          r.droiteLoin = z();
+          window.ktaEstAccessible = acc;
+          return K.fermer();
+        }).then(function () { return r; });
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(colA.gauche > -0.9 && colA.gauche < -0.75 && colA.droite > 1.5 && colA.droite < 1.65 &&
+        colA.droiteLoin > 0.75 && colA.droiteLoin < 0.9,
+        "collisions (A) : à gauche on bute sur la paroi (" + colA.gauche + " m), à droite sur le pilier (" + colA.droite +
+        " m, face à 2 m), plus loin sur la paroi droite gardée (" + colA.droiteLoin + " m)", colA);
+
+      // ── 15. Itinéraire au sol : ruban de 0,35 m en tirets, liseré, étape et arrivée ─────────────────────────
+      const IT = await page.evaluate(function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: 0 }; };
+        window.setStructures([]);
+        window.KtaGalerie.invalider();
+        const pts = [P(-20, 0), P(-10, 0), P(0, 0), P(10, 0)];
+        window.setRoads([{ uid: "rd_it_t", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] },
+          { uid: "rd_it", type: "itinerary", level: 0, points: pts,
+            raccords: [{ role: "depart", vers: { x: pts[0].x, y: pts[0].y } },
+              { role: "etape", label: "Étape fictive", vers: { x: pts[2].x, y: pts[2].y } },
+              { role: "arrivee", label: "Arrivée fictive", vers: { x: pts[3].x, y: pts[3].y } }] }]);
+        const d = P(-14, 0.3);
+        return K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false }).then(function () {
+          const e = K.etat();
+          const fin = e.panneaux.filter(function (q) { return q.genre === "arrivee"; })[0] || null;
+          return { iti: e.itineraire,
+            arrivee: fin ? { nom: fin.nom, x: +(fin.x - a.ox).toFixed(2), z: +(fin.z - a.oz).toFixed(2) } : null };
+        });
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      if (CAPTURES) { await page.waitForTimeout(600); await capture(page, "itineraire-tirets"); }
+      await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+      const it = IT.iti;
+      verifier(Math.abs(it.ruban - 0.35) < 0.005 && Math.abs(it.lisere - 0.43) < 0.005 &&
+        Math.abs(it.longueurTiret - 1.2) < 0.01,
+        "itinéraire : ruban de 0,35 m, liseré de 4 cm de chaque côté (0,43 m), tirets de 1,2 m", it);
+      // 30 m de trajet en tirets de 1,2 m tous les 1,8 m : 17 tirets (le dernier commence à 28,8 m).
+      verifier(it.tirets === 17 && /^#8cb4ff$/i.test(it.couleur) && /^#0a0d18$/i.test(it.couleurLisere),
+        "itinéraire : 17 tirets sur 30 m (1,2 m / 0,6 m, « 12 6 » de la carte), --kta-interaction, liseré --kta-fond",
+        it);
+      verifier(it.etapes === 1 && it.arrivee === true && !!IT.arrivee && IT.arrivee.x === 10 && IT.arrivee.z === 0 &&
+        IT.arrivee.nom === "🏁 Arrivée fictive", "itinéraire : un marqueur à l'étape, 🏁 à l'arrivée (panneau)",
+        { it: it, arrivee: IT.arrivee });
+
+      // ── 16. Ronds d'intersection de la carte, lus en 3D (option 2D, niveau affiché) ─────────────────────────
+      const RD = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const c = window.APP_CONFIG, vis = Array.isArray(c.visibleLevels) ? c.visibleLevels.slice() : null;
+        if (Array.isArray(c.availableLevels)) c.visibleLevels = c.availableLevels.slice();
+        window.setRoads([
+          { uid: "rd_x1", type: "principal", level: 0, points: [P(-10, 0), P(10, 0)] },
+          { uid: "rd_x2", type: "chemin", level: 0, points: [P(4, -6), P(4, 6)] },
+          { uid: "rd_x3", type: "principal", level: 1, points: [P(-10, 5), P(10, 5)] },
+          { uid: "rd_x4", type: "chemin", level: 1, points: [P(-4, -1), P(-4, 9)] }
+        ]);
+        window.setPlanShowsIntersections(null, false);
+        const r = {}, d = P(0, 0.3);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.sans = K.etat().ronds.length;
+        window.setPlanShowsIntersections(null, true);
+        await pause(250);
+        r.liste2D = window.getRoadIntersections().map(function (q) {
+          return [+(q.point.x / a.sc - a.ox).toFixed(2), +(q.point.y / a.sc - a.oz).toFixed(2), q.color, q.level];
+        });
+        r.avec = K.etat().ronds.map(function (q) {
+          return [+(q.x - a.ox).toFixed(2), +(q.z - a.oz).toFixed(2), q.couleur, q.niveau];
+        });
+        r.couleurChemin = window.ktaResolveStyle("traces", "chemin").color;
+        window.setPlanShowsIntersections(null, false);
+        await pause(250);
+        r.coupe = K.etat().ronds.length;
+        await K.fermer();
+        if (vis) c.visibleLevels = vis;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(RD.sans === 0 && RD.coupe === 0, "ronds : aucun en 3D quand l'option de la carte est coupée", RD);
+      // La carte compte aussi les tracés du relevé fictif : la 3D doit montrer exactement ses ronds du niveau 0.
+      const du0 = RD.liste2D.filter(function (q) { return !G.multi || q[3] === 0; });
+      const ici = RD.avec.filter(function (q) { return q[0] === 4 && q[1] === 0; })[0];
+      const au1 = RD.liste2D.filter(function (q) { return q[0] === -4 && q[1] === 5; })[0];
+      verifier(RD.avec.length === du0.length && !!ici && ici[2] === RD.couleurChemin && ici[3] === 0 &&
+        (!G.multi || (!!au1 && au1[3] === 1 && RD.avec.every(function (q) { return q[3] === 0; }))),
+        "ronds : option cochée → les ronds de la carte du niveau affiché (" + RD.avec.length + "), à leur couleur ; " +
+        "celui du niveau 1 absent", { avec: RD.avec.length, carte: RD.liste2D.length, ici: ici, au1: au1 });
+
+      // ── 17. Joystick (téléphone) : pointeurs tactiles synthétiques ──────────────────────────────────────────
+      // Pointeur grossier simulé (matchMedia) : la vue choisit le joystick sans qu'on le lui dise ; pavé au PC
+      // (pointeur fin du navigateur de test) et avec l'option « Pavé classique » de cet appareil.
+      const JS = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const acc = window.ktaEstAccessible, mm = window.matchMedia;
+        window.ktaEstAccessible = function () { return true; };
+        window.setRoads([{ uid: "rd_js", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+        window.KtaGalerie.invalider();
+        const r = {}, d = P(-30, 0);
+        r.finPc = !!(mm && mm.call(window, "(pointer: fine)").matches);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.pc = { commandes: K.etat().commandes, pave: K.etat().pave };
+        await K.fermer();
+        window.matchMedia = function (q) {
+          if (!/pointer:\s*fine/.test(q)) return mm.call(window, q);
+          return { matches: false, media: q, addListener: function () {}, removeListener: function () {},
+            addEventListener: function () {}, removeEventListener: function () {} };
+        };
+        window.setVue3DPave(true);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.option = { commandes: K.etat().commandes, pave: K.etat().pave };
+        await K.fermer();
+        window.setVue3DPave(false);
+        // Suivi actif : toucher sans bouger ne quitte pas le suivi, sortir de la zone morte passe en libre.
+        const trackerAvant = window.getTrackingActif();
+        if (!trackerAvant) window.startTracking();
+        window.recalerTrackerSurPoint(d.x, d.y, 0);
+        await K.ouvrir({});
+        const e0 = K.etat(), z = document.querySelector("#kta-vue3d .kta-v3d-stick-zone");
+        r.tel = { commandes: e0.commandes, pave: e0.pave, zone: !!z, mode: e0.mode, stick: e0.stick,
+          barre: document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect().bottom,
+          boussole: document.querySelector("#kta-vue3d .kta-v3d-boussole").getBoundingClientRect().top,
+          largeur: document.getElementById("kta-vue3d").getBoundingClientRect().width };
+        if (!z) { window.stopTracking(); await K.fermer(); window.matchMedia = mm; window.ktaEstAccessible = acc; return r; }
+        const zr = z.getBoundingClientRect(), x0 = zr.left + 100, y0 = zr.top + zr.height / 2;
+        const ev = function (type, id, x, y, cible) {
+          (cible || z).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id,
+            pointerType: "touch", isPrimary: id === 7, clientX: x, clientY: y }));
+        };
+        ev("pointerdown", 7, x0, y0);
+        await pause(100);
+        r.pose = K.etat().stick;
+        ev("pointerup", 7, x0, y0);
+        await pause(50);
+        r.tapMode = K.etat().mode;
+        // Vitesse mesurée sur la position de la vue entre deux instants (m/s), et son déplacement (m).
+        const vitesse = async function (ms) {
+          const p0 = K.etat().pos, t0 = performance.now();
+          await pause(ms);
+          const p1 = K.etat().pos, t1 = performance.now();
+          return { v: +(Math.hypot(p1.x - p0.x, p1.y - p0.y) / a.sc / ((t1 - t0) / 1000)).toFixed(2),
+            dx: +((p1.x - p0.x) / a.sc).toFixed(2), dz: +((p1.y - p0.y) / a.sc).toFixed(2) };
+        };
+        ev("pointerdown", 7, x0, y0);
+        ev("pointermove", 7, x0, y0 - 26);
+        await pause(80);
+        r.libre = { mode: K.etat().mode, m: K.etat().stick.m, libres: K.etat().stick.libres };
+        // Cap connu (vers l'est, le long du tube) : celui du tracker ne l'est pas.
+        K.placer(d.x, d.y, 90);
+        r.moitie = await vitesse(600);
+        ev("pointermove", 7, x0, y0 - 40);
+        await pause(80);
+        r.plein = await vitesse(400);
+        await pause(300);
+        r.course = K.etat().stick.course;
+        r.courseV = await vitesse(400);
+        // Pas de côté sous le seuil de course (30 px : la course tient tant que le débattement reste au-delà).
+        ev("pointermove", 7, x0 + 30, y0);
+        await pause(80);
+        r.cote = await vitesse(500);
+        ev("pointermove", 7, x0 + 5, y0 - 5);
+        await pause(80);
+        r.morte = await vitesse(300);
+        // Deux doigts sur la scène, le doigt du joystick posé : la vue plongeante s'incline.
+        K.basculerVue();
+        const cv = document.querySelector("#kta-vue3d canvas"), cr = cv.getBoundingClientRect();
+        const i0 = K.etat().inclinaison, cx = cr.left + cr.width * 0.75;
+        ev("pointerdown", 8, cx, 300, cv); ev("pointerdown", 9, cx + 30, 300, cv);
+        for (let k = 1; k <= 10; k++) {
+          ev("pointermove", 8, cx, 300 + 8 * k, cv); ev("pointermove", 9, cx + 30, 300 + 8 * k, cv);
+        }
+        r.incl = { avant: i0, apres: K.etat().inclinaison, stick: K.etat().stick.actif };
+        ev("pointerup", 8, cx, 380, cv); ev("pointerup", 9, cx + 30, 380, cv);
+        ev("pointerup", 7, x0 + 5, y0 - 5);
+        await pause(50);
+        r.relache = K.etat().stick.actif;
+        K.basculerVue();
+        window.stopTracking();
+        await K.fermer();
+        if (trackerAvant) window.startTracking();
+        window.matchMedia = mm;
+        window.ktaEstAccessible = acc;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(JS.pc.commandes === (JS.finPc ? "pave" : "joystick") && JS.pc.pave === JS.finPc &&
+        JS.option.commandes === "pave" && JS.option.pave === true && JS.tel.commandes === "joystick" &&
+        JS.tel.pave === false && JS.tel.zone,
+        "commandes : pavé au PC (pointeur fin), joystick au téléphone (pavé absent), pavé avec l'option de cet appareil",
+        { pc: JS.pc, option: JS.option, tel: JS.tel.commandes, pave: JS.tel.pave, finPc: JS.finPc });
+      if (JS.tel.zone) {
+        const st0 = JS.tel.stick;
+        verifier(st0.zone.y >= JS.tel.barre - 0.5 && st0.zone.y + st0.zone.h <= JS.tel.boussole + 0.5 &&
+          Math.abs(st0.zone.w - JS.tel.largeur / 2) < 1 && st0.anneau.w >= 88 && st0.bouton === 44,
+          "joystick : zone gauche sous la rangée du haut et au-dessus de la boussole, anneau ≥ 88 px, bouton 44 px",
+          JS.tel);
+        verifier(JS.pose.actif && Math.abs(JS.pose.anneau.x - (st0.zone.x + 100)) < 1.5 &&
+          Math.abs(JS.pose.anneau.y - (st0.zone.y + st0.zone.h / 2)) < 1.5 && JS.tel.mode === "suivi" &&
+          JS.tapMode === "suivi",
+          "joystick : l'anneau apparaît sous le doigt ; un toucher bref sans bouger ne quitte pas le suivi", JS.pose);
+        verifier(JS.libre.mode === "libre" && JS.libre.libres === 1 && Math.abs(JS.libre.m - 0.5) < 0.01,
+          "joystick : sortir de la zone morte passe en libre (débattement 26 px → moitié de la vitesse)", JS.libre);
+        verifier(Math.abs(JS.moitie.v - 1.4) < 0.35 && Math.abs(JS.plein.v - 2.8) < 0.5 &&
+          Math.abs(JS.moitie.dz) < 0.05 && JS.moitie.dx > 0,
+          "joystick : avance proportionnelle (" + JS.moitie.v + " m/s à mi-course, " + JS.plein.v +
+          " m/s au bout, attendu 1,4 et 2,8), vers l'avant", { moitie: JS.moitie, plein: JS.plein });
+        verifier(JS.course === true && JS.courseV.v > 5.5, "joystick : au bout, tenu 0,6 s → course (" + JS.courseV.v +
+          " m/s)", JS.courseV);
+        verifier(JS.cote.dz > 0.5 && Math.abs(JS.cote.dx) < 0.05 && JS.morte.v === 0,
+          "joystick : vers la droite → pas de côté (vers +z en regardant à l'est) ; dans la zone morte, rien",
+          { cote: JS.cote, morte: JS.morte });
+        verifier(JS.incl.apres !== JS.incl.avant && JS.incl.stick && JS.relache === false,
+          "joystick posé : deux doigts sur la scène inclinent la vue plongeante (le doigt du joystick ne compte pas)",
+          JS.incl);
+      }
+
+      // ── 18. Finitions : plus de « bêta », toast de présence en info, nom au toucher, focus après « Je suis ici ? »
+      const FI = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const orig = window.OOMGuard.showToast;
+        window.__v3dToasts = [];
+        window.OOMGuard.showToast = function (m, t, o) {
+          window.__v3dToasts.push([String(m), t || "warn"]);
+          return orig.call(this, m, t, o);
+        };
+        window.__v3dToastOrig = orig;
+        const d = P(-30, 0), r = {};
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        const ov = document.getElementById("kta-vue3d");
+        r.beta = /b[êe]ta/i.test(ov.textContent + " " + ov.getAttribute("aria-label"));
+        r.titre = window.I18n.t("vue3d.titre");
+        window.__v3dPartage = true; window.__v3dPub = [];
+        const m = P(-26, 0);
+        window.KtaExtensions.afficherPresences([{ id: "membre-t", pseudo: "Membre T", x: m.x, y: m.y, niveau: 0 }]);
+        await pause(250);
+        K.avancer(0.6);
+        await pause(300);
+        r.presence = window.__v3dToasts.filter(function (t) { return /📡/.test(t[0]); });
+        const q = K.etat().panneaux.filter(function (p) { return p.genre === "membre" && p.visible; })[0];
+        r.vise = q ? q.ecran : null;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      if (FI.vise) await page.mouse.click(FI.vise.x, FI.vise.y);
+      await page.waitForTimeout(250);
+      const FI2 = await page.evaluate(async function () {
+        const K = window.KtaVue3D, r = { nom: K.etat().toucheNom, fiche: !!K.etat().fiche,
+          toast: window.__v3dToasts.filter(function (t) { return t[0] === "Membre T"; }) };
+        window.KtaExtensions.afficherPresences([]);
+        window.__v3dPartage = false;
+        window.OOMGuard.showToast = window.__v3dToastOrig;
+        await K.fermer();
+        return r;
+      });
+      verifier(!FI.beta && !/b[êe]ta/i.test(FI.titre), "plus de « bêta » dans la vue (rangée, titre)", FI);
+      verifier(FI.presence.length === 1 && FI.presence[0][1] === "info",
+        "toast de présence 3D en « info » (plus « warn »)", FI.presence);
+      verifier(!!FI.vise && FI2.nom === "Membre T" && FI2.toast.length === 1 && !FI2.fiche,
+        "toucher un membre : un toast court avec son nom, pas de fiche", FI2);
+      // Focus rendu au bouton cube après « Je suis ici ? » (suivi actif, déplacé, Non).
+      const FO = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const acc = window.ktaEstAccessible, r = {};
+        window.ktaEstAccessible = function () { return true; };
+        const trackerAvant = window.getTrackingActif();
+        if (!trackerAvant) window.startTracking();
+        const d = P(-30, 0);
+        window.recalerTrackerSurPoint(d.x, d.y, 0);
+        const cube = document.querySelector(".kta-vue3d-ctrl a");
+        await K.ouvrir({ retourFocus: cube });
+        const loin = P(-28, 0);
+        K.placer(loin.x, loin.y, 90);
+        const ferme = K.fermer();
+        await pause(300);
+        const non = Array.prototype.filter.call(document.querySelectorAll("button"), function (b) {
+          return b.offsetParent !== null && b.textContent.trim() === window.I18n.t("vue3d.jeSuisIci.non");
+        })[0];
+        r.question = !!non;
+        if (non) non.click();
+        await ferme;
+        await pause(200);
+        r.focus = document.activeElement === cube;
+        r.actif = document.activeElement ? (document.activeElement.className || document.activeElement.tagName) : null;
+        window.stopTracking();
+        if (trackerAvant) window.startTracking();
+        window.ktaEstAccessible = acc;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(FO.question && FO.focus, "focus rendu au bouton cube après « Je suis ici ? » (Non)", FO);
+      await page.evaluate(function () { window.setStructures([]); window.KtaGalerie.invalider(); });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

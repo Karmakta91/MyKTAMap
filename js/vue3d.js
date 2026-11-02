@@ -4,19 +4,20 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// vue3d.js — vue 3D à la première personne autour de la position du tracker (bêta), ouverte par le bouton cube de
+// vue3d.js — vue 3D à la première personne autour de la position du tracker, ouverte par le bouton cube de
 // la barre de droite (interface.js > _ouvrirVue3D, qui la charge à la demande avec css/vue3d.css) ; three.js
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
 //   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg), avancer(m),
 //   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), placerSurTracker(), charge() } ;
-//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus }.
+//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus,
+//   commandes ("joystick" | "pave" : sinon joystick au téléphone, pavé au PC ou option ⚙️, _commandesVoulues) }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
-// STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire,
-// POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
-// (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau. Tuiles
-// autour de soi, lampe frontale, rendu au mouvement seul.
+// STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire
+// (tirets, étapes, 🏁), ronds d'intersection de la carte, POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ;
+// membres, repères et itinéraires d'une extension (KtaPresences ; ma place libre leur est montrée, _publierPosition ;
+// rien sans extension) ; un niveau. Tuiles autour de soi, lampe frontale, rendu au mouvement seul.
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
@@ -56,7 +57,18 @@
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
   const LARGEUR_TRACE = 0.25;       // m
-  const LARGEUR_ITI = 0.5;          // m
+  // Itinéraire au sol (décision produit) : ruban de LARGEUR_ITI à --kta-interaction, liseré sombre (--kta-fond) de
+  // ITI.lisere sur chaque bord, en tirets ITI.tiret / ITI.vide comme la 2D (dashArray « 12 6 » à l'échelle),
+  // posés à des abscisses fixes du trajet (ils ne glissent pas). Non éclairé : lisible hors du faisceau.
+  const LARGEUR_ITI = 0.35;         // m
+  const ITI = { lisere: 0.04, tiret: 1.2, vide: 0.6, y: 0.05 };
+  // Marqueurs de l'itinéraire : disque et mât à chaque étape, 🏁 en panneau à l'arrivée (m).
+  const MARQUEUR = { rayon: 0.25, mat: 0.6, epMat: 0.03, y: 0.055 };
+  // Ronds d'intersection (option de la carte) : disque à la couleur du rond 2D, au-dessus des rubans des tracés.
+  const ROND = { rayon: 0.35, cotes: 16, y: 0.04 };
+  // Joystick (téléphone) : débattement en px pour 0 → VITESSE, zone morte, course au-delà de `course` du
+  // débattement tenu APPUI_LONG ; tailles de l'anneau et du bouton (px, posées par css/vue3d.css).
+  const JOYSTICK = { debattement: 40, morte: 12, course: 0.85 };
   const HAUTEUR_REMBLAIS = 0.6;     // part de la hauteur du plan
   const PANNEAU = { l: 1.6, h: 0.5 };   // m : taille d'un panneau de POI de près
   // De près : rien sous PRES.min, fondu jusqu'à PRES.net ; jamais plus large que PRES.ecran de la largeur de l'écran
@@ -104,8 +116,11 @@
     return typeof window.ktaFormatNiveau === "function" ? window.ktaFormatNiveau(n) : String(n);
   }
 
-  function _toast(cle) {
-    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t(cle), "warn");
+  // Toast de la vue ; `type` « warn » par défaut (un avertissement : perte du contexte WebGL).
+  function _toast(texte, type) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(texte, type || "warn");
+    }
   }
 
   function _alerte(cle) {
@@ -192,18 +207,25 @@
     const embRoads = _tab(window.getAllEmbeddedRoads);
     // 🩸 L'itinéraire est UN tracé dont chaque point porte son niveau (pathfinder.js) : il est découpé en morceaux
     // du niveau affiché, sinon un itinéraire au −1 (tracé sans `level` = 0) disparaissait tout entier.
+    // Chaque morceau garde l'abscisse (px, depuis le début du trajet) de ses points : tirets continus d'un morceau
+    // et d'une tuile à l'autre.
     const itiDuNiveau = [];
     sessionRoads.forEach(function (r) {
       if (r.type !== "itinerary" || !Array.isArray(r.points)) return;
       const defaut = Number.isInteger(r.level) ? r.level : 0;
-      let cur = [];
+      let cur = [], abs = [], s = 0, prec = null;
+      const fin = function (lvl) {
+        if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: lvl, abscisses: abs }));
+        cur = []; abs = [];
+      };
       r.points.forEach(function (q) {
+        if (q && prec && Number.isFinite(q.x) && Number.isFinite(prec.x)) s += Math.hypot(q.x - prec.x, q.y - prec.y);
+        if (q) prec = q;
         const n = q && Number.isInteger(q.level) ? q.level : defaut;
-        if (niveau === null || n === niveau) { cur.push(q); return; }
-        if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: niveau }));
-        cur = [];
+        if (niveau === null || n === niveau) { cur.push(q); abs.push(s); return; }
+        fin(niveau);
       });
-      if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: niveau === null ? defaut : niveau }));
+      fin(niveau === null ? defaut : niveau);
     });
     const roads = itiDuNiveau
       .concat(_filtrer(sessionRoads.filter(function (r) { return r.type !== "itinerary"; }), embRoads,
@@ -361,7 +383,7 @@
         if (!a || !b) continue;
         const k = cle((a.x + b.x) / 2 / sc, (a.y + b.y) / 2 / sc);
         const t = range(k[0], k[1]);
-        t.r.push({ type: r.type, a: a, b: b });
+        t.r.push({ type: r.type, a: a, b: b, s0: r.abscisses ? r.abscisses[j] : 0 });
         emprise(t, [a, b]);
       }
     }
@@ -496,6 +518,45 @@
       [ax - ex - nx, y, az - ez - nz], [0, 1, 0], col);
   }
 
+  // Bande de `larg` m de large de (ax, az) à (bx, bz) (m), à la hauteur y, sans recouvrement aux bouts.
+  function _bande(lot, ax, az, bx, bz, larg, y, col) {
+    const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz);
+    if (l < 1e-6) return;
+    const nx = -dz / l * larg / 2, nz = dx / l * larg / 2;
+    lot.quad([ax + nx, y, az + nz], [bx + nx, y, bz + nz], [bx - nx, y, bz - nz], [ax - nx, y, az - nz], [0, 1, 0], col);
+  }
+
+  // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } en tirets (ITI) : chaque tiret est une bande claire
+  // posée sur une bande sombre plus large et plus longue de ITI.lisere (le liseré). Phase prise sur l'abscisse du
+  // trajet : les tirets se suivent d'un segment et d'une tuile à l'autre.
+  function _rubanIti(lot, r) {
+    const e = _e, sc = e.sc, ax = r.a.x / sc, az = r.a.y / sc, bx = r.b.x / sc, bz = r.b.y / sc;
+    const L = Math.hypot(bx - ax, bz - az), s0 = (r.s0 || 0) / sc, P = ITI.tiret + ITI.vide;
+    if (L < 1e-6) return;
+    const ux = (bx - ax) / L, uz = (bz - az) / L, cols = _couleursIti(), m = ITI.lisere;
+    for (let k = Math.floor(s0 / P); k * P < s0 + L; k++) {
+      const d0 = Math.max(k * P, s0) - s0, d1 = Math.min(k * P + ITI.tiret, s0 + L) - s0;
+      if (d1 - d0 < 0.01) continue;
+      // Liseré prolongé de m aux bouts du tiret seulement (pas au raccord de deux segments d'un même tiret).
+      const m0 = k * P >= s0 ? m : 0, m1 = k * P + ITI.tiret <= s0 + L ? m : 0;
+      _bande(lot, ax + ux * (d0 - m0), az + uz * (d0 - m0), ax + ux * (d1 + m1), az + uz * (d1 + m1),
+        LARGEUR_ITI + 2 * m, ITI.y - 0.005, cols.lisere);
+      _bande(lot, ax + ux * d0, az + uz * d0, ax + ux * d1, az + uz * d1, LARGEUR_ITI, ITI.y, cols.ruban);
+      if (k * P >= s0) e.itiTirets++;
+    }
+  }
+
+  // Couleurs de l'itinéraire, jetons du thème sombre (la scène est noire dans les deux thèmes) : ruban
+  // --kta-interaction, liseré --kta-fond.
+  function _couleursIti() {
+    const e = _e;
+    if (e.itiCouleurs) return e.itiCouleurs;
+    const j = _jetonsSombres(), ruban = new THREE.Color(), lisere = new THREE.Color();
+    try { ruban.setStyle(j.interaction); } catch (err) { ruban.set(0x8cb4ff); }
+    try { lisere.setStyle(j.fond); } catch (err) { lisere.set(0x0a0d18); }
+    return (e.itiCouleurs = { ruban: ruban, lisere: lisere, hexRuban: j.interaction, hexLisere: j.fond });
+  }
+
   // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) est toujours SOUS un pilier ou un front de son
   // niveau. Là où ils se chevauchent, le pilier ou le front l'emporte : le mur monte à HAUTEUR_MUR de la hauteur et
   // son matériau est reculé en profondeur (polygonOffset), d'où aucun scintillement sur les faces confondues et
@@ -550,7 +611,7 @@
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       _compter(_e.rubans, r.type);
-      if (r.type === "itinerary") _ruban(lumineux, r.a, r.b, sc, LARGEUR_ITI, 0.05, col);
+      if (r.type === "itinerary") _rubanIti(lumineux, r);
       else _ruban(opaque, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
     }
     const groupe = new THREE.Group();
@@ -565,7 +626,7 @@
     };
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
     ajouter(murs, _e.mats.murs, 0, "murs");
-    ajouter(lumineux, _e.mats.lumineux, 1);
+    ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
     ajouter(hachSol, _e.mats.hachSol, 0, "opaque");
     ajouter(hachRideau, _e.mats.hachRideau, 2);
@@ -676,7 +737,7 @@
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       _compter(_e.rubans, r.type);
-      if (r.type === "itinerary") _ruban(lumineux, r.a, r.b, sc, LARGEUR_ITI, 0.05, col);
+      if (r.type === "itinerary") _rubanIti(lumineux, r);
       else _ruban(opaque, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
     }
     const groupe = new THREE.Group();
@@ -695,7 +756,7 @@
     ajouter(parois, e.mats.paroi, 0, "parois");
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(remblais, e.mats.opaque, 0, "remblais");
-    ajouter(lumineux, e.mats.lumineux, 1);
+    ajouter(lumineux, e.mats.iti, 1, "itineraire");
     ajouter(eau, e.mats.eauGalerie, 2, "eau");
     ajouter(hachSol, e.mats.hachSol, 0, "inaccessible");
     ajouter(hachRideau, e.mats.hachRideau, 2, "rideau");
@@ -1209,6 +1270,8 @@
       murs: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1,
         polygonOffsetUnits: 1 }),
       lumineux: new THREE.MeshBasicMaterial({ vertexColors: true }),
+      // Itinéraire et ronds d'intersection : couleurs exactes du jeton et de la légende (sans compression de tons).
+      iti: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
       transp: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
         depthWrite: false, side: THREE.DoubleSide }),
       hachSol: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true })),
@@ -1400,7 +1463,7 @@
   function _razCompteurs() {
     const e = _e;
     e.poiMasques = 0; e.zonesDecoupees = {}; e.rideaux = []; e.facesRemblais = 0; e.rubans = {}; e.liseres = {};
-    e.zonesTube = 0; e.poiTube = 0; e.halos = 0;
+    e.zonesTube = 0; e.poiTube = 0; e.halos = 0; e.itiTirets = 0;
   }
 
   // Tuiles refaites sur place (hauteur, affichage) : même index, position, cap, niveau et rendu gardés.
@@ -1436,6 +1499,8 @@
     e.msIndex = performance.now() - t0;
     _appliquerRendu();
     _gererTuiles(true);
+    _majMarqueursIti();
+    _majRonds();
   }
 
   // ── Rendu mixte / structures / galerie (interrupteur à trois états, retenu par plan) ─────────────────────
@@ -1863,9 +1928,10 @@
 
   // Toucher un panneau de POI : sa fiche, la même que sur la carte (_ouvrirFiche). POI jonction : son passage, d'où
   // que l'on soit (un seul niveau lié : on y va), comme avant la fiche.
-  // 🩸 Les panneaux de membres et de repères d'une extension sont aussi dans _e.panneaux (même fondu) : ils ne sont
-  // pas des POI, `point` n'y est qu'un { nom } — rien ne s'ouvre. Ils arrêtent quand même le toucher : sinon la
-  // fiche d'un POI caché derrière s'ouvrirait à la place.
+  // 🩸 Les panneaux de membres et de repères d'une extension (et le 🏁 de l'arrivée) sont aussi dans _e.panneaux
+  // (même fondu) : ils ne sont pas des POI, `point` n'y est qu'un { nom } — pas de fiche, un toast court avec leur
+  // nom (sinon le toucher restait muet). Ils arrêtent quand même le toucher : sinon la fiche d'un POI caché derrière
+  // s'ouvrirait à la place.
   function _toucher(cx, cy) {
     const e = _e, r = e.cv.getBoundingClientRect(), sprites = [];
     if (!r.width || !r.height) return false;
@@ -1877,7 +1943,12 @@
     e.rayon.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1),
       e.camera);
     const hit = e.rayon.intersectObjects(sprites, false)[0];
-    if (!hit || hit.object.userData.poi.genre !== "poi") return false;
+    if (!hit) return false;
+    if (hit.object.userData.poi.genre !== "poi") {
+      e.toucheNom = hit.object.userData.poi.nom;
+      _toast(e.toucheNom, "info");
+      return true;
+    }
     const poi = hit.object.userData.poi.jonction;
     if (!poi) return _ouvrirFiche(hit.object.userData.poi.point);
     const pas = e.passages.filter(function (p) { return p.poi === poi; })[0];
@@ -2031,6 +2102,125 @@
     e.chevrons.renderOrder = 1;
     e.chevrons.matrixAutoUpdate = false;
     e.scene.add(e.chevrons);
+    e.sale = true;
+  }
+
+  // ── Marqueurs de l'itinéraire : étapes (disque et mât) et arrivée (🏁) ──────────────────────────────────
+  // ⚠️ contrat : étapes = `road.raccords` de rôle « etape » (pathfinder.js > computeRoute), posées à leur point SUR
+  // le trajet (`vers`), au niveau du point du trajet le plus proche ; arrivée = dernier point du trajet, panneau
+  // « 🏁 » (et le nom de l'arrivée s'il en a un), sans icône. Refaits à chaque _reindexer (itinéraire, niveau).
+
+  function _viderGroupe(g) {
+    const e = _e;
+    if (!g) return;
+    g.traverse(function (q) {
+      if (q.geometry && !q.isSprite && !q.userData.partage) q.geometry.dispose();
+      if (q.isSprite && q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); }
+      if (q.isSprite) e.panneaux.delete(q);
+    });
+    if (g.parent) g.parent.remove(g);
+    e.sale = true;
+  }
+
+  function _niveauPointIti(road, x, y) {
+    const defaut = Number.isInteger(road.level) ? road.level : 0;
+    let best = null, d = Infinity;
+    road.points.forEach(function (q) {
+      if (!q || !Number.isFinite(q.x)) return;
+      const dd = Math.hypot(q.x - x, q.y - y);
+      if (dd < d) { d = dd; best = q; }
+    });
+    return best && Number.isInteger(best.level) ? best.level : defaut;
+  }
+
+  function _majMarqueursIti() {
+    const e = _e, road = _itineraire(), sc = e.sc;
+    _viderGroupe(e.marqueursIti);
+    e.marqueursIti = null;
+    e.nbMarqueurs = { etapes: 0, arrivee: false };
+    if (!road) return;
+    const g = new THREE.Group(), cols = _couleursIti();
+    if (!e.geoMarqueur) {
+      const disque = new THREE.CircleGeometry(MARQUEUR.rayon, 24);
+      disque.rotateX(-Math.PI / 2);
+      const mat = new THREE.CylinderGeometry(MARQUEUR.epMat, MARQUEUR.epMat, MARQUEUR.mat, 8);
+      mat.translate(0, MARQUEUR.mat / 2, 0);
+      e.geoMarqueur = { disque: disque, mat: mat };
+    }
+    if (!e.mats.marqueur) {
+      e.mats.marqueur = new THREE.MeshBasicMaterial({ color: cols.ruban, toneMapped: false });
+    }
+    const auNiveau = function (n) { return e.niveau === null || n === e.niveau; };
+    (Array.isArray(road.raccords) ? road.raccords : []).forEach(function (r) {
+      if (!r || r.role !== "etape" || !r.vers || !Number.isFinite(r.vers.x)) return;
+      if (!auNiveau(_niveauPointIti(road, r.vers.x, r.vers.y))) return;
+      const m = new THREE.Group();
+      [e.geoMarqueur.disque, e.geoMarqueur.mat].forEach(function (geo) {
+        const me = new THREE.Mesh(geo, e.mats.marqueur);
+        me.userData.partage = true;   // géométrie et matériau de la vue : libérés à la fermeture
+        m.add(me);
+      });
+      m.children[0].position.y = MARQUEUR.y;
+      m.position.set(r.vers.x / sc, 0, r.vers.y / sc);
+      m.userData.famille = "etape";
+      g.add(m);
+      e.nbMarqueurs.etapes++;
+    });
+    const pts = road.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+    const fin = pts[pts.length - 1];
+    const defaut = Number.isInteger(road.level) ? road.level : 0;
+    if (fin && auNiveau(Number.isInteger(fin.level) ? fin.level : defaut)) {
+      const rArr = (Array.isArray(road.raccords) ? road.raccords : []).filter(function (r) {
+        return r && r.role === "arrivee";
+      })[0];
+      const nom = "🏁" + (rArr && rArr.label ? " " + rArr.label : "");
+      g.add(_panneau({ nom: nom }, [fin.x / sc, fin.y / sc], { bord: _jetonsSombres().interaction, sansIcone: true,
+        genre: "arrivee", y: Math.min(MARQUEUR.mat + 0.5, e.hauteur - 0.15) }));
+      e.nbMarqueurs.arrivee = true;
+    }
+    e.scene.add(g);
+    e.marqueursIti = g;
+    e.sale = true;
+  }
+
+  // ── Ronds d'intersection (option ⚙️ de la carte, getPlanShowsIntersections) ───────────────────────────
+  // ⚠️ contrat : la 3D ne calcule rien ; elle lit les ronds DESSINÉS par la carte (road.js > getRoadIntersections :
+  // mêmes filtres, liste vide option coupée), garde ceux du niveau affiché et pose un disque de ROND.rayon à la
+  // couleur du rond, au-dessus des rubans (et du liseré en galerie). Refaits à _reindexer et à
+  // `kta:intersectionsChange`.
+  function _majRonds() {
+    const e = _e, sc = e.sc;
+    if (e.ronds) {
+      if (e.ronds.parent) e.ronds.parent.remove(e.ronds);
+      e.ronds.geometry.dispose();
+      e.ronds = null;
+      e.sale = true;
+    }
+    e.listeRonds = [];
+    const montre = typeof window.getPlanShowsIntersections === "function" && window.getPlanShowsIntersections();
+    if (!montre || typeof window.getRoadIntersections !== "function") return;
+    let liste = [];
+    try { liste = window.getRoadIntersections() || []; } catch (err) { liste = []; }
+    const lot = new Lot(), haut = [0, 1, 0], n = ROND.cotes;
+    liste.forEach(function (it) {
+      if (!it || !it.point || !Number.isFinite(it.point.x)) return;
+      if (e.niveau !== null && Number.isInteger(it.level) && it.level !== e.niveau) return;
+      const col = new THREE.Color();
+      try { col.setStyle(it.color); } catch (err) { col.set(0xffffff); }
+      const cx = it.point.x / sc, cz = it.point.y / sc;
+      for (let k = 0; k < n; k++) {
+        const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n;
+        lot.tri([cx, ROND.y, cz], [cx + Math.cos(a0) * ROND.rayon, ROND.y, cz + Math.sin(a0) * ROND.rayon],
+          [cx + Math.cos(a1) * ROND.rayon, ROND.y, cz + Math.sin(a1) * ROND.rayon], haut, col);
+      }
+      e.listeRonds.push({ x: cx, z: cz, couleur: it.color, niveau: Number.isInteger(it.level) ? it.level : null });
+    });
+    const geo = lot.geometrie();
+    if (!geo) return;
+    e.ronds = new THREE.Mesh(geo, e.mats.iti);
+    e.ronds.renderOrder = 1;
+    e.ronds.matrixAutoUpdate = false;
+    e.scene.add(e.ronds);
     e.sale = true;
   }
 
@@ -2188,7 +2378,8 @@
     e.publiee = p;
     e.publications++;
     // Dit une fois par ouverture : la place libre est vue de l'équipe (vie privée), marquée « en vue 3D ».
-    if (!e.publicationDite) { e.publicationDite = true; _toast("vue3d.presencePartagee"); }
+    // Information, pas une alerte (décision produit) : rien ne va mal, la place est montrée comme convenu.
+    if (!e.publicationDite) { e.publicationDite = true; _toast(_t("vue3d.presencePartagee"), "info"); }
   }
 
   function _lireTracker() {
@@ -2236,6 +2427,14 @@
     if (rot) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
     if (av) _pas(vit * dt * av, e.cap);
     if (lat) _pas(vit * dt, e.cap + 90 * lat);
+    // Joystick : un seul pas dans la direction du bouton, à sa vitesse ; course = pleine vitesse × FACTEUR_RAPIDE.
+    const st = e.stick;
+    if (st && st.m > 0) {
+      const course = st.fortDepuis > 0 && ts - st.fortDepuis > APPUI_LONG;
+      _passerEnLibre();
+      _pas(VITESSE * (course ? FACTEUR_RAPIDE : st.m) * dt, e.cap + st.ang);
+      e.rapide = e.rapide || course;
+    }
     if (_trackerActif() !== e.suiviDispo) {
       if (e.mode === "suivi" && !_trackerActif()) e.mode = "libre";
       _majBoutonSuivre();
@@ -2244,9 +2443,10 @@
     _majPassage();
     const niv = _niveauCourant();
     if (niv !== e.niveau || e.filtresChanges || e.itiChange) {
-      e.filtresChanges = false; e.itiChange = false;
+      e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
       _reindexer();
     }
+    if (e.rondsChange) { e.rondsChange = false; _majRonds(); }
     _gererTuiles(false);
     _majEquipe();
     _publierPosition();
@@ -2297,11 +2497,21 @@
     return b;
   }
 
+  // Commandes de déplacement (décision produit) : joystick au téléphone, pavé ▲ ▼ ◀ ▶ ↶ ↷ au PC (pointeur fin) ou
+  // quand l'option « Pavé classique » est cochée sur cet appareil (config.js > getVue3DPave). `force` (ouvrir) :
+  // "pave" | "joystick" (checkup).
+  function _commandesVoulues(force) {
+    if (force === "pave" || force === "joystick") return force;
+    const fin = !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches);
+    const pave = typeof window.getVue3DPave === "function" && window.getVue3DPave() === true;
+    return fin || pave ? "pave" : "joystick";
+  }
+
   // Rangée du haut, à droite (row-reverse : l'ordre CSS de chaque élément dit sa place, de droite à gauche) : ✕
   // toujours au coin haut droit, même quand la rangée passe sur deux lignes au téléphone, ≡ collé à sa gauche
   // (décision produit), puis 🚨, ❓ (posé par interfaceDocs.js > _aidePoserBouton dans l'en-tête marqué
-  // kta-aide-ctx-entete), vue, hauteur, rendu, mode et la marque « bêta ». Réglage de hauteur sur sa propre ligne
-  // dessous. Ordre de tabulation = ordre du DOM.
+  // kta-aide-ctx-entete), vue, hauteur, rendu et mode. Réglage de hauteur sur sa propre ligne dessous. Ordre de
+  // tabulation = ordre du DOM. Joystick (zone gauche) posé juste après la scène : tout le reste passe au-dessus.
   function _monterDom(stats) {
     const e = _e;
     const ov = document.createElement("div");
@@ -2314,6 +2524,22 @@
     const cv = document.createElement("canvas");
     cv.className = "kta-v3d-canvas";
     ov.appendChild(cv);
+    if (e.commandes === "joystick") {
+      // Zone du pouce gauche, sous la rangée du haut et au-dessus de la boussole (css/vue3d.css) ; l'anneau attend
+      // en bas de la zone et vient sous le doigt où il se pose (_brancherStick).
+      const zone = document.createElement("div");
+      zone.className = "kta-v3d-stick-zone";
+      zone.setAttribute("role", "group");
+      zone.setAttribute("aria-label", _t("vue3d.joystick"));
+      const anneau = document.createElement("div");
+      anneau.className = "kta-v3d-stick kta-v3d-stick-repos";
+      const bouton = document.createElement("div");
+      bouton.className = "kta-v3d-stick-bouton";
+      anneau.appendChild(bouton);
+      zone.appendChild(anneau);
+      ov.appendChild(zone);
+      e.stickZone = zone; e.stickAnneau = anneau; e.stickBouton = bouton;
+    }
     const haut = document.createElement("div");
     haut.className = "kta-v3d-haut kta-aide-ctx-entete";
     const fermer = _bouton(haut, "kta-v3d-fermer", "✕", _t("vue3d.fermer"), "fermer");
@@ -2330,10 +2556,6 @@
     e.boutonHauteur.setAttribute("aria-expanded", "false");
     e.boutonRendu = _bouton(haut, "kta-v3d-btn-mode kta-v3d-btn-rendu", "", "", "rendu");
     e.boutonSuivre = _bouton(haut, "kta-v3d-btn-mode kta-v3d-btn-suivre", "🧭", _t("vue3d.suivre"), "suivre");
-    const beta = document.createElement("span");
-    beta.className = "kta-v3d-beta";
-    beta.textContent = _t("vue3d.beta");
-    haut.appendChild(beta);
     // Réglage de la hauteur : − valeur +, sous la rangée du haut, ouvert par ⛏️.
     const regl = document.createElement("div");
     regl.className = "kta-v3d-hauteur";
@@ -2358,15 +2580,18 @@
     bandeau.hidden = true;
     ov.appendChild(bandeau);
     e.bandeau = bandeau;
-    const pad = document.createElement("div");
-    pad.className = "kta-v3d-pad";
-    _bouton(pad, "kta-v3d-tg", "↶", _t("vue3d.tournerGauche"), "tg");
-    _bouton(pad, "kta-v3d-av", "▲", _t("vue3d.avancer"), "av");
-    _bouton(pad, "kta-v3d-td", "↷", _t("vue3d.tournerDroite"), "td");
-    _bouton(pad, "kta-v3d-ga", "◀", _t("vue3d.pasGauche"), "ga");
-    _bouton(pad, "kta-v3d-ar", "▼", _t("vue3d.reculer"), "ar");
-    _bouton(pad, "kta-v3d-dr", "▶", _t("vue3d.pasDroite"), "dr");
-    ov.appendChild(pad);
+    if (e.commandes === "pave") {
+      const pad = document.createElement("div");
+      pad.className = "kta-v3d-pad";
+      _bouton(pad, "kta-v3d-tg", "↶", _t("vue3d.tournerGauche"), "tg");
+      _bouton(pad, "kta-v3d-av", "▲", _t("vue3d.avancer"), "av");
+      _bouton(pad, "kta-v3d-td", "↷", _t("vue3d.tournerDroite"), "td");
+      _bouton(pad, "kta-v3d-ga", "◀", _t("vue3d.pasGauche"), "ga");
+      _bouton(pad, "kta-v3d-ar", "▼", _t("vue3d.reculer"), "ar");
+      _bouton(pad, "kta-v3d-dr", "▶", _t("vue3d.pasDroite"), "dr");
+      ov.appendChild(pad);
+      e.pave = pad;
+    }
     // Inclinaison (vue plongeante seulement) : deux petits boutons à droite.
     const incl = document.createElement("div");
     incl.className = "kta-v3d-incl";
@@ -2570,6 +2795,7 @@
     });
     on(window, "pointerup", relacher);
     on(window, "pointercancel", relacher);
+    if (e.stickZone) _brancherStick(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
     // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical) ; deux doigts,
     // glissés à la verticale, inclinent la vue plongeante (vers le haut = plus rasante).
@@ -2620,6 +2846,8 @@
     // Itinéraire tracé, remplacé ou effacé pendant la vue (🚨, fiche, guidage) : scène refaite à l'image suivante,
     // bandeau et chevrons relus aussitôt.
     on(window, "kta:itineraireChange", function () { e.itiChange = true; e.guidageForce = true; e.apS = undefined; });
+    // Ronds d'intersection redessinés par la carte (option, filtres, tracés) : refaits à l'image suivante.
+    on(window, "kta:intersectionsChange", function () { e.rondsChange = true; });
     on(e.cv, "contextmenu", function (ev) { ev.preventDefault(); });
     // Clavier : capturé pendant que la vue est ouverte (les raccourcis de la carte ne partent pas dessous).
     // Une fenêtre de l'app par-dessus la vue (≡ Filtres, Aide, Sortie d'urgence, confirmation) garde ses touches :
@@ -2652,7 +2880,7 @@
       const a = TOUCHES[ev.code];
       if (a) { e.touches[a] = false; ev.stopPropagation(); }
     }, true);
-    on(window, "blur", relacher);
+    on(window, "blur", function () { relacher(); _lacherStick(); });
     on(window, "resize", function () { _majSousHaut(); });
     // Filtres de la carte changés (ici ou en 2D) : la scène est refaite à l'image suivante, une fois même si
     // plusieurs cases changent d'un coup (« Tout masquer »).
@@ -2687,6 +2915,7 @@
       e.reprises++;
       e.tuiles.forEach(function (t) { t.obj = null; });
       e.chevrons = null; e.chevSig = null; e.guidageForce = true;   // même règle : jamais dispose() d'avant la perte
+      e.marqueursIti = null; e.ronds = null; e.geoMarqueur = null;
       _monterScene();
       _reindexer();
       _appliquerVue();
@@ -2696,10 +2925,67 @@
     });
   }
 
+  // ── Joystick (téléphone) ─────────────────────────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : un doigt posé dans la zone gauche fait apparaître l'anneau sous lui ; le bouton
+  // suit le doigt jusqu'à JOYSTICK.debattement px. Au-delà de la zone morte, vitesse proportionnelle (0 → VITESSE),
+  // axe vertical = avancer / reculer, horizontal = pas de côté, dans une seule direction (_image) ; débattement au-delà
+  // de JOYSTICK.course tenu APPUI_LONG = course (× FACTEUR_RAPIDE). Sortir de la zone morte passe en libre (un
+  // toucher bref sans bouger ne quitte pas le suivi : c'est peut-être un panneau, ouvert par _toucher). Un doigt à la
+  // fois ; le doigt du joystick n'est pas sur la scène, il ne compte ni pour le regard ni pour l'inclinaison à deux
+  // doigts. 🩸 `touch-action: none` sur la zone (css), sinon le navigateur fait défiler ou zoomer.
+  function _brancherStick(on) {
+    const e = _e, zone = e.stickZone;
+    on(zone, "pointerdown", function (ev) {
+      if (e.stick) return;
+      ev.preventDefault();
+      const r = zone.getBoundingClientRect();
+      e.stick = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, x0: ev.clientX - r.left, y0: ev.clientY - r.top,
+        m: 0, ang: 0, d: 0, fortDepuis: 0, t: performance.now(), bouge: false };
+      try { zone.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur synthétique ou déjà relâché */ }
+      e.stickAnneau.classList.remove("kta-v3d-stick-repos");
+      e.stickAnneau.classList.add("kta-v3d-stick-actif");
+      e.stickAnneau.style.left = Math.round(e.stick.x0) + "px";
+      e.stickAnneau.style.top = Math.round(e.stick.y0) + "px";
+      e.stickBouton.style.transform = "";
+    });
+    on(zone, "pointermove", function (ev) {
+      const st = e.stick;
+      if (!st || ev.pointerId !== st.id) return;
+      const dx = ev.clientX - st.cx, dy = ev.clientY - st.cy, d = Math.hypot(dx, dy), D = JOYSTICK.debattement;
+      const k = d > D ? D / d : 1;
+      e.stickBouton.style.transform = "translate(" + Math.round(dx * k) + "px, " + Math.round(dy * k) + "px)";
+      st.d = d;
+      st.m = d <= JOYSTICK.morte ? 0 : Math.min(1, (d - JOYSTICK.morte) / (D - JOYSTICK.morte));
+      st.ang = Math.atan2(dx, -dy) * 180 / Math.PI;   // 0 = devant, 90 = pas à droite
+      if (d > JOYSTICK.course * D) { if (!st.fortDepuis) st.fortDepuis = performance.now(); } else st.fortDepuis = 0;
+      if (st.m > 0 && !st.bouge) { st.bouge = true; e.stickLibres++; _passerEnLibre(); }
+      e.sale = true;
+    });
+    const lacher = function (ev) {
+      const st = e.stick;
+      if (!st || ev.pointerId !== st.id) return;
+      const tape = ev.type === "pointerup" && !st.bouge && st.d < 8 && performance.now() - st.t < 500;
+      _lacherStick();
+      if (tape) _toucher(ev.clientX, ev.clientY);
+    };
+    on(zone, "pointerup", lacher);
+    on(zone, "pointercancel", lacher);
+  }
+
+  function _lacherStick() {
+    const e = _e;
+    if (!e || !e.stickAnneau) return;
+    e.stick = null;
+    e.stickAnneau.classList.add("kta-v3d-stick-repos");
+    e.stickAnneau.classList.remove("kta-v3d-stick-actif");
+    e.stickAnneau.style.left = e.stickAnneau.style.top = "";
+    e.stickBouton.style.transform = "";
+  }
+
   function _fermerSansContexte() {
     console.warn("[Vue3D] contexte WebGL non repris : vue fermée");
     _demonter("contexte");
-    _toast("vue3d.contextePerdu");
+    _toast(_t("vue3d.contextePerdu"));
   }
 
   // ── API ────────────────────────────────────────────────────────────────────────────────────────────
@@ -2744,7 +3030,9 @@
         itiChange: false, guidageT: 0, guidageForce: true,
         apS: undefined, bandeauCle: null, bandeauEtat: { visible: false }, chevrons: null, chevSig: null,
         chevRoad: null, chevPts: null, nChevrons: 0, fiche: null, publiee: null, publications: 0,
-        publicationDite: false, libreBouge: false,
+        publicationDite: false, libreBouge: false, commandes: _commandesVoulues(o.commandes), stick: null,
+        stickLibres: 0, toucheNom: null, itiTirets: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
+        rondsChange: false,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
@@ -2796,6 +3084,8 @@
     if (e.renderer) {
       e.tuiles.forEach(_libererTuile);
       _libererChevrons();
+      _viderGroupe(e.marqueursIti);
+      if (e.ronds) e.ronds.geometry.dispose();
       if (e.sol) e.sol.geometry.dispose();
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
@@ -2804,7 +3094,7 @@
       if (e.moellons) e.moellons.dispose();
       if (e.equipe) _viderEquipe();
       if (e.matsEquipe) e.matsEquipe.forEach(function (m) { m.dispose(); });
-      [e.geoMembre, e.geoHalo].forEach(function (g) {
+      [e.geoMembre, e.geoHalo, e.geoMarqueur].forEach(function (g) {
         if (g) Object.keys(g).forEach(function (k) { g[k].dispose(); });
       });
       if (e.lampe) e.lampe.dispose();
@@ -2815,8 +3105,12 @@
     }
     if (e.ov && e.ov.parentNode) e.ov.parentNode.removeChild(e.ov);
     _e = null;
-    // Focus rendu à ce qui l'avait (le bouton cube), sinon au bouton de la barre.
-    const r = e.retourFocus && e.retourFocus.isConnected ? e.retourFocus : document.querySelector(".kta-vue3d-ctrl a");
+    _rendreFocus(e.retourFocus);
+  }
+
+  // Focus rendu à ce qui l'avait (le bouton cube), sinon au bouton de la barre.
+  function _rendreFocus(el) {
+    const r = el && el.isConnected ? el : document.querySelector(".kta-vue3d-ctrl a");
     if (r && typeof r.focus === "function") { try { r.focus({ preventScroll: true }); } catch (err) { /* rien */ } }
   }
 
@@ -2826,7 +3120,7 @@
     const e = _e;
     if (!e) return Promise.resolve(false);
     const pos = { x: e.pos.x, y: e.pos.y }, niveau = e.niveau, sc = e.sc, bouge = e.aBouge;
-    const suivi = e.mode === "suivi";
+    const suivi = e.mode === "suivi", retour = e.retourFocus;
     _demonter("utilisateur");
     console.log("[Vue3D] fermée");
     const actif = typeof window.getTrackingActif === "function" && window.getTrackingActif() === true;
@@ -2847,6 +3141,8 @@
       okLabel: window.ktaEsc(_t("vue3d.jeSuisIci.oui")),
       cancelLabel: window.ktaEsc(_t("vue3d.jeSuisIci.non"))
     }).then(function (oui) {
+      // 🩸 La fenêtre de la question prend le focus et le rend à <html> en se fermant : il revient au bouton cube.
+      _rendreFocus(retour);
       if (!oui) return false;
       window.recalerTrackerSurPoint(pos.x, pos.y, niveau === null ? undefined : niveau);
       return true;
@@ -2972,10 +3268,51 @@
           largeurEcran: +_largeurEcran(sp).toFixed(3) };
       }),
       murDecale: e.mats.murs.polygonOffset === true,
+      commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
+      stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom,
+      itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
+        couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti()),
+      ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
       msOuverture: Math.round(e.msOuverture || 0), msIndex: Math.round(e.msIndex), msTuiles: Math.round(e.msTuiles)
     };
+  }
+
+  // Joystick (checkup) : zone et anneau en px de la page, débattement, vitesse relative, direction, course.
+  function _etatStick() {
+    const e = _e, z = e.stickZone.getBoundingClientRect(), a = e.stickAnneau.getBoundingClientRect();
+    const st = e.stick;
+    return { zone: { x: z.left, y: z.top, w: z.width, h: z.height },
+      anneau: { x: a.left + a.width / 2, y: a.top + a.height / 2, w: a.width },
+      bouton: e.stickBouton.getBoundingClientRect().width, actif: !!st, m: st ? +st.m.toFixed(3) : 0,
+      ang: st ? Math.round(st.ang) : 0, course: !!(st && st.fortDepuis && performance.now() - st.fortDepuis > APPUI_LONG),
+      libres: e.stickLibres };
+  }
+
+  // Ruban de l'itinéraire tel que construit (checkup) : largeur médiane des tirets (bande claire) et du liseré
+  // (bande sombre), longueur médiane d'un tiret, en m, lues dans la géométrie des tuiles construites.
+  function _mesureIti() {
+    const ruban = [], lisere = [], longueurs = [];
+    _e.tuiles.forEach(function (t) {
+      if (!t.obj) return;
+      t.obj.children.forEach(function (m) {
+        if (m.userData.famille !== "itineraire" || !m.geometry) return;
+        const p = m.geometry.attributes.position.array;
+        for (let q = 0; q + 17 < p.length; q += 18) {
+          const d = function (i, j) { return Math.hypot(p[q + 3 * i] - p[q + 3 * j], p[q + 3 * i + 2] - p[q + 3 * j + 2]); };
+          const l = [d(0, 1), d(1, 2), d(0, 2)].sort(function (a, b) { return a - b; });
+          (Math.abs(p[q + 1] - ITI.y) < 1e-4 ? ruban : lisere).push(l[0]);
+          if (Math.abs(p[q + 1] - ITI.y) < 1e-4) longueurs.push(l[1]);
+        }
+      });
+    });
+    const med = function (t) {
+      if (!t.length) return null;
+      t.sort(function (a, b) { return a - b; });
+      return +t[t.length >> 1].toFixed(3);
+    };
+    return { ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) };
   }
 
   // Part de la largeur de l'écran couverte par un panneau visible (checkup : pas plus que PRES.ecran de près).

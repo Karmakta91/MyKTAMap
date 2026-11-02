@@ -4,8 +4,9 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 /* vue3d.css — vue 3D plein écran (js/vue3d.js), chargée avec elle à la demande : rien ici au démarrage.
-   Boutons de 52 px (pouce, gants) ; le pavé de déplacement se maintient appuyé (pointerdown / pointerup).
-   ⚠️ contrat : `touch-action: none` sur la scène, sinon le glisser pour tourner fait défiler ou zoomer la page.
+   Boutons de 52 px (pouce, gants) ; le pavé de déplacement (PC, option « Pavé classique ») se maintient appuyé
+   (pointerdown / pointerup) ; au téléphone, joystick flottant dans la zone gauche (.kta-v3d-stick-zone).
+   ⚠️ contrat : `touch-action: none` sur la scène et la zone du joystick, sinon le glisser fait défiler ou zoomer.
    ⚠️ contrat : z-index 99999 (rang des modales) ; les fenêtres de l'app ouvertes depuis la vue (≡ Filtres, Aide,
    Sortie d'urgence, confirmations) sont posées après elle dans le document, donc au-dessus ; toasts à 100000.
    Détail : docs/architecture/ui.md § Vue 3D. */
@@ -33,7 +34,6 @@
 .kta-v3d-haut > .kta-v3d-btn-hauteur { order: 6; }
 .kta-v3d-haut > .kta-v3d-btn-rendu { order: 7; }
 .kta-v3d-haut > .kta-v3d-btn-suivre { order: 8; }
-.kta-v3d-haut > .kta-v3d-beta { order: 9; }
 .kta-v3d-haut > .kta-v3d-hauteur { order: 20; }
 .kta-v3d-pad {
   position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
@@ -63,11 +63,27 @@
   content: ""; position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; border-radius: 50%;
   background: var(--kta-accent); box-shadow: 0 0 0 2px var(--kta-surface); pointer-events: none;
 }
-/* Marque « bêta » : visible tant que la vue est ouverte (la 3D montre le plan, pas la galerie réelle). */
-.kta-v3d-beta {
-  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--kta-accent);
-  background: var(--kta-surface); color: var(--kta-accent-texte); font-size: 13px; font-weight: 600;
+/* Joystick (téléphone, vue3d.js > _brancherStick) : zone du pouce gauche, de sous la rangée du haut (et du bandeau,
+   --kta-v3d-sous-haut) jusqu'au-dessus de la boussole ; posée juste après la scène, donc sous 🪜, la fiche et les
+   boutons. L'anneau (96 px) attend en bas de la zone, vient sous le doigt (left / top = son centre) ; le bouton
+   (44 px) suit le doigt par `transform`. Aucune image : jetons seulement. */
+.kta-v3d-stick-zone {
+  position: absolute; left: 0; width: 50%;
+  top: var(--kta-v3d-sous-haut, 140px); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 92px);
+  touch-action: none;
 }
+.kta-v3d-stick {
+  position: absolute; width: 96px; height: 96px; transform: translate(-50%, -50%); box-sizing: border-box;
+  border-radius: 50%; border: 2px solid var(--kta-texte-3);
+  background: color-mix(in srgb, var(--kta-surface) 70%, transparent); pointer-events: none;
+}
+.kta-v3d-stick.kta-v3d-stick-repos { left: 74px; top: calc(100% - 60px); }
+.kta-v3d-stick.kta-v3d-stick-actif { border-color: var(--kta-accent); }
+.kta-v3d-stick-bouton {
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  border-radius: 50%; background: var(--kta-surface); border: 2px solid var(--kta-accent); box-sizing: border-box;
+}
+.kta-v3d-stick-actif .kta-v3d-stick-bouton { background: var(--kta-accent); }
 /* Bandeau de guidage sous la rangée du haut (vue3d.js > _majBandeau ; `top` posé par _majSousHaut) : compact, une
    icône, la consigne, « puis… » en dessous, la marque « Aperçu » en mode libre. Les toasts passent dessous. */
 .kta-v3d-bandeau {

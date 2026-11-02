@@ -1296,6 +1296,15 @@ function afficherConfig() {
               <span class="kta-perf-ultra-hint" id="cfg_voice_hint"></span>
             </span>
           </label>
+
+          <!-- Vue 3D : pavé ▲ ▼ ◀ ▶ ↶ ↷ au lieu du joystick au téléphone (config.js > getVue3DPave, cet appareil). -->
+          <label class="kta-perf-ultra-row" id="cfg_v3d_pave_row" style="margin-top:8px;">
+            <input type="checkbox" id="cfg_v3d_pave">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.v3dPave.label")} <em>${window.I18n.t("config.scope.cetAppareil")}</em></span>
+              <span class="kta-perf-ultra-hint">${window.I18n.t("config.display.v3dPave.hint")}</span>
+            </span>
+          </label>
         </div>
 
         <!-- ════════ 5. 🚀 PERFORMANCE ════════ -->
@@ -1679,6 +1688,12 @@ function afficherConfig() {
   }
   // Commandes vocales (BETA) : Web Speech API (SpeechRecognition / webkitSpeechRecognition), window.VoiceCommand.
   // Rechargement requis : le bouton micro est injecté/retiré au démarrage du module.
+  // Vue 3D : pavé classique au téléphone (cet appareil), pris à la prochaine ouverture de la vue.
+  const v3dPave = document.getElementById("cfg_v3d_pave");
+  if (v3dPave && typeof window.getVue3DPave === "function") {
+    v3dPave.checked = window.getVue3DPave();
+    v3dPave.addEventListener("change", function() { window.setVue3DPave(v3dPave.checked); });
+  }
   const voiceRow = document.getElementById("cfg_voice_row");
   const voiceCb  = document.getElementById("cfg_voice");
   if (voiceRow && voiceCb) {

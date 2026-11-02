@@ -522,7 +522,7 @@
             _atout("danger", "bienvenue.reperer.urgence") + _atout("oeil", "bienvenue.reperer.xl") +
             _atout("loupe", "bienvenue.reperer.perdu") + _atout("sirene", "bienvenue.reperer.alertes") +
             _atout("bouee", "bienvenue.reperer.secours", "bienvenue.reperer.secours.badge") +
-            _atout("cube", "bienvenue.reperer.vue3d", "bienvenue.reperer.vue3d.badge") +
+            _atout("cube", "bienvenue.reperer.vue3d") +
           '</dl>' +
         '</div>' + _planche() + '</div>' +
       '</section>' +

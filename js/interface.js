@@ -1069,7 +1069,7 @@ function _creerTuileTracker(sub) {
   return tile;
 }
 
-// ── Vue 3D (bêta) : bouton cube de la barre de droite, juste sous ≡ Filtres ─────────────────────────────
+// ── Vue 3D : bouton cube de la barre de droite, juste sous ≡ Filtres ─────────────────────────────
 // js/vue3d.js et three.js (~2 Mo) ne sont chargés qu'au premier toucher, jamais au démarrage (scripts/smoke/smoke.js
 // le vérifie) ; sw.js les précache pour le hors-ligne. Doc : docs/ETUDE_VUE_3D.md, docs/architecture/ui.md § Vue 3D.
 // ⚠️ Même refus que KtaVue3D.ouvrir (plan, échelle), testé ici AVANT de charger quoi que ce soit.
@@ -1914,7 +1914,7 @@ function initInterface() {
   L.control.titleControl().addTo(window.map);
 
   L.control.ktaFilterControl().addTo(window.map);
-  // Vue 3D (bêta) juste sous ≡ Filtres : l'ordre d'ajout fixe l'ordre dans la barre.
+  // Vue 3D juste sous ≡ Filtres : l'ordre d'ajout fixe l'ordre dans la barre.
   L.control.ktaVue3DControl().addTo(window.map);
 
   // Interface refondue : boutons ≡ de réduction des sidebars (mis en haut par CSS order:-1),
