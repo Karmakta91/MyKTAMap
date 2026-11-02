@@ -727,7 +727,7 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
      `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
      juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
      appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms) ; le premier test l'est aussi
-     (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`, bêta), qui s'en sert pour ses déplacements à
+     (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
@@ -1259,7 +1259,7 @@ demi-tours en 350 m sous 4 m de bruit).
 - **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) — ils créent leurs roads sans `raccords` /
   `carrefours`.
 
-## 🧊 Vue 3D (bêta) — `js/vue3d.js`
+## 🧊 Vue 3D — `js/vue3d.js`
 
 Le plan en relief autour de la position du tracker. Décisions, mesures et risques : `docs/ETUDE_VUE_3D.md` ; place
 dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.md` § Vue 3D.
@@ -1290,12 +1290,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plus haut), jamais une copie, appliquée à un **corps de 0,8 m** : chaque pas est balayé par trois segments
   parallèles (axe et ± 0,4 m) prolongés de 0,4 m devant, puis douze rayons de 0,4 m autour de l'arrivée doivent
   rester libres (pas plus de rayons bloqués qu'au départ, pour ne pas rester collé si l'on s'ouvre contre un mur).
-  Glissement le long d'un mur. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
+  Glissement le long d'un mur. **Commandes** (décision produit) : au téléphone, **joystick** (ci-dessous) ; au PC
+  (`pointer: fine`) ou avec l'option « Pavé classique » de cet appareil (`config.js > getVue3DPave`,
+  `myktamap_v3d_pave_v1`), pavé ▲ ▼ ◀ ▶ ↶ ↷ (`vue3d.js > _commandesVoulues`, `ouvrir({ commandes })` pour forcer) ;
+  clavier partout.
+- **Joystick** (`vue3d.js > _brancherStick`, `JOYSTICK`) : zone de la moitié gauche, sous la rangée du haut et le
+  bandeau (`--kta-v3d-sous-haut`), au-dessus de la boussole ; posée juste après la scène, donc sous 🪜, la fiche et
+  les boutons. Un doigt posé y fait venir l'anneau (96 px) ; le bouton (44 px) suit le doigt jusqu'à 40 px. Zone
+  morte 12 px, puis vitesse proportionnelle 0 → 2,8 m/s ; un seul pas par image dans la direction du bouton (haut =
+  avancer, côté = pas de côté) ; débattement > 85 % tenu 0,6 s = course (× 2,5, vitesse pleine). Sortir de la zone
+  morte passe en libre ; un toucher bref sans bouger ne quitte pas le suivi et vise un panneau (`_toucher`). Le doigt
+  du joystick n'est pas sur la scène : il ne compte ni pour le regard (moitié droite) ni pour l'inclinaison à deux
+  doigts. `touch-action: none` sur la zone. Un doigt à la fois ; relâché à la perte de focus de la fenêtre. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
   règle est celle de l'emprise (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
   En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout (image de collision comprise)
-  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes, un remblais dans un tube) ; dans une chambre,
+  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour, un remblais dans un tube) ; dans une chambre,
   seules les structures arrêtent.
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
@@ -1304,12 +1315,21 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   la scène.
 - **Rendu mixte** (`KtaGalerie.modele(niveau, true)`, gardé à part du modèle galerie) : structures dressées partout
   (comme en structures, sol et plafond d'un seul tenant, tracés en rubans au sol), et les tracés en tubes **seulement
-  là où aucune structure n'est autour**. ⚠️ contrat : un morceau de tracé perd ses parois s'il passe à moins de
-  `SEUIL_CHAMBRE_M` = **3 m** d'une structure de son niveau, intégrée ou perso, filtres ignorés (axe échantillonné
-  tous les 0,5 m, coupe au seuil exact par dichotomie). Pourquoi 3 m : la paroi d'un tube principal est à 1,25 m de
+  là où aucune structure n'est autour**. ⚠️ contrat (décision produit) : **chaque côté du tube est jugé à part**
+  (`galerieEmprise.js > _cotesOuverts`) : à chaque échantillon de l'axe (0,5 m), un point à w + 0,5 m de l'axe de
+  chaque côté ; une structure du niveau, intégrée ou perso, filtres ignorés, à moins de `SEUIL_CHAMBRE_M` − w de ce
+  point (w = demi-largeur) ouvre **ce côté** ; la pièce reste entière, la paroi d'en face reste. Un côté ouvert
+  commence et finit là où un **pan de retour** perpendiculaire (`_cotesDuTube`, 1,5 m au plus, bout avancé par pas de
+  10 cm) touche la structure, coupé à sa face (`_indexStructures > rayon` : premier bord croisé, ceux que juge la règle
+  du pas) : ni fente ni bout de paroi orphelin ; aucun pan ne touche → le côté reste fermé. Les pans sont dans
+  `paroisDe` (dessin) et `modele.retours` (collision). 🩸 Pas de `ktaSegmentsBloquesParStructure` pour ces pans :
+  chaque appel relit la signature de toutes les structures (2 s de modèle sous émulation téléphone sur le plan dense).
+  Aux nœuds, le bord du joint entre deux branches s'ouvre si l'une d'elles a ce côté ouvert (`_joint`, `r.cotesA` /
+  `r.cotesB`). Les **deux** côtés ouverts (ou une structure en travers, qui ouvre les deux) = **chambre** : le
+  morceau perd ses parois (coupe au seuil exact par dichotomie). Pourquoi 3 m : la paroi d'un tube principal est à 1,25 m de
   l'axe ; plus près, il resterait entre elle et la structure moins de 1,75 m (la largeur d'un chemin), une lame de
   roche doublée ; la structure borde donc la galerie elle-même (front, mur de consolidation, pilier de chambre).
-  Un nœud est en chambre si la structure est proche de lui ou de l'échantillon voisin ; autour, les tubes s'arrêtent
+  Un nœud est en chambre si l'échantillon d'une de ses arêtes, à lui ou voisin, l'est ; autour, les tubes s'arrêtent
   à la plus grande demi-largeur + 0,5 m (sinon la paroi d'une branche fermerait l'entrée d'une autre) et aucun joint
   n'y est construit. Un tube plus court que 3 m entre deux chambres (ou une chambre et un bout libre) est ouvert aussi :
   **aucune paroi orpheline** entre deux piliers. Le bout d'un tube qui débouche dans une chambre est **ouvert** (bord
@@ -1453,7 +1473,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   cadence réseau reste celle de l'extension). 🔒 La prise ne la remet que si la présence est déjà partagée ; un refus
   n'est pas noté comme remis (partage allumé ensuite : la place part à l'image suivante). `null` en repassant en
   **suivi** et à la **fermeture** (`_demonter`, perte de contexte comprise) ; repasser en libre sans bouger ne remet
-  rien. Le tracker n'est jamais recalé par là. Première remise d'une ouverture : toast `vue3d.presencePartagee`
+  rien. Le tracker n'est jamais recalé par là. Première remise d'une ouverture : toast `info` `vue3d.presencePartagee`
   (vie privée). État : `etat().presence = { publiee, publications }`. Repère : carte « symbole
   titre ×nombre », liseré à la teinte de la charte qu'il porte, sur ses niveaux. Itinéraire partagé : tirets jaunes
   (accent) au sol, tronçons du niveau affiché.
@@ -1466,7 +1486,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Guidage, fiche d'un POI et « Y aller » (QCM du 02/11/2026)
 
-- **Itinéraire** : ruban lumineux, découpé en morceaux du niveau de la scène (`pathfinder.js > computeRoute` pose
+- **Itinéraire** (décision produit) : tirets de 1,2 m tous les 1,8 m (`ITI`, le « 12 6 » de la carte), ruban de 0,35 m
+  à `--kta-interaction` sur un liseré `--kta-fond` de 4 cm par bord (`_rubanIti`, jetons du thème sombre,
+  `_couleursIti`), matériau `iti` non éclairé et sans compression de tons ; phase prise sur l'abscisse du trajet
+  (`abscisses` de chaque morceau) : les tirets se suivent d'un segment et d'une tuile à l'autre. Marqueurs
+  (`_majMarqueursIti`, à chaque `_reindexer`) : disque et mât de 0,6 m à chaque `road.raccords` de rôle « etape »
+  (à son point sur le trajet, au niveau du point du trajet le plus proche), panneau « 🏁 » (et le nom de l'arrivée)
+  au dernier point. Itinéraire découpé en morceaux du niveau de la scène (`pathfinder.js > computeRoute` pose
   `level` sur chaque point, sinon celui du tracé ; `vue3d.js > _collecter`). ⚠️ contrat : la scène
   est refaite à `kta:itineraireChange` (`road.js > setRoads / resetRoads`, detail `{ road | null }` : itinéraire tracé,
   remplacé ou effacé ; pas sur une étape validée), donc un itinéraire tracé pendant la vue (🚨, fiche, recalcul du
@@ -1481,6 +1507,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Chevrons au sol** (`_majChevrons`) : « ^ » dorés (accent sombre) sur le ruban, de la position vers la prochaine
   consigne (`s` → `sCible`, abscisses rendues par `etat()` ou `apercu()`), un tous les 2 m à des abscisses fixes du
   trajet (ils ne glissent pas), 30 m au plus, sur le niveau de la scène ; montrés même en « Jamais ».
+- **Ronds d'intersection** (`_majRonds`, décision produit) : ⚠️ contrat : la 3D ne calcule rien ; si
+  `getPlanShowsIntersections()`, elle lit les ronds que la carte a dessinés (`road.js > getRoadIntersections`, mêmes
+  filtres, `[{ point, color, level }]`), garde ceux du niveau affiché et pose un disque de 0,35 m de rayon
+  (16 triangles) à 4 cm du sol, à la couleur du rond (matériau `iti`, au-dessus des rubans et du liseré de la
+  galerie). Refaits à chaque `_reindexer` (dont `FilterPanel.onChange`) et à `kta:intersectionsChange` (option du
+  plan, tracés, niveaux visibles changés sur la carte).
 - **Toucher un panneau de POI** (`_toucher`) → **sa fiche de la carte** (`_ouvrirFiche` :
   `utils.js > buildPointPopupHtml`, ses boutons agissent par `_ktaPopupAction`), dans un cadre sous le bandeau ;
   ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Sans ✏️ /
@@ -1536,7 +1568,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tube ramené contre la paroi ; on bute contre la paroi du tube, on entre dans la chambre, on bute contre un pilier,
   aucune paroi n'arrête dans la chambre. Halo et liseré rouges d'un danger, ⭐ d'un favori. Extension factice (§ 12) :
   rien sans elle ; membre au niveau affiché (celui d'un autre niveau absent), repère, itinéraire ; listes vidées →
-  retirés, toucher d'un panneau de membre ou de repère n'ouvre aucune fiche. Jamais coincé (§ 13) : accroche de POI
+  retirés, toucher d'un panneau de membre ou de repère n'ouvre aucune fiche. Côtés (§ 14) : pilier à 2 m à droite et
+  front de 10 m à droite → paroi gauche gardée, droite ouverte, un pan de retour à chaque bout du bord à la face,
+  aucune fente (rayons tous les 10 cm) ; piliers des deux côtés → chambre ; pilier dans l'axe → bout ouvert ; on bute
+  à gauche sur la paroi, à droite sur le pilier. Itinéraire (§ 15) : 0,35 m, liseré 0,43 m, tirets de 1,2 m (17 sur
+  30 m), couleurs des jetons, mât d'étape, 🏁. Ronds (§ 16) : aucun option coupée, ceux de la carte au niveau affiché
+  et à leur couleur option cochée. Joystick (§ 17, pointeurs tactiles synthétiques, pointeur grossier simulé) :
+  pavé au PC et avec l'option, joystick sinon ; zone sous la rangée et au-dessus de la boussole, anneau sous le doigt,
+  toucher bref sans quitter le suivi, libre en sortant de la zone morte, 1,4 puis 2,8 m/s, course à 7 m/s, pas de
+  côté, zone morte, inclinaison à deux doigts le joystick posé. Finitions (§ 18) : plus de « bêta », toast de
+  présence en info, nom d'un membre touché, focus rendu au bouton cube après « Je suis ici ? ». Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.
   `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense

@@ -2182,7 +2182,7 @@ listage, absence de doublon, `resetSession`, id inconnu).
 
 ---
 
-## 🧊 Vue 3D (bêta) — sa place dans l'interface
+## 🧊 Vue 3D — sa place dans l'interface
 
 La 3D (`js/vue3d.js`, `css/vue3d.css` ; contrats de la scène : `docs/architecture/tracking.md` § Vue 3D) est une
 **vue de l'app**, pas une autre appli : même entrée que les outils de la carte, mêmes filtres, mêmes fenêtres, mêmes
@@ -2201,7 +2201,7 @@ icônes.
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
 - **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, 🦅 vue
   plongeante, ⛏️ hauteur, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, le mode en cours écrit en clair, un
-  toucher passe au suivant), 🧭 / 🕹️ mode, marque « bêta ». ✕ reste au coin haut droit quand la rangée passe sur
+  toucher passe au suivant), 🧭 / 🕹️ mode. ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
@@ -2221,12 +2221,21 @@ icônes.
   éclairés, sans compression de tons : le rouge reste celui du jeton), montré aussi de près quand le panneau
   s'efface ; **favori** (`Favoris.isFav(id, uid)`) : ⭐ doré au coin haut droit. Membres et repères d'une extension :
   même carte, sans icône, coupée à la largeur du texte, liseré à la couleur de la personne (`KtaPresences.couleurDe`)
-  ou à la teinte de la charte du repère ; les toucher n'ouvre rien (pas de fiche : ce ne sont pas des POI).
+  ou à la teinte de la charte du repère ; les toucher n'ouvre pas de fiche (ce ne sont pas des POI), seulement un
+  toast `info` avec leur nom (le 🏁 de l'arrivée aussi). ⚠️ Un toast `info` est tu au réglage de notifications par
+  défaut (« essentielles »).
 - **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
   compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
   urgence, marque « Aperçu » (pointillés dorés, `--kta-accent-texte`) en mode libre. Son `top` est posé par
   `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
+- **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :
+  zone de la moitié gauche, de sous la rangée du haut et le bandeau (`--kta-v3d-sous-haut`) jusqu'au-dessus de la
+  boussole, posée juste après la scène (🪜, fiche et boutons passent au-dessus) ; anneau de 96 px (contour
+  `--kta-texte-3` au repos en bas de la zone, `--kta-accent` actif, fond `--kta-surface` à 70 %), bouton de 44 px
+  (`--kta-accent` actif), aucune image ; `touch-action: none`. Au PC (`pointer: fine`) ou avec ⚙️ › 🎨 Affichage ›
+  « 🕹️ Pavé classique dans la vue 3D » (cet appareil), le pavé ▲ ▼ ◀ ▶ ↶ ↷ en bas au centre. Contrat du geste :
+  `tracking.md` § Vue 3D › Joystick.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
   Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous.

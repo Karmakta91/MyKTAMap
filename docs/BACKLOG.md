@@ -109,7 +109,7 @@
 ## Entrant
 
 - **Site de doc : la vue 3D dans les capacités** — `MyKTAMap-doc/generateur/accueil.js > CAPACITES` est une liste en dur
-  qui ne cite pas la vue 3D (bêta) ; à ajouter seulement quand la 3D est en prod (le site public lit community `main`).
+  qui ne cite pas la vue 3D ; à ajouter seulement quand la 3D est en prod (le site public lit community `main`).
   `qui: Claude · action: ajouter la ligne après le merge main de la 3D, puis relecture de KARMA avant deploy-doc public
   · depuis: 02/11/2026 · taille: XS`
 

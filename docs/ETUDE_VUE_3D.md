@@ -1,9 +1,9 @@
 # Étude — Vue 3D autour de sa position
 
 > Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01 et du 02/11/2026. Lots 1, 2, 4, 4 bis et 4 ter
-> livrés : la vue est en **bêta**, ouverte par le bouton cube de la barre de droite (sous ≡ Filtres), avec trois rendus
-> (mixte par défaut, structures, galerie), les filtres de la carte, le guidage de l'itinéraire, la fiche des POI,
-> précachée, textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
+> livrés : la vue s'ouvre par le bouton cube de la barre de droite (sous ≡ Filtres), avec trois rendus (mixte par
+> défaut, raccord par côté, structures, galerie), joystick au téléphone, les filtres de la carte, l'itinéraire en tirets et
+> le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
 > `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
 ## Le besoin
@@ -16,7 +16,7 @@ droite.
 
 | # | Sujet | Décision |
 |---|---|---|
-| 1 | Livrable | Cette étude + un prototype jouable sur le relevé fictif ; puis (second QCM) bêta dans le menu Tracker |
+| 1 | Livrable | Cette étude + un prototype jouable sur le relevé fictif ; puis (second QCM) livrée dans le menu Tracker |
 | 2 | Caméra | Première personne à hauteur d'yeux depuis le tracker ; un bouton bascule en vue plongeante au-dessus de soi |
 | 3 | Librairie | three.js embarqué dans `lib/`, chargé **à la demande** (rien au démarrage) |
 | 4 | Contenu | Structures extrudées à la hauteur du plan (Volume exploité) ; sol, plafond ; zones ; POI en panneaux ; tracés et itinéraire au sol |
@@ -34,7 +34,7 @@ Après l'audit de cohérence (la 3D se posait par-dessus l'app comme une autre a
 | 1 | Entrée | Bouton dans la barre de droite, juste sous ≡ Filtres, picto cube au trait de l'écran Bienvenue ; grisé sans plan ou sans échelle, toujours touchable ; la tuile du menu Tracker est retirée |
 | 2 | Filtres | Le même panneau ≡ Filtres que la carte, un seul état (masquer en 3D masque en 2D, et inversement) ; toutes les sections lues (tags, types, calques de données, niveaux) ; panneau propre à la 3D supprimé. **Revient sur** « la 3D ne touche pas aux filtres 2D » et sur la question 6 ci-dessous |
 | 3 | Urgence | 🚨 dans la rangée du haut, même action que l'en-tête ; toasts sous la rangée |
-| 4 | Icônes | Celles de la 2D : 🏛️ Structures, 🛣️ Galerie ; ni 📍 (recalage) pour le suivi, ni 🛰️ (Export GeoTIFF) pour la vue plongeante ; ✕ au coin haut droit au téléphone ; ❓ d'aide et marque « bêta » visibles |
+| 4 | Icônes | Celles de la 2D : 🏛️ Structures, 🛣️ Galerie ; ni 📍 (recalage) pour le suivi, ni 🛰️ (Export GeoTIFF) pour la vue plongeante ; ✕ au coin haut droit au téléphone ; ❓ d'aide et marque « bêta » visibles (marque retirée depuis, ci-dessous) |
 | 5 | Panneaux de POI | Toujours sombres (jetons du thème sombre) ; distance minimale et fondu de près |
 | 6 | Finitions | Indicateur de chargement ; Échap ferme d'abord le panneau ouvert ; focus et `aria-modal` ; rendu en pause (bruit de la boussole ignoré) ; statistiques en i18n ; section « Vue 3D » dans `ui.md` |
 
@@ -76,6 +76,31 @@ anneau et disque pâle de `--kta-erreur` (le rouge de la charte du thème sombre
 panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouverts, tracés en rubans au sol en mixte
 (pas de liseré : il appartient au mode galerie).
 
+## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
+
+Après le deuxième audit (pavé peu maniable au pouce, itinéraire trop large et sans repères, paroi disparue du côté
+opposé à un pilier en mixte, ronds d'intersection absents en 3D) :
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Commandes au téléphone | **Joystick flottant à gauche** : apparaît sous le pouce (zone gauche sous le bandeau, au-dessus de la boussole) ; anneau ≥ 88 px, bouton 44 px, jetons `--kta-surface` / `--kta-accent`, aucune image ; débattement 40 px → 0 à 2,8 m/s, Y avant / arrière, X pas de côté ; **course** = débattement > 85 % tenu 0,6 s ; zone morte 12 px. Regard au glisser sur la moitié droite. Toucher le stick passe en libre ; en suivi, le glisser ne tourne pas. Deux doigts inchangés (le doigt du stick ne compte pas). Clavier inchangé ; pavé au PC (`pointer: fine`) et option « Pavé classique » dans ⚙️ (réglage par appareil) |
+| 2 | Itinéraire au sol | Ruban **0,35 m** à `--kta-interaction`, **liseré sombre** de 4 cm sur chaque bord, **tirets 1,2 m / 0,6 m** comme la 2D (« 12 6 »), chevrons gardés ; **marqueurs** : disque et mât de 0,6 m à chaque étape, 🏁 en panneau à l'arrivée. Itinéraires des membres dorés tiretés, distincts. Pas d'animation |
+| 3 | Raccord galerie / structures en mixte | **Par côté** : chaque tronçon juge sa paroi gauche et droite séparément (échantillon à axe ± (w + 0,5 m), structure à moins de 3 m − w → côté ouvert) ; la pièce reste entière ; à chaque bout d'un côté ouvert, un **pan de paroi perpendiculaire** vers la structure, borné à 1,5 m, coupé à sa face : ni fente ni bout orphelin ; aux nœuds, le joint garde ses parois sauf sur les branches dont le côté est ouvert. Deux côtés = chambre, structure dans l'axe = bout ouvert. Collisions : parois dessinées seulement, la structure bloque par la règle du tracker |
+| 4 | Ronds d'intersection | `road.js` mémorise sa dernière liste `[{ point, color, level }]` et l'expose (`getRoadIntersections`) ; la 3D la lit si l'option 2D est cochée, au niveau affiché, disque à la couleur donnée au-dessus des rubans ; redessin par `FilterPanel.onChange` ou `kta:intersectionsChange` ; aucun recalcul côté 3D |
+| 5 | Marque « bêta » | Retirée partout (vue, Bienvenue, guides, Aide, AI_CONTEXT, notes, README, docs) ; la phrase « la 3D montre le plan, pas la galerie réelle » reste |
+| 6 | Finitions | Toast de présence 3D en `info` ; focus rendu au bouton cube après « Je suis ici ? » ; toucher un membre ou un repère : un toast court avec son nom |
+
+Choix faits à la livraison, à valider : le joystick ne **passe en libre qu'en sortant de la zone morte** (un toucher
+bref sans bouger, qui vise peut-être un panneau, ne quitte pas le suivi ; il ouvre le panneau touché) ; la course
+garde la vitesse pleine × 2,5 tant que le débattement reste au-delà de 85 % ; au repos, l'anneau attend en bas de la
+zone (contour gris) pour qu'on sache où poser le pouce ; disque de rond de **0,35 m de rayon** (0,7 m de diamètre,
+environ trois fois la largeur d'un tracé, comme sur la carte) ; un côté ouvert ne commence que là où un pan
+perpendiculaire de 1,5 m touche la structure (avancé par pas de 10 cm), sinon il reste fermé ; aux nœuds, le bord du
+joint s'ouvre si l'une des deux branches qui le bordent a ce côté ouvert ; le 🏁 de l'arrivée, touché, donne son nom
+comme un membre ; ruban et ronds en couleurs exactes (sans compression de tons, comme le halo des dangers).
+⚠️ Un toast `info` est **tu par défaut** (notifications « essentielles ») : le toast de présence et le nom d'un membre
+touché ne se voient qu'avec les notifications sur « Toutes ».
+
 ## Ce que fait la vue
 
 - **Entrée** : bouton cube de la barre de droite, sous ≡ Filtres, titré « le plan, pas la galerie réelle » ; grisé
@@ -99,8 +124,10 @@ panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouvert
   lissés, lus à la même source que le mode 2D « plan orienté » : `getPlanRelHeading`, offset Nord compris ; on
   tourne avec le téléphone, la vue tourne) et **libre** (boutons et clavier). Ouverture en suivi si le tracker
   tourne, sinon en libre ; tracker arrêté : 🧭 grisé, son toucher l'explique ; arrêté en route : retour en libre.
-- **Déplacement** (mode libre) : pavé ▲ ▼ ◀ ▶ ↶ ↷ maintenu, ou clavier (flèches, ZQSD / WASD, A/E en pas de
-  côté), ou glisser sur la scène (tourner, lever les yeux) ; tout geste de déplacement passe en libre. **2,8 m/s** (le double du prototype : on explore, on ne
+- **Déplacement** (mode libre) : au téléphone, **joystick** dans la moitié gauche (sous le pouce, vitesse selon
+  l'écart, course au bord tenu 0,6 s) et glisser sur la moitié droite (tourner, lever les yeux) ; au PC ou avec
+  l'option « Pavé classique », pavé ▲ ▼ ◀ ▶ ↶ ↷ maintenu ; clavier (flèches, ZQSD / WASD, A/E en pas de côté)
+  partout ; tout geste de déplacement passe en libre. **2,8 m/s** (le double du prototype : on explore, on ne
   marche pas) ; **pas rapide × 2,5** avec Maj maintenue ou ▲ gardé appuyé plus de 0,6 s ; 90 °/s.
 - **Collisions** : chaque déplacement libre passe la règle du pas du tracker, exposée par `tracking.js`
   (`ktaEstAccessible` puis `ktaPasBloqueParStructure`, sans copie), appliquée à un **corps de 0,8 m** : trois
@@ -133,9 +160,10 @@ panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouvert
   sur la position, sans animation), quelle que soit la réponse à « Je suis ici ? », qui recale aussi le niveau.
 - **Filtres** (QCM du 02/11/2026) : ceux de la carte ; ≡ ouvre le même panneau par-dessus la vue ; masquer ne retire
   que le dessin (collisions, parois, 🪜 restent), l'itinéraire n'en suit aucun.
-- **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, 🦅, ⛏️ hauteur, rendu, mode, « bêta » ; Échap
+- **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, 🦅, ⛏️ hauteur, rendu, mode ; Échap
   ferme d'abord un réglage, une fiche ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
-- **Guidage** (QCM du 02/11/2026) : l'itinéraire en ruban, au niveau de chacun de ses points, redessiné dès qu'il
+- **Guidage** (QCM du 02/11/2026) : l'itinéraire en tirets bordés de sombre (étapes : mât ; arrivée : 🏁), au niveau de
+  chacun de ses points, redessiné dès qu'il
   change (tracé depuis 🚨 pendant la vue compris) ; bandeau compact sous la rangée du haut (consigne réelle en suivi,
   aperçu marqué en libre) ; chevrons dorés au sol vers la prochaine consigne.
 - **Fiche d'un POI** : toucher son panneau ouvre sa fiche de la carte (Je suis ici, Y aller, Itinéraire, favori,
@@ -178,8 +206,11 @@ panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouvert
 - **Zones** : remblais = volume à 60 % de la hauteur ; eau = surface translucide à 4 cm ; inaccessible = aplat
   au sol + rideau translucide sur son contour, rouges à hachures à 45° comme sur la carte (`_hachurer`, une bande
   sombre tous les 0,6 m, en coordonnées monde) ; effondrement et types perso = aplat au sol.
-- **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : ruban de 0,5 m non éclairé (il reste lisible
-  hors du faisceau, le brouillard l'éteint au loin).
+- **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : tirets de 1,2 m tous les 1,8 m, ruban de 0,35 m à
+  `--kta-interaction` sur un liseré `--kta-fond` de 4 cm de chaque côté, à 5 cm du sol, non éclairés et sans
+  compression de tons (lisibles hors du faisceau, le brouillard les éteint au loin) ; disque et mât de 0,6 m à chaque
+  étape, panneau 🏁 à l'arrivée. **Ronds d'intersection** (option de la carte) : disques de 0,35 m de rayon à 4 cm,
+  la liste de la carte (`getRoadIntersections`), niveau affiché.
 - **POI** : panneau toujours face à soi (icône du catalogue `getIconUrlForPoint` + nom), au-dessus des yeux,
   **jamais caché par la géométrie** (décision de KARMA : sprite sans test de profondeur, dessiné après tout le
   reste), seulement dans la distance de vue, de plus en plus petit (jusqu'à moitié) et pâle (jusqu'à 40 %) vers
@@ -219,9 +250,16 @@ panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouvert
     hors d'un remblais ; même corps de 0,8 m balayé.
 - **Rendu mixte** (défaut ; `KtaGalerie.modele(niveau, true)` + `vue3d.js > _construireTuile`) : structures comme en
   rendu structures (sol et plafond d'un seul tenant, tracés en rubans au sol), plus les **tubes des galeries de
-  liaison**. Un morceau de tracé est en **chambre** (sans parois) s'il passe à moins de `SEUIL_CHAMBRE_M` = **3 m**
-  d'une structure de son niveau (intégrée ou perso, filtres ignorés) : axe échantillonné tous les 0,5 m, coupe au seuil
-  exact. **Pourquoi 3 m** : la paroi d'un tube principal est à 1,25 m de l'axe ; une structure plus proche que 3 m
+  liaison**. **Chaque côté est jugé à part** (QCM du 02/11/2026, `galerieEmprise.js > _cotesOuverts`) : à chaque
+  échantillon de l'axe (tous les 0,5 m), un point est posé à w + 0,5 m de l'axe de chaque côté (w = demi-largeur) ;
+  une structure de son niveau (intégrée ou perso, filtres ignorés) à moins de `SEUIL_CHAMBRE_M` − w de ce point ouvre
+  **ce côté** (sa paroi n'est pas dessinée, la paroi d'en face reste) ; les deux côtés ouverts (ou une structure en
+  travers, qui ouvre les deux) = **chambre** (sans parois), coupe au seuil exact par dichotomie. Un côté ouvert
+  commence et finit là où un **pan de retour** perpendiculaire, parti du bord du tube, touche la structure à 1,5 m au
+  plus (`_cotesDuTube`, bout avancé par pas de 10 cm ; aucun pan ne touche : le côté reste fermé) : le pan, coupé à la
+  face (premier bord croisé, ceux de la règle du pas), relie la paroi gardée à la structure, sans fente ; il est
+  dessiné et bloquant comme une paroi. Aux nœuds, le bord du joint entre deux branches s'ouvre si l'une d'elles a ce
+  côté ouvert. **Pourquoi 3 m** : la paroi d'un tube principal est à 1,25 m de l'axe ; une structure plus proche que 3 m
   laisserait entre elle et la paroi moins de 1,75 m (la largeur d'un chemin), une lame de roche doublée qui ne
   ressemble à rien : la structure borde alors la galerie elle-même (front, mur de consolidation, pilier de chambre).
   À 2 m, une chambre traversée en son milieu entre deux rangées de piliers (5 à 7 m) gardait des bouts de tube ; à
@@ -263,7 +301,7 @@ de 6 à 12 sommets, 3 000 murs polygones, 1 000 murs en ligne, 700 fronts, 108 z
 pixel), sur un tour complet sur place, après un tour de chauffe non compté (compilation des shaders, envoi au
 GPU).
 
-Chiffres de la bêta (murs dans leur propre maillage, sol et plafond texturés, lampe renforcée, corps balayé),
+Chiffres de la première livraison (murs dans leur propre maillage, sol et plafond texturés, lampe renforcée, corps balayé),
 deux passages par configuration ; entre parenthèses, le prototype.
 
 **PC** — Edge 156 sans écran, GPU réel (RTX 5070, D3D11), fenêtre 1200 × 800 :
@@ -293,7 +331,7 @@ processeur ralenti x4 :
 Marche de 120 m : aucune image au-delà de 33 ms (la plus longue : 18 à 24 ms). Budget de 30 images/s = 33 ms.
 Pas balayé : 0,8 ms (médiane) · 1,7 ms (p95) ; quinze appels séparés coûtaient 21 ms, d'où le lot. Rotation
 continue mesurée à 53 à 60 images/s sous ralentissement x4 (74 lors d'un passage antérieur : chiffre instable
-sous émulation). La bêta coûte environ un tiers d'appels en plus (maillage des murs) et 0,1 à 1 ms par image ;
+sous émulation). Cette livraison coûtait environ un tiers d'appels en plus (maillage des murs) et 0,1 à 1 ms par image ;
 le budget reste large.
 
 **WebKit de Playwright sous Windows** (moteur de Safari, pas Safari) : fonctionnel (checkup vert, « Apple GPU »
@@ -333,6 +371,20 @@ modèle galerie : la recherche des structures à moins de 3 m de chaque échanti
 structure n'est pas échantillonnée). Comme en galerie, il est construit à l'ouverture et à chaque changement de
 niveau, de rendu ou de données : sous émulation, l'ouverture d'un tel plan est d'environ 0,4 + 0,4 s.
 
+**Raccord par côté** (QCM du 02/11/2026, même semis, deux passages par configuration ; 11 604 pièces, 1 761 nœuds
+en chambre, 844 bords ouverts) :
+
+| | Modèle mixte | Ouverture | Triangles · appels (30 m) | ms / image 30 m (médiane · p95) | 50 m | Marche 120 m | Pas balayé |
+|---|---|---|---|---|---|---|---|
+| **PC** (Edge, RTX 5070) | 105 à 116 ms | 121 à 137 ms | 2 520 · 32 | 0,7 à 0,8 · 1,0 à 1,5 | 0,9 à 1,0 · 1,6 à 2,1 | aucune image > 33 ms | 0,1 à 0,2 ms |
+| **Émulation iPhone** (393 × 852, ×3, processeur ÷4) | 467 à 506 ms | 573 à 654 ms | 1 923 · 23 | 1,8 à 2,0 · 3,5 à 4,8 | 3,4 · 6,9 | 1 image sur 597 > 33 ms (36 ms) | 0,8 · 2,0 ms |
+
+Rotation continue : 165 images/s au PC, 62 à 65 sous émulation. Le jugement des côtés fait deux tests de proximité
+de plus par échantillon proche d'une structure et lance un rayon tous les 10 cm aux bouts des côtés ouverts : sous
+émulation, le modèle passe de 366 à environ 490 ms ; au PC il reste sous les 120 ms. 🩸 Avec la règle du pas
+(`ktaSegmentsBloquesParStructure`) pour couper les pans de retour, il montait à 1,4 à 2 s sous émulation : chaque
+appel relit la signature de toutes les structures ; les pans sont coupés par un rayon sur l'index du modèle.
+
 ### Ce qui n'a **pas** été mesuré
 
 - **Aucun vrai iPhone** : ni images/s réelles, ni mémoire, ni chauffe, ni batterie. L'émulation ralentit le
@@ -364,7 +416,7 @@ niveau, de rendu ou de données : sous émulation, l'ouverture d'un tel plan est
 | **Perte du contexte WebGL** (mémoire graphique, onglet longtemps en fond) | `webglcontextlost` : la vue attend `webglcontextrestored` 8 s d'écran visible, remonte sa scène à neuf (jamais `dispose()` sur les objets d'avant la perte), sinon se ferme avec un toast (question 7 c). Simulée par le checkup (`WEBGL_lose_context`) | Perte réelle sur un iPhone : non observée |
 | **Contextes WebGL en trop** | Chaque fermeture appelle `forceContextLoss` ; Chromium rend la place aussitôt. WebKit ne la rend qu'au ramasse-miettes : après ~16 ouvertures rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien, **déjà fermé** (sans effet ; toléré par le checkup sous WebKit seulement) | Si l'app utilisait un autre contexte WebGL un jour, garder un seul contexte pour la session (question 7) |
 | **Batterie** | Rendu seulement quand on bouge (bruit de la boussole sous 2° ignoré en suivi) ; pas d'ombres ; GPU de bureau mesuré à < 1 ms par image | Mesure réelle de décharge sur une sortie ; couper la vue quand l'écran se verrouille (la boucle s'arrête déjà avec l'onglet caché) |
-| **Fausse précision** : la 3D a l'air exacte, la position du tracker ne l'est pas (dérive PDR) | Lissage ; mode libre + « Je suis ici ? » pour se recaler à l'œil ; marque « bêta » dans la vue, titre du bouton, Aide et guides : « la 3D montre le plan, pas la galerie réelle » | Retour terrain |
+| **Fausse précision** : la 3D a l'air exacte, la position du tracker ne l'est pas (dérive PDR) | Lissage ; mode libre + « Je suis ici ? » pour se recaler à l'œil ; titre du bouton, Aide et guides : « la 3D montre le plan, pas la galerie réelle » | Retour terrain |
 | Plan sans échelle ou sans structures | Sans échelle : bouton grisé et ouverture refusée avec un message | Plan sans structures : la vue montre sol, plafond, tracés et points |
 
 ## Intégration à l'app (lots 1, 2 et cohérence, livrés)
