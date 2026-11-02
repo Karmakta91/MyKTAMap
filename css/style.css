@@ -19610,7 +19610,7 @@ html.kta-theme-light .kta-storage-banner {
 }
 html.kta-theme-light .kta-filter-ctrl a.kta-filter-ctrl-actif::after { box-shadow: 0 0 0 2px #f0e8d8; }
 
-/* Bouton Vue 3D (bêta), sous ≡ dans la barre de droite : picto cube au trait (js/ktaPictos.js) en currentColor, la
+/* Bouton Vue 3D, sous ≡ dans la barre de droite : picto cube au trait (js/ktaPictos.js) en currentColor, la
    couleur et le fond du thème venant de .leaflet-bar a, comme ≡. */
 .kta-vue3d-ctrl a { display: flex !important; align-items: center; justify-content: center; }
 .kta-vue3d-ctrl-picto { width: 20px; height: 20px; pointer-events: none; }

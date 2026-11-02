@@ -1,9 +1,10 @@
 # Étude — Vue 3D autour de sa position
 
-> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01 et du 02/11/2026. Lots 1, 2, 4, 4 bis et 4 ter
-> livrés : la vue s'ouvre par le bouton cube de la barre de droite (sous ≡ Filtres), avec trois rendus (mixte par
-> défaut, raccord par côté, structures, galerie), joystick au téléphone, les filtres de la carte, l'itinéraire en tirets et
-> le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
+> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01 et du 02/11/2026. Lots 1, 2, 4, 4 bis, 4 ter et
+> 4 quater (passages entre niveaux) livrés : la vue s'ouvre par le bouton cube de la barre de droite (sous ≡ Filtres),
+> avec trois rendus (mixte par défaut, raccord par côté, structures, galerie), joystick au téléphone, les filtres de la
+> carte, l'itinéraire en tirets et le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es,
+> docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
 > `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
 ## Le besoin
@@ -49,8 +50,7 @@ Après l'audit de cohérence (la 3D se posait par-dessus l'app comme une autre a
 | 5 | « Je suis ici » d'un POI d'un niveau sans tracé | Repli sur l'image de collision (point accessible le plus proche, 6 m) même si d'autres niveaux ont des tracés |
 | — | Rangée du haut (demande du 02/11/2026) | ≡ Filtres collé à gauche de ✕, au téléphone comme au PC |
 
-Choix faits à la livraison, à valider : un POI jonction garde son toucher (passage 🪜) plutôt que d'ouvrir sa fiche ;
-la fiche en 3D n'a ni ✏️ ni Repositionner ni 🗑️ (ils se jouent sur la carte, cachée dessous) ; en libre, l'aperçu
+Choix faits à la livraison, à valider : la fiche en 3D n'a ni ✏️ ni Repositionner ni 🗑️ (ils se jouent sur la carte, cachée dessous) ; en libre, l'aperçu
 suit le réglage Auto / Jamais (hors urgence) mais les chevrons restent ; sans position jamais confirmée et hors 3D,
 « Me repositionner » serait la seule réponse : le picker s'ouvre directement, sans question.
 
@@ -75,6 +75,30 @@ icônes de la carte accolées, aucune n'en dit « les deux »), ordre du bouton 
 anneau et disque pâle de `--kta-erreur` (le rouge de la charte du thème sombre, celui des panneaux), liseré du
 panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouverts, tracés en rubans au sol en mixte
 (pas de liseré : il appartient au mode galerie).
+
+## Décisions de KARMA (QCM du 02/11/2026) : passages entre niveaux (audit n° 2)
+
+L'audit n° 2 (relevé fictif, téléphone et PC, deux thèmes) a montré un passage de niveau sec et sans volume, un
+panneau de POI jonction qui s'effaçait là où 🪜 apparaissait, une arrivée hors du tube en mixte, et un guidage qui
+taisait la descente par un tracé jonction. Tranché :
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Volumes de passage | Par moyen (`KtaPoiJonction.moyen`) : escalier (`jes`, `eso`) = cage de 2,5 × 1,5 m à marches ; échelons (`jpe`, `peo`) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ; corde (`jps`) = puits nu. Ouvert dans le sol (descente), dans le plafond (montée : il dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface `peo`, `eso` et **`pa`** (qui porte désormais des niveaux, `TAGS_SURFACE_NIVEAUX`) : plafond seulement, sans 🪜 ni passage ; disque de ciel au sommet de `peo` / `eso`, tube de 0,8 m à grille pour `pa`. Panneau au-dessus, cadre doré au sol. Construits avec les objets à portée. Le **tracé `jonction`** devient une **rampe** à la couleur du canon |
+| 2 | Panneau d'un POI jonction | Liseré à la couleur du tracé jonction et ↕ ; lisible jusqu'à 1 m (là où 🪜 apparaît) |
+| 3 | Geste | Fondu noir de 250 ms (scène d'arrivée construite pendant le noir), descente ou montée animée d'environ 1 s dans le volume, verticale seulement ; même fondu quand le tracker change de niveau en suivi, et bandeau « Niveau −1 » 2 s |
+| 4 | Arrivée | Raccord validé, sinon POI ; en mixte comme en galerie, une arrivée hors du tube à moins de `smartNavRadiusM` d'un axe est ramenée dans le tube ; cap vers la prochaine consigne si un itinéraire passe là, sinon le long de la galerie, côté le plus long |
+| 5 | Toucher un POI jonction | Sa fiche, comme tout POI, avec « ▼ Descendre » / « ▲ Monter » (un bouton par niveau lié, moyen compris) ; 🪜 à 2 m reste, ses boutons nommés (« ▼ -1 · Nom du puits (échelle) ») |
+| 6 | Guidage | Une consigne de niveau absorbe les consignes de carrefour à ≤ 5 m et passe devant à abscisse égale ; aperçu de la 3D filtré au niveau de la scène (plus de « Rejoindre le tracé » sur un niveau sans itinéraire ; la consigne de niveau déjà franchie n'est plus dite) ; libellé du niveau signé (« +1 »), 2D comprise |
+| 7 | Aide intégrée | Réécrite à l'état actuel (mixte par défaut, trois rendus, dangers, favoris, équipe, place « en vue 3D », passages) |
+
+Choix faits à la livraison, à valider : escalier en volée droite le long de la galerie la plus proche (pas en quart
+tournant), marches pleines jusqu'au fond du volume ; une volée par moitié de largeur entre trois niveaux ; échelle
+contre une paroi, montants qui dépassent du sol d'un mètre ; ciel = dégradé clair (couleur de la scène) ; rampe de
+1 m de large, tranchée ouverte vers le bas plutôt qu'une rampe qui traverserait le sol ; aucune collision avec les
+volumes (on ne tombe pas dans un puits, on traverse une marche) ; bandeau « Niveau n » aussi après un passage 🪜, pas
+seulement en suivi ; appareil réglé en « mouvement réduit » : fondu seul ; tracé jonction masqué par les filtres =
+pas de rampe (le 🪜 reste) ; un tracé du sol (ruban) peut passer sur une bouche.
 
 ## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
 
@@ -151,11 +175,15 @@ touché ne se voient qu'avec les notifications sur « Toutes ».
 - **Équipe** (installation reliée seulement) : membres qui partagent leur position (silhouette à leur couleur et nom,
   au niveau affiché), repères et itinéraires publiés, lus dans ce que la carte affiche déjà (`KtaPresences`).
 - **Niveau** : celui du tracker en suivi actif, sinon celui pris par un passage 🪜, sinon le niveau actif du
-  sélecteur ; lu à chaque image, la scène est refaite dès qu'il change.
-- **Passage de niveau 🪜** (question B, mode libre) : à moins de 2 m d'un POI jonction ou d'un bout de tracé
-  `jonction`, ▲ / ▼ vers le niveau lié voisin (une liste au-delà d'un de chaque côté) ; toucher le panneau du POI fait
-  de même. Arrivée au raccord validé du niveau, sinon au bout opposé du tracé jonction, sinon à la même position ; cap
-  gardé. Le tracker et le niveau de la carte ne bougent pas pendant la 3D.
+  sélecteur ; lu à chaque image ; quand il change, la scène est refaite derrière un fondu noir, puis « Niveau n » 2 s.
+- **Passages** : chaque POI jonction, puits de surface ou aération montre son volume (cage d'escalier, puits à
+  échelons, puits nu, tube à grille), ouvert dans le sol ou le plafond selon le sens ; un tracé jonction, une rampe.
+- **Passage de niveau 🪜** (question B) : à moins de 2 m d'un POI jonction ou d'un bout de tracé `jonction`,
+  « ▼ -1 · nom (moyen) » vers le niveau lié voisin (une liste au-delà d'un de chaque côté) ; la fiche du POI propose
+  aussi ses niveaux, d'où que l'on soit. La caméra s'enfonce ou monte dans le volume (~1 s), fondu noir à mi-course.
+  Arrivée au raccord validé du niveau, sinon au bout opposé du tracé jonction, sinon au point, ramenée dans le tube si
+  elle tombe à côté ; cap vers la prochaine consigne de l'itinéraire, sinon le long de la galerie. Le tracker et le
+  niveau de la carte ne bougent pas pendant la 3D.
 - **Sortie** (demande de KARMA du 01/11/2026) : la carte 2D se place là où l'on était en 3D (niveau de la 3D, centre
   sur la position, sans animation), quelle que soit la réponse à « Je suis ici ? », qui recale aussi le niveau.
 - **Filtres** (QCM du 02/11/2026) : ceux de la carte ; ≡ ouvre le même panneau par-dessus la vue ; masquer ne retire
@@ -167,7 +195,7 @@ touché ne se voient qu'avec les notifications sur « Toutes ».
   change (tracé depuis 🚨 pendant la vue compris) ; bandeau compact sous la rangée du haut (consigne réelle en suivi,
   aperçu marqué en libre) ; chevrons dorés au sol vers la prochaine consigne.
 - **Fiche d'un POI** : toucher son panneau ouvre sa fiche de la carte (Je suis ici, Y aller, Itinéraire, favori,
-  photos, liaisons) ; « Y aller » part de la position 3D en libre, du tracker en suivi ; tracker arrêté, « D'où
+  photos, liaisons ; ▼ Descendre / ▲ Monter pour un POI jonction) ; « Y aller » part de la position 3D en libre, du tracker en suivi ; tracker arrêté, « D'où
   pars-tu ? » propose d'abord « Ici ».
 - **Outils de mesure** : `etat()` (tuiles, triangles, appels, contexte vivant, bandeau, chevrons, fiche…),
   `mesurer({ images })`, `placer(x, y, cap)`, `origineItineraire()`.
@@ -271,6 +299,15 @@ touché ne se voient qu'avec les notifications sur « Toutes ».
   structures arrêtent). Zones : découpées aux tubes si elles touchent un tube loin de toute structure, entières
   sinon ; POI : ramenés contre la paroi si l'axe le plus proche (10 m au plus) passe en tube, sinon règle des
   structures.
+- **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`) : au panneau du POI (raccord validé du niveau,
+  sinon le point), orientés le long de l'axe de galerie le plus proche. Parois en moellons (`_paroiY`), 6 m sous le
+  sol ou au-dessus du plafond ; **bouches** au gabarit (stencil : 1 = sol, 2 = plafond) dessinées avant tout, sans
+  couleur ni profondeur : sol et plafond ne se dessinent pas dans la bouche, on voit dans le puits (contexte créé avec
+  `stencil: true`). Escalier : 10 marches pleines sur 2,5 m, (hauteur + 0,4 m) en tout ; échelle : échelons de 40 cm
+  tous les 0,3 m, deux montants ; aération : barreaux croisés tous les 15 cm, 25 cm au-dessus du plafond ; ciel :
+  sprite clair non éclairé, sans brouillard, au sommet ; cadre doré de 8 cm à 12 cm de la bouche. Rampe : ruban de
+  1 m, incliné du sol au plafond (vers le haut) ou du sol à −hauteur dans une tranchée ouverte (vers le bas).
+  Construits à portée (`_gererVolumes`, règle des tuiles), libérés au loin ; aucune collision.
 - **Halo des dangers** : anneau de 0,45 à 0,7 m et disque pâle au sol, rouge `--kta-erreur` du thème sombre, non
   éclairé et sans compression de tons (ACES le délavait en saumon) ; liseré du panneau rouge, plus épais.
 - **Équipe** (`_majEquipe`) : silhouette de 1,7 m au plus (85 % de la hauteur), corps et tête, couleur de la
@@ -385,6 +422,26 @@ de plus par échantillon proche d'une structure et lance un rayon tous les 10 cm
 (`ktaSegmentsBloquesParStructure`) pour couper les pans de retour, il montait à 1,4 à 2 s sous émulation : chaque
 appel relit la signature de toutes les structures ; les pans sont coupés par un rayon sur l'index du modèle.
 
+### Passages entre niveaux
+
+Plan dense synthétique ci-dessus (rendu structures, 30 m de vue), puis **10 passages** (tous les moyens, deux puits
+de surface, deux aérations) et **2 tracés jonction** semés à 8 à 22 m du départ (`KTA_V3D_PERF=passages`) ; deux
+passages par configuration. Poste partagé avec d'autres lots : chiffres bruités.
+
+| | Volumes construits | Triangles des volumes | Triangles · appels (30 m) | Ouverture | ms / image (médiane · p95) |
+|---|---|---|---|---|---|
+| **PC** sans passages | 0 | 0 | 2 040 · 27 | 79 à 144 ms | 0,7 à 0,8 · 1,2 à 1,3 |
+| **PC** avec passages | 12 | 1 950 | 2 852 · 45 | 67 à 154 ms | 0,9 à 1,2 · 1,7 à 1,8 |
+| **Émulation iPhone** sans | 0 | 0 | 1 732 · 19 | 374 à 661 ms | 2,3 à 3,9 · 4,8 à 7,8 |
+| **Émulation iPhone** avec | 12 | 1 950 | 2 240 · 30 | 359 à 446 ms | 2,7 à 2,9 · 5,6 à 6,8 |
+
+Un volume coûte 160 triangles en moyenne et jusqu'à cinq appels (bouches, parois, marches ou échelons, cadre, ciel) :
+pour 12 volumes, +0,2 à 0,5 ms par image, très loin du budget de 33 ms. **Passage animé** (fondu et descente, plan
+dense) : image médiane de 6 ms, mais l'image de la **bascule** (scène du niveau d'arrivée refaite d'un coup) prend
+140 ms au PC et 480 ms sous émulation ; elle tombe au noir complet, qui dure d'autant (le geste avance d'au plus
+100 ms par image). 2 à 3 images de plus de 33 ms sur le geste. Si un vrai iPhone le rend gênant : construire les
+tuiles du niveau d'arrivée sur plusieurs images pendant le noir.
+
 ### Ce qui n'a **pas** été mesuré
 
 - **Aucun vrai iPhone** : ni images/s réelles, ni mémoire, ni chauffe, ni batterie. L'émulation ralentit le
@@ -443,6 +500,7 @@ appel relit la signature de toutes les structures ; les pans sont coupés par un
 | 4 | Multi-niveau par POI jonction et tracé `jonction` (question B), POI touchables (fiche), guidage de l'itinéraire en 3D | **M**, livré |
 | 4 bis | Mode « galerie » : tracés en tubes, carrefours exacts, bascule exclusive structures / galerie, collisions contre les parois (question A) | **M**, livré |
 | 4 ter | Mode mixte par défaut (trois états), halo des dangers, ⭐ des favoris, membres / repères / itinéraires d'une extension | **M**, livré |
+| 4 quater | Passages entre niveaux : volumes par moyen, rampe, panneau ↕, fiche, fondu et descente, arrivée dans le tube, cap, guidage au passage | **M**, livré |
 | 5 | Rendu plus « vrai » (texture de roche, ombres de la lampe, niveaux voisins en transparence) | **L**, à n'engager qu'après le retour terrain |
 
 ## Questions tranchées (QCM du 01/11/2026, toutes les recos prises)
@@ -460,7 +518,7 @@ appel relit la signature de toutes les structures ; les pans sont coupés par un
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
 | A bis | Mode mixte (QCM du 02/11/2026) | L'interrupteur exclusif devient **trois états Mixte / Structures / Galerie**, mixte par défaut, retenu par plan ; en mixte, structures partout, tubes seulement à plus de 3 m d'une structure, bouts ouverts dans les chambres, collisions des deux règles, zones et POI selon le lieu (tube ou chambre) |
 | A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🏛️ / 🛣️ écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
-| B | Passer par un POI jonction (QCM du 01/11/2026) | Bouton 🪜 à moins de 2 m, **▲ / ▼** vers le niveau lié suivant, liste au-delà ; toucher le panneau = même chose ; arrivée au raccord validé ou à la même position, cap gardé ; tracé `jonction` **dans les deux sens** ; **le tracker ne bouge pas**, « Je suis ici ? » recale aussi le niveau ; en suivi, pas de 🪜 ; niveau de la carte 2D inchangé pendant la 3D |
+| B | Passer par un POI jonction (QCM du 01/11/2026) | Bouton 🪜 à moins de 2 m, **▲ / ▼** vers le niveau lié suivant, liste au-delà ; toucher le panneau = même chose ; arrivée au raccord validé ou à la même position, cap gardé (revu au QCM des passages : cap vers la consigne ou la galerie, toucher = fiche) ; tracé `jonction` **dans les deux sens** ; **le tracker ne bouge pas**, « Je suis ici ? » recale aussi le niveau ; en suivi, pas de 🪜 ; niveau de la carte 2D inchangé pendant la 3D |
 | — | Sortie de la 3D (demande du 01/11/2026) | La carte 2D se place là où l'on était en 3D : niveau de la 3D, centre sur la position, quelle que soit la réponse à « Je suis ici ? » |
 
 ## Question ouverte

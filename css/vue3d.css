@@ -174,3 +174,24 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 .kta-v3d-niveaux-marque {
   font-size: 26px; line-height: 1; padding: 4px 6px; border-radius: 10px; background: var(--kta-surface);
 }
+
+/* Passages entre niveaux. Boutons de la boîte 🪜 nommés (« ▼ -1 · Nom (échelle) ») : coupés à la largeur. */
+.kta-v3d-btn.kta-v3d-btn-passage { max-width: min(72vw, 340px); overflow: hidden; text-overflow: ellipsis; }
+/* Fiche d'un POI jonction : un bouton par niveau lié (vue3d.js > _passagesFiche), au-dessus de la fiche de la carte. */
+.kta-v3d-fiche-passages { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.kta-v3d-btn.kta-v3d-fiche-passage { height: 44px; border-color: var(--kta-accent); white-space: normal; text-align: left; }
+/* Fondu noir d'un passage (vue3d.js > _majFondu) : fond des jetons SOMBRES (posé par la vue), au-dessus de la scène,
+   sous les boutons ; l'opacité suit le geste. */
+.kta-v3d-fondu {
+  position: absolute; inset: 0; pointer-events: none;
+  background: var(--kta-v3d-fondu-fond, var(--kta-fond));
+}
+.kta-v3d-fondu[hidden] { display: none; }
+/* Bandeau « Niveau n » après un changement de niveau (vue3d.js > _annoncerNiveau), 2 s. */
+.kta-v3d-bandeau-niveau {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  padding: 10px 22px; border-radius: 999px; border: 2px solid var(--kta-accent);
+  background: var(--kta-surface); color: var(--kta-texte); font-size: 22px; font-weight: 700;
+  pointer-events: none; white-space: nowrap;
+}
+.kta-v3d-bandeau-niveau[hidden] { display: none; }

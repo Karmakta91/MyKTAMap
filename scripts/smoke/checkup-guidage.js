@@ -231,6 +231,42 @@ function inf(msg) { console.log("  •  " + msg); }
     const g9b = await page.evaluate(masque);
     if (!g9b) pb("G9 : suivi arrêté, position NON confirmée → bandeau encore visible");
     else ok("G9 : suivi arrêté, position non confirmée → bandeau masqué");
+
+    // G10 — itinéraire par un tracé `jonction` (fictif, en mémoire) : le changement de niveau tombe au même point que
+    // le virage du carrefour d'arrivée ; la consigne « descendre » passe devant et absorbe le virage. Aperçu filtré
+    // par niveau (vue 3D) : rien sur un niveau sans tronçon. Libellé du niveau signé (« +1 »).
+    const g10 = await page.evaluate(function (a) {
+      const e = Number(window.APP_CONFIG.scale) || 1, G = window.ItiGuidage, r = {};
+      const P = function (x, y, n) { return { x: a.x + x * e, y: a.y + y * e, level: n }; };
+      const route = { uid: "rd_g10", type: "itinerary", level: 0,
+        points: [P(0, 0, 0), P(20, 0, 0), P(20, 5, -1), P(40, 5, -1)],
+        carrefours: [{ x: a.x + 20 * e, y: a.y + 5 * e, sorties: [0, 90, 180, 270] }] };
+      const g = G.construire(route, { pois: [] });
+      r.consignes = g.consignes.map(function (c) { return c.type + "@" + Math.round(c.s / e); });
+      r.premier = G.texteAction(g.consignes[0]);
+      r.monter = G.texteAction({ type: "niveau", sens: "monter", vers: 1 });
+      r.plus1 = window.ktaFormatNiveau(1);
+      const avant = window.getRoads();
+      window.setRoads(avant.filter(function (x) { return x.type !== "itinerary"; }).concat([route]));
+      const ici = P(30, 5);
+      const m1 = G.apercu(ici, { niveau: -1 }), p1 = G.apercu(ici, { niveau: 1 }), z0 = G.apercu(P(10, 0), { niveau: 0 });
+      window.setRoads(avant);
+      r.m1 = { visible: m1.visible, mode: m1.mode, cap: m1.capTrajet };
+      r.p1 = { visible: p1.visible, mode: p1.mode };
+      r.z0 = { visible: z0.visible, principal: z0.principal };
+      return r;
+    }, choix.a);
+    if (g10.consignes[0] !== "niveau@25" || g10.consignes.some(function (c) { return /^virage/.test(c); })) {
+      pb("G10 : par tracé jonction, la consigne de niveau n'est pas dite en premier — " + g10.consignes.join(", "));
+    } else {
+      ok("G10 : par tracé jonction, « " + g10.premier + " » d'abord, virage du nœud absorbé (" +
+        g10.consignes.join(", ") + ")");
+    }
+    if (g10.monter.indexOf(g10.plus1) < 0) pb("G10 : libellé du niveau non signé — « " + g10.monter + " »");
+    else ok("G10 : libellé signé — « " + g10.monter + " »");
+    if (!g10.m1.visible || g10.m1.mode !== "guide" || g10.m1.cap !== 90 || g10.p1.visible || !g10.z0.visible) {
+      pb("G10 : aperçu par niveau — " + JSON.stringify({ m1: g10.m1, p1: g10.p1, z0: g10.z0 }));
+    } else ok("G10 : aperçu au −1 sur son tronçon (cap du trajet 90°), rien au +1 (pas de « Rejoindre »), 0 guidé");
   } catch (e) {
     if (String(e && e.message) !== "stop") pb("exception : " + (e && e.stack || e));
   } finally {
