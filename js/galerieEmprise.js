@@ -10,11 +10,12 @@
 //   dedans(x, y, niveau), segmentsBloques(segs, niveau) → [bool] (même forme que
 //   tracking.js > ktaSegmentsBloquesParStructure), paroisBloquent(segs, niveau) (mode mixte), invalider(),
 //   SEUIL_CHAMBRE_M.
-// Modèle MIXTE (vue 3D par défaut) : le tube n'existe que là où aucune structure du niveau (intégrée ou perso)
-// n'est à moins de SEUIL_CHAMBRE_M de l'axe ; ailleurs le tracé traverse une CHAMBRE, sans parois. Un tube qui
-// débouche dans une chambre s'y arrête sur un bout OUVERT (aucune paroi de fond) ; un tube plus court que
-// TUBE_MIN_M entre deux chambres est ouvert aussi (pas de paroi orpheline). Règle du pas : on bute contre les
-// parois dessinées (paroisBloquent), contre les structures (règle du tracker) et contre un remblais dans un tube.
+// Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
+// perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
+// structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
+// chambre s'y arrête sur un bout OUVERT (aucune paroi de fond) ; un tube plus court que TUBE_MIN_M entre deux
+// chambres est ouvert aussi (pas de paroi orpheline). Règle du pas : on bute contre les parois dessinées et les
+// pans de retour (paroisBloquent), contre les structures (règle du tracker) et contre un remblais dans un tube.
 // Modèle : graphe plan des tracés (sommets confondus à 15 cm, croisements coupés, bout libre raccordé au tracé
 // voisin s'il s'arrête à moins de 0,5 m de sa paroi) ; une PIÈCE convexe par tronçon (rectangle de sa largeur,
 // d'un nœud à l'autre) et, à chaque nœud de degré ≥ 2, les triangles d'un joint : coude en onglet (borné à deux
@@ -50,6 +51,15 @@
   const PAS_CHAMBRE_M = 0.5;        // m : pas d'échantillonnage de l'axe pour ce test (coupe affinée par dichotomie)
   const TUBE_MIN_M = 3;             // m : tube plus court entre deux chambres (ou chambre et bout libre) → ouvert
   const RECUL_CHAMBRE_M = 0.5;      // m au-delà de la plus grande demi-largeur : tubes arrêtés avant un nœud en chambre
+  // Côté par côté : chaque échantillon de l'axe juge sa paroi gauche et sa paroi droite à part, au point posé à
+  // w + COTE_MARGE_M de l'axe (w = demi-largeur) : une structure à moins de SEUIL_CHAMBRE_M − w de ce point ouvre
+  // ce côté seulement. Les deux côtés ouverts = chambre (sans parois ni joint).
+  const COTE_MARGE_M = 0.5;
+  // Retour de paroi : à chaque bout d'un côté ouvert, un pan perpendiculaire part du bord du tube vers la
+  // structure, au plus RETOUR_MAX_M, coupé à sa face (règle du pas des structures) ; le bout est avancé par pas de
+  // RETOUR_PAS_M jusqu'à ce que ce pan touche la structure (sinon une fente resterait entre lui et elle).
+  const RETOUR_MAX_M = 1.5;
+  const RETOUR_PAS_M = 0.1;
 
   const _cache = new Map();         // "niveau|m" → { sig, modele }
   let _sig = null, _sigT = 0;
@@ -206,11 +216,33 @@
       polys.push(pts);
       gp.poser(polys.length - 1, x0, y0, x1, y1);
     });
-    const r = SEUIL_CHAMBRE_M * sc, r2 = r * r;
+    const seuil = SEUIL_CHAMBRE_M * sc;
+    // Une structure à moins de r (px) de (x, y), ou (x, y) dans un contour fermé ?
+    // Cases lues une à une (sans Grille.pres, qui dédoublonne dans un Set) : appelé des dizaines de milliers de
+    // fois à la construction, et un segment vu deux fois ne change pas la réponse.
+    const pres = function (x, y, r) {
+      if (!segs.length) return false;
+      const c = g.c, r2 = r * r;
+      for (let gx = Math.floor((x - r) / c); gx <= Math.floor((x + r) / c); gx++) {
+        for (let gy = Math.floor((y - r) / c); gy <= Math.floor((y + r) / c); gy++) {
+          const l = g.m.get(_cle(gx, gy));
+          if (!l) continue;
+          for (let i = 0; i < l.length; i++) {
+            const s = segs[l[i]], dx = s[2] - s[0], dy = s[3] - s[1], q = dx * dx + dy * dy;
+            const t = q ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (y - s[1]) * dy) / q)) : 0;
+            const ex = s[0] + t * dx - x, ey = s[1] + t * dy - y;
+            if (ex * ex + ey * ey <= r2) return true;
+          }
+        }
+      }
+      const lp = gp.case(x, y);
+      for (let i = 0; i < lp.length; i++) { if (_dansAnneau(polys[lp[i]], x, y)) return true; }
+      return false;
+    };
     return {
       n: segs.length,
-      // Aucune structure dans les cases autour du rectangle (px), marge du seuil comprise : rien à échantillonner.
-      aucuneAutour: function (x0, y0, x1, y1) {
+      // Aucune structure dans les cases autour du rectangle (px), marge `r` (px) comprise : rien à échantillonner.
+      aucuneAutour: function (x0, y0, x1, y1, r) {
         const c = g.c;
         for (let gx = Math.floor((x0 - r) / c); gx <= Math.floor((x1 + r) / c); gx++) {
           for (let gy = Math.floor((y0 - r) / c); gy <= Math.floor((y1 + r) / c); gy++) {
@@ -219,47 +251,66 @@
         }
         return true;
       },
-      proche: function (x, y) {
-        if (!segs.length) return false;
-        // Cases lues une à une (sans Grille.pres, qui dédoublonne dans un Set) : appelé des dizaines de milliers de
-        // fois à la construction, et un segment vu deux fois ne change pas la réponse.
-        const c = g.c;
-        for (let gx = Math.floor((x - r) / c); gx <= Math.floor((x + r) / c); gx++) {
-          for (let gy = Math.floor((y - r) / c); gy <= Math.floor((y + r) / c); gy++) {
+      pres: pres,
+      proche: function (x, y) { return pres(x, y, seuil); },
+      // Distance (px) de (x, y) au premier bord de structure croisé dans la direction (ux, uy), au plus L ; null
+      // sinon. Bords = ceux que juge la règle du pas (contours fermés, segments des lignes : l'axe d'un front).
+      rayon: function (x, y, ux, uy, L) {
+        const x1 = x + ux * L, y1 = y + uy * L, c = g.c;
+        let best = null;
+        for (let gx = Math.floor(Math.min(x, x1) / c); gx <= Math.floor(Math.max(x, x1) / c); gx++) {
+          for (let gy = Math.floor(Math.min(y, y1) / c); gy <= Math.floor(Math.max(y, y1) / c); gy++) {
             const l = g.m.get(_cle(gx, gy));
             if (!l) continue;
             for (let i = 0; i < l.length; i++) {
-              const s = segs[l[i]], dx = s[2] - s[0], dy = s[3] - s[1], q = dx * dx + dy * dy;
-              const t = q ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (y - s[1]) * dy) / q)) : 0;
-              const ex = s[0] + t * dx - x, ey = s[1] + t * dy - y;
-              if (ex * ex + ey * ey <= r2) return true;
+              const s = segs[l[i]], ex = s[2] - s[0], ey = s[3] - s[1], dx = x1 - x, dy = y1 - y;
+              const d = dx * ey - dy * ex;
+              if (Math.abs(d) < 1e-12) continue;
+              const rx = s[0] - x, ry = s[1] - y, t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
+              if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && (best === null || t < best)) best = t;
             }
           }
         }
-        const lp = gp.case(x, y);
-        for (let i = 0; i < lp.length; i++) { if (_dansAnneau(polys[lp[i]], x, y)) return true; }
-        return false;
+        return best === null ? null : best * L;
       }
     };
   }
 
+  // Côtés d'un échantillon de l'arête r (point (x, y) de l'axe) : [côté +, côté −] ouverts ? Côté + = du côté de la
+  // normale (−dy, dx) de a vers b, celui des pièces (_construire) et des coins `cote` +1 du joint quand r part de v.
+  function _cotesOuverts(S, r, x, y, sc) {
+    const nx = -(r.by - r.ay) / r.l, ny = (r.bx - r.ax) / r.l, d = r.w + COTE_MARGE_M * sc;
+    const rs = Math.max(0.1 * sc, SEUIL_CHAMBRE_M * sc - r.w);
+    return [S.pres(x + nx * d, y + ny * d, rs), S.pres(x - nx * d, y - ny * d, rs)];
+  }
+
   // Classe chaque arête en morceaux de tube et de chambre → r.tubes = [[t0, t1, ouvertDebut, ouvertFin]] (t le long
-  // de l'arête, de a vers b) ; rend les nœuds en chambre (aucun joint n'y est construit). Échantillons tous les
-  // PAS_CHAMBRE_M : un nœud est en chambre s'il est proche d'une structure ou si l'échantillon voisin l'est ; autour
-  // d'un nœud en chambre, les tubes s'arrêtent à la plus grande demi-largeur + RECUL_CHAMBRE_M (sinon la paroi d'une
-  // branche fermerait l'entrée d'une autre) ; un tube trop court sans joint devient chambre.
+  // de l'arête, de a vers b) et, par échantillon, ses côtés ouverts (e.cotes) ; rend les nœuds en chambre (aucun
+  // joint n'y est construit). Échantillons tous les PAS_CHAMBRE_M : un échantillon est en chambre si ses DEUX côtés
+  // sont ouverts (_cotesOuverts ; une structure dans l'axe ouvre les deux) ; un nœud l'est si l'échantillon d'une
+  // de ses arêtes, à lui ou voisin, l'est ; autour d'un nœud en chambre, les tubes s'arrêtent à la plus grande
+  // demi-largeur + RECUL_CHAMBRE_M (sinon la paroi d'une branche fermerait l'entrée d'une autre) ; un tube trop
+  // court sans joint devient chambre.
   function _chambres(noeuds, aretes, incid, S, sc) {
-    const nc = noeuds.map(function (n) { return S.proche(n.x, n.y); });
+    const nc = noeuds.map(function () { return false; });
+    const portee = SEUIL_CHAMBRE_M * sc + COTE_MARGE_M * sc;
     const ech = aretes.map(function (r) {
-      const n = Math.max(1, Math.ceil(r.l / (PAS_CHAMBRE_M * sc))), brut = [];
-      const loin = S.aucuneAutour(Math.min(r.ax, r.bx), Math.min(r.ay, r.by), Math.max(r.ax, r.bx), Math.max(r.ay, r.by));
+      const n = Math.max(1, Math.ceil(r.l / (PAS_CHAMBRE_M * sc))), brut = [], cotes = [];
+      const loin = S.aucuneAutour(Math.min(r.ax, r.bx), Math.min(r.ay, r.by), Math.max(r.ax, r.bx),
+        Math.max(r.ay, r.by), portee);
       for (let i = 0; i <= n; i++) {
-        brut.push(!loin && S.proche(r.ax + (r.bx - r.ax) * i / n, r.ay + (r.by - r.ay) * i / n));
+        const x = r.ax + (r.bx - r.ax) * i / n, y = r.ay + (r.by - r.ay) * i / n;
+        // Rien à moins de la portée des deux tests de côté : les deux fermés sans les faire.
+        const c = !loin && S.pres(x, y, portee) ? _cotesOuverts(S, r, x, y, sc) : [false, false];
+        cotes.push(c);
+        brut.push(c[0] && c[1]);
       }
-      return { n: n, brut: brut };
+      return { n: n, brut: brut, cotes: cotes };
     });
     aretes.forEach(function (r, k) {
       const e = ech[k];
+      if (e.brut[0]) nc[r.a] = true;
+      if (e.brut[e.n]) nc[r.b] = true;
       if (e.n < 2) return;
       if (e.brut[1]) nc[r.a] = true;
       if (e.brut[e.n - 1]) nc[r.b] = true;
@@ -298,7 +349,8 @@
       let a = tCh, b = tTu;
       for (let k = 0; k < 6; k++) {
         const m = (a + b) / 2;
-        if (S.proche(r.ax + (r.bx - r.ax) * m, r.ay + (r.by - r.ay) * m)) a = m; else b = m;
+        const c = _cotesOuverts(S, r, r.ax + (r.bx - r.ax) * m, r.ay + (r.by - r.ay) * m, sc);
+        if (c[0] && c[1]) a = m; else b = m;
       }
       return b;
     };
@@ -313,8 +365,82 @@
         i = j + 1;
       }
       r.tubes = tubes;
+      r.ech = { n: e.n, cotes: e.cotes };
     });
     return nc;
+  }
+
+  // Longueur (px) du pan de retour partant de (x, y) dans la direction (ux, uy) : jusqu'au premier bord de structure
+  // du niveau (S.rayon : les bords que juge la règle du pas des structures, types perso compris, donc on bute là où
+  // le pan s'arrête), ou null si aucun n'est à moins de RETOUR_MAX_M.
+  // 🩸 Pas de ktaSegmentsBloquesParStructure ici : chaque appel relit la signature de toutes les structures ; des
+  // milliers d'appels (pas de 10 cm, dichotomie) portaient le modèle d'un plan dense à 2 s sous émulation téléphone.
+  function _retour(S, x, y, ux, uy, sc) {
+    return S.rayon(x, y, ux, uy, RETOUR_MAX_M * sc);
+  }
+
+  // Morceau de tube u = [t0, t1, ouvertDebut, ouvertFin] de l'arête r découpé là où un côté s'ouvre ou se ferme →
+  // { morceaux: [[ta, tb, ouvert+, ouvert−, ouvertDebut, ouvertFin]], retours: [[x0, y0, x1, y1, ta]] } (px).
+  // ⚠️ contrat : un côté ouvert ne commence (ne finit) que là où un pan perpendiculaire de RETOUR_MAX_M au plus
+  // touche la structure : le pan relie la paroi gardée à la structure, ni fente ni bout de paroi orphelin. Un
+  // côté dont aucun pan ne touche la structure reste fermé. Au bout du morceau (chambre, nœud), pas de pan : le
+  // tube s'y ouvre déjà ou le joint prend le relais.
+  function _cotesDuTube(r, u, S, sc) {
+    const n = r.ech.n, ux = (r.bx - r.ax) / r.l, uy = (r.by - r.ay) / r.l, nx = -uy, ny = ux;
+    const pasT = RETOUR_PAS_M * sc / r.l, eps = 1e-9;
+    const retours = [], intervalles = [[], []];
+    [1, -1].forEach(function (sgn, c) {
+      const ox = nx * sgn, oy = ny * sgn;
+      const bord = function (t) { return [r.ax + (r.bx - r.ax) * t + ox * r.w, r.ay + (r.by - r.ay) * t + oy * r.w]; };
+      const touche = function (t) { const p = bord(t); return _retour(S, p[0], p[1], ox, oy, sc); };
+      for (let i = 0; i <= n;) {
+        const ti = i / n;
+        if (!r.ech.cotes[i][c] || ti < u[0] - 0.5 / n || ti > u[1] + 0.5 / n) { i++; continue; }
+        let j = i;
+        while (j + 1 <= n && r.ech.cotes[j + 1][c] && (j + 1) / n <= u[1] + 0.5 / n) j++;
+        let ta = Math.max(u[0], (i - 0.5) / n), tb = Math.min(u[1], (j + 0.5) / n);
+        i = j + 1;
+        let la = null, lb = null;
+        if (ta > u[0] + eps) {
+          for (; ta < tb; ta += pasT) { la = touche(ta); if (la !== null) break; }
+          if (la === null) continue;
+        }
+        if (tb < u[1] - eps) {
+          for (; tb > ta; tb -= pasT) { lb = touche(tb); if (lb !== null) break; }
+          if (lb === null) continue;
+        }
+        if (tb - ta < eps) continue;
+        [[ta, la], [tb, lb]].forEach(function (q) {
+          if (q[1] === null) return;
+          const p = bord(q[0]);
+          retours.push([p[0], p[1], p[0] + ox * q[1], p[1] + oy * q[1], q[0]]);
+        });
+        intervalles[c].push([ta, tb]);
+      }
+    });
+    const coupes = [u[0], u[1]];
+    intervalles.forEach(function (l) { l.forEach(function (iv) { coupes.push(iv[0], iv[1]); }); });
+    coupes.sort(function (a, b) { return a - b; });
+    const dans = function (l, t) { return l.some(function (iv) { return t > iv[0] && t < iv[1]; }); };
+    const morceaux = [];
+    for (let k = 0; k + 1 < coupes.length; k++) {
+      const ta = coupes[k], tb = coupes[k + 1];
+      if ((tb - ta) * r.l < 1e-3 * sc) continue;
+      const tm = (ta + tb) / 2;
+      morceaux.push([ta, tb, dans(intervalles[0], tm), dans(intervalles[1], tm),
+        ta <= u[0] + eps && u[2], tb >= u[1] - eps && u[3]]);
+    }
+    return { morceaux: morceaux, retours: retours };
+  }
+
+  // Bords ouverts d'une pièce : ceux dont le milieu est l'un des points `milieux` (px) → indices dans p.ouverts.
+  function _marquerOuverts(p, milieux) {
+    if (!milieux.length) return;
+    p.ouverts = p.ouverts || [];
+    for (let k = 0; k < p.pts.length; k++) {
+      const a = p.pts[k], b = p.pts[(k + 1) % p.pts.length], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      if (milieux.some(function (c) { return Math.hypot(c[0] - mx, c[1] - my) < 1e-3; })) p.ouverts.push(k);
+    }
   }
 
   // ── Construction du modèle ───────────────────────────────────────────────────────────────────────
@@ -431,27 +557,43 @@
     // par nœud de degré ≥ 2 (hors chambre). Bout ouvert d'un tube : son bord est noté dans `ouverts` (pas de paroi).
     const S = mixte ? _indexStructures(niveau, sc) : null;
     const nc = S ? _chambres(noeuds, aretes, incid, S, sc) : null;
-    const pieces = [];
+    const pieces = [], retours = [];
+    let cotesOuverts = 0;
     aretes.forEach(function (r, i) {
       if (r.l < 1e-9) return;
       const nx = -(r.by - r.ay) / r.l * r.w, ny = (r.bx - r.ax) / r.l * r.w;
+      // Mixte : chaque morceau de tube recoupé là où un côté s'ouvre (_cotesDuTube) ; côtés aux nœuds pour le joint.
       (r.tubes || [[0, 1, false, false]]).forEach(function (u) {
-        const ax = r.ax + (r.bx - r.ax) * u[0], ay = r.ay + (r.by - r.ay) * u[0];
-        const bx = r.ax + (r.bx - r.ax) * u[1], by = r.ay + (r.by - r.ay) * u[1];
-        const p = _piece([[ax - nx, ay - ny], [bx - nx, by - ny], [bx + nx, by + ny], [ax + nx, ay + ny]], r.type,
-          "tube");
-        p.arete = i;
-        const bouts = [];
-        if (u[2]) bouts.push([ax, ay]);
-        if (u[3]) bouts.push([bx, by]);
-        if (bouts.length) {
-          p.ouverts = [];
-          for (let k = 0; k < p.pts.length; k++) {
-            const a = p.pts[k], b = p.pts[(k + 1) % p.pts.length], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-            if (bouts.some(function (c) { return Math.hypot(c[0] - mx, c[1] - my) < 1e-3; })) p.ouverts.push(k);
-          }
-        }
-        pieces.push(p);
+        const dec = r.ech ? _cotesDuTube(r, u, S, sc)
+          : { morceaux: [[u[0], u[1], false, false, u[2], u[3]]], retours: [] };
+        const premiere = pieces.length;
+        dec.morceaux.forEach(function (q) {
+          const ax = r.ax + (r.bx - r.ax) * q[0], ay = r.ay + (r.by - r.ay) * q[0];
+          const bx = r.ax + (r.bx - r.ax) * q[1], by = r.ay + (r.by - r.ay) * q[1];
+          const p = _piece([[ax - nx, ay - ny], [bx - nx, by - ny], [bx + nx, by + ny], [ax + nx, ay + ny]], r.type,
+            "tube");
+          p.arete = i;
+          p.t0 = q[0]; p.t1 = q[1];
+          const mx = (ax + bx) / 2, my = (ay + by) / 2, ouv = [];
+          if (q[4]) ouv.push([ax, ay]);
+          if (q[5]) ouv.push([bx, by]);
+          if (q[2]) ouv.push([mx + nx, my + ny]);
+          if (q[3]) ouv.push([mx - nx, my - ny]);
+          cotesOuverts += (q[2] ? 1 : 0) + (q[3] ? 1 : 0);
+          _marquerOuverts(p, ouv);
+          if (q[0] <= 1e-9) r.cotesA = [q[2], q[3]];
+          if (q[1] >= 1 - 1e-9) r.cotesB = [q[2], q[3]];
+          pieces.push(p);
+        });
+        // Pans de retour : dessinés avec le morceau qui les touche (paroisDe), jugés aussi seuls (paroisBloquent).
+        dec.retours.forEach(function (w) {
+          let k = premiere;
+          while (k + 1 < pieces.length && pieces[k].t1 < w[4] - 1e-9) k++;
+          const P = pieces[k];
+          if (!P) return;
+          (P.retours = P.retours || []).push([w[0], w[1], w[2], w[3]]);
+          retours.push([w[0], w[1], w[2], w[3]]);
+        });
       });
     });
     // Longueur de tube contre le nœud v (mixte : le morceau qui le touche) : borne la dalle du joint.
@@ -465,20 +607,25 @@
       const k = incid[v].length;
       if (k === 1 && !(nc && nc[v])) bouts++;
       if (k < 2 || (nc && nc[v])) continue;
-      const tri = _joint(noeuds[v], incid[v].map(function (i) {
+      const J = _joint(noeuds[v], incid[v].map(function (i) {
         return nc ? Object.assign({}, aretes[i], { lTube: longueurAu(aretes[i], v) }) : aretes[i];
       }), v, sc);
-      if (!tri.length) continue;
+      if (!J.tri.length) continue;
       if (k >= 3) dalles++; else coudes++;
       const larges = incid[v].map(function (i) { return aretes[i]; }).sort(function (p, q) { return q.w - p.w; });
-      tri.forEach(function (t) {
+      J.tri.forEach(function (t, n) {
         const p = _piece(t, larges[0].type, k >= 3 ? "dalle" : "coude");
         p.noeud = v;
+        if (J.ouvert[n]) _marquerOuverts(p, [[(t[1][0] + t[2][0]) / 2, (t[1][1] + t[2][1]) / 2]]);
         pieces.push(p);
       });
     }
     const gP = new Grille(CASE_M * sc), gA = new Grille(CASE_M * sc);
     pieces.forEach(function (p, i) { gP.poser(i, p.x0, p.y0, p.x1, p.y1); });
+    const gW = new Grille(CASE_M * sc);
+    retours.forEach(function (w, i) {
+      gW.poser(i, Math.min(w[0], w[2]), Math.min(w[1], w[3]), Math.max(w[0], w[2]), Math.max(w[1], w[3]));
+    });
     aretes.forEach(function (r, i) {
       gA.poser(i, Math.min(r.ax, r.bx) - r.w, Math.min(r.ay, r.by) - r.w, Math.max(r.ax, r.bx) + r.w,
         Math.max(r.ay, r.by) + r.w);
@@ -502,6 +649,9 @@
       dalles: dalles, coudes: coudes, bouts: bouts,
       chambres: nc ? nc.filter(Boolean).length : 0,
       ouverts: pieces.reduce(function (n, p) { return n + (p.ouverts ? p.ouverts.length : 0); }, 0),
+      // Mixte : bords de tube ouverts d'un seul côté, et pans de retour [[x0, y0, x1, y1]] (px) qui les bornent.
+      cotesOuverts: cotesOuverts, retours: retours,
+      retoursPres: function (x0, y0, x1, y1) { return gW.pres(x0, y0, x1, y1).map(function (i) { return retours[i]; }); },
       // Mixte : une structure du niveau est à moins de SEUIL_CHAMBRE_M (chambre) ? Toujours faux sinon.
       enChambre: function (x, y) { return !!S && S.proche(x, y); },
       // Mixte : le point t (0 → 1, de a vers b) de l'arête i est-il dans un morceau de tube ? Toujours vrai sinon.
@@ -509,11 +659,11 @@
         const r = aretes[i];
         return !r || !r.tubes || r.tubes.some(function (u) { return t >= u[0] - 1e-9 && t <= u[1] + 1e-9; });
       },
-      // Parois de la pièce i → [[x0, y0, x1, y1]] (px), calculées une fois (_parois).
+      // Parois de la pièce i → [[x0, y0, x1, y1]] (px), calculées une fois (_parois), pans de retour compris.
       paroisDe: function (i) {
         const c = m._parois || (m._parois = new Map());
         let l = c.get(i);
-        if (!l) { l = _parois(m, i); c.set(i, l); }
+        if (!l) { l = _parois(m, i).concat(pieces[i].retours || []); c.set(i, l); }
         return l;
       },
       piecesPres: function (x0, y0, x1, y1) { return gP.pres(x0, y0, x1, y1); },
@@ -596,13 +746,19 @@
   // voisines : ouverture < 180° → coins au point où leurs parois se coupent (coupe reculée d'autant, bornée) ;
   // ouverture ≥ 180° → coins au nœud, plus la pointe d'onglet si elle reste à ONGLET_MAX demi-largeurs.
   // Les parois entre deux branches relient leurs coins (dalle) : elles ne traversent aucun tube voisin.
+  // Mixte : le bord du joint entre deux branches est ouvert (sans paroi) si le côté de l'une d'elles qui le borde
+  // est ouvert au nœud (r.cotesA / r.cotesB, _cotesDuTube) → { tri, ouvert: [bool] (bord extérieur, tri[n][1] →
+  // tri[n][2]) }.
   function _joint(V, aretes, v, sc) {
     const br = aretes.map(function (r) {
       const sens = r.a === v ? 1 : -1;
       const dx = (r.bx - r.ax) * sens, dy = (r.by - r.ay) * sens, l = r.l || 1;
       // lTube (mixte) : longueur du morceau de tube contre le nœud, qui borne la dalle ; la direction reste l'arête.
       const lb = r.lTube !== undefined ? r.lTube : l;
-      return { ux: dx / l, uy: dy / l, w: r.w, l: lb, ang: Math.atan2(dy, dx), recul: 0 };
+      // Coin `cote` +1 = côté + de l'arête quand elle part du nœud, côté − quand elle y arrive.
+      const c = (sens === 1 ? r.cotesA : r.cotesB) || [false, false];
+      const ouv = sens === 1 ? { "1": c[0], "-1": c[1] } : { "1": c[1], "-1": c[0] };
+      return { ux: dx / l, uy: dy / l, w: r.w, l: lb, ang: Math.atan2(dy, dx), recul: 0, ouv: ouv };
     }).sort(function (p, q) { return p.ang - q.ang; });
     const k = br.length, ouv = [];
     for (let i = 0; i < k; i++) {
@@ -620,11 +776,11 @@
     const coin = function (b, d, cote) {   // cote +1 = côté de la branche suivante (angle croissant)
       return [V.x + d * b.ux - cote * b.w * b.uy, V.y + d * b.uy + cote * b.w * b.ux];
     };
-    const pts = [];
+    const pts = [], tags = [];   // tags : [branche, cote] d'un coin, null pour une pointe d'onglet
     for (let i = 0; i < k; i++) {
       const b = br[i], avant = ouv[(i - 1 + k) % k], apres = ouv[i], q = br[(i + 1) % k];
-      pts.push(coin(b, avant < Math.PI - 1e-3 ? b.d : 0, -1));
-      pts.push(coin(b, apres < Math.PI - 1e-3 ? b.d : 0, 1));
+      pts.push(coin(b, avant < Math.PI - 1e-3 ? b.d : 0, -1)); tags.push([b, -1]);
+      pts.push(coin(b, apres < Math.PI - 1e-3 ? b.d : 0, 1)); tags.push([b, 1]);
       if (apres >= Math.PI - 1e-3) {
         // Pointe d'onglet : intersection des parois prolongées en arrière du nœud.
         const P = coin(b, 0, 1), Q = coin(q, 0, -1);
@@ -634,17 +790,20 @@
           const s = (rx * (-q.uy) - ry * (-q.ux)) / det, t = (b.ux * ry - b.uy * rx) / det;
           const M = [P[0] + s * b.ux, P[1] + s * b.uy];
           const loin = Math.hypot(M[0] - V.x, M[1] - V.y) > ONGLET_MAX * Math.max(b.w, q.w);
-          if (s <= 1e-6 && t <= 1e-6 && !loin) pts.push(M);
+          if (s <= 1e-6 && t <= 1e-6 && !loin) { pts.push(M); tags.push(null); }
         }
       }
     }
-    const tri = [], c = [V.x, V.y], seuil = 1e-4 * sc * sc;
+    const tri = [], ouvert = [], c = [V.x, V.y], seuil = 1e-4 * sc * sc;
     for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], q = pts[(i + 1) % pts.length];
+      const j = (i + 1) % pts.length, p = pts[i], q = pts[j];
       const t = [c, p, q];
-      if (_aire(t) > seuil) tri.push([[c[0], c[1]], [p[0], p[1]], [q[0], q[1]]]);
+      if (_aire(t) <= seuil) continue;
+      tri.push([[c[0], c[1]], [p[0], p[1]], [q[0], q[1]]]);
+      ouvert.push(!!((tags[i] && tags[i][1] === 1 && tags[i][0].ouv["1"]) ||
+        (tags[j] && tags[j][1] === -1 && tags[j][0].ouv["-1"])));
     }
-    return tri;
+    return { tri: tri, ouvert: ouvert };
   }
 
   // ── API ──────────────────────────────────────────────────────────────────────────────────────────
@@ -694,15 +853,15 @@
     return segs.map(function (s) {
       const x0 = Math.min(s[0], s[2]), x1 = Math.max(s[0], s[2]), y0 = Math.min(s[1], s[3]), y1 = Math.max(s[1], s[3]);
       const dx = s[2] - s[0], dy = s[3] - s[1], ps = m.piecesPres(x0 - 1, y0 - 1, x1 + 1, y1 + 1);
-      for (let k = 0; k < ps.length; k++) {
-        const w = m.paroisDe(ps[k]);
-        for (let j = 0; j < w.length; j++) {
-          const p = w[j], ex = p[2] - p[0], ey = p[3] - p[1], d = dx * ey - dy * ex;
-          if (Math.abs(d) < 1e-12) continue;
-          const rx = p[0] - s[0], ry = p[1] - s[1], t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
-          if (t >= -e && t <= 1 + e && u >= -e && u <= 1 + e) return true;
-        }
-      }
+      const coupe = function (p) {
+        const ex = p[2] - p[0], ey = p[3] - p[1], d = dx * ey - dy * ex;
+        if (Math.abs(d) < 1e-12) return false;
+        const rx = p[0] - s[0], ry = p[1] - s[1], t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
+        return t >= -e && t <= 1 + e && u >= -e && u <= 1 + e;
+      };
+      for (let k = 0; k < ps.length; k++) { if (m.paroisDe(ps[k]).some(coupe)) return true; }
+      // Pans de retour : ils sortent de l'emprise de leur pièce (jusqu'à la structure), cherchés à part.
+      if (m.retoursPres(x0 - 1, y0 - 1, x1 + 1, y1 + 1).some(coupe)) return true;
       if (!m.remblaisPres(x0, y0, x1, y1)) return false;
       const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / pas));
       for (let i = 0; i <= n; i++) {
