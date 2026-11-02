@@ -287,7 +287,10 @@ jonctions en tracé (§26.5) restent les **pentes douces**.
 - **Tags** : `jes` (escalier entre niveaux), `jpe` (puits à échelons entre niveaux), `jps` (puits sans échelon entre
   niveaux). 🔒 **Jamais une sortie de surface** : absents de `sortieUrgence.js > TYPES_SORTIE` et de
   `secoursMode.js > CRIT_TAGS / CRIT_FERMES` (`scripts/check-poi-jonction.js` §1-2, sur la vraie sortie d'urgence).
-  `peo` / `eso` peuvent **aussi** porter `niveaux` (puits de surface qui dessert des étages) : ils restent des sorties.
+  `peo` / `eso` / `pa` peuvent **aussi** porter `niveaux` (puits de surface qui dessert des étages) : `peo` / `eso`
+  restent des sorties ; `pa` (puits d'aération) n'a pas de moyen (`moyen` null) : jamais emprunté par l'itinéraire
+  (`_injecterJonctionsPoi` l'écarte) ni par le 🪜 de la vue 3D, qui le dessine à chacun de ses niveaux ; sa fiche dit
+  ses niveaux sans raccord.
   Pas de variante ouvert / fermé (décision produit).
 - **Données du point** : `niveaux` (entiers, contient toujours `level`) et `accroches` `[{level, x, y}]` = raccords
   **validés** par l'utilisateur, un par galerie où le passage débouche. Point sans `niveaux` = son seul `level`.
