@@ -1601,7 +1601,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Itinéraire** (décision produit) : tirets de 1,2 m tous les 1,8 m (`ITI`, le « 12 6 » de la carte), ruban de 0,35 m
   à `--kta-interaction` sur un liseré `--kta-fond` de 4 cm par bord (`_rubanIti`, jetons du thème sombre,
   `_couleursIti`), matériau `iti` non éclairé et sans compression de tons ; phase prise sur l'abscisse du trajet
-  (`abscisses` de chaque morceau) : les tirets se suivent d'un segment et d'une tuile à l'autre. Marqueurs
+  (`abscisses` de chaque morceau) : les tirets se suivent d'un segment et d'une tuile à l'autre. ⚠️ contrat (décision
+  produit) : sur un remblais ou un effondrement dessiné (`ITI_SUR`, zones montrées du niveau, `_volumesIti` à chaque
+  `_reindexer`), ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`,
+  HAUTEUR_REMBLAIS de la hauteur) à leur hauteur propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une
+  contremarche verticale (`_contremarche`, ruban et liseré) monte le long de la face, à `ITI_FACE` (3 cm) devant
+  elle : ni ruban dans le volume, ni rampe en l'air. Refait au réglage ⛏️ de la hauteur. Tracé 2D et rubans des
+  tracés ordinaires inchangés. Marqueurs
   (`_majMarqueursIti`, à chaque `_reindexer`) : disque et mât de 0,6 m à chaque `road.raccords` de rôle « etape »
   (à son point sur le trajet, au niveau du point du trajet le plus proche), panneau « 🏁 » (et le nom de l'arrivée)
   au dernier point. Itinéraire découpé en morceaux du niveau de la scène (`pathfinder.js > computeRoute` pose

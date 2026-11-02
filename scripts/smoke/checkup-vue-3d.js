@@ -4587,6 +4587,93 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces === 4 && arrete(EF.coupe.tube, -16) &&
         contient(EF.coupe.couleurs, EF.coupe.legende),
         "🧱 coupé : l'effondrement reste un volume qui arrête, à la couleur de la légende", EF.coupe);
+      // ── 24 ter. Itinéraire par-dessus un remblais ou un effondrement (ruban, tirets, chevrons, étape) ──────────
+      // Tube principal, effondrement de 4 m en travers (-16 → -12), itinéraire de -23,5 à -4 (une face franchie dans
+      // un tiret à l'entrée comme à la sortie), étape sur l'effondrement. Trois rendus ; tracé 2D inchangé.
+      const IV = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: 0 }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.setVue3DGuidage(true);
+        window.setStructures([]);
+        const pts = [P(-23.5, 0), P(-14, 0), P(-4, 0)];
+        const iti = { uid: "rd_iv", type: "itinerary", level: 0, points: pts,
+          raccords: [{ role: "depart", vers: { x: pts[0].x, y: pts[0].y } },
+            { role: "etape", label: "Étape fictive", vers: { x: pts[1].x, y: pts[1].y } },
+            { role: "arrivee", label: "Arrivée fictive", vers: { x: pts[2].x, y: pts[2].y } }] };
+        window.setRoads([{ uid: "rd_iv_p", type: "principal", level: 0, points: [P(-40, 0), P(10, 0)] }, iti]);
+        window.setZones([{ uid: "zn_iv_e", type: "effondrement", level: 0, points: rect(-16, -3, -12, 3) }]);
+        const avant2D = JSON.stringify(window.getRoads().filter(function (r) { return r.type === "itinerary"; }));
+        const rel = function (q) { return [+(q[0] - a.ox).toFixed(2), q[1], q[2], q[3], q[4]]; };
+        const r = {};
+        for (const rendu of ["mixte", "galerie", "structures"]) {
+          window.setPlanRenduVue3D(null, rendu);
+          window.KtaGalerie.invalider();
+          await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-21, 0.6)), tuiles: false });
+          await pause(400);
+          const e = K.etat(), it = e.itineraire;
+          r[rendu] = { rendu: e.rendu, hauteur: e.hauteur, profil: (it.profil || []).map(rel),
+            chevrons: (it.chevronsY || []).map(function (c) { return [+(c[0] - a.ox).toFixed(2), c[2]]; }),
+            etapes: (it.etapesY || []).map(function (c) { return [+(c[0] - a.ox).toFixed(2), c[2]]; }),
+            rubansYMax: it.rubansYMax, nChevrons: e.chevrons };
+          if (rendu === "mixte" && a.captures) {
+            await pause(300);
+            r.capture = true;
+            window.ktaEstAccessible = acc;
+            return r;   // captures prises par le harnais, la vue reste ouverte
+          }
+          await K.fermer();
+        }
+        r.apres2D = JSON.stringify(window.getRoads().filter(function (r) { return r.type === "itinerary"; }));
+        r.avant2D = avant2D;
+        window.ktaEstAccessible = acc;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, captures: !!CAPTURES });
+      if (IV.capture) {
+        await capture(page, "iti-effondrement-yeux");
+        await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+        await page.waitForTimeout(600);
+        await capture(page, "iti-effondrement-plongee");
+        await page.evaluate(function () { window.KtaVue3D.basculerVue(); return window.KtaVue3D.fermer(); });
+      }
+      ["mixte", "galerie", "structures"].forEach(function (k) {
+        const o = IV[k];
+        if (!o) return;
+        const hv = o.hauteur * 0.6, pres3 = function (v, att) { return Math.abs(v - att) < 0.012; };
+        // Horizontaux : sur le volume (centre entre -15,8 et -12,2) au dessus + 5 cm ; hors du volume au sol.
+        const hor = o.profil.filter(function (q) { return q[3] - q[2] < 0.01; });
+        const dessus = hor.filter(function (q) { return q[0] > -15.8 && q[0] < -12.2; });
+        const sol = hor.filter(function (q) { return q[0] < -16.4 || q[0] > -11.6; });
+        const vert = o.profil.filter(function (q) { return q[3] - q[2] > 0.3; });
+        const entree = vert.filter(function (q) { return q[0] < -16 && q[0] > -16.1; });
+        const sortie = vert.filter(function (q) { return q[0] > -12 && q[0] < -11.9; });
+        verifier(dessus.length >= 4 && dessus.every(function (q) { return q[2] >= hv + 0.03 && q[2] <= hv + 0.06; }) &&
+          sol.length >= 8 && sol.every(function (q) { return q[2] <= 0.06; }) &&
+          hor.every(function (q) { return !(q[0] > -16 && q[0] < -12 && q[2] < hv); }),
+          k + " : le ruban passe sur l'effondrement (dessus à " + hv.toFixed(2) + " m + 5 cm), au sol ailleurs, jamais " +
+          "dessous ni en l'air", { dessus: dessus.slice(0, 4), sol: sol.slice(0, 3), n: [dessus.length, sol.length] });
+        verifier(entree.length === 2 && sortie.length === 2 && vert.length === 4 && vert.every(function (q) {
+          return pres3(q[2], 0.05) && pres3(q[3], hv + 0.05);
+        }), k + " : une contremarche (ruban et liseré) collée à la face d'entrée et de sortie, du sol au dessus",
+        { entree: entree, sortie: sortie, n: vert.length });
+        const chOn = o.chevrons.filter(function (c) { return c[0] > -15.7 && c[0] < -12.3; });
+        const chOff = o.chevrons.filter(function (c) { return c[0] < -16.3 || c[0] > -11.7; });
+        verifier(o.nChevrons > 0 && chOn.length >= 2 && chOn.every(function (c) { return pres3(c[1], hv + 0.07); }) &&
+          chOff.every(function (c) { return c[1] < 0.1; }),
+          k + " : chevrons de guidage sur le dessus du volume, au sol ailleurs", { on: chOn.slice(0, 6), off: chOff.length });
+        verifier(o.etapes.length === 1 && o.etapes[0][0] === -14 && pres3(o.etapes[0][1], hv),
+          k + " : marqueur d'étape posé sur l'effondrement (" + JSON.stringify(o.etapes) + ")", o.etapes);
+        verifier(o.rubansYMax === null || o.rubansYMax <= 0.031,
+          k + " : rubans des tracés ordinaires inchangés, au sol (" + o.rubansYMax + ")", o.rubansYMax);
+      });
+      if (!IV.capture) {
+        verifier(IV.avant2D === IV.apres2D, "tracé 2D de l'itinéraire inchangé par la 3D", { avant: IV.avant2D.length });
+      }
+      await page.evaluate(function () {
+        window.setRoads([]); window.setZones([]); window.setPlanRenduVue3D(null, "mixte"); window.KtaGalerie.invalider();
+      });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

@@ -610,21 +610,122 @@
   // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } en tirets (ITI) : chaque tiret est une bande claire
   // posée sur une bande sombre plus large et plus longue de ITI.lisere (le liseré). Phase prise sur l'abscisse du
   // trajet : les tirets se suivent d'un segment et d'une tuile à l'autre.
+  // Par-dessus un remblais ou un effondrement (_morceauxIti), chaque morceau du tiret est posé sur le dessus du
+  // volume, et une contremarche monte (descend) le long de la face franchie.
   function _rubanIti(lot, r) {
     const e = _e, sc = e.sc, ax = r.a.x / sc, az = r.a.y / sc, bx = r.b.x / sc, bz = r.b.y / sc;
     const L = Math.hypot(bx - ax, bz - az), s0 = (r.s0 || 0) / sc, P = ITI.tiret + ITI.vide;
     if (L < 1e-6) return;
     const ux = (bx - ax) / L, uz = (bz - az) / L, cols = _couleursIti(), m = ITI.lisere;
+    const mc = _morceauxIti(ax, az, ux, uz, L);
     for (let k = Math.floor(s0 / P); k * P < s0 + L; k++) {
-      const d0 = Math.max(k * P, s0) - s0, d1 = Math.min(k * P + ITI.tiret, s0 + L) - s0;
+      const D0 = k * P - s0, D1 = D0 + ITI.tiret, d0 = Math.max(D0, 0), d1 = Math.min(D1, L);
       if (d1 - d0 < 0.01) continue;
-      // Liseré prolongé de m aux bouts du tiret seulement (pas au raccord de deux segments d'un même tiret).
-      const m0 = k * P >= s0 ? m : 0, m1 = k * P + ITI.tiret <= s0 + L ? m : 0;
-      _bande(lot, ax + ux * (d0 - m0), az + uz * (d0 - m0), ax + ux * (d1 + m1), az + uz * (d1 + m1),
-        LARGEUR_ITI + 2 * m, ITI.y - 0.005, cols.lisere);
-      _bande(lot, ax + ux * d0, az + uz * d0, ax + ux * d1, az + uz * d1, LARGEUR_ITI, ITI.y, cols.ruban);
-      if (k * P >= s0) e.itiTirets++;
+      for (let i = 0; i < mc.length; i++) {
+        const q0 = Math.max(d0, mc[i].d0), q1 = Math.min(d1, mc[i].d1), h = mc[i].h;
+        if (q1 - q0 > 1e-4) {
+          // Liseré prolongé de m aux bouts du tiret seulement (ni au raccord de deux segments, ni contre une face).
+          const m0 = q0 === D0 ? m : 0, m1 = q1 === D1 ? m : 0;
+          _bande(lot, ax + ux * (q0 - m0), az + uz * (q0 - m0), ax + ux * (q1 + m1), az + uz * (q1 + m1),
+            LARGEUR_ITI + 2 * m, h + ITI.y - 0.005, cols.lisere);
+          _bande(lot, ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1, LARGEUR_ITI, h + ITI.y, cols.ruban);
+        }
+        if (i > 0 && mc[i].h !== mc[i - 1].h && mc[i].d0 > d0 && mc[i].d0 < d1) {
+          _contremarche(lot, ax + ux * mc[i].d0, az + uz * mc[i].d0, ux, uz, mc[i].face, mc[i - 1].h, mc[i].h, cols);
+        }
+      }
+      if (D0 >= 0) e.itiTirets++;
     }
+  }
+
+  // ── Itinéraire par-dessus les volumes (remblais, effondrement) ────────────────────────────────────────
+  // ⚠️ contrat : ruban, tirets, chevrons et marqueurs de l'itinéraire passent PAR-DESSUS un remblais ou un
+  // effondrement dessiné (zones montrées du niveau, _collecter) : posés sur son dessus (HAUTEUR_REMBLAIS de la
+  // hauteur) à leur hauteur propre, une contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en
+  // sort (ni ruban dans le volume, ni rampe en l'air). Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
+  const ITI_SUR = { remblais: true, effondrement: true };
+  const ITI_FACE = 0.03;   // m : contremarche décollée de la face (pas de scintillement)
+
+  // Volumes que l'itinéraire enjambe → [{ ring (m), x0, z0, x1, z1 }]. Refaits à _reindexer.
+  function _volumesIti(zones) {
+    const sc = _e.sc, out = [];
+    zones.forEach(function (z) {
+      if (!z || !ITI_SUR[z.type] || !Array.isArray(z.points)) return;
+      const ring = _anneau(z.points, sc);
+      if (ring.length < 3) return;
+      const v = { ring: ring, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+      ring.forEach(function (q) {
+        v.x0 = Math.min(v.x0, q[0]); v.x1 = Math.max(v.x1, q[0]); v.z0 = Math.min(v.z0, q[1]); v.z1 = Math.max(v.z1, q[1]);
+      });
+      out.push(v);
+    });
+    return out;
+  }
+
+  // Hauteur (m) du dessus du volume sous (x, z), 0 hors volume.
+  function _dessusIti(x, z) {
+    const l = _e.volumesIti;
+    if (!l || !l.length) return 0;
+    for (let i = 0; i < l.length; i++) {
+      const v = l[i], a = v.ring;
+      if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1) continue;
+      let r = false;
+      for (let j = 0, k = a.length - 1; j < a.length; k = j++) {
+        const p = a[j], q = a[k];
+        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
+      }
+      if (r) return _e.hauteur * HAUTEUR_REMBLAIS;
+    }
+    return 0;
+  }
+
+  // Segment de (ax, az), direction (ux, uz), longueur L (m) coupé aux bords des volumes → [{ d0, d1, h, face }] (d en
+  // m depuis le début) ; face = direction normée du bord franchi à d0 (morceaux suivants).
+  function _morceauxIti(ax, az, ux, uz, L) {
+    const vols = _e.volumesIti || [], coupes = [], bx = ax + ux * L, bz = az + uz * L;
+    const mx0 = Math.min(ax, bx), mx1 = Math.max(ax, bx), mz0 = Math.min(az, bz), mz1 = Math.max(az, bz);
+    vols.forEach(function (v) {
+      if (v.x1 < mx0 || v.x0 > mx1 || v.z1 < mz0 || v.z0 > mz1) return;
+      for (let j = 0, k = v.ring.length - 1; j < v.ring.length; k = j++) {
+        const p = v.ring[k], q = v.ring[j], ex = q[0] - p[0], ez = q[1] - p[1], d = ux * ez - uz * ex;
+        if (Math.abs(d) < 1e-12) continue;
+        const rx = p[0] - ax, rz = p[1] - az, t = (rx * ez - rz * ex) / d, u = (rx * uz - rz * ux) / d;
+        if (t <= 0 || t >= L || u < 0 || u > 1) continue;
+        const el = Math.hypot(ex, ez);
+        coupes.push({ d: t, face: { ex: ex / el, ez: ez / el } });
+      }
+    });
+    coupes.sort(function (a, b) { return a.d - b.d; });
+    coupes.push({ d: L, face: null });
+    const out = [];
+    let d0 = 0, face = null;
+    coupes.forEach(function (c) {
+      if (c.d - d0 > 1e-6) {
+        const dm = (d0 + c.d) / 2;
+        out.push({ d0: d0, d1: c.d, h: _dessusIti(ax + ux * dm, az + uz * dm), face: face });
+        d0 = c.d;
+      }
+      face = c.face || face;
+    });
+    return out;
+  }
+
+  // Contremarche du ruban en (cx, cz) (m) sur la face de direction `face`, de la hauteur hA à hB : bande verticale
+  // dans le plan de la face, côté bas, à ITI_FACE devant elle, aussi large que le ruban vu sous l'angle d'entrée.
+  function _contremarche(lot, cx, cz, ux, uz, face, hA, hB, cols) {
+    if (!face) return;
+    const ex = face.ex, ez = face.ez, haut = hB > hA ? -1 : 1;
+    let nx = -ez, nz = ex;
+    if ((nx * ux + nz * uz) * haut < 0) { nx = -nx; nz = -nz; }
+    const sin = Math.max(0.35, Math.abs(ux * ez - uz * ex));
+    const y0 = Math.min(hA, hB) + ITI.y, y1 = Math.max(hA, hB) + ITI.y;
+    const bande = function (larg, off, col) {
+      const w = larg / 2 / sin, px = cx + nx * off, pz = cz + nz * off;
+      lot.quad([px - ex * w, y0, pz - ez * w], [px + ex * w, y0, pz + ez * w], [px + ex * w, y1, pz + ez * w],
+        [px - ex * w, y1, pz - ez * w], [nx, 0, nz], col);
+    };
+    bande(LARGEUR_ITI + 2 * ITI.lisere, ITI_FACE, cols.lisere);
+    bande(LARGEUR_ITI, ITI_FACE + 0.005, cols.ruban);
   }
 
   // Couleurs de l'itinéraire, jetons du thème sombre (la scène est noire dans les deux thèmes) : ruban
@@ -2160,6 +2261,7 @@
       msGalerie: m ? Math.round(m.msConstruction) : 0 };
     _razCompteurs();
     if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
+    e.volumesIti = _volumesIti(d.zones);
     e.passages = _passages(e.niveau, d.jonctions);
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
@@ -3170,7 +3272,7 @@
     e.nChevrons = 0;
     if (!sig) return;
     const pts = road.points, lot = new Lot(), col = new THREE.Color(_jetonsSombres().accent);
-    const l = CHEVRON.l, ep = CHEVRON.ep, y = CHEVRON.y, haut = [0, 1, 0];
+    const l = CHEVRON.l, ep = CHEVRON.ep, haut = [0, 1, 0];
     let i = 1, cum = 0;
     for (let k = k0; k <= k1; k++) {
       const s = k * pas;
@@ -3185,6 +3287,7 @@
       if (d < 1e-6 || !_segmentDuNiveau(road, a, b, e.niveau)) continue;
       const t = (s - cum) / d, ux = (b.x - a.x) / d, uz = (b.y - a.y) / d, nx = -uz, nz = ux;
       const cx = (a.x + t * (b.x - a.x)) / sc, cz = (a.y + t * (b.y - a.y)) / sc;
+      const y = CHEVRON.y + _dessusIti(cx, cz);   // par-dessus un remblais ou un effondrement, comme le ruban
       // Pointe devant, deux branches vers l'arrière de part et d'autre.
       const px = cx + ux * l / 2, pz = cz + uz * l / 2;
       [-1, 1].forEach(function (cote) {
@@ -3260,7 +3363,7 @@
         m.add(me);
       });
       m.children[0].position.y = MARQUEUR.y;
-      m.position.set(r.vers.x / sc, 0, r.vers.y / sc);
+      m.position.set(r.vers.x / sc, _dessusIti(r.vers.x / sc, r.vers.y / sc), r.vers.y / sc);
       m.userData.famille = "etape";
       g.add(m);
       e.nbMarqueurs.etapes++;
@@ -3274,7 +3377,7 @@
       })[0];
       const nom = "🏁" + (rArr && rArr.label ? " " + rArr.label : "");
       g.add(_panneau({ nom: nom }, [fin.x / sc, fin.y / sc], { bord: _jetonsSombres().interaction, sansIcone: true,
-        genre: "arrivee", y: Math.min(MARQUEUR.mat + 0.5, e.hauteur - 0.15) }));
+        genre: "arrivee", y: Math.min(_dessusIti(fin.x / sc, fin.y / sc) + MARQUEUR.mat + 0.5, e.hauteur - 0.15) }));
       e.nbMarqueurs.arrivee = true;
     }
     e.scene.add(g);
@@ -4015,6 +4118,8 @@
       e.hauteur = v;
       e.oeil = _oeil(v);
       _refaireTuiles();
+      _majMarqueursIti();   // étapes et 🏁 posées sur un volume : elles suivent sa hauteur
+      e.chevSig = null;
     }
     _majHauteur();
     return v;
@@ -4847,7 +4952,47 @@
       t.sort(function (a, b) { return a - b; });
       return +t[t.length >> 1].toFixed(3);
     };
-    return { ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) };
+    return Object.assign({ ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) }, _profilIti());
+  }
+
+  // Profil de l'itinéraire construit (checkup : par-dessus les volumes) : un quadrilatère par entrée
+  // [x, z, yMin, yMax, clair] (m, centre ; clair = bande du ruban, sinon liseré), chevrons [x, z, y], étapes
+  // [x, z, y], et la plus haute bande des rubans des tracés (rubansYMax).
+  function _profilIti() {
+    const e = _e, cols = _couleursIti(), rouge = Math.round(cols.ruban.r * 255), profil = [], rubansY = [];
+    const quads = function (m, f) {
+      const p = m.geometry.attributes.position.array, c = m.geometry.attributes.color.array;
+      for (let q = 0; q + 17 < p.length; q += 18) {
+        let x = 0, z = 0, y0 = Infinity, y1 = -Infinity;
+        for (let i = 0; i < 6; i++) {
+          x += p[q + 3 * i] / 6; z += p[q + 3 * i + 2] / 6;
+          y0 = Math.min(y0, p[q + 3 * i + 1]); y1 = Math.max(y1, p[q + 3 * i + 1]);
+        }
+        f(+x.toFixed(3), +z.toFixed(3), +y0.toFixed(3), +y1.toFixed(3), c[q] === rouge);
+      }
+    };
+    e.tuiles.forEach(function (t) {
+      if (!t.obj) return;
+      t.obj.children.forEach(function (m) {
+        if (!m.geometry) return;
+        if (m.userData.famille === "itineraire") {
+          quads(m, function (x, z, y0, y1, clair) { profil.push([x, z, y0, y1, clair ? 1 : 0]); });
+        } else if (m.userData.famille === "rubans") {
+          quads(m, function (x, z, y0, y1) { rubansY.push(y1); });
+        }
+      });
+    });
+    const chevronsY = [];
+    if (e.chevrons && e.chevrons.geometry) quads(e.chevrons, function (x, z, y0) { chevronsY.push([x, z, y0]); });
+    const etapesY = [];
+    if (e.marqueursIti) {
+      e.marqueursIti.children.forEach(function (g) {
+        if (g.userData.famille === "etape") etapesY.push([+g.position.x.toFixed(3), +g.position.z.toFixed(3),
+          +g.position.y.toFixed(3)]);
+      });
+    }
+    return { profil: profil, chevronsY: chevronsY, etapesY: etapesY,
+      rubansYMax: rubansY.length ? Math.max.apply(null, rubansY) : null };
   }
 
   // Part de la largeur de l'écran couverte par un panneau visible (checkup : pas plus que PRES.ecran de près).
