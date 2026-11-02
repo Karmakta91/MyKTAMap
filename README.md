@@ -442,7 +442,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
-| `vue3d.js` | Vue 3D autour de la position du tracker (bêta) — chargé par `js/interface.js` au toucher de la tuile 🧊 du menu Tracker ; three.js importé à la première ouverture ; précaché par `sw.js` |
+| `vue3d.js` | Vue 3D autour de la position du tracker (bêta) — chargé par `js/interface.js` au toucher du bouton cube de la barre de droite ; three.js importé à la première ouverture ; précaché par `sw.js` |
 
 ---
 

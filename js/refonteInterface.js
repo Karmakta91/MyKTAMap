@@ -604,6 +604,10 @@
     if (window.FilterPanel && typeof window.FilterPanel.majBadge === "function") {
       try { window.FilterPanel.majBadge(); } catch(e) {}
     }
+    // Le bouton de la vue 3D suit l'échelle réglée dans ⚙️ Réglages (grisé sans elle).
+    if (typeof window.ktaMajBoutonVue3D === "function") {
+      try { window.ktaMajBoutonVue3D(); } catch(e) {}
+    }
   }
 
   function _setStat(parentId, value) {

@@ -1066,9 +1066,9 @@ function _creerTuileTracker(sub) {
   return tile;
 }
 
-// ── Vue 3D (bêta) : tuile du menu Tracker ──────────────────────────────────────────────────────────
-// js/vue3d.js et three.js (~2 Mo) ne sont chargés qu'au premier toucher de la tuile, jamais au démarrage
-// (scripts/smoke/smoke.js le vérifie) ; sw.js les précache pour le hors-ligne. Doc : docs/ETUDE_VUE_3D.md.
+// ── Vue 3D (bêta) : bouton cube de la barre de droite, juste sous ≡ Filtres ─────────────────────────────
+// js/vue3d.js et three.js (~2 Mo) ne sont chargés qu'au premier toucher, jamais au démarrage (scripts/smoke/smoke.js
+// le vérifie) ; sw.js les précache pour le hors-ligne. Doc : docs/ETUDE_VUE_3D.md, docs/architecture/ui.md § Vue 3D.
 // ⚠️ Même refus que KtaVue3D.ouvrir (plan, échelle), testé ici AVANT de charger quoi que ce soit.
 function _vue3dRaison() {
   if (!window.map || !window.PLAN_CONFIG || !window.APP_CONFIG) return "vue3d.sansPlan";
@@ -1091,17 +1091,60 @@ function _chargerVue3D() {
   return _vue3dChargement;
 }
 
-function _ouvrirVue3D() {
+// Indicateur entre le toucher et la scène (ComputeLoader : une image peinte avant le travail synchrone de
+// l'ouverture) ; au premier chargement de three.js, le message le dit. `retour` : élément qui reprend le focus à
+// la fermeture de la vue.
+function _ouvrirVue3D(retour) {
   const raison = _vue3dRaison();
   if (raison) { window.ktaAlerte(window.I18n.t(raison)); return Promise.resolve(false); }
-  return _chargerVue3D().then(function(ok) {
-    if (!ok) {
-      window.ktaAlerte(window.I18n.t("vue3d.chargementImpossible"), { type: "erreur" });
-      return false;
-    }
-    return window.KtaVue3D.ouvrir();
-  });
+  const premier = !(window.KtaVue3D && window.KtaVue3D.charge && window.KtaVue3D.charge());
+  const ouvrir = function() {
+    return _chargerVue3D().then(function(ok) {
+      if (!ok) {
+        window.ktaAlerte(window.I18n.t("vue3d.chargementImpossible"), { type: "erreur" });
+        return false;
+      }
+      return window.KtaVue3D.ouvrir({ retourFocus: retour || null });
+    });
+  };
+  const L_ = window.ComputeLoader;
+  if (!L_ || typeof L_.wrap !== "function") return ouvrir();
+  return L_.wrap(ouvrir, window.I18n.t(premier ? "vue3d.chargementPremier" : "vue3d.chargement"));
 }
+
+// Grisé (kta-inactif : texte-3, désaturé, sans opacité) sans plan ou sans échelle ; son titre dit pourquoi et il
+// reste touchable (le toucher le dit aussi). Recalculé à l'ajout, à chaque plan prêt et au rafraîchissement
+// périodique de la barre d'état (refonteInterface.js > refreshStatusBar, avec la pastille ≡).
+function _majBoutonVue3D() {
+  const a = document.querySelector(".kta-vue3d-ctrl a");
+  if (!a) return;
+  const raison = _vue3dRaison();
+  a.classList.toggle("kta-inactif", !!raison);
+  const t = window.I18n.t(raison || "ui.vue3d.title");
+  if (a.title !== t) { a.title = t; a.setAttribute("aria-label", t); }
+}
+window.ktaMajBoutonVue3D = _majBoutonVue3D;
+
+L.control.ktaVue3DControl = function() {
+  const ctrl = L.control({ position: "topright" });
+  ctrl.onAdd = function() {
+    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-vue3d-ctrl");
+    const a = L.DomUtil.create("a", "", div);
+    a.href = "#";   // pas « javascript: » (CSP stricte)
+    a.setAttribute("role", "button");
+    // Picto cube de l'écran Bienvenue (js/ktaPictos.js), en currentColor : couleur du thème par .leaflet-bar a.
+    a.innerHTML = typeof window.ktaPicto === "function" ? window.ktaPicto("cube", "kta-vue3d-ctrl-picto") : "3D";
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.on(a, "click", function(e) {
+      L.DomEvent.preventDefault(e);
+      _ouvrirVue3D(a);
+    });
+    setTimeout(_majBoutonVue3D, 0);
+    return div;
+  };
+  return ctrl;
+};
+window.addEventListener("mktm:plan-pret", function() { _majBoutonVue3D(); });
 
 function _ajouterSectionTracker(corps, titre, actions) {
   if (!actions || actions.length === 0) return;
@@ -1868,6 +1911,8 @@ function initInterface() {
   L.control.titleControl().addTo(window.map);
 
   L.control.ktaFilterControl().addTo(window.map);
+  // Vue 3D (bêta) juste sous ≡ Filtres : l'ordre d'ajout fixe l'ordre dans la barre.
+  L.control.ktaVue3DControl().addTo(window.map);
 
   // Interface refondue : boutons ≡ de réduction des sidebars (mis en haut par CSS order:-1),
   // puis Niveau et Favoris en sidebar gauche. Sinon Niveau est créé en fin d'initInterface.
@@ -2295,16 +2340,6 @@ function initInterface() {
                                             : window.I18n.t("guid.toast.off"), "info");
           }
         }
-      },
-      {
-        // Vue 3D (bêta) : grisée sans plan ou sans échelle, sa ligne d'aide dit pourquoi ; sinon elle rappelle
-        // que la 3D montre le plan, pas la galerie réelle (décision produit : risque de fausse précision).
-        icone: "🧊",
-        titreCle: "tracker.menu.vue3d",
-        section: "outils",
-        etat: function() { return _vue3dRaison() ? "off" : null; },
-        dynamicAide: function() { return window.I18n.t(_vue3dRaison() || "tracker.menu.vue3dAide"); },
-        onClick: function() { _ouvrirVue3D(); }
       },
       {
         icone: "📍",
