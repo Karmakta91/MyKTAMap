@@ -108,7 +108,9 @@
   const TEXTURE_TYPE = { "pilier-1": "pierre", "pilier-2": "pierre", "front-1": "pierre", "front-2": "pierre",
     "mur": "parpaing", "mur-ligne": "parpaing" };
   const LISERE = 0.15;              // m
-  const POI_GALERIE = 10;           // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises)
+  // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises). ⚠️ contrat : le rayon du
+  // recalage du tracker (KtaGalerie.versGalerie), une seule valeur.
+  const POI_GALERIE = window.KtaGalerie.PROCHE_M;
   const RECUL_PAROI = 0.08;         // m : POI hors du tube ramené contre la paroi, devant elle
   // POI danger : anneau au sol sous le panneau, rouge de la charte (--kta-erreur du thème sombre), non éclairé :
   // lisible hors du faisceau, éteint au loin par le brouillard comme le reste.
@@ -2387,7 +2389,8 @@
   // collision dit dans la roche : la règle du pas refusait tout pas, la vue restait figée. ⚠️ contrat : une place
   // hors de l'emprise (galerie) ou d'où aucun pas n'est possible est ramenée au point libre le plus proche :
   // l'axe du tracé le plus proche (modèle KtaGalerie du rendu, plusProche) à moins de smartNavRadiusM (6 m par
-  // défaut, le rayon de tracking.js > _positionDansGalerie), sinon un point libre cherché en couronnes de 0,25 m dans
+  // défaut, le rayon du verrou sur tracé ; pas celui du recalage du tracker, KtaGalerie.PROCHE_M), sinon un point
+  // libre cherché en couronnes de 0,25 m dans
   // ce rayon. Rien trouvé : _pas laisse passer tout pas qui rapproche de l'axe le plus proche (30 m), ou tout pas.
 
   // Un pas de 0,3 m est-il possible dans l'une des 8 directions, depuis (x, y) (px) ?
@@ -3059,13 +3062,26 @@
   }
 
   // Le tracker vient d'être recalé pendant la vue (tracking.js > _notifierRecalage : « 📍 Je suis ici » d'une fiche,
-  // « Ici » de « D'où pars-tu ? »). ⚠️ contrat (décision produit) : en libre, la place NE bouge PAS — la position
-  // ajustée du tracker (tracking.js > _positionDansGalerie) n'est pas la galerie dessinée et tombait souvent hors
-  // d'elle ; seule la question « Je suis ici ? » de la fermeture est retirée tant qu'on n'avance pas (on vient de
-  // dire où l'on est). En suivi, la vue suit le tracker comme toujours ; fermée, rien. → true en libre.
-  function trackerRecale() {
+  // « Ici » de « D'où pars-tu ? », Secours). ⚠️ contrat (décision produit) : la place NE bouge PAS — on dit où est le
+  // tracker, pas où regarder ; seule la question « Je suis ici ? » de la fermeture est retirée tant qu'on n'avance
+  // pas (on vient de dire où l'on est). En suivi, un « Je suis ici » (`opts.dansGalerie`) passe en libre à cet
+  // instant, avant toute image (la vue ne lit pas le tracker recalé), toast à l'appui ; on revient au suivi par le
+  // bouton habituel. Un autre recalage en suivi (Secours) se laisse suivre. Fermée : rien. → true si la place reste.
+  function trackerRecale(opts) {
     const e = _e;
-    if (!e || e.mode !== "libre") return false;
+    if (!e) return false;
+    if (e.mode === "suivi") {
+      if (!(opts && opts.dansGalerie)) return false;
+      // Niveau tenu comme après un passage 🪜 : en libre, la vue garderait sinon le niveau actif de la carte.
+      const cfg = window.APP_CONFIG || {};
+      if (Number.isInteger(e.niveau)) {
+        e.niveauLibre = e.niveau;
+        e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+      }
+      e.libreBouge = false;
+      _passerEnLibre();
+      _toast(_t("vue3d.libreApresRecalage"), "success");
+    }
     e.aBouge = false;
     return true;
   }

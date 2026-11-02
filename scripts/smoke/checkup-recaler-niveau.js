@@ -16,8 +16,10 @@
 // que le 0 est affiché → tracker au −1 (POI jonction : niveau affiché s'il le dessert) ; tracker au −1 : « Y aller »,
 // « Recalculer d'ici » et sortie d'urgence partent du −1 ; « Tracer » vers une sortie du −1 finit sur le −1 ;
 // « Y aller » de la fiche d'un POI du −1, depuis le 0, finit sur le −1 (POI jonction : même niveau que « Je suis
-// ici ») ; « Je suis ici » d'un POI à côté de la galerie (§ 16) : à 2 m → tracker sur le tracé de son niveau,
-// à 30 m → sur le POI, image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
+// ici ») ; « Je suis ici » d'un POI à côté de la galerie (§ 16, galerie de la vue 3D) : à 2 m → tracker sur le
+// tracé de son niveau, à 8 m d'un tracé perso → dans sa galerie, déjà dans l'emprise → ne bouge pas, entre deux
+// galeries → celle dont la paroi est la plus proche, à 30 m → sur le POI ; clic de recalage et picker à côté d'un
+// tracé → dans la galerie, image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
 // tracé quand d'autres niveaux en ont (§ 16 bis) ; « Y aller » tracker arrêté (§ 17) : « D'où pars-tu ? » à chaque
 // fois (« Ma dernière position (il y a …) » part de là, « Me repositionner » arme le picker, Annuler ne fait rien),
 // picker direct si la position n'a jamais été confirmée ; mono-niveau → jamais de fenêtre.
@@ -241,6 +243,8 @@ async function repondreDepart(page, valeur) {
     const P = await trouverPointLibre(page);
     if (!P) throw new Error("aucun point du plan sans objet à 30 m");
     ok("point de test libre trouvé (échelle " + P.sc + " px/m)");
+    // Un tap hors de l'emprise d'un tracé est-ouest (axe à dyAxe m de P) est recalé sur l'axe, au droit du tap.
+    const surAxe = function (xy, dyAxe) { return { x: xy.x, y: P.y + dyAxe * P.sc }; };
 
     console.log("\n── 1. Rien d'un autre niveau à proximité ──");
     await poserCas(page, P, { roads: [{ type: "principal", level: 0, pts: [[-20, 3], [20, 3]] }] });
@@ -248,7 +252,9 @@ async function repondreDepart(page, valeur) {
     let xy = await cliquerCarte(page, P, 0, 0);
     let e = await etat(page);
     verifier(!e.fenetre, "pas de fenêtre (seul le niveau actif est là)", e);
-    verifier(e.tracker === 0 && proche(e.pos, xy) && !e.mode, "recalé au niveau actif 0, mode refermé", e);
+    // Le tap tombe à 3 m du tracé, hors de son emprise : le tracker va sur l'axe (même règle que « Je suis ici »).
+    verifier(e.tracker === 0 && proche(e.pos, surAxe(xy, 3)) && !e.mode,
+      "recalé au niveau actif 0, dans la galerie (tap à 3 m de l'axe), mode refermé", e);
     verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "click", "timeline : recalage src click", e.dernier);
 
     console.log("\n── 2. Tracé du −1 à 5 m ──");
@@ -263,7 +269,7 @@ async function repondreDepart(page, valeur) {
     e = await etat(page);
     verifier(!e.fenetre && e.tracker === -1 && e.actif === -1 && e.visibles.indexOf(-1) >= 0,
       "choix −1 : tracker à −1, niveau affiché −1", e);
-    verifier(proche(e.pos, xy) && !e.mode, "position au clic, mode refermé", e);
+    verifier(proche(e.pos, surAxe(xy, 5)) && !e.mode, "position dans la galerie du −1 (tracé à 5 m), mode refermé", e);
     verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "click" && e.dernier.level === -1,
       "timeline : recalage src click au niveau −1", e.dernier);
 
@@ -348,10 +354,12 @@ async function repondreDepart(page, valeur) {
     await choisir(page, -1);
     e = await etat(page);
     const recu2 = await page.evaluate(function () { return window._ktaPickRecu; });
-    verifier(!e.picker && recu2 && proche(recu2, xy), "position rendue à l'appelant", recu2);
+    // Tap à 5 m du tracé du −1 : tracker dans la galerie ; l'appelant reçoit la position du tracker.
+    const ga7 = surAxe(xy, 5);
+    verifier(!e.picker && recu2 && proche(recu2, ga7), "position rendue à l'appelant = celle du tracker (galerie)", recu2);
     verifier(recu2 && recu2.niveau === -1, "niveau choisi rendu à l'appelant (niveau: −1)", recu2);
-    verifier(e.tracker === -1 && e.actif === -1 && proche(e.pos, xy), "tracker et niveau affiché à −1", e);
-    verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, xy) &&
+    verifier(e.tracker === -1 && e.actif === -1 && proche(e.pos, ga7), "tracker dans la galerie et niveau affiché à −1", e);
+    verifier(e.dernier && e.dernier.type === "recalage" && e.dernier.src === "point" && proche(e.dernier, ga7) &&
       e.dernier.level === -1, "timeline : ancre recalage src point au niveau d'arrivée −1", e.dernier);
 
     console.log("\n── 7 bis. « 📍 Je suis ici » sur un POI du −1 (tracker au niveau 0 avant) ──");
@@ -645,16 +653,17 @@ async function repondreDepart(page, valeur) {
         "zone d'un calque : son niveau proposé", cal.zone);
     } else inf("aucune zone de calque sur ce plan");
 
-    // « Je suis ici » d'un POI posé à côté du tracé (tracking.js > _positionDansGalerie) : le tracker va sur le
-    // tracé le plus proche DU NIVEAU du POI, à moins du rayon du verrou (6 m) ; le POI ne bouge pas.
+    // « Je suis ici » d'un POI posé à côté du tracé (tracking.js > _positionDansGalerie, galerie de la vue 3D :
+    // KtaGalerie.versGalerie) : hors emprise, le tracker va sur l'axe de la galerie DU NIVEAU du POI dont l'emprise
+    // est la plus proche, à moins de 10 m d'un axe ; dans l'emprise, il reste sur le POI ; le POI ne bouge pas.
     // Tracé du 0 sur y = 0, tracé du −1 sur y = 5 (en m depuis P).
     console.log("\n── 16. « 📍 Je suis ici » d'un POI à côté de la galerie ──");
     const GALERIES = [
       { type: "principal", level: 0, pts: [[-20, 0], [20, 0]] },
       { type: "principal", level: -1, pts: [[-20, 5], [20, 5]] }
     ];
-    const iciSurPoi = async function (poi, affiche) {
-      await poserCas(page, P, { roads: GALERIES, points: [poi] });
+    const iciSurPoi = async function (poi, affiche, roads) {
+      await poserCas(page, P, { roads: roads || GALERIES, points: [poi] });
       await page.evaluate(function (a) {
         window.recalerTrackerSurPoint(a.P.x, a.P.y - 40 * a.P.sc, 0);
         window.ktaSetActiveLevel(-1, { source: "checkup" });   // union : −1 et 0 affichés
@@ -693,14 +702,41 @@ async function repondreDepart(page, valeur) {
       verifier(r16.pos && Math.abs(r16.pos.dy - 5) < 0.1 && Math.abs(r16.pos.dx + 3) < 0.1 && r16.e.tracker === -1,
         "POI du −1 (tracé du 0 à 2 m, du −1 à 3 m) : tracker sur le tracé du −1, niveau −1", r16.pos);
     }
-    // Les autres recalages (portail, « Où es-tu ? », Secours, vue 3D) passent sans `dansGalerie` : point exact.
+    // Tracé d'un type perso (tube de 2 m en 3D) à 8 m : au-delà de l'ancien rayon (6 m, types du graphe seulement).
+    r16 = await iciSurPoi({ id: "Perso", nom: "Perso", uid: "pt_perso", tags: ["salle"], level: 0, d: [3, 8] }, 0,
+      [{ type: "cust-checkup", level: 0, pts: [[-20, 0], [20, 0]] }]);
+    if (r16) {
+      const dd = await page.evaluate(function () {
+        const p = window.getTrackingPosition();
+        return window.KtaGalerie.dedans(p.x, p.y, 0);
+      });
+      verifier(r16.pos && Math.abs(r16.pos.dy) < 0.1 && Math.abs(r16.pos.dx - 3) < 0.1 && dd && r16.e.tracker === 0,
+        "POI à 8 m d'un tracé perso : tracker recalé dans sa galerie (sur l'axe)", { pos: r16.pos, dedans: dd });
+    }
+    // Déjà dans l'emprise (1 m de l'axe d'un principal de 2,5 m) : le tracker reste sur le POI.
+    r16 = await iciSurPoi({ id: "Dedans", nom: "Dedans", uid: "pt_dedans", tags: ["salle"], level: 0, d: [3, 1] }, 0);
+    if (r16) {
+      verifier(proche(r16.e.pos, r16.poi) && r16.e.tracker === 0, "POI déjà dans la galerie : le tracker ne bouge pas",
+        r16.pos);
+    }
+    // Entre deux galeries séparées par la roche : principal (2,5 m) sur y = 0, chemin (1,7 m) sur y = 7, POI à
+    // y = 3,6. L'axe le plus proche est celui du chemin (3,4 m) ; la paroi la plus proche, celle du principal
+    // (2,35 m contre 2,55 m) : c'est elle qu'il faut rejoindre, avec le moins de roche à franchir.
+    r16 = await iciSurPoi({ id: "Entre", nom: "Entre", uid: "pt_entre", tags: ["salle"], level: 0, d: [3, 3.6] }, 0,
+      [{ type: "principal", level: 0, pts: [[-20, 0], [20, 0]] }, { type: "chemin", level: 0, pts: [[-20, 7], [20, 7]] }]);
+    if (r16) {
+      verifier(r16.pos && Math.abs(r16.pos.dy) < 0.1 && Math.abs(r16.pos.dx - 3) < 0.1,
+        "POI entre deux galeries : tracker dans celle dont la paroi est la plus proche (principal), pas l'axe le plus " +
+        "proche (chemin)", r16.pos);
+    }
+    // Les autres recalages (portail, Secours, vue 3D) passent sans `dansGalerie` : point exact.
     const exact = await page.evaluate(function (P) {
       const x = P.x + 3 * P.sc, y = P.y + 2 * P.sc;
       window.recalerTrackerSurPoint(x, y, 0);
       const pos = window.getTrackingPosition();
       return { ok: Math.abs(pos.x - x) < 0.01 && Math.abs(pos.y - y) < 0.01, pos: pos };
     }, P);
-    verifier(exact.ok, "recalage sans « dansGalerie » (portail, picker) : coordonnées exactes", exact.pos);
+    verifier(exact.ok, "recalage sans « dansGalerie » (portail, Secours) : coordonnées exactes", exact.pos);
     // Plan sans tracé (simulé : Pathfinder.aDesTraces rend false, session et calques vides) : point accessible le plus proche
     // de l'image de collision. Cherche un point refusé qui a un point accessible à moins de 3 m.
     const coll = await page.evaluate(function () {
@@ -763,7 +799,7 @@ async function repondreDepart(page, valeur) {
         window.recalerTrackerSurPoint(cas.x, cas.y, -2, { dansGalerie: true });
         const p = window.getTrackingPosition();
         out.bas = { accessible: acc(p.x, p.y), dM: Math.hypot(p.x - cas.x, p.y - cas.y) / sc, niveau: window.getTrackerLevel() };
-        // Contre-cas : au niveau 0 (qui a un tracé, à plus de 6 m), on reste sur le POI.
+        // Contre-cas : au niveau 0 (qui a un tracé, à 40 m, plus de 10 m), on reste sur le POI.
         window.recalerTrackerSurPoint(cas.x, cas.y, 0, { dansGalerie: true });
         const q = window.getTrackingPosition();
         out.zero = { dM: Math.hypot(q.x - cas.x, q.y - cas.y) / sc };
@@ -777,7 +813,7 @@ async function repondreDepart(page, valeur) {
       verifier(coll2.aDesTraces && coll2.bas.accessible && coll2.bas.dM > 0 && coll2.bas.dM <= 3.1 &&
         coll2.bas.niveau === -2, "POI du −2 sans tracé à ce niveau (le 0 en a) : point accessible le plus proche",
         coll2.bas);
-      verifier(coll2.zero.dM < 0.01, "POI du 0, tracé du 0 à plus de 6 m : tracker sur le POI", coll2.zero);
+      verifier(coll2.zero.dM < 0.01, "POI du 0, tracé du 0 à 40 m (plus de 10 m) : tracker sur le POI", coll2.zero);
     } else inf("pas d'image de collision exploitable : § 16 bis non testé");
 
     // § 17. « Y aller », tracker arrêté : la question se pose chaque fois ; Annuler ne fait rien ; « Me
@@ -824,14 +860,15 @@ async function repondreDepart(page, valeur) {
     await armerRecalage(page);
     xy = await cliquerCarte(page, P, 0, 0);
     e = await etat(page);
-    verifier(!e.fenetre && proche(e.pos, xy) && !e.mode, "clic de recalage : pas de fenêtre, recalé", e);
+    verifier(!e.fenetre && proche(e.pos, surAxe(xy, 5)) && !e.mode,
+      "clic de recalage : pas de fenêtre, recalé dans la galerie (tous niveaux : plan mono-niveau)", e);
     await page.evaluate(function () {
       window._ktaPickRecu = null;
       window.ktaDemanderPositionCarte(function (p) { window._ktaPickRecu = p; }, { texte: "test" });
     });
     xy = await cliquerCarte(page, P, 1, 0);
     e = await etat(page);
-    verifier(!e.fenetre && proche(e.pos, xy) && !e.picker, "picker : pas de fenêtre, recalé", e);
+    verifier(!e.fenetre && proche(e.pos, surAxe(xy, 5)) && !e.picker, "picker : pas de fenêtre, recalé dans la galerie", e);
     const recu4 = await page.evaluate(function () { return window._ktaPickRecu; });
     verifier(recu4 && recu4.niveau === undefined, "picker : pas de niveau rendu", recu4);
 

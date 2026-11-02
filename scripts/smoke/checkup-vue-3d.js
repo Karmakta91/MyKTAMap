@@ -2241,10 +2241,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return { pos: e.pos, niveau: e.niveau, mode: e.mode, fiche: e.fiche, bouge: e.aBouge, actif: window.getTrackingActif(),
           tr: window.getTrackingPosition(), trN: window.getTrackerLevel() };
       });
-      verifier(ici0 === 1 && ji.actif && ji.mode === "libre" && dist(ji.tr, SALLE) > 0.3 * G.sc && dist(ji.tr, SALLE) < 1 * G.sc,
-        "« Je suis ici » sur le POI : tracker mis dans la galerie (position ajustée)", ji);
+      // Le POI est à 0,6 m de l'axe du principal : déjà dans la galerie de la 3D, le tracker va sur lui.
+      verifier(ici0 === 1 && ji.actif && ji.mode === "libre" && dist(ji.tr, SALLE) < 0.01,
+        "« Je suis ici » sur un POI déjà dans la galerie : tracker sur le POI", ji);
       verifier(dist(ji.pos, pt(0, -3, 0)) < 0.01 && dist(ji.pos, ji.tr) > 1 && !ji.fiche && !ji.bouge,
-        "la 3D ne bouge pas (pas de téléportation à la position ajustée), fiche refermée", ji);
+        "la 3D ne bouge pas (pas de téléportation au tracker), fiche refermée", ji);
       const fq1 = await fermerSansQuestion();
       verifier(!fq1.question && fq1.recale === false && fq1.ouvert === false,
         "fermer juste après : pas de « Je suis ici ? » (on vient de dire où l'on est)", fq1);
@@ -2252,24 +2253,46 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.recalerTrackerSurPoint(a.x, a.y, 0, { dansGalerie: true });
         return window.getTrackingPosition();
       }, SALLE);
-      verifier(dist(ferme, ji.tr) < 0.01, "vue fermée : « Je suis ici » pose le tracker au même point ajusté", ferme);
-      // Suivi (constat, pas de règle) : la vue suit le tracker, donc saute au point recalé.
+      verifier(dist(ferme, ji.tr) < 0.01, "vue fermée : « Je suis ici » pose le tracker au même point", ferme);
+      // Suivi (décision produit) : « Je suis ici » (recalage `dansGalerie`, celui du bouton de la fiche) passe la vue
+      // en libre à cet instant, sans la bouger ; toast success ; le tracker est recalé (POI à 3 m de l'axe → sur
+      // l'axe). Le bouton du suivi la ramène ensuite au tracker.
       const suivi = await page.evaluate(function (a) {
-        const K = window.KtaVue3D;
+        const K = window.KtaVue3D, G = window.OOMGuard, show = G.showToast, toasts = [];
+        G.showToast = function (t, type) { toasts.push({ t: t, type: type }); return show.apply(G, arguments); };
+        const att = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         return K.ouvrir({}).then(function () {
           K.suivre();
-          const avant = { x: K.etat().pos.x, y: K.etat().pos.y, mode: K.etat().mode };
+          return att(400);
+        }).then(function () {
+          const e0 = K.etat(), avant = { x: e0.pos.x, y: e0.pos.y, mode: e0.mode, niveau: e0.niveau };
           window.recalerTrackerSurPoint(a.ici.x, a.ici.y, 0, { dansGalerie: true });
-          return new Promise(function (ok) { setTimeout(ok, 300); }).then(function () {
-            const e = K.etat(), r = { avant: avant, apres: { x: e.pos.x, y: e.pos.y, mode: e.mode },
-              tr: window.getTrackingPosition() };
-            return K.fermer().then(function () { return r; });
+          const e1 = K.etat(), tout = { x: e1.pos.x, y: e1.pos.y, mode: e1.mode };
+          return att(400).then(function () {
+            const e = K.etat(), r = { avant: avant, tout: tout, apres: { x: e.pos.x, y: e.pos.y, mode: e.mode,
+              niveau: e.niveau, bouge: e.aBouge }, tr: window.getTrackingPosition(), toasts: toasts.slice(),
+              texte: window.I18n.t("vue3d.libreApresRecalage") };
+            K.basculerSuivi();
+            return att(500).then(function () {
+              const e2 = K.etat();
+              r.retour = { x: e2.pos.x, y: e2.pos.y, mode: e2.mode };
+              G.showToast = show;
+              return K.fermer().then(function () { return r; });
+            });
           });
         });
-      }, { ici: pt(0, -10, 0.6) });
-      console.log("  ℹ️ suivi : « Je suis ici » pendant la 3D → place " +
-        (dist(suivi.apres, suivi.tr) < 0.01 ? "posée sur le tracker recalé (la vue le suit)" : "inchangée") +
-        " " + JSON.stringify(suivi));
+      }, { ici: pt(0, -10, 3) });
+      verifier(suivi.avant.mode === "suivi" && suivi.tout.mode === "libre" && suivi.apres.mode === "libre",
+        "suivi : « Je suis ici » passe la vue en libre à cet instant", suivi);
+      verifier(dist(suivi.apres, suivi.avant) < 0.01 && dist(suivi.tout, suivi.avant) < 0.01 &&
+        suivi.apres.niveau === suivi.avant.niveau && !suivi.apres.bouge,
+        "suivi : la position 3D ne change pas (ni tout de suite, ni aux images suivantes), niveau gardé", suivi);
+      verifier(dist(suivi.tr, pt(0, -10, 0)) < 0.01, "suivi : tracker recalé dans la galerie (POI à 3 m → axe)",
+        suivi.tr);
+      verifier(suivi.toasts.some(function (t) { return t.type === "success" && t.t === suivi.texte; }) &&
+        suivi.texte !== "vue3d.libreApresRecalage", "suivi : toast success « mode libre »", suivi.toasts);
+      verifier(suivi.retour.mode === "suivi" && dist(suivi.retour, suivi.tr) < 0.01,
+        "bouton du suivi : la vue repart sur le tracker recalé", suivi.retour);
       // c. « Me repositionner » : la 3D se ferme pour le picker « Où es-tu ? » ; une fois le point choisi (niveau
       // demandé si un autre niveau passe à moins de 10 m : on prend le 1), le tracker est recalé là et la 3D se
       // ROUVRE en libre, au point et au niveau choisis, cap gardé ; l'itinéraire en part ; fermer : pas de question.

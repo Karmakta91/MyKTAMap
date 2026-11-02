@@ -2450,6 +2450,7 @@
   "vue3d.texturesMontrer": "Structures en pierre de taille et en parpaing, ou aux couleurs de la légende (cet appareil)",
   "vue3d.etatSuivi": "Suivi",
   "vue3d.etatLibre": "Libre",
+  "vue3d.libreApresRecalage": "🕹️ Mode libre : la vue 3D reste où tu es, le tracker est recalé",
   "vue3d.suivre": "Mode suivi : la vue suit le tracker et la boussole du téléphone",
   "vue3d.ficheFermer": "Fermer la fiche",
   "vue3d.inclinaisonPlus": "Vue plus verticale",

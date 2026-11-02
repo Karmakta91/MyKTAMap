@@ -2422,6 +2422,7 @@
   "vue3d.stats": "{ips} imágenes/s · {tri} triángulos · {appels} llamadas",
   "vue3d.etatSuivi": "Seguimiento",
   "vue3d.etatLibre": "Libre",
+  "vue3d.libreApresRecalage": "🕹️ Modo libre: la vista 3D se queda donde estás, el tracker se ha reubicado",
   "vue3d.suivre": "Modo seguimiento: la vista sigue al tracker y a la brújula del teléfono",
   "vue3d.ficheFermer": "Cerrar la ficha",
   "vue3d.plongee": "Vista aérea",

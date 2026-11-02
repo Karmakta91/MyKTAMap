@@ -2422,6 +2422,7 @@
   "vue3d.stats": "{ips} frames/s · {tri} triangles · {appels} calls",
   "vue3d.etatSuivi": "Follow",
   "vue3d.etatLibre": "Free",
+  "vue3d.libreApresRecalage": "🕹️ Free mode: the 3D view stays where you are, the tracker is repositioned",
   "vue3d.suivre": "Follow mode: the view follows the tracker and the phone's compass",
   "vue3d.ficheFermer": "Close the card",
   "vue3d.plongee": "Bird's-eye view",
