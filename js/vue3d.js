@@ -84,6 +84,19 @@
   const HALO = { r0: 0.45, r1: 0.7, y: 0.03, opacite: 0.85, fond: 0.18 };
   const MEMBRE = { rayon: 0.22, haut: 1.7, tete: 0.14 };   // m : silhouette d'un membre (extension)
   const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
+  // Panneau d'un passage (POI jonction) : lisible jusqu'à 1 m (là où 🪜 apparaît), effacé seulement sous 0,8 m.
+  const PRES_PASSAGE = { min: 0.8, net: 1 };
+  // Volumes des passages (_construireVolume) : escalier 2,5 × 1,5 m à `marches` marches, puits carré de 1,2 m, tube
+  // d'aération de 0,8 m ; `long` m sous le sol ou au-dessus du plafond (le reste se perd dans le noir) ; échelons tous
+  // les 0,3 m ; rampe d'un tracé jonction de 1 m ; cadre doré au sol de 8 cm, à 12 cm de la bouche.
+  const VOLUME = { long: 6, escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, echelon: 0.3, marches: 10, rampe: 1,
+    cadre: 0.08, marge: 0.12 };
+  const COULEUR_FER = "#5e5a52";    // échelons, montants, grille : couleur de la scène, pas de la charte de l'UI
+  // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
+  // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
+  // « Niveau n » `bandeau` ms.
+  const GESTE = { ms: 1000, fondu: 250, auDela: 0.8, bandeau: 2000 };
+  const PASSAGE_ITI = 3;            // m : itinéraire à moins de cette distance de l'arrivée → cap vers sa consigne
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
   const SEUIL_RECALAGE = 0.5;       // m d'écart avec le tracker sous lequel « Je suis ici ? » ne se pose pas
   // Chevrons au sol sur l'itinéraire, de sa position vers la prochaine consigne : un tous les `pas` m (posés à des
@@ -96,6 +109,7 @@
   let _e = null;                    // état de la vue ouverte (null = fermée)
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
   let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
+  let _gesteAnime = true;           // false : passage sans fondu ni descente (checkup des parties anciennes)
 
   // Textes lus au rendu (langue courante) ; sans I18n, la clé.
   function _t(cle, p) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(cle, p) : cle; }
@@ -243,6 +257,7 @@
     if (niveau === null) return out;
     if (J && typeof J.pointsJonction === "function") {
       J.pointsJonction().forEach(function (p) {
+        if (!J.moyen(_premierTag(p))) return;   // puits d'aération (pa) : ni 🪜 ni passage
         const nv = J.niveaux(p), acc = J.accroches(p);
         if (nv.indexOf(niveau) < 0) return;
         const raccord = function (n) { return acc.filter(function (a) { return a.level === n; })[0] || null; };
@@ -845,6 +860,19 @@
     return D && typeof D.estDanger === "function" ? D.estDanger(p) : _premierTag(p) === "danger";
   }
 
+  // Passage entre niveaux qu'on peut prendre : POI jonction avec un moyen (escalier, échelons, corde ; pas pa).
+  function _estPassage(p) {
+    const J = window.KtaPoiJonction;
+    return !!J && !!p && J.estJonction(p) && !!J.moyen(_premierTag(p));
+  }
+
+  // Couleur du tracé `jonction` du canon (celle de la légende), repli : magenta de la charte sombre.
+  function _couleurJonction(coul) {
+    const s = typeof window.ktaResolveStyle === "function"
+      ? window.ktaResolveStyle("traces", "jonction", { flat: true }) : null;
+    return (s && s.color) || coul.magenta;
+  }
+
   function _estFavori(p) {
     const F = window.Favoris;
     try { return !!F && typeof F.isFav === "function" && F.isFav(p.id, p.uid); } catch (err) { return false; }
@@ -872,7 +900,8 @@
     const POLICE = "600 30px system-ui, -apple-system, sans-serif";
     const coul = _jetonsSombres();
     const danger = !o.bord && _estDanger(p), favori = !o.bord && _estFavori(p);
-    const bord = o.bord || (danger ? coul.erreur : coul.accent);
+    const passage = !o.bord && _estPassage(p._v3dJonction || p);
+    const bord = o.bord || (danger ? coul.erreur : passage ? _couleurJonction(coul) : coul.accent);
     // Même titre que la fiche 2D (utils.js > buildPointPopupHtml : `nom`) ; l'id n'est qu'un repli technique.
     const nom = String(p.nom || p.name || p.id || (Array.isArray(p.tags) && p.tags[0]) || "").slice(0, 120);
     let url = null;
@@ -928,6 +957,16 @@
           try { ctx.drawImage(img, PAD + 8, (H - ICONE) / 2 + 8, ICONE - 16, ICONE - 16); } catch (err) { /* illisible */ }
         }
       }
+      if (passage) {
+        // ↕ dans une pastille à la couleur du liseré, au coin de l'icône : le passage entre niveaux.
+        const bx = url ? PAD + ICONE - 4 : L - PAD - 18, by = url ? (H - ICONE) / 2 + 4 : PAD + 14;
+        ctx.beginPath(); ctx.arc(bx, by, 17, 0, Math.PI * 2); ctx.fillStyle = bord; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = coul.fond; ctx.stroke();
+        ctx.fillStyle = coul.fond; ctx.font = "700 26px system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("↕", bx, by + 1);
+        ctx.textAlign = "start";
+      }
       if (favori) {
         _etoile(ctx, L - PAD - ETOILE / 2 + 4, PAD + ETOILE / 2 - 2, ETOILE / 2 - 2);
         ctx.fillStyle = coul.accent; ctx.fill();
@@ -952,7 +991,7 @@
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
     sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
-    const J = window.KtaPoiJonction, jonction = p._v3dJonction || (J && J.estJonction(p) ? p : null);
+    const jonction = passage ? (p._v3dJonction || p) : null;
     // `point` : le POI d'origine (celui de la carte), dont la fiche s'ouvre au toucher (_toucher).
     sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction,
       danger: danger, favori: favori, bord: bord, genre: o.genre || "poi", point: p._v3dJonction || p };
@@ -1077,7 +1116,8 @@
       const dc = Math.hypot(x - cam.x, sp.position.y - cam.y, z - cam.z);
       const halo = sp.userData.halo;
       if (halo) { halo.visible = k <= 1; halo.position.x = x; halo.position.z = z; }
-      sp.visible = k <= 1 && dc >= PRES.min;
+      const pr = u.jonction ? PRES_PASSAGE : PRES;
+      sp.visible = k <= 1 && dc >= pr.min;
       if (!sp.visible) return;
       sp.position.x = x; sp.position.z = z;
       // Profondeur devant la caméra (la largeur à l'écran en dépend) ; derrière elle, la distance suffit.
@@ -1086,7 +1126,7 @@
       const l = Math.min(PANNEAU.l * (1 - 0.5 * k), PRES.ecran * 2 * (prof > 0 ? prof : dc) * demiChamp);
       const f = sp.userData.part || 1;
       sp.scale.set(l * f, l * f * ratio, 1);
-      const pres = Math.min(1, (dc - PRES.min) / (PRES.net - PRES.min));
+      const pres = Math.min(1, (dc - pr.min) / (pr.net - pr.min));
       sp.material.opacity = (1 - 0.6 * k) * pres;
     });
   }
@@ -1204,7 +1244,7 @@
     monde.offset.set(0, 0);
     monde.needsUpdate = true;
     _e.moellons = _moellons();
-    return {
+    const m = {
       opaque: new THREE.MeshLambertMaterial({ vertexColors: true }),
       murs: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1,
         polygonOffsetUnits: 1 }),
@@ -1225,6 +1265,22 @@
       eauGalerie: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
         depthWrite: true, depthFunc: THREE.LessDepth, side: THREE.DoubleSide })
     };
+    // Bouches des passages (_construireVolume) : dessinées avant tout (renderOrder −1), sans couleur ni profondeur,
+    // elles marquent le gabarit (1 = sol, 2 = plafond) ; sol et plafond ne se dessinent pas là : on voit dans le puits.
+    // ⚠️ Le contexte est créé avec `stencil: true` (ouvrir) ; le gabarit est effacé à chaque image (three.js).
+    const bouche = function (ref) {
+      return new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide,
+        stencilWrite: true, stencilRef: ref, stencilFunc: THREE.AlwaysStencilFunc,
+        stencilZPass: THREE.ReplaceStencilOp });
+    };
+    m.boucheSol = bouche(1);
+    m.bouchePlafond = bouche(2);
+    [[m.sol, 1], [m.solGalerie, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
+      x[0].stencilWrite = true;   // test du gabarit (opérations « garder » : rien n'y est écrit)
+      x[0].stencilRef = x[1];
+      x[0].stencilFunc = THREE.NotEqualStencilFunc;
+    });
+    return m;
   }
 
   function _monterScene() {
@@ -1237,6 +1293,7 @@
     e.camera.rotation.order = "YXZ";
     e.scene.add(e.camera);
     e.mats = _materiaux();
+    e.texCiel = null;   // 🩸 refaite avec la scène (reprise du contexte) : jamais celle de l'ancien contexte
     // Sol et plafond : un carré qui suit la position, plus grand que la distance de vue.
     const plan = new THREE.PlaneGeometry(e.distance * 2.4, e.distance * 2.4, 8, 8);
     plan.rotateX(-Math.PI / 2);
@@ -1409,6 +1466,8 @@
     e.tuiles.forEach(_libererTuile);
     _razCompteurs();
     _gererTuiles(true);
+    (e.volPassages || []).forEach(_libererVolume);
+    _gererVolumes();
     e.sale = true;
   }
 
@@ -1432,10 +1491,376 @@
     if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
     e.passages = _passages(e.niveau, d.jonctions);
     e.passageSig = null;
+    (e.volPassages || []).forEach(_libererVolume);
+    e.volPassages = _volumesDuNiveau(d);
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
     e.msIndex = performance.now() - t0;
     _appliquerRendu();
     _gererTuiles(true);
+    _gererVolumes();
+  }
+
+  // ── Volumes des passages entre niveaux (POI jonction, puits de surface, tracé jonction) ─────────────────
+  // ⚠️ contrat (décision produit) : un POI jonction ou un puits de surface montre son volume là où est son panneau
+  // (raccord validé du niveau, sinon le point), selon son moyen (KtaPoiJonction.moyen) : escalier (jes, eso) = cage
+  // de 2,5 × 1,5 m à marches ; échelons (jpe, peo) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ;
+  // corde (jps) = puits nu. Ouvert dans le SOL vers un niveau lié au-dessous, dans le PLAFOND vers un niveau lié
+  // au-dessus (le volume dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface
+  // (peo, eso au plus haut de leurs niveaux ; pa partout) : plafond seulement, disque de ciel au sommet (peo, eso) ou
+  // tube de 0,8 m à grille (pa, sans moyen : ni 🪜 ni passage). Cadre doré au sol d'un passage, panneau au-dessus.
+  // Un tracé `jonction` devient une rampe à la couleur du canon : du sol au plafond vers un niveau au-dessus, du sol
+  // vers le bas, dans une tranchée ouverte, vers un niveau au-dessous.
+  // Construits à portée seulement (_gererVolumes, la règle des tuiles) : rien hors de la distance de vue. Aucune
+  // collision : le pas reste la règle du tracker. Les bouches trouent sol et plafond par le gabarit (_materiaux).
+
+  function _volumesDuNiveau(d) {
+    const e = _e, J = window.KtaPoiJonction, N = e.niveau, out = [];
+    if (!J) return out;
+    d.points.forEach(function (p) {
+      const src = p._v3dJonction || p, tag = _premierTag(src);
+      if (!J.porteNiveaux(tag)) return;
+      const moyen = J.moyen(tag);
+      const autres = N === null || !J.estJonction(src) ? []
+        : J.niveaux(src).filter(function (n) { return n !== N; });
+      const dessus = autres.some(function (n) { return _auDessus(n, N); });
+      const dessous = autres.some(function (n) { return !_auDessus(n, N); });
+      const surface = J.TAGS_SURFACE_NIVEAUX.indexOf(tag) >= 0 && !dessus;
+      const v = { genre: "poi", tag: tag, moyen: moyen, x: p.x, y: p.y,
+        forme: !moyen ? "aeration" : moyen === "escalier" ? "escalier" : "puits",
+        sol: !!moyen && dessous, plafond: !moyen || dessus || surface, ciel: !!moyen && surface, grille: !moyen,
+        echelons: moyen === "echelons", passage: !!moyen && autres.length > 0 };
+      if (!v.sol && !v.plafond) return;   // passage sans autre niveau (plan à un niveau) : rien à ouvrir
+      const dim = v.forme === "escalier" ? VOLUME.escalier
+        : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
+      v.a = dim[0] / 2; v.b = dim[1] / 2;
+      v.dir = _dirGalerie(p.x, p.y);
+      v.cx = p.x / e.sc; v.cz = p.y / e.sc;
+      v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
+      out.push(v);
+    });
+    if (N === null || !_typeTraceMontre("jonction")) return out;
+    d.jonctions.forEach(function (r) {
+      if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) return;
+      if (r.fromLevel !== N && r.toLevel !== N) return;
+      let pts = r.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+      if (pts.length < 2) return;
+      if (r.fromLevel !== N) pts = pts.slice().reverse();   // la rampe part toujours de notre bout
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      pts.forEach(function (q) {
+        x0 = Math.min(x0, q.x / e.sc); x1 = Math.max(x1, q.x / e.sc);
+        z0 = Math.min(z0, q.y / e.sc); z1 = Math.max(z1, q.y / e.sc);
+      });
+      const monte = _auDessus(r.fromLevel === N ? r.toLevel : r.fromLevel, N);
+      out.push({ genre: "rampe", pts: pts, monte: monte, sol: !monte, plafond: false, x: pts[0].x, y: pts[0].y,
+        cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, r: Math.hypot(x1 - x0, z1 - z0) / 2 + VOLUME.rampe });
+    });
+    return out;
+  }
+
+  // Angle (rad, plan x / z) de l'axe de galerie le plus proche (10 m), 0 sans galerie : la cage d'escalier s'aligne.
+  function _dirGalerie(x, y) {
+    const e = _e, niv = e.niveau === null ? undefined : e.niveau;
+    const m = e.galerie || e.mixte || (window.KtaGalerie ? window.KtaGalerie.modele(niv) : null);
+    const pp = m ? m.plusProche(x, y, 10 * e.sc) : null;
+    if (!pp) return 0;
+    const r = m.aretes[pp.arete];
+    return Math.atan2(r.by - r.ay, r.bx - r.ax);
+  }
+
+  // Volumes à portée construits, lointains libérés : la règle des tuiles (_gererTuiles).
+  function _gererVolumes() {
+    const e = _e;
+    if (!e.volPassages || !e.volPassages.length) return;
+    const px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
+    const rVue = e.vue === "plongee" ? e.distance * 1.4 : e.distance, rGarde = rVue + 2 * TUILE;
+    for (let i = 0; i < e.volPassages.length; i++) {
+      const v = e.volPassages[i], d = Math.max(0, Math.hypot(v.cx - px, v.cz - pz) - v.r);
+      if (d <= rVue) { if (!v.obj) _construireVolume(v); }
+      else if (d > rGarde && v.obj) _libererVolume(v);
+    }
+  }
+
+  function _libererVolume(v) {
+    const e = _e;
+    if (!v.obj) return;
+    // 🩸 Après une perte du contexte, la scène a été remontée : un objet de l'ancienne n'est jamais libéré
+    // (dispose() effacerait sur le nouveau contexte des objets qui n'en sont pas).
+    if (v.obj.parent === e.scene) {
+      v.obj.traverse(function (o) {
+        if (o.geometry && !o.isSprite) o.geometry.dispose();
+        if (o.isSprite && o.material) o.material.dispose();   // texture du ciel : celle de la vue (_e.texCiel)
+      });
+      e.scene.remove(v.obj);
+      e.sale = true;
+    }
+    v.obj = null;
+  }
+
+  function _couleurFixe(hex) {
+    const k = "fixe|" + hex;
+    let c = _e.couleurs.get(k);
+    if (!c) { c = new THREE.Color(hex); _e.couleurs.set(k, c); }
+    return c;
+  }
+
+  // Repère du volume (m) : s le long de la galerie (v.dir), t en travers, centre (v.cx, v.cz).
+  function _repere(v) {
+    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    return function (s, t) { return [v.cx + ux * s - uz * t, v.cz + uz * s + ux * t]; };
+  }
+
+  function _sensPositif(ring) {
+    let aire = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) aire += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+    return aire < 0 ? ring.slice().reverse() : ring;
+  }
+
+  // Pavé (repère du volume) de s0..s1 × t0..t1, de y0 à y1, dessus et dessous compris (échelons vus d'en bas).
+  function _pave(lot, Q, s0, s1, t0, t1, y0, y1, col) {
+    const ring = _sensPositif([Q(s0, t0), Q(s1, t0), Q(s1, t1), Q(s0, t1)]);
+    _prisme(lot, ring, y0, y1, col, true);
+    lot.quad([ring[0][0], y0, ring[0][1]], [ring[1][0], y0, ring[1][1]], [ring[2][0], y0, ring[2][1]],
+      [ring[3][0], y0, ring[3][1]], [0, -1, 0], col);
+  }
+
+  // Paroi en moellons de y0 à y1 (m), texture en mètres comme _paroi (une assise part de y = 0).
+  function _paroiY(lot, p, q, y0, y1) {
+    const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+    if (l < 1e-6 || y1 <= y0) return;
+    const lm = MOELLON.l * MOELLONS_MOTIF.l, hm = MOELLON.h * MOELLONS_MOTIF.h;
+    const u0 = (p[0] * dx + p[1] * dz) / l / lm, u1 = u0 + l / lm;
+    lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], [-dz / l, 0, dx / l], BLANC,
+      [u0, y0 / hm, u1, y0 / hm, u1, y1 / hm, u0, y1 / hm]);
+  }
+
+  function _quadPlat(lot, ring, y, col) {
+    lot.quad([ring[0][0], y, ring[0][1]], [ring[1][0], y, ring[1][1]], [ring[2][0], y, ring[2][1]],
+      [ring[3][0], y, ring[3][1]], [0, 1, 0], col || BLANC);
+  }
+
+  // Disque de ciel (sommet d'un puits de surface ouvert) : dégradé clair, non éclairé, une texture pour la vue.
+  const COULEURS_CIEL = ["#fdfbf3", "#d5e2ee"];   // couleurs de la scène (jour au bout du puits), pas de l'UI
+  function _texCiel() {
+    const n = 64, cv = document.createElement("canvas");
+    cv.width = n; cv.height = n;
+    const ctx = cv.getContext("2d"), g = ctx.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+    g.addColorStop(0, COULEURS_CIEL[0]);
+    g.addColorStop(0.75, COULEURS_CIEL[1]);
+    g.addColorStop(1, "rgba(213, 226, 238, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, n, n);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  function _construireVolume(v) {
+    const e = _e, lots = { parois: new Lot(), opaque: new Lot(), lumineux: new Lot(), sol: new Lot(),
+      plafond: new Lot() };
+    const g = new THREE.Group();
+    g.userData.famille = "passage";
+    if (v.genre === "rampe") _rampe(v, lots); else _puits(v, lots, g);
+    const ajouter = function (lot, mat, ordre, famille) {
+      const geo = lot.geometrie();
+      if (!geo) return;
+      const me = new THREE.Mesh(geo, mat);
+      me.renderOrder = ordre;
+      me.matrixAutoUpdate = false;
+      me.userData.famille = famille;
+      g.add(me);
+    };
+    ajouter(lots.sol, e.mats.boucheSol, -1, "boucheSol");
+    ajouter(lots.plafond, e.mats.bouchePlafond, -1, "bouchePlafond");
+    ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
+    ajouter(lots.opaque, e.mats.opaque, 0, "passage");
+    ajouter(lots.lumineux, e.mats.lumineux, 1, "cadre");
+    let y0 = Infinity, y1 = -Infinity;
+    [lots.parois, lots.opaque].forEach(function (l) {
+      for (let i = 1; i < l.p.length; i += 3) { y0 = Math.min(y0, l.p[i]); y1 = Math.max(y1, l.p[i]); }
+    });
+    const n = function (l) { return l.p.length / 9; };
+    v.stats = { triangles: n(lots.parois) + n(lots.opaque) + n(lots.lumineux), bouchesSol: n(lots.sol),
+      bouchesPlafond: n(lots.plafond), cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
+      yMax: Number.isFinite(y1) ? +y1.toFixed(2) : null,
+      cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }) };
+    e.scene.add(g);
+    v.obj = g;
+    e.sale = true;
+  }
+
+  function _puits(v, lots, g) {
+    const e = _e, h = e.hauteur, L = VOLUME.long, Q = _repere(v), a = v.a, b = v.b;
+    const ring = _sensPositif([Q(-a, -b), Q(a, -b), Q(a, b), Q(-a, b)]);
+    const murs = function (y0, y1) {
+      for (let k = 0; k < 4; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % 4], y0, y1);
+    };
+    if (v.sol) { murs(-L, 0); _quadPlat(lots.sol, ring, 0); }
+    if (v.plafond) { murs(h, h + L); _quadPlat(lots.plafond, ring, h); }
+    if (v.forme === "escalier") _marches(v, lots.opaque, Q, _couleurFixe(COULEUR_CALCAIRE));
+    if (v.echelons) _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER));
+    if (v.grille) {
+      // Grille au-dessus du plafond : barreaux croisés tous les 15 cm.
+      const fer = _couleurFixe(COULEUR_FER), y = h + 0.25;
+      for (let k = -2; k <= 2; k++) {
+        const c = k * 0.15;
+        _pave(lots.opaque, Q, -a, a, c - 0.015, c + 0.015, y, y + 0.03, fer);
+        _pave(lots.opaque, Q, c - 0.015, c + 0.015, -b, b, y + 0.03, y + 0.06, fer);
+      }
+    }
+    if (v.ciel) {
+      if (!e.texCiel) e.texCiel = _texCiel();
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: e.texCiel, fog: false, depthWrite: false,
+        toneMapped: false, transparent: true }));
+      const c = Q(0, 0), r = 2 * Math.min(a, b) * 0.95;
+      sp.position.set(c[0], h + L - 0.05, c[1]);
+      sp.scale.set(r, r, 1);
+      sp.renderOrder = 2;
+      sp.userData.famille = "ciel";
+      g.add(sp);
+    }
+    if (v.passage) {
+      // Cadre doré au sol autour de la bouche (accent sombre, non éclairé : lisible hors du faisceau).
+      const or = _couleurFixe(_jetonsSombres().accent), y = 0.025;
+      const a1 = a + VOLUME.marge, b1 = b + VOLUME.marge, a2 = a1 + VOLUME.cadre, b2 = b1 + VOLUME.cadre;
+      [[-a2, a2, -b2, -b1], [-a2, a2, b1, b2], [-a2, -a1, -b1, b1], [a1, a2, -b1, b1]].forEach(function (r) {
+        _quadPlat(lots.lumineux, _sensPositif([Q(r[0], r[2]), Q(r[1], r[2]), Q(r[1], r[3]), Q(r[0], r[3])]), y, or);
+      });
+    }
+  }
+
+  // Marches d'une cage d'escalier, le long de la galerie : vers le haut (du sol, à travers le plafond) et / ou vers le
+  // bas (du sol dans le puits) ; entre trois niveaux, une volée par moitié de largeur.
+  function _marches(v, lot, Q, col) {
+    const h = _e.hauteur, n = VOLUME.marches, a = v.a, b = v.b, pas = 2 * a / n, haut = (h + 0.4) / n;
+    const monte = v.plafond && !v.grille, deux = monte && v.sol;
+    for (let k = 0; k < n; k++) {
+      const s0 = -a + k * pas, s1 = s0 + pas;
+      if (monte) _pave(lot, Q, s0, s1, deux ? 0 : -b, b, 0, (k + 1) * haut, col);
+      if (v.sol) _pave(lot, Q, s0, s1, -b, deux ? 0 : b, -VOLUME.long, -(k + 1) * haut, col);
+    }
+  }
+
+  // Échelle scellée contre une paroi : échelons tous les VOLUME.echelon m et deux montants ; vers le bas, les montants
+  // dépassent du sol d'un mètre (la sortie).
+  function _echellePuits(v, lot, Q, col) {
+    const h = _e.hauteur, L = VOLUME.long, tw = -v.b + 0.12;
+    const yA = v.sol ? -L : 0, yB = v.plafond ? h + L : 1, yR = v.plafond ? h + L : 0;
+    for (let y = yA + VOLUME.echelon / 2; y <= yR; y += VOLUME.echelon) {
+      _pave(lot, Q, -0.2, 0.2, tw - 0.02, tw + 0.02, y - 0.02, y + 0.02, col);
+    }
+    _pave(lot, Q, -0.25, -0.2, tw - 0.03, tw + 0.03, yA, yB, col);
+    _pave(lot, Q, 0.2, 0.25, tw - 0.03, tw + 0.03, yA, yB, col);
+  }
+
+  // Rampe d'un tracé jonction : ruban incliné, couleur du canon. Vers un niveau au-dessus, du sol (notre bout) au
+  // plafond (l'autre bout) ; au-dessous, du sol à −hauteur dans une tranchée (bouche au sol, parois en moellons).
+  function _rampe(v, lots) {
+    const e = _e, sc = e.sc, h = e.hauteur, w = VOLUME.rampe / 2, col = _couleur("traces", "jonction", "color");
+    const pts = v.pts.map(function (q) { return [q.x / sc, q.y / sc]; }), cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    }
+    const tot = cum[cum.length - 1] || 1, H = v.monte ? h - 0.05 : -h, wt = w + 0.1;
+    let der = null;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const A = pts[i], B = pts[i + 1], dx = B[0] - A[0], dz = B[1] - A[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const nx = -dz / l, nz = dx / l, ya = 0.03 + H * cum[i] / tot, yb = 0.03 + H * cum[i + 1] / tot;
+      lots.opaque.quad([A[0] - nx * w, ya, A[1] - nz * w], [B[0] - nx * w, yb, B[1] - nz * w],
+        [B[0] + nx * w, yb, B[1] + nz * w], [A[0] + nx * w, ya, A[1] + nz * w], [0, 1, 0], col);
+      if (!v.monte) {
+        const g0 = [A[0] - nx * wt, A[1] - nz * wt], g1 = [B[0] - nx * wt, B[1] - nz * wt];
+        const d0 = [A[0] + nx * wt, A[1] + nz * wt], d1 = [B[0] + nx * wt, B[1] + nz * wt];
+        _quadPlat(lots.sol, [g0, g1, d1, d0], 0);
+        _paroiY(lots.parois, g0, g1, -h - 0.1, 0);
+        _paroiY(lots.parois, d0, d1, -h - 0.1, 0);
+        der = [g1, d1];
+      }
+    }
+    if (der) _paroiY(lots.parois, der[0], der[1], -h - 0.1, 0);   // fond de la tranchée
+  }
+
+  // ── Geste d'un passage : fondu noir, descente / montée, bandeau du niveau ────────────────────────────────
+  // ⚠️ contrat (décision produit) : un changement de niveau se fait derrière un fondu noir (GESTE.fondu ms, voile
+  // aux jetons sombres, _majFondu) ; la scène du niveau d'arrivée est construite pendant le noir (`bascule`).
+  // Passage 🪜 ou fiche : la caméra s'enfonce (ou monte) dans le volume pendant la première moitié de GESTE.ms, puis
+  // arrive du plafond (ou du sol) du niveau d'arrivée ; mouvement vertical lent, sans rotation, tenu par `dt` dans la
+  // boucle d'image (rendu continu pendant le geste seulement). Niveau du tracker changé en suivi : le fondu seul.
+  // Puis le bandeau « Niveau n » GESTE.bandeau ms. L'appareil demande moins de mouvement : fondu seul.
+  function _mouvementReduit() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (err) { return false; }
+  }
+
+  function _lisse(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+
+  // sens : 1 monte, −1 descend, 0 fondu seul ; bascule() : appelée au noir.
+  function _lancerGeste(sens, bascule) {
+    const e = _e, s = _mouvementReduit() ? 0 : sens;
+    const bas = e.oeil + GESTE.auDela, haut = e.hauteur - e.oeil + GESTE.auDela;
+    e.geste = { t: 0, sens: s, d1: s > 0 ? haut : bas, d2: s > 0 ? bas : haut, bascule: bascule, fait: false };
+    e.sale = true;
+  }
+
+  function _majGeste(dt) {
+    const e = _e, g = e.geste, F = GESTE.fondu, T = g.sens ? GESTE.ms : 2 * F, M = T / 2;
+    g.t += dt * 1000;
+    const t = Math.min(g.t, T);
+    let op;
+    if (t < M) {
+      e.dy = g.sens * g.d1 * _lisse(t / M);
+      op = (t - (M - F)) / F;
+    } else {
+      if (!g.fait) {
+        g.fait = true;
+        try { g.bascule(); } catch (err) { console.warn("[Vue3D] bascule de niveau :", err && err.message); }
+        if (!_e) return;
+      }
+      e.dy = -g.sens * g.d2 * (1 - _lisse((t - M) / M));
+      op = 1 - (t - M) / F;
+    }
+    _majFondu(Math.max(0, Math.min(1, op)));
+    e.sale = true;
+    if (g.t >= T) { e.geste = null; e.dy = 0; _majFondu(0); }
+  }
+
+  // Voile noir (fond des jetons sombres, quel que soit le thème) au-dessus de la scène, sous les boutons.
+  function _majFondu(op) {
+    const e = _e;
+    e.fonduOp = op;
+    if (!e.fondu) {
+      if (op <= 0) return;
+      const f = document.createElement("div");
+      f.className = "kta-v3d-fondu";
+      f.setAttribute("aria-hidden", "true");
+      f.style.setProperty("--kta-v3d-fondu-fond", _jetonsSombres().fond);
+      e.ov.insertBefore(f, e.cv.nextSibling);
+      e.fondu = f;
+    }
+    e.fondu.hidden = op <= 0;
+    e.fondu.style.opacity = String(op);
+  }
+
+  function _annoncerNiveau() {
+    const e = _e;
+    if (!e || e.niveau === null || !e.ov) return;
+    if (!e.bandeauNiveau) {
+      const b = document.createElement("div");
+      b.className = "kta-v3d-bandeau-niveau";
+      b.setAttribute("role", "status");
+      b.setAttribute("aria-live", "polite");
+      e.ov.appendChild(b);
+      e.bandeauNiveau = b;
+    }
+    e.bandeauNiveau.textContent = _t("vue3d.niveauBandeau", { n: _fmtNiveau(e.niveau) });
+    e.bandeauNiveau.hidden = false;
+    e.bandeauNiveauFin = performance.now() + GESTE.bandeau;
+  }
+
+  function _majBandeauNiveau(ts) {
+    const e = _e, b = e.bandeauNiveau;
+    if (b && !b.hidden && ts >= e.bandeauNiveauFin) b.hidden = true;
   }
 
   // ── Rendu mixte / structures / galerie (interrupteur à trois états, retenu par plan) ─────────────────────
@@ -1508,7 +1933,8 @@
 
   function _placerCamera() {
     const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, cap = e.cap * Math.PI / 180;
-    e.tete.position.set(x, e.oeil, z);
+    const dy = e.dy || 0;   // geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume
+    e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(x, 0, z);
     // Le carré de sol suit la position : le motif est décalé d'autant pour rester fixe sous les pieds.
@@ -1522,7 +1948,7 @@
       e.camera.position.set(vx - fx * h, RECUL_PLONGEE * Math.sin(i), vz - fz * h);
       e.camera.lookAt(vx, 0, vz);
     } else {
-      e.camera.position.set(x, e.oeil, z);
+      e.camera.position.set(x, e.oeil + dy, z);
       e.camera.rotation.set(e.tangage, -cap, 0);
     }
     _majPanneaux();
@@ -1619,7 +2045,6 @@
     const e = _e;
     e.pos.x = x; e.pos.y = y;
     e.aBouge = true; e.libreBouge = true;
-    e.passageForce = null;
     e.sale = true;
   }
 
@@ -1642,8 +2067,17 @@
     return false;
   }
 
+  // 🩸 Mixte : une arrivée hors du tube mais près de son axe (accroche posée à côté) restait dans la roche, d'où
+  // un pas était possible sans jamais pouvoir franchir la paroi pour entrer. ⚠️ contrat : comme en galerie, hors
+  // des tubes et à moins de smartNavRadiusM d'un axe qui est en tube à cet endroit (pas dans une chambre) = coincé.
   function _coince(x, y) {
-    if (_e.galerie) return !window.KtaGalerie.dedans(x, y, _niveauPas());
+    const e = _e;
+    if (e.galerie) return !window.KtaGalerie.dedans(x, y, _niveauPas());
+    const m = e.mixte;
+    if (m && m.pieces.length && !m.dedans(x, y) && !m.enChambre(x, y)) {
+      const pp = m.plusProche(x, y, _rayonLibre());
+      if (pp && m.tubeAu(pp.arete, pp.t)) return true;
+    }
     return !_pasPossible(x, y);
   }
 
@@ -1764,14 +2198,13 @@
     return Number.isFinite(za) && Number.isFinite(zb) && za !== zb ? za > zb : a > b;
   }
 
-  // Niveaux proposés : ceux des passages à moins de PASSAGE m (le plus proche d'abord), ou du passage touché.
+  // Niveaux proposés : ceux des passages à moins de PASSAGE m, le plus proche d'abord.
   function _ciblesProches() {
     const e = _e;
     if (e.mode !== "libre" || !e.passages || !e.passages.length) return [];
     const loin = function (p) { return Math.hypot(p.x - e.pos.x, p.y - e.pos.y) / e.sc; };
-    const liste = e.passageForce ? [{ p: e.passageForce, d: loin(e.passageForce) }]
-      : e.passages.map(function (p) { return { p: p, d: loin(p) }; })
-        .filter(function (q) { return q.d <= PASSAGE; }).sort(function (a, b) { return a.d - b.d; });
+    const liste = e.passages.map(function (p) { return { p: p, d: loin(p) }; })
+      .filter(function (q) { return q.d <= PASSAGE; }).sort(function (a, b) { return a.d - b.d; });
     const vus = {}, out = [];
     liste.forEach(function (q) {
       q.p.cibles.forEach(function (c) {
@@ -1800,7 +2233,9 @@
     const cibles = _ciblesProches();
     const nHaut = cibles.filter(function (c) { return _auDessus(c.niveau, e.niveau); }).length;
     const liste = nHaut > 1 || cibles.length - nHaut > 1;
-    const sig = cibles.map(function (c) { return c.niveau; }).join(",") + (liste ? "|liste" : "") + "|" + e.niveau;
+    // 🩸 Le nom du passage est dans la signature : deux passages vers le même niveau gardaient le libellé du premier.
+    const sig = cibles.map(function (c) { return c.niveau + ":" + _textePassage(c).long; }).join(",") +
+      (liste ? "|liste" : "") + "|" + e.niveau;
     if (sig === e.passageSig) return;
     e.passageSig = sig;
     e.passageCibles = { haut: null, bas: null, liste: [] };
@@ -1814,42 +2249,89 @@
     boite.appendChild(marque);
     if (liste) {
       cibles.slice().sort(function (a, b) { return _auDessus(a.niveau, b.niveau) ? -1 : 1; }).forEach(function (c) {
-        const n = _fmtNiveau(c.niveau), fl = _auDessus(c.niveau, e.niveau) ? "▲ " : "▼ ";
+        const t = _textePassage(c);
         e.passageCibles.liste.push(c);
-        _bouton(boite, "kta-v3d-btn-mode", fl + n, _t("vue3d.niveauAller", { n: n }), "niveau")
+        _bouton(boite, "kta-v3d-btn-mode kta-v3d-btn-passage", t.court,
+          _t("vue3d.niveauAller", { n: _fmtNiveau(c.niveau) }) + " · " + t.long, "niveau")
           .dataset.indice = String(e.passageCibles.liste.length - 1);
       });
       return;
     }
     const h = e.passageCibles.haut = _voisin(cibles, true), b = e.passageCibles.bas = _voisin(cibles, false);
     if (h) {
-      _bouton(boite, "kta-v3d-btn-mode", "▲ " + _fmtNiveau(h.niveau),
-        _t("vue3d.niveauMonter", { n: _fmtNiveau(h.niveau) }), "niveauHaut");
+      const t = _textePassage(h);
+      _bouton(boite, "kta-v3d-btn-mode kta-v3d-btn-passage", t.court,
+        _t("vue3d.niveauMonter", { n: _fmtNiveau(h.niveau) }) + " · " + t.long, "niveauHaut");
     }
     if (b) {
-      _bouton(boite, "kta-v3d-btn-mode", "▼ " + _fmtNiveau(b.niveau),
-        _t("vue3d.niveauDescendre", { n: _fmtNiveau(b.niveau) }), "niveauBas");
+      const t = _textePassage(b);
+      _bouton(boite, "kta-v3d-btn-mode kta-v3d-btn-passage", t.court,
+        _t("vue3d.niveauDescendre", { n: _fmtNiveau(b.niveau) }) + " · " + t.long, "niveauBas");
     }
   }
 
+  // Bouton d'un passage, nommé (« ▼ -1 · Nom du puits (échelle) ») : `court` à l'écran (nom coupé à 22 signes),
+  // `long` au titre et au libellé accessible. Tracé jonction : sans nom.
+  function _textePassage(c) {
+    const poi = c.depuis && c.depuis.poi, J = window.KtaPoiJonction;
+    const moyen = _t("vue3d.moyen." + ((poi && J && J.moyen(_premierTag(poi))) || "trace"));
+    const nom = poi ? String(poi.nom || poi.name || poi.id || "") : "";
+    const p = { fleche: _auDessus(c.niveau, _e.niveau) ? "▲" : "▼", n: _fmtNiveau(c.niveau), moyen: moyen };
+    const cle = nom ? "vue3d.passageNomme" : "vue3d.passageSansNom";
+    return { court: _t(cle, Object.assign({}, p, { nom: nom.length > 22 ? nom.slice(0, 21) + "…" : nom })),
+      long: _t(cle, Object.assign({}, p, { nom: nom })) };
+  }
+
+  // Passage vers le niveau de `c` derrière le geste (_lancerGeste : fondu, descente ou montée), bascule au noir. Un
+  // geste déjà en cours : refusé (double toucher). → true si le passage est lancé (ou fait, sans geste).
   function _allerNiveau(c) {
     const e = _e;
-    if (!e || !c || !Number.isInteger(c.niveau)) return false;
+    if (!e || !c || !Number.isInteger(c.niveau) || e.geste) return false;
     _passerEnLibre();
+    if (!_gesteAnime) return _basculerNiveau(c);
+    _lancerGeste(_auDessus(c.niveau, e.niveau) ? 1 : -1, function () { _basculerNiveau(c); });
+    return true;
+  }
+
+  // ⚠️ contrat (décision produit) : arrivée au raccord validé du niveau, sinon au bout opposé du tracé jonction, sinon
+  // au point ; ramenée dans le tube si elle tombe à côté (_degager) ; cap vers la prochaine consigne si un itinéraire
+  // passe là, sinon vers la galerie d'arrivée (_capArrivee).
+  function _basculerNiveau(c) {
+    const e = _e;
+    if (!e) return false;
     const cfg = window.APP_CONFIG || {};
     e.niveauLibre = c.niveau;
     e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
     if (Number.isFinite(c.x) && Number.isFinite(c.y)) { e.pos.x = c.x; e.pos.y = c.y; }
     else if (c.depuis && !c.proche) { e.pos.x = c.depuis.x; e.pos.y = c.depuis.y; }
     e.aBouge = true; e.libreBouge = true;
-    e.passageForce = null;
     e.changementsNiveau++;
     console.log("[Vue3D] passage vers le niveau " + c.niveau);
     _reindexer();
     _degager();
+    e.cap = _capArrivee();
     _majPassage();
+    _annoncerNiveau();
     e.sale = true;
     return true;
+  }
+
+  // Cap à l'arrivée d'un passage : le long de l'itinéraire s'il passe à moins de PASSAGE_ITI m (vers sa prochaine
+  // consigne, ItiGuidage.apercu > capTrajet), sinon le long de l'axe de galerie le plus proche, du côté où il est le
+  // plus long ; rien de tout cela : cap gardé.
+  function _capArrivee() {
+    const e = _e, G = window.ItiGuidage, niv = e.niveau === null ? undefined : e.niveau;
+    if (G && typeof G.apercu === "function" && _itineraire()) {
+      const ap = G.apercu(e.pos, { niveau: niv });
+      if (ap && ap.visible && ap.distM <= PASSAGE_ITI && Number.isFinite(ap.capTrajet)) return ap.capTrajet;
+    }
+    const m = e.galerie || e.mixte || (window.KtaGalerie ? window.KtaGalerie.modele(niv) : null);
+    const pp = m ? m.plusProche(e.pos.x, e.pos.y, _rayonLibre()) : null;
+    if (!pp) return e.cap;
+    const r = m.aretes[pp.arete], sens = 1 - pp.t >= pp.t ? 1 : -1;
+    const dx = (r.bx - r.ax) * sens, dy = (r.by - r.ay) * sens;
+    if (Math.abs(dx) + Math.abs(dy) < 1e-9) return e.cap;
+    return (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
   }
 
   // sens : "haut", "bas" ou un numéro de niveau, parmi les passages proches. → true si la scène a changé de niveau.
@@ -1861,8 +2343,8 @@
     return _allerNiveau(c || null);
   }
 
-  // Toucher un panneau de POI : sa fiche, la même que sur la carte (_ouvrirFiche). POI jonction : son passage, d'où
-  // que l'on soit (un seul niveau lié : on y va), comme avant la fiche.
+  // Toucher un panneau de POI : sa fiche, la même que sur la carte (_ouvrirFiche), POI jonction compris (décision
+  // produit) : sa fiche porte alors les boutons de passage (_passagesFiche).
   // 🩸 Les panneaux de membres et de repères d'une extension sont aussi dans _e.panneaux (même fondu) : ils ne sont
   // pas des POI, `point` n'y est qu'un { nom } — rien ne s'ouvre. Ils arrêtent quand même le toucher : sinon la
   // fiche d'un POI caché derrière s'ouvrirait à la place.
@@ -1878,18 +2360,7 @@
       e.camera);
     const hit = e.rayon.intersectObjects(sprites, false)[0];
     if (!hit || hit.object.userData.poi.genre !== "poi") return false;
-    const poi = hit.object.userData.poi.jonction;
-    if (!poi) return _ouvrirFiche(hit.object.userData.poi.point);
-    const pas = e.passages.filter(function (p) { return p.poi === poi; })[0];
-    if (!pas) return false;
-    const proche = Math.hypot(pas.x - e.pos.x, pas.y - e.pos.y) / e.sc <= PASSAGE;
-    const autres = pas.cibles.filter(function (c) { return c.niveau !== e.niveau; });
-    if (autres.length === 1) return _allerNiveau(Object.assign({ depuis: pas, proche: proche }, autres[0]));
-    _passerEnLibre();
-    e.passageForce = pas;
-    e.passageSig = null;
-    _majPassage();
-    return true;
+    return _ouvrirFiche(hit.object.userData.poi.point);
   }
 
   // ── Guidage de l'itinéraire : bandeau et chevrons (js/itiGuidage.js, aucun calcul de chemin ici) ──────────
@@ -1913,7 +2384,7 @@
     }
     let ap = null;
     if (!reel && typeof G.apercu === "function") {
-      ap = G.apercu(e.pos, { cap: e.cap, sPrec: e.apS });
+      ap = G.apercu(e.pos, { cap: e.cap, sPrec: e.apS, niveau: e.niveau === null ? undefined : e.niveau });
       if (!ap || !ap.visible) ap = null;
     }
     e.apS = ap ? ap.s : undefined;
@@ -2062,6 +2533,7 @@
     const corps = document.createElement("div");
     corps.className = "kta-v3d-fiche-corps";
     corps.innerHTML = window.buildPointPopupHtml(p, false, info);   // HTML échappé par la fiche elle-même
+    _passagesFiche(boite, p);
     boite.appendChild(corps);
     e.ov.appendChild(boite);
     const marqueur = {
@@ -2078,6 +2550,37 @@
       } catch (err) { console.warn("[Vue3D] photos de la fiche :", err && err.message); }
     }
     return true;
+  }
+
+  // Fiche d'un POI jonction : un bouton par niveau lié (« ▼ Descendre au niveau -1 (échelle) », le plus haut
+  // d'abord), d'où que l'on soit ; même arrivée que 🪜 (_allerNiveau). Ses boutons n'ont pas de data-v3d : les
+  // écouteurs de la vue (_brancher) les ignorent, celui de la fiche les joue.
+  function _passagesFiche(boite, p) {
+    const e = _e, J = window.KtaPoiJonction;
+    const pas = (e.passages || []).filter(function (q) { return q.poi === p; })[0];
+    if (!pas || !J) return;
+    const cibles = pas.cibles.filter(function (c) { return c.niveau !== e.niveau; })
+      .sort(function (a, b) { return _auDessus(a.niveau, b.niveau) ? -1 : 1; });
+    if (!cibles.length) return;
+    const zone = document.createElement("div");
+    zone.className = "kta-v3d-fiche-passages";
+    zone.setAttribute("role", "group");
+    zone.setAttribute("aria-label", _t("vue3d.passage"));
+    const moyen = _t("vue3d.moyen." + (J.moyen(_premierTag(p)) || "trace"));
+    cibles.forEach(function (c, i) {
+      const cle = _auDessus(c.niveau, e.niveau) ? "vue3d.ficheMonter" : "vue3d.ficheDescendre";
+      const txt = _t(cle, { n: _fmtNiveau(c.niveau), moyen: moyen });
+      _bouton(zone, "kta-v3d-btn-mode kta-v3d-fiche-passage", txt, txt, null).dataset.v3dPassage = String(i);
+    });
+    zone.addEventListener("click", function (ev) {
+      const b = ev.target.closest && ev.target.closest("[data-v3d-passage]");
+      if (!b || !_e) return;
+      const c = cibles[Number(b.dataset.v3dPassage)];
+      const proche = Math.hypot(pas.x - _e.pos.x, pas.y - _e.pos.y) / _e.sc <= PASSAGE;
+      _fermerFiche();
+      _allerNiveau(Object.assign({ depuis: pas, proche: proche }, c));
+    });
+    boite.appendChild(zone);
   }
 
   function _fermerFiche() {
@@ -2110,7 +2613,6 @@
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
     e.pos.x = p.x; e.pos.y = p.y;
     e.aBouge = false; e.libreBouge = false;   // la place est celle du tracker : pas de pseudo « 3D » pour l'équipe
-    e.passageForce = null;
     e.sortie = null;
     const cfg = window.APP_CONFIG || {};
     if (cfg.multiLevel === true && typeof window.getTrackerLevel === "function") {
@@ -2241,13 +2743,22 @@
       _majBoutonSuivre();
     }
     if (e.mode === "suivi") _lireTracker();
+    if (e.geste) _majGeste(dt);
     _majPassage();
     const niv = _niveauCourant();
-    if (niv !== e.niveau || e.filtresChanges || e.itiChange) {
-      e.filtresChanges = false; e.itiChange = false;
-      _reindexer();
+    // Pendant un geste, la scène attend sa bascule (au noir). Niveau changé hors passage (tracker en suivi, niveau
+    // de la carte) : même fondu, sans descente.
+    if (!e.geste) {
+      if (niv !== e.niveau && e.niveau !== null && niv !== null && _gesteAnime) {
+        _lancerGeste(0, function () { _reindexer(); _annoncerNiveau(); });
+      } else if (niv !== e.niveau || e.filtresChanges || e.itiChange) {
+        e.filtresChanges = false; e.itiChange = false;
+        _reindexer();
+      }
     }
     _gererTuiles(false);
+    _gererVolumes();
+    _majBandeauNiveau(ts);
     _majEquipe();
     _publierPosition();
     _majGuidage(ts);
@@ -2738,7 +3249,8 @@
         msIndex: 0, msTuiles: 0, compteurN: 0, compteurT0: 0, w: 0, h: 0, aBouge: false, perdu: false,
         msPerdu: 0, reprises: 0, minuterie: null, inclinaison: INCLINAISON.defaut, nord: 0, nordCalibre: false,
         roseAngle: NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
-        passageForce: null, niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
+        volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
+        niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, rubans: {}, liseres: {}, filtresChanges: false,
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
         itiChange: false, guidageT: 0, guidageForce: true,
@@ -2751,7 +3263,7 @@
       const t0 = performance.now();
       _monterDom(!!o.stats);
       try {
-        _e.renderer = new THREE.WebGLRenderer({ canvas: _e.cv, antialias: (window.devicePixelRatio || 1) < 2,
+        _e.renderer = new THREE.WebGLRenderer({ canvas: _e.cv, stencil: true, antialias: (window.devicePixelRatio || 1) < 2,
           powerPreference: "high-performance" });
       } catch (err) {
         console.warn("[Vue3D] WebGL indisponible :", err && err.message);
@@ -2795,6 +3307,8 @@
     document.documentElement.style.removeProperty("--kta-v3d-sous-haut");
     if (e.renderer) {
       e.tuiles.forEach(_libererTuile);
+      (e.volPassages || []).forEach(_libererVolume);
+      if (e.texCiel) e.texCiel.dispose();
       _libererChevrons();
       if (e.sol) e.sol.geometry.dispose();
       if (e.avatar) e.avatar.geometry.dispose();
@@ -2880,7 +3394,6 @@
     _e.mode = "suivi";
     _e.libreBouge = false;   // repasser en libre sans bouger ne remontre pas la place du tracker comme « en 3D »
     _e.niveauLibre = null;
-    _e.passageForce = null;
     _e.tangage = 0;
     _majBoutonSuivre();
     _e.sale = true;
@@ -2957,7 +3470,20 @@
       boutonRendu: e.boutonRendu ? e.boutonRendu.textContent : "",
       bandeau: Object.assign({ affiche: !!e.bandeau && !e.bandeau.hidden }, e.bandeauEtat),
       chevrons: e.nChevrons, chevronsVisibles: !!e.chevrons && !!e.chevrons.parent,
-      fiche: e.fiche ? { nom: String(e.fiche.point.nom || ""), x: e.fiche.point.x, y: e.fiche.point.y } : null,
+      fiche: e.fiche ? { nom: String(e.fiche.point.nom || ""), x: e.fiche.point.x, y: e.fiche.point.y,
+        passages: Array.prototype.map.call(e.fiche.boite.querySelectorAll("[data-v3d-passage]"), function (b) {
+          return b.textContent;
+        }) } : null,
+      volumes: (e.volPassages || []).map(function (v) {
+        return Object.assign({ genre: v.genre, tag: v.tag || null, forme: v.forme || null, moyen: v.moyen || null,
+          sol: !!v.sol, plafond: !!v.plafond, ciel: !!v.ciel, grille: !!v.grille, echelons: !!v.echelons,
+          passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y },
+          v.stats || {});
+      }),
+      geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
+      cameraY: +e.camera.position.y.toFixed(3), fondu: +(e.fonduOp || 0).toFixed(2),
+      fonduPresent: !!e.fondu && !!e.fondu.parentNode && !e.fondu.hidden,
+      bandeauNiveau: e.bandeauNiveau && !e.bandeauNiveau.hidden ? e.bandeauNiveau.textContent : null,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
       tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte, yMax: yMax,
       boites: boites,
@@ -3044,6 +3570,8 @@
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
-    origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, charge: function () { return !!THREE; }
+    origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, charge: function () { return !!THREE; },
+    // Passages avec ou sans geste (fondu, descente) : false = bascule immédiate (mesures, checkup).
+    gesteAnime: function (oui) { if (oui !== undefined) _gesteAnime = oui !== false; return _gesteAnime; }
   };
 })();

@@ -16,7 +16,9 @@
 // suivi / libre avec un cap d'appareil simulé, 🧭 grisé tracker arrêté ; POI au centre d'un pilier visible depuis
 // la galerie, collé à la face vue. Mode galerie sur des tracés fictifs (T, X, coudes droit et aigu, cul-de-sac, presque
 // parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 / 25 m,
-// interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Intégration :
+// interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Passages (14) :
+// volume par moyen, rampe, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le tube, cap, guidage, suivi.
+// Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
@@ -24,6 +26,7 @@
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
 //   chambres à l'est), en mode mixte ;
+//   KTA_V3D_PERF=passages → plan dense, sans puis avec 10 passages entre niveaux et 2 rampes à portée de vue ;
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 m et sans tuiles ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
@@ -40,7 +43,8 @@ const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 // KTA_V3D_PERF=1 : toutes les mesures ; =galerie ou =mixte : celles de ce rendu seulement.
-const PERF = ["1", "galerie", "mixte"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF = ["1", "galerie", "mixte", "passages"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF_PASSAGES = process.env.KTA_V3D_PERF === "passages";
 const PERF_STRUCTURES = process.env.KTA_V3D_PERF === "1";
 const PERF_GALERIE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "galerie";
 const PERF_MIXTE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "mixte";
@@ -205,6 +209,71 @@ function semerMixte() {
 }
 
 // nom : "galerie" (réseau seul, rendu galerie) ou "mixte" (semis déjà posé par semerMixte).
+// Dix passages entre niveaux (tous les moyens, puits de surface et aération) et deux tracés jonction autour du départ,
+// dans les galeries du plan dense (mémoire seule) : le coût des volumes construits à portée.
+function semerPassages(d) {
+  const sc = window.APP_CONFIG.scale, tags = ["jes", "jpe", "jps", "peo", "eso", "pa", "jes", "jpe", "jps", "jpe"];
+  const niv = [[0, -1], [0, 1], [-1, 0, 1], null, null, [0, -1], [0, 1], [0, -1], [-1, 0, 1], [0, 1]];
+  const pts = tags.map(function (t, i) {
+    const a = i * Math.PI / 5, r = (8 + (i % 3) * 7) * sc, x = d.x + Math.cos(a) * r, y = d.y + Math.sin(a) * r;
+    const o = { id: "Passage mesure " + i, uid: "pt_mes_" + i, level: 0, tags: [t], x: x, y: y };
+    if (niv[i]) {
+      o.niveaux = niv[i];
+      o.accroches = niv[i].filter(function (n) { return n !== 0; }).map(function (n) { return { level: n, x: x, y: y }; });
+    }
+    return o;
+  });
+  window.setEditorPoints(window.getEditorPoints().concat(pts));
+  window.setRoads(window.getRoads().concat([
+    { uid: "rd_mes_jb", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [{ x: d.x - 20 * sc, y: d.y },
+      { x: d.x - 20 * sc, y: d.y + 8 * sc }] },
+    { uid: "rd_mes_jh", type: "jonction", level: 0, fromLevel: 0, toLevel: 1, points: [{ x: d.x + 20 * sc, y: d.y },
+      { x: d.x + 20 * sc, y: d.y - 8 * sc }] }]));
+  window.ktaSetActiveLevel(0);
+  return pts.length;
+}
+
+// Ouverture à 30 m et tour sur place, deux passages : sans puis avec les passages (même plan dense).
+async function mesuresPassages(page, depart) {
+  const un = function (avec) {
+    return page.evaluate(function (c) {
+      return window.KtaVue3D.ouvrir({ depart: c.depart, distanceVue: 30 }).then(function () {
+        const e0 = window.KtaVue3D.etat(), m = window.KtaVue3D.mesurer({ images: 90 }), e1 = window.KtaVue3D.etat();
+        window.KtaVue3D.fermer();
+        const v = e1.volumes.filter(function (q) { return q.construit; });
+        return { volumes: v.length, trianglesVolumes: v.reduce(function (s, q) { return s + (q.triangles || 0); }, 0),
+          ouverture: e0.msOuverture, msMed: m.msMed, msP95: m.msP95, msMax: m.msMax, triangles: m.trianglesMax,
+          appels: m.appelsMax };
+      });
+    }, { depart: depart });
+  };
+  for (let i = 0; i < 2; i++) console.log("  📏 30 m sans passages : " + JSON.stringify(await un(false)));
+  const n = await page.evaluate(semerPassages, depart);
+  console.log("  ℹ️ " + n + " passages et 2 tracés jonction semés autour du départ");
+  for (let i = 0; i < 2; i++) console.log("  📏 30 m avec passages : " + JSON.stringify(await un(true)));
+  // Passage animé (fondu + descente) : durée des images pendant le geste, construction de l'autre niveau comprise.
+  const geste = await page.evaluate(function (d) {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    return K.ouvrir({ depart: { x: d.x + 8 * sc - 1 * sc, y: d.y, cap: 90 }, distanceVue: 30 }).then(function () {
+      K.gesteAnime(true);
+      const lance = K.changerNiveau("bas"), durees = [];
+      return new Promise(function (r) {
+        let t = 0;
+        (function img(ts) {
+          if (t) durees.push(ts - t);
+          t = ts;
+          if (K.etat().geste) { requestAnimationFrame(img); return; }
+          K.fermer();
+          durees.sort(function (a, b) { return a - b; });
+          r({ lance: lance, images: durees.length, msMed: +durees[durees.length >> 1].toFixed(1),
+            msMax: +durees[durees.length - 1].toFixed(1), plus33ms: durees.filter(function (v) { return v > 33.4; }).length });
+        })(0);
+      });
+    });
+  }, depart);
+  console.log("  📏 passage animé (images pendant le geste) : " + JSON.stringify(geste));
+}
+
 async function mesuresGalerie(page, nom, semisDonne) {
   const semis = semisDonne || await page.evaluate(semerGalerie);
   console.log("  ℹ️ réseau " + nom + " synthétique : " + JSON.stringify(semis));
@@ -438,6 +507,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
       });
       console.log("  📏 rotation continue 3 s, densité 1 : " + Math.round(n1 / 3) + " images/s");
       }
+      if (PERF_PASSAGES) {
+        await page.evaluate(function () { window.setPlanRenduVue3D(null, "structures"); });
+        const semisP = await page.evaluate(semerPlanDense);
+        await mesuresPassages(page, semisP.depart);
+      }
       if (PERF_GALERIE) await mesuresGalerie(page, "galerie");
       if (PERF_MIXTE) {
         await page.evaluate(semerGalerie);
@@ -553,6 +627,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "toucher → indicateur « premier chargement » jusqu'à la scène, puis retiré", charge);
       verifier(charge.role === "dialog" && charge.modal === "true" && charge.focus,
         "vue ouverte : dialog aria-modal, focus clavier dedans", charge);
+      // Passages sans geste (bascule immédiate) jusqu'à la partie 14, qui joue le fondu et la descente.
+      await page.evaluate(function () { window.KtaVue3D.gesteAnime(false); });
       await page.keyboard.press("Tab");
       const tab = await page.evaluate(function () {
         return { dans: document.getElementById("kta-vue3d").contains(document.activeElement),
@@ -1767,7 +1843,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
           "▼ revient ; tracé jonction pris dans les deux sens, d'un bout à l'autre", j3);
         verifier(j3.suivi.mode === "suivi" && j3.suivi.niveau === 0 && !j3.suivi.boite,
           "en suivi : niveau du tracker, pas de 🪜", j3.suivi);
-        // Toucher le panneau du POI jonction, à 3,5 m (hors de portée du bouton) : passage direct.
+        // Toucher le panneau du POI jonction, à 3,5 m (hors de portée du bouton) : sa fiche, avec le bouton de passage.
         await page.evaluate(function (a) { window.KtaVue3D.placer(a.x, a.y, 90); }, pt(0, -11.5, 0));
         await page.waitForTimeout(300);
         const vise = await page.evaluate(function () {
@@ -1776,10 +1852,23 @@ async function mesuresGalerie(page, nom, semisDonne) {
         });
         if (vise) await page.mouse.click(vise.x, vise.y);
         await page.waitForTimeout(200);
-        const j4 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { niveau: e.niveau, pos: e.pos }; });
+        const j4f = await page.evaluate(function () {
+          const e = window.KtaVue3D.etat();
+          return { niveau: e.niveau, fiche: e.fiche, attendu: window.I18n.t("vue3d.ficheMonter",
+            { n: window.ktaFormatNiveau(1), moyen: window.I18n.t("vue3d.moyen.escalier") }) };
+        });
+        verifier(!!vise && j4f.niveau === 0 && !!j4f.fiche && j4f.fiche.passages.length === 1 &&
+          j4f.fiche.passages[0] === j4f.attendu,
+          "toucher le panneau du POI jonction : sa fiche, avec « ▲ Monter au niveau +1 (escalier) »", { vise: vise, j4f: j4f });
+        await capture(page, "fiche-poi-jonction");
+        await page.locator("#kta-vue3d [data-v3d-passage]").first().click();
+        await page.waitForTimeout(200);
+        const j4 = await page.evaluate(function () {
+          const e = window.KtaVue3D.etat(); return { niveau: e.niveau, pos: e.pos, fiche: e.fiche };
+        });
         const acc = pt(0, -8, -6);
-        verifier(!!vise && j4.niveau === 1 && Math.hypot(j4.pos.x - acc.x, j4.pos.y - acc.y) < 0.01,
-          "toucher le panneau du POI jonction : passage au niveau +1", { vise: vise, j4: j4 });
+        verifier(j4.niveau === 1 && Math.hypot(j4.pos.x - acc.x, j4.pos.y - acc.y) < 0.01 && !j4.fiche,
+          "bouton de la fiche : passage au niveau +1, à l'accroche, fiche fermée", j4);
         // Fermer : « Je suis ici ? » parle du niveau ; Non → tracker inchangé, carte au niveau et à la place de la 3D.
         await page.keyboard.press("Escape");
         await page.waitForTimeout(200);
@@ -2577,7 +2666,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
             const z0 = e.pos.y / a.sc - a.oz, x0 = e.pos.x / a.sc - a.ox;
             for (let i = 0; i < 10; i++) K.avancer(0.2);
             const x1 = K.etat().pos.x / a.sc - a.ox;
-            r[rendu] = { passe: ok, niveau: e.niveau, z: +z0.toFixed(2), degage: e.degagements, avance: +(x1 - x0).toFixed(2) };
+            // Cap d'arrivée : le long de la galerie, vers son côté le plus long (12 m à l'ouest, 8 m à l'est) = 270°.
+            r[rendu] = { passe: ok, niveau: e.niveau, z: +z0.toFixed(2), degage: e.degagements, cap: Math.round(e.cap),
+              avance: +Math.abs(x1 - x0).toFixed(2) };
             if (rendu === "mixte") {
               const c = P(-14, -12);
               K.placer(c.x, c.y, 180);   // au centre du pilier : vers le sud, on s'approche de la galerie
@@ -2593,14 +2684,300 @@ async function mesuresGalerie(page, nom, semisDonne) {
           return r;
         }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
         verifier(nc.galerie.passe && nc.galerie.niveau === 1 && Math.abs(nc.galerie.z + 6) < 0.05 &&
-          nc.galerie.degage === 1 && nc.galerie.avance > 1.5,
-          "galerie : accroche à 3 m du tube → ramené dans le tube (axe), on avance", nc.galerie);
-        verifier(nc.mixte.passe && nc.mixte.niveau === 1 && nc.mixte.avance > 1.5,
-          "mixte : après le passage (accroche hors du tube), on avance", nc.mixte);
+          nc.galerie.degage === 1 && nc.galerie.cap === 270 && nc.galerie.avance > 1.5,
+          "galerie : accroche à 3 m du tube → ramené dans le tube (axe), cap vers le côté long, on avance", nc.galerie);
+        verifier(nc.mixte.passe && nc.mixte.niveau === 1 && Math.abs(nc.mixte.z + 6) < 0.05 && nc.mixte.degage === 1 &&
+          nc.mixte.cap === 270 && nc.mixte.avance > 1.5,
+          "mixte : accroche hors du tube → ramené dans le tube comme en galerie, cap vers le côté long, on avance", nc.mixte);
         verifier(nc.pilier > 0.5, "mixte : parti du centre d'un pilier, un pas qui rapproche de la galerie passe (" +
           nc.pilier + " m)", nc);
       } else {
         console.log("  ℹ️ plan à un niveau : passage vers une accroche hors du tube non joué");
+      }
+
+      // ── 14. Passages entre niveaux (QCM du 02/11/2026) : volumes par moyen, rampe, panneau, fiche, geste, arrivée ──
+      // Réseau fictif : une galerie est-ouest aux niveaux −1, 0 et +1 ; sur le 0, un passage par moyen (escalier vers
+      // −1, échelons vers +1, corde entre les trois), deux puits de surface (peo, eso), une aération pa (0 et −1), deux
+      // tracés jonction (vers −1 et vers +1). Accroches au même endroit sur les autres niveaux.
+      if (G.multi) {
+        const PJ = await page.evaluate(function (a) {
+          const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+          window.__v3dAcc14 = window.ktaEstAccessible;
+          window.ktaEstAccessible = function () { return true; };
+          window.setStructures([]);
+          window.setRoads([-1, 0, 1].map(function (n) {
+            return { uid: "rd_p14_" + (n + 1), type: "principal", level: n, points: [P(-70, 0), P(70, 0)] };
+          }).concat([
+            { uid: "rd_p14_jb", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(45, 0), P(45, 8)] },
+            { uid: "rd_p14_jh", type: "jonction", level: 0, fromLevel: 0, toLevel: 1, points: [P(55, 0), P(55, -8)] }
+          ]));
+          const poi = function (id, x, tag, niveaux) {
+            const q = P(x, 0), o = { id: id, nom: id, uid: "pt_p14_" + tag, level: 0, tags: [tag], x: q.x, y: q.y };
+            if (niveaux) {
+              o.niveaux = niveaux;
+              o.accroches = niveaux.filter(function (n) { return n !== 0; }).map(function (n) { return { level: n, x: q.x, y: q.y }; });
+            }
+            return o;
+          };
+          window.setEditorPoints([poi("Escalier p14", -40, "jes", [0, -1]), poi("Puits a echelons p14", -25, "jpe", [0, 1]),
+            poi("Puits a corde p14", -10, "jps", [-1, 0, 1]), poi("Puits ouvert p14", 5, "peo"),
+            poi("Escalier de surface p14", 20, "eso"), poi("Aeration p14", 35, "pa", [0, -1])]);
+          window.setPlanRenduVue3D(null, "mixte");
+          window.ktaSetActiveLevel(0);
+          window.KtaGalerie.invalider();
+          const d = P(-46, 0);
+          return window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 150 }).then(function () {
+            const e = window.KtaVue3D.etat();
+            return { volumes: e.volumes, h: e.hauteur, jonction: (window.ktaResolveStyle("traces", "jonction") || {}).color,
+              panneaux: e.panneaux.filter(function (p) { return /p14/.test(p.nom); }).map(function (p) {
+                return { nom: p.nom, jonction: p.jonction, bord: p.bord };
+              }) };
+          });
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        const vol = function (tag) { return PJ.volumes.filter(function (v) { return v.tag === tag; })[0] || {}; };
+        const h = PJ.h, L = 6, pres = function (a, b) { return typeof a === "number" && Math.abs(a - b) < 0.15; };
+        const jes = vol("jes"), jpe = vol("jpe"), jps = vol("jps"), peo = vol("peo"), eso = vol("eso"), pa = vol("pa");
+        verifier(jes.forme === "escalier" && jes.sol && !jes.plafond && jes.triangles > 0 && jes.bouchesSol > 0 &&
+          jes.bouchesPlafond === 0 && jes.cadre && pres(jes.yMin, -L),
+          "jes (vers −1) : cage d'escalier ouverte dans le sol, marches, cadre doré", jes);
+        verifier(jpe.forme === "puits" && jpe.plafond && !jpe.sol && jpe.echelons && jpe.bouchesPlafond > 0 &&
+          jpe.bouchesSol === 0 && pres(jpe.yMax, h + L) && jpe.cadre,
+          "jpe (vers +1) : puits à échelons ouvert dans le plafond, qui dépasse la hauteur", jpe);
+        verifier(jps.forme === "puits" && jps.sol && jps.plafond && !jps.echelons && jps.bouchesSol > 0 &&
+          jps.bouchesPlafond > 0 && jps.triangles > 0,
+          "jps (−1, 0, +1) : puits nu ouvert dans le sol ET le plafond", jps);
+        verifier(peo.plafond && !peo.sol && peo.ciel && peo.cielVu && peo.echelons && !peo.passage && !peo.cadre,
+          "peo (surface) : puits à échelons dans le plafond, disque de ciel, ni passage ni cadre", peo);
+        verifier(eso.forme === "escalier" && eso.plafond && !eso.sol && eso.ciel && !eso.passage,
+          "eso (surface) : escalier dans le plafond, disque de ciel", eso);
+        verifier(pa.forme === "aeration" && pa.plafond && !pa.sol && pa.grille && !pa.ciel && !pa.passage &&
+          pa.bouchesSol === 0 && pa.bouchesPlafond > 0,
+          "pa (niveaux 0 et −1) : tube d'aération à grille dans le plafond SEUL, sans passage", pa);
+        const rampes = PJ.volumes.filter(function (v) { return v.genre === "rampe"; });
+        const rb = rampes.filter(function (v) { return v.monte === false; })[0] || {};
+        const rh = rampes.filter(function (v) { return v.monte === true; })[0] || {};
+        verifier(rh.triangles > 0 && pres(rh.yMax, h) && rh.bouchesSol === 0 && rb.triangles > 0 && rb.bouchesSol > 0 &&
+          pres(rb.yMin, -h - 0.1),
+          "tracé jonction en rampe : du sol au plafond vers +1, du sol à −" + h + " m en tranchée vers −1", rampes);
+        verifier(PJ.panneaux.filter(function (p) { return p.jonction; }).length === 3 &&
+          PJ.panneaux.every(function (p) { return p.jonction ? p.bord === PJ.jonction : p.bord !== PJ.jonction; }),
+          "panneaux des trois passages au liseré du tracé jonction (canon) ; puits de surface et pa : liseré doré",
+          PJ.panneaux);
+        // Captures (une par moyen) : vue plongeante au-dessus de chaque volume, puis à hauteur d'yeux.
+        if (CAPTURES) {
+          for (const c of [["jes", -40], ["jpe", -25], ["jps", -10], ["peo", 5], ["eso", 20], ["pa", 35], ["rampes", 50]]) {
+            await page.evaluate(function (a) {
+              const K = window.KtaVue3D;
+              K.placer((a.ox + a.x - 4) * a.sc, a.oz * a.sc, 90);
+              if (K.etat().vue !== "plongee") K.basculerVue();
+            }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, x: c[1] });
+            await page.waitForTimeout(250);
+            await capture(page, "passage-" + c[0] + "-plongee");
+            await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+            await page.waitForTimeout(250);
+            await capture(page, "passage-" + c[0] + "-yeux");
+          }
+        }
+        // Panneau d'un passage lisible jusqu'à 1 m (là où 🪜 apparaît) ; ↕ et liseré dessinés dans le canvas.
+        const pan = await page.evaluate(function (a) {
+          const K = window.KtaVue3D;
+          K.placer((a.ox - 40 - 1.05) * a.sc, a.oz * a.sc, 90);
+          return new Promise(function (r) { setTimeout(r, 150); }).then(function () {
+            const e = K.etat(), q = e.panneaux.filter(function (p) { return p.nom === "Escalier p14"; })[0];
+            return { visible: q && q.visible, opacite: q && q.opacite, boite: e.passage };
+          });
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        verifier(pan.visible && pan.opacite >= 0.85 && pan.boite.visible && pan.boite.bas === -1,
+          "à 1 m d'un POI jonction : panneau encore lisible (opacité " + pan.opacite + ") ET 🪜 ▼ montré", pan);
+        // 🪜 nommé, et aucun 🪜 près du puits d'aération ni d'un puits de surface.
+        const nomme = await page.evaluate(function (a) {
+          const K = window.KtaVue3D, r = {};
+          r.texte = Array.prototype.map.call(document.querySelectorAll("#kta-vue3d .kta-v3d-niveaux button"),
+            function (b) { return b.textContent; });
+          r.attendu = window.I18n.t("vue3d.passageNomme", { fleche: "▼", n: "-1", nom: "Escalier p14",
+            moyen: window.I18n.t("vue3d.moyen.escalier") });
+          K.placer((a.ox + 35 - 1) * a.sc, a.oz * a.sc, 90);
+          return new Promise(function (res) { setTimeout(res, 150); }).then(function () {
+            r.pa = K.etat().passage.visible;
+            K.placer((a.ox + 5 - 1) * a.sc, a.oz * a.sc, 90);
+            return new Promise(function (res) { setTimeout(res, 150); });
+          }).then(function () { r.peo = K.etat().passage.visible; return r; });
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        verifier(nomme.texte.length === 1 && nomme.texte[0] === nomme.attendu && !nomme.pa && !nomme.peo,
+          "🪜 nommé (« " + nomme.attendu + " ») ; ni 🪜 à l'aération ni au puits de surface", nomme);
+        // Fiche du puits à corde (trois niveaux) : deux boutons, le plus haut d'abord.
+        await page.evaluate(function (a) { window.KtaVue3D.placer((a.ox - 10 - 4) * a.sc, a.oz * a.sc, 90); },
+          { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        await page.waitForTimeout(300);
+        const viseC = await page.evaluate(function () {
+          const q = window.KtaVue3D.etat().panneaux.filter(function (p) { return p.nom === "Puits a corde p14" && p.visible; })[0];
+          return q ? q.ecran : null;
+        });
+        if (viseC) await page.mouse.click(viseC.x, viseC.y);
+        await page.waitForTimeout(200);
+        const fc = await page.evaluate(function () {
+          const t = function (k, n) {
+            return window.I18n.t(k, { n: window.ktaFormatNiveau(n), moyen: window.I18n.t("vue3d.moyen.corde") });
+          };
+          return { fiche: window.KtaVue3D.etat().fiche, attendu: [t("vue3d.ficheMonter", 1), t("vue3d.ficheDescendre", -1)] };
+        });
+        verifier(!!viseC && !!fc.fiche && JSON.stringify(fc.fiche.passages) === JSON.stringify(fc.attendu),
+          "fiche d'un passage entre trois niveaux : « ▲ Monter… », « ▼ Descendre… » (moyen compris)", fc);
+        await capture(page, "passage-fiche-corde");
+        await page.keyboard.press("Escape");
+
+        // Geste : fondu noir et descente animée ~1 s, scène du niveau d'arrivée construite au noir ; bandeau 2 s.
+        const ge = await page.evaluate(function (a) {
+          const K = window.KtaVue3D;
+          K.gesteAnime(true);
+          K.placer((a.ox - 40 - 1) * a.sc, a.oz * a.sc, 90);
+          return new Promise(function (r) { setTimeout(r, 100); }).then(function () {
+            const oeil = K.etat().oeil, ech = [], t0 = performance.now();
+            const lance = K.changerNiveau("bas");
+            return new Promise(function (res) {
+              (function lire() {
+                const e = K.etat();
+                ech.push({ t: Math.round(performance.now() - t0), y: e.cameraY, f: e.fondu, n: e.niveau, g: !!e.geste,
+                  voile: e.fonduPresent, bandeau: e.bandeauNiveau, im: e.images, aretes: e.compte.aretes });
+                if (performance.now() - t0 < 1500) requestAnimationFrame(lire);
+                else res({ lance: lance, oeil: oeil, ech: ech });
+              })();
+            });
+          });
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        const avant = ge.ech.filter(function (q) { return q.n === 0; }), apres = ge.ech.filter(function (q) { return q.n === -1; });
+        const fin = ge.ech.filter(function (q) { return !q.g && q.n === -1; })[0] || {};
+        const yMin0 = Math.min.apply(null, avant.map(function (q) { return q.y; }));
+        const yMax1 = Math.max.apply(null, apres.map(function (q) { return q.y; }));
+        const fMax = Math.max.apply(null, ge.ech.map(function (q) { return q.f; }));
+        const bascule = apres.length ? apres[0].t : null;
+        verifier(ge.lance && avant.length > 3 && apres.length > 3 && yMin0 < 0 && yMax1 > PJ.h && fMax >= 0.9 &&
+          fin.f === 0 && fin.voile === false && Math.abs(fin.y - ge.oeil) < 0.01 && fin.t > 800 && fin.t < 1300 &&
+          bascule > 350 && bascule < 750,
+          "descente animée : caméra de " + ge.oeil + " m à " + yMin0.toFixed(2) + " m, noir (" + fMax + ") à la bascule (" +
+          bascule + " ms), arrivée par le plafond (" + yMax1.toFixed(2) + " m), fin à " + fin.t + " ms, voile retiré",
+          { yMin0: yMin0, yMax1: yMax1, fMax: fMax, bascule: bascule, fin: fin });
+        const auNoir = apres[0] || {};
+        verifier(auNoir.f >= 0.9 && auNoir.aretes > 0 && apres.some(function (q) { return q.bandeau; }),
+          "scène du niveau −1 construite pendant le noir ; bandeau « " + (apres.filter(function (q) { return q.bandeau; })[0] || {}).bandeau + " »",
+          auNoir);
+        const repos = await page.evaluate(function () {
+          const K = window.KtaVue3D, i0 = K.etat().images;
+          return new Promise(function (r) { setTimeout(r, 1500); }).then(function () {
+            const e = K.etat();
+            return { images: e.images - i0, bandeau: e.bandeauNiveau, geste: e.geste };
+          });
+        });
+        verifier(repos.images === 0 && repos.bandeau === null && !repos.geste,
+          "après le geste : aucun rendu continu, bandeau retiré au bout de 2 s", repos);
+
+        // Arrivée en mixte à 5,9 m de l'axe (accroche posée à côté du tube) : ramenée dans le tube, un pas possible.
+        // Cap à l'arrivée : vers la galerie (côté le plus long) sans itinéraire, vers la prochaine consigne avec.
+        const ar = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, dormir = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+          const P = function (x, z, n) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: n }; };
+          if (K.gesteAnime) K.gesteAnime(false);
+          const acc = P(-40, 5.9);
+          window.setEditorPoints(window.getEditorPoints().map(function (p) {
+            return p.id === "Escalier p14" ? Object.assign({}, p, { accroches: [{ level: -1, x: acc.x, y: acc.y }] }) : p;
+          }));
+          await K.fermer();
+          window.ktaSetActiveLevel(0);
+          const d = P(-41, 0);
+          await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 0 } });
+          const r = { passe: K.changerNiveau("bas") };
+          let e = K.etat();
+          const m = window.KtaGalerie.modele(-1, true);
+          r.niveau = e.niveau; r.z = +(e.pos.y / a.sc - a.oz).toFixed(2); r.dansTube = m.dedans(e.pos.x, e.pos.y);
+          r.cap = Math.round(e.cap);
+          const x0 = e.pos.x, y0 = e.pos.y;
+          for (let i = 0; i < 10; i++) K.avancer(0.2);
+          e = K.etat();
+          r.avance = +(Math.hypot(e.pos.x - x0, e.pos.y - y0) / a.sc).toFixed(2);
+          // Itinéraire par le passage, vers l'ouest au −1 (le côté long de la galerie du −1 y est à l'est).
+          window.__v3dRoutes14 = window.getRoads();
+          window.setRoads(window.__v3dRoutes14.concat([{ uid: "rd_p14_iti", type: "itinerary", level: 0,
+            points: [P(-50, 0, 0), P(-40, 0, 0), Object.assign(P(-40, 0, null), { via: "escalier" }), P(-40, 0, -1),
+              P(-60, 0, -1), P(-60, 10, -1)] }]));
+          window.setEditorPoints(window.getEditorPoints().map(function (p) {
+            return p.id === "Escalier p14" ? Object.assign({}, p, { accroches: [{ level: -1, x: P(-40, 0).x, y: P(-40, 0).y }] }) : p;
+          }));
+          await dormir(300);   // scène refaite à kta:itineraireChange (passages relus)
+          K.placer(P(-40.5, 0).x, P(-40.5, 0).y, 90);
+          K.changerNiveau("haut");
+          K.placer(P(-48, 0).x, P(-48, 0).y, 90);
+          await dormir(400);
+          e = K.etat();
+          r.avant = { niveau: e.niveau, principal: e.bandeau.principal, chevrons: e.chevrons };
+          r.attendu = window.I18n.t("guid.act.descendre", { niveau: window.I18n.t("guid.niveau", { n: "-1" }) });
+          K.placer(P(-40.5, 0).x, P(-40.5, 0).y, 90);
+          K.changerNiveau("bas");
+          await dormir(400);
+          e = K.etat();
+          r.apres = { niveau: e.niveau, cap: Math.round(e.cap), principal: e.bandeau.principal, mode: e.bandeau.mode,
+            chevrons: e.chevrons };
+          // Niveau +1 (aucun tronçon de l'itinéraire) par le puits à corde : plus de « Rejoindre le tracé ».
+          K.placer(P(-11, 0).x, P(-11, 0).y, 90);
+          await dormir(100);
+          K.changerNiveau(1);
+          await dormir(400);
+          e = K.etat();
+          r.plusUn = { niveau: e.niveau, bandeau: e.bandeau.affiche, mode: e.bandeau.mode || null };
+          window.setRoads(window.__v3dRoutes14);
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        verifier(ar.passe && ar.niveau === -1 && Math.abs(ar.z) < 0.05 && ar.dansTube && ar.avance > 1.5,
+          "mixte : arrivée à 5,9 m de l'axe → ramenée dans le tube, on avance (" + ar.avance + " m)", ar);
+        verifier(ar.cap === 90, "cap d'arrivée sans itinéraire : le long de la galerie, côté le plus long (90°)", ar.cap);
+        verifier(ar.avant.niveau === 0 && ar.avant.principal.indexOf(ar.attendu) >= 0 && ar.avant.chevrons > 0,
+          "itinéraire par le passage : le bandeau dit « " + ar.attendu + " » avant le passage, chevrons jusque-là", ar.avant);
+        verifier(ar.apres.niveau === -1 && ar.apres.cap === 270 && ar.apres.mode === "guide" && ar.apres.chevrons > 0 &&
+          ar.apres.principal.indexOf(ar.attendu) < 0,
+          "après le passage : cap vers la prochaine consigne (270°, pas le côté long), guidage repris au −1, chevrons",
+          ar.apres);
+        verifier(ar.plusUn.niveau === 1 && !ar.plusUn.bandeau,
+          "niveau +1 sans tronçon de l'itinéraire : aucun bandeau (plus de « Rejoindre le tracé »)", ar.plusUn);
+
+        // Changement de niveau du tracker en suivi : même fondu (sans descente), bandeau « Niveau −1 ».
+        const su = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, dormir = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+          const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+          await K.fermer();
+          window.ktaSetActiveLevel(0);
+          if (!window.getTrackingActif()) window.startTracking();
+          const t = P(-30, 0);
+          window.recalerTrackerSurPoint(t.x, t.y, 0);
+          if (K.gesteAnime) K.gesteAnime(true);
+          await K.ouvrir({});
+          await dormir(300);
+          const r = { mode: K.etat().mode, avant: K.etat().niveau, ech: [] };
+          window.recalerTrackerSurPoint(t.x, t.y, -1);
+          const t0 = performance.now();
+          while (performance.now() - t0 < 900) {
+            const e = K.etat();
+            r.ech.push({ t: Math.round(performance.now() - t0), f: e.fondu, n: e.niveau, y: e.cameraY, b: e.bandeauNiveau });
+            await new Promise(function (res) { requestAnimationFrame(res); });
+          }
+          r.texte = window.I18n.t("vue3d.niveauBandeau", { n: window.ktaFormatNiveau(-1) });
+          await K.fermer();
+          window.stopTracking();
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        const sAv = su.ech.filter(function (q) { return q.n === 0; }), sAp = su.ech.filter(function (q) { return q.n === -1; });
+        const ys = su.ech.map(function (q) { return q.y; });
+        verifier(su.mode === "suivi" && su.avant === 0 && sAv.some(function (q) { return q.f > 0.5; }) && sAp.length &&
+          sAp[0].f >= 0.9 && sAp[sAp.length - 1].f === 0 && Math.max.apply(null, ys) - Math.min.apply(null, ys) < 0.3 &&
+          sAp.some(function (q) { return q.b === su.texte; }),
+          "suivi : le tracker passe au −1 → fondu noir sans descente, scène refaite au noir, bandeau « " + su.texte + " »",
+          { avant: sAv.length, apres: sAp.length, premier: sAp[0], dernier: sAp[sAp.length - 1] });
+        await page.evaluate(function () {
+          window.ktaEstAccessible = window.__v3dAcc14;
+          if (window.KtaVue3D.gesteAnime) window.KtaVue3D.gesteAnime(false);
+          window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
+          window.ktaSetActiveLevel(0);
+        });
+      } else {
+        console.log("  ℹ️ plan à un niveau : passages entre niveaux non joués");
       }
 
       await page.evaluate(function () {
