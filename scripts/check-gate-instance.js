@@ -11,7 +11,7 @@
 //   - deux `null` qui s'égalent : sur un navigateur vierge, `v === k` ouvrirait à tout le monde ;
 //   - le reverrouillage hors ligne : index injoignable → on n'efface RIEN ;
 //   - un `accessHash` fautif (clair, tronqué) ne devient jamais une valeur comparable.
-// Aussi : data/reglages.json n'apporte que accueil et subtitle (§3), écran d'arrivée selon le domaine (§11).
+// Aussi : data/reglages.json n'apporte que accueil, subtitle et addons (§3), écran d'arrivée selon le domaine (§11).
 // On EXÉCUTE (vm) les fonctions extraites du vrai fichier. Doc : docs/architecture/security-legal.md.
 // =====================================================================
 "use strict";
@@ -162,7 +162,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     t("🩸 ktaInstance : une config rejouée de mémoire est marquée repondu: false",
       /_etat = \{ charge: true, repondu: false, index: null, config: _fusion\(memo, reglages\)/.test(KI));
     t("ktaInstance : seule la section config est mémorisée (pas la liste des plans)", /_ecrireMemo\(config\);/.test(KI));
-    // 🔒 data/reglages.json (fichier posé à côté de l'index, hors Git) : accueil et subtitle SEULS, exécuté.
+    // 🔒 data/reglages.json (fichier posé à côté de l'index, hors Git) : accueil, subtitle et addons SEULS, exécuté.
     const morceau = (nom) => {
       const d = KI.indexOf("function " + nom + "(");
       if (d < 0) return "";
@@ -182,6 +182,12 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     const filtre = F(piege);
     t("🔒 reglages.json : seules accueil et subtitle sont lues (accessHash, serverConnection, plans… ignorés)",
       !!filtre && JSON.stringify(Object.keys(filtre).sort()) === '["accueil","subtitle"]');
+    // addons : un nom bien formé à true, rien d'autre (ni texte, ni chemin, ni objet, ni « 1 »).
+    const pa = F({ addons: { mkmg: true, autre: "true", "../x": true, ["a".repeat(33)]: true, un: 1, o: { v: true },
+      faux: false, "jeu-2": true } });
+    t("🔒 reglages.json > addons : seuls les noms d'add-on bien formés à true (aucun chemin, aucune valeur autre)",
+      !!pa && JSON.stringify(pa) === '{"addons":{"mkmg":true,"jeu-2":true}}' &&
+      F({ addons: ["mkmg"] }) === null && F({ addons: { mkmg: false } }) === null && F({ addons: "mkmg" }) === null);
     const eff = U({ accessHash: VRAI, subtitle: "Index", serverConnection: { state: "off" } }, F(piege));
     t("🔒 config effective : le sous-titre des réglages prime, le mot de passe et la connexion restent ceux de l'index",
       eff.subtitle === "Secteur" && eff.accessHash === VRAI && eff.serverConnection.state === "off");

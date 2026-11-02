@@ -1622,7 +1622,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Add-on `mkmg`** (`addons/mkmg/` : `js/coeur.js` partie et interface, `js/monde.js` menaces, objets et tir,
   `js/son.js` sons WebAudio sans fichier, `css/coeur.css`, `img/fusil.svg` ; `coeur.js` charge les deux autres) :
   jeu en vagues sur le plan ouvert.
-  - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`), pendant le
+  - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`) sauf si son
+    hébergeur l'autorise (`data/reglages.json` > `"addons": { "mkmg": true }`, `KtaInstance.etat().reglages`), pendant le
     suivi du tracker, une sortie d'urgence (itinéraire `urgence`, `EmergencyMode`) ou le mode Secours ouvert ; sinon
     confirmation « Descendre plus bas ? » avec la difficulté (`ktaConfirm`, `choix`).
   - Vague = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau est

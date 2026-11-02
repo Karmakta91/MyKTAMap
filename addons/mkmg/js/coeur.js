@@ -125,7 +125,10 @@
 
   function _refus() {
     const X = window.KtaExtensions;
-    if (X && typeof X.etat === "function" && X.etat().etat !== "off") return "refus.installation";
+    // Installation reliée : refusé, sauf si son hébergeur l'autorise (data/reglages.json > addons.mkmg, ktaInstance.js).
+    const I = window.KtaInstance && window.KtaInstance.etat(), permis = !!(I && I.reglages && I.reglages.addons &&
+      I.reglages.addons.mkmg === true);
+    if (X && typeof X.etat === "function" && X.etat().etat !== "off" && !permis) return "refus.installation";
     if (typeof window.getTrackingActif === "function" && window.getTrackingActif() === true) return "refus.suivi";
     const roads = typeof window.getRoads === "function" ? window.getRoads() || [] : [];
     const urgence = roads.some(function (r) { return r && r.type === "itinerary" && r.urgence; });

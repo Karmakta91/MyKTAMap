@@ -3807,6 +3807,18 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await code();
         r.refusInstallation = !!q("#kta-confirm-oui") && texteFenetre().indexOf("installation") >= 0;
         if (q("#kta-confirm-oui")) q("#kta-confirm-oui").click();
+        await pause(100);
+        // Même installation, autorisée par son hébergeur (data/reglages.json > addons.mkmg) : la confirmation vient.
+        const inst = window.KtaInstance.etat;
+        window.KtaInstance.etat = function () {
+          return Object.assign({}, inst(), { reglages: { addons: { mkmg: true } } });
+        };
+        await code();
+        r.permisInstallation = document.querySelectorAll('input[name="kta-confirm-choix"]').length === 3;
+        if (q("#kta-confirm-non")) q("#kta-confirm-non").click();
+        await pause(100);
+        r.permisInstallation = r.permisInstallation && K.etat().greffe === null;
+        window.KtaInstance.etat = inst;
         window.KtaExtensions.etat = ext;
         await pause(100);
         window.startTracking();
@@ -3926,6 +3938,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.avant);
       verifier(MK.refusInstallation && MK.refusSuivi, "jeu : refusé sur une installation reliée et pendant le suivi",
         { installation: MK.refusInstallation, suivi: MK.refusSuivi });
+      verifier(MK.permisInstallation, "jeu : installation reliée autorisée par reglages.json (addons.mkmg) → " +
+        "confirmation ; « Rester ici » ne lance rien", MK.permisInstallation);
       verifier(MK.radios === 3 && MK.partie.greffe === "mkmg" && MK.partie.diff === "facile" && MK.partie.vague === 1 &&
         MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 3 && MK.partie.panneau &&
         MK.partie.fleche && /\d/.test(MK.partie.reste || "") && MK.partie.surTrace && MK.partie.horsPilier,

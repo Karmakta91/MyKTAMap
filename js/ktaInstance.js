@@ -20,9 +20,10 @@
 // Réglages de l'installation : `data/reglages.json`, FACULTATIF, lu en même temps que l'index (même délai) et
 //   mémorisé à part. Fichier posé par qui héberge, jamais livré ni suivi par Git : l'index, lui, est livré (pro) et
 //   un réglage écrit dedans entrerait en conflit à chaque mise à jour. Absent (404) = aucun réglage, sans erreur.
-//   🔒 SEULES `accueil` et `subtitle` en sont lues (filtrerReglages) : jamais serverConnection, plans, accessHash ni
-//   aucune autre clé — un fichier ajouté à côté de l'index ne peut ni ouvrir une instance protégée, ni greffer un
-//   module, ni déclarer un plan. Priorité : reglages.json, puis index.json, puis les défauts ; un champ mal formé est
+//   🔒 SEULES `accueil`, `subtitle` et `addons` en sont lues (filtrerReglages) : jamais serverConnection, plans,
+//   accessHash ni aucune autre clé — un fichier ajouté à côté de l'index ne peut ni ouvrir une instance protégée, ni
+//   greffer un module, ni déclarer un plan. `addons` = { <nom>: true } : autorise sur cette installation un add-on
+//   DÉJÀ livré avec l'app (addons/<nom>/), rien d'autre (il n'en charge aucun). Priorité : reglages.json, puis index.json, puis les défauts ; un champ mal formé est
 //   ignoré, le reste s'applique. etat().config = config de l'index où `subtitle` est remplacé par celui des réglages
 //   (sous-titre partout : démarrage, accueil, PDF) ; etat().reglages = réglages filtrés (accueil :
 //   KtaExtensions.textesAccueil).
@@ -33,7 +34,7 @@
 
   const LS_MEMO = "myktamap_instance_config_v1";
   const LS_REGLAGES = "myktamap_instance_reglages_v1";
-  const CLES_REGLAGES = ["accueil", "subtitle"];
+  const CLES_REGLAGES = ["accueil", "subtitle", "addons"];
   const DELAI_MS = 2000;
   // 🩸 Premier contact (aucune config mémorisée) : rien à rejouer, on attend la VRAIE réponse. Après « Tout
   // réinitialiser », le SW se réinstalle et l'index arrive après 2 s : avec le délai court, une instance
@@ -42,13 +43,22 @@
   let _promesse = null;
   let _etat = { charge: false, repondu: false, index: null, config: null, reglages: null, source: "aucune" };
 
-  // 🔒 Contenu de data/reglages.json → { accueil?, subtitle? } : les clés de CLES_REGLAGES seules, de la bonne forme
-  // (accueil : objet, détaillé par KtaExtensions.normaliserAccueil ; subtitle : texte non vide). null si rien.
+  // 🔒 Contenu de data/reglages.json → { accueil?, subtitle?, addons? } : les clés de CLES_REGLAGES seules, de la
+  // bonne forme (accueil : objet, détaillé par KtaExtensions.normaliserAccueil ; subtitle : texte non vide ; addons :
+  // noms d'add-on à true). null si rien.
   function filtrerReglages(r) {
     if (!r || typeof r !== "object" || Array.isArray(r)) return null;
     const out = {};
     if (r.accueil && typeof r.accueil === "object" && !Array.isArray(r.accueil)) out.accueil = r.accueil;
     if (typeof r.subtitle === "string" && r.subtitle.trim()) out.subtitle = r.subtitle;
+    // addons : seuls les noms d'add-on bien formés à `true` (un booléen, rien d'autre) sont gardés.
+    if (r.addons && typeof r.addons === "object" && !Array.isArray(r.addons)) {
+      const a = {};
+      Object.keys(r.addons).forEach(function (k) {
+        if (/^[a-z0-9-]{1,32}$/.test(k) && r.addons[k] === true) a[k] = true;
+      });
+      if (Object.keys(a).length) out.addons = a;
+    }
     return Object.keys(out).length ? out : null;
   }
   // Config effective : celle de l'index, sous-titre des réglages en priorité. Ni l'une ni l'autre : null.
