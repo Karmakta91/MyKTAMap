@@ -2219,7 +2219,8 @@ icônes.
   thème clair. Les boutons de la vue, eux, suivent le thème. Liseré doré ; **danger** (`poiDanger.js > estDanger`) :
   liseré rouge `--kta-erreur` (sombre) plus épais et **halo au sol** (anneau et disque pâle du même rouge, non
   éclairés, sans compression de tons : le rouge reste celui du jeton), montré aussi de près quand le panneau
-  s'efface ; **favori** (`Favoris.isFav(id, uid)`) : ⭐ doré au coin haut droit. Membres et repères d'une extension :
+  s'efface ; **favori** (`Favoris.isFav(id, uid)`) : ⭐ doré au coin haut droit ; **passage** (POI jonction) : liseré à
+  la couleur du tracé `jonction` du canon et ↕ dans une pastille au coin de l'icône, lisible jusqu'à 1 m. Membres et repères d'une extension :
   même carte, sans icône, coupée à la largeur du texte, liseré à la couleur de la personne (`KtaPresences.couleurDe`)
   ou à la teinte de la charte du repère ; les toucher n'ouvre rien (pas de fiche : ce ne sont pas des POI).
 - **Bandeau de guidage** (`_e.bandeau`, `.kta-v3d-bandeau`) : sous la rangée du haut, caché sans itinéraire ;
@@ -2229,6 +2230,13 @@ icônes.
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
-  Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous.
+  Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
+  un bouton par niveau lié (`.kta-v3d-fiche-passages`, « ▲ Monter au niveau +1 (escalier) », liseré doré, le plus haut
+  d'abord).
+- **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la
+  largeur (`.kta-v3d-btn-passage`, 72 % de l'écran au plus) ; le nom entier au libellé accessible. Changement de
+  niveau derrière un **voile** (`.kta-v3d-fondu` : fond des jetons sombres posé par la vue en
+  `--kta-v3d-fondu-fond`, au-dessus de la scène, sous les boutons, sans pointeur) puis le bandeau
+  **« Niveau n »** (`.kta-v3d-bandeau-niveau`, pastille surface à liseré doré, au centre, 2 s, `role="status"`).
 - **« D'où pars-tu ? »** (« Y aller », tracker arrêté) : `ktaConfirm` en mode choix (z-index 100002, au-dessus de
   la vue) ; pas de nouvelle fenêtre.

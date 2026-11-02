@@ -9,8 +9,9 @@
 // =====================================================================
 // Modèle : `niveaux` (entiers, ⊇ {level}) + `accroches` [{level, x, y}] = raccords VALIDÉS par l'utilisateur, un
 // par galerie où le passage débouche. Point sans `niveaux` = son seul `level` (anciens plans inchangés).
-// ⚠️ Tags « entre niveaux » jes / jpe / jps : JAMAIS une sortie de surface (check-poi-jonction.js). peo / eso
-// peuvent aussi porter `niveaux` (puits de surface qui dessert des étages) et restent des sorties.
+// ⚠️ Tags « entre niveaux » jes / jpe / jps : JAMAIS une sortie de surface (check-poi-jonction.js). peo / eso / pa
+// peuvent aussi porter `niveaux` (puits de surface qui dessert des étages) : peo / eso restent des sorties ; pa (puits
+// d'aération) n'a pas de moyen (`moyen` null) : jamais emprunté par l'itinéraire ni par le 🪜 de la vue 3D.
 // L'itinéraire n'emprunte que les raccords validés (pathfinder.js > _injecterJonctionsPoi) ; la proposition se
 // fait dans un rayon de 5 m (échelle du plan), 50 px sur un plan sans échelle.
 // Expose window.KtaPoiJonction : modèle (niveaux, moyen, estJonction, pointsJonction, passeNiveaux), formulaire
@@ -21,8 +22,9 @@
   "use strict";
 
   const TAGS_ENTRE_NIVEAUX = ["jes", "jpe", "jps"];
-  // Accès de surface qui peuvent AUSSI desservir des niveaux : restent des sorties.
-  const TAGS_SURFACE_NIVEAUX = ["peo", "eso"];
+  // Accès de surface qui peuvent AUSSI desservir des niveaux : peo / eso restent des sorties ; pa porte ses niveaux
+  // (vue 3D : un puits à chaque niveau traversé) sans moyen de passage.
+  const TAGS_SURFACE_NIVEAUX = ["peo", "eso", "pa"];
   // Moyen de passage (consigne de guidage, coût vertical) : escalier, échelle, corde.
   const MOYEN = { jes: "escalier", eso: "escalier", jpe: "echelons", peo: "echelons", jps: "corde" };
   // Coût vertical par niveau franchi quand les profondeurs ne sont pas saisies (décision produit).
@@ -151,7 +153,7 @@
 
   // ── Formulaire du POI (editor.js > afficherFormulaire) ──────────
   // Bloc « Niveaux desservis » : cases des niveaux du plan, puis les raccords proposés (à valider) et validés.
-  // Rendu vide hors multi-niveau ; masqué tant que le tag n'est pas un passage (jes / jpe / jps / peo / eso).
+  // Rendu vide hors multi-niveau ; masqué tant que le tag ne porte pas de niveaux (jes / jpe / jps / peo / eso / pa).
   function htmlFormulaire(tag) {
     if (!_mlOn()) return "";
     const cache = porteNiveaux(tag) ? "" : " hidden";
@@ -288,6 +290,10 @@
   function htmlFiche(point) {
     if (!estJonction(point)) return "";
     const nv = niveaux(point).map(_fmtNiv).join(" · ");
+    // Puits sans moyen de passage (pa) : ses niveaux seulement, il ne relie rien pour l'itinéraire.
+    if (!moyen(tagDe(point))) {
+      return '<div class="kta-popup-jonction">' + _esc(_t("poiJonction.fiche.niveaux", { liste: nv })) + '</div>';
+    }
     const n = accroches(point).length;
     const rac = n === 0 ? _t("poiJonction.fiche.raccords0")
               : n === 1 ? _t("poiJonction.fiche.raccords1") : _t("poiJonction.fiche.raccordsN", { n: n });
@@ -308,8 +314,9 @@
     if (!window.map || typeof L === "undefined" || !estJonction(point)) return;
     const acc = accroches(point);
     if (!acc.length) return;
+    // Catégorie « traces » du canon (styleResolver.js) : « roads » n'y existe pas et rendait un trait sans couleur.
     const st = (typeof window.ktaResolveStyle === "function")
-      ? (window.ktaResolveStyle("roads", "jonction") || {}) : {};
+      ? (window.ktaResolveStyle("traces", "jonction") || {}) : {};
     _calque = L.layerGroup();
     acc.forEach(function (a) {
       L.polyline([window.convertCoord(point.x, point.y), window.convertCoord(a.x, a.y)], {
