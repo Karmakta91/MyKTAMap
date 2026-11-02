@@ -2216,8 +2216,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
         eq0);
       const eq1 = await page.evaluate(function (a) {
         const X = window.KtaExtensions, P = function (x, z) { return [(a.ox + x) * a.sc, (a.oz + z) * a.sc]; };
-        X.register({ nom: "v3d-factice", apiVersion: 1, presence: { actif: function () { return true; },
-          basculer: function () {} } });
+        // presence.vue3d capte la place libre remise par la 3D (§ 12 bis) ; le partage suit __v3dPartage.
+        window.__v3dPub = [];
+        X.register({ nom: "v3d-factice", apiVersion: 1, presence: { actif: function () { return window.__v3dPartage === true; },
+          basculer: function () {}, vue3d: function (p) { window.__v3dPub.push(p); } } });
         const m0 = P(-8, 0.5), m1 = P(-6, 0);
         X.afficherPresences([
           { id: "membre-a", pseudo: "Membre A", x: m0[0], y: m0[1], niveau: 0 },
@@ -2283,6 +2285,88 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.Favoris.remove("POI favori v3d");
         window.setStructures([]);
       });
+
+      // ── 12 bis. Place libre montrée à l'équipe (prise presence.vue3d de l'extension FACTICE) ────────────────
+      // Rien sans partage ; libre et déplacé à la main → appels espacés (0,5 m ou 10°), jamais un par image ; suivi
+      // → null ; fermeture → null ; le tracker n'est jamais déplacé. Et la place d'un autre « en 3D » est marquée.
+      const pub = await page.evaluate(async function (d) {
+        const K = window.KtaVue3D, r = {}, pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const n = function () { return window.__v3dPub.length; };
+        const trackerAvant = window.getTrackingActif();
+        if (!trackerAvant) window.startTracking();
+        window.recalerTrackerSurPoint(d.x, d.y, window.APP_CONFIG.activeLevel);
+        const tr0 = Object.assign({}, window.getTrackingPosition());
+        window.__v3dPartage = false; window.__v3dPub = [];
+        await K.ouvrir({ depart: d });
+        await pause(200);
+        r.avantPas = n();
+        K.avancer(1);
+        await pause(250);
+        r.sansPartage = { n: n(), etat: K.etat().presence.publications };
+        window.__v3dPartage = true;
+        await pause(250);
+        r.premier = { n: n(), p: window.__v3dPub[0] || null };
+        await pause(600);
+        r.immobile = n();
+        const e0 = K.etat(), x0 = e0.pos.x, y0 = e0.pos.y, i0 = e0.images;
+        for (let i = 0; i < 40; i++) { K.avancer(0.05); await pause(16); }
+        await pause(150);
+        const e1 = K.etat();
+        r.marche = { appels: n() - r.premier.n, images: e1.images - i0, m: Math.hypot(e1.pos.x - x0, e1.pos.y - y0) / d.sc };
+        const n1 = n();
+        K.tourner(6); await pause(150);
+        r.tourne6 = n() - n1;
+        K.tourner(6); await pause(150);
+        r.tourne12 = n() - n1;
+        r.dernier = window.__v3dPub[n() - 1];
+        r.capVue = Math.round(K.etat().cap) % 360;
+        K.suivre();
+        await pause(250);
+        r.suivi = { mode: K.etat().mode, dernier: window.__v3dPub[n() - 1], n: n() };
+        K.basculerSuivi();
+        await pause(250);
+        r.libreSansPas = n() - r.suivi.n;
+        K.avancer(0.6);
+        await pause(250);
+        r.relibre = window.__v3dPub[n() - 1];
+        const tr1 = window.getTrackingPosition();
+        r.trackerBouge = Math.hypot(tr1.x - tr0.x, tr1.y - tr0.y);
+        window.stopTracking();
+        await K.fermer();
+        r.ferme = { dernier: window.__v3dPub[n() - 1], n: n() };
+        // Un autre membre « en 3D » : silhouette marquée, son pseudo suivi de « 3D ».
+        window.KtaExtensions.afficherPresences([{ id: "membre-3d", pseudo: "Membre C", x: d.x + 3 * d.sc, y: d.y,
+          niveau: window.APP_CONFIG.activeLevel, source: "vue3d", cap: 45 }]);
+        await K.ouvrir({ depart: d });
+        await pause(250);
+        const e3 = K.etat();
+        r.autre = { equipe: e3.equipe, membres: e3.membres, noms: e3.panneaux.filter(function (q) { return q.genre === "membre"; })
+          .map(function (q) { return q.nom; }), marque: window.I18n.t("presence.vue3d.marque") };
+        window.KtaExtensions.afficherPresences([]);
+        await K.fermer();
+        window.__v3dPartage = false;
+        if (trackerAvant) window.startTracking();
+        return r;
+      }, Object.assign({ sc: MX.sc }, mq(-12, 0, 90)));
+      verifier(pub.avantPas === 0 && pub.sansPartage.n === 0 && pub.sansPartage.etat === 0,
+        "🔒 place libre : rien remis sans partage de position, ni avant un déplacement à la main", pub);
+      verifier(pub.premier.n === 1 && pub.premier.p && pub.premier.p.source === "vue3d" && pub.immobile === 1,
+        "partage allumé en libre : une place remise (source vue3d), puis rien tant qu'on ne bouge pas", pub.premier);
+      verifier(pub.marche.images >= 10 && pub.marche.m > 1 && pub.marche.appels >= 1 &&
+        pub.marche.appels <= Math.ceil(pub.marche.m / 0.5) + 1,
+        "en marchant : une remise tous les 0,5 m environ, jamais une par image", pub.marche);
+      verifier(pub.tourne6 === 0 && pub.tourne12 === 1 && pub.dernier && pub.dernier.cap === pub.capVue,
+        "en tournant : rien sous 10°, une remise au-delà, cap arrondi au degré", pub);
+      verifier(pub.dernier && Math.round(pub.dernier.x * 10) === pub.dernier.x * 10 &&
+        Math.round(pub.dernier.y * 10) === pub.dernier.y * 10, "place arrondie (0,1 px)", pub.dernier);
+      verifier(pub.suivi.mode === "suivi" && pub.suivi.dernier === null && pub.libreSansPas === 0,
+        "suivi → null (retour au tracker) ; repasser en libre sans bouger ne remet rien", pub.suivi);
+      verifier(pub.relibre && pub.relibre.source === "vue3d" && pub.ferme.dernier === null,
+        "libre à nouveau → place remise ; fermeture → null", pub);
+      verifier(pub.trackerBouge < 0.01, "le tracker n'est pas déplacé par la place libre", pub.trackerBouge);
+      verifier(pub.autre.equipe.membres === 1 && pub.autre.equipe.membres3d === 1 && pub.autre.membres[0].vue3d === true &&
+        pub.autre.noms[0] === "Membre C · " + pub.autre.marque,
+        "membre « en 3D » d'une extension : silhouette marquée, pseudo suivi de « 3D »", pub.autre);
 
       // ── 13. Jamais coincé : accroche d'un POI jonction posée à 3 m d'un tube (dans la roche) ─────────────────
       // Après le passage, la place est ramenée dans le tube et l'on avance, en galerie et en mixte ; partie d'un

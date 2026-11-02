@@ -20186,6 +20186,14 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 }
 .kta-presence-ancienne .kta-presence-etiquette { color: var(--kta-texte-3); }
 .kta-presence-hors-niveau { opacity: 0.4; }
+/* Place d'un membre dans SA vue 3D (source "vue3d") : contour pointillé et pastille « 3D » — jamais confondue
+   avec une position suivie. */
+.kta-presence-vue3d .kta-presence-repere path { stroke-dasharray: 4 3; }
+.kta-presence-marque-3d {
+  position: absolute; left: -6px; top: -6px; font-size: 10px; font-weight: 700; line-height: 1; padding: 2px 4px;
+  border-radius: 6px; background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-interaction);
+  pointer-events: none;
+}
 /* Repères d'une extension (KtaExtensions.afficherReperes) : pastille à symbole, bord à la teinte de la charte,
    touchable (30 px + marge du marqueur) ; le nombre dit plusieurs entrées sur le même objet. */
 .kta-repere-icone { background: none; border: none; }

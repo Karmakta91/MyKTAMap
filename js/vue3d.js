@@ -15,8 +15,8 @@
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire,
 // POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
-// (KtaPresences, lecture seule ; rien sans extension) ; un niveau. Tuiles autour de soi, lampe frontale, rendu au
-// mouvement seul.
+// (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau. Tuiles
+// autour de soi, lampe frontale, rendu au mouvement seul.
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
@@ -1327,7 +1327,7 @@
     if (sig === e.equipeSig) return;
     e.equipeSig = sig;
     _viderEquipe();
-    const g = e.equipe, sc = e.sc, j = _jetonsSombres(), nb = { membres: 0, reperes: 0, itineraires: 0 };
+    const g = e.equipe, sc = e.sc, j = _jetonsSombres(), nb = { membres: 0, membres3d: 0, reperes: 0, itineraires: 0 };
     const auNiveau = function (n) { return e.niveau === null || !Number.isInteger(n) || n === e.niveau; };
     const liste = function (f) { try { return typeof f === "function" ? f() || [] : []; } catch (err) { return []; } };
     liste(P.liste).forEach(function (p) {
@@ -1335,10 +1335,15 @@
       if (!auNiveau(p.niveau) || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
       const couleur = p.couleur || (typeof P.couleurDe === "function" ? P.couleurDe(p.id) : j.interaction);
       const x = p.x / sc, z = p.y / sc;
-      g.add(_silhouette(x, z, couleur));
-      g.add(_panneau({ nom: p.pseudo }, [x, z], { bord: couleur, sansIcone: true, genre: "membre",
-        y: Math.min(_hauteurSilhouette() + 0.35, e.hauteur - 0.15) }));
+      // Place d'un membre qui se déplace dans SA vue 3D : marquée « 3D » (jamais confondue avec son tracker).
+      const en3d = p.source === "vue3d";
+      const s = _silhouette(x, z, couleur);
+      s.userData.vue3d = en3d;
+      g.add(s);
+      g.add(_panneau({ nom: p.pseudo + (en3d ? " · " + _t("presence.vue3d.marque") : "") }, [x, z],
+        { bord: couleur, sansIcone: true, genre: "membre", y: Math.min(_hauteurSilhouette() + 0.35, e.hauteur - 0.15) }));
       nb.membres++;
+      if (en3d) nb.membres3d++;
     });
     // Repères : pastille du calque (symbole et titre), liseré à la teinte de la charte qu'il porte.
     liste(P.calques).forEach(function (nom) {
@@ -1611,7 +1616,7 @@
   function _poser(x, y) {
     const e = _e;
     e.pos.x = x; e.pos.y = y;
-    e.aBouge = true;
+    e.aBouge = true; e.libreBouge = true;
     e.passageForce = null;
     e.sale = true;
   }
@@ -1834,7 +1839,7 @@
     e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
     if (Number.isFinite(c.x) && Number.isFinite(c.y)) { e.pos.x = c.x; e.pos.y = c.y; }
     else if (c.depuis && !c.proche) { e.pos.x = c.depuis.x; e.pos.y = c.depuis.y; }
-    e.aBouge = true;
+    e.aBouge = true; e.libreBouge = true;
     e.passageForce = null;
     e.changementsNiveau++;
     console.log("[Vue3D] passage vers le niveau " + c.niveau);
@@ -2128,6 +2133,36 @@
     return true;
   }
 
+  // ── Place libre montrée à l'équipe (prise de présence) ─────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : en libre, après un déplacement à la main, la place d'où l'on regarde part à
+  // l'extension de présence (KtaExtensions.positionVue3D), qui ne la remet que si l'utilisateur partage déjà sa
+  // position (sinon rien ne sort) ; null en repassant en suivi et à la fermeture (_demonter) : l'équipe revoit
+  // la position du tracker, qui n'est jamais recalé ici. Cadence : place arrondie, remise seulement si elle a
+  // bougé de PUB_DISTANCE m, tourné de PUB_CAP° ou changé de niveau (pas un appel par image). Sans extension : rien.
+  const PUB_DISTANCE = 0.5, PUB_CAP = 10;
+  function _prisePresence(p) {
+    const X = window.KtaExtensions;
+    if (!X || typeof X.positionVue3D !== "function") return false;
+    try { return X.positionVue3D(p) === true; } catch (err) { return false; }
+  }
+  function _publierPosition() {
+    const e = _e;
+    if (e.mode !== "libre" || !e.libreBouge) {
+      if (e.publiee) { e.publiee = null; _prisePresence(null); }
+      return;
+    }
+    const p = { x: Math.round(e.pos.x * 10) / 10, y: Math.round(e.pos.y * 10) / 10,
+      niveau: Number.isInteger(e.niveau) ? e.niveau : null, cap: Math.round(e.cap) % 360 };
+    const d = e.publiee;
+    if (d && d.niveau === p.niveau && Math.hypot(p.x - d.x, p.y - d.y) / e.sc < PUB_DISTANCE &&
+        Math.abs(((p.cap - d.cap + 540) % 360) - 180) < PUB_CAP) return;
+    if (!_prisePresence(p)) return;
+    e.publiee = p;
+    e.publications++;
+    // Dit une fois par ouverture : la place libre est vue de l'équipe (vie privée), marquée « en vue 3D ».
+    if (!e.publicationDite) { e.publicationDite = true; _toast("vue3d.presencePartagee"); }
+  }
+
   function _lireTracker() {
     const e = _e;
     if (typeof window.getTrackingPosition !== "function") return;
@@ -2186,6 +2221,7 @@
     }
     _gererTuiles(false);
     _majEquipe();
+    _publierPosition();
     _majGuidage(ts);
     if (e.perdu) return;
     _redimensionner();
@@ -2678,7 +2714,8 @@
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
         itiChange: false, guidageT: 0, guidageForce: true,
         apS: undefined, bandeauCle: null, bandeauEtat: { visible: false }, chevrons: null, chevSig: null,
-        chevRoad: null, chevPts: null, nChevrons: 0, fiche: null,
+        chevRoad: null, chevPts: null, nChevrons: 0, fiche: null, publiee: null, publications: 0,
+        publicationDite: false, libreBouge: false,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
@@ -2722,6 +2759,8 @@
     clearInterval(e.minuterie);
     e.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (e.desabonner) e.desabonner();
+    // Place libre retirée : l'équipe revoit la position du tracker (ou le partage tel qu'avant la 3D).
+    if (e.publiee) { e.publiee = null; _prisePresence(null); }
     _fermerFiche();
     document.documentElement.classList.remove("kta-vue3d-ouverte");
     document.documentElement.style.removeProperty("--kta-v3d-sous-haut");
@@ -2810,6 +2849,7 @@
   function suivre() {
     if (!_e || !_trackerActif()) return;
     _e.mode = "suivi";
+    _e.libreBouge = false;   // repasser en libre sans bouger ne remontre pas la place du tracker comme « en 3D »
     _e.niveauLibre = null;
     _e.passageForce = null;
     _e.tangage = 0;
@@ -2822,7 +2862,7 @@
     if (!_e || !Number.isFinite(x) || !Number.isFinite(y)) return;
     _passerEnLibre();
     _e.pos.x = x; _e.pos.y = y;
-    _e.aBouge = true;
+    _e.aBouge = true; _e.libreBouge = true;
     if (Number.isFinite(cap)) _e.cap = (cap % 360 + 360) % 360;
     _e.sale = true;
   }
@@ -2874,9 +2914,10 @@
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
       facesRemblais: e.facesRemblais, rubans: Object.assign({}, e.rubans), liseres: Object.assign({}, e.liseres),
       zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
-      equipe: Object.assign({ membres: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
+      equipe: Object.assign({ membres: 0, membres3d: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
       membres: e.equipe ? e.equipe.children.filter(function (o) { return o.userData.famille === "membre"; })
-        .map(function (o) { return { x: o.position.x, z: o.position.z }; }) : [],
+        .map(function (o) { return { x: o.position.x, z: o.position.z, vue3d: !!o.userData.vue3d }; }) : [],
+      presence: { publiee: e.publiee ? Object.assign({}, e.publiee) : null, publications: e.publications },
       filtres: { panneauOuvert: !!(window.FilterPanel && window.FilterPanel.isVisible()),
         pastille: !!e.boutonFiltres && e.boutonFiltres.classList.contains("kta-filter-ctrl-actif") },
       recouverte: _recouverte(),

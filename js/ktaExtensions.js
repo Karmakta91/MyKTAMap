@@ -1707,6 +1707,24 @@
       return { x: p.x, y: p.y, niveau: Number.isInteger(n) ? n : null, suiviActif: !!e.suiviActif, ts: Date.now() };
     } catch (e) { return null; }
   }
+  // Place de la vue 3D en mode libre (vue3d.js > _publierPosition) : `presence.vue3d(p)`, facultatif, reçoit
+  // { x, y, niveau, cap, source: "vue3d", ts } (coordonnées plan, cap en degrés depuis le haut du plan), ou null en
+  // repassant en suivi et à la fermeture. ⚠️ contrat : ce n'est PAS la position du tracker (jamais recalé) ; une
+  // extension qui la partage garde `source: "vue3d"` pour qu'on ne la prenne pas pour une position suivie.
+  // 🔒 Une place n'est remise que si presenceActive() (l'utilisateur partage déjà sa position) ; null toujours.
+  // → true si l'extension l'a reçue. Sans extension : rien.
+  function positionVue3D(p) {
+    const ext = _prise("presence");
+    const f = ext && ext.presence && typeof ext.presence.vue3d === "function" ? ext.presence.vue3d : null;
+    if (!f) return false;
+    let v = null;
+    if (p) {
+      if (!presenceActive() || !isFinite(p.x) || !isFinite(p.y)) return false;
+      v = { x: Number(p.x), y: Number(p.y), niveau: Number.isInteger(p.niveau) ? p.niveau : null,
+        cap: isFinite(p.cap) ? ((Number(p.cap) % 360) + 360) % 360 : null, source: "vue3d", ts: Date.now() };
+    }
+    try { f(v); return true; } catch (e) { console.warn("[Extensions] presence.vue3d :", e); return false; }
+  }
   function afficherPresences(liste) {
     try { return window.KtaPresences ? window.KtaPresences.afficher(liste) : 0; }
     catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
@@ -2508,6 +2526,7 @@
     presenceActive: presenceActive,
     basculerPresence: basculerPresence,
     positionTracker: positionTracker,
+    positionVue3D: positionVue3D,
     afficherPresences: afficherPresences,
     itinerairePublie: itinerairePublie,
     basculerItineraire: basculerItineraire,

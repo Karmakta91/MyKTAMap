@@ -328,7 +328,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
   suiviActif, ts }`, ou `null` tant qu'il n'y a ni suivi en cours ni position confirmée (jamais le point de
   départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère = forme de l'icône du tracker
-  en SVG (40 px, sans rotation : aucun cap transmis) à la couleur de la personne, pseudo + ancienneté toujours
+  en SVG (40 px, sans rotation pour une position suivie : aucun cap transmis) à la couleur de la personne, pseudo + ancienneté toujours
   affichés à côté (texte), éteint et désaturé après 2 min, atténué hors niveau, trace pointillée de la même
   couleur ; entrées non conformes écartées, 200 personnes et 2000 points max ; aucune requête réseau).
   **Qui est qui** : `KtaPresences.couleurDe(id)` tire la couleur de l'identifiant (FNV-1a → palette de 9 teintes,
@@ -338,11 +338,23 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `couleur` fournie par l'extension (#rrggbb, ex. équipe d'une intervention Secours) > `couleurDe(id)`. Un
   panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `masquerPersonne(id, bool)` / `personneMasquee(id)` (14/10/2026) : ni repère ni trace, plus suivie, oublié en sortie de plan (`reinitialiser`). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+  **Place de la vue 3D** (facultatif) : `presence.vue3d(p)` reçoit, par `KtaExtensions.positionVue3D(p)` (seule
+  prise appelée par `js/vue3d.js > _publierPosition`), la place d'où l'utilisateur regarde quand il se déplace à la
+  main en mode **libre** : `{ x, y, niveau, cap, source: "vue3d", ts }` (coordonnées plan arrondies à 0,1 px, cap en
+  degrés depuis le haut du plan, normalisé 0–360, `null` si illisible ; niveau entier ou `null`), remise seulement
+  quand elle a bougé de 0,5 m, tourné de 10° ou changé de niveau ; `null` en repassant en suivi et à la fermeture.
+  🔒 Une place n'est remise que si `presenceActive()` (consentement déjà donné) ; `null` toujours ; coordonnées non
+  finies refusées ; une erreur de l'extension = `false`. ⚠️ contrat : ce n'est **pas** la position du tracker (jamais
+  recalé) ; l'extension garde la marque `source: "vue3d"` jusqu'à l'affichage. **Lecture** : une présence avec
+  `source: "vue3d"` (et `cap` facultatif) est marquée partout — repère au contour pointillé, tourné vers son cap,
+  pastille « 3D » et « en vue 3D » dans l'étiquette (`presence.vue3d.*`), pseudo suivi de « 3D » sur la silhouette
+  de la vue 3D ; toute autre valeur de `source` = position ordinaire. Sans extension : rien n'est remis.
 - **Vue 3D** (`js/vue3d.js > _majEquipe`) : redessine en relief, en **lecture seule**, ce que `KtaPresences` affiche
-  déjà sur la carte : présences (silhouette et pseudo au niveau affiché, masquages respectés), repères
-  (`calques()` + `reperes(nom)`), itinéraires publiés (tirets jaunes au sol). Elle relit seulement quand
-  `KtaPresences.version()` change (monte à chaque dessin et à `reinitialiser`). Aucune prise appelée, aucune requête
-  (`check-extensions.js`) ; sans extension, les listes sont vides et rien n'est dessiné.
+  déjà sur la carte : présences (silhouette et pseudo au niveau affiché, masquages respectés, « 3D » pour une place
+  `source: "vue3d"`), repères (`calques()` + `reperes(nom)`), itinéraires publiés (tirets jaunes au sol). Elle relit
+  seulement quand `KtaPresences.version()` change (monte à chaque dessin et à `reinitialiser`). Aucune requête ; une
+  seule prise appelée, `positionVue3D` (ci-dessus) (`check-extensions.js`) ; sans extension, les listes sont vides
+  et rien n'est dessiné.
 - **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
   fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
   navigation). L'app ne fournit que `itineraireActuel()` — `{ points: [[x, y, niveau]], etapes: [[x, y, faite]] }`

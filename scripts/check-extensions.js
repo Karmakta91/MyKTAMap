@@ -678,6 +678,30 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: K2 } = nouveauContexte(null);
     K2.register({ nom: "p2", apiVersion: 1, presence: { actif: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
     t("🩸 extension en erreur → présence inactive, aucune exception", K2.presenceActive() === false && (await K2.basculerPresence()) === false);
+    // Place libre de la vue 3D (prise presence.vue3d) : remise seulement avec le partage actif ; null toujours.
+    t("vue 3D : sans prise presence.vue3d → rien reçu (false)", K.positionVue3D({ x: 1, y: 2, niveau: 0, cap: 0 }) === false);
+    {
+      const { K: K3 } = nouveauContexte(null);
+      t("vue 3D : sans extension → false, sans erreur", K3.positionVue3D({ x: 1, y: 2 }) === false && K3.positionVue3D(null) === false);
+      let partage = false;
+      const recus = [];
+      K3.register({ nom: "p3", apiVersion: 1, presence: { actif: () => partage, basculer: () => { partage = !partage; },
+        vue3d: (p) => { recus.push(p); } } });
+      t("🔒 vue 3D : partage éteint → aucune place remise (consentement)",
+        K3.positionVue3D({ x: 1, y: 2, niveau: 0, cap: 10 }) === false && recus.length === 0);
+      t("vue 3D : null remis même partage éteint (retour au tracker)", K3.positionVue3D(null) === true && recus[0] === null);
+      partage = true;
+      const ok = K3.positionVue3D({ x: 12.5, y: 40, niveau: -1, cap: -30 });
+      const r = recus[1];
+      t("vue 3D : partage actif → { x, y, niveau, cap normalisé, source « vue3d », ts }", ok === true && r && r.x === 12.5 &&
+        r.y === 40 && r.niveau === -1 && r.cap === 330 && r.source === "vue3d" && typeof r.ts === "number", r);
+      t("🔒 vue 3D : coordonnées non finies → refusées", K3.positionVue3D({ x: NaN, y: 1 }) === false && recus.length === 2);
+      K3.positionVue3D({ x: 1, y: 2, niveau: 1.5, cap: "x" });
+      t("vue 3D : niveau non entier et cap illisible → null", recus[2] && recus[2].niveau === null && recus[2].cap === null);
+      const { K: K4 } = nouveauContexte(null);
+      K4.register({ nom: "p4", apiVersion: 1, presence: { actif: () => true, basculer() {}, vue3d: () => { throw new Error("z"); } } });
+      t("🩸 vue 3D : extension en erreur → false, aucune exception", K4.positionVue3D({ x: 1, y: 2 }) === false);
+    }
     const IF = lire("js/interface.js");
     t("tuile 📡 du tracker : seulement si une extension a la prise « presence »",
       /X\.aPrise\("presence"\)/.test(IF) && /_groupes\.tracker\.dynamicSousActions = function/.test(IF));
@@ -760,6 +784,23 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("👁️ réafficher : son repère revient", !P.personneMasquee("a1") && couches.filter((c) => c.type === "repere").length === 3);
     P.masquerPersonne("b2", true); P.reinitialiser();
     t("👁️ sortie de plan : les masquages sont oubliés", !P.personneMasquee("b2"));
+    // Place de vue 3D : marquée « 3D », libellée « en vue 3D », tournée vers son cap ; jamais pour une autre source.
+    couches.length = 0;
+    P.afficher([{ id: "v1", pseudo: "Val", x: 1, y: 2, source: "vue3d", cap: 450 },
+      { id: "v2", pseudo: "Tom", x: 3, y: 4, source: "gps", cap: 90 }]);
+    const r3 = couches.filter((c) => c.type === "repere");
+    const h3 = r3[0].icone.html, h4 = r3[1].icone.html;
+    t("🧊 place de vue 3D : classe, marque « 3D », libellé « en vue 3D », repère tourné vers son cap",
+      /kta-presence-vue3d/.test(h3.className) && h3.enfants[1].className === "kta-presence-marque-3d" &&
+      h3.enfants[1].textContent === "presence.vue3d.marque" &&
+      h3.enfants[2].textContent.indexOf("Val · presence.vue3d.libelle · ") === 0 &&
+      h3.enfants[0].style.transform === "rotate(90deg)" && P.liste()[0].source === "vue3d" && P.liste()[0].cap === 90, h3);
+    t("🩸 autre source (ou aucune) : position ordinaire, ni marque ni cap", !/kta-presence-vue3d/.test(h4.className) &&
+      h4.enfants.length === 2 && !h4.enfants[0].style.transform && P.liste()[1].source === null && P.liste()[1].cap === null);
+    const CSS = lire("css/style.css");
+    t("🎨 marque « 3D » : pastille et contour pointillé (CSS)", /\.kta-presence-marque-3d \{/.test(CSS) &&
+      /\.kta-presence-vue3d \.kta-presence-repere path \{ stroke-dasharray/.test(CSS));
+    P.reinitialiser();
   }
 
   // ── 6 bis ter. LECTURE SEULE et SORTIE DE PLAN ──────
@@ -2171,9 +2212,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 sortie du plan : tous les calques de repères effacés", KP.reperes("autre").length === 0 &&
       KP.calques().length === 0 && KP.version() > v1);
     const V3 = lire("js/vue3d.js");
-    t("🔒 vue 3D : membres, repères et itinéraires LUS dans KtaPresences (aucune requête, aucune prise appelée)",
+    t("🔒 vue 3D : membres, repères et itinéraires LUS dans KtaPresences (aucune requête)",
       /P\.liste\b/.test(V3) && /P\.calques\b/.test(V3) && /P\.itineraires\b/.test(V3) &&
-      !/fetch\(|XMLHttpRequest|WebSocket|KtaExtensions\./.test(V3));
+      !/fetch\(|XMLHttpRequest|WebSocket/.test(V3));
+    // Seule prise : la place libre (positionVue3D), retirée (null) à la fermeture et en repassant en suivi.
+    const prisesV3 = V3.match(/\bX\.\w+\(|KtaExtensions\.\w+\(/g) || [];
+    t("🔒 vue 3D : une seule prise appelée, positionVue3D ; null à la fermeture et au retour en suivi",
+      prisesV3.length > 0 && prisesV3.every((x) => /positionVue3D/.test(x)) &&
+      /function _demonter[\s\S]{0,700}if \(e\.publiee\) \{ e\.publiee = null; _prisePresence\(null\); \}/.test(V3) &&
+      /if \(e\.mode !== "libre" \|\| !e\.libreBouge\) \{\s*if \(e\.publiee\) \{ e\.publiee = null; _prisePresence\(null\); \}/.test(V3),
+      prisesV3);
     const IA = lire("js/interfaceAlerts.js");
     const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
     t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",

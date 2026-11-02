@@ -1438,10 +1438,21 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Membres, repères et itinéraires d'une extension** (`_majEquipe`) : ⚠️ contrat (frontière) : la vue **lit**
   `KtaPresences` (`liste`, `calques` + `reperes(nom)`, `itineraires`, masquages `personneMasquee` /
   `itineraireMasque`), ce que la prise neutre a posé sur la carte (`afficherPresences`, `afficherReperes`,
-  `afficherItineraires`) ; elle ne demande rien et n'envoie rien. Sans extension, ces listes sont vides : rien n'est
+  `afficherItineraires`) ; elle ne demande rien. Sans extension, ces listes sont vides : rien n'est
   dessiné. Refait quand `KtaPresences.version()` (monte à chaque dessin de la carte), le niveau ou la hauteur
   changent. Membre : silhouette (cylindre et tête, `MEMBRE`, à sa couleur `couleurDe(id)` ou celle donnée, non
-  éclairée) et son pseudo au-dessus, au niveau affiché seulement (niveau inconnu : partout). Repère : carte « symbole
+  éclairée) et son pseudo au-dessus, au niveau affiché seulement (niveau inconnu : partout) ; un membre dont la
+  place vient de SA vue 3D (`source: "vue3d"`) : pseudo suivi de « 3D » (`presence.vue3d.marque`).
+- **Ma place libre montrée à l'équipe** (`_publierPosition`, décision produit, QCM du 02/11/2026) : ⚠️ contrat
+  (frontière) : seule prise appelée par la vue, `KtaExtensions.positionVue3D(p)` (`community-server-line.md` §3).
+  En **libre** et après un déplacement à la main (`libreBouge` : pas, `placer`, passage 🪜 ; tourner seul ne compte
+  pas), chaque image compare la place `{ x, y }` arrondie à 0,1 px, `cap` au degré et `niveau` à la dernière remise :
+  nouvelle remise seulement au-delà de 0,5 m, 10° ou d'un changement de niveau (jamais un appel par image ; la
+  cadence réseau reste celle de l'extension). 🔒 La prise ne la remet que si la présence est déjà partagée ; un refus
+  n'est pas noté comme remis (partage allumé ensuite : la place part à l'image suivante). `null` en repassant en
+  **suivi** et à la **fermeture** (`_demonter`, perte de contexte comprise) ; repasser en libre sans bouger ne remet
+  rien. Le tracker n'est jamais recalé par là. Première remise d'une ouverture : toast `vue3d.presencePartagee`
+  (vie privée). État : `etat().presence = { publiee, publications }`. Repère : carte « symbole
   titre ×nombre », liseré à la teinte de la charte qu'il porte, sur ses niveaux. Itinéraire partagé : tirets jaunes
   (accent) au sol, tronçons du niveau affiché.
 - **Couleurs** : celles de la légende, par `ktaResolveStyle(…, { flat: true })` / `ktaSwatchColor` ; aucune table
@@ -1488,7 +1499,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   parallèles) : aucune paroi qui en traverse une autre, axes libres, bouts fermés, butée contre une paroi, carrefour et
   coude passés, remblais qui arrête, zones coupées au tube, rideau en travers, POI à 2 m montré et à 5 m masqué,
   interrupteur retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
-  du panneau, suivi sans 🪜, tracker et carte inchangés) ; sortie : carte au niveau et à la place de la 3D (libre,
+  du panneau, suivi sans 🪜, tracker et carte inchangés) ; place libre (extension factice) : rien sans partage ni
+  avant un pas, une remise puis rien à l'arrêt, ≤ 1 remise par 0,5 m en marchant, rien sous 10° de rotation,
+  `null` en suivi et à la fermeture, tracker inchangé, membre « en 3D » marqué ; sortie : carte au niveau et à la place de la 3D (libre,
   après Non, en suivi), Oui recale aussi le niveau. Hauteur ⛏️ (structures et galerie) : réglée à 3 m → piliers,
   murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getPlanHauteurGalerie()` = 3, relue à la
   réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 4 m. Filtres : ≡ ouvre le ≡ Filtres de la
